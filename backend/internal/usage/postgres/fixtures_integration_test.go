@@ -82,16 +82,12 @@ func mustCreateGroup(t *testing.T, client *dbent.Client, g *routing.Group) *rout
 	t.Helper()
 	ctx := context.Background()
 
-	if g.Platform == "" {
-		g.Platform = capability.PlatformAnthropic
-	}
 	if g.Status == "" {
 		g.Status = billing.StatusActive
 	}
 
 	create := client.Group.Create().
 		SetName(g.Name).
-		SetPlatform(g.Platform).
 		SetStatus(g.Status).
 		SetRateMultiplier(g.RateMultiplier).
 		SetIsExclusive(g.IsExclusive).

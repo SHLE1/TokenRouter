@@ -25,10 +25,17 @@ func NormalizeNativeProtocols(account AccountProtocols) ([]ProtocolID, error) {
 }
 
 // ValidateProtocolFallbacks 只接受已有的一跳转换边，不执行隐式多级搜索。
-func ValidateProtocolFallbacks(platform string, fallbacks map[ProtocolID]ProtocolID) error {
-	for source, target := range fallbacks {
-		if !slices.Contains(ProtocolFallbackTargets(platform, source), target) {
-			return fmt.Errorf("unsupported conversion %s -> %s", source, target)
+func ValidateProtocolFallbacks(_ string, fallbacks map[ProtocolID][]ProtocolID) error {
+	for source, targets := range fallbacks {
+		if !slices.Contains(canonicalGroupClientProtocols, source) {
+			return fmt.Errorf("unknown source protocol %q", source)
+		}
+		seen := make(map[ProtocolID]bool)
+		for _, target := range targets {
+			if seen[target] || !slices.Contains(AutomaticProtocolFallbackTargets(source), target) {
+				return fmt.Errorf("unsupported or duplicated conversion %s -> %s", source, target)
+			}
+			seen[target] = true
 		}
 	}
 	return nil

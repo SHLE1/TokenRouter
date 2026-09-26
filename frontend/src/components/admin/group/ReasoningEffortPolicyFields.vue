@@ -209,7 +209,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import type { GroupPlatform } from "@/types";
 import Icon from "@/components/icons/Icon.vue";
 import Select from "@/components/common/Select.vue";
 import {
@@ -228,7 +227,6 @@ import {
 
 const props = defineProps<{
   idPrefix: string;
-  platform: GroupPlatform;
   maxEffort: string;
   overLimit: string;
   mappings: ReasoningEffortMappingRow[];
@@ -243,10 +241,10 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const showValidation = ref(false);
 const reasoningEffortOptions = computed(() =>
-  reasoningEffortOptionsForPlatform(props.platform),
+  reasoningEffortOptionsForPlatform(),
 );
 const reasoningEffortMappingOptions = computed(() =>
-  reasoningEffortMappingOptionsForPlatform(props.platform),
+  reasoningEffortMappingOptionsForPlatform(),
 );
 const overLimitOptions = computed(() => [
   {
@@ -273,7 +271,7 @@ const matchTypeOptions = computed(() => [
   },
 ]);
 const validationErrors = computed(() =>
-  validateReasoningEffortMappings(props.mappings, props.platform),
+  validateReasoningEffortMappings(props.mappings),
 );
 
 const asString = (value: string | number | boolean | null): string =>

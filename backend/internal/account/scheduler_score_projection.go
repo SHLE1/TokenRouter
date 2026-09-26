@@ -152,7 +152,7 @@ func (h *SchedulerScoreView) buildAdvancedAccountSchedulerScores(
 			if group == nil {
 				continue
 			}
-			pool, err := h.adminService.ListSchedulableAccountsForAdvancedSchedulerScore(ctx, &gid, group.Platform)
+			pool, err := h.adminService.ListSchedulableAccountsForAdvancedSchedulerScore(ctx, &gid, "")
 			if err != nil {
 				h.options.Warn("advanced_scheduler_group_score_pool_failed", "group_id", gid, "error", err)
 				continue

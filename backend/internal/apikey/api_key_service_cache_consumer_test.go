@@ -26,8 +26,8 @@ import (
 
 func TestAPIKeyAuthGroupSnapshotPreservesExplicitEmptyClientProtocols(t *testing.T) {
 	emptySnapshot := apikey.KeyAuthGroupSnapshotFromGroup(&routing.Group{
-		ID:               1,
-		Platform:         capability.PlatformOpenAI,
+		ID: 1,
+
 		AllowedProtocols: []protocol.ProtocolID{},
 	})
 	payload, err := json.Marshal(emptySnapshot)
@@ -366,9 +366,9 @@ func TestAPIKeyService_GetByKey_UsesL2Cache(t *testing.T) {
 				Concurrency: 3,
 			},
 			Group: &apikey.APIKeyAuthGroupSnapshot{
-				ID:                  groupID,
-				Name:                "g",
-				Platform:            capability.PlatformAnthropic,
+				ID:   groupID,
+				Name: "g",
+
 				Status:              billing.StatusActive,
 				RateMultiplier:      1,
 				ModelRoutingEnabled: true,
@@ -391,7 +391,7 @@ func TestAPIKeyService_GetByKey_UsesL2Cache(t *testing.T) {
 	require.Equal(t, map[string][]int64{"claude-opus-*": {1, 2}}, apiKey.Group.ModelRouting)
 }
 
-func TestAPIKeyService_GetByKey_FallsBackDisabledBoundGroupToPlatformDefaultFromRepo(t *testing.T) {
+func TestAPIKeyService_GetByKey_KeepsDisabledGroupWithoutConfiguredFallbackFromRepo(t *testing.T) {
 	disabledGroupID := int64(9)
 	defaultGroupID := int64(10)
 	defaultRPM := 77
@@ -399,12 +399,12 @@ func TestAPIKeyService_GetByKey_FallsBackDisabledBoundGroupToPlatformDefaultFrom
 	repo := &authRepoStub{
 		getByKeyForAuth: func(ctx context.Context, key string) (*apikey.APIKey, error) {
 			return &apikey.APIKey{
-				ID:                                    1,
-				UserID:                                2,
-				GroupID:                               &disabledGroupID,
-				Key:                                   key,
-				Status:                                billing.StatusActive,
-				FallbackToDefaultGroupWhenUnavailable: true,
+				ID:                           1,
+				UserID:                       2,
+				GroupID:                      &disabledGroupID,
+				Key:                          key,
+				Status:                       billing.StatusActive,
+				FallbackWhenGroupUnavailable: true,
 				User: &identity.User{
 					ID:                   2,
 					Status:               billing.StatusActive,
@@ -414,9 +414,9 @@ func TestAPIKeyService_GetByKey_FallsBackDisabledBoundGroupToPlatformDefaultFrom
 					UserGroupRPMOverride: &oldRPM,
 				},
 				Group: &routing.Group{
-					ID:             disabledGroupID,
-					Name:           "openai-disabled",
-					Platform:       capability.PlatformOpenAI,
+					ID:   disabledGroupID,
+					Name: "openai-disabled",
+
 					Status:         billing.StatusDisabled,
 					Hydrated:       true,
 					RateMultiplier: 9,
@@ -428,12 +428,12 @@ func TestAPIKeyService_GetByKey_FallsBackDisabledBoundGroupToPlatformDefaultFrom
 		groupsByPlatform: map[string][]routing.Group{
 			capability.PlatformOpenAI: {
 				{
-					ID:             defaultGroupID,
-					Name:           "openai-default",
-					Platform:       capability.PlatformOpenAI,
-					Status:         billing.StatusActive,
-					Hydrated:       true,
-					IsDefault:      true,
+					ID:   defaultGroupID,
+					Name: "openai-default",
+
+					Status:   billing.StatusActive,
+					Hydrated: true,
+
 					RateMultiplier: 1.5,
 				},
 			},
@@ -446,14 +446,12 @@ func TestAPIKeyService_GetByKey_FallsBackDisabledBoundGroupToPlatformDefaultFrom
 	apiKey, err := svc.GetByKey(context.Background(), "k-disabled")
 	require.NoError(t, err)
 	require.NotNil(t, apiKey.GroupID)
-	require.Equal(t, defaultGroupID, *apiKey.GroupID)
+	require.Equal(t, disabledGroupID, *apiKey.GroupID)
 	require.NotNil(t, apiKey.Group)
-	require.Equal(t, defaultGroupID, apiKey.Group.ID)
-	require.Equal(t, capability.PlatformOpenAI, apiKey.Group.Platform)
-	require.Equal(t, billing.StatusActive, apiKey.Group.Status)
-	require.NotNil(t, apiKey.User.UserGroupRPMOverride)
-	require.Equal(t, defaultRPM, *apiKey.User.UserGroupRPMOverride)
-	require.Equal(t, []int64{defaultGroupID}, rateRepo.calls)
+	require.Equal(t, disabledGroupID, apiKey.Group.ID)
+	require.Equal(t, billing.StatusDisabled, apiKey.Group.Status)
+	require.Nil(t, apiKey.User.UserGroupRPMOverride)
+	require.Empty(t, rateRepo.calls)
 }
 
 func TestAPIKeyService_GetByKey_FallsBackDisabledBoundGroupToConfiguredGroup(t *testing.T) {
@@ -463,12 +461,12 @@ func TestAPIKeyService_GetByKey_FallsBackDisabledBoundGroupToConfiguredGroup(t *
 	repo := &authRepoStub{
 		getByKeyForAuth: func(ctx context.Context, key string) (*apikey.APIKey, error) {
 			return &apikey.APIKey{
-				ID:                                    1,
-				UserID:                                2,
-				GroupID:                               &disabledGroupID,
-				Key:                                   key,
-				Status:                                billing.StatusActive,
-				FallbackToDefaultGroupWhenUnavailable: true,
+				ID:                           1,
+				UserID:                       2,
+				GroupID:                      &disabledGroupID,
+				Key:                          key,
+				Status:                       billing.StatusActive,
+				FallbackWhenGroupUnavailable: true,
 				User: &identity.User{
 					ID:          2,
 					Status:      billing.StatusActive,
@@ -477,9 +475,9 @@ func TestAPIKeyService_GetByKey_FallsBackDisabledBoundGroupToConfiguredGroup(t *
 					Concurrency: 3,
 				},
 				Group: &routing.Group{
-					ID:                         disabledGroupID,
-					Name:                       "openai-disabled",
-					Platform:                   capability.PlatformOpenAI,
+					ID:   disabledGroupID,
+					Name: "openai-disabled",
+
 					Status:                     billing.StatusDisabled,
 					Hydrated:                   true,
 					UnavailableFallbackGroupID: &configuredFallbackID,
@@ -490,9 +488,9 @@ func TestAPIKeyService_GetByKey_FallsBackDisabledBoundGroupToConfiguredGroup(t *
 	groupRepo := &authGroupRepoStub{
 		groupsByID: map[int64]routing.Group{
 			configuredFallbackID: {
-				ID:             configuredFallbackID,
-				Name:           "openai-configured-fallback",
-				Platform:       capability.PlatformOpenAI,
+				ID:   configuredFallbackID,
+				Name: "openai-configured-fallback",
+
 				Status:         billing.StatusActive,
 				Hydrated:       true,
 				RateMultiplier: 1.2,
@@ -501,12 +499,12 @@ func TestAPIKeyService_GetByKey_FallsBackDisabledBoundGroupToConfiguredGroup(t *
 		groupsByPlatform: map[string][]routing.Group{
 			capability.PlatformOpenAI: {
 				{
-					ID:             defaultGroupID,
-					Name:           "openai-default",
-					Platform:       capability.PlatformOpenAI,
-					Status:         billing.StatusActive,
-					Hydrated:       true,
-					IsDefault:      true,
+					ID:   defaultGroupID,
+					Name: "openai-default",
+
+					Status:   billing.StatusActive,
+					Hydrated: true,
+
 					RateMultiplier: 1,
 				},
 			},
@@ -524,19 +522,19 @@ func TestAPIKeyService_GetByKey_FallsBackDisabledBoundGroupToConfiguredGroup(t *
 	require.Equal(t, "openai-configured-fallback", apiKey.Group.Name)
 }
 
-func TestAPIKeyService_GetByKey_InvalidConfiguredUnavailableFallbackUsesPlatformDefault(t *testing.T) {
+func TestAPIKeyService_GetByKey_UsesConfiguredFallbackWithoutPlatformConstraint(t *testing.T) {
 	disabledGroupID := int64(9)
 	configuredFallbackID := int64(11)
 	defaultGroupID := int64(10)
 	repo := &authRepoStub{
 		getByKeyForAuth: func(ctx context.Context, key string) (*apikey.APIKey, error) {
 			return &apikey.APIKey{
-				ID:                                    1,
-				UserID:                                2,
-				GroupID:                               &disabledGroupID,
-				Key:                                   key,
-				Status:                                billing.StatusActive,
-				FallbackToDefaultGroupWhenUnavailable: true,
+				ID:                           1,
+				UserID:                       2,
+				GroupID:                      &disabledGroupID,
+				Key:                          key,
+				Status:                       billing.StatusActive,
+				FallbackWhenGroupUnavailable: true,
 				User: &identity.User{
 					ID:          2,
 					Status:      billing.StatusActive,
@@ -545,9 +543,9 @@ func TestAPIKeyService_GetByKey_InvalidConfiguredUnavailableFallbackUsesPlatform
 					Concurrency: 3,
 				},
 				Group: &routing.Group{
-					ID:                         disabledGroupID,
-					Name:                       "openai-disabled",
-					Platform:                   capability.PlatformOpenAI,
+					ID:   disabledGroupID,
+					Name: "openai-disabled",
+
 					Status:                     billing.StatusDisabled,
 					Hydrated:                   true,
 					UnavailableFallbackGroupID: &configuredFallbackID,
@@ -558,9 +556,9 @@ func TestAPIKeyService_GetByKey_InvalidConfiguredUnavailableFallbackUsesPlatform
 	groupRepo := &authGroupRepoStub{
 		groupsByID: map[int64]routing.Group{
 			configuredFallbackID: {
-				ID:       configuredFallbackID,
-				Name:     "gemini-wrong-platform",
-				Platform: capability.PlatformGemini,
+				ID:   configuredFallbackID,
+				Name: "mixed-fallback",
+
 				Status:   billing.StatusActive,
 				Hydrated: true,
 			},
@@ -568,12 +566,11 @@ func TestAPIKeyService_GetByKey_InvalidConfiguredUnavailableFallbackUsesPlatform
 		groupsByPlatform: map[string][]routing.Group{
 			capability.PlatformOpenAI: {
 				{
-					ID:        defaultGroupID,
-					Name:      "openai-default",
-					Platform:  capability.PlatformOpenAI,
-					Status:    billing.StatusActive,
-					Hydrated:  true,
-					IsDefault: true,
+					ID:   defaultGroupID,
+					Name: "openai-default",
+
+					Status:   billing.StatusActive,
+					Hydrated: true,
 				},
 			},
 		},
@@ -584,12 +581,12 @@ func TestAPIKeyService_GetByKey_InvalidConfiguredUnavailableFallbackUsesPlatform
 	apiKey, err := svc.GetByKey(context.Background(), "k-disabled")
 	require.NoError(t, err)
 	require.NotNil(t, apiKey.GroupID)
-	require.Equal(t, defaultGroupID, *apiKey.GroupID)
+	require.Equal(t, configuredFallbackID, *apiKey.GroupID)
 	require.NotNil(t, apiKey.Group)
-	require.Equal(t, defaultGroupID, apiKey.Group.ID)
+	require.Equal(t, configuredFallbackID, apiKey.Group.ID)
 }
 
-func TestAPIKeyService_GetByKey_FallsBackDisabledBoundGroupToPlatformDefaultFromAuthCache(t *testing.T) {
+func TestAPIKeyService_GetByKey_KeepsDisabledGroupWithoutConfiguredFallbackFromAuthCache(t *testing.T) {
 	cache := &authCacheStub{}
 	repo := &authRepoStub{
 		getByKeyForAuth: func(ctx context.Context, key string) (*apikey.APIKey, error) {
@@ -602,12 +599,12 @@ func TestAPIKeyService_GetByKey_FallsBackDisabledBoundGroupToPlatformDefaultFrom
 		groupsByPlatform: map[string][]routing.Group{
 			capability.PlatformGemini: {
 				{
-					ID:             defaultGroupID,
-					Name:           "gemini-default",
-					Platform:       capability.PlatformGemini,
-					Status:         billing.StatusActive,
-					Hydrated:       true,
-					IsDefault:      true,
+					ID:   defaultGroupID,
+					Name: "gemini-default",
+
+					Status:   billing.StatusActive,
+					Hydrated: true,
+
 					RateMultiplier: 2,
 				},
 			},
@@ -617,12 +614,12 @@ func TestAPIKeyService_GetByKey_FallsBackDisabledBoundGroupToPlatformDefaultFrom
 	cache.getAuthCache = func(ctx context.Context, key string) (*apikey.APIKeyAuthCacheEntry, error) {
 		return &apikey.APIKeyAuthCacheEntry{
 			Snapshot: &apikey.APIKeyAuthSnapshot{
-				Version:                               apikey.KeyApiKeyAuthSnapshotVersion,
-				APIKeyID:                              1,
-				UserID:                                2,
-				GroupID:                               &disabledGroupID,
-				Status:                                billing.StatusActive,
-				FallbackToDefaultGroupWhenUnavailable: true,
+				Version:                      apikey.KeyApiKeyAuthSnapshotVersion,
+				APIKeyID:                     1,
+				UserID:                       2,
+				GroupID:                      &disabledGroupID,
+				Status:                       billing.StatusActive,
+				FallbackWhenGroupUnavailable: true,
 				User: apikey.APIKeyAuthUserSnapshot{
 					ID:                   2,
 					Status:               billing.StatusActive,
@@ -632,9 +629,9 @@ func TestAPIKeyService_GetByKey_FallsBackDisabledBoundGroupToPlatformDefaultFrom
 					UserGroupRPMOverride: &oldRPM,
 				},
 				Group: &apikey.APIKeyAuthGroupSnapshot{
-					ID:             disabledGroupID,
-					Name:           "gemini-disabled",
-					Platform:       capability.PlatformGemini,
+					ID:   disabledGroupID,
+					Name: "gemini-disabled",
+
 					Status:         billing.StatusDisabled,
 					RateMultiplier: 8,
 				},
@@ -648,10 +645,11 @@ func TestAPIKeyService_GetByKey_FallsBackDisabledBoundGroupToPlatformDefaultFrom
 	apiKey, err := svc.GetByKey(context.Background(), "k-cached-disabled")
 	require.NoError(t, err)
 	require.NotNil(t, apiKey.GroupID)
-	require.Equal(t, defaultGroupID, *apiKey.GroupID)
+	require.Equal(t, disabledGroupID, *apiKey.GroupID)
 	require.NotNil(t, apiKey.Group)
-	require.Equal(t, defaultGroupID, apiKey.Group.ID)
-	require.Nil(t, apiKey.User.UserGroupRPMOverride)
+	require.Equal(t, disabledGroupID, apiKey.Group.ID)
+	require.NotNil(t, apiKey.User.UserGroupRPMOverride)
+	require.Equal(t, oldRPM, *apiKey.User.UserGroupRPMOverride)
 }
 
 func TestAPIKeyService_GetByKey_DoesNotFallbackDeletedOrMissingBoundGroup(t *testing.T) {
@@ -673,9 +671,9 @@ func TestAPIKeyService_GetByKey_DoesNotFallbackDeletedOrMissingBoundGroup(t *tes
 						Concurrency: 3,
 					},
 					Group: &routing.Group{
-						ID:       groupID,
-						Name:     "deleted",
-						Platform: capability.PlatformOpenAI,
+						ID:   groupID,
+						Name: "deleted",
+
 						Status:   "deleted",
 						Hydrated: true,
 					},
@@ -684,7 +682,7 @@ func TestAPIKeyService_GetByKey_DoesNotFallbackDeletedOrMissingBoundGroup(t *tes
 		}
 		groupRepo := &authGroupRepoStub{
 			groupsByPlatform: map[string][]routing.Group{
-				capability.PlatformOpenAI: {{ID: 10, Name: "openai-default", Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Hydrated: true, IsDefault: true}},
+				capability.PlatformOpenAI: {{ID: 10, Name: "openai-default", Status: billing.StatusActive, Hydrated: true}},
 			},
 		}
 		ctx := apikey.WithInboundEndpoint(context.Background(), "/v1/images/generations")
@@ -720,7 +718,7 @@ func TestAPIKeyService_GetByKey_DoesNotFallbackDeletedOrMissingBoundGroup(t *tes
 		}
 		groupRepo := &authGroupRepoStub{
 			groupsByPlatform: map[string][]routing.Group{
-				capability.PlatformAnthropic: {{ID: 10, Name: "default", Platform: capability.PlatformAnthropic, Status: billing.StatusActive, Hydrated: true, IsDefault: true}},
+				capability.PlatformAnthropic: {{ID: 10, Name: "default", Status: billing.StatusActive, Hydrated: true}},
 			},
 		}
 		ctx := apikey.WithInboundEndpoint(context.Background(), "/v1/messages")
@@ -755,9 +753,9 @@ func TestAPIKeyService_SnapshotRoundTrip_PreservesMessagesDispatchModelConfig(t 
 			Concurrency: 3,
 		},
 		Group: &routing.Group{
-			ID:                 groupID,
-			Name:               "openai",
-			Platform:           capability.PlatformOpenAI,
+			ID:   groupID,
+			Name: "openai",
+
 			Status:             billing.StatusActive,
 			RateMultiplier:     1,
 			DefaultMappedModel: "gpt-5.4",
@@ -812,7 +810,7 @@ func TestAPIKeyServiceSnapshotRoundTripPreservesGroupModelPricing(t *testing.T) 
 		ID: 1, UserID: 2, GroupID: &groupID, Key: "k-group-pricing", Status: billing.StatusActive,
 		User: &identity.User{ID: 2, Status: billing.StatusActive},
 		Group: &routing.Group{
-			ID: groupID, Name: "openai", Platform: capability.PlatformOpenAI, Status: billing.StatusActive,
+			ID: groupID, Name: "openai", Status: billing.StatusActive,
 			LongContextPricingEnabled: true,
 			ModelPricing: []routing.ModelPricingEntry{{
 				Models: []string{"gpt-5.4"}, BillingMode: routing.BillingModeToken, InputPrice: &inputPrice,
@@ -847,9 +845,9 @@ func TestAPIKeyService_SnapshotRoundTrip_PreservesReasoningEffortPolicy(t *testi
 			Concurrency: 3,
 		},
 		Group: &routing.Group{
-			ID:                          groupID,
-			Name:                        "openai",
-			Platform:                    capability.PlatformOpenAI,
+			ID:   groupID,
+			Name: "openai",
+
 			Status:                      billing.StatusActive,
 			RateMultiplier:              1,
 			MaxReasoningEffort:          "medium",
@@ -890,9 +888,9 @@ func TestAPIKeyService_GetByKey_IgnoresLegacyAuthCacheSnapshotWithoutMessagesDis
 					Concurrency: 3,
 				},
 				Group: &routing.Group{
-					ID:                    groupID,
-					Name:                  "openai",
-					Platform:              capability.PlatformOpenAI,
+					ID:   groupID,
+					Name: "openai",
+
 					Status:                billing.StatusActive,
 					Hydrated:              true,
 					RateMultiplier:        1,
@@ -929,9 +927,9 @@ func TestAPIKeyService_GetByKey_IgnoresLegacyAuthCacheSnapshotWithoutMessagesDis
 					Concurrency: 3,
 				},
 				Group: &apikey.APIKeyAuthGroupSnapshot{
-					ID:                 groupID,
-					Name:               "openai",
-					Platform:           capability.PlatformOpenAI,
+					ID:   groupID,
+					Name: "openai",
+
 					Status:             billing.StatusActive,
 					RateMultiplier:     1,
 					DefaultMappedModel: "gpt-5.4",
@@ -1194,22 +1192,22 @@ func TestAPIKeySnapshotPreservesIndependentRoutingPolicy(t *testing.T) {
 	key := &apikey.APIKey{
 		ID: 1, UserID: 2, GroupID: &groupID, Key: "policy-snapshot", Status: billing.StatusActive,
 		User: &identity.User{ID: 2, Status: billing.StatusActive}, Group: &routing.Group{
-			ID: groupID, Platform: capability.PlatformOpenAI,
+			ID: groupID,
 			RoutingPolicy: routing.GroupRoutingPolicy{
 				Enabled: true, RestrictModels: true, RestrictionModelSource: routing.BillingModelSourceUpstream,
-				ModelMapping: map[string]map[string]string{"openai": {"alias": "real"}}, AllowedModels: map[string][]string{"openai": {"real"}},
+				ModelMapping: map[string]string{"alias": "real"}, AllowedModels: []string{"real"},
 				FeaturesConfig: map[string]any{"codex_image_generation_bridge": map[string]any{"openai": false}},
 			},
 		},
 	}
 	snapshot := svc.KeySnapshotFromAPIKey(context.Background(), key)
-	require.Equal(t, 41, snapshot.Version)
+	require.Equal(t, apikey.KeyApiKeyAuthSnapshotVersion, snapshot.Version)
 	restored := svc.KeySnapshotToAPIKey(key.Key, snapshot)
 	require.Equal(t, key.Group.RoutingPolicy, restored.Group.RoutingPolicy)
-	restored.Group.RoutingPolicy.ModelMapping["openai"]["alias"] = "changed"
-	restored.Group.RoutingPolicy.AllowedModels["openai"][0] = "changed"
-	require.Equal(t, "real", snapshot.Group.RoutingPolicy.ModelMapping["openai"]["alias"])
-	require.Equal(t, "real", snapshot.Group.RoutingPolicy.AllowedModels["openai"][0])
+	restored.Group.RoutingPolicy.ModelMapping["alias"] = "changed"
+	restored.Group.RoutingPolicy.AllowedModels[0] = "changed"
+	require.Equal(t, "real", snapshot.Group.RoutingPolicy.ModelMapping["alias"])
+	require.Equal(t, "real", snapshot.Group.RoutingPolicy.AllowedModels[0])
 	snapshot.Version = 40
 	cached, ok, err := svc.KeyApplyAuthCacheEntry(key.Key, &apikey.APIKeyAuthCacheEntry{Snapshot: snapshot})
 	require.NoError(t, err)

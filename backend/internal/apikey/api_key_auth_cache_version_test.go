@@ -6,7 +6,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/identity"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
 func TestAPIKeyService_RejectsV13AuthSnapshotWithoutSessionIsolationFlag(t *testing.T) {
@@ -28,15 +27,14 @@ func TestAPIKeyService_RejectsV13AuthSnapshotWithoutSessionIsolationFlag(t *test
 				Concurrency: 3,
 			},
 			Group: &apikey.APIKeyAuthGroupSnapshot{
-				ID:             groupID,
-				Name:           "openai",
-				Platform:       capability.PlatformOpenAI,
+				ID:   groupID,
+				Name: "openai",
+
 				Status:         billing.StatusActive,
 				RateMultiplier: 1,
 			},
 		},
 	})
-
 	if err != nil {
 		t.Fatalf("expected stale snapshot to be ignored without error, got %v", err)
 	}
@@ -54,7 +52,6 @@ func TestAPIKeyService_RejectsV21AuthSnapshotWithoutReasoningEffortPolicy(t *tes
 	apiKey, ok, err := svc.KeyApplyAuthCacheEntry("k-legacy-reasoning-mappings", &apikey.APIKeyAuthCacheEntry{
 		Snapshot: &apikey.APIKeyAuthSnapshot{Version: 21},
 	})
-
 	if err != nil {
 		t.Fatalf("expected stale snapshot to be ignored without error, got %v", err)
 	}
@@ -72,7 +69,6 @@ func TestAPIKeyServiceRejectsV26AuthSnapshotWithoutModelMapping(t *testing.T) {
 	apiKey, ok, err := svc.KeyApplyAuthCacheEntry("k-legacy-model-mapping", &apikey.APIKeyAuthCacheEntry{
 		Snapshot: &apikey.APIKeyAuthSnapshot{Version: 26},
 	})
-
 	if err != nil {
 		t.Fatalf("expected stale snapshot to be ignored without error, got %v", err)
 	}
@@ -87,7 +83,6 @@ func TestAPIKeyServiceRejectsV29AuthSnapshotWithoutSchedulerType(t *testing.T) {
 	apiKey, ok, err := svc.KeyApplyAuthCacheEntry("k-legacy-scheduler-type", &apikey.APIKeyAuthCacheEntry{
 		Snapshot: &apikey.APIKeyAuthSnapshot{Version: 29},
 	})
-
 	if err != nil {
 		t.Fatalf("expected stale snapshot to be ignored without error, got %v", err)
 	}

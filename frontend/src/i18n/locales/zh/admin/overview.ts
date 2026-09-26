@@ -531,7 +531,6 @@ affiliates: {
         groups: '分组',
         subscriptions: '订阅分组',
         balance: '余额',
-        balancePlatformQuota: '余额(平台配额)',
         usage: '用量',
         usageAnthropic: '用量 (Claude)',
         usageOpenAI: '用量 (OpenAI)',
@@ -765,41 +764,6 @@ affiliates: {
         keyExists: '属性键已存在',
         dragToReorder: '拖拽排序'
       },
-      platformQuota: {
-        menuItem: '平台限额',
-        title: '平台限额',
-        subtitle: '为用户 {email} 配置各上游平台的日 / 周 / 月用量上限',
-        columns: {
-          platform: '平台',
-          daily: '日 (USD)',
-          weekly: '周 (USD)',
-          monthly: '月 (USD, 30天滚动)',
-          usage: '当前用量',
-        },
-        placeholder: '不限制',
-        save: '保存',
-        saving: '保存中...',
-        cancel: '取消',
-        clearAll: '全部清空（取消所有限额）',
-        clearAllConfirm: '确认清空全部平台的日 / 周 / 月限额？所有平台将变为"无限额"，本地无法撤销，需要在保存前手动重填。',
-        reset: {
-          button: '重置该窗口',
-          confirm: '确认重置该用户 {platform} 平台的 {window} 用量？此操作立即生效。',
-          success: '已重置 {platform} {window} 用量',
-          failed: '重置失败',
-        },
-        updateSuccess: '平台限额已更新',
-        updateFailed: '保存失败',
-        loadFailed: '加载失败',
-        hint: '留空 = 不限制该窗口。',
-        windowDaily: '日',
-        windowWeekly: '周',
-        windowMonthly: '月',
-        cellNotConfigured: '未配置',
-        cellColumnTooltip: '仅展示已设限额的平台',
-        subscriptionWarning: '此用户有活跃订阅，平台限额仅在余额（标准）模式下生效，订阅模式请求不受此限额约束。',
-        invalidNumber: '以下字段填写不是合法数字，请修正后再保存：{fields}',
-      }
     },
 // Groups Management
     groups: {
@@ -831,7 +795,7 @@ affiliates: {
         routing: "\u6a21\u578b\u4e0e\u529f\u80fd",
         label: '分组设置',
         general: '通用',
-        platform: '平台设置',
+        features: '功能策略',
         pricing: '计费与定价',
         protocol: '协议控制',
         identity: '基本信息',
@@ -965,17 +929,10 @@ affiliates: {
           '公开分组费率 0.8，您可以创建一个费率 0.7 的专属分组，手动分配给 VIP 用户，让他们享受更优惠的价格。'
       },
       rateMultiplierHint: '1.0 = 标准费率，0.5 = 半价，2.0 = 双倍',
-      defaultGroup: {
-        title: '默认分组',
-        badge: '默认',
-        enabled: '作为默认分组',
-        disabled: '不作为默认分组',
-        hint: '当 API Key 未绑定到任何有效分组时，会自动回退到该平台的默认分组；同一平台只会保留一个默认分组。'
-      },
       unavailableFallback: {
         title: '指定 fallback 分组',
-        noFallback: '不指定（使用默认分组）',
-        hint: '当该分组被停用时，绑定到该分组的 API Key 会优先回退到这里选择的分组；留空则继续回退到同平台默认分组。'
+        noFallback: '不回退',
+        hint: '分组不可用时，仅在 Key 允许回退的情况下使用这里指定的分组。留空则不回退。'
       },
       sessionIsolation: {
         title: '开启会话隔离',
@@ -1060,8 +1017,6 @@ affiliates: {
       displayBrandPlaceholder: '例如 DeepSeek / Claude / OpenAI',
       displayBrandCreatablePrefix: '使用品牌',
       displayBrandHint: '仅用于模型广场展示，不影响路由协议、账号调度或格式转换；留空时使用分组名称。',
-      platformHint: '选择此分组使用的上游账号和网关路由格式，不代表模型品牌。',
-      platformNotEditable: '创建后不可更改上游平台；它只影响路由和账号调度，不代表模型品牌。',
       noGroupsYet: '暂无分组',
       createFirstGroup: '创建您的第一个分组来组织 API 密钥。',
       creating: '创建中...',
@@ -1248,8 +1203,8 @@ affiliates: {
       },
       copyAccounts: {
         title: '从分组复制账号',
-        tooltip: '选择一个或多个相同平台的分组，创建后会自动将这些分组的所有账号绑定到新分组（去重）。',
-        tooltipEdit: '选择一个或多个相同平台的分组，保存后当前分组的账号会被替换为这些分组的账号（去重）。',
+        tooltip: '选择一个或多个分组，创建后会自动将这些分组的所有账号绑定到新分组（去重）。',
+        tooltipEdit: '选择一个或多个分组，保存后当前分组的账号会被替换为这些分组的账号（去重）。',
         selectPlaceholder: '选择分组以复制其账号...',
         hint: '可选多个分组，账号会自动去重',
         hintEdit: '⚠️ 注意：这会替换当前分组的所有账号绑定'

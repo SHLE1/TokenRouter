@@ -100,19 +100,22 @@ func newGrokFreeQuotaTestGate(cfg *config.Config, reader usage.UsageLogRepositor
 }
 
 func healthyGrokOAuthGatewayTestAccount(id int64, token string) *gatewayprovider.ExecutionAccount {
-	return &gatewayprovider.ExecutionAccount{Record: account.Record{LoadLocation: time.LoadLocation, ID: id,
-		Name:        "grok",
-		Platform:    capability.PlatformGrok,
-		Type:        capability.AccountTypeOAuth,
-		Status:      billing.StatusActive,
-		Schedulable: true,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"access_token":  token,
-			"refresh_token": "refresh-token",
-			"expires_at":    time.Now().Add(2 * account.GrokTokenRefreshSkew).UTC().Format(time.RFC3339),
-			"base_url":      xai.DefaultCLIBaseURL,
-		}},
+	return &gatewayprovider.ExecutionAccount{
+		Record: account.Record{
+			LoadLocation: time.LoadLocation, ID: id,
+			Name:        "grok",
+			Platform:    capability.PlatformGrok,
+			Type:        capability.AccountTypeOAuth,
+			Status:      billing.StatusActive,
+			Schedulable: true,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"access_token":  token,
+				"refresh_token": "refresh-token",
+				"expires_at":    time.Now().Add(2 * account.GrokTokenRefreshSkew).UTC().Format(time.RFC3339),
+				"base_url":      xai.DefaultCLIBaseURL,
+			},
+		},
 	}
 }
 
@@ -120,8 +123,8 @@ func TestOpenAIAccountSchedulerLoadBalanceAppliesGrokFreeQuotaGate(t *testing.T)
 	cfg := grokFreeQuotaTestConfig()
 	cfg.RunMode = config.RunModeSimple
 	accounts := []gatewayprovider.ExecutionAccount{
-		{Record: account.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformGrok, Type: capability.AccountTypeOAuth, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Credentials: map[string]any{"subscription_tier": "free"}}},
-		{Record: account.Record{LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformGrok, Type: capability.AccountTypeOAuth, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Credentials: map[string]any{"subscription_tier": "pro"}}},
+		{Record: account.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformGrok, Type: capability.AccountTypeOAuth, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Credentials: map[string]any{"model_whitelist": []string{"*"}, "subscription_tier": "free"}}},
+		{Record: account.Record{LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformGrok, Type: capability.AccountTypeOAuth, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Credentials: map[string]any{"model_whitelist": []string{"*"}, "subscription_tier": "pro"}}},
 	}
 	reader := &grokFreeQuotaUsageRepoStub{stats: map[int64]*usage.AccountStats{1: {Tokens: 480_000}}}
 	factory := freeQuotaFactoryForTest(t, cfg, reader)
@@ -140,7 +143,7 @@ func TestOpenAIAccountSchedulerLoadBalanceAppliesGrokFreeQuotaGate(t *testing.T)
 	}, 2*time.Second, 10*time.Millisecond)
 
 	core, scope := picker.platformSelector()
-	result, _, _, _, err := core.SelectByLoadBalance(context.Background(), scheduler.PlatformSelectionInput{Platform: capability.PlatformGrok})
+	result, _, _, _, err := core.SelectByLoadBalance(context.Background(), scheduler.PlatformSelectionInput{GroupID: selectionFixtureGroupID(context.Background()), Platform: capability.PlatformGrok})
 	selection := scope.restore(result)
 
 	require.NoError(t, err)

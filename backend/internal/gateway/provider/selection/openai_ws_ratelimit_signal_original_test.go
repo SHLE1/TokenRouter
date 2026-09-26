@@ -15,21 +15,26 @@ import (
 
 func TestOpenAIGatewayService_GetSchedulableAccount_ExhaustedCodexExtraDoesNotSetRateLimit(t *testing.T) {
 	resetAt := time.Now().Add(6 * 24 * time.Hour)
-	account := gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 701,
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeOAuth,
-		Status:      billing.StatusActive,
-		Schedulable: true,
-		Concurrency: 1,
-		Extra: map[string]any{
-			"codex_7d_used_percent": 100.0,
-			"codex_7d_reset_at":     resetAt.UTC().Format(time.RFC3339),
-		}},
+	account := gatewayprovider.ExecutionAccount{
+		Record: accountcore.Record{
+			Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 701,
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.AccountTypeOAuth,
+			Status:      billing.StatusActive,
+			Schedulable: true,
+			Concurrency: 1,
+			Extra: map[string]any{
+				"codex_7d_used_percent": 100.0,
+				"codex_7d_reset_at":     resetAt.UTC().Format(time.RFC3339),
+			},
+		},
 	}
 	repo := &openAICodexExtraListRepo{selectionAccountFixture: selectionAccountFixture{accounts: []gatewayprovider.ExecutionAccount{account}}, rateLimitCh: make(chan time.Time, 1)}
 	svc := newCompatibleSelectionForTest(CompatibleDependencies{
 		Reads: Reads{
-			Accounts: repo}, Shared: Shared{}},
+			Accounts: repo,
+		}, Shared: Shared{},
+	},
 		nil)
 
 	fresh, err := svc.getSchedulableAccount(context.Background(), account.Record.ID)

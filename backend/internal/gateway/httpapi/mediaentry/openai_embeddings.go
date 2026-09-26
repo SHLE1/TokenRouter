@@ -9,7 +9,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/admission"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/httpapi/openaiattempt"
@@ -168,12 +167,12 @@ func (p *embeddingRequestAdapter) CompleteEmbedding(_ context.Context, _ account
 	clientIP := clientip.GetClientIP(c)
 	inboundEndpoint := gatewayhttp.GetInboundEndpoint(c)
 	upstreamEndpoint := gatewayhttp.GetUpstreamEndpoint(c, account.Record.Platform)
-	quotaPlatform := admission.QuotaPlatform(c.Request.Context(), apiKey)
+
 	clientSessionID := gatewayhttp.ExtractClientSessionID(c)
 	// 异步任务只读取此处固化的分组映射结果，不能再读取可变 HTTP Context。
 	pricingFields := p.groupMapping.ToUsageFields(p.reqModel, result.UpstreamModel)
 	subscription, reqModel, userID := p.subscription, p.reqModel, p.userID
-	completionInput := gatewaycapture.CaptureOpenAI(c.Request.Context(), &gatewaycapture.OpenAICapture{Result: result, APIKey: apiKey, User: apiKey.User, Account: gatewaycapture.ExecutionCompletionRecord(account), Subscription: subscription, InboundEndpoint: inboundEndpoint, UpstreamEndpoint: upstreamEndpoint, UserAgent: userAgent, IPAddress: clientIP, APIKeyService: h.bindings.Quota, QuotaPlatform: quotaPlatform, ClientSessionID: clientSessionID, PricingUsageFields: pricingFields})
+	completionInput := gatewaycapture.CaptureOpenAI(c.Request.Context(), &gatewaycapture.OpenAICapture{Result: result, APIKey: apiKey, User: apiKey.User, Account: gatewaycapture.ExecutionCompletionRecord(account), Subscription: subscription, InboundEndpoint: inboundEndpoint, UpstreamEndpoint: upstreamEndpoint, UserAgent: userAgent, IPAddress: clientIP, APIKeyService: h.bindings.Quota, ClientSessionID: clientSessionID, PricingUsageFields: pricingFields})
 	completionRecorder := h.bindings.Common.Recorder
 	completionLog := logging.L().With(zap.String("component", "handler.openai_gateway.embeddings"), zap.Int64("user_id", userID), zap.Int64("api_key_id", apiKey.ID), zap.Any("group_id", apiKey.GroupID), zap.String("model", reqModel), zap.Int64("account_id", account.Record.ID))
 	h.submitOpenAIUsageRecordTask(c, result, func(ctx context.Context) {

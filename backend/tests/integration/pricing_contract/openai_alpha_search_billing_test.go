@@ -17,7 +17,6 @@ import (
 	gatewaycapture "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/stretchr/testify/require"
 )
 
@@ -60,7 +59,7 @@ func TestCalculateOpenAIRecordUsageCostWebSearchPerCall(t *testing.T) {
 
 	// 分组未配置单价：默认 0.01。按次搜索使用不含高峰因子的基础倍率（第 4 个倍率参数 2.0），
 	// 即使 token 倍率（含高峰，3.0）更高也不采用。
-	apiKey := &apikey.APIKey{ID: 1, GroupID: &groupID, Group: &routing.Group{ID: groupID, Platform: capability.PlatformOpenAI}}
+	apiKey := &apikey.APIKey{ID: 1, GroupID: &groupID, Group: &routing.Group{ID: groupID}}
 	result := &forwardcore.OpenAIResult{Model: "gpt-5.6-sol", UpstreamModel: "gpt-5.6-sol", WebSearchCalls: 1}
 	cost, err := svc.CalculateOpenAIRecordUsageCostAt(context.Background(), gatewaycapture.ProjectOpenAICompletionResult(result, nil), gatewaycapture.ProjectCompletionKey(apiKey), []string{"gpt-5.6-sol"}, 3.0, 1.0, 1.0, 2.0, pricing.UsageTokens{}, "", time.Time{})
 	require.NoError(t, err)
@@ -94,9 +93,9 @@ func TestAPIKeyService_SnapshotRoundTrip_PreservesWebSearchPricePerCall(t *testi
 		Status:  billing.StatusActive,
 		User:    &identity.User{ID: 2, Status: billing.StatusActive, Role: identity.RoleUser},
 		Group: &routing.Group{
-			ID:                    groupID,
-			Name:                  "openai",
-			Platform:              capability.PlatformOpenAI,
+			ID:   groupID,
+			Name: "openai",
+
 			Status:                billing.StatusActive,
 			RateMultiplier:        1,
 			WebSearchPricePerCall: testPtrFloat64(0.008),

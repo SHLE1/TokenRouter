@@ -93,10 +93,10 @@ type ModelMarketplaceAvailability struct {
 }
 
 type ModelMarketplaceGroup struct {
-	ID                         int64                         `json:"id"`
-	Name                       string                        `json:"name"`
-	Description                string                        `json:"description"`
-	Platform                   string                        `json:"platform"`
+	ID          int64  `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+
 	DisplayBrand               string                        `json:"display_brand"`
 	SortOrder                  int                           `json:"sort_order"`
 	RateMultiplier             float64                       `json:"rate_multiplier"`
@@ -123,10 +123,10 @@ func ModelMarketplaceGroupsFromRouting(groups []routing.ModelMarketplaceGroup) [
 		}
 
 		out = append(out, ModelMarketplaceGroup{
-			ID:                         group.ID,
-			Name:                       group.Name,
-			Description:                group.Description,
-			Platform:                   group.Platform,
+			ID:          group.ID,
+			Name:        group.Name,
+			Description: group.Description,
+
 			DisplayBrand:               group.DisplayBrand,
 			SortOrder:                  group.SortOrder,
 			RateMultiplier:             group.RateMultiplier,

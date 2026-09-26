@@ -44,24 +44,29 @@ type Options struct {
 	Team            struct{ Enabled bool }
 	GroupFastPolicy func(string, bool) string
 }
-type User = identity.User
-type NotifyEmailEntry = contact.Entry
-type Team = team.Team
-type TeamMembership = team.TeamMembership
-type UserSubscription = billing.UserSubscription
-type UserSubscriptionRepository interface {
-	GetByID(context.Context, int64) (*UserSubscription, error)
-	ListActiveByUserID(context.Context, int64) ([]UserSubscription, error)
-}
-type UserGroupRateRepository = billing.UserGroupRateRepository
-type UserRepository interface {
-	GetByID(context.Context, int64) (*User, error)
-}
+type (
+	User                       = identity.User
+	NotifyEmailEntry           = contact.Entry
+	Team                       = team.Team
+	TeamMembership             = team.TeamMembership
+	UserSubscription           = billing.UserSubscription
+	UserSubscriptionRepository interface {
+		GetByID(context.Context, int64) (*UserSubscription, error)
+		ListActiveByUserID(context.Context, int64) ([]UserSubscription, error)
+	}
+)
+
+type (
+	UserGroupRateRepository = billing.UserGroupRateRepository
+	UserRepository          interface {
+		GetByID(context.Context, int64) (*User, error)
+	}
+)
+
 type GroupRepository interface {
 	GetByID(context.Context, int64) (*routing.Group, error)
 	GetByIDLite(context.Context, int64) (*routing.Group, error)
 	ListActive(context.Context) ([]routing.Group, error)
-	FindDefault(context.Context, string) (*routing.Group, error)
 }
 type TeamRepository interface {
 	GetContextByUserID(context.Context, int64) (*team.TeamContext, error)
@@ -100,6 +105,7 @@ func cloneGroupClientProtocols(values []protocol.ProtocolID) []protocol.Protocol
 	copy(out, values)
 	return out
 }
+
 func subscriptionPlanIncludesGroup(plan *billing.SubscriptionPlan, id int64) bool {
 	return billing.SubscriptionAllowsGroup(&billing.UserSubscription{Plan: plan}, id)
 }
@@ -108,6 +114,7 @@ func subscriptionPlanIncludesGroup(plan *billing.SubscriptionPlan, id int64) boo
 func (s *APIKeyService) SetGroupFastPolicy(policy func(string, bool) string) {
 	s.groupFastPolicy = policy
 }
+
 func (s *APIKeyService) groupPolicy(g *routing.Group) string {
 	if s.groupFastPolicy != nil {
 		return s.groupFastPolicy(g.OpenAIFastPolicy, g.ForceOpenAIFast)

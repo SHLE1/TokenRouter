@@ -428,7 +428,7 @@ func (r *Store) getBatchUserUsageStatsFromAnalytics(ctx context.Context, userIDs
 			  AND ((bucket_start >= $4 AND bucket_start < $7)
 			    OR (bucket_start >= $8 AND bucket_start < $5))
 			UNION ALL
-			SELECT ul.user_id, COALESCE(NULLIF(g.platform, ''), a.platform, ''), ul.actual_cost
+			SELECT ul.user_id, ul.platform, ul.actual_cost
 			FROM usage_logs ul
 			LEFT JOIN groups g ON g.id = ul.group_id
 			LEFT JOIN accounts a ON a.id = ul.account_id

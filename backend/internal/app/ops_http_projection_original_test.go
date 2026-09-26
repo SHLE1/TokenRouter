@@ -16,7 +16,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 
 	"github.com/TokenFlux/TokenRouter/internal/routing"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 
 	middleware2 "github.com/TokenFlux/TokenRouter/internal/server/middleware"
 	"github.com/gin-gonic/gin"
@@ -24,7 +23,6 @@ import (
 )
 
 func TestOpsErrorLoggerMiddleware_DoesNotBreakOuterMiddlewares(t *testing.T) {
-
 	r := gin.New()
 	r.Use(middleware2.Recovery())
 	r.Use(middleware2.RequestLogger())
@@ -43,7 +41,6 @@ func TestOpsErrorLoggerMiddleware_DoesNotBreakOuterMiddlewares(t *testing.T) {
 }
 
 func TestGetOpsAPIKeyFallsBackToOpsFallbackKey(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 
@@ -56,7 +53,7 @@ func TestGetOpsAPIKeyFallsBackToOpsFallbackKey(t *testing.T) {
 		ID:      100,
 		GroupID: &groupID,
 		User:    &identity.User{ID: 7},
-		Group:   &routing.Group{ID: groupID, Platform: capability.PlatformAnthropic},
+		Group:   &routing.Group{ID: groupID},
 	}
 	c.Set(string(keyhttp.ContextKeyOpsFallbackAPIKey), apiKey)
 
@@ -66,13 +63,11 @@ func TestGetOpsAPIKeyFallsBackToOpsFallbackKey(t *testing.T) {
 	require.NotNil(t, got.User)
 	require.Equal(t, int64(7), got.User.ID)
 	require.NotNil(t, got.Group)
-	require.Equal(t, capability.PlatformAnthropic, got.Group.Platform)
 	_, authenticated := authctx.GetPrincipal(c)
 	require.False(t, authenticated, "读取失败 Key 的观测投影不能创建认证主体")
 }
 
 func TestGetOpsAPIKeyPrefersPrimaryContextKey(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 

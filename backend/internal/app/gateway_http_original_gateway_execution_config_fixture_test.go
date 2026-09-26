@@ -124,7 +124,7 @@ func newMessageEndpointsFixture(source *messageExecutionFixture, messages *gatew
 			ReportSchedule:     choices.ReportAdvancedAccountScheduleResult,
 			IncrementRPM:       choices.IncrementAccountRPM,
 			BindSticky:         choices.BindStickySession,
-			ResolveGroup:       choices.ResolveGroupByID,
+			CachedSession:      choices.GetCachedSessionAccountID,
 			AccountSwitched:    choices.RecordAdvancedAccountSwitch,
 			TempUnschedule:     messageRetryCooldown(source.Cooldown),
 		}
@@ -138,9 +138,6 @@ func newMessageEndpointsFixture(source *messageExecutionFixture, messages *gatew
 		b.Forward.ForwardMessages = messages.Forward
 		b.Forward.ForwardResponses = messages.ForwardAsResponses
 		b.Forward.ForwardChat = messages.ForwardAsChatCompletions
-	}
-	if funding != nil {
-		b.CheckFunding = funding.CheckKey
 	}
 	var settings *gateway.RuntimeSettings
 	bindings := gatewayhttp.MessagesBindings{

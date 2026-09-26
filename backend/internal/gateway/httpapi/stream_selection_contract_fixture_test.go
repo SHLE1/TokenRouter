@@ -44,7 +44,7 @@ func selectionDiagnosticForStreamTest(t *testing.T, source *OpenAIResponsesExecu
 	copy.Record.Status = "active"
 	copy.Record.Schedulable = true
 	copy.Record.GroupIDs = []int64{1}
-	projection := streamSelectionDiagnosticSource{value: copy, group: routing.Group{ID: 1, Platform: value.Record.Platform, Status: "active", Hydrated: true, SchedulerType: routing.GroupSchedulerTypeAdvanced}}
+	projection := streamSelectionDiagnosticSource{value: copy, group: routing.Group{ID: 1, Status: "active", Hydrated: true, SchedulerType: routing.GroupSchedulerTypeAdvanced}}
 	parameters := scheduler.NewParameters(scheduler.NewSettingsRuntime(scheduler.Diagnostics{}), nil, scheduler.DefaultParameters())
 	choices := selectionadapter.NewCompatible(selectionadapter.CompatibleDependencies{Responses: source.Lineage.Store, RuntimeBlocks: source.Output.Health.Runtime, ModelTransient: source.Output.Health.ModelTransient, ProxyCircuit: source.Output.ProxyCircuit}, selectionadapter.DefaultOptions())
 	diagnostic := selectionadapter.NewDiagnostics(projection, selectionadapter.Shared{Parameters: parameters}, nil, choices)

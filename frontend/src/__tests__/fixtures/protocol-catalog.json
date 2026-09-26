@@ -723,158 +723,15 @@
   ],
   "groups": [
     {
-      "platform": "anthropic",
-      "protocols": [
-        "anthropic_messages",
-        "openai_responses",
-        "openai_chat_completions"
-      ],
-      "defaults": [
-        "anthropic_messages"
-      ],
-      "fallback_targets": {
-        "anthropic_messages": [
-          "gemini_generate_content"
-        ],
-        "openai_chat_completions": [
-          "anthropic_messages",
-          "gemini_generate_content"
-        ],
-        "openai_responses": [
-          "anthropic_messages",
-          "gemini_generate_content"
-        ]
-      },
-      "default_fallbacks": {
-        "anthropic_messages": "gemini_generate_content",
-        "openai_chat_completions": "anthropic_messages",
-        "openai_responses": "anthropic_messages"
-      }
-    },
-    {
-      "platform": "openai",
-      "protocols": [
-        "anthropic_messages",
-        "openai_responses",
-        "openai_chat_completions",
-        "openai_embeddings",
-        "openai_images_generations",
-        "openai_images_edits",
-        "openai_responses_websocket",
-        "openai_live",
-        "openai_responses_compact",
-        "openai_alpha_search"
-      ],
-      "defaults": [
-        "openai_responses",
-        "openai_chat_completions"
-      ],
-      "fallback_targets": {
-        "anthropic_messages": [
-          "openai_responses",
-          "openai_chat_completions"
-        ],
-        "openai_alpha_search": [
-          "openai_responses"
-        ],
-        "openai_chat_completions": [
-          "openai_responses"
-        ],
-        "openai_embeddings": [],
-        "openai_images_edits": [
-          "openai_responses"
-        ],
-        "openai_images_generations": [
-          "openai_responses"
-        ],
-        "openai_live": [],
-        "openai_responses": [
-          "openai_chat_completions"
-        ],
-        "openai_responses_compact": [],
-        "openai_responses_websocket": [
-          "openai_responses"
-        ]
-      },
-      "default_fallbacks": {
-        "anthropic_messages": "openai_responses",
-        "openai_alpha_search": "openai_responses",
-        "openai_chat_completions": "openai_responses",
-        "openai_images_edits": "openai_responses",
-        "openai_images_generations": "openai_responses",
-        "openai_responses": "openai_chat_completions",
-        "openai_responses_websocket": "openai_responses"
-      }
-    },
-    {
-      "platform": "gemini",
       "protocols": [
         "anthropic_messages",
         "openai_responses",
         "openai_chat_completions",
         "gemini_generate_content",
-        "image_batches"
-      ],
-      "defaults": [
-        "gemini_generate_content"
-      ],
-      "fallback_targets": {
-        "anthropic_messages": [
-          "gemini_generate_content"
-        ],
-        "gemini_generate_content": [],
-        "image_batches": [],
-        "openai_chat_completions": [
-          "gemini_generate_content"
-        ],
-        "openai_responses": [
-          "gemini_generate_content"
-        ]
-      },
-      "default_fallbacks": {
-        "anthropic_messages": "gemini_generate_content",
-        "openai_chat_completions": "gemini_generate_content",
-        "openai_responses": "gemini_generate_content"
-      }
-    },
-    {
-      "platform": "antigravity",
-      "protocols": [
-        "anthropic_messages",
-        "openai_responses",
-        "openai_chat_completions",
-        "gemini_generate_content"
-      ],
-      "defaults": [
-        "anthropic_messages",
-        "gemini_generate_content"
-      ],
-      "fallback_targets": {
-        "anthropic_messages": [
-          "gemini_generate_content"
-        ],
-        "gemini_generate_content": [],
-        "openai_chat_completions": [
-          "gemini_generate_content"
-        ],
-        "openai_responses": [
-          "gemini_generate_content"
-        ]
-      },
-      "default_fallbacks": {
-        "anthropic_messages": "gemini_generate_content",
-        "openai_chat_completions": "gemini_generate_content",
-        "openai_responses": "gemini_generate_content"
-      }
-    },
-    {
-      "platform": "grok",
-      "protocols": [
-        "anthropic_messages",
-        "openai_responses",
-        "openai_chat_completions",
+        "openai_embeddings",
         "openai_images_generations",
         "openai_images_edits",
+        "image_batches",
         "grok_videos_generations",
         "grok_videos_edits",
         "grok_videos_extensions",
@@ -883,21 +740,25 @@
         "grok_custom_voices",
         "grok_voice_realtime",
         "openai_responses_websocket",
+        "openai_live",
         "openai_responses_compact",
+        "openai_alpha_search",
         "grok_web_search",
         "grok_x_search"
       ],
       "defaults": [
+        "anthropic_messages",
         "openai_responses",
-        "openai_chat_completions",
-        "openai_images_generations",
-        "openai_images_edits"
+        "openai_chat_completions"
       ],
       "fallback_targets": {
         "anthropic_messages": [
           "openai_responses",
-          "openai_chat_completions"
+          "openai_chat_completions",
+          "gemini_generate_content",
+          "qoder_chat"
         ],
+        "gemini_generate_content": [],
         "grok_custom_voices": [],
         "grok_stt": [],
         "grok_tts": [],
@@ -911,13 +772,29 @@
         "grok_x_search": [
           "openai_responses"
         ],
-        "openai_chat_completions": [
+        "image_batches": [],
+        "openai_alpha_search": [
           "openai_responses"
         ],
-        "openai_images_edits": [],
-        "openai_images_generations": [],
+        "openai_chat_completions": [
+          "openai_responses",
+          "anthropic_messages",
+          "gemini_generate_content",
+          "qoder_chat"
+        ],
+        "openai_embeddings": [],
+        "openai_images_edits": [
+          "openai_responses"
+        ],
+        "openai_images_generations": [
+          "openai_responses"
+        ],
+        "openai_live": [],
         "openai_responses": [
-          "openai_chat_completions"
+          "openai_chat_completions",
+          "anthropic_messages",
+          "gemini_generate_content",
+          "qoder_chat"
         ],
         "openai_responses_compact": [
           "openai_responses"
@@ -926,133 +803,7 @@
           "openai_responses"
         ]
       },
-      "default_fallbacks": {
-        "anthropic_messages": "openai_responses",
-        "grok_web_search": "openai_responses",
-        "grok_x_search": "openai_responses",
-        "openai_chat_completions": "openai_responses",
-        "openai_responses": "openai_chat_completions",
-        "openai_responses_compact": "openai_responses",
-        "openai_responses_websocket": "openai_responses"
-      }
-    },
-    {
-      "platform": "qoder",
-      "protocols": [
-        "anthropic_messages",
-        "openai_responses",
-        "openai_chat_completions"
-      ],
-      "defaults": [],
-      "fallback_targets": {
-        "anthropic_messages": [
-          "qoder_chat"
-        ],
-        "openai_chat_completions": [
-          "qoder_chat"
-        ],
-        "openai_responses": [
-          "qoder_chat"
-        ]
-      },
-      "default_fallbacks": {
-        "anthropic_messages": "qoder_chat",
-        "openai_chat_completions": "qoder_chat",
-        "openai_responses": "qoder_chat"
-      }
-    },
-    {
-      "platform": "kimi",
-      "protocols": [
-        "anthropic_messages",
-        "openai_responses",
-        "openai_chat_completions"
-      ],
-      "defaults": [
-        "anthropic_messages",
-        "openai_responses",
-        "openai_chat_completions"
-      ],
-      "fallback_targets": {
-        "anthropic_messages": [
-          "openai_responses",
-          "openai_chat_completions"
-        ],
-        "openai_chat_completions": [
-          "anthropic_messages",
-          "openai_responses"
-        ],
-        "openai_responses": [
-          "anthropic_messages",
-          "openai_chat_completions"
-        ]
-      },
-      "default_fallbacks": {
-        "anthropic_messages": "openai_responses",
-        "openai_chat_completions": "openai_responses",
-        "openai_responses": "openai_chat_completions"
-      }
-    },
-    {
-      "platform": "zhipu",
-      "protocols": [
-        "anthropic_messages",
-        "openai_responses",
-        "openai_chat_completions"
-      ],
-      "defaults": [
-        "anthropic_messages",
-        "openai_responses",
-        "openai_chat_completions"
-      ],
-      "fallback_targets": {
-        "anthropic_messages": [
-          "openai_chat_completions"
-        ],
-        "openai_chat_completions": [
-          "anthropic_messages"
-        ],
-        "openai_responses": [
-          "anthropic_messages",
-          "openai_chat_completions"
-        ]
-      },
-      "default_fallbacks": {
-        "anthropic_messages": "openai_chat_completions",
-        "openai_responses": "openai_chat_completions"
-      }
-    },
-    {
-      "platform": "deepseek",
-      "protocols": [
-        "anthropic_messages",
-        "openai_responses",
-        "openai_chat_completions"
-      ],
-      "defaults": [
-        "anthropic_messages",
-        "openai_responses",
-        "openai_chat_completions"
-      ],
-      "fallback_targets": {
-        "anthropic_messages": [
-          "openai_responses",
-          "openai_chat_completions"
-        ],
-        "openai_chat_completions": [
-          "anthropic_messages",
-          "openai_responses"
-        ],
-        "openai_responses": [
-          "anthropic_messages",
-          "openai_chat_completions"
-        ]
-      },
-      "default_fallbacks": {
-        "anthropic_messages": "openai_responses",
-        "openai_chat_completions": "openai_responses",
-        "openai_responses": "openai_chat_completions"
-      }
+      "default_fallbacks": {}
     }
   ],
   "auxiliary_operations": [

@@ -30,8 +30,8 @@ func TestAccountHandlerListLiteUsesCompactDTOAndETag(t *testing.T) {
 		Credentials: map[string]any{"email": "compact@example.com", "access_token": strings.Repeat("x", 4096)},
 		Extra:       map[string]any{"privacy_mode": "training_off"}, Status: billing.StatusActive,
 		Schedulable: true, Concurrency: 4, GroupIDs: []int64{groupID},
-		Groups:        []*accessview.GroupConfig{{ID: groupID, Name: "codex", Platform: capability.PlatformOpenAI}},
-		AccountGroups: []account.GroupMembership{{AccountID: 501, GroupID: groupID, Group: &accessview.GroupConfig{ID: groupID, Name: "codex", Platform: capability.PlatformOpenAI}}},
+		Groups:        []*accessview.GroupConfig{{ID: groupID, Name: "codex"}},
+		AccountGroups: []account.GroupMembership{{AccountID: 501, GroupID: groupID, Group: &accessview.GroupConfig{Hydrated: true, Status: billing.StatusActive, AllowedProtocols: capability.DefaultGroupClientProtocols(""), ID: groupID, Name: "codex"}}},
 		CreatedAt:     now, UpdatedAt: now,
 	}}
 
@@ -94,7 +94,7 @@ func TestAccountHandlerListLiteStaysBelowResponseBudget(t *testing.T) {
 			Type: capability.AccountTypeOAuth, Status: billing.StatusActive, Schedulable: true,
 			Concurrency: 4, GroupIDs: []int64{groupID},
 			Groups:        []*accessview.GroupConfig{{ID: groupID, Name: "group-" + strconv.Itoa(i), Description: strings.Repeat("description ", 20)}},
-			AccountGroups: []account.GroupMembership{{AccountID: id, GroupID: groupID, Group: &accessview.GroupConfig{ID: groupID, Name: "group-" + strconv.Itoa(i), Description: strings.Repeat("description ", 20)}}},
+			AccountGroups: []account.GroupMembership{{AccountID: id, GroupID: groupID, Group: &accessview.GroupConfig{Hydrated: true, Status: billing.StatusActive, AllowedProtocols: capability.DefaultGroupClientProtocols(""), ID: groupID, Name: "group-" + strconv.Itoa(i), Description: strings.Repeat("description ", 20)}}},
 			CreatedAt:     now, UpdatedAt: now,
 		}
 	}
@@ -115,7 +115,6 @@ func TestAccountHandlerListLiteStaysBelowResponseBudget(t *testing.T) {
 }
 
 func setupAccountListRouter() (*gin.Engine, *managementListFixture) {
-
 	router := gin.New()
 	adminSvc := newManagementListFixture()
 	handler := newManagementListFixtureHandler(adminSvc)
@@ -168,7 +167,7 @@ func TestAccountHandlerListReturnsSchedulerScoresPerGroup(t *testing.T) {
 			Concurrency: 10,
 			Priority:    1,
 			AccountGroups: []account.GroupMembership{
-				{AccountID: 101, GroupID: groupID, Group: &accessview.GroupConfig{ID: groupID, Name: "openai", Platform: capability.PlatformOpenAI, SchedulerType: routing.GroupSchedulerTypeAdvanced}},
+				{AccountID: 101, GroupID: groupID, Group: &accessview.GroupConfig{Hydrated: true, Status: billing.StatusActive, AllowedProtocols: capability.DefaultGroupClientProtocols(""), ID: groupID, Name: "openai", SchedulerType: routing.GroupSchedulerTypeAdvanced}},
 			},
 			GroupIDs:  []int64{groupID},
 			CreatedAt: now,
@@ -184,7 +183,7 @@ func TestAccountHandlerListReturnsSchedulerScoresPerGroup(t *testing.T) {
 			Concurrency: 10,
 			Priority:    100000,
 			AccountGroups: []account.GroupMembership{
-				{AccountID: 102, GroupID: groupID, Group: &accessview.GroupConfig{ID: groupID, Name: "openai", Platform: capability.PlatformOpenAI, SchedulerType: routing.GroupSchedulerTypeAdvanced}},
+				{AccountID: 102, GroupID: groupID, Group: &accessview.GroupConfig{Hydrated: true, Status: billing.StatusActive, AllowedProtocols: capability.DefaultGroupClientProtocols(""), ID: groupID, Name: "openai", SchedulerType: routing.GroupSchedulerTypeAdvanced}},
 			},
 			GroupIDs:  []int64{groupID},
 			CreatedAt: now,
@@ -252,9 +251,10 @@ func TestAccountHandlerListNonOpenAIStickyScoreExcludesPreviousResponse(t *testi
 	previousWeight := 11.0
 	sessionWeight := 7.0
 	group := &accessview.GroupConfig{
-		ID:            groupID,
-		Name:          "gemini",
-		Platform:      capability.PlatformGemini,
+		Hydrated: true, Status: billing.StatusActive, AllowedProtocols: capability.DefaultGroupClientProtocols(""),
+		ID:   groupID,
+		Name: "gemini",
+
 		SchedulerType: routing.GroupSchedulerTypeAdvanced,
 		AdvancedSchedulerOverrides: routing.GroupAdvancedSchedulerOverrides{
 			StickyWeightedEnabled:  &stickyWeighted,
@@ -298,11 +298,13 @@ func TestAccountHandlerListReusesHydratedGroupsWithoutRepositoryLookups(t *testi
 	router, adminSvc := setupAccountListRouter()
 	now := time.Now().UTC()
 	firstGroup := &accessview.GroupConfig{
-		ID: 51, Name: "openai-primary", Platform: capability.PlatformOpenAI,
+		Hydrated: true, Status: billing.StatusActive, AllowedProtocols: capability.DefaultGroupClientProtocols(""),
+		ID: 51, Name: "openai-primary",
 		SchedulerType: routing.GroupSchedulerTypeAdvanced,
 	}
 	secondGroup := &accessview.GroupConfig{
-		ID: 52, Name: "openai-secondary", Platform: capability.PlatformOpenAI,
+		Hydrated: true, Status: billing.StatusActive, AllowedProtocols: capability.DefaultGroupClientProtocols(""),
+		ID: 52, Name: "openai-secondary",
 		SchedulerType: routing.GroupSchedulerTypeAdvanced,
 	}
 	accountGroups := func(accountID int64) []account.GroupMembership {
@@ -402,7 +404,7 @@ func TestAccountHandlerListKeepsSchedulerScoreScopedToFilter(t *testing.T) {
 		Concurrency: 10,
 		Priority:    100000,
 		AccountGroups: []account.GroupMembership{
-			{AccountID: 201, GroupID: groupID, Group: &accessview.GroupConfig{ID: groupID, Name: "openai", Platform: capability.PlatformOpenAI, SchedulerType: routing.GroupSchedulerTypeAdvanced}},
+			{AccountID: 201, GroupID: groupID, Group: &accessview.GroupConfig{Hydrated: true, Status: billing.StatusActive, AllowedProtocols: capability.DefaultGroupClientProtocols(""), ID: groupID, Name: "openai", SchedulerType: routing.GroupSchedulerTypeAdvanced}},
 		},
 		GroupIDs:  []int64{groupID},
 		CreatedAt: now,
@@ -418,7 +420,7 @@ func TestAccountHandlerListKeepsSchedulerScoreScopedToFilter(t *testing.T) {
 		Concurrency: 10,
 		Priority:    1,
 		AccountGroups: []account.GroupMembership{
-			{AccountID: 202, GroupID: groupID, Group: &accessview.GroupConfig{ID: groupID, Name: "openai", Platform: capability.PlatformOpenAI, SchedulerType: routing.GroupSchedulerTypeAdvanced}},
+			{AccountID: 202, GroupID: groupID, Group: &accessview.GroupConfig{Hydrated: true, Status: billing.StatusActive, AllowedProtocols: capability.DefaultGroupClientProtocols(""), ID: groupID, Name: "openai", SchedulerType: routing.GroupSchedulerTypeAdvanced}},
 		},
 		GroupIDs:  []int64{groupID},
 		CreatedAt: now,

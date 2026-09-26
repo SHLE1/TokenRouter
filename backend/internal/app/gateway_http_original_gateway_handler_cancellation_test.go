@@ -44,12 +44,14 @@ func (c *countingGatewaySchedulerCache) GetSnapshot(ctx context.Context, bucket 
 }
 
 func TestGatewayHandlerPreCancelledCompatibleRequestsDoNotSelectAccount(t *testing.T) {
-
 	groupID := int64(9100)
-	group := &routing.Group{ID: groupID, Hydrated: true, Platform: capability.PlatformAnthropic, Status: billing.StatusActive}
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 9101, Platform: capability.PlatformAnthropic, Type: capability.AccountTypeAPIKey,
-		Status: billing.StatusActive, Schedulable: true, Concurrency: 1,
-		AccountGroups: []accountcore.GroupMembership{{AccountID: 9101, GroupID: groupID}}},
+	group := &routing.Group{ID: groupID, Hydrated: true, Status: billing.StatusActive}
+	account := &gatewayprovider.ExecutionAccount{
+		Record: accountcore.Record{
+			LoadLocation: time.LoadLocation, ID: 9101, Platform: capability.PlatformAnthropic, Type: capability.AccountTypeAPIKey,
+			Status: billing.StatusActive, Schedulable: true, Concurrency: 1,
+			AccountGroups: []accountcore.GroupMembership{{AccountID: 9101, GroupID: groupID}},
+		},
 	}
 	schedulerCache := &countingGatewaySchedulerCache{fakeSchedulerCache: &fakeSchedulerCache{accounts: []*gatewayprovider.ExecutionAccount{account}}}
 	schedulerSnapshot := scheduler.NewSnapshotService(schedulerCache, nil, nil, nil, nil, scheduler.SnapshotBindings{})
@@ -64,7 +66,8 @@ func TestGatewayHandlerPreCancelledCompatibleRequestsDoNotSelectAccount(t *testi
 	billingCacheService := newBillingEligibilityFixture(cfg)
 	billingCacheService.Start()
 	t.Cleanup(billingCacheService.Stop)
-	h := newMessageEndpointsFixture(gatewayService, messages, newFundingAdmissionFixture(billingCacheService, cfg), gatewayhttp.NewConcurrencyHelper(scheduler.NewConcurrencyService(&fakeConcurrencyCache{}, scheduler.Diagnostics{Logf: logging.LegacyPrintf,
+	h := newMessageEndpointsFixture(gatewayService, messages, newFundingAdmissionFixture(billingCacheService, cfg), gatewayhttp.NewConcurrencyHelper(scheduler.NewConcurrencyService(&fakeConcurrencyCache{}, scheduler.Diagnostics{
+		Logf:  logging.LegacyPrintf,
 		Event: logging.Event,
 	},
 	), gatewayhttp.SSEPingFormatClaude, 0), gatewayhttp.MessagesHTTPOptions{MaxBodyBytes: openAITextOptions(cfg).MaxBodyBytes, MaxSwitches: 1, MaxGeminiSwitches: 0}, newExecutionAvailabilityForTest(nil,

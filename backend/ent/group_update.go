@@ -196,20 +196,6 @@ func (_u *GroupUpdate) SetNillableIsExclusive(v *bool) *GroupUpdate {
 	return _u
 }
 
-// SetIsDefault sets the "is_default" field.
-func (_u *GroupUpdate) SetIsDefault(v bool) *GroupUpdate {
-	_u.mutation.SetIsDefault(v)
-	return _u
-}
-
-// SetNillableIsDefault sets the "is_default" field if the given value is not nil.
-func (_u *GroupUpdate) SetNillableIsDefault(v *bool) *GroupUpdate {
-	if v != nil {
-		_u.SetIsDefault(*v)
-	}
-	return _u
-}
-
 // SetStatus sets the "status" field.
 func (_u *GroupUpdate) SetStatus(v string) *GroupUpdate {
 	_u.mutation.SetStatus(v)
@@ -220,20 +206,6 @@ func (_u *GroupUpdate) SetStatus(v string) *GroupUpdate {
 func (_u *GroupUpdate) SetNillableStatus(v *string) *GroupUpdate {
 	if v != nil {
 		_u.SetStatus(*v)
-	}
-	return _u
-}
-
-// SetPlatform sets the "platform" field.
-func (_u *GroupUpdate) SetPlatform(v string) *GroupUpdate {
-	_u.mutation.SetPlatform(v)
-	return _u
-}
-
-// SetNillablePlatform sets the "platform" field if the given value is not nil.
-func (_u *GroupUpdate) SetNillablePlatform(v *string) *GroupUpdate {
-	if v != nil {
-		_u.SetPlatform(*v)
 	}
 	return _u
 }
@@ -730,7 +702,7 @@ func (_u *GroupUpdate) AppendAllowedProtocols(v []protocol.ProtocolID) *GroupUpd
 }
 
 // SetProtocolFallbacks sets the "protocol_fallbacks" field.
-func (_u *GroupUpdate) SetProtocolFallbacks(v map[protocol.ProtocolID]protocol.ProtocolID) *GroupUpdate {
+func (_u *GroupUpdate) SetProtocolFallbacks(v map[protocol.ProtocolID][]protocol.ProtocolID) *GroupUpdate {
 	_u.mutation.SetProtocolFallbacks(v)
 	return _u
 }
@@ -1249,11 +1221,6 @@ func (_u *GroupUpdate) check() error {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Group.status": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.Platform(); ok {
-		if err := group.PlatformValidator(v); err != nil {
-			return &ValidationError{Name: "platform", err: fmt.Errorf(`ent: validator failed for field "Group.platform": %w`, err)}
-		}
-	}
 	if v, ok := _u.mutation.SchedulerType(); ok {
 		if err := group.SchedulerTypeValidator(v); err != nil {
 			return &ValidationError{Name: "scheduler_type", err: fmt.Errorf(`ent: validator failed for field "Group.scheduler_type": %w`, err)}
@@ -1356,17 +1323,11 @@ func (_u *GroupUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.IsExclusive(); ok {
 		_spec.SetField(group.FieldIsExclusive, field.TypeBool, value)
 	}
-	if value, ok := _u.mutation.IsDefault(); ok {
-		_spec.SetField(group.FieldIsDefault, field.TypeBool, value)
-	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(group.FieldStatus, field.TypeString, value)
 	}
 	if _u.mutation.DuplicateOperationIDCleared() {
 		_spec.ClearField(group.FieldDuplicateOperationID, field.TypeString)
-	}
-	if value, ok := _u.mutation.Platform(); ok {
-		_spec.SetField(group.FieldPlatform, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.SchedulerType(); ok {
 		_spec.SetField(group.FieldSchedulerType, field.TypeString, value)
@@ -2075,20 +2036,6 @@ func (_u *GroupUpdateOne) SetNillableIsExclusive(v *bool) *GroupUpdateOne {
 	return _u
 }
 
-// SetIsDefault sets the "is_default" field.
-func (_u *GroupUpdateOne) SetIsDefault(v bool) *GroupUpdateOne {
-	_u.mutation.SetIsDefault(v)
-	return _u
-}
-
-// SetNillableIsDefault sets the "is_default" field if the given value is not nil.
-func (_u *GroupUpdateOne) SetNillableIsDefault(v *bool) *GroupUpdateOne {
-	if v != nil {
-		_u.SetIsDefault(*v)
-	}
-	return _u
-}
-
 // SetStatus sets the "status" field.
 func (_u *GroupUpdateOne) SetStatus(v string) *GroupUpdateOne {
 	_u.mutation.SetStatus(v)
@@ -2099,20 +2046,6 @@ func (_u *GroupUpdateOne) SetStatus(v string) *GroupUpdateOne {
 func (_u *GroupUpdateOne) SetNillableStatus(v *string) *GroupUpdateOne {
 	if v != nil {
 		_u.SetStatus(*v)
-	}
-	return _u
-}
-
-// SetPlatform sets the "platform" field.
-func (_u *GroupUpdateOne) SetPlatform(v string) *GroupUpdateOne {
-	_u.mutation.SetPlatform(v)
-	return _u
-}
-
-// SetNillablePlatform sets the "platform" field if the given value is not nil.
-func (_u *GroupUpdateOne) SetNillablePlatform(v *string) *GroupUpdateOne {
-	if v != nil {
-		_u.SetPlatform(*v)
 	}
 	return _u
 }
@@ -2609,7 +2542,7 @@ func (_u *GroupUpdateOne) AppendAllowedProtocols(v []protocol.ProtocolID) *Group
 }
 
 // SetProtocolFallbacks sets the "protocol_fallbacks" field.
-func (_u *GroupUpdateOne) SetProtocolFallbacks(v map[protocol.ProtocolID]protocol.ProtocolID) *GroupUpdateOne {
+func (_u *GroupUpdateOne) SetProtocolFallbacks(v map[protocol.ProtocolID][]protocol.ProtocolID) *GroupUpdateOne {
 	_u.mutation.SetProtocolFallbacks(v)
 	return _u
 }
@@ -3141,11 +3074,6 @@ func (_u *GroupUpdateOne) check() error {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Group.status": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.Platform(); ok {
-		if err := group.PlatformValidator(v); err != nil {
-			return &ValidationError{Name: "platform", err: fmt.Errorf(`ent: validator failed for field "Group.platform": %w`, err)}
-		}
-	}
 	if v, ok := _u.mutation.SchedulerType(); ok {
 		if err := group.SchedulerTypeValidator(v); err != nil {
 			return &ValidationError{Name: "scheduler_type", err: fmt.Errorf(`ent: validator failed for field "Group.scheduler_type": %w`, err)}
@@ -3265,17 +3193,11 @@ func (_u *GroupUpdateOne) sqlSave(ctx context.Context) (_node *Group, err error)
 	if value, ok := _u.mutation.IsExclusive(); ok {
 		_spec.SetField(group.FieldIsExclusive, field.TypeBool, value)
 	}
-	if value, ok := _u.mutation.IsDefault(); ok {
-		_spec.SetField(group.FieldIsDefault, field.TypeBool, value)
-	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(group.FieldStatus, field.TypeString, value)
 	}
 	if _u.mutation.DuplicateOperationIDCleared() {
 		_spec.ClearField(group.FieldDuplicateOperationID, field.TypeString)
-	}
-	if value, ok := _u.mutation.Platform(); ok {
-		_spec.SetField(group.FieldPlatform, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.SchedulerType(); ok {
 		_spec.SetField(group.FieldSchedulerType, field.TypeString, value)

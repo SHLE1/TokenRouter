@@ -36,20 +36,6 @@ func (s *ModelList) Available(ctx context.Context, groupID *int64, platform stri
 		return nil
 	}
 
-	// OpenAI 透传账号不依赖 model_mapping；旧映射不能限制公开模型列表。
-	if platform == PlatformOpenAI {
-		for i := range accounts {
-			if accounts[i].Platform != PlatformOpenAI || !accounts[i].Passthrough {
-				continue
-			}
-			if s.Cache != nil {
-				s.Cache.Set(cacheKey, []string(nil), s.TTL)
-				sharedModelListMetrics.Store.Add(1)
-			}
-			return nil
-		}
-	}
-
 	models := ConfiguredRequestModelsFromAccounts(accounts, platform)
 	// 没有账号显式模型范围时返回 nil，由调用方使用平台默认模型。
 	if len(models) == 0 {
@@ -113,6 +99,7 @@ type ModelList struct {
 func NewModelList(read func(context.Context, *int64) ([]CatalogueAccount, error), ttl time.Duration) *ModelList {
 	return &ModelList{Cache: gocache.New(ttl, 0), TTL: ttl, Read: read}
 }
+
 func (s *ModelList) Expire() {
 	if s != nil && s.Cache != nil {
 		s.Cache.DeleteExpired()
@@ -125,6 +112,7 @@ var sharedModelListMetrics ModelListMetrics
 
 // SharedModelListMetrics 延续全进程唯一指标，旧 Ops 与测试只取得同一状态的引用。
 func SharedModelListMetrics() *ModelListMetrics { return &sharedModelListMetrics }
+
 func modelListGroupID(id *int64) int64 {
 	if id == nil {
 		return 0

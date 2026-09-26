@@ -9,7 +9,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/admission"
+
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
 	gatewaycapture "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
@@ -138,6 +138,7 @@ func (b *openAIChatAttemptBridge) Forward() textflow.ResponseOutcome {
 		gatewayhttp.SetOpsLatencyMs(b.c, gatewayhttp.OpsTimeToFirstTokenMsKey, int64(*b.result.FirstTokenMs))
 	}
 	out := textflow.ResponseOutcome{Outcome: textflow.Outcome{Attempt: openAIObservedAttempt(b.result, err), Err: err, HasResult: b.result != nil}, Images: b.result != nil && b.result.ImageCount > 0}
+	out.NativePartial = err != nil && b.result != nil && b.result.NativeUsage != nil && (b.result.NativeUsage.HasObservedTokens() || b.result.ImageCount > 0)
 	out.Attempt.HTTPCommitted = b.c.Writer.Written()
 	var retry *forwardcore.UpstreamFailoverError
 	if errors.As(err, &retry) {
@@ -158,22 +159,22 @@ func (b *openAIChatAttemptBridge) Complete() {
 	clientIP := clientip.GetClientIP(b.c)
 	inboundEndpoint := gatewayhttp.GetInboundEndpoint(b.c)
 	upstreamEndpoint := ResolveOpenAIUpstreamEndpoint(b.c, b.account, res)
-	quotaPlatform := admission.QuotaPlatform(b.c.Request.Context(), b.apiKey)
+
 	clientSessionID := gatewayhttp.ExtractClientSessionID(b.c)
 	// 入队前固化资金与报文投影，worker 不再读取请求中的实体。
 	completionInput := gatewaycapture.CaptureOpenAI(gatewayhttp.CompletionContext(b.c), &gatewaycapture.OpenAICapture{
-		Result:             res,
-		APIKey:             b.apiKey,
-		User:               b.apiKey.User,
-		Account:            gatewaycapture.ExecutionCompletionRecord(b.account),
-		Subscription:       b.subscription,
-		InboundEndpoint:    inboundEndpoint,
-		UpstreamEndpoint:   upstreamEndpoint,
-		UserAgent:          userAgent,
-		IPAddress:          clientIP,
-		RequestBody:        b.body,
-		APIKeyService:      b.binding().apiKeyService,
-		QuotaPlatform:      quotaPlatform,
+		Result:           res,
+		APIKey:           b.apiKey,
+		User:             b.apiKey.User,
+		Account:          gatewaycapture.ExecutionCompletionRecord(b.account),
+		Subscription:     b.subscription,
+		InboundEndpoint:  inboundEndpoint,
+		UpstreamEndpoint: upstreamEndpoint,
+		UserAgent:        userAgent,
+		IPAddress:        clientIP,
+		RequestBody:      b.body,
+		APIKeyService:    b.binding().apiKeyService,
+
 		ClientSessionID:    clientSessionID,
 		PricingUsageFields: b.groupMapping.ToUsageFields(b.reqModel, res.UpstreamModel),
 		CyberBlocked:       b.cyberPolicyHandled,

@@ -5,6 +5,8 @@ import (
 	"maps"
 	"slices"
 
+	"github.com/TokenFlux/TokenRouter/internal/protocol"
+
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 )
 
@@ -14,6 +16,11 @@ func CloneGroupConfig(g *GroupConfig) *GroupConfig {
 		return nil
 	}
 	out := *g
+	out.Models = slices.Clone(g.Models)
+	out.ModelProtocols = maps.Clone(g.ModelProtocols)
+	for model, protocols := range out.ModelProtocols {
+		out.ModelProtocols[model] = slices.Clone(protocols)
+	}
 	out.RoutingPolicy = g.RoutingPolicy.Clone()
 	out.WebSearchPricePerCall = cloneGroupPointer(g.WebSearchPricePerCall)
 	out.SearchPricePer1k = cloneGroupPointer(g.SearchPricePer1k)
@@ -35,7 +42,7 @@ func CloneGroupConfig(g *GroupConfig) *GroupConfig {
 	}
 	out.SupportedModelScopes = slices.Clone(g.SupportedModelScopes)
 	out.AllowedProtocols = slices.Clone(g.AllowedProtocols)
-	out.ProtocolFallbacks = maps.Clone(g.ProtocolFallbacks)
+	out.ProtocolFallbacks = protocol.CloneFallbacks(g.ProtocolFallbacks)
 	out.ReasoningEffortMappings = slices.Clone(g.ReasoningEffortMappings)
 	out.AdvancedSchedulerOverrides = CloneGroupAdvancedSchedulerOverrides(g.AdvancedSchedulerOverrides)
 	out.MessagesDispatchModelConfig.ExactModelMappings = maps.Clone(g.MessagesDispatchModelConfig.ExactModelMappings)

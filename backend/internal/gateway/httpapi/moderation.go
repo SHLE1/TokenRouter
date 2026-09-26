@@ -278,7 +278,7 @@ func ContentModerationProvider(apiKey *apikey.APIKey) string {
 	if apiKey == nil || apiKey.Group == nil {
 		return ""
 	}
-	return strings.TrimSpace(apiKey.Group.Platform)
+	return ""
 }
 
 func ContentModerationRequestID(ctx context.Context) string {

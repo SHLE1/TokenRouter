@@ -40,7 +40,7 @@ func makePublicPricingConfigFixture(pricingConfig routing.PricingConfig, platfor
 
 func newPublicPricingConfigFixture(repo *publicPricingConfigFixture) *routing.PricingConfigService {
 	return routing.NewPricingConfigService(repo, nil, routing.PricingConfigOptions{Warn: slog.Warn, Now: time.Now, LoadLocation: pricingprovider.LoadPricingLocation, ReadGroup: func(_ context.Context, id int64) (*routing.Group, error) {
-		return &routing.Group{ID: id, Platform: repo.platforms[id], RoutingPolicy: repo.policy.Clone()}, nil
+		return &routing.Group{ID: id, RoutingPolicy: repo.policy.Clone()}, nil
 	}})
 }
 

@@ -14,8 +14,10 @@ type UsageLog struct {
 	TeamID        *int64
 	APIKeyID      int64
 	AccountID     int64
-	RequestID     string
-	Model         string
+	// Platform 固化本次执行账号的平台，历史记录由迁移保存原统计口径。
+	Platform  string
+	RequestID string
+	Model     string
 	// RequestedModel is the client-requested model name recorded for stable user/admin display.
 	// Empty should be treated as Model for backward compatibility with historical rows.
 	RequestedModel string

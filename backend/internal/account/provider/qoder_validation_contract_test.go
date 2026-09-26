@@ -41,10 +41,9 @@ func TestCreateQoderDirectTokenAccountPersistsStableMachineIdentity(t *testing.T
 	svc := newQoderValidationAdmin(repo, validator)
 
 	created, err := svc.CreateAccount(context.Background(), &accountcore.CreateAccountInput{
-		Name:                 "qoder-direct",
-		Platform:             capability.PlatformQoder,
-		Type:                 capability.AccountTypeCosy,
-		SkipDefaultGroupBind: true,
+		Name:     "qoder-direct",
+		Platform: capability.PlatformQoder,
+		Type:     capability.AccountTypeCosy,
 		Credentials: map[string]any{
 			"security_oauth_token": "dt-token",
 			"machine_id":           "machine-1",
@@ -68,11 +67,10 @@ func TestCreateQoderDirectTokenAccountRejectsMissingMachineID(t *testing.T) {
 	}
 
 	_, err := svc.CreateAccount(context.Background(), &accountcore.CreateAccountInput{
-		Name:                 "qoder-direct",
-		Platform:             capability.PlatformQoder,
-		Type:                 capability.AccountTypeCosy,
-		SkipDefaultGroupBind: true,
-		Credentials:          credentials,
+		Name:        "qoder-direct",
+		Platform:    capability.PlatformQoder,
+		Type:        capability.AccountTypeCosy,
+		Credentials: credentials,
 	})
 
 	require.ErrorContains(t, err, "machine_id")
@@ -93,11 +91,10 @@ func TestCreateQoderPATAccountPersistsStableMachineIdentity(t *testing.T) {
 	svc := newQoderValidationAdmin(repo, validator)
 
 	created, err := svc.CreateAccount(context.Background(), &accountcore.CreateAccountInput{
-		Name:                 "qoder-pat",
-		Platform:             capability.PlatformQoder,
-		Type:                 capability.AccountTypeCosy,
-		SkipDefaultGroupBind: true,
-		Credentials:          map[string]any{"pat": "pat-123"},
+		Name:        "qoder-pat",
+		Platform:    capability.PlatformQoder,
+		Type:        capability.AccountTypeCosy,
+		Credentials: map[string]any{"pat": "pat-123"},
 	})
 
 	require.NoError(t, err)
@@ -120,10 +117,9 @@ func TestCreateQoderCNPATAccountUsesOfficialMachineIdentity(t *testing.T) {
 	svc := newQoderValidationAdmin(repo, validator)
 
 	created, err := svc.CreateAccount(context.Background(), &accountcore.CreateAccountInput{
-		Name:                 "qoder-cn-pat",
-		Platform:             capability.PlatformQoder,
-		Type:                 capability.AccountTypeCosy,
-		SkipDefaultGroupBind: true,
+		Name:     "qoder-cn-pat",
+		Platform: capability.PlatformQoder,
+		Type:     capability.AccountTypeCosy,
 		Credentials: map[string]any{
 			"site": "cn",
 			"pat":  "pat-cn",

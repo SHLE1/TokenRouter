@@ -106,7 +106,6 @@ func runOpenAIResponsesImagePermissionGateTest(t *testing.T, platform string, bo
 		GroupID: &groupID,
 		Group: &routing.Group{
 			ID:                   groupID,
-			Platform:             platform,
 			AllowImageGeneration: false,
 		},
 		User: &identity.User{ID: userID, Status: billing.StatusActive},
@@ -118,8 +117,10 @@ func runOpenAIResponsesImagePermissionGateTest(t *testing.T, platform string, bo
 		Funding: newFundingAdmissionFixture(newBillingEligibilityFixture(&config.Config{RunMode: config.RunModeSimple}), &config.Config{RunMode: config.RunModeSimple}),
 		Keys:    &apikey.APIKeyService{},
 		Concurrency: gatewayhttp.NewConcurrencyHelper(scheduler.NewConcurrencyService(
-			&httptestkit.ConcurrencySequence{UserSeq: []bool{true}}, scheduler.Diagnostics{Logf: logging.LegacyPrintf,
-				Event: logging.Event},
+			&httptestkit.ConcurrencySequence{UserSeq: []bool{true}}, scheduler.Diagnostics{
+				Logf:  logging.LegacyPrintf,
+				Event: logging.Event,
+			},
 		), gatewayhttp.SSEPingFormatNone, 0),
 		Config: &config.Config{},
 		Images: &scheduler.ImageConcurrencyLimiter{}, Availability: newExecutionAvailabilityForTest(nil, nil, nil), Choices: newEmptyCompatibleSelectionFixture(),

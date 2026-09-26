@@ -7,6 +7,8 @@ import (
 
 // ModelMappingDefaults 按需投影平台默认目录，不建立第二份别名缓存。
 type ModelMappingDefaults struct {
+	// Models 按账号平台和认证类型提供当前默认模型目录。
+	Models                func(*Record) []string
 	Antigravity           func() map[string]string
 	GoogleOne             func() map[string]string
 	AntigravityAgentModel string

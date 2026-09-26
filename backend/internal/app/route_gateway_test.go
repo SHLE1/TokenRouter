@@ -1,7 +1,6 @@
 package app
 
 import (
-	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -53,14 +52,12 @@ func newGatewayRoutesTestRouterWithOptions(cfg *config.Config, platform ...strin
 	}
 	return newGatewayRoutesTestRouterWithGroup(cfg, &routing.Group{
 		ID:               groupID,
-		Platform:         groupPlatform,
 		AllowedProtocols: protocols,
 	})
 }
 
 // newGatewayRoutesTestRouterWithGroup 允许测试显式控制 nil 与空协议集合。
 func newGatewayRoutesTestRouterWithGroup(cfg *config.Config, group *routing.Group, models ...*gatewayhttp.ModelsHandler) *gin.Engine {
-
 	router := gin.New()
 
 	var modelsHTTP *gatewayhttp.ModelsHandler
@@ -139,7 +136,6 @@ func TestGatewayRoutesClientProtocolGateRejectsAliasesBeforeReadingBody(t *testi
 			groupID := int64(1)
 			router := newGatewayRoutesTestRouterWithGroup(&config.Config{}, &routing.Group{
 				ID:               groupID,
-				Platform:         tt.platform,
 				AllowedProtocols: tt.protocols,
 			})
 			for _, path := range tt.paths {
@@ -158,8 +154,8 @@ func TestGatewayRoutesClientProtocolGateRejectsAliasesBeforeReadingBody(t *testi
 	}
 }
 
-// 不支持 count_tokens 的平台固定返回 404，不受 Messages 协议开关影响。
-func TestGatewayRoutesUnsupportedCountTokensBypassesProtocolGate(t *testing.T) {
+// 计数入口先执行分组协议门禁，账号选中后才决定实际计数能力。
+func TestGatewayRoutesCountTokensHonorsProtocolGate(t *testing.T) {
 	tests := []struct {
 		name     string
 		platform string
@@ -177,7 +173,6 @@ func TestGatewayRoutesUnsupportedCountTokensBypassesProtocolGate(t *testing.T) {
 			groupID := int64(1)
 			router := newGatewayRoutesTestRouterWithGroup(&config.Config{}, &routing.Group{
 				ID:               groupID,
-				Platform:         tt.platform,
 				AllowedProtocols: []protocolcore.ProtocolID{},
 			})
 			reader := &protocolGateTrackingReader{}
@@ -187,8 +182,8 @@ func TestGatewayRoutesUnsupportedCountTokensBypassesProtocolGate(t *testing.T) {
 
 			router.ServeHTTP(w, req)
 
-			require.Equal(t, http.StatusNotFound, w.Code)
-			require.Contains(t, w.Body.String(), "not_found_error")
+			require.Equal(t, http.StatusForbidden, w.Code)
+			require.Contains(t, w.Body.String(), "permission_error")
 			require.NotContains(t, w.Body.String(), "protocol_not_allowed")
 			require.False(t, reader.read, "unsupported count_tokens must not read request body")
 		})
@@ -198,8 +193,7 @@ func TestGatewayRoutesUnsupportedCountTokensBypassesProtocolGate(t *testing.T) {
 func TestGatewayRoutesResponsesSubpathGuardRunsBeforeProtocolGate(t *testing.T) {
 	groupID := int64(1)
 	router := newGatewayRoutesTestRouterWithGroup(&config.Config{}, &routing.Group{
-		ID:       groupID,
-		Platform: capability.PlatformQoder,
+		ID: groupID,
 		AllowedProtocols: []protocolcore.ProtocolID{
 			protocolcore.ProtocolAnthropicMessages,
 			protocolcore.ProtocolOpenAIChatCompletions,
@@ -257,7 +251,7 @@ func TestRequireGeminiGenerateContentProtocolOnlyGatesTextActions(t *testing.T) 
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
 		c.Set(string(keyhttp.ContextKeyAPIKey), &apikey.APIKey{
-			Group: &routing.Group{Platform: capability.PlatformQoder, AllowedProtocols: []protocolcore.ProtocolID{}},
+			Group: &routing.Group{AllowedProtocols: []protocolcore.ProtocolID{}},
 		})
 		c.Next()
 	})
@@ -329,8 +323,8 @@ func TestGatewayRoutesQoderResponsesSubpathsAreRejected(t *testing.T) {
 		w := httptest.NewRecorder()
 
 		router.ServeHTTP(w, req)
-		require.Equal(t, http.StatusNotFound, w.Code, "path=%s should reject unsupported Qoder Responses subpath", path)
-		require.Contains(t, w.Body.String(), "Qoder Responses subpaths are not supported")
+		require.Equal(t, http.StatusForbidden, w.Code, "path=%s should reject unsupported Qoder Responses subpath", path)
+		require.Contains(t, w.Body.String(), "protocol_not_allowed")
 	}
 }
 
@@ -346,8 +340,8 @@ func TestGatewayRoutesQoderResponsesWebSocketIsRejected(t *testing.T) {
 		w := httptest.NewRecorder()
 
 		router.ServeHTTP(w, req)
-		require.Equal(t, http.StatusNotFound, w.Code, "path=%s should reject Qoder Responses websocket", path)
-		require.Contains(t, w.Body.String(), "Qoder Responses WebSocket is not supported")
+		require.Equal(t, http.StatusForbidden, w.Code, "path=%s should reject Qoder Responses websocket", path)
+		require.Contains(t, w.Body.String(), "protocol_not_allowed")
 	}
 }
 
@@ -356,8 +350,8 @@ func TestGatewayRoutesNonNativeResponsesWebSocketIsRejected(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/responses", nil))
 
-	require.Equal(t, http.StatusNotFound, w.Code)
-	require.Contains(t, w.Body.String(), "not supported for this upstream platform")
+	require.Equal(t, http.StatusForbidden, w.Code)
+	require.Contains(t, w.Body.String(), "protocol_not_allowed")
 }
 
 // Alpha Search 的三种公开路径都必须注册到 OpenAI 专用 handler。
@@ -379,7 +373,7 @@ func TestGatewayRoutesOpenAIAlphaSearchPathsAreRegistered(t *testing.T) {
 	}
 }
 
-// 非 OpenAI 分组不能通过通用 /v1 路由调用 Codex Alpha Search。
+// 未启用 Alpha Search 协议的分组在读取请求体前拒绝。
 func TestGatewayRoutesAlphaSearchRejectsNonOpenAIGroup(t *testing.T) {
 	router := newGatewayRoutesTestRouter(capability.PlatformGrok)
 	req := httptest.NewRequest(http.MethodPost, "/v1/alpha/search", strings.NewReader(`{"model":"gpt-5.6-sol"}`))
@@ -388,8 +382,8 @@ func TestGatewayRoutesAlphaSearchRejectsNonOpenAIGroup(t *testing.T) {
 
 	router.ServeHTTP(w, req)
 
-	require.Equal(t, http.StatusNotFound, w.Code)
-	require.Contains(t, w.Body.String(), "only available for OpenAI groups")
+	require.Equal(t, http.StatusForbidden, w.Code)
+	require.Contains(t, w.Body.String(), "protocol_not_allowed")
 }
 
 func TestGatewayRoutesOpenAIImagesPathsAreRegistered(t *testing.T) {
@@ -523,7 +517,7 @@ func TestGatewayRoutesGrokImagesAndVideosPathsAreRegistered(t *testing.T) {
 	}
 }
 
-func TestGatewayRoutesNonGrokVideosAreRejectedAtPlatformGate(t *testing.T) {
+func TestGatewayRoutesVideosFollowProtocolAndResourceRules(t *testing.T) {
 	router := newGatewayRoutesTestRouter(capability.PlatformOpenAI)
 
 	for _, tc := range []struct {
@@ -561,8 +555,12 @@ func TestGatewayRoutesNonGrokVideosAreRejectedAtPlatformGate(t *testing.T) {
 		w := httptest.NewRecorder()
 
 		router.ServeHTTP(w, req)
-		require.Equal(t, http.StatusNotFound, w.Code, "method=%s path=%s", tc.method, tc.path)
-		require.Contains(t, w.Body.String(), "Videos API is not supported for this platform")
+		if tc.method == http.MethodPost {
+			require.Equal(t, http.StatusForbidden, w.Code)
+			require.Contains(t, w.Body.String(), "protocol_not_allowed")
+		} else {
+			require.NotContains(t, w.Body.String(), "not supported for this platform")
+		}
 	}
 }
 
@@ -598,12 +596,8 @@ func TestGatewayRoutesGrokAllowsCLICompatibilityEntrypoints(t *testing.T) {
 		w := httptest.NewRecorder()
 
 		countTokensRouter.ServeHTTP(w, req)
-		require.Equal(t, http.StatusOK, w.Code, "path=%s", path)
-		var response struct {
-			InputTokens int `json:"input_tokens"`
-		}
-		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &response), "path=%s", path)
-		require.Positive(t, response.InputTokens, "path=%s", path)
+		require.Equal(t, http.StatusServiceUnavailable, w.Code, "path=%s", path)
+		require.Contains(t, w.Body.String(), "billing_service_error")
 	}
 
 	for _, path := range []string{

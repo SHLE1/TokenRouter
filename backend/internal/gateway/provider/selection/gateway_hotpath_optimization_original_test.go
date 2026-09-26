@@ -159,24 +159,33 @@ func TestWithWindowCostPrefetch_BatchReadAndContextReuse(t *testing.T) {
 	windowStart := time.Now().Add(-30 * time.Minute).Truncate(time.Hour)
 	windowEnd := windowStart.Add(5 * time.Hour)
 	accounts := []gatewayprovider.ExecutionAccount{
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-			Platform:           capability.PlatformAnthropic,
-			Type:               capability.AccountTypeOAuth,
-			Extra:              map[string]any{"window_cost_limit": 100.0},
-			SessionWindowStart: &windowStart,
-			SessionWindowEnd:   &windowEnd},
+		{
+			Record: accountcore.Record{
+				Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1,
+				Platform:           capability.PlatformAnthropic,
+				Type:               capability.AccountTypeOAuth,
+				Extra:              map[string]any{"window_cost_limit": 100.0},
+				SessionWindowStart: &windowStart,
+				SessionWindowEnd:   &windowEnd,
+			},
 		},
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 2,
-			Platform:           capability.PlatformAnthropic,
-			Type:               capability.AccountTypeSetupToken,
-			Extra:              map[string]any{"window_cost_limit": 100.0},
-			SessionWindowStart: &windowStart,
-			SessionWindowEnd:   &windowEnd},
+		{
+			Record: accountcore.Record{
+				Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2,
+				Platform:           capability.PlatformAnthropic,
+				Type:               capability.AccountTypeSetupToken,
+				Extra:              map[string]any{"window_cost_limit": 100.0},
+				SessionWindowStart: &windowStart,
+				SessionWindowEnd:   &windowEnd,
+			},
 		},
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 3,
-			Platform: capability.PlatformAnthropic,
-			Type:     capability.AccountTypeAPIKey,
-			Extra:    map[string]any{"window_cost_limit": 100.0}},
+		{
+			Record: accountcore.Record{
+				Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 3,
+				Platform: capability.PlatformAnthropic,
+				Type:     capability.AccountTypeAPIKey,
+				Extra:    map[string]any{"window_cost_limit": 100.0},
+			},
 		},
 	}
 
@@ -191,7 +200,6 @@ func TestWithWindowCostPrefetch_BatchReadAndContextReuse(t *testing.T) {
 		},
 	}
 	svc := newGenericSelectionForTest(GenericDependencies{
-
 		Reads:                   Reads{},
 		Shared:                  Shared{},
 		Window:                  selectionWindowForTest(cache, repo),
@@ -231,19 +239,25 @@ func TestWithWindowCostPrefetch_AllHitNoSQL(t *testing.T) {
 	windowStart := time.Now().Add(-30 * time.Minute).Truncate(time.Hour)
 	windowEnd := windowStart.Add(5 * time.Hour)
 	accounts := []gatewayprovider.ExecutionAccount{
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-			Platform:           capability.PlatformAnthropic,
-			Type:               capability.AccountTypeOAuth,
-			Extra:              map[string]any{"window_cost_limit": 100.0},
-			SessionWindowStart: &windowStart,
-			SessionWindowEnd:   &windowEnd},
+		{
+			Record: accountcore.Record{
+				Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1,
+				Platform:           capability.PlatformAnthropic,
+				Type:               capability.AccountTypeOAuth,
+				Extra:              map[string]any{"window_cost_limit": 100.0},
+				SessionWindowStart: &windowStart,
+				SessionWindowEnd:   &windowEnd,
+			},
 		},
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 2,
-			Platform:           capability.PlatformAnthropic,
-			Type:               capability.AccountTypeSetupToken,
-			Extra:              map[string]any{"window_cost_limit": 100.0},
-			SessionWindowStart: &windowStart,
-			SessionWindowEnd:   &windowEnd},
+		{
+			Record: accountcore.Record{
+				Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2,
+				Platform:           capability.PlatformAnthropic,
+				Type:               capability.AccountTypeSetupToken,
+				Extra:              map[string]any{"window_cost_limit": 100.0},
+				SessionWindowStart: &windowStart,
+				SessionWindowEnd:   &windowEnd,
+			},
 		},
 	}
 
@@ -255,7 +269,6 @@ func TestWithWindowCostPrefetch_AllHitNoSQL(t *testing.T) {
 	}
 	repo := &usageLogWindowBatchRepoStub{}
 	svc := newGenericSelectionForTest(GenericDependencies{
-
 		Reads:                   Reads{},
 		Shared:                  Shared{},
 		Window:                  selectionWindowForTest(cache, repo),
@@ -286,12 +299,15 @@ func TestWithWindowCostPrefetch_BatchErrorFallbackSingleQuery(t *testing.T) {
 	windowStart := time.Now().Add(-30 * time.Minute).Truncate(time.Hour)
 	windowEnd := windowStart.Add(5 * time.Hour)
 	accounts := []gatewayprovider.ExecutionAccount{
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 2,
-			Platform:           capability.PlatformAnthropic,
-			Type:               capability.AccountTypeSetupToken,
-			Extra:              map[string]any{"window_cost_limit": 100.0},
-			SessionWindowStart: &windowStart,
-			SessionWindowEnd:   &windowEnd},
+		{
+			Record: accountcore.Record{
+				Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2,
+				Platform:           capability.PlatformAnthropic,
+				Type:               capability.AccountTypeSetupToken,
+				Extra:              map[string]any{"window_cost_limit": 100.0},
+				SessionWindowStart: &windowStart,
+				SessionWindowEnd:   &windowEnd,
+			},
 		},
 	}
 
@@ -303,7 +319,6 @@ func TestWithWindowCostPrefetch_BatchErrorFallbackSingleQuery(t *testing.T) {
 		},
 	}
 	svc := newGenericSelectionForTest(GenericDependencies{
-
 		Reads:                   Reads{},
 		Shared:                  Shared{},
 		Window:                  selectionWindowForTest(cache, repo),
@@ -323,7 +338,6 @@ func TestWithWindowCostPrefetch_BatchErrorFallbackSingleQuery(t *testing.T) {
 }
 
 func TestGatewayHotpathHelpers_CacheTTLAndStickyContext(t *testing.T) {
-
 	t.Run("prefetched_sticky_account_id_from_context", func(t *testing.T) {
 		require.Equal(t, int64(0), prefetchedStickyAccountIDFromContext(context.TODO(), nil))
 		require.Equal(t, int64(0), prefetchedStickyAccountIDFromContext(context.Background(), nil))
@@ -365,20 +379,25 @@ func TestGatewayHotpathHelpers_CacheTTLAndStickyContext(t *testing.T) {
 
 func TestSelectAccountWithLoadAwareness_StickyReadReuse(t *testing.T) {
 	now := time.Now().Add(-time.Minute)
-	account := gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 88,
-		Platform:    capability.PlatformAnthropic,
-		Type:        capability.AccountTypeAPIKey,
-		Status:      billing.StatusActive,
-		Schedulable: true,
-		Concurrency: 4,
-		Priority:    1,
-		LastUsedAt:  &now},
+	account := gatewayprovider.ExecutionAccount{
+		Record: accountcore.Record{
+			Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 88,
+			Platform:    capability.PlatformAnthropic,
+			Type:        capability.AccountTypeAPIKey,
+			Status:      billing.StatusActive,
+			Schedulable: true,
+			Concurrency: 4,
+			Priority:    1,
+			LastUsedAt:  &now,
+		},
 	}
 
 	repo := selectionAccountFixture{accounts: []gatewayprovider.ExecutionAccount{account}}
-	concurrency := scheduler.NewConcurrencyService(selectionConcurrencyFixture{}, scheduler.Diagnostics{Logf: logging.LegacyPrintf,
+	concurrency := scheduler.NewConcurrencyService(selectionConcurrencyFixture{}, scheduler.Diagnostics{
+		Logf: logging.LegacyPrintf,
 
-		Event: logging.Event},
+		Event: logging.Event,
+	},
 	)
 
 	cfg := &config.Config{
@@ -399,13 +418,12 @@ func TestSelectAccountWithLoadAwareness_StickyReadReuse(t *testing.T) {
 	t.Run("without_prefetch_reads_cache_once", func(t *testing.T) {
 		cache := &stickyGatewayCacheHotpathStub{stickyID: account.Record.ID}
 		svc := newGenericSelectionForTest(GenericDependencies{
-
 			Reads: Reads{Accounts: repo},
 
 			Shared: Shared{Cache: cache, Concurrency: concurrency},
 		}, cfg)
 
-		result, err := svc.SelectAccountWithLoadAwareness(baseCtx, nil, "sess-hash", "", nil, "", int64(0))
+		result, err := svc.SelectAccountWithLoadAwareness(baseCtx, selectionFixtureGroupID(baseCtx), "sess-hash", "", nil, "", int64(0))
 		require.NoError(t, err)
 		require.NotNil(t, result)
 		require.NotNil(t, result.Account)
@@ -416,14 +434,13 @@ func TestSelectAccountWithLoadAwareness_StickyReadReuse(t *testing.T) {
 	t.Run("with_prefetch_skips_cache_read", func(t *testing.T) {
 		cache := &stickyGatewayCacheHotpathStub{stickyID: account.Record.ID}
 		svc := newGenericSelectionForTest(GenericDependencies{
-
 			Reads: Reads{Accounts: repo},
 
 			Shared: Shared{Cache: cache, Concurrency: concurrency},
 		}, cfg)
 
-		ctx := requeststate.WithPrefetchedStickySession(baseCtx, account.Record.ID, 0)
-		result, err := svc.SelectAccountWithLoadAwareness(ctx, nil, "sess-hash", "", nil, "", int64(0))
+		ctx := requeststate.WithPrefetchedStickySession(baseCtx, account.Record.ID, *selectionFixtureGroupID(baseCtx))
+		result, err := svc.SelectAccountWithLoadAwareness(ctx, selectionFixtureGroupID(ctx), "sess-hash", "", nil, "", int64(0))
 		require.NoError(t, err)
 		require.NotNil(t, result)
 		require.NotNil(t, result.Account)
@@ -434,14 +451,13 @@ func TestSelectAccountWithLoadAwareness_StickyReadReuse(t *testing.T) {
 	t.Run("with_prefetch_group_mismatch_reads_cache", func(t *testing.T) {
 		cache := &stickyGatewayCacheHotpathStub{stickyID: account.Record.ID}
 		svc := newGenericSelectionForTest(GenericDependencies{
-
 			Reads: Reads{Accounts: repo},
 
 			Shared: Shared{Cache: cache, Concurrency: concurrency},
 		}, cfg)
 
 		ctx := requeststate.WithPrefetchedStickySession(baseCtx, 999, 77)
-		result, err := svc.SelectAccountWithLoadAwareness(ctx, nil, "sess-hash", "", nil, "", int64(0))
+		result, err := svc.SelectAccountWithLoadAwareness(ctx, selectionFixtureGroupID(ctx), "sess-hash", "", nil, "", int64(0))
 		require.NoError(t, err)
 		require.NotNil(t, result)
 		require.NotNil(t, result.Account)

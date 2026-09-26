@@ -13,7 +13,7 @@ export interface ProtocolCatalog {
   auxiliary_operations: { operation: string; protocol?: ProtocolID; authorization: string }[]
   protocols: ProtocolDefinition[]
   accounts: { platform: string; type: string; auth_mode: string; protocols: ProtocolID[] }[]
-  groups: { platform: string; protocols: ProtocolID[]; defaults: ProtocolID[]; fallback_targets: Partial<Record<ProtocolID, ProtocolID[]>>; default_fallbacks: Partial<Record<ProtocolID, ProtocolID>> }[]
+  groups: { protocols: ProtocolID[]; defaults: ProtocolID[]; fallback_targets: Partial<Record<ProtocolID, ProtocolID[]>>; default_fallbacks: Partial<Record<ProtocolID, ProtocolID[]>> }[]
 }
 
 // 能力目录不含用户配置，整个管理会话共享一次只读请求；失败后允许重试。

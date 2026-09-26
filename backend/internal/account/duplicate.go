@@ -240,22 +240,20 @@ func (s *Admin) DuplicateAccount(ctx context.Context, id int64, actorScope, oper
 		proxyID = source.ProxyFallbackOriginID
 	}
 	input := &CreateAccountInput{
-		Name:                  duplicateAccountName(source.Name),
-		Notes:                 cloneAccountValuePointer(source.Notes),
-		Platform:              source.Platform,
-		Type:                  source.Type,
-		Credentials:           credentials,
-		Extra:                 extra,
-		ProxyID:               cloneAccountValuePointer(proxyID),
-		Concurrency:           source.Concurrency,
-		Priority:              source.Priority,
-		RateMultiplier:        cloneAccountValuePointer(source.RateMultiplier),
-		LoadFactor:            cloneAccountValuePointer(source.LoadFactor),
-		GroupIDs:              groupIDs,
-		ExpiresAt:             expiresAt,
-		AutoPauseOnExpired:    &autoPauseOnExpired,
-		SkipDefaultGroupBind:  true,
-		SkipMixedChannelCheck: true,
+		Name:               duplicateAccountName(source.Name),
+		Notes:              cloneAccountValuePointer(source.Notes),
+		Platform:           source.Platform,
+		Type:               source.Type,
+		Credentials:        credentials,
+		Extra:              extra,
+		ProxyID:            cloneAccountValuePointer(proxyID),
+		Concurrency:        source.Concurrency,
+		Priority:           source.Priority,
+		RateMultiplier:     cloneAccountValuePointer(source.RateMultiplier),
+		LoadFactor:         cloneAccountValuePointer(source.LoadFactor),
+		GroupIDs:           groupIDs,
+		ExpiresAt:          expiresAt,
+		AutoPauseOnExpired: &autoPauseOnExpired,
 	}
 	if err := egress.NormalizeHeaderOverrideCredentials(input.Credentials); err != nil {
 		return nil, err

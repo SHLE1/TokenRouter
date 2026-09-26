@@ -263,33 +263,33 @@ func TestValidateNoConflictingModels(t *testing.T) {
 		{
 			name: "no duplicates",
 			pricingList: []ModelPricingEntry{
-				{Platform: "anthropic", Models: []string{"claude-sonnet-4", "claude-opus-4"}},
-				{Platform: "openai", Models: []string{"gpt-5.1"}},
+				{Models: []string{"claude-sonnet-4", "claude-opus-4"}},
+				{Models: []string{"gpt-5.1"}},
 			},
 			wantErr: false,
 		},
 		{
 			name: "same platform duplicate",
 			pricingList: []ModelPricingEntry{
-				{Platform: "anthropic", Models: []string{"claude-sonnet-4"}},
-				{Platform: "anthropic", Models: []string{"claude-sonnet-4"}},
+				{Models: []string{"claude-sonnet-4"}},
+				{Models: []string{"claude-sonnet-4"}},
 			},
 			wantErr:     true,
 			errContains: "claude-sonnet-4",
 		},
 		{
-			name: "same model different platform",
+			name: "same model duplicate in unified space",
 			pricingList: []ModelPricingEntry{
-				{Platform: "anthropic", Models: []string{"model-a"}},
-				{Platform: "openai", Models: []string{"model-a"}},
+				{Models: []string{"model-a"}},
+				{Models: []string{"model-a"}},
 			},
-			wantErr: false,
+			wantErr: true,
 		},
 		{
 			name: "case insensitive",
 			pricingList: []ModelPricingEntry{
-				{Platform: "anthropic", Models: []string{"Claude"}},
-				{Platform: "anthropic", Models: []string{"claude"}},
+				{Models: []string{"Claude"}},
+				{Models: []string{"claude"}},
 			},
 			wantErr: true,
 		},
@@ -301,8 +301,8 @@ func TestValidateNoConflictingModels(t *testing.T) {
 		{
 			name: "wildcard_vs_wildcard_conflict",
 			pricingList: []ModelPricingEntry{
-				{Platform: "anthropic", Models: []string{"claude-*"}},
-				{Platform: "anthropic", Models: []string{"claude-opus-*"}},
+				{Models: []string{"claude-*"}},
+				{Models: []string{"claude-opus-*"}},
 			},
 			wantErr:     true,
 			errContains: "conflict",
@@ -310,33 +310,33 @@ func TestValidateNoConflictingModels(t *testing.T) {
 		{
 			name: "wildcard_vs_exact_conflict",
 			pricingList: []ModelPricingEntry{
-				{Platform: "anthropic", Models: []string{"claude-*"}},
-				{Platform: "anthropic", Models: []string{"claude-opus-4-6"}},
+				{Models: []string{"claude-*"}},
+				{Models: []string{"claude-opus-4-6"}},
 			},
 			wantErr:     true,
 			errContains: "conflict",
 		},
 		{
-			name: "no_conflict_different_platform",
+			name: "overlapping wildcard in unified space",
 			pricingList: []ModelPricingEntry{
-				{Platform: "anthropic", Models: []string{"claude-opus-*"}},
-				{Platform: "openai", Models: []string{"claude-*"}},
+				{Models: []string{"claude-opus-*"}},
+				{Models: []string{"claude-*"}},
 			},
-			wantErr: false,
+			wantErr: true,
 		},
 		{
 			name: "no_conflict_same_platform_different_prefix",
 			pricingList: []ModelPricingEntry{
-				{Platform: "anthropic", Models: []string{"claude-opus-*"}},
-				{Platform: "anthropic", Models: []string{"gpt-*"}},
+				{Models: []string{"claude-opus-*"}},
+				{Models: []string{"gpt-*"}},
 			},
 			wantErr: false,
 		},
 		{
 			name: "catch_all_wildcard_conflicts_with_everything",
 			pricingList: []ModelPricingEntry{
-				{Platform: "openai", Models: []string{"*"}},
-				{Platform: "openai", Models: []string{"gpt-5"}},
+				{Models: []string{"*"}},
+				{Models: []string{"gpt-5"}},
 			},
 			wantErr:     true,
 			errContains: "conflict",
@@ -346,8 +346,8 @@ func TestValidateNoConflictingModels(t *testing.T) {
 		{
 			name: "claude_dot_and_hyphen_spelling_conflict",
 			pricingList: []ModelPricingEntry{
-				{Platform: "anthropic", Models: []string{"claude-sonnet-4.5"}},
-				{Platform: "anthropic", Models: []string{"claude-sonnet-4-5"}},
+				{Models: []string{"claude-sonnet-4.5"}},
+				{Models: []string{"claude-sonnet-4-5"}},
 			},
 			wantErr:     true,
 			errContains: "conflict",
@@ -355,8 +355,8 @@ func TestValidateNoConflictingModels(t *testing.T) {
 		{
 			name: "claude_dot_and_hyphen_spelling_conflict_wildcard",
 			pricingList: []ModelPricingEntry{
-				{Platform: "anthropic", Models: []string{"claude-sonnet-4.5*"}},
-				{Platform: "anthropic", Models: []string{"claude-sonnet-4-5-x"}},
+				{Models: []string{"claude-sonnet-4.5*"}},
+				{Models: []string{"claude-sonnet-4-5-x"}},
 			},
 			wantErr:     true,
 			errContains: "conflict",
@@ -364,8 +364,8 @@ func TestValidateNoConflictingModels(t *testing.T) {
 		{
 			name: "surrounding_whitespace_conflict",
 			pricingList: []ModelPricingEntry{
-				{Platform: "openai", Models: []string{"gpt-5.6"}},
-				{Platform: "openai", Models: []string{" gpt-5.6 "}},
+				{Models: []string{"gpt-5.6"}},
+				{Models: []string{" gpt-5.6 "}},
 			},
 			wantErr:     true,
 			errContains: "conflict",
@@ -374,8 +374,8 @@ func TestValidateNoConflictingModels(t *testing.T) {
 			// 只有 claude-* 前缀才做 "." → "-"，别把其它平台也一起归一化了
 			name: "non_claude_dot_spelling_is_not_normalized",
 			pricingList: []ModelPricingEntry{
-				{Platform: "openai", Models: []string{"gpt-5.6"}},
-				{Platform: "openai", Models: []string{"gpt-5-6"}},
+				{Models: []string{"gpt-5.6"}},
+				{Models: []string{"gpt-5-6"}},
 			},
 			wantErr: false,
 		},
@@ -402,82 +402,25 @@ func TestValidateNoConflictingModels(t *testing.T) {
 	})
 }
 
+// 映射键在统一模型空间内校验，精确项和通配范围不可重叠。
 func TestValidateNoConflictingMappings(t *testing.T) {
 	tests := []struct {
-		name        string
-		mapping     map[string]map[string]string
-		wantErr     bool
-		errContains string
+		name     string
+		mapping  map[string]string
+		conflict bool
 	}{
-		{
-			name:    "nil mapping",
-			mapping: nil,
-			wantErr: false,
-		},
-		{
-			name:    "empty mapping",
-			mapping: map[string]map[string]string{},
-			wantErr: false,
-		},
-		{
-			name: "no conflict",
-			mapping: map[string]map[string]string{
-				"anthropic": {"claude-opus-*": "opus", "gpt-*": "gpt"},
-			},
-			wantErr: false,
-		},
-		{
-			name: "wildcard vs wildcard conflict",
-			mapping: map[string]map[string]string{
-				"anthropic": {"claude-*": "a", "claude-opus-*": "b"},
-			},
-			wantErr:     true,
-			errContains: "conflict",
-		},
-		{
-			// 分组映射保留点号，只忽略大小写，不使用定价的名称归一化
-			// "." → "-"，所以这两个源模式在缓存里是两个不同的键、并不冲突。
-			// 这条用来卡住：定价侧的归一化修复不能顺手套到映射侧，否则会误报冲突。
-			name: "mapping keeps dot and hyphen spelling separate",
-			mapping: map[string]map[string]string{
-				"anthropic": {"claude-sonnet-4.5": "a", "claude-sonnet-4-5": "b"},
-			},
-			wantErr: false,
-		},
-		{
-			name: "wildcard vs exact conflict",
-			mapping: map[string]map[string]string{
-				"openai": {"gpt-*": "a", "gpt-4o": "b"},
-			},
-			wantErr:     true,
-			errContains: "conflict",
-		},
-		{
-			name: "exact duplicate conflict",
-			mapping: map[string]map[string]string{
-				"anthropic": {"claude-opus-4": "a"},
-				"openai":    {"claude-opus-4": "b"},
-			},
-			wantErr: false, // different platforms
-		},
-		{
-			name: "different platforms no conflict",
-			mapping: map[string]map[string]string{
-				"anthropic": {"claude-*": "a"},
-				"openai":    {"claude-*": "b"},
-			},
-			wantErr: false,
-		},
+		{"nil", nil, false},
+		{"separate families", map[string]string{"claude-*": "a", "gpt-*": "b"}, false},
+		{"overlapping wildcard", map[string]string{"claude-*": "a", "claude-opus-*": "b"}, true},
+		{"exact inside wildcard", map[string]string{"gpt-*": "a", "gpt-4o": "b"}, true},
+		{"case duplicate", map[string]string{"GPT-4": "a", "gpt-4": "b"}, true},
+		{"dot and hyphen remain distinct", map[string]string{"claude-4.5": "a", "claude-4-5": "b"}, false},
 	}
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := validateNoConflictingMappings(tt.mapping)
-			if tt.wantErr {
-				require.Error(t, err)
-				if tt.errContains != "" {
-					require.Contains(t, err.Error(), tt.errContains)
-				}
+			if tt.conflict {
+				require.ErrorContains(t, err, "conflict")
 			} else {
 				require.NoError(t, err)
 			}
@@ -613,7 +556,7 @@ func TestGetConfigModelPricing_ExactMatch(t *testing.T) {
 		Status:   StatusActive,
 		GroupIDs: []int64{10},
 		ModelPricing: []ModelPricingEntry{
-			{ID: 100, Platform: "anthropic", Models: []string{"claude-opus-4"}, InputPrice: testPtrFloat64(15e-6)},
+			{ID: 100, Models: []string{"claude-opus-4"}, InputPrice: testPtrFloat64(15e-6)},
 		},
 	}
 	repo := makeStandardRepo(ch, map[int64]string{10: "anthropic"})
@@ -631,7 +574,7 @@ func TestGetConfigModelPricing_CaseInsensitive(t *testing.T) {
 		Status:   StatusActive,
 		GroupIDs: []int64{10},
 		ModelPricing: []ModelPricingEntry{
-			{ID: 100, Platform: "anthropic", Models: []string{"claude-opus-4"}, InputPrice: testPtrFloat64(15e-6)},
+			{ID: 100, Models: []string{"claude-opus-4"}, InputPrice: testPtrFloat64(15e-6)},
 		},
 	}
 	repo := makeStandardRepo(ch, map[int64]string{10: "anthropic"})
@@ -648,7 +591,7 @@ func TestGetConfigModelPricing_NormalizesDotsAndHyphens(t *testing.T) {
 		Status:   StatusActive,
 		GroupIDs: []int64{10},
 		ModelPricing: []ModelPricingEntry{
-			{ID: 100, Platform: "anthropic", Models: []string{"claude-opus-4.8"}, BillingMode: BillingModePerRequest, PerRequestPrice: testPtrFloat64(0.007)},
+			{ID: 100, Models: []string{"claude-opus-4.8"}, BillingMode: BillingModePerRequest, PerRequestPrice: testPtrFloat64(0.007)},
 		},
 	}
 	repo := makeStandardRepo(ch, map[int64]string{10: "anthropic"})
@@ -673,7 +616,7 @@ func TestGetConfigModelPricing_WildcardMatch(t *testing.T) {
 		Status:   StatusActive,
 		GroupIDs: []int64{10},
 		ModelPricing: []ModelPricingEntry{
-			{ID: 200, Platform: "anthropic", Models: []string{"claude-*"}, InputPrice: testPtrFloat64(10e-6)},
+			{ID: 200, Models: []string{"claude-*"}, InputPrice: testPtrFloat64(10e-6)},
 		},
 	}
 	repo := makeStandardRepo(ch, map[int64]string{10: "anthropic"})
@@ -690,8 +633,8 @@ func TestGetConfigModelPricing_WildcardFirstMatch(t *testing.T) {
 		Status:   StatusActive,
 		GroupIDs: []int64{10},
 		ModelPricing: []ModelPricingEntry{
-			{ID: 200, Platform: "anthropic", Models: []string{"claude-*"}, InputPrice: testPtrFloat64(10e-6)},
-			{ID: 300, Platform: "anthropic", Models: []string{"claude-sonnet-*"}, InputPrice: testPtrFloat64(5e-6)},
+			{ID: 200, Models: []string{"claude-*"}, InputPrice: testPtrFloat64(10e-6)},
+			{ID: 300, Models: []string{"claude-sonnet-*"}, InputPrice: testPtrFloat64(5e-6)},
 		},
 	}
 	repo := makeStandardRepo(ch, map[int64]string{10: "anthropic"})
@@ -710,7 +653,7 @@ func TestGetConfigModelPricing_NoMatch(t *testing.T) {
 		Status:   StatusActive,
 		GroupIDs: []int64{10},
 		ModelPricing: []ModelPricingEntry{
-			{ID: 100, Platform: "anthropic", Models: []string{"claude-opus-4"}, InputPrice: testPtrFloat64(15e-6)},
+			{ID: 100, Models: []string{"claude-opus-4"}, InputPrice: testPtrFloat64(15e-6)},
 		},
 	}
 	repo := makeStandardRepo(ch, map[int64]string{10: "anthropic"})
@@ -726,7 +669,7 @@ func TestGetConfigModelPricing_InactivePricingConfig(t *testing.T) {
 		Status:   StatusDisabled,
 		GroupIDs: []int64{10},
 		ModelPricing: []ModelPricingEntry{
-			{ID: 100, Platform: "anthropic", Models: []string{"claude-opus-4"}},
+			{ID: 100, Models: []string{"claude-opus-4"}},
 		},
 	}
 	repo := makeStandardRepo(ch, map[int64]string{10: "anthropic"})
@@ -736,36 +679,32 @@ func TestGetConfigModelPricing_InactivePricingConfig(t *testing.T) {
 	require.Nil(t, result)
 }
 
-func TestGetConfigModelPricing_PlatformFiltering(t *testing.T) {
+func TestGetConfigModelPricing_UnifiedModelSpace(t *testing.T) {
 	ch := PricingConfig{
 		ID:       1,
 		Status:   StatusActive,
 		GroupIDs: []int64{10, 20},
 		ModelPricing: []ModelPricingEntry{
-			{ID: 100, Platform: "openai", Models: []string{"gpt-5.1"}, InputPrice: testPtrFloat64(5e-6)},
-			{ID: 200, Platform: "anthropic", Models: []string{"claude-opus-4"}, InputPrice: testPtrFloat64(15e-6)},
+			{ID: 100, Models: []string{"gpt-5.1"}, InputPrice: testPtrFloat64(5e-6)},
+			{ID: 200, Models: []string{"claude-opus-4"}, InputPrice: testPtrFloat64(15e-6)},
 		},
 	}
 	repo := makeStandardRepo(ch, map[int64]string{10: "anthropic", 20: "openai"})
 	svc := newTestPricingConfigService(repo)
 
-	// Group 10 (anthropic) should NOT see openai pricing
 	result := svc.GetConfigModelPricing(context.Background(), 10, "gpt-5.1")
-	require.Nil(t, result)
+	require.NotNil(t, result)
 
-	// Group 10 (anthropic) should see anthropic pricing
 	result = svc.GetConfigModelPricing(context.Background(), 10, "claude-opus-4")
 	require.NotNil(t, result)
 	require.Equal(t, int64(200), result.ID)
 
-	// Group 20 (openai) should see openai pricing
 	result = svc.GetConfigModelPricing(context.Background(), 20, "gpt-5.1")
 	require.NotNil(t, result)
 	require.Equal(t, int64(100), result.ID)
 
-	// Group 20 (openai) should NOT see anthropic pricing
 	result = svc.GetConfigModelPricing(context.Background(), 20, "claude-opus-4")
-	require.Nil(t, result)
+	require.NotNil(t, result)
 }
 
 func TestGetConfigModelPricing_ReturnsCopy(t *testing.T) {
@@ -774,7 +713,7 @@ func TestGetConfigModelPricing_ReturnsCopy(t *testing.T) {
 		Status:   StatusActive,
 		GroupIDs: []int64{10},
 		ModelPricing: []ModelPricingEntry{
-			{ID: 100, Platform: "anthropic", Models: []string{"claude-opus-4"}, InputPrice: testPtrFloat64(15e-6)},
+			{ID: 100, Models: []string{"claude-opus-4"}, InputPrice: testPtrFloat64(15e-6)},
 		},
 	}
 	repo := makeStandardRepo(ch, map[int64]string{10: "anthropic"})
@@ -812,11 +751,7 @@ func TestResolveGroupMapping_NoGroupPolicy(t *testing.T) {
 }
 
 func TestResolveGroupMapping_ExactMapping(t *testing.T) {
-	routingPolicy := GroupRoutingPolicy{ModelMapping: map[string]map[string]string{
-		"anthropic": {
-			"claude-sonnet-4": "claude-sonnet-4-20250514",
-		},
-	}}
+	routingPolicy := GroupRoutingPolicy{ModelMapping: map[string]string{"claude-sonnet-4": "claude-sonnet-4-20250514"}}
 
 	ch := PricingConfig{
 		ID:       1,
@@ -833,11 +768,7 @@ func TestResolveGroupMapping_ExactMapping(t *testing.T) {
 }
 
 func TestResolveGroupMapping_WildcardMapping(t *testing.T) {
-	routingPolicy := GroupRoutingPolicy{ModelMapping: map[string]map[string]string{
-		"anthropic": {
-			"*": "gpt-5.4",
-		},
-	}}
+	routingPolicy := GroupRoutingPolicy{ModelMapping: map[string]string{"*": "gpt-5.4"}}
 
 	ch := PricingConfig{
 		ID:       1,
@@ -853,12 +784,7 @@ func TestResolveGroupMapping_WildcardMapping(t *testing.T) {
 }
 
 func TestResolveGroupMapping_WildcardFirstMatch(t *testing.T) {
-	routingPolicy := GroupRoutingPolicy{ModelMapping: map[string]map[string]string{
-		"anthropic": {
-			"claude-*":        "target2",
-			"claude-sonnet-*": "target1",
-		},
-	}}
+	routingPolicy := GroupRoutingPolicy{ModelMapping: map[string]string{"claude-*": "target2", "claude-sonnet-*": "target1"}}
 
 	ch := PricingConfig{
 		ID:       1,
@@ -877,11 +803,7 @@ func TestResolveGroupMapping_WildcardFirstMatch(t *testing.T) {
 }
 
 func TestResolveGroupMapping_NoMapping(t *testing.T) {
-	routingPolicy := GroupRoutingPolicy{ModelMapping: map[string]map[string]string{
-		"anthropic": {
-			"claude-sonnet-4": "mapped",
-		},
-	}}
+	routingPolicy := GroupRoutingPolicy{ModelMapping: map[string]string{"claude-sonnet-4": "mapped"}}
 
 	ch := PricingConfig{
 		ID:       1,
@@ -926,11 +848,7 @@ func TestResolveGroupMapping_UpstreamBillingModelSource(t *testing.T) {
 }
 
 func TestResolveGroupMapping_DisabledGroupPolicy(t *testing.T) {
-	routingPolicy := GroupRoutingPolicy{ModelMapping: map[string]map[string]string{
-		"anthropic": {
-			"claude-sonnet-4": "mapped",
-		},
-	}}
+	routingPolicy := GroupRoutingPolicy{ModelMapping: map[string]string{"claude-sonnet-4": "mapped"}}
 
 	ch := PricingConfig{
 		ID:       1,
@@ -971,7 +889,7 @@ func TestIsModelRestricted_RestrictDisabled(t *testing.T) {
 		GroupIDs: []int64{10},
 
 		ModelPricing: []ModelPricingEntry{
-			{Platform: "anthropic", Models: []string{"claude-opus-4"}},
+			{Models: []string{"claude-opus-4"}},
 		},
 	}
 	repo := makePolicyRepo(routingPolicy, ch, map[int64]string{10: "anthropic"})
@@ -1006,7 +924,7 @@ func TestIsModelRestricted_ModelInPricing(t *testing.T) {
 		GroupIDs: []int64{10},
 
 		ModelPricing: []ModelPricingEntry{
-			{Platform: "anthropic", Models: []string{"claude-opus-4", "claude-sonnet-4"}},
+			{Models: []string{"claude-opus-4", "claude-sonnet-4"}},
 		},
 	}
 	repo := makePolicyRepo(routingPolicy, ch, map[int64]string{10: "anthropic"})
@@ -1026,8 +944,8 @@ func TestIsModelRestricted_QoderBlankPricingIsAllowlist(t *testing.T) {
 		GroupIDs: []int64{10},
 
 		ModelPricing: []ModelPricingEntry{
-			{Platform: PlatformQoder, Models: []string{"qmodel"}, BillingMode: BillingModeToken},
-			{Platform: PlatformQoder, Models: []string{"free-model"}, BillingMode: BillingModeToken, InputPrice: &zero},
+			{Models: []string{"qmodel"}, BillingMode: BillingModeToken},
+			{Models: []string{"free-model"}, BillingMode: BillingModeToken, InputPrice: &zero},
 		},
 	}
 	repo := makePolicyRepo(routingPolicy, ch, map[int64]string{10: PlatformQoder})
@@ -1047,8 +965,8 @@ func TestIsModelRestricted_QoderBlankWildcardDoesNotMaskEffectiveWildcard(t *tes
 		GroupIDs: []int64{10},
 
 		ModelPricing: []ModelPricingEntry{
-			{Platform: PlatformQoder, Models: []string{"qwen3.*"}, BillingMode: BillingModeToken},
-			{Platform: PlatformQoder, Models: []string{"qwen3.7-*"}, BillingMode: BillingModeToken, InputPrice: &price},
+			{Models: []string{"qwen3.*"}, BillingMode: BillingModeToken},
+			{Models: []string{"qwen3.7-*"}, BillingMode: BillingModeToken, InputPrice: &price},
 		},
 	}
 	repo := makePolicyRepo(routingPolicy, ch, map[int64]string{10: PlatformQoder})
@@ -1067,7 +985,7 @@ func TestIsModelRestricted_ModelInWildcard(t *testing.T) {
 		GroupIDs: []int64{10},
 
 		ModelPricing: []ModelPricingEntry{
-			{Platform: "anthropic", Models: []string{"claude-*"}},
+			{Models: []string{"claude-*"}},
 		},
 	}
 	repo := makePolicyRepo(routingPolicy, ch, map[int64]string{10: "anthropic"})
@@ -1086,7 +1004,7 @@ func TestIsModelRestricted_ModelNotFound(t *testing.T) {
 		GroupIDs: []int64{10},
 
 		ModelPricing: []ModelPricingEntry{
-			{Platform: "anthropic", Models: []string{"claude-opus-4"}},
+			{Models: []string{"claude-opus-4"}},
 		},
 	}
 	repo := makePolicyRepo(routingPolicy, ch, map[int64]string{10: "anthropic"})
@@ -1105,7 +1023,7 @@ func TestIsModelRestricted_CaseInsensitive(t *testing.T) {
 		GroupIDs: []int64{10},
 
 		ModelPricing: []ModelPricingEntry{
-			{Platform: "anthropic", Models: []string{"claude-opus-4"}},
+			{Models: []string{"claude-opus-4"}},
 		},
 	}
 	repo := makePolicyRepo(routingPolicy, ch, map[int64]string{10: "anthropic"})
@@ -1116,11 +1034,7 @@ func TestIsModelRestricted_CaseInsensitive(t *testing.T) {
 }
 
 func TestResolveGroupMapping_WithPolicy(t *testing.T) {
-	routingPolicy := GroupRoutingPolicy{ModelMapping: map[string]map[string]string{
-		"anthropic": {
-			"claude-sonnet-4": "claude-sonnet-4-20250514",
-		},
-	}, RestrictModels: true}
+	routingPolicy := GroupRoutingPolicy{ModelMapping: map[string]string{"claude-sonnet-4": "claude-sonnet-4-20250514"}, RestrictModels: true}
 
 	ch := PricingConfig{
 		ID:       1,
@@ -1128,7 +1042,7 @@ func TestResolveGroupMapping_WithPolicy(t *testing.T) {
 		GroupIDs: []int64{10},
 
 		ModelPricing: []ModelPricingEntry{
-			{Platform: "anthropic", Models: []string{"claude-sonnet-4"}},
+			{Models: []string{"claude-sonnet-4"}},
 		},
 	}
 	repo := makePolicyRepo(routingPolicy, ch, map[int64]string{10: "anthropic"})
@@ -1150,7 +1064,7 @@ func TestResolveGroupMapping_UnmappedPolicy(t *testing.T) {
 		GroupIDs: []int64{10},
 
 		ModelPricing: []ModelPricingEntry{
-			{Platform: "anthropic", Models: []string{"claude-sonnet-4"}},
+			{Models: []string{"claude-sonnet-4"}},
 		},
 	}
 	repo := makePolicyRepo(routingPolicy, ch, map[int64]string{10: "anthropic"})
@@ -1194,13 +1108,13 @@ func TestBuildCache_DBError(t *testing.T) {
 	require.Equal(t, 1, callCount)
 }
 
-func TestBuildCache_GroupPlatformError(t *testing.T) {
+func TestBuildCacheDoesNotReadRetiredGroupPlatform(t *testing.T) {
 	ch := PricingConfig{
 		ID:       1,
 		Status:   StatusActive,
 		GroupIDs: []int64{10},
 		ModelPricing: []ModelPricingEntry{
-			{ID: 100, Platform: "anthropic", Models: []string{"claude-opus-4"}},
+			{ID: 100, Models: []string{"claude-opus-4"}},
 		},
 	}
 	repo := &mockPricingConfigRepository{
@@ -1213,15 +1127,15 @@ func TestBuildCache_GroupPlatformError(t *testing.T) {
 	}
 	svc := newTestPricingConfigService(repo)
 
-	// Should fail-close: error propagated when group platforms cannot be loaded
+	// 平台查询已经退出价格解析，即使旧端口报错也不会访问。
 	result, err := svc.GetPricingConfigForGroup(context.Background(), 10)
-	require.Error(t, err)
-	require.Nil(t, result)
+	require.NoError(t, err)
+	require.NotNil(t, result)
 
-	// Within error-TTL, second call should hit cache (empty) and return nil, nil
+	// 再次读取命中同一份完整缓存。
 	result2, err2 := svc.GetPricingConfigForGroup(context.Background(), 10)
 	require.NoError(t, err2)
-	require.Nil(t, result2)
+	require.NotNil(t, result2)
 }
 
 func TestBuildCache_MultipleGroupsSamePricingConfig(t *testing.T) {
@@ -1230,7 +1144,7 @@ func TestBuildCache_MultipleGroupsSamePricingConfig(t *testing.T) {
 		Status:   StatusActive,
 		GroupIDs: []int64{10, 20, 30},
 		ModelPricing: []ModelPricingEntry{
-			{ID: 100, Platform: "anthropic", Models: []string{"claude-opus-4"}, InputPrice: testPtrFloat64(15e-6)},
+			{ID: 100, Models: []string{"claude-opus-4"}, InputPrice: testPtrFloat64(15e-6)},
 		},
 	}
 	repo := makeStandardRepo(ch, map[int64]string{
@@ -1247,14 +1161,14 @@ func TestBuildCache_MultipleGroupsSamePricingConfig(t *testing.T) {
 	}
 }
 
-func TestBuildCache_PlatformFiltering(t *testing.T) {
+func TestBuildCache_UnifiedModelSpace(t *testing.T) {
 	ch := PricingConfig{
 		ID:       1,
 		Status:   StatusActive,
 		GroupIDs: []int64{10, 20},
 		ModelPricing: []ModelPricingEntry{
-			{ID: 100, Platform: "anthropic", Models: []string{"claude-opus-4"}},
-			{ID: 200, Platform: "openai", Models: []string{"gpt-5.1"}},
+			{ID: 100, Models: []string{"claude-opus-4"}},
+			{ID: 200, Models: []string{"gpt-5.1"}},
 		},
 	}
 	repo := makeStandardRepo(ch, map[int64]string{
@@ -1263,13 +1177,11 @@ func TestBuildCache_PlatformFiltering(t *testing.T) {
 	})
 	svc := newTestPricingConfigService(repo)
 
-	// anthropic group sees only anthropic models
 	require.NotNil(t, svc.GetConfigModelPricing(context.Background(), 10, "claude-opus-4"))
-	require.Nil(t, svc.GetConfigModelPricing(context.Background(), 10, "gpt-5.1"))
+	require.NotNil(t, svc.GetConfigModelPricing(context.Background(), 10, "gpt-5.1"))
 
-	// openai group sees only openai models
 	require.NotNil(t, svc.GetConfigModelPricing(context.Background(), 20, "gpt-5.1"))
-	require.Nil(t, svc.GetConfigModelPricing(context.Background(), 20, "claude-opus-4"))
+	require.NotNil(t, svc.GetConfigModelPricing(context.Background(), 20, "claude-opus-4"))
 }
 
 func TestBuildCache_WildcardPreservesConfigOrder(t *testing.T) {
@@ -1279,9 +1191,9 @@ func TestBuildCache_WildcardPreservesConfigOrder(t *testing.T) {
 		GroupIDs: []int64{10},
 		ModelPricing: []ModelPricingEntry{
 			// Configuration order: shortest prefix first
-			{ID: 100, Platform: "anthropic", Models: []string{"c-*"}, InputPrice: testPtrFloat64(1e-6)},
-			{ID: 200, Platform: "anthropic", Models: []string{"c-son-*"}, InputPrice: testPtrFloat64(2e-6)},
-			{ID: 300, Platform: "anthropic", Models: []string{"c-son-4-*"}, InputPrice: testPtrFloat64(3e-6)},
+			{ID: 100, Models: []string{"c-*"}, InputPrice: testPtrFloat64(1e-6)},
+			{ID: 200, Models: []string{"c-son-*"}, InputPrice: testPtrFloat64(2e-6)},
+			{ID: 300, Models: []string{"c-son-4-*"}, InputPrice: testPtrFloat64(3e-6)},
 		},
 	}
 	repo := makeStandardRepo(ch, map[int64]string{10: "anthropic"})
@@ -1310,7 +1222,7 @@ func TestInvalidateCache(t *testing.T) {
 		Status:   StatusActive,
 		GroupIDs: []int64{10},
 		ModelPricing: []ModelPricingEntry{
-			{ID: 100, Platform: "anthropic", Models: []string{"claude-opus-4"}},
+			{ID: 100, Models: []string{"claude-opus-4"}},
 		},
 	}
 	repo := &mockPricingConfigRepository{
@@ -1419,8 +1331,8 @@ func TestCreate_DuplicateModel(t *testing.T) {
 	_, err := svc.Create(context.Background(), &CreatePricingConfigInput{
 		Name: "new-channel",
 		ModelPricing: []ModelPricingEntry{
-			{Platform: "anthropic", Models: []string{"claude-opus-4"}},
-			{Platform: "anthropic", Models: []string{"claude-opus-4"}}, // duplicate
+			{Models: []string{"claude-opus-4"}},
+			{Models: []string{"claude-opus-4"}}, // duplicate
 		},
 	})
 	require.Error(t, err)
@@ -1439,8 +1351,7 @@ func TestCreate_InvalidPricingIntervals(t *testing.T) {
 		Name: "new-channel",
 		ModelPricing: []ModelPricingEntry{
 			{
-				Platform: "anthropic",
-				Models:   []string{"claude-opus-4"},
+				Models: []string{"claude-opus-4"},
 				Intervals: []PricingInterval{
 					{MinTokens: 0, MaxTokens: testPtrInt(2000), InputPrice: testPtrFloat64(1e-6)},
 					{MinTokens: 1000, MaxTokens: testPtrInt(3000), InputPrice: testPtrFloat64(2e-6)},
@@ -1489,7 +1400,7 @@ func TestCreate_InvalidatesCache(t *testing.T) {
 		Status:   StatusActive,
 		GroupIDs: []int64{10},
 		ModelPricing: []ModelPricingEntry{
-			{ID: 100, Platform: "anthropic", Models: []string{"claude-opus-4"}},
+			{ID: 100, Models: []string{"claude-opus-4"}},
 		},
 	}
 	repo := &mockPricingConfigRepository{
@@ -1632,8 +1543,8 @@ func TestUpdate_DuplicateModel(t *testing.T) {
 	svc := newTestPricingConfigService(repo)
 
 	dupPricing := []ModelPricingEntry{
-		{Platform: "anthropic", Models: []string{"claude-opus-4"}},
-		{Platform: "anthropic", Models: []string{"claude-opus-4"}},
+		{Models: []string{"claude-opus-4"}},
+		{Models: []string{"claude-opus-4"}},
 	}
 	_, err := svc.Update(context.Background(), 1, &UpdatePricingConfigInput{
 		ModelPricing: &dupPricing,
@@ -1657,8 +1568,7 @@ func TestUpdate_InvalidPricingIntervals(t *testing.T) {
 
 	invalidPricing := []ModelPricingEntry{
 		{
-			Platform: "anthropic",
-			Models:   []string{"claude-opus-4"},
+			Models: []string{"claude-opus-4"},
 			Intervals: []PricingInterval{
 				{MinTokens: 0, MaxTokens: nil, InputPrice: testPtrFloat64(1e-6)},
 				{MinTokens: 2000, MaxTokens: testPtrInt(4000), InputPrice: testPtrFloat64(2e-6)},
@@ -1913,99 +1823,9 @@ func TestPricingConfigDelete_GetGroupIDsError(t *testing.T) {
 	require.True(t, deleted)
 }
 
-func TestIsPlatformPricingMatch(t *testing.T) {
-	tests := []struct {
-		name            string
-		groupPlatform   string
-		pricingPlatform string
-		want            bool
-	}{
-		{"antigravity does NOT match anthropic", PlatformAntigravity, PlatformAnthropic, false},
-		{"antigravity does NOT match gemini", PlatformAntigravity, PlatformGemini, false},
-		{"antigravity matches antigravity", PlatformAntigravity, PlatformAntigravity, true},
-		{"antigravity does NOT match openai", PlatformAntigravity, PlatformOpenAI, false},
-		{"anthropic matches anthropic", PlatformAnthropic, PlatformAnthropic, true},
-		{"anthropic does NOT match antigravity", PlatformAnthropic, PlatformAntigravity, false},
-		{"anthropic does NOT match gemini", PlatformAnthropic, PlatformGemini, false},
-		{"gemini matches gemini", PlatformGemini, PlatformGemini, true},
-		{"gemini does NOT match antigravity", PlatformGemini, PlatformAntigravity, false},
-		{"gemini does NOT match anthropic", PlatformGemini, PlatformAnthropic, false},
-		{"empty string matches nothing", "", PlatformAnthropic, false},
-		{"empty string matches empty", "", "", true},
-	}
+func TestResolveGroupMappingUsesUnifiedModelNames(t *testing.T) {
+	routingPolicy := GroupRoutingPolicy{ModelMapping: map[string]string{"claude-opus-4-5": "claude-opus-4-6"}}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.want, isPlatformPricingMatch(tt.groupPlatform, tt.pricingPlatform))
-		})
-	}
-}
-
-func TestMatchingPlatforms(t *testing.T) {
-	tests := []struct {
-		name          string
-		groupPlatform string
-		want          []string
-	}{
-		{"antigravity returns itself only", PlatformAntigravity, []string{PlatformAntigravity}},
-		{"anthropic returns itself", PlatformAnthropic, []string{PlatformAnthropic}},
-		{"gemini returns itself", PlatformGemini, []string{PlatformGemini}},
-		{"openai returns itself", PlatformOpenAI, []string{PlatformOpenAI}},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := matchingPlatforms(tt.groupPlatform)
-			require.Equal(t, tt.want, result)
-		})
-	}
-}
-
-func TestGetConfigModelPricing_AntigravityDoesNotSeeCrossPlatformPricing(t *testing.T) {
-	// PricingConfig has anthropic pricing for claude-opus-4-6.
-	// Group 10 is antigravity — should NOT see the anthropic pricing.
-	ch := PricingConfig{
-		ID:       1,
-		Status:   StatusActive,
-		GroupIDs: []int64{10},
-		ModelPricing: []ModelPricingEntry{
-			{ID: 100, Platform: PlatformAnthropic, Models: []string{"claude-opus-4-6"}, InputPrice: testPtrFloat64(15e-6)},
-		},
-	}
-	repo := makeStandardRepo(ch, map[int64]string{10: PlatformAntigravity})
-	svc := newTestPricingConfigService(repo)
-
-	result := svc.GetConfigModelPricing(context.Background(), 10, "claude-opus-4-6")
-	require.Nil(t, result, "antigravity group should NOT see anthropic-platform pricing")
-}
-
-func TestGetConfigModelPricing_AnthropicCannotSeeAntigravityPricing(t *testing.T) {
-	// PricingConfig has antigravity-platform pricing for claude-opus-4-6.
-	// Group 10 is anthropic — should NOT see antigravity pricing (no cross-platform leakage).
-	ch := PricingConfig{
-		ID:       1,
-		Status:   StatusActive,
-		GroupIDs: []int64{10},
-		ModelPricing: []ModelPricingEntry{
-			{ID: 100, Platform: PlatformAntigravity, Models: []string{"claude-opus-4-6"}, InputPrice: testPtrFloat64(15e-6)},
-		},
-	}
-	repo := makeStandardRepo(ch, map[int64]string{10: PlatformAnthropic})
-	svc := newTestPricingConfigService(repo)
-
-	result := svc.GetConfigModelPricing(context.Background(), 10, "claude-opus-4-6")
-	require.Nil(t, result, "anthropic group should NOT see antigravity-platform pricing")
-}
-
-func TestResolveGroupMapping_AntigravityDoesNotSeeCrossPlatformMapping(t *testing.T) {
-	routingPolicy := GroupRoutingPolicy{ModelMapping: map[string]map[string]string{
-		PlatformAnthropic: {
-			"claude-opus-4-5": "claude-opus-4-6",
-		},
-	}}
-
-	// PricingConfig has anthropic model mapping: claude-opus-4-5 → claude-opus-4-6.
-	// Group 10 is antigravity — should NOT apply the anthropic mapping.
 	ch := PricingConfig{
 		ID:       1,
 		Status:   StatusActive,
@@ -2015,74 +1835,13 @@ func TestResolveGroupMapping_AntigravityDoesNotSeeCrossPlatformMapping(t *testin
 	svc := newTestPricingConfigService(repo)
 
 	result := svc.ResolveGroupMapping(context.Background(), 10, "claude-opus-4-5")
-	require.False(t, result.Mapped, "antigravity group should NOT apply anthropic mapping")
-	require.Equal(t, "claude-opus-4-5", result.MappedModel)
+	require.True(t, result.Mapped)
+	require.Equal(t, "claude-opus-4-6", result.MappedModel)
 }
 
-func TestGetConfigModelPricing_AntigravityDoesNotSeeSameModelFromOtherPlatforms(t *testing.T) {
-	// anthropic 和 gemini 都定义了同名模型 "shared-model"，价格不同。
-	// antigravity 分组不应看到任何一个（各平台严格独立）。
-	ch := PricingConfig{
-		ID:       1,
-		Status:   StatusActive,
-		GroupIDs: []int64{10},
-		ModelPricing: []ModelPricingEntry{
-			{ID: 200, Platform: PlatformAnthropic, Models: []string{"shared-model"}, InputPrice: testPtrFloat64(10e-6)},
-			{ID: 201, Platform: PlatformGemini, Models: []string{"shared-model"}, InputPrice: testPtrFloat64(5e-6)},
-		},
-	}
-	repo := makeStandardRepo(ch, map[int64]string{10: PlatformAntigravity})
-	svc := newTestPricingConfigService(repo)
+func TestResolveGroupMappingUsesExplicitAlias(t *testing.T) {
+	routingPolicy := GroupRoutingPolicy{ModelMapping: map[string]string{"alias": "anthropic-target"}}
 
-	result := svc.GetConfigModelPricing(context.Background(), 10, "shared-model")
-	require.Nil(t, result, "antigravity group should NOT see anthropic/gemini-platform pricing")
-}
-
-func TestGetConfigModelPricing_AntigravityDoesNotSeeGeminiOnlyPricing(t *testing.T) {
-	// 只有 gemini 平台定义了模型 "gemini-model"。
-	// antigravity 分组不应看到 gemini 的定价。
-	ch := PricingConfig{
-		ID:       1,
-		Status:   StatusActive,
-		GroupIDs: []int64{10},
-		ModelPricing: []ModelPricingEntry{
-			{ID: 300, Platform: PlatformGemini, Models: []string{"gemini-model"}, InputPrice: testPtrFloat64(2e-6)},
-		},
-	}
-	repo := makeStandardRepo(ch, map[int64]string{10: PlatformAntigravity})
-	svc := newTestPricingConfigService(repo)
-
-	result := svc.GetConfigModelPricing(context.Background(), 10, "gemini-model")
-	require.Nil(t, result, "antigravity group should NOT see gemini-platform pricing")
-}
-
-func TestGetConfigModelPricing_AntigravityDoesNotSeeWildcardFromOtherPlatforms(t *testing.T) {
-	// anthropic 和 gemini 都有 "shared-*" 通配符定价。
-	// antigravity 分组不应命中任何一个。
-	ch := PricingConfig{
-		ID:       1,
-		Status:   StatusActive,
-		GroupIDs: []int64{10},
-		ModelPricing: []ModelPricingEntry{
-			{ID: 400, Platform: PlatformAnthropic, Models: []string{"shared-*"}, InputPrice: testPtrFloat64(10e-6)},
-			{ID: 401, Platform: PlatformGemini, Models: []string{"shared-*"}, InputPrice: testPtrFloat64(5e-6)},
-		},
-	}
-	repo := makeStandardRepo(ch, map[int64]string{10: PlatformAntigravity})
-	svc := newTestPricingConfigService(repo)
-
-	result := svc.GetConfigModelPricing(context.Background(), 10, "shared-model")
-	require.Nil(t, result, "antigravity group should NOT see wildcard pricing from other platforms")
-}
-
-func TestResolveGroupMapping_AntigravityDoesNotSeeMappingFromOtherPlatforms(t *testing.T) {
-	routingPolicy := GroupRoutingPolicy{ModelMapping: map[string]map[string]string{
-		PlatformAnthropic: {"alias": "anthropic-target"},
-		PlatformGemini:    {"alias": "gemini-target"},
-	}}
-
-	// anthropic 和 gemini 都定义了同名模型映射 "alias" → 不同目标。
-	// antigravity 分组不应命中任何一个。
 	ch := PricingConfig{
 		ID:       1,
 		Status:   StatusActive,
@@ -2092,30 +1851,27 @@ func TestResolveGroupMapping_AntigravityDoesNotSeeMappingFromOtherPlatforms(t *t
 	svc := newTestPricingConfigService(repo)
 
 	result := svc.ResolveGroupMapping(context.Background(), 10, "alias")
-	require.False(t, result.Mapped, "antigravity group should NOT see mapping from other platforms")
-	require.Equal(t, "alias", result.MappedModel)
+	require.True(t, result.Mapped)
+	require.Equal(t, "anthropic-target", result.MappedModel)
 }
 
-func TestCheckRestricted_AntigravityDoesNotSeeModelsFromOtherPlatforms(t *testing.T) {
+func TestCheckRestrictedUsesUnifiedAllowlist(t *testing.T) {
 	routingPolicy := GroupRoutingPolicy{RestrictModels: true}
 
-	// anthropic 和 gemini 都定义了同名模型 "shared-model"。
-	// antigravity 分组启用了 RestrictModels，"shared-model" 应被限制（各平台独立）。
 	ch := PricingConfig{
 		ID:     1,
 		Status: StatusActive,
 
 		GroupIDs: []int64{10},
 		ModelPricing: []ModelPricingEntry{
-			{ID: 500, Platform: PlatformAnthropic, Models: []string{"shared-model"}, InputPrice: testPtrFloat64(10e-6)},
-			{ID: 501, Platform: PlatformGemini, Models: []string{"shared-model"}, InputPrice: testPtrFloat64(5e-6)},
+			{ID: 500, Models: []string{"shared-model"}, InputPrice: testPtrFloat64(10e-6)},
 		},
 	}
 	repo := makePolicyRepo(routingPolicy, ch, map[int64]string{10: PlatformAntigravity})
 	svc := newTestPricingConfigService(repo)
 
 	restricted := svc.IsModelRestricted(context.Background(), 10, "shared-model")
-	require.True(t, restricted, "shared-model from other platforms should be restricted for antigravity")
+	require.False(t, restricted)
 
 	restricted = svc.IsModelRestricted(context.Background(), 10, "unknown-model")
 	require.True(t, restricted, "unknown-model should be restricted for antigravity")
@@ -2128,8 +1884,8 @@ func TestGetConfigModelPricing_AntigravityOwnPricingWorks(t *testing.T) {
 		Status:   StatusActive,
 		GroupIDs: []int64{10},
 		ModelPricing: []ModelPricingEntry{
-			{ID: 600, Platform: PlatformAntigravity, Models: []string{"claude-*"}, InputPrice: testPtrFloat64(15e-6)},
-			{ID: 601, Platform: PlatformAntigravity, Models: []string{"gemini-*"}, InputPrice: testPtrFloat64(2e-6)},
+			{ID: 600, Models: []string{"claude-*"}, InputPrice: testPtrFloat64(15e-6)},
+			{ID: 601, Models: []string{"gemini-*"}, InputPrice: testPtrFloat64(2e-6)},
 		},
 	}
 	repo := makeStandardRepo(ch, map[int64]string{10: PlatformAntigravity})
@@ -2146,34 +1902,6 @@ func TestGetConfigModelPricing_AntigravityOwnPricingWorks(t *testing.T) {
 	require.NotNil(t, result)
 	require.Equal(t, int64(601), result.ID)
 	require.InDelta(t, 2e-6, *result.InputPrice, 1e-12)
-}
-
-func TestGetConfigModelPricing_NonAntigravityUnaffected(t *testing.T) {
-	// 确保非 antigravity 平台的行为不受影响。
-	// anthropic 分组只能看到 anthropic 的定价，看不到 gemini 的。
-	ch := PricingConfig{
-		ID:       1,
-		Status:   StatusActive,
-		GroupIDs: []int64{10, 20},
-		ModelPricing: []ModelPricingEntry{
-			{ID: 600, Platform: PlatformAnthropic, Models: []string{"shared-model"}, InputPrice: testPtrFloat64(10e-6)},
-			{ID: 601, Platform: PlatformGemini, Models: []string{"shared-model"}, InputPrice: testPtrFloat64(5e-6)},
-		},
-	}
-	repo := makeStandardRepo(ch, map[int64]string{10: PlatformAnthropic, 20: PlatformGemini})
-	svc := newTestPricingConfigService(repo)
-
-	// anthropic 分组应该只看到 anthropic 的定价
-	result := svc.GetConfigModelPricing(context.Background(), 10, "shared-model")
-	require.NotNil(t, result)
-	require.Equal(t, int64(600), result.ID)
-	require.InDelta(t, 10e-6, *result.InputPrice, 1e-12)
-
-	// gemini 分组应该只看到 gemini 的定价
-	result = svc.GetConfigModelPricing(context.Background(), 20, "shared-model")
-	require.NotNil(t, result)
-	require.Equal(t, int64(601), result.ID)
-	require.InDelta(t, 5e-6, *result.InputPrice, 1e-12)
 }
 
 func TestToUsageFields_NoMapping(t *testing.T) {
@@ -2309,27 +2037,22 @@ func TestValidatePricingBillingMode(t *testing.T) {
 		{
 			name: "OpenAI token fast_mode_multiplier with explicit price - valid",
 			pricing: []ModelPricingEntry{{
-				Platform:           PlatformOpenAI,
 				BillingMode:        BillingModeToken,
 				FastModeMultiplier: testPtrFloat64(2),
 				InputPrice:         testPtrFloat64(0.01),
 			}},
 		},
 		{
-			name: "fast_mode_multiplier on non-OpenAI platform - invalid",
+			name: "fast_mode_multiplier in unified pricing - valid",
 			pricing: []ModelPricingEntry{{
-				Platform:           PlatformAnthropic,
 				BillingMode:        BillingModeToken,
 				FastModeMultiplier: testPtrFloat64(2),
 				InputPrice:         testPtrFloat64(0.01),
 			}},
-			wantErr: true,
-			errMsg:  "fast_mode_multiplier is only supported for OpenAI pricing",
 		},
 		{
 			name: "fast_mode_multiplier on per-request pricing - invalid",
 			pricing: []ModelPricingEntry{{
-				Platform:           PlatformOpenAI,
 				BillingMode:        BillingModePerRequest,
 				FastModeMultiplier: testPtrFloat64(2),
 				PerRequestPrice:    testPtrFloat64(0.01),
@@ -2340,7 +2063,6 @@ func TestValidatePricingBillingMode(t *testing.T) {
 		{
 			name: "fast_mode_multiplier without explicit price - invalid",
 			pricing: []ModelPricingEntry{{
-				Platform:           PlatformOpenAI,
 				BillingMode:        BillingModeToken,
 				FastModeMultiplier: testPtrFloat64(2),
 			}},
@@ -2350,7 +2072,6 @@ func TestValidatePricingBillingMode(t *testing.T) {
 		{
 			name: "negative fast_mode_multiplier - invalid",
 			pricing: []ModelPricingEntry{{
-				Platform:           PlatformOpenAI,
 				BillingMode:        BillingModeToken,
 				FastModeMultiplier: testPtrFloat64(-1),
 				InputPrice:         testPtrFloat64(0.01),
@@ -2385,7 +2106,6 @@ func TestValidatePricingBillingMode(t *testing.T) {
 
 func TestValidateAccountStatsPricingEntries_RejectsFastModeMultiplier(t *testing.T) {
 	err := (PricingConfigValidation{LoadLocation: time.LoadLocation}).AccountStatsPricing([]ModelPricingEntry{{
-		Platform:           PlatformOpenAI,
 		BillingMode:        BillingModeToken,
 		FastModeMultiplier: testPtrFloat64(2),
 		InputPrice:         testPtrFloat64(0.01),
@@ -2396,7 +2116,6 @@ func TestValidateAccountStatsPricingEntries_RejectsFastModeMultiplier(t *testing
 
 func TestValidatePricingEntries_RejectsTimePricingForNonTokenMode(t *testing.T) {
 	err := (PricingConfigValidation{LoadLocation: time.LoadLocation}).PricingEntries([]ModelPricingEntry{{
-		Platform:        PlatformOpenAI,
 		BillingMode:     BillingModePerRequest,
 		PerRequestPrice: testPtrFloat64(0.05),
 		TimePricing: &TimePricingConfig{
@@ -2419,11 +2138,8 @@ func TestNormalizeGroupModelPricingAcceptsTimePricing(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestResolveGroupMapping_AntigravityDoesNotSeeWildcardMappingFromOtherPlatforms(t *testing.T) {
-	routingPolicy := GroupRoutingPolicy{ModelMapping: map[string]map[string]string{
-		PlatformAnthropic: {"claude-*": "claude-override"},
-		PlatformGemini:    {"gemini-*": "gemini-override"},
-	}}
+func TestResolveGroupMappingUnifiedWildcardsAcrossGroups(t *testing.T) {
+	routingPolicy := GroupRoutingPolicy{ModelMapping: map[string]string{"claude-*": "claude-override", "gemini-*": "gemini-override"}}
 
 	ch := PricingConfig{
 		ID:       1,
@@ -2433,29 +2149,27 @@ func TestResolveGroupMapping_AntigravityDoesNotSeeWildcardMappingFromOtherPlatfo
 	repo := makePolicyRepo(routingPolicy, ch, map[int64]string{10: PlatformAntigravity, 20: PlatformAnthropic})
 	svc := newTestPricingConfigService(repo)
 
-	// antigravity 分组不应看到 anthropic/gemini 的通配符映射
 	result := svc.ResolveGroupMapping(context.Background(), 10, "claude-opus-4")
-	require.False(t, result.Mapped)
-	require.Equal(t, "claude-opus-4", result.MappedModel)
+	require.True(t, result.Mapped)
+	require.Equal(t, "claude-override", result.MappedModel)
 
 	result = svc.ResolveGroupMapping(context.Background(), 10, "gemini-2.5-pro")
-	require.False(t, result.Mapped)
-	require.Equal(t, "gemini-2.5-pro", result.MappedModel)
+	require.True(t, result.Mapped)
+	require.Equal(t, "gemini-override", result.MappedModel)
 
-	// anthropic 分组应该能看到 anthropic 的通配符映射
 	result = svc.ResolveGroupMapping(context.Background(), 20, "claude-opus-4")
 	require.True(t, result.Mapped)
 	require.Equal(t, "claude-override", result.MappedModel)
 }
 
 func TestGroupRoutingPolicyCreateMappingConflict(t *testing.T) {
-	err := ValidateGroupRoutingPolicy(GroupRoutingPolicy{ModelMapping: map[string]map[string]string{PlatformAnthropic: {"claude-*": "a", "claude-opus-*": "b"}}})
+	err := ValidateGroupRoutingPolicy(GroupRoutingPolicy{ModelMapping: map[string]string{"claude-*": "a", "claude-opus-*": "b"}})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "MAPPING_PATTERN_CONFLICT")
 }
 
 func TestGroupRoutingPolicyUpdateMappingConflict(t *testing.T) {
-	err := ValidateGroupRoutingPolicy(GroupRoutingPolicy{ModelMapping: map[string]map[string]string{PlatformAnthropic: {"claude-*": "a", "claude-opus-*": "b"}}})
+	err := ValidateGroupRoutingPolicy(GroupRoutingPolicy{ModelMapping: map[string]string{"claude-*": "a", "claude-opus-*": "b"}})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "MAPPING_PATTERN_CONFLICT")
 }
@@ -2465,17 +2179,30 @@ func makePolicyRepo(policy GroupRoutingPolicy, config PricingConfig, platforms m
 	repo := makeStandardRepo(config, platforms)
 	policy.Enabled = config.IsActive()
 	policy.RestrictionModelSource = config.BillingModelSource
-	policy.AllowedModels = make(map[string][]string)
+	policy.AllowedModels = []string{}
 	for _, price := range config.ModelPricing {
-		policy.AllowedModels[price.Platform] = append(policy.AllowedModels[price.Platform], price.Models...)
+		policy.AllowedModels = append(policy.AllowedModels, price.Models...)
 	}
 	repo.readGroup = func(_ context.Context, id int64) (*Group, error) {
 		for _, groupID := range config.GroupIDs {
 			if groupID == id {
-				return &Group{ID: id, Platform: platforms[id], RoutingPolicy: policy.Clone()}, nil
+				return &Group{ID: id, RoutingPolicy: policy.Clone()}, nil
 			}
 		}
 		return nil, nil
 	}
 	return repo
+}
+
+// 价格查找只依赖关联关系，不得再访问分组平台。
+func TestPricingConfigModelLookupIndependentOfGroupPlatform(t *testing.T) {
+	config := PricingConfig{ID: 1, Status: StatusActive, GroupIDs: []int64{10, 20}, ModelPricing: []ModelPricingEntry{{Models: []string{"claude-x"}, InputPrice: testPtrFloat64(3)}, {Models: []string{"gpt-*"}, InputPrice: testPtrFloat64(5)}}}
+	repo := &mockPricingConfigRepository{listAllFn: func(context.Context) ([]PricingConfig, error) { return []PricingConfig{config}, nil }, getGroupPlatformsFn: func(context.Context, []int64) (map[int64]string, error) {
+		panic("pricing must not read group platforms")
+	}}
+	service := newTestPricingConfigService(repo)
+	for _, id := range []int64{10, 20} {
+		require.Equal(t, 3.0, *service.GetConfigModelPricing(context.Background(), id, "claude-x").InputPrice)
+		require.Equal(t, 5.0, *service.GetConfigModelPricing(context.Background(), id, "gpt-x").InputPrice)
+	}
 }

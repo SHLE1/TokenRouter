@@ -39,23 +39,29 @@ func TestSparkShadowIntegration(t *testing.T) {
 	pid := int64(100)
 
 	// 共享母账号：Credentials 为 map（引用型），可原地轮换而无需重建 stub。
-	parent := &ExecutionAccount{Record: account.Record{LoadLocation: time.LoadLocation, ID: 100,
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeOAuth,
-		Status:      billing.StatusActive,
-		Schedulable: true,
-		Credentials: map[string]any{
-			"access_token": "T1",
-		}},
+	parent := &ExecutionAccount{
+		Record: account.Record{
+			LoadLocation: time.LoadLocation, ID: 100,
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.AccountTypeOAuth,
+			Status:      billing.StatusActive,
+			Schedulable: true,
+			Credentials: map[string]any{
+				"access_token": "T1",
+			},
+		},
 	}
 	// 影子账号：不持凭据（与生产语义一致），QuotaDimensionSpark 标记 spark 维度。
-	shadow := &ExecutionAccount{Record: account.Record{LoadLocation: time.LoadLocation, ID: 200,
-		Platform:        capability.PlatformOpenAI,
-		Type:            capability.AccountTypeOAuth,
-		ParentAccountID: &pid,
-		QuotaDimension:  account.QuotaDimensionSpark,
-		Status:          billing.StatusActive,
-		Schedulable:     true},
+	shadow := &ExecutionAccount{
+		Record: account.Record{
+			LoadLocation: time.LoadLocation, ID: 200,
+			Platform:        capability.PlatformOpenAI,
+			Type:            capability.AccountTypeOAuth,
+			ParentAccountID: &pid,
+			QuotaDimension:  account.QuotaDimensionSpark,
+			Status:          billing.StatusActive,
+			Schedulable:     true,
+		},
 	}
 
 	// repo：stubCredRepo（credential_shadow_test.go）保存原生执行目标指针，
@@ -103,14 +109,17 @@ func TestSparkShadowIntegration(t *testing.T) {
 
 	t.Run("normal_account_returns_its_own_token", func(t *testing.T) {
 		// 对照组：普通账号（非影子）直接返回自身凭据，不经 resolveCredentialAccount。
-		ordinary := &ExecutionAccount{Record: account.Record{LoadLocation: time.LoadLocation, ID: 300,
-			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeOAuth,
-			Status:      billing.StatusActive,
-			Schedulable: true,
-			Credentials: map[string]any{
-				"access_token": "ordinary-token",
-			}},
+		ordinary := &ExecutionAccount{
+			Record: account.Record{
+				LoadLocation: time.LoadLocation, ID: 300,
+				Platform:    capability.PlatformOpenAI,
+				Type:        capability.AccountTypeOAuth,
+				Status:      billing.StatusActive,
+				Schedulable: true,
+				Credentials: map[string]any{
+					"access_token": "ordinary-token",
+				},
+			},
 		}
 		token, _, err := credentials.Resolve(ctx, ExecutionRecord(ordinary))
 		require.NoError(t, err)
@@ -135,9 +144,11 @@ func TestSparkShadowIntegration(t *testing.T) {
 		normalWithSpark := &ExecutionAccount{Record: account.Record{LoadLocation: time.LoadLocation, ID: 3, Platform: capability.PlatformOpenAI, Credentials: sparkCreds}}
 		require.True(t, ExecutionProtocolRecord(normalWithSpark).IsModelSupported(sparkModel, accountprovider.ModelDefaults(), accountprovider.ModelRules(ExecutionProtocolRecord(normalWithSpark))), "普通账号配 spark → 接 spark（不再按类型排除）")
 
-		normalNoSpark := &ExecutionAccount{Record: account.Record{LoadLocation: time.LoadLocation, ID: 4, Platform: capability.PlatformOpenAI,
-			Credentials: map[string]any{"model_mapping": map[string]any{normalModel: normalModel}}}}
-		require.False(t, ExecutionProtocolRecord(normalNoSpark).IsModelSupported(sparkModel, accountprovider.ModelDefaults(), accountprovider.ModelRules(ExecutionProtocolRecord(normalNoSpark))), "普通账号未配 spark → 拒 spark（按配置）")
+		normalNoSpark := &ExecutionAccount{Record: account.Record{
+			LoadLocation: time.LoadLocation, ID: 4, Platform: capability.PlatformOpenAI,
+			Credentials: map[string]any{"model_whitelist": []string{normalModel}, "model_mapping": map[string]any{normalModel: normalModel}},
+		}}
+		require.False(t, ExecutionProtocolRecord(normalNoSpark).IsModelSupported(sparkModel, accountprovider.ModelDefaults(), accountprovider.ModelRules(ExecutionProtocolRecord(normalNoSpark))), "普通账号显式白名单不含 Spark 时拒绝")
 	})
 
 	// ──────────────────────────────────────────────────────────────────────

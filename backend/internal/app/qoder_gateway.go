@@ -72,7 +72,7 @@ func provideQoderChat(planner *gatewayprovider.RoutePlanner, q *gatewayprovider.
 			Access: access, UserID: subject.UserID, Concurrency: subject.Concurrency, Stream: parsed.Stream,
 			Body: append([]byte(nil), parsed.Body...), Model: parsed.Model,
 			Funding:  gateway.FundingState{Key: keyView, Subscription: subscription},
-			Metadata: gateway.RequestMetadata{Headers: c.Request.Header.Clone(), UserAgent: c.GetHeader("User-Agent"), ClientIP: clientip.GetClientIP(c), InboundEndpoint: inbound, UpstreamEndpoint: outbound, QuotaPlatform: admission.QuotaPlatform(c.Request.Context(), key), ClaudeCode: requeststate.IsClaudeCodeClient(c.Request.Context()), StartedAt: parsed.StartedAt},
+			Metadata: gateway.RequestMetadata{Headers: c.Request.Header.Clone(), UserAgent: c.GetHeader("User-Agent"), ClientIP: clientip.GetClientIP(c), InboundEndpoint: inbound, UpstreamEndpoint: outbound, ClaudeCode: requeststate.IsClaudeCodeClient(c.Request.Context()), StartedAt: parsed.StartedAt},
 		}
 		request.SessionHash = session.QoderRequestHash(request.Metadata.Headers, request.Body, "anthropic", &requeststate.SessionContext{ClientIP: request.Metadata.ClientIP, UserAgent: request.Metadata.UserAgent, APIKeyID: key.ID}, slog.Info)
 		return request, nil
@@ -104,9 +104,11 @@ func (o *qoderHTTPObservation) Prepared(request gateway.Request) {
 	o.c.Request = o.c.Request.WithContext(requeststate.WithRoutePlan(o.c.Request.Context(), request.Route))
 	gatewayhttp.SetOpsLatencyMs(o.c, gatewayhttp.OpsAuthLatencyMsKey, time.Since(request.Metadata.StartedAt).Milliseconds())
 }
+
 func (o *qoderHTTPObservation) Selected(snapshot account.AccountSnapshot) {
 	gatewayhttp.SetOpsSelectedAccount(o.c, snapshot.ID, snapshot.Platform)
 }
+
 func (o *qoderHTTPObservation) Waiting(string) scheduler.WaitObserver {
 	return gatewayhttp.WaitObserver(o.c, gatewayhttp.SSEPingFormatComment, 10*time.Second, o.stream, &o.started, true)
 }

@@ -3,6 +3,13 @@
 package app
 
 import (
+	"bytes"
+	"context"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"sync"
+	"testing"
 	time "time"
 
 	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
@@ -11,14 +18,6 @@ import (
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	authctx "github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
-
-	"bytes"
-	"context"
-	"io"
-	"net/http"
-	"net/http/httptest"
-	"sync"
-	"testing"
 
 	apikey "github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
@@ -72,7 +71,7 @@ func (r openAIResponsesFailoverAccountRepo) ListSchedulableUngroupedByPlatform(_
 func (r openAIResponsesFailoverAccountRepo) accountsForPlatform(platform string) []gatewayprovider.ExecutionAccount {
 	out := make([]gatewayprovider.ExecutionAccount, 0, len(r.accounts))
 	for _, account := range r.accounts {
-		if account.Record.Platform == platform {
+		if platform == "" || account.Record.Platform == platform {
 			out = append(out, account)
 		}
 	}
@@ -124,35 +123,41 @@ func newOpenAIResponsesFailoverTestHandler(t *testing.T, upstream httpclient.Ups
 	t.Helper()
 	proxyID := int64(11)
 	accounts := []gatewayprovider.ExecutionAccount{
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-			Name:        "responses-account-1",
-			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeOAuth,
-			Status:      billing.StatusActive,
-			Schedulable: true,
-			Concurrency: 0,
-			Priority:    0,
-			Credentials: map[string]any{"access_token": "token-1"},
-			ProxyID:     &proxyID,
-			Proxy: &egress.Proxy{
-				ID:       proxyID,
-				Name:     "responses-proxy",
-				Protocol: "http",
-				Host:     "proxy.example.com",
-				Port:     8080,
-				Username: "proxy-user-secret",
-				Password: "proxy-password-secret",
-			}},
+		{
+			Record: accountcore.Record{
+				LoadLocation: time.LoadLocation, ID: 1,
+				Name:        "responses-account-1",
+				Platform:    capability.PlatformOpenAI,
+				Type:        capability.AccountTypeOAuth,
+				Status:      billing.StatusActive,
+				Schedulable: true,
+				Concurrency: 0,
+				Priority:    0,
+				Credentials: map[string]any{"access_token": "token-1"},
+				ProxyID:     &proxyID,
+				Proxy: &egress.Proxy{
+					ID:       proxyID,
+					Name:     "responses-proxy",
+					Protocol: "http",
+					Host:     "proxy.example.com",
+					Port:     8080,
+					Username: "proxy-user-secret",
+					Password: "proxy-password-secret",
+				},
+			},
 		},
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 2,
-			Name:        "responses-account-2",
-			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeOAuth,
-			Status:      billing.StatusActive,
-			Schedulable: true,
-			Concurrency: 0,
-			Priority:    1,
-			Credentials: map[string]any{"access_token": "token-2"}},
+		{
+			Record: accountcore.Record{
+				LoadLocation: time.LoadLocation, ID: 2,
+				Name:        "responses-account-2",
+				Platform:    capability.PlatformOpenAI,
+				Type:        capability.AccountTypeOAuth,
+				Status:      billing.StatusActive,
+				Schedulable: true,
+				Concurrency: 0,
+				Priority:    1,
+				Credentials: map[string]any{"access_token": "token-2"},
+			},
 		},
 	}
 	accountRepo := openAIResponsesFailoverAccountRepo{accounts: accounts}
@@ -190,8 +195,10 @@ func newOpenAIResponsesFailoverTestHandler(t *testing.T, upstream httpclient.Ups
 	billingService := newBillingEligibilityFixture(cfg)
 	billingService.Start()
 	t.Cleanup(billingService.Stop)
-	concurrencyService := scheduler.NewConcurrencyService(nil, scheduler.Diagnostics{Logf: logging.LegacyPrintf,
-		Event: logging.Event},
+	concurrencyService := scheduler.NewConcurrencyService(nil, scheduler.Diagnostics{
+		Logf:  logging.LegacyPrintf,
+		Event: logging.Event,
+	},
 	)
 	handler := newGatewayHTTPEndpointsFromDeps(
 		gatewayService, gatewayServiceCredentialPort,
@@ -211,7 +218,7 @@ func newOpenAIResponsesFailoverTestHandler(t *testing.T, upstream httpclient.Ups
 func newOpenAIResponsesFailoverTestContext(t *testing.T, ctx context.Context) (*gin.Context, *httptest.ResponseRecorder) {
 	t.Helper()
 	groupID := int64(3131)
-	body := []byte(`{"model":"gpt-5.1","stream":false,"input":"hello"}`)
+	body := []byte(`{"model":"gpt-5.4","stream":false,"input":"hello"}`)
 	req := httptest.NewRequest(http.MethodPost, "/v1/responses", bytes.NewReader(body))
 	if ctx != nil {
 		req = req.WithContext(ctx)
@@ -224,8 +231,7 @@ func newOpenAIResponsesFailoverTestContext(t *testing.T, ctx context.Context) (*
 		ID:      99,
 		GroupID: &groupID,
 		Group: &routing.Group{
-			ID:       groupID,
-			Platform: capability.PlatformOpenAI,
+			ID: groupID,
 		},
 		User: &identity.User{ID: 100},
 	})
@@ -238,7 +244,6 @@ func newOpenAIResponsesFailoverTestContext(t *testing.T, ctx context.Context) (*
 // 期望：不再用已取消的 context 重新选号（不触达账号 2）、不把取消误报成
 // 502 账号耗尽、请求按 499 归类。
 func TestOpenAIGatewayHandlerResponses_FailoverAbortsWhenClientDisconnected(t *testing.T) {
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	upstream := &openAIResponsesFailoverCancelUpstream{onFirstDo: cancel}
@@ -268,7 +273,6 @@ func TestOpenAIGatewayHandlerResponses_FailoverAbortsWhenClientDisconnected(t *t
 // 守卫：客户端在线时 failover 行为不变——切换到账号 2，两个账号都 520 后按
 // 耗尽返回 502。
 func TestOpenAIGatewayHandlerResponses_FailoverContinuesForConnectedClient(t *testing.T) {
-
 	logSink, restore := captureHandlerStructuredLog(t)
 	defer restore()
 

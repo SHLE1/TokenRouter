@@ -6,7 +6,6 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
-
 	"strings"
 	"time"
 
@@ -146,6 +145,7 @@ type CreativeRun struct {
 	GroupID              int64
 	APIKeyID             int64
 	AccountID            *int64
+	Provider             string
 	Model                string
 	RequestedModel       string
 	Operation            string
@@ -211,6 +211,7 @@ type CreativeRunOutput struct {
 
 // CreateCreativeRunParams 创建创作台任务及其输出行。
 type CreateCreativeRunParams struct {
+	Provider                   string
 	RunID                      string
 	UserID                     int64
 	WorkspaceID                string
@@ -313,8 +314,8 @@ type CreativeRunRepository interface {
 	TransitionCreativeRunStatus(ctx context.Context, runID, toStatus string, opts CreativeRunTransitionOptions) error
 	// MarkCreativeRunRunning 幂等地把任务标记为执行中并回填账号，重复调用不产生副作用。
 	MarkCreativeRunRunning(ctx context.Context, runID string, accountID int64, now time.Time) error
-	// SetCreativeRunAccountID 在执行结果确定后补写真实上游账号，避免 worker 先推进状态时丢失账号信息。
-	SetCreativeRunAccountID(ctx context.Context, runID string, accountID int64, now time.Time) error
+	// SetCreativeRunExecution 在执行结果确定后补写真实上游账号，避免 worker 先推进状态时丢失账号信息。
+	SetCreativeRunExecution(ctx context.Context, runID string, accountID int64, provider string, now time.Time) error
 	// MarkCreativeRunSucceeded 记录实际成本并进入终态，仅在 running 时生效。
 	MarkCreativeRunSucceeded(ctx context.Context, runID string, actualCost float64, now time.Time) error
 	// UpdateCreativeRunOutput 幂等更新输出行；已 acked 的行不允许被覆盖。

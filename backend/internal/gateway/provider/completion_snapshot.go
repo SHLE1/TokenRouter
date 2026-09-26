@@ -41,8 +41,8 @@ func ProjectCompletionKey(v *apikey.APIKey) *completion.KeySnapshot {
 	}
 	if g := v.Group; g != nil {
 		out.Group = &completion.GroupSnapshot{
-			ID:                 g.ID,
-			Platform:           g.Platform,
+			ID: g.ID,
+
 			Price:              ProjectCompletionPriceGroup(g),
 			RateMultiplier:     g.RateMultiplier,
 			PeakRateEnabled:    g.PeakRateEnabled,
@@ -52,7 +52,7 @@ func ProjectCompletionKey(v *apikey.APIKey) *completion.KeySnapshot {
 			Location:           time.Local,
 
 			FreeOpenAIFast:        g.FreeOpenAIFast,
-			SupportsOpenAIFast:    routing.GroupSupportsOpenAIFast(g.Platform),
+			SupportsOpenAIFast:    true,
 			WebSearchPricePerCall: g.WebSearchPricePerCall,
 			SearchPricePer1k:      g.GetSearchPricePer1k(),
 			AudioPrice:            groupAudioPriceConfigFromAPIKey(v),
@@ -153,6 +153,10 @@ func ProjectOpenAICompletionResult(v *forwardcore.OpenAIResult, a *account.Recor
 	}
 	if v.AudioUsage != nil {
 		out.AudioUsage = &completion.AudioUsage{Mode: v.AudioUsage.Mode, DurationOrUnits: v.AudioUsage.DurationOrUnits}
+	}
+	if v.NativeUsage != nil {
+		out.NativeUsage = true
+		out.Usage = completion.TokenUsage{InputTokens: v.NativeUsage.InputTokens, OutputTokens: v.NativeUsage.OutputTokens, CacheCreationInputTokens: v.NativeUsage.CacheCreationInputTokens, CacheReadInputTokens: v.NativeUsage.CacheReadInputTokens, CacheCreation5mTokens: v.NativeUsage.CacheCreation5mTokens, CacheCreation1hTokens: v.NativeUsage.CacheCreation1hTokens, ImageOutputTokens: v.NativeUsage.ImageOutputTokens, Speed: v.NativeUsage.Speed}
 	}
 	return completion.SnapshotResult(out)
 }

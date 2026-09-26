@@ -1,8 +1,6 @@
 package billing
 
 import (
-	"encoding/json"
-	"log/slog"
 	"strconv"
 	"strings"
 
@@ -18,7 +16,6 @@ type AdminReadSettings struct {
 	BalanceUnitName                 string
 	BalanceUnitSymbol               string
 	DefaultBalance                  float64
-	DefaultPlatformQuotas           map[string]*DefaultPlatformQuotaSetting
 	DefaultSubscriptions            []DefaultSubscriptionSetting
 	ReasoningPointRMBUnitPrice      float64
 	SubscriptionExpiryNotifyEnabled bool
@@ -57,13 +54,5 @@ func ReadAdminSettings(settings map[string]string, defaultBalance func() float64
 	}
 	result.BalanceLowNotifyRechargeURL = settings[SettingKeyBalanceLowNotifyRechargeURL]
 	result.SubscriptionExpiryNotifyEnabled = !settingvalues.IsExplicitFalse(settings[SettingKeySubscriptionExpiryNotifyEnabled])
-	if raw := settings[SettingKeyDefaultPlatformQuotas]; raw != "" {
-		parsed := map[string]*DefaultPlatformQuotaSetting{}
-		if err := json.Unmarshal([]byte(raw), &parsed); err != nil {
-			slog.Warn("[Setting] parseSettings: unmarshal default_platform_quotas failed", "error", err)
-		} else {
-			result.DefaultPlatformQuotas = parsed
-		}
-	}
 	return result
 }

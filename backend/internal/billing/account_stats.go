@@ -11,17 +11,14 @@ import (
 type AccountStatsPricingConfig struct {
 	Rules []purepricing.AccountStatsPricingRule
 }
-type AccountStatsPlatform struct {
-	ID                   string
-	PreferRequestedModel bool
-}
 type AccountStatsSource interface {
 	AccountStatsGroup(context.Context, int64) (*AccountStatsPricingConfig, error)
-	AccountStatsPlatform(context.Context, int64) AccountStatsPlatform
 }
 
 // AccountStatsCostInput 固定上游用量和最终服务层级，账号倍率由结算快照另行处理。
 type AccountStatsCostInput struct {
+	// PreferRequestedModel 由实际账号能力指定，不再读取分组平台。
+	PreferRequestedModel                       bool
 	AccountID, GroupID                         int64
 	UpstreamModel, RequestedModel, MappedModel string
 	Tokens                                     UsageTokens
@@ -37,10 +34,9 @@ func (r *PriceResolver) ResolveAccountStats(ctx context.Context, input AccountSt
 	if err != nil || configPricing == nil {
 		return nil
 	}
-	platform := r.accountStats.AccountStatsPlatform(ctx, input.GroupID)
 	if cost, handled := purepricing.ResolveAccountStatsOverride(purepricing.AccountStatsInput{
-		Rules: configPricing.Rules, AccountID: input.AccountID, GroupID: input.GroupID, Platform: platform.ID,
-		Models: AccountStatsRuleModels(platform.PreferRequestedModel, input.UpstreamModel, input.RequestedModel, input.MappedModel),
+		Rules: configPricing.Rules, AccountID: input.AccountID, GroupID: input.GroupID,
+		Models: AccountStatsRuleModels(input.PreferRequestedModel, input.UpstreamModel, input.RequestedModel, input.MappedModel),
 		Tokens: input.Tokens, RequestCount: input.RequestCount,
 	}); handled {
 		return cost

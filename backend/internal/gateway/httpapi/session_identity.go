@@ -35,8 +35,10 @@ var explicitOpenAIHeaderSessionNames = []string{
 	CodeBuddyConversationHeader,
 }
 
-const GrokConversationIDHeader = "X-Grok-Conv-Id"
-const ClaudeCodeSessionHeader = "X-Claude-Code-Session-Id"
+const (
+	GrokConversationIDHeader = "X-Grok-Conv-Id"
+	ClaudeCodeSessionHeader  = "X-Claude-Code-Session-Id"
+)
 
 var clientSessionIDHeaders = append(append([]string(nil), explicitOpenAIHeaderSessionNames...), ClaudeCodeSessionHeader)
 
@@ -68,8 +70,7 @@ func ExplicitOpenAISessionID(c *gin.Context, body []byte) string {
 	return sessionID
 }
 
-// ExplicitOpenAIRequestSessionID 仅对认证到 Grok 分组的请求，将 Grok 原生会话头加入
-// 通用 OpenAI 会话信号，避免无关的 x-grok-conv-id 改变非 Grok 分组的调度或上游会话行为。
+// ExplicitOpenAIRequestSessionID 按客户端显式会话信号读取身份，选定账号后再应用其平台约束。
 func ExplicitOpenAIRequestSessionID(c *gin.Context, body []byte) string {
 	if c == nil {
 		return ""
@@ -102,7 +103,7 @@ func GenerateExplicitOpenAISessionHash(c *gin.Context, body []byte) string {
 
 // GenerateOpenAISessionHash 为 OpenAI 请求生成粘性会话哈希。
 // 优先级依次为：session-id/session_id、conversation_id、OpenCode 会话头、
-// CodeBuddy 会话头、Grok 分组会话头、prompt_cache_key，最后才使用内容回退。
+// CodeBuddy 会话头、Grok 原生会话头、prompt_cache_key，最后才使用内容回退。
 func GenerateOpenAISessionHash(c *gin.Context, body []byte) string {
 	if c == nil {
 		return ""
@@ -160,21 +161,20 @@ func ExtractClientSessionID(c *gin.Context) string {
 	return gatewaysession.ExtractClientSessionID(c.GetHeader, clientSessionIDHeaders, IsGrokRequestContext(c))
 }
 
+// IsGrokRequestContext 使用已选账号、强制路由或显式 Grok 会话头，不推断分组平台。
 func IsGrokRequestContext(c *gin.Context) bool {
 	if c == nil {
 		return false
+	}
+	if platform := selectedOpsPlatform(c); platform != "" && platform != "unknown" {
+		return platform == capability.PlatformGrok
 	}
 	if c.Request != nil {
 		if platform, ok := apikey.ForcePlatformFromContext(c.Request.Context()); ok && strings.TrimSpace(platform) != "" {
 			return platform == capability.PlatformGrok
 		}
 	}
-	v, exists := c.Get("api_key")
-	if !exists {
-		return false
-	}
-	apiKey, ok := v.(*apikey.APIKey)
-	return ok && apiKey != nil && apiKey.Group != nil && apiKey.Group.Platform == capability.PlatformGrok
+	return strings.TrimSpace(c.GetHeader(GrokConversationIDHeader)) != ""
 }
 
 func AttachOpenAILegacySessionHash(c *gin.Context, legacyHash string) {

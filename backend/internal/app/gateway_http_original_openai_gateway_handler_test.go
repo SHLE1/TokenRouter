@@ -195,7 +195,7 @@ func TestOpenAIHandleFailoverExhausted_CyberWarningPassesThroughMessage(t *testi
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
-	gatewayhttp.SetOpsRequestContext(c, "gpt-5.1", false)
+	gatewayhttp.SetOpsRequestContext(c, "gpt-5.4", false)
 
 	message := "This content was flagged for possible cybersecurity risk. If this seems wrong, try rephrasing your request."
 	h := newGatewayHTTPEndpoints(gatewayHTTPFixtureInput{})
@@ -248,8 +248,7 @@ func TestOpenAIGatewayMessagesProtocolPolicyAllowsGrokGroups(t *testing.T) {
 			GroupID: &groupID,
 			User:    &identity.User{ID: 6101},
 			Group: &routing.Group{
-				ID:       groupID,
-				Platform: capability.PlatformOpenAI,
+				ID: groupID,
 				AllowedProtocols: []protocol.ProtocolID{
 					protocol.ProtocolOpenAIResponses,
 					protocol.ProtocolOpenAIChatCompletions,
@@ -276,8 +275,7 @@ func TestOpenAIGatewayMessagesProtocolPolicyAllowsGrokGroups(t *testing.T) {
 			GroupID: &groupID,
 			User:    &identity.User{ID: 6102},
 			Group: &routing.Group{
-				ID:       groupID,
-				Platform: capability.PlatformGrok,
+				ID: groupID,
 				AllowedProtocols: []protocol.ProtocolID{
 					protocol.ProtocolAnthropicMessages,
 					protocol.ProtocolOpenAIResponses,
@@ -347,7 +345,7 @@ func TestOpenAIResponses_RejectsMessageIDAsPreviousResponseID(t *testing.T) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/responses", strings.NewReader(
-		`{"model":"gpt-5.1","stream":false,"previous_response_id":"msg_123456","input":[{"type":"input_text","text":"hello"}]}`,
+		`{"model":"gpt-5.4","stream":false,"previous_response_id":"msg_123456","input":[{"type":"input_text","text":"hello"}]}`,
 	))
 	c.Request.Header.Set("Content-Type", "application/json")
 
@@ -373,7 +371,7 @@ func TestOpenAIResponses_AcceptsHTTPContinuationPreviousResponseIDBeforeRouting(
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/responses", strings.NewReader(
-		`{"model":"gpt-5.1","stream":false,"previous_response_id":"resp_123456","input":[{"type":"input_text","text":"hello"}]}`,
+		`{"model":"gpt-5.4","stream":false,"previous_response_id":"resp_123456","input":[{"type":"input_text","text":"hello"}]}`,
 	))
 	c.Request.Header.Set("Content-Type", "application/json")
 
@@ -400,7 +398,7 @@ func TestOpenAIResponses_RejectsHTTPContinuationOwnedByAnotherUser(t *testing.T)
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/responses", strings.NewReader(
-		`{"model":"gpt-5.1","stream":false,"previous_response_id":"resp_other_tenant","input":"hello"}`,
+		`{"model":"gpt-5.4","stream":false,"previous_response_id":"resp_other_tenant","input":"hello"}`,
 	))
 	c.Request.Header.Set("Content-Type", "application/json")
 
@@ -425,7 +423,7 @@ func TestOpenAIResponses_RejectsUnownedHTTPContinuation(t *testing.T) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/responses", strings.NewReader(
-		`{"model":"gpt-5.1","stream":false,"previous_response_id":"resp_unknown","input":"hello"}`,
+		`{"model":"gpt-5.4","stream":false,"previous_response_id":"resp_unknown","input":"hello"}`,
 	))
 	c.Request.Header.Set("Content-Type", "application/json")
 
@@ -444,7 +442,7 @@ func TestOpenAIResponses_FunctionCallOutputHTTPGuidanceDoesNotSuggestPreviousRes
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/responses", strings.NewReader(
-		`{"model":"gpt-5.1","stream":false,"input":[{"type":"function_call_output","output":"{}"}]}`,
+		`{"model":"gpt-5.4","stream":false,"input":[{"type":"function_call_output","output":"{}"}]}`,
 	))
 	c.Request.Header.Set("Content-Type", "application/json")
 
@@ -645,7 +643,7 @@ func TestOpenAIResponsesWebSocket_RejectsMessageIDAsPreviousResponseID(t *testin
 
 	writeCtx, cancelWrite := context.WithTimeout(context.Background(), 3*time.Second)
 	err = clientConn.Write(writeCtx, coderws.MessageText, []byte(
-		`{"type":"response.create","model":"gpt-5.1","stream":false,"previous_response_id":"msg_abc123"}`,
+		`{"type":"response.create","model":"gpt-5.4","stream":false,"previous_response_id":"msg_abc123"}`,
 	))
 	cancelWrite()
 	require.NoError(t, err)
@@ -680,7 +678,7 @@ func TestOpenAIResponsesWebSocket_PreviousResponseIDKindLoggedBeforeAcquireFailu
 
 	writeCtx, cancelWrite := context.WithTimeout(context.Background(), 3*time.Second)
 	err = clientConn.Write(writeCtx, coderws.MessageText, []byte(
-		`{"type":"response.create","model":"gpt-5.1","stream":false,"previous_response_id":"resp_prev_123"}`,
+		`{"type":"response.create","model":"gpt-5.4","stream":false,"previous_response_id":"resp_prev_123"}`,
 	))
 	cancelWrite()
 	require.NoError(t, err)
@@ -991,7 +989,7 @@ func TestOpenAIRecordCyberWarning_RecordsStructuredResponseBody(t *testing.T) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/responses", nil)
-	gatewayhttp.SetOpenAICyberWarningRequestSnapshot(c, moderation.ContentModerationProtocolOpenAIResponses, []byte(`{"model":"gpt-5.1","input":[{"type":"message","role":"user","content":[{"type":"input_text","text":"bad cyber prompt"}]}]}`))
+	gatewayhttp.SetOpenAICyberWarningRequestSnapshot(c, moderation.ContentModerationProtocolOpenAIResponses, []byte(`{"model":"gpt-5.4","input":[{"type":"message","role":"user","content":[{"type":"input_text","text":"bad cyber prompt"}]}]}`))
 	apiKey := &apikey.APIKey{
 		ID:     101,
 		Name:   "test-key",
@@ -1010,7 +1008,7 @@ func TestOpenAIRecordCyberWarning_RecordsStructuredResponseBody(t *testing.T) {
 		nil,
 		apiKey,
 		account,
-		"gpt-5.1",
+		"gpt-5.4",
 		400,
 		[]byte(`{"error":{"message":"This request may pose a cybersecurity risk."}}`),
 		"",
@@ -1055,7 +1053,7 @@ func TestOpenAIRecordCyberWarning_UsesExplicitPromptExcerpt(t *testing.T) {
 		nil,
 		apiKey,
 		account,
-		"gpt-5.1",
+		"gpt-5.4",
 		400,
 		[]byte(`{"error":{"message":"This request may pose a cybersecurity risk."}}`),
 		"",
@@ -1087,7 +1085,7 @@ func TestOpenAIRecordCyberWarning_RequestSnapshotUsesCurrentToolOutput(t *testin
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/responses", nil)
 	gatewayhttp.SetOpenAICyberWarningRequestSnapshot(c, moderation.ContentModerationProtocolOpenAIResponses, []byte(`{
-		"model":"gpt-5.1",
+		"model":"gpt-5.4",
 		"input":[
 			{"type":"message","role":"user","content":[{"type":"input_text","text":"latest cyber prompt"}]},
 			{"type":"function_call","call_id":"call_1","name":"run_tests","arguments":"{}"},
@@ -1103,7 +1101,7 @@ func TestOpenAIRecordCyberWarning_RequestSnapshotUsesCurrentToolOutput(t *testin
 		nil,
 		apiKey,
 		account,
-		"gpt-5.1",
+		"gpt-5.4",
 		http.StatusOK,
 		[]byte(`{"type":"response.failed","error":{"message":"This request has been flagged for potentially high-risk cyber activity."}}`),
 		"",
@@ -1151,7 +1149,7 @@ func TestOpenAIRecordForwardResultCyberWarning_RecordsWSV2TerminalWarning(t *tes
 		},
 	}
 	result := &forwardcore.OpenAIResult{
-		Model: "gpt-5.1",
+		Model: "gpt-5.4",
 		UpstreamWarning: &forwardcore.UpstreamWarning{
 			ResponseBody: []byte(`{"type":"response.failed","response":{"error":{"message":"This request may pose a cybersecurity risk."}}}`),
 			Message:      "This request may pose a cybersecurity risk.",
@@ -1162,7 +1160,7 @@ func TestOpenAIRecordForwardResultCyberWarning_RecordsWSV2TerminalWarning(t *tes
 
 	require.Len(t, repo.cyberWarnings, 1)
 	warning := repo.cyberWarnings[0]
-	require.Equal(t, "gpt-5.1", warning.Model)
+	require.Equal(t, "gpt-5.4", warning.Model)
 	require.Equal(t, "user@example.com", warning.UserEmail)
 	require.Equal(t, int64(2001), *warning.AccountID)
 	require.Contains(t, warning.WarningText, "cybersecurity risk")
@@ -1234,12 +1232,12 @@ func TestOpenAIRecordForwardErrorCyberWarning_RecordsWSV2TerminalWarning(t *test
 		err: errors.New("no terminal response payload"),
 	})
 
-	recorded := h.openAIAttemptSupport().RecordOpenAIForwardErrorCyberWarning(c, nil, apiKey, account, "gpt-5.1", 502, err)
+	recorded := h.openAIAttemptSupport().RecordOpenAIForwardErrorCyberWarning(c, nil, apiKey, account, "gpt-5.4", 502, err)
 
 	require.True(t, recorded)
 	require.Len(t, repo.cyberWarnings, 1)
 	warning := repo.cyberWarnings[0]
-	require.Equal(t, "gpt-5.1", warning.Model)
+	require.Equal(t, "gpt-5.4", warning.Model)
 	require.Equal(t, "user@example.com", warning.UserEmail)
 	require.Equal(t, int64(2001), *warning.AccountID)
 	require.Equal(t, 502, warning.UpstreamStatus)
@@ -1283,7 +1281,7 @@ func TestOpenAIRecordCyberPolicyIfMarked_SkipsSideEffectsOutOfScope(t *testing.T
 	}
 	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 2001, Name: "openai-1"}}
 
-	handled := h.openAIAttemptSupport().RecordCyberPolicyIfMarked(c, apiKey, account, nil, "gpt-5.1", true, "cyber-session-key", routing.PricingUsageFields{}, "payload-hash")
+	handled := h.openAIAttemptSupport().RecordCyberPolicyIfMarked(c, apiKey, account, nil, "gpt-5.4", true, "cyber-session-key", routing.PricingUsageFields{}, "payload-hash")
 
 	require.False(t, handled)
 	require.Empty(t, repo.cyberWarnings)
@@ -1342,7 +1340,7 @@ func TestOpenAIRejectCyberSessionBlocked_OnlyChecksRiskControlGroups(t *testing.
 			groupID := tc.groupID
 			apiKey := &apikey.APIKey{ID: 1001, GroupID: &groupID}
 
-			blocked := h.rejectIfCyberSessionBlocked(c, apiKey, body, "gpt-5.1", gatewayhttp.CyberBlockResponses)
+			blocked := h.rejectIfCyberSessionBlocked(c, apiKey, body, "gpt-5.4", gatewayhttp.CyberBlockResponses)
 
 			require.Equal(t, tc.wantBlocked, blocked)
 			require.Equal(t, tc.wantReads, cache.readCalls)
@@ -1476,7 +1474,7 @@ type openAIWSUsageHandlerAccountRepoStub struct {
 }
 
 func (s *openAIWSUsageHandlerAccountRepoStub) ListSchedulableByPlatform(ctx context.Context, platform string) ([]gatewayprovider.ExecutionAccount, error) {
-	if s.account.Record.Platform != platform {
+	if platform != "" && s.account.Record.Platform != platform {
 		return nil, nil
 	}
 	return []gatewayprovider.ExecutionAccount{s.account}, nil
@@ -1610,7 +1608,7 @@ func (u *openAIHTTPPassthroughSSERateLimitUpstream) calls() []int64 {
 func (s *openAIWSFailoverHandlerAccountRepoStub) ListSchedulableByPlatform(ctx context.Context, platform string) ([]gatewayprovider.ExecutionAccount, error) {
 	out := make([]gatewayprovider.ExecutionAccount, 0, len(s.accounts))
 	for _, account := range s.accounts {
-		if account.Record.Platform == platform && account.View().IsSchedulable() {
+		if (platform == "" || account.Record.Platform == platform) && account.View().IsSchedulable() {
 			out = append(out, account)
 		}
 	}
@@ -1762,7 +1760,7 @@ func TestOpenAIResponses_APIKeyPassthroughPool5xxRetriesThenExhaustsMaxSwitches(
 	c.Set(string(keyhttp.ContextKeyAPIKey), &apikey.APIKey{
 		ID: 1803, GroupID: &groupID,
 		User:  &identity.User{ID: 1703, Status: billing.StatusActive},
-		Group: &routing.Group{ID: groupID, Platform: capability.PlatformOpenAI, Status: billing.StatusActive},
+		Group: &routing.Group{ID: groupID, Status: billing.StatusActive},
 	})
 	c.Set(string(authctx.ContextKeyUser), authctx.AuthSubject{UserID: 1703, Concurrency: 0})
 
@@ -1869,7 +1867,7 @@ func TestOpenAIResponses_APIKeyPassthroughPoolAuthFailureRetriesThenSwitchesToHe
 			c.Set(string(keyhttp.ContextKeyAPIKey), &apikey.APIKey{
 				ID: 1803, GroupID: &groupID,
 				User:  &identity.User{ID: 1703, Status: billing.StatusActive},
-				Group: &routing.Group{ID: groupID, Platform: capability.PlatformOpenAI, Status: billing.StatusActive},
+				Group: &routing.Group{ID: groupID, Status: billing.StatusActive},
 			})
 			c.Set(string(authctx.ContextKeyUser), authctx.AuthSubject{UserID: 1703, Concurrency: 0})
 
@@ -1954,7 +1952,7 @@ func TestOpenAIResponses_APIKeyPassthroughSSERateLimitUsesConfiguredPoolRetry(t 
 	c.Set(string(keyhttp.ContextKeyAPIKey), &apikey.APIKey{
 		ID: 1804, GroupID: &groupID,
 		User:  &identity.User{ID: 1704, Status: billing.StatusActive},
-		Group: &routing.Group{ID: groupID, Platform: capability.PlatformOpenAI, Status: billing.StatusActive},
+		Group: &routing.Group{ID: groupID, Status: billing.StatusActive},
 	})
 	c.Set(string(authctx.ContextKeyUser), authctx.AuthSubject{UserID: 1704, Concurrency: 0})
 
@@ -2007,7 +2005,7 @@ func TestOpenAIResponsesWebSocket_FailoverOnUpstreamUsageLimitEvent(t *testing.T
 		}
 
 		writeCtx, cancelWrite := context.WithTimeout(r.Context(), 3*time.Second)
-		_ = conn.Write(writeCtx, coderws.MessageText, []byte(`{"type":"response.completed","response":{"id":"resp_ws_failover_ok","model":"gpt-5.1","usage":{"input_tokens":1,"output_tokens":1}}}`))
+		_ = conn.Write(writeCtx, coderws.MessageText, []byte(`{"type":"response.completed","response":{"id":"resp_ws_failover_ok","model":"gpt-5.4","usage":{"input_tokens":1,"output_tokens":1}}}`))
 		cancelWrite()
 		_ = conn.Close(coderws.StatusNormalClosure, "done")
 	}))
@@ -2123,7 +2121,7 @@ func TestOpenAIResponsesWebSocket_FailoverOnUpstreamUsageLimitEvent(t *testing.T
 		ID:      1802,
 		GroupID: &groupID,
 		User:    &identity.User{ID: 1702, Status: billing.StatusActive},
-		Group:   &routing.Group{ID: groupID, Platform: capability.PlatformOpenAI, Status: billing.StatusActive},
+		Group:   &routing.Group{ID: groupID, Status: billing.StatusActive},
 	}
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
@@ -2146,7 +2144,7 @@ func TestOpenAIResponsesWebSocket_FailoverOnUpstreamUsageLimitEvent(t *testing.T
 	defer func() { _ = clientConn.CloseNow() }()
 
 	writeCtx, cancelWrite := context.WithTimeout(context.Background(), 3*time.Second)
-	err = clientConn.Write(writeCtx, coderws.MessageText, []byte(`{"type":"response.create","model":"gpt-5.1","stream":false}`))
+	err = clientConn.Write(writeCtx, coderws.MessageText, []byte(`{"type":"response.create","model":"gpt-5.4","stream":false}`))
 	cancelWrite()
 	require.NoError(t, err)
 
@@ -2214,9 +2212,9 @@ func TestOpenAIResponsesWebSocket_FirstOutputTimeoutWithoutDownstreamReusesClien
 		}
 
 		for _, event := range []string{
-			`{"type":"response.created","response":{"id":"resp_ws_timeout_b","model":"gpt-5.1"}}`,
+			`{"type":"response.created","response":{"id":"resp_ws_timeout_b","model":"gpt-5.4"}}`,
 			`{"type":"response.output_text.delta","response_id":"resp_ws_timeout_b","delta":"recovered"}`,
-			`{"type":"response.completed","response":{"id":"resp_ws_timeout_b","model":"gpt-5.1","usage":{"input_tokens":1,"output_tokens":1}}}`,
+			`{"type":"response.completed","response":{"id":"resp_ws_timeout_b","model":"gpt-5.4","usage":{"input_tokens":1,"output_tokens":1}}}`,
 		} {
 			writeCtx, cancelWrite := context.WithTimeout(r.Context(), 3*time.Second)
 			writeErr := conn.Write(writeCtx, coderws.MessageText, []byte(event))
@@ -2323,7 +2321,7 @@ func TestOpenAIResponsesWebSocket_FirstOutputTimeoutWithoutDownstreamReusesClien
 		ID:      1812,
 		GroupID: &groupID,
 		User:    &identity.User{ID: 1712, Status: billing.StatusActive},
-		Group:   &routing.Group{ID: groupID, Platform: capability.PlatformOpenAI, Status: billing.StatusActive},
+		Group:   &routing.Group{ID: groupID, Status: billing.StatusActive},
 	}
 	handlerDone := make(chan struct{})
 	router := gin.New()
@@ -2350,7 +2348,7 @@ func TestOpenAIResponsesWebSocket_FirstOutputTimeoutWithoutDownstreamReusesClien
 	defer func() { _ = clientConn.CloseNow() }()
 
 	writeCtx, cancelWrite := context.WithTimeout(context.Background(), 3*time.Second)
-	err = clientConn.Write(writeCtx, coderws.MessageText, []byte(`{"type":"response.create","model":"gpt-5.1","stream":false}`))
+	err = clientConn.Write(writeCtx, coderws.MessageText, []byte(`{"type":"response.create","model":"gpt-5.4","stream":false}`))
 	cancelWrite()
 	require.NoError(t, err)
 
@@ -2479,7 +2477,7 @@ func runOpenAIResponsesWebSocketUsageLogCase(t *testing.T, tc openAIResponsesWSU
 				Name:         "openai-ws-e2e-channel",
 				Status:       billing.StatusActive,
 				GroupIDs:     []int64{groupID},
-				ModelMapping: map[string]map[string]string{capability.PlatformOpenAI: tc.groupMapping},
+				ModelMapping: tc.groupMapping,
 			}},
 			groupPlatforms: map[int64]string{groupID: capability.PlatformOpenAI},
 		}, nil, routing.PricingConfigOptions{Warn: slog.Warn, Now: time.Now, LoadLocation: pricingprovider.LoadPricingLocation},

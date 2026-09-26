@@ -33,16 +33,19 @@ func (o APIKeyAuthorizationOptions) loaded(c *gin.Context, k *apikey.APIKey) {
 		o.Authentication.Loaded(c, k)
 	}
 }
+
 func (o APIKeyAuthorizationOptions) business(c *gin.Context) {
 	if o.Authentication.BusinessLimited != nil {
 		o.Authentication.BusinessLimited(c, "api_key_group_unavailable")
 	}
 }
+
 func (o APIKeyAuthorizationOptions) reject(c *gin.Context, reason string) {
 	if o.Authentication.Rejected != nil {
 		o.Authentication.Rejected(c, reason)
 	}
 }
+
 func (o APIKeyAuthorizationOptions) bind(c *gin.Context, k *apikey.APIKey) {
 	c.Set("gateway_effective_key", k)
 	if o.BindLegacyKey != nil {
@@ -59,6 +62,7 @@ func EffectiveAPIKey(c *gin.Context) (*apikey.APIKey, bool) {
 	key, ok := value.(*apikey.APIKey)
 	return key, ok
 }
+
 func NewAPIKeyAuthorization(apiKeyService *apikey.APIKeyService, subscriptionService AuthorizationSubscriptions, options APIKeyAuthorizationOptions) gin.HandlerFunc {
 	options.Authentication.Google = false
 	return func(c *gin.Context) {
@@ -314,6 +318,7 @@ func NewGoogleAPIKeyAuthorization(apiKeyService *apikey.APIKeyService, subscript
 		c.Next()
 	}
 }
+
 func AbortAPIKeyQuotaError(c *gin.Context) {
 	const message = "API key 额度已用完"
 	if IsOpenAICompatibleAPIKeyRequest(c) {
@@ -322,6 +327,7 @@ func AbortAPIKeyQuotaError(c *gin.Context) {
 	}
 	httpx.AbortWithError(c, http.StatusTooManyRequests, "API_KEY_QUOTA_EXHAUSTED", message)
 }
+
 func IsOpenAICompatibleAPIKeyRequest(c *gin.Context) bool {
 	if c == nil || c.Request == nil || c.Request.URL == nil {
 		return false
@@ -353,7 +359,16 @@ func AbortOpenAIQuotaError(c *gin.Context, statusCode int, message string) {
 	})
 	c.Abort()
 }
+
 func abortAuthorizationGroupUnavailable(c *gin.Context, key *apikey.APIKey, o APIKeyAuthorizationOptions) bool {
+	// 未绑普通 Key 在资金检查之前给出可操作提示；既有任务和本地用量查询仍可访问。
+	if key != nil && !key.IsComposite && key.GroupID == nil && !IsAPIKeyUsageRequest(c.Request.Method, c.Request.URL.Path) && !IsBatchImageBillingBypassRequest(c.Request.Method, c.Request.URL.Path) && !IsGrokVideoTaskRead(c.Request.Method, c.Request.URL.Path) {
+		o.business(c)
+		o.reject(c, "group_unassigned")
+		httpx.AbortWithError(c, http.StatusForbidden, "GROUP_REQUIRED", "API Key 尚未绑定分组，请先在控制台选择分组")
+		return true
+	}
+
 	code, message, ok := admission.GroupAvailable(key)
 	if ok {
 		return false
@@ -367,6 +382,7 @@ func abortAuthorizationGroupUnavailable(c *gin.Context, key *apikey.APIKey, o AP
 	httpx.AbortWithError(c, 403, code, message)
 	return true
 }
+
 func abortAuthorizationGroupNotAllowed(c *gin.Context, key *apikey.APIKey, o APIKeyAuthorizationOptions) bool {
 	if admission.GroupAllowed(key) {
 		return false

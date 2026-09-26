@@ -34,8 +34,8 @@ type APIKey[G any] struct {
 	ExpiresAt               *time.Time                `json:"expires_at"`   // Expiration time (nil = never expires)
 	CreatedAt               time.Time                 `json:"created_at"`
 	UpdatedAt               time.Time                 `json:"updated_at"`
-	// 绑定分组不可用时是否自动回退到同平台默认分组。
-	FallbackToDefaultGroupWhenUnavailable bool `json:"fallback_to_default_group_when_unavailable"`
+	// 绑定分组不可用时是否允许使用其明确配置的回退分组。
+	FallbackWhenGroupUnavailable bool `json:"fallback_when_group_unavailable"`
 	// CurrentConcurrency 表示当前 API Key 的实时活跃请求数。
 	CurrentConcurrency int `json:"current_concurrency"`
 
@@ -69,40 +69,40 @@ func APIKeyFromKey[G any](k *apikey.APIKey, group func(*routing.Group) *G) *APIK
 		return nil
 	}
 	out := &APIKey[G]{
-		ID:                                    k.ID,
-		UserID:                                k.UserID,
-		TeamID:                                k.TeamID,
-		TeamOwnerDisabled:                     k.TeamOwnerDisabled,
-		Key:                                   k.Key,
-		Name:                                  k.Name,
-		GroupID:                               k.GroupID,
-		IsComposite:                           k.IsComposite,
-		Status:                                k.Status,
-		FastModePolicy:                        k.FastModePolicy,
-		BillingMode:                           k.BillingMode,
-		PreferredSubscriptionID:               k.PreferredSubscriptionID,
-		ModelMapping:                          apikey.CloneModelMapping(k.ModelMapping),
-		IPWhitelist:                           k.IPWhitelist,
-		IPBlacklist:                           k.IPBlacklist,
-		LastUsedAt:                            k.LastUsedAt,
-		LastUsedIP:                            k.LastUsedIP,
-		Quota:                                 k.Quota,
-		QuotaUsed:                             k.QuotaUsed,
-		ExpiresAt:                             k.ExpiresAt,
-		CreatedAt:                             k.CreatedAt,
-		UpdatedAt:                             k.UpdatedAt,
-		RateLimit5h:                           k.RateLimit5h,
-		RateLimit1d:                           k.RateLimit1d,
-		RateLimit7d:                           k.RateLimit7d,
-		Usage5h:                               k.EffectiveUsage5h(),
-		Usage1d:                               k.EffectiveUsage1d(),
-		Usage7d:                               k.EffectiveUsage7d(),
-		Window5hStart:                         k.Window5hStart,
-		Window1dStart:                         k.Window1dStart,
-		Window7dStart:                         k.Window7dStart,
-		FallbackToDefaultGroupWhenUnavailable: k.FallbackToDefaultGroupWhenUnavailable,
-		CurrentConcurrency:                    k.CurrentConcurrency,
-		Group:                                 group(k.Group),
+		ID:                           k.ID,
+		UserID:                       k.UserID,
+		TeamID:                       k.TeamID,
+		TeamOwnerDisabled:            k.TeamOwnerDisabled,
+		Key:                          k.Key,
+		Name:                         k.Name,
+		GroupID:                      k.GroupID,
+		IsComposite:                  k.IsComposite,
+		Status:                       k.Status,
+		FastModePolicy:               k.FastModePolicy,
+		BillingMode:                  k.BillingMode,
+		PreferredSubscriptionID:      k.PreferredSubscriptionID,
+		ModelMapping:                 apikey.CloneModelMapping(k.ModelMapping),
+		IPWhitelist:                  k.IPWhitelist,
+		IPBlacklist:                  k.IPBlacklist,
+		LastUsedAt:                   k.LastUsedAt,
+		LastUsedIP:                   k.LastUsedIP,
+		Quota:                        k.Quota,
+		QuotaUsed:                    k.QuotaUsed,
+		ExpiresAt:                    k.ExpiresAt,
+		CreatedAt:                    k.CreatedAt,
+		UpdatedAt:                    k.UpdatedAt,
+		RateLimit5h:                  k.RateLimit5h,
+		RateLimit1d:                  k.RateLimit1d,
+		RateLimit7d:                  k.RateLimit7d,
+		Usage5h:                      k.EffectiveUsage5h(),
+		Usage1d:                      k.EffectiveUsage1d(),
+		Usage7d:                      k.EffectiveUsage7d(),
+		Window5hStart:                k.Window5hStart,
+		Window1dStart:                k.Window1dStart,
+		Window7dStart:                k.Window7dStart,
+		FallbackWhenGroupUnavailable: k.FallbackWhenGroupUnavailable,
+		CurrentConcurrency:           k.CurrentConcurrency,
+		Group:                        group(k.Group),
 	}
 	out.CompositeGroups = make([]APIKeyCompositeGroup[G], 0, len(k.CompositeGroups))
 	for _, binding := range k.CompositeGroups {

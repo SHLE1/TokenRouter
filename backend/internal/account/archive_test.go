@@ -22,6 +22,7 @@ func (f *archiveAccountsFixture) GetAccountsByIDs(context.Context, []int64) ([]*
 	*f.events = append(*f.events, "accounts")
 	return f.values, nil
 }
+
 func (f *archiveAccountsFixture) CreateAccount(_ context.Context, input *CreateAccountInput) (*Record, error) {
 	*f.events = append(*f.events, "create")
 	f.created = append(f.created, *input)
@@ -84,5 +85,4 @@ func TestArchiveImportRetainsPartialResultsAndLazyDefaults(t *testing.T) {
 	require.Equal(t, []string{"proxies", "defaults", "decode", "create", "create"}, events)
 	require.Equal(t, map[string]any{"id_token": "fixture"}, input.Data.Accounts[0].Credentials)
 	require.Equal(t, "decoded@example.test", records.created[0].Credentials["email"])
-	require.True(t, records.created[0].SkipDefaultGroupBind)
 }

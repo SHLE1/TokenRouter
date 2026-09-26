@@ -128,6 +128,11 @@ func (r *Store) BatchInsertErrorLogs(ctx context.Context, inputs []*ops.OpsInser
 }
 
 func opsInsertErrorLogArgs(input *ops.OpsInsertErrorLogInput) []any {
+	// 尚未选定账号的错误也保存明确平台，查询不再反查可变配置。
+	platform := strings.TrimSpace(input.Platform)
+	if platform == "" {
+		platform = "unknown"
+	}
 	return []any{
 		opsNullString(input.RequestID),
 		opsNullString(input.ClientRequestID),
@@ -136,7 +141,7 @@ func opsInsertErrorLogArgs(input *ops.OpsInsertErrorLogInput) []any {
 		opsNullInt64(input.AccountID),
 		opsNullInt64(input.GroupID),
 		opsNullString(input.ClientIP),
-		opsNullString(input.Platform),
+		opsNullString(platform),
 		opsNullString(input.Model),
 		opsNullString(input.RequestPath),
 		input.Stream,

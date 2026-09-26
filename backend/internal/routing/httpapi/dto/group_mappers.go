@@ -9,14 +9,13 @@ import (
 
 func GroupFromRoutingBase(g *routing.Group) Group {
 	return Group{
+		Models: append([]string{}, g.Models...), ModelProtocols: g.ModelProtocols,
 		ID:                              g.ID,
 		Name:                            g.Name,
 		Description:                     g.Description,
-		Platform:                        g.Platform,
 		DisplayBrand:                    g.DisplayBrand,
 		RateMultiplier:                  g.RateMultiplier,
 		IsExclusive:                     g.IsExclusive,
-		IsDefault:                       g.IsDefault,
 		Status:                          g.Status,
 		SessionIsolationEnabled:         g.SessionIsolationEnabled,
 		LongContextPricingEnabled:       g.LongContextPricingEnabled,

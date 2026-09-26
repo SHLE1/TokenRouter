@@ -9,7 +9,6 @@ import (
 	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	schedulercore "github.com/TokenFlux/TokenRouter/internal/scheduler"
 
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
@@ -43,7 +42,7 @@ func (s *Diagnostics) prepareEligibilityContext(ctx context.Context, group *rout
 		ctx = s.gatewayService.withWindowCostPrefetch(ctx, accounts)
 		ctx = s.gatewayService.withRPMPrefetch(ctx, accounts)
 	}
-	if s.openAIGateway != nil && group != nil && (group.Platform == capability.PlatformOpenAI || group.Platform == capability.PlatformGrok) {
+	if s.openAIGateway != nil && group != nil {
 		ctx = s.openAIGateway.withOpenAIQuotaAutoPauseContext(ctx)
 	}
 	return ctx
@@ -57,7 +56,7 @@ func (s *Diagnostics) diagnosticPlatformFilterReason(
 	now time.Time,
 ) string {
 	model := strings.TrimSpace(request.RequestedModel)
-	if group != nil && (group.Platform == capability.PlatformOpenAI || group.Platform == capability.PlatformGrok) {
+	if account != nil && account.View().IsOpenAICompatible() {
 		if !gatewayprovider.ExecutionModelPolicy(account).Schedulable(ctx, model) {
 			return "model_runtime_blocked"
 		}

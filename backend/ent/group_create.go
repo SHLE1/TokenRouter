@@ -177,20 +177,6 @@ func (_c *GroupCreate) SetNillableIsExclusive(v *bool) *GroupCreate {
 	return _c
 }
 
-// SetIsDefault sets the "is_default" field.
-func (_c *GroupCreate) SetIsDefault(v bool) *GroupCreate {
-	_c.mutation.SetIsDefault(v)
-	return _c
-}
-
-// SetNillableIsDefault sets the "is_default" field if the given value is not nil.
-func (_c *GroupCreate) SetNillableIsDefault(v *bool) *GroupCreate {
-	if v != nil {
-		_c.SetIsDefault(*v)
-	}
-	return _c
-}
-
 // SetStatus sets the "status" field.
 func (_c *GroupCreate) SetStatus(v string) *GroupCreate {
 	_c.mutation.SetStatus(v)
@@ -215,20 +201,6 @@ func (_c *GroupCreate) SetDuplicateOperationID(v string) *GroupCreate {
 func (_c *GroupCreate) SetNillableDuplicateOperationID(v *string) *GroupCreate {
 	if v != nil {
 		_c.SetDuplicateOperationID(*v)
-	}
-	return _c
-}
-
-// SetPlatform sets the "platform" field.
-func (_c *GroupCreate) SetPlatform(v string) *GroupCreate {
-	_c.mutation.SetPlatform(v)
-	return _c
-}
-
-// SetNillablePlatform sets the "platform" field if the given value is not nil.
-func (_c *GroupCreate) SetNillablePlatform(v *string) *GroupCreate {
-	if v != nil {
-		_c.SetPlatform(*v)
 	}
 	return _c
 }
@@ -558,7 +530,7 @@ func (_c *GroupCreate) SetAllowedProtocols(v []protocol.ProtocolID) *GroupCreate
 }
 
 // SetProtocolFallbacks sets the "protocol_fallbacks" field.
-func (_c *GroupCreate) SetProtocolFallbacks(v map[protocol.ProtocolID]protocol.ProtocolID) *GroupCreate {
+func (_c *GroupCreate) SetProtocolFallbacks(v map[protocol.ProtocolID][]protocol.ProtocolID) *GroupCreate {
 	_c.mutation.SetProtocolFallbacks(v)
 	return _c
 }
@@ -944,17 +916,9 @@ func (_c *GroupCreate) defaults() error {
 		v := group.DefaultIsExclusive
 		_c.mutation.SetIsExclusive(v)
 	}
-	if _, ok := _c.mutation.IsDefault(); !ok {
-		v := group.DefaultIsDefault
-		_c.mutation.SetIsDefault(v)
-	}
 	if _, ok := _c.mutation.Status(); !ok {
 		v := group.DefaultStatus
 		_c.mutation.SetStatus(v)
-	}
-	if _, ok := _c.mutation.Platform(); !ok {
-		v := group.DefaultPlatform
-		_c.mutation.SetPlatform(v)
 	}
 	if _, ok := _c.mutation.SchedulerType(); !ok {
 		v := group.DefaultSchedulerType
@@ -1131,9 +1095,6 @@ func (_c *GroupCreate) check() error {
 	if _, ok := _c.mutation.IsExclusive(); !ok {
 		return &ValidationError{Name: "is_exclusive", err: errors.New(`ent: missing required field "Group.is_exclusive"`)}
 	}
-	if _, ok := _c.mutation.IsDefault(); !ok {
-		return &ValidationError{Name: "is_default", err: errors.New(`ent: missing required field "Group.is_default"`)}
-	}
 	if _, ok := _c.mutation.Status(); !ok {
 		return &ValidationError{Name: "status", err: errors.New(`ent: missing required field "Group.status"`)}
 	}
@@ -1145,14 +1106,6 @@ func (_c *GroupCreate) check() error {
 	if v, ok := _c.mutation.DuplicateOperationID(); ok {
 		if err := group.DuplicateOperationIDValidator(v); err != nil {
 			return &ValidationError{Name: "duplicate_operation_id", err: fmt.Errorf(`ent: validator failed for field "Group.duplicate_operation_id": %w`, err)}
-		}
-	}
-	if _, ok := _c.mutation.Platform(); !ok {
-		return &ValidationError{Name: "platform", err: errors.New(`ent: missing required field "Group.platform"`)}
-	}
-	if v, ok := _c.mutation.Platform(); ok {
-		if err := group.PlatformValidator(v); err != nil {
-			return &ValidationError{Name: "platform", err: fmt.Errorf(`ent: validator failed for field "Group.platform": %w`, err)}
 		}
 	}
 	if _, ok := _c.mutation.SchedulerType(); !ok {
@@ -1367,10 +1320,6 @@ func (_c *GroupCreate) createSpec() (*Group, *sqlgraph.CreateSpec) {
 		_spec.SetField(group.FieldIsExclusive, field.TypeBool, value)
 		_node.IsExclusive = value
 	}
-	if value, ok := _c.mutation.IsDefault(); ok {
-		_spec.SetField(group.FieldIsDefault, field.TypeBool, value)
-		_node.IsDefault = value
-	}
 	if value, ok := _c.mutation.Status(); ok {
 		_spec.SetField(group.FieldStatus, field.TypeString, value)
 		_node.Status = value
@@ -1378,10 +1327,6 @@ func (_c *GroupCreate) createSpec() (*Group, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.DuplicateOperationID(); ok {
 		_spec.SetField(group.FieldDuplicateOperationID, field.TypeString, value)
 		_node.DuplicateOperationID = &value
-	}
-	if value, ok := _c.mutation.Platform(); ok {
-		_spec.SetField(group.FieldPlatform, field.TypeString, value)
-		_node.Platform = value
 	}
 	if value, ok := _c.mutation.SchedulerType(); ok {
 		_spec.SetField(group.FieldSchedulerType, field.TypeString, value)
@@ -1859,18 +1804,6 @@ func (u *GroupUpsert) UpdateIsExclusive() *GroupUpsert {
 	return u
 }
 
-// SetIsDefault sets the "is_default" field.
-func (u *GroupUpsert) SetIsDefault(v bool) *GroupUpsert {
-	u.Set(group.FieldIsDefault, v)
-	return u
-}
-
-// UpdateIsDefault sets the "is_default" field to the value that was provided on create.
-func (u *GroupUpsert) UpdateIsDefault() *GroupUpsert {
-	u.SetExcluded(group.FieldIsDefault)
-	return u
-}
-
 // SetStatus sets the "status" field.
 func (u *GroupUpsert) SetStatus(v string) *GroupUpsert {
 	u.Set(group.FieldStatus, v)
@@ -1880,18 +1813,6 @@ func (u *GroupUpsert) SetStatus(v string) *GroupUpsert {
 // UpdateStatus sets the "status" field to the value that was provided on create.
 func (u *GroupUpsert) UpdateStatus() *GroupUpsert {
 	u.SetExcluded(group.FieldStatus)
-	return u
-}
-
-// SetPlatform sets the "platform" field.
-func (u *GroupUpsert) SetPlatform(v string) *GroupUpsert {
-	u.Set(group.FieldPlatform, v)
-	return u
-}
-
-// UpdatePlatform sets the "platform" field to the value that was provided on create.
-func (u *GroupUpsert) UpdatePlatform() *GroupUpsert {
-	u.SetExcluded(group.FieldPlatform)
 	return u
 }
 
@@ -2340,7 +2261,7 @@ func (u *GroupUpsert) UpdateAllowedProtocols() *GroupUpsert {
 }
 
 // SetProtocolFallbacks sets the "protocol_fallbacks" field.
-func (u *GroupUpsert) SetProtocolFallbacks(v map[protocol.ProtocolID]protocol.ProtocolID) *GroupUpsert {
+func (u *GroupUpsert) SetProtocolFallbacks(v map[protocol.ProtocolID][]protocol.ProtocolID) *GroupUpsert {
 	u.Set(group.FieldProtocolFallbacks, v)
 	return u
 }
@@ -2765,20 +2686,6 @@ func (u *GroupUpsertOne) UpdateIsExclusive() *GroupUpsertOne {
 	})
 }
 
-// SetIsDefault sets the "is_default" field.
-func (u *GroupUpsertOne) SetIsDefault(v bool) *GroupUpsertOne {
-	return u.Update(func(s *GroupUpsert) {
-		s.SetIsDefault(v)
-	})
-}
-
-// UpdateIsDefault sets the "is_default" field to the value that was provided on create.
-func (u *GroupUpsertOne) UpdateIsDefault() *GroupUpsertOne {
-	return u.Update(func(s *GroupUpsert) {
-		s.UpdateIsDefault()
-	})
-}
-
 // SetStatus sets the "status" field.
 func (u *GroupUpsertOne) SetStatus(v string) *GroupUpsertOne {
 	return u.Update(func(s *GroupUpsert) {
@@ -2790,20 +2697,6 @@ func (u *GroupUpsertOne) SetStatus(v string) *GroupUpsertOne {
 func (u *GroupUpsertOne) UpdateStatus() *GroupUpsertOne {
 	return u.Update(func(s *GroupUpsert) {
 		s.UpdateStatus()
-	})
-}
-
-// SetPlatform sets the "platform" field.
-func (u *GroupUpsertOne) SetPlatform(v string) *GroupUpsertOne {
-	return u.Update(func(s *GroupUpsert) {
-		s.SetPlatform(v)
-	})
-}
-
-// UpdatePlatform sets the "platform" field to the value that was provided on create.
-func (u *GroupUpsertOne) UpdatePlatform() *GroupUpsertOne {
-	return u.Update(func(s *GroupUpsert) {
-		s.UpdatePlatform()
 	})
 }
 
@@ -3326,7 +3219,7 @@ func (u *GroupUpsertOne) UpdateAllowedProtocols() *GroupUpsertOne {
 }
 
 // SetProtocolFallbacks sets the "protocol_fallbacks" field.
-func (u *GroupUpsertOne) SetProtocolFallbacks(v map[protocol.ProtocolID]protocol.ProtocolID) *GroupUpsertOne {
+func (u *GroupUpsertOne) SetProtocolFallbacks(v map[protocol.ProtocolID][]protocol.ProtocolID) *GroupUpsertOne {
 	return u.Update(func(s *GroupUpsert) {
 		s.SetProtocolFallbacks(v)
 	})
@@ -3952,20 +3845,6 @@ func (u *GroupUpsertBulk) UpdateIsExclusive() *GroupUpsertBulk {
 	})
 }
 
-// SetIsDefault sets the "is_default" field.
-func (u *GroupUpsertBulk) SetIsDefault(v bool) *GroupUpsertBulk {
-	return u.Update(func(s *GroupUpsert) {
-		s.SetIsDefault(v)
-	})
-}
-
-// UpdateIsDefault sets the "is_default" field to the value that was provided on create.
-func (u *GroupUpsertBulk) UpdateIsDefault() *GroupUpsertBulk {
-	return u.Update(func(s *GroupUpsert) {
-		s.UpdateIsDefault()
-	})
-}
-
 // SetStatus sets the "status" field.
 func (u *GroupUpsertBulk) SetStatus(v string) *GroupUpsertBulk {
 	return u.Update(func(s *GroupUpsert) {
@@ -3977,20 +3856,6 @@ func (u *GroupUpsertBulk) SetStatus(v string) *GroupUpsertBulk {
 func (u *GroupUpsertBulk) UpdateStatus() *GroupUpsertBulk {
 	return u.Update(func(s *GroupUpsert) {
 		s.UpdateStatus()
-	})
-}
-
-// SetPlatform sets the "platform" field.
-func (u *GroupUpsertBulk) SetPlatform(v string) *GroupUpsertBulk {
-	return u.Update(func(s *GroupUpsert) {
-		s.SetPlatform(v)
-	})
-}
-
-// UpdatePlatform sets the "platform" field to the value that was provided on create.
-func (u *GroupUpsertBulk) UpdatePlatform() *GroupUpsertBulk {
-	return u.Update(func(s *GroupUpsert) {
-		s.UpdatePlatform()
 	})
 }
 
@@ -4513,7 +4378,7 @@ func (u *GroupUpsertBulk) UpdateAllowedProtocols() *GroupUpsertBulk {
 }
 
 // SetProtocolFallbacks sets the "protocol_fallbacks" field.
-func (u *GroupUpsertBulk) SetProtocolFallbacks(v map[protocol.ProtocolID]protocol.ProtocolID) *GroupUpsertBulk {
+func (u *GroupUpsertBulk) SetProtocolFallbacks(v map[protocol.ProtocolID][]protocol.ProtocolID) *GroupUpsertBulk {
 	return u.Update(func(s *GroupUpsert) {
 		s.SetProtocolFallbacks(v)
 	})

@@ -103,13 +103,11 @@ const createGroup = (overrides: Partial<AdminGroup> = {}): AdminGroup => ({
   id: 1,
   name: 'Core Anthropic',
   description: null,
-  platform: 'anthropic',
   scheduler_type: 'basic',
   display_brand: '',
   rate_multiplier: 1,
   rpm_limit: 0,
   is_exclusive: false,
-  is_default: false,
   session_isolation_enabled: false,
   status: 'active',
   allow_image_generation: false,
@@ -279,7 +277,7 @@ describe('admin GroupsView column settings', () => {
     // 筛选项已聚合到按钮，展开后只保留平台和状态筛选。
     await wrapper.get('button[aria-label="common.filter"]').trigger('click')
     await flushPromises()
-    expect(wrapper.findAll('select')).toHaveLength(2)
+    expect(wrapper.findAll('select')).toHaveLength(1)
     expect(listGroups.mock.calls[0]?.[2]).not.toHaveProperty('is_exclusive')
   })
 
@@ -288,7 +286,6 @@ describe('admin GroupsView column settings', () => {
 
     expect(columnKeys(wrapper)).toEqual([
       'name',
-      'platform',
       'display_brand',
       'rate_multiplier',
       'is_exclusive',
@@ -323,7 +320,6 @@ describe('admin GroupsView column settings', () => {
     expect(columnKeys(wrapper)).toEqual([
       'name',
       'id',
-      'platform',
       'display_brand',
       'rate_multiplier',
       'is_exclusive',
@@ -342,7 +338,6 @@ describe('admin GroupsView column settings', () => {
 
     expect(columnKeys(wrapper)).toEqual([
       'name',
-      'platform',
       'display_brand',
       'rate_multiplier',
       'is_exclusive',
@@ -377,7 +372,6 @@ describe('admin GroupsView column settings', () => {
 
     expect(columnKeys(wrapper)).toEqual([
       'name',
-      'platform',
       'display_brand',
       'rate_multiplier',
       'is_exclusive',
@@ -401,7 +395,6 @@ describe('admin GroupsView column settings', () => {
     expect(columnKeys(wrapper)).toEqual([
       'name',
       'id',
-      'platform',
       'display_brand',
       'rate_multiplier',
       'is_exclusive',

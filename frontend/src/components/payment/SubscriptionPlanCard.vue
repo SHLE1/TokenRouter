@@ -114,18 +114,18 @@ const { t } = useI18n()
 const { formatBalanceAmount } = useBalanceDisplay()
 const planCurrencySymbol = computed(() => currencySymbol(props.plan.currency || 'USD'))
 
-const platform = computed(() => props.plan.group_platform || '')
+
 const isRenewal = computed(() =>
   props.activeSubscriptions?.some(s => s.plan_id === props.plan.id && s.status === 'active') ?? false
 )
 
 // Derived color classes from central config
-const accentClass = computed(() => platformAccentBarClass(platform.value))
-const borderClass = computed(() => platformBorderClass(platform.value))
-const textClass = computed(() => platformTextClass(platform.value))
-const iconClass = computed(() => platformIconClass(platform.value))
-const btnClass = computed(() => platformButtonClass(platform.value))
-const discountClass = computed(() => platformDiscountClass(platform.value))
+const accentClass = computed(() => platformAccentBarClass(''))
+const borderClass = computed(() => platformBorderClass(''))
+const textClass = computed(() => platformTextClass(''))
+const iconClass = computed(() => platformIconClass(''))
+const btnClass = computed(() => platformButtonClass(''))
+const discountClass = computed(() => platformDiscountClass(''))
 
 const discountText = computed(() => {
   if (!props.plan.original_price || props.plan.original_price <= 0) return ''
@@ -149,8 +149,7 @@ const MODEL_SCOPE_LABELS: Record<string, string> = {
 }
 
 const modelScopeLabels = computed(() => {
-  // 模型系列只对 Antigravity 套餐有含义，其他平台不展示历史残留字段。
-  if (platform.value !== 'antigravity') return []
+  // 模型系列限制由分组策略提供，作用于相关账号。
   const scopes = props.plan.supported_model_scopes
   if (!scopes || scopes.length === 0) return []
   return scopes.map(s => MODEL_SCOPE_LABELS[s] || s)

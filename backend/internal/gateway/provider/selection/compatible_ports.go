@@ -60,10 +60,10 @@ func (s *compatiblePicker) platformSelector() (*schedulercore.PlatformSelector, 
 			return s.service.UpstreamRoutingModelRestricted(ctx, id, scope.oldAccount(a), model, compact)
 		},
 		BasicEligible: func(ctx context.Context, a *schedulercore.FlowAccount, platform, model string, compact bool, capability account.OpenAIEndpointCapability) bool {
-			return gatewayprovider.CompatibleAccountEligible(ctx, scope.oldAccount(a), platform, model, compact, capability)
+			return s.service.candidateEligibilityReason(ctx, scope.oldAccount(a), platform, model, compact, capability) == ""
 		},
 		BasicFailureReason: func(ctx context.Context, a *schedulercore.FlowAccount, platform, model string, compact bool, capability account.OpenAIEndpointCapability) string {
-			return gatewayprovider.CompatibleEligibilityReason(ctx, scope.oldAccount(a), platform, model, compact, capability)
+			return s.service.candidateEligibilityReason(ctx, scope.oldAccount(a), platform, model, compact, capability)
 		},
 		CompleteAcquired: func(ctx context.Context, a *schedulercore.FlowAccount, release func()) (*schedulercore.FlowSelection, error) {
 			v, err := s.service.newAcquiredSelectionResult(ctx, scope.oldAccount(a), release)
@@ -104,7 +104,7 @@ func (s *compatiblePicker) platformSelector() (*schedulercore.PlatformSelector, 
 		ClearSticky: func(a *schedulercore.FlowAccount, model string) bool {
 			return shouldClearStickySession(scope.oldAccount(a), model)
 		},
-		IsCompatible:  func(a *schedulercore.FlowAccount) bool { return scope.oldAccount(a).View().IsOpenAICompatible() },
+		IsCompatible:  func(a *schedulercore.FlowAccount) bool { return scope.oldAccount(a) != nil },
 		IsSchedulable: func(a *schedulercore.FlowAccount) bool { return scope.oldAccount(a).View().IsSchedulable() },
 		Recheck: func(ctx context.Context, a *schedulercore.FlowAccount, id *int64, platform, model string, compact bool, capability account.OpenAIEndpointCapability) *schedulercore.FlowAccount {
 			return scope.account(s.service.recheckSelectedOpenAIAccountFromDB(ctx, scope.oldAccount(a), id, platform, model, compact, capability))

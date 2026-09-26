@@ -31,6 +31,7 @@ func (e *creativeFakeExecutor) Prepare(ctx context.Context, run creative.Creativ
 	}
 	return &creative.CreativeExecution{
 		AccountID: 55,
+		Provider:  creative.PlatformGemini,
 		Target: creativeFixtureTarget(func(ctx context.Context, run creative.CreativeRun, payload creative.CreativeRunPayload) (*creative.CreativeExecuteResult, error) {
 			return e.Execute(ctx, run, payload, nil)
 		}),
@@ -121,6 +122,10 @@ func TestCreativeWorkerSuccessPath(t *testing.T) {
 	f := newCreativeWorkerFixture()
 	runID := "crun_workersuccess01"
 	seedCreativeRun(f, runID, true)
+	f.exec.onExecute = func(id string) {
+		require.Equal(t, creative.PlatformGemini, f.repo.runs[id].Provider)
+		require.Equal(t, int64(55), *f.repo.runs[id].AccountID)
+	}
 	f.exec.result = &creative.CreativeExecuteResult{
 		Outputs:   []creative.CreativeOutput{{Index: 0, Bytes: []byte("img"), Mime: "image/png"}},
 		AccountID: 55,
@@ -176,7 +181,8 @@ func TestCreativeWorkerUserConcurrencyPending(t *testing.T) {
 	userRepo := testassert.MustType[*creativeFakeUserRepo](testassert.MustType[creativeUserReader](f.service.UserRepo).source)
 	userRepo.user.Concurrency = 1
 	cache := &creativeUserCacheFixture{acquireResult: false}
-	f.worker = newCreativeWorkerFixtureForSources(f.queue, f.repo, f.store, f.exec, f.service, f.worker.Options(), scheduler.NewConcurrencyService(cache, scheduler.Diagnostics{Logf: logging.LegacyPrintf,
+	f.worker = newCreativeWorkerFixtureForSources(f.queue, f.repo, f.store, f.exec, f.service, f.worker.Options(), scheduler.NewConcurrencyService(cache, scheduler.Diagnostics{
+		Logf:  logging.LegacyPrintf,
 		Event: logging.Event,
 	},
 	))

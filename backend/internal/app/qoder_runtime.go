@@ -59,7 +59,7 @@ func (b *qoderRuntime) Check(ctx context.Context, request gateway.Request, after
 		return nil
 	}
 	key := apikey.CopyAPIKey(request.Funding.Key)
-	return b.Billing.CheckKey(ctx, key, request.Funding.Subscription, request.Metadata.QuotaPlatform, afterWait)
+	return b.Billing.CheckKey(ctx, key, request.Funding.Subscription, "", afterWait)
 }
 
 func (b *qoderRuntime) Select(ctx context.Context, request gateway.Request, excluded map[int64]struct{}) (*gateway.Selection, error) {
@@ -106,7 +106,7 @@ func (b *qoderRuntime) Select(ctx context.Context, request gateway.Request, excl
 
 		selected.Complete = func(callCtx context.Context, result upstream.AttemptResult) {
 			snapshot := gatewayprovider.CaptureMessages(callCtx, &gatewayprovider.MessagesCapture{
-				Result: forwardcore.MessagesFromAttempt(result), QuotaPlatform: request.Metadata.QuotaPlatform,
+				Result: forwardcore.MessagesFromAttempt(result),
 				APIKey: key, User: key.User, Account: gatewayprovider.ExecutionCompletionRecord(account), Subscription: request.Funding.Subscription,
 				InboundEndpoint: request.Metadata.InboundEndpoint, UpstreamEndpoint: request.Metadata.UpstreamEndpoint,
 				UserAgent: request.Metadata.UserAgent, IPAddress: request.Metadata.ClientIP,

@@ -17,7 +17,7 @@
 - [Anthropic 上游](anthropic_upstream.md)：OAuth、Setup Token、API Key、Bedrock 模型区域路由、Vertex，以及 Messages/OpenAI 兼容转换和缓存/限流契约。读取时机：修改 Anthropic 认证、协议、模型区域、beta、thinking、缓存或错误分类时读取。
 - [OpenAI 上游](openai_upstream.md)：OAuth/API Key、Responses、Chat、Messages、Embeddings、Images、Realtime 和 Codex 传输契约。读取时机：修改 OpenAI 认证、endpoint capability、WebSocket、模型或配额调度时读取。
 - [Gemini 上游](gemini_upstream.md)：OAuth 变体、API Key、Vertex Service Account、v1beta 原生和兼容协议契约。读取时机：修改 Gemini 认证、project/tier、协议转换、thought signature 或配额时读取。
-- [Antigravity 上游](antigravity_upstream.md)：Antigravity 专用端点、混合调度及模型协议边界。读取时机：修改 Antigravity 账号、OAuth、Claude/Gemini 转换或调度隔离时读取。
+- [Antigravity 上游](antigravity_upstream.md)：Antigravity 专用端点、跨平台分组选号及模型协议边界。读取时机：修改 Antigravity 账号、OAuth、Claude/Gemini 转换或强制平台过滤时读取。
 - [Grok / xAI 上游](grok_upstream.md)：Grok OAuth/API Key、媒体资格与 OpenAI 兼容转发契约。读取时机：修改 Grok 登录、聊天、图片、视频、计费探测或模型配置时读取。
 - [Qoder 原生上游](qoder_upstream.md)：Qoder 站点、模型别名、思考能力、上下文、计费和刷新契约。读取时机：修改 Qoder 账号、模型能力、请求转换、定价或运维探测时读取。
 - [网关错误响应策略](gateway_error_policy.md)：最终错误规则的优先级、匹配、状态/消息改写、监控跳过和缓存一致性。读取时机：修改错误透传规则、平台错误封装或 Ops 跳过语义时读取。

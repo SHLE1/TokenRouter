@@ -5,7 +5,6 @@ import "github.com/TokenFlux/TokenRouter/internal/routing"
 // RoutingAdminSettings 仅转换所属模块值，不读取设置或发布状态。
 func (s *Snapshot) RoutingAdminSettings() routing.AdminSettings {
 	return routing.AdminSettings{
-		AllowUngroupedKeyScheduling:          s.AllowUngroupedKeyScheduling,
 		EnableModelFallback:                  s.EnableModelFallback,
 		FallbackModelAnthropic:               s.FallbackModelAnthropic,
 		FallbackModelAntigravity:             s.FallbackModelAntigravity,
@@ -18,7 +17,6 @@ func (s *Snapshot) RoutingAdminSettings() routing.AdminSettings {
 
 // ApplyRoutingAdminSettings 仅转换所属模块值，不读取设置或发布状态。
 func (s *Snapshot) ApplyRoutingAdminSettings(value routing.AdminSettings) {
-	s.AllowUngroupedKeyScheduling = value.AllowUngroupedKeyScheduling
 	s.EnableModelFallback = value.EnableModelFallback
 	s.FallbackModelAnthropic = value.FallbackModelAnthropic
 	s.FallbackModelAntigravity = value.FallbackModelAntigravity

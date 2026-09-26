@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strconv"
 	"sync"
@@ -194,6 +195,7 @@ func (s *SnapshotService) Stop() {
 	defer cancel()
 	_ = s.StopContext(ctx)
 }
+
 func (s *SnapshotService) StopContext(ctx context.Context) error {
 	if s == nil {
 		return nil
@@ -203,7 +205,13 @@ func (s *SnapshotService) StopContext(ctx context.Context) error {
 
 // @project-doc docs/architecture/account_scheduling_and_cache.md#scheduler_snapshot_consistency
 func (s *SnapshotService) ListSchedulableAccounts(ctx context.Context, groupID *int64, platform string, hasForcePlatform bool) ([]SnapshotAccount, bool, error) {
-	useMixed := (platform == capability.PlatformAnthropic || platform == capability.PlatformGemini) && !hasForcePlatform
+	useMixed := false
+	if err := ctx.Err(); err != nil {
+		return nil, false, err
+	}
+	if groupID == nil || *groupID <= 0 {
+		return nil, false, nil
+	}
 	mode := s.resolveMode(platform, hasForcePlatform)
 	bucket := s.bucketFor(groupID, platform, mode)
 	var writeToken SchedulerBucketWriteToken
@@ -553,18 +561,13 @@ func (s *SnapshotService) handleBulkAccountEvent(ctx context.Context, payload ma
 		if account == nil || account.SnapshotMetadata().ID <= 0 {
 			continue
 		}
-		accountGroupIDs := s.normalizeGroupIDs(account.SnapshotMetadata().GroupIDs)
-		switch account.SnapshotMetadata().Platform {
-		case capability.PlatformAnthropic, capability.PlatformGemini, capability.PlatformOpenAI, capability.PlatformQoder, capability.PlatformGrok:
-			addPlatformGroups(account.SnapshotMetadata().Platform, accountGroupIDs)
-		case capability.PlatformAntigravity:
-			// 批量更新可能刚关闭 mixed_scheduling，仍需清理两个兼容平台的旧快照。
-			addPlatformGroups(capability.PlatformAntigravity, accountGroupIDs)
-			addPlatformGroups(capability.PlatformAnthropic, accountGroupIDs)
-			addPlatformGroups(capability.PlatformGemini, accountGroupIDs)
-		default:
+		if !slices.Contains(capability.AccountPlatforms(), account.SnapshotMetadata().Platform) {
 			return s.rebuildByGroupIDs(ctx, rebuildGroupIDs, "account_bulk_change", seen)
 		}
+		accountGroupIDs := s.normalizeGroupIDs(account.SnapshotMetadata().GroupIDs)
+		addPlatformGroups("", accountGroupIDs)
+		addPlatformGroups(account.SnapshotMetadata().Platform, accountGroupIDs)
+
 	}
 
 	// payload 携带更新前的组；只扩散到本事件实际涉及的平台，避免平台间交叉重建。
@@ -632,7 +635,7 @@ func (s *SnapshotService) handleAccountEvent(ctx context.Context, accountID *int
 }
 
 func (s *SnapshotService) handleGroupEvent(ctx context.Context, groupID *int64, seen map[batchSeenKey]struct{}) error {
-	if groupID == nil || *groupID <= 0 || s.isRunModeSimple() {
+	if groupID == nil || *groupID <= 0 {
 		return nil
 	}
 	if seen != nil {
@@ -664,7 +667,7 @@ func (s *SnapshotService) reconcileGroupLifecycle(ctx context.Context, groupID i
 // active 仅 Reopen canonical bucket；missing/inactive 同时 Retire canonical 与已登记历史 bucket；
 // group event 路径只有在权威决策和后续重建全部成功后才会标记 seen。
 func (s *SnapshotService) prepareGroupLifecycle(ctx context.Context, groupID int64, knownHistorical []SchedulerBucket) (plan schedulerGroupLifecyclePlan, retErr error) {
-	if groupID <= 0 || s.isRunModeSimple() {
+	if groupID <= 0 {
 		return schedulerGroupLifecyclePlan{}, nil
 	}
 	if s.cache == nil || s.groupRepo == nil {
@@ -757,21 +760,11 @@ func (s *SnapshotService) rebuildByAccount(ctx context.Context, account Snapshot
 	if account == nil {
 		return nil
 	}
-	groupIDs = s.normalizeGroupIDs(groupIDs)
-	if len(groupIDs) == 0 {
-		return nil
-	}
-
-	buckets := s.bucketsForPlatform(account.SnapshotMetadata().Platform, groupIDs, seen)
-	if account.SnapshotMetadata().Platform == capability.PlatformAntigravity && account.SnapshotMetadata().MixedScheduling {
-		buckets = append(buckets, s.bucketsForPlatform(capability.PlatformAnthropic, groupIDs, seen)...)
-		buckets = append(buckets, s.bucketsForPlatform(capability.PlatformGemini, groupIDs, seen)...)
-	}
-	return s.rebuildBuckets(ctx, buckets, reason)
+	return s.rebuildByGroupIDs(ctx, groupIDs, reason, seen)
 }
 
 func schedulerSnapshotPlatforms() []string {
-	return []string{capability.PlatformAnthropic, capability.PlatformGemini, capability.PlatformOpenAI, capability.PlatformAntigravity, capability.PlatformQoder, capability.PlatformGrok}
+	return append([]string{""}, capability.AccountPlatforms()...)
 }
 
 // 生命周期辅助函数有意排除 group0；full rebuild 构造 group0 canonical 集时必须显式调用 canonical helper。
@@ -789,9 +782,6 @@ func schedulerCanonicalBuckets(groupID int64) []SchedulerBucket {
 			SchedulerBucket{GroupID: groupID, Platform: platform, Mode: SchedulerModeSingle},
 			SchedulerBucket{GroupID: groupID, Platform: platform, Mode: SchedulerModeForced},
 		)
-		if platform == capability.PlatformAnthropic || platform == capability.PlatformGemini {
-			buckets = append(buckets, SchedulerBucket{GroupID: groupID, Platform: platform, Mode: SchedulerModeMixed})
-		}
 	}
 	return buckets
 }
@@ -809,9 +799,6 @@ func (s *SnapshotService) rebuildByGroupIDs(ctx context.Context, groupIDs []int6
 }
 
 func (s *SnapshotService) bucketsForPlatform(platform string, groupIDs []int64, seen map[batchSeenKey]struct{}) []SchedulerBucket {
-	if platform == "" {
-		return nil
-	}
 	buckets := make([]SchedulerBucket, 0, len(groupIDs)*3)
 	for _, gid := range groupIDs {
 		// 同一轮轮询中跳过已经重建过的（分组、平台）组合。首次重建会从数据库
@@ -825,9 +812,6 @@ func (s *SnapshotService) bucketsForPlatform(platform string, groupIDs []int64, 
 		}
 		buckets = append(buckets, SchedulerBucket{GroupID: gid, Platform: platform, Mode: SchedulerModeSingle})
 		buckets = append(buckets, SchedulerBucket{GroupID: gid, Platform: platform, Mode: SchedulerModeForced})
-		if platform == capability.PlatformAnthropic || platform == capability.PlatformGemini {
-			buckets = append(buckets, SchedulerBucket{GroupID: gid, Platform: platform, Mode: SchedulerModeMixed})
-		}
 	}
 	return buckets
 }
@@ -988,16 +972,6 @@ func (s *SnapshotService) rebuildFullSnapshot(ctx context.Context, reason string
 		return err
 	}
 	registered = dedupeBuckets(registered)
-
-	if s.isRunModeSimple() {
-		canonical := schedulerCanonicalBuckets(0)
-		captured, err := s.captureFullRebuildCanonicalTasks(ctx, canonical)
-		if err != nil {
-			return err
-		}
-		ordinary := appendBucketsExcept(nil, registered, canonical)
-		return s.prepareAndRebuildFullSnapshot(ctx, captured, nil, ordinary, reason)
-	}
 
 	activeGroupIDs, err := s.listActiveSchedulerGroupIDs(ctx)
 	if err != nil {
@@ -1410,42 +1384,13 @@ func (s *SnapshotService) loadAccountsFromDB(ctx context.Context, bucket Schedul
 	if s.accountRepo == nil {
 		return nil, ErrSchedulerCacheNotReady
 	}
-	groupID := bucket.GroupID
-	if s.isRunModeSimple() {
-		groupID = 0
+	if bucket.GroupID <= 0 {
+		return nil, nil
 	}
-
-	if useMixed {
-		platforms := []string{bucket.Platform, capability.PlatformAntigravity}
-		var accounts []SnapshotAccount
-		var err error
-		if groupID > 0 {
-			accounts, err = s.accountRepo.ListSchedulableByGroupIDAndPlatforms(ctx, groupID, platforms)
-		} else if s.isRunModeSimple() {
-			accounts, err = s.accountRepo.ListSchedulableByPlatforms(ctx, platforms)
-		} else {
-			accounts, err = s.accountRepo.ListSchedulableUngroupedByPlatforms(ctx, platforms)
-		}
-		if err != nil {
-			return nil, err
-		}
-		filtered := make([]SnapshotAccount, 0, len(accounts))
-		for _, acc := range accounts {
-			if acc.SnapshotMetadata().Platform == capability.PlatformAntigravity && !acc.SnapshotMetadata().MixedScheduling {
-				continue
-			}
-			filtered = append(filtered, acc)
-		}
-		return filtered, nil
+	if bucket.Platform == "" {
+		return s.accountRepo.ListSchedulableByGroupIDAndPlatforms(ctx, bucket.GroupID, capability.AccountPlatforms())
 	}
-
-	if groupID > 0 {
-		return s.accountRepo.ListSchedulableByGroupIDAndPlatform(ctx, groupID, bucket.Platform)
-	}
-	if s.isRunModeSimple() {
-		return s.accountRepo.ListSchedulableByPlatform(ctx, bucket.Platform)
-	}
-	return s.accountRepo.ListSchedulableUngroupedByPlatform(ctx, bucket.Platform)
+	return s.accountRepo.ListSchedulableByGroupIDAndPlatform(ctx, bucket.GroupID, bucket.Platform)
 }
 
 func (s *SnapshotService) loadAccountsForRebuild(
@@ -1481,9 +1426,6 @@ func (s *SnapshotService) bucketFor(groupID *int64, platform string, mode string
 }
 
 func (s *SnapshotService) normalizeGroupID(groupID *int64) int64 {
-	if s.isRunModeSimple() {
-		return 0
-	}
 	if groupID == nil || *groupID <= 0 {
 		return 0
 	}
@@ -1491,9 +1433,6 @@ func (s *SnapshotService) normalizeGroupID(groupID *int64) int64 {
 }
 
 func (s *SnapshotService) normalizeGroupIDs(groupIDs []int64) []int64 {
-	if s.isRunModeSimple() {
-		return []int64{0}
-	}
 	if len(groupIDs) == 0 {
 		return []int64{0}
 	}
@@ -1518,9 +1457,6 @@ func (s *SnapshotService) normalizeGroupIDs(groupIDs []int64) []int64 {
 func (s *SnapshotService) resolveMode(platform string, hasForcePlatform bool) string {
 	if hasForcePlatform {
 		return SchedulerModeForced
-	}
-	if platform == capability.PlatformAnthropic || platform == capability.PlatformGemini {
-		return SchedulerModeMixed
 	}
 	return SchedulerModeSingle
 }
@@ -1550,10 +1486,6 @@ func (s *SnapshotService) withFallbackTimeout(ctx context.Context) (context.Cont
 		}
 	}
 	return context.WithTimeout(ctx, timeout)
-}
-
-func (s *SnapshotService) isRunModeSimple() bool {
-	return s.cfg != nil && s.cfg.Simple
 }
 
 func (s *SnapshotService) outboxPollInterval() time.Duration {
@@ -1684,6 +1616,7 @@ func (s *SnapshotService) accountNotFound() error {
 	}
 	return ErrSnapshotAccountNotFound
 }
+
 func (s *SnapshotService) groupNotFound() error {
 	if s.bindings.GroupNotFound != nil {
 		return s.bindings.GroupNotFound

@@ -6,9 +6,12 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io/fs"
+	"net/url"
 	"os"
 	"strings"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	"github.com/stretchr/testify/require"
@@ -24,8 +27,11 @@ import (
 )
 
 // 历史迁移契约使用独立 PostgreSQL，按原顺序应用并重放 SQL。
-var integrationDB *sql.DB
-var integrationEntClient *dbent.Client
+var (
+	integrationDSN       string
+	integrationDB        *sql.DB
+	integrationEntClient *dbent.Client
+)
 
 func TestMain(m *testing.M) {
 	time.Local = time.UTC
@@ -56,6 +62,7 @@ func runPostgresTests(m *testing.M) int {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
+	integrationDSN = dsn
 	integrationDB, err = sql.Open("postgres", dsn)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -78,6 +85,41 @@ func runPostgresTests(m *testing.M) int {
 func testTx(t *testing.T) *sql.Tx {
 	t.Helper()
 	tx, err := integrationDB.BeginTx(context.Background(), nil)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = tx.Rollback() })
+	return tx
+}
+
+// historicalTx 从真实迁移恢复目标升级前的数据库，避免当前 schema 干扰历史契约。
+func historicalTx(t *testing.T, before string) *sql.Tx {
+	t.Helper()
+	ctx := context.Background()
+	name := fmt.Sprintf("migration_history_%d", time.Now().UnixNano())
+	_, err := integrationDB.ExecContext(ctx, "CREATE DATABASE "+name)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_, err := integrationDB.ExecContext(ctx, "DROP DATABASE "+name+" WITH (FORCE)")
+		require.NoError(t, err)
+	})
+	dsn, err := url.Parse(integrationDSN)
+	require.NoError(t, err)
+	dsn.Path = "/" + name
+	db, err := sql.Open("postgres", dsn.String())
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, db.Close()) })
+	history := fstest.MapFS{}
+	entries, err := fs.ReadDir(migrations.FS, ".")
+	require.NoError(t, err)
+	for _, entry := range entries {
+		if entry.Name() >= before {
+			continue
+		}
+		data, err := migrations.FS.ReadFile(entry.Name())
+		require.NoError(t, err)
+		history[entry.Name()] = &fstest.MapFile{Data: data}
+	}
+	require.NoError(t, postgresinfra.ApplyMigrations(ctx, db, history))
+	tx, err := db.BeginTx(ctx, nil)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = tx.Rollback() })
 	return tx

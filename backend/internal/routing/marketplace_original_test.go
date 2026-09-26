@@ -68,7 +68,7 @@ func TestParseMarketplaceAvailabilityWindowSettings(t *testing.T) {
 
 func TestModelMarketplaceQoderModelUsesStandardPricing(t *testing.T) {
 	svc := newMarketplaceFixture(nil, nil, newMarketplaceCalculator(nil, nil), nil)
-	group := &routing.Group{ID: 1, Platform: capability.PlatformQoder, RateMultiplier: 1}
+	group := &routing.Group{ID: 1, RateMultiplier: 1}
 
 	pricing := svc.PublicModelPricing(context.Background(), group, "claude-sonnet-4")
 
@@ -93,7 +93,7 @@ func TestModelMarketplaceQoderGroupMappedBasisDoesNotUseRequestedStandardPricing
 
 		billingService, NewModelPricingResolver(pricingConfigService, billingService),
 	)
-	group := &routing.Group{ID: groupID, Platform: capability.PlatformQoder, RateMultiplier: 1}
+	group := &routing.Group{ID: groupID, RateMultiplier: 1}
 
 	pricing := svc.RequestableModelPricing(context.Background(), group, routing.MarketplaceModelDef{ID: "gpt-5.4", PricingModel: "qmodel"})
 
@@ -118,7 +118,7 @@ func TestModelMarketplaceQoderUpstreamBasisDoesNotUseRequestedStandardPricing(t 
 
 		billingService, NewModelPricingResolver(pricingConfigService, billingService),
 	)
-	group := &routing.Group{ID: groupID, Platform: capability.PlatformQoder, RateMultiplier: 1}
+	group := &routing.Group{ID: groupID, RateMultiplier: 1}
 
 	pricing := svc.RequestableModelPricing(context.Background(), group, routing.MarketplaceModelDef{ID: "gpt-5.4-mini", PricingModel: "qmodel"})
 
@@ -143,7 +143,7 @@ func TestModelMarketplaceQoderCustomImageAliasWithoutManualPricingRemainsUnknown
 
 		billingService, NewModelPricingResolver(pricingConfigService, billingService),
 	)
-	group := &routing.Group{ID: groupID, Platform: capability.PlatformQoder, RateMultiplier: 1}
+	group := &routing.Group{ID: groupID, RateMultiplier: 1}
 
 	pricing := svc.RequestableModelPricing(context.Background(), group, routing.MarketplaceModelDef{ID: "custom-image-alias", PricingModel: "qmodel"})
 
@@ -155,7 +155,7 @@ func TestModelMarketplaceQoderCustomImageAliasWithoutManualPricingRemainsUnknown
 func TestModelMarketplaceQoderAliasesWithoutAnyBasePricingRemainUnknown(t *testing.T) {
 	billingService := newMarketplaceCalculator(nil, nil)
 	svc := newMarketplaceFixture(nil, nil, billingService, nil)
-	group := &routing.Group{ID: 1, Platform: capability.PlatformQoder, RateMultiplier: 1.25}
+	group := &routing.Group{ID: 1, RateMultiplier: 1.25}
 
 	for _, model := range []string{"auto", "qwen3.8-max", "qmodel_38max"} {
 		pricing := svc.PublicModelPricing(context.Background(), group, model)
@@ -186,7 +186,7 @@ func TestModelMarketplaceQoderManualConfigPricingOverridesDefaultAliasDisplayPri
 
 		billingService, NewModelPricingResolver(pricingConfigService, billingService),
 	)
-	group := &routing.Group{ID: groupID, Platform: capability.PlatformQoder, RateMultiplier: 1}
+	group := &routing.Group{ID: groupID, RateMultiplier: 1}
 
 	pricing := svc.PublicModelPricing(context.Background(), group, "auto")
 
@@ -218,7 +218,7 @@ func TestModelMarketplacePricingConfigImageInputPricingIsDisplayed(t *testing.T)
 
 		billingService, NewModelPricingResolver(pricingConfigService, billingService),
 	)
-	group := &routing.Group{ID: groupID, Platform: capability.PlatformOpenAI, RateMultiplier: 1.5}
+	group := &routing.Group{ID: groupID, RateMultiplier: 1.5}
 
 	pricing := svc.PublicModelPricing(context.Background(), group, "gpt-image-edit")
 
@@ -300,7 +300,7 @@ func TestModelMarketplaceQoderBlankConfigPricingRemainsUnknown(t *testing.T) {
 
 		billingService, NewModelPricingResolver(pricingConfigService, billingService),
 	)
-	group := &routing.Group{ID: groupID, Platform: capability.PlatformQoder, RateMultiplier: 1}
+	group := &routing.Group{ID: groupID, RateMultiplier: 1}
 
 	pricing := svc.PublicModelPricing(context.Background(), group, "auto")
 
@@ -333,7 +333,7 @@ func TestModelMarketplaceQoderBlankRouteKeyPricingShowsAliasManualPricing(t *tes
 
 		billingService, NewModelPricingResolver(pricingConfigService, billingService),
 	)
-	group := &routing.Group{ID: groupID, Platform: capability.PlatformQoder, RateMultiplier: 1}
+	group := &routing.Group{ID: groupID, RateMultiplier: 1}
 
 	pricing := svc.PublicModelPricing(context.Background(), group, "qwen3.7-plus")
 
@@ -363,7 +363,7 @@ func TestModelMarketplaceQoderRequestedBasisDoesNotInferRouteKeyPricing(t *testi
 
 		billingService, NewModelPricingResolver(pricingConfigService, billingService),
 	)
-	group := &routing.Group{ID: groupID, Platform: capability.PlatformQoder, RateMultiplier: 1}
+	group := &routing.Group{ID: groupID, RateMultiplier: 1}
 
 	pricing := svc.PublicModelPricing(context.Background(), group, "qwen3.7-plus")
 
@@ -400,7 +400,7 @@ func TestModelMarketplaceQoderAliasManualPricingOverridesRouteKeyManualPricing(t
 
 		billingService, NewModelPricingResolver(pricingConfigService, billingService),
 	)
-	group := &routing.Group{ID: groupID, Platform: capability.PlatformQoder, RateMultiplier: 1}
+	group := &routing.Group{ID: groupID, RateMultiplier: 1}
 
 	pricing := svc.PublicModelPricing(context.Background(), group, "qwen3.7-plus")
 
@@ -435,7 +435,7 @@ func TestModelMarketplaceQoderNonUniformIntervalsDisplayAsContextIntervals(t *te
 
 		billingService, NewModelPricingResolver(pricingConfigService, billingService),
 	)
-	group := &routing.Group{ID: groupID, Platform: capability.PlatformQoder, RateMultiplier: 1}
+	group := &routing.Group{ID: groupID, RateMultiplier: 1}
 
 	pricing := svc.PublicModelPricing(context.Background(), group, "qwen3.7-plus")
 
@@ -475,7 +475,7 @@ func TestModelMarketplaceQoderStandardModelPartialIntervalKeepsBaseDisplayFields
 
 		billingService, NewModelPricingResolver(pricingConfigService, billingService),
 	)
-	group := &routing.Group{ID: groupID, Platform: capability.PlatformQoder, RateMultiplier: 1}
+	group := &routing.Group{ID: groupID, RateMultiplier: 1}
 
 	pricing := svc.PublicModelPricing(context.Background(), group, "gpt-5.4")
 
@@ -509,7 +509,7 @@ func TestModelMarketplaceGroupPricingOverridesConfigPricing(t *testing.T) {
 		billingService, NewModelPricingResolver(pricingConfigService, billingService),
 	)
 	group := &routing.Group{
-		ID: groupID, Platform: capability.PlatformOpenAI, RateMultiplier: 2, LongContextPricingEnabled: true,
+		ID: groupID, RateMultiplier: 2, LongContextPricingEnabled: true,
 		ModelPricing: []routing.ModelPricingEntry{{
 			Models: []string{"gpt-5.4-mini"}, BillingMode: routing.BillingModeToken,
 			InputPrice: &groupInput, OutputPrice: &groupOutput,
@@ -533,7 +533,7 @@ func TestModelMarketplaceGroupExplicitZeroPricingRemainsPriced(t *testing.T) {
 		billingService, NewModelPricingResolver(nil, billingService),
 	)
 	group := &routing.Group{
-		ID: 906, Platform: capability.PlatformOpenAI, RateMultiplier: 1, LongContextPricingEnabled: true,
+		ID: 906, RateMultiplier: 1, LongContextPricingEnabled: true,
 		ModelPricing: []routing.ModelPricingEntry{{
 			Models: []string{"gpt-5.4"}, BillingMode: routing.BillingModeToken,
 			InputPrice: &zero, OutputPrice: &zero,
@@ -553,7 +553,7 @@ func TestModelMarketplaceGroupCanDisableBuiltInLongContextDisplay(t *testing.T) 
 
 		billingService, NewModelPricingResolver(nil, billingService),
 	)
-	group := &routing.Group{ID: 907, Platform: capability.PlatformOpenAI, RateMultiplier: 1, LongContextPricingEnabled: false}
+	group := &routing.Group{ID: 907, RateMultiplier: 1, LongContextPricingEnabled: false}
 
 	pricing := svc.PublicModelPricing(context.Background(), group, "gpt-5.4")
 
@@ -562,7 +562,7 @@ func TestModelMarketplaceGroupCanDisableBuiltInLongContextDisplay(t *testing.T) 
 	}
 }
 
-func TestModelMarketplaceQoderOmitsOfficialPriceDiscount(t *testing.T) {
+func TestModelMarketplaceDoesNotInventModelsWithoutCandidates(t *testing.T) {
 	settingRepo := &marketplaceSettingRepoStub{settings: map[string]string{
 		billing.SettingKeyReasoningPointRMBUnitPrice: "1",
 		billing.SettingKeyUSDExchangeRate:            "7",
@@ -571,7 +571,6 @@ func TestModelMarketplaceQoderOmitsOfficialPriceDiscount(t *testing.T) {
 		&marketplaceGroupRepoStub{groups: []routing.Group{{
 			ID:                 1,
 			Name:               "Qoder",
-			Platform:           capability.PlatformQoder,
 			Status:             billing.StatusActive,
 			RateMultiplier:     1,
 			ActiveAccountCount: 1,
@@ -583,21 +582,7 @@ func TestModelMarketplaceQoderOmitsOfficialPriceDiscount(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListPublic returned error: %v", err)
 	}
-	if len(groups) != 1 {
-		t.Fatalf("ListPublic returned %d groups, want 1", len(groups))
-	}
-	if groups[0].OfficialPriceRatio != nil || groups[0].OfficialPriceRMBEquivalent != nil {
-		t.Fatalf("Qoder official price discount should be omitted, got ratio=%v rmb=%v", groups[0].OfficialPriceRatio, groups[0].OfficialPriceRMBEquivalent)
-	}
-	if len(groups[0].Models) == 0 {
-		t.Fatal("Qoder marketplace should still list public models")
-	}
-	for _, model := range groups[0].Models {
-		if model.ID == "claude-opus-4-6" {
-			require.Equal(t, "priced", model.Pricing.PriceStatus)
-			require.Positive(t, model.Pricing.InputPricePerToken)
-		}
-	}
+	require.Empty(t, groups, "账号计数不能替代实际可请求能力")
 }
 
 type marketplaceGroupRepoStub struct {
@@ -669,7 +654,7 @@ func TestModelMarketplacePublicModelsIncludeModalities(t *testing.T) {
 	}})
 	billingService := newMarketplaceCalculator(pricingSvc, nil)
 	svc := newMarketplaceFixture(nil, nil, billingService, nil)
-	group := &routing.Group{ID: 1, Platform: capability.PlatformOpenAI, RateMultiplier: 1}
+	group := &routing.Group{ID: 1, RateMultiplier: 1}
 
 	models := svc.BuildPublicModels(context.Background(), group, []routing.MarketplaceModelDef{
 		{ID: "gpt-image-2", DisplayName: "GPT Image 2"},
@@ -702,7 +687,7 @@ func TestModelMarketplaceGeminiTierModalitiesPreservePublicIDs(t *testing.T) {
 		{ID: "gemini-3.8-flash-tiered"},
 		{ID: "public-google", PricingModel: "gemini-3.8-flash-tiered"},
 	}
-	models := svc.BuildPublicModels(context.Background(), &routing.Group{ID: 1, Platform: capability.PlatformGemini, RateMultiplier: 1}, defs)
+	models := svc.BuildPublicModels(context.Background(), &routing.Group{ID: 1, RateMultiplier: 1}, defs)
 	require.Len(t, models, len(defs))
 	for i, model := range models {
 		require.Equal(t, defs[i].ID, model.ID)

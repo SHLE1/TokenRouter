@@ -108,7 +108,6 @@ func RegisterAccountRoutes(admin *gin.RouterGroup, endpoints AccountRouteEndpoin
 		accounts.GET("/:id", endpoints.AccountManagement.GetByID)
 		accounts.POST("", endpoints.AccountManagement.Create)
 		accounts.POST("/:id/duplicate", endpoints.AccountManagement.Duplicate)
-		accounts.POST("/check-mixed-channel", endpoints.AccountManagement.CheckMixedChannel)
 		accounts.POST("/import/codex-session", endpoints.AccountCodexImport.ImportCodexSession)
 		accounts.POST("/sync/crs", endpoints.AccountCRS.SyncFromCRS)
 		accounts.POST("/sync/crs/preview", endpoints.AccountCRS.PreviewFromCRS)

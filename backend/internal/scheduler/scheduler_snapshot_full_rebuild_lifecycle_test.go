@@ -266,7 +266,7 @@ func TestSchedulerFullRebuildActiveTombstoneDoesNotBlockFollowingGroupEvent(t *t
 	groups := &fullRebuildLifecycleGroupRepo{
 		activeIDs: []int64{groupID},
 		fresh: map[int64]*SnapshotGroup{
-			groupID: &SnapshotGroup{ID: groupID, Status: StatusActive, Hydrated: true},
+			groupID: {ID: groupID, Status: StatusActive, Hydrated: true},
 		},
 		freshErr: make(map[int64]error),
 	}
@@ -293,7 +293,7 @@ func TestSchedulerFullRebuildActiveTombstoneDoesNotBlockFollowingGroupEvent(t *t
 	for _, held := range reopenHeld {
 		require.True(t, held)
 	}
-	require.Equal(t, expectedCanonicalAccountQueryCount()*3, accounts.callCount())
+	require.Equal(t, expectedCanonicalAccountQueryCount()*2, accounts.callCount())
 }
 
 func TestSchedulerFullRebuildGlobalReadErrorsFailBeforeMutationOrDB(t *testing.T) {
@@ -354,7 +354,7 @@ func TestSchedulerFullRebuildFreshActivePreparesEveryTokenBeforeFirstDB(t *testi
 	cache := newFullRebuildLifecycleCache(historical)
 	groups := &fullRebuildLifecycleGroupRepo{
 		fresh: map[int64]*SnapshotGroup{
-			groupID: &SnapshotGroup{ID: groupID, Status: StatusActive, Hydrated: true},
+			groupID: {ID: groupID, Status: StatusActive, Hydrated: true},
 		},
 		freshErr: make(map[int64]error),
 	}
@@ -371,7 +371,7 @@ func TestSchedulerFullRebuildFreshActivePreparesEveryTokenBeforeFirstDB(t *testi
 
 	require.NoError(t, svc.rebuildFullSnapshot(context.Background(), "test"))
 	require.Equal(t, capturesAtFirstDB, cache.captureAttemptCount())
-	require.Equal(t, expectedCanonicalAccountQueryCount()*2+1, accounts.callCount())
+	require.Equal(t, expectedCanonicalAccountQueryCount()+1, accounts.callCount())
 	require.Equal(t, expectedCanonicalAccountQueryCount()+1, accounts.groupCallCount(groupID))
 	_, historicalPublished := cache.counts(historical)
 	require.Equal(t, 1, historicalPublished)
@@ -408,13 +408,13 @@ func TestSchedulerFullRebuildPreservesGroupZeroActiveHistoricalAndInvalidRegistr
 	activeMixed := SchedulerBucket{GroupID: groupID, Platform: PlatformAnthropic, Mode: SchedulerModeMixed}
 	invalidHistorical := SchedulerBucket{GroupID: -7, Platform: "legacy-invalid", Mode: "unknown"}
 	cache := newFullRebuildLifecycleCache(groupZeroHistorical, activeHistorical, activeForced, activeMixed, invalidHistorical)
-	groups := &fullRebuildFallbackGroupRepo{groups: []SnapshotGroup{SnapshotGroup{ID: groupID, Status: StatusActive}}}
+	groups := &fullRebuildFallbackGroupRepo{groups: []SnapshotGroup{{ID: groupID, Status: StatusActive}}}
 	accounts := &fullRebuildAccountRepo{}
 	svc := newFullRebuildLifecycleService(cache, nil, accounts, groups, "standard")
 
 	require.NoError(t, svc.rebuildFullSnapshot(context.Background(), "test"))
-	require.Equal(t, len(schedulerCanonicalBuckets(0))*2+3, cache.captureAttemptCount())
-	require.Equal(t, expectedCanonicalAccountQueryCount()*2+3, accounts.callCount())
+	require.Equal(t, len(schedulerCanonicalBuckets(0))*2+4, cache.captureAttemptCount())
+	require.Equal(t, expectedCanonicalAccountQueryCount()+2, accounts.callCount())
 	groups.mu.Lock()
 	require.Equal(t, 1, groups.listCalls)
 	groups.mu.Unlock()
@@ -453,7 +453,7 @@ func TestSchedulerFullRebuildActiveTombstoneFreshInactiveOrMissingFiltersAllGrou
 
 			require.NoError(t, svc.rebuildFullSnapshot(context.Background(), "test"))
 			require.Zero(t, accounts.groupCallCount(groupID))
-			require.Equal(t, expectedCanonicalAccountQueryCount(), accounts.groupCallCount(0))
+			require.Zero(t, accounts.groupCallCount(0))
 			require.Empty(t, cache.tokens())
 			require.Equal(t, bucketStrings(append(canonical, historical)), bucketStrings(cache.retiredBuckets()))
 			for _, bucket := range append(canonical, historical) {
@@ -476,8 +476,8 @@ func TestSchedulerFullRebuildStaleCandidatesAreSortedAndNeverReopenedAcrossRound
 	cache := newFullRebuildLifecycleCache(historical...)
 	groups := &fullRebuildLifecycleGroupRepo{
 		fresh: map[int64]*SnapshotGroup{
-			1: &SnapshotGroup{ID: 1, Status: StatusDisabled, Hydrated: true},
-			3: &SnapshotGroup{ID: 3, Status: StatusDisabled, Hydrated: true},
+			1: {ID: 1, Status: StatusDisabled, Hydrated: true},
+			3: {ID: 3, Status: StatusDisabled, Hydrated: true},
 		},
 		freshErr: make(map[int64]error),
 	}
@@ -511,8 +511,8 @@ func TestSchedulerFullRebuildPartialLifecycleFailureReturnsBeforeDBAndRetries(t 
 	cache := newFullRebuildLifecycleCache(historical...)
 	groups := &fullRebuildLifecycleGroupRepo{
 		fresh: map[int64]*SnapshotGroup{
-			1: &SnapshotGroup{ID: 1, Status: StatusDisabled, Hydrated: true},
-			3: &SnapshotGroup{ID: 3, Status: StatusDisabled, Hydrated: true},
+			1: {ID: 1, Status: StatusDisabled, Hydrated: true},
+			3: {ID: 3, Status: StatusDisabled, Hydrated: true},
 		},
 		freshErr: map[int64]error{2: wantErr},
 	}
@@ -536,7 +536,7 @@ func TestSchedulerFullRebuildPartialLifecycleFailureReturnsBeforeDBAndRetries(t 
 	_, _, freshCalls = groups.stats()
 	require.Equal(t, []int64{1, 2, 2, 3}, freshCalls)
 	require.Equal(t, retiredPerGroup*3, len(cache.retiredBuckets()))
-	require.Equal(t, expectedCanonicalAccountQueryCount(), accounts.callCount())
+	require.Zero(t, accounts.callCount())
 	require.Empty(t, cache.tokens())
 }
 
@@ -549,7 +549,7 @@ func TestSchedulerFullRebuildActiveTombstoneLazyRecoveryDiscardsPartialCaptureTa
 	groups := &fullRebuildLifecycleGroupRepo{
 		activeIDs: []int64{groupID},
 		fresh: map[int64]*SnapshotGroup{
-			groupID: &SnapshotGroup{ID: groupID, Status: StatusActive, Hydrated: true},
+			groupID: {ID: groupID, Status: StatusActive, Hydrated: true},
 		},
 		freshErr: make(map[int64]error),
 	}
@@ -566,7 +566,7 @@ func TestSchedulerFullRebuildActiveTombstoneLazyRecoveryDiscardsPartialCaptureTa
 
 	require.NoError(t, svc.rebuildFullSnapshot(context.Background(), "test"))
 	require.Equal(t, capturesAtFirstDB, cache.captureAttemptCount())
-	require.Equal(t, expectedCanonicalAccountQueryCount()*2+1, accounts.callCount())
+	require.Equal(t, expectedCanonicalAccountQueryCount()+1, accounts.callCount())
 	for _, bucket := range canonical {
 		attempts, published := cache.counts(bucket)
 		require.Equal(t, 1, attempts, "discarded pre-recovery tokens must never publish: %s", bucket.String())
@@ -578,35 +578,21 @@ func TestSchedulerFullRebuildActiveTombstoneLazyRecoveryDiscardsPartialCaptureTa
 	require.Equal(t, 1, listCalls)
 }
 
-func TestSchedulerFullRebuildSimpleModePreservesRegistryWithoutLifecycleAuthority(t *testing.T) {
-	registered := []SchedulerBucket{
-		{GroupID: 0, Platform: "legacy-zero", Mode: "unknown"},
-		{GroupID: 106, Platform: "legacy-positive", Mode: "unknown"},
-		{GroupID: -8, Platform: "legacy-negative", Mode: "unknown"},
-	}
+func TestSchedulerFullRebuildSimpleModeUsesGroupLifecycleAuthority(t *testing.T) {
+	registered := []SchedulerBucket{{GroupID: 0, Platform: "legacy-zero", Mode: "unknown"}, {GroupID: 106, Platform: "legacy-positive", Mode: "unknown"}, {GroupID: -8, Platform: "legacy-negative", Mode: "unknown"}}
 	cache := newFullRebuildLifecycleCache(registered...)
-	groups := &fullRebuildLifecycleGroupRepo{
-		activeIDsErr: errors.New("simple mode must not query groups"),
-		fresh:        make(map[int64]*SnapshotGroup),
-		freshErr:     make(map[int64]error),
-	}
+	groups := &fullRebuildLifecycleGroupRepo{fresh: make(map[int64]*SnapshotGroup), freshErr: make(map[int64]error)}
 	accounts := &fullRebuildAccountRepo{}
 	svc := newFullRebuildLifecycleService(cache, nil, accounts, groups, "simple")
-
 	require.NoError(t, svc.rebuildFullSnapshot(context.Background(), "test"))
 	activeCalls, fallbackCalls, freshCalls := groups.stats()
-	require.Zero(t, activeCalls)
+	require.Equal(t, 1, activeCalls)
 	require.Zero(t, fallbackCalls)
-	require.Empty(t, freshCalls)
-	require.Equal(t, len(schedulerCanonicalBuckets(0))+len(registered), cache.captureAttemptCount())
-	require.Equal(t, expectedCanonicalAccountQueryCount()+len(registered), accounts.callCount())
-	require.Equal(t, expectedCanonicalAccountQueryCount()+len(registered), accounts.groupCallCount(0))
-	require.Empty(t, cache.retiredBuckets())
+	require.Equal(t, []int64{106}, freshCalls)
+	require.Equal(t, len(schedulerCanonicalBuckets(0))+2, cache.captureAttemptCount())
+	require.Zero(t, accounts.callCount())
+	require.Equal(t, bucketStrings(append(schedulerCanonicalBuckets(106), registered[1])), bucketStrings(cache.retiredBuckets()))
 	require.Empty(t, cache.tokens())
-	for _, bucket := range registered {
-		_, published := cache.counts(bucket)
-		require.Equal(t, 1, published, bucket.String())
-	}
 }
 
 func TestSchedulerFullRebuildFreshReopenLockBusyRetriesWithoutBlockingOrdinaryTasks(t *testing.T) {
@@ -618,7 +604,7 @@ func TestSchedulerFullRebuildFreshReopenLockBusyRetriesWithoutBlockingOrdinaryTa
 	groups := &fullRebuildLifecycleGroupRepo{
 		activeIDs: []int64{groupID},
 		fresh: map[int64]*SnapshotGroup{
-			groupID: &SnapshotGroup{ID: groupID, Status: StatusActive, Hydrated: true},
+			groupID: {ID: groupID, Status: StatusActive, Hydrated: true},
 		},
 		freshErr: make(map[int64]error),
 	}
@@ -630,11 +616,11 @@ func TestSchedulerFullRebuildFreshReopenLockBusyRetriesWithoutBlockingOrdinaryTa
 	require.Zero(t, cache.currentWatermark())
 	_, groupZeroPublished := cache.counts(schedulerCanonicalBuckets(0)[0])
 	require.Equal(t, 1, groupZeroPublished, "ordinary tasks must still run when one strict Reopen task is busy")
-	require.Equal(t, expectedCanonicalAccountQueryCount()*2, accounts.callCount())
+	require.Equal(t, expectedCanonicalAccountQueryCount(), accounts.callCount())
 
 	svc.pollOutbox()
 	require.Equal(t, int64(1), cache.currentWatermark())
-	require.Equal(t, expectedCanonicalAccountQueryCount()*4, accounts.callCount())
+	require.Equal(t, expectedCanonicalAccountQueryCount()*2, accounts.callCount())
 	_, busyBucketPublished := cache.counts(canonical[0])
 	require.Equal(t, 1, busyBucketPublished)
 	activeCalls, fallbackCalls, freshCalls := groups.stats()
@@ -652,7 +638,7 @@ func TestSchedulerFullRebuildOrdinaryLockBusyKeepsExistingSkipSemantics(t *testi
 	svc := newFullRebuildLifecycleService(cache, nil, accounts, groups, "standard")
 
 	require.NoError(t, svc.rebuildFullSnapshot(context.Background(), "test"))
-	require.Equal(t, expectedCanonicalAccountQueryCount(), accounts.callCount())
+	require.Zero(t, accounts.callCount())
 	attempts, published := cache.counts(busyBucket)
 	require.Zero(t, attempts)
 	require.Zero(t, published)

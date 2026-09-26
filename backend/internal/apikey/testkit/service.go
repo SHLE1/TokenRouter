@@ -2,8 +2,6 @@
 package testkit
 
 import (
-	"context"
-
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/config"
@@ -38,7 +36,3 @@ func NewService(keys apikey.APIKeyRepository, users identity.UserRepository, gro
 
 // groupSource 只补充原生分组接口的默认组读取，选择规则仍由 routing 拥有。
 type groupSource struct{ routing.GroupRepository }
-
-func (g groupSource) FindDefault(ctx context.Context, platform string) (*routing.Group, error) {
-	return routing.FindPlatformDefaultGroup(ctx, g.GroupRepository, platform)
-}

@@ -13,9 +13,11 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
 
-const VideoPendingTTL = 24 * time.Hour
-const VideoClaimTTL = 48 * time.Hour
-const grokMediaVideoRequestOwnerSource = "grok_video_request"
+const (
+	VideoPendingTTL                  = 24 * time.Hour
+	VideoClaimTTL                    = 48 * time.Hour
+	grokMediaVideoRequestOwnerSource = "grok_video_request"
+)
 
 // VideoOptions 仅投影绑定有效期，不传递完整应用配置。
 type VideoOptions struct{ StickyTTL time.Duration }
@@ -30,16 +32,19 @@ type VideoTasks struct {
 func NewVideoTasks(owners session.GatewayCache, billing session.GrokVideoBillingCache, options VideoOptions) *VideoTasks {
 	return &VideoTasks{owners: owners, billing: billing, options: options}
 }
+
 func videoSessionHash(seed string) string {
 	current, _ := scheduler.DeriveSessionHashes(seed)
 	return current
 }
+
 func videoSessionCacheKey(hash string) string {
 	if strings.TrimSpace(hash) == "" {
 		return ""
 	}
 	return "openai:" + strings.TrimSpace(hash)
 }
+
 func derefGroupID(id *int64) int64 {
 	if id == nil {
 		return 0
@@ -327,9 +332,8 @@ func (s *VideoTasks) TrackCreated(ctx context.Context, groupID *int64, taskID st
 
 // VideoBinding 只投影认证快照内的分组关系，不包含分组策略或凭据。
 type VideoBinding struct {
-	GroupID  int64
-	Platform string
-	Present  bool
+	GroupID int64
+	Present bool
 }
 type VideoOwner struct {
 	GroupID, AccountID int64
@@ -345,7 +349,7 @@ func (s *VideoTasks) ResolveCompositeVideo(ctx context.Context, taskID string, u
 		if accountErr == nil && accountID > 0 {
 			index := -1
 			for i, binding := range bindings {
-				if binding.GroupID == ownerID && binding.Present && binding.Platform == "grok" {
+				if binding.GroupID == ownerID && binding.Present {
 					index = i
 					break
 				}
@@ -357,7 +361,7 @@ func (s *VideoTasks) ResolveCompositeVideo(ctx context.Context, taskID string, u
 		lookupErr = err
 	}
 	for i, binding := range bindings {
-		if !binding.Present || binding.Platform != "grok" {
+		if !binding.Present {
 			continue
 		}
 		id := binding.GroupID

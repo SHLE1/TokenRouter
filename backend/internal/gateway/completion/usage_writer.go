@@ -55,5 +55,7 @@ func (s *Recorder) applyAccountStatsCost(ctx context.Context, row *UsageLog, acc
 	if source == nil {
 		return
 	}
-	row.AccountStatsCost = source.ResolveAccountStats(ctx, billing.AccountStatsCostInput{AccountID: accountID, GroupID: groupID, UpstreamModel: upstream, RequestedModel: requested, MappedModel: mapped, Tokens: tokens, RequestCount: count, ServiceTier: stringValueOrEmpty(row.ServiceTier), ReasoningEffort: stringValueOrEmpty(row.ReasoningEffort)})
+	row.AccountStatsCost = source.ResolveAccountStats(ctx, billing.AccountStatsCostInput{
+		PreferRequestedModel: row.Platform == "qoder", AccountID: accountID, GroupID: groupID, UpstreamModel: upstream, RequestedModel: requested, MappedModel: mapped, Tokens: tokens, RequestCount: count, ServiceTier: stringValueOrEmpty(row.ServiceTier), ReasoningEffort: stringValueOrEmpty(row.ReasoningEffort),
+	})
 }

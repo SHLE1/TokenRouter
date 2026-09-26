@@ -6,7 +6,6 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
@@ -22,7 +21,6 @@ func TestAPIKeyRepository_GetByKeyForAuth_PreservesMessagesDispatchModelConfig_S
 
 	group, err := client.Group.Create().
 		SetName("g-auth-dispatch-unit").
-		SetPlatform(capability.PlatformOpenAI).
 		SetStatus(billing.StatusActive).
 		SetRateMultiplier(1).
 		SetSchedulerType(string(routing.GroupSchedulerTypeAdvanced)).
@@ -72,7 +70,6 @@ func TestAPIKeyRepository_GetByKeyForAuth_PreservesImageGenerationControls_SQLit
 
 	group, err := client.Group.Create().
 		SetName("g-auth-images-unit").
-		SetPlatform(capability.PlatformOpenAI).
 		SetStatus(billing.StatusActive).
 		SetRateMultiplier(1).
 		SetAllowImageGeneration(true).
@@ -101,7 +98,6 @@ func TestAPIKeyRepository_GetByKeyForAuth_PreservesSessionIsolation_SQLite(t *te
 
 	group, err := client.Group.Create().
 		SetName("g-auth-session-isolation-unit").
-		SetPlatform(capability.PlatformOpenAI).
 		SetStatus(billing.StatusActive).
 		SetRateMultiplier(1).
 		SetSessionIsolationEnabled(true).

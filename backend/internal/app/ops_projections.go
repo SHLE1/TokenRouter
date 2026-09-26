@@ -19,14 +19,17 @@ func (a opsAccounts) ListPage(ctx context.Context, p pagination.PaginationParams
 	v, pg, e := a.store.ListWithFilters(ctx, p, platform, "", "", "", group, "")
 	return opsAccountViews(v), pg, e
 }
+
 func (a opsAccounts) ListOpsAccountsForStats(ctx context.Context, platform string, g *int64) ([]ops.AccountObservation, error) {
 	v, e := a.store.ListOpsAccountsForStats(ctx, platform, g)
 	return opsAccountViews(v), e
 }
+
 func (a opsAccounts) ListSchedulable(ctx context.Context) ([]ops.AccountObservation, error) {
 	v, e := a.store.ListSchedulable(ctx)
 	return opsAccountViews(v), e
 }
+
 func (a opsAccounts) ListSchedulableAccountLoads(ctx context.Context) ([]ops.AccountWithConcurrency, error) {
 	v, e := a.store.ListSchedulableAccountLoads(ctx)
 	if e != nil {
@@ -38,6 +41,7 @@ func (a opsAccounts) ListSchedulableAccountLoads(ctx context.Context) ([]ops.Acc
 	}
 	return out, nil
 }
+
 func opsAccountViews(a []account.Record) []ops.AccountObservation {
 	out := make([]ops.AccountObservation, len(a))
 	for i, v := range a {
@@ -46,7 +50,7 @@ func opsAccountViews(a []account.Record) []ops.AccountObservation {
 			out[i].Groups = make([]*ops.GroupObservation, len(v.Groups))
 			for j, g := range v.Groups {
 				if g != nil {
-					out[i].Groups[j] = &ops.GroupObservation{ID: g.ID, Name: g.Name, Platform: g.Platform}
+					out[i].Groups[j] = &ops.GroupObservation{ID: g.ID, Name: g.Name}
 				}
 			}
 		}
@@ -64,6 +68,7 @@ func (a opsUsers) ListActivePage(ctx context.Context, p pagination.PaginationPar
 	}
 	return out, pg, e
 }
+
 func (a opsUsers) GetFirstAdmin(ctx context.Context) (*ops.UserObservation, error) {
 	u, e := a.store.GetFirstAdmin(ctx)
 	if u == nil {

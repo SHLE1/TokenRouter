@@ -1,12 +1,12 @@
 package httpapi
 
 import (
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
-
 	"context"
 	"fmt"
 	"net/http"
 	"strings"
+
+	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 
 	protocolforward "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
@@ -45,7 +45,7 @@ func (s *OpenAIAuxiliary) ForwardCountTokensAsAnthropic(
 
 	// 三家国产供应商的兼容层都没有可依赖的 count_tokens 端点；无论账号使用
 	// Chat、Anthropic 还是 Responses 上游协议，都只做本地估算且不改变账号状态。
-	if account.View().IsCNProvider() {
+	if account.View().IsCNProvider() || account.View().IsGrok() {
 		estimated, err := tokenestimate.Anthropic(body)
 		if err != nil {
 			writeAnthropicCountTokensError(c, http.StatusBadRequest, "invalid_request_error", "Failed to parse request body")
@@ -103,7 +103,6 @@ func (s *OpenAIAuxiliary) ForwardCountTokensAsAnthropic(
 			return s.Requests.Transport.Do(req, proxyURL, account.Record.ID, account.Record.Concurrency)
 		},
 		TransportError: func(err error) error {
-
 			safeErr := logredact.SanitizeUpstreamQueries(err.Error())
 			SetOpsUpstreamError(c, 0, safeErr, "")
 			AppendOpsUpstreamError(c, ops.OpsUpstreamErrorEvent{
@@ -116,10 +115,8 @@ func (s *OpenAIAuxiliary) ForwardCountTokensAsAnthropic(
 			})
 			writeAnthropicCountTokensError(c, http.StatusBadGateway, "upstream_error", "Upstream request failed")
 			return fmt.Errorf("openai input_tokens upstream request failed: %s", safeErr)
-
 		},
 		HTTPError: func(resp *http.Response, respBody []byte) error {
-
 			upstreamMsg := logredact.SanitizeUpstreamQueries(strings.TrimSpace(upstream.ExtractErrorMessage(respBody)))
 			if account.Record.Type == capability.AccountTypeOAuth && isOpenAIOAuthInputTokensUnsupported(resp.StatusCode, respBody) {
 				writeOpenAIOAuthInputTokensFallback(c, account, prepared, resp.StatusCode)
@@ -184,7 +181,6 @@ func (s *OpenAIAuxiliary) ForwardCountTokensAsAnthropic(
 				return fmt.Errorf("input_tokens upstream error: %d", resp.StatusCode)
 			}
 			return fmt.Errorf("input_tokens upstream error: %d message=%s", resp.StatusCode, upstreamMsg)
-
 		},
 		WriteError: func(status int, kind, message string) { writeAnthropicCountTokensError(c, status, kind, message) },
 	}, ResponseSink{Writer: c.Writer})

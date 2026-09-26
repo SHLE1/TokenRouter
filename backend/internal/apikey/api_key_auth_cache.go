@@ -49,8 +49,8 @@ type APIKeyAuthSnapshot struct {
 	RateLimit5h float64 `json:"rate_limit_5h"`
 	RateLimit1d float64 `json:"rate_limit_1d"`
 	RateLimit7d float64 `json:"rate_limit_7d"`
-	// FallbackToDefaultGroupWhenUnavailable 控制停用分组请求级回退。
-	FallbackToDefaultGroupWhenUnavailable bool `json:"fallback_to_default_group_when_unavailable"`
+	// FallbackWhenGroupUnavailable 控制停用分组请求级回退。
+	FallbackWhenGroupUnavailable bool `json:"fallback_when_group_unavailable"`
 }
 
 // APIKeyAuthCompositeGroupSnapshot 缓存一个复合前缀对应的完整鉴权分组。
@@ -110,9 +110,9 @@ type APIKeyAuthUserSnapshot struct {
 
 // APIKeyAuthGroupSnapshot 分组快照
 type APIKeyAuthGroupSnapshot struct {
-	ID            int64              `json:"id"`
-	Name          string             `json:"name"`
-	Platform      string             `json:"platform"`
+	ID   int64  `json:"id"`
+	Name string `json:"name"`
+
 	SchedulerType GroupSchedulerType `json:"scheduler_type"`
 	// AdvancedSchedulerOverrides 随认证快照下发，避免请求期回读分组配置。
 	AdvancedSchedulerOverrides      GroupAdvancedSchedulerOverrides `json:"advanced_scheduler_overrides"`
@@ -145,10 +145,10 @@ type APIKeyAuthGroupSnapshot struct {
 	SupportedModelScopes []string `json:"supported_model_scopes,omitempty"`
 
 	// AllowedProtocols 不使用 omitempty，确保空集合按 [] 写入快照。
-	AllowedProtocols     []protocol.ProtocolID                       `json:"allowed_protocols"`
-	ProtocolFallbacks    map[protocol.ProtocolID]protocol.ProtocolID `json:"protocol_fallbacks"`
-	ResponsesImagePolicy string                                      `json:"responses_image_policy"`
-	AllowLive            bool                                        `json:"allow_live"`
+	AllowedProtocols     []protocol.ProtocolID                         `json:"allowed_protocols"`
+	ProtocolFallbacks    map[protocol.ProtocolID][]protocol.ProtocolID `json:"protocol_fallbacks"`
+	ResponsesImagePolicy string                                        `json:"responses_image_policy"`
+	AllowLive            bool                                          `json:"allow_live"`
 	// ForceOpenAIFast 保留组级 OpenAI Fast 策略，供请求期无需回源即可执行。
 	ForceOpenAIFast bool `json:"force_openai_fast"`
 	// OpenAIFastPolicy 保存管理员选择的互斥加速策略。

@@ -8,14 +8,13 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/admission"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/telemetry"
 	textflow "github.com/TokenFlux/TokenRouter/internal/gateway/text"
+	"github.com/TokenFlux/TokenRouter/internal/protocol"
 	openaiprotocol "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -38,9 +37,10 @@ type CountExecutor interface {
 
 // CountHTTPPorts 在构造时绑定固定依赖；每请求只建立当前尝试状态。
 type CountHTTPPorts struct {
-	Diagnoser routing.ModelAvailabilityDiagnoser
-	Executor  CountExecutor
-	Funding   interface {
+	ClientGroupFallback ClientGroupFallbackResolver
+	Diagnoser           routing.ModelAvailabilityDiagnoser
+	Executor            CountExecutor
+	Funding             interface {
 		CheckKey(context.Context, *apikey.APIKey, *billing.UserSubscription, string, bool) error
 	}
 	ReadAccess           func(*gin.Context) (*apikey.APIKey, bool)
@@ -79,7 +79,7 @@ func (p CountHTTPPorts) BindThinking(c *gin.Context, thinking bool) {
 
 func (p CountHTTPPorts) Eligibility(ctx context.Context, key *apikey.APIKey, sub *billing.UserSubscription) error {
 	value := apikey.CopyAPIKey(key)
-	return p.Funding.CheckKey(ctx, value, sub, admission.QuotaPlatform(ctx, value), false)
+	return p.Funding.CheckKey(ctx, value, sub, "", false)
 }
 
 func (p CountHTTPPorts) FailoverObservation(ctx context.Context, event string, values map[string]any) {
@@ -87,6 +87,9 @@ func (p CountHTTPPorts) FailoverObservation(ctx context.Context, event string, v
 }
 
 func (p CountHTTPPorts) Execution(c *gin.Context, key *apikey.APIKey, parsed *requeststate.ParsedRequest, hash string, log *zap.Logger) textflow.CountPorts {
+	plan := p.Executor.PlanCountRoute(c.Request.Context(), key, parsed.Model).WithClientProtocol(protocol.ProtocolAnthropicMessages)
+	ctx := requeststate.WithRoutePlan(requeststate.WithGroup(c.Request.Context(), key.Group), plan)
+	c.Request = c.Request.WithContext(ctx)
 	return &countAttempt{ports: p, c: c, key: apikey.CopyAPIKey(key), parsed: parsed, hash: hash, log: log}
 }
 
@@ -138,13 +141,13 @@ func (b *countAttempt) Select(excluded map[int64]struct{}) (textflow.Selection, 
 func (b *countAttempt) SelectionFailed(err error, last *textflow.AttemptFailure) {
 	b.log.Warn("gateway.count_tokens_select_account_failed", zap.Error(err))
 	if last != nil {
-		b.exhausted(last, capability.PlatformAnthropic)
+		b.exhausted(last, "")
 		return
 	}
 	if b.ports.BusinessError(b.c, err, false, func(status int, kind, message string, _ bool) { WriteAnthropicError(b.c, status, kind, "", message) }) {
 		return
 	}
-	result := ClassifySelectionError(b.Context(), b.ports.Diagnoser, b.key.GroupID, b.parsed.Model, b.parsed.Model, capability.PlatformAnthropic)
+	result := ClassifySelectionError(b.Context(), b.ports.Diagnoser, b.key.GroupID, b.parsed.Model, b.parsed.Model, "")
 	if result.ModelNotFound {
 		MarkOpsClientBusinessLimited(b.c, OpsClientBusinessLimitedReasonLocalModelConfiguration)
 	} else {
@@ -200,4 +203,11 @@ func (b *countAttempt) TempUnscheduleRetryableError(ctx context.Context, id int6
 	if errors.As(failure.Cause, &original) {
 		b.ports.Executor.TempUnscheduleRetryableError(ctx, id, original)
 	}
+}
+
+func (p CountHTTPPorts) ResolveClientGroup(ctx context.Context, key *apikey.APIKey, source protocol.ProtocolID) (*apikey.APIKey, *billing.UserSubscription, error) {
+	if p.ClientGroupFallback == nil {
+		return nil, nil, routing.ErrClaudeCodeOnly
+	}
+	return p.ClientGroupFallback(ctx, key, source)
 }

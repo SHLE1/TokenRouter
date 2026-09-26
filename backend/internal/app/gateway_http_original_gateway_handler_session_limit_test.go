@@ -87,11 +87,14 @@ func gatewaySessionResponse(status int, stream bool) *http.Response {
 func newGatewaySessionLimitFixture(t *testing.T, accountType string, failover bool, upstream *gatewaySessionUpstreamStub) (*messageEndpointsFixture, *apikey.APIKey, *gatewaySessionLimitCacheStub) {
 	t.Helper()
 	groupID := int64(11)
-	group := &routing.Group{ID: groupID, Hydrated: true, Platform: capability.PlatformAnthropic, Status: billing.StatusActive}
-	accounts := []*gatewayprovider.ExecutionAccount{{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 12, Name: "session-test", Platform: capability.PlatformAnthropic, Type: accountType,
-		Credentials: map[string]any{"access_token": "test-token"}, Extra: map[string]any{"max_sessions": 1},
-		Concurrency: 2, Status: billing.StatusActive, Schedulable: true,
-		AccountGroups: []accountcore.GroupMembership{{AccountID: 12, GroupID: groupID}}},
+	group := &routing.Group{ID: groupID, Hydrated: true, Status: billing.StatusActive}
+	accounts := []*gatewayprovider.ExecutionAccount{{
+		Record: accountcore.Record{
+			LoadLocation: time.LoadLocation, ID: 12, Name: "session-test", Platform: capability.PlatformAnthropic, Type: accountType,
+			Credentials: map[string]any{"access_token": "test-token"}, Extra: map[string]any{"max_sessions": 1},
+			Concurrency: 2, Status: billing.StatusActive, Schedulable: true,
+			AccountGroups: []accountcore.GroupMembership{{AccountID: 12, GroupID: groupID}},
+		},
 	}}
 	if failover {
 		second := *accounts[0]
@@ -113,7 +116,8 @@ func newGatewaySessionLimitFixture(t *testing.T, accountType string, failover bo
 	gateway.Recorder = newHTTPCompletionFixture(cfg, nil, completionInput1, billingCache, nil,
 		nil, nil, false)
 
-	h := newMessageEndpointsFixture(gateway, messages, newFundingAdmissionFixture(billingCache, cfg), gatewayhttp.NewConcurrencyHelper(scheduler.NewConcurrencyService(&fakeConcurrencyCache{}, scheduler.Diagnostics{Logf: logging.LegacyPrintf,
+	h := newMessageEndpointsFixture(gateway, messages, newFundingAdmissionFixture(billingCache, cfg), gatewayhttp.NewConcurrencyHelper(scheduler.NewConcurrencyService(&fakeConcurrencyCache{}, scheduler.Diagnostics{
+		Logf:  logging.LegacyPrintf,
 		Event: logging.Event,
 	},
 	), gatewayhttp.SSEPingFormatClaude, 0), gatewayhttp.MessagesHTTPOptions{MaxBodyBytes: openAITextOptions(cfg).MaxBodyBytes, MaxSwitches: 1, MaxGeminiSwitches: 0}, newExecutionAvailabilityForTest(nil,
@@ -144,7 +148,6 @@ func serveGatewaySessionMessage(h *messageEndpointsFixture, key *apikey.APIKey, 
 }
 
 func TestGatewayHandlerMessages_SessionSlotLifecycle(t *testing.T) {
-
 	for _, accountType := range []string{capability.AccountTypeOAuth, capability.AccountTypeSetupToken} {
 		for _, tc := range []struct {
 			name         string

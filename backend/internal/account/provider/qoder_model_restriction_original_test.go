@@ -99,7 +99,10 @@ func TestAccountGetConfiguredRequestModels_QoderMappingWhitelistSemantics(t *tes
 			},
 		},
 	}
-	require.Equal(t, []string{"claude-opus-4-6"}, mappingOnly.GetConfiguredRequestModels(ModelDefaults()))
+	models := mappingOnly.GetConfiguredRequestModels(ModelDefaults())
+	require.Contains(t, models, "claude-opus-4-6")
+	require.Contains(t, models, "auto")
+	require.Contains(t, models, "ultimate")
 
 	withWhitelist := &accountcore.Record{
 		Platform: capability.PlatformQoder,
@@ -110,7 +113,7 @@ func TestAccountGetConfiguredRequestModels_QoderMappingWhitelistSemantics(t *tes
 			"model_whitelist": []any{"ultimate"},
 		},
 	}
-	require.Equal(t, []string{"claude-opus-4-6"}, withWhitelist.GetConfiguredRequestModels(ModelDefaults()))
+	require.ElementsMatch(t, []string{"claude-opus-4-6", "ultimate"}, withWhitelist.GetConfiguredRequestModels(ModelDefaults()))
 
 	whitelistOnly := &accountcore.Record{
 		Platform: capability.PlatformQoder,
@@ -122,8 +125,8 @@ func TestAccountGetConfiguredRequestModels_QoderMappingWhitelistSemantics(t *tes
 }
 
 func TestAccountIsModelSupported_QoderSiteCompatibility(t *testing.T) {
-	global := &accountcore.Record{Platform: capability.PlatformQoder, Credentials: map[string]any{"site": "global"}}
-	cn := &accountcore.Record{Platform: capability.PlatformQoder, Credentials: map[string]any{"site": "cn"}}
+	global := &accountcore.Record{Platform: capability.PlatformQoder, Credentials: map[string]any{"site": "global", "model_whitelist": []string{"*"}}}
+	cn := &accountcore.Record{Platform: capability.PlatformQoder, Credentials: map[string]any{"site": "cn", "model_whitelist": []string{"*"}}}
 
 	require.True(t, global.IsModelSupported("claude-opus-4-6", ModelDefaults(), ModelRules(global)))
 	require.False(t, cn.IsModelSupported("claude-opus-4-6", ModelDefaults(), ModelRules(cn)))
@@ -136,5 +139,7 @@ func TestAccountIsModelSupported_QoderSiteCompatibility(t *testing.T) {
 	require.True(t, global.IsModelSupported("unknown-raw-key", ModelDefaults(), ModelRules(global)))
 
 	cn.Credentials["model_mapping"] = map[string]any{"claude-opus-4-6": "ultimate"}
-	require.True(t, cn.IsModelSupported("claude-opus-4-6", ModelDefaults(), ModelRules(cn)), "显式账号 mapping 应覆盖站点默认限制")
+	require.False(t, cn.IsModelSupported("claude-opus-4-6", ModelDefaults(), ModelRules(cn)), "显式映射不能绕过站点的上游模型限制")
+	cn.Credentials["model_mapping"] = map[string]any{"claude-opus-4-6": "q36fmodel"}
+	require.True(t, cn.IsModelSupported("claude-opus-4-6", ModelDefaults(), ModelRules(cn)), "别名可以映射到该站点支持的模型")
 }

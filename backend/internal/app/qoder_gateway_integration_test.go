@@ -151,7 +151,7 @@ func TestS09QoderHTTPStorageChain(t *testing.T) {
 	accounts := accountpg.NewAccountStore(f.client, f.db, accountpg.AccountStoreOptions{Group: func(g *dbent.Group) *accessview.GroupConfig {
 		return (*accessview.GroupConfig)(routingpg.GroupFromEnt(g))
 	}})
-	eligibility := billing.NewEligibility(billingredis.NewBillingCache(rdb), s09BalanceReader{f.db}, nil, billingpg.NewUserPlatformQuotaRepository(f.client, timezone.NewCalendar(time.Local)), func() billing.EligibilityOptions { return billing.EligibilityOptions{RunMode: "standard"} }, nil, billing.NewQuotaCoordinator())
+	eligibility := billing.NewEligibility(billingredis.NewBillingCache(rdb), s09BalanceReader{f.db}, nil, func() billing.EligibilityOptions { return billing.EligibilityOptions{RunMode: "standard"} }, nil)
 	eligibility.Start()
 	t.Cleanup(eligibility.Stop)
 	price := &pricing.ResolvedPricing{Mode: pricing.BillingModeToken, Source: pricing.PricingSourceGroup, BasePricing: &pricing.ModelPricing{InputPricePerToken: 0.01, OutputPricePerToken: 0.02}}
@@ -164,7 +164,7 @@ func TestS09QoderHTTPStorageChain(t *testing.T) {
 			uid := uuid.NewString()
 			user, err := f.client.User.Create().SetEmail(uid + "@s09.test").SetPasswordHash("fixture-only").SetBalance(10).SetConcurrency(1).Save(ctx)
 			require.NoError(t, err)
-			group, err := f.client.Group.Create().SetName("s09-" + uid).SetPlatform("qoder").SetAllowedProtocols([]protocol.ProtocolID{protocol.ProtocolOpenAIChatCompletions}).SetProtocolFallbacks(map[protocol.ProtocolID]protocol.ProtocolID{protocol.ProtocolOpenAIChatCompletions: protocol.ProtocolQoderChat}).Save(ctx)
+			group, err := f.client.Group.Create().SetName("s09-" + uid).SetAllowedProtocols([]protocol.ProtocolID{protocol.ProtocolOpenAIChatCompletions}).SetProtocolFallbacks(map[protocol.ProtocolID][]protocol.ProtocolID{protocol.ProtocolOpenAIChatCompletions: {protocol.ProtocolQoderChat}}).Save(ctx)
 			require.NoError(t, err)
 			key, err := f.client.APIKey.Create().SetUserID(user.ID).SetGroupID(group.ID).SetKey("sk-s09-" + uid).SetName("fixture").SetQuota(100).SetBillingMode("balance").Save(ctx)
 			require.NoError(t, err)
@@ -247,7 +247,7 @@ func TestS09QoderHTTPStorageChain(t *testing.T) {
 				if err != nil {
 					return gateway.Request{}, err
 				}
-				request.Route = routing.Plan(routing.PlanInput{Group: grp, GroupID: &group.ID, RequestedModel: request.Model, ClientProtocol: protocol.ProtocolOpenAIChatCompletions, PricingConfig: routing.GroupMappingResult{ClientModel: request.Model, MappedModel: request.Model}})
+				request.Route = routing.Plan(routing.PlanInput{Group: grp, GroupID: &group.ID, RequestedModel: request.Model, ClientProtocol: protocol.ProtocolOpenAIChatCompletions, GroupMapping: routing.GroupMappingResult{ClientModel: request.Model, MappedModel: request.Model}})
 				return request, nil
 			}
 			runtime.check = func(callCtx context.Context) error {

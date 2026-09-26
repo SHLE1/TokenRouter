@@ -8,7 +8,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/admission"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/errorpolicy"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/execution"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/media"
@@ -27,14 +26,16 @@ import (
 
 // OpenAITextBindings 只绑定原生资源和明确用例端口，不持有旧聚合 Handler。
 type OpenAITextBindings struct {
-	Dependencies  OpenAIDependencies
-	Resources     *OpenAIHTTPResources
-	ResponseOwner func() gatewaysession.HTTPResponseOwnerReader
-	Moderation    ModerationPort
-	PlanRoute     func(context.Context, *apikey.APIKey, string) routing.RoutePlan
-	ReplaceModel  requeststate.ModelBodyReplacer
-	Errors        *errorpolicy.ErrorPassthroughService
-	Funding       interface {
+	ClientVersions      func(context.Context) (string, string)
+	ClientGroupFallback ClientGroupFallbackResolver
+	Dependencies        OpenAIDependencies
+	Resources           *OpenAIHTTPResources
+	ResponseOwner       func() gatewaysession.HTTPResponseOwnerReader
+	Moderation          ModerationPort
+	PlanRoute           func(context.Context, *apikey.APIKey, string) routing.RoutePlan
+	ReplaceModel        requeststate.ModelBodyReplacer
+	Errors              *errorpolicy.ErrorPassthroughService
+	Funding             interface {
 		CheckKey(context.Context, *apikey.APIKey, *billing.UserSubscription, string, bool) error
 	}
 	Cyber          *CyberHandler
@@ -196,7 +197,7 @@ func (p openAITextHTTPBackend) UserSlot(c *gin.Context, user int64, limit int, s
 
 func (p openAITextHTTPBackend) Eligibility(ctx context.Context, key *apikey.APIKey, sub *billing.UserSubscription) error {
 	old := apikey.CopyAPIKey(key)
-	return p.bindings.Funding.CheckKey(ctx, old, sub, admission.QuotaPlatform(ctx, old), false)
+	return p.bindings.Funding.CheckKey(ctx, old, sub, "", false)
 }
 
 func (p openAITextHTTPBackend) SessionHash(c *gin.Context, kind OpenAISessionInput, body []byte) string {
@@ -276,4 +277,9 @@ func openAITextModerationProtocol(proto protocol.ProtocolID) string {
 // MarkStreamFailure 与普通流错误分别保留 SLA 口径。
 func (p openAITextHTTPBackend) MarkStreamFailure(c *gin.Context, kind, code, message string, status int) {
 	MarkOpsStreamFailure(c, kind, code, message, status)
+}
+
+// PrepareMessages 在选号之前绑定原生客户端资格，避免混合调度绕过 Claude Code 限制。
+func (p openAITextHTTPBackend) PrepareMessages(c *gin.Context, body []byte) error {
+	return PrepareMessageClientContext(c, body, p.bindings.ClientVersions)
 }

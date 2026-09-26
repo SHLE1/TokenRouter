@@ -29,7 +29,7 @@ func (p ModelPolicy) ProtocolRoute(group *routing.Group, source protocol.Protoco
 	}
 	var projected *routing.Group
 	if group != nil {
-		projected = &routing.Group{ID: group.ID, Platform: group.Platform, SchedulerType: group.SchedulerType, AllowedProtocols: group.AllowedProtocols, ProtocolFallbacks: group.ProtocolFallbacks}
+		projected = &routing.Group{ID: group.ID, SchedulerType: group.SchedulerType, AllowedProtocols: group.AllowedProtocols, ProtocolFallbacks: group.ProtocolFallbacks}
 	}
 	plan := routing.Plan(routing.PlanInput{Group: projected, ClientProtocol: source})
 	candidate, ok := plan.ResolveCandidate(p.CandidateSnapshot())
@@ -38,11 +38,14 @@ func (p ModelPolicy) ProtocolRoute(group *routing.Group, source protocol.Protoco
 
 // AllowsProtocol 在原调用点读取请求路线，不提前读取模型目录。
 func (p ModelPolicy) AllowsProtocol(ctx context.Context) bool {
+	group, _ := requeststate.GroupFromContext(ctx)
+	if p.Record == nil || group != nil && (group.RequireOAuthOnly && !p.Record.IsOAuth() || group.RequirePrivacySet && !p.Record.IsPrivacySet()) {
+		return false
+	}
 	source, _ := requeststate.ClientProtocolFromContext(ctx)
 	if source == "" {
 		return true
 	}
-	group, _ := requeststate.GroupFromContext(ctx)
 	_, ok := p.ProtocolRoute(group, source)
 	return ok
 }

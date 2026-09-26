@@ -14,10 +14,10 @@ func TestCreativeExecutorGroupPolicyUsesFinalModel(t *testing.T) {
 	for _, platform := range []string{PlatformOpenAI, PlatformGemini, PlatformGrok} {
 		t.Run(platform, func(t *testing.T) {
 			final := map[string]string{PlatformOpenAI: "gpt-image-2", PlatformGemini: "gemini-3-pro-image", PlatformGrok: "grok-imagine-image-2.0"}[platform]
-			group := &ExecutionGroup{Platform: platform, RoutingPolicy: routing.GroupRoutingPolicy{
+			group := &ExecutionGroup{RoutingPolicy: routing.GroupRoutingPolicy{
 				Enabled: true, RestrictModels: true, RestrictionModelSource: routing.BillingModelSourceUpstream,
-				ModelMapping:  map[string]map[string]string{platform: {"draw": "account-alias", "account-alias": "forbidden-group-hop"}},
-				AllowedModels: map[string][]string{platform: {final}},
+				ModelMapping:  map[string]string{"draw": "account-alias", "account-alias": "forbidden-group-hop"},
+				AllowedModels: []string{final},
 			}}
 			mapping := map[string]string{"account-alias": final, final: "forbidden-account-hop"}
 			calls := 0
@@ -40,10 +40,11 @@ func TestCreativeExecutorGroupPolicyUsesFinalModel(t *testing.T) {
 				Group:  func(context.Context, int64) (*ExecutionGroup, error) { return group, nil },
 				OpenAI: selectAccount, Gemini: selectAccount, Grok: selectAccount,
 			}
-			run := CreativeRun{GroupID: 12, Model: "draw", Operation: CreativeOperationGenerate}
+			run := CreativeRun{Provider: platform, GroupID: 12, Model: "draw", Operation: CreativeOperationGenerate}
 			prepared, err := executor.Prepare(context.Background(), run)
 			require.NoError(t, err)
 			require.Equal(t, final, prepared.UpstreamModel)
+			require.Equal(t, platform, prepared.Provider)
 			// 准备后固定执行模型，不因其他请求修改共享规则而重新映射。
 			mapping["account-alias"] = "changed-after-prepare"
 			_, err = prepared.Target.Execute(context.Background(), run, CreativeRunPayload{})
@@ -72,10 +73,10 @@ func TestCreativeExecutorGroupPolicyRestrictionStages(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			selected, released := 0, 0
-			group := &ExecutionGroup{Platform: PlatformOpenAI, RoutingPolicy: routing.GroupRoutingPolicy{
+			group := &ExecutionGroup{RoutingPolicy: routing.GroupRoutingPolicy{
 				Enabled: !tc.disabled, RestrictModels: true, RestrictionModelSource: tc.source,
-				ModelMapping:  map[string]map[string]string{PlatformOpenAI: {"gpt-image-1": "group-model"}},
-				AllowedModels: map[string][]string{PlatformOpenAI: tc.allowed},
+				ModelMapping:  map[string]string{"gpt-image-1": "group-model"},
+				AllowedModels: tc.allowed,
 			}}
 			executor := &Executor{
 				Group: func(context.Context, int64) (*ExecutionGroup, error) { return group, nil },
@@ -117,12 +118,7 @@ func TestCreativeExecutorGroupPolicyRestrictionStages(t *testing.T) {
 }
 
 func TestCreativeExecutorPolicyReadFailureStopsSelection(t *testing.T) {
-	reads := 0
 	executor := &Executor{Group: func(context.Context, int64) (*ExecutionGroup, error) {
-		reads++
-		if reads == 1 {
-			return &ExecutionGroup{Platform: PlatformOpenAI}, nil
-		}
 		return nil, errors.New("group store unavailable")
 	}, OpenAI: func(context.Context, CreativeRun) (*Selection, error) {
 		t.Fatal("无法取得分组策略时不能继续选账号")

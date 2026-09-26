@@ -231,7 +231,7 @@ func TestResolveAccountStatsCost_NilPricingConfigService(t *testing.T) {
 		context.Background(),
 		nil, // channelService is nil
 		newTestBillingServiceWithPrices(map[string]*purepricing.ModelPricing{}),
-		1, 1, "claude-sonnet-4", "",
+		"", 1, 1, "claude-sonnet-4", "",
 		purepricing.UsageTokens{InputTokens: 100}, 1, 0.5, "",
 	)
 	require.Nil(t, result)
@@ -247,7 +247,7 @@ func TestResolveAccountStatsCost_EmptyUpstreamModel(t *testing.T) {
 		context.Background(),
 		cs,
 		newTestBillingServiceWithPrices(map[string]*purepricing.ModelPricing{}),
-		1, 1, "", "", // empty upstream model
+		"", 1, 1, "", "", // empty upstream model
 		purepricing.UsageTokens{InputTokens: 100}, 1, 0.5, "",
 	)
 	require.Nil(t, result)
@@ -264,7 +264,7 @@ func TestResolveAccountStatsCost_GetPricingConfigForGroupReturnsNil(t *testing.T
 		context.Background(),
 		cs,
 		newTestBillingServiceWithPrices(map[string]*purepricing.ModelPricing{}),
-		1, 99, "claude-sonnet-4", "", // groupID 99 has no channel
+		"", 1, 99, "claude-sonnet-4", "", // groupID 99 has no channel
 		purepricing.UsageTokens{InputTokens: 100}, 1, 0.5, "",
 	)
 	require.Nil(t, result)
@@ -295,7 +295,7 @@ func TestResolveAccountStatsCost_HitsCustomRule(t *testing.T) {
 	result := contractAccountStatsCost(
 		context.Background(),
 		cs, nil, // billingService not needed when custom rule hits
-		1, 10, "claude-sonnet-4", "",
+		"", 1, 10, "claude-sonnet-4", "",
 		tokens, 1, 999.0, "priority", // 自定义账号价格不叠加服务层级倍率
 	)
 	require.NotNil(t, result)
@@ -318,7 +318,7 @@ func TestResolveAccountStatsCost_DoesNotUseUserPrice(t *testing.T) {
 		cs, newTestBillingServiceWithPrices(map[string]*purepricing.ModelPricing{
 			"claude-sonnet-4": {InputPricePerToken: 0.001, OutputPricePerToken: 0.002},
 		}),
-		1, 10, "claude-sonnet-4", "",
+		"", 1, 10, "claude-sonnet-4", "",
 		tokens, 1, 0.75, "", // 用户售价不进入账号成本计算
 	)
 	require.NotNil(t, result)
@@ -335,7 +335,7 @@ func TestResolveAccountStatsCost_NoCalculatorReturnsNil(t *testing.T) {
 	result := contractAccountStatsCost(
 		context.Background(),
 		cs, nil,
-		1, 10, "claude-sonnet-4", "",
+		"", 1, 10, "claude-sonnet-4", "",
 		purepricing.UsageTokens{}, 1, 0.0, "", // totalCost = 0
 	)
 	require.Nil(t, result)
@@ -361,7 +361,7 @@ func TestResolveAccountStatsCost_FallsBackToLiteLLM(t *testing.T) {
 	result := contractAccountStatsCost(
 		context.Background(),
 		cs, bs,
-		1, 10, "claude-sonnet-4", "",
+		"", 1, 10, "claude-sonnet-4", "",
 		tokens, 1, 999.0, "", // totalCost ignored
 	)
 	require.NotNil(t, result)
@@ -388,7 +388,7 @@ func TestResolveAccountStatsCost_QoderRouteKeyWithoutManualPricingReturnsNil(t *
 	result := contractAccountStatsCost(
 		context.Background(),
 		cs, bs,
-		1, 10, "qmodel", "qwen3.7-plus",
+		capability.PlatformQoder, 1, 10, "qmodel", "qwen3.7-plus",
 		tokens, 1, 999.0, "",
 	)
 	require.Nil(t, result)
@@ -410,7 +410,7 @@ func TestResolveAccountStatsCost_QoderAliasUsesStandardUpstreamPricing(t *testin
 	result := contractAccountStatsCost(
 		context.Background(),
 		cs, bs,
-		1, 10, "gpt-5.4-mini", "qwen3.7-plus",
+		capability.PlatformQoder, 1, 10, "gpt-5.4-mini", "qwen3.7-plus",
 		purepricing.UsageTokens{InputTokens: 100, OutputTokens: 50}, 1, 999.0, "",
 	)
 	require.NotNil(t, result)
@@ -440,7 +440,7 @@ func TestResolveAccountStatsCost_QoderCustomRuleCanMatchRequestedAliasAfterRoute
 	result := contractAccountStatsCost(
 		context.Background(),
 		cs, nil,
-		1, 10, "qmodel", "qwen3.7-plus",
+		capability.PlatformQoder, 1, 10, "qmodel", "qwen3.7-plus",
 		purepricing.UsageTokens{InputTokens: 100, OutputTokens: 50}, 1, 999.0, "",
 	)
 
@@ -471,7 +471,7 @@ func TestResolveAccountStatsCost_QoderGroupMappedRuleMatchesBeforeDifferentUpstr
 	result := contractAccountStatsWithMapping(
 		context.Background(),
 		cs, nil,
-		1, 10, "ultimate", "qwen3.7-plus", "qmodel",
+		capability.PlatformQoder, 1, 10, "ultimate", "qwen3.7-plus", "qmodel",
 		purepricing.UsageTokens{InputTokens: 100, OutputTokens: 50}, 1, 999.0, "",
 	)
 
@@ -502,7 +502,7 @@ func TestResolveAccountStatsCost_QoderGroupMappedRuleMatchesWhenUpstreamFallsBac
 	result := contractAccountStatsWithMapping(
 		context.Background(),
 		cs, nil,
-		1, 10, "qwen3.7-plus", "qwen3.7-plus", "qmodel",
+		capability.PlatformQoder, 1, 10, "qwen3.7-plus", "qwen3.7-plus", "qmodel",
 		purepricing.UsageTokens{InputTokens: 100, OutputTokens: 50}, 1, 999.0, "",
 	)
 
@@ -539,7 +539,7 @@ func TestResolveAccountStatsCost_QoderRequestedAliasRuleOverridesRouteKeyRule(t 
 	result := contractAccountStatsCost(
 		context.Background(),
 		cs, nil,
-		1, 10, "qmodel", "qwen3.7-plus",
+		capability.PlatformQoder, 1, 10, "qmodel", "qwen3.7-plus",
 		purepricing.UsageTokens{InputTokens: 100, OutputTokens: 50}, 1, 999.0, "",
 	)
 
@@ -579,7 +579,7 @@ func TestResolveAccountStatsCost_QoderBlankRuleDoesNotMaskLaterAliasRule(t *test
 	result := contractAccountStatsCost(
 		context.Background(),
 		cs, nil,
-		1, 10, "qmodel", "qwen3.7-plus",
+		capability.PlatformQoder, 1, 10, "qmodel", "qwen3.7-plus",
 		purepricing.UsageTokens{InputTokens: 100, OutputTokens: 50}, 1, 999.0, "",
 	)
 
@@ -609,7 +609,7 @@ func TestResolveAccountStatsCost_CustomRuleExplicitZeroOverridesTotalCost(t *tes
 	result := contractAccountStatsCost(
 		context.Background(),
 		cs, nil,
-		1, 10, "qmodel", "qwen3.7-plus",
+		capability.PlatformQoder, 1, 10, "qmodel", "qwen3.7-plus",
 		purepricing.UsageTokens{InputTokens: 100, OutputTokens: 50}, 1, 999.0, "",
 	)
 
@@ -637,7 +637,7 @@ func TestResolveAccountStatsCost_QoderUnknownUpstreamDoesNotUseRequestedPrice(t 
 	result := contractAccountStatsCost(
 		context.Background(),
 		cs, bs,
-		1, 10, "ultimate", "gpt-5.4",
+		capability.PlatformQoder, 1, 10, "ultimate", "gpt-5.4",
 		purepricing.UsageTokens{InputTokens: 100, OutputTokens: 50}, 1, 999.0, "",
 	)
 
@@ -655,7 +655,7 @@ func TestResolveAccountStatsCost_Gemini36FlashTierUsesFallbackPricing(t *testing
 	result := contractAccountStatsCost(
 		context.Background(),
 		cs, bs,
-		1, 10, "gemini-3.6-flash-low", "",
+		"", 1, 10, "gemini-3.6-flash-low", "",
 		purepricing.UsageTokens{InputTokens: 1_000_000, OutputTokens: 1_000_000, CacheReadTokens: 1_000_000}, 1, 0, "",
 	)
 	require.NotNil(t, result)
@@ -678,7 +678,7 @@ func TestResolveAccountStatsCost_AllMiss_ReturnsNil(t *testing.T) {
 	result := contractAccountStatsCost(
 		context.Background(),
 		cs, bs,
-		1, 10, "totally-unknown-model", "",
+		"", 1, 10, "totally-unknown-model", "",
 		tokens, 1, 0.0, "",
 	)
 	require.Nil(t, result)
@@ -694,7 +694,7 @@ func TestResolveAccountStatsCost_NilBillingService_SkipsLiteLLM(t *testing.T) {
 	result := contractAccountStatsCost(
 		context.Background(),
 		cs, nil, // billingService is nil
-		1, 10, "claude-sonnet-4", "",
+		"", 1, 10, "claude-sonnet-4", "",
 		purepricing.UsageTokens{InputTokens: 100}, 1, 0.0, "",
 	)
 	require.Nil(t, result)
@@ -725,7 +725,7 @@ func TestResolveAccountStatsCost_CustomRuleDoesNotUseUserPrice(t *testing.T) {
 	result := contractAccountStatsCost(
 		context.Background(),
 		cs, nil,
-		1, 10, "claude-sonnet-4", "",
+		"", 1, 10, "claude-sonnet-4", "",
 		tokens, 1, 99.0, "", // 用户售价不参与账号成本规则
 	)
 	require.NotNil(t, result)

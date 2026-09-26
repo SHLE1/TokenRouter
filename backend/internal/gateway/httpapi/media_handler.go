@@ -18,7 +18,6 @@ import (
 // MediaAccess 仅包含 HTTP 准入、日志和复合资源查找所需字段。
 type MediaAccess struct {
 	HasGroup                 bool
-	Platform                 string
 	ID                       int64
 	GroupID                  *int64
 	Composite, ImagesAllowed bool
@@ -147,10 +146,10 @@ func (h *MediaHandler) Images(c *gin.Context) {
 	if routingModel == "" {
 		routingModel = strings.TrimSpace(requestModel)
 	}
-	if err := parsed.ValidateRoutingModel(routingModel); err != nil {
-		h.ports.Error(c, 400, "invalid_request_error", err.Error())
-		return
-	}
+	// 分组映射后仍可能是账号别名，图片模型资格由逐候选的最终上游模型校验。
+	routed := *parsed
+	routed.Model = routingModel
+	parsed.RequiredCapability = media.ClassifyImageCapability(&routed)
 	log = log.With(zap.String("model", requestModel), zap.Bool("stream", parsed.Stream), zap.Bool("multipart", parsed.Multipart), zap.String("capability", string(parsed.RequiredCapability)), zap.String("img_quality", parsed.Quality), zap.String("img_size", parsed.Size))
 	if !access.ImagesAllowed {
 		h.ports.ImagePolicyDenied(c)
@@ -192,7 +191,7 @@ func (h *MediaHandler) Images(c *gin.Context) {
 		return
 	}
 	ctx := h.ports.ImageContext(c)
-	input := GenerationHTTPInput{Subject: subject, Parsed: parsed, Body: body, RequestModel: requestModel, RoutingModel: routingModel, SessionHash: sessionHash, Mapping: mapping}
+	input := GenerationHTTPInput{Subject: subject, ContentType: c.GetHeader("Content-Type"), Parsed: parsed, Body: body, RequestModel: requestModel, RoutingModel: routingModel, SessionHash: sessionHash, Mapping: mapping}
 	media.RunImages(ctx, media.GenerationRequest{Body: body, Stream: parsed.Stream, MaxSwitches: h.ports.MaxSwitches(), RoutingStarted: routingStarted}, h.ports.NewGenerationPorts(c, input, log, &streamStarted))
 }
 

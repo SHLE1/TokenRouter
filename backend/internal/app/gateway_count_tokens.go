@@ -25,10 +25,12 @@ import (
 
 // countExecution 仅连接选择与计数执行原语，不拥有循环、缓存或规则。
 type countExecution struct {
-	planner  *gatewayprovider.RoutePlanner
-	choices  *selection.Generic
-	messages *gatewayhttp.MessagesExecutor
-	cooldown func(context.Context, int64, *forwardcore.UpstreamFailoverError)
+	planner   *gatewayprovider.RoutePlanner
+	choices   *selection.Generic
+	messages  *gatewayhttp.MessagesExecutor
+	auxiliary *gatewayhttp.OpenAIAuxiliary
+	gemini    *gatewayhttp.GeminiExecutor
+	cooldown  func(context.Context, int64, *forwardcore.UpstreamFailoverError)
 }
 
 func (p countExecution) SelectCountTarget(ctx context.Context, id *int64, hash, model string, excluded map[int64]struct{}) (gatewayhttp.CountTarget, error) {
@@ -36,17 +38,20 @@ func (p countExecution) SelectCountTarget(ctx context.Context, id *int64, hash, 
 	if err != nil {
 		return nil, err
 	}
-	return countTarget{gateway: p.messages, account: value, choices: p.choices}, nil
+	return countTarget{gateway: p.messages, auxiliary: p.auxiliary, gemini: p.gemini, account: value, choices: p.choices}, nil
 }
+
 func (p countExecution) PlanCountRoute(ctx context.Context, key *apikey.APIKey, model string) routing.RoutePlan {
 	return p.planner.PlanKey(ctx, key, model)
 }
 
 // countTarget 将已经取得的账号保持在受控调用内，不把凭据暴露给 HTTP。
 type countTarget struct {
-	choices *selection.Generic
-	gateway *gatewayhttp.MessagesExecutor
-	account *gatewayprovider.ExecutionAccount
+	choices   *selection.Generic
+	gateway   *gatewayhttp.MessagesExecutor
+	auxiliary *gatewayhttp.OpenAIAuxiliary
+	gemini    *gatewayhttp.GeminiExecutor
+	account   *gatewayprovider.ExecutionAccount
 }
 
 func (t countTarget) Snapshot() account.AccountSnapshot {
@@ -54,14 +59,15 @@ func (t countTarget) Snapshot() account.AccountSnapshot {
 }
 func (t countTarget) RetryLimit() int { return t.account.View().GetPoolModeRetryCount() }
 func (t countTarget) ForwardCountTokens(ctx context.Context, c *gin.Context, parsed *requeststate.ParsedRequest) error {
-	return t.gateway.ForwardCountTokens(ctx, c, t.account, parsed)
+	return gatewayhttp.ForwardSelectedCountTokens(ctx, c, t.account, parsed, t.gateway, t.auxiliary, t.gemini)
 }
+
 func (t countTarget) ReleaseSession(ctx context.Context, hash string) {
 	t.choices.ReleaseAccountSession(ctx, t.account, hash)
 }
 
 // provideCountTokensHTTP 直接装配原生 HTTP，固定依赖不经旧 Handler 工厂。
-func provideCountTokensHTTP(planner *gatewayprovider.RoutePlanner, messages *gatewayhttp.MessagesExecutor, shared *schedulerSharedState, funding *admission.FundingAdmission, rules *errorpolicy.ErrorPassthroughService, cfg *config.Config, activity *gatewayRequestActivity, prompts *promptpolicy.Service, availability *gatewayModelAvailability, choices *selection.Generic, cooldown *account.RetryCooldown) *gatewayhttp.CountTokensHandler {
+func provideCountTokensHTTP(planner *gatewayprovider.RoutePlanner, messages *gatewayhttp.MessagesExecutor, shared *schedulerSharedState, funding *admission.FundingAdmission, rules *errorpolicy.ErrorPassthroughService, cfg *config.Config, activity *gatewayRequestActivity, prompts *promptpolicy.Service, availability *gatewayModelAvailability, choices *selection.Generic, cooldown *account.RetryCooldown, auxiliary *gatewayhttp.OpenAIAuxiliary, gemini *gatewayhttp.GeminiExecutor, clients *messageHTTPBindings) *gatewayhttp.CountTokensHandler {
 	limit := int64(0)
 	switches := 10
 	if cfg != nil {
@@ -75,7 +81,7 @@ func provideCountTokensHTTP(planner *gatewayprovider.RoutePlanner, messages *gat
 		matcher = rules
 	}
 	ports := gatewayhttp.CountHTTPPorts{
-		Executor: countExecution{planner: planner, choices: choices, messages: messages, cooldown: messageRetryCooldown(cooldown)}, Funding: funding, ReadAccess: keyhttp.GetAPIKeyFromContext,
+		Executor: countExecution{planner: planner, choices: choices, messages: messages, auxiliary: auxiliary, gemini: gemini, cooldown: messageRetryCooldown(cooldown)}, Funding: funding, ReadAccess: keyhttp.GetAPIKeyFromContext,
 		ObserveCompatibility: func(log *zap.Logger) {
 			gatewayhttp.LogCompatibilityFallback(log, func() gatewayhttp.CompatibilityLogSnapshot {
 				return gatewayCompatibilitySnapshot(shared)
@@ -87,6 +93,9 @@ func provideCountTokensHTTP(planner *gatewayprovider.RoutePlanner, messages *gat
 		Failure: func(c *gin.Context, failure *forwardcore.UpstreamFailoverError, platform string, started bool) {
 			gatewayhttp.WriteAnthropicFailover(c, failure, platform, started, matcher, forwardcore.IsOpenAISilentRefusalErrorBody, forwardcore.OpenAISilentRefusalClientMessage())
 		},
+	}
+	if clients != nil {
+		ports.ClientGroupFallback = clients.bindings.ClientGroupFallback
 	}
 	if availability != nil {
 		ports.Diagnoser = availability.Messages

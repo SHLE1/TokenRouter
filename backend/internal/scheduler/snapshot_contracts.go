@@ -7,11 +7,10 @@ import (
 
 // SnapshotMetadata 是重建和事件展开所需的最小投影，不包含凭据或管理 Extra。
 type SnapshotMetadata struct {
-	ID              int64
-	Name            string
-	Platform        string
-	GroupIDs        []int64
-	MixedScheduling bool
+	ID       int64
+	Name     string
+	Platform string
+	GroupIDs []int64
 }
 
 // SnapshotAccount 将发布数据保留在 Adapter 中；核心只能查看其重建元数据。
@@ -25,7 +24,6 @@ type SnapshotGroup struct {
 	ID       int64
 	Hydrated bool
 	Name     string
-	Platform string
 	Status   string
 }
 

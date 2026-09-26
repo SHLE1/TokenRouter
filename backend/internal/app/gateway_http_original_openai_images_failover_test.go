@@ -3,6 +3,13 @@
 package app
 
 import (
+	"bytes"
+	"context"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"sync"
+	"testing"
 	time "time"
 
 	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
@@ -11,14 +18,6 @@ import (
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	authctx "github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
-
-	"bytes"
-	"context"
-	"io"
-	"net/http"
-	"net/http/httptest"
-	"sync"
-	"testing"
 
 	apikey "github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
@@ -71,7 +70,7 @@ func (r openAIImagesFailoverAccountRepo) ListSchedulableUngroupedByPlatform(_ co
 func (r openAIImagesFailoverAccountRepo) accountsForPlatform(platform string) []gatewayprovider.ExecutionAccount {
 	out := make([]gatewayprovider.ExecutionAccount, 0, len(r.accounts))
 	for _, account := range r.accounts {
-		if account.Record.Platform == platform {
+		if platform == "" || account.Record.Platform == platform {
 			out = append(out, account)
 		}
 	}
@@ -110,28 +109,33 @@ func (u *openAIImagesFailoverHTTPUpstream) calls() []int64 {
 }
 
 func TestOpenAIGatewayHandlerImages_ServerErrorFailsOverAndReturnsClearErrorWhenExhausted(t *testing.T) {
-
 	groupID := int64(3130)
 	accounts := []gatewayprovider.ExecutionAccount{
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-			Name:        "image-account-1",
-			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeOAuth,
-			Status:      billing.StatusActive,
-			Schedulable: true,
-			Concurrency: 0,
-			Priority:    0,
-			Credentials: map[string]any{"access_token": "token-1"}},
+		{
+			Record: accountcore.Record{
+				LoadLocation: time.LoadLocation, ID: 1,
+				Name:        "image-account-1",
+				Platform:    capability.PlatformOpenAI,
+				Type:        capability.AccountTypeOAuth,
+				Status:      billing.StatusActive,
+				Schedulable: true,
+				Concurrency: 0,
+				Priority:    0,
+				Credentials: map[string]any{"access_token": "token-1"},
+			},
 		},
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 2,
-			Name:        "image-account-2",
-			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeOAuth,
-			Status:      billing.StatusActive,
-			Schedulable: true,
-			Concurrency: 0,
-			Priority:    1,
-			Credentials: map[string]any{"access_token": "token-2"}},
+		{
+			Record: accountcore.Record{
+				LoadLocation: time.LoadLocation, ID: 2,
+				Name:        "image-account-2",
+				Platform:    capability.PlatformOpenAI,
+				Type:        capability.AccountTypeOAuth,
+				Status:      billing.StatusActive,
+				Schedulable: true,
+				Concurrency: 0,
+				Priority:    1,
+				Credentials: map[string]any{"access_token": "token-2"},
+			},
 		},
 	}
 	accountRepo := openAIImagesFailoverAccountRepo{accounts: accounts}
@@ -170,8 +174,10 @@ func TestOpenAIGatewayHandlerImages_ServerErrorFailsOverAndReturnsClearErrorWhen
 	billingService := newBillingEligibilityFixture(cfg)
 	billingService.Start()
 	t.Cleanup(billingService.Stop)
-	concurrencyService := scheduler.NewConcurrencyService(&fakeConcurrencyCache{}, scheduler.Diagnostics{Logf: logging.LegacyPrintf,
-		Event: logging.Event},
+	concurrencyService := scheduler.NewConcurrencyService(&fakeConcurrencyCache{}, scheduler.Diagnostics{
+		Logf:  logging.LegacyPrintf,
+		Event: logging.Event,
+	},
 	)
 	handler := newGatewayHTTPEndpointsFromDeps(
 		gatewayService, gatewayServiceCredentialPort,

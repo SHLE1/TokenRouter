@@ -1,19 +1,13 @@
 import type { GroupOpenAIFastPolicy } from "@/types";
-// 判断分组是否支持 OpenAI Fast 强制策略。
-export function supportsGroupOpenAIFast(platform: string): boolean {
-  return platform === "openai";
+
+// 策略保存在分组，执行时由适用的账号和协议使用。
+export function normalizeGroupOpenAIFast(enabled: boolean): boolean {
+  return enabled;
 }
 
-// 仅在支持的平台上保留开关值，避免前端提交无效配置。
-export function normalizeGroupOpenAIFast(
-  platform: string,
-  enabled: boolean,
-): boolean {
-  return supportsGroupOpenAIFast(platform) && enabled;
-}
-
-// 不支持的平台一律恢复跟随请求。
-export function normalizeGroupOpenAIFastPolicy(platform:string, policy:string):GroupOpenAIFastPolicy {
- if (supportsGroupOpenAIFast(platform) && ["follow_request","force_priority","force_ultrafast","force_off"].includes(policy)) return policy as GroupOpenAIFastPolicy;
- return "follow_request";
+export function normalizeGroupOpenAIFastPolicy(policy: string): GroupOpenAIFastPolicy {
+  if (["follow_request", "force_priority", "force_ultrafast", "force_off"].includes(policy)) {
+    return policy as GroupOpenAIFastPolicy;
+  }
+  return "follow_request";
 }

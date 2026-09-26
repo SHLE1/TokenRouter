@@ -4,12 +4,14 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/antigravity"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/gemini/codeassist"
+	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/qoder"
 )
 
 // ModelDefaults 提供原平台目录的懒读取入口，不复制映射或建立新缓存。
 func ModelDefaults() account.ModelMappingDefaults {
 	return account.ModelMappingDefaults{
+		Models:                DefaultAccountModels,
 		Antigravity:           func() map[string]string { return antigravity.DefaultAntigravityModelMapping },
 		GoogleOne:             codeassist.GoogleOneModelMapping,
 		AntigravityAgentModel: antigravity.AntigravityGemini31ProAgentModel,
@@ -20,6 +22,7 @@ func ModelDefaults() account.ModelMappingDefaults {
 func ModelRules(value *account.Record) account.ModelPlatformRules {
 	return account.ModelPlatformRules{
 		NormalizeQoder:      qoder.NormalizeModelForWhitelist,
+		NormalizeOpenAI:     openai.GetNormalizedCodexModel,
 		OpenAIOAuthServable: account.IsOpenAIOAuthServableModel,
 		QoderCompatible: func(model string) bool {
 			if value == nil {

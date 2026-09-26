@@ -205,14 +205,6 @@ func Prepare(ctx context.Context, settings *Snapshot, options PrepareOptions) (m
 		updates[key] = value
 	}
 
-	quotaValues, err := billing.PrepareDefaultQuotaSettings(settings.DefaultPlatformQuotas)
-	if err != nil {
-		return nil, err
-	}
-	for key, value := range quotaValues {
-		updates[key] = value
-	}
-
 	accountValues, err := account.PrepareAdminSettings(account.AdminSettings{AccountQuotaNotifyEnabled: settings.AccountQuotaNotifyEnabled, AccountQuotaNotifyEmails: settings.AccountQuotaNotifyEmails, AccountSchedulingThresholds: settings.AccountSchedulingThresholds})
 	if err != nil {
 		return nil, err

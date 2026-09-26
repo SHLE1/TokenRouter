@@ -103,6 +103,20 @@ func (_c *CreativeRunCreate) SetNillableAccountID(v *int64) *CreativeRunCreate {
 	return _c
 }
 
+// SetProvider sets the "provider" field.
+func (_c *CreativeRunCreate) SetProvider(v string) *CreativeRunCreate {
+	_c.mutation.SetProvider(v)
+	return _c
+}
+
+// SetNillableProvider sets the "provider" field if the given value is not nil.
+func (_c *CreativeRunCreate) SetNillableProvider(v *string) *CreativeRunCreate {
+	if v != nil {
+		_c.SetProvider(*v)
+	}
+	return _c
+}
+
 // SetModel sets the "model" field.
 func (_c *CreativeRunCreate) SetModel(v string) *CreativeRunCreate {
 	_c.mutation.SetModel(v)
@@ -596,6 +610,10 @@ func (_c *CreativeRunCreate) defaults() {
 		v := creativerun.DefaultUpdatedAt()
 		_c.mutation.SetUpdatedAt(v)
 	}
+	if _, ok := _c.mutation.Provider(); !ok {
+		v := creativerun.DefaultProvider
+		_c.mutation.SetProvider(v)
+	}
 	if _, ok := _c.mutation.RequestedModel(); !ok {
 		v := creativerun.DefaultRequestedModel
 		_c.mutation.SetRequestedModel(v)
@@ -707,6 +725,14 @@ func (_c *CreativeRunCreate) check() error {
 	}
 	if _, ok := _c.mutation.APIKeyID(); !ok {
 		return &ValidationError{Name: "api_key_id", err: errors.New(`ent: missing required field "CreativeRun.api_key_id"`)}
+	}
+	if _, ok := _c.mutation.Provider(); !ok {
+		return &ValidationError{Name: "provider", err: errors.New(`ent: missing required field "CreativeRun.provider"`)}
+	}
+	if v, ok := _c.mutation.Provider(); ok {
+		if err := creativerun.ProviderValidator(v); err != nil {
+			return &ValidationError{Name: "provider", err: fmt.Errorf(`ent: validator failed for field "CreativeRun.provider": %w`, err)}
+		}
 	}
 	if _, ok := _c.mutation.Model(); !ok {
 		return &ValidationError{Name: "model", err: errors.New(`ent: missing required field "CreativeRun.model"`)}
@@ -903,6 +929,10 @@ func (_c *CreativeRunCreate) createSpec() (*CreativeRun, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.AccountID(); ok {
 		_spec.SetField(creativerun.FieldAccountID, field.TypeInt64, value)
 		_node.AccountID = &value
+	}
+	if value, ok := _c.mutation.Provider(); ok {
+		_spec.SetField(creativerun.FieldProvider, field.TypeString, value)
+		_node.Provider = value
 	}
 	if value, ok := _c.mutation.Model(); ok {
 		_spec.SetField(creativerun.FieldModel, field.TypeString, value)
@@ -1201,6 +1231,18 @@ func (u *CreativeRunUpsert) AddAccountID(v int64) *CreativeRunUpsert {
 // ClearAccountID clears the value of the "account_id" field.
 func (u *CreativeRunUpsert) ClearAccountID() *CreativeRunUpsert {
 	u.SetNull(creativerun.FieldAccountID)
+	return u
+}
+
+// SetProvider sets the "provider" field.
+func (u *CreativeRunUpsert) SetProvider(v string) *CreativeRunUpsert {
+	u.Set(creativerun.FieldProvider, v)
+	return u
+}
+
+// UpdateProvider sets the "provider" field to the value that was provided on create.
+func (u *CreativeRunUpsert) UpdateProvider() *CreativeRunUpsert {
+	u.SetExcluded(creativerun.FieldProvider)
 	return u
 }
 
@@ -1933,6 +1975,20 @@ func (u *CreativeRunUpsertOne) UpdateAccountID() *CreativeRunUpsertOne {
 func (u *CreativeRunUpsertOne) ClearAccountID() *CreativeRunUpsertOne {
 	return u.Update(func(s *CreativeRunUpsert) {
 		s.ClearAccountID()
+	})
+}
+
+// SetProvider sets the "provider" field.
+func (u *CreativeRunUpsertOne) SetProvider(v string) *CreativeRunUpsertOne {
+	return u.Update(func(s *CreativeRunUpsert) {
+		s.SetProvider(v)
+	})
+}
+
+// UpdateProvider sets the "provider" field to the value that was provided on create.
+func (u *CreativeRunUpsertOne) UpdateProvider() *CreativeRunUpsertOne {
+	return u.Update(func(s *CreativeRunUpsert) {
+		s.UpdateProvider()
 	})
 }
 
@@ -2924,6 +2980,20 @@ func (u *CreativeRunUpsertBulk) UpdateAccountID() *CreativeRunUpsertBulk {
 func (u *CreativeRunUpsertBulk) ClearAccountID() *CreativeRunUpsertBulk {
 	return u.Update(func(s *CreativeRunUpsert) {
 		s.ClearAccountID()
+	})
+}
+
+// SetProvider sets the "provider" field.
+func (u *CreativeRunUpsertBulk) SetProvider(v string) *CreativeRunUpsertBulk {
+	return u.Update(func(s *CreativeRunUpsert) {
+		s.SetProvider(v)
+	})
+}
+
+// UpdateProvider sets the "provider" field to the value that was provided on create.
+func (u *CreativeRunUpsertBulk) UpdateProvider() *CreativeRunUpsertBulk {
+	return u.Update(func(s *CreativeRunUpsert) {
+		s.UpdateProvider()
 	})
 }
 

@@ -556,16 +556,6 @@ export interface PaginationConfig {
 
 // ==================== API Key & Group Types ====================
 
-export type GroupPlatform =
-  | 'anthropic'
-  | 'openai'
-  | 'gemini'
-  | 'antigravity'
-  | 'qoder'
-  | 'grok'
-  | 'kimi'
-  | 'zhipu'
-  | 'deepseek'
 export type GroupSchedulerType = 'basic' | 'advanced'
 
 // 分组高级调度器的稀疏覆盖；未出现的字段继承网关通用设置。
@@ -702,7 +692,6 @@ export interface MarketplaceGroup {
   id: number
   name: string
   description: string
-  platform: GroupPlatform
   display_brand: string
   sort_order: number
   rate_multiplier: number
@@ -747,10 +736,12 @@ export interface ReasoningEffortMapping {
 }
 
 export interface Group {
+  // 后端按组内账号能力解析的可请求模型。
+  models?: string[]
+  model_protocols?: Record<string, ProtocolID[]>
   id: number
   name: string
   description: string | null
-  platform: GroupPlatform
   display_brand?: string
   rate_multiplier: number
   capacity?: MarketplaceGroupCapacity
@@ -759,7 +750,6 @@ export interface Group {
   max_reasoning_effort_over_limit?: string // 超过上限时 downgrade 或 deny
   reasoning_effort_mappings?: ReasoningEffortMapping[]
   is_exclusive: boolean
-  is_default?: boolean
   session_isolation_enabled: boolean
   status: 'active' | 'inactive'
   long_context_pricing_enabled: boolean
@@ -787,7 +777,7 @@ export interface Group {
   fallback_group_id_on_invalid_request: number | null
   unavailable_fallback_group_id: number | null
   // 分组允许客户端使用的文本生成协议，顺序由服务端固定。
-  protocol_fallbacks?: Partial<Record<ProtocolID, ProtocolID>>
+  protocol_fallbacks?: Partial<Record<ProtocolID, ProtocolID[]>>
   responses_image_policy?: 'inherit' | 'enabled' | 'disabled' | 'block'
   allowed_protocols: ProtocolID[]
   // OpenAI Messages 调度开关（弃用兼容字段，新代码读取 allowed_protocols）
@@ -809,10 +799,10 @@ export type GroupOpenAIFastPolicy = "follow_request" | "force_priority" | "force
 export interface GroupRoutingPolicy {
   /** 兼容历史停用策略，管理表单保存时固定为 true。 */
   enabled: boolean
-  model_mapping: Record<string, Record<string, string>>
+  model_mapping: Record<string, string>
   restrict_models: boolean
   restriction_model_source: 'requested' | 'group_mapped' | 'upstream'
-  allowed_models: Record<string, string[]>
+  allowed_models: string[]
   features: string
   features_config: Record<string, unknown>
 }
@@ -920,7 +910,7 @@ export interface ApiKey {
   reset_5h_at: string | null
   reset_1d_at: string | null
   reset_7d_at: string | null
-  fallback_to_default_group_when_unavailable?: boolean
+  fallback_when_group_unavailable?: boolean
 }
 
 export interface CreateApiKeyRequest {
@@ -941,7 +931,7 @@ export interface CreateApiKeyRequest {
   rate_limit_5h?: number
   rate_limit_1d?: number
   rate_limit_7d?: number
-  fallback_to_default_group_when_unavailable?: boolean
+  fallback_when_group_unavailable?: boolean
 }
 
 export interface UpdateApiKeyRequest {
@@ -963,20 +953,18 @@ export interface UpdateApiKeyRequest {
   rate_limit_1d?: number
   rate_limit_7d?: number
   reset_rate_limit_usage?: boolean
-  fallback_to_default_group_when_unavailable?: boolean
+  fallback_when_group_unavailable?: boolean
 }
 
 export interface CreateGroupRequest {
   name: string
   description?: string | null
-  platform?: GroupPlatform
   scheduler_type?: GroupSchedulerType
   advanced_scheduler_overrides?: GroupAdvancedSchedulerOverrides
   display_brand?: string
   sort_order?: number
   rate_multiplier?: number
   is_exclusive?: boolean
-  is_default?: boolean
   session_isolation_enabled?: boolean
   long_context_pricing_enabled?: boolean
   force_openai_fast?: boolean
@@ -1005,7 +993,7 @@ export interface CreateGroupRequest {
   supported_model_scopes?: string[]
   models_list_config?: ModelsListConfig
   availability_probe_config?: GroupAvailabilityProbeConfig
-  protocol_fallbacks?: Partial<Record<ProtocolID, ProtocolID>>
+  protocol_fallbacks?: Partial<Record<ProtocolID, ProtocolID[]>>
   responses_image_policy?: 'inherit' | 'enabled' | 'disabled' | 'block'
   allowed_protocols?: ProtocolID[]
   allow_messages_dispatch?: boolean
@@ -1027,14 +1015,12 @@ export interface CreateGroupRequest {
 export interface UpdateGroupRequest {
   name?: string
   description?: string | null
-  platform?: GroupPlatform
   scheduler_type?: GroupSchedulerType
   advanced_scheduler_overrides?: GroupAdvancedSchedulerOverrides
   display_brand?: string
   sort_order?: number
   rate_multiplier?: number
   is_exclusive?: boolean
-  is_default?: boolean
   session_isolation_enabled?: boolean
   status?: 'active' | 'inactive'
   long_context_pricing_enabled?: boolean
@@ -1064,7 +1050,7 @@ export interface UpdateGroupRequest {
   supported_model_scopes?: string[]
   models_list_config?: ModelsListConfig
   availability_probe_config?: GroupAvailabilityProbeConfig
-  protocol_fallbacks?: Partial<Record<ProtocolID, ProtocolID>>
+  protocol_fallbacks?: Partial<Record<ProtocolID, ProtocolID[]>>
   responses_image_policy?: 'inherit' | 'enabled' | 'disabled' | 'block'
   allowed_protocols?: ProtocolID[]
   allow_messages_dispatch?: boolean
@@ -1722,7 +1708,6 @@ export interface CreateAccountRequest {
   group_ids?: number[]
   expires_at?: number | null
   auto_pause_on_expired?: boolean
-  confirm_mixed_channel_risk?: boolean
 }
 
 export interface UpdateAccountRequest {
@@ -1741,27 +1726,6 @@ export interface UpdateAccountRequest {
   group_ids?: number[]
   expires_at?: number | null
   auto_pause_on_expired?: boolean
-  confirm_mixed_channel_risk?: boolean
-}
-
-export interface CheckMixedChannelRequest {
-  platform: AccountPlatform
-  group_ids: number[]
-  account_id?: number
-}
-
-export interface MixedChannelWarningDetails {
-  group_id: number
-  group_name: string
-  current_platform: string
-  other_platform: string
-}
-
-export interface CheckMixedChannelResponse {
-  has_risk: boolean
-  error?: string
-  message?: string
-  details?: MixedChannelWarningDetails
 }
 
 export interface CreateProxyRequest {
@@ -1859,8 +1823,6 @@ export interface CodexSessionImportRequest {
   credential_extras?: Record<string, unknown>
   extra?: Record<string, unknown>
   update_existing?: boolean
-  skip_default_group_bind?: boolean
-  confirm_mixed_channel_risk?: boolean
 }
 
 export interface OpenAICodexPATCreateRequest {
@@ -1877,8 +1839,6 @@ export interface OpenAICodexPATCreateRequest {
   auto_pause_on_expired?: boolean
   credential_extras?: Record<string, unknown>
   extra?: Record<string, unknown>
-  skip_default_group_bind?: boolean
-  confirm_mixed_channel_risk?: boolean
 }
 
 export interface CodexSessionImportMessage {
@@ -1921,6 +1881,8 @@ export type ImageSizeSource = 'output' | 'input' | 'default' | 'legacy'
 export type ImageSizeBreakdown = Record<string, number>
 
 export interface UsageLog {
+  // 实际执行账号的平台快照，历史记录由迁移固化。
+  platform: string
   id: number
   user_id: number
   team_id?: number | null
@@ -2718,9 +2680,4 @@ export interface UpdateScheduledTestPlanRequest {
 export type { SubscriptionPlan, PaymentOrder, CheckoutInfoResponse } from './payment'
 
 export type {
-  PlatformQuotaItem,
-  PlatformQuotaUpdateItem,
-  PlatformQuotaPlatform,
-  PlatformQuotaWindow,
-  PlatformQuotasResponse,
 } from '@/api/admin/users'

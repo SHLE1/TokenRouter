@@ -98,7 +98,44 @@ func (s *gatewayModelsAccountRepoStub) ListSchedulableByGroupID(ctx context.Cont
 		return nil, nil
 	}
 	out := make([]account.Record, len(accounts))
-	copy(out, accounts)
+	for i := range accounts {
+		out[i] = *account.CloneRecord(&accounts[i])
+		if out[i].Type == "" {
+			out[i].Type = "apikey"
+			if out[i].Platform == "antigravity" {
+				out[i].Type = "oauth"
+			}
+			if out[i].Platform == "qoder" {
+				out[i].Type = "cosy"
+			}
+		}
+		if out[i].Status == "" {
+			out[i].Status = "active"
+			out[i].Schedulable = true
+		}
+		out[i].GroupIDs = []int64{groupID}
+		// 映射夹具明确声明可服务范围，测试不依赖“映射表兼作白名单”的旧假设。
+		if _, configured := out[i].Credentials["model_whitelist"]; !configured {
+			var allowed []string
+			switch mapping := out[i].Credentials["model_mapping"].(type) {
+			case map[string]any:
+				for _, value := range mapping {
+					if model, ok := value.(string); ok && model != "" {
+						allowed = append(allowed, model)
+					}
+				}
+			case map[string]string:
+				for _, model := range mapping {
+					if model != "" {
+						allowed = append(allowed, model)
+					}
+				}
+			}
+			if len(allowed) > 0 {
+				out[i].Credentials["model_whitelist"] = allowed
+			}
+		}
+	}
 	return out, nil
 }
 
@@ -124,7 +161,9 @@ func newGatewayModelsHandlerWithPricingConfigForTest(repo modelHTTPAccountRows, 
 			return gatewayprovider.CatalogueAccounts(values), nil
 		}
 	}
-	var pricingConfigPort routing.CataloguePolicies
+	var pricingConfigPort routing.CataloguePolicies = routing.NewPricingConfigService(modelCatalogueEmptyPrices{}, nil, routing.PricingConfigOptions{ReadGroup: func(_ context.Context, id int64) (*routing.Group, error) {
+		return &routing.Group{ID: id, AllowedProtocols: capability.SupportedGroupClientProtocols("")}, nil
+	}})
 	if modelConfigs != nil {
 		pricingConfigPort = modelConfigs
 	}
@@ -163,7 +202,7 @@ func TestGatewayModels_GeminiGroupFallsBackToGeminiModels(t *testing.T) {
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodGet, "/v1/models", nil)
 	c.Set(string(keyhttp.ContextKeyAPIKey), &apikey.APIKey{
-		Group:        &routing.Group{ID: groupID, Platform: capability.PlatformGemini},
+		Group:        &routing.Group{ID: groupID},
 		ModelMapping: map[string]string{"gemini-review": "gemini-2.5-flash", "wild-*": "gemini-2.5-flash"},
 	})
 
@@ -231,7 +270,7 @@ func TestAntigravityModelsExcludesAliasWhoseTargetIsUnavailableToBoundGroup(t *t
 	c.Request = httptest.NewRequest(http.MethodGet, "/antigravity/models", nil)
 	c.Set(string(keyhttp.ContextKeyAPIKey), &apikey.APIKey{
 		GroupID: &groupID,
-		Group:   &routing.Group{ID: groupID, Platform: capability.PlatformAntigravity},
+		Group:   &routing.Group{ID: groupID},
 		ModelMapping: map[string]string{
 			"available-alias":   availableModel,
 			"unavailable-alias": unavailableModel,
@@ -278,8 +317,8 @@ func TestGatewayModelsCompositeKeyAggregatesMappingsInOrder(t *testing.T) {
 		},
 		User: &identity.User{Status: billing.StatusActive, AllowedGroups: []int64{anthropicGroupID}},
 		CompositeGroups: []apikey.APIKeyCompositeGroup{
-			{GroupID: openAIGroupID, Prefix: "GPT", SortOrder: 0, Group: &routing.Group{ID: openAIGroupID, Platform: capability.PlatformOpenAI, Status: billing.StatusActive}},
-			{GroupID: anthropicGroupID, Prefix: "Claude", SortOrder: 1, Group: &routing.Group{ID: anthropicGroupID, Platform: capability.PlatformAnthropic, Status: billing.StatusActive}},
+			{GroupID: openAIGroupID, Prefix: "GPT", SortOrder: 0, Group: &routing.Group{ID: openAIGroupID, Status: billing.StatusActive}},
+			{GroupID: anthropicGroupID, Prefix: "Claude", SortOrder: 1, Group: &routing.Group{ID: anthropicGroupID, Status: billing.StatusActive}},
 		},
 	})
 
@@ -332,8 +371,8 @@ func TestGatewayModelsCompositeKeyFiltersPreferredSubscriptionMappings(t *testin
 			AllowedGroups: []int64{allowedGroupID, blockedGroupID},
 		},
 		CompositeGroups: []apikey.APIKeyCompositeGroup{
-			{GroupID: allowedGroupID, Prefix: "Allowed", Group: &routing.Group{ID: allowedGroupID, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, IsExclusive: true}},
-			{GroupID: blockedGroupID, Prefix: "Blocked", Group: &routing.Group{ID: blockedGroupID, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, IsExclusive: true}},
+			{GroupID: allowedGroupID, Prefix: "Allowed", Group: &routing.Group{ID: allowedGroupID, Status: billing.StatusActive, IsExclusive: true}},
+			{GroupID: blockedGroupID, Prefix: "Blocked", Group: &routing.Group{ID: blockedGroupID, Status: billing.StatusActive, IsExclusive: true}},
 		},
 	})
 	context.Set(string(gatewayhttp.ContextKeyAPIKeyBilling), &billing.APIKeyBillingContext{
@@ -378,8 +417,8 @@ func TestGatewayModelsCompositeKeyFiltersRevokedMappings(t *testing.T) {
 			AllowedGroups:        nil,
 		},
 		CompositeGroups: []apikey.APIKeyCompositeGroup{
-			{GroupID: publicGroupID, Prefix: "Public", Group: &routing.Group{ID: publicGroupID, Platform: capability.PlatformOpenAI, Status: billing.StatusActive}},
-			{GroupID: exclusiveGroupID, Prefix: "Private", Group: &routing.Group{ID: exclusiveGroupID, Platform: capability.PlatformAnthropic, Status: billing.StatusActive, IsExclusive: true}},
+			{GroupID: publicGroupID, Prefix: "Public", Group: &routing.Group{ID: publicGroupID, Status: billing.StatusActive}},
+			{GroupID: exclusiveGroupID, Prefix: "Private", Group: &routing.Group{ID: exclusiveGroupID, Status: billing.StatusActive, IsExclusive: true}},
 		},
 	})
 
@@ -414,7 +453,7 @@ func TestGatewayModels_AntigravityGroupKeepsDefaultModelMetadata(t *testing.T) {
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodGet, "/v1/models", nil)
 	c.Set(string(keyhttp.ContextKeyAPIKey), &apikey.APIKey{
-		Group: &routing.Group{ID: groupID, Platform: capability.PlatformAntigravity},
+		Group: &routing.Group{ID: groupID},
 	})
 
 	h.Models(c)
@@ -446,7 +485,7 @@ func TestGatewayModels_QoderGroupFallsBackToQoderModels(t *testing.T) {
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodGet, "/v1/models", nil)
 	c.Set(string(keyhttp.ContextKeyAPIKey), &apikey.APIKey{
-		Group: &routing.Group{ID: groupID, Platform: capability.PlatformQoder},
+		Group: &routing.Group{ID: groupID},
 	})
 
 	h.Models(c)
@@ -513,7 +552,7 @@ func assertGrokGatewayReasoningEfforts(t *testing.T, groupID int64, modelID stri
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodGet, "/v1/models", nil)
 	c.Set(string(keyhttp.ContextKeyAPIKey), &apikey.APIKey{
-		Group: &routing.Group{ID: groupID, Platform: capability.PlatformGrok},
+		Group: &routing.Group{ID: groupID},
 	})
 
 	h.Models(c)
@@ -528,7 +567,7 @@ func assertGrokGatewayReasoningEfforts(t *testing.T, groupID int64, modelID stri
 	require.Equal(t, "xai", model.OwnedBy)
 	require.Equal(t, "model", model.Type)
 	require.NotEmpty(t, model.DisplayName)
-	require.Equal(t, "2024-01-01T00:00:00Z", model.CreatedAt)
+	require.Empty(t, model.CreatedAt)
 	require.True(t, model.SupportsReasoningEffort)
 	require.Equal(t, "high", model.ReasoningEffort)
 	require.Equal(t, want, model.ReasoningEfforts)
@@ -551,7 +590,7 @@ func TestGatewayModels_GrokDefaultsExcludeBuiltinAliases(t *testing.T) {
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodGet, "/v1/models", nil)
 	c.Set(string(keyhttp.ContextKeyAPIKey), &apikey.APIKey{
-		Group: &routing.Group{ID: groupID, Platform: capability.PlatformGrok},
+		Group: &routing.Group{ID: groupID},
 	})
 
 	h.Models(c)
@@ -559,7 +598,7 @@ func TestGatewayModels_GrokDefaultsExcludeBuiltinAliases(t *testing.T) {
 	require.Equal(t, http.StatusOK, rec.Code)
 	var got gatewayModelsResponseForTest
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
-	require.Equal(t, xai.DefaultModelIDs(), modelIDsForTest(got.Data))
+	require.ElementsMatch(t, xai.DefaultModelIDs(), modelIDsForTest(got.Data))
 	require.NotContains(t, modelIDsForTest(got.Data), "grok")
 	require.NotContains(t, modelIDsForTest(got.Data), "grok-latest")
 
@@ -583,7 +622,7 @@ func TestGatewayModels_GrokDefaultsExcludeBuiltinAliases(t *testing.T) {
 	mappedContext, _ := gin.CreateTestContext(mappedRecorder)
 	mappedContext.Request = httptest.NewRequest(http.MethodGet, "/v1/models", nil)
 	mappedContext.Set(string(keyhttp.ContextKeyAPIKey), &apikey.APIKey{
-		Group: &routing.Group{ID: mappedGroupID, Platform: capability.PlatformGrok},
+		Group: &routing.Group{ID: mappedGroupID},
 	})
 
 	mappedHandler.Models(mappedContext)
@@ -594,7 +633,7 @@ func TestGatewayModels_GrokDefaultsExcludeBuiltinAliases(t *testing.T) {
 	require.Contains(t, modelIDsForTest(mapped.Data), "grok")
 }
 
-func TestGatewayModels_GeminiGroupFiltersMappedModelsByPlatform(t *testing.T) {
+func TestGatewayModels_MixedGroupIncludesMappedModelsFromEveryPlatform(t *testing.T) {
 	groupID := int64(21)
 	h := newGatewayModelsHandlerForTest(
 		&gatewayModelsAccountRepoStub{
@@ -627,7 +666,7 @@ func TestGatewayModels_GeminiGroupFiltersMappedModelsByPlatform(t *testing.T) {
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodGet, "/v1/models", nil)
 	c.Set(string(keyhttp.ContextKeyAPIKey), &apikey.APIKey{
-		Group: &routing.Group{ID: groupID, Platform: capability.PlatformGemini},
+		Group: &routing.Group{ID: groupID},
 	})
 
 	h.Models(c)
@@ -636,7 +675,7 @@ func TestGatewayModels_GeminiGroupFiltersMappedModelsByPlatform(t *testing.T) {
 
 	var got gatewayModelsResponseForTest
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
-	require.Equal(t, []string{"gemini-2.5-flash"}, modelIDsForTest(got.Data))
+	require.Equal(t, []string{"claude-sonnet-4-6", "gemini-2.5-flash"}, modelIDsForTest(got.Data))
 }
 
 func TestGatewayModels_CustomModelsListDisabledKeepsOriginalModels(t *testing.T) {
@@ -665,8 +704,7 @@ func TestGatewayModels_CustomModelsListDisabledKeepsOriginalModels(t *testing.T)
 	c.Request = httptest.NewRequest(http.MethodGet, "/v1/models", nil)
 	c.Set(string(keyhttp.ContextKeyAPIKey), &apikey.APIKey{
 		Group: &routing.Group{
-			ID:       groupID,
-			Platform: capability.PlatformOpenAI,
+			ID: groupID,
 			ModelsListConfig: routing.GroupModelsListConfig{
 				Enabled: false,
 				Models:  []string{"gpt-5.5"},
@@ -681,10 +719,9 @@ func TestGatewayModels_CustomModelsListDisabledKeepsOriginalModels(t *testing.T)
 	var got gatewayModelsResponseForTest
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
 	require.Equal(t, []string{"gpt-5.4", "gpt-5.5"}, modelIDsForTest(got.Data))
-	require.Empty(t, got.Data[0].Object)
-	require.Zero(t, got.Data[0].Created)
-	require.Empty(t, got.Data[0].OwnedBy)
-	require.Equal(t, "2024-01-01T00:00:00Z", got.Data[0].CreatedAt)
+	require.Equal(t, "model", got.Data[0].Object)
+	require.Equal(t, "openai", got.Data[0].OwnedBy)
+	require.Empty(t, got.Data[0].CreatedAt)
 }
 
 func TestGatewayModels_CustomModelsListFiltersAndOrdersMappedModels(t *testing.T) {
@@ -714,8 +751,7 @@ func TestGatewayModels_CustomModelsListFiltersAndOrdersMappedModels(t *testing.T
 	c.Request = httptest.NewRequest(http.MethodGet, "/v1/models", nil)
 	c.Set(string(keyhttp.ContextKeyAPIKey), &apikey.APIKey{
 		Group: &routing.Group{
-			ID:       groupID,
-			Platform: capability.PlatformOpenAI,
+			ID: groupID,
 			ModelsListConfig: routing.GroupModelsListConfig{
 				Enabled: true,
 				Models:  []string{"gpt-5.5", "missing-model", "gpt-5.4"},
@@ -757,8 +793,7 @@ func TestGatewayModels_CustomModelsListKeepsConcreteModelAllowedByWildcardMappin
 	c.Request = httptest.NewRequest(http.MethodGet, "/v1/models", nil)
 	c.Set(string(keyhttp.ContextKeyAPIKey), &apikey.APIKey{
 		Group: &routing.Group{
-			ID:       groupID,
-			Platform: capability.PlatformAnthropic,
+			ID: groupID,
 			ModelsListConfig: routing.GroupModelsListConfig{
 				Enabled: true,
 				Models:  []string{"claude-sonnet-4-6"},
@@ -806,8 +841,7 @@ func TestGatewayModels_AnthropicCustomModelsListIncludesOAuthClaudeAndMappedDeep
 	c.Request = httptest.NewRequest(http.MethodGet, "/v1/models", nil)
 	c.Set(string(keyhttp.ContextKeyAPIKey), &apikey.APIKey{
 		Group: &routing.Group{
-			ID:       groupID,
-			Platform: capability.PlatformAnthropic,
+			ID: groupID,
 			ModelsListConfig: routing.GroupModelsListConfig{
 				Enabled: true,
 				Models:  []string{"claude-fable-5", "claude-opus-4-8", "deepseek-v4-pro"},
@@ -855,8 +889,7 @@ func TestGatewayModels_AnthropicCustomModelsListDisabledIncludesUnrestrictedDefa
 	c.Request = httptest.NewRequest(http.MethodGet, "/v1/models", nil)
 	c.Set(string(keyhttp.ContextKeyAPIKey), &apikey.APIKey{
 		Group: &routing.Group{
-			ID:       groupID,
-			Platform: capability.PlatformAnthropic,
+			ID: groupID,
 			ModelsListConfig: routing.GroupModelsListConfig{
 				Enabled: false,
 				Models:  []string{"claude-fable-5", "deepseek-v4-pro"},
@@ -896,8 +929,7 @@ func TestGatewayModels_AnthropicCustomModelsListDoesNotAddModelsOutsideResolvedC
 	c.Request = httptest.NewRequest(http.MethodGet, "/v1/models", nil)
 	c.Set(string(keyhttp.ContextKeyAPIKey), &apikey.APIKey{
 		Group: &routing.Group{
-			ID:       groupID,
-			Platform: capability.PlatformAnthropic,
+			ID: groupID,
 			ModelsListConfig: routing.GroupModelsListConfig{
 				Enabled: true,
 				Models:  []string{"claude-opus-4-6-thinking", "claude-sonnet-4-5"},
@@ -939,8 +971,7 @@ func TestGatewayModels_CustomModelsListCanReturnEmptyWhenSelectionsUnavailable(t
 	c.Request = httptest.NewRequest(http.MethodGet, "/v1/models", nil)
 	c.Set(string(keyhttp.ContextKeyAPIKey), &apikey.APIKey{
 		Group: &routing.Group{
-			ID:       groupID,
-			Platform: capability.PlatformOpenAI,
+			ID: groupID,
 			ModelsListConfig: routing.GroupModelsListConfig{
 				Enabled: true,
 				Models:  []string{"gpt-5.5"},
@@ -974,8 +1005,7 @@ func TestGatewayModels_CustomModelsListFiltersDefaultFallbackModels(t *testing.T
 	c.Request = httptest.NewRequest(http.MethodGet, "/v1/models", nil)
 	c.Set(string(keyhttp.ContextKeyAPIKey), &apikey.APIKey{
 		Group: &routing.Group{
-			ID:       groupID,
-			Platform: capability.PlatformOpenAI,
+			ID: groupID,
 			ModelsListConfig: routing.GroupModelsListConfig{
 				Enabled: true,
 				Models:  []string{"gpt-5.5", "legacy-gpt-2024", "gpt-5.4"},
@@ -1009,8 +1039,7 @@ func TestGatewayModels_OpenAICustomModelsListKeepsOpenAIResponseShapeForDefaultF
 	c.Request = httptest.NewRequest(http.MethodGet, "/v1/models", nil)
 	c.Set(string(keyhttp.ContextKeyAPIKey), &apikey.APIKey{
 		Group: &routing.Group{
-			ID:       groupID,
-			Platform: capability.PlatformOpenAI,
+			ID: groupID,
 			ModelsListConfig: routing.GroupModelsListConfig{
 				Enabled: true,
 				Models:  []string{"gpt-5.5", "gpt-5.4"},
@@ -1045,7 +1074,7 @@ func TestGatewayModels_OpenAIUnrestrictedListKeepsOpenAIResponseShape(t *testing
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodGet, "/v1/models", nil)
 	c.Set(string(keyhttp.ContextKeyAPIKey), &apikey.APIKey{
-		Group: &routing.Group{ID: groupID, Platform: capability.PlatformOpenAI},
+		Group: &routing.Group{ID: groupID},
 	})
 
 	h.Models(c)
@@ -1077,8 +1106,7 @@ func TestGatewayModels_QoderCustomModelsListFiltersDefaultFallbackModels(t *test
 	c.Request = httptest.NewRequest(http.MethodGet, "/v1/models", nil)
 	c.Set(string(keyhttp.ContextKeyAPIKey), &apikey.APIKey{
 		Group: &routing.Group{
-			ID:       groupID,
-			Platform: capability.PlatformQoder,
+			ID: groupID,
 			ModelsListConfig: routing.GroupModelsListConfig{
 				Enabled: true,
 				Models:  []string{"deepseek-v4-pro", "claude-sonnet-4-6", "lite"},
@@ -1112,7 +1140,7 @@ func TestGatewayModels_GroupRestrictionEmptyDoesNotFallBackToDefaults(t *testing
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodGet, "/v1/models", nil)
 	c.Set(string(keyhttp.ContextKeyAPIKey), &apikey.APIKey{
-		Group: &routing.Group{ID: groupID, Platform: capability.PlatformOpenAI},
+		Group: &routing.Group{ID: groupID},
 	})
 
 	h.Models(c)
@@ -1143,7 +1171,6 @@ func TestGatewayModels_CustomListIntersectsPricingConfigFilteredModels(t *testin
 		RestrictModels:     true,
 		BillingModelSource: routing.BillingModelSourceRequested,
 		ModelPricing: []routing.ModelPricingEntry{{
-			Platform:   capability.PlatformOpenAI,
 			Models:     []string{"allowed-model"},
 			InputPrice: &price,
 		}},
@@ -1155,8 +1182,7 @@ func TestGatewayModels_CustomListIntersectsPricingConfigFilteredModels(t *testin
 	c.Request = httptest.NewRequest(http.MethodGet, "/v1/models", nil)
 	c.Set(string(keyhttp.ContextKeyAPIKey), &apikey.APIKey{
 		Group: &routing.Group{
-			ID:       groupID,
-			Platform: capability.PlatformOpenAI,
+			ID: groupID,
 			ModelsListConfig: routing.GroupModelsListConfig{
 				Enabled: true,
 				Models:  []string{"blocked-model", "allowed-model"},
@@ -1177,4 +1203,13 @@ func modelIDsForTest(models []gatewayModelItemForTest) []string {
 		ids = append(ids, model.ID)
 	}
 	return ids
+}
+
+// modelCatalogueEmptyPrices 让仅测试账号目录的夹具提供合法的空价格仓储。
+type modelCatalogueEmptyPrices struct {
+	routing.PricingConfigRepository
+}
+
+func (modelCatalogueEmptyPrices) ListAll(context.Context) ([]routing.PricingConfig, error) {
+	return nil, nil
 }

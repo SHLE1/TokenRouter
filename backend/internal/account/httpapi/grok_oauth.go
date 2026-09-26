@@ -51,7 +51,6 @@ func (h *GrokOAuthHandler) ExchangeCode(c *gin.Context) {
 		return
 	}
 	tokenInfo, err := h.grokOAuthService.ExchangeCode(c.Request.Context(), &accountcore.GrokExchangeCodeInput{
-
 		SessionID: req.SessionID,
 
 		Code: req.Code,
@@ -205,7 +204,6 @@ func (h *GrokOAuthHandler) ReconcileOAuthAccounts(c *gin.Context) {
 		return
 	}
 	result, err := h.reconciler.ReconcileGrokOAuth(c.Request.Context(), accountcore.GrokOAuthReconcileInput{
-
 		DryRun: dryRun,
 
 		Apply: req.Apply,
@@ -235,7 +233,7 @@ func (h *GrokOAuthHandler) CreateAccountFromOAuth(c *gin.Context) {
 		Priority    int     `json:"priority"`
 		GroupIDs    []int64 `json:"group_ids"`
 	}
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := response.BindJSONStrict(c, &req); err != nil {
 		response.BadRequest(c, "Invalid request: "+err.Error())
 		return
 	}
@@ -274,7 +272,7 @@ type GrokSSOToOAuthResponse struct {
 
 func (h *GrokOAuthHandler) CreateAccountsFromSSO(c *gin.Context) {
 	var req GrokSSOToOAuthRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := response.BindJSONStrict(c, &req); err != nil {
 		response.BadRequest(c, "Invalid request: "+err.Error())
 		return
 	}

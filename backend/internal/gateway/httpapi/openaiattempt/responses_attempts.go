@@ -11,7 +11,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/admission"
+
 	"github.com/TokenFlux/TokenRouter/internal/gateway/failover"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
@@ -28,6 +28,10 @@ import (
 )
 
 type responsesAttemptBridge struct {
+	sessionAttempts                                                          *scheduler.SessionAttempts
+	hasBoundSession                                                          bool
+	forceCacheBilling                                                        bool
+	groupFallbackUsed                                                        bool
 	fixed                                                                    *openAIExecutionDependencies
 	c                                                                        *gin.Context
 	apiKey                                                                   *apikey.APIKey
@@ -93,7 +97,7 @@ func (b *responsesAttemptBridge) Select(excluded map[int64]struct{}) (textflow.R
 		zap.Float64("load_skew", scheduleDecision.LoadSkew),
 	)
 	b.account = b.selection.Account
-	if b.previousResponseID != "" && b.requestPlatform == capability.PlatformOpenAI && !b.account.View().IsOpenAIApiKey() {
+	if b.previousResponseID != "" && !b.account.View().IsOpenAIApiKey() {
 		// The public Responses HTTP API supports previous_response_id on API-key
 		// accounts. OAuth/SetupToken upstreams do not, so keep searching instead
 		// of silently deleting continuation state from a mixed account pool.
@@ -163,6 +167,9 @@ func (b *responsesAttemptBridge) SelectionFailure(err error, excludedCount int, 
 
 // Acquire 只执行单次 Responses 适配操作，不持有重试循环。
 func (b *responsesAttemptBridge) Acquire() bool {
+	if b.sessionAttempts != nil && b.binding().sessions.Track != nil {
+		b.binding().sessions.Track(b.sessionAttempts, b.account, b.sessionHash)
+	}
 	var acquired bool
 	b.accountReleaseFunc, acquired = b.binding().acquireResponsesAccountSlot(b.c, b.apiKey.GroupID, b.sessionHash, b.selection, b.reqStream, b.streamStarted, b.reqLog)
 	return acquired
@@ -204,6 +211,7 @@ func (b *responsesAttemptBridge) Forward() textflow.ResponseOutcome {
 		gatewayhttp.SetOpsLatencyMs(b.c, gatewayhttp.OpsTimeToFirstTokenMsKey, int64(*b.result.FirstTokenMs))
 	}
 	out := textflow.ResponseOutcome{Outcome: textflow.Outcome{Attempt: openAIObservedAttempt(b.result, err), Err: err, HasResult: b.result != nil}, Images: b.result != nil && b.result.ImageCount > 0}
+	out.NativePartial = err != nil && b.result != nil && b.result.NativeUsage != nil && (b.result.NativeUsage.HasObservedTokens() || b.result.ImageCount > 0)
 	out.Attempt.HTTPCommitted = b.c.Writer.Written()
 	var retry *forwardcore.UpstreamFailoverError
 	if errors.As(err, &retry) {
@@ -226,7 +234,7 @@ func (b *responsesAttemptBridge) Complete() {
 	requestPayloadHash := billing.HashUsageRequestPayload(b.body)
 	inboundEndpoint := gatewayhttp.GetInboundEndpoint(b.c)
 	upstreamEndpoint := ResolveOpenAIUpstreamEndpoint(b.c, b.account, res)
-	quotaPlatform := admission.QuotaPlatform(b.c.Request.Context(), b.apiKey)
+
 	clientSessionID := gatewayhttp.ExtractClientSessionID(b.c)
 	// 入队前固化资金与报文投影，worker 不再读取请求中的实体。
 	completionInput := gatewaycapture.CaptureOpenAI(gatewayhttp.CompletionContext(b.c), &gatewaycapture.OpenAICapture{
@@ -242,7 +250,7 @@ func (b *responsesAttemptBridge) Complete() {
 		RequestPayloadHash: requestPayloadHash,
 		RequestBody:        b.body,
 		APIKeyService:      b.binding().apiKeyService,
-		QuotaPlatform:      quotaPlatform,
+
 		ClientSessionID:    clientSessionID,
 		PricingUsageFields: b.groupMapping.ToUsageFields(b.reqModel, res.UpstreamModel),
 		CyberBlocked:       b.cyberPolicyHandled,
@@ -371,7 +379,7 @@ func (b *responsesAttemptBridge) Failed() {
 func (b *responsesAttemptBridge) Success() {
 	if b.result != nil {
 		// 排除 spark 影子:其 codex_* 仅由 QueryUsage(/wham/usage bengalfox)更新(外审第7轮 P1)。
-		if b.account.Record.Type == capability.AccountTypeOAuth && !b.account.View().IsShadow() {
+		if b.account.View().IsOpenAI() && b.account.Record.Type == capability.AccountTypeOAuth && !b.account.View().IsShadow() {
 			b.binding().updateCodexUsageSnapshotFromHeaders(b.c.Request.Context(), b.account.Record.ID, b.result.ResponseHeaders)
 		}
 		b.binding().reportOpenAIAccountScheduleResult(b.account, OpenAIAccountScheduleModel(b.c, b.account, b.forwardModel, b.requireCompact, b.result), b.result.SucceededForScheduling(), b.result.FirstTokenMs)
@@ -405,5 +413,8 @@ func (b *responsesAttemptBridge) Exhausted(failure *textflow.AttemptFailure) {
 }
 
 func (b *responsesAttemptBridge) Switched() {
+	if b.sessionAttempts != nil && b.account != nil {
+		b.sessionAttempts.Abandon(b.account.Record.ID)
+	}
 	b.binding().recordOpenAIAccountSwitchForSelection(b.selection)
 }

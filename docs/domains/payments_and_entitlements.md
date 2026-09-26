@@ -156,4 +156,4 @@ Webhook 路由不依赖用户 JWT，因此提供商验签、订单绑定和金�
 
 实现入口：[下单](../../backend/internal/payment/checkout.go)、[状态与履约](../../backend/internal/payment/fulfillment.go)、[退款](../../backend/internal/payment/refund_workflow.go)、[闭合退款存储](../../backend/internal/payment/postgres/refund.go)、[HTTP](../../backend/internal/payment/httpapi/user.go)、[装配](../../backend/internal/app/payment_refund.go)。
 
-相关资料：[支付配置与运营指南](../guides/payments/configuration.md)、[外部支付集成 API](../guides/payments/admin_integration_api.md)。相关 Project Doc：[路由与结算](routing_and_billing.md)、[用户平台额度](platform_quotas.md)、[推广与返利](promotions_and_affiliates.md)、[身份与租户](identity_and_tenancy.md)、[领域目录](index.md)。
+相关资料：[支付配置与运营指南](../guides/payments/configuration.md)、[外部支付集成 API](../guides/payments/admin_integration_api.md)。相关 Project Doc：[路由与结算](routing_and_billing.md)、[推广与返利](promotions_and_affiliates.md)、[身份与租户](identity_and_tenancy.md)、[领域目录](index.md)。

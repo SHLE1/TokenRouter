@@ -20,12 +20,15 @@ import (
 
 // newBedrockRoutingTestAccount 使用虚构凭据构造可调度账号，测试不会访问真实 AWS。
 func newBedrockRoutingTestAccount(id int64, region string, forceGlobal bool) gatewayprovider.ExecutionAccount {
-	account := gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: id, Platform: capability.PlatformAnthropic, Type: capability.AccountTypeBedrock,
-		Status: billing.StatusActive, Schedulable: true, Concurrency: 5, Priority: int(id),
-		Credentials: map[string]any{
-			"aws_region": region, "auth_mode": "sigv4",
-			"aws_access_key_id": "test-akid", "aws_secret_access_key": "test-secret",
-		}},
+	account := gatewayprovider.ExecutionAccount{
+		Record: accountcore.Record{
+			LoadLocation: time.LoadLocation, ID: id, Platform: capability.PlatformAnthropic, Type: capability.AccountTypeBedrock,
+			Status: billing.StatusActive, Schedulable: true, Concurrency: 5, Priority: int(id),
+			Credentials: map[string]any{
+				"aws_region": region, "auth_mode": "sigv4",
+				"aws_access_key_id": "test-akid", "aws_secret_access_key": "test-secret",
+			},
+		},
 	}
 	if forceGlobal {
 		account.Record.Credentials["aws_force_global"] = "true"
@@ -61,7 +64,7 @@ func TestBedrockRegionRouting_SchedulerAndDiagnosisAgree(t *testing.T) {
 					repo.accounts[i].Record.AccountGroups = []accountcore.GroupMembership{{AccountID: repo.accounts[i].Record.ID, GroupID: groupID}}
 					repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
 				}
-				group := &routing.Group{ID: groupID, Platform: capability.PlatformAnthropic, Status: billing.StatusActive, Hydrated: true}
+				group := &routing.Group{ID: groupID, Status: billing.StatusActive, Hydrated: true}
 				cfg := testConfig()
 				cfg.Gateway.Scheduling.LoadBatchEnabled = loadBatchEnabled
 				gateway := newGenericSelectionForTest(GenericDependencies{

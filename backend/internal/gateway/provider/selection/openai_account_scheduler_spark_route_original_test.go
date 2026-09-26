@@ -24,11 +24,12 @@ func TestSparkRoutingByModel(t *testing.T) {
 	sparkCreds := map[string]any{"model_mapping": accountprovider.DefaultSparkShadowModels()}
 
 	newScheduler := func(snapshot map[int64]*gatewayprovider.ExecutionAccount) *compatiblePicker {
-		return &compatiblePicker{service: newCompatibleSelectionForTest(CompatibleDependencies{
-			Reads: Reads{Snapshot: schedulerredis.NewSnapshotReader(schedulercore.NewSnapshotService(
-				&openAISnapshotCacheStub{accountsByID: snapshot}, nil, nil, nil, nil))},
-			Shared: Shared{},
-		}, &config.Config{}),
+		return &compatiblePicker{
+			service: newCompatibleSelectionForTest(CompatibleDependencies{
+				Reads: Reads{Snapshot: schedulerredis.NewSnapshotReader(schedulercore.NewSnapshotService(
+					&openAISnapshotCacheStub{accountsByID: snapshot}, nil, nil, nil, nil))},
+				Shared: Shared{},
+			}, &config.Config{}),
 		}
 	}
 	sparkReq := schedulercore.PlatformSelectionInput{RequestedModel: sparkModel, Platform: capability.PlatformOpenAI}
@@ -41,17 +42,21 @@ func TestSparkRoutingByModel(t *testing.T) {
 	})
 
 	t.Run("normal_account_without_spark_rejects_spark", func(t *testing.T) {
-		acc := &gatewayprovider.ExecutionAccount{Record: account.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth, Status: billing.StatusActive, Schedulable: true,
-			Credentials: map[string]any{"model_mapping": map[string]any{normalModel: normalModel}}}}
+		acc := &gatewayprovider.ExecutionAccount{Record: account.Record{
+			LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth, Status: billing.StatusActive, Schedulable: true,
+			Credentials: map[string]any{"model_whitelist": []string{normalModel}, "model_mapping": map[string]any{normalModel: normalModel}},
+		}}
 		require.False(t, newScheduler(nil).isAccountRequestCompatible(ctx, acc, sparkReq),
 			"普通账号未配 spark → 拒 spark（按配置而非类型）")
 	})
 
 	t.Run("shadow_with_spark_mapping_accepts_spark_rejects_non_spark", func(t *testing.T) {
 		pid := int64(100)
-		parent := &gatewayprovider.ExecutionAccount{Record: account.Record{LoadLocation: time.LoadLocation, ID: 100, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth, Status: billing.StatusActive, Schedulable: true}}
-		shadow := &gatewayprovider.ExecutionAccount{Record: account.Record{LoadLocation: time.LoadLocation, ID: 200, ParentAccountID: &pid, QuotaDimension: account.QuotaDimensionSpark,
-			Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Credentials: sparkCreds}}
+		parent := &gatewayprovider.ExecutionAccount{Record: account.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 100, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth, Status: billing.StatusActive, Schedulable: true}}
+		shadow := &gatewayprovider.ExecutionAccount{Record: account.Record{
+			LoadLocation: time.LoadLocation, ID: 200, ParentAccountID: &pid, QuotaDimension: account.QuotaDimensionSpark,
+			Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Credentials: sparkCreds,
+		}}
 		s := newScheduler(map[int64]*gatewayprovider.ExecutionAccount{100: parent})
 		require.True(t, s.isAccountRequestCompatible(ctx, shadow, sparkReq), "影子配 spark + 健康母 → 接 spark")
 		require.False(t, s.isAccountRequestCompatible(ctx, shadow, normalReq), "影子（仅 spark mapping）→ 拒非 spark")
@@ -63,9 +68,11 @@ func TestSparkRoutingByModel(t *testing.T) {
 		// 一样成为候选。旧类型门曾在空 model 时排除影子(opt-in)，该 opt-in 已随类型门移除——
 		// routing 路径不再有任何类型判断。此测试锁定该决策，防被未来改动静默改回。
 		pid := int64(100)
-		parent := &gatewayprovider.ExecutionAccount{Record: account.Record{LoadLocation: time.LoadLocation, ID: 100, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth, Status: billing.StatusActive, Schedulable: true}}
-		shadow := &gatewayprovider.ExecutionAccount{Record: account.Record{LoadLocation: time.LoadLocation, ID: 200, ParentAccountID: &pid, QuotaDimension: account.QuotaDimensionSpark,
-			Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Credentials: sparkCreds}}
+		parent := &gatewayprovider.ExecutionAccount{Record: account.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 100, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth, Status: billing.StatusActive, Schedulable: true}}
+		shadow := &gatewayprovider.ExecutionAccount{Record: account.Record{
+			LoadLocation: time.LoadLocation, ID: 200, ParentAccountID: &pid, QuotaDimension: account.QuotaDimensionSpark,
+			Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Credentials: sparkCreds,
+		}}
 		emptyReq := schedulercore.PlatformSelectionInput{RequestedModel: "", Platform: capability.PlatformOpenAI}
 		s := newScheduler(map[int64]*gatewayprovider.ExecutionAccount{100: parent})
 		require.True(t, s.isAccountRequestCompatible(ctx, shadow, emptyReq),
@@ -84,14 +91,17 @@ func TestParentHealthSchedulerIntegration(t *testing.T) {
 	pid := int64(78100)
 	sparkModel := "gpt-5.3-codex-spark"
 
-	shadow := &gatewayprovider.ExecutionAccount{Record: account.Record{LoadLocation: time.LoadLocation, ID: 78200,
-		ParentAccountID: &pid,
-		QuotaDimension:  account.QuotaDimensionSpark,
-		Platform:        capability.PlatformOpenAI,
-		Type:            capability.AccountTypeOAuth,
-		Status:          billing.StatusActive,
-		Schedulable:     true,
-		Concurrency:     1},
+	shadow := &gatewayprovider.ExecutionAccount{
+		Record: account.Record{
+			Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 78200,
+			ParentAccountID: &pid,
+			QuotaDimension:  account.QuotaDimensionSpark,
+			Platform:        capability.PlatformOpenAI,
+			Type:            capability.AccountTypeOAuth,
+			Status:          billing.StatusActive,
+			Schedulable:     true,
+			Concurrency:     1,
+		},
 	}
 
 	req := schedulercore.PlatformSelectionInput{
@@ -113,11 +123,14 @@ func TestParentHealthSchedulerIntegration(t *testing.T) {
 	}
 
 	t.Run("unhealthy_parent_status_error_rejects_shadow", func(t *testing.T) {
-		unhealthyParent := &gatewayprovider.ExecutionAccount{Record: account.Record{LoadLocation: time.LoadLocation, ID: 78100,
-			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeOAuth,
-			Status:      account.StatusError, // IsActive()==false → IsSchedulable()==false
-			Schedulable: true},
+		unhealthyParent := &gatewayprovider.ExecutionAccount{
+			Record: account.Record{
+				Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 78100,
+				Platform:    capability.PlatformOpenAI,
+				Type:        capability.AccountTypeOAuth,
+				Status:      account.StatusError, // IsActive()==false → IsSchedulable()==false
+				Schedulable: true,
+			},
 		}
 		require.False(t, unhealthyParent.View().IsSchedulable(), "前提：Status=error 的母账号不可调度")
 		scheduler := makeScheduler(unhealthyParent)
@@ -127,11 +140,14 @@ func TestParentHealthSchedulerIntegration(t *testing.T) {
 
 	t.Run("manual_schedulable_false_parent_does_not_reject_shadow", func(t *testing.T) {
 		// F1 决策 A:母账号手动暂停(Schedulable=false)不传播到影子 —— 凭据仍可用,影子应被接受。
-		manualPausedParent := &gatewayprovider.ExecutionAccount{Record: account.Record{LoadLocation: time.LoadLocation, ID: 78100,
-			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeOAuth,
-			Status:      billing.StatusActive,
-			Schedulable: false}, // 显式手动暂停
+		manualPausedParent := &gatewayprovider.ExecutionAccount{
+			Record: account.Record{
+				Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 78100,
+				Platform:    capability.PlatformOpenAI,
+				Type:        capability.AccountTypeOAuth,
+				Status:      billing.StatusActive,
+				Schedulable: false,
+			}, // 显式手动暂停
 		}
 		require.False(t, manualPausedParent.View().IsSchedulable(), "前提：手动暂停的母账号自身不可调度")
 		scheduler := makeScheduler(manualPausedParent)
@@ -142,12 +158,15 @@ func TestParentHealthSchedulerIntegration(t *testing.T) {
 	t.Run("global_rate_limited_parent_does_not_reject_shadow", func(t *testing.T) {
 		// F1 核心修复:母账号 global 429(RateLimitResetAt)不连坐 spark 影子。
 		resetAt := time.Now().Add(1 * time.Hour)
-		rateLimitedParent := &gatewayprovider.ExecutionAccount{Record: account.Record{LoadLocation: time.LoadLocation, ID: 78100,
-			Platform:         capability.PlatformOpenAI,
-			Type:             capability.AccountTypeOAuth,
-			Status:           billing.StatusActive,
-			Schedulable:      true,
-			RateLimitResetAt: &resetAt},
+		rateLimitedParent := &gatewayprovider.ExecutionAccount{
+			Record: account.Record{
+				Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 78100,
+				Platform:         capability.PlatformOpenAI,
+				Type:             capability.AccountTypeOAuth,
+				Status:           billing.StatusActive,
+				Schedulable:      true,
+				RateLimitResetAt: &resetAt,
+			},
 		}
 		require.False(t, rateLimitedParent.View().IsSchedulable(), "前提：global 限流母账号自身不可调度")
 		scheduler := makeScheduler(rateLimitedParent)
@@ -156,11 +175,14 @@ func TestParentHealthSchedulerIntegration(t *testing.T) {
 	})
 
 	t.Run("healthy_parent_accepts_shadow_control", func(t *testing.T) {
-		healthyParent := &gatewayprovider.ExecutionAccount{Record: account.Record{LoadLocation: time.LoadLocation, ID: 78100,
-			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeOAuth,
-			Status:      billing.StatusActive,
-			Schedulable: true},
+		healthyParent := &gatewayprovider.ExecutionAccount{
+			Record: account.Record{
+				Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 78100,
+				Platform:    capability.PlatformOpenAI,
+				Type:        capability.AccountTypeOAuth,
+				Status:      billing.StatusActive,
+				Schedulable: true,
+			},
 		}
 		require.True(t, healthyParent.View().IsSchedulable(), "前提：健康母账号必须可调度")
 		scheduler := makeScheduler(healthyParent)
@@ -172,20 +194,26 @@ func TestParentHealthSchedulerIntegration(t *testing.T) {
 func TestParentHealthSchedulerFallsBackToRepoWhenSnapshotMissesParent(t *testing.T) {
 	ctx := context.Background()
 	parentID := int64(79100)
-	parent := gatewayprovider.ExecutionAccount{Record: account.Record{LoadLocation: time.LoadLocation, ID: parentID,
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeOAuth,
-		Status:      billing.StatusActive,
-		Schedulable: true},
+	parent := gatewayprovider.ExecutionAccount{
+		Record: account.Record{
+			Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: parentID,
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.AccountTypeOAuth,
+			Status:      billing.StatusActive,
+			Schedulable: true,
+		},
 	}
-	shadow := &gatewayprovider.ExecutionAccount{Record: account.Record{LoadLocation: time.LoadLocation, ID: 79200,
-		ParentAccountID: &parentID,
-		QuotaDimension:  account.QuotaDimensionSpark,
-		Platform:        capability.PlatformOpenAI,
-		Type:            capability.AccountTypeOAuth,
-		Status:          billing.StatusActive,
-		Schedulable:     true,
-		Concurrency:     1},
+	shadow := &gatewayprovider.ExecutionAccount{
+		Record: account.Record{
+			Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 79200,
+			ParentAccountID: &parentID,
+			QuotaDimension:  account.QuotaDimensionSpark,
+			Platform:        capability.PlatformOpenAI,
+			Type:            capability.AccountTypeOAuth,
+			Status:          billing.StatusActive,
+			Schedulable:     true,
+			Concurrency:     1,
+		},
 	}
 
 	repo := schedulerTestOpenAIAccountRepo{accounts: []gatewayprovider.ExecutionAccount{parent}}

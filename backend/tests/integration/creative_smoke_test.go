@@ -19,7 +19,6 @@ import (
 	identity "github.com/TokenFlux/TokenRouter/internal/identity"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 
 	billingcore "github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/config"
@@ -62,6 +61,7 @@ func (r *smokeFakeRunRepo) CreateCreativeRun(ctx context.Context, params creativ
 		GroupID:              params.GroupID,
 		APIKeyID:             params.APIKeyID,
 		Model:                params.Model,
+		Provider:             params.Provider,
 		Operation:            params.Operation,
 		RequestedOutputCount: params.RequestedOutputCount,
 		ImageSize:            params.ImageSize,
@@ -140,13 +140,14 @@ func (r *smokeFakeRunRepo) MarkCreativeRunRunning(ctx context.Context, runID str
 	return nil
 }
 
-func (r *smokeFakeRunRepo) SetCreativeRunAccountID(ctx context.Context, runID string, accountID int64, now time.Time) error {
+func (r *smokeFakeRunRepo) SetCreativeRunExecution(ctx context.Context, runID string, accountID int64, provider string, now time.Time) error {
 	run, ok := r.runs[runID]
 	if !ok {
 		return creative.ErrCreativeRunNotFound
 	}
 	if accountID > 0 {
 		run.AccountID = &accountID
+		run.Provider = provider
 	}
 	return nil
 }
@@ -311,6 +312,7 @@ type smokeFakeExecutor struct{}
 func (e *smokeFakeExecutor) Prepare(ctx context.Context, run creative.CreativeRun) (*creative.CreativeExecution, error) {
 	return &creative.CreativeExecution{
 		AccountID:     55,
+		Provider:      creative.PlatformGemini,
 		Target:        e,
 		UpstreamModel: run.Model,
 		ReleaseFunc:   func() {},
@@ -354,7 +356,7 @@ type smokeFakeGroupRepo struct {
 
 func (r *smokeFakeGroupRepo) GetByIDLite(ctx context.Context, id int64) (*creative.GroupView, error) {
 	price := r.price1k
-	return &creative.GroupView{ID: id, Name: "Smoke Group", Platform: capability.PlatformGemini, Active: true, AllowImageGeneration: true, RateMultiplier: 1, Operations: []string{creative.CreativeOperationGenerate, creative.CreativeOperationEdit}, Price: billingcore.PriceGroup{ModelPricing: []routing.ModelPricingEntry{{Models: []string{"*"}, BillingMode: routing.BillingModeImage, PerRequestPrice: &price}}}}, nil
+	return &creative.GroupView{ID: id, Name: "Smoke Group", Active: true, AllowImageGeneration: true, RateMultiplier: 1, Operations: map[string][]string{creative.PlatformGemini: {creative.CreativeOperationGenerate, creative.CreativeOperationEdit}}, Price: billingcore.PriceGroup{ModelPricing: []routing.ModelPricingEntry{{Models: []string{"*"}, BillingMode: routing.BillingModeImage, PerRequestPrice: &price}}}}, nil
 }
 
 func (r *smokeFakeGroupRepo) ListActive(context.Context) ([]creative.GroupView, error) {
@@ -364,7 +366,7 @@ func (r *smokeFakeGroupRepo) ListActive(context.Context) ([]creative.GroupView, 
 type smokeFakeAccountRepo struct{}
 
 func (r *smokeFakeAccountRepo) ListSchedulableByGroupIDAndPlatform(context.Context, int64, string) ([]creative.CatalogAccount, error) {
-	return []creative.CatalogAccount{creativeprovider.CatalogAccount(&account.Record{ID: 55, Status: billingcore.StatusActive, Schedulable: true, Credentials: map[string]any{"model_mapping": map[string]any{"gemini-3.1-flash-image": "gemini-3.1-flash-image"}}})}, nil
+	return []creative.CatalogAccount{creativeprovider.CatalogAccount(&account.Record{ID: 55, Platform: "gemini", Type: "apikey", Status: billingcore.StatusActive, Schedulable: true, Credentials: map[string]any{"model_mapping": map[string]any{"gemini-3.1-flash-image": "gemini-3.1-flash-image"}}})}, nil
 }
 
 type smokeFakeRateRepo struct{}
@@ -459,6 +461,7 @@ func TestCreativeFullChainSmoke(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, creative.CreativeRunStatusQueued, created.Status)
 	runID := created.ID
+	require.Equal(t, creative.PlatformGemini, repo.runs[runID].Provider)
 
 	// 2. worker 从原生队列实现 Reserve → 执行 fake provider → 成功结算。
 	require.NoError(t, worker.RunOnce(ctx))

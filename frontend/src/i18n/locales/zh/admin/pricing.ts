@@ -327,6 +327,9 @@ riskControl: {
     },
 // 价格管理
     pricing: {
+      noGroupsSelected: '请至少关联一个分组',
+      emptyModelsInPricing: '请为所有价格条目选择模型，或删除空条目',
+
       defaults: {
         "description": "当前网关生效的基础价格，包含目录更新、本地覆盖及内置兜底。未叠加分组、订阅或共享价格配置。",
         "search": "搜索模型名称",
@@ -528,7 +531,6 @@ riskControl: {
         defaultPerRequestPrice: '默认单次价格（未命中层级时使用）',
         defaultImagePrice: '默认每张图片价格（未命中层级时使用）',
         defaultVideoPrice: '默认视频每秒价格（未命中层级时使用）',
-        platformConfig: '平台配置',
         webSearchEmulationGlobalDisabled: '请先在系统设置 → 网关 → Web Search 模拟中启用全局开关',
         basicSettings: '基础设置',
         addPlatform: '添加平台',

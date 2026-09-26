@@ -3,7 +3,6 @@ package selection
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"strings"
 	"time"
 
@@ -33,6 +32,7 @@ func (s *Generic) SelectAccountForModel(ctx context.Context, groupID *int64, ses
 
 // SelectAccountForModelWithExclusions selects an account supporting the requested model while excluding specified accounts.
 func (s *Generic) SelectAccountForModelWithExclusions(ctx context.Context, groupID *int64, sessionHash string, requestedModel string, excludedIDs map[int64]struct{}) (*gatewayprovider.ExecutionAccount, error) {
+	ctx = withSelectionRequest(ctx, groupID, requestedModel)
 	core, scope := s.genericSelector()
 	selected, err := core.SelectOnly(ctx, schedulercore.SelectionInput{GroupID: groupID, SessionHash: sessionHash, RequestedModel: requestedModel, ExcludedIDs: excludedIDs})
 	return scope.oldAccount(selected), err
@@ -43,6 +43,7 @@ func (s *Generic) SelectAccountForModelWithExclusions(ctx context.Context, group
 // sub2apiUserID: 系统用户 ID，用于二维亲和调度
 // @project-doc docs/architecture/gateway_request_lifecycle.md#account_selection_and_failover
 func (s *Generic) SelectAccountWithLoadAwareness(ctx context.Context, groupID *int64, sessionHash string, requestedModel string, excludedIDs map[int64]struct{}, metadataUserID string, sub2apiUserID int64) (*gatewayprovider.SelectionResult, error) {
+	ctx = withSelectionRequest(ctx, groupID, requestedModel)
 	core, scope := s.genericSelector()
 	plan, _ := requeststate.RoutePlanFromContext(ctx)
 	result, err := core.Select(ctx, schedulercore.SelectionInput{RoutePlan: plan, GroupID: groupID, SessionHash: sessionHash, RequestedModel: requestedModel, ExcludedIDs: excludedIDs})
@@ -144,7 +145,7 @@ func (s *Generic) ResolveGroupByID(ctx context.Context, groupID int64) (*routing
 }
 
 func (s *Generic) routingAccountIDsForRequest(ctx context.Context, groupID *int64, requestedModel string, platform string) []int64 {
-	if groupID == nil || requestedModel == "" || platform != capability.PlatformAnthropic {
+	if groupID == nil || requestedModel == "" {
 		return nil
 	}
 	group, err := s.resolveGroupByID(ctx, *groupID)
@@ -155,12 +156,6 @@ func (s *Generic) routingAccountIDsForRequest(ctx context.Context, groupID *int6
 		return nil
 	}
 
-	if group.Platform != capability.PlatformAnthropic {
-		if s.debugModelRoutingEnabled() {
-			logging.LegacyPrintf("service.gateway", "[ModelRoutingDebug] skip: non-anthropic group platform: group_id=%d group_platform=%s model=%s", group.ID, group.Platform, requestedModel)
-		}
-		return nil
-	}
 	routingModel := s.groupMappedModelForGroup(ctx, groupID, requestedModel)
 	ids := group.GetRoutingAccountIDs(routingModel)
 	if s.debugModelRoutingEnabled() {
@@ -171,24 +166,17 @@ func (s *Generic) routingAccountIDsForRequest(ctx context.Context, groupID *int6
 }
 
 func (s *Generic) resolveGatewayGroup(ctx context.Context, groupID *int64) (*routing.Group, *int64, error) {
-	return routing.ResolveClientGroup(ctx, groupID, s.resolveGroupByID, requeststate.IsClaudeCodeClient, routing.ClientGroupPolicy{})
+	group, err := currentSelectionGroup(ctx, groupID, s.resolveGroupByID)
+	if err != nil {
+		return nil, nil, err
+	}
+	return group, groupID, nil
 }
 
-// checkClaudeCodeRestriction 检查分组的 Claude Code 客户端限制
-// 如果分组启用了 claude_code_only 且请求不是来自 Claude Code 客户端：
-//   - 有降级分组：返回降级分组的 ID
-//   - 无降级分组：返回 ErrClaudeCodeOnly 错误
+// checkClaudeCodeRestriction 检查当前组的客户端限制，选择器不自行切换分组。
 func (s *Generic) checkClaudeCodeRestriction(ctx context.Context, groupID *int64) (*routing.Group, *int64, error) {
 	if groupID == nil {
 		return nil, groupID, nil
-	}
-
-	if forcePlatform, hasForcePlatform := apikey.ForcePlatformFromContext(ctx); hasForcePlatform && forcePlatform != "" {
-		group, err := s.resolveGroupByID(ctx, *groupID)
-		if err != nil {
-			return nil, nil, err
-		}
-		return group, groupID, nil
 	}
 
 	group, resolvedID, err := s.resolveGatewayGroup(ctx, groupID)
@@ -200,131 +188,31 @@ func (s *Generic) checkClaudeCodeRestriction(ctx context.Context, groupID *int64
 }
 
 func (s *Generic) resolvePlatform(ctx context.Context, groupID *int64, group *routing.Group) (string, bool, error) {
-	forcePlatform, hasForcePlatform := apikey.ForcePlatformFromContext(ctx)
-	if hasForcePlatform && forcePlatform != "" {
-		return forcePlatform, true, nil
+	if platform, forced := apikey.ForcePlatformFromContext(ctx); forced && platform != "" {
+		return platform, true, nil
 	}
-	if group != nil {
-		return group.Platform, false, nil
-	}
-	if groupID != nil {
-		group, err := s.resolveGroupByID(ctx, *groupID)
-		if err != nil {
-			return "", false, err
-		}
-		return group.Platform, false, nil
-	}
-	return capability.PlatformAnthropic, false, nil
+	return "", false, nil
 }
 
 func (s *Generic) listSchedulableAccounts(ctx context.Context, groupID *int64, platform string, hasForcePlatform bool) ([]gatewayprovider.ExecutionAccount, bool, error) {
-	if s.schedulerSnapshot != nil {
-		accounts, useMixed, err := readSnapshotAccounts(ctx, s.schedulerSnapshot, groupID, platform, hasForcePlatform)
-		if err == nil {
-			accounts = s.filterAccountsBySchedulingThreshold(ctx, accounts)
-			if platform == capability.PlatformGrok || strings.EqualFold(platform, capability.PlatformGrok) {
-				accounts = s.filterGrokFreeQuotaAccountsForGateway(ctx, accounts)
-			}
-			slog.Debug("account_scheduling_list_snapshot",
-				"group_id", derefGroupID(groupID),
-				"platform", platform,
-				"use_mixed", useMixed,
-				"count", len(accounts))
-			if slog.Default().Enabled(ctx, slog.LevelDebug) {
-				for _, acc := range accounts {
-					slog.Debug("account_scheduling_account_detail",
-						"account_id", acc.Record.ID,
-						"name", acc.Record.Name,
-						"platform", acc.Record.Platform,
-						"type", acc.Record.Type,
-						"status", acc.Record.Status,
-						"tls_fingerprint", acc.View().IsTLSFingerprintEnabled())
-				}
-			}
-		}
-		return accounts, useMixed, err
+	if groupID == nil || *groupID <= 0 {
+		return nil, false, nil
 	}
-	useMixed := (platform == capability.PlatformAnthropic || platform == capability.PlatformGemini) && !hasForcePlatform
-	if useMixed {
-		platforms := []string{platform, capability.PlatformAntigravity}
-		var accounts []gatewayprovider.ExecutionAccount
-		var err error
-		if groupID != nil {
-			accounts, err = s.accountRepo.ListSchedulableByGroupIDAndPlatforms(ctx, *groupID, platforms)
-		} else if s.options.Simple {
-			accounts, err = s.accountRepo.ListSchedulableByPlatforms(ctx, platforms)
-		} else {
-			accounts, err = s.accountRepo.ListSchedulableUngroupedByPlatforms(ctx, platforms)
-		}
-		if err != nil {
-			slog.Debug("account_scheduling_list_failed",
-				"group_id", derefGroupID(groupID),
-				"platform", platform,
-				"error", err)
-			return nil, useMixed, err
-		}
-		filtered := make([]gatewayprovider.ExecutionAccount, 0, len(accounts))
-		for _, acc := range accounts {
-			if acc.Record.Platform == capability.PlatformAntigravity && !acc.View().IsMixedSchedulingEnabled() {
-				continue
-			}
-			filtered = append(filtered, acc)
-		}
-		slog.Debug("account_scheduling_list_mixed",
-			"group_id", derefGroupID(groupID),
-			"platform", platform,
-			"raw_count", len(accounts),
-			"filtered_count", len(filtered))
-		if slog.Default().Enabled(ctx, slog.LevelDebug) {
-			for _, acc := range filtered {
-				slog.Debug("account_scheduling_account_detail",
-					"account_id", acc.Record.ID,
-					"name", acc.Record.Name,
-					"platform", acc.Record.Platform,
-					"type", acc.Record.Type,
-					"status", acc.Record.Status,
-					"tls_fingerprint", acc.View().IsTLSFingerprintEnabled())
-			}
-		}
-		return s.filterAccountsBySchedulingThreshold(ctx, filtered), useMixed, nil
-	}
-
 	var accounts []gatewayprovider.ExecutionAccount
 	var err error
-	if s.options.Simple {
-		accounts, err = s.accountRepo.ListSchedulableByPlatform(ctx, platform)
-	} else if groupID != nil {
-		accounts, err = s.accountRepo.ListSchedulableByGroupIDAndPlatform(ctx, *groupID, platform)
+	if s.schedulerSnapshot != nil {
+		accounts, _, err = readSnapshotAccounts(ctx, s.schedulerSnapshot, groupID, platform, hasForcePlatform)
+	} else if platform == "" {
+		accounts, err = s.accountRepo.ListSchedulableByGroupIDAndPlatforms(ctx, *groupID, capability.AccountPlatforms())
 	} else {
-		accounts, err = s.accountRepo.ListSchedulableUngroupedByPlatform(ctx, platform)
+		accounts, err = s.accountRepo.ListSchedulableByGroupIDAndPlatform(ctx, *groupID, platform)
 	}
 	if err != nil {
-		slog.Debug("account_scheduling_list_failed",
-			"group_id", derefGroupID(groupID),
-			"platform", platform,
-			"error", err)
-		return nil, useMixed, err
-	}
-	slog.Debug("account_scheduling_list_single",
-		"group_id", derefGroupID(groupID),
-		"platform", platform,
-		"count", len(accounts))
-	if slog.Default().Enabled(ctx, slog.LevelDebug) {
-		for _, acc := range accounts {
-			slog.Debug("account_scheduling_account_detail",
-				"account_id", acc.Record.ID,
-				"name", acc.Record.Name,
-				"platform", acc.Record.Platform,
-				"type", acc.Record.Type,
-				"status", acc.Record.Status,
-				"tls_fingerprint", acc.View().IsTLSFingerprintEnabled())
-		}
+		return nil, false, err
 	}
 	accounts = s.filterAccountsBySchedulingThreshold(ctx, accounts)
-	if platform == capability.PlatformGrok || strings.EqualFold(platform, capability.PlatformGrok) {
-		accounts = s.filterGrokFreeQuotaAccountsForGateway(ctx, accounts)
-	}
-	return accounts, useMixed, nil
+	accounts = s.filterGrokFreeQuotaAccountsForGateway(ctx, accounts)
+	return accounts, false, nil
 }
 
 // IsSingleAntigravityAccountGroup 检查指定分组是否只有一个 antigravity 平台的可调度账号。
@@ -339,16 +227,7 @@ func (s *Generic) IsSingleAntigravityAccountGroup(ctx context.Context, groupID *
 }
 
 func (s *Generic) isAccountAllowedForPlatform(account *gatewayprovider.ExecutionAccount, platform string, useMixed bool) bool {
-	if account == nil {
-		return false
-	}
-	if useMixed {
-		if account.Record.Platform == platform {
-			return true
-		}
-		return account.Record.Platform == capability.PlatformAntigravity && account.View().IsMixedSchedulingEnabled()
-	}
-	return account.Record.Platform == platform
+	return account != nil && (platform == "" || account.Record.Platform == platform)
 }
 
 func (s *Generic) isAccountSchedulableForSelection(account *gatewayprovider.ExecutionAccount) bool {
@@ -434,18 +313,7 @@ func (s *Generic) groupModelUnsupportedErrorIfApplicable(ctx context.Context, ac
 // isAccountInGroup checks if the account belongs to the specified group.
 // When groupID is nil, returns true only for ungrouped accounts (no group assignments).
 func (s *Generic) isAccountInGroup(account *gatewayprovider.ExecutionAccount, groupID *int64) bool {
-	if account == nil {
-		return false
-	}
-	if groupID == nil {
-		return len(account.Record.AccountGroups) == 0
-	}
-	for _, ag := range account.Record.AccountGroups {
-		if ag.GroupID == *groupID {
-			return true
-		}
-	}
-	return false
+	return openAIStickyAccountMatchesGroup(account, groupID)
 }
 
 func (s *Generic) tryAcquireAccountSlot(ctx context.Context, accountID int64, maxConcurrency int) (*schedulercore.AcquireResult, error) {
@@ -603,12 +471,29 @@ func (s *Generic) hydrateSelectedAccount(ctx context.Context, account *gatewaypr
 	if account == nil || s.schedulerSnapshot == nil {
 		return account, nil
 	}
-	hydrated, err := readSnapshotAccount(ctx, s.schedulerSnapshot, account.Record.ID)
+	var hydrated *gatewayprovider.ExecutionAccount
+	var err error
+	if s.accountRepo != nil {
+		hydrated, err = s.accountRepo.GetByID(ctx, account.Record.ID)
+	} else {
+		hydrated, err = readSnapshotAccount(ctx, s.schedulerSnapshot, account.Record.ID)
+	}
 	if err != nil {
 		return nil, err
 	}
 	if hydrated == nil {
-		return nil, fmt.Errorf("selected gateway account %d not found during hydration", account.Record.ID)
+		return nil, schedulercore.ErrNoAvailableAccounts
+	}
+	if input, ok := ctx.Value(selectionRequestKey{}).(selectionRequest); ok {
+		groupID := input.groupID
+		if group, ok := requeststate.GroupFromContext(ctx); ok && group != nil {
+			groupID = &group.ID
+		}
+		model := s.groupMappedModelForGroup(ctx, groupID, input.model)
+		policy := gatewayprovider.ExecutionModelPolicy(hydrated)
+		if !openAIStickyAccountMatchesGroup(hydrated, groupID) || !policy.Schedulable(ctx, model) || !policy.Supports(ctx, model) {
+			return nil, schedulercore.ErrNoAvailableAccounts
+		}
 	}
 	return hydrated, nil
 }
@@ -771,19 +656,7 @@ func (s *Generic) diagnoseSelectionFailure(
 }
 
 func isPlatformFilteredForSelection(acc *gatewayprovider.ExecutionAccount, platform string, allowMixedScheduling bool) bool {
-	if acc == nil {
-		return true
-	}
-	if allowMixedScheduling {
-		if acc.Record.Platform == capability.PlatformAntigravity {
-			return !acc.View().IsMixedSchedulingEnabled()
-		}
-		return acc.Record.Platform != platform
-	}
-	if strings.TrimSpace(platform) == "" {
-		return false
-	}
-	return acc.Record.Platform != platform
+	return acc == nil || platform != "" && acc.Record.Platform != platform
 }
 
 func appendSelectionFailureSampleID(samples []int64, id int64) []int64 {

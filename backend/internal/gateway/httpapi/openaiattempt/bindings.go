@@ -77,6 +77,8 @@ type SelectionPorts struct {
 
 // Bindings 在构造时注入固定端口，运行时不创建共享资源。
 type Bindings struct {
+	Fallback          GroupFallbackPorts
+	Sessions          SessionPorts
 	Forward           ForwardPorts
 	Selection         SelectionPorts
 	Support           *Support
@@ -85,6 +87,8 @@ type Bindings struct {
 	ResolvedDiagnoser routing.ModelAvailabilityDiagnoser
 }
 type openAIExecutionDependencies struct {
+	fallback                            GroupFallbackPorts
+	sessions                            SessionPorts
 	recorder                            *completion.Recorder
 	apiKeyService                       gatewaycapture.QuotaUpdater
 	diagnoser                           routing.ModelAvailabilityDiagnoser
@@ -169,6 +173,8 @@ func New(b Bindings) *Runtime {
 	support := b.Support
 	output := gatewayhttp.DefaultOpenAIErrorOutput()
 	d := &openAIExecutionDependencies{
+		fallback: b.Fallback,
+		sessions: b.Sessions,
 		recorder: b.Recorder, apiKeyService: support.Quota, diagnoser: b.Diagnoser, resolvedDiagnoser: b.ResolvedDiagnoser,
 		enforceOpenAIClientPolicyForRequest:                    b.Forward.EnforceOpenAIClientPolicyForRequest,
 		forward:                                                b.Forward.Forward,

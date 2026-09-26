@@ -25,6 +25,7 @@ type UsageLog struct {
 	TeamID    *int64 `json:"team_id,omitempty"`
 	APIKeyID  int64  `json:"api_key_id"`
 	AccountID int64  `json:"account_id"`
+	Platform  string `json:"platform"`
 	RequestID string `json:"request_id"`
 	Model     string `json:"model"`
 	// ServiceTier records the OpenAI service tier used for billing, e.g. "priority" / "flex".

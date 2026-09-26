@@ -8,7 +8,6 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/admission"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/media"
@@ -40,11 +39,7 @@ func mediaAccessView(key *apikey.APIKey) *gatewayhttp.MediaAccess {
 		v := *key.GroupID
 		group = &v
 	}
-	platform := ""
-	if key.Group != nil {
-		platform = key.Group.Platform
-	}
-	return &gatewayhttp.MediaAccess{HasGroup: key.Group != nil, Platform: platform, ID: key.ID, GroupID: group, Composite: key.IsComposite, ImagesAllowed: key.Group == nil || key.Group.AllowImageGeneration}
+	return &gatewayhttp.MediaAccess{HasGroup: key.Group != nil, ID: key.ID, GroupID: group, Composite: key.IsComposite, ImagesAllowed: key.Group != nil && key.Group.AllowImageGeneration}
 }
 
 func (p mediaHTTPAdapter) Access(c *gin.Context) (*gatewayhttp.MediaAccess, bool) {
@@ -138,7 +133,7 @@ func (p mediaHTTPAdapter) BindErrors(c *gin.Context) {
 func (p mediaHTTPAdapter) Billing(c *gin.Context) *gatewayhttp.MediaHTTPFailure {
 	key, _ := keyhttp.GetAPIKeyFromContext(c)
 	subscription, _ := gatewayhttp.SubscriptionFromContext(c)
-	err := p.h.bindings.CheckFunding(c.Request.Context(), key, subscription, admission.QuotaPlatform(c.Request.Context(), key), false)
+	err := p.h.bindings.CheckFunding(c.Request.Context(), key, subscription, "", false)
 	if err == nil {
 		return nil
 	}

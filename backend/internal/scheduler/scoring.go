@@ -702,11 +702,8 @@ func BuildScoreSnapshot(
 			StickyScoreInfinity:   !stickyWeightedEnabled,
 		}
 		if stickyWeightedEnabled {
-			// 分组平台定义请求语义；无分组兼容入口按账号平台判断。
+			// 上一响应的亲缘加分只适用于实际 OpenAI 账号。
 			platform := candidate.Account.Platform
-			if group != nil && strings.TrimSpace(group.Platform) != "" {
-				platform = group.Platform
-			}
 			score.StickyScore = candidate.Score + weights.SessionSticky
 			if platform == capability.PlatformOpenAI {
 				score.StickyScore += weights.Previous
@@ -727,7 +724,7 @@ type ScoreAccount struct {
 	Priority         int
 	SessionWindowEnd *time.Time
 }
-type ScoreGroup struct{ Platform string }
+type ScoreGroup struct{}
 
 func (s *RuntimeStats) nowTime() time.Time {
 	if s.now != nil {
@@ -735,6 +732,7 @@ func (s *RuntimeStats) nowTime() time.Time {
 	}
 	return time.Now()
 }
+
 func Clamp01(value float64) float64 {
 	switch {
 	case value < 0:

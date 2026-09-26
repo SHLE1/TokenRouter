@@ -49,7 +49,7 @@ func TestModelForRestriction_Empty(t *testing.T) {
 
 func TestResolveAccountUpstreamModel_Antigravity(t *testing.T) {
 	t.Parallel()
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAntigravity}}
+	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, Platform: capability.PlatformAntigravity}}
 	// Antigravity 平台使用 DefaultAntigravityModelMapping
 	got := resolveAccountUpstreamModel(context.Background(), account, "claude-sonnet-4-6")
 	require.Equal(t, "claude-sonnet-4-6", got)
@@ -64,7 +64,7 @@ func TestResolveAccountUpstreamModel_Antigravity_Unsupported(t *testing.T) {
 
 func TestResolveAccountUpstreamModel_NonAntigravity(t *testing.T) {
 	t.Parallel()
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAnthropic}}
+	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, Platform: capability.PlatformAnthropic}}
 	got := resolveAccountUpstreamModel(context.Background(), account, "claude-sonnet-4-6")
 	require.Equal(t, "claude-sonnet-4-6", got, "no mapping = passthrough")
 }
@@ -92,7 +92,8 @@ func TestResolveAccountUpstreamModel_BedrockUsesRegionalFinalModel(t *testing.T)
 			LoadLocation: time.LoadLocation, Platform: capability.PlatformAnthropic,
 			Type: capability.AccountTypeBedrock,
 			Credentials: map[string]any{
-				"aws_region": "us-east-1",
+				"model_whitelist": []string{"*"},
+				"aws_region":      "us-east-1",
 			},
 		},
 	}
@@ -103,7 +104,7 @@ func TestResolveAccountUpstreamModel_BedrockUsesRegionalFinalModel(t *testing.T)
 
 func TestResolveAccountUpstreamModel_AntigravityUsesThinkingContext(t *testing.T) {
 	t.Parallel()
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAntigravity}}
+	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, Platform: capability.PlatformAntigravity}}
 	ctx := requeststate.WithThinkingEnabled(context.Background(), true)
 
 	got := resolveAccountUpstreamModel(ctx, account, "claude-sonnet-4-5")
@@ -113,19 +114,17 @@ func TestResolveAccountUpstreamModel_AntigravityUsesThinkingContext(t *testing.T
 func TestIsModelSupportedByAccountWithContext_QoderUsesGroupMappedAccountLayerModel(t *testing.T) {
 	t.Parallel()
 	ch := routingtestkit.Configuration{
-		ID:       1,
-		Status:   billing.StatusActive,
-		GroupIDs: []int64{10},
-		ModelMapping: map[string]map[string]string{
-			capability.PlatformQoder: {"my-qoder": "qmodel"},
-		},
+		ID:           1,
+		Status:       billing.StatusActive,
+		GroupIDs:     []int64{10},
+		ModelMapping: map[string]string{"my-qoder": "qmodel"},
 	}
 	pricingConfigSvc := routingtestkit.NewConfigServiceFixture(routingtestkit.StandardPricingConfigRepository(ch, map[int64]string{10: capability.PlatformQoder}))
 	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{}, Shared: Shared{GroupPolicies: pricingConfigSvc}}, nil)
 
 	ctx := svc.withGroupContext(context.Background(), &routing.Group{
-		ID:       10,
-		Platform: capability.PlatformQoder,
+		ID: 10,
+
 		Status:   billing.StatusActive,
 		Hydrated: true,
 	})
@@ -184,11 +183,9 @@ func TestCheckGroupModelRestriction_GroupMapped_Restricted(t *testing.T) {
 		RestrictModels:     true,
 		BillingModelSource: routing.BillingModelSourceGroupMapped,
 		ModelPricing: []routing.ModelPricingEntry{
-			{Platform: "anthropic", Models: []string{"claude-opus-4-6"}},
+			{Models: []string{"claude-opus-4-6"}},
 		},
-		ModelMapping: map[string]map[string]string{
-			"anthropic": {"claude-sonnet-4-5": "claude-sonnet-4-6"},
-		},
+		ModelMapping: map[string]string{"claude-sonnet-4-5": "claude-sonnet-4-6"},
 	}
 	pricingConfigSvc := routingtestkit.NewConfigServiceFixture(routingtestkit.StandardPricingConfigRepository(ch, map[int64]string{10: "anthropic"}))
 	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{}, Shared: Shared{GroupPolicies: pricingConfigSvc}}, nil)
@@ -208,11 +205,9 @@ func TestCheckGroupModelRestriction_GroupMapped_Allowed(t *testing.T) {
 		RestrictModels:     true,
 		BillingModelSource: routing.BillingModelSourceGroupMapped,
 		ModelPricing: []routing.ModelPricingEntry{
-			{Platform: "anthropic", Models: []string{"claude-sonnet-4-6"}},
+			{Models: []string{"claude-sonnet-4-6"}},
 		},
-		ModelMapping: map[string]map[string]string{
-			"anthropic": {"claude-sonnet-4-5": "claude-sonnet-4-6"},
-		},
+		ModelMapping: map[string]string{"claude-sonnet-4-5": "claude-sonnet-4-6"},
 	}
 	pricingConfigSvc := routingtestkit.NewConfigServiceFixture(routingtestkit.StandardPricingConfigRepository(ch, map[int64]string{10: "anthropic"}))
 	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{}, Shared: Shared{GroupPolicies: pricingConfigSvc}}, nil)
@@ -232,12 +227,10 @@ func TestCheckGroupModelRestriction_QoderGroupMappedBasisAllowsConfiguredRouteKe
 		RestrictModels:     true,
 		BillingModelSource: routing.BillingModelSourceGroupMapped,
 		ModelPricing: []routing.ModelPricingEntry{
-			{Platform: capability.PlatformQoder, Models: []string{"qmodel"}, BillingMode: routing.BillingModeToken},
-			{Platform: capability.PlatformQoder, Models: []string{"qwen3.7-plus"}, BillingMode: routing.BillingModeToken, InputPrice: &price},
+			{Models: []string{"qmodel"}, BillingMode: routing.BillingModeToken},
+			{Models: []string{"qwen3.7-plus"}, BillingMode: routing.BillingModeToken, InputPrice: &price},
 		},
-		ModelMapping: map[string]map[string]string{
-			capability.PlatformQoder: {"qwen3.7-plus": "qmodel"},
-		},
+		ModelMapping: map[string]string{"qwen3.7-plus": "qmodel"},
 	}
 	pricingConfigSvc := routingtestkit.NewConfigServiceFixture(routingtestkit.StandardPricingConfigRepository(ch, map[int64]string{10: capability.PlatformQoder}))
 	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{}, Shared: Shared{GroupPolicies: pricingConfigSvc}}, nil)
@@ -257,7 +250,7 @@ func TestCheckGroupModelRestriction_Requested_Restricted(t *testing.T) {
 		RestrictModels:     true,
 		BillingModelSource: routing.BillingModelSourceRequested,
 		ModelPricing: []routing.ModelPricingEntry{
-			{Platform: "anthropic", Models: []string{"claude-sonnet-4-6"}},
+			{Models: []string{"claude-sonnet-4-6"}},
 		},
 	}
 	pricingConfigSvc := routingtestkit.NewConfigServiceFixture(routingtestkit.StandardPricingConfigRepository(ch, map[int64]string{10: "anthropic"}))
@@ -277,7 +270,7 @@ func TestCheckGroupModelRestriction_Requested_Allowed(t *testing.T) {
 		RestrictModels:     true,
 		BillingModelSource: routing.BillingModelSourceRequested,
 		ModelPricing: []routing.ModelPricingEntry{
-			{Platform: "anthropic", Models: []string{"claude-sonnet-4-5"}},
+			{Models: []string{"claude-sonnet-4-5"}},
 		},
 	}
 	pricingConfigSvc := routingtestkit.NewConfigServiceFixture(routingtestkit.StandardPricingConfigRepository(ch, map[int64]string{10: "anthropic"}))
@@ -298,7 +291,7 @@ func TestCheckGroupModelRestriction_Upstream_SkipsPreCheck(t *testing.T) {
 		RestrictModels:     true,
 		BillingModelSource: routing.BillingModelSourceUpstream,
 		ModelPricing: []routing.ModelPricingEntry{
-			{Platform: "anthropic", Models: []string{"claude-opus-4-6"}},
+			{Models: []string{"claude-opus-4-6"}},
 		},
 	}
 	pricingConfigSvc := routingtestkit.NewConfigServiceFixture(routingtestkit.StandardPricingConfigRepository(ch, map[int64]string{10: "anthropic"}))
@@ -317,7 +310,7 @@ func TestCheckGroupModelRestriction_RestrictModelsDisabled(t *testing.T) {
 		GroupIDs:       []int64{10},
 		RestrictModels: false, // 未开启模型限制
 		ModelPricing: []routing.ModelPricingEntry{
-			{Platform: "anthropic", Models: []string{"claude-opus-4-6"}},
+			{Models: []string{"claude-opus-4-6"}},
 		},
 	}
 	pricingConfigSvc := routingtestkit.NewConfigServiceFixture(routingtestkit.StandardPricingConfigRepository(ch, map[int64]string{10: "anthropic"}))
@@ -352,13 +345,13 @@ func TestIsUpstreamModelRestrictedByGroup_Restricted(t *testing.T) {
 		GroupIDs:       []int64{10},
 		RestrictModels: true,
 		ModelPricing: []routing.ModelPricingEntry{
-			{Platform: "anthropic", Models: []string{"claude-opus-4-6"}},
+			{Models: []string{"claude-opus-4-6"}},
 		},
 	}
 	pricingConfigSvc := routingtestkit.NewConfigServiceFixture(routingtestkit.StandardPricingConfigRepository(ch, map[int64]string{10: "anthropic"}))
 	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{}, Shared: Shared{GroupPolicies: pricingConfigSvc}}, nil)
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.
+	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.
 		// claude-sonnet-4-6 在 DefaultAntigravityModelMapping 中，映射后仍为 claude-sonnet-4-6
 		// 但定价列表只有 claude-opus-4-6
 		LoadLocation, Platform: capability.PlatformAntigravity}}
@@ -375,13 +368,13 @@ func TestIsUpstreamModelRestrictedByGroup_Allowed(t *testing.T) {
 		GroupIDs:       []int64{10},
 		RestrictModels: true,
 		ModelPricing: []routing.ModelPricingEntry{
-			{Platform: "anthropic", Models: []string{"claude-sonnet-4-6"}},
+			{Models: []string{"claude-sonnet-4-6"}},
 		},
 	}
 	pricingConfigSvc := routingtestkit.NewConfigServiceFixture(routingtestkit.StandardPricingConfigRepository(ch, map[int64]string{10: "anthropic"}))
 	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{}, Shared: Shared{GroupPolicies: pricingConfigSvc}}, nil)
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAntigravity}}
+	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, Platform: capability.PlatformAntigravity}}
 	require.False(t, svc.isUpstreamModelRestrictedByGroup(context.Background(), 10, account, "claude-sonnet-4-6"),
 		"upstream model claude-sonnet-4-6 IS in pricing → allowed")
 }
@@ -396,11 +389,9 @@ func TestIsUpstreamModelRestrictedByGroup_AppliesGroupMappingBeforeAccountMappin
 		RestrictModels:     true,
 		BillingModelSource: routing.BillingModelSourceUpstream,
 		ModelPricing: []routing.ModelPricingEntry{
-			{Platform: capability.PlatformQoder, Models: []string{"ultimate"}, BillingMode: routing.BillingModeToken, InputPrice: &price},
+			{Models: []string{"ultimate"}, BillingMode: routing.BillingModeToken, InputPrice: &price},
 		},
-		ModelMapping: map[string]map[string]string{
-			capability.PlatformQoder: {"my-qoder": "qmodel"},
-		},
+		ModelMapping: map[string]string{"my-qoder": "qmodel"},
 	}
 	pricingConfigSvc := routingtestkit.NewConfigServiceFixture(routingtestkit.StandardPricingConfigRepository(ch, map[int64]string{10: capability.PlatformQoder}))
 	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{}, Shared: Shared{GroupPolicies: pricingConfigSvc}}, nil)
@@ -428,17 +419,15 @@ func TestIsUpstreamModelRestrictedByGroup_QoderUpstreamBasisAllowsConfiguredUpst
 		RestrictModels:     true,
 		BillingModelSource: routing.BillingModelSourceUpstream,
 		ModelPricing: []routing.ModelPricingEntry{
-			{Platform: capability.PlatformQoder, Models: []string{"qmodel"}, BillingMode: routing.BillingModeToken},
-			{Platform: capability.PlatformQoder, Models: []string{"qwen3.7-plus"}, BillingMode: routing.BillingModeToken, InputPrice: &price},
+			{Models: []string{"qmodel"}, BillingMode: routing.BillingModeToken},
+			{Models: []string{"qwen3.7-plus"}, BillingMode: routing.BillingModeToken, InputPrice: &price},
 		},
-		ModelMapping: map[string]map[string]string{
-			capability.PlatformQoder: {"qwen3.7-plus": "qmodel"},
-		},
+		ModelMapping: map[string]string{"qwen3.7-plus": "qmodel"},
 	}
 	pricingConfigSvc := routingtestkit.NewConfigServiceFixture(routingtestkit.StandardPricingConfigRepository(ch, map[int64]string{10: capability.PlatformQoder}))
 	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{}, Shared: Shared{GroupPolicies: pricingConfigSvc}}, nil)
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformQoder}}
+	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, Platform: capability.PlatformQoder}}
 
 	require.False(t, svc.isUpstreamModelRestrictedByGroup(context.Background(), 10, account, "qwen3.7-plus"),
 		"已配置的上游模型属于白名单，价格为空不影响放行")
@@ -452,7 +441,7 @@ func TestIsUpstreamModelRestrictedByGroup_UnsupportedModel(t *testing.T) {
 		GroupIDs:       []int64{10},
 		RestrictModels: true,
 		ModelPricing: []routing.ModelPricingEntry{
-			{Platform: "anthropic", Models: []string{"claude-opus-4-6"}},
+			{Models: []string{"claude-opus-4-6"}},
 		},
 	}
 	pricingConfigSvc := routingtestkit.NewConfigServiceFixture(routingtestkit.StandardPricingConfigRepository(ch, map[int64]string{10: "anthropic"}))

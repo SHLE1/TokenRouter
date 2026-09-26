@@ -9,7 +9,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/admission"
+
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
 	gatewaycapture "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
@@ -105,6 +105,7 @@ func (b *openAIMessageAttemptBridge) SelectionFailure(err error, excludedCount i
 
 // Forward 保留 OpenAI Messages 适配差异；账号重试复用同一核心。
 func (b *openAIMessageAttemptBridge) Forward() textflow.ResponseOutcome {
+	gatewayhttp.BindNativeMessageStreamState(b.c, b.streamStarted)
 	var err error
 	gatewayhttp.SetOpsLatencyMs(b.c, gatewayhttp.OpsRoutingLatencyMsKey, time.Since(b.routingStart).Milliseconds())
 	forwardStart := time.Now()
@@ -124,6 +125,9 @@ func (b *openAIMessageAttemptBridge) Forward() textflow.ResponseOutcome {
 		}
 		return b.binding().forwardAsAnthropic(b.c.Request.Context(), b.c, b.account, attemptBody, b.promptCacheKey, b.accountLayerModel, tlsRouterMatch)
 	}()
+	if gatewayhttp.NativeMessageIntercepted(b.c) {
+		return textflow.ResponseOutcome{Outcome: textflow.Outcome{Stop: true}}
+	}
 	var cyberBlockBodyMsg []byte
 	if gatewayhttp.GetOpsCyberPolicy(b.c) != nil {
 		cyberBlockBodyMsg = b.body
@@ -140,6 +144,7 @@ func (b *openAIMessageAttemptBridge) Forward() textflow.ResponseOutcome {
 		gatewayhttp.SetOpsLatencyMs(b.c, gatewayhttp.OpsTimeToFirstTokenMsKey, int64(*b.result.FirstTokenMs))
 	}
 	out := textflow.ResponseOutcome{Outcome: textflow.Outcome{Attempt: openAIObservedAttempt(b.result, err), Err: err, HasResult: b.result != nil}, Images: b.result != nil && b.result.ImageCount > 0}
+	out.NativePartial = err != nil && b.result != nil && b.result.NativeUsage != nil && (b.result.NativeUsage.HasObservedTokens() || b.result.ImageCount > 0)
 	out.Attempt.HTTPCommitted = b.c.Writer.Written()
 	if err != nil && !out.Images {
 		var overLimit *routing.ReasoningEffortOverLimitError
@@ -169,7 +174,7 @@ func (b *openAIMessageAttemptBridge) Complete() {
 	requestPayloadHash := billing.HashUsageRequestPayload(b.body)
 	inboundEndpoint := gatewayhttp.GetInboundEndpoint(b.c)
 	upstreamEndpoint := ResolveOpenAIUpstreamEndpoint(b.c, b.account, res)
-	quotaPlatform := admission.QuotaPlatform(b.c.Request.Context(), b.apiKey)
+
 	clientSessionID := gatewayhttp.ExtractClientSessionID(b.c)
 	// 入队前固化资金与报文投影，worker 不再读取请求中的实体。
 	completionInput := gatewaycapture.CaptureOpenAI(gatewayhttp.CompletionContext(b.c), &gatewaycapture.OpenAICapture{
@@ -185,7 +190,7 @@ func (b *openAIMessageAttemptBridge) Complete() {
 		RequestPayloadHash: requestPayloadHash,
 		RequestBody:        b.body,
 		APIKeyService:      b.binding().apiKeyService,
-		QuotaPlatform:      quotaPlatform,
+
 		ClientSessionID:    clientSessionID,
 		PricingUsageFields: b.groupMappingMsg.ToUsageFields(b.reqModel, res.UpstreamModel),
 		CyberBlocked:       b.cyberPolicyHandled,

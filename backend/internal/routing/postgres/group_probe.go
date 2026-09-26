@@ -86,7 +86,7 @@ func (r *GroupAvailabilityProbeStore) ClaimDue(ctx context.Context, now time.Tim
 			WHERE s.group_id = due.group_id
 			RETURNING s.group_id
 		)
-		SELECT g.id, g.name, g.platform, g.availability_probe_config
+		SELECT g.id, g.name, g.availability_probe_config
 		FROM claimed c
 		JOIN groups g ON g.id = c.group_id
 		ORDER BY g.id
@@ -100,7 +100,7 @@ func (r *GroupAvailabilityProbeStore) ClaimDue(ctx context.Context, now time.Tim
 	for rows.Next() {
 		var item routing.GroupAvailabilityProbeDueGroup
 		var rawConfig []byte
-		if err := rows.Scan(&item.GroupID, &item.Name, &item.Platform, &rawConfig); err != nil {
+		if err := rows.Scan(&item.GroupID, &item.Name, &rawConfig); err != nil {
 			return nil, err
 		}
 		if len(rawConfig) > 0 {

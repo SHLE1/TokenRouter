@@ -11,7 +11,9 @@ type Hint[T bool | int | int64] struct {
 // ExecutionHints 是本次请求的执行参数快照；派生 attempt 不修改父请求。
 type ExecutionHints struct {
 	// HealthModel 保存本次尝试已规范化的健康观察型号，不再次映射。
-	HealthModel string
+	HealthModel            string
+	SessionIsolationSource string
+	SessionIsolationHash   string
 	// 选择快照只携带本次阈值、分组要求和单次降级标记，不写入共享账号缓存。
 	QuotaAutoPauseThreshold5h   float64
 	QuotaAutoPauseThreshold7d   float64
@@ -144,4 +146,9 @@ func SingleAccountRetryFromContext(ctx context.Context) (bool, bool) {
 func AccountSwitchCountFromContext(ctx context.Context) (int, bool) {
 	h := ExecutionHintsFromContext(ctx).AccountSwitchCount
 	return h.Value, h.Set
+}
+
+// WithSessionIsolation 保留入口已经解析的显式会话身份，供分组回退再次校验。
+func WithSessionIsolation(ctx context.Context, source, hash string) context.Context {
+	return updateHints(ctx, func(h *ExecutionHints) { h.SessionIsolationSource, h.SessionIsolationHash = source, hash })
 }

@@ -112,8 +112,6 @@
                     <Select v-model="filters.plan_id" :options="planOptions" :placeholder="t('admin.announcements.form.selectPackages')" @change="applyFilters" />
                   </div>
                   <div class="sm:col-span-2">
-                    <label class="input-label">{{ t('admin.accounts.columns.platform') }}</label>
-                    <Select v-model="filters.platform" :options="platformFilterOptions" :placeholder="t('admin.subscriptions.allPlatforms')" @change="applyFilters" />
                   </div>
                 </div>
                 </div>
@@ -791,7 +789,6 @@ import EmptyState from '@/components/common/EmptyState.vue'
 import UserAvatar from '@/components/common/UserAvatar.vue'
 import Select from '@/components/common/Select.vue'
 import Icon from '@/components/icons/Icon.vue'
-import { GROUP_PLATFORM_OPTIONS } from '@/constants/platforms'
 import { getFloatingPanelPosition } from '@/utils/floatingPanel'
 import {
   getRemainingDurationParts,
@@ -1032,16 +1029,14 @@ let userSearchTimeout: ReturnType<typeof setTimeout> | null = null
 const filters = reactive({
   status: 'active',
   plan_id: '',
-  platform: '',
   user_id: null as number | null
 })
 
-const activeFilterCount = computed(() => [filters.status, filters.plan_id, filters.platform].filter(Boolean).length)
+const activeFilterCount = computed(() => [filters.status, filters.plan_id].filter(Boolean).length)
 
 const resetSubscriptionFilters = () => {
   filters.status = ''
   filters.plan_id = ''
-  filters.platform = ''
   applyFilters()
 }
 
@@ -1085,10 +1080,6 @@ const planOptions = computed(() => [
   ...plans.value.map((plan) => ({ value: plan.id.toString(), label: plan.name }))
 ])
 
-const platformFilterOptions = computed(() => [
-  { value: '', label: t('admin.subscriptions.allPlatforms') },
-  ...GROUP_PLATFORM_OPTIONS
-])
 
 const subscriptionPlanOptions = computed<PlanOption[]>(() =>
   plans.value.map((plan) => ({
@@ -1119,7 +1110,6 @@ const loadSubscriptions = async () => {
       {
         status: (filters.status as any) || undefined,
         plan_id: filters.plan_id ? parseInt(filters.plan_id) : undefined,
-        platform: filters.platform || undefined,
         user_id: filters.user_id || undefined,
         sort_by: sortState.sort_by,
         sort_order: sortState.sort_order

@@ -27,6 +27,7 @@ func TestOpenAIGatewayService_SelectAccountByPreviousResponseID_Hit(t *testing.T
 	groupID := int64(23)
 	account := gatewayprovider.ExecutionAccount{
 		Record: accountcore.Record{
+			Credentials:  map[string]any{"model_whitelist": []string{"*"}},
 			LoadLocation: time.LoadLocation, ID: 2,
 			Platform:    capability.PlatformOpenAI,
 			Type:        capability.AccountTypeAPIKey,
@@ -75,6 +76,7 @@ func TestOpenAIGatewayService_SelectAccountByPreviousResponseID_QuotaAutoPausedM
 	groupID := int64(23)
 	account := gatewayprovider.ExecutionAccount{
 		Record: accountcore.Record{
+			Credentials:  map[string]any{"model_whitelist": []string{"*"}},
 			LoadLocation: time.LoadLocation, ID: 77,
 			Platform:    capability.PlatformOpenAI,
 			Type:        capability.AccountTypeAPIKey,
@@ -125,6 +127,7 @@ func TestOpenAIGatewayService_SelectAccountByPreviousResponseID_RateLimitedMiss(
 	rateLimitedUntil := time.Now().Add(30 * time.Minute)
 	account := gatewayprovider.ExecutionAccount{
 		Record: accountcore.Record{
+			Credentials:  map[string]any{"model_whitelist": []string{"*"}},
 			LoadLocation: time.LoadLocation, ID: 12,
 			Platform:         capability.PlatformOpenAI,
 			Type:             capability.AccountTypeAPIKey,
@@ -171,6 +174,7 @@ func TestOpenAIGatewayService_SelectAccountByPreviousResponseID_DBRuntimeRecheck
 	rateLimitedUntil := time.Now().Add(30 * time.Minute)
 	staleAccount := &gatewayprovider.ExecutionAccount{
 		Record: accountcore.Record{
+			Credentials:  map[string]any{"model_whitelist": []string{"*"}},
 			LoadLocation: time.LoadLocation, ID: 13,
 			Platform:    capability.PlatformOpenAI,
 			Type:        capability.AccountTypeAPIKey,
@@ -184,6 +188,7 @@ func TestOpenAIGatewayService_SelectAccountByPreviousResponseID_DBRuntimeRecheck
 	}
 	dbAccount := gatewayprovider.ExecutionAccount{
 		Record: accountcore.Record{
+			Credentials:  map[string]any{"model_whitelist": []string{"*"}},
 			LoadLocation: time.LoadLocation, ID: 13,
 			Platform:         capability.PlatformOpenAI,
 			Type:             capability.AccountTypeAPIKey,
@@ -235,6 +240,7 @@ func TestOpenAIGatewayService_SelectAccountByPreviousResponseID_Excluded(t *test
 	groupID := int64(23)
 	account := gatewayprovider.ExecutionAccount{
 		Record: accountcore.Record{
+			Credentials:  map[string]any{"model_whitelist": []string{"*"}},
 			LoadLocation: time.LoadLocation, ID: 8,
 			Platform:    capability.PlatformOpenAI,
 			Type:        capability.AccountTypeAPIKey,
@@ -276,6 +282,7 @@ func TestOpenAIGatewayService_SelectAccountByPreviousResponseID_APIKeyForceHTTPH
 	groupID := int64(23)
 	account := gatewayprovider.ExecutionAccount{
 		Record: accountcore.Record{
+			Credentials:  map[string]any{"model_whitelist": []string{"*"}},
 			LoadLocation: time.LoadLocation, ID: 11,
 			Platform:    capability.PlatformOpenAI,
 			Type:        capability.AccountTypeAPIKey,
@@ -323,6 +330,7 @@ func TestOpenAIGatewayService_SelectAccountByPreviousResponseID_OAuthForceHTTPIg
 	groupID := int64(23)
 	account := gatewayprovider.ExecutionAccount{
 		Record: accountcore.Record{
+			Credentials:  map[string]any{"model_whitelist": []string{"*"}},
 			LoadLocation: time.LoadLocation, ID: 12,
 			Platform:    capability.PlatformOpenAI,
 			Type:        capability.AccountTypeOAuth,
@@ -365,6 +373,7 @@ func TestOpenAIGatewayService_SelectAccountByPreviousResponseID_BusyKeepsSticky(
 	accounts := []gatewayprovider.ExecutionAccount{
 		{
 			Record: accountcore.Record{
+				Credentials:  map[string]any{"model_whitelist": []string{"*"}},
 				LoadLocation: time.LoadLocation, ID: 21,
 				Platform:    capability.PlatformOpenAI,
 				Type:        capability.AccountTypeAPIKey,
@@ -379,6 +388,7 @@ func TestOpenAIGatewayService_SelectAccountByPreviousResponseID_BusyKeepsSticky(
 		},
 		{
 			Record: accountcore.Record{
+				Credentials:  map[string]any{"model_whitelist": []string{"*"}},
 				LoadLocation: time.LoadLocation, ID: 22,
 				Platform:    capability.PlatformOpenAI,
 				Type:        capability.AccountTypeAPIKey,
@@ -448,6 +458,7 @@ func TestOpenAIGatewayService_SelectAccountByPreviousResponseID_CapabilityMismat
 			Schedulable: true,
 			Concurrency: 1,
 			Credentials: map[string]any{
+				"model_whitelist":              []string{"*"},
 				"openai_workload_capabilities": []any{"text_generation"},
 			},
 			Extra: map[string]any{
@@ -501,11 +512,8 @@ func TestOpenAIGatewayService_SelectAccountByPreviousResponseIDUsesResolvedRouti
 		Status:             billing.StatusActive,
 		RestrictModels:     true,
 		BillingModelSource: routing.BillingModelSourceUpstream,
-		ModelMapping: map[string]map[string]string{
-			capability.PlatformOpenAI: {"client-alias": "group-model"},
-		},
+		ModelMapping:       map[string]string{"client-alias": "group-model"},
 		ModelPricing: []routing.ModelPricingEntry{{
-			Platform:   capability.PlatformOpenAI,
 			Models:     []string{"allowed-upstream"},
 			InputPrice: &price,
 		}},

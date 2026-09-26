@@ -32,9 +32,8 @@ export function pricingEntryFromAPI(entry: ModelPricingEntry): PricingFormEntry 
 }
 
 // 单价按百万 token 展示、按单 token 存储；区间倍率和服务层级倍率保持原单位。
-export function pricingEntryToAPI(entry: PricingFormEntry, platform: string): ModelPricingEntry {
+export function pricingEntryToAPI(entry: PricingFormEntry): ModelPricingEntry {
   return {
-    platform,
     models: entry.models.map(model => model.trim()),
     billing_mode: entry.billing_mode,
     price_multiplier: toNullableNumber(entry.price_multiplier),

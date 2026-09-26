@@ -29,7 +29,7 @@ func TestS07BucketLeaseExpiredOwnerCannotReleaseSuccessor(t *testing.T) {
 	second, acquired, err := cache.AcquireBucketLease(ctx, bucket, time.Minute)
 	require.NoError(t, err)
 	require.True(t, acquired)
-	key := "sched:v2:lock:" + bucket.String()
+	key := "sched:v3:lock:" + bucket.String()
 	owner, err := rdb.Get(ctx, key).Result()
 	require.NoError(t, err)
 	require.ErrorIs(t, first.Release(ctx), scheduler.ErrBucketLeaseLost)
@@ -52,6 +52,7 @@ type s07WaitIncrementFault struct{ scheduler.ConcurrencyCache }
 func (c s07WaitIncrementFault) IncrementWaitCount(context.Context, int64, int) (bool, error) {
 	return false, errors.New("增加等待计数未确认")
 }
+
 func (c s07WaitIncrementFault) IncrementAccountWaitCount(context.Context, int64, int) (bool, error) {
 	return false, errors.New("增加账号等待计数未确认")
 }
@@ -67,7 +68,8 @@ func TestS07WaitFailOpenDoesNotReleaseOtherRequest(t *testing.T) {
 	accountAllowed, err := cache.IncrementAccountWaitCount(ctx, 91002, 20)
 	require.NoError(t, err)
 	require.True(t, accountAllowed)
-	concurrency := scheduler.NewConcurrencyService(s07WaitIncrementFault{cache}, scheduler.Diagnostics{Logf: logging.LegacyPrintf,
+	concurrency := scheduler.NewConcurrencyService(s07WaitIncrementFault{cache}, scheduler.Diagnostics{
+		Logf: logging.LegacyPrintf,
 
 		Event: logging.Event,
 	},

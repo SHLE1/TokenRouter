@@ -6,17 +6,18 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"maps"
 	"math/rand/v2"
 	"slices"
 	"time"
+
+	"github.com/TokenFlux/TokenRouter/internal/protocol"
 
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/accessview"
 	"github.com/dgraph-io/ristretto"
 )
 
-const KeyApiKeyAuthSnapshotVersion = 41
+const KeyApiKeyAuthSnapshotVersion = 42
 
 type KeyApiKeyAuthCacheConfig struct {
 	l1Size        int
@@ -394,29 +395,29 @@ func (s *APIKeyService) KeySnapshotFromAPIKey(ctx context.Context, apiKey *APIKe
 		return nil
 	}
 	snapshot := &APIKeyAuthSnapshot{
-		Version:                               KeyApiKeyAuthSnapshotVersion,
-		APIKeyID:                              apiKey.ID,
-		UserID:                                apiKey.UserID,
-		TeamID:                                clonePointer(apiKey.TeamID),
-		TeamOwnerDisabled:                     apiKey.TeamOwnerDisabled,
-		CreatedAt:                             apiKey.CreatedAt,
-		GroupID:                               clonePointer(apiKey.GroupID),
-		IsComposite:                           apiKey.IsComposite,
-		Name:                                  apiKey.Name,
-		Status:                                apiKey.Status,
-		FastModePolicy:                        apiKey.FastModePolicy,
-		BillingMode:                           apiKey.BillingMode,
-		PreferredSubscriptionID:               clonePointer(apiKey.PreferredSubscriptionID),
-		ModelMapping:                          CloneModelMapping(apiKey.ModelMapping),
-		IPWhitelist:                           slices.Clone(apiKey.IPWhitelist),
-		IPBlacklist:                           slices.Clone(apiKey.IPBlacklist),
-		Quota:                                 apiKey.Quota,
-		QuotaUsed:                             apiKey.QuotaUsed,
-		ExpiresAt:                             clonePointer(apiKey.ExpiresAt),
-		RateLimit5h:                           apiKey.RateLimit5h,
-		RateLimit1d:                           apiKey.RateLimit1d,
-		RateLimit7d:                           apiKey.RateLimit7d,
-		FallbackToDefaultGroupWhenUnavailable: apiKey.FallbackToDefaultGroupWhenUnavailable,
+		Version:                      KeyApiKeyAuthSnapshotVersion,
+		APIKeyID:                     apiKey.ID,
+		UserID:                       apiKey.UserID,
+		TeamID:                       clonePointer(apiKey.TeamID),
+		TeamOwnerDisabled:            apiKey.TeamOwnerDisabled,
+		CreatedAt:                    apiKey.CreatedAt,
+		GroupID:                      clonePointer(apiKey.GroupID),
+		IsComposite:                  apiKey.IsComposite,
+		Name:                         apiKey.Name,
+		Status:                       apiKey.Status,
+		FastModePolicy:               apiKey.FastModePolicy,
+		BillingMode:                  apiKey.BillingMode,
+		PreferredSubscriptionID:      clonePointer(apiKey.PreferredSubscriptionID),
+		ModelMapping:                 CloneModelMapping(apiKey.ModelMapping),
+		IPWhitelist:                  slices.Clone(apiKey.IPWhitelist),
+		IPBlacklist:                  slices.Clone(apiKey.IPBlacklist),
+		Quota:                        apiKey.Quota,
+		QuotaUsed:                    apiKey.QuotaUsed,
+		ExpiresAt:                    clonePointer(apiKey.ExpiresAt),
+		RateLimit5h:                  apiKey.RateLimit5h,
+		RateLimit1d:                  apiKey.RateLimit1d,
+		RateLimit7d:                  apiKey.RateLimit7d,
+		FallbackWhenGroupUnavailable: apiKey.FallbackWhenGroupUnavailable,
 		User: APIKeyAuthUserSnapshot{
 			ID:                         apiKey.User.ID,
 			Status:                     apiKey.User.Status,
@@ -453,9 +454,9 @@ func (s *APIKeyService) KeySnapshotFromAPIKey(ctx context.Context, apiKey *APIKe
 	}
 	if apiKey.Group != nil {
 		snapshot.Group = &APIKeyAuthGroupSnapshot{
-			ID:                              apiKey.Group.ID,
-			Name:                            apiKey.Group.Name,
-			Platform:                        apiKey.Group.Platform,
+			ID:   apiKey.Group.ID,
+			Name: apiKey.Group.Name,
+
 			SchedulerType:                   apiKey.Group.SchedulerType,
 			AdvancedSchedulerOverrides:      accessview.CloneGroupAdvancedSchedulerOverrides(apiKey.Group.AdvancedSchedulerOverrides),
 			IsExclusive:                     apiKey.Group.IsExclusive,
@@ -481,7 +482,7 @@ func (s *APIKeyService) KeySnapshotFromAPIKey(ctx context.Context, apiKey *APIKe
 			MCPXMLInject:                    apiKey.Group.MCPXMLInject,
 			SupportedModelScopes:            slices.Clone(apiKey.Group.SupportedModelScopes),
 			AllowedProtocols:                cloneGroupClientProtocols(apiKey.Group.AllowedProtocols),
-			ProtocolFallbacks:               maps.Clone(apiKey.Group.ProtocolFallbacks),
+			ProtocolFallbacks:               protocol.CloneFallbacks(apiKey.Group.ProtocolFallbacks),
 			ResponsesImagePolicy:            apiKey.Group.ResponsesImagePolicy,
 			AllowLive:                       apiKey.Group.AllowLive,
 			ForceOpenAIFast:                 apiKey.Group.ForceOpenAIFast,
@@ -528,29 +529,29 @@ func (s *APIKeyService) KeySnapshotToAPIKey(key string, snapshot *APIKeyAuthSnap
 		return nil
 	}
 	apiKey := &APIKey{
-		ID:                                    snapshot.APIKeyID,
-		UserID:                                snapshot.UserID,
-		TeamID:                                clonePointer(snapshot.TeamID),
-		TeamOwnerDisabled:                     snapshot.TeamOwnerDisabled,
-		CreatedAt:                             snapshot.CreatedAt,
-		GroupID:                               clonePointer(snapshot.GroupID),
-		IsComposite:                           snapshot.IsComposite,
-		Key:                                   key,
-		Name:                                  snapshot.Name,
-		Status:                                snapshot.Status,
-		FastModePolicy:                        snapshot.FastModePolicy,
-		BillingMode:                           snapshot.BillingMode,
-		PreferredSubscriptionID:               clonePointer(snapshot.PreferredSubscriptionID),
-		ModelMapping:                          CloneModelMapping(snapshot.ModelMapping),
-		IPWhitelist:                           slices.Clone(snapshot.IPWhitelist),
-		IPBlacklist:                           slices.Clone(snapshot.IPBlacklist),
-		Quota:                                 snapshot.Quota,
-		QuotaUsed:                             snapshot.QuotaUsed,
-		ExpiresAt:                             clonePointer(snapshot.ExpiresAt),
-		RateLimit5h:                           snapshot.RateLimit5h,
-		RateLimit1d:                           snapshot.RateLimit1d,
-		RateLimit7d:                           snapshot.RateLimit7d,
-		FallbackToDefaultGroupWhenUnavailable: snapshot.FallbackToDefaultGroupWhenUnavailable,
+		ID:                           snapshot.APIKeyID,
+		UserID:                       snapshot.UserID,
+		TeamID:                       clonePointer(snapshot.TeamID),
+		TeamOwnerDisabled:            snapshot.TeamOwnerDisabled,
+		CreatedAt:                    snapshot.CreatedAt,
+		GroupID:                      clonePointer(snapshot.GroupID),
+		IsComposite:                  snapshot.IsComposite,
+		Key:                          key,
+		Name:                         snapshot.Name,
+		Status:                       snapshot.Status,
+		FastModePolicy:               snapshot.FastModePolicy,
+		BillingMode:                  snapshot.BillingMode,
+		PreferredSubscriptionID:      clonePointer(snapshot.PreferredSubscriptionID),
+		ModelMapping:                 CloneModelMapping(snapshot.ModelMapping),
+		IPWhitelist:                  slices.Clone(snapshot.IPWhitelist),
+		IPBlacklist:                  slices.Clone(snapshot.IPBlacklist),
+		Quota:                        snapshot.Quota,
+		QuotaUsed:                    snapshot.QuotaUsed,
+		ExpiresAt:                    clonePointer(snapshot.ExpiresAt),
+		RateLimit5h:                  snapshot.RateLimit5h,
+		RateLimit1d:                  snapshot.RateLimit1d,
+		RateLimit7d:                  snapshot.RateLimit7d,
+		FallbackWhenGroupUnavailable: snapshot.FallbackWhenGroupUnavailable,
 		User: &User{
 			ID:                         snapshot.User.ID,
 			Status:                     snapshot.User.Status,
@@ -582,9 +583,9 @@ func (s *APIKeyService) KeySnapshotToAPIKey(key string, snapshot *APIKeyAuthSnap
 	}
 	if snapshot.Group != nil {
 		apiKey.Group = &routing.Group{
-			ID:                              snapshot.Group.ID,
-			Name:                            snapshot.Group.Name,
-			Platform:                        snapshot.Group.Platform,
+			ID:   snapshot.Group.ID,
+			Name: snapshot.Group.Name,
+
 			SchedulerType:                   snapshot.Group.SchedulerType,
 			AdvancedSchedulerOverrides:      accessview.CloneGroupAdvancedSchedulerOverrides(snapshot.Group.AdvancedSchedulerOverrides),
 			IsExclusive:                     snapshot.Group.IsExclusive,
@@ -611,7 +612,7 @@ func (s *APIKeyService) KeySnapshotToAPIKey(key string, snapshot *APIKeyAuthSnap
 			MCPXMLInject:                    snapshot.Group.MCPXMLInject,
 			SupportedModelScopes:            slices.Clone(snapshot.Group.SupportedModelScopes),
 			AllowedProtocols:                cloneGroupClientProtocols(snapshot.Group.AllowedProtocols),
-			ProtocolFallbacks:               maps.Clone(snapshot.Group.ProtocolFallbacks),
+			ProtocolFallbacks:               protocol.CloneFallbacks(snapshot.Group.ProtocolFallbacks),
 			ResponsesImagePolicy:            snapshot.Group.ResponsesImagePolicy,
 			AllowLive:                       snapshot.Group.AllowLive,
 			ForceOpenAIFast:                 snapshot.Group.ForceOpenAIFast,
@@ -655,7 +656,7 @@ func KeyAuthGroupSnapshotFromGroup(group *routing.Group) *APIKeyAuthGroupSnapsho
 		return nil
 	}
 	return &APIKeyAuthGroupSnapshot{
-		ID: group.ID, Name: group.Name, Platform: group.Platform, SchedulerType: group.SchedulerType,
+		ID: group.ID, Name: group.Name, SchedulerType: group.SchedulerType,
 		AdvancedSchedulerOverrides: accessview.CloneGroupAdvancedSchedulerOverrides(group.AdvancedSchedulerOverrides), IsExclusive: group.IsExclusive,
 		Status: group.Status, RateMultiplier: group.RateMultiplier,
 		SessionIsolationEnabled: group.SessionIsolationEnabled, AllowImageGeneration: group.AllowImageGeneration,
@@ -669,7 +670,7 @@ func KeyAuthGroupSnapshotFromGroup(group *routing.Group) *APIKeyAuthGroupSnapsho
 		FallbackGroupID: clonePointer(group.FallbackGroupID), FallbackGroupIDOnInvalidRequest: clonePointer(group.FallbackGroupIDOnInvalidRequest),
 		UnavailableFallbackGroupID: clonePointer(group.UnavailableFallbackGroupID), ModelRouting: cloneModelRouting(group.ModelRouting),
 		ModelRoutingEnabled: group.ModelRoutingEnabled, MCPXMLInject: group.MCPXMLInject,
-		ProtocolFallbacks: maps.Clone(group.ProtocolFallbacks), ResponsesImagePolicy: group.ResponsesImagePolicy,
+		ProtocolFallbacks: protocol.CloneFallbacks(group.ProtocolFallbacks), ResponsesImagePolicy: group.ResponsesImagePolicy,
 		SupportedModelScopes: slices.Clone(group.SupportedModelScopes), AllowedProtocols: cloneGroupClientProtocols(group.AllowedProtocols),
 		AllowLive: group.AllowLive, ForceOpenAIFast: group.ForceOpenAIFast, OpenAIFastPolicy: group.OpenAIFastPolicy, FreeOpenAIFast: group.FreeOpenAIFast, DefaultMappedModel: group.DefaultMappedModel,
 		MessagesDispatchModelConfig: cloneMessagesDispatch(group.MessagesDispatchModelConfig), ModelsListConfig: cloneModelsList(group.ModelsListConfig),
@@ -686,7 +687,7 @@ func KeyGroupFromAuthSnapshot(snapshot *APIKeyAuthGroupSnapshot) *routing.Group 
 		return nil
 	}
 	return &routing.Group{
-		ID: snapshot.ID, Name: snapshot.Name, Platform: snapshot.Platform, SchedulerType: snapshot.SchedulerType,
+		ID: snapshot.ID, Name: snapshot.Name, SchedulerType: snapshot.SchedulerType,
 		AdvancedSchedulerOverrides: accessview.CloneGroupAdvancedSchedulerOverrides(snapshot.AdvancedSchedulerOverrides), IsExclusive: snapshot.IsExclusive,
 		Status: snapshot.Status, Hydrated: true, RateMultiplier: snapshot.RateMultiplier,
 		SessionIsolationEnabled: snapshot.SessionIsolationEnabled,
@@ -702,7 +703,7 @@ func KeyGroupFromAuthSnapshot(snapshot *APIKeyAuthGroupSnapshot) *routing.Group 
 		FallbackGroupIDOnInvalidRequest: clonePointer(snapshot.FallbackGroupIDOnInvalidRequest),
 		UnavailableFallbackGroupID:      clonePointer(snapshot.UnavailableFallbackGroupID), ModelRouting: cloneModelRouting(snapshot.ModelRouting),
 		ModelRoutingEnabled: snapshot.ModelRoutingEnabled, MCPXMLInject: snapshot.MCPXMLInject,
-		ProtocolFallbacks: maps.Clone(snapshot.ProtocolFallbacks), ResponsesImagePolicy: snapshot.ResponsesImagePolicy,
+		ProtocolFallbacks: protocol.CloneFallbacks(snapshot.ProtocolFallbacks), ResponsesImagePolicy: snapshot.ResponsesImagePolicy,
 		SupportedModelScopes: slices.Clone(snapshot.SupportedModelScopes), AllowedProtocols: cloneGroupClientProtocols(snapshot.AllowedProtocols),
 		AllowLive: snapshot.AllowLive, ForceOpenAIFast: snapshot.ForceOpenAIFast, OpenAIFastPolicy: snapshot.OpenAIFastPolicy, FreeOpenAIFast: snapshot.FreeOpenAIFast, DefaultMappedModel: snapshot.DefaultMappedModel,
 		MessagesDispatchModelConfig: cloneMessagesDispatch(snapshot.MessagesDispatchModelConfig), ModelsListConfig: cloneModelsList(snapshot.ModelsListConfig),

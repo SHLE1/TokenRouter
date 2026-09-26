@@ -1,10 +1,13 @@
-// Gemini 模型资源保留 scope 回退、别名元数据和原始上游响应，不进入生成链。
+// Gemini 模型资源复用分组能力目录和本地模型元数据，不读取单个上游账号的列表。
 package httpapi
 
 import (
 	"encoding/json"
 	"net/http"
+	"slices"
 	"strings"
+
+	"github.com/TokenFlux/TokenRouter/internal/protocol"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
@@ -19,72 +22,16 @@ func (h *ModelsHandler) GeminiV1BetaListModels(c *gin.Context) {
 		return
 	}
 	defer done()
-
-	apiKey, ok := h.backend.Access(c)
-	if !ok || apiKey == nil {
+	key, ok := h.backend.Access(c)
+	if !ok || key == nil {
 		WriteGoogleError(c, http.StatusUnauthorized, "Invalid API key")
 		return
 	}
-	if apiKey.IsComposite {
-		requiredPlatform := capability.PlatformGemini
-		if forcePlatform, ok := h.backend.ForcedPlatform(c); ok && forcePlatform == capability.PlatformAntigravity {
-			requiredPlatform = capability.PlatformAntigravity
-		}
-		models := h.CompositeRequestableModels(c, apiKey, requiredPlatform)
-		out := make([]GeminiModel, 0, len(models))
-		for _, model := range models {
-			out = append(out, GeminiModel{
-				Name:                       "models/" + model,
-				DisplayName:                model,
-				SupportedGenerationMethods: []string{"generateContent", "streamGenerateContent"},
-			})
-		}
-		c.JSON(http.StatusOK, GeminiModelsList{Models: out})
+	models, allowed := h.requestableGeminiModels(c, key)
+	if !allowed {
 		return
 	}
-	// 检查平台：优先使用强制平台（/antigravity 路由），否则要求 gemini 分组
-	forcePlatform, hasForcePlatform := h.backend.ForcedPlatform(c)
-	if !hasForcePlatform && (apiKey.Group == nil || apiKey.Group.Platform != capability.PlatformGemini) {
-		WriteGoogleError(c, http.StatusBadRequest, "API key group platform is not gemini")
-		return
-	}
-
-	// 强制 antigravity 模式：返回 antigravity 支持的模型列表
-	if forcePlatform == capability.PlatformAntigravity {
-		h.WriteGeminiModelsListWithAPIKeyAliases(c, h.catalog.GeminiList(true), apiKey)
-		return
-	}
-
-	if models, ok := h.CustomGeminiModelsList(apiKey.Group); ok {
-		h.WriteGeminiModelsListWithAPIKeyAliases(c, models, apiKey)
-		return
-	}
-
-	account, err := h.backend.SelectGemini(c.Request.Context(), apiKey.GroupID)
-	if err != nil {
-		// 没有 gemini 账户，检查是否有 antigravity 账户可用
-		hasAntigravity, _ := h.backend.HasAntigravity(c.Request.Context(), apiKey.GroupID)
-		if hasAntigravity {
-			// antigravity 账户使用静态模型列表
-			h.WriteGeminiModelsListWithAPIKeyAliases(c, h.catalog.GeminiList(false), apiKey)
-			return
-		}
-		h.backend.CapacityLimited(c, err)
-		WriteGoogleError(c, http.StatusServiceUnavailable, "No available Gemini accounts: "+err.Error())
-		return
-	}
-
-	res, err := account.Read(c.Request.Context(), "/v1beta/models")
-	if err != nil {
-		WriteGoogleError(c, http.StatusBadGateway, err.Error())
-		return
-	}
-	if h.ShouldFallbackGeminiModels(res) {
-		h.WriteGeminiModelsListWithAPIKeyAliases(c, h.catalog.GeminiList(false), apiKey)
-		return
-	}
-	res.Body = h.AppendAPIKeyAliasesToGeminiModelsJSON(res.Body, apiKey.ModelMapping)
-	h.WriteUpstreamResponse(c, res)
+	c.JSON(http.StatusOK, GeminiModelsList{Models: models})
 }
 
 func (h *ModelsHandler) GeminiV1BetaGetModel(c *gin.Context) {
@@ -93,61 +40,100 @@ func (h *ModelsHandler) GeminiV1BetaGetModel(c *gin.Context) {
 		return
 	}
 	defer done()
-
-	apiKey, ok := h.backend.Access(c)
-	if !ok || apiKey == nil {
+	key, ok := h.backend.Access(c)
+	if !ok || key == nil {
 		WriteGoogleError(c, http.StatusUnauthorized, "Invalid API key")
 		return
 	}
-	// 检查平台：优先使用强制平台（/antigravity 路由），否则要求 gemini 分组
-	forcePlatform, hasForcePlatform := h.backend.ForcedPlatform(c)
-	if !hasForcePlatform && (apiKey.Group == nil || apiKey.Group.Platform != capability.PlatformGemini) {
-		WriteGoogleError(c, http.StatusBadRequest, "API key group platform is not gemini")
-		return
+	name := strings.TrimPrefix(strings.TrimSpace(c.Param("model")), "/")
+	segment := name
+	if key.IsComposite {
+		_, rest, found := strings.Cut(name, "/")
+		if found {
+			segment = rest
+		}
 	}
-
-	modelName := strings.TrimPrefix(strings.TrimSpace(c.Param("model")), "/")
-	if modelName == "" {
-		WriteGoogleError(c, http.StatusBadRequest, "Missing model in URL")
-		return
-	}
-	// 模型名会被拼进上游 URL 的 path，先在入口校验片段合规性，
-	// 通过路径校验端口保持原限制。
-	if !h.backend.SafeModelSegment(modelName) {
+	if segment == "" || strings.ContainsAny(segment, "*?") || !h.backend.SafeModelSegment(segment) {
 		WriteGoogleError(c, http.StatusBadRequest, "Invalid model in URL")
 		return
 	}
-
-	// 强制 antigravity 模式：返回 antigravity 模型信息
-	if forcePlatform == capability.PlatformAntigravity {
-		c.JSON(http.StatusOK, h.catalog.GeminiModel(modelName, true))
+	models, allowed := h.requestableGeminiModels(c, key)
+	if !allowed {
 		return
 	}
-
-	account, err := h.backend.SelectGemini(c.Request.Context(), apiKey.GroupID)
-	if err != nil {
-		// 没有 gemini 账户，检查是否有 antigravity 账户可用
-		hasAntigravity, _ := h.backend.HasAntigravity(c.Request.Context(), apiKey.GroupID)
-		if hasAntigravity {
-			// antigravity 账户使用静态模型信息
-			c.JSON(http.StatusOK, h.catalog.GeminiModel(modelName, false))
+	for _, model := range models {
+		if model.Name == "models/"+name {
+			c.JSON(http.StatusOK, model)
 			return
 		}
-		h.backend.CapacityLimited(c, err)
-		WriteGoogleError(c, http.StatusServiceUnavailable, "No available Gemini accounts: "+err.Error())
-		return
 	}
+	WriteGoogleError(c, http.StatusNotFound, "Model is not available in this group")
+}
 
-	res, err := account.Read(c.Request.Context(), "/v1beta/models/"+modelName)
-	if err != nil {
-		WriteGoogleError(c, http.StatusBadGateway, err.Error())
-		return
+// requestableGeminiModels 把组级协议权限、逐候选能力和 Key 别名保持在同一目录路径。
+func (h *ModelsHandler) requestableGeminiModels(c *gin.Context, key *apikey.APIKey) ([]GeminiModel, bool) {
+	models := make([]GeminiModel, 0)
+	if !key.IsComposite && (key.Group == nil || !key.Group.AllowsClientProtocol(protocol.ProtocolGeminiGenerateContent)) {
+		WriteGoogleError(c, http.StatusForbidden, "This group does not allow Gemini GenerateContent requests")
+		return nil, false
 	}
-	if h.ShouldFallbackGeminiModel(modelName, res) {
-		c.JSON(http.StatusOK, h.catalog.GeminiModel(modelName, false))
-		return
+	if !h.backend.Available() {
+		return models, true
 	}
-	h.WriteUpstreamResponse(c, res)
+	forced, _ := h.backend.ForcedPlatform(c)
+	forced = strings.TrimSpace(forced)
+	seen := make(map[string]bool)
+	appendGroup := func(group *routing.Group, prefix string) {
+		if group == nil || !group.AllowsClientProtocol(protocol.ProtocolGeminiGenerateContent) {
+			return
+		}
+		id := group.ID
+		resolved := h.backend.Resolve(c.Request.Context(), &id, forced)
+		available := make([]string, 0, len(resolved.Models))
+		for _, model := range resolved.Models {
+			if slices.Contains(model.Protocols, protocol.ProtocolGeminiGenerateContent) && !strings.ContainsAny(model.ID, "*?") {
+				available = append(available, model.ID)
+			}
+		}
+		if customListEnabled(group) {
+			available = FilterModelsByCustomList(available, nil, group.ModelsListConfig.Models)
+		}
+		aliases := apikey.AvailableAPIKeyModelAliases(available, key.ModelMapping)
+		for _, modelID := range append(available, aliases...) {
+			publicID := modelID
+			if prefix != "" {
+				publicID = prefix + "/" + publicID
+			}
+			if seen[publicID] {
+				continue
+			}
+			seen[publicID] = true
+			metadataID := modelID
+			if slices.Contains(aliases, modelID) {
+				metadataID = key.ModelMapping[modelID]
+			}
+			model := h.catalog.GeminiModel(metadataID, forced == capability.PlatformAntigravity)
+			model.Name = "models/" + publicID
+			if publicID != metadataID {
+				model.DisplayName = publicID
+			}
+			models = append(models, model)
+		}
+	}
+	if key.IsComposite {
+		subscription, ready := h.CompositePreferredSubscription(c, key)
+		if !ready {
+			return models, true
+		}
+		for _, binding := range key.CompositeGroups {
+			if CompositeGroupAvailableToUser(key, subscription, binding.Group) {
+				appendGroup(binding.Group, binding.Prefix)
+			}
+		}
+	} else {
+		appendGroup(key.Group, "")
+	}
+	return models, true
 }
 
 func (h *ModelsHandler) WriteGeminiModelsListWithAPIKeyAliases(c *gin.Context, payload GeminiModelsList, apiKey *apikey.APIKey) {

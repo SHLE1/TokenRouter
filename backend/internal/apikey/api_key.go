@@ -112,10 +112,10 @@ type APIKey struct {
 	Team           *Team
 	TeamMembership *TeamMembership
 	Group          *routing.
-		// FallbackToDefaultGroupWhenUnavailable 控制绑定分组停用时是否回退到同平台默认分组。
+		// FallbackWhenGroupUnavailable 控制绑定分组停用时是否允许回退到管理员明确配置的目标。
 		Group
 
-	FallbackToDefaultGroupWhenUnavailable bool
+	FallbackWhenGroupUnavailable bool
 	// CurrentConcurrency 表示当前 API Key 的实时活跃请求数。
 	CurrentConcurrency int
 	// ManagedBy 标记服务端托管的隐藏 Key（如创作台执行 Key 'creative_studio'），

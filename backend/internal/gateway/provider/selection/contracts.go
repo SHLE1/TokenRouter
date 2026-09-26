@@ -70,6 +70,8 @@ type GenericDependencies struct {
 
 // CompatibleDependencies 只借用同一响应归属、健康状态和配额观测，不能执行供应商交换。
 type CompatibleDependencies struct {
+	Generic *Generic
+	Gemini  *Gemini
 	Reads
 	Shared
 	Responses            session.OpenAIWSStateStore

@@ -2,12 +2,15 @@ package app
 
 import (
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
+	"github.com/TokenFlux/TokenRouter/internal/billing"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/admission"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/completion"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/errorpolicy"
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/httpapi/openaiattempt"
 	gatewaycapture "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/selection"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 	"github.com/TokenFlux/TokenRouter/internal/moderation"
 	openaiwire "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 )
@@ -22,6 +25,9 @@ func provideOpenAIAttemptBindings(
 	moderator *moderation.ContentModerationService,
 	records GatewayCompletionRecorders,
 	worker *completion.UsageRecordWorkerPool, availability *gatewayModelAvailability, choices *selection.Compatible,
+	unified *gatewayhttp.UnifiedTextExecutor,
+	generic *selection.Generic,
+	funding *admission.FundingAdmission, subscriptions *billing.SubscriptionService, planner *gatewaycapture.RoutePlanner, cache session.GatewayCache,
 ) openaiattempt.Bindings {
 	support := &openaiattempt.Support{Rules: rules, Cyber: cyber, Submission: gatewayhttp.NewCompletionSubmission(worker, true)}
 	if resources != nil {
@@ -34,6 +40,13 @@ func provideOpenAIAttemptBindings(
 		support.Moderation = moderator
 	}
 	b := openaiattempt.Bindings{Support: support, Recorder: records.OpenAI}
+	if keys != nil && funding != nil && planner != nil {
+		b.Fallback = openaiattempt.GroupFallbackPorts{
+			Plan:    planner.PlanKey,
+			Resolve: provideRuntimeGroupFallbackResolver(keys, funding, subscriptions, cache),
+		}
+	}
+
 	if s := source; s != nil {
 		b.Forward.EnforceOpenAIClientPolicyForRequest = s.Requests.EnforceClient
 		b.Forward.Forward = s.Forward
@@ -43,7 +56,17 @@ func provideOpenAIAttemptBindings(
 		b.Forward.ReplaceModelInBody = openaiwire.ReplaceModelInBody
 		b.Selection.UpdateCodexUsageSnapshotFromHeaders = s.Text.CodexUsage.Headers
 	}
+	if generic != nil {
+		b.Sessions = openaiattempt.SessionPorts{New: generic.NewSessionAttempts, Track: generic.TrackSessionAttempt, IncrementRPM: generic.IncrementAccountRPM}
+	}
+	if unified != nil {
+		b.Forward.Forward = unified.Responses
+		b.Forward.ForwardAsAnthropic = unified.Messages
+		b.Forward.ForwardAsChatCompletions = unified.Chat
+		b.Forward.EnforceOpenAIClientPolicyForRequest = unified.EnforceClient
+	}
 	if choices != nil {
+		b.Sessions.StickyAccountID = choices.StickyAccountID
 		support.Sticky = choices
 		b.Selection.ObserveOpenAIAccountHealthFailure = choices.ObserveOpenAIAccountHealthFailure
 		b.Selection.RecordOpenAIAccountSwitchForSelection = choices.RecordOpenAIAccountSwitchForSelection

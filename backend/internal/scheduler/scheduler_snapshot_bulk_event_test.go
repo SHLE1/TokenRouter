@@ -4,6 +4,7 @@ package scheduler
 
 import (
 	"context"
+	"slices"
 	"sync"
 	"testing"
 
@@ -84,16 +85,16 @@ func bulkEventPayload(accountIDs []int64, groupIDs []int64) map[string]any {
 }
 
 func schedulerBucketsForTest(groupIDs []int64, platforms ...string) []SchedulerBucket {
-	buckets := make([]SchedulerBucket, 0, len(groupIDs)*len(platforms)*3)
+	if !slices.Contains(platforms, "") {
+		platforms = append([]string{""}, platforms...)
+	}
+	buckets := make([]SchedulerBucket, 0, len(groupIDs)*len(platforms)*2)
 	for _, platform := range platforms {
 		for _, groupID := range groupIDs {
 			buckets = append(buckets,
 				SchedulerBucket{GroupID: groupID, Platform: platform, Mode: SchedulerModeSingle},
 				SchedulerBucket{GroupID: groupID, Platform: platform, Mode: SchedulerModeForced},
 			)
-			if platform == PlatformAnthropic || platform == PlatformGemini {
-				buckets = append(buckets, SchedulerBucket{GroupID: groupID, Platform: platform, Mode: SchedulerModeMixed})
-			}
 		}
 	}
 	return buckets
@@ -165,10 +166,10 @@ func TestSchedulerBulkAccountEventDoesNotCrossCurrentGroupsBetweenPlatforms(t *t
 		schedulerBucketsForTest([]int64{61, 63}, PlatformOpenAI),
 		schedulerBucketsForTest([]int64{62, 63}, PlatformGrok)...,
 	)
-	require.ElementsMatch(t, want, cache.capturedBuckets())
+	require.ElementsMatch(t, dedupeBuckets(want), cache.capturedBuckets())
 }
 
-func TestSchedulerBulkAccountEventUsesGroupZeroInSimpleMode(t *testing.T) {
+func TestSchedulerBulkAccountEventKeepsGroupMembershipInSimpleMode(t *testing.T) {
 	cache := newBulkEventSnapshotCache()
 	repo := newBulkEventAccountRepo(&snapshotTestAccount{ID: 11, Platform: PlatformOpenAI, GroupIDs: []int64{71}})
 	svc := NewSnapshotService(cache, nil, repo, nil, &SnapshotOptions{Simple: true})
@@ -176,12 +177,12 @@ func TestSchedulerBulkAccountEventUsesGroupZeroInSimpleMode(t *testing.T) {
 	err := svc.handleBulkAccountEvent(context.Background(), bulkEventPayload([]int64{11}, []int64{72}), make(map[batchSeenKey]struct{}))
 
 	require.NoError(t, err)
-	require.ElementsMatch(t, schedulerBucketsForTest([]int64{0}, PlatformOpenAI), cache.capturedBuckets())
+	require.ElementsMatch(t, schedulerBucketsForTest([]int64{71, 72}, PlatformOpenAI), cache.capturedBuckets())
 }
 
-func TestSchedulerBulkAccountEventConservativelyExpandsAntigravityPlatforms(t *testing.T) {
+func TestSchedulerBulkAccountEventRefreshesAntigravityAndSharedPool(t *testing.T) {
 	cache := newBulkEventSnapshotCache()
-	// fresh 值可能已经关闭 mixed_scheduling，兼容平台仍要重建以清理旧快照。
+	// Antigravity 状态变化同步到所属分组的共享池。
 	repo := newBulkEventAccountRepo(&snapshotTestAccount{ID: 2, Platform: PlatformAntigravity, GroupIDs: []int64{22}})
 	svc := newBulkEventTestService(cache, repo)
 
@@ -189,7 +190,7 @@ func TestSchedulerBulkAccountEventConservativelyExpandsAntigravityPlatforms(t *t
 
 	require.NoError(t, err)
 	require.ElementsMatch(t,
-		schedulerBucketsForTest([]int64{21, 22}, PlatformAnthropic, PlatformGemini, PlatformAntigravity),
+		schedulerBucketsForTest([]int64{21, 22}, PlatformAntigravity),
 		cache.capturedBuckets(),
 	)
 }

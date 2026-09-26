@@ -37,7 +37,7 @@ func TestResolveCatalogAliasesPreserveConfigPricing(t *testing.T) {
 				groupID := int64(998)
 				pricingConfigPrice := 9e-6
 				configPricing := routingtestkit.Configuration{ID: 998, Status: billing.StatusActive, GroupIDs: []int64{groupID}, ModelPricing: []routing.ModelPricingEntry{{
-					Platform: tc.platform, Models: []string{tc.base}, BillingMode: routing.BillingModeToken, InputPrice: &pricingConfigPrice,
+					Models: []string{tc.base}, BillingMode: routing.BillingModeToken, InputPrice: &pricingConfigPrice,
 				}}}
 				repository := &routingtestkit.ConfigRows{Values: []routingtestkit.Configuration{configPricing}, Platforms: map[int64]string{groupID: tc.platform}}
 				pricingConfigs := routingtestkit.NewPricingConfigService(repository, nil, routing.PricingConfigOptions{Now: time.Now, LoadLocation: provider.LoadPricingLocation})
@@ -60,7 +60,7 @@ func TestResolveCatalogAliasesPreserveConfigPricing(t *testing.T) {
 				// 完整请求名的独立价卡仍然优先，显式零价也不能被基础名价格覆盖。
 				zero := 0.0
 				configPricing.ModelPricing = append(configPricing.ModelPricing, routing.ModelPricingEntry{
-					Platform: tc.platform, Models: []string{tc.alias}, BillingMode: routing.BillingModeToken, InputPrice: &zero,
+					Models: []string{tc.alias}, BillingMode: routing.BillingModeToken, InputPrice: &zero,
 				})
 				repository.Values = []routingtestkit.Configuration{configPricing}
 				pricingConfigs.InvalidateCache()
@@ -74,15 +74,15 @@ func TestResolveCatalogAliasesPreserveConfigPricing(t *testing.T) {
 	}
 }
 
-// 别名只在当前分组平台内查价，不能误命中其它平台或不相关模型。
-func TestResolveCatalogAliasesKeepPricingConfigPlatformBoundary(t *testing.T) {
+// 同一共享价表中的基础模型价可用于对应别名，账号平台不形成额外价格边界。
+func TestResolveCatalogAliasesUseUnifiedPricingConfig(t *testing.T) {
 	groupID := int64(999)
 	price := 9e-6
 
 	pricingConfigs := routingtestkit.ModelConfigFromData(routingtestkit.ModelConfigDataFromRows([]routingtestkit.Configuration{{
 		ID: 999, Status: billing.StatusActive, GroupIDs: []int64{groupID}, ModelPricing: []routing.ModelPricingEntry{
-			{Platform: capability.PlatformOpenAI, Models: []string{"gemini-3.8-flash"}, BillingMode: routing.BillingModeToken, InputPrice: &price},
-			{Platform: capability.PlatformGemini, Models: []string{"gemini-3.7-flash"}, BillingMode: routing.BillingModeToken, InputPrice: &price},
+			{Models: []string{"gemini-3.8-flash"}, BillingMode: routing.BillingModeToken, InputPrice: &price},
+			{Models: []string{"gemini-3.7-flash"}, BillingMode: routing.BillingModeToken, InputPrice: &price},
 		},
 	}}, map[int64]string{groupID: capability.PlatformGemini}))
 	catalog := newCatalogFixture(catalogFixture{pricingData: map[string]*pricing.LiteLLMModelPricing{
@@ -90,8 +90,8 @@ func TestResolveCatalogAliasesKeepPricingConfigPlatformBoundary(t *testing.T) {
 	}})
 	resolver := billingtestkit.PriceResolver(pricingConfigs, newCalculator(&config.Config{}, catalog))
 	resolved := resolver.Resolve(context.Background(), billing.PricingInput{Model: "gemini-3.8-flash-tiered", GroupID: &groupID})
-	require.False(t, resolved.HasEffectivePricing())
-	require.InDelta(t, 1e-6, resolved.BasePricing.InputPricePerToken, 1e-12)
+	require.True(t, resolved.HasEffectivePricing())
+	require.InDelta(t, price, resolved.BasePricing.InputPricePerToken, 1e-12)
 }
 
 // 两类价卡共用身份候选，空完整名条目不遮蔽基础价，完整名零价和通配价仍优先。
@@ -104,9 +104,9 @@ func TestGroupAndPricingCatalogAliasPrecedence(t *testing.T) {
 	} {
 		t.Run(tc.alias, func(t *testing.T) {
 			price, zero := 9e-6, 0.0
-			card := routing.ModelPricingEntry{Platform: tc.platform, Models: []string{tc.base}, InputPrice: &price}
+			card := routing.ModelPricingEntry{Models: []string{tc.base}, InputPrice: &price}
 			for _, scope := range []string{pricing.PricingSourceGroup, pricing.PricingSourceConfig} {
-				group := &routing.Group{ID: 990, Platform: tc.platform, LongContextPricingEnabled: true}
+				group := &routing.Group{ID: 990, LongContextPricingEnabled: true}
 
 				repository := &routingtestkit.ConfigRows{Platforms: map[int64]string{group.ID: tc.platform}}
 				pricingConfigs := routingtestkit.NewPricingConfigService(repository, nil, routing.PricingConfigOptions{Now: time.Now, LoadLocation: provider.LoadPricingLocation})
@@ -129,11 +129,11 @@ func TestGroupAndPricingCatalogAliasPrecedence(t *testing.T) {
 				if pricing.NormalizePriceModelName(tc.base) == pricing.NormalizePriceModelName(tc.alias) {
 					continue
 				}
-				exact := routing.ModelPricingEntry{Platform: tc.platform, Models: []string{tc.alias}}
+				exact := routing.ModelPricingEntry{Models: []string{tc.alias}}
 				require.Equal(t, price, resolve([]routing.ModelPricingEntry{exact, card}).BasePricing.InputPricePerToken)
 				exact.InputPrice = &zero
 				require.Zero(t, resolve([]routing.ModelPricingEntry{card, exact}).BasePricing.InputPricePerToken)
-				wildcard := routing.ModelPricingEntry{Platform: tc.platform, Models: []string{tc.alias + "*"}, InputPrice: &zero}
+				wildcard := routing.ModelPricingEntry{Models: []string{tc.alias + "*"}, InputPrice: &zero}
 				require.Zero(t, resolve([]routing.ModelPricingEntry{card, wildcard}).BasePricing.InputPricePerToken)
 			}
 		})

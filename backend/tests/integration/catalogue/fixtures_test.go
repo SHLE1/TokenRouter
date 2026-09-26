@@ -74,6 +74,19 @@ func newCatalogueFixture(rows catalogueRows, pricingConfigs *routing.PricingConf
 			if err != nil {
 				return nil, err
 			}
+			// 旧夹具未表达认证类型；按测试平台补足原生协议资格，不扩大模型范围。
+			for index := range values {
+				if values[index].Type == "" {
+					switch values[index].Platform {
+					case account.PlatformQoder:
+						values[index].Type = account.AccountTypeCosy
+					case account.PlatformAntigravity:
+						values[index].Type = account.AccountTypeOAuth
+					default:
+						values[index].Type = account.AccountTypeAPIKey
+					}
+				}
+			}
 			return gatewayprovider.CatalogueAccounts(values), nil
 		}
 	}
@@ -93,11 +106,6 @@ func (s accountStatsSource) AccountStatsGroup(ctx context.Context, id int64) (*b
 		return nil, e
 	}
 	return &billing.AccountStatsPricingConfig{Rules: v.AccountStatsPricingRules}, nil
-}
-
-func (s accountStatsSource) AccountStatsPlatform(ctx context.Context, id int64) billing.AccountStatsPlatform {
-	v := s.pricingConfigs.GetGroupPlatform(ctx, id)
-	return billing.AccountStatsPlatform{ID: v, PreferRequestedModel: v == routing.PlatformQoder}
 }
 
 func cataloguePriceResolver(pricingConfigs *routing.PricingConfigService, calculator *billing.Calculator) *billing.PriceResolver {

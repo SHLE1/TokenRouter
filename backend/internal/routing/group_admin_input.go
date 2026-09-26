@@ -9,7 +9,6 @@ type CreateGroupInput struct {
 	RoutingPolicy GroupRoutingPolicy
 	Name          string
 	Description   string
-	Platform      string
 	// SchedulerType 为空时使用基础调度器，保持新分组的历史默认行为。
 	SchedulerType string
 	// AdvancedSchedulerOverrides 未设置字段继承网关通用高级调度设置。
@@ -18,7 +17,6 @@ type CreateGroupInput struct {
 	SortOrder                  *int
 	RateMultiplier             float64
 	IsExclusive                bool
-	IsDefault                  bool
 	// SessionIsolationEnabled 开启后拒绝其它分组已归属的显式会话切入。
 	SessionIsolationEnabled bool
 	// LongContextPricingEnabled 为 nil 时默认开启，以兼容未发送新字段的客户端。
@@ -57,7 +55,7 @@ type CreateGroupInput struct {
 	// AllowedProtocols 为 nil 时使用平台默认值；显式空数组对所有平台都合法。
 	LegacyProtocolInput  bool
 	AllowedProtocols     []protocol.ProtocolID
-	ProtocolFallbacks    map[protocol.ProtocolID]protocol.ProtocolID
+	ProtocolFallbacks    map[protocol.ProtocolID][]protocol.ProtocolID
 	ResponsesImagePolicy string
 	// AllowMessagesDispatch 仅在 OpenAI 分组且新字段缺省时作为兼容输入。
 	AllowMessagesDispatch bool
@@ -91,7 +89,6 @@ type UpdateGroupInput struct {
 	RoutingPolicy *GroupRoutingPolicy
 	Name          string
 	Description   *string
-	Platform      string
 	// SchedulerType 为 nil 时保留原值。
 	SchedulerType *string
 	// AdvancedSchedulerOverrides 为 nil 时保留原值；空对象表示清除全部覆盖并恢复继承。
@@ -100,7 +97,6 @@ type UpdateGroupInput struct {
 	SortOrder                  *int
 	RateMultiplier             *float64 // 使用指针以支持设置为0
 	IsExclusive                *bool
-	IsDefault                  *bool
 	// SessionIsolationEnabled 控制目标分组是否开启会话隔离。
 	SessionIsolationEnabled   *bool
 	Status                    string
@@ -139,7 +135,7 @@ type UpdateGroupInput struct {
 	// AllowedProtocols 为 nil 时保留原值；非 nil 表示显式替换完整集合。
 	LegacyProtocolInput  bool
 	AllowedProtocols     *[]protocol.ProtocolID
-	ProtocolFallbacks    map[protocol.ProtocolID]protocol.ProtocolID
+	ProtocolFallbacks    map[protocol.ProtocolID][]protocol.ProtocolID
 	ResponsesImagePolicy string
 	// AllowMessagesDispatch 仅在 OpenAI 分组且新字段缺省时作为兼容输入。
 	AllowMessagesDispatch *bool

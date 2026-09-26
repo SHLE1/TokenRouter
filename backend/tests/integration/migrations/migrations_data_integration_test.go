@@ -17,9 +17,7 @@ import (
 
 func TestMigration111_MigratesLegacySubscriptionData(t *testing.T) {
 	ctx := context.Background()
-	tx := testTx(t)
-
-	restoreLegacySubscriptionColumns(t, tx)
+	tx := historicalTx(t, "111_")
 
 	suffix := time.Now().UnixNano()
 
@@ -46,11 +44,11 @@ RETURNING id
 	var legacySub1ID int64
 	require.NoError(t, tx.QueryRowContext(ctx, `
 INSERT INTO user_subscriptions (
-    user_id, plan_id, group_id, starts_at, expires_at, status,
+    user_id, group_id, starts_at, expires_at, status,
     daily_window_start, weekly_window_start, monthly_window_start,
     daily_usage_usd, weekly_usage_usd, monthly_usage_usd, notes
 ) VALUES (
-    $1, NULL, $2, $3, $4, 'active',
+     $1, $2, $3, $4, 'active',
     $5, $6, $7,
     $8, $9, $10, $11
 )
@@ -66,11 +64,11 @@ RETURNING id
 	var legacySub2ID int64
 	require.NoError(t, tx.QueryRowContext(ctx, `
 INSERT INTO user_subscriptions (
-    user_id, plan_id, group_id, starts_at, expires_at, status,
+    user_id, group_id, starts_at, expires_at, status,
     daily_window_start, weekly_window_start, monthly_window_start,
     daily_usage_usd, weekly_usage_usd, monthly_usage_usd, notes
 ) VALUES (
-    $1, NULL, $2, $3, $4, 'active',
+     $1, $2, $3, $4, 'active',
     $5, $6, $7,
     $8, $9, $10, $11
 )
@@ -84,6 +82,10 @@ VALUES ($1, 'subscription', 0, 'unused', 1, 0, 'legacy redeem', $2, 14)
 RETURNING id
 `, "MIGRATE-REDEEM-"+time.Unix(0, suffix).UTC().Format("150405000000"), group2ID).Scan(&redeemCodeID))
 
+	// 旧库同一用户/分组只能有一条未删除订阅，支付来源样本使用另一名真实用户。
+	var paymentUserID int64
+	require.NoError(t, tx.QueryRowContext(ctx, `INSERT INTO users (email, password_hash) VALUES ($1, 'hash') RETURNING id`, "payment-"+int64ToString(suffix)+"@example.test").Scan(&paymentUserID))
+
 	var orderID int64
 	require.NoError(t, tx.QueryRowContext(ctx, `
 INSERT INTO payment_orders (
@@ -96,21 +98,21 @@ INSERT INTO payment_orders (
     $6, '127.0.0.1', 'migration-test', $7, 14
 )
 RETURNING id
-`, userID, "legacy-order@example.com", "legacy-order-user", "RC-"+time.Unix(0, suffix).UTC().Format("150405000000"), "OTN-"+time.Unix(0, suffix).UTC().Format("150405000000"), time.Date(2026, 4, 21, 0, 0, 0, 0, time.UTC), group2ID).Scan(&orderID))
+`, paymentUserID, "legacy-order@example.com", "legacy-order-user", "RC-"+time.Unix(0, suffix).UTC().Format("150405000000"), "OTN-"+time.Unix(0, suffix).UTC().Format("150405000000"), time.Date(2026, 4, 21, 0, 0, 0, 0, time.UTC), group2ID).Scan(&orderID))
 
 	var legacySub3ID int64
 	require.NoError(t, tx.QueryRowContext(ctx, `
 INSERT INTO user_subscriptions (
-    user_id, plan_id, group_id, starts_at, expires_at, status,
+    user_id, group_id, starts_at, expires_at, status,
     daily_window_start, weekly_window_start, monthly_window_start,
     daily_usage_usd, weekly_usage_usd, monthly_usage_usd, notes
 ) VALUES (
-    $1, NULL, $2, $3, $4, 'active',
+     $1, $2, $3, $4, 'active',
     $5, $6, $7,
     $8, $9, $10, $11
 )
 RETURNING id
-`, userID, group2ID, start2, expires2, dailyWindow2, weeklyWindow2, monthlyWindow2, 1.5, 2.5, 3.5, "payment order "+int64ToString(orderID)).Scan(&legacySub3ID))
+`, paymentUserID, group2ID, start2, expires2, dailyWindow2, weeklyWindow2, monthlyWindow2, 1.5, 2.5, 3.5, "payment order "+int64ToString(orderID)).Scan(&legacySub3ID))
 
 	oldDefaultSubscriptions := `[{"group_id":` + int64ToString(group1ID) + `,"validity_days":30},{"group_id":` + int64ToString(group2ID) + `,"validity_days":14},{"group_id":` + int64ToString(group2ID) + `,"validity_days":14}]`
 	_, err := tx.ExecContext(ctx, `
@@ -313,30 +315,6 @@ WHERE id = $1
 	require.Len(t, targeting.AnyOf[0].AllOf, 1)
 	require.Equal(t, "subscription", targeting.AnyOf[0].AllOf[0].Type)
 	require.ElementsMatch(t, []int64{plan1ID, plan2AID, plan2BID, sub2PlanID}, targeting.AnyOf[0].AllOf[0].PlanIDs)
-}
-
-func restoreLegacySubscriptionColumns(t *testing.T, tx *sql.Tx) {
-	t.Helper()
-
-	_, err := tx.ExecContext(context.Background(), `
-ALTER TABLE groups ADD COLUMN IF NOT EXISTS subscription_type VARCHAR(20) NOT NULL DEFAULT 'standard';
-ALTER TABLE groups ADD COLUMN IF NOT EXISTS daily_limit_usd DECIMAL(20,8);
-ALTER TABLE groups ADD COLUMN IF NOT EXISTS weekly_limit_usd DECIMAL(20,8);
-ALTER TABLE groups ADD COLUMN IF NOT EXISTS monthly_limit_usd DECIMAL(20,8);
-ALTER TABLE groups ADD COLUMN IF NOT EXISTS default_validity_days INT NOT NULL DEFAULT 30;
-
-ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS group_id BIGINT;
-
-ALTER TABLE user_subscriptions ADD COLUMN IF NOT EXISTS group_id BIGINT;
-ALTER TABLE user_subscriptions ALTER COLUMN plan_id DROP NOT NULL;
-
-ALTER TABLE payment_orders ADD COLUMN IF NOT EXISTS subscription_group_id BIGINT;
-ALTER TABLE payment_orders ADD COLUMN IF NOT EXISTS subscription_days INT;
-
-ALTER TABLE redeem_codes ADD COLUMN IF NOT EXISTS group_id BIGINT;
-ALTER TABLE redeem_codes ADD COLUMN IF NOT EXISTS validity_days INT NOT NULL DEFAULT 30;
-`)
-	require.NoError(t, err)
 }
 
 func insertLegacyGroup(t *testing.T, tx *sql.Tx, base string, suffix int64, daily, weekly, monthly float64, validityDays int) int64 {

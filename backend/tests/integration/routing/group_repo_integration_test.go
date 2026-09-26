@@ -63,8 +63,8 @@ func TestGroupRepoSuite(t *testing.T) {
 func (s *GroupRepoSuite) TestCreate() {
 	webSearchPrice := 0.008
 	group := &routing.Group{
-		Name:                  "test-create",
-		Platform:              capability.PlatformOpenAI,
+		Name: "test-create",
+
 		RateMultiplier:        1.0,
 		IsExclusive:           false,
 		Status:                billing.StatusActive,
@@ -88,8 +88,8 @@ func (s *GroupRepoSuite) TestCreate() {
 
 func (s *GroupRepoSuite) TestCreateFromSourcePreservesPriorityAndFiltersIneligibleAccounts() {
 	source := &routing.Group{
-		Name:             "duplicate-source",
-		Platform:         capability.PlatformOpenAI,
+		Name: "duplicate-source",
+
 		RateMultiplier:   1,
 		Status:           billing.StatusActive,
 		RequireOAuthOnly: true,
@@ -129,15 +129,15 @@ func (s *GroupRepoSuite) TestCreateFromSourcePreservesPriorityAndFiltersIneligib
 	}
 
 	duplicate := &routing.Group{
-		Name:                 "duplicate-source (Copy)",
-		Platform:             source.Platform,
+		Name: "duplicate-source (Copy)",
+
 		RateMultiplier:       source.RateMultiplier,
 		Status:               "inactive",
 		RequireOAuthOnly:     true,
 		DuplicateOperationID: strings.Repeat("a", 64),
 
-		AllowedProtocols:     capability.DefaultGroupClientProtocols(source.Platform),
-		ProtocolFallbacks:    capability.DefaultProtocolFallbacks(source.Platform),
+		AllowedProtocols:     capability.DefaultGroupClientProtocols(""),
+		ProtocolFallbacks:    capability.DefaultProtocolFallbacks(""),
 		ResponsesImagePolicy: "inherit",
 	}
 	s.Require().NoError(s.repo.CreateFromSource(s.ctx, duplicate, source.ID))
@@ -179,8 +179,8 @@ func (s *GroupRepoSuite) TestGetByID_NotFound() {
 
 func (s *GroupRepoSuite) TestGetByIDLite_DoesNotUseAccountCount() {
 	group := &routing.Group{
-		Name:           "lite-group",
-		Platform:       capability.PlatformAnthropic,
+		Name: "lite-group",
+
 		RateMultiplier: 1.0,
 		IsExclusive:    false,
 		Status:         billing.StatusActive,
@@ -202,8 +202,8 @@ func (s *GroupRepoSuite) TestGetByIDLite_DoesNotUseAccountCount() {
 
 func (s *GroupRepoSuite) TestUpdate() {
 	group := &routing.Group{
-		Name:           "original",
-		Platform:       capability.PlatformAnthropic,
+		Name: "original",
+
 		RateMultiplier: 1.0,
 		IsExclusive:    false,
 		Status:         billing.StatusActive,
@@ -225,8 +225,8 @@ func (s *GroupRepoSuite) TestUpdate() {
 
 func (s *GroupRepoSuite) TestGetByID_PreservesMessagesDispatchModelConfig() {
 	group := &routing.Group{
-		Name:           "openai-dispatch",
-		Platform:       capability.PlatformOpenAI,
+		Name: "openai-dispatch",
+
 		RateMultiplier: 1.0,
 		IsExclusive:    false,
 		Status:         billing.StatusActive,
@@ -260,8 +260,8 @@ func (s *GroupRepoSuite) TestGetByID_PreservesMessagesDispatchModelConfig() {
 
 func (s *GroupRepoSuite) TestDelete() {
 	group := &routing.Group{
-		Name:           "to-delete",
-		Platform:       capability.PlatformAnthropic,
+		Name: "to-delete",
+
 		RateMultiplier: 1.0,
 		IsExclusive:    false,
 		Status:         billing.StatusActive,
@@ -287,8 +287,8 @@ func (s *GroupRepoSuite) TestList() {
 	s.Require().NoError(err, "List base")
 
 	s.Require().NoError(s.repo.Create(s.ctx, &routing.Group{
-		Name:           "g1",
-		Platform:       capability.PlatformAnthropic,
+		Name: "g1",
+
 		RateMultiplier: 1.0,
 		IsExclusive:    false,
 		Status:         billing.StatusActive,
@@ -298,8 +298,8 @@ func (s *GroupRepoSuite) TestList() {
 		ResponsesImagePolicy: "inherit",
 	}))
 	s.Require().NoError(s.repo.Create(s.ctx, &routing.Group{
-		Name:           "g2",
-		Platform:       capability.PlatformAnthropic,
+		Name: "g2",
+
 		RateMultiplier: 1.0,
 		IsExclusive:    false,
 		Status:         billing.StatusActive,
@@ -315,11 +315,11 @@ func (s *GroupRepoSuite) TestList() {
 	s.Require().Equal(basePage.Total+2, page.Total)
 }
 
-func (s *GroupRepoSuite) TestListWithFilters_Platform() {
+func (s *GroupRepoSuite) TestListWithFiltersIncludesAllGroups() {
 	baseGroups, _, err := s.repo.ListWithFilters(
 		s.ctx,
 		pagination.PaginationParams{Page: 1, PageSize: 10},
-		capability.PlatformOpenAI,
+		"",
 		"",
 		"",
 		nil,
@@ -327,8 +327,8 @@ func (s *GroupRepoSuite) TestListWithFilters_Platform() {
 	s.Require().NoError(err, "ListWithFilters base")
 
 	s.Require().NoError(s.repo.Create(s.ctx, &routing.Group{
-		Name:           "g1",
-		Platform:       capability.PlatformAnthropic,
+		Name: "g1",
+
 		RateMultiplier: 1.0,
 		IsExclusive:    false,
 		Status:         billing.StatusActive,
@@ -338,8 +338,8 @@ func (s *GroupRepoSuite) TestListWithFilters_Platform() {
 		ResponsesImagePolicy: "inherit",
 	}))
 	s.Require().NoError(s.repo.Create(s.ctx, &routing.Group{
-		Name:           "g2",
-		Platform:       capability.PlatformOpenAI,
+		Name: "g2",
+
 		RateMultiplier: 1.0,
 		IsExclusive:    false,
 		Status:         billing.StatusActive,
@@ -349,19 +349,15 @@ func (s *GroupRepoSuite) TestListWithFilters_Platform() {
 		ResponsesImagePolicy: "inherit",
 	}))
 
-	groups, _, err := s.repo.ListWithFilters(s.ctx, pagination.PaginationParams{Page: 1, PageSize: 10}, capability.PlatformOpenAI, "", "", nil)
+	groups, _, err := s.repo.ListWithFilters(s.ctx, pagination.PaginationParams{Page: 1, PageSize: 10}, "", "", "", nil)
 	s.Require().NoError(err)
-	s.Require().Len(groups, len(baseGroups)+1)
-	// Verify all groups are OpenAI platform
-	for _, g := range groups {
-		s.Require().Equal(capability.PlatformOpenAI, g.Platform)
-	}
+	s.Require().Len(groups, len(baseGroups)+2)
 }
 
 func (s *GroupRepoSuite) TestListWithFilters_Status() {
 	s.Require().NoError(s.repo.Create(s.ctx, &routing.Group{
-		Name:           "g1",
-		Platform:       capability.PlatformAnthropic,
+		Name: "g1",
+
 		RateMultiplier: 1.0,
 		IsExclusive:    false,
 		Status:         billing.StatusActive,
@@ -371,8 +367,8 @@ func (s *GroupRepoSuite) TestListWithFilters_Status() {
 		ResponsesImagePolicy: "inherit",
 	}))
 	s.Require().NoError(s.repo.Create(s.ctx, &routing.Group{
-		Name:           "g2",
-		Platform:       capability.PlatformAnthropic,
+		Name: "g2",
+
 		RateMultiplier: 1.0,
 		IsExclusive:    false,
 		Status:         billing.StatusDisabled,
@@ -390,8 +386,8 @@ func (s *GroupRepoSuite) TestListWithFilters_Status() {
 
 func (s *GroupRepoSuite) TestListWithFilters_IsExclusive() {
 	s.Require().NoError(s.repo.Create(s.ctx, &routing.Group{
-		Name:           "g1",
-		Platform:       capability.PlatformAnthropic,
+		Name: "g1",
+
 		RateMultiplier: 1.0,
 		IsExclusive:    false,
 		Status:         billing.StatusActive,
@@ -401,8 +397,8 @@ func (s *GroupRepoSuite) TestListWithFilters_IsExclusive() {
 		ResponsesImagePolicy: "inherit",
 	}))
 	s.Require().NoError(s.repo.Create(s.ctx, &routing.Group{
-		Name:           "g2",
-		Platform:       capability.PlatformAnthropic,
+		Name: "g2",
+
 		RateMultiplier: 1.0,
 		IsExclusive:    true,
 		Status:         billing.StatusActive,
@@ -442,8 +438,8 @@ func (s *GroupRepoSuite) TestListWithFilters_Search() {
 
 	newGroup := func(name string) *routing.Group {
 		return &routing.Group{
-			Name:           name,
-			Platform:       capability.PlatformAnthropic,
+			Name: name,
+
 			RateMultiplier: 1.0,
 			IsExclusive:    false,
 			Status:         billing.StatusActive,
@@ -529,8 +525,8 @@ func (s *GroupRepoSuite) TestListWithFilters_Search() {
 
 func (s *GroupRepoSuite) TestUpdateSortOrders_BatchCaseWhen() {
 	g1 := &routing.Group{
-		Name:           "sort-g1",
-		Platform:       capability.PlatformAnthropic,
+		Name: "sort-g1",
+
 		RateMultiplier: 1.0,
 		IsExclusive:    false,
 		Status:         billing.StatusActive,
@@ -540,8 +536,8 @@ func (s *GroupRepoSuite) TestUpdateSortOrders_BatchCaseWhen() {
 		ResponsesImagePolicy: "inherit",
 	}
 	g2 := &routing.Group{
-		Name:           "sort-g2",
-		Platform:       capability.PlatformAnthropic,
+		Name: "sort-g2",
+
 		RateMultiplier: 1.0,
 		IsExclusive:    false,
 		Status:         billing.StatusActive,
@@ -551,8 +547,8 @@ func (s *GroupRepoSuite) TestUpdateSortOrders_BatchCaseWhen() {
 		ResponsesImagePolicy: "inherit",
 	}
 	g3 := &routing.Group{
-		Name:           "sort-g3",
-		Platform:       capability.PlatformAnthropic,
+		Name: "sort-g3",
+
 		RateMultiplier: 1.0,
 		IsExclusive:    false,
 		Status:         billing.StatusActive,
@@ -586,8 +582,8 @@ func (s *GroupRepoSuite) TestUpdateSortOrders_BatchCaseWhen() {
 
 func (s *GroupRepoSuite) TestUpdateSortOrders_MissingGroupNoPartialUpdate() {
 	g1 := &routing.Group{
-		Name:           "sort-no-partial",
-		Platform:       capability.PlatformAnthropic,
+		Name: "sort-no-partial",
+
 		RateMultiplier: 1.0,
 		IsExclusive:    false,
 		Status:         billing.StatusActive,
@@ -616,8 +612,8 @@ func (s *GroupRepoSuite) TestUpdateSortOrders_MissingGroupNoPartialUpdate() {
 
 func (s *GroupRepoSuite) TestListWithFilters_AccountCount() {
 	g1 := &routing.Group{
-		Name:           "g1",
-		Platform:       capability.PlatformAnthropic,
+		Name: "g1",
+
 		RateMultiplier: 1.0,
 		IsExclusive:    false,
 		Status:         billing.StatusActive,
@@ -627,8 +623,8 @@ func (s *GroupRepoSuite) TestListWithFilters_AccountCount() {
 		ResponsesImagePolicy: "inherit",
 	}
 	g2 := &routing.Group{
-		Name:           "g2",
-		Platform:       capability.PlatformAnthropic,
+		Name: "g2",
+
 		RateMultiplier: 1.0,
 		IsExclusive:    true,
 		Status:         billing.StatusActive,
@@ -669,8 +665,8 @@ func (s *GroupRepoSuite) TestListActive() {
 	s.Require().NoError(err, "ListActive base")
 
 	s.Require().NoError(s.repo.Create(s.ctx, &routing.Group{
-		Name:           "active1",
-		Platform:       capability.PlatformAnthropic,
+		Name: "active1",
+
 		RateMultiplier: 1.0,
 		IsExclusive:    false,
 		Status:         billing.StatusActive,
@@ -680,8 +676,8 @@ func (s *GroupRepoSuite) TestListActive() {
 		ResponsesImagePolicy: "inherit",
 	}))
 	s.Require().NoError(s.repo.Create(s.ctx, &routing.Group{
-		Name:           "inactive1",
-		Platform:       capability.PlatformAnthropic,
+		Name: "inactive1",
+
 		RateMultiplier: 1.0,
 		IsExclusive:    false,
 		Status:         billing.StatusDisabled,
@@ -705,10 +701,12 @@ func (s *GroupRepoSuite) TestListActive() {
 	s.Require().True(found, "active1 group should be in results")
 }
 
-func (s *GroupRepoSuite) TestListActiveByPlatform() {
+func (s *GroupRepoSuite) TestListActiveDoesNotPartitionGroups() {
+	before, err := s.repo.ListActive(s.ctx)
+	s.Require().NoError(err)
 	s.Require().NoError(s.repo.Create(s.ctx, &routing.Group{
-		Name:           "g1",
-		Platform:       capability.PlatformAnthropic,
+		Name: "g1",
+
 		RateMultiplier: 1.0,
 		IsExclusive:    false,
 		Status:         billing.StatusActive,
@@ -718,8 +716,8 @@ func (s *GroupRepoSuite) TestListActiveByPlatform() {
 		ResponsesImagePolicy: "inherit",
 	}))
 	s.Require().NoError(s.repo.Create(s.ctx, &routing.Group{
-		Name:           "g2",
-		Platform:       capability.PlatformOpenAI,
+		Name: "g2",
+
 		RateMultiplier: 1.0,
 		IsExclusive:    false,
 		Status:         billing.StatusActive,
@@ -729,8 +727,8 @@ func (s *GroupRepoSuite) TestListActiveByPlatform() {
 		ResponsesImagePolicy: "inherit",
 	}))
 	s.Require().NoError(s.repo.Create(s.ctx, &routing.Group{
-		Name:           "g3",
-		Platform:       capability.PlatformAnthropic,
+		Name: "g3",
+
 		RateMultiplier: 1.0,
 		IsExclusive:    false,
 		Status:         billing.StatusDisabled,
@@ -740,10 +738,10 @@ func (s *GroupRepoSuite) TestListActiveByPlatform() {
 		ResponsesImagePolicy: "inherit",
 	}))
 
-	groups, err := s.repo.ListActiveByPlatform(s.ctx, capability.PlatformAnthropic)
+	groups, err := s.repo.ListActive(s.ctx)
 	s.Require().NoError(err, "ListActiveByPlatform")
-	// 1 default anthropic group + 1 test active anthropic group = 2 total
-	s.Require().Len(groups, 2)
+	// 两个启用的分组均进入列表，停用分组不返回。
+	s.Require().Len(groups, len(before)+2)
 	// Verify our test group is in the results
 	var found bool
 	for _, g := range groups {
@@ -759,8 +757,8 @@ func (s *GroupRepoSuite) TestListActiveByPlatform() {
 
 func (s *GroupRepoSuite) TestExistsByName() {
 	s.Require().NoError(s.repo.Create(s.ctx, &routing.Group{
-		Name:           "existing-group",
-		Platform:       capability.PlatformAnthropic,
+		Name: "existing-group",
+
 		RateMultiplier: 1.0,
 		IsExclusive:    false,
 		Status:         billing.StatusActive,
@@ -783,8 +781,8 @@ func (s *GroupRepoSuite) TestExistsByName() {
 
 func (s *GroupRepoSuite) TestGetAccountCount() {
 	group := &routing.Group{
-		Name:           "g-count",
-		Platform:       capability.PlatformAnthropic,
+		Name: "g-count",
+
 		RateMultiplier: 1.0,
 		IsExclusive:    false,
 		Status:         billing.StatusActive,
@@ -824,8 +822,8 @@ func (s *GroupRepoSuite) TestGetAccountCount() {
 
 func (s *GroupRepoSuite) TestGetAccountCount_Empty() {
 	group := &routing.Group{
-		Name:           "g-empty",
-		Platform:       capability.PlatformAnthropic,
+		Name: "g-empty",
+
 		RateMultiplier: 1.0,
 		IsExclusive:    false,
 		Status:         billing.StatusActive,
@@ -846,8 +844,8 @@ func (s *GroupRepoSuite) TestGetAccountCount_Empty() {
 // 且与 GetAccountCount 返回的 active 值一致。
 func (s *GroupRepoSuite) TestListWithFilters_ActiveAccountCount_LessThanTotal() {
 	g := &routing.Group{
-		Name:           "g-mixed-status",
-		Platform:       capability.PlatformAnthropic,
+		Name: "g-mixed-status",
+
 		RateMultiplier: 1.0,
 		IsExclusive:    false,
 		Status:         billing.StatusActive,
@@ -912,8 +910,8 @@ func (s *GroupRepoSuite) TestListWithFilters_ActiveAccountCount_LessThanTotal() 
 // 因此 ActiveAccountCount 必须与真实调度查询口径一致。
 func (s *GroupRepoSuite) TestListWithFilters_RateLimitedAccountCount() {
 	g := &routing.Group{
-		Name:           "g-rate-limited",
-		Platform:       capability.PlatformAnthropic,
+		Name: "g-rate-limited",
+
 		RateMultiplier: 1.0,
 		IsExclusive:    false,
 		Status:         billing.StatusActive,
@@ -1009,8 +1007,8 @@ func (s *GroupRepoSuite) TestListWithFilters_RateLimitedAccountCount() {
 
 func (s *GroupRepoSuite) TestDeleteAccountGroupsByGroupID() {
 	g := &routing.Group{
-		Name:           "g-del",
-		Platform:       capability.PlatformAnthropic,
+		Name: "g-del",
+
 		RateMultiplier: 1.0,
 		IsExclusive:    false,
 		Status:         billing.StatusActive,
@@ -1042,8 +1040,8 @@ func (s *GroupRepoSuite) TestDeleteAccountGroupsByGroupID() {
 
 func (s *GroupRepoSuite) TestDeleteAccountGroupsByGroupID_MultipleAccounts() {
 	g := &routing.Group{
-		Name:           "g-multi",
-		Platform:       capability.PlatformAnthropic,
+		Name: "g-multi",
+
 		RateMultiplier: 1.0,
 		IsExclusive:    false,
 		Status:         billing.StatusActive,
@@ -1087,8 +1085,8 @@ func (s *GroupRepoSuite) TestDeleteAccountGroupsByGroupID_MultipleAccounts() {
 
 func (s *GroupRepoSuite) TestDelete_SoftDelete_NotVisibleInList() {
 	group := &routing.Group{
-		Name:           "to-soft-delete",
-		Platform:       capability.PlatformAnthropic,
+		Name: "to-soft-delete",
+
 		RateMultiplier: 1.0,
 		IsExclusive:    false,
 		Status:         billing.StatusActive,
@@ -1121,8 +1119,8 @@ func (s *GroupRepoSuite) TestDelete_SoftDelete_NotVisibleInList() {
 
 func (s *GroupRepoSuite) TestDelete_SoftDeletedGroup_lockForUpdate() {
 	group := &routing.Group{
-		Name:           "lock-soft-delete",
-		Platform:       capability.PlatformAnthropic,
+		Name: "lock-soft-delete",
+
 		RateMultiplier: 1.0,
 		IsExclusive:    false,
 		Status:         billing.StatusActive,
@@ -1148,10 +1146,10 @@ func (s *GroupRepoSuite) TestDelete_SoftDeletedGroup_lockForUpdate() {
 func (s *GroupRepoSuite) TestModelPricingRoundTrip() {
 	fast, flex, max, price, outputMultiplier := 1.5, 0.4, 2.0, 0.0, 3.0
 	group := &routing.Group{
-		Name: "pricing-roundtrip", Platform: capability.PlatformOpenAI, RateMultiplier: 1,
+		Name: "pricing-roundtrip", RateMultiplier: 1,
 		Status: billing.StatusActive, LongContextPricingEnabled: true, FreeOpenAIFast: true,
 		ModelPricing: []routing.ModelPricingEntry{{
-			Platform: capability.PlatformOpenAI, Models: []string{"gpt-test"}, BillingMode: routing.BillingModeToken,
+			Models: []string{"gpt-test"}, BillingMode: routing.BillingModeToken,
 			InputPrice: &price, FastMultiplier: &fast, FlexMultiplier: &flex, MaxReasoningEffortMultiplier: &max,
 			Intervals: []routing.PricingInterval{{MinTokens: 100, OutputMultiplier: &outputMultiplier}},
 			TimePricing: &routing.TimePricingConfig{

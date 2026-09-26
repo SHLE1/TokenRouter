@@ -19,9 +19,10 @@ type CodexImportHandler struct {
 func NewCodexImportHandler(core *account.CodexImporter) *CodexImportHandler {
 	return &CodexImportHandler{core: core}
 }
+
 func (h *CodexImportHandler) ImportCodexSession(c *gin.Context) {
 	var req account.CodexSessionImportRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := response.BindJSONStrict(c, &req); err != nil {
 		response.BadRequest(c, "Invalid request: "+err.Error())
 		return
 	}

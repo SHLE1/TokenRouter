@@ -21,7 +21,6 @@ func newHTTPCompletionFixture(cfg *config.Config, logs usage.UsageLogRepository,
 	if cfg != nil {
 		f.Options.DefaultMultiplier = cfg.Default.RateMultiplier
 		f.Options.Simple = cfg.RunMode == config.RunModeSimple
-		f.Effects.Funds.FlusherEnabled = cfg.Database.UserPlatformQuotaFlusherEnabled
 	}
 	return f.Core(nil, openAI)
 }

@@ -42,16 +42,18 @@ func TestOpenAIAccountSchedulerGuardianAffinitySelectsParent(t *testing.T) {
 	parentHash, _ := scheduler.DeriveSessionHashes(parentID)
 	groupID := int64(102001)
 	accounts := []gatewayprovider.ExecutionAccount{
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 39001, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 10, GroupIDs: []int64{groupID}, Credentials: map[string]any{"access_token": "parent", "plan_type": "team"}}},
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 39002, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 0, GroupIDs: []int64{groupID}, Credentials: map[string]any{"access_token": "fallback", "plan_type": "team"}}},
+		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 39001, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 10, GroupIDs: []int64{groupID}, Credentials: map[string]any{"model_whitelist": []string{"*"}, "access_token": "parent", "plan_type": "team"}}},
+		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 39002, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 0, GroupIDs: []int64{groupID}, Credentials: map[string]any{"model_whitelist": []string{"*"}, "access_token": "fallback", "plan_type": "team"}}},
 	}
 	cache := &schedulerTestGatewayCache{sessionBindings: map[string]int64{"openai:" + parentHash: 39001}, deletedSessions: map[string]int{}}
 	svc := newCompatibleSelectionForTest(CompatibleDependencies{
 		Reads: Reads{Accounts: schedulerGroupAwareOpenAIAccountRepo{schedulerTestOpenAIAccountRepo{accounts: accounts}}},
 		Shared: Shared{
 			Cache: cache,
-			Concurrency: scheduler.NewConcurrencyService(schedulerTestConcurrencyCache{acquireResults: map[int64]bool{39001: true, 39002: true}}, scheduler.Diagnostics{Logf: logging.LegacyPrintf,
-				Event: logging.Event}),
+			Concurrency: scheduler.NewConcurrencyService(schedulerTestConcurrencyCache{acquireResults: map[int64]bool{39001: true, 39002: true}}, scheduler.Diagnostics{
+				Logf:  logging.LegacyPrintf,
+				Event: logging.Event,
+			}),
 		},
 	}, newSchedulerTestOpenAIWSV2Config())
 

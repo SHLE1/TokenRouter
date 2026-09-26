@@ -130,7 +130,6 @@ describe('ImportDataModal', () => {
 
     expect(importData).toHaveBeenCalledWith({
       data: payload,
-      skip_default_group_bind: true
     })
     expect(showSuccess).toHaveBeenCalledWith('admin.accounts.dataImportSuccess')
   })
@@ -157,7 +156,6 @@ describe('ImportDataModal', () => {
 
     expect(importData).toHaveBeenCalledWith({
       data: pastedPayload,
-      skip_default_group_bind: true
     })
   })
 
@@ -192,7 +190,6 @@ describe('ImportDataModal', () => {
 
     expect(importData).toHaveBeenCalledWith({
       data: payload,
-      skip_default_group_bind: true
     })
   })
 
@@ -224,7 +221,6 @@ describe('ImportDataModal', () => {
         proxies: [{ proxy_key: 'proxy-b' }],
         skipped_shadows: 3
       }),
-      skip_default_group_bind: true
     })
   })
 
@@ -241,7 +237,6 @@ describe('ImportDataModal', () => {
 
     expect(importData).toHaveBeenCalledWith({
       data: payload,
-      skip_default_group_bind: true
     })
   })
 

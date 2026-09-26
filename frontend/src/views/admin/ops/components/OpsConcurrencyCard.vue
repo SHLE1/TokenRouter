@@ -154,10 +154,6 @@ const groupRows = computed((): SummaryRow[] => {
         return null
       }
 
-      // 只显示匹配的平台
-      if (props.platformFilter && conc.platform !== props.platformFilter && avail.platform !== props.platformFilter) {
-        return null
-      }
 
       const totalAccounts = safeNumber(avail.total_accounts)
       const availableAccounts = safeNumber(avail.available_count)
@@ -167,11 +163,11 @@ const groupRows = computed((): SummaryRow[] => {
       return {
         key: gid,
         name: String(conc.group_name || avail.group_name || `Group ${gid}`),
-        platform: String(conc.platform || avail.platform || ''),
+        platform: '',
         total_accounts: totalAccounts,
         available_accounts: availableAccounts,
         rate_limited_accounts: safeNumber(avail.rate_limit_count),
-  
+
         error_accounts: safeNumber(avail.error_count),
         total_concurrency: totalConcurrency,
         used_concurrency: usedConcurrency,
@@ -481,9 +477,7 @@ watch(
               <div class="truncate text-xs font-bold text-gray-900 dark:text-white" :title="row.name">
                 {{ row.name }}
               </div>
-              <span v-if="displayDimension === 'group' && row.platform" class="text-xs text-gray-400 dark:text-gray-500">
-                {{ row.platform.toUpperCase() }}
-              </span>
+
             </div>
             <div class="flex shrink-0 items-center gap-2 text-xs">
               <span class="font-mono font-bold text-gray-900 dark:text-white"> {{ row.used_concurrency }}/{{ row.total_concurrency }} </span>

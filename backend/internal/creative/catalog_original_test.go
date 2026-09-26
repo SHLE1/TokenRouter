@@ -28,9 +28,12 @@ func creativeAccountModelsForTest(t *testing.T, value *accountcore.Record) []str
 	t.Helper()
 	value = accountcore.CloneRecord(value)
 	value.Status = "active"
+	if value.Type == "" {
+		value.Type = "apikey"
+	}
 	value.Schedulable = true
 	svc := &creative.Public{AccountRepo: creativeCatalogTestAccounts{[]creative.CatalogAccount{creativeprovider.CatalogAccount(value)}}}
-	models, err := svc.CreativeModelsForGroup(context.Background(), &creative.GroupView{ID: 12, Platform: value.Platform})
+	models, err := svc.CreativeModelsForGroup(context.Background(), &creative.GroupView{ID: 12, Operations: creative.OperationsForGroup(false, nil)})
 	require.NoError(t, err)
 	result := make([]string, 0, len(models))
 	for model := range models {
@@ -121,12 +124,12 @@ func TestCreativeDirectoryAndCreateUseGroupPolicy(t *testing.T) {
 				final := map[string]string{creative.PlatformOpenAI: "gpt-image-2", creative.PlatformGemini: "gemini-3-pro-image", creative.PlatformGrok: "grok-imagine-image-2.0"}[platform]
 				allowed := map[string]string{routing.BillingModelSourceRequested: "DRAW-*", routing.BillingModelSourceGroupMapped: "account-alias", routing.BillingModelSourceUpstream: final}[source]
 				group := newCreativeTestGroup()
-				group.Platform = platform
+
 				group.ModelPricing = nil
 				group.RoutingPolicy = routing.GroupRoutingPolicy{
 					Enabled: true, RestrictModels: true, RestrictionModelSource: source,
-					ModelMapping:  map[string]map[string]string{platform: {"draw-*": "account-alias", "account-alias": "forbidden-group-hop"}},
-					AllowedModels: map[string][]string{platform: {allowed}},
+					ModelMapping:  map[string]string{"draw-*": "account-alias", "account-alias": "forbidden-group-hop"},
+					AllowedModels: []string{allowed},
 				}
 				groups := testassert.MustType[*creativeFakeGroupRepo](testassert.MustType[creativeGroupReader](svc.GroupRepo).source)
 				groups.byID[group.ID] = group
@@ -153,8 +156,8 @@ func TestCreativeDirectoryAndCreateUseGroupPolicy(t *testing.T) {
 				require.Equal(t, final, validated.FinalModel)
 				require.Nil(t, svc.GroupMapping, "准入不依赖共享价格配置服务")
 
-				// 只保留另一平台的允许项，本平台空白名单必须在目录和提交时同时拒绝。
-				group.RoutingPolicy.AllowedModels = map[string][]string{"anthropic": {allowed}}
+				// 空白名单必须在目录和提交时同时拒绝。
+				group.RoutingPolicy.AllowedModels = nil
 				groups.active = []routing.Group{*group}
 				models, err = svc.ListModels(context.Background(), 7)
 				require.NoError(t, err)
@@ -172,7 +175,7 @@ func TestCreativeDirectoryIgnoresDisabledPolicyDraft(t *testing.T) {
 	group := groups.byID[12]
 	group.RoutingPolicy = routing.GroupRoutingPolicy{
 		Enabled: false, RestrictModels: true,
-		ModelMapping: map[string]map[string]string{group.Platform: {"gemini-3.1-flash-image": "forbidden-draft-model"}},
+		ModelMapping: map[string]string{"gemini-3.1-flash-image": "forbidden-draft-model"},
 	}
 	groups.active = []routing.Group{*group}
 	models, err := svc.ListModels(context.Background(), 7)

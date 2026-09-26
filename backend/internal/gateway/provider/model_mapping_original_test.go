@@ -218,39 +218,49 @@ func TestResolveOpenAIForwardMappedModels_CompactMappingPrecedence(t *testing.T)
 	}{
 		{
 			name: "compact uses client-visible model before ordinary mapping",
-			account: &accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth,
-				Credentials: conflictingMappings},
+			account: &accountcore.Record{
+				LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth,
+				Credentials: conflictingMappings,
+			},
 			requireCompact: true,
 			wantBilling:    "gpt-5.4",
 			wantUpstream:   "gpt-5.5-openai-compact",
 		},
 		{
 			name: "non-compact uses ordinary mapping",
-			account: &accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth,
-				Credentials: conflictingMappings},
+			account: &accountcore.Record{
+				LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth,
+				Credentials: conflictingMappings,
+			},
 			wantBilling:  "gpt-5.4",
 			wantUpstream: "gpt-5.4",
 		},
 		{
 			name: "compact falls back to ordinary mapped model",
-			account: &accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth,
-				Credentials: mappedOnlyCompact},
+			account: &accountcore.Record{
+				LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth,
+				Credentials: mappedOnlyCompact,
+			},
 			requireCompact: true,
 			wantBilling:    "gpt-5.4",
 			wantUpstream:   "gpt-5.4-openai-compact",
 		},
 		{
-			name: "passthrough ignores ordinary mapping",
-			account: &accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth,
-				Credentials: conflictingMappings, Extra: map[string]any{"openai_passthrough": true}},
+			name: "passthrough preserves explicit ordinary mapping",
+			account: &accountcore.Record{
+				LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth,
+				Credentials: conflictingMappings, Extra: map[string]any{"openai_passthrough": true},
+			},
 			requireCompact: true,
-			wantBilling:    "gpt-5.5",
+			wantBilling:    "gpt-5.4",
 			wantUpstream:   "gpt-5.5-openai-compact",
 		},
 		{
 			name: "raw chat fallback never applies compact mapping",
-			account: &accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey,
-				Credentials: conflictingMappings, Extra: map[string]any{"openai_text_route_mode": "force_chat_completions"}},
+			account: &accountcore.Record{
+				LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey,
+				Credentials: conflictingMappings, Extra: map[string]any{"openai_text_route_mode": "force_chat_completions"},
+			},
 			requireCompact: true,
 			wantBilling:    "gpt-5.4",
 			wantUpstream:   "gpt-5.4",
@@ -287,12 +297,14 @@ func TestCanonicalOpenAIAccountSchedulingModelMatchesForwardSemantics(t *testing
 			want:    "gpt-5.6",
 		},
 		{
-			name: "OpenAI passthrough ignores ordinary account mapping",
-			account: &accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth,
-				Credentials: map[string]any{"model_mapping": map[string]any{"public": "private"}},
-				Extra:       map[string]any{"openai_passthrough": true}},
+			name: "OpenAI passthrough preserves explicit ordinary account mapping",
+			account: &accountcore.Record{
+				LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth,
+				Credentials: map[string]any{"model_mapping": map[string]any{"public": "private", "private": "must-not-map-again"}},
+				Extra:       map[string]any{"openai_passthrough": true},
+			},
 			model: "public",
-			want:  "public",
+			want:  "private",
 		},
 		{
 			name:    "Grok OAuth does not inherit OpenAI Codex aliases",

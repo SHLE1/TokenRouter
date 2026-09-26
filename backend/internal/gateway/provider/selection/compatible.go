@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 	schedulercore "github.com/TokenFlux/TokenRouter/internal/scheduler"
 
@@ -69,7 +70,7 @@ func (s *Compatible) SelectAccountForModelWithExclusions(ctx context.Context, gr
 		}
 		return selection.Account, nil
 	}
-	return s.selectAccountForModelWithExclusions(ctx, groupID, capability.PlatformOpenAI, sessionHash, requestedModel, excludedIDs, false, 0, "")
+	return s.selectAccountForModelWithExclusions(ctx, groupID, "", sessionHash, requestedModel, excludedIDs, false, 0, "")
 }
 
 func shouldUseGroupModelUnsupportedError(ctx context.Context, accounts []gatewayprovider.ExecutionAccount, requestedModel string) bool {
@@ -80,7 +81,7 @@ func shouldUseGroupModelUnsupportedError(ctx context.Context, accounts []gateway
 	hasRelevantAccount := false
 	for i := range accounts {
 		acc := &accounts[i]
-		if !acc.View().IsOpenAI() || !acc.View().IsSchedulable() {
+		if !acc.View().IsSchedulable() {
 			continue
 		}
 		hasRelevantAccount = true
@@ -130,7 +131,7 @@ func noAvailableOpenAISelectionErrorForRoutingWithDetails(ctx context.Context, r
 		return schedulercore.ErrNoAvailableCompactAccounts
 	}
 	if len(accounts) > 0 && shouldUseGroupModelUnsupportedError(ctx, accounts[0], routingModel) {
-		if err := routing.NewGroupModelRejection(capability.PlatformOpenAI, requestedModel, modelRejectionSources(accounts[0])); err != nil {
+		if err := routing.NewGroupModelRejection("", requestedModel, modelRejectionSources(accounts[0])); err != nil {
 			return err
 		}
 	}
@@ -171,6 +172,15 @@ func (s *Compatible) selectAccountForModelWithExclusions(ctx context.Context, gr
 
 // selectAccountForModelWithExclusionsForRouting 使用已解析的账号层模型执行旧版调度。
 func (s *Compatible) selectAccountForModelWithExclusionsForRouting(ctx context.Context, groupID *int64, platform string, sessionHash string, requestedModel string, routingModel string, excludedIDs map[int64]struct{}, requireCompact bool, stickyAccountID int64, requiredCapability accountcore.OpenAIEndpointCapability) (*gatewayprovider.ExecutionAccount, error) {
+	resolvedCtx, _, groupErr := s.resolveOpenAISchedulerGroup(ctx, groupID)
+	if groupErr != nil {
+		return nil, groupErr
+	}
+	ctx = resolvedCtx
+	if forced, ok := apikey.ForcePlatformFromContext(ctx); ok && strings.TrimSpace(forced) != "" {
+		platform = forced
+	}
+	ctx = s.withCandidatePolicy(ctx, groupID, sessionHash)
 	core, scope := (&compatiblePicker{service: s}).platformSelector()
 	selected, err := core.SelectBasicOnly(ctx, schedulercore.PlatformSelectionInput{GroupID: groupID, Platform: platform, SessionHash: sessionHash, RequestedModel: requestedModel, RoutingModel: routingModel, ExcludedIDs: excludedIDs, RequireCompact: requireCompact, StickyAccountID: stickyAccountID, RequiredCapability: requiredCapability})
 	return scope.oldAccount(selected), err
@@ -178,7 +188,7 @@ func (s *Compatible) selectAccountForModelWithExclusionsForRouting(ctx context.C
 
 // SelectAccountWithLoadAwareness selects an account with load-awareness and wait plan.
 func (s *Compatible) SelectAccountWithLoadAwareness(ctx context.Context, groupID *int64, sessionHash string, requestedModel string, excludedIDs map[int64]struct{}) (*gatewayprovider.SelectionResult, error) {
-	return s.selectAccountWithLoadAwareness(s.withOpenAIQuotaAutoPauseContext(ctx), groupID, capability.PlatformOpenAI, sessionHash, requestedModel, excludedIDs, false, "")
+	return s.selectAccountWithLoadAwareness(s.withOpenAIQuotaAutoPauseContext(ctx), groupID, "", sessionHash, requestedModel, excludedIDs, false, "")
 }
 
 func (s *Compatible) selectAccountWithLoadAwareness(ctx context.Context, groupID *int64, platform string, sessionHash string, requestedModel string, excludedIDs map[int64]struct{}, requireCompact bool, requiredCapability accountcore.OpenAIEndpointCapability) (*gatewayprovider.SelectionResult, error) {
@@ -188,41 +198,39 @@ func (s *Compatible) selectAccountWithLoadAwareness(ctx context.Context, groupID
 
 // selectAccountWithLoadAwarenessForRouting 使用已解析的账号层模型执行负载感知调度。
 func (s *Compatible) selectAccountWithLoadAwarenessForRouting(ctx context.Context, groupID *int64, platform string, sessionHash string, requestedModel string, routingModel string, excludedIDs map[int64]struct{}, requireCompact bool, requiredCapability accountcore.OpenAIEndpointCapability) (*gatewayprovider.SelectionResult, error) {
+	resolvedCtx, _, groupErr := s.resolveOpenAISchedulerGroup(ctx, groupID)
+	if groupErr != nil {
+		return nil, groupErr
+	}
+	ctx = resolvedCtx
+	if forced, ok := apikey.ForcePlatformFromContext(ctx); ok && strings.TrimSpace(forced) != "" {
+		platform = forced
+	}
+	ctx = s.withCandidatePolicy(ctx, groupID, sessionHash)
 	core, scope := (&compatiblePicker{service: s}).platformSelector()
 	selected, err := core.SelectBasic(ctx, schedulercore.PlatformSelectionInput{GroupID: groupID, Platform: platform, SessionHash: sessionHash, RequestedModel: requestedModel, RoutingModel: routingModel, ExcludedIDs: excludedIDs, RequireCompact: requireCompact, RequiredCapability: requiredCapability})
 	return scope.restore(selected), err
 }
 
 func (s *Compatible) listSchedulableAccounts(ctx context.Context, groupID *int64, platform string) ([]gatewayprovider.ExecutionAccount, error) {
-	platform = routing.NormalizeOpenAICompatiblePlatform(platform)
-	if s.schedulerSnapshot != nil {
-		accounts, _, err := readSnapshotAccounts(ctx, s.schedulerSnapshot, groupID, platform, false)
-		if err != nil {
-			return accounts, err
-		}
-		accounts = s.filterOpenAIAccountsBySchedulingThreshold(ctx, accounts)
-		if platform == capability.PlatformGrok {
-			accounts = s.filterGrokFreeQuotaAccountsForOpenAI(ctx, accounts)
-		}
-		return accounts, nil
+	if groupID == nil || *groupID <= 0 {
+		return nil, nil
 	}
+	platform = strings.TrimSpace(platform)
 	var accounts []gatewayprovider.ExecutionAccount
 	var err error
-	if s.options.Simple {
-		accounts, err = s.accountRepo.ListSchedulableByPlatform(ctx, platform)
-	} else if groupID != nil {
-		accounts, err = s.accountRepo.ListSchedulableByGroupIDAndPlatform(ctx, *groupID, platform)
+	if s.schedulerSnapshot != nil {
+		accounts, _, err = readSnapshotAccounts(ctx, s.schedulerSnapshot, groupID, platform, platform != "")
+	} else if platform == "" {
+		accounts, err = s.accountRepo.ListSchedulableByGroupIDAndPlatforms(ctx, *groupID, capability.AccountPlatforms())
 	} else {
-		accounts, err = s.accountRepo.ListSchedulableUngroupedByPlatform(ctx, platform)
+		accounts, err = s.accountRepo.ListSchedulableByGroupIDAndPlatform(ctx, *groupID, platform)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("query accounts failed: %w", err)
 	}
 	accounts = s.filterOpenAIAccountsBySchedulingThreshold(ctx, accounts)
-	if platform == capability.PlatformGrok {
-		accounts = s.filterGrokFreeQuotaAccountsForOpenAI(ctx, accounts)
-	}
-	return accounts, nil
+	return s.filterGrokFreeQuotaAccountsForOpenAI(ctx, accounts), nil
 }
 
 func (s *Compatible) tryAcquireAccountSlot(ctx context.Context, accountID int64, maxConcurrency int) (*schedulercore.AcquireResult, error) {
@@ -239,7 +247,7 @@ func (s *Compatible) resolveFreshSchedulableOpenAIAccount(ctx context.Context, a
 	if account == nil {
 		return nil
 	}
-	platform = routing.NormalizeOpenAICompatiblePlatform(platform)
+	platform = strings.TrimSpace(platform)
 
 	fresh := account
 	if s.schedulerSnapshot != nil {
@@ -250,7 +258,7 @@ func (s *Compatible) resolveFreshSchedulableOpenAIAccount(ctx context.Context, a
 		fresh = current
 	}
 
-	if !gatewayprovider.CompatibleAccountEligible(ctx, fresh, platform, requestedModel, requireCompact, requiredCapability) {
+	if s.candidateEligibilityReason(ctx, fresh, platform, requestedModel, requireCompact, requiredCapability) != "" {
 		return nil
 	}
 	if !s.shadowProtocolsAllowed(ctx, fresh) || !accountcore.ParentHealthyForShadow(gatewayprovider.ExecutionRecord(fresh), func(id int64) *accountcore.Record {
@@ -288,12 +296,15 @@ func (s *Compatible) recheckSelectedOpenAIAccountFromDB(ctx context.Context, acc
 	if account == nil {
 		return nil
 	}
-	platform = routing.NormalizeOpenAICompatiblePlatform(platform)
+	platform = strings.TrimSpace(platform)
 	if s.schedulerSnapshot == nil || s.accountRepo == nil {
+		if !s.openAIAccountMatchesSchedulingGroup(account, groupID) {
+			return nil
+		}
 		if !s.openAIAccountPassesPrivacyRequirement(ctx, groupID, account) {
 			return nil
 		}
-		if !gatewayprovider.CompatibleAccountEligible(ctx, account, platform, requestedModel, requireCompact, requiredCapability) {
+		if s.candidateEligibilityReason(ctx, account, platform, requestedModel, requireCompact, requiredCapability) != "" {
 			return nil
 		}
 		if s.isOpenAIAccountBlockedBySchedulingThreshold(ctx, account) {
@@ -320,7 +331,7 @@ func (s *Compatible) recheckSelectedOpenAIAccountFromDB(ctx context.Context, acc
 	if !s.openAIAccountPassesPrivacyRequirement(ctx, groupID, latest) {
 		return nil
 	}
-	if !gatewayprovider.CompatibleAccountEligible(ctx, latest, platform, requestedModel, requireCompact, requiredCapability) {
+	if s.candidateEligibilityReason(ctx, latest, platform, requestedModel, requireCompact, requiredCapability) != "" {
 		return nil
 	}
 	if !s.shadowProtocolsAllowed(ctx, latest) || !accountcore.ParentHealthyForShadow(gatewayprovider.ExecutionRecord(latest), func(id int64) *accountcore.Record {
@@ -341,9 +352,6 @@ func (s *Compatible) recheckSelectedOpenAIAccountFromDB(ctx context.Context, acc
 }
 
 func (s *Compatible) openAIAccountMatchesSchedulingGroup(account *gatewayprovider.ExecutionAccount, groupID *int64) bool {
-	if s != nil && s.options.Simple {
-		return account != nil
-	}
 	return openAIStickyAccountMatchesGroup(account, groupID)
 }
 
@@ -409,7 +417,7 @@ func (s *Compatible) isOpenAIAccountBlockedBySchedulingThreshold(ctx context.Con
 }
 
 func (s *Compatible) hydrateSelectedAccount(ctx context.Context, account *gatewayprovider.ExecutionAccount) (*gatewayprovider.ExecutionAccount, error) {
-	if account == nil || s.schedulerSnapshot == nil {
+	if account == nil || s.schedulerSnapshot == nil || s.accountRepo != nil {
 		return account, nil
 	}
 	hydrated, err := readSnapshotAccount(ctx, s.schedulerSnapshot, account.Record.ID)
@@ -445,4 +453,16 @@ func (s *Compatible) newAcquiredSelectionResult(ctx context.Context, account *ga
 
 func (s *Compatible) schedulingConfig() schedulercore.FlowOptions {
 	return s.options.Scheduling
+}
+
+// StickyAccountID 只读取当前分组会话的绑定，用于请求开始时固定缓存计费依据。
+func (s *Compatible) StickyAccountID(ctx context.Context, groupID *int64, sessionHash string) int64 {
+	if s == nil || s.cache == nil || groupID == nil || *groupID <= 0 || sessionHash == "" {
+		return 0
+	}
+	id, err := s.getStickySessionAccountID(ctx, groupID, sessionHash)
+	if err != nil {
+		return 0
+	}
+	return id
 }

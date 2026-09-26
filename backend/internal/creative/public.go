@@ -20,6 +20,7 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
+	"github.com/TokenFlux/TokenRouter/internal/protocol"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 	"golang.org/x/image/webp"
@@ -39,11 +40,14 @@ type (
 )
 
 type GroupView struct {
-	ID                                        int64
-	Name, Platform                            string
+	ID   int64
+	Name string
+	// ClaudeCodeOnly 分组不能用于创作台，也不在后台隐式切换回退组。
+	ClaudeCodeOnly                            bool
 	IsExclusive, AllowImageGeneration, Active bool
 	RateMultiplier                            float64
-	Operations                                []string
+	Operations                                map[string][]string
+	ProtocolFallbacks                         map[protocol.ProtocolID][]protocol.ProtocolID
 	Price                                     billing.PriceGroup
 	RoutingPolicy                             routing.GroupRoutingPolicy
 }
@@ -52,6 +56,8 @@ type GroupReader interface {
 	ListActive(context.Context) ([]GroupView, error)
 }
 type CatalogAccount interface {
+	PlatformID() string
+	AllowsProtocol(protocol.ProtocolID, map[protocol.ProtocolID][]protocol.ProtocolID) bool
 	IsSchedulable() bool
 	GetModelMapping() map[string]string
 	GetConfiguredRequestModels() []string
@@ -206,14 +212,15 @@ func (s *Public) ListModels(ctx context.Context, userID int64) (*CreativeModelsR
 		if !user.CanBindGroup(group.ID, group.IsExclusive) {
 			continue
 		}
-		if !group.AllowImageGeneration || !group.Active {
+		if !group.AllowImageGeneration || !group.Active || group.ClaudeCodeOnly {
 			continue
 		}
-		platformOperations := group.Operations
+		platformOperations := groupOperations(group)
 		if len(platformOperations) == 0 {
 			continue
 		}
-		models, err := s.CreativeModelsForGroup(ctx, group)
+		routes, err := s.creativeModelRoutes(ctx, group)
+		models := creativeModelsFromRoutes(routes)
 		if err != nil {
 			return nil, err
 		}
@@ -223,7 +230,7 @@ func (s *Public) ListModels(ctx context.Context, userID int64) (*CreativeModelsR
 		}
 		sort.Strings(modelNames)
 		for _, model := range modelNames {
-			operations, configured := CreativeOperationsForModel(modelSettings, group.ID, model, platformOperations)
+			operations, configured := CreativeOperationsForModel(modelSettings, group.ID, model, routes[model].Operations)
 			if !configured || len(operations) == 0 {
 				continue
 			}
@@ -232,11 +239,11 @@ func (s *Public) ListModels(ctx context.Context, userID int64) (*CreativeModelsR
 			if finalModel == "" {
 				finalModel = model
 			}
-			imageSizes := CreativeImageSizesForGroupModel(group, finalModel)
+			imageSizes := CreativeImageSizesForModel(routes[model].Provider, finalModel)
 			if len(imageSizes) == 0 {
 				continue
 			}
-			capabilities := CreativeCapabilitiesForModel(group.Platform, finalModel)
+			capabilities := CreativeCapabilitiesForModel(routes[model].Provider, finalModel)
 			pricingModel := s.BillingModel(ctx, group, model, finalModel)
 			if _, ok := s.ImageUnitPrice(ctx, group, pricingModel, imageSizes[0]); !ok {
 				continue
@@ -278,14 +285,15 @@ func (s *Public) ListCreativeModelCandidates(ctx context.Context) ([]CreativeMod
 	out := make([]CreativeModelCandidate, 0)
 	for i := range groups {
 		group := &groups[i]
-		if !group.Active || !group.AllowImageGeneration {
+		if !group.Active || !group.AllowImageGeneration || group.ClaudeCodeOnly {
 			continue
 		}
-		operations := group.Operations
+		operations := groupOperations(group)
 		if len(operations) == 0 {
 			continue
 		}
-		models, err := s.CreativeModelsForGroup(ctx, group)
+		routes, err := s.creativeModelRoutes(ctx, group)
+		models := creativeModelsFromRoutes(routes)
 		if err != nil {
 			return nil, err
 		}
@@ -294,7 +302,7 @@ func (s *Public) ListCreativeModelCandidates(ctx context.Context) ([]CreativeMod
 			if finalModel == "" {
 				finalModel = model
 			}
-			if len(CreativeImageSizesForGroupModel(group, finalModel)) == 0 {
+			if len(CreativeImageSizesForModel(routes[model].Provider, finalModel)) == 0 {
 				continue
 			}
 			modelNames = append(modelNames, model)
@@ -304,9 +312,9 @@ func (s *Public) ListCreativeModelCandidates(ctx context.Context) ([]CreativeMod
 			out = append(out, CreativeModelCandidate{
 				GroupID:    group.ID,
 				GroupName:  group.Name,
-				Platform:   group.Platform,
+				Platform:   routes[model].Provider,
 				Model:      model,
-				Operations: append([]string(nil), operations...),
+				Operations: append([]string(nil), routes[model].Operations...),
 			})
 		}
 	}
@@ -444,17 +452,14 @@ func CreativeGeminiMaxReferenceImages(model string) int {
 	}
 }
 
-// CreativeImageSizesForGroupModel 返回分组内某模型可用的尺寸档位。
+// CreativeImageSizesForModel 返回实际候选模型支持的尺寸档位。
 // 尺寸由平台与模型能力决定，不依赖是否填写价格。
-func CreativeImageSizesForGroupModel(group *GroupView, model string) []string {
-	if group == nil {
-		return nil
-	}
-	sizes := CreativeDefaultImageSizesForPlatform(group.Platform)
-	if group.Platform == PlatformOpenAI && !IsCreativeGPTImage2Model(model) {
+func CreativeImageSizesForModel(platform, model string) []string {
+	sizes := CreativeDefaultImageSizesForPlatform(platform)
+	if platform == PlatformOpenAI && !IsCreativeGPTImage2Model(model) {
 		sizes = []string{"1K", "2K"}
 	}
-	return CreativeFilterImageSizesForModel(group.Platform, model, sizes)
+	return CreativeFilterImageSizesForModel(platform, model, sizes)
 }
 
 // CreativeFilterImageSizesForModel 按已知模型能力收窄各平台尺寸档位。
@@ -564,33 +569,81 @@ func CreativeDefaultOption(options []string, preferred string) string {
 // CreativeModelsForGroup 按分组映射、账号映射和指定阶段白名单解析图片模型。
 // @project-doc docs/domains/creative_studio.md#creative_model_policy
 func (s *Public) CreativeModelsForGroup(ctx context.Context, group *GroupView) (map[string]string, error) {
-	out := make(map[string]string)
-	if s.AccountRepo == nil || group == nil {
+	routes, err := s.creativeModelRoutes(ctx, group)
+	return creativeModelsFromRoutes(routes), err
+}
+
+type creativeModelRoute struct {
+	Provider, Model string
+	Operations      []string
+}
+
+func creativeModelsFromRoutes(routes map[string]creativeModelRoute) map[string]string {
+	models := make(map[string]string, len(routes))
+	for name, route := range routes {
+		models[name] = route.Model
+	}
+	return models
+}
+
+// groupOperations 按固定顺序汇总候选平台可执行的操作。
+func groupOperations(group *GroupView) []string {
+	var operations []string
+	for _, operation := range CreativeOperationOrder {
+		for _, allowed := range group.Operations {
+			if CreativeContainsOption(allowed, operation) {
+				operations = append(operations, operation)
+				break
+			}
+		}
+	}
+	return operations
+}
+
+// creativeModelRoutes 保留每个模型的实际账号平台，避免分组混合后套用另一供应商的图片参数。
+func (s *Public) creativeModelRoutes(ctx context.Context, group *GroupView) (map[string]creativeModelRoute, error) {
+	out := make(map[string]creativeModelRoute)
+	if s.AccountRepo == nil || group == nil || group.ClaudeCodeOnly {
 		return out, nil
 	}
-	accounts, err := s.AccountRepo.ListSchedulableByGroupIDAndPlatform(ctx, group.ID, group.Platform)
-	if err != nil {
-		return nil, err
-	}
-	policy := newGroupModelPolicy(group.Platform, group.RoutingPolicy)
+	policy := newGroupModelPolicy(group.RoutingPolicy)
 	var configured []string
 	for _, setting := range s.CreativeModelSettings(ctx) {
 		if setting.GroupID == group.ID {
 			configured = append(configured, setting.Model)
 		}
 	}
-	for _, model := range policy.candidates(group.Platform, configured, accounts) {
-		mapped, allowed := policy.resolve(model)
-		if !allowed {
-			continue
+	for _, platform := range []string{PlatformOpenAI, PlatformGemini, PlatformGrok} {
+		accounts, err := s.AccountRepo.ListSchedulableByGroupIDAndPlatform(ctx, group.ID, platform)
+		if err != nil {
+			return nil, err
 		}
-		for _, account := range accounts {
-			if account == nil || !account.IsSchedulable() || !account.IsModelSupported(mapped) {
+		for _, model := range policy.candidates(platform, configured, accounts) {
+			if _, exists := out[model]; exists {
 				continue
 			}
-			finalModel := mappedCatalogModel(account, mapped)
-			if CreativePlatformImageModel(group.Platform, finalModel) && policy.allowsUpstream(finalModel) {
-				out[model] = finalModel
+			mapped, allowed := policy.resolve(model)
+			if !allowed {
+				continue
+			}
+			for _, account := range accounts {
+				if account == nil || account.PlatformID() != platform || !account.IsSchedulable() || !account.IsModelSupported(mapped) {
+					continue
+				}
+				finalModel := mappedCatalogModel(account, mapped)
+				if !CreativePlatformImageModel(platform, finalModel) || !policy.allowsUpstream(finalModel) {
+					continue
+				}
+				var operations []string
+				for _, operation := range group.Operations[platform] {
+					if account.AllowsProtocol(OperationProtocol(platform, operation), group.ProtocolFallbacks) {
+						operations = append(operations, operation)
+					}
+				}
+				if len(operations) > 0 {
+					out[model] = creativeModelRoute{Provider: platform, Model: finalModel, Operations: operations}
+					break
+				}
 			}
 		}
 	}
@@ -622,6 +675,7 @@ func DefaultCreativeGrokModelCandidates() []string {
 
 // ValidatedCreativeParams 是校验通过的创建参数。
 type ValidatedCreativeParams struct {
+	Provider      string
 	Group         *GroupView
 	Model         string
 	FinalModel    string
@@ -698,6 +752,7 @@ func (s *Public) CreateRun(ctx context.Context, scope CreativeRunScope, params C
 		Model:                      validated.Model,
 		RequestedModel:             params.Model,
 		Operation:                  validated.Operation,
+		Provider:                   validated.Provider,
 		RequestedOutputCount:       validated.OutputCount,
 		ImageSize:                  validated.ImageSize,
 		AspectRatio:                validated.AspectRatio,
@@ -835,10 +890,13 @@ func (s *Public) ValidateCreateParams(ctx context.Context, userID int64, params 
 	if !user.CanBindGroup(group.ID, group.IsExclusive) {
 		return nil, ErrCreativeGroupForbidden
 	}
+	if group.ClaudeCodeOnly {
+		return nil, ErrCreativeGroupForbidden
+	}
 	if !group.AllowImageGeneration {
 		return nil, ErrCreativeGroupImageDisabled
 	}
-	operations := group.Operations
+	operations := groupOperations(group)
 	if len(operations) == 0 {
 		return nil, ErrCreativeGroupImageDisabled
 	}
@@ -852,7 +910,8 @@ func (s *Public) ValidateCreateParams(ctx context.Context, userID int64, params 
 	if len(operations) == 0 {
 		return nil, ErrCreativeOperationUnsupported
 	}
-	models, err := s.CreativeModelsForGroup(ctx, group)
+	routes, err := s.creativeModelRoutes(ctx, group)
+	models := creativeModelsFromRoutes(routes)
 	if err != nil {
 		return nil, err
 	}
@@ -863,6 +922,7 @@ func (s *Public) ValidateCreateParams(ctx context.Context, userID int64, params 
 	if finalModel == "" {
 		finalModel = model
 	}
+	operations = intersectCreativeOperations(operations, routes[model].Operations)
 	operation := strings.TrimSpace(params.Operation)
 	operationAllowed := false
 	for _, candidate := range operations {
@@ -874,7 +934,7 @@ func (s *Public) ValidateCreateParams(ctx context.Context, userID int64, params 
 	if !operationAllowed {
 		return nil, ErrCreativeOperationUnsupported
 	}
-	capabilities := CreativeCapabilitiesForModel(group.Platform, finalModel)
+	capabilities := CreativeCapabilitiesForModel(routes[model].Provider, finalModel)
 	if capabilities.MaxReferenceImages > 0 && len(params.SourceImages) > capabilities.MaxReferenceImages {
 		return nil, ErrCreativeInvalidParams
 	}
@@ -899,7 +959,7 @@ func (s *Public) ValidateCreateParams(ctx context.Context, userID int64, params 
 	if imageSize == "" {
 		imageSize = s.DefaultImageSize()
 	}
-	imageSize, supported := CreativeCanonicalOption(imageSize, CreativeImageSizesForGroupModel(group, finalModel))
+	imageSize, supported := CreativeCanonicalOption(imageSize, CreativeImageSizesForModel(routes[model].Provider, finalModel))
 	if !supported {
 		return nil, ErrCreativeInvalidParams
 	}
@@ -971,7 +1031,7 @@ func (s *Public) ValidateCreateParams(ctx context.Context, userID int64, params 
 	if totalBytes > 0 && int64(totalBytes) > s.MaxTotalInputBytes() {
 		return nil, ErrCreativeInputTooLarge
 	}
-	if strings.EqualFold(strings.TrimSpace(group.Platform), string(PlatformGemini)) {
+	if routes[model].Provider == PlatformGemini {
 		encodedBytes := base64.StdEncoding.EncodedLen(len([]byte(prompt)))
 		for _, source := range sources {
 			encodedBytes += base64.StdEncoding.EncodedLen(len(source.Bytes))
@@ -1027,6 +1087,7 @@ func (s *Public) ValidateCreateParams(ctx context.Context, userID int64, params 
 	})
 	return &ValidatedCreativeParams{
 		Group:         group,
+		Provider:      routes[model].Provider,
 		Model:         model,
 		FinalModel:    finalModel,
 		Operation:     operation,
@@ -1181,7 +1242,7 @@ func (s *Public) ModerateCreativeRequest(ctx context.Context, userID int64, vali
 		GroupID:          &validated.Group.ID,
 		GroupName:        validated.Group.Name,
 		Endpoint:         "/v1/creative/runs",
-		Provider:         validated.Group.Platform,
+		Provider:         validated.Provider,
 		Model:            validated.Model,
 		Protocol:         "openai_images",
 		Body:             body,
@@ -1270,4 +1331,14 @@ func (s *Public) BillingModel(ctx context.Context, group *GroupView, requested, 
 		mapped = requested
 	}
 	return routing.BillingModelForPrice(mapping, requested, mapped, upstream)
+}
+
+func intersectCreativeOperations(left, right []string) []string {
+	var result []string
+	for _, value := range left {
+		if CreativeContainsOption(right, value) {
+			result = append(result, value)
+		}
+	}
+	return result
 }

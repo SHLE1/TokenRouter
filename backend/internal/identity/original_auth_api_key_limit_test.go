@@ -30,7 +30,7 @@ func TestAuthService_RegisterSnapshotsDefaultUserAPIKeyLimit(t *testing.T) {
 				settings[identity.SettingKeyDefaultUserAPIKeyLimit] = *tt.value
 			}
 			repo := &userRepoStub{nextID: int64(index + 1)}
-			svc := newAuthService(repo, settings, nil, nil)
+			svc := newAuthService(repo, settings, nil)
 
 			_, user, err := svc.Register(context.Background(), fmt.Sprintf("api-limit-%d@example.com", index), "strong-pass")
 			require.NoError(t, err)
@@ -47,7 +47,7 @@ func TestAuthService_DefaultUserAPIKeyLimitDoesNotRetroactivelyChangeUsers(t *te
 		identity.SettingKeyDefaultUserAPIKeyLimit: "10",
 	}
 	repo := &userRepoStub{}
-	svc := newAuthService(repo, settings, nil, nil)
+	svc := newAuthService(repo, settings, nil)
 
 	_, first, err := svc.Register(context.Background(), "api-limit-first@example.com", "strong-pass")
 	require.NoError(t, err)
@@ -69,7 +69,7 @@ func TestAuthService_AllOAuthSourcesSnapshotDefaultUserAPIKeyLimit(t *testing.T)
 			svc := newAuthService(repo, map[string]string{
 				identity.SettingKeyRegistrationEnabled:    "true",
 				identity.SettingKeyDefaultUserAPIKeyLimit: "29",
-			}, nil, nil)
+			}, nil)
 			svc.RefreshTokens = &refreshTokenCacheStub{}
 			rebuildOriginalSession(svc)
 

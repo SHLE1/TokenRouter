@@ -3,14 +3,18 @@ package routing
 
 import (
 	"context"
+	"slices"
 	"sort"
 	"strings"
+
+	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 
 	"github.com/TokenFlux/TokenRouter/internal/account"
 )
 
 // RequestableModel 描述客户端可请求的模型，以及模型广场应使用的定价模型。
 type RequestableModel struct {
+	Protocols        []capability.ProtocolID
 	ID               string
 	PricingModel     string
 	PricingAmbiguous bool
@@ -55,9 +59,6 @@ func (s *RequestableResolver) ResolveWithAccounts(
 				"platform", platform,
 				"error", err)
 			return RequestableModelsResult{Restricted: true, HadExplicitAccountModels: hadExplicitAccountModels}
-		}
-		if cachedPlatform := strings.TrimSpace(s.GroupPolicies.GetGroupPlatform(ctx, *groupID)); cachedPlatform != "" {
-			policyPlatform = cachedPlatform
 		}
 	}
 
@@ -144,8 +145,8 @@ func mergeRequestableModelCandidates(baseModels []string, accounts []CatalogueAc
 
 	appendModels(baseModels...)
 	if policy != nil {
-		appendModels(policy.AllowedModels[platform]...)
-		if mapping := policy.ModelMapping[platform]; len(mapping) > 0 {
+		appendModels(policy.AllowedModels...)
+		if mapping := policy.ModelMapping; len(mapping) > 0 {
 			appendModels(sortedModelMappingSources(mapping)...)
 		}
 	}
@@ -250,8 +251,29 @@ func (s *RequestableResolver) resolveRequestableModel(
 	}
 
 	upstreamModels := make([]string, 0, len(accounts))
+	var protocols []capability.ProtocolID
 	for i := range accounts {
 		account := &accounts[i]
+		var candidateProtocols []capability.ProtocolID
+		if policy != nil && policy.AllowedProtocols != nil {
+			if policy.RequireOAuthOnly && account.Type == capability.AccountTypeAPIKey {
+				continue
+			}
+			for _, source := range policy.AllowedProtocols {
+				if _, ok := capability.ResolveRoute(account.Protocols(), source, policy.ProtocolFallbacks); !ok {
+					continue
+				}
+				if aware, ok := account.Rules.(interface {
+					SupportsClientProtocol(string, capability.ProtocolID) bool
+				}); ok && !aware.SupportsClientProtocol(groupMappedModel, source) {
+					continue
+				}
+				candidateProtocols = append(candidateProtocols, source)
+			}
+			if len(candidateProtocols) == 0 {
+				continue
+			}
+		}
 		if !account.Rules.Supports(ctx, groupMappedModel) {
 			continue
 		}
@@ -261,13 +283,18 @@ func (s *RequestableResolver) resolveRequestableModel(
 				continue
 			}
 			upstreamModels = append(upstreamModels, upstreamModel)
+			for _, source := range candidateProtocols {
+				if !slices.Contains(protocols, source) {
+					protocols = append(protocols, source)
+				}
+			}
 		}
 	}
 	if len(upstreamModels) == 0 {
 		return RequestableModel{}, false
 	}
 
-	resolved := RequestableModel{ID: requestedModel}
+	resolved := RequestableModel{ID: requestedModel, Protocols: protocols}
 	switch billingSource {
 	case BillingModelSourceRequested:
 		resolved.PricingModel = requestedModel
@@ -335,7 +362,6 @@ type CatalogueAccount struct {
 	account.AccountSnapshot
 	GroupIDs        []int64
 	AccountGroupIDs []int64
-	MixedScheduling bool
 	Passthrough     bool
 	Rules           CatalogueRules
 }
@@ -345,7 +371,6 @@ type CatalogueDefaults struct {
 }
 type CataloguePolicies interface {
 	GetGroupPolicy(context.Context, int64) (*GroupPolicyView, error)
-	GetGroupPlatform(context.Context, int64) string
 	ResolveGroupMapping(context.Context, int64, string) GroupMappingResult
 	IsModelRestricted(context.Context, int64, string) bool
 }
@@ -357,9 +382,7 @@ type RequestableResolver struct {
 	Warn          func(string, ...any)
 }
 
+// matchesCataloguePlatform 只把平台参数用于专用入口的强制过滤。
 func matchesCataloguePlatform(account *CatalogueAccount, platform string) bool {
-	if platform == PlatformAnthropic || platform == PlatformGemini {
-		return account.Platform == platform || (account.Platform == PlatformAntigravity && account.MixedScheduling)
-	}
-	return account.Platform == platform
+	return platform == "" || account.Platform == platform
 }

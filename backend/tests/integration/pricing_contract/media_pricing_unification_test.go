@@ -20,7 +20,6 @@ import (
 
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/stretchr/testify/require"
 )
 
@@ -29,11 +28,11 @@ func TestMediaPricingCardsHaveSameGroupAndPricingConfigSemantics(t *testing.T) {
 	for _, media := range []string{"image", "video"} {
 		for _, perRequest := range []bool{false, true} {
 			for _, zero := range []bool{false, true} {
-				model, platform, mode, tier := "gpt-image-2", capability.PlatformOpenAI, routing.BillingModeImage, "4K"
+				model, mode, tier := "gpt-image-2", routing.BillingModeImage, "4K"
 				result := &forwardcore.OpenAIResult{Model: model, ImageCount: 3, ImageSize: tier}
 				units := 3.0
 				if media == "video" {
-					model, platform, mode, tier = "grok-imagine-video", capability.PlatformGrok, routing.BillingModeVideo, "720p"
+					model, mode, tier = "grok-imagine-video", routing.BillingModeVideo, "720p"
 					result = &forwardcore.OpenAIResult{Model: model, VideoCount: 2, VideoDurationSeconds: 7, VideoResolution: tier}
 					units = 14
 				}
@@ -49,8 +48,8 @@ func TestMediaPricingCardsHaveSameGroupAndPricingConfigSemantics(t *testing.T) {
 				}
 				for _, scope := range []string{"group", "channel"} {
 					t.Run(media+"/"+string(mode)+"/"+scope+"/"+map[bool]string{true: "free", false: "paid"}[zero], func(t *testing.T) {
-						card := routing.ModelPricingEntry{Platform: platform, Models: []string{model}, BillingMode: mode, PerRequestPrice: testPtrFloat64(9), Intervals: []routing.PricingInterval{{TierLabel: tier, PerRequestPrice: &price}}}
-						group := &routing.Group{ID: 100, Platform: platform, RateMultiplier: 1.5}
+						card := routing.ModelPricingEntry{Models: []string{model}, BillingMode: mode, PerRequestPrice: testPtrFloat64(9), Intervals: []routing.PricingInterval{{TierLabel: tier, PerRequestPrice: &price}}}
+						group := &routing.Group{ID: 100, RateMultiplier: 1.5}
 						cards := []routing.ModelPricingEntry{card}
 						if scope == "group" {
 							group.ModelPricing = cards
@@ -77,9 +76,9 @@ func TestAsyncImageUnitPricingUsesCardsAndPerImageFallback(t *testing.T) {
 	ctx := context.Background()
 	model := "gemini-3.1-flash-image"
 	billing := newCalculator(nil, newCatalogFixture(catalogFixture{pricingData: map[string]*pricing.LiteLLMModelPricing{model: {OutputCostPerToken: 0.000001, OutputCostPerImageToken: 0.000002, OutputCostPerImage: 0.2}}}))
-	pricingConfig := routing.ModelPricingEntry{Platform: capability.PlatformGemini, Models: []string{model}, BillingMode: routing.BillingModeImage, PerRequestPrice: testPtrFloat64(0.4), Intervals: []routing.PricingInterval{{TierLabel: "512", PerRequestPrice: testPtrFloat64(0)}}}
+	pricingConfig := routing.ModelPricingEntry{Models: []string{model}, BillingMode: routing.BillingModeImage, PerRequestPrice: testPtrFloat64(0.4), Intervals: []routing.PricingInterval{{TierLabel: "512", PerRequestPrice: testPtrFloat64(0)}}}
 	resolver := billingtestkit.ResolverWithCards(t, billing, []routing.ModelPricingEntry{pricingConfig})
-	group := &routing.Group{ID: 100, Platform: capability.PlatformGemini}
+	group := &routing.Group{ID: 100}
 	batch := &batchimage.Pricing{Resolver: resolver}
 	creativeService := &creative.Public{ImageUnitPrice: creativePriceFixture(billing, resolver)}
 	for _, tc := range []struct {

@@ -26,7 +26,7 @@ func WriteGroupSelectionBusinessError(c *gin.Context, err error, streamStarted b
 		if apiKey, ok := readAccess(c); ok && apiKey != nil && apiKey.Group != nil && apiKey.Group.CustomModelsListEnabled() {
 			platform := strings.TrimSpace(modelErr.Platform)
 			if platform == "" {
-				platform = apiKey.Group.Platform
+				platform = ""
 			}
 			availableModels := FilterModelsByCustomList(modelErr.AvailableModels, modeldisplay.DefaultModelIDs(catalogue, platform), apiKey.Group.ModelsListConfig.Models)
 			message = (&routing.GroupModelUnsupportedError{

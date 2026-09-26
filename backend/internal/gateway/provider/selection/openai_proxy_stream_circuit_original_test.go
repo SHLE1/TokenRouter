@@ -15,7 +15,7 @@ import (
 // 第二次调度的 context 只绕过代理隔离，不会清除熔断状态。
 func TestOpenAIProxyStreamQuarantineBypassContext(t *testing.T) {
 	proxyID := int64(7)
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, ProxyID: &proxyID}}
+	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, ProxyID: &proxyID}}
 	svc := newCompatibleSelectionForTest(CompatibleDependencies{Reads: Reads{}, Shared: Shared{}}, nil)
 
 	svc.proxyCircuit = egress.NewProxyStreamCircuit(egress.ProxyStreamCircuitSettings{

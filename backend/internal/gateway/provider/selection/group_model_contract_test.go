@@ -41,11 +41,8 @@ func TestResolveOpenAIWSRoutingModelForAccountStrictlyFollowsBillingBasis(t *tes
 				Status:             billing.StatusActive,
 				RestrictModels:     true,
 				BillingModelSource: tt.billingSource,
-				ModelMapping: map[string]map[string]string{
-					capability.PlatformOpenAI: {"client-alias": "group-model"},
-				},
+				ModelMapping:       map[string]string{"client-alias": "group-model"},
 				ModelPricing: []routing.ModelPricingEntry{{
-					Platform:   capability.PlatformOpenAI,
 					Models:     []string{tt.pricingModel},
 					InputPrice: &price,
 				}},

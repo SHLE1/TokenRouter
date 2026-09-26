@@ -113,7 +113,6 @@ func TestAuthService_Register_InvitationCodeSingleUseUnderConcurrency(t *testing
 			promotion.SettingKeyInvitationCodeEnabled: "true",
 		},
 		nil,
-		&userPlatformQuotaRepoStub{},
 	)
 
 	start := make(chan struct{})

@@ -64,21 +64,23 @@ type DiagnosticAccount struct {
 	ID                                                                                   int64
 	Name, Platform, Type, Status                                                         string
 	Priority, LoadFactor                                                                 int
-	Schedulable, AutoPauseOnExpired, PrivacySet, MixedScheduling, SubscriptionPriority   bool
+	Schedulable, AutoPauseOnExpired, PrivacySet, SubscriptionPriority                    bool
 	ExpiresAt, OverloadUntil, RateLimitResetAt, TempUnschedulableUntil, SessionWindowEnd *time.Time
 	GroupIDs                                                                             []int64
 	Groups                                                                               []*DiagnosticGroup
 	AccountGroups                                                                        []DiagnosticAccountGroup
 }
-type DiagnosticAccountGroup struct{ Group *DiagnosticGroup }
-type DiagnosticGroup struct {
-	ProjectionID                uint64
-	ID                          int64
-	Name, Platform              string
-	SortOrder                   int
-	Advanced, RequirePrivacySet bool
-	AdvancedSchedulerOverrides  policy.GroupAdvancedSchedulerOverrides
-}
+type (
+	DiagnosticAccountGroup struct{ Group *DiagnosticGroup }
+	DiagnosticGroup        struct {
+		ProjectionID                uint64
+		ID                          int64
+		Name                        string
+		SortOrder                   int
+		Advanced, RequirePrivacySet bool
+		AdvancedSchedulerOverrides  policy.GroupAdvancedSchedulerOverrides
+	}
+)
 
 func (g *DiagnosticGroup) UsesAdvancedScheduler() bool { return g != nil && g.Advanced }
 
@@ -108,15 +110,18 @@ type DiagnosticService struct {
 func NewDiagnosticService(source DiagnosticSource, concurrency *ConcurrencyService, ports DiagnosticPorts) *DiagnosticService {
 	return &DiagnosticService{source: source, concurrencyService: concurrency, ports: ports, now: ports.Now}
 }
+
 func (s *DiagnosticService) effectiveSettings(ctx context.Context, g *DiagnosticGroup) (policy.EffectiveSettings, policy.RuntimeSettings) {
 	return s.ports.Effective(ctx, g)
 }
+
 func (s *DiagnosticService) prepareEligibilityContext(ctx context.Context, g *DiagnosticGroup, a []DiagnosticAccount) context.Context {
 	if s.ports.Prepare == nil {
 		return ctx
 	}
 	return s.ports.Prepare(ctx, g, a)
 }
+
 func (s *DiagnosticService) HardFilterReason(ctx context.Context, a *DiagnosticAccount, g *DiagnosticGroup, request AdvancedSchedulerScoreDiagnosticRequest, now time.Time) string {
 	if reason := diagnosticBaseHardFilterReason(a, g, now); reason != "" {
 		return reason
@@ -126,9 +131,11 @@ func (s *DiagnosticService) HardFilterReason(ctx context.Context, a *DiagnosticA
 	}
 	return s.ports.Filter(ctx, a, g, request, now)
 }
+
 func (s *DiagnosticService) diagnosticHardFilterReason(ctx context.Context, a *DiagnosticAccount, g *DiagnosticGroup, request AdvancedSchedulerScoreDiagnosticRequest, now time.Time) string {
 	return s.HardFilterReason(ctx, a, g, request, now)
 }
+
 func partitionDiagnosticSubscriptionAccounts(accounts []*DiagnosticAccount) ([]*DiagnosticAccount, []*DiagnosticAccount) {
 	var subscribed, regular []*DiagnosticAccount
 	for _, a := range accounts {
@@ -140,12 +147,14 @@ func partitionDiagnosticSubscriptionAccounts(accounts []*DiagnosticAccount) ([]*
 	}
 	return subscribed, regular
 }
+
 func (s *DiagnosticService) quotaHeadroom(a *ScoreAccount, now time.Time) float64 {
 	if s.ports.Quota == nil {
 		return 0.5
 	}
 	return s.ports.Quota(a.ProjectionID, now)
 }
+
 func (s *DiagnosticService) scoreCandidates(accounts []*DiagnosticAccount, loads map[int64]*AccountLoadInfo, stats *RuntimeStats, weights policy.ScoreWeights, input ScoreInput, now time.Time) ([]CandidateScore, float64, ScoreRanges) {
 	projected := make([]*ScoreAccount, len(accounts))
 	for i, a := range accounts {
@@ -298,7 +307,7 @@ func diagnosticGroupSummary(group *DiagnosticGroup) AdvancedSchedulerScoreDiagno
 	if group == nil {
 		return AdvancedSchedulerScoreDiagnosticGroup{}
 	}
-	return AdvancedSchedulerScoreDiagnosticGroup{ID: group.ID, Name: group.Name, Platform: group.Platform}
+	return AdvancedSchedulerScoreDiagnosticGroup{ID: group.ID, Name: group.Name}
 }
 
 func summaryFromDiagnosticDetail(detail *AdvancedSchedulerScoreDiagnosticDetail) AdvancedSchedulerScoreDiagnosticGroupSummary {
@@ -335,7 +344,7 @@ func (s *DiagnosticService) buildGroupSummary(
 	}
 	now := s.now()
 	effective, _ := s.effectiveSettings(ctx, group)
-	poolAccounts, err := s.source.ListSchedulableAccountsForAdvancedSchedulerScore(ctx, &group.ID, group.Platform)
+	poolAccounts, err := s.source.ListSchedulableAccountsForAdvancedSchedulerScore(ctx, &group.ID, "")
 	if err != nil {
 		return summary, err
 	}
@@ -389,7 +398,7 @@ func (s *DiagnosticService) buildDetail(
 	if err != nil {
 		return nil, err
 	}
-	poolAccounts, err := s.source.ListSchedulableAccountsForAdvancedSchedulerScore(ctx, &group.ID, group.Platform)
+	poolAccounts, err := s.source.ListSchedulableAccountsForAdvancedSchedulerScore(ctx, &group.ID, "")
 	if err != nil {
 		return nil, err
 	}
@@ -443,7 +452,7 @@ func (s *DiagnosticService) buildDetail(
 
 	loadMap := s.LoadMap(ctx, filtered)
 	previousResponseAccountID := int64(0)
-	if group != nil && group.Platform == capability.PlatformOpenAI {
+	if diagnosticPreviousResponseSupported(filtered, request.PreviousResponseAccountID) {
 		previousResponseAccountID = request.PreviousResponseAccountID
 	}
 	input := ScoreInput{
@@ -525,7 +534,7 @@ func diagnosticBaseHardFilterReason(account *DiagnosticAccount, group *Diagnosti
 		return "account_missing"
 	}
 	if !diagnosticPlatformMatchesGroup(account, group) {
-		return "platform_mismatch"
+		return "group_mismatch"
 	}
 	if account.Status != "active" {
 		return "account_inactive"
@@ -555,11 +564,22 @@ func diagnosticPlatformMatchesGroup(account *DiagnosticAccount, group *Diagnosti
 	if account == nil || group == nil {
 		return false
 	}
-	if account.Platform == group.Platform {
-		return true
+	for _, id := range account.GroupIDs {
+		if id == group.ID {
+			return true
+		}
 	}
-	return (group.Platform == capability.PlatformAnthropic || group.Platform == capability.PlatformGemini) &&
-		account.Platform == capability.PlatformAntigravity && account.MixedScheduling
+	for _, item := range account.AccountGroups {
+		if item.Group != nil && item.Group.ID == group.ID {
+			return true
+		}
+	}
+	for _, item := range account.Groups {
+		if item != nil && item.ID == group.ID {
+			return true
+		}
+	}
+	return false
 }
 
 func diagnosticSubscriptionPriorityPool(
@@ -568,8 +588,7 @@ func diagnosticSubscriptionPriorityPool(
 	effective policy.EffectiveSettings,
 ) ([]*DiagnosticAccount, map[int64]struct{}, bool) {
 	deferred := make(map[int64]struct{})
-	if group == nil || !effective.SubscriptionPriorityEnabled ||
-		(group.Platform != capability.PlatformOpenAI && group.Platform != capability.PlatformGrok) {
+	if group == nil || !effective.SubscriptionPriorityEnabled {
 		return accounts, deferred, false
 	}
 	subscriptionAccounts, regularAccounts := partitionDiagnosticSubscriptionAccounts(accounts)
@@ -609,7 +628,7 @@ func diagnosticHardStickyPolicyOutcome(
 	}
 	if effective.StickyWeightedEnabled {
 		if request.PreviousResponseAccountID > 0 {
-			if group == nil || group.Platform != capability.PlatformOpenAI {
+			if !diagnosticPreviousResponseSupported(accounts, request.PreviousResponseAccountID) {
 				outcome.previousResponseState = "ignored"
 			} else {
 				outcome.previousResponseState = "weighted"
@@ -622,7 +641,7 @@ func diagnosticHardStickyPolicyOutcome(
 	}
 
 	if request.PreviousResponseAccountID > 0 {
-		if group == nil || group.Platform != capability.PlatformOpenAI {
+		if !diagnosticPreviousResponseSupported(accounts, request.PreviousResponseAccountID) {
 			outcome.previousResponseState = "ignored"
 		} else if _, eligible := eligibleIDs[request.PreviousResponseAccountID]; eligible {
 			outcome.previousResponseState = "forced_first"
@@ -1132,7 +1151,7 @@ func diagnosticPolicySignals(
 			Detail: detail,
 		})
 	}
-	if group != nil && (group.Platform == capability.PlatformOpenAI || group.Platform == capability.PlatformGrok) && effective.SubscriptionPriorityEnabled {
+	if group != nil && effective.SubscriptionPriorityEnabled {
 		state := "enabled"
 		detail := "当前没有可用订阅账号，使用完整候选池。"
 		if outcome.subscriptionPoolActive {
@@ -1152,4 +1171,14 @@ func diagnosticPolicySignals(
 		Detail: "诊断请求未提供端点、传输协议、compact 与会话注册上下文，这些请求级门禁不参与本次结果。",
 	})
 	return signals
+}
+
+// diagnosticPreviousResponseSupported 只把 OpenAI 账号的上一响应视为可复用状态。
+func diagnosticPreviousResponseSupported(accounts []*DiagnosticAccount, id int64) bool {
+	for _, account := range accounts {
+		if account != nil && account.ID == id {
+			return account.Platform == capability.PlatformOpenAI
+		}
+	}
+	return false
 }

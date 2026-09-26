@@ -3,6 +3,7 @@ package selection
 import (
 	"context"
 	"errors"
+	"slices"
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/config"
@@ -29,6 +30,7 @@ func responseSelectionParameters() *scheduler.Parameters {
 
 // selectPreviousResponseForTest 组合原入口的上下文及模型投影，不为私有合同扩大生产 API。
 func selectPreviousResponseForTest(s *Compatible, ctx context.Context, group *int64, previous, model string, excluded map[int64]struct{}, compact bool) (*provider.SelectionResult, error) {
+	ctx = s.withCandidatePolicy(ctx, group, "")
 	ctx = s.withOpenAIGroupPrivacyRequirement(ctx, group)
 	model = s.resolveGroupRoutingModel(ctx, group, model)
 	return s.selectAccountByPreviousResponseIDForCapability(ctx, group, previous, model, excluded, "", compact)
@@ -40,9 +42,10 @@ type selectionAccountFixture struct {
 	accounts []provider.ExecutionAccount
 }
 
-func (r selectionAccountFixture) GetByID(_ context.Context, id int64) (*provider.ExecutionAccount, error) {
+func (r selectionAccountFixture) GetByID(ctx context.Context, id int64) (*provider.ExecutionAccount, error) {
 	for i := range r.accounts {
 		if r.accounts[i].Record.ID == id {
+			prepareSelectionFixtureAccount(ctx, &r.accounts[i], nil)
 			return &r.accounts[i], nil
 		}
 	}
@@ -59,8 +62,8 @@ func (r selectionAccountFixture) ListSchedulableByPlatform(_ context.Context, pl
 	return out, nil
 }
 
-func (r selectionAccountFixture) ListSchedulableByGroupIDAndPlatform(ctx context.Context, _ int64, platform string) ([]provider.ExecutionAccount, error) {
-	return r.ListSchedulableByPlatform(ctx, platform)
+func (r selectionAccountFixture) ListSchedulableByGroupIDAndPlatform(ctx context.Context, groupID int64, platform string) ([]provider.ExecutionAccount, error) {
+	return r.ListSchedulableByGroupIDAndPlatforms(ctx, groupID, []string{platform})
 }
 
 func (r selectionAccountFixture) ListSchedulableUngroupedByPlatform(ctx context.Context, platform string) ([]provider.ExecutionAccount, error) {
@@ -198,4 +201,39 @@ type hydrationAccountSource struct {
 func (s hydrationAccountSource) GetByID(ctx context.Context, id int64) (scheduler.SnapshotAccount, error) {
 	value, err := s.source.GetByID(ctx, id)
 	return codec.WrapRecord(provider.ExecutionRecord(value)), err
+}
+
+func (r selectionAccountFixture) ListSchedulableByGroupIDAndPlatforms(ctx context.Context, groupID int64, platforms []string) ([]provider.ExecutionAccount, error) {
+	var result []provider.ExecutionAccount
+	for i := range r.accounts {
+		prepareSelectionFixtureAccount(ctx, &r.accounts[i], &groupID)
+		if slices.Contains(platforms, r.accounts[i].Record.Platform) && openAIStickyAccountMatchesGroup(&r.accounts[i], &groupID) {
+			result = append(result, r.accounts[i])
+		}
+	}
+	return result, nil
+}
+
+func (r groupAwareStubOpenAIAccountRepo) ListSchedulableByGroupIDAndPlatforms(ctx context.Context, groupID int64, platforms []string) ([]provider.ExecutionAccount, error) {
+	var result []provider.ExecutionAccount
+	for i := range r.accounts {
+		if slices.Contains(platforms, r.accounts[i].Record.Platform) && openAIStickyAccountMatchesGroup(&r.accounts[i], &groupID) {
+			prepareSelectionFixtureAccount(ctx, &r.accounts[i], &groupID)
+			result = append(result, r.accounts[i])
+		}
+	}
+	return result, nil
+}
+
+func (r groupAwareStubOpenAIAccountRepo) GetByID(ctx context.Context, id int64) (*provider.ExecutionAccount, error) {
+	for i := range r.accounts {
+		if r.accounts[i].Record.ID == id {
+			copy := r.accounts[i]
+			groups := copy.Record.GroupIDs
+			prepareSelectionFixtureAccount(ctx, &copy, nil)
+			copy.Record.GroupIDs = groups
+			return &copy, nil
+		}
+	}
+	return nil, errors.New("account not found")
 }

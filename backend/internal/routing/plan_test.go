@@ -11,9 +11,9 @@ import (
 // 每个候选独立验证启用集合，旧计划不受之后的配置或返回切片修改影响。
 func TestRoutePlanCandidateRecalculationAndIsolation(t *testing.T) {
 	group := &Group{
-		ID: 7, Platform: capability.PlatformOpenAI, SchedulerType: GroupSchedulerTypeAdvanced,
+		ID: 7, SchedulerType: GroupSchedulerTypeAdvanced,
 		AllowedProtocols:  []capability.ProtocolID{capability.ProtocolAnthropicMessages},
-		ProtocolFallbacks: map[capability.ProtocolID]capability.ProtocolID{capability.ProtocolAnthropicMessages: capability.ProtocolOpenAIResponses},
+		ProtocolFallbacks: map[capability.ProtocolID][]capability.ProtocolID{capability.ProtocolAnthropicMessages: {capability.ProtocolOpenAIResponses}},
 	}
 	plan := Plan(PlanInput{Group: group, ClientProtocol: capability.ProtocolAnthropicMessages})
 	responses := account.AccountSnapshot{ID: 1, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey, EnabledProtocols: []capability.ProtocolID{capability.ProtocolOpenAIResponses}}
@@ -24,7 +24,7 @@ func TestRoutePlanCandidateRecalculationAndIsolation(t *testing.T) {
 	require.Equal(t, capability.ProtocolOpenAIResponses, first.UpstreamProtocol)
 	_, ok = plan.ResolveCandidate(chat)
 	require.False(t, ok)
-	group.ProtocolFallbacks[capability.ProtocolAnthropicMessages] = capability.ProtocolOpenAIChatCompletions
+	group.ProtocolFallbacks[capability.ProtocolAnthropicMessages][0] = capability.ProtocolOpenAIChatCompletions
 	plan.AllowedProtocols()[0] = capability.ProtocolLive
 	again, ok := plan.ResolveCandidate(responses)
 	require.True(t, ok)
@@ -35,7 +35,6 @@ func TestRoutePlanCandidateRecalculationAndIsolation(t *testing.T) {
 	require.Equal(t, int64(2), second.AccountID)
 	require.Equal(t, capability.ProtocolOpenAIChatCompletions, second.UpstreamProtocol)
 	require.Equal(t, GroupSchedulerTypeAdvanced, plan.SchedulerType())
-	require.Equal(t, capability.PlatformOpenAI, plan.Platform())
 	require.Equal(t, int64(7), plan.GroupID())
 	require.Equal(t, []capability.ProtocolID{capability.ProtocolAnthropicMessages}, plan.AllowedProtocols())
 }

@@ -16,10 +16,6 @@ type CreateAccountInput struct {
 	GroupIDs           []int64
 	ExpiresAt          *int64
 	AutoPauseOnExpired *bool
-	// SkipDefaultGroupBind 在空分组集合时跳过原默认组绑定。
-	SkipDefaultGroupBind bool
-	// SkipMixedChannelCheck 表达调用方已确认混合渠道风险。
-	SkipMixedChannelCheck bool
 }
 
 // ShadowOptions 描述影子创建参数；影子不持认证凭据。
@@ -36,22 +32,21 @@ type UpdateAccountInput struct {
 	// PatchExtra 仅用于维护字段，保留锁内最新的无关管理配置。
 	PatchExtra bool `json:"-"`
 	// ExpectedCredentials 只由内部刷新入口提供，HTTP 输入不能设置。
-	ExpectedCredentials   *CredentialVersion `json:"-"`
-	Name                  string
-	Notes                 *string
-	Type                  string // Account type: oauth, setup-token, apikey
-	Credentials           map[string]any
-	Extra                 map[string]any
-	ProxyID               *int64
-	Concurrency           *int     // 使用指针区分"未提供"和"设置为0"
-	Priority              *int     // 使用指针区分"未提供"和"设置为0"
-	RateMultiplier        *float64 // 账号计费倍率（>=0，允许 0）
-	LoadFactor            *int
-	Status                string
-	GroupIDs              *[]int64
-	ExpiresAt             *int64
-	AutoPauseOnExpired    *bool
-	SkipMixedChannelCheck bool // 跳过混合渠道检查（用户已确认风险）
+	ExpectedCredentials *CredentialVersion `json:"-"`
+	Name                string
+	Notes               *string
+	Type                string // Account type: oauth, setup-token, apikey
+	Credentials         map[string]any
+	Extra               map[string]any
+	ProxyID             *int64
+	Concurrency         *int     // 使用指针区分"未提供"和"设置为0"
+	Priority            *int     // 使用指针区分"未提供"和"设置为0"
+	RateMultiplier      *float64 // 账号计费倍率（>=0，允许 0）
+	LoadFactor          *int
+	Status              string
+	GroupIDs            *[]int64
+	ExpiresAt           *int64
+	AutoPauseOnExpired  *bool
 }
 
 // BulkUpdateAccountsInput 保留批量修改的筛选与字段省略语义。
@@ -69,8 +64,6 @@ type BulkUpdateAccountsInput struct {
 	GroupIDs       *[]int64
 	Credentials    map[string]any
 	Extra          map[string]any
-	// SkipMixedChannelCheck 表达调用方已确认混合渠道风险。
-	SkipMixedChannelCheck bool
 }
 
 type BulkUpdateAccountFilters struct {

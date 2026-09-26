@@ -52,12 +52,14 @@ func (s *Diagnostics) diagnosticCore() (*schedulercore.DiagnosticService, *diagn
 	})
 	return core, scope
 }
+
 func (s *diagnosticScope) originalGroup(g *schedulercore.DiagnosticGroup) *routing.Group {
 	if g == nil {
 		return nil
 	}
 	return s.groupValues[g.ProjectionID]
 }
+
 func (s *diagnosticScope) group(v *routing.Group) *schedulercore.DiagnosticGroup {
 	if v == nil {
 		return nil
@@ -65,8 +67,9 @@ func (s *diagnosticScope) group(v *routing.Group) *schedulercore.DiagnosticGroup
 	s.next++
 	id := s.next
 	s.groupValues[id] = v
-	return &schedulercore.DiagnosticGroup{ProjectionID: id, ID: v.ID, Name: v.Name, Platform: v.Platform, SortOrder: v.SortOrder, Advanced: v.UsesAdvancedScheduler(), RequirePrivacySet: v.RequirePrivacySet, AdvancedSchedulerOverrides: accessview.CloneGroupAdvancedSchedulerOverrides(v.AdvancedSchedulerOverrides)}
+	return &schedulercore.DiagnosticGroup{ProjectionID: id, ID: v.ID, Name: v.Name, SortOrder: v.SortOrder, Advanced: v.UsesAdvancedScheduler(), RequirePrivacySet: v.RequirePrivacySet, AdvancedSchedulerOverrides: accessview.CloneGroupAdvancedSchedulerOverrides(v.AdvancedSchedulerOverrides)}
 }
+
 func (s *diagnosticScope) account(v *gatewayprovider.ExecutionAccount) *schedulercore.DiagnosticAccount {
 	if v == nil {
 		return nil
@@ -74,7 +77,7 @@ func (s *diagnosticScope) account(v *gatewayprovider.ExecutionAccount) *schedule
 	s.next++
 	id := s.next
 	s.accountValues[id] = v
-	a := &schedulercore.DiagnosticAccount{ProjectionID: id, ID: v.Record.ID, Name: v.Record.Name, Platform: v.Record.Platform, Type: v.Record.Type, Status: v.Record.Status, Priority: v.Record.Priority, LoadFactor: v.View().EffectiveLoadFactor(), Schedulable: v.Record.Schedulable, AutoPauseOnExpired: v.Record.AutoPauseOnExpired, PrivacySet: v.View().IsPrivacySet(), MixedScheduling: v.View().IsMixedSchedulingEnabled(), SubscriptionPriority: v.View().IsOpenAIChatGPTSubscription(), ExpiresAt: v.Record.ExpiresAt, OverloadUntil: v.Record.OverloadUntil, RateLimitResetAt: v.Record.RateLimitResetAt, TempUnschedulableUntil: v.Record.TempUnschedulableUntil, SessionWindowEnd: v.Record.SessionWindowEnd, GroupIDs: slices.Clone(v.Record.GroupIDs)}
+	a := &schedulercore.DiagnosticAccount{ProjectionID: id, ID: v.Record.ID, Name: v.Record.Name, Platform: v.Record.Platform, Type: v.Record.Type, Status: v.Record.Status, Priority: v.Record.Priority, LoadFactor: v.View().EffectiveLoadFactor(), Schedulable: v.Record.Schedulable, AutoPauseOnExpired: v.Record.AutoPauseOnExpired, PrivacySet: v.View().IsPrivacySet(), SubscriptionPriority: v.View().IsOpenAIChatGPTSubscription(), ExpiresAt: v.Record.ExpiresAt, OverloadUntil: v.Record.OverloadUntil, RateLimitResetAt: v.Record.RateLimitResetAt, TempUnschedulableUntil: v.Record.TempUnschedulableUntil, SessionWindowEnd: v.Record.SessionWindowEnd, GroupIDs: slices.Clone(v.Record.GroupIDs)}
 	if v.Record.AccountGroups != nil {
 		a.AccountGroups = make([]schedulercore.DiagnosticAccountGroup, len(v.Record.AccountGroups))
 		for i, g := range v.Record.AccountGroups {
@@ -89,6 +92,7 @@ func (s *diagnosticScope) account(v *gatewayprovider.ExecutionAccount) *schedule
 	}
 	return a
 }
+
 func (s *diagnosticScope) accounts(values []*gatewayprovider.ExecutionAccount) []*schedulercore.DiagnosticAccount {
 	if values == nil {
 		return nil
@@ -99,6 +103,7 @@ func (s *diagnosticScope) accounts(values []*gatewayprovider.ExecutionAccount) [
 	}
 	return out
 }
+
 func (s *diagnosticScope) accountSlice(values []gatewayprovider.ExecutionAccount) []schedulercore.DiagnosticAccount {
 	if values == nil {
 		return nil
@@ -109,18 +114,22 @@ func (s *diagnosticScope) accountSlice(values []gatewayprovider.ExecutionAccount
 	}
 	return out
 }
+
 func (s *diagnosticScope) GetAccount(ctx context.Context, id int64) (*schedulercore.DiagnosticAccount, error) {
 	v, err := s.source.GetAccount(ctx, id)
 	return s.account(v), err
 }
+
 func (s *diagnosticScope) GetGroup(ctx context.Context, id int64) (*schedulercore.DiagnosticGroup, error) {
 	v, err := s.source.GetGroup(ctx, id)
 	return s.group(v), err
 }
+
 func (s *diagnosticScope) ListAccountsForSchedulerScoreFilter(ctx context.Context, platform, kind, status, search string, groupID int64, privacy string) ([]schedulercore.DiagnosticAccount, error) {
 	v, err := s.source.ListAccountsForSchedulerScoreFilter(ctx, platform, kind, status, search, groupID, privacy)
 	return s.accountSlice(v), err
 }
+
 func (s *diagnosticScope) ListSchedulableAccountsForAdvancedSchedulerScore(ctx context.Context, groupID *int64, platform string) ([]schedulercore.DiagnosticAccount, error) {
 	v, err := s.source.ListSchedulableAccountsForAdvancedSchedulerScore(ctx, groupID, platform)
 	return s.accountSlice(v), err

@@ -17,11 +17,10 @@ import (
 func TestCreateAccountDiscardsDeprecatedBillingProbeExtra(t *testing.T) {
 	repo := &accountServiceTestRepo{}
 	created, err := newOriginalAccountEditor(repo).CreateAccount(context.Background(), &account.CreateAccountInput{
-		Name:                 "upstream",
-		Platform:             capability.PlatformOpenAI,
-		Type:                 capability.AccountTypeAPIKey,
-		Credentials:          map[string]any{"api_key": "sk-test"},
-		SkipDefaultGroupBind: true,
+		Name:        "upstream",
+		Platform:    capability.PlatformOpenAI,
+		Type:        capability.AccountTypeAPIKey,
+		Credentials: map[string]any{"api_key": "sk-test"},
 		Extra: map[string]any{
 			"upstream_billing_probe_enabled": true,
 			"upstream_billing_probe":         map[string]any{"status": "ok"},

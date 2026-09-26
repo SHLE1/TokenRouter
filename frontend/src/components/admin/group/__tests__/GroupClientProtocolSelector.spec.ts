@@ -12,7 +12,6 @@ describe('GroupClientProtocolSelector', () => {
   it('renders the protocol rows without an outer frame', () => {
     const wrapper = mount(GroupClientProtocolSelector, {
       props: {
-        platform: 'openai',
         modelValue: ['openai_responses', 'openai_chat_completions']
       }
     })
@@ -26,7 +25,6 @@ describe('GroupClientProtocolSelector', () => {
   it('shows the canonical endpoint for each supported protocol', () => {
     const wrapper = mount(GroupClientProtocolSelector, {
       props: {
-        platform: 'gemini',
         modelValue: []
       }
     })
@@ -48,7 +46,6 @@ describe('GroupClientProtocolSelector', () => {
   it('uses the shared enabled switch color', () => {
     const wrapper = mount(GroupClientProtocolSelector, {
       props: {
-        platform: 'openai',
         modelValue: ['openai_responses']
       }
     })
@@ -64,7 +61,6 @@ describe('GroupClientProtocolSelector', () => {
   it('allows default protocols to be disabled', async () => {
     const wrapper = mount(GroupClientProtocolSelector, {
       props: {
-        platform: 'openai',
         modelValue: ['openai_responses', 'openai_chat_completions']
       }
     })
@@ -79,7 +75,6 @@ describe('GroupClientProtocolSelector', () => {
   it('allows any platform to disable its final protocol', async () => {
     const wrapper = mount(GroupClientProtocolSelector, {
       props: {
-        platform: 'anthropic',
         modelValue: ['anthropic_messages']
       }
     })
@@ -90,14 +85,25 @@ describe('GroupClientProtocolSelector', () => {
 })
 
 it('转换目标与客户端入口开关独立，并使用项目 Select', async () => {
-  const wrapper = mount(GroupClientProtocolSelector, { props: { platform: 'openai', modelValue: ['anthropic_messages'], fallbacks: { anthropic_messages: 'openai_responses' } } })
+  const wrapper = mount(GroupClientProtocolSelector, { props: { modelValue: ['anthropic_messages'], fallbacks: { anthropic_messages: ['openai_responses'] } } })
   const selects = wrapper.findAllComponents({ name: 'Select' })
   expect(selects.length).toBeGreaterThan(0)
   const messages = selects.find(select => select.props('modelValue') === 'openai_responses')!
   expect(messages.props('options')).toEqual(expect.arrayContaining([{ value: 'openai_responses', label: 'OpenAI Responses' }]))
   messages.vm.$emit('update:modelValue', 'openai_chat_completions')
-  expect(wrapper.emitted('update:fallbacks')?.at(-1)?.[0]).toEqual({ anthropic_messages: 'openai_chat_completions' })
+  expect(wrapper.emitted('update:fallbacks')?.at(-1)?.[0]).toEqual({ anthropic_messages: ['openai_chat_completions'] })
   expect(wrapper.emitted('update:modelValue')).toBeUndefined()
 })
 
 useProtocolCatalogFixture()
+
+it('自动、仅原生和有序目标使用不同持久语义', async () => {
+  const wrapper = mount(GroupClientProtocolSelector, { props: { modelValue: ['anthropic_messages'], fallbacks: {} } })
+  const mode = wrapper.findAllComponents({ name: 'Select' })[0]
+  expect(mode.props('modelValue')).toBe('auto')
+  mode.vm.$emit('update:modelValue', 'native')
+  expect(wrapper.emitted('update:fallbacks')?.at(-1)?.[0]).toEqual({ anthropic_messages: [] })
+  await wrapper.setProps({ fallbacks: { anthropic_messages: ['openai_responses', 'openai_chat_completions'] } })
+  mode.vm.$emit('update:modelValue', 'auto')
+  expect(wrapper.emitted('update:fallbacks')?.at(-1)?.[0]).toEqual({})
+})

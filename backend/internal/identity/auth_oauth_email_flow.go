@@ -303,8 +303,6 @@ func (s *AuthService) FinalizeOAuthEmailAccount(
 	s.AuthUpdateOAuthSignupSource(ctx, user.ID, signupSource)
 	grantPlan := s.AuthResolveSignupGrantPlan(ctx, signupSource)
 	s.AuthAssignSubscriptions(ctx, user.ID, grantPlan.Subscriptions, "auto assigned by signup defaults")
-	// 平台限额快照失败不阻断 OAuth 邮箱补全。
-	_ = s.AuthSnapshotPlatformQuotaDefaults(ctx, user.ID, &grantPlan)
 	s.AuthBindRegistrationAffiliate(ctx, user.ID, affiliateCode)
 	return nil
 }

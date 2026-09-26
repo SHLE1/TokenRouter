@@ -13,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/TokenFlux/TokenRouter/internal/protocol"
+
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/execution"
@@ -127,12 +129,10 @@ func (h *GeminiNativeHandler) GeminiV1BetaModels(c *gin.Context) {
 		zap.Any("group_id", apiKey.GroupID),
 	)
 
-	// 检查平台：优先使用强制平台（/antigravity 路由，中间件已设置 request.Context），否则要求 gemini 分组
-	if !h.backend.HasForcedPlatform(c) {
-		if apiKey.Group == nil || apiKey.Group.Platform != capability.PlatformGemini {
-			WriteGoogleError(c, http.StatusBadRequest, "API key group platform is not gemini")
-			return
-		}
+	// 原生入口同样只检查分组协议，实际供应商由账号选择确定。
+	if apiKey.Group == nil || !apiKey.Group.AllowsClientProtocol(protocol.ProtocolGeminiGenerateContent) {
+		WriteGoogleError(c, http.StatusForbidden, "This group does not allow Gemini GenerateContent requests")
+		return
 	}
 
 	modelName, action, err := ParseGeminiModelAction(strings.TrimPrefix(c.Param("modelAction"), "/"))
@@ -164,6 +164,11 @@ func (h *GeminiNativeHandler) GeminiV1BetaModels(c *gin.Context) {
 		return
 	}
 
+	apiKey, err = resolveClientGroupForRequest(c, h.backend, apiKey, protocol.ProtocolGeminiGenerateContent)
+	if err != nil {
+		writeClientGroupFallbackError(c, err, func(c *gin.Context, status int, _, message string) { WriteGoogleError(c, status, message) })
+		return
+	}
 	h.backend.ObserveRequest(c, modelName, stream)
 	h.backend.ObserveEndpoint(c, stream)
 	// 用户提示词替换必须早于内容审计、会话 hash 和转发，避免审计与上游请求不一致。
@@ -275,7 +280,7 @@ func (h *GeminiNativeHandler) GeminiV1BetaModels(c *gin.Context) {
 				clientIP := clientip.GetClientIP(c)
 				platform := ""
 				if apiKey.Group != nil {
-					platform = apiKey.Group.Platform
+					platform = ""
 				}
 				geminiPrefixHash = h.backend.PrefixHash(
 					authSubject.UserID,

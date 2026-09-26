@@ -102,11 +102,10 @@ func (s *GatewayRoutingSuite) TestListSchedulableByPlatforms_GeminiAndAntigravit
 
 // TestListSchedulableByGroupIDAndPlatforms_WithGroupBinding 验证按分组过滤
 func (s *GatewayRoutingSuite) TestListSchedulableByGroupIDAndPlatforms_WithGroupBinding() {
-	// 创建 gemini 分组
+	// 创建可关联不同平台账号的分组
 	group := mustCreateGroup(s.T(), s.client, &routing.Group{
-		Name:     "gemini-group",
-		Platform: capability.PlatformGemini,
-		Status:   billing.StatusActive,
+		Name:   "mixed-group",
+		Status: billing.StatusActive,
 	})
 
 	// 创建账户

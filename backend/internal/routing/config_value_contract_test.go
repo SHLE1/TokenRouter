@@ -134,16 +134,14 @@ func TestPricingConfigClone_EdgeCases(t *testing.T) {
 
 	t.Run("deep copy model mapping", func(t *testing.T) {
 		original := &routing.GroupRoutingPolicy{
-			ModelMapping: map[string]map[string]string{
-				"openai": {"gpt-4": "gpt-4-turbo"},
-			},
+			ModelMapping: map[string]string{"gpt-4": "gpt-4-turbo"},
 		}
 		cloned := original.Clone()
 
 		// Modify the cloned nested map
-		cloned.ModelMapping["openai"]["gpt-4"] = "hacked"
+		cloned.ModelMapping["gpt-4"] = "hacked"
 
 		// Original must remain unchanged
-		require.Equal(t, "gpt-4-turbo", original.ModelMapping["openai"]["gpt-4"])
+		require.Equal(t, "gpt-4-turbo", original.ModelMapping["gpt-4"])
 	})
 }

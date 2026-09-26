@@ -11,7 +11,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/app/lifecycle"
 	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 )
@@ -19,7 +18,7 @@ import (
 // 媒体与辅助入口直接复用原生运行时，依赖拒绝和关闭都不能提前读取正文。
 func TestMediaAssemblyKeepsReadAndStopBoundaries(t *testing.T) {
 	activity := &gatewayRequestActivity{Operations: lifecycle.NewOperations("media-entry-contract")}
-	common := provideOpenAIAttemptBindings(nil, nil, nil, nil, nil, nil, GatewayCompletionRecorders{}, nil, nil, nil)
+	common := provideOpenAIAttemptBindings(nil, nil, nil, nil, nil, nil, GatewayCompletionRecorders{}, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	runtime := provideMediaRuntime(nil, nil, nil, nil, common, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	media := provideMediaHTTP(runtime, activity)
 	auxiliary := provideAuxiliaryHTTP(runtime, activity)
@@ -40,7 +39,7 @@ func TestMediaAssemblyKeepsReadAndStopBoundaries(t *testing.T) {
 				c, _ := gin.CreateTestContext(writer)
 				body := &protocolGateTrackingReader{}
 				c.Request = httptest.NewRequest(http.MethodPost, "/v1/"+entry.name, body)
-				c.Set(string(keyhttp.ContextKeyAPIKey), &apikey.APIKey{ID: 9, UserID: 7, Group: &routing.Group{Platform: capability.PlatformOpenAI, AllowImageGeneration: true}})
+				c.Set(string(keyhttp.ContextKeyAPIKey), &apikey.APIKey{ID: 9, UserID: 7, Group: &routing.Group{AllowImageGeneration: true}})
 				c.Set(authctx.ContextKeyUser, authctx.AuthSubject{UserID: 7})
 				entry.run(c)
 				require.Equal(t, http.StatusServiceUnavailable, writer.Code)

@@ -8,26 +8,20 @@ import (
 // @project-doc docs/domains/gateway_policy_controls.md#group_routing_policy
 // GroupRoutingPolicy 保存分组独立的路由与功能策略；价格配置不参与这些规则。
 type GroupRoutingPolicy struct {
-	Enabled                bool                         `json:"enabled"`
-	ModelMapping           map[string]map[string]string `json:"model_mapping"`
-	RestrictModels         bool                         `json:"restrict_models"`
-	RestrictionModelSource string                       `json:"restriction_model_source"`
-	AllowedModels          map[string][]string          `json:"allowed_models"`
-	Features               string                       `json:"features"`
-	FeaturesConfig         map[string]any               `json:"features_config"`
+	Enabled                bool              `json:"enabled"`
+	ModelMapping           map[string]string `json:"model_mapping"`
+	RestrictModels         bool              `json:"restrict_models"`
+	RestrictionModelSource string            `json:"restriction_model_source"`
+	AllowedModels          []string          `json:"allowed_models"`
+	Features               string            `json:"features"`
+	FeaturesConfig         map[string]any    `json:"features_config"`
 }
 
 // Clone 为认证快照和管理请求隔离嵌套配置。
 func (p GroupRoutingPolicy) Clone() GroupRoutingPolicy {
 	out := p
 	out.ModelMapping = maps.Clone(p.ModelMapping)
-	for platform, rules := range out.ModelMapping {
-		out.ModelMapping[platform] = maps.Clone(rules)
-	}
-	out.AllowedModels = maps.Clone(p.AllowedModels)
-	for platform, models := range out.AllowedModels {
-		out.AllowedModels[platform] = slices.Clone(models)
-	}
+	out.AllowedModels = slices.Clone(p.AllowedModels)
 	out.FeaturesConfig = DeepCopyFeaturesConfig(p.FeaturesConfig)
 	return out
 }

@@ -7,7 +7,6 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 
-	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/gin-gonic/gin"
@@ -17,16 +16,26 @@ import (
 // ReasoningEffortPolicyForRequest 返回请求目标平台对应的分组策略。
 // 复合 Key 已由鉴权中间件投影到具体分组，这里不重新引入旧的复合平台解析层。
 func ReasoningEffortPolicyForRequest(c *gin.Context, apiKey *apikey.APIKey, platform string) (string, []routing.ReasoningEffortMapping, string, bool) {
-	if apiKey == nil || apiKey.Group == nil || apiKey.Group.Platform != platform {
+	if apiKey == nil || apiKey.Group == nil || selectedOpsPlatform(c) != platform {
 		return "", nil, "", false
 	}
-	if EffectiveAPIKeyPlatform(c, apiKey) != platform {
-		return "", nil, "", false
+	group := apiKey.Group
+	maxEffort, err := routing.NormalizeMaxReasoningEffortForPlatform(platform, group.MaxReasoningEffort)
+	if err != nil {
+		maxEffort = ""
 	}
-	return apiKey.Group.MaxReasoningEffort,
-		apiKey.Group.ReasoningEffortMappings,
-		apiKey.Group.MaxReasoningEffortOverLimit,
-		true
+	// 平台专属档位只作用于能够表达该档位的实际账号。
+	var mappings []routing.ReasoningEffortMapping
+	for _, mapping := range group.ReasoningEffortMappings {
+		if _, err := routing.NormalizeReasoningEffortMappingValueForPlatform(platform, mapping.From); err != nil {
+			continue
+		}
+		if _, err := routing.NormalizeReasoningEffortMappingValueForPlatform(platform, mapping.To); err != nil {
+			continue
+		}
+		mappings = append(mappings, mapping)
+	}
+	return maxEffort, mappings, group.MaxReasoningEffortOverLimit, true
 }
 
 // OpenAIReasoningEffortPolicyForRequest 返回 OpenAI 分组策略。
@@ -36,20 +45,7 @@ func OpenAIReasoningEffortPolicyForRequest(c *gin.Context, apiKey *apikey.APIKey
 
 // AnthropicReasoningEffortPolicyForRequest 返回 Anthropic 分组策略。
 func AnthropicReasoningEffortPolicyForRequest(c *gin.Context, apiKey *apikey.APIKey) (string, []routing.ReasoningEffortMapping, string, bool) {
-	// /v1/messages 由通用 Anthropic handler 独立承接，不能使用 OpenAI 兼容
-	// handler 的默认平台推断，否则 Anthropic 分组会被误判为 OpenAI。
-	if apiKey == nil || apiKey.Group == nil || apiKey.Group.Platform != capability.PlatformAnthropic {
-		return "", nil, "", false
-	}
-	if c != nil {
-		if platform, forced := keyhttp.GetForcePlatformFromContext(c); forced && platform != capability.PlatformAnthropic {
-			return "", nil, "", false
-		}
-	}
-	return apiKey.Group.MaxReasoningEffort,
-		apiKey.Group.ReasoningEffortMappings,
-		apiKey.Group.MaxReasoningEffortOverLimit,
-		true
+	return ReasoningEffortPolicyForRequest(c, apiKey, capability.PlatformAnthropic)
 }
 
 // ApplyOpenAIReasoningEffortPolicyForRequest 在策略改写前保存客户端档位，并执行分组裁决。

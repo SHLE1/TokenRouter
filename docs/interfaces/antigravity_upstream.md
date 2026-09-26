@@ -2,14 +2,14 @@
 
 Antigravity 原生 OAuth 只显示 GenerateContent 的平台适配变体，Messages/Responses/Chat 是分组转换入口；历史 upstream 类型保留 Messages 原生直连，静态 API Key 的既有契约冲突不因目录统一而扩大支持范围。统一配置字段与入口门禁见[统一协议能力](protocol_capabilities.md)。
 
-本文描述 Antigravity 账号接入、专用 Claude/Gemini 端点、协议转换、混合调度与上游失败语义。它用于修改 Antigravity 适配器时保持平台隔离，不记录终端用户的 Claude Code 操作技巧，也不承诺上游未验证的模型能力。
+本文描述 Antigravity 账号接入、专用 Claude/Gemini 端点、协议转换、跨平台分组选号与上游失败语义。它用于修改 Antigravity 适配器时保持平台隔离，不记录终端用户的 Claude Code 操作技巧，也不承诺上游未验证的模型能力。
 
 ## 章节导航
 
 - [账号与凭据](#账号与凭据)：修改 OAuth 导入、刷新或账号资格时读取。
 - [专用端点](#专用端点)：修改强制平台路由时读取。
 - [协议适配](#协议适配)：修改 Claude/Gemini/OpenAI 转换时读取。
-- [混合调度](#混合调度)：修改与 Anthropic/Gemini 分组共用账号时读取。
+- [跨平台分组选号](#跨平台分组选号)：修改账号参与分组调度和专用入口过滤时读取。
 - [模型与额度](#模型与额度)：修改可见模型、配额或价格归属时读取。
 - [失败与恢复](#失败与恢复)：修改限流、重试、切换或凭据错误时读取。
 
@@ -26,7 +26,7 @@ Antigravity 账号的 `platform` 为 `antigravity`。管理端通过 `/api/v1/ad
 
 ## 专用端点
 
-专用路由在 API Key 鉴权前写入 `ForcePlatform=antigravity`，因此只选择 Antigravity 账号，不受混合调度开关影响：
+专用路由在 API Key 鉴权前写入 `ForcePlatform=antigravity`，因此只选择 Antigravity 账号，并继续遵守 Key 绑定分组的权限、模型与协议规则：
 
 | 入口 | 客户端协议 | 处理 |
 | --- | --- | --- |
@@ -65,24 +65,19 @@ Chat Completions / Responses
 
 兼容层把 Chat 请求中的正数 `max_completion_tokens`（缺省时使用 `max_tokens`）在转换为 Anthropic 请求前封顶为 64000；零、负数或缺省值不会覆盖转换器已有的默认上限，避免超大客户端参数被上游拒绝。
 
-## 混合调度
+## 跨平台分组选号
 
-Antigravity 账号 `extra.mixed_scheduling` 为布尔 `true` 时，可以作为 Anthropic 或 Gemini 原生分组的候选账号。缺失、`false` 或字符串 `"true"` 都视为未启用。候选账号还必须属于目标分组、状态 active/schedulable，并满足模型、额度、并发、资格和 endpoint 能力。
+Antigravity 账号可与其它平台账号关联到同一分组。选择器依次检查组成员、模型范围、协议路线、账号状态、额度和并发；账号不再需要配置混合调度开关。`/antigravity/*` 专用入口额外强制使用 Antigravity 账号。
 
-混合调度只扩大账号候选集，不改变请求平台的产品语义：
-
-- Anthropic 分组的请求仍按 Anthropic 入口、分组倍率和错误形状处理。
-- Gemini 分组的请求仍按 Gemini 入口和模型 URL 处理。
-- 粘性会话命中已关闭混合调度的 Antigravity 账号时，必须丢弃旧绑定并重新选择原生或合格混合账号。
-- 专用 `/antigravity/*` 入口永远强制平台；普通 Antigravity 分组也不因该开关混入其它平台账号。
-
-账号的混合调度状态或分组关系变化后要重建原生平台和 Antigravity 相关调度快照，清理旧粘性状态。Anthropic 与 Antigravity Claude 不能在同一显式会话里无约束切换；会话隔离、粘性和缓存计费规则用于防止上下文跨账号语义漂移。
+客户端的 Messages、Responses、Chat 或 Gemini 协议决定响应形状。分组保存权限、倍率和策略，实际账号决定上游认证和转发协议。账号移组或资格变化后会刷新所属分组的共享快照与相关平台桶。已有显式会话仍受签名、会话隔离、粘性和缓存计费约束。
 
 ## 模型与额度
 
 Antigravity 同时提供 Claude 与 Gemini 模型族。Gemini 3.6 Flash 的基础、high、low、medium 与 tiered 五种模型 ID 均进入默认模型目录和身份映射；账号存在自定义映射时，只要没有覆盖它们的通配符，这些精确直通映射仍会自动保留。可见模型来自默认映射、分组白名单、账号资格和当前可请求解析；API Key 精确别名可投影到列表，目标不可请求时不展示。模型能力不能只由名称前缀推断，thinking/image 等能力由适配器与账号详情共同约束。
 
-额度查询按账号和模型 scope 保存上游 reset/remaining 状态，并可包含 AI Credits。429/503 分类区分模型限流、credits 耗尽和共享容量不足；请求期由 `gateway/admission.QuotaPlatform` 固定额度平台：强制平台入口使用 Antigravity，其他入口使用最终分组平台；不能仅因选到 Antigravity 账号就改变额度归属。账号成本和用户扣费仍遵守渠道计价与分组倍率边界。
+账号模型先完成一次映射，再应用本次请求的 thinking 后缀，最后检查最终模型白名单。只允许 thinking 变体时，基础名称加 thinking 的请求可以通过；白名单只允许基础模型时，thinking 请求会被拒绝。最终模型不再作为新的输入执行第二次账号映射。
+
+额度查询按账号和模型 scope 保存上游 reset/remaining 状态，并可包含 AI Credits。429/503 分类区分模型限流、credits 耗尽和共享容量不足。上游账号额度独立于用户余额、订阅和 Key 限额；使用记录的平台取实际执行账号。账号成本和用户售价分别解析，用户价格不因最终选择 Antigravity 账号而改变。
 
 ## 失败与恢复
 
@@ -93,14 +88,14 @@ Antigravity 同时提供 Claude 与 Gemini 模型族。Gemini 3.6 Flash 的基�
 - OAuth credential 被刷新后仍遭拒绝时返回要求重新授权并检查 project ID 的脱敏提示，同时把账号标记为可恢复错误。
 - 只有白名单中的安全上游提示可以透传；响应体日志受开关、字节上限和脱敏约束。
 
-修改适配器时应覆盖非流/流、Claude/Gemini/OpenAI 三种客户端形状、工具/thinking、单/多账号限流、混合调度关闭后的快照失效和用量归属测试。
+修改适配器时应覆盖非流/流、Claude/Gemini/OpenAI 三种客户端形状、工具/thinking、单/多账号限流、移组后的快照失效和用量归属测试。
 
 <a id="antigravity_native_execution"></a>
 ## 平台执行与账号职责
 
 `upstream/antigravity.Executor` 接入 Claude、Gemini、Chat、Responses 和历史静态 upstream 五条生产链，闭合单次平台交换、恢复、输出及最终响应体关闭。账号内普通重试、智能重试、credits 请求和共享模型容量去重只有一份实现；全局账号切换、付款主体和资金完成由网关编排持有；`gateway/provider/googleforward.Antigravity` 只组合本次凭据、转换选项和同步输出。`Probe` 复用同一平台重试，只测试指定账号，不取得用户或账号的请求槽。
 
-流通过同步 `OutputSink` 输出，保留原来每种协议的前导缓冲、非流收集、心跳、首 token 与断开后的尾部读取规则。结果区分已观测 usage、是否服务和错误；HTTP 提交及重试关闭与语义输出分开，失败结算仍按 Antigravity 入口的完成资格判断。平台用量归一化、外层冻结的 QuotaPlatform 与后台完成输入保持原链：强制平台路由优先，否则按分组平台；后台不能用缺少原路由上下文的 context 重新计算。
+流通过同步 `OutputSink` 输出，保留原来每种协议的前导缓冲、非流收集、心跳、首 token 与断开后的尾部读取规则。结果区分已观测 usage、是否服务和错误；HTTP 提交及重试关闭与语义输出分开，失败结算仍按 Antigravity 入口的完成资格判断。使用记录在请求期固化实际账号平台，后台完成器只消费冻结结果，不再从分组推导平台。
 
 OAuth 会话、交换后的一次性删除、项目与套餐发现、隐私设置及验证由 `account.AntigravityAuthorization` 编排。原生客户端只执行供应商协议，wire 变体由 `protocol/google` 保留。token provider 的 project 回填冷却、缓存键、八秒请求刷新预算、后台十五分钟刷新资格与原 CAS 不变。额度展示、credits/模型窗口及 INTERNAL 500 惩罚归账号；共享缓存、计数器和发布端口复用原实例。
 

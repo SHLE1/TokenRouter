@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
-	"maps"
 	"strconv"
 	"strings"
 	"time"
@@ -85,9 +84,9 @@ func CloneGroupMessagesDispatchModelConfig(value OpenAIMessagesDispatchModelConf
 
 func CloneGroupForDuplicate(source *Group, operationID string) *Group {
 	return &Group{
-		Name:                            DuplicateGroupName(source.Name, 1),
-		Description:                     source.Description,
-		Platform:                        source.Platform,
+		Name:        DuplicateGroupName(source.Name, 1),
+		Description: source.Description,
+
 		SchedulerType:                   source.SchedulerType,
 		AdvancedSchedulerOverrides:      policy.CloneGroupAdvancedSchedulerOverrides(source.AdvancedSchedulerOverrides),
 		DisplayBrand:                    source.DisplayBrand,
@@ -122,9 +121,9 @@ func CloneGroupForDuplicate(source *Group, operationID string) *Group {
 		SupportedModelScopes:            append([]string(nil), source.SupportedModelScopes...),
 		SortOrder:                       source.SortOrder,
 		AllowedProtocols:                CloneGroupClientProtocols(source.AllowedProtocols),
-		ProtocolFallbacks:               maps.Clone(source.ProtocolFallbacks),
+		ProtocolFallbacks:               protocol.CloneFallbacks(source.ProtocolFallbacks),
 		ResponsesImagePolicy:            source.ResponsesImagePolicy,
-		AllowMessagesDispatch:           source.Platform == PlatformOpenAI && source.AllowsClientProtocol(protocol.ProtocolAnthropicMessages),
+		AllowMessagesDispatch:           source.AllowsClientProtocol(protocol.ProtocolAnthropicMessages),
 		AllowLive:                       source.AllowLive,
 		ForceOpenAIFast:                 source.ForceOpenAIFast,
 		OpenAIFastPolicy:                source.EffectiveOpenAIFastPolicy(),

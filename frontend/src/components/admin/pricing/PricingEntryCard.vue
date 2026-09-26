@@ -496,7 +496,7 @@ async function onModelsUpdate(newModels: string[]) {
 
   // 查询第一个新增模型的默认价格
   try {
-    const result = await pricingAPI.getModelDefaultPricing(addedModels[0], props.platform)
+    const result = await pricingAPI.getModelDefaultPricing(addedModels[0])
     if (result.found) {
       emit('update', {
         ...props.entry,

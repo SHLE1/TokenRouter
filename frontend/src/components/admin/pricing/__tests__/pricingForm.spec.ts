@@ -5,7 +5,7 @@ import type { ModelPricingEntry } from '@/api/admin/pricing'
 // 使用包含零价、区间和各类倍率的完整 API 价卡，验证两处管理页的共同往返合同。
 export function fullPricing(): ModelPricingEntry {
   return {
-    platform: 'openai', models: ['gpt-test'], billing_mode: 'token', price_multiplier: 1.2,
+    models: ['gpt-test'], billing_mode: 'token', price_multiplier: 1.2,
     fast_mode_multiplier: null, fast_multiplier: 1.5, flex_multiplier: 0.4, max_reasoning_effort_multiplier: 2,
     input_price: 0, output_price: 0.000003, cache_write_price: 0.000004,
     cache_write_1h_price: 0.000005, cache_read_price: 0.0000001,
@@ -26,7 +26,7 @@ describe('共享价格卡', () => {
     const form = pricingEntryFromAPI(api)
     expect(form.output_price).toBe(3)
     expect(validatePricingForm([form], t)).toBeNull()
-    expect(pricingEntryToAPI(form, 'openai')).toEqual(api)
+    expect(pricingEntryToAPI(form)).toEqual(api)
     form.models.push('another')
     form.intervals[0]!.output_multiplier = 7
     expect(api.models).toEqual(['gpt-test'])
@@ -44,7 +44,7 @@ describe('共享价格卡', () => {
     const api = { ...fullPricing(), fast_multiplier: null, fast_mode_multiplier: 0 }
     const form = pricingEntryFromAPI(api)
     expect(validatePricingForm([form], t)).toBeNull()
-    expect(pricingEntryToAPI(form, 'openai')).toEqual(api)
+    expect(pricingEntryToAPI(form)).toEqual(api)
     expect(validatePricingForm([{ ...form, fast_multiplier: 0 }], t)).toContain('tierMultiplierMustBePositive')
   })
   it.each([0, -1, Infinity, NaN])('拒绝非法服务层级倍率 %s', value => {

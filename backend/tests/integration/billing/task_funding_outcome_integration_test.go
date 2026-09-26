@@ -17,7 +17,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/timezone"
 
 	routing "github.com/TokenFlux/TokenRouter/internal/routing"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 
 	billingpg "github.com/TokenFlux/TokenRouter/internal/billing/postgres"
 	"github.com/TokenFlux/TokenRouter/internal/creative"
@@ -32,7 +31,7 @@ func TestS13ProviderOutcomeRollbackAndDeliveryLost(t *testing.T) {
 	ctx := context.Background()
 	client := committedEntitlementClient(t)
 	user := mustCreateUser(t, client, &identity.User{Email: "s13-" + uuid.NewString() + "@example.com", Balance: 10})
-	group := mustCreateGroup(t, client, &routing.Group{Name: "s13-outcome-" + uuid.NewString(), Platform: capability.PlatformGemini})
+	group := mustCreateGroup(t, client, &routing.Group{Name: "s13-outcome-" + uuid.NewString()})
 	key := mustCreateApiKey(t, client, &apikey.APIKey{UserID: user.ID, Key: "sk-s13-" + uuid.NewString(), Name: "s13"})
 	repo := creativepg.NewCreativeRunRepository(client)
 	id := "crun_" + uuid.NewString()
@@ -92,7 +91,7 @@ func TestS13TaskFundingProjectionRollback(t *testing.T) {
 	ctx := context.Background()
 	client := committedEntitlementClient(t)
 	user := mustCreateUser(t, client, &identity.User{Email: "s13-funds-" + uuid.NewString() + "@example.com", Balance: 10})
-	group := mustCreateGroup(t, client, &routing.Group{Name: "s13-funds-" + uuid.NewString(), Platform: capability.PlatformGemini})
+	group := mustCreateGroup(t, client, &routing.Group{Name: "s13-funds-" + uuid.NewString()})
 	key := mustCreateApiKey(t, client, &apikey.APIKey{UserID: user.ID, Key: "sk-s13-funds-" + uuid.NewString(), Name: "s13"})
 	repo := creativepg.NewCreativeRunRepository(client)
 	id := "crun_" + uuid.NewString()
@@ -129,7 +128,7 @@ func TestS13NativeCreativeFundingReplay(t *testing.T) {
 	ctx := context.Background()
 	client := committedEntitlementClient(t)
 	user := mustCreateUser(t, client, &identity.User{Email: "s13-native-" + uuid.NewString() + "@example.com", Balance: 10})
-	group := mustCreateGroup(t, client, &routing.Group{Name: "s13-native-" + uuid.NewString(), Platform: capability.PlatformGemini})
+	group := mustCreateGroup(t, client, &routing.Group{Name: "s13-native-" + uuid.NewString()})
 	key := mustCreateApiKey(t, client, &apikey.APIKey{UserID: user.ID, Key: "sk-s13-native-" + uuid.NewString(), Name: "native"})
 	repo := creativepg.NewCreativeRunRepository(client)
 	run, err := repo.CreateCreativeRun(ctx, creative.CreateCreativeRunParams{RunID: "crun_" + uuid.NewString(), UserID: user.ID, GroupID: group.ID, APIKeyID: key.ID, Model: "image", RequestedModel: "image", Operation: creative.CreativeOperationGenerate, RequestedOutputCount: 1, ImageSize: "1K", ResponseMIMEType: "image/png", PromptHash: "hash", RequestFingerprint: "fingerprint", EstimatedCost: 0.2, HoldAmount: 0.2, BaseUnitPrice: 0.2, SubscriptionRateMultiplier: 1, BalanceRateMultiplier: 1, PlanGroupRateEnabled: true})

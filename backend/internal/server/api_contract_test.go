@@ -39,7 +39,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/ops"
 	"github.com/TokenFlux/TokenRouter/internal/payment"
 	"github.com/TokenFlux/TokenRouter/internal/promotion"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 	"github.com/TokenFlux/TokenRouter/internal/site"
 
@@ -67,7 +66,6 @@ import (
 )
 
 func TestAPIContracts(t *testing.T) {
-
 	tests := []struct {
 		name       string
 		setup      func(t *testing.T, deps *contractDeps)
@@ -254,10 +252,14 @@ func TestAPIContracts(t *testing.T) {
 			}`,
 		},
 		{
-			name:   "POST /api/v1/keys",
+			name: "POST /api/v1/keys",
+			setup: func(t *testing.T, deps *contractDeps) {
+				t.Helper()
+				deps.groupRepo.SetActive([]routing.Group{{ID: 10, Status: "active"}})
+			},
 			method: http.MethodPost,
 			path:   "/api/v1/keys",
-			body:   `{"name":"Key One","custom_key":"sk_custom_1234567890"}`,
+			body:   `{"name":"Key One","custom_key":"sk_custom_1234567890","group_id":10}`,
 			headers: map[string]string{
 				"Content-Type": "application/json",
 			},
@@ -273,7 +275,7 @@ func TestAPIContracts(t *testing.T) {
 					"scope": "personal",
 					"key": "sk_custom_1234567890",
 					"name": "Key One",
-					"group_id": null,
+					"group_id": 10,
 					"is_composite": false,
 					"composite_groups": [],
 					"status": "active",
@@ -297,7 +299,7 @@ func TestAPIContracts(t *testing.T) {
 					"window_5h_start": null,
 					"window_1d_start": null,
 					"window_7d_start": null,
-					"fallback_to_default_group_when_unavailable": true,
+					"fallback_when_group_unavailable": true,
 					"expires_at": null,
 					"created_at": "2025-01-02T03:04:05Z",
 					"updated_at": "2025-01-02T03:04:05Z"
@@ -309,10 +311,11 @@ func TestAPIContracts(t *testing.T) {
 			setup: func(t *testing.T, deps *contractDeps) {
 				t.Helper()
 				deps.apiKeyRepo.createErr = apikey.NewAPIKeyLimitReachedError(100, 100)
+				deps.groupRepo.SetActive([]routing.Group{{ID: 10, Status: "active"}})
 			},
 			method: http.MethodPost,
 			path:   "/api/v1/keys",
-			body:   `{"name":"Blocked Key","custom_key":"sk_blocked_1234567890"}`,
+			body:   `{"name":"Blocked Key","custom_key":"sk_blocked_1234567890","group_id":10}`,
 			headers: map[string]string{
 				"Content-Type": "application/json",
 			},
@@ -332,15 +335,15 @@ func TestAPIContracts(t *testing.T) {
 			setup: func(t *testing.T, deps *contractDeps) {
 				t.Helper()
 				deps.apiKeyRepo.MustSeed(&apikey.APIKey{
-					ID:                                    100,
-					UserID:                                1,
-					Key:                                   "sk_custom_1234567890",
-					Name:                                  "Key One",
-					Status:                                billing.StatusActive,
-					BillingMode:                           apikey.APIKeyBillingModeAuto,
-					FallbackToDefaultGroupWhenUnavailable: true,
-					CreatedAt:                             deps.now,
-					UpdatedAt:                             deps.now,
+					ID:                           100,
+					UserID:                       1,
+					Key:                          "sk_custom_1234567890",
+					Name:                         "Key One",
+					Status:                       billing.StatusActive,
+					BillingMode:                  apikey.APIKeyBillingModeAuto,
+					FallbackWhenGroupUnavailable: true,
+					CreatedAt:                    deps.now,
+					UpdatedAt:                    deps.now,
 				})
 			},
 			method:     http.MethodGet,
@@ -383,7 +386,7 @@ func TestAPIContracts(t *testing.T) {
 							"window_5h_start": null,
 							"window_1d_start": null,
 							"window_7d_start": null,
-							"fallback_to_default_group_when_unavailable": true,
+							"fallback_when_group_unavailable": true,
 							"expires_at": null,
 							"created_at": "2025-01-02T03:04:05Z",
 							"updated_at": "2025-01-02T03:04:05Z"
@@ -406,7 +409,6 @@ func TestAPIContracts(t *testing.T) {
 						ID:                 10,
 						Name:               "Group One",
 						Description:        "desc",
-						Platform:           capability.PlatformAnthropic,
 						RateMultiplier:     1.5,
 						PeakRateMultiplier: 1.0,
 						AllowedProtocols: []protocolcore.ProtocolID{
@@ -418,7 +420,7 @@ func TestAPIContracts(t *testing.T) {
 						Status:              billing.StatusActive,
 						ModelRoutingEnabled: true,
 						ModelRouting: map[string][]int64{
-							"claude-3-*": []int64{101, 102},
+							"claude-3-*": {101, 102},
 						},
 						AccountCount: 2,
 						CreatedAt:    deps.now,
@@ -437,8 +439,8 @@ func TestAPIContracts(t *testing.T) {
 					{
 						"id": 10,
 						"name": "Group One",
+						"models": [],
 						"description": "desc",
-						"platform": "anthropic",
 						"display_brand": "",
 						"rate_multiplier": 1.5,
 						"peak_rate_enabled": false,
@@ -455,7 +457,6 @@ func TestAPIContracts(t *testing.T) {
 						"audio_realtime_price_per_min": null,
 						"batch_image_discount_multiplier": 0,
 						"batch_image_hold_multiplier": 0,
-						"is_default": false,
 						"claude_code_only": false,
 						"protocol_fallbacks": null, "responses_image_policy": "", "allowed_protocols": [
 							"anthropic_messages",
@@ -857,6 +858,7 @@ func TestAPIContracts(t *testing.T) {
 							"api_key_id": 100,
 							"account_id": 200,
 								"request_id": "req_123",
+							"platform": "",
 								"model": "claude-3",
 								"request_type": "stream",
 								"openai_ws_mode": false,
@@ -1124,14 +1126,6 @@ func TestAPIContracts(t *testing.T) {
 					"force_email_on_third_party_signup": false,
 					"default_concurrency": 5,
 					"default_balance": 1.25,
-					"default_platform_quotas": {"anthropic":{"daily":null,"weekly":null,"monthly":null},"antigravity":{"daily":null,"weekly":null,"monthly":null},"deepseek":{"daily":null,"weekly":null,"monthly":null},"gemini":{"daily":null,"weekly":null,"monthly":null},"grok":{"daily":null,"weekly":null,"monthly":null},"kimi":{"daily":null,"weekly":null,"monthly":null},"openai":{"daily":null,"weekly":null,"monthly":null},"qoder":{"daily":null,"weekly":null,"monthly":null},"zhipu":{"daily":null,"weekly":null,"monthly":null}},
-					"auth_source_default_email_platform_quotas": null,
-					"auth_source_default_github_platform_quotas": null,
-					"auth_source_default_google_platform_quotas": null,
-					"auth_source_default_linuxdo_platform_quotas": null,
-					"auth_source_default_oidc_platform_quotas": null,
-					"auth_source_default_wechat_platform_quotas": null,
-					"auth_source_default_dingtalk_platform_quotas": null,
 					"default_user_api_key_limit": 100,
 					"default_user_rpm_limit": 0,
 					"default_subscriptions": [],
@@ -1176,7 +1170,6 @@ func TestAPIContracts(t *testing.T) {
 					"usage_ranking_show_actual_cost": true,
 					"min_claude_code_version": "",
 					"max_claude_code_version": "",
-					"allow_ungrouped_key_scheduling": false,
 					"backend_mode_enabled": false,
 					"enable_cch_signing": false,
 					"enable_claude_oauth_system_prompt_injection": true,
@@ -1484,14 +1477,6 @@ func TestAPIContracts(t *testing.T) {
 					"purchase_subscription_url": "",
 					"reasoning_point_rmb_unit_price": 0,
 					"affiliate_enabled": false,
-					"default_platform_quotas": {"anthropic":{"daily":null,"weekly":null,"monthly":null},"antigravity":{"daily":null,"weekly":null,"monthly":null},"deepseek":{"daily":null,"weekly":null,"monthly":null},"gemini":{"daily":null,"weekly":null,"monthly":null},"grok":{"daily":null,"weekly":null,"monthly":null},"kimi":{"daily":null,"weekly":null,"monthly":null},"openai":{"daily":null,"weekly":null,"monthly":null},"qoder":{"daily":null,"weekly":null,"monthly":null},"zhipu":{"daily":null,"weekly":null,"monthly":null}},
-					"auth_source_default_email_platform_quotas": null,
-					"auth_source_default_github_platform_quotas": null,
-					"auth_source_default_google_platform_quotas": null,
-					"auth_source_default_linuxdo_platform_quotas": null,
-					"auth_source_default_oidc_platform_quotas": null,
-					"auth_source_default_wechat_platform_quotas": null,
-					"auth_source_default_dingtalk_platform_quotas": null,
 					"affiliate_rebate_rate": 20,
 					"affiliate_rebate_freeze_hours": 0,
 					"affiliate_rebate_duration_days": 0,
@@ -1535,7 +1520,6 @@ func TestAPIContracts(t *testing.T) {
 					"ops_metrics_interval_seconds": 60,
 					"min_claude_code_version": "",
 					"max_claude_code_version": "",
-					"allow_ungrouped_key_scheduling": false,
 					"backend_mode_enabled": false,
 					"enable_fingerprint_unification": true,
 					"enable_metadata_passthrough": false,
@@ -2142,12 +2126,18 @@ func (stubGroupRepo) Create(ctx context.Context, group *routing.Group) error {
 	return errors.New("not implemented")
 }
 
-func (stubGroupRepo) GetByID(ctx context.Context, id int64) (*routing.Group, error) {
+func (r *stubGroupRepo) GetByID(ctx context.Context, id int64) (*routing.Group, error) {
+	for i := range r.active {
+		if r.active[i].ID == id {
+			group := r.active[i]
+			return &group, nil
+		}
+	}
 	return nil, routing.ErrGroupNotFound
 }
 
-func (stubGroupRepo) GetByIDLite(ctx context.Context, id int64) (*routing.Group, error) {
-	return nil, routing.ErrGroupNotFound
+func (r *stubGroupRepo) GetByIDLite(ctx context.Context, id int64) (*routing.Group, error) {
+	return r.GetByID(ctx, id)
 }
 
 func (stubGroupRepo) Update(ctx context.Context, group *routing.Group) error {
@@ -2172,20 +2162,6 @@ func (stubGroupRepo) ListWithFilters(ctx context.Context, params pagination.Pagi
 
 func (r *stubGroupRepo) ListActive(ctx context.Context) ([]routing.Group, error) {
 	return append([]routing.Group(nil), r.active...), nil
-}
-
-func (r *stubGroupRepo) ListActiveByPlatform(ctx context.Context, platform string) ([]routing.Group, error) {
-	out := make([]routing.Group, 0, len(r.active))
-	for i := range r.active {
-		g := r.active[i]
-		if g.Platform == platform {
-			out = append(out, g)
-		}
-	}
-	return out, nil
-}
-func (r *stubGroupRepo) ListActiveByPlatformLite(ctx context.Context, platform string) ([]routing.Group, error) {
-	return r.ListActiveByPlatform(ctx, platform)
 }
 
 func (stubGroupRepo) ExistsByName(ctx context.Context, name string) (bool, error) {
@@ -2542,6 +2518,7 @@ func (r *stubUserSubscriptionRepo) SetByID(id int64, sub billing.UserSubscriptio
 func (stubUserSubscriptionRepo) Create(ctx context.Context, sub *billing.UserSubscription) error {
 	return errors.New("not implemented")
 }
+
 func (r *stubUserSubscriptionRepo) GetByID(ctx context.Context, id int64) (*billing.UserSubscription, error) {
 	if r.byID == nil {
 		return nil, errors.New("not implemented")
@@ -2552,6 +2529,7 @@ func (r *stubUserSubscriptionRepo) GetByID(ctx context.Context, id int64) (*bill
 	}
 	return &sub, nil
 }
+
 func (r *stubUserSubscriptionRepo) GetByIDIncludeDeleted(ctx context.Context, id int64) (*billing.UserSubscription, error) {
 	if r.byID == nil {
 		return nil, errors.New("not implemented")
@@ -2562,18 +2540,23 @@ func (r *stubUserSubscriptionRepo) GetByIDIncludeDeleted(ctx context.Context, id
 	}
 	return &sub, nil
 }
+
 func (stubUserSubscriptionRepo) GetByUserIDAndGroupID(ctx context.Context, userID, groupID int64) (*billing.UserSubscription, error) {
 	return nil, errors.New("not implemented")
 }
+
 func (stubUserSubscriptionRepo) GetActiveByUserIDAndGroupID(ctx context.Context, userID, groupID int64) (*billing.UserSubscription, error) {
 	return nil, errors.New("not implemented")
 }
+
 func (stubUserSubscriptionRepo) GetLatestByUserIDAndPlanID(ctx context.Context, userID, planID int64) (*billing.UserSubscription, error) {
 	return nil, errors.New("not implemented")
 }
+
 func (stubUserSubscriptionRepo) Update(ctx context.Context, sub *billing.UserSubscription) error {
 	return errors.New("not implemented")
 }
+
 func (r *stubUserSubscriptionRepo) Delete(ctx context.Context, id int64) error {
 	if r.byID == nil {
 		return errors.New("not implemented")
@@ -2584,6 +2567,7 @@ func (r *stubUserSubscriptionRepo) Delete(ctx context.Context, id int64) error {
 	delete(r.byID, id)
 	return nil
 }
+
 func (r *stubUserSubscriptionRepo) Restore(ctx context.Context, subscriptionID int64, restoredStatus string) (*billing.UserSubscription, error) {
 	if r.byID == nil {
 		return nil, errors.New("not implemented")
@@ -2598,18 +2582,21 @@ func (r *stubUserSubscriptionRepo) Restore(ctx context.Context, subscriptionID i
 	r.byID[subscriptionID] = sub
 	return &sub, nil
 }
+
 func (r *stubUserSubscriptionRepo) ListByUserID(ctx context.Context, userID int64) ([]billing.UserSubscription, error) {
 	if r.byUser == nil {
 		return nil, nil
 	}
 	return append([]billing.UserSubscription(nil), r.byUser[userID]...), nil
 }
+
 func (r *stubUserSubscriptionRepo) ListActiveByUserID(ctx context.Context, userID int64) ([]billing.UserSubscription, error) {
 	if r.activeByUser == nil {
 		return nil, nil
 	}
 	return append([]billing.UserSubscription(nil), r.activeByUser[userID]...), nil
 }
+
 func (r *stubUserSubscriptionRepo) ListByUserIDAndPlanID(ctx context.Context, userID, planID int64) ([]billing.UserSubscription, error) {
 	if r.byID == nil {
 		return nil, errors.New("not implemented")
@@ -2622,48 +2609,63 @@ func (r *stubUserSubscriptionRepo) ListByUserIDAndPlanID(ctx context.Context, us
 	}
 	return out, nil
 }
+
 func (stubUserSubscriptionRepo) ListByGroupID(ctx context.Context, groupID int64, params pagination.PaginationParams) ([]billing.UserSubscription, *pagination.PaginationResult, error) {
 	return nil, nil, errors.New("not implemented")
 }
+
 func (stubUserSubscriptionRepo) ListByPlanID(ctx context.Context, planID int64, params pagination.PaginationParams) ([]billing.UserSubscription, *pagination.PaginationResult, error) {
 	return nil, nil, errors.New("not implemented")
 }
+
 func (stubUserSubscriptionRepo) List(ctx context.Context, params pagination.PaginationParams, userID, groupID *int64, status, platform, sortBy, sortOrder string) ([]billing.UserSubscription, *pagination.PaginationResult, error) {
 	return nil, nil, errors.New("not implemented")
 }
+
 func (stubUserSubscriptionRepo) ListBySourceOrderID(ctx context.Context, sourceOrderID int64) ([]billing.UserSubscription, error) {
 	return nil, errors.New("not implemented")
 }
+
 func (stubUserSubscriptionRepo) ExistsByUserIDAndGroupID(ctx context.Context, userID, groupID int64) (bool, error) {
 	return false, errors.New("not implemented")
 }
+
 func (stubUserSubscriptionRepo) ExtendExpiry(ctx context.Context, subscriptionID int64, newExpiresAt time.Time) error {
 	return errors.New("not implemented")
 }
+
 func (stubUserSubscriptionRepo) UpdateStatus(ctx context.Context, subscriptionID int64, status string) error {
 	return errors.New("not implemented")
 }
+
 func (stubUserSubscriptionRepo) UpdateNotes(ctx context.Context, subscriptionID int64, notes string) error {
 	return errors.New("not implemented")
 }
+
 func (stubUserSubscriptionRepo) ActivateWindows(ctx context.Context, id int64, start time.Time, activation billing.SubscriptionWindowActivation) error {
 	return errors.New("not implemented")
 }
+
 func (stubUserSubscriptionRepo) ResetUsageWindows(ctx context.Context, id int64, resetDaily, resetWeekly, resetMonthly bool, newWindowStart time.Time) error {
 	return errors.New("not implemented")
 }
+
 func (stubUserSubscriptionRepo) ResetDailyUsage(ctx context.Context, id int64, expectedWindowStart *time.Time, newWindowStart time.Time) error {
 	return errors.New("not implemented")
 }
+
 func (stubUserSubscriptionRepo) ResetWeeklyUsage(ctx context.Context, id int64, expectedWindowStart *time.Time, newWindowStart time.Time) error {
 	return errors.New("not implemented")
 }
+
 func (stubUserSubscriptionRepo) ResetMonthlyUsage(ctx context.Context, id int64, expectedWindowStart *time.Time, newWindowStart time.Time) error {
 	return errors.New("not implemented")
 }
+
 func (stubUserSubscriptionRepo) IncrementUsage(ctx context.Context, id int64, costUSD float64) error {
 	return errors.New("not implemented")
 }
+
 func (stubUserSubscriptionRepo) BatchUpdateExpiredStatus(ctx context.Context) (int64, error) {
 	return 0, errors.New("not implemented")
 }
@@ -2915,9 +2917,11 @@ func (r *stubApiKeyRepo) UpdateLastUsed(ctx context.Context, id int64, usedAt ti
 func (r *stubApiKeyRepo) IncrementRateLimitUsage(ctx context.Context, id int64, cost float64) error {
 	return nil
 }
+
 func (r *stubApiKeyRepo) ResetRateLimitWindows(ctx context.Context, id int64) error {
 	return nil
 }
+
 func (r *stubApiKeyRepo) GetRateLimitData(ctx context.Context, id int64) (*apikey.APIKeyRateLimitData, error) {
 	return nil, nil
 }
@@ -3224,6 +3228,7 @@ func (r *stubUsageLogRepo) GetStatsWithFilters(ctx context.Context, filters usag
 		Endpoints:                []usagecore.EndpointStat{},
 	}, nil
 }
+
 func (r *stubUsageLogRepo) GetAllGroupUsageSummary(ctx context.Context, todayStart time.Time) ([]usagecore.GroupUsageSummary, error) {
 	return nil, errors.New("not implemented")
 }

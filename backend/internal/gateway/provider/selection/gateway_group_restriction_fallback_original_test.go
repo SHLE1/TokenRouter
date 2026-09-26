@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestSelectAccountForModelWithExclusions_UsesFallbackGroupForGroupRestriction(t *testing.T) {
+func TestSelectAccountForModelWithExclusions_UsesAdmittedFallbackGroupForGroupRestriction(t *testing.T) {
 	t.Parallel()
 
 	groupID := int64(10)
@@ -28,7 +28,7 @@ func TestSelectAccountForModelWithExclusions_UsesFallbackGroupForGroupRestrictio
 		GroupIDs:       []int64{fallbackID},
 		RestrictModels: true,
 		ModelPricing: []routing.ModelPricingEntry{
-			{Platform: capability.PlatformAnthropic, Models: []string{"claude-sonnet-4-6"}},
+			{Models: []string{"claude-sonnet-4-6"}},
 		},
 	}
 	pricingConfigSvc := routingtestkit.NewConfigServiceFixture(routingtestkit.StandardPricingConfigRepository(ch, map[int64]string{
@@ -36,7 +36,7 @@ func TestSelectAccountForModelWithExclusions_UsesFallbackGroupForGroupRestrictio
 	}))
 	accountRepo := &mockAccountRepoForPlatform{
 		accounts: []gatewayprovider.ExecutionAccount{
-			{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true}},
+			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true}},
 		},
 		accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
 	}
@@ -46,16 +46,16 @@ func TestSelectAccountForModelWithExclusions_UsesFallbackGroupForGroupRestrictio
 	groupRepo := &mockGroupRepoForGateway{
 		groups: map[int64]*routing.Group{
 			groupID: {
-				ID:              groupID,
-				Platform:        capability.PlatformAnthropic,
+				ID: groupID,
+
 				Status:          billing.StatusActive,
 				ClaudeCodeOnly:  true,
 				FallbackGroupID: &fallbackID,
 				Hydrated:        true,
 			},
 			fallbackID: {
-				ID:       fallbackID,
-				Platform: capability.PlatformAnthropic,
+				ID: fallbackID,
+
 				Status:   billing.StatusActive,
 				Hydrated: true,
 			},
@@ -71,14 +71,16 @@ func TestSelectAccountForModelWithExclusions_UsesFallbackGroupForGroupRestrictio
 		Shared: Shared{GroupPolicies: pricingConfigSvc},
 	}, testConfig())
 
-	ctx := requeststate.WithGroup(context.Background(), groupRepo.groups[groupID])
-	account, err := svc.SelectAccountForModelWithExclusions(ctx, &groupID, "", "claude-sonnet-4-6", nil)
+	// 入口已完成回退授权，选择器只使用最终分组及其模型限制。
+	ctx := requeststate.WithGroup(context.Background(), groupRepo.groups[fallbackID])
+	ctx = requeststate.WithRoutePlan(ctx, routing.Plan(routing.PlanInput{Group: groupRepo.groups[fallbackID]}))
+	account, err := svc.SelectAccountForModelWithExclusions(ctx, &fallbackID, "", "claude-sonnet-4-6", nil)
 	require.NoError(t, err)
 	require.NotNil(t, account)
 	require.Equal(t, int64(1), account.Record.ID)
 }
 
-func TestSelectAccountWithLoadAwareness_UsesFallbackGroupForGroupRestriction(t *testing.T) {
+func TestSelectAccountWithLoadAwareness_UsesAdmittedFallbackGroupForGroupRestriction(t *testing.T) {
 	t.Parallel()
 
 	groupID := int64(10)
@@ -89,7 +91,7 @@ func TestSelectAccountWithLoadAwareness_UsesFallbackGroupForGroupRestriction(t *
 		GroupIDs:       []int64{fallbackID},
 		RestrictModels: true,
 		ModelPricing: []routing.ModelPricingEntry{
-			{Platform: capability.PlatformAnthropic, Models: []string{"claude-sonnet-4-6"}},
+			{Models: []string{"claude-sonnet-4-6"}},
 		},
 	}
 	pricingConfigSvc := routingtestkit.NewConfigServiceFixture(routingtestkit.StandardPricingConfigRepository(ch, map[int64]string{
@@ -97,7 +99,7 @@ func TestSelectAccountWithLoadAwareness_UsesFallbackGroupForGroupRestriction(t *
 	}))
 	accountRepo := &mockAccountRepoForPlatform{
 		accounts: []gatewayprovider.ExecutionAccount{
-			{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true}},
+			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true}},
 		},
 		accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
 	}
@@ -107,16 +109,16 @@ func TestSelectAccountWithLoadAwareness_UsesFallbackGroupForGroupRestriction(t *
 	groupRepo := &mockGroupRepoForGateway{
 		groups: map[int64]*routing.Group{
 			groupID: {
-				ID:              groupID,
-				Platform:        capability.PlatformAnthropic,
+				ID: groupID,
+
 				Status:          billing.StatusActive,
 				ClaudeCodeOnly:  true,
 				FallbackGroupID: &fallbackID,
 				Hydrated:        true,
 			},
 			fallbackID: {
-				ID:       fallbackID,
-				Platform: capability.PlatformAnthropic,
+				ID: fallbackID,
+
 				Status:   billing.StatusActive,
 				Hydrated: true,
 			},
@@ -132,8 +134,10 @@ func TestSelectAccountWithLoadAwareness_UsesFallbackGroupForGroupRestriction(t *
 		Shared: Shared{GroupPolicies: pricingConfigSvc},
 	}, testConfig())
 
-	ctx := requeststate.WithGroup(context.Background(), groupRepo.groups[groupID])
-	result, err := svc.SelectAccountWithLoadAwareness(ctx, &groupID, "", "claude-sonnet-4-6", nil, "", 0)
+	// 入口已完成回退授权，选择器只使用最终分组及其模型限制。
+	ctx := requeststate.WithGroup(context.Background(), groupRepo.groups[fallbackID])
+	ctx = requeststate.WithRoutePlan(ctx, routing.Plan(routing.PlanInput{Group: groupRepo.groups[fallbackID]}))
+	result, err := svc.SelectAccountWithLoadAwareness(ctx, &fallbackID, "", "claude-sonnet-4-6", nil, "", 0)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.NotNil(t, result.Account)

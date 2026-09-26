@@ -74,13 +74,13 @@ func TestMaxReasoningPricing_AccountStatsPriority(t *testing.T) {
 	}}}
 	cs := newTestPricingConfigServiceForStats(t, pricingConfig, 10, capability.PlatformAnthropic)
 	tokens := pricing.UsageTokens{InputTokens: 100}
-	cost := contractAccountStatsCost(context.Background(), cs, bs, 1, 10, "claude-fable-5-1", "", tokens, 1, 9, "priority", "max")
+	cost := contractAccountStatsCost(context.Background(), cs, bs, "", 1, 10, "claude-fable-5-1", "", tokens, 1, 9, "priority", "max")
 	require.NotNil(t, cost)
 	require.InDelta(t, 1, *cost, 1e-12)
 	pricingConfig.AccountStatsPricingRules = nil
 	cs = newTestPricingConfigServiceForStats(t, pricingConfig, 10, capability.PlatformAnthropic)
-	standard := contractAccountStatsCost(context.Background(), cs, bs, 1, 10, "claude-fable-5-1", "", tokens, 1, 9, "", "xhigh")
-	cost = contractAccountStatsCost(context.Background(), cs, bs, 1, 10, "claude-fable-5-1", "", tokens, 1, 9, "", "max")
+	standard := contractAccountStatsCost(context.Background(), cs, bs, "", 1, 10, "claude-fable-5-1", "", tokens, 1, 9, "", "xhigh")
+	cost = contractAccountStatsCost(context.Background(), cs, bs, "", 1, 10, "claude-fable-5-1", "", tokens, 1, 9, "", "max")
 	require.NotNil(t, standard)
 	require.NotNil(t, cost)
 	require.InDelta(t, *standard*3, *cost, 1e-12)
@@ -94,7 +94,7 @@ func TestMaxReasoningPricing_OpenAIUsageUsesFinalEffort(t *testing.T) {
 
 		requested, final := "max", "xhigh"
 		result := &forwardcore.OpenAIResult{ReasoningEffort: &final, RequestedReasoningEffort: &requested}
-		key := &apikey.APIKey{Group: &routing.Group{ID: 1, Platform: capability.PlatformOpenAI}}
+		key := &apikey.APIKey{Group: &routing.Group{ID: 1}}
 		tokens := pricing.UsageTokens{InputTokens: 1000}
 		standard, err := svc.CalculateOpenAIRecordUsageCostAt(context.Background(), gatewaycapture.ProjectOpenAICompletionResult(result, nil), gatewaycapture.ProjectCompletionKey(key), []string{"claude-fable-5-1"}, 2, 1, 1, 1, tokens, "", time.Time{})
 		require.NoError(t, err)

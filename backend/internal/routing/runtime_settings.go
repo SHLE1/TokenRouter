@@ -54,12 +54,3 @@ func (s *RuntimeSettings) GetFallbackModel(ctx context.Context, platform string)
 	}
 	return value
 }
-
-// IsUngroupedKeySchedulingAllowed 保持原缺省、未知平台及故障语义。
-func (s *RuntimeSettings) IsUngroupedKeySchedulingAllowed(ctx context.Context) bool {
-	value, err := s.settingRepo.GetValue(ctx, SettingKeyAllowUngroupedKeyScheduling)
-	if err != nil {
-		return false // fail-closed: 查询失败时默认不允许
-	}
-	return value == "true"
-}

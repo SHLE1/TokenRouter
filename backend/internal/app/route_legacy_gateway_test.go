@@ -1,11 +1,14 @@
 package app
 
 import (
+	"context"
+	"time"
+
 	"github.com/TokenFlux/TokenRouter/internal/app/lifecycle"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/httpapi/textattempt"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/promptpolicy"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
-
-	"time"
+	"go.uber.org/zap"
 
 	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
 
@@ -30,7 +33,7 @@ func legacyRouteMiddleware(auth keyhttp.APIKeyAuthMiddleware, keys *apikey.APIKe
 	if keys != nil {
 		native = keys
 	}
-	value := provideGatewayRouteMiddleware(auth, native, subscriptions, ops, settings, cfg, nil)
+	value := provideGatewayRouteMiddleware(auth, native, subscriptions, ops, cfg, nil, nil)
 	options := gatewayhttp.GroupAssignmentOptions{Access: func(c *gin.Context) gatewayhttp.GroupAssignmentAccess {
 		key, ok := keyhttp.GetAPIKeyFromContext(c)
 		if !ok || key == nil {
@@ -43,9 +46,9 @@ func legacyRouteMiddleware(auth keyhttp.APIKeyAuthMiddleware, keys *apikey.APIKe
 		middleware.MarkIngressRejected(c, middleware.IngressRejectGroupUnassigned)
 	}}
 	options.WriteError = gatewayhttp.AnthropicErrorWriter
-	value.RequireGroupAnthropic = gatewayhttp.RequireGroupAssignment(settings, options)
+	value.RequireGroupAnthropic = gatewayhttp.RequireGroupAssignment(options)
 	options.WriteError = gatewayhttp.GoogleErrorWriter
-	value.RequireGroupGoogle = gatewayhttp.RequireGroupAssignment(settings, options)
+	value.RequireGroupGoogle = gatewayhttp.RequireGroupAssignment(options)
 	return value
 }
 
@@ -64,7 +67,7 @@ func RegisterGatewayRoutes(
 	var runtime *textattempt.Runtime
 	var activity *gatewayRequestActivity
 	if h.TextEnabled {
-		shared = provideMessageHTTPBindings(gatewayprovider.NewRoutePlanner(nil), nil, provideSchedulerSharedState(nil, nil), nil, nil, nil, nil, nil, nil, cfg, nil)
+		shared = provideMessageHTTPBindings(gatewayprovider.NewRoutePlanner(nil), nil, provideSchedulerSharedState(nil, nil), nil, nil, nil, nil, nil, nil, cfg, nil, nil, nil)
 		runtime = textattempt.New(textattempt.Bindings{})
 		activity = &gatewayRequestActivity{Operations: lifecycle.NewOperations("route-fixture")}
 	}
@@ -74,7 +77,7 @@ func RegisterGatewayRoutes(
 	}
 	countTokensHTTP := h.CountTokensHTTP
 	if countTokensHTTP == nil && h.TextEnabled {
-		countTokensHTTP = provideCountTokensHTTP(nil, nil, nil, nil, nil, cfg, nil, nil, nil, nil, nil)
+		countTokensHTTP = gatewayhttp.NewCountTokensHandler(cfg.Gateway.MaxBodySize, 0, gatewayhttp.CountHTTPPorts{ReadAccess: keyhttp.GetAPIKeyFromContext, Funding: routeCountUnavailable{}, ObserveCompatibility: func(*zap.Logger) {}}, (*promptpolicy.Service)(nil))
 	}
 	qoderCompatibleHTTP := h.QoderCompatibleHTTP
 	if qoderCompatibleHTTP == nil {
@@ -88,12 +91,12 @@ func RegisterGatewayRoutes(
 	if geminiNativeHTTP == nil && h.TextEnabled {
 		geminiNativeHTTP = provideGeminiNativeHTTP(shared, nil, runtime, activity, nil)
 	}
-	commonOpenAI := provideOpenAIAttemptBindings(nil, nil, nil, nil, nil, nil, GatewayCompletionRecorders{}, nil, nil, nil)
+	commonOpenAI := provideOpenAIAttemptBindings(nil, nil, nil, nil, nil, nil, GatewayCompletionRecorders{}, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	openAIRuntime := provideOpenAITextAttemptRuntime(commonOpenAI)
 	mediaRuntime := provideMediaRuntime(nil, nil, nil, nil, commonOpenAI, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	openAITextHTTP := h.OpenAITextHTTP
 	if openAITextHTTP == nil && h.OpenAIEnabled {
-		openAITextHTTP = provideOpenAITextHTTP(nil, nil, nil, nil, nil, nil, nil, nil, nil, openAIRuntime, activity, nil, nil)
+		openAITextHTTP = provideOpenAITextHTTP(nil, nil, nil, nil, nil, nil, nil, nil, nil, openAIRuntime, activity, nil, nil, nil, nil)
 	}
 	responsesWSHTTP := h.ResponsesWSHTTP
 	if responsesWSHTTP == nil && h.OpenAIEnabled {
@@ -139,4 +142,11 @@ func RegisterGatewayRoutes(
 		publicUsage = h.PublicUsage.Usage
 	}
 	gatewayhttp.RegisterGatewayRoutes(r, gatewayhttp.RouteEndpoints{CountTokens: countTokensHTTP, QoderCompatible: qoderCompatibleHTTP, CompatibleText: compatibleTextHTTP, GeminiNative: geminiNativeHTTP, OpenAIText: openAITextHTTP, OpenAITokens: openAITokensHTTP, ResponsesWS: responsesWSHTTP, Models: modelsHTTP, Messages: messagesHTTP, Media: mediaHTTP, Auxiliary: auxiliaryHTTP, Live: liveHTTP, Search: searchHTTP, PublicUsage: publicUsage, QoderChat: qoderChat}, legacyRouteMiddleware(apiKeyAuth, apiKeyService, subscriptionService, opsService, settingService, cfg), func(group *gin.RouterGroup) { batchhttp.RegisterGatewayRoutes(group, h.BatchImage) })
+}
+
+// 空路由夹具不配置上游计数器，返回明确依赖错误而不是触发 nil 端口。
+type routeCountUnavailable struct{}
+
+func (routeCountUnavailable) CheckKey(context.Context, *apikey.APIKey, *billing.UserSubscription, string, bool) error {
+	return billing.ErrBillingServiceUnavailable
 }

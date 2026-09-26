@@ -14,7 +14,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/accessview"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
 )
 
@@ -68,9 +67,6 @@ func (Group) Fields() []ent.Field {
 			Comment("高峰时段叠加倍率，仅在 peak_rate_enabled 且处于 [peak_start, peak_end) 时乘入文本倍率"),
 		field.Bool("is_exclusive").
 			Default(false),
-		field.Bool("is_default").
-			Default(false).
-			Comment("是否为当前平台的默认分组"),
 		field.String("status").
 			MaxLen(20).
 			Default(routing.StatusActive),
@@ -81,9 +77,6 @@ func (Group) Fields() []ent.Field {
 			Immutable().
 			Comment("内部幂等恢复标识，不对 API 暴露"),
 
-		field.String("platform").
-			MaxLen(50).
-			Default(capability.PlatformAnthropic),
 		// scheduler_type 由分组决定基础或高级调度器，默认保持历史基础调度行为。
 		field.String("scheduler_type").
 			MaxLen(16).
@@ -208,8 +201,8 @@ func (Group) Fields() []ent.Field {
 			SchemaType(map[string]string{dialect.Postgres: "jsonb"}).
 			Comment("允许客户端调用分组的协议与业务入口完整集合"),
 		// 协议转换与 Responses 图片策略是独立的分组控制项。
-		field.JSON("protocol_fallbacks", map[protocol.ProtocolID]protocol.ProtocolID{}).
-			Default(map[protocol.ProtocolID]protocol.ProtocolID{}).
+		field.JSON("protocol_fallbacks", map[protocol.ProtocolID][]protocol.ProtocolID{}).
+			Default(map[protocol.ProtocolID][]protocol.ProtocolID{}).
 			SchemaType(map[string]string{dialect.Postgres: "jsonb"}),
 		field.String("responses_image_policy").Default("inherit"),
 		field.Bool("allow_live").
@@ -297,9 +290,7 @@ func (Group) Indexes() []ent.Index {
 	return []ent.Index{
 		// name 字段已在 Fields() 中声明 Unique()，无需重复索引
 		index.Fields("status"),
-		index.Fields("platform"),
 		index.Fields("is_exclusive"),
-		index.Fields("is_default"),
 		index.Fields("deleted_at"),
 		index.Fields("sort_order"),
 		index.Fields("session_isolation_enabled"),

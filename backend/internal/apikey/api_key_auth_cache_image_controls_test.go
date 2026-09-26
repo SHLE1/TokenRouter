@@ -9,7 +9,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/stretchr/testify/require"
 )
 
@@ -36,9 +35,9 @@ func TestAPIKeyService_SnapshotRoundTrip_PreservesGroupCaptureControls(t *testin
 			Concurrency: 3,
 		},
 		Group: &routing.Group{
-			ID:            groupID,
-			Name:          "openai-images",
-			Platform:      capability.PlatformOpenAI,
+			ID:   groupID,
+			Name: "openai-images",
+
 			SchedulerType: routing.GroupSchedulerTypeAdvanced,
 			AdvancedSchedulerOverrides: routing.GroupAdvancedSchedulerOverrides{
 				StickyWeightedEnabled: &stickyWeighted,

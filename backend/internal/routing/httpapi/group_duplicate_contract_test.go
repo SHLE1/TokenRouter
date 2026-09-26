@@ -15,8 +15,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/idempotency"
 	routing "github.com/TokenFlux/TokenRouter/internal/routing"
 
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
-
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 )
@@ -71,9 +69,9 @@ func setupDuplicateGroupRouter(t *testing.T, svc GroupAdministration, coordinato
 
 func duplicateGroupHandlerFixture() *routing.Group {
 	return &routing.Group{
-		ID:                   43,
-		Name:                 "primary (Copy)",
-		Platform:             capability.PlatformAnthropic,
+		ID:   43,
+		Name: "primary (Copy)",
+
 		Status:               "inactive",
 		RateMultiplier:       1,
 		AccountCount:         3,

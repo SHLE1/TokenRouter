@@ -19,7 +19,6 @@ type SettlementInput struct {
 	RequestPayloadHash                                                                                        string
 	AccountRateMultiplier, SubscriptionRateMultiplier, SubscriptionRateMultiplierScale, BalanceRateMultiplier float64
 	QuotaUpdates                                                                                              bool
-	Platform                                                                                                  string
 	BillingBaseAmountUSD                                                                                      *float64
 }
 type usageBillingParams = SettlementInput
@@ -27,12 +26,15 @@ type usageBillingParams = SettlementInput
 func (p *SettlementInput) shouldDeductAPIKeyQuota() bool {
 	return p.Cost.ActualCost > 0 && p.APIKey.Quota > 0 && p.QuotaUpdates
 }
+
 func (p *SettlementInput) shouldUpdateRateLimits() bool {
 	return p.Cost.ActualCost > 0 && p.APIKey.HasRateLimits && p.QuotaUpdates
 }
+
 func (p *SettlementInput) shouldUpdateAccountQuota(cost float64) bool {
 	return cost > 0 && p.Account.QuotaEligible && p.Account.HasQuotaLimit
 }
+
 func BuildCommand(requestID string, usageLog *UsageLog, p *usageBillingParams) *billing.UsageBillingCommand {
 	if p == nil || p.Cost == nil || p.APIKey == nil || p.User == nil || p.Account == nil {
 		return nil
@@ -104,6 +106,7 @@ func BuildCommand(requestID string, usageLog *UsageLog, p *usageBillingParams) *
 	cmd.Normalize()
 	return cmd
 }
+
 func AccountQuotaCost(usageLog *UsageLog, p *usageBillingParams) float64 {
 	if p == nil || p.Cost == nil {
 		return 0
@@ -117,6 +120,7 @@ func AccountQuotaCost(usageLog *UsageLog, p *usageBillingParams) float64 {
 	}
 	return baseCost * p.AccountRateMultiplier
 }
+
 func ApplyRateMultipliers(cmd *billing.UsageBillingCommand, p *usageBillingParams) {
 	if cmd == nil || p == nil || p.Cost == nil {
 		return
@@ -138,6 +142,7 @@ func ApplyRateMultipliers(cmd *billing.UsageBillingCommand, p *usageBillingParam
 	}
 	cmd.BalanceRateMultiplier = RateOrFallback(p.BalanceRateMultiplier, effectiveRate)
 }
+
 func (s *Recorder) Apply(ctx context.Context, requestID string, usageLog *UsageLog, p *usageBillingParams) (bool, error) {
 	if p == nil || s.effects == nil {
 		return false, nil
@@ -174,6 +179,7 @@ func (s *Recorder) Apply(ctx context.Context, requestID string, usageLog *UsageL
 	s.effects.Settled(*p, result)
 	return true, nil
 }
+
 func detachedBillingContext(ctx context.Context) (context.Context, context.CancelFunc) {
 	base := context.Background()
 	if ctx != nil {
@@ -181,6 +187,7 @@ func detachedBillingContext(ctx context.Context) (context.Context, context.Cance
 	}
 	return context.WithTimeout(base, 15*time.Second)
 }
+
 func ApplyResultToLog(usageLog *UsageLog, result *billing.UsageBillingApplyResult) {
 	if usageLog == nil || result == nil {
 		return
@@ -201,6 +208,7 @@ func ApplyResultToLog(usageLog *UsageLog, result *billing.UsageBillingApplyResul
 		usageLog.BillingType = BillingTypeBalance
 	}
 }
+
 func cloneBillingAllocations(allocations []billing.BillingAllocation) []billing.BillingAllocation {
 	if len(allocations) == 0 {
 		return nil
@@ -211,12 +219,14 @@ func cloneBillingAllocations(allocations []billing.BillingAllocation) []billing.
 	}
 	return cloned
 }
+
 func usageBillingResultBillableAmount(result *billing.UsageBillingApplyResult) float64 {
 	if result == nil {
 		return -1
 	}
 	return result.SubscriptionAmountUSD + result.BalanceAmountUSD
 }
+
 func firstAllocatedSubscriptionID(allocations []billing.BillingAllocation) *int64 {
 	for i := range allocations {
 		if allocations[i].Type != billing.BillingAllocationTypeSubscription || allocations[i].SubscriptionID == nil {

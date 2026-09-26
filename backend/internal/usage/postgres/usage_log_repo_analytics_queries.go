@@ -145,7 +145,7 @@ func (r *Store) buildUsageAnalyticsQuery(ctx context.Context, filters UsageLogFi
 				WHEN COALESCE(ul.image_count, 0) > 0 THEN 'image'
 				ELSE 'token'
 			END),
-			COALESCE(NULLIF(g.platform, ''), a.platform, ''),
+			ul.platform,
 			COALESCE(ul.inbound_endpoint, ''),
 			1, ul.input_tokens, ul.output_tokens, ul.cache_creation_tokens,
 			ul.cache_read_tokens, ul.total_cost, ul.actual_cost,

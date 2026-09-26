@@ -40,5 +40,5 @@ func RegisterUserRoutes(
 	usagehttp.RegisterUserRoutes(authenticated, h.Usage, panelRateLimiter.Heavy())
 	creativehttp.RegisterUserRoutes(authenticated, h.Creative, panelRateLimiter.Heavy())
 	sitehttp.RegisterUserRoutes(authenticated, h.Announcement)
-	billinghttp.RegisterUserRoutes(authenticated, h.Redeem, h.Subscription, h.PlatformQuota)
+	billinghttp.RegisterUserRoutes(authenticated, h.Redeem, h.Subscription)
 }

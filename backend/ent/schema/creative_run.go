@@ -43,6 +43,8 @@ func (CreativeRun) Fields() []ent.Field {
 		field.Int64("api_key_id"),
 		// account_id 由 worker 执行阶段回填。
 		field.Int64("account_id").Optional().Nillable(),
+		// provider 随执行账号固化，分组和账号调整不会改写已提交任务的执行类型。
+		field.String("provider").MaxLen(32).Default(""),
 		field.String("model").MaxLen(128),
 		// requested_model 记录客户端提交值，model 记录计费/路由模型。
 		field.String("requested_model").MaxLen(128).Default(""),

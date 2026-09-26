@@ -12,7 +12,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 	identitypostgres "github.com/TokenFlux/TokenRouter/internal/identity/postgres"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	routingpostgres "github.com/TokenFlux/TokenRouter/internal/routing/postgres"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
@@ -88,18 +87,18 @@ func (s *APIKeyRepoSuite) TestUpdateForkSpecificFields() {
 	loaded, err := s.repo.GetByID(s.ctx, key.ID)
 	s.Require().NoError(err)
 	loaded.FastModePolicy = apikey.APIKeyFastModePolicyForceOff
-	loaded.FallbackToDefaultGroupWhenUnavailable = false
+	loaded.FallbackWhenGroupUnavailable = false
 
 	// fork 扩展列必须各自由显式掩码控制，不能因收窄标准字段而停止持久化。
 	s.Require().NoError(s.repo.Update(s.ctx, loaded, apikey.APIKeyUpdateFields{
-		FastModePolicy:                        true,
-		FallbackToDefaultGroupWhenUnavailable: true,
+		FastModePolicy:               true,
+		FallbackWhenGroupUnavailable: true,
 	}))
 
 	updated, err := s.repo.GetByID(s.ctx, key.ID)
 	s.Require().NoError(err)
 	s.Require().Equal(apikey.APIKeyFastModePolicyForceOff, updated.FastModePolicy)
-	s.Require().False(updated.FallbackToDefaultGroupWhenUnavailable)
+	s.Require().False(updated.FallbackWhenGroupUnavailable)
 }
 
 func (s *APIKeyRepoSuite) TestCompositeKeyCRUDAndGroupQueries() {
@@ -232,7 +231,6 @@ func (s *APIKeyRepoSuite) TestGetByKeyForAuth_PreservesSelectedGroupFields() {
 	group, err := s.client.Group.Create().
 		SetName("g-auth-dispatch").
 		SetModelPricing([]byte(modelPricing)).
-		SetPlatform(capability.PlatformOpenAI).
 		SetStatus(billing.StatusActive).
 		SetRateMultiplier(1).
 		SetSchedulerType(string(routing.GroupSchedulerTypeAdvanced)).

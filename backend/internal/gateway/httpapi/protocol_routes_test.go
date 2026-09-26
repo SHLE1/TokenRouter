@@ -53,5 +53,5 @@ func TestProtocolCatalogRoutesAreIndependent(t *testing.T) {
 	_, ok = ProtocolForRoute(http.MethodPost, "/changed")
 	require.False(t, ok)
 	require.Contains(t, capability.SupportedGroupClientProtocols(capability.PlatformOpenAI), ProtocolEmbeddings)
-	require.NotContains(t, capability.SupportedGroupClientProtocols(capability.PlatformGrok), ProtocolEmbeddings)
+	require.Contains(t, capability.SupportedGroupClientProtocols(capability.PlatformGrok), ProtocolEmbeddings)
 }

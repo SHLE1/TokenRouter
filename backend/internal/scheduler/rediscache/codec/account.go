@@ -1,4 +1,4 @@
-// 本文件只定义 sched:v2 的历史存储形状；凭据不进入账号公开 JSON。
+// 本文件只定义 sched:v3 的快照存储形状；凭据不进入账号公开 JSON。
 package codec
 
 import (
@@ -69,6 +69,7 @@ func encodeGroup(group *accessview.GroupConfig) *groupWire {
 	}
 	return &groupWire{GroupConfig: group}
 }
+
 func decodeGroup(group *groupWire) *accessview.GroupConfig {
 	if group == nil {
 		return nil
@@ -80,6 +81,7 @@ func decodeGroup(group *groupWire) *accessview.GroupConfig {
 func MarshalAccountRecord(value *account.Record) ([]byte, error) {
 	return json.Marshal(recordToWire(value, make(map[*account.Record]*accountWire)))
 }
+
 func recordToWire(value *account.Record, seen map[*account.Record]*accountWire) *accountWire {
 	if value == nil {
 		return nil
@@ -148,6 +150,7 @@ func UnmarshalAccountRecord(payload []byte) (*account.Record, error) {
 	}
 	return recordFromWire(&wire), nil
 }
+
 func recordFromWire(value *accountWire) *account.Record {
 	if value == nil {
 		return nil

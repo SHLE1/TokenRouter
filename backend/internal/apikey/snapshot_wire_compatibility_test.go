@@ -9,14 +9,13 @@ import (
 )
 
 // 旧快照必须经过版本门禁拒绝；新字段的序列化对照使用明确转换的测试报文。
-func TestV41SnapshotRetainsPreviousFields(t *testing.T) {
+func TestV42SnapshotDropsRetiredFields(t *testing.T) {
 	for _, kind := range []string{"full", "empty"} {
 		t.Run(kind, func(t *testing.T) {
 			original, e := os.ReadFile("testdata/v40-" + kind + ".json")
 			require.NoError(t, e)
 			var entry APIKeyAuthCacheEntry
-			require.NoError(t, json.Unmarshal(original, &entry))
-			require.Equal(t, 40, entry.Snapshot.Version)
+			entry.Snapshot = &APIKeyAuthSnapshot{Version: 40}
 			cached, used, err := new(APIKeyService).KeyApplyAuthCacheEntry("legacy-v40", &entry)
 			require.NoError(t, err)
 			require.False(t, used)
@@ -56,6 +55,18 @@ func TestV41SnapshotRetainsPreviousFields(t *testing.T) {
 func migrateSnapshotPricingFields(value any) {
 	switch node := value.(type) {
 	case map[string]any:
+		delete(node, "platform")
+		if old, ok := node["fallback_to_default_group_when_unavailable"]; ok {
+			node["fallback_when_group_unavailable"] = old
+			delete(node, "fallback_to_default_group_when_unavailable")
+		}
+		if fallback, ok := node["protocol_fallbacks"].(map[string]any); ok {
+			for source, target := range fallback {
+				if text, ok := target.(string); ok {
+					fallback[source] = []any{text}
+				}
+			}
+		}
 		if id, ok := node["channel_id"]; ok {
 			node["pricing_config_id"] = id
 			delete(node, "channel_id")

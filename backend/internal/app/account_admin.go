@@ -29,32 +29,26 @@ func provideAccountAdmin(store *accountpostgres.AccountStore, usage *billingpost
 
 type accountGroupReferences struct{ store *routingpostgres.GroupStore }
 
-func (g accountGroupReferences) DefaultGroup(ctx context.Context, platform string) (*account.GroupReference, error) {
-	value, err := routing.FindPlatformDefaultGroup(ctx, g.store, platform)
-	if value == nil {
-		return nil, err
-	}
-	return &account.GroupReference{ID: value.ID, Name: value.Name, Platform: value.Platform, RequireOAuthOnly: value.RequireOAuthOnly}, err
-}
 func (g accountGroupReferences) GetGroup(ctx context.Context, id int64) (*account.GroupReference, error) {
 	value, err := g.store.GetByID(ctx, id)
 	if value == nil {
 		return nil, err
 	}
-	return &account.GroupReference{ID: value.ID, Name: value.Name, Platform: value.Platform, RequireOAuthOnly: value.RequireOAuthOnly}, err
+	return &account.GroupReference{ID: value.ID, Name: value.Name, RequireOAuthOnly: value.RequireOAuthOnly}, err
 }
 
 func (g accountGroupReferences) ActiveGroups(ctx context.Context, platform string) ([]account.GroupReference, error) {
-	rows, err := g.store.ListActiveByPlatform(ctx, platform)
+	rows, err := g.store.ListActive(ctx)
 	if rows == nil {
 		return nil, err
 	}
 	out := make([]account.GroupReference, len(rows))
 	for i, v := range rows {
-		out[i] = account.GroupReference{ID: v.ID, Name: v.Name, Platform: v.Platform, RequireOAuthOnly: v.RequireOAuthOnly}
+		out[i] = account.GroupReference{ID: v.ID, Name: v.Name, RequireOAuthOnly: v.RequireOAuthOnly}
 	}
 	return out, err
 }
+
 func (g accountGroupReferences) ValidateGroups(ctx context.Context, ids []int64) error {
 	return routing.ValidateGroupIDs(ctx, g.store, ids)
 }

@@ -38,10 +38,12 @@ type OpenAIAccountStateRecoverer interface {
 	RecoverAccountState(ctx context.Context, accountID int64, options accountcore.AccountRecoveryOptions) (*accountcore.SuccessfulTestRecovery, error)
 }
 
-const OpenAIQuotaResetWarningCacheRefreshFailed = accountcore.OpenAIQuotaResetWarningCacheRefreshFailed
-const OpenAIQuotaResetWarningAccountRecoveryFailed = accountcore.OpenAIQuotaResetWarningAccountRecoveryFailed
-const OpenAIQuotaResetWarningAccountRefreshFailed = accountcore.OpenAIQuotaResetWarningAccountRefreshFailed
-const OpenAIQuotaResetPostProcessTimeout = accountcore.OpenAIQuotaResetPostProcessTimeout
+const (
+	OpenAIQuotaResetWarningCacheRefreshFailed    = accountcore.OpenAIQuotaResetWarningCacheRefreshFailed
+	OpenAIQuotaResetWarningAccountRecoveryFailed = accountcore.OpenAIQuotaResetWarningAccountRecoveryFailed
+	OpenAIQuotaResetWarningAccountRefreshFailed  = accountcore.OpenAIQuotaResetWarningAccountRefreshFailed
+	OpenAIQuotaResetPostProcessTimeout           = accountcore.OpenAIQuotaResetPostProcessTimeout
+)
 
 type OpenAIQuotaResetResponse struct {
 	wire.OpenAIQuotaResetResult
@@ -119,7 +121,6 @@ func (h *OpenAIOAuthHandler) ExchangeCode(c *gin.Context) {
 	}
 
 	tokenInfo, err := h.Authorization.ExchangeCode(c.Request.Context(), &accountcore.OpenAIExchangeCodeInput{
-
 		SessionID: req.SessionID,
 
 		Code: req.Code,
@@ -150,21 +151,19 @@ type OpenAIRefreshTokenRequest struct {
 }
 
 type OpenAICodexPATCreateRequest struct {
-	AccessToken             string         `json:"access_token" binding:"required"`
-	Name                    string         `json:"name"`
-	Notes                   *string        `json:"notes"`
-	GroupIDs                []int64        `json:"group_ids"`
-	ProxyID                 *int64         `json:"proxy_id"`
-	Concurrency             *int           `json:"concurrency"`
-	Priority                *int           `json:"priority"`
-	RateMultiplier          *float64       `json:"rate_multiplier"`
-	LoadFactor              *int           `json:"load_factor"`
-	ExpiresAt               *int64         `json:"expires_at"`
-	AutoPauseOnExpired      *bool          `json:"auto_pause_on_expired"`
-	CredentialExtras        map[string]any `json:"credential_extras"`
-	Extra                   map[string]any `json:"extra"`
-	SkipDefaultGroupBind    *bool          `json:"skip_default_group_bind"`
-	ConfirmMixedChannelRisk *bool          `json:"confirm_mixed_channel_risk"`
+	AccessToken        string         `json:"access_token" binding:"required"`
+	Name               string         `json:"name"`
+	Notes              *string        `json:"notes"`
+	GroupIDs           []int64        `json:"group_ids"`
+	ProxyID            *int64         `json:"proxy_id"`
+	Concurrency        *int           `json:"concurrency"`
+	Priority           *int           `json:"priority"`
+	RateMultiplier     *float64       `json:"rate_multiplier"`
+	LoadFactor         *int           `json:"load_factor"`
+	ExpiresAt          *int64         `json:"expires_at"`
+	AutoPauseOnExpired *bool          `json:"auto_pause_on_expired"`
+	CredentialExtras   map[string]any `json:"credential_extras"`
+	Extra              map[string]any `json:"extra"`
 }
 
 // RefreshToken refreshes an OpenAI OAuth token
@@ -240,13 +239,12 @@ func (h *OpenAIOAuthHandler) CreateAccountFromOAuth(c *gin.Context) {
 		Priority               int     `json:"priority"`
 		GroupIDs               []int64 `json:"group_ids"`
 	}
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := response.BindJSONStrict(c, &req); err != nil {
 		response.BadRequest(c, "Invalid request: "+err.Error())
 		return
 	}
 
 	value, err := h.accountImport().CreateOAuthAccount(c.Request.Context(), accountcore.OpenAIOAuthAccountCreateInput{
-
 		SessionID: req.SessionID,
 
 		Code: req.Code,
@@ -278,7 +276,7 @@ func (h *OpenAIOAuthHandler) CreateAccountFromOAuth(c *gin.Context) {
 // POST /api/v1/admin/openai/create-from-codex-pat
 func (h *OpenAIOAuthHandler) CreateAccountFromCodexPAT(c *gin.Context) {
 	var req OpenAICodexPATCreateRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := response.BindJSONStrict(c, &req); err != nil {
 		response.BadRequest(c, "Invalid request: "+err.Error())
 		return
 	}
@@ -359,7 +357,7 @@ func (h *OpenAIOAuthHandler) CreateShadow(c *gin.Context) {
 	}
 
 	var req CreateShadowRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := response.BindJSONStrict(c, &req); err != nil {
 		response.BadRequest(c, "Invalid request: "+err.Error())
 		return
 	}
@@ -442,6 +440,7 @@ func (h *OpenAIOAuthHandler) accountImport() *accountcore.OpenAIAccountImport {
 	// 兼容原白盒测试直接构造的部分 handler；生产构造始终持有同一用例实例。
 	return accountcore.NewOpenAIAccountImport(h.Authorization, h.Admin, h.Options.ProxyURL)
 }
+
 func writeOpenAIAccountImportError(c *gin.Context, err error) {
 	var inputError *accountcore.OpenAIAccountInputError
 	if errors.As(err, &inputError) {

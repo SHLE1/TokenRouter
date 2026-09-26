@@ -29,7 +29,7 @@ func TestCompletionCaptureKeepsTurnTimeAndIndependentInputs(t *testing.T) {
 	ctx := context.WithValue(context.Background(), telemetry.RequestID, "local")
 	in := &OpenAICapture{
 		APIKey: key, User: user, Account: target, Result: result, PricingAt: turnAt,
-		RequestBody: []byte(`{"reasoning":{"effort":"high"}}`), QuotaPlatform: "openai", Subscription: &billing.UserSubscription{ID: 5},
+		RequestBody: []byte(`{"reasoning":{"effort":"high"}}`), Subscription: &billing.UserSubscription{ID: 5},
 	}
 	// 捕获之前的合法输入变化应生效，不能在构造输入时提前拍快照。
 	user.Balance = 10
@@ -43,7 +43,6 @@ func TestCompletionCaptureKeepsTurnTimeAndIndependentInputs(t *testing.T) {
 	in.RequestBody[0] = '!'
 	require.Equal(t, "local:local", out.RequestID)
 	require.Equal(t, turnAt, out.PricingAt)
-	require.Equal(t, "openai", out.QuotaPlatform)
 	require.Equal(t, 10.0, out.User.Balance)
 	require.Equal(t, int64(17), *out.APIKey.GroupID)
 	require.Equal(t, 0.25, *out.APIKey.Group.Price.ModelPricing[0].InputPrice)

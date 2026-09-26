@@ -16,6 +16,7 @@ import (
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 
+	"github.com/TokenFlux/TokenRouter/internal/protocol"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 	"github.com/gin-gonic/gin"
@@ -84,7 +85,7 @@ type SelectionPorts struct {
 	IncrementRPM       func(context.Context, int64) error
 	NewSessionAttempts func() *scheduler.SessionAttempts
 	ReportSchedule     func(*gatewaycapture.SelectionResult, int64, bool, *forwardcore.MessagesResult)
-	ResolveGroup       func(context.Context, int64) (*routing.Group, error)
+	CachedSession      func(context.Context, *int64, string) (int64, error)
 	SelectAccount      func(context.Context, *int64, string, string, map[int64]struct{}, string, int64) (*gatewaycapture.SelectionResult, error)
 	SingleAccountGroup func(context.Context, *int64) bool
 	TempUnschedule     func(context.Context, int64, *forwardcore.UpstreamFailoverError)
@@ -93,15 +94,15 @@ type SelectionPorts struct {
 
 // Bindings 在构造期间固定依赖，Open 仅创建本请求和尝试的数据。
 type Bindings struct {
-	Forward      ForwardPorts
-	Selection    SelectionPorts
-	CheckFunding func(context.Context, *apikey.APIKey, *billing.UserSubscription, string, bool) error
-	Diagnoser    routing.ModelAvailabilityDiagnoser
-	Quota        gatewaycapture.QuotaUpdater
-	Recorder     *completion.Recorder
-	Concurrency  *gatewayhttp.ConcurrencyHelper
-	Queue        *gatewayhttp.UserMsgQueueHelper
-	QueueWait    time.Duration
+	Forward         ForwardPorts
+	Selection       SelectionPorts
+	ResolveFallback func(context.Context, *apikey.APIKey, int64, protocol.ProtocolID) (*apikey.APIKey, *billing.UserSubscription, error)
+	Diagnoser       routing.ModelAvailabilityDiagnoser
+	Quota           gatewaycapture.QuotaUpdater
+	Recorder        *completion.Recorder
+	Concurrency     *gatewayhttp.ConcurrencyHelper
+	Queue           *gatewayhttp.UserMsgQueueHelper
+	QueueWait       time.Duration
 
 	PlanRoute  func(context.Context, *apikey.APIKey, string) routing.RoutePlan
 	QueueMode  string
@@ -168,7 +169,7 @@ type messageExecutionDependencies struct {
 	reportSchedule                    func(*gatewaycapture.SelectionResult, int64, bool, *forwardcore.MessagesResult)
 	incrementRPM                      func(context.Context, int64) error
 	bindSticky                        func(context.Context, *int64, string, int64) error
-	resolveGroup                      func(context.Context, int64) (*routing.Group, error)
+	cachedSession                     func(context.Context, *int64, string) (int64, error)
 	accountSwitched                   func(*gatewaycapture.SelectionResult)
 	tempUnschedule                    func(context.Context, int64, *forwardcore.UpstreamFailoverError)
 	bedrockCompat                     func(*gin.Context, []byte, string, *gatewaycapture.ExecutionAccount, *int64) []byte
@@ -177,7 +178,8 @@ type messageExecutionDependencies struct {
 	forwardGemini                     func(context.Context, *gin.Context, *gatewaycapture.ExecutionAccount, []byte) (*forwardcore.MessagesResult, error)
 	forwardAntigravityGemini          func(context.Context, *gin.Context, *gatewaycapture.ExecutionAccount, string, string, bool, []byte, bool, ...forwardcore.GeminiSessionOption) (*forwardcore.MessagesResult, error)
 	writeMappedClaudeError            func(*gin.Context, *gatewaycapture.ExecutionAccount, int, string, []byte) error
-	billingCheck                      func(context.Context, *apikey.APIKey, *billing.UserSubscription, string, bool) error
+	resolveFallback                   func(context.Context, *apikey.APIKey, int64, protocol.ProtocolID) (*apikey.APIKey, *billing.UserSubscription, error)
+	planRoute                         func(context.Context, *apikey.APIKey, string) routing.RoutePlan
 	diagnoser                         routing.ModelAvailabilityDiagnoser
 	apiKeyService                     gatewaycapture.QuotaUpdater
 	recorder                          *completion.Recorder
@@ -221,12 +223,13 @@ func New(b Bindings) *Runtime {
 		incrementRPM:                      b.Selection.IncrementRPM,
 		newSessionAttempts:                b.Selection.NewSessionAttempts,
 		reportSchedule:                    b.Selection.ReportSchedule,
-		resolveGroup:                      b.Selection.ResolveGroup,
+		cachedSession:                     b.Selection.CachedSession,
 		selectAccount:                     b.Selection.SelectAccount,
 		singleAccountGroup:                b.Selection.SingleAccountGroup,
 		tempUnschedule:                    b.Selection.TempUnschedule,
 		trackSession:                      b.Selection.TrackSession,
-		billingCheck:                      b.CheckFunding,
+		resolveFallback:                   b.ResolveFallback,
+		planRoute:                         b.PlanRoute,
 		diagnoser:                         b.Diagnoser,
 		apiKeyService:                     b.Quota,
 		recorder:                          b.Recorder,

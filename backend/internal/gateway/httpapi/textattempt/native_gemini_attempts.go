@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/TokenFlux/TokenRouter/internal/gateway/admission"
 	gatewaycapture "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/protocol/bridge"
 	protocolgemini "github.com/TokenFlux/TokenRouter/internal/protocol/gemini"
@@ -207,12 +206,12 @@ func (b *nativeGeminiAttemptBridge) Complete(state textflow.AttemptState) {
 	upstreamEndpoint := gatewayhttp.GetUpstreamEndpoint(b.c, b.account.Record.Platform)
 	// ForceCacheBilling 提前拍成标量，避免 worker 闭包保活 failover 状态里的响应体。
 	forceCacheBilling := state.ForceCacheBilling
-	quotaPlatform := admission.QuotaPlatform(b.c.Request.Context(), b.apiKey)
+
 	clientSessionID := gatewayhttp.ExtractClientSessionID(b.c)
 	// 入队前固化资金与报文投影，worker 不再读取请求中的实体。
 	completionInput := gatewaycapture.CaptureMessages(gatewayhttp.CompletionContext(b.c), &gatewaycapture.MessagesCapture{
-		Result:             b.result,
-		QuotaPlatform:      quotaPlatform,
+		Result: b.result,
+
 		APIKey:             b.apiKey,
 		User:               b.apiKey.User,
 		Account:            gatewaycapture.ExecutionCompletionRecord(b.account),

@@ -25,14 +25,14 @@ func UniqueNonEmptyAccountStatsModels(models []string) []string {
 // TryCustomRules 遍历自定义规则，按数组顺序先命中为准。
 func TryCustomRules(
 	rules []AccountStatsPricingRule, accountID, groupID int64,
-	platform, model string, tokens UsageTokens, requestCount int,
+	model string, tokens UsageTokens, requestCount int,
 ) *float64 {
 	modelLower := strings.ToLower(model)
 	for _, rule := range rules {
 		if !MatchAccountStatsRule(&rule, accountID, groupID) {
 			continue
 		}
-		pricing := FindEffectivePricingForModel(rule.Pricing, platform, modelLower)
+		pricing := FindEffectivePricingForModel(rule.Pricing, modelLower)
 		if pricing == nil {
 			continue // 规则匹配但模型不在规则定价中，继续下一条
 		}
@@ -68,26 +68,26 @@ func MatchAccountStatsRule(rule *AccountStatsPricingRule, accountID, groupID int
 // 先精确匹配，再通配符匹配（按配置顺序，先匹配先使用）。
 //
 //nolint:unused // 兼容旧测试入口；生产路径需要过滤空定价行并调用 FindEffectivePricingForModel。
-func FindPricingForModel(pricingList []ModelPricingEntry, platform, modelLower string) *ModelPricingEntry {
-	return FindPricingForModelByPredicate(pricingList, platform, modelLower, nil)
+func FindPricingForModel(pricingList []ModelPricingEntry, modelLower string) *ModelPricingEntry {
+	return FindPricingForModelByPredicate(pricingList, modelLower, nil)
 }
 
 // FindEffectivePricingForModel 用于账号统计成本规则。
 // 空定价行只是配置占位，不是成本规则；显式 0 指针仍视为有效，返回 0 成本覆盖。
-func FindEffectivePricingForModel(pricingList []ModelPricingEntry, platform, modelLower string) *ModelPricingEntry {
-	return FindPricingForModelByPredicate(pricingList, platform, modelLower, func(p *ModelPricingEntry) bool {
+func FindEffectivePricingForModel(pricingList []ModelPricingEntry, modelLower string) *ModelPricingEntry {
+	return FindPricingForModelByPredicate(pricingList, modelLower, func(p *ModelPricingEntry) bool {
 		return p != nil && p.HasEffectivePricing()
 	})
 }
 
-func FindPricingForModelByPredicate(pricingList []ModelPricingEntry, platform, modelLower string, include func(*ModelPricingEntry) bool) *ModelPricingEntry {
+func FindPricingForModelByPredicate(pricingList []ModelPricingEntry, modelLower string, include func(*ModelPricingEntry) bool) *ModelPricingEntry {
 	if include == nil {
 		include = func(*ModelPricingEntry) bool { return true }
 	}
 	// 精确匹配优先
 	for i := range pricingList {
 		p := &pricingList[i]
-		if !include(p) || !IsPlatformMatch(platform, p.Platform) {
+		if !include(p) {
 			continue
 		}
 		for _, m := range p.Models {
@@ -99,7 +99,7 @@ func FindPricingForModelByPredicate(pricingList []ModelPricingEntry, platform, m
 	// 通配符匹配：按配置顺序，先匹配先使用
 	for i := range pricingList {
 		p := &pricingList[i]
-		if !include(p) || !IsPlatformMatch(platform, p.Platform) {
+		if !include(p) {
 			continue
 		}
 		for _, m := range p.Models {
@@ -114,14 +114,6 @@ func FindPricingForModelByPredicate(pricingList []ModelPricingEntry, platform, m
 		}
 	}
 	return nil
-}
-
-// IsPlatformMatch 判断平台是否匹配（空平台视为不限平台）。
-func IsPlatformMatch(queryPlatform, pricingPlatform string) bool {
-	if queryPlatform == "" || pricingPlatform == "" {
-		return true
-	}
-	return queryPlatform == pricingPlatform
 }
 
 // CalculateStatsCost 使用给定的定价计算费用，并在最后应用可选的定价倍率。
@@ -229,7 +221,6 @@ func HasAnyStatsTokenUsage(tokens UsageTokens) bool {
 type AccountStatsInput struct {
 	Rules              []AccountStatsPricingRule
 	AccountID, GroupID int64
-	Platform           string
 	Models             []string
 	Tokens             UsageTokens
 	RequestCount       int
@@ -238,7 +229,7 @@ type AccountStatsInput struct {
 // ResolveAccountStatsOverride 返回 handled，区分明确不覆盖与继续查询模型目录。
 func ResolveAccountStatsOverride(input AccountStatsInput) (*float64, bool) {
 	for _, model := range input.Models {
-		if cost := TryCustomRules(input.Rules, input.AccountID, input.GroupID, input.Platform, model, input.Tokens, input.RequestCount); cost != nil {
+		if cost := TryCustomRules(input.Rules, input.AccountID, input.GroupID, model, input.Tokens, input.RequestCount); cost != nil {
 			return cost, true
 		}
 	}

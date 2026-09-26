@@ -32,7 +32,7 @@ func (g *projectionScope) account(value *gatewayprovider.ExecutionAccount) *sche
 	if captured, ok := value.Route.Candidate(); ok {
 		plan = &captured
 	}
-	return &schedulercore.FlowAccount{Plan: plan, ProjectionID: id, ID: value.Record.ID, Name: value.Record.Name, Platform: value.Record.Platform, Type: value.Record.Type, Concurrency: value.Record.Concurrency, Priority: value.Record.Priority, LastUsedAt: cloneFlowTime(value.Record.LastUsedAt), SessionWindowEnd: cloneFlowTime(value.Record.SessionWindowEnd), LoadFactor: value.View().EffectiveLoadFactor(), BaseRPM: gatewayprovider.ExecutionRuntimeConfig(value).GetBaseRPM(), PrivacySet: value.View().IsPrivacySet(), MixedScheduling: value.View().IsMixedSchedulingEnabled()}
+	return &schedulercore.FlowAccount{Plan: plan, ProjectionID: id, ID: value.Record.ID, Name: value.Record.Name, Platform: value.Record.Platform, Type: value.Record.Type, Concurrency: value.Record.Concurrency, Priority: value.Record.Priority, LastUsedAt: cloneFlowTime(value.Record.LastUsedAt), SessionWindowEnd: cloneFlowTime(value.Record.SessionWindowEnd), LoadFactor: value.View().EffectiveLoadFactor(), BaseRPM: gatewayprovider.ExecutionRuntimeConfig(value).GetBaseRPM(), PrivacySet: value.View().IsPrivacySet()}
 }
 
 func (g *projectionScope) group(value *routing.Group) *schedulercore.FlowGroup {
@@ -147,7 +147,7 @@ func (s *Generic) genericSelector() (*schedulercore.GenericSelector, *projection
 			return value, ok
 		},
 		ResolveGroupByID: func(ctx context.Context, id int64) (*schedulercore.FlowGroup, error) {
-			v, err := s.resolveGroupByID(ctx, id)
+			v, err := currentSelectionGroup(ctx, &id, s.resolveGroupByID)
 			return scope.group(v), err
 		},
 		ResolveGatewayGroup: func(ctx context.Context, id *int64) (*schedulercore.FlowGroup, *int64, error) {

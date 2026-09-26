@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
+
 	"github.com/TokenFlux/TokenRouter/internal/gateway/execution"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
@@ -87,6 +89,22 @@ func (h *OpenAITextHandler) Messages(c *gin.Context) {
 		return
 	}
 	reqModel := modelResult.String()
+	if preparer, ok := h.backend.(interface {
+		PrepareMessages(*gin.Context, []byte) error
+	}); ok {
+		if err := preparer.PrepareMessages(c, body); err != nil {
+			h.anthropicErrorResponse(c, http.StatusBadRequest, "invalid_request_error", err.Error())
+			return
+		}
+	} else if err := PrepareMessageClientContext(c, body, nil); err != nil {
+		h.anthropicErrorResponse(c, http.StatusBadRequest, "invalid_request_error", err.Error())
+		return
+	}
+	apiKey, err = resolveClientGroupForRequest(c, h.backend, apiKey, protocol.ProtocolAnthropicMessages)
+	if err != nil {
+		writeClientGroupFallbackError(c, err, h.anthropicErrorResponse)
+		return
+	}
 	h.backend.MessageReasoning(c, apiKey, body)
 	reqStream := gjson.GetBytes(body, "stream").Bool()
 
@@ -154,6 +172,7 @@ func (h *OpenAITextHandler) Messages(c *gin.Context) {
 		}
 	}
 	if explicitSessionHash != "" {
+		c.Request = c.Request.WithContext(requeststate.WithSessionIsolation(c.Request.Context(), isolationSource, explicitSessionHash))
 		if err := h.backend.Isolate(c.Request.Context(), apiKey, subject.UserID, isolationSource, explicitSessionHash); h.handleAnthropicSessionIsolationError(c, err, streamStarted) {
 			return
 		}

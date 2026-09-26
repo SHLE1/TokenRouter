@@ -43,7 +43,7 @@ func TestGroupOpenAIFastPolicyHTTPAndWS(t *testing.T) {
 			}
 			svc := newFastPolicyContract(t, settings)
 			svc.Prices = fastModeTestResolver()
-			ctx := requeststate.WithGroup(fastModeTestContext(tt.key, "gpt-5.5"), &routing.Group{ID: 1, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Hydrated: true, OpenAIFastPolicy: tt.group})
+			ctx := requeststate.WithGroup(fastModeTestContext(tt.key, "gpt-5.5"), &routing.Group{ID: 1, Status: billing.StatusActive, Hydrated: true, OpenAIFastPolicy: tt.group})
 			payload := map[string]any{"model": "gpt-5.5", "type": "response.create"}
 			if tt.tier != "" {
 				payload["service_tier"] = tt.tier

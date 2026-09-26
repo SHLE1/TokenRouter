@@ -24,13 +24,12 @@ type sparkShadowGroupRepoStub struct {
 	groups []routing.Group
 }
 
-func (s *sparkShadowGroupRepoStub) ListActiveByPlatform(_ context.Context, _ string) ([]routing.Group, error) {
+func (s *sparkShadowGroupRepoStub) ListActive(_ context.Context) ([]routing.Group, error) {
 	return s.groups, nil
 }
 
-// TestCreateShadow_DefaultGroupBinding 验证外审 F4:未指定 group_ids 时
-// 影子回落绑定 openai-default 组(否则无组、组内路由选不到)。
-func TestCreateShadow_DefaultGroupBinding(t *testing.T) {
+// 新影子可以继承母账号的明确关联，但不会自动寻找默认组。
+func TestCreateShadowDoesNotBindDefaultGroup(t *testing.T) {
 	ctx := context.Background()
 	repo := newSparkShadowRepoStub()
 	groupRepo := &sparkShadowGroupRepoStub{
@@ -49,7 +48,7 @@ func TestCreateShadow_DefaultGroupBinding(t *testing.T) {
 
 	shadow, err := svc.CreateShadow(ctx, parent.ID, accountcore.ShadowOptions{Name: "grp-shadow"})
 	require.NoError(t, err)
-	require.Equal(t, []int64{99}, repo.groupsOf[shadow.ID], "未指定分组应回落绑定 openai-default(id=99)")
+	require.Empty(t, repo.groupsOf[shadow.ID], "未指定分组且母账号无分组时保留未分组状态")
 }
 
 // TestCreateShadow_InheritsParentGroups 验证外审 G1:未指定 group_ids 时
@@ -215,16 +214,13 @@ func TestBulkUpdateAccounts_RejectsProxyChangeOnShadow(t *testing.T) {
 // originalShadowGroups 保留原分组查询及校验路径，只投影账号需要的字段。
 type originalShadowGroups struct{ routing.GroupRepository }
 
-func (g originalShadowGroups) DefaultGroup(ctx context.Context, platform string) (*accountcore.GroupReference, error) {
-	v, err := routing.FindPlatformDefaultGroup(ctx, g.GroupRepository, platform)
-	return originalShadowGroupReference(v), err
-}
 func (g originalShadowGroups) GetGroup(ctx context.Context, id int64) (*accountcore.GroupReference, error) {
 	v, err := g.GetByID(ctx, id)
 	return originalShadowGroupReference(v), err
 }
+
 func (g originalShadowGroups) ActiveGroups(ctx context.Context, platform string) ([]accountcore.GroupReference, error) {
-	rows, err := g.ListActiveByPlatform(ctx, platform)
+	rows, err := g.ListActive(ctx)
 	if rows == nil {
 		return nil, err
 	}
@@ -234,12 +230,14 @@ func (g originalShadowGroups) ActiveGroups(ctx context.Context, platform string)
 	}
 	return out, err
 }
+
 func (g originalShadowGroups) ValidateGroups(ctx context.Context, ids []int64) error {
 	return routing.ValidateGroupIDs(ctx, g.GroupRepository, ids)
 }
+
 func originalShadowGroupReference(v *routing.Group) *accountcore.GroupReference {
 	if v == nil {
 		return nil
 	}
-	return &accountcore.GroupReference{ID: v.ID, Name: v.Name, Platform: v.Platform, RequireOAuthOnly: v.RequireOAuthOnly}
+	return &accountcore.GroupReference{ID: v.ID, Name: v.Name, RequireOAuthOnly: v.RequireOAuthOnly}
 }

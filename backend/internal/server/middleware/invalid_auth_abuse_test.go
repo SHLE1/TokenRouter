@@ -28,7 +28,6 @@ func invalidAuthAbuseTestConfig(threshold int) *config.Config {
 }
 
 func TestAPIKeyAuthInvalidAbuseReturns429BeforeRepository(t *testing.T) {
-
 	repoCalls := 0
 	repo := &stubApiKeyRepo{getByKey: func(context.Context, string) (*apikey.APIKey, error) {
 		repoCalls++
@@ -64,7 +63,6 @@ func TestAPIKeyAuthInvalidAbuseReturns429BeforeRepository(t *testing.T) {
 }
 
 func TestGoogleAPIKeyAuthInvalidAbuseReturnsProtocol429(t *testing.T) {
-
 	repoCalls := 0
 	repo := fakeAPIKeyRepo{getByKey: func(context.Context, string) (*apikey.APIKey, error) {
 		repoCalls++
@@ -99,12 +97,11 @@ func TestGoogleAPIKeyAuthInvalidAbuseReturnsProtocol429(t *testing.T) {
 }
 
 func TestInvalidAuthAbuseDoesNotCountValidOrOperationalFailures(t *testing.T) {
-
 	user := &identity.User{ID: 1, Status: billing.StatusActive, Role: identity.RoleUser, Balance: 1}
 	repo := &stubApiKeyRepo{getByKey: func(_ context.Context, key string) (*apikey.APIKey, error) {
 		switch key {
 		case "valid-key":
-			return &apikey.APIKey{ID: 1, UserID: 1, Key: key, Status: billing.StatusActive, User: user}, nil
+			return bindAuthTestGroup(&apikey.APIKey{ID: 1, UserID: 1, Key: key, Status: billing.StatusActive, User: user}), nil
 		case "db-error":
 			return nil, errors.New("database unavailable")
 		default:

@@ -99,7 +99,6 @@ type routeTestHandlers struct {
 	Payment             *paymenthttpapi.PaymentHandler
 	PaymentWebhook      *paymenthttpapi.PaymentWebhookHandler
 	Plans               *billinghttpapi.PlanHandler
-	PlatformQuota       *billinghttpapi.QuotaHandler
 	PublicSettings      *sitehttpapi.PublicHandler
 	PublicUsage         *usagehttpapi.PublicUsageHandler
 	QoderChat           *gatewayhttpapi.QoderChatHandler

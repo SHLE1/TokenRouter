@@ -56,7 +56,6 @@ func provideAdminRouteMount(eAdminTLSFingerprintProfile *routeegress.TLSFingerpr
 	eAdminGrokOAuth *routeaccount.GrokOAuthHandler,
 	eAdminAuditLog *routeaudit.AuditLogHandler,
 	eAdminPricing *routerouting.PricingHandler,
-	ePlatformQuota *routebilling.QuotaHandler,
 	eAdminSetting *routesettings.Handler,
 	ePreAggregation *routesettings.PreAggregationHandler,
 	eCreativeSettings *routecreative.SettingsHandler,
@@ -97,7 +96,6 @@ func provideAdminRouteMount(eAdminTLSFingerprintProfile *routeegress.TLSFingerpr
 			// 用户管理
 			{
 				routeidentity.RegisterUserManagementRoutes(admin, eAdminUser, eAdminUserAttribute)
-				routebilling.RegisterUserQuotaRoutes(admin, ePlatformQuota)
 			}
 
 			// 分组管理

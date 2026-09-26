@@ -136,7 +136,6 @@ func newOAuthEmailFlowAuthService(
 	refreshTokenCache identity.RefreshTokenCache,
 	settings map[string]string,
 	emailCache identity.EmailCache,
-	quotaRepo billing.UserPlatformQuotaRepository, // 新增
 ) *identity.AuthService {
 	cfg := &config.Config{
 		JWT: config.JWTConfig{
@@ -155,7 +154,7 @@ func newOAuthEmailFlowAuthService(
 	emailService := identity.NewEmailChallenges(emailCache, notification.NewMailer(&settingRepoStub{values: settings}, smtp.New()))
 
 	return identitytestkit.Auth(
-		nil, &identity.AuthDependencies{Users: userRepo, Redeem: redeemRepo, RefreshTokens: refreshTokenCache, Options: identitytestkit.AuthOptions(cfg), Settings: authSettingsPort(settingService), Email: identitytestkit.Email(emailService), Quotas: quotaRepo}, // 替换原来的 nil
+		nil, &identity.AuthDependencies{Users: userRepo, Redeem: redeemRepo, RefreshTokens: refreshTokenCache, Options: identitytestkit.AuthOptions(cfg), Settings: authSettingsPort(settingService), Email: identitytestkit.Email(emailService)}, // 替换原来的 nil
 	)
 }
 
@@ -189,7 +188,6 @@ func TestRegisterOAuthEmailAccountRollsBackCreatedUserWhenTokenPairGenerationFai
 			identity.SettingKeyEmailVerifyEnabled:     "true",
 		},
 		emailCache,
-		nil,
 	)
 
 	tokenPair, user, err := authService.RegisterOAuthEmailAccount(
@@ -227,7 +225,6 @@ func TestRegisterOAuthEmailAccountRejectsExhaustedNonWhitelistDomain(t *testing.
 			CreatedAt: time.Now().UTC(),
 			ExpiresAt: time.Now().UTC().Add(15 * time.Minute),
 		}},
-		nil,
 	)
 
 	_, _, err := authService.RegisterOAuthEmailAccount(
@@ -255,7 +252,6 @@ func TestSendPendingOAuthVerifyCodeRejectsExhaustedNonWhitelistDomain(t *testing
 			identity.SettingKeyRegistrationEmailDomainQuotaEnabled: "true",
 		},
 		&emailCacheStub{},
-		nil,
 	)
 
 	_, err := authService.SendPendingOAuthVerifyCode(context.Background(), "second@custom.example")
@@ -273,7 +269,6 @@ func TestSendPendingOAuthVerifyCodeRejectsNonWhitelistDomainWhenQuotaDisabled(t 
 			identity.SettingKeyRegistrationEmailSuffixWhitelist: `["@example.com"]`,
 		},
 		&emailCacheStub{},
-		nil,
 	)
 
 	_, err := authService.SendPendingOAuthVerifyCode(context.Background(), "first@custom.example")
@@ -313,7 +308,6 @@ func TestRegisterOAuthEmailAccountRejectsExpiredInvitation(t *testing.T) {
 			identity.SettingKeyEmailVerifyEnabled:     "true",
 		},
 		emailCache,
-		nil,
 	)
 
 	tokenPair, user, err := authService.RegisterOAuthEmailAccount(
@@ -350,7 +344,6 @@ func TestRegisterOAuthEmailAccountSetsNormalizedSignupSourceOnCreatedUser(t *tes
 			identity.SettingKeyEmailVerifyEnabled:  "true",
 		},
 		emailCache,
-		nil,
 	)
 
 	tokenPair, user, err := authService.RegisterOAuthEmailAccount(
@@ -410,7 +403,6 @@ func TestRegisterOAuthEmailAccountKeepsGitHubAndGoogleSignupSource(t *testing.T)
 					identity.SettingKeyEmailVerifyEnabled:  "true",
 				},
 				emailCache,
-				nil,
 			)
 
 			tokenPair, user, err := authService.RegisterOAuthEmailAccount(
@@ -450,7 +442,6 @@ func TestRegisterOAuthEmailAccountFallsBackUnknownSignupSourceToEmail(t *testing
 			identity.SettingKeyEmailVerifyEnabled:  "true",
 		},
 		emailCache,
-		nil,
 	)
 
 	tokenPair, user, err := authService.RegisterOAuthEmailAccount(
@@ -498,7 +489,6 @@ func TestRollbackOAuthEmailAccountCreationRestoresInvitationUsage(t *testing.T) 
 			promotion.SettingKeyInvitationCodeEnabled: "true",
 		},
 		&emailCacheStub{},
-		nil,
 	)
 
 	err := authService.RollbackOAuthEmailAccountCreation(context.Background(), 42, "INVITE123")
@@ -521,62 +511,10 @@ func TestRollbackOAuthEmailAccountCreationPropagatesDeleteError(t *testing.T) {
 			identity.SettingKeyRegistrationEnabled: "true",
 		},
 		&emailCacheStub{},
-		nil,
 	)
 
 	err := authService.RollbackOAuthEmailAccountCreation(context.Background(), 42, "")
 
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "delete created oauth user")
-}
-
-func TestFinalizeOAuthEmailAccount_SnapshotsPlatformQuotaDefaults(t *testing.T) {
-	userRepo := &userRepoStub{nextID: 99}
-	quotaRepo := &userPlatformQuotaRepoStub{}
-
-	authService := newOAuthEmailFlowAuthService(
-		userRepo,
-		nil,
-		&refreshTokenCacheStub{},
-		map[string]string{
-			identity.SettingKeyRegistrationEnabled:  "true",
-			identity.SettingKeyEmailVerifyEnabled:   "true",
-			billing.SettingKeyDefaultPlatformQuotas: `{"anthropic": {"daily": 5.5}}`,
-		},
-		&emailCacheStub{},
-		quotaRepo,
-	)
-
-	user := &identity.User{
-		ID:           99,
-		Email:        "newuser@example.com",
-		Role:         identity.RoleUser,
-		Status:       billing.StatusActive,
-		SignupSource: "oidc",
-	}
-
-	err := authService.FinalizeOAuthEmailAccount(
-		context.Background(),
-		user,
-		"",
-		"oidc",
-		"",
-	)
-
-	require.NoError(t, err)
-
-	require.Len(t, quotaRepo.bulkInsertCalls, 1, "snapshotPlatformQuotaDefaults must call BulkInsertInitial once on successful OAuth signup")
-
-	records := quotaRepo.bulkInsertCalls[0]
-	var anthropicRecord *billing.UserPlatformQuotaRecord
-	for i := range records {
-		if records[i].Platform == "anthropic" {
-			anthropicRecord = &records[i]
-			break
-		}
-	}
-	require.NotNil(t, anthropicRecord, "expected anthropic platform record")
-	require.Equal(t, int64(99), anthropicRecord.UserID)
-	require.NotNil(t, anthropicRecord.DailyLimitUSD)
-	require.InDelta(t, 5.5, *anthropicRecord.DailyLimitUSD, 0.0001)
 }

@@ -39,10 +39,8 @@ func (s *Admin) CreateShadow(ctx context.Context, parentID int64, opts ShadowOpt
 			"parent account already has a spark shadow account")
 	}
 
-	// 3. 解析分组。未指定 GroupIDs 时:优先**继承母账号当前分组**(影子与母同路由域,母在自定义
-	// 组时该组的 spark 请求也能选到影子;G1 决策);母无分组再回落 openai-default(F4)。
-	// 显式指定 GroupIDs 时,与 UpdateAccount 对齐先校验存在性(创建前),避免建出影子后再因无效组
-	// 失败而留下孤儿影子(一母一影唯一索引会挡住重试)——外审 C/P1。
+	// 显式分组在创建前校验；省略时只继承母账号已有的关联。
+	// 母账号没有分组时保持未分组，不按名称寻找其他组。
 	groupIDs := opts.GroupIDs
 	if len(groupIDs) > 0 {
 		if s.options.Groups != nil {
@@ -52,16 +50,6 @@ func (s *Admin) CreateShadow(ctx context.Context, parentID int64, opts ShadowOpt
 		}
 	} else if len(parent.GroupIDs) > 0 {
 		groupIDs = append([]int64(nil), parent.GroupIDs...)
-	} else if s.options.Groups != nil {
-		defaultGroupName := PlatformOpenAI + "-default"
-		if groups, gerr := s.options.Groups.ActiveGroups(ctx, PlatformOpenAI); gerr == nil {
-			for _, g := range groups {
-				if g.Name == defaultGroupName {
-					groupIDs = []int64{g.ID}
-					break
-				}
-			}
-		}
 	}
 
 	// 4. 构造影子账号（安全不变量：Credentials 恒不含 auth token，仅含 model_mapping）。
@@ -165,6 +153,7 @@ func (s *Admin) RevertAccountProxyFallback(ctx context.Context, id int64) error 
 	}
 	return s.propagateProxyToShadows(ctx, id, account.ProxyID)
 }
+
 func (s *Admin) ValidateGroupIDs(ctx context.Context, ids []int64) error {
 	if len(ids) == 0 {
 		return nil

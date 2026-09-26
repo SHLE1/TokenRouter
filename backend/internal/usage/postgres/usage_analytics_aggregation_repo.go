@@ -102,7 +102,7 @@ func (r *AggregationStore) aggregateUsageAnalyticsRangeInTx(ctx context.Context,
 					ELSE 'token'
 				END
 			),
-			COALESCE(NULLIF(g.platform, ''), a.platform, ''),
+			ul.platform,
 			COALESCE(ul.inbound_endpoint, ''),
 			COUNT(*),
 			COALESCE(SUM(ul.input_tokens), 0),
@@ -307,6 +307,7 @@ func (r *AggregationStore) ApplyUsageAnalyticsState(ctx context.Context, change 
 	}
 	return r.applyUsageAnalyticsStateInTx(ctx, change)
 }
+
 func (r *AggregationStore) applyUsageAnalyticsStateInTx(ctx context.Context, change usage.AnalyticsStateChange) (*usage.UsageAnalyticsAggregationState, error) {
 	var id int64
 	if err := scanSingleRow(ctx, r.sql, "SELECT id FROM usage_analytics_aggregation_state WHERE id=1 FOR UPDATE", nil, &id); err != nil {

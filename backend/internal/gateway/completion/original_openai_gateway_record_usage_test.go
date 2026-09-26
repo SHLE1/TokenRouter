@@ -171,58 +171,6 @@ func TestOpenAIGatewayServiceRecordUsage_MissingPricingRecordsZeroCostUsageLog(t
 	require.Zero(t, billingRepo.LastCmd.AccountQuotaCost)
 }
 
-func TestOpenAIGatewayServiceRecordUsage_UsesQuotaPlatformForPlatformQuota(t *testing.T) {
-	dailyLimit := 100.0
-	usageRepo := &completiontestkit.UsageLogStore{Inserted: true}
-	billingRepo := &completiontestkit.SettlementStore{
-		Result: &billing.UsageBillingApplyResult{
-			Applied:          true,
-			BalanceAmountUSD: 0.25,
-		},
-	}
-	quotaCache := &completiontestkit.QuotaCache{
-		Entry: &billing.UserPlatformQuotaCacheEntry{DailyLimitUSD: &dailyLimit},
-	}
-	svc := newOpenAIRecordUsageServiceWithBillingRepoForTest(
-		usageRepo,
-		billingRepo,
-		&completiontestkit.UserStore{},
-		&completiontestkit.SubscriptionStore{},
-		nil,
-	)
-	svc.Effects.Funds.Cache = newBillingEligibilityForCompletionTest(quotaCache)
-	svc.Effects.Funds.Quotas = &completiontestkit.PlatformQuotaStore{}
-
-	err := svc.RecordOpenAI(context.Background(), &gatewaycapture.OpenAICapture{
-		Result: &forwardcore.OpenAIResult{
-			RequestID: "resp_quota_platform",
-			Usage: openai.ForwardUsage{
-				InputTokens:  1000,
-				OutputTokens: 1000,
-			},
-			Model:    "gpt-5.1",
-			Duration: time.Second,
-		},
-		APIKey: &apikey.APIKey{
-			ID:    1100,
-			Quota: 100,
-			Group: &routing.Group{Platform: capability.PlatformOpenAI, RateMultiplier: 1},
-		},
-		User:          &identity.User{ID: 2100, Balance: 10},
-		Account:       &accountcore.Record{ID: 3100, Type: capability.AccountTypeAPIKey},
-		QuotaPlatform: capability.PlatformAntigravity,
-	})
-
-	require.NoError(t, err)
-	// ForcePlatform 由 handler 预先拍进 QuotaPlatform，后扣不能再回退到 API key 的 openai 分组。
-	require.Equal(t, []completiontestkit.QuotaCacheGet{
-		{UserID: 2100, Platform: capability.PlatformAntigravity},
-	}, quotaCache.GetCalls)
-	require.Equal(t, []completiontestkit.QuotaCacheIncrement{
-		{UserID: 2100, Platform: capability.PlatformAntigravity, Cost: 0.25},
-	}, quotaCache.IncrCalls)
-}
-
 func TestOpenAIGatewayServiceRecordUsage_UsesUserSpecificGroupRate(t *testing.T) {
 	groupID := int64(11)
 	groupRate := 1.4
@@ -1107,8 +1055,8 @@ func TestOpenAIGatewayServiceRecordUsage_GrokLongContextFollowsGroupToggle(t *te
 					ID:      int64(1030 + i),
 					GroupID: &groupID,
 					Group: &routing.Group{
-						ID:                        groupID,
-						Platform:                  capability.PlatformGrok,
+						ID: groupID,
+
 						RateMultiplier:            1,
 						LongContextPricingEnabled: tt.groupEnable,
 					},
@@ -2254,8 +2202,8 @@ func TestOpenAIGatewayServiceRecordUsage_GrokVideoUsesDefaultRateCard(t *testing
 			ID:      101261,
 			GroupID: i64p(groupID),
 			Group: &routing.Group{
-				ID:             groupID,
-				Platform:       capability.PlatformGrok,
+				ID: groupID,
+
 				RateMultiplier: 1,
 			},
 		},
@@ -2298,8 +2246,8 @@ func TestOpenAIGatewayServiceRecordUsage_GroupImagePriceOverridesPricingConfigIm
 			ID:      10127,
 			GroupID: i64p(groupID),
 			Group: &routing.Group{
-				ID:             groupID,
-				Platform:       capability.PlatformGrok,
+				ID: groupID,
+
 				RateMultiplier: 1,
 				ModelPricing:   testImageModelPricing(map[string]*float64{"2K": &groupImagePrice2K}),
 			},
@@ -2341,8 +2289,8 @@ func TestOpenAIGatewayServiceRecordUsage_GroupVideoPriceOverridesPricingConfigIm
 			ID:      10128,
 			GroupID: i64p(groupID),
 			Group: &routing.Group{
-				ID:             groupID,
-				Platform:       capability.PlatformGrok,
+				ID: groupID,
+
 				RateMultiplier: 1,
 				ModelPricing:   testVideoModelPricing(map[string]*float64{"720p": &groupVideoPrice720P}),
 			},
@@ -2386,8 +2334,8 @@ func TestOpenAIGatewayServiceRecordUsage_GrokVideoWithTokenConfigPricingKeepsVid
 			ID:      10132,
 			GroupID: i64p(groupID),
 			Group: &routing.Group{
-				ID:             groupID,
-				Platform:       capability.PlatformGrok,
+				ID: groupID,
+
 				RateMultiplier: 1,
 			},
 		},
@@ -2764,7 +2712,7 @@ func TestOpenAIGatewayServiceRecordUsage_FreeOpenAIFastChargesStandard(t *testin
 		ID:      1020,
 		GroupID: &groupID,
 		Group: &routing.Group{
-			ID: groupID, Platform: capability.PlatformOpenAI, Status: billing.StatusActive,
+			ID: groupID, Status: billing.StatusActive,
 			Hydrated: true, RateMultiplier: 0.5, FreeOpenAIFast: true,
 			ModelPricing: []routing.ModelPricingEntry{{
 				Models:         []string{"gpt-5.6-sol"},
@@ -2809,7 +2757,7 @@ func TestOpenAIGatewayServiceRecordUsage_FreeOpenAIFastChargesStandard(t *testin
 
 // TestGroupBillsOpenAIFastAtStandardRequiresOpenAIAccount 锁定平台、账号和档位三重边界。
 func TestGroupBillsOpenAIFastAtStandardRequiresOpenAIAccount(t *testing.T) {
-	apiKey := &apikey.APIKey{Group: &routing.Group{Platform: capability.PlatformOpenAI, FreeOpenAIFast: true}}
+	apiKey := &apikey.APIKey{Group: &routing.Group{FreeOpenAIFast: true}}
 
 	require.True(t, completion.GroupBillsOpenAIFastAtStandard(gatewaycapture.ProjectCompletionKey(apiKey), gatewaycapture.ProjectCompletionAccount(&accountcore.Record{Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth}), "priority"))
 	require.True(t, completion.GroupBillsOpenAIFastAtStandard(gatewaycapture.ProjectCompletionKey(apiKey), gatewaycapture.ProjectCompletionAccount(&accountcore.Record{Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth}), " FAST "))

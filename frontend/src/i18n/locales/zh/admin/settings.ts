@@ -421,16 +421,6 @@ export default {
         defaultSubscriptionsDuplicate: '默认订阅存在重复套餐：{planId}。每个套餐只能出现一次。',
         subscriptionGroup: '订阅套餐',
         subscriptionValidityDays: '有效期（天）',
-        defaultPlatformQuotas: '默认平台限额（注册时分配）',
-        defaultPlatformQuotasHint: '新用户注册时自动写入平台限额记录；已有用户不受影响。留空 = 该平台该窗口不限制。',
-        platformQuotaNotice: '月限额为 30 天滚动窗口，非自然月',
-      },
-      platformQuota: {
-        platform:    '平台',
-        daily:       '日限额 (USD)',
-        weekly:      '周限额 (USD)',
-        monthly:     '月限额 (USD, 30天滚动)',
-        placeholder: '不限',
       },
       balanceDisplay: {
         title: '余额展示设置',
@@ -468,8 +458,6 @@ export default {
       scheduling: {
         title: '网关调度设置',
         description: '控制 API Key 的调度行为',
-        allowUngroupedKey: '允许未分组 Key 调度',
-        allowUngroupedKeyHint: '关闭后，未分配到任何分组的 API Key 将无法发起请求（返回 403）。建议保持关闭以确保所有 Key 都归属明确的分组。',
         accountSchedulingThresholdsTitle: '平台账号自动停调阈值',
         accountSchedulingThresholdsDescription: '账号当前原生用量窗口（OpenAI Codex/Anthropic 会话，或 Grok 请求/Token 利用率）达到该百分比时，将临时移出调度，直到窗口重置。填 100 表示禁用。',
         accountSchedulingThresholdsGlobalHint: '这是平台全部账号的系统默认值，可在账号编辑页为单个账号覆盖。',
@@ -1271,8 +1259,6 @@ export default {
         defaultSubscriptionsLabel: '默认订阅',
         defaultSubscriptionsHint: '仅对当前认证来源生效，未配置时不追加来源专属订阅。',
         noSourceSubscriptions: '当前来源未配置专属默认订阅。',
-        platformQuotasOverride: '平台限额覆盖',
-        platformQuotasOverrideHint: '留空的字段继承「系统默认平台限额」；填 0 表示禁止该窗口使用。',
       },
       paymentVisibleMethods: {
         methodLabel: '{title} 可见方式',

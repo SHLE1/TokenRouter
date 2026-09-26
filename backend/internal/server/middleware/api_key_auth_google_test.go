@@ -18,7 +18,6 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 
 	billingcore "github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/config"
@@ -28,7 +27,6 @@ import (
 )
 
 func TestGoogleAPIKeyAuthRejectsOversizedCredentialsBeforeLookup(t *testing.T) {
-
 	var calls atomic.Int32
 	repo := fakeAPIKeyRepo{getByKey: func(context.Context, string) (*apikey.APIKey, error) {
 		calls.Add(1)
@@ -57,7 +55,6 @@ func TestGoogleAPIKeyAuthRejectsOversizedCredentialsBeforeLookup(t *testing.T) {
 }
 
 func TestGoogleAPIKeyAuthMarksLookupBulkheadRejection(t *testing.T) {
-
 	repo := fakeAPIKeyRepo{getByKey: func(context.Context, string) (*apikey.APIKey, error) {
 		return nil, apikey.ErrAPIKeyAuthOverloaded
 	}}
@@ -83,9 +80,8 @@ func TestGoogleAPIKeyAuthMarksLookupBulkheadRejection(t *testing.T) {
 }
 
 func TestGoogleAPIKeyAuthCompositeModelListStillChecksQuota(t *testing.T) {
-
 	user := &identity.User{ID: 7, Status: billingcore.StatusActive, Balance: 10}
-	group := &routing.Group{ID: 9, Platform: capability.PlatformGemini, Status: billingcore.StatusActive, Hydrated: true}
+	group := &routing.Group{ID: 9, Status: billingcore.StatusActive, Hydrated: true}
 	apiKey := &apikey.APIKey{
 		ID: 10, UserID: user.ID, Key: "google-composite-exhausted", Status: apikey.StatusAPIKeyQuotaExhausted,
 		User: user, IsComposite: true, Quota: 1, QuotaUsed: 1,
@@ -117,9 +113,8 @@ func TestGoogleAPIKeyAuthCompositeModelListStillChecksQuota(t *testing.T) {
 }
 
 func TestAPIKeyAuthWithSubscriptionGoogle_UsageKeepsUnavailablePreferredSubscription(t *testing.T) {
-
 	now := time.Now()
-	group := &routing.Group{ID: 9, Platform: capability.PlatformGemini, Status: billingcore.StatusActive, Hydrated: true}
+	group := &routing.Group{ID: 9, Status: billingcore.StatusActive, Hydrated: true}
 	user := &identity.User{ID: 7, Status: billingcore.StatusActive, Role: identity.RoleUser, Balance: 100}
 	preferredID := int64(55)
 	apiKey := &apikey.APIKey{
@@ -215,78 +210,101 @@ func (f fakeGoogleSubscriptionRepo) FilterByGroup(_ context.Context, subs []bill
 func (f fakeAPIKeyRepo) Create(ctx context.Context, key *apikey.APIKey) error {
 	return errors.New("not implemented")
 }
+
 func (f fakeAPIKeyRepo) GetByID(ctx context.Context, id int64) (*apikey.APIKey, error) {
 	return nil, errors.New("not implemented")
 }
+
 func (f fakeAPIKeyRepo) GetKeyAndOwnerID(ctx context.Context, id int64) (string, int64, error) {
 	return "", 0, errors.New("not implemented")
 }
+
 func (f fakeAPIKeyRepo) GetByKey(ctx context.Context, key string) (*apikey.APIKey, error) {
 	if f.getByKey == nil {
 		return nil, errors.New("unexpected call")
 	}
 	return f.getByKey(ctx, key)
 }
+
 func (f fakeAPIKeyRepo) GetByKeyForAuth(ctx context.Context, key string) (*apikey.APIKey, error) {
 	return f.GetByKey(ctx, key)
 }
+
 func (f fakeAPIKeyRepo) Update(ctx context.Context, key *apikey.APIKey, _ apikey.APIKeyUpdateFields) error {
 	return errors.New("not implemented")
 }
+
 func (f fakeAPIKeyRepo) Delete(ctx context.Context, id int64) error {
 	return errors.New("not implemented")
 }
+
 func (f fakeAPIKeyRepo) DeleteWithAudit(ctx context.Context, id int64) error {
 	return errors.New("not implemented")
 }
+
 func (f fakeAPIKeyRepo) ListByUserID(ctx context.Context, userID int64, params pagination.PaginationParams, _ apikey.APIKeyListFilters) ([]apikey.APIKey, *pagination.PaginationResult, error) {
 	return nil, nil, errors.New("not implemented")
 }
+
 func (f fakeAPIKeyRepo) VerifyOwnership(ctx context.Context, userID int64, apiKeyIDs []int64) ([]int64, error) {
 	return nil, errors.New("not implemented")
 }
+
 func (f fakeAPIKeyRepo) CountByUserID(ctx context.Context, userID int64) (int64, error) {
 	return 0, errors.New("not implemented")
 }
+
 func (f fakeAPIKeyRepo) ExistsByKey(ctx context.Context, key string) (bool, error) {
 	return false, errors.New("not implemented")
 }
+
 func (f fakeAPIKeyRepo) ListByGroupID(ctx context.Context, groupID int64, params pagination.PaginationParams) ([]apikey.APIKey, *pagination.PaginationResult, error) {
 	return nil, nil, errors.New("not implemented")
 }
+
 func (f fakeAPIKeyRepo) SearchAPIKeys(ctx context.Context, userID int64, keyword string, limit int) ([]apikey.APIKey, error) {
 	return nil, errors.New("not implemented")
 }
+
 func (f fakeAPIKeyRepo) ClearGroupIDByGroupID(ctx context.Context, groupID int64) (int64, error) {
 	return 0, errors.New("not implemented")
 }
+
 func (f fakeAPIKeyRepo) CountByGroupID(ctx context.Context, groupID int64) (int64, error) {
 	return 0, errors.New("not implemented")
 }
+
 func (f fakeAPIKeyRepo) ListKeysByUserID(ctx context.Context, userID int64) ([]string, error) {
 	return nil, errors.New("not implemented")
 }
+
 func (f fakeAPIKeyRepo) ListKeysByGroupID(ctx context.Context, groupID int64) ([]string, error) {
 	return nil, errors.New("not implemented")
 }
+
 func (f fakeAPIKeyRepo) IncrementQuotaUsed(ctx context.Context, id int64, amount float64) (float64, error) {
 	return 0, errors.New("not implemented")
 }
+
 func (f fakeAPIKeyRepo) UpdateLastUsed(ctx context.Context, id int64, usedAt time.Time) error {
 	if f.updateLastUsed != nil {
 		return f.updateLastUsed(ctx, id, usedAt)
 	}
 	return nil
 }
+
 func (f fakeAPIKeyRepo) IncrementRateLimitUsage(ctx context.Context, id int64, cost float64) error {
 	return nil
 }
+
 func (f fakeAPIKeyRepo) ResetRateLimitWindows(ctx context.Context, id int64) error {
 	return nil
 }
+
 func (f fakeAPIKeyRepo) GetRateLimitData(ctx context.Context, id int64) (*apikey.APIKeyRateLimitData, error) {
 	return &apikey.APIKeyRateLimitData{}, nil
 }
+
 func (f fakeAPIKeyRepo) UpdateGroupIDByUserAndGroup(ctx context.Context, userID, oldGroupID, newGroupID int64) (int64, error) {
 	return 0, errors.New("not implemented")
 }
@@ -294,102 +312,128 @@ func (f fakeAPIKeyRepo) UpdateGroupIDByUserAndGroup(ctx context.Context, userID,
 func (f fakeGoogleSubscriptionRepo) Create(ctx context.Context, sub *billingcore.UserSubscription) error {
 	return errors.New("not implemented")
 }
+
 func (f fakeGoogleSubscriptionRepo) GetByID(ctx context.Context, id int64) (*billingcore.UserSubscription, error) {
 	if f.getByID != nil {
 		return f.getByID(ctx, id)
 	}
 	return nil, errors.New("not implemented")
 }
+
 func (f fakeGoogleSubscriptionRepo) GetByIDIncludeDeleted(ctx context.Context, id int64) (*billingcore.UserSubscription, error) {
 	return nil, errors.New("not implemented")
 }
+
 func (f fakeGoogleSubscriptionRepo) GetByUserIDAndGroupID(ctx context.Context, userID, groupID int64) (*billingcore.UserSubscription, error) {
 	return nil, errors.New("not implemented")
 }
+
 func (f fakeGoogleSubscriptionRepo) GetActiveByUserIDAndGroupID(ctx context.Context, userID, groupID int64) (*billingcore.UserSubscription, error) {
 	return nil, errors.New("not implemented")
 }
+
 func (f fakeGoogleSubscriptionRepo) GetLatestByUserIDAndPlanID(ctx context.Context, userID, planID int64) (*billingcore.UserSubscription, error) {
 	return nil, errors.New("not implemented")
 }
+
 func (f fakeGoogleSubscriptionRepo) Update(ctx context.Context, sub *billingcore.UserSubscription) error {
 	return errors.New("not implemented")
 }
+
 func (f fakeGoogleSubscriptionRepo) Delete(ctx context.Context, id int64) error {
 	return errors.New("not implemented")
 }
+
 func (f fakeGoogleSubscriptionRepo) Restore(ctx context.Context, subscriptionID int64, restoredStatus string) (*billingcore.UserSubscription, error) {
 	return nil, errors.New("not implemented")
 }
+
 func (f fakeGoogleSubscriptionRepo) ListByUserID(ctx context.Context, userID int64) ([]billingcore.UserSubscription, error) {
 	return nil, errors.New("not implemented")
 }
+
 func (f fakeGoogleSubscriptionRepo) ListActiveByUserID(ctx context.Context, userID int64) ([]billingcore.UserSubscription, error) {
 	if f.listActive != nil {
 		return f.listActive(ctx, userID)
 	}
 	return nil, errors.New("not implemented")
 }
+
 func (f fakeGoogleSubscriptionRepo) ListByUserIDAndPlanID(ctx context.Context, userID, planID int64) ([]billingcore.UserSubscription, error) {
 	return nil, errors.New("not implemented")
 }
+
 func (f fakeGoogleSubscriptionRepo) ListByGroupID(ctx context.Context, groupID int64, params pagination.PaginationParams) ([]billingcore.UserSubscription, *pagination.PaginationResult, error) {
 	return nil, nil, errors.New("not implemented")
 }
+
 func (f fakeGoogleSubscriptionRepo) ListByPlanID(ctx context.Context, planID int64, params pagination.PaginationParams) ([]billingcore.UserSubscription, *pagination.PaginationResult, error) {
 	return nil, nil, errors.New("not implemented")
 }
+
 func (f fakeGoogleSubscriptionRepo) List(ctx context.Context, params pagination.PaginationParams, userID, planID *int64, status, platform, sortBy, sortOrder string) ([]billingcore.UserSubscription, *pagination.PaginationResult, error) {
 	return nil, nil, errors.New("not implemented")
 }
+
 func (f fakeGoogleSubscriptionRepo) ListBySourceOrderID(ctx context.Context, sourceOrderID int64) ([]billingcore.UserSubscription, error) {
 	return nil, errors.New("not implemented")
 }
+
 func (f fakeGoogleSubscriptionRepo) ExistsByUserIDAndGroupID(ctx context.Context, userID, groupID int64) (bool, error) {
 	return false, errors.New("not implemented")
 }
+
 func (f fakeGoogleSubscriptionRepo) ExtendExpiry(ctx context.Context, subscriptionID int64, newExpiresAt time.Time) error {
 	return errors.New("not implemented")
 }
+
 func (f fakeGoogleSubscriptionRepo) UpdateStatus(ctx context.Context, subscriptionID int64, status string) error {
 	if f.updateStatus != nil {
 		return f.updateStatus(ctx, subscriptionID, status)
 	}
 	return errors.New("not implemented")
 }
+
 func (f fakeGoogleSubscriptionRepo) UpdateNotes(ctx context.Context, subscriptionID int64, notes string) error {
 	return errors.New("not implemented")
 }
+
 func (f fakeGoogleSubscriptionRepo) ActivateWindows(ctx context.Context, id int64, start time.Time, activation billingcore.SubscriptionWindowActivation) error {
 	if f.activateWindow != nil {
 		return f.activateWindow(ctx, id, start)
 	}
 	return errors.New("not implemented")
 }
+
 func (f fakeGoogleSubscriptionRepo) ResetUsageWindows(context.Context, int64, bool, bool, bool, time.Time) error {
 	return errors.New("not implemented")
 }
+
 func (f fakeGoogleSubscriptionRepo) ResetDailyUsage(ctx context.Context, id int64, _ *time.Time, start time.Time) error {
 	if f.resetDaily != nil {
 		return f.resetDaily(ctx, id, start)
 	}
 	return errors.New("not implemented")
 }
+
 func (f fakeGoogleSubscriptionRepo) ResetWeeklyUsage(ctx context.Context, id int64, _ *time.Time, start time.Time) error {
 	if f.resetWeekly != nil {
 		return f.resetWeekly(ctx, id, start)
 	}
 	return errors.New("not implemented")
 }
+
 func (f fakeGoogleSubscriptionRepo) ResetMonthlyUsage(ctx context.Context, id int64, _ *time.Time, start time.Time) error {
 	if f.resetMonthly != nil {
 		return f.resetMonthly(ctx, id, start)
 	}
 	return errors.New("not implemented")
 }
+
 func (f fakeGoogleSubscriptionRepo) IncrementUsage(ctx context.Context, id int64, costUSD float64) error {
 	return errors.New("not implemented")
 }
+
 func (f fakeGoogleSubscriptionRepo) BatchUpdateExpiredStatus(ctx context.Context) (int64, error) {
 	return 0, errors.New("not implemented")
 }
@@ -415,7 +459,6 @@ func newTestAPIKeyService(repo apikey.APIKeyRepository) *apikey.APIKeyService {
 }
 
 func TestApiKeyAuthWithSubscriptionGoogle_MissingKey(t *testing.T) {
-
 	r := gin.New()
 	apiKeyService := newTestAPIKeyService(fakeAPIKeyRepo{
 		getByKey: func(ctx context.Context, key string) (*apikey.APIKey, error) {
@@ -438,7 +481,6 @@ func TestApiKeyAuthWithSubscriptionGoogle_MissingKey(t *testing.T) {
 }
 
 func TestApiKeyAuthWithSubscriptionGoogle_QueryApiKeyRejected(t *testing.T) {
-
 	r := gin.New()
 	apiKeyService := newTestAPIKeyService(fakeAPIKeyRepo{
 		getByKey: func(ctx context.Context, key string) (*apikey.APIKey, error) {
@@ -461,12 +503,11 @@ func TestApiKeyAuthWithSubscriptionGoogle_QueryApiKeyRejected(t *testing.T) {
 }
 
 func TestApiKeyAuthWithSubscriptionGoogleSetsGroupContext(t *testing.T) {
-
 	group := &routing.Group{
-		ID:       99,
-		Name:     "g1",
-		Status:   billingcore.StatusActive,
-		Platform: capability.PlatformGemini,
+		ID:     99,
+		Name:   "g1",
+		Status: billingcore.StatusActive,
+
 		Hydrated: true,
 	}
 	user := &identity.User{
@@ -526,7 +567,6 @@ func TestApiKeyAuthWithSubscriptionGoogleSetsGroupContext(t *testing.T) {
 }
 
 func TestApiKeyAuthWithSubscriptionGoogle_QueryKeyAllowedOnV1Beta(t *testing.T) {
-
 	r := gin.New()
 	apiKeyService := newTestAPIKeyService(fakeAPIKeyRepo{
 		getByKey: func(ctx context.Context, key string) (*apikey.APIKey, error) {
@@ -553,7 +593,6 @@ func TestApiKeyAuthWithSubscriptionGoogle_QueryKeyAllowedOnV1Beta(t *testing.T) 
 }
 
 func TestApiKeyAuthWithSubscriptionGoogle_InvalidKey(t *testing.T) {
-
 	r := gin.New()
 	apiKeyService := newTestAPIKeyService(fakeAPIKeyRepo{
 		getByKey: func(ctx context.Context, key string) (*apikey.APIKey, error) {
@@ -585,7 +624,6 @@ func TestApiKeyAuthWithSubscriptionGoogle_InvalidKey(t *testing.T) {
 }
 
 func TestApiKeyAuthWithSubscriptionGoogle_MarksUnavailableGroupBusinessLimited(t *testing.T) {
-
 	groupID := int64(101)
 	user := &identity.User{
 		ID:          7,
@@ -602,10 +640,10 @@ func TestApiKeyAuthWithSubscriptionGoogle_MarksUnavailableGroupBusinessLimited(t
 		Status:  billingcore.StatusActive,
 		User:    user,
 		Group: &routing.Group{
-			ID:       groupID,
-			Name:     "deleted",
-			Status:   "deleted",
-			Platform: capability.PlatformGemini,
+			ID:     groupID,
+			Name:   "deleted",
+			Status: "deleted",
+
 			Hydrated: true,
 		},
 	}
@@ -651,7 +689,6 @@ func TestApiKeyAuthWithSubscriptionGoogle_MarksUnavailableGroupBusinessLimited(t
 }
 
 func TestApiKeyAuthWithSubscriptionGoogle_RepoError(t *testing.T) {
-
 	r := gin.New()
 	apiKeyService := newTestAPIKeyService(fakeAPIKeyRepo{
 		getByKey: func(ctx context.Context, key string) (*apikey.APIKey, error) {
@@ -675,7 +712,6 @@ func TestApiKeyAuthWithSubscriptionGoogle_RepoError(t *testing.T) {
 }
 
 func TestApiKeyAuthWithSubscriptionGoogle_DisabledKey(t *testing.T) {
-
 	r := gin.New()
 	apiKeyService := newTestAPIKeyService(fakeAPIKeyRepo{
 		getByKey: func(ctx context.Context, key string) (*apikey.APIKey, error) {
@@ -707,7 +743,6 @@ func TestApiKeyAuthWithSubscriptionGoogle_DisabledKey(t *testing.T) {
 }
 
 func TestApiKeyAuthWithSubscriptionGoogle_RejectsRuntimeKeyRestrictions(t *testing.T) {
-
 	expiredAt := time.Now().Add(-time.Minute)
 	tests := []struct {
 		name            string
@@ -778,7 +813,6 @@ func TestApiKeyAuthWithSubscriptionGoogle_RejectsRuntimeKeyRestrictions(t *testi
 }
 
 func TestApiKeyAuthWithSubscriptionGoogle_IPRestrictionDoesNotTrustForwardedClientIPByDefault(t *testing.T) {
-
 	apiKey := &apikey.APIKey{
 		ID:          1,
 		Key:         "google-ip-restricted",
@@ -826,7 +860,6 @@ func TestApiKeyAuthWithSubscriptionGoogle_IPRestrictionDoesNotTrustForwardedClie
 }
 
 func TestApiKeyAuthWithSubscriptionGoogle_InsufficientBalance(t *testing.T) {
-
 	r := gin.New()
 	apiKeyService := newTestAPIKeyService(fakeAPIKeyRepo{
 		getByKey: func(ctx context.Context, key string) (*apikey.APIKey, error) {
@@ -859,7 +892,6 @@ func TestApiKeyAuthWithSubscriptionGoogle_InsufficientBalance(t *testing.T) {
 }
 
 func TestApiKeyAuthWithSubscriptionGoogle_BalanceBelowMinimumReserve(t *testing.T) {
-
 	// 鉴权层保持历史语义：MinimumBalanceReserve 只用于 billing-cache 预检，
 	// 0 < balance < reserve 的用户不得在鉴权中间件被硬 403。
 	r := gin.New()
@@ -891,7 +923,6 @@ func TestApiKeyAuthWithSubscriptionGoogle_BalanceBelowMinimumReserve(t *testing.
 }
 
 func TestApiKeyAuthWithSubscriptionGoogle_RejectsExhaustedBalance(t *testing.T) {
-
 	r := gin.New()
 	apiKeyService := newTestAPIKeyService(fakeAPIKeyRepo{
 		getByKey: func(ctx context.Context, key string) (*apikey.APIKey, error) {
@@ -925,7 +956,6 @@ func TestApiKeyAuthWithSubscriptionGoogle_RejectsExhaustedBalance(t *testing.T) 
 }
 
 func TestApiKeyAuthWithSubscriptionGoogle_TouchesLastUsedOnSuccess(t *testing.T) {
-
 	user := &identity.User{
 		ID:          11,
 		Role:        identity.RoleUser,
@@ -973,7 +1003,6 @@ func TestApiKeyAuthWithSubscriptionGoogle_TouchesLastUsedOnSuccess(t *testing.T)
 }
 
 func TestApiKeyAuthWithSubscriptionGoogle_TouchFailureDoesNotBlock(t *testing.T) {
-
 	user := &identity.User{
 		ID:          12,
 		Role:        identity.RoleUser,
@@ -1018,7 +1047,6 @@ func TestApiKeyAuthWithSubscriptionGoogle_TouchFailureDoesNotBlock(t *testing.T)
 }
 
 func TestApiKeyAuthWithSubscriptionGoogle_TouchesLastUsedInStandardMode(t *testing.T) {
-
 	user := &identity.User{
 		ID:          13,
 		Role:        identity.RoleUser,
@@ -1063,12 +1091,11 @@ func TestApiKeyAuthWithSubscriptionGoogle_TouchesLastUsedInStandardMode(t *testi
 }
 
 func TestApiKeyAuthWithSubscriptionGoogle_ExhaustedSubscriptionFallsBackToBalance(t *testing.T) {
-
 	group := &routing.Group{
-		ID:       77,
-		Name:     "gemini-sub",
-		Status:   billingcore.StatusActive,
-		Platform: capability.PlatformGemini,
+		ID:     77,
+		Name:   "gemini-sub",
+		Status: billingcore.StatusActive,
+
 		Hydrated: true,
 	}
 	user := &identity.User{

@@ -12,10 +12,12 @@ import (
 
 // SelectedAccountSlot 不携带凭据或可变账号实体。
 type SelectedAccountSlot struct {
-	AccountID   int64
-	Acquired    bool
-	ReleaseFunc func()
-	WaitPlan    *scheduler.AccountWaitPlan
+	// CompleteBeforeRelease 用于流式请求在客户端断开后仍需收集原生用量的账号。
+	CompleteBeforeRelease bool
+	AccountID             int64
+	Acquired              bool
+	ReleaseFunc           func()
+	WaitPlan              *scheduler.AccountWaitPlan
 }
 type SlotStickyBinder interface {
 	BindStickySession(context.Context, *int64, string, int64) error
@@ -27,7 +29,6 @@ type AccountSlotHooks struct {
 
 // AcquireSelectedAccountSlot 只有取得的资源才交给请求释放，不变更原故障放行语义。
 func AcquireSelectedAccountSlot(c *gin.Context, groupID *int64, sessionHash string, selection *SelectedAccountSlot, reqStream bool, streamStarted *bool, reqLog *zap.Logger, writeError func(int, string, string, string), concurrency *ConcurrencyHelper, sticky SlotStickyBinder, hooks AccountSlotHooks) (func(), bool) {
-
 	if selection == nil {
 		hooks.CapacityLimited(c)
 		writeError(http.StatusServiceUnavailable, "api_error", "", "No available accounts")
@@ -35,10 +36,14 @@ func AcquireSelectedAccountSlot(c *gin.Context, groupID *int64, sessionHash stri
 	}
 
 	ctx := c.Request.Context()
+	mode := scheduler.ReleaseOnCancel
+	if selection.CompleteBeforeRelease {
+		mode = scheduler.ReleaseOnCompletion
+	}
 	accountID := selection.AccountID
 	if selection.Acquired {
 		hooks.Acquired(c)
-		return scheduler.WrapRelease(ctx, scheduler.ReleaseOnCancel, selection.ReleaseFunc), true
+		return scheduler.WrapRelease(ctx, mode, selection.ReleaseFunc), true
 	}
 	if selection.WaitPlan == nil {
 		hooks.CapacityLimited(c)
@@ -62,7 +67,7 @@ func AcquireSelectedAccountSlot(c *gin.Context, groupID *int64, sessionHash stri
 		if err := sticky.BindStickySession(ctx, groupID, sessionHash, accountID); err != nil {
 			reqLog.Warn("openai.bind_sticky_session_failed", zap.Int64("account_id", accountID), zap.Error(err))
 		}
-		return scheduler.WrapRelease(ctx, scheduler.ReleaseOnCancel, fastReleaseFunc), true
+		return scheduler.WrapRelease(ctx, mode, fastReleaseFunc), true
 	}
 
 	waitEntry, waitErr := concurrency.EnterAccountWait(ctx, accountID, selection.WaitPlan.MaxWaiting)
@@ -108,5 +113,5 @@ func AcquireSelectedAccountSlot(c *gin.Context, groupID *int64, sessionHash stri
 	if err := sticky.BindStickySession(ctx, groupID, sessionHash, accountID); err != nil {
 		reqLog.Warn("openai.bind_sticky_session_failed", zap.Int64("account_id", accountID), zap.Error(err))
 	}
-	return scheduler.WrapRelease(ctx, scheduler.ReleaseOnCancel, accountReleaseFunc), true
+	return scheduler.WrapRelease(ctx, mode, accountReleaseFunc), true
 }

@@ -18,8 +18,8 @@ func mustCreateGroup(t *testing.T, client *dbent.Client, g *routing.Group) *rout
 	t.Helper()
 	ctx := context.Background()
 
-	if g.Platform == "" {
-		g.Platform = capability.PlatformAnthropic
+	if g.AllowedProtocols == nil {
+		g.AllowedProtocols = capability.DefaultGroupClientProtocols("")
 	}
 	if g.Status == "" {
 		g.Status = billing.StatusActive
@@ -27,7 +27,7 @@ func mustCreateGroup(t *testing.T, client *dbent.Client, g *routing.Group) *rout
 
 	create := client.Group.Create().
 		SetName(g.Name).
-		SetPlatform(g.Platform).
+		SetAllowedProtocols(g.AllowedProtocols).
 		SetStatus(g.Status).
 		SetRateMultiplier(g.RateMultiplier).
 		SetIsExclusive(g.IsExclusive).

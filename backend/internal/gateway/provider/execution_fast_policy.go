@@ -88,6 +88,7 @@ func WithFastPolicyContext(ctx context.Context, settings *tierpolicy.OpenAIFastP
 	}
 	return context.WithValue(ctx, openAIFastPolicyCtxKey, settings)
 }
+
 func FastPolicySettingsFromContext(ctx context.Context) *tierpolicy.OpenAIFastPolicySettings {
 	if ctx == nil {
 		return nil
@@ -104,11 +105,12 @@ func GroupFastPolicy(ctx context.Context, account *ExecutionAccount) string {
 		return routing.GroupOpenAIFastPolicyFollowRequest
 	}
 	group, _ := requeststate.GroupFromContext(ctx)
-	if !routing.IsGroupContextValid(group) || !routing.GroupSupportsOpenAIFast(group.Platform) {
+	if !routing.IsGroupContextValid(group) {
 		return routing.GroupOpenAIFastPolicyFollowRequest
 	}
 	return group.EffectiveOpenAIFastPolicy()
 }
+
 func (s *ExecutionFastPolicy) Input(ctx context.Context, value *ExecutionAccount, model string) tierpolicy.DecisionInput {
 	return tierpolicy.DecisionInput{
 		Model: model, GroupPolicy: GroupFastPolicy(ctx, value), OpenAI: value != nil && value.View().IsOpenAI(),

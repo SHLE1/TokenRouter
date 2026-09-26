@@ -30,10 +30,6 @@ func (s *GroupAdmin) GetAllGroups(ctx context.Context) ([]Group, error) {
 	return s.groupRepo.ListActive(ctx)
 }
 
-func (s *GroupAdmin) GetAllGroupsByPlatform(ctx context.Context, platform string) ([]Group, error) {
-	return s.groupRepo.ListActiveByPlatform(ctx, platform)
-}
-
 func (s *GroupAdmin) GetAllGroupsIncludingInactive(ctx context.Context) ([]Group, error) {
 	// ListWithFilters 的空 status 表示不按状态过滤，因此会返回启用和禁用分组。
 	// PageSize 10000 有意放宽；实际分组数量通常只是几十个。
@@ -45,64 +41,36 @@ func (s *GroupAdmin) GetGroup(ctx context.Context, id int64) (*Group, error) {
 	return s.groupRepo.GetByID(ctx, id)
 }
 
-func (s *GroupAdmin) GetGroupModelsListCandidates(ctx context.Context, id int64, platform string) ([]string, error) {
-	platform = strings.TrimSpace(platform)
-	var existingGroup *Group
-	if id > 0 {
-		group, err := s.groupRepo.GetByIDLite(ctx, id)
-		if err != nil {
-			return nil, err
-		}
-		existingGroup = group
-		if platform == "" {
-			platform = group.Platform
-		}
+// GetGroupModelsListCandidates 新组展示默认目录建议，已有组只展示实际账号能力的并集。
+func (s *GroupAdmin) GetGroupModelsListCandidates(ctx context.Context, id int64, _ string) ([]string, error) {
+	if id <= 0 {
+		return s.options.DefaultModels(""), nil
 	}
-	if platform == "" {
-		platform = PlatformAnthropic
+	group, err := s.groupRepo.GetByIDLite(ctx, id)
+	if err != nil {
+		return nil, err
 	}
-
-	if id <= 0 || s.accountRepo == nil {
-		return s.options.DefaultModels(platform), nil
+	if s.accountRepo == nil {
+		return []string{}, nil
 	}
-
 	accounts, err := s.accountRepo.ListSchedulableByGroupID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-
-	candidates := ConfiguredModelsListCandidateIDs(accounts, platform)
-	if existingGroup != nil && existingGroup.Platform == platform && existingGroup.CustomModelsListEnabled() {
-		return FilterModelsListCandidates(candidates, existingGroup.ModelsListConfig.Models), nil
+	candidates := ConfiguredModelsListCandidateIDs(accounts, "")
+	if group.CustomModelsListEnabled() {
+		candidates = FilterModelsListCandidates(candidates, group.ModelsListConfig.Models)
 	}
-	if len(candidates) > 0 {
-		return candidates, nil
-	}
-	return s.options.DefaultModels(platform), nil
+	return candidates, nil
 }
 
-func DefaultAllowImageGenerationForPlatform(platform string) bool {
-	// Grok 图片和视频生成路由共用历史图片生成开关；旧客户端不会显式传 true。
-	return platform == PlatformGrok
-}
-
-// GroupSupportsOpenAIFast 判断分组是否允许配置 OpenAI Fast 强制策略。
-func GroupSupportsOpenAIFast(platform string) bool {
-	return platform == PlatformOpenAI
-}
-
-// SanitizeGroupOpenAIFast 清除不支持平台上的组级 Fast 开关，避免无效配置持久化。
+// SanitizeGroupOpenAIFast 规范化功能配置，实际应用范围由执行账号决定。
 func SanitizeGroupOpenAIFast(group *Group) {
 	if group == nil {
 		return
 	}
 	group.OpenAIFastPolicy = group.EffectiveOpenAIFastPolicy()
 	group.ForceOpenAIFast = group.OpenAIFastPolicy == GroupOpenAIFastPolicyForcePriority
-	if !GroupSupportsOpenAIFast(group.Platform) {
-		group.OpenAIFastPolicy = GroupOpenAIFastPolicyFollowRequest
-		group.ForceOpenAIFast = false
-		group.FreeOpenAIFast = false
-	}
 }
 
 func (s *GroupAdmin) CreateGroup(ctx context.Context, input *CreateGroupInput) (*Group, error) {
@@ -117,10 +85,7 @@ func (s *GroupAdmin) CreateGroup(ctx context.Context, input *CreateGroupInput) (
 		return nil, errors.New("rate_multiplier must be > 0")
 	}
 
-	platform := input.Platform
-	if platform == "" {
-		platform = PlatformAnthropic
-	}
+	platform := ""
 	schedulerType, err := NormalizeGroupSchedulerType(input.SchedulerType)
 	if err != nil {
 		return nil, infraerrors.Newf(infraerrors.Category(400), "INVALID_SCHEDULER_TYPE", "%v", err)
@@ -131,9 +96,6 @@ func (s *GroupAdmin) CreateGroup(ctx context.Context, input *CreateGroupInput) (
 	allowedClientProtocols := input.AllowedProtocols
 	if allowedClientProtocols == nil {
 		allowedClientProtocols = capability.DefaultGroupClientProtocols(platform)
-		if platform == PlatformOpenAI {
-			allowedClientProtocols = capability.SetGroupClientProtocol(allowedClientProtocols, wireprotocol.ProtocolAnthropicMessages, input.AllowMessagesDispatch)
-		}
 	}
 
 	modelPricing, err := s.options.Pricing.NormalizeGroupPricing(platform, input.ModelPricing)
@@ -144,15 +106,15 @@ func (s *GroupAdmin) CreateGroup(ctx context.Context, input *CreateGroupInput) (
 	if input.LongContextPricingEnabled != nil {
 		longContextPricingEnabled = *input.LongContextPricingEnabled
 	}
-	maxReasoningEffort, err := NormalizeMaxReasoningEffortForPlatform(platform, input.MaxReasoningEffort)
+	maxReasoningEffort, err := NormalizeMaxReasoningEffortForPlatform(PlatformOpenAI, input.MaxReasoningEffort)
 	if err != nil {
 		return nil, infraerrors.Newf(infraerrors.Category(400), "INVALID_MAX_REASONING_EFFORT", "%v", err)
 	}
-	maxReasoningEffortOverLimit, err := NormalizeMaxReasoningEffortOverLimitForPlatform(platform, input.MaxReasoningEffortOverLimit)
+	maxReasoningEffortOverLimit, err := NormalizeMaxReasoningEffortOverLimitForPlatform(PlatformOpenAI, input.MaxReasoningEffortOverLimit)
 	if err != nil {
 		return nil, infraerrors.Newf(infraerrors.Category(400), "INVALID_MAX_REASONING_EFFORT_OVER_LIMIT", "%v", err)
 	}
-	reasoningEffortMappings, err := NormalizeReasoningEffortMappings(platform, input.ReasoningEffortMappings)
+	reasoningEffortMappings, err := NormalizeReasoningEffortMappings(PlatformOpenAI, input.ReasoningEffortMappings)
 	if err != nil {
 		return nil, infraerrors.Newf(infraerrors.Category(400), "INVALID_REASONING_EFFORT_MAPPING", "%v", err)
 	}
@@ -225,8 +187,8 @@ func (s *GroupAdmin) CreateGroup(ctx context.Context, input *CreateGroupInput) (
 		mcpXMLInject = *input.MCPXMLInject
 	}
 
-	allowImageGeneration := input.AllowImageGeneration || DefaultAllowImageGenerationForPlatform(platform)
-	allowBatchImageGeneration := input.AllowBatchImageGeneration && allowImageGeneration && platform == PlatformGemini
+	allowImageGeneration := input.AllowImageGeneration
+	allowBatchImageGeneration := input.AllowBatchImageGeneration && allowImageGeneration
 
 	// 如果指定了复制账号的源分组，先获取账号 ID 列表
 	var accountIDsToCopy []int64
@@ -243,12 +205,9 @@ func (s *GroupAdmin) CreateGroup(ctx context.Context, input *CreateGroupInput) (
 
 		// 校验源分组的平台是否与新分组一致
 		for _, srcGroupID := range uniqueSourceGroupIDs {
-			srcGroup, err := s.groupRepo.GetByIDLite(ctx, srcGroupID)
+			_, err := s.groupRepo.GetByIDLite(ctx, srcGroupID)
 			if err != nil {
 				return nil, fmt.Errorf("source group %d not found: %w", srcGroupID, err)
-			}
-			if srcGroup.Platform != platform {
-				return nil, fmt.Errorf("source group %d platform mismatch: expected %s, got %s", srcGroupID, platform, srcGroup.Platform)
 			}
 		}
 
@@ -269,16 +228,15 @@ func (s *GroupAdmin) CreateGroup(ctx context.Context, input *CreateGroupInput) (
 		sortOrder = *input.SortOrder
 	}
 	group := &Group{
-		Name:                            input.Name,
-		Description:                     input.Description,
-		Platform:                        platform,
+		Name:        input.Name,
+		Description: input.Description,
+
 		SchedulerType:                   schedulerType,
 		AdvancedSchedulerOverrides:      policy.CloneGroupAdvancedSchedulerOverrides(input.AdvancedSchedulerOverrides),
 		DisplayBrand:                    strings.TrimSpace(input.DisplayBrand),
 		SortOrder:                       sortOrder,
 		RateMultiplier:                  input.RateMultiplier,
 		IsExclusive:                     input.IsExclusive,
-		IsDefault:                       input.IsDefault,
 		SessionIsolationEnabled:         input.SessionIsolationEnabled,
 		Status:                          StatusActive,
 		LongContextPricingEnabled:       longContextPricingEnabled,
@@ -324,11 +282,7 @@ func (s *GroupAdmin) CreateGroup(ctx context.Context, input *CreateGroupInput) (
 	}
 	SanitizeGroupMessagesDispatchFields(group)
 	SanitizeGroupOpenAIFast(group)
-	if group.Platform != PlatformOpenAI {
-		group.AllowLive = false
-	}
 	SanitizeGroupReasoningEffortPolicy(group)
-	NormalizeGroupDefaultState(group)
 	if group.ProtocolFallbacks == nil {
 		group.ProtocolFallbacks = capability.DefaultProtocolFallbacks(platform)
 	}
@@ -341,7 +295,7 @@ func (s *GroupAdmin) CreateGroup(ctx context.Context, input *CreateGroupInput) (
 	}
 
 	// require_oauth_only: 过滤掉 apikey 类型账号
-	if group.RequireOAuthOnly && (group.Platform == PlatformOpenAI || group.Platform == PlatformAntigravity || group.Platform == PlatformAnthropic || group.Platform == PlatformGemini || group.Platform == PlatformGrok) && len(accountIDsToCopy) > 0 {
+	if group.RequireOAuthOnly && len(accountIDsToCopy) > 0 {
 		accounts, err := s.accountRepo.GetByIDs(ctx, accountIDsToCopy)
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch accounts for oauth filter: %w", err)
@@ -369,13 +323,10 @@ func (s *GroupAdmin) CreateGroup(ctx context.Context, input *CreateGroupInput) (
 			}
 			group.SortOrder = resolvedSortOrder
 		}
-		if err := s.ClearOtherPlatformDefaultGroups(opCtx, group.Platform, 0, group.IsDefault); err != nil {
+		if err := s.groupRepo.Create(opCtx, group); err != nil {
 			return err
 		}
-		if err := s.groupRepo.Create(opCtx, group); err != nil {
-			return TranslateGroupDefaultConflict(err)
-		}
-		// 账号复制与默认组切换放在同一事务中，避免出现部分提交。
+		// 账号复制与分组创建放在同一事务中，避免出现部分提交。
 		if len(accountIDsToCopy) > 0 {
 			if err := s.groupRepo.BindAccountsToGroup(opCtx, group.ID, accountIDsToCopy); err != nil {
 				return fmt.Errorf("failed to bind accounts to new group: %w", err)
@@ -479,9 +430,6 @@ func (s *GroupAdmin) ValidateFallbackGroup(ctx context.Context, currentGroupID, 
 // platform: 当前分组的平台
 // fallbackGroupID: 兜底分组 ID
 func (s *GroupAdmin) ValidateFallbackGroupOnInvalidRequest(ctx context.Context, currentGroupID int64, platform string, fallbackGroupID int64) error {
-	if platform != PlatformAnthropic && platform != PlatformAntigravity {
-		return fmt.Errorf("invalid request fallback only supported for anthropic or antigravity groups")
-	}
 	if currentGroupID > 0 && currentGroupID == fallbackGroupID {
 		return fmt.Errorf("cannot set self as invalid request fallback group")
 	}
@@ -489,9 +437,6 @@ func (s *GroupAdmin) ValidateFallbackGroupOnInvalidRequest(ctx context.Context, 
 	fallbackGroup, err := s.groupRepo.GetByIDLite(ctx, fallbackGroupID)
 	if err != nil {
 		return fmt.Errorf("fallback group not found: %w", err)
-	}
-	if fallbackGroup.Platform != PlatformAnthropic {
-		return fmt.Errorf("fallback group must be anthropic platform")
 	}
 	if fallbackGroup.FallbackGroupIDOnInvalidRequest != nil {
 		return fmt.Errorf("fallback group cannot have invalid request fallback configured")
@@ -504,7 +449,6 @@ func (s *GroupAdmin) UpdateGroup(ctx context.Context, id int64, input *UpdateGro
 	if err != nil {
 		return nil, err
 	}
-	previousPlatform := group.Platform
 	previousAllowedProtocols := group.EffectiveAllowedProtocols()
 
 	if input.Name != "" {
@@ -512,9 +456,6 @@ func (s *GroupAdmin) UpdateGroup(ctx context.Context, id int64, input *UpdateGro
 	}
 	if input.Description != nil {
 		group.Description = *input.Description
-	}
-	if input.Platform != "" {
-		group.Platform = input.Platform
 	}
 	if input.SchedulerType != nil {
 		schedulerType, normalizeErr := NormalizeGroupSchedulerType(*input.SchedulerType)
@@ -534,9 +475,6 @@ func (s *GroupAdmin) UpdateGroup(ctx context.Context, id int64, input *UpdateGro
 	} else {
 		// 字段缺省时保留原集合；切换平台只移除新平台不支持的协议。
 		group.AllowedProtocols = previousAllowedProtocols
-		if input.Platform != "" && group.Platform != previousPlatform {
-			group.AllowedProtocols = FilterGroupClientProtocolsForPlatform(group.Platform, group.AllowedProtocols)
-		}
 	}
 	if input.DisplayBrand != nil {
 		group.DisplayBrand = strings.TrimSpace(*input.DisplayBrand)
@@ -552,9 +490,6 @@ func (s *GroupAdmin) UpdateGroup(ctx context.Context, id int64, input *UpdateGro
 	}
 	if input.IsExclusive != nil {
 		group.IsExclusive = *input.IsExclusive
-	}
-	if input.IsDefault != nil {
-		group.IsDefault = *input.IsDefault
 	}
 	if input.SessionIsolationEnabled != nil {
 		group.SessionIsolationEnabled = *input.SessionIsolationEnabled
@@ -572,7 +507,7 @@ func (s *GroupAdmin) UpdateGroup(ctx context.Context, id int64, input *UpdateGro
 		group.RoutingPolicy = input.RoutingPolicy.Clone()
 	}
 	if input.ModelPricing != nil {
-		modelPricing, normalizeErr := s.options.Pricing.NormalizeGroupPricing(group.Platform, *input.ModelPricing)
+		modelPricing, normalizeErr := s.options.Pricing.NormalizeGroupPricing("", *input.ModelPricing)
 		if normalizeErr != nil {
 			return nil, normalizeErr
 		}
@@ -586,7 +521,7 @@ func (s *GroupAdmin) UpdateGroup(ctx context.Context, id int64, input *UpdateGro
 	if input.AllowBatchImageGeneration != nil {
 		group.AllowBatchImageGeneration = *input.AllowBatchImageGeneration
 	}
-	if !group.AllowImageGeneration || group.Platform != PlatformGemini {
+	if !group.AllowImageGeneration {
 		group.AllowBatchImageGeneration = false
 	}
 	if input.BatchImageDiscountMultiplier != nil {
@@ -666,7 +601,7 @@ func (s *GroupAdmin) UpdateGroup(ctx context.Context, id int64, input *UpdateGro
 		}
 	}
 	if fallbackOnInvalidRequest != nil {
-		if err := s.ValidateFallbackGroupOnInvalidRequest(ctx, id, group.Platform, *fallbackOnInvalidRequest); err != nil {
+		if err := s.ValidateFallbackGroupOnInvalidRequest(ctx, id, "", *fallbackOnInvalidRequest); err != nil {
 			return nil, err
 		}
 	}
@@ -680,7 +615,7 @@ func (s *GroupAdmin) UpdateGroup(ctx context.Context, id int64, input *UpdateGro
 		}
 	}
 	if unavailableFallbackGroupID != nil {
-		if err := s.ValidateUnavailableFallbackGroup(ctx, id, group.Platform, *unavailableFallbackGroupID); err != nil {
+		if err := s.ValidateUnavailableFallbackGroup(ctx, id, "", *unavailableFallbackGroupID); err != nil {
 			return nil, err
 		}
 	}
@@ -743,21 +678,21 @@ func (s *GroupAdmin) UpdateGroup(ctx context.Context, id int64, input *UpdateGro
 		group.RPMLimit = *input.RPMLimit
 	}
 	if input.MaxReasoningEffort != nil {
-		maxReasoningEffort, err := NormalizeMaxReasoningEffortForPlatform(group.Platform, *input.MaxReasoningEffort)
+		maxReasoningEffort, err := NormalizeMaxReasoningEffortForPlatform(PlatformOpenAI, *input.MaxReasoningEffort)
 		if err != nil {
 			return nil, infraerrors.Newf(infraerrors.Category(400), "INVALID_MAX_REASONING_EFFORT", "%v", err)
 		}
 		group.MaxReasoningEffort = maxReasoningEffort
 	}
 	if input.MaxReasoningEffortOverLimit != nil {
-		maxReasoningEffortOverLimit, err := NormalizeMaxReasoningEffortOverLimitForPlatform(group.Platform, *input.MaxReasoningEffortOverLimit)
+		maxReasoningEffortOverLimit, err := NormalizeMaxReasoningEffortOverLimitForPlatform(PlatformOpenAI, *input.MaxReasoningEffortOverLimit)
 		if err != nil {
 			return nil, infraerrors.Newf(infraerrors.Category(400), "INVALID_MAX_REASONING_EFFORT_OVER_LIMIT", "%v", err)
 		}
 		group.MaxReasoningEffortOverLimit = maxReasoningEffortOverLimit
 	}
 	if input.ReasoningEffortMappings != nil {
-		reasoningEffortMappings, err := NormalizeReasoningEffortMappings(group.Platform, *input.ReasoningEffortMappings)
+		reasoningEffortMappings, err := NormalizeReasoningEffortMappings(PlatformOpenAI, *input.ReasoningEffortMappings)
 		if err != nil {
 			return nil, infraerrors.Newf(infraerrors.Category(400), "INVALID_REASONING_EFFORT_MAPPING", "%v", err)
 		}
@@ -765,11 +700,7 @@ func (s *GroupAdmin) UpdateGroup(ctx context.Context, id int64, input *UpdateGro
 	}
 	SanitizeGroupMessagesDispatchFields(group)
 	SanitizeGroupOpenAIFast(group)
-	if group.Platform != PlatformOpenAI {
-		group.AllowLive = false
-	}
 	SanitizeGroupReasoningEffortPolicy(group)
-	NormalizeGroupDefaultState(group)
 	if input.LegacyProtocolInput {
 		for _, protocol := range previousAllowedProtocols {
 			if protocol != wireprotocol.ProtocolAnthropicMessages && protocol != wireprotocol.ProtocolOpenAIResponses && protocol != wireprotocol.ProtocolOpenAIChatCompletions && protocol != wireprotocol.ProtocolGeminiGenerateContent {
@@ -779,8 +710,6 @@ func (s *GroupAdmin) UpdateGroup(ctx context.Context, id int64, input *UpdateGro
 	}
 	if input.ProtocolFallbacks != nil {
 		group.ProtocolFallbacks = input.ProtocolFallbacks
-	} else if input.Platform != "" && input.Platform != previousPlatform {
-		group.ProtocolFallbacks = capability.DefaultProtocolFallbacks(group.Platform)
 	}
 	if input.ResponsesImagePolicy != "" {
 		group.ResponsesImagePolicy = input.ResponsesImagePolicy
@@ -791,7 +720,7 @@ func (s *GroupAdmin) UpdateGroup(ctx context.Context, id int64, input *UpdateGro
 		if input.AllowBatchImageGeneration != nil {
 			legacy.Batch = &group.AllowBatchImageGeneration
 		}
-		if input.AllowedProtocols == nil && group.Platform == PlatformOpenAI {
+		if input.AllowedProtocols == nil {
 			legacy.Messages = input.AllowMessagesDispatch
 		}
 	}
@@ -817,14 +746,11 @@ func (s *GroupAdmin) UpdateGroup(ctx context.Context, id int64, input *UpdateGro
 			}
 		}
 
-		// 校验源分组的平台是否与当前分组一致
+		// 校验源分组存在后复制账号关联
 		for _, srcGroupID := range uniqueSourceGroupIDs {
-			srcGroup, err := s.groupRepo.GetByIDLite(ctx, srcGroupID)
+			_, err := s.groupRepo.GetByIDLite(ctx, srcGroupID)
 			if err != nil {
 				return nil, fmt.Errorf("source group %d not found: %w", srcGroupID, err)
-			}
-			if srcGroup.Platform != group.Platform {
-				return nil, fmt.Errorf("source group %d platform mismatch: expected %s, got %s", srcGroupID, group.Platform, srcGroup.Platform)
 			}
 		}
 
@@ -835,7 +761,7 @@ func (s *GroupAdmin) UpdateGroup(ctx context.Context, id int64, input *UpdateGro
 		}
 
 		// require_oauth_only: 过滤掉 apikey 类型账号
-		if group.RequireOAuthOnly && (group.Platform == PlatformOpenAI || group.Platform == PlatformAntigravity || group.Platform == PlatformAnthropic || group.Platform == PlatformGemini || group.Platform == PlatformGrok) && len(accountIDsToCopy) > 0 {
+		if group.RequireOAuthOnly && len(accountIDsToCopy) > 0 {
 			accounts, err := s.accountRepo.GetByIDs(ctx, accountIDsToCopy)
 			if err != nil {
 				return nil, fmt.Errorf("failed to fetch accounts for oauth filter: %w", err)
@@ -857,11 +783,8 @@ func (s *GroupAdmin) UpdateGroup(ctx context.Context, id int64, input *UpdateGro
 	}
 
 	if err := s.options.Mutate(ctx, func(opCtx context.Context) error {
-		if err := s.ClearOtherPlatformDefaultGroups(opCtx, group.Platform, group.ID, group.IsDefault); err != nil {
-			return err
-		}
 		if err := s.groupRepo.Update(opCtx, group); err != nil {
-			return TranslateGroupDefaultConflict(err)
+			return err
 		}
 		// 分组属性更新和账号替换必须同事务提交，避免删绑成功一半。
 		if len(input.CopyAccountsFromGroupIDs) > 0 {
@@ -881,11 +804,8 @@ func (s *GroupAdmin) UpdateGroup(ctx context.Context, id int64, input *UpdateGro
 	if s.authCacheInvalidator != nil {
 		s.authCacheInvalidator.InvalidateAuthCacheByGroupID(ctx, id)
 	}
-	// 共享价格配置缓存按分组平台索引价卡；分组策略通过认证快照独立读取。
+	// 共享价格配置缓存按分组及模型索引价卡；分组策略通过认证快照独立读取。
 	// 仅在平台实际变化且事务提交成功后失效，避免继续按旧平台匹配。
-	if group.Platform != previousPlatform && s.pricingConfigCacheInvalidator != nil {
-		s.pricingConfigCacheInvalidator.InvalidateCache()
-	}
 
 	return group, nil
 }

@@ -3,10 +3,11 @@
 package provider
 
 import (
-	acct "github.com/TokenFlux/TokenRouter/internal/account"
-
 	"reflect"
+	"slices"
 	"testing"
+
+	acct "github.com/TokenFlux/TokenRouter/internal/account"
 
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/antigravity"
@@ -44,18 +45,18 @@ func TestAccountIsModelSupported(t *testing.T) {
 		requestedModel string
 		expected       bool
 	}{
-		// 无映射 = 允许所有
+		// 未配置白名单使用默认目录，未知平台没有隐式全模型权限。
 		{
-			name:           "no mapping allows all",
+			name:           "missing mapping rejects unknown model",
 			credentials:    nil,
 			requestedModel: "any-model",
-			expected:       true,
+			expected:       false,
 		},
 		{
-			name:           "empty mapping allows all",
+			name:           "empty mapping rejects unknown model",
 			credentials:    map[string]any{},
 			requestedModel: "any-model",
-			expected:       true,
+			expected:       false,
 		},
 
 		// 精确匹配
@@ -77,7 +78,7 @@ func TestAccountIsModelSupported(t *testing.T) {
 				},
 			},
 			requestedModel: "claude-opus-4-5",
-			expected:       true,
+			expected:       false,
 		},
 
 		// 通配符匹配
@@ -110,7 +111,7 @@ func TestAccountIsModelSupported(t *testing.T) {
 				},
 			},
 			requestedModel: "gemini-3-flash",
-			expected:       true,
+			expected:       false,
 		},
 		{
 			name: "mapping is checked before final whitelist",
@@ -174,7 +175,7 @@ func TestAccountIsModelSupported(t *testing.T) {
 				"model_whitelist": []any{},
 			},
 			requestedModel: "model-c",
-			expected:       true,
+			expected:       false,
 		},
 		{
 			name:           "qoder mapping absent does not restrict public alias",
@@ -252,7 +253,7 @@ func TestAccountIsModelSupported(t *testing.T) {
 				"model_whitelist": []any{},
 			},
 			requestedModel: "glm-5",
-			expected:       true,
+			expected:       false,
 		},
 		{
 			name:     "qoder whitelist allows mapped final route key",
@@ -308,17 +309,18 @@ func TestAccountIsModelSupported(t *testing.T) {
 
 func TestAccountGetConfiguredRequestModels(t *testing.T) {
 	tests := []struct {
-		name        string
-		platform    string
-		credentials map[string]any
-		expected    []string
+		name            string
+		platform        string
+		credentials     map[string]any
+		expected        []string
+		includeDefaults bool
 	}{
 		{
-			name: "mapping only returns nil because request space is unrestricted",
+			name: "mapping lists its explicit alias and target",
 			credentials: map[string]any{
 				"model_mapping": map[string]any{"model-a": "model-b"},
 			},
-			expected: nil,
+			expected: []string{"model-a", "model-b"},
 		},
 		{
 			name: "explicit whitelist returns whitelist and mapping keys",
@@ -329,20 +331,21 @@ func TestAccountGetConfiguredRequestModels(t *testing.T) {
 			expected: []string{"model-a", "model-b", "model-c"},
 		},
 		{
-			name: "explicit empty whitelist returns nil even with mapping",
+			name: "empty whitelist keeps explicit alias and target",
 			credentials: map[string]any{
 				"model_mapping":   map[string]any{"model-a": "model-b"},
 				"model_whitelist": []any{},
 			},
-			expected: nil,
+			expected: []string{"model-a", "model-b"},
 		},
 		{
-			name:     "qoder mapping only returns mapping keys for model list display",
-			platform: capability.PlatformQoder,
+			name:            "qoder mapping lists defaults and explicit aliases",
+			includeDefaults: true,
+			platform:        capability.PlatformQoder,
 			credentials: map[string]any{
 				"model_mapping": map[string]any{"claude-opus-4-6": "ultimate"},
 			},
-			expected: []string{"claude-opus-4-6"},
+			expected: []string{"claude-opus-4-6", "ultimate"},
 		},
 		{
 			name:     "qoder explicit mapping returns mapping keys for model list display",
@@ -351,7 +354,7 @@ func TestAccountGetConfiguredRequestModels(t *testing.T) {
 				"model_mapping":   map[string]any{"claude-opus-4-6": "ultimate"},
 				"model_whitelist": []any{"ultimate"},
 			},
-			expected: []string{"claude-opus-4-6"},
+			expected: []string{"claude-opus-4-6", "ultimate"},
 		},
 	}
 
@@ -362,6 +365,19 @@ func TestAccountGetConfiguredRequestModels(t *testing.T) {
 				Credentials: tt.credentials,
 			}
 			result := account.GetConfiguredRequestModels(ModelDefaults())
+			if tt.includeDefaults {
+				for _, model := range append(DefaultAccountModels(account), tt.expected...) {
+					if !slices.Contains(result, model) {
+						t.Fatalf("missing configured model %q in %v", model, result)
+					}
+				}
+				for _, model := range result {
+					if !account.IsModelSupported(model, ModelDefaults(), ModelRules(account)) {
+						t.Fatalf("advertised unavailable model %q", model)
+					}
+				}
+				return
+			}
 			if !reflect.DeepEqual(result, tt.expected) {
 				t.Fatalf("GetConfiguredRequestModels() = %#v, want %#v", result, tt.expected)
 			}

@@ -1,15 +1,18 @@
 package app
 
 import (
+	"context"
+
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
+	"github.com/TokenFlux/TokenRouter/internal/protocol"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/accessview"
 	"github.com/TokenFlux/TokenRouter/internal/routing/httpapi/dto"
 )
 
 // provideKeyHTTP 直接绑定 Key 用例与容量展示投影，不创建额外认证缓存。
-func provideKeyHTTP(keys *apikey.APIKeyService, capacity *routing.CapacityService) *keyhttp.APIKeyHandler[dto.Group] {
+func provideKeyHTTP(keys *apikey.APIKeyService, capacity *routing.CapacityService, catalogue *routing.RequestableCatalogue) *keyhttp.APIKeyHandler[dto.Group] {
 	handler := keyhttp.NewAPIKeyHandler(keys, func(group *routing.Group, summary *accessview.GroupCapacitySummary) *dto.Group {
 		result := dto.GroupFromRouting(apikey.RoutingGroup(group))
 		if result != nil && summary != nil {
@@ -18,6 +21,16 @@ func provideKeyHTTP(keys *apikey.APIKeyService, capacity *routing.CapacityServic
 		return result
 	})
 	handler.SetGroupCapacityService(capacity)
+	handler.SetGroupModelsReader(func(ctx context.Context, id int64) ([]string, map[string][]protocol.ProtocolID) {
+		result := catalogue.ResolveRequestableModels(ctx, &id, "")
+		models := make([]string, 0, len(result.Models))
+		protocols := make(map[string][]protocol.ProtocolID)
+		for _, model := range result.Models {
+			models = append(models, model.ID)
+			protocols[model.ID] = model.Protocols
+		}
+		return models, protocols
+	})
 	return handler
 }
 

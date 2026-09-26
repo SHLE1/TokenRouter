@@ -40,7 +40,7 @@ func (f *tokenExecutionContract) TokenSessionHash(*gin.Context, []byte) string {
 
 func (f *tokenExecutionContract) CheckKey(_ context.Context, _ *apikey.APIKey, _ *billing.UserSubscription, platform string, afterWait bool) error {
 	f.events = append(f.events, "funding")
-	require.Equal(f.t, "openai", platform)
+	require.Empty(f.t, platform)
 	require.False(f.t, afterWait)
 	return nil
 }
@@ -54,7 +54,7 @@ func (f *tokenExecutionContract) SelectCount(_ context.Context, _ *int64, hash, 
 	f.selections++
 	require.Equal(f.t, "token-session", hash)
 	require.Equal(f.t, "group-model", model)
-	require.Equal(f.t, "openai", platform)
+	require.Empty(f.t, platform)
 	return tokenContractTarget{f: f, id: 1}, nil
 }
 
@@ -64,7 +64,7 @@ func (f *tokenExecutionContract) SelectInputTokens(_ context.Context, _ *int64, 
 	require.Equal(f.t, "token-session", hash)
 	require.Equal(f.t, "client-model", model)
 	require.Equal(f.t, "group-model", routingModel)
-	require.Equal(f.t, "openai", platform)
+	require.Empty(f.t, platform)
 	if f.selections == 2 {
 		require.Contains(f.t, excluded, int64(1))
 	}
@@ -119,7 +119,7 @@ func TestOpenAITokensNativeHTTPContracts(t *testing.T) {
 			c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses/input_tokens", strings.NewReader(`{"model":"client-model","input":"hello","messages":[{"role":"user","content":"hello"}]}`))
 			group := int64(7)
 			c.Set(string(keyhttp.ContextKeyAPIKey), &apikey.APIKey{ID: 9, UserID: 7, GroupID: &group, Group: &routing.Group{
-				ID: group, Platform: "openai", AllowedProtocols: []protocol.ProtocolID{protocol.ProtocolAnthropicMessages, protocol.ProtocolOpenAIResponses},
+				ID: group, AllowedProtocols: []protocol.ProtocolID{protocol.ProtocolAnthropicMessages, protocol.ProtocolOpenAIResponses},
 			}})
 			c.Set(authctx.ContextKeyUser, authctx.AuthSubject{UserID: 7})
 			if inputTokens {

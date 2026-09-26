@@ -1,7 +1,14 @@
 package selection
 
 import (
+	"context"
 	"time"
+
+	"github.com/TokenFlux/TokenRouter/internal/account"
+	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
+	"github.com/TokenFlux/TokenRouter/internal/routing"
+	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/config"
@@ -15,6 +22,9 @@ import (
 
 // newGenericSelectionForTest 仅组装已有原生能力和配置投影，保持各场景的显式零值。
 func newGenericSelectionForTest(deps GenericDependencies, cfg *config.Config) *Generic {
+	if deps.Groups == nil {
+		deps.Groups = selectionFixtureGroups{}
+	}
 	if deps.Parameters == nil {
 		deps.Parameters = scheduler.NewParameters(scheduler.NewSettingsRuntime(scheduler.Diagnostics{}), nil, diagnosticParameterDefaults(cfg))
 	}
@@ -50,6 +60,9 @@ func selectionWindowForTest(cache billing.WindowCostCache, source usage.UsageLog
 
 // newGeminiSelectionForTest 将原场景直接接入 Gemini 原生选择器。
 func newGeminiSelectionForTest(deps GeminiDependencies, cfg *config.Config) *Gemini {
+	if deps.Groups == nil {
+		deps.Groups = selectionFixtureGroups{}
+	}
 	if deps.Parameters == nil {
 		deps.Parameters = scheduler.NewParameters(scheduler.NewSettingsRuntime(scheduler.Diagnostics{}), nil, diagnosticParameterDefaults(cfg))
 	}
@@ -58,6 +71,9 @@ func newGeminiSelectionForTest(deps GeminiDependencies, cfg *config.Config) *Gem
 
 // newCompatibleSelectionForTest 只注入原生参数，不初始化供应商执行器。
 func newCompatibleSelectionForTest(deps CompatibleDependencies, cfg *config.Config) *Compatible {
+	if deps.Groups == nil {
+		deps.Groups = selectionFixtureGroups{}
+	}
 	// 执行夹具惰性提供同一响应归属存储，并通过测试装配注入。
 	if deps.Responses == nil {
 		cache, _ := deps.Cache.(session.GatewayCache)
@@ -67,4 +83,60 @@ func newCompatibleSelectionForTest(deps CompatibleDependencies, cfg *config.Conf
 		deps.Parameters = scheduler.NewParameters(scheduler.NewSettingsRuntime(scheduler.Diagnostics{}), nil, diagnosticParameterDefaults(cfg))
 	}
 	return NewCompatible(deps, selectionOptionsForTest(cfg))
+}
+
+// selectionFixtureGroupID 为只验证调度算法的旧夹具提供明确分组。
+func selectionFixtureGroupID(ctx context.Context) *int64 {
+	if group, ok := requeststate.GroupFromContext(ctx); ok && group != nil {
+		return &group.ID
+	}
+	if policy, ok := ctx.Value(candidatePolicyKey{}).(candidatePolicy); ok && policy.groupID != nil {
+		return policy.groupID
+	}
+	if input, ok := ctx.Value(selectionRequestKey{}).(selectionRequest); ok && input.groupID != nil {
+		return input.groupID
+	}
+	id := int64(1)
+	return &id
+}
+
+// prepareSelectionFixtureAccount 显式声明算法夹具的模型范围，专门的模型能力测试直接构造账号。
+func prepareSelectionFixtureAccount(ctx context.Context, value *gatewayprovider.ExecutionAccount, groupID *int64) {
+	if value == nil {
+		return
+	}
+	if value.Record.Type == "" {
+		value.Record.Type = capability.AccountTypeAPIKey
+	}
+	if value.Record.Credentials == nil {
+		value.Record.Credentials = map[string]any{}
+	}
+	if _, set := value.Record.Credentials["model_whitelist"]; !set {
+		mapping := account.ResolveModelMapping(&value.Record, accountprovider.ModelDefaults())
+		if len(mapping) == 0 {
+			value.Record.Credentials["model_whitelist"] = []string{"*"}
+		} else {
+			models := make([]string, 0, len(mapping))
+			for _, model := range mapping {
+				models = append(models, model)
+			}
+			value.Record.Credentials["model_whitelist"] = models
+		}
+	}
+	if groupID == nil {
+		groupID = selectionFixtureGroupID(ctx)
+	}
+	if len(value.Record.GroupIDs) == 0 && len(value.Record.AccountGroups) == 0 {
+		value.Record.GroupIDs = []int64{*groupID}
+	}
+}
+
+type selectionFixtureGroups struct{}
+
+func (selectionFixtureGroups) GetByID(_ context.Context, id int64) (*routing.Group, error) {
+	return &routing.Group{ID: id, Hydrated: true, Status: routing.StatusActive}, nil
+}
+
+func (s selectionFixtureGroups) GetByIDLite(ctx context.Context, id int64) (*routing.Group, error) {
+	return s.GetByID(ctx, id)
 }

@@ -7,28 +7,14 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/migrations"
 	"github.com/stretchr/testify/require"
 )
 
 func TestMigration274PreservesPricesAndCopiesPolicies(t *testing.T) {
-	tx := testTx(t)
+	tx := historicalTx(t, "274_")
 	ctx := context.Background()
-	// 从全量迁移后的测试库恢复这一项迁移之前的表形状，所有变更随事务回滚。
 	_, err := tx.ExecContext(ctx, `
-ALTER TABLE pricing_configs RENAME TO channels;
-ALTER TABLE channels ADD COLUMN model_mapping JSONB NOT NULL DEFAULT '{}', ADD COLUMN restrict_models BOOLEAN NOT NULL DEFAULT FALSE,
-    ADD COLUMN features TEXT NOT NULL DEFAULT '', ADD COLUMN features_config JSONB NOT NULL DEFAULT '{}';
-DO $$ DECLARE item RECORD; BEGIN
-    FOR item IN SELECT tablename FROM pg_tables WHERE schemaname='public' AND tablename LIKE 'pricing_config\_%' ESCAPE '\' LOOP
-        EXECUTE format('ALTER TABLE %I RENAME TO %I',item.tablename,replace(item.tablename,'pricing_config_','channel_'));
-    END LOOP;
-    FOR item IN SELECT table_name FROM information_schema.columns WHERE table_schema='public' AND column_name='pricing_config_id'
-        AND (table_name LIKE 'channel\_%' ESCAPE '\' OR table_name='usage_logs') LOOP
-        EXECUTE format('ALTER TABLE %I RENAME COLUMN pricing_config_id TO channel_id',item.table_name);
-    END LOOP;
-END $$;
 INSERT INTO groups (id,name,platform) VALUES (91001,'migration274-a','openai'),(91002,'migration274-b','openai'),(91003,'migration274-c','anthropic');
 INSERT INTO channels (id,name,status,billing_model_source,restrict_models,model_mapping,features_config) VALUES
  (92001,'migration274-active','active','upstream',true,'{"openai":{"alias":"real"}}','{"codex_image_generation_bridge":{"openai":false}}'),
@@ -53,7 +39,14 @@ INSERT INTO usage_logs(user_id,api_key_id,account_id,model,channel_id,total_cost
 	for _, id := range []int64{91001, 91002, 91003} {
 		var raw []byte
 		require.NoError(t, tx.QueryRowContext(ctx, `SELECT routing_policy FROM groups WHERE id=$1`, id).Scan(&raw))
-		var policy routing.GroupRoutingPolicy
+		// 历史迁移的策略保留平台层级，不能用新版本扁平实体解释。
+		var policy struct {
+			Enabled                bool                         `json:"enabled"`
+			RestrictModels         bool                         `json:"restrict_models"`
+			RestrictionModelSource string                       `json:"restriction_model_source"`
+			AllowedModels          map[string][]string          `json:"allowed_models"`
+			ModelMapping           map[string]map[string]string `json:"model_mapping"`
+		}
 		require.NoError(t, json.Unmarshal(raw, &policy))
 		require.Equal(t, id != 91003, policy.Enabled)
 		require.True(t, policy.RestrictModels)

@@ -34,21 +34,23 @@ func RunPassthrough(ctx context.Context, in PassthroughInput, p PassthroughPorts
 	attemptImageIntentInvalidated, reasoningEffort, reqStream, startTime := in.ImageIntentInvalidated, in.ReasoningEffort, in.Stream, in.StartedAt
 	requestedModel := reqModel
 	upstreamPassthroughModel := ""
-	if p.CompactPath() {
-		compactMappedModel := p.CompactModel(reqModel)
-		if compactMappedModel != "" && compactMappedModel != reqModel {
-			nextBody, setErr := sjson.SetBytes(body, "model", compactMappedModel)
-			if setErr != nil {
-				return nil, fmt.Errorf("set compact passthrough model: %w", setErr)
-			}
-			body = nextBody
-			upstreamPassthroughModel = compactMappedModel
-			attemptImageIntentInvalidated = true
+	// 仅替换模型字段，保留大请求体及未知扩展字段的透传形状。
+	policyInputModel := p.ForwardModel(reqModel, p.CompactPath())
+	if policyInputModel == "" {
+		policyInputModel = reqModel
+	}
+	if policyInputModel != reqModel {
+		nextBody, setErr := sjson.SetBytes(body, "model", policyInputModel)
+		if setErr != nil {
+			return nil, fmt.Errorf("set passthrough model: %w", setErr)
 		}
+		body = nextBody
+		upstreamPassthroughModel = policyInputModel
+		attemptImageIntentInvalidated = true
 	}
 
 	if profile.UsesCodex {
-		if rejectReason := p.InstructionsRejection(reqModel, body); rejectReason != "" {
+		if rejectReason := p.InstructionsRejection(policyInputModel, body); rejectReason != "" {
 			rejectMsg := "OpenAI codex passthrough requires a non-empty instructions field"
 			p.PolicyDenied()
 			p.LogInstructionsRejected(ctx, reqModel, rejectReason, body)
@@ -56,8 +58,8 @@ func RunPassthrough(ctx context.Context, in PassthroughInput, p PassthroughPorts
 			return nil, fmt.Errorf("openai passthrough rejected before upstream: %s", rejectReason)
 		}
 		// Codex passthrough 允许省略 instructions，但仍拒绝显式的非法值。
-		if p.CodexModel(reqModel) && !gjson.GetBytes(body, "instructions").Exists() {
-			nextBody, setErr := sjson.SetBytes(body, "instructions", openai.DefaultCodexSynthInstructions(reqModel))
+		if p.CodexModel(policyInputModel) && !gjson.GetBytes(body, "instructions").Exists() {
+			nextBody, setErr := sjson.SetBytes(body, "instructions", openai.DefaultCodexSynthInstructions(policyInputModel))
 			if setErr != nil {
 				return nil, fmt.Errorf("set passthrough codex instructions: %w", setErr)
 			}
@@ -158,7 +160,6 @@ func RunPassthrough(ctx context.Context, in PassthroughInput, p PassthroughPorts
 	}
 	updatedBody, policyErr := p.ApplyFastPass(ctx, policyModel, body)
 	if policyErr != nil {
-
 		return nil, policyErr
 	}
 	body = updatedBody

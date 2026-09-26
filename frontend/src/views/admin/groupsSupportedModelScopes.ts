@@ -1,8 +1,2 @@
-export const normalizeSupportedModelScopesForPlatform = (
-  platform: string,
-  scopes: string[] | undefined,
-): string[] => {
-  // 非 Antigravity 分组不支持模型系列，提交时主动清空隐藏表单值。
-  if (platform !== "antigravity") return [];
-  return scopes ?? [];
-};
+// Antigravity 模型系列限制仅在实际选择该类账号时生效。
+export const normalizeSupportedModelScopesForPlatform = (scopes: string[] | undefined): string[] => scopes ?? [];

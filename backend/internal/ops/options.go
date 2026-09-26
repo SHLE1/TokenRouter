@@ -34,11 +34,14 @@ type CleanupOptions struct {
 	Schedule                                                                                                                       string
 	BatchSize, BatchPauseMS, ErrorLogRetentionDays, SystemLogRetentionDays, MinuteMetricsRetentionDays, HourlyMetricsRetentionDays int
 }
-type AggregationOptions struct{ Enabled bool }
-type MetricsCollectorCacheOptions struct {
-	Enabled bool
-	TTL     time.Duration
-}
+type (
+	AggregationOptions           struct{ Enabled bool }
+	MetricsCollectorCacheOptions struct {
+		Enabled bool
+		TTL     time.Duration
+	}
+)
+
 type LogOptions struct {
 	Level, StacktraceLevel string
 	Caller                 bool
@@ -56,12 +59,14 @@ type Settings interface {
 }
 type PreAggregationReader interface{ OpsEnabled(context.Context) bool }
 
-var ErrSettingNotFound = settings.ErrSettingNotFound
-var ErrRowNotFound = errors.New("ops row not found")
+var (
+	ErrSettingNotFound = settings.ErrSettingNotFound
+	ErrRowNotFound     = errors.New("ops row not found")
+)
 
 type GroupObservation struct {
-	ID             int64
-	Name, Platform string
+	ID   int64
+	Name string
 }
 type AccountObservation struct {
 	ID                                                      int64
@@ -92,24 +97,29 @@ type ConcurrencyReader interface {
 	GetAccountsLoadBatch(context.Context, []scheduler.AccountWithConcurrency) (map[int64]*scheduler.AccountLoadInfo, error)
 	GetUsersLoadBatch(context.Context, []scheduler.UserWithConcurrency) (map[int64]*scheduler.UserLoadInfo, error)
 }
-type AccountWithConcurrency = scheduler.AccountWithConcurrency
-type AccountLoadInfo = scheduler.AccountLoadInfo
-type UserWithConcurrency = scheduler.UserWithConcurrency
-type UserLoadInfo = scheduler.UserLoadInfo
-type AuthHealthReader interface {
-	Health(context.Context) apikey.AuthCacheInvalidationHealth
-}
+type (
+	AccountWithConcurrency = scheduler.AccountWithConcurrency
+	AccountLoadInfo        = scheduler.AccountLoadInfo
+	UserWithConcurrency    = scheduler.UserWithConcurrency
+	UserLoadInfo           = scheduler.UserLoadInfo
+	AuthHealthReader       interface {
+		Health(context.Context) apikey.AuthCacheInvalidationHealth
+	}
+)
+
 type KeyHealthReader interface {
 	AuthCacheInvalidationSubscriberHealth() apikey.AuthCacheInvalidationSubscriberHealth
 	AuthLookupMetrics() apikey.APIKeyAuthLookupMetrics
 	InvalidAuthAbuseHealth() apikey.InvalidAuthAbuseHealth
 }
-type OpsAuthCacheInvalidationHealth = apikey.OpsAuthCacheInvalidationHealth
-type LogControl interface {
-	Apply(*OpsRuntimeLogConfig) error
-	Changed(int64, *OpsRuntimeLogConfig, *OpsRuntimeLogConfig, string)
-	Failed(int64, *OpsRuntimeLogConfig, *OpsRuntimeLogConfig, string)
-}
+type (
+	OpsAuthCacheInvalidationHealth = apikey.OpsAuthCacheInvalidationHealth
+	LogControl                     interface {
+		Apply(*OpsRuntimeLogConfig) error
+		Changed(int64, *OpsRuntimeLogConfig, *OpsRuntimeLogConfig, string)
+		Failed(int64, *OpsRuntimeLogConfig, *OpsRuntimeLogConfig, string)
+	}
+)
 
 func (s *OpsService) isNotFound(e error) bool {
 	if s != nil && s.cfg != nil && s.cfg.IsNotFound != nil {
@@ -117,6 +127,7 @@ func (s *OpsService) isNotFound(e error) bool {
 	}
 	return errors.Is(e, ErrRowNotFound)
 }
+
 func (s *OpsService) SetAuthObservers(worker AuthHealthReader, key KeyHealthReader) {
 	s.authCacheInvalidationWorker = worker
 	s.apiKeyService = key

@@ -51,7 +51,7 @@ func TestVideoTasksRedisOwnershipAndCompletion(t *testing.T) {
 	legacyTask := "old-without-owner"
 	legacyHash := "openai:" + media.GrokMediaVideoRequestSessionHash(legacyTask, 2, 3)
 	require.NoError(t, store.SetSessionAccountID(ctx, group, legacyHash, 15, media.VideoPendingTTL))
-	restored, err = tasks.ResolveCompositeVideo(ctx, legacyTask, 2, 3, []media.VideoBinding{{GroupID: 5, Platform: "openai", Present: true}, {GroupID: 9, Platform: "grok", Present: true}})
+	restored, err = tasks.ResolveCompositeVideo(ctx, legacyTask, 2, 3, []media.VideoBinding{{GroupID: 5, Present: true}, {GroupID: 9, Present: true}})
 	require.NoError(t, err)
 	require.EqualValues(t, 15, restored.AccountID)
 	require.Equal(t, 1, restored.BindingIndex)

@@ -42,12 +42,12 @@ type QoderCompatibleExecution interface {
 
 // QoderCompletionCapture 在入队前取得原请求展示与资金参数，完成队列不持有 Gin。
 type QoderCompletionCapture struct {
-	Result                                                                             *forward.MessagesResult
-	Key                                                                                *apikey.APIKey
-	Subscription                                                                       *billing.UserSubscription
-	QuotaPlatform, InboundEndpoint, UpstreamEndpoint, UserAgent, ClientIP, PayloadHash string
-	Body                                                                               []byte
-	Pricing                                                                            routing.PricingUsageFields
+	Result                                                              *forward.MessagesResult
+	Key                                                                 *apikey.APIKey
+	Subscription                                                        *billing.UserSubscription
+	InboundEndpoint, UpstreamEndpoint, UserAgent, ClientIP, PayloadHash string
+	Body                                                                []byte
+	Pricing                                                             routing.PricingUsageFields
 }
 
 // QoderCompatibleOptions 注入唯一实例，不在 HTTP 构造时启动资源或复制缓存。

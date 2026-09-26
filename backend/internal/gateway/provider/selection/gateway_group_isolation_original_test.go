@@ -36,48 +36,48 @@ func TestIsAccountInGroup(t *testing.T) {
 		// groupID == nil（无分组 API Key）
 		{
 			"nil_groupID_ungrouped_account_nil_groups",
-			&gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, AccountGroups: nil}},
-			nil, true,
+			&gatewayprovider.ExecutionAccount{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, AccountGroups: nil}},
+			nil, false,
 		},
 		{
 			"nil_groupID_ungrouped_account_empty_slice",
-			&gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 2, AccountGroups: []accountcore.GroupMembership{}}},
-			nil, true,
+			&gatewayprovider.ExecutionAccount{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, AccountGroups: []accountcore.GroupMembership{}}},
+			nil, false,
 		},
 		{
 			"nil_groupID_grouped_account_single",
-			&gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 3, AccountGroups: []accountcore.GroupMembership{{GroupID: 100}}}},
+			&gatewayprovider.ExecutionAccount{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 3, AccountGroups: []accountcore.GroupMembership{{GroupID: 100}}}},
 			nil, false,
 		},
 		{
 			"nil_groupID_grouped_account_multiple",
-			&gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 4, AccountGroups: []accountcore.GroupMembership{{GroupID: 100}, {GroupID: 200}}}},
+			&gatewayprovider.ExecutionAccount{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 4, AccountGroups: []accountcore.GroupMembership{{GroupID: 100}, {GroupID: 200}}}},
 			nil, false,
 		},
 		// groupID != nil（有分组 API Key）
 		{
 			"with_groupID_account_in_group",
-			&gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 5, AccountGroups: []accountcore.GroupMembership{{GroupID: 100}}}},
+			&gatewayprovider.ExecutionAccount{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 5, AccountGroups: []accountcore.GroupMembership{{GroupID: 100}}}},
 			&groupID100, true,
 		},
 		{
 			"with_groupID_account_not_in_group",
-			&gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 6, AccountGroups: []accountcore.GroupMembership{{GroupID: 200}}}},
+			&gatewayprovider.ExecutionAccount{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 6, AccountGroups: []accountcore.GroupMembership{{GroupID: 200}}}},
 			&groupID100, false,
 		},
 		{
 			"with_groupID_ungrouped_account",
-			&gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 7, AccountGroups: nil}},
+			&gatewayprovider.ExecutionAccount{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 7, AccountGroups: nil}},
 			&groupID100, false,
 		},
 		{
 			"with_groupID_multi_group_account_match_one",
-			&gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 8, AccountGroups: []accountcore.GroupMembership{{GroupID: 100}, {GroupID: 200}}}},
+			&gatewayprovider.ExecutionAccount{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 8, AccountGroups: []accountcore.GroupMembership{{GroupID: 100}, {GroupID: 200}}}},
 			&groupID200, true,
 		},
 		{
 			"with_groupID_multi_group_account_no_match",
-			&gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 9, AccountGroups: []accountcore.GroupMembership{{GroupID: 300}, {GroupID: 400}}}},
+			&gatewayprovider.ExecutionAccount{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 9, AccountGroups: []accountcore.GroupMembership{{GroupID: 300}, {GroupID: 400}}}},
 			&groupID100, false,
 		},
 		// 防御性边界
@@ -198,10 +198,14 @@ func TestGroupIsolation_UngroupedKey_ShouldNotScheduleGroupedAccounts(t *testing
 	ctx := context.Background()
 
 	accounts := []gatewayprovider.ExecutionAccount{
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Priority: 1, Status: billing.StatusActive, Schedulable: true,
-			AccountGroups: []accountcore.GroupMembership{{GroupID: 100}}}},
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformOpenAI, Priority: 2, Status: billing.StatusActive, Schedulable: true,
-			AccountGroups: []accountcore.GroupMembership{{GroupID: 200}}}},
+		{Record: accountcore.Record{
+			Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Priority: 1, Status: billing.StatusActive, Schedulable: true,
+			AccountGroups: []accountcore.GroupMembership{{GroupID: 100}},
+		}},
+		{Record: accountcore.Record{
+			Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformOpenAI, Priority: 2, Status: billing.StatusActive, Schedulable: true,
+			AccountGroups: []accountcore.GroupMembership{{GroupID: 200}},
+		}},
 	}
 	repo := newGroupAwareMockRepo(accounts)
 	cache := &mockGatewayCacheForPlatform{}
@@ -219,10 +223,14 @@ func TestGroupIsolation_GroupedKey_ShouldNotScheduleUngroupedAccounts(t *testing
 	groupID := int64(100)
 
 	accounts := []gatewayprovider.ExecutionAccount{
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Priority: 1, Status: billing.StatusActive, Schedulable: true,
-			AccountGroups: nil}},
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformOpenAI, Priority: 2, Status: billing.StatusActive, Schedulable: true,
-			AccountGroups: []accountcore.GroupMembership{}}},
+		{Record: accountcore.Record{
+			Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Priority: 1, Status: billing.StatusActive, Schedulable: true,
+			AccountGroups: nil,
+		}},
+		{Record: accountcore.Record{
+			Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformOpenAI, Priority: 2, Status: billing.StatusActive, Schedulable: true,
+			AccountGroups: []accountcore.GroupMembership{},
+		}},
 	}
 	repo := newGroupAwareMockRepo(accounts)
 	cache := &mockGatewayCacheForPlatform{}
@@ -234,17 +242,23 @@ func TestGroupIsolation_GroupedKey_ShouldNotScheduleUngroupedAccounts(t *testing
 	require.Nil(t, acc)
 }
 
-func TestGroupIsolation_UngroupedKey_ShouldOnlyScheduleUngroupedAccounts(t *testing.T) {
+func TestGroupIsolation_UngroupedKey_RejectsUngroupedAccounts(t *testing.T) {
 	// 场景：无分组 API Key（groupID=nil），池中有未分组和已分组账号 → 应只选中未分组的
 	ctx := context.Background()
 
 	accounts := []gatewayprovider.ExecutionAccount{
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Priority: 1, Status: billing.StatusActive, Schedulable: true,
-			AccountGroups: []accountcore.GroupMembership{{GroupID: 100}}}}, // 已分组，不应被选中
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformOpenAI, Priority: 2, Status: billing.StatusActive, Schedulable: true,
-			AccountGroups: nil}}, // 未分组，应被选中
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 3, Platform: capability.PlatformOpenAI, Priority: 3, Status: billing.StatusActive, Schedulable: true,
-			AccountGroups: []accountcore.GroupMembership{{GroupID: 200}}}}, // 已分组，不应被选中
+		{Record: accountcore.Record{
+			Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Priority: 1, Status: billing.StatusActive, Schedulable: true,
+			AccountGroups: []accountcore.GroupMembership{{GroupID: 100}},
+		}}, // 已分组，不应被选中
+		{Record: accountcore.Record{
+			Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformOpenAI, Priority: 2, Status: billing.StatusActive, Schedulable: true,
+			AccountGroups: nil,
+		}}, // 未分组，应被选中
+		{Record: accountcore.Record{
+			Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 3, Platform: capability.PlatformOpenAI, Priority: 3, Status: billing.StatusActive, Schedulable: true,
+			AccountGroups: []accountcore.GroupMembership{{GroupID: 200}},
+		}}, // 已分组，不应被选中
 	}
 	repo := newGroupAwareMockRepo(accounts)
 	cache := &mockGatewayCacheForPlatform{}
@@ -252,9 +266,8 @@ func TestGroupIsolation_UngroupedKey_ShouldOnlyScheduleUngroupedAccounts(t *test
 	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Accounts: repo}, Shared: Shared{Cache: cache}}, testConfig())
 
 	acc, err := svc.selectAccountForModelWithPlatform(ctx, nil, "", "", nil, capability.PlatformOpenAI)
-	require.NoError(t, err, "应成功调度未分组账号")
-	require.NotNil(t, acc)
-	require.Equal(t, int64(2), acc.Record.ID, "应选中未分组的账号 ID=2")
+	require.Error(t, err, "请求必须明确绑定分组")
+	require.Nil(t, acc)
 }
 
 func TestGroupIsolation_GroupedKey_ShouldOnlyScheduleMatchingGroupAccounts(t *testing.T) {
@@ -263,12 +276,18 @@ func TestGroupIsolation_GroupedKey_ShouldOnlyScheduleMatchingGroupAccounts(t *te
 	groupID := int64(100)
 
 	accounts := []gatewayprovider.ExecutionAccount{
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Priority: 1, Status: billing.StatusActive, Schedulable: true,
-			AccountGroups: nil}}, // 未分组，不应被选中
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformOpenAI, Priority: 2, Status: billing.StatusActive, Schedulable: true,
-			AccountGroups: []accountcore.GroupMembership{{GroupID: 200}}}}, // 属于分组 200，不应被选中
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 3, Platform: capability.PlatformOpenAI, Priority: 3, Status: billing.StatusActive, Schedulable: true,
-			AccountGroups: []accountcore.GroupMembership{{GroupID: 100}}}}, // 属于分组 100，应被选中
+		{Record: accountcore.Record{
+			Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Priority: 1, Status: billing.StatusActive, Schedulable: true,
+			AccountGroups: nil,
+		}}, // 未分组，不应被选中
+		{Record: accountcore.Record{
+			Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformOpenAI, Priority: 2, Status: billing.StatusActive, Schedulable: true,
+			AccountGroups: []accountcore.GroupMembership{{GroupID: 200}},
+		}}, // 属于分组 200，不应被选中
+		{Record: accountcore.Record{
+			Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 3, Platform: capability.PlatformOpenAI, Priority: 3, Status: billing.StatusActive, Schedulable: true,
+			AccountGroups: []accountcore.GroupMembership{{GroupID: 100}},
+		}}, // 属于分组 100，应被选中
 	}
 	repo := newGroupAwareMockRepo(accounts)
 	cache := &mockGatewayCacheForPlatform{}
@@ -285,17 +304,21 @@ func TestGroupIsolation_GroupedKey_ShouldOnlyScheduleMatchingGroupAccounts(t *te
 // Part 3: SimpleMode 旁路测试
 // ============================================================================
 
-func TestGroupIsolation_SimpleMode_SkipsGroupIsolation(t *testing.T) {
+func TestGroupIsolation_SimpleMode_RequiresExplicitGroup(t *testing.T) {
 	// SimpleMode 应跳过分组隔离，使用 ListSchedulableByPlatform 返回所有账号。
 	// 测试非 useMixed 路径（platform=openai，不会触发 mixed 调度逻辑）。
 	ctx := context.Background()
 
 	// 混合未分组和已分组账号，SimpleMode 下应全部可调度
 	accounts := []gatewayprovider.ExecutionAccount{
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Priority: 2, Status: billing.StatusActive, Schedulable: true,
-			AccountGroups: []accountcore.GroupMembership{{GroupID: 100}}}}, // 已分组
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformOpenAI, Priority: 1, Status: billing.StatusActive, Schedulable: true,
-			AccountGroups: nil}}, // 未分组
+		{Record: accountcore.Record{
+			Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Priority: 2, Status: billing.StatusActive, Schedulable: true,
+			AccountGroups: []accountcore.GroupMembership{{GroupID: 100}},
+		}}, // 已分组
+		{Record: accountcore.Record{
+			Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformOpenAI, Priority: 1, Status: billing.StatusActive, Schedulable: true,
+			AccountGroups: nil,
+		}}, // 未分组
 	}
 
 	// 使用基础 mock（ListSchedulableByPlatform 返回所有匹配平台的账号，不做分组过滤）
@@ -313,20 +336,20 @@ func TestGroupIsolation_SimpleMode_SkipsGroupIsolation(t *testing.T) {
 
 	// groupID=nil 时，SimpleMode 应使用 ListSchedulableByPlatform（不过滤分组）
 	acc, err := svc.selectAccountForModelWithPlatform(ctx, nil, "", "", nil, capability.PlatformOpenAI)
-	require.NoError(t, err, "SimpleMode 应跳过分组隔离直接返回账号")
-	require.NotNil(t, acc)
-	// 应选择优先级最高的账号（Priority=1, ID=2），即使它未分组
-	require.Equal(t, int64(2), acc.Record.ID, "SimpleMode 应按优先级选择，不考虑分组")
+	require.Error(t, err, "请求必须明确绑定分组")
+	require.Nil(t, acc)
 }
 
-func TestGroupIsolation_SimpleMode_GroupedAccountAlsoSchedulable(t *testing.T) {
+func TestGroupIsolation_SimpleMode_RejectsImplicitGroupedAccount(t *testing.T) {
 	// SimpleMode + groupID=nil 时，已分组账号也应该可被调度
 	ctx := context.Background()
 
 	// 只有已分组账号，在 standard 模式下 groupID=nil 会报错，但 simple 模式应正常
 	accounts := []gatewayprovider.ExecutionAccount{
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Priority: 1, Status: billing.StatusActive, Schedulable: true,
-			AccountGroups: []accountcore.GroupMembership{{GroupID: 100}}}},
+		{Record: accountcore.Record{
+			Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Priority: 1, Status: billing.StatusActive, Schedulable: true,
+			AccountGroups: []accountcore.GroupMembership{{GroupID: 100}},
+		}},
 	}
 
 	byID := make(map[int64]*gatewayprovider.ExecutionAccount, len(accounts))
@@ -342,7 +365,6 @@ func TestGroupIsolation_SimpleMode_GroupedAccountAlsoSchedulable(t *testing.T) {
 	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Accounts: repo}, Shared: Shared{Cache: cache}}, &config.Config{RunMode: config.RunModeSimple})
 
 	acc, err := svc.selectAccountForModelWithPlatform(ctx, nil, "", "", nil, capability.PlatformOpenAI)
-	require.NoError(t, err, "SimpleMode 下已分组账号也应可调度")
-	require.NotNil(t, acc)
-	require.Equal(t, int64(1), acc.Record.ID, "SimpleMode 应能调度已分组账号")
+	require.Error(t, err, "请求必须明确绑定分组")
+	require.Nil(t, acc)
 }

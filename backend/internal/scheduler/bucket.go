@@ -60,7 +60,7 @@ func ParseSchedulerBucket(raw string) (SchedulerBucket, bool) {
 	if err != nil {
 		return SchedulerBucket{}, false
 	}
-	if parts[1] == "" || parts[2] == "" {
+	if parts[2] == "" {
 		return SchedulerBucket{}, false
 	}
 	return SchedulerBucket{

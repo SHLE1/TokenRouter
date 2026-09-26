@@ -25,20 +25,16 @@ func TestPrepareGatewayAttemptRequestUsesCurrentAPIKeyGroupMapping(t *testing.T)
 	pricingConfigService := testkit.NewPricingConfigService(&gatewayExecutionPricingConfigRows{
 		modelConfigs: []testkit.Configuration{
 			{
-				ID:       701,
-				Status:   billing.StatusActive,
-				GroupIDs: []int64{sourceGroupID},
-				ModelMapping: map[string]map[string]string{
-					capability.PlatformAnthropic: {"client-alias": "source-group-model"},
-				},
+				ID:           701,
+				Status:       billing.StatusActive,
+				GroupIDs:     []int64{sourceGroupID},
+				ModelMapping: map[string]string{"client-alias": "source-group-model"},
 			},
 			{
-				ID:       702,
-				Status:   billing.StatusActive,
-				GroupIDs: []int64{fallbackGroupID},
-				ModelMapping: map[string]map[string]string{
-					capability.PlatformAnthropic: {"client-alias": "fallback-group-model"},
-				},
+				ID:           702,
+				Status:       billing.StatusActive,
+				GroupIDs:     []int64{fallbackGroupID},
+				ModelMapping: map[string]string{"client-alias": "fallback-group-model"},
 			},
 		},
 		groupPlatforms: map[int64]string{
@@ -84,12 +80,10 @@ func TestPrepareGatewayAttemptRequestUsesGeminiGroupMapping(t *testing.T) {
 	groupID := int64(6103)
 	pricingConfigService := testkit.NewPricingConfigService(&gatewayExecutionPricingConfigRows{
 		modelConfigs: []testkit.Configuration{{
-			ID:       703,
-			Status:   billing.StatusActive,
-			GroupIDs: []int64{groupID},
-			ModelMapping: map[string]map[string]string{
-				capability.PlatformGemini: {"client-alias": "gemini-group-model"},
-			},
+			ID:           703,
+			Status:       billing.StatusActive,
+			GroupIDs:     []int64{groupID},
+			ModelMapping: map[string]string{"client-alias": "gemini-group-model"},
 		}},
 		groupPlatforms: map[int64]string{groupID: capability.PlatformGemini},
 	}, nil, routing.PricingConfigOptions{Warn: slog.Warn, Now: time.

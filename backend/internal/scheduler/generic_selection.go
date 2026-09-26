@@ -15,7 +15,6 @@ import (
 
 type FlowAccount struct {
 	Plan                                       *routing.CandidatePlan
-	MixedScheduling                            bool
 	ProjectionID                               uint64
 	ID                                         int64
 	Name, Platform, Type                       string
@@ -196,9 +195,9 @@ func (s *GenericSelector) Select(ctx context.Context, input SelectionInput) (*Fl
 	if s.ports.DebugModelRoutingEnabled() && requestedModel != "" {
 		groupPlatform := ""
 		if group != nil {
-			groupPlatform = group.Platform
+			groupPlatform = ""
 		}
-		s.diagnostics.printf("service.gateway", "[ModelRoutingDebug] select entry: group_id=%v group_platform=%s model=%s session=%s sticky_account=%d load_batch=%v concurrency=%v",
+		s.diagnostics.printf("service.gateway", "[ModelRoutingDebug] select entry: group_id=%v forced_platform=%s model=%s session=%s sticky_account=%d load_batch=%v concurrency=%v",
 			derefGroupID(groupID), groupPlatform, requestedModel, shortFlowSessionHash(sessionHash), stickyAccountID, cfg.LoadBatchEnabled, s.concurrencyService != nil)
 	}
 
@@ -290,7 +289,7 @@ func (s *GenericSelector) Select(ctx context.Context, input SelectionInput) (*Fl
 	}
 
 	var routingAccountIDs []int64
-	if group != nil && requestedModel != "" && group.Platform == capability.PlatformAnthropic {
+	if group != nil && requestedModel != "" {
 		routingModel := s.ports.GroupMappedModelForAccountLayer(ctx, requestedModel)
 		routingAccountIDs = group.GetRoutingAccountIDs(routingModel)
 		if s.ports.DebugModelRoutingEnabled() {
@@ -1007,9 +1006,6 @@ func shortFlowSessionHash(sessionHash string) string {
 	}
 	return sessionHash[:8]
 }
-
-// IsMixedSchedulingEnabled 读取本次候选的纯账号资格投影。
-func (a *FlowAccount) IsMixedSchedulingEnabled() bool { return a.MixedScheduling }
 
 // SelectOnly 供辅助入口选择账号，不创建请求槽或会话注册；原路由和资格查询顺序不变。
 func (s *GenericSelector) SelectOnly(ctx context.Context, input SelectionInput) (*FlowAccount, error) {

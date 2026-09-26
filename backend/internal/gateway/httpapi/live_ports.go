@@ -11,8 +11,6 @@ import (
 	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
 
-	"github.com/TokenFlux/TokenRouter/internal/gateway/admission"
-
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/moderation"
 	"github.com/TokenFlux/TokenRouter/internal/usage"
@@ -54,14 +52,16 @@ func (a LivePorts) APIKey(c *gin.Context) (*LiveAPIKey, bool) {
 	}
 	result := &LiveAPIKey{ID: key.ID, UserID: key.UserID, TeamID: key.TeamID, GroupID: key.GroupID, ModelMapping: apikey.CloneModelMapping(key.ModelMapping)}
 	if key.Group != nil {
-		result.Group = &LiveGroup{Platform: key.Group.Platform, AllowLive: key.Group.AllowLive}
+		result.Group = &LiveGroup{AllowLive: key.Group.AllowLive}
 	}
 	return result, true
 }
+
 func (a LivePorts) Subject(c *gin.Context) (LiveSubject, bool) {
 	subject, ok := authctx.GetAuthSubjectFromContext(c)
 	return LiveSubject{UserID: subject.UserID, Concurrency: subject.Concurrency}, ok
 }
+
 func (a LivePorts) Subscription(c *gin.Context) (*LiveSubscription, bool) {
 	sub, ok := SubscriptionFromContext(c)
 	if sub == nil {
@@ -69,10 +69,12 @@ func (a LivePorts) Subscription(c *gin.Context) (*LiveSubscription, bool) {
 	}
 	return &LiveSubscription{ID: sub.ID}, ok
 }
+
 func (a LivePorts) Redirect(ctx context.Context, key *LiveAPIKey, model string) (context.Context, string) {
 	// 重定向只读取模型映射，不需要用户、资金或分组对象。
 	return APIKeyModelRedirectContext(ctx, &apikey.APIKey{ID: key.ID, ModelMapping: key.ModelMapping}, model)
 }
+
 func (a LivePorts) Moderate(c *gin.Context, key *LiveAPIKey, subject LiveSubject, clientModel, model string, body []byte) bool {
 	SetOpsRequestContext(c, clientModel, false)
 	SetOpsEndpointContext(c, "", int16(usage.RequestTypeLive))
@@ -87,6 +89,7 @@ func (a LivePorts) Moderate(c *gin.Context, key *LiveAPIKey, subject LiveSubject
 	}
 	return true
 }
+
 func (a LivePorts) CheckBilling(c *gin.Context) bool {
 	if a.Funding == nil {
 		a.Error(c, http.StatusServiceUnavailable, "api_error", "Billing service unavailable")
@@ -94,7 +97,7 @@ func (a LivePorts) CheckBilling(c *gin.Context) bool {
 	}
 	key, _ := keyhttp.GetAPIKeyFromContext(c)
 	subscription, _ := SubscriptionFromContext(c)
-	if err := a.Funding.CheckKey(c.Request.Context(), key, subscription, admission.QuotaPlatform(c.Request.Context(), key), false); err != nil {
+	if err := a.Funding.CheckKey(c.Request.Context(), key, subscription, "", false); err != nil {
 		status, code, message, retry := BillingErrorDetails(err)
 		if retry > 0 {
 			c.Header("Retry-After", strconv.Itoa(retry))
@@ -104,6 +107,7 @@ func (a LivePorts) CheckBilling(c *gin.Context) bool {
 	}
 	return true
 }
+
 func (a LivePorts) TryAcquireUserSlot(ctx context.Context, userID int64, limit int) (func(), bool, error) {
 	result, err := a.Slots.AcquireUserSlot(ctx, userID, limit)
 	if err != nil {
@@ -114,24 +118,31 @@ func (a LivePorts) TryAcquireUserSlot(ctx context.Context, userID int64, limit i
 	}
 	return result.ReleaseFunc, true, nil
 }
+
 func (a LivePorts) InboundEndpoint(c *gin.Context) string {
 	return GetInboundEndpoint(c)
 }
+
 func (a LivePorts) Create(ctx context.Context, request *session.LiveCallRequest, identity session.LiveCallIdentity, limit int) (*gatewaylive.Created, error) {
 	return a.Execution.Create(ctx, request, identity, limit)
 }
+
 func (a LivePorts) Lookup(ctx context.Context, id string, identity session.LiveCallIdentity) (*session.LiveCallRecord, error) {
 	return a.Execution.Lookup(ctx, id, identity)
 }
+
 func (a LivePorts) Proxy(ctx context.Context, record *session.LiveCallRecord, conn *coderws.Conn) error {
 	return a.Execution.Proxy(ctx, record, conn)
 }
+
 func (a LivePorts) Error(c *gin.Context, status int, code, message string) {
 	writeOpenAIRequestError(c, status, code, message, StopOpenAICompactSSEKeepaliveCommitted, MarkOpsStreamError, func(c *gin.Context) (string, string) { return ErrorRequestID(c), ErrorRequestModel(c) })
 }
+
 func (a LivePorts) PolicyDenied(c *gin.Context) {
 	MarkOpsClientBusinessLimited(c, OpsClientBusinessLimitedReasonLocalPolicyDenied)
 }
+
 func (a LivePorts) UpstreamStatus(err error) int {
 	var upstream *forwardcore.UpstreamFailoverError
 	if errors.As(err, &upstream) {

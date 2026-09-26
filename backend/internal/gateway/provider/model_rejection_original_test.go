@@ -59,7 +59,8 @@ func TestAvailableRequestModelsFromAccountsFiltersConfiguredQoderModels(t *testi
 		"model_mapping": map[string]any{"claude-opus-4-6": "ultimate"},
 	})
 	overrideModels := rejectedModelsForContract([]accountcore.Record{cnMappingOverride}, capability.PlatformQoder)
-	require.Equal(t, []string{"claude-opus-4-6"}, overrideModels)
+	require.ElementsMatch(t, qoder.DefaultRequestModelIDsForSite(qoder.SiteCN), overrideModels)
+	require.NotContains(t, overrideModels, "claude-opus-4-6", "显式映射不能突破站点能力")
 
 	globalWhitelist := newAccount(13, "global", map[string]any{
 		"model_whitelist": []any{"claude-opus-4-6", "qwen3.6-flash"},

@@ -7,8 +7,10 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 )
 
-type AccountActivity interface{ ScheduleLastUsedUpdate(int64) }
-type AuthInvalidator interface{ InvalidateAuthCacheByKey(context.Context, string) }
+type (
+	AccountActivity interface{ ScheduleLastUsedUpdate(int64) }
+	AuthInvalidator interface{ InvalidateAuthCacheByKey(context.Context, string) }
+)
 
 // CommitEffects 只安排已提交资金的缓存和通知，保留 billing 的唯一副作用顺序。
 type CommitEffects struct {
@@ -26,13 +28,12 @@ func (e *CommitEffects) InvalidateAuth(ctx context.Context, key string) {
 	}
 }
 
-// @project-doc docs/domains/platform_quotas.md#platform_quota_settlement_and_flush
 func (e *CommitEffects) Settled(p SettlementInput, result *billing.UsageBillingApplyResult) {
 	effects := e.Funds
 	effects.AccountUsed = func() { e.AccountUsed(p.Account.ID) }
 	effects.NotifyBalance = func() { e.NotifyBalance(p, result) }
 	effects.NotifyAccount = func() { e.NotifyAccount(p, result) }
-	in := billing.SettlementEffectInput{Cost: p.Cost, Result: result, Platform: p.Platform, HasUser: p.User != nil}
+	in := billing.SettlementEffectInput{Cost: p.Cost, Result: result, HasUser: p.User != nil}
 	if p.User != nil {
 		in.UserID = p.User.ID
 	}
@@ -42,6 +43,7 @@ func (e *CommitEffects) Settled(p SettlementInput, result *billing.UsageBillingA
 	}
 	effects.Finalize(in)
 }
+
 func (e *CommitEffects) recoverNotification(name string) {
 	if v := recover(); v != nil && e.Observe != nil {
 		e.Observe(name, fmt.Sprint(v))
@@ -55,7 +57,6 @@ func (e *CommitEffects) NotifyBalance(p SettlementInput, result *billing.UsageBi
 		return
 	}
 	e.Notifications.CheckBalanceAfterDeduction(context.Background(), p.User.Notification, billing.BalanceBeforeSettlement(p.User.Balance, result), result.BalanceAmountUSD)
-
 }
 
 // NotifyAccount 保留账号通知的成本口径，优先使用事务返回额度状态。
@@ -69,5 +70,4 @@ func (e *CommitEffects) NotifyAccount(p SettlementInput, result *billing.UsageBi
 		state = result.QuotaState
 	}
 	e.Notifications.CheckAccountQuotaAfterIncrement(context.Background(), p.Account.Notification, p.Cost.TotalCost*p.AccountRateMultiplier, state)
-
 }

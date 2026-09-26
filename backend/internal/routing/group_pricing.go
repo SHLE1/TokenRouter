@@ -13,9 +13,6 @@ func (v PricingConfigValidation) NormalizeGroupPricing(platform string, pricing 
 		out[i] = pricing[i].Clone()
 		out[i].ID = 0
 		out[i].PricingConfigID = 0
-		if strings.TrimSpace(out[i].Platform) == "" {
-			out[i].Platform = platform
-		}
 		for j := range out[i].Models {
 			out[i].Models[j] = strings.TrimSpace(out[i].Models[j])
 		}

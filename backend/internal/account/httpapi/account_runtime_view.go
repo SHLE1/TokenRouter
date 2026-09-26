@@ -19,12 +19,7 @@ type AccountWithConcurrency struct {
 }
 
 // 调度展示值由账号管理用例拥有，JSON 保持原契约。
-type AccountSchedulerScore = accountcore.AccountSchedulerScore
-type AccountSchedulerGroupScore = accountcore.AccountSchedulerGroupScore
-
-// CheckMixedChannelRequest represents check mixed channel risk request
-type CheckMixedChannelRequest struct {
-	Platform  string  `json:"platform" binding:"required"`
-	GroupIDs  []int64 `json:"group_ids"`
-	AccountID *int64  `json:"account_id"`
-}
+type (
+	AccountSchedulerScore      = accountcore.AccountSchedulerScore
+	AccountSchedulerGroupScore = accountcore.AccountSchedulerGroupScore
+)

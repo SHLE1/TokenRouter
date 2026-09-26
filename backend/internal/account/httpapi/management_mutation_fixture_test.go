@@ -102,12 +102,6 @@ func (s *managementMutationFixture) EnsureAntigravityPrivacy(ctx context.Context
 
 // managementMutationFixture 记录配置、凭据与失效输入，复用原独立存储替身语义。
 type managementMutationFixture struct {
-	checkMixedErr  error
-	lastMixedCheck struct {
-		accountID int64
-		platform  string
-		groupIDs  []int64
-	}
 	managementCreateFixture
 	accounts                   []accountcore.Record
 	updateAccountInput         *accountcore.UpdateAccountInput
@@ -130,12 +124,4 @@ func newMutationHandler(source *managementMutationFixture, invalidator accountco
 	presenter := NewRuntimePresenter(accountcore.NewRuntimeStatusReader(accountcore.RuntimeStatusOptions{}), source, nil)
 	batch := accountcore.NewManagementBatch(source, managed, accountcore.ManagementCreationOptions{Privacy: source})
 	return NewManagementHandler(source, ManagementOptions{Managed: managed, Presenter: presenter, RuntimePresenter: presenter, Privacy: source, Batch: batch})
-}
-
-// CheckMixedChannelRisk 保留原管理请求的字段传递及受控冲突。
-func (s *managementMutationFixture) CheckMixedChannelRisk(_ context.Context, id int64, platform string, groups []int64) error {
-	s.lastMixedCheck.accountID = id
-	s.lastMixedCheck.platform = platform
-	s.lastMixedCheck.groupIDs = append([]int64(nil), groups...)
-	return s.checkMixedErr
 }

@@ -5,8 +5,6 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
-
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 
 	xai "github.com/TokenFlux/TokenRouter/internal/upstream/grok"
@@ -48,16 +46,14 @@ func TestResolveOpenAIMessagesDispatchMappedModel(t *testing.T) {
 		require.Empty(t, ResolveOpenAIMessagesDispatchMappedModel(&apikey.APIKey{Group: &routing.Group{}}, "gpt-5.4"))
 	})
 
-	t.Run("grok_group_maps_claude_cli_model_to_grok_default", func(t *testing.T) {
+	t.Run("group_does_not_guess_grok_default", func(t *testing.T) {
 		original := xai.RuntimeModelMappingOptions()
 		t.Cleanup(func() { xai.SetRuntimeModelMappingOptions(original) })
 		xai.SetRuntimeModelMappingOptions(xai.ModelMappingOptions{EnableCrossClientMap: true})
 		apiKey := &apikey.APIKey{
-			Group: &routing.Group{
-				Platform: capability.PlatformGrok,
-			},
+			Group: &routing.Group{},
 		}
-		require.Equal(t, "grok-4.6", ResolveOpenAIMessagesDispatchMappedModel(apiKey, "claude-sonnet-4-5"))
+		require.Empty(t, ResolveOpenAIMessagesDispatchMappedModel(apiKey, "claude-sonnet-4-5"))
 		require.Empty(t, ResolveOpenAIMessagesDispatchMappedModel(apiKey, "grok"))
 	})
 

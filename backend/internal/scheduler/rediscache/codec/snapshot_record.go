@@ -14,7 +14,7 @@ type recordSnapshot struct{ value *account.Record }
 func (s recordSnapshot) SnapshotMetadata() scheduler.SnapshotMetadata {
 	return scheduler.SnapshotMetadata{
 		ID: s.value.ID, Name: s.value.Name, Platform: s.value.Platform,
-		GroupIDs: slices.Clone(s.value.GroupIDs), MixedScheduling: s.value.IsMixedSchedulingEnabled(),
+		GroupIDs: slices.Clone(s.value.GroupIDs),
 	}
 }
 

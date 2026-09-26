@@ -3,8 +3,6 @@ package postgres_test
 import (
 	"testing"
 
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
-
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	routingpostgres "github.com/TokenFlux/TokenRouter/internal/routing/postgres"
@@ -15,9 +13,9 @@ import (
 
 func TestGroupEntityToService_PreservesMessagesDispatchModelConfig(t *testing.T) {
 	group := &dbent.Group{
-		ID:             1,
-		Name:           "openai-dispatch",
-		Platform:       capability.PlatformOpenAI,
+		ID:   1,
+		Name: "openai-dispatch",
+
 		Status:         routing.StatusActive,
 		RateMultiplier: 1,
 		AllowedProtocols: []protocol.ProtocolID{
@@ -45,9 +43,9 @@ func TestGroupEntityToService_PreservesMessagesDispatchModelConfig(t *testing.T)
 
 func TestGroupEntityToService_PreservesImageGenerationControls(t *testing.T) {
 	group := &dbent.Group{
-		ID:                   1,
-		Name:                 "openai-images",
-		Platform:             capability.PlatformOpenAI,
+		ID:   1,
+		Name: "openai-images",
+
 		Status:               routing.StatusActive,
 		RateMultiplier:       1,
 		AllowImageGeneration: true,

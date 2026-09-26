@@ -27,7 +27,7 @@ interface Props {
   fullscreen?: boolean
   customStartTime?: string | null
   customEndTime?: string | null
-  groups?: Array<{ id: number; name: string; platform: string }>
+  groups?: Array<{ id: number; name: string }>
 }
 
 interface Emits {
@@ -106,7 +106,7 @@ function formatCustomTimeRangeLabel(startTime: string, endTime: string): string 
   return `${formatDate(start)} ~ ${formatDate(end)}`
 }
 
-const platformOptions = computed(() => buildOpsPlatformOptions(props.groups ?? [], t('common.all')))
+const platformOptions = computed(() => buildOpsPlatformOptions( t('common.all')))
 
 const timeRangeOptions = computed(() => [
   { value: '5m', label: t('admin.ops.timeRange.5m') },
@@ -124,7 +124,7 @@ const timeRangeOptions = computed(() => [
 
 const groupOptions = computed(() => {
   const groups = props.groups ?? []
-  const filtered = props.platform ? groups.filter((g) => g.platform === props.platform) : groups
+  const filtered = groups
   return [{ value: null, label: t('common.all') }, ...filtered.map((g) => ({ value: g.id, label: g.name }))]
 })
 
@@ -145,16 +145,6 @@ function handleFilterClickOutside(event: MouseEvent) {
 onMounted(() => document.addEventListener('click', handleFilterClickOutside))
 onUnmounted(() => document.removeEventListener('click', handleFilterClickOutside))
 
-watch(
-  () => [props.platform, props.groupId, props.groups] as const,
-  ([newPlatform]) => {
-    if (!newPlatform) return
-    const currentGroup = (props.groups ?? []).find((g) => g.id === props.groupId)
-    if (currentGroup && currentGroup.platform !== newPlatform) {
-      emit('update:group', null)
-    }
-  }
-)
 
 function handlePlatformChange(val: string | number | boolean | null) {
   emit('update:platform', String(val || ''))

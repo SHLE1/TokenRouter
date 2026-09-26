@@ -25,9 +25,8 @@ type AdvancedSchedulerScoreDiagnosticAccount struct {
 
 // AdvancedSchedulerScoreDiagnosticGroup 是高级调度分组的安全摘要。
 type AdvancedSchedulerScoreDiagnosticGroup struct {
-	ID       int64  `json:"id"`
-	Name     string `json:"name"`
-	Platform string `json:"platform"`
+	ID   int64  `json:"id"`
+	Name string `json:"name"`
 }
 
 // AdvancedSchedulerScoreDiagnosticGroupSummary 用于首次打开弹窗时的轻量分组 Tab 信息。

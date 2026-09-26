@@ -180,7 +180,6 @@ func registerDashboardRoutes(admin *gin.RouterGroup, h *routeTestHandlers) {
 
 func registerUserManagementRoutes(admin *gin.RouterGroup, h *routeTestHandlers) {
 	routeidentity.RegisterUserManagementRoutes(admin, h.Admin.User, h.Admin.UserAttribute)
-	routebilling.RegisterUserQuotaRoutes(admin, h.PlatformQuota)
 }
 
 func registerGroupRoutes(admin *gin.RouterGroup, h *routeTestHandlers) {

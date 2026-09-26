@@ -271,7 +271,7 @@ describe('BulkEditAccountModal', () => {
     })
   })
 
-  it('Antigravity 批量修改白名单模式仍应写入 mapping-only 结构', async () => {
+  it('Antigravity 批量修改保存独立白名单', async () => {
     const wrapper = mountModal({
       selectedPlatforms: ['antigravity'],
       selectedTypes: ['apikey']
@@ -286,9 +286,8 @@ describe('BulkEditAccountModal', () => {
     expect(adminAPI.accounts.bulkUpdate).toHaveBeenCalledTimes(1)
     expect(adminAPI.accounts.bulkUpdate).toHaveBeenCalledWith([1, 2], {
       credentials: {
-        model_mapping: {
-          'claude-sonnet-4-5': 'claude-sonnet-4-5'
-        }
+        model_mapping: {},
+        model_whitelist: ['claude-sonnet-4-5']
       }
     })
   })
@@ -340,7 +339,7 @@ describe('BulkEditAccountModal', () => {
     })
   })
 
-  it('包含 Antigravity 的跨平台批量修改不允许提交模型限制', async () => {
+  it('包含 Antigravity 的跨平台批量修改共用模型规则', async () => {
     const wrapper = mountModal({
       selectedPlatforms: ['antigravity', 'openai'],
       selectedTypes: ['apikey']
@@ -350,7 +349,7 @@ describe('BulkEditAccountModal', () => {
     await wrapper.get('#bulk-edit-account-form').trigger('submit.prevent')
     await flushPromises()
 
-    expect(adminAPI.accounts.bulkUpdate).not.toHaveBeenCalled()
+    expect(adminAPI.accounts.bulkUpdate).toHaveBeenCalledWith([1, 2], { credentials: { model_mapping: {}, model_whitelist: [] } })
   })
 
   it('全部目标为 Grok OAuth 时，官方主机 base_url 作为手动端点切换正常提交', async () => {
@@ -947,7 +946,7 @@ describe('BulkEditAccountModal', () => {
     })
   })
 
-  it('开启 OpenAI 自动透传时不再同时提交模型限制', async () => {
+  it('OpenAI 自动透传仍保存模型限制', async () => {
     const wrapper = mountModal({
       selectedPlatforms: ['openai'],
       selectedTypes: ['oauth']
@@ -961,11 +960,12 @@ describe('BulkEditAccountModal', () => {
 
     expect(adminAPI.accounts.bulkUpdate).toHaveBeenCalledTimes(1)
     expect(adminAPI.accounts.bulkUpdate).toHaveBeenCalledWith([1, 2], {
+      credentials: { model_mapping: {}, model_whitelist: [] },
       extra: {
         openai_passthrough: true
       }
     })
-    expect(wrapper.text()).toContain('admin.accounts.openai.modelRestrictionDisabledByPassthrough')
+    expect(wrapper.text()).toContain('admin.accounts.modelRestriction')
   })
 
   it('filtered-results 模式下应提交 filters 而不是 account_ids', async () => {

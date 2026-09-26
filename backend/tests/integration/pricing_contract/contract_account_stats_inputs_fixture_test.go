@@ -43,11 +43,11 @@ func applyContractAccountStatsCost(
 		reasoningEffort = *usageLog.ReasoningEffort
 	}
 	if len(resolvers) > 0 && resolvers[0] != nil {
-		usageLog.AccountStatsCost = resolvers[0].ResolveAccountStats(ctx, billing.AccountStatsCostInput{AccountID: accountID, GroupID: groupID, UpstreamModel: model, RequestedModel: requestedModel, MappedModel: groupMappedModel, Tokens: tokens, RequestCount: requestCount, ServiceTier: serviceTier, ReasoningEffort: reasoningEffort})
+		usageLog.AccountStatsCost = resolvers[0].ResolveAccountStats(ctx, billing.AccountStatsCostInput{PreferRequestedModel: usageLog.Platform == "qoder", AccountID: accountID, GroupID: groupID, UpstreamModel: model, RequestedModel: requestedModel, MappedModel: groupMappedModel, Tokens: tokens, RequestCount: requestCount, ServiceTier: serviceTier, ReasoningEffort: reasoningEffort})
 		return
 	}
 	usageLog.AccountStatsCost = contractAccountStatsWithMapping(
-		ctx, cs, bs, accountID, groupID, model, requestedModel, groupMappedModel, tokens, requestCount, totalCost, serviceTier,
+		ctx, cs, bs, usageLog.Platform, accountID, groupID, model, requestedModel, groupMappedModel, tokens, requestCount, totalCost, serviceTier,
 		reasoningEffort,
 	)
 }
@@ -60,6 +60,7 @@ func contractAccountStatsCost(
 	ctx context.Context,
 	pricingConfigService *routing.PricingConfigService,
 	billingService *billing.Calculator,
+	actualPlatform string,
 	accountID int64,
 	groupID int64,
 	upstreamModel string,
@@ -70,7 +71,7 @@ func contractAccountStatsCost(
 	serviceTier string,
 	reasoningEfforts ...string,
 ) *float64 {
-	return contractAccountStatsWithMapping(ctx, pricingConfigService, billingService, accountID, groupID, upstreamModel, requestedModel, "", tokens, requestCount, totalCost, serviceTier, reasoningEfforts...)
+	return contractAccountStatsWithMapping(ctx, pricingConfigService, billingService, actualPlatform, accountID, groupID, upstreamModel, requestedModel, "", tokens, requestCount, totalCost, serviceTier, reasoningEfforts...)
 }
 
 // contractAccountStatsWithMapping 委托 billing 的唯一账号统计规则。
@@ -78,6 +79,7 @@ func contractAccountStatsWithMapping(
 	ctx context.Context,
 	pricingConfigService *routing.PricingConfigService,
 	billingService *billing.Calculator,
+	actualPlatform string,
 	accountID int64,
 	groupID int64,
 	upstreamModel string,
@@ -102,5 +104,5 @@ func contractAccountStatsWithMapping(
 		calculator = billingService
 	}
 	resolver := billing.NewPriceResolver(nil, calculator, nil, nil, source)
-	return resolver.ResolveAccountStats(ctx, billing.AccountStatsCostInput{AccountID: accountID, GroupID: groupID, UpstreamModel: upstreamModel, RequestedModel: requestedModel, MappedModel: groupMappedModel, Tokens: tokens, RequestCount: requestCount, ServiceTier: serviceTier, ReasoningEffort: effort})
+	return resolver.ResolveAccountStats(ctx, billing.AccountStatsCostInput{PreferRequestedModel: actualPlatform == "qoder", AccountID: accountID, GroupID: groupID, UpstreamModel: upstreamModel, RequestedModel: requestedModel, MappedModel: groupMappedModel, Tokens: tokens, RequestCount: requestCount, ServiceTier: serviceTier, ReasoningEffort: effort})
 }

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	idempotencytest "github.com/TokenFlux/TokenRouter/internal/idempotency/testkit"
 
@@ -15,8 +16,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
-
-	"time"
 
 	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
 	"github.com/TokenFlux/TokenRouter/internal/account/transfer"
@@ -65,7 +64,6 @@ func setupAccountDataRouter(coordinators ...*idempotency.IdempotencyCoordinator)
 }
 
 func setupAccountDataRouterWithSettings(settingService *accountcore.RuntimeSettings, coordinators ...*idempotency.IdempotencyCoordinator) (*gin.Engine, *archiveHTTPFixture) {
-
 	router := gin.New()
 	adminSvc := newArchiveHTTPFixture()
 
@@ -313,7 +311,6 @@ func TestImportDataReusesProxyAndSkipsDefaultGroup(t *testing.T) {
 				},
 			},
 		},
-		"skip_default_group_bind": true,
 	}
 
 	body, _ := json.Marshal(dataPayload)
@@ -325,7 +322,6 @@ func TestImportDataReusesProxyAndSkipsDefaultGroup(t *testing.T) {
 
 	require.Len(t, adminSvc.createdProxies, 0)
 	require.Len(t, adminSvc.createdAccounts, 1)
-	require.True(t, adminSvc.createdAccounts[0].SkipDefaultGroupBind)
 }
 
 func TestImportDataIdempotencyIgnoresDeprecatedLongContextBillingExtra(t *testing.T) {
@@ -352,7 +348,6 @@ func TestImportDataIdempotencyIgnoresDeprecatedLongContextBillingExtra(t *testin
 				"proxies":  []map[string]any{},
 				"accounts": []map[string]any{account},
 			},
-			"skip_default_group_bind": true,
 		}
 		body, err := json.Marshal(payload)
 		require.NoError(t, err)
@@ -542,7 +537,6 @@ func postImportAccountRaw(t *testing.T, router *gin.Engine, account map[string]a
 			"proxies":  []map[string]any{},
 			"accounts": []map[string]any{account},
 		},
-		"skip_default_group_bind": true,
 	}
 
 	body, _ := json.Marshal(dataPayload)

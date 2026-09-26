@@ -3,7 +3,6 @@ package httpapi
 
 import (
 	"context"
-	"errors"
 	"strconv"
 
 	idempotencyhttp "github.com/TokenFlux/TokenRouter/internal/idempotency/httpapi"
@@ -27,7 +26,6 @@ type AccountManagement interface {
 	RecoverDuplicateAccount(context.Context, int64, string, string) (*accountcore.Record, error)
 	GetAccount(context.Context, int64) (*accountcore.Record, error)
 	DeleteAccount(context.Context, int64) error
-	CheckMixedChannelRisk(context.Context, int64, string, []int64) error
 }
 type AccountRuntimePresenter interface {
 	Present(context.Context, *accountcore.Record) AccountWithConcurrency
@@ -124,48 +122,4 @@ func (h *ManagementHandler) Delete(c *gin.Context) {
 	}
 
 	response.Success(c, gin.H{"message": "Account deleted successfully"})
-}
-
-// CheckMixedChannel 返回账号绑组的混合渠道风险。
-// POST /api/v1/admin/accounts/check-mixed-channel
-func (h *ManagementHandler) CheckMixedChannel(c *gin.Context) {
-	var req CheckMixedChannelRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, "Invalid request: "+err.Error())
-		return
-	}
-
-	if len(req.GroupIDs) == 0 {
-		response.Success(c, gin.H{"has_risk": false})
-		return
-	}
-
-	accountID := int64(0)
-	if req.AccountID != nil {
-		accountID = *req.AccountID
-	}
-
-	err := h.adminService.CheckMixedChannelRisk(c.Request.Context(), accountID, req.Platform, req.GroupIDs)
-	if err != nil {
-		var mixedErr *accountcore.MixedChannelError
-		if errors.As(err, &mixedErr) {
-			response.Success(c, gin.H{
-				"has_risk": true,
-				"error":    "mixed_channel_warning",
-				"message":  mixedErr.Error(),
-				"details": gin.H{
-					"group_id":         mixedErr.GroupID,
-					"group_name":       mixedErr.GroupName,
-					"current_platform": mixedErr.CurrentPlatform,
-					"other_platform":   mixedErr.OtherPlatform,
-				},
-			})
-			return
-		}
-
-		response.ErrorFrom(c, err)
-		return
-	}
-
-	response.Success(c, gin.H{"has_risk": false})
 }

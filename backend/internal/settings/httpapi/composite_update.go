@@ -1,6 +1,15 @@
 package httpapi
 
 import (
+	"context"
+	"encoding/json"
+	"errors"
+	"log/slog"
+	"net/http"
+	"reflect"
+	"strconv"
+	"strings"
+
 	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/audit"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
@@ -22,15 +31,6 @@ import (
 	settingsdto "github.com/TokenFlux/TokenRouter/internal/settings/httpapi/dto"
 	sitedto "github.com/TokenFlux/TokenRouter/internal/site/httpapi/dto"
 	"github.com/TokenFlux/TokenRouter/internal/usage"
-
-	"context"
-	"encoding/json"
-	"errors"
-	"log/slog"
-	"net/http"
-	"reflect"
-	"strconv"
-	"strings"
 
 	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
 
@@ -142,7 +142,7 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 		response.BadRequest(c, "Invalid request: "+err.Error())
 		return
 	}
-	if rejectDeprecatedAdvancedSchedulerRequestFields(c, sentFields) {
+	if rejectRemovedUngroupedKeySchedulingField(c, sentFields) || rejectRemovedPlatformQuotaFields(c, sentFields) || rejectDeprecatedAdvancedSchedulerRequestFields(c, sentFields) {
 		return
 	}
 	var req UpdateSettingsRequest
@@ -158,7 +158,7 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 	defer update.Close()
 	c.Request = c.Request.WithContext(update.Context())
 
-	// 管理端保存白名单时按实际分组平台收敛能力，清理已下线的 Gemini inpaint。
+	// 管理端保存能力白名单，执行目录再与组内账号的实际能力取交集。
 	if req.CreativeModelSettings != nil {
 		if sanitizer, ok := h.creativeModelReader.(interface {
 			NormalizeCreativeModelSettingsForSave(context.Context, []creative.CreativeModelSetting) ([]creative.CreativeModelSetting, error)
@@ -1312,8 +1312,6 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 	}
 
 	settings := &composite.Snapshot{
-		// 系统全局 platform quota 默认值（整体替换语义）
-		DefaultPlatformQuotas:       req.DefaultPlatformQuotas,
 		AccountSchedulingThresholds: req.AccountSchedulingThresholds,
 
 		RegistrationEnabled:                 req.RegistrationEnabled,
@@ -1544,12 +1542,11 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 			}
 			return previousSettings.GrokDefaultBaseURLMode
 		}(),
-		EnableIdentityPatch:         req.EnableIdentityPatch,
-		IdentityPatchPrompt:         req.IdentityPatchPrompt,
-		MinClaudeCodeVersion:        req.MinClaudeCodeVersion,
-		MaxClaudeCodeVersion:        req.MaxClaudeCodeVersion,
-		AllowUngroupedKeyScheduling: req.AllowUngroupedKeyScheduling,
-		BackendModeEnabled:          req.BackendModeEnabled,
+		EnableIdentityPatch:  req.EnableIdentityPatch,
+		IdentityPatchPrompt:  req.IdentityPatchPrompt,
+		MinClaudeCodeVersion: req.MinClaudeCodeVersion,
+		MaxClaudeCodeVersion: req.MaxClaudeCodeVersion,
+		BackendModeEnabled:   req.BackendModeEnabled,
 		OpenAITTFTMode: func() string {
 			if req.OpenAITTFTMode != nil {
 				return *req.OpenAITTFTMode
@@ -1765,8 +1762,6 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 		}(),
 	}
 
-	// req.AuthSourceXxxPlatformQuotas 为 nil 表示本次请求未包含该 source 的 quota 配置（保留 previousAuthSourceDefaults 中的值）；
-	// non-nil（含 empty map）表示整体覆盖：empty map = 清空该 source 的所有 quota 配置。
 	authSourceDefaults := &identity.AuthSourceDefaultSettings{
 		Email: identity.ProviderDefaultGrantSettings{
 			Balance:          float64ValueOrDefault(req.AuthSourceDefaultEmailBalance, previousAuthSourceDefaults.Email.Balance),
@@ -1774,7 +1769,6 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 			Subscriptions:    defaultSubscriptionsValueOrDefault(req.AuthSourceDefaultEmailSubscriptions, previousAuthSourceDefaults.Email.Subscriptions),
 			GrantOnSignup:    boolValueOrDefault(req.AuthSourceDefaultEmailGrantOnSignup, previousAuthSourceDefaults.Email.GrantOnSignup),
 			GrantOnFirstBind: boolValueOrDefault(req.AuthSourceDefaultEmailGrantOnFirstBind, previousAuthSourceDefaults.Email.GrantOnFirstBind),
-			PlatformQuotas:   platformQuotasValueOrDefault(req.AuthSourceEmailPlatformQuotas, previousAuthSourceDefaults.Email.PlatformQuotas),
 		},
 		LinuxDo: identity.ProviderDefaultGrantSettings{
 			Balance:          float64ValueOrDefault(req.AuthSourceDefaultLinuxDoBalance, previousAuthSourceDefaults.LinuxDo.Balance),
@@ -1782,7 +1776,6 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 			Subscriptions:    defaultSubscriptionsValueOrDefault(req.AuthSourceDefaultLinuxDoSubscriptions, previousAuthSourceDefaults.LinuxDo.Subscriptions),
 			GrantOnSignup:    boolValueOrDefault(req.AuthSourceDefaultLinuxDoGrantOnSignup, previousAuthSourceDefaults.LinuxDo.GrantOnSignup),
 			GrantOnFirstBind: boolValueOrDefault(req.AuthSourceDefaultLinuxDoGrantOnFirstBind, previousAuthSourceDefaults.LinuxDo.GrantOnFirstBind),
-			PlatformQuotas:   platformQuotasValueOrDefault(req.AuthSourceLinuxDoPlatformQuotas, previousAuthSourceDefaults.LinuxDo.PlatformQuotas),
 		},
 		OIDC: identity.ProviderDefaultGrantSettings{
 			Balance:          float64ValueOrDefault(req.AuthSourceDefaultOIDCBalance, previousAuthSourceDefaults.OIDC.Balance),
@@ -1790,7 +1783,6 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 			Subscriptions:    defaultSubscriptionsValueOrDefault(req.AuthSourceDefaultOIDCSubscriptions, previousAuthSourceDefaults.OIDC.Subscriptions),
 			GrantOnSignup:    boolValueOrDefault(req.AuthSourceDefaultOIDCGrantOnSignup, previousAuthSourceDefaults.OIDC.GrantOnSignup),
 			GrantOnFirstBind: boolValueOrDefault(req.AuthSourceDefaultOIDCGrantOnFirstBind, previousAuthSourceDefaults.OIDC.GrantOnFirstBind),
-			PlatformQuotas:   platformQuotasValueOrDefault(req.AuthSourceOIDCPlatformQuotas, previousAuthSourceDefaults.OIDC.PlatformQuotas),
 		},
 		WeChat: identity.ProviderDefaultGrantSettings{
 			Balance:          float64ValueOrDefault(req.AuthSourceDefaultWeChatBalance, previousAuthSourceDefaults.WeChat.Balance),
@@ -1798,7 +1790,6 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 			Subscriptions:    defaultSubscriptionsValueOrDefault(req.AuthSourceDefaultWeChatSubscriptions, previousAuthSourceDefaults.WeChat.Subscriptions),
 			GrantOnSignup:    boolValueOrDefault(req.AuthSourceDefaultWeChatGrantOnSignup, previousAuthSourceDefaults.WeChat.GrantOnSignup),
 			GrantOnFirstBind: boolValueOrDefault(req.AuthSourceDefaultWeChatGrantOnFirstBind, previousAuthSourceDefaults.WeChat.GrantOnFirstBind),
-			PlatformQuotas:   platformQuotasValueOrDefault(req.AuthSourceWeChatPlatformQuotas, previousAuthSourceDefaults.WeChat.PlatformQuotas),
 		},
 		GitHub: identity.ProviderDefaultGrantSettings{
 			Balance:          float64ValueOrDefault(req.AuthSourceDefaultGitHubBalance, previousAuthSourceDefaults.GitHub.Balance),
@@ -1806,7 +1797,6 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 			Subscriptions:    defaultSubscriptionsValueOrDefault(req.AuthSourceDefaultGitHubSubscriptions, previousAuthSourceDefaults.GitHub.Subscriptions),
 			GrantOnSignup:    boolValueOrDefault(req.AuthSourceDefaultGitHubGrantOnSignup, previousAuthSourceDefaults.GitHub.GrantOnSignup),
 			GrantOnFirstBind: boolValueOrDefault(req.AuthSourceDefaultGitHubGrantOnFirstBind, previousAuthSourceDefaults.GitHub.GrantOnFirstBind),
-			PlatformQuotas:   platformQuotasValueOrDefault(req.AuthSourceGitHubPlatformQuotas, previousAuthSourceDefaults.GitHub.PlatformQuotas),
 		},
 		Google: identity.ProviderDefaultGrantSettings{
 			Balance:          float64ValueOrDefault(req.AuthSourceDefaultGoogleBalance, previousAuthSourceDefaults.Google.Balance),
@@ -1814,7 +1804,6 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 			Subscriptions:    defaultSubscriptionsValueOrDefault(req.AuthSourceDefaultGoogleSubscriptions, previousAuthSourceDefaults.Google.Subscriptions),
 			GrantOnSignup:    boolValueOrDefault(req.AuthSourceDefaultGoogleGrantOnSignup, previousAuthSourceDefaults.Google.GrantOnSignup),
 			GrantOnFirstBind: boolValueOrDefault(req.AuthSourceDefaultGoogleGrantOnFirstBind, previousAuthSourceDefaults.Google.GrantOnFirstBind),
-			PlatformQuotas:   platformQuotasValueOrDefault(req.AuthSourceGooglePlatformQuotas, previousAuthSourceDefaults.Google.PlatformQuotas),
 		},
 		DingTalk: identity.ProviderDefaultGrantSettings{
 			Balance:          float64ValueOrDefault(req.AuthSourceDefaultDingTalkBalance, previousAuthSourceDefaults.DingTalk.Balance),
@@ -1822,7 +1811,6 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 			Subscriptions:    defaultSubscriptionsValueOrDefault(req.AuthSourceDefaultDingTalkSubscriptions, previousAuthSourceDefaults.DingTalk.Subscriptions),
 			GrantOnSignup:    boolValueOrDefault(req.AuthSourceDefaultDingTalkGrantOnSignup, previousAuthSourceDefaults.DingTalk.GrantOnSignup),
 			GrantOnFirstBind: boolValueOrDefault(req.AuthSourceDefaultDingTalkGrantOnFirstBind, previousAuthSourceDefaults.DingTalk.GrantOnFirstBind),
-			PlatformQuotas:   platformQuotasValueOrDefault(req.AuthSourceDingTalkPlatformQuotas, previousAuthSourceDefaults.DingTalk.PlatformQuotas),
 		},
 		ForceEmailOnThirdPartySignup: boolValueOrDefault(req.ForceEmailOnThirdPartySignup, previousAuthSourceDefaults.ForceEmailOnThirdPartySignup),
 	}
@@ -1982,7 +1970,8 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 	}
 	for name, value := range map[string]any{
 		"payment_visible_method_alipay_source": settings.PaymentVisibleMethodAlipaySource, "payment_visible_method_wxpay_source": settings.PaymentVisibleMethodWxpaySource, "payment_visible_method_alipay_enabled": settings.PaymentVisibleMethodAlipayEnabled, "payment_visible_method_wxpay_enabled": settings.PaymentVisibleMethodWxpayEnabled,
-		"ops_monitoring_enabled": settings.OpsMonitoringEnabled, "ops_realtime_monitoring_enabled": settings.OpsRealtimeMonitoringEnabled, "ops_metrics_interval_seconds": settings.OpsMetricsIntervalSeconds} {
+		"ops_monitoring_enabled": settings.OpsMonitoringEnabled, "ops_realtime_monitoring_enabled": settings.OpsRealtimeMonitoringEnabled, "ops_metrics_interval_seconds": settings.OpsMetricsIntervalSeconds,
+	} {
 		raw, marshalErr := json.Marshal(value)
 		if marshalErr != nil {
 			response.ErrorFrom(c, marshalErr)
@@ -2239,7 +2228,6 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 		OpsMetricsIntervalSeconds:                        updatedSettings.OpsMetricsIntervalSeconds,
 		MinClaudeCodeVersion:                             updatedSettings.MinClaudeCodeVersion,
 		MaxClaudeCodeVersion:                             updatedSettings.MaxClaudeCodeVersion,
-		AllowUngroupedKeyScheduling:                      updatedSettings.AllowUngroupedKeyScheduling,
 		BackendModeEnabled:                               updatedSettings.BackendModeEnabled,
 		OpenAITTFTMode:                                   updatedSettings.OpenAITTFTMode,
 		EnableFingerprintUnification:                     updatedSettings.EnableFingerprintUnification,
@@ -2331,12 +2319,6 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 		payload.OpenAIFastPolicySettings = openaiFastPolicySettingsToDTO(fastPolicy)
 	}
 
-	// 默认平台限额（JSON map）：与 GetSettings 一致，避免保存后响应缺失该字段。
-	if platformQuotas, err := h.settingService.GetDefaultPlatformQuotas(c.Request.Context()); err != nil {
-		slog.Error("default_platform_quotas_get_failed", "error", err)
-	} else {
-		payload.DefaultPlatformQuotas = platformQuotas
-	}
 	response.Success(c, systemSettingsResponseData(payload, updatedAuthSourceDefaults))
 }
 

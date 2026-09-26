@@ -59,7 +59,7 @@ func (s *managementListFixture) ListSchedulableAccountsForAdvancedSchedulerScore
 	}
 	out := make([]account.Record, 0, len(accounts))
 	for _, account := range accounts {
-		if account.Platform != platform || !account.IsSchedulable() {
+		if (platform != "" && account.Platform != platform) || !account.IsSchedulable() {
 			continue
 		}
 		if groupID == nil {

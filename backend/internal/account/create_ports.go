@@ -6,7 +6,6 @@ import (
 )
 
 type GroupReference struct {
-	Platform         string
 	RequireOAuthOnly bool
 	ID               int64
 	Name             string
@@ -14,7 +13,6 @@ type GroupReference struct {
 type AdminGroups interface {
 	ActiveGroups(context.Context, string) ([]GroupReference, error)
 	ValidateGroups(context.Context, []int64) error
-	DefaultGroup(context.Context, string) (*GroupReference, error)
 	GetGroup(context.Context, int64) (*GroupReference, error)
 }
 type CreateCredentialHooks struct {

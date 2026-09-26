@@ -18,7 +18,6 @@ import (
 	billingpricing "github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 	"github.com/TokenFlux/TokenRouter/internal/config"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 
 	"github.com/stretchr/testify/require"
 )
@@ -1764,7 +1763,6 @@ func TestGetModelPricingWithConfig_PreservesNativeTierRatio(t *testing.T) {
 func TestCalculateCostWithPricingConfigFastModeMultiplierUsesFinalStandardPrice(t *testing.T) {
 	svc := newTestCalculator()
 	configPricing := &routing.ModelPricingEntry{
-		Platform:           capability.PlatformOpenAI,
 		PriceMultiplier:    testPtrFloat64(1.25),
 		FastModeMultiplier: testPtrFloat64(1.5),
 		InputPrice:         testPtrFloat64(10e-6),

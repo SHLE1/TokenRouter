@@ -83,6 +83,24 @@
 
 升级前先创建并实际验证 PostgreSQL 备份，同时保存 Redis/对象存储中业务要求恢复的数据。后台备份服务可把数据库 dump 流式写入本地或 S3 兼容存储，并用维护锁串行化备份/恢复；敏感存储配置需要稳定的安全密钥。备份内容策略可能排除大体量历史表，恢复目标必须先核对备份范围。
 
+### 分组跨平台与统一价格配置切换
+
+迁移 `276_platform_independent_pricing.sql` 与 `277_platform_independent_groups.sql` 删除价格平台、分组平台、默认组和用户平台额度，旧实例与新版不能同时运行。
+
+1. 使用新版的 `--check-group-platform-migration` 只读预检价卡冲突、未绑定分组的 Key 和账号模型范围。处理不可比较的价格规则后重新预检。
+2. 备份并验证完整 PostgreSQL 数据，停止所有旧实例与 worker。历史未绑定 Key 必须由管理员明确选组，迁移不会替它选择默认组。
+3. 启动新版执行前向迁移。每个 SQL 文件在独立事务内提交；276 已成功而 277 失败时，保持停机并修复后重试，不能重新启动旧版。
+4. 确认迁移完成后重建调度快照和认证缓存，再恢复流量。抽样检查混合组路由、报价与实扣、平台统计、历史任务和未绑定 Key 的错误提示。
+5. 回退时停止新版，并将升级前数据库备份与旧二进制一同恢复。迁移归档仅用于核对，不是可直接执行的 Down 迁移。
+
+预检可运行 `server --check-group-platform-migration > group-migration-preview.json`，使用与服务相同的数据库配置，只读取数据库，不执行迁移或启动后台任务。报告列出每个价格范围的合并前后规则、冲突、未绑定 Key ID、全部账号的显式目录扩展，以及最近 30 天使用过但新模型范围不再接受的模型；不输出 Key 字符串或账号凭据。复杂价格冲突会返回非零退出码，未绑定 Key 和模型范围差异作为待配置项列出。
+
+同一配置、同一模型的可比较显式单价逐项取最大，输入与输出可能来自不同旧平台。全部为空的桶保持继承，显式零价保留；空值与显式值、不同计费模式/区间/倍率/分时规则，以及重叠但不同的模型通配规则都会阻断迁移。账号成本规则按各自匹配条件及排序独立合并，不跨规则取高。缓存使用认证快照 v42 和 `sched:v3:`，旧空间不再被新版读取。
+
+价格归档保存在 `platform_independent_pricing_archive`。分组归档 `platform_independent_group_archive` 保留原平台、默认组标记和完整策略，其中未生效的平台草稿不转为生效配置。平台额度及其默认设置归档到 `removed_platform_quota_archive` 后退出运行时。旧 `allow_ungrouped_key_scheduling` 设置单独保存在 `platform_independent_setting_archive`，随后从运行设置删除。
+
+旧使用记录先按升级前的统计口径固化 `platform`，旧错误记录仅补齐空平台；新记录使用实际账号平台。迁移不会清空预聚合、重算账单或改变已提交任务的 provider 与资金快照。创作台的迁移 `278_creative_provider_snapshot.sql` 增加 `provider`，从已绑定账号回填历史任务；新任务在调用上游前保存供应商与账号。协议 fallback 的旧单目标变为数组，未配置项显式设为空数组以保持仅原生，存量 `allowed_protocols` 原样保留。
+
 ### 数据共享功能下线
 
 迁移 `265_remove_data_sharing.sql` 是不支持新旧实例混跑的破坏性迁移。它幂等删除 `data_share_export_artifacts`、`data_share_sessions`，删除 Group、API Key 和复合 Key 映射中的数据共享列与索引，并删除九个数据共享运行设置。对于有效的 `backup_content_config` JSON 对象，迁移只移除 `include_data_share_sessions`；历史上无效的 JSON 或 JSONB 无法表示的值会保留并发出数据库 notice，不阻断迁移。历史迁移 141 至 168 及 226 保持不可变，以支持空库按完整序列初始化和旧版本前向升级。
@@ -98,7 +116,9 @@
 
 仅回退二进制不能恢复已删除的 schema，也不得通过删除 `schema_migrations` 记录模拟回滚。需要回滚时必须停止全部新实例，恢复升级前已验证的 PostgreSQL 备份，再启动旧版本；外部导出对象和旧备份仍按上述人工策略处理。
 
-### 国产供应商用户平台额度约束
+### 国产供应商用户平台额度历史约束（已下线）
+
+本节记录旧版本的升级边界。迁移 277 已归档并删除用户平台额度及其注册默认设置，当前版本不再执行额度授予、预检查或结算累加。
 
 迁移 `248_allow_cn_user_platform_quotas.sql` 由上游迁移 224 按本 fork 当时最大编号 247 递增而来；仓库不保留上游原文件名。它只替换 `user_platform_quotas.platform` 的 CHECK 约束，把 `kimi`、`zhipu`、`deepseek` 加入原有六个平台，并与应用层九平台 allowlist 对齐。
 

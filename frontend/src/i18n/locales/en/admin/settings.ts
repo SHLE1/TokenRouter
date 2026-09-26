@@ -428,16 +428,6 @@ export default {
           'Duplicate subscription plan: {planId}. Each plan can only appear once.',
         subscriptionGroup: 'Subscription Plan',
         subscriptionValidityDays: 'Validity (days)',
-        defaultPlatformQuotas: 'Default Platform Quotas (on signup)',
-        defaultPlatformQuotasHint: 'Automatically assigned to new users on signup; existing users are not affected. Leave blank = unlimited.',
-        platformQuotaNotice: 'Monthly quota uses a 30-day rolling window, not a calendar month.',
-      },
-      platformQuota: {
-        platform:    'Platform',
-        daily:       'Daily (USD)',
-        weekly:      'Weekly (USD)',
-        monthly:     'Monthly (USD, 30d rolling)',
-        placeholder: 'Unlimited',
       },
       balanceDisplay: {
         title: 'Balance Display',
@@ -477,8 +467,6 @@ export default {
       scheduling: {
         title: 'Gateway Scheduling Settings',
         description: 'Control API Key scheduling behavior',
-        allowUngroupedKey: 'Allow Ungrouped Key Scheduling',
-        allowUngroupedKeyHint: 'When disabled, API Keys not assigned to any group cannot make requests (403 Forbidden). Keep disabled to ensure all Keys belong to a specific group.',
         accountSchedulingThresholdsTitle: 'Platform Account Auto-Pause Thresholds',
         accountSchedulingThresholdsDescription: 'When an account\'s current native usage window (OpenAI Codex/Anthropic session, or Grok request/token utilization) reaches this percentage, it is temporarily removed from scheduling until the window resets. Use 100 to disable.',
         accountSchedulingThresholdsGlobalHint: 'System-wide default for every account on that platform. Individual accounts can override this value in the account editor.',
@@ -1279,8 +1267,6 @@ export default {
         defaultSubscriptionsLabel: 'Default subscriptions',
         defaultSubscriptionsHint: 'Applies only to this auth source. Leave empty to skip source-specific subscriptions.',
         noSourceSubscriptions: 'No source-specific default subscriptions configured.',
-        platformQuotasOverride: 'Platform Quota Overrides',
-        platformQuotasOverrideHint: 'Blank fields inherit the system default. Set to 0 to fully block that window for this auth source.',
       },
       paymentVisibleMethods: {
         methodLabel: '{title} visible method',

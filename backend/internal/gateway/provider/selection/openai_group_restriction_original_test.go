@@ -27,16 +27,15 @@ func TestOpenAISelectAccountForModelWithExclusions_GroupMappedRestrictionRejects
 		RestrictModels:     true,
 		BillingModelSource: routing.BillingModelSourceGroupMapped,
 		ModelPricing: []routing.ModelPricingEntry{
-			{Platform: capability.PlatformOpenAI, Models: []string{"gpt-4o"}},
+			{Models: []string{"gpt-4o"}},
 		},
-		ModelMapping: map[string]map[string]string{
-			capability.PlatformOpenAI: {"gpt-4.1": "o3-mini"},
-		},
+		ModelMapping: map[string]string{"gpt-4.1": "o3-mini"},
 	}, map[int64]string{10: capability.PlatformOpenAI}))
 
 	svc := newCompatibleSelectionForTest(CompatibleDependencies{
 		Reads: Reads{
 			Accounts: selectionAccountFixture{accounts: []gatewayprovider.ExecutionAccount{{Record: accountcore.Record{
+				Credentials:  map[string]any{"model_whitelist": []string{"*"}},
 				LoadLocation: time.LoadLocation,
 				ID:           1, Platform: capability.PlatformOpenAI, Status: billing.StatusActive,
 				Schedulable: true,
@@ -61,7 +60,7 @@ func TestOpenAISelectAccountForModelWithExclusions_UpstreamRestrictionSkipsDisal
 		RestrictModels:     true,
 		BillingModelSource: routing.BillingModelSourceUpstream,
 		ModelPricing: []routing.ModelPricingEntry{
-			{Platform: capability.PlatformOpenAI, Models: []string{"o3-mini"}},
+			{Models: []string{"o3-mini"}},
 		},
 	}, map[int64]string{10: capability.PlatformOpenAI}))
 
@@ -100,7 +99,7 @@ func TestOpenAISelectAccountForModelWithExclusions_StickyRestrictedUpstreamFalls
 		RestrictModels:     true,
 		BillingModelSource: routing.BillingModelSourceUpstream,
 		ModelPricing: []routing.ModelPricingEntry{
-			{Platform: capability.PlatformOpenAI, Models: []string{"o3-mini"}},
+			{Models: []string{"o3-mini"}},
 		},
 	}, map[int64]string{10: capability.PlatformOpenAI}))
 

@@ -330,16 +330,13 @@ func expectedGroupLifecycleBuckets(groupID int64) []SchedulerBucket {
 			SchedulerBucket{GroupID: groupID, Platform: platform, Mode: SchedulerModeSingle},
 			SchedulerBucket{GroupID: groupID, Platform: platform, Mode: SchedulerModeForced},
 		)
-		if platform == PlatformAnthropic || platform == PlatformGemini {
-			buckets = append(buckets, SchedulerBucket{GroupID: groupID, Platform: platform, Mode: SchedulerModeMixed})
-		}
 	}
 	return buckets
 }
 
 func expectedCanonicalAccountQueryCount() int {
-	// 每个平台的 single/forced 共用一次查询，Anthropic 与 Gemini 的 mixed 各自查询一次。
-	return len(schedulerSnapshotPlatforms()) + 2
+	// 同一分组和平台的 single/forced 共用一次查询，空平台加载组内全部账号。
+	return len(schedulerSnapshotPlatforms())
 }
 
 func bucketStrings(buckets []SchedulerBucket) map[string]struct{} {
@@ -439,7 +436,7 @@ func TestSchedulerGroupLifecycleActiveReopensAndRebuildsAllCurrentBuckets(t *tes
 	for _, bucket := range current {
 		require.NoError(t, cache.retirementRaceCache.RetireBucket(context.Background(), bucket))
 	}
-	groups := &groupLifecycleTestGroupRepo{group: &SnapshotGroup{ID: groupID, Platform: PlatformOpenAI, Status: StatusActive, Hydrated: true}}
+	groups := &groupLifecycleTestGroupRepo{group: &SnapshotGroup{ID: groupID, Status: StatusActive, Hydrated: true}}
 	accounts := &groupLifecycleTestAccountRepo{}
 	accounts.beforeLoad = func() {
 		held, tokenCount := cache.leaseHeldAndTokenCount()
@@ -464,8 +461,8 @@ func TestSchedulerGroupLifecycleActiveReopensAndRebuildsAllCurrentBuckets(t *tes
 		require.Equal(t, 1, published, bucket.String())
 	}
 	require.Contains(t, bucketStrings(current), SchedulerBucket{GroupID: groupID, Platform: PlatformAntigravity, Mode: SchedulerModeForced}.String())
-	require.Contains(t, bucketStrings(current), SchedulerBucket{GroupID: groupID, Platform: PlatformAnthropic, Mode: SchedulerModeMixed}.String())
-	require.Contains(t, bucketStrings(current), SchedulerBucket{GroupID: groupID, Platform: PlatformGemini, Mode: SchedulerModeMixed}.String())
+	require.Contains(t, bucketStrings(current), SchedulerBucket{GroupID: groupID, Platform: "", Mode: SchedulerModeSingle}.String())
+	require.Contains(t, bucketStrings(current), SchedulerBucket{GroupID: groupID, Platform: "", Mode: SchedulerModeForced}.String())
 	acquires, releases, listCalls := cache.lifecycleCounts()
 	require.Equal(t, 1, acquires)
 	require.Equal(t, 1, releases)
@@ -780,7 +777,7 @@ func TestSchedulerGroupLifecycleCanceledAfterFreshQueryUsesIndependentReleaseCon
 	require.NoError(t, cache.releaseCtxErr)
 }
 
-func TestSchedulerGroupLifecycleGroupZeroAndSimpleModeAreNoOps(t *testing.T) {
+func TestSchedulerGroupLifecycleSimpleModeUsesExplicitGroups(t *testing.T) {
 	cache := newGroupLifecycleTestCache()
 	groups := &groupLifecycleTestGroupRepo{group: &SnapshotGroup{ID: 88, Status: StatusActive, Hydrated: true}}
 	accounts := &groupLifecycleTestAccountRepo{}
@@ -792,11 +789,11 @@ func TestSchedulerGroupLifecycleGroupZeroAndSimpleModeAreNoOps(t *testing.T) {
 	require.NoError(t, simple.handleGroupEvent(context.Background(), ptrInt64(88), make(map[batchSeenKey]struct{})))
 
 	acquires, releases, listCalls := cache.lifecycleCounts()
-	require.Zero(t, acquires)
-	require.Zero(t, releases)
+	require.Equal(t, 1, acquires)
+	require.Equal(t, 1, releases)
 	require.Zero(t, listCalls)
-	require.Zero(t, groups.callCount())
-	require.Zero(t, accounts.callCount())
+	require.Equal(t, 1, groups.callCount())
+	require.Equal(t, expectedCanonicalAccountQueryCount(), accounts.callCount())
 }
 
 // 夹具提供锁持有者句柄，并控制获取失败与等待结果。

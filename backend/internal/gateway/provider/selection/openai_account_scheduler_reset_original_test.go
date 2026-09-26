@@ -48,8 +48,8 @@ func TestBuildOpenAIAccountLoadPlan_ResetWeightPrefersSoonestReset(t *testing.T)
 	soon := now.Add(1 * time.Hour)
 	later := now.Add(20 * time.Hour)
 	filtered := []*gatewayprovider.ExecutionAccount{
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Priority: 0, SessionWindowEnd: &later}},
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 2, Priority: 0, SessionWindowEnd: &soon}},
+		{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Priority: 0, SessionWindowEnd: &later}},
+		{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Priority: 0, SessionWindowEnd: &soon}},
 	}
 	sched := openAIResetTestScheduler(5.0)
 
@@ -64,8 +64,8 @@ func TestBuildOpenAIAccountLoadPlan_ResetWeightZeroNoEffect(t *testing.T) {
 	soon := now.Add(1 * time.Hour)
 	later := now.Add(20 * time.Hour)
 	filtered := []*gatewayprovider.ExecutionAccount{
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Priority: 0, SessionWindowEnd: &later}},
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 2, Priority: 0, SessionWindowEnd: &soon}},
+		{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Priority: 0, SessionWindowEnd: &later}},
+		{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Priority: 0, SessionWindowEnd: &soon}},
 	}
 	sched := openAIResetTestScheduler(0.0)
 
@@ -79,21 +79,27 @@ func TestBuildOpenAIAccountLoadPlan_BillingRatesDoNotAffectScoreOrOrder(t *testi
 	expensiveRate := 100.0
 	cheapRate := 0.01
 	filtered := []*gatewayprovider.ExecutionAccount{
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Priority: 0, RateMultiplier: &expensiveRate,
-			Extra: map[string]any{
-				"upstream_billing_probe": map[string]any{
-					"status": "ok",
-					"data":   map[string]any{"effective_rate_multiplier": expensiveRate},
+		{
+			Record: accountcore.Record{
+				Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Priority: 0, RateMultiplier: &expensiveRate,
+				Extra: map[string]any{
+					"upstream_billing_probe": map[string]any{
+						"status": "ok",
+						"data":   map[string]any{"effective_rate_multiplier": expensiveRate},
+					},
 				},
-			}},
+			},
 		},
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 2, Priority: 0, RateMultiplier: &cheapRate,
-			Extra: map[string]any{
-				"upstream_billing_probe": map[string]any{
-					"status": "ok",
-					"data":   map[string]any{"effective_rate_multiplier": cheapRate},
+		{
+			Record: accountcore.Record{
+				Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Priority: 0, RateMultiplier: &cheapRate,
+				Extra: map[string]any{
+					"upstream_billing_probe": map[string]any{
+						"status": "ok",
+						"data":   map[string]any{"effective_rate_multiplier": cheapRate},
+					},
 				},
-			}},
+			},
 		},
 	}
 	sched := openAIResetTestScheduler(0)
@@ -111,8 +117,8 @@ func TestBuildOpenAIAccountLoadPlan_ResetWeightIgnoresNilWindow(t *testing.T) {
 	now := time.Now()
 	soon := now.Add(2 * time.Hour)
 	filtered := []*gatewayprovider.ExecutionAccount{
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Priority: 0, SessionWindowEnd: nil}},
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 2, Priority: 0, SessionWindowEnd: &soon}},
+		{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Priority: 0, SessionWindowEnd: nil}},
+		{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Priority: 0, SessionWindowEnd: &soon}},
 	}
 	sched := openAIResetTestScheduler(5.0)
 
@@ -124,21 +130,27 @@ func TestBuildOpenAIAccountLoadPlan_ResetWeightIgnoresNilWindow(t *testing.T) {
 func TestBuildOpenAIAccountLoadPlan_QuotaHeadroomPrefersHigher7dRemaining(t *testing.T) {
 	now := time.Now()
 	filtered := []*gatewayprovider.ExecutionAccount{
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-			Priority: 0,
-			Extra: map[string]any{
-				"codex_primary_used_percent": 80.0,
-				"codex_primary_reset_at":     now.Add(24 * time.Hour).Format(time.RFC3339),
-				"codex_usage_updated_at":     now.Add(-time.Minute).Format(time.RFC3339),
-			}},
+		{
+			Record: accountcore.Record{
+				Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1,
+				Priority: 0,
+				Extra: map[string]any{
+					"codex_primary_used_percent": 80.0,
+					"codex_primary_reset_at":     now.Add(24 * time.Hour).Format(time.RFC3339),
+					"codex_usage_updated_at":     now.Add(-time.Minute).Format(time.RFC3339),
+				},
+			},
 		},
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 2,
-			Priority: 0,
-			Extra: map[string]any{
-				"codex_primary_used_percent": 20.0,
-				"codex_primary_reset_at":     now.Add(24 * time.Hour).Format(time.RFC3339),
-				"codex_usage_updated_at":     now.Add(-time.Minute).Format(time.RFC3339),
-			}},
+		{
+			Record: accountcore.Record{
+				Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2,
+				Priority: 0,
+				Extra: map[string]any{
+					"codex_primary_used_percent": 20.0,
+					"codex_primary_reset_at":     now.Add(24 * time.Hour).Format(time.RFC3339),
+					"codex_usage_updated_at":     now.Add(-time.Minute).Format(time.RFC3339),
+				},
+			},
 		},
 	}
 	sched := openAIQuotaHeadroomTestScheduler(1.0)
@@ -151,21 +163,27 @@ func TestBuildOpenAIAccountLoadPlan_QuotaHeadroomPrefersHigher7dRemaining(t *tes
 func TestBuildOpenAIAccountLoadPlan_QuotaHeadroomZeroNoEffect(t *testing.T) {
 	now := time.Now()
 	filtered := []*gatewayprovider.ExecutionAccount{
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-			Priority: 0,
-			Extra: map[string]any{
-				"codex_primary_used_percent": 80.0,
-				"codex_primary_reset_at":     now.Add(24 * time.Hour).Format(time.RFC3339),
-				"codex_usage_updated_at":     now.Add(-time.Minute).Format(time.RFC3339),
-			}},
+		{
+			Record: accountcore.Record{
+				Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1,
+				Priority: 0,
+				Extra: map[string]any{
+					"codex_primary_used_percent": 80.0,
+					"codex_primary_reset_at":     now.Add(24 * time.Hour).Format(time.RFC3339),
+					"codex_usage_updated_at":     now.Add(-time.Minute).Format(time.RFC3339),
+				},
+			},
 		},
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 2,
-			Priority: 0,
-			Extra: map[string]any{
-				"codex_primary_used_percent": 20.0,
-				"codex_primary_reset_at":     now.Add(24 * time.Hour).Format(time.RFC3339),
-				"codex_usage_updated_at":     now.Add(-time.Minute).Format(time.RFC3339),
-			}},
+		{
+			Record: accountcore.Record{
+				Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2,
+				Priority: 0,
+				Extra: map[string]any{
+					"codex_primary_used_percent": 20.0,
+					"codex_primary_reset_at":     now.Add(24 * time.Hour).Format(time.RFC3339),
+					"codex_usage_updated_at":     now.Add(-time.Minute).Format(time.RFC3339),
+				},
+			},
 		},
 	}
 	sched := openAIResetTestScheduler(0)

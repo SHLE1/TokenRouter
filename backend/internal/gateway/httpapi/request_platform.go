@@ -1,28 +1,20 @@
 package httpapi
 
 import (
-	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
-
 	"strings"
 
+	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
+
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 
 	"github.com/gin-gonic/gin"
 )
 
-func OpenAICompatibleRequestPlatform(apiKey *apikey.APIKey) string {
-	if apiKey != nil && apiKey.Group != nil {
-		switch apiKey.Group.Platform {
-		case capability.PlatformGrok, capability.PlatformKimi, capability.PlatformZhipu, capability.PlatformDeepseek:
-			return apiKey.Group.Platform
-		}
-	}
-	return capability.PlatformOpenAI
-}
+// OpenAICompatibleRequestPlatform 不从分组推断平台，空值表示按账号能力选择。
+func OpenAICompatibleRequestPlatform(_ *apikey.APIKey) string { return "" }
 
 // EffectiveAPIKeyPlatform 返回当前 API key 在 handler 层应使用的平台。
-// 强制平台路由由中间件单独处理；没有可识别的平台时保持 OpenAI 兼容默认值。
+// 强制平台路由由中间件单独处理；未强制平台时由候选账号决定。
 func EffectiveAPIKeyPlatform(c *gin.Context, apiKey *apikey.APIKey) string {
 	if c != nil {
 		if forced, ok := keyhttp.GetForcePlatformFromContext(c); ok && strings.TrimSpace(forced) != "" {

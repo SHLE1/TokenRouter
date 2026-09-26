@@ -12,7 +12,6 @@ func (s *Snapshot) BillingAdminSettings() billing.AdminSettings {
 		BalanceUnitName:                 s.BalanceUnitName,
 		BalanceUnitSymbol:               s.BalanceUnitSymbol,
 		DefaultBalance:                  s.DefaultBalance,
-		DefaultPlatformQuotas:           s.DefaultPlatformQuotas,
 		DefaultSubscriptions:            s.DefaultSubscriptions,
 		ReasoningPointRMBUnitPrice:      s.ReasoningPointRMBUnitPrice,
 		SubscriptionExpiryNotifyEnabled: s.SubscriptionExpiryNotifyEnabled,

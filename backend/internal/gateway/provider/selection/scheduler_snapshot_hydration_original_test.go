@@ -27,46 +27,55 @@ type snapshotHydrationCache struct {
 	accounts map[int64]*gatewayprovider.ExecutionAccount
 }
 
-func (c *snapshotHydrationCache) GetSnapshot(context.Context, scheduler.SchedulerBucket) ([]scheduler.SnapshotAccount, bool, error) {
+func (c *snapshotHydrationCache) GetSnapshot(ctx context.Context, bucket scheduler.SchedulerBucket) ([]scheduler.SnapshotAccount, bool, error) {
 	out := make([]scheduler.SnapshotAccount, 0, len(c.snapshot))
 	for _, v := range c.snapshot {
+		prepareSelectionFixtureAccount(ctx, v, &bucket.GroupID)
 		out = append(out, codec.WrapRecord(gatewayprovider.ExecutionRecord(v)))
 	}
 	return out, true, nil
 }
-func (c *snapshotHydrationCache) GetAccount(_ context.Context, id int64) (scheduler.SnapshotAccount, error) {
+
+func (c *snapshotHydrationCache) GetAccount(ctx context.Context, id int64) (scheduler.SnapshotAccount, error) {
+	prepareSelectionFixtureAccount(ctx, c.accounts[id], nil)
 	return codec.WrapRecord(gatewayprovider.ExecutionRecord(c.accounts[id])), nil
 }
 
 func TestOpenAISelectAccountWithLoadAwareness_HydratesSelectedAccountFromSchedulerSnapshot(t *testing.T) {
 	cache := &snapshotHydrationCache{
 		snapshot: []*gatewayprovider.ExecutionAccount{
-			{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-				Platform:    capability.PlatformOpenAI,
-				Type:        capability.AccountTypeAPIKey,
-				Status:      billing.StatusActive,
-				Schedulable: true,
-				Concurrency: 1,
-				Priority:    1,
-				Credentials: map[string]any{
-					"model_mapping": map[string]any{
-						"gpt-4": "gpt-4",
+			{
+				Record: accountcore.Record{
+					LoadLocation: time.LoadLocation, ID: 1,
+					Platform:    capability.PlatformOpenAI,
+					Type:        capability.AccountTypeAPIKey,
+					Status:      billing.StatusActive,
+					Schedulable: true,
+					Concurrency: 1,
+					Priority:    1,
+					Credentials: map[string]any{
+						"model_mapping": map[string]any{
+							"gpt-4": "gpt-4",
+						},
 					},
-				}},
+				},
 			},
 		},
 		accounts: map[int64]*gatewayprovider.ExecutionAccount{
-			1: {Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-				Platform:    capability.PlatformOpenAI,
-				Type:        capability.AccountTypeAPIKey,
-				Status:      billing.StatusActive,
-				Schedulable: true,
-				Concurrency: 1,
-				Priority:    1,
-				Credentials: map[string]any{
-					"api_key":       "sk-live",
-					"model_mapping": map[string]any{"gpt-4": "gpt-4"},
-				}},
+			1: {
+				Record: accountcore.Record{
+					LoadLocation: time.LoadLocation, ID: 1,
+					Platform:    capability.PlatformOpenAI,
+					Type:        capability.AccountTypeAPIKey,
+					Status:      billing.StatusActive,
+					Schedulable: true,
+					Concurrency: 1,
+					Priority:    1,
+					Credentials: map[string]any{
+						"api_key":       "sk-live",
+						"model_mapping": map[string]any{"gpt-4": "gpt-4"},
+					},
+				},
 			},
 		},
 	}
@@ -75,7 +84,8 @@ func TestOpenAISelectAccountWithLoadAwareness_HydratesSelectedAccountFromSchedul
 	groupID := int64(2)
 	svc := newCompatibleSelectionForTest(CompatibleDependencies{
 		Reads: Reads{
-			Snapshot: schedulerredis.NewSnapshotReader(schedulerSnapshot)},
+			Snapshot: schedulerredis.NewSnapshotReader(schedulerSnapshot),
+		},
 		Shared: Shared{Cache: &responseCacheFixture{}},
 	}, nil)
 
@@ -98,13 +108,14 @@ func TestOpenAINewAcquiredSelectionResult_ReleasesSlotWhenHydrationFails(t *test
 	schedulerSnapshot := newHydrationSnapshotForTest(cache, selectionAccountFixture{})
 	svc := newCompatibleSelectionForTest(CompatibleDependencies{
 		Reads: Reads{
-			Snapshot: schedulerredis.NewSnapshotReader(schedulerSnapshot)},
+			Snapshot: schedulerredis.NewSnapshotReader(schedulerSnapshot),
+		},
 		Shared: Shared{},
 	}, nil)
 
 	releaseCalls := 0
 
-	selection, err := svc.newAcquiredSelectionResult(context.Background(), &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1001}}, func() {
+	selection, err := svc.newAcquiredSelectionResult(context.Background(), &gatewayprovider.ExecutionAccount{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1001}}, func() {
 		releaseCalls++
 	})
 
@@ -122,26 +133,33 @@ func TestOpenAINewAcquiredSelectionResult_ReleasesSlotWhenHydrationFails(t *test
 func TestGatewaySelectAccountWithLoadAwareness_HydratesSelectedAccountFromSchedulerSnapshot(t *testing.T) {
 	cache := &snapshotHydrationCache{
 		snapshot: []*gatewayprovider.ExecutionAccount{
-			{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 9,
-				Platform:    capability.PlatformAnthropic,
-				Type:        capability.AccountTypeAPIKey,
-				Status:      billing.StatusActive,
-				Schedulable: true,
-				Concurrency: 1,
-				Priority:    1},
+			{
+				Record: accountcore.Record{
+					Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 9,
+					Platform:    capability.PlatformAnthropic,
+					Type:        capability.AccountTypeAPIKey,
+					Status:      billing.StatusActive,
+					Schedulable: true,
+					Concurrency: 1,
+					Priority:    1,
+				},
 			},
 		},
 		accounts: map[int64]*gatewayprovider.ExecutionAccount{
-			9: {Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 9,
-				Platform:    capability.PlatformAnthropic,
-				Type:        capability.AccountTypeAPIKey,
-				Status:      billing.StatusActive,
-				Schedulable: true,
-				Concurrency: 1,
-				Priority:    1,
-				Credentials: map[string]any{
-					"api_key": "anthropic-live-key",
-				}},
+			9: {
+				Record: accountcore.Record{
+					LoadLocation: time.LoadLocation, ID: 9,
+					Platform:    capability.PlatformAnthropic,
+					Type:        capability.AccountTypeAPIKey,
+					Status:      billing.StatusActive,
+					Schedulable: true,
+					Concurrency: 1,
+					Priority:    1,
+					Credentials: map[string]any{
+						"model_whitelist": []string{"*"},
+						"api_key":         "anthropic-live-key",
+					},
+				},
 			},
 		},
 	}
@@ -152,7 +170,7 @@ func TestGatewaySelectAccountWithLoadAwareness_HydratesSelectedAccountFromSchedu
 		Shared: Shared{Cache: &mockGatewayCacheForPlatform{}},
 	}, testConfig())
 
-	result, err := svc.SelectAccountWithLoadAwareness(context.Background(), nil, "", "claude-3-5-sonnet-20241022", nil, "", 0)
+	result, err := svc.SelectAccountWithLoadAwareness(context.Background(), selectionFixtureGroupID(context.Background()), "", "claude-3-5-sonnet-20241022", nil, "", 0)
 	if err != nil {
 		t.Fatalf("SelectAccountWithLoadAwareness error: %v", err)
 	}
@@ -168,55 +186,66 @@ func TestGatewaySelectAccountWithLoadAwareness_SkipsAntigravityGeminiFamilyRateL
 	resetAt := time.Now().Add(10 * time.Minute).Format(time.RFC3339)
 	cache := &snapshotHydrationCache{
 		snapshot: []*gatewayprovider.ExecutionAccount{
-			{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-				Platform:    capability.PlatformAntigravity,
-				Type:        capability.AccountTypeOAuth,
-				Status:      billing.StatusActive,
-				Schedulable: true,
-				Concurrency: 1,
-				Priority:    1,
-				AccountGroups: []accountcore.GroupMembership{
-					{AccountID: 1, GroupID: 22},
+			{
+				Record: accountcore.Record{
+					Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1,
+					Platform:    capability.PlatformAntigravity,
+					Type:        capability.AccountTypeOAuth,
+					Status:      billing.StatusActive,
+					Schedulable: true,
+					Concurrency: 1,
+					Priority:    1,
+					AccountGroups: []accountcore.GroupMembership{
+						{AccountID: 1, GroupID: 22},
+					},
+					GroupIDs: []int64{22},
+					Extra: map[string]any{
+						"mixed_scheduling": true, "model_rate_limits": map[string]any{
+							"antigravity:gemini": map[string]any{
+								"rate_limit_reset_at": resetAt,
+							},
+						},
+					},
 				},
-				GroupIDs: []int64{22},
-				Extra: map[string]any{
-					"mixed_scheduling": true, "model_rate_limits": map[string]any{"antigravity:gemini": map[string]any{
-						"rate_limit_reset_at": resetAt,
-					},
-					},
-				}},
 			},
-			{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 2,
-				Platform:    capability.PlatformAntigravity,
-				Type:        capability.AccountTypeOAuth,
-				Status:      billing.StatusActive,
-				Schedulable: true,
-				Concurrency: 1,
-				Priority:    2,
-				AccountGroups: []accountcore.GroupMembership{
-					{AccountID: 2, GroupID: 22},
+			{
+				Record: accountcore.Record{
+					Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2,
+					Platform:    capability.PlatformAntigravity,
+					Type:        capability.AccountTypeOAuth,
+					Status:      billing.StatusActive,
+					Schedulable: true,
+					Concurrency: 1,
+					Priority:    2,
+					AccountGroups: []accountcore.GroupMembership{
+						{AccountID: 2, GroupID: 22},
+					},
+					GroupIDs: []int64{22},
+					Extra: map[string]any{
+						"mixed_scheduling": true,
+					},
 				},
-				GroupIDs: []int64{22},
-				Extra: map[string]any{
-					"mixed_scheduling": true,
-				}},
 			},
 		},
 		accounts: map[int64]*gatewayprovider.ExecutionAccount{
-			1: {Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAntigravity, Type: capability.AccountTypeOAuth}},
-			2: {Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAntigravity, Type: capability.AccountTypeOAuth}},
+			1: {Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAntigravity, Type: capability.AccountTypeOAuth, Status: billing.StatusActive, Schedulable: true}},
+			2: {Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAntigravity, Type: capability.AccountTypeOAuth, Status: billing.StatusActive, Schedulable: true}},
 		},
 	}
 	groupID := int64(22)
 	svc := newGenericSelectionForTest(GenericDependencies{
 		Reads: Reads{
-			Groups: &mockGroupRepoForGateway{groups: map[int64]*routing.Group{groupID: {ID: groupID,
-				Platform: capability.PlatformGemini, Status: billing.StatusActive, Hydrated: true}}},
+			Groups: &mockGroupRepoForGateway{groups: map[int64]*routing.Group{groupID: {
+				ID:     groupID,
+				Status: billing.StatusActive, Hydrated: true,
+			}}},
 			Snapshot: schedulerredis.NewSnapshotReader(newHydrationSnapshotForTest(cache, nil)),
 		},
 		Shared: Shared{Concurrency: scheduler.NewConcurrencyService(&mockConcurrencyCache{}, scheduler.Diagnostics{Logf: logging.LegacyPrintf, Event: logging.Event})},
-	}, &config.Config{Gateway: config.GatewayConfig{Scheduling: config.GatewaySchedulingConfig{LoadBatchEnabled: true, StickySessionMaxWaiting: 3, StickySessionWaitTimeout: time.Second,
-		FallbackWaitTimeout: time.Second, FallbackMaxWaiting: 10}}})
+	}, &config.Config{Gateway: config.GatewayConfig{Scheduling: config.GatewaySchedulingConfig{
+		LoadBatchEnabled: true, StickySessionMaxWaiting: 3, StickySessionWaitTimeout: time.Second,
+		FallbackWaitTimeout: time.Second, FallbackMaxWaiting: 10,
+	}}})
 
 	result, err := svc.SelectAccountWithLoadAwareness(context.Background(), &groupID, "", "gemini-3-flash-preview", nil, "", 0)
 	if err != nil {
@@ -240,7 +269,7 @@ func TestGatewayNewSelectionResultReleasesSlotWhenHydrationFails(t *testing.T) {
 	}, nil)
 
 	calls := 0
-	result, err := gateway.newSelectionResult(context.Background(), &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1001}}, true, func() { calls++ }, nil)
+	result, err := gateway.newSelectionResult(context.Background(), &gatewayprovider.ExecutionAccount{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1001}}, true, func() { calls++ }, nil)
 	if err == nil || result != nil {
 		t.Fatal("补全失败必须返回原错误而非选择结果")
 	}

@@ -104,12 +104,12 @@ func TestGetModelDefaultPricing_UnknownQoderRouteKeysRemainUnpriced(t *testing.T
 
 func setupSyncPricingModelsRouter(pricingSvc *provider.PricingService) *gin.Engine {
 	router := gin.New()
-	h := routinghttp.NewPricingHandler(nil, providePricingCatalog(nil, pricingSvc))
+	h := routinghttp.NewPricingHandler(nil, providePricingCatalog(billingtestkit.Calculator(1, pricingSvc, nil), pricingSvc))
 	router.GET("/pricing/defaults/models", h.SyncPricingModels)
 	return router
 }
 
-func TestSyncPricingModels_MissingPlatform(t *testing.T) {
+func TestSyncPricingModels_UnifiedWithoutPlatform(t *testing.T) {
 	svc := provider.NewPricingService(provider.Options{}, nil)
 	router := setupSyncPricingModelsRouter(svc)
 
@@ -117,7 +117,14 @@ func TestSyncPricingModels_MissingPlatform(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	require.Equal(t, http.StatusBadRequest, w.Code)
+	require.Equal(t, http.StatusOK, w.Code)
+	var result struct {
+		Data struct {
+			Models []string `json:"models"`
+		} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &result))
+	require.NotEmpty(t, result.Data.Models)
 }
 
 func TestSyncPricingModels_UnsupportedPlatform(t *testing.T) {

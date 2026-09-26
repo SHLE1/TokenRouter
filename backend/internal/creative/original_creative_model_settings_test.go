@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/TokenFlux/TokenRouter/internal/creative"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	testassert "github.com/TokenFlux/TokenRouter/internal/testutil/assertion"
 	"github.com/stretchr/testify/require"
 )
@@ -43,14 +42,13 @@ func TestCreativeOperationsForModelIntersectsPlatformSupport(t *testing.T) {
 	require.Empty(t, operations)
 }
 
-// TestNormalizeCreativeModelSettingsForSaveByPlatform 校验保存时按实际平台清理能力。
+// TestNormalizeCreativeModelSettingsForSaveByPlatform 校验已解析模型的能力，未解析模型保留配置。
 func TestNormalizeCreativeModelSettingsForSaveByPlatform(t *testing.T) {
 	svc := newCreativeTestService()
 	groupRepo := testassert.MustType[*creativeFakeGroupRepo](testassert.MustType[creativeGroupReader](svc.GroupRepo).source)
 	openai := newCreativeTestGroup()
 	openai.ID = 13
 	openai.Name = "OpenAI Image"
-	openai.Platform = capability.PlatformOpenAI
 	groupRepo.byID[13] = openai
 
 	got, err := svc.NormalizeCreativeModelSettingsForSave(context.Background(), []creative.CreativeModelSetting{
@@ -63,6 +61,7 @@ func TestNormalizeCreativeModelSettingsForSaveByPlatform(t *testing.T) {
 	require.Equal(t, []creative.CreativeModelSetting{
 		{GroupID: 12, Model: "gemini-3.1-flash-image", Operations: []string{creative.CreativeOperationGenerate}},
 		{GroupID: 13, Model: "gpt-image-2", Operations: []string{creative.CreativeOperationGenerate, creative.CreativeOperationInpaint}},
+		{GroupID: 12, Model: "gemini-only-inpaint", Operations: []string{creative.CreativeOperationInpaint}},
 		{GroupID: 999, Model: "legacy", Operations: []string{creative.CreativeOperationInpaint}},
 	}, got)
 }

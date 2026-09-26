@@ -39,7 +39,7 @@
                   <button v-if="activeFilterCount > 0" type="button" class="text-xs font-medium text-primary-600 dark:text-primary-400" @click="resetGroupFilters">{{ t('common.reset') }}</button>
                 </div>
                 <div class="space-y-3">
-                  <Select v-model="filters.platform" :options="platformFilterOptions" :placeholder="t('admin.groups.allPlatforms')" @change="loadGroups" />
+
                   <Select v-model="filters.status" :options="statusOptions" :placeholder="t('admin.groups.allStatus')" @change="loadGroups" />
                 </div>
               </div>
@@ -121,17 +121,12 @@
           default-sort-order="asc"
           @sort="handleSort"
         >
-          <template #cell-name="{ value, row }">
+          <template #cell-name="{ value }">
             <div class="flex items-center gap-2">
               <span class="font-medium text-gray-900 dark:text-white">{{
                 value
               }}</span>
-              <span
-                v-if="row.is_default"
-                class="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
-              >
-                {{ t("admin.groups.defaultGroup.badge") }}
-              </span>
+
             </div>
           </template>
 
@@ -141,31 +136,7 @@
             >
           </template>
 
-          <template #cell-platform="{ value }">
-            <span
-              :class="[
-                'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium',
-                value === 'anthropic'
-                  ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
-                  : value === 'openai'
-                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                    : value === 'antigravity'
-                      ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
-                      : value === 'grok'
-                        ? 'bg-zinc-200 text-zinc-800 dark:bg-zinc-700 dark:text-zinc-100'
-                        : value === 'kimi'
-                          ? 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400'
-                          : value === 'zhipu'
-                            ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400'
-                            : value === 'deepseek'
-                              ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400'
-                              : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-              ]"
-            >
-              <PlatformIcon :platform="value" size="xs" />
-              {{ t("admin.groups.platforms." + value) }}
-            </span>
-          </template>
+
 
           <template #cell-display_brand="{ value }">
             <span v-if="value" :class="displayBrandBadgeClass(value)">
@@ -378,7 +349,7 @@
         class="group-dialog-form"
       >
 
-        <GroupFormTabs ref="createGroupTabsRef" :platform="createForm.platform" id-prefix="create-group">
+        <GroupFormTabs ref="createGroupTabsRef" id-prefix="create-group">
           <template #general>
             <h4 class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('admin.groups.tabs.identity') }}</h4>
             <div data-group-field="name">
@@ -418,18 +389,7 @@
               />
               <p class="input-hint">{{ t("admin.groups.displayBrandHint") }}</p>
             </div>
-            <div>
-              <label class="input-label">{{
-                t("admin.groups.form.platform")
-              }}</label>
-              <Select
-                v-model="createForm.platform"
-                :options="platformOptions"
-                data-tour="group-form-platform"
-                @change="createForm.copy_accounts_from_group_ids = []"
-              />
-              <p class="input-hint">{{ t("admin.groups.platformHint") }}</p>
-            </div>
+
             <div data-tour="group-form-exclusive">
               <div class="relative mb-1.5 flex items-center gap-1">
                 <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -490,29 +450,7 @@
                 </span>
               </div>
             </div>
-            <div>
-              <div class="relative mb-1.5 flex items-center gap-1">
-                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {{ t("admin.groups.defaultGroup.title") }}
-                </label>
-              </div>
-              <div class="flex items-center gap-3">
-                <Toggle
-                  :model-value="createForm.is_default"
-                  data-group-setting="is_default"
-                  :aria-label="t('admin.groups.defaultGroup.title')"
-                  @update:model-value="createForm.is_default = !createForm.is_default"
-                />
-                <span class="text-sm text-gray-500 dark:text-gray-400">
-                  {{
-                    createForm.is_default
-                      ? t("admin.groups.defaultGroup.enabled")
-                      : t("admin.groups.defaultGroup.disabled")
-                  }}
-                </span>
-              </div>
-              <p class="input-hint">{{ t("admin.groups.defaultGroup.hint") }}</p>
-            </div>
+
             <h4 class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('admin.groups.tabs.scheduling') }}</h4>
             <div>
               <label class="input-label">{{
@@ -726,9 +664,9 @@
               </div>
             </div>
           </template>
-          <template #platform>
+          <template #features>
             <div
-              v-if="supportsGroupOpenAIFast(createForm.platform)"
+
               class="border-t border-gray-200 dark:border-dark-400 pt-4 mt-4"
               data-testid="create-openai-fast"
             >
@@ -745,20 +683,16 @@
             </div>
             <ReasoningEffortPolicyFields
               data-group-field="reasoning"
-              v-if="createForm.platform === 'openai' || createForm.platform === 'anthropic'"
+
               ref="createReasoningEffortPolicyRef"
               id-prefix="create-group-reasoning"
-              :platform="createForm.platform"
+
               v-model:max-effort="createForm.max_reasoning_effort"
               v-model:over-limit="createForm.max_reasoning_effort_over_limit"
               v-model:mappings="createForm.reasoning_effort_mappings"
             />
             <div
-              v-if="
-                ['openai', 'antigravity', 'anthropic', 'gemini'].includes(
-                  createForm.platform,
-                )
-              "
+
               class="border-t border-gray-200 dark:border-dark-400 pt-4 mt-4 space-y-4"
             >
               <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
@@ -809,7 +743,7 @@
                 />
               </div>
             </div>
-            <div v-if="createForm.platform === 'anthropic'" class="border-t pt-4">
+            <div  class="border-t pt-4">
               <div class="relative mb-1.5 flex items-center gap-1">
                 <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
                   {{ t("admin.groups.modelRouting.title") }}
@@ -986,9 +920,7 @@
               </button>
             </div>
             <div
-              v-if="
-                ['anthropic', 'antigravity'].includes(createForm.platform)
-              "
+
               class="border-t pt-4"
             >
               <label class="input-label">{{
@@ -1003,7 +935,7 @@
                 {{ t("admin.groups.invalidRequestFallback.hint") }}
               </p>
             </div>
-            <div v-if="createForm.platform === 'antigravity'" class="border-t pt-4">
+            <div  class="border-t pt-4">
               <div class="relative mb-1.5 flex items-center gap-1">
                 <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
                   {{ t("admin.groups.supportedScopes.title") }}
@@ -1068,7 +1000,7 @@
                 {{ t("admin.groups.supportedScopes.hint") }}
               </p>
             </div>
-            <div v-if="createForm.platform === 'antigravity'" class="border-t pt-4">
+            <div  class="border-t pt-4">
               <div class="relative mb-1.5 flex items-center gap-1">
                 <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
                   {{ t("admin.groups.mcpXml.title") }}
@@ -1196,11 +1128,11 @@
                 />
               </div>
               <div class="mt-3 space-y-2" data-group-field="model-pricing">
-                <PricingEntryCard v-for="(entry, index) in createForm.model_pricing" :key="index" :entry="entry" :platform="createForm.platform" enable-tier-multipliers enable-time-pricing @update="createForm.model_pricing[index] = $event" @remove="createForm.model_pricing.splice(index, 1)" />
+                <PricingEntryCard v-for="(entry, index) in createForm.model_pricing" :key="index" :entry="entry"  enable-tier-multipliers enable-time-pricing @update="createForm.model_pricing[index] = $event" @remove="createForm.model_pricing.splice(index, 1)" />
               </div>
             </div>
             <div
-              v-if="supportsGroupOpenAIFast(createForm.platform)"
+
               class="border-t border-gray-200 dark:border-dark-400 pt-4 mt-4"
               data-testid="create-free-openai-fast-section"
             >
@@ -1224,7 +1156,7 @@
                 {{ t("admin.groups.openaiFast.freeHint") }}
               </p>
             </div>
-            <div v-if="createForm.platform === 'gemini' && createForm.allowed_protocols.includes('image_batches')" class="border-t border-gray-200 pt-4 dark:border-dark-700">
+            <div v-if="createForm.allowed_protocols.includes('image_batches')" class="border-t border-gray-200 pt-4 dark:border-dark-700">
                 <h4 class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('admin.groups.tabs.batchPricing') }}</h4>
                 <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
                   {{ t("admin.groups.imagePricing.batchSectionHint") }}
@@ -1263,7 +1195,7 @@
               </div>
 
             <div
-              v-if="createForm.platform === 'openai'"
+
               class="border-t border-gray-200 dark:border-dark-400 pt-4 mt-4"
             >
               <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
@@ -1296,7 +1228,7 @@
               </div>
             </div>
             <div
-              v-if="createForm.platform === 'grok'"
+
               class="border-t border-gray-200 dark:border-dark-400 pt-4 mt-4"
             >
               <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -1362,11 +1294,10 @@
               v-model="createForm.allowed_protocols"
               v-model:fallbacks="createForm.protocol_fallbacks"
               v-model:image-policy="createForm.responses_image_policy"
-              :platform="createForm.platform"
               class="mt-4"
             />
             <div
-              v-if="createForm.platform === 'openai' && createMessagesDispatchEnabled"
+              v-if="createMessagesDispatchEnabled"
               class="border-t border-gray-200 dark:border-dark-400 pt-4 mt-4"
             >
               <div>
@@ -1552,7 +1483,7 @@
                 </div>
               </div>
             </div>
-            <div v-if="createForm.platform === 'anthropic'" class="border-t pt-4">
+            <div  class="border-t pt-4">
               <div class="relative mb-1.5 flex items-center gap-1">
                 <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
                   {{ t("admin.groups.claudeCode.title") }}
@@ -1617,14 +1548,14 @@
                   <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
                     {{
                       t("admin.groups.modelsList.title", {
-                        endpoint: modelsListEndpoint(createForm.platform),
+                        endpoint: modelsListEndpoint(),
                       })
                     }}
                   </label>
                   <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                     {{
                       t("admin.groups.modelsList.hint", {
-                        endpoint: modelsListEndpoint(createForm.platform),
+                        endpoint: modelsListEndpoint(),
                       })
                     }}
                   </p>
@@ -1711,7 +1642,7 @@
               </div>
             </div>
           </template>
-          <template #routing><GroupRoutingPolicyFields v-model="createForm.routing_policy" :platform="createForm.platform" /></template>
+          <template #routing><GroupRoutingPolicyFields v-model="createForm.routing_policy" /></template>
         </GroupFormTabs>
       </form>
 
@@ -1772,7 +1703,7 @@
         class="group-dialog-form"
       >
 
-        <GroupFormTabs ref="editGroupTabsRef" :platform="editForm.platform" id-prefix="edit-group">
+        <GroupFormTabs ref="editGroupTabsRef" id-prefix="edit-group">
           <template #general>
             <h4 class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('admin.groups.tabs.identity') }}</h4>
             <div data-group-field="name">
@@ -1810,18 +1741,7 @@
               />
               <p class="input-hint">{{ t("admin.groups.displayBrandHint") }}</p>
             </div>
-            <div>
-              <label class="input-label">{{
-                t("admin.groups.form.platform")
-              }}</label>
-              <Select
-                v-model="editForm.platform"
-                :options="platformOptions"
-                :disabled="true"
-                data-tour="group-form-platform"
-              />
-              <p class="input-hint">{{ t("admin.groups.platformNotEditable") }}</p>
-            </div>
+
             <div>
               <label class="input-label">{{ t("admin.groups.form.status") }}</label>
               <div class="flex items-center gap-3">
@@ -1901,30 +1821,7 @@
                 </span>
               </div>
             </div>
-            <div>
-              <div class="relative mb-1.5 flex items-center gap-1">
-                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {{ t("admin.groups.defaultGroup.title") }}
-                </label>
-              </div>
-              <div class="flex items-center gap-3">
-                <Toggle
-                  :model-value="editForm.is_default"
-                  data-group-setting="is_default"
-                  :disabled="editForm.status !== 'active'"
-                  :aria-label="t('admin.groups.defaultGroup.title')"
-                  @update:model-value="editForm.is_default = !editForm.is_default"
-                />
-                <span class="text-sm text-gray-500 dark:text-gray-400">
-                  {{
-                    editForm.is_default
-                      ? t("admin.groups.defaultGroup.enabled")
-                      : t("admin.groups.defaultGroup.disabled")
-                  }}
-                </span>
-              </div>
-              <p class="input-hint">{{ t("admin.groups.defaultGroup.hint") }}</p>
-            </div>
+
             <h4 class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('admin.groups.tabs.scheduling') }}</h4>
             <div>
               <label class="input-label">{{
@@ -2140,9 +2037,9 @@
               </div>
             </div>
           </template>
-          <template #platform>
+          <template #features>
             <div
-              v-if="supportsGroupOpenAIFast(editForm.platform)"
+
               class="border-t border-gray-200 dark:border-dark-400 pt-4 mt-4"
               data-testid="edit-openai-fast"
             >
@@ -2159,20 +2056,16 @@
             </div>
             <ReasoningEffortPolicyFields
               data-group-field="reasoning"
-              v-if="editForm.platform === 'openai' || editForm.platform === 'anthropic'"
+
               ref="editReasoningEffortPolicyRef"
               id-prefix="edit-group-reasoning"
-              :platform="editForm.platform"
+
               v-model:max-effort="editForm.max_reasoning_effort"
               v-model:over-limit="editForm.max_reasoning_effort_over_limit"
               v-model:mappings="editForm.reasoning_effort_mappings"
             />
             <div
-              v-if="
-                ['openai', 'antigravity', 'anthropic', 'gemini'].includes(
-                  editForm.platform,
-                )
-              "
+
               class="border-t border-gray-200 dark:border-dark-400 pt-4 mt-4 space-y-4"
             >
               <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
@@ -2223,7 +2116,7 @@
                 />
               </div>
             </div>
-            <div v-if="editForm.platform === 'anthropic'" class="border-t pt-4">
+            <div  class="border-t pt-4">
               <div class="relative mb-1.5 flex items-center gap-1">
                 <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
                   {{ t("admin.groups.modelRouting.title") }}
@@ -2400,9 +2293,7 @@
               </button>
             </div>
             <div
-              v-if="
-                ['anthropic', 'antigravity'].includes(editForm.platform)
-              "
+
               class="border-t pt-4"
             >
               <label class="input-label">{{
@@ -2417,7 +2308,7 @@
                 {{ t("admin.groups.invalidRequestFallback.hint") }}
               </p>
             </div>
-            <div v-if="editForm.platform === 'antigravity'" class="border-t pt-4">
+            <div  class="border-t pt-4">
               <div class="relative mb-1.5 flex items-center gap-1">
                 <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
                   {{ t("admin.groups.supportedScopes.title") }}
@@ -2482,7 +2373,7 @@
                 {{ t("admin.groups.supportedScopes.hint") }}
               </p>
             </div>
-            <div v-if="editForm.platform === 'antigravity'" class="border-t pt-4">
+            <div  class="border-t pt-4">
               <div class="relative mb-1.5 flex items-center gap-1">
                 <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
                   {{ t("admin.groups.mcpXml.title") }}
@@ -2609,11 +2500,11 @@
                 />
               </div>
               <div class="mt-3 space-y-2" data-group-field="model-pricing">
-                <PricingEntryCard v-for="(entry, index) in editForm.model_pricing" :key="index" :entry="entry" :platform="editForm.platform" enable-tier-multipliers enable-time-pricing @update="editForm.model_pricing[index] = $event" @remove="editForm.model_pricing.splice(index, 1)" />
+                <PricingEntryCard v-for="(entry, index) in editForm.model_pricing" :key="index" :entry="entry"  enable-tier-multipliers enable-time-pricing @update="editForm.model_pricing[index] = $event" @remove="editForm.model_pricing.splice(index, 1)" />
               </div>
             </div>
             <div
-              v-if="supportsGroupOpenAIFast(editForm.platform)"
+
               class="border-t border-gray-200 dark:border-dark-400 pt-4 mt-4"
               data-testid="edit-free-openai-fast-section"
             >
@@ -2637,7 +2528,7 @@
                 {{ t("admin.groups.openaiFast.freeHint") }}
               </p>
             </div>
-            <div v-if="editForm.platform === 'gemini' && editForm.allowed_protocols.includes('image_batches')" class="border-t border-gray-200 pt-4 dark:border-dark-700">
+            <div v-if="editForm.allowed_protocols.includes('image_batches')" class="border-t border-gray-200 pt-4 dark:border-dark-700">
                 <h4 class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('admin.groups.tabs.batchPricing') }}</h4>
                 <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
                   {{ t("admin.groups.imagePricing.batchSectionHint") }}
@@ -2676,7 +2567,7 @@
               </div>
 
             <div
-              v-if="editForm.platform === 'openai'"
+
               class="border-t border-gray-200 dark:border-dark-400 pt-4 mt-4"
             >
               <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
@@ -2709,7 +2600,7 @@
               </div>
             </div>
             <div
-              v-if="editForm.platform === 'grok'"
+
               class="border-t border-gray-200 dark:border-dark-400 pt-4 mt-4"
             >
               <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -2775,11 +2666,10 @@
               v-model="editForm.allowed_protocols"
               v-model:fallbacks="editForm.protocol_fallbacks"
               v-model:image-policy="editForm.responses_image_policy"
-              :platform="editForm.platform"
               class="mt-4"
             />
             <div
-              v-if="editForm.platform === 'openai' && editMessagesDispatchEnabled"
+              v-if="editMessagesDispatchEnabled"
               class="border-t border-gray-200 dark:border-dark-400 pt-4 mt-4"
             >
               <div>
@@ -2965,7 +2855,7 @@
                 </div>
               </div>
             </div>
-            <div v-if="editForm.platform === 'anthropic'" class="border-t pt-4">
+            <div  class="border-t pt-4">
               <div class="relative mb-1.5 flex items-center gap-1">
                 <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
                   {{ t("admin.groups.claudeCode.title") }}
@@ -3030,14 +2920,14 @@
                   <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
                     {{
                       t("admin.groups.modelsList.title", {
-                        endpoint: modelsListEndpoint(editForm.platform),
+                        endpoint: modelsListEndpoint(),
                       })
                     }}
                   </label>
                   <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                     {{
                       t("admin.groups.modelsList.hint", {
-                        endpoint: modelsListEndpoint(editForm.platform),
+                        endpoint: modelsListEndpoint(),
                       })
                     }}
                   </p>
@@ -3124,7 +3014,7 @@
               </div>
             </div>
           </template>
-          <template #routing><GroupRoutingPolicyFields v-model="editForm.routing_policy" :platform="editForm.platform" /></template>
+          <template #routing><GroupRoutingPolicyFields v-model="editForm.routing_policy" /></template>
         </GroupFormTabs>
       </form>
 
@@ -3222,28 +3112,7 @@
                 {{ group.name }}
               </div>
               <div class="text-xs text-gray-500 dark:text-gray-400">
-                <span
-                  :class="[
-                    'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium',
-                    group.platform === 'anthropic'
-                      ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
-                      : group.platform === 'openai'
-                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                        : group.platform === 'antigravity'
-                          ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
-                          : group.platform === 'grok'
-                            ? 'bg-zinc-200 text-zinc-800 dark:bg-zinc-700 dark:text-zinc-100'
-                            : group.platform === 'kimi'
-                              ? 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400'
-                              : group.platform === 'zhipu'
-                                ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400'
-                                : group.platform === 'deepseek'
-                                  ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400'
-                                  : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-                  ]"
-                >
-                  {{ t("admin.groups.platforms." + group.platform) }}
-                </span>
+
               </div>
             </div>
             <div class="text-sm text-gray-400">#{{ group.id }}</div>
@@ -3328,7 +3197,6 @@ import type {
   AdminGroup,
   GroupAvailabilityProbeConfig,
   ProtocolID,
-  GroupPlatform,
   GroupSchedulerType,
   GroupAdvancedSchedulerOverrides,
 } from "@/types";
@@ -3342,7 +3210,6 @@ import ConfirmDialog from "@/components/common/ConfirmDialog.vue";
 import EmptyState from "@/components/common/EmptyState.vue";
 import Select from "@/components/common/Select.vue";
 import Toggle from "@/components/common/Toggle.vue";
-import PlatformIcon from "@/components/common/PlatformIcon.vue";
 import ProviderIcon from "@/components/common/ProviderIcon.vue";
 import Icon from "@/components/icons/Icon.vue";
 import GroupRateMultipliersModal from "@/components/admin/group/GroupRateMultipliersModal.vue";
@@ -3397,11 +3264,7 @@ import { normalizeSupportedModelScopesForPlatform } from "./groupsSupportedModel
 import {
   normalizeGroupOpenAIFast,
   normalizeGroupOpenAIFastPolicy,
-  supportsGroupOpenAIFast,
 } from "./groupsOpenAIFast";
-import {
-  GROUP_PLATFORM_OPTIONS,
-} from "@/constants/platforms";
 import {
   normalizeReasoningEffortForPlatform,
   normalizeReasoningEffortOverLimit,
@@ -3423,8 +3286,8 @@ const emptyGroupPricing = (): PricingFormEntry => ({
 const addGroupPricing = (entries: PricingFormEntry[]) => entries.push(emptyGroupPricing());
 const groupPricingFromAPI = (pricing: ModelPricingEntry[] | undefined): PricingFormEntry[] =>
   (pricing || []).map(pricingEntryFromAPI);
-const groupPricingToAPI = (pricing: PricingFormEntry[], platform: string): ModelPricingEntry[] =>
-  pricing.filter(entry => entry.models.length > 0).map(entry => pricingEntryToAPI(entry, platform));
+const groupPricingToAPI = (pricing: PricingFormEntry[]): ModelPricingEntry[] =>
+  pricing.filter(entry => entry.models.length > 0).map(entry => pricingEntryToAPI(entry));
 
 const { t } = useI18n();
 const appStore = useAppStore();
@@ -3446,11 +3309,6 @@ const VERSION_NEW_HIDDEN_COLUMNS: Record<number, string[]> = {
 const allColumns = computed<Column[]>(() => [
   { key: "name", label: t("admin.groups.columns.name"), sortable: true },
   { key: "id", label: t("admin.groups.columns.id"), sortable: true },
-  {
-    key: "platform",
-    label: t("admin.groups.columns.platform"),
-    sortable: true,
-  },
   {
     key: "display_brand",
     label: t("admin.groups.columns.displayBrand"),
@@ -3499,11 +3357,10 @@ const getValidHiddenColumnKeys = () =>
   new Set(toggleableColumns.value.map((col) => col.key));
 
 const activeFilterCount = computed(
-  () => [filters.platform, filters.status].filter(Boolean).length,
+  () => [filters.status].filter(Boolean).length,
 );
 
 const resetGroupFilters = () => {
-  filters.platform = "";
   filters.status = "";
   loadGroups();
 };
@@ -3618,7 +3475,6 @@ const statusOptions = computed(() => [
   { value: "inactive", label: t("admin.accounts.status.inactive") },
 ]);
 
-const platformOptions = computed(() => [...GROUP_PLATFORM_OPTIONS]);
 
 const schedulerTypeOptions = computed(() => [
   { value: "basic", label: t("admin.groups.scheduler.basic") },
@@ -3662,19 +3518,14 @@ const saveAdvancedSchedulerOverrides = (value: GroupAdvancedSchedulerOverrides) 
   closeAdvancedSchedulerOverrides();
 };
 
-const platformFilterOptions = computed(() => [
-  { value: "", label: t("admin.groups.allPlatforms") },
-  ...GROUP_PLATFORM_OPTIONS,
-]);
 
-// 降级分组选项（创建时）- 仅包含 anthropic 平台且未启用 claude_code_only 的分组
+// 降级分组选项（创建时）- 仅包含未启用 claude_code_only 的分组
 const fallbackGroupOptions = computed(() => {
   const options: { value: number | null; label: string }[] = [
     { value: null, label: t("admin.groups.claudeCode.noFallback") },
   ];
-  const eligibleGroups = groups.value.filter(
+  const eligibleGroups = unavailableFallbackGroups.value.filter(
     (g) =>
-      g.platform === "anthropic" &&
       !g.claude_code_only &&
       g.status === "active",
   );
@@ -3690,9 +3541,8 @@ const fallbackGroupOptionsForEdit = computed(() => {
     { value: null, label: t("admin.groups.claudeCode.noFallback") },
   ];
   const currentId = editingGroup.value?.id;
-  const eligibleGroups = groups.value.filter(
+  const eligibleGroups = unavailableFallbackGroups.value.filter(
     (g) =>
-      g.platform === "anthropic" &&
       !g.claude_code_only &&
       g.status === "active" &&
       g.id !== currentId,
@@ -3703,13 +3553,13 @@ const fallbackGroupOptionsForEdit = computed(() => {
   return options;
 });
 
-// 不可用回退分组选项（创建时）：仅允许同平台且启用中的分组。
+// 不可用回退分组选项（创建时）：仅允许启用中的分组。
 const unavailableFallbackGroupOptions = computed(() => {
   const options: { value: number | null; label: string }[] = [
     { value: null, label: t("admin.groups.unavailableFallback.noFallback") },
   ];
   const eligibleGroups = unavailableFallbackGroups.value.filter(
-    (g) => g.platform === createForm.platform && g.status === "active",
+    (g) => g.status === "active",
   );
   eligibleGroups.forEach((g) => {
     options.push({ value: g.id, label: g.name });
@@ -3725,7 +3575,6 @@ const unavailableFallbackGroupOptionsForEdit = computed(() => {
   const currentId = editingGroup.value?.id;
   const eligibleGroups = unavailableFallbackGroups.value.filter(
     (g) =>
-      g.platform === editForm.platform &&
       g.status === "active" &&
       g.id !== currentId,
   );
@@ -3735,14 +3584,13 @@ const unavailableFallbackGroupOptionsForEdit = computed(() => {
   return options;
 });
 
-// 无效请求兜底分组选项（创建时）- 仅包含 anthropic 平台且未配置兜底的分组
+// 无效请求兜底分组选项（创建时）- 仅包含未配置兜底的分组
 const invalidRequestFallbackOptions = computed(() => {
   const options: { value: number | null; label: string }[] = [
     { value: null, label: t("admin.groups.invalidRequestFallback.noFallback") },
   ];
-  const eligibleGroups = groups.value.filter(
+  const eligibleGroups = unavailableFallbackGroups.value.filter(
     (g) =>
-      g.platform === "anthropic" &&
       g.status === "active" &&
       g.fallback_group_id_on_invalid_request === null,
   );
@@ -3758,9 +3606,8 @@ const invalidRequestFallbackOptionsForEdit = computed(() => {
     { value: null, label: t("admin.groups.invalidRequestFallback.noFallback") },
   ];
   const currentId = editingGroup.value?.id;
-  const eligibleGroups = groups.value.filter(
+  const eligibleGroups = unavailableFallbackGroups.value.filter(
     (g) =>
-      g.platform === "anthropic" &&
       g.status === "active" &&
       g.fallback_group_id_on_invalid_request === null &&
       g.id !== currentId,
@@ -3771,10 +3618,10 @@ const invalidRequestFallbackOptionsForEdit = computed(() => {
   return options;
 });
 
-// 复制账号的源分组选项（创建时）- 仅包含相同平台且有账号的分组
+// 复制账号的源分组选项（创建时）- 仅包含有账号的分组
 const copyAccountsGroupOptions = computed(() => {
-  const eligibleGroups = groups.value.filter(
-    (g) => g.platform === createForm.platform && (g.account_count || 0) > 0,
+  const eligibleGroups = unavailableFallbackGroups.value.filter(
+    (g) => (g.account_count || 0) > 0,
   );
   return eligibleGroups.map((g) => ({
     value: g.id,
@@ -3789,12 +3636,11 @@ const copyAccountsGroupSelectOptions = computed(() =>
   })),
 );
 
-// 复制账号的源分组选项（编辑时）- 仅包含相同平台且有账号的分组，排除自身
+// 复制账号的源分组选项（编辑时）- 仅包含有账号的分组，排除自身
 const copyAccountsGroupOptionsForEdit = computed(() => {
   const currentId = editingGroup.value?.id;
-  const eligibleGroups = groups.value.filter(
+  const eligibleGroups = unavailableFallbackGroups.value.filter(
     (g) =>
-      g.platform === editForm.platform &&
       (g.account_count || 0) > 0 &&
       g.id !== currentId,
   );
@@ -3848,7 +3694,6 @@ const capacityMap = ref<
 >(new Map());
 const searchQuery = ref("");
 const filters = reactive({
-  platform: "",
   status: "",
 });
 const pagination = reactive({
@@ -3923,9 +3768,8 @@ const createMessagesDispatchDefaults = createDefaultMessagesDispatchFormState();
 const editMessagesDispatchDefaults = createDefaultMessagesDispatchFormState();
 const createModelsListState = reactive(createInitialModelsListState());
 const editModelsListState = reactive(createInitialModelsListState());
-// 根据分组平台显示实际使用的模型列表端点。
-const modelsListEndpoint = (platform: string) =>
-  platform === "gemini" ? "/v1beta/models" : "/v1/models";
+// 管理表单统一使用兼容模型目录，原生客户端可通过对应入口读取。
+const modelsListEndpoint = () => "/v1/models";
 const createModelsListLoading = ref(false);
 const editModelsListLoading = ref(false);
 type ReasoningEffortPolicyFieldsExpose = {
@@ -3962,15 +3806,13 @@ const createForm = reactive({
   name: "",
   description: "",
   display_brand: "",
-  platform: "anthropic" as GroupPlatform,
   scheduler_type: "basic" as GroupSchedulerType,
   advanced_scheduler_overrides: {} as GroupAdvancedSchedulerOverrides,
-  protocol_fallbacks: {} as Partial<Record<ProtocolID, ProtocolID>>,
+  protocol_fallbacks: {} as Partial<Record<ProtocolID, ProtocolID[]>>,
   responses_image_policy: "inherit" as "inherit" | "enabled" | "disabled" | "block",
   allowed_protocols: [] as ProtocolID[],
   rate_multiplier: 1.0,
   is_exclusive: false,
-  is_default: false,
   // 会话隔离开关
   session_isolation_enabled: false,
   long_context_pricing_enabled: true,
@@ -4110,7 +3952,6 @@ const accountSearchRunner = useKeyedDebouncedSearch<SimpleAccount[]>({
       20,
       {
         search: keyword,
-        platform: "anthropic",
       },
       { signal },
     );
@@ -4124,7 +3965,7 @@ const accountSearchRunner = useKeyedDebouncedSearch<SimpleAccount[]>({
   },
 });
 
-// 搜索账号（仅限 anthropic 平台）
+// 模型路由可指向分组内任意平台的账号。
 const searchAccounts = (key: string) => {
   accountSearchRunner.trigger(key, accountSearchKeyword.value[key] || "");
 };
@@ -4245,15 +4086,14 @@ const resetModelsListState = (
 const loadModelsListCandidates = async (
   mode: "create" | "edit",
   groupID: number,
-  platform: GroupPlatform,
 ) => {
-  const request = { mode, groupID, platform };
+  const request = { mode, groupID };
   const requestID = modelsListCandidatesTracker.next(request);
   const state = mode === "create" ? createModelsListState : editModelsListState;
   const loadingRef = mode === "create" ? createModelsListLoading : editModelsListLoading;
   loadingRef.value = true;
   try {
-    const models = await adminAPI.groups.getModelsListCandidates(groupID, platform);
+    const models = await adminAPI.groups.getModelsListCandidates(groupID);
     if (!modelsListCandidatesTracker.isCurrent(requestID, request)) {
       return;
     }
@@ -4391,15 +4231,13 @@ const editForm = reactive({
   name: "",
   description: "",
   display_brand: "",
-  platform: "anthropic" as GroupPlatform,
   scheduler_type: "basic" as GroupSchedulerType,
   advanced_scheduler_overrides: {} as GroupAdvancedSchedulerOverrides,
-  protocol_fallbacks: {} as Partial<Record<ProtocolID, ProtocolID>>,
+  protocol_fallbacks: {} as Partial<Record<ProtocolID, ProtocolID[]>>,
   responses_image_policy: "inherit" as "inherit" | "enabled" | "disabled" | "block",
   allowed_protocols: [] as ProtocolID[],
   rate_multiplier: 1.0,
   is_exclusive: false,
-  is_default: false,
   // 会话隔离开关
   session_isolation_enabled: false,
   status: "active" as "active" | "inactive",
@@ -4468,28 +4306,20 @@ const editForm = reactive({
 
 // 草稿默认值必须在目录就绪后建立；空集合是用户配置，不能作为“未初始化”的标记。
 function initializeGroupProtocolDefaults(form: {
-  platform: GroupPlatform;
   allowed_protocols: ProtocolID[];
-  protocol_fallbacks: Partial<Record<ProtocolID, ProtocolID>>;
+  protocol_fallbacks: Partial<Record<ProtocolID, ProtocolID[]>>;
 }) {
-  const profile = protocolCatalog.value?.groups.find(group => group.platform === form.platform);
+  const profile = protocolCatalog.value?.groups[0];
   if (!profile) return;
   form.allowed_protocols = [...profile.defaults];
   form.protocol_fallbacks = { ...profile.default_fallbacks };
 }
 
-watch(
-  [() => createForm.platform, () => protocolCatalog.value],
-  ([platform, catalog], [previousPlatform, previousCatalog]) => {
-    if (catalog && (!previousCatalog || platform !== previousPlatform)) {
-      initializeGroupProtocolDefaults(createForm);
-    }
-  },
-  { immediate: true, flush: "sync" },
-);
-
 // 编辑回显保留服务器配置；只有目录未就绪时的主动平台切换需要延后初始化。
 const editProtocolDefaultsPending = ref(false);
+watch(protocolCatalog, (catalog, previous) => {
+  if (catalog && !previous) initializeGroupProtocolDefaults(createForm);
+}, { immediate: true });
 watch(protocolCatalog, (catalog) => {
   if (catalog && editProtocolDefaultsPending.value) {
     initializeGroupProtocolDefaults(editForm);
@@ -4511,7 +4341,6 @@ const editMessagesDispatchEnabled = computed(() =>
 );
 
 type BatchImagePricingFormState = {
-  platform: GroupPlatform;
   allowed_protocols: ProtocolID[];
   allow_image_generation: boolean;
   allow_batch_image_generation: boolean;
@@ -4575,10 +4404,10 @@ const editWebSearchFinalPricePreview = computed(() =>
 const resetDisabledBatchImagePricing = (
   form: Pick<
     BatchImagePricingFormState,
-    "platform" | "allowed_protocols" | "batch_image_discount_multiplier" | "batch_image_hold_multiplier"
+    "allowed_protocols" | "batch_image_discount_multiplier" | "batch_image_hold_multiplier"
   >,
 ) => {
-  if (form.platform !== "gemini" || !form.allowed_protocols.includes("image_batches")) {
+  if (!form.allowed_protocols.includes("image_batches")) {
     form.batch_image_discount_multiplier = 0.5;
     form.batch_image_hold_multiplier = 0.6;
   }
@@ -4631,7 +4460,6 @@ const loadGroups = async () => {
       pagination.page,
       pagination.page_size,
       {
-        platform: (filters.platform as GroupPlatform) || undefined,
         status: filters.status as any,
         search: searchQuery.value.trim() || undefined,
         sort_by: sortState.sort_by,
@@ -4777,7 +4605,7 @@ const handleSort = (key: string, order: 'asc' | 'desc') => {
 
 const openCreateModal = () => {
   showCreateModal.value = true;
-  loadModelsListCandidates("create", 0, createForm.platform);
+  loadModelsListCandidates("create", 0);
 };
 
 const closeCreateModal = () => {
@@ -4789,14 +4617,12 @@ const closeCreateModal = () => {
   createForm.name = "";
   createForm.description = "";
   createForm.display_brand = "";
-  createForm.platform = "anthropic";
   createForm.scheduler_type = "basic";
   createForm.advanced_scheduler_overrides = {};
   initializeGroupProtocolDefaults(createForm);
   createForm.responses_image_policy = "inherit";
   createForm.rate_multiplier = 1.0;
   createForm.is_exclusive = false;
-  createForm.is_default = false;
   createForm.session_isolation_enabled = false;
   createForm.allow_image_generation = false;
   createForm.allow_batch_image_generation = false;
@@ -4870,7 +4696,7 @@ const validateGroupForm = async (target: "create" | "edit"): Promise<boolean> =>
     await tabs?.revealField('[data-group-field="model-pricing"]');
     return false;
   }
-  if ((form.platform === "openai" || form.platform === "anthropic") && reasoning && !reasoning.validate()) {
+  if (reasoning && !reasoning.validate()) {
     await nextTick();
     await tabs?.revealField('[data-group-field="reasoning"] [role="alert"]');
     return false;
@@ -4906,7 +4732,7 @@ const handleCreateGroup = async () => {
       routing_policy: createForm.routing_policy,
       model_pricing: groupPricingToAPI(
         createForm.model_pricing,
-        createForm.platform,
+
       ),
       model_routing: convertRoutingRulesToApiFormat(
         createModelRoutingRules.value,
@@ -4914,29 +4740,27 @@ const handleCreateGroup = async () => {
       models_list_config: buildModelsListConfig(createModelsListState),
       availability_probe_config: availabilityProbeConfig,
       supported_model_scopes: normalizeSupportedModelScopesForPlatform(
-        createForm.platform,
+
         createForm.supported_model_scopes,
       ),
       openai_fast_policy: normalizeGroupOpenAIFastPolicy(
-        createForm.platform,
+
         createForm.openai_fast_policy,
       ),
       free_openai_fast: normalizeGroupOpenAIFast(
-        createForm.platform,
+
         createForm.free_openai_fast,
       ),
       max_reasoning_effort_over_limit: normalizeReasoningEffortOverLimit(
         createForm.max_reasoning_effort_over_limit,
       ),
       messages_dispatch_model_config:
-        createForm.platform === "openai"
-          ? messagesDispatchFormStateToConfig({
+          messagesDispatchFormStateToConfig({
               opus_mapped_model: createForm.opus_mapped_model,
               sonnet_mapped_model: createForm.sonnet_mapped_model,
               haiku_mapped_model: createForm.haiku_mapped_model,
               exact_model_mappings: createForm.exact_model_mappings,
-            })
-          : undefined,
+            }),
       reasoning_effort_mappings: reasoningEffortMappingsToAPI(
         createForm.reasoning_effort_mappings,
       ),
@@ -5005,14 +4829,12 @@ const handleEdit = async (group: AdminGroup) => {
   editForm.name = group.name;
   editForm.description = group.description || "";
   editForm.display_brand = group.display_brand || "";
-  editForm.platform = group.platform;
   editForm.scheduler_type = group.scheduler_type ?? "basic";
   editForm.advanced_scheduler_overrides = cloneAdvancedSchedulerOverrides(
     group.advanced_scheduler_overrides,
   );
   editForm.rate_multiplier = group.rate_multiplier;
   editForm.is_exclusive = group.is_exclusive;
-  editForm.is_default = group.is_default ?? false;
   editForm.session_isolation_enabled =
     group.session_isolation_enabled ?? false;
   editForm.status = group.status;
@@ -5046,7 +4868,7 @@ const handleEdit = async (group: AdminGroup) => {
     group.messages_dispatch_model_config,
   );
   editForm.allowed_protocols = effectiveGroupClientProtocols(
-    group.platform,
+
     group.allowed_protocols,
   );
   editForm.protocol_fallbacks = { ...group.protocol_fallbacks };
@@ -5054,11 +4876,11 @@ const handleEdit = async (group: AdminGroup) => {
   editForm.responses_image_policy = group.responses_image_policy ?? "inherit";
   editForm.allow_live = group.allowed_protocols?.includes('openai_live') ?? false;
   editForm.openai_fast_policy = normalizeGroupOpenAIFastPolicy(
-    group.platform,
+
     group.openai_fast_policy ?? (group.force_openai_fast ? "force_priority" : "follow_request"),
   );
   editForm.free_openai_fast = normalizeGroupOpenAIFast(
-    group.platform,
+
     group.free_openai_fast ?? false,
   );
   editForm.opus_mapped_model = messagesDispatchFormState.opus_mapped_model;
@@ -5078,7 +4900,7 @@ const handleEdit = async (group: AdminGroup) => {
   editForm.copy_accounts_from_group_ids = []; // 复制账号字段每次编辑时重置为空
   editForm.rpm_limit = group.rpm_limit ?? 0;
   editForm.max_reasoning_effort = normalizeReasoningEffortForPlatform(
-    group.platform,
+
     group.max_reasoning_effort,
   );
   editForm.max_reasoning_effort_over_limit = normalizeReasoningEffortOverLimit(
@@ -5086,7 +4908,7 @@ const handleEdit = async (group: AdminGroup) => {
   );
   editForm.reasoning_effort_mappings = reasoningEffortMappingsToRows(
     group.reasoning_effort_mappings,
-    group.platform,
+
   );
   resetAvailabilityProbeFormState(editForm, group.availability_probe_config);
   resetModelsListState(editModelsListState, group.models_list_config);
@@ -5094,7 +4916,7 @@ const handleEdit = async (group: AdminGroup) => {
   editModelRoutingRules.value = await convertApiFormatToRoutingRules(
     group.model_routing,
   );
-  loadModelsListCandidates("edit", group.id, group.platform);
+  loadModelsListCandidates("edit", group.id);
   showEditModal.value = true;
 };
 
@@ -5110,7 +4932,6 @@ const closeEditModal = () => {
   editForm.reasoning_effort_mappings = [];
   editReasoningEffortPolicyRef.value?.resetValidation();
   editModelRoutingRules.value = [];
-  editForm.is_default = false;
   editForm.scheduler_type = "basic";
   editForm.advanced_scheduler_overrides = {};
   editForm.session_isolation_enabled = false;
@@ -5158,7 +4979,7 @@ const handleUpdateGroup = async () => {
       routing_policy: editForm.routing_policy,
       model_pricing: groupPricingToAPI(
         editForm.model_pricing,
-        editForm.platform,
+
       ),
       fallback_group_id:
         editForm.fallback_group_id === null ? 0 : editForm.fallback_group_id,
@@ -5176,29 +4997,27 @@ const handleUpdateGroup = async () => {
       models_list_config: buildModelsListConfig(editModelsListState),
       availability_probe_config: availabilityProbeConfig,
       supported_model_scopes: normalizeSupportedModelScopesForPlatform(
-        editForm.platform,
+
         editForm.supported_model_scopes,
       ),
       openai_fast_policy: normalizeGroupOpenAIFastPolicy(
-        editForm.platform,
+
         editForm.openai_fast_policy,
       ),
       free_openai_fast: normalizeGroupOpenAIFast(
-        editForm.platform,
+
         editForm.free_openai_fast,
       ),
       max_reasoning_effort_over_limit: normalizeReasoningEffortOverLimit(
         editForm.max_reasoning_effort_over_limit,
       ),
       messages_dispatch_model_config:
-        editForm.platform === "openai"
-          ? messagesDispatchFormStateToConfig({
+          messagesDispatchFormStateToConfig({
               opus_mapped_model: editForm.opus_mapped_model,
               sonnet_mapped_model: editForm.sonnet_mapped_model,
               haiku_mapped_model: editForm.haiku_mapped_model,
               exact_model_mappings: editForm.exact_model_mappings,
-            })
-          : undefined,
+            }),
       reasoning_effort_mappings: reasoningEffortMappingsToAPI(
         editForm.reasoning_effort_mappings,
       ),
@@ -5335,66 +5154,6 @@ const confirmDelete = async () => {
   }
 };
 
-watch(
-  () => editForm.status,
-  (newVal) => {
-    if (newVal !== "active") {
-      editForm.is_default = false;
-    }
-  },
-);
-
-watch(
-  () => createForm.platform,
-  (newVal) => {
-    createForm.unavailable_fallback_group_id = null;
-    if (!["anthropic", "antigravity"].includes(newVal)) {
-      createForm.fallback_group_id_on_invalid_request = null;
-    }
-    if (newVal !== "openai") {
-      resetMessagesDispatchFormState(createForm);
-      createForm.allow_live = false;
-    }
-    createForm.openai_fast_policy = normalizeGroupOpenAIFastPolicy(
-      newVal,
-      createForm.openai_fast_policy,
-    );
-    createForm.free_openai_fast = normalizeGroupOpenAIFast(
-      newVal,
-      createForm.free_openai_fast,
-    );
-    createForm.max_reasoning_effort = normalizeReasoningEffortForPlatform(
-      newVal,
-      createForm.max_reasoning_effort,
-    );
-    createForm.max_reasoning_effort_over_limit = normalizeReasoningEffortOverLimit(
-      createForm.max_reasoning_effort_over_limit,
-    );
-    createForm.reasoning_effort_mappings = reasoningEffortMappingsToRows(
-      reasoningEffortMappingsToAPI(createForm.reasoning_effort_mappings),
-      newVal,
-    );
-    createReasoningEffortPolicyRef.value?.resetValidation();
-    if (!["openai", "antigravity", "anthropic", "gemini"].includes(newVal)) {
-      createForm.require_oauth_only = false;
-      createForm.require_privacy_set = false;
-    }
-    resetDisabledBatchImagePricing(createForm);
-    resetModelsListState(createModelsListState);
-    loadModelsListCandidates("create", 0, newVal);
-  },
-);
-
-// 编辑加载会在设置平台后覆盖服务端值；用户切换平台时先使用新平台默认协议。
-watch(
-  () => editForm.platform,
-  () => {
-    editProtocolDefaultsPending.value = !protocolCatalog.value;
-    initializeGroupProtocolDefaults(editForm);
-  },
-  { flush: "sync" },
-);
-
 watch(createAvailabilityProbeModelOptions, (options) => {
   if (!createModelsListState.enabled && createModelsListState.items.length === 0) {
     return;
@@ -5438,59 +5197,6 @@ watch(
 );
 
 watch(
-  () => editForm.platform,
-  (newVal) => {
-    if (
-      editForm.unavailable_fallback_group_id &&
-      !unavailableFallbackGroups.value.some(
-        (g) =>
-          g.id === editForm.unavailable_fallback_group_id &&
-          g.platform === newVal &&
-          g.status === "active",
-      )
-    ) {
-      editForm.unavailable_fallback_group_id = null;
-    }
-    if (!["anthropic", "antigravity"].includes(newVal)) {
-      editForm.fallback_group_id_on_invalid_request = null;
-    }
-    if (newVal !== "openai") {
-      resetMessagesDispatchFormState(editForm);
-      editForm.allow_live = false;
-    }
-    editForm.openai_fast_policy = normalizeGroupOpenAIFastPolicy(
-      newVal,
-      editForm.openai_fast_policy,
-    );
-    editForm.free_openai_fast = normalizeGroupOpenAIFast(
-      newVal,
-      editForm.free_openai_fast,
-    );
-    editForm.max_reasoning_effort = normalizeReasoningEffortForPlatform(
-      newVal,
-      editForm.max_reasoning_effort,
-    );
-    editForm.max_reasoning_effort_over_limit = normalizeReasoningEffortOverLimit(
-      editForm.max_reasoning_effort_over_limit,
-    );
-    editForm.reasoning_effort_mappings = reasoningEffortMappingsToRows(
-      reasoningEffortMappingsToAPI(editForm.reasoning_effort_mappings),
-      newVal,
-    );
-    editReasoningEffortPolicyRef.value?.resetValidation();
-    if (!["openai", "antigravity", "anthropic", "gemini"].includes(newVal)) {
-      editForm.require_oauth_only = false;
-      editForm.require_privacy_set = false;
-    }
-    resetDisabledBatchImagePricing(editForm);
-    if (editingGroup.value) {
-      resetModelsListState(editModelsListState, editForm.platform === editingGroup.value.platform ? editingGroup.value.models_list_config : undefined);
-      loadModelsListCandidates("edit", editingGroup.value.id, newVal);
-    }
-  },
-);
-
-watch(
   () => editForm.allow_image_generation,
   () => {
     resetDisabledBatchImagePricing(editForm);
@@ -5503,27 +5209,6 @@ watch(
     resetDisabledBatchImagePricing(editForm);
   },
 );
-
-watch(
-  () => editForm.platform,
-  (newVal) => {
-    if (!['anthropic', 'antigravity'].includes(newVal)) {
-      editForm.fallback_group_id_on_invalid_request = null
-    }
-    if (newVal !== 'openai') {
-      editForm.allow_live = false
-      editForm.default_mapped_model = ''
-    }
-    editForm.openai_fast_policy = normalizeGroupOpenAIFastPolicy(
-      newVal,
-      editForm.openai_fast_policy,
-    )
-    editForm.free_openai_fast = normalizeGroupOpenAIFast(
-      newVal,
-      editForm.free_openai_fast,
-    )
-  }
-)
 
 // 点击外部关闭账号搜索下拉框
 const handleClickOutside = (event: MouseEvent) => {
@@ -5592,7 +5277,7 @@ onMounted(async () => {
   loadGroups();
   loadUnavailableFallbackGroups();
   void loadLiveCapability();
-  loadModelsListCandidates("create", 0, createForm.platform);
+  loadModelsListCandidates("create", 0);
   document.addEventListener("click", handleClickOutside);
 });
 

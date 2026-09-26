@@ -60,8 +60,8 @@ WHERE schemaname = current_schema()
 
 	var groupID int64
 	require.NoError(t, tx.QueryRowContext(ctx, `
-INSERT INTO groups (name, platform)
-VALUES ('migration-240-capacity-order', 'openai')
+INSERT INTO groups (name)
+VALUES ('migration-240-capacity-order')
 RETURNING id
 `).Scan(&groupID))
 

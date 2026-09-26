@@ -1,26 +1,29 @@
 package httpapi
 
 import (
+	"context"
 	"net/http"
-	"slices"
 	"strings"
+
+	"github.com/TokenFlux/TokenRouter/internal/apikey"
+	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
+	"github.com/TokenFlux/TokenRouter/internal/billing"
 
 	wireprotocol "github.com/TokenFlux/TokenRouter/internal/protocol"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/gin-gonic/gin"
 )
 
 // RouteAccess 是每次门禁从当前认证请求读取的最小投影，不持有完整旧实体。
 type RouteAccess struct {
 	HasGroup         bool
-	Platform         string
 	Composite        bool
 	AllowedProtocols []wireprotocol.ProtocolID
 }
 
 // RouteMiddleware 在 app 一次装配，路由不构造认证、配置或观测服务。
 type RouteMiddleware struct {
+	ClientGroupFallback                                                                                            ClientGroupFallbackResolver
 	APIKeyAuth, GoogleAPIKeyAuth, BodyLimit, TextBodyLimit, ClientRequestID, OpsErrorLogger, EndpointNormalization gin.HandlerFunc
 	RequireGroupAnthropic, RequireGroupGoogle, ForceAntigravity                                                    gin.HandlerFunc
 	Access                                                                                                         func(*gin.Context) RouteAccess
@@ -37,8 +40,7 @@ const (
 // RouteGuards 共享现有路由表和当次认证投影，不读取请求报文。
 type RouteGuards struct{ options RouteMiddleware }
 
-func NewRouteGuards(options RouteMiddleware) *RouteGuards  { return &RouteGuards{options: options} }
-func (g *RouteGuards) GroupPlatform(c *gin.Context) string { return g.options.Access(c).Platform }
+func NewRouteGuards(options RouteMiddleware) *RouteGuards { return &RouteGuards{options: options} }
 
 type GroupClientProtocolErrorFormat string
 
@@ -69,12 +71,33 @@ func (g *RouteGuards) WithGroupClientProtocol(protocol wireprotocol.ProtocolID, 
 // enforceGroupClientProtocol 执行检查并在拒绝时写入协议原生错误。
 func (g *RouteGuards) EnforceGroupClientProtocol(c *gin.Context, protocol wireprotocol.ProtocolID, format GroupClientProtocolErrorFormat) bool {
 	access := g.options.Access(c)
-	if protocol == wireprotocol.ProtocolOpenAIResponses && RouteProtocol(c.Request.Method, c.Request.URL.Path) == wireprotocol.ProtocolResponsesCompact && (access.Platform == capability.PlatformOpenAI || access.Platform == capability.PlatformGrok) {
+	if protocol == wireprotocol.ProtocolOpenAIResponses && RouteProtocol(c.Request.Method, c.Request.URL.Path) == wireprotocol.ProtocolResponsesCompact {
 		protocol = wireprotocol.ProtocolResponsesCompact
 	}
 	g.options.InstallClientProtocol(c, protocol)
 	group := routing.Group{AllowedProtocols: access.AllowedProtocols}
 	if !access.HasGroup || group.AllowsClientProtocol(protocol) {
+		// Messages 必须先读正文识别客户端；其它协议在捕获任务、资金或会话归属前完成回退。
+		if protocol != wireprotocol.ProtocolAnthropicMessages {
+			key, ok := EffectiveAPIKey(c)
+			if !ok {
+				key, _ = keyhttp.GetAPIKeyFromContext(c)
+			}
+			if _, err := resolveClientGroupForRequest(c, g, key, protocol); err != nil {
+				writeClientGroupFallbackError(c, err, func(c *gin.Context, status int, code, message string) {
+					switch format {
+					case GroupClientProtocolErrorGoogle:
+						WriteGoogleError(c, status, message)
+					case GroupClientProtocolErrorOpenAI:
+						c.JSON(status, gin.H{"error": gin.H{"message": message, "type": code, "code": code}})
+					default:
+						WriteAnthropicError(c, status, code, "", message)
+					}
+				})
+				c.Abort()
+				return false
+			}
+		}
 		return true
 	}
 	g.options.ObserveBusinessLimit(c, RouteLimitLocalPolicyDenied)
@@ -162,15 +185,17 @@ func RouteProtocol(method, path string) wireprotocol.ProtocolID {
 	return protocol
 }
 
-// RequireExtendedProtocol 只拦截分组平台支持的入口，保持辅助操作的既有拒绝顺序。
+// RequireExtendedProtocol 按入口协议检查分组许可，已有资源操作仍保持独立归属检查。
 func (g *RouteGuards) RequireExtendedProtocol(c *gin.Context) {
 	protocol := ExtendedRouteProtocol(c.Request.Method, c.Request.URL.Path)
-	access := g.options.Access(c)
-	if access.HasGroup && !slices.Contains(capability.SupportedGroupClientProtocols(access.Platform), protocol) {
-		c.Next()
-		return
-	}
 	if protocol == "" || g.EnforceGroupClientProtocol(c, protocol, GroupClientProtocolErrorOpenAI) {
 		c.Next()
 	}
+}
+
+func (g *RouteGuards) ResolveClientGroup(ctx context.Context, key *apikey.APIKey, source wireprotocol.ProtocolID) (*apikey.APIKey, *billing.UserSubscription, error) {
+	if g.options.ClientGroupFallback == nil {
+		return nil, nil, routing.ErrClaudeCodeOnly
+	}
+	return g.options.ClientGroupFallback(ctx, key, source)
 }

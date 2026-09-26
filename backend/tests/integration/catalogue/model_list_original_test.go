@@ -29,6 +29,7 @@ func TestGetAvailableModels_UsesShortCacheAndSupportsInvalidation(t *testing.T) 
 					ID:       1,
 					Platform: capability.PlatformAnthropic,
 					Credentials: map[string]any{
+						"model_whitelist": []string{"claude-3-5-sonnet", "claude-3-5-haiku"},
 						"model_mapping": map[string]any{
 							"claude-3-5-sonnet": "claude-3-5-sonnet",
 							"claude-3-5-haiku":  "claude-3-5-haiku",
@@ -39,6 +40,7 @@ func TestGetAvailableModels_UsesShortCacheAndSupportsInvalidation(t *testing.T) 
 					ID:       2,
 					Platform: capability.PlatformGemini,
 					Credentials: map[string]any{
+						"model_whitelist": []string{"gemini-2.5-pro"},
 						"model_mapping": map[string]any{
 							"gemini-2.5-pro": "gemini-2.5-pro",
 						},
@@ -65,6 +67,7 @@ func TestGetAvailableModels_UsesShortCacheAndSupportsInvalidation(t *testing.T) 
 			ID:       3,
 			Platform: capability.PlatformAnthropic,
 			Credentials: map[string]any{
+				"model_whitelist": []string{"claude-3-7-sonnet"},
 				"model_mapping": map[string]any{
 					"claude-3-7-sonnet": "claude-3-7-sonnet",
 				},
@@ -102,6 +105,7 @@ func TestGetAvailableModels_ErrorAndGlobalListBranches(t *testing.T) {
 				ID:       1,
 				Platform: capability.PlatformAnthropic,
 				Credentials: map[string]any{
+					"model_whitelist": []string{"claude-3-5-sonnet"},
 					"model_mapping": map[string]any{
 						"claude-3-5-sonnet": "claude-3-5-sonnet",
 					},
@@ -111,6 +115,7 @@ func TestGetAvailableModels_ErrorAndGlobalListBranches(t *testing.T) {
 				ID:       2,
 				Platform: capability.PlatformGemini,
 				Credentials: map[string]any{
+					"model_whitelist": []string{"gemini-2.5-pro"},
 					"model_mapping": map[string]any{
 						"gemini-2.5-pro": "gemini-2.5-pro",
 					},
@@ -124,64 +129,18 @@ func TestGetAvailableModels_ErrorAndGlobalListBranches(t *testing.T) {
 	require.Equal(t, int64(1), okRepo.listAllCalls.Load())
 }
 
-func TestGetAvailableModels_OpenAIPassthroughUsesDefaultFallback(t *testing.T) {
+// 透传只改变传输，显式白名单及映射在目录聚合时仍生效。
+func TestGetAvailableModelsPassthroughPreservesExplicitScope(t *testing.T) {
 	groupID := int64(10)
-
-	tests := []struct {
-		name     string
-		accounts []account.Record
-		want     []string
-	}{
-		{
-			name: "passthrough only ignores stale mapping",
-			accounts: []account.Record{
-				{
-					ID:          1,
-					Platform:    capability.PlatformOpenAI,
-					Credentials: map[string]any{"model_mapping": map[string]any{"stale-model": "upstream-model"}},
-					Extra:       map[string]any{"openai_passthrough": true},
-				},
-			},
-			want: nil,
-		},
-		{
-			name: "passthrough wins over ordinary account mapping",
-			accounts: []account.Record{
-				{
-					ID:          2,
-					Platform:    capability.PlatformOpenAI,
-					Credentials: map[string]any{"model_mapping": map[string]any{"configured-model": "configured-upstream"}},
-				},
-				{
-					ID:          3,
-					Platform:    capability.PlatformOpenAI,
-					Credentials: map[string]any{"model_mapping": map[string]any{"stale-model": "upstream-model"}},
-					Extra:       map[string]any{"openai_passthrough": true},
-				},
-			},
-			want: nil,
-		},
-		{
-			name: "ordinary accounts preserve mapped whitelist",
-			accounts: []account.Record{
-				{
-					ID:          4,
-					Platform:    capability.PlatformOpenAI,
-					Credentials: map[string]any{"model_mapping": map[string]any{"configured-model": "configured-model"}},
-				},
-			},
-			want: []string{"configured-model"},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			repo := &modelsListAccountRepoStub{byGroup: map[int64][]account.Record{groupID: tt.accounts}}
-			svc := newModelListFixture(repo)
-
-			require.Equal(t, tt.want, svc.Available(context.Background(), &groupID, capability.PlatformOpenAI))
-		})
-	}
+	first := account.Record{ID: 1, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey, Credentials: map[string]any{
+		"model_mapping": map[string]any{"custom-alias": "custom-upstream"}, "model_whitelist": []string{"custom-upstream"},
+	}, Extra: map[string]any{"openai_passthrough": true}}
+	second := account.Record{ID: 2, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey, Credentials: map[string]any{
+		"model_mapping": map[string]any{"other-alias": "other-upstream"}, "model_whitelist": []string{"other-upstream"},
+	}}
+	repo := &modelsListAccountRepoStub{byGroup: map[int64][]account.Record{groupID: {first, second}}}
+	models := newModelListFixture(repo).Available(context.Background(), &groupID, capability.PlatformOpenAI)
+	require.ElementsMatch(t, []string{"custom-alias", "custom-upstream", "other-alias", "other-upstream"}, models)
 }
 
 func TestGetAvailableModels_GlobalListPreservesMappedModelsWithOpenAIPassthrough(t *testing.T) {
@@ -204,7 +163,10 @@ func TestGetAvailableModels_GlobalListPreservesMappedModelsWithOpenAIPassthrough
 	}
 	svc := newModelListFixture(repo)
 
-	require.Equal(t, []string{"claude-mapped"}, svc.Available(context.Background(), &groupID, ""))
+	models := svc.Available(context.Background(), &groupID, "")
+	require.Contains(t, models, "claude-mapped")
+	require.Contains(t, models, "gpt-5.6-sol")
+	require.NotContains(t, models, "unknown-model")
 }
 
 func TestInvalidateAvailableModelsCache_ByDimensions(t *testing.T) {

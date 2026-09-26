@@ -3,6 +3,7 @@ package routing
 
 import (
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
@@ -28,6 +29,24 @@ func (c *PricingCatalog) DefaultPricing(model string) (*ModelPricing, error) {
 }
 
 func (c *PricingCatalog) ModelNames(platform string) ([]string, error) {
+	if platform == "" {
+		var models []string
+		if c.Snapshot != nil {
+			for _, entry := range c.Snapshot().Prices {
+				models = append(models, entry.Model)
+			}
+		} else if c.NamesByProvider != nil {
+			for _, provider := range platformToLiteLLMProvider {
+				models = append(models, c.NamesByProvider(provider)...)
+			}
+		}
+		if c.QoderModels != nil {
+			models = append(models, c.QoderModels()...)
+		}
+		slices.Sort(models)
+		return slices.Compact(models), nil
+	}
+
 	if platform == PlatformQoder {
 		return c.QoderModels(), nil
 	}

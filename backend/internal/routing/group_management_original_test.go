@@ -27,32 +27,16 @@ func ptrGroupClientProtocols(value []protocol.ProtocolID) *[]protocol.ProtocolID
 	return &value
 }
 
-func TestAdminServiceCreateGroupUsesPlatformClientProtocolDefaults(t *testing.T) {
-	tests := []struct {
-		platform string
-		want     []protocol.ProtocolID
-	}{
-		{capability.PlatformAnthropic, []protocol.ProtocolID{protocol.ProtocolAnthropicMessages}},
-		{capability.PlatformOpenAI, []protocol.ProtocolID{protocol.ProtocolOpenAIResponses, protocol.ProtocolOpenAIChatCompletions}},
-		{capability.PlatformGemini, []protocol.ProtocolID{protocol.ProtocolGeminiGenerateContent}},
-		{capability.PlatformAntigravity, []protocol.ProtocolID{protocol.ProtocolAnthropicMessages, protocol.ProtocolGeminiGenerateContent}},
-		{capability.PlatformQoder, []protocol.ProtocolID{}},
-		{capability.PlatformGrok, []protocol.ProtocolID{protocol.ProtocolOpenAIResponses, protocol.ProtocolOpenAIChatCompletions, "openai_images_generations", "openai_images_edits"}},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.platform, func(t *testing.T) {
-			repo := &groupRepoStubForAdmin{}
-			svc := newOriginalGroupAdmin(repo, nil, nil)
-
-			group, err := svc.CreateGroup(context.Background(), &routing.CreateGroupInput{Name: tt.platform, Platform: tt.platform, RateMultiplier: 1})
-
-			require.NoError(t, err)
-			require.Equal(t, tt.want, group.AllowedProtocols)
-			require.NotNil(t, group.AllowedProtocols)
-			require.False(t, group.AllowMessagesDispatch)
-		})
-	}
+// 新分组统一开放三个文本协议，非文本入口保持关闭。
+func TestAdminServiceCreateGroupUsesUnifiedClientProtocolDefaults(t *testing.T) {
+	repo := &groupRepoStubForAdmin{}
+	group, err := newOriginalGroupAdmin(repo, nil, nil).CreateGroup(context.Background(), &routing.CreateGroupInput{Name: "mixed", RateMultiplier: 1})
+	require.NoError(t, err)
+	require.Equal(t, []protocol.ProtocolID{protocol.ProtocolAnthropicMessages, protocol.ProtocolOpenAIResponses, protocol.ProtocolOpenAIChatCompletions}, group.AllowedProtocols)
+	require.Empty(t, group.ProtocolFallbacks)
+	require.False(t, group.AllowImageGeneration)
+	require.False(t, group.AllowBatchImageGeneration)
+	require.False(t, group.AllowLive)
 }
 
 func TestAdminServiceCreateGroupDefaultsLongContextPricingOn(t *testing.T) {
@@ -61,7 +45,7 @@ func TestAdminServiceCreateGroupDefaultsLongContextPricingOn(t *testing.T) {
 		svc := newOriginalGroupAdmin(repo, nil, nil)
 
 		group, err := svc.CreateGroup(context.Background(), &routing.CreateGroupInput{
-			Name: "default-long-context", Platform: capability.PlatformOpenAI, RateMultiplier: 1,
+			Name: "default-long-context", RateMultiplier: 1,
 		})
 
 		require.NoError(t, err)
@@ -75,7 +59,7 @@ func TestAdminServiceCreateGroupDefaultsLongContextPricingOn(t *testing.T) {
 		disabled := false
 
 		group, err := svc.CreateGroup(context.Background(), &routing.CreateGroupInput{
-			Name: "disabled-long-context", Platform: capability.PlatformOpenAI, RateMultiplier: 1,
+			Name: "disabled-long-context", RateMultiplier: 1,
 			LongContextPricingEnabled: &disabled,
 		})
 
@@ -99,7 +83,7 @@ func TestAdminServiceGroupAvailabilityProbeConfigReturnsBadRequest(t *testing.T)
 		svc := newOriginalGroupAdmin(repo, nil, nil)
 
 		_, err := svc.CreateGroup(context.Background(), &routing.CreateGroupInput{
-			Name: "invalid-probe", Platform: capability.PlatformOpenAI, RateMultiplier: 1,
+			Name: "invalid-probe", RateMultiplier: 1,
 			AvailabilityProbeConfig: invalidConfig,
 		})
 
@@ -109,7 +93,7 @@ func TestAdminServiceGroupAvailabilityProbeConfigReturnsBadRequest(t *testing.T)
 	})
 
 	t.Run("update rejects invalid config", func(t *testing.T) {
-		existing := &routing.Group{ID: 7, Name: "existing", Platform: capability.PlatformOpenAI, Status: billing.StatusActive}
+		existing := &routing.Group{ID: 7, Name: "existing", Status: billing.StatusActive}
 		repo := &groupRepoStubForAdmin{getByID: existing}
 		svc := newOriginalGroupAdmin(repo, nil, nil)
 
@@ -129,7 +113,7 @@ func TestAdminServiceGroupSchedulerTypeDefaultsValidatesAndUpdates(t *testing.T)
 		svc := newOriginalGroupAdmin(repo, nil, nil)
 
 		group, err := svc.CreateGroup(context.Background(), &routing.CreateGroupInput{
-			Name: "default-scheduler", Platform: capability.PlatformGemini, RateMultiplier: 1,
+			Name: "default-scheduler", RateMultiplier: 1,
 		})
 
 		require.NoError(t, err)
@@ -142,7 +126,7 @@ func TestAdminServiceGroupSchedulerTypeDefaultsValidatesAndUpdates(t *testing.T)
 		svc := newOriginalGroupAdmin(repo, nil, nil)
 
 		group, err := svc.CreateGroup(context.Background(), &routing.CreateGroupInput{
-			Name: "advanced-scheduler", Platform: capability.PlatformQoder, RateMultiplier: 1, SchedulerType: string(routing.GroupSchedulerTypeAdvanced),
+			Name: "advanced-scheduler", RateMultiplier: 1, SchedulerType: string(routing.GroupSchedulerTypeAdvanced),
 		})
 
 		require.NoError(t, err)
@@ -153,7 +137,7 @@ func TestAdminServiceGroupSchedulerTypeDefaultsValidatesAndUpdates(t *testing.T)
 		svc := newOriginalGroupAdmin(&groupRepoStubForAdmin{}, nil, nil)
 
 		_, err := svc.CreateGroup(context.Background(), &routing.CreateGroupInput{
-			Name: "invalid-scheduler", Platform: capability.PlatformAnthropic, RateMultiplier: 1, SchedulerType: "weighted",
+			Name: "invalid-scheduler", RateMultiplier: 1, SchedulerType: "weighted",
 		})
 
 		require.Equal(t, http.StatusBadRequest, s15httpx.ErrorCode(err))
@@ -161,7 +145,7 @@ func TestAdminServiceGroupSchedulerTypeDefaultsValidatesAndUpdates(t *testing.T)
 	})
 
 	t.Run("update preserves explicit advanced choice", func(t *testing.T) {
-		existing := &routing.Group{ID: 7, Name: "basic", Platform: capability.PlatformAnthropic, Status: billing.StatusActive, SchedulerType: routing.GroupSchedulerTypeBasic}
+		existing := &routing.Group{ID: 7, Name: "basic", Status: billing.StatusActive, SchedulerType: routing.GroupSchedulerTypeBasic}
 		repo := &groupRepoStubForAdmin{getByID: existing}
 		svc := newOriginalGroupAdmin(repo, nil, nil)
 		advanced := string(routing.GroupSchedulerTypeAdvanced)
@@ -180,7 +164,7 @@ func TestAdminServiceCreateGroupClientProtocolCompatibilityPrecedence(t *testing
 		svc := newOriginalGroupAdmin(repo, nil, nil)
 
 		group, err := svc.CreateGroup(context.Background(), &routing.CreateGroupInput{
-			Name: "legacy", Platform: capability.PlatformOpenAI, RateMultiplier: 1, AllowMessagesDispatch: true,
+			Name: "legacy", RateMultiplier: 1, AllowMessagesDispatch: true,
 		})
 
 		require.NoError(t, err)
@@ -197,8 +181,8 @@ func TestAdminServiceCreateGroupClientProtocolCompatibilityPrecedence(t *testing
 		svc := newOriginalGroupAdmin(repo, nil, nil)
 
 		group, err := svc.CreateGroup(context.Background(), &routing.CreateGroupInput{
-			Name:                  "new-field",
-			Platform:              capability.PlatformOpenAI,
+			Name: "new-field",
+
 			RateMultiplier:        1,
 			AllowMessagesDispatch: true,
 			AllowedProtocols: []protocol.ProtocolID{
@@ -224,14 +208,13 @@ func TestAdminServiceRejectsInvalidGroupClientProtocols(t *testing.T) {
 	}{
 		{"unknown", capability.PlatformQoder, []protocol.ProtocolID{"unknown"}},
 		{"duplicate", capability.PlatformQoder, []protocol.ProtocolID{protocol.ProtocolAnthropicMessages, protocol.ProtocolAnthropicMessages}},
-		{"unsupported", capability.PlatformOpenAI, []protocol.ProtocolID{protocol.ProtocolOpenAIResponses, protocol.ProtocolOpenAIChatCompletions, protocol.ProtocolGeminiGenerateContent}},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			svc := newOriginalGroupAdmin(&groupRepoStubForAdmin{}, nil, nil)
 			_, err := svc.CreateGroup(context.Background(), &routing.CreateGroupInput{
-				Name: tt.name, Platform: tt.platform, RateMultiplier: 1, AllowedProtocols: tt.protocols,
+				Name: tt.name, RateMultiplier: 1, AllowedProtocols: tt.protocols,
 			})
 
 			require.Error(t, err)
@@ -255,7 +238,7 @@ func TestAdminServiceAllowsEmptyGroupClientProtocolsForEveryPlatform(t *testing.
 			svc := newOriginalGroupAdmin(&groupRepoStubForAdmin{}, nil, nil)
 
 			group, err := svc.CreateGroup(context.Background(), &routing.CreateGroupInput{
-				Name: platform, Platform: platform, RateMultiplier: 1, AllowedProtocols: []protocol.ProtocolID{},
+				Name: platform, RateMultiplier: 1, AllowedProtocols: []protocol.ProtocolID{},
 			})
 
 			require.NoError(t, err)
@@ -266,7 +249,7 @@ func TestAdminServiceAllowsEmptyGroupClientProtocolsForEveryPlatform(t *testing.
 }
 
 func TestAdminServiceUpdateGroupPreservesExplicitEmptyClientProtocols(t *testing.T) {
-	existing := &routing.Group{ID: 1, Name: "openai", Platform: capability.PlatformOpenAI, Status: billing.StatusActive, AllowedProtocols: []protocol.ProtocolID{}}
+	existing := &routing.Group{ID: 1, Name: "openai", Status: billing.StatusActive, AllowedProtocols: []protocol.ProtocolID{}}
 	repo := &groupRepoStubForAdmin{getByID: existing}
 	svc := newOriginalGroupAdmin(repo, nil, nil)
 
@@ -277,69 +260,19 @@ func TestAdminServiceUpdateGroupPreservesExplicitEmptyClientProtocols(t *testing
 	require.Empty(t, group.AllowedProtocols)
 }
 
-func TestAdminServiceUpdateGroupFiltersUnsupportedProtocolsWhenPlatformChanges(t *testing.T) {
-	tests := []struct {
-		name     string
-		from     string
-		to       string
-		initial  []protocol.ProtocolID
-		expected []protocol.ProtocolID
-	}{
-		{
-			name: "Gemini to OpenAI",
-			from: capability.PlatformGemini,
-			to:   capability.PlatformOpenAI,
-			initial: []protocol.ProtocolID{
-				protocol.ProtocolAnthropicMessages,
-				protocol.ProtocolOpenAIResponses,
-				protocol.ProtocolOpenAIChatCompletions,
-				protocol.ProtocolGeminiGenerateContent,
-			},
-			expected: []protocol.ProtocolID{
-				protocol.ProtocolAnthropicMessages,
-				protocol.ProtocolOpenAIResponses,
-				protocol.ProtocolOpenAIChatCompletions,
-			},
-		},
-		{
-			name:    "OpenAI to Anthropic",
-			from:    capability.PlatformOpenAI,
-			to:      capability.PlatformAnthropic,
-			initial: []protocol.ProtocolID{protocol.ProtocolOpenAIResponses, protocol.ProtocolOpenAIChatCompletions},
-			expected: []protocol.ProtocolID{
-				protocol.ProtocolOpenAIResponses,
-				protocol.ProtocolOpenAIChatCompletions,
-			},
-		},
-		{
-			name:     "Qoder empty to Grok",
-			from:     capability.PlatformQoder,
-			to:       capability.PlatformGrok,
-			initial:  []protocol.ProtocolID{},
-			expected: []protocol.ProtocolID{},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			existing := &routing.Group{
-				ID: 1, Name: tt.name, Platform: tt.from, Status: billing.StatusActive,
-				AllowedProtocols: tt.initial,
-			}
-			repo := &groupRepoStubForAdmin{getByID: existing}
-			svc := newOriginalGroupAdmin(repo, nil, nil)
-
-			group, err := svc.UpdateGroup(context.Background(), existing.ID, &routing.UpdateGroupInput{Platform: tt.to})
-
-			require.NoError(t, err)
-			require.Equal(t, tt.expected, group.AllowedProtocols)
-		})
-	}
+// 更新名称或其他策略不会隐式修改客户端入口。
+func TestAdminServiceUpdateGroupPreservesAllConfiguredProtocols(t *testing.T) {
+	protocols := []protocol.ProtocolID{protocol.ProtocolAnthropicMessages, protocol.ProtocolOpenAIResponses, protocol.ProtocolGeminiGenerateContent, protocol.ProtocolImageBatches}
+	repo := &groupRepoStubForAdmin{getByID: &routing.Group{ID: 1, Name: "before", Status: billing.StatusActive, AllowedProtocols: protocols}}
+	group, err := newOriginalGroupAdmin(repo, nil, nil).UpdateGroup(context.Background(), 1, &routing.UpdateGroupInput{Name: "after"})
+	require.NoError(t, err)
+	require.Equal(t, protocols, group.AllowedProtocols)
+	require.True(t, group.AllowBatchImageGeneration)
 }
 
 func TestAdminServiceUpdateGroupNewClientProtocolsOverrideLegacySwitch(t *testing.T) {
 	existing := &routing.Group{
-		ID: 1, Name: "openai", Platform: capability.PlatformOpenAI, Status: billing.StatusActive,
+		ID: 1, Name: "openai", Status: billing.StatusActive,
 		AllowedProtocols: []protocol.ProtocolID{protocol.ProtocolOpenAIResponses, protocol.ProtocolOpenAIChatCompletions},
 	}
 	repo := &groupRepoStubForAdmin{getByID: existing}
@@ -516,31 +449,14 @@ func TestAdminService_ListGroups_PassesSessionIsolationSortParams(t *testing.T) 
 	}, repo.listWithFiltersParams)
 }
 
-func TestAdminService_CreateGroup_DefaultsGrokMediaGenerationEnabled(t *testing.T) {
-	repo := &groupRepoStubForAdmin{}
-	svc := newOriginalGroupAdmin(repo, nil, nil)
-
-	group, err := svc.CreateGroup(context.Background(), &routing.CreateGroupInput{
-		Name:           "grok-media",
-		Description:    "Grok media group",
-		Platform:       capability.PlatformGrok,
-		RateMultiplier: 1.0,
-	})
-	require.NoError(t, err)
-	require.NotNil(t, group)
-	require.NotNil(t, repo.created)
-	require.True(t, repo.created.AllowImageGeneration)
-	require.True(t, group.AllowImageGeneration)
-}
-
 func TestAdminService_CreateGroup_PreservesNonGrokImageGenerationDisabled(t *testing.T) {
 	repo := &groupRepoStubForAdmin{}
 	svc := newOriginalGroupAdmin(repo, nil, nil)
 
 	group, err := svc.CreateGroup(context.Background(), &routing.CreateGroupInput{
-		Name:           "anthropic-text",
-		Description:    "Anthropic text group",
-		Platform:       capability.PlatformAnthropic,
+		Name:        "anthropic-text",
+		Description: "Anthropic text group",
+
 		RateMultiplier: 1.0,
 	})
 	require.NoError(t, err)
@@ -555,8 +471,8 @@ func TestAdminService_CreateGroup_WithSessionIsolation(t *testing.T) {
 	svc := newOriginalGroupAdmin(repo, nil, nil)
 
 	group, err := svc.CreateGroup(context.Background(), &routing.CreateGroupInput{
-		Name:                    "isolated-group",
-		Platform:                capability.PlatformAnthropic,
+		Name: "isolated-group",
+
 		RateMultiplier:          1.0,
 		SessionIsolationEnabled: true,
 	})
@@ -573,9 +489,9 @@ func TestAdminService_CreateGroup_DisablesBatchImageWhenImageGenerationDisabled(
 	svc := newOriginalGroupAdmin(repo, nil, nil)
 
 	group, err := svc.CreateGroup(context.Background(), &routing.CreateGroupInput{
-		Name:                      "gemini-no-image",
-		Description:               "Gemini group without image generation",
-		Platform:                  capability.PlatformGemini,
+		Name:        "gemini-no-image",
+		Description: "Gemini group without image generation",
+
 		RateMultiplier:            1.0,
 		AllowImageGeneration:      false,
 		AllowBatchImageGeneration: true,
@@ -584,87 +500,53 @@ func TestAdminService_CreateGroup_DisablesBatchImageWhenImageGenerationDisabled(
 	require.NotNil(t, group)
 	require.NotNil(t, repo.created)
 
-	require.True(t, repo.created.AllowImageGeneration)
+	require.False(t, repo.created.AllowImageGeneration)
 	require.False(t, repo.created.AllowBatchImageGeneration)
 	require.False(t, group.AllowBatchImageGeneration)
 }
 
-func TestAdminService_CreateGroup_DisablesBatchImageForNonGeminiPlatform(t *testing.T) {
+// 批量图片准入独立于账号平台，实际provider在创建任务时选择。
+func TestAdminServiceCreateGroupAllowsExplicitBatchProtocol(t *testing.T) {
 	repo := &groupRepoStubForAdmin{}
-	svc := newOriginalGroupAdmin(repo, nil, nil)
-
-	group, err := svc.CreateGroup(context.Background(), &routing.CreateGroupInput{
-		Name:                      "openai-image",
-		Description:               "OpenAI image group",
-		Platform:                  capability.PlatformOpenAI,
-		RateMultiplier:            1.0,
-		AllowImageGeneration:      true,
-		AllowBatchImageGeneration: true,
-	})
+	group, err := newOriginalGroupAdmin(repo, nil, nil).CreateGroup(context.Background(), &routing.CreateGroupInput{Name: "batch", RateMultiplier: 1, AllowedProtocols: []protocol.ProtocolID{protocol.ProtocolImageBatches}})
 	require.NoError(t, err)
-	require.NotNil(t, group)
-	require.NotNil(t, repo.created)
-	require.True(t, repo.created.AllowImageGeneration)
-	require.False(t, repo.created.AllowBatchImageGeneration)
-	require.False(t, group.AllowBatchImageGeneration)
+	require.True(t, group.AllowBatchImageGeneration)
 }
 
-// TestAdminService_CreateGroup_NormalizesOpenAIFastByPlatform 验证两个组级 Fast
-// 开关只在 OpenAI 分组中保留。
-func TestAdminService_CreateGroup_NormalizesOpenAIFastByPlatform(t *testing.T) {
-	for _, tt := range []struct {
-		name     string
-		platform string
-		want     bool
-	}{
-		{name: "openai", platform: capability.PlatformOpenAI, want: true},
-		{name: "anthropic", platform: capability.PlatformAnthropic, want: false},
-	} {
-		t.Run(tt.name, func(t *testing.T) {
-			repo := &groupRepoStubForAdmin{}
-			svc := newOriginalGroupAdmin(repo, nil, nil)
-
-			group, err := svc.CreateGroup(context.Background(), &routing.CreateGroupInput{
-				Name: "fast-" + tt.name, Platform: tt.platform, RateMultiplier: 1,
-				ForceOpenAIFast: true, FreeOpenAIFast: true,
-			})
-
-			require.NoError(t, err)
-			require.NotNil(t, group)
-			require.Equal(t, tt.want, repo.created.ForceOpenAIFast)
-			require.Equal(t, tt.want, repo.created.FreeOpenAIFast)
-		})
-	}
+// 功能策略保存于分组，执行时仅由适用账号使用。
+func TestAdminServiceCreateGroupPreservesFastPolicies(t *testing.T) {
+	repo := &groupRepoStubForAdmin{}
+	group, err := newOriginalGroupAdmin(repo, nil, nil).CreateGroup(context.Background(), &routing.CreateGroupInput{Name: "fast", RateMultiplier: 1, ForceOpenAIFast: true, FreeOpenAIFast: true})
+	require.NoError(t, err)
+	require.True(t, group.ForceOpenAIFast)
+	require.True(t, group.FreeOpenAIFast)
 }
 
-// TestAdminService_UpdateGroup_ClearsOpenAIFastWhenPlatformChanges 防止平台切换后
-// 把旧分组的 Fast 配置带到不支持的协议。
-func TestAdminService_UpdateGroup_ClearsOpenAIFastWhenPlatformChanges(t *testing.T) {
+func TestAdminServiceUpdateGroupPreservesFastPolicies(t *testing.T) {
 	existingGroup := &routing.Group{
-		ID: 1, Name: "existing-fast", Platform: capability.PlatformOpenAI, Status: billing.StatusActive,
+		ID: 1, Name: "existing-fast", Status: billing.StatusActive,
 		ForceOpenAIFast: true, FreeOpenAIFast: true,
 	}
 	repo := &groupRepoStubForAdmin{getByID: existingGroup}
 	svc := newOriginalGroupAdmin(repo, nil, nil)
 
-	group, err := svc.UpdateGroup(context.Background(), existingGroup.ID, &routing.UpdateGroupInput{Platform: capability.PlatformAnthropic})
+	group, err := svc.UpdateGroup(context.Background(), existingGroup.ID, &routing.UpdateGroupInput{})
 
 	require.NoError(t, err)
 	require.NotNil(t, group)
-	require.False(t, repo.updated.ForceOpenAIFast)
-	require.False(t, repo.updated.FreeOpenAIFast)
+	require.True(t, repo.updated.ForceOpenAIFast)
+	require.True(t, repo.updated.FreeOpenAIFast)
 }
 
 func TestAdminService_UpdateGroup_PreservesImageGenerationControlsWhenOmitted(t *testing.T) {
-
 	existingGroup := &routing.Group{
-		ID:                   1,
-		Name:                 "existing-group",
-		Platform:             capability.PlatformOpenAI,
+		ID:   1,
+		Name: "existing-group",
+
 		Status:               billing.StatusActive,
 		AllowImageGeneration: true,
 		AllowedProtocols:     []protocol.ProtocolID{"openai_images_generations", "openai_images_edits"},
-		ProtocolFallbacks:    map[protocol.ProtocolID]protocol.ProtocolID{},
+		ProtocolFallbacks:    map[protocol.ProtocolID][]protocol.ProtocolID{},
 		ResponsesImagePolicy: "inherit",
 	}
 	repo := &groupRepoStubForAdmin{getByID: existingGroup}
@@ -682,10 +564,10 @@ func TestAdminService_UpdateGroup_PreservesImageGenerationControlsWhenOmitted(t 
 
 func TestAdminService_UpdateGroup_WithSessionIsolation(t *testing.T) {
 	existingGroup := &routing.Group{
-		ID:       1,
-		Name:     "existing-group",
-		Platform: capability.PlatformAnthropic,
-		Status:   billing.StatusActive,
+		ID:   1,
+		Name: "existing-group",
+
+		Status: billing.StatusActive,
 	}
 	repo := &groupRepoStubForAdmin{getByID: existingGroup}
 	svc := newOriginalGroupAdmin(repo, nil, nil)
@@ -704,9 +586,9 @@ func TestAdminService_UpdateGroup_WithSessionIsolation(t *testing.T) {
 
 func TestAdminService_UpdateGroup_DisablesBatchImageWhenImageGenerationDisabled(t *testing.T) {
 	existingGroup := &routing.Group{
-		ID:                        1,
-		Name:                      "existing-gemini",
-		Platform:                  capability.PlatformGemini,
+		ID:   1,
+		Name: "existing-gemini",
+
 		Status:                    billing.StatusActive,
 		AllowImageGeneration:      true,
 		AllowBatchImageGeneration: true,
@@ -726,36 +608,13 @@ func TestAdminService_UpdateGroup_DisablesBatchImageWhenImageGenerationDisabled(
 	require.False(t, group.AllowBatchImageGeneration)
 }
 
-func TestAdminService_UpdateGroup_DisablesBatchImageWhenPlatformChangesFromGemini(t *testing.T) {
-	existingGroup := &routing.Group{
-		ID:                        1,
-		Name:                      "existing-gemini",
-		Platform:                  capability.PlatformGemini,
-		Status:                    billing.StatusActive,
-		AllowImageGeneration:      true,
-		AllowBatchImageGeneration: true,
-	}
-	repo := &groupRepoStubForAdmin{getByID: existingGroup}
-	svc := newOriginalGroupAdmin(repo, nil, nil)
-
-	group, err := svc.UpdateGroup(context.Background(), 1, &routing.UpdateGroupInput{
-		Platform: capability.PlatformOpenAI,
-	})
-	require.NoError(t, err)
-	require.NotNil(t, group)
-	require.NotNil(t, repo.updated)
-	require.Equal(t, capability.PlatformOpenAI, repo.updated.Platform)
-	require.False(t, repo.updated.AllowBatchImageGeneration)
-	require.False(t, group.AllowBatchImageGeneration)
-}
-
 func TestAdminService_UpdateGroup_ClearsDescriptionWhenEmptyString(t *testing.T) {
 	existingGroup := &routing.Group{
 		ID:          1,
 		Name:        "existing-group",
 		Description: "Auto-created default group",
-		Platform:    capability.PlatformOpenAI,
-		Status:      billing.StatusActive,
+
+		Status: billing.StatusActive,
 	}
 	repo := &groupRepoStubForAdmin{getByID: existingGroup}
 	svc := newOriginalGroupAdmin(repo, nil, nil)
@@ -774,8 +633,8 @@ func TestAdminService_UpdateGroup_PreservesDescriptionWhenNil(t *testing.T) {
 		ID:          1,
 		Name:        "existing-group",
 		Description: "keep me",
-		Platform:    capability.PlatformOpenAI,
-		Status:      billing.StatusActive,
+
+		Status: billing.StatusActive,
 	}
 	repo := &groupRepoStubForAdmin{getByID: existingGroup}
 	svc := newOriginalGroupAdmin(repo, nil, nil)
@@ -795,8 +654,8 @@ func TestAdminService_CreateGroup_BatchImagePricingSettings(t *testing.T) {
 	hold := 0.9
 
 	group, err := svc.CreateGroup(context.Background(), &routing.CreateGroupInput{
-		Name:                         "batch-image-pricing",
-		Platform:                     capability.PlatformGemini,
+		Name: "batch-image-pricing",
+
 		RateMultiplier:               1,
 		BatchImageDiscountMultiplier: &discount,
 		BatchImageHoldMultiplier:     &hold,
@@ -815,8 +674,8 @@ func TestAdminService_CreateGroup_RejectsHoldBelowDiscount(t *testing.T) {
 	hold := 0.6
 
 	_, err := svc.CreateGroup(context.Background(), &routing.CreateGroupInput{
-		Name:                         "batch-image-pricing-invalid",
-		Platform:                     capability.PlatformGemini,
+		Name: "batch-image-pricing-invalid",
+
 		RateMultiplier:               1,
 		BatchImageDiscountMultiplier: &discount,
 		BatchImageHoldMultiplier:     &hold,
@@ -903,9 +762,9 @@ func TestAdminService_UpdateGroup_ReasoningEffortMappingsTriState(t *testing.T) 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			existing := &routing.Group{
-				ID:                      1,
-				Name:                    "openai-group",
-				Platform:                capability.PlatformOpenAI,
+				ID:   1,
+				Name: "openai-group",
+
 				Status:                  billing.StatusActive,
 				ReasoningEffortMappings: []routing.ReasoningEffortMapping{{From: "max", To: "xhigh"}},
 			}
@@ -922,9 +781,9 @@ func TestAdminService_UpdateGroup_ReasoningEffortMappingsTriState(t *testing.T) 
 
 func TestAdminService_UpdateGroup_RejectsInvalidReasoningEffortMappings(t *testing.T) {
 	existing := &routing.Group{
-		ID:             1,
-		Name:           "openai",
-		Platform:       capability.PlatformOpenAI,
+		ID:   1,
+		Name: "openai",
+
 		RateMultiplier: 1,
 		Status:         billing.StatusActive,
 	}
@@ -944,11 +803,11 @@ func TestAdminService_UpdateGroup_RejectsInvalidReasoningEffortMappings(t *testi
 	require.Nil(t, repo.updated)
 }
 
-func TestAdminService_UpdateGroup_ClearsReasoningPolicyForUnsupportedPlatform(t *testing.T) {
+func TestAdminServiceUpdateGroupPreservesReasoningPolicy(t *testing.T) {
 	existing := &routing.Group{
-		ID:                          1,
-		Name:                        "openai-group",
-		Platform:                    capability.PlatformOpenAI,
+		ID:   1,
+		Name: "openai-group",
+
 		Status:                      billing.StatusActive,
 		MaxReasoningEffort:          "medium",
 		MaxReasoningEffortOverLimit: routing.ReasoningEffortOverLimitDeny,
@@ -957,19 +816,19 @@ func TestAdminService_UpdateGroup_ClearsReasoningPolicyForUnsupportedPlatform(t 
 	repo := &groupRepoStubForAdmin{getByID: existing}
 	svc := newOriginalGroupAdmin(repo, nil, nil)
 
-	_, err := svc.UpdateGroup(context.Background(), existing.ID, &routing.UpdateGroupInput{Platform: capability.PlatformGemini})
+	_, err := svc.UpdateGroup(context.Background(), existing.ID, &routing.UpdateGroupInput{})
 
 	require.NoError(t, err)
-	require.Empty(t, repo.updated.MaxReasoningEffort)
-	require.Equal(t, routing.ReasoningEffortOverLimitDowngrade, repo.updated.MaxReasoningEffortOverLimit)
-	require.Empty(t, repo.updated.ReasoningEffortMappings)
+	require.Equal(t, "medium", repo.updated.MaxReasoningEffort)
+	require.Equal(t, routing.ReasoningEffortOverLimitDeny, repo.updated.MaxReasoningEffortOverLimit)
+	require.Equal(t, existing.ReasoningEffortMappings, repo.updated.ReasoningEffortMappings)
 }
 
 func TestAdminService_UpdateGroup_NormalizesPeakRateWhenDisabled(t *testing.T) {
 	existingGroup := &routing.Group{
-		ID:                 1,
-		Name:               "existing-group",
-		Platform:           capability.PlatformOpenAI,
+		ID:   1,
+		Name: "existing-group",
+
 		Status:             billing.StatusActive,
 		PeakRateEnabled:    true,
 		PeakStart:          "14:00",
@@ -994,9 +853,9 @@ func TestAdminService_UpdateGroup_NormalizesPeakRateWhenDisabled(t *testing.T) {
 
 func TestAdminService_UpdateGroup_ScrubsInvalidDisabledPeakRate(t *testing.T) {
 	existingGroup := &routing.Group{
-		ID:                 1,
-		Name:               "existing-group",
-		Platform:           capability.PlatformOpenAI,
+		ID:   1,
+		Name: "existing-group",
+
 		Status:             billing.StatusActive,
 		PeakRateEnabled:    false,
 		PeakStart:          "bad",
@@ -1021,9 +880,9 @@ func TestAdminService_CreateGroup_NormalizesMessagesDispatchModelConfig(t *testi
 	svc := newOriginalGroupAdmin(repo, nil, nil)
 
 	group, err := svc.CreateGroup(context.Background(), &routing.CreateGroupInput{
-		Name:           "dispatch-group",
-		Description:    "dispatch config",
-		Platform:       capability.PlatformOpenAI,
+		Name:        "dispatch-group",
+		Description: "dispatch config",
+
 		RateMultiplier: 1.0,
 		MessagesDispatchModelConfig: routing.OpenAIMessagesDispatchModelConfig{
 			OpusMappedModel:   " gpt-5.4-high ",
@@ -1049,10 +908,10 @@ func TestAdminService_CreateGroup_NormalizesMessagesDispatchModelConfig(t *testi
 
 func TestAdminService_UpdateGroup_NormalizesMessagesDispatchModelConfig(t *testing.T) {
 	existingGroup := &routing.Group{
-		ID:       1,
-		Name:     "existing-group",
-		Platform: capability.PlatformOpenAI,
-		Status:   billing.StatusActive,
+		ID:   1,
+		Name: "existing-group",
+
+		Status: billing.StatusActive,
 	}
 	repo := &groupRepoStubForAdmin{getByID: existingGroup}
 	svc := newOriginalGroupAdmin(repo, nil, nil)
@@ -1076,62 +935,18 @@ func TestAdminService_UpdateGroup_NormalizesMessagesDispatchModelConfig(t *testi
 	}, repo.updated.MessagesDispatchModelConfig)
 }
 
-func TestAdminService_CreateGroup_ClearsMessagesDispatchFieldsForNonOpenAIPlatform(t *testing.T) {
-	repo := &groupRepoStubForAdmin{}
-	svc := newOriginalGroupAdmin(repo, nil, nil)
-
-	group, err := svc.CreateGroup(context.Background(), &routing.CreateGroupInput{
-		Name:                  "anthropic-group",
-		Description:           "non-openai",
-		Platform:              capability.PlatformAnthropic,
-		RateMultiplier:        1.0,
-		AllowMessagesDispatch: true,
-		AllowLive:             true,
-		DefaultMappedModel:    "gpt-5.4",
-		MessagesDispatchModelConfig: routing.OpenAIMessagesDispatchModelConfig{
-			OpusMappedModel: "gpt-5.4",
-		},
-	})
+func TestAdminServiceUpdateGroupPreservesMessagesDispatchPolicy(t *testing.T) {
+	existing := &routing.Group{ID: 1, Name: "mixed", Status: billing.StatusActive, AllowedProtocols: []protocol.ProtocolID{protocol.ProtocolAnthropicMessages, protocol.ProtocolLive}, DefaultMappedModel: "gpt-test", MessagesDispatchModelConfig: routing.OpenAIMessagesDispatchModelConfig{SonnetMappedModel: "gpt-test"}}
+	repo := &groupRepoStubForAdmin{getByID: existing}
+	group, err := newOriginalGroupAdmin(repo, nil, nil).UpdateGroup(context.Background(), 1, &routing.UpdateGroupInput{Name: "renamed"})
 	require.NoError(t, err)
-	require.NotNil(t, group)
-	require.NotNil(t, repo.created)
-	require.False(t, repo.created.AllowMessagesDispatch)
-	require.False(t, repo.created.AllowLive)
-	require.Empty(t, repo.created.DefaultMappedModel)
-	require.Equal(t, routing.OpenAIMessagesDispatchModelConfig{}, repo.created.MessagesDispatchModelConfig)
-}
-
-func TestAdminService_UpdateGroup_ClearsMessagesDispatchFieldsWhenPlatformChangesAwayFromOpenAI(t *testing.T) {
-	existingGroup := &routing.Group{
-		ID:                    1,
-		Name:                  "existing-openai-group",
-		Platform:              capability.PlatformOpenAI,
-		Status:                billing.StatusActive,
-		AllowMessagesDispatch: true,
-		AllowLive:             true,
-		DefaultMappedModel:    "gpt-5.4",
-		MessagesDispatchModelConfig: routing.OpenAIMessagesDispatchModelConfig{
-			SonnetMappedModel: "gpt-5.3-codex",
-		},
-	}
-	repo := &groupRepoStubForAdmin{getByID: existingGroup}
-	svc := newOriginalGroupAdmin(repo, nil, nil)
-
-	group, err := svc.UpdateGroup(context.Background(), 1, &routing.UpdateGroupInput{
-		Platform: capability.PlatformAnthropic,
-	})
-	require.NoError(t, err)
-	require.NotNil(t, group)
-	require.NotNil(t, repo.updated)
-	require.Equal(t, capability.PlatformAnthropic, repo.updated.Platform)
-	require.False(t, repo.updated.AllowMessagesDispatch)
-	require.False(t, repo.updated.AllowLive)
-	require.Empty(t, repo.updated.DefaultMappedModel)
-	require.Equal(t, routing.OpenAIMessagesDispatchModelConfig{}, repo.updated.MessagesDispatchModelConfig)
+	require.True(t, group.AllowMessagesDispatch)
+	require.True(t, group.AllowLive)
+	require.Equal(t, "gpt-test", group.DefaultMappedModel)
+	require.Equal(t, existing.MessagesDispatchModelConfig, group.MessagesDispatchModelConfig)
 }
 
 func TestAdminService_ListGroups_WithSearch(t *testing.T) {
-
 	t.Run("search 参数正常传递到 repository 层", func(t *testing.T) {
 		repo := &groupRepoStubForAdmin{
 			listWithFiltersGroups: []routing.Group{{ID: 1, Name: "alpha"}},
@@ -1328,7 +1143,6 @@ func (s *groupRepoStubForInvalidRequestFallback) List(_ context.Context, _ pagin
 }
 
 func (s *groupRepoStubForInvalidRequestFallback) ListWithFilters(_ context.Context, params pagination.PaginationParams, platform, status, search string, isExclusive *bool) ([]routing.Group, *pagination.PaginationResult, error) {
-
 	if params.Page != 1 || params.PageSize != 1 || params.SortBy != "sort_order" || params.SortOrder != "desc" || platform != "" || status != "" || search != "" || isExclusive != nil {
 		panic("unexpected ListWithFilters call")
 	}
@@ -1381,26 +1195,6 @@ func (s *groupRepoStubForInvalidRequestFallback) UpdateSortOrders(_ context.Cont
 	return nil
 }
 
-func TestAdminService_CreateGroup_InvalidRequestFallbackRejectsUnsupportedPlatform(t *testing.T) {
-	fallbackID := int64(10)
-	repo := &groupRepoStubForInvalidRequestFallback{
-		groups: map[int64]*routing.Group{
-			fallbackID: {ID: fallbackID, Platform: capability.PlatformAnthropic},
-		},
-	}
-	svc := newOriginalGroupAdmin(repo, nil, nil)
-
-	_, err := svc.CreateGroup(context.Background(), &routing.CreateGroupInput{
-		Name:                            "g1",
-		Platform:                        capability.PlatformOpenAI,
-		RateMultiplier:                  1.0,
-		FallbackGroupIDOnInvalidRequest: &fallbackID,
-	})
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "invalid request fallback only supported for anthropic or antigravity groups")
-	require.Nil(t, repo.created)
-}
-
 func TestAdminService_CreateGroup_InvalidRequestFallbackRejectsFallbackGroup(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -1408,20 +1202,10 @@ func TestAdminService_CreateGroup_InvalidRequestFallbackRejectsFallbackGroup(t *
 		wantMessage string
 	}{
 		{
-			name:        "openai_target",
-			fallback:    &routing.Group{ID: 10, Platform: capability.PlatformOpenAI},
-			wantMessage: "fallback group must be anthropic platform",
-		},
-		{
-			name:        "antigravity_target",
-			fallback:    &routing.Group{ID: 10, Platform: capability.PlatformAntigravity},
-			wantMessage: "fallback group must be anthropic platform",
-		},
-		{
 			name: "nested_fallback",
 			fallback: &routing.Group{
-				ID:                              10,
-				Platform:                        capability.PlatformAnthropic,
+				ID: 10,
+
 				FallbackGroupIDOnInvalidRequest: func() *int64 { v := int64(99); return &v }(),
 			},
 			wantMessage: "fallback group cannot have invalid request fallback configured",
@@ -1439,8 +1223,8 @@ func TestAdminService_CreateGroup_InvalidRequestFallbackRejectsFallbackGroup(t *
 			svc := newOriginalGroupAdmin(repo, nil, nil)
 
 			_, err := svc.CreateGroup(context.Background(), &routing.CreateGroupInput{
-				Name:                            "g1",
-				Platform:                        capability.PlatformAnthropic,
+				Name: "g1",
+
 				RateMultiplier:                  1.0,
 				FallbackGroupIDOnInvalidRequest: &fallbackID,
 			})
@@ -1457,8 +1241,8 @@ func TestAdminService_CreateGroup_InvalidRequestFallbackNotFound(t *testing.T) {
 	svc := newOriginalGroupAdmin(repo, nil, nil)
 
 	_, err := svc.CreateGroup(context.Background(), &routing.CreateGroupInput{
-		Name:                            "g1",
-		Platform:                        capability.PlatformAnthropic,
+		Name: "g1",
+
 		RateMultiplier:                  1.0,
 		FallbackGroupIDOnInvalidRequest: &fallbackID,
 	})
@@ -1471,14 +1255,14 @@ func TestAdminService_CreateGroup_InvalidRequestFallbackAllowsAnthropic(t *testi
 	fallbackID := int64(10)
 	repo := &groupRepoStubForInvalidRequestFallback{
 		groups: map[int64]*routing.Group{
-			fallbackID: {ID: fallbackID, Platform: capability.PlatformAnthropic},
+			fallbackID: {ID: fallbackID},
 		},
 	}
 	svc := newOriginalGroupAdmin(repo, nil, nil)
 
 	group, err := svc.CreateGroup(context.Background(), &routing.CreateGroupInput{
-		Name:                            "g1",
-		Platform:                        capability.PlatformAnthropic,
+		Name: "g1",
+
 		RateMultiplier:                  1.0,
 		FallbackGroupIDOnInvalidRequest: &fallbackID,
 	})
@@ -1492,14 +1276,14 @@ func TestAdminService_CreateGroup_InvalidRequestFallbackAllowsAntigravity(t *tes
 	fallbackID := int64(10)
 	repo := &groupRepoStubForInvalidRequestFallback{
 		groups: map[int64]*routing.Group{
-			fallbackID: {ID: fallbackID, Platform: capability.PlatformAnthropic},
+			fallbackID: {ID: fallbackID},
 		},
 	}
 	svc := newOriginalGroupAdmin(repo, nil, nil)
 
 	group, err := svc.CreateGroup(context.Background(), &routing.CreateGroupInput{
-		Name:                            "g1",
-		Platform:                        capability.PlatformAntigravity,
+		Name: "g1",
+
 		RateMultiplier:                  1.0,
 		FallbackGroupIDOnInvalidRequest: &fallbackID,
 	})
@@ -1515,8 +1299,8 @@ func TestAdminService_CreateGroup_InvalidRequestFallbackClearsOnZero(t *testing.
 	svc := newOriginalGroupAdmin(repo, nil, nil)
 
 	group, err := svc.CreateGroup(context.Background(), &routing.CreateGroupInput{
-		Name:                            "g1",
-		Platform:                        capability.PlatformAnthropic,
+		Name: "g1",
+
 		RateMultiplier:                  1.0,
 		FallbackGroupIDOnInvalidRequest: &zero,
 	})
@@ -1530,14 +1314,14 @@ func TestAdminService_CreateGroup_UnavailableFallbackAllowsSamePlatformActiveGro
 	fallbackID := int64(10)
 	repo := &groupRepoStubForInvalidRequestFallback{
 		groups: map[int64]*routing.Group{
-			fallbackID: {ID: fallbackID, Platform: capability.PlatformOpenAI, Status: billing.StatusActive},
+			fallbackID: {ID: fallbackID, Status: billing.StatusActive},
 		},
 	}
 	svc := newOriginalGroupAdmin(repo, nil, nil)
 
 	group, err := svc.CreateGroup(context.Background(), &routing.CreateGroupInput{
-		Name:                       "g1",
-		Platform:                   capability.PlatformOpenAI,
+		Name: "g1",
+
 		RateMultiplier:             1.0,
 		UnavailableFallbackGroupID: &fallbackID,
 	})
@@ -1554,13 +1338,8 @@ func TestAdminService_CreateGroup_UnavailableFallbackRejectsInvalidGroup(t *test
 		wantMessage string
 	}{
 		{
-			name:        "platform_mismatch",
-			fallback:    &routing.Group{ID: 10, Platform: capability.PlatformGemini, Status: billing.StatusActive},
-			wantMessage: "unavailable fallback group must use the same platform",
-		},
-		{
 			name:        "inactive_target",
-			fallback:    &routing.Group{ID: 10, Platform: capability.PlatformOpenAI, Status: billing.StatusDisabled},
+			fallback:    &routing.Group{ID: 10, Status: billing.StatusDisabled},
 			wantMessage: "unavailable fallback group must be active",
 		},
 	}
@@ -1576,8 +1355,8 @@ func TestAdminService_CreateGroup_UnavailableFallbackRejectsInvalidGroup(t *test
 			svc := newOriginalGroupAdmin(repo, nil, nil)
 
 			_, err := svc.CreateGroup(context.Background(), &routing.CreateGroupInput{
-				Name:                       "g1",
-				Platform:                   capability.PlatformOpenAI,
+				Name: "g1",
+
 				RateMultiplier:             1.0,
 				UnavailableFallbackGroupID: &fallbackID,
 			})
@@ -1590,10 +1369,10 @@ func TestAdminService_CreateGroup_UnavailableFallbackRejectsInvalidGroup(t *test
 
 func TestAdminService_UpdateGroup_UnavailableFallbackRejectsSelf(t *testing.T) {
 	existing := &routing.Group{
-		ID:       1,
-		Name:     "g1",
-		Platform: capability.PlatformOpenAI,
-		Status:   billing.StatusActive,
+		ID:   1,
+		Name: "g1",
+
+		Status: billing.StatusActive,
 	}
 	repo := &groupRepoStubForInvalidRequestFallback{
 		groups: map[int64]*routing.Group{existing.ID: existing},
@@ -1611,16 +1390,16 @@ func TestAdminService_UpdateGroup_UnavailableFallbackRejectsSelf(t *testing.T) {
 func TestAdminService_UpdateGroup_UnavailableFallbackClearsOnZero(t *testing.T) {
 	fallbackID := int64(10)
 	existing := &routing.Group{
-		ID:                         1,
-		Name:                       "g1",
-		Platform:                   capability.PlatformOpenAI,
+		ID:   1,
+		Name: "g1",
+
 		Status:                     billing.StatusActive,
 		UnavailableFallbackGroupID: &fallbackID,
 	}
 	repo := &groupRepoStubForInvalidRequestFallback{
 		groups: map[int64]*routing.Group{
 			existing.ID: existing,
-			fallbackID:  {ID: fallbackID, Platform: capability.PlatformOpenAI, Status: billing.StatusActive},
+			fallbackID:  {ID: fallbackID, Status: billing.StatusActive},
 		},
 	}
 	svc := newOriginalGroupAdmin(repo, nil, nil)
@@ -1635,51 +1414,25 @@ func TestAdminService_UpdateGroup_UnavailableFallbackClearsOnZero(t *testing.T) 
 	require.Nil(t, repo.updated.UnavailableFallbackGroupID)
 }
 
-func TestAdminService_UpdateGroup_InvalidRequestFallbackPlatformMismatch(t *testing.T) {
-	fallbackID := int64(10)
-	existing := &routing.Group{
-		ID:                              1,
-		Name:                            "g1",
-		Platform:                        capability.PlatformAnthropic,
-		Status:                          billing.StatusActive,
-		FallbackGroupIDOnInvalidRequest: &fallbackID,
-	}
-	repo := &groupRepoStubForInvalidRequestFallback{
-		groups: map[int64]*routing.Group{
-			existing.ID: existing,
-			fallbackID:  {ID: fallbackID, Platform: capability.PlatformAnthropic},
-		},
-	}
-	svc := newOriginalGroupAdmin(repo, nil, nil)
-
-	_, err := svc.UpdateGroup(context.Background(), existing.ID, &routing.UpdateGroupInput{
-		Platform: capability.PlatformOpenAI,
-	})
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "invalid request fallback only supported for anthropic or antigravity groups")
-	require.Nil(t, repo.updated)
-}
-
 func TestAdminService_UpdateGroup_InvalidRequestFallbackClearsOnZero(t *testing.T) {
 	fallbackID := int64(10)
 	existing := &routing.Group{
-		ID:                              1,
-		Name:                            "g1",
-		Platform:                        capability.PlatformAnthropic,
+		ID:   1,
+		Name: "g1",
+
 		Status:                          billing.StatusActive,
 		FallbackGroupIDOnInvalidRequest: &fallbackID,
 	}
 	repo := &groupRepoStubForInvalidRequestFallback{
 		groups: map[int64]*routing.Group{
 			existing.ID: existing,
-			fallbackID:  {ID: fallbackID, Platform: capability.PlatformAnthropic},
+			fallbackID:  {ID: fallbackID},
 		},
 	}
 	svc := newOriginalGroupAdmin(repo, nil, nil)
 
 	clear := int64(0)
 	group, err := svc.UpdateGroup(context.Background(), existing.ID, &routing.UpdateGroupInput{
-		Platform:                        capability.PlatformOpenAI,
 		FallbackGroupIDOnInvalidRequest: &clear,
 	})
 	require.NoError(t, err)
@@ -1688,18 +1441,18 @@ func TestAdminService_UpdateGroup_InvalidRequestFallbackClearsOnZero(t *testing.
 	require.Nil(t, repo.updated.FallbackGroupIDOnInvalidRequest)
 }
 
-func TestAdminService_UpdateGroup_InvalidRequestFallbackRejectsFallbackGroup(t *testing.T) {
+func TestAdminServiceUpdateGroupAllowsConfiguredFallback(t *testing.T) {
 	fallbackID := int64(10)
 	existing := &routing.Group{
-		ID:       1,
-		Name:     "g1",
-		Platform: capability.PlatformAnthropic,
-		Status:   billing.StatusActive,
+		ID:   1,
+		Name: "g1",
+
+		Status: billing.StatusActive,
 	}
 	repo := &groupRepoStubForInvalidRequestFallback{
 		groups: map[int64]*routing.Group{
 			existing.ID: existing,
-			fallbackID:  {ID: fallbackID, Platform: capability.PlatformOpenAI},
+			fallbackID:  {ID: fallbackID},
 		},
 	}
 	svc := newOriginalGroupAdmin(repo, nil, nil)
@@ -1707,23 +1460,22 @@ func TestAdminService_UpdateGroup_InvalidRequestFallbackRejectsFallbackGroup(t *
 	_, err := svc.UpdateGroup(context.Background(), existing.ID, &routing.UpdateGroupInput{
 		FallbackGroupIDOnInvalidRequest: &fallbackID,
 	})
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "fallback group must be anthropic platform")
-	require.Nil(t, repo.updated)
+	require.NoError(t, err)
+	require.Equal(t, fallbackID, *repo.updated.FallbackGroupIDOnInvalidRequest)
 }
 
 func TestAdminService_UpdateGroup_InvalidRequestFallbackSetSuccess(t *testing.T) {
 	fallbackID := int64(10)
 	existing := &routing.Group{
-		ID:       1,
-		Name:     "g1",
-		Platform: capability.PlatformAnthropic,
-		Status:   billing.StatusActive,
+		ID:   1,
+		Name: "g1",
+
+		Status: billing.StatusActive,
 	}
 	repo := &groupRepoStubForInvalidRequestFallback{
 		groups: map[int64]*routing.Group{
 			existing.ID: existing,
-			fallbackID:  {ID: fallbackID, Platform: capability.PlatformAnthropic},
+			fallbackID:  {ID: fallbackID},
 		},
 	}
 	svc := newOriginalGroupAdmin(repo, nil, nil)
@@ -1740,15 +1492,15 @@ func TestAdminService_UpdateGroup_InvalidRequestFallbackSetSuccess(t *testing.T)
 func TestAdminService_UpdateGroup_InvalidRequestFallbackAllowsAntigravity(t *testing.T) {
 	fallbackID := int64(10)
 	existing := &routing.Group{
-		ID:       1,
-		Name:     "g1",
-		Platform: capability.PlatformAntigravity,
-		Status:   billing.StatusActive,
+		ID:   1,
+		Name: "g1",
+
+		Status: billing.StatusActive,
 	}
 	repo := &groupRepoStubForInvalidRequestFallback{
 		groups: map[int64]*routing.Group{
 			existing.ID: existing,
-			fallbackID:  {ID: fallbackID, Platform: capability.PlatformAnthropic},
+			fallbackID:  {ID: fallbackID},
 		},
 	}
 	svc := newOriginalGroupAdmin(repo, nil, nil)

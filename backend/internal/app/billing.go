@@ -2,6 +2,8 @@ package app
 
 import (
 	"context"
+	"database/sql"
+	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/account"
 
@@ -9,9 +11,6 @@ import (
 	notificationcore "github.com/TokenFlux/TokenRouter/internal/notification"
 	"github.com/TokenFlux/TokenRouter/internal/promotion"
 	settingscore "github.com/TokenFlux/TokenRouter/internal/settings"
-
-	"database/sql"
-	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/batchimage"
 
@@ -36,7 +35,6 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 
-	"github.com/TokenFlux/TokenRouter/internal/infra/timingwheel"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/timezone"
 
 	routingpostgres "github.com/TokenFlux/TokenRouter/internal/routing/postgres"
@@ -47,22 +45,19 @@ import (
 )
 
 func billingEligibilityOptions(c *config.Config, calendar timezone.Calendar) billing.EligibilityOptions {
-	return billing.EligibilityOptions{Dates: billing.DateRuntime{Now: time.Now, Calendar: &calendar}, RunMode: c.RunMode, Billing: billing.BillingOptions{MinimumBalanceReserve: c.Billing.MinimumBalanceReserve, UserPlatformQuotaCacheTTLSeconds: c.Billing.UserPlatformQuotaCacheTTLSeconds, UserPlatformQuotaSentinelTTLSeconds: c.Billing.UserPlatformQuotaSentinelTTLSeconds, CircuitBreaker: billing.CircuitBreakerOptions{Enabled: c.Billing.CircuitBreaker.Enabled, FailureThreshold: c.Billing.CircuitBreaker.FailureThreshold, ResetTimeoutSeconds: c.Billing.CircuitBreaker.ResetTimeoutSeconds, HalfOpenRequests: c.Billing.CircuitBreaker.HalfOpenRequests}}, Database: billing.QuotaMirrorOptions{UserPlatformQuotaFlusherEnabled: c.Database.UserPlatformQuotaFlusherEnabled}}
+	return billing.EligibilityOptions{Dates: billing.DateRuntime{Now: time.Now, Calendar: &calendar}, RunMode: c.RunMode, Billing: billing.BillingOptions{MinimumBalanceReserve: c.Billing.MinimumBalanceReserve, CircuitBreaker: billing.CircuitBreakerOptions{Enabled: c.Billing.CircuitBreaker.Enabled, FailureThreshold: c.Billing.CircuitBreaker.FailureThreshold, ResetTimeoutSeconds: c.Billing.CircuitBreaker.ResetTimeoutSeconds, HalfOpenRequests: c.Billing.CircuitBreaker.HalfOpenRequests}}}
 }
 
-// provideBillingEligibility 与管理及镜像写回共享同一个按用户协调器。
-func provideBillingEligibility(cache billing.BillingCache, users *identitypostgres.UserStore, keys apikey.APIKeyRepository, quotas billing.UserPlatformQuotaRepository, cfg *config.Config, coordinator *billing.QuotaCoordinator, tasks *lifecycle.Tasks, calendar timezone.Calendar) *billing.Eligibility {
+// provideBillingEligibility 绑定余额与 Key 限额准入的共享缓存。
+func provideBillingEligibility(cache billing.BillingCache, users *identitypostgres.UserStore, keys apikey.APIKeyRepository, cfg *config.Config, tasks *lifecycle.Tasks, calendar timezone.Calendar) *billing.Eligibility {
 	options := billingEligibilityOptions(cfg, calendar)
-	return billing.NewEligibility(cache, billingIdentityUsers{Repository: users}, keys, quotas, func() billing.EligibilityOptions { return options }, logging.LegacyPrintf, coordinator, func(name string, fn func()) { tasks.Go(name, fn) })
+	return billing.NewEligibility(cache, billingIdentityUsers{Repository: users}, keys, func() billing.EligibilityOptions { return options }, logging.LegacyPrintf, func(name string, fn func()) { tasks.Go(name, fn) })
 }
 
-func providePlatformQuotaFlusher(cfg *config.Config, cache billing.BillingCache, quotas billing.UserPlatformQuotaRepository, wheel *timingwheel.Wheel, coordinator *billing.QuotaCoordinator) *billing.UserPlatformQuotaUsageFlusher {
-	options := billing.FlusherOptions{UserPlatformQuotaFlushBatchSize: cfg.Database.UserPlatformQuotaFlushBatchSize, UserPlatformQuotaFlushIntervalMs: cfg.Database.UserPlatformQuotaFlushIntervalMs, UserPlatformQuotaFlusherEnabled: cfg.Database.UserPlatformQuotaFlusherEnabled}
-	return billing.NewUserPlatformQuotaUsageFlusher(options, cache, quotas, wheel, coordinator, logging.LegacyPrintf)
-}
 func provideBillingSubscriptions(groups *routingpostgres.GroupStore, repo billing.UserSubscriptionRepository, client *dbent.Client, calendar timezone.Calendar) *billing.SubscriptionService {
 	return billing.NewSubscriptionService(billingGroups{Repository: groups}, repo, billingpostgres.NewSubscriptionMutations(client), billing.DateRuntime{Now: time.Now, Calendar: &calendar})
 }
+
 func provideSettlementStore(db *sql.DB, calendar timezone.Calendar) *billingpostgres.SettlementStore {
 	return billingpostgres.NewSettlementStore(db, calendar, schedulerpostgres.EnqueueAccountQuotaChangedInTx, billingpostgres.TaskProjectionFactories{
 		creative.FundingScope: func(tx *sql.Tx, ref billing.TaskReference) billingpostgres.TaskProjection {
@@ -74,10 +69,6 @@ func provideSettlementStore(db *sql.DB, calendar timezone.Calendar) *billingpost
 	})
 }
 
-// providePlatformQuotaStore 将缓存预检、管理重置与数据库镜像绑定到同一日历。
-func providePlatformQuotaStore(client *dbent.Client, calendar timezone.Calendar) billing.UserPlatformQuotaRepository {
-	return billingpostgres.NewUserPlatformQuotaRepository(client, calendar)
-}
 func provideBillingFunds(store *billingpostgres.SettlementStore) *billing.Funds {
 	return billing.NewFunds(store)
 }
@@ -89,6 +80,7 @@ func provideBillingRedeem(repo billing.RedeemCodeRepository, users *identitypost
 func provideRedeemAdministration(repo billing.RedeemCodeRepository, client *dbent.Client) *billing.RedeemAdmin {
 	return billing.NewRedeemAdmin(repo, billingpostgres.NewRedeemAdministrationMutations(client), time.Now)
 }
+
 func provideBalanceAdjuster(client *dbent.Client) billing.BalanceAdjuster {
 	return billingpostgres.NewBalanceStore(client)
 }

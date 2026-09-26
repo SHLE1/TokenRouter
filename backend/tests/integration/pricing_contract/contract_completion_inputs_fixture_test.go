@@ -56,7 +56,6 @@ func projectContractSettlement(p *contractSettlementInput) *completion.Settlemen
 		SubscriptionRateMultiplierScale: p.SubscriptionRateMultiplierScale,
 		BalanceRateMultiplier:           p.BalanceRateMultiplier,
 		QuotaUpdates:                    p.APIKeyService != nil,
-		Platform:                        p.Platform,
 		BillingBaseAmountUSD:            p.BillingBaseAmountUSD,
 	}
 }

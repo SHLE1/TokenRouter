@@ -15,7 +15,6 @@ import (
 	billingpricing "github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 	"github.com/TokenFlux/TokenRouter/internal/config"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 
 	"github.com/stretchr/testify/require"
 )
@@ -78,8 +77,8 @@ func TestCalculateCostUnified_DeepseekPeakDoesNotOverrideGroupPricing(t *testing
 	resolver := billingtestkit.PriceResolver(nil, bs)
 	inputPrice, outputPrice := 1e-6, 2e-6
 	group := &routing.Group{
-		ID:       1,
-		Platform: capability.PlatformDeepseek,
+		ID: 1,
+
 		ModelPricing: []routing.ModelPricingEntry{{
 			Models:      []string{"deepseek-v4-flash"},
 			BillingMode: routing.BillingModeToken,

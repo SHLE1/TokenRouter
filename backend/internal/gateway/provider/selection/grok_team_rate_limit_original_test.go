@@ -15,17 +15,29 @@ import (
 func TestGrokTeamModelRateLimit_MarksAndFiltersSiblings(t *testing.T) {
 	// 使用唯一团队 ID，避免与其他测试相互影响。
 	team := "team-test-" + time.Now().Format("150405.000")
-	a1 := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 101, Platform: capability.PlatformGrok, Type: capability.AccountTypeOAuth,
-		Credentials: map[string]any{"team_id": team}},
+	a1 := &gatewayprovider.ExecutionAccount{
+		Record: accountcore.Record{
+			LoadLocation: time.LoadLocation, ID: 101, Platform: capability.PlatformGrok, Type: capability.AccountTypeOAuth,
+			Credentials: map[string]any{"model_whitelist": []string{"*"}, "team_id": team},
+		},
 	}
-	a2 := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 102, Platform: capability.PlatformGrok, Type: capability.AccountTypeOAuth,
-		Credentials: map[string]any{"team_id": team}},
+	a2 := &gatewayprovider.ExecutionAccount{
+		Record: accountcore.Record{
+			LoadLocation: time.LoadLocation, ID: 102, Platform: capability.PlatformGrok, Type: capability.AccountTypeOAuth,
+			Credentials: map[string]any{"model_whitelist": []string{"*"}, "team_id": team},
+		},
 	}
-	other := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 103, Platform: capability.PlatformGrok, Type: capability.AccountTypeOAuth,
-		Credentials: map[string]any{"team_id": team + "-other"}},
+	other := &gatewayprovider.ExecutionAccount{
+		Record: accountcore.Record{
+			LoadLocation: time.LoadLocation, ID: 103, Platform: capability.PlatformGrok, Type: capability.AccountTypeOAuth,
+			Credentials: map[string]any{"model_whitelist": []string{"*"}, "team_id": team + "-other"},
+		},
 	}
-	noTeam := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 104, Platform: capability.PlatformGrok, Type: capability.AccountTypeOAuth,
-		Credentials: map[string]any{}},
+	noTeam := &gatewayprovider.ExecutionAccount{
+		Record: accountcore.Record{
+			LoadLocation: time.LoadLocation, ID: 104, Platform: capability.PlatformGrok, Type: capability.AccountTypeOAuth,
+			Credentials: map[string]any{"model_whitelist": []string{"*"}},
+		},
 	}
 
 	now := time.Now()
@@ -46,8 +58,11 @@ func TestGrokTeamModelRateLimit_MarksAndFiltersSiblings(t *testing.T) {
 
 func TestGrokTeamModelRateLimit_Expires(t *testing.T) {
 	team := "team-expire-" + time.Now().Format("150405.000")
-	a := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 201, Platform: capability.PlatformGrok, Type: capability.AccountTypeOAuth,
-		Credentials: map[string]any{"team_id": team}},
+	a := &gatewayprovider.ExecutionAccount{
+		Record: accountcore.Record{
+			LoadLocation: time.LoadLocation, ID: 201, Platform: capability.PlatformGrok, Type: capability.AccountTypeOAuth,
+			Credentials: map[string]any{"model_whitelist": []string{"*"}, "team_id": team},
+		},
 	}
 	past := time.Now().Add(-time.Minute)
 	accountcore.MarkGrokTeamModelRateLimit(gatewayprovider.ExecutionRecord(a), "grok-4.5", past)
@@ -58,13 +73,16 @@ func TestGrokTeamModelRateLimit_Expires(t *testing.T) {
 
 func TestGrokTeamModelRateLimitFilterUsesMappedUpstreamModel(t *testing.T) {
 	now := time.Now()
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 301,
-		Platform: capability.PlatformGrok,
-		Type:     capability.AccountTypeOAuth,
-		Credentials: map[string]any{
-			"team_id":       "team-mapped-301",
-			"model_mapping": map[string]any{"gpt-*": "grok-4.5"},
-		}},
+	account := &gatewayprovider.ExecutionAccount{
+		Record: accountcore.Record{
+			LoadLocation: time.LoadLocation, ID: 301,
+			Platform: capability.PlatformGrok,
+			Type:     capability.AccountTypeOAuth,
+			Credentials: map[string]any{
+				"team_id":       "team-mapped-301",
+				"model_mapping": map[string]any{"gpt-*": "grok-4.5"},
+			},
+		},
 	}
 	accountcore.MarkGrokTeamModelRateLimit(gatewayprovider.ExecutionRecord(account), "grok-4.5", now.Add(time.Hour))
 

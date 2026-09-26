@@ -107,8 +107,9 @@ func provideGenericSelection(reads selection.Reads, shared selection.Shared, cfg
 	}, selectionOptions(cfg))
 }
 
-func provideCompatibleSelection(reads selection.Reads, shared selection.Shared, cfg *config.Config, responses session.OpenAIWSStateStore, quota *account.QuotaSettingsCache, blocks *account.RuntimeBlockState, transient *account.ModelTransientState, proxy *egress.ProxyStreamCircuit, state *schedulerSharedState, gates *selectionFreeQuotaGates) *selection.Compatible {
+func provideCompatibleSelection(generic *selection.Generic, gemini *selection.Gemini, reads selection.Reads, shared selection.Shared, cfg *config.Config, responses session.OpenAIWSStateStore, quota *account.QuotaSettingsCache, blocks *account.RuntimeBlockState, transient *account.ModelTransientState, proxy *egress.ProxyStreamCircuit, state *schedulerSharedState, gates *selectionFreeQuotaGates) *selection.Compatible {
 	return selection.NewCompatible(selection.CompatibleDependencies{
+		Generic: generic, Gemini: gemini,
 		Reads:                reads,
 		Shared:               shared,
 		Responses:            responses,

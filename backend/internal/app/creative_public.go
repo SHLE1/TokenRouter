@@ -161,13 +161,13 @@ func creativeGroupView(g *routing.Group) *creative.GroupView {
 	return &creative.GroupView{
 		ID:                   g.ID,
 		Name:                 g.Name,
-		Platform:             g.Platform,
+		ClaudeCodeOnly:       g.ClaudeCodeOnly,
 		IsExclusive:          g.IsExclusive,
 		AllowImageGeneration: g.AllowImageGeneration,
 		Active:               g.IsActive(),
 		RateMultiplier:       g.RateMultiplier,
-		RoutingPolicy:        g.RoutingPolicy.Clone(),
-		Operations:           creative.OperationsForGroup(g.Platform, g.ResponsesImagePolicy != "" || g.ProtocolFallbacks != nil, g.AllowsClientProtocol),
+		RoutingPolicy:        g.RoutingPolicy.Clone(), ProtocolFallbacks: g.ProtocolFallbacks,
+		Operations: creative.OperationsForGroup(g.ResponsesImagePolicy != "" || g.ProtocolFallbacks != nil, g.AllowsClientProtocol),
 		Price: billing.PriceGroup{
 			ModelPricing:              g.ModelPricing,
 			LongContextPricingEnabled: g.LongContextPricingEnabled,

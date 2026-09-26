@@ -110,7 +110,7 @@ func NativeProtocolOptions(platform, accountType, authMode string) []ProtocolID 
 
 // ProtocolFallbackTargets 仅列出已有适配器支持的单步目标；原生直通不作为转换项。
 func ProtocolFallbackTargets(platform string, source ProtocolID) []ProtocolID {
-	if !slices.Contains(SupportedGroupClientProtocols(platform), source) {
+	if !platformSupportsClientProtocol(platform, source) {
 		return []ProtocolID{}
 	}
 	var targets []ProtocolID
@@ -171,4 +171,27 @@ func ProtocolCatalog() []Protocol {
 		out[i].Platforms = slices.Clone(out[i].Platforms)
 	}
 	return out
+}
+
+// platformSupportsClientProtocol 校验具体上游已有的入口实现，独立于分组准入。
+func platformSupportsClientProtocol(platform string, source ProtocolID) bool {
+	for _, entry := range protocolCatalog {
+		if entry.ID == source {
+			return slices.Contains(entry.Platforms, platform)
+		}
+	}
+	return false
+}
+
+// AutomaticProtocolFallbackTargets 是所有候选共用的稳定转换顺序，只包含已实现的单步路线。
+func AutomaticProtocolFallbackTargets(source ProtocolID) []ProtocolID {
+	targets := []ProtocolID{}
+	for _, platform := range []string{PlatformOpenAI, PlatformAnthropic, PlatformGemini, PlatformAntigravity, PlatformGrok, PlatformQoder, PlatformKimi, PlatformZhipu, PlatformDeepseek} {
+		for _, target := range ProtocolFallbackTargets(platform, source) {
+			if !slices.Contains(targets, target) {
+				targets = append(targets, target)
+			}
+		}
+	}
+	return targets
 }

@@ -50,37 +50,9 @@ func (b *billingCacheWorkerStub) InvalidateAPIKeyRateLimit(ctx context.Context, 
 	return nil
 }
 
-func (b *billingCacheWorkerStub) GetUserPlatformQuotaCache(ctx context.Context, userID int64, platform string) (*UserPlatformQuotaCacheEntry, bool, error) {
-	return nil, false, nil
-}
-
-func (b *billingCacheWorkerStub) SetUserPlatformQuotaCache(ctx context.Context, userID int64, platform string, entry *UserPlatformQuotaCacheEntry, ttl time.Duration) error {
-	return nil
-}
-
-func (b *billingCacheWorkerStub) DeleteUserPlatformQuotaCache(ctx context.Context, userID int64, platform string) error {
-	return nil
-}
-
-func (b *billingCacheWorkerStub) IncrUserPlatformQuotaUsageCache(ctx context.Context, userID int64, platform string, cost float64, ttl time.Duration, markDirty bool) error {
-	return nil
-}
-
-func (b *billingCacheWorkerStub) PopDirtyUserPlatformQuotaKeys(ctx context.Context, n int) ([]UserPlatformQuotaKey, error) {
-	return nil, nil
-}
-
-func (b *billingCacheWorkerStub) ReaddDirtyUserPlatformQuotaKeys(ctx context.Context, keys []UserPlatformQuotaKey) error {
-	return nil
-}
-
-func (b *billingCacheWorkerStub) BatchGetUserPlatformQuotaCache(ctx context.Context, keys []UserPlatformQuotaKey) ([]*UserPlatformQuotaCacheEntry, error) {
-	return nil, nil
-}
-
 func TestBillingCacheServiceQueueHighLoad(t *testing.T) {
 	cache := &billingCacheWorkerStub{}
-	svc := NewEligibility(cache, nil, nil, nil, func() EligibilityOptions { return EligibilityOptions{} }, nil, NewQuotaCoordinator())
+	svc := NewEligibility(cache, nil, nil, func() EligibilityOptions { return EligibilityOptions{} }, nil)
 	svc.Start()
 	t.Cleanup(svc.Stop)
 
@@ -103,7 +75,7 @@ func TestBillingCacheServiceQueueHighLoad(t *testing.T) {
 
 func TestBillingCacheServiceEnqueueAfterStopReturnsFalse(t *testing.T) {
 	cache := &billingCacheWorkerStub{}
-	svc := NewEligibility(cache, nil, nil, nil, func() EligibilityOptions { return EligibilityOptions{} }, nil, NewQuotaCoordinator())
+	svc := NewEligibility(cache, nil, nil, func() EligibilityOptions { return EligibilityOptions{} }, nil)
 	svc.Start()
 	svc.Stop()
 

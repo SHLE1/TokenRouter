@@ -45,7 +45,7 @@ func RoutePlanForMapping(ctx context.Context, group *routing.Group, groupID *int
 	}
 	var view *routing.Group
 	if group != nil {
-		view = &routing.Group{ID: group.ID, Platform: group.Platform, SchedulerType: group.SchedulerType, AllowedProtocols: group.AllowedProtocols, ProtocolFallbacks: group.ProtocolFallbacks}
+		view = &routing.Group{ID: group.ID, SchedulerType: group.SchedulerType, AllowedProtocols: group.AllowedProtocols, ProtocolFallbacks: group.ProtocolFallbacks}
 	}
 	protocol, _ := requeststate.ClientProtocolFromContext(ctx)
 	return routing.Plan(routing.PlanInput{Group: view, GroupID: groupID, ClientProtocol: protocol, RequestedModel: requested, GroupMapping: mapping})

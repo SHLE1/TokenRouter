@@ -11,6 +11,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
+	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/stretchr/testify/require"
 )
 
@@ -133,11 +134,13 @@ func TestAPIKeyService_Create_EscapesNameBeforePersist(t *testing.T) {
 	repo := &apiKeyNameSanitizeRepoStub{}
 	svc := newAPIKeyTestService(apiKeyTestDependencies{
 		apiKeyRepo: repo,
+		groupRepo:  &compositeGroupRepoStub{groups: map[int64]*routing.Group{1: {ID: 1, Status: billing.StatusActive, Hydrated: true}}},
 		userRepo:   &userRepoStub{user: &identity.User{ID: 7, Status: billing.StatusActive, Role: identity.RoleUser}},
 	})
 	customKey := "sk_valid_xss_key_1"
 
 	created, err := svc.Create(context.Background(), 7, apikey.CreateAPIKeyRequest{
+		GroupID:   sanitizeFixtureGroupID(),
 		Name:      `<img src=x onerror=alert(1)>`,
 		CustomKey: &customKey,
 	})
@@ -148,30 +151,32 @@ func TestAPIKeyService_Create_EscapesNameBeforePersist(t *testing.T) {
 	require.Equal(t, "&lt;img src=x onerror=alert(1)&gt;", repo.created[0].Name)
 }
 
-func TestAPIKeyService_Create_DefaultsGroupFallbackEnabled(t *testing.T) {
+func TestAPIKeyService_Create_DefaultsConfiguredGroupFallbackEnabled(t *testing.T) {
 	repo := &apiKeyNameSanitizeRepoStub{}
 	svc := newAPIKeyTestService(apiKeyTestDependencies{
 		apiKeyRepo: repo,
+		groupRepo:  &compositeGroupRepoStub{groups: map[int64]*routing.Group{1: {ID: 1, Status: billing.StatusActive, Hydrated: true}}},
 		userRepo:   &userRepoStub{user: &identity.User{ID: 7, Status: billing.StatusActive, Role: identity.RoleUser}},
 	})
 	customKey := "sk_valid_default_fallback"
 
 	created, err := svc.Create(context.Background(), 7, apikey.CreateAPIKeyRequest{
+		GroupID:   sanitizeFixtureGroupID(),
 		Name:      "default fallback",
 		CustomKey: &customKey,
 	})
 
 	require.NoError(t, err)
-	require.True(t, created.FallbackToDefaultGroupWhenUnavailable)
+	require.True(t, created.FallbackWhenGroupUnavailable)
 	require.Len(t, repo.created, 1)
-	require.True(t, repo.created[0].FallbackToDefaultGroupWhenUnavailable)
+	require.True(t, repo.created[0].FallbackWhenGroupUnavailable)
 	require.Equal(t, apikey.APIKeyFastModePolicyFollowRequest, created.FastModePolicy)
 }
 
 func TestAPIKeyService_CreateRejectsInvalidFastModePolicy(t *testing.T) {
 	svc := newAPIKeyTestService(apiKeyTestDependencies{})
 
-	_, err := svc.Create(context.Background(), 7, apikey.CreateAPIKeyRequest{FastModePolicy: "invalid"})
+	_, err := svc.Create(context.Background(), 7, apikey.CreateAPIKeyRequest{GroupID: sanitizeFixtureGroupID(), FastModePolicy: "invalid"})
 	require.ErrorIs(t, err, apikey.ErrInvalidAPIKeyFastModePolicy)
 }
 
@@ -179,21 +184,23 @@ func TestAPIKeyService_Create_AllowsDisablingGroupFallback(t *testing.T) {
 	repo := &apiKeyNameSanitizeRepoStub{}
 	svc := newAPIKeyTestService(apiKeyTestDependencies{
 		apiKeyRepo: repo,
+		groupRepo:  &compositeGroupRepoStub{groups: map[int64]*routing.Group{1: {ID: 1, Status: billing.StatusActive, Hydrated: true}}},
 		userRepo:   &userRepoStub{user: &identity.User{ID: 7, Status: billing.StatusActive, Role: identity.RoleUser}},
 	})
 	customKey := "sk_valid_disabled_fallback"
 	fallback := false
 
 	created, err := svc.Create(context.Background(), 7, apikey.CreateAPIKeyRequest{
-		Name:                                  "disabled fallback",
-		CustomKey:                             &customKey,
-		FallbackToDefaultGroupWhenUnavailable: &fallback,
+		GroupID:                      sanitizeFixtureGroupID(),
+		Name:                         "disabled fallback",
+		CustomKey:                    &customKey,
+		FallbackWhenGroupUnavailable: &fallback,
 	})
 
 	require.NoError(t, err)
-	require.False(t, created.FallbackToDefaultGroupWhenUnavailable)
+	require.False(t, created.FallbackWhenGroupUnavailable)
 	require.Len(t, repo.created, 1)
-	require.False(t, repo.created[0].FallbackToDefaultGroupWhenUnavailable)
+	require.False(t, repo.created[0].FallbackWhenGroupUnavailable)
 }
 
 func TestAPIKeyService_Update_EscapesNameBeforePersist(t *testing.T) {
@@ -280,3 +287,6 @@ func TestAPIKeyService_UpdateRejectsInvalidIPRestriction(t *testing.T) {
 	require.ErrorIs(t, err, apikey.ErrInvalidIPPattern)
 	require.Empty(t, repo.updated)
 }
+
+// 名称与配置测试使用明确的普通分组。
+func sanitizeFixtureGroupID() *int64 { id := int64(1); return &id }

@@ -1419,9 +1419,12 @@
       </div>
 
       <!-- Antigravity model restriction (applies to OAuth + Upstream) -->
-      <!-- Antigravity 只支持模型映射模式，不支持白名单模式 -->
+      <!-- 白名单与映射分别控制最终范围和请求改写。 -->
       <div v-if="form.platform === 'antigravity'" class="border-t border-gray-200 pt-4 dark:border-dark-600">
         <label class="input-label">{{ t('admin.accounts.modelRestriction') }}</label>
+        <p class="input-hint">{{ t('admin.accounts.selectAllowedModels') }}</p>
+        <ModelWhitelistSelector v-model="antigravityWhitelistModels" platform="antigravity" />
+
 
         <!-- Mapping Mode Only (no toggle for Antigravity) -->
         <div>
@@ -1634,16 +1637,7 @@
         <div class="border-t border-gray-200 pt-4 dark:border-dark-600">
           <label class="input-label">{{ t('admin.accounts.modelRestriction') }}</label>
 
-          <div
-            v-if="isOpenAIModelRestrictionDisabled"
-            class="mb-3 rounded-control bg-amber-50 p-3 dark:bg-amber-900/20"
-          >
-            <p class="text-xs text-amber-700 dark:text-amber-400">
-              {{ t('admin.accounts.openai.modelRestrictionDisabledByPassthrough') }}
-            </p>
-          </div>
 
-          <template v-else>
             <!-- Mode Toggle -->
             <div class="mb-4 flex gap-2">
               <button
@@ -1816,7 +1810,7 @@
                 </button>
               </div>
             </div>
-          </template>
+
         </div>
 
         <!-- Pool Mode Section -->
@@ -2375,21 +2369,12 @@
 
       <!-- OpenAI OAuth Model Mapping (OAuth 类型没有 apikey 容器，需要独立的模型映射区域) -->
       <div
-        v-if="(form.platform === 'openai' || form.platform === 'grok') && isOAuthFlow"
+        v-if="['openai', 'grok', 'gemini'].includes(form.platform) && isOAuthFlow"
         class="border-t border-gray-200 pt-4 dark:border-dark-600"
       >
         <label class="input-label">{{ t('admin.accounts.modelRestriction') }}</label>
 
-        <div
-          v-if="isOpenAIModelRestrictionDisabled"
-          class="mb-3 rounded-control bg-amber-50 p-3 dark:bg-amber-900/20"
-        >
-          <p class="text-xs text-amber-700 dark:text-amber-400">
-            {{ t('admin.accounts.openai.modelRestrictionDisabledByPassthrough') }}
-          </p>
-        </div>
 
-        <template v-else>
           <!-- Mode Toggle -->
           <div class="mb-4 flex gap-2">
             <button
@@ -2509,7 +2494,7 @@
               </button>
             </div>
           </div>
-        </template>
+
       </div>
 
       <!-- Temp Unschedulable Rules -->
@@ -3311,35 +3296,6 @@
       </div>
 
       <div class="border-t border-gray-200 pt-4 dark:border-dark-600">
-        <!-- Mixed Scheduling (only for antigravity accounts) -->
-        <div v-if="form.platform === 'antigravity'" class="flex items-center gap-2">
-          <label class="flex cursor-pointer items-center gap-2">
-            <input
-              type="checkbox"
-              v-model="mixedScheduling"
-              class="h-4 w-4 rounded-compact border-gray-300 text-primary-500 focus:ring-primary-500 dark:border-dark-500"
-            />
-            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
-              {{ t('admin.accounts.mixedScheduling') }}
-            </span>
-          </label>
-          <div class="group relative">
-            <span
-              class="inline-flex h-4 w-4 cursor-help items-center justify-center rounded-full bg-gray-200 text-xs text-gray-500 hover:bg-gray-300 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500"
-            >
-              ?
-            </span>
-            <!-- Tooltip（向下显示避免被弹窗裁剪） -->
-            <div
-              class="pointer-events-none absolute left-0 top-full z-tooltip mt-1.5 w-72 rounded-compact bg-gray-900 px-3 py-2 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 dark:bg-gray-700"
-            >
-              {{ t('admin.accounts.mixedSchedulingTooltip') }}
-              <div
-                class="absolute bottom-full left-3 border-4 border-transparent border-b-gray-900 dark:border-b-gray-700"
-              ></div>
-            </div>
-          </div>
-        </div>
         <div v-if="form.platform === 'antigravity'" class="mt-3 flex items-center gap-2">
           <label class="flex cursor-pointer items-center gap-2">
             <input
@@ -3370,11 +3326,8 @@
 
         <!-- Group Selection - 仅标准模式显示 -->
         <GroupSelector
-          v-if="!authStore.isSimpleMode"
           v-model="form.group_ids"
           :groups="groups"
-          :platform="form.platform"
-          :mixed-scheduling="mixedScheduling"
           data-tour="account-form-groups"
         />
       </div>
@@ -3726,16 +3679,7 @@
   </BaseDialog>
 
   <!-- Mixed Channel Warning Dialog -->
-  <ConfirmDialog
-    :show="showMixedChannelWarning"
-    :title="t('admin.accounts.mixedChannelWarningTitle')"
-    :message="mixedChannelWarningMessageText"
-    :confirm-text="t('common.confirm')"
-    :cancel-text="t('common.cancel')"
-    :danger="true"
-    @confirm="handleMixedChannelConfirm"
-    @cancel="handleMixedChannelCancel"
-  />
+
 </template>
 
 <script setup lang="ts">
@@ -3761,7 +3705,6 @@ import {
   fetchAntigravityDefaultMappings,
   isValidWildcardPattern
 } from '@/composables/useModelWhitelist'
-import { useAuthStore } from '@/stores/auth'
 import { adminAPI } from '@/api/admin'
 import { useQuotaNotifyState } from '@/composables/useQuotaNotifyState'
 import {
@@ -3784,7 +3727,6 @@ import type {
   AdminGroup,
   AccountPlatform,
   AccountType,
-  CheckMixedChannelResponse,
   CreateAccountRequest,
   CodexSessionImportMessage,
   OpenAICompactMode,
@@ -3793,7 +3735,6 @@ import type {
 } from '@/types'
 import type { OpenAIOAuthImportDefaults } from '@/api/admin/settings'
 import BaseDialog from '@/components/common/BaseDialog.vue'
-import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import Select from '@/components/common/Select.vue'
 import HelpTooltip from '@/components/common/HelpTooltip.vue'
 import Toggle from '@/components/common/Toggle.vue'
@@ -3858,7 +3799,6 @@ interface OAuthFlowExposed {
 }
 
 const { t } = useI18n()
-const authStore = useAuthStore()
 
 const oauthStepTitle = computed(() => {
   if (form.platform === 'openai') return t('admin.accounts.oauth.openai.title')
@@ -4303,7 +4243,6 @@ adminAPI.settings.getWebSearchEmulationConfig().then(cfg => {
 }).catch(() => { webSearchGlobalEnabled.value = false })
 
 loadQuotaNotifyGlobal()
-const mixedScheduling = ref(false) // For antigravity accounts: enable mixed scheduling
 const allowOverages = ref(false) // For antigravity accounts: enable AI Credits overages
 const antigravityAccountType = ref<'oauth' | 'upstream'>('oauth') // For antigravity: oauth or upstream
 const qoderAccountType = ref<'oauth' | 'manual'>('oauth')
@@ -4355,21 +4294,12 @@ const openAIOAuthClientPolicyOptions = computed(() => [
 
 function buildAntigravityExtra(): Record<string, unknown> | undefined {
   const extra: Record<string, unknown> = {}
-  if (mixedScheduling.value) extra.mixed_scheduling = true
   if (allowOverages.value) extra.allow_overages = true
   return Object.keys(extra).length > 0 ? extra : undefined
 }
 
 const buildOpenAICompactModelMapping = () =>
   buildModelMappingObject('mapping', [], openAICompactModelMappings.value)
-
-const showMixedChannelWarning = ref(false)
-const mixedChannelWarningDetails = ref<{ groupName: string; currentPlatform: string; otherPlatform: string } | null>(
-  null
-)
-const mixedChannelWarningRawMessage = ref('')
-const mixedChannelWarningAction = ref<(() => Promise<void>) | null>(null)
-const antigravityMixedChannelConfirmed = ref(false)
 const showAdvancedOAuth = ref(false)
 const showGeminiHelpDialog = ref(false)
 
@@ -4474,9 +4404,6 @@ const openAIWSModeConcurrencyHintKey = computed(() =>
   resolveOpenAIWSModeConcurrencyHintKey(openaiResponsesWebSocketV2Mode.value)
 )
 
-const isOpenAIModelRestrictionDisabled = computed(() =>
-  form.platform === 'openai' && openaiPassthroughEnabled.value
-)
 
 const openAIOAuthImportDefaults = ref<OpenAIOAuthImportDefaults | null>(null)
 const openAIOAuthImportDefaultsLoaded = ref(false)
@@ -4677,13 +4604,6 @@ const applyOpenAIOAuthCredentialDefaults = (credentials: Record<string, unknown>
   }
 }
 
-const mixedChannelWarningMessageText = computed(() => {
-  if (mixedChannelWarningDetails.value) {
-    return t('admin.accounts.mixedChannelWarning', mixedChannelWarningDetails.value)
-  }
-  return mixedChannelWarningRawMessage.value
-})
-
 const geminiQuotaDocs = {
   codeAssist: 'https://developers.google.com/gemini-code-assist/resources/quotas',
   aiStudio: 'https://ai.google.dev/pricing',
@@ -4815,7 +4735,7 @@ watch(
         .then(routers => { tlsFingerprintRouters.value = routers.map(router => ({ id: router.id, name: router.name })) })
         .catch(() => { tlsFingerprintRouters.value = [] })
       // Modal opened - fill related models
-      allowedModels.value = form.platform === 'qoder' ? [] : [...getModelsByPlatform(form.platform)]
+      allowedModels.value = []
       if (isOpenAIOAuthImportDefaultsTarget.value) {
         void loadOpenAIOAuthImportDefaults()
       }
@@ -5279,84 +5199,14 @@ const splitTempUnschedKeywords = (value: string) => {
     .filter((item) => item.length > 0)
 }
 
-const needsMixedChannelCheck = (platform: AccountPlatform) => platform === 'antigravity' || platform === 'anthropic'
-
-const buildMixedChannelDetails = (resp?: CheckMixedChannelResponse) => {
-  const details = resp?.details
-  if (!details) {
-    return null
-  }
-  return {
-    groupName: details.group_name || 'Unknown',
-    currentPlatform: details.current_platform || 'Unknown',
-    otherPlatform: details.other_platform || 'Unknown'
-  }
-}
-
-const clearMixedChannelDialog = () => {
-  showMixedChannelWarning.value = false
-  mixedChannelWarningDetails.value = null
-  mixedChannelWarningRawMessage.value = ''
-  mixedChannelWarningAction.value = null
-}
-
-const openMixedChannelDialog = (opts: {
-  response?: CheckMixedChannelResponse
-  message?: string
-  onConfirm: () => Promise<void>
-}) => {
-  mixedChannelWarningDetails.value = buildMixedChannelDetails(opts.response)
-  mixedChannelWarningRawMessage.value =
-    opts.message || opts.response?.message || t('admin.accounts.failedToCreate')
-  mixedChannelWarningAction.value = opts.onConfirm
-  showMixedChannelWarning.value = true
-}
-
-const withAntigravityConfirmFlag = (payload: CreateAccountRequest): CreateAccountRequest => {
-  if (needsMixedChannelCheck(payload.platform) && antigravityMixedChannelConfirmed.value) {
-    return {
-      ...payload,
-      confirm_mixed_channel_risk: true
-    }
-  }
-  const cloned = { ...payload }
-  delete cloned.confirm_mixed_channel_risk
-  return cloned
-}
-
-const ensureAntigravityMixedChannelConfirmed = async (onConfirm: () => Promise<void>): Promise<boolean> => {
-  if (!needsMixedChannelCheck(form.platform)) {
-    return true
-  }
-  if (antigravityMixedChannelConfirmed.value) {
-    return true
-  }
-
-  try {
-    const result = await adminAPI.accounts.checkMixedChannelRisk({
-      platform: form.platform,
-      group_ids: form.group_ids
-    })
-    if (!result.has_risk) {
-      return true
-    }
-    openMixedChannelDialog({
-      response: result,
-      onConfirm: async () => {
-        antigravityMixedChannelConfirmed.value = true
-        await onConfirm()
-      }
-    })
-    return false
-  } catch (error: any) {
-    appStore.showError(error.response?.data?.message || error.response?.data?.detail || t('admin.accounts.failedToCreate'))
-    return false
-  }
-}
-
 
 // 普通提交、批量授权与导入入口共用此边界，不能遗漏原生集合。
 async function createProtocolAccount(payload: CreateAccountRequest) {
+  if (payload.platform === 'antigravity') {
+    payload.credentials = { ...payload.credentials, model_whitelist: [...antigravityWhitelistModels.value] }
+  } else if (payload.platform === 'gemini') {
+    applyPersistedModelRestriction(payload.credentials)
+  }
   await loadProtocolCatalog()
   const options = nativeProtocolOptions(payload.platform, payload.type, String(payload.credentials?.auth_mode ?? ''))
   payload.credentials = { ...payload.credentials, upstream_protocols: (upstreamProtocols.value ?? options).filter(id => options.includes(id)) }
@@ -5374,7 +5224,7 @@ const submitCreateAccount = async (
 ): Promise<boolean> => {
   submitting.value = true
   try {
-    await createProtocolAccount(withAntigravityConfirmFlag(payload))
+    await createProtocolAccount(payload)
     if (!isCurrent()) return false
     appStore.showSuccess(t('admin.accounts.accountCreated'))
     emit('created')
@@ -5382,17 +5232,6 @@ const submitCreateAccount = async (
     return true
   } catch (error: any) {
     if (!isCurrent()) return false
-    if (error.response?.status === 409 && error.response?.data?.error === 'mixed_channel_warning' && needsMixedChannelCheck(form.platform)) {
-      openMixedChannelDialog({
-        message: error.response?.data?.message,
-        onConfirm: async () => {
-          if (!isCurrent()) return
-          antigravityMixedChannelConfirmed.value = true
-          await submitCreateAccount(payload, isCurrent)
-        }
-      })
-      return false
-    }
     appStore.showError(error.response?.data?.message || error.response?.data?.detail || t('admin.accounts.failedToCreate'))
     return false
   } finally {
@@ -5540,19 +5379,15 @@ const resetForm = () => {
   qoderOAuth.resetState()
   grokOAuth.resetState()
   oauthFlowRef.value?.reset()
-  antigravityMixedChannelConfirmed.value = false
   openAIOAuthImportDefaults.value = null
   openAIOAuthImportDefaultsLoaded.value = false
   openAIOAuthImportDefaultsApplied.value = false
-  clearMixedChannelDialog()
 }
 
 const finishClose = () => {
   stopQoderPolling()
   resetQoderOAuthCompletionState()
   closeQoderAuthPopup()
-  antigravityMixedChannelConfirmed.value = false
-  clearMixedChannelDialog()
   emit('close')
 }
 
@@ -5717,40 +5552,9 @@ const buildAnthropicExtra = (base?: Record<string, unknown>): Record<string, unk
   return Object.keys(extra).length > 0 ? extra : undefined
 }
 
-// Helper function to create account with mixed channel warning handling
-const doCreateAccount = async (
-  payload: CreateAccountRequest,
-  isCurrent: AccountCreateGuard = () => true
-): Promise<boolean> => {
-  let confirmedResult = false
-  const canContinue = await ensureAntigravityMixedChannelConfirmed(async () => {
-    if (!isCurrent()) return
-    confirmedResult = await submitCreateAccount(payload, isCurrent)
-  })
-  if (!canContinue || !isCurrent()) {
-    return confirmedResult
-  }
+const doCreateAccount = async (payload: CreateAccountRequest, isCurrent: AccountCreateGuard = () => true): Promise<boolean> => {
+  if (!isCurrent()) return false
   return submitCreateAccount(payload, isCurrent)
-}
-
-// Handle mixed channel warning confirmation
-const handleMixedChannelConfirm = async () => {
-  const action = mixedChannelWarningAction.value
-  if (!action) {
-    clearMixedChannelDialog()
-    return
-  }
-  clearMixedChannelDialog()
-  submitting.value = true
-  try {
-    await action()
-  } finally {
-    submitting.value = false
-  }
-}
-
-const handleMixedChannelCancel = () => {
-  clearMixedChannelDialog()
 }
 
 const normalizePoolModeRetryCount = (value: number) => {
@@ -5818,12 +5622,6 @@ const handleSubmit = async () => {
   if (isOAuthFlow.value) {
     if (!isGrokSSOInputMethod.value && !form.name.trim()) {
       appStore.showError(t('admin.accounts.pleaseEnterAccountName'))
-      return
-    }
-    const canContinue = await ensureAntigravityMixedChannelConfirmed(async () => {
-      step.value = 2
-    })
-    if (!canContinue) {
       return
     }
     step.value = 2
@@ -5917,6 +5715,7 @@ const handleSubmit = async () => {
     if (antigravityModelMapping) {
       credentials.model_mapping = antigravityModelMapping
     }
+    credentials.model_whitelist = [...antigravityWhitelistModels.value]
 
     applyInterceptWarmup(credentials, interceptWarmupRequests.value, 'create')
 
@@ -6068,7 +5867,7 @@ const handleSubmit = async () => {
   }
 
   // Add model mapping if configured（OpenAI 开启自动透传时不应用）
-  if (!isOpenAIModelRestrictionDisabled.value) {
+  if (true) {
     applyPersistedModelRestriction(credentials)
   }
   if (form.platform === 'openai') {
@@ -6392,12 +6191,7 @@ const createAccountAndFinish = async (
     if (!credentials.base_url) {
       credentials.base_url = apiKeyBaseUrl.value.trim() || 'https://api.x.ai/v1'
     }
-    const modelMapping = buildModelMappingObject(modelRestrictionMode.value, allowedModels.value, modelMappings.value)
-    if (modelMapping) {
-      credentials.model_mapping = modelMapping
-    } else {
-      delete credentials.model_mapping
-    }
+    applyPersistedModelRestriction(credentials)
   }
   if (!isCurrent()) return false
   return doCreateAccount({
@@ -6514,7 +6308,7 @@ const buildOpenAIOAuthAccountRequest = (
 
   applyOpenAIOAuthCredentialDefaults(credentials)
   // OpenAI OAuth 透传模式下不应用模型限制。
-  if (!isOpenAIModelRestrictionDisabled.value) {
+  if (true) {
     applyPersistedModelRestriction(credentials)
   }
   const compactModelMapping = buildOpenAICompactModelMapping()
@@ -6609,10 +6403,7 @@ const handleGrokValidateRT = async (refreshTokenInput: string) => {
         const extra = grokOAuth.buildExtraInfo(tokenInfo)
         const accountName = refreshTokens.length > 1 ? `${form.name || tokenInfo.email || 'Grok OAuth Account'} #${i + 1}` : (form.name || tokenInfo.email || 'Grok OAuth Account')
 
-        const modelMapping = buildModelMappingObject(modelRestrictionMode.value, allowedModels.value, modelMappings.value)
-        if (modelMapping) {
-          credentials.model_mapping = modelMapping
-        }
+        applyPersistedModelRestriction(credentials)
         if (!applyTempUnschedConfig(credentials)) {
           failedCount++
           errors.push(`#${i + 1}: ${t('admin.accounts.tempUnschedulable.rulesInvalid')}`)
@@ -6678,10 +6469,7 @@ const handleGrokImportSSO = async (ssoInput: string) => {
 
   const credentials: Record<string, unknown> = {}
   applyGrokOAuthUpstreamConfig(credentials)
-  const modelMapping = buildModelMappingObject(modelRestrictionMode.value, allowedModels.value, modelMappings.value)
-  if (modelMapping) {
-    credentials.model_mapping = modelMapping
-  }
+  applyPersistedModelRestriction(credentials)
   if (!applyTempUnschedConfig(credentials)) {
     grokOAuth.loading.value = false
     return
@@ -6853,7 +6641,7 @@ const OPENAI_MOBILE_RT_CLIENT_ID = 'app_LlGpXReQgckcGGUo2JrYvtJK'
 
 const buildOpenAICodexImportCredentialExtras = (): Record<string, unknown> | null => {
   const credentials: Record<string, unknown> = {}
-  if (!isOpenAIModelRestrictionDisabled.value) {
+  if (true) {
     // 与其他 OpenAI OAuth 创建方式保持一致：映射和最终白名单分别保存。
     applyPersistedModelRestriction(credentials)
   }
@@ -7169,7 +6957,7 @@ const handleAntigravityValidateRT = async (refreshTokenInput: string) => {
         const accountName = refreshTokens.length > 1 ? `${form.name} #${i + 1}` : form.name
 
         // Note: Antigravity doesn't have buildExtraInfo, so we pass empty extra or rely on credentials
-        const createPayload = withAntigravityConfirmFlag({
+        const createPayload: CreateAccountRequest = {
           name: accountName,
           notes: form.notes,
           platform: 'antigravity',
@@ -7184,7 +6972,7 @@ const handleAntigravityValidateRT = async (refreshTokenInput: string) => {
           group_ids: form.group_ids,
           expires_at: form.expires_at,
           auto_pause_on_expired: autoPauseOnExpired.value
-        })
+        }
         await createProtocolAccount(createPayload)
         successCount++
       } catch (error: any) {
@@ -7291,6 +7079,7 @@ const handleAntigravityExchange = async (authCode: string) => {
 		if (antigravityModelMapping) {
 			credentials.model_mapping = antigravityModelMapping
 		}
+    credentials.model_whitelist = [...antigravityWhitelistModels.value]
 		const extra = buildAntigravityExtra()
 		await createAccountAndFinish('antigravity', 'oauth', credentials, extra)
   } catch (error: any) {

@@ -33,21 +33,19 @@ type OpenAIOAuthAccountCreateInput struct {
 	GroupIDs                                  []int64
 }
 type OpenAICodexPATCreateInput struct {
-	AccessToken             string `json:"-"`
-	Name                    string
-	Notes                   *string
-	GroupIDs                []int64
-	ProxyID                 *int64
-	Concurrency             *int
-	Priority                *int
-	RateMultiplier          *float64
-	LoadFactor              *int
-	ExpiresAt               *int64
-	AutoPauseOnExpired      *bool
-	CredentialExtras        map[string]any `json:"-"`
-	Extra                   map[string]any
-	SkipDefaultGroupBind    *bool
-	ConfirmMixedChannelRisk *bool
+	AccessToken        string `json:"-"`
+	Name               string
+	Notes              *string
+	GroupIDs           []int64
+	ProxyID            *int64
+	Concurrency        *int
+	Priority           *int
+	RateMultiplier     *float64
+	LoadFactor         *int
+	ExpiresAt          *int64
+	AutoPauseOnExpired *bool
+	CredentialExtras   map[string]any `json:"-"`
+	Extra              map[string]any
 }
 
 func (OpenAICodexPATCreateInput) String() string { return "OpenAI PAT account creation input" }
@@ -103,7 +101,6 @@ func (s *OpenAIAccountImport) RefreshAccount(ctx context.Context, accountID int6
 	}
 
 	return updatedAccount, nil
-
 }
 
 func (s *OpenAIAccountImport) CreateOAuthAccount(ctx context.Context, req OpenAIOAuthAccountCreateInput, platform string) (*Record, error) {
@@ -114,7 +111,6 @@ func (s *OpenAIAccountImport) CreateOAuthAccount(ctx context.Context, req OpenAI
 	defer finish()
 	// Exchange code for tokens
 	tokenInfo, err := s.Authorization.ExchangeCode(ctx, &OpenAIExchangeCodeInput{
-
 		SessionID: req.SessionID,
 
 		Code: req.Code,
@@ -153,7 +149,6 @@ func (s *OpenAIAccountImport) CreateOAuthAccount(ctx context.Context, req OpenAI
 
 	// Create account
 	account, err := s.Admin.CreateAccount(ctx, &CreateAccountInput{
-
 		Name: name,
 
 		Platform: platform,
@@ -177,7 +172,6 @@ func (s *OpenAIAccountImport) CreateOAuthAccount(ctx context.Context, req OpenAI
 	}
 
 	return account, nil
-
 }
 
 func (s *OpenAIAccountImport) CreatePATAccount(ctx context.Context, req OpenAICodexPATCreateInput) (*Record, error) {
@@ -221,7 +215,6 @@ func (s *OpenAIAccountImport) CreatePATAccount(ctx context.Context, req OpenAICo
 		SanitizeCodexImportCredentialExtras(req.CredentialExtras),
 	)
 	extra := MergeCodexImportMap(req.Extra, map[string]any{
-
 		"import_source": "codex_personal_access_token",
 
 		"auth_provider": "codex_personal_access_token",
@@ -239,13 +232,8 @@ func (s *OpenAIAccountImport) CreatePATAccount(ctx context.Context, req OpenAICo
 	if req.Priority != nil {
 		priority = *req.Priority
 	}
-	skipDefaultGroupBind := false
-	if req.SkipDefaultGroupBind != nil {
-		skipDefaultGroupBind = *req.SkipDefaultGroupBind
-	}
 
 	account, err := s.Admin.CreateAccount(ctx, &CreateAccountInput{
-
 		Name: BuildOpenAICodexPATAccountName(req.Name, tokenInfo),
 
 		Notes: req.Notes,
@@ -273,17 +261,12 @@ func (s *OpenAIAccountImport) CreatePATAccount(ctx context.Context, req OpenAICo
 		ExpiresAt: req.ExpiresAt,
 
 		AutoPauseOnExpired: req.AutoPauseOnExpired,
-
-		SkipDefaultGroupBind: skipDefaultGroupBind,
-
-		SkipMixedChannelCheck: req.ConfirmMixedChannelRisk != nil && *req.ConfirmMixedChannelRisk,
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	return account, nil
-
 }
 
 func BuildOpenAICodexPATAccountName(name string, tokenInfo *OpenAITokenInfo) string {

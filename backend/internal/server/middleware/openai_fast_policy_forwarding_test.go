@@ -43,7 +43,6 @@ import (
 )
 
 func TestAPIKeyAuthForwardsUserScopedOpenAIFastPolicyToUpstream(t *testing.T) {
-
 	upstreamBodies := make(chan []byte, 2)
 	upstreamServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
@@ -97,10 +96,10 @@ func TestAPIKeyAuthForwardsUserScopedOpenAIFastPolicyToUpstream(t *testing.T) {
 
 	groupID := int64(101)
 	group := &routing.Group{
-		ID:       groupID,
-		Name:     "openai",
-		Status:   billing.StatusActive,
-		Platform: capability.PlatformOpenAI,
+		ID:     groupID,
+		Name:   "openai",
+		Status: billing.StatusActive,
+
 		Hydrated: true,
 	}
 	apiKeys := map[string]*apikey.APIKey{
@@ -109,18 +108,21 @@ func TestAPIKeyAuthForwardsUserScopedOpenAIFastPolicyToUpstream(t *testing.T) {
 	}
 	apiKeyService := testkit.NewService(&openAIFastPolicyForwardingAPIKeyRepo{apiKeys: apiKeys}, nil, nil, nil, nil, nil, cfg)
 	apiKeyService.Start()
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 900,
-		Name:        "openai-upstream",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Status:      billing.StatusActive,
-		Schedulable: true,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":  "sk-test",
-			"base_url": upstreamServer.URL,
+	account := &gatewayprovider.ExecutionAccount{
+		Record: accountcore.Record{
+			LoadLocation: time.LoadLocation, ID: 900,
+			Name:        "openai-upstream",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.AccountTypeAPIKey,
+			Status:      billing.StatusActive,
+			Schedulable: true,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":  "sk-test",
+				"base_url": upstreamServer.URL,
+			},
+			Extra: map[string]any{"use_responses_api": true},
 		},
-		Extra: map[string]any{"use_responses_api": true}},
 	}
 
 	router := gin.New()

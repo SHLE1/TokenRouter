@@ -307,7 +307,6 @@ export interface PlatformConcurrencyInfo {
 export interface GroupConcurrencyInfo {
   group_id: number
   group_name: string
-  platform: string
   current_in_use: number
   max_capacity: number
   load_percentage: number
@@ -379,7 +378,6 @@ export interface PlatformAvailability {
 export interface GroupAvailability {
   group_id: number
   group_name: string
-  platform: string
   total_accounts: number
   available_count: number
   rate_limit_count: number

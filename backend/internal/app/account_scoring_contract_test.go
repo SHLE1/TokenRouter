@@ -1,14 +1,14 @@
 package app
 
 import (
+	"context"
+	"testing"
+	"time"
+
 	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/routing/accessview"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
-
-	"context"
-	"testing"
-	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/config"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
@@ -17,7 +17,6 @@ import (
 )
 
 func TestRateLimitServiceAdvancedSchedulerScoreSnapshotUsesSharedRuntimeStats(t *testing.T) {
-
 	weights := policy.ScoreWeights{
 		Priority:  1,
 		ErrorRate: 2,
@@ -32,7 +31,7 @@ func TestRateLimitServiceAdvancedSchedulerScoreSnapshotUsesSharedRuntimeStats(t 
 	shared := newScoreFixtureState()
 	stats := shared.Feedback
 	options := accountScoreOptions(nil, shared, nil, cfg)
-	group := &routing.Group{ID: 71, Platform: capability.PlatformGemini, SchedulerType: routing.GroupSchedulerTypeAdvanced}
+	group := &routing.Group{ID: 71, SchedulerType: routing.GroupSchedulerTypeAdvanced}
 	accounts := []*account.Record{
 		{ID: 7101, Platform: capability.PlatformGemini, Priority: 1},
 		{ID: 7102, Platform: capability.PlatformGemini, Priority: 1},
@@ -66,7 +65,6 @@ func TestRateLimitServiceAdvancedSchedulerScoreSnapshotUsesSharedRuntimeStats(t 
 }
 
 func TestAdvancedSchedulerScoreSnapshotUsesPreviousResponseOnlyForOpenAI(t *testing.T) {
-
 	stickyWeighted := true
 	previousWeight := 11.0
 	sessionWeight := 7.0
@@ -83,7 +81,6 @@ func TestAdvancedSchedulerScoreSnapshotUsesPreviousResponseOnlyForOpenAI(t *test
 		t.Run(platform, func(t *testing.T) {
 			group := &routing.Group{
 				ID:            int64(7200 + index),
-				Platform:      platform,
 				SchedulerType: routing.GroupSchedulerTypeAdvanced,
 				AdvancedSchedulerOverrides: routing.GroupAdvancedSchedulerOverrides{
 					StickyWeightedEnabled:  &stickyWeighted,
@@ -106,11 +103,9 @@ func TestAdvancedSchedulerScoreSnapshotUsesPreviousResponseOnlyForOpenAI(t *test
 }
 
 func TestAdvancedSchedulerScoreSnapshotKeepsHardStickyInfinity(t *testing.T) {
-
 	stickyWeighted := false
 	group := &routing.Group{
 		ID:            7401,
-		Platform:      capability.PlatformGemini,
 		SchedulerType: routing.GroupSchedulerTypeAdvanced,
 		AdvancedSchedulerOverrides: routing.GroupAdvancedSchedulerOverrides{
 			StickyWeightedEnabled: &stickyWeighted,
@@ -128,6 +123,7 @@ func TestAdvancedSchedulerScoreSnapshotKeepsHardStickyInfinity(t *testing.T) {
 func newScoreFixtureState() *schedulerSharedState {
 	return &schedulerSharedState{Settings: scheduler.NewSettingsRuntime(scheduler.Diagnostics{}), Feedback: scheduler.NewRuntimeStats(time.Now)}
 }
+
 func scoreFixtureAccounts(values []*account.Record) []*scheduler.ScoreAccount {
 	result := make([]*scheduler.ScoreAccount, len(values))
 	for i, v := range values {

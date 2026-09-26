@@ -40,10 +40,6 @@ func (h *LiveHandler) Live(c *gin.Context) {
 		h.ports.Error(c, http.StatusInternalServerError, "api_error", "User context not found")
 		return
 	}
-	if apiKey.Group == nil || apiKey.Group.Platform != "openai" {
-		h.ports.Error(c, http.StatusNotFound, "not_found_error", "Live is not supported for this platform")
-		return
-	}
 	if !liveEnabledForAPIKey(apiKey) {
 		h.ports.Error(c, http.StatusForbidden, "permission_error", "Live is not enabled for this group")
 		return
@@ -240,7 +236,6 @@ func (h *LiveHandler) LiveSideband(c *gin.Context) {
 func liveEnabledForAPIKey(apiKey *LiveAPIKey) bool {
 	return apiKey != nil &&
 		apiKey.Group != nil &&
-		apiKey.Group.Platform == "openai" &&
 		apiKey.Group.AllowLive
 }
 
@@ -254,7 +249,6 @@ type LiveAPIKey struct {
 	ModelMapping map[string]string
 }
 type LiveGroup struct {
-	Platform  string
 	AllowLive bool
 }
 type LiveSubject struct {

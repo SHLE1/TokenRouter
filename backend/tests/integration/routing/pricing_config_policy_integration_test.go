@@ -18,13 +18,13 @@ func TestPricingConfigCRUDPreservesIndependentGroupPolicies(t *testing.T) {
 	client, db := routingDatabase(t)
 	groups := newGroupStoreFixture(client, db)
 	source := &routing.Group{
-		Name: "price-policy-source", Platform: routing.PlatformOpenAI, Status: routing.StatusActive, RateMultiplier: 1,
+		Name: "price-policy-source", Status: routing.StatusActive, RateMultiplier: 1,
 		AllowedProtocols:     capability.DefaultGroupClientProtocols(routing.PlatformOpenAI),
 		ProtocolFallbacks:    capability.DefaultProtocolFallbacks(routing.PlatformOpenAI),
 		ResponsesImagePolicy: "inherit",
 		RoutingPolicy: routing.GroupRoutingPolicy{
 			Enabled: true, RestrictModels: true, RestrictionModelSource: routing.BillingModelSourceGroupMapped,
-			ModelMapping: map[string]map[string]string{"openai": {"alias": "gpt-allowed"}}, AllowedModels: map[string][]string{"openai": {"gpt-allowed"}},
+			ModelMapping: map[string]string{"alias": "gpt-allowed"}, AllowedModels: []string{"gpt-allowed"},
 			FeaturesConfig: map[string]any{"codex_image_generation_bridge": map[string]any{"openai": false}},
 		},
 	}
@@ -44,7 +44,7 @@ func TestPricingConfigCRUDPreservesIndependentGroupPolicies(t *testing.T) {
 	store := postgres.NewPricingConfigStore(db)
 	service := routing.NewPricingConfigService(store, nil, routing.PricingConfigOptions{ReadGroup: groups.GetByIDLite, LoadLocation: time.LoadLocation})
 	zero := 0.0
-	config, err := service.Create(ctx, &routing.CreatePricingConfigInput{Name: "shared-price", GroupIDs: []int64{source.ID, duplicate.ID}, ModelPricing: []routing.ModelPricingEntry{{Platform: "openai", Models: []string{"gpt-other"}, InputPrice: &zero, BillingMode: routing.BillingModeToken}}})
+	config, err := service.Create(ctx, &routing.CreatePricingConfigInput{Name: "shared-price", GroupIDs: []int64{source.ID, duplicate.ID}, ModelPricing: []routing.ModelPricingEntry{{Models: []string{"gpt-other"}, InputPrice: &zero, BillingMode: routing.BillingModeToken}}})
 	require.NoError(t, err)
 	require.Len(t, config.ModelPricing, 1)
 	require.NotNil(t, config.ModelPricing[0].InputPrice)

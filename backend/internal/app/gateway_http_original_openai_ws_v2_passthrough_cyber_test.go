@@ -1,6 +1,13 @@
 package app
 
 import (
+	"context"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+	"time"
+
 	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
 	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
 	httptestkit "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi/testkit"
@@ -10,13 +17,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 	"github.com/TokenFlux/TokenRouter/internal/usage"
-
-	"context"
-	"net/http"
-	"net/http/httptest"
-	"strings"
-	"testing"
-	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
@@ -67,18 +67,21 @@ func newOpenAIWSPassthroughHandlerHarness(t *testing.T, upstreamURL string) *ope
 	settingSvc := gatewaytestkit.RuntimeReaders(settingRepo)
 
 	groupID := int64(4301)
-	account := gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 9951,
-		Name:        "openai-ws-passthrough-cyber",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Status:      billing.StatusActive,
-		Schedulable: true,
-		Concurrency: 1,
-		Credentials: map[string]any{"api_key": "sk-test", "base_url": upstreamURL},
-		Extra: map[string]any{
-			"openai_apikey_responses_websockets_v2_enabled": true,
-			"openai_apikey_responses_websockets_v2_mode":    accountcore.OpenAIWSIngressModePassthrough,
-		}},
+	account := gatewayprovider.ExecutionAccount{
+		Record: accountcore.Record{
+			LoadLocation: time.LoadLocation, ID: 9951,
+			Name:        "openai-ws-passthrough-cyber",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.AccountTypeAPIKey,
+			Status:      billing.StatusActive,
+			Schedulable: true,
+			Concurrency: 1,
+			Credentials: map[string]any{"api_key": "sk-test", "base_url": upstreamURL},
+			Extra: map[string]any{
+				"openai_apikey_responses_websockets_v2_enabled": true,
+				"openai_apikey_responses_websockets_v2_mode":    accountcore.OpenAIWSIngressModePassthrough,
+			},
+		},
 	}
 	cfg := &config.Config{}
 	cfg.RunMode = config.RunModeSimple
@@ -154,7 +157,6 @@ func newOpenAIWSPassthroughHandlerHarness(t *testing.T, upstreamURL string) *ope
 }
 
 func TestOpenAIResponsesWebSocketV2PassthroughCyberMarkIsConsumedAfterTurn(t *testing.T) {
-
 	upstreamDone := make(chan struct{})
 	secondUpstreamFrame := make(chan []byte, 1)
 	upstreamServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -168,7 +170,7 @@ func TestOpenAIResponsesWebSocketV2PassthroughCyberMarkIsConsumedAfterTurn(t *te
 		cancelRead()
 		require.NoError(t, err)
 
-		failed := []byte(`{"type":"response.failed","response":{"id":"resp_cyber_handler","model":"gpt-5.1","error":{"code":"cyber_policy","message":"blocked by upstream policy"},"usage":{"input_tokens":11,"output_tokens":3}}}`)
+		failed := []byte(`{"type":"response.failed","response":{"id":"resp_cyber_handler","model":"gpt-5.4","error":{"code":"cyber_policy","message":"blocked by upstream policy"},"usage":{"input_tokens":11,"output_tokens":3}}}`)
 		writeCtx, cancelWrite := context.WithTimeout(r.Context(), 3*time.Second)
 		err = conn.Write(writeCtx, coderws.MessageText, failed)
 		cancelWrite()
@@ -182,7 +184,7 @@ func TestOpenAIResponsesWebSocketV2PassthroughCyberMarkIsConsumedAfterTurn(t *te
 		}
 		secondUpstreamFrame <- append([]byte(nil), second...)
 
-		completed := []byte(`{"type":"response.completed","response":{"id":"resp_cyber_handler_turn_2","model":"gpt-5.1","usage":{"input_tokens":1,"output_tokens":1}}}`)
+		completed := []byte(`{"type":"response.completed","response":{"id":"resp_cyber_handler_turn_2","model":"gpt-5.4","usage":{"input_tokens":1,"output_tokens":1}}}`)
 		writeCtx, cancelWrite = context.WithTimeout(r.Context(), 3*time.Second)
 		err = conn.Write(writeCtx, coderws.MessageText, completed)
 		cancelWrite()
@@ -191,7 +193,7 @@ func TestOpenAIResponsesWebSocketV2PassthroughCyberMarkIsConsumedAfterTurn(t *te
 	defer upstreamServer.Close()
 	harness := newOpenAIWSPassthroughHandlerHarness(t, upstreamServer.URL)
 
-	requestPayload := `{"type":"response.create","model":"gpt-5.1","prompt_cache_key":"cyber-session-1","input":"test"}`
+	requestPayload := `{"type":"response.create","model":"gpt-5.4","prompt_cache_key":"cyber-session-1","input":"test"}`
 	writeCtx, cancelWrite := context.WithTimeout(context.Background(), 3*time.Second)
 	err := harness.clientConn.Write(writeCtx, coderws.MessageText, []byte(requestPayload))
 	cancelWrite()
@@ -222,7 +224,7 @@ func TestOpenAIResponsesWebSocketV2PassthroughCyberMarkIsConsumedAfterTurn(t *te
 	}, 3*time.Second, 10*time.Millisecond, "handler AfterTurn must write the cyber session block table")
 
 	writeCtx, cancelWrite = context.WithTimeout(context.Background(), 3*time.Second)
-	err = harness.clientConn.Write(writeCtx, coderws.MessageText, []byte(`{"type":"response.create","model":"gpt-5.1","prompt_cache_key":"cyber-session-1","input":"follow-up"}`))
+	err = harness.clientConn.Write(writeCtx, coderws.MessageText, []byte(`{"type":"response.create","model":"gpt-5.4","prompt_cache_key":"cyber-session-1","input":"follow-up"}`))
 	cancelWrite()
 	require.NoError(t, err)
 
@@ -253,7 +255,6 @@ func TestOpenAIResponsesWebSocketV2PassthroughCyberMarkIsConsumedAfterTurn(t *te
 }
 
 func TestOpenAIResponsesWebSocketV2PassthroughNonCyberTurnAllowsFollowup(t *testing.T) {
-
 	upstreamDone := make(chan struct{})
 	secondUpstreamFrame := make(chan []byte, 1)
 	upstreamServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -267,7 +268,7 @@ func TestOpenAIResponsesWebSocketV2PassthroughNonCyberTurnAllowsFollowup(t *test
 		cancelRead()
 		require.NoError(t, err)
 
-		firstCompleted := []byte(`{"type":"response.completed","response":{"id":"resp_non_cyber_handler_turn_1","model":"gpt-5.1","usage":{"input_tokens":2,"output_tokens":1}}}`)
+		firstCompleted := []byte(`{"type":"response.completed","response":{"id":"resp_non_cyber_handler_turn_1","model":"gpt-5.4","usage":{"input_tokens":2,"output_tokens":1}}}`)
 		writeCtx, cancelWrite := context.WithTimeout(r.Context(), 3*time.Second)
 		err = conn.Write(writeCtx, coderws.MessageText, firstCompleted)
 		cancelWrite()
@@ -279,7 +280,7 @@ func TestOpenAIResponsesWebSocketV2PassthroughNonCyberTurnAllowsFollowup(t *test
 		require.NoError(t, err)
 		secondUpstreamFrame <- append([]byte(nil), second...)
 
-		secondCompleted := []byte(`{"type":"response.completed","response":{"id":"resp_non_cyber_handler_turn_2","model":"gpt-5.1","usage":{"input_tokens":3,"output_tokens":1}}}`)
+		secondCompleted := []byte(`{"type":"response.completed","response":{"id":"resp_non_cyber_handler_turn_2","model":"gpt-5.4","usage":{"input_tokens":3,"output_tokens":1}}}`)
 		writeCtx, cancelWrite = context.WithTimeout(r.Context(), 3*time.Second)
 		err = conn.Write(writeCtx, coderws.MessageText, secondCompleted)
 		cancelWrite()
@@ -292,7 +293,7 @@ func TestOpenAIResponsesWebSocketV2PassthroughNonCyberTurnAllowsFollowup(t *test
 	defer upstreamServer.Close()
 	harness := newOpenAIWSPassthroughHandlerHarness(t, upstreamServer.URL)
 
-	firstPayload := `{"type":"response.create","model":"gpt-5.1","prompt_cache_key":"non-cyber-session-1","input":"first"}`
+	firstPayload := `{"type":"response.create","model":"gpt-5.4","prompt_cache_key":"non-cyber-session-1","input":"first"}`
 	writeCtx, cancelWrite := context.WithTimeout(context.Background(), 3*time.Second)
 	err := harness.clientConn.Write(writeCtx, coderws.MessageText, []byte(firstPayload))
 	cancelWrite()
@@ -304,7 +305,7 @@ func TestOpenAIResponsesWebSocketV2PassthroughNonCyberTurnAllowsFollowup(t *test
 	require.NoError(t, err)
 	require.Equal(t, "resp_non_cyber_handler_turn_1", gjson.GetBytes(firstEvent, "response.id").String())
 
-	secondPayload := `{"type":"response.create","model":"gpt-5.1","prompt_cache_key":"non-cyber-session-1","input":"follow-up"}`
+	secondPayload := `{"type":"response.create","model":"gpt-5.4","prompt_cache_key":"non-cyber-session-1","input":"follow-up"}`
 	writeCtx, cancelWrite = context.WithTimeout(context.Background(), 3*time.Second)
 	err = harness.clientConn.Write(writeCtx, coderws.MessageText, []byte(secondPayload))
 	cancelWrite()

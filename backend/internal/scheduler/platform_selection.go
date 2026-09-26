@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/account"
-	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
 )
@@ -383,7 +382,7 @@ func (s *PlatformSelector) Select(
 	}()
 
 	previousResponseID := strings.TrimSpace(req.PreviousResponseID)
-	if previousResponseID != "" && routing.NormalizeOpenAICompatiblePlatform(req.Platform) == capability.PlatformOpenAI &&
+	if previousResponseID != "" && (req.Platform == "" || strings.TrimSpace(req.Platform) == capability.PlatformOpenAI) &&
 		(!req.StickyWeighted || !req.PreviousResponseCanMove) {
 		selection, err := s.ports.PreviousResponse(
 			ctx,
@@ -399,7 +398,7 @@ func (s *PlatformSelector) Select(
 		}
 		if selection != nil && selection.Account != nil {
 			compatible, _ := s.ports.RequestCompatible(ctx, selection.Account, req)
-			groupCompatible := !s.ports.HasGroupMetadata(selection.Account) || s.ports.MatchesGroup(selection.Account, req.GroupID)
+			groupCompatible := s.ports.MatchesGroup(selection.Account, req.GroupID)
 			if !groupCompatible || !compatible || !s.ports.TransportCompatible(selection.Account, req.RequiredTransport) {
 				if selection.ReleaseFunc != nil {
 					selection.ReleaseFunc()
@@ -512,7 +511,7 @@ func (s *PlatformSelector) SelectBySessionHash(
 		clearBinding()
 		return nil, false, nil
 	}
-	if s.ports.ClearSticky(account, req.routingModel()) || account.Platform != routing.NormalizeOpenAICompatiblePlatform(req.Platform) || !s.ports.IsCompatible(account) || !s.ports.IsSchedulable(account) {
+	if !s.ports.MatchesGroup(account, req.GroupID) || s.ports.ClearSticky(account, req.routingModel()) || req.Platform != "" && account.Platform != strings.TrimSpace(req.Platform) || !s.ports.IsCompatible(account) || !s.ports.IsSchedulable(account) {
 		clearBinding()
 		return nil, false, nil
 	}
@@ -524,7 +523,7 @@ func (s *PlatformSelector) SelectBySessionHash(
 		return nil, false, nil
 	}
 	account = s.ports.Recheck(ctx, account, req.GroupID, req.Platform, req.routingModel(), req.RequireCompact, req.RequiredCapability)
-	if account == nil || (s.ports.HasGroupMetadata(account) && !s.ports.MatchesGroup(account, req.GroupID)) || !s.ports.TransportCompatible(account, req.RequiredTransport) {
+	if account == nil || !s.ports.MatchesGroup(account, req.GroupID) || !s.ports.TransportCompatible(account, req.RequiredTransport) {
 		clearBinding()
 		return nil, false, nil
 	}
@@ -739,7 +738,7 @@ func (s *PlatformSelector) SelectByLoadBalance(
 		return nil, 0, 0, 0, s.ports.Unavailable(ctx, req.RequestedModel, req.routingModel(), false, PlatformFilterStats{}.Summary("grok_free_quota_soft_gate"))
 	}
 	// 团队与模型限流冷却：发生 429 的团队关联账号跳过热点模型。
-	if req.Platform == capability.PlatformGrok {
+	if req.Platform == "" || req.Platform == capability.PlatformGrok {
 		now := s.now()
 		filtered := s.ports.FilterTeamLimited(accounts, req.RequestedModel, now)
 		if len(filtered) == 0 && len(accounts) > 0 {
@@ -767,11 +766,15 @@ func (s *PlatformSelector) SelectByLoadBalance(
 				continue
 			}
 		}
+		if !s.ports.MatchesGroup(account, req.GroupID) {
+			filterStats.Exclude("group_mismatch")
+			continue
+		}
 		if !s.ports.IsSchedulable(account) {
 			filterStats.Exclude("not_schedulable")
 			continue
 		}
-		if account.Platform != routing.NormalizeOpenAICompatiblePlatform(req.Platform) || !s.ports.IsCompatible(account) {
+		if req.Platform != "" && account.Platform != strings.TrimSpace(req.Platform) || !s.ports.IsCompatible(account) {
 			filterStats.Exclude("platform_mismatch")
 			continue
 		}

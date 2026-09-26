@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/stretchr/testify/require"
 )
 
@@ -15,15 +14,15 @@ func TestGatewayService_ResolveGatewayGroup_DetectsFallbackCycle(t *testing.T) {
 	fallbackID := int64(11)
 
 	group := &Group{
-		ID:              groupID,
-		Platform:        capability.PlatformAnthropic,
+		ID: groupID,
+
 		Status:          StatusActive,
 		ClaudeCodeOnly:  true,
 		FallbackGroupID: &fallbackID,
 	}
 	fallbackGroup := &Group{
-		ID:              fallbackID,
-		Platform:        capability.PlatformAnthropic,
+		ID: fallbackID,
+
 		Status:          StatusActive,
 		ClaudeCodeOnly:  true,
 		FallbackGroupID: &groupID,

@@ -16,7 +16,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 
 	"github.com/TokenFlux/TokenRouter/internal/routing"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 
 	gatewaysession "github.com/TokenFlux/TokenRouter/internal/gateway/session"
@@ -27,7 +26,6 @@ import (
 )
 
 func TestParseLiveCallRequestMultipartPreservesSession(t *testing.T) {
-
 	session := `{"model":"gpt-live-test","delegation":{"type":"client"},"instructions":"你好"}`
 	var body bytes.Buffer
 	writer := multipart.NewWriter(&body)
@@ -48,7 +46,6 @@ func TestParseLiveCallRequestMultipartPreservesSession(t *testing.T) {
 }
 
 func TestParseLiveCallRequestJSONPreservesSessionWithoutDelegation(t *testing.T) {
-
 	body := `{"sdp":"v=0\\r\\n","session":{"model":"gpt-live-test","instructions":"standalone"}}`
 	request := httptest.NewRequest("POST", "/backend-api/codex/realtime/calls", bytes.NewBufferString(body))
 	request.Header.Set("Content-Type", "application/json")
@@ -62,7 +59,6 @@ func TestParseLiveCallRequestJSONPreservesSessionWithoutDelegation(t *testing.T)
 }
 
 func TestParseLiveCallRequestRejectsInvalidJSONShape(t *testing.T) {
-
 	testCases := []string{
 		`{"session":{"type":"quicksilver"}}`,
 		`{"sdp":"v=0\\r\\n","session":[]}`,
@@ -92,18 +88,17 @@ func TestLiveEnabledForAPIKey(t *testing.T) {
 	require.False(t, liveEnabledForAPIKey(nil))
 	require.False(t, liveEnabledForAPIKey(&LiveAPIKey{}))
 	require.False(t, liveEnabledForAPIKey(&LiveAPIKey{
-		Group: &LiveGroup{Platform: capability.PlatformOpenAI},
-	}))
-	require.False(t, liveEnabledForAPIKey(&LiveAPIKey{
-		Group: &LiveGroup{Platform: capability.PlatformAnthropic, AllowLive: true},
+		Group: &LiveGroup{},
 	}))
 	require.True(t, liveEnabledForAPIKey(&LiveAPIKey{
-		Group: &LiveGroup{Platform: capability.PlatformOpenAI, AllowLive: true},
+		Group: &LiveGroup{AllowLive: true},
+	}))
+	require.True(t, liveEnabledForAPIKey(&LiveAPIKey{
+		Group: &LiveGroup{AllowLive: true},
 	}))
 }
 
 func TestLiveContentModerationBlocksBeforeBilling(t *testing.T) {
-
 	moderationServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "/v1/moderations", r.URL.Path)
 		_, _ = w.Write([]byte(`{"results":[{"category_scores":{"sexual":0.9}}]}`))
@@ -131,7 +126,7 @@ func TestLiveContentModerationBlocksBeforeBilling(t *testing.T) {
 	moderationSvc.Start()
 
 	groupID := int64(2)
-	group := &routing.Group{ID: groupID, Name: "openai", Platform: capability.PlatformOpenAI, AllowLive: true}
+	group := &routing.Group{ID: groupID, Name: "live", AllowLive: true}
 	apiKey := &apikey.APIKey{
 		ID:      101,
 		Name:    "live-test-key",
@@ -160,7 +155,6 @@ func TestLiveContentModerationBlocksBeforeBilling(t *testing.T) {
 }
 
 func TestLiveAttestationErrorIsExplicit(t *testing.T) {
-
 	recorder := httptest.NewRecorder()
 	context, _ := gin.CreateTestContext(recorder)
 

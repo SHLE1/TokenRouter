@@ -24,15 +24,8 @@ describe("groups models list layout", () => {
     );
   });
 
-  it("uses the Gemini-native models endpoint in Gemini group copy", () => {
-    expect(groupsViewSource).toContain(
-      'platform === "gemini" ? "/v1beta/models" : "/v1/models"',
-    );
-    expect(groupsViewSource).toContain(
-      "modelsListEndpoint(createForm.platform)",
-    );
-    expect(groupsViewSource).toContain(
-      "modelsListEndpoint(editForm.platform)",
-    );
+  it("uses the unified models endpoint in group configuration", () => {
+    expect(groupsViewSource).toContain('const modelsListEndpoint = () => "/v1/models"');
+    expect(groupsViewSource).not.toContain('modelsListEndpoint(createForm.platform)');
   });
 });

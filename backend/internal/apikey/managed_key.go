@@ -40,15 +40,15 @@ func (s ManagedKeys) Ensure(ctx context.Context, userID, groupID int64) (*APIKey
 	}
 	managedBy := s.ManagedBy
 	key := &APIKey{
-		UserID:                                userID,
-		Key:                                   keyString,
-		Name:                                  fmt.Sprintf("%s:%d", s.NamePrefix, groupID),
-		GroupID:                               &groupID,
-		Status:                                StatusActive,
-		BillingMode:                           APIKeyBillingModeAuto,
-		ManagedBy:                             &managedBy,
-		FastModePolicy:                        "follow_request",
-		FallbackToDefaultGroupWhenUnavailable: false,
+		UserID:                       userID,
+		Key:                          keyString,
+		Name:                         fmt.Sprintf("%s:%d", s.NamePrefix, groupID),
+		GroupID:                      &groupID,
+		Status:                       StatusActive,
+		BillingMode:                  APIKeyBillingModeAuto,
+		ManagedBy:                    &managedBy,
+		FastModePolicy:               "follow_request",
+		FallbackWhenGroupUnavailable: false,
 	}
 	if err := s.Store.CreateManagedKey(ctx, key); err != nil {
 		// 并发创建冲突：重查一次即可拿到已存在的 Key（创建幂等）。

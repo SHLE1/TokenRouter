@@ -86,7 +86,7 @@ func (t *qoderCompatibleTarget) Refresh(ctx context.Context) (gatewayhttp.QoderC
 
 func (t *qoderCompatibleTarget) Completion(ctx context.Context, capture gatewayhttp.QoderCompletionCapture) *completion.Input {
 	return gatewayprovider.CaptureMessages(ctx, &gatewayprovider.MessagesCapture{
-		Result: capture.Result, QuotaPlatform: capture.QuotaPlatform, APIKey: capture.Key, User: capture.Key.User, Account: gatewayprovider.ExecutionCompletionRecord(t.value),
+		Result: capture.Result, APIKey: capture.Key, User: capture.Key.User, Account: gatewayprovider.ExecutionCompletionRecord(t.value),
 		Subscription: capture.Subscription, InboundEndpoint: capture.InboundEndpoint, UpstreamEndpoint: capture.UpstreamEndpoint,
 		UserAgent: capture.UserAgent, IPAddress: capture.ClientIP, RequestPayloadHash: capture.PayloadHash, RequestBody: capture.Body,
 		APIKeyService: t.owner.keys, PricingUsageFields: capture.Pricing,

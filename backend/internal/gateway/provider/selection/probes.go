@@ -8,7 +8,6 @@ import (
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/routing"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
 // Probe 连接已绑定的原生选择器与账号测试，保留平台分发及 Gemini 兜底。
@@ -31,6 +30,7 @@ func (s Probe) Select(ctx context.Context, due routing.GroupAvailabilityProbeDue
 	}
 	return account.Record.ID, nil
 }
+
 func (s Probe) Test(ctx context.Context, id int64, model, prompt, userAgent string) (*routing.ProbeExecutionResult, error) {
 	result, err := s.AccountTest.RunTestBackgroundWithPromptAndUserAgent(ctx, id, model, prompt, userAgent)
 	if result == nil {
@@ -38,28 +38,16 @@ func (s Probe) Test(ctx context.Context, id int64, model, prompt, userAgent stri
 	}
 	return &routing.ProbeExecutionResult{Status: result.Status, LatencyMs: result.LatencyMs, ErrorMessage: result.ErrorMessage, StartedAt: result.StartedAt, FinishedAt: result.FinishedAt}, err
 }
+
 func (s Probe) selectProbeAccount(ctx context.Context, due routing.GroupAvailabilityProbeDueGroup, modelID string) (*gatewayprovider.ExecutionAccount, error) {
 	groupID := due.GroupID
-	switch due.Platform {
-	case capability.PlatformOpenAI:
-		if s.openAIGateway == nil {
-			return nil, fmt.Errorf("openai gateway service not configured")
-		}
+	if s.openAIGateway != nil {
 		return s.openAIGateway.SelectAccountForModel(ctx, &groupID, "", modelID)
-	case capability.PlatformGemini:
-		if s.geminiCompatSvc != nil {
-			return s.geminiCompatSvc.SelectAccountForModel(ctx, &groupID, "", modelID)
-		}
-		if s.gatewaySvc != nil {
-			return s.gatewaySvc.SelectAccountForModel(ctx, &groupID, "", modelID)
-		}
-		return nil, fmt.Errorf("gemini gateway service not configured")
-	default:
-		if s.gatewaySvc == nil {
-			return nil, fmt.Errorf("gateway service not configured")
-		}
+	}
+	if s.gatewaySvc != nil {
 		return s.gatewaySvc.SelectAccountForModel(ctx, &groupID, "", modelID)
 	}
+	return nil, fmt.Errorf("account selector not configured")
 }
 
 // NewProbe 固定平台选择与账号测试端口，不构造额外测试服务或调度状态。

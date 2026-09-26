@@ -55,7 +55,6 @@ type AccountStatsPricingRule struct {
 type ModelPricingEntry struct {
 	ID                 int64       `json:"id,omitempty"`
 	PricingConfigID    int64       `json:"pricing_config_id,omitempty"`
-	Platform           string      `json:"platform"` // 所属平台（anthropic/openai/gemini/...）
 	Models             []string    `json:"models"`
 	BillingMode        BillingMode `json:"billing_mode"`
 	PriceMultiplier    *float64    `json:"price_multiplier"`     // 最终定价倍率；nil 表示不调整价格

@@ -8,8 +8,6 @@ import (
 
 	openaiprotocol "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 
-	"github.com/TokenFlux/TokenRouter/internal/gateway/admission"
-
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/server/clientip"
@@ -85,7 +83,7 @@ func (h *QoderCompatibleRuntime) Eligibility(ctx context.Context, key *apikey.AP
 		return nil
 	}
 	old := apikey.CopyAPIKey(key)
-	return h.options.Funding.CheckKey(ctx, old, sub, admission.QuotaPlatform(ctx, old), false)
+	return h.options.Funding.CheckKey(ctx, old, sub, "", false)
 }
 
 func (h *QoderCompatibleRuntime) SessionHash(c *gin.Context, endpoint QoderEndpoint, body []byte, id int64) string {
@@ -115,10 +113,10 @@ func (h *QoderCompatibleRuntime) Execution(c *gin.Context, call QoderCompatibleC
 		requestPayloadHash := billing.HashUsageRequestPayload(body)
 		inboundEndpoint := GetInboundEndpoint(c)
 		upstreamEndpoint := GetUpstreamEndpoint(c, account.Snapshot().Platform)
-		quotaPlatform := admission.QuotaPlatform(c.Request.Context(), apiKey)
+
 		// 入队前固化资金与报文投影，worker 不再读取请求中的实体。
 		completionInput := account.Completion(CompletionContext(c), QoderCompletionCapture{
-			Result: result, QuotaPlatform: quotaPlatform, Key: apiKey, Subscription: subscription,
+			Result: result, Key: apiKey, Subscription: subscription,
 			InboundEndpoint: inboundEndpoint, UpstreamEndpoint: upstreamEndpoint, UserAgent: userAgent, ClientIP: clientIP,
 			PayloadHash: requestPayloadHash, Body: append([]byte(nil), body...), Pricing: groupMapping.ToUsageFields(reqModel, result.UpstreamModel),
 		})

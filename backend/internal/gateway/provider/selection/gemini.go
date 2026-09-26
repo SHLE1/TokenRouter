@@ -1,6 +1,12 @@
 package selection
 
 import (
+	"context"
+	"errors"
+	"fmt"
+	"strings"
+	"time"
+
 	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
 	schedulercore "github.com/TokenFlux/TokenRouter/internal/scheduler"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
@@ -10,13 +16,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
-
-	"context"
-	"errors"
-	"fmt"
-
-	"strings"
-	"time"
 
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
@@ -29,46 +28,31 @@ func (s *Gemini) SelectAccountForModel(ctx context.Context, groupID *int64, sess
 }
 
 func (s *Gemini) SelectAccountForModelWithExclusions(ctx context.Context, groupID *int64, sessionHash string, requestedModel string, excludedIDs map[int64]struct{}) (*gatewayprovider.ExecutionAccount, error) {
+	ctx = withSelectionRequest(ctx, groupID, requestedModel)
 	core, scope := s.geminiSelector()
-	selected, err := core.SelectOnly(ctx, schedulercore.SelectionInput{GroupID: groupID, SessionHash: sessionHash, RequestedModel: requestedModel,
-		ExcludedIDs: excludedIDs})
+	selected, err := core.SelectOnly(ctx, schedulercore.SelectionInput{
+		GroupID: groupID, SessionHash: sessionHash, RequestedModel: requestedModel,
+		ExcludedIDs: excludedIDs,
+	})
 	return scope.oldAccount(selected), err
 }
 
 // resolvePlatformAndSchedulingMode 解析目标平台和调度模式。
 // 返回：平台名称、是否使用混合调度、是否强制平台、已解析分组、错误。
 func (s *Gemini) resolvePlatformAndSchedulingMode(ctx context.Context, groupID *int64) (platform string, useMixedScheduling bool, hasForcePlatform bool, group *routing.Group, err error) {
-
-	forcePlatform, hasForcePlatform := apikey.ForcePlatformFromContext(ctx)
-	if hasForcePlatform && forcePlatform != "" {
-		if groupID == nil {
-			return forcePlatform, false, true, nil, nil
-		}
-		if ctxGroup, ok := requeststate.GroupFromContext(ctx); ok && routing.IsGroupContextValid(ctxGroup) && ctxGroup.ID == *groupID {
-			return forcePlatform, false, true, ctxGroup, nil
-		}
-		group, err = s.groupRepo.GetByIDLite(ctx, *groupID)
-		if err != nil {
-			return "", false, false, nil, fmt.Errorf("get group failed: %w", err)
-		}
-		return forcePlatform, false, true, group, nil
+	var read func(context.Context, int64) (*routing.Group, error)
+	if s.groupRepo != nil {
+		read = s.groupRepo.GetByIDLite
 	}
-
-	if groupID != nil {
-
-		if ctxGroup, ok := requeststate.GroupFromContext(ctx); ok && routing.IsGroupContextValid(ctxGroup) && ctxGroup.ID == *groupID {
-			group = ctxGroup
-		} else {
-			group, err = s.groupRepo.GetByIDLite(ctx, *groupID)
-			if err != nil {
-				return "", false, false, nil, fmt.Errorf("get group failed: %w", err)
-			}
-		}
-
-		return group.Platform, group.Platform == capability.PlatformGemini, false, group, nil
+	group, err = currentSelectionGroup(ctx, groupID, read)
+	if err != nil {
+		return "", false, false, nil, err
 	}
-
-	return capability.PlatformGemini, true, false, nil, nil
+	platform, forced := apikey.ForcePlatformFromContext(ctx)
+	if forced && platform != "" {
+		return platform, false, true, group, nil
+	}
+	return "", false, false, group, nil
 }
 
 // tryStickySessionHit 尝试从粘性会话获取账号。
@@ -107,7 +91,7 @@ func (s *Gemini) tryStickySessionHit(
 		return nil
 	}
 
-	if !s.isAccountUsableForRequest(ctx, account, requestedModel, platform, useMixedScheduling) {
+	if !openAIStickyAccountMatchesGroup(account, groupID) || !s.isAccountUsableForRequest(ctx, account, requestedModel, platform, useMixedScheduling) {
 		return nil
 	}
 
@@ -136,7 +120,6 @@ func (s *Gemini) isAccountUsableForRequestWithPrecheck(
 	useMixedScheduling bool,
 	precheckResult map[int64]bool,
 ) bool {
-
 	if !gatewayprovider.ExecutionModelPolicy(account).Schedulable(ctx, requestedModel) {
 		return false
 	}
@@ -157,18 +140,11 @@ func (s *Gemini) isAccountUsableForRequestWithPrecheck(
 }
 
 // isAccountValidForPlatform 检查账号是否匹配目标平台。
-// 原生平台直接匹配；混合调度模式下 antigravity 需要启用 mixed_scheduling。
+// 普通请求使用分组的全部候选；强制平台请求额外限定账号平台。
 //
 // isAccountValidForPlatform checks if account matches target platform.
-// Native platform matches directly; mixed scheduling mode requires antigravity to enable mixed_scheduling.
 func (s *Gemini) isAccountValidForPlatform(account *gatewayprovider.ExecutionAccount, platform string, useMixedScheduling bool) bool {
-	if account.Record.Platform == platform {
-		return true
-	}
-	if useMixedScheduling && account.Record.Platform == capability.PlatformAntigravity && account.View().IsMixedSchedulingEnabled() {
-		return true
-	}
-	return false
+	return account != nil && (platform == "" || account.Record.Platform == platform)
 }
 
 func (s *Gemini) passesRateLimitPreCheckWithCache(ctx context.Context, account *gatewayprovider.ExecutionAccount, requestedModel string, precheckResult map[int64]bool) bool {
@@ -364,35 +340,45 @@ func (s *Gemini) hydrateSelectedAccount(ctx context.Context, account *gatewaypro
 	if account == nil || s.schedulerSnapshot == nil {
 		return account, nil
 	}
-	hydrated, err := readSnapshotAccount(ctx, s.schedulerSnapshot, account.Record.ID)
+	var hydrated *gatewayprovider.ExecutionAccount
+	var err error
+	if s.accountRepo != nil {
+		hydrated, err = s.accountRepo.GetByID(ctx, account.Record.ID)
+	} else {
+		hydrated, err = readSnapshotAccount(ctx, s.schedulerSnapshot, account.Record.ID)
+	}
 	if err != nil {
 		return nil, err
 	}
 	if hydrated == nil {
-		return nil, fmt.Errorf("selected gemini account %d not found during hydration", account.Record.ID)
+		return nil, schedulercore.ErrNoAvailableAccounts
+	}
+	if input, ok := ctx.Value(selectionRequestKey{}).(selectionRequest); ok {
+		groupID := input.groupID
+		if group, ok := requeststate.GroupFromContext(ctx); ok && group != nil {
+			groupID = &group.ID
+		}
+		model := input.model
+		policy := gatewayprovider.ExecutionModelPolicy(hydrated)
+		if !openAIStickyAccountMatchesGroup(hydrated, groupID) || !policy.Schedulable(ctx, model) || !policy.Supports(ctx, model) {
+			return nil, schedulercore.ErrNoAvailableAccounts
+		}
 	}
 	return hydrated, nil
 }
 
 func (s *Gemini) listSchedulableAccountsOnce(ctx context.Context, groupID *int64, platform string, hasForcePlatform bool) ([]gatewayprovider.ExecutionAccount, error) {
+	if groupID == nil || *groupID <= 0 {
+		return nil, nil
+	}
 	if s.schedulerSnapshot != nil {
 		accounts, _, err := readSnapshotAccounts(ctx, s.schedulerSnapshot, groupID, platform, hasForcePlatform)
 		return accounts, err
 	}
-
-	useMixedScheduling := platform == capability.PlatformGemini && !hasForcePlatform
-	queryPlatforms := []string{platform}
-	if useMixedScheduling {
-		queryPlatforms = []string{platform, capability.PlatformAntigravity}
+	if platform == "" {
+		return s.accountRepo.ListSchedulableByGroupIDAndPlatforms(ctx, *groupID, capability.AccountPlatforms())
 	}
-
-	if groupID != nil {
-		return s.accountRepo.ListSchedulableByGroupIDAndPlatforms(ctx, *groupID, queryPlatforms)
-	}
-	if s.options.Simple {
-		return s.accountRepo.ListSchedulableByPlatforms(ctx, queryPlatforms)
-	}
-	return s.accountRepo.ListSchedulableUngroupedByPlatforms(ctx, queryPlatforms)
+	return s.accountRepo.ListSchedulableByGroupIDAndPlatform(ctx, *groupID, platform)
 }
 
 // HasAntigravityAccounts 检查是否有可用的 antigravity 账户
@@ -413,6 +399,17 @@ func (s *Gemini) HasAntigravityAccounts(ctx context.Context, groupID *int64) (bo
 // 3) OAuth accounts explicitly marked as ai_studio
 // 4) Any remaining Gemini accounts (fallback)
 func (s *Gemini) SelectAccountForAIStudioEndpoints(ctx context.Context, groupID *int64) (*gatewayprovider.ExecutionAccount, error) {
+	var read func(context.Context, int64) (*routing.Group, error)
+	if s.groupRepo != nil {
+		read = s.groupRepo.GetByIDLite
+	}
+	current, groupErr := currentSelectionGroup(ctx, groupID, read)
+	if groupErr != nil {
+		return nil, groupErr
+	}
+	if current != nil {
+		ctx = requeststate.WithGroup(ctx, current)
+	}
 	if group, ok := s.resolveAdvancedSchedulerGroup(ctx, groupID); ok {
 		ctx = requeststate.WithGroup(ctx, group)
 	}

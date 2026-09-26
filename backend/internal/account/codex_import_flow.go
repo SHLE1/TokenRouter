@@ -33,11 +33,6 @@ func (h *CodexImporter) Import(ctx context.Context, req CodexSessionImportReques
 		priority = *req.Priority
 	}
 	credentialExtras := SanitizeCodexImportCredentialExtras(req.CredentialExtras)
-	skipDefaultGroupBind := false
-	if req.SkipDefaultGroupBind != nil {
-		skipDefaultGroupBind = *req.SkipDefaultGroupBind
-	}
-	skipMixedChannelCheck := req.ConfirmMixedChannelRisk != nil && *req.ConfirmMixedChannelRisk
 
 	seenIdentity := map[string]CodexSeenIdentity{}
 	for _, entry := range entries {
@@ -143,7 +138,6 @@ func (h *CodexImporter) Import(ctx context.Context, req CodexSessionImportReques
 			if len(req.GroupIDs) > 0 {
 				groupIDs := append([]int64(nil), req.GroupIDs...)
 				updateInput.GroupIDs = &groupIDs
-				updateInput.SkipMixedChannelCheck = skipMixedChannelCheck
 			}
 			updated, updateErr := h.accounts.UpdateAccount(ctx, existing.ID, updateInput)
 			if updateErr != nil {
@@ -180,22 +174,20 @@ func (h *CodexImporter) Import(ctx context.Context, req CodexSessionImportReques
 		}
 
 		account, createErr := h.accounts.CreateAccount(ctx, &CreateAccountInput{
-			Name:                  accountName,
-			Notes:                 req.Notes,
-			Platform:              PlatformOpenAI,
-			Type:                  AccountTypeOAuth,
-			Credentials:           credentials,
-			Extra:                 extra,
-			ProxyID:               req.ProxyID,
-			Concurrency:           concurrency,
-			Priority:              priority,
-			RateMultiplier:        req.RateMultiplier,
-			LoadFactor:            req.LoadFactor,
-			GroupIDs:              req.GroupIDs,
-			ExpiresAt:             effectiveExpiresAt,
-			AutoPauseOnExpired:    autoPauseOnExpired,
-			SkipDefaultGroupBind:  skipDefaultGroupBind,
-			SkipMixedChannelCheck: skipMixedChannelCheck,
+			Name:               accountName,
+			Notes:              req.Notes,
+			Platform:           PlatformOpenAI,
+			Type:               AccountTypeOAuth,
+			Credentials:        credentials,
+			Extra:              extra,
+			ProxyID:            req.ProxyID,
+			Concurrency:        concurrency,
+			Priority:           priority,
+			RateMultiplier:     req.RateMultiplier,
+			LoadFactor:         req.LoadFactor,
+			GroupIDs:           req.GroupIDs,
+			ExpiresAt:          effectiveExpiresAt,
+			AutoPauseOnExpired: autoPauseOnExpired,
 		})
 		if createErr != nil {
 			result.Failed++

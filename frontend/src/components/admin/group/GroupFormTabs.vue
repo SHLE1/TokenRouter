@@ -42,16 +42,14 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-const props = defineProps<{ platform: string; idPrefix: string }>()
+defineProps<{ idPrefix: string }>()
 const { t } = useI18n()
-const allTabs = ['general', 'platform', 'routing', 'pricing', 'protocol'] as const
+const allTabs = ['general', 'features', 'routing', 'pricing', 'protocol'] as const
 type GroupFormTab = typeof allTabs[number]
 const activeTab = ref<GroupFormTab>('general')
 const rootRef = ref<HTMLElement | null>(null)
 const contentRef = ref<HTMLElement | null>(null)
-const visibleTabs = computed(() => allTabs.filter(tab =>
-  tab !== 'platform' || ['anthropic', 'openai', 'gemini', 'antigravity'].includes(props.platform),
-))
+const visibleTabs = computed(() => [...allTabs])
 
 watch(visibleTabs, tabs => {
   if (!tabs.includes(activeTab.value)) activeTab.value = 'general'

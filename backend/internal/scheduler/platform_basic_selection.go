@@ -4,14 +4,14 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/TokenFlux/TokenRouter/internal/account"
-	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
 // 基础平台选择保留自己的 LRU、粘性溢出和复核顺序，不合并高级调度策略。
 func (s *PlatformSelector) selectBasicOnlyRoutes(ctx context.Context, groupID *int64, platform string, sessionHash string, requestedModel string, routingModel string, excludedIDs map[int64]struct{}, requireCompact bool, stickyAccountID int64, requiredCapability account.OpenAIEndpointCapability) (*FlowAccount, error) {
-	platform = routing.NormalizeOpenAICompatiblePlatform(platform)
+	platform = strings.TrimSpace(platform)
 	if s.ports.CheckPricing(ctx, groupID, requestedModel) {
 		s.diagnostics.event("warn", "group model restriction blocked request",
 			"group_id", derefGroupID(groupID),
@@ -50,7 +50,7 @@ func (s *PlatformSelector) tryBasicSticky(ctx context.Context, groupID *int64, p
 	if sessionHash == "" {
 		return nil
 	}
-	platform = routing.NormalizeOpenAICompatiblePlatform(platform)
+	platform = strings.TrimSpace(platform)
 
 	accountID := stickyAccountID
 	if accountID <= 0 {
@@ -72,7 +72,7 @@ func (s *PlatformSelector) tryBasicSticky(ctx context.Context, groupID *int64, p
 
 	// 检查账号是否需要清理粘性会话
 	// Check if sticky session should be cleared
-	if s.ports.ClearSticky(account, routingModel) {
+	if s.ports.ClearSticky(account, routingModel) || !s.ports.MatchesGroup(account, groupID) {
 		_ = s.ports.DeleteSticky(ctx, groupID, sessionHash)
 		return nil
 	}
@@ -111,7 +111,7 @@ func (s *PlatformSelector) tryBasicSticky(ctx context.Context, groupID *int64, p
 }
 
 func (s *PlatformSelector) SelectBestBasic(ctx context.Context, groupID *int64, platform string, accounts []FlowAccount, requestedModel string, routingModel string, excludedIDs map[int64]struct{}, requireCompact bool, requiredCapability account.OpenAIEndpointCapability) (*FlowAccount, bool) {
-	platform = routing.NormalizeOpenAICompatiblePlatform(platform)
+	platform = strings.TrimSpace(platform)
 	compactBlocked := false
 	needsUpstreamCheck := s.ports.NeedsGroupCheck(ctx, groupID)
 	eligible := make([]*FlowAccount, 0, len(accounts))
@@ -186,7 +186,7 @@ func (s *PlatformSelector) isBetterBasic(candidate, current *FlowAccount) bool {
 }
 
 func (s *PlatformSelector) selectBasicRoutes(ctx context.Context, groupID *int64, platform string, sessionHash string, requestedModel string, routingModel string, excludedIDs map[int64]struct{}, requireCompact bool, requiredCapability account.OpenAIEndpointCapability) (*FlowSelection, error) {
-	platform = routing.NormalizeOpenAICompatiblePlatform(platform)
+	platform = strings.TrimSpace(platform)
 	if s.ports.CheckPricing(ctx, groupID, requestedModel) {
 		s.diagnostics.event("warn", "group model restriction blocked request",
 			"group_id", derefGroupID(groupID),
@@ -264,7 +264,7 @@ func (s *PlatformSelector) selectBasicRoutes(ctx context.Context, groupID *int64
 		if accountID > 0 && !isExcluded(accountID) {
 			account, err := s.ports.GetSchedulable(ctx, accountID)
 			if err == nil {
-				clearSticky := s.ports.ClearSticky(account, routingModel)
+				clearSticky := s.ports.ClearSticky(account, routingModel) || !s.ports.MatchesGroup(account, groupID)
 				if clearSticky {
 					_ = s.ports.DeleteSticky(ctx, groupID, sessionHash)
 				}

@@ -16,6 +16,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
 	"github.com/TokenFlux/TokenRouter/internal/moderation"
+	"github.com/TokenFlux/TokenRouter/internal/protocol"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
@@ -34,9 +35,9 @@ const (
 
 type CompatibleTextCall struct {
 	MessagesCall
-	RequestContext                      context.Context
-	ForwardBody                         []byte
-	GroupPlatform, SelectionSessionHash string
+	RequestContext                        context.Context
+	ForwardBody                           []byte
+	RequestPlatform, SelectionSessionHash string
 }
 type CompatibleTextBackend interface {
 	Access(*gin.Context) (*apikey.APIKey, bool)
@@ -162,6 +163,12 @@ func (h *CompatibleTextHandler) Responses(c *gin.Context) {
 		return
 	}
 	reqModel := modelResult.String()
+	apiKey, err = resolveClientGroupForRequest(c, h.backend, apiKey, protocol.ProtocolOpenAIResponses)
+	if err != nil {
+		writeClientGroupFallbackError(c, err, h.responsesErrorResponse)
+		return
+	}
+
 	// 在协议转换前裁决客户端显式档位，并保留改写前的审计值。
 	if policyBody, _, policyErr := h.backend.Reasoning(c, apiKey, body); policyErr != nil {
 		h.backend.PolicyDenied(c)
@@ -188,13 +195,6 @@ func (h *CompatibleTextHandler) Responses(c *gin.Context) {
 	requestCtx := c.Request.Context()
 	if imageIntent {
 		requestCtx = h.backend.ImageContext(requestCtx)
-	}
-
-	// Responses 不是 Claude Code 入口，专用分组在进入等待和账号选择前拒绝。
-	if apiKey.Group != nil && apiKey.Group.ClaudeCodeOnly {
-		h.responsesErrorResponse(c, http.StatusForbidden, "permission_error",
-			"This group is restricted to Claude Code clients (/v1/messages only)")
-		return
 	}
 
 	if decision := h.backend.Moderate(c, reqLog, apiKey, subject, moderation.ContentModerationProtocolOpenAIResponses, reqModel, body); decision != nil && decision.Blocked {
@@ -345,6 +345,12 @@ func (h *CompatibleTextHandler) ChatCompletions(c *gin.Context) {
 		return
 	}
 	reqModel := modelResult.String()
+	apiKey, err = resolveClientGroupForRequest(c, h.backend, apiKey, protocol.ProtocolOpenAIChatCompletions)
+	if err != nil {
+		writeClientGroupFallbackError(c, err, h.chatCompletionsErrorResponse)
+		return
+	}
+
 	// 与 Messages/Responses 使用相同策略，避免兼容入口绕过分组上限。
 	if policyBody, _, policyErr := h.backend.Reasoning(c, apiKey, body); policyErr != nil {
 		h.backend.PolicyDenied(c)
@@ -371,13 +377,6 @@ func (h *CompatibleTextHandler) ChatCompletions(c *gin.Context) {
 
 	h.backend.ObserveRequest(c, reqModel, reqStream)
 	h.backend.ObserveEndpoint(c, reqStream)
-
-	// 保留 Claude Code 专用分组限制
-	if apiKey.Group != nil && apiKey.Group.ClaudeCodeOnly {
-		h.chatCompletionsErrorResponse(c, http.StatusForbidden, "permission_error",
-			"This group is restricted to Claude Code clients (/v1/messages only)")
-		return
-	}
 
 	if decision := h.backend.Moderate(c, reqLog, apiKey, subject, moderation.ContentModerationProtocolOpenAIChat, reqModel, body); decision != nil && decision.Blocked {
 		h.chatCompletionsErrorResponse(c, ModerationHTTPStatus(decision), "content_policy_violation", decision.Message)
@@ -426,12 +425,9 @@ func (h *CompatibleTextHandler) ChatCompletions(c *gin.Context) {
 		APIKeyID:  apiKey.ID,
 	}
 	sessionHash := session.GenerateSessionHash(parsedReq, slog.Info)
-	groupPlatform := ""
-	if apiKey.Group != nil {
-		groupPlatform = apiKey.Group.Platform
-	}
+	requestPlatform, _ := apikey.ForcePlatformFromContext(c.Request.Context())
 	selectionSessionHash := sessionHash
-	if groupPlatform == capability.PlatformGemini && selectionSessionHash != "" {
+	if requestPlatform == capability.PlatformGemini && selectionSessionHash != "" {
 		selectionSessionHash = "gemini:" + selectionSessionHash
 	}
 	if isolationSessionID := MetadataSessionID(parsedReq.MetadataUserID); isolationSessionID != "" {
@@ -461,7 +457,7 @@ func (h *CompatibleTextHandler) ChatCompletions(c *gin.Context) {
 			Mapping:       groupMapping,
 		},
 		RequestContext:       c.Request.Context(),
-		GroupPlatform:        groupPlatform,
+		RequestPlatform:      requestPlatform,
 		SelectionSessionHash: selectionSessionHash,
 	}
 	h.executeCompatible(c, call, execution.TextGenericChat)
@@ -484,7 +480,7 @@ func (h *CompatibleTextHandler) executeCompatible(c *gin.Context, call Compatibl
 		SessionHash: call.SessionKey,
 		AttemptBody: call.ForwardBody,
 
-		Text: execution.TextState{Kind: kind, Parsed: call.Parsed, Platform: call.GroupPlatform, SelectionContext: call.RequestContext, SelectionSessionHash: call.SelectionSessionHash, Mapping: call.Mapping, AlternateBudget: kind == execution.TextGenericChat && call.GroupPlatform == capability.PlatformGemini},
+		Text: execution.TextState{Kind: kind, Parsed: call.Parsed, Platform: call.RequestPlatform, SelectionContext: call.RequestContext, SelectionSessionHash: call.SelectionSessionHash, Mapping: call.Mapping, AlternateBudget: kind == execution.TextGenericChat && call.RequestPlatform == capability.PlatformGemini},
 	}
 	output := &MessagesOutput{ResponseSink: ResponseSink{Writer: c.Writer}, HTTP: c, Log: call.Log, StreamStarted: call.StreamStarted}
 	_, _ = h.executor.Execute(c.Request.Context(), request, output)

@@ -35,7 +35,8 @@ func TestGatewayRoutesModelsWithClientVersionUsesLocalList(t *testing.T) {
 				Platform: capability.PlatformOpenAI,
 				Type:     capability.AccountTypeAPIKey,
 				Credentials: map[string]any{
-					"api_key": "sk-test",
+					"api_key":         "sk-test",
+					"model_whitelist": []string{"local-api-key-model"},
 					"model_mapping": map[string]any{
 						"local-api-key-model": "local-api-key-model",
 					},
@@ -44,7 +45,7 @@ func TestGatewayRoutesModelsWithClientVersionUsesLocalList(t *testing.T) {
 		},
 	}
 	router := newGatewayRoutesTestRouterWithGroup(&config.Config{}, &routing.Group{
-		ID: 1, Platform: capability.PlatformOpenAI, AllowedProtocols: []protocol.ProtocolID{protocol.ProtocolAnthropicMessages, protocol.ProtocolOpenAIResponses, protocol.ProtocolOpenAIChatCompletions},
+		ID: 1, AllowedProtocols: []protocol.ProtocolID{protocol.ProtocolAnthropicMessages, protocol.ProtocolOpenAIResponses, protocol.ProtocolOpenAIChatCompletions},
 	}, newGatewayModelsHandlerForTest(repo))
 	paths := []string{
 		"/v1/models?client_version=0.144.0",

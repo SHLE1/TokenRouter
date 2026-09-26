@@ -70,8 +70,10 @@ func TestCreativeWorkerRuntimeStatus(t *testing.T) {
 		overlapped: make(chan struct{}),
 		release:    make(chan struct{}),
 	}
-	worker := newCreativeWorkerFixtureForSources(queue, repo, transient, executor, fixture.service, fixture.worker.Options(), scheduler.NewConcurrencyService(&parallelCreativeUserCache{}, scheduler.Diagnostics{Logf: logging.LegacyPrintf,
-		Event: logging.Event},
+	worker := newCreativeWorkerFixtureForSources(queue, repo, transient, executor, fixture.service, fixture.worker.Options(), scheduler.NewConcurrencyService(&parallelCreativeUserCache{}, scheduler.Diagnostics{
+		Logf:  logging.LegacyPrintf,
+		Event: logging.Event,
+	},
 	))
 	runtime := newCreativeRuntimeFixture(worker, fixture.service, &config.Config{
 		Creative: config.CreativeConfig{QueueEnabled: true},
@@ -130,12 +132,15 @@ func (q *parallelCreativeQueue) Ack(context.Context, string, string) error { ret
 func (q *parallelCreativeQueue) Heartbeat(context.Context, string, string) (bool, error) {
 	return true, nil
 }
+
 func (q *parallelCreativeQueue) MoveDueDelayedToReady(context.Context, int) (int, error) {
 	return 0, nil
 }
+
 func (q *parallelCreativeQueue) RecoverStaleActive(context.Context, time.Duration, int) (int, error) {
 	return 0, nil
 }
+
 func (q *parallelCreativeQueue) TryAcquireJobLock(context.Context, string, time.Duration) (creative.CreativeRunJobLock, bool, error) {
 	return &creativeFakeJobLock{}, true, nil
 }
@@ -162,10 +167,10 @@ func (r *parallelCreativeRunRepo) MarkCreativeRunRunning(ctx context.Context, ru
 	return r.creativeFakeRunRepo.MarkCreativeRunRunning(ctx, runID, accountID, now)
 }
 
-func (r *parallelCreativeRunRepo) SetCreativeRunAccountID(ctx context.Context, runID string, accountID int64, now time.Time) error {
+func (r *parallelCreativeRunRepo) SetCreativeRunExecution(ctx context.Context, runID string, accountID int64, provider string, now time.Time) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	return r.creativeFakeRunRepo.SetCreativeRunAccountID(ctx, runID, accountID, now)
+	return r.creativeFakeRunRepo.SetCreativeRunExecution(ctx, runID, accountID, provider, now)
 }
 
 func (r *parallelCreativeRunRepo) MarkCreativeRunSucceeded(ctx context.Context, runID string, actualCost float64, now time.Time) error {
@@ -300,8 +305,10 @@ func TestCreativeWorkerRuntimeParallelProviderExecution(t *testing.T) {
 		overlapped: make(chan struct{}),
 		release:    make(chan struct{}),
 	}
-	concurrency := scheduler.NewConcurrencyService(&parallelCreativeUserCache{}, scheduler.Diagnostics{Logf: logging.LegacyPrintf,
-		Event: logging.Event},
+	concurrency := scheduler.NewConcurrencyService(&parallelCreativeUserCache{}, scheduler.Diagnostics{
+		Logf:  logging.LegacyPrintf,
+		Event: logging.Event,
+	},
 	)
 	worker := newCreativeWorkerFixtureForSources(queue, repo, transient, executor, fixture.service, fixture.worker.Options(), concurrency)
 	runtime := newCreativeRuntimeFixture(worker, fixture.service, &config.Config{Creative: config.CreativeConfig{QueueEnabled: true}})
@@ -453,6 +460,7 @@ func (r *parallelCreativeRunRepo) RecordProviderOutcome(ctx context.Context, id 
 	defer r.mu.Unlock()
 	return r.creativeFakeRunRepo.RecordProviderOutcome(ctx, id, accountID, outputs, now)
 }
+
 func (r *parallelCreativeRunRepo) CompleteProviderOutcome(ctx context.Context, id string, cost float64, lost bool, now time.Time) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

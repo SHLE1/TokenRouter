@@ -2,7 +2,6 @@ package capability
 
 import (
 	"fmt"
-	"slices"
 )
 
 // canonicalGroupClientProtocols 从唯一目录派生顺序，避免新增协议遗漏校验。
@@ -16,52 +15,14 @@ var canonicalGroupClientProtocols = func() []ProtocolID {
 	return out
 }()
 
-// SupportedGroupClientProtocols 返回平台实际实现的客户端入口。
-func SupportedGroupClientProtocols(platform string) []ProtocolID {
-	out := []ProtocolID{}
-	for _, protocol := range protocolCatalog {
-		if protocol.UpstreamOnly {
-			continue
-		}
-		for _, candidate := range protocol.Platforms {
-			if platform == candidate {
-				out = append(out, protocol.ID)
-				break
-			}
-		}
-	}
-	return out
+// SupportedGroupClientProtocols 返回所有公开入口；上游资格在逐账号选路时判断。
+func SupportedGroupClientProtocols(_ string) []ProtocolID {
+	return append([]ProtocolID{}, canonicalGroupClientProtocols...)
 }
 
-// DefaultGroupClientProtocols 返回新建分组的协议默认值。
-// 默认值只决定初始选择，管理员可以在保存时关闭任意协议。
-func DefaultGroupClientProtocols(platform string) []ProtocolID {
-	switch platform {
-	case PlatformAnthropic:
-		return []ProtocolID{ProtocolAnthropicMessages}
-	case PlatformGrok:
-		return []ProtocolID{ProtocolOpenAIResponses, ProtocolOpenAIChatCompletions, ProtocolImagesGenerations, ProtocolImagesEdits}
-	case PlatformOpenAI:
-		return []ProtocolID{
-			ProtocolOpenAIResponses,
-			ProtocolOpenAIChatCompletions,
-		}
-	case PlatformKimi, PlatformZhipu, PlatformDeepseek:
-		return []ProtocolID{
-			ProtocolAnthropicMessages,
-			ProtocolOpenAIResponses,
-			ProtocolOpenAIChatCompletions,
-		}
-	case PlatformGemini:
-		return []ProtocolID{ProtocolGeminiGenerateContent}
-	case PlatformAntigravity:
-		return []ProtocolID{
-			ProtocolAnthropicMessages,
-			ProtocolGeminiGenerateContent,
-		}
-	default:
-		return []ProtocolID{}
-	}
+// DefaultGroupClientProtocols 只默认开放三个文本入口，其余能力由管理员显式启用。
+func DefaultGroupClientProtocols(_ string) []ProtocolID {
+	return []ProtocolID{ProtocolAnthropicMessages, ProtocolOpenAIResponses, ProtocolOpenAIChatCompletions}
 }
 
 // ValidateGroupClientProtocols 校验完整协议集合并返回固定顺序的副本。
@@ -117,30 +78,7 @@ func SetGroupClientProtocol(protocols []ProtocolID, target ProtocolID, enabled b
 	return out
 }
 
-// DefaultProtocolFallbacks 固化历史平台适配，管理员可显式清空映射改为仅原生。
-func DefaultProtocolFallbacks(platform string) map[ProtocolID]ProtocolID {
-	result := map[ProtocolID]ProtocolID{}
-	target := ProtocolOpenAIResponses
-	switch platform {
-	case PlatformAnthropic:
-		target = ProtocolAnthropicMessages
-	case PlatformGemini, PlatformAntigravity:
-		target = ProtocolGeminiGenerateContent
-	case PlatformQoder:
-		target = ProtocolQoderChat
-	case PlatformZhipu:
-		target = ProtocolOpenAIChatCompletions
-	}
-	for _, source := range SupportedGroupClientProtocols(platform) {
-		if slices.Contains(ProtocolFallbackTargets(platform, source), target) {
-			result[source] = target
-		}
-	}
-	if platform == PlatformAnthropic {
-		result[ProtocolAnthropicMessages] = ProtocolGeminiGenerateContent
-	}
-	if slices.Contains(ProtocolFallbackTargets(platform, ProtocolOpenAIResponses), ProtocolOpenAIChatCompletions) {
-		result[ProtocolOpenAIResponses] = ProtocolOpenAIChatCompletions
-	}
-	return result
+// DefaultProtocolFallbacks 省略入口表示自动匹配，显式空目标列表表示仅原生。
+func DefaultProtocolFallbacks(_ string) map[ProtocolID][]ProtocolID {
+	return map[ProtocolID][]ProtocolID{}
 }

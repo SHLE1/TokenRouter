@@ -45,17 +45,17 @@ func FilterGroupClientProtocolsForPlatform(platform string, protocols []protocol
 // NormalizeGroupProtocolPolicy 校验一次原始集合，再应用兼容输入并生成旧字段镜像。
 // @project-doc docs/interfaces/protocol_capabilities.md#group_protocol_routes
 func NormalizeGroupProtocolPolicy(group *Group, legacy *LegacyGroupProtocolPatch) error {
-	normalized, err := capability.ValidateGroupClientProtocols(group.Platform, group.AllowedProtocols)
+	normalized, err := capability.ValidateGroupClientProtocols("", group.AllowedProtocols)
 	if err != nil {
 		return infraerrors.BadRequest("INVALID_ALLOWED_CLIENT_PROTOCOLS", err.Error())
 	}
 	group.AllowedProtocols = normalized
 	ApplyLegacyGroupProtocolPatch(group, legacy)
-	if err := capability.ValidateProtocolFallbacks(group.Platform, group.ProtocolFallbacks); err != nil {
+	if err := capability.ValidateProtocolFallbacks("", group.ProtocolFallbacks); err != nil {
 		return infraerrors.BadRequest("GROUP_PROTOCOL_FALLBACK_INVALID", err.Error())
 	}
 	if group.ProtocolFallbacks == nil {
-		group.ProtocolFallbacks = map[protocol.ProtocolID]protocol.ProtocolID{}
+		group.ProtocolFallbacks = map[protocol.ProtocolID][]protocol.ProtocolID{}
 	}
 	policy, err := capability.NormalizeResponsesImagePolicy(group.ResponsesImagePolicy)
 	if err != nil {
@@ -63,7 +63,7 @@ func NormalizeGroupProtocolPolicy(group *Group, legacy *LegacyGroupProtocolPatch
 	}
 	group.ResponsesImagePolicy = policy
 	// 旧服务仍读取这些派生值；它们不再作为独立配置写入。
-	group.AllowMessagesDispatch = group.Platform == PlatformOpenAI && slices.Contains(group.AllowedProtocols, protocol.ProtocolAnthropicMessages)
+	group.AllowMessagesDispatch = slices.Contains(group.AllowedProtocols, protocol.ProtocolAnthropicMessages)
 	group.AllowImageGeneration = slices.Contains(group.AllowedProtocols, protocol.ProtocolImagesGenerations) || slices.Contains(group.AllowedProtocols, protocol.ProtocolImagesEdits) || slices.Contains(group.AllowedProtocols, protocol.ProtocolImageBatches) || slices.Contains(group.AllowedProtocols, protocol.ProtocolGeminiGenerateContent)
 	group.AllowBatchImageGeneration = slices.Contains(group.AllowedProtocols, protocol.ProtocolImageBatches)
 	group.AllowLive = slices.Contains(group.AllowedProtocols, protocol.ProtocolLive)
@@ -80,7 +80,7 @@ func ApplyLegacyGroupProtocolPatch(group *Group, patch *LegacyGroupProtocolPatch
 	if patch == nil {
 		return
 	}
-	supported := capability.SupportedGroupClientProtocols(group.Platform)
+	supported := capability.SupportedGroupClientProtocols("")
 	set := func(protocol protocol.ProtocolID, value *bool) {
 		if value != nil && slices.Contains(supported, protocol) {
 			group.AllowedProtocols = capability.SetGroupClientProtocol(group.AllowedProtocols, protocol, *value)

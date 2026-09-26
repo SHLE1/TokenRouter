@@ -116,7 +116,7 @@ func TestQoderCompatibleNativeHTTPCompletionBoundary(t *testing.T) {
 				}
 				fixture := &qoderRuntimeContract{t: t, wire: wire, partial: partial}
 				group := int64(4)
-				key := &apikey.APIKey{ID: 2, GroupID: &group, Group: &routing.Group{Platform: "qoder"}}
+				key := &apikey.APIKey{ID: 2, GroupID: &group, Group: &routing.Group{}}
 				options := QoderCompatibleOptions{Execution: fixture, Funding: fixture, Recorder: fixture, PlatformAvailable: true, ReadAccess: func(*gin.Context) (*apikey.APIKey, bool) { return key, true }, MayRefresh: func(error) bool { return false }, MaySwitch: func(error) bool { return false }, Errors: QoderErrorPresenter{Describe: func(error) forward.QoderErrorView { return forward.QoderErrorView{} }}}
 				h := NewQoderCompatibleHandler(NewQoderCompatibleRuntime(options), nil, 3)
 				response := httptest.NewRecorder()

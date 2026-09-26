@@ -31,7 +31,7 @@ func SchedulerScoreOptions(concurrency *scheduler.ConcurrencyService, stats *sch
 		}
 		var g *scheduler.ScoreGroup
 		if group != nil {
-			g = &scheduler.ScoreGroup{Platform: group.Platform}
+			g = &scheduler.ScoreGroup{}
 		}
 		settings := effective(ctx, group)
 		scores := scheduler.BuildScoreSnapshot(projected, loads, stats, g, settings.Weights, settings.StickyWeightedEnabled, func(v *scheduler.ScoreAccount, now time.Time) float64 {

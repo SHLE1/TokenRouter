@@ -8,7 +8,7 @@ import (
 	dbent "github.com/TokenFlux/TokenRouter/ent"
 )
 
-// runGroupMutationTx 在可用时为分组变更开启事务，保证“切换默认组”过程原子化。
+// runGroupMutationTx 在可用时为分组变更开启事务，保证分组及关联变更原子化。
 func (s *GroupStore) Mutate(ctx context.Context, fn func(context.Context) error) error {
 	if dbent.TxFromContext(ctx) != nil || s.client == nil {
 		return fn(ctx)

@@ -37,10 +37,13 @@ func (s *sessionLimitReleaseCacheStub) UnregisterSession(_ context.Context, acco
 }
 
 func newSessionLimitTestAccount() *gatewayprovider.ExecutionAccount {
-	return &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 42,
-		Platform: capability.PlatformAnthropic,
-		Type:     capability.AccountTypeOAuth,
-		Extra:    map[string]any{"max_sessions": 1}},
+	return &gatewayprovider.ExecutionAccount{
+		Record: accountcore.Record{
+			LoadLocation: time.LoadLocation, ID: 42,
+			Platform: capability.PlatformAnthropic,
+			Type:     capability.AccountTypeOAuth,
+			Extra:    map[string]any{"max_sessions": 1},
+		},
 	}
 }
 
@@ -50,7 +53,8 @@ func newSessionLimitTestAccount() *gatewayprovider.ExecutionAccount {
 func TestReleaseAccountSession_ReleasesRegisteredSlot(t *testing.T) {
 	cache := newSessionLimitReleaseCacheStub()
 	svc := newGenericSelectionForTest(GenericDependencies{
-		Reads: Reads{}, Shared: Shared{}, Sessions: cache}, nil)
+		Reads: Reads{}, Shared: Shared{}, Sessions: cache,
+	}, nil)
 
 	acc := newSessionLimitTestAccount()
 
@@ -66,14 +70,20 @@ func TestReleaseAccountSession_ReleasesRegisteredSlot(t *testing.T) {
 // - 空 sessionID
 // 以上场景均为 no-op，不得触发 UnregisterSession。
 func TestReleaseAccountSession_NoOpForInapplicableAccounts(t *testing.T) {
-	apiKeyAcc := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 43,
-		Platform: capability.PlatformAnthropic,
-		Type:     capability.AccountTypeAPIKey,
-		Extra:    map[string]any{"max_sessions": 1}},
+	apiKeyAcc := &gatewayprovider.ExecutionAccount{
+		Record: accountcore.Record{
+			Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 43,
+			Platform: capability.PlatformAnthropic,
+			Type:     capability.AccountTypeAPIKey,
+			Extra:    map[string]any{"max_sessions": 1},
+		},
 	}
-	noLimitAcc := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 44,
-		Platform: capability.PlatformAnthropic,
-		Type:     capability.AccountTypeOAuth},
+	noLimitAcc := &gatewayprovider.ExecutionAccount{
+		Record: accountcore.Record{
+			Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 44,
+			Platform: capability.PlatformAnthropic,
+			Type:     capability.AccountTypeOAuth,
+		},
 	}
 	enabledAcc := newSessionLimitTestAccount()
 
@@ -92,7 +102,8 @@ func TestReleaseAccountSession_NoOpForInapplicableAccounts(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			cache := newSessionLimitReleaseCacheStub()
 			svc := newGenericSelectionForTest(GenericDependencies{
-				Reads: Reads{}, Shared: Shared{}, Sessions: cache}, nil)
+				Reads: Reads{}, Shared: Shared{}, Sessions: cache,
+			}, nil)
 
 			svc.ReleaseAccountSession(context.Background(), tc.account, tc.sessionID)
 			require.Empty(t, cache.unregistered, "不适用账号不应触发释放")
@@ -105,14 +116,16 @@ func TestReleaseAccountSession_NoOpForInapplicableAccounts(t *testing.T) {
 func TestReleaseAccountSession_NilCacheAndErrorTolerance(t *testing.T) {
 	// nil cache：no-op
 	svc := newGenericSelectionForTest(GenericDependencies{
-		Reads: Reads{}, Shared: Shared{}}, nil)
+		Reads: Reads{}, Shared: Shared{},
+	}, nil)
 
 	svc.ReleaseAccountSession(context.Background(), newSessionLimitTestAccount(), "session-hash")
 
 	// 底层错误：不 panic
 	cache := &sessionLimitReleaseCacheStub{err: errors.New("redis down")}
 	svc = newGenericSelectionForTest(GenericDependencies{
-		Reads: Reads{}, Shared: Shared{}, Sessions: cache}, nil)
+		Reads: Reads{}, Shared: Shared{}, Sessions: cache,
+	}, nil)
 
 	svc.ReleaseAccountSession(context.Background(), newSessionLimitTestAccount(), "session-hash")
 }
@@ -122,7 +135,8 @@ func TestReleaseAccountSession_NilCacheAndErrorTolerance(t *testing.T) {
 func TestReleaseAccountSession_Idempotent(t *testing.T) {
 	cache := newSessionLimitReleaseCacheStub()
 	svc := newGenericSelectionForTest(GenericDependencies{
-		Reads: Reads{}, Shared: Shared{}, Sessions: cache}, nil)
+		Reads: Reads{}, Shared: Shared{}, Sessions: cache,
+	}, nil)
 
 	acc := newSessionLimitTestAccount()
 

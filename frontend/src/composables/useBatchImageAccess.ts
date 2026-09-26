@@ -12,7 +12,7 @@ const pageSize = 100
 function keyAllowsBatchImage(key: ApiKey): boolean {
   return (
     key.status === 'active' &&
-    key.group?.platform === 'gemini' &&
+
     key.group?.allowed_protocols?.includes('image_batches') === true
   )
 }

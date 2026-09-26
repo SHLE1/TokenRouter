@@ -559,7 +559,6 @@ affiliates: {
         groups: 'Groups',
         subscriptions: 'Subscriptions',
         balance: 'Balance',
-        balancePlatformQuota: 'Balance (Platform Quota)',
         usage: 'Usage',
         usageAnthropic: 'Usage (Claude)',
         usageOpenAI: 'Usage (OpenAI)',
@@ -768,41 +767,6 @@ affiliates: {
         keyExists: 'Attribute key already exists',
         dragToReorder: 'Drag to reorder'
       },
-      platformQuota: {
-        menuItem: 'Platform Quotas',
-        title: 'Platform Quotas',
-        subtitle: 'Configure daily / weekly / monthly USD usage limits for each upstream platform for user {email}',
-        columns: {
-          platform: 'Platform',
-          daily: 'Daily (USD)',
-          weekly: 'Weekly (USD)',
-          monthly: 'Monthly (USD, 30-day rolling)',
-          usage: 'Current Usage',
-        },
-        placeholder: 'unlimited',
-        save: 'Save',
-        saving: 'Saving...',
-        cancel: 'Cancel',
-        clearAll: 'Clear All (remove all limits)',
-        clearAllConfirm: 'Clear daily / weekly / monthly limits for ALL platforms? All platforms will become "unlimited" with no local undo — you must manually re-enter values before saving.',
-        reset: {
-          button: 'Reset window',
-          confirm: 'Reset the {window} usage for {platform} for this user? This is effective immediately.',
-          success: 'Reset {platform} {window} usage',
-          failed: 'Reset failed',
-        },
-        updateSuccess: 'Platform quotas updated',
-        updateFailed: 'Save failed',
-        loadFailed: 'Load failed',
-        hint: 'Empty = no limit for that window.',
-        windowDaily: 'daily',
-        windowWeekly: 'weekly',
-        windowMonthly: 'monthly',
-        cellNotConfigured: 'Not configured',
-        cellColumnTooltip: 'Only platforms with a limit are shown',
-        subscriptionWarning: 'This user has an active subscription. Platform quotas only apply to balance (standard) mode requests; subscription mode requests are not subject to these limits.',
-        invalidNumber: 'The following fields contain invalid numbers. Please fix them before saving: {fields}',
-      }
     },
 // Groups
     groups: {
@@ -834,7 +798,7 @@ affiliates: {
         routing: "Models and features",
         label: 'Group settings',
         general: 'General',
-        platform: 'Platform settings',
+        features: 'Feature policies',
         pricing: 'Billing & pricing',
         protocol: 'Protocol controls',
         identity: 'Basic information',
@@ -968,8 +932,6 @@ affiliates: {
       displayBrandPlaceholder: 'e.g. DeepSeek / Claude / OpenAI',
       displayBrandCreatablePrefix: 'Use brand',
       displayBrandHint: 'Only used in the model marketplace. It does not affect routing protocol, account scheduling, or format conversion. Empty uses the group name.',
-      platformHint: 'Select the upstream account and gateway routing format for this group. This is not the model brand.',
-      platformNotEditable: 'The upstream platform cannot be changed after creation; it only affects routing and account scheduling, not the model brand.',
       saving: 'Saving...',
       noGroups: 'No groups yet',
       noGroupsDescription: 'Create a group to better manage API keys and rates.',
@@ -977,17 +939,10 @@ affiliates: {
       groupUpdatedSuccess: 'Group updated successfully',
       groupDeletedSuccess: 'Group deleted successfully',
       rateMultiplierHint: 'Cost multiplier for this group (e.g., 1.5 = 150% of base cost)',
-      defaultGroup: {
-        title: 'Default Group',
-        badge: 'Default',
-        enabled: 'Use as default group',
-        disabled: 'Do not use as default group',
-        hint: 'When an API key has no valid group binding, requests fall back to the default group for that platform. Only one default group is kept per platform.'
-      },
       unavailableFallback: {
         title: 'Specific fallback group',
-        noFallback: 'Not specified (use default group)',
-        hint: 'When this group is disabled, API keys bound to it prefer this group as fallback. Leave empty to keep falling back to the platform default group.'
+        noFallback: 'No fallback',
+        hint: 'When this group is unavailable, keys with fallback enabled use this configured group. Leave empty to disable fallback.'
       },
       sessionIsolation: {
         title: 'Enable Session Isolation',
@@ -1227,7 +1182,7 @@ affiliates: {
       openaiLive: {
         title: 'OpenAI Live',
         allow: 'Allow Live access',
-        hint: 'When enabled, API keys in this OpenAI group can create and control Live voice sessions. Disabled by default. The TokenRouter server must run on Apple Silicon macOS with the official ChatGPT app installed; client platforms are unrestricted.',
+        hint: 'When enabled, API keys in this group can create and control Live voice sessions. Disabled by default. The TokenRouter server must run on Apple Silicon macOS with the official ChatGPT app installed; client platforms are unrestricted.',
         unsupportedTitle: 'Current server does not support Live',
         unsupportedMessage: 'This TokenRouter server cannot generate the required Live attestation. Live will not work even if enabled. Continue anyway?',
         enableAnyway: 'Enable anyway'
@@ -1250,8 +1205,8 @@ affiliates: {
       },
       copyAccounts: {
         title: 'Copy Accounts from Groups',
-        tooltip: 'Select one or more groups of the same platform. After creation, all accounts from these groups will be automatically bound to the new group (deduplicated).',
-        tooltipEdit: 'Select one or more groups of the same platform. After saving, current group accounts will be replaced with accounts from these groups (deduplicated).',
+        tooltip: 'Select one or more groups. After creation, all accounts from these groups will be automatically bound to the new group (deduplicated).',
+        tooltipEdit: 'Select one or more groups. After saving, current group accounts will be replaced with accounts from these groups (deduplicated).',
         selectPlaceholder: 'Select groups to copy accounts from...',
         hint: 'Multiple groups can be selected, accounts will be deduplicated',
         hintEdit: '⚠️ Warning: This will replace all existing account bindings'

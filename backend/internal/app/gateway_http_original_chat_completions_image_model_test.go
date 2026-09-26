@@ -71,11 +71,9 @@ func TestChatCompletionsRejectsGPTImageModelsBeforeScheduling(t *testing.T) {
 func TestChatCompletionsRejectsGroupMappedImageModel(t *testing.T) {
 	groupID := int64(4349)
 	pricingConfigService := newGatewayExecutionPricingConfigServiceForTest(groupID, capability.PlatformOpenAI, routingtestkit.Configuration{
-		ID:     4349,
-		Status: billing.StatusActive,
-		ModelMapping: map[string]map[string]string{
-			capability.PlatformOpenAI: {"draw-alias": "gpt-image-1"},
-		},
+		ID:           4349,
+		Status:       billing.StatusActive,
+		ModelMapping: map[string]string{"draw-alias": "gpt-image-1"},
 	})
 
 	tests := []struct {
@@ -187,7 +185,7 @@ func setImageChatTestAuthForGroup(c *gin.Context, groupID int64) {
 	apiKey := &apikey.APIKey{ID: 4348, UserID: 4348, User: &identity.User{ID: 4348}}
 	if groupID > 0 {
 		apiKey.GroupID = &groupID
-		apiKey.Group = &routing.Group{ID: groupID, Platform: capability.PlatformOpenAI}
+		apiKey.Group = &routing.Group{ID: groupID}
 	}
 	c.Set(string(keyhttp.ContextKeyAPIKey), apiKey)
 	c.Set(string(authctx.ContextKeyUser), authctx.AuthSubject{UserID: apiKey.UserID, Concurrency: 1})

@@ -85,7 +85,7 @@ func TestAPIKeyServiceRejectsInvalidLimitsBeforeRepositoryAccess(t *testing.T) {
 	service := newAPIKeyTestService(apiKeyTestDependencies{})
 	// 故意不提供 context，确保数值校验先于任何仓储访问。
 	var requestContext context.Context
-	_, createErr := service.Create(requestContext, 1, apikey.CreateAPIKeyRequest{Quota: -1})
+	_, createErr := service.Create(requestContext, 1, apikey.CreateAPIKeyRequest{GroupID: sanitizeFixtureGroupID(), Quota: -1})
 	require.ErrorIs(t, createErr, apikey.ErrAPIKeyLimitInvalid)
 
 	invalid := math.Inf(1)

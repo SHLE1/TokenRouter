@@ -107,8 +107,8 @@ type APIKeyUpdateFields struct {
 	BillingConfiguration bool
 	// ModelMapping 覆盖当前 API Key 的整份模型重定向规则。
 	ModelMapping bool
-	// FallbackToDefaultGroupWhenUnavailable 覆盖绑定分组不可用时的回退策略。
-	FallbackToDefaultGroupWhenUnavailable bool
+	// FallbackWhenGroupUnavailable 覆盖绑定分组不可用时的回退策略。
+	FallbackWhenGroupUnavailable bool
 	// QuotaUsed 仅供"重置配额用量"路径声明；常规计费走 IncrementQuotaUsed。
 	QuotaUsed bool
 	// RateLimits 覆盖 rate_limit_5h / _1d / _7d 三个阈值。
@@ -240,8 +240,8 @@ type CreateAPIKeyRequest struct {
 	RateLimit1d float64 `json:"rate_limit_1d"`
 	RateLimit7d float64 `json:"rate_limit_7d"`
 
-	// FallbackToDefaultGroupWhenUnavailable 表示绑定分组停用时是否允许回退到同平台默认分组，nil 时默认开启。
-	FallbackToDefaultGroupWhenUnavailable *bool `json:"fallback_to_default_group_when_unavailable"`
+	// FallbackWhenGroupUnavailable 表示绑定分组停用时是否允许回退到明确配置的回退分组，nil 时默认开启。
+	FallbackWhenGroupUnavailable *bool `json:"fallback_when_group_unavailable"`
 }
 
 // APIKeyBillingSubscriptionOption 是配置 API Key 时可选择的有效订阅。
@@ -285,8 +285,8 @@ type UpdateAPIKeyRequest struct {
 	RateLimit7d         *float64 `json:"rate_limit_7d"`
 	ResetRateLimitUsage *bool    `json:"reset_rate_limit_usage"` // Reset all usage counters to 0
 
-	// FallbackToDefaultGroupWhenUnavailable 为 nil 时保持原值。
-	FallbackToDefaultGroupWhenUnavailable *bool `json:"fallback_to_default_group_when_unavailable"`
+	// FallbackWhenGroupUnavailable 为 nil 时保持原值。
+	FallbackWhenGroupUnavailable *bool `json:"fallback_when_group_unavailable"`
 }
 
 // ValidateAPIKeyLimit 校验可写入 DECIMAL(20,8) 的 API Key 配额或滚动限额。
@@ -618,14 +618,20 @@ func (s *APIKeyService) KeyBillingUserIDForScope(ctx context.Context, userID int
 // KeyBillingUserForAPIKey 独立解析已有 Key 的付款主体。
 // 停用或被 Owner 锁定的团队 Key 会跳过鉴权水合，因此更新结算配置时不能直接信任 apiKey.User。
 func (s *APIKeyService) KeyBillingUserForAPIKey(ctx context.Context, apiKey *APIKey) (*User, error) {
-	if apiKey == nil || apiKey.UserID <= 0 || s == nil || s.userRepo == nil {
+	if apiKey == nil || apiKey.UserID <= 0 || s == nil {
 		return nil, ErrUserNotFound
 	}
 	if apiKey.TeamID == nil {
 		if apiKey.User != nil && apiKey.User.ID == apiKey.UserID {
 			return apiKey.User, nil
 		}
+		if s.userRepo == nil {
+			return nil, ErrUserNotFound
+		}
 		return s.userRepo.GetByID(ctx, apiKey.UserID)
+	}
+	if s.userRepo == nil {
+		return nil, ErrUserNotFound
 	}
 	if s.cfg != nil && !s.cfg.Team.Enabled {
 		return nil, ErrTeamFeatureDisabled
@@ -648,7 +654,13 @@ func (s *APIKeyService) KeyBillingUserForAPIKey(ctx context.Context, apiKey *API
 
 // KeyCanUserUseBoundGroup 校验已有 API Key 当前绑定的公开分组是否仍被该用户允许。
 func (s *APIKeyService) KeyCanUserUseBoundGroup(ctx context.Context, apiKey *APIKey) bool {
-	if apiKey == nil || apiKey.GroupID == nil || apiKey.Group == nil || apiKey.Group.IsExclusive {
+	if apiKey == nil || apiKey.GroupID == nil || apiKey.Group == nil {
+		return true
+	}
+	if !apiKey.AllowsRuntimeGroup(*apiKey.GroupID) {
+		return false
+	}
+	if apiKey.Group.IsExclusive {
 		return true
 	}
 	user := apiKey.User
@@ -670,6 +682,9 @@ func (s *APIKeyService) KeyCanUserUseBoundGroup(ctx context.Context, apiKey *API
 
 // Create 创建API Key
 func (s *APIKeyService) Create(ctx context.Context, userID int64, req CreateAPIKeyRequest) (*APIKey, error) {
+	if !req.IsComposite && (req.GroupID == nil || *req.GroupID <= 0) {
+		return nil, infraerrors.BadRequest("GROUP_REQUIRED", "API Key must be assigned to a group")
+	}
 	if err := KeyValidateCreateAPIKeyRequest(req); err != nil {
 		return nil, err
 	}
@@ -813,33 +828,33 @@ func (s *APIKeyService) Create(ctx context.Context, userID int64, req CreateAPIK
 	}
 
 	// 新建 API Key 默认开启分组不可用时的自动回退，仍允许调用方显式传 false 关闭。
-	fallbackToDefaultGroupWhenUnavailable := true
-	if req.FallbackToDefaultGroupWhenUnavailable != nil {
-		fallbackToDefaultGroupWhenUnavailable = *req.FallbackToDefaultGroupWhenUnavailable
+	fallbackWhenGroupUnavailable := true
+	if req.FallbackWhenGroupUnavailable != nil {
+		fallbackWhenGroupUnavailable = *req.FallbackWhenGroupUnavailable
 	}
 
 	// 创建API Key记录
 	apiKey := &APIKey{
-		UserID:                                userID,
-		TeamID:                                teamID,
-		Key:                                   key,
-		Name:                                  html.EscapeString(req.Name),
-		GroupID:                               req.GroupID,
-		IsComposite:                           req.IsComposite,
-		CompositeGroups:                       compositeGroups,
-		Status:                                StatusActive,
-		FastModePolicy:                        fastModePolicy,
-		BillingMode:                           billingMode,
-		PreferredSubscriptionID:               preferredSubscriptionID,
-		ModelMapping:                          modelMapping,
-		IPWhitelist:                           req.IPWhitelist,
-		IPBlacklist:                           req.IPBlacklist,
-		Quota:                                 req.Quota,
-		QuotaUsed:                             0,
-		RateLimit5h:                           req.RateLimit5h,
-		RateLimit1d:                           req.RateLimit1d,
-		RateLimit7d:                           req.RateLimit7d,
-		FallbackToDefaultGroupWhenUnavailable: fallbackToDefaultGroupWhenUnavailable,
+		UserID:                       userID,
+		TeamID:                       teamID,
+		Key:                          key,
+		Name:                         html.EscapeString(req.Name),
+		GroupID:                      req.GroupID,
+		IsComposite:                  req.IsComposite,
+		CompositeGroups:              compositeGroups,
+		Status:                       StatusActive,
+		FastModePolicy:               fastModePolicy,
+		BillingMode:                  billingMode,
+		PreferredSubscriptionID:      preferredSubscriptionID,
+		ModelMapping:                 modelMapping,
+		IPWhitelist:                  req.IPWhitelist,
+		IPBlacklist:                  req.IPBlacklist,
+		Quota:                        req.Quota,
+		QuotaUsed:                    0,
+		RateLimit5h:                  req.RateLimit5h,
+		RateLimit1d:                  req.RateLimit1d,
+		RateLimit7d:                  req.RateLimit7d,
+		FallbackWhenGroupUnavailable: fallbackWhenGroupUnavailable,
 	}
 	apiKey.ActorUser = actor
 	apiKey.User = user
@@ -1023,7 +1038,7 @@ func (s *APIKeyService) GetByKey(ctx context.Context, key string) (*APIKey, erro
 				return nil, fmt.Errorf("get api key: %w", err)
 			}
 			if !apiKey.IsComposite {
-				apiKey = s.KeyApplyDefaultGroupFallback(ctx, apiKey)
+				apiKey = s.KeyApplyExplicitGroupFallback(ctx, apiKey)
 				if !s.KeyCanUserUseBoundGroup(ctx, apiKey) {
 					return nil, fmt.Errorf("get api key: %w", ErrGroupDisabledForUser)
 				}
@@ -1046,7 +1061,7 @@ func (s *APIKeyService) GetByKey(ctx context.Context, key string) (*APIKey, erro
 				return nil, fmt.Errorf("get api key: %w", err)
 			}
 			if !apiKey.IsComposite {
-				apiKey = s.KeyApplyDefaultGroupFallback(ctx, apiKey)
+				apiKey = s.KeyApplyExplicitGroupFallback(ctx, apiKey)
 				if !s.KeyCanUserUseBoundGroup(ctx, apiKey) {
 					return nil, fmt.Errorf("get api key: %w", ErrGroupDisabledForUser)
 				}
@@ -1064,7 +1079,7 @@ func (s *APIKeyService) GetByKey(ctx context.Context, key string) (*APIKey, erro
 				return nil, fmt.Errorf("get api key: %w", err)
 			}
 			if !apiKey.IsComposite {
-				apiKey = s.KeyApplyDefaultGroupFallback(ctx, apiKey)
+				apiKey = s.KeyApplyExplicitGroupFallback(ctx, apiKey)
 				if !s.KeyCanUserUseBoundGroup(ctx, apiKey) {
 					return nil, fmt.Errorf("get api key: %w", ErrGroupDisabledForUser)
 				}
@@ -1080,7 +1095,7 @@ func (s *APIKeyService) GetByKey(ctx context.Context, key string) (*APIKey, erro
 	}
 	apiKey.Key = key
 	if !apiKey.IsComposite {
-		apiKey = s.KeyApplyDefaultGroupFallback(ctx, apiKey)
+		apiKey = s.KeyApplyExplicitGroupFallback(ctx, apiKey)
 		if !s.KeyCanUserUseBoundGroup(ctx, apiKey) {
 			return nil, fmt.Errorf("get api key: %w", ErrGroupDisabledForUser)
 		}
@@ -1104,108 +1119,35 @@ func (s *APIKeyService) SelectCompositeGroupForRequest(ctx context.Context, apiK
 		userCopy.UserGroupRPMOverride = binding.UserGroupRPMOverride
 		selected.User = &userCopy
 	}
-	prepared := s.KeyApplyDefaultGroupFallback(ctx, &selected)
+	prepared := s.KeyApplyExplicitGroupFallback(ctx, &selected)
 	if !s.KeyCanUserUseBoundGroup(ctx, prepared) {
 		return nil, ErrGroupDisabledForUser
 	}
 	return prepared, nil
 }
 
-// KeyApplyDefaultGroupFallback 为未绑定有效分组或绑定停用分组的 API Key 计算请求级默认分组。
-// 这里只修正当前请求中的对象，不回写数据库，也不写入认证缓存，避免不同端点之间互相污染。
-func (s *APIKeyService) KeyApplyDefaultGroupFallback(ctx context.Context, apiKey *APIKey) *APIKey {
-	if apiKey == nil || s.groupRepo == nil {
+// KeyApplyExplicitGroupFallback 仅使用管理员明确配置的不可用回退，不为未绑定 Key 猜测分组。
+func (s *APIKeyService) KeyApplyExplicitGroupFallback(ctx context.Context, apiKey *APIKey) *APIKey {
+	if apiKey == nil || s.groupRepo == nil || apiKey.GroupID == nil || apiKey.Group == nil || !apiKey.FallbackWhenGroupUnavailable {
 		return apiKey
 	}
-	if apiKey.Group != nil {
-		if apiKey.GroupID == nil {
-			gid := apiKey.Group.ID
-			apiKey.GroupID = &gid
-		}
-		if strings.EqualFold(apiKey.Group.Status, "deleted") {
-			return apiKey
-		}
-		if fallbackPlatform, ok := KeyFallbackPlatformFromBoundGroup(apiKey.Group); ok {
-			if !apiKey.FallbackToDefaultGroupWhenUnavailable {
-				return apiKey
-			}
-			if fallbackID := apiKey.Group.UnavailableFallbackGroupID; fallbackID != nil && *fallbackID > 0 {
-				if fallbackKey := s.KeyApplyUnavailableFallbackGroup(ctx, apiKey, fallbackPlatform, *fallbackID); fallbackKey != nil {
-					return fallbackKey
-				}
-			}
-			return s.KeyApplyDefaultGroupByPlatform(ctx, apiKey, fallbackPlatform)
-		}
-		if apiKey.GroupID != nil && apiKey.Group.ID == *apiKey.GroupID {
-			return apiKey
-		}
-	} else if apiKey.GroupID != nil {
-		// Key 明确绑定了分组但查询不到实体时，保持 GROUP_DELETED 语义，不使用入口默认分组兜底。
+	current := apiKey.Group
+	if current.IsActive() || strings.EqualFold(current.Status, "deleted") {
 		return apiKey
 	}
-
-	platform, ok := KeyResolveAPIKeyFallbackPlatform(ctx)
-	if !ok {
+	targetID := current.UnavailableFallbackGroupID
+	if targetID == nil || *targetID <= 0 || *targetID == current.ID {
 		return apiKey
 	}
-
-	return s.KeyApplyDefaultGroupByPlatform(ctx, apiKey, platform)
+	resolved, err := s.ResolveRuntimeGroup(ctx, apiKey, *targetID)
+	if err != nil {
+		return apiKey
+	}
+	// 订阅和入口协议在认证后按最终组继续检查，不沿用原组的额度及模型计划。
+	return resolved
 }
 
-// KeyApplyUnavailableFallbackGroup 将停用分组的请求优先切到管理员指定的回退分组。
-// 若目标分组不存在、停用或平台不匹配，返回 nil 交给默认分组兜底逻辑继续处理。
-func (s *APIKeyService) KeyApplyUnavailableFallbackGroup(ctx context.Context, apiKey *APIKey, platform string, fallbackGroupID int64) *APIKey {
-	if apiKey == nil || s.groupRepo == nil || fallbackGroupID <= 0 {
-		return nil
-	}
-	group, err := s.groupRepo.GetByIDLite(ctx, fallbackGroupID)
-	if err != nil || group == nil {
-		return nil
-	}
-	if !group.IsActive() || group.Platform != platform {
-		return nil
-	}
-	gid := group.ID
-	apiKey.GroupID = &gid
-	apiKey.Group = group
-	s.KeyRefreshFallbackUserGroupRPMOverride(ctx, apiKey, gid)
-	return apiKey
-}
-
-// KeyFallbackPlatformFromBoundGroup 返回停用绑定分组所属平台。
-// deleted/缺失分组不兜底，保留调用方现有的不可用分组报错语义。
-func KeyFallbackPlatformFromBoundGroup(group *routing.Group) (string, bool) {
-	if group == nil {
-		return "", false
-	}
-	if group.Status == StatusActive || strings.EqualFold(group.Status, "deleted") {
-		return "", false
-	}
-	platform := strings.TrimSpace(group.Platform)
-	if platform == "" {
-		return "", false
-	}
-	return platform, true
-}
-
-// KeyApplyDefaultGroupByPlatform 将当前请求中的 API Key 切到指定平台的默认分组。
-func (s *APIKeyService) KeyApplyDefaultGroupByPlatform(ctx context.Context, apiKey *APIKey, platform string) *APIKey {
-	if apiKey == nil || s.groupRepo == nil {
-		return apiKey
-	}
-	group, err := s.groupRepo.FindDefault(ctx, platform)
-	if err != nil || group == nil {
-		return apiKey
-	}
-
-	gid := group.ID
-	apiKey.GroupID = &gid
-	apiKey.Group = group
-	s.KeyRefreshFallbackUserGroupRPMOverride(ctx, apiKey, gid)
-	return apiKey
-}
-
-// KeyRefreshFallbackUserGroupRPMOverride 重新绑定默认分组后刷新用户专属 RPM。
+// KeyRefreshFallbackUserGroupRPMOverride 切换到显式回退分组后刷新用户专属 RPM。
 // 认证缓存里的 override 属于原分组，不能沿用到 fallback 分组。
 func (s *APIKeyService) KeyRefreshFallbackUserGroupRPMOverride(ctx context.Context, apiKey *APIKey, groupID int64) {
 	if apiKey == nil || apiKey.User == nil {
@@ -1218,37 +1160,6 @@ func (s *APIKeyService) KeyRefreshFallbackUserGroupRPMOverride(ctx context.Conte
 	override, err := s.userGroupRateRepo.GetRPMOverrideByUserAndGroup(ctx, apiKey.User.ID, groupID)
 	if err == nil {
 		apiKey.User.UserGroupRPMOverride = override
-	}
-}
-
-// KeyResolveAPIKeyFallbackPlatform 根据当前请求上下文推断默认分组所属平台。
-// 仅在明确处于网关请求链路时返回 true，避免普通内部调用被意外改写为默认分组。
-func KeyResolveAPIKeyFallbackPlatform(ctx context.Context) (string, bool) {
-	if ctx == nil {
-		return "", false
-	}
-
-	if forcePlatform, ok := ForcePlatformFromContext(ctx); ok {
-		forcePlatform = strings.TrimSpace(forcePlatform)
-		if forcePlatform != "" {
-			return forcePlatform, true
-		}
-	}
-
-	inboundEndpoint, ok := InboundEndpointFromContext(ctx)
-	if !ok {
-		return "", false
-	}
-	switch strings.TrimSpace(inboundEndpoint) {
-	case "/v1beta/models":
-		return PlatformGemini, true
-	case "/v1/images/generations", "/v1/images/edits":
-		return PlatformOpenAI, true
-	case "/v1/messages", "/v1/chat/completions", "/v1/responses":
-		// 通用 /v1 入口保持现有语义：未指定平台时默认走 anthropic。
-		return PlatformAnthropic, true
-	default:
-		return "", false
 	}
 }
 
@@ -1548,9 +1459,9 @@ func (s *APIKeyService) Update(ctx context.Context, id int64, userID int64, req 
 		apiKey.RateLimit7d = *req.RateLimit7d
 		fields.RateLimits = true
 	}
-	if req.FallbackToDefaultGroupWhenUnavailable != nil {
-		apiKey.FallbackToDefaultGroupWhenUnavailable = *req.FallbackToDefaultGroupWhenUnavailable
-		fields.FallbackToDefaultGroupWhenUnavailable = true
+	if req.FallbackWhenGroupUnavailable != nil {
+		apiKey.FallbackWhenGroupUnavailable = *req.FallbackWhenGroupUnavailable
+		fields.FallbackWhenGroupUnavailable = true
 	}
 	resetRateLimit := req.ResetRateLimitUsage != nil && *req.ResetRateLimitUsage
 	if resetRateLimit {

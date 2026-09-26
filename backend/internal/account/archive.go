@@ -185,11 +185,6 @@ func (h *Archive) Export(ctx context.Context, query ArchiveExportQuery) (transfe
 }
 
 func (h *Archive) Import(ctx context.Context, req transfer.DataImportRequest) (transfer.DataImportResult, error) {
-	skipDefaultGroupBind := true
-	if req.SkipDefaultGroupBind != nil {
-		skipDefaultGroupBind = *req.SkipDefaultGroupBind
-	}
-
 	dataPayload := req.Data
 	result := transfer.DataImportResult{}
 
@@ -244,20 +239,19 @@ func (h *Archive) Import(ctx context.Context, req transfer.DataImportRequest) (t
 		h.enrichIdentity(&item)
 
 		accountInput := &CreateAccountInput{
-			Name:                 item.Name,
-			Notes:                item.Notes,
-			Platform:             item.Platform,
-			Type:                 item.Type,
-			Credentials:          item.Credentials,
-			Extra:                item.Extra,
-			ProxyID:              proxyID,
-			Concurrency:          archiveIntValue(item.Concurrency),
-			Priority:             archiveIntValue(item.Priority),
-			RateMultiplier:       item.RateMultiplier,
-			GroupIDs:             nil,
-			ExpiresAt:            item.ExpiresAt,
-			AutoPauseOnExpired:   item.AutoPauseOnExpired,
-			SkipDefaultGroupBind: skipDefaultGroupBind,
+			Name:               item.Name,
+			Notes:              item.Notes,
+			Platform:           item.Platform,
+			Type:               item.Type,
+			Credentials:        item.Credentials,
+			Extra:              item.Extra,
+			ProxyID:            proxyID,
+			Concurrency:        archiveIntValue(item.Concurrency),
+			Priority:           archiveIntValue(item.Priority),
+			RateMultiplier:     item.RateMultiplier,
+			GroupIDs:           nil,
+			ExpiresAt:          item.ExpiresAt,
+			AutoPauseOnExpired: item.AutoPauseOnExpired,
 		}
 
 		created, err := h.accounts.CreateAccount(ctx, accountInput)
@@ -363,6 +357,7 @@ func (h *Archive) resolveExportProxies(ctx context.Context, accounts []Record) (
 
 	return h.proxies.GetProxiesByIDs(ctx, ids)
 }
+
 func (h *Archive) enrichIdentity(item *transfer.DataAccount) {
 	token := ArchiveIDToken(item)
 	if token == "" || h.options.DecodeIDToken == nil {
@@ -375,6 +370,7 @@ func (h *Archive) enrichIdentity(item *transfer.DataAccount) {
 	}
 	FillArchiveIdentity(item, hints)
 }
+
 func cloneArchiveItem(value transfer.DataAccount) transfer.DataAccount {
 	value.Credentials = CloneValues(value.Credentials)
 	value.Extra = CloneValues(value.Extra)

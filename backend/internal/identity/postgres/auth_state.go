@@ -480,38 +480,6 @@ func (s *AuthState) AuthShouldApplyEmailFirstBindDefaults(
 	return !hasGrant
 }
 
-// identitycore.AuthSnapshotPlatformQuotaDefaults 把 plan.PlatformQuotas（全部允许 platform × 3 window）以
-// BulkInsertInitial 形式写入 user_platform_quotas 表。失败 fail-open（仅 warn log）。
-func (s *AuthState) AuthSnapshotPlatformQuotaDefaults(ctx context.Context, userID int64, plan *identitycore.AuthSignupGrantPlan) error {
-	if s.Quotas == nil || plan == nil || len(plan.PlatformQuotas) == 0 {
-		return nil
-	}
-	// 平台配额快照是 best-effort，必须脱离调用方事务执行。
-	// 否则某平台违反 user_platform_quotas 的 CHECK 约束时，PostgreSQL 会把整笔注册事务标记为 aborted。
-	ctx = dbent.WithoutTx(ctx)
-	records := make([]identitycore.UserPlatformQuotaRecord, 0, len(plan.PlatformQuotas))
-	for platform, q := range plan.PlatformQuotas {
-		rec := identitycore.UserPlatformQuotaRecord{
-			UserID:   userID,
-			Platform: platform,
-		}
-		if q != nil {
-			rec.DailyLimitUSD = q.DailyLimitUSD
-			rec.WeeklyLimitUSD = q.WeeklyLimitUSD
-			rec.MonthlyLimitUSD = q.MonthlyLimitUSD
-		}
-		records = append(records, rec)
-	}
-
-	if err := s.AuthRunFailOpenDBStep(ctx, "auth_platform_quota_snapshot", func(stepCtx context.Context) error {
-		return s.Quotas.BulkInsertInitial(stepCtx, records)
-	}); err != nil {
-		s.Observer.Printf("service.auth", "[Auth] Warning: snapshot platform quota failed user=%d: %v (fail-open)", userID, err)
-		return nil // fail-open：返回 nil，让调用方继续
-	}
-	return nil
-}
-
 func (s *AuthState) AuthTouchUserLogin(ctx context.Context, userID int64) {
 	if s == nil || s.entClient == nil || userID <= 0 {
 		return

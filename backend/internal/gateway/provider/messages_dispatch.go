@@ -3,7 +3,6 @@ package provider
 import (
 	"strings"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/grok"
 )
@@ -24,9 +23,6 @@ func ResolveMessagesDispatchModel(group *routing.Group, model string) string {
 			}
 			return grok.ModelMappingWithOptions(options)["claude-*"]
 		},
-	}
-	if group != nil {
-		options.SkipGroupMapping = account.IsCNProvider(group.Platform)
 	}
 	return routing.ResolveMessagesDispatchModel(group, model, options)
 }

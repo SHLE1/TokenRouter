@@ -255,6 +255,7 @@ export default {
         },
         filterReasons: {
           account_missing: '账号不存在',
+          group_mismatch: '账号不属于当前分组',
           platform_mismatch: '平台不匹配',
           account_inactive: '账号未启用',
           account_disabled: '账号已关闭调度',
@@ -736,7 +737,6 @@ export default {
         noSelection: '请选择要编辑的账号',
         noFieldsSelected: '请至少选择一个要更新的字段',
         mixedPlatformWarning: '所选账号跨越多个平台（{platforms}）。显示的账号模型映射预设为合并结果——请确保映射对每个平台都适用。',
-        modelRestrictionMixedAntigravityNotSupported: '包含 Antigravity 账号时，暂不支持跨平台批量修改模型限制。请按平台分别操作。'
       },
       bulkDeleteTitle: '批量删除账号',
       bulkDeleteConfirm: '确定要删除选中的 {count} 个账号吗？此操作无法撤销。',
@@ -906,7 +906,6 @@ export default {
         testModeDefault: '常规请求',
         testModeCompact: '原生 V2 压缩测试',
         testModeLegacyCompact: '旧版 Compact 端点测试',
-        modelRestrictionDisabledByPassthrough: '已开启自动透传：最终模型白名单和账号模型映射不会生效。',
       },
       grok: {
         baseUrlHint: 'Grok OAuth 账号会转发到官方 xAI API Base URL。',
@@ -978,11 +977,11 @@ export default {
       modelRestriction: '账号模型规则（可选）',
       modelWhitelist: '最终模型白名单',
       modelMapping: '账号模型映射',
-      modelRestrictionCombinedHint: '请求进入该账号后，先执行账号模型映射，再用最终模型白名单检查映射结果。白名单留空表示不设置账号级模型限制；分组规则、平台能力和上游实际支持范围仍然生效。',
-      selectAllowedModels: '仅允许这些最终模型。留空表示账号级不限制模型，不代表上游一定支持任意模型。',
+      modelRestrictionCombinedHint: '先执行账号模型映射，再检查最终模型白名单。白名单留空使用该平台和认证类型的默认目录；显式模型映射可添加自定义模型。支持末尾 * 和单独的 *，协议及账号能力仍需满足。',
+      selectAllowedModels: '留空使用默认模型目录；填写具体模型、末尾通配符或 * 明确扩展范围。',
       mapRequestModels: '将账号收到的模型名改写为发送给上游 API 的模型名。若分组也配置映射，会先执行分组映射，再执行这里的账号映射；未命中时原样透传。',
       selectedModels: '已选择 {count} 个模型',
-      supportsAllModels: '账号级不限制',
+      supportsAllModels: '使用默认模型目录',
       requestModel: '请求模型',
       actualModel: '实际模型',
       addMapping: '添加映射',
@@ -1174,10 +1173,6 @@ export default {
       expiresAtHint: '留空表示不过期',
       expiresAtTimezoneHint: '输入按浏览器本地时区（{timezone}）解释。',
       higherPriorityFirst: '数值越小优先级越高',
-      mixedScheduling: '在 /v1/messages 中使用',
-      mixedSchedulingHint: '启用后可参与 Anthropic/Gemini 分组的调度',
-      mixedSchedulingTooltip:
-        '！！注意！！ Antigravity Claude 和 Anthropic Claude 无法在同个上下文中使用，如果你同时有 Anthropic 账号和 Antigravity 账号，开启此选项会导致经常 400 报错。开启后，请用分组功能做好 Antigravity 账号和 Anthropic 账号的隔离。一定要弄明白再开启！！',
       aiCreditsBalance: 'AI Credits',
       allowOverages: '允许超量请求 (AI Credits)',
       allowOveragesTooltip:
@@ -1189,8 +1184,6 @@ export default {
       failedToCreate: '创建账号失败',
       failedToUpdate: '更新账号失败',
       pleaseSelectStatus: '请选择有效的账号状态',
-      mixedChannelWarningTitle: '混合渠道警告',
-      mixedChannelWarning: '警告：分组 "{groupName}" 中同时包含 {currentPlatform} 和 {otherPlatform} 账号。混合使用不同渠道可能导致 thinking block 签名验证问题，会自动回退到非 thinking 模式。确定要继续吗？',
       pleaseEnterAccountName: '请输入账号名称',
       pleaseEnterApiKey: '请输入 API Key',
       bedrockAccessKeyId: 'AWS Access Key ID',
@@ -1457,7 +1450,7 @@ export default {
           missingProjectId:
             'GCP Project ID 获取失败：您的 Google 账号未关联有效的 GCP 项目。请前往 Google Cloud Console 激活 GCP 并绑定信用卡，或在授权时手动填写 Project ID。',
           modelPassthrough: 'Gemini 直接转发模型',
-          modelPassthroughDesc: '所有模型请求将直接转发至 Gemini API，不进行模型限制或映射。',
+          modelPassthroughDesc: '请求转发至 Gemini API，模型映射、白名单和默认目录仍然生效。',
           stateWarningTitle: '提示',
           stateWarningDesc: '建议粘贴完整回调链接（包含 code 和 state）。',
           oauthTypeLabel: 'OAuth 类型',
@@ -1509,7 +1502,7 @@ export default {
           apiKeySection: 'API Key 相关链接'
         },
         modelPassthrough: 'Gemini 直接转发模型',
-        modelPassthroughDesc: '所有模型请求将直接转发至 Gemini API，不进行模型限制或映射。',
+        modelPassthroughDesc: '请求转发至 Gemini API，模型映射、白名单和默认目录仍然生效。',
         baseUrlHint: '留空使用官方 Gemini API',
         apiKeyHint: '您的 Gemini API Key（以 AIza 开头）',
         providerType: {

@@ -3,7 +3,6 @@ package provider_test
 import (
 	"context"
 	"net/http"
-
 	"testing"
 	"time"
 
@@ -48,7 +47,7 @@ func TestOpenAIAPIKeyFastModeForceOnAndOff(t *testing.T) {
 func TestOpenAIGroupFastForcesHTTPAndWS(t *testing.T) {
 	svc := newFastPolicyContract(t, tierpolicy.Default())
 	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}}
-	group := &routing.Group{ID: 12, Platform: capability.PlatformOpenAI, Status: billingcore.StatusActive, Hydrated: true, ForceOpenAIFast: true}
+	group := &routing.Group{ID: 12, Status: billingcore.StatusActive, Hydrated: true, ForceOpenAIFast: true}
 	ctx := requeststate.WithGroup(context.Background(), group)
 
 	body, err := tierpolicy.ApplyBody([]byte(`{"model":"gpt-5.5"}`), svc.Input(ctx, account, "gpt-5.5"))
@@ -64,7 +63,7 @@ func TestOpenAIGroupFastForcesHTTPAndWS(t *testing.T) {
 // TestOpenAIGroupFastStillHonorsGlobalAndKeyPolicy 验证组级强制不会绕过全局过滤或 API Key ForceOff 策略。
 func TestOpenAIGroupFastStillHonorsGlobalAndKeyPolicy(t *testing.T) {
 	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}}
-	group := &routing.Group{ID: 13, Platform: capability.PlatformOpenAI, Status: billingcore.StatusActive, Hydrated: true, ForceOpenAIFast: true}
+	group := &routing.Group{ID: 13, Status: billingcore.StatusActive, Hydrated: true, ForceOpenAIFast: true}
 	base := requeststate.WithGroup(context.Background(), group)
 
 	filtered := newFastPolicyContract(t, openAIFastFilterPriorityPolicy())
@@ -79,17 +78,23 @@ func TestOpenAIGroupFastStillHonorsGlobalAndKeyPolicy(t *testing.T) {
 	require.False(t, gjson.GetBytes(body, "service_tier").Exists())
 }
 
-// TestOpenAIGroupFastRequiresTrustedOpenAIContext 防止不可信或非 OpenAI 上下文改变请求语义。
-func TestOpenAIGroupFastRequiresTrustedOpenAIContext(t *testing.T) {
+// 分组可信状态与实际账号能力分别校验，分组没有平台限制。
+func TestOpenAIGroupFastRequiresTrustedContextAndCapableAccount(t *testing.T) {
 	svc := newFastPolicyContract(t, tierpolicy.Default())
-	for _, group := range []*routing.Group{
-		{ID: 14, Platform: capability.PlatformOpenAI, Status: billingcore.StatusActive, ForceOpenAIFast: true},
-		{ID: 15, Platform: capability.PlatformAnthropic, Status: billingcore.StatusActive, Hydrated: true, ForceOpenAIFast: true},
+	for _, tc := range []struct {
+		hydrated bool
+		platform string
+		want     bool
+	}{
+		{false, capability.PlatformOpenAI, false},
+		{true, capability.PlatformOpenAI, true},
+		{true, capability.PlatformGrok, false},
 	} {
+		group := &routing.Group{ID: 14, Status: billingcore.StatusActive, Hydrated: tc.hydrated, ForceOpenAIFast: true}
 		ctx := requeststate.WithGroup(context.Background(), group)
-		body, err := tierpolicy.ApplyBody([]byte(`{"model":"gpt-5.5"}`), svc.Input(ctx, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI}}, "gpt-5.5"))
+		body, err := tierpolicy.ApplyBody([]byte(`{"model":"gpt-5.5"}`), svc.Input(ctx, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: tc.platform, Type: capability.AccountTypeAPIKey}}, "gpt-5.5"))
 		require.NoError(t, err)
-		require.False(t, gjson.GetBytes(body, "service_tier").Exists())
+		require.Equal(t, tc.want, gjson.GetBytes(body, "service_tier").Exists())
 	}
 }
 

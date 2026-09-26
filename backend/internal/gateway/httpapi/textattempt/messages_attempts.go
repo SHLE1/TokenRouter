@@ -5,9 +5,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"strconv"
 
-	"github.com/TokenFlux/TokenRouter/internal/gateway/admission"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/clientmeta"
 	gatewaycapture "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
@@ -293,6 +291,8 @@ func (b *messageAttemptBridge) Forward(state textflow.AttemptState) textflow.Out
 	if state.ForceCacheBilling {
 		// 将故障转移后的缓存计费语义传给同步响应改写逻辑。
 		requestCtx = requeststate.WithForceCacheBilling(requestCtx)
+		// 分组回退会重建账号尝试状态，这项已触发策略必须保留到请求完成。
+		b.c.Request = b.c.Request.WithContext(requestCtx)
 	}
 	// 记录 Forward 前已写入字节数，Forward 后若增加则说明 SSE 内容已发，禁止 failover
 	b.writerSizeBeforeForward = b.c.Writer.Size()
@@ -357,13 +357,13 @@ func (b *messageAttemptBridge) Complete(state textflow.AttemptState) {
 	}
 
 	// ForceCacheBilling 提前拍成标量，避免 worker 闭包保活 failover 状态里的响应体。
-	forceCacheBilling := state.ForceCacheBilling
-	quotaPlatform := admission.QuotaPlatform(b.c.Request.Context(), b.currentAPIKey)
+	forceCacheBilling := state.ForceCacheBilling || requeststate.IsForceCacheBilling(b.Context())
+
 	clientSessionID := gatewayhttp.ExtractClientSessionID(b.c)
 	// 入队前固化资金与报文投影，worker 不再读取请求中的实体。
 	completionInput := gatewaycapture.CaptureMessages(gatewayhttp.CompletionContext(b.c), &gatewaycapture.MessagesCapture{
-		Result:             usageResult,
-		QuotaPlatform:      quotaPlatform,
+		Result: usageResult,
+
 		APIKey:             b.currentAPIKey,
 		User:               b.currentAPIKey.User,
 		Account:            gatewaycapture.ExecutionCompletionRecord(b.account),
@@ -394,62 +394,6 @@ func (b *messageAttemptBridge) Complete(state textflow.AttemptState) {
 			).Error("gateway.record_usage_failed", zap.Error(err))
 		}
 	})
-}
-
-// Fallback 只执行一次适配操作，重试与分组回退循环由 gateway/text 拥有。
-func (b *messageAttemptBridge) Fallback(err error, fallbackUsed bool) bool {
-	var promptTooLongErr *antigravity.PromptTooLongError
-	if errors.As(err, &promptTooLongErr) {
-		b.reqLog.Warn("gateway.prompt_too_long_from_antigravity",
-			zap.Any("current_group_id", b.currentAPIKey.GroupID),
-			zap.Any("fallback_group_id", b.fallbackGroupID),
-			zap.Bool("fallback_used", fallbackUsed),
-		)
-		if !fallbackUsed && b.fallbackGroupID != nil && *b.fallbackGroupID > 0 {
-			fallbackGroup, err := b.binding().resolveGroup(b.c.Request.Context(), *b.fallbackGroupID)
-			if err != nil {
-				b.reqLog.Warn("gateway.resolve_fallback_group_failed", zap.Int64("fallback_group_id", *b.fallbackGroupID), zap.Error(err))
-				_ = b.binding().writeMappedClaudeError(b.c, b.account, promptTooLongErr.StatusCode, promptTooLongErr.RequestID, promptTooLongErr.Body)
-				return false
-			}
-			if fallbackGroup.Platform != capability.PlatformAnthropic ||
-				fallbackGroup.FallbackGroupIDOnInvalidRequest != nil {
-				b.reqLog.Warn("gateway.fallback_group_invalid",
-					zap.Int64("fallback_group_id", fallbackGroup.ID),
-					zap.String("fallback_platform", fallbackGroup.Platform),
-				)
-				_ = b.binding().writeMappedClaudeError(b.c, b.account, promptTooLongErr.StatusCode, promptTooLongErr.RequestID, promptTooLongErr.Body)
-				return false
-			}
-			fallbackAPIKey := cloneAPIKeyWithGroup(b.apiKey, fallbackGroup)
-			fallbackSubscription := (*billing.UserSubscription)(nil)
-			if apikey.APIKeyEffectiveBillingMode(fallbackAPIKey) == apikey.APIKeyBillingModeSubscription {
-				// 指定订阅的回退分组必须继续使用同一订阅，由资格检查再次验证套餐分组范围。
-				fallbackSubscription = b.currentSubscription
-			}
-			if err := b.binding().billingCheck(b.c.Request.Context(), fallbackAPIKey, fallbackSubscription, admission.PlatformFromAPIKey(fallbackAPIKey), false); err != nil {
-				status, code, message, retryAfter := gatewayhttp.BillingErrorDetails(err)
-				if retryAfter > 0 {
-					b.c.Header("Retry-After", strconv.Itoa(retryAfter))
-				}
-				b.binding().handleStreamingAwareError(b.c, status, code, message, *b.streamStarted)
-				return false
-			}
-			// 兜底重试按"直接请求兜底分组"处理：清除强制平台，允许按分组平台调度
-			ctx := apikey.WithForcePlatform(b.c.Request.Context(), "")
-			// 后续转发和用量计算必须读取兜底分组，而不是中间件写入的原分组。
-			ctx = requeststate.WithGroup(ctx, fallbackGroup)
-			b.c.Request = b.c.Request.WithContext(ctx)
-			b.currentAPIKey = fallbackAPIKey
-			b.currentSubscription = fallbackSubscription
-
-			b.sessionAttempts.Reset()
-			return true
-		}
-		_ = b.binding().writeMappedClaudeError(b.c, b.account, promptTooLongErr.StatusCode, promptTooLongErr.RequestID, promptTooLongErr.Body)
-		return false
-	}
-	return false
 }
 
 // OtherFailure 只执行一次适配操作，重试与分组回退循环由 gateway/text 拥有。

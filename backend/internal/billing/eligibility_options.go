@@ -15,18 +15,14 @@ func (o Observe) Printf(component, format string, args ...any) {
 
 // EligibilityOptions 是计费准入的独立运行参数。
 type EligibilityOptions struct {
-	Dates    DateRuntime
-	RunMode  string
-	Billing  BillingOptions
-	Database QuotaMirrorOptions
+	Dates   DateRuntime
+	RunMode string
+	Billing BillingOptions
 }
 type BillingOptions struct {
-	MinimumBalanceReserve               float64
-	UserPlatformQuotaCacheTTLSeconds    int
-	UserPlatformQuotaSentinelTTLSeconds int
-	CircuitBreaker                      CircuitBreakerOptions
+	MinimumBalanceReserve float64
+	CircuitBreaker        CircuitBreakerOptions
 }
-type QuotaMirrorOptions struct{ UserPlatformQuotaFlusherEnabled bool }
 type CircuitBreakerOptions struct {
 	Enabled             bool
 	FailureThreshold    int
@@ -56,6 +52,7 @@ type KeySnapshot struct {
 func (k *KeySnapshot) HasRateLimits() bool {
 	return k.RateLimit5h > 0 || k.RateLimit1d > 0 || k.RateLimit7d > 0
 }
+
 func effectiveKeyBillingMode(k *KeySnapshot) string {
 	if k == nil {
 		return APIKeyBillingModeAuto

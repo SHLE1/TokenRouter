@@ -43,7 +43,7 @@ func (p openAITokenExecution) SelectCount(ctx context.Context, group *int64, has
 }
 
 func (p openAITokenExecution) SelectInputTokens(ctx context.Context, group *int64, hash, model, routingModel string, excluded map[int64]struct{}, platform string) (gatewayhttp.InputTokensSelection, error) {
-	selected, _, err := p.choices.SelectAccountWithSchedulerForCapabilityAndRoutingModel(ctx, group, "", hash, model, routingModel, excluded, egress.OpenAIUpstreamTransportAny, account.OpenAIEndpointCapabilityTextGeneration, false, false, platform)
+	selected, _, err := p.choices.SelectAccountWithSchedulerForCapabilityAndRoutingModel(scheduler.WithSelectOnly(ctx), group, "", hash, model, routingModel, excluded, egress.OpenAIUpstreamTransportAny, account.OpenAIEndpointCapabilityTextGeneration, false, false, platform)
 	if err != nil || selected == nil || selected.Account == nil {
 		return gatewayhttp.InputTokensSelection{}, err
 	}

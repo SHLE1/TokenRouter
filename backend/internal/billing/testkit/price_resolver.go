@@ -41,9 +41,6 @@ func ResolverWithCards(t *testing.T, bs *billing.Calculator, pricing []routing.M
 	t.Helper()
 	const groupID = 100
 	platform := capability.PlatformAnthropic
-	if len(pricing) > 0 && pricing[0].Platform != "" {
-		platform = pricing[0].Platform
-	}
 	repo := &routingtestkit.PricingConfigRepositoryStub{
 		ListAllFn: func(_ context.Context) ([]routingtestkit.Configuration, error) {
 			return []routingtestkit.Configuration{{

@@ -7,7 +7,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
-	routingprovider "github.com/TokenFlux/TokenRouter/internal/routing/provider"
 
 	context "context"
 
@@ -38,7 +37,7 @@ func TestAdminServiceGroupAdvancedSchedulerOverrides(t *testing.T) {
 		}
 
 		group, err := svc.CreateGroup(context.Background(), &routing.CreateGroupInput{
-			Name: "advanced-overrides", Platform: capability.PlatformGemini, RateMultiplier: 1,
+			Name: "advanced-overrides", RateMultiplier: 1,
 			SchedulerType: string(routing.GroupSchedulerTypeAdvanced), AdvancedSchedulerOverrides: overrides,
 		})
 
@@ -51,7 +50,7 @@ func TestAdminServiceGroupAdvancedSchedulerOverrides(t *testing.T) {
 
 	t.Run("update retains omission and clears explicit empty object", func(t *testing.T) {
 		existing := &routing.Group{
-			ID: 7, Name: "advanced", Platform: capability.PlatformOpenAI, Status: billing.StatusActive,
+			ID: 7, Name: "advanced", Status: billing.StatusActive,
 			SchedulerType: routing.GroupSchedulerTypeAdvanced,
 			AdvancedSchedulerOverrides: routing.GroupAdvancedSchedulerOverrides{
 				LBTopK: groupAdvancedSchedulerOverrideTestPointer(3),
@@ -74,7 +73,7 @@ func TestAdminServiceGroupAdvancedSchedulerOverrides(t *testing.T) {
 	t.Run("invalid overrides are rejected", func(t *testing.T) {
 		svc := newOriginalGroupAdmin(&groupRepoStubForAdmin{}, nil, nil)
 		_, err := svc.CreateGroup(context.Background(), &routing.CreateGroupInput{
-			Name: "invalid-advanced-overrides", Platform: capability.PlatformAnthropic, RateMultiplier: 1,
+			Name: "invalid-advanced-overrides", RateMultiplier: 1,
 			AdvancedSchedulerOverrides: routing.GroupAdvancedSchedulerOverrides{
 				LBTopK: groupAdvancedSchedulerOverrideTestPointer(0),
 			},
@@ -90,7 +89,7 @@ func TestAdminServiceGroupAdvancedSchedulerOverrides(t *testing.T) {
 		svc := newOriginalGroupAdminPorts(repo, nil, nil, nil, nil, nil, &weights)
 
 		_, err := svc.CreateGroup(context.Background(), &routing.CreateGroupInput{
-			Name: "overflowing-advanced-overrides", Platform: capability.PlatformAnthropic, RateMultiplier: 1,
+			Name: "overflowing-advanced-overrides", RateMultiplier: 1,
 			AdvancedSchedulerOverrides: routing.GroupAdvancedSchedulerOverrides{
 				WeightLoad: groupAdvancedSchedulerOverrideTestPointer(math.MaxFloat64 * 0.75),
 			},
@@ -103,7 +102,7 @@ func TestAdminServiceGroupAdvancedSchedulerOverrides(t *testing.T) {
 
 	t.Run("update rejects merged weight overflow", func(t *testing.T) {
 		existing := &routing.Group{
-			ID: 8, Name: "existing-advanced-overrides", Platform: capability.PlatformGemini,
+			ID: 8, Name: "existing-advanced-overrides",
 			Status: billing.StatusActive, SchedulerType: routing.GroupSchedulerTypeAdvanced,
 		}
 		repo := &groupRepoStubForAdmin{getByID: existing}
@@ -128,7 +127,7 @@ func TestAdminServiceGroupAdvancedSchedulerOverrides(t *testing.T) {
 		zero := 0.0
 
 		_, err := svc.CreateGroup(context.Background(), &routing.CreateGroupInput{
-			Name: "zero-base-advanced-overrides", Platform: capability.PlatformGemini, RateMultiplier: 1,
+			Name: "zero-base-advanced-overrides", RateMultiplier: 1,
 			AdvancedSchedulerOverrides: routing.GroupAdvancedSchedulerOverrides{
 				WeightPriority:      &zero,
 				WeightLoad:          &zero,
@@ -156,6 +155,9 @@ func (s *groupModelsListAccountRepoStub) ListSchedulableByGroupID(_ context.Cont
 	s.calledGroupID = groupID
 	out := make([]routing.GroupAccount, len(s.accounts))
 	for i, record := range s.accounts {
+		if record.Type == "" {
+			record.Type = capability.AccountTypeAPIKey
+		}
 		out[i] = routing.GroupAccount{ID: record.ID, Platform: record.Platform, Type: record.Type, Models: record.GetConfiguredRequestModels(accountprovider.ModelDefaults())}
 	}
 	return out, nil
@@ -165,10 +167,9 @@ func (s *groupModelsListAccountRepoStub) ListSchedulableByGroupID(_ context.Cont
 func TestAdminService_GetGroupModelsListCandidates_UsesConfiguredRequestModels(t *testing.T) {
 	groupID := int64(10)
 	groupRepo := &groupRepoStubForAdmin{
-		getByID: &routing.Group{ID: groupID, Platform: capability.PlatformOpenAI},
+		getByID: &routing.Group{ID: groupID},
 	}
 	accountRepo := &groupModelsListAccountRepoStub{
-
 		accounts: []account.Record{
 			{
 				ID:       1,
@@ -192,16 +193,16 @@ func TestAdminService_GetGroupModelsListCandidates_UsesConfiguredRequestModels(t
 
 	require.NoError(t, err)
 	require.Equal(t, groupID, accountRepo.calledGroupID)
-	require.Equal(t, []string{"deepseek-v4-flash", "deepseek-v4-pro"}, models)
+	require.Equal(t, []string{"claude-sonnet-4-6", "deepseek-v4-flash", "deepseek-v4-pro"}, models)
 }
 
 // TestAdminService_GetGroupModelsListCandidates_UsesCustomModelsList 确保已有分组不会因为 OpenAI 上游平台回退出 GPT 默认模型。
-func TestAdminService_GetGroupModelsListCandidates_UsesCustomModelsList(t *testing.T) {
+func TestAdminServiceCustomModelsCannotInventUnsupportedModels(t *testing.T) {
 	groupID := int64(12)
 	groupRepo := &groupRepoStubForAdmin{
 		getByID: &routing.Group{
-			ID:       groupID,
-			Platform: capability.PlatformOpenAI,
+			ID: groupID,
+
 			ModelsListConfig: routing.GroupModelsListConfig{
 				Enabled: true,
 				Models:  []string{"deepseek-v4-flash", "deepseek-v4-pro"},
@@ -209,7 +210,6 @@ func TestAdminService_GetGroupModelsListCandidates_UsesCustomModelsList(t *testi
 		},
 	}
 	accountRepo := &groupModelsListAccountRepoStub{
-
 		accounts: []account.Record{
 			{ID: 1, Platform: capability.PlatformOpenAI},
 		},
@@ -220,7 +220,7 @@ func TestAdminService_GetGroupModelsListCandidates_UsesCustomModelsList(t *testi
 
 	require.NoError(t, err)
 	require.Equal(t, groupID, accountRepo.calledGroupID)
-	require.Equal(t, []string{"deepseek-v4-flash", "deepseek-v4-pro"}, models)
+	require.Empty(t, models)
 }
 
 // TestAdminService_GetGroupModelsListCandidates_FiltersCustomModelsList 确保候选存在有限模型时按自定义模型列表取交集。
@@ -228,8 +228,8 @@ func TestAdminService_GetGroupModelsListCandidates_FiltersCustomModelsList(t *te
 	groupID := int64(13)
 	groupRepo := &groupRepoStubForAdmin{
 		getByID: &routing.Group{
-			ID:       groupID,
-			Platform: capability.PlatformOpenAI,
+			ID: groupID,
+
 			ModelsListConfig: routing.GroupModelsListConfig{
 				Enabled: true,
 				Models:  []string{"deepseek-v4-pro", "gpt-5.5", "deepseek-v4-flash"},
@@ -237,7 +237,6 @@ func TestAdminService_GetGroupModelsListCandidates_FiltersCustomModelsList(t *te
 		},
 	}
 	accountRepo := &groupModelsListAccountRepoStub{
-
 		accounts: []account.Record{
 			{
 				ID:       1,
@@ -257,12 +256,12 @@ func TestAdminService_GetGroupModelsListCandidates_FiltersCustomModelsList(t *te
 }
 
 // TestAdminService_GetGroupModelsListCandidates_IgnoresCustomModelsListForPlatformSwitch 确保编辑时切换平台不会沿用旧平台的自定义模型。
-func TestAdminService_GetGroupModelsListCandidates_IgnoresCustomModelsListForPlatformSwitch(t *testing.T) {
+func TestAdminServiceGetGroupModelsListCandidatesKeepsEmptyIntersection(t *testing.T) {
 	groupID := int64(14)
 	groupRepo := &groupRepoStubForAdmin{
 		getByID: &routing.Group{
-			ID:       groupID,
-			Platform: capability.PlatformOpenAI,
+			ID: groupID,
+
 			ModelsListConfig: routing.GroupModelsListConfig{
 				Enabled: true,
 				Models:  []string{"deepseek-v4-flash"},
@@ -270,7 +269,6 @@ func TestAdminService_GetGroupModelsListCandidates_IgnoresCustomModelsListForPla
 		},
 	}
 	accountRepo := &groupModelsListAccountRepoStub{
-
 		accounts: []account.Record{
 			{
 				ID:       1,
@@ -283,20 +281,19 @@ func TestAdminService_GetGroupModelsListCandidates_IgnoresCustomModelsListForPla
 	}
 	svc := newOriginalGroupAdminPorts(groupRepo, nil, nil, nil, accountRepo, nil, nil)
 
-	models, err := svc.GetGroupModelsListCandidates(context.Background(), groupID, capability.PlatformAnthropic)
+	models, err := svc.GetGroupModelsListCandidates(context.Background(), groupID, "")
 
 	require.NoError(t, err)
-	require.Equal(t, []string{"claude-sonnet-4-6"}, models)
+	require.Empty(t, models)
 }
 
 // TestAdminService_GetGroupModelsListCandidates_FallsBackToPlatformDefaults 确保未配置有限模型时仍保留旧的默认候选。
 func TestAdminService_GetGroupModelsListCandidates_FallsBackToPlatformDefaults(t *testing.T) {
 	groupID := int64(11)
 	groupRepo := &groupRepoStubForAdmin{
-		getByID: &routing.Group{ID: groupID, Platform: capability.PlatformOpenAI},
+		getByID: &routing.Group{ID: groupID},
 	}
 	accountRepo := &groupModelsListAccountRepoStub{
-
 		accounts: []account.Record{
 			{ID: 1, Platform: capability.PlatformOpenAI},
 		},
@@ -306,7 +303,7 @@ func TestAdminService_GetGroupModelsListCandidates_FallsBackToPlatformDefaults(t
 	models, err := svc.GetGroupModelsListCandidates(context.Background(), groupID, "")
 
 	require.NoError(t, err)
-	require.Equal(t, routingprovider.DefaultGroupModelCandidates(capability.PlatformOpenAI), models)
+	require.ElementsMatch(t, accountprovider.DefaultAccountModels(&account.Record{Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}), models)
 }
 
 func TestAdminService_CreateGroup_AppendsSortOrder(t *testing.T) {
@@ -352,7 +349,7 @@ func TestAdminService_CreateGroup_PreservesExplicitSortOrder(t *testing.T) {
 // TestAdminService_UpdateGroup_OpenAIFastInvalidatesAuthCache 验证缓存快照中的两个
 // Fast 字段更新后会沿用现有分组级缓存失效边界。
 func TestAdminService_UpdateGroup_OpenAIFastInvalidatesAuthCache(t *testing.T) {
-	existingGroup := &routing.Group{ID: 1, Name: "existing-fast", Platform: capability.PlatformOpenAI, Status: billing.StatusActive}
+	existingGroup := &routing.Group{ID: 1, Name: "existing-fast", Status: billing.StatusActive}
 	repo := &groupRepoStubForAdmin{getByID: existingGroup}
 	invalidator := &authCacheInvalidatorStub{}
 	svc := newOriginalGroupAdminPorts(repo, nil, nil, nil, nil, invalidator, nil)
@@ -372,9 +369,9 @@ func TestAdminService_UpdateGroup_OpenAIFastInvalidatesAuthCache(t *testing.T) {
 
 func TestAdminService_UpdateGroup_InvalidatesAuthCacheOnRPMLimitChange(t *testing.T) {
 	existingGroup := &routing.Group{
-		ID:       1,
-		Name:     "existing-group",
-		Platform: capability.PlatformAnthropic,
+		ID:   1,
+		Name: "existing-group",
+
 		Status:   billing.StatusActive,
 		RPMLimit: 10,
 	}
@@ -399,7 +396,7 @@ func TestAdminGroupOpenAIFastPolicy(t *testing.T) {
 			repo := &groupRepoStubForAdmin{}
 			invalidator := &authCacheInvalidatorStub{}
 			svc := newOriginalGroupAdminPorts(repo, nil, nil, nil, nil, invalidator, nil)
-			group, err := svc.CreateGroup(context.Background(), &routing.CreateGroupInput{Name: "fast", Platform: capability.PlatformOpenAI, RateMultiplier: 1, ForceOpenAIFast: true, OpenAIFastPolicy: &policy})
+			group, err := svc.CreateGroup(context.Background(), &routing.CreateGroupInput{Name: "fast", RateMultiplier: 1, ForceOpenAIFast: true, OpenAIFastPolicy: &policy})
 			require.NoError(t, err)
 			require.Equal(t, policy, group.OpenAIFastPolicy)
 			require.Equal(t, policy == "force_priority", group.ForceOpenAIFast)
@@ -416,9 +413,9 @@ func TestAdminGroupOpenAIFastPolicy(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, policy, changed.OpenAIFastPolicy)
 			require.Contains(t, invalidator.groupIDs, int64(1))
-			changed, err = svc.UpdateGroup(context.Background(), 1, &routing.UpdateGroupInput{Platform: capability.PlatformAnthropic})
+			changed, err = svc.UpdateGroup(context.Background(), 1, &routing.UpdateGroupInput{})
 			require.NoError(t, err)
-			require.Equal(t, "follow_request", changed.OpenAIFastPolicy)
+			require.Equal(t, policy, changed.OpenAIFastPolicy)
 		})
 	}
 }
@@ -435,6 +432,7 @@ type authCacheInvalidatorStub struct {
 func (s *authCacheInvalidatorStub) InvalidateAuthCacheByGroupID(_ context.Context, id int64) {
 	s.groupIDs = append(s.groupIDs, id)
 }
+
 func (s *authCacheInvalidatorStub) InvalidateAuthCacheByKey(_ context.Context, key string) {
 	s.keys = append(s.keys, key)
 }

@@ -45,7 +45,6 @@ func ptrInt64(v int64) *int64 { return &v }
 
 // newTestGinContextWithRequest 在通用测试 context 上补一个 request，方便分类器读取 context。
 func newTestGinContextWithRequest() *gin.Context {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/test", nil)
@@ -134,15 +133,14 @@ func TestClassifyNoAccountError_ModelNotSupported_Returns404(t *testing.T) {
 	require.Equal(t, gatewayhttp.OpsClientBusinessLimitedReasonLocalModelConfiguration, gatewayhttp.OpsClientBusinessLimitedReason(c))
 }
 
-func TestClassifyOpenAICompatibleNoAccountError_GrokUsesGrokPlatform(t *testing.T) {
+func TestClassifyOpenAICompatibleNoAccountErrorUsesMixedPool(t *testing.T) {
 	c := newTestGinContextWithRequest()
 	fd := &fakeDiagnoser{resp: routing.ModelAvailabilityDiagnosis{HasAccountsInPool: true, HasModelSupport: false}}
 	groupID := int64(43)
 	apiKey := &apikey.APIKey{
 		GroupID: &groupID,
 		Group: &routing.Group{
-			ID:       groupID,
-			Platform: capability.PlatformGrok,
+			ID: groupID,
 		},
 	}
 
@@ -152,7 +150,7 @@ func TestClassifyOpenAICompatibleNoAccountError_GrokUsesGrokPlatform(t *testing.
 	require.Equal(t, "model_not_found", cls.ErrType)
 	require.True(t, cls.ModelNotFound)
 	require.Len(t, fd.calls, 1)
-	require.Equal(t, capability.PlatformGrok, fd.calls[0].Platform)
+	require.Empty(t, fd.calls[0].Platform)
 	require.True(t, gatewayhttp.HasOpsClientBusinessLimited(c))
 	require.Equal(t, gatewayhttp.OpsClientBusinessLimitedReasonLocalModelConfiguration, gatewayhttp.OpsClientBusinessLimitedReason(c))
 

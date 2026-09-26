@@ -83,9 +83,7 @@ func TestImportCodexSessionsKeepsAgentIdentityTeamsSeparate(t *testing.T) {
 	svc := newCodexImportMemoryAdminService(nil)
 	handler := newCodexImportFixture(svc)
 
-	result, err := handler.Import(context.Background(), account.CodexSessionImportRequest{
-		SkipDefaultGroupBind: boolPtr(true),
-	}, []account.CodexImportEntry{{Index: 1, Value: first}, {Index: 2, Value: second}})
+	result, err := handler.Import(context.Background(), account.CodexSessionImportRequest{}, []account.CodexImportEntry{{Index: 1, Value: first}, {Index: 2, Value: second}})
 	require.NoError(t, err)
 	require.Equal(t, 2, result.Created)
 	require.Zero(t, result.Updated)
@@ -114,9 +112,7 @@ func TestImportCodexSessionsMergesAgentIdentityRuntimesForSameTeam(t *testing.T)
 	svc := newCodexImportMemoryAdminService([]account.Record{existing})
 	handler := newCodexImportFixture(svc)
 
-	result, err := handler.Import(context.Background(), account.CodexSessionImportRequest{
-		SkipDefaultGroupBind: boolPtr(true),
-	}, []account.CodexImportEntry{{Index: 1, Value: second}})
+	result, err := handler.Import(context.Background(), account.CodexSessionImportRequest{}, []account.CodexImportEntry{{Index: 1, Value: second}})
 	require.NoError(t, err)
 	require.Zero(t, result.Created)
 	require.Equal(t, 1, result.Updated)
@@ -151,9 +147,7 @@ func TestImportCodexSessionsCreatesAgentIdentityWithoutOAuthExpiry(t *testing.T)
 
 	svc := newCodexImportMemoryAdminService(nil)
 	handler := newCodexImportFixture(svc)
-	result, err := handler.Import(context.Background(), account.CodexSessionImportRequest{
-		SkipDefaultGroupBind: boolPtr(true),
-	}, []account.CodexImportEntry{{
+	result, err := handler.Import(context.Background(), account.CodexSessionImportRequest{}, []account.CodexImportEntry{{
 		Index: 1,
 		Value: map[string]any{
 			"auth_mode": "agentIdentity",

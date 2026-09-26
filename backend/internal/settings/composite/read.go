@@ -40,7 +40,6 @@ type ReadOptions struct {
 
 // Parse 将各领域的只读投影组合为管理快照，不增加存储查询。
 func Parse(settings map[string]string, options ReadOptions) *Snapshot {
-
 	prior := options.Forwarded()
 	forwarded := runtimeconfig.ReadForwardedSettings(settings, prior)
 	result := &Snapshot{
@@ -65,8 +64,6 @@ func Parse(settings map[string]string, options ReadOptions) *Snapshot {
 	result.ApplyIdentityAdminReadSettings(options.OAuth.ReadAdminSettings(settings, options.DefaultConcurrency))
 
 	result.ApplySchedulerAdminReadSettings(scheduler.ReadAdminSettings(settings, options.Scheduler))
-
-	// 系统层默认 platform quota（修复 Bug B：parseSettings 不填充导致回显恒为 nil）
 
 	// 保留旧读取时发布动态默认模型的时点，具体平台由装配投影。
 	if options.PublishModel != nil {

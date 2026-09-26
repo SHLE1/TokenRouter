@@ -16,7 +16,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/accessview"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/stretchr/testify/require"
 )
 
@@ -122,24 +121,24 @@ func groupDuplicateTestPointer[T any](value T) *T { return &value }
 func TestDuplicateGroupCopiesConfigurationDeeplyAndResetsRuntimeState(t *testing.T) {
 	createdAt := time.Date(2026, time.July, 1, 2, 3, 4, 0, time.UTC)
 	source := &routing.Group{
-		ID:            41,
-		Name:          "高级订阅",
-		Description:   "configuration",
-		Platform:      capability.PlatformOpenAI,
+		ID:          41,
+		Name:        "高级订阅",
+		Description: "configuration",
+
 		SchedulerType: routing.GroupSchedulerTypeAdvanced,
 		AdvancedSchedulerOverrides: routing.GroupAdvancedSchedulerOverrides{
 			StickyWeightedEnabled: groupDuplicateTestPointer(true),
 			LBTopK:                groupDuplicateTestPointer(3),
 			WeightPriority:        groupDuplicateTestPointer(4.5),
 		},
-		DisplayBrand:                    "OpenAI",
-		RateMultiplier:                  1.75,
-		PeakRateEnabled:                 true,
-		PeakStart:                       "09:00",
-		PeakEnd:                         "18:00",
-		PeakRateMultiplier:              1.2,
-		IsExclusive:                     true,
-		IsDefault:                       true,
+		DisplayBrand:       "OpenAI",
+		RateMultiplier:     1.75,
+		PeakRateEnabled:    true,
+		PeakStart:          "09:00",
+		PeakEnd:            "18:00",
+		PeakRateMultiplier: 1.2,
+		IsExclusive:        true,
+
 		Status:                          billing.StatusActive,
 		Hydrated:                        true,
 		SessionIsolationEnabled:         true,
@@ -204,12 +203,10 @@ func TestDuplicateGroupCopiesConfigurationDeeplyAndResetsRuntimeState(t *testing
 	require.Equal(t, routing.DuplicateGroupInactiveStatus, duplicate.Status)
 	require.True(t, duplicate.Hydrated, "the duplicate response is reloaded with derived counts")
 	require.Equal(t, source.Description, duplicate.Description)
-	require.Equal(t, source.Platform, duplicate.Platform)
 	require.Equal(t, routing.GroupSchedulerTypeAdvanced, duplicate.SchedulerType)
 	require.Equal(t, 3, *duplicate.AdvancedSchedulerOverrides.LBTopK)
 	require.NotSame(t, source.AdvancedSchedulerOverrides.LBTopK, duplicate.AdvancedSchedulerOverrides.LBTopK)
 	require.Equal(t, source.DisplayBrand, duplicate.DisplayBrand)
-	require.False(t, duplicate.IsDefault)
 	require.Equal(t, source.SessionIsolationEnabled, duplicate.SessionIsolationEnabled)
 	require.Equal(t, source.RateMultiplier, duplicate.RateMultiplier)
 	require.Equal(t, source.PeakRateMultiplier, duplicate.PeakRateMultiplier)
@@ -257,7 +254,7 @@ func TestDuplicateGroupCopiesConfigurationDeeplyAndResetsRuntimeState(t *testing
 }
 
 func TestDuplicateGroupRecoversSameOperationAndScopesByAdmin(t *testing.T) {
-	source := &routing.Group{ID: 9, Name: "team", Platform: capability.PlatformAnthropic, Status: billing.StatusActive}
+	source := &routing.Group{ID: 9, Name: "team", Status: billing.StatusActive}
 	repo := newDuplicateGroupRepoStub(source)
 	svc := newOriginalGroupAdmin(repo, repo, nil)
 	ctx := context.Background()
@@ -278,7 +275,7 @@ func TestDuplicateGroupRecoversSameOperationAndScopesByAdmin(t *testing.T) {
 }
 
 func TestDuplicateGroupAdvancesNameAndTruncatesUnicodeByRunes(t *testing.T) {
-	source := &routing.Group{ID: 12, Name: "team", Platform: capability.PlatformAnthropic, Status: billing.StatusActive}
+	source := &routing.Group{ID: 12, Name: "team", Status: billing.StatusActive}
 	repo := newDuplicateGroupRepoStub(source)
 	repo.names["team (Copy)"] = struct{}{}
 	svc := newOriginalGroupAdmin(repo, repo, nil)
@@ -293,7 +290,7 @@ func TestDuplicateGroupAdvancesNameAndTruncatesUnicodeByRunes(t *testing.T) {
 }
 
 func TestDuplicateGroupAtomicCreateFailureReturnsNoCopy(t *testing.T) {
-	source := &routing.Group{ID: 15, Name: "team", Platform: capability.PlatformAnthropic, Status: billing.StatusActive}
+	source := &routing.Group{ID: 15, Name: "team", Status: billing.StatusActive}
 	repo := newDuplicateGroupRepoStub(source)
 	repo.atomicCreateErr = errors.New("binding insert failed")
 	svc := newOriginalGroupAdmin(repo, repo, nil)

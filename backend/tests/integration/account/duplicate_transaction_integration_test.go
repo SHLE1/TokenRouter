@@ -22,7 +22,6 @@ func TestCreateWithAccountGroupsPersistsPausedCopyAtomically(t *testing.T) {
 
 	group, err := client.Group.Create().
 		SetName(fmt.Sprintf("duplicate-atomic-%d", suffix)).
-		SetPlatform(capability.PlatformAnthropic).
 		Save(ctx)
 	require.NoError(t, err)
 

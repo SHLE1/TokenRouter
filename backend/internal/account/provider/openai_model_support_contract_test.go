@@ -3,9 +3,9 @@
 package provider
 
 import (
-	acct "github.com/TokenFlux/TokenRouter/internal/account"
-
 	"testing"
+
+	acct "github.com/TokenFlux/TokenRouter/internal/account"
 
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/stretchr/testify/require"
@@ -19,26 +19,13 @@ func newOpenAIOAuthAccountForModelTest() *acct.Record {
 	}
 }
 
-func TestIsModelSupported_OpenAIOAuthEmptyMapping_ServableModels(t *testing.T) {
+func TestIsModelSupported_OpenAIOAuthEmptyMapping_UsesDefaultDirectory(t *testing.T) {
 	account := newOpenAIOAuthAccountForModelTest()
-
-	servable := []string{
-		"", // 空模型交由上层必填校验。
-		"gpt-5.4",
-		"gpt-5.4-high", // 推理后缀变体。
-		"gpt-5.3-codex",
-		"gpt-5.1-codex-mini",
-		"gpt-5",
-		"codex-mini-latest",
-		"gpt5.3codexspark",  // 别名拼写。
-		"gpt-image-1",       // 图像生成模型。
-		"claude-sonnet-4-6", // /v1/messages 调度默认映射兜底。
-		"claude-3-opus-20240229",
-		"gpt-4o",          // 保守放行：非黑名单模型保持允许。
-		"my-custom-alias", // 自定义别名可能由渠道级映射改写，保持允许。
+	for _, model := range []string{"gpt-5.4", "gpt-5.6-terra", "gpt-5.6-sol"} {
+		require.True(t, account.IsModelSupported(model, ModelDefaults(), ModelRules(account)), model)
 	}
-	for _, model := range servable {
-		require.True(t, account.IsModelSupported(model, ModelDefaults(), ModelRules(account)), "expected %q to be servable by empty-mapping OpenAI OAuth account", model)
+	for _, model := range []string{"", "my-custom-alias", "model-outside-current-catalog"} {
+		require.False(t, account.IsModelSupported(model, ModelDefaults(), ModelRules(account)), model)
 	}
 }
 
@@ -74,10 +61,10 @@ func TestIsModelSupported_OpenAIOAuthMappingKeepsForkSemantics(t *testing.T) {
 		"model_mapping": map[string]any{"deepseek-v4": "gpt-5.4", "k3": "gpt-5.4"},
 	}
 
-	// fork 中映射是可选改写规则，没有独立白名单时不限制未命中的请求。
+	// 映射可以引入别名；未命中的模型仍受默认目录和认证能力限制。
 	require.True(t, account.IsModelSupported("deepseek-v4", ModelDefaults(), ModelRules(account)))
 	require.True(t, account.IsModelSupported("k3", ModelDefaults(), ModelRules(account)))
-	require.True(t, account.IsModelSupported("glm-4.7", ModelDefaults(), ModelRules(account)))
+	require.False(t, account.IsModelSupported("glm-4.7", ModelDefaults(), ModelRules(account)))
 
 	account.Credentials["model_whitelist"] = []any{"gpt-5.4"}
 	require.True(t, account.IsModelSupported("deepseek-v4", ModelDefaults(), ModelRules(account)))
@@ -94,28 +81,24 @@ func TestIsModelSupported_OpenAIOAuthEmptyMappingRespectsWhitelist(t *testing.T)
 	require.False(t, account.IsModelSupported("deepseek-v4", ModelDefaults(), ModelRules(account)))
 }
 
-func TestIsModelSupported_OpenAIOAuthPassthroughAllowsAll(t *testing.T) {
+func TestIsModelSupported_OpenAIOAuthPassthroughKeepsModelScope(t *testing.T) {
 	account := newOpenAIOAuthAccountForModelTest()
 	account.Extra = map[string]any{"openai_passthrough": true}
-
-	// 透传模式仅替换认证，模型语义由上游决定，保持“允许所有”。
-	require.True(t, account.IsModelSupported("deepseek-v4", ModelDefaults(), ModelRules(account)))
+	require.False(t, account.IsModelSupported("deepseek-v4", ModelDefaults(), ModelRules(account)))
+	account.Credentials = map[string]any{"model_whitelist": []string{"*"}}
+	require.False(t, account.IsModelSupported("deepseek-v4", ModelDefaults(), ModelRules(account)))
 }
 
-func TestIsModelSupported_OpenAIAPIKeyEmptyMappingAllowsAll(t *testing.T) {
-	account := &acct.Record{
-		ID:       2,
-		Platform: capability.PlatformOpenAI,
-		Type:     capability.AccountTypeAPIKey,
-	}
-
-	// API Key 账号的第三方 OpenAI 兼容上游可服务任意别名，语义不变。
-	require.True(t, account.IsModelSupported("deepseek-v4", ModelDefaults(), ModelRules(account)))
+func TestIsModelSupported_OpenAIAPIKeyRequiresExplicitCustomScope(t *testing.T) {
+	account := &acct.Record{ID: 2, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}
+	require.False(t, account.IsModelSupported("deepseek-v4", ModelDefaults(), ModelRules(account)))
 	require.True(t, account.IsModelSupported("gpt-5.4", ModelDefaults(), ModelRules(account)))
+	account.Credentials = map[string]any{"model_whitelist": []string{"*"}}
+	require.True(t, account.IsModelSupported("deepseek-v4", ModelDefaults(), ModelRules(account)))
 }
 
-func TestIsModelSupported_NonOpenAIPlatformsUnchanged(t *testing.T) {
+func TestIsModelSupported_AnthropicDefaultsRejectForeignModel(t *testing.T) {
 	anthropic := &acct.Record{ID: 3, Platform: capability.PlatformAnthropic, Type: capability.AccountTypeOAuth}
 	require.True(t, anthropic.IsModelSupported("claude-sonnet-4-6", ModelDefaults(), ModelRules(anthropic)))
-	require.True(t, anthropic.IsModelSupported("deepseek-v4", ModelDefaults(), ModelRules(anthropic)))
+	require.False(t, anthropic.IsModelSupported("deepseek-v4", ModelDefaults(), ModelRules(anthropic)))
 }

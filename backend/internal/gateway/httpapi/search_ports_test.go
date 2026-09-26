@@ -35,11 +35,13 @@ type searchTargetProbe struct {
 func (p *searchTargetProbe) Select(_ context.Context, group int64, _ string, _ map[int64]struct{}) (StandaloneSearchTarget, searchtools.Selection, bool, error) {
 	return p, searchtools.Selection{AccountID: 7, Acquired: true, Release: func() { p.releases++ }}, true, nil
 }
+
 func (p *searchTargetProbe) Execute(_ context.Context, body []byte) ([]byte, error) {
 	p.calls++
 	p.body = append([]byte(nil), body...)
 	return []byte(`{"output":[{"type":"web_search_call","action":{"sources":[{"url":"https://source.test","title":"source","snippet":"result"}]}}]}`), nil
 }
+
 func (p *searchTargetProbe) CompletionRecord() *account.Record {
 	p.snapshots++
 	return &account.Record{ID: 7, Platform: capability.PlatformGrok, Type: capability.AccountTypeAPIKey}
@@ -65,7 +67,7 @@ func TestSearchNativePortsCompleteEachRequestOnce(t *testing.T) {
 			for i := 1; i <= 2; i++ {
 				c, response := searchContext(`{"query":"same query","max_results":3}`)
 				groupID := int64(2)
-				key := &apikey.APIKey{ID: 3, UserID: 1, User: &identity.User{ID: 1}, GroupID: &groupID, Group: &routing.Group{ID: groupID, Platform: capability.PlatformGrok, RateMultiplier: 1}}
+				key := &apikey.APIKey{ID: 3, UserID: 1, User: &identity.User{ID: 1}, GroupID: &groupID, Group: &routing.Group{ID: groupID, RateMultiplier: 1}}
 				c.Set(string(keyhttp.ContextKeyAPIKey), key)
 				if isX {
 					handler.XSearch(c)

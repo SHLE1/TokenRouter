@@ -248,7 +248,7 @@ func InboundEndpointMiddleware() gin.HandlerFunc {
 		normalized := NormalizeInboundEndpoint(path)
 		c.Set(ctxKeyInboundEndpoint, normalized)
 		if c.Request != nil {
-			// 同时写入 request.Context，方便认证阶段在进入 Handler 前完成默认分组回退。
+			// 同时写入 request.Context，方便认证阶段在进入 Handler 前完成明确配置的分组回退。
 			ctx := apikey.WithInboundEndpoint(c.Request.Context(), normalized)
 			c.Request = c.Request.WithContext(ctx)
 		}

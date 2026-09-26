@@ -202,6 +202,7 @@ func (s *Settlement) RecordSettlementFailure(ctx context.Context, job *BatchImag
 	}
 	return nil
 }
+
 func (s *Settlement) FailExhaustedSettlement(ctx context.Context, job *BatchImageJob, message string) error {
 	if s == nil || s.Repo == nil {
 		return ErrBatchImageSettlementBillingFailed
@@ -237,6 +238,7 @@ func (s *Settlement) FailExhaustedSettlement(ctx context.Context, job *BatchImag
 	}
 	return ErrBatchImageSettlementBillingFailed
 }
+
 func (s *Settlement) RecordUsageLog(ctx context.Context, job *BatchImageJob, actualCost float64, requestID string, createdAt time.Time, billingResult *billing.TaskFundsResult) {
 	if s == nil || s.RecordUsage == nil || job == nil || job.APIKeyID == nil || job.AccountID == nil {
 		return
@@ -274,6 +276,7 @@ func (s *Settlement) RecordUsageLog(ctx context.Context, job *BatchImageJob, act
 		TeamID:                job.TeamID,
 		APIKeyID:              *job.APIKeyID,
 		AccountID:             *job.AccountID,
+		Platform:              BatchImageProviderPlatform(job.Provider),
 		RequestID:             strings.TrimSpace(requestID),
 		Model:                 internalModel,
 		RequestedModel:        requestedModel,
@@ -300,11 +303,13 @@ func (s *Settlement) RecordUsageLog(ctx context.Context, job *BatchImageJob, act
 	}
 	s.RecordUsage(ctx, usageLog)
 }
+
 func (s *Settlement) InvalidateAuthCache(ctx context.Context, userID int64) {
 	if s != nil && s.InvalidateAuth != nil && userID > 0 {
 		s.InvalidateAuth(ctx, userID)
 	}
 }
+
 func (s *Settlement) SettlementUnitPrice(ctx context.Context, job *BatchImageJob) (float64, error) {
 	if job != nil && job.PricingSnapshotVersion >= 1 {
 		if job.BillableUnitPrice < 0 {
@@ -318,15 +323,18 @@ func (s *Settlement) SettlementUnitPrice(ctx context.Context, job *BatchImageJob
 	}
 	return unitPrice, nil
 }
+
 func (s *Settlement) OutputRetentionAfterTerminal() time.Duration {
 	if s.Retention > 0 {
 		return s.Retention
 	}
 	return 72 * time.Hour
 }
+
 func BatchImageSettlementRequestID(batchID string) string {
 	return BatchImageSettlementRequestPrefix + strings.TrimSpace(batchID)
 }
+
 func BuildBatchImageSettlementManifestHash(job *BatchImageJob) string {
 	if job == nil {
 		return ""
@@ -344,6 +352,7 @@ func BuildBatchImageSettlementManifestHash(job *BatchImageJob) string {
 	sum := sha256.Sum256([]byte(strings.Join(parts, "\x00")))
 	return hex.EncodeToString(sum[:])
 }
+
 func (r *BatchImageSettlementResult) String() string {
 	if r == nil {
 		return ""
@@ -366,6 +375,7 @@ func optionalTrimmedStringPtr(raw string) *string {
 	}
 	return &v
 }
+
 func firstAllocatedSubscriptionID(values []billing.BillingAllocation) *int64 {
 	for _, v := range values {
 		if v.Type == billing.BillingAllocationTypeSubscription && v.SubscriptionID != nil {

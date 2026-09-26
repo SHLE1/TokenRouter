@@ -15,7 +15,7 @@ import (
 func TestProtocolSaveEntrypointsAndBulkRejectBeforeWrite(t *testing.T) {
 	repo := &accountServiceTestRepo{accounts: map[int64]*accountcore.Record{}}
 	svc := newOriginalAccountEditor(repo)
-	created, err := svc.CreateAccount(context.Background(), &accountcore.CreateAccountInput{Name: "native", Platform: capability.PlatformKimi, Type: capability.AccountTypeAPIKey, SkipDefaultGroupBind: true, Credentials: map[string]any{"api_key": "test", accountcore.UpstreamProtocolsKey: []string{"anthropic_messages", "openai_responses", "openai_chat_completions"}, "api_base_urls": map[string]any{"responses": "https://relay.example/v1"}}})
+	created, err := svc.CreateAccount(context.Background(), &accountcore.CreateAccountInput{Name: "native", Platform: capability.PlatformKimi, Type: capability.AccountTypeAPIKey, Credentials: map[string]any{"api_key": "test", accountcore.UpstreamProtocolsKey: []string{"anthropic_messages", "openai_responses", "openai_chat_completions"}, "api_base_urls": map[string]any{"responses": "https://relay.example/v1"}}})
 	require.NoError(t, err)
 	require.NotContains(t, created.Credentials, "api_protocol")
 	require.Len(t, created.UpstreamProtocols(), 3)

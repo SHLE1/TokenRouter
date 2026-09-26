@@ -70,6 +70,9 @@ func openAIObservedAttempt(result *forwardcore.OpenAIResult, err error) upstream
 			context.Canceled),
 	}
 	out.Usage = upstream.TokenUsage{InputTokens: result.Usage.InputTokens, OutputTokens: result.Usage.OutputTokens, CacheCreationInputTokens: result.Usage.CacheCreationInputTokens, CacheReadInputTokens: result.Usage.CacheReadInputTokens, ImageOutputTokens: result.Usage.ImageOutputTokens}
+	if result.NativeUsage != nil {
+		out.Usage = *result.NativeUsage
+	}
 	out.ImageInputTokens = result.Usage.ImageInputTokens
 	out.HasUsage = out.Usage.HasObservedTokens() || result.ImageCount > 0 || result.SearchCount > 0 || result.WebSearchCalls > 0 || result.AudioUsage != nil || result.Usage.ImageInputTokens > 0
 	out.Served = err == nil || out.HasUsage

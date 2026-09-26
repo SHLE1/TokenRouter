@@ -14,7 +14,10 @@ type GroupConfig struct {
 	ID            int64
 	Name          string
 	Description   string
-	Platform      string
+	// Models 是控制台查询时填充的可请求目录，不持久化或用于调度授权。
+	Models         []string
+	ModelProtocols map[string][]protocol.ProtocolID
+
 	// SchedulerType 决定该分组使用基础或高级调度器。
 	SchedulerType GroupSchedulerType
 	// AdvancedSchedulerOverrides 仅对高级调度分组生效，未设置字段继承网关通用设置。
@@ -28,7 +31,6 @@ type GroupConfig struct {
 	PeakEnd            string
 	PeakRateMultiplier float64
 	IsExclusive        bool
-	IsDefault          bool
 	Status             string
 	Hydrated           bool // indicates the group was loaded from a trusted repository source
 	// DuplicateOperationID 仅用于恢复已提交的一键复制结果，不得映射到 API DTO。
@@ -84,7 +86,7 @@ type GroupConfig struct {
 
 	// AllowedProtocols 是分组允许的完整客户端协议与业务入口集合，空集合表示全部关闭。
 	AllowedProtocols     []protocol.ProtocolID
-	ProtocolFallbacks    map[protocol.ProtocolID]protocol.ProtocolID
+	ProtocolFallbacks    map[protocol.ProtocolID][]protocol.ProtocolID
 	ResponsesImagePolicy string
 	// AllowMessagesDispatch 是从协议集合派生并持久化的弃用兼容镜像。
 	AllowMessagesDispatch bool

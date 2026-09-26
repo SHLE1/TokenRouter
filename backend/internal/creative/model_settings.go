@@ -23,35 +23,27 @@ type CreativeModelCandidate struct {
 	Operations []string `json:"operations"`
 }
 
-// NormalizeCreativeModelSettingsForSave 按实际分组平台清理即将保存的能力白名单。
-// Gemini 的独立 PNG mask inpaint 已从创作台移除，OpenAI 的同名能力保持不变。
-// 无法解析的历史分组保留原配置，避免在不知道平台时误删管理员设置。
+// NormalizeCreativeModelSettingsForSave 按当前候选模型能力保留操作，历史不可解析的模型留待管理员处理。
 func (s *Public) NormalizeCreativeModelSettingsForSave(ctx context.Context, input []CreativeModelSetting) ([]CreativeModelSetting, error) {
 	normalized, err := NormalizeCreativeModelSettings(input)
-	if err != nil {
-		return nil, err
-	}
-	if s == nil || s.GroupRepo == nil {
-		return normalized, nil
+	if err != nil || s == nil || s.GroupRepo == nil {
+		return normalized, err
 	}
 	out := make([]CreativeModelSetting, 0, len(normalized))
 	for _, item := range normalized {
 		group, lookupErr := s.GroupRepo.GetByIDLite(ctx, item.GroupID)
-		if lookupErr != nil || group == nil || strings.TrimSpace(group.Platform) != PlatformGemini {
-			out = append(out, item)
-			continue
-		}
-		operations := make([]string, 0, len(item.Operations))
-		for _, operation := range item.Operations {
-			if operation != CreativeOperationInpaint {
-				operations = append(operations, operation)
+		if lookupErr == nil && group != nil {
+			routes, routeErr := s.creativeModelRoutes(ctx, group)
+			if routeErr != nil {
+				return nil, routeErr
+			}
+			if route, ok := routes[item.Model]; ok {
+				item.Operations = intersectCreativeOperations(item.Operations, route.Operations)
 			}
 		}
-		if len(operations) == 0 {
-			continue
+		if len(item.Operations) > 0 {
+			out = append(out, item)
 		}
-		item.Operations = operations
-		out = append(out, item)
 	}
 	return out, nil
 }
@@ -154,6 +146,7 @@ func CreativeOperationsForModel(settings map[string][]string, groupID int64, mod
 	}
 	return operations, true
 }
+
 func ContainsCreativeOperation(values []string, target string) bool {
 	for _, value := range values {
 		if value == target {

@@ -13,6 +13,8 @@ import (
 
 // Result 仅保留完成处理需要的已观测结果，不携带响应体、HTTP Header 或平台执行器。
 type Result struct {
+	// NativeUsage 表示结果沿用原生输入与缓存分桶，不使用 OpenAI 总输入口径。
+	NativeUsage                                                                  bool
 	RequestID, ResponseID, Model, BillingModel, UpstreamModel                    string
 	UpstreamRequestID                                                            *string
 	Usage                                                                        TokenUsage
@@ -76,8 +78,8 @@ type KeySnapshot struct {
 
 // GroupSnapshot 只含完成计费字段，不接收路由/调度实体。
 type GroupSnapshot struct {
-	ID                                      int64
-	Platform                                string
+	ID int64
+
 	Price                                   *billing.PriceGroup
 	RateMultiplier                          float64
 	PeakRateEnabled                         bool
@@ -104,7 +106,7 @@ type Input struct {
 	Account                                                                  *AccountSnapshot
 	Subscription                                                             *billing.UserSubscription
 	InboundEndpoint, UpstreamEndpoint, UserAgent, IPAddress, ClientSessionID string
-	RequestID, RequestPayloadHash, QuotaPlatform, CacheOverrideTarget        string
+	RequestID, RequestPayloadHash, CacheOverrideTarget                       string
 	RequestedReasoningEffort                                                 *string
 	ForceCacheBilling, QuotaUpdates, CyberBlocked, NativeCompactionV2        bool
 	PricingAt                                                                time.Time
@@ -258,7 +260,7 @@ func NewRecorder(d Dependencies, o RecorderOptions) *Recorder {
 // Record 是普通完成入口；openAI 标记原有总输入桶和媒体计价分支，不改变部分结果的提交资格。
 func (s *Recorder) Record(ctx context.Context, input *Input, openAI bool) error {
 	input = Snapshot(input)
-	if openAI {
+	if openAI && (input == nil || input.Result == nil || !input.Result.NativeUsage) {
 		return s.RecordOpenAI(ctx, input)
 	}
 	return s.RecordAnthropic(ctx, input, &PricingOptions{})

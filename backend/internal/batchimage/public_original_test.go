@@ -82,13 +82,11 @@ func TestBatchImagePublicService_Submit(t *testing.T) {
 		svc.GroupRepo = batchGroupReader{&publicBatchImageGroupRepo{groups: map[int64]*routing.Group{
 			groupID: {
 				ID:                        groupID,
-				Platform:                  capability.PlatformGemini,
 				RateMultiplier:            1,
 				AllowBatchImageGeneration: true,
 			},
 			otherGroupID: {
 				ID:                        otherGroupID,
-				Platform:                  capability.PlatformGemini,
 				RateMultiplier:            1,
 				AllowBatchImageGeneration: true,
 			},
@@ -125,7 +123,6 @@ func TestBatchImagePublicService_Submit(t *testing.T) {
 		svc.GroupRepo = batchGroupReader{&publicBatchImageGroupRepo{groups: map[int64]*routing.Group{
 			groupID: {
 				ID:                           groupID,
-				Platform:                     capability.PlatformGemini,
 				RateMultiplier:               1,
 				AllowBatchImageGeneration:    true,
 				BatchImageDiscountMultiplier: 0.5,
@@ -138,7 +135,7 @@ func TestBatchImagePublicService_Submit(t *testing.T) {
 			GroupIDs: []int64{groupID},
 		}, map[int64]string{groupID: capability.PlatformGemini}, routing.GroupRoutingPolicy{
 			Enabled:      true,
-			ModelMapping: map[string]map[string]string{capability.PlatformGemini: {"gemini-2.5-flash-image": "group-image-model"}},
+			ModelMapping: map[string]string{"gemini-2.5-flash-image": "group-image-model"},
 		}))
 		svc.AccountRepo = rebindBatchFixtureAccounts(svc, &publicBatchImageAccountRepo{accounts: []accountcore.Record{
 			testBatchImageMappedAccount(301, capability.AccountTypeAPIKey, map[string]any{
@@ -193,7 +190,6 @@ func TestBatchImagePublicService_Submit(t *testing.T) {
 		svc.GroupRepo = batchGroupReader{&publicBatchImageGroupRepo{groups: map[int64]*routing.Group{
 			groupID: {
 				ID:                           groupID,
-				Platform:                     capability.PlatformGemini,
 				RateMultiplier:               2.0,
 				AllowImageGeneration:         true,
 				AllowBatchImageGeneration:    true,
@@ -231,7 +227,6 @@ func TestBatchImagePublicService_Submit(t *testing.T) {
 		svc.GroupRepo = batchGroupReader{&publicBatchImageGroupRepo{groups: map[int64]*routing.Group{
 			groupID: {
 				ID:                           groupID,
-				Platform:                     capability.PlatformGemini,
 				RateMultiplier:               2,
 				AllowImageGeneration:         true,
 				AllowBatchImageGeneration:    true,
@@ -276,7 +271,6 @@ func TestBatchImagePublicService_Submit(t *testing.T) {
 		svc.GroupRepo = batchGroupReader{&publicBatchImageGroupRepo{groups: map[int64]*routing.Group{
 			groupID: {
 				ID:                           groupID,
-				Platform:                     capability.PlatformGemini,
 				RateMultiplier:               1.0,
 				AllowImageGeneration:         true,
 				AllowBatchImageGeneration:    true,
@@ -316,7 +310,6 @@ func TestBatchImagePublicService_Submit(t *testing.T) {
 		svc.GroupRepo = batchGroupReader{&publicBatchImageGroupRepo{groups: map[int64]*routing.Group{
 			groupID: {
 				ID:                           groupID,
-				Platform:                     capability.PlatformGemini,
 				RateMultiplier:               1,
 				AllowBatchImageGeneration:    false,
 				BatchImageDiscountMultiplier: 0.5,
@@ -522,6 +515,9 @@ func TestBatchImagePublicService_Submit(t *testing.T) {
 				billing := &fakeBatchImageBillingRepo{err: test.err}
 				svc.Funding = nativeTaskFundingFixture(billing)
 				preferredSubscriptionID := int64(301)
+				svc.PreferredSubscription = func(context.Context, int64, int64, *int64) *billingcore.UserSubscription {
+					return &billingcore.UserSubscription{ID: preferredSubscriptionID}
+				}
 				owner := testBatchImageOwner()
 				owner.BillingMode = apikey.APIKeyBillingModeSubscription
 				owner.PreferredSubscriptionID = &preferredSubscriptionID
@@ -691,7 +687,6 @@ func TestBatchImagePublicService_ListModels(t *testing.T) {
 		svc.GroupRepo = batchGroupReader{&publicBatchImageGroupRepo{groups: map[int64]*routing.Group{
 			groupID: {
 				ID:                           groupID,
-				Platform:                     capability.PlatformGemini,
 				RateMultiplier:               1,
 				AllowImageGeneration:         true,
 				AllowBatchImageGeneration:    true,

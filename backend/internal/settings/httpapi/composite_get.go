@@ -1,6 +1,10 @@
 package httpapi
 
 import (
+	"encoding/json"
+	"log/slog"
+	"strings"
+
 	"github.com/TokenFlux/TokenRouter/internal/gateway/tierpolicy"
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 	"github.com/TokenFlux/TokenRouter/internal/payment"
@@ -11,10 +15,6 @@ import (
 	identitydto "github.com/TokenFlux/TokenRouter/internal/identity/httpapi/dto"
 	settingsdto "github.com/TokenFlux/TokenRouter/internal/settings/httpapi/dto"
 	sitedto "github.com/TokenFlux/TokenRouter/internal/site/httpapi/dto"
-
-	"encoding/json"
-	"log/slog"
-	"strings"
 
 	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
 
@@ -233,7 +233,6 @@ func (h *Handler) GetSettings(c *gin.Context) {
 		OpsMetricsIntervalSeconds:                        settings.OpsMetricsIntervalSeconds,
 		MinClaudeCodeVersion:                             settings.MinClaudeCodeVersion,
 		MaxClaudeCodeVersion:                             settings.MaxClaudeCodeVersion,
-		AllowUngroupedKeyScheduling:                      settings.AllowUngroupedKeyScheduling,
 		BackendModeEnabled:                               settings.BackendModeEnabled,
 		OpenAITTFTMode:                                   settings.OpenAITTFTMode,
 		EnableFingerprintUnification:                     settings.EnableFingerprintUnification,
@@ -326,13 +325,6 @@ func (h *Handler) GetSettings(c *gin.Context) {
 		slog.Error("openai_fast_policy_settings_get_failed", "error", err)
 	} else if fastPolicy != nil {
 		payload.OpenAIFastPolicySettings = openaiFastPolicySettingsToDTO(fastPolicy)
-	}
-
-	// 默认平台限额（JSON map）
-	if platformQuotas, err := h.settingService.GetDefaultPlatformQuotas(c.Request.Context()); err != nil {
-		slog.Error("default_platform_quotas_get_failed", "error", err)
-	} else {
-		payload.DefaultPlatformQuotas = platformQuotas
 	}
 
 	response.Success(c, systemSettingsResponseData(payload, authSourceDefaults))
@@ -450,13 +442,6 @@ func systemSettingsResponseData(settings settingsdto.SystemSettings, authSourceD
 	data["auth_source_default_google_subscriptions"] = authSourceDefaults.Google.Subscriptions
 	data["auth_source_default_google_grant_on_signup"] = authSourceDefaults.Google.GrantOnSignup
 	data["auth_source_default_google_grant_on_first_bind"] = authSourceDefaults.Google.GrantOnFirstBind
-	data["auth_source_default_email_platform_quotas"] = authSourceDefaults.Email.PlatformQuotas
-	data["auth_source_default_linuxdo_platform_quotas"] = authSourceDefaults.LinuxDo.PlatformQuotas
-	data["auth_source_default_oidc_platform_quotas"] = authSourceDefaults.OIDC.PlatformQuotas
-	data["auth_source_default_wechat_platform_quotas"] = authSourceDefaults.WeChat.PlatformQuotas
-	data["auth_source_default_github_platform_quotas"] = authSourceDefaults.GitHub.PlatformQuotas
-	data["auth_source_default_google_platform_quotas"] = authSourceDefaults.Google.PlatformQuotas
-	data["auth_source_default_dingtalk_platform_quotas"] = authSourceDefaults.DingTalk.PlatformQuotas
 	data["force_email_on_third_party_signup"] = authSourceDefaults.ForceEmailOnThirdPartySignup
 
 	return data

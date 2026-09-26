@@ -44,7 +44,7 @@ func TestCheckBillingEligibilityRejectsBalanceBelowMinimumReserve(t *testing.T) 
 	cache := &balanceEligibilityCacheStub{balance: 0.005}
 	cfg := &EligibilityOptions{}
 	cfg.Billing.MinimumBalanceReserve = 0.01
-	svc := newOriginalEligibility(cache, nil, nil, nil, cfg)
+	svc := newOriginalEligibility(cache, nil, nil, cfg)
 	svc.Start()
 	t.Cleanup(svc.Stop)
 
@@ -56,7 +56,7 @@ func TestCheckBillingEligibilityAllowsBalanceAtMinimumReserve(t *testing.T) {
 	cache := &balanceEligibilityCacheStub{balance: 0.01}
 	cfg := &EligibilityOptions{}
 	cfg.Billing.MinimumBalanceReserve = 0.01
-	svc := newOriginalEligibility(cache, nil, nil, nil, cfg)
+	svc := newOriginalEligibility(cache, nil, nil, cfg)
 	svc.Start()
 	t.Cleanup(svc.Stop)
 
@@ -72,7 +72,7 @@ func TestSyncBalanceCacheAfterDeductionInvalidatesExhaustedBalance(t *testing.T)
 	userRepo := &balanceLoadUserRepoStub{balance: -0.25}
 	cfg := &EligibilityOptions{}
 	cfg.Billing.MinimumBalanceReserve = 0.01
-	svc := newOriginalEligibility(cache, userRepo, nil, nil, cfg)
+	svc := newOriginalEligibility(cache, userRepo, nil, cfg)
 	svc.Start()
 	t.Cleanup(svc.Stop)
 
@@ -94,7 +94,7 @@ func TestSyncBalanceCacheAfterDeductionInvalidatesWhenBalanceFallsBelowReserve(t
 	cache := &balanceEligibilityCacheStub{balance: 0.50}
 	cfg := &EligibilityOptions{}
 	cfg.Billing.MinimumBalanceReserve = 0.01
-	svc := newOriginalEligibility(cache, nil, nil, nil, cfg)
+	svc := newOriginalEligibility(cache, nil, nil, cfg)
 	svc.Start()
 	t.Cleanup(svc.Stop)
 
@@ -112,7 +112,7 @@ func TestSyncBalanceCacheAfterDeductionQueuesDeductWhenBalanceStillEligible(t *t
 	cache := &balanceEligibilityCacheStub{balance: 1}
 	cfg := &EligibilityOptions{}
 	cfg.Billing.MinimumBalanceReserve = 0.01
-	svc := newOriginalEligibility(cache, nil, nil, nil, cfg)
+	svc := newOriginalEligibility(cache, nil, nil, cfg)
 	svc.Start()
 	t.Cleanup(svc.Stop)
 

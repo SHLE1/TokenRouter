@@ -67,6 +67,8 @@ func NewGeneric(deps GenericDependencies, options Options) *Generic {
 
 // Compatible 在同一原生调度器上连接 OpenAI/Grok 资格，借用共享状态而不拥有供应商执行。
 type Compatible struct {
+	generic             *Generic
+	gemini              *Gemini
 	options             Options
 	accountRepo         Accounts
 	schedulerSnapshot   Snapshots
@@ -108,6 +110,7 @@ func NewCompatible(deps CompatibleDependencies, options Options) *Compatible {
 		groups = deps.Groups.GetByID
 	}
 	return &Compatible{
+		generic: deps.Generic, gemini: deps.Gemini,
 		options:           options,
 		accountRepo:       deps.Accounts,
 		schedulerSnapshot: deps.Snapshot,

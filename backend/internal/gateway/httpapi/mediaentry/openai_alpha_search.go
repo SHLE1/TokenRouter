@@ -9,7 +9,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/admission"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/failover"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
@@ -44,7 +43,6 @@ func (h *Runtime) recordAlphaSearchUsage(
 	requestPayloadHash := billing.HashUsageRequestPayload(body)
 	inboundEndpoint := gatewayhttp.GetInboundEndpoint(c)
 	upstreamEndpoint := gatewayhttp.GetUpstreamEndpoint(c, account.Record.Platform)
-	quotaPlatform := admission.QuotaPlatform(c.Request.Context(), apiKey)
 
 	completionInput := gatewaycapture.CaptureOpenAI(c.Request.Context(), &gatewaycapture.OpenAICapture{
 		Result:             result,
@@ -58,7 +56,7 @@ func (h *Runtime) recordAlphaSearchUsage(
 		IPAddress:          clientIP,
 		RequestPayloadHash: requestPayloadHash,
 		APIKeyService:      h.bindings.Quota,
-		QuotaPlatform:      quotaPlatform,
+
 		ClientSessionID:    sessionID,
 		PricingUsageFields: groupMapping.ToUsageFields(requestedModel, result.UpstreamModel),
 	})

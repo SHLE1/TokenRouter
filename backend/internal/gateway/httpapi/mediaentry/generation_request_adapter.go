@@ -10,7 +10,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/admission"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/failover"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
@@ -66,11 +65,17 @@ func (p *generationRequestAdapter) SelectGeneration(ctx context.Context, exclude
 
 func (p *generationRequestAdapter) ActivateGeneration(_ gatewaymedia.GenerationSelection) {
 	account := p.selection.Account
-	if !p.grok {
+	if !p.grok && p.usesGrok() {
+		p.endpoint = upstreamgrok.GrokMediaEndpointImagesGenerations
+		if p.parsed != nil && p.parsed.IsEdits() {
+			p.endpoint = upstreamgrok.GrokMediaEndpointImagesEdits
+		}
+	}
+	if !p.usesGrok() {
 		p.logSchedule()
 	}
 	p.sessionHash = openaiattempt.EnsureOpenAIPoolModeSessionHash(p.sessionHash, account)
-	if !p.grok {
+	if !p.usesGrok() {
 		p.reqLog.Debug("openai.images.account_selected", zap.Int64("account_id", account.Record.ID), zap.String("account_name", account.Record.Name))
 	}
 	gatewayhttp.SetOpsSelectedAccount(p.c, account.Record.ID, account.Record.Platform)
@@ -97,7 +102,7 @@ func (p *generationRequestAdapter) ForwardGeneration(ctx context.Context, _ gate
 	var result *forwardcore.OpenAIResult
 	var err error
 	p.writerBefore = p.c.Writer.Size()
-	if p.grok {
+	if p.usesGrok() {
 		result, err = p.h.bindings.Platform.GrokMedia(ctx, p.c, account, p.endpoint, p.requestID, body, p.contentType)
 	} else {
 		p.writerBefore = gatewayhttp.OpenAIImagesJSONKeepaliveAdjustedWrittenSize(p.c)
@@ -108,7 +113,7 @@ func (p *generationRequestAdapter) ForwardGeneration(ctx context.Context, _ gate
 		}
 	}
 	after := p.c.Writer.Size()
-	if !p.grok {
+	if !p.usesGrok() {
 		after = gatewayhttp.OpenAIImagesJSONKeepaliveAdjustedWrittenSize(p.c)
 	}
 	outcome := gatewaymedia.GenerationOutcome{Result: generationResultView(result), Err: err, OutputChanged: after != p.writerBefore}
@@ -131,7 +136,7 @@ func (p *generationRequestAdapter) ForwardGeneration(ctx context.Context, _ gate
 func (p *generationRequestAdapter) ReportGeneration(_ context.Context, _ gatewaymedia.GenerationSelection, value *gatewaymedia.GenerationResult, success bool, err error) {
 	account := p.selection.Account
 	result := legacyGenerationResult(value)
-	if p.grok {
+	if p.usesGrok() {
 		p.h.bindings.Common.Selection.ReportOpenAIAccountScheduleResult(account, grokMediaScheduleModel(account, p.routingModel, result), success, nil)
 		return
 	}
@@ -156,7 +161,7 @@ func (p *generationRequestAdapter) GenerationClientGone() bool {
 
 func (p *generationRequestAdapter) logSchedule() {
 	name := "openai.images"
-	if p.grok {
+	if p.usesGrok() {
 		name = "grok_media"
 	}
 	d := p.decision
@@ -165,7 +170,7 @@ func (p *generationRequestAdapter) logSchedule() {
 
 func (p *generationRequestAdapter) ObserveGeneration(e gatewaymedia.GenerationEvent) {
 	name := "openai.images"
-	if p.grok {
+	if p.usesGrok() {
 		name = "grok_media"
 	}
 	status := 0
@@ -194,7 +199,7 @@ func (p *generationRequestAdapter) ObserveGeneration(e gatewaymedia.GenerationEv
 			elapsed -= upstream
 		}
 		gatewayhttp.SetOpsLatencyMs(p.c, gatewayhttp.OpsResponseLatencyMsKey, elapsed)
-		if !p.grok && e.Outcome.Result != nil && e.Outcome.Result.FirstTokenMs != nil {
+		if !p.usesGrok() && e.Outcome.Result != nil && e.Outcome.Result.FirstTokenMs != nil {
 			gatewayhttp.SetOpsLatencyMs(p.c, gatewayhttp.OpsTimeToFirstTokenMsKey, int64(*e.Outcome.Result.FirstTokenMs))
 		}
 	case "partial":
@@ -221,11 +226,11 @@ func (p *generationRequestAdapter) EndGeneration(f gatewaymedia.GenerationFailur
 	if p.selection != nil && p.selection.Account != nil {
 		id = p.selection.Account.Record.ID
 	}
-	gatewayhttp.WriteGenerationFailure(f, gatewayhttp.MediaFailureContext{Grok: p.grok, Generation: p.endpoint.IsGenerationRequest(), StreamStarted: *p.streamStarted, BoundAccountID: p.boundAccountID, AccountID: id, WriterBefore: p.writerBefore, Context: p.c, Log: p.reqLog}, p)
+	gatewayhttp.WriteGenerationFailure(f, gatewayhttp.MediaFailureContext{Grok: p.usesGrok(), Generation: p.endpoint.IsGenerationRequest(), StreamStarted: *p.streamStarted, BoundAccountID: p.boundAccountID, AccountID: id, WriterBefore: p.writerBefore, Context: p.c, Log: p.reqLog}, p)
 }
 
 func (p *generationRequestAdapter) CompleteGeneration(ctx context.Context, _ gatewaymedia.GenerationSelection, value *gatewaymedia.GenerationResult) {
-	if p.grok {
+	if p.usesGrok() {
 		p.completeGrok(ctx, value)
 	} else {
 		p.completeImages(value)
@@ -253,7 +258,7 @@ func (p *generationRequestAdapter) completeImages(value *gatewaymedia.Generation
 	}
 	inboundEndpoint := gatewayhttp.GetInboundEndpoint(c)
 	upstreamEndpoint := gatewayhttp.GetUpstreamEndpoint(c, account.Record.Platform)
-	quotaPlatform := admission.QuotaPlatform(c.Request.Context(), apiKey)
+
 	clientSessionID := gatewayhttp.ExtractClientSessionID(c)
 
 	upstreamModel := ""
@@ -273,7 +278,7 @@ func (p *generationRequestAdapter) completeImages(value *gatewaymedia.Generation
 		RequestPayloadHash: requestPayloadHash,
 		RequestBody:        body,
 		APIKeyService:      h.bindings.Quota,
-		QuotaPlatform:      quotaPlatform,
+
 		ClientSessionID:    clientSessionID,
 		PricingUsageFields: groupMapping.ToUsageFields(requestModel, upstreamModel),
 	})
@@ -337,9 +342,9 @@ func legacyGenerationResult(r *gatewaymedia.GenerationResult) *forwardcore.OpenA
 
 // 媒体最终错误接口只适配父层共同错误分类、风控观察和响应写入。
 func (p *generationRequestAdapter) MediaClassify() gatewayhttp.MediaNoAccount {
-	platform := capability.PlatformOpenAI
+	platform := ""
 	routing := p.requestModel
-	if p.grok {
+	if p.usesGrok() {
 		platform = capability.PlatformGrok
 		routing = p.routingModel
 	}
@@ -396,7 +401,7 @@ func (p *generationRequestAdapter) MediaReportUnexpected(result *gatewaymedia.Ge
 }
 
 func (p *generationRequestAdapter) MediaCommunicated(err error) bool {
-	if p.grok {
+	if p.usesGrok() {
 		return gatewayhttp.IsResponseCommitted(p.c)
 	}
 	return gatewayhttp.OpenAIForwardErrorAlreadyCommunicated(p.c, p.writerBefore, err)
@@ -408,4 +413,12 @@ func (p *generationRequestAdapter) MediaEnsureFallback(err error) bool {
 
 func (p *generationRequestAdapter) MediaWarnFailure(wrote bool) bool {
 	return gatewayhttp.ShouldLogOpenAIForwardFailureAsWarn(p.c, wrote)
+}
+
+// usesGrok 在切换账号后重新判断执行器，不把前一次选择变成后续候选限制。
+func (p *generationRequestAdapter) usesGrok() bool {
+	if p.selection == nil || p.selection.Account == nil {
+		return p.grok
+	}
+	return p.selection.Account.Record.Platform == capability.PlatformGrok
 }

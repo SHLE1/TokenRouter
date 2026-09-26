@@ -9,7 +9,7 @@ type AccountProtocols struct {
 }
 
 // ResolveRoute 保留原生优先、批量 provider 绑定及单步转换规则。
-func ResolveRoute(account AccountProtocols, source ProtocolID, fallbacks map[ProtocolID]ProtocolID) (ProtocolID, bool) {
+func ResolveRoute(account AccountProtocols, source ProtocolID, fallbacks map[ProtocolID][]ProtocolID) (ProtocolID, bool) {
 	enabled := account.Enabled
 	if slices.Contains(enabled, source) && slices.Contains(NativeProtocolOptions(account.Platform, account.Type, account.AuthMode), source) {
 		return source, true
@@ -22,12 +22,14 @@ func ResolveRoute(account AccountProtocols, source ProtocolID, fallbacks map[Pro
 		}
 		return target, account.Platform == PlatformGemini && slices.Contains(enabled, target)
 	}
-	if fallbacks == nil {
-		return "", false
+	targets, configured := fallbacks[source]
+	if !configured {
+		targets = AutomaticProtocolFallbackTargets(source)
 	}
-	target := fallbacks[source]
-	if slices.Contains(enabled, target) && SupportsProtocolConversion(account.Platform, account.Type, account.AuthMode, source, target) {
-		return target, true
+	for _, target := range targets {
+		if slices.Contains(enabled, target) && SupportsProtocolConversion(account.Platform, account.Type, account.AuthMode, source, target) {
+			return target, true
+		}
 	}
 	return "", false
 }

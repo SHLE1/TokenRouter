@@ -238,7 +238,6 @@ type Snapshot struct {
 	MaxClaudeCodeVersion string
 
 	// 分组隔离：允许未分组 Key 调度（默认 false → 403）
-	AllowUngroupedKeyScheduling bool
 
 	// Backend 模式：禁用用户注册和自助服务，仅管理员可登录
 	BackendModeEnabled bool
@@ -319,9 +318,6 @@ type Snapshot struct {
 	// 账号限额通知
 	AccountQuotaNotifyEnabled bool
 	AccountQuotaNotifyEmails  []contact.Entry
-
-	// 系统全局默认平台配额（key = platform，nil/缺省 = 不限制）
-	DefaultPlatformQuotas map[string]*billing.DefaultPlatformQuotaSetting `json:"default_platform_quotas"`
 
 	// 系统全局账号自动停调阈值（key = platform，100 = disabled）
 	AccountSchedulingThresholds map[string]int `json:"account_scheduling_thresholds"`

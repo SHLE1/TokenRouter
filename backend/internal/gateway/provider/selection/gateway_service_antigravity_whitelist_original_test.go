@@ -4,6 +4,7 @@ package selection
 
 import (
 	"context"
+	"strings"
 	"testing"
 	time "time"
 
@@ -20,13 +21,17 @@ func TestGatewayService_isModelSupportedByAccount_AntigravityModelMapping(t *tes
 		nil)
 
 	// 使用 model_mapping 作为白名单（通配符匹配）
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAntigravity,
-		Credentials: map[string]any{
-			"model_mapping": map[string]any{
-				"claude-*":   "claude-sonnet-4-5",
-				"gemini-3-*": "gemini-3-flash",
+	account := &gatewayprovider.ExecutionAccount{
+		Record: accountcore.Record{
+			LoadLocation: time.LoadLocation, Platform: capability.PlatformAntigravity,
+			Credentials: map[string]any{
+				"model_whitelist": []string{"claude-sonnet-4-5", "gemini-3-flash"},
+				"model_mapping": map[string]any{
+					"claude-*":   "claude-sonnet-4-5",
+					"gemini-3-*": "gemini-3-flash",
+				},
 			},
-		}},
+		},
 	}
 
 	// claude-* 通配符匹配
@@ -56,8 +61,11 @@ func TestGatewayService_isModelSupportedByAccount_AntigravityNoMapping(t *testin
 
 	// 未配置 model_mapping 时，使用默认映射（domain.DefaultAntigravityModelMapping）
 	// 只有默认映射中的模型才被支持
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAntigravity,
-		Credentials: map[string]any{}},
+	account := &gatewayprovider.ExecutionAccount{
+		Record: accountcore.Record{
+			LoadLocation: time.LoadLocation, Platform: capability.PlatformAntigravity,
+			Credentials: map[string]any{},
+		},
 	}
 
 	// 默认映射中的模型应该被支持
@@ -89,18 +97,18 @@ func TestGatewayService_isModelSupportedByAccountWithContext_ThinkingMode(t *tes
 		expected        bool
 	}{
 		// 场景 1: 只配置 claude-sonnet-4-5-thinking，请求 claude-sonnet-4-5 + thinking=true
-		// mapAntigravityModel 找不到 claude-sonnet-4-5 的映射 → 返回 false
+		// 白名单按规范化后的最终模型判断。
 		{
-			name: "thinking_enabled_no_base_mapping_returns_false",
+			name: "thinking_enabled_matches_final_whitelist",
 			modelMapping: map[string]any{
 				"claude-sonnet-4-5-thinking": "claude-sonnet-4-5-thinking",
 			},
 			requestedModel:  "claude-sonnet-4-5",
 			thinkingEnabled: true,
-			expected:        false,
+			expected:        true,
 		},
 		// 场景 2: 只配置 claude-sonnet-4-5-thinking，请求 claude-sonnet-4-5 + thinking=false
-		// mapAntigravityModel 找不到 claude-sonnet-4-5 的映射 → 返回 false
+		// 白名单按规范化后的最终模型判断。
 		{
 			name: "thinking_disabled_no_base_mapping_returns_false",
 			modelMapping: map[string]any{
@@ -154,9 +162,9 @@ func TestGatewayService_isModelSupportedByAccountWithContext_ThinkingMode(t *tes
 			expected:        true, // claude-sonnet-4-5-thinking 匹配 claude-*
 		},
 		// 场景 7: 只配置 thinking 变体但没有基础模型映射 → 返回 false
-		// mapAntigravityModel 找不到 claude-opus-4-6 的映射
+		// Opus 4.6 不自动追加 thinking 后缀，基础名称仍须在白名单内。
 		{
-			name: "opus_thinking_no_base_mapping_returns_false",
+			name: "opus_without_suffix_rewrite_does_not_match_thinking_only_scope",
 			modelMapping: map[string]any{
 				"claude-opus-4-6-thinking": "claude-opus-4-6-thinking",
 			},
@@ -168,10 +176,26 @@ func TestGatewayService_isModelSupportedByAccountWithContext_ThinkingMode(t *tes
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAntigravity,
-				Credentials: map[string]any{
-					"model_mapping": tt.modelMapping,
-				}},
+			account := &gatewayprovider.ExecutionAccount{
+				Record: accountcore.Record{
+					LoadLocation: time.LoadLocation, Platform: capability.PlatformAntigravity,
+					Credentials: map[string]any{
+						"model_whitelist": func() []string {
+							var out []string
+							for source, value := range tt.modelMapping {
+								if strings.Contains(source, "*") {
+									out = append(out, source)
+									continue
+								}
+								if model, ok := value.(string); ok {
+									out = append(out, model)
+								}
+							}
+							return out
+						}(),
+						"model_mapping": tt.modelMapping,
+					},
+				},
 			}
 
 			ctx := requeststate.WithThinkingEnabled(context.Background(), tt.thinkingEnabled)
@@ -192,15 +216,18 @@ func TestGatewayService_isModelSupportedByAccount_CustomMappingNotInDefault(t *t
 		nil)
 
 	// 自定义映射中包含不在默认映射中的模型
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAntigravity,
-		Credentials: map[string]any{
-			"model_mapping": map[string]any{
-				"my-custom-model":   "actual-upstream-model",
-				"gpt-4o":            "some-upstream-model",
-				"llama-3-70b":       "llama-3-70b-upstream",
-				"claude-sonnet-4-5": "claude-sonnet-4-5",
+	account := &gatewayprovider.ExecutionAccount{
+		Record: accountcore.Record{
+			LoadLocation: time.LoadLocation, Platform: capability.PlatformAntigravity,
+			Credentials: map[string]any{
+				"model_mapping": map[string]any{
+					"my-custom-model":   "actual-upstream-model",
+					"gpt-4o":            "some-upstream-model",
+					"llama-3-70b":       "llama-3-70b-upstream",
+					"claude-sonnet-4-5": "claude-sonnet-4-5",
+				},
 			},
-		}},
+		},
 	}
 
 	// 自定义模型应该通过（不在 DefaultAntigravityModelMapping 中也可以）
@@ -225,14 +252,17 @@ func TestGatewayService_isModelSupportedByAccountWithContext_CustomMappingThinki
 		nil)
 
 	// 自定义映射同时配置基础模型和 thinking 变体
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAntigravity,
-		Credentials: map[string]any{
-			"model_mapping": map[string]any{
-				"claude-sonnet-4-5":          "claude-sonnet-4-5",
-				"claude-sonnet-4-5-thinking": "claude-sonnet-4-5-thinking",
-				"my-custom-model":            "upstream-model",
+	account := &gatewayprovider.ExecutionAccount{
+		Record: accountcore.Record{
+			LoadLocation: time.LoadLocation, Platform: capability.PlatformAntigravity,
+			Credentials: map[string]any{
+				"model_mapping": map[string]any{
+					"claude-sonnet-4-5":          "claude-sonnet-4-5",
+					"claude-sonnet-4-5-thinking": "claude-sonnet-4-5-thinking",
+					"my-custom-model":            "upstream-model",
+				},
 			},
-		}},
+		},
 	}
 
 	// thinking=true: claude-sonnet-4-5 → mapped=claude-sonnet-4-5 → +thinking → check IsModelSupported(claude-sonnet-4-5-thinking)=true

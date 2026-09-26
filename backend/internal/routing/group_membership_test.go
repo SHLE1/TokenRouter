@@ -163,8 +163,8 @@ func (s *groupRepoStubForAdmin) UpdateSortOrders(_ context.Context, _ []GroupSor
 }
 
 func TestAdminServiceUpdateGroupCopiesMembershipWithoutAssociationPriority(t *testing.T) {
-	target := &Group{ID: 1701, Name: "target", Platform: PlatformGemini, Status: StatusActive}
-	source := &Group{ID: 1702, Name: "source", Platform: PlatformGemini, Status: StatusActive}
+	target := &Group{ID: 1701, Name: "target", Status: StatusActive}
+	source := &Group{ID: 1702, Name: "source", Status: StatusActive}
 	base := &groupRepoStubForAdmin{}
 	repo := &groupAccountCopyRepoStub{
 		groupRepoStubForAdmin: base,

@@ -8,12 +8,11 @@ vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }))
 afterEach(() => { document.body.innerHTML = '' })
 
 describe('GroupFormTabs', () => {
-  it('隐藏空页签并在平台变化时回到通用', async () => {
-    const wrapper = mount(GroupFormTabs, { props: { platform: 'openai', idPrefix: 'create' } })
-    await wrapper.get('[data-group-tab-button="platform"]').trigger('click')
-    await wrapper.setProps({ platform: 'qoder' })
-    expect(wrapper.find('[data-group-tab-button="platform"]').exists()).toBe(false)
-    expect(wrapper.get('[data-group-tab-button="general"]').attributes('aria-selected')).toBe('true')
+  it('所有分组提供相同的功能页签', async () => {
+    const wrapper = mount(GroupFormTabs, { props: { idPrefix: 'create' } })
+    expect(wrapper.findAll('[data-group-tab-button]').map(tab => tab.attributes('data-group-tab-button'))).toEqual(['general', 'features', 'routing', 'pricing', 'protocol'])
+    await wrapper.get('[data-group-tab-button="features"]').trigger('click')
+    expect(wrapper.get('[data-group-tab="features"]').isVisible()).toBe(true)
     wrapper.unmount()
   })
 
@@ -22,7 +21,7 @@ describe('GroupFormTabs', () => {
     const Draft = defineComponent({ setup: () => ({ value: ref('') }), template: '<input v-model="value" />' })
     const wrapper = mount(GroupFormTabs, {
       attachTo: document.body,
-      props: { platform: 'openai', idPrefix: 'edit' },
+      props: { idPrefix: 'edit' },
       slots: { pricing: Draft },
     })
     await wrapper.get('[data-group-tab-button="pricing"]').trigger('click')
@@ -43,7 +42,7 @@ describe('GroupFormTabs', () => {
   it('显示无效输入所在页签后才报告原生校验错误', async () => {
     const wrapper = mount(GroupFormTabs, {
       attachTo: document.body,
-      props: { platform: 'openai', idPrefix: 'edit' },
+      props: { idPrefix: 'edit' },
       slots: { pricing: '<input type="number" min="0.001" value="-1" />' },
     })
     const field = wrapper.get('input').element as HTMLInputElement
@@ -57,7 +56,7 @@ describe('GroupFormTabs', () => {
 
   it('创建引导可以往返定位倍率与通用字段', async () => {
     const wrapper = mount(GroupFormTabs, {
-      props: { platform: 'anthropic', idPrefix: 'create' },
+      props: { idPrefix: 'create' },
       slots: {
         general: '<input data-tour="group-form-name" />',
         pricing: '<input data-tour="group-form-multiplier" />',
@@ -75,7 +74,7 @@ describe('GroupFormTabs', () => {
   it('跨页定位错误字段后保留滚动位置', async () => {
     const wrapper = mount(GroupFormTabs, {
       attachTo: document.body,
-      props: { platform: 'openai', idPrefix: 'edit' },
+      props: { idPrefix: 'edit' },
       slots: { general: '<input data-testid="probe-model" />' },
     })
     try {

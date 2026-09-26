@@ -28,7 +28,7 @@ func TestLiveAssemblyKeepsPermissionAndStopBeforeRead(t *testing.T) {
 		c, _ := gin.CreateTestContext(writer)
 		body := &protocolGateTrackingReader{}
 		c.Request = httptest.NewRequest(http.MethodPost, "/v1/live", body)
-		c.Set(string(keyhttp.ContextKeyAPIKey), &apikey.APIKey{ID: 2, UserID: 1, Group: &routing.Group{Platform: "openai"}})
+		c.Set(string(keyhttp.ContextKeyAPIKey), &apikey.APIKey{ID: 2, UserID: 1, Group: &routing.Group{}})
 		c.Set(authctx.ContextKeyUser, authctx.AuthSubject{UserID: 1})
 		if stopped {
 			second.Live(c)

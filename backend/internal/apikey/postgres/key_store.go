@@ -177,7 +177,7 @@ func KeyCreateAPIKeyRecord(ctx context.Context, client *dbent.Client, key *keyco
 		SetRateLimit5h(key.RateLimit5h).
 		SetRateLimit1d(key.RateLimit1d).
 		SetRateLimit7d(key.RateLimit7d).
-		SetFallbackToDefaultGroupWhenUnavailable(key.FallbackToDefaultGroupWhenUnavailable)
+		SetFallbackWhenGroupUnavailable(key.FallbackWhenGroupUnavailable)
 
 	if len(key.IPWhitelist) > 0 {
 		builder.SetIPWhitelist(key.IPWhitelist)
@@ -330,7 +330,7 @@ func (r *KeyStore) GetByKeyForAuth(ctx context.Context, key string) (*keycore.AP
 			apikey.FieldRateLimit5h,
 			apikey.FieldRateLimit1d,
 			apikey.FieldRateLimit7d,
-			apikey.FieldFallbackToDefaultGroupWhenUnavailable,
+			apikey.FieldFallbackWhenGroupUnavailable,
 		).
 		WithUser(func(q *dbent.UserQuery) {
 			q.Select(
@@ -360,7 +360,7 @@ func (r *KeyStore) GetByKeyForAuth(ctx context.Context, key string) (*keycore.AP
 			q.Select(
 				group.FieldID,
 				group.FieldName,
-				group.FieldPlatform,
+
 				group.FieldSchedulerType,
 				group.FieldAdvancedSchedulerOverrides,
 				group.FieldIsExclusive,
@@ -472,8 +472,8 @@ func (r *KeyStore) Update(ctx context.Context, key *keycore.APIKey, fields keyco
 	if fields.ModelMapping {
 		builder.SetModelMapping(keycore.CloneModelMapping(key.ModelMapping))
 	}
-	if fields.FallbackToDefaultGroupWhenUnavailable {
-		builder.SetFallbackToDefaultGroupWhenUnavailable(key.FallbackToDefaultGroupWhenUnavailable)
+	if fields.FallbackWhenGroupUnavailable {
+		builder.SetFallbackWhenGroupUnavailable(key.FallbackWhenGroupUnavailable)
 	}
 	if fields.Quota {
 		builder.SetQuota(key.Quota)
@@ -1016,38 +1016,38 @@ func KeyApiKeyEntityToService(m *dbent.APIKey) *keycore.APIKey {
 		return nil
 	}
 	out := &keycore.APIKey{
-		ID:                                    m.ID,
-		UserID:                                m.UserID,
-		TeamID:                                m.TeamID,
-		TeamOwnerDisabled:                     m.TeamOwnerDisabled,
-		Key:                                   m.Key,
-		Name:                                  m.Name,
-		Status:                                m.Status,
-		FastModePolicy:                        m.FastModePolicy,
-		BillingMode:                           m.BillingMode,
-		PreferredSubscriptionID:               m.PreferredSubscriptionID,
-		ModelMapping:                          keycore.CloneModelMapping(m.ModelMapping),
-		IPWhitelist:                           m.IPWhitelist,
-		IPBlacklist:                           m.IPBlacklist,
-		LastUsedAt:                            m.LastUsedAt,
-		CreatedAt:                             m.CreatedAt,
-		UpdatedAt:                             m.UpdatedAt,
-		GroupID:                               m.GroupID,
-		IsComposite:                           m.IsComposite,
-		Quota:                                 m.Quota,
-		QuotaUsed:                             m.QuotaUsed,
-		ExpiresAt:                             m.ExpiresAt,
-		RateLimit5h:                           m.RateLimit5h,
-		RateLimit1d:                           m.RateLimit1d,
-		RateLimit7d:                           m.RateLimit7d,
-		Usage5h:                               m.Usage5h,
-		Usage1d:                               m.Usage1d,
-		Usage7d:                               m.Usage7d,
-		Window5hStart:                         m.Window5hStart,
-		Window1dStart:                         m.Window1dStart,
-		Window7dStart:                         m.Window7dStart,
-		FallbackToDefaultGroupWhenUnavailable: m.FallbackToDefaultGroupWhenUnavailable,
-		ManagedBy:                             m.ManagedBy,
+		ID:                           m.ID,
+		UserID:                       m.UserID,
+		TeamID:                       m.TeamID,
+		TeamOwnerDisabled:            m.TeamOwnerDisabled,
+		Key:                          m.Key,
+		Name:                         m.Name,
+		Status:                       m.Status,
+		FastModePolicy:               m.FastModePolicy,
+		BillingMode:                  m.BillingMode,
+		PreferredSubscriptionID:      m.PreferredSubscriptionID,
+		ModelMapping:                 keycore.CloneModelMapping(m.ModelMapping),
+		IPWhitelist:                  m.IPWhitelist,
+		IPBlacklist:                  m.IPBlacklist,
+		LastUsedAt:                   m.LastUsedAt,
+		CreatedAt:                    m.CreatedAt,
+		UpdatedAt:                    m.UpdatedAt,
+		GroupID:                      m.GroupID,
+		IsComposite:                  m.IsComposite,
+		Quota:                        m.Quota,
+		QuotaUsed:                    m.QuotaUsed,
+		ExpiresAt:                    m.ExpiresAt,
+		RateLimit5h:                  m.RateLimit5h,
+		RateLimit1d:                  m.RateLimit1d,
+		RateLimit7d:                  m.RateLimit7d,
+		Usage5h:                      m.Usage5h,
+		Usage1d:                      m.Usage1d,
+		Usage7d:                      m.Usage7d,
+		Window5hStart:                m.Window5hStart,
+		Window1dStart:                m.Window1dStart,
+		Window7dStart:                m.Window7dStart,
+		FallbackWhenGroupUnavailable: m.FallbackWhenGroupUnavailable,
+		ManagedBy:                    m.ManagedBy,
 	}
 	if m.Edges.User != nil {
 		out.User = userEntityToKeyView(m.Edges.User)

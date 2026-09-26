@@ -16,12 +16,11 @@ func TestAdminServiceCreateAccountDiscardsDeprecatedLongContextBillingExtra(t *t
 	svc := NewAdmin(repo, AdminOptions{Creation: CreationOptions{Now: time.Now, LoadLocation: time.LoadLocation}, Credentials: CreateCredentialHooks{Validate: func(context.Context, *Record) error { return nil }}})
 
 	account, err := svc.CreateAccount(context.Background(), &CreateAccountInput{
-		Name:                 "openai-account",
-		Platform:             PlatformOpenAI,
-		Type:                 AccountTypeAPIKey,
-		Credentials:          map[string]any{"api_key": "test"},
-		Extra:                map[string]any{"openai_long_context_billing_enabled": "malformed", "preserved": true},
-		SkipDefaultGroupBind: true,
+		Name:        "openai-account",
+		Platform:    PlatformOpenAI,
+		Type:        AccountTypeAPIKey,
+		Credentials: map[string]any{"api_key": "test"},
+		Extra:       map[string]any{"openai_long_context_billing_enabled": "malformed", "preserved": true},
 	})
 
 	require.NoError(t, err)

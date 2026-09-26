@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/gateway"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/tierpolicy"
 	"github.com/TokenFlux/TokenRouter/internal/identity"
@@ -25,6 +24,7 @@ type Runtime struct {
 func NewRuntime(store *settings.Store, read ReadOptions, prepare PrepareOptions, grants *identity.GrantSettings, gateway *gateway.RuntimeSettings, totpConfigured bool, applications []Application) *Runtime {
 	return &Runtime{store: store, read: read, prepare: prepare, grants: grants, gateway: gateway, totpConfigured: totpConfigured, applications: append([]Application(nil), applications...)}
 }
+
 func (s *Runtime) GetAllSettings(ctx context.Context) (*Snapshot, error) {
 	values, err := s.store.GetAll(ctx)
 	if err != nil {
@@ -32,12 +32,11 @@ func (s *Runtime) GetAllSettings(ctx context.Context) (*Snapshot, error) {
 	}
 	return Parse(values, s.read), nil
 }
+
 func (s *Runtime) GetAuthSourceDefaultSettings(ctx context.Context) (*identity.AuthSourceDefaultSettings, error) {
 	return s.grants.GetAuthSourceDefaultSettings(ctx)
 }
-func (s *Runtime) GetDefaultPlatformQuotas(ctx context.Context) (map[string]*billing.DefaultPlatformQuotaSetting, error) {
-	return s.grants.GetDefaultPlatformQuotas(ctx)
-}
+
 func (s *Runtime) GetOpenAIFastPolicySettings(ctx context.Context) (*tierpolicy.OpenAIFastPolicySettings, error) {
 	return s.gateway.GetOpenAIFastPolicySettings(ctx)
 }
@@ -45,9 +44,11 @@ func (s *Runtime) IsTotpEncryptionKeyConfigured() bool { return s.totpConfigured
 func (s *Runtime) OIDCSecurityWriteDefaults(ctx context.Context) (bool, bool, error) {
 	return s.read.OAuth.OIDCSecurityWriteDefaults(ctx)
 }
+
 func (s *Runtime) BeginSettingsUpdate(ctx context.Context) (*settings.UpdateSession, error) {
 	return s.store.Updates().Begin(ctx)
 }
+
 func (s *Runtime) PrepareSettingsWithAuthSourceDefaults(ctx context.Context, value *Snapshot, auth *identity.AuthSourceDefaultSettings, omitted settings.OmittedKeys) (map[string]string, error) {
 	values, err := Prepare(ctx, value, s.prepare)
 	if err != nil {
@@ -63,6 +64,7 @@ func (s *Runtime) PrepareSettingsWithAuthSourceDefaults(ctx context.Context, val
 	omitted.DropFrom(values)
 	return values, nil
 }
+
 func (s *Runtime) ApplicationChanges() []settings.PreparedChange {
 	return ApplicationsForUpdate(s.GetAllSettings, s.applications)
 }

@@ -69,8 +69,8 @@ func TestListAllAccountsForOpsFallbackPassesGroupFilter(t *testing.T) {
 
 func TestGetAccountAvailabilityStatsOnlyAggregatesSelectedGroup(t *testing.T) {
 	targetGroupID := int64(7)
-	otherGroup := &GroupObservation{ID: 8, Name: "其他分组", Platform: PlatformAnthropic}
-	targetGroup := &GroupObservation{ID: targetGroupID, Name: "目标分组", Platform: PlatformAnthropic}
+	otherGroup := &GroupObservation{ID: 8, Name: "其他分组"}
+	targetGroup := &GroupObservation{ID: targetGroupID, Name: "目标分组"}
 	repo := &opsAccountStatsRepoStub{accounts: []AccountObservation{
 		{
 			ID:          11,

@@ -59,7 +59,7 @@ func (p ModelPolicy) NormalizeOpenAI(model string) string {
 	if p.Record.IsGrok() {
 		return grok.NormalizeModelID(model)
 	}
-	if p.Record.UsesOpenAICodexProtocol() {
+	if p.Record.UsesOpenAICodexProtocol() && !p.Record.IsOpenAIPassthroughEnabled() {
 		return NormalizeCodexModel(model)
 	}
 	return strings.TrimSpace(model)
@@ -86,23 +86,14 @@ func (p ModelPolicy) RawChat() bool {
 	return account.ResolveUpstreamTextProtocol(p.Record.Extra, account.TextProtocolResponses) == account.TextProtocolChatCompletions
 }
 
-// OpenAIUpstream 保留压缩映射、透传和普通映射的原优先级。
-func (p ModelPolicy) OpenAIUpstream(requested string, compact, allowHTTPPassthrough bool) string {
+// OpenAIUpstream 按压缩规则与普通单跳映射解析模型，透传只影响传输方式。
+func (p ModelPolicy) OpenAIUpstream(requested string, compact, _ bool) string {
 	requested = strings.TrimSpace(requested)
 	if requested == "" {
 		return ""
 	}
 	if p.RawChat() {
 		return p.NormalizeOpenAI(p.ForwardModel(requested, ""))
-	}
-	if p.Record != nil && p.Record.IsOpenAIPassthroughEnabled() {
-		if compact {
-			return account.ResolveCompactForwardModel(p.Record, requested)
-		}
-		return requested
-	}
-	if allowHTTPPassthrough && p.Record != nil && p.Record.IsOpenAIPassthroughEnabled() {
-		return requested
 	}
 	if compact && p.Record != nil {
 		if model, matched := p.Record.ResolveCompactMappedModel(requested); matched {
@@ -189,31 +180,23 @@ func (p ModelPolicy) Supports(ctx context.Context, model string) bool {
 		if strings.TrimSpace(model) == "" {
 			return true
 		}
-		mapped := accountprovider.MapAntigravityModel(value, model)
-		if mapped == "" {
-			return false
-		}
-		if thinking := modelThinking(ctx); thinking != nil {
-			final := antigravity.ApplyThinkingModelSuffix(mapped, *thinking)
-			if final == mapped {
-				return true
-			}
-			return value.IsModelSupported(final, accountprovider.ModelDefaults(), accountprovider.ModelRules(value))
-		}
-		return true
+		return accountprovider.FinalAntigravityModel(value, model, modelThinking(ctx)) != ""
 	}
 	if value.IsBedrock() {
+		if !value.IsModelSupported(model, accountprovider.ModelDefaults(), accountprovider.ModelRules(value)) {
+			return false
+		}
 		_, ok := p.Bedrock(model)
 		return ok
-	}
-	if value.Platform == capability.PlatformOpenAI && value.IsOpenAIPassthroughEnabled() {
-		return true
 	}
 	if value.Platform == capability.PlatformAnthropic && value.Type != capability.AccountTypeAPIKey {
 		mapped := account.ResolveForwardMappedModel(value, model, accountprovider.ModelDefaults())
 		return value.FinalModelWhitelisted(p.AnthropicUpstream(mapped), accountprovider.ModelDefaults(), accountprovider.ModelRules(value))
 	}
-	return value.IsModelSupported(model, accountprovider.ModelDefaults(), accountprovider.ModelRules(value))
+	rules := accountprovider.ModelRules(value)
+	// OAuth 目录资格与实际转发共用已知别名规则，避免推理后缀在选号时被误拒绝。
+	rules.NormalizeOpenAI = NormalizeCodexModel
+	return value.IsModelSupported(model, accountprovider.ModelDefaults(), rules)
 }
 
 // UpstreamModel 保留最终模型登记时点；目录和执行共用平台规则。
@@ -327,9 +310,7 @@ func (p ModelPolicy) ListingModels(ctx context.Context, requested string) []stri
 // ForwardMappedModels 保留计费模型与最终上游模型的独立解析和 Compact 优先级。
 func (p ModelPolicy) ForwardMappedModels(requested string, compact bool) (billingModel, upstreamModel string) {
 	requested = strings.TrimSpace(requested)
-	if p.Record != nil && p.Record.IsOpenAIPassthroughEnabled() {
-		billingModel = requested
-	} else if p.Record != nil {
+	if p.Record != nil {
 		billingModel = strings.TrimSpace(p.Mapped(requested))
 	}
 	if billingModel == "" {

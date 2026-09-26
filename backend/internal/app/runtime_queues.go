@@ -21,7 +21,6 @@ func provideQueuesRuntime(
 	emailQueue *notification.EmailQueueService,
 	billingCache *billing.Eligibility,
 	usageRecordWorkerPool *completion.UsageRecordWorkerPool,
-	quotaFlusher *billing.UserPlatformQuotaUsageFlusher,
 	ollamaCloudUsage *account.OllamaCloudUsageService,
 	auditLog *audit.AuditLogService,
 	grokQuota *account.GrokQuotaService,
@@ -60,18 +59,6 @@ func provideQueuesRuntime(
 	}, Stop: func(ctx context.Context) error {
 		if usageRecordWorkerPool != nil {
 			return usageRecordWorkerPool.StopContext(ctx)
-		}
-		return nil
-	}})
-
-	manager.Register(lifecycle.Hook{Name: "UserPlatformQuotaUsageFlusher", StartOrder: 945, StopOrder: 55, Start: func(ctx context.Context) error {
-		if quotaFlusher != nil {
-			quotaFlusher.Start()
-		}
-		return nil
-	}, Stop: func(ctx context.Context) error {
-		if quotaFlusher != nil {
-			return quotaFlusher.Shutdown(ctx)
 		}
 		return nil
 	}})

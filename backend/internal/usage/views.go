@@ -8,11 +8,14 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/accessview"
 )
 
-type GroupView = accessview.GroupConfig
-type AccountView struct {
-	ID   int64
-	Name string
-}
+type (
+	GroupView   = accessview.GroupConfig
+	AccountView struct {
+		ID   int64
+		Name string
+	}
+)
+
 type KeyCompositeGroupView struct {
 	ID, APIKeyID, GroupID    int64
 	Prefix, NormalizedPrefix string
@@ -44,40 +47,40 @@ type UserView struct {
 	APIKeyLimit                int
 }
 type KeyView struct {
-	ID                                    int64
-	UserID                                int64
-	TeamID                                *int64
-	TeamOwnerDisabled                     bool
-	Key                                   string
-	Name                                  string
-	GroupID                               *int64
-	IsComposite                           bool
-	CompositeGroups                       []KeyCompositeGroupView
-	Status                                string
-	FastModePolicy                        string
-	BillingMode                           string
-	PreferredSubscriptionID               *int64
-	ModelMapping                          map[string]string
-	IPWhitelist                           []string
-	IPBlacklist                           []string
-	LastUsedAt                            *time.Time
-	LastUsedIP                            *string
-	CreatedAt                             time.Time
-	UpdatedAt                             time.Time
-	Group                                 *GroupView
-	FallbackToDefaultGroupWhenUnavailable bool
-	CurrentConcurrency                    int
-	ManagedBy                             *string
-	Quota                                 float64
-	QuotaUsed                             float64
-	ExpiresAt                             *time.Time
-	RateLimit5h                           float64
-	RateLimit1d                           float64
-	RateLimit7d                           float64
-	Usage5h                               float64
-	Usage1d                               float64
-	Usage7d                               float64
-	Window5hStart                         *time.Time
-	Window1dStart                         *time.Time
-	Window7dStart                         *time.Time
+	ID                           int64
+	UserID                       int64
+	TeamID                       *int64
+	TeamOwnerDisabled            bool
+	Key                          string
+	Name                         string
+	GroupID                      *int64
+	IsComposite                  bool
+	CompositeGroups              []KeyCompositeGroupView
+	Status                       string
+	FastModePolicy               string
+	BillingMode                  string
+	PreferredSubscriptionID      *int64
+	ModelMapping                 map[string]string
+	IPWhitelist                  []string
+	IPBlacklist                  []string
+	LastUsedAt                   *time.Time
+	LastUsedIP                   *string
+	CreatedAt                    time.Time
+	UpdatedAt                    time.Time
+	Group                        *GroupView
+	FallbackWhenGroupUnavailable bool
+	CurrentConcurrency           int
+	ManagedBy                    *string
+	Quota                        float64
+	QuotaUsed                    float64
+	ExpiresAt                    *time.Time
+	RateLimit5h                  float64
+	RateLimit1d                  float64
+	RateLimit7d                  float64
+	Usage5h                      float64
+	Usage1d                      float64
+	Usage7d                      float64
+	Window5hStart                *time.Time
+	Window1dStart                *time.Time
+	Window7dStart                *time.Time
 }

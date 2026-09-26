@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/TokenFlux/TokenRouter/internal/protocol"
+
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/apikey/httpapi/dto"
 	idempotencyhttp "github.com/TokenFlux/TokenRouter/internal/idempotency/httpapi"
@@ -24,6 +26,7 @@ type APIKeyHandler[G any] struct {
 
 	apiKeyService        *apikey.APIKeyService
 	groupCapacityService GroupCapacityReader
+	groupModels          func(context.Context, int64) ([]string, map[string][]protocol.ProtocolID)
 	presentGroup         func(*routing.Group, *accessview.GroupCapacitySummary) *G
 }
 type GroupCapacityReader interface {
@@ -33,7 +36,14 @@ type GroupCapacityReader interface {
 func NewAPIKeyHandler[G any](keys *apikey.APIKeyService, present func(*routing.Group, *accessview.GroupCapacitySummary) *G) *APIKeyHandler[G] {
 	return &APIKeyHandler[G]{apiKeyService: keys, presentGroup: present}
 }
+
+// SetGroupModelsReader 只为已授权的控制台分组提供目录，不改变 Key 的运行时权限。
+func (h *APIKeyHandler[G]) SetGroupModelsReader(read func(context.Context, int64) ([]string, map[string][]protocol.ProtocolID)) {
+	h.groupModels = read
+}
+
 func (h *APIKeyHandler[G]) SetGroupCapacityService(c GroupCapacityReader) { h.groupCapacityService = c }
+
 func (h *APIKeyHandler[G]) keyResponse(k *apikey.APIKey) *dto.APIKey[G] {
 	return dto.APIKeyFromKey(k, func(g *routing.Group) *G { return h.presentGroup(g, nil) })
 }
@@ -60,8 +70,8 @@ type CreateAPIKeyRequest struct {
 	RateLimit5h *float64 `json:"rate_limit_5h"`
 	RateLimit1d *float64 `json:"rate_limit_1d"`
 	RateLimit7d *float64 `json:"rate_limit_7d"`
-	// 绑定分组不可用时是否自动回退到同平台默认分组，nil 表示使用服务层默认值。
-	FallbackToDefaultGroupWhenUnavailable *bool `json:"fallback_to_default_group_when_unavailable"`
+	// 绑定分组不可用时是否允许使用其明确配置的回退分组，nil 表示使用服务层默认值。
+	FallbackWhenGroupUnavailable *bool `json:"fallback_when_group_unavailable"`
 }
 
 // UpdateAPIKeyRequest represents the update API key request payload
@@ -88,7 +98,7 @@ type UpdateAPIKeyRequest struct {
 	RateLimit7d         *float64 `json:"rate_limit_7d"`
 	ResetRateLimitUsage *bool    `json:"reset_rate_limit_usage"` // 重置限速用量
 	// nil 表示保持原配置不变。
-	FallbackToDefaultGroupWhenUnavailable *bool `json:"fallback_to_default_group_when_unavailable"`
+	FallbackWhenGroupUnavailable *bool `json:"fallback_when_group_unavailable"`
 }
 
 type ApiKeyLimitInput struct {
@@ -232,7 +242,7 @@ func (h *APIKeyHandler[G]) Create(c *gin.Context) {
 	}
 
 	var req CreateAPIKeyRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := response.BindJSONStrict(c, &req); err != nil {
 		response.BadRequest(c, "Invalid request: "+err.Error())
 		return
 	}
@@ -242,20 +252,20 @@ func (h *APIKeyHandler[G]) Create(c *gin.Context) {
 	}
 
 	svcReq := apikey.CreateAPIKeyRequest{
-		Name:                                  req.Name,
-		Scope:                                 req.Scope,
-		GroupID:                               req.GroupID,
-		IsComposite:                           req.IsComposite,
-		CompositeGroups:                       req.CompositeGroups,
-		CustomKey:                             req.CustomKey,
-		IPWhitelist:                           req.IPWhitelist,
-		IPBlacklist:                           req.IPBlacklist,
-		FastModePolicy:                        req.FastModePolicy,
-		BillingMode:                           req.BillingMode,
-		PreferredSubscriptionID:               req.PreferredSubscriptionID,
-		ModelMapping:                          req.ModelMapping,
-		ExpiresInDays:                         req.ExpiresInDays,
-		FallbackToDefaultGroupWhenUnavailable: req.FallbackToDefaultGroupWhenUnavailable,
+		Name:                         req.Name,
+		Scope:                        req.Scope,
+		GroupID:                      req.GroupID,
+		IsComposite:                  req.IsComposite,
+		CompositeGroups:              req.CompositeGroups,
+		CustomKey:                    req.CustomKey,
+		IPWhitelist:                  req.IPWhitelist,
+		IPBlacklist:                  req.IPBlacklist,
+		FastModePolicy:               req.FastModePolicy,
+		BillingMode:                  req.BillingMode,
+		PreferredSubscriptionID:      req.PreferredSubscriptionID,
+		ModelMapping:                 req.ModelMapping,
+		ExpiresInDays:                req.ExpiresInDays,
+		FallbackWhenGroupUnavailable: req.FallbackWhenGroupUnavailable,
 	}
 	if req.Quota != nil {
 		svcReq.Quota = *req.Quota
@@ -295,7 +305,7 @@ func (h *APIKeyHandler[G]) Update(c *gin.Context) {
 	}
 
 	var req UpdateAPIKeyRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := response.BindJSONStrict(c, &req); err != nil {
 		response.BadRequest(c, "Invalid request: "+err.Error())
 		return
 	}
@@ -305,21 +315,21 @@ func (h *APIKeyHandler[G]) Update(c *gin.Context) {
 	}
 
 	svcReq := apikey.UpdateAPIKeyRequest{
-		IsComposite:                           req.IsComposite,
-		CompositeGroups:                       req.CompositeGroups,
-		IPWhitelist:                           req.IPWhitelist,
-		IPBlacklist:                           req.IPBlacklist,
-		FastModePolicy:                        req.FastModePolicy,
-		BillingMode:                           req.BillingMode,
-		PreferredSubscriptionID:               req.PreferredSubscriptionID,
-		ModelMapping:                          req.ModelMapping,
-		Quota:                                 req.Quota,
-		ResetQuota:                            req.ResetQuota,
-		RateLimit5h:                           req.RateLimit5h,
-		RateLimit1d:                           req.RateLimit1d,
-		RateLimit7d:                           req.RateLimit7d,
-		ResetRateLimitUsage:                   req.ResetRateLimitUsage,
-		FallbackToDefaultGroupWhenUnavailable: req.FallbackToDefaultGroupWhenUnavailable,
+		IsComposite:                  req.IsComposite,
+		CompositeGroups:              req.CompositeGroups,
+		IPWhitelist:                  req.IPWhitelist,
+		IPBlacklist:                  req.IPBlacklist,
+		FastModePolicy:               req.FastModePolicy,
+		BillingMode:                  req.BillingMode,
+		PreferredSubscriptionID:      req.PreferredSubscriptionID,
+		ModelMapping:                 req.ModelMapping,
+		Quota:                        req.Quota,
+		ResetQuota:                   req.ResetQuota,
+		RateLimit5h:                  req.RateLimit5h,
+		RateLimit1d:                  req.RateLimit1d,
+		RateLimit7d:                  req.RateLimit7d,
+		ResetRateLimitUsage:          req.ResetRateLimitUsage,
+		FallbackWhenGroupUnavailable: req.FallbackWhenGroupUnavailable,
 	}
 	if req.Name != "" {
 		svcReq.Name = &req.Name
@@ -413,6 +423,9 @@ func (h *APIKeyHandler[G]) GetAvailableGroups(c *gin.Context) {
 		var capacity *accessview.GroupCapacitySummary
 		if value, ok := capacityMap[groups[i].ID]; ok {
 			capacity = &value
+		}
+		if h.groupModels != nil {
+			groups[i].Models, groups[i].ModelProtocols = h.groupModels(c.Request.Context(), groups[i].ID)
 		}
 		groupDTO := h.presentGroup(&groups[i], capacity)
 		out = append(out, *groupDTO)

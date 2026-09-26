@@ -217,14 +217,6 @@ func (s *AntigravityRetry) creditsFailure(p AntigravityRetryRequest, model strin
 	}
 }
 
-// FinalAntigravityModel 在一跳映射后应用本次 thinking 后缀。
-func FinalAntigravityModel(value *account.Record, model string, thinking *bool) string {
-	key := MapAntigravityModel(value, model)
-	if key != "" && thinking != nil {
-		key = antigravity.ApplyThinkingModelSuffix(key, *thinking)
-	}
-	return key
-}
 func antigravityRequestLimitKeys(value *account.Record, model string, thinking *bool) []string {
 	return AntigravityModelLimitKeys(FinalAntigravityModel(value, model, thinking))
 }

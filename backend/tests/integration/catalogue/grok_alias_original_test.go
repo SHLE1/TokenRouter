@@ -19,7 +19,7 @@ func TestGrokRequestableModelsExcludeBuiltinAliases(t *testing.T) {
 	service := newCatalogueFixture(repo, nil, nil)
 
 	result := service.ResolveRequestableModels(context.Background(), &groupID, capability.PlatformGrok)
-	require.Equal(t, xai.DefaultModelIDs(), routing.RequestableModelIDs(result.Models))
+	require.ElementsMatch(t, xai.DefaultModelIDs(), routing.RequestableModelIDs(result.Models))
 	require.NotContains(t, routing.RequestableModelIDs(result.Models), "grok")
 	require.NotContains(t, routing.RequestableModelIDs(result.Models), "grok-latest")
 

@@ -66,7 +66,7 @@ func IsGroupContextValid(group *Group) bool {
 	if !group.Hydrated {
 		return false
 	}
-	if group.Platform == "" || group.Status == "" {
+	if group.Status == "" {
 		return false
 	}
 	return true

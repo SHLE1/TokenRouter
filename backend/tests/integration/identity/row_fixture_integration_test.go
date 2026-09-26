@@ -164,6 +164,7 @@ func mustCreateAccount(t *testing.T, client *dbent.Client, a *accountcore.Record
 	a.UpdatedAt = created.UpdatedAt
 	return a
 }
+
 func mustCreateApiKey(t *testing.T, client *dbent.Client, k *apikey.APIKey) *apikey.APIKey {
 	t.Helper()
 	ctx := context.Background()
@@ -245,16 +246,12 @@ func mustCreateGroup(t *testing.T, client *dbent.Client, g *routing.Group) *rout
 	t.Helper()
 	ctx := context.Background()
 
-	if g.Platform == "" {
-		g.Platform = capability.PlatformAnthropic
-	}
 	if g.Status == "" {
 		g.Status = billing.StatusActive
 	}
 
 	create := client.Group.Create().
 		SetName(g.Name).
-		SetPlatform(g.Platform).
 		SetStatus(g.Status).
 		SetRateMultiplier(g.RateMultiplier).
 		SetIsExclusive(g.IsExclusive).

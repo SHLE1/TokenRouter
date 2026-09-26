@@ -15,9 +15,7 @@ const (
 type GroupAvailabilityProbeDueGroup struct {
 	GroupID int64
 	Name    string
-	// Platform 用于选择对应平台的账号调度器。
-	Platform string
-	Config   GroupAvailabilityProbeConfig
+	Config  GroupAvailabilityProbeConfig
 }
 
 // GroupAvailabilityProbeResult 是单次主动探测结果。

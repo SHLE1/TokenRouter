@@ -14,6 +14,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 	textflow "github.com/TokenFlux/TokenRouter/internal/gateway/text"
 	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
+	"github.com/TokenFlux/TokenRouter/internal/protocol"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/server/clientip"
 	"github.com/gin-gonic/gin"
@@ -44,9 +45,11 @@ type CountTokensHandler struct {
 func NewCountTokensHandler(limit int64, switches int, backend CountTokensBackend, prompt MessagesPrompt) *CountTokensHandler {
 	return &CountTokensHandler{maxBodyBytes: limit, maxSwitches: switches, backend: backend, prompt: prompt}
 }
+
 func (h *CountTokensHandler) errorResponse(c *gin.Context, status int, kind, message string) {
 	WriteAnthropicError(c, status, kind, "", message)
 }
+
 func countMaxBytesError(err error) (*http.MaxBytesError, bool) {
 	var exceeded *http.MaxBytesError
 	ok := errors.As(err, &exceeded)
@@ -114,6 +117,12 @@ func (h *CountTokensHandler) CountTokens(c *gin.Context) {
 	body = parsedReq.Body.Bytes()
 	// count_tokens 走 messages 严格校验时，复用已解析请求，避免二次反序列化。
 	h.backend.BindClient(c, DetectClaudeCodeRequest(c, body, parsedReq, false))
+	apiKey, err = resolveClientGroupForRequest(c, h.backend, apiKey, protocol.ProtocolAnthropicMessages)
+	if err != nil {
+		writeClientGroupFallbackError(c, err, h.errorResponse)
+		return
+	}
+
 	reqLog = reqLog.With(zap.String("model", parsedReq.Model), zap.Bool("stream", parsedReq.Stream))
 	// 在请求上下文中记录 thinking 状态，供 Antigravity 最终模型 key 推导/模型维度限流使用
 	h.backend.BindThinking(c, parsedReq.ThinkingEnabled)

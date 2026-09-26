@@ -2,8 +2,6 @@ package routing
 
 import (
 	"strings"
-
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
 func claudeMessagesDispatchFamily(model string) string {
@@ -31,13 +29,6 @@ func ResolveMessagesDispatchModel(g *Group, requestedModel string, options Messa
 	requestedModel = strings.TrimSpace(requestedModel)
 	if requestedModel == "" {
 		return ""
-	}
-
-	if g.Platform == capability.PlatformGrok {
-		if claudeMessagesDispatchFamily(requestedModel) == "" {
-			return ""
-		}
-		return options.CrossClientModel()
 	}
 
 	// 国产供应商不使用 OpenAI Messages 的分组级模型映射；模型改写由分组通用映射与

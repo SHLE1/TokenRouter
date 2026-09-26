@@ -43,32 +43,38 @@ func (r *thresholdSelectionAccountRepoStub) ListSchedulableUngroupedByPlatform(c
 }
 
 func TestGatewayService_ListSchedulableAccounts_DoesNotFilterUnsupportedThresholdPlatforms(t *testing.T) {
-
 	settingsRepo := settingstestkit.NewMemory()
 	settingsRepo.Data[account.SettingKeyAccountSchedulingThresholds] = `{"openai":90}`
 
 	accountRepo := &thresholdSelectionAccountRepoStub{
 		accounts: []gatewayprovider.ExecutionAccount{
-			{Record: account.Record{LoadLocation: time.LoadLocation, ID: 3101,
-				Platform:    "kiro",
-				Status:      billing.StatusActive,
-				Schedulable: true,
-				Credentials: map[string]any{
-					"account_scheduling_threshold": 1,
+			{
+				Record: account.Record{
+					LoadLocation: time.LoadLocation, ID: 3101,
+					Platform:    "kiro",
+					Status:      billing.StatusActive,
+					Schedulable: true,
+					Credentials: map[string]any{
+						"model_whitelist":              []string{"*"},
+						"account_scheduling_threshold": 1,
+					},
+					Extra: map[string]any{
+						"kiro_sched_utilization": 95.0,
+						"kiro_sched_reset_at":    time.Now().UTC().Add(2 * time.Hour).Format(time.RFC3339),
+					},
 				},
-				Extra: map[string]any{
-					"kiro_sched_utilization": 95.0,
-					"kiro_sched_reset_at":    time.Now().UTC().Add(2 * time.Hour).Format(time.RFC3339),
-				}},
 			},
-			{Record: account.Record{LoadLocation: time.LoadLocation, ID: 3102,
-				Platform:    "kiro",
-				Status:      billing.StatusActive,
-				Schedulable: true,
-				Extra: map[string]any{
-					"kiro_sched_utilization": 42.0,
-					"kiro_sched_reset_at":    time.Now().UTC().Add(2 * time.Hour).Format(time.RFC3339),
-				}},
+			{
+				Record: account.Record{
+					Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 3102,
+					Platform:    "kiro",
+					Status:      billing.StatusActive,
+					Schedulable: true,
+					Extra: map[string]any{
+						"kiro_sched_utilization": 42.0,
+						"kiro_sched_reset_at":    time.Now().UTC().Add(2 * time.Hour).Format(time.RFC3339),
+					},
+				},
 			},
 		},
 	}
@@ -76,7 +82,7 @@ func TestGatewayService_ListSchedulableAccounts_DoesNotFilterUnsupportedThreshol
 	healthObserver := gatewaytestkit.NewHealthObserver(gatewaytestkit.HealthInput{Store: accountRepo, Readers: gatewaytestkit.RuntimeReaders(settings.New(settingsRepo))})
 	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Accounts: accountRepo}, Shared: Shared{Health: healthObserver}}, &config.Config{})
 
-	accounts, useMixed, err := svc.listSchedulableAccounts(context.Background(), nil, "kiro", false)
+	accounts, useMixed, err := svc.listSchedulableAccounts(context.Background(), selectionFixtureGroupID(context.Background()), "kiro", false)
 
 	require.NoError(t, err)
 	require.False(t, useMixed)
@@ -87,29 +93,34 @@ func TestGatewayService_ListSchedulableAccounts_DoesNotFilterUnsupportedThreshol
 }
 
 func TestOpenAIGatewayService_ListSchedulableAccounts_FiltersThresholdBlockedAccounts(t *testing.T) {
-
 	settingsRepo := settingstestkit.NewMemory()
 	settingsRepo.Data[account.SettingKeyAccountSchedulingThresholds] = `{"openai":85}`
 
 	accountRepo := &thresholdSelectionAccountRepoStub{
 		accounts: []gatewayprovider.ExecutionAccount{
-			{Record: account.Record{LoadLocation: time.LoadLocation, ID: 4101,
-				Platform:    capability.PlatformOpenAI,
-				Status:      billing.StatusActive,
-				Schedulable: true,
-				Extra: map[string]any{
-					"codex_7d_used_percent": 91.0,
-					"codex_7d_reset_at":     time.Now().UTC().Add(12 * time.Hour).Format(time.RFC3339),
-				}},
+			{
+				Record: account.Record{
+					Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 4101,
+					Platform:    capability.PlatformOpenAI,
+					Status:      billing.StatusActive,
+					Schedulable: true,
+					Extra: map[string]any{
+						"codex_7d_used_percent": 91.0,
+						"codex_7d_reset_at":     time.Now().UTC().Add(12 * time.Hour).Format(time.RFC3339),
+					},
+				},
 			},
-			{Record: account.Record{LoadLocation: time.LoadLocation, ID: 4102,
-				Platform:    capability.PlatformOpenAI,
-				Status:      billing.StatusActive,
-				Schedulable: true,
-				Extra: map[string]any{
-					"codex_7d_used_percent": 40.0,
-					"codex_7d_reset_at":     time.Now().UTC().Add(12 * time.Hour).Format(time.RFC3339),
-				}},
+			{
+				Record: account.Record{
+					Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 4102,
+					Platform:    capability.PlatformOpenAI,
+					Status:      billing.StatusActive,
+					Schedulable: true,
+					Extra: map[string]any{
+						"codex_7d_used_percent": 40.0,
+						"codex_7d_reset_at":     time.Now().UTC().Add(12 * time.Hour).Format(time.RFC3339),
+					},
+				},
 			},
 		},
 	}
@@ -117,7 +128,7 @@ func TestOpenAIGatewayService_ListSchedulableAccounts_FiltersThresholdBlockedAcc
 	healthObserver := gatewaytestkit.NewHealthObserver(gatewaytestkit.HealthInput{Store: accountRepo, Readers: gatewaytestkit.RuntimeReaders(settings.New(settingsRepo))})
 	svc := newCompatibleSelectionForTest(CompatibleDependencies{Reads: Reads{Accounts: accountRepo}, Shared: Shared{Health: healthObserver}}, &config.Config{})
 
-	accounts, err := svc.listSchedulableAccounts(context.Background(), nil, capability.PlatformOpenAI)
+	accounts, err := svc.listSchedulableAccounts(context.Background(), selectionFixtureGroupID(context.Background()), capability.PlatformOpenAI)
 
 	require.NoError(t, err)
 	require.Len(t, accounts, 1)

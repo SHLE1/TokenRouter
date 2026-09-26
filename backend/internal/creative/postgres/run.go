@@ -41,6 +41,7 @@ func (r *creativeRunRepository) CreateCreativeRun(ctx context.Context, params se
 		SetUserID(params.UserID).
 		SetGroupID(params.GroupID).
 		SetAPIKeyID(params.APIKeyID).
+		SetProvider(params.Provider).
 		SetModel(params.Model).
 		SetRequestedModel(params.RequestedModel).
 		SetOperation(params.Operation).
@@ -291,13 +292,14 @@ func (r *creativeRunRepository) MarkCreativeRunRunning(ctx context.Context, runI
 	return nil
 }
 
-// SetCreativeRunAccountID 持久化执行器最终选中的真实上游账号。
-func (r *creativeRunRepository) SetCreativeRunAccountID(ctx context.Context, runID string, accountID int64, now time.Time) error {
+// SetCreativeRunExecution 持久化执行器最终选中的真实上游账号。
+func (r *creativeRunRepository) SetCreativeRunExecution(ctx context.Context, runID string, accountID int64, provider string, now time.Time) error {
 	if accountID <= 0 {
 		return nil
 	}
 	affected, err := r.client.CreativeRun.Update().
 		Where(creativerun.RunIDEQ(runID)).
+		SetProvider(provider).
 		SetAccountID(accountID).
 		SetUpdatedAt(now).
 		Save(ctx)
@@ -658,6 +660,7 @@ func creativeRunEntityToService(entity *dbent.CreativeRun) *service.CreativeRun 
 		GroupID:                     entity.GroupID,
 		APIKeyID:                    entity.APIKeyID,
 		AccountID:                   entity.AccountID,
+		Provider:                    entity.Provider,
 		Model:                       entity.Model,
 		RequestedModel:              requestedModel,
 		Operation:                   entity.Operation,

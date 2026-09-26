@@ -18,7 +18,7 @@ import (
 func TestImportCodexSessionsAccessTokenOnlySameWorkspaceDifferentUsersCreatesTwoAccounts(t *testing.T) {
 	svc := newCodexImportMemoryAdminService(nil)
 	handler := newCodexImportFixture(svc)
-	req := account.CodexSessionImportRequest{SkipDefaultGroupBind: boolPtr(true)}
+	req := account.CodexSessionImportRequest{}
 	entries := []account.CodexImportEntry{
 		{Index: 1, Value: buildCodexAccessOnlyImportValue(t, "workspace-1", "user-1")},
 		{Index: 2, Value: buildCodexAccessOnlyImportValue(t, "workspace-1", "user-2")},
@@ -42,7 +42,7 @@ func TestImportCodexSessionsAccessTokenOnlySameWorkspaceDifferentUsersCreatesTwo
 func TestImportCodexSessionsAccessTokenOnlySameWorkspaceAndUserDifferentTokensCreatesTwoAccounts(t *testing.T) {
 	svc := newCodexImportMemoryAdminService(nil)
 	handler := newCodexImportFixture(svc)
-	req := account.CodexSessionImportRequest{SkipDefaultGroupBind: boolPtr(true)}
+	req := account.CodexSessionImportRequest{}
 	entries := []account.CodexImportEntry{
 		{Index: 1, Value: map[string]any{
 			"access_token": buildCodexImportTestJWT(t, time.Now().Add(time.Hour), map[string]any{
@@ -90,7 +90,7 @@ func TestImportCodexSessionsAccessTokenOnlySameUserUpdatesExisting(t *testing.T)
 		},
 	}})
 	handler := newCodexImportFixture(svc)
-	req := account.CodexSessionImportRequest{SkipDefaultGroupBind: boolPtr(true)}
+	req := account.CodexSessionImportRequest{}
 	entries := []account.CodexImportEntry{
 		{Index: 1, Value: map[string]any{"access_token": existingToken}},
 	}
@@ -125,7 +125,7 @@ func TestImportCodexSessionsUpgradesAccessTokenOnlyAccountWithRefreshToken(t *te
 		},
 	}})
 	handler := newCodexImportFixture(svc)
-	req := account.CodexSessionImportRequest{SkipDefaultGroupBind: boolPtr(true)}
+	req := account.CodexSessionImportRequest{}
 	entries := []account.CodexImportEntry{
 		{Index: 1, Value: map[string]any{
 			"access_token":  newToken,
@@ -164,7 +164,7 @@ func TestImportCodexSessionsAccessTokenOnlyPreservesExistingRefreshToken(t *test
 		},
 	}})
 	handler := newCodexImportFixture(svc)
-	req := account.CodexSessionImportRequest{SkipDefaultGroupBind: boolPtr(true)}
+	req := account.CodexSessionImportRequest{}
 	entries := []account.CodexImportEntry{
 		{Index: 1, Value: map[string]any{"access_token": existingToken}},
 	}
@@ -207,7 +207,7 @@ func TestImportCodexSessionsBatchOldAccessTokenDoesNotRollbackRefreshToken(t *te
 		},
 	}})
 	handler := newCodexImportFixture(svc)
-	req := account.CodexSessionImportRequest{SkipDefaultGroupBind: boolPtr(true)}
+	req := account.CodexSessionImportRequest{}
 	entries := []account.CodexImportEntry{
 		{Index: 1, Value: map[string]any{
 			"access_token":  newToken,
@@ -253,7 +253,7 @@ func TestImportCodexSessionsWithRefreshTokenKeepsExistingDedup(t *testing.T) {
 		},
 	}})
 	handler := newCodexImportFixture(svc)
-	req := account.CodexSessionImportRequest{SkipDefaultGroupBind: boolPtr(true)}
+	req := account.CodexSessionImportRequest{}
 	entries := []account.CodexImportEntry{
 		{Index: 1, Value: buildCodexRefreshImportValue(t, "workspace-1", "user-1", "refresh-new")},
 	}
@@ -384,10 +384,6 @@ func cloneCodexImportTestMap(input map[string]any) map[string]any {
 		out[key] = value
 	}
 	return out
-}
-
-func boolPtr(v bool) *bool {
-	return &v
 }
 
 func buildCodexImportTestJWT(t *testing.T, exp time.Time, extraClaims map[string]any) string {

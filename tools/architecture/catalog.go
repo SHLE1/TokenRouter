@@ -78,7 +78,7 @@ github.com/testcontainers/testcontainers-go/modules/redis`},
 	"schema": {Production: `entgo.io/ent entgo.io/ent/dialect entgo.io/ent/dialect/entsql entgo.io/ent/dialect/sql
 entgo.io/ent/schema entgo.io/ent/schema/edge entgo.io/ent/schema/field entgo.io/ent/schema/index
 entgo.io/ent/schema/mixin`, Tests: `entgo.io/ent/dialect/sql/schema entgo.io/ent/entc/load github.com/stretchr/testify/require
-modernc.org/sqlite`},
+modernc.org/sqlite github.com/lib/pq github.com/testcontainers/testcontainers-go/modules/postgres`},
 	"upstream": {Production: `github.com/aws/aws-sdk-go-v2/aws github.com/aws/aws-sdk-go-v2/aws/signer/v4
 github.com/cespare/xxhash/v2 github.com/coder/websocket github.com/coder/websocket/wsjson
 github.com/golang-jwt/jwt/v5 github.com/google/uuid github.com/imroc/req/v3
@@ -138,7 +138,7 @@ internal/upstream/openai`},
 internal/server/clientip/policy internal/server/httpconfig`, Tests: ""},
 	"internal/creative": {Production: `ent/... internal/account internal/account/provider internal/billing internal/billing/pricing
 internal/creative/... internal/identity/httpapi/authctx internal/infra/postgres/... internal/pkg/
-internal/protocol internal/protocol/gemini internal/routing internal/routing/modelmap
+internal/protocol internal/protocol/gemini internal/routing internal/routing/capability internal/routing/modelmap
 internal/scheduler internal/server/httpx internal/settings internal/upstream
 internal/upstream/gemini internal/upstream/grok internal/usage`, Tests: `internal/apikey internal/billing/provider internal/billing/testkit internal/config
 internal/gateway/completion internal/gateway/media internal/gateway/provider/modelidentity
@@ -201,6 +201,7 @@ internal/billing/provider internal/idempotency internal/idempotency/httpapi
 internal/infra/postgres/... internal/infra/telemetry/... internal/pkg/ internal/protocol
 internal/protocol/openai internal/routing/... internal/scheduler/policy internal/server/httpx
 internal/settings internal/upstream/anthropic internal/upstream/antigravity
+internal/upstream/deepseek internal/upstream/kimi internal/upstream/zhipu
 internal/upstream/gemini/codeassist internal/upstream/grok internal/upstream/openai
 internal/upstream/qoder`, Tests: `internal/account/provider internal/apikey internal/billing/testkit internal/gateway/media
 internal/gateway/provider internal/gateway/provider/modelidentity internal/idempotency/testkit
@@ -253,10 +254,10 @@ internal/identity/httpapi/authctx internal/identity/httpapi/dto internal/identit
 internal/infra/postgres/... internal/infra/telemetry/... internal/ops internal/pkg/ internal/routing
 internal/routing/accessview internal/routing/httpapi/dto internal/routing/postgres
 internal/server/httpx internal/settings internal/settings/preaggregation internal/team
-internal/usage/...`, Tests: `internal/audit internal/audit/postgres internal/gateway/httpapi internal/infra/timingwheel/...
+internal/usage/...`, Tests: `internal/ops/postgres internal/audit internal/audit/postgres internal/gateway/httpapi internal/infra/timingwheel/...
 internal/routing/capability internal/testutil/assertion migrations`},
 	"internal/web": {Production: "internal/server/middleware internal/web/...", Tests: ""},
-	"migrations":   {Production: "migrations/...", Tests: ""},
+	"migrations":   {Production: "migrations/...", Tests: "internal/infra/postgres internal/routing/postgres"},
 }
 
 var leafDependencies = map[string]dependencySet{
@@ -380,6 +381,9 @@ var ioFileExceptions = map[string]string{
 
 // 窄权限属于指定文件，不能由相邻文件或目标子包继承。
 var filePermissions = []filePermission{
+	{Scope: "migrations", Imports: "internal/routing/postgres", Files: "platform_independent_pricing_integration_test.go"},
+	{Scope: "migrations", Imports: "internal/infra/postgres github.com/lib/pq github.com/testcontainers/testcontainers-go/modules/postgres", Files: "platform_independent_groups_integration_test.go platform_independent_pricing_integration_test.go"},
+	{Scope: "internal/usage/postgres", Imports: "internal/ops/postgres", Files: "platform_snapshot_integration_test.go"},
 	{Scope: "internal/account", Imports: "internal/account/provider", Files: `admin_editor_original_fixture_test.go admin_legacy_extra_original_test.go
 admin_shadow_original_test.go`},
 	{Scope: "internal/apikey", Imports: "internal/apikey/postgres", Files: "admin_group_original_test.go"},
@@ -417,7 +421,7 @@ recording_pricing_stub_helpers_test.go`},
 	{Scope: "internal/moderation/postgres", Imports: "internal/identity/postgres", Files: "fixture_test.go"},
 	{Scope: "internal/payment/postgres", Imports: "internal/billing/postgres", Files: "consumer_order_snapshot_test.go"},
 	{Scope: "internal/routing", Imports: "internal/gateway/provider", Files: "group_admin_original_fixture_test.go"},
-	{Scope: "internal/routing", Imports: "internal/routing/provider", Files: `group_admin_original_fixture_test.go group_management_ports_original_test.go
+	{Scope: "internal/routing", Imports: "internal/routing/provider", Files: `group_admin_original_fixture_test.go
 marketplace_fixture_test.go`},
 	{Scope: "internal/routing", Imports: "internal/billing/provider", Files: `group_admin_original_fixture_test.go marketplace_catalog_fixture_test.go marketplace_fixture_test.go`},
 	{Scope: "internal/routing", Imports: "internal/account/provider", Files: "group_management_ports_original_test.go"},

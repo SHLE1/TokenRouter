@@ -296,7 +296,6 @@ func newResolverWithPricingConfig(t *testing.T, pricing []routing.ModelPricingEn
 
 func TestResolve_WithPricingConfigOverride_TokenFlat(t *testing.T) {
 	r := newResolverWithPricingConfig(t, []routing.ModelPricingEntry{{
-		Platform:    "anthropic",
 		Models:      []string{"claude-sonnet-4"},
 		BillingMode: routing.BillingModeToken,
 		InputPrice:  testPtrFloat64(10e-6),
@@ -331,7 +330,6 @@ func TestResolve_WithPricingConfigOverride_TokenFlatPreservesNativeTierRatio(t *
 	}
 	bs := newCalculatorWithPrices(nil, nil, prices)
 	r := billingtestkit.ResolverWithCards(t, bs, []routing.ModelPricingEntry{{
-		Platform:       "openai",
 		Models:         []string{"gpt-5.4"},
 		BillingMode:    routing.BillingModeToken,
 		InputPrice:     testPtrFloat64(7e-6),
@@ -349,7 +347,6 @@ func TestResolve_WithPricingConfigOverride_TokenFlatPreservesNativeTierRatio(t *
 func TestResolve_WithPricingConfigOverride_TokenPartialOverride(t *testing.T) {
 	// PricingConfig only sets InputPrice; OutputPrice should remain from the base (LiteLLM/fallback).
 	r := newResolverWithPricingConfig(t, []routing.ModelPricingEntry{{
-		Platform:    "anthropic",
 		Models:      []string{"claude-sonnet-4"},
 		BillingMode: routing.BillingModeToken,
 		InputPrice:  testPtrFloat64(20e-6),
@@ -372,7 +369,6 @@ func TestResolve_WithPricingConfigOverride_TokenPartialOverride(t *testing.T) {
 
 func TestResolve_WithPricingConfigOverride_PriceMultiplierOnlyIsIgnored(t *testing.T) {
 	r := newResolverWithPricingConfig(t, []routing.ModelPricingEntry{{
-		Platform:        "anthropic",
 		Models:          []string{"claude-sonnet-4"},
 		BillingMode:     routing.BillingModeToken,
 		PriceMultiplier: testPtrFloat64(2),
@@ -394,7 +390,6 @@ func TestResolve_WithPricingConfigOverride_PriceMultiplierOnlyIsIgnored(t *testi
 
 func TestResolve_BlankConfigPricingIsIgnoredForNonQoder(t *testing.T) {
 	r := newResolverWithPricingConfig(t, []routing.ModelPricingEntry{{
-		Platform:    "anthropic",
 		Models:      []string{"claude-sonnet-4"},
 		BillingMode: routing.BillingModeToken,
 	}})
@@ -420,7 +415,6 @@ func TestResolve_QoderCustomAliasMappedToRouteKeyZerosMissingPartialConfigPricin
 	cache.ByGroup[groupID] = &routingtestkit.Configuration{ID: 1, Status: billing.StatusActive}
 	cache.Platforms[groupID] = capability.PlatformQoder
 	cache.Prices[routingtestkit.ModelKey{GroupID: groupID, Platform: capability.PlatformQoder, Model: "custom-qoder"}] = &routing.ModelPricingEntry{
-		Platform:    capability.PlatformQoder,
 		Models:      []string{"custom-qoder"},
 		BillingMode: routing.BillingModeToken,
 		InputPrice:  &inputPrice,
@@ -451,7 +445,6 @@ func TestResolve_QoderStandardModelMappedToRouteKeyKeepsBaseForPartialConfigPric
 	cache.ByGroup[groupID] = &routingtestkit.Configuration{ID: 1, Status: billing.StatusActive}
 	cache.Platforms[groupID] = capability.PlatformQoder
 	cache.Prices[routingtestkit.ModelKey{GroupID: groupID, Platform: capability.PlatformQoder, Model: "gpt-5.4"}] = &routing.ModelPricingEntry{
-		Platform:    capability.PlatformQoder,
 		Models:      []string{"gpt-5.4"},
 		BillingMode: routing.BillingModeToken,
 		InputPrice:  &inputPrice,
@@ -487,7 +480,6 @@ func TestResolve_QoderStandardModelMappedToRouteKeyKeepsBaseForPartialIntervalPr
 	cache.ByGroup[groupID] = &routingtestkit.Configuration{ID: 1, Status: billing.StatusActive}
 	cache.Platforms[groupID] = capability.PlatformQoder
 	cache.Prices[routingtestkit.ModelKey{GroupID: groupID, Platform: capability.PlatformQoder, Model: "gpt-5.4"}] = &routing.ModelPricingEntry{
-		Platform:    capability.PlatformQoder,
 		Models:      []string{"gpt-5.4"},
 		BillingMode: routing.BillingModeToken,
 		Intervals: []routing.PricingInterval{
@@ -525,7 +517,6 @@ func TestResolve_QoderCustomAliasUnknownBaseZerosMissingPartialConfigPricing(t *
 	cache.ByGroup[groupID] = &routingtestkit.Configuration{ID: 1, Status: billing.StatusActive}
 	cache.Platforms[groupID] = capability.PlatformQoder
 	cache.Prices[routingtestkit.ModelKey{GroupID: groupID, Platform: capability.PlatformQoder, Model: "custom-qoder"}] = &routing.ModelPricingEntry{
-		Platform:    capability.PlatformQoder,
 		Models:      []string{"custom-qoder"},
 		BillingMode: routing.BillingModeToken,
 		InputPrice:  &inputPrice,
@@ -556,7 +547,6 @@ func TestResolve_QoderCustomAliasUnknownBaseZerosMissingPartialIntervalPricing(t
 	cache.ByGroup[groupID] = &routingtestkit.Configuration{ID: 1, Status: billing.StatusActive}
 	cache.Platforms[groupID] = capability.PlatformQoder
 	cache.Prices[routingtestkit.ModelKey{GroupID: groupID, Platform: capability.PlatformQoder, Model: "custom-qoder"}] = &routing.ModelPricingEntry{
-		Platform:    capability.PlatformQoder,
 		Models:      []string{"custom-qoder"},
 		BillingMode: routing.BillingModeToken,
 		Intervals: []routing.PricingInterval{
@@ -589,12 +579,10 @@ func TestResolve_QoderBlankRouteKeyPricingIsUnpricedButAliasManualPricingWorks(t
 	cache.ByGroup[groupID] = &routingtestkit.Configuration{ID: 1, Status: billing.StatusActive}
 	cache.Platforms[groupID] = capability.PlatformQoder
 	cache.Prices[routingtestkit.ModelKey{GroupID: groupID, Platform: capability.PlatformQoder, Model: "qmodel"}] = &routing.ModelPricingEntry{
-		Platform:    capability.PlatformQoder,
 		Models:      []string{"qmodel"},
 		BillingMode: routing.BillingModeToken,
 	}
 	cache.Prices[routingtestkit.ModelKey{GroupID: groupID, Platform: capability.PlatformQoder, Model: "qwen3.7-plus"}] = &routing.ModelPricingEntry{
-		Platform:    capability.PlatformQoder,
 		Models:      []string{"qwen3.7-plus"},
 		BillingMode: routing.BillingModeToken,
 		InputPrice:  &inputPrice,
@@ -635,7 +623,6 @@ func TestResolve_BlankWildcardPricingDoesNotMaskLaterEffectiveWildcard(t *testin
 		{
 			Prefix: "qwen3.",
 			Pricing: &routing.ModelPricingEntry{
-				Platform:    capability.PlatformQoder,
 				Models:      []string{"qwen3.*"},
 				BillingMode: routing.BillingModeToken,
 			},
@@ -643,7 +630,6 @@ func TestResolve_BlankWildcardPricingDoesNotMaskLaterEffectiveWildcard(t *testin
 		{
 			Prefix: "qwen3.7-",
 			Pricing: &routing.ModelPricingEntry{
-				Platform:    capability.PlatformQoder,
 				Models:      []string{"qwen3.7-*"},
 				BillingMode: routing.BillingModeToken,
 				InputPrice:  &inputPrice,
@@ -676,7 +662,6 @@ func TestResolve_QoderPerRequestRouteKeyTokenOnlyIntervalIsUnpriced(t *testing.T
 	cache.ByGroup[groupID] = &routingtestkit.Configuration{ID: 1, Status: billing.StatusActive}
 	cache.Platforms[groupID] = capability.PlatformQoder
 	cache.Prices[routingtestkit.ModelKey{GroupID: groupID, Platform: capability.PlatformQoder, Model: "qmodel"}] = &routing.ModelPricingEntry{
-		Platform:    capability.PlatformQoder,
 		Models:      []string{"qmodel"},
 		BillingMode: routing.BillingModePerRequest,
 		Intervals: []routing.PricingInterval{
@@ -684,7 +669,6 @@ func TestResolve_QoderPerRequestRouteKeyTokenOnlyIntervalIsUnpriced(t *testing.T
 		},
 	}
 	cache.Prices[routingtestkit.ModelKey{GroupID: groupID, Platform: capability.PlatformQoder, Model: "qwen3.7-plus"}] = &routing.ModelPricingEntry{
-		Platform:    capability.PlatformQoder,
 		Models:      []string{"qwen3.7-plus"},
 		BillingMode: routing.BillingModeToken,
 		InputPrice:  &inputPrice,
@@ -716,7 +700,6 @@ func TestResolve_QoderPerRequestRouteKeyTokenOnlyIntervalIsUnpriced(t *testing.T
 
 func TestResolve_WithPricingConfigOverride_TokenWithIntervals(t *testing.T) {
 	r := newResolverWithPricingConfig(t, []routing.ModelPricingEntry{{
-		Platform:    "anthropic",
 		Models:      []string{"claude-sonnet-4"},
 		BillingMode: routing.BillingModeToken,
 		Intervals: []routing.PricingInterval{
@@ -748,7 +731,6 @@ func TestResolve_WithPricingConfigOverride_TokenWithIntervals(t *testing.T) {
 
 func TestResolve_WithPricingConfigOverride_PriceMultiplierScalesIntervalsAndFallbackFields(t *testing.T) {
 	r := newResolverWithPricingConfig(t, []routing.ModelPricingEntry{{
-		Platform:        "anthropic",
 		Models:          []string{"claude-sonnet-4"},
 		BillingMode:     routing.BillingModeToken,
 		PriceMultiplier: testPtrFloat64(2),
@@ -772,7 +754,6 @@ func TestResolve_WithPricingConfigOverride_PriceMultiplierScalesIntervalsAndFall
 func TestResolve_WithPricingConfigOverride_FastModeMultiplierAppliesToIntervals(t *testing.T) {
 	calculator := billingtestkit.ResolverCalculator()
 	r := billingtestkit.ResolverWithCards(t, calculator, []routing.ModelPricingEntry{{
-		Platform:           capability.PlatformOpenAI,
 		Models:             []string{"claude-sonnet-4"},
 		BillingMode:        routing.BillingModeToken,
 		PriceMultiplier:    testPtrFloat64(1.25),
@@ -821,7 +802,6 @@ func TestResolve_WithPricingConfigOverride_FastModeMultiplierAppliesToIntervals(
 func TestResolve_WithPricingConfigOverride_TokenNilBasePricing(t *testing.T) {
 	// Base pricing is nil (unknown model), configPricing has flat prices → creates new BasePricing.
 	r := newResolverWithPricingConfig(t, []routing.ModelPricingEntry{{
-		Platform:    "anthropic",
 		Models:      []string{"unknown-model-xyz"},
 		BillingMode: routing.BillingModeToken,
 		InputPrice:  testPtrFloat64(7e-6),
@@ -847,7 +827,6 @@ func TestResolve_WithPricingConfigOverride_TokenNilBasePricing(t *testing.T) {
 
 func TestResolve_WithPricingConfigOverride_PerRequest(t *testing.T) {
 	r := newResolverWithPricingConfig(t, []routing.ModelPricingEntry{{
-		Platform:        "anthropic",
 		Models:          []string{"claude-sonnet-4"},
 		BillingMode:     routing.BillingModePerRequest,
 		PerRequestPrice: testPtrFloat64(0.05),
@@ -875,7 +854,6 @@ func TestResolve_WithPricingConfigOverride_PerRequest(t *testing.T) {
 
 func TestResolve_WithPricingConfigOverride_PriceMultiplierScalesPerRequestPrices(t *testing.T) {
 	r := newResolverWithPricingConfig(t, []routing.ModelPricingEntry{{
-		Platform:        "anthropic",
 		Models:          []string{"claude-sonnet-4"},
 		BillingMode:     routing.BillingModePerRequest,
 		PriceMultiplier: testPtrFloat64(2),
@@ -897,7 +875,6 @@ func TestResolve_WithPricingConfigOverride_PriceMultiplierScalesPerRequestPrices
 func TestResolve_WithPricingConfigOverride_PerRequestNilPrice(t *testing.T) {
 	// PerRequestPrice nil → DefaultPerRequestPrice stays 0.
 	r := newResolverWithPricingConfig(t, []routing.ModelPricingEntry{{
-		Platform:    "anthropic",
 		Models:      []string{"claude-sonnet-4"},
 		BillingMode: routing.BillingModePerRequest,
 		// PerRequestPrice intentionally nil
@@ -923,7 +900,6 @@ func TestResolve_WithPricingConfigOverride_PerRequestNilPrice(t *testing.T) {
 
 func TestResolve_WithPricingConfigOverride_Image(t *testing.T) {
 	r := newResolverWithPricingConfig(t, []routing.ModelPricingEntry{{
-		Platform:        "anthropic",
 		Models:          []string{"claude-sonnet-4"},
 		BillingMode:     routing.BillingModeImage,
 		PerRequestPrice: testPtrFloat64(0.08),
@@ -948,7 +924,6 @@ func TestResolve_WithPricingConfigOverride_Image(t *testing.T) {
 
 func TestResolve_WithPricingConfigOverride_ImageTierLabels(t *testing.T) {
 	r := newResolverWithPricingConfig(t, []routing.ModelPricingEntry{{
-		Platform:    "anthropic",
 		Models:      []string{"claude-sonnet-4"},
 		BillingMode: routing.BillingModeImage,
 		Intervals: []routing.PricingInterval{
@@ -975,7 +950,6 @@ func TestResolve_WithPricingConfigOverride_ImageTierLabels(t *testing.T) {
 
 func TestResolve_WithPricingConfigOverride_SourceIsPricingConfig(t *testing.T) {
 	r := newResolverWithPricingConfig(t, []routing.ModelPricingEntry{{
-		Platform:    "anthropic",
 		Models:      []string{"claude-sonnet-4"},
 		BillingMode: routing.BillingModeToken,
 		InputPrice:  testPtrFloat64(1e-6),
@@ -992,7 +966,6 @@ func TestResolve_WithPricingConfigOverride_SourceIsPricingConfig(t *testing.T) {
 func TestResolve_WithPricingConfigOverride_DefaultMode(t *testing.T) {
 	// PricingConfig pricing with empty BillingMode → defaults to BillingModeToken.
 	r := newResolverWithPricingConfig(t, []routing.ModelPricingEntry{{
-		Platform:    "anthropic",
 		Models:      []string{"claude-sonnet-4"},
 		BillingMode: "", // intentionally empty
 		InputPrice:  testPtrFloat64(5e-6),
@@ -1016,7 +989,6 @@ func TestResolve_WithPricingConfigOverride_DefaultMode(t *testing.T) {
 func TestGetIntervalPricing_WithPricingConfigIntervals(t *testing.T) {
 	// PricingConfig provides intervals that override the base pricing path.
 	r := newResolverWithPricingConfig(t, []routing.ModelPricingEntry{{
-		Platform:    "anthropic",
 		Models:      []string{"claude-sonnet-4"},
 		BillingMode: routing.BillingModeToken,
 		Intervals: []routing.PricingInterval{
@@ -1046,7 +1018,6 @@ func TestGetIntervalPricing_WithPricingConfigIntervals(t *testing.T) {
 func TestGetIntervalPricing_PricingConfigIntervalsNoMatch(t *testing.T) {
 	// PricingConfig intervals don't match token count → falls back to BasePricing.
 	r := newResolverWithPricingConfig(t, []routing.ModelPricingEntry{{
-		Platform:    "anthropic",
 		Models:      []string{"claude-sonnet-4"},
 		BillingMode: routing.BillingModeToken,
 		Intervals: []routing.PricingInterval{
@@ -1343,7 +1314,6 @@ func TestModelPricingEntryHasEffectivePricingIsModeAware(t *testing.T) {
 
 func TestApplyTokenOverrides_FlatSetsImageOutputPriceExplicit(t *testing.T) {
 	r := newResolverWithPricingConfig(t, []routing.ModelPricingEntry{{
-		Platform:    "anthropic",
 		Models:      []string{"claude-sonnet-4"},
 		BillingMode: routing.BillingModeToken,
 		InputPrice:  testPtrFloat64(3e-6),
@@ -1362,7 +1332,6 @@ func TestApplyTokenOverrides_FlatSetsImageOutputPriceExplicit(t *testing.T) {
 
 func TestApplyTokenOverrides_FlatWithImageOutputPriceSetsExplicit(t *testing.T) {
 	r := newResolverWithPricingConfig(t, []routing.ModelPricingEntry{{
-		Platform:         "anthropic",
 		Models:           []string{"claude-sonnet-4"},
 		BillingMode:      routing.BillingModeToken,
 		InputPrice:       testPtrFloat64(3e-6),
@@ -1380,7 +1349,6 @@ func TestApplyTokenOverrides_FlatWithImageOutputPriceSetsExplicit(t *testing.T) 
 
 func TestApplyTokenOverrides_FlatUsesPricingConfigImageInputPrice(t *testing.T) {
 	r := newResolverWithPricingConfig(t, []routing.ModelPricingEntry{{
-		Platform:        "anthropic",
 		Models:          []string{"claude-sonnet-4"},
 		BillingMode:     routing.BillingModeToken,
 		InputPrice:      testPtrFloat64(3e-6),
@@ -1446,7 +1414,6 @@ func TestIntervalToModelPricingWithBaseAppliesMultipliersAndPreservesTierRatio(t
 
 func TestApplyTokenOverrides_IntervalSetsImageOutputPriceExplicit(t *testing.T) {
 	r := newResolverWithPricingConfig(t, []routing.ModelPricingEntry{{
-		Platform:    "anthropic",
 		Models:      []string{"claude-sonnet-4"},
 		BillingMode: routing.BillingModeToken,
 		// 不配置图片输出价格
@@ -1494,7 +1461,6 @@ func TestApplyTokenOverrides_FlatDoesNotPolluteFallbackPrices(t *testing.T) {
 	prices := billingtestkit.ResolverFallbackPrices()
 	calculator := newCalculatorWithPrices(nil, nil, prices)
 	r := billingtestkit.ResolverWithCards(t, calculator, []routing.ModelPricingEntry{{
-		Platform:    "anthropic",
 		Models:      []string{"claude-sonnet-4"},
 		BillingMode: routing.BillingModeToken,
 		InputPrice:  testPtrFloat64(10e-6), // 基础价格为 3e-6
@@ -1524,7 +1490,6 @@ func TestApplyTokenOverrides_IntervalDoesNotPolluteFallbackPrices(t *testing.T) 
 	prices := billingtestkit.ResolverFallbackPrices()
 	calculator := newCalculatorWithPrices(nil, nil, prices)
 	r := billingtestkit.ResolverWithCards(t, calculator, []routing.ModelPricingEntry{{
-		Platform:    "anthropic",
 		Models:      []string{"claude-sonnet-4"},
 		BillingMode: routing.BillingModeToken,
 		Intervals: []routing.PricingInterval{
@@ -1549,7 +1514,7 @@ func TestApplyTokenOverrides_IntervalDoesNotPolluteFallbackPrices(t *testing.T) 
 
 func TestResolve_GroupPricingOverridesPricingConfig(t *testing.T) {
 	r := newResolverWithPricingConfig(t, []routing.ModelPricingEntry{{
-		Platform: "anthropic", Models: []string{"claude-sonnet-4"}, BillingMode: routing.BillingModeToken,
+		Models: []string{"claude-sonnet-4"}, BillingMode: routing.BillingModeToken,
 		InputPrice: testPtrFloat64(10e-6), OutputPrice: testPtrFloat64(20e-6),
 	}})
 	group := &routing.Group{ID: 100, ModelPricing: []routing.ModelPricingEntry{{

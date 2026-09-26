@@ -9,7 +9,6 @@ import (
 	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/admission"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
 	gatewaymedia "github.com/TokenFlux/TokenRouter/internal/gateway/media"
@@ -17,7 +16,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/server/clientip"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/grok"
 	"github.com/gin-gonic/gin"
@@ -36,9 +34,6 @@ func (h *Runtime) resolveCompositeGrokVideoAPIKey(
 	bindings := make([]gatewaymedia.VideoBinding, len(apiKey.CompositeGroups))
 	for i, binding := range apiKey.CompositeGroups {
 		bindings[i] = gatewaymedia.VideoBinding{GroupID: binding.GroupID, Present: binding.Group != nil}
-		if binding.Group != nil {
-			bindings[i].Platform = binding.Group.Platform
-		}
 	}
 	owner, err := h.bindings.VideoTasks().ResolveCompositeVideo(ctx, requestID, userID, apiKey.ID, bindings)
 	if err != nil {
@@ -49,7 +44,7 @@ func (h *Runtime) resolveCompositeGrokVideoAPIKey(
 	if owner.BindingIndex >= 0 {
 		selected.Group = apiKey.CompositeGroups[owner.BindingIndex].Group
 	} else {
-		selected.Group = &routing.Group{ID: owner.GroupID, Platform: capability.PlatformGrok, Status: billing.StatusActive, Hydrated: true}
+		selected.Group = &routing.Group{ID: owner.GroupID, Status: billing.StatusActive, Hydrated: true}
 	}
 	return &selected, owner.AccountID, nil
 }
@@ -147,7 +142,7 @@ func recordGrokMediaUsage(
 	}
 	inboundEndpoint := gatewayhttp.GetInboundEndpoint(c)
 	upstreamEndpoint := gatewayhttp.GetUpstreamEndpoint(c, account.Record.Platform)
-	quotaPlatform := admission.QuotaPlatform(c.Request.Context(), apiKey)
+
 	pricingUsageFields := gatewayhttp.ClientRequestedUsageFields(c, groupMapping, requestModel, result.UpstreamModel)
 	videoTaskID := ""
 	if result.VideoCount > 0 {
@@ -172,7 +167,7 @@ func recordGrokMediaUsage(
 		IPAddress:          clientIP,
 		RequestPayloadHash: requestPayloadHash,
 		APIKeyService:      h.bindings.Quota,
-		QuotaPlatform:      quotaPlatform,
+
 		ClientSessionID:    sessionID,
 		PricingUsageFields: pricingUsageFields,
 	})

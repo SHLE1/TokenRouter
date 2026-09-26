@@ -57,7 +57,7 @@ func schedulerSnapshotGroup(value *routing.Group) *scheduler.SnapshotGroup {
 	if value == nil {
 		return nil
 	}
-	return &scheduler.SnapshotGroup{ID: value.ID, Name: value.Name, Platform: value.Platform, Status: value.Status, Hydrated: value.Hydrated}
+	return &scheduler.SnapshotGroup{ID: value.ID, Name: value.Name, Status: value.Status, Hydrated: value.Hydrated}
 }
 
 type schedulerGroupSource struct{ *routingpostgres.GroupStore }

@@ -12,13 +12,12 @@ type groupModelPolicy struct {
 	view *routing.GroupPolicyView
 }
 
-func newGroupModelPolicy(platform string, policy routing.GroupRoutingPolicy) groupModelPolicy {
+func newGroupModelPolicy(policy routing.GroupRoutingPolicy) groupModelPolicy {
 	if !policy.Enabled {
 		return groupModelPolicy{}
 	}
 	return groupModelPolicy{view: &routing.GroupPolicyView{
 		GroupRoutingPolicy: policy.Clone(),
-		Platform:           platform,
 	}}
 }
 
@@ -59,8 +58,8 @@ func (p groupModelPolicy) candidates(platform string, configured []string, accou
 	}
 	add(configured...)
 	if p.view != nil {
-		add(p.view.AllowedModels[platform]...)
-		for model := range p.view.ModelMapping[platform] {
+		add(p.view.AllowedModels...)
+		for model := range p.view.ModelMapping {
 			add(model)
 		}
 	}

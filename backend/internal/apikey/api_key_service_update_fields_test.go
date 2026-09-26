@@ -88,8 +88,8 @@ func TestAPIKeyUpdate_OnlyDeclaresRequestedColumns(t *testing.T) {
 		},
 		{
 			name: "fork group fallback policy only",
-			req:  apikey.UpdateAPIKeyRequest{FallbackToDefaultGroupWhenUnavailable: &fallbackToDefaultGroup},
-			want: apikey.APIKeyUpdateFields{FallbackToDefaultGroupWhenUnavailable: true},
+			req:  apikey.UpdateAPIKeyRequest{FallbackWhenGroupUnavailable: &fallbackToDefaultGroup},
+			want: apikey.APIKeyUpdateFields{FallbackWhenGroupUnavailable: true},
 		},
 	}
 

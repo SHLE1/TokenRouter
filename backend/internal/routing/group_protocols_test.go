@@ -7,14 +7,12 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
 	routing "github.com/TokenFlux/TokenRouter/internal/routing"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/stretchr/testify/require"
 )
 
 // TestGroupClientProtocolsDoNotRecoverLegacyPolicy 锁定空集合即全部禁用，不读取旧开关恢复协议。
 func TestGroupClientProtocolsDoNotRecoverLegacyPolicy(t *testing.T) {
 	group := &routing.Group{
-		Platform:              capability.PlatformOpenAI,
 		AllowMessagesDispatch: true,
 	}
 

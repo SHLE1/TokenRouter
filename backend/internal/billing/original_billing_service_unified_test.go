@@ -92,8 +92,8 @@ func TestCalculateCostUnified_PricingConfigOverridesFable51MaxReasoningMultiplie
 	cs := newTestPricingConfigServiceWithCache(t, &routingtestkit.ModelConfigData{
 		Prices: map[routingtestkit.ModelKey]*routing.ModelPricingEntry{
 			{GroupID: groupID, Platform: capability.PlatformAnthropic, Model: "claude-fable-5-1"}: {
-				Platform: capability.PlatformAnthropic, BillingMode: routing.BillingModeToken,
-				InputPrice: testPtrFloat64(10e-6), OutputPrice: testPtrFloat64(50e-6),
+				BillingMode: routing.BillingModeToken,
+				InputPrice:  testPtrFloat64(10e-6), OutputPrice: testPtrFloat64(50e-6),
 				MaxReasoningEffortMultiplier: &configured,
 			},
 		},
@@ -106,7 +106,7 @@ func TestCalculateCostUnified_PricingConfigOverridesFable51MaxReasoningMultiplie
 	})
 	bs := newTestCalculator()
 	resolver := billingtestkit.PriceResolver(cs, bs)
-	group := &routing.Group{ID: groupID, Platform: capability.PlatformAnthropic}
+	group := &routing.Group{ID: groupID}
 	cost, err := bs.CalculateCostUnified(billing.CostInput{
 		Ctx: context.Background(), Model: "claude-fable-5-1", GroupID: &groupID, Group: projectPriceGroup(group),
 		Tokens: pricing.UsageTokens{InputTokens: 1000}, RateMultiplier: 1, ReasoningEffort: "max", Resolver: resolver,

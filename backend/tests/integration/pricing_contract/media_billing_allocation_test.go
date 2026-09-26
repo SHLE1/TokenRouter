@@ -46,7 +46,7 @@ func TestMediaAllocationRatesPreserveBalanceMultiplier(t *testing.T) {
 						card.PerRequestPrice = nil
 						card.InputPrice = testPtrFloat64(0.1)
 					}
-					group := &routing.Group{ID: 88, Platform: platform, RateMultiplier: 2, ModelPricing: []routing.ModelPricingEntry{card}, PeakRateEnabled: peak, PeakStart: "11:00", PeakEnd: "13:00", PeakRateMultiplier: 3}
+					group := &routing.Group{ID: 88, RateMultiplier: 2, ModelPricing: []routing.ModelPricingEntry{card}, PeakRateEnabled: peak, PeakStart: "11:00", PeakEnd: "13:00", PeakRateMultiplier: 3}
 					key := &apikey.APIKey{ID: 100, GroupID: &group.ID, Group: group}
 					user, account := &identity.User{ID: 200}, &gatewaycapture.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 300, Platform: platform}}
 					subscription := &billing.UserSubscription{ID: 99, Plan: &billing.SubscriptionPlan{ID: 199, GroupIDs: []int64{88}, GroupRateMultipliers: map[int64]float64{88: 0.5}}}

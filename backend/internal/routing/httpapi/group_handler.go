@@ -22,14 +22,12 @@ type CreateGroupRequest struct {
 	RoutingPolicy              routing.GroupRoutingPolicy              `json:"routing_policy"`
 	Name                       string                                  `json:"name" binding:"required"`
 	Description                string                                  `json:"description"`
-	Platform                   string                                  `json:"platform" binding:"omitempty,oneof=anthropic openai gemini antigravity qoder grok kimi zhipu deepseek"`
 	SchedulerType              string                                  `json:"scheduler_type" binding:"omitempty,oneof=basic advanced"`
 	AdvancedSchedulerOverrides routing.GroupAdvancedSchedulerOverrides `json:"advanced_scheduler_overrides"`
 	DisplayBrand               string                                  `json:"display_brand"`
 	SortOrder                  *int                                    `json:"sort_order"`
 	RateMultiplier             float64                                 `json:"rate_multiplier"`
 	IsExclusive                bool                                    `json:"is_exclusive"`
-	IsDefault                  bool                                    `json:"is_default"`
 	// 会话隔离开启后拒绝其它分组已归属的显式会话切入。
 	SessionIsolationEnabled   bool                        `json:"session_isolation_enabled"`
 	LongContextPricingEnabled *bool                       `json:"long_context_pricing_enabled"`
@@ -60,10 +58,10 @@ type CreateGroupRequest struct {
 	// 支持的模型系列（仅 antigravity 平台使用）
 	SupportedModelScopes []string `json:"supported_model_scopes"`
 	// 客户端文本协议完整准入集合；nil 表示创建时采用平台默认值。
-	AllowedProtocols             []protocol.ProtocolID                       `json:"allowed_protocols"`
-	ProtocolFallbacks            map[protocol.ProtocolID]protocol.ProtocolID `json:"protocol_fallbacks"`
-	ResponsesImagePolicy         string                                      `json:"responses_image_policy"`
-	LegacyAllowedClientProtocols []protocol.ProtocolID                       `json:"allowed_client_protocols"`
+	AllowedProtocols             []protocol.ProtocolID                         `json:"allowed_protocols"`
+	ProtocolFallbacks            map[protocol.ProtocolID][]protocol.ProtocolID `json:"protocol_fallbacks"`
+	ResponsesImagePolicy         string                                        `json:"responses_image_policy"`
+	LegacyAllowedClientProtocols []protocol.ProtocolID                         `json:"allowed_client_protocols"`
 	// OpenAI Messages 旧兼容开关。
 	AllowMessagesDispatch bool `json:"allow_messages_dispatch"`
 	AllowLive             bool `json:"allow_live"`
@@ -96,14 +94,12 @@ type UpdateGroupRequest struct {
 	RoutingPolicy              *routing.GroupRoutingPolicy              `json:"routing_policy"`
 	Name                       string                                   `json:"name"`
 	Description                *string                                  `json:"description"`
-	Platform                   string                                   `json:"platform" binding:"omitempty,oneof=anthropic openai gemini antigravity qoder grok kimi zhipu deepseek"`
 	SchedulerType              *string                                  `json:"scheduler_type" binding:"omitempty,oneof=basic advanced"`
 	AdvancedSchedulerOverrides *routing.GroupAdvancedSchedulerOverrides `json:"advanced_scheduler_overrides"`
 	DisplayBrand               *string                                  `json:"display_brand"`
 	SortOrder                  *int                                     `json:"sort_order"`
 	RateMultiplier             *float64                                 `json:"rate_multiplier"`
 	IsExclusive                *bool                                    `json:"is_exclusive"`
-	IsDefault                  *bool                                    `json:"is_default"`
 	// nil 表示不修改会话隔离开关。
 	SessionIsolationEnabled   *bool                        `json:"session_isolation_enabled"`
 	Status                    string                       `json:"status" binding:"omitempty,oneof=active inactive"`
@@ -135,10 +131,10 @@ type UpdateGroupRequest struct {
 	// 支持的模型系列（仅 antigravity 平台使用）
 	SupportedModelScopes *[]string `json:"supported_model_scopes"`
 	// nil 表示不修改，空数组表示显式关闭全部文本协议（所有平台均合法）。
-	AllowedProtocols             *[]protocol.ProtocolID                      `json:"allowed_protocols"`
-	ProtocolFallbacks            map[protocol.ProtocolID]protocol.ProtocolID `json:"protocol_fallbacks"`
-	ResponsesImagePolicy         string                                      `json:"responses_image_policy"`
-	LegacyAllowedClientProtocols *[]protocol.ProtocolID                      `json:"allowed_client_protocols"`
+	AllowedProtocols             *[]protocol.ProtocolID                        `json:"allowed_protocols"`
+	ProtocolFallbacks            map[protocol.ProtocolID][]protocol.ProtocolID `json:"protocol_fallbacks"`
+	ResponsesImagePolicy         string                                        `json:"responses_image_policy"`
+	LegacyAllowedClientProtocols *[]protocol.ProtocolID                        `json:"allowed_client_protocols"`
 	// OpenAI Messages 旧兼容开关。
 	AllowMessagesDispatch *bool `json:"allow_messages_dispatch"`
 	AllowLive             *bool `json:"allow_live"`
@@ -170,7 +166,11 @@ type UpdateGroupRequest struct {
 // GET /api/v1/admin/groups
 func (h *GroupHandler) List(c *gin.Context) {
 	page, pageSize := response.ParsePagination(c)
-	platform := c.Query("platform")
+	if _, supplied := c.GetQuery("platform"); supplied {
+		response.ErrorFrom(c, infraerrors.BadRequest("REMOVED_GROUP_FIELD", "groups no longer have a platform"))
+		return
+	}
+	platform := ""
 	status := c.Query("status")
 	search := c.Query("search")
 	// 标准化和验证 search 参数
@@ -206,7 +206,10 @@ func (h *GroupHandler) List(c *gin.Context) {
 // 绑定和维护已禁用分组。
 // GET /api/v1/admin/groups/all
 func (h *GroupHandler) GetAll(c *gin.Context) {
-	platform := c.Query("platform")
+	if _, supplied := c.GetQuery("platform"); supplied {
+		response.ErrorFrom(c, infraerrors.BadRequest("REMOVED_GROUP_FIELD", "groups no longer have a platform"))
+		return
+	}
 	includeInactive := c.Query("include_inactive") == "true"
 
 	var groups []routing.Group
@@ -214,8 +217,6 @@ func (h *GroupHandler) GetAll(c *gin.Context) {
 
 	if includeInactive {
 		groups, err = h.adminService.GetAllGroupsIncludingInactive(c.Request.Context())
-	} else if platform != "" {
-		groups, err = h.adminService.GetAllGroupsByPlatform(c.Request.Context(), platform)
 	} else {
 		groups, err = h.adminService.GetAllGroups(c.Request.Context())
 	}
@@ -253,6 +254,10 @@ func (h *GroupHandler) GetByID(c *gin.Context) {
 // GetModelsListCandidates 获取自定义 /v1/models 列表可选模型 ID。
 // GET /api/v1/admin/groups/:id/models-list-candidates
 func (h *GroupHandler) GetModelsListCandidates(c *gin.Context) {
+	if _, supplied := c.GetQuery("platform"); supplied {
+		response.ErrorFrom(c, infraerrors.BadRequest("REMOVED_GROUP_FIELD", "groups no longer have a platform"))
+		return
+	}
 	groupID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil || groupID < 0 {
 		response.BadRequest(c, "Invalid group ID")
@@ -262,7 +267,7 @@ func (h *GroupHandler) GetModelsListCandidates(c *gin.Context) {
 	models, err := h.adminService.GetGroupModelsListCandidates(
 		c.Request.Context(),
 		groupID,
-		c.Query("platform"),
+		"",
 	)
 	if err != nil {
 		response.ErrorFrom(c, err)
@@ -276,7 +281,7 @@ func (h *GroupHandler) GetModelsListCandidates(c *gin.Context) {
 // POST /api/v1/admin/groups
 func (h *GroupHandler) Create(c *gin.Context) {
 	var req CreateGroupRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := bindManagementJSON(c, &req); err != nil {
 		response.BadRequest(c, "Invalid request: "+err.Error())
 		return
 	}
@@ -293,14 +298,12 @@ func (h *GroupHandler) Create(c *gin.Context) {
 	group, err := h.adminService.CreateGroup(c.Request.Context(), &routing.CreateGroupInput{
 		Name:                            req.Name,
 		Description:                     req.Description,
-		Platform:                        req.Platform,
 		SchedulerType:                   req.SchedulerType,
 		AdvancedSchedulerOverrides:      req.AdvancedSchedulerOverrides,
 		DisplayBrand:                    req.DisplayBrand,
 		SortOrder:                       req.SortOrder,
 		RateMultiplier:                  req.RateMultiplier,
 		IsExclusive:                     req.IsExclusive,
-		IsDefault:                       req.IsDefault,
 		SessionIsolationEnabled:         req.SessionIsolationEnabled,
 		LongContextPricingEnabled:       req.LongContextPricingEnabled,
 		ModelPricing:                    req.ModelPricing,
@@ -412,7 +415,7 @@ func (h *GroupHandler) Update(c *gin.Context) {
 	}
 
 	var req UpdateGroupRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := bindManagementJSON(c, &req); err != nil {
 		response.BadRequest(c, "Invalid request: "+err.Error())
 		return
 	}
@@ -424,14 +427,12 @@ func (h *GroupHandler) Update(c *gin.Context) {
 	group, err := h.adminService.UpdateGroup(c.Request.Context(), groupID, &routing.UpdateGroupInput{
 		Name:                            req.Name,
 		Description:                     req.Description,
-		Platform:                        req.Platform,
 		SchedulerType:                   req.SchedulerType,
 		AdvancedSchedulerOverrides:      req.AdvancedSchedulerOverrides,
 		DisplayBrand:                    req.DisplayBrand,
 		SortOrder:                       req.SortOrder,
 		RateMultiplier:                  req.RateMultiplier,
 		IsExclusive:                     req.IsExclusive,
-		IsDefault:                       req.IsDefault,
 		SessionIsolationEnabled:         req.SessionIsolationEnabled,
 		Status:                          req.Status,
 		LongContextPricingEnabled:       req.LongContextPricingEnabled,
@@ -536,7 +537,7 @@ type UpdateSortOrderRequest struct {
 // PUT /api/v1/admin/groups/sort-order
 func (h *GroupHandler) UpdateSortOrder(c *gin.Context) {
 	var req UpdateSortOrderRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := bindManagementJSON(c, &req); err != nil {
 		response.BadRequest(c, "Invalid request: "+err.Error())
 		return
 	}
@@ -561,7 +562,6 @@ func (h *GroupHandler) UpdateSortOrder(c *gin.Context) {
 type GroupAdministration interface {
 	ListGroups(context.Context, int, int, string, string, string, *bool, string, string) ([]routing.Group, int64, error)
 	GetAllGroups(context.Context) ([]routing.Group, error)
-	GetAllGroupsByPlatform(context.Context, string) ([]routing.Group, error)
 	GetAllGroupsIncludingInactive(context.Context) ([]routing.Group, error)
 	GetGroup(context.Context, int64) (*routing.Group, error)
 	GetGroupModelsListCandidates(context.Context, int64, string) ([]string, error)

@@ -19,7 +19,7 @@
 - 不支持：创建校验明确拒绝，或该类型被限定给另一个平台。
 - 契约冲突：管理端与运行时对同一组合的类型解释不同；在实现统一前不作为正式支持承诺。
 
-通用数据导入器除 Qoder/COSY 的双向限制外，会接受多种历史组合。这只是迁移兼容性；真正的可调度性仍由平台 token provider、协议处理器、账号状态、模型和 endpoint 能力共同决定。
+通用数据导入器除 Qoder/COSY 的双向限制外，会接受多种历史组合。这只是迁移兼容性；真正的可调度性仍由平台 token provider、协议处理器、账号状态、模型和 endpoint 能力共同决定。分组可关联任意平台账号；平台只属于账号与实际执行记录，不由分组名称或模型族推断。
 
 ## 账号支持矩阵
 
@@ -58,26 +58,26 @@ Kimi、Zhipu、DeepSeek 的账号类型、模式与协议矩阵由本页和[API 
 <a id="public_gateway_protocols"></a>
 ## 公开网关协议
 
-所有 21 个客户端业务入口使用分组 `allowed_protocols` 控制；另外 3 个上游专用项仅在账号集合中显示。完整清单和认证边界见[统一协议能力](protocol_capabilities.md#protocol_catalog)。原生优先，无法原生承接时只使用分组明确指定的转换目标；HTTP/SSE 共用项，Responses WebSocket 独立。
+所有 21 个客户端业务入口使用分组 `allowed_protocols` 控制；另外 3 个上游专用项仅在账号集合中显示。完整清单和认证边界见[统一协议能力](protocol_capabilities.md#protocol_catalog)。原生优先，无法原生承接时按分组的自动模式或有序目标列表选择现有单步转换；显式空目标列表只允许原生；HTTP/SSE 共用项，Responses WebSocket 独立。
 
 | 协议族或入口 | 当前平台边界 | 专题路由 |
 | --- | --- | --- |
-| Anthropic Messages：`/v1/messages` | 九个平台均有平台分派；最终分组允许 Messages 时按平台转换或原生转发 | 各平台契约；共同链路见[网关请求生命周期](../architecture/gateway_request_lifecycle.md) |
+| Anthropic Messages：`/v1/messages` | 分组允许 Messages 后，从组内筛出可处理模型的账号，再按实际账号转换或原生转发 | 各平台契约；共同链路见[网关请求生命周期](../architecture/gateway_request_lifecycle.md) |
 | Anthropic token count：`/v1/messages/count_tokens`、`/messages/count_tokens` | Anthropic、OpenAI、Gemini 进入各自统计路径，Grok 与三个 CN 平台使用本地估算；Antigravity、Qoder 明确返回 `404`，Anthropic Bedrock 账号也不支持 | 各平台契约；客户端仍应保留本地估算回退 |
-| OpenAI Responses：`/v1/responses`、`/responses` 及允许的子路径 | 九个平台在最终分组允许 Responses 时进入平台适配；Kimi/Zhipu 不要求账号拥有上游原生 Responses，DeepSeek 可显式使用其 `/responses`；Qoder 不支持 Responses 子路径和 WebSocket | 各平台契约；WebSocket/Realtime 重点见 [OpenAI 上游](openai_upstream.md) |
-| OpenAI Chat Completions：`/v1/chat/completions`、`/chat/completions` | 最终分组允许 Chat 时，九个平台均按平台转换或原生转发 | 各平台契约 |
-| 模型与用量：`/v1/models`、`/models`、`/v1/usage` | 按 Key、分组、账号和渠道解析可请求模型与本地额度；不是上游模型列表或账单的原样代理 | [模型目录与市场](model_catalog_and_marketplace.md)及各平台专题 |
-| Embeddings：`/v1/embeddings`、`/embeddings` | 仅 OpenAI 分组 | [OpenAI 上游](openai_upstream.md) |
+| OpenAI Responses：`/v1/responses`、`/responses` 及允许的子路径 | 最终分组允许 Responses 时，按选中账号进入九个平台的既有适配；Kimi/Zhipu 不要求账号拥有上游原生 Responses，DeepSeek 可显式使用其 `/responses`；Qoder 不支持 Responses 子路径和 WebSocket | 各平台契约；WebSocket/Realtime 重点见 [OpenAI 上游](openai_upstream.md) |
+| OpenAI Chat Completions：`/v1/chat/completions`、`/chat/completions` | 最终分组允许 Chat 后按组内候选的原生能力和允许转换路线选择账号 | 各平台契约 |
+| 模型与用量：`/v1/models`、`/models`、`/v1/usage` | 按 Key、分组和账号解析可请求模型与本地额度；不是上游模型列表或账单的原样代理 | [模型目录与市场](model_catalog_and_marketplace.md)及各平台专题 |
+| Embeddings：`/v1/embeddings`、`/embeddings` | 分组允许 Embeddings，候选账号具备 OpenAI Embeddings 能力 | [OpenAI 上游](openai_upstream.md) |
 | Realtime、Live 与 Alpha Search | Live/sideband、Codex realtime 和 alpha search 仅 OpenAI 平台；是否可用还受分组和账号能力限制 | [OpenAI 上游](openai_upstream.md) |
 | 同步图片生成/编辑 | 仅 OpenAI 与 Grok；对应 Images 生成/编辑入口和账号能力继续收窄范围 | [OpenAI 上游](openai_upstream.md)、[Grok / xAI 上游](grok_upstream.md) |
 | 批量图片作业 | Gemini/Vertex 使用独立任务生命周期；供应商范围由批量图片领域契约定义 | [批量图片作业](../domains/batch_image_jobs.md) |
 | 视频生成、编辑、扩展、查询和下载 | 新任务仅 Grok；复合 Key 可凭持久任务绑定查询既有任务 | [Grok / xAI 上游](grok_upstream.md) |
-| Gemini v1beta：`/v1beta/models/*` | Gemini/Antigravity 分组允许 Gemini 协议时承接生成、流式生成和 token 统计；模型列表 GET 不受开关影响 | [Gemini 上游](gemini_upstream.md)、[Antigravity 上游](antigravity_upstream.md) |
-| Antigravity 专用入口：`/antigravity/*` | 强制只选择 Antigravity 账号，不参与混合调度 | [Antigravity 上游](antigravity_upstream.md) |
+| Gemini v1beta：`/v1beta/models/*` | 分组允许 Gemini 协议，且候选 Gemini/Antigravity 账号具备相应能力时承接生成、流式生成和 token 统计；模型列表 GET 不受开关影响 | [Gemini 上游](gemini_upstream.md)、[Antigravity 上游](antigravity_upstream.md) |
+| Antigravity 专用入口：`/antigravity/*` | 在当前分组成员中进一步限定 Antigravity 账号 | [Antigravity 上游](antigravity_upstream.md) |
 
-路由存在不代表任意分组或账号类型都能承接。协议门禁在账号选择前按最终分组执行；通过后，处理器仍会校验平台、模型、transport、endpoint capability、媒体资格和其它分组策略。Gemini Responses 已有正式非流和 SSE 转换，保留 reasoning、工具调用、usage、结束原因与首次 Token 指标；首个客户端字节写出后不再 failover。
+路由存在不代表任意分组或账号类型都能承接。协议门禁在账号选择前按最终分组执行；通过后按账号快照校验模型、原生协议、允许转换、transport、endpoint capability、媒体资格和其它分组策略，选中账号后再调用对应平台执行器。Gemini Responses 已有正式非流和 SSE 转换，保留 reasoning、工具调用、usage、结束原因与首次 Token 指标；首个客户端字节写出后不再 failover。
 
-公开协议不再包含 Key 账单自省或上游声明倍率入口。`GET /v1/sub2api/billing` 未注册并返回普通 `404`；账户本地 `rate_multiplier` 和渠道的上游计费模型来源仍属于结算配置，不代表从上游探测到的声明倍率。管理员 API Key 用量查询属于独立的手动展示接口，详见 [API Key 上游用量查询](upstream_usage.md)。
+公开协议不再包含 Key 账单自省或上游声明倍率入口。`GET /v1/sub2api/billing` 未注册并返回普通 `404`；账户本地 `rate_multiplier` 和价格配置的上游计费模型来源仍属于结算配置，不代表从上游探测到的声明倍率。管理员 API Key 用量查询属于独立的手动展示接口，详见 [API Key 上游用量查询](upstream_usage.md)。
 
 ## 跨层约束
 
@@ -85,11 +85,15 @@ Kimi、Zhipu、DeepSeek 的账号类型、模式与协议矩阵由本页和[API 
 
 1. 平台与账号类型有实际 token/签名实现，而不只是导入器接受字段。
 2. 账号 active、schedulable、未过期、未处于账号或模型限流期，并属于目标分组。
-3. 分组允许对应协议或媒体能力，渠道和账号都能解析最终模型。
+3. 分组允许对应协议或媒体能力，分组和账号的模型规则均允许最终模型。
 4. OAuth-only、隐私状态、客户端限制、transport capability 和站点/区域等平台策略通过。
 5. 并发槽、等待队列和粘性约束允许本次选择。
 
-账号选择和快照一致性见[账号调度与缓存一致性](../architecture/account_scheduling_and_cache.md)，分组/渠道策略见[网关策略控制](../domains/gateway_policy_controls.md)，凭据和健康恢复见[账号维护](../operations/account_maintenance.md)。
+账号模型白名单为空时使用所属平台及认证类型的默认目录，显式模型、映射或末尾通配符可以声明自定义范围。`*` 也不能绕过本页的认证、协议和端点能力。账号可以不加入任何分组，standard/simple 两种模式都不会据此将它纳入其他分组。
+
+混合账号不再触发 Anthropic/Antigravity 关联确认，也不需要 `mixed_scheduling` 开关。同一会话中的签名、上游响应 ID 和 WS/Live 状态仍按实际账号约束处理，不能因同组而跨供应商复用。
+
+账号选择和快照一致性见[账号调度与缓存一致性](../architecture/account_scheduling_and_cache.md)，分组/价格策略见[网关策略控制](../domains/gateway_policy_controls.md)，凭据和健康恢复见[账号维护](../operations/account_maintenance.md)。
 
 ## 已确认冲突
 

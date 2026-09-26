@@ -52,24 +52,31 @@ func (f *fakeSchedulerCache) GetSnapshot(_ context.Context, _ scheduler.Schedule
 	}
 	return values, true, nil
 }
+
 func (f *fakeSchedulerCache) CaptureBucketWriteToken(_ context.Context, bucket scheduler.SchedulerBucket) (scheduler.SchedulerBucketWriteToken, error) {
 	return scheduler.SchedulerBucketWriteToken{Bucket: bucket, Epoch: 1}, nil
 }
+
 func (f *fakeSchedulerCache) SetSnapshot(_ context.Context, _ scheduler.SchedulerBucket, _ scheduler.SchedulerBucketWriteToken, _ []scheduler.SnapshotAccount) error {
 	return nil
 }
+
 func (f *fakeSchedulerCache) RetireBucket(_ context.Context, _ scheduler.SchedulerBucket) error {
 	return nil
 }
+
 func (f *fakeSchedulerCache) ReopenBucket(_ context.Context, bucket scheduler.SchedulerBucket) (scheduler.SchedulerBucketWriteToken, error) {
 	return scheduler.SchedulerBucketWriteToken{Bucket: bucket, Epoch: 1}, nil
 }
+
 func (f *fakeSchedulerCache) TryAcquireGroupLifecycleLease(_ context.Context, _ int64, _ time.Duration) (scheduler.SchedulerGroupLifecycleLease, bool, error) {
 	return scheduler.SchedulerGroupLifecycleLease{}, false, nil
 }
+
 func (f *fakeSchedulerCache) ReleaseGroupLifecycleLease(_ context.Context, _ scheduler.SchedulerGroupLifecycleLease) error {
 	return nil
 }
+
 func (f *fakeSchedulerCache) GetAccount(_ context.Context, id int64) (scheduler.SnapshotAccount, error) {
 	for _, account := range f.accounts {
 		if account != nil && account.Record.ID == id {
@@ -78,6 +85,7 @@ func (f *fakeSchedulerCache) GetAccount(_ context.Context, id int64) (scheduler.
 	}
 	return nil, nil
 }
+
 func (f *fakeSchedulerCache) SetAccount(_ context.Context, _ scheduler.SnapshotAccount) error {
 	return nil
 }
@@ -85,12 +93,15 @@ func (f *fakeSchedulerCache) DeleteAccount(_ context.Context, _ int64) error { r
 func (f *fakeSchedulerCache) UpdateLastUsed(_ context.Context, _ map[int64]time.Time) error {
 	return nil
 }
+
 func (f *fakeSchedulerCache) TryLockBucket(_ context.Context, _ scheduler.SchedulerBucket, _ time.Duration) (bool, error) {
 	return true, nil
 }
+
 func (f *fakeSchedulerCache) UnlockBucket(_ context.Context, _ scheduler.SchedulerBucket) error {
 	return nil
 }
+
 func (f *fakeSchedulerCache) ListBuckets(_ context.Context) ([]scheduler.SchedulerBucket, error) {
 	return nil, nil
 }
@@ -105,6 +116,7 @@ func (f *fakeGroupRepo) Create(context.Context, *routing.Group) error { return n
 func (f *fakeGroupRepo) GetByID(context.Context, int64) (*routing.Group, error) {
 	return f.group, nil
 }
+
 func (f *fakeGroupRepo) GetByIDLite(context.Context, int64) (*routing.Group, error) {
 	return f.group, nil
 }
@@ -114,6 +126,7 @@ func (f *fakeGroupRepo) DeleteCascade(context.Context, int64) ([]int64, error) {
 func (f *fakeGroupRepo) List(context.Context, pagination.PaginationParams) ([]routing.Group, *pagination.PaginationResult, error) {
 	return nil, nil, nil
 }
+
 func (f *fakeGroupRepo) ListWithFilters(context.Context, pagination.PaginationParams, string, string, string, *bool) ([]routing.Group, *pagination.PaginationResult, error) {
 	return nil, nil, nil
 }
@@ -121,6 +134,7 @@ func (f *fakeGroupRepo) ListActive(context.Context) ([]routing.Group, error) { r
 func (f *fakeGroupRepo) ListActiveByPlatform(context.Context, string) ([]routing.Group, error) {
 	return nil, nil
 }
+
 func (f *fakeGroupRepo) ListActiveByPlatformLite(ctx context.Context, platform string) ([]routing.Group, error) {
 	return f.ListActiveByPlatform(ctx, platform)
 }
@@ -128,9 +142,11 @@ func (f *fakeGroupRepo) ExistsByName(context.Context, string) (bool, error) { re
 func (f *fakeGroupRepo) GetAccountCount(context.Context, int64) (int64, int64, error) {
 	return 0, 0, nil
 }
+
 func (f *fakeGroupRepo) DeleteAccountGroupsByGroupID(context.Context, int64) (int64, error) {
 	return 0, nil
 }
+
 func (f *fakeGroupRepo) GetAccountIDsByGroupIDs(context.Context, []int64) ([]int64, error) {
 	return nil, nil
 }
@@ -144,22 +160,31 @@ type fakeConcurrencyCache struct{}
 func (f *fakeConcurrencyCache) AcquireAccountSlot(context.Context, int64, int, string) (bool, error) {
 	return true, nil
 }
+
 func (f *fakeConcurrencyCache) ReleaseAccountSlot(context.Context, int64, string) error { return nil }
+
 func (f *fakeConcurrencyCache) GetAccountConcurrency(context.Context, int64) (int, error) {
 	return 0, nil
 }
+
 func (f *fakeConcurrencyCache) IncrementAccountWaitCount(context.Context, int64, int) (bool, error) {
 	return true, nil
 }
+
 func (f *fakeConcurrencyCache) DecrementAccountWaitCount(context.Context, int64) error { return nil }
+
 func (f *fakeConcurrencyCache) GetAccountWaitingCount(context.Context, int64) (int, error) {
 	return 0, nil
 }
+
 func (f *fakeConcurrencyCache) AcquireUserSlot(context.Context, int64, int, string) (bool, error) {
 	return true, nil
 }
-func (f *fakeConcurrencyCache) ReleaseUserSlot(context.Context, int64, string) error   { return nil }
+
+func (f *fakeConcurrencyCache) ReleaseUserSlot(context.Context, int64, string) error { return nil }
+
 func (f *fakeConcurrencyCache) GetUserConcurrency(context.Context, int64) (int, error) { return 0, nil }
+
 func (f *fakeConcurrencyCache) IncrementWaitCount(context.Context, int64, int) (bool, error) {
 	return true, nil
 }
@@ -167,9 +192,11 @@ func (f *fakeConcurrencyCache) DecrementWaitCount(context.Context, int64) error 
 func (f *fakeConcurrencyCache) GetAccountsLoadBatch(context.Context, []scheduler.AccountWithConcurrency) (map[int64]*scheduler.AccountLoadInfo, error) {
 	return map[int64]*scheduler.AccountLoadInfo{}, nil
 }
+
 func (f *fakeConcurrencyCache) GetUsersLoadBatch(context.Context, []scheduler.UserWithConcurrency) (map[int64]*scheduler.UserLoadInfo, error) {
 	return map[int64]*scheduler.UserLoadInfo{}, nil
 }
+
 func (f *fakeConcurrencyCache) GetAccountConcurrencyBatch(_ context.Context, accountIDs []int64) (map[int64]int, error) {
 	result := make(map[int64]int, len(accountIDs))
 	for _, id := range accountIDs {
@@ -177,9 +204,12 @@ func (f *fakeConcurrencyCache) GetAccountConcurrencyBatch(_ context.Context, acc
 	}
 	return result, nil
 }
+
 func (f *fakeConcurrencyCache) CleanupExpiredAccountSlots(context.Context, int64) error { return nil }
-func (f *fakeConcurrencyCache) CleanupExpiredAccountSlotKeys(context.Context) error     { return nil }
-func (f *fakeConcurrencyCache) CleanupStaleProcessSlots(context.Context, string) error  { return nil }
+
+func (f *fakeConcurrencyCache) CleanupExpiredAccountSlotKeys(context.Context) error { return nil }
+
+func (f *fakeConcurrencyCache) CleanupStaleProcessSlots(context.Context, string) error { return nil }
 
 func newTestGatewayHandler(t *testing.T, group *routing.Group, accounts []*gatewayprovider.ExecutionAccount) (*messageEndpointsFixture, func()) {
 	t.Helper()
@@ -214,8 +244,6 @@ func newTestGatewayHandler(t *testing.T, group *routing.Group, accounts []*gatew
 		nil, // resolver
 		// balanceNotifyService
 		responseHeaderFilterForTest(nil),
-
-		// userPlatformQuotaRepo
 	)
 	// simple 用例保留原完成器，不通过旧网关对象取回。
 	gwSvc.Recorder = newHTTPCompletionFixture(nil, nil, nil, nil, nil, nil, nil, false)
@@ -224,7 +252,8 @@ func newTestGatewayHandler(t *testing.T, group *routing.Group, accounts []*gatew
 	billingCacheSvc := newBillingEligibilityFixture(cfg)
 	billingCacheSvc.Start()
 
-	concurrencySvc := scheduler.NewConcurrencyService(&fakeConcurrencyCache{}, scheduler.Diagnostics{Logf: logging.LegacyPrintf,
+	concurrencySvc := scheduler.NewConcurrencyService(&fakeConcurrencyCache{}, scheduler.Diagnostics{
+		Logf:  logging.LegacyPrintf,
 		Event: logging.Event,
 	},
 	)
@@ -242,33 +271,35 @@ func newTestGatewayHandler(t *testing.T, group *routing.Group, accounts []*gatew
 }
 
 func TestGatewayHandlerMessages_InterceptWarmup_AntigravityAccount_MixedSchedulingV1(t *testing.T) {
-
 	groupID := int64(2001)
 	accountID := int64(1001)
 
 	group := &routing.Group{
 		ID:       groupID,
 		Hydrated: true,
-		Platform: capability.PlatformAnthropic, // /v1/messages（Claude兼容）入口
-		Status:   billing.StatusActive,
+		// /v1/messages（Claude兼容）入口
+		Status: billing.StatusActive,
 	}
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: accountID,
-		Name:     "ag-1",
-		Platform: capability.PlatformAntigravity,
-		Type:     capability.AccountTypeOAuth,
-		Credentials: map[string]any{
-			"access_token":              "tok_xxx",
-			"intercept_warmup_requests": true,
+	account := &gatewayprovider.ExecutionAccount{
+		Record: accountcore.Record{
+			LoadLocation: time.LoadLocation, ID: accountID,
+			Name:     "ag-1",
+			Platform: capability.PlatformAntigravity,
+			Type:     capability.AccountTypeOAuth,
+			Credentials: map[string]any{
+				"access_token":              "tok_xxx",
+				"intercept_warmup_requests": true,
+			},
+			Extra: map[string]any{
+				"mixed_scheduling": true, // 关键：允许被 anthropic 分组混合调度选中
+			},
+			Concurrency:   1,
+			Priority:      1,
+			Status:        billing.StatusActive,
+			Schedulable:   true,
+			AccountGroups: []accountcore.GroupMembership{{AccountID: accountID, GroupID: groupID}},
 		},
-		Extra: map[string]any{
-			"mixed_scheduling": true, // 关键：允许被 anthropic 分组混合调度选中
-		},
-		Concurrency:   1,
-		Priority:      1,
-		Status:        billing.StatusActive,
-		Schedulable:   true,
-		AccountGroups: []accountcore.GroupMembership{{AccountID: accountID, GroupID: groupID}}},
 	}
 
 	h, cleanup := newTestGatewayHandler(t, group, []*gatewayprovider.ExecutionAccount{account})
@@ -326,30 +357,31 @@ func TestGatewayHandlerMessages_InterceptWarmup_AntigravityAccount_MixedScheduli
 }
 
 func TestGatewayHandlerMessages_InterceptWarmup_AntigravityAccount_ForcePlatform(t *testing.T) {
-
 	groupID := int64(2002)
 	accountID := int64(1002)
 
 	group := &routing.Group{
 		ID:       groupID,
 		Hydrated: true,
-		Platform: capability.PlatformAntigravity,
 		Status:   billing.StatusActive,
 	}
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: accountID,
-		Name:     "ag-2",
-		Platform: capability.PlatformAntigravity,
-		Type:     capability.AccountTypeOAuth,
-		Credentials: map[string]any{
-			"access_token":              "tok_xxx",
-			"intercept_warmup_requests": true,
+	account := &gatewayprovider.ExecutionAccount{
+		Record: accountcore.Record{
+			LoadLocation: time.LoadLocation, ID: accountID,
+			Name:     "ag-2",
+			Platform: capability.PlatformAntigravity,
+			Type:     capability.AccountTypeOAuth,
+			Credentials: map[string]any{
+				"access_token":              "tok_xxx",
+				"intercept_warmup_requests": true,
+			},
+			Concurrency:   1,
+			Priority:      1,
+			Status:        billing.StatusActive,
+			Schedulable:   true,
+			AccountGroups: []accountcore.GroupMembership{{AccountID: accountID, GroupID: groupID}},
 		},
-		Concurrency:   1,
-		Priority:      1,
-		Status:        billing.StatusActive,
-		Schedulable:   true,
-		AccountGroups: []accountcore.GroupMembership{{AccountID: accountID, GroupID: groupID}}},
 	}
 
 	h, cleanup := newTestGatewayHandler(t, group, []*gatewayprovider.ExecutionAccount{account})

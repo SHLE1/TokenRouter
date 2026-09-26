@@ -21,7 +21,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 
 	"github.com/TokenFlux/TokenRouter/internal/routing"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
@@ -42,8 +41,10 @@ func newServiceTierHandlerTest(t *testing.T) *gatewayHTTPEndpointsFixture {
 		Funding: newFundingAdmissionFixture(newBillingEligibilityFixture(&config.Config{RunMode: config.RunModeSimple}), &config.Config{RunMode: config.RunModeSimple}),
 		Keys:    &apikey.APIKeyService{},
 		Concurrency: gatewayhttp.NewConcurrencyHelper(scheduler.NewConcurrencyService(
-			&httptestkit.ConcurrencySequence{UserSeq: []bool{true}}, scheduler.Diagnostics{Logf: logging.LegacyPrintf,
-				Event: logging.Event},
+			&httptestkit.ConcurrencySequence{UserSeq: []bool{true}}, scheduler.Diagnostics{
+				Logf:  logging.LegacyPrintf,
+				Event: logging.Event,
+			},
 		), gatewayhttp.SSEPingFormatNone, 0),
 		Config: &config.Config{},
 		Images: &scheduler.ImageConcurrencyLimiter{}, Availability: newExecutionAvailabilityForTest(nil, nil, nil), Choices: newEmptyCompatibleSelectionFixture(),
@@ -64,8 +65,7 @@ func runOpenAIHandlerServiceTierTest(t *testing.T, path, body string, handler fu
 		ID:      6403,
 		GroupID: &groupID,
 		Group: &routing.Group{
-			ID:       groupID,
-			Platform: capability.PlatformOpenAI,
+			ID: groupID,
 		},
 		User: &identity.User{ID: userID, Status: billing.StatusActive},
 	})

@@ -16,7 +16,7 @@ func TestMigration239AddsGroupAdvancedSchedulerOverrides(t *testing.T) {
 	ctx := context.Background()
 	migrationSQL, err := dbmigrations.FS.ReadFile("239_add_group_advanced_scheduler_overrides.sql")
 	require.NoError(t, err)
-	tx := testTx(t)
+	tx := historicalTx(t, "239_")
 
 	// 该迁移可能在已有实例的启动阶段被重复探测，必须保持幂等。
 	_, err = tx.ExecContext(ctx, string(migrationSQL))

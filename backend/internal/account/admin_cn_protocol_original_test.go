@@ -81,7 +81,7 @@ func TestCNProviderAccountProtocolPersistence(t *testing.T) {
 
 				created, err := svc.CreateAccount(ctx, &accountcore.CreateAccountInput{
 					Name: "国产平台账号", Platform: tc.platform, Type: capability.AccountTypeAPIKey,
-					Credentials: credentials, SkipDefaultGroupBind: true,
+					Credentials: credentials,
 				})
 				require.NoError(t, err)
 				require.Equal(t, wantProtocols, created.UpstreamProtocols())
@@ -148,7 +148,7 @@ func TestCNProviderLegacyCredentialDefaults(t *testing.T) {
 			require.NotContains(t, updated.Credentials, "api_protocol")
 			created, err := svc.CreateAccount(ctx, &accountcore.CreateAccountInput{
 				Name: "缺省账号", Platform: platform, Type: capability.AccountTypeAPIKey,
-				Credentials: map[string]any{"api_key": "sk-test"}, SkipDefaultGroupBind: true,
+				Credentials: map[string]any{"api_key": "sk-test"},
 			})
 			require.NoError(t, err)
 			require.Equal(t, accountcore.AccountModePayG, created.Credentials["account_mode"])

@@ -22,7 +22,7 @@ import (
 
 func TestProtocolRouteNativeFirstAndExplicitFallback(t *testing.T) {
 	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformDeepseek, Type: capability.AccountTypeAPIKey, Credentials: map[string]any{accountcore.UpstreamProtocolsKey: []string{"anthropic_messages", "openai_responses"}, "api_base_urls": map[string]any{"anthropic": "https://relay.example/messages", "responses": "https://relay.example/responses"}}}}
-	group := &routing.Group{Platform: capability.PlatformDeepseek, AllowedProtocols: []protocolcore.ProtocolID{protocolcore.ProtocolAnthropicMessages}, ProtocolFallbacks: map[protocolcore.ProtocolID]protocolcore.ProtocolID{protocolcore.ProtocolAnthropicMessages: protocolcore.ProtocolOpenAIResponses}}
+	group := &routing.Group{AllowedProtocols: []protocolcore.ProtocolID{protocolcore.ProtocolAnthropicMessages}, ProtocolFallbacks: map[protocolcore.ProtocolID][]protocolcore.ProtocolID{protocolcore.ProtocolAnthropicMessages: {protocolcore.ProtocolOpenAIResponses}}}
 	ctx := requeststate.WithClientProtocol(requeststate.WithGroup(context.Background(), group), protocolcore.ProtocolAnthropicMessages)
 	selected, err := gatewayprovider.AccountForProtocolAttempt(ctx, account)
 	require.NoError(t, err)
@@ -39,7 +39,7 @@ func TestProtocolRouteNativeFirstAndExplicitFallback(t *testing.T) {
 	next := *account
 	next.Record.Credentials = map[string]any{accountcore.UpstreamProtocolsKey: []string{"openai_chat_completions"}}
 	require.False(t, gatewayprovider.ExecutionModelPolicy(&next).AllowsProtocol(ctx))
-	delete(group.ProtocolFallbacks, protocolcore.ProtocolAnthropicMessages)
+	group.ProtocolFallbacks[protocolcore.ProtocolAnthropicMessages] = []protocolcore.ProtocolID{}
 	ctx = requeststate.WithGroup(ctx, group)
 	require.False(t, gatewayprovider.ExecutionModelPolicy(account).AllowsProtocol(ctx))
 }
@@ -66,7 +66,7 @@ func TestProtocolConversionAccountConstraints(t *testing.T) {
 }
 
 func TestProtocolImagePolicyAndBatchBinding(t *testing.T) {
-	group := &routing.Group{Platform: capability.PlatformOpenAI, AllowedProtocols: []protocolcore.ProtocolID{}, ResponsesImagePolicy: "enabled"}
+	group := &routing.Group{AllowedProtocols: []protocolcore.ProtocolID{}, ResponsesImagePolicy: "enabled"}
 	require.NoError(t, routing.NormalizeGroupProtocolPolicy(group, nil))
 	*group = *routing.CloneGroup(group)
 	require.False(t, gatewaymedia.GroupImagePermission(group != nil, group.AllowImageGeneration))
@@ -96,7 +96,7 @@ func TestProtocolAuxiliaryModelURLAndIndependentTransports(t *testing.T) {
 			SupportsRequestCapability(ctx, a, accountcore.OpenAIEndpointCapabilityResponses))
 		require.False(t, accountprovider.SupportsOpenAIEndpoint(gatewayprovider.ExecutionProtocolRecord(a), accountcore.OpenAIEndpointCapabilityTextGeneration))
 	}
-	group := &routing.Group{Platform: capability.PlatformOpenAI, AllowedProtocols: []protocolcore.ProtocolID{protocolcore.ProtocolImagesEdits}, ResponsesImagePolicy: "block"}
-	require.Equal(t, []string{creative.CreativeOperationEdit, creative.CreativeOperationInpaint}, creative.OperationsForGroup(group.Platform, group.ResponsesImagePolicy != "" || group.ProtocolFallbacks != nil, group.AllowsClientProtocol))
+	group := &routing.Group{AllowedProtocols: []protocolcore.ProtocolID{protocolcore.ProtocolImagesEdits}, ResponsesImagePolicy: "block"}
+	require.Equal(t, []string{creative.CreativeOperationEdit, creative.CreativeOperationInpaint}, creative.OperationsForGroup(group.ResponsesImagePolicy != "" || group.ProtocolFallbacks != nil, group.AllowsClientProtocol)[creative.PlatformOpenAI])
 	require.Nil(t, gatewayprovider.ResponsesPolicyGroup(requeststate.WithClientProtocol(context.Background(), protocolcore.ProtocolImagesEdits), group))
 }

@@ -8,6 +8,7 @@ import (
 	textflow "github.com/TokenFlux/TokenRouter/internal/gateway/text"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
+	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/config"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/admission"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/errorpolicy"
@@ -34,9 +35,14 @@ func provideOpenAITextHTTP(
 	runtime *openaiattempt.Runtime,
 	activity *gatewayRequestActivity,
 	planner *provider.RoutePlanner, cache session.GatewayCache,
+	messages *messageHTTPBindings,
+	subscriptions *billing.SubscriptionService,
 ) *gatewayhttp.OpenAITextHandler {
 	options := openAITextOptions(cfg)
-	bindings := openAITextBindings(source, funding, keys, resources, cyber, rules, moderator, planner, cache)
+	bindings := openAITextBindings(source, funding, keys, resources, cyber, rules, moderator, planner, cache, subscriptions)
+	if messages != nil {
+		bindings.ClientVersions = messages.bindings.ClientVersions
+	}
 	result := gatewayhttp.NewBoundOpenAITextHandler(options, bindings, prompts, textflow.NewResponsesExecutor(runtime, textflow.ResponseOptions{MaxSwitches: options.MaxSwitches}, textflow.ResponseOptions{MaxSwitches: options.MaxSwitches, FirstOutputBudget: true}))
 	result.BindRequestActivity(activity.Enter)
 	return result
@@ -59,7 +65,7 @@ func openAITextOptions(cfg *config.Config) gatewayhttp.OpenAITextOptions {
 }
 
 // openAITextBindings 固定原生能力，运行时只创建请求数据。
-func openAITextBindings(source *gatewayhttp.OpenAIResponsesExecutor, funding *admission.FundingAdmission, keys *apikey.APIKeyService, resources *gatewayhttp.OpenAIHTTPResources, cyber *gatewayhttp.CyberHandler, rules *errorpolicy.ErrorPassthroughService, moderator *moderation.ContentModerationService, planner *provider.RoutePlanner, cache session.GatewayCache) gatewayhttp.OpenAITextBindings {
+func openAITextBindings(source *gatewayhttp.OpenAIResponsesExecutor, funding *admission.FundingAdmission, keys *apikey.APIKeyService, resources *gatewayhttp.OpenAIHTTPResources, cyber *gatewayhttp.CyberHandler, rules *errorpolicy.ErrorPassthroughService, moderator *moderation.ContentModerationService, planner *provider.RoutePlanner, cache session.GatewayCache, subscriptions *billing.SubscriptionService) gatewayhttp.OpenAITextBindings {
 	var moderationPort gatewayhttp.ModerationPort
 	if moderator != nil {
 		moderationPort = moderator
@@ -78,11 +84,12 @@ func openAITextBindings(source *gatewayhttp.OpenAIResponsesExecutor, funding *ad
 		PlanRoute: func(ctx context.Context, key *apikey.APIKey, model string) routing.RoutePlan {
 			return planner.PlanKey(ctx, key, model)
 		},
-		ReplaceModel:   openaiwire.ReplaceModelInBody,
-		Errors:         rules,
-		Funding:        funding,
-		Cyber:          cyber,
-		IsolateSession: messageSessionIsolation(cache),
+		ReplaceModel:        openaiwire.ReplaceModelInBody,
+		ClientGroupFallback: provideClientGroupFallbackResolver(keys, funding, subscriptions, cache),
+		Errors:              rules,
+		Funding:             funding,
+		Cyber:               cyber,
+		IsolateSession:      messageSessionIsolation(cache),
 	}
 	return bindings
 }

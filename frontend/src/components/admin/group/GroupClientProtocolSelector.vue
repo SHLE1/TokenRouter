@@ -15,11 +15,18 @@
         </div>
         <div v-if="profile?.fallback_targets[protocol.id]?.length">
           <label class="input-label text-xs">{{ t('admin.protocols.fallback') }}</label>
-          <Select :model-value="fallbacks?.[protocol.id] ?? ''" :options="targetOptions(protocol.id)" @update:model-value="setFallback(protocol.id, String($event))" />
+          <Select :model-value="fallbackMode(protocol.id)" :options="modeOptions" @update:model-value="setMode(protocol.id, String($event))" />
+          <div v-if="fallbackMode(protocol.id) === 'restricted'" class="mt-2 space-y-2">
+            <div v-for="(target, index) in fallbacks?.[protocol.id]" :key="index" class="flex items-center gap-2">
+              <Select :model-value="target" :options="targetOptions(protocol.id)" @update:model-value="setTarget(protocol.id, index, String($event) as ProtocolID)" />
+              <button type="button" class="btn btn-secondary btn-sm" :aria-label="t('common.delete')" @click="removeTarget(protocol.id, index)">{{ t('common.delete') }}</button>
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm" :disabled="!remainingTarget(protocol.id)" @click="addTarget(protocol.id)">{{ t('common.add') }}</button>
+          </div>
         </div>
       </div>
     </div>
-    <div v-if="platform === 'openai' || platform === 'grok'" class="space-y-2">
+    <div class="space-y-2">
       <label class="input-label">{{ t('admin.protocols.imagePolicy') }}</label>
       <CodexImageToolModeSelector :model-value="imagePolicy ?? 'inherit'" @update:model-value="emit('update:imagePolicy', $event)" />
     </div>
@@ -32,30 +39,56 @@ import Toggle from '@/components/common/Toggle.vue'
 import Select from '@/components/common/Select.vue'
 import CodexImageToolModeSelector from '@/components/account/CodexImageToolModeSelector.vue'
 import { loadProtocolCatalog, protocolCatalog, protocolCatalogError, protocolCatalogLoading } from '@/api/admin/protocolCapabilities'
-import type { ProtocolID, GroupPlatform } from '@/types'
+import type { ProtocolID } from '@/types'
 import type { CodexImageToolMode } from '@/utils/codexImageToolMode'
 import { setGroupClientProtocol } from '@/utils/groupClientProtocols'
-const props = defineProps<{ modelValue: ProtocolID[]; platform: GroupPlatform; fallbacks?: Partial<Record<ProtocolID, ProtocolID>>; imagePolicy?: CodexImageToolMode }>()
+const props = defineProps<{ modelValue: ProtocolID[]; fallbacks?: Partial<Record<ProtocolID, ProtocolID[]>>; imagePolicy?: CodexImageToolMode }>()
 const emit = defineEmits<{
   'update:modelValue': [value: ProtocolID[]]
-  'update:fallbacks': [value: Partial<Record<ProtocolID, ProtocolID>>]
+  'update:fallbacks': [value: Partial<Record<ProtocolID, ProtocolID[]>>]
   'update:imagePolicy': [value: CodexImageToolMode]
 }>()
 const { t } = useI18n()
 // 所有表单共享加载状态；任一入口重试成功后同时恢复。
 function retryCatalog() { void loadProtocolCatalog().catch(() => {}) }
 retryCatalog()
-const profile = computed(() => protocolCatalog.value?.groups.find(group => group.platform === props.platform))
+const profile = computed(() => protocolCatalog.value?.groups[0])
 const protocols = computed(() => protocolCatalog.value?.protocols.filter(protocol => profile.value?.protocols.includes(protocol.id)) ?? [])
 function targetOptions(source: ProtocolID) {
-  return [{ value: '', label: t('admin.protocols.nativeOnly') }, ...(profile.value?.fallback_targets[source] ?? []).map(id => ({ value: id, label: protocolCatalog.value?.protocols.find(protocol => protocol.id === id)?.name ?? id }))]
+  return (profile.value?.fallback_targets[source] ?? []).map(id => ({ value: id, label: protocolCatalog.value?.protocols.find(protocol => protocol.id === id)?.name ?? id }))
 }
-function toggle(id: ProtocolID) { emit('update:modelValue', setGroupClientProtocol(props.platform, props.modelValue, id, !props.modelValue.includes(id))) }
-// 空选择删除该源的转换目标，目标不受客户端入口开关影响。
-function setFallback(source: ProtocolID, target: string) {
+function toggle(id: ProtocolID) { emit('update:modelValue', setGroupClientProtocol(props.modelValue, id, !props.modelValue.includes(id))) }
+// 缺少入口采用自动转换；空数组仅允许原生，显式列表按顺序尝试。
+const modeOptions = computed(() => [
+  { value: 'auto', label: t('admin.protocols.auto') },
+  { value: 'native', label: t('admin.protocols.nativeOnly') },
+  { value: 'restricted', label: t('admin.protocols.restricted') },
+])
+function fallbackMode(source: ProtocolID) {
+  const targets = props.fallbacks?.[source]
+  return targets === undefined ? 'auto' : targets.length ? 'restricted' : 'native'
+}
+function setMode(source: ProtocolID, mode: string) {
   const next = { ...props.fallbacks }
-  if (target) next[source] = target as ProtocolID
-  else delete next[source]
+  if (mode === 'auto') delete next[source]
+  else next[source] = mode === 'restricted' ? (profile.value?.fallback_targets[source] ?? []).slice(0, 1) : []
   emit('update:fallbacks', next)
+}
+function remainingTarget(source: ProtocolID) {
+  return profile.value?.fallback_targets[source]?.find(target => !props.fallbacks?.[source]?.includes(target))
+}
+function addTarget(source: ProtocolID) {
+  const target = remainingTarget(source)
+  if (target) emit('update:fallbacks', { ...props.fallbacks, [source]: [...(props.fallbacks?.[source] ?? []), target] })
+}
+function setTarget(source: ProtocolID, index: number, target: ProtocolID) {
+  const targets = [...(props.fallbacks?.[source] ?? [])]
+  const existing = targets.indexOf(target)
+  if (existing >= 0 && existing !== index) targets[existing] = targets[index]
+  targets[index] = target
+  emit('update:fallbacks', { ...props.fallbacks, [source]: targets })
+}
+function removeTarget(source: ProtocolID, index: number) {
+  emit('update:fallbacks', { ...props.fallbacks, [source]: props.fallbacks?.[source]?.filter((_, i) => i !== index) ?? [] })
 }
 </script>

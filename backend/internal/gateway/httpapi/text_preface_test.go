@@ -16,6 +16,7 @@ import (
 	textflow "github.com/TokenFlux/TokenRouter/internal/gateway/text"
 	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
 	"github.com/TokenFlux/TokenRouter/internal/moderation"
+	"github.com/TokenFlux/TokenRouter/internal/protocol"
 	protocolgemini "github.com/TokenFlux/TokenRouter/internal/protocol/gemini"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
@@ -113,7 +114,7 @@ func prefaceContext(body string) (*gin.Context, *httptest.ResponseRecorder) {
 
 func prefaceKey() *apikey.APIKey {
 	id := int64(7)
-	return &apikey.APIKey{ID: 9, GroupID: &id, Group: &routing.Group{ID: id, Platform: "gemini"}}
+	return &apikey.APIKey{ID: 9, GroupID: &id, Group: &routing.Group{ID: id, AllowedProtocols: []protocol.ProtocolID{protocol.ProtocolAnthropicMessages, protocol.ProtocolOpenAIResponses, protocol.ProtocolOpenAIChatCompletions, protocol.ProtocolGeminiGenerateContent}}}
 }
 
 func prefaceConcurrency() *ConcurrencyHelper {

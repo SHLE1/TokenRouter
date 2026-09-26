@@ -216,16 +216,11 @@ func (s *OpsService) GetConcurrencyStats(
 				group[grp.ID] = &GroupConcurrencyInfo{
 					GroupID:   grp.ID,
 					GroupName: grp.Name,
-					Platform:  grp.Platform,
 				}
 			}
 			g := group[grp.ID]
 			if g.GroupName == "" && grp.Name != "" {
 				g.GroupName = grp.Name
-			}
-			if g.Platform != "" && grp.Platform != "" && g.Platform != grp.Platform {
-				// Groups are expected to be platform-scoped. If mismatch is observed, avoid misleading labels.
-				g.Platform = ""
 			}
 			g.MaxCapacity += int64(acc.Concurrency)
 			g.CurrentInUse += currentInUse
@@ -239,16 +234,11 @@ func (s *OpsService) GetConcurrencyStats(
 					group[grp.ID] = &GroupConcurrencyInfo{
 						GroupID:   grp.ID,
 						GroupName: grp.Name,
-						Platform:  grp.Platform,
 					}
 				}
 				g := group[grp.ID]
 				if g.GroupName == "" && grp.Name != "" {
 					g.GroupName = grp.Name
-				}
-				if g.Platform != "" && grp.Platform != "" && g.Platform != grp.Platform {
-					// Groups are expected to be platform-scoped. If mismatch is observed, avoid misleading labels.
-					g.Platform = ""
 				}
 				g.MaxCapacity += int64(acc.Concurrency)
 				g.CurrentInUse += currentInUse

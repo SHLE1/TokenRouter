@@ -363,10 +363,9 @@ func TestCreativeListModelsFiltersAndContent(t *testing.T) {
 	groupRepo.byID[13] = noImage
 	groupRepo.active = append(groupRepo.active, *noImage)
 
-	// 不支持的图片平台（anthropic）不出现。
+	// 没有图片候选账号的分组不出现。
 	unsupported := newCreativeTestGroup()
 	unsupported.ID = 14
-	unsupported.Platform = capability.PlatformAnthropic
 	unsupported.Name = "Claude"
 	groupRepo.byID[14] = unsupported
 	groupRepo.active = append(groupRepo.active, *unsupported)
@@ -404,7 +403,7 @@ func TestCreativeListModelsFallbacks(t *testing.T) {
 	openaiGroup := newCreativeTestGroup()
 	openaiGroup.ID = 21
 	openaiGroup.Name = "ChatGPT Image"
-	openaiGroup.Platform = capability.PlatformOpenAI
+
 	openaiGroup.ModelPricing = nil
 	groupRepo.byID[21] = openaiGroup
 	groupRepo.active = append(groupRepo.active, *openaiGroup)
@@ -438,7 +437,7 @@ func TestCreativeListModelsFallbacks(t *testing.T) {
 	grokGroup := newCreativeTestGroup()
 	grokGroup.ID = 23
 	grokGroup.Name = "Grok Imagine"
-	grokGroup.Platform = capability.PlatformGrok
+
 	grokGroup.ModelPricing = nil
 	groupRepo.byID[23] = grokGroup
 	groupRepo.active = append(groupRepo.active, *grokGroup)
@@ -456,7 +455,7 @@ func TestCreativeListModelsFallbacks(t *testing.T) {
 	pricedGroup := newCreativeTestGroup()
 	pricedGroup.ID = 24
 	pricedGroup.Name = "GPT Image Priced"
-	pricedGroup.Platform = capability.PlatformOpenAI
+
 	price1k := 0.02
 	pricedGroup.ModelPricing = testImageModelPricing(map[string]*float64{"1K": &price1k})
 	groupRepo.byID[24] = pricedGroup
@@ -627,7 +626,6 @@ func TestCreativeFilterImageSizesForModel(t *testing.T) {
 func TestCreativePricingUsesResolvedPricingConfigPrice(t *testing.T) {
 	price := 1.0
 	resolver := newResolverWithPricingConfig(t, []routing.ModelPricingEntry{{
-		Platform:        capability.PlatformOpenAI,
 		Models:          []string{"gpt-image-2"},
 		BillingMode:     routing.BillingModeImage,
 		PerRequestPrice: &price,
@@ -636,7 +634,7 @@ func TestCreativePricingUsesResolvedPricingConfigPrice(t *testing.T) {
 	svc.ImageUnitPrice = creativePriceFixture(nil, resolver)
 	group := newCreativeTestGroup()
 	group.ID = 100
-	group.Platform = capability.PlatformOpenAI
+
 	group.ModelPricing = nil
 
 	require.InDelta(t, 1, svc.CreativePrice(context.Background(), creativeGroupProjection(group), "gpt-image-2", "1K"), 1e-9)
@@ -647,7 +645,6 @@ func TestCreativePricingUsesResolvedPricingConfigPrice(t *testing.T) {
 	price512 := 0.5
 	defaultPrice := 1.25
 	resolver = newResolverWithPricingConfig(t, []routing.ModelPricingEntry{{
-		Platform:        capability.PlatformGemini,
 		Models:          []string{"gemini-3.1-flash-image"},
 		BillingMode:     routing.BillingModeImage,
 		PerRequestPrice: &defaultPrice,
@@ -662,7 +659,6 @@ func TestCreativePricingUsesResolvedPricingConfigPrice(t *testing.T) {
 	geminiGroup.ModelPricing = nil
 	require.InDelta(t, price512, svc.CreativePrice(context.Background(), creativeGroupProjection(geminiGroup), "gemini-3.1-flash-image", "512"), 1e-9)
 	resolver = newResolverWithPricingConfig(t, []routing.ModelPricingEntry{{
-		Platform:        capability.PlatformGemini,
 		Models:          []string{"gemini-3.1-flash-image"},
 		BillingMode:     routing.BillingModeImage,
 		PerRequestPrice: &defaultPrice,

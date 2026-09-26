@@ -4,14 +4,15 @@ package routing
 import (
 	"context"
 	"strings"
+
+	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
 // ModelAvailabilityDiagnosis 描述请求模型是否被分组内任一持久可用账号支持。
 // 持久可用指账号为 active 且启用 schedulable；诊断忽略限流、过载、临时不可调度和
 // 运行时阻断等瞬时状态，供 handler 区分 404 model_not_found 与 503 service_unavailable。
 type ModelAvailabilityDiagnosis struct {
-	// HasAccountsInPool 表示查询平台下至少存在一个持久可用账号；
-	// Anthropic/Gemini 路径还会包含参与混排的 Antigravity 账号。
+	// HasAccountsInPool 表示分组内、满足专用入口平台过滤的持久可用账号存在。
 	HasAccountsInPool bool
 	// HasModelSupport 表示至少有一个账号的模型映射允许请求模型。
 	HasModelSupport bool
@@ -47,43 +48,24 @@ func (s *ModelAvailability) DiagnoseGeneral(
 		// 空模型无法判断 model_not_found，交给调用方回落到 503。
 		return ModelAvailabilityDiagnosis{HasAccountsInPool: true, HasModelSupport: true}
 	}
-	if strings.TrimSpace(platform) == "" {
-		// 没有平台时无法限定查询范围，保守回落到 503 分支。
-		return ModelAvailabilityDiagnosis{HasAccountsInPool: true, HasModelSupport: true}
+	if groupID == nil || *groupID <= 0 {
+		return ModelAvailabilityDiagnosis{}
 	}
-
 	if s.Read == nil {
 		return ModelAvailabilityDiagnosis{HasAccountsInPool: true, HasModelSupport: true}
 	}
-
-	useMixed := platform == PlatformAnthropic || platform == PlatformGemini
-	platforms := []string{platform}
-	if useMixed {
-		platforms = append(platforms, PlatformAntigravity)
-	}
-
-	queryGroupID := groupID
-	includeGrouped := false
-	if useMixed {
-		// 保持通用调度器的池范围：混排时显式分组优先；无分组的 simple 模式扫描全部账号。
-		if groupID == nil && s.Simple {
-			includeGrouped = true
-		}
-	} else if s.Simple {
-		queryGroupID = nil
-		includeGrouped = true
-	}
-
-	accounts, err := s.Read(ctx, queryGroupID, platforms, includeGrouped)
+	accounts, err := s.Read(ctx, groupID, availabilityPlatforms(platform), false)
 	if err != nil {
-		// 查询失败时保守返回 503 分支，避免因为临时查询错误误判为 404。
 		return ModelAvailabilityDiagnosis{HasAccountsInPool: true, HasModelSupport: true}
 	}
 
 	diag := ModelAvailabilityDiagnosis{}
-	routingModel := s.MapModel(ctx, groupID, requestedModel)
+	routingModel := requestedModel
+	if s.MapModel != nil {
+		routingModel = s.MapModel(ctx, groupID, requestedModel)
+	}
 	for i := range accounts {
-		if useMixed && accounts[i].Platform == PlatformAntigravity && !accounts[i].MixedScheduling {
+		if platform != "" && accounts[i].Platform != strings.TrimSpace(platform) {
 			continue
 		}
 		diag.HasAccountsInPool = true
@@ -96,7 +78,7 @@ func (s *ModelAvailability) DiagnoseGeneral(
 }
 
 // DiagnoseCompatible 判断请求模型是否被分组内指定 OpenAI 兼容平台账号配置支持。
-// platform 用于限定候选池，避免 OpenAI 与 Grok 等兼容平台互相污染诊断结果。
+// platform 非空时附加强制平台过滤；为空时检查同组全部平台的静态能力。
 // 诊断使用持久配置查询，绕过调度快照并忽略瞬时运行状态。
 //
 // 该方法用于错误路径：内部失败、空模型或 nil service 时返回 {true,true}，
@@ -114,7 +96,13 @@ func (s *ModelAvailability) DiagnoseCompatible(
 	if requestedModel == "" {
 		return ModelAvailabilityDiagnosis{HasAccountsInPool: true, HasModelSupport: true}
 	}
-	routingModel := s.MapModel(ctx, groupID, requestedModel)
+	if groupID == nil || *groupID <= 0 {
+		return ModelAvailabilityDiagnosis{}
+	}
+	routingModel := requestedModel
+	if s.MapModel != nil {
+		routingModel = s.MapModel(ctx, groupID, requestedModel)
+	}
 	return s.DiagnoseCompatibleRouting(ctx, groupID, routingModel, platform)
 }
 
@@ -133,23 +121,14 @@ func (s *ModelAvailability) DiagnoseCompatibleRouting(
 	if routingModel == "" {
 		return ModelAvailabilityDiagnosis{HasAccountsInPool: true, HasModelSupport: true}
 	}
+	if groupID == nil || *groupID <= 0 {
+		return ModelAvailabilityDiagnosis{}
+	}
 	if s.Read == nil {
 		return ModelAvailabilityDiagnosis{HasAccountsInPool: true, HasModelSupport: true}
 	}
 
-	platform = NormalizeOpenAICompatiblePlatform(platform)
-	queryGroupID := groupID
-	includeGrouped := false
-	if s.Simple {
-		queryGroupID = nil
-		includeGrouped = true
-	}
-	accounts, err := s.Read(
-		ctx,
-		queryGroupID,
-		[]string{platform},
-		includeGrouped,
-	)
+	accounts, err := s.Read(ctx, groupID, availabilityPlatforms(platform), false)
 	if err != nil {
 		// 查询失败时保守返回 503 分支，避免临时查询错误误判为 404 model_not_found。
 		return ModelAvailabilityDiagnosis{HasAccountsInPool: true, HasModelSupport: true}
@@ -157,9 +136,11 @@ func (s *ModelAvailability) DiagnoseCompatibleRouting(
 
 	diag := ModelAvailabilityDiagnosis{}
 	for i := range accounts {
+		if platform != "" && accounts[i].Platform != strings.TrimSpace(platform) {
+			continue
+		}
 		diag.HasAccountsInPool = true
-		// 与账号选择时的候选过滤保持一致：空 model_mapping 表示允许全部模型；
-		// 否则必须命中显式映射或通配符映射。
+		// 与账号选择共用默认目录、显式模型范围和协议资格。
 		if accounts[i].Supports(ctx, routingModel) {
 			diag.HasModelSupport = true
 			return diag
@@ -170,9 +151,8 @@ func (s *ModelAvailability) DiagnoseCompatibleRouting(
 
 // AvailabilityAccount 只暴露持久资格投影和模型判断端口，不持有可任意读取的凭据。
 type AvailabilityAccount struct {
-	Platform        string
-	MixedScheduling bool
-	Supports        func(context.Context, string) bool
+	Platform string
+	Supports func(context.Context, string) bool
 }
 type AvailabilityReader func(context.Context, *int64, []string, bool) ([]AvailabilityAccount, error)
 
@@ -188,4 +168,12 @@ type ModelAvailabilityDiagnoserFunc func(context.Context, *int64, string, string
 
 func (f ModelAvailabilityDiagnoserFunc) DiagnoseModelAvailabilityForPlatform(ctx context.Context, group *int64, model, platform string) ModelAvailabilityDiagnosis {
 	return f(ctx, group, model, platform)
+}
+
+// availabilityPlatforms 与调度使用同一账号平台目录，simple 模式也不扩大组成员范围。
+func availabilityPlatforms(platform string) []string {
+	if platform = strings.TrimSpace(platform); platform != "" {
+		return []string{platform}
+	}
+	return capability.AccountPlatforms()
 }

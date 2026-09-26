@@ -19,24 +19,65 @@ import (
 // 逐入口执行真实路由；禁用时不进入缺少上游依赖的 handler，所有别名共用同一准入。
 func TestProtocolAllPublicRoutesDeniedBeforeUpstream(t *testing.T) {
 	paths := []struct{ platform, method, path string }{
-		{"openai", "POST", "/v1/messages"}, {"openai", "POST", "/v1/responses"}, {"openai", "POST", "/responses"}, {"openai", "POST", "/backend-api/codex/responses"},
-		{"openai", "POST", "/v1/chat/completions"}, {"openai", "POST", "/chat/completions"}, {"gemini", "POST", "/v1beta/models/gemini:generateContent"}, {"gemini", "POST", "/v1beta/models/gemini:streamGenerateContent"},
-		{"openai", "POST", "/v1/embeddings"}, {"openai", "POST", "/embeddings"}, {"openai", "POST", "/v1/images/generations"}, {"openai", "POST", "/images/generations"}, {"openai", "POST", "/v1/images/edits"}, {"openai", "POST", "/images/edits"},
-		{"gemini", "POST", "/v1/images/batches"}, {"grok", "POST", "/v1/videos"}, {"grok", "POST", "/videos"}, {"grok", "POST", "/v1/videos/generations"}, {"grok", "POST", "/videos/generations"}, {"grok", "POST", "/v1/videos/edits"}, {"grok", "POST", "/videos/edits"}, {"grok", "POST", "/v1/videos/extensions"}, {"grok", "POST", "/videos/extensions"},
-		{"grok", "POST", "/v1/tts"}, {"grok", "POST", "/tts"}, {"grok", "POST", "/v1/stt"}, {"grok", "POST", "/stt"}, {"grok", "POST", "/v1/custom-voices"}, {"grok", "POST", "/custom-voices"}, {"grok", "GET", "/v1/realtime"}, {"grok", "GET", "/realtime"},
-		{"openai", "GET", "/v1/responses"}, {"openai", "GET", "/responses"}, {"openai", "GET", "/backend-api/codex/responses"}, {"openai", "POST", "/v1/live"}, {"openai", "POST", "/backend-api/codex/realtime/calls"},
-		{"openai", "POST", "/v1/responses/compact"}, {"openai", "POST", "/responses/compact"}, {"openai", "POST", "/backend-api/codex/responses/compact"}, {"openai", "POST", "/v1/alpha/search"}, {"openai", "POST", "/alpha/search"}, {"openai", "POST", "/backend-api/codex/alpha/search"},
-		{"grok", "POST", "/v1/web_search"}, {"grok", "POST", "/web_search"}, {"grok", "POST", "/v1/x_search"}, {"grok", "POST", "/x_search"},
-		{"openai", "POST", "/v1/messages/count_tokens"}, {"openai", "POST", "/messages/count_tokens"}, {"openai", "POST", "/v1/responses/input_tokens"}, {"gemini", "POST", "/v1beta/models/gemini:countTokens"},
+		{"openai", "POST", "/v1/messages"},
+		{"openai", "POST", "/v1/responses"},
+		{"openai", "POST", "/responses"},
+		{"openai", "POST", "/backend-api/codex/responses"},
+		{"openai", "POST", "/v1/chat/completions"},
+		{"openai", "POST", "/chat/completions"},
+		{"gemini", "POST", "/v1beta/models/gemini:generateContent"},
+		{"gemini", "POST", "/v1beta/models/gemini:streamGenerateContent"},
+		{"openai", "POST", "/v1/embeddings"},
+		{"openai", "POST", "/embeddings"},
+		{"openai", "POST", "/v1/images/generations"},
+		{"openai", "POST", "/images/generations"},
+		{"openai", "POST", "/v1/images/edits"},
+		{"openai", "POST", "/images/edits"},
+		{"gemini", "POST", "/v1/images/batches"},
+		{"grok", "POST", "/v1/videos"},
+		{"grok", "POST", "/videos"},
+		{"grok", "POST", "/v1/videos/generations"},
+		{"grok", "POST", "/videos/generations"},
+		{"grok", "POST", "/v1/videos/edits"},
+		{"grok", "POST", "/videos/edits"},
+		{"grok", "POST", "/v1/videos/extensions"},
+		{"grok", "POST", "/videos/extensions"},
+		{"grok", "POST", "/v1/tts"},
+		{"grok", "POST", "/tts"},
+		{"grok", "POST", "/v1/stt"},
+		{"grok", "POST", "/stt"},
+		{"grok", "POST", "/v1/custom-voices"},
+		{"grok", "POST", "/custom-voices"},
+		{"grok", "GET", "/v1/realtime"},
+		{"grok", "GET", "/realtime"},
+		{"openai", "GET", "/v1/responses"},
+		{"openai", "GET", "/responses"},
+		{"openai", "GET", "/backend-api/codex/responses"},
+		{"openai", "POST", "/v1/live"},
+		{"openai", "POST", "/backend-api/codex/realtime/calls"},
+		{"openai", "POST", "/v1/responses/compact"},
+		{"openai", "POST", "/responses/compact"},
+		{"openai", "POST", "/backend-api/codex/responses/compact"},
+		{"openai", "POST", "/v1/alpha/search"},
+		{"openai", "POST", "/alpha/search"},
+		{"openai", "POST", "/backend-api/codex/alpha/search"},
+		{"grok", "POST", "/v1/web_search"},
+		{"grok", "POST", "/web_search"},
+		{"grok", "POST", "/v1/x_search"},
+		{"grok", "POST", "/x_search"},
+		{"openai", "POST", "/v1/messages/count_tokens"},
+		{"openai", "POST", "/messages/count_tokens"},
+		{"openai", "POST", "/v1/responses/input_tokens"},
+		{"gemini", "POST", "/v1beta/models/gemini:countTokens"},
 	}
 	for _, tc := range paths {
 		t.Run(tc.method+tc.path, func(t *testing.T) {
-			router := newGatewayRoutesTestRouterWithGroup(&config.Config{}, &routing.Group{ID: 1, Platform: tc.platform, AllowedProtocols: []protocol.ProtocolID{}})
+			router := newGatewayRoutesTestRouterWithGroup(&config.Config{}, &routing.Group{ID: 1, AllowedProtocols: []protocol.ProtocolID{}})
 			if strings.HasPrefix(tc.path, "/v1beta/") {
 				// Gemini 鉴权使用单独中间件；此处在鉴权后注入分组，独立验证动作分派。
 				router = gin.New()
 				router.Use(func(c *gin.Context) {
-					c.Set(string(keyhttp.ContextKeyAPIKey), &apikey.APIKey{Group: &routing.Group{Platform: "gemini", AllowedProtocols: []protocol.ProtocolID{}}})
+					c.Set(string(keyhttp.ContextKeyAPIKey), &apikey.APIKey{Group: &routing.Group{AllowedProtocols: []protocol.ProtocolID{}}})
 				})
 				router.POST("/v1beta/models/*modelAction", requireGeminiGenerateContentProtocol, func(c *gin.Context) { t.Fatal("disabled protocol reached handler") })
 			}

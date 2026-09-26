@@ -1,6 +1,9 @@
 package httpapi
 
 import (
+	"log/slog"
+	"reflect"
+
 	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/identity"
@@ -10,9 +13,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/site"
 
 	billinghttp "github.com/TokenFlux/TokenRouter/internal/billing/httpapi"
-
-	"log/slog"
-	"reflect"
 
 	"github.com/gin-gonic/gin"
 )
@@ -510,9 +510,6 @@ func DiffSettings(before *composite.Snapshot, after *composite.Snapshot, beforeA
 	if before.MaxClaudeCodeVersion != after.MaxClaudeCodeVersion {
 		changed = append(changed, "max_claude_code_version")
 	}
-	if before.AllowUngroupedKeyScheduling != after.AllowUngroupedKeyScheduling {
-		changed = append(changed, "allow_ungrouped_key_scheduling")
-	}
 	if before.BackendModeEnabled != after.BackendModeEnabled {
 		changed = append(changed, "backend_mode_enabled")
 	}
@@ -691,9 +688,6 @@ func DiffSettings(before *composite.Snapshot, after *composite.Snapshot, beforeA
 		changed = append(changed, "account_quota_notify_emails")
 	}
 	// 默认平台限额（JSON map，整体比较）
-	if !EqualPlatformQuotaSettings(before.DefaultPlatformQuotas, after.DefaultPlatformQuotas) {
-		changed = append(changed, billing.SettingKeyDefaultPlatformQuotas)
-	}
 	if !equalAccountSchedulingThresholds(before.AccountSchedulingThresholds, after.AccountSchedulingThresholds) {
 		changed = append(changed, account.SettingKeyAccountSchedulingThresholds)
 	}
@@ -739,10 +733,6 @@ func AppendAuthSourceDefaultChanges(changed []string, before *identity.AuthSourc
 		}
 		if field.before.GrantOnFirstBind != field.after.GrantOnFirstBind {
 			changed = append(changed, "auth_source_default_"+field.name+"_grant_on_first_bind")
-		}
-		// Platform quotas diff：整体替换语义，发单个 JSON key。
-		if !EqualPlatformQuotaSettings(field.before.PlatformQuotas, field.after.PlatformQuotas) {
-			changed = append(changed, identity.SettingKeyAuthSourcePlatformQuotas(field.name))
 		}
 	}
 	if before.ForceEmailOnThirdPartySignup != after.ForceEmailOnThirdPartySignup {
@@ -807,17 +797,6 @@ func defaultSubscriptionsValueOrDefault(input *[]billinghttp.DefaultSubscription
 	return result
 }
 
-// platformQuotasValueOrDefault 处理 auth-source platform quota 的 nil 语义：
-// nil = 请求未包含该字段（保留 fallback），non-nil（含 empty map）= 整体覆盖。
-// 注意：JSON null 与字段省略等价——两者均反序列化为 nil map，因此都保留旧值；
-// 若要清空某 source 的所有 quota 配置，须显式发空对象 {}。
-func platformQuotasValueOrDefault(value, fallback map[string]*billing.DefaultPlatformQuotaSetting) map[string]*billing.DefaultPlatformQuotaSetting {
-	if value == nil {
-		return fallback
-	}
-	return value
-}
-
 func equalStringSlice(a, b []string) bool {
 	if len(a) != len(b) {
 		return false
@@ -878,34 +857,6 @@ func equalNotifyEmailEntries(a, b []contact.Entry) bool {
 	return true
 }
 
-// EqualNullableFloat compares two *float64 values treating nil as a distinct case.
-func EqualNullableFloat(a, b *float64) bool {
-	if a == nil && b == nil {
-		return true
-	}
-	if a == nil || b == nil {
-		return false
-	}
-	return *a == *b
-}
-
-// slotOf returns the *float64 for the given window from a DefaultPlatformQuotaSetting.
-func slotOf(s *billing.DefaultPlatformQuotaSetting, win string) *float64 {
-	if s == nil {
-		return nil
-	}
-	switch win {
-	case "daily":
-		return s.DailyLimitUSD
-	case "weekly":
-		return s.WeeklyLimitUSD
-	case "monthly":
-		return s.MonthlyLimitUSD
-	}
-	return nil
-}
-
-// EqualPlatformQuotaSettings reports whether two platform-quota maps are identical across all allowed slots.
 func equalAccountSchedulingThresholds(before, after map[string]int) bool {
 	for _, platform := range account.AllowedSchedulingThresholdPlatforms {
 		beforeValue := 100
@@ -921,23 +872,6 @@ func equalAccountSchedulingThresholds(before, after map[string]int) bool {
 			}
 		}
 		if beforeValue != afterValue {
-			return false
-		}
-	}
-	return true
-}
-
-func EqualPlatformQuotaSettings(before, after map[string]*billing.DefaultPlatformQuotaSetting) bool {
-	for _, platform := range billing.AllowedQuotaPlatforms {
-		b := before[platform]
-		a := after[platform]
-		if !EqualNullableFloat(slotOf(b, "daily"), slotOf(a, "daily")) {
-			return false
-		}
-		if !EqualNullableFloat(slotOf(b, "weekly"), slotOf(a, "weekly")) {
-			return false
-		}
-		if !EqualNullableFloat(slotOf(b, "monthly"), slotOf(a, "monthly")) {
 			return false
 		}
 	}

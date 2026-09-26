@@ -12,8 +12,6 @@ import (
 	identitypostgres "github.com/TokenFlux/TokenRouter/internal/identity/postgres"
 	routing "github.com/TokenFlux/TokenRouter/internal/routing"
 
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
-
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 
 	dbent "github.com/TokenFlux/TokenRouter/ent"
@@ -204,12 +202,10 @@ func (s *UserSubscriptionRepoSuite) TestListActiveByUserID_OnlyReturnsEffectiveS
 func (s *UserSubscriptionRepoSuite) TestFilterByGroup_KeepsGlobalAndMatchingPlans() {
 	user := s.mustCreateUser("group-filter@test.com", identity.RoleUser)
 	groupA := mustCreateGroup(s.T(), s.client, &routing.Group{
-		Name:     "subscription-filter-a",
-		Platform: capability.PlatformAnthropic,
+		Name: "subscription-filter-a",
 	})
 	groupB := mustCreateGroup(s.T(), s.client, &routing.Group{
-		Name:     "subscription-filter-b",
-		Platform: capability.PlatformAnthropic,
+		Name: "subscription-filter-b",
 	})
 	globalPlan := s.mustCreatePlan("plan-global", 30)
 	planA := s.mustCreatePlan("plan-group-a", 30)

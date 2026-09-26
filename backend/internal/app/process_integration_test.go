@@ -38,6 +38,7 @@ func (o *processOutput) Write(p []byte) (int, error) {
 	defer o.mu.Unlock()
 	return o.buffer.Write(p)
 }
+
 func (o *processOutput) text() string {
 	o.mu.Lock()
 	defer o.mu.Unlock()
@@ -173,7 +174,7 @@ func TestS02ProcessModes(t *testing.T) {
 		t.Helper()
 		dir := t.TempDir()
 		priceFile := filepath.Join(dir, "prices.json")
-		require.NoError(t, os.WriteFile(priceFile, []byte(`{"s02-model":{"input_cost_per_token":0.000001}}`), 0600))
+		require.NoError(t, os.WriteFile(priceFile, []byte(`{"s02-model":{"input_cost_per_token":0.000001}}`), 0o600))
 		cfg := map[string]any{
 			"run_mode": mode, "timezone": "UTC",
 			"server":   map[string]any{"host": "127.0.0.1", "port": port, "mode": "release"},
@@ -184,7 +185,7 @@ func TestS02ProcessModes(t *testing.T) {
 		}
 		data, err := yaml.Marshal(cfg)
 		require.NoError(t, err)
-		require.NoError(t, os.WriteFile(filepath.Join(dir, "config.yaml"), data, 0600))
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "config.yaml"), data, 0o600))
 		return dir, []string{"PGAPPNAME=s02-" + mode}
 	}
 	for _, mode := range []string{"standard", "simple"} {
@@ -215,7 +216,7 @@ func TestS02ProcessModes(t *testing.T) {
 				require.Less(t, strings.Index(logs, "stopped "+name), strings.Index(logs, "stopped Redis"), name)
 			}
 			// 资金运行组件各启动一次，所有资金队列完成后才关闭 Redis。
-			for _, name := range []string{"BillingCacheService", "UserPlatformQuotaUsageFlusher", "SubscriptionExpiryService"} {
+			for _, name := range []string{"BillingCacheService", "SubscriptionExpiryService"} {
 				require.Equal(t, 1, strings.Count(logs, "[Lifecycle] started "+name))
 				require.Equal(t, 1, strings.Count(logs, "[Lifecycle] stopped "+name))
 				require.Less(t, strings.Index(logs, "stopped "+name), strings.Index(logs, "stopped Redis"))
@@ -228,7 +229,6 @@ func TestS02ProcessModes(t *testing.T) {
 			}
 			require.Less(t, strings.Index(logs, "stopped HTTPRequests"), strings.Index(logs, "stopped APIKeyService"))
 			require.Less(t, strings.Index(logs, "stopped AuthCacheInvalidationWorker"), strings.Index(logs, "stopped APIKeyService"))
-			require.Less(t, strings.Index(logs, "stopped BillingCacheService"), strings.Index(logs, "stopped UserPlatformQuotaUsageFlusher"))
 			require.Less(t, strings.Index(logs, "stopped TimingWheelService"), strings.Index(logs, "stopped Redis"))
 			require.Less(t, strings.Index(logs, "stopped Redis"), strings.Index(logs, "stopped Ent"))
 			// 周期维护只启动一次；生产者停止后才结束共享刷新、查询与技术依赖。
@@ -452,9 +452,22 @@ func TestS02ProcessModes(t *testing.T) {
 		p := startTestProcess(t, binary, dir, nil, "-setup")
 		// 按提示逐行输入，使普通 stdin 的密码读取不受其它 reader 预读影响。
 		for _, step := range [][2]string{
-			{"PostgreSQL Host", fixture.host}, {"PostgreSQL Port", strconv.Itoa(fixture.port)}, {"PostgreSQL User", "postgres"}, {"PostgreSQL Password", "postgres"}, {"Database Name", "s02_cli"}, {"SSL Mode", "disable"},
-			{"Redis Host", redisHost}, {"Redis Port", strconv.Itoa(redisPort.Int())}, {"Redis Password", ""}, {"Redis DB", "0"}, {"Enable Redis TLS?", "n"},
-			{"Admin Email", "s02-cli@example.test"}, {"Admin Password", "s02-test-password"}, {"Confirm Password", "s02-test-password"}, {"Server Port", strconv.Itoa(freeServerPort(t))}, {"Proceed with installation?", "y"},
+			{"PostgreSQL Host", fixture.host},
+			{"PostgreSQL Port", strconv.Itoa(fixture.port)},
+			{"PostgreSQL User", "postgres"},
+			{"PostgreSQL Password", "postgres"},
+			{"Database Name", "s02_cli"},
+			{"SSL Mode", "disable"},
+			{"Redis Host", redisHost},
+			{"Redis Port", strconv.Itoa(redisPort.Int())},
+			{"Redis Password", ""},
+			{"Redis DB", "0"},
+			{"Enable Redis TLS?", "n"},
+			{"Admin Email", "s02-cli@example.test"},
+			{"Admin Password", "s02-test-password"},
+			{"Confirm Password", "s02-test-password"},
+			{"Server Port", strconv.Itoa(freeServerPort(t))},
+			{"Proceed with installation?", "y"},
 		} {
 			p.prompt(t, step[0], step[1])
 		}
@@ -462,7 +475,7 @@ func TestS02ProcessModes(t *testing.T) {
 		require.Contains(t, p.output.text(), "Installation Complete!")
 		info, err := os.Stat(filepath.Join(dir, "config.yaml"))
 		require.NoError(t, err)
-		require.Equal(t, os.FileMode(0600), info.Mode().Perm())
+		require.Equal(t, os.FileMode(0o600), info.Mode().Perm())
 		_, err = os.Stat(filepath.Join(dir, ".installed"))
 		require.NoError(t, err)
 		require.NotContains(t, p.output.text(), "[Lifecycle] started")

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/TokenFlux/TokenRouter/internal/gateway/admission"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
 	gatewaycapture "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
@@ -208,13 +207,13 @@ func (b *geminiMessageAttemptBridge) Complete(state textflow.AttemptState) {
 	// 使用量记录通过有界 worker 池提交，避免请求热路径创建无界 goroutine。
 	// ForceCacheBilling 提前拍成标量，避免 worker 闭包保活 failover 状态里的响应体。
 	forceCacheBilling := state.ForceCacheBilling
-	quotaPlatform := admission.QuotaPlatform(b.c.Request.Context(), b.apiKey)
+
 	clientSessionID := gatewayhttp.ExtractClientSessionID(b.c)
 	gatewayhttp.StampForwardRequestedReasoningEffort(b.result, b.c)
 	// 入队前固化资金与报文投影，worker 不再读取请求中的实体。
 	completionInput := gatewaycapture.CaptureMessages(gatewayhttp.CompletionContext(b.c), &gatewaycapture.MessagesCapture{
-		Result:             b.result,
-		QuotaPlatform:      quotaPlatform,
+		Result: b.result,
+
 		APIKey:             b.apiKey,
 		User:               b.apiKey.User,
 		Account:            gatewaycapture.ExecutionCompletionRecord(b.account),

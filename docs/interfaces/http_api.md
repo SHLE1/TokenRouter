@@ -13,6 +13,7 @@
 - [备份与维护接口](#备份与维护接口)：修改备份和系统操作时读取。
 - [API Key 结算策略接口](#api-key-结算策略接口)：配置资金来源、查询订阅和收窄分组。
 - [分组客户端协议](#分组客户端协议)：理解上游平台与客户端准入的独立契约。
+- [价格管理与分组策略](#价格管理与分组策略)：修改无平台价卡、模型规则和管理字段边界时读取。
 - [认证方式](#认证方式)：区分 JWT、管理密钥、API Key 和签名票据。
 - [外部支付管理集成](#外部支付管理集成)：服务间充值和嵌入页对接边界。
 - [API Key 上游用量查询](#api-key-上游用量查询)：修改管理员手动用量查询时读取。
@@ -62,7 +63,7 @@ RequestLogger
 
 账号管理展示值与脱敏映射位于 `account/httpapi/dto`，代理展示值位于 `egress/httpapi/dto`；DTO 由实际 HTTP 模块提供。敏感字段、省略/空集合及代理管理员字段边界保持原契约，非敏感的嵌套 map、slice 和时间指针使用独立副本，不能通过修改展示结果污染账号配置。账号备份、即时/计划测试和 API Key 上游用量查询已直接使用 account/httpapi；账号 CRUD、列表、复制/恢复、批量管理、凭据字段更新、刷新/重授权、隐私、调度开关、额度重置及健康恢复已直接绑定 `account/httpapi.ManagementHandler`；模型目录、实时模型同步、tier 和详细统计也使用新入口；高级调度诊断直接绑定 `scheduler/httpapi.DiagnosticsHandler`。综合设置由 `settings/httpapi` 直接组合各领域端点；SMTP、预聚合和创作状态分别调用其原生处理器。备份导出继续要求原 step-up，导入继续使用同一管理员幂等 helper。
 
-订阅、兑换、平台额度和套餐的用户/管理员 handler 与 DTO 位于 `billing/httpapi`，原路由汇总直接绑定这些实例。URL、认证/幂等中间件顺序、reason、CSV 和分页排序保持原契约；额度 HTTP 不直接读取仓储，用户存在性由用例的只读端口处理。管理员套餐保留原 Ent 的字段省略及 `edges` 形状，公开套餐使用独立投影。
+订阅、兑换和套餐的用户/管理员 handler 与 DTO 位于 `billing/httpapi`，原路由汇总直接绑定这些实例。URL、认证/幂等中间件顺序、reason、CSV 和分页排序保持原契约；管理员套餐保留原 Ent 的字段省略及 `edges` 形状，公开套餐使用独立投影。
 
 用户资料、会话、七类身份、强认证与用户管理 HTTP 位于 `identity/httpapi`，团队位于 `team/httpapi`，Key 生命周期和凭据入口位于 `apikey/httpapi`。app 组合同一组身份处理器供原路由调用；微信支付 OAuth 在 payment/httpapi 单独接入原路径。HTTP 适配保留历史 DTO 形状与凭据差异，安全 `Principal` 和 Key 的 `AccessSnapshot` 分别表达身份与付款/成员上下文。
 
@@ -146,11 +147,15 @@ POST /api/v1/creative/runs/{id}/outputs/{index}/ack
 
 管理员设置接口 `GET|PUT /api/v1/admin/settings` 的 `creative_model_settings` 字段用于维护创作台全局生图模型白名单，结构为 `[{"group_id":123,"model":"gpt-image-2","operations":["generate","edit","inpaint"]}]`。省略字段保留现值，显式空数组清空；服务端校验能力值和 `(group_id, model)` 唯一性，并在审计中只记录字段是否发生变化。
 
-保存时按实际分组平台规范化：Gemini 移除 `inpaint`，移除后无能力的条目删除；无法解析的平台暂时保留，但运行时仍不放行。`creative_worker_count` 同属该接口，要求为大于 0 的整数，默认 128，保存后热更新当前实例的创作台 worker 池。`GET /api/v1/admin/settings/creative-model-candidates` 返回当前 active、启用图片生成且存在可调度图片模型的 `{group_id, group_name, platform, model, operations}` 候选，不按管理员用户权限过滤；OpenAI 返回三项能力，Gemini/Grok 返回 `generate`/`edit`。
+保存和执行时按该模型的候选账号及实际 provider 规范化操作。OpenAI 支持 `generate`/`edit`/`inpaint`，Gemini/Grok 支持 `generate`/`edit`；一个分组内不同模型可以对应不同 provider。无法解析可执行能力的配置不会因此获得调用资格。`creative_worker_count` 同属该接口，要求为大于 0 的整数，默认 128，保存后热更新当前实例的创作台 worker 池。`GET /api/v1/admin/settings/creative-model-candidates` 返回当前 active、启用图片生成且存在可调度图片模型的 `{group_id, group_name, platform, model, operations}` 候选，不按管理员用户权限过滤。候选中的 `platform` 是该模型实际 provider，不是分组属性；提交任务前固化账号、provider、参数与价格快照，既有任务继续按这些绑定执行。
 
 `GET /api/v1/admin/settings/creative-worker-status` 返回创作台任务 worker 池快照 `{running, worker_count, busy_workers}`：运行中 `worker_count` 为当前活动 worker 数、`busy_workers` 为正在处理任务的 worker 数，管理端设置页据此轮询展示当前使用情况；未运行时返回 `running=false` 的零值快照，由前端回退到 `creative_worker_count` 配置值。
 
 ## 账号管理接口
+
+账号创建、编辑、批量创建/更新及支持选组的导入入口使用明确的 `group_ids`，可关联不同平台账号所在的分组。通用备份格式不携带分组关系，导入后的账号保持未分组；其他创建入口未指定分组时也不自动绑定默认组。Spark 影子未指定分组时可以继承母账号已有的明确关联，母账号无分组则保持未分组。OAuth-only、隐私和实际协议能力继续限制使用资格。
+
+`POST /api/v1/admin/accounts/check-mixed-channel` 已移除并返回 404。账号写入、备份/Codex 导入和创建账号的 OAuth/PAT/SSO 入口对 `confirm_mixed_channel_risk`、`skip_default_group_bind` 等未知结构字段返回 400，不保留确认旁路。局部严格 JSON 绑定仍保留 `credentials`/`extra` 这类动态 map，由领域负责校验其内容；不修改其他接口的全局 Gin 行为。
 
 账号批量删除使用 `POST /api/v1/admin/accounts/batch-delete`，请求体为 `account_ids`。服务端先去除非正数和重复 ID，再以最多 5 路并发执行删除；同批选择父账号及其影子账号时只删除根账号一次，并将级联影响映射回逐账号结果。响应返回稳定排序的 `success_ids`、`failed_ids` 和错误明细，单项失败不会取消其它账号。管理端“全选筛选结果”先以同一筛选快照分页读取轻量 ID，任何分页缺失或重复都保留原选择，不得提交部分集合。
 
@@ -162,11 +167,11 @@ POST /api/v1/creative/runs/{id}/outputs/{index}/ack
 
 账号高级调度评分诊断仅限管理员：`GET /api/v1/admin/accounts/:id/advanced-scheduler-score` 返回该账号所属高级分组摘要；携带 `group_id` 时返回指定高级分组的完整候选池、硬过滤、有效配置、指标原值/归一化值/贡献、Top-K 权重与实际活动池概率及平台策略提示。订阅优先启用且存在合格订阅账号时，普通账号标记为延后且不进入本轮概率；开启粘性加权时 previous-response 和 session 只影响 Top-K 权重，关闭时有效硬粘性账号按实际强制选择显示概率 1。
 
-`POST /api/v1/admin/accounts/:id/advanced-scheduler-score/preview` 接受 `group_id`、可选 `requested_model`、`sticky_account_id` 和 `previous_response_account_id`，用于无状态的评分模拟；previous-response 只对 OpenAI 分组有效，其它平台返回 `ignored`。请求体严格拒绝其它字段，尤其不得传入 session hash、响应正文或凭据。
+`POST /api/v1/admin/accounts/:id/advanced-scheduler-score/preview` 接受 `group_id`、可选 `requested_model`、`sticky_account_id` 和 `previous_response_account_id`，用于无状态的评分模拟；previous-response 按候选账号和协议的实际支持能力应用，不支持该能力的账号返回 `ignored`。分组摘要没有平台字段；未关联目标分组的账号使用 `group_mismatch` 原因。请求体严格拒绝其它字段，尤其不得传入 session hash、响应正文或凭据。
 
 两个接口不分配并发槽、不写粘性，并且响应不包含凭据、代理认证、session hash 或上游响应内容。诊断复用请求信息足以判断的生产硬过滤；endpoint、transport、compact、media 等缺少请求上下文的能力以 `not_evaluated` 明示，不伪装成已通过。
 
-路由前缀不独自决定协议处理器。例如 `/v1/messages` 会根据分组平台分派到 Anthropic、OpenAI/Grok 或 Qoder handler；路由层拥有分派，HTTP 适配和业务用例 不能通过字符串猜测调用方已经具备某个平台能力。
+路由前缀只声明客户端协议。`/v1/messages` 等通用入口先在当前分组中选择满足模型、协议和其他策略的账号，再按该账号平台调用单次执行器。模型族或分组展示品牌不能决定供应商；`/antigravity/*` 另有强制账号平台条件。
 
 CRS 同步和预览路由绑定 `account/httpapi.CRSHandler`；保留 `/api/v1/admin/accounts/sync/crs` 与 `/preview`、管理员中间件及原错误 envelope。默认同步代理，显式 false 关闭；已存在账号更新不受“只创建选中项”的空集合语义影响。Codex session 的 `/api/v1/admin/accounts/import/codex-session` 同样直接绑定 `account/httpapi.CodexImportHandler`，保留原请求校验、逐项结果和幂等 scope。
 
@@ -180,17 +185,23 @@ Ollama Cloud 的设置、状态、会话、自动刷新和主动刷新路由直�
 
 ## API Key 结算策略接口
 
+普通 Key 必须明确绑定一个可用分组。历史未绑定 Key 的字符串保留，调用前需完成绑定；standard 和 simple 模式都没有无分组调度入口。`fallback_when_group_unavailable` 只允许使用管理员显式配置的回退组，目标组重新接受权限、模型、协议、团队及订阅范围检查。
+
+创建/更新请求对旧 `fallback_to_default_group_when_unavailable` 字段返回 400，包括显式 false 或 null。配置页面与生成的客户端配置使用新字段，不根据账号平台选择默认组。
+
+用户平台额度管理接口已移除：`GET /api/v1/user/platform-quotas`、`GET|PUT /api/v1/admin/users/:id/platform-quotas` 与 `POST /api/v1/admin/users/:id/platform-quotas/reset` 均返回 404。综合设置拒绝 `default_platform_quotas`、`auth_source_default_*_platform_quotas` 和 `allow_ungrouped_key_scheduling`，响应为 400 / `REMOVED_SETTING_FIELD`。账号上游额度、余额、订阅、团队和 Key 限额继续使用各自接口。
+
 `POST /api/v1/keys` 和 `PUT /api/v1/keys/{id}` 接受 `billing_mode`（`auto`、`subscription`、`balance`）及可空 `preferred_subscription_id`。省略模式或使用 `auto` 保持旧的订阅优先、余额兜底行为；`balance` 会清除指定订阅；`subscription` 必须指定当前付款主体的一份有效订阅。个人 Key 的付款主体是本人，团队 Key 的付款主体是 Team Owner。
 
 创建和更新 API Key 时，`quota`、`rate_limit_5h`、`rate_limit_1d`、`rate_limit_7d` 必须是有限、非负且小于 `1e12` 的 USD 数值，以匹配数据库 `DECIMAL(20,8)`；`0` 仍表示不限额。创建请求省略 `expires_in_days` 表示永不过期，显式提供时必须大于 0；更新请求用空 `expires_at` 清除到期时间，用合法 RFC3339 时间设置明确到期点。handler 的早期校验与 service 的最终校验必须使用同一规则，内部调用不能绕过。
 
-`GET /api/v1/keys/billing-options?scope=personal|team` 返回当前作用域可指定的有效订阅摘要，包括 `id`、`plan_id`、`plan_name`、`expires_at`、`groups_restricted` 和 `applicable_groups`。`GET /api/v1/groups/available?scope=personal|team&subscription_id={id}` 在带 `subscription_id` 时返回付款主体原有分组权限与该订阅套餐分组的交集；不带该参数时保持历史的可用分组结果。两个接口都不把成员自己的订阅泄露到团队作用域。
+`GET /api/v1/keys/billing-options?scope=personal|team` 返回当前作用域可指定的有效订阅摘要，包括 `id`、`plan_id`、`plan_name`、`expires_at`、`groups_restricted` 和 `applicable_groups`。`GET /api/v1/groups/available?scope=personal|team&subscription_id={id}` 在带 `subscription_id` 时返回付款主体原有分组权限与该订阅套餐分组的交集；不带该参数时保持历史的可用分组结果。两个接口都不把成员自己的订阅泄露到团队作用域。可见分组的 `models` 和 `model_protocols` 来自组内可请求能力，供客户端配置选择真实模型；它们不扩大请求权限。
 
 网关 `GET /v1/usage` 在原有 Key 配额、订阅或余额字段之外始终返回 `billing` 对象，至少包含 `mode`、`source`、`preferred_subscription_id`、`available` 和 `unit`。`source=subscription` 时只返回实际选择的订阅额度/剩余值；指定订阅失效时仍使用该来源并标记 `available=false`，不返回余额。`source=balance` 时只返回付款主体余额，不加载或展示订阅额度。`auto` 的 `source` 随当前可用订阅动态变化；Key 自身的配额和滚动限额字段不受该展示规则影响。
 
 ## 分组客户端协议
 
-Group 使用 `allowed_protocols`、`protocol_fallbacks`、`responses_image_policy` 返回统一配置；账号使用 `credentials.upstream_protocols`。管理员只读 `GET /api/v1/admin/protocol-capabilities` 提供全部协议、原生账号 profile、分组可用入口及转换目标。完整字段语义见[统一协议能力](protocol_capabilities.md)。
+Group 不再返回 `platform` 或 `is_default`；使用 `allowed_protocols`、`protocol_fallbacks`、`responses_image_policy` 返回协议配置。`protocol_fallbacks` 为入口到有序目标数组的映射：缺少入口表示自动、空数组仅原生、非空数组限制目标。账号仍保留平台并使用 `credentials.upstream_protocols`。管理员只读 `GET /api/v1/admin/protocol-capabilities` 提供全部协议、原生账号 profile、单元素通用分组 profile、可用入口及转换目标。完整字段语义见[统一协议能力](protocol_capabilities.md)。
 
 旧 `allowed_client_protocols`、媒体/Live 开关和账号文本路由只作为输入兼容，新响应与导出使用统一结构。`messages_dispatch_model_config` 仍只处理模型映射，不参与协议准入。门禁拒绝在上游调用前返回对应协议的 403 错误；平台没有实现的入口保留 404 边界。
 
@@ -294,8 +305,10 @@ app 为所有需要幂等的用户和管理员 HTTP 处理器显式绑定同一�
 
 ## 价格管理与分组策略
 
-`/api/v1/admin/pricing/configs` 及其 `/:id` 子路由提供共享价格配置 CRUD。请求只接受价格字段，模型映射、白名单和功能字段必须通过分组的 `routing_policy` 保存；未知价格配置字段返回 400。原 `/api/v1/admin/channels` 路由已移除并返回 404，管理脚本需要切换地址。
+分组管理请求与列表筛选不再接受上游平台，旧 `platform`、`is_default` 字段明确返回 400。分组 `routing_policy.model_mapping` 为 `Record<string,string>`，`allowed_models` 为 `string[]`，不再包一层平台键。账号列表仍可按账号自身平台筛选。
 
-默认价只读查询位于 `/api/v1/admin/pricing/defaults`、`/model` 和 `/models`，具体价格口径见[管理员默认价格查询](model_catalog_and_marketplace.md#gateway_default_pricing)。模型链字段使用 `group_mapped` 语义；历史用量中的共享价格关联字段为 `pricing_config_id`，数值沿用原 ID。
+`/api/v1/admin/pricing/configs` 及其 `/:id` 子路由提供共享价格配置 CRUD。请求只接受价格字段，模型映射、白名单和功能字段必须通过分组的 `routing_policy` 保存；共享价卡、分组覆盖价和账号成本价卡都不包含 `platform`，模型规则统一校验重叠；未知价格配置字段返回 400。原 `/api/v1/admin/channels` 路由已移除并返回 404，管理脚本需要切换地址。
+
+默认价只读查询位于 `/api/v1/admin/pricing/defaults`、`/model` 和 `/models`，`/model` 和 `/models` 不再要求上游平台参数，默认目录列表可保留模型来源标签筛选。具体价格口径见[管理员默认价格查询](model_catalog_and_marketplace.md#gateway_default_pricing)。模型链字段使用 `group_mapped` 语义；历史用量中的共享价格关联字段为 `pricing_config_id`，数值沿用原 ID。
 
 管理员手动更新价格目录使用 `POST /api/v1/admin/pricing/defaults/update`，不接收价格来源地址或文件路径，复用服务端已配置的目录来源。普通 GET 查询和列表刷新不触发更新。

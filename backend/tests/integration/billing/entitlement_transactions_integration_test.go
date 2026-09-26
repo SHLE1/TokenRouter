@@ -114,7 +114,7 @@ func TestS04RedeemEffectsWaitForCommit(t *testing.T) {
 			auth := &redeemAuthObservation{}
 			subs := billing.NewSubscriptionService(subscriptionContractEmptyGroups{}, billingpostgres.NewUserSubscriptionRepository(client), billingpostgres.NewSubscriptionMutations(client))
 			makeService := func(store billing.RedeemCodeRepository) *billing.RedeemService {
-				return billing.NewRedeemService(store, quotaUsersForContract{identitypostgres.NewUserStore(client, integrationDB)}, subs, nil, nil,
+				return billing.NewRedeemService(store, billingUsersForContract{identitypostgres.NewUserStore(client, integrationDB)}, subs, nil, nil,
 					billingpostgres.NewRedeemMutations(client, billingpostgres.RedeemWriters{Balances: billingpostgres.NewBalanceStore(client), Concurrency: identitypostgres.NewConcurrencyStore(client)}), auth, nil, billing.RedeemRuntime{Now: time.Now})
 			}
 			_, err = makeService(failedRedeemUsage{repo}).Redeem(ctx, user.ID, code.Code)

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/routing"
+	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
 // Configuration 是迁移前的组合输入。测试装配时将它投影为独立的价格和分组策略，
@@ -22,7 +23,7 @@ type Configuration struct {
 	UpdatedAt                time.Time
 	GroupIDs                 []int64
 	ModelPricing             []routing.ModelPricingEntry
-	ModelMapping             map[string]map[string]string
+	ModelMapping             map[string]string
 	AccountStatsPricingRules []routing.AccountStatsPricingRule
 }
 
@@ -31,11 +32,15 @@ func (c Configuration) Price() routing.PricingConfig {
 }
 
 func (c Configuration) Policy() routing.GroupRoutingPolicy {
-	allowed := make(map[string][]string)
+	var allowed []string
 	for _, price := range c.ModelPricing {
-		allowed[price.Platform] = append(allowed[price.Platform], price.Models...)
+		allowed = append(allowed, price.Models...)
 	}
-	return routing.GroupRoutingPolicy{Enabled: c.Status == routing.StatusActive, ModelMapping: c.ModelMapping, RestrictModels: c.RestrictModels, RestrictionModelSource: c.BillingModelSource, AllowedModels: allowed, Features: c.Features, FeaturesConfig: c.FeaturesConfig}
+	mapping := make(map[string]string)
+	for source, target := range c.ModelMapping {
+		mapping[source] = target
+	}
+	return routing.GroupRoutingPolicy{Enabled: c.Status == routing.StatusActive, ModelMapping: mapping, RestrictModels: c.RestrictModels, RestrictionModelSource: c.BillingModelSource, AllowedModels: allowed, Features: c.Features, FeaturesConfig: c.FeaturesConfig}
 }
 
 func (c *Configuration) Clone() *Configuration {
@@ -47,7 +52,8 @@ func (c *Configuration) Clone() *Configuration {
 	clone := price.Clone()
 	out.GroupIDs, out.ModelPricing, out.AccountStatsPricingRules = clone.GroupIDs, clone.ModelPricing, clone.AccountStatsPricingRules
 	policy := c.Policy().Clone()
-	out.ModelMapping, out.FeaturesConfig = policy.ModelMapping, policy.FeaturesConfig
+	out.FeaturesConfig = policy.FeaturesConfig
+	out.ModelMapping = policy.ModelMapping
 	return &out
 }
 func (c *Configuration) IsActive() bool { return c != nil && c.Status == routing.StatusActive }
@@ -99,18 +105,14 @@ func (r configurationRows) ReadGroup(ctx context.Context, id int64) (*routing.Gr
 	if err != nil {
 		return nil, err
 	}
-	platforms, err := r.source.GetGroupPlatforms(ctx, []int64{id})
-	if err != nil {
-		return nil, err
-	}
 	for _, row := range rows {
 		for _, groupID := range row.GroupIDs {
 			if groupID == id {
-				return &routing.Group{ID: id, Platform: platforms[id], RoutingPolicy: row.Policy()}, nil
+				return &routing.Group{ID: id, AllowedProtocols: capability.DefaultGroupClientProtocols(""), RoutingPolicy: row.Policy()}, nil
 			}
 		}
 	}
-	return &routing.Group{ID: id, Platform: platforms[id]}, nil
+	return &routing.Group{ID: id}, nil
 }
 
 // NewPricingConfigService 仅在测试中把旧组合输入拆为两个独立读取端口。

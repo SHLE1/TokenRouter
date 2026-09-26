@@ -496,11 +496,11 @@ func TestSchedulerRebuildBatchKeepsMixedAndDifferentKeysIndependent(t *testing.T
 	svc := newBatchQueryTestService(cache, repo, "standard")
 
 	require.NoError(t, svc.rebuildBuckets(context.Background(), buckets, "test"))
-	require.Equal(t, 1, repo.callCount(batchAccountQueryKey{groupID: groupID, platform: PlatformAnthropic}))
-	require.Equal(t, 1, repo.callCount(batchAccountQueryKey{groupID: groupID, platform: PlatformAnthropic, mixed: true}))
+	require.Equal(t, 2, repo.callCount(batchAccountQueryKey{groupID: groupID, platform: PlatformAnthropic}))
+	require.Zero(t, repo.callCount(batchAccountQueryKey{groupID: groupID, platform: PlatformAnthropic, mixed: true}))
 	require.Equal(t, 1, repo.callCount(batchAccountQueryKey{groupID: groupID + 1, platform: PlatformAnthropic}))
 	require.Equal(t, 1, repo.callCount(batchAccountQueryKey{groupID: groupID, platform: PlatformGemini}))
-	require.Equal(t, 2, repo.callCount(batchAccountQueryKey{platform: PlatformOpenAI}), "group0 and a negative historical group must not share")
+	require.Zero(t, repo.callCount(batchAccountQueryKey{platform: PlatformOpenAI}), "没有有效分组时不查询账号")
 	for _, bucket := range buckets {
 		locks, attempts, version, _ := cache.bucketState(bucket)
 		require.Equal(t, 1, locks, bucket.String())
@@ -517,7 +517,8 @@ func TestSchedulerRebuildBatchKeepsSimpleModeBucketGroupsIndependent(t *testing.
 	svc := newBatchQueryTestService(cache, repo, "simple")
 
 	require.NoError(t, svc.rebuildBuckets(context.Background(), []SchedulerBucket{single, forced}, "test"))
-	require.Equal(t, 2, repo.callCount(batchAccountQueryKey{platform: PlatformOpenAI}))
+	require.Equal(t, 1, repo.callCount(batchAccountQueryKey{groupID: 204, platform: PlatformOpenAI}))
+	require.Zero(t, repo.callCount(batchAccountQueryKey{platform: PlatformOpenAI}))
 }
 
 func TestSchedulerRebuildBatchDoesNotCacheMixedOrHistoricalQueries(t *testing.T) {
@@ -529,7 +530,7 @@ func TestSchedulerRebuildBatchDoesNotCacheMixedOrHistoricalQueries(t *testing.T)
 		{
 			name:   "mixed",
 			bucket: SchedulerBucket{GroupID: 204, Platform: PlatformAnthropic, Mode: SchedulerModeMixed},
-			key:    batchAccountQueryKey{groupID: 204, platform: PlatformAnthropic, mixed: true},
+			key:    batchAccountQueryKey{groupID: 204, platform: PlatformAnthropic},
 		},
 		{
 			name:   "historical",

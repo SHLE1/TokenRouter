@@ -14,10 +14,10 @@ import (
 )
 
 type ModelMarketplaceGroup struct {
-	ID                         int64
-	Name                       string
-	Description                string
-	Platform                   string
+	ID          int64
+	Name        string
+	Description string
+
 	DisplayBrand               string
 	SortOrder                  int
 	RateMultiplier             float64
@@ -69,15 +69,15 @@ func (s *Marketplace) ListPublic(ctx context.Context) ([]ModelMarketplaceGroup, 
 
 		var officialPriceRatio *float64
 		var officialPriceRMBEquivalent *float64
-		if showDiscount && group.Platform != PlatformQoder {
+		if showDiscount {
 			officialPriceRatio = discountConfig.officialPriceRatio(group.RateMultiplier)
 			officialPriceRMBEquivalent = discountConfig.officialPriceRMBEquivalent(group.RateMultiplier)
 		}
 		out = append(out, ModelMarketplaceGroup{
-			ID:                         group.ID,
-			Name:                       group.Name,
-			Description:                group.Description,
-			Platform:                   group.Platform,
+			ID:          group.ID,
+			Name:        group.Name,
+			Description: group.Description,
+
 			DisplayBrand:               marketplaceGroupDisplayBrand(group),
 			SortOrder:                  group.SortOrder,
 			RateMultiplier:             group.RateMultiplier,
@@ -366,15 +366,15 @@ func (s *Marketplace) PublicModelPricing(ctx context.Context, group *Group, mode
 	if s.prices == nil {
 		return pricing.UnknownDisplayPricing()
 	}
-	return s.prices.Quote(ctx, MarketplaceQuoteRequest{Model: model, GroupID: group.ID, ModelPricing: group.ModelPricing, LongContextPricingEnabled: group.LongContextPricingEnabled, RateMultiplier: group.RateMultiplier, FreeFastApplicable: group.FreeOpenAIFast && GroupSupportsOpenAIFast(group.Platform)})
+	return s.prices.Quote(ctx, MarketplaceQuoteRequest{Model: model, GroupID: group.ID, ModelPricing: group.ModelPricing, LongContextPricingEnabled: group.LongContextPricingEnabled, RateMultiplier: group.RateMultiplier, FreeFastApplicable: group.FreeOpenAIFast && true})
 }
 
 func (s *Marketplace) resolveGroupModels(ctx context.Context, group *Group) []MarketplaceModelDef {
 	if s.models != nil && group != nil {
 		groupID := group.ID
-		resolution := s.models.ResolveRequestableModels(ctx, &groupID, group.Platform)
+		resolution := s.models.ResolveRequestableModels(ctx, &groupID, "")
 		if len(resolution.Models) > 0 {
-			return buildMarketplaceModelDefsFromRequestable(resolution.Models, s.options.DisplayNames(group.Platform))
+			return buildMarketplaceModelDefsFromRequestable(resolution.Models, s.options.DisplayNames(""))
 		}
 		// 已完成账号和分组策略解析后，空结果必须保持为空，不能再次回退平台默认模型。
 		return nil
@@ -383,7 +383,7 @@ func (s *Marketplace) resolveGroupModels(ctx context.Context, group *Group) []Ma
 	if group == nil {
 		return nil
 	}
-	return s.options.DefaultModels(group.Platform)
+	return s.options.DefaultModels("")
 }
 
 // resolveGroupModelsWithAccounts 直接使用预取账号生成候选和执行 R -> G -> U 校验。
@@ -392,12 +392,12 @@ func (s *Marketplace) resolveGroupModelsWithAccounts(ctx context.Context, group 
 		return nil
 	}
 	groupID := group.ID
-	baseModels := ConfiguredRequestModelsFromAccounts(accounts, group.Platform)
-	resolution := s.requestable.ResolveWithAccounts(ctx, &groupID, group.Platform, baseModels, accounts)
+	baseModels := ConfiguredRequestModelsFromAccounts(accounts, "")
+	resolution := s.requestable.ResolveWithAccounts(ctx, &groupID, "", baseModels, accounts)
 	if len(resolution.Models) == 0 {
 		return nil
 	}
-	return buildMarketplaceModelDefsFromRequestable(resolution.Models, s.options.DisplayNames(group.Platform))
+	return buildMarketplaceModelDefsFromRequestable(resolution.Models, s.options.DisplayNames(""))
 }
 
 type MarketplaceModelDef struct {

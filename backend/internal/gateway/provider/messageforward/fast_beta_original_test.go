@@ -1,16 +1,16 @@
 package messageforward
 
 import (
-	billingprovider "github.com/TokenFlux/TokenRouter/internal/billing/provider"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/media"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/modelidentity"
-	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
-
 	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	billingprovider "github.com/TokenFlux/TokenRouter/internal/billing/provider"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/media"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/modelidentity"
+	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 
 	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
@@ -51,7 +51,7 @@ func TestClaudeAPIKeyFastModeCannotBypassSystemFilter(t *testing.T) {
 
 func fastModeTestContext(policy, model string) context.Context {
 	ctx := apikey.WithFastModePolicy(context.Background(), policy)
-	ctx = requeststate.WithGroup(ctx, &routing.Group{ID: 11, Platform: capability.PlatformOpenAI})
+	ctx = requeststate.WithGroup(ctx, &routing.Group{ID: 11})
 	return context.WithValue(ctx, telemetry.Model, model)
 }
 

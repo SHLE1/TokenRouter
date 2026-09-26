@@ -25,17 +25,17 @@
       </div>
       <template v-if="value.restrict_models">
         <Select :model-value="value.restriction_model_source || 'group_mapped'" :options="sourceOptions" @update:model-value="update({ restriction_model_source: String($event) as GroupRoutingPolicy['restriction_model_source'] })" />
-        <ModelTagInput :models="value.allowed_models[platform] || []" :platform="platform" @update:models="update({ allowed_models: { ...value.allowed_models, [platform]: $event } })" />
+        <ModelTagInput :models="value.allowed_models" @update:models="update({ allowed_models: $event })" />
       </template>
     </div>
-    <div v-if="platform === 'anthropic'" class="flex items-center justify-between gap-4">
+    <div class="flex items-center justify-between gap-4">
       <div class="min-w-0">
         <label class="input-label mb-0">{{ t('admin.groups.routingPolicy.webSearch') }}</label>
         <p class="input-hint">{{ t('admin.groups.routingPolicy.webSearchHint') }}</p>
       </div>
       <Toggle :model-value="feature('web_search_emulation') === true" :aria-label="t('admin.groups.routingPolicy.webSearch')" @update:model-value="setFeature('web_search_emulation', $event)" />
     </div>
-    <div v-if="platform === 'anthropic'" class="flex items-center justify-between gap-4">
+    <div class="flex items-center justify-between gap-4">
       <div class="min-w-0">
         <label class="input-label mb-0">{{ t('admin.groups.routingPolicy.bedrock') }}</label>
         <p class="input-hint">{{ t('admin.groups.routingPolicy.bedrockHint') }}</p>
@@ -56,7 +56,7 @@ import ModelTagInput from '@/components/admin/pricing/ModelTagInput.vue'
 import { findModelConflict } from '@/components/admin/pricing/types'
 import { cloneRoutingPolicy } from './routingPolicy'
 
-const props = defineProps<{ modelValue?: GroupRoutingPolicy; platform: string }>()
+const props = defineProps<{ modelValue?: GroupRoutingPolicy }>()
 const emit = defineEmits<{ 'update:modelValue': [value: GroupRoutingPolicy] }>()
 const { t } = useI18n()
 const value = computed(() => cloneRoutingPolicy(props.modelValue))
@@ -64,9 +64,9 @@ const sourceOptions = computed(() => ['requested', 'group_mapped', 'upstream'].m
 let rowID = 0
 const mappingRows = ref<{ id: number; source: string; target: string }[]>([])
 let lastPublished = ''
-watch(() => [props.platform, props.modelValue?.model_mapping] as const, () => {
-  const mapping = value.value.model_mapping[props.platform] || {}
-  const signature = JSON.stringify([props.platform, mapping])
+watch(() => [props.modelValue?.model_mapping] as const, () => {
+  const mapping = value.value.model_mapping
+  const signature = JSON.stringify(mapping)
   if (signature === lastPublished) return
   mappingRows.value = Object.entries(mapping).map(([source, target]) => ({ id: ++rowID, source, target }))
 }, { immediate: true, deep: true })
@@ -80,8 +80,8 @@ function update(patch: Partial<GroupRoutingPolicy>) {
 }
 function publishMappings() {
   const mapping = Object.fromEntries(mappingRows.value.map(row => [row.source.trim(), row.target.trim()]))
-  lastPublished = JSON.stringify([props.platform, mapping])
-  update({ model_mapping: { ...value.value.model_mapping, [props.platform]: mapping } })
+  lastPublished = JSON.stringify(mapping)
+  update({ model_mapping: mapping })
 }
 function addMapping() {
   mappingRows.value.push({ id: ++rowID, source: '', target: '' })
@@ -95,7 +95,7 @@ function feature(key: string): boolean | null {
   const raw = value.value.features_config[key]
   if (typeof raw === 'boolean') return raw
   if (raw && typeof raw === 'object') {
-    const selected = (raw as Record<string, unknown>)[props.platform]
+    const selected = (raw as Record<string, unknown>)['anthropic']
     return typeof selected === 'boolean' ? selected : null
   }
   return null
@@ -103,8 +103,8 @@ function feature(key: string): boolean | null {
 function setFeature(key: string, enabled: boolean | null) {
   const raw = value.value.features_config[key]
   const values: Record<string, boolean> = raw && typeof raw === 'object' ? { ...raw as Record<string, boolean> } : {}
-  if (enabled == null) delete values[props.platform]
-  else values[props.platform] = enabled
+  if (enabled == null) delete values['anthropic']
+  else values['anthropic'] = enabled
   update({ features_config: { ...value.value.features_config, [key]: values } })
 }
 </script>

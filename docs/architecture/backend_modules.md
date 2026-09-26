@@ -74,7 +74,7 @@ backend/
 │   │   ├── rediscache/                                  Redis 缓存、计数或会话适配
 │   │   └── urlpolicy/                                   上游地址、允许列表和重定向校验策略
 │   ├── gateway/                                         请求准入、平台尝试、输出和完成编排
-│   │   ├── admission/                                   消费资格、分组及用户平台额度准入
+│   │   ├── admission/                                   消费资格与分组准入
 │   │   ├── clientmeta/                                  客户端识别、版本规则与审查亲缘线索解析
 │   │   ├── compact/                                     压缩请求恢复、流观察与回退规则
 │   │   ├── completion/                                  完成快照、结算、记录和有界任务池
@@ -411,7 +411,7 @@ app/lifecycle 管理这些组件的启动和关闭。audit 独立记录操作审
 | gateway | [请求生命周期](gateway_request_lifecycle.md)、[网关策略](../domains/gateway_policy_controls.md)、[错误策略](../interfaces/gateway_error_policy.md) |
 | protocol、upstream | [协议能力](../interfaces/protocol_capabilities.md)、[接口目录中的平台专题](../interfaces/index.md) |
 | egress | [传输安全](../operations/upstream_transport_security.md) |
-| billing | [路由与结算](../domains/routing_and_billing.md)、[支付与权益](../domains/payments_and_entitlements.md)、[平台额度](../domains/platform_quotas.md) |
+| billing | [路由与结算](../domains/routing_and_billing.md)、[支付与权益](../domains/payments_and_entitlements.md) |
 | payment、promotion | [支付与权益](../domains/payments_and_entitlements.md)、[推广与返利](../domains/promotions_and_affiliates.md) |
 | creative、batchimage | [创作台](../domains/creative_studio.md)、[批量图片作业](../domains/batch_image_jobs.md) |
 | moderation | [内容审核](../domains/content_moderation.md) |

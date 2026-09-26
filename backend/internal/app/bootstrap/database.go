@@ -85,15 +85,10 @@ func InitEnt(ctx context.Context, cfg *config.Config) (_ *ent.Client, _ *sql.DB,
 		return nil, nil, fmt.Errorf("validate config after secret bootstrap: %w", err)
 	}
 
-	// SIMPLE 模式：启动时补齐各平台默认分组。
-	// - anthropic/openai/gemini: 确保存在 <platform>-default
-	// - antigravity: 仅要求存在 >=2 个未软删除分组（用于 claude/gemini 混合调度场景）
+	// SIMPLE 模式只设置管理员并发，不自动创建或选择分组。
 	if cfg.RunMode == config.RunModeSimple {
 		seedCtx, seedCancel := context.WithTimeout(ctx, 30*time.Second)
 		defer seedCancel()
-		if err := EnsureSimpleModeDefaultGroups(seedCtx, client); err != nil {
-			return nil, nil, err
-		}
 		if err := ensureSimpleModeAdminConcurrency(seedCtx, client); err != nil {
 			return nil, nil, err
 		}

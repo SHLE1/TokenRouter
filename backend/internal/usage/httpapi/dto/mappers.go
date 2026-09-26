@@ -21,6 +21,7 @@ func usageLogFromServiceUser(l *usage.UsageLog) UsageLog {
 		TeamID:                    l.TeamID,
 		APIKeyID:                  l.APIKeyID,
 		AccountID:                 l.AccountID,
+		Platform:                  l.Platform,
 		RequestID:                 l.RequestID,
 		Model:                     requestedModel,
 		ServiceTier:               l.ServiceTier,

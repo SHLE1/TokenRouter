@@ -15,8 +15,10 @@ const (
 	DataVersion    = 1
 )
 
-type DataProxy = egress.TransferProxy
-type DataImportError = egress.TransferError
+type (
+	DataProxy       = egress.TransferProxy
+	DataImportError = egress.TransferError
+)
 
 type DataPayload struct {
 	Type       string        `json:"type,omitempty"`
@@ -82,8 +84,7 @@ func (a *DataAccount) UnmarshalJSON(data []byte) error {
 }
 
 type DataImportRequest struct {
-	Data                 DataPayload `json:"data"`
-	SkipDefaultGroupBind *bool       `json:"skip_default_group_bind"`
+	Data DataPayload `json:"data"`
 }
 type DataImportResult struct {
 	ProxyCreated   int               `json:"proxy_created"`

@@ -11,7 +11,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/stretchr/testify/require"
 )
 
@@ -112,7 +111,7 @@ func TestCompositeAPIKeyAuthSnapshotRoundTrip(t *testing.T) {
 			{
 				ID: 30, APIKeyID: 10, GroupID: 40, Prefix: "GPT", NormalizedPrefix: "gpt", SortOrder: 1,
 				Group: &routing.Group{
-					ID: 40, Name: "OpenAI", Platform: capability.PlatformOpenAI, Status: billing.StatusActive, IsExclusive: true,
+					ID: 40, Name: "OpenAI", Status: billing.StatusActive, IsExclusive: true,
 					RateMultiplier: 1.25, AllowImageGeneration: true, RPMLimit: 80,
 					LongContextPricingEnabled: true,
 					ModelPricing: []routing.ModelPricingEntry{{
@@ -134,7 +133,6 @@ func TestCompositeAPIKeyAuthSnapshotRoundTrip(t *testing.T) {
 	require.NotNil(t, snapshot)
 	require.Equal(t, apikey.KeyApiKeyAuthSnapshotVersion, snapshot.Version)
 	require.Len(t, snapshot.CompositeGroups, 1)
-	require.Equal(t, capability.PlatformOpenAI, snapshot.CompositeGroups[0].Group.Platform)
 
 	restored := service.KeySnapshotToAPIKey(key.Key, snapshot)
 	require.True(t, restored.IsComposite)
@@ -158,8 +156,8 @@ func TestCompositeAPIKeyAuthSnapshotRoundTrip(t *testing.T) {
 }
 
 func TestAPIKeyUpdateConvertsBetweenOrdinaryAndComposite(t *testing.T) {
-	groupOne := &routing.Group{ID: 1, Name: "OpenAI", Platform: capability.PlatformOpenAI, Status: billing.StatusActive, IsExclusive: true}
-	groupTwo := &routing.Group{ID: 2, Name: "Claude", Platform: capability.PlatformAnthropic, Status: billing.StatusActive, IsExclusive: true}
+	groupOne := &routing.Group{ID: 1, Name: "OpenAI", Status: billing.StatusActive, IsExclusive: true}
+	groupTwo := &routing.Group{ID: 2, Name: "Claude", Status: billing.StatusActive, IsExclusive: true}
 	user := &identity.User{ID: 20, Status: billing.StatusActive, AllowedGroups: []int64{1, 2}, GroupRestrictionsLoaded: true}
 	groupID := groupOne.ID
 	repo := &compositeAPIKeyRepoStub{key: &apikey.APIKey{

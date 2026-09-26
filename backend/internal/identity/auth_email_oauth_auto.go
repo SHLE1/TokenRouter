@@ -202,8 +202,6 @@ func (s *AuthService) AuthCreateEmailOAuthUser(ctx context.Context, email, usern
 	}
 	s.AuthPostAuthUserBootstrap(ctx, user, providerType, false)
 	s.AuthAssignSubscriptions(ctx, user.ID, grantPlan.Subscriptions, "auto assigned by signup defaults")
-	// 平台限额快照失败不阻断 OAuth 自动建号。
-	_ = s.AuthSnapshotPlatformQuotaDefaults(ctx, user.ID, &grantPlan)
 	s.AuthBindRegistrationAffiliate(ctx, user.ID, affiliateCode)
 	return user, nil
 }

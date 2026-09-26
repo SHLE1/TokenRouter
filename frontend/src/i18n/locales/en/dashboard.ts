@@ -23,15 +23,6 @@ export default {
     platformBreakdownEmpty: 'No platform usage yet',
     platformCount: '{count} platforms',
     platformOther: 'Other',
-    platformQuota: {
-      title: 'Quota Usage',
-      daily: 'Daily',
-      weekly: 'Weekly',
-      monthly: 'Monthly (30-day rolling)',
-      resetsAt: 'Resets {time}',
-      noLimit: 'unlimited',
-      disabled: 'Disabled',
-    },
     tokenUsageTrend: 'Token Usage Trend',
     activityHeatmap: 'Usage Activity',
     heatmapLess: 'Less',
@@ -193,7 +184,7 @@ export default {
       duplicateSource: 'Source models must be unique',
       tooManyRules: 'Up to 100 model redirect rules are allowed'
     },
-    fallbackToDefaultGroupWhenUnavailable: 'Auto fallback when unavailable',
+    fallbackWhenGroupUnavailable: 'Auto fallback when unavailable',
     statusLabel: 'Status',
     selectStatus: 'Select status',
     saving: 'Saving...',
@@ -223,6 +214,11 @@ export default {
     lastUsedIP: 'Last Used IP',
     useKey: 'Use Key',
     useKeyModal: {
+      model: 'Request model',
+      selectModel: 'Select an available model',
+      noModels: 'This group has no models available for this client',
+      directAuth: 'Store the API key in the configuration file',
+
       title: 'Use API Key',
       compositeDescription: 'Prefix each model ID with the group prefix when making requests.',
       description:

@@ -25,7 +25,7 @@ func TestPricingDisplayPreservesDefaultRanges(t *testing.T) {
 		for _, freeFast := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/freeFast=%v", source, freeFast), func(t *testing.T) {
 				card := routing.ModelPricingEntry{
-					Platform: capability.PlatformOpenAI, Models: []string{"custom-ranges"}, BillingMode: routing.BillingModeToken,
+					Models: []string{"custom-ranges"}, BillingMode: routing.BillingModeToken,
 					InputPrice: testPtrFloat64(0.001), FastMultiplier: testPtrFloat64(3),
 					// 有意按倒序保存，展示排序不能改动管理员配置。
 					Intervals: []routing.PricingInterval{
@@ -33,7 +33,7 @@ func TestPricingDisplayPreservesDefaultRanges(t *testing.T) {
 						{MinTokens: 100, MaxTokens: testPtrInt(150), InputPrice: testPtrFloat64(0.002)},
 					},
 				}
-				group := &routing.Group{ID: 100, Platform: capability.PlatformOpenAI, RateMultiplier: 1.5, FreeOpenAIFast: freeFast, ModelPricing: []routing.ModelPricingEntry{card}}
+				group := &routing.Group{ID: 100, RateMultiplier: 1.5, FreeOpenAIFast: freeFast, ModelPricing: []routing.ModelPricingEntry{card}}
 				rCalculator := billingtestkit.ResolverCalculator()
 				r := billingtestkit.ResolverWithCards(t, rCalculator, nil)
 				if source == "channel" {
@@ -90,7 +90,7 @@ func TestPricingDisplayOnlyFlattensCompleteUniformRanges(t *testing.T) {
 		if pricedBase {
 			card.InputPrice = testPtrFloat64(0.001)
 		}
-		group := &routing.Group{ID: 1, Platform: capability.PlatformOpenAI, RateMultiplier: 1, ModelPricing: []routing.ModelPricingEntry{card}}
+		group := &routing.Group{ID: 1, RateMultiplier: 1, ModelPricing: []routing.ModelPricingEntry{card}}
 		market := newPricingMarketplaceFixture(nil, nil, r, rCalculator, nil, nil, nil)
 		display := market.PublicModelPricing(context.Background(), group, "custom-uniform")
 		if pricedBase {
@@ -114,7 +114,7 @@ func TestPricingIntervalsDistinguishMissingBaseFromExplicitZero(t *testing.T) {
 					model = "claude-sonnet-4"
 				}
 				card := routing.ModelPricingEntry{
-					Platform: capability.PlatformOpenAI, Models: []string{model}, BillingMode: routing.BillingModeToken,
+					Models: []string{model}, BillingMode: routing.BillingModeToken,
 					Intervals: []routing.PricingInterval{{MinTokens: 0, InputMultiplier: testPtrFloat64(2)}},
 				}
 				if kind == "zero_base" {
@@ -125,7 +125,7 @@ func TestPricingIntervalsDistinguishMissingBaseFromExplicitZero(t *testing.T) {
 				}
 				_, err := (routing.PricingConfigValidation{LoadLocation: pricingprovider.LoadPricingLocation}).NormalizeGroupPricing(capability.PlatformOpenAI, []routing.ModelPricingEntry{card})
 				require.NoError(t, err)
-				group := &routing.Group{ID: 100, Platform: capability.PlatformOpenAI, RateMultiplier: 1, ModelPricing: []routing.ModelPricingEntry{card}}
+				group := &routing.Group{ID: 100, RateMultiplier: 1, ModelPricing: []routing.ModelPricingEntry{card}}
 				rCalculator := billingtestkit.ResolverCalculator()
 				r := billingtestkit.ResolverWithCards(t, rCalculator, nil)
 				if source == "channel" {
@@ -162,7 +162,7 @@ func TestPricingMissingMultiplierRangeDoesNotBorrowOtherIntervalPrice(t *testing
 	rCalculator := billingtestkit.ResolverCalculator()
 	r := billingtestkit.PriceResolver(nil, rCalculator)
 	group := &routing.Group{
-		ID: 1, Platform: capability.PlatformOpenAI, RateMultiplier: 1, ModelPricing: []routing.ModelPricingEntry{{
+		ID: 1, RateMultiplier: 1, ModelPricing: []routing.ModelPricingEntry{{
 			Models: []string{"custom-partial"}, BillingMode: routing.BillingModeToken,
 			Intervals: []routing.PricingInterval{{MinTokens: 0, MaxTokens: testPtrInt(100), InputMultiplier: testPtrFloat64(2)}, {MinTokens: 100, InputPrice: testPtrFloat64(0.003)}},
 		}},

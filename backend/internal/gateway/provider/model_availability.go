@@ -5,8 +5,7 @@ import (
 	"strings"
 
 	"github.com/TokenFlux/TokenRouter/internal/account"
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
+	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
@@ -26,6 +25,9 @@ func NewModelAvailability(source AvailabilityAccounts, groupPolicies *routing.Pr
 		return result
 	}
 	result.Read = func(ctx context.Context, group *int64, platforms []string, grouped bool) ([]routing.AvailabilityAccount, error) {
+		if forced, ok := apikey.ForcePlatformFromContext(ctx); ok && strings.TrimSpace(forced) != "" {
+			platforms = []string{forced}
+		}
 		values, err := source.ListModelAvailabilityCandidates(ctx, group, platforms, grouped)
 		if err != nil {
 			return nil, err
@@ -34,10 +36,12 @@ func NewModelAvailability(source AvailabilityAccounts, groupPolicies *routing.Pr
 		for i := range values {
 			record := &values[i]
 			out[i] = routing.AvailabilityAccount{
-				Platform:        record.Platform,
-				MixedScheduling: record.IsMixedSchedulingEnabled(),
+				Platform: record.Platform,
 				Supports: func(ctx context.Context, model string) bool {
 					policy := ModelPolicy{Record: record}
+					if !policy.AllowsProtocol(ctx) {
+						return false
+					}
 					if compatible {
 						return policy.SupportsCompatibleRouting(ctx, model)
 					}
@@ -50,7 +54,7 @@ func NewModelAvailability(source AvailabilityAccounts, groupPolicies *routing.Pr
 	return result
 }
 
-// SupportsCompatibleRouting 保留 HTTP 自动透传对模型检查的旁路，不改变普通账号一跳规则。
+// SupportsCompatibleRouting 使用账号平台的模型能力规则，透传账号也受模型范围约束。
 func (p ModelPolicy) SupportsCompatibleRouting(ctx context.Context, model string) bool {
 	model = strings.TrimSpace(model)
 	if model == "" {
@@ -59,8 +63,5 @@ func (p ModelPolicy) SupportsCompatibleRouting(ctx context.Context, model string
 	if p.Record == nil {
 		return false
 	}
-	if requeststate.OpenAIHTTPPassthroughRoutingFromContext(ctx) && p.Record.IsOpenAIPassthroughEnabled() {
-		return true
-	}
-	return p.Record.IsModelSupported(model, accountprovider.ModelDefaults(), accountprovider.ModelRules(p.Record))
+	return p.Supports(ctx, model)
 }

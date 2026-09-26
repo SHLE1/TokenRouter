@@ -117,8 +117,7 @@ func TestUsageBillingRepositoryApply_DeduplicatesSubscriptionBilling(t *testing.
 		PasswordHash: "hash",
 	})
 	group := mustCreateGroup(t, client, &routing.Group{
-		Name:     "usage-billing-group-" + uuid.NewString(),
-		Platform: capability.PlatformAnthropic,
+		Name: "usage-billing-group-" + uuid.NewString(),
 	})
 	plan := mustCreatePlan(t, client, &billing.SubscriptionPlan{
 		Name:            "usage-billing-plan-" + uuid.NewString(),
@@ -178,8 +177,7 @@ func TestUsageBillingRepositoryResolveUsableSubscriptionForGroup(t *testing.T) {
 		PasswordHash: "hash",
 	})
 	group := mustCreateGroup(t, client, &routing.Group{
-		Name:     "usage-billing-resolve-group-" + uuid.NewString(),
-		Platform: capability.PlatformOpenAI,
+		Name: "usage-billing-resolve-group-" + uuid.NewString(),
 	})
 	plan := mustCreatePlan(t, client, &billing.SubscriptionPlan{
 		Name:            "usage-billing-resolve-plan-" + uuid.NewString(),
@@ -219,8 +217,7 @@ func TestUsageBillingRepositoryResolveUsableSubscriptionForGroup_NormalizesTailW
 		PasswordHash: "hash",
 	})
 	group := mustCreateGroup(t, client, &routing.Group{
-		Name:     "usage-billing-resolve-tail-group-" + uuid.NewString(),
-		Platform: capability.PlatformOpenAI,
+		Name: "usage-billing-resolve-tail-group-" + uuid.NewString(),
 	})
 	blockedPlan := mustCreatePlan(t, client, &billing.SubscriptionPlan{
 		Name:            "usage-billing-resolve-blocked-plan-" + uuid.NewString(),
@@ -728,8 +725,7 @@ func TestUsageBillingRepositoryApply_PricesByActualSubscriptionAllocations(t *te
 		Balance:      10,
 	})
 	group := mustCreateGroup(t, client, &routing.Group{
-		Name:     "usage-billing-allocation-rate-group-" + uuid.NewString(),
-		Platform: capability.PlatformOpenAI,
+		Name: "usage-billing-allocation-rate-group-" + uuid.NewString(),
 	})
 	planA := mustCreatePlan(t, client, &billing.SubscriptionPlan{
 		Name:                 "usage-billing-allocation-rate-plan-a-" + uuid.NewString(),
@@ -819,8 +815,7 @@ func TestUsageBillingRepositoryApply_UsesBalanceRateAfterPartialSubscription(t *
 		Balance:      10,
 	})
 	group := mustCreateGroup(t, client, &routing.Group{
-		Name:     "usage-billing-partial-rate-group-" + uuid.NewString(),
-		Platform: capability.PlatformOpenAI,
+		Name: "usage-billing-partial-rate-group-" + uuid.NewString(),
 	})
 	plan := mustCreatePlan(t, client, &billing.SubscriptionPlan{
 		Name:                 "usage-billing-partial-rate-plan-" + uuid.NewString(),
@@ -889,12 +884,10 @@ func TestUsageBillingRepositoryApply_UsesOnlySubscriptionPlansContainingRequestG
 		Balance:      10,
 	})
 	groupA := mustCreateGroup(t, client, &routing.Group{
-		Name:     "usage-billing-plan-group-a-" + uuid.NewString(),
-		Platform: capability.PlatformAnthropic,
+		Name: "usage-billing-plan-group-a-" + uuid.NewString(),
 	})
 	groupB := mustCreateGroup(t, client, &routing.Group{
-		Name:     "usage-billing-plan-group-b-" + uuid.NewString(),
-		Platform: capability.PlatformAnthropic,
+		Name: "usage-billing-plan-group-b-" + uuid.NewString(),
 	})
 	planA := mustCreatePlan(t, client, &billing.SubscriptionPlan{
 		Name:            "usage-billing-plan-a-" + uuid.NewString(),
@@ -988,8 +981,7 @@ func TestUsageBillingRepositoryApply_GlobalPlanAppliesToNewRequestGroup(t *testi
 		MonthlyLimitUSD: float64Ptr(100),
 	})
 	group := mustCreateGroup(t, client, &routing.Group{
-		Name:     "usage-billing-new-group-" + uuid.NewString(),
-		Platform: capability.PlatformAnthropic,
+		Name: "usage-billing-new-group-" + uuid.NewString(),
 	})
 	apiKey := mustCreateApiKey(t, client, &apikey.APIKey{
 		UserID:  user.ID,

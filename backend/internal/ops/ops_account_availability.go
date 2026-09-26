@@ -101,7 +101,6 @@ func (s *OpsService) GetAccountAvailabilityStats(ctx context.Context, platformFi
 				group[grp.ID] = &GroupAvailability{
 					GroupID:   grp.ID,
 					GroupName: grp.Name,
-					Platform:  grp.Platform,
 				}
 			}
 			g := group[grp.ID]

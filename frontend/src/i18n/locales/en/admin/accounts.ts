@@ -359,6 +359,7 @@ export default {
         },
         filterReasons: {
           account_missing: 'Account missing',
+          group_mismatch: 'Account does not belong to this group',
           platform_mismatch: 'Platform mismatch',
           account_inactive: 'Account inactive',
           account_disabled: 'Scheduling disabled',
@@ -661,7 +662,6 @@ export default {
         noSelection: 'Please select accounts to edit',
         noFieldsSelected: 'Select at least one field to update',
         mixedPlatformWarning: 'Selected accounts span multiple platforms ({platforms}). Account model mapping presets shown are combined — ensure mappings are appropriate for each platform.',
-        modelRestrictionMixedAntigravityNotSupported: 'Bulk editing model restrictions across Antigravity and other platforms is not supported. Edit them by platform instead.'
       },
       bulkDeleteTitle: 'Bulk Delete Accounts',
       bulkDeleteConfirm: 'Delete the selected {count} account(s)? This action cannot be undone.',
@@ -843,7 +843,6 @@ export default {
         testModeDefault: 'Default request',
         testModeCompact: 'Native V2 compaction test',
         testModeLegacyCompact: 'Legacy Compact endpoint test',
-        modelRestrictionDisabledByPassthrough: 'Automatic passthrough is enabled: the final model whitelist and account model mapping will not take effect.',
       },
       grok: {
         baseUrlHint: 'Grok OAuth accounts forward to the official xAI API base URL.',
@@ -916,13 +915,12 @@ export default {
       modelRestriction: 'Account Model Rules (Optional)',
       modelWhitelist: 'Final Model Whitelist',
       modelMapping: 'Account Model Mapping',
-      modelRestrictionCombinedHint:
-        'After a request reaches this account, account model mapping runs first, then the mapped result is checked against the final model whitelist. An empty whitelist means no account-level model restriction; group rules, platform capabilities, and the upstream supported range still apply.',
-      selectAllowedModels: 'Only allow these final models. Leave empty for no account-level restriction; this does not mean the upstream supports every model.',
+      modelRestrictionCombinedHint: 'Apply the account model mapping, then check the final model whitelist. An empty whitelist uses the default catalog for the account platform and authentication type. Explicit mappings can add custom models. A trailing * or standalone * is supported; protocol and account capabilities still apply.',
+      selectAllowedModels: 'Leave empty to use the default model catalog. Add model IDs, trailing wildcards, or * to define an explicit range.',
       mapRequestModels:
         'Rewrite the model name received by this account before sending it to the upstream API. If the group also has a mapping, group mapping runs first, followed by this account mapping; unmatched names pass through unchanged.',
       selectedModels: 'Selected {count} model(s)',
-      supportsAllModels: 'No account-level restriction',
+      supportsAllModels: 'Use default model catalog',
       requestModel: 'Request model',
       actualModel: 'Actual model',
       addMapping: 'Add Mapping',
@@ -1119,10 +1117,6 @@ export default {
       expiresAtHint: 'Leave empty for no expiration',
       expiresAtTimezoneHint: 'Input is interpreted in your browser time zone ({timezone}).',
       higherPriorityFirst: 'Lower value means higher priority',
-      mixedScheduling: 'Use in /v1/messages',
-      mixedSchedulingHint: 'Enable to participate in Anthropic/Gemini group scheduling',
-      mixedSchedulingTooltip:
-        '!! WARNING !! Antigravity Claude and Anthropic Claude cannot be used in the same context. If you have both Anthropic and Antigravity accounts, enabling this option will cause frequent 400 errors. When enabled, please use the group feature to isolate Antigravity accounts from Anthropic accounts. Make sure you understand this before enabling!!',
       aiCreditsBalance: 'AI Credits',
       allowOverages: 'Allow Overages (AI Credits)',
       allowOveragesTooltip:
@@ -1134,8 +1128,6 @@ export default {
       failedToCreate: 'Failed to create account',
       failedToUpdate: 'Failed to update account',
       pleaseSelectStatus: 'Please select a valid account status',
-      mixedChannelWarningTitle: 'Mixed Channel Warning',
-      mixedChannelWarning: 'Warning: Group "{groupName}" contains both {currentPlatform} and {otherPlatform} accounts. Mixing different channels may cause thinking block signature validation issues, which will fallback to non-thinking mode. Are you sure you want to continue?',
       pleaseEnterAccountName: 'Please enter account name',
       pleaseEnterApiKey: 'Please enter API Key',
       bedrockAccessKeyId: 'AWS Access Key ID',
@@ -1413,7 +1405,7 @@ export default {
 	          missingProjectId: 'GCP Project ID retrieval failed: Your Google account is not linked to an active GCP project. Please activate GCP and bind a credit card in Google Cloud Console, or manually enter the Project ID during authorization.',
 	          modelPassthrough: 'Gemini Model Passthrough',
 	          modelPassthroughDesc:
-	            'All model requests are forwarded directly to the Gemini API without model restrictions or mappings.',
+	            'Requests are forwarded to Gemini API. Model mappings, whitelists and the default model catalog still apply.',
 	          stateWarningTitle: 'Note',
 	          stateWarningDesc: 'Recommended: paste the full callback URL (includes code & state).',
 	          oauthTypeLabel: 'OAuth Type',
@@ -1465,7 +1457,7 @@ export default {
         },
         modelPassthrough: 'Gemini Model Passthrough',
         modelPassthroughDesc:
-          'All model requests are forwarded directly to the Gemini API without model restrictions or mappings.',
+          'Requests are forwarded to Gemini API. Model mappings, whitelists and the default model catalog still apply.',
         baseUrlHint: 'Leave default for official Gemini API',
         apiKeyHint: 'Your Gemini API Key (starts with AIza)',
         providerType: {

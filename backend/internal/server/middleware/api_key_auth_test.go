@@ -8,13 +8,13 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	httpx "github.com/TokenFlux/TokenRouter/internal/server/httpx"
-	settingscore "github.com/TokenFlux/TokenRouter/internal/settings"
 
 	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
 
@@ -23,7 +23,6 @@ import (
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 	"github.com/TokenFlux/TokenRouter/internal/identity"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 
 	billingcore "github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/config"
@@ -34,7 +33,6 @@ import (
 )
 
 func TestAPIKeyAuthRejectsOversizedCredentialsBeforeLookup(t *testing.T) {
-
 	var calls atomic.Int32
 	repo := &stubApiKeyRepo{getByKey: func(context.Context, string) (*apikey.APIKey, error) {
 		calls.Add(1)
@@ -64,7 +62,6 @@ func TestAPIKeyAuthRejectsOversizedCredentialsBeforeLookup(t *testing.T) {
 }
 
 func TestSimpleModeBypassesQuotaCheck(t *testing.T) {
-
 	group := &routing.Group{
 		ID:       42,
 		Name:     "sub",
@@ -288,7 +285,6 @@ func TestSimpleModeBypassesQuotaCheck(t *testing.T) {
 }
 
 func TestAPIKeyAuthPreferredSubscriptionRejectsPlanRestrictedGroup(t *testing.T) {
-
 	now := time.Now()
 	group := &routing.Group{ID: 9, Status: billingcore.StatusActive, Hydrated: true}
 	user := &identity.User{ID: 7, Status: billingcore.StatusActive, Role: identity.RoleUser, Balance: 100}
@@ -339,7 +335,6 @@ func TestAPIKeyAuthPreferredSubscriptionRejectsPlanRestrictedGroup(t *testing.T)
 }
 
 func TestAPIKeyAuthPreferredSubscriptionDoesNotFallBackAfterQuotaExhaustion(t *testing.T) {
-
 	now := time.Now()
 	group := &routing.Group{ID: 9, Status: billingcore.StatusActive, Hydrated: true}
 	user := &identity.User{ID: 7, Status: billingcore.StatusActive, Role: identity.RoleUser, Balance: 100}
@@ -392,7 +387,6 @@ func TestAPIKeyAuthPreferredSubscriptionDoesNotFallBackAfterQuotaExhaustion(t *t
 }
 
 func TestAPIKeyAuthSimpleUsageKeepsPreferredSubscriptionSource(t *testing.T) {
-
 	now := time.Now()
 	group := &routing.Group{ID: 9, Status: billingcore.StatusActive, Hydrated: true}
 	user := &identity.User{ID: 7, Status: billingcore.StatusActive, Role: identity.RoleUser, Balance: 100}
@@ -468,7 +462,6 @@ func TestAPIKeyAuthSimpleUsageKeepsPreferredSubscriptionSource(t *testing.T) {
 }
 
 func TestAPIKeyAuthAntigravityUsageKeepsUnavailablePreferredSubscription(t *testing.T) {
-
 	now := time.Now()
 	group := &routing.Group{ID: 9, Status: billingcore.StatusActive, Hydrated: true}
 	user := &identity.User{ID: 7, Status: billingcore.StatusActive, Role: identity.RoleUser, Balance: 100}
@@ -528,8 +521,7 @@ func TestAPIKeyAuthAntigravityUsageKeepsUnavailablePreferredSubscription(t *test
 	require.False(t, got.Available)
 }
 
-func TestAPIKeyAuthPreferredSubscriptionRejectsRestrictedPlanWithoutBoundGroup(t *testing.T) {
-
+func TestAPIKeyAuthRejectsUnboundGroupBeforeSubscriptionSelection(t *testing.T) {
 	now := time.Now()
 	user := &identity.User{ID: 7, Status: billingcore.StatusActive, Role: identity.RoleUser, Balance: 100}
 	preferredID := int64(55)
@@ -573,16 +565,15 @@ func TestAPIKeyAuthPreferredSubscriptionRejectsRestrictedPlanWithoutBoundGroup(t
 	router.ServeHTTP(w, req)
 
 	require.Equal(t, http.StatusForbidden, w.Code)
-	requireAPIKeyAuthError(t, w, "PREFERRED_SUBSCRIPTION_GROUP_NOT_ALLOWED", apikey.ErrPreferredSubscriptionGroup.Error())
+	require.Contains(t, w.Body.String(), "GROUP_REQUIRED")
 }
 
 func TestAPIKeyAuthSetsGroupContext(t *testing.T) {
-
 	group := &routing.Group{
-		ID:       101,
-		Name:     "g1",
-		Status:   billingcore.StatusActive,
-		Platform: capability.PlatformAnthropic,
+		ID:     101,
+		Name:   "g1",
+		Status: billingcore.StatusActive,
+
 		Hydrated: true,
 	}
 	user := &identity.User{
@@ -645,7 +636,6 @@ func TestAPIKeyAuthSetsGroupContext(t *testing.T) {
 }
 
 func TestAPIKeyAuthRejectsExclusiveGroupWhenUserNoLongerAllowed(t *testing.T) {
-
 	group := &routing.Group{
 		ID:          202,
 		Name:        "exclusive",
@@ -696,12 +686,11 @@ func TestAPIKeyAuthRejectsExclusiveGroupWhenUserNoLongerAllowed(t *testing.T) {
 }
 
 func TestAPIKeyAuthOverwritesInvalidContextGroup(t *testing.T) {
-
 	group := &routing.Group{
-		ID:       101,
-		Name:     "g1",
-		Status:   billingcore.StatusActive,
-		Platform: capability.PlatformAnthropic,
+		ID:     101,
+		Name:   "g1",
+		Status: billingcore.StatusActive,
+
 		Hydrated: true,
 	}
 	user := &identity.User{
@@ -738,9 +727,9 @@ func TestAPIKeyAuthOverwritesInvalidContextGroup(t *testing.T) {
 	router.Use(gin.HandlerFunc(NewAPIKeyAuthMiddleware(apiKeyService, nil, cfg)))
 
 	invalidGroup := &routing.Group{
-		ID:       group.ID,
-		Platform: group.Platform,
-		Status:   group.Status,
+		ID: group.ID,
+
+		Status: group.Status,
 	}
 	router.GET("/t", func(c *gin.Context) {
 		groupFromCtx, ok := requeststate.GroupFromContext(c.Request.Context())
@@ -761,7 +750,6 @@ func TestAPIKeyAuthOverwritesInvalidContextGroup(t *testing.T) {
 }
 
 func TestAPIKeyAuthRejectsUnavailableGroup(t *testing.T) {
-
 	groupID := int64(101)
 	user := &identity.User{
 		ID:          7,
@@ -782,10 +770,10 @@ func TestAPIKeyAuthRejectsUnavailableGroup(t *testing.T) {
 		{
 			name: "active group passes",
 			group: &routing.Group{
-				ID:       groupID,
-				Name:     "active",
-				Status:   billingcore.StatusActive,
-				Platform: capability.PlatformAnthropic,
+				ID:     groupID,
+				Name:   "active",
+				Status: billingcore.StatusActive,
+
 				Hydrated: true,
 			},
 			wantStatus: http.StatusOK,
@@ -793,10 +781,10 @@ func TestAPIKeyAuthRejectsUnavailableGroup(t *testing.T) {
 		{
 			name: "disabled group is forbidden",
 			group: &routing.Group{
-				ID:       groupID,
-				Name:     "disabled",
-				Status:   billingcore.StatusDisabled,
-				Platform: capability.PlatformAnthropic,
+				ID:     groupID,
+				Name:   "disabled",
+				Status: billingcore.StatusDisabled,
+
 				Hydrated: true,
 			},
 			wantStatus: http.StatusForbidden,
@@ -807,10 +795,10 @@ func TestAPIKeyAuthRejectsUnavailableGroup(t *testing.T) {
 		{
 			name: "deleted status group is forbidden",
 			group: &routing.Group{
-				ID:       groupID,
-				Name:     "deleted",
-				Status:   "deleted",
-				Platform: capability.PlatformAnthropic,
+				ID:     groupID,
+				Name:   "deleted",
+				Status: "deleted",
+
 				Hydrated: true,
 			},
 			wantStatus: http.StatusForbidden,
@@ -889,7 +877,6 @@ func TestAPIKeyAuthRejectsUnavailableGroup(t *testing.T) {
 }
 
 func TestAPIKeyAuthRejectsUserDisabledPublicGroup(t *testing.T) {
-
 	groupID := int64(101)
 	user := &identity.User{
 		ID:                      7,
@@ -901,10 +888,10 @@ func TestAPIKeyAuthRejectsUserDisabledPublicGroup(t *testing.T) {
 		GroupRestrictionsLoaded: true,
 	}
 	group := &routing.Group{
-		ID:       groupID,
-		Name:     "public",
-		Status:   billingcore.StatusActive,
-		Platform: capability.PlatformAnthropic,
+		ID:     groupID,
+		Name:   "public",
+		Status: billingcore.StatusActive,
+
 		Hydrated: true,
 	}
 	apiKey := &apikey.APIKey{
@@ -944,7 +931,6 @@ func TestAPIKeyAuthRejectsUserDisabledPublicGroup(t *testing.T) {
 }
 
 func TestAPIKeyAuthMarksOnlyExpectedIngressRejections(t *testing.T) {
-
 	tests := []struct {
 		name       string
 		path       string
@@ -1050,7 +1036,6 @@ func TestAPIKeyAuthMarksOnlyExpectedIngressRejections(t *testing.T) {
 }
 
 func TestAPIKeyAuthSetsOpsFallbackKeyOnEarlyAbort(t *testing.T) {
-
 	groupID := int64(101)
 	user := &identity.User{
 		ID:          7,
@@ -1067,10 +1052,10 @@ func TestAPIKeyAuthSetsOpsFallbackKeyOnEarlyAbort(t *testing.T) {
 		Status:  billingcore.StatusActive,
 		User:    user,
 		Group: &routing.Group{
-			ID:       groupID,
-			Name:     "disabled",
-			Status:   billingcore.StatusDisabled,
-			Platform: capability.PlatformAnthropic,
+			ID:     groupID,
+			Name:   "disabled",
+			Status: billingcore.StatusDisabled,
+
 			Hydrated: true,
 		},
 	}
@@ -1104,7 +1089,7 @@ func TestAPIKeyAuthSetsOpsFallbackKeyOnEarlyAbort(t *testing.T) {
 	req.Header.Set("x-api-key", apiKey.Key)
 	router.ServeHTTP(w, req)
 
-	// 分组停用时请求会早退中断，但 Ops fallback key 仍应写入，含 user/group/platform。
+	// 分组停用时请求会早退中断，但 Ops fallback key 仍应写入，含 user/group；平台在选定账号后记录。
 	require.Equal(t, http.StatusForbidden, w.Code)
 	require.Contains(t, w.Body.String(), "GROUP_DISABLED")
 	require.True(t, fallbackOK, "鉴权早退时也应写入 ops fallback api key")
@@ -1115,11 +1100,9 @@ func TestAPIKeyAuthSetsOpsFallbackKeyOnEarlyAbort(t *testing.T) {
 	require.NotNil(t, fallback.GroupID)
 	require.Equal(t, groupID, *fallback.GroupID)
 	require.NotNil(t, fallback.Group)
-	require.Equal(t, capability.PlatformAnthropic, fallback.Group.Platform)
 }
 
 func TestAPIKeyAuthGoogleSetsOpsFallbackKeyOnEarlyAbort(t *testing.T) {
-
 	groupID := int64(202)
 	user := &identity.User{
 		ID:          9,
@@ -1136,10 +1119,10 @@ func TestAPIKeyAuthGoogleSetsOpsFallbackKeyOnEarlyAbort(t *testing.T) {
 		Status:  billingcore.StatusActive,
 		User:    user,
 		Group: &routing.Group{
-			ID:       groupID,
-			Name:     "disabled",
-			Status:   billingcore.StatusDisabled,
-			Platform: capability.PlatformGemini,
+			ID:     groupID,
+			Name:   "disabled",
+			Status: billingcore.StatusDisabled,
+
 			Hydrated: true,
 		},
 	}
@@ -1182,7 +1165,6 @@ func TestAPIKeyAuthGoogleSetsOpsFallbackKeyOnEarlyAbort(t *testing.T) {
 }
 
 func TestAPIKeyAuthGoogleRejectsExclusiveGroupWhenUserNoLongerAllowed(t *testing.T) {
-
 	groupID := int64(303)
 	user := &identity.User{
 		ID:            7,
@@ -1242,12 +1224,6 @@ func TestAPIKeyAuthGoogleRejectsExclusiveGroupWhenUserNoLongerAllowed(t *testing
 }
 
 func TestRequireGroupAssignmentMarksUngroupedKeyBusinessLimited(t *testing.T) {
-
-	settingService := routing.NewRuntimeSettings(&ungroupedSettingProbe{
-		values: map[string]string{
-			routing.SettingKeyAllowUngroupedKeyScheduling: "false",
-		},
-	})
 	apiKey := &apikey.APIKey{
 		ID:     100,
 		Key:    "ungrouped-key",
@@ -1271,7 +1247,7 @@ func TestRequireGroupAssignmentMarksUngroupedKeyBusinessLimited(t *testing.T) {
 		c.Set(string(keyhttp.ContextKeyAPIKey), apiKey)
 		c.Next()
 	})
-	router.Use(RequireGroupAssignment(settingService, gatewayhttp.AnthropicErrorWriter))
+	router.Use(RequireGroupAssignment(gatewayhttp.AnthropicErrorWriter))
 	router.GET("/t", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"ok": true})
 	})
@@ -1288,89 +1264,90 @@ func TestRequireGroupAssignmentMarksUngroupedKeyBusinessLimited(t *testing.T) {
 	require.Equal(t, gatewayhttp.OpsClientBusinessLimitedReasonAPIKeyGroupUnassigned, businessLimitedReason)
 }
 
-func TestAPIKeyAuthFallsBackDisabledGroupToPlatformDefault(t *testing.T) {
-
-	disabledGroupID := int64(101)
-	defaultGroupID := int64(202)
-	user := &identity.User{
-		ID:          7,
-		Role:        identity.RoleUser,
-		Status:      billingcore.StatusActive,
-		Balance:     10,
-		Concurrency: 3,
-	}
-	disabledGroup := &routing.Group{
-		ID:       disabledGroupID,
-		Name:     "openai-disabled",
-		Status:   billingcore.StatusDisabled,
-		Platform: capability.PlatformOpenAI,
-		Hydrated: true,
-	}
-	apiKey := &apikey.APIKey{
-		ID:                                    100,
-		UserID:                                user.ID,
-		GroupID:                               &disabledGroupID,
-		Key:                                   "test-key",
-		Status:                                billingcore.StatusActive,
-		User:                                  user,
-		Group:                                 disabledGroup,
-		FallbackToDefaultGroupWhenUnavailable: true,
-	}
-
-	apiKeyRepo := &stubApiKeyRepo{
-		getByKey: func(ctx context.Context, key string) (*apikey.APIKey, error) {
-			if key != apiKey.Key {
-				return nil, apikey.ErrAPIKeyNotFound
+// 不可用回退必须配置目标；历史默认名称不能触发隐式选组。
+func TestAPIKeyAuthUsesExplicitUnavailableFallback(t *testing.T) {
+	for _, explicit := range []bool{true, false} {
+		t.Run(strconv.FormatBool(explicit), func(t *testing.T) {
+			disabledGroupID := int64(101)
+			defaultGroupID := int64(202)
+			user := &identity.User{
+				ID:          7,
+				Role:        identity.RoleUser,
+				Status:      billingcore.StatusActive,
+				Balance:     10,
+				Concurrency: 3,
 			}
-			clone := *apiKey
-			return &clone, nil
-		},
-	}
-	groupRepo := &stubGroupRepoForAuth{
-		groupsByPlatform: map[string][]routing.Group{
-			capability.PlatformOpenAI: {
-				{
-					ID:             defaultGroupID,
-					Name:           "openai-default",
-					Status:         billingcore.StatusActive,
-					Platform:       capability.PlatformOpenAI,
-					Hydrated:       true,
-					IsDefault:      true,
-					RateMultiplier: 1,
+			disabledGroup := &routing.Group{
+				UnavailableFallbackGroupID: &defaultGroupID,
+				ID:                         disabledGroupID,
+				Name:                       "openai-disabled",
+				Status:                     billingcore.StatusDisabled,
+
+				Hydrated: true,
+			}
+			if !explicit {
+				disabledGroup.UnavailableFallbackGroupID = nil
+			}
+			apiKey := &apikey.APIKey{
+				ID:                           100,
+				UserID:                       user.ID,
+				GroupID:                      &disabledGroupID,
+				Key:                          "test-key",
+				Status:                       billingcore.StatusActive,
+				User:                         user,
+				Group:                        disabledGroup,
+				FallbackWhenGroupUnavailable: true,
+			}
+
+			apiKeyRepo := &stubApiKeyRepo{
+				getByKey: func(ctx context.Context, key string) (*apikey.APIKey, error) {
+					if key != apiKey.Key {
+						return nil, apikey.ErrAPIKeyNotFound
+					}
+					clone := *apiKey
+					return &clone, nil
 				},
-			},
-		},
+			}
+			groupRepo := &stubGroupRepoForAuth{groupsByID: map[int64]routing.Group{
+				disabledGroupID: *disabledGroup,
+				defaultGroupID:  {ID: defaultGroupID, Name: "openai-default", Status: billingcore.StatusActive, Hydrated: true, RateMultiplier: 1},
+			}}
+
+			cfg := &config.Config{RunMode: config.RunModeStandard}
+			apiKeyService := testkit.NewService(apiKeyRepo, nil, groupRepo, nil, nil, nil, cfg)
+			apiKeyService.Start()
+			router := gin.New()
+			router.Use(gin.HandlerFunc(NewAPIKeyAuthMiddleware(apiKeyService, nil, cfg)))
+			router.GET("/t", func(c *gin.Context) {
+				currentKey, ok := keyhttp.GetAPIKeyFromContext(c)
+				if !ok || currentKey.GroupID == nil || *currentKey.GroupID != defaultGroupID {
+					c.JSON(http.StatusInternalServerError, gin.H{"ok": false})
+					return
+				}
+				groupFromCtx, ok := requeststate.GroupFromContext(c.Request.Context())
+				if !ok || groupFromCtx == nil || groupFromCtx.ID != defaultGroupID {
+					c.JSON(http.StatusInternalServerError, gin.H{"ok": false})
+					return
+				}
+				c.JSON(http.StatusOK, gin.H{"ok": true})
+			})
+
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, "/t", nil)
+			req.Header.Set("x-api-key", apiKey.Key)
+			router.ServeHTTP(w, req)
+
+			if explicit {
+				require.Equal(t, http.StatusOK, w.Code)
+			} else {
+				require.Equal(t, http.StatusForbidden, w.Code)
+				require.Contains(t, w.Body.String(), "GROUP_DISABLED")
+			}
+		})
 	}
-
-	cfg := &config.Config{RunMode: config.RunModeStandard}
-	apiKeyService := testkit.NewService(apiKeyRepo, nil, groupRepo, nil, nil, nil, cfg)
-	apiKeyService.Start()
-	router := gin.New()
-	router.Use(gin.HandlerFunc(NewAPIKeyAuthMiddleware(apiKeyService, nil, cfg)))
-	router.GET("/t", func(c *gin.Context) {
-		currentKey, ok := keyhttp.GetAPIKeyFromContext(c)
-		if !ok || currentKey.GroupID == nil || *currentKey.GroupID != defaultGroupID {
-			c.JSON(http.StatusInternalServerError, gin.H{"ok": false})
-			return
-		}
-		groupFromCtx, ok := requeststate.GroupFromContext(c.Request.Context())
-		if !ok || groupFromCtx == nil || groupFromCtx.ID != defaultGroupID {
-			c.JSON(http.StatusInternalServerError, gin.H{"ok": false})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{"ok": true})
-	})
-
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/t", nil)
-	req.Header.Set("x-api-key", apiKey.Key)
-	router.ServeHTTP(w, req)
-
-	require.Equal(t, http.StatusOK, w.Code)
 }
 
 func TestAPIKeyAuthRejectsDisabledGroupWhenFallbackDisabled(t *testing.T) {
-
 	disabledGroupID := int64(101)
 	defaultGroupID := int64(202)
 	user := &identity.User{
@@ -1381,10 +1358,11 @@ func TestAPIKeyAuthRejectsDisabledGroupWhenFallbackDisabled(t *testing.T) {
 		Concurrency: 3,
 	}
 	disabledGroup := &routing.Group{
-		ID:       disabledGroupID,
-		Name:     "openai-disabled",
-		Status:   billingcore.StatusDisabled,
-		Platform: capability.PlatformOpenAI,
+		UnavailableFallbackGroupID: &defaultGroupID,
+		ID:                         disabledGroupID,
+		Name:                       "openai-disabled",
+		Status:                     billingcore.StatusDisabled,
+
 		Hydrated: true,
 	}
 	apiKey := &apikey.APIKey{
@@ -1406,21 +1384,10 @@ func TestAPIKeyAuthRejectsDisabledGroupWhenFallbackDisabled(t *testing.T) {
 			return &clone, nil
 		},
 	}
-	groupRepo := &stubGroupRepoForAuth{
-		groupsByPlatform: map[string][]routing.Group{
-			capability.PlatformOpenAI: {
-				{
-					ID:             defaultGroupID,
-					Name:           "openai-default",
-					Status:         billingcore.StatusActive,
-					Platform:       capability.PlatformOpenAI,
-					Hydrated:       true,
-					IsDefault:      true,
-					RateMultiplier: 1,
-				},
-			},
-		},
-	}
+	groupRepo := &stubGroupRepoForAuth{groupsByID: map[int64]routing.Group{
+		disabledGroupID: *disabledGroup,
+		defaultGroupID:  {ID: defaultGroupID, Name: "explicit-fallback", Status: billingcore.StatusActive, Hydrated: true, RateMultiplier: 1},
+	}}
 
 	cfg := &config.Config{RunMode: config.RunModeStandard}
 	apiKeyService := testkit.NewService(apiKeyRepo, nil, groupRepo, nil, nil, nil, cfg)
@@ -1441,7 +1408,6 @@ func TestAPIKeyAuthRejectsDisabledGroupWhenFallbackDisabled(t *testing.T) {
 }
 
 func TestAPIKeyAuthIPRestrictionUsesTrustedPathWhenSwitchDisabled(t *testing.T) {
-
 	user := &identity.User{
 		ID:          7,
 		Role:        identity.RoleUser,
@@ -1504,7 +1470,6 @@ func TestAPIKeyAuthIPRestrictionUsesTrustedPathWhenSwitchDisabled(t *testing.T) 
 }
 
 func TestAPIKeyAuthIPRestrictionIncludesClientIPForBlacklistDenial(t *testing.T) {
-
 	user := &identity.User{
 		ID:          7,
 		Role:        identity.RoleUser,
@@ -1552,7 +1517,6 @@ func TestAPIKeyAuthIPRestrictionIncludesClientIPForBlacklistDenial(t *testing.T)
 }
 
 func TestAPIKeyAuthIPRestrictionUsesConfiguredTrustedProxy(t *testing.T) {
-
 	user := &identity.User{
 		ID:          7,
 		Role:        identity.RoleUser,
@@ -1569,6 +1533,7 @@ func TestAPIKeyAuthIPRestrictionUsesConfiguredTrustedProxy(t *testing.T) {
 		IPWhitelist: []string{"1.2.3.4"},
 	}
 
+	bindAuthTestGroup(apiKey)
 	apiKeyRepo := &stubApiKeyRepo{
 		getByKey: func(ctx context.Context, key string) (*apikey.APIKey, error) {
 			if key != apiKey.Key {
@@ -1603,7 +1568,6 @@ func TestAPIKeyAuthIPRestrictionUsesConfiguredTrustedProxy(t *testing.T) {
 }
 
 func TestAPIKeyAuthIPRestrictionUsesForwardedClientIPInDenialWhenTrusted(t *testing.T) {
-
 	user := &identity.User{
 		ID:          7,
 		Role:        identity.RoleUser,
@@ -1655,7 +1619,6 @@ func TestAPIKeyAuthIPRestrictionUsesForwardedClientIPInDenialWhenTrusted(t *test
 }
 
 func TestAPIKeyAuthTouchesLastUsedOnSuccess(t *testing.T) {
-
 	user := &identity.User{
 		ID:          7,
 		Role:        identity.RoleUser,
@@ -1673,6 +1636,7 @@ func TestAPIKeyAuthTouchesLastUsedOnSuccess(t *testing.T) {
 
 	var touchedID int64
 	var touchedAt time.Time
+	bindAuthTestGroup(apiKey)
 	apiKeyRepo := &stubApiKeyRepo{
 		getByKey: func(ctx context.Context, key string) (*apikey.APIKey, error) {
 			if key != apiKey.Key {
@@ -1704,7 +1668,6 @@ func TestAPIKeyAuthTouchesLastUsedOnSuccess(t *testing.T) {
 }
 
 func TestAPIKeyAuthTouchLastUsedFailureDoesNotBlock(t *testing.T) {
-
 	user := &identity.User{
 		ID:          8,
 		Role:        identity.RoleUser,
@@ -1721,6 +1684,7 @@ func TestAPIKeyAuthTouchLastUsedFailureDoesNotBlock(t *testing.T) {
 	}
 
 	touchCalls := 0
+	bindAuthTestGroup(apiKey)
 	apiKeyRepo := &stubApiKeyRepo{
 		getByKey: func(ctx context.Context, key string) (*apikey.APIKey, error) {
 			if key != apiKey.Key {
@@ -1750,7 +1714,6 @@ func TestAPIKeyAuthTouchLastUsedFailureDoesNotBlock(t *testing.T) {
 }
 
 func TestAPIKeyAuthTouchesLastUsedInStandardMode(t *testing.T) {
-
 	user := &identity.User{
 		ID:          9,
 		Role:        identity.RoleUser,
@@ -1767,6 +1730,7 @@ func TestAPIKeyAuthTouchesLastUsedInStandardMode(t *testing.T) {
 	}
 
 	touchCalls := 0
+	bindAuthTestGroup(apiKey)
 	apiKeyRepo := &stubApiKeyRepo{
 		getByKey: func(ctx context.Context, key string) (*apikey.APIKey, error) {
 			if key != apiKey.Key {
@@ -1796,13 +1760,13 @@ func TestAPIKeyAuthTouchesLastUsedInStandardMode(t *testing.T) {
 }
 
 func TestAPIKeyAuthRemovedBillingPathUsesNormalQuotaChecks(t *testing.T) {
-
 	user := &identity.User{ID: 7, Role: identity.RoleUser, Status: billingcore.StatusActive, Balance: 10}
 	apiKey := &apikey.APIKey{
 		ID: 100, UserID: user.ID, Key: "removed-billing-path", Status: apikey.StatusAPIKeyQuotaExhausted,
 		User: user, Quota: 1, QuotaUsed: 1,
 	}
 
+	bindAuthTestGroup(apiKey)
 	apiKeyRepo := &stubApiKeyRepo{
 		getByKey: func(context.Context, string) (*apikey.APIKey, error) {
 			clone := *apiKey
@@ -1824,7 +1788,6 @@ func TestAPIKeyAuthRemovedBillingPathUsesNormalQuotaChecks(t *testing.T) {
 }
 
 func TestAPIKeyAuthUsageStillTouchesLastUsed(t *testing.T) {
-
 	user := &identity.User{ID: 7, Role: identity.RoleUser, Status: billingcore.StatusActive, Balance: 10}
 	apiKey := &apikey.APIKey{ID: 100, UserID: user.ID, Key: "usage-touch", Status: billingcore.StatusActive, User: user}
 	touchCalls := 0
@@ -1853,7 +1816,6 @@ func TestAPIKeyAuthUsageStillTouchesLastUsed(t *testing.T) {
 }
 
 func TestAPIKeyAuthAllowsBalanceBelowMinimumReserve(t *testing.T) {
-
 	user := &identity.User{
 		ID:          10,
 		Role:        identity.RoleUser,
@@ -1868,6 +1830,7 @@ func TestAPIKeyAuthAllowsBalanceBelowMinimumReserve(t *testing.T) {
 		Status: billingcore.StatusActive,
 		User:   user,
 	}
+	bindAuthTestGroup(apiKey)
 	apiKeyRepo := &stubApiKeyRepo{
 		getByKey: func(ctx context.Context, key string) (*apikey.APIKey, error) {
 			if key != apiKey.Key {
@@ -1897,7 +1860,6 @@ func TestAPIKeyAuthAllowsBalanceBelowMinimumReserve(t *testing.T) {
 }
 
 func TestAPIKeyAuthRejectsExhaustedBalance(t *testing.T) {
-
 	user := &identity.User{
 		ID:          10,
 		Role:        identity.RoleUser,
@@ -1912,6 +1874,7 @@ func TestAPIKeyAuthRejectsExhaustedBalance(t *testing.T) {
 		Status: billingcore.StatusActive,
 		User:   user,
 	}
+	bindAuthTestGroup(apiKey)
 	apiKeyRepo := &stubApiKeyRepo{
 		getByKey: func(ctx context.Context, key string) (*apikey.APIKey, error) {
 			if key != apiKey.Key {
@@ -1939,9 +1902,8 @@ func TestAPIKeyAuthRejectsExhaustedBalance(t *testing.T) {
 }
 
 func TestAPIKeyAuthOpenAIQuotaErrorFormat(t *testing.T) {
-
 	user := &identity.User{ID: 11, Role: identity.RoleUser, Status: billingcore.StatusActive, Balance: 10}
-	group := &routing.Group{ID: 8, Platform: capability.PlatformOpenAI, Status: billingcore.StatusActive}
+	group := &routing.Group{ID: 8, Status: billingcore.StatusActive}
 	apiKey := &apikey.APIKey{
 		ID: 105, UserID: user.ID, Key: "openai-quota-exhausted", Status: apikey.StatusAPIKeyQuotaExhausted,
 		User: user, Group: group, GroupID: &group.ID,
@@ -1980,9 +1942,8 @@ func TestAPIKeyAuthOpenAIQuotaErrorFormat(t *testing.T) {
 }
 
 func TestAPIKeyAuthQuotaErrorKeepsLegacyFormatOutsideResponses(t *testing.T) {
-
 	user := &identity.User{ID: 11, Role: identity.RoleUser, Status: billingcore.StatusActive, Balance: 10}
-	group := &routing.Group{ID: 8, Platform: capability.PlatformOpenAI, Status: billingcore.StatusActive}
+	group := &routing.Group{ID: 8, Status: billingcore.StatusActive}
 	apiKey := &apikey.APIKey{
 		ID: 105, UserID: user.ID, Key: "openai-quota-exhausted", Status: apikey.StatusAPIKeyQuotaExhausted,
 		User: user, Group: group, GroupID: &group.ID,
@@ -2009,7 +1970,6 @@ func TestAPIKeyAuthQuotaErrorKeepsLegacyFormatOutsideResponses(t *testing.T) {
 }
 
 func TestAPIKeyAuthAllowsBatchManagementAfterQuotaExhaustion(t *testing.T) {
-
 	user := &identity.User{ID: 11, Role: identity.RoleUser, Status: billingcore.StatusActive, Balance: 0}
 	apiKey := &apikey.APIKey{
 		ID: 106, UserID: user.ID, Key: "batch-management-exhausted", Status: apikey.StatusAPIKeyQuotaExhausted,
@@ -2046,9 +2006,8 @@ func TestAPIKeyAuthAllowsBatchManagementAfterQuotaExhaustion(t *testing.T) {
 }
 
 func TestAPIKeyAuthCompositeModelListStillChecksQuota(t *testing.T) {
-
 	user := &identity.User{ID: 11, Role: identity.RoleUser, Status: billingcore.StatusActive, Balance: 10}
-	group := &routing.Group{ID: 9, Platform: capability.PlatformOpenAI, Status: billingcore.StatusActive, Hydrated: true}
+	group := &routing.Group{ID: 9, Status: billingcore.StatusActive, Hydrated: true}
 	apiKey := &apikey.APIKey{
 		ID: 107, UserID: user.ID, Key: "composite-model-list-exhausted", Status: apikey.StatusAPIKeyQuotaExhausted,
 		User: user, IsComposite: true, Quota: 1, QuotaUsed: 1,
@@ -2111,7 +2070,7 @@ type stubApiKeyRepo struct {
 }
 
 type stubGroupRepoForAuth struct {
-	groupsByPlatform map[string][]routing.Group
+	groupsByID map[int64]routing.Group
 }
 
 func (r *stubGroupRepoForAuth) Create(ctx context.Context, group *routing.Group) error {
@@ -2119,11 +2078,14 @@ func (r *stubGroupRepoForAuth) Create(ctx context.Context, group *routing.Group)
 }
 
 func (r *stubGroupRepoForAuth) GetByID(ctx context.Context, id int64) (*routing.Group, error) {
-	return nil, errors.New("not implemented")
+	if value, ok := r.groupsByID[id]; ok {
+		return &value, nil
+	}
+	return nil, routing.ErrGroupNotFound
 }
 
 func (r *stubGroupRepoForAuth) GetByIDLite(ctx context.Context, id int64) (*routing.Group, error) {
-	return nil, errors.New("not implemented")
+	return r.GetByID(ctx, id)
 }
 
 func (r *stubGroupRepoForAuth) Update(ctx context.Context, group *routing.Group) error {
@@ -2148,17 +2110,6 @@ func (r *stubGroupRepoForAuth) ListWithFilters(ctx context.Context, params pagin
 
 func (r *stubGroupRepoForAuth) ListActive(ctx context.Context) ([]routing.Group, error) {
 	return nil, errors.New("not implemented")
-}
-
-func (r *stubGroupRepoForAuth) ListActiveByPlatform(ctx context.Context, platform string) ([]routing.Group, error) {
-	return r.ListActiveByPlatformLite(ctx, platform)
-}
-
-func (r *stubGroupRepoForAuth) ListActiveByPlatformLite(ctx context.Context, platform string) ([]routing.Group, error) {
-	groups := r.groupsByPlatform[platform]
-	out := make([]routing.Group, len(groups))
-	copy(out, groups)
-	return out, nil
 }
 
 func (r *stubGroupRepoForAuth) ExistsByName(ctx context.Context, name string) (bool, error) {
@@ -2278,9 +2229,11 @@ func (r *stubApiKeyRepo) UpdateLastUsed(ctx context.Context, id int64, usedAt ti
 func (r *stubApiKeyRepo) IncrementRateLimitUsage(ctx context.Context, id int64, cost float64) error {
 	return nil
 }
+
 func (r *stubApiKeyRepo) ResetRateLimitWindows(ctx context.Context, id int64) error {
 	return nil
 }
+
 func (r *stubApiKeyRepo) GetRateLimitData(ctx context.Context, id int64) (*apikey.APIKeyRateLimitData, error) {
 	return nil, nil
 }
@@ -2309,6 +2262,7 @@ func (r *stubUserSubscriptionRepo) GetByID(ctx context.Context, id int64) (*bill
 	}
 	return nil, errors.New("not implemented")
 }
+
 func (r *stubUserSubscriptionRepo) GetByIDIncludeDeleted(ctx context.Context, id int64) (*billingcore.UserSubscription, error) {
 	return nil, errors.New("not implemented")
 }
@@ -2320,6 +2274,7 @@ func (r *stubUserSubscriptionRepo) GetByUserIDAndGroupID(ctx context.Context, us
 func (r *stubUserSubscriptionRepo) GetActiveByUserIDAndGroupID(ctx context.Context, userID, groupID int64) (*billingcore.UserSubscription, error) {
 	return nil, errors.New("not implemented")
 }
+
 func (r *stubUserSubscriptionRepo) GetLatestByUserIDAndPlanID(ctx context.Context, userID, planID int64) (*billingcore.UserSubscription, error) {
 	return nil, errors.New("not implemented")
 }
@@ -2331,6 +2286,7 @@ func (r *stubUserSubscriptionRepo) Update(ctx context.Context, sub *billingcore.
 func (r *stubUserSubscriptionRepo) Delete(ctx context.Context, id int64) error {
 	return errors.New("not implemented")
 }
+
 func (r *stubUserSubscriptionRepo) Restore(ctx context.Context, subscriptionID int64, restoredStatus string) (*billingcore.UserSubscription, error) {
 	return nil, errors.New("not implemented")
 }
@@ -2345,6 +2301,7 @@ func (r *stubUserSubscriptionRepo) ListActiveByUserID(ctx context.Context, userI
 	}
 	return nil, errors.New("not implemented")
 }
+
 func (r *stubUserSubscriptionRepo) ListByUserIDAndPlanID(ctx context.Context, userID, planID int64) ([]billingcore.UserSubscription, error) {
 	return nil, errors.New("not implemented")
 }
@@ -2352,6 +2309,7 @@ func (r *stubUserSubscriptionRepo) ListByUserIDAndPlanID(ctx context.Context, us
 func (r *stubUserSubscriptionRepo) ListByGroupID(ctx context.Context, groupID int64, params pagination.PaginationParams) ([]billingcore.UserSubscription, *pagination.PaginationResult, error) {
 	return nil, nil, errors.New("not implemented")
 }
+
 func (r *stubUserSubscriptionRepo) ListByPlanID(ctx context.Context, planID int64, params pagination.PaginationParams) ([]billingcore.UserSubscription, *pagination.PaginationResult, error) {
 	return nil, nil, errors.New("not implemented")
 }
@@ -2359,6 +2317,7 @@ func (r *stubUserSubscriptionRepo) ListByPlanID(ctx context.Context, planID int6
 func (r *stubUserSubscriptionRepo) List(ctx context.Context, params pagination.PaginationParams, userID, planID *int64, status, platform, sortBy, sortOrder string) ([]billingcore.UserSubscription, *pagination.PaginationResult, error) {
 	return nil, nil, errors.New("not implemented")
 }
+
 func (r *stubUserSubscriptionRepo) ListBySourceOrderID(ctx context.Context, sourceOrderID int64) ([]billingcore.UserSubscription, error) {
 	return nil, errors.New("not implemented")
 }
@@ -2422,16 +2381,10 @@ func (r *stubUserSubscriptionRepo) BatchUpdateExpiredStatus(ctx context.Context)
 	return 0, errors.New("not implemented")
 }
 
-// ungroupedSettingProbe 只提供原无分组门禁单键值，其余存储调用保持未配置。
-type ungroupedSettingProbe struct {
-	settingscore.Repository
-	values map[string]string
-}
-
-func (p *ungroupedSettingProbe) GetValue(_ context.Context, key string) (string, error) {
-	value, ok := p.values[key]
-	if !ok {
-		return "", settingscore.ErrSettingNotFound
-	}
-	return value, nil
+// 与分组无关的认证、额度和缓存测试使用已明确绑定的启用分组。
+func bindAuthTestGroup(key *apikey.APIKey) *apikey.APIKey {
+	group := &routing.Group{ID: 9001, Name: "explicit-test-group", Status: billingcore.StatusActive, Hydrated: true, RateMultiplier: 1}
+	key.GroupID = &group.ID
+	key.Group = group
+	return key
 }

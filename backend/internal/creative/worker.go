@@ -359,7 +359,7 @@ func (w *CreativeRunWorker) Process(ctx context.Context, runID string) (Creative
 	}
 	// 先持久化实际账号，再调用 provider，确保结果元数据已落库时可恢复结算。
 	if execution.AccountID > 0 {
-		if err := w.repo.SetCreativeRunAccountID(ctx, runID, execution.AccountID, time.Now()); err != nil {
+		if err := w.repo.SetCreativeRunExecution(ctx, runID, execution.AccountID, execution.Provider, time.Now()); err != nil {
 			return CreativeProcessResult{}, err
 		}
 	}
@@ -678,6 +678,7 @@ type ExecutionTarget interface {
 	Execute(context.Context, CreativeRun, CreativeRunPayload) (*CreativeExecuteResult, error)
 }
 type CreativeExecution struct {
+	Provider      string
 	AccountID     int64
 	UpstreamModel string
 	Target        ExecutionTarget
@@ -702,6 +703,7 @@ func (w *CreativeRunWorker) warn(event string, values ...any) {
 		w.ports.Observe(event, values...)
 	}
 }
+
 func sleepOrDone(ctx context.Context, delay time.Duration) {
 	timer := time.NewTimer(delay)
 	defer timer.Stop()

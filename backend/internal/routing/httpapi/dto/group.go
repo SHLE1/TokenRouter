@@ -9,16 +9,16 @@ import (
 )
 
 type Group struct {
-	ID             int64          `json:"id"`
-	Name           string         `json:"name"`
-	Description    string         `json:"description"`
-	Platform       string         `json:"platform"`
-	DisplayBrand   string         `json:"display_brand"`
-	RateMultiplier float64        `json:"rate_multiplier"`
-	Capacity       *GroupCapacity `json:"capacity,omitempty"`
-	IsExclusive    bool           `json:"is_exclusive"`
-	IsDefault      bool           `json:"is_default"`
-	Status         string         `json:"status"`
+	Models         []string                         `json:"models"`
+	ModelProtocols map[string][]protocol.ProtocolID `json:"model_protocols,omitempty"`
+	ID             int64                            `json:"id"`
+	Name           string                           `json:"name"`
+	Description    string                           `json:"description"`
+	DisplayBrand   string                           `json:"display_brand"`
+	RateMultiplier float64                          `json:"rate_multiplier"`
+	Capacity       *GroupCapacity                   `json:"capacity,omitempty"`
+	IsExclusive    bool                             `json:"is_exclusive"`
+	Status         string                           `json:"status"`
 	// 会话隔离开启后，目标分组会拒绝其它分组已归属的显式会话切入。
 	SessionIsolationEnabled   bool `json:"session_isolation_enabled"`
 	LongContextPricingEnabled bool `json:"long_context_pricing_enabled"`
@@ -49,9 +49,9 @@ type Group struct {
 	UnavailableFallbackGroupID *int64 `json:"unavailable_fallback_group_id"`
 
 	// AllowedProtocols 是分组允许的完整客户端协议与业务入口集合。
-	AllowedProtocols     []protocol.ProtocolID                       `json:"allowed_protocols"`
-	ProtocolFallbacks    map[protocol.ProtocolID]protocol.ProtocolID `json:"protocol_fallbacks"`
-	ResponsesImagePolicy string                                      `json:"responses_image_policy"`
+	AllowedProtocols     []protocol.ProtocolID                         `json:"allowed_protocols"`
+	ProtocolFallbacks    map[protocol.ProtocolID][]protocol.ProtocolID `json:"protocol_fallbacks"`
+	ResponsesImagePolicy string                                        `json:"responses_image_policy"`
 	// AllowMessagesDispatch 是从协议集合派生的弃用兼容字段。
 	AllowMessagesDispatch bool `json:"-"`
 	// OpenAI Live 接口开关

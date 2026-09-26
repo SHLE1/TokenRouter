@@ -46,7 +46,7 @@ func TestProtocolForwardUsesConfiguredTarget(t *testing.T) {
 				t.Run(platform+"/"+string(source)+"/"+string(target), func(t *testing.T) {
 					account := *a
 					account.Record.Credentials = map[string]any{"api_key": "test", "base_url": "http://grok.example/v1", accountcore.UpstreamProtocolsKey: []protocol.ProtocolID{target}, "api_base_urls": a.Record.Credentials["api_base_urls"]}
-					group := &routing.Group{Platform: platform, ProtocolFallbacks: map[protocol.ProtocolID]protocol.ProtocolID{source: target}}
+					group := &routing.Group{ProtocolFallbacks: map[protocol.ProtocolID][]protocol.ProtocolID{source: {target}}}
 					ctx := requeststate.WithClientProtocol(requeststate.WithGroup(context.Background(), group), source)
 					c := adaptiveProtocolTestContext(ingress.path, ingress.body)
 					c.Request = c.Request.WithContext(ctx)
@@ -107,7 +107,7 @@ func TestProtocolForwardConvertedResponsesRetainsWireContract(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey, Credentials: map[string]any{"api_key": "test", "base_url": "http://upstream.example", accountcore.UpstreamProtocolsKey: []string{"openai_chat_completions"}}}}
-			group := &routing.Group{Platform: capability.PlatformOpenAI, ProtocolFallbacks: map[protocol.ProtocolID]protocol.ProtocolID{protocol.ProtocolOpenAIResponses: protocol.ProtocolOpenAIChatCompletions}}
+			group := &routing.Group{ProtocolFallbacks: map[protocol.ProtocolID][]protocol.ProtocolID{protocol.ProtocolOpenAIResponses: {protocol.ProtocolOpenAIChatCompletions}}}
 			ctx := requeststate.WithClientProtocol(requeststate.WithGroup(context.Background(), group), protocol.ProtocolOpenAIResponses)
 			recorder := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(recorder)

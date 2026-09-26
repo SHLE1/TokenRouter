@@ -21,7 +21,6 @@ func TestS06GroupProbeLeaseAndAtomicResult(t *testing.T) {
 	client, integrationDB := routingDatabase(t)
 	suffix := time.Now().UnixNano()
 	group, err := client.Group.Create().SetName(fmt.Sprintf("s06-probe-%d", suffix)).
-		SetPlatform(routing.PlatformOpenAI).
 		SetAllowedProtocols(capability.DefaultGroupClientProtocols(routing.PlatformOpenAI)).
 		SetProtocolFallbacks(capability.DefaultProtocolFallbacks(routing.PlatformOpenAI)).
 		SetAvailabilityProbeConfig(routing.GroupAvailabilityProbeConfig{Enabled: true, IntervalMinutes: 5, ModelID: "gpt-test", TimeoutSeconds: 10}).Save(ctx)

@@ -50,7 +50,6 @@ type updatePricingConfigRequest struct {
 }
 
 type modelPricingRequest struct {
-	Platform                     string                   `json:"platform" binding:"omitempty,max=50"`
 	Models                       []string                 `json:"models" binding:"required,min=1,max=100"`
 	BillingMode                  string                   `json:"billing_mode" binding:"omitempty,oneof=token per_request image video"`
 	PriceMultiplier              *float64                 `json:"price_multiplier" binding:"omitempty,min=0"`
@@ -124,7 +123,6 @@ type pricingConfigResponse struct {
 
 type modelPricingResponse struct {
 	ID                           int64                     `json:"id"`
-	Platform                     string                    `json:"platform"`
 	Models                       []string                  `json:"models"`
 	BillingMode                  string                    `json:"billing_mode"`
 	PriceMultiplier              *float64                  `json:"price_multiplier"`
@@ -251,17 +249,13 @@ func pricingToResponse(p *routing.ModelPricingEntry) modelPricingResponse {
 	if billingMode == "" {
 		billingMode = string(routing.BillingModeToken)
 	}
-	platform := p.Platform
-	if platform == "" {
-		platform = routing.PlatformAnthropic
-	}
 	intervals := make([]pricingIntervalResponse, 0, len(p.Intervals))
 	for _, iv := range p.Intervals {
 		intervals = append(intervals, intervalToResponse(iv))
 	}
 	return modelPricingResponse{
-		ID:                           p.ID,
-		Platform:                     platform,
+		ID: p.ID,
+
 		Models:                       models,
 		BillingMode:                  billingMode,
 		PriceMultiplier:              p.PriceMultiplier,
@@ -328,7 +322,6 @@ func pricingRequestToService(reqs []modelPricingRequest) []routing.ModelPricingE
 		if billingMode == "" {
 			billingMode = routing.BillingModeToken
 		}
-		platform := r.Platform
 		intervals := make([]routing.PricingInterval, 0, len(r.Intervals))
 		for _, iv := range r.Intervals {
 			intervals = append(intervals, routing.PricingInterval{
@@ -349,7 +342,6 @@ func pricingRequestToService(reqs []modelPricingRequest) []routing.ModelPricingE
 			})
 		}
 		result = append(result, routing.ModelPricingEntry{
-			Platform:                     platform,
 			Models:                       r.Models,
 			BillingMode:                  billingMode,
 			PriceMultiplier:              r.PriceMultiplier,
@@ -450,18 +442,12 @@ func (h *PricingHandler) GetByID(c *gin.Context) {
 // POST /api/v1/admin/pricing/configs
 func (h *PricingHandler) Create(c *gin.Context) {
 	var req createPricingConfigRequest
-	if err := bindPricingConfigJSON(c, &req); err != nil {
+	if err := bindManagementJSON(c, &req); err != nil {
 		response.ErrorFrom(c, infraerrors.BadRequest("VALIDATION_ERROR", err.Error()))
 		return
 	}
 
 	pricing := pricingRequestToService(req.ModelPricing)
-	// Main model_pricing requires a platform; default to anthropic for backward compatibility.
-	for i := range pricing {
-		if pricing[i].Platform == "" {
-			pricing[i].Platform = routing.PlatformAnthropic
-		}
-	}
 
 	var statsRules []routing.AccountStatsPricingRule
 	for i, r := range req.AccountStatsPricingRules {
@@ -508,7 +494,7 @@ func (h *PricingHandler) Update(c *gin.Context) {
 	}
 
 	var req updatePricingConfigRequest
-	if err := bindPricingConfigJSON(c, &req); err != nil {
+	if err := bindManagementJSON(c, &req); err != nil {
 		response.ErrorFrom(c, infraerrors.BadRequest("VALIDATION_ERROR", err.Error()))
 		return
 	}
@@ -523,11 +509,6 @@ func (h *PricingHandler) Update(c *gin.Context) {
 	}
 	if req.ModelPricing != nil {
 		pricing := pricingRequestToService(*req.ModelPricing)
-		for i := range pricing {
-			if pricing[i].Platform == "" {
-				pricing[i].Platform = routing.PlatformAnthropic
-			}
-		}
 		input.ModelPricing = &pricing
 	}
 	if req.AccountStatsPricingRules != nil {
@@ -613,15 +594,10 @@ func (h *PricingHandler) GetModelDefaultPricing(c *gin.Context) {
 	})
 }
 
-// SyncPricingModels 返回 LiteLLM 定价目录中指定平台的最新模型列表
-// GET /api/v1/admin/pricing/defaults/models?platform=anthropic
+// SyncPricingModels 返回已加载的统一模型目录，不按分组上游平台分区。
+// GET /api/v1/admin/pricing/defaults/models
 func (h *PricingHandler) SyncPricingModels(c *gin.Context) {
 	platform := strings.ToLower(strings.TrimSpace(c.Query("platform")))
-	if platform == "" {
-		response.ErrorFrom(c, infraerrors.BadRequest("MISSING_PARAMETER", "platform parameter is required").
-			WithMetadata(map[string]string{"param": "platform"}))
-		return
-	}
 	models, err := h.catalog.ModelNames(platform)
 	if err != nil {
 		response.ErrorFrom(c, err)
@@ -631,8 +607,8 @@ func (h *PricingHandler) SyncPricingModels(c *gin.Context) {
 	response.Success(c, gin.H{"models": models})
 }
 
-// bindPricingConfigJSON 拒绝未知字段，并沿用 Gin 的字段校验。
-func bindPricingConfigJSON(c *gin.Context, target any) error {
+// bindManagementJSON 拒绝未知字段，并沿用 Gin 的字段校验。
+func bindManagementJSON(c *gin.Context, target any) error {
 	decoder := json.NewDecoder(c.Request.Body)
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(target); err != nil {

@@ -12,7 +12,7 @@ import { formatNumber } from '@/utils/format'
 interface Props {
   platformFilter?: string
   groupIdFilter?: number | null
-  groups?: Array<{ id: number; name: string; platform: string }>
+  groups?: Array<{ id: number; name: string }>
 }
 
 interface Emits {
@@ -60,9 +60,7 @@ const timeRangeOptions = computed(() => [
 ])
 
 const groupOptions = computed(() => {
-  const filtered = props.platformFilter
-    ? props.groups.filter((group) => group.platform === props.platformFilter)
-    : props.groups
+  const filtered = props.groups
   return [
     { value: null, label: t('common.all') },
     ...filtered.map((group) => ({ value: group.id, label: group.name }))

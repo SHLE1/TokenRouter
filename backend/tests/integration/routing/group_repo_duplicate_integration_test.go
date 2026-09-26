@@ -23,7 +23,6 @@ func TestCreateGroupFromSourceRollsBackWhenOutboxInsertFails(t *testing.T) {
 
 	source, err := client.Group.Create().
 		SetName(fmt.Sprintf("duplicate-rollback-source-%d", suffix)).
-		SetPlatform(capability.PlatformAnthropic).
 		Save(ctx)
 	require.NoError(t, err)
 	account, err := client.Account.Create().
@@ -71,14 +70,14 @@ func TestCreateGroupFromSourceRollsBackWhenOutboxInsertFails(t *testing.T) {
 	})
 
 	duplicate := &routing.Group{
-		Name:                 duplicateName,
-		Platform:             source.Platform,
+		Name: duplicateName,
+
 		RateMultiplier:       1,
 		Status:               "inactive",
 		DuplicateOperationID: operationID,
 
-		AllowedProtocols:     capability.DefaultGroupClientProtocols(source.Platform),
-		ProtocolFallbacks:    capability.DefaultProtocolFallbacks(source.Platform),
+		AllowedProtocols:     capability.DefaultGroupClientProtocols(""),
+		ProtocolFallbacks:    capability.DefaultProtocolFallbacks(""),
 		ResponsesImagePolicy: "inherit",
 	}
 	err = repo.CreateFromSource(ctx, duplicate, source.ID)

@@ -28,3 +28,16 @@ func WithFastModePolicy(ctx context.Context, policy string) context.Context {
 }
 
 func (a AccessSnapshot) FastModePolicy() string { return a.fastModePolicy }
+
+// WithRuntimeAPIKey 将已重新授权的分组快照发布给本请求，不改变原凭据身份或认证缓存。
+func WithRuntimeAPIKey(ctx context.Context, key *APIKey) context.Context {
+	access, ok := AccessSnapshotFromContext(ctx)
+	if !ok || key == nil || access.KeyID != key.ID {
+		return ctx
+	}
+	access.key = key
+	if key.User != nil {
+		access.PayerUserID = key.User.ID
+	}
+	return WithAccessSnapshot(ctx, access)
+}

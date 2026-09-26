@@ -36,8 +36,7 @@ func TestS06CodexImportHTTPDatabaseContract(t *testing.T) {
 		t.Helper()
 		raw, err := json.Marshal(contents)
 		require.NoError(t, err)
-		skip := true
-		payload, err := json.Marshal(account.CodexSessionImportRequest{Content: string(raw), SkipDefaultGroupBind: &skip})
+		payload, err := json.Marshal(account.CodexSessionImportRequest{Content: string(raw)})
 		require.NoError(t, err)
 		req := httptest.NewRequest(http.MethodPost, "/import/codex-session", bytes.NewReader(payload))
 		req.Header.Set("Content-Type", "application/json")

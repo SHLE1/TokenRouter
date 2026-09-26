@@ -42,11 +42,8 @@ func TestOpenAIGatewayService_MessagesRoutingModelUsesFullMappingChain(t *testin
 				Status:             billing.StatusActive,
 				RestrictModels:     true,
 				BillingModelSource: routing.BillingModelSourceUpstream,
-				ModelMapping: map[string]map[string]string{
-					capability.PlatformOpenAI: {"client-alias": "group-model"},
-				},
+				ModelMapping:       map[string]string{"client-alias": "group-model"},
 				ModelPricing: []routing.ModelPricingEntry{{
-					Platform:   capability.PlatformOpenAI,
 					Models:     []string{"allowed-upstream"},
 					InputPrice: &price,
 				}},

@@ -100,14 +100,12 @@ func createGroupRecord(ctx context.Context, client *dbent.Client, groupIn *routi
 	builder := client.Group.Create().
 		SetName(groupIn.Name).
 		SetDescription(groupIn.Description).
-		SetPlatform(groupIn.Platform).
 		SetSchedulerType(string(groupIn.SchedulerType)).
 		SetAdvancedSchedulerOverrides(groupIn.AdvancedSchedulerOverrides).
 		SetDisplayBrand(groupIn.DisplayBrand).
 		SetRateMultiplier(groupIn.RateMultiplier).
 		SetSortOrder(groupIn.SortOrder).
 		SetIsExclusive(groupIn.IsExclusive).
-		SetIsDefault(groupIn.IsDefault).
 		SetStatus(groupIn.Status).
 		SetSessionIsolationEnabled(groupIn.SessionIsolationEnabled).
 		SetAllowImageGeneration(groupIn.AllowImageGeneration).
@@ -284,14 +282,12 @@ func (r *GroupStore) Update(ctx context.Context, groupIn *routing.Group) error {
 	builder := client.Group.UpdateOneID(groupIn.ID).
 		SetName(groupIn.Name).
 		SetDescription(groupIn.Description).
-		SetPlatform(groupIn.Platform).
 		SetSchedulerType(string(schedulerType)).
 		SetAdvancedSchedulerOverrides(groupIn.AdvancedSchedulerOverrides).
 		SetDisplayBrand(groupIn.DisplayBrand).
 		SetRateMultiplier(groupIn.RateMultiplier).
 		SetSortOrder(groupIn.SortOrder).
 		SetIsExclusive(groupIn.IsExclusive).
-		SetIsDefault(groupIn.IsDefault).
 		SetStatus(groupIn.Status).
 		SetSessionIsolationEnabled(groupIn.SessionIsolationEnabled).
 		SetAllowImageGeneration(groupIn.AllowImageGeneration).
@@ -415,9 +411,6 @@ func (r *GroupStore) ListWithFilters(ctx context.Context, params pagination.Pagi
 	client := clientFromContext(ctx, r.client)
 	q := client.Group.Query()
 
-	if platform != "" {
-		q = q.Where(group.PlatformEQ(platform))
-	}
 	if status != "" {
 		q = q.Where(group.StatusEQ(status))
 	}
@@ -574,9 +567,6 @@ func groupListOrder(params pagination.PaginationParams) []func(*entsql.Selector)
 	case "name":
 		field = group.FieldName
 		defaultOrder = false
-	case "platform":
-		field = group.FieldPlatform
-		defaultOrder = false
 	case "display_brand":
 		field = group.FieldDisplayBrand
 		defaultOrder = false
@@ -692,51 +682,6 @@ func (r *GroupStore) ListActiveIDs(ctx context.Context) ([]int64, error) {
 		ids = append(ids, groups[i].ID)
 	}
 	return ids, nil
-}
-
-func (r *GroupStore) ListActiveByPlatform(ctx context.Context, platform string) ([]routing.Group, error) {
-	outGroups, err := r.ListActiveByPlatformLite(ctx, platform)
-	if err != nil {
-		return nil, err
-	}
-
-	groupIDs := make([]int64, 0, len(outGroups))
-	for i := range outGroups {
-		groupIDs = append(groupIDs, outGroups[i].ID)
-	}
-
-	counts, err := r.loadAccountCounts(ctx, groupIDs)
-	if err == nil {
-		for i := range outGroups {
-			c := counts[outGroups[i].ID]
-			outGroups[i].AccountCount = c.Total
-			outGroups[i].ActiveAccountCount = c.Active
-			outGroups[i].RateLimitedAccountCount = c.RateLimited
-		}
-	}
-
-	return outGroups, nil
-}
-
-// ListActiveByPlatformLite 返回指定平台的活跃分组，但不加载账号统计。
-func (r *GroupStore) ListActiveByPlatformLite(ctx context.Context, platform string) ([]routing.Group, error) {
-	client := clientFromContext(ctx, r.client)
-
-	groups, err := client.Group.Query().
-		Where(group.StatusEQ(routing.StatusActive), group.PlatformEQ(platform)).
-		Order(dbent.Asc(group.FieldSortOrder), dbent.Asc(group.FieldID)).
-		All(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	outGroups := make([]routing.Group, 0, len(groups))
-	for i := range groups {
-		g := GroupFromEnt(groups[i])
-		outGroups = append(outGroups, *g)
-	}
-
-	return outGroups, nil
 }
 
 func (r *GroupStore) ExistsByName(ctx context.Context, name string) (bool, error) {

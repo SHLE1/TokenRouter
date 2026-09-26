@@ -142,7 +142,7 @@ func (APIKey) Fields() []ent.Field {
 			Comment("Start time of the current 7d rate limit window"),
 
 		// 绑定分组停用时是否允许请求级回退到同平台默认分组。
-		field.Bool("fallback_to_default_group_when_unavailable").
+		field.Bool("fallback_when_group_unavailable").
 			Default(true).
 			Comment("绑定分组不可用时自动回退到同平台默认分组"),
 		// managed_by 标记服务端托管的隐藏 Key（如创作台执行 Key），普通用户接口不得暴露或操作。

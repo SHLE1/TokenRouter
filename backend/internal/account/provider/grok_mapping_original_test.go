@@ -47,8 +47,8 @@ func TestGrokAccountModelMappingRemainsExplicit(t *testing.T) {
 
 func TestGrokWhitelistRunsBeforeBuiltinNormalization(t *testing.T) {
 	unrestricted := &accountcore.Record{Platform: capability.PlatformGrok, Credentials: map[string]any{}}
-	require.True(t, unrestricted.IsModelSupported("custom-grok-model", ModelDefaults(), ModelRules(unrestricted)))
-	require.True(t, unrestricted.IsModelSupported("grok", ModelDefaults(), ModelRules(unrestricted)))
+	require.False(t, unrestricted.IsModelSupported("custom-grok-model", ModelDefaults(), ModelRules(unrestricted)))
+	require.False(t, unrestricted.IsModelSupported("grok", ModelDefaults(), ModelRules(unrestricted)))
 
 	strict := &accountcore.Record{
 		Platform: capability.PlatformGrok,

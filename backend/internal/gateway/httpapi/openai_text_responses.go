@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
+
 	"github.com/TokenFlux/TokenRouter/internal/gateway/execution"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 	textflow "github.com/TokenFlux/TokenRouter/internal/gateway/text"
@@ -105,6 +107,11 @@ func (h *OpenAITextHandler) Responses(c *gin.Context) {
 		return
 	}
 	reqModel := modelResult.String()
+	apiKey, err = resolveClientGroupForRequest(c, h.backend, apiKey, protocol.ProtocolOpenAIResponses)
+	if err != nil {
+		writeClientGroupFallbackError(c, err, h.errorResponse)
+		return
+	}
 	if cappedBody, changed, policyErr := h.backend.Reasoning(c, apiKey, body); policyErr != nil {
 		h.backend.PolicyDenied(c)
 		h.errorResponse(c, http.StatusForbidden, "permission_error", policyErr.Error())
@@ -266,6 +273,7 @@ func (h *OpenAITextHandler) Responses(c *gin.Context) {
 		return
 	}
 	if explicitSessionHash != "" {
+		c.Request = c.Request.WithContext(requeststate.WithSessionIsolation(c.Request.Context(), session.SessionIsolationSourceOpenAI, explicitSessionHash))
 		if err := h.backend.Isolate(c.Request.Context(), apiKey, subject.UserID, session.SessionIsolationSourceOpenAI, explicitSessionHash); h.handleOpenAISessionIsolationError(c, err, streamStarted) {
 			return
 		}

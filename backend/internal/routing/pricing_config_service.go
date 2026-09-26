@@ -4,7 +4,6 @@ package routing
 import (
 	"context"
 	"fmt"
-	"maps"
 	"math"
 	"strings"
 	"sync/atomic"
@@ -42,9 +41,6 @@ type PricingConfigRepository interface {
 	GetPricingConfigIDByGroupID(ctx context.Context, groupID int64) (int64, error)
 	GetGroupsInOtherPricingConfigs(ctx context.Context, pricingConfigID int64, groupIDs []int64) ([]int64, error)
 
-	// 分组平台查询
-	GetGroupPlatforms(ctx context.Context, groupIDs []int64) (map[int64]string, error)
-
 	// 模型定价
 	ListModelPricing(ctx context.Context, pricingConfigID int64) ([]ModelPricingEntry, error)
 	CreateModelPricing(ctx context.Context, pricing *ModelPricingEntry) error
@@ -53,22 +49,15 @@ type PricingConfigRepository interface {
 	ReplaceModelPricing(ctx context.Context, pricingConfigID int64, pricingList []ModelPricingEntry) error
 }
 
-// pricingModelKey 价格配置缓存复合键（显式包含 platform 防止跨平台同名模型冲突）
+// pricingModelKey 以分组和模型标识唯一的用户售价。
 type pricingModelKey struct {
-	groupID  int64
-	platform string // 平台标识
-	model    string // lowercase
+	groupID int64
+	model   string // lowercase
 }
 
 // normalizePriceModelName 委托纯价卡匹配规则。
 func normalizePriceModelName(model string) string {
 	return pricing.NormalizePriceModelName(model)
-}
-
-// pricingGroupPlatformKey 通配符定价缓存键
-type pricingGroupPlatformKey struct {
-	groupID  int64
-	platform string
 }
 
 // wildcardPricingEntry 通配符定价条目
@@ -80,11 +69,10 @@ type wildcardPricingEntry struct {
 // pricingConfigCache 价格配置缓存快照（扁平化哈希结构，热路径 O(1) 查找）
 type pricingConfigCache struct {
 	// 热路径查找
-	pricingByGroupModel     map[pricingModelKey]*ModelPricingEntry              // (groupID, platform, model) → 定价
-	wildcardByGroupPlatform map[pricingGroupPlatformKey][]*wildcardPricingEntry // (groupID, platform) → 通配符定价（按配置顺序，先匹配先使用）
+	pricingByGroupModel map[pricingModelKey]*ModelPricingEntry // (groupID, model) → 定价
+	wildcardByGroup     map[int64][]*wildcardPricingEntry      // (groupID) → 通配符定价（按配置顺序，先匹配先使用）
 
 	pricingConfigByGroupID map[int64]*PricingConfig // groupID → 价格配置
-	groupPlatform          map[int64]string         // groupID → platform
 
 	// 冷路径（CRUD 操作）
 	byID     map[int64]*PricingConfig
@@ -200,37 +188,23 @@ func (s *PricingConfigService) loadCache(ctx context.Context) (*pricingConfigCac
 // newEmptyPricingConfigCache 创建空的价格配置缓存（所有 map 已初始化）
 func newEmptyPricingConfigCache() *pricingConfigCache {
 	return &pricingConfigCache{
-		pricingByGroupModel:     make(map[pricingModelKey]*ModelPricingEntry),
-		wildcardByGroupPlatform: make(map[pricingGroupPlatformKey][]*wildcardPricingEntry),
+		pricingByGroupModel: make(map[pricingModelKey]*ModelPricingEntry),
+		wildcardByGroup:     make(map[int64][]*wildcardPricingEntry),
 
 		pricingConfigByGroupID: make(map[int64]*PricingConfig),
-		groupPlatform:          make(map[int64]string),
 		byID:                   make(map[int64]*PricingConfig),
 	}
 }
 
-// expandPricingToCache 将价格配置的模型定价展开到缓存（按分组+平台维度）。
-// 各平台严格独立：antigravity 分组只匹配 antigravity 定价，不会匹配 anthropic/gemini 的定价。
-// 查找时通过 lookupPricingAcrossPlatforms() 在本平台内查找。
-func expandPricingToCache(cache *pricingConfigCache, ch *PricingConfig, gid int64, platform string) {
-	for j := range ch.ModelPricing {
-		pricing := &ch.ModelPricing[j]
-		if !isPlatformPricingMatch(platform, pricing.Platform) {
-			continue // 跳过非本平台的定价
-		}
-		// 使用定价条目的原始平台作为缓存 key，防止跨平台同名模型冲突
-		pricingPlatform := pricing.Platform
-		gpKey := pricingGroupPlatformKey{groupID: gid, platform: pricingPlatform}
-		for _, model := range pricing.Models {
+// expandPricingToCache 以分组和模型建立精确及通配符索引，不读取账号平台。
+func expandPricingToCache(cache *pricingConfigCache, config *PricingConfig, groupID int64) {
+	for i := range config.ModelPricing {
+		entry := &config.ModelPricing[i]
+		for _, model := range entry.Models {
 			if strings.HasSuffix(model, "*") {
-				prefix := normalizePriceModelName(strings.TrimSuffix(model, "*"))
-				cache.wildcardByGroupPlatform[gpKey] = append(cache.wildcardByGroupPlatform[gpKey], &wildcardPricingEntry{
-					prefix:  prefix,
-					pricing: pricing,
-				})
+				cache.wildcardByGroup[groupID] = append(cache.wildcardByGroup[groupID], &wildcardPricingEntry{prefix: normalizePriceModelName(strings.TrimSuffix(model, "*")), pricing: entry})
 			} else {
-				key := pricingModelKey{groupID: gid, platform: pricingPlatform, model: normalizePriceModelName(model)}
-				cache.pricingByGroupModel[key] = pricing
+				cache.pricingByGroupModel[pricingModelKey{groupID: groupID, model: normalizePriceModelName(model)}] = entry
 			}
 		}
 	}
@@ -250,77 +224,45 @@ func (s *PricingConfigService) buildCache(ctx context.Context) (*pricingConfigCa
 	dbCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), pricingConfigCacheDBTimeout)
 	defer cancel()
 
-	pricingConfigs, groupPlatforms, err := s.fetchPricingConfigData(dbCtx)
+	pricingConfigs, err := s.fetchPricingConfigData(dbCtx)
 	if err != nil {
 		return nil, err
 	}
 
-	cache := populatePricingConfigCache(pricingConfigs, groupPlatforms)
+	cache := populatePricingConfigCache(pricingConfigs)
 	cache.loadedAt = s.options.Now()
 	s.cache.Store(cache)
 	return cache, nil
 }
 
-// fetchPricingConfigData 从数据库加载价格配置列表和分组平台映射。
-func (s *PricingConfigService) fetchPricingConfigData(ctx context.Context) ([]PricingConfig, map[int64]string, error) {
-	pricingConfigs, err := s.repo.ListAll(ctx)
+// fetchPricingConfigData 一次读取价格配置及关联分组，不查询分组平台。
+func (s *PricingConfigService) fetchPricingConfigData(ctx context.Context) ([]PricingConfig, error) {
+	configs, err := s.repo.ListAll(ctx)
 	if err != nil {
 		s.warn("failed to build pricing configuration cache", "error", err)
 		s.storeErrorCache()
-		return nil, nil, fmt.Errorf("list all price configurations: %w", err)
+		return nil, fmt.Errorf("list all price configurations: %w", err)
 	}
-
-	var allGroupIDs []int64
-	for i := range pricingConfigs {
-		allGroupIDs = append(allGroupIDs, pricingConfigs[i].GroupIDs...)
-	}
-
-	groupPlatforms := make(map[int64]string)
-	if len(allGroupIDs) > 0 {
-		groupPlatforms, err = s.repo.GetGroupPlatforms(ctx, allGroupIDs)
-		if err != nil {
-			s.warn("failed to load group platforms for pricing configuration cache", "error", err)
-			s.storeErrorCache()
-			return nil, nil, fmt.Errorf("get group platforms: %w", err)
-		}
-	}
-	return pricingConfigs, groupPlatforms, nil
+	return configs, nil
 }
 
-// populatePricingConfigCache 将价格配置列表和分组平台映射填充到缓存快照中。
-func populatePricingConfigCache(pricingConfigs []PricingConfig, groupPlatforms map[int64]string) *pricingConfigCache {
+// populatePricingConfigCache 发布独立副本，避免管理输入修改热路径价卡。
+func populatePricingConfigCache(configs []PricingConfig) *pricingConfigCache {
 	cache := newEmptyPricingConfigCache()
-	cache.groupPlatform = maps.Clone(groupPlatforms)
-	cache.byID = make(map[int64]*PricingConfig, len(pricingConfigs))
 	cache.loadedAt = time.Now()
-
-	for i := range pricingConfigs {
-		ch := pricingConfigs[i].Clone()
-		cache.byID[ch.ID] = ch
-		for _, gid := range ch.GroupIDs {
-			cache.pricingConfigByGroupID[gid] = ch
-			platform := groupPlatforms[gid]
-			expandPricingToCache(cache, ch, gid, platform)
+	for i := range configs {
+		config := configs[i].Clone()
+		cache.byID[config.ID] = config
+		for _, id := range config.GroupIDs {
+			cache.pricingConfigByGroupID[id] = config
+			expandPricingToCache(cache, config, id)
 		}
 	}
-
 	return cache
 }
 
-// isPlatformPricingMatch 判断定价条目的平台是否匹配分组平台。
-// 各平台（antigravity / anthropic / gemini / openai）严格独立，不跨平台匹配。
-func isPlatformPricingMatch(groupPlatform, pricingPlatform string) bool {
-	return groupPlatform == pricingPlatform
-}
-
-// matchingPlatforms 返回分组平台对应的可匹配平台列表。
-// 各平台严格独立，只返回自身。
-func matchingPlatforms(groupPlatform string) []string {
-	return []string{groupPlatform}
-}
-
 // InvalidateCache 失效并重建价格配置缓存。
-// 供价格配置以外、但会影响价格配置缓存内容的变更调用（如分组平台变更）。
+// 供价格配置以外、但会影响价格配置缓存内容的变更调用（如分组价卡关联变更）。
 func (s *PricingConfigService) InvalidateCache() {
 	s.invalidateCache()
 }
@@ -336,59 +278,18 @@ func (s *PricingConfigService) invalidateCache() {
 	}
 }
 
-// matchWildcard 在通配符定价中查找匹配项（最先匹配到优先）
-func (c *pricingConfigCache) matchWildcard(groupID int64, platform, modelLower string) *ModelPricingEntry {
-	gpKey := pricingGroupPlatformKey{groupID: groupID, platform: platform}
-	wildcards := c.wildcardByGroupPlatform[gpKey]
-	for _, wc := range wildcards {
-		if strings.HasPrefix(modelLower, wc.prefix) {
-			return wc.pricing
-		}
+// lookupPricing 优先精确匹配，再查配置顺序中的通配符；有效价查询跳过空条目。
+func lookupPricing(cache *pricingConfigCache, groupID int64, model string, effective bool) *ModelPricingEntry {
+	model = normalizePriceModelName(model)
+	matches := func(entry *ModelPricingEntry) bool {
+		return entry != nil && (!effective || entry.HasEffectivePricing())
 	}
-	return nil
-}
-
-func (c *pricingConfigCache) matchEffectiveWildcard(groupID int64, platform, modelLower string) *ModelPricingEntry {
-	gpKey := pricingGroupPlatformKey{groupID: groupID, platform: platform}
-	wildcards := c.wildcardByGroupPlatform[gpKey]
-	for _, wc := range wildcards {
-		if strings.HasPrefix(modelLower, wc.prefix) && wc.pricing != nil && wc.pricing.HasEffectivePricing() {
-			return wc.pricing
-		}
+	if entry := cache.pricingByGroupModel[pricingModelKey{groupID: groupID, model: model}]; matches(entry) {
+		return entry
 	}
-	return nil
-}
-
-// lookupPricingAcrossPlatforms 在分组平台内查找模型定价。
-// 各平台严格独立，只在本平台内查找（先精确匹配，再通配符）。
-func lookupPricingAcrossPlatforms(cache *pricingConfigCache, groupID int64, groupPlatform, modelLower string) *ModelPricingEntry {
-	modelLower = normalizePriceModelName(modelLower)
-	for _, p := range matchingPlatforms(groupPlatform) {
-		key := pricingModelKey{groupID: groupID, platform: p, model: modelLower}
-		if pricing, ok := cache.pricingByGroupModel[key]; ok {
-			return pricing
-		}
-	}
-	// 精确查找全部失败，依次尝试通配符匹配
-	for _, p := range matchingPlatforms(groupPlatform) {
-		if pricing := cache.matchWildcard(groupID, p, modelLower); pricing != nil {
-			return pricing
-		}
-	}
-	return nil
-}
-
-func lookupEffectivePricingAcrossPlatforms(cache *pricingConfigCache, groupID int64, groupPlatform, modelLower string) *ModelPricingEntry {
-	modelLower = normalizePriceModelName(modelLower)
-	for _, p := range matchingPlatforms(groupPlatform) {
-		key := pricingModelKey{groupID: groupID, platform: p, model: modelLower}
-		if pricing, ok := cache.pricingByGroupModel[key]; ok && pricing != nil && pricing.HasEffectivePricing() {
-			return pricing
-		}
-	}
-	for _, p := range matchingPlatforms(groupPlatform) {
-		if pricing := cache.matchEffectiveWildcard(groupID, p, modelLower); pricing != nil {
-			return pricing
+	for _, wildcard := range cache.wildcardByGroup[groupID] {
+		if strings.HasPrefix(model, wildcard.prefix) && matches(wildcard.pricing) {
+			return wildcard.pricing
 		}
 	}
 	return nil
@@ -409,20 +310,10 @@ func (s *PricingConfigService) GetPricingConfigForGroup(ctx context.Context, gro
 	return ch.Clone(), nil
 }
 
-// GetGroupPlatform 获取分组的平台标识（从缓存）
-func (s *PricingConfigService) GetGroupPlatform(ctx context.Context, groupID int64) string {
-	cache, err := s.loadCache(ctx)
-	if err != nil {
-		return ""
-	}
-	return cache.groupPlatform[groupID]
-}
-
 // pricingConfigLookup 热路径公共查找结果
 type pricingConfigLookup struct {
 	cache         *pricingConfigCache
 	pricingConfig *PricingConfig
-	platform      string
 }
 
 // lookupGroupPricingConfig 加载缓存并查找分组对应的价格配置信息（公共热路径前置逻辑）。
@@ -439,12 +330,11 @@ func (s *PricingConfigService) lookupGroupPricingConfig(ctx context.Context, gro
 	return &pricingConfigLookup{
 		cache:         cache,
 		pricingConfig: ch,
-		platform:      cache.groupPlatform[groupID],
 	}, nil
 }
 
 // GetConfigModelPricing 获取指定分组+模型的价格配置定价（热路径 O(1)）。
-// 各平台严格独立，只在本平台内查找定价。
+// 关联同一配置的分组共享模型价格。
 func (s *PricingConfigService) GetConfigModelPricing(ctx context.Context, groupID int64, model string) *ModelPricingEntry {
 	lk, err := s.lookupGroupPricingConfig(ctx, groupID)
 	if err != nil {
@@ -456,7 +346,7 @@ func (s *PricingConfigService) GetConfigModelPricing(ctx context.Context, groupI
 	}
 
 	modelLower := strings.ToLower(model)
-	pricing := lookupPricingAcrossPlatforms(lk.cache, groupID, lk.platform, modelLower)
+	pricing := lookupPricing(lk.cache, groupID, modelLower, false)
 	if pricing == nil {
 		return nil
 	}
@@ -476,7 +366,7 @@ func (s *PricingConfigService) GetEffectiveConfigModelPricing(ctx context.Contex
 	}
 
 	modelLower := strings.ToLower(model)
-	pricing := lookupEffectivePricingAcrossPlatforms(lk.cache, groupID, lk.platform, modelLower)
+	pricing := lookupPricing(lk.cache, groupID, modelLower, true)
 	if pricing == nil {
 		return nil
 	}
@@ -551,7 +441,7 @@ func (v PricingConfigValidation) PricingTime(pricing []ModelPricingEntry) error 
 		}
 		if err := v.TimePricing(config); err != nil {
 			return infraerrors.BadRequest("INVALID_TIME_PRICING", fmt.Sprintf(
-				"invalid time pricing for platform '%s' models %v: %v", pricing[i].Platform, pricing[i].Models, err))
+				"invalid time pricing for models %v: %v", pricing[i].Models, err))
 		}
 	}
 	return nil
@@ -589,12 +479,6 @@ func CheckBillingModeRequirements(p ModelPricingEntry) error {
 		)
 	}
 	if p.FastModeMultiplier != nil {
-		if !strings.EqualFold(strings.TrimSpace(p.Platform), PlatformOpenAI) {
-			return infraerrors.BadRequest(
-				"FAST_MODE_MULTIPLIER_UNSUPPORTED_PLATFORM",
-				"fast_mode_multiplier is only supported for OpenAI pricing",
-			)
-		}
 		mode := p.BillingMode
 		if mode == "" {
 			mode = BillingModeToken
@@ -967,35 +851,23 @@ func toPricingModelEntry(pattern string) modelEntry {
 	}
 }
 
-// validateNoConflictingModels 检查定价列表中是否有冲突模型模式（同一平台下）。
-// 冲突包括：精确重复、通配符之间的前缀包含、通配符与精确名的前缀匹配。
+// validateNoConflictingModels 在整张价表内检查重复模型及重叠匹配范围。
 func validateNoConflictingModels(pricingList []ModelPricingEntry) error {
-	byPlatform := make(map[string][]modelEntry)
-	for _, p := range pricingList {
-		for _, model := range p.Models {
-			byPlatform[p.Platform] = append(byPlatform[p.Platform], toPricingModelEntry(model))
+	var entries []modelEntry
+	for _, price := range pricingList {
+		for _, model := range price.Models {
+			entries = append(entries, toPricingModelEntry(model))
 		}
 	}
-	for platform, entries := range byPlatform {
-		if err := detectConflicts(entries, platform, "MODEL_PATTERN_CONFLICT", "model patterns"); err != nil {
-			return err
-		}
-	}
-	return nil
+	return detectConflicts(entries, "MODEL_PATTERN_CONFLICT", "model patterns")
 }
 
-// validateNoConflictingMappings 检查模型映射中是否有冲突的源模式
-func validateNoConflictingMappings(mapping map[string]map[string]string) error {
-	for platform, platformMapping := range mapping {
-		entries := make([]modelEntry, 0, len(platformMapping))
-		for src := range platformMapping {
-			entries = append(entries, toModelEntry(src))
-		}
-		if err := detectConflicts(entries, platform, "MAPPING_PATTERN_CONFLICT", "mapping source patterns"); err != nil {
-			return err
-		}
+func validateNoConflictingMappings(mapping map[string]string) error {
+	entries := make([]modelEntry, 0, len(mapping))
+	for source := range mapping {
+		entries = append(entries, toModelEntry(source))
 	}
-	return nil
+	return detectConflicts(entries, "MAPPING_PATTERN_CONFLICT", "mapping source patterns")
 }
 
 func validatePricingIntervals(pricingList []ModelPricingEntry) error {
@@ -1003,8 +875,7 @@ func validatePricingIntervals(pricingList []ModelPricingEntry) error {
 		if err := ValidateIntervals(pricing.Intervals, pricing.BillingMode); err != nil {
 			return infraerrors.BadRequest(
 				"INVALID_PRICING_INTERVALS",
-				fmt.Sprintf("invalid pricing intervals for platform '%s' models %v: %v",
-					pricing.Platform, pricing.Models, err),
+				fmt.Sprintf("invalid pricing intervals for models %v: %v", pricing.Models, err),
 			)
 		}
 	}
@@ -1012,14 +883,14 @@ func validatePricingIntervals(pricingList []ModelPricingEntry) error {
 }
 
 // detectConflicts 在一组 modelEntry 中检测冲突，返回带有 errCode 和 label 的错误
-func detectConflicts(entries []modelEntry, platform, errCode, label string) error {
+func detectConflicts(entries []modelEntry, errCode, label string) error {
 	for i := 0; i < len(entries); i++ {
 		for j := i + 1; j < len(entries); j++ {
 			if conflictsBetween(entries[i], entries[j]) {
 				return infraerrors.BadRequest(errCode,
-					fmt.Sprintf("%s '%s' and '%s' conflict in platform '%s': overlapping match range "+
+					fmt.Sprintf("%s '%s' and '%s' conflict: overlapping match range "+
 						"(model names are matched case-insensitively, so an existing entry already covers all case variants)",
-						label, entries[i].pattern, entries[j].pattern, platform))
+						label, entries[i].pattern, entries[j].pattern))
 			}
 		}
 	}

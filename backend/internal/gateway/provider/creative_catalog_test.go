@@ -16,7 +16,7 @@ func (s creativeCatalogRows) ListSchedulableByGroupIDAndPlatform(context.Context
 	return s.values, nil
 }
 
-// 生产目录使用真实上游模型规则，透传账号不能靠未执行的账号映射通过白名单。
+// 透传只决定传输方式，生产目录和执行都保留显式模型映射。
 func TestCreativeCatalogUsesExecutionModelPolicy(t *testing.T) {
 	for _, passthrough := range []bool{false, true} {
 		value := &account.Record{
@@ -25,16 +25,12 @@ func TestCreativeCatalogUsesExecutionModelPolicy(t *testing.T) {
 			Extra:       map[string]any{"openai_passthrough": passthrough},
 		}
 		public := creative.Public{AccountRepo: creativeCatalogRows{[]creative.CatalogAccount{CreativeCatalogAccount(value)}}}
-		group := &creative.GroupView{ID: 12, Platform: creative.PlatformOpenAI, RoutingPolicy: routing.GroupRoutingPolicy{
+		group := &creative.GroupView{ID: 12, Operations: creative.OperationsForGroup(false, nil), RoutingPolicy: routing.GroupRoutingPolicy{
 			Enabled: true, RestrictModels: true, RestrictionModelSource: routing.BillingModelSourceUpstream,
-			AllowedModels: map[string][]string{creative.PlatformOpenAI: {"gpt-image-2"}},
+			AllowedModels: []string{"gpt-image-2"},
 		}}
 		models, err := public.CreativeModelsForGroup(context.Background(), group)
 		require.NoError(t, err)
-		if passthrough {
-			require.NotContains(t, models, "gpt-image-1")
-		} else {
-			require.Equal(t, "gpt-image-2", models["gpt-image-1"])
-		}
+		require.Equal(t, "gpt-image-2", models["gpt-image-1"])
 	}
 }

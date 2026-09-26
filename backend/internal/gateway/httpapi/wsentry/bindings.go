@@ -10,7 +10,6 @@ import (
 	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/admission"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/completion"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/failover"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
@@ -75,7 +74,6 @@ func (p openAIWSHTTPBackend) Access(c *gin.Context) (*gatewayws.EntryKey, bool) 
 	}
 	if key.Group != nil {
 		out.Group = &gatewayws.EntryGroup{
-			Platform:                    key.Group.Platform,
 			MaxReasoningEffort:          key.Group.MaxReasoningEffort,
 			MaxReasoningEffortOverLimit: key.Group.MaxReasoningEffortOverLimit,
 			ReasoningEffortMappings:     append([]routing.ReasoningEffortMapping(nil), key.Group.ReasoningEffortMappings...),
@@ -236,7 +234,7 @@ func (p *openAIWSEntryAdapter) LoadSubscription() {
 }
 
 func (p *openAIWSEntryAdapter) Eligibility(ctx context.Context) error {
-	return p.bindings.CheckFunding(ctx, p.key, p.subscription, admission.QuotaPlatform(p.c.Request.Context(), p.key), false)
+	return p.bindings.CheckFunding(ctx, p.key, p.subscription, "", false)
 }
 
 func (p *openAIWSEntryAdapter) SessionHash(body []byte, seed string) string {
@@ -440,7 +438,7 @@ func (t *openAIWSEntryTarget) PrepareCompletion(ctx context.Context, result *gat
 		Result: legacy, APIKey: p.key, User: p.key.User, Account: gatewayprovider.ExecutionCompletionRecord(t.account), Subscription: p.subscription,
 		InboundEndpoint: gatewayhttp.GetInboundEndpoint(p.c), UpstreamEndpoint: openaiattempt.ResolveOpenAIUpstreamEndpoint(p.c, t.account, legacy), UserAgent: p.call.UserAgent, IPAddress: p.call.ClientIP,
 		RequestPayloadHash: billing.HashUsageRequestPayload(body), RequestBody: append([]byte(nil), body...), PricingAt: capture.StartedAt, APIKeyService: p.bindings.Common.Support.Quota,
-		QuotaPlatform: admission.QuotaPlatform(p.c.Request.Context(), p.key), ClientSessionID: gatewayhttp.ExtractClientSessionID(p.c), PricingUsageFields: mapping.ToUsageFields(model, result.UpstreamModel), CyberBlocked: cyber,
+		ClientSessionID: gatewayhttp.ExtractClientSessionID(p.c), PricingUsageFields: mapping.ToUsageFields(model, result.UpstreamModel), CyberBlocked: cyber,
 	})
 }
 

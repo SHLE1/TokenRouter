@@ -3,7 +3,6 @@ package httpapi
 import (
 	"context"
 
-	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/creative"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/tierpolicy"
 	"github.com/TokenFlux/TokenRouter/internal/identity"
@@ -17,7 +16,6 @@ import (
 type CompositeSettings interface {
 	GetAllSettings(context.Context) (*composite.Snapshot, error)
 	GetAuthSourceDefaultSettings(context.Context) (*identity.AuthSourceDefaultSettings, error)
-	GetDefaultPlatformQuotas(context.Context) (map[string]*billing.DefaultPlatformQuotaSetting, error)
 	GetOpenAIFastPolicySettings(context.Context) (*tierpolicy.OpenAIFastPolicySettings, error)
 	IsTotpEncryptionKeyConfigured() bool
 	OIDCSecurityWriteDefaults(context.Context) (bool, bool, error)
@@ -74,6 +72,7 @@ type HandlerOptions struct {
 func NewHandler(o HandlerOptions) *Handler {
 	return &Handler{settingService: o.Settings, settingsParticipants: o.Participants, participantError: o.ParticipantError, opsService: o.Monitoring, paymentConfigService: o.Payment, turnstileService: o.Turnstile, aliyunCaptchaService: o.Aliyun, userAttributeService: o.Attributes, totpService: o.Totp, userService: o.User, creativeModelReader: o.Creative}
 }
+
 func (h *Handler) preparedParticipants(ctx context.Context, input settings.Fields, values map[string]string) ([]settings.PreparedChange, error) {
 	if h.participantError != nil {
 		return nil, h.participantError

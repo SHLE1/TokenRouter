@@ -13,7 +13,7 @@ func (h *ManagementHandler) BatchCreate(c *gin.Context) {
 	var req struct {
 		Accounts []CreateAccountRequest `json:"accounts" binding:"required,min=1"`
 	}
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := response.BindJSONStrict(c, &req); err != nil {
 		response.BadRequest(c, "Invalid request: "+err.Error())
 		return
 	}
@@ -23,7 +23,7 @@ func (h *ManagementHandler) BatchCreate(c *gin.Context) {
 	h.ExecuteAdminIdempotentJSON(c, "admin.accounts.batch_create", req, h.DefaultWriteIdempotencyTTL(), func(ctx context.Context) (any, error) {
 		inputs := make([]account.CreateAccountInput, 0, len(req.Accounts))
 		for _, item := range req.Accounts {
-			inputs = append(inputs, account.CreateAccountInput{Name: item.Name, Notes: item.Notes, Platform: item.Platform, Type: item.Type, Credentials: item.Credentials, Extra: item.Extra, ProxyID: item.ProxyID, Concurrency: item.Concurrency, Priority: item.Priority, RateMultiplier: item.RateMultiplier, LoadFactor: item.LoadFactor, GroupIDs: item.GroupIDs, ExpiresAt: item.ExpiresAt, AutoPauseOnExpired: item.AutoPauseOnExpired, SkipMixedChannelCheck: item.ConfirmMixedChannelRisk != nil && *item.ConfirmMixedChannelRisk})
+			inputs = append(inputs, account.CreateAccountInput{Name: item.Name, Notes: item.Notes, Platform: item.Platform, Type: item.Type, Credentials: item.Credentials, Extra: item.Extra, ProxyID: item.ProxyID, Concurrency: item.Concurrency, Priority: item.Priority, RateMultiplier: item.RateMultiplier, LoadFactor: item.LoadFactor, GroupIDs: item.GroupIDs, ExpiresAt: item.ExpiresAt, AutoPauseOnExpired: item.AutoPauseOnExpired})
 		}
 		result, err := h.batch.Create(ctx, inputs)
 		if err != nil {

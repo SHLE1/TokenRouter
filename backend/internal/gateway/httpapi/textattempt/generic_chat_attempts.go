@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/TokenFlux/TokenRouter/internal/gateway/admission"
 	gatewaycapture "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
@@ -176,13 +175,12 @@ func (b *genericChatAttemptBridge) Complete(_ textflow.AttemptState) {
 	inboundEndpoint := gatewayhttp.GetInboundEndpoint(b.c)
 	upstreamEndpoint := gatewayhttp.GetUpstreamEndpoint(b.c, b.account.Record.Platform)
 
-	quotaPlatform := admission.QuotaPlatform(b.c.Request.Context(), b.apiKey)
 	clientSessionID := gatewayhttp.ExtractClientSessionID(b.c)
 	gatewayhttp.StampForwardRequestedReasoningEffort(b.result, b.c)
 	// 入队前固化资金与报文投影，worker 不再读取请求中的实体。
 	completionInput := gatewaycapture.CaptureMessages(gatewayhttp.CompletionContext(b.c), &gatewaycapture.MessagesCapture{
-		Result:             b.result,
-		QuotaPlatform:      quotaPlatform,
+		Result: b.result,
+
 		APIKey:             b.apiKey,
 		User:               b.apiKey.User,
 		Account:            gatewaycapture.ExecutionCompletionRecord(b.account),

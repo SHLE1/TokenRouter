@@ -52,7 +52,7 @@ func ClassifyNoAccountErrorFromGin(
 	return classification
 }
 
-// ClassifyOpenAICompatibleNoAccountErrorFromGin 按 API Key 分组平台诊断 OpenAI 兼容请求。
+// ClassifyOpenAICompatibleNoAccountErrorFromGin 按分组候选及可选强制平台诊断兼容请求。
 func ClassifyOpenAICompatibleNoAccountErrorFromGin(
 	c *gin.Context,
 	diag routing.ModelAvailabilityDiagnoser,

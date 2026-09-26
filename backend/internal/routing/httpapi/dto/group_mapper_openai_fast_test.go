@@ -8,14 +8,13 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	routing "github.com/TokenFlux/TokenRouter/internal/routing"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/stretchr/testify/require"
 )
 
 // TestGroupMapperExposesOpenAIFastOnlyToAdmins 验证组级 Fast 策略不会泄露到公开分组接口。
 func TestGroupMapperExposesOpenAIFastOnlyToAdmins(t *testing.T) {
 	group := &routing.Group{
-		ID: 7, Name: "fast", Platform: capability.PlatformOpenAI, Status: billing.StatusActive,
+		ID: 7, Name: "fast", Status: billing.StatusActive,
 		ForceOpenAIFast: true, FreeOpenAIFast: true,
 	}
 

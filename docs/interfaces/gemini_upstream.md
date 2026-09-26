@@ -35,7 +35,7 @@ Code Assist/Google One 需要有效 project；AI Studio 的 project 可选并使
 
 Gemini 通用 wire 与 Google 错误结构分别在 `protocol/gemini`、`protocol/google`；Google HTTP 状态映射在 `gateway/httpapi`，激活诊断在 `upstream/gemini/codeassist`。纯 Anthropic ↔ Gemini 转换位于 `protocol/bridge`，原生与内部方言分别接收显式选项，保留 schema、工具配对、签名和预算差异；平台 HTTP 交换、响应流和账号内重试由 `upstream/gemini` 唯一实现；入站许可、最终账号选择及完成处理由 gateway 的准入、选择与完成接口负责。
 
-Gemini SDK/CLI 使用 `/v1beta/models`、`/v1beta/models/{model}` 和 `{model}:{action}` 形状，保持 Google 请求、流和错误语义。Anthropic Messages、Count Tokens、OpenAI Responses 与 Chat Completions 入口则先归一化，再由 `gateway/provider/googleforward.Gemini` 准备上游请求，响应恢复为原客户端协议。
+Gemini SDK/CLI 使用 `/v1beta/models`、`/v1beta/models/{model}` 和 `{model}:{action}` 形状，保持 Google 请求、流和错误语义。前两个模型资源从分组的统一可请求目录生成，只保留支持 Gemini 协议的模型并补充本地元数据，不选择某个上游账号读取目录。分组必须开放 Gemini 协议；强制平台路径与复合 Key 也分别检查分组权限和具体模型范围。Anthropic Messages、Count Tokens、OpenAI Responses 与 Chat Completions 入口则先归一化，再由 `gateway/provider/googleforward.Gemini` 准备上游请求，响应恢复为原客户端协议。
 
 Gemini 分组支持 Messages、Responses、Chat 和 Gemini GenerateContent，新建时默认只启用 GenerateContent；四项都可关闭，迁移前已有分组启用四项。GenerateContent、StreamGenerateContent 和 CountTokens 的 POST 动作受 Gemini 协议开关控制，模型列表 GET 不受影响。
 

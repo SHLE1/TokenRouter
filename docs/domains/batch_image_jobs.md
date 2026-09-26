@@ -149,6 +149,8 @@ output_deleted             -> output_deleted
 
 手工删除输出或 TTL 清理后，状态从 `completed` 变为 `output_deleted`。
 
+任务提交时已固定 provider 和执行账号，轮询、查询、下载、取消与结算沿用该绑定，不因分组成员变化重新选择。使用记录的平台从作业 provider 映射得到，不查询分组平台。
+
 任务提交时必须同时快照三种模型身份：`requested_model` 保存客户端提交值（复合 Key 场景包含自定义分组前缀），`internal_model` 保存复合 Key 选组和 API Key 模型重定向完成后、渠道与账号映射前的内部模型，`model` 保存最终提交给提供商的上游模型。异步结算写使用记录时以 `internal_model` 作为 `usage_logs.model`，并把 `model` 写入 `upstream_model`；迁移前任务没有内部模型快照时，才兼容回退到上游模型。
 
 ## Redis
@@ -249,7 +251,7 @@ DELETE /v1/images/batches/{id}/outputs
 - TokenRouter 运行时使用服务账号或应用默认凭据。
 - 为批量图片输入输出创建固定 Cloud Storage 存储桶，并向运行时和 Vertex 服务代理授予最低必要存储桶权限。
 - 在 TokenRouter 中配置项目 ID、区域、受管存储桶、提供商账号、模型白名单和价格。
-- 全局启用 `BATCH_IMAGE_ENABLED`，在目标 Gemini 分组上启用图片生成，再为该分组启用 `allow_batch_image_generation`。非 Gemini 分组不支持批量图片；只有 Gemini 分组先启用图片生成后，管理界面才显示批量图片开关。
+- 全局启用 `BATCH_IMAGE_ENABLED`，在目标分组的 `allowed_protocols` 中开启 `image_batches`。分组可混合任意平台，但新作业只选择组内具备 Gemini 或 Vertex 批处理能力的账号；未绑定分组时拒绝提交，不从全局账号池补选。
 
 API Key 路径：
 

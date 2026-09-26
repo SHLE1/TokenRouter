@@ -2,7 +2,6 @@ package testkit
 
 import (
 	"context"
-	"time"
 
 	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/completion"
@@ -51,6 +50,7 @@ func (s *AccountLookup) GetByID(_ context.Context, _ int64) (*accountcore.Record
 	s.Calls++
 	return s.Account, nil
 }
+
 func (s *SettlementStore) Apply(ctx context.Context, cmd *billing.UsageBillingCommand) (*billing.UsageBillingApplyResult, error) {
 	s.Calls++
 	s.LastCmd = cmd
@@ -72,101 +72,10 @@ func (s *SettlementStore) Apply(ctx context.Context, cmd *billing.UsageBillingCo
 	}
 	return result, nil
 }
+
 func (s *SettlementStore) ResolveUsableSubscriptionForGroup(ctx context.Context, userID, groupID int64) (*billing.UserSubscription, error) {
 	s.ResolveCalls++
 	return s.ResolveSub, nil
-}
-
-type QuotaCache struct {
-	Entry     *billing.UserPlatformQuotaCacheEntry
-	GetCalls  []QuotaCacheGet
-	IncrCalls []QuotaCacheIncrement
-}
-type QuotaCacheGet struct {
-	UserID   int64
-	Platform string
-}
-type QuotaCacheIncrement struct {
-	UserID   int64
-	Platform string
-	Cost     float64
-}
-
-func (s *QuotaCache) GetUserBalance(ctx context.Context, userID int64) (float64, error) {
-	return 0, nil
-}
-func (s *QuotaCache) SetUserBalance(ctx context.Context, userID int64, balance float64) error {
-	return nil
-}
-func (s *QuotaCache) DeductUserBalance(ctx context.Context, userID int64, amount float64) error {
-	return nil
-}
-func (s *QuotaCache) InvalidateUserBalance(ctx context.Context, userID int64) error {
-	return nil
-}
-func (s *QuotaCache) GetAPIKeyRateLimit(ctx context.Context, keyID int64) (*billing.APIKeyRateLimitCacheData, error) {
-	return nil, nil
-}
-func (s *QuotaCache) SetAPIKeyRateLimit(ctx context.Context, keyID int64, data *billing.APIKeyRateLimitCacheData) error {
-	return nil
-}
-func (s *QuotaCache) UpdateAPIKeyRateLimitUsage(ctx context.Context, keyID int64, cost float64) error {
-	return nil
-}
-func (s *QuotaCache) InvalidateAPIKeyRateLimit(ctx context.Context, keyID int64) error {
-	return nil
-}
-func (s *QuotaCache) GetUserPlatformQuotaCache(ctx context.Context, userID int64, platform string) (*billing.UserPlatformQuotaCacheEntry, bool, error) {
-	s.GetCalls = append(s.GetCalls, QuotaCacheGet{UserID: userID, Platform: platform})
-	if s.Entry == nil {
-		return nil, false, nil
-	}
-	return s.Entry, true, nil
-}
-func (s *QuotaCache) SetUserPlatformQuotaCache(ctx context.Context, userID int64, platform string, entry *billing.UserPlatformQuotaCacheEntry, ttl time.Duration) error {
-	s.Entry = entry
-	return nil
-}
-func (s *QuotaCache) DeleteUserPlatformQuotaCache(ctx context.Context, userID int64, platform string) error {
-	s.Entry = nil
-	return nil
-}
-func (s *QuotaCache) IncrUserPlatformQuotaUsageCache(ctx context.Context, userID int64, platform string, cost float64, ttl time.Duration, markDirty bool) error {
-	s.IncrCalls = append(s.IncrCalls, QuotaCacheIncrement{UserID: userID, Platform: platform, Cost: cost})
-	return nil
-}
-func (s *QuotaCache) PopDirtyUserPlatformQuotaKeys(ctx context.Context, n int) ([]billing.UserPlatformQuotaKey, error) {
-	return nil, nil
-}
-func (s *QuotaCache) ReaddDirtyUserPlatformQuotaKeys(ctx context.Context, keys []billing.UserPlatformQuotaKey) error {
-	return nil
-}
-func (s *QuotaCache) BatchGetUserPlatformQuotaCache(ctx context.Context, keys []billing.UserPlatformQuotaKey) ([]*billing.UserPlatformQuotaCacheEntry, error) {
-	return make([]*billing.UserPlatformQuotaCacheEntry, len(keys)), nil
-}
-
-type PlatformQuotaStore struct{}
-
-func (s *PlatformQuotaStore) GetByUserPlatform(ctx context.Context, userID int64, platform string) (*billing.UserPlatformQuotaRecord, error) {
-	return nil, nil
-}
-func (s *PlatformQuotaStore) BulkInsertInitial(ctx context.Context, records []billing.UserPlatformQuotaRecord) error {
-	return nil
-}
-func (s *PlatformQuotaStore) IncrementUsageWithReset(ctx context.Context, userID int64, platform string, cost float64, now time.Time) error {
-	return nil
-}
-func (s *PlatformQuotaStore) ListByUser(ctx context.Context, userID int64) ([]billing.UserPlatformQuotaRecord, error) {
-	return nil, nil
-}
-func (s *PlatformQuotaStore) UpsertForUser(ctx context.Context, userID int64, records []billing.UserPlatformQuotaRecord) error {
-	return nil
-}
-func (s *PlatformQuotaStore) ResetExpiredWindow(ctx context.Context, userID int64, platform string, window string, newStart time.Time) error {
-	return nil
-}
-func (s *PlatformQuotaStore) BatchSnapshotUsage(ctx context.Context, snapshots []billing.UserPlatformQuotaSnapshot, now time.Time) error {
-	return nil
 }
 
 type UserStore struct {
@@ -187,9 +96,11 @@ func (s *UserStore) DeductBalance(ctx context.Context, id int64, amount float64)
 	}
 	return amount, nil
 }
+
 func (s *UserStore) AdjustBalance(ctx context.Context, id int64, delta float64) (identity.BalanceChange, error) {
 	panic("unexpected AdjustBalance call")
 }
+
 func (s *UserStore) SetBalance(ctx context.Context, id int64, value float64) (identity.BalanceChange, error) {
 	panic("unexpected SetBalance call")
 }
@@ -223,6 +134,7 @@ func (s *KeyQuotaUpdater) UpdateQuotaUsed(ctx context.Context, apiKeyID int64, c
 	s.LastQuotaCtxErr = ctx.Err()
 	return s.Err
 }
+
 func (s *KeyQuotaUpdater) UpdateRateLimitUsage(ctx context.Context, apiKeyID int64, cost float64) error {
 	s.RateLimitCalls++
 	s.LastAmount = cost

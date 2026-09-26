@@ -19,7 +19,7 @@ func TestMigration238GeneralizesAdvancedScheduler(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("旧开关开启时仅迁移 OpenAI 与 Grok 分组", func(t *testing.T) {
-		tx := testTx(t)
+		tx := historicalTx(t, "238_")
 		clearMigration238Settings(t, ctx, tx)
 
 		openAIGroupID := insertMigration238Group(t, ctx, tx, "openai")
@@ -48,7 +48,7 @@ func TestMigration238GeneralizesAdvancedScheduler(t *testing.T) {
 	})
 
 	t.Run("旧开关关闭时所有存量分组保持基础", func(t *testing.T) {
-		tx := testTx(t)
+		tx := historicalTx(t, "238_")
 		clearMigration238Settings(t, ctx, tx)
 
 		openAIGroupID := insertMigration238Group(t, ctx, tx, "openai")

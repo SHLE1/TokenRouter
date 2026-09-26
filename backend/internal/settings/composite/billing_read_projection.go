@@ -11,7 +11,6 @@ func (s *Snapshot) ApplyBillingAdminReadSettings(value *billing.AdminReadSetting
 	s.BalanceUnitName = value.BalanceUnitName
 	s.BalanceUnitSymbol = value.BalanceUnitSymbol
 	s.DefaultBalance = value.DefaultBalance
-	s.DefaultPlatformQuotas = value.DefaultPlatformQuotas
 	s.DefaultSubscriptions = value.DefaultSubscriptions
 	s.ReasoningPointRMBUnitPrice = value.ReasoningPointRMBUnitPrice
 	s.SubscriptionExpiryNotifyEnabled = value.SubscriptionExpiryNotifyEnabled

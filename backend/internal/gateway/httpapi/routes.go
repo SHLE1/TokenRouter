@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	wireprotocol "github.com/TokenFlux/TokenRouter/internal/protocol"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/gin-gonic/gin"
 )
 
@@ -31,12 +30,12 @@ type RouteEndpoints struct {
 // @project-doc docs/architecture/gateway_request_lifecycle.md#gateway_pipeline
 func RegisterGatewayRoutes(r *gin.Engine, endpoints RouteEndpoints, options RouteMiddleware, registerBatchImages func(*gin.RouterGroup)) {
 	guards := NewRouteGuards(options)
-	getGroupPlatform := guards.GroupPlatform
+
 	requireGroupClientProtocol := guards.RequireGroupClientProtocol
 	withGroupClientProtocol := guards.WithGroupClientProtocol
 	requireExtendedProtocol := guards.RequireExtendedProtocol
 	requireGeminiGenerateContentProtocol := guards.RequireGeminiGenerateContentProtocol
-	countTokensHTTP, qoderCompatibleHTTP, compatibleTextHTTP := endpoints.CountTokens, endpoints.QoderCompatible, endpoints.CompatibleText
+	countTokensHTTP := endpoints.CountTokens
 	geminiNativeHTTP, openAITextHTTP, responsesWSHTTP := endpoints.GeminiNative, endpoints.OpenAIText, endpoints.ResponsesWS
 	modelsHTTP, messagesHTTP := endpoints.Models, endpoints.Messages
 	mediaHTTP, auxiliaryHTTP, liveHTTP, searchHTTP := endpoints.Media, endpoints.Auxiliary, endpoints.Live, endpoints.Search
@@ -53,176 +52,20 @@ func RegisterGatewayRoutes(r *gin.Engine, endpoints RouteEndpoints, options Rout
 	requireGroupAnthropic := options.RequireGroupAnthropic
 	requireGroupGoogle := options.RequireGroupGoogle
 
-	isOpenAIResponsesCompatibleGatewayPlatform := func(c *gin.Context) bool {
-		switch getGroupPlatform(c) {
-		case capability.PlatformOpenAI, capability.PlatformGrok,
-			capability.PlatformKimi, capability.PlatformZhipu, capability.PlatformDeepseek:
-			// 国产 OpenAI 兼容供应商（kimi/zhipu/deepseek）与 openai/grok 一样经 OpenAI 网关转发。
-			return true
-		default:
-			return false
-		}
-	}
-	responsesInputTokensHandler := func(c *gin.Context) {
-		if isOpenAIResponsesCompatibleGatewayPlatform(c) {
-			endpoints.OpenAITokens.ResponsesInputTokens(c)
-			return
-		}
-		options.ObserveBusinessLimit(c, RouteLimitLocalFeatureGate)
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": gin.H{
-				"type":    "not_found_error",
-				"message": "Responses input token counting is not supported for this platform",
-			},
-		})
-	}
+	responsesInputTokensHandler := func(c *gin.Context) { endpoints.OpenAITokens.ResponsesInputTokens(c) }
 	// count_tokens 需要识别强制平台别名，避免把 Antigravity 当成分组原平台处理。
-	countTokensPlatform := func(c *gin.Context) string {
-		if platform, ok := options.ForcedPlatform(c); ok && strings.TrimSpace(platform) != "" {
-			return platform
-		}
-		return getGroupPlatform(c)
-	}
+
 	// 只有实际支持 count_tokens 的平台才受 Messages 协议门禁控制。
-	countTokensProtocolGate := func(c *gin.Context) {
-		switch countTokensPlatform(c) {
-		case capability.PlatformAntigravity, capability.PlatformQoder:
-			c.Next()
-		default:
-			messagesProtocolGate(c)
-		}
-	}
-	countTokensHandler := func(c *gin.Context) {
-		switch countTokensPlatform(c) {
-		case capability.PlatformAntigravity, capability.PlatformQoder:
-			c.JSON(http.StatusNotFound, gin.H{
-				"type": "error",
-				"error": gin.H{
-					"type":    "not_found_error",
-					"message": "count_tokens endpoint is not supported for this platform",
-				},
-			})
-		case capability.PlatformOpenAI, capability.PlatformKimi, capability.PlatformZhipu, capability.PlatformDeepseek:
-			endpoints.OpenAITokens.CountTokens(c)
-		case capability.PlatformGrok:
-			endpoints.OpenAITokens.GrokCountTokens(c)
-		default:
-			countTokensHTTP.CountTokens(c)
-		}
-	}
-	imagesHandler := func(c *gin.Context) {
-		switch getGroupPlatform(c) {
-		case capability.PlatformOpenAI:
-			mediaHTTP.Images(c)
-		case capability.PlatformGrok:
-			mediaHTTP.GrokImages(c)
-		default:
-			options.ObserveBusinessLimit(c, RouteLimitLocalFeatureGate)
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": gin.H{
-					"type":    "not_found_error",
-					"message": "Images API is not supported for this platform",
-				},
-			})
-		}
-	}
-	videoGenerationHandler := func(c *gin.Context) {
-		if getGroupPlatform(c) == capability.PlatformGrok {
-			mediaHTTP.GrokVideoGeneration(c)
-			return
-		}
-		options.ObserveBusinessLimit(c, RouteLimitLocalFeatureGate)
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": gin.H{
-				"type":    "not_found_error",
-				"message": "Videos API is not supported for this platform",
-			},
-		})
-	}
-	videoStatusHandler := func(c *gin.Context) {
-		access := options.Access(c)
-		if getGroupPlatform(c) == capability.PlatformGrok || access.Composite {
-			mediaHTTP.GrokVideoStatus(c)
-			return
-		}
-		options.ObserveBusinessLimit(c, RouteLimitLocalFeatureGate)
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": gin.H{
-				"type":    "not_found_error",
-				"message": "Videos API is not supported for this platform",
-			},
-		})
-	}
-	videoContentHandler := func(c *gin.Context) {
-		access := options.Access(c)
-		if getGroupPlatform(c) == capability.PlatformGrok || access.Composite {
-			mediaHTTP.GrokVideoContent(c)
-			return
-		}
-		options.ObserveBusinessLimit(c, RouteLimitLocalFeatureGate)
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": gin.H{
-				"type":    "not_found_error",
-				"message": "Videos API is not supported for this platform",
-			},
-		})
-	}
-	videoEditHandler := func(c *gin.Context) {
-		if getGroupPlatform(c) == capability.PlatformGrok {
-			mediaHTTP.GrokVideoEdit(c)
-			return
-		}
-		options.ObserveBusinessLimit(c, RouteLimitLocalFeatureGate)
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": gin.H{
-				"type":    "not_found_error",
-				"message": "Videos API is not supported for this platform",
-			},
-		})
-	}
-	videoExtensionHandler := func(c *gin.Context) {
-		if getGroupPlatform(c) == capability.PlatformGrok {
-			mediaHTTP.GrokVideoExtension(c)
-			return
-		}
-		options.ObserveBusinessLimit(c, RouteLimitLocalFeatureGate)
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": gin.H{
-				"type":    "not_found_error",
-				"message": "Videos API is not supported for this platform",
-			},
-		})
-	}
-	qoderResponsesSubpathUnsupported := func(c *gin.Context) {
-		options.ObserveBusinessLimit(c, RouteLimitLocalFeatureGate)
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": gin.H{
-				"type":    "not_found_error",
-				"message": "Qoder Responses subpaths are not supported",
-			},
-		})
-	}
-	responsesWebSocketUnsupported := func(c *gin.Context) {
-		options.ObserveBusinessLimit(c, RouteLimitLocalFeatureGate)
-		message := "Responses WebSocket is not supported for this upstream platform"
-		if getGroupPlatform(c) == capability.PlatformQoder {
-			message = "Qoder Responses WebSocket is not supported"
-		}
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": gin.H{
-				"type":    "not_found_error",
-				"message": message,
-			},
-		})
-	}
-	responsesWebSocketHandler := func(c *gin.Context) {
-		switch getGroupPlatform(c) {
-		case capability.PlatformOpenAI, capability.PlatformGrok:
-			responsesWSHTTP.ResponsesWebSocket(c)
-		default:
-			responsesWebSocketUnsupported(c)
-		}
-	}
+	countTokensProtocolGate := func(c *gin.Context) { messagesProtocolGate(c) }
+	countTokensHandler := func(c *gin.Context) { countTokensHTTP.CountTokens(c) }
+	imagesHandler := func(c *gin.Context) { mediaHTTP.Images(c) }
+	videoGenerationHandler := func(c *gin.Context) { mediaHTTP.GrokVideoGeneration(c) }
+	videoStatusHandler := func(c *gin.Context) { mediaHTTP.GrokVideoStatus(c) }
+	videoContentHandler := func(c *gin.Context) { mediaHTTP.GrokVideoContent(c) }
+	videoEditHandler := func(c *gin.Context) { mediaHTTP.GrokVideoEdit(c) }
+	videoExtensionHandler := func(c *gin.Context) { mediaHTTP.GrokVideoExtension(c) }
+
+	responsesWebSocketHandler := func(c *gin.Context) { responsesWSHTTP.ResponsesWebSocket(c) }
 	// Sideband 动态段不能吞掉 fork 已明确移除的旧 Codex models 路由。
 	rejectRemovedCodexRoute := func(c *gin.Context) {
 		if c.Param("call_id") == "models" {
@@ -259,18 +102,8 @@ func RegisterGatewayRoutes(r *gin.Engine, endpoints RouteEndpoints, options Rout
 	gateway.Use(options.APIKeyAuth)
 	gateway.Use(requireGroupAnthropic, requireExtendedProtocol)
 	{
-		// /v1/messages: auto-route based on group platform
-		gateway.POST("/messages", messagesProtocolGate, func(c *gin.Context) {
-			if isOpenAIResponsesCompatibleGatewayPlatform(c) {
-				openAITextHTTP.Messages(c)
-				return
-			}
-			if getGroupPlatform(c) == capability.PlatformQoder {
-				qoderCompatibleHTTP.Messages(c)
-				return
-			}
-			messagesHTTP.Messages(c)
-		})
+		// 文本入口只固定客户端协议，平台执行在账号选择后确定。
+		gateway.POST("/messages", messagesProtocolGate, func(c *gin.Context) { openAITextHTTP.Messages(c) })
 		// /v1/messages/count_tokens：OpenAI 桥接上游，Grok 本地估算，其余 Anthropic
 		// 兼容平台保留原处理路径。
 		gateway.POST("/messages/count_tokens", countTokensProtocolGate, countTokensHandler)
@@ -278,60 +111,26 @@ func RegisterGatewayRoutes(r *gin.Engine, endpoints RouteEndpoints, options Rout
 		gateway.GET("/usage", endpoints.PublicUsage)
 		gateway.POST("/live", liveHTTP.Live)
 		gateway.GET("/live/:call_id", liveHTTP.LiveSideband)
-		// OpenAI Responses API: auto-route based on group platform
+		// OpenAI Responses API: 账号选定后按实际能力执行
 		gateway.POST("/responses", responsesProtocolGate, func(c *gin.Context) {
-			if isOpenAIResponsesCompatibleGatewayPlatform(c) {
-				openAITextHTTP.Responses(c)
+			if IsOpenAIResponsesInputTokensRequestPath(c) {
+				responsesInputTokensHandler(c)
 				return
 			}
-			if getGroupPlatform(c) == capability.PlatformQoder {
-				qoderCompatibleHTTP.Responses(c)
-				return
-			}
-			compatibleTextHTTP.Responses(c)
+			openAITextHTTP.Responses(c)
 		})
 		gateway.POST("/responses/*subpath", guardResponsesSubpath(withGroupClientProtocol(wireprotocol.ProtocolOpenAIResponses, GroupClientProtocolErrorOpenAI, func(c *gin.Context) {
 			if IsOpenAIResponsesInputTokensRequestPath(c) {
 				responsesInputTokensHandler(c)
 				return
 			}
-			if isOpenAIResponsesCompatibleGatewayPlatform(c) {
-				openAITextHTTP.Responses(c)
-				return
-			}
-			if getGroupPlatform(c) == capability.PlatformQoder {
-				qoderResponsesSubpathUnsupported(c)
-				return
-			}
-			compatibleTextHTTP.Responses(c)
+			openAITextHTTP.Responses(c)
 		})))
 		gateway.POST("/alpha/search", textBodyLimit, auxiliaryHTTP.AlphaSearch)
 		gateway.GET("/responses", responsesWebSocketHandler)
-		// OpenAI Chat Completions API: auto-route based on group platform
-		gateway.POST("/chat/completions", chatCompletionsProtocolGate, func(c *gin.Context) {
-			if isOpenAIResponsesCompatibleGatewayPlatform(c) {
-				openAITextHTTP.ChatCompletions(c)
-				return
-			}
-			if getGroupPlatform(c) == capability.PlatformQoder {
-				endpoints.QoderChat(c)
-				return
-			}
-			compatibleTextHTTP.ChatCompletions(c)
-		})
-		gateway.POST("/embeddings", textBodyLimit, func(c *gin.Context) {
-			if getGroupPlatform(c) != capability.PlatformOpenAI {
-				options.ObserveBusinessLimit(c, RouteLimitLocalFeatureGate)
-				c.JSON(http.StatusNotFound, gin.H{
-					"error": gin.H{
-						"type":    "not_found_error",
-						"message": "Embeddings API is not supported for this platform",
-					},
-				})
-				return
-			}
-			auxiliaryHTTP.Embeddings(c)
-		})
+		// OpenAI Chat Completions API: 账号选定后按实际能力执行
+		gateway.POST("/chat/completions", chatCompletionsProtocolGate, func(c *gin.Context) { openAITextHTTP.ChatCompletions(c) })
+		gateway.POST("/embeddings", textBodyLimit, func(c *gin.Context) { auxiliaryHTTP.Embeddings(c) })
 		gateway.POST("/images/generations", imagesHandler)
 		gateway.POST("/images/edits", imagesHandler)
 		registerBatchImages(gateway)
@@ -355,11 +154,6 @@ func RegisterGatewayRoutes(r *gin.Engine, endpoints RouteEndpoints, options Rout
 		// 这些接口仅用于网关中继，不属于创作中心产品界面。
 		voiceHandler := func(endpoint string) gin.HandlerFunc {
 			return func(c *gin.Context) {
-				if getGroupPlatform(c) != capability.PlatformGrok {
-					options.ObserveBusinessLimit(c, RouteLimitLocalFeatureGate)
-					c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"type": "not_found_error", "message": "Voice API is not supported for this platform"}})
-					return
-				}
 				auxiliaryHTTP.GrokVoice(c, endpoint)
 			}
 		}
@@ -367,11 +161,6 @@ func RegisterGatewayRoutes(r *gin.Engine, endpoints RouteEndpoints, options Rout
 		gateway.POST("/stt", voiceHandler("stt"))
 		gateway.POST("/custom-voices", voiceHandler("custom-voices"))
 		customVoicePathHandler := func(c *gin.Context) {
-			if getGroupPlatform(c) != capability.PlatformGrok {
-				options.ObserveBusinessLimit(c, RouteLimitLocalFeatureGate)
-				c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"type": "not_found_error", "message": "Voice API is not supported for this platform"}})
-				return
-			}
 			auxiliaryHTTP.GrokVoice(c, grokCustomVoiceEndpoint(c))
 		}
 		gateway.GET("/custom-voices", voiceHandler("custom-voices"))
@@ -380,27 +169,12 @@ func RegisterGatewayRoutes(r *gin.Engine, endpoints RouteEndpoints, options Rout
 		gateway.PATCH("/custom-voices/:voice_id", customVoicePathHandler)
 		gateway.DELETE("/custom-voices/:voice_id", customVoicePathHandler)
 		gateway.GET("/realtime", func(c *gin.Context) {
-			if getGroupPlatform(c) != capability.PlatformGrok {
-				options.ObserveBusinessLimit(c, RouteLimitLocalFeatureGate)
-				c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"type": "not_found_error", "message": "Realtime API is not supported for this platform"}})
-				return
-			}
 			auxiliaryHTTP.GrokRealtime(c)
 		})
 		gateway.POST("/web_search", func(c *gin.Context) {
-			if getGroupPlatform(c) != capability.PlatformGrok {
-				options.ObserveBusinessLimit(c, RouteLimitLocalFeatureGate)
-				c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"type": "not_found_error", "message": "Web Search API is not supported for this platform"}})
-				return
-			}
 			searchHTTP.WebSearch(c)
 		})
 		gateway.POST("/x_search", func(c *gin.Context) {
-			if getGroupPlatform(c) != capability.PlatformGrok {
-				options.ObserveBusinessLimit(c, RouteLimitLocalFeatureGate)
-				c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"type": "not_found_error", "message": "X Search API is not supported for this platform"}})
-				return
-			}
 			searchHTTP.XSearch(c)
 		})
 	}
@@ -420,25 +194,13 @@ func RegisterGatewayRoutes(r *gin.Engine, endpoints RouteEndpoints, options Rout
 		gemini.POST("/models/*modelAction", requireGeminiGenerateContentProtocol, geminiNativeHTTP.GeminiV1BetaModels)
 	}
 
-	// OpenAI Responses API（不带v1前缀的别名）— auto-route based on group platform
+	// OpenAI Responses API（不带v1前缀的别名）— 账号选定后按实际能力执行
 	responsesHandler := func(c *gin.Context) {
 		if IsOpenAIResponsesInputTokensRequestPath(c) {
 			responsesInputTokensHandler(c)
 			return
 		}
-		if isOpenAIResponsesCompatibleGatewayPlatform(c) {
-			openAITextHTTP.Responses(c)
-			return
-		}
-		if getGroupPlatform(c) == capability.PlatformQoder {
-			if c.Param("subpath") != "" {
-				qoderResponsesSubpathUnsupported(c)
-				return
-			}
-			qoderCompatibleHTTP.Responses(c)
-			return
-		}
-		compatibleTextHTTP.Responses(c)
+		openAITextHTTP.Responses(c)
 	}
 	r.POST("/responses", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, options.APIKeyAuth, requireGroupAnthropic, requireExtendedProtocol, responsesProtocolGate, responsesHandler)
 	r.POST("/responses/*subpath", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, options.APIKeyAuth, requireGroupAnthropic, requireExtendedProtocol, guardResponsesSubpath(withGroupClientProtocol(wireprotocol.ProtocolOpenAIResponses, GroupClientProtocolErrorOpenAI, responsesHandler)))
@@ -467,31 +229,9 @@ func RegisterGatewayRoutes(r *gin.Engine, endpoints RouteEndpoints, options Rout
 		codexDirect.POST("/alpha/search", textBodyLimit, auxiliaryHTTP.AlphaSearch)
 		codexDirect.GET("/responses", responsesWebSocketHandler)
 	}
-	// OpenAI Chat Completions API（不带v1前缀的别名）— auto-route based on group platform
-	r.POST("/chat/completions", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, options.APIKeyAuth, requireGroupAnthropic, requireExtendedProtocol, chatCompletionsProtocolGate, func(c *gin.Context) {
-		if isOpenAIResponsesCompatibleGatewayPlatform(c) {
-			openAITextHTTP.ChatCompletions(c)
-			return
-		}
-		if getGroupPlatform(c) == capability.PlatformQoder {
-			endpoints.QoderChat(c)
-			return
-		}
-		compatibleTextHTTP.ChatCompletions(c)
-	})
-	r.POST("/embeddings", textBodyLimit, clientRequestID, opsErrorLogger, endpointNorm, options.APIKeyAuth, requireGroupAnthropic, requireExtendedProtocol, func(c *gin.Context) {
-		if getGroupPlatform(c) != capability.PlatformOpenAI {
-			options.ObserveBusinessLimit(c, RouteLimitLocalFeatureGate)
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": gin.H{
-					"type":    "not_found_error",
-					"message": "Embeddings API is not supported for this platform",
-				},
-			})
-			return
-		}
-		auxiliaryHTTP.Embeddings(c)
-	})
+	// OpenAI Chat Completions API（不带v1前缀的别名）— 账号选定后按实际能力执行
+	r.POST("/chat/completions", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, options.APIKeyAuth, requireGroupAnthropic, requireExtendedProtocol, chatCompletionsProtocolGate, func(c *gin.Context) { openAITextHTTP.ChatCompletions(c) })
+	r.POST("/embeddings", textBodyLimit, clientRequestID, opsErrorLogger, endpointNorm, options.APIKeyAuth, requireGroupAnthropic, requireExtendedProtocol, func(c *gin.Context) { auxiliaryHTTP.Embeddings(c) })
 	r.POST("/images/generations", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, options.APIKeyAuth, requireGroupAnthropic, requireExtendedProtocol, imagesHandler)
 	r.POST("/images/edits", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, options.APIKeyAuth, requireGroupAnthropic, requireExtendedProtocol, imagesHandler)
 	// 与 /v1/videos 保持兼容，为 OpenAI 风格客户端提供无前缀的视频创建入口。
@@ -510,11 +250,6 @@ func RegisterGatewayRoutes(r *gin.Engine, endpoints RouteEndpoints, options Rout
 
 	rootVoiceHandler := func(endpoint string) gin.HandlerFunc {
 		return func(c *gin.Context) {
-			if getGroupPlatform(c) != capability.PlatformGrok {
-				options.ObserveBusinessLimit(c, RouteLimitLocalFeatureGate)
-				c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"type": "not_found_error", "message": "Voice API is not supported for this platform"}})
-				return
-			}
 			auxiliaryHTTP.GrokVoice(c, endpoint)
 		}
 	}
@@ -522,11 +257,6 @@ func RegisterGatewayRoutes(r *gin.Engine, endpoints RouteEndpoints, options Rout
 	r.POST("/stt", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, options.APIKeyAuth, requireGroupAnthropic, requireExtendedProtocol, rootVoiceHandler("stt"))
 	r.POST("/custom-voices", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, options.APIKeyAuth, requireGroupAnthropic, requireExtendedProtocol, rootVoiceHandler("custom-voices"))
 	rootCustomVoicePathHandler := func(c *gin.Context) {
-		if getGroupPlatform(c) != capability.PlatformGrok {
-			options.ObserveBusinessLimit(c, RouteLimitLocalFeatureGate)
-			c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"type": "not_found_error", "message": "Voice API is not supported for this platform"}})
-			return
-		}
 		auxiliaryHTTP.GrokVoice(c, grokCustomVoiceEndpoint(c))
 	}
 	r.GET("/custom-voices", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, options.APIKeyAuth, requireGroupAnthropic, requireExtendedProtocol, rootVoiceHandler("custom-voices"))
@@ -535,27 +265,12 @@ func RegisterGatewayRoutes(r *gin.Engine, endpoints RouteEndpoints, options Rout
 	r.PATCH("/custom-voices/:voice_id", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, options.APIKeyAuth, requireGroupAnthropic, requireExtendedProtocol, rootCustomVoicePathHandler)
 	r.DELETE("/custom-voices/:voice_id", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, options.APIKeyAuth, requireGroupAnthropic, requireExtendedProtocol, rootCustomVoicePathHandler)
 	r.GET("/realtime", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, options.APIKeyAuth, requireGroupAnthropic, requireExtendedProtocol, func(c *gin.Context) {
-		if getGroupPlatform(c) != capability.PlatformGrok {
-			options.ObserveBusinessLimit(c, RouteLimitLocalFeatureGate)
-			c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"type": "not_found_error", "message": "Realtime API is not supported for this platform"}})
-			return
-		}
 		auxiliaryHTTP.GrokRealtime(c)
 	})
 	r.POST("/web_search", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, options.APIKeyAuth, requireGroupAnthropic, requireExtendedProtocol, func(c *gin.Context) {
-		if getGroupPlatform(c) != capability.PlatformGrok {
-			options.ObserveBusinessLimit(c, RouteLimitLocalFeatureGate)
-			c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"type": "not_found_error", "message": "Web Search API is not supported for this platform"}})
-			return
-		}
 		searchHTTP.WebSearch(c)
 	})
 	r.POST("/x_search", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, options.APIKeyAuth, requireGroupAnthropic, requireExtendedProtocol, func(c *gin.Context) {
-		if getGroupPlatform(c) != capability.PlatformGrok {
-			options.ObserveBusinessLimit(c, RouteLimitLocalFeatureGate)
-			c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"type": "not_found_error", "message": "X Search API is not supported for this platform"}})
-			return
-		}
 		searchHTTP.XSearch(c)
 	})
 
@@ -591,7 +306,6 @@ func RegisterGatewayRoutes(r *gin.Engine, endpoints RouteEndpoints, options Rout
 		antigravityV1Beta.GET("/models/*model", modelsHTTP.GeminiV1BetaGetModel)
 		antigravityV1Beta.POST("/models/*modelAction", requireGeminiGenerateContentProtocol, geminiNativeHTTP.GeminiV1BetaModels)
 	}
-
 }
 
 func grokCustomVoiceEndpoint(c *gin.Context) string {

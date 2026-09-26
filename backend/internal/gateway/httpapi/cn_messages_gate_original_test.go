@@ -14,11 +14,10 @@ import (
 func TestAllowOpenAICompatibleMessagesDispatchUsesProtocolCollectionForCN(t *testing.T) {
 	require.True(t, (openAITextHTTPBackend{}).AllowsMessages(nil))
 	for _, platform := range []string{capability.PlatformKimi, capability.PlatformZhipu, capability.PlatformDeepseek} {
-		disabled := &apikey.APIKey{Group: &routing.Group{Platform: platform}}
+		disabled := &apikey.APIKey{Group: &routing.Group{}}
 		require.False(t, (openAITextHTTPBackend{}).AllowsMessages(disabled), platform)
 
 		enabled := &apikey.APIKey{Group: &routing.Group{
-			Platform:         platform,
 			AllowedProtocols: []protocol.ProtocolID{protocol.ProtocolAnthropicMessages},
 		}}
 		require.True(t, (openAITextHTTPBackend{}).AllowsMessages(enabled), platform)

@@ -58,79 +58,64 @@ func TestFindPricingForModel(t *testing.T) {
 		ID:     2,
 		Models: []string{"claude-*"},
 	}
-	platformPricing := purepricing.ModelPricingEntry{
-		ID:       3,
-		Platform: "openai",
-		Models:   []string{"gpt-4o"},
+	additionalPricing := purepricing.ModelPricingEntry{
+		ID: 3,
+
+		Models: []string{"gpt-4o"},
 	}
-	emptyPlatformPricing := purepricing.ModelPricingEntry{
+	geminiPricing := purepricing.ModelPricingEntry{
 		ID:     4,
 		Models: []string{"gemini-2.5-pro"},
 	}
 
 	tests := []struct {
-		name     string
-		list     []purepricing.ModelPricingEntry
-		platform string
-		model    string
-		wantID   int64
-		wantNil  bool
+		name    string
+		list    []purepricing.ModelPricingEntry
+		model   string
+		wantID  int64
+		wantNil bool
 	}{
 		{
-			name:     "exact match",
-			list:     []purepricing.ModelPricingEntry{exactPricing},
-			platform: "anthropic",
-			model:    "claude-opus-4",
-			wantID:   1,
+			name:   "exact match",
+			list:   []purepricing.ModelPricingEntry{exactPricing},
+			model:  "claude-opus-4",
+			wantID: 1,
 		},
 		{
-			name:     "exact match case insensitive",
-			list:     []purepricing.ModelPricingEntry{{ID: 5, Models: []string{"Claude-Opus-4"}}},
-			platform: "",
-			model:    "claude-opus-4",
-			wantID:   5,
+			name:   "exact match case insensitive",
+			list:   []purepricing.ModelPricingEntry{{ID: 5, Models: []string{"Claude-Opus-4"}}},
+			model:  "claude-opus-4",
+			wantID: 5,
 		},
 		{
-			name:     "wildcard match",
-			list:     []purepricing.ModelPricingEntry{wildcardPricing},
-			platform: "anthropic",
-			model:    "claude-opus-4",
-			wantID:   2,
+			name:   "wildcard match",
+			list:   []purepricing.ModelPricingEntry{wildcardPricing},
+			model:  "claude-opus-4",
+			wantID: 2,
 		},
 		{
-			name:     "exact match takes priority over wildcard",
-			list:     []purepricing.ModelPricingEntry{wildcardPricing, exactPricing},
-			platform: "anthropic",
-			model:    "claude-opus-4",
-			wantID:   1,
+			name:   "exact match takes priority over wildcard",
+			list:   []purepricing.ModelPricingEntry{wildcardPricing, exactPricing},
+			model:  "claude-opus-4",
+			wantID: 1,
 		},
 		{
-			name:     "platform mismatch skipped",
-			list:     []purepricing.ModelPricingEntry{platformPricing},
-			platform: "anthropic",
-			model:    "gpt-4o",
-			wantNil:  true,
+			name:   "same card includes different model vendors",
+			list:   []purepricing.ModelPricingEntry{exactPricing, additionalPricing, geminiPricing},
+			model:  "gpt-4o",
+			wantID: 3,
 		},
 		{
-			name:     "empty platform in pricing matches any",
-			list:     []purepricing.ModelPricingEntry{emptyPlatformPricing},
-			platform: "gemini",
-			model:    "gemini-2.5-pro",
-			wantID:   4,
+			name:   "Gemini model shares the same card",
+			list:   []purepricing.ModelPricingEntry{exactPricing, additionalPricing, geminiPricing},
+			model:  "gemini-2.5-pro",
+			wantID: 4,
 		},
 		{
-			name:     "empty platform in query matches any pricing platform",
-			list:     []purepricing.ModelPricingEntry{platformPricing},
-			platform: "",
-			model:    "gpt-4o",
-			wantID:   3,
-		},
-		{
-			name:     "no match at all",
-			list:     []purepricing.ModelPricingEntry{exactPricing, wildcardPricing},
-			platform: "anthropic",
-			model:    "gpt-4o",
-			wantNil:  true,
+			name:    "no match at all",
+			list:    []purepricing.ModelPricingEntry{exactPricing, wildcardPricing},
+			model:   "gpt-4o",
+			wantNil: true,
 		},
 		{
 			name:    "empty list returns nil",
@@ -144,9 +129,8 @@ func TestFindPricingForModel(t *testing.T) {
 				{ID: 10, Models: []string{"claude-*"}},
 				{ID: 11, Models: []string{"claude-opus-*"}},
 			},
-			platform: "",
-			model:    "claude-opus-4",
-			wantID:   10, // config order: "claude-*" is first and matches, so it wins
+			model:  "claude-opus-4",
+			wantID: 10, // config order: "claude-*" is first and matches, so it wins
 		},
 		{
 			name: "shorter wildcard used when longer does not match",
@@ -154,15 +138,14 @@ func TestFindPricingForModel(t *testing.T) {
 				{ID: 10, Models: []string{"claude-*"}},
 				{ID: 11, Models: []string{"claude-opus-*"}},
 			},
-			platform: "",
-			model:    "claude-sonnet-4",
-			wantID:   10, // only "claude-*" matches
+			model:  "claude-sonnet-4",
+			wantID: 10, // only "claude-*" matches
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := purepricing.FindPricingForModel(tt.list, tt.platform, tt.model)
+			result := purepricing.FindPricingForModel(tt.list, tt.model)
 			if tt.wantNil {
 				require.Nil(t, result)
 				return
@@ -409,7 +392,7 @@ func TestTryCustomRules_FirstMatchWins(t *testing.T) {
 		},
 	}
 	tokens := purepricing.UsageTokens{InputTokens: 100, OutputTokens: 50}
-	result := purepricing.TryCustomRules(configPricing.AccountStatsPricingRules, 999, 1, "", "claude-opus-4", tokens, 1)
+	result := purepricing.TryCustomRules(configPricing.AccountStatsPricingRules, 999, 1, "claude-opus-4", tokens, 1)
 	require.NotNil(t, result)
 	// 应使用第一条规则的价格：100*0.01 + 50*0.02 = 2.0
 	require.InDelta(t, 2.0, *result, 1e-12)
@@ -435,7 +418,7 @@ func TestTryCustomRules_SkipsNonMatchingRules(t *testing.T) {
 		},
 	}
 	tokens := purepricing.UsageTokens{InputTokens: 100}
-	result := purepricing.TryCustomRules(configPricing.AccountStatsPricingRules, 999, 1, "", "claude-opus-4", tokens, 1)
+	result := purepricing.TryCustomRules(configPricing.AccountStatsPricingRules, 999, 1, "claude-opus-4", tokens, 1)
 	require.NotNil(t, result)
 	// 跳过规则1（账号不匹配），使用规则2：100*0.05 = 5.0
 	require.InDelta(t, 5.0, *result, 1e-12)
@@ -455,7 +438,7 @@ func TestTryCustomRules_NoMatch_ReturnsNil(t *testing.T) {
 		},
 	}
 	tokens := purepricing.UsageTokens{InputTokens: 100}
-	result := purepricing.TryCustomRules(configPricing.AccountStatsPricingRules, 999, 2, "", "claude-opus-4", tokens, 1)
+	result := purepricing.TryCustomRules(configPricing.AccountStatsPricingRules, 999, 2, "claude-opus-4", tokens, 1)
 	require.Nil(t, result) // 账号和分组都不匹配
 }
 
@@ -479,7 +462,7 @@ func TestTryCustomRules_RuleMatchesButModelNot_ContinuesToNext(t *testing.T) {
 		},
 	}
 	tokens := purepricing.UsageTokens{InputTokens: 100}
-	result := purepricing.TryCustomRules(configPricing.AccountStatsPricingRules, 999, 1, "", "claude-opus-4", tokens, 1)
+	result := purepricing.TryCustomRules(configPricing.AccountStatsPricingRules, 999, 1, "claude-opus-4", tokens, 1)
 	require.NotNil(t, result)
 	require.InDelta(t, 5.0, *result, 1e-12) // 使用规则2
 }

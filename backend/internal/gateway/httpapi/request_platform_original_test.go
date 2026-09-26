@@ -6,22 +6,11 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 
 	"github.com/TokenFlux/TokenRouter/internal/routing"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/stretchr/testify/require"
 )
 
-func TestOpenAICompatibleRequestPlatformPreservesCNPlatform(t *testing.T) {
-	for _, platform := range []string{
-		capability.PlatformGrok,
-		capability.PlatformKimi,
-		capability.PlatformZhipu,
-		capability.PlatformDeepseek,
-	} {
-		apiKey := &apikey.APIKey{Group: &routing.Group{Platform: platform}}
-		require.Equal(t, platform, OpenAICompatibleRequestPlatform(apiKey))
-	}
-	require.Equal(t, capability.PlatformOpenAI, OpenAICompatibleRequestPlatform(nil))
-	require.Equal(t, capability.PlatformOpenAI, OpenAICompatibleRequestPlatform(
-		&apikey.APIKey{Group: &routing.Group{Platform: capability.PlatformAnthropic}},
-	))
+// 分组不再决定上游，未选号时保留空平台以允许跨平台候选。
+func TestOpenAICompatibleRequestPlatformStaysUnspecifiedBeforeSelection(t *testing.T) {
+	require.Empty(t, OpenAICompatibleRequestPlatform(nil))
+	require.Empty(t, OpenAICompatibleRequestPlatform(&apikey.APIKey{Group: &routing.Group{}}))
 }

@@ -29,6 +29,8 @@ Agent Identity 的任务锁、锁内复查和凭据登记由 account 协调；ap
 
 标准 Responses、passthrough、Chat/Messages 转换和 Raw Chat 读取使用原生实现，通过同步 OutputSink 输出。 `gateway/httpapi.OpenAIResponseOutput` 固定绑定响应读取、Header、错误规则、健康观测、超时及诊断；app 注入静态参数，TTFT 设置仍在原读取时点查询。响应结果直接使用上游读取器的值类型，保留“仅有观测的失败”在不同入口上的返回差异。
 
+透传只决定报文和传输处理方式。显式账号模型映射仍执行一次，普通请求与透传请求使用相同的最终模型范围；OAuth 认证的硬能力限制不会被透传或全模型通配符关闭。HTTP 出站仅局部替换 `model`，同时保留原请求模型与最终上游模型，用于响应回填、日志和计费。
+
 首输出暂存器拥有当前尝试的内存和临时文件；protocol 唯一提供工具参数、usage、终态重建和图片产出计数。Embeddings、Images 和 Alpha Search 的单次执行负责网络调用和响应资源，账号选择、健康写入及全局重试由入站适配。Alpha Search 在错误处理回卷响应体时仍关闭最初取得的上游 Body。计数查询保持原生完整 JSON 与 Anthropic 兼容响应的区别，不作为推理结算事实。 Embeddings、AlphaSearch、Messages count_tokens 和 Responses input_tokens 由 `gateway/httpapi.OpenAIAuxiliary` 直接接入；请求构造与健康/输出复用原实例，模型投影和计数请求准备归 gateway/provider。计数路由直接组合 RoutePlanner、选择器及受控账号目标。
 
 Responses 主请求由 `gateway/httpapi.OpenAIResponsesExecutor` 执行准备、模型与工具转换、HTTP 交换及协议分派。图片桥接依次使用分组显式协议设置、账号覆盖和全局默认值。分组「协议控制」中的 Responses 图片策略控制非 Responses Lite 的 Codex 请求是否自动补充 `image_generation` 工具及引导指令；关闭自动注入不会移除客户端已声明的生图工具，也不影响独立图片接口。HTTP 与 WS 使用同一 OpenAIEncryptedLineage 和会话存储，失效密文摘要只在上游明确拒绝后记录，后续请求按原会话键剥离。转入 WS 时传递已固化的模型、计费投影、TLS 及请求体，继续使用原连接池和恢复循环；WS 资源已由同一 OpenAIWSConnections 持有，关闭后不能重新创建连接池。
@@ -228,7 +230,7 @@ OpenAI 为通用高级调度器提供平台能力适配，评分核心由 schedu
 
 OpenAI 专属能力只在账号和请求具备对应条件时加入候选或分数：Responses transport、WebSocket、旧版 Compact、previous response、订阅优先和 Codex 额度余量都不会排除缺失这类可选信号的普通账号。OAuth 5 小时、7 天等上游窗口和自动暂停仍由 OpenAI 设置及账号运行状态控制，不随高级调度器通用化而迁移到其它平台。
 
-OAuth 账号的 5 小时、7 天等上游窗口和重置时间保存在账号运行状态中，可触发临时限流或自动暂停；API Key 的文本协议和压缩资格只由管理员配置决定。OpenAI 不再采集上游站点声明倍率，也不按该值进行低倍率优先或高级评分。账户本地 `rate_multiplier` 和渠道上游计费模型来源继续用于 TokenRouter 结算，但都不是用户余额、订阅、Key 限额或用户平台额度。
+OAuth 账号的 5 小时、7 天等上游窗口和重置时间保存在账号运行状态中，可触发临时限流或自动暂停；API Key 的文本协议和压缩资格只由管理员配置决定。OpenAI 不再采集上游站点声明倍率，也不按该值进行低倍率优先或高级评分。账户本地 `rate_multiplier` 和渠道上游计费模型来源继续用于 TokenRouter 结算，但都不是用户余额、订阅和 Key 限额。
 
 管理 API 的 `GET /admin/openai/accounts/:id/quota` 保持只读；账号列表使用 `POST /admin/openai/accounts/:id/quota/refresh` 查询上游并把重置次数写入 `account.extra.codex_reset_credit_snapshot`。正数次数只有同时取得到期明细时才覆盖快照，前端水合时过滤已过期明细并把次数收敛到仍有效的卡片数量。该 extra 键只用于展示缓存，不触发调度 outbox；Spark 影子账号的查询可解析母账号额度，但快照仍写在被查询的行上，且列表继续只提供查询入口，不提供真实重置按钮。
 

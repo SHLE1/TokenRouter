@@ -6,7 +6,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/creative"
 	gatewaydto "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi/dto"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/promptpolicy"
-	"github.com/TokenFlux/TokenRouter/internal/identity"
 	identitydto "github.com/TokenFlux/TokenRouter/internal/identity/httpapi/dto"
 	"github.com/TokenFlux/TokenRouter/internal/payment"
 	sitedto "github.com/TokenFlux/TokenRouter/internal/site/httpapi/dto"
@@ -261,7 +260,6 @@ type UpdateSettingsRequest struct {
 	MaxClaudeCodeVersion string `json:"max_claude_code_version"`
 
 	// 分组隔离
-	AllowUngroupedKeyScheduling bool `json:"allow_ungrouped_key_scheduling"`
 
 	// Backend Mode
 	BackendModeEnabled bool `json:"backend_mode_enabled"`
@@ -361,20 +359,8 @@ type UpdateSettingsRequest struct {
 	// OpenAI fast/flex 策略（只在请求显式提供时更新）
 	OpenAIFastPolicySettings *gatewaydto.OpenAIFastPolicySettings `json:"openai_fast_policy_settings,omitempty"`
 
-	// 系统全局 platform quota 默认值（整体替换语义：nil = 不修改，non-nil = 整体覆盖）。
-	DefaultPlatformQuotas map[string]*identity.DefaultPlatformQuotaSetting `json:"default_platform_quotas"`
-
 	// 各平台账号自动停调阈值（整体替换语义：nil = 不修改，non-nil = 整体覆盖）。
 	AccountSchedulingThresholds map[string]int `json:"account_scheduling_thresholds"`
-
-	// auth-source 层 platform quota 覆盖（override 语义：nil = 不修改，non-nil = 整体覆盖该 source 的 quota 配置）。
-	AuthSourceEmailPlatformQuotas    map[string]*identity.DefaultPlatformQuotaSetting `json:"auth_source_default_email_platform_quotas"`
-	AuthSourceLinuxDoPlatformQuotas  map[string]*identity.DefaultPlatformQuotaSetting `json:"auth_source_default_linuxdo_platform_quotas"`
-	AuthSourceOIDCPlatformQuotas     map[string]*identity.DefaultPlatformQuotaSetting `json:"auth_source_default_oidc_platform_quotas"`
-	AuthSourceWeChatPlatformQuotas   map[string]*identity.DefaultPlatformQuotaSetting `json:"auth_source_default_wechat_platform_quotas"`
-	AuthSourceGitHubPlatformQuotas   map[string]*identity.DefaultPlatformQuotaSetting `json:"auth_source_default_github_platform_quotas"`
-	AuthSourceGooglePlatformQuotas   map[string]*identity.DefaultPlatformQuotaSetting `json:"auth_source_default_google_platform_quotas"`
-	AuthSourceDingTalkPlatformQuotas map[string]*identity.DefaultPlatformQuotaSetting `json:"auth_source_default_dingtalk_platform_quotas"`
 
 	AllowUserViewErrorRequests *bool `json:"allow_user_view_error_requests"`
 }

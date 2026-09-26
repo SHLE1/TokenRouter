@@ -305,10 +305,9 @@ func TestAdminService_BulkUpdateAccounts_PartialFailureIDs(t *testing.T) {
 	groupIDs := []int64{10}
 	schedulable := false
 	input := &accountcore.BulkUpdateAccountsInput{
-		AccountIDs:            []int64{1, 2, 3},
-		GroupIDs:              &groupIDs,
-		Schedulable:           &schedulable,
-		SkipMixedChannelCheck: true,
+		AccountIDs:  []int64{1, 2, 3},
+		GroupIDs:    &groupIDs,
+		Schedulable: &schedulable,
 	}
 
 	result, err := svc.BulkUpdateAccounts(context.Background(), input)
@@ -363,10 +362,8 @@ func TestAdminServiceBulkUpdateAccountsRejectsGeminiThirdPartyWithoutCustomBaseU
 	require.Empty(t, repo.bulkUpdateIDs)
 }
 
-// TestAdminService_BulkUpdateAccounts_MixedChannelPreCheckBlocksOnExistingConflict verifies
-// that the global pre-check detects a conflict with existing group members and returns an
-// error before any DB write is performed.
-func TestAdminService_BulkUpdateAccounts_MixedChannelPreCheckBlocksOnExistingConflict(t *testing.T) {
+// 组内已有其他平台账号不会阻止显式关联。
+func TestAdminServiceBulkUpdateAllowsMixedAccountPlatforms(t *testing.T) {
 	repo := &accountRepoStubForBulkUpdate{
 		getByIDsAccounts: []*accountcore.Record{
 			{ID: 1, Platform: capability.PlatformAntigravity},
@@ -385,11 +382,10 @@ func TestAdminService_BulkUpdateAccounts_MixedChannelPreCheckBlocksOnExistingCon
 	}
 
 	result, err := svc.BulkUpdateAccounts(context.Background(), input)
-	require.Nil(t, result)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "mixed channel")
-	// No BindGroups should have been called since the check runs before any write.
-	require.Empty(t, repo.bindGroupsCalls)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Equal(t, 1, result.Success)
+	require.Len(t, repo.bindGroupsCalls, 1)
 }
 
 func TestAdminServiceBulkUpdateAccounts_ResolvesIDsFromFilters(t *testing.T) {

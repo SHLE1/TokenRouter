@@ -6,28 +6,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// 分组协议集合独立于账号平台，默认只开放三个文本入口。
 func TestGroupClientProtocolMatrix(t *testing.T) {
-	tests := []struct {
-		platform  string
-		supported []ProtocolID
-		defaults  []ProtocolID
-	}{
-		{PlatformAnthropic, []ProtocolID{ProtocolAnthropicMessages, ProtocolOpenAIResponses, ProtocolOpenAIChatCompletions}, []ProtocolID{ProtocolAnthropicMessages}},
-		{PlatformOpenAI, []ProtocolID{ProtocolAnthropicMessages, ProtocolOpenAIResponses, ProtocolOpenAIChatCompletions, ProtocolEmbeddings, ProtocolImagesGenerations, ProtocolImagesEdits, ProtocolResponsesWebSocket, ProtocolLive, ProtocolResponsesCompact, ProtocolAlphaSearch}, []ProtocolID{ProtocolOpenAIResponses, ProtocolOpenAIChatCompletions}},
-		{PlatformGemini, []ProtocolID{ProtocolAnthropicMessages, ProtocolOpenAIResponses, ProtocolOpenAIChatCompletions, ProtocolGeminiGenerateContent, ProtocolImageBatches}, []ProtocolID{ProtocolGeminiGenerateContent}},
-		{PlatformAntigravity, []ProtocolID{ProtocolAnthropicMessages, ProtocolOpenAIResponses, ProtocolOpenAIChatCompletions, ProtocolGeminiGenerateContent}, []ProtocolID{ProtocolAnthropicMessages, ProtocolGeminiGenerateContent}},
-		{PlatformQoder, []ProtocolID{ProtocolAnthropicMessages, ProtocolOpenAIResponses, ProtocolOpenAIChatCompletions}, []ProtocolID{}},
-		{PlatformGrok, []ProtocolID{ProtocolAnthropicMessages, ProtocolOpenAIResponses, ProtocolOpenAIChatCompletions, ProtocolImagesGenerations, ProtocolImagesEdits, ProtocolVideosGenerations, ProtocolVideosEdits, ProtocolVideosExtensions, ProtocolTTS, ProtocolSTT, ProtocolCustomVoices, ProtocolVoiceRealtime, ProtocolResponsesWebSocket, ProtocolResponsesCompact, ProtocolWebSearch, ProtocolXSearch}, []ProtocolID{ProtocolOpenAIResponses, ProtocolOpenAIChatCompletions, "openai_images_generations", "openai_images_edits"}},
-		{PlatformKimi, []ProtocolID{ProtocolAnthropicMessages, ProtocolOpenAIResponses, ProtocolOpenAIChatCompletions}, []ProtocolID{ProtocolAnthropicMessages, ProtocolOpenAIResponses, ProtocolOpenAIChatCompletions}},
-		{PlatformZhipu, []ProtocolID{ProtocolAnthropicMessages, ProtocolOpenAIResponses, ProtocolOpenAIChatCompletions}, []ProtocolID{ProtocolAnthropicMessages, ProtocolOpenAIResponses, ProtocolOpenAIChatCompletions}},
-		{PlatformDeepseek, []ProtocolID{ProtocolAnthropicMessages, ProtocolOpenAIResponses, ProtocolOpenAIChatCompletions}, []ProtocolID{ProtocolAnthropicMessages, ProtocolOpenAIResponses, ProtocolOpenAIChatCompletions}},
-	}
-	for _, tt := range tests {
-		t.Run(tt.platform, func(t *testing.T) {
-			require.Equal(t, tt.supported, SupportedGroupClientProtocols(tt.platform))
-			require.Equal(t, tt.defaults, DefaultGroupClientProtocols(tt.platform))
-		})
-	}
+	supported := SupportedGroupClientProtocols("")
+	require.Len(t, supported, 21)
+	require.Contains(t, supported, ProtocolImageBatches)
+	require.Contains(t, supported, ProtocolVoiceRealtime)
+	require.NotContains(t, supported, ProtocolQoderChat)
+	require.Equal(t, []ProtocolID{ProtocolAnthropicMessages, ProtocolOpenAIResponses, ProtocolOpenAIChatCompletions}, DefaultGroupClientProtocols(""))
+	require.Empty(t, DefaultProtocolFallbacks(""))
+	supported[0] = ProtocolLive
+	require.Equal(t, ProtocolAnthropicMessages, SupportedGroupClientProtocols("")[0])
 }
 
 func TestValidateGroupClientProtocols(t *testing.T) {
@@ -47,7 +36,7 @@ func TestValidateGroupClientProtocols(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, emptyOpenAI)
 	_, err = ValidateGroupClientProtocols(PlatformAnthropic, []ProtocolID{ProtocolAnthropicMessages, ProtocolGeminiGenerateContent})
-	require.ErrorContains(t, err, "not supported")
+	require.NoError(t, err)
 	_, err = ValidateGroupClientProtocols(PlatformQoder, []ProtocolID{ProtocolAnthropicMessages, ProtocolAnthropicMessages})
 	require.ErrorContains(t, err, "duplicated")
 	_, err = ValidateGroupClientProtocols(PlatformQoder, []ProtocolID{"unknown"})

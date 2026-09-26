@@ -92,7 +92,7 @@ func (t countHTTPContractTarget) ForwardCountTokens(_ context.Context, c *gin.Co
 // 无槽计数保留资金预检、逐次原报文改写和失败会话释放，不提交费用或完成任务。
 func TestCountTokensNativeHTTPAttemptContract(t *testing.T) {
 	fixture := &countHTTPContract{t: t, group: 42}
-	key := &apikey.APIKey{ID: 7, GroupID: &fixture.group, Group: &routing.Group{Platform: "anthropic"}}
+	key := &apikey.APIKey{ID: 7, GroupID: &fixture.group, Group: &routing.Group{}}
 	ports := CountHTTPPorts{
 		Executor: fixture, Funding: fixture, Diagnoser: routing.ModelAvailabilityDiagnoserFunc(unexpectedCountModelDiagnosis),
 		ReadAccess:           func(*gin.Context) (*apikey.APIKey, bool) { return key, true },
@@ -112,8 +112,8 @@ func TestCountTokensNativeHTTPAttemptContract(t *testing.T) {
 	handler.CountTokens(c)
 	require.Equal(t, http.StatusOK, response.Code)
 	require.JSONEq(t, `{"input_tokens":17}`, response.Body.String())
-	require.Equal(t, []string{"funding", "select", "plan", "forward", "release", "select", "plan", "forward"}, fixture.events)
-	require.Equal(t, "antigravity", fixture.platform)
+	require.Equal(t, []string{"funding", "plan", "select", "plan", "forward", "release", "select", "plan", "forward"}, fixture.events)
+	require.Empty(t, fixture.platform)
 	require.Len(t, fixture.bodies, 2)
 	require.Equal(t, "attempt-1", gjson.GetBytes(fixture.bodies[0], "model").String())
 	require.Equal(t, "attempt-2", gjson.GetBytes(fixture.bodies[1], "model").String())

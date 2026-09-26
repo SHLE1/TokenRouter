@@ -97,16 +97,6 @@ func (r originalGroupPort) ListActive(ctx context.Context) ([]routing.Group, err
 	return originalTestGroups(v), e
 }
 
-func (r originalGroupPort) ListActiveByPlatform(ctx context.Context, platform string) ([]routing.Group, error) {
-	v, e := r.GroupRepository.ListActiveByPlatform(ctx, platform)
-	return originalTestGroups(v), e
-}
-
-func (r originalGroupPort) ListActiveByPlatformLite(ctx context.Context, platform string) ([]routing.Group, error) {
-	v, e := r.GroupRepository.ListActiveByPlatformLite(ctx, platform)
-	return originalTestGroups(v), e
-}
-
 type originalGroupDuplicatePort struct {
 	routing.GroupDuplicateRepository
 }

@@ -24,14 +24,14 @@ import (
 // 图片和视频的 token 价卡必须保留全部倍率，不能因为继承内置来源而改走按次计费。
 func TestOpenAIMediaPricingUsesModifierOnlyCards(t *testing.T) {
 	for _, media := range []string{"image", "video"} {
-		model, platform := "gpt-image-1", capability.PlatformOpenAI
+		model := "gpt-image-1"
 		if media == "video" {
-			model, platform = "grok-imagine-video", capability.PlatformGrok
+			model = "grok-imagine-video"
 		}
 		for _, scope := range []string{"group", "channel"} {
 			for _, kind := range []string{"fast", "flex", "max", "time", "combined"} {
 				t.Run(media+"/"+scope+"/"+kind, func(t *testing.T) {
-					card := routing.ModelPricingEntry{Platform: platform, Models: []string{model}, BillingMode: routing.BillingModeToken}
+					card := routing.ModelPricingEntry{Models: []string{model}, BillingMode: routing.BillingModeToken}
 					factor, tier, effort := 1.0, "", ""
 					if kind == "fast" || kind == "combined" {
 						card.FastMultiplier, tier = testPtrFloat64(2), "priority"
@@ -53,7 +53,7 @@ func TestOpenAIMediaPricingUsesModifierOnlyCards(t *testing.T) {
 					billing := newCalculator(nil, newCatalogFixture(catalogFixture{pricingData: map[string]*pricing.LiteLLMModelPricing{
 						model: {Mode: media, InputCostPerToken: 0.001, OutputCostPerToken: 0.002, OutputCostPerImageToken: 0.004},
 					}}))
-					group := &routing.Group{ID: 100, Platform: platform}
+					group := &routing.Group{ID: 100}
 					var pricingConfigCards []routing.ModelPricingEntry
 					if scope == "group" {
 						group.ModelPricing = []routing.ModelPricingEntry{card}
@@ -88,17 +88,17 @@ func TestOpenAIMediaPricingUsesModifierOnlyCards(t *testing.T) {
 func TestOpenAIMediaModifiersPreserveInheritedRequestBilling(t *testing.T) {
 	for _, mode := range []routing.BillingMode{routing.BillingModeImage, routing.BillingModeVideo} {
 		t.Run(string(mode), func(t *testing.T) {
-			model, platform := "gpt-image-1", capability.PlatformOpenAI
+			model := "gpt-image-1"
 			result := &forwardcore.OpenAIResult{Model: model, ImageCount: 2}
 			wantTotal, rate := 0.5, 0.7
 			if mode == routing.BillingModeVideo {
-				model, platform = "grok-imagine-video", capability.PlatformGrok
+				model = "grok-imagine-video"
 				result = &forwardcore.OpenAIResult{Model: model, VideoCount: 2, VideoDurationSeconds: 8}
 				wantTotal, rate = 4, 0.8
 			}
 			billing := newCalculator(nil, nil)
-			resolver := billingtestkit.ResolverWithCards(t, billing, []routing.ModelPricingEntry{{Platform: platform, Models: []string{model}, BillingMode: mode, PerRequestPrice: testPtrFloat64(0.25)}})
-			group := &routing.Group{ID: 100, Platform: platform, ModelPricing: []routing.ModelPricingEntry{{
+			resolver := billingtestkit.ResolverWithCards(t, billing, []routing.ModelPricingEntry{{Models: []string{model}, BillingMode: mode, PerRequestPrice: testPtrFloat64(0.25)}})
+			group := &routing.Group{ID: 100, ModelPricing: []routing.ModelPricingEntry{{
 				Models: []string{model}, FastMultiplier: testPtrFloat64(3),
 				TimePricing: &routing.TimePricingConfig{Timezone: "UTC", Periods: []routing.TimePricingPeriod{{StartTime: "00:00", EndTime: "12:00", Multiplier: 2}}},
 			}}}
@@ -120,8 +120,8 @@ func TestCNProviderPricingModifiersDoNotCountAsExplicitPrices(t *testing.T) {
 		for _, scope := range []string{"group", "channel"} {
 			t.Run(platform+"/"+scope, func(t *testing.T) {
 				model := "claude-sonnet-4"
-				card := routing.ModelPricingEntry{Platform: platform, Models: []string{model}, FastMultiplier: testPtrFloat64(2)}
-				group := &routing.Group{ID: 100, Platform: platform}
+				card := routing.ModelPricingEntry{Models: []string{model}, FastMultiplier: testPtrFloat64(2)}
+				group := &routing.Group{ID: 100}
 				var pricingConfigCards []routing.ModelPricingEntry
 				if scope == "group" {
 					group.ModelPricing = []routing.ModelPricingEntry{card}

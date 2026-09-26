@@ -6,6 +6,8 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
+
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/completion"
 
@@ -56,6 +58,7 @@ func (p SearchPorts) DefaultModel() string { return gatewaycapture.GrokStandalon
 func (p SearchPorts) NormalizeMaxResults(n int) int {
 	return gatewaycapture.GrokStandaloneSearchMaxResults(n)
 }
+
 func (p SearchPorts) Access(c *gin.Context) (SearchAccess, bool) {
 	key, ok := keyhttp.GetAPIKeyFromContext(c)
 	if !ok || key == nil {
@@ -63,19 +66,21 @@ func (p SearchPorts) Access(c *gin.Context) (SearchAccess, bool) {
 	}
 	out := SearchAccess{GroupPresent: key.Group != nil, GroupID: key.GroupID}
 	if key.Group != nil {
-		out.Platform = key.Group.Platform
+		out.Platform = capability.PlatformGrok
 	}
 	return out, true
 }
+
 func (p SearchPorts) Billing(c *gin.Context) *SearchHTTPFailure {
 	key, _ := keyhttp.GetAPIKeyFromContext(c)
 	sub, _ := SubscriptionFromContext(c)
-	if err := p.Funding.CheckKey(c.Request.Context(), key, sub, admission.QuotaPlatform(c.Request.Context(), key), false); err != nil {
+	if err := p.Funding.CheckKey(c.Request.Context(), key, sub, "", false); err != nil {
 		status, code, message, retry := BillingErrorDetails(err)
 		return &SearchHTTPFailure{Status: status, Code: code, Message: message, RetryAfter: retry}
 	}
 	return nil
 }
+
 func (p SearchPorts) Moderate(c *gin.Context, model string, body []byte) *SearchHTTPFailure {
 	key, _ := keyhttp.GetAPIKeyFromContext(c)
 	subject, _ := authctx.GetAuthSubjectFromContext(c)
@@ -85,9 +90,11 @@ func (p SearchPorts) Moderate(c *gin.Context, model string, body []byte) *Search
 	}
 	return nil
 }
+
 func (p SearchPorts) Run(c *gin.Context, groupID int64, isX bool) SearchHTTPRun {
 	return &gatewayStandaloneSearchRun{ports: p, c: c, groupID: groupID, isX: isX}
 }
+
 func (p SearchPorts) ConcurrencyError(c *gin.Context, err error) {
 	status, kind, code, message := ConcurrencyErrorResponse(err, "account")
 	WriteAnthropicStreamError(c, status, kind, code, message, false, MarkOpsStreamError)
@@ -110,10 +117,12 @@ func (r *gatewayStandaloneSearchRun) Select(ctx context.Context, model string, e
 	r.target = target
 	return selected, true, nil
 }
+
 func (r *gatewayStandaloneSearchRun) CanSwitch(err error) bool {
 	var failure *forwardcore.UpstreamFailoverError
 	return errors.As(err, &failure) && failure.ShouldRetryNextAccount()
 }
+
 func (r *gatewayStandaloneSearchRun) Execute(ctx context.Context, _ int64, request searchtools.StandaloneRequest, model string, maxResults int) (*contract.SearchResponse, string, error) {
 	body, err := gatewaycapture.GrokStandaloneSearchBody(request, model, maxResults, r.isX)
 	if err != nil {
@@ -125,6 +134,7 @@ func (r *gatewayStandaloneSearchRun) Execute(ctx context.Context, _ int64, reque
 	}
 	return gatewaycapture.GrokStandaloneSearchResponse(request.Query, response, maxResults), "grok-native", nil
 }
+
 func (r *gatewayStandaloneSearchRun) Acquire(ctx context.Context, selected searchtools.Selection) (func(), bool, error) {
 	if selected.Acquired {
 		return selected.Release, true, nil
@@ -151,6 +161,7 @@ func (r *gatewayStandaloneSearchRun) Acquire(ctx context.Context, selected searc
 	}
 	return release, true, nil
 }
+
 func (r *gatewayStandaloneSearchRun) Complete(c *gin.Context, req searchtools.StandaloneRequest, _ searchtools.StandaloneResult, isXSearch bool) {
 	ports := r.ports
 	account := r.target.CompletionRecord()
@@ -165,7 +176,7 @@ func (r *gatewayStandaloneSearchRun) Complete(c *gin.Context, req searchtools.St
 	inboundEndpoint := GetInboundEndpoint(c)
 	upstreamEndpoint := GetUpstreamEndpoint(c, account.Platform)
 	requestPayloadHash := billing.HashUsageRequestPayload([]byte(req.Query))
-	quotaPlatform := admission.QuotaPlatform(c.Request.Context(), apiKey)
+
 	// request ID 是结算幂等键，必须按调用唯一；查询、IP 或 UA 哈希会错误合并重复搜索。
 	searchRequestID := searchLabel + ":" + uuid.NewString()
 	if apiKey.Group != nil {
@@ -194,7 +205,6 @@ func (r *gatewayStandaloneSearchRun) Complete(c *gin.Context, req searchtools.St
 		IPAddress:          clientIP,
 		RequestPayloadHash: requestPayloadHash,
 		APIKeyService:      ports.Keys,
-		QuotaPlatform:      quotaPlatform,
 	})
 	completionRuntime := ports.Recorder
 	NewCompletionSubmission(ports.Workers, false).SubmitMandatory(c, func(ctx context.Context) {
@@ -207,5 +217,4 @@ func (r *gatewayStandaloneSearchRun) Complete(c *gin.Context, req searchtools.St
 			).Error("gateway.web_search.record_usage_failed", zap.Error(err))
 		}
 	})
-
 }

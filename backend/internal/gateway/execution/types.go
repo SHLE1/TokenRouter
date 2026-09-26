@@ -77,9 +77,9 @@ type RequestMetadata struct {
 	ClientIP         string
 	InboundEndpoint  string
 	UpstreamEndpoint string
-	QuotaPlatform    string
-	ClaudeCode       bool
-	StartedAt        time.Time
+
+	ClaudeCode bool
+	StartedAt  time.Time
 }
 type FundingState struct {
 	Key          *apikey.APIKey

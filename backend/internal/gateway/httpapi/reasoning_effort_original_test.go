@@ -23,10 +23,10 @@ func TestApplyOpenAIReasoningEffortPolicyForRequest_MapsConfiguredNoneForAstra(t
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
+	SetOpsSelectedAccount(c, 1, capability.PlatformOpenAI)
 
 	apiKey := &apikey.APIKey{
 		Group: &routing.Group{
-			Platform: capability.PlatformOpenAI,
 			ReasoningEffortMappings: []routing.ReasoningEffortMapping{{
 				From:      "none",
 				To:        "low",
@@ -56,8 +56,8 @@ func TestApplyAnthropicReasoningEffortPolicyForRequest_CapsOutputConfigEffort(t 
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
+	SetOpsSelectedAccount(c, 1, capability.PlatformAnthropic)
 	apiKey := &apikey.APIKey{Group: &routing.Group{
-		Platform:           capability.PlatformAnthropic,
 		MaxReasoningEffort: "high",
 	}}
 	body := []byte(`{"model":"claude-fable-5-1","output_config":{"effort":"max"}}`)
@@ -72,13 +72,14 @@ func TestApplyAnthropicReasoningEffortPolicyForRequest_CapsOutputConfigEffort(t 
 
 // 强制平台入口与缺省请求都不能被 Anthropic 分组策略意外改写。
 func TestAnthropicReasoningPolicy_PreservesForcedPlatformAndDefault(t *testing.T) {
-	apiKey := &apikey.APIKey{Group: &routing.Group{Platform: capability.PlatformAnthropic, MaxReasoningEffort: "low"}}
+	apiKey := &apikey.APIKey{Group: &routing.Group{MaxReasoningEffort: "low"}}
 	for _, forced := range []bool{false, true} {
 		c, _ := gin.CreateTestContext(httptest.NewRecorder())
 		c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
 		body := []byte(`{"model":"claude-fable-5-1"}`)
 		if forced {
 			c.Set(string(keyhttp.ContextKeyForcePlatform), capability.PlatformAntigravity)
+			SetOpsSelectedAccount(c, 1, capability.PlatformAntigravity)
 			body = []byte(`{"model":"claude-fable-5-1","output_config":{"effort":"max"}}`)
 		}
 		updated, changed, err := ApplyAnthropicReasoningEffortPolicyForRequest(c, apiKey, body)

@@ -3,9 +3,12 @@
 package billing_test
 
 import (
+	"context"
 	"database/sql"
 	"testing"
 	"time"
+
+	"github.com/TokenFlux/TokenRouter/internal/identity"
 
 	dbent "github.com/TokenFlux/TokenRouter/ent"
 	"github.com/TokenFlux/TokenRouter/internal/batchimage"
@@ -36,3 +39,11 @@ func newSettlementFixture(db *sql.DB) *billingpostgres.SettlementStore {
 	return store
 }
 func testEntClient(t *testing.T) *dbent.Client { t.Helper(); return integrationEntClient }
+
+// billingUsersForContract 为余额和权益合同读取付款用户快照。
+type billingUsersForContract struct{ repository identity.UserRepository }
+
+func (r billingUsersForContract) GetByID(ctx context.Context, id int64) (*billing.UserSummary, error) {
+	user, err := r.repository.GetByID(ctx, id)
+	return billingUserForContract(user), err
+}

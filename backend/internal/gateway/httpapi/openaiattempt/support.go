@@ -7,7 +7,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/admission"
+
 	"github.com/TokenFlux/TokenRouter/internal/gateway/errorpolicy"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
@@ -141,7 +141,7 @@ func (h *Support) AcquireOpenAIAccountSlot(
 	}
 	var projected *gatewayhttp.SelectedAccountSlot
 	if selection != nil && selection.Account != nil {
-		projected = &gatewayhttp.SelectedAccountSlot{AccountID: selection.Account.Record.ID, Acquired: selection.Acquired, ReleaseFunc: selection.ReleaseFunc, WaitPlan: selection.WaitPlan}
+		projected = &gatewayhttp.SelectedAccountSlot{CompleteBeforeRelease: reqStream && selection.Account.Record.Platform == capability.PlatformQoder, AccountID: selection.Account.Record.ID, Acquired: selection.Acquired, ReleaseFunc: selection.ReleaseFunc, WaitPlan: selection.WaitPlan}
 	}
 	release, ok := gatewayhttp.AcquireSelectedAccountSlot(c, groupID, sessionHash, projected, reqStream, streamStarted, reqLog, writeError, h.Concurrency, h.Sticky, gatewayhttp.AccountSlotHooks{Acquired: gatewayhttp.MarkOpsAccountSlotAcquired, CapacityLimited: gatewayhttp.MarkOpsRoutingCapacityLimited})
 	if !ok {
@@ -253,7 +253,7 @@ func (h *Support) RecordCyberPolicyIfMarked(c *gin.Context, apiKey *apikey.APIKe
 		ClientSessionID:    gatewayhttp.ExtractClientSessionID(c),
 		RequestPayloadHash: requestPayloadHash,
 		APIKeyService:      h.Quota,
-		QuotaPlatform:      admission.QuotaPlatform(c.Request.Context(), apiKey),
+
 		NativeCompactionV2: compaction,
 		PricingUsageFields: pricingFields,
 	})

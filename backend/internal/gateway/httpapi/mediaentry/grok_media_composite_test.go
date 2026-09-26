@@ -11,7 +11,6 @@ import (
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
 	gatewaymedia "github.com/TokenFlux/TokenRouter/internal/gateway/media"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/stretchr/testify/require"
 )
 
@@ -65,7 +64,7 @@ func TestResolveCompositeGrokVideoAPIKeyUsesPersistedOwnerAfterMappingRemoval(t 
 	require.NoError(t, err)
 	require.Equal(t, int64(88), accountID)
 	require.Equal(t, int64(20), *selected.GroupID)
-	require.Equal(t, capability.PlatformGrok, selected.Group.Platform)
+	require.True(t, selected.Group.Hydrated)
 }
 
 func (s *compositeGrokVideoCacheStub) RefreshSessionOwnerTTL(context.Context, int64, string, string, time.Duration) error {
@@ -73,8 +72,8 @@ func (s *compositeGrokVideoCacheStub) RefreshSessionOwnerTTL(context.Context, in
 }
 
 func TestResolveCompositeGrokVideoAPIKeyRestoresBoundGroup(t *testing.T) {
-	openAIGroup := &routing.Group{ID: 10, Platform: capability.PlatformOpenAI, Status: billing.StatusActive}
-	grokGroup := &routing.Group{ID: 20, Platform: capability.PlatformGrok, Status: billing.StatusActive}
+	openAIGroup := &routing.Group{ID: 10, Status: billing.StatusActive}
+	grokGroup := &routing.Group{ID: 20, Status: billing.StatusActive}
 	cache := &compositeGrokVideoCacheStub{groupID: grokGroup.ID, accountID: 88}
 	// 存储替身只接入实际视频任务拥有者，不构造无关网关图。
 	tasks := gatewaymedia.NewVideoTasks(cache, nil, gatewaymedia.VideoOptions{})

@@ -33,8 +33,8 @@ func TestPricingConfigToResponse_FullPricingConfig(t *testing.T) {
 		GroupIDs:  []int64{1, 2, 3},
 		ModelPricing: []routing.ModelPricingEntry{
 			{
-				ID:                 10,
-				Platform:           "openai",
+				ID: 10,
+
 				Models:             []string{"gpt-4"},
 				BillingMode:        routing.BillingModeToken,
 				PriceMultiplier:    float64Ptr(1.5),
@@ -74,7 +74,6 @@ func TestPricingConfigToResponse_FullPricingConfig(t *testing.T) {
 	require.Len(t, resp.ModelPricing, 1)
 	p := resp.ModelPricing[0]
 	require.Equal(t, int64(10), p.ID)
-	require.Equal(t, "openai", p.Platform)
 	require.Equal(t, []string{"gpt-4"}, p.Models)
 	require.Equal(t, "token", p.BillingMode)
 	require.Equal(t, float64Ptr(1.5), p.PriceMultiplier)
@@ -95,8 +94,7 @@ func TestPricingConfigToResponse_FullPricingConfig(t *testing.T) {
 
 func TestPricingRequestToServiceTimePricing(t *testing.T) {
 	pricing := pricingRequestToService([]modelPricingRequest{{
-		Platform: "openai",
-		Models:   []string{"gpt-5"},
+		Models: []string{"gpt-5"},
 		TimePricing: &timePricingRequest{
 			Timezone:     "Asia/Tokyo",
 			WeekdaysOnly: true,
@@ -123,7 +121,6 @@ func TestPricingConfigToResponse_EmptyDefaults(t *testing.T) {
 
 		ModelPricing: []routing.ModelPricingEntry{
 			{
-				Platform:    "",
 				BillingMode: "",
 				Models:      []string{"m1"},
 			},
@@ -136,7 +133,6 @@ func TestPricingConfigToResponse_EmptyDefaults(t *testing.T) {
 	require.Empty(t, resp.GroupIDs)
 
 	require.Len(t, resp.ModelPricing, 1)
-	require.Equal(t, "anthropic", resp.ModelPricing[0].Platform)
 	require.Equal(t, "token", resp.ModelPricing[0].BillingMode)
 }
 
@@ -238,23 +234,23 @@ func TestPricingConfigToResponse_MultipleEntries(t *testing.T) {
 		UpdatedAt: now,
 		ModelPricing: []routing.ModelPricingEntry{
 			{
-				ID:          1,
-				Platform:    "anthropic",
+				ID: 1,
+
 				Models:      []string{"claude-sonnet-4"},
 				BillingMode: routing.BillingModeToken,
 				InputPrice:  float64Ptr(0.003),
 				OutputPrice: float64Ptr(0.015),
 			},
 			{
-				ID:              2,
-				Platform:        "openai",
+				ID: 2,
+
 				Models:          []string{"gpt-4", "gpt-4o"},
 				BillingMode:     routing.BillingModePerRequest,
 				PerRequestPrice: float64Ptr(1.0),
 			},
 			{
-				ID:               3,
-				Platform:         "gemini",
+				ID: 3,
+
 				Models:           []string{"gemini-2.5-pro"},
 				BillingMode:      routing.BillingModeImage,
 				ImageOutputPrice: float64Ptr(0.05),
@@ -267,17 +263,14 @@ func TestPricingConfigToResponse_MultipleEntries(t *testing.T) {
 	require.Len(t, resp.ModelPricing, 3)
 
 	require.Equal(t, int64(1), resp.ModelPricing[0].ID)
-	require.Equal(t, "anthropic", resp.ModelPricing[0].Platform)
 	require.Equal(t, []string{"claude-sonnet-4"}, resp.ModelPricing[0].Models)
 	require.Equal(t, "token", resp.ModelPricing[0].BillingMode)
 
 	require.Equal(t, int64(2), resp.ModelPricing[1].ID)
-	require.Equal(t, "openai", resp.ModelPricing[1].Platform)
 	require.Equal(t, []string{"gpt-4", "gpt-4o"}, resp.ModelPricing[1].Models)
 	require.Equal(t, "per_request", resp.ModelPricing[1].BillingMode)
 
 	require.Equal(t, int64(3), resp.ModelPricing[2].ID)
-	require.Equal(t, "gemini", resp.ModelPricing[2].Platform)
 	require.Equal(t, []string{"gemini-2.5-pro"}, resp.ModelPricing[2].Models)
 	require.Equal(t, "image", resp.ModelPricing[2].BillingMode)
 	require.Equal(t, float64Ptr(0.05), resp.ModelPricing[2].ImageOutputPrice)
@@ -299,15 +292,6 @@ func TestPricingRequestToService_Defaults(t *testing.T) {
 			wantField: "BillingMode",
 			wantValue: string(routing.BillingModeToken),
 		},
-		{
-			name: "空平台保持为空",
-			req: modelPricingRequest{
-				Models:   []string{"m1"},
-				Platform: "",
-			},
-			wantField: "Platform",
-			wantValue: "",
-		},
 	}
 
 	for _, tt := range tests {
@@ -317,8 +301,6 @@ func TestPricingRequestToService_Defaults(t *testing.T) {
 			switch tt.wantField {
 			case "BillingMode":
 				require.Equal(t, routing.BillingMode(tt.wantValue), result[0].BillingMode)
-			case "Platform":
-				require.Equal(t, tt.wantValue, result[0].Platform)
 			}
 		})
 	}
@@ -327,7 +309,6 @@ func TestPricingRequestToService_Defaults(t *testing.T) {
 func TestPricingRequestToService_WithAllFields(t *testing.T) {
 	reqs := []modelPricingRequest{
 		{
-			Platform:         "openai",
 			Models:           []string{"gpt-4", "gpt-4o"},
 			BillingMode:      "per_request",
 			PriceMultiplier:  float64Ptr(1.5),
@@ -343,7 +324,6 @@ func TestPricingRequestToService_WithAllFields(t *testing.T) {
 	result := pricingRequestToService(reqs)
 	require.Len(t, result, 1)
 	r := result[0]
-	require.Equal(t, "openai", r.Platform)
 	require.Equal(t, []string{"gpt-4", "gpt-4o"}, r.Models)
 	require.Equal(t, routing.BillingModePerRequest, r.BillingMode)
 	require.Equal(t, float64Ptr(1.5), r.PriceMultiplier)
@@ -357,7 +337,6 @@ func TestPricingRequestToService_WithAllFields(t *testing.T) {
 
 func TestPricingRequestToService_WithFastModeMultiplier(t *testing.T) {
 	reqs := []modelPricingRequest{{
-		Platform:           routing.PlatformOpenAI,
 		Models:             []string{"gpt-5.4"},
 		BillingMode:        string(routing.BillingModeToken),
 		FastModeMultiplier: float64Ptr(2),
@@ -371,7 +350,6 @@ func TestPricingRequestToService_WithFastModeMultiplier(t *testing.T) {
 
 func TestPricingRequestToService_WithTierMultipliers(t *testing.T) {
 	result := pricingRequestToService([]modelPricingRequest{{
-		Platform:       routing.PlatformAnthropic,
 		Models:         []string{"claude-opus-4-8"},
 		BillingMode:    string(routing.BillingModeToken),
 		FastMultiplier: float64Ptr(2),

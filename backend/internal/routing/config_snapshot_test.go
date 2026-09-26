@@ -30,13 +30,13 @@ func TestS06PricingConfigNestedSnapshotIsolation(t *testing.T) {
 	require.Equal(t, "original", originalArray[0])
 }
 
-// 发布快照后输入仍由存储调用者拥有，后续修改不得改变缓存值或平台路由。
+// 发布快照后输入仍由存储调用者拥有，后续修改不得改变缓存值或分组关联。
 func TestS06PricingConfigPublicationOwnsSnapshot(t *testing.T) {
 	pricingConfigs := []PricingConfig{{ID: 1, Status: StatusActive, GroupIDs: []int64{9}}}
-	platforms := map[int64]string{9: PlatformOpenAI}
-	cache := populatePricingConfigCache(pricingConfigs, platforms)
+
+	cache := populatePricingConfigCache(pricingConfigs)
 	pricingConfigs[0].Status = "disabled"
-	platforms[9] = PlatformGemini
+
 	require.Equal(t, StatusActive, cache.byID[1].Status)
-	require.Equal(t, PlatformOpenAI, cache.groupPlatform[9])
+	require.Equal(t, int64(1), cache.pricingConfigByGroupID[9].ID)
 }

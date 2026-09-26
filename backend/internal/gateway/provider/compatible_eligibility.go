@@ -3,13 +3,13 @@ package provider
 import (
 	"context"
 	"log/slog"
+	"strings"
 	"time"
 
 	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 	protocolcore "github.com/TokenFlux/TokenRouter/internal/protocol"
-	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
 // AllowsCompatibleCompact 保留 Grok 与 OpenAI 的 Compact 资格差异。
@@ -30,11 +30,11 @@ func CompatibleAccountEligible(ctx context.Context, account *ExecutionAccount, p
 // 负载批处理只使用该原因生成服务端无账号诊断，不改变实际准入行为。
 // @project-doc docs/architecture/account_scheduling_and_cache.md#advanced_scheduler_selection
 func CompatibleEligibilityReason(ctx context.Context, account *ExecutionAccount, platform string, requestedModel string, requireCompact bool, requiredCapability accountcore.OpenAIEndpointCapability) string {
-	platform = routing.NormalizeOpenAICompatiblePlatform(platform)
+	platform = strings.TrimSpace(platform)
 	if account == nil {
 		return "account_nil"
 	}
-	if account.Record.Platform != platform || !account.View().IsOpenAICompatible() {
+	if platform != "" && account.Record.Platform != platform {
 		return "platform_mismatch"
 	}
 	if !ExecutionModelPolicy(account).Schedulable(ctx, requestedModel) {
@@ -74,6 +74,9 @@ func CompatibleEligibilityReason(ctx context.Context, account *ExecutionAccount,
 	}
 	if !ExecutionModelPolicy(account).SupportsCompatibleRouting(ctx, requestedModel) {
 		return "model_not_supported"
+	}
+	if !account.View().IsSchedulable() || account.View().IsQuotaExceeded() {
+		return "account_quota_exhausted"
 	}
 	if !SupportsRequestCapability(ctx, account, requiredCapability) {
 		if account.View().IsGrok() && requiredCapability == accountcore.OpenAIEndpointCapabilityGrokMediaGeneration {
@@ -130,6 +133,19 @@ func SupportsRequestCapability(ctx context.Context, account *ExecutionAccount, c
 		return false
 	}
 	source, _ := requeststate.ClientProtocolFromContext(ctx)
+	if !account.View().IsOpenAICompatible() && (capability == "" || capability == accountcore.OpenAIEndpointCapabilityTextGeneration || capability == accountcore.OpenAIEndpointCapabilityResponses) {
+		policy := ExecutionModelPolicy(account)
+		if source != "" {
+			return policy.AllowsProtocol(ctx)
+		}
+		group, _ := requeststate.GroupFromContext(ctx)
+		for _, entry := range []protocolcore.ProtocolID{protocolcore.ProtocolAnthropicMessages, protocolcore.ProtocolOpenAIResponses, protocolcore.ProtocolOpenAIChatCompletions} {
+			if _, allowed := policy.ProtocolRoute(group, entry); allowed {
+				return true
+			}
+		}
+		return false
+	}
 	if source == protocolcore.ProtocolResponsesWebSocket || source == protocolcore.ProtocolResponsesCompact {
 		if capability == accountcore.OpenAIEndpointCapabilityTextGeneration || capability == accountcore.OpenAIEndpointCapabilityResponses {
 			return ExecutionModelPolicy(account).AllowsProtocol(ctx)

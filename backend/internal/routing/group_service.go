@@ -26,9 +26,6 @@ type GroupRepository interface {
 	List(ctx context.Context, params pagination.PaginationParams) ([]Group, *pagination.PaginationResult, error)
 	ListWithFilters(ctx context.Context, params pagination.PaginationParams, platform, status, search string, isExclusive *bool) ([]Group, *pagination.PaginationResult, error)
 	ListActive(ctx context.Context) ([]Group, error)
-	ListActiveByPlatform(ctx context.Context, platform string) ([]Group, error)
-	// ListActiveByPlatformLite 返回活跃分组的轻量信息，不附带账号统计。
-	ListActiveByPlatformLite(ctx context.Context, platform string) ([]Group, error)
 
 	ExistsByName(ctx context.Context, name string) (bool, error)
 	GetAccountCount(ctx context.Context, groupID int64) (total int64, active int64, err error)
@@ -112,9 +109,9 @@ func (s *GroupService) Create(ctx context.Context, req CreateGroupRequest) (*Gro
 
 	// 创建分组
 	group := &Group{
-		Name:                 req.Name,
-		Description:          req.Description,
-		Platform:             PlatformAnthropic,
+		Name:        req.Name,
+		Description: req.Description,
+
 		SchedulerType:        GroupSchedulerTypeBasic,
 		AllowedProtocols:     capability.DefaultGroupClientProtocols(PlatformAnthropic),
 		ProtocolFallbacks:    capability.DefaultProtocolFallbacks(PlatformAnthropic),

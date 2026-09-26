@@ -182,7 +182,7 @@ riskControl: {
       groupScope: 'Audit Groups',
       groupScopeHint: 'Switch on for all groups, or turn off to choose specific groups.',
       selectedGroups: 'Selected Groups',
-      searchGroups: 'Search group name or platform',
+      searchGroups: 'Search group name',
       noGroups: 'No groups available',
       modelFilter: 'Model scope',
       modelFilterHint: 'Moderate by the client-requested model name; group model mappings do not change this match.',
@@ -327,6 +327,9 @@ riskControl: {
     },
 // 价格管理
     pricing: {
+      noGroupsSelected: 'Select at least one group',
+      emptyModelsInPricing: 'Select models for every pricing entry or remove empty entries',
+
       defaults: {
         "description": "Effective gateway base prices, including catalog updates, local overrides and built-in fallbacks. Group, subscription and shared price overrides are excluded.",
         "search": "Search model names",
@@ -528,7 +531,6 @@ riskControl: {
         defaultPerRequestPrice: 'Default per-request price (fallback when no tier matches)',
         defaultImagePrice: 'Default price per image (fallback when no tier matches)',
         defaultVideoPrice: 'Default video price per second (fallback when no tier matches)',
-        platformConfig: 'Platform Configuration',
         webSearchEmulationGlobalDisabled: 'Please enable the global switch first in Settings → Gateway → Web Search Emulation',
         basicSettings: 'Basic Settings',
         addPlatform: 'Add Platform',
@@ -545,7 +547,7 @@ riskControl: {
         searchAccountPlaceholder: 'Search accounts...',
         ruleAccountsHint: 'Leave empty to match all accounts',
         ruleModelPricing: 'Model Pricing',
-         noGroupsInPricingConfig: 'No groups selected in platform tabs above',
+         noGroupsInPricingConfig: 'No groups selected',
          unnamed: 'Unnamed',
          syncLatestModels: 'Sync Latest Models',
          syncingModels: 'Syncing...',

@@ -9,7 +9,7 @@ import (
 )
 
 func TestDiagnosticPolicySignalsOnlyReturnsContextualOrEnabledStrategies(t *testing.T) {
-	group := &DiagnosticGroup{ID: 601, Platform: capability.PlatformOpenAI, Advanced: true}
+	group := &DiagnosticGroup{ID: 601, Advanced: true}
 	effective := policy.EffectiveSettings{}
 
 	// 基准诊断明确标出请求未提供、因而无法评估的能力门禁。
@@ -30,8 +30,9 @@ func TestDiagnosticPolicySignalsOnlyReturnsContextualOrEnabledStrategies(t *test
 	require.Equal(t, "subscription_priority", signals[1].Key)
 	require.Equal(t, "active_pool", signals[1].State)
 }
+
 func TestDiagnosticWeightedPreviousResponseIsIgnoredOutsideOpenAI(t *testing.T) {
-	group := &DiagnosticGroup{ID: 602, Platform: capability.PlatformGemini, Advanced: true}
+	group := &DiagnosticGroup{ID: 602, Advanced: true}
 	outcome := diagnosticHardStickyPolicyOutcome(
 		[]*DiagnosticAccount{{ID: 99, Platform: capability.PlatformGemini}},
 		group,

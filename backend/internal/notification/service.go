@@ -922,7 +922,7 @@ func notificationEmailSampleVariables(locale string) map[string]string {
 			"quota_remaining":     "20.00",
 			"quota_threshold":     "20%",
 			"triggered_at":        "2026-05-20 12:00:00",
-			"group_name":          "默认分组",
+			"group_name":          "示例分组",
 			"moderation_category": "violence",
 			"moderation_score":    "0.982",
 			"violation_count":     "2",

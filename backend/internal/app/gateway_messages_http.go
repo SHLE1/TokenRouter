@@ -11,6 +11,8 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/gemini"
 	"github.com/google/uuid"
 
+	"github.com/TokenFlux/TokenRouter/internal/apikey"
+	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/config"
 	"github.com/TokenFlux/TokenRouter/internal/gateway"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/admission"
@@ -38,6 +40,7 @@ func provideMessageHTTPBindings(
 	prompts *promptpolicy.Service,
 	concurrency *scheduler.ConcurrencyService,
 	cfg *config.Config, choices *selection.Generic,
+	keys *apikey.APIKeyService, subscriptions *billing.SubscriptionService,
 ) *messageHTTPBindings {
 	options := gatewayhttp.MessagesHTTPOptions{MaxSwitches: 10, MaxGeminiSwitches: 3}
 	ping := time.Duration(0)
@@ -56,8 +59,9 @@ func provideMessageHTTPBindings(
 		moderationPort = moderationService
 	}
 	bindings := gatewayhttp.MessagesBindings{
-		PlanRoute:      planner.PlanKey,
-		ClientVersions: settings.GetClaudeCodeVersionBounds, Funding: funding, Moderation: moderationPort, Errors: rules,
+		PlanRoute:           planner.PlanKey,
+		ClientGroupFallback: provideClientGroupFallbackResolver(keys, funding, subscriptions, cache),
+		ClientVersions:      settings.GetClaudeCodeVersionBounds, Funding: funding, Moderation: moderationPort, Errors: rules,
 		IsolateSession: messageSessionIsolation(cache), CachedSession: choices.GetCachedSessionAccountID,
 		ObserveCompatibility: func(log *zap.Logger) {
 			gatewayhttp.LogCompatibilityFallback(log, func() gatewayhttp.CompatibilityLogSnapshot {
@@ -102,6 +106,7 @@ func provideMessagesHTTP(
 	result.BindRequestActivity(activity.Enter)
 	return result
 }
+
 func provideCompatibleTextHTTP(
 	shared *messageHTTPBindings,
 	runtime *textattempt.Runtime,
@@ -130,6 +135,7 @@ func provideCompatibleTextHTTP(
 	result.BindRequestActivity(activity.Enter)
 	return result
 }
+
 func provideGeminiNativeHTTP(
 	shared *messageHTTPBindings,
 	digest *session.DigestSessionStore,

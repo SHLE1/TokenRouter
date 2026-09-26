@@ -57,7 +57,7 @@ func TestS16NativeCompletionRuntimeOneFinancialEffect(t *testing.T) {
 	health := app.NewS16AccountHealthRuntime(accounts, nil, cfg, nil, nil, nil, nil, nil)
 	calculator := billing.NewCalculator(nativeCompletionCatalog{}, billing.CalculatorOptions{DefaultRateMultiplier: 1})
 	prices := billing.NewPriceResolver(nil, calculator, nil, nil, nil)
-	recorders := app.NewS16CompletionRecorders(rates, calculator, prices, funds, logs, nil, nil, nil, deferred, nil, nil, accounts, health, nil, tasks, cfg)
+	recorders := app.NewS16CompletionRecorders(rates, calculator, prices, funds, logs, nil, nil, deferred, nil, nil, accounts, health, nil, tasks, cfg)
 	for _, openAI := range []bool{false, true} {
 		name := "messages"
 		if openAI {

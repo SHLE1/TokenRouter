@@ -17,7 +17,6 @@ type PlatformConcurrencyInfo struct {
 type GroupConcurrencyInfo struct {
 	GroupID        int64   `json:"group_id"`
 	GroupName      string  `json:"group_name"`
-	Platform       string  `json:"platform"`
 	CurrentInUse   int64   `json:"current_in_use"`
 	MaxCapacity    int64   `json:"max_capacity"`
 	LoadPercentage float64 `json:"load_percentage"`
@@ -61,7 +60,6 @@ type PlatformAvailability struct {
 type GroupAvailability struct {
 	GroupID        int64  `json:"group_id"`
 	GroupName      string `json:"group_name"`
-	Platform       string `json:"platform"`
 	TotalAccounts  int64  `json:"total_accounts"`
 	AvailableCount int64  `json:"available_count"`
 	RateLimitCount int64  `json:"rate_limit_count"`

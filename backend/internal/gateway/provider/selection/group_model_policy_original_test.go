@@ -28,11 +28,8 @@ func TestOpenAIUpstreamRestrictionAppliesPricingConfigThenAccountMapping(t *test
 		Status:             billing.StatusActive,
 		RestrictModels:     true,
 		BillingModelSource: routing.BillingModelSourceUpstream,
-		ModelMapping: map[string]map[string]string{
-			capability.PlatformOpenAI: {"client-alias": "group-model"},
-		},
+		ModelMapping:       map[string]string{"client-alias": "group-model"},
 		ModelPricing: []routing.ModelPricingEntry{{
-			Platform:   capability.PlatformOpenAI,
 			Models:     []string{"upstream-model"},
 			InputPrice: &price,
 		}},
@@ -91,10 +88,10 @@ func TestOpenAIUpstreamRestrictionUsesActuallyForwardedOAuthModel(t *testing.T) 
 			restricted:         true,
 		},
 		{
-			name:               "自动透传不执行普通账号映射",
+			name:               "自动透传仍按账号映射后的模型检查",
 			groupID:            4206,
 			pricingConfigModel: "passthrough-model",
-			pricingModel:       "passthrough-model",
+			pricingModel:       "mapped-model",
 			account: &gatewayprovider.ExecutionAccount{
 				Record: accountcore.Record{
 					LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI,
@@ -116,11 +113,8 @@ func TestOpenAIUpstreamRestrictionUsesActuallyForwardedOAuthModel(t *testing.T) 
 				Status:             billing.StatusActive,
 				RestrictModels:     true,
 				BillingModelSource: routing.BillingModelSourceUpstream,
-				ModelMapping: map[string]map[string]string{
-					capability.PlatformOpenAI: {"client-alias": tt.pricingConfigModel},
-				},
+				ModelMapping:       map[string]string{"client-alias": tt.pricingConfigModel},
 				ModelPricing: []routing.ModelPricingEntry{{
-					Platform:   capability.PlatformOpenAI,
 					Models:     []string{tt.pricingModel},
 					InputPrice: &price,
 				}},
@@ -143,11 +137,9 @@ func TestOpenAIUpstreamRestrictionUsesActuallyForwardedOAuthModel(t *testing.T) 
 func TestModelAvailabilityDiagnosisAcceptsPricingConfigAlias(t *testing.T) {
 	groupID := int64(4203)
 	pricingConfig := routingtestkit.Configuration{
-		ID:     74,
-		Status: billing.StatusActive,
-		ModelMapping: map[string]map[string]string{
-			capability.PlatformOpenAI: {"client-alias": "group-model"},
-		},
+		ID:           74,
+		Status:       billing.StatusActive,
+		ModelMapping: map[string]string{"client-alias": "group-model"},
 	}
 	account := gatewayprovider.ExecutionAccount{
 		Record: accountcore.Record{

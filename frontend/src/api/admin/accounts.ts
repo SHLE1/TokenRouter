@@ -21,8 +21,6 @@ import type {
   CodexSessionImportRequest,
   CodexSessionImportResult,
   OpenAICodexPATCreateRequest,
-  CheckMixedChannelRequest,
-  CheckMixedChannelResponse,
   OllamaCloudUsageSettings,
   OllamaCloudUsageState
 } from '@/types'
@@ -155,7 +153,6 @@ export interface AdvancedSchedulerScoreDiagnosticAccount {
 export interface AdvancedSchedulerScoreDiagnosticGroup {
   id: number
   name: string
-  platform: string
 }
 
 export interface AdvancedSchedulerScoreDiagnosticGroupSummary extends AdvancedSchedulerScoreDiagnosticGroup {
@@ -462,12 +459,6 @@ export async function update(id: number, updates: UpdateAccountRequest): Promise
 /**
  * Check mixed-channel risk for account-group binding.
  */
-export async function checkMixedChannelRisk(
-  payload: CheckMixedChannelRequest
-): Promise<CheckMixedChannelResponse> {
-  const { data } = await apiClient.post<CheckMixedChannelResponse>('/admin/accounts/check-mixed-channel', payload)
-  return data
-}
 
 /**
  * Delete account
@@ -946,11 +937,9 @@ export async function exportData(options?: {
 
 export async function importData(payload: {
   data: AdminDataPayload
-  skip_default_group_bind?: boolean
 }): Promise<AdminDataImportResult> {
   const { data } = await apiClient.post<AdminDataImportResult>('/admin/accounts/data', {
     data: payload.data,
-    skip_default_group_bind: payload.skip_default_group_bind
   })
   return data
 }
@@ -1231,7 +1220,6 @@ export const accountsAPI = {
   create,
   duplicate,
   update,
-  checkMixedChannelRisk,
   delete: deleteAccount,
   toggleStatus,
   testAccount,

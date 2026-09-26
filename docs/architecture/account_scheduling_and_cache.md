@@ -18,18 +18,14 @@
 
 调度使用请求携带的分组、强制平台、客户端模型、映射后的模型、endpoint/媒体意图、协议 transport、OAuth/privacy 要求和可选 session 标识。账号优先级统一来自 `accounts.priority`；`account_groups` 只表达成员关系，不保存分组内优先级。
 
-快照 bucket 由分组、平台和模式共同区分：
-
-- `single`：目标平台的普通调度。
-- `mixed`：Anthropic 或 Gemini 分组允许纳入显式开启 mixed scheduling 的 Antigravity 账号。
-- `forced`：专用 Antigravity 路由等强制平台场景，不混入其它平台。
+普通请求读取分组内全部账号的平台无关快照。平台为空的 `single` bucket 包含九类账号平台；指定平台的 bucket 只用于专用入口或明确的能力选择。`/antigravity/*` 等强制入口附加账号平台过滤，并保留分组成员、模型和协议门禁。standard 与 simple 模式使用相同的分组范围；未分组账号不进入请求候选池。
 
 同一账号可能属于多个分组；每个 bucket 的资格和模型范围独立计算，但账号全局优先级在所有分组中一致。分组查询按 `accounts.priority`、`account_id` 稳定排序。
 
 <a id="advanced_scheduler_selection"></a>
 ## 调度器模式
 
-`groups.scheduler_type` 是分组级调度策略，取值只能是 `basic` 或 `advanced`，新建和历史未配置分组均为 `basic`。它不是平台能力开关：任何平台的分组都能选择高级调度器；未绑定分组的请求保持基础调度。Claude Code-only、不可用组等回退链完成后，必须以实际落到的最终分组重新读取该字段，不能沿用原分组的模式。强制平台只改变候选平台和混合模式，不清除最终分组，也不能绕过该分组的高级模式与参数覆盖。
+`groups.scheduler_type` 是分组级调度策略，取值只能是 `basic` 或 `advanced`，新建和历史未配置分组均为 `basic`。它不是平台能力开关：每个分组都能选择高级调度器；未绑定分组的请求不会选出账号。Claude Code-only、不可用组等回退链由入口重新检查目标组权限、资金和协议，并更新有效 Key、分组快照及 RoutePlan。选择器只校验已准入分组；分组 ID 与上下文或 RoutePlan 不一致时拒绝选号，不在选号期间跳到回退组。回退链完成后，必须以实际落到的最终分组重新读取该字段，不能沿用原分组的模式。强制平台只收窄候选账号的平台，不清除最终分组，也不能绕过该分组的高级模式与参数覆盖。
 
 高级分组的有效参数按字段合并：高级调度覆盖值、深复制、校验和配置合并由 `internal/scheduler/policy` 的纯叶子实现。选号和诊断直接使用其 RuntimeSettings、EffectiveSettings、FeedbackConfig 与 StickyEscapeConfig，运行反馈直接使用唯一 `scheduler.RuntimeStats`；评分与 Top-K 抽样也由 scheduler 拥有。平台直接使用原生无凭据分数类型，执行目标只在当次适配作用域保留对应关系。
 
@@ -43,12 +39,12 @@ app 显式绑定唯一反馈、设置和粘性统计实例，生产选择与诊�
 
 基础调度器保留原有的优先级、最近使用、负载、粘性和等待路径，不因高级调度器的存在改变排序或失败语义。高级调度器只在各平台先完成现有硬过滤后接管候选排序：
 
-1. 适配层先执行分组、平台/混合模式、模型、能力、账号状态、限流、代理、privacy、配额、窗口费用和 RPM 等硬过滤。
+1. 适配层先执行分组、强制平台、模型、能力、账号状态、限流、代理、privacy、配额、窗口费用和 RPM 等硬过滤。
 2. 通用核心对剩余候选组合优先级、负载、队列、错误率 EWMA、首 token 延迟 EWMA、窗口重置和可选会话粘性分数，并在 Top-K 内做加权无放回选择。
 3. 暂时满槽或负载率为 100% 的硬资格合格账号仍进入高级核心；选择前逐账号复核真实并发槽，全部满槽时可产生等待计划，无槽探测则忽略占用。没有结果反馈时错误率按 0% 计算；负载快照、TTFT、窗口或平台专属额度缺失时仍使用中性信号，不能据此排除账号。
-4. 实际由高级调度器选出的转发结果、失败、TTFT 和切换会回写运行时统计；流已开始后的不可切换边界不变。
+4. 实际由高级调度器选出的转发结果、失败、TTFT 和切换会回写运行时统计；流已开始后的不可切换边界不变。选定账号在凭据补全和数据库复核时再次检查组成员、模型和协议，已复核的完整账号不会被旧快照覆盖。
 
-OpenAI/Grok 是通用核心的能力适配者：在高级分组中，OpenAI 额外处理 previous response、订阅优先、Responses transport、旧版 Compact 和额度余量，Grok 继续执行自身配额及媒体能力约束。Anthropic/Gemini 的 mixed bucket 仍只纳入显式开启 mixed scheduling 的 Antigravity 账号。关闭粘性加权时，各平台保留硬会话粘性；OpenAI previous response 不可跨账号移动时无论开关状态都保持硬绑定，可移动时才作为加权信号。
+Compatible 选择器在基础与高级调度中处理同组全部平台候选，并按实际账号应用协议、模型、订阅优先和传输限制。Anthropic 继续使用原窗口费用、RPM、会话上限和配额门禁；Gemini 复用现有额度预检；Grok 保留免费层、团队模型冷却和媒体资格。Antigravity 按模型和协议能力参与，不再需要混合调度开关。关闭粘性加权时保留已有硬会话粘性；OpenAI previous response 不可跨账号移动时无论开关状态都保持硬绑定，可移动时才作为加权信号。
 
 共享错误率或 TTFT 超过通用逃逸阈值时只对当前请求逃逸，并保留原绑定。开启粘性加权时，上一响应和会话账号只获得评分加成，并与其它 Top-K 候选一起按权重抽样，不能被强制置首，也不能在 Top-K 尝试失败后获得额外硬兜底；window-cost/RPM 的 sticky-only 区间仍允许当前绑定账号进入评分。非 OpenAI 平台没有 previous-response 绑定语义，诊断输入中的该信号标记为 `ignored`。
 
@@ -60,7 +56,7 @@ Codex 自动审查的父线程亲缘只接受 `codex-auto-review` 模型，以�
 
 选择适配通过只读账号端口和 `scheduler/rediscache.SnapshotReader` 获取候选或完整目标；完整记录解码留在 Redis Adapter，评分与排序只接收无凭据投影。每次选择保留自己的关联表，同 ID 的快照、fresh 与数据库重检记录不会相互覆盖。app 直接注入进程 Options、反馈、参数缓存、会话与配额拥有者。普通 Grok 免费层与高级 picker 的缓存作用域仍分别保留。
 
-OpenAI/Grok 的请求资格与固定账号 WS 复核共用 `gateway/provider.CompatibleEligibilityReason` 及协议能力判断。配额阈值、分组隐私要求和单次代理隔离绕过标记保存在 `requeststate.ExecutionHints` 的值快照中；派生 attempt 不修改父请求，不能把一次 fail-open 标记带回后续请求。
+跨平台文本请求资格与固定账号 WS 复核共用 `gateway/provider.CompatibleEligibilityReason` 及协议能力判断。配额阈值、分组隐私要求和单次代理隔离绕过标记保存在 `requeststate.ExecutionHints` 的值快照中；派生 attempt 不修改父请求，不能把一次 fail-open 标记带回后续请求。
 
 ## 评分诊断
 
@@ -76,16 +72,16 @@ Spark 影子的母账号资格由 `account.ParentHealthyForShadow` 统一判断�
 
 错误率和 TTFT 使用共享的运行时 EWMA；错误率以 0% 为初始基线，没有反馈样本时按 0% 计算，归一化健康度为 1，首次失败会从该零基线更新 EWMA 并立即低于完全未观测账号。每个聚合值还保存样本数和最近观测时间。诊断对未观测错误率明确显示“0%（未观测）”，负载、TTFT、窗口重置或平台额度快照缺失时则标注“未观测，使用中性值”，而不是把账号表示为失败或不可调度。负载分母使用账号的 `EffectiveLoadFactor()`。分组覆盖、全局运行时设置与进程默认值均逐字段标注来源，保证诊断公式和实际高级调度路径共用相同有效参数。
 
-模型缺失错误的诊断直接由 `routing.ModelAvailability` 读取持久配置账号池，app 将同一 account 存储与分组策略读取实例绑定到 Messages、兼容文本、已解析模型三种端口。该查询忽略临时限流、过载和停调，不能拿调度快照的空池证明模型不存在；standard/simple 的分组范围保持各自语义。HTTP 与计数执行端分别接收诊断和选择能力。已解析模型不再经过分组映射；未解析模型使用 `PricingConfigService.ResolveRoutingModel` 的唯一规则。
+模型缺失错误的诊断直接由 `routing.ModelAvailability` 读取持久配置账号池，app 将同一 account 存储与分组策略读取实例绑定到 Messages、兼容文本、已解析模型三种端口。该查询忽略临时限流、过载和停调，同时复核分组、账号协议路线与模型范围，不能拿调度快照的空池证明模型不存在；standard/simple 均限定在显式分组的账号关联内，缺少分组时不读取账号池。HTTP 与计数执行端分别接收诊断和选择能力。已解析模型不再经过分组映射；未解析模型使用 `PricingConfigService.ResolveRoutingModel` 的唯一规则。
 
-OpenAI 兼容选择、诊断与 WS 复核共用 `ModelPolicy.SupportsCompatibleRouting`，保留透传旁路与账号白名单规则。
+OpenAI 兼容选择、诊断与 WS 复核共用 `ModelPolicy.SupportsCompatibleRouting`，透传账号同样遵守显式白名单、映射与默认模型目录。
 
 <a id="scheduler_snapshot_consistency"></a>
 ## 快照一致性
 
-协议统一后调度 Redis 命名空间升级为 `sched:v2:`，完整与轻量账号投影均携带 `upstream_protocols` 和认证方式，分组认证快照 v40 携带准入集合、转换映射和 Responses 图片策略。协议候选过滤在评分前执行，每次切号和 fresh/DB 复核重新检查；转发目标只保存在当次账号副本，不污染共享缓存。
+跨平台分组的调度 Redis 命名空间为 `sched:v3:`，完整与轻量账号投影均携带 `upstream_protocols` 和认证方式，分组认证快照 v40 携带准入集合、转换映射和 Responses 图片策略。协议候选过滤在评分前执行，每次切号和 fresh/DB 复核重新检查；转发目标只保存在当次账号副本，不污染共享缓存。
 
-调度事件契约及去重编码、SQL 读写位于 `scheduler` 与 `scheduler/postgres`；同事务写入和提交后尽力发布的界限保持。`scheduler.SnapshotService` 拥有重建、事件消费与受限回退，网关读取和生命周期直接绑定这一实例。`scheduler/rediscache` 拥有原 `sched:v2` 发布、epoch/tombstone 和锁协议。其 `codec.AccountCodec` 唯一负责完整/轻量账号的存储形状及字段过滤，保持历史 JSON 字段与 nil/空集合。
+调度事件契约及去重编码、SQL 读写位于 `scheduler` 与 `scheduler/postgres`；同事务写入和提交后尽力发布的界限保持。`scheduler.SnapshotService` 拥有重建、事件消费与受限回退，网关读取和生命周期直接绑定这一实例。`scheduler/rediscache` 拥有`sched:v3` 发布、epoch/tombstone 和锁协议。其 `codec.AccountCodec` 唯一负责完整/轻量账号的存储形状及字段过滤，保持历史 JSON 字段与 nil/空集合。
 
 app 直接把 account/routing 存储和凭据刷新后的原生记录绑定到同一缓存，执行目标通过 app 注入的受控读取端口取得。编码器内部持有受控完整记录，核心只读取无凭据的候选元数据。选号只读取原生候选投影，执行凭据由 account 受控提供，分组读取绑定 routing。
 
@@ -108,7 +104,7 @@ app 直接把 account/routing 存储和凭据刷新后的原生记录绑定到�
 
 候选账号依次受以下约束收窄：
 
-1. 分组关联、平台/混合模式、active、schedulable 和账号有效期。
+1. 分组关联、强制平台、active、schedulable 和账号有效期。
 2. 账号级、模型级和 endpoint 级临时不可调度、限流恢复时间及配额状态。
 3. 客户端模型经过映射后的最终模型、白名单和账号 capability。
 4. OAuth-only、privacy、客户端类型、站点/区域、媒体资格和所需 transport。
@@ -135,7 +131,7 @@ OpenAI/Grok 的进程内停调、同账号 429 恢复窗口和刷新失败发布
 <a id="session_lifecycle"></a>
 ## 粘性与等待
 
-显式 session、previous response、WebSocket 或平台内部上下文可以建立粘性。命中账号仍需重新通过当前快照的状态、分组、模型和策略校验；账号被禁用、移组、限流、混合调度关闭或能力不再满足时，旧绑定必须失效。
+显式 session、previous response、WebSocket 或平台内部上下文可以建立粘性。命中账号仍需重新通过当前快照的状态、分组、模型和策略校验；账号被禁用、移组、限流或能力不再满足时，旧绑定必须失效。
 
 app 分别构造唯一的 `scheduler.SessionLimitCache` 与 `billing.WindowCostCache`，网关按两个原生端口使用它们。会话注销只操作调度会话，窗口费用沿用 `window_cost:account:` 与 30 秒缓存 TTL；两个数据面共享 Redis 客户端。
 
@@ -153,7 +149,7 @@ Anthropic OAuth/Setup Token 账号的 `max_sessions` 限制空闲窗口内的活
 
 ## 失效与恢复
 
-以下变化必须使相关账号投影或 bucket 失效：账号启停/删除、凭据刷新、分组关系、优先级、模型映射/白名单、代理可用性、限流与临时不可调度、mixed scheduling、privacy 和可调度资格。影响多个平台 bucket 的 Antigravity 混合账号要同时更新原生目标平台与 Antigravity bucket。
+以下变化必须使相关账号投影或 bucket 失效：账号启停/删除、凭据刷新、分组关系、优先级、模型映射/白名单、代理可用性、限流与临时不可调度、privacy 和可调度资格。账号变化同时更新所属分组的平台无关桶和相关平台桶；删除或无法确定原平台时重建受影响分组的全部桶。
 
 写数据库成功但失效广播失败时，应记录可操作告警并依赖周期重建收敛。仅清本实例缓存不能保证多实例一致；仅发通知而不保存权威状态也会在重建后回退。
 
@@ -178,6 +174,6 @@ API Key 上游用量是控制面查询，不属于调度快照。`UpstreamUsageS
 
 ### Key 认证快照的所有权
 
-`apikey` 拥有认证缓存与回源并发控制，Redis 技术实现位于 `apikey/rediscache`，失效 outbox 存储位于 `apikey/postgres`。每次返回独立请求副本，复合选组、模型映射和分组回退不能共享可变 map、slice、指针或嵌套策略。重连沿用现有重新订阅及安全清理机制；生命周期在在途操作结束后再关闭订阅和 L1。该兼容性不扩大平台额度的单进程协调范围。
+`apikey` 拥有认证缓存与回源并发控制，Redis 技术实现位于 `apikey/rediscache`，失效 outbox 存储位于 `apikey/postgres`。每次返回独立请求副本，复合选组、模型映射和分组回退不能共享可变 map、slice、指针或嵌套策略。重连沿用现有重新订阅及安全清理机制；生命周期在在途操作结束后再关闭订阅和 L1。
 
 相关文档：[网关请求生命周期](gateway_request_lifecycle.md)、[网关策略控制](../domains/gateway_policy_controls.md)、[账号维护](../operations/account_maintenance.md)。

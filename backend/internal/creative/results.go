@@ -53,6 +53,7 @@ func SanitizeCreativeMessage(message string) string {
 	}
 	return message
 }
+
 func firstAllocatedSubscriptionID(allocations []billing.BillingAllocation) *int64 {
 	for i := range allocations {
 		if allocations[i].Type != billing.BillingAllocationTypeSubscription || allocations[i].SubscriptionID == nil {
@@ -139,6 +140,7 @@ func (s *Results) ReconcileCreativeOutboxOnce(ctx context.Context) (int, error) 
 	}
 	return processed, lastErr
 }
+
 func (s *Results) ReconcileCreativeOutboxEvent(ctx context.Context, event CreativeRunOutbox) error {
 	run, err := s.Repo.GetCreativeRunByRunID(ctx, event.RunID)
 	if err != nil {
@@ -162,6 +164,7 @@ func (s *Results) ReconcileCreativeOutboxEvent(ctx context.Context, event Creati
 		return fmt.Errorf("unknown creative outbox operation %q", event.Operation)
 	}
 }
+
 func (s *Results) ReconcileCreativeProvision(ctx context.Context, run *CreativeRun) error {
 	if run == nil {
 		return nil
@@ -215,6 +218,7 @@ func (s *Results) EnsureCreativeOutbox(ctx context.Context, runID string, operat
 	}
 	return s.Outbox.Ensure(ctx, runID, operation, s.now())
 }
+
 func (s *Results) GetRunPublic(ctx context.Context, runID string) (*CreativeRunPublic, error) {
 	run, err := s.Repo.GetCreativeRunByRunID(ctx, runID)
 	if err != nil {
@@ -226,6 +230,7 @@ func (s *Results) GetRunPublic(ctx context.Context, runID string) (*CreativeRunP
 	}
 	return CreativeRunToPublic(run, outputs), nil
 }
+
 func (s *Results) InvalidateCreativeAuthCache(ctx context.Context, userID int64) {
 	if s != nil && s.InvalidateAuth != nil && userID > 0 {
 		s.InvalidateAuth(ctx, userID)
@@ -252,6 +257,7 @@ func (s *Results) MarkRunning(ctx context.Context, runID string, accountID int64
 	}
 	return s.Repo.MarkCreativeRunRunning(ctx, runID, accountID, s.now())
 }
+
 func (s *Results) SucceedRun(ctx context.Context, runID string, accountID int64, results []ProviderOutput) (*CreativeRunPublic, error) {
 	if s == nil || s.Repo == nil {
 		return nil, errors.New("creative service is not configured")
@@ -529,6 +535,7 @@ func (s *Results) RecordCreativeUsageLog(ctx context.Context, run *CreativeRun, 
 		BillingUserID:         run.UserID,
 		APIKeyID:              run.APIKeyID,
 		AccountID:             *run.AccountID,
+		Platform:              run.Provider,
 		RequestID:             CreativeSettlementRequestID(run.RunID),
 		Model:                 run.Model,
 		RequestedModel:        run.RequestedModel,
@@ -559,6 +566,7 @@ const (
 	creativeOutboxPoll       = 5 * time.Second
 	creativeOutboxRetry      = 15 * time.Second
 )
+
 const (
 	creativeTransientCleanupInterval = 5 * time.Minute
 	creativeTransientCleanupAge      = 10 * time.Minute

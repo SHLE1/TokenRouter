@@ -135,7 +135,8 @@ func TestAPIKeyService_CreateBillingModeValidatesPreferredSubscriptionGroups(t *
 			PreferredSubscriptionID: &preferredID,
 		})
 
-		require.ErrorIs(t, err, apikey.ErrPreferredSubscriptionGroup)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "GROUP_REQUIRED")
 	})
 }
 

@@ -1,8 +1,6 @@
 package httpapi
 
 import (
-	"github.com/TokenFlux/TokenRouter/internal/pkg/logredact"
-
 	"bufio"
 	"bytes"
 	"context"
@@ -15,9 +13,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/TokenFlux/TokenRouter/internal/pkg/logredact"
+
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 
@@ -363,6 +362,7 @@ func (w *opsCaptureWriter) Header() http.Header {
 	defer state.mu.RUnlock()
 	return rw.Header()
 }
+
 func (w *opsCaptureWriter) WriteHeader(code int) {
 	state, rw := w.beginDelegatedCall()
 	if state == nil {
@@ -372,6 +372,7 @@ func (w *opsCaptureWriter) WriteHeader(code int) {
 	defer finishDelegatedCall(state)
 	rw.WriteHeader(code)
 }
+
 func (w *opsCaptureWriter) WriteHeaderNow() {
 	state, rw := w.beginDelegatedCall()
 	if state == nil {
@@ -381,6 +382,7 @@ func (w *opsCaptureWriter) WriteHeaderNow() {
 	defer finishDelegatedCall(state)
 	rw.WriteHeaderNow()
 }
+
 func (w *opsCaptureWriter) Status() int {
 	state, rw := w.lockActive()
 	if state == nil {
@@ -389,6 +391,7 @@ func (w *opsCaptureWriter) Status() int {
 	defer state.mu.RUnlock()
 	return rw.Status()
 }
+
 func (w *opsCaptureWriter) Size() int {
 	state, rw := w.lockActive()
 	if state == nil {
@@ -397,6 +400,7 @@ func (w *opsCaptureWriter) Size() int {
 	defer state.mu.RUnlock()
 	return rw.Size()
 }
+
 func (w *opsCaptureWriter) Written() bool {
 	state, rw := w.lockActive()
 	if state == nil {
@@ -405,6 +409,7 @@ func (w *opsCaptureWriter) Written() bool {
 	defer state.mu.RUnlock()
 	return rw.Written()
 }
+
 func (w *opsCaptureWriter) Flush() {
 	state, rw := w.beginDelegatedCall()
 	if state == nil {
@@ -414,6 +419,7 @@ func (w *opsCaptureWriter) Flush() {
 	defer finishDelegatedCall(state)
 	rw.Flush()
 }
+
 func (w *opsCaptureWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	state, rw := w.beginDelegatedCall()
 	if state == nil {
@@ -423,6 +429,7 @@ func (w *opsCaptureWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	defer finishDelegatedCall(state)
 	return rw.Hijack()
 }
+
 func (w *opsCaptureWriter) CloseNotify() <-chan bool {
 	state, rw := w.lockActive()
 	if state == nil {
@@ -433,6 +440,7 @@ func (w *opsCaptureWriter) CloseNotify() <-chan bool {
 	defer state.mu.RUnlock()
 	return rw.CloseNotify()
 }
+
 func (w *opsCaptureWriter) Pusher() http.Pusher {
 	state, rw := w.lockActive()
 	if state == nil {
@@ -792,7 +800,7 @@ func OpsErrorLoggerMiddleware(ops *opscore.OpsService, queue OpsErrorLogQueue, a
 			accountID = &v
 		}
 
-		fallbackPlatform := guessPlatformFromPath(c.Request.URL.Path)
+		fallbackPlatform := selectedOpsPlatform(c)
 		platform := resolveOpsPlatform(apiKey, fallbackPlatform)
 
 		requestID, _ := c.Request.Context().Value(telemetry.RequestID).(string)
@@ -884,10 +892,6 @@ func OpsErrorLoggerMiddleware(ops *opscore.OpsService, queue OpsErrorLogQueue, a
 			}
 			if apiKey.GroupID != nil {
 				entry.GroupID = apiKey.GroupID
-			}
-			// 优先使用分组平台，比从路径推断更稳定。
-			if apiKey.Group != nil && apiKey.Group.Platform != "" {
-				entry.Platform = apiKey.Group.Platform
 			}
 		}
 
@@ -989,7 +993,7 @@ func logOpsRecoveredUpstream(c *gin.Context, ops *opscore.OpsService, finalStatu
 	entry.RequestType = opsRequestTypeFromContext(c)
 
 	apiKey := access.key(c)
-	fallbackPlatform := guessPlatformFromPath(entry.RequestPath)
+	fallbackPlatform := selectedOpsPlatform(c)
 	entry.Platform = resolveOpsPlatform(apiKey, fallbackPlatform)
 	entry.UpstreamEndpoint = GetUpstreamEndpoint(c, entry.Platform)
 	if apiKey != nil {
@@ -1000,9 +1004,6 @@ func logOpsRecoveredUpstream(c *gin.Context, ops *opscore.OpsService, finalStatu
 		}
 		if apiKey.GroupID != nil {
 			entry.GroupID = apiKey.GroupID
-		}
-		if apiKey.Group != nil && apiKey.Group.Platform != "" {
-			entry.Platform = apiKey.Group.Platform
 		}
 	}
 	if clientIP := strings.TrimSpace(clientip.GetClientIP(c)); clientIP != "" {
@@ -1087,7 +1088,7 @@ func logOpsStreamErrorValue(c *gin.Context, ops *opscore.OpsService, wireStatus 
 		accountID = &v
 	}
 
-	fallbackPlatform := guessPlatformFromPath(c.Request.URL.Path)
+	fallbackPlatform := selectedOpsPlatform(c)
 	platform := resolveOpsPlatform(apiKey, fallbackPlatform)
 
 	requestID, _ := c.Request.Context().Value(telemetry.RequestID).(string)
@@ -1167,9 +1168,6 @@ func logOpsStreamErrorValue(c *gin.Context, ops *opscore.OpsService, wireStatus 
 		}
 		if apiKey.GroupID != nil {
 			entry.GroupID = apiKey.GroupID
-		}
-		if apiKey.Group != nil && apiKey.Group.Platform != "" {
-			entry.Platform = apiKey.Group.Platform
 		}
 	}
 
@@ -1680,25 +1678,21 @@ func inferStreamFailureStatus(_ *gin.Context, parsed parsedOpsError) int {
 // 正式 key 尚未写入，回退到 middleware 写入的 ops fallback key
 // （含 User/Group/Platform），从而让日志能展示 用户/分组/平台。
 
-func resolveOpsPlatform(apiKey *apikey.APIKey, fallback string) string {
-	if apiKey != nil && apiKey.Group != nil && apiKey.Group.Platform != "" {
-		return apiKey.Group.Platform
+// selectedOpsPlatform 只使用已选账号的快照，尚未选号的错误保留 unknown。
+func selectedOpsPlatform(c *gin.Context) string {
+	if c != nil && c.Request != nil {
+		if platform, ok := c.Request.Context().Value(telemetry.Platform).(string); ok && strings.TrimSpace(platform) != "" {
+			return platform
+		}
 	}
-	return fallback
+	return "unknown"
 }
 
-func guessPlatformFromPath(path string) string {
-	p := strings.ToLower(path)
-	switch {
-	case strings.HasPrefix(p, "/antigravity/"):
-		return capability.PlatformAntigravity
-	case strings.HasPrefix(p, "/v1beta/"):
-		return capability.PlatformGemini
-	case strings.Contains(p, "/responses"), strings.Contains(p, "/images/"):
-		return capability.PlatformOpenAI
-	default:
-		return ""
+func resolveOpsPlatform(_ *apikey.APIKey, actual string) string {
+	if strings.TrimSpace(actual) == "" {
+		return "unknown"
 	}
+	return actual
 }
 
 // classifyOpsErrorLog 汇总上游错误上下文与本地路由标记，生成统一的 Ops 统计口径。

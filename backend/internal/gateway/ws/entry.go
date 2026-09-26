@@ -337,7 +337,7 @@ func RunEntry(ctx context.Context, p EntryPorts, in EntryInput, client ClientSoc
 		maxReasoningEffort := ""
 		maxReasoningEffortOverLimit := ""
 		var reasoningEffortMappings []routing.ReasoningEffortMapping
-		if apiKey.Group != nil && apiKey.Group.Platform == "openai" {
+		if apiKey.Group != nil {
 			maxReasoningEffort = apiKey.Group.MaxReasoningEffort
 			maxReasoningEffortOverLimit = apiKey.Group.MaxReasoningEffortOverLimit
 			reasoningEffortMappings = apiKey.Group.ReasoningEffortMappings

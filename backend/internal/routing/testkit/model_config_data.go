@@ -9,6 +9,7 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/billing/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
+	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
 // ModelKey 模型配置测试输入复合键（显式包含 Platform 防止跨平台同名模型冲突）
@@ -108,7 +109,6 @@ func ModelConfigFromData(fixture *ModelConfigData) *routing.PricingConfigService
 			})
 			for _, key := range keys {
 				price := fixture.Prices[key].Clone()
-				price.Platform = key.Platform
 				price.Models = []string{key.Model}
 				ch.ModelPricing = append(ch.ModelPricing, price)
 			}
@@ -116,7 +116,6 @@ func ModelConfigFromData(fixture *ModelConfigData) *routing.PricingConfigService
 				if key.GroupID == gid {
 					for _, entry := range entries {
 						price := entry.Pricing.Clone()
-						price.Platform = key.Platform
 						price.Models = []string{entry.Prefix + "*"}
 						ch.ModelPricing = append(ch.ModelPricing, price)
 					}
@@ -130,23 +129,17 @@ func ModelConfigFromData(fixture *ModelConfigData) *routing.PricingConfigService
 				policy.Enabled = true
 			}
 			if policy.ModelMapping == nil {
-				policy.ModelMapping = make(map[string]map[string]string)
+				policy.ModelMapping = make(map[string]string)
 			}
 			for key, target := range fixture.Models {
 				if key.GroupID == gid {
-					if policy.ModelMapping[key.Platform] == nil {
-						policy.ModelMapping[key.Platform] = make(map[string]string)
-					}
-					policy.ModelMapping[key.Platform][key.Model] = target
+					policy.ModelMapping[key.Model] = target
 				}
 			}
 			for key, entries := range fixture.ModelPatterns {
 				if key.GroupID == gid {
-					if policy.ModelMapping[key.Platform] == nil {
-						policy.ModelMapping[key.Platform] = make(map[string]string)
-					}
 					for _, entry := range entries {
-						policy.ModelMapping[key.Platform][entry.Prefix+"*"] = entry.Target
+						policy.ModelMapping[entry.Prefix+"*"] = entry.Target
 					}
 				}
 			}
@@ -165,6 +158,6 @@ func ModelConfigFromData(fixture *ModelConfigData) *routing.PricingConfigService
 				}
 			}
 		}
-		return &routing.Group{ID: id, Platform: fixture.Platforms[id], RoutingPolicy: policy}, nil
+		return &routing.Group{ID: id, AllowedProtocols: capability.DefaultGroupClientProtocols(""), RoutingPolicy: policy}, nil
 	}})
 }

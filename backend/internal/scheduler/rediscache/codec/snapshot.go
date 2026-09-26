@@ -21,10 +21,12 @@ func (AccountCodec) Encode(value scheduler.SnapshotAccount) ([]byte, []byte, err
 	}
 	return marshalSchedulerCacheAccount(*v)
 }
+
 func (AccountCodec) Decode(raw any) (scheduler.SnapshotAccount, error) {
 	v, err := decodeCachedAccount(raw)
 	return WrapRecord(v), err
 }
+
 func (AccountCodec) LastUsedAt(value scheduler.SnapshotAccount) (*time.Time, error) {
 	v, err := RecordValue(value)
 	if err != nil || v == nil {
@@ -32,6 +34,7 @@ func (AccountCodec) LastUsedAt(value scheduler.SnapshotAccount) (*time.Time, err
 	}
 	return v.LastUsedAt, nil
 }
+
 func (AccountCodec) SetLastUsedAt(value scheduler.SnapshotAccount, at *time.Time) error {
 	v, err := RecordValue(value)
 	if err != nil {
@@ -42,9 +45,11 @@ func (AccountCodec) SetLastUsedAt(value scheduler.SnapshotAccount, at *time.Time
 	}
 	return nil
 }
+
 func (AccountCodec) Metadata(value accountcore.Record) accountcore.Record {
 	return buildSchedulerMetadataAccount(value)
 }
+
 func decodeCachedAccount(val any) (*accountcore.Record, error) {
 	var payload []byte
 	switch raw := val.(type) {
@@ -195,7 +200,6 @@ func filterSchedulerExtra(extra map[string]any) map[string]any {
 		"quota_weekly_reset_day",
 		"quota_weekly_reset_hour",
 		"quota_reset_timezone",
-		"mixed_scheduling",
 		"window_cost_limit",
 		"window_cost_sticky_reserve",
 		"max_sessions",

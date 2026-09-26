@@ -49,6 +49,7 @@ func routeInventoryValue(kind reflect.Type, depth int) reflect.Value {
 	}
 	return reflect.Zero(kind)
 }
+
 func routeInventoryMount[T any](t *testing.T, factory any) T {
 	value := reflect.ValueOf(factory)
 	args := make([]reflect.Value, value.Type().NumIn())
@@ -60,9 +61,8 @@ func routeInventoryMount[T any](t *testing.T, factory any) T {
 	return result
 }
 
-// TestS15NativeRouteInventory 对照固定的 693 条路由快照，实际调用生产注册函数并由 Gin 检测重复注册。
+// TestS15NativeRouteInventory 对照已登记的路由快照，实际调用生产注册函数并由 Gin 检测重复注册。
 func TestS15NativeRouteInventory(t *testing.T) {
-
 	r := gin.New()
 	var chain []string
 	r.Use(func(c *gin.Context) { chain = c.HandlerNames(); c.Abort() })

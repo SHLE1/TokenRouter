@@ -38,7 +38,6 @@ export interface TimePricingConfig {
 
 export interface ModelPricingEntry {
   id?: number
-  platform: string
   models: string[]
   billing_mode: BillingMode
   // 可空表示完全沿用现有定价，不隐式写入 1 倍。
@@ -174,9 +173,9 @@ export interface ModelDefaultPricing {
   image_output_price?: number
 }
 
-export async function getModelDefaultPricing(model: string, platform?: string): Promise<ModelDefaultPricing> {
+export async function getModelDefaultPricing(model: string): Promise<ModelDefaultPricing> {
   const { data } = await apiClient.get<ModelDefaultPricing>('/admin/pricing/defaults/model', {
-    params: { model, platform }
+    params: { model }
   })
   return data
 }
@@ -186,11 +185,10 @@ export interface SyncPricingModelsResult {
 }
 
 /**
- * 从 LiteLLM 定价目录获取指定平台的最新模型名
+ * 从定价目录获取最新模型名
  */
-export async function syncPricingModels(platform: string): Promise<SyncPricingModelsResult> {
+export async function syncPricingModels(): Promise<SyncPricingModelsResult> {
   const { data } = await apiClient.get<SyncPricingModelsResult>('/admin/pricing/defaults/models', {
-    params: { platform }
   })
   return data
 }

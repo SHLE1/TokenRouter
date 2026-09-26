@@ -10,7 +10,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/admission"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
 	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
@@ -117,11 +116,11 @@ func (OpenAITokenPorts) MappedBodyCache(body []byte) func(bool, string) []byte {
 
 func (p OpenAITokenPorts) Eligibility(ctx context.Context, key *apikey.APIKey, sub *billing.UserSubscription) error {
 	keyCopy := apikey.CopyAPIKey(key)
-	return p.Funding.CheckKey(ctx, keyCopy, sub, admission.QuotaPlatform(ctx, keyCopy), false)
+	return p.Funding.CheckKey(ctx, keyCopy, sub, "", false)
 }
 
 func (OpenAITokenPorts) Platform(key *apikey.APIKey) string {
-	return OpenAICompatibleRequestPlatform(apikey.CopyAPIKey(key))
+	return ""
 }
 
 func (p OpenAITokenPorts) SessionHash(c *gin.Context, _ OpenAISessionInput, body []byte) string {
@@ -138,7 +137,7 @@ func tokenSelectionError(c *gin.Context, diagnose routing.ModelAvailabilityDiagn
 	if key != nil {
 		group = key.GroupID
 	}
-	result := ClassifySelectionError(c.Request.Context(), diagnose, group, routingModel, displayModel, OpenAICompatibleRequestPlatform(key))
+	result := ClassifySelectionError(c.Request.Context(), diagnose, group, routingModel, displayModel, "")
 	if result.ModelNotFound {
 		MarkOpsClientBusinessLimited(c, OpsClientBusinessLimitedReasonLocalModelConfiguration)
 	}

@@ -226,13 +226,6 @@ func actorID(key *KeySnapshot, user *PayerSnapshot) int64 {
 	return user.ID
 }
 
-func platformFromKey(key *KeySnapshot) string {
-	if key == nil || key.Group == nil {
-		return ""
-	}
-	return key.Group.Platform
-}
-
 func stringValueOrEmpty(v *string) string {
 	if v == nil {
 		return ""

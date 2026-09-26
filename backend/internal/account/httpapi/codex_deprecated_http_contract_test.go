@@ -15,15 +15,13 @@ import (
 )
 
 func TestCodexSessionImportDiscardsDeprecatedLongContextBillingExtra(t *testing.T) {
-
 	stub := newCodexImportMemoryAdminService(nil)
 	handler := NewCodexImportHandler(newCodexImportFixture(stub))
 	router := gin.New()
 	router.POST("/accounts/import-codex-session", handler.ImportCodexSession)
 	body, err := json.Marshal(account.CodexSessionImportRequest{
-		Content:              buildCodexAccessToken(t, "workspace-1", "user-1", time.Now().Add(time.Hour)),
-		Extra:                map[string]any{deprecatedLongContextBillingExtraKey: []bool{true}, "preserved": "value"},
-		SkipDefaultGroupBind: boolPtr(true),
+		Content: buildCodexAccessToken(t, "workspace-1", "user-1", time.Now().Add(time.Hour)),
+		Extra:   map[string]any{deprecatedLongContextBillingExtraKey: []bool{true}, "preserved": "value"},
 	})
 	require.NoError(t, err)
 	recorder := httptest.NewRecorder()

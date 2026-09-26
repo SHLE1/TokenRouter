@@ -8,8 +8,6 @@ import (
 
 	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
 
-	"github.com/TokenFlux/TokenRouter/internal/gateway/admission"
-
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
@@ -28,9 +26,10 @@ import (
 
 // MessagesBindings 固定路由、资金、隔离和审核端口；HTTP 状态操作由本模块拥有。
 type MessagesBindings struct {
-	PlanRoute      func(context.Context, *apikey.APIKey, string) routing.RoutePlan
-	ClientVersions func(context.Context) (string, string)
-	Funding        interface {
+	PlanRoute           func(context.Context, *apikey.APIKey, string) routing.RoutePlan
+	ClientVersions      func(context.Context) (string, string)
+	ClientGroupFallback ClientGroupFallbackResolver
+	Funding             interface {
 		CheckKey(context.Context, *apikey.APIKey, *billing.UserSubscription, string, bool) error
 	}
 	Moderation           ModerationPort
@@ -125,7 +124,7 @@ func (p messagesHTTPBackend) BindErrors(c *gin.Context) {
 
 func (p messagesHTTPBackend) Eligibility(ctx context.Context, key *apikey.APIKey, sub *billing.UserSubscription) error {
 	old := apikey.CopyAPIKey(key)
-	return p.bindings.Funding.CheckKey(ctx, old, sub, admission.QuotaPlatform(ctx, old), false)
+	return p.bindings.Funding.CheckKey(ctx, old, sub, "", false)
 }
 
 func (p messagesHTTPBackend) ForcedPlatform(c *gin.Context) (string, bool) {

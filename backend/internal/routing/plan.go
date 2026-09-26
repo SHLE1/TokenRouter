@@ -1,8 +1,9 @@
 package routing
 
 import (
-	"maps"
 	"slices"
+
+	"github.com/TokenFlux/TokenRouter/internal/protocol"
 
 	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
@@ -22,11 +23,10 @@ type PlanInput struct {
 type RoutePlan struct {
 	models         ModelChain
 	groupID        int64
-	platform       string
 	schedulerType  GroupSchedulerType
 	clientProtocol capability.ProtocolID
 	allowed        []capability.ProtocolID
-	fallbacks      map[capability.ProtocolID]capability.ProtocolID
+	fallbacks      map[capability.ProtocolID][]capability.ProtocolID
 }
 
 // Plan 复制已完成入口准入的分组投影，不改变原权限、模型或资金检查顺序。
@@ -47,10 +47,9 @@ func Plan(input PlanInput) RoutePlan {
 	}
 	if input.Group != nil {
 		plan.groupID = input.Group.ID
-		plan.platform = input.Group.Platform
 		plan.schedulerType = input.Group.SchedulerType
 		plan.allowed = slices.Clone(input.Group.AllowedProtocols)
-		plan.fallbacks = maps.Clone(input.Group.ProtocolFallbacks)
+		plan.fallbacks = protocol.CloneFallbacks(input.Group.ProtocolFallbacks)
 	}
 	if input.GroupID != nil {
 		plan.groupID = *input.GroupID
@@ -76,9 +75,8 @@ func (p RoutePlan) ResolveCandidate(candidate account.AccountSnapshot) (Candidat
 	return CandidatePlan{Models: p.models, AccountID: candidate.ID, GroupID: p.groupID, ClientProtocol: p.clientProtocol, UpstreamProtocol: target}, true
 }
 
-// GroupID、Platform 和 SchedulerType 返回本次最终分组值，不重新读取共享配置。
+// GroupID 和 SchedulerType 返回本次最终分组值，不重新读取共享配置。
 func (p RoutePlan) GroupID() int64                            { return p.groupID }
-func (p RoutePlan) Platform() string                          { return p.platform }
 func (p RoutePlan) SchedulerType() GroupSchedulerType         { return p.schedulerType }
 func (p RoutePlan) AllowedProtocols() []capability.ProtocolID { return slices.Clone(p.allowed) }
 

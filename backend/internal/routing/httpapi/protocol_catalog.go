@@ -19,11 +19,10 @@ type ProtocolAccountProfile struct {
 }
 
 type ProtocolGroupProfile struct {
-	Platform         string                                        `json:"platform"`
 	Protocols        []protocol.ProtocolID                         `json:"protocols"`
 	Defaults         []protocol.ProtocolID                         `json:"defaults"`
 	FallbackTargets  map[protocol.ProtocolID][]protocol.ProtocolID `json:"fallback_targets"`
-	DefaultFallbacks map[protocol.ProtocolID]protocol.ProtocolID   `json:"default_fallbacks"`
+	DefaultFallbacks map[protocol.ProtocolID][]protocol.ProtocolID `json:"default_fallbacks"`
 }
 
 // ProtocolCatalogResponse 显式描述目录响应，便于调用方和契约测试检查完整结构。
@@ -48,13 +47,14 @@ func AdminProtocolCatalog(endpoints map[protocol.ProtocolID]string) ProtocolCata
 				accounts = append(accounts, ProtocolAccountProfile{platform, accountType, mode, capability.NativeProtocolOptions(platform, accountType, mode)})
 			}
 		}
-		supported := capability.SupportedGroupClientProtocols(platform)
-		targets := map[protocol.ProtocolID][]protocol.ProtocolID{}
-		for _, source := range supported {
-			targets[source] = capability.ProtocolFallbackTargets(platform, source)
-		}
-		groups = append(groups, ProtocolGroupProfile{platform, supported, capability.DefaultGroupClientProtocols(platform), targets, capability.DefaultProtocolFallbacks(platform)})
 	}
+	supported := capability.SupportedGroupClientProtocols("")
+	targets := map[protocol.ProtocolID][]protocol.ProtocolID{}
+	for _, source := range supported {
+		targets[source] = capability.AutomaticProtocolFallbackTargets(source)
+	}
+	groups = append(groups, ProtocolGroupProfile{Protocols: supported, Defaults: capability.DefaultGroupClientProtocols(""), FallbackTargets: targets, DefaultFallbacks: capability.DefaultProtocolFallbacks("")})
+
 	return ProtocolCatalogResponse{
 		Protocols: publicProtocols(endpoints), Accounts: accounts, Groups: groups,
 		AuxiliaryOperations: AuxiliaryOperations(),

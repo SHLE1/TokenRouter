@@ -146,6 +146,20 @@ func (_u *CreativeRunUpdate) ClearAccountID() *CreativeRunUpdate {
 	return _u
 }
 
+// SetProvider sets the "provider" field.
+func (_u *CreativeRunUpdate) SetProvider(v string) *CreativeRunUpdate {
+	_u.mutation.SetProvider(v)
+	return _u
+}
+
+// SetNillableProvider sets the "provider" field if the given value is not nil.
+func (_u *CreativeRunUpdate) SetNillableProvider(v *string) *CreativeRunUpdate {
+	if v != nil {
+		_u.SetProvider(*v)
+	}
+	return _u
+}
+
 // SetModel sets the "model" field.
 func (_u *CreativeRunUpdate) SetModel(v string) *CreativeRunUpdate {
 	_u.mutation.SetModel(v)
@@ -832,6 +846,11 @@ func (_u *CreativeRunUpdate) check() error {
 			return &ValidationError{Name: "workspace_id", err: fmt.Errorf(`ent: validator failed for field "CreativeRun.workspace_id": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.Provider(); ok {
+		if err := creativerun.ProviderValidator(v); err != nil {
+			return &ValidationError{Name: "provider", err: fmt.Errorf(`ent: validator failed for field "CreativeRun.provider": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.Model(); ok {
 		if err := creativerun.ModelValidator(v); err != nil {
 			return &ValidationError{Name: "model", err: fmt.Errorf(`ent: validator failed for field "CreativeRun.model": %w`, err)}
@@ -947,6 +966,9 @@ func (_u *CreativeRunUpdate) sqlSave(ctx context.Context) (_node int, err error)
 	}
 	if _u.mutation.AccountIDCleared() {
 		_spec.ClearField(creativerun.FieldAccountID, field.TypeInt64)
+	}
+	if value, ok := _u.mutation.Provider(); ok {
+		_spec.SetField(creativerun.FieldProvider, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.Model(); ok {
 		_spec.SetField(creativerun.FieldModel, field.TypeString, value)
@@ -1260,6 +1282,20 @@ func (_u *CreativeRunUpdateOne) AddAccountID(v int64) *CreativeRunUpdateOne {
 // ClearAccountID clears the value of the "account_id" field.
 func (_u *CreativeRunUpdateOne) ClearAccountID() *CreativeRunUpdateOne {
 	_u.mutation.ClearAccountID()
+	return _u
+}
+
+// SetProvider sets the "provider" field.
+func (_u *CreativeRunUpdateOne) SetProvider(v string) *CreativeRunUpdateOne {
+	_u.mutation.SetProvider(v)
+	return _u
+}
+
+// SetNillableProvider sets the "provider" field if the given value is not nil.
+func (_u *CreativeRunUpdateOne) SetNillableProvider(v *string) *CreativeRunUpdateOne {
+	if v != nil {
+		_u.SetProvider(*v)
+	}
 	return _u
 }
 
@@ -1962,6 +1998,11 @@ func (_u *CreativeRunUpdateOne) check() error {
 			return &ValidationError{Name: "workspace_id", err: fmt.Errorf(`ent: validator failed for field "CreativeRun.workspace_id": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.Provider(); ok {
+		if err := creativerun.ProviderValidator(v); err != nil {
+			return &ValidationError{Name: "provider", err: fmt.Errorf(`ent: validator failed for field "CreativeRun.provider": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.Model(); ok {
 		if err := creativerun.ModelValidator(v); err != nil {
 			return &ValidationError{Name: "model", err: fmt.Errorf(`ent: validator failed for field "CreativeRun.model": %w`, err)}
@@ -2094,6 +2135,9 @@ func (_u *CreativeRunUpdateOne) sqlSave(ctx context.Context) (_node *CreativeRun
 	}
 	if _u.mutation.AccountIDCleared() {
 		_spec.ClearField(creativerun.FieldAccountID, field.TypeInt64)
+	}
+	if value, ok := _u.mutation.Provider(); ok {
+		_spec.SetField(creativerun.FieldProvider, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.Model(); ok {
 		_spec.SetField(creativerun.FieldModel, field.TypeString, value)

@@ -18,7 +18,6 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
@@ -26,7 +25,7 @@ import (
 
 func compositeMiddlewareTestKey() *apikey.APIKey {
 	group := &routing.Group{
-		ID: 7, Name: "OpenAI", Platform: capability.PlatformOpenAI, Status: billing.StatusActive, IsExclusive: true,
+		ID: 7, Name: "OpenAI", Status: billing.StatusActive, IsExclusive: true,
 		AllowedProtocols: []protocol.ProtocolID{
 			protocol.ProtocolOpenAIResponses,
 			protocol.ProtocolOpenAIChatCompletions,
@@ -41,7 +40,7 @@ func compositeMiddlewareTestKey() *apikey.APIKey {
 // compositeMiddlewareMultiGroupTestKey 构造可验证单请求跨分组模型拒绝行为的复合 Key。
 func compositeMiddlewareMultiGroupTestKey() *apikey.APIKey {
 	key := compositeMiddlewareTestKey()
-	group := &routing.Group{ID: 8, Name: "Claude", Platform: capability.PlatformAnthropic, Status: billing.StatusActive, IsExclusive: true}
+	group := &routing.Group{ID: 8, Name: "Claude", Status: billing.StatusActive, IsExclusive: true}
 	key.CompositeGroups = append(key.CompositeGroups, apikey.APIKeyCompositeGroup{
 		GroupID: 8, Prefix: "Claude", NormalizedPrefix: "claude", Group: group,
 	})
@@ -49,7 +48,6 @@ func compositeMiddlewareMultiGroupTestKey() *apikey.APIKey {
 }
 
 func TestResolveCompositeAPIKeyRequestJSON(t *testing.T) {
-
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewBufferString(`{"model":"gPt/vendor/model","messages":[]}`))
 	c.Request.Header.Set("Content-Type", "application/json")
@@ -211,7 +209,6 @@ func TestReplaceCompositeResponseModel(t *testing.T) {
 }
 
 func TestAbortCompositeKeyErrorPreservesProtocolShape(t *testing.T) {
-
 	openAIRecorder := httptest.NewRecorder()
 	openAIContext, _ := gin.CreateTestContext(openAIRecorder)
 	openAIContext.Request = httptest.NewRequest(http.MethodPost, "/v1/live", nil)

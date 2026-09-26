@@ -65,7 +65,7 @@ func (r *PricingConfigStore) batchLoadAccountStatsModelPricing(ctx context.Conte
 	}
 
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, rule_id, platform, models, billing_mode, price_multiplier, input_price, output_price,
+		`SELECT id, rule_id, models, billing_mode, price_multiplier, input_price, output_price,
 		        cache_write_price, cache_write_1h_price, cache_read_price, image_output_price, per_request_price, created_at, updated_at
 		 FROM pricing_config_account_stats_model_pricing WHERE rule_id = ANY($1) ORDER BY rule_id, id`,
 		pq.Array(ruleIDs),
@@ -81,7 +81,7 @@ func (r *PricingConfigStore) batchLoadAccountStatsModelPricing(ctx context.Conte
 		var ruleID int64
 		var modelsJSON []byte
 		if err := rows.Scan(
-			&p.ID, &ruleID, &p.Platform, &modelsJSON, &p.BillingMode, &p.PriceMultiplier,
+			&p.ID, &ruleID, &modelsJSON, &p.BillingMode, &p.PriceMultiplier,
 			&p.InputPrice, &p.OutputPrice, &p.CacheWritePrice, &p.CacheWrite1hPrice, &p.CacheReadPrice,
 			&p.ImageOutputPrice, &p.PerRequestPrice, &p.CreatedAt, &p.UpdatedAt,
 		); err != nil {
@@ -175,11 +175,10 @@ func createAccountStatsModelPricingTx(ctx context.Context, tx *sql.Tx, ruleID in
 	if billingMode == "" {
 		billingMode = routing.BillingModeToken
 	}
-	platform := pricing.Platform
 	err = tx.QueryRowContext(ctx,
-		`INSERT INTO pricing_config_account_stats_model_pricing (rule_id, platform, models, billing_mode, price_multiplier, input_price, output_price, cache_write_price, cache_write_1h_price, cache_read_price, image_output_price, per_request_price)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id, created_at, updated_at`,
-		ruleID, platform, modelsJSON, billingMode,
+		`INSERT INTO pricing_config_account_stats_model_pricing (rule_id, models, billing_mode, price_multiplier, input_price, output_price, cache_write_price, cache_write_1h_price, cache_read_price, image_output_price, per_request_price)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id, created_at, updated_at`,
+		ruleID, modelsJSON, billingMode,
 		pricing.PriceMultiplier, pricing.InputPrice, pricing.OutputPrice, pricing.CacheWritePrice, pricing.CacheWrite1hPrice, pricing.CacheReadPrice,
 		pricing.ImageOutputPrice, pricing.PerRequestPrice,
 	).Scan(&pricing.ID, &pricing.CreatedAt, &pricing.UpdatedAt)

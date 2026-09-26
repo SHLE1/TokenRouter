@@ -236,16 +236,7 @@
           role="group"
           aria-labelledby="bulk-edit-model-restriction-label"
         >
-          <div
-            v-if="isOpenAIModelRestrictionDisabled"
-            class="rounded-control bg-amber-50 p-3 dark:bg-amber-900/20"
-          >
-            <p class="text-xs text-amber-700 dark:text-amber-400">
-              {{ t('admin.accounts.openai.modelRestrictionDisabledByPassthrough') }}
-            </p>
-          </div>
 
-          <template v-else>
             <!-- Mode Toggle -->
             <div class="mb-4 flex gap-2">
               <button
@@ -441,7 +432,7 @@
                 </button>
               </div>
             </div>
-          </template>
+
         </div>
       </div>
 
@@ -1467,16 +1458,7 @@
     </template>
   </BaseDialog>
 
-  <ConfirmDialog
-    :show="showMixedChannelWarning"
-    :title="t('admin.accounts.mixedChannelWarningTitle')"
-    :message="mixedChannelWarningMessage"
-    :confirm-text="t('common.confirm')"
-    :cancel-text="t('common.cancel')"
-    :danger="true"
-    @confirm="handleMixedChannelConfirm"
-    @cancel="handleMixedChannelCancel"
-  />
+
 </template>
 
 <script setup lang="ts">
@@ -1497,7 +1479,6 @@ import type {
   OpenAIOAuthClientPolicy,
 } from '@/types'
 import BaseDialog from '@/components/common/BaseDialog.vue'
-import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import Select from '@/components/common/Select.vue'
 import Toggle from '@/components/common/Toggle.vue'
 import ProxySelector from '@/components/common/ProxySelector.vue'
@@ -1574,7 +1555,6 @@ const allTargetsGrok = computed(
     targetSelectedPlatforms.value.every((p) => p === 'grok')
 )
 const isMixedPlatform = computed(() => targetSelectedPlatforms.value.length > 1)
-const includesAntigravity = computed(() => targetSelectedPlatforms.value.includes('antigravity'))
 
 const allOpenAIPassthroughCapable = computed(() => {
   return (
@@ -1715,9 +1695,6 @@ const enableTLSFingerprint = ref(false)
 
 // State - field values
 const submitting = ref(false)
-const showMixedChannelWarning = ref(false)
-const mixedChannelWarningMessage = ref('')
-const pendingUpdatesForConfirm = ref<Record<string, unknown> | null>(null)
 const baseUrl = ref('')
 const modelRestrictionMode = ref<'whitelist' | 'mapping'>('whitelist')
 const allowedModels = ref<string[]>([])
@@ -1803,12 +1780,6 @@ const statusOptions = computed(() => [
   { value: 'active', label: t('common.active') },
   { value: 'inactive', label: t('common.inactive') }
 ])
-const isOpenAIModelRestrictionDisabled = computed(
-  () =>
-    allOpenAIPassthroughCapable.value &&
-    enableOpenAIPassthrough.value &&
-    openaiPassthroughEnabled.value
-)
 
 const openAIWSModeOptions = computed(() => [
   { value: OPENAI_WS_MODE_OFF, label: t('admin.accounts.openai.wsModeOff') },
@@ -2155,20 +2126,11 @@ const buildUpdatePayload = (): Record<string, unknown> | null => {
     extra.openai_responses_continuation_supported = openAIResponsesContinuationSupported.value
   }
 
-  if (enableModelRestriction.value && !isOpenAIModelRestrictionDisabled.value) {
-    // Antigravity 账号仍使用 mapping-only 语义，批量修改不能给它写入普通账号的独立白名单字段。
-    if (targetSelectedPlatforms.value.length === 1 && targetSelectedPlatforms.value[0] === 'antigravity') {
-      credentials.model_mapping = buildModelMappingObject(
-        modelRestrictionMode.value,
-        allowedModels.value,
-        modelMappings.value
-      ) ?? {}
-    } else {
-      // 普通账号批量编辑需要显式发送空对象/空数组，才能覆盖账号上已有的限制配置。
-      const persisted = buildPersistedModelRestriction(allowedModels.value, modelMappings.value)
-      credentials.model_mapping = persisted.modelMapping ?? {}
-      credentials.model_whitelist = persisted.modelWhitelist
-    }
+  if (enableModelRestriction.value) {
+    // 所有账号共用独立的模型映射和最终白名单，空集合恢复默认目录。
+    const persisted = buildPersistedModelRestriction(allowedModels.value, modelMappings.value)
+    credentials.model_mapping = persisted.modelMapping ?? {}
+    credentials.model_whitelist = persisted.modelWhitelist
     credentialsChanged = true
   }
 
@@ -2317,44 +2279,8 @@ const buildUpdatePayload = (): Record<string, unknown> | null => {
   return Object.keys(updates).length > 0 ? updates : null
 }
 
-const mixedChannelConfirmed = ref(false)
-
-// 是否需要预检查：改了分组 + 全是单一的 antigravity 或 anthropic 平台
-// 多平台混合的情况由 submitBulkUpdate 的 409 catch 兜底
-const canPreCheck = () =>
-  enableGroups.value &&
-  groupIds.value.length > 0 &&
-  targetSelectedPlatforms.value.length === 1 &&
-  (targetSelectedPlatforms.value[0] === 'antigravity' || targetSelectedPlatforms.value[0] === 'anthropic')
-
 const handleClose = () => {
-  showMixedChannelWarning.value = false
-  mixedChannelWarningMessage.value = ''
-  pendingUpdatesForConfirm.value = null
-  mixedChannelConfirmed.value = false
   emit('close')
-}
-
-// 预检查：提交前调接口检测，有风险就弹窗阻止，返回 false 表示需要用户确认
-const preCheckMixedChannelRisk = async (built: Record<string, unknown>): Promise<boolean> => {
-  if (!canPreCheck()) return true
-  if (mixedChannelConfirmed.value) return true
-
-  try {
-    const result = await adminAPI.accounts.checkMixedChannelRisk({
-      platform: targetSelectedPlatforms.value[0],
-      group_ids: groupIds.value
-    })
-    if (!result.has_risk) return true
-
-    pendingUpdatesForConfirm.value = built
-    mixedChannelWarningMessage.value = result.message || t('admin.accounts.bulkEdit.failed')
-    showMixedChannelWarning.value = true
-    return false
-  } catch (error: any) {
-    appStore.showError(error.message || t('admin.accounts.bulkEdit.failed'))
-    return false
-  }
 }
 
 const handleSubmit = async () => {
@@ -2402,11 +2328,6 @@ const handleSubmit = async () => {
     return
   }
 
-  // Antigravity 和普通账号的模型限制持久化语义不同，混选时无法用同一份 credentials 正确表达。
-  if (enableModelRestriction.value && isMixedPlatform.value && includesAntigravity.value) {
-    appStore.showError(t('admin.accounts.bulkEdit.modelRestrictionMixedAntigravityNotSupported'))
-    return
-  }
 
   // base_url 现在也会作用于 Grok OAuth 订阅账号的转发端点；坏值会让请求期
   // 校验失败、账号请求全挂，因此保存前强制格式校验（与单账号编辑一致）。
@@ -2438,17 +2359,12 @@ const handleSubmit = async () => {
     return
   }
 
-  const canContinue = await preCheckMixedChannelRisk(built)
-  if (!canContinue) return
 
   await submitBulkUpdate(built)
 }
 
 const submitBulkUpdate = async (baseUpdates: Record<string, unknown>) => {
-  // 无论是预检查确认还是 409 兜底确认，只要 mixedChannelConfirmed 为 true 就带上 flag
-  const updates = mixedChannelConfirmed.value
-    ? { ...baseUpdates, confirm_mixed_channel_risk: true }
-    : baseUpdates
+  const updates = baseUpdates
 
   submitting.value = true
 
@@ -2471,36 +2387,14 @@ const submitBulkUpdate = async (baseUpdates: Record<string, unknown>) => {
     }
 
     if (success > 0) {
-      pendingUpdatesForConfirm.value = null
       emit('updated')
       handleClose()
     }
-  } catch (error: any) {
-    // 兜底：多平台混合场景下，预检查跳过，由后端 409 触发确认框
-    if (error.status === 409 && error.error === 'mixed_channel_warning') {
-      pendingUpdatesForConfirm.value = baseUpdates
-      mixedChannelWarningMessage.value = error.message
-      showMixedChannelWarning.value = true
-    } else {
-      appStore.showError(error.message || t('admin.accounts.bulkEdit.failed'))
-      console.error('Error bulk updating accounts:', error)
-    }
+  } catch (error: any) {appStore.showError(error.message || t('admin.accounts.bulkEdit.failed'))
+console.error('Error bulk updating accounts:', error)
   } finally {
     submitting.value = false
   }
-}
-
-const handleMixedChannelConfirm = async () => {
-  showMixedChannelWarning.value = false
-  mixedChannelConfirmed.value = true
-  if (pendingUpdatesForConfirm.value) {
-    await submitBulkUpdate(pendingUpdatesForConfirm.value)
-  }
-}
-
-const handleMixedChannelCancel = () => {
-  showMixedChannelWarning.value = false
-  pendingUpdatesForConfirm.value = null
 }
 
 const resetBulkEditFormState = () => {
@@ -2575,11 +2469,6 @@ const resetBulkEditFormState = () => {
   tlsFingerprintEnabled.value = false
   tlsFingerprintProfileId.value = 0
   tlsFingerprintRouterId.value = null
-
-  showMixedChannelWarning.value = false
-  mixedChannelWarningMessage.value = ''
-  pendingUpdatesForConfirm.value = null
-  mixedChannelConfirmed.value = false
 }
 
 watch(

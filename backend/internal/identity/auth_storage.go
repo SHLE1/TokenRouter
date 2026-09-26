@@ -37,7 +37,6 @@ type AuthStorage interface {
 		identity *AuthIdentity,
 		created bool,
 	) bool
-	AuthSnapshotPlatformQuotaDefaults(ctx context.Context, userID int64, plan *AuthSignupGrantPlan) error
 	AuthTouchUserLogin(ctx context.Context, userID int64)
 	AuthUpdateBoundEmailIdentityTx(
 		ctx context.Context,
@@ -60,6 +59,7 @@ func (s *AuthService) ApplyProviderDefaultSettingsOnFirstBind(
 ) error {
 	return s.Storage.ApplyProviderDefaultSettingsOnFirstBind(ctx, userID, providerType)
 }
+
 func (s *AuthService) AuthApplyProviderDefaultSettingsOnFirstBind(
 	ctx context.Context,
 	userID int64,
@@ -67,18 +67,23 @@ func (s *AuthService) AuthApplyProviderDefaultSettingsOnFirstBind(
 ) error {
 	return s.Storage.AuthApplyProviderDefaultSettingsOnFirstBind(ctx, userID, providerType)
 }
+
 func (s *AuthService) AuthCreateRegisteredUser(ctx context.Context, user *User, artifacts *AuthRegistrationArtifacts) error {
 	return s.Storage.AuthCreateRegisteredUser(ctx, user, artifacts)
 }
+
 func (s *AuthService) AuthEnsureEmailAuthIdentity(ctx context.Context, user *User, source string) (*AuthIdentity, bool) {
 	return s.Storage.AuthEnsureEmailAuthIdentity(ctx, user, source)
 }
+
 func (s *AuthService) AuthEnsureEmailOAuthIdentity(ctx context.Context, userID int64, input EmailOAuthIdentityInput) error {
 	return s.Storage.AuthEnsureEmailOAuthIdentity(ctx, userID, input)
 }
+
 func (s *AuthService) AuthFindEmailOAuthIdentityOwner(ctx context.Context, providerType, providerKey, providerSubject string) (*User, error) {
 	return s.Storage.AuthFindEmailOAuthIdentityOwner(ctx, providerType, providerKey, providerSubject)
 }
+
 func (s *AuthService) AuthHasProviderGrantRecord(
 	ctx context.Context,
 	userID int64,
@@ -87,15 +92,19 @@ func (s *AuthService) AuthHasProviderGrantRecord(
 ) (bool, error) {
 	return s.Storage.AuthHasProviderGrantRecord(ctx, userID, providerType, grantReason)
 }
+
 func (s *AuthService) AuthLoadOAuthRegistrationInvitation(ctx context.Context, invitationCode string) (*RedeemCode, error) {
 	return s.Storage.AuthLoadOAuthRegistrationInvitation(ctx, invitationCode)
 }
+
 func (s *AuthService) AuthRestoreOAuthRegistrationInvitation(ctx context.Context, invitationCode string, userID int64) error {
 	return s.Storage.AuthRestoreOAuthRegistrationInvitation(ctx, invitationCode, userID)
 }
+
 func (s *AuthService) AuthRunFailOpenDBStep(ctx context.Context, savepointName string, fn func(context.Context) error) error {
 	return s.Storage.AuthRunFailOpenDBStep(ctx, savepointName, fn)
 }
+
 func (s *AuthService) AuthShouldApplyEmailFirstBindDefaults(
 	ctx context.Context,
 	userID int64,
@@ -104,12 +113,11 @@ func (s *AuthService) AuthShouldApplyEmailFirstBindDefaults(
 ) bool {
 	return s.Storage.AuthShouldApplyEmailFirstBindDefaults(ctx, userID, identity, created)
 }
-func (s *AuthService) AuthSnapshotPlatformQuotaDefaults(ctx context.Context, userID int64, plan *AuthSignupGrantPlan) error {
-	return s.Storage.AuthSnapshotPlatformQuotaDefaults(ctx, userID, plan)
-}
+
 func (s *AuthService) AuthTouchUserLogin(ctx context.Context, userID int64) {
 	s.Storage.AuthTouchUserLogin(ctx, userID)
 }
+
 func (s *AuthService) AuthUpdateBoundEmailIdentityTx(
 	ctx context.Context,
 	currentUser *User,
@@ -120,15 +128,19 @@ func (s *AuthService) AuthUpdateBoundEmailIdentityTx(
 ) error {
 	return s.Storage.AuthUpdateBoundEmailIdentityTx(ctx, currentUser, email, registrationNormalizedEmail, hashedPassword, applyFirstBindDefaults)
 }
+
 func (s *AuthService) AuthUpdateOAuthRegistrationInvitation(ctx context.Context, code *RedeemCode) error {
 	return s.Storage.AuthUpdateOAuthRegistrationInvitation(ctx, code)
 }
+
 func (s *AuthService) AuthUpdateOAuthSignupSource(ctx context.Context, userID int64, signupSource string) {
 	s.Storage.AuthUpdateOAuthSignupSource(ctx, userID, signupSource)
 }
+
 func (s *AuthService) AuthUpdateUserSignupSource(ctx context.Context, userID int64, signupSource string) {
 	s.Storage.AuthUpdateUserSignupSource(ctx, userID, signupSource)
 }
+
 func (s *AuthService) AuthUseOAuthRegistrationInvitation(ctx context.Context, invitationID, userID int64) error {
 	return s.Storage.AuthUseOAuthRegistrationInvitation(ctx, invitationID, userID)
 }

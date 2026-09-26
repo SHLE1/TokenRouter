@@ -16,10 +16,15 @@ func OperationProtocol(platform, operation string) protocol.ProtocolID {
 	}
 	return protocol.ProtocolImagesEdits
 }
-func OperationsForGroup(platform string, explicit bool, allows func(protocol.ProtocolID) bool) []string {
-	operations := CreativeOperationsForPlatform(platform)
-	if !explicit {
-		return operations
+
+func OperationsForGroup(explicit bool, allows func(protocol.ProtocolID) bool) map[string][]string {
+	out := make(map[string][]string)
+	for _, platform := range []string{PlatformOpenAI, PlatformGemini, PlatformGrok} {
+		operations := CreativeOperationsForPlatform(platform)
+		if explicit {
+			operations = slices.DeleteFunc(operations, func(operation string) bool { return !allows(OperationProtocol(platform, operation)) })
+		}
+		out[platform] = operations
 	}
-	return slices.DeleteFunc(operations, func(operation string) bool { return !allows(OperationProtocol(platform, operation)) })
+	return out
 }

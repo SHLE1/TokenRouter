@@ -303,7 +303,8 @@ func TestFinalizeLiveCallIsIdempotentAndWritesZeroUsage(t *testing.T) {
 	require.NoError(t, store.SaveLiveCall(context.Background(), record, time.Hour))
 	concurrencyCache := &liveTestConcurrencyCache{}
 	usageRepo := &liveTestUsageRepo{}
-	service := newLiveFixture(liveFixtureInputs{store: store, concurrency: scheduler.NewConcurrencyService(concurrencyCache, scheduler.Diagnostics{Logf: logging.LegacyPrintf,
+	service := newLiveFixture(liveFixtureInputs{store: store, concurrency: scheduler.NewConcurrencyService(concurrencyCache, scheduler.Diagnostics{
+		Logf:  logging.LegacyPrintf,
 		Event: logging.Event,
 	},
 	), logs: usageRepo})
@@ -365,14 +366,18 @@ func TestGetLiveCallForIdentityRejectsMismatchedCaller(t *testing.T) {
 }
 
 func TestLiveSidebandRewritesEachSessionModelAndRestoresResponse(t *testing.T) {
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 11,
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeOAuth,
-		Status:      billing.StatusActive,
-		Schedulable: true,
-		Credentials: map[string]any{
-			"model_mapping": map[string]any{"gpt-5": "gpt-5.1-codex"},
-		}},
+	account := &gatewayprovider.ExecutionAccount{
+		Record: accountcore.Record{
+			LoadLocation: time.LoadLocation, ID: 11,
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.AccountTypeOAuth,
+			Status:      billing.StatusActive,
+			Schedulable: true,
+			Credentials: map[string]any{
+				"model_whitelist": []string{"gpt-5.4"},
+				"model_mapping":   map[string]any{"gpt-5": "gpt-5.4"},
+			},
+		},
 	}
 	upstreamModel := gatewayprovider.ExecutionModelPolicy(account).OpenAIUpstream("gpt-5", false, false)
 	record := &session.LiveCallRecord{
@@ -404,18 +409,21 @@ func TestLiveSidebandRewritesEachSessionModelAndRestoresResponse(t *testing.T) {
 
 func TestProxyLiveSidebandForwardsTextAndBinary(t *testing.T) {
 	profileService, routerService := newLiveTLSRoutingServices()
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 11,
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeOAuth,
-		Concurrency: 2,
-		Credentials: map[string]any{
-			"access_token":       "test-access-token",
-			"chatgpt_account_id": "acct_test",
+	account := &gatewayprovider.ExecutionAccount{
+		Record: accountcore.Record{
+			LoadLocation: time.LoadLocation, ID: 11,
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.AccountTypeOAuth,
+			Concurrency: 2,
+			Credentials: map[string]any{
+				"access_token":       "test-access-token",
+				"chatgpt_account_id": "acct_test",
+			},
+			Extra: map[string]any{
+				"enable_tls_fingerprint":    true,
+				"tls_fingerprint_router_id": int64(9),
+			},
 		},
-		Extra: map[string]any{
-			"enable_tls_fingerprint":    true,
-			"tls_fingerprint_router_id": int64(9),
-		}},
 	}
 	record := &session.LiveCallRecord{
 		CallID:     "call_proxy",
@@ -559,13 +567,12 @@ func TestWaitForLiveObserverRetryTreatsStoreErrorAsRetryable(t *testing.T) {
 
 	require.True(t, svc.waitForLiveObserverRetry(record),
 		"store 报错时必须继续重试，否则会话会静默结束")
-	require.False(t, (newLiveFixture(liveFixtureInputs{store: &liveTestStore{}})).waitForLiveObserverRetry(record),
+	require.False(t, newLiveFixture(liveFixtureInputs{store: &liveTestStore{}}).waitForLiveObserverRetry(record),
 		"记录不存在时应停止重试")
 }
 
 // observer 持续读不到 store 时，必须使用创建阶段快照在到期后释放租约并写 usage log。
 func TestObserveLiveCallStoreOutageFallsBackToExpiryFinalize(t *testing.T) {
-
 	cases := []struct {
 		name   string
 		inject func(*liveTestStore)
@@ -596,7 +603,8 @@ func TestObserveLiveCallStoreOutageFallsBackToExpiryFinalize(t *testing.T) {
 			tc.inject(store)
 			concurrencyCache := &liveTestConcurrencyCache{}
 			usageRepo := &liveTestUsageRepo{}
-			svc := newLiveFixture(liveFixtureInputs{store: store, concurrency: scheduler.NewConcurrencyService(concurrencyCache, scheduler.Diagnostics{Logf: logging.LegacyPrintf,
+			svc := newLiveFixture(liveFixtureInputs{store: store, concurrency: scheduler.NewConcurrencyService(concurrencyCache, scheduler.Diagnostics{
+				Logf:  logging.LegacyPrintf,
 				Event: logging.Event,
 			},
 			), logs: usageRepo})
@@ -645,7 +653,8 @@ func TestFinalizeLiveCallUsageLogFallsBackToSyncCreate(t *testing.T) {
 	store := &liveTestStore{}
 	require.NoError(t, store.SaveLiveCall(context.Background(), record, time.Hour))
 	usageRepo := &liveTestBestEffortUsageRepo{bestEffortErr: errors.New("usage log queue dropped")}
-	svc := newLiveFixture(liveFixtureInputs{store: store, concurrency: scheduler.NewConcurrencyService(&liveTestConcurrencyCache{}, scheduler.Diagnostics{Logf: logging.LegacyPrintf,
+	svc := newLiveFixture(liveFixtureInputs{store: store, concurrency: scheduler.NewConcurrencyService(&liveTestConcurrencyCache{}, scheduler.Diagnostics{
+		Logf:  logging.LegacyPrintf,
 		Event: logging.Event,
 	},
 	), logs: usageRepo})

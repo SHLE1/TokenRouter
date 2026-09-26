@@ -35,7 +35,6 @@ type MessagesCapture struct {
 	RequestBody        []byte                    // 原始请求体，用于解析客户端请求的计费推理档位
 	ForceCacheBilling  bool                      // 强制缓存计费：将 input_tokens 转为 cache_read 计费（用于粘性会话切换）
 	APIKeyService      QuotaUpdater              // 可选：用于更新API Key配额
-	QuotaPlatform      string                    // user×platform 配额计量平台：handler 在请求 ctx 内经 admission.QuotaPlatform() 算定后传入（后扣运行在 worker 池 background ctx 上，取不到 ForcePlatform）
 
 	routing.PricingUsageFields // 分组映射信息（由 handler 在 Forward 前解析）
 }
@@ -81,7 +80,6 @@ type OpenAICapture struct {
 	// PricingAt 是 WS turn 开始时刻；普通 HTTP 调用留空并在记录时取当前时间。
 	PricingAt     time.Time
 	APIKeyService QuotaUpdater
-	QuotaPlatform string // user×platform 配额计量平台，由 handler 在请求 ctx 内算定后传入。
 	CyberBlocked  bool
 	// NativeCompactionV2 表示请求体运行时被识别为原生远程 compaction v2。
 	NativeCompactionV2 bool
@@ -105,7 +103,7 @@ type CyberCapture struct {
 	ClientSessionID    string
 	RequestPayloadHash string
 	APIKeyService      QuotaUpdater
-	QuotaPlatform      string
+
 	// NativeCompactionV2 保留错误路径中原生 compaction 标记。
 	NativeCompactionV2 bool
 	routing.PricingUsageFields
@@ -128,7 +126,7 @@ func CaptureMessages(ctx context.Context, in *MessagesCapture) *completion.Input
 		IPAddress:          in.IPAddress,
 		ClientSessionID:    in.ClientSessionID,
 		RequestPayloadHash: CompletionPayloadFingerprint(ctx, in.RequestPayloadHash),
-		QuotaPlatform:      in.QuotaPlatform,
+
 		ForceCacheBilling:  in.ForceCacheBilling,
 		QuotaUpdates:       in.APIKeyService != nil,
 		PricingUsageFields: in.PricingUsageFields,
@@ -146,18 +144,19 @@ func CaptureOpenAI(ctx context.Context, in *OpenAICapture) *completion.Input {
 		return nil
 	}
 	out := &completion.Input{
-		Result:                   ProjectOpenAICompletionResult(in.Result, in.Account),
-		APIKey:                   ProjectCompletionKey(in.APIKey),
-		User:                     ProjectCompletionPayer(in.User),
-		Account:                  ProjectCompletionAccount(in.Account),
-		Subscription:             in.Subscription,
-		InboundEndpoint:          in.InboundEndpoint,
-		UpstreamEndpoint:         in.UpstreamEndpoint,
-		UserAgent:                in.UserAgent,
-		IPAddress:                in.IPAddress,
-		ClientSessionID:          in.ClientSessionID,
-		RequestPayloadHash:       CompletionPayloadFingerprint(ctx, in.RequestPayloadHash),
-		QuotaPlatform:            in.QuotaPlatform,
+		ForceCacheBilling:  in.Result != nil && in.Result.NativeUsage != nil && requeststate.IsForceCacheBilling(ctx),
+		Result:             ProjectOpenAICompletionResult(in.Result, in.Account),
+		APIKey:             ProjectCompletionKey(in.APIKey),
+		User:               ProjectCompletionPayer(in.User),
+		Account:            ProjectCompletionAccount(in.Account),
+		Subscription:       in.Subscription,
+		InboundEndpoint:    in.InboundEndpoint,
+		UpstreamEndpoint:   in.UpstreamEndpoint,
+		UserAgent:          in.UserAgent,
+		IPAddress:          in.IPAddress,
+		ClientSessionID:    in.ClientSessionID,
+		RequestPayloadHash: CompletionPayloadFingerprint(ctx, in.RequestPayloadHash),
+
 		QuotaUpdates:             in.APIKeyService != nil,
 		CyberBlocked:             in.CyberBlocked,
 		NativeCompactionV2:       in.NativeCompactionV2,
@@ -208,7 +207,7 @@ func CaptureCyber(ctx context.Context, in CyberCapture) *completion.Input {
 		ClientSessionID:    in.ClientSessionID,
 		RequestPayloadHash: in.RequestPayloadHash,
 		APIKeyService:      in.APIKeyService,
-		QuotaPlatform:      in.QuotaPlatform,
+
 		PricingUsageFields: in.PricingUsageFields,
 		CyberBlocked:       true,
 		NativeCompactionV2: in.NativeCompactionV2,

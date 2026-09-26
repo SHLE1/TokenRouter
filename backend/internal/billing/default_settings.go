@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math"
 	"strconv"
 	"strings"
 
@@ -14,13 +13,6 @@ import (
 // DefaultSubscriptionSetting 是默认权益配置的纯值，原 JSON 形状保持不变。
 type DefaultSubscriptionSetting struct {
 	PlanID int64 `json:"plan_id"`
-}
-
-// DefaultPlatformQuotaSetting 是默认权益配置的纯值，原 JSON 形状保持不变。
-type DefaultPlatformQuotaSetting struct {
-	DailyLimitUSD   *float64 `json:"daily"`
-	WeeklyLimitUSD  *float64 `json:"weekly"`
-	MonthlyLimitUSD *float64 `json:"monthly"`
 }
 
 func ValidateDefaultSubscriptionPlans(ctx context.Context, items []DefaultSubscriptionSetting, lookup func(context.Context, int64) (*SubscriptionPlan, error)) error {
@@ -59,23 +51,6 @@ func ValidateDefaultSubscriptionPlans(ctx context.Context, items []DefaultSubscr
 		}
 	}
 
-	return nil
-}
-
-func ValidateDefaultPlatformQuotaMap(m map[string]*DefaultPlatformQuotaSetting) error {
-	for platform, pq := range m {
-		if !IsAllowedQuotaPlatform(platform) {
-			return apperror.BadRequest("INVALID_DEFAULT_PLATFORM_QUOTA", fmt.Sprintf("unknown platform %q", platform))
-		}
-		if pq == nil {
-			continue
-		}
-		for _, v := range []*float64{pq.DailyLimitUSD, pq.WeeklyLimitUSD, pq.MonthlyLimitUSD} {
-			if v != nil && (*v < 0 || math.IsNaN(*v) || math.IsInf(*v, 0)) {
-				return apperror.BadRequest("INVALID_DEFAULT_PLATFORM_QUOTA", "platform quota limit must be a finite non-negative number")
-			}
-		}
-	}
 	return nil
 }
 

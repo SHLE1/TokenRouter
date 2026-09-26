@@ -9,7 +9,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/batchimage"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/stretchr/testify/require"
 )
 
@@ -29,7 +28,7 @@ func (r *changingMediaPricingGroupRepo) GetByIDLite(context.Context, int64) (*ro
 
 func TestBatchImagePricingSnapshotUsesOneGroupVersion(t *testing.T) {
 	oldGroup := &routing.Group{
-		ID: 7, Platform: capability.PlatformGemini, AllowBatchImageGeneration: true, RateMultiplier: 10, BatchImageDiscountMultiplier: 0.5, BatchImageHoldMultiplier: 0.6,
+		ID: 7, AllowBatchImageGeneration: true, RateMultiplier: 10, BatchImageDiscountMultiplier: 0.5, BatchImageHoldMultiplier: 0.6,
 		ModelPricing: []routing.ModelPricingEntry{{Models: []string{"gemini-3.1-flash-image"}, BillingMode: routing.BillingModeImage, PerRequestPrice: testPtrFloat64(1)}},
 	}
 	newGroup := *oldGroup

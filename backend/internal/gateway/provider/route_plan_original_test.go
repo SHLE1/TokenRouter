@@ -16,7 +16,7 @@ import (
 
 // 当前请求计划不能污染共享账号；模型读取仍按每次原匹配时机获得最新配置。
 func TestS06RoutePlanRebuildsCandidateAndKeepsModelReadTiming(t *testing.T) {
-	group := &routing.Group{ID: 7, Platform: capability.PlatformOpenAI, AllowedProtocols: []protocol.ProtocolID{protocol.ProtocolAnthropicMessages}, ProtocolFallbacks: map[protocol.ProtocolID]protocol.ProtocolID{protocol.ProtocolAnthropicMessages: protocol.ProtocolOpenAIResponses}}
+	group := &routing.Group{ID: 7, AllowedProtocols: []protocol.ProtocolID{protocol.ProtocolAnthropicMessages}, ProtocolFallbacks: map[protocol.ProtocolID][]protocol.ProtocolID{protocol.ProtocolAnthropicMessages: {protocol.ProtocolOpenAIResponses}}}
 	ctx := requeststate.WithClientProtocol(requeststate.WithGroup(context.Background(), group), protocol.ProtocolAnthropicMessages)
 	mapping := routing.GroupMappingResult{MappedModel: "group-model", Mapped: true, PricingConfigID: 9, BillingModelSource: "requested"}
 	plan := gatewayprovider.RoutePlanForMapping(ctx, group, &group.ID, "key-model", mapping)

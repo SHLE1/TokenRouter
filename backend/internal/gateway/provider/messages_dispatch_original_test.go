@@ -34,7 +34,7 @@ func TestNormalizeOpenAIMessagesDispatchModelConfig(t *testing.T) {
 func TestGroupResolveMessagesDispatchModel_RequiresExplicitFamilyMapping(t *testing.T) {
 	t.Parallel()
 
-	group := &routing.Group{Platform: capability.PlatformOpenAI}
+	group := &routing.Group{}
 	// 空配置不能再把 Claude 系列请求隐式改写为内置 GPT 模型。
 	require.Empty(t, ResolveMessagesDispatchModel(group, "claude-opus-4-6"))
 	require.Empty(t, ResolveMessagesDispatchModel(group, "claude-sonnet-4-5-20250929"))
@@ -48,10 +48,10 @@ func TestGroupResolveMessagesDispatchModel_RequiresExplicitFamilyMapping(t *test
 	require.Empty(t, ResolveMessagesDispatchModel(group, "claude-haiku-4-5-20251001"))
 }
 
-func TestGroupResolveMessagesDispatchModel_GrokRequiresCrossClientMapping(t *testing.T) {
+func TestGroupResolveMessagesDispatchModelIgnoresAccountCrossClientDefaults(t *testing.T) {
 	original := xai.RuntimeModelMappingOptions()
 	t.Cleanup(func() { xai.SetRuntimeModelMappingOptions(original) })
-	group := &routing.Group{Platform: capability.PlatformGrok}
+	group := &routing.Group{}
 
 	xai.SetRuntimeModelMappingOptions(xai.ModelMappingOptions{})
 	require.Empty(t, ResolveMessagesDispatchModel(group, "claude-sonnet-4-5"))
@@ -60,18 +60,18 @@ func TestGroupResolveMessagesDispatchModel_GrokRequiresCrossClientMapping(t *tes
 		DefaultText:          "grok-build-0.1",
 		EnableCrossClientMap: true,
 	})
-	require.Equal(t, "grok-build-0.1", ResolveMessagesDispatchModel(group, "claude-sonnet-4-5"))
-	require.Equal(t, "grok-build-0.1", ResolveMessagesDispatchModel(group, "claude-opus-4-6"))
-	require.Equal(t, "grok-build-0.1", ResolveMessagesDispatchModel(group, "claude-haiku-4-5"))
+	require.Empty(t, ResolveMessagesDispatchModel(group, "claude-sonnet-4-5"))
+	require.Empty(t, ResolveMessagesDispatchModel(group, "claude-opus-4-6"))
+	require.Empty(t, ResolveMessagesDispatchModel(group, "claude-haiku-4-5"))
 	require.Empty(t, ResolveMessagesDispatchModel(group, "grok"))
 	require.Empty(t, ResolveMessagesDispatchModel(group, "gpt-5.3-codex"))
 }
 
-func TestSanitizeGroupMessagesDispatchFields_ClearsNonOpenAIPlatform(t *testing.T) {
+func TestSanitizeGroupMessagesDispatchFieldsPreservesExplicitConfig(t *testing.T) {
 	t.Parallel()
 
 	group := &routing.Group{
-		Platform:              capability.PlatformAnthropic,
+		AllowedProtocols:      []capability.ProtocolID{capability.ProtocolAnthropicMessages},
 		AllowMessagesDispatch: true,
 		DefaultMappedModel:    "gpt-5.6-sol",
 		MessagesDispatchModelConfig: routing.OpenAIMessagesDispatchModelConfig{
@@ -84,7 +84,7 @@ func TestSanitizeGroupMessagesDispatchFields_ClearsNonOpenAIPlatform(t *testing.
 
 	routing.SanitizeGroupMessagesDispatchFields(group)
 
-	require.False(t, group.AllowMessagesDispatch)
-	require.Empty(t, group.DefaultMappedModel)
-	require.Equal(t, routing.OpenAIMessagesDispatchModelConfig{}, group.MessagesDispatchModelConfig)
+	require.True(t, group.AllowMessagesDispatch)
+	require.Equal(t, "gpt-5.6-sol", group.DefaultMappedModel)
+	require.Equal(t, "gpt-5.3-codex", group.MessagesDispatchModelConfig.SonnetMappedModel)
 }

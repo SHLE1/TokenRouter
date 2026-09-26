@@ -1,4 +1,4 @@
-import type { AccountPlatform, GroupPlatform } from '@/types'
+import type { AccountPlatform } from '@/types'
 
 export interface PlatformOption<T extends string = string> {
   value: T
@@ -18,6 +18,3 @@ export const CONCRETE_PLATFORM_OPTIONS = [
   { value: 'zhipu', label: 'Zhipu' },
   { value: 'deepseek', label: 'DeepSeek' }
 ] as const satisfies readonly PlatformOption<AccountPlatform>[]
-
-// 分组只绑定具体平台，选项与账号平台目录保持一致。
-export const GROUP_PLATFORM_OPTIONS = CONCRETE_PLATFORM_OPTIONS as readonly PlatformOption<GroupPlatform>[]

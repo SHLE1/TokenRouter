@@ -18,7 +18,7 @@ func TestModelMarketplaceQoderAccountMappedCustomModelUsesRouteKeyManualPricing(
 	groupID := int64(903)
 	inputPrice := 0.01
 	outputPrice := 0.02
-	pricingConfigService := routingtestkit.PricingConfig(groupID, capability.PlatformQoder, routingtestkit.Configuration{ID: groupID, Status: billing.StatusActive, BillingModelSource: routing.BillingModelSourceUpstream, ModelPricing: []routing.ModelPricingEntry{{Platform: capability.PlatformQoder, Models: []string{"qmodel"}, BillingMode: routing.BillingModeToken, InputPrice: &inputPrice, OutputPrice: &outputPrice}}})
+	pricingConfigService := routingtestkit.PricingConfig(groupID, capability.PlatformQoder, routingtestkit.Configuration{ID: groupID, Status: billing.StatusActive, BillingModelSource: routing.BillingModelSourceUpstream, ModelPricing: []routing.ModelPricingEntry{{Models: []string{"qmodel"}, BillingMode: routing.BillingModeToken, InputPrice: &inputPrice, OutputPrice: &outputPrice}}})
 
 	billingService := billingtestkit.Calculator(0, nil, nil)
 	svc := newCatalogueMarketplace(nil, newCatalogueFixture(&modelsListAccountRepoStub{byGroup: map[int64][]accountcore.Record{
@@ -35,7 +35,7 @@ func TestModelMarketplaceQoderAccountMappedCustomModelUsesRouteKeyManualPricing(
 			},
 		},
 	}}, pricingConfigService, cataloguePriceResolver(pricingConfigService, billingService)), billingService)
-	group := &routing.Group{ID: groupID, Platform: capability.PlatformQoder, RateMultiplier: 1}
+	group := &routing.Group{ID: groupID, RateMultiplier: 1}
 
 	models := svc.ModelsForGroup(context.Background(), group)
 
@@ -57,8 +57,8 @@ func TestModelMarketplaceQoderAccountMappedCustomModelUsesRouteKeyManualPricing(
 
 func TestModelMarketplaceListPublicPrefetchesAccountsOnce(t *testing.T) {
 	groups := []routing.Group{
-		{ID: 4101, Name: "OpenAI A", Platform: capability.PlatformOpenAI, Status: billing.StatusActive, RateMultiplier: 1, ActiveAccountCount: 1},
-		{ID: 4102, Name: "OpenAI B", Platform: capability.PlatformOpenAI, Status: billing.StatusActive, RateMultiplier: 1, ActiveAccountCount: 1},
+		{ID: 4101, Name: "OpenAI A", Status: billing.StatusActive, RateMultiplier: 1, ActiveAccountCount: 1},
+		{ID: 4102, Name: "OpenAI B", Status: billing.StatusActive, RateMultiplier: 1, ActiveAccountCount: 1},
 	}
 	accounts := []accountcore.Record{
 		{

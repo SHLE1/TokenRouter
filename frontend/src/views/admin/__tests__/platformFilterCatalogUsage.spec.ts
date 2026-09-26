@@ -7,10 +7,10 @@ function readSource(path: string): string {
 }
 
 describe('admin platform filters', () => {
-  it('uses the shared group catalog on groups and subscriptions pages', () => {
+  it('does not constrain groups or subscriptions to a platform', () => {
     for (const path of ['src/views/admin/GroupsView.vue', 'src/views/admin/SubscriptionsView.vue']) {
       const source = readSource(path)
-      expect(source).toContain('GROUP_PLATFORM_OPTIONS')
+      expect(source).not.toContain('filters.platform')
     }
   })
 
@@ -24,9 +24,8 @@ describe('admin platform filters', () => {
     }
   })
 
-  it('keeps the operations helper on the shared catalog while retaining dynamic platforms', () => {
+  it('keeps the operations helper on the shared catalog for actual account platforms', () => {
     const source = readSource('src/views/admin/ops/platformOptions.ts')
     expect(source).toContain('CONCRETE_PLATFORM_OPTIONS')
-    expect(source).toContain('knownPlatforms')
   })
 })

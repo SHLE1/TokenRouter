@@ -19,6 +19,7 @@ type ResponseSelection struct {
 type ResponseOutcome struct {
 	Outcome
 	Images              bool
+	NativePartial       bool
 	FirstOutputRecovery bool
 }
 
@@ -50,6 +51,15 @@ type ResponsePorts interface {
 
 // RunResponses 保留同账号恢复、一次请求的账号预算和首输出后的禁止重放边界。
 func RunResponses(options ResponseOptions, p ResponsePorts) {
+	served := false
+	if lifecycle, ok := p.(interface {
+		Begin()
+		Finish(bool)
+	}); ok {
+		lifecycle.Begin()
+		defer func() { lifecycle.Finish(served) }()
+	}
+
 	excluded := make(map[int64]struct{})
 	sameAccount := make(map[int64]int)
 	switches, firstOutputSwitches := 0, 0
@@ -80,6 +90,25 @@ func RunResponses(options ResponseOptions, p ResponsePorts) {
 			return
 		}
 		if outcome.Err != nil {
+			if fallback, ok := p.(interface{ TryGroupFallback(error) (bool, bool) }); ok && !outcome.NativePartial {
+				handled, retry := fallback.TryGroupFallback(outcome.Err)
+				if handled {
+					if !retry {
+						return
+					}
+					excluded = make(map[int64]struct{})
+					sameAccount = make(map[int64]int)
+					last = nil
+					continue
+				}
+			}
+			if outcome.NativePartial {
+				served = true
+				p.OtherFailure(outcome.Err)
+				p.Complete()
+				p.Failed()
+				return
+			}
 			if outcome.Images {
 				p.PartialImages(outcome.Err)
 			} else {
@@ -98,6 +127,9 @@ func RunResponses(options ResponseOptions, p ResponsePorts) {
 					}
 					retryLimit := failover.EffectiveSameAccountRetryLimit(failure.Policy, selected.RetryLimit)
 					if failure.Policy.RetryableOnSameAccount && failover.SameAccountRetryAllowed(failure.Policy, sameAccount[selected.Account.ID], retryLimit) {
+						if observer, ok := p.(interface{ PrepareRetry(*AttemptFailure, bool) }); ok {
+							observer.PrepareRetry(failure, true)
+						}
 						sameAccount[selected.Account.ID]++
 						delay := failover.SameAccountRetryDelayFor(failure.Policy, sameAccount[selected.Account.ID])
 						p.RetryWait(failure, retryLimit, sameAccount[selected.Account.ID], delay)
@@ -105,6 +137,9 @@ func RunResponses(options ResponseOptions, p ResponsePorts) {
 							return
 						}
 						continue
+					}
+					if observer, ok := p.(interface{ PrepareRetry(*AttemptFailure, bool) }); ok {
+						observer.PrepareRetry(failure, false)
 					}
 					p.Switched()
 					excluded[selected.Account.ID] = struct{}{}
@@ -127,6 +162,7 @@ func RunResponses(options ResponseOptions, p ResponsePorts) {
 				return
 			}
 		}
+		served = outcome.Attempt.Served
 		p.Success()
 		p.Complete()
 		p.Completed(switches)

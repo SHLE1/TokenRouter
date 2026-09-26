@@ -12,7 +12,6 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	routing "github.com/TokenFlux/TokenRouter/internal/routing"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 
 	dbent "github.com/TokenFlux/TokenRouter/ent"
 	"github.com/stretchr/testify/require"
@@ -78,16 +77,12 @@ func mustCreateGroup(t *testing.T, client *dbent.Client, g *routing.Group) *rout
 	t.Helper()
 	ctx := context.Background()
 
-	if g.Platform == "" {
-		g.Platform = capability.PlatformAnthropic
-	}
 	if g.Status == "" {
 		g.Status = billing.StatusActive
 	}
 
 	create := client.Group.Create().
 		SetName(g.Name).
-		SetPlatform(g.Platform).
 		SetStatus(g.Status).
 		SetRateMultiplier(g.RateMultiplier).
 		SetIsExclusive(g.IsExclusive).

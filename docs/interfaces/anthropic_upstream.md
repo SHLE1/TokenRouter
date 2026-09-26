@@ -80,7 +80,7 @@ Messages 和 CountTokens 的 OAuth 出站请求中，`x-anthropic-billing-header
 
 账号必须通过状态、分组、模型、endpoint、凭据、限流和并发筛选。粘性会话尽量复用同一账号；账号失效、模型限流或策略变化会丢弃旧绑定并重新选择。等待队列只等待可能恢复的并发/限流条件，不会把永久凭据错误变成无限等待。
 
-API Key/Bedrock 可配置本地账号配额和亲和策略。可用的上游用量/配额状态、账号优先级与近期错误可以参与资格判断或调度，但不替代用户余额、订阅和用户平台额度。Anthropic 不再采集上游站点声明倍率，也不按该值排序或评分；账户本地 `rate_multiplier` 仅保留为结算输入。Antigravity 账号只有显式启用 mixed scheduling 后才能加入 Anthropic 候选，并继续遵守 Anthropic 分组语义。
+API Key/Bedrock 可配置本地账号配额和亲和策略。可用的上游用量/配额状态、账号优先级与近期错误可以参与资格判断或调度，但不替代用户余额和订阅。Anthropic 不再采集上游站点声明倍率，也不按该值排序或评分；账户本地 `rate_multiplier` 仅保留为结算输入。Antigravity 账号只有显式启用 mixed scheduling 后才能加入 Anthropic 候选，并继续遵守 Anthropic 分组语义。
 
 ## 错误与诊断
 

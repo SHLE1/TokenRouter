@@ -68,6 +68,7 @@ func (r *Record) now() time.Time {
 	}
 	return time.Now()
 }
+
 func (r *Record) String() string {
 	if r == nil {
 		return "account <nil>"
@@ -208,10 +209,12 @@ const (
 	QuotaDimensionGlobal = "global"
 	QuotaDimensionSpark  = "spark"
 )
+
 const (
 	AntigravityPrivacySet    = "privacy_set"
 	AntigravityPrivacyFailed = "privacy_set_failed"
 )
+
 const (
 	PrivacyModeTrainingOff = "training_off"
 	PrivacyModeFailed      = "training_set_failed"
@@ -795,7 +798,7 @@ func ExtractFinalModelWhitelist(platform string, mapping map[string]string) map[
 }
 
 // ExtractExplicitFinalModelWhitelist 从独立的 model_whitelist 字段提取最终模型白名单。
-// 该字段是新的主持久化方式；仍忽略通配符，保持与前端 whitelist 视图一致。
+// 支持精确名称和末尾通配符；非法的中间通配符仍被忽略。
 func ExtractExplicitFinalModelWhitelist(platform string, rawWhitelist any) map[string]struct{} {
 	if rawWhitelist == nil {
 		return nil
@@ -817,7 +820,7 @@ func ExtractExplicitFinalModelWhitelist(platform string, rawWhitelist any) map[s
 	whitelist := make(map[string]struct{})
 	for _, rawModel := range values {
 		model := NormalizeRequestedModelForLookup(platform, rawModel)
-		if model == "" || strings.Contains(model, "*") {
+		if model == "" || strings.Contains(strings.TrimSuffix(model, "*"), "*") {
 			continue
 		}
 		whitelist[model] = struct{}{}
@@ -1613,23 +1616,6 @@ func (a *Record) IsOpenAITokenExpired() bool {
 		return false
 	}
 	return a.now().Add(60 * time.Second).After(*expiresAt)
-}
-
-// IsMixedSchedulingEnabled 检查 antigravity 账户是否启用混合调度
-// 启用后可参与 anthropic/gemini 分组的账户调度
-func (a *Record) IsMixedSchedulingEnabled() bool {
-	if a.Platform != PlatformAntigravity {
-		return false
-	}
-	if a.Extra == nil {
-		return false
-	}
-	if v, ok := a.Extra["mixed_scheduling"]; ok {
-		if enabled, ok := v.(bool); ok {
-			return enabled
-		}
-	}
-	return false
 }
 
 // IsOveragesEnabled 检查 Antigravity 账号是否启用 AI Credits 超量请求。

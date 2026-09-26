@@ -5,6 +5,7 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
+	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/config"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/admission"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/completion"
@@ -32,6 +33,7 @@ func messageAttemptBindings(
 	worker *completion.UsageRecordWorkerPool,
 	queue *scheduler.UserMessageQueueService,
 	cfg *config.Config, availability *gatewayModelAvailability, choices *selection.Generic,
+	subscriptions *billing.SubscriptionService, cache session.GatewayCache,
 ) textattempt.Bindings {
 	var queueHelper *gatewayhttp.UserMsgQueueHelper
 	if queue != nil && cfg != nil {
@@ -39,10 +41,11 @@ func messageAttemptBindings(
 	}
 
 	b := textattempt.Bindings{
-		PlanRoute:   shared.bindings.PlanRoute,
-		Concurrency: shared.concurrency,
-		Queue:       queueHelper,
-		Errors:      rules,
+		PlanRoute:       shared.bindings.PlanRoute,
+		ResolveFallback: provideRuntimeGroupFallbackResolver(keys, funding, subscriptions, cache),
+		Concurrency:     shared.concurrency,
+		Queue:           queueHelper,
+		Errors:          rules,
 		Submission: gatewayhttp.NewCompletionSubmission(
 			worker,
 			false,
@@ -69,7 +72,7 @@ func messageAttemptBindings(
 		b.Selection.ReportSchedule = choices.ReportAdvancedAccountScheduleResult
 		b.Selection.IncrementRPM = choices.IncrementAccountRPM
 		b.Selection.BindSticky = choices.BindStickySession
-		b.Selection.ResolveGroup = choices.ResolveGroupByID
+		b.Selection.CachedSession = choices.GetCachedSessionAccountID
 		b.Selection.AccountSwitched = choices.RecordAdvancedAccountSwitch
 	}
 	b.Selection.TempUnschedule = messageRetryCooldown(cooldown)
@@ -88,9 +91,6 @@ func messageAttemptBindings(
 	if s := gemini; s != nil {
 		b.Forward.ForwardGemini = s.Forward
 	}
-	if s := funding; s != nil {
-		b.CheckFunding = s.CheckKey
-	}
 	b.Forward.SaveGeminiSession = messageDigestSave(digest)
 	b.Forward.ReplaceModel = openaiwire.ReplaceModelInBody
 	if s := antigravity; s != nil {
@@ -106,7 +106,6 @@ func messageAttemptBindings(
 	b.Forward.AntigravityAvailable = antigravity != nil
 
 	return b
-
 }
 
 // 固定依赖投影只构造一次；Wire 入口直接创建原生执行器。
@@ -124,6 +123,7 @@ func provideMessageAttemptRuntime(
 	worker *completion.UsageRecordWorkerPool,
 	queue *scheduler.UserMessageQueueService,
 	cfg *config.Config, availability *gatewayModelAvailability, choices *selection.Generic,
+	subscriptions *billing.SubscriptionService, cache session.GatewayCache,
 ) *textattempt.Runtime {
-	return textattempt.New(messageAttemptBindings(cooldown, digest, messages, antigravity, gemini, funding, keys, recorders, shared, rules, worker, queue, cfg, availability, choices))
+	return textattempt.New(messageAttemptBindings(cooldown, digest, messages, antigravity, gemini, funding, keys, recorders, shared, rules, worker, queue, cfg, availability, choices, subscriptions, cache))
 }

@@ -18,7 +18,7 @@ import (
 func TestS16ModelAvailabilityUsesPersistentAccountStore(t *testing.T) {
 	f := newDatabaseFixture(t)
 	ctx := t.Context()
-	group, err := f.client.Group.Create().SetName("s16-diagnostic-group").SetPlatform(capability.PlatformOpenAI).SetAllowedProtocols([]protocol.ProtocolID{protocol.ProtocolOpenAIResponses}).Save(ctx)
+	group, err := f.client.Group.Create().SetName("s16-diagnostic-group").SetAllowedProtocols([]protocol.ProtocolID{protocol.ProtocolOpenAIResponses}).Save(ctx)
 	require.NoError(t, err)
 	cooldown := time.Now().Add(time.Hour)
 	row, err := f.client.Account.Create().SetName("s16-diagnostic-account").SetPlatform(capability.PlatformOpenAI).SetType(capability.AccountTypeAPIKey).SetCredentials(map[string]any{"model_mapping": map[string]any{"public-known": "public-known"}}).SetRateLimitResetAt(cooldown).SetOverloadUntil(cooldown).SetTempUnschedulableUntil(cooldown).Save(ctx)
@@ -43,8 +43,11 @@ func TestS16ModelAvailabilityUsesPersistentAccountStore(t *testing.T) {
 		require.False(t, result.HasAccountsInPool)
 		require.False(t, result.HasModelSupport)
 	})
-	t.Run("simple_includes_grouped", func(t *testing.T) {
+	t.Run("simple_requires_explicit_group", func(t *testing.T) {
 		result := simple.Compatible.DiagnoseModelAvailabilityForPlatform(ctx, nil, "public-known", capability.PlatformOpenAI)
+		require.False(t, result.HasAccountsInPool)
+		require.False(t, result.HasModelSupport)
+		result = simple.Compatible.DiagnoseModelAvailabilityForPlatform(ctx, &group.ID, "public-known", capability.PlatformOpenAI)
 		require.True(t, result.HasAccountsInPool)
 		require.True(t, result.HasModelSupport)
 	})

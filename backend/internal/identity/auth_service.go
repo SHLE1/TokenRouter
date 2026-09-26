@@ -24,10 +24,9 @@ type DefaultSubscriptionAssigner interface {
 }
 
 type AuthSignupGrantPlan struct {
-	Balance        float64
-	Concurrency    int
-	Subscriptions  []DefaultSubscriptionSetting
-	PlatformQuotas map[string]*DefaultPlatformQuotaSetting
+	Balance       float64
+	Concurrency   int
+	Subscriptions []DefaultSubscriptionSetting
 }
 
 func (s *AuthService) SetRuntimeCaches(authCacheInvalidator APIKeyAuthCacheInvalidator, billingCache BillingCache) {
@@ -134,8 +133,6 @@ func (s *AuthService) RegisterWithVerification(ctx context.Context, email, passw
 	}
 	s.AuthPostAuthUserBootstrap(ctx, user, "email", true)
 	s.AuthAssignSubscriptions(ctx, user.ID, grantPlan.Subscriptions, "auto assigned by signup defaults")
-	// 平台限额快照失败不阻断注册，避免配置或 DB 短暂异常影响用户创建。
-	_ = s.AuthSnapshotPlatformQuotaDefaults(ctx, user.ID, &grantPlan)
 	s.AuthBindRegistrationAffiliate(ctx, user.ID, affiliateCode)
 
 	// 应用优惠码（如果提供且功能已启用）
@@ -500,8 +497,6 @@ func (s *AuthService) LoginOrRegisterOAuth(ctx context.Context, email, username 
 				user = newUser
 				s.AuthPostAuthUserBootstrap(ctx, user, signupSource, false)
 				s.AuthAssignSubscriptions(ctx, user.ID, grantPlan.Subscriptions, "auto assigned by signup defaults")
-				// snapshot user × platform quota（fail-open）
-				_ = s.AuthSnapshotPlatformQuotaDefaults(ctx, user.ID, &grantPlan)
 			}
 		} else {
 			s.Observer.Printf("service.auth", "[Auth] Database error during oauth login: %v", err)
@@ -646,8 +641,6 @@ func (s *AuthService) AuthLoginOrRegisterOAuthWithTokenPair(ctx context.Context,
 				created = true
 				s.AuthPostAuthUserBootstrap(ctx, user, signupSource, false)
 				s.AuthAssignSubscriptions(ctx, user.ID, grantPlan.Subscriptions, "auto assigned by signup defaults")
-				// 平台限额快照失败不阻断 OAuth 注册，避免三方登录流程被默认限额配置拖垮。
-				_ = s.AuthSnapshotPlatformQuotaDefaults(ctx, user.ID, &grantPlan)
 				s.AuthBindRegistrationAffiliate(ctx, user.ID, affiliateCode)
 			}
 		} else {
@@ -780,38 +773,18 @@ func (s *AuthService) AuthResolveSignupGrantPlan(ctx context.Context, signupSour
 	plan.Concurrency = s.Settings.GetDefaultConcurrency(ctx)
 	plan.Subscriptions = s.Settings.GetDefaultSubscriptions(ctx)
 
-	// ============ 全局 quota 装载（必须在 ResolveAuthSourceGrantSettings 之前） ============
-	// 无论 auth source 是否 enabled，全局层都要先装载，确保 !enabled 早退路径也携带全局 quota。
-	if quotas, err := s.Settings.GetDefaultPlatformQuotas(ctx); err == nil {
-		plan.PlatformQuotas = quotas
-	} else {
-		s.Observer.Printf("service.auth", "[Auth] Warning: load default platform quotas failed: %v (fail-open)", err)
-	}
-	// ============================================================================================
-
 	resolved, enabled, err := s.Settings.ResolveAuthSourceGrantSettings(ctx, signupSource, false)
 	if err != nil {
 		s.Observer.Printf("service.auth", "[Auth] Failed to load auth source signup defaults for %s: %v", signupSource, err)
 		return plan
 	}
 	if !enabled {
-		return plan // plan.PlatformQuotas 已含全局层
+		return plan
 	}
 
 	plan.Balance = resolved.Balance
 	plan.Concurrency = resolved.Concurrency
 	plan.Subscriptions = resolved.Subscriptions
-
-	// ============ auth source quota merge（仅在 enabled 分支内） ============
-	asQuotas := s.Settings.GetAuthSourcePlatformQuotas(ctx, signupSource)
-	if plan.PlatformQuotas != nil {
-		for platform, patch := range asQuotas {
-			if dst := plan.PlatformQuotas[platform]; dst != nil {
-				MergePlatformQuotaDefaults(dst, patch)
-			}
-		}
-	}
-	// ==============================================================================
 
 	return plan
 }

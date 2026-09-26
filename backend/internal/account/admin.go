@@ -30,42 +30,14 @@ func (s *Admin) ListAccountsForSchedulerScoreFilter(ctx context.Context, platfor
 
 // ListSchedulableAccountsForAdvancedSchedulerScore 查询指定分组内可参与高级评分的账号。
 func (s *Admin) ListSchedulableAccountsForAdvancedSchedulerScore(ctx context.Context, groupID *int64, platform string) ([]Record, error) {
-	if s == nil || s.accountRepo == nil {
+	if s == nil || s.accountRepo == nil || groupID == nil || *groupID <= 0 {
 		return nil, nil
 	}
 	platform = strings.TrimSpace(platform)
-	if platform == "" {
-		return nil, nil
-	}
-	// Anthropic/Gemini 主路径会把启用了 mixed_scheduling 的 Antigravity 账号
-	// 纳入同一候选池。评分展示必须使用相同池，避免页面分数与实际选择不一致。
-	if platform == PlatformAnthropic || platform == PlatformGemini {
-		platforms := []string{platform, PlatformAntigravity}
-		var (
-			accounts []Record
-			err      error
-		)
-		if groupID != nil {
-			accounts, err = s.accountRepo.ListSchedulableByGroupIDAndPlatforms(ctx, *groupID, platforms)
-		} else {
-			accounts, err = s.accountRepo.ListSchedulableUngroupedByPlatforms(ctx, platforms)
-		}
-		if err != nil {
-			return nil, err
-		}
-		filtered := make([]Record, 0, len(accounts))
-		for _, account := range accounts {
-			if account.Platform == PlatformAntigravity && !account.IsMixedSchedulingEnabled() {
-				continue
-			}
-			filtered = append(filtered, account)
-		}
-		return filtered, nil
-	}
-	if groupID != nil {
+	if platform != "" {
 		return s.accountRepo.ListSchedulableByGroupIDAndPlatform(ctx, *groupID, platform)
 	}
-	return s.accountRepo.ListSchedulableUngroupedByPlatform(ctx, platform)
+	return s.accountRepo.ListSchedulableByGroupIDAndPlatforms(ctx, *groupID, []string{PlatformAnthropic, PlatformOpenAI, PlatformGemini, PlatformAntigravity, PlatformGrok, PlatformQoder, PlatformKimi, PlatformZhipu, PlatformDeepseek})
 }
 
 func (s *Admin) GetAccount(ctx context.Context, id int64) (*Record, error) {

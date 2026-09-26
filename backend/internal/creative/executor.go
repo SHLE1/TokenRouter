@@ -10,10 +10,10 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
-// ExecutionGroup 提供当前分组的平台、模型策略与本次调度所需的协议投影。
+// ExecutionGroup 提供当前分组的模型策略与本次调度所需的协议投影。
 type ExecutionGroup struct {
-	Platform         string
 	RoutingPolicy    routing.GroupRoutingPolicy
+	AllowsOperation  func(string, string) bool
 	ConfigureContext func(context.Context, string, string) context.Context
 }
 type Selection struct {
@@ -31,95 +31,68 @@ type Executor struct {
 	Timeout              time.Duration
 }
 
-func (e *Executor) ResolveGroupPlatform(ctx context.Context, id int64) (string, error) {
-	if e.Group == nil {
-		return "", errors.New("creative group repository is not configured")
-	}
-	group, err := e.Group(ctx, id)
-	if err != nil || group == nil {
-		return "", CreativeNonRetryableError("creative group %d is unavailable", id)
-	}
-	switch group.Platform {
-	case PlatformOpenAI, PlatformGrok, PlatformGemini:
-		return group.Platform, nil
-	default:
-		return "", CreativeNonRetryableError("creative group platform %s is not supported", group.Platform)
-	}
-}
-
 // @project-doc docs/domains/creative_studio.md#creative_model_policy
 func (e *Executor) Prepare(ctx context.Context, run CreativeRun) (*CreativeExecution, error) {
 	if e == nil {
 		return nil, errors.New("creative executor is not configured")
 	}
-	platform, err := e.ResolveGroupPlatform(ctx, run.GroupID)
-	if err != nil {
-		return nil, err
+	if e.Group == nil {
+		return nil, errors.New("creative group repository is not configured")
 	}
-	// 本次尝试必须取得完整策略；读取失败或平台变化时停止，不能丢弃白名单继续执行。
 	group, err := e.Group(ctx, run.GroupID)
-	if err != nil || group == nil || group.Platform != platform {
+	if err != nil || group == nil {
 		return nil, CreativeNonRetryableError("creative group %d policy is unavailable", run.GroupID)
 	}
-	if group.ConfigureContext != nil {
-		ctx = group.ConfigureContext(ctx, platform, run.Operation)
-	}
-	policy := newGroupModelPolicy(platform, group.RoutingPolicy)
+	policy := newGroupModelPolicy(group.RoutingPolicy)
 	groupModel, allowed := policy.resolve(run.Model)
 	if !allowed {
 		return nil, CreativeNonRetryableError("creative model %s is restricted by group %d", run.Model, run.GroupID)
 	}
-	var selectAccount func(context.Context, CreativeRun) (*Selection, error)
-	switch platform {
-	case PlatformOpenAI:
-		selectAccount = e.OpenAI
-	case PlatformGrok:
-		selectAccount = e.Grok
-	case PlatformGemini:
-		selectAccount = e.Gemini
-	default:
-		return nil, CreativeNonRetryableError("creative executor unsupported account platform %s", platform)
+	platforms := []string{PlatformOpenAI, PlatformGemini, PlatformGrok}
+	if run.Provider != "" {
+		platforms = []string{run.Provider}
 	}
-	if selectAccount == nil {
-		if platform == PlatformGemini {
-			return nil, errors.New("creative gateway service is not configured")
+	var lastErr error
+	for _, platform := range platforms {
+		if group.AllowsOperation != nil && !group.AllowsOperation(platform, run.Operation) {
+			continue
 		}
-		return nil, errors.New("creative OpenAI gateway is not configured")
-	}
-	selection, err := selectAccount(ctx, run)
-	if err != nil {
-		return nil, err
-	}
-	if selection == nil {
-		return nil, CreativeNonRetryableError("no compatible creative account available for group %d model %s", run.GroupID, run.Model)
-	}
-	if !selection.Acquired {
-		if selection.Waiting {
-			return nil, ErrCreativeExecutionPending
+		selectAccount := map[string]func(context.Context, CreativeRun) (*Selection, error){PlatformOpenAI: e.OpenAI, PlatformGrok: e.Grok, PlatformGemini: e.Gemini}[platform]
+		if selectAccount == nil {
+			continue
 		}
-		return nil, CreativeNonRetryableError("creative account %d was not admitted", selection.AccountID)
-	}
-	// 调度仍接收请求模型；执行只把已解析的分组模型交给账号规则，不能再次改写分组别名。
-	model := strings.TrimSpace(selection.ResolveModel(ctx, groupModel))
-	if model == "" {
-		if selection.Release != nil {
-			selection.Release()
+		selectionCtx := ctx
+		if group.ConfigureContext != nil {
+			selectionCtx = group.ConfigureContext(ctx, platform, run.Operation)
 		}
-		return nil, CreativeNonRetryableError("creative account %d has no upstream model for %s", selection.AccountID, run.Model)
-	}
-	if !CreativePlatformImageModel(platform, model) {
-		if selection.Release != nil {
-			selection.Release()
+		selection, selectErr := selectAccount(selectionCtx, run)
+		if selectErr != nil {
+			lastErr = selectErr
+			continue
 		}
-		return nil, CreativeNonRetryableError("creative mapped model %s is not an image model", model)
-	}
-	if !policy.allowsUpstream(model) {
-		if selection.Release != nil {
-			selection.Release()
+		if selection == nil {
+			continue
 		}
-		return nil, CreativeNonRetryableError("creative upstream model %s is restricted by group %d", model, run.GroupID)
+		if !selection.Acquired {
+			if selection.Waiting {
+				lastErr = ErrCreativeExecutionPending
+			}
+			continue
+		}
+		model := strings.TrimSpace(selection.ResolveModel(selectionCtx, groupModel))
+		if selection.Platform != platform || !CreativePlatformImageModel(selection.Platform, model) || !policy.allowsUpstream(model) {
+			if selection.Release != nil {
+				selection.Release()
+			}
+			lastErr = CreativeNonRetryableError("creative upstream model %s is unavailable for group %d", model, run.GroupID)
+			continue
+		}
+		return &CreativeExecution{AccountID: selection.AccountID, Provider: selection.Platform, UpstreamModel: model, ReleaseFunc: selection.Release, Target: NewExecutionTarget(selection, model, e.Timeout)}, nil
 	}
-	return &CreativeExecution{AccountID: selection.AccountID, UpstreamModel: model, ReleaseFunc: selection.Release, Target: NewExecutionTarget(selection, model, e.Timeout)}, nil
+	if lastErr != nil {
+		return nil, lastErr
+	}
+	return nil, CreativeNonRetryableError("no compatible creative account available for group %d model %s", run.GroupID, run.Model)
 }
 func (e *Executor) IsRetryable(err error) bool { return IsRetryableCreativeError(err) }
 

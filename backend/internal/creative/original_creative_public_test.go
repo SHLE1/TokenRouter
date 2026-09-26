@@ -67,6 +67,7 @@ func (r *creativeFakeRunRepo) CreateCreativeRun(ctx context.Context, params crea
 		GroupID:                    params.GroupID,
 		APIKeyID:                   params.APIKeyID,
 		Model:                      params.Model,
+		Provider:                   params.Provider,
 		RequestedModel:             params.RequestedModel,
 		Operation:                  params.Operation,
 		RequestedOutputCount:       params.RequestedOutputCount,
@@ -178,13 +179,14 @@ func (r *creativeFakeRunRepo) MarkCreativeRunRunning(ctx context.Context, runID 
 	return nil
 }
 
-func (r *creativeFakeRunRepo) SetCreativeRunAccountID(ctx context.Context, runID string, accountID int64, now time.Time) error {
+func (r *creativeFakeRunRepo) SetCreativeRunExecution(ctx context.Context, runID string, accountID int64, provider string, now time.Time) error {
 	run, ok := r.runs[runID]
 	if !ok {
 		return creative.ErrCreativeRunNotFound
 	}
 	if accountID > 0 {
 		run.AccountID = &accountID
+		run.Provider = provider
 		r.setAccountN++
 	}
 	return nil
@@ -592,7 +594,6 @@ func newCreativeTestGroup() *routing.Group {
 	return &routing.Group{
 		ID:                   12,
 		Name:                 "Gemini Image",
-		Platform:             capability.PlatformGemini,
 		Status:               billing.StatusActive,
 		AllowImageGeneration: true,
 		RateMultiplier:       1,
@@ -668,7 +669,7 @@ func validCreateParams() creative.CreateCreativeRunParamsPublic {
 func configureOpenAICreativeTestService(svc *creative.Public) {
 	group := newCreativeTestGroup()
 	group.Name = "OpenAI Image"
-	group.Platform = capability.PlatformOpenAI
+
 	testassert.MustType[*creativeFakeGroupRepo](testassert.MustType[creativeGroupReader](svc.GroupRepo).source).byID[group.ID] = group
 	testassert.MustType[*creativeFakeAccountRepo](testassert.MustType[creativeAccountReader](svc.AccountRepo).source).byGroup[group.ID] = []accountcore.Record{{
 		ID:          57,
@@ -687,7 +688,7 @@ func configureOpenAICreativeTestService(svc *creative.Public) {
 func configureGrok2CreativeTestService(svc *creative.Public) {
 	group := newCreativeTestGroup()
 	group.Name = "Grok Imagine 2"
-	group.Platform = capability.PlatformGrok
+
 	testassert.MustType[*creativeFakeGroupRepo](testassert.MustType[creativeGroupReader](svc.GroupRepo).source).byID[group.ID] = group
 	testassert.MustType[*creativeFakeAccountRepo](testassert.MustType[creativeAccountReader](svc.AccountRepo).source).byGroup[group.ID] = []accountcore.Record{{
 		ID:          58,
@@ -816,10 +817,11 @@ func TestValidateCreateParams(t *testing.T) {
 	t.Run("grok 平台不支持 inpaint", func(t *testing.T) {
 		svc := newCreativeTestService()
 		group := newCreativeTestGroup()
-		group.Platform = capability.PlatformGrok
+
 		testassert.MustType[*creativeFakeGroupRepo](testassert.MustType[creativeGroupReader](svc.GroupRepo).source).byID[12] = group
 		testassert.MustType[*creativeFakeAccountRepo](testassert.MustType[creativeAccountReader](svc.AccountRepo).source).byGroup[12] = []accountcore.Record{{
 			ID:          56,
+			Platform:    capability.PlatformGrok,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Credentials: map[string]any{"model_mapping": map[string]any{"grok-imagine": "grok-imagine"}},
@@ -834,7 +836,7 @@ func TestValidateCreateParams(t *testing.T) {
 	t.Run("grok edit 支持单图且最多三张源图", func(t *testing.T) {
 		svc := newCreativeTestService()
 		group := newCreativeTestGroup()
-		group.Platform = capability.PlatformGrok
+
 		testassert.MustType[*creativeFakeGroupRepo](testassert.MustType[creativeGroupReader](svc.GroupRepo).source).byID[12] = group
 		testassert.MustType[*creativeFakeAccountRepo](testassert.MustType[creativeAccountReader](svc.AccountRepo).source).byGroup[12] = []accountcore.Record{{
 			ID: 56, Platform: capability.PlatformGrok, Status: billing.StatusActive, Schedulable: true,
@@ -1178,6 +1180,9 @@ func TestCreativeGeminiNanoBananaCandidates(t *testing.T) {
 
 	account := &accountcore.Record{Platform: capability.PlatformGemini, Credentials: map[string]any{}}
 	models := creativeAccountModelsForTest(t, account)
+	require.NotContains(t, models, "nano-banana-pro")
+	account.Credentials["model_whitelist"] = []string{"nano-banana-pro", "nano-banana-2"}
+	models = creativeAccountModelsForTest(t, account)
 	require.Contains(t, models, "nano-banana-pro")
 	require.Contains(t, models, "nano-banana-2")
 }

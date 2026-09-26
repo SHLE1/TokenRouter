@@ -76,7 +76,7 @@ func newGenericExecutionAndSelectionFixture(
 	}
 	choices := selection.NewGeneric(selection.GenericDependencies{
 		Reads: selection.Reads{
-			Accounts: accountRepo,
+			Accounts: withSelectionGroupFixture(accountRepo),
 			Groups:   groupRepo,
 			Snapshot: provideSelectionSnapshots(schedulerSnapshot),
 		},

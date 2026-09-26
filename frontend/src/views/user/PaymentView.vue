@@ -261,7 +261,7 @@
                 <div class="space-y-2">
                   <div v-for="sub in activeSubscriptions" :key="sub.id"
                     class="flex items-center gap-3 rounded-surface border border-gray-100 bg-white px-3 py-2 dark:border-dark-700 dark:bg-dark-800">
-                    <div :class="['h-6 w-1 shrink-0 rounded-full', platformAccentBarClass(subscriptionPlatform(sub))]" />
+                    <div :class="['h-6 w-1 shrink-0 rounded-full', platformAccentBarClass('')]" />
                     <div class="min-w-0 flex-1">
                       <div class="flex items-center gap-1.5">
                         <span class="truncate text-xs font-semibold text-gray-900 dark:text-white">{{ subscriptionName(sub) }}</span>
@@ -871,7 +871,7 @@ const paymentButtonClass = computed(() => {
 })
 
 // Subscription confirm: platform accent colors (clean card, no gradient)
-const planTextClass = computed(() => platformTextClass(selectedPlan.value?.group_platform || ''))
+const planTextClass = computed(() => platformTextClass(''))
 
 // Renewal modal state
 const showRenewalModal = ref(false)
@@ -957,9 +957,6 @@ function resolveSubscriptionPlan(sub: UserSubscription): UserSubscription['plan'
   return sub.plan ?? findCheckoutPlan(sub.plan_id)
 }
 
-function subscriptionPlatform(sub: UserSubscription): string {
-  return resolveSubscriptionPlan(sub)?.group_platform || ''
-}
 
 function subscriptionName(sub: UserSubscription): string {
   return resolveSubscriptionPlan(sub)?.name || `Plan #${sub.plan_id}`

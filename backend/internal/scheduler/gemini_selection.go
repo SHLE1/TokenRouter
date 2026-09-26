@@ -23,7 +23,7 @@ type GeminiSelectionPorts struct {
 	Hydrate     func(context.Context, *FlowAccount) (*FlowAccount, error)
 }
 
-// GeminiSelector 保留原混合池与强制平台回退，不取得请求槽或创建另一套故障切换循环。
+// GeminiSelector 只在已准入组内选择账号，强制平台只收窄候选，不取得请求槽。
 type GeminiSelector struct {
 	ports GeminiSelectionPorts
 	cache StickyCache
@@ -52,12 +52,6 @@ func (s *GeminiSelector) SelectOnly(ctx context.Context, input SelectionInput) (
 	values, err := s.ports.List(ctx, input.GroupID, platform, forced)
 	if err != nil {
 		return nil, fmt.Errorf("query accounts failed: %w", err)
-	}
-	if len(values) == 0 && input.GroupID != nil && forced {
-		values, err = s.ports.List(ctx, nil, platform, forced)
-		if err != nil {
-			return nil, fmt.Errorf("query accounts failed: %w", err)
-		}
 	}
 	eligible := s.ports.Eligible(ctx, values, input.RequestedModel, input.ExcludedIDs, platform, mixed)
 	var selected *FlowAccount
@@ -95,6 +89,7 @@ func BestGeminiCandidate(values []*FlowAccount) *FlowAccount {
 	}
 	return selected
 }
+
 func BetterGeminiCandidate(candidate, current *FlowAccount) bool {
 	if candidate.Priority < current.Priority {
 		return true

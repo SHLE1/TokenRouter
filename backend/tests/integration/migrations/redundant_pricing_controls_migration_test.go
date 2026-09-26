@@ -12,10 +12,9 @@ import (
 
 // 迁移只清除退役配置，分组协议、其他功能和价格规则保持原值；重复执行安全。
 func TestMigration275RemovesRedundantPricingControls(t *testing.T) {
-	tx := testTx(t)
+	tx := historicalTx(t, "275_")
 	ctx := context.Background()
 	_, err := tx.ExecContext(ctx, `
-ALTER TABLE pricing_configs ADD COLUMN apply_pricing_to_account_stats BOOLEAN NOT NULL DEFAULT FALSE;
 INSERT INTO pricing_configs(id,name,apply_pricing_to_account_stats) VALUES (97501,'migration275',true);
 INSERT INTO groups(id,name,platform,responses_image_policy,routing_policy)
 VALUES (97501,'migration275','openai','enabled','{"enabled":true,"model_mapping":{"openai":{"alias":"gpt-test"}},"features_config":{"codex_image_generation_bridge":{"openai":false},"web_search_emulation":{"anthropic":true}}}');

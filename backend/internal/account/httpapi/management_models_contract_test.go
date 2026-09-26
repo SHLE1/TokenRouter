@@ -39,7 +39,6 @@ func (s *availableModelsAdminService) GetAccount(_ context.Context, id int64) (*
 }
 
 func setupAvailableModelsRouter(adminSvc AccountManagement) *gin.Engine {
-
 	router := gin.New()
 	handler := NewManagementHandler(adminSvc, ManagementOptions{Catalog: routing.NewAdminCatalog(routingprovider.AdminCatalogOptions()), ModelDefaults: accountprovider.ModelDefaults()})
 	router.GET("/api/v1/admin/accounts/:id/models", handler.GetAvailableModels)
@@ -63,7 +62,6 @@ func (u *syncUpstreamHTTPUpstream) DoWithTLS(req *http.Request, proxyURL string,
 }
 
 func setupSyncUpstreamModelsRouter(adminSvc AccountManagement, upstream accountprovider.QoderTransport) *gin.Engine {
-
 	router := gin.New()
 	modelPolicy := egress.OperatorURLPolicy{}
 	catalogue := &accountprovider.ModelCatalogue{Transport: upstream, Options: accountprovider.ModelCatalogueOptions{ValidateURL: modelPolicy.Validate, OperatorValidator: modelPolicy.Validate, BodyLimit: 8 * 1024 * 1024, CodexModelsURL: accountprovider.DefaultCodexModelsURL}}
@@ -280,7 +278,12 @@ func TestAccountHandlerGetAvailableModels_OpenAIAPIKeyDefaultsToConcreteGPT56Sol
 	}
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
 	require.NotEmpty(t, resp.Data)
-	require.Equal(t, "gpt-5.6-sol", resp.Data[0].ID)
+	ids := make([]string, 0, len(resp.Data))
+	for _, model := range resp.Data {
+		ids = append(ids, model.ID)
+	}
+	require.Contains(t, ids, "gpt-5.6-sol")
+	require.NotContains(t, ids, "gpt-5.6")
 }
 
 func TestAccountHandlerGetAvailableModels_OpenAISparkShadowReturnsMappingModels(t *testing.T) {
@@ -466,8 +469,8 @@ func TestAccountHandlerGetAvailableModels_QoderUsesConfiguredModels(t *testing.T
 	for _, model := range resp.Data {
 		ids = append(ids, model.ID)
 	}
-	require.ElementsMatch(t, []string{"custom-qoder-model"}, ids,
-		"available models are driven by Qoder model_mapping keys when mapping is configured")
+	require.ElementsMatch(t, []string{"custom-qoder-model", "qmodel"}, ids,
+		"显式白名单目标和可请求别名共同出现在模型目录")
 }
 
 func TestAccountHandlerSyncUpstreamModels_ConfigErrorReturnsBadRequest(t *testing.T) {

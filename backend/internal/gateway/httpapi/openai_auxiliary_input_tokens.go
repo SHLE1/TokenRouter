@@ -1,12 +1,12 @@
 package httpapi
 
 import (
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
-
 	"context"
 	"fmt"
 	"net/http"
 	"strings"
+
+	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/logredact"
@@ -34,6 +34,12 @@ func (s *OpenAIAuxiliary) ForwardResponsesInputTokens(
 	if account == nil {
 		writeOpenAIResponsesInputTokensError(c, http.StatusServiceUnavailable, "api_error", "No available OpenAI accounts")
 		return fmt.Errorf("responses input_tokens: missing account")
+	}
+
+	// 此辅助协议只覆盖已实现的 OpenAI 兼容计数，不能把其它平台凭据送到 OpenAI 端点。
+	if account.Record.Platform != "openai" && !account.View().IsGrok() && !account.View().IsCNProvider() {
+		writeOpenAIResponsesInputTokensError(c, http.StatusNotFound, "not_found_error", "Responses input token counting is not supported for this account")
+		return nil
 	}
 
 	prepared, err := gatewayprovider.PrepareNativeInputTokens(body, account)

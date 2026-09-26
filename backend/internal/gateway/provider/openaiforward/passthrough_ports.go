@@ -23,7 +23,7 @@ type PassthroughPorts interface {
 	UpstreamContext(ctx context.Context) (context.Context, context.CancelFunc)
 	Profile() MessagesProfile
 	CompactPath() bool
-	CompactModel(model string) string
+	ForwardModel(model string, compact bool) string
 	InstructionsRejection(model string, body []byte) string
 	PolicyDenied()
 	LogInstructionsRejected(ctx context.Context, model, reason string, body []byte)

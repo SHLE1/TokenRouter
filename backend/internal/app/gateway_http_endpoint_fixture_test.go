@@ -31,6 +31,8 @@ type gatewayHTTPFixtureInput struct {
 	Credentials  *gatewayhttp.RequestCredentialExecutor
 	Availability *gatewayModelAvailability
 	Choices      *selection.Compatible
+	Native       *gatewayhttp.UnifiedTextExecutor
+	Generic      *selection.Generic
 	Source       *gatewayExecutionFixture
 	Funding      *admission.FundingAdmission
 	Keys         *apikey.APIKeyService
@@ -132,14 +134,18 @@ func newGatewayHTTPEndpoints(input gatewayHTTPFixtureInput) *gatewayHTTPEndpoint
 			runtime.Ops = fixtureCyberOps{input.Ops, input.Queue}
 		}
 		cyber := gatewayhttp.NewBoundCyberHandler(blocks, moderator, runtime)
-		bindings := provideOpenAIAttemptBindings(responses, input.Keys, resources(), cyber, input.Rules, input.Moderator, GatewayCompletionRecorders{OpenAI: recorder}, input.Worker, input.Availability, input.Choices)
+		unified := input.Native
+		if unified == nil {
+			unified = &gatewayhttp.UnifiedTextExecutor{OpenAI: responses}
+		}
+		bindings := provideOpenAIAttemptBindings(responses, input.Keys, resources(), cyber, input.Rules, input.Moderator, GatewayCompletionRecorders{OpenAI: recorder}, input.Worker, input.Availability, input.Choices, unified, input.Generic, input.Funding, nil, planner, cache)
 		return bindings, cyber, blocks
 	}
 	text := func() *gatewayhttp.OpenAITextHandler {
 		common, cyber, _ := base()
 		options := openAITextOptions(input.Config)
 		options.MaxSwitches = input.MaxSwitches
-		bindings := openAITextBindings(responses, input.Funding, input.Keys, resources(), cyber, input.Rules, input.Moderator, planner, cache)
+		bindings := openAITextBindings(responses, input.Funding, input.Keys, resources(), cyber, input.Rules, input.Moderator, planner, cache, nil)
 		executor := textflow.NewResponsesExecutor(provideOpenAITextAttemptRuntime(common), textflow.ResponseOptions{MaxSwitches: input.MaxSwitches}, textflow.ResponseOptions{MaxSwitches: input.MaxSwitches, FirstOutputBudget: true})
 		return gatewayhttp.NewBoundOpenAITextHandler(options, bindings, input.Prompts, executor)
 	}

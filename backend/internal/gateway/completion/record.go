@@ -118,13 +118,6 @@ func (s *Recorder) RecordAnthropic(ctx context.Context, input *Input, opts *Pric
 		return nil
 	}
 
-	// 配额平台由 handler 在请求 ctx 内经 QuotaPlatform() 算定并通过 input 传入；
-	// 后扣运行在 worker 池的 background ctx 上，无法再从 ctx 取 ForcePlatform。
-	// 缺省（未设置）时回退到分组平台，保持对其它调用方的兼容。
-	quotaPlatform := input.QuotaPlatform
-	if quotaPlatform == "" {
-		quotaPlatform = platformFromKey(apiKey)
-	}
 	subscriptionMultiplier, balanceMultiplier, subscriptionMultiplierScale := RatesForMode(apiKey, cost, subscriptionMultiplier, balanceMultiplier, rateNow)
 	requestID := usageLog.RequestID
 	_, billingErr := s.Apply(ctx, requestID, usageLog, &usageBillingParams{
@@ -139,7 +132,6 @@ func (s *Recorder) RecordAnthropic(ctx context.Context, input *Input, opts *Pric
 		SubscriptionRateMultiplierScale: subscriptionMultiplierScale,
 		BalanceRateMultiplier:           balanceMultiplier,
 		QuotaUpdates:                    input.QuotaUpdates,
-		Platform:                        quotaPlatform,
 	})
 
 	if billingErr != nil {
@@ -177,6 +169,7 @@ func (s *Recorder) BuildRecordUsageLog(
 		TeamID:            apiKey.TeamID,
 		APIKeyID:          apiKey.ID,
 		AccountID:         account.ID,
+		Platform:          account.Platform,
 		RequestID:         requestID,
 		UpstreamRequestID: result.UpstreamRequestID,
 		Model:             result.Model,
@@ -407,6 +400,7 @@ func (s *Recorder) RecordOpenAI(ctx context.Context, input *Input) error {
 		TeamID:            apiKey.TeamID,
 		APIKeyID:          apiKey.ID,
 		AccountID:         account.ID,
+		Platform:          account.Platform,
 		RequestID:         requestID,
 		UpstreamRequestID: result.UpstreamRequestID,
 		Model:             result.Model,
@@ -520,13 +514,6 @@ func (s *Recorder) RecordOpenAI(ctx context.Context, input *Input) error {
 		return nil
 	}
 
-	// 后扣运行在 worker 池的 background ctx 上，无法再从 ctx 读取 ForcePlatform；
-	// 未设置时回退到分组平台，兼容测试和内部直接调用方。
-	quotaPlatform := input.QuotaPlatform
-	if quotaPlatform == "" {
-		quotaPlatform = platformFromKey(apiKey)
-	}
-
 	subscriptionMultiplier, balanceMultiplier, subscriptionMultiplierScale := RatesForMode(apiKey, cost, subscriptionMultiplier, balanceMultiplier, rateNow)
 	billingErr := func() error {
 		_, err := s.Apply(ctx, requestID, usageLog, &usageBillingParams{
@@ -541,7 +528,6 @@ func (s *Recorder) RecordOpenAI(ctx context.Context, input *Input) error {
 			SubscriptionRateMultiplierScale: subscriptionMultiplierScale,
 			BalanceRateMultiplier:           balanceMultiplier,
 			QuotaUpdates:                    input.QuotaUpdates,
-			Platform:                        quotaPlatform,
 			BillingBaseAmountUSD:            billingBaseAmountUSD,
 		})
 		return err

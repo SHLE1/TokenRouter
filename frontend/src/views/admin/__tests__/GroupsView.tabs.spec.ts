@@ -10,7 +10,7 @@ import PricingEntryCard from '@/components/admin/pricing/PricingEntryCard.vue'
 import { pricingEntryFromAPI } from '@/components/admin/pricing/pricingForm'
 import { defaultRoutingPolicy } from '@/components/admin/group/routingPolicy'
 import type { ModelPricingEntry } from '@/api/admin/pricing'
-import type { AdminGroup, GroupPlatform } from '@/types'
+import type { AdminGroup } from '@/types'
 
 const { groups, showError } = vi.hoisted(() => ({
   groups: {
@@ -38,20 +38,19 @@ const Page = defineComponent({ template: '<div><slot name="filters" /><slot name
 const Layout = defineComponent({ template: '<div><slot /></div>' })
 const Table = defineComponent({ props: ['data'], template: '<div><div v-for="row in data" :key="row.id"><slot name="cell-actions" :row="row" /></div></div>' })
 const wrappers: VueWrapper[] = []
-const platforms: GroupPlatform[] = ['anthropic', 'openai', 'gemini', 'antigravity', 'grok', 'qoder', 'kimi', 'zhipu', 'deepseek']
 
-function group(platform: GroupPlatform): AdminGroup {
+function group(): AdminGroup {
   // 只提供界面依赖的存量字段，其他配置由编辑初始化逻辑使用默认值。
   return {
-    id: 42, name: 'Existing', platform, rate_multiplier: 1, status: 'active',
+    id: 42, name: 'Existing', rate_multiplier: 1, status: 'active',
     scheduler_type: 'basic', is_exclusive: false, model_routing: null,
     supported_model_scopes: ['claude', 'gemini_text', 'gemini_image'],
 
   } as AdminGroup
 }
 
-async function open(mode: 'create' | 'edit', platform: GroupPlatform, overrides: Partial<AdminGroup> = {}) {
-  groups.list.mockResolvedValue({ items: [{ ...group(platform), ...overrides }], total: 1, pages: 1 })
+async function open(mode: 'create' | 'edit', _accountType: string, overrides: Partial<AdminGroup> = {}) {
+  groups.list.mockResolvedValue({ items: [{ ...group(), ...overrides }], total: 1, pages: 1 })
   const wrapper = mount(GroupsView, {
     attachTo: document.body,
     global: { plugins: [createPinia()], stubs: {
@@ -70,9 +69,6 @@ async function open(mode: 'create' | 'edit', platform: GroupPlatform, overrides:
   await button.trigger('click')
   await flushPromises()
   if (mode === 'create') {
-    wrapper.findAllComponents(Select).find(select => select.attributes('data-tour') === 'group-form-platform')!
-      .vm.$emit('update:modelValue', platform)
-    await flushPromises()
     await wrapper.get('[data-group-field="name"] input').setValue('New group')
   }
   return wrapper
@@ -102,7 +98,7 @@ afterEach(() => {
 it('编辑历史停用策略后保存即应用，打开表单时不提前更新服务端', async () => {
   const policy = {
     ...defaultRoutingPolicy(), enabled: false,
-    model_mapping: { openai: { alias: 'gpt-test' } }, features: '历史文字',
+    model_mapping: { alias: 'gpt-test' }, features: '历史文字',
   }
   const wrapper = await open('edit', 'openai', { routing_policy: policy })
   await tab(wrapper, 'routing')
@@ -118,21 +114,20 @@ it('编辑历史停用策略后保存即应用，打开表单时不提前更新�
 })
 
 describe.each(['create', 'edit'] as const)('GroupsView %s tabs', mode => {
-  it.each(platforms)('%s 显示正确页签并将通用价格和协议字段放入对应页', async platform => {
-    const wrapper = await open(mode, platform)
+  it('通用分组显示功能、价格、模型和协议设置', async () => {
+    const wrapper = await open(mode, 'mixed')
     const keys = wrapper.findAll('[data-group-tab-button]').map(button => button.attributes('data-group-tab-button'))
-    expect(keys).toEqual(['anthropic', 'openai', 'gemini', 'antigravity'].includes(platform)
-      ? ['general', 'platform', 'routing', 'pricing', 'protocol'] : ['general', 'routing', 'pricing', 'protocol'])
+    expect(keys).toEqual(['general', 'features', 'routing', 'pricing', 'protocol'])
     expect(wrapper.get('[data-group-tab="general"]').isVisible()).toBe(true)
     expect(wrapper.get('[data-tour="group-form-multiplier"]').element.closest('[data-group-tab]')?.getAttribute('data-group-tab')).toBe('pricing')
     expect(wrapper.getComponent(GroupClientProtocolSelector).element.closest('[data-group-tab]')?.getAttribute('data-group-tab')).toBe('protocol')
-    expect(wrapper.find('[data-group-field="reasoning"]').exists()).toBe(['openai', 'anthropic'].includes(platform))
+    expect(wrapper.find('[data-group-field="reasoning"]').exists()).toBe(true)
     expect(wrapper.find('[data-group-field="image-capabilities"]').exists()).toBe(false)
   })
 
   it('完整价卡在创建和编辑中开放区间及倍率，提交后可重新回填', async () => {
     const pricing: ModelPricingEntry = {
-      platform: 'openai', models: ['gpt-test'], billing_mode: 'token', price_multiplier: 1.2,
+      models: ['gpt-test'], billing_mode: 'token', price_multiplier: 1.2,
       fast_multiplier: 1.5, flex_multiplier: 0.4, max_reasoning_effort_multiplier: 2,
       input_price: 0, output_price: 0.000003, cache_write_price: null, cache_write_1h_price: 0.000005,
       cache_read_price: null, image_input_price: null, image_output_price: null, per_request_price: null,
@@ -182,7 +177,7 @@ describe.each(['create', 'edit'] as const)('GroupsView %s tabs', mode => {
     await tab(wrapper, 'pricing')
     await wrapper.get('[data-tour="group-form-multiplier"]').setValue('1.5')
     await wrapper.get(`[data-testid="${mode}-free-openai-fast"]`).trigger('click')
-    await tab(wrapper, 'platform')
+    await tab(wrapper, 'features')
     const force = wrapper.get(`[data-testid="${mode}-openai-fast"]`).getComponent(Select)
     expect(force.props('modelValue')).toBe('follow_request')
     expect(force.props('options').map((option: { value: string }) => option.value)).toEqual(['follow_request', 'force_priority', 'force_ultrafast', 'force_off'])
@@ -218,12 +213,12 @@ describe.each(['create', 'edit'] as const)('GroupsView %s tabs', mode => {
     await flushPromises()
     expect(wrapper.get('[data-group-tab="pricing"]').isVisible()).toBe(true)
     await wrapper.get('[data-tour="group-form-multiplier"]').setValue('1')
-    await tab(wrapper, 'platform')
+    await tab(wrapper, 'features')
     await wrapper.get('[data-group-field="reasoning"] button').trigger('click')
     await tab(wrapper, 'general')
     await wrapper.get(`#${mode}-group-form`).trigger('submit')
     await flushPromises()
-    expect(wrapper.get('[data-group-tab="platform"]').isVisible()).toBe(true)
+    expect(wrapper.get('[data-group-tab="features"]').isVisible()).toBe(true)
     expect(wrapper.find('[data-group-field="reasoning"] [role="alert"]').exists()).toBe(true)
     expect(groups[mode === 'create' ? 'create' : 'update']).not.toHaveBeenCalled()
   })
@@ -313,7 +308,7 @@ describe.each(['create', 'edit'] as const)('GroupsView %s tabs', mode => {
 
   it('模型系列与模型列表开关保留展示选择结果', async () => {
     const wrapper = await open(mode, 'antigravity')
-    await tab(wrapper, 'platform')
+    await tab(wrapper, 'features')
     for (const scope of ['claude', 'gemini_text']) {
       await wrapper.get(`[data-group-setting="${scope}"]`).trigger('click')
     }
@@ -361,7 +356,7 @@ it('首次加载目录后初始化创建默认值，清空后提交不恢复默�
   try {
     const wrapper = await open('create', 'anthropic')
     const selector = wrapper.getComponent(GroupClientProtocolSelector)
-    const defaults = fixture.groups.find(group => group.platform === 'anthropic')!
+    const defaults = fixture.groups[0]
     expect(selector.props('modelValue')).toEqual(defaults.defaults)
     expect(selector.props('fallbacks')).toEqual(defaults.default_fallbacks)
     selector.vm.$emit('update:modelValue', [])
@@ -396,7 +391,7 @@ it.each(['create', 'edit'] as const)('目录失败时阻止 %s 提交，重试�
     await flushPromises()
     const selector = wrapper.getComponent(GroupClientProtocolSelector)
     expect(selector.find('[role="alert"]').exists()).toBe(false)
-    expect(selector.props('modelValue')).toEqual(mode === 'create' ? ['anthropic_messages'] : [])
+    expect(selector.props('modelValue')).toEqual(mode === 'create' ? fixture.groups[0].defaults : [])
     await wrapper.get(`#${mode}-group-form`).trigger('submit')
     await flushPromises()
     expect(groups[mode === 'create' ? 'create' : 'update']).toHaveBeenCalledTimes(1)

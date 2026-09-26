@@ -8,16 +8,12 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 )
 
-// DefaultPlatformQuotaSetting 单 platform 三档限额（nil = 沿用上层；0 = 显式禁用；>0 = 上限）
-type DefaultPlatformQuotaSetting = billing.DefaultPlatformQuotaSetting
-
 type ProviderDefaultGrantSettings struct {
 	Balance          float64
 	Concurrency      int
 	Subscriptions    []DefaultSubscriptionSetting
 	GrantOnSignup    bool
 	GrantOnFirstBind bool
-	PlatformQuotas   map[string]*DefaultPlatformQuotaSetting // key = platform name
 }
 
 type AuthSourceDefaultSettings struct {
@@ -47,14 +43,14 @@ type DingTalkRegistrationPolicy struct {
 	Enabled, BypassRegistration bool
 	CorpRestrictionPolicy       string
 }
-type RedeemCode = billing.RedeemCode
-type RedeemCodeRepository = billing.RedeemCodeRepository
-type AssignSubscriptionInput = billing.AssignSubscriptionInput
-type UserSubscription = billing.UserSubscription
-type UserPlatformQuotaRecord = billing.UserPlatformQuotaRecord
-type UserPlatformQuotaRepository = billing.UserPlatformQuotaRepository
-type APIKeyAuthCacheInvalidator = UserAuthInvalidator
-type BillingCache = UserBalanceCache
+type (
+	RedeemCode                 = billing.RedeemCode
+	RedeemCodeRepository       = billing.RedeemCodeRepository
+	AssignSubscriptionInput    = billing.AssignSubscriptionInput
+	UserSubscription           = billing.UserSubscription
+	APIKeyAuthCacheInvalidator = UserAuthInvalidator
+	BillingCache               = UserBalanceCache
+)
 
 const (
 	RedeemTypeInvitation = billing.RedeemTypeInvitation
@@ -83,11 +79,9 @@ type AuthIdentity struct {
 
 // AuthSettings 按动作取得动态策略，不能缓存为启动时副本。
 type AuthSettings interface {
-	GetAuthSourcePlatformQuotas(ctx context.Context, source string) map[string]*DefaultPlatformQuotaSetting
 	GetCaptchaProviderConfig(ctx context.Context) (CaptchaProviderConfig, error)
 	GetDefaultBalance(ctx context.Context) float64
 	GetDefaultConcurrency(ctx context.Context) int
-	GetDefaultPlatformQuotas(ctx context.Context) (map[string]*DefaultPlatformQuotaSetting, error)
 	GetDefaultSubscriptions(ctx context.Context) []DefaultSubscriptionSetting
 	GetDefaultUserAPIKeyLimit(ctx context.Context) int
 	GetDefaultUserRPMLimit(ctx context.Context) int
@@ -143,7 +137,6 @@ type AuthDependencies struct {
 	DefaultSubscriptions    DefaultSubscriptionAssigner
 	Invalidator             UserAuthInvalidator
 	BalanceCache            UserBalanceCache
-	Quotas                  UserPlatformQuotaRepository
 	Observer                Observer
 	DomainRegistration      RegistrationEmailDomainRepository
 	NormalizedEmailConflict AuthNormalizedEmailBindingConflictChecker
@@ -179,21 +172,4 @@ type EmailAliasLookupRepository interface {
 // 该能力由真实数据库仓储提供，避免用户把自己的 alias 变体误判为冲突。
 type EmailAliasOwnerLookupRepository interface {
 	EmailAliasOwnerID(ctx context.Context, email string, currentUserID int64) (int64, bool, error)
-}
-
-// MergePlatformQuotaDefaults 按字段级 patch：src 中非 nil 字段覆盖 dst。
-// 区分 nil（"未配置"，保留 dst）vs &0.0（"显式禁用"，覆盖 dst 为 0）
-func MergePlatformQuotaDefaults(dst, src *DefaultPlatformQuotaSetting) {
-	if src == nil || dst == nil {
-		return
-	}
-	if src.DailyLimitUSD != nil {
-		dst.DailyLimitUSD = src.DailyLimitUSD
-	}
-	if src.WeeklyLimitUSD != nil {
-		dst.WeeklyLimitUSD = src.WeeklyLimitUSD
-	}
-	if src.MonthlyLimitUSD != nil {
-		dst.MonthlyLimitUSD = src.MonthlyLimitUSD
-	}
 }

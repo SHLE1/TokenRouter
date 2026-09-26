@@ -135,10 +135,6 @@ func (h *AuxiliaryHandler) AlphaSearch(c *gin.Context) {
 		h.ports.Error(c, 401, "authentication_error", "Invalid API key")
 		return
 	}
-	if access.Platform != "openai" {
-		h.ports.Error(c, 404, "not_found_error", "Codex alpha search is only available for OpenAI groups")
-		return
-	}
 	subject, ok := h.ports.Subject(c)
 	if !ok {
 		h.ports.Error(c, 500, "api_error", "User context not found")
@@ -197,7 +193,7 @@ func (h *AuxiliaryHandler) GrokVoice(c *gin.Context, endpoint string) {
 	defer done()
 
 	access, ok := h.ports.Access(c)
-	if !ok || !access.HasGroup || access.Platform != "grok" {
+	if !ok || !access.HasGroup {
 		h.ports.Error(c, http.StatusNotFound, "not_found_error", "Voice API is not supported for this platform")
 		return
 	}
@@ -252,7 +248,7 @@ func (h *AuxiliaryHandler) GrokRealtime(c *gin.Context) {
 		return
 	}
 	access, ok := h.ports.Access(c)
-	if !ok || !access.HasGroup || access.Platform != "grok" {
+	if !ok || !access.HasGroup {
 		h.ports.Error(c, 404, "not_found_error", "Realtime API is not supported for this platform")
 		return
 	}

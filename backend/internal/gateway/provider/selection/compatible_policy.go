@@ -41,12 +41,10 @@ func (s *Compatible) UpstreamRoutingModelRestricted(ctx context.Context, groupID
 	if s.groupPolicies == nil {
 		return false
 	}
-	upstreamModel := gatewayprovider.ExecutionModelPolicy(account).OpenAIUpstream(
-
-		routingModel,
-		requireCompact,
-		requeststate.OpenAIHTTPPassthroughRoutingFromContext(ctx),
-	)
+	upstreamModel := gatewayprovider.ExecutionModelPolicy(account).UpstreamModel(ctx, routingModel)
+	if requireCompact {
+		upstreamModel = gatewayprovider.ExecutionModelPolicy(account).OpenAIUpstream(routingModel, true, requeststate.OpenAIHTTPPassthroughRoutingFromContext(ctx))
+	}
 	if upstreamModel == "" {
 		return false
 	}

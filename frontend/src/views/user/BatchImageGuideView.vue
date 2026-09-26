@@ -941,7 +941,7 @@ let activePromptPopoverTarget: HTMLElement | null = null
 const geminiApiKeys = computed(() =>
   apiKeys.value.filter((key) =>
     key.status === 'active' &&
-    key.group?.platform === 'gemini' &&
+
     key.group?.allowed_protocols?.includes('image_batches') === true,
   ),
 )

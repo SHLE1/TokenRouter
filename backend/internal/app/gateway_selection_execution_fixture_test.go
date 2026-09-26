@@ -70,7 +70,7 @@ func newOpenAIExecutionAndSelectionFixture(
 		quota = settingService.Quota
 	}
 	choices := selection.NewCompatible(selection.CompatibleDependencies{
-		Reads: selection.Reads{Accounts: accountRepo, Snapshot: provideSelectionSnapshots(schedulerSnapshot)},
+		Reads: selection.Reads{Accounts: withSelectionGroupFixture(accountRepo), Snapshot: provideSelectionSnapshots(schedulerSnapshot)},
 		Shared: selection.Shared{
 			Cache: cache,
 

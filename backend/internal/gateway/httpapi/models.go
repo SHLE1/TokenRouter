@@ -84,7 +84,6 @@ func (h *ModelsHandler) Models(c *gin.Context) {
 
 	if apiKey != nil && apiKey.Group != nil {
 		groupID = &apiKey.Group.ID
-		platform = apiKey.Group.Platform
 	}
 	if forcedPlatform, ok := h.backend.ForcedPlatform(c); ok && strings.TrimSpace(forcedPlatform) != "" {
 		platform = forcedPlatform
@@ -104,31 +103,12 @@ func (h *ModelsHandler) Models(c *gin.Context) {
 		availableModels = apikey.AppendAPIKeyModelAliases(availableModels, apiKey.ModelMapping)
 	}
 
-	if len(availableModels) > 0 {
-		if resolution.HadExplicitAccountModels {
-			if platform == capability.PlatformGrok {
-				// Grok Build 需要 reasoning 元数据，同时保留显式列表的旧兼容字段。
-				h.WriteGrokModelsList(c, availableModels)
-			} else {
-				// 其它平台的账号显式列表继续使用历史 Claude 兼容字段结构。
-				h.WriteModelsList(c, availableModels)
-			}
-		} else {
-			h.WriteDefaultModelsList(c, platform, availableModels)
-		}
+	// 普通模型目录统一使用 OpenAI 列表外形；品牌是逐模型元数据。
+	if platform == "" {
+		h.WriteUnifiedModelsList(c, availableModels)
 		return
 	}
-	if resolution.Restricted || groupID != nil {
-		h.WriteModelsList(c, nil)
-		return
-	}
-
-	// 未绑定分组时保留旧版默认模型，并按默认可请求集合追加精确别名。
-	fallbackModels := h.DefaultModelIDsForPlatform(platform)
-	if apiKey != nil {
-		fallbackModels = apikey.AppendAPIKeyModelAliases(fallbackModels, apiKey.ModelMapping)
-	}
-	h.WriteDefaultModelsList(c, platform, fallbackModels)
+	h.WriteDefaultModelsList(c, platform, availableModels)
 }
 
 func (h *ModelsHandler) AntigravityModels(c *gin.Context) {
@@ -185,11 +165,11 @@ func (h *ModelsHandler) CompositeRequestableModels(c *gin.Context, apiKey *apike
 	seen := make(map[string]struct{})
 	for _, binding := range apiKey.CompositeGroups {
 		group := binding.Group
-		if !CompositeGroupAvailableToUser(apiKey, preferredSubscription, group) || (requiredPlatform != "" && group.Platform != requiredPlatform) {
+		if !CompositeGroupAvailableToUser(apiKey, preferredSubscription, group) {
 			continue
 		}
 		groupID := group.ID
-		resolution := h.backend.Resolve(ctx, &groupID, group.Platform)
+		resolution := h.backend.Resolve(ctx, &groupID, requiredPlatform)
 		available := routing.RequestableModelIDs(resolution.Models)
 		if customListEnabled(group) {
 			available = FilterModelsByCustomList(available, nil, group.ModelsListConfig.Models)
@@ -247,8 +227,8 @@ func (h *ModelsHandler) WriteModelsList(c *gin.Context, modelIDs []string) {
 
 func (h *ModelsHandler) WriteCustomModelsList(c *gin.Context, platform string, modelIDs []string) {
 	switch platform {
-	case capability.PlatformOpenAI:
-		h.WriteOpenAIModelsList(c, modelIDs)
+	case "", capability.PlatformOpenAI:
+		h.WriteUnifiedModelsList(c, modelIDs)
 	case capability.PlatformGrok:
 		h.WriteGrokModelsList(c, modelIDs)
 	default:

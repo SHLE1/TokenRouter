@@ -17,10 +17,12 @@ func (p keyGroups) GetByID(ctx context.Context, id int64) (*routing.Group, error
 	v, e := p.Repository.GetByID(ctx, id)
 	return apikey.GroupFromRouting(v), e
 }
+
 func (p keyGroups) GetByIDLite(ctx context.Context, id int64) (*routing.Group, error) {
 	v, e := p.Repository.GetByIDLite(ctx, id)
 	return apikey.GroupFromRouting(v), e
 }
+
 func (p keyGroups) ListActive(ctx context.Context) ([]routing.Group, error) {
 	v, e := p.Repository.ListActive(ctx)
 	if v == nil {
@@ -32,10 +34,7 @@ func (p keyGroups) ListActive(ctx context.Context) ([]routing.Group, error) {
 	}
 	return out, e
 }
-func (p keyGroups) FindDefault(ctx context.Context, platform string) (*routing.Group, error) {
-	v, e := routing.FindPlatformDefaultGroup(ctx, p.Repository, platform)
-	return apikey.GroupFromRouting(v), e
-}
+
 func keyGroupFastPolicy(raw string, force bool) string {
 	return (&routing.Group{OpenAIFastPolicy: raw, ForceOpenAIFast: force}).EffectiveOpenAIFastPolicy()
 }
@@ -47,10 +46,12 @@ func (p identityAdminGroups) GetByID(ctx context.Context, id int64) (*identity.A
 	v, e := p.Repository.GetByID(ctx, id)
 	return identityAdminGroup(v), e
 }
+
 func (p identityAdminGroups) GetByIDLite(ctx context.Context, id int64) (*identity.AdminGroup, error) {
 	v, e := p.Repository.GetByIDLite(ctx, id)
 	return identityAdminGroup(v), e
 }
+
 func identityAdminGroup(v *routing.Group) *identity.AdminGroup {
 	if v == nil {
 		return nil

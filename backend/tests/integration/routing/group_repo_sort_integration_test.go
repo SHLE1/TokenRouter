@@ -16,13 +16,15 @@ import (
 // 且排序基于 total 账号数而非 active 账号数。
 func (s *GroupRepoSuite) TestListWithAccountCountSort_AttachesActiveCount() {
 	// 分组 A：total=2，active=1（包含 1 个 disabled 账号）。
-	gA := &routing.Group{Name: "sort-count-a", Platform: capability.PlatformAnthropic, RateMultiplier: 1, Status: billing.StatusActive,
+	gA := &routing.Group{
+		Name: "sort-count-a", RateMultiplier: 1, Status: billing.StatusActive,
 		AllowedProtocols:     capability.DefaultGroupClientProtocols(capability.PlatformAnthropic),
 		ProtocolFallbacks:    capability.DefaultProtocolFallbacks(capability.PlatformAnthropic),
 		ResponsesImagePolicy: "inherit",
 	}
 	// 分组 B：total=1，active=1。
-	gB := &routing.Group{Name: "sort-count-b", Platform: capability.PlatformAnthropic, RateMultiplier: 1, Status: billing.StatusActive,
+	gB := &routing.Group{
+		Name: "sort-count-b", RateMultiplier: 1, Status: billing.StatusActive,
 		AllowedProtocols:     capability.DefaultGroupClientProtocols(capability.PlatformAnthropic),
 		ProtocolFallbacks:    capability.DefaultProtocolFallbacks(capability.PlatformAnthropic),
 		ResponsesImagePolicy: "inherit",
@@ -81,12 +83,14 @@ func (s *GroupRepoSuite) TestListWithAccountCountSort_AttachesActiveCount() {
 }
 
 func (s *GroupRepoSuite) TestList_DefaultSortBySortOrderAsc() {
-	g1 := &routing.Group{Name: "g1", Platform: capability.PlatformAnthropic, RateMultiplier: 1, Status: billing.StatusActive, SortOrder: 20,
+	g1 := &routing.Group{
+		Name: "g1", RateMultiplier: 1, Status: billing.StatusActive, SortOrder: 20,
 		AllowedProtocols:     capability.DefaultGroupClientProtocols(capability.PlatformAnthropic),
 		ProtocolFallbacks:    capability.DefaultProtocolFallbacks(capability.PlatformAnthropic),
 		ResponsesImagePolicy: "inherit",
 	}
-	g2 := &routing.Group{Name: "g2", Platform: capability.PlatformAnthropic, RateMultiplier: 1, Status: billing.StatusActive, SortOrder: 10,
+	g2 := &routing.Group{
+		Name: "g2", RateMultiplier: 1, Status: billing.StatusActive, SortOrder: 10,
 		AllowedProtocols:     capability.DefaultGroupClientProtocols(capability.PlatformAnthropic),
 		ProtocolFallbacks:    capability.DefaultProtocolFallbacks(capability.PlatformAnthropic),
 		ResponsesImagePolicy: "inherit",
@@ -108,12 +112,14 @@ func (s *GroupRepoSuite) TestList_DefaultSortBySortOrderAsc() {
 }
 
 func (s *GroupRepoSuite) TestList_SortBySortOrderDesc() {
-	g1 := &routing.Group{Name: "g1", Platform: capability.PlatformAnthropic, RateMultiplier: 1, Status: billing.StatusActive, SortOrder: 40,
+	g1 := &routing.Group{
+		Name: "g1", RateMultiplier: 1, Status: billing.StatusActive, SortOrder: 40,
 		AllowedProtocols:     capability.DefaultGroupClientProtocols(capability.PlatformAnthropic),
 		ProtocolFallbacks:    capability.DefaultProtocolFallbacks(capability.PlatformAnthropic),
 		ResponsesImagePolicy: "inherit",
 	}
-	g2 := &routing.Group{Name: "g2", Platform: capability.PlatformAnthropic, RateMultiplier: 1, Status: billing.StatusActive, SortOrder: 50,
+	g2 := &routing.Group{
+		Name: "g2", RateMultiplier: 1, Status: billing.StatusActive, SortOrder: 50,
 		AllowedProtocols:     capability.DefaultGroupClientProtocols(capability.PlatformAnthropic),
 		ProtocolFallbacks:    capability.DefaultProtocolFallbacks(capability.PlatformAnthropic),
 		ResponsesImagePolicy: "inherit",

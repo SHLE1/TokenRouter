@@ -37,6 +37,23 @@ func (ModelDisplayCatalogue) GrokModels() []modeldisplay.GrokModel {
 	return out
 }
 func (ModelDisplayCatalogue) GrokModelIDs() []string { return grok.DefaultModelIDs() }
+
+// GrokModelAlias 只为已知精确别名补充厂商信息，通配映射不决定模型品牌。
+func (ModelDisplayCatalogue) GrokModelAlias(id string) (modeldisplay.GrokModel, bool) {
+	target, ok := grok.DefaultModelMapping()[id]
+	if !ok {
+		return modeldisplay.GrokModel{}, false
+	}
+	for _, model := range grok.DefaultModels() {
+		if model.ID == target {
+			model.ID = id
+			model.DisplayName = id
+			return modeldisplay.GrokModel(model), true
+		}
+	}
+	return modeldisplay.GrokModel{}, false
+}
+
 func (ModelDisplayCatalogue) GrokSupportsXHigh(model string) bool {
 	return (grok.BodyCodec{NewID: uuid.NewString}).GrokSupportsXHighReasoningEffort(model)
 }
@@ -63,6 +80,7 @@ func (ModelDisplayCatalogue) ClaudeModels(platform string) []modeldisplay.Claude
 	}
 	return out
 }
+
 func (ModelDisplayCatalogue) GeminiList(ag bool) modeldisplay.GeminiModelsList {
 	models := gemini.FallbackModelsList().Models
 	if ag {
@@ -79,6 +97,7 @@ func (ModelDisplayCatalogue) GeminiList(ag bool) modeldisplay.GeminiModelsList {
 	}
 	return modeldisplay.GeminiModelsList{Models: out}
 }
+
 func (ModelDisplayCatalogue) GeminiModel(name string, ag bool) modeldisplay.GeminiModel {
 	if ag {
 		m := antigravity.FallbackGeminiModel(name)
@@ -86,9 +105,11 @@ func (ModelDisplayCatalogue) GeminiModel(name string, ag bool) modeldisplay.Gemi
 	}
 	return projectGeminiDisplayModel(gemini.FallbackModel(name))
 }
+
 func projectGeminiDisplayModel(m gemini.Model) modeldisplay.GeminiModel {
 	return modeldisplay.GeminiModel{Name: m.Name, DisplayName: m.DisplayName, Description: m.Description, SupportedGenerationMethods: slices.Clone(m.SupportedGenerationMethods)}
 }
+
 func (ModelDisplayCatalogue) HasGeminiFallback(name string) bool {
 	return gemini.HasFallbackModel(name)
 }

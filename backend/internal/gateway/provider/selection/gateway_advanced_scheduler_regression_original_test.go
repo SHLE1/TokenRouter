@@ -42,7 +42,7 @@ func advancedSchedulerRegressionOverrides() routing.GroupAdvancedSchedulerOverri
 
 func advancedSchedulerRegressionGroup(id int64, platform string, overrides routing.GroupAdvancedSchedulerOverrides) *routing.Group {
 	return &routing.Group{
-		ID: id, Name: "advanced", Platform: platform, Status: billing.StatusActive, Hydrated: true,
+		ID: id, Name: "advanced", Status: billing.StatusActive, Hydrated: true,
 		SchedulerType: routing.GroupSchedulerTypeAdvanced, AdvancedSchedulerOverrides: overrides,
 	}
 }
@@ -60,8 +60,8 @@ func TestGatewayAdvancedSchedulerKeepsFullLoadCandidatesForWaitAndNoSlotSelectio
 	overrides.WeightPriority = advancedSchedulerRegressionFloat(1)
 	group := advancedSchedulerRegressionGroup(1301, capability.PlatformAnthropic, overrides)
 	accounts := []gatewayprovider.ExecutionAccount{
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 13011, Platform: capability.PlatformAnthropic, Type: capability.AccountTypeOAuth, Status: billing.StatusActive, Schedulable: true, Concurrency: 2, Priority: 1}},
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 13012, Platform: capability.PlatformAnthropic, Type: capability.AccountTypeOAuth, Status: billing.StatusActive, Schedulable: true, Concurrency: 2, Priority: 2}},
+		{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 13011, Platform: capability.PlatformAnthropic, Type: capability.AccountTypeOAuth, Status: billing.StatusActive, Schedulable: true, Concurrency: 2, Priority: 1}},
+		{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 13012, Platform: capability.PlatformAnthropic, Type: capability.AccountTypeOAuth, Status: billing.StatusActive, Schedulable: true, Concurrency: 2, Priority: 2}},
 	}
 	repo := advancedSchedulerRegressionAccountRepo(accounts)
 	concurrencyCache := &mockConcurrencyCache{
@@ -108,8 +108,8 @@ func TestGatewayAdvancedSchedulerForcePlatformUsesGroupOverrides(t *testing.T) {
 	overrides.WeightLoad = advancedSchedulerRegressionFloat(1)
 	group := advancedSchedulerRegressionGroup(1401, capability.PlatformAnthropic, overrides)
 	accounts := []gatewayprovider.ExecutionAccount{
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 14011, Platform: capability.PlatformAntigravity, Status: billing.StatusActive, Schedulable: true, Concurrency: 2, Priority: 1, Extra: map[string]any{"mixed_scheduling": true}}},
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 14012, Platform: capability.PlatformAntigravity, Status: billing.StatusActive, Schedulable: true, Concurrency: 2, Priority: 100, Extra: map[string]any{"mixed_scheduling": true}}},
+		{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 14011, Platform: capability.PlatformAntigravity, Status: billing.StatusActive, Schedulable: true, Concurrency: 2, Priority: 1, Extra: map[string]any{"mixed_scheduling": true}}},
+		{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 14012, Platform: capability.PlatformAntigravity, Status: billing.StatusActive, Schedulable: true, Concurrency: 2, Priority: 100, Extra: map[string]any{"mixed_scheduling": true}}},
 	}
 	repo := advancedSchedulerRegressionAccountRepo(accounts)
 	concurrencyCache := &mockConcurrencyCache{
@@ -151,10 +151,13 @@ func TestGatewayAdvancedSchedulerWeightedStickyKeepsStickyOnlyAccount(t *testing
 	overrides.WeightSessionSticky = advancedSchedulerRegressionFloat(1)
 	group := advancedSchedulerRegressionGroup(1501, capability.PlatformAnthropic, overrides)
 	accounts := []gatewayprovider.ExecutionAccount{
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 15011, Platform: capability.PlatformAnthropic, Type: capability.AccountTypeOAuth, Status: billing.StatusActive,
-			Schedulable: true, Concurrency: 2, Extra: map[string]any{"window_cost_limit": 10.0, "window_cost_sticky_reserve": 5.0}},
+		{
+			Record: accountcore.Record{
+				Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 15011, Platform: capability.PlatformAnthropic, Type: capability.AccountTypeOAuth, Status: billing.StatusActive,
+				Schedulable: true, Concurrency: 2, Extra: map[string]any{"window_cost_limit": 10.0, "window_cost_sticky_reserve": 5.0},
+			},
 		},
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 15012, Platform: capability.PlatformAnthropic, Type: capability.AccountTypeOAuth, Status: billing.StatusActive, Schedulable: true, Concurrency: 2}},
+		{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 15012, Platform: capability.PlatformAnthropic, Type: capability.AccountTypeOAuth, Status: billing.StatusActive, Schedulable: true, Concurrency: 2}},
 	}
 	repo := advancedSchedulerRegressionAccountRepo(accounts)
 	cache := &mockGatewayCacheForPlatform{sessionBindings: map[string]int64{"sticky": 15011}}
@@ -191,8 +194,8 @@ func TestGatewayAdvancedSchedulerEscapesNonOpenAIHardSticky(t *testing.T) {
 	overrides.WeightErrorRate = advancedSchedulerRegressionFloat(1)
 	group := advancedSchedulerRegressionGroup(1601, capability.PlatformGemini, overrides)
 	accounts := []gatewayprovider.ExecutionAccount{
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 16011, Platform: capability.PlatformGemini, Status: billing.StatusActive, Schedulable: true, Concurrency: 2, Priority: 1}},
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 16012, Platform: capability.PlatformGemini, Status: billing.StatusActive, Schedulable: true, Concurrency: 2, Priority: 2}},
+		{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 16011, Platform: capability.PlatformGemini, Status: billing.StatusActive, Schedulable: true, Concurrency: 2, Priority: 1}},
+		{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 16012, Platform: capability.PlatformGemini, Status: billing.StatusActive, Schedulable: true, Concurrency: 2, Priority: 2}},
 	}
 	repo := advancedSchedulerRegressionAccountRepo(accounts)
 	cache := &mockGatewayCacheForPlatform{sessionBindings: map[string]int64{"sticky": 16011}}
@@ -211,8 +214,10 @@ func TestGatewayAdvancedSchedulerEscapesNonOpenAIHardSticky(t *testing.T) {
 			Feedback: scheduler.NewRuntimeStats(time.Now),
 			Cache:    cache,
 			Concurrency: scheduler.NewConcurrencyService(concurrencyCache,
-				scheduler.Diagnostics{Logf: logging.LegacyPrintf,
-					Event: logging.Event}),
+				scheduler.Diagnostics{
+					Logf:  logging.LegacyPrintf,
+					Event: logging.Event,
+				}),
 		},
 	}, cfg)
 

@@ -93,7 +93,7 @@
               />
               <span class="flex-1 truncate">{{ group.name }}</span>
             </label>
-            <span class="text-xs text-gray-400">{{ group.platform }}</span>
+
             <input
               v-if="isGroupSelected(group.id)"
               :value="planForm.group_rate_multipliers[group.id] ?? ''"

@@ -77,12 +77,10 @@ func TestExtractClientSessionID_Sanitizes(t *testing.T) {
 }
 
 func TestExtractClientSessionID_IgnoresNonSessionHeaders(t *testing.T) {
-	// prompt_cache_key、请求/消息 ID，以及非 Grok 请求携带的 Grok 对话头，
-	// 均不得持久化为 session_id。
+	// prompt_cache_key 和逐请求 ID 不是持久会话标识。
 	c := newSessionHeaderContext(t, map[string]string{
 		"prompt_cache_key": "cache-key-should-not-persist",
 		"X-Request-Id":     "req-should-not-persist",
-		"x-grok-conv-id":   "grok-conv-should-not-persist",
 	})
 	require.Equal(t, "", ExtractClientSessionID(c))
 }
@@ -91,17 +89,17 @@ func TestExtractClientSessionID_GrokConversationHeader(t *testing.T) {
 	c := newSessionHeaderContext(t, map[string]string{GrokConversationIDHeader: "grok-native-session"})
 	c.Set("api_key", &apikey.APIKey{
 		ID:    42,
-		Group: &routing.Group{Platform: capability.PlatformGrok},
+		Group: &routing.Group{},
 	})
 
 	require.Equal(t, "grok-native-session", ExtractClientSessionID(c))
 }
 
-func TestExtractClientSessionID_EmptyForcedRouteFallsBackToGrokGroup(t *testing.T) {
+func TestExtractClientSessionID_EmptyForcedRouteUsesExplicitGrokHeader(t *testing.T) {
 	c := newSessionHeaderContext(t, map[string]string{GrokConversationIDHeader: "grok-group-session"})
 	c.Set("api_key", &apikey.APIKey{
 		ID:    44,
-		Group: &routing.Group{Platform: capability.PlatformGrok},
+		Group: &routing.Group{},
 	})
 	c.Request = c.Request.WithContext(apikey.WithForcePlatform(context.Background(), ""))
 
@@ -112,7 +110,7 @@ func TestExtractClientSessionID_GrokConversationHeaderForForcedRoute(t *testing.
 	c := newSessionHeaderContext(t, map[string]string{GrokConversationIDHeader: "grok-composite-session"})
 	c.Set("api_key", &apikey.APIKey{
 		ID:    43,
-		Group: &routing.Group{Platform: capability.PlatformAnthropic},
+		Group: &routing.Group{},
 	})
 	c.Request = c.Request.WithContext(apikey.WithForcePlatform(context.Background(), capability.PlatformGrok))
 

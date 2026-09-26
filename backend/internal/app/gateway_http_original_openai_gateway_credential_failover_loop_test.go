@@ -70,7 +70,7 @@ func (r *grokCredentialHandlerRepo) ListSchedulableByPlatform(_ context.Context,
 	r.selectionCalls++
 	out := make([]gatewayprovider.ExecutionAccount, 0, len(r.accounts))
 	for _, account := range r.accounts {
-		if account.Record.Platform == platform && account.View().IsSchedulable() {
+		if (platform == "" || account.Record.Platform == platform) && account.View().IsSchedulable() {
 			out = append(out, account)
 		}
 	}
@@ -439,7 +439,6 @@ func (u *grokCredentialHandlerUpstream) requests() ([]string, []string) {
 }
 
 func TestResponsesCredentialFailoverLoop(t *testing.T) {
-
 	t.Run("revoked account selects healthy account", func(t *testing.T) {
 		h, repo, upstream, router, cleanup := newGrokCredentialFailoverHandler(t, "revoked")
 		defer cleanup()
@@ -594,7 +593,6 @@ func TestResponsesCredentialFailoverLoop(t *testing.T) {
 }
 
 func TestResponsesGrok429FailoverIsBounded(t *testing.T) {
-
 	t.Run("first rate limited account selects healthy account", func(t *testing.T) {
 		_, repo, upstream, router, cleanup := newGrokCredentialFailoverHandler(t, "first_429")
 		defer cleanup()
@@ -629,7 +627,6 @@ func TestResponsesGrok429FailoverIsBounded(t *testing.T) {
 }
 
 func TestResponsesGrok402FailoverCooldown(t *testing.T) {
-
 	_, repo, upstream, router, cleanup := newGrokCredentialFailoverHandler(t, "first_402")
 	defer cleanup()
 
@@ -655,7 +652,6 @@ func TestResponsesGrok402FailoverCooldown(t *testing.T) {
 }
 
 func TestResponsesGrok429FailoverHandlesMixedStatuses(t *testing.T) {
-
 	t.Run("429 then 500 stops after the bounded followup", func(t *testing.T) {
 		_, _, upstream, router, cleanup := newGrokCredentialFailoverHandler(t, "mixed_429_500")
 		defer cleanup()
@@ -698,7 +694,6 @@ func TestResponsesGrok429FailoverHandlesMixedStatuses(t *testing.T) {
 }
 
 func TestGrokMedia429FailoverIsBounded(t *testing.T) {
-
 	t.Run("first 429 selects one healthy followup", func(t *testing.T) {
 		_, _, upstream, router, cleanup := newGrokCredentialFailoverHandler(t, "first_429")
 		defer cleanup()
@@ -728,7 +723,6 @@ func TestGrokMedia429FailoverIsBounded(t *testing.T) {
 }
 
 func TestGrokOAuthCredentialFailoverAcrossHTTPHandlers(t *testing.T) {
-
 	endpoints := []struct {
 		name   string
 		method string
@@ -776,7 +770,6 @@ func TestGrokOAuthCredentialFailoverAcrossHTTPHandlers(t *testing.T) {
 }
 
 func TestGrokOAuthMissingSelectedRowRetriesHealthyAccountWithoutMutation(t *testing.T) {
-
 	_, repo, upstream, router, cleanup := newGrokCredentialFailoverHandler(t, "missing_row")
 	defer cleanup()
 	recorder := httptest.NewRecorder()
@@ -792,7 +785,6 @@ func TestGrokOAuthMissingSelectedRowRetriesHealthyAccountWithoutMutation(t *test
 }
 
 func TestResponsesWebSocketCredentialFailoverLoop(t *testing.T) {
-
 	dial := func(t *testing.T, router *gin.Engine) (*coderws.Conn, func()) {
 		t.Helper()
 		server := httptest.NewServer(router)
@@ -875,34 +867,43 @@ func newGrokCredentialFailoverHandler(t *testing.T, mode string) (*gatewayHTTPEn
 	t.Helper()
 	groupID := int64(901)
 	accounts := []gatewayprovider.ExecutionAccount{
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 801, Name: "revoked", Platform: capability.PlatformGrok, Type: capability.AccountTypeOAuth,
-			Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 1,
-			Credentials: map[string]any{
-				"access_token": "expired", "refresh_token": "revoked-refresh",
-				"expires_at": time.Now().Add(-time.Minute).UTC().Format(time.RFC3339),
+		{
+			Record: accountcore.Record{
+				LoadLocation: time.LoadLocation, ID: 801, Name: "revoked", Platform: capability.PlatformGrok, Type: capability.AccountTypeOAuth,
+				Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 1,
+				Credentials: map[string]any{
+					"access_token": "expired", "refresh_token": "revoked-refresh",
+					"expires_at": time.Now().Add(-time.Minute).UTC().Format(time.RFC3339),
+				},
+				Extra: map[string]any{accountcore.GrokMediaEligibleExtraKey: true},
 			},
-			Extra: map[string]any{accountcore.GrokMediaEligibleExtraKey: true}},
 		},
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 802, Name: "healthy", Platform: capability.PlatformGrok, Type: capability.AccountTypeOAuth,
-			Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 2,
-			Credentials: map[string]any{
-				"access_token": "healthy-access", "refresh_token": "healthy-refresh",
-				"expires_at": time.Now().Add(2 * time.Hour).UTC().Format(time.RFC3339),
+		{
+			Record: accountcore.Record{
+				LoadLocation: time.LoadLocation, ID: 802, Name: "healthy", Platform: capability.PlatformGrok, Type: capability.AccountTypeOAuth,
+				Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 2,
+				Credentials: map[string]any{
+					"access_token": "healthy-access", "refresh_token": "healthy-refresh",
+					"expires_at": time.Now().Add(2 * time.Hour).UTC().Format(time.RFC3339),
+				},
+				Extra: map[string]any{accountcore.GrokMediaEligibleExtraKey: true},
 			},
-			Extra: map[string]any{accountcore.GrokMediaEligibleExtraKey: true}},
 		},
 	}
 	if mode == "postmap_cancel" || mode == "first_402" || mode == "first_429" || mode == "all_429" || mode == "mixed_429_500" || mode == "mixed_500_429" || mode == "oauth_429_apikey_500" {
 		accounts[0].Record.Credentials["expires_at"] = time.Now().Add(2 * time.Hour).UTC().Format(time.RFC3339)
 	}
 	if mode == "all_429" || mode == "mixed_429_500" || mode == "mixed_500_429" || mode == "oauth_429_apikey_500" {
-		accounts = append(accounts, gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 803, Name: "untried-healthy", Platform: capability.PlatformGrok, Type: capability.AccountTypeOAuth,
-			Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 3,
-			Credentials: map[string]any{
-				"access_token": "untried-healthy-access", "refresh_token": "untried-healthy-refresh",
-				"expires_at": time.Now().Add(2 * time.Hour).UTC().Format(time.RFC3339),
+		accounts = append(accounts, gatewayprovider.ExecutionAccount{
+			Record: accountcore.Record{
+				LoadLocation: time.LoadLocation, ID: 803, Name: "untried-healthy", Platform: capability.PlatformGrok, Type: capability.AccountTypeOAuth,
+				Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 3,
+				Credentials: map[string]any{
+					"access_token": "untried-healthy-access", "refresh_token": "untried-healthy-refresh",
+					"expires_at": time.Now().Add(2 * time.Hour).UTC().Format(time.RFC3339),
+				},
+				Extra: map[string]any{accountcore.GrokMediaEligibleExtraKey: true},
 			},
-			Extra: map[string]any{accountcore.GrokMediaEligibleExtraKey: true}},
 		})
 	}
 	if mode == "oauth_429_apikey_500" {
@@ -911,6 +912,11 @@ func newGrokCredentialFailoverHandler(t *testing.T, mode string) (*gatewayHTTPEn
 	}
 	if mode == "all_revoked" {
 		accounts[1].Record.Credentials["expires_at"] = time.Now().Add(-time.Minute).UTC().Format(time.RFC3339)
+	}
+	// 该夹具验证凭据恢复；显式开放请求别名，不依赖默认模型目录。
+	for i := range accounts {
+		accounts[i].Record.Credentials["model_whitelist"] = []string{"*"}
+		accounts[i].Record.GroupIDs = []int64{groupID}
 	}
 	repo := &grokCredentialHandlerRepo{accounts: accounts, missingOnGet: map[int64]bool{}}
 	if mode == "missing_row" {
@@ -973,7 +979,8 @@ func newGrokCredentialFailoverHandler(t *testing.T, mode string) (*gatewayHTTPEn
 		AcquireUserSlotFn:    func(context.Context, int64, int, string) (bool, error) { return true, nil },
 		AcquireAccountSlotFn: func(context.Context, int64, int, string) (bool, error) { return true, nil },
 	}
-	h := newGatewayHTTPEndpointsFromDeps(gateway, gatewayCredentialPort, scheduler.NewConcurrencyService(cache, scheduler.Diagnostics{Logf: logging.LegacyPrintf,
+	h := newGatewayHTTPEndpointsFromDeps(gateway, gatewayCredentialPort, scheduler.NewConcurrencyService(cache, scheduler.Diagnostics{
+		Logf:  logging.LegacyPrintf,
 		Event: logging.Event,
 	},
 	), newFundingAdmissionFixture(billingCache, cfg), &apikey.APIKeyService{}, nil, nil, nil, nil, cfg, nil, newExecutionAvailabilityForTest(repo,
@@ -985,7 +992,6 @@ func newGrokCredentialFailoverHandler(t *testing.T, mode string) (*gatewayHTTPEn
 		User: &identity.User{ID: 903, Status: billing.StatusActive},
 		Group: &routing.Group{
 			ID:                   groupID,
-			Platform:             capability.PlatformGrok,
 			Status:               billing.StatusActive,
 			AllowImageGeneration: true,
 			AllowedProtocols: []protocol.ProtocolID{

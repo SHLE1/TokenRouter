@@ -38,6 +38,7 @@ type bedrockMarketplaceGroups struct {
 func (s *bedrockMarketplaceGroups) ListActive(context.Context) ([]routing.Group, error) {
 	return s.groups, nil
 }
+
 func TestBedrockRegionRouting_MarketplaceUsesSharedResolution(t *testing.T) {
 	groupID := int64(5201)
 	for _, forceGlobal := range []bool{false, true} {
@@ -59,7 +60,7 @@ func TestBedrockRegionRouting_MarketplaceUsesSharedResolution(t *testing.T) {
 				require.NotContains(t, routing.RequestableModelIDs(models.Models), "client-alias")
 			}
 			marketplace := newCatalogueMarketplace(
-				&bedrockMarketplaceGroups{groups: []routing.Group{{ID: groupID, Name: "Bedrock", Platform: capability.PlatformAnthropic, Status: billing.StatusActive, RateMultiplier: 1, ActiveAccountCount: 1}}},
+				&bedrockMarketplaceGroups{groups: []routing.Group{{ID: groupID, Name: "Bedrock", Status: billing.StatusActive, RateMultiplier: 1, ActiveAccountCount: 1}}},
 				gateway, billingtestkit.Calculator(0, nil, nil),
 			)
 			groups, err := marketplace.ListPublic(context.Background())

@@ -22,7 +22,7 @@ import (
 func TestFilterCNProviderBillingModelCandidates(t *testing.T) {
 	svc := completion.NewRecorder(completion.Dependencies{}, completion.RecorderOptions{DefaultMultiplier: 1})
 
-	apiKey := &apikey.APIKey{Group: &routing.Group{ID: 1, Platform: capability.PlatformKimi}}
+	apiKey := &apikey.APIKey{Group: &routing.Group{ID: 1}}
 	cnAccount := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformKimi}}
 
 	filtered := svc.FilterCNProviderBillingModelCandidates(
@@ -50,8 +50,8 @@ func TestFilterCNProviderBillingModelCandidatesKeepsExplicitGroupPricing(t *test
 	}, completion.RecorderOptions{DefaultMultiplier: 1})
 
 	group := &routing.Group{
-		ID:       1,
-		Platform: capability.PlatformKimi,
+		ID: 1,
+
 		ModelPricing: []routing.ModelPricingEntry{{
 			Models:      []string{"claude-sonnet-4-5"},
 			BillingMode: routing.BillingModeToken,
@@ -70,7 +70,7 @@ func TestFilterCNProviderBillingModelCandidatesKeepsExplicitGroupPricing(t *test
 func TestCalculateOpenAIRecordUsageCostEmptyCandidatesIsPricingUnavailable(t *testing.T) {
 	svc := completion.NewRecorder(completion.Dependencies{}, completion.RecorderOptions{DefaultMultiplier: 1})
 
-	apiKey := &apikey.APIKey{Group: &routing.Group{ID: 1, Platform: capability.PlatformKimi}}
+	apiKey := &apikey.APIKey{Group: &routing.Group{ID: 1}}
 
 	_, err := svc.CalculateOpenAIRecordUsageCostAt(
 		context.Background(), gatewayprovider.ProjectOpenAICompletionResult(nil, nil), gatewayprovider.ProjectCompletionKey(apiKey), nil,

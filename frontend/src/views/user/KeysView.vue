@@ -180,7 +180,6 @@
                 <GroupBadge
                   v-if="row.group"
                   :name="row.group.name"
-                  :platform="row.group.platform"
                   :display-brand="row.group.display_brand"
                   :rate-multiplier="row.group.rate_multiplier"
                   :user-rate-multiplier="userGroupRates[row.group.id]"
@@ -556,7 +555,6 @@
               <GroupBadge
                 v-if="option"
                 :name="(option as unknown as GroupOption).label"
-                :platform="(option as unknown as GroupOption).platform"
                 :display-brand="(option as unknown as GroupOption).displayBrand"
                 :rate-multiplier="(option as unknown as GroupOption).rate"
                 :user-rate-multiplier="(option as unknown as GroupOption).userRate"
@@ -570,7 +568,6 @@
             <template #option="{ option, selected }">
               <GroupOptionItem
                 :name="(option as unknown as GroupOption).label"
-                :platform="(option as unknown as GroupOption).platform"
                 :display-brand="(option as unknown as GroupOption).displayBrand"
                 :rate-multiplier="(option as unknown as GroupOption).rate"
                 :user-rate-multiplier="(option as unknown as GroupOption).userRate"
@@ -648,8 +645,8 @@
 
         <!-- 分组停用时的请求级自动降级开关。 -->
         <div class="flex items-center justify-between">
-          <label class="input-label mb-0">{{ t('keys.fallbackToDefaultGroupWhenUnavailable') }}</label>
-          <Toggle v-model="formData.fallback_to_default_group_when_unavailable" size="sm" />
+          <label class="input-label mb-0">{{ t('keys.fallbackWhenGroupUnavailable') }}</label>
+          <Toggle v-model="formData.fallback_when_group_unavailable" size="sm" />
         </div>
 
         <!-- 模型重定向按行编辑，删除全部行会在更新时提交空对象。 -->
@@ -1158,9 +1155,8 @@
       :show="showUseKeyModal"
       :api-key="selectedKey?.key || ''"
       :base-url="publicSettings?.api_base_url || ''"
-      :platform="selectedKey?.group?.platform || null"
-      :allowed-client-protocols="selectedKey?.group?.allowed_protocols"
-      :composite-groups="selectedKey?.composite_groups || []"
+      :group="selectedKeyGroup"
+      :composite-groups="selectedCompositeGroups"
       @close="closeUseKeyModal"
     />
 
@@ -1182,7 +1178,7 @@
       @delete="confirmDelete"
     />
 
-    <!-- CCS Client Selection Dialog for Antigravity -->
+    <!-- 按可用协议选择客户端和模型。 -->
     <BaseDialog
       :show="showCcsClientSelect"
       :title="t('keys.ccsClientSelect.title')"
@@ -1190,36 +1186,12 @@
       @close="closeCcsClientSelect"
     >
       <div class="space-y-4">
-        <p class="text-sm text-gray-600 dark:text-gray-400">
-          {{ t('keys.ccsClientSelect.description') }}
-	        </p>
-	        <div class="grid grid-cols-2 gap-3">
-	          <button
-	            @click="handleCcsClientSelect('claude')"
-	            class="flex flex-col items-center gap-2 p-4 rounded-control border-2 border-gray-200 dark:border-dark-600 hover:border-primary-500 dark:hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all"
-	          >
-	            <Icon name="terminal" size="xl" class="text-gray-600 dark:text-gray-400" />
-	            <span class="font-medium text-gray-900 dark:text-white">{{
-	              t('keys.ccsClientSelect.claudeCode')
-	            }}</span>
-	            <span class="text-xs text-gray-500 dark:text-gray-400">{{
-	              t('keys.ccsClientSelect.claudeCodeDesc')
-	            }}</span>
-	          </button>
-	          <button
-	            @click="handleCcsClientSelect('gemini')"
-	            class="flex flex-col items-center gap-2 p-4 rounded-control border-2 border-gray-200 dark:border-dark-600 hover:border-primary-500 dark:hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all"
-	          >
-	            <Icon name="sparkles" size="xl" class="text-gray-600 dark:text-gray-400" />
-	            <span class="font-medium text-gray-900 dark:text-white">{{
-	              t('keys.ccsClientSelect.geminiCli')
-	            }}</span>
-	            <span class="text-xs text-gray-500 dark:text-gray-400">{{
-	              t('keys.ccsClientSelect.geminiCliDesc')
-	            }}</span>
-	          </button>
-	        </div>
-	      </div>
+        <p class="text-sm text-gray-600 dark:text-gray-400">{{ t('keys.ccsClientSelect.description') }}</p>
+        <Select v-model="ccClient" :options="ccClientOptions" />
+        <Select v-model="ccModel" :options="ccModelOptions" searchable :placeholder="t('keys.useKeyModal.selectModel')" />
+        <p v-if="!ccModelOptions.length" class="input-hint">{{ t('keys.useKeyModal.noModels') }}</p>
+        <button type="button" class="btn btn-primary" :disabled="!ccModel" @click="handleCcsClientSelect(ccClient)">{{ t('common.confirm') }}</button>
+      </div>
       <template #footer>
         <div class="flex justify-end">
           <button @click="closeCcsClientSelect" class="btn btn-secondary">
@@ -1275,7 +1247,6 @@
           >
             <GroupOptionItem
               :name="option.label"
-              :platform="option.platform"
               :display-brand="option.displayBrand"
               :rate-multiplier="option.rate"
               :user-rate-multiplier="option.userRate"
@@ -1301,7 +1272,7 @@
 </template>
 
 <script setup lang="ts">
-	import { ref, reactive, computed, onMounted, onUnmounted, type ComponentPublicInstance } from 'vue'
+	import { watch, ref, reactive, computed, onMounted, onUnmounted, type ComponentPublicInstance } from 'vue'
 	import { useI18n } from 'vue-i18n'
 	import { useRoute } from 'vue-router'
 	import { useAppStore } from '@/stores/app'
@@ -1339,7 +1310,6 @@ import TablePageLayout from '@/components/layout/TablePageLayout.vue'
 	  CreateApiKeyRequest,
 	  Group,
 	  PublicSettings,
-	  GroupPlatform,
 	  UpdateApiKeyRequest
 	} from '@/types'
 import type { Column } from '@/components/common/types'
@@ -1351,6 +1321,7 @@ import {
   buildCcSwitchUsageScript,
   type CcSwitchClientType
 } from '@/utils/ccswitchImport'
+import { availableClients, CLIENT_LABELS, clientProtocol, modelsForProtocol, groupForKeyConfig } from '@/utils/clientConfig'
 
 // Helper to format date for datetime-local input
 const formatDateTimeLocal = (isoDate: string): string => {
@@ -1370,7 +1341,6 @@ interface GroupOption {
   peakStart: string
   peakEnd: string
   peakRateMultiplier: number
-  platform: GroupPlatform
 }
 
 const appStore = useAppStore()
@@ -1604,7 +1574,7 @@ const formData = ref({
   enable_expiration: false,
   expiration_preset: '30' as '7' | '30' | '90' | 'custom',
   expiration_date: '',
-  fallback_to_default_group_when_unavailable: true
+  fallback_when_group_unavailable: true
 })
 
 type ModelMappingRowError = { source?: string; target?: string }
@@ -1804,7 +1774,6 @@ const buildGroupOptions = (source: Group[]) =>
     peakStart: group.peak_start,
     peakEnd: group.peak_end,
     peakRateMultiplier: group.peak_rate_multiplier,
-    platform: group.platform
   }))
 
 // 指定订阅时仅使用服务端返回的权限与套餐分组交集。
@@ -2164,7 +2133,7 @@ const editKey = (key: ApiKey) => {
     enable_expiration: hasExpiration,
     expiration_preset: 'custom',
     expiration_date: key.expires_at ? formatDateTimeLocal(key.expires_at) : '',
-    fallback_to_default_group_when_unavailable: key.fallback_to_default_group_when_unavailable ?? false
+    fallback_when_group_unavailable: key.fallback_when_group_unavailable ?? false
   }
   formGroups.value = []
   showEditModal.value = true
@@ -2365,7 +2334,7 @@ const submitKeyForm = async () => {
         rate_limit_5h: rateLimitData.rate_limit_5h,
         rate_limit_1d: rateLimitData.rate_limit_1d,
         rate_limit_7d: rateLimitData.rate_limit_7d,
-        fallback_to_default_group_when_unavailable: formData.value.fallback_to_default_group_when_unavailable
+        fallback_when_group_unavailable: formData.value.fallback_when_group_unavailable
       }
       const originalBillingMode = selectedKey.value.billing_mode ?? 'auto'
       const originalPreferredSubscriptionID = selectedKey.value.preferred_subscription_id ?? null
@@ -2410,7 +2379,7 @@ const submitKeyForm = async () => {
         rate_limit_5h: rateLimitData.rate_limit_5h,
         rate_limit_1d: rateLimitData.rate_limit_1d,
         rate_limit_7d: rateLimitData.rate_limit_7d,
-        fallback_to_default_group_when_unavailable: formData.value.fallback_to_default_group_when_unavailable
+        fallback_when_group_unavailable: formData.value.fallback_when_group_unavailable
       }
       await keysAPI.createWithPayload(payload)
       appStore.showSuccess(t('keys.keyCreatedSuccess'))
@@ -2529,7 +2498,7 @@ const closeModals = () => {
     enable_expiration: false,
     expiration_preset: '30',
     expiration_date: '',
-    fallback_to_default_group_when_unavailable: true
+    fallback_when_group_unavailable: true
   }
 }
 
@@ -2594,29 +2563,39 @@ const resetRateLimitUsage = async () => {
   }
 }
 
+// Key 内嵌分组未带目录时复用当前已加载的可见分组，避免逐行请求。
+const groupWithModels = (key: ApiKey | null): Group | undefined => {
+  if (!key?.group_id) return undefined
+  const available = groups.value.find(group => group.id === key.group_id)
+  return groupForKeyConfig(available ? { ...key.group, ...available } : key.group ?? undefined, key.model_mapping)
+}
+const selectedKeyGroup = computed(() => groupWithModels(selectedKey.value))
+const selectedCompositeGroups = computed(() => (selectedKey.value?.composite_groups ?? []).map(binding => ({
+  ...binding, group: groupForKeyConfig(groups.value.find(group => group.id === binding.group_id) ?? binding.group, selectedKey.value?.model_mapping),
+})))
+const ccClient = ref<CcSwitchClientType>('claude')
+const ccModel = ref('')
+const ccGroup = computed(() => groupWithModels(pendingCcsRow.value))
+const ccClientOptions = computed(() => availableClients(ccGroup.value?.allowed_protocols ?? []).filter(client => client !== 'opencode').map(client => ({ value: client, label: CLIENT_LABELS[client] })))
+const ccModelOptions = computed(() => {
+  const protocol = clientProtocol(ccClient.value, ccGroup.value?.allowed_protocols ?? [])
+  return protocol ? modelsForProtocol(ccGroup.value, protocol).map(model => ({ value: model, label: model })) : []
+})
+watch(ccClientOptions, options => { if (!options.some(option => option.value === ccClient.value)) ccClient.value = options[0]?.value as CcSwitchClientType ?? 'claude' })
+watch(ccModelOptions, options => { if (!options.some(option => option.value === ccModel.value)) ccModel.value = options[0]?.value ?? '' })
 const importToCcswitch = (row: ApiKey) => {
-  const platform = row.group?.platform || 'anthropic'
-
-  // Antigravity 平台需要先选择客户端。
-  if (platform === 'antigravity') {
-    pendingCcsRow.value = row
-    showCcsClientSelect.value = true
-    return
-  }
-
-  // 其他平台直接执行导入。
-  executeCcsImport(row, platform === 'gemini' ? 'gemini' : 'claude')
+  pendingCcsRow.value = row
+  showCcsClientSelect.value = true
 }
 
 const executeCcsImport = (row: ApiKey, clientType: CcSwitchClientType) => {
   const baseUrl = publicSettings.value?.api_base_url || window.location.origin
-  const platform = row.group?.platform || 'anthropic'
 
   const usageScript = buildCcSwitchUsageScript(baseUrl, balanceUnitName.value)
   const providerName = (publicSettings.value?.site_name || 'sub2api').trim() || 'sub2api'
   const deeplink = buildCcSwitchImportDeeplink({
     baseUrl,
-    platform,
+    model: ccModel.value,
     clientType,
     providerName,
     apiKey: row.key,
@@ -2639,7 +2618,7 @@ const executeCcsImport = (row: ApiKey, clientType: CcSwitchClientType) => {
 }
 
 const handleCcsClientSelect = (clientType: CcSwitchClientType) => {
-  if (pendingCcsRow.value) {
+  if (pendingCcsRow.value && ccModelOptions.value.some(option => option.value === ccModel.value)) {
     executeCcsImport(pendingCcsRow.value, clientType)
   }
   showCcsClientSelect.value = false

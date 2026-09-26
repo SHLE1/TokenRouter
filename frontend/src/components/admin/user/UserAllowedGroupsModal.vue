@@ -63,8 +63,6 @@
                   </div>
                   <div class="mt-1.5 flex items-center gap-3 text-sm">
                     <span class="inline-flex items-center gap-1 text-gray-500 dark:text-gray-400">
-                      <PlatformIcon :platform="config.platform" size="xs" />
-                      <span>{{ config.platform }}</span>
                     </span>
                     <span class="text-gray-300 dark:text-dark-500">•</span>
                     <span class="text-gray-500 dark:text-gray-400">
@@ -138,8 +136,6 @@
                   </div>
                   <div class="mt-1.5 flex items-center gap-3 text-sm">
                     <span class="inline-flex items-center gap-1 text-gray-500 dark:text-gray-400">
-                      <PlatformIcon :platform="config.platform" size="xs" />
-                      <span>{{ config.platform }}</span>
                     </span>
                     <span class="text-gray-300 dark:text-dark-500">•</span>
                     <span class="text-gray-500 dark:text-gray-400">
@@ -198,15 +194,13 @@ import { ref, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import { adminAPI } from '@/api/admin'
-import type { AdminUser, Group, GroupPlatform } from '@/types'
+import type { AdminUser, Group } from '@/types'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import UserAvatar from '@/components/common/UserAvatar.vue'
-import PlatformIcon from '@/components/common/PlatformIcon.vue'
 
 interface GroupRateConfig {
   groupId: number
   groupName: string
-  platform: GroupPlatform
   isExclusive: boolean
   defaultRate: number
   customRate: number | null
@@ -257,7 +251,6 @@ const load = async () => {
     groupConfigs.value = groups.value.map((g) => ({
       groupId: g.id,
       groupName: g.name,
-      platform: g.platform,
       isExclusive: g.is_exclusive,
       defaultRate: g.rate_multiplier,
       customRate: userGroupRates[g.id] ?? null,

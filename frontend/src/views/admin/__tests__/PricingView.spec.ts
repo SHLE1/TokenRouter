@@ -146,17 +146,9 @@ describe('PricingView model routing copy', () => {
     await createButton!.trigger('click')
     await flushPromises()
 
-    const anthropicToggle = wrapper
-      .findAll('label')
-      .find(label => label.text().includes('admin.groups.platforms.anthropic'))
-    expect(anthropicToggle).toBeTruthy()
-    await anthropicToggle!.get('input[type="checkbox"]').trigger('change')
-
-    const anthropicTab = wrapper
-      .findAll('button')
-      .find(button => button.text().includes('admin.groups.platforms.anthropic'))
-    expect(anthropicTab).toBeTruthy()
-    await anthropicTab!.trigger('click')
+    expect(wrapper.text()).not.toContain('admin.pricing.form.platformConfig')
+    const pricingTab = wrapper.findAll('button').find(button => button.text() === 'admin.pricing.columns.pricing')!
+    await pricingTab.trigger('click')
 
     expect(wrapper.find('[data-testid="channel-model-mapping-hint"]').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('admin.pricing.form.restrictModels')

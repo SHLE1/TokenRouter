@@ -11,8 +11,10 @@ import (
 
 // OpenAIResult 保存 OpenAI 兼容执行的观测结果，恢复报文仍由本次执行私有持有。
 type OpenAIResult struct {
-	RequestID  string
-	ResponseID string
+	// NativeUsage 保留非 OpenAI 执行器的互斥输入桶，避免桥接后重复扣减缓存。
+	NativeUsage *protocolcore.TokenUsage
+	RequestID   string
+	ResponseID  string
 	// UpstreamHeaders 是直接上游的响应头，用于按账户配置解析上游请求标识。
 	UpstreamHeaders map[string][]string
 	Usage           protocolopenai.ForwardUsage

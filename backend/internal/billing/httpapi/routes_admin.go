@@ -44,11 +44,3 @@ func RegisterSubscriptionRoutes(admin *gin.RouterGroup, endpoint *AdminSubscript
 	// 用户下的订阅列表
 	admin.GET("/users/:id/subscriptions", endpoint.ListByUser)
 }
-
-// RegisterUserQuotaRoutes 只注册管理员用户额度路径，身份校验由共享组提供。
-func RegisterUserQuotaRoutes(admin *gin.RouterGroup, endpoint *QuotaHandler) {
-	users := admin.Group("/users")
-	users.GET("/:id/platform-quotas", endpoint.GetUserPlatformQuotas)
-	users.PUT("/:id/platform-quotas", endpoint.UpdateUserPlatformQuotas)
-	users.POST("/:id/platform-quotas/reset", endpoint.ResetUserPlatformQuotaWindow)
-}

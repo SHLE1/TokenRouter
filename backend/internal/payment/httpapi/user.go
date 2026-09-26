@@ -139,7 +139,6 @@ type UserCheckoutPlan struct {
 	GroupID              *int64            `json:"group_id,omitempty"`
 	GroupIDs             []int64           `json:"group_ids"`
 	GroupRateMultipliers map[int64]float64 `json:"group_rate_multipliers"`
-	GroupPlatform        string            `json:"group_platform,omitempty"`
 	GroupName            string            `json:"group_name,omitempty"`
 	DailyLimitUSD        *float64          `json:"daily_limit_usd"`
 	WeeklyLimitUSD       *float64          `json:"weekly_limit_usd"`

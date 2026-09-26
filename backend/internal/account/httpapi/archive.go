@@ -25,6 +25,7 @@ type ArchiveHandler struct {
 func NewArchiveHandler(archive *account.Archive) *ArchiveHandler {
 	return &ArchiveHandler{archive: archive}
 }
+
 func (h *ArchiveHandler) ExportData(c *gin.Context) {
 	ids, err := parseAccountIDs(c)
 	if err != nil {
@@ -64,7 +65,7 @@ func (h *ArchiveHandler) ExportData(c *gin.Context) {
 
 func (h *ArchiveHandler) ImportData(c *gin.Context) {
 	var req transfer.DataImportRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := response.BindJSONStrict(c, &req); err != nil {
 		response.BadRequest(c, "Invalid request: "+err.Error())
 		return
 	}
@@ -82,6 +83,7 @@ func (h *ArchiveHandler) ImportData(c *gin.Context) {
 		return h.archive.Import(ctx, req)
 	})
 }
+
 func parseAccountIDs(c *gin.Context) ([]int64, error) {
 	values := c.QueryArray("ids")
 	if len(values) == 0 {
@@ -110,6 +112,7 @@ func parseAccountIDs(c *gin.Context) ([]int64, error) {
 	}
 	return ids, nil
 }
+
 func parseIncludeProxies(c *gin.Context) (bool, error) {
 	raw := strings.TrimSpace(strings.ToLower(c.Query("include_proxies")))
 	if raw == "" {

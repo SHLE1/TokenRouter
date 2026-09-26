@@ -63,7 +63,6 @@ type AccountReader interface {
 }
 type GroupView struct {
 	ID                                                                     int64
-	Platform                                                               string
 	AllowBatchImageGeneration                                              bool
 	RateMultiplier, BatchImageDiscountMultiplier, BatchImageHoldMultiplier float64
 	Price                                                                  billing.PriceGroup
@@ -149,7 +148,7 @@ func (s *Public) Submit(ctx context.Context, owner BatchImageOwner, req BatchIma
 	if err != nil {
 		return nil, err
 	}
-	// 与 ListModels 使用同一鉴权谓词（AllowBatchImageGeneration + Platform==Gemini），
+	// 与 ListModels 使用同一鉴权谓词（AllowBatchImageGeneration），
 	// 避免两个入口校验口径不一致留下防御纵深缺口。
 	if err := s.EnsureGroupAllowsBatchImage(ctx, owner.GroupID); err != nil {
 		return nil, err
@@ -991,12 +990,12 @@ func (s *Public) ListCandidateAccounts(ctx context.Context, groupID *int64, plat
 	if groupID != nil && *groupID > 0 {
 		return s.AccountRepo.ListSchedulableByGroupIDAndPlatform(ctx, *groupID, platform)
 	}
-	return s.AccountRepo.ListSchedulableByPlatform(ctx, platform)
+	return nil, ErrBatchImageNoAccountAvailable
 }
 
 func (s *Public) EnsureGroupAllowsBatchImage(ctx context.Context, groupID *int64) error {
 	if groupID == nil || *groupID <= 0 {
-		return nil
+		return ErrBatchImageGroupDisabled
 	}
 	if s.GroupRepo == nil {
 		return ErrBatchImageSettlementPricingMissing
@@ -1006,9 +1005,6 @@ func (s *Public) EnsureGroupAllowsBatchImage(ctx context.Context, groupID *int64
 		return ErrBatchImageSettlementPricingMissing
 	}
 	if !group.AllowBatchImageGeneration {
-		return ErrBatchImageGroupDisabled
-	}
-	if group.Platform != PlatformGemini {
 		return ErrBatchImageGroupDisabled
 	}
 	return nil

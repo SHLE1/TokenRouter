@@ -9,6 +9,8 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/execution"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
@@ -33,6 +35,12 @@ func (r *Runtime) Open(ctx context.Context, in execution.Request, sink upstream.
 		subscription: in.Funding.Subscription, parsedReq: in.Text.Parsed, body: in.Body, reqModel: in.Model, reqStream: in.Stream,
 		isClaudeCodeClient: in.Metadata.ClaudeCode, platform: in.Text.Platform, hasBoundSession: in.Text.HasBoundSession,
 		sessionKey: in.SessionHash, sessionBoundAccountID: in.Text.BoundAccountID, streamStarted: output.StreamStarted, reqLog: output.Log,
+	}
+	// Messages 入口的隔离标识来自 metadata，不把调度用的内容摘要当成显式会话。
+	if in.Text.Kind == execution.TextMessages && in.Text.Parsed != nil && requeststate.ExecutionHintsFromContext(ctx).SessionIsolationHash == "" {
+		if id := gatewayhttp.MetadataSessionID(in.Text.Parsed.MetadataUserID); id != "" {
+			ctx = requeststate.WithSessionIsolation(ctx, session.SessionIsolationSourceGateway, id)
+		}
 	}
 	// 前置步骤已完成 context 绑定，执行采用调用者传入的同一请求 context。
 	output.HTTP.Request = output.HTTP.Request.WithContext(ctx)

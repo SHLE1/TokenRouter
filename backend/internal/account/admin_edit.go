@@ -277,13 +277,6 @@ func (s *Admin) UpdateAccount(ctx context.Context, id int64, input *UpdateAccoun
 		if err := s.ValidateGroupIDs(ctx, *input.GroupIDs); err != nil {
 			return nil, err
 		}
-
-		// 检查混合渠道风险（除非用户已确认）
-		if !input.SkipMixedChannelCheck {
-			if err := s.checkMixedChannelRisk(ctx, account.ID, account.Platform, *input.GroupIDs); err != nil {
-				return nil, err
-			}
-		}
 	}
 
 	deferQoderPATValidation := false
@@ -448,12 +441,10 @@ func (s *Admin) BulkUpdateAccounts(ctx context.Context, input *BulkUpdateAccount
 		return nil, err
 	}
 
-	needMixedChannelCheck := input.GroupIDs != nil && !input.SkipMixedChannelCheck
-
-	// 预取所有目标账号，供凭据守卫/代理守卫/混合渠道检查共用，避免多次 DB 查询。
+	// 预取所有目标账号，供凭据与代理守卫共用，避免多次 DB 查询。
 	var cachedTargets []*Record
 	hasOpenAIConfigPatch := HasOpenAIConfigurationPatch(input.Credentials, input.Extra)
-	if len(input.Credentials) > 0 || input.ProxyID != nil || needMixedChannelCheck || hasOpenAIConfigPatch {
+	if len(input.Credentials) > 0 || input.ProxyID != nil || hasOpenAIConfigPatch {
 		loaded, err := s.accountRepo.GetByIDs(ctx, input.AccountIDs)
 		if err != nil {
 			return nil, err
@@ -505,29 +496,6 @@ func (s *Admin) BulkUpdateAccounts(ctx context.Context, input *BulkUpdateAccount
 			if acc != nil && acc.IsCredentialShadow() {
 				return nil, infraerrors.Newf(infraerrors.CategoryBadRequest, "SPARK_SHADOW_PROXY_INHERITED",
 					"spark shadow account %d proxy is inherited from its parent and cannot be set in bulk; manage it on the parent account", acc.ID)
-			}
-		}
-	}
-
-	// 预加载账号平台信息（混合渠道检查需要）。
-	platformByID := map[int64]string{}
-	if needMixedChannelCheck {
-		for _, account := range cachedTargets {
-			if account != nil {
-				platformByID[account.ID] = account.Platform
-			}
-		}
-	}
-
-	// 预检查混合渠道风险：在任何写操作之前，若发现风险立即返回错误。
-	if needMixedChannelCheck {
-		for _, accountID := range input.AccountIDs {
-			platform := platformByID[accountID]
-			if platform == "" {
-				continue
-			}
-			if err := s.checkMixedChannelRisk(ctx, accountID, platform, *input.GroupIDs); err != nil {
-				return nil, err
 			}
 		}
 	}

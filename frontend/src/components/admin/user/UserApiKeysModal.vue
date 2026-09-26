@@ -48,7 +48,6 @@
                 <GroupBadge
                   v-if="key.group_id && key.group"
                   :name="key.group.name"
-                  :platform="key.group.platform"
                   :display-brand="key.group.display_brand"
                   :rate-multiplier="key.group.rate_multiplier"
                   :peak-rate-enabled="key.group.peak_rate_enabled"
@@ -112,7 +111,6 @@
         >
           <GroupOptionItem
             :name="group.name"
-            :platform="group.platform"
             :display-brand="group.display_brand"
             :rate-multiplier="group.rate_multiplier"
             :peak-rate-enabled="group.peak_rate_enabled"

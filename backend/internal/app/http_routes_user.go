@@ -14,7 +14,7 @@ import (
 )
 
 // provideUserRouteMount 固定所属 HTTP 实例，只负责注册与跨模块投影。
-func provideUserRouteMount(ePlatformQuota *billinghttp.QuotaHandler,
+func provideUserRouteMount(
 	eUserPromotion *promotionhttp.UserHandler,
 	eSubscription *billinghttp.SubscriptionHandler,
 	eAnnouncement *sitehttp.AnnouncementHandler,
@@ -25,7 +25,8 @@ func provideUserRouteMount(ePlatformQuota *billinghttp.QuotaHandler,
 	eUsage *usagehttp.UsageHandler,
 	eTeam *teamhttp.UserHandler,
 	eTotp *identityhttp.TotpHandler,
-	eUser *identityhttp.UserHandler) userRouteMount {
+	eUser *identityhttp.UserHandler,
+) userRouteMount {
 	return func(v1 *gin.RouterGroup, security httpRouteSecurity) {
 		authenticated := v1.Group("")
 		authenticated.Use(security.JWT)
@@ -41,7 +42,6 @@ func provideUserRouteMount(ePlatformQuota *billinghttp.QuotaHandler,
 		usagehttp.RegisterUserRoutes(authenticated, eUsage, security.Panel.Heavy())
 		creativehttp.RegisterUserRoutes(authenticated, eCreative, security.Panel.Heavy())
 		sitehttp.RegisterUserRoutes(authenticated, eAnnouncement)
-		billinghttp.RegisterUserRoutes(authenticated, eRedeem, eSubscription, ePlatformQuota)
-
+		billinghttp.RegisterUserRoutes(authenticated, eRedeem, eSubscription)
 	}
 }

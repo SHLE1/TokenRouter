@@ -77,7 +77,6 @@ func provideIdentityAuthGraph(
 	promoService *promotion.PromoService,
 	defaultSubAssigner identity.DefaultSubscriptionAssigner,
 	affiliateService *promotion.AffiliateService,
-	userPlatformQuotaRepo billing.UserPlatformQuotaRepository,
 	authCacheInvalidator apikey.APIKeyAuthCacheInvalidator,
 	billingCache billing.BillingCache,
 ) *identityAuthGraph {
@@ -89,7 +88,7 @@ func provideIdentityAuthGraph(
 		options.Server.Mode = cfg.Server.Mode
 		options.Turnstile.Required = cfg.Turnstile.Required
 	}
-	deps := &identity.AuthDependencies{Users: users, Redeem: redeemRepo, RefreshTokens: refreshTokenCache, Options: options, Turnstile: turnstileService, Tencent: tencentCaptchaService, Aliyun: aliyunCaptchaService, DefaultSubscriptions: defaultSubAssigner, Invalidator: authCacheInvalidator, BalanceCache: billingCache, Quotas: userPlatformQuotaRepo, Observer: identity.Observer{Log: logging.LegacyPrintf}, DomainRegistration: users, NormalizedEmailConflict: users, EmailAliasGuard: users, AliasLookup: users, AliasOwner: users}
+	deps := &identity.AuthDependencies{Users: users, Redeem: redeemRepo, RefreshTokens: refreshTokenCache, Options: options, Turnstile: turnstileService, Tencent: tencentCaptchaService, Aliyun: aliyunCaptchaService, DefaultSubscriptions: defaultSubAssigner, Invalidator: authCacheInvalidator, BalanceCache: billingCache, Observer: identity.Observer{Log: logging.LegacyPrintf}, DomainRegistration: users, NormalizedEmailConflict: users, EmailAliasGuard: users, AliasLookup: users, AliasOwner: users}
 	if settingService != nil {
 		deps.Settings = settingService
 	}

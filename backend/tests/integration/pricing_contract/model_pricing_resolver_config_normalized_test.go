@@ -46,7 +46,6 @@ const (
 // tokenPricingForModels 构造 token 计费模式的共享价格配置定价；inputPerMillion 单位为 USD/1M token。
 func tokenPricingForModels(models []string, inputPerMillion float64) routing.ModelPricingEntry {
 	return routing.ModelPricingEntry{
-		Platform:        capability.PlatformOpenAI,
 		Models:          models,
 		BillingMode:     routing.BillingModeToken,
 		InputPrice:      new(float64(inputPerMillion / 1e6)),
@@ -81,8 +80,8 @@ func recordUsageWithConfigPricing(t *testing.T, requestedModel string, pricings 
 	svc.Dependencies.Prices = billingtestkit.PriceResolver(cs, svc.Dependencies.Calculator)
 
 	group := &routing.Group{
-		ID:             groupID,
-		Platform:       capability.PlatformOpenAI,
+		ID: groupID,
+
 		RateMultiplier: 1,
 	}
 	err := svc.RecordOpenAI(context.Background(), &gatewaycapture.OpenAICapture{

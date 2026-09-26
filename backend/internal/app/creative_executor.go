@@ -7,6 +7,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/selection"
 
 	"github.com/TokenFlux/TokenRouter/internal/account"
+	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/config"
 	"github.com/TokenFlux/TokenRouter/internal/creative"
 	creativeprovider "github.com/TokenFlux/TokenRouter/internal/creative/provider"
@@ -29,11 +30,11 @@ func provideCreativeExecutor(cfg *config.Config, groups creativeprovider.Executi
 			if group == nil {
 				return nil, err
 			}
-			value := &creative.ExecutionGroup{Platform: group.Platform, RoutingPolicy: group.RoutingPolicy.Clone()}
-			if group.ResponsesImagePolicy != "" || group.ProtocolFallbacks != nil {
-				value.ConfigureContext = func(ctx context.Context, platform, operation string) context.Context {
-					return requeststate.WithClientProtocol(requeststate.WithGroup(ctx, group), creative.OperationProtocol(platform, operation))
-				}
+			value := &creative.ExecutionGroup{RoutingPolicy: group.RoutingPolicy.Clone(), AllowsOperation: func(platform, operation string) bool {
+				return group.IsActive() && !group.ClaudeCodeOnly && group.AllowsClientProtocol(creative.OperationProtocol(platform, operation))
+			}}
+			value.ConfigureContext = func(ctx context.Context, platform, operation string) context.Context {
+				return requeststate.WithClientProtocol(requeststate.WithGroup(apikey.WithForcePlatform(ctx, platform), group), creative.OperationProtocol(platform, operation))
 			}
 			return value, err
 		}

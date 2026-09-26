@@ -11,7 +11,7 @@
     }
   },
   "Extra": {
-    "mixed_scheduling": true
+    "openai_passthrough": true
   },
   "ProxyID": null,
   "ProxyFallbackOriginID": null,

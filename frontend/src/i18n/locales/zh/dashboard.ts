@@ -23,15 +23,6 @@ export default {
     platformBreakdownEmpty: '暂无平台用量',
     platformCount: '{count} 个平台',
     platformOther: '其他',
-    platformQuota: {
-      title: '配额用量',
-      daily: '日',
-      weekly: '周',
-      monthly: '月（近30天）',
-      resetsAt: '{time} 重置',
-      noLimit: '不限制',
-      disabled: '已禁用',
-    },
     tokenUsageTrend: 'Token 使用趋势',
     activityHeatmap: '用量热力图',
     heatmapLess: '少',
@@ -193,7 +184,7 @@ export default {
       duplicateSource: '来源模型不能重复',
       tooManyRules: '最多支持 100 条模型重定向规则'
     },
-    fallbackToDefaultGroupWhenUnavailable: '不可用时自动降级',
+    fallbackWhenGroupUnavailable: '不可用时自动降级',
     statusLabel: '状态',
     selectStatus: '选择状态',
     saving: '保存中...',
@@ -223,6 +214,11 @@ export default {
     lastUsedIP: '最近使用 IP',
     useKey: '使用密钥',
     useKeyModal: {
+      model: '请求模型',
+      selectModel: '选择可请求模型',
+      noModels: '此分组没有适用于当前客户端的模型',
+      directAuth: '将 API Key 写入配置文件',
+
       title: '使用 API 密钥',
       compositeDescription: '调用模型时，请在模型 ID 前添加对应分组前缀。',
       description: '将以下环境变量添加到您的终端配置文件或直接在终端中运行。',

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log/slog"
 	"strconv"
 	"strings"
 
@@ -81,25 +80,18 @@ const (
 	SettingKeyAuthSourceDefaultWeChatGrantOnSignup      = "auth_source_default_wechat_grant_on_signup"
 	SettingKeyAuthSourceDefaultWeChatSubscriptions      = "auth_source_default_wechat_subscriptions"
 	SettingKeyDefaultBalance                            = "default_balance"
-	SettingKeyDefaultPlatformQuotas                     = "default_platform_quotas"
 	SettingKeyDefaultSubscriptions                      = "default_subscriptions"
 	SettingKeyForceEmailOnThirdPartySignup              = "force_email_on_third_party_signup"
 )
 
-func SettingKeyAuthSourcePlatformQuotas(source string) string {
-	return fmt.Sprintf("auth_source_default_%s_platform_quotas", source)
-}
-
 type authSourceDefaultKeySet struct {
-	// source 是 auth source 标识（如 "email"、"github"），仅用于 parse 时
-	// slog.Warn 诊断输出，不再参与 key 拼接（platformQuotas 字段已存完整 key）。
+	// source 标识认证来源。
 	source           string
 	balance          string
 	concurrency      string
 	subscriptions    string
 	grantOnSignup    string
 	grantOnFirstBind string
-	platformQuotas   string // SettingKeyAuthSourcePlatformQuotas(source)
 }
 
 var (
@@ -110,7 +102,6 @@ var (
 		subscriptions:    SettingKeyAuthSourceDefaultEmailSubscriptions,
 		grantOnSignup:    SettingKeyAuthSourceDefaultEmailGrantOnSignup,
 		grantOnFirstBind: SettingKeyAuthSourceDefaultEmailGrantOnFirstBind,
-		platformQuotas:   SettingKeyAuthSourcePlatformQuotas("email"),
 	}
 	linuxDoAuthSourceDefaultKeys = authSourceDefaultKeySet{
 		source:           "linuxdo",
@@ -119,7 +110,6 @@ var (
 		subscriptions:    SettingKeyAuthSourceDefaultLinuxDoSubscriptions,
 		grantOnSignup:    SettingKeyAuthSourceDefaultLinuxDoGrantOnSignup,
 		grantOnFirstBind: SettingKeyAuthSourceDefaultLinuxDoGrantOnFirstBind,
-		platformQuotas:   SettingKeyAuthSourcePlatformQuotas("linuxdo"),
 	}
 	oidcAuthSourceDefaultKeys = authSourceDefaultKeySet{
 		source:           "oidc",
@@ -128,7 +118,6 @@ var (
 		subscriptions:    SettingKeyAuthSourceDefaultOIDCSubscriptions,
 		grantOnSignup:    SettingKeyAuthSourceDefaultOIDCGrantOnSignup,
 		grantOnFirstBind: SettingKeyAuthSourceDefaultOIDCGrantOnFirstBind,
-		platformQuotas:   SettingKeyAuthSourcePlatformQuotas("oidc"),
 	}
 	weChatAuthSourceDefaultKeys = authSourceDefaultKeySet{
 		source:           "wechat",
@@ -137,7 +126,6 @@ var (
 		subscriptions:    SettingKeyAuthSourceDefaultWeChatSubscriptions,
 		grantOnSignup:    SettingKeyAuthSourceDefaultWeChatGrantOnSignup,
 		grantOnFirstBind: SettingKeyAuthSourceDefaultWeChatGrantOnFirstBind,
-		platformQuotas:   SettingKeyAuthSourcePlatformQuotas("wechat"),
 	}
 	gitHubAuthSourceDefaultKeys = authSourceDefaultKeySet{
 		source:           "github",
@@ -146,7 +134,6 @@ var (
 		subscriptions:    SettingKeyAuthSourceDefaultGitHubSubscriptions,
 		grantOnSignup:    SettingKeyAuthSourceDefaultGitHubGrantOnSignup,
 		grantOnFirstBind: SettingKeyAuthSourceDefaultGitHubGrantOnFirstBind,
-		platformQuotas:   SettingKeyAuthSourcePlatformQuotas("github"),
 	}
 	googleAuthSourceDefaultKeys = authSourceDefaultKeySet{
 		source:           "google",
@@ -155,7 +142,6 @@ var (
 		subscriptions:    SettingKeyAuthSourceDefaultGoogleSubscriptions,
 		grantOnSignup:    SettingKeyAuthSourceDefaultGoogleGrantOnSignup,
 		grantOnFirstBind: SettingKeyAuthSourceDefaultGoogleGrantOnFirstBind,
-		platformQuotas:   SettingKeyAuthSourcePlatformQuotas("google"),
 	}
 	dingTalkAuthSourceDefaultKeys = authSourceDefaultKeySet{
 		source:           "dingtalk",
@@ -164,7 +150,6 @@ var (
 		subscriptions:    SettingKeyAuthSourceDefaultDingTalkSubscriptions,
 		grantOnSignup:    SettingKeyAuthSourceDefaultDingTalkGrantOnSignup,
 		grantOnFirstBind: SettingKeyAuthSourceDefaultDingTalkGrantOnFirstBind,
-		platformQuotas:   SettingKeyAuthSourcePlatformQuotas("dingtalk"),
 	}
 )
 
@@ -258,42 +243,6 @@ func (s *GrantSettings) UpdateAuthSourceDefaultSettings(ctx context.Context, set
 	return nil
 }
 
-// GetDefaultPlatformQuotas 保留默认接纳参数的原读取和容错边界。
-func (s *GrantSettings) GetDefaultPlatformQuotas(ctx context.Context) (map[string]*DefaultPlatformQuotaSetting, error) {
-	out := make(map[string]*DefaultPlatformQuotaSetting, len(billing.AllowedQuotaPlatforms))
-	for _, platform := range billing.AllowedQuotaPlatforms {
-		out[platform] = &DefaultPlatformQuotaSetting{}
-	}
-	raw, err := s.settingRepo.GetValue(ctx, SettingKeyDefaultPlatformQuotas)
-	if err != nil || raw == "" {
-		return out, nil // 无配置 = 全部不限制
-	}
-	parsed := map[string]*DefaultPlatformQuotaSetting{}
-	if err := json.Unmarshal([]byte(raw), &parsed); err != nil {
-		return out, nil // 配置损坏 fail-open，避免注册失败
-	}
-	for _, platform := range billing.AllowedQuotaPlatforms {
-		if v := parsed[platform]; v != nil {
-			out[platform] = v
-		}
-	}
-	return out, nil // 补齐全部允许 platform key，保持与旧实现一致的下游契约
-}
-
-// GetAuthSourcePlatformQuotas 保留默认接纳参数的原读取和容错边界。
-func (s *GrantSettings) GetAuthSourcePlatformQuotas(ctx context.Context, source string) map[string]*DefaultPlatformQuotaSetting {
-	out := map[string]*DefaultPlatformQuotaSetting{}
-	raw, err := s.settingRepo.GetValue(ctx, SettingKeyAuthSourcePlatformQuotas(source))
-	if err != nil || raw == "" {
-		return out // 无 override
-	}
-	if err := json.Unmarshal([]byte(raw), &out); err != nil {
-		slog.Warn("[Setting] unmarshal auth source platform quotas failed (fail-open)", "source", source, "error", err)
-		return map[string]*DefaultPlatformQuotaSetting{}
-	}
-	return out // 仅含已配置平台，保持 override 语义
-}
-
 // ErrDefaultSubPlanInvalid 保留原 reason 和错误身份。
 var ErrDefaultSubPlanInvalid = billing.ErrDefaultSubPlanInvalid
 
@@ -329,15 +278,6 @@ func parseProviderDefaultGrantSettings(settings map[string]string, keys authSour
 		result.GrantOnFirstBind = raw == "true"
 	}
 
-	if raw := settings[keys.platformQuotas]; raw != "" {
-		parsed := map[string]*DefaultPlatformQuotaSetting{}
-		if err := json.Unmarshal([]byte(raw), &parsed); err != nil {
-			slog.Warn("[Setting] parseProviderDefaultGrantSettings: unmarshal auth source platform quotas failed", "source", keys.source, "error", err)
-		} else {
-			result.PlatformQuotas = parsed
-		}
-	}
-
 	return result
 }
 
@@ -356,17 +296,6 @@ func writeProviderDefaultGrantUpdates(updates map[string]string, keys authSource
 	updates[keys.subscriptions] = string(raw)
 	updates[keys.grantOnSignup] = strconv.FormatBool(settings.GrantOnSignup)
 	updates[keys.grantOnFirstBind] = strconv.FormatBool(settings.GrantOnFirstBind)
-
-	// auth source platform quota：整体替换语义。
-	// nil = 请求未携带该字段，跳过写入以保留既有配置（与系统层 buildSystemSettingsUpdates 的
-	// DefaultPlatformQuotas nil 守卫一致）；非 nil（含空 map）才整体替换。二者语义不可混同。
-	if keys.platformQuotas != "" && settings.PlatformQuotas != nil {
-		blob, err := json.Marshal(settings.PlatformQuotas)
-		if err != nil {
-			blob = []byte("{}")
-		}
-		updates[keys.platformQuotas] = string(blob)
-	}
 }
 
 func mergeProviderDefaultGrantSettings(globalDefaults ProviderDefaultGrantSettings, providerDefaults ProviderDefaultGrantSettings) ProviderDefaultGrantSettings {
@@ -399,10 +328,6 @@ func ValidateDefaultSubscriptionPlans(ctx context.Context, items []DefaultSubscr
 	return billing.ValidateDefaultSubscriptionPlans(ctx, items, lookup)
 }
 
-func ValidateDefaultPlatformQuotaMap(m map[string]*DefaultPlatformQuotaSetting) error {
-	return billing.ValidateDefaultPlatformQuotaMap(m)
-}
-
 func (s *GrantSettings) PrepareAuthSourceDefaults(ctx context.Context, settings *AuthSourceDefaultSettings) (map[string]string, error) {
 	if settings == nil {
 		return nil, nil
@@ -419,26 +344,6 @@ func (s *GrantSettings) PrepareAuthSourceDefaults(ctx context.Context, settings 
 	} {
 		if err := s.options.ValidatePlans(ctx, subscriptions); err != nil {
 			return nil, err
-		}
-	}
-
-	// 校验各 auth source 的 platform quota map（改动 C：对等系统层校验）
-	for _, pgs := range []struct {
-		name string
-		pq   map[string]*DefaultPlatformQuotaSetting
-	}{
-		{"email", settings.Email.PlatformQuotas},
-		{"linuxdo", settings.LinuxDo.PlatformQuotas},
-		{"oidc", settings.OIDC.PlatformQuotas},
-		{"wechat", settings.WeChat.PlatformQuotas},
-		{"github", settings.GitHub.PlatformQuotas},
-		{"google", settings.Google.PlatformQuotas},
-		{"dingtalk", settings.DingTalk.PlatformQuotas},
-	} {
-		if pgs.pq != nil {
-			if err := ValidateDefaultPlatformQuotaMap(pgs.pq); err != nil {
-				return nil, err
-			}
 		}
 	}
 
@@ -483,13 +388,6 @@ func AuthSourceSettingKeys() []string {
 		SettingKeyAuthSourceDefaultDingTalkSubscriptions,
 		SettingKeyAuthSourceDefaultDingTalkGrantOnSignup,
 		SettingKeyAuthSourceDefaultDingTalkGrantOnFirstBind,
-		SettingKeyAuthSourcePlatformQuotas("email"),
-		SettingKeyAuthSourcePlatformQuotas("linuxdo"),
-		SettingKeyAuthSourcePlatformQuotas("oidc"),
-		SettingKeyAuthSourcePlatformQuotas("wechat"),
-		SettingKeyAuthSourcePlatformQuotas("github"),
-		SettingKeyAuthSourcePlatformQuotas("google"),
-		SettingKeyAuthSourcePlatformQuotas("dingtalk"),
 		SettingKeyForceEmailOnThirdPartySignup,
 	}
 }

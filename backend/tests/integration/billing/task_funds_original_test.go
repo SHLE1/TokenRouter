@@ -19,7 +19,6 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/batchimage"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/team"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing"
@@ -318,8 +317,7 @@ func TestUsageBillingRepositoryBatchImagePartialSubscriptionUsesBalanceRate(t *t
 		Balance: 5,
 	})
 	group := mustCreateGroup(t, client, &routing.Group{
-		Name:     "batch-partial-rate-group-" + uuid.NewString(),
-		Platform: capability.PlatformGemini,
+		Name: "batch-partial-rate-group-" + uuid.NewString(),
 	})
 	plan := mustCreatePlan(t, client, &billing.SubscriptionPlan{
 		Name:                 "batch-partial-rate-plan-" + uuid.NewString(),

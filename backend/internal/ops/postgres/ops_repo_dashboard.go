@@ -1026,11 +1026,9 @@ func buildUsageWhere(filter *ops.OpsDashboardFilter, start, end time.Time, start
 		idx++
 	}
 	if platform != "" {
-		// Prefer group.platform when available; fall back to account.platform so we don't
-		// drop rows where group_id is NULL.
-		join = "LEFT JOIN groups g ON g.id = ul.group_id LEFT JOIN accounts a ON a.id = ul.account_id"
+		// 使用记录自身的平台快照，不依赖当前账号或分组状态。
 		args = append(args, platform)
-		clauses = append(clauses, fmt.Sprintf("COALESCE(NULLIF(g.platform,''), a.platform) = $%d", idx))
+		clauses = append(clauses, fmt.Sprintf("ul.platform = $%d", idx))
 		idx++
 	}
 

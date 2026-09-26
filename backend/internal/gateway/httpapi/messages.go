@@ -17,6 +17,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
 	"github.com/TokenFlux/TokenRouter/internal/moderation"
+	"github.com/TokenFlux/TokenRouter/internal/protocol"
 	"github.com/TokenFlux/TokenRouter/internal/protocol/anthropic"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
@@ -154,25 +155,8 @@ func (h *MessagesHandler) Messages(c *gin.Context) {
 	}
 	body = parsedReq.Body.Bytes()
 	reqModel := parsedReq.Model
-	if policyBody, changed, policyErr := h.backend.Reasoning(c, apiKey, body); policyErr != nil {
-		h.backend.PolicyDenied(c)
-		h.errorResponse(c, http.StatusForbidden, "permission_error", policyErr.Error())
-		return
-	} else if changed {
-		if err := parsedReq.ReplaceBody(policyBody); err != nil {
-			h.errorResponse(c, http.StatusBadRequest, "invalid_request_error", "Failed to apply reasoning effort policy")
-			return
-		}
-		body = parsedReq.Body.Bytes()
-	}
 	reqStream := parsedReq.Stream
 	reqLog = reqLog.With(zap.String("model", reqModel), zap.Bool("stream", reqStream))
-
-	// 解析分组模型映射
-	// 当前分组和分组映射结果进入独立计划，不改变原解析位置。
-	groupMappingRoutePlan := h.backend.Plan(c.Request.Context(), apiKey, reqModel)
-	groupMapping := groupMappingRoutePlan.Mapping()
-	h.backend.BindPlan(c, groupMappingRoutePlan)
 
 	// 设置 max_tokens=1 + haiku 探测请求标识到 context 中
 	// 必须在 SetClaudeCodeClientContext 之前设置，因为 ClaudeCodeValidator 需要读取此标识进行绕过判断
@@ -189,6 +173,28 @@ func (h *MessagesHandler) Messages(c *gin.Context) {
 	if !h.checkClientVersion(c, detection) {
 		return
 	}
+
+	apiKey, err = resolveClientGroupForRequest(c, h.backend, apiKey, protocol.ProtocolAnthropicMessages)
+	if err != nil {
+		writeClientGroupFallbackError(c, err, h.errorResponse)
+		return
+	}
+	if policyBody, changed, policyErr := h.backend.Reasoning(c, apiKey, body); policyErr != nil {
+		h.backend.PolicyDenied(c)
+		h.errorResponse(c, http.StatusForbidden, "permission_error", policyErr.Error())
+		return
+	} else if changed {
+		if err := parsedReq.ReplaceBody(policyBody); err != nil {
+			h.errorResponse(c, http.StatusBadRequest, "invalid_request_error", "Failed to apply reasoning effort policy")
+			return
+		}
+		body = parsedReq.Body.Bytes()
+	}
+	// 解析分组模型映射
+	// 当前分组和分组映射结果进入独立计划，不改变原解析位置。
+	groupMappingRoutePlan := h.backend.Plan(c.Request.Context(), apiKey, reqModel)
+	groupMapping := groupMappingRoutePlan.Mapping()
+	h.backend.BindPlan(c, groupMappingRoutePlan)
 
 	// 在请求上下文中记录 thinking 状态，供 Antigravity 最终模型 key 推导/模型维度限流使用
 	h.backend.BindThinking(c, parsedReq.ThinkingEnabled)
@@ -257,12 +263,12 @@ func (h *MessagesHandler) Messages(c *gin.Context) {
 		zap.String("metadata_user_id_raw", parsedReq.MetadataUserID),
 	)
 
-	// 获取平台：优先使用强制平台（/antigravity 路由，中间件已设置 request.Context），否则使用分组平台
+	// 专用入口读取强制平台过滤，普通入口不预设账号平台
 	platform := ""
 	if forcePlatform, ok := h.backend.ForcedPlatform(c); ok {
 		platform = forcePlatform
 	} else if apiKey.Group != nil {
-		platform = apiKey.Group.Platform
+		platform = ""
 	}
 	sessionKey := sessionHash
 	if platform == capability.PlatformGemini && sessionHash != "" {

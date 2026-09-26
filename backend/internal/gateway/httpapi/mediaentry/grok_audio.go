@@ -11,7 +11,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/admission"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
 	gatewaymedia "github.com/TokenFlux/TokenRouter/internal/gateway/media"
@@ -66,7 +65,7 @@ func (h *Runtime) recordGrokVoiceUsage(
 	}
 	inboundEndpoint := gatewayhttp.GetInboundEndpoint(c)
 	upstreamEndpoint := gatewayhttp.GetUpstreamEndpoint(c, account.Record.Platform)
-	quotaPlatform := admission.QuotaPlatform(c.Request.Context(), apiKey)
+
 	model := strings.TrimSpace(result.Model)
 	if model == "" {
 		model = endpoint
@@ -85,7 +84,7 @@ func (h *Runtime) recordGrokVoiceUsage(
 		IPAddress:          clientIP,
 		RequestPayloadHash: requestPayloadHash,
 		APIKeyService:      h.bindings.Quota,
-		QuotaPlatform:      quotaPlatform,
+
 		ClientSessionID:    sessionID,
 		PricingUsageFields: pricingFields,
 	})
