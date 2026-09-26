@@ -336,6 +336,8 @@
     <!-- Create Group Modal -->
     <BaseDialog
       :show="showCreateModal"
+      :body-scroll="false"
+      :close-on-escape="!showAdvancedSchedulerOverridesModal"
       :title="t('admin.groups.createGroup')"
       width="wide"
       @close="closeCreateModal"
@@ -344,784 +346,43 @@
         id="create-group-form"
         @submit.prevent="handleCreateGroup"
         novalidate
-        class="group-dialog-form"
+        class="flex min-h-0 flex-1 flex-col"
       >
-        <GroupFormTabs ref="createGroupTabsRef" id-prefix="create-group">
-          <template #general>
-            <h4 class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('admin.groups.tabs.identity') }}</h4>
-            <div data-group-field="name">
-              <label class="input-label">{{ t("admin.groups.form.name") }}</label>
-              <input
-                v-model="createForm.name"
-                type="text"
-                required
-                class="input"
-                :placeholder="t('admin.groups.enterGroupName')"
-                data-tour="group-form-name"
-              />
-            </div>
-            <div>
-              <label class="input-label">{{
-                t("admin.groups.form.description")
-              }}</label>
-              <textarea
-                v-model="createForm.description"
-                rows="3"
-                class="input"
-                :placeholder="t('admin.groups.optionalDescription')"
-              ></textarea>
-            </div>
-            <div>
-              <label for="create-group-rate-multiplier" class="input-label">{{
-                t("admin.groups.form.rateMultiplier")
-              }}</label>
-              <input
-                id="create-group-rate-multiplier"
-                v-model.number="createForm.rate_multiplier"
-                type="number"
-                step="0.001"
-                min="0.001"
-                required
-                class="input"
-                data-tour="group-form-multiplier"
-              />
-              <p class="input-hint">{{ t("admin.groups.rateMultiplierHint") }}</p>
-            </div>
-            <div>
-              <label class="input-label">{{
-                t("admin.groups.form.displayBrand")
-              }}</label>
-              <Select
-                v-model="createForm.display_brand"
-                :options="providerBrandOptions"
-                :placeholder="t('admin.groups.displayBrandPlaceholder')"
-                :search-placeholder="t('admin.groups.displayBrandPlaceholder')"
-                :creatable-prefix="t('admin.groups.displayBrandCreatablePrefix')"
-                searchable
-                creatable
-              />
-              <p class="input-hint">{{ t("admin.groups.displayBrandHint") }}</p>
-            </div>
-
-            <div data-tour="group-form-exclusive">
-              <div class="relative mb-1.5 flex items-center gap-1">
-                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {{ t("admin.groups.form.exclusive") }}
-                </label>
-                <!-- Help Tooltip -->
-                <div class="group inline-flex">
-                  <Icon
-                    name="questionCircle"
-                    size="sm"
-                    :stroke-width="2"
-                    class="cursor-help text-gray-400 transition-colors hover:text-primary-500 dark:text-gray-500 dark:hover:text-primary-400"
-                  />
-                  <!-- Tooltip Popover -->
-                  <div
-                    class="pointer-events-none absolute bottom-full left-0 z-50 mb-2 w-72 max-w-full opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:opacity-100"
-                  >
-                    <div
-                      class="rounded-control bg-gray-900 p-3 text-white shadow-lg dark:bg-gray-800"
-                    >
-                      <p class="mb-2 text-xs font-medium">
-                        {{ t("admin.groups.exclusiveTooltip.title") }}
-                      </p>
-                      <p class="mb-2 text-xs leading-relaxed text-gray-300">
-                        {{ t("admin.groups.exclusiveTooltip.description") }}
-                      </p>
-                      <div class="rounded-compact bg-gray-800 p-2 dark:bg-gray-700">
-                        <p class="text-xs leading-relaxed text-gray-300">
-                          <span
-                            class="inline-flex items-center gap-1 text-primary-400"
-                            ><Icon name="lightbulb" size="xs" />
-                            {{ t("admin.groups.exclusiveTooltip.example") }}</span
-                          >
-                          {{ t("admin.groups.exclusiveTooltip.exampleContent") }}
-                        </p>
-                      </div>
-                      <!-- Arrow -->
-                      <div
-                        class="absolute -bottom-1.5 left-3 h-3 w-3 rotate-45 bg-gray-900 dark:bg-gray-800"
-                      ></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="flex items-center gap-3">
-                <Toggle
-                  :model-value="createForm.is_exclusive"
-                  data-group-setting="is_exclusive"
-                  :aria-label="t('admin.groups.form.exclusive')"
-                  @update:model-value="createForm.is_exclusive = !createForm.is_exclusive"
-                />
-                <span class="text-sm text-gray-500 dark:text-gray-400">
-                  {{
-                    createForm.is_exclusive
-                      ? t("admin.groups.exclusive")
-                      : t("admin.groups.public")
-                  }}
-                </span>
-              </div>
-            </div>
-
-            <h4 class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('admin.groups.tabs.scheduling') }}</h4>
-            <div>
-              <label class="input-label">{{
-                t("admin.groups.form.schedulerType")
-              }}</label>
-              <Select
-                v-model="createForm.scheduler_type"
-                :options="schedulerTypeOptions"
-              />
-              <p class="input-hint">{{ t("admin.groups.scheduler.hint") }}</p>
-              <div
-                v-if="createForm.scheduler_type === 'advanced'"
-                class="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-control border border-primary-900/10 bg-primary-50/60 px-3 py-2.5 dark:border-dark-600 dark:bg-dark-800/70"
-              >
-                <div class="min-w-0 text-xs text-primary-900/70 dark:text-dark-200/80">
-                  <span class="font-medium text-primary-900 dark:text-dark-50">{{ t('admin.groups.advancedSchedulerOverrides.label') }}</span>
-                  <span class="ml-2">{{ formatAdvancedSchedulerOverridesSummary(createForm.advanced_scheduler_overrides) }}</span>
-                </div>
-                <button
-                  type="button"
-                  class="btn btn-secondary shrink-0 px-3 py-1.5 text-xs"
-                  @click="openAdvancedSchedulerOverrides('create')"
-                >
-                  <Icon name="cog" size="sm" />
-                  {{ t('admin.groups.advancedSchedulerOverrides.configure') }}
-                </button>
-              </div>
-            </div>
-            <div v-if="copyAccountsGroupOptions.length > 0">
-              <div class="relative mb-1.5 flex items-center gap-1">
-                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {{ t("admin.groups.copyAccounts.title") }}
-                </label>
-                <div class="group inline-flex">
-                  <Icon
-                    name="questionCircle"
-                    size="sm"
-                    :stroke-width="2"
-                    class="cursor-help text-gray-400 transition-colors hover:text-primary-500 dark:text-gray-500 dark:hover:text-primary-400"
-                  />
-                  <div
-                    class="pointer-events-none absolute bottom-full left-0 z-50 mb-2 w-72 max-w-full opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:opacity-100"
-                  >
-                    <div
-                      class="rounded-control bg-gray-900 p-3 text-white shadow-lg dark:bg-gray-800"
-                    >
-                      <p class="text-xs leading-relaxed text-gray-300">
-                        {{ t("admin.groups.copyAccounts.tooltip") }}
-                      </p>
-                      <div
-                        class="absolute -bottom-1.5 left-3 h-3 w-3 rotate-45 bg-gray-900 dark:bg-gray-800"
-                      ></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <!-- 已选分组标签 -->
-              <div
-                v-if="createForm.copy_accounts_from_group_ids.length > 0"
-                class="flex flex-wrap gap-1.5 mb-2"
-              >
-                <span
-                  v-for="groupId in createForm.copy_accounts_from_group_ids"
-                  :key="groupId"
-                  class="inline-flex items-center gap-1 rounded-full bg-primary-100 px-2.5 py-1 text-xs font-medium text-primary-700 dark:bg-primary-900/30 dark:text-primary-300"
-                >
-                  {{
-                    copyAccountsGroupOptions.find((o) => o.value === groupId)
-                      ?.label || `#${groupId}`
-                  }}
-                  <button
-                    type="button"
-                    @click="
-                      createForm.copy_accounts_from_group_ids =
-                        createForm.copy_accounts_from_group_ids.filter(
-                          (id) => id !== groupId,
-                        )
-                    "
-                    class="ml-0.5 text-primary-500 hover:text-primary-700 dark:hover:text-primary-200"
-                  >
-                    <Icon name="x" size="xs" />
-                  </button>
-                </span>
-              </div>
-              <!-- 分组选择下拉 -->
-              <Select
-                :model-value="null"
-                :options="copyAccountsGroupSelectOptions"
-                :placeholder="t('admin.groups.copyAccounts.selectPlaceholder')"
-                @change="addCreateCopyAccountsGroup"
-              />
-              <p class="input-hint">{{ t("admin.groups.copyAccounts.hint") }}</p>
-            </div>
-            <div>
-              <label class="input-label">{{
-                t("admin.groups.unavailableFallback.title")
-              }}</label>
-              <Select
-                v-model="createForm.unavailable_fallback_group_id"
-                :options="unavailableFallbackGroupOptions"
-                :placeholder="t('admin.groups.unavailableFallback.noFallback')"
-              />
-              <p class="input-hint">
-                {{ t("admin.groups.unavailableFallback.hint") }}
-              </p>
-            </div>
-            <div>
-              <div class="relative mb-1.5 flex items-center gap-1">
-                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {{ t("admin.groups.sessionIsolation.title") }}
-                </label>
-              </div>
-              <div class="flex items-center gap-3">
-                <Toggle
-                  :model-value="createForm.session_isolation_enabled"
-                  data-group-setting="session_isolation_enabled"
-                  :aria-label="t('admin.groups.sessionIsolation.title')"
-                  @update:model-value="createForm.session_isolation_enabled = !createForm.session_isolation_enabled"
-                />
-                <span class="text-sm text-gray-500 dark:text-gray-400">
-                  {{
-                    createForm.session_isolation_enabled
-                      ? t("admin.groups.sessionIsolation.enabledText")
-                      : t("admin.groups.sessionIsolation.disabledText")
-                  }}
-                </span>
-              </div>
-              <p class="input-hint">{{ t("admin.groups.sessionIsolation.hint") }}</p>
-            </div>
-            <div class="border-t pt-4" data-group-field="probe">
-              <div class="mb-3 flex items-center justify-between gap-3">
-                <div>
-                  <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {{ t("admin.groups.availabilityProbe.title") }}
-                  </label>
-                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    {{ t("admin.groups.availabilityProbe.hint") }}
-                  </p>
-                </div>
-                <Toggle
-                  :model-value="createForm.availability_probe_enabled"
-                  data-group-setting="availability_probe_enabled"
-                  :aria-label="t('admin.groups.availabilityProbe.title')"
-                  @update:model-value="createForm.availability_probe_enabled = !createForm.availability_probe_enabled"
-                />
-              </div>
-              <div
-                v-if="createForm.availability_probe_enabled"
-                class="grid gap-4 rounded-surface border border-gray-200 bg-gray-50/50 p-4 dark:border-dark-600 dark:bg-dark-800/40 md:grid-cols-2"
-              >
-                <div>
-                  <label class="input-label">{{ t("admin.groups.availabilityProbe.model") }}</label>
-                  <Select
-                    data-group-field="probe-model"
-                    v-model="createForm.availability_probe_model_id"
-                    :options="createAvailabilityProbeModelOptions"
-                    searchable
-                  />
-                </div>
-                <div>
-                  <label class="input-label">{{ t("admin.groups.availabilityProbe.interval") }}</label>
-                  <input
-                    v-model.number="createForm.availability_probe_interval_minutes"
-                    type="number"
-                    min="1"
-                    max="1440"
-                    class="input"
-                  />
-                </div>
-                <div>
-                  <label class="input-label">{{ t("admin.groups.availabilityProbe.timeout") }}</label>
-                  <input
-                    v-model.number="createForm.availability_probe_timeout_seconds"
-                    type="number"
-                    min="5"
-                    max="120"
-                    class="input"
-                  />
-                </div>
-                <div>
-                  <label class="input-label">{{ t("admin.groups.availabilityProbe.maxRetries") }}</label>
-                  <input
-                    v-model.number="createForm.availability_probe_max_retries"
-                    type="number"
-                    min="0"
-                    max="10"
-                    step="1"
-                    class="input"
-                  />
-                </div>
-                <div class="md:col-span-2">
-                  <label class="input-label">{{ t("admin.groups.availabilityProbe.userAgent") }}</label>
-                  <input
-                    v-model="createForm.availability_probe_user_agent"
-                    type="text"
-                    maxlength="512"
-                    class="input"
-                    :placeholder="t('admin.groups.availabilityProbe.userAgentPlaceholder')"
-                  />
-                </div>
-                <div class="md:col-span-2">
-                  <label class="input-label">{{ t("admin.groups.availabilityProbe.prompt") }}</label>
-                  <textarea
-                    data-group-field="probe-prompt"
-                    v-model="createForm.availability_probe_prompt"
-                    rows="3"
-                    class="input"
-                    :placeholder="t('admin.groups.availabilityProbe.promptPlaceholder')"
-                  />
-                </div>
-              </div>
-            </div>
-          </template>
-          <template #features>
-            <div
-
-              class="border-t border-gray-200 dark:border-dark-400 pt-4 mt-4"
-              data-testid="create-openai-fast"
-            >
-              <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                {{ t("admin.groups.openaiFast.title") }}
-              </h4>
-              <!-- 互斥策略防止加速与关闭配置冲突。 -->
-              <Select v-model="createForm.openai_fast_policy" data-group-setting="openai_fast_policy"
-                :aria-label="t('admin.groups.openaiFast.policy')" :options="groupOpenAIFastPolicyOptions" />
-              <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                {{ t("admin.groups.openaiFast.hint") }}
-              </p>
-
-            </div>
-            <ReasoningEffortPolicyFields
-              data-group-field="reasoning"
-
-              ref="createReasoningEffortPolicyRef"
-              id-prefix="create-group-reasoning"
-
-              v-model:max-effort="createForm.max_reasoning_effort"
-              v-model:over-limit="createForm.max_reasoning_effort_over_limit"
-              v-model:mappings="createForm.reasoning_effort_mappings"
-            />
-            <div
-
-              class="border-t border-gray-200 dark:border-dark-400 pt-4 mt-4 space-y-4"
-            >
-              <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                {{ t('admin.groups.accountFilters.title') }}
-              </h4>
-
-              <!-- require_oauth_only toggle -->
-              <div class="flex items-center justify-between">
-                <div>
-                  <label class="text-sm text-gray-600 dark:text-gray-400"
-                    >{{ t('admin.groups.accountFilters.oauthOnly') }}</label
-                  >
-                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                    {{
-                      createForm.require_oauth_only
-                        ? "已启用 — 排除 API Key 类型账号"
-                        : "未启用"
-                    }}
-                  </p>
-                </div>
-                <Toggle
-                  :model-value="createForm.require_oauth_only"
-                  data-group-setting="require_oauth_only"
-                  :aria-label="t('admin.groups.accountFilters.oauthOnly')"
-                  @update:model-value="createForm.require_oauth_only = !createForm.require_oauth_only"
-                />
-              </div>
-
-              <!-- require_privacy_set toggle -->
-              <div class="flex items-center justify-between">
-                <div>
-                  <label class="text-sm text-gray-600 dark:text-gray-400"
-                    >{{ t('admin.groups.accountFilters.privacyRequired') }}</label
-                  >
-                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                    {{
-                      createForm.require_privacy_set
-                        ? "已启用 — Privacy 未设置的账号将被排除"
-                        : "未启用"
-                    }}
-                  </p>
-                </div>
-                <Toggle
-                  :model-value="createForm.require_privacy_set"
-                  data-group-setting="require_privacy_set"
-                  :aria-label="t('admin.groups.accountFilters.privacyRequired')"
-                  @update:model-value="createForm.require_privacy_set = !createForm.require_privacy_set"
-                />
-              </div>
-            </div>
-            <div  class="border-t pt-4">
-              <div class="relative mb-1.5 flex items-center gap-1">
-                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {{ t("admin.groups.modelRouting.title") }}
-                </label>
-                <!-- Help Tooltip -->
-                <div class="group inline-flex">
-                  <Icon
-                    name="questionCircle"
-                    size="sm"
-                    :stroke-width="2"
-                    class="cursor-help text-gray-400 transition-colors hover:text-primary-500 dark:text-gray-500 dark:hover:text-primary-400"
-                  />
-                  <div
-                    class="pointer-events-none absolute bottom-full left-0 z-50 mb-2 w-80 max-w-full opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:opacity-100"
-                  >
-                    <div
-                      class="rounded-control bg-gray-900 p-3 text-white shadow-lg dark:bg-gray-800"
-                    >
-                      <p class="text-xs leading-relaxed text-gray-300">
-                        {{ t("admin.groups.modelRouting.tooltip") }}
-                      </p>
-                      <div
-                        class="absolute -bottom-1.5 left-3 h-3 w-3 rotate-45 bg-gray-900 dark:bg-gray-800"
-                      ></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <!-- 启用开关 -->
-              <div class="flex items-center gap-3 mb-3">
-                <Toggle
-                  :model-value="createForm.model_routing_enabled"
-                  data-group-setting="model_routing_enabled"
-                  :aria-label="t('admin.groups.modelRouting.title')"
-                  @update:model-value="createForm.model_routing_enabled = !createForm.model_routing_enabled"
-                />
-                <span class="text-sm text-gray-500 dark:text-gray-400">
-                  {{
-                    createForm.model_routing_enabled
-                      ? t("admin.groups.modelRouting.enabled")
-                      : t("admin.groups.modelRouting.disabled")
-                  }}
-                </span>
-              </div>
-              <p
-                v-if="!createForm.model_routing_enabled"
-                class="text-xs text-gray-500 dark:text-gray-400 mb-3"
-              >
-                {{ t("admin.groups.modelRouting.disabledHint") }}
-              </p>
-              <p v-else class="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                {{ t("admin.groups.modelRouting.noRulesHint") }}
-              </p>
-              <!-- 路由规则列表（仅在启用时显示） -->
-              <div v-if="createForm.model_routing_enabled" class="space-y-3">
-                <div
-                  v-for="rule in createModelRoutingRules"
-                  :key="getCreateRuleRenderKey(rule)"
-                  class="rounded-control border border-gray-200 p-3 dark:border-dark-600"
-                >
-                  <div class="flex items-start gap-3">
-                    <div class="flex-1 space-y-2">
-                      <div>
-                        <label class="input-label text-xs">{{
-                          t("admin.groups.modelRouting.modelPattern")
-                        }}</label>
-                        <input
-                          v-model="rule.pattern"
-                          type="text"
-                          class="input text-sm"
-                          :placeholder="
-                            t('admin.groups.modelRouting.modelPatternPlaceholder')
-                          "
-                        />
-                      </div>
-                      <div>
-                        <label class="input-label text-xs">{{
-                          t("admin.groups.modelRouting.accounts")
-                        }}</label>
-                        <!-- 已选账号标签 -->
-                        <div
-                          v-if="rule.accounts.length > 0"
-                          class="flex flex-wrap gap-1.5 mb-2"
-                        >
-                          <span
-                            v-for="account in rule.accounts"
-                            :key="account.id"
-                            class="inline-flex items-center gap-1 rounded-full bg-primary-100 px-2.5 py-1 text-xs font-medium text-primary-700 dark:bg-primary-900/30 dark:text-primary-300"
-                          >
-                            {{ account.name }}
-                            <button
-                              type="button"
-                              @click="removeSelectedAccount(rule, account.id)"
-                              class="ml-0.5 text-primary-500 hover:text-primary-700 dark:hover:text-primary-200"
-                            >
-                              <Icon name="x" size="xs" />
-                            </button>
-                          </span>
-                        </div>
-                        <!-- 账号搜索输入框 -->
-                        <div class="relative account-search-container">
-                          <input
-                            v-model="
-                              accountSearchKeyword[getCreateRuleSearchKey(rule)]
-                            "
-                            type="text"
-                            class="input text-sm"
-                            :placeholder="
-                              t(
-                                'admin.groups.modelRouting.searchAccountPlaceholder',
-                              )
-                            "
-                            @input="searchAccountsByRule(rule)"
-                            @focus="onAccountSearchFocus(rule)"
-                          />
-                          <!-- 搜索结果下拉框 -->
-                          <div
-                            v-if="
-                              showAccountDropdown[getCreateRuleSearchKey(rule)] &&
-                              accountSearchResults[getCreateRuleSearchKey(rule)]
-                                ?.length > 0
-                            "
-                            class="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-control border bg-white shadow-lg dark:border-dark-600 dark:bg-dark-800"
-                          >
-                            <button
-                              v-for="account in accountSearchResults[
-                                getCreateRuleSearchKey(rule)
-                              ]"
-                              :key="account.id"
-                              type="button"
-                              @click="selectAccount(rule, account)"
-                              class="dropdown-item-sm"
-                              :class="{
-                                'opacity-50': rule.accounts.some(
-                                  (a) => a.id === account.id,
-                                ),
-                              }"
-                              :disabled="
-                                rule.accounts.some((a) => a.id === account.id)
-                              "
-                            >
-                              <span>{{ account.name }}</span>
-                              <span class="text-xs text-gray-400"
-                                >#{{ account.id }}</span
-                              >
-                            </button>
-                          </div>
-                        </div>
-                        <p class="text-xs text-gray-400 mt-1">
-                          {{ t("admin.groups.modelRouting.accountsHint") }}
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      @click="removeCreateRoutingRule(rule)"
-                      class="mt-5 p-1.5 text-gray-400 hover:text-red-500 transition-colors"
-                      :title="t('admin.groups.modelRouting.removeRule')"
-                    >
-                      <Icon name="trash" size="sm" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-              <!-- 添加规则按钮（仅在启用时显示） -->
-              <button
-                v-if="createForm.model_routing_enabled"
-                type="button"
-                @click="addCreateRoutingRule"
-                class="mt-3 flex items-center gap-1.5 text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
-              >
-                <Icon name="plus" size="sm" />
-                {{ t("admin.groups.modelRouting.addRule") }}
-              </button>
-            </div>
-            <div
-
-              class="border-t pt-4"
-            >
-              <label class="input-label">{{
-                t("admin.groups.invalidRequestFallback.title")
-              }}</label>
-              <Select
-                v-model="createForm.fallback_group_id_on_invalid_request"
-                :options="invalidRequestFallbackOptions"
-                :placeholder="t('admin.groups.invalidRequestFallback.noFallback')"
-              />
-              <p class="input-hint">
-                {{ t("admin.groups.invalidRequestFallback.hint") }}
-              </p>
-            </div>
-          </template>
-
-          <template #protocol>
-            <GroupClientProtocolSelector
-              v-model="createForm.allowed_protocols"
-              v-model:fallbacks="createForm.protocol_fallbacks"
-              v-model:image-policy="createForm.responses_image_policy"
-              class="mt-4"
-            />
-            <div  class="border-t pt-4">
-              <div class="relative mb-1.5 flex items-center gap-1">
-                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {{ t("admin.groups.claudeCode.title") }}
-                </label>
-                <!-- Help Tooltip -->
-                <div class="group inline-flex">
-                  <Icon
-                    name="questionCircle"
-                    size="sm"
-                    :stroke-width="2"
-                    class="cursor-help text-gray-400 transition-colors hover:text-primary-500 dark:text-gray-500 dark:hover:text-primary-400"
-                  />
-                  <div
-                    class="pointer-events-none absolute bottom-full left-0 z-50 mb-2 w-72 max-w-full opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:opacity-100"
-                  >
-                    <div
-                      class="rounded-control bg-gray-900 p-3 text-white shadow-lg dark:bg-gray-800"
-                    >
-                      <p class="text-xs leading-relaxed text-gray-300">
-                        {{ t("admin.groups.claudeCode.tooltip") }}
-                      </p>
-                      <div
-                        class="absolute -bottom-1.5 left-3 h-3 w-3 rotate-45 bg-gray-900 dark:bg-gray-800"
-                      ></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="flex items-center gap-3">
-                <Toggle
-                  :model-value="createForm.claude_code_only"
-                  data-group-setting="claude_code_only"
-                  :aria-label="t('admin.groups.claudeCode.title')"
-                  @update:model-value="createForm.claude_code_only = !createForm.claude_code_only"
-                />
-                <span class="text-sm text-gray-500 dark:text-gray-400">
-                  {{
-                    createForm.claude_code_only
-                      ? t("admin.groups.claudeCode.enabled")
-                      : t("admin.groups.claudeCode.disabled")
-                  }}
-                </span>
-              </div>
-              <!-- 降级分组选择（仅当启用 claude_code_only 时显示） -->
-              <div v-if="createForm.claude_code_only" class="mt-3">
-                <label class="input-label">{{
-                  t("admin.groups.claudeCode.fallbackGroup")
-                }}</label>
-                <Select
-                  v-model="createForm.fallback_group_id"
-                  :options="fallbackGroupOptions"
-                  :placeholder="t('admin.groups.claudeCode.noFallback')"
-                />
-                <p class="input-hint">
-                  {{ t("admin.groups.claudeCode.fallbackHint") }}
-                </p>
-              </div>
-            </div>
-            <div class="border-t pt-4">
-              <div class="mb-3 flex items-center justify-between gap-3">
-                <div>
-                  <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {{
-                      t("admin.groups.modelsList.title", {
-                        endpoint: modelsListEndpoint(),
-                      })
-                    }}
-                  </label>
-                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    {{
-                      t("admin.groups.modelsList.hint", {
-                        endpoint: modelsListEndpoint(),
-                      })
-                    }}
-                  </p>
-                </div>
-                <Toggle
-                  :model-value="createModelsListState.enabled"
-                  data-group-setting="enabled"
-                  :aria-label="t('admin.groups.modelsList.title')"
-                  @update:model-value="createModelsListState.enabled = !createModelsListState.enabled"
-                />
-              </div>
-              <div
-                v-if="createModelsListState.enabled"
-                class="overflow-hidden rounded-surface border border-gray-200 bg-gray-50/50 dark:border-dark-600 dark:bg-dark-800/40"
-              >
-                <div
-                  v-if="!createModelsListLoading && createModelsListState.items.length > 0"
-                  class="flex items-center justify-between gap-2 border-b border-gray-200 bg-gray-50 px-3 py-2 text-xs dark:border-dark-600 dark:bg-dark-800"
-                >
-                  <span class="text-gray-500 dark:text-gray-400">
-                    已选 {{ createModelsListSelectedCount }} /
-                    {{ createModelsListState.items.length }}
-                  </span>
-                  <div class="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      class="rounded-compact px-2 py-1 font-medium text-primary-600 transition-colors hover:bg-primary-50 dark:text-primary-400 dark:hover:bg-primary-900/20"
-                      @click="selectAllModelsListItems(createModelsListState)"
-                    >
-                      全选
-                    </button>
-                    <button
-                      type="button"
-                      class="rounded-compact px-2 py-1 font-medium text-gray-600 transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dark-700"
-                      @click="invertModelsListSelection(createModelsListState)"
-                    >
-                      反选
-                    </button>
-                  </div>
-                </div>
-                <div
-                  class="max-h-64 space-y-2 overflow-y-auto p-2"
-                >
-                  <p v-if="createModelsListLoading" class="text-xs text-gray-500 dark:text-gray-400">
-                    {{ t("admin.groups.modelsList.loading") }}
-                  </p>
-                  <p
-                    v-else-if="createModelsListState.items.length === 0"
-                    class="text-xs text-gray-500 dark:text-gray-400"
-                  >
-                    {{ t("admin.groups.modelsList.empty") }}
-                  </p>
-                  <div
-                    v-for="(item, index) in createModelsListState.items"
-                    :key="item.id"
-                    class="flex items-center gap-2 rounded-compact border border-gray-200 bg-white px-3 py-2 dark:border-dark-600 dark:bg-dark-800"
-                  >
-                    <span class="min-w-0 flex-1 break-all text-sm text-gray-700 dark:text-gray-300">
-                      {{ item.id }}
-                    </span>
-                    <Toggle
-                      v-model="item.selected"
-                      :aria-label="item.id"
-                      :data-model-visibility="item.id"
-                    />
-                    <button
-                      type="button"
-                      :disabled="index === 0"
-                      class="rounded-compact p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-40 dark:hover:bg-dark-600 dark:hover:text-gray-200"
-                      @click="moveCreateModelsListItem(index, index - 1)"
-                    >
-                      <Icon name="arrowUp" size="sm" />
-                    </button>
-                    <button
-                      type="button"
-                      :disabled="index === createModelsListState.items.length - 1"
-                      class="rounded-compact p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-40 dark:hover:bg-dark-600 dark:hover:text-gray-200"
-                      @click="moveCreateModelsListItem(index, index + 1)"
-                    >
-                      <Icon name="arrowDown" size="sm" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </template>
-          <template #routing><GroupRoutingPolicyFields v-model="createForm.routing_policy" /></template>
-        </GroupFormTabs>
+        <GroupSettingsForm
+          ref="createSettingsRef"
+          mode="create"
+          :model-value="createForm"
+          :options="{
+            copyAccounts: copyAccountsGroupOptions,
+            unavailableFallback: unavailableFallbackGroupOptions,
+            invalidRequestFallback: invalidRequestFallbackOptions,
+            clientFallback: fallbackGroupOptions,
+            probeModels: createAvailabilityProbeModelOptions,
+          }"
+          :routing-rules="createModelRoutingRules"
+          :models-list="createModelsListState"
+          :models-list-loading="createModelsListLoading"
+          :account-search="{ keywords: accountSearchKeyword, results: accountSearchResults, open: showAccountDropdown }"
+          :get-rule-key="getCreateRuleSearchKey"
+          @patch="Object.assign(createForm, $event)"
+          @configure-scheduler="openAdvancedSchedulerOverrides('create')"
+          @add-rule="addCreateRoutingRule"
+          @remove-rule="removeCreateRoutingRule"
+          @rule-pattern="(rule, value) => rule.pattern = value"
+          @search-accounts="(rule, keyword) => updateAccountSearch(rule, keyword)"
+          @focus-accounts="rule => onAccountSearchFocus(rule)"
+          @select-account="(rule, account) => selectAccount(rule, account)"
+          @remove-account="(rule, id) => removeSelectedAccount(rule, id)"
+          @models-enabled="createModelsListState.enabled = $event"
+          @select-model="(id, value) => setModelSelection(createModelsListState, id, value)"
+          @select-all-models="selectAllModelsListItems(createModelsListState)"
+          @invert-models="invertModelsListSelection(createModelsListState)"
+          @move-model="(from, to) => moveModelsListItem(createModelsListState, from, to)"
+        />
       </form>
 
       <template #footer>
-        <div class="flex justify-end gap-3 pt-4">
+        <div class="flex justify-end gap-3">
           <button
             @click="closeCreateModal"
             type="button"
@@ -1165,6 +426,8 @@
     <!-- Edit Group Modal -->
     <BaseDialog
       :show="showEditModal"
+      :body-scroll="false"
+      :close-on-escape="!showAdvancedSchedulerOverridesModal"
       :title="t('admin.groups.editGroup')"
       width="wide"
       @close="closeEditModal"
@@ -1174,802 +437,43 @@
         id="edit-group-form"
         @submit.prevent="handleUpdateGroup"
         novalidate
-        class="group-dialog-form"
+        class="flex min-h-0 flex-1 flex-col"
       >
-        <GroupFormTabs ref="editGroupTabsRef" id-prefix="edit-group">
-          <template #general>
-            <h4 class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('admin.groups.tabs.identity') }}</h4>
-            <div data-group-field="name">
-              <label class="input-label">{{ t("admin.groups.form.name") }}</label>
-              <input
-                v-model="editForm.name"
-                type="text"
-                required
-                class="input"
-                data-tour="edit-group-form-name"
-              />
-            </div>
-            <div>
-              <label class="input-label">{{
-                t("admin.groups.form.description")
-              }}</label>
-              <textarea
-                v-model="editForm.description"
-                rows="3"
-                class="input"
-              ></textarea>
-            </div>
-            <div>
-              <label for="edit-group-rate-multiplier" class="input-label">{{
-                t("admin.groups.form.rateMultiplier")
-              }}</label>
-              <input
-                id="edit-group-rate-multiplier"
-                v-model.number="editForm.rate_multiplier"
-                type="number"
-                step="0.001"
-                min="0.001"
-                required
-                class="input"
-                data-tour="group-form-multiplier"
-              />
-            </div>
-            <div>
-              <label class="input-label">{{
-                t("admin.groups.form.displayBrand")
-              }}</label>
-              <Select
-                v-model="editForm.display_brand"
-                :options="providerBrandOptions"
-                :placeholder="t('admin.groups.displayBrandPlaceholder')"
-                :search-placeholder="t('admin.groups.displayBrandPlaceholder')"
-                :creatable-prefix="t('admin.groups.displayBrandCreatablePrefix')"
-                searchable
-                creatable
-              />
-              <p class="input-hint">{{ t("admin.groups.displayBrandHint") }}</p>
-            </div>
-
-            <div>
-              <label class="input-label">{{ t("admin.groups.form.status") }}</label>
-              <div class="flex items-center gap-3">
-                <Toggle
-                  :model-value="editForm.status === 'active'"
-                  data-group-setting="status"
-                  data-testid="edit-group-status-toggle"
-                  :aria-label="t('admin.groups.form.status')"
-                  @update:model-value="editForm.status = editForm.status === 'active' ? 'inactive' : 'active'"
-                />
-                <span class="text-sm text-gray-500 dark:text-gray-400">
-                  {{
-                    editForm.status === 'active'
-                      ? t("admin.accounts.status.active")
-                      : t("admin.accounts.status.inactive")
-                  }}
-                </span>
-              </div>
-            </div>
-            <div>
-              <div class="relative mb-1.5 flex items-center gap-1">
-                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {{ t("admin.groups.form.exclusive") }}
-                </label>
-                <!-- Help Tooltip -->
-                <div class="group inline-flex">
-                  <Icon
-                    name="questionCircle"
-                    size="sm"
-                    :stroke-width="2"
-                    class="cursor-help text-gray-400 transition-colors hover:text-primary-500 dark:text-gray-500 dark:hover:text-primary-400"
-                  />
-                  <!-- Tooltip Popover -->
-                  <div
-                    class="pointer-events-none absolute bottom-full left-0 z-50 mb-2 w-72 max-w-full opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:opacity-100"
-                  >
-                    <div
-                      class="rounded-control bg-gray-900 p-3 text-white shadow-lg dark:bg-gray-800"
-                    >
-                      <p class="mb-2 text-xs font-medium">
-                        {{ t("admin.groups.exclusiveTooltip.title") }}
-                      </p>
-                      <p class="mb-2 text-xs leading-relaxed text-gray-300">
-                        {{ t("admin.groups.exclusiveTooltip.description") }}
-                      </p>
-                      <div class="rounded-compact bg-gray-800 p-2 dark:bg-gray-700">
-                        <p class="text-xs leading-relaxed text-gray-300">
-                          <span
-                            class="inline-flex items-center gap-1 text-primary-400"
-                            ><Icon name="lightbulb" size="xs" />
-                            {{ t("admin.groups.exclusiveTooltip.example") }}</span
-                          >
-                          {{ t("admin.groups.exclusiveTooltip.exampleContent") }}
-                        </p>
-                      </div>
-                      <!-- Arrow -->
-                      <div
-                        class="absolute -bottom-1.5 left-3 h-3 w-3 rotate-45 bg-gray-900 dark:bg-gray-800"
-                      ></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="flex items-center gap-3">
-                <Toggle
-                  :model-value="editForm.is_exclusive"
-                  data-group-setting="is_exclusive"
-                  :aria-label="t('admin.groups.form.exclusive')"
-                  @update:model-value="editForm.is_exclusive = !editForm.is_exclusive"
-                />
-                <span class="text-sm text-gray-500 dark:text-gray-400">
-                  {{
-                    editForm.is_exclusive
-                      ? t("admin.groups.exclusive")
-                      : t("admin.groups.public")
-                  }}
-                </span>
-              </div>
-            </div>
-
-            <h4 class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('admin.groups.tabs.scheduling') }}</h4>
-            <div>
-              <label class="input-label">{{
-                t("admin.groups.form.schedulerType")
-              }}</label>
-              <Select
-                v-model="editForm.scheduler_type"
-                :options="schedulerTypeOptions"
-              />
-              <p class="input-hint">{{ t("admin.groups.scheduler.hint") }}</p>
-              <div
-                v-if="editForm.scheduler_type === 'advanced'"
-                class="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-control border border-primary-900/10 bg-primary-50/60 px-3 py-2.5 dark:border-dark-600 dark:bg-dark-800/70"
-              >
-                <div class="min-w-0 text-xs text-primary-900/70 dark:text-dark-200/80">
-                  <span class="font-medium text-primary-900 dark:text-dark-50">{{ t('admin.groups.advancedSchedulerOverrides.label') }}</span>
-                  <span class="ml-2">{{ formatAdvancedSchedulerOverridesSummary(editForm.advanced_scheduler_overrides) }}</span>
-                </div>
-                <button
-                  type="button"
-                  class="btn btn-secondary shrink-0 px-3 py-1.5 text-xs"
-                  @click="openAdvancedSchedulerOverrides('edit')"
-                >
-                  <Icon name="cog" size="sm" />
-                  {{ t('admin.groups.advancedSchedulerOverrides.configure') }}
-                </button>
-              </div>
-            </div>
-            <div v-if="copyAccountsGroupOptionsForEdit.length > 0">
-              <div class="relative mb-1.5 flex items-center gap-1">
-                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {{ t("admin.groups.copyAccounts.title") }}
-                </label>
-                <div class="group inline-flex">
-                  <Icon
-                    name="questionCircle"
-                    size="sm"
-                    :stroke-width="2"
-                    class="cursor-help text-gray-400 transition-colors hover:text-primary-500 dark:text-gray-500 dark:hover:text-primary-400"
-                  />
-                  <div
-                    class="pointer-events-none absolute bottom-full left-0 z-50 mb-2 w-72 max-w-full opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:opacity-100"
-                  >
-                    <div
-                      class="rounded-control bg-gray-900 p-3 text-white shadow-lg dark:bg-gray-800"
-                    >
-                      <p class="text-xs leading-relaxed text-gray-300">
-                        {{ t("admin.groups.copyAccounts.tooltipEdit") }}
-                      </p>
-                      <div
-                        class="absolute -bottom-1.5 left-3 h-3 w-3 rotate-45 bg-gray-900 dark:bg-gray-800"
-                      ></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <!-- 已选分组标签 -->
-              <div
-                v-if="editForm.copy_accounts_from_group_ids.length > 0"
-                class="flex flex-wrap gap-1.5 mb-2"
-              >
-                <span
-                  v-for="groupId in editForm.copy_accounts_from_group_ids"
-                  :key="groupId"
-                  class="inline-flex items-center gap-1 rounded-full bg-primary-100 px-2.5 py-1 text-xs font-medium text-primary-700 dark:bg-primary-900/30 dark:text-primary-300"
-                >
-                  {{
-                    copyAccountsGroupOptionsForEdit.find((o) => o.value === groupId)
-                      ?.label || `#${groupId}`
-                  }}
-                  <button
-                    type="button"
-                    @click="
-                      editForm.copy_accounts_from_group_ids =
-                        editForm.copy_accounts_from_group_ids.filter(
-                          (id) => id !== groupId,
-                        )
-                    "
-                    class="ml-0.5 text-primary-500 hover:text-primary-700 dark:hover:text-primary-200"
-                  >
-                    <Icon name="x" size="xs" />
-                  </button>
-                </span>
-              </div>
-              <!-- 分组选择下拉 -->
-              <Select
-                :model-value="null"
-                :options="copyAccountsGroupSelectOptionsForEdit"
-                :placeholder="t('admin.groups.copyAccounts.selectPlaceholder')"
-                @change="addEditCopyAccountsGroup"
-              />
-              <p class="input-hint">
-                {{ t("admin.groups.copyAccounts.hintEdit") }}
-              </p>
-            </div>
-            <div>
-              <label class="input-label">{{
-                t("admin.groups.unavailableFallback.title")
-              }}</label>
-              <Select
-                v-model="editForm.unavailable_fallback_group_id"
-                :options="unavailableFallbackGroupOptionsForEdit"
-                :placeholder="t('admin.groups.unavailableFallback.noFallback')"
-              />
-              <p class="input-hint">
-                {{ t("admin.groups.unavailableFallback.hint") }}
-              </p>
-            </div>
-            <div>
-              <div class="relative mb-1.5 flex items-center gap-1">
-                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {{ t("admin.groups.sessionIsolation.title") }}
-                </label>
-              </div>
-              <div class="flex items-center gap-3">
-                <Toggle
-                  :model-value="editForm.session_isolation_enabled"
-                  data-group-setting="session_isolation_enabled"
-                  :aria-label="t('admin.groups.sessionIsolation.title')"
-                  @update:model-value="editForm.session_isolation_enabled = !editForm.session_isolation_enabled"
-                />
-                <span class="text-sm text-gray-500 dark:text-gray-400">
-                  {{
-                    editForm.session_isolation_enabled
-                      ? t("admin.groups.sessionIsolation.enabledText")
-                      : t("admin.groups.sessionIsolation.disabledText")
-                  }}
-                </span>
-              </div>
-              <p class="input-hint">{{ t("admin.groups.sessionIsolation.hint") }}</p>
-            </div>
-            <div class="border-t pt-4" data-group-field="probe">
-              <div class="mb-3 flex items-center justify-between gap-3">
-                <div>
-                  <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {{ t("admin.groups.availabilityProbe.title") }}
-                  </label>
-                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    {{ t("admin.groups.availabilityProbe.hint") }}
-                  </p>
-                </div>
-                <Toggle
-                  :model-value="editForm.availability_probe_enabled"
-                  data-group-setting="availability_probe_enabled"
-                  :aria-label="t('admin.groups.availabilityProbe.title')"
-                  @update:model-value="editForm.availability_probe_enabled = !editForm.availability_probe_enabled"
-                />
-              </div>
-              <div
-                v-if="editForm.availability_probe_enabled"
-                class="grid gap-4 rounded-surface border border-gray-200 bg-gray-50/50 p-4 dark:border-dark-600 dark:bg-dark-800/40 md:grid-cols-2"
-              >
-                <div>
-                  <label class="input-label">{{ t("admin.groups.availabilityProbe.model") }}</label>
-                  <Select
-                    data-group-field="probe-model"
-                    v-model="editForm.availability_probe_model_id"
-                    :options="editAvailabilityProbeModelOptions"
-                    searchable
-                  />
-                </div>
-                <div>
-                  <label class="input-label">{{ t("admin.groups.availabilityProbe.interval") }}</label>
-                  <input
-                    v-model.number="editForm.availability_probe_interval_minutes"
-                    type="number"
-                    min="1"
-                    max="1440"
-                    class="input"
-                  />
-                </div>
-                <div>
-                  <label class="input-label">{{ t("admin.groups.availabilityProbe.timeout") }}</label>
-                  <input
-                    v-model.number="editForm.availability_probe_timeout_seconds"
-                    type="number"
-                    min="5"
-                    max="120"
-                    class="input"
-                  />
-                </div>
-                <div>
-                  <label class="input-label">{{ t("admin.groups.availabilityProbe.maxRetries") }}</label>
-                  <input
-                    v-model.number="editForm.availability_probe_max_retries"
-                    type="number"
-                    min="0"
-                    max="10"
-                    step="1"
-                    class="input"
-                  />
-                </div>
-                <div class="md:col-span-2">
-                  <label class="input-label">{{ t("admin.groups.availabilityProbe.userAgent") }}</label>
-                  <input
-                    v-model="editForm.availability_probe_user_agent"
-                    type="text"
-                    maxlength="512"
-                    class="input"
-                    :placeholder="t('admin.groups.availabilityProbe.userAgentPlaceholder')"
-                  />
-                </div>
-                <div class="md:col-span-2">
-                  <label class="input-label">{{ t("admin.groups.availabilityProbe.prompt") }}</label>
-                  <textarea
-                    data-group-field="probe-prompt"
-                    v-model="editForm.availability_probe_prompt"
-                    rows="3"
-                    class="input"
-                    :placeholder="t('admin.groups.availabilityProbe.promptPlaceholder')"
-                  />
-                </div>
-              </div>
-            </div>
-          </template>
-          <template #features>
-            <div
-
-              class="border-t border-gray-200 dark:border-dark-400 pt-4 mt-4"
-              data-testid="edit-openai-fast"
-            >
-              <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                {{ t("admin.groups.openaiFast.title") }}
-              </h4>
-              <!-- 互斥策略防止加速与关闭配置冲突。 -->
-              <Select v-model="editForm.openai_fast_policy" data-group-setting="openai_fast_policy"
-                :aria-label="t('admin.groups.openaiFast.policy')" :options="groupOpenAIFastPolicyOptions" />
-              <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                {{ t("admin.groups.openaiFast.hint") }}
-              </p>
-
-            </div>
-            <ReasoningEffortPolicyFields
-              data-group-field="reasoning"
-
-              ref="editReasoningEffortPolicyRef"
-              id-prefix="edit-group-reasoning"
-
-              v-model:max-effort="editForm.max_reasoning_effort"
-              v-model:over-limit="editForm.max_reasoning_effort_over_limit"
-              v-model:mappings="editForm.reasoning_effort_mappings"
-            />
-            <div
-
-              class="border-t border-gray-200 dark:border-dark-400 pt-4 mt-4 space-y-4"
-            >
-              <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                {{ t('admin.groups.accountFilters.title') }}
-              </h4>
-
-              <!-- require_oauth_only toggle -->
-              <div class="flex items-center justify-between">
-                <div>
-                  <label class="text-sm text-gray-600 dark:text-gray-400"
-                    >{{ t('admin.groups.accountFilters.oauthOnly') }}</label
-                  >
-                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                    {{
-                      editForm.require_oauth_only
-                        ? "已启用 — 排除 API Key 类型账号"
-                        : "未启用"
-                    }}
-                  </p>
-                </div>
-                <Toggle
-                  :model-value="editForm.require_oauth_only"
-                  data-group-setting="require_oauth_only"
-                  :aria-label="t('admin.groups.accountFilters.oauthOnly')"
-                  @update:model-value="editForm.require_oauth_only = !editForm.require_oauth_only"
-                />
-              </div>
-
-              <!-- require_privacy_set toggle -->
-              <div class="flex items-center justify-between">
-                <div>
-                  <label class="text-sm text-gray-600 dark:text-gray-400"
-                    >{{ t('admin.groups.accountFilters.privacyRequired') }}</label
-                  >
-                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                    {{
-                      editForm.require_privacy_set
-                        ? "已启用 — Privacy 未设置的账号将被排除"
-                        : "未启用"
-                    }}
-                  </p>
-                </div>
-                <Toggle
-                  :model-value="editForm.require_privacy_set"
-                  data-group-setting="require_privacy_set"
-                  :aria-label="t('admin.groups.accountFilters.privacyRequired')"
-                  @update:model-value="editForm.require_privacy_set = !editForm.require_privacy_set"
-                />
-              </div>
-            </div>
-            <div  class="border-t pt-4">
-              <div class="relative mb-1.5 flex items-center gap-1">
-                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {{ t("admin.groups.modelRouting.title") }}
-                </label>
-                <!-- Help Tooltip -->
-                <div class="group inline-flex">
-                  <Icon
-                    name="questionCircle"
-                    size="sm"
-                    :stroke-width="2"
-                    class="cursor-help text-gray-400 transition-colors hover:text-primary-500 dark:text-gray-500 dark:hover:text-primary-400"
-                  />
-                  <div
-                    class="pointer-events-none absolute bottom-full left-0 z-50 mb-2 w-80 max-w-full opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:opacity-100"
-                  >
-                    <div
-                      class="rounded-control bg-gray-900 p-3 text-white shadow-lg dark:bg-gray-800"
-                    >
-                      <p class="text-xs leading-relaxed text-gray-300">
-                        {{ t("admin.groups.modelRouting.tooltip") }}
-                      </p>
-                      <div
-                        class="absolute -bottom-1.5 left-3 h-3 w-3 rotate-45 bg-gray-900 dark:bg-gray-800"
-                      ></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <!-- 启用开关 -->
-              <div class="flex items-center gap-3 mb-3">
-                <Toggle
-                  :model-value="editForm.model_routing_enabled"
-                  data-group-setting="model_routing_enabled"
-                  :aria-label="t('admin.groups.modelRouting.title')"
-                  @update:model-value="editForm.model_routing_enabled = !editForm.model_routing_enabled"
-                />
-                <span class="text-sm text-gray-500 dark:text-gray-400">
-                  {{
-                    editForm.model_routing_enabled
-                      ? t("admin.groups.modelRouting.enabled")
-                      : t("admin.groups.modelRouting.disabled")
-                  }}
-                </span>
-              </div>
-              <p
-                v-if="!editForm.model_routing_enabled"
-                class="text-xs text-gray-500 dark:text-gray-400 mb-3"
-              >
-                {{ t("admin.groups.modelRouting.disabledHint") }}
-              </p>
-              <p v-else class="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                {{ t("admin.groups.modelRouting.noRulesHint") }}
-              </p>
-              <!-- 路由规则列表（仅在启用时显示） -->
-              <div v-if="editForm.model_routing_enabled" class="space-y-3">
-                <div
-                  v-for="rule in editModelRoutingRules"
-                  :key="getEditRuleRenderKey(rule)"
-                  class="rounded-control border border-gray-200 p-3 dark:border-dark-600"
-                >
-                  <div class="flex items-start gap-3">
-                    <div class="flex-1 space-y-2">
-                      <div>
-                        <label class="input-label text-xs">{{
-                          t("admin.groups.modelRouting.modelPattern")
-                        }}</label>
-                        <input
-                          v-model="rule.pattern"
-                          type="text"
-                          class="input text-sm"
-                          :placeholder="
-                            t('admin.groups.modelRouting.modelPatternPlaceholder')
-                          "
-                        />
-                      </div>
-                      <div>
-                        <label class="input-label text-xs">{{
-                          t("admin.groups.modelRouting.accounts")
-                        }}</label>
-                        <!-- 已选账号标签 -->
-                        <div
-                          v-if="rule.accounts.length > 0"
-                          class="flex flex-wrap gap-1.5 mb-2"
-                        >
-                          <span
-                            v-for="account in rule.accounts"
-                            :key="account.id"
-                            class="inline-flex items-center gap-1 rounded-full bg-primary-100 px-2.5 py-1 text-xs font-medium text-primary-700 dark:bg-primary-900/30 dark:text-primary-300"
-                          >
-                            {{ account.name }}
-                            <button
-                              type="button"
-                              @click="removeSelectedAccount(rule, account.id, true)"
-                              class="ml-0.5 text-primary-500 hover:text-primary-700 dark:hover:text-primary-200"
-                            >
-                              <Icon name="x" size="xs" />
-                            </button>
-                          </span>
-                        </div>
-                        <!-- 账号搜索输入框 -->
-                        <div class="relative account-search-container">
-                          <input
-                            v-model="
-                              accountSearchKeyword[getEditRuleSearchKey(rule)]
-                            "
-                            type="text"
-                            class="input text-sm"
-                            :placeholder="
-                              t(
-                                'admin.groups.modelRouting.searchAccountPlaceholder',
-                              )
-                            "
-                            @input="searchAccountsByRule(rule, true)"
-                            @focus="onAccountSearchFocus(rule, true)"
-                          />
-                          <!-- 搜索结果下拉框 -->
-                          <div
-                            v-if="
-                              showAccountDropdown[getEditRuleSearchKey(rule)] &&
-                              accountSearchResults[getEditRuleSearchKey(rule)]
-                                ?.length > 0
-                            "
-                            class="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-control border bg-white shadow-lg dark:border-dark-600 dark:bg-dark-800"
-                          >
-                            <button
-                              v-for="account in accountSearchResults[
-                                getEditRuleSearchKey(rule)
-                              ]"
-                              :key="account.id"
-                              type="button"
-                              @click="selectAccount(rule, account, true)"
-                              class="dropdown-item-sm"
-                              :class="{
-                                'opacity-50': rule.accounts.some(
-                                  (a) => a.id === account.id,
-                                ),
-                              }"
-                              :disabled="
-                                rule.accounts.some((a) => a.id === account.id)
-                              "
-                            >
-                              <span>{{ account.name }}</span>
-                              <span class="text-xs text-gray-400"
-                                >#{{ account.id }}</span
-                              >
-                            </button>
-                          </div>
-                        </div>
-                        <p class="text-xs text-gray-400 mt-1">
-                          {{ t("admin.groups.modelRouting.accountsHint") }}
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      @click="removeEditRoutingRule(rule)"
-                      class="mt-5 p-1.5 text-gray-400 hover:text-red-500 transition-colors"
-                      :title="t('admin.groups.modelRouting.removeRule')"
-                    >
-                      <Icon name="trash" size="sm" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-              <!-- 添加规则按钮（仅在启用时显示） -->
-              <button
-                v-if="editForm.model_routing_enabled"
-                type="button"
-                @click="addEditRoutingRule"
-                class="mt-3 flex items-center gap-1.5 text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
-              >
-                <Icon name="plus" size="sm" />
-                {{ t("admin.groups.modelRouting.addRule") }}
-              </button>
-            </div>
-            <div
-
-              class="border-t pt-4"
-            >
-              <label class="input-label">{{
-                t("admin.groups.invalidRequestFallback.title")
-              }}</label>
-              <Select
-                v-model="editForm.fallback_group_id_on_invalid_request"
-                :options="invalidRequestFallbackOptionsForEdit"
-                :placeholder="t('admin.groups.invalidRequestFallback.noFallback')"
-              />
-              <p class="input-hint">
-                {{ t("admin.groups.invalidRequestFallback.hint") }}
-              </p>
-            </div>
-          </template>
-
-          <template #protocol>
-            <GroupClientProtocolSelector
-              v-model="editForm.allowed_protocols"
-              v-model:fallbacks="editForm.protocol_fallbacks"
-              v-model:image-policy="editForm.responses_image_policy"
-              class="mt-4"
-            />
-            <div  class="border-t pt-4">
-              <div class="relative mb-1.5 flex items-center gap-1">
-                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {{ t("admin.groups.claudeCode.title") }}
-                </label>
-                <!-- Help Tooltip -->
-                <div class="group inline-flex">
-                  <Icon
-                    name="questionCircle"
-                    size="sm"
-                    :stroke-width="2"
-                    class="cursor-help text-gray-400 transition-colors hover:text-primary-500 dark:text-gray-500 dark:hover:text-primary-400"
-                  />
-                  <div
-                    class="pointer-events-none absolute bottom-full left-0 z-50 mb-2 w-72 max-w-full opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:opacity-100"
-                  >
-                    <div
-                      class="rounded-control bg-gray-900 p-3 text-white shadow-lg dark:bg-gray-800"
-                    >
-                      <p class="text-xs leading-relaxed text-gray-300">
-                        {{ t("admin.groups.claudeCode.tooltip") }}
-                      </p>
-                      <div
-                        class="absolute -bottom-1.5 left-3 h-3 w-3 rotate-45 bg-gray-900 dark:bg-gray-800"
-                      ></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="flex items-center gap-3">
-                <Toggle
-                  :model-value="editForm.claude_code_only"
-                  data-group-setting="claude_code_only"
-                  :aria-label="t('admin.groups.claudeCode.title')"
-                  @update:model-value="editForm.claude_code_only = !editForm.claude_code_only"
-                />
-                <span class="text-sm text-gray-500 dark:text-gray-400">
-                  {{
-                    editForm.claude_code_only
-                      ? t("admin.groups.claudeCode.enabled")
-                      : t("admin.groups.claudeCode.disabled")
-                  }}
-                </span>
-              </div>
-              <!-- 降级分组选择（仅当启用 claude_code_only 时显示） -->
-              <div v-if="editForm.claude_code_only" class="mt-3">
-                <label class="input-label">{{
-                  t("admin.groups.claudeCode.fallbackGroup")
-                }}</label>
-                <Select
-                  v-model="editForm.fallback_group_id"
-                  :options="fallbackGroupOptionsForEdit"
-                  :placeholder="t('admin.groups.claudeCode.noFallback')"
-                />
-                <p class="input-hint">
-                  {{ t("admin.groups.claudeCode.fallbackHint") }}
-                </p>
-              </div>
-            </div>
-            <div class="border-t pt-4">
-              <div class="mb-3 flex items-center justify-between gap-3">
-                <div>
-                  <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {{
-                      t("admin.groups.modelsList.title", {
-                        endpoint: modelsListEndpoint(),
-                      })
-                    }}
-                  </label>
-                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    {{
-                      t("admin.groups.modelsList.hint", {
-                        endpoint: modelsListEndpoint(),
-                      })
-                    }}
-                  </p>
-                </div>
-                <Toggle
-                  :model-value="editModelsListState.enabled"
-                  data-group-setting="enabled"
-                  :aria-label="t('admin.groups.modelsList.title')"
-                  @update:model-value="editModelsListState.enabled = !editModelsListState.enabled"
-                />
-              </div>
-              <div
-                v-if="editModelsListState.enabled"
-                class="overflow-hidden rounded-surface border border-gray-200 bg-gray-50/50 dark:border-dark-600 dark:bg-dark-800/40"
-              >
-                <div
-                  v-if="!editModelsListLoading && editModelsListState.items.length > 0"
-                  class="flex items-center justify-between gap-2 border-b border-gray-200 bg-gray-50 px-3 py-2 text-xs dark:border-dark-600 dark:bg-dark-800"
-                >
-                  <span class="text-gray-500 dark:text-gray-400">
-                    已选 {{ editModelsListSelectedCount }} /
-                    {{ editModelsListState.items.length }}
-                  </span>
-                  <div class="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      class="rounded-compact px-2 py-1 font-medium text-primary-600 transition-colors hover:bg-primary-50 dark:text-primary-400 dark:hover:bg-primary-900/20"
-                      @click="selectAllModelsListItems(editModelsListState)"
-                    >
-                      全选
-                    </button>
-                    <button
-                      type="button"
-                      class="rounded-compact px-2 py-1 font-medium text-gray-600 transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dark-700"
-                      @click="invertModelsListSelection(editModelsListState)"
-                    >
-                      反选
-                    </button>
-                  </div>
-                </div>
-                <div
-                  class="max-h-64 space-y-2 overflow-y-auto p-2"
-                >
-                  <p v-if="editModelsListLoading" class="text-xs text-gray-500 dark:text-gray-400">
-                    {{ t("admin.groups.modelsList.loading") }}
-                  </p>
-                  <p
-                    v-else-if="editModelsListState.items.length === 0"
-                    class="text-xs text-gray-500 dark:text-gray-400"
-                  >
-                    {{ t("admin.groups.modelsList.empty") }}
-                  </p>
-                  <div
-                    v-for="(item, index) in editModelsListState.items"
-                    :key="item.id"
-                    class="flex items-center gap-2 rounded-compact border border-gray-200 bg-white px-3 py-2 dark:border-dark-600 dark:bg-dark-800"
-                  >
-                    <span class="min-w-0 flex-1 break-all text-sm text-gray-700 dark:text-gray-300">
-                      {{ item.id }}
-                    </span>
-                    <Toggle
-                      v-model="item.selected"
-                      :aria-label="item.id"
-                      :data-model-visibility="item.id"
-                    />
-                    <button
-                      type="button"
-                      :disabled="index === 0"
-                      class="rounded-compact p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-40 dark:hover:bg-dark-600 dark:hover:text-gray-200"
-                      @click="moveEditModelsListItem(index, index - 1)"
-                    >
-                      <Icon name="arrowUp" size="sm" />
-                    </button>
-                    <button
-                      type="button"
-                      :disabled="index === editModelsListState.items.length - 1"
-                      class="rounded-compact p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-40 dark:hover:bg-dark-600 dark:hover:text-gray-200"
-                      @click="moveEditModelsListItem(index, index + 1)"
-                    >
-                      <Icon name="arrowDown" size="sm" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </template>
-          <template #routing><GroupRoutingPolicyFields v-model="editForm.routing_policy" /></template>
-        </GroupFormTabs>
+        <GroupSettingsForm
+          ref="editSettingsRef"
+          mode="edit"
+          :model-value="editForm"
+          :options="{
+            copyAccounts: copyAccountsGroupOptionsForEdit,
+            unavailableFallback: unavailableFallbackGroupOptionsForEdit,
+            invalidRequestFallback: invalidRequestFallbackOptionsForEdit,
+            clientFallback: fallbackGroupOptionsForEdit,
+            probeModels: editAvailabilityProbeModelOptions,
+          }"
+          :routing-rules="editModelRoutingRules"
+          :models-list="editModelsListState"
+          :models-list-loading="editModelsListLoading"
+          :account-search="{ keywords: accountSearchKeyword, results: accountSearchResults, open: showAccountDropdown }"
+          :get-rule-key="getEditRuleSearchKey"
+          @patch="Object.assign(editForm, $event)"
+          @configure-scheduler="openAdvancedSchedulerOverrides('edit')"
+          @add-rule="addEditRoutingRule"
+          @remove-rule="removeEditRoutingRule"
+          @rule-pattern="(rule, value) => rule.pattern = value"
+          @search-accounts="(rule, keyword) => updateAccountSearch(rule, keyword, true)"
+          @focus-accounts="rule => onAccountSearchFocus(rule, true)"
+          @select-account="(rule, account) => selectAccount(rule, account, true)"
+          @remove-account="(rule, id) => removeSelectedAccount(rule, id, true)"
+          @models-enabled="editModelsListState.enabled = $event"
+          @select-model="(id, value) => setModelSelection(editModelsListState, id, value)"
+          @select-all-models="selectAllModelsListItems(editModelsListState)"
+          @invert-models="invertModelsListSelection(editModelsListState)"
+          @move-model="(from, to) => moveModelsListItem(editModelsListState, from, to)"
+        />
       </form>
 
       <template #footer>
-        <div class="flex justify-end gap-3 pt-4">
+        <div class="flex justify-end gap-3">
           <button
             @click="closeEditModal"
             type="button"
@@ -2071,7 +575,7 @@
       </div>
 
       <template #footer>
-        <div class="flex justify-end gap-3 pt-4">
+        <div class="flex justify-end gap-3">
           <button
             @click="closeSortModal"
             type="button"
@@ -2136,7 +640,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, nextTick, onMounted, onUnmounted, watch } from "vue";
+import { ref, reactive, computed, onMounted, onUnmounted, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAppStore } from "@/stores/app";
 import { useOnboardingStore } from "@/stores/onboarding";
@@ -2159,25 +663,21 @@ import BaseDialog from "@/components/common/BaseDialog.vue";
 import ConfirmDialog from "@/components/common/ConfirmDialog.vue";
 import EmptyState from "@/components/common/EmptyState.vue";
 import Select from "@/components/common/Select.vue";
-import Toggle from "@/components/common/Toggle.vue";
 import ProviderIcon from "@/components/common/ProviderIcon.vue";
 import Icon from "@/components/icons/Icon.vue";
 import GroupRateMultipliersModal from "@/components/admin/group/GroupRateMultipliersModal.vue";
 import GroupActionMenu from "@/components/admin/group/GroupActionMenu.vue";
 import GroupRPMOverridesModal from "@/components/admin/group/GroupRPMOverridesModal.vue";
 import GroupCapacityBadge from "@/components/common/GroupCapacityBadge.vue";
-import ReasoningEffortPolicyFields from "@/components/admin/group/ReasoningEffortPolicyFields.vue";
 import { loadProtocolCatalog, protocolCatalog } from '@/api/admin/protocolCapabilities';
-import GroupClientProtocolSelector from "@/components/admin/group/GroupClientProtocolSelector.vue";
 import GroupAdvancedSchedulerOverridesModal from "@/components/admin/group/GroupAdvancedSchedulerOverridesModal.vue";
-import GroupRoutingPolicyFields from '@/components/admin/group/GroupRoutingPolicyFields.vue';
 import { defaultRoutingPolicy, cloneRoutingPolicy } from '@/components/admin/group/routingPolicy';
-import GroupFormTabs from "@/components/admin/group/GroupFormTabs.vue";
+import GroupSettingsForm from "@/components/admin/group/GroupSettingsForm.vue";
+import type { GroupModelRoutingRule as ModelRoutingRule, GroupRoutingAccount as SimpleAccount } from "@/components/admin/group/groupSettingsTypes";
 import { VueDraggable } from "vue-draggable-plus";
 import { createStableObjectKeyResolver } from "@/utils/stableObjectKey";
 import { getFloatingPanelPosition } from "@/utils/floatingPanel";
 import {
-  defaultProviderBrandOptions,
   providerBrandDisplayName,
   resolveProviderBrand,
 } from "@/utils/providerBrand";
@@ -2213,7 +713,6 @@ const { t } = useI18n();
 const appStore = useAppStore();
 const onboardingStore = useOnboardingStore();
 const { formatBalanceAmount } = useBalanceDisplay();
-const providerBrandOptions = defaultProviderBrandOptions;
 
 const ALWAYS_VISIBLE_COLUMNS = new Set(["name", "actions"]);
 // 首次加载或列结构升级后默认隐藏的列。
@@ -2395,23 +894,9 @@ const statusOptions = computed(() => [
   { value: "inactive", label: t("admin.accounts.status.inactive") },
 ]);
 
-const schedulerTypeOptions = computed(() => [
-  { value: "basic", label: t("admin.groups.scheduler.basic") },
-  { value: "advanced", label: t("admin.groups.scheduler.advanced") },
-]);
-
 const cloneAdvancedSchedulerOverrides = (
   value?: GroupAdvancedSchedulerOverrides,
 ): GroupAdvancedSchedulerOverrides => ({ ...(value || {}) });
-
-const formatAdvancedSchedulerOverridesSummary = (
-  value?: GroupAdvancedSchedulerOverrides,
-) => {
-  const count = Object.keys(value || {}).length;
-  return count === 0
-    ? t("admin.groups.advancedSchedulerOverrides.allInherited")
-    : t("admin.groups.advancedSchedulerOverrides.overriddenCount", { count });
-};
 
 const openAdvancedSchedulerOverrides = (target: "create" | "edit") => {
   advancedSchedulerOverridesTarget.value = target;
@@ -2543,16 +1028,9 @@ const copyAccountsGroupOptions = computed(() => {
   );
   return eligibleGroups.map((g) => ({
     value: g.id,
-    label: `${g.name} (${g.account_count || 0} 个账号)`,
+    label: t("admin.groups.settings.groupAccounts", { name: g.name, count: g.account_count || 0 }),
   }));
 });
-
-const copyAccountsGroupSelectOptions = computed(() =>
-  copyAccountsGroupOptions.value.map((option) => ({
-    ...option,
-    disabled: createForm.copy_accounts_from_group_ids.includes(option.value),
-  })),
-);
 
 // 复制账号的源分组选项（编辑时）- 仅包含有账号的分组，排除自身
 const copyAccountsGroupOptionsForEdit = computed(() => {
@@ -2564,30 +1042,9 @@ const copyAccountsGroupOptionsForEdit = computed(() => {
   );
   return eligibleGroups.map((g) => ({
     value: g.id,
-    label: `${g.name} (${g.account_count || 0} 个账号)`,
+    label: t("admin.groups.settings.groupAccounts", { name: g.name, count: g.account_count || 0 }),
   }));
 });
-
-const copyAccountsGroupSelectOptionsForEdit = computed(() =>
-  copyAccountsGroupOptionsForEdit.value.map((option) => ({
-    ...option,
-    disabled: editForm.copy_accounts_from_group_ids.includes(option.value),
-  })),
-);
-
-function addCreateCopyAccountsGroup(value: string | number | boolean | null) {
-  const groupId = Number(value);
-  if (groupId && !createForm.copy_accounts_from_group_ids.includes(groupId)) {
-    createForm.copy_accounts_from_group_ids.push(groupId);
-  }
-}
-
-function addEditCopyAccountsGroup(value: string | number | boolean | null) {
-  const groupId = Number(value);
-  if (groupId && !editForm.copy_accounts_from_group_ids.includes(groupId)) {
-    editForm.copy_accounts_from_group_ids.push(groupId);
-  }
-}
 
 const groups = ref<AdminGroup[]>([]);
 // 不可用回退分组需要跨分页选择，因此单独保存全量 active 分组选项来源。
@@ -2684,39 +1141,17 @@ const advancedSchedulerOverridesDraft = ref<GroupAdvancedSchedulerOverrides>({})
 const sortableGroups = ref<AdminGroup[]>([]);
 const createModelsListState = reactive(createInitialModelsListState());
 const editModelsListState = reactive(createInitialModelsListState());
-// 管理表单统一使用兼容模型目录，原生客户端可通过对应入口读取。
-const modelsListEndpoint = () => "/v1/models";
 const createModelsListLoading = ref(false);
 const editModelsListLoading = ref(false);
-type ReasoningEffortPolicyFieldsExpose = {
-  validate: () => boolean;
-  resetValidation: () => void;
-};
-const createReasoningEffortPolicyRef = ref<ReasoningEffortPolicyFieldsExpose | null>(null);
-const editReasoningEffortPolicyRef = ref<ReasoningEffortPolicyFieldsExpose | null>(null);
-const createGroupTabsRef = ref<InstanceType<typeof GroupFormTabs> | null>(null);
-const editGroupTabsRef = ref<InstanceType<typeof GroupFormTabs> | null>(null);
+const createSettingsRef = ref<InstanceType<typeof GroupSettingsForm> | null>(null);
+const editSettingsRef = ref<InstanceType<typeof GroupSettingsForm> | null>(null);
 const modelsListCandidatesTracker = createModelsListCandidatesTracker();
-const createModelsListSelectedCount = computed(
-  () => createModelsListState.items.filter((item) => item.selected).length,
-);
-const editModelsListSelectedCount = computed(
-  () => editModelsListState.items.filter((item) => item.selected).length,
-);
 const createAvailabilityProbeModelOptions = computed(() =>
   buildAvailabilityProbeModelOptions(getAvailabilityProbeCandidateModels(createModelsListState)),
 );
 const editAvailabilityProbeModelOptions = computed(() =>
   buildAvailabilityProbeModelOptions(getAvailabilityProbeCandidateModels(editModelsListState)),
 );
-
-// 两个表单共用选项与翻译。
-const groupOpenAIFastPolicyOptions = computed(() => [
- {value:"follow_request",label:t("admin.groups.openaiFast.followRequest")},
- {value:"force_priority",label:t("admin.groups.openaiFast.force")},
- {value:"force_ultrafast",label:t("admin.groups.openaiFast.forceUltrafast")},
- {value:"force_off",label:t("admin.groups.openaiFast.forceOff")},
-]);
 
 const createForm = reactive({
   name: "",
@@ -2770,18 +1205,6 @@ const createForm = reactive({
   availability_probe_user_agent: "",
 });
 
-// 简单账号类型（用于模型路由选择）
-interface SimpleAccount {
-  id: number;
-  name: string;
-}
-
-// 模型路由规则类型
-interface ModelRoutingRule {
-  pattern: string;
-  accounts: SimpleAccount[]; // 选中的账号对象数组
-}
-
 // 创建表单的模型路由规则
 const createModelRoutingRules = ref<ModelRoutingRule[]>([]);
 
@@ -2793,11 +1216,6 @@ const resolveCreateRuleKey =
   createStableObjectKeyResolver<ModelRoutingRule>("create-rule");
 const resolveEditRuleKey =
   createStableObjectKeyResolver<ModelRoutingRule>("edit-rule");
-
-const getCreateRuleRenderKey = (rule: ModelRoutingRule) =>
-  resolveCreateRuleKey(rule);
-const getEditRuleRenderKey = (rule: ModelRoutingRule) =>
-  resolveEditRuleKey(rule);
 
 const getCreateRuleSearchKey = (rule: ModelRoutingRule) =>
   `create-${resolveCreateRuleKey(rule)}`;
@@ -2851,11 +1269,14 @@ const searchAccounts = (key: string) => {
   accountSearchRunner.trigger(key, accountSearchKeyword.value[key] || "");
 };
 
-const searchAccountsByRule = (
+const updateAccountSearch = (
   rule: ModelRoutingRule,
+  keyword: string,
   isEdit: boolean = false,
 ) => {
-  searchAccounts(getRuleSearchKey(rule, isEdit));
+  const key = getRuleSearchKey(rule, isEdit);
+  accountSearchKeyword.value[key] = keyword;
+  searchAccounts(key);
 };
 
 // 选择账号
@@ -2971,13 +1392,11 @@ const loadModelsListCandidates = async (
   }
 };
 
-const moveCreateModelsListItem = (fromIndex: number, toIndex: number) => {
-  moveModelsListItem(createModelsListState, fromIndex, toIndex);
-};
-
-const moveEditModelsListItem = (fromIndex: number, toIndex: number) => {
-  moveModelsListItem(editModelsListState, fromIndex, toIndex);
-};
+// 列表组件只发出选择事件，页面更新独立草稿供保存和探测候选共同读取。
+function setModelSelection(state: typeof createModelsListState, id: string, value: boolean) {
+  const item = state.items.find(item => item.id === id);
+  if (item) item.selected = value;
+}
 
 function buildAvailabilityProbeModelOptions(models: string[]) {
   const seen = new Set<string>();
@@ -3392,7 +1811,7 @@ const closeCreateModal = () => {
   createForm.max_reasoning_effort = "";
   createForm.max_reasoning_effort_over_limit = reasoningEffortOverLimitDowngrade;
   createForm.reasoning_effort_mappings = [];
-  createReasoningEffortPolicyRef.value?.resetValidation();
+  createSettingsRef.value?.resetValidation();
   resetAvailabilityProbeFormState(createForm);
   resetModelsListState(createModelsListState);
   createModelRoutingRules.value = [];
@@ -3401,19 +1820,11 @@ const closeCreateModal = () => {
 // 整份表单统一校验，业务校验失败也要定位到对应页签中的字段。
 const validateGroupForm = async (target: "create" | "edit"): Promise<boolean> => {
   const form = target === "create" ? createForm : editForm;
-  const tabs = target === "create" ? createGroupTabsRef.value : editGroupTabsRef.value;
-  const reasoning = target === "create"
-    ? createReasoningEffortPolicyRef.value
-    : editReasoningEffortPolicyRef.value;
+  const tabs = target === "create" ? createSettingsRef.value : editSettingsRef.value;
   if (tabs && !(await tabs.validate())) return false;
   if (!form.name.trim()) {
     appStore.showError(t("admin.groups.nameRequired"));
     await tabs?.revealField('[data-group-field="name"]');
-    return false;
-  }
-  if (reasoning && !reasoning.validate()) {
-    await nextTick();
-    await tabs?.revealField('[data-group-field="reasoning"] [role="alert"]');
     return false;
   }
   try {
@@ -3561,7 +1972,7 @@ const closeEditModal = () => {
   editForm.max_reasoning_effort = "";
   editForm.max_reasoning_effort_over_limit = reasoningEffortOverLimitDowngrade;
   editForm.reasoning_effort_mappings = [];
-  editReasoningEffortPolicyRef.value?.resetValidation();
+  editSettingsRef.value?.resetValidation();
   editModelRoutingRules.value = [];
   editForm.scheduler_type = "basic";
   editForm.advanced_scheduler_overrides = {};

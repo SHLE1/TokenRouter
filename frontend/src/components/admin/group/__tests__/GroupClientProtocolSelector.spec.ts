@@ -107,3 +107,13 @@ it('自动、仅原生和有序目标使用不同持久语义', async () => {
   mode.vm.$emit('update:modelValue', 'auto')
   expect(wrapper.emitted('update:fallbacks')?.at(-1)?.[0]).toEqual({})
 })
+
+// 四种图片策略由同一个选择器提交，继承与显式关闭不能合并。
+it.each(['inherit', 'enabled', 'disabled', 'block'] as const)('图片策略 %s 原样更新', mode => {
+  const wrapper = mount(GroupClientProtocolSelector, { props: { modelValue: [], idPrefix: 'image-test' } })
+  const field = wrapper.findAllComponents({ name: 'Select' }).find(select => select.props('id') === 'image-test-image-policy')!
+  expect(field.props('options').map((option: { value: string }) => option.value)).toEqual(['inherit', 'enabled', 'disabled', 'block'])
+  field.vm.$emit('update:modelValue', mode)
+  expect(wrapper.emitted('update:imagePolicy')?.at(-1)).toEqual([mode])
+  wrapper.unmount()
+})

@@ -10,9 +10,9 @@ afterEach(() => { document.body.innerHTML = '' })
 describe('GroupFormTabs', () => {
   it('所有分组提供相同的功能页签', async () => {
     const wrapper = mount(GroupFormTabs, { props: { idPrefix: 'create' } })
-    expect(wrapper.findAll('[data-group-tab-button]').map(tab => tab.attributes('data-group-tab-button'))).toEqual(['general', 'features', 'routing', 'protocol'])
-    await wrapper.get('[data-group-tab-button="features"]').trigger('click')
-    expect(wrapper.get('[data-group-tab="features"]').isVisible()).toBe(true)
+    expect(wrapper.findAll('[data-group-tab-button]').map(tab => tab.attributes('data-group-tab-button'))).toEqual(['general', 'models', 'scheduling', 'protocol', 'request'])
+    await wrapper.get('[data-group-tab-button="request"]').trigger('click')
+    expect(wrapper.get('[data-group-tab="request"]').isVisible()).toBe(true)
     wrapper.unmount()
   })
 
@@ -22,19 +22,19 @@ describe('GroupFormTabs', () => {
     const wrapper = mount(GroupFormTabs, {
       attachTo: document.body,
       props: { idPrefix: 'edit' },
-      slots: { routing: Draft },
+      slots: { models: Draft },
     })
-    await wrapper.get('[data-group-tab-button="routing"]').trigger('click')
+    await wrapper.get('[data-group-tab-button="models"]').trigger('click')
     await wrapper.get('input').setValue('draft')
     const content = wrapper.get('.group-tab-content').element
     content.scrollTop = 300
-    await wrapper.get('[data-group-tab-button="routing"]').trigger('keydown', { key: 'ArrowRight' })
+    await wrapper.get('[data-group-tab-button="models"]').trigger('keydown', { key: 'ArrowRight' })
     await flushPromises()
-    expect(document.activeElement).toBe(wrapper.get('[data-group-tab-button="protocol"]').element)
+    expect(document.activeElement).toBe(wrapper.get('[data-group-tab-button="scheduling"]').element)
     expect(content.scrollTop).toBe(0)
-    await wrapper.get('[data-group-tab-button="protocol"]').trigger('keydown', { key: 'Home' })
+    await wrapper.get('[data-group-tab-button="scheduling"]').trigger('keydown', { key: 'Home' })
     expect(wrapper.get('[data-group-tab-button="general"]').attributes('aria-selected')).toBe('true')
-    await wrapper.get('[data-group-tab-button="routing"]').trigger('click')
+    await wrapper.get('[data-group-tab-button="models"]').trigger('click')
     expect((wrapper.get('input').element as HTMLInputElement).value).toBe('draft')
     wrapper.unmount()
   })
@@ -43,12 +43,12 @@ describe('GroupFormTabs', () => {
     const wrapper = mount(GroupFormTabs, {
       attachTo: document.body,
       props: { idPrefix: 'edit' },
-      slots: { routing: '<input type="number" min="0.001" value="-1" />' },
+      slots: { models: '<input type="number" min="0.001" value="-1" />' },
     })
     const field = wrapper.get('input').element as HTMLInputElement
     const report = vi.spyOn(field, 'reportValidity')
     expect(await wrapper.vm.validate()).toBe(false)
-    expect(wrapper.get('[data-group-tab="routing"]').isVisible()).toBe(true)
+    expect(wrapper.get('[data-group-tab="models"]').isVisible()).toBe(true)
     expect(document.activeElement).toBe(field)
     expect(report).toHaveBeenCalledOnce()
     wrapper.unmount()
@@ -77,7 +77,7 @@ describe('GroupFormTabs', () => {
       slots: { general: '<input data-testid="probe-model" />' },
     })
     try {
-      await wrapper.get('[data-group-tab-button="routing"]').trigger('click')
+      await wrapper.get('[data-group-tab-button="models"]').trigger('click')
       const content = wrapper.get('.group-tab-content').element
       const field = wrapper.get('[data-testid="probe-model"]').element as HTMLInputElement
       // jsdom 没有布局引擎，模拟浏览器将下方错误字段滚入视口后的实际位置。

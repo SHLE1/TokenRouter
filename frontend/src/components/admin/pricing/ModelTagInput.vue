@@ -1,18 +1,19 @@
 <template>
   <div>
-    <!-- Tags display -->
-    <div class="flex flex-wrap gap-1.5 rounded-control border border-gray-200 bg-white p-2 dark:border-dark-600 dark:bg-dark-800 min-h-[2.5rem]">
+    <!-- 标签允许长模型名换行，删除按钮保持可见。 -->
+    <div class="flex flex-wrap gap-2 rounded-control border border-gray-200 bg-white p-2 dark:border-dark-600 dark:bg-dark-800 min-h-9">
       <span
         v-for="(model, idx) in models"
         :key="idx"
-        class="inline-flex items-center gap-1 rounded-compact px-2 py-0.5 text-sm"
+        class="inline-flex max-w-full items-center gap-2 rounded-compact px-2 py-1 text-sm"
         :class="getPlatformTagClass(props.platform || '')"
       >
-        {{ model }}
+        <span class="min-w-0 break-all">{{ model }}</span>
         <button
           type="button"
           @click="removeModel(idx)"
-          class="ml-0.5 rounded-full p-0.5 hover:bg-primary-200 dark:hover:bg-primary-800"
+          :aria-label="`${t('common.delete')} ${model}`"
+          class="shrink-0 rounded-compact hover:bg-primary-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:bg-primary-800"
         >
           <Icon name="x" size="xs" />
         </button>
@@ -21,7 +22,8 @@
         ref="inputRef"
         v-model="inputValue"
         type="text"
-        class="flex-1 min-w-[120px] border-none bg-transparent text-sm outline-none placeholder:text-gray-400 dark:text-white"
+        class="min-w-0 flex-1 basis-32 border-none bg-transparent text-sm outline-none placeholder:text-gray-400 dark:text-white"
+        :aria-label="ariaLabel || placeholder || t('admin.pricing.form.modelInputHint')"
         :placeholder="models.length === 0 ? placeholder : ''"
         @keydown.enter.prevent="addModel"
         @keydown.tab.prevent="addModel"
@@ -45,6 +47,7 @@ const { t } = useI18n()
 
 const props = defineProps<{
   models: string[]
+  ariaLabel?: string
   placeholder?: string
   platform?: string
 }>()

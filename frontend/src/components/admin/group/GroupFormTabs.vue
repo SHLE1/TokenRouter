@@ -30,7 +30,7 @@
         :aria-labelledby="`${idPrefix}-tab-${tab}`"
         :data-group-tab="tab"
         tabindex="0"
-        class="group-tab-panel space-y-5"
+        class="group-tab-panel space-y-6"
       >
         <slot :name="tab" />
       </section>
@@ -44,7 +44,7 @@ import { useI18n } from 'vue-i18n'
 
 defineProps<{ idPrefix: string }>()
 const { t } = useI18n()
-const allTabs = ['general', 'features', 'routing', 'protocol'] as const
+const allTabs = ['general', 'models', 'scheduling', 'protocol', 'request'] as const
 type GroupFormTab = typeof allTabs[number]
 const activeTab = ref<GroupFormTab>('general')
 const rootRef = ref<HTMLElement | null>(null)
@@ -125,7 +125,7 @@ defineExpose({ validate, revealField })
 .group-form-tabs {
   display: flex;
   height: min(68dvh, 760px);
-  max-height: calc(90dvh - 180px);
+  flex: 1 1 auto;
   min-height: 0;
   min-width: 0;
   flex-direction: column;
@@ -144,18 +144,11 @@ defineExpose({ validate, revealField })
 }
 
 .group-tab-content {
-  @apply min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain px-1 pb-2 pt-5;
+  @apply min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain px-1 pb-2 pt-6;
 }
 
-/* 分区本身不使用卡片，首块内容省略多余的顶部边线。 */
-.group-tab-panel :deep(> :first-child) {
-  border-top: 0;
-  margin-top: 0;
-  padding-top: 0;
-}
-
+/* 窄屏上限为 BREAKPOINT_SM（640px）减 1，与项目断点保持一致。 */
 @media (max-width: 639px) {
-  .group-form-tabs { max-height: calc(95dvh - 180px); }
   .group-tab { @apply px-3; }
 }
 </style>

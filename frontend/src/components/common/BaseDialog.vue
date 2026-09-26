@@ -31,7 +31,11 @@
           </div>
 
           <!-- 内容区 -->
-          <div class="modal-body min-h-0 min-w-0 max-w-full">
+          <div
+            ref="modalBodyRef"
+            class="modal-body min-h-0 min-w-0 max-w-full"
+            :class="{ 'modal-body-contained': !bodyScroll }"
+          >
             <slot></slot>
           </div>
 
@@ -70,6 +74,7 @@ interface Props {
   show: boolean
   title: string
   width?: DialogWidth
+  bodyScroll?: boolean
   closeOnEscape?: boolean
   closeOnClickOutside?: boolean
   zIndex?: number
@@ -81,6 +86,7 @@ interface Emits {
 
 const props = withDefaults(defineProps<Props>(), {
   width: 'normal',
+  bodyScroll: true,
   closeOnEscape: true,
   closeOnClickOutside: false,
   zIndex: Z_INDEX.MODAL
@@ -176,3 +182,12 @@ onUnmounted(() => {
   unlockBodyScroll()
 })
 </script>
+
+<style scoped>
+/* 分页表单自行管理滚动，外壳只分配标题和按钮之间的剩余高度。 */
+.modal-body-contained {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+</style>
