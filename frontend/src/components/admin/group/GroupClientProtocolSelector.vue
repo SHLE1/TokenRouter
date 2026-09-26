@@ -29,21 +29,39 @@
       <div
         v-for="protocol in protocols"
         :key="protocol.id"
-        class="space-y-4 py-4"
+        class="py-2.5"
       >
-        <div class="flex items-start justify-between gap-4">
-          <div class="min-w-0">
+        <div class="flex items-center gap-3">
+          <div class="flex min-w-0 flex-1 items-baseline gap-x-2">
             <span
-              class="block text-sm font-medium text-primary-900 dark:text-dark-50"
+              class="shrink-0 text-sm font-medium"
+              :class="
+                isEnabled(protocol.id)
+                  ? 'text-primary-900 dark:text-dark-50'
+                  : 'text-gray-400 dark:text-dark-400'
+              "
               >{{ protocol.name }}</span
             ><code
-              class="block break-all text-xs text-gray-500"
+              class="hidden min-w-0 truncate text-xs text-gray-400 dark:text-dark-500 sm:inline"
               :data-protocol-endpoint="protocol.id"
               >{{ protocol.endpoint }}</code
             >
           </div>
+          <template v-if="isEnabled(protocol.id) && hasFallbackTargets(protocol.id)">
+            <span
+              class="hidden shrink-0 text-xs text-gray-400 dark:text-dark-500 md:inline"
+              >{{ t('admin.protocols.fallbackWhen') }}</span
+            >
+            <Select
+              class="protocol-mode-select w-32 shrink-0 sm:w-40"
+              :aria-label="`${protocol.name}: ${t('admin.protocols.fallback')}`"
+              :model-value="fallbackMode(protocol.id)"
+              :options="modeOptions"
+              @update:model-value="setMode(protocol.id, String($event))"
+            />
+          </template>
           <Toggle
-            size="md"
+            size="sm"
             class="shrink-0"
             :model-value="modelValue.includes(protocol.id)"
             :data-protocol="protocol.id"
@@ -51,55 +69,49 @@
             @update:model-value="toggle(protocol.id)"
           />
         </div>
-        <div v-if="profile?.fallback_targets[protocol.id]?.length">
-          <label
-            :for="`${idPrefix}-${protocol.id}-fallback`"
-            class="input-label"
-            >{{ t('admin.protocols.fallback') }}</label
-          >
-          <Select
-            :id="`${idPrefix}-${protocol.id}-fallback`"
-            :aria-label="`${protocol.name}: ${t('admin.protocols.fallback')}`"
-            :model-value="fallbackMode(protocol.id)"
-            :options="modeOptions"
-            @update:model-value="setMode(protocol.id, String($event))"
-          />
+        <div
+          v-if="
+            isEnabled(protocol.id) &&
+            fallbackMode(protocol.id) === 'restricted' &&
+            hasFallbackTargets(protocol.id)
+          "
+          class="mt-2 space-y-2 rounded-compact border border-gray-100 bg-gray-50/50 p-3 dark:border-dark-700 dark:bg-dark-800/40"
+        >
           <div
-            v-if="fallbackMode(protocol.id) === 'restricted'"
-            class="mt-2 space-y-2"
+            v-for="(target, index) in fallbacks?.[protocol.id]"
+            :key="index"
+            class="flex items-center gap-2"
           >
-            <div
-              v-for="(target, index) in fallbacks?.[protocol.id]"
-              :key="index"
-              class="flex items-center gap-2"
+            <span
+              class="w-4 shrink-0 text-right text-xs tabular-nums text-gray-400 dark:text-dark-500"
+              >{{ index + 1 }}</span
             >
-              <Select
-                class="min-w-0 flex-1"
-                :aria-label="`${protocol.name}: ${t('admin.protocols.fallback')} ${index + 1}`"
-                :model-value="target"
-                :options="targetOptions(protocol.id)"
-                @update:model-value="
-                  setTarget(protocol.id, index, String($event) as ProtocolID)
-                "
-              />
-              <button
-                type="button"
-                class="btn btn-ghost btn-icon shrink-0 text-red-500"
-                :aria-label="t('common.delete')"
-                @click="removeTarget(protocol.id, index)"
-              >
-                <Icon name="trash" size="sm" />
-              </button>
-            </div>
+            <Select
+              class="min-w-0 flex-1"
+              :aria-label="`${protocol.name}: ${t('admin.protocols.fallback')} ${index + 1}`"
+              :model-value="target"
+              :options="targetOptions(protocol.id)"
+              @update:model-value="
+                setTarget(protocol.id, index, String($event) as ProtocolID)
+              "
+            />
             <button
               type="button"
-              class="btn btn-secondary"
-              :disabled="!remainingTarget(protocol.id)"
-              @click="addTarget(protocol.id)"
+              class="btn btn-ghost btn-icon shrink-0 text-red-500"
+              :aria-label="t('common.delete')"
+              @click="removeTarget(protocol.id, index)"
             >
-              {{ t('common.add') }}
+              <Icon name="trash" size="sm" />
             </button>
           </div>
+          <button
+            type="button"
+            class="btn btn-secondary btn-sm"
+            :disabled="!remainingTarget(protocol.id)"
+            @click="addTarget(protocol.id)"
+          >
+            <Icon name="plus" size="sm" />{{ t('common.add') }}
+          </button>
         </div>
       </div>
     </div>
@@ -177,6 +189,13 @@ const protocols = computed(
       profile.value?.protocols.includes(protocol.id),
     ) ?? [],
 )
+function isEnabled(id: ProtocolID) {
+  return props.modelValue.includes(id)
+}
+// 关闭的入口不承接请求，转换策略无意义，行内控件随开关显隐。
+function hasFallbackTargets(id: ProtocolID) {
+  return !!profile.value?.fallback_targets[id]?.length
+}
 function targetOptions(source: ProtocolID) {
   return (profile.value?.fallback_targets[source] ?? []).map((id) => ({
     value: id,
@@ -246,3 +265,10 @@ function removeTarget(source: ProtocolID, index: number) {
   })
 }
 </script>
+
+<style scoped>
+/* 行内转换策略下拉压到 32px 与紧凑协议行同高，仅作用于本组件，不影响其他 Select。 */
+.protocol-mode-select :deep(.input-trigger) {
+  @apply min-h-8 px-3 py-1 text-xs;
+}
+</style>

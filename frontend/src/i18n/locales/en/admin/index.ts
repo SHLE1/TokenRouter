@@ -12,6 +12,7 @@ export default {
       nativeHint: 'Only native protocols for this account type are shown. An empty set disables new calls.',
       loadError: 'Failed to load protocol capabilities. Please reopen the form.',
       fallback: 'Convert when unavailable',
+      fallbackWhen: 'If unavailable',
       auto: 'Automatic conversion',
       restricted: 'Ordered conversion targets',
       nativeOnly: 'Native only',
