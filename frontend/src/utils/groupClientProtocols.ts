@@ -31,3 +31,25 @@ export function setGroupClientProtocol(protocols: readonly ProtocolID[], protoco
   else next.delete(protocol)
   return effectiveGroupClientProtocols([...next])
 }
+
+// 历史分组可能残留目录收缩前的转换源（如调整为仅上游的协议），提交前按目录剔除，
+// 目标列表同步去重并过滤非法边；显式空数组保留“仅原生”语义。
+export function sanitizeGroupProtocolFallbacks(
+  fallbacks: Partial<Record<ProtocolID, ProtocolID[]>> | null | undefined,
+): Partial<Record<ProtocolID, ProtocolID[]>> {
+  const next: Partial<Record<ProtocolID, ProtocolID[]>> = { ...(fallbacks ?? {}) }
+  const profile = protocolCatalog.value?.groups[0]
+  if (!profile) return next
+  const sources = new Set(profile.protocols)
+  for (const source of Object.keys(next) as ProtocolID[]) {
+    if (!sources.has(source)) {
+      delete next[source]
+      continue
+    }
+    const allowed = new Set(profile.fallback_targets[source] ?? [])
+    next[source] = (next[source] ?? []).filter(
+      (target, index, list) => allowed.has(target) && list.indexOf(target) === index,
+    )
+  }
+  return next
+}

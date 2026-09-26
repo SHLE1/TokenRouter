@@ -684,6 +684,7 @@ import {
 import { extractApiErrorMessage } from "@/utils/apiError";
 import {
   effectiveGroupClientProtocols,
+  sanitizeGroupProtocolFallbacks,
 } from "@/utils/groupClientProtocols";
 import { useKeyedDebouncedSearch } from "@/composables/useKeyedDebouncedSearch";
 import { getPersistedPageSize } from "@/composables/usePersistedPageSize";
@@ -1851,8 +1852,12 @@ const handleCreateGroup = async () => {
       allow_image_generation: undefined,
       allow_batch_image_generation: undefined,
       allow_live: undefined,
-      allowed_protocols: [...createForm.allowed_protocols],
-      protocol_fallbacks: { ...createForm.protocol_fallbacks },
+      allowed_protocols: effectiveGroupClientProtocols(
+        createForm.allowed_protocols,
+      ),
+      protocol_fallbacks: sanitizeGroupProtocolFallbacks(
+        createForm.protocol_fallbacks,
+      ),
       responses_image_policy: createForm.responses_image_policy,
       display_brand: normalizeDisplayBrand(createForm.display_brand),
       routing_policy: createForm.routing_policy,
@@ -1930,7 +1935,9 @@ const handleEdit = async (group: AdminGroup) => {
   editForm.allowed_protocols = effectiveGroupClientProtocols(
     group.allowed_protocols,
   );
-  editForm.protocol_fallbacks = { ...group.protocol_fallbacks };
+  editForm.protocol_fallbacks = sanitizeGroupProtocolFallbacks(
+    group.protocol_fallbacks,
+  );
   editProtocolDefaultsPending.value = false;
   editForm.responses_image_policy = group.responses_image_policy ?? "inherit";
   editForm.allow_live = group.allowed_protocols?.includes('openai_live') ?? false;
@@ -2003,8 +2010,12 @@ const handleUpdateGroup = async () => {
       allow_image_generation: undefined,
       allow_batch_image_generation: undefined,
       allow_live: undefined,
-      allowed_protocols: [...editForm.allowed_protocols],
-      protocol_fallbacks: { ...editForm.protocol_fallbacks },
+      allowed_protocols: effectiveGroupClientProtocols(
+        editForm.allowed_protocols,
+      ),
+      protocol_fallbacks: sanitizeGroupProtocolFallbacks(
+        editForm.protocol_fallbacks,
+      ),
       responses_image_policy: editForm.responses_image_policy,
       display_brand: normalizeDisplayBrand(editForm.display_brand),
       routing_policy: editForm.routing_policy,
