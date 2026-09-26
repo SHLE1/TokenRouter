@@ -11,8 +11,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
 )
 
-type OpenAIMessagesDispatchModelConfig = accessview.OpenAIMessagesDispatchModelConfig
-
 type GroupModelsListConfig = accessview.GroupModelsListConfig
 
 type GroupAvailabilityProbeConfig = accessview.GroupAvailabilityProbeConfig

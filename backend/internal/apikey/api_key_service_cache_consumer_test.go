@@ -733,53 +733,6 @@ func TestAPIKeyService_GetByKey_DoesNotFallbackDeletedOrMissingBoundGroup(t *tes
 	})
 }
 
-func TestAPIKeyService_SnapshotRoundTrip_PreservesMessagesDispatchModelConfig(t *testing.T) {
-	svc := testkit.NewService(nil, nil, nil, nil, nil, nil, &config.Config{})
-	svc.Start()
-	groupID := int64(9)
-	apiKey := &apikey.APIKey{
-		ID:             1,
-		UserID:         2,
-		GroupID:        &groupID,
-		Key:            "k-roundtrip",
-		Name:           "Audit Key",
-		Status:         billing.StatusActive,
-		FastModePolicy: apikey.APIKeyFastModePolicyForceOn,
-		User: &identity.User{
-			ID:          2,
-			Status:      billing.StatusActive,
-			Role:        identity.RoleUser,
-			Balance:     10,
-			Concurrency: 3,
-		},
-		Group: &routing.Group{
-			ID:   groupID,
-			Name: "openai",
-
-			Status:             billing.StatusActive,
-			RateMultiplier:     1,
-			DefaultMappedModel: "gpt-5.4",
-			MessagesDispatchModelConfig: routing.OpenAIMessagesDispatchModelConfig{
-				OpusMappedModel:   "gpt-5.4-nano",
-				SonnetMappedModel: "gpt-5.3-codex",
-				HaikuMappedModel:  "gpt-5.4-mini",
-				ExactModelMappings: map[string]string{
-					"claude-sonnet-4.5": "gpt-5.4-nano",
-				},
-			},
-		},
-	}
-
-	snapshot := svc.KeySnapshotFromAPIKey(context.Background(), apiKey)
-	roundTrip := svc.KeySnapshotToAPIKey(apiKey.Key, snapshot)
-
-	require.NotNil(t, roundTrip)
-	require.Equal(t, apiKey.Name, roundTrip.Name)
-	require.Equal(t, apikey.APIKeyFastModePolicyForceOn, roundTrip.FastModePolicy)
-	require.NotNil(t, roundTrip.Group)
-	require.Equal(t, apiKey.Group.MessagesDispatchModelConfig, roundTrip.Group.MessagesDispatchModelConfig)
-}
-
 func TestAPIKeyServiceSnapshotRoundTripPreservesIndependentModelMapping(t *testing.T) {
 	svc := testkit.NewService(nil, nil, nil, nil, nil, nil, &config.Config{})
 	svc.Start()
@@ -866,83 +819,6 @@ func TestAPIKeyService_SnapshotRoundTrip_PreservesReasoningEffortPolicy(t *testi
 	require.Equal(t, "medium", roundTrip.Group.MaxReasoningEffort)
 	require.Equal(t, routing.ReasoningEffortOverLimitDeny, roundTrip.Group.MaxReasoningEffortOverLimit)
 	require.Equal(t, apiKey.Group.ReasoningEffortMappings, roundTrip.Group.ReasoningEffortMappings)
-}
-
-func TestAPIKeyService_GetByKey_IgnoresLegacyAuthCacheSnapshotWithoutMessagesDispatchConfig(t *testing.T) {
-	cache := &authCacheStub{}
-	var repoCalls int32
-	repo := &authRepoStub{
-		getByKeyForAuth: func(ctx context.Context, key string) (*apikey.APIKey, error) {
-			atomic.AddInt32(&repoCalls, 1)
-			groupID := int64(9)
-			return &apikey.APIKey{
-				ID:      1,
-				UserID:  2,
-				GroupID: &groupID,
-				Status:  billing.StatusActive,
-				User: &identity.User{
-					ID:          2,
-					Status:      billing.StatusActive,
-					Role:        identity.RoleUser,
-					Balance:     10,
-					Concurrency: 3,
-				},
-				Group: &routing.Group{
-					ID:   groupID,
-					Name: "openai",
-
-					Status:                billing.StatusActive,
-					Hydrated:              true,
-					RateMultiplier:        1,
-					AllowMessagesDispatch: true,
-					DefaultMappedModel:    "gpt-5.4",
-					MessagesDispatchModelConfig: routing.OpenAIMessagesDispatchModelConfig{
-						OpusMappedModel: "gpt-5.4-nano",
-					},
-				},
-			}, nil
-		},
-	}
-	cfg := &config.Config{
-		APIKeyAuth: config.APIKeyAuthCacheConfig{
-			L2TTLSeconds: 60,
-		},
-	}
-	svc := testkit.NewService(repo, nil, nil, nil, nil, cache, cfg)
-	svc.Start()
-
-	groupID := int64(9)
-	cache.getAuthCache = func(ctx context.Context, key string) (*apikey.APIKeyAuthCacheEntry, error) {
-		return &apikey.APIKeyAuthCacheEntry{
-			Snapshot: &apikey.APIKeyAuthSnapshot{
-				APIKeyID: 1,
-				UserID:   2,
-				GroupID:  &groupID,
-				Status:   billing.StatusActive,
-				User: apikey.APIKeyAuthUserSnapshot{
-					ID:          2,
-					Status:      billing.StatusActive,
-					Role:        identity.RoleUser,
-					Balance:     10,
-					Concurrency: 3,
-				},
-				Group: &apikey.APIKeyAuthGroupSnapshot{
-					ID:   groupID,
-					Name: "openai",
-
-					Status:             billing.StatusActive,
-					RateMultiplier:     1,
-					DefaultMappedModel: "gpt-5.4",
-				},
-			},
-		}, nil
-	}
-
-	apiKey, err := svc.GetByKey(context.Background(), "k-legacy")
-	require.NoError(t, err)
-	require.Equal(t, int32(1), atomic.LoadInt32(&repoCalls))
-	require.NotNil(t, apiKey.Group)
-	require.Equal(t, "gpt-5.4-nano", apiKey.Group.MessagesDispatchModelConfig.OpusMappedModel)
 }
 
 func TestAPIKeyService_GetByKey_NegativeCache(t *testing.T) {

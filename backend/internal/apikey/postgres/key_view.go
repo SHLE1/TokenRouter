@@ -111,7 +111,6 @@ func groupEntityToKeyView(g *dbent.Group) *routing.Group {
 		RequireOAuthOnly:                g.RequireOauthOnly,
 		RequirePrivacySet:               g.RequirePrivacySet,
 		DefaultMappedModel:              g.DefaultMappedModel,
-		MessagesDispatchModelConfig:     g.MessagesDispatchModelConfig,
 		ModelsListConfig:                g.ModelsListConfig,
 		AvailabilityProbeConfig:         g.AvailabilityProbeConfig,
 		RPMLimit:                        g.RpmLimit,

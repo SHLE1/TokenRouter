@@ -420,7 +420,6 @@ recording_pricing_stub_helpers_test.go`},
 	{Scope: "internal/moderation", Imports: "internal/moderation/provider", Files: "legacy_fixture_test.go"},
 	{Scope: "internal/moderation/postgres", Imports: "internal/identity/postgres", Files: "fixture_test.go"},
 	{Scope: "internal/payment/postgres", Imports: "internal/billing/postgres", Files: "consumer_order_snapshot_test.go"},
-	{Scope: "internal/routing", Imports: "internal/gateway/provider", Files: "group_admin_original_fixture_test.go"},
 	{Scope: "internal/routing", Imports: "internal/routing/provider", Files: `group_admin_original_fixture_test.go
 marketplace_fixture_test.go`},
 	{Scope: "internal/routing", Imports: "internal/billing/provider", Files: `group_admin_original_fixture_test.go marketplace_catalog_fixture_test.go marketplace_fixture_test.go`},

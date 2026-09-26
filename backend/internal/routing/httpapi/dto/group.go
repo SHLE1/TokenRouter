@@ -109,9 +109,8 @@ type AdminGroup[A any] struct {
 	MCPXMLInject bool `json:"mcp_xml_inject"`
 
 	// OpenAI Messages 调度配置（仅 openai 平台使用）
-	DefaultMappedModel          string                                    `json:"default_mapped_model"`
-	MessagesDispatchModelConfig routing.OpenAIMessagesDispatchModelConfig `json:"messages_dispatch_model_config"`
-	ModelsListConfig            routing.GroupModelsListConfig             `json:"models_list_config"`
+	DefaultMappedModel string                        `json:"default_mapped_model"`
+	ModelsListConfig   routing.GroupModelsListConfig `json:"models_list_config"`
 	// AvailabilityProbeConfig 控制分组主动可用性探测，仅管理员接口返回。
 	AvailabilityProbeConfig routing.GroupAvailabilityProbeConfig `json:"availability_probe_config"`
 

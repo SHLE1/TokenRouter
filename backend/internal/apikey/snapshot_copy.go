@@ -1,7 +1,6 @@
 package apikey
 
 import (
-	"maps"
 	"slices"
 )
 
@@ -25,10 +24,7 @@ func cloneModelRouting(v map[string][]int64) map[string][]int64 {
 	}
 	return out
 }
-func cloneMessagesDispatch(v OpenAIMessagesDispatchModelConfig) OpenAIMessagesDispatchModelConfig {
-	v.ExactModelMappings = maps.Clone(v.ExactModelMappings)
-	return v
-}
+
 func cloneModelsList(v GroupModelsListConfig) GroupModelsListConfig {
 	v.Models = slices.Clone(v.Models)
 	return v

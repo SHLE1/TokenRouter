@@ -71,17 +71,6 @@ func CloneGroupModelRouting(value map[string][]int64) map[string][]int64 {
 	return cloned
 }
 
-func CloneGroupMessagesDispatchModelConfig(value OpenAIMessagesDispatchModelConfig) OpenAIMessagesDispatchModelConfig {
-	cloned := value
-	if value.ExactModelMappings != nil {
-		cloned.ExactModelMappings = make(map[string]string, len(value.ExactModelMappings))
-		for requestedModel, mappedModel := range value.ExactModelMappings {
-			cloned.ExactModelMappings[requestedModel] = mappedModel
-		}
-	}
-	return cloned
-}
-
 func CloneGroupForDuplicate(source *Group, operationID string) *Group {
 	return &Group{
 		Name:        DuplicateGroupName(source.Name, 1),
@@ -131,7 +120,6 @@ func CloneGroupForDuplicate(source *Group, operationID string) *Group {
 		RequireOAuthOnly:                source.RequireOAuthOnly,
 		RequirePrivacySet:               source.RequirePrivacySet,
 		DefaultMappedModel:              source.DefaultMappedModel,
-		MessagesDispatchModelConfig:     CloneGroupMessagesDispatchModelConfig(source.MessagesDispatchModelConfig),
 		ModelsListConfig: GroupModelsListConfig{
 			Enabled: source.ModelsListConfig.Enabled,
 			Models:  append([]string(nil), source.ModelsListConfig.Models...),

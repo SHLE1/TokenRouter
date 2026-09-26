@@ -272,7 +272,6 @@ func (s *GroupAdmin) CreateGroup(ctx context.Context, input *CreateGroupInput) (
 		RequireOAuthOnly:                input.RequireOAuthOnly,
 		RequirePrivacySet:               input.RequirePrivacySet,
 		DefaultMappedModel:              input.DefaultMappedModel,
-		MessagesDispatchModelConfig:     NormalizeMessagesDispatchConfig(input.MessagesDispatchModelConfig, s.options.NormalizeMappedModel),
 		ModelsListConfig:                NormalizeGroupModelsListConfig(input.ModelsListConfig),
 		AvailabilityProbeConfig:         availabilityProbeConfig,
 		RPMLimit:                        input.RPMLimit,
@@ -660,9 +659,6 @@ func (s *GroupAdmin) UpdateGroup(ctx context.Context, id int64, input *UpdateGro
 	}
 	if input.DefaultMappedModel != nil {
 		group.DefaultMappedModel = *input.DefaultMappedModel
-	}
-	if input.MessagesDispatchModelConfig != nil {
-		group.MessagesDispatchModelConfig = NormalizeMessagesDispatchConfig(*input.MessagesDispatchModelConfig, s.options.NormalizeMappedModel)
 	}
 	if input.ModelsListConfig != nil {
 		group.ModelsListConfig = NormalizeGroupModelsListConfig(*input.ModelsListConfig)

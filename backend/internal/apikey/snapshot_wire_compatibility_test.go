@@ -9,7 +9,7 @@ import (
 )
 
 // 旧快照必须经过版本门禁拒绝；新字段的序列化对照使用明确转换的测试报文。
-func TestV42SnapshotDropsRetiredFields(t *testing.T) {
+func TestCurrentSnapshotDropsRetiredFields(t *testing.T) {
 	for _, kind := range []string{"full", "empty"} {
 		t.Run(kind, func(t *testing.T) {
 			original, e := os.ReadFile("testdata/v40-" + kind + ".json")
@@ -56,6 +56,10 @@ func migrateSnapshotPricingFields(value any) {
 	switch node := value.(type) {
 	case map[string]any:
 		delete(node, "platform")
+		delete(node, "messages_dispatch_model_config")
+		delete(node, "opus_mapped_model")
+		delete(node, "sonnet_mapped_model")
+		delete(node, "haiku_mapped_model")
 		if old, ok := node["fallback_to_default_group_when_unavailable"]; ok {
 			node["fallback_when_group_unavailable"] = old
 			delete(node, "fallback_to_default_group_when_unavailable")

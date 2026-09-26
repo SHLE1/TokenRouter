@@ -65,12 +65,11 @@ type CreateGroupInput struct {
 	// 新策略优先于旧布尔输入，省略时保持兼容。
 	OpenAIFastPolicy *string
 	// FreeOpenAIFast 仅对 OpenAI 分组启用 Standard 计费策略。
-	FreeOpenAIFast              bool
-	DefaultMappedModel          string
-	RequireOAuthOnly            bool
-	RequirePrivacySet           bool
-	MessagesDispatchModelConfig OpenAIMessagesDispatchModelConfig
-	ModelsListConfig            GroupModelsListConfig
+	FreeOpenAIFast     bool
+	DefaultMappedModel string
+	RequireOAuthOnly   bool
+	RequirePrivacySet  bool
+	ModelsListConfig   GroupModelsListConfig
 	// AvailabilityProbeConfig 控制分组主动可用性探测。
 	AvailabilityProbeConfig GroupAvailabilityProbeConfig
 	// RPMLimit 分组 RPM 上限（0 = 不限制）
@@ -145,12 +144,11 @@ type UpdateGroupInput struct {
 	// 新策略优先于旧布尔输入，省略时保持兼容。
 	OpenAIFastPolicy *string
 	// FreeOpenAIFast 为 nil 时保留原值；仅对 OpenAI 分组生效。
-	FreeOpenAIFast              *bool
-	DefaultMappedModel          *string
-	RequireOAuthOnly            *bool
-	RequirePrivacySet           *bool
-	MessagesDispatchModelConfig *OpenAIMessagesDispatchModelConfig
-	ModelsListConfig            *GroupModelsListConfig
+	FreeOpenAIFast     *bool
+	DefaultMappedModel *string
+	RequireOAuthOnly   *bool
+	RequirePrivacySet  *bool
+	ModelsListConfig   *GroupModelsListConfig
 	// AvailabilityProbeConfig 为 nil 时不修改探测配置。
 	AvailabilityProbeConfig *GroupAvailabilityProbeConfig
 	// RPMLimit 分组 RPM 上限（0 = 不限制），nil 表示未提供不改动。

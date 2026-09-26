@@ -391,7 +391,6 @@ func (r *KeyStore) GetByKeyForAuth(ctx context.Context, key string) (*keycore.AP
 				group.FieldOpenaiFastPolicy,
 				group.FieldFreeOpenaiFast,
 				group.FieldDefaultMappedModel,
-				group.FieldMessagesDispatchModelConfig,
 				group.FieldModelsListConfig,
 				group.FieldRpmLimit,
 				group.FieldMaxReasoningEffort,

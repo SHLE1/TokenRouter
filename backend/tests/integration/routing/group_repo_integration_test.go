@@ -16,8 +16,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	routingpostgres "github.com/TokenFlux/TokenRouter/internal/routing/postgres"
 
-	"github.com/TokenFlux/TokenRouter/internal/protocol"
-
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 
 	dbent "github.com/TokenFlux/TokenRouter/ent"
@@ -221,41 +219,6 @@ func (s *GroupRepoSuite) TestUpdate() {
 	got, err := s.repo.GetByID(s.ctx, group.ID)
 	s.Require().NoError(err, "GetByID after update")
 	s.Require().Equal("updated", got.Name)
-}
-
-func (s *GroupRepoSuite) TestGetByID_PreservesMessagesDispatchModelConfig() {
-	group := &routing.Group{
-		Name: "openai-dispatch",
-
-		RateMultiplier: 1.0,
-		IsExclusive:    false,
-		Status:         billing.StatusActive,
-		AllowedProtocols: []protocol.ProtocolID{
-			protocol.ProtocolAnthropicMessages,
-			protocol.ProtocolOpenAIResponses,
-			protocol.ProtocolOpenAIChatCompletions,
-		},
-		AllowMessagesDispatch: true,
-		DefaultMappedModel:    "gpt-5.4",
-		MessagesDispatchModelConfig: routing.OpenAIMessagesDispatchModelConfig{
-			OpusMappedModel:   "gpt-5.4",
-			SonnetMappedModel: "gpt-5.3-codex",
-			HaikuMappedModel:  "gpt-5.4-mini",
-			ExactModelMappings: map[string]string{
-				"claude-sonnet-4.5": "gpt-5.4-nano",
-			},
-		},
-
-		ProtocolFallbacks:    capability.DefaultProtocolFallbacks(capability.PlatformOpenAI),
-		ResponsesImagePolicy: "inherit",
-	}
-
-	s.Require().NoError(s.repo.Create(s.ctx, group))
-
-	got, err := s.repo.GetByID(s.ctx, group.ID)
-	s.Require().NoError(err)
-	s.Require().Equal(group.AllowedProtocols, got.AllowedProtocols)
-	s.Require().Equal(group.MessagesDispatchModelConfig, got.MessagesDispatchModelConfig)
 }
 
 func (s *GroupRepoSuite) TestDelete() {

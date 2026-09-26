@@ -114,8 +114,6 @@ const (
 	FieldRequirePrivacySet = "require_privacy_set"
 	// FieldDefaultMappedModel holds the string denoting the default_mapped_model field in the database.
 	FieldDefaultMappedModel = "default_mapped_model"
-	// FieldMessagesDispatchModelConfig holds the string denoting the messages_dispatch_model_config field in the database.
-	FieldMessagesDispatchModelConfig = "messages_dispatch_model_config"
 	// FieldModelsListConfig holds the string denoting the models_list_config field in the database.
 	FieldModelsListConfig = "models_list_config"
 	// FieldAvailabilityProbeConfig holds the string denoting the availability_probe_config field in the database.
@@ -260,7 +258,6 @@ var Columns = []string{
 	FieldRequireOauthOnly,
 	FieldRequirePrivacySet,
 	FieldDefaultMappedModel,
-	FieldMessagesDispatchModelConfig,
 	FieldModelsListConfig,
 	FieldAvailabilityProbeConfig,
 	FieldRpmLimit,
@@ -392,8 +389,6 @@ var (
 	DefaultDefaultMappedModel string
 	// DefaultMappedModelValidator is a validator for the "default_mapped_model" field. It is called by the builders before save.
 	DefaultMappedModelValidator func(string) error
-	// DefaultMessagesDispatchModelConfig holds the default value on creation for the "messages_dispatch_model_config" field.
-	DefaultMessagesDispatchModelConfig accessview.OpenAIMessagesDispatchModelConfig
 	// DefaultModelsListConfig holds the default value on creation for the "models_list_config" field.
 	DefaultModelsListConfig accessview.GroupModelsListConfig
 	// DefaultAvailabilityProbeConfig holds the default value on creation for the "availability_probe_config" field.

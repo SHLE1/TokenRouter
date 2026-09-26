@@ -819,20 +819,6 @@ func (_u *GroupUpdate) SetNillableDefaultMappedModel(v *string) *GroupUpdate {
 	return _u
 }
 
-// SetMessagesDispatchModelConfig sets the "messages_dispatch_model_config" field.
-func (_u *GroupUpdate) SetMessagesDispatchModelConfig(v accessview.OpenAIMessagesDispatchModelConfig) *GroupUpdate {
-	_u.mutation.SetMessagesDispatchModelConfig(v)
-	return _u
-}
-
-// SetNillableMessagesDispatchModelConfig sets the "messages_dispatch_model_config" field if the given value is not nil.
-func (_u *GroupUpdate) SetNillableMessagesDispatchModelConfig(v *accessview.OpenAIMessagesDispatchModelConfig) *GroupUpdate {
-	if v != nil {
-		_u.SetMessagesDispatchModelConfig(*v)
-	}
-	return _u
-}
-
 // SetModelsListConfig sets the "models_list_config" field.
 func (_u *GroupUpdate) SetModelsListConfig(v accessview.GroupModelsListConfig) *GroupUpdate {
 	_u.mutation.SetModelsListConfig(v)
@@ -1519,9 +1505,6 @@ func (_u *GroupUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.DefaultMappedModel(); ok {
 		_spec.SetField(group.FieldDefaultMappedModel, field.TypeString, value)
-	}
-	if value, ok := _u.mutation.MessagesDispatchModelConfig(); ok {
-		_spec.SetField(group.FieldMessagesDispatchModelConfig, field.TypeJSON, value)
 	}
 	if value, ok := _u.mutation.ModelsListConfig(); ok {
 		_spec.SetField(group.FieldModelsListConfig, field.TypeJSON, value)
@@ -2659,20 +2642,6 @@ func (_u *GroupUpdateOne) SetNillableDefaultMappedModel(v *string) *GroupUpdateO
 	return _u
 }
 
-// SetMessagesDispatchModelConfig sets the "messages_dispatch_model_config" field.
-func (_u *GroupUpdateOne) SetMessagesDispatchModelConfig(v accessview.OpenAIMessagesDispatchModelConfig) *GroupUpdateOne {
-	_u.mutation.SetMessagesDispatchModelConfig(v)
-	return _u
-}
-
-// SetNillableMessagesDispatchModelConfig sets the "messages_dispatch_model_config" field if the given value is not nil.
-func (_u *GroupUpdateOne) SetNillableMessagesDispatchModelConfig(v *accessview.OpenAIMessagesDispatchModelConfig) *GroupUpdateOne {
-	if v != nil {
-		_u.SetMessagesDispatchModelConfig(*v)
-	}
-	return _u
-}
-
 // SetModelsListConfig sets the "models_list_config" field.
 func (_u *GroupUpdateOne) SetModelsListConfig(v accessview.GroupModelsListConfig) *GroupUpdateOne {
 	_u.mutation.SetModelsListConfig(v)
@@ -3389,9 +3358,6 @@ func (_u *GroupUpdateOne) sqlSave(ctx context.Context) (_node *Group, err error)
 	}
 	if value, ok := _u.mutation.DefaultMappedModel(); ok {
 		_spec.SetField(group.FieldDefaultMappedModel, field.TypeString, value)
-	}
-	if value, ok := _u.mutation.MessagesDispatchModelConfig(); ok {
-		_spec.SetField(group.FieldMessagesDispatchModelConfig, field.TypeJSON, value)
 	}
 	if value, ok := _u.mutation.ModelsListConfig(); ok {
 		_spec.SetField(group.FieldModelsListConfig, field.TypeJSON, value)

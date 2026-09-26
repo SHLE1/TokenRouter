@@ -245,14 +245,6 @@ func (s *APIKeyRepoSuite) TestGetByKeyForAuth_PreservesSelectedGroupFields() {
 		}).
 		SetAllowMessagesDispatch(true).
 		SetDefaultMappedModel("gpt-5.4").
-		SetMessagesDispatchModelConfig(routing.OpenAIMessagesDispatchModelConfig{
-			OpusMappedModel:   "gpt-5.4-nano",
-			SonnetMappedModel: "gpt-5.3-codex",
-			HaikuMappedModel:  "gpt-5.4-mini",
-			ExactModelMappings: map[string]string{
-				"claude-sonnet-4.5": "gpt-5.4-nano",
-			},
-		}).
 		Save(s.ctx)
 	s.Require().NoError(err)
 
@@ -276,8 +268,6 @@ func (s *APIKeyRepoSuite) TestGetByKeyForAuth_PreservesSelectedGroupFields() {
 		protocol.ProtocolOpenAIChatCompletions,
 	}, got.Group.AllowedProtocols)
 	s.Require().Equal("gpt-5.4", got.Group.DefaultMappedModel)
-	s.Require().Equal("gpt-5.4-nano", got.Group.MessagesDispatchModelConfig.OpusMappedModel)
-	s.Require().Equal("gpt-5.4-nano", got.Group.MessagesDispatchModelConfig.ExactModelMappings["claude-sonnet-4.5"])
 	s.Require().Equal(routing.GroupSchedulerTypeAdvanced, got.Group.SchedulerType)
 	s.Require().NotNil(got.Group.AdvancedSchedulerOverrides.LBTopK)
 	s.Require().Equal(4, *got.Group.AdvancedSchedulerOverrides.LBTopK)

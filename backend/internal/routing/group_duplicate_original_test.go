@@ -61,7 +61,6 @@ func cloneGroupForDuplicateTest(group *routing.Group) *routing.Group {
 	cloned.ModelRouting = routing.CloneGroupModelRouting(group.ModelRouting)
 	cloned.SupportedModelScopes = append([]string(nil), group.SupportedModelScopes...)
 	cloned.AllowedProtocols = routing.CloneGroupClientProtocols(group.AllowedProtocols)
-	cloned.MessagesDispatchModelConfig = routing.CloneGroupMessagesDispatchModelConfig(group.MessagesDispatchModelConfig)
 	cloned.ModelsListConfig.Models = append([]string(nil), group.ModelsListConfig.Models...)
 	return &cloned
 }
@@ -161,19 +160,13 @@ func TestDuplicateGroupCopiesConfigurationDeeplyAndResetsRuntimeState(t *testing
 			protocol.ProtocolOpenAIResponses,
 			protocol.ProtocolOpenAIChatCompletions,
 		},
-		AllowMessagesDispatch: true,
-		AllowLive:             true,
-		ForceOpenAIFast:       true,
-		FreeOpenAIFast:        true,
-		RequireOAuthOnly:      true,
-		RequirePrivacySet:     true,
-		DefaultMappedModel:    "gpt-5.4",
-		MessagesDispatchModelConfig: routing.OpenAIMessagesDispatchModelConfig{
-			OpusMappedModel:    "gpt-5.4",
-			SonnetMappedModel:  "gpt-5.3",
-			HaikuMappedModel:   "gpt-5-mini",
-			ExactModelMappings: map[string]string{"claude-special": "gpt-special"},
-		},
+		AllowMessagesDispatch:       true,
+		AllowLive:                   true,
+		ForceOpenAIFast:             true,
+		FreeOpenAIFast:              true,
+		RequireOAuthOnly:            true,
+		RequirePrivacySet:           true,
+		DefaultMappedModel:          "gpt-5.4",
 		ModelsListConfig:            routing.GroupModelsListConfig{Enabled: true, Models: []string{"gpt-5.4", "gpt-5-mini"}},
 		AvailabilityProbeConfig:     routing.GroupAvailabilityProbeConfig{Enabled: true, ModelID: "gpt-5.4", Prompt: "ping", TimeoutSeconds: 15},
 		RPMLimit:                    99,
@@ -217,7 +210,6 @@ func TestDuplicateGroupCopiesConfigurationDeeplyAndResetsRuntimeState(t *testing
 	require.Equal(t, source.UnavailableFallbackGroupID, duplicate.UnavailableFallbackGroupID)
 	require.Equal(t, source.ModelRouting, duplicate.ModelRouting)
 	require.Equal(t, source.AllowedProtocols, duplicate.AllowedProtocols)
-	require.Equal(t, source.MessagesDispatchModelConfig, duplicate.MessagesDispatchModelConfig)
 	require.Equal(t, source.ModelsListConfig, duplicate.ModelsListConfig)
 	require.Equal(t, source.AvailabilityProbeConfig, duplicate.AvailabilityProbeConfig)
 	require.Equal(t, source.RPMLimit, duplicate.RPMLimit)
@@ -236,7 +228,6 @@ func TestDuplicateGroupCopiesConfigurationDeeplyAndResetsRuntimeState(t *testing
 	duplicate.ModelRouting["gpt-*"][0] = 999
 	duplicate.SupportedModelScopes[0] = "changed"
 	duplicate.AllowedProtocols[0] = protocol.ProtocolOpenAIResponses
-	duplicate.MessagesDispatchModelConfig.ExactModelMappings["claude-special"] = "changed"
 	duplicate.ModelsListConfig.Models[0] = "changed"
 	duplicate.ReasoningEffortMappings[0].To = "changed"
 	*duplicate.UnavailableFallbackGroupID = 999
@@ -245,7 +236,6 @@ func TestDuplicateGroupCopiesConfigurationDeeplyAndResetsRuntimeState(t *testing
 	require.Equal(t, int64(13), source.ModelRouting["gpt-*"][0])
 	require.Equal(t, "claude", source.SupportedModelScopes[0])
 	require.Equal(t, protocol.ProtocolAnthropicMessages, source.AllowedProtocols[0])
-	require.Equal(t, "gpt-special", source.MessagesDispatchModelConfig.ExactModelMappings["claude-special"])
 	require.Equal(t, "gpt-5.4", source.ModelsListConfig.Models[0])
 	require.Equal(t, "xhigh", source.ReasoningEffortMappings[0].To)
 	require.Equal(t, int64(9), *source.UnavailableFallbackGroupID)

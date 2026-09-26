@@ -1157,28 +1157,6 @@ affiliates: {
           gemini_generate_content: 'Gemini GenerateContent'
         }
       },
-      openaiMessages: {
-        title: 'OpenAI Messages Model Mapping',
-        allowDispatch: 'Allow /v1/messages dispatch',
-        allowDispatchHint: 'When enabled, API keys in this OpenAI group can dispatch requests through /v1/messages endpoint',
-        familyMappingTitle: 'Family Default Mapping',
-        familyMappingHint: 'Only families with an explicit target model are mapped; blank fields skip this mapping.',
-        opusModel: 'Opus Target Model',
-        opusModelPlaceholder: 'e.g., gpt-5.4',
-        sonnetModel: 'Sonnet Target Model',
-        sonnetModelPlaceholder: 'e.g., gpt-5.3-codex',
-        haikuModel: 'Haiku Target Model',
-        haikuModelPlaceholder: 'e.g., gpt-5.4-mini',
-        exactMappingTitle: 'Exact Model Overrides',
-        exactMappingHint: 'Exact Claude model overrides take priority over the family defaults and can route a specific Claude model to a different target model.',
-        noExactMappings: 'No exact model overrides yet',
-        addExactMapping: 'Add Exact Mapping',
-        claudeModel: 'Claude Model',
-        claudeModelPlaceholder: 'e.g., claude-sonnet-4-5-20250929',
-        targetModel: 'Target Model',
-        targetModelPlaceholder: 'e.g., gpt-5.4',
-        removeExactMapping: 'Remove Exact Mapping'
-      },
       openaiLive: {
         title: 'OpenAI Live',
         allow: 'Allow Live access',

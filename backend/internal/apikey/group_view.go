@@ -8,11 +8,10 @@ import (
 
 // 分组配置值沿用其唯一所有者，Key 只持有独立的读取快照。
 type (
-	GroupSchedulerType                = accessview.GroupSchedulerType
-	GroupAdvancedSchedulerOverrides   = accessview.GroupAdvancedSchedulerOverrides
-	OpenAIMessagesDispatchModelConfig = accessview.OpenAIMessagesDispatchModelConfig
-	GroupModelsListConfig             = accessview.GroupModelsListConfig
-	GroupAvailabilityProbeConfig      = accessview.GroupAvailabilityProbeConfig
-	ReasoningEffortMapping            = routing.ReasoningEffortMapping
-	ModelPricingEntry                 = pricing.ModelPricingEntry
+	GroupSchedulerType              = accessview.GroupSchedulerType
+	GroupAdvancedSchedulerOverrides = accessview.GroupAdvancedSchedulerOverrides
+	GroupModelsListConfig           = accessview.GroupModelsListConfig
+	GroupAvailabilityProbeConfig    = accessview.GroupAvailabilityProbeConfig
+	ReasoningEffortMapping          = routing.ReasoningEffortMapping
+	ModelPricingEntry               = pricing.ModelPricingEntry
 )

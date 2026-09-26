@@ -1296,193 +1296,6 @@
               v-model:image-policy="createForm.responses_image_policy"
               class="mt-4"
             />
-            <div
-              v-if="createMessagesDispatchEnabled"
-              class="border-t border-gray-200 dark:border-dark-400 pt-4 mt-4"
-            >
-              <div>
-                <div
-                  class="space-y-3"
-                >
-                  <div
-                    class="space-y-1"
-                  >
-                    <div class="flex items-center gap-2">
-                      <label
-                        class="text-sm font-medium text-gray-900 dark:text-white"
-                        >{{
-                          t("admin.groups.openaiMessages.familyMappingTitle")
-                        }}</label
-                      >
-                    </div>
-                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                      {{ t("admin.groups.openaiMessages.familyMappingHint") }}
-                    </p>
-                  </div>
-                  <div class="space-y-4">
-                    <div class="grid gap-4 md:grid-cols-3">
-                      <div>
-                        <label class="input-label">{{
-                          t("admin.groups.openaiMessages.opusModel")
-                        }}</label>
-                        <input
-                          v-model="createForm.opus_mapped_model"
-                          type="text"
-                          :placeholder="
-                            t('admin.groups.openaiMessages.opusModelPlaceholder')
-                          "
-                          class="input"
-                        />
-                      </div>
-                      <div>
-                        <label class="input-label">{{
-                          t("admin.groups.openaiMessages.sonnetModel")
-                        }}</label>
-                        <input
-                          v-model="createForm.sonnet_mapped_model"
-                          type="text"
-                          :placeholder="
-                            t('admin.groups.openaiMessages.sonnetModelPlaceholder')
-                          "
-                          class="input"
-                        />
-                      </div>
-                      <div>
-                        <label class="input-label">{{
-                          t("admin.groups.openaiMessages.haikuModel")
-                        }}</label>
-                        <input
-                          v-model="createForm.haiku_mapped_model"
-                          type="text"
-                          :placeholder="
-                            t('admin.groups.openaiMessages.haikuModelPlaceholder')
-                          "
-                          class="input"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div
-                  class="mt-5 space-y-3 border-t border-gray-200 pt-4 dark:border-dark-600"
-                >
-                  <div
-                    class="space-y-1"
-                  >
-                    <div class="flex items-start justify-between gap-3">
-                      <div>
-                        <div class="flex items-center gap-2">
-                          <label
-                            class="text-sm font-medium text-gray-900 dark:text-white"
-                            >{{
-                              t("admin.groups.openaiMessages.exactMappingTitle")
-                            }}</label
-                          >
-                        </div>
-                        <p
-                          class="mt-1 text-xs text-gray-500 dark:text-gray-400"
-                        >
-                          {{ t("admin.groups.openaiMessages.exactMappingHint") }}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="space-y-3">
-                    <div
-                      v-if="createForm.exact_model_mappings.length === 0"
-                      class="flex flex-wrap items-center justify-between gap-3 py-2 text-sm text-gray-500 dark:text-gray-400"
-                    >
-                      <span>{{
-                        t("admin.groups.openaiMessages.noExactMappings")
-                      }}</span>
-                      <button
-                        type="button"
-                        @click="addCreateMessagesDispatchMapping"
-                        class="flex items-center gap-1.5 text-sm font-medium text-primary-600 transition-colors hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
-                      >
-                        <Icon name="plus" size="sm" />
-                        {{ t("admin.groups.openaiMessages.addExactMapping") }}
-                      </button>
-                    </div>
-
-                    <div v-else class="space-y-3">
-                      <div
-                        v-for="row in createForm.exact_model_mappings"
-                        :key="getCreateMessagesDispatchRowKey(row)"
-                        class="group relative rounded-surface border border-gray-200 bg-white p-3 dark:border-dark-600 dark:bg-dark-800"
-                      >
-                        <div class="flex items-center gap-4">
-                          <div
-                            class="grid min-w-0 flex-1 gap-4 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:items-start"
-                          >
-                            <div>
-                              <label class="input-label">{{
-                                t("admin.groups.openaiMessages.claudeModel")
-                              }}</label>
-                              <input
-                                v-model="row.claude_model"
-                                type="text"
-                                :placeholder="
-                                  t(
-                                    'admin.groups.openaiMessages.claudeModelPlaceholder',
-                                  )
-                                "
-                                class="input bg-gray-50 focus:bg-white dark:bg-dark-800 dark:focus:bg-dark-900"
-                              />
-                            </div>
-                            <div
-                              class="hidden md:flex md:justify-center md:pt-7 text-primary-300 dark:text-primary-700"
-                            >
-                              <Icon
-                                name="arrowRight"
-                                size="sm"
-                                class="transition-transform group-hover:translate-x-1"
-                              />
-                            </div>
-                            <div>
-                              <label class="input-label">{{
-                                t("admin.groups.openaiMessages.targetModel")
-                              }}</label>
-                              <input
-                                v-model="row.target_model"
-                                type="text"
-                                :placeholder="
-                                  t(
-                                    'admin.groups.openaiMessages.targetModelPlaceholder',
-                                  )
-                                "
-                                class="input bg-gray-50 focus:bg-white dark:bg-dark-800 dark:focus:bg-dark-900"
-                              />
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            @click="removeCreateMessagesDispatchMapping(row)"
-                            class="mt-6 flex shrink-0 rounded-control text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20 dark:hover:text-red-400 btn-icon"
-                            :title="
-                              t('admin.groups.openaiMessages.removeExactMapping')
-                            "
-                          >
-                            <Icon name="trash" size="sm" />
-                          </button>
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        @click="addCreateMessagesDispatchMapping"
-                        class="flex min-h-9 w-full items-center justify-center gap-2 rounded-control border-2 border-dashed border-gray-300 bg-white py-1.5 text-sm font-medium text-gray-500 transition-all hover:border-primary-300 hover:bg-primary-50/50 hover:text-primary-600 dark:border-dark-600 dark:bg-dark-800 dark:text-gray-400 dark:hover:border-primary-800 dark:hover:bg-primary-900/20 dark:hover:text-primary-400"
-                      >
-                        <Icon name="plus" size="sm" />
-                        {{ t("admin.groups.openaiMessages.addExactMapping") }}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
             <div  class="border-t pt-4">
               <div class="relative mb-1.5 flex items-center gap-1">
                 <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -2668,193 +2481,6 @@
               v-model:image-policy="editForm.responses_image_policy"
               class="mt-4"
             />
-            <div
-              v-if="editMessagesDispatchEnabled"
-              class="border-t border-gray-200 dark:border-dark-400 pt-4 mt-4"
-            >
-              <div>
-                <div
-                  class="space-y-3"
-                >
-                  <div
-                    class="space-y-1"
-                  >
-                    <div class="flex items-center gap-2">
-                      <label
-                        class="text-sm font-medium text-gray-900 dark:text-white"
-                        >{{
-                          t("admin.groups.openaiMessages.familyMappingTitle")
-                        }}</label
-                      >
-                    </div>
-                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                      {{ t("admin.groups.openaiMessages.familyMappingHint") }}
-                    </p>
-                  </div>
-                  <div class="space-y-4">
-                    <div class="grid gap-4 md:grid-cols-3">
-                      <div>
-                        <label class="input-label">{{
-                          t("admin.groups.openaiMessages.opusModel")
-                        }}</label>
-                        <input
-                          v-model="editForm.opus_mapped_model"
-                          type="text"
-                          :placeholder="
-                            t('admin.groups.openaiMessages.opusModelPlaceholder')
-                          "
-                          class="input"
-                        />
-                      </div>
-                      <div>
-                        <label class="input-label">{{
-                          t("admin.groups.openaiMessages.sonnetModel")
-                        }}</label>
-                        <input
-                          v-model="editForm.sonnet_mapped_model"
-                          type="text"
-                          :placeholder="
-                            t('admin.groups.openaiMessages.sonnetModelPlaceholder')
-                          "
-                          class="input"
-                        />
-                      </div>
-                      <div>
-                        <label class="input-label">{{
-                          t("admin.groups.openaiMessages.haikuModel")
-                        }}</label>
-                        <input
-                          v-model="editForm.haiku_mapped_model"
-                          type="text"
-                          :placeholder="
-                            t('admin.groups.openaiMessages.haikuModelPlaceholder')
-                          "
-                          class="input"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div
-                  class="mt-5 space-y-3 border-t border-gray-200 pt-4 dark:border-dark-600"
-                >
-                  <div
-                    class="space-y-1"
-                  >
-                    <div class="flex items-start justify-between gap-3">
-                      <div>
-                        <div class="flex items-center gap-2">
-                          <label
-                            class="text-sm font-medium text-gray-900 dark:text-white"
-                            >{{
-                              t("admin.groups.openaiMessages.exactMappingTitle")
-                            }}</label
-                          >
-                        </div>
-                        <p
-                          class="mt-1 text-xs text-gray-500 dark:text-gray-400"
-                        >
-                          {{ t("admin.groups.openaiMessages.exactMappingHint") }}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="space-y-3">
-                    <div
-                      v-if="editForm.exact_model_mappings.length === 0"
-                      class="flex flex-wrap items-center justify-between gap-3 py-2 text-sm text-gray-500 dark:text-gray-400"
-                    >
-                      <span>{{
-                        t("admin.groups.openaiMessages.noExactMappings")
-                      }}</span>
-                      <button
-                        type="button"
-                        @click="addEditMessagesDispatchMapping"
-                        class="flex items-center gap-1.5 text-sm font-medium text-primary-600 transition-colors hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
-                      >
-                        <Icon name="plus" size="sm" />
-                        {{ t("admin.groups.openaiMessages.addExactMapping") }}
-                      </button>
-                    </div>
-
-                    <div v-else class="space-y-3">
-                      <div
-                        v-for="row in editForm.exact_model_mappings"
-                        :key="getEditMessagesDispatchRowKey(row)"
-                        class="group relative rounded-surface border border-gray-200 bg-white p-3 dark:border-dark-600 dark:bg-dark-800"
-                      >
-                        <div class="flex items-center gap-4">
-                          <div
-                            class="grid min-w-0 flex-1 gap-4 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:items-start"
-                          >
-                            <div>
-                              <label class="input-label">{{
-                                t("admin.groups.openaiMessages.claudeModel")
-                              }}</label>
-                              <input
-                                v-model="row.claude_model"
-                                type="text"
-                                :placeholder="
-                                  t(
-                                    'admin.groups.openaiMessages.claudeModelPlaceholder',
-                                  )
-                                "
-                                class="input bg-gray-50 focus:bg-white dark:bg-dark-800 dark:focus:bg-dark-900"
-                              />
-                            </div>
-                            <div
-                              class="hidden md:flex md:justify-center md:pt-7 text-primary-300 dark:text-primary-700"
-                            >
-                              <Icon
-                                name="arrowRight"
-                                size="sm"
-                                class="transition-transform group-hover:translate-x-1"
-                              />
-                            </div>
-                            <div>
-                              <label class="input-label">{{
-                                t("admin.groups.openaiMessages.targetModel")
-                              }}</label>
-                              <input
-                                v-model="row.target_model"
-                                type="text"
-                                :placeholder="
-                                  t(
-                                    'admin.groups.openaiMessages.targetModelPlaceholder',
-                                  )
-                                "
-                                class="input bg-gray-50 focus:bg-white dark:bg-dark-800 dark:focus:bg-dark-900"
-                              />
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            @click="removeEditMessagesDispatchMapping(row)"
-                            class="mt-6 flex shrink-0 rounded-control text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20 dark:hover:text-red-400 btn-icon"
-                            :title="
-                              t('admin.groups.openaiMessages.removeExactMapping')
-                            "
-                          >
-                            <Icon name="trash" size="sm" />
-                          </button>
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        @click="addEditMessagesDispatchMapping"
-                        class="flex min-h-9 w-full items-center justify-center gap-2 rounded-control border-2 border-dashed border-gray-300 bg-white py-1.5 text-sm font-medium text-gray-500 transition-all hover:border-primary-300 hover:bg-primary-50/50 hover:text-primary-600 dark:border-dark-600 dark:bg-dark-800 dark:text-gray-400 dark:hover:border-primary-800 dark:hover:bg-primary-900/20 dark:hover:text-primary-400"
-                      >
-                        <Icon name="plus" size="sm" />
-                        {{ t("admin.groups.openaiMessages.addExactMapping") }}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
             <div  class="border-t pt-4">
               <div class="relative mb-1.5 flex items-center gap-1">
                 <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -3239,17 +2865,9 @@ import {
 import { extractApiErrorMessage } from "@/utils/apiError";
 import {
   effectiveGroupClientProtocols,
-  hasGroupClientProtocol,
 } from "@/utils/groupClientProtocols";
 import { useKeyedDebouncedSearch } from "@/composables/useKeyedDebouncedSearch";
 import { getPersistedPageSize } from "@/composables/usePersistedPageSize";
-import {
-  createDefaultMessagesDispatchFormState,
-  messagesDispatchConfigToFormState,
-  messagesDispatchFormStateToConfig,
-  resetMessagesDispatchFormState,
-  type MessagesDispatchMappingRow,
-} from "./groupsMessagesDispatch";
 import {
   buildModelsListConfig,
   createModelsListState as createInitialModelsListState,
@@ -3764,8 +3382,6 @@ const showAdvancedSchedulerOverridesModal = ref(false);
 const advancedSchedulerOverridesTarget = ref<"create" | "edit" | null>(null);
 const advancedSchedulerOverridesDraft = ref<GroupAdvancedSchedulerOverrides>({});
 const sortableGroups = ref<AdminGroup[]>([]);
-const createMessagesDispatchDefaults = createDefaultMessagesDispatchFormState();
-const editMessagesDispatchDefaults = createDefaultMessagesDispatchFormState();
 const createModelsListState = reactive(createInitialModelsListState());
 const editModelsListState = reactive(createInitialModelsListState());
 // 管理表单统一使用兼容模型目录，原生客户端可通过对应入口读取。
@@ -3847,10 +3463,6 @@ const createForm = reactive({
   openai_fast_policy: "follow_request",
   // OpenAI 分组级免费 Fast 计费策略
   free_openai_fast: false,
-  opus_mapped_model: createMessagesDispatchDefaults.opus_mapped_model,
-  sonnet_mapped_model: createMessagesDispatchDefaults.sonnet_mapped_model,
-  haiku_mapped_model: createMessagesDispatchDefaults.haiku_mapped_model,
-  exact_model_mappings: [] as MessagesDispatchMappingRow[],
   // 账号过滤控制（OpenAI/Antigravity 平台）
   require_oauth_only: false,
   require_privacy_set: false,
@@ -3900,23 +3512,11 @@ const resolveCreateRuleKey =
   createStableObjectKeyResolver<ModelRoutingRule>("create-rule");
 const resolveEditRuleKey =
   createStableObjectKeyResolver<ModelRoutingRule>("edit-rule");
-const resolveCreateMessagesDispatchRowKey =
-  createStableObjectKeyResolver<MessagesDispatchMappingRow>(
-    "create-messages-dispatch-row",
-  );
-const resolveEditMessagesDispatchRowKey =
-  createStableObjectKeyResolver<MessagesDispatchMappingRow>(
-    "edit-messages-dispatch-row",
-  );
 
 const getCreateRuleRenderKey = (rule: ModelRoutingRule) =>
   resolveCreateRuleKey(rule);
 const getEditRuleRenderKey = (rule: ModelRoutingRule) =>
   resolveEditRuleKey(rule);
-const getCreateMessagesDispatchRowKey = (row: MessagesDispatchMappingRow) =>
-  resolveCreateMessagesDispatchRowKey(row);
-const getEditMessagesDispatchRowKey = (row: MessagesDispatchMappingRow) =>
-  resolveEditMessagesDispatchRowKey(row);
 
 const getCreateRuleSearchKey = (rule: ModelRoutingRule) =>
   `create-${resolveCreateRuleKey(rule)}`;
@@ -4274,10 +3874,6 @@ const editForm = reactive({
   // OpenAI 分组级免费 Fast 计费策略
   free_openai_fast: false,
   default_mapped_model: '',
-  opus_mapped_model: editMessagesDispatchDefaults.opus_mapped_model,
-  sonnet_mapped_model: editMessagesDispatchDefaults.sonnet_mapped_model,
-  haiku_mapped_model: editMessagesDispatchDefaults.haiku_mapped_model,
-  exact_model_mappings: [] as MessagesDispatchMappingRow[],
   // 账号过滤控制（OpenAI/Antigravity 平台）
   require_oauth_only: false,
   require_privacy_set: false,
@@ -4327,18 +3923,6 @@ watch(protocolCatalog, (catalog) => {
   }
 });
 
-const createMessagesDispatchEnabled = computed(() =>
-  hasGroupClientProtocol(
-    createForm.allowed_protocols,
-    "anthropic_messages",
-  ),
-);
-const editMessagesDispatchEnabled = computed(() =>
-  hasGroupClientProtocol(
-    editForm.allowed_protocols,
-    "anthropic_messages",
-  ),
-);
 
 type BatchImagePricingFormState = {
   allowed_protocols: ProtocolID[];
@@ -4644,7 +4228,6 @@ const closeCreateModal = () => {
   createForm.fallback_group_id = null;
   createForm.fallback_group_id_on_invalid_request = null;
   createForm.unavailable_fallback_group_id = null;
-  resetMessagesDispatchFormState(createForm);
   createForm.allow_live = false;
   createForm.openai_fast_policy = "follow_request";
   createForm.free_openai_fast = false;
@@ -4754,13 +4337,6 @@ const handleCreateGroup = async () => {
       max_reasoning_effort_over_limit: normalizeReasoningEffortOverLimit(
         createForm.max_reasoning_effort_over_limit,
       ),
-      messages_dispatch_model_config:
-          messagesDispatchFormStateToConfig({
-              opus_mapped_model: createForm.opus_mapped_model,
-              sonnet_mapped_model: createForm.sonnet_mapped_model,
-              haiku_mapped_model: createForm.haiku_mapped_model,
-              exact_model_mappings: createForm.exact_model_mappings,
-            }),
       reasoning_effort_mappings: reasoningEffortMappingsToAPI(
         createForm.reasoning_effort_mappings,
       ),
@@ -4864,9 +4440,6 @@ const handleEdit = async (group: AdminGroup) => {
     group.fallback_group_id_on_invalid_request;
   editForm.unavailable_fallback_group_id =
     group.unavailable_fallback_group_id;
-  const messagesDispatchFormState = messagesDispatchConfigToFormState(
-    group.messages_dispatch_model_config,
-  );
   editForm.allowed_protocols = effectiveGroupClientProtocols(
 
     group.allowed_protocols,
@@ -4883,11 +4456,6 @@ const handleEdit = async (group: AdminGroup) => {
 
     group.free_openai_fast ?? false,
   );
-  editForm.opus_mapped_model = messagesDispatchFormState.opus_mapped_model;
-  editForm.sonnet_mapped_model = messagesDispatchFormState.sonnet_mapped_model;
-  editForm.haiku_mapped_model = messagesDispatchFormState.haiku_mapped_model;
-  editForm.exact_model_mappings =
-    messagesDispatchFormState.exact_model_mappings;
   editForm.require_oauth_only = group.require_oauth_only ?? false;
   editForm.require_privacy_set = group.require_privacy_set ?? false;
   editForm.model_routing_enabled = group.model_routing_enabled || false;
@@ -4951,7 +4519,6 @@ const closeEditModal = () => {
   editForm.audio_realtime_price_per_min = null;
   editForm.audio_tts_price_per_million_chars = null;
   editForm.audio_stt_price_per_hour = null;
-  resetMessagesDispatchFormState(editForm);
   editForm.allow_live = false;
   editForm.openai_fast_policy = "follow_request";
   editForm.free_openai_fast = false;
@@ -5011,13 +4578,6 @@ const handleUpdateGroup = async () => {
       max_reasoning_effort_over_limit: normalizeReasoningEffortOverLimit(
         editForm.max_reasoning_effort_over_limit,
       ),
-      messages_dispatch_model_config:
-          messagesDispatchFormStateToConfig({
-              opus_mapped_model: editForm.opus_mapped_model,
-              sonnet_mapped_model: editForm.sonnet_mapped_model,
-              haiku_mapped_model: editForm.haiku_mapped_model,
-              exact_model_mappings: editForm.exact_model_mappings,
-            }),
       reasoning_effort_mappings: reasoningEffortMappingsToAPI(
         editForm.reasoning_effort_mappings,
       ),
@@ -5075,30 +4635,6 @@ const handleUpdateGroup = async () => {
     console.error("Error updating group:", error);
   } finally {
     submitting.value = false;
-  }
-};
-
-const addCreateMessagesDispatchMapping = () => {
-  createForm.exact_model_mappings.push({ claude_model: "", target_model: "" });
-};
-
-const removeCreateMessagesDispatchMapping = (
-  row: MessagesDispatchMappingRow,
-) => {
-  const index = createForm.exact_model_mappings.indexOf(row);
-  if (index !== -1) {
-    createForm.exact_model_mappings.splice(index, 1);
-  }
-};
-
-const addEditMessagesDispatchMapping = () => {
-  editForm.exact_model_mappings.push({ claude_model: "", target_model: "" });
-};
-
-const removeEditMessagesDispatchMapping = (row: MessagesDispatchMappingRow) => {
-  const index = editForm.exact_model_mappings.indexOf(row);
-  if (index !== -1) {
-    editForm.exact_model_mappings.splice(index, 1);
   }
 };
 

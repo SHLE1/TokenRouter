@@ -647,20 +647,6 @@ func (_c *GroupCreate) SetNillableDefaultMappedModel(v *string) *GroupCreate {
 	return _c
 }
 
-// SetMessagesDispatchModelConfig sets the "messages_dispatch_model_config" field.
-func (_c *GroupCreate) SetMessagesDispatchModelConfig(v accessview.OpenAIMessagesDispatchModelConfig) *GroupCreate {
-	_c.mutation.SetMessagesDispatchModelConfig(v)
-	return _c
-}
-
-// SetNillableMessagesDispatchModelConfig sets the "messages_dispatch_model_config" field if the given value is not nil.
-func (_c *GroupCreate) SetNillableMessagesDispatchModelConfig(v *accessview.OpenAIMessagesDispatchModelConfig) *GroupCreate {
-	if v != nil {
-		_c.SetMessagesDispatchModelConfig(*v)
-	}
-	return _c
-}
-
 // SetModelsListConfig sets the "models_list_config" field.
 func (_c *GroupCreate) SetModelsListConfig(v accessview.GroupModelsListConfig) *GroupCreate {
 	_c.mutation.SetModelsListConfig(v)
@@ -1016,10 +1002,6 @@ func (_c *GroupCreate) defaults() error {
 		v := group.DefaultDefaultMappedModel
 		_c.mutation.SetDefaultMappedModel(v)
 	}
-	if _, ok := _c.mutation.MessagesDispatchModelConfig(); !ok {
-		v := group.DefaultMessagesDispatchModelConfig
-		_c.mutation.SetMessagesDispatchModelConfig(v)
-	}
 	if _, ok := _c.mutation.ModelsListConfig(); !ok {
 		v := group.DefaultModelsListConfig
 		_c.mutation.SetModelsListConfig(v)
@@ -1214,9 +1196,6 @@ func (_c *GroupCreate) check() error {
 		if err := group.DefaultMappedModelValidator(v); err != nil {
 			return &ValidationError{Name: "default_mapped_model", err: fmt.Errorf(`ent: validator failed for field "Group.default_mapped_model": %w`, err)}
 		}
-	}
-	if _, ok := _c.mutation.MessagesDispatchModelConfig(); !ok {
-		return &ValidationError{Name: "messages_dispatch_model_config", err: errors.New(`ent: missing required field "Group.messages_dispatch_model_config"`)}
 	}
 	if _, ok := _c.mutation.ModelsListConfig(); !ok {
 		return &ValidationError{Name: "models_list_config", err: errors.New(`ent: missing required field "Group.models_list_config"`)}
@@ -1467,10 +1446,6 @@ func (_c *GroupCreate) createSpec() (*Group, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.DefaultMappedModel(); ok {
 		_spec.SetField(group.FieldDefaultMappedModel, field.TypeString, value)
 		_node.DefaultMappedModel = value
-	}
-	if value, ok := _c.mutation.MessagesDispatchModelConfig(); ok {
-		_spec.SetField(group.FieldMessagesDispatchModelConfig, field.TypeJSON, value)
-		_node.MessagesDispatchModelConfig = value
 	}
 	if value, ok := _c.mutation.ModelsListConfig(); ok {
 		_spec.SetField(group.FieldModelsListConfig, field.TypeJSON, value)
@@ -2365,18 +2340,6 @@ func (u *GroupUpsert) SetDefaultMappedModel(v string) *GroupUpsert {
 // UpdateDefaultMappedModel sets the "default_mapped_model" field to the value that was provided on create.
 func (u *GroupUpsert) UpdateDefaultMappedModel() *GroupUpsert {
 	u.SetExcluded(group.FieldDefaultMappedModel)
-	return u
-}
-
-// SetMessagesDispatchModelConfig sets the "messages_dispatch_model_config" field.
-func (u *GroupUpsert) SetMessagesDispatchModelConfig(v accessview.OpenAIMessagesDispatchModelConfig) *GroupUpsert {
-	u.Set(group.FieldMessagesDispatchModelConfig, v)
-	return u
-}
-
-// UpdateMessagesDispatchModelConfig sets the "messages_dispatch_model_config" field to the value that was provided on create.
-func (u *GroupUpsert) UpdateMessagesDispatchModelConfig() *GroupUpsert {
-	u.SetExcluded(group.FieldMessagesDispatchModelConfig)
 	return u
 }
 
@@ -3341,20 +3304,6 @@ func (u *GroupUpsertOne) SetDefaultMappedModel(v string) *GroupUpsertOne {
 func (u *GroupUpsertOne) UpdateDefaultMappedModel() *GroupUpsertOne {
 	return u.Update(func(s *GroupUpsert) {
 		s.UpdateDefaultMappedModel()
-	})
-}
-
-// SetMessagesDispatchModelConfig sets the "messages_dispatch_model_config" field.
-func (u *GroupUpsertOne) SetMessagesDispatchModelConfig(v accessview.OpenAIMessagesDispatchModelConfig) *GroupUpsertOne {
-	return u.Update(func(s *GroupUpsert) {
-		s.SetMessagesDispatchModelConfig(v)
-	})
-}
-
-// UpdateMessagesDispatchModelConfig sets the "messages_dispatch_model_config" field to the value that was provided on create.
-func (u *GroupUpsertOne) UpdateMessagesDispatchModelConfig() *GroupUpsertOne {
-	return u.Update(func(s *GroupUpsert) {
-		s.UpdateMessagesDispatchModelConfig()
 	})
 }
 
@@ -4500,20 +4449,6 @@ func (u *GroupUpsertBulk) SetDefaultMappedModel(v string) *GroupUpsertBulk {
 func (u *GroupUpsertBulk) UpdateDefaultMappedModel() *GroupUpsertBulk {
 	return u.Update(func(s *GroupUpsert) {
 		s.UpdateDefaultMappedModel()
-	})
-}
-
-// SetMessagesDispatchModelConfig sets the "messages_dispatch_model_config" field.
-func (u *GroupUpsertBulk) SetMessagesDispatchModelConfig(v accessview.OpenAIMessagesDispatchModelConfig) *GroupUpsertBulk {
-	return u.Update(func(s *GroupUpsert) {
-		s.SetMessagesDispatchModelConfig(v)
-	})
-}
-
-// UpdateMessagesDispatchModelConfig sets the "messages_dispatch_model_config" field to the value that was provided on create.
-func (u *GroupUpsertBulk) UpdateMessagesDispatchModelConfig() *GroupUpsertBulk {
-	return u.Update(func(s *GroupUpsert) {
-		s.UpdateMessagesDispatchModelConfig()
 	})
 }
 

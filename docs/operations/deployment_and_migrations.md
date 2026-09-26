@@ -280,3 +280,17 @@
 迁移 `275_remove_redundant_pricing_controls.sql` 删除 `pricing_configs.apply_pricing_to_account_stats`，并清理 `groups.routing_policy.features_config.codex_image_generation_bridge`。账号成本保留独立规则与网关默认模型价回退，不再提供复用用户自定义价的开关。分组图片设置只保留协议控制，优先级为分组显式协议设置、账号覆盖、全局默认值；旧兜底值直接移除，不提升为会覆盖账号设置的分组显式策略。
 
 升级前停止旧实例并备份数据库，随后启动新实例执行迁移。此迁移支持重复执行，不修改价格条目、账号成本规则、历史账单或任务定价快照。回滚需要恢复升级前数据库及旧版本。
+
+
+### Messages 系列默认映射下线
+
+迁移 `279_remove_messages_family_mapping.sql` 删除分组 `messages_dispatch_model_config` 中的 Opus、Sonnet、Haiku 系列目标字段，保留精确模型覆盖、分组 ID 和其它策略。迁移可重复执行；旧系列规则不转成通配规则，升级后不再按系列自动改写模型。
+
+管理端创建和编辑表单移除该设置，旧字段提交返回 400。认证快照升至 v43，旧快照重新回源。前后端需同时升级；回退时使用升级前数据库备份与旧版本恢复。
+
+
+### Messages 专用模型覆盖下线
+
+迁移 `280_remove_messages_dispatch_model_config.sql` 删除分组的专用模型覆盖列，旧规则直接停止生效，不自动复制到通用映射。现有 `routing_policy.model_mapping`、分组身份和其它策略保持不变，迁移支持重复执行。
+
+创建、编辑、复制分组和认证快照不再携带该配置，旧管理请求返回 400。认证快照升至 v44 后重新回源；前后端需同时升级，回退仍使用升级前数据库备份与旧版本。

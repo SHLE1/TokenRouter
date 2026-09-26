@@ -70,13 +70,12 @@ type CreateGroupRequest struct {
 	// 新策略优先于旧布尔输入，省略时保持兼容。
 	OpenAIFastPolicy *string `json:"openai_fast_policy"`
 	// OpenAI 分组的 Fast 请求是否按 Standard 价格计费。
-	FreeOpenAIFast              bool                                      `json:"free_openai_fast"`
-	RequireOAuthOnly            bool                                      `json:"require_oauth_only"`
-	RequirePrivacySet           bool                                      `json:"require_privacy_set"`
-	DefaultMappedModel          string                                    `json:"default_mapped_model"`
-	MessagesDispatchModelConfig routing.OpenAIMessagesDispatchModelConfig `json:"messages_dispatch_model_config"`
-	ModelsListConfig            routing.GroupModelsListConfig             `json:"models_list_config"`
-	AvailabilityProbeConfig     routing.GroupAvailabilityProbeConfig      `json:"availability_probe_config"`
+	FreeOpenAIFast          bool                                 `json:"free_openai_fast"`
+	RequireOAuthOnly        bool                                 `json:"require_oauth_only"`
+	RequirePrivacySet       bool                                 `json:"require_privacy_set"`
+	DefaultMappedModel      string                               `json:"default_mapped_model"`
+	ModelsListConfig        routing.GroupModelsListConfig        `json:"models_list_config"`
+	AvailabilityProbeConfig routing.GroupAvailabilityProbeConfig `json:"availability_probe_config"`
 	// 分组 RPM 上限（0 = 不限制）
 	RPMLimit int `json:"rpm_limit"`
 	// OpenAI/Codex 请求推理强度上限，空字符串表示不限制。
@@ -143,13 +142,12 @@ type UpdateGroupRequest struct {
 	// 新策略优先于旧布尔输入，省略时保持兼容。
 	OpenAIFastPolicy *string `json:"openai_fast_policy"`
 	// OpenAI 分组的 Fast 请求是否按 Standard 价格计费。
-	FreeOpenAIFast              *bool                                      `json:"free_openai_fast"`
-	RequireOAuthOnly            *bool                                      `json:"require_oauth_only"`
-	RequirePrivacySet           *bool                                      `json:"require_privacy_set"`
-	DefaultMappedModel          *string                                    `json:"default_mapped_model"`
-	MessagesDispatchModelConfig *routing.OpenAIMessagesDispatchModelConfig `json:"messages_dispatch_model_config"`
-	ModelsListConfig            *routing.GroupModelsListConfig             `json:"models_list_config"`
-	AvailabilityProbeConfig     *routing.GroupAvailabilityProbeConfig      `json:"availability_probe_config"`
+	FreeOpenAIFast          *bool                                 `json:"free_openai_fast"`
+	RequireOAuthOnly        *bool                                 `json:"require_oauth_only"`
+	RequirePrivacySet       *bool                                 `json:"require_privacy_set"`
+	DefaultMappedModel      *string                               `json:"default_mapped_model"`
+	ModelsListConfig        *routing.GroupModelsListConfig        `json:"models_list_config"`
+	AvailabilityProbeConfig *routing.GroupAvailabilityProbeConfig `json:"availability_probe_config"`
 	// 分组 RPM 上限（0 = 不限制）；nil 表示未提供不改动
 	RPMLimit *int `json:"rpm_limit"`
 	// OpenAI/Codex 请求推理强度上限；空字符串清除，nil 不修改。
@@ -341,7 +339,6 @@ func (h *GroupHandler) Create(c *gin.Context) {
 		RequireOAuthOnly:                req.RequireOAuthOnly,
 		RequirePrivacySet:               req.RequirePrivacySet,
 		DefaultMappedModel:              req.DefaultMappedModel,
-		MessagesDispatchModelConfig:     req.MessagesDispatchModelConfig,
 		ModelsListConfig:                req.ModelsListConfig,
 		AvailabilityProbeConfig:         req.AvailabilityProbeConfig,
 		RPMLimit:                        req.RPMLimit,
@@ -471,7 +468,6 @@ func (h *GroupHandler) Update(c *gin.Context) {
 		RequireOAuthOnly:                req.RequireOAuthOnly,
 		RequirePrivacySet:               req.RequirePrivacySet,
 		DefaultMappedModel:              req.DefaultMappedModel,
-		MessagesDispatchModelConfig:     req.MessagesDispatchModelConfig,
 		ModelsListConfig:                req.ModelsListConfig,
 		AvailabilityProbeConfig:         req.AvailabilityProbeConfig,
 		RPMLimit:                        req.RPMLimit,

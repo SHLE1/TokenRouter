@@ -239,7 +239,7 @@ func (p openAITextHTTPBackend) AllowsMessages(key *apikey.APIKey) bool {
 }
 
 func (p openAITextHTTPBackend) MessageAccountModel(ctx context.Context, key *apikey.APIKey, model string) string {
-	return ResolveOpenAIMessagesAccountLayerModelForRequest(ctx, apikey.CopyAPIKey(key), model)
+	return ResolveOpenAIMessagesAccountLayerModelForRequest(ctx, model)
 }
 
 func (p openAITextHTTPBackend) MetadataSession(c *gin.Context, hash, key, model string, body []byte) (string, string) {

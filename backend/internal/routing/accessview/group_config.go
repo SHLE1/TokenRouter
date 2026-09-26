@@ -96,12 +96,11 @@ type GroupConfig struct {
 	// OpenAIFastPolicy 保存管理员选择的互斥加速策略。
 	OpenAIFastPolicy string
 	// FreeOpenAIFast 让 OpenAI 分组的 Fast 请求按 Standard 价格向用户计费。
-	FreeOpenAIFast              bool
-	RequireOAuthOnly            bool // 仅允许非 apikey 类型账号关联（OpenAI/Antigravity/Anthropic/Gemini）
-	RequirePrivacySet           bool // 调度时仅允许 privacy 已成功设置的账号（OpenAI/Antigravity/Anthropic/Gemini）
-	DefaultMappedModel          string
-	MessagesDispatchModelConfig OpenAIMessagesDispatchModelConfig
-	ModelsListConfig            GroupModelsListConfig
+	FreeOpenAIFast     bool
+	RequireOAuthOnly   bool // 仅允许非 apikey 类型账号关联（OpenAI/Antigravity/Anthropic/Gemini）
+	RequirePrivacySet  bool // 调度时仅允许 privacy 已成功设置的账号（OpenAI/Antigravity/Anthropic/Gemini）
+	DefaultMappedModel string
+	ModelsListConfig   GroupModelsListConfig
 	// AvailabilityProbeConfig 控制该分组的主动可用性探测。
 	AvailabilityProbeConfig GroupAvailabilityProbeConfig
 

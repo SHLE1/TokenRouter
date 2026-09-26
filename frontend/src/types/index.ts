@@ -709,13 +709,6 @@ export interface MarketplaceStats {
   total_users: number
 }
 
-export interface OpenAIMessagesDispatchModelConfig {
-  opus_mapped_model?: string
-  sonnet_mapped_model?: string
-  haiku_mapped_model?: string
-  exact_model_mappings?: Record<string, string>
-}
-
 export interface GroupAvailabilityProbeConfig {
   enabled: boolean
   interval_minutes?: number
@@ -785,7 +778,6 @@ export interface Group {
   // OpenAI Live 接口开关
   allow_live: boolean
   default_mapped_model?: string
-  messages_dispatch_model_config?: OpenAIMessagesDispatchModelConfig
   availability_probe_config?: GroupAvailabilityProbeConfig
   require_oauth_only: boolean
   require_privacy_set: boolean
@@ -836,7 +828,6 @@ export interface AdminGroup extends Group {
 
   // OpenAI Messages 调度配置（仅 openai 平台使用）
   default_mapped_model?: string
-  messages_dispatch_model_config?: OpenAIMessagesDispatchModelConfig
   models_list_config?: ModelsListConfig
 
   // 分组排序
@@ -999,7 +990,6 @@ export interface CreateGroupRequest {
   allow_messages_dispatch?: boolean
   allow_live?: boolean
   default_mapped_model?: string
-  messages_dispatch_model_config?: OpenAIMessagesDispatchModelConfig
   model_routing?: Record<string, number[]> | null
   model_routing_enabled?: boolean
   rpm_limit?: number
@@ -1056,7 +1046,6 @@ export interface UpdateGroupRequest {
   allow_messages_dispatch?: boolean
   allow_live?: boolean
   default_mapped_model?: string
-  messages_dispatch_model_config?: OpenAIMessagesDispatchModelConfig
   model_routing?: Record<string, number[]> | null
   model_routing_enabled?: boolean
   rpm_limit?: number

@@ -20,13 +20,15 @@ func s05IsolationKey() *apikey.APIKey {
 	groupID, teamID, subscriptionID := int64(3), int64(4), int64(5)
 	threshold, price := 3.0, 0.2
 	now := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
-	return &apikey.APIKey{ID: 1, UserID: 2, Key: "s05-test-only", GroupID: &groupID, TeamID: &teamID, PreferredSubscriptionID: &subscriptionID, ExpiresAt: &now,
+	return &apikey.APIKey{
+		ID: 1, UserID: 2, Key: "s05-test-only", GroupID: &groupID, TeamID: &teamID, PreferredSubscriptionID: &subscriptionID, ExpiresAt: &now,
 		IPWhitelist: []string{"127.0.0.1"}, IPBlacklist: []string{"192.0.2.1"}, ModelMapping: map[string]string{"alias": "original"},
 		User: &identity.User{ID: 2, AllowedGroups: []int64{3}, BalanceNotifyThreshold: &threshold, BalanceNotifyExtraEmails: []billing.NotifyEmailSummary{{Email: "test@example.invalid"}}},
 		Team: &team.Team{ID: 4}, TeamMembership: &team.TeamMembership{ID: 6, DailyWindowStart: &now},
-		Group: &routing.Group{ID: 3, ModelRouting: map[string][]int64{"model": {7, 8}}, SupportedModelScopes: []string{"claude"},
-			MessagesDispatchModelConfig: routing.OpenAIMessagesDispatchModelConfig{ExactModelMappings: map[string]string{"alias": "original"}},
-			ModelsListConfig:            routing.GroupModelsListConfig{Enabled: true, Models: []string{"model"}}, WebSearchPricePerCall: &price},
+		Group: &routing.Group{
+			ID: 3, ModelRouting: map[string][]int64{"model": {7, 8}}, SupportedModelScopes: []string{"claude"},
+			ModelsListConfig: routing.GroupModelsListConfig{Enabled: true, Models: []string{"model"}}, WebSearchPricePerCall: &price,
+		},
 	}
 }
 
@@ -50,7 +52,6 @@ func TestS05AuthSnapshotIsolation(t *testing.T) {
 		"routing_map":   func(k *apikey.APIKey) { k.Group.ModelRouting["extra"] = []int64{99} },
 		"routing_slice": func(k *apikey.APIKey) { k.Group.ModelRouting["model"][0] = 99 },
 		"scopes":        func(k *apikey.APIKey) { k.Group.SupportedModelScopes[0] = "changed" },
-		"dispatch":      func(k *apikey.APIKey) { k.Group.MessagesDispatchModelConfig.ExactModelMappings["alias"] = "changed" },
 		"models":        func(k *apikey.APIKey) { k.Group.ModelsListConfig.Models[0] = "changed" },
 		"price":         func(k *apikey.APIKey) { *k.Group.WebSearchPricePerCall = 99 },
 	}

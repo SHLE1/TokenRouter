@@ -17,7 +17,7 @@ import (
 	"github.com/dgraph-io/ristretto"
 )
 
-const KeyApiKeyAuthSnapshotVersion = 42
+const KeyApiKeyAuthSnapshotVersion = 44
 
 type KeyApiKeyAuthCacheConfig struct {
 	l1Size        int
@@ -489,7 +489,6 @@ func (s *APIKeyService) KeySnapshotFromAPIKey(ctx context.Context, apiKey *APIKe
 			OpenAIFastPolicy:                s.groupPolicy(apiKey.Group),
 			FreeOpenAIFast:                  apiKey.Group.FreeOpenAIFast,
 			DefaultMappedModel:              apiKey.Group.DefaultMappedModel,
-			MessagesDispatchModelConfig:     cloneMessagesDispatch(apiKey.Group.MessagesDispatchModelConfig),
 			ModelsListConfig:                cloneModelsList(apiKey.Group.ModelsListConfig),
 			RPMLimit:                        apiKey.Group.RPMLimit,
 			MaxReasoningEffort:              apiKey.Group.MaxReasoningEffort,
@@ -619,7 +618,6 @@ func (s *APIKeyService) KeySnapshotToAPIKey(key string, snapshot *APIKeyAuthSnap
 			OpenAIFastPolicy:                snapshot.Group.OpenAIFastPolicy,
 			FreeOpenAIFast:                  snapshot.Group.FreeOpenAIFast,
 			DefaultMappedModel:              snapshot.Group.DefaultMappedModel,
-			MessagesDispatchModelConfig:     cloneMessagesDispatch(snapshot.Group.MessagesDispatchModelConfig),
 			ModelsListConfig:                cloneModelsList(snapshot.Group.ModelsListConfig),
 			RPMLimit:                        snapshot.Group.RPMLimit,
 			MaxReasoningEffort:              snapshot.Group.MaxReasoningEffort,
@@ -673,8 +671,8 @@ func KeyAuthGroupSnapshotFromGroup(group *routing.Group) *APIKeyAuthGroupSnapsho
 		ProtocolFallbacks: protocol.CloneFallbacks(group.ProtocolFallbacks), ResponsesImagePolicy: group.ResponsesImagePolicy,
 		SupportedModelScopes: slices.Clone(group.SupportedModelScopes), AllowedProtocols: cloneGroupClientProtocols(group.AllowedProtocols),
 		AllowLive: group.AllowLive, ForceOpenAIFast: group.ForceOpenAIFast, OpenAIFastPolicy: group.OpenAIFastPolicy, FreeOpenAIFast: group.FreeOpenAIFast, DefaultMappedModel: group.DefaultMappedModel,
-		MessagesDispatchModelConfig: cloneMessagesDispatch(group.MessagesDispatchModelConfig), ModelsListConfig: cloneModelsList(group.ModelsListConfig),
-		RPMLimit: group.RPMLimit, MaxReasoningEffort: group.MaxReasoningEffort,
+		ModelsListConfig: cloneModelsList(group.ModelsListConfig),
+		RPMLimit:         group.RPMLimit, MaxReasoningEffort: group.MaxReasoningEffort,
 		MaxReasoningEffortOverLimit: group.MaxReasoningEffortOverLimit,
 		ReasoningEffortMappings:     slices.Clone(group.ReasoningEffortMappings), PeakRateEnabled: group.PeakRateEnabled,
 		PeakStart: group.PeakStart, PeakEnd: group.PeakEnd, PeakRateMultiplier: group.PeakRateMultiplier,
@@ -706,8 +704,8 @@ func KeyGroupFromAuthSnapshot(snapshot *APIKeyAuthGroupSnapshot) *routing.Group 
 		ProtocolFallbacks: protocol.CloneFallbacks(snapshot.ProtocolFallbacks), ResponsesImagePolicy: snapshot.ResponsesImagePolicy,
 		SupportedModelScopes: slices.Clone(snapshot.SupportedModelScopes), AllowedProtocols: cloneGroupClientProtocols(snapshot.AllowedProtocols),
 		AllowLive: snapshot.AllowLive, ForceOpenAIFast: snapshot.ForceOpenAIFast, OpenAIFastPolicy: snapshot.OpenAIFastPolicy, FreeOpenAIFast: snapshot.FreeOpenAIFast, DefaultMappedModel: snapshot.DefaultMappedModel,
-		MessagesDispatchModelConfig: cloneMessagesDispatch(snapshot.MessagesDispatchModelConfig), ModelsListConfig: cloneModelsList(snapshot.ModelsListConfig),
-		RPMLimit: snapshot.RPMLimit, MaxReasoningEffort: snapshot.MaxReasoningEffort,
+		ModelsListConfig: cloneModelsList(snapshot.ModelsListConfig),
+		RPMLimit:         snapshot.RPMLimit, MaxReasoningEffort: snapshot.MaxReasoningEffort,
 		MaxReasoningEffortOverLimit: snapshot.MaxReasoningEffortOverLimit,
 		ReasoningEffortMappings:     slices.Clone(snapshot.ReasoningEffortMappings), PeakRateEnabled: snapshot.PeakRateEnabled,
 		PeakStart: snapshot.PeakStart, PeakEnd: snapshot.PeakEnd, PeakRateMultiplier: snapshot.PeakRateMultiplier,

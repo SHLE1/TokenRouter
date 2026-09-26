@@ -28,3 +28,13 @@ func TestGroupManagementRejectsRetiredFields(t *testing.T) {
 	require.Equal(t, "mixed", req.Name)
 	require.NotNil(t, req.ProtocolFallbacks["anthropic_messages"])
 }
+
+// 管理端不得继续保存已经移除的协议专用模型映射。
+func TestGroupManagementRejectsRetiredMessagesMapping(t *testing.T) {
+	body := `{"messages_dispatch_model_config":{"exact_model_mappings":{"claude-sonnet-4-6":"target"}}}`
+	require.Error(t, bindGroupPlatformJSON(t, &CreateGroupRequest{}, body))
+	require.Error(t, bindGroupPlatformJSON(t, &UpdateGroupRequest{}, body))
+	var req UpdateGroupRequest
+	require.NoError(t, bindGroupPlatformJSON(t, &req, `{"routing_policy":{"enabled":true,"model_mapping":{"claude-sonnet-4-6":"target"}}}`))
+	require.Equal(t, "target", req.RoutingPolicy.ModelMapping["claude-sonnet-4-6"])
+}

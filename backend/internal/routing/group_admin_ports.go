@@ -30,11 +30,10 @@ type GroupPricingInvalidator interface{ InvalidateCache() }
 
 // GroupAdminOptions 注入读取时机和原有闭合事务；规则不依赖装配和具体存储。
 type GroupAdminOptions struct {
-	Pricing              PricingConfigValidation
-	DefaultModels        func(string) []string
-	NormalizeMappedModel func(string) string
-	GlobalWeights        func(context.Context) (policy.ScoreWeights, error)
-	Mutate               func(context.Context, func(context.Context) error) error
+	Pricing       PricingConfigValidation
+	DefaultModels func(string) []string
+	GlobalWeights func(context.Context) (policy.ScoreWeights, error)
+	Mutate        func(context.Context, func(context.Context) error) error
 }
 
 // GroupAdmin 拥有分组管理和复制规则，缓存与读写均使用 app 提供的唯一实例。

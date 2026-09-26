@@ -107,7 +107,7 @@ func (OpenAITokenPorts) BindPlan(c *gin.Context, plan routing.RoutePlan) {
 }
 
 func (OpenAITokenPorts) MessageAccountModel(ctx context.Context, key *apikey.APIKey, model string) string {
-	return ResolveOpenAIMessagesAccountLayerModelForRequest(ctx, apikey.CopyAPIKey(key), model)
+	return ResolveOpenAIMessagesAccountLayerModelForRequest(ctx, model)
 }
 
 func (OpenAITokenPorts) MappedBodyCache(body []byte) func(bool, string) []byte {

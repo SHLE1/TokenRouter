@@ -203,7 +203,7 @@ Ollama Cloud 的设置、状态、会话、自动刷新和主动刷新路由直�
 
 Group 不再返回 `platform` 或 `is_default`；使用 `allowed_protocols`、`protocol_fallbacks`、`responses_image_policy` 返回协议配置。`protocol_fallbacks` 为入口到有序目标数组的映射：缺少入口表示自动、空数组仅原生、非空数组限制目标。账号仍保留平台并使用 `credentials.upstream_protocols`。管理员只读 `GET /api/v1/admin/protocol-capabilities` 提供全部协议、原生账号 profile、单元素通用分组 profile、可用入口及转换目标。完整字段语义见[统一协议能力](protocol_capabilities.md)。
 
-旧 `allowed_client_protocols`、媒体/Live 开关和账号文本路由只作为输入兼容，新响应与导出使用统一结构。`messages_dispatch_model_config` 仍只处理模型映射，不参与协议准入。门禁拒绝在上游调用前返回对应协议的 403 错误；平台没有实现的入口保留 404 边界。
+旧 `allowed_client_protocols`、媒体/Live 开关和账号文本路由只作为输入兼容，新响应与导出使用统一结构。`messages_dispatch_model_config` 已移除，提交该字段返回 400；分组模型映射统一使用 `routing_policy.model_mapping`。门禁拒绝在上游调用前返回对应协议的 403 错误；平台没有实现的入口保留 404 边界。
 
 ## 认证方式
 

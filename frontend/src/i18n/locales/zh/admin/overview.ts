@@ -1155,28 +1155,6 @@ affiliates: {
           gemini_generate_content: 'Gemini GenerateContent'
         }
       },
-      openaiMessages: {
-        title: 'OpenAI Messages 模型映射',
-        allowDispatch: '允许 /v1/messages 调度',
-        allowDispatchHint: '启用后，此 OpenAI 分组的 API Key 可以通过 /v1/messages 端点调度请求',
-        familyMappingTitle: '系列默认映射',
-        familyMappingHint: '仅对已填写目标模型的系列执行映射；留空时不执行这里的映射。',
-        opusModel: 'Opus 映射模型',
-        opusModelPlaceholder: '例如: gpt-5.4',
-        sonnetModel: 'Sonnet 映射模型',
-        sonnetModelPlaceholder: '例如: gpt-5.3-codex',
-        haikuModel: 'Haiku 映射模型',
-        haikuModelPlaceholder: '例如: gpt-5.4-mini',
-        exactMappingTitle: '精确模型覆盖',
-        exactMappingHint: '精确 Claude 模型覆盖优先级高于系列默认映射，可将某个具体 Claude 模型单独映射到不同的目标模型。',
-        noExactMappings: '暂无精确模型覆盖规则',
-        addExactMapping: '添加精确映射',
-        claudeModel: 'Claude 模型',
-        claudeModelPlaceholder: '例如: claude-sonnet-4-5-20250929',
-        targetModel: '目标模型',
-        targetModelPlaceholder: '例如: gpt-5.4',
-        removeExactMapping: '删除精确映射'
-      },
       openaiLive: {
         title: 'OpenAI Live',
         allow: '允许访问 Live',

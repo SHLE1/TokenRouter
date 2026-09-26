@@ -45,7 +45,6 @@ func CloneGroupConfig(g *GroupConfig) *GroupConfig {
 	out.ProtocolFallbacks = protocol.CloneFallbacks(g.ProtocolFallbacks)
 	out.ReasoningEffortMappings = slices.Clone(g.ReasoningEffortMappings)
 	out.AdvancedSchedulerOverrides = CloneGroupAdvancedSchedulerOverrides(g.AdvancedSchedulerOverrides)
-	out.MessagesDispatchModelConfig.ExactModelMappings = maps.Clone(g.MessagesDispatchModelConfig.ExactModelMappings)
 	out.ModelsListConfig.Models = slices.Clone(g.ModelsListConfig.Models)
 	out.AvailabilityProbeConfig.MaxRetries = cloneGroupPointer(g.AvailabilityProbeConfig.MaxRetries)
 	return &out

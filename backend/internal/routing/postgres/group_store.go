@@ -137,7 +137,6 @@ func createGroupRecord(ctx context.Context, client *dbent.Client, groupIn *routi
 		SetRequireOauthOnly(groupIn.RequireOAuthOnly).
 		SetRequirePrivacySet(groupIn.RequirePrivacySet).
 		SetDefaultMappedModel(groupIn.DefaultMappedModel).
-		SetMessagesDispatchModelConfig(groupIn.MessagesDispatchModelConfig).
 		SetModelsListConfig(groupIn.ModelsListConfig).
 		SetAvailabilityProbeConfig(groupIn.AvailabilityProbeConfig).
 		SetRpmLimit(groupIn.RPMLimit).
@@ -311,7 +310,6 @@ func (r *GroupStore) Update(ctx context.Context, groupIn *routing.Group) error {
 		SetRequireOauthOnly(groupIn.RequireOAuthOnly).
 		SetRequirePrivacySet(groupIn.RequirePrivacySet).
 		SetDefaultMappedModel(groupIn.DefaultMappedModel).
-		SetMessagesDispatchModelConfig(groupIn.MessagesDispatchModelConfig).
 		SetModelsListConfig(groupIn.ModelsListConfig).
 		SetAvailabilityProbeConfig(groupIn.AvailabilityProbeConfig).
 		SetRpmLimit(groupIn.RPMLimit).

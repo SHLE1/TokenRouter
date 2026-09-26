@@ -875,75 +875,14 @@ func TestAdminService_UpdateGroup_ScrubsInvalidDisabledPeakRate(t *testing.T) {
 	require.Equal(t, 1.0, repo.updated.PeakRateMultiplier)
 }
 
-func TestAdminService_CreateGroup_NormalizesMessagesDispatchModelConfig(t *testing.T) {
-	repo := &groupRepoStubForAdmin{}
-	svc := newOriginalGroupAdmin(repo, nil, nil)
-
-	group, err := svc.CreateGroup(context.Background(), &routing.CreateGroupInput{
-		Name:        "dispatch-group",
-		Description: "dispatch config",
-
-		RateMultiplier: 1.0,
-		MessagesDispatchModelConfig: routing.OpenAIMessagesDispatchModelConfig{
-			OpusMappedModel:   " gpt-5.4-high ",
-			SonnetMappedModel: " gpt-5.3-codex ",
-			HaikuMappedModel:  " gpt-5.4-mini-medium ",
-			ExactModelMappings: map[string]string{
-				" claude-sonnet-4-5-20250929 ": " gpt-5.2-high ",
-			},
-		},
-	})
-	require.NoError(t, err)
-	require.NotNil(t, group)
-	require.NotNil(t, repo.created)
-	require.Equal(t, routing.OpenAIMessagesDispatchModelConfig{
-		OpusMappedModel:   "gpt-5.4",
-		SonnetMappedModel: "gpt-5.3-codex",
-		HaikuMappedModel:  "gpt-5.4-mini",
-		ExactModelMappings: map[string]string{
-			"claude-sonnet-4-5-20250929": "gpt-5.2",
-		},
-	}, repo.created.MessagesDispatchModelConfig)
-}
-
-func TestAdminService_UpdateGroup_NormalizesMessagesDispatchModelConfig(t *testing.T) {
-	existingGroup := &routing.Group{
-		ID:   1,
-		Name: "existing-group",
-
-		Status: billing.StatusActive,
-	}
-	repo := &groupRepoStubForAdmin{getByID: existingGroup}
-	svc := newOriginalGroupAdmin(repo, nil, nil)
-
-	group, err := svc.UpdateGroup(context.Background(), 1, &routing.UpdateGroupInput{
-		MessagesDispatchModelConfig: &routing.OpenAIMessagesDispatchModelConfig{
-			SonnetMappedModel: " gpt-5.4-medium ",
-			ExactModelMappings: map[string]string{
-				" claude-haiku-4-5-20251001 ": " gpt-5.4-mini-high ",
-			},
-		},
-	})
-	require.NoError(t, err)
-	require.NotNil(t, group)
-	require.NotNil(t, repo.updated)
-	require.Equal(t, routing.OpenAIMessagesDispatchModelConfig{
-		SonnetMappedModel: "gpt-5.4",
-		ExactModelMappings: map[string]string{
-			"claude-haiku-4-5-20251001": "gpt-5.4-mini",
-		},
-	}, repo.updated.MessagesDispatchModelConfig)
-}
-
 func TestAdminServiceUpdateGroupPreservesMessagesDispatchPolicy(t *testing.T) {
-	existing := &routing.Group{ID: 1, Name: "mixed", Status: billing.StatusActive, AllowedProtocols: []protocol.ProtocolID{protocol.ProtocolAnthropicMessages, protocol.ProtocolLive}, DefaultMappedModel: "gpt-test", MessagesDispatchModelConfig: routing.OpenAIMessagesDispatchModelConfig{SonnetMappedModel: "gpt-test"}}
+	existing := &routing.Group{ID: 1, Name: "mixed", Status: billing.StatusActive, AllowedProtocols: []protocol.ProtocolID{protocol.ProtocolAnthropicMessages, protocol.ProtocolLive}, DefaultMappedModel: "gpt-test"}
 	repo := &groupRepoStubForAdmin{getByID: existing}
 	group, err := newOriginalGroupAdmin(repo, nil, nil).UpdateGroup(context.Background(), 1, &routing.UpdateGroupInput{Name: "renamed"})
 	require.NoError(t, err)
 	require.True(t, group.AllowMessagesDispatch)
 	require.True(t, group.AllowLive)
 	require.Equal(t, "gpt-test", group.DefaultMappedModel)
-	require.Equal(t, existing.MessagesDispatchModelConfig, group.MessagesDispatchModelConfig)
 }
 
 func TestAdminService_ListGroups_WithSearch(t *testing.T) {
