@@ -3,18 +3,15 @@
     class="group-settings-section space-y-6"
     data-group-field="routing-policy"
   >
-    <GroupFormSection>
-      <div class="flex items-center justify-between gap-4 mb-2">
-        <label class="input-label mb-0">{{
-          t('admin.groups.routingPolicy.mapping')
-        }}</label>
+    <GroupFormSection
+      :title="t('admin.groups.routingPolicy.mapping')"
+      :hint="t('admin.groups.routingPolicy.mappingHint')"
+    >
+      <template #actions>
         <button type="button" class="btn btn-secondary" @click="addMapping">
           {{ t('common.add') }}
         </button>
-      </div>
-      <p class="input-hint mb-3">
-        {{ t('admin.groups.routingPolicy.mappingHint') }}
-      </p>
+      </template>
       <div
         v-for="(row, index) in mappingRows"
         :key="row.id"

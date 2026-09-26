@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { defineComponent, h } from "vue";
-import { flushPromises, mount } from "@vue/test-utils";
+import { flushPromises, mount, DOMWrapper } from "@vue/test-utils";
 
 import SettingsView from "../SettingsView.vue";
+import BaseDialog from "@/components/common/BaseDialog.vue";
 
 const {
   getSettings,
@@ -11,6 +12,7 @@ const {
   updateSettings,
   getWebSearchEmulationConfig,
   updateWebSearchEmulationConfig,
+  testWebSearchEmulation,
   getAdminApiKey,
   getOverloadCooldownSettings,
   getOpenAI403CooldownSettings,
@@ -49,6 +51,7 @@ const {
   updateSettings: vi.fn(),
   getWebSearchEmulationConfig: vi.fn(),
   updateWebSearchEmulationConfig: vi.fn(),
+  testWebSearchEmulation: vi.fn(),
   getAdminApiKey: vi.fn(),
   getOverloadCooldownSettings: vi.fn(),
   getOpenAI403CooldownSettings: vi.fn(),
@@ -120,6 +123,7 @@ vi.mock("@/api", () => ({
       updateSettings,
       getWebSearchEmulationConfig,
       updateWebSearchEmulationConfig,
+      testWebSearchEmulation,
       getAdminApiKey,
       getOverloadCooldownSettings,
       getOpenAI403CooldownSettings,
@@ -887,6 +891,74 @@ describe("admin SettingsView payment visible method controls", () => {
     ]);
     fetchPublicSettings.mockResolvedValue(undefined);
     adminSettingsFetch.mockResolvedValue(undefined);
+  });
+
+  it("搜索测试默认隐藏，点击测试后以弹窗展示并可关闭", async () => {
+    getWebSearchEmulationConfig.mockResolvedValue({ enabled: true, providers: [] });
+    testWebSearchEmulation.mockReset();
+    testWebSearchEmulation.mockResolvedValue({
+      provider: "brave",
+      results: [
+        { title: "测试结果", url: "https://example.com", snippet: "结果摘要" },
+      ],
+    });
+    const wrapper = mountView();
+    const querySelector =
+      'input[placeholder="admin.settings.webSearchEmulation.testDefaultQuery"]';
+    try {
+      await flushPromises();
+      await openGatewayTab(wrapper);
+      // 使用真实组件验证注册与 Teleport，避免 stub 掩盖漏导入导致的内联渲染。
+      expect(wrapper.findComponent(BaseDialog).exists()).toBe(true);
+      expect(wrapper.find("basedialog").exists()).toBe(false);
+      expect(wrapper.find(querySelector).exists()).toBe(false);
+      expect(document.body.querySelector(querySelector)).toBeNull();
+
+      await openGatewaySection(wrapper, "anthropic");
+      const providerCard = wrapper.get(
+        '[data-testid="gateway-card-web-search-emulation"]',
+      );
+      await providerCard.findAll("button")
+        .find(button => button.text() === "admin.settings.webSearchEmulation.addProvider")!
+        .trigger("click");
+      const openTest = providerCard.findAll("button")
+        .find(button => button.text() === "admin.settings.webSearchEmulation.test")!;
+      await openTest.trigger("click");
+      await flushPromises();
+
+      const dialog = new DOMWrapper(document.body).get('[role="dialog"]');
+      expect(dialog.text()).toContain("admin.settings.webSearchEmulation.testResultTitle");
+      expect(document.body.classList.contains("modal-open")).toBe(true);
+      await dialog.get(querySelector).setValue("测试查询");
+      await dialog.findAll("button")
+        .find(button => button.text() === "admin.settings.webSearchEmulation.test")!
+        .trigger("click");
+      await flushPromises();
+      expect(testWebSearchEmulation).toHaveBeenCalledWith("测试查询");
+      expect(dialog.text()).toContain("测试结果");
+      expect(updateSettings).not.toHaveBeenCalled();
+
+      await dialog.findAll("button")
+        .find(button => button.text() === "common.close")!
+        .trigger("click");
+      await flushPromises();
+      await vi.waitFor(() => {
+        expect(document.body.querySelector(querySelector)).toBeNull();
+      });
+      expect(document.body.classList.contains("modal-open")).toBe(false);
+
+      await openTest.trigger("click");
+      await flushPromises();
+      expect(new DOMWrapper(document.body).get('[role="dialog"]').text())
+        .not.toContain("测试结果");
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+      await flushPromises();
+      await vi.waitFor(() => {
+        expect(document.body.querySelector(querySelector)).toBeNull();
+      });
+    } finally {
+      wrapper.unmount();
+    }
   });
 
   it("renders panel rate limit card and saves settings", async () => {

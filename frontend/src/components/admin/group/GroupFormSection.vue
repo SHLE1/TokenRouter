@@ -1,7 +1,7 @@
 <template>
   <section class="group-settings-section space-y-4">
     <div v-if="title" class="flex flex-wrap items-start justify-between gap-3">
-      <div class="min-w-0">
+      <div class="min-w-0 flex-1">
         <h4 class="text-sm font-semibold text-primary-900 dark:text-dark-50">
           {{ title }}
         </h4>

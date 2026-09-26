@@ -8801,6 +8801,7 @@ import Icon from "@/components/icons/Icon.vue";
 import HelpTooltip from "@/components/common/HelpTooltip.vue";
 import ProviderIcon from "@/components/common/ProviderIcon.vue";
 import Select from "@/components/common/Select.vue";
+import BaseDialog from "@/components/common/BaseDialog.vue";
 import ConfirmDialog from "@/components/common/ConfirmDialog.vue";
 import PaymentProviderList from "@/components/payment/PaymentProviderList.vue";
 import PaymentProviderDialog from "@/components/payment/PaymentProviderDialog.vue";
