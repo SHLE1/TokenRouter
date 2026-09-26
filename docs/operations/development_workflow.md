@@ -81,7 +81,7 @@ upstream 的具体平台不能相互导入，也不接收旧 Account、Gin 或�
 
 notification、site、moderation、search 的核心、纯契约和 Adapter 按职责匹配架构规则。邮件凭据留 identity，阈值留 billing，通知接受已确定事件；审核跨身份事务沿用同一 SQL 连接；文件读取归 site/filesystem；搜索的 HTTP 与 Redis 分开。适配不得复制核心状态或算法，文件移动时同步清理专用许可及排除项。角色夹具需覆盖新文件、精确历史 import、非法子包和迁出后的同名文件。
 
-这些模块的行为验证包括真实 SMTP/TLS 夹具、页面文件边界、PostgreSQL 审核回滚、Redis 预占释放、配置交错及有界关闭。全量普通、unit、integration 命令串行执行；integration 使用 `-p=4` 限制包级容器压力，保留测试内部并发和断言。测试事件、跳过、原失败及后续通过分别保存，不能用数量相同代替诊断逐项比较。
+这些模块的行为验证包括真实 SMTP/TLS 夹具、页面文件边界、PostgreSQL 审核回滚、Redis 预占释放、配置交错及有界关闭。全量普通、unit、integration 命令串行执行；`make -C backend test-integration` 固定使用 `-p=4`，本地与 CI 共用该入口，保留测试内部并发和断言。测试事件、跳过、原失败及后续通过分别保存，不能用数量相同代替诊断逐项比较。
 
 gateway 的请求值与固定 `Execute` 契约位于 `gateway/execution`；该叶子不能反向导入根执行器、text 或 Adapter。HTTP 构造时由 app 先绑定唯一完成 Recorder，再构造执行器；请求调用只传显式状态和同步输出。内部账号循环、平台同账号恢复和协议转换仍各有一个实现，不能通过新增回调再包装整个旧 handler。执行 Adapter 只提供单步调用与投影。
 

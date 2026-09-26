@@ -23,7 +23,8 @@ test-unit:
 	go test -tags=unit ./...
 
 test-integration:
-	go test -tags=integration ./...
+	# 限制包级并发，避免本地和 CI 同时启动过多 PostgreSQL/Redis 测试容器。
+	go test -tags=integration -p=4 ./...
 
 test-e2e: test-e2e-local
 
