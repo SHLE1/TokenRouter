@@ -4,13 +4,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
 func TestPeakMultiplierAt_DisabledOrUnconfigured(t *testing.T) {
 	cases := []struct {
 		name string
-		g    *routing.Group
+		g    *pricing.BillingSettings
 	}{
 		{"disabled", newPeakGroup(false, "14:00", "18:00", 3.0)},
 		{"empty start", newPeakGroup(true, "", "18:00", 3.0)},
@@ -29,7 +30,7 @@ func TestPeakMultiplierAt_DisabledOrUnconfigured(t *testing.T) {
 }
 
 func TestPeakMultiplierAt_NilReceiver(t *testing.T) {
-	var g *routing.Group
+	var g *pricing.BillingSettings
 	if got := g.PeakMultiplierAt(at(15, 0)); got != 1.0 {
 		t.Fatalf("expect 1.0, got %v", got)
 	}
@@ -156,8 +157,8 @@ func TestPeakMultiplierAt_EnabledGroupUsesConfiguredWindow(t *testing.T) {
 	}
 }
 
-func newPeakGroup(enabled bool, start, end string, mult float64) *routing.Group {
-	return &routing.Group{
+func newPeakGroup(enabled bool, start, end string, mult float64) *pricing.BillingSettings {
+	return &pricing.BillingSettings{
 		PeakRateEnabled:    enabled,
 		PeakStart:          start,
 		PeakEnd:            end,

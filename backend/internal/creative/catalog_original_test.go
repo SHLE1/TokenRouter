@@ -125,7 +125,6 @@ func TestCreativeDirectoryAndCreateUseGroupPolicy(t *testing.T) {
 				allowed := map[string]string{routing.BillingModelSourceRequested: "DRAW-*", routing.BillingModelSourceGroupMapped: "account-alias", routing.BillingModelSourceUpstream: final}[source]
 				group := newCreativeTestGroup()
 
-				group.ModelPricing = nil
 				group.RoutingPolicy = routing.GroupRoutingPolicy{
 					Enabled: true, RestrictModels: true, RestrictionModelSource: source,
 					ModelMapping:  map[string]string{"draw-*": "account-alias", "account-alias": "forbidden-group-hop"},

@@ -106,9 +106,8 @@ func TestCalculateCostUnified_PricingConfigOverridesFable51MaxReasoningMultiplie
 	})
 	bs := newTestCalculator()
 	resolver := billingtestkit.PriceResolver(cs, bs)
-	group := &routing.Group{ID: groupID}
 	cost, err := bs.CalculateCostUnified(billing.CostInput{
-		Ctx: context.Background(), Model: "claude-fable-5-1", GroupID: &groupID, Group: projectPriceGroup(group),
+		Ctx: context.Background(), Model: "claude-fable-5-1", GroupID: &groupID,
 		Tokens: pricing.UsageTokens{InputTokens: 1000}, RateMultiplier: 1, ReasoningEffort: "max", Resolver: resolver,
 	})
 	require.NoError(t, err)

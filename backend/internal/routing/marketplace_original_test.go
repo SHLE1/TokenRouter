@@ -485,12 +485,10 @@ func TestModelMarketplaceQoderStandardModelPartialIntervalKeepsBaseDisplayFields
 	}
 }
 
-func TestModelMarketplaceGroupPricingOverridesConfigPricing(t *testing.T) {
+func TestModelMarketplaceUsesConfigPricingWithGroupMultiplier(t *testing.T) {
 	groupID := int64(905)
 	pricingConfigInput := 0.5
 	pricingConfigOutput := 0.75
-	groupInput := 0.01
-	groupOutput := 0.02
 	cache := routingtestkit.NewModelConfigData()
 	cache.Prices[routingtestkit.ModelKey{GroupID: groupID, Platform: capability.PlatformOpenAI, Model: "gpt-5.4-mini"}] = &routing.ModelPricingEntry{
 		BillingMode: routing.BillingModeToken,
@@ -508,37 +506,23 @@ func TestModelMarketplaceGroupPricingOverridesConfigPricing(t *testing.T) {
 
 		billingService, NewModelPricingResolver(pricingConfigService, billingService),
 	)
-	group := &routing.Group{
-		ID: groupID, RateMultiplier: 2, LongContextPricingEnabled: true,
-		ModelPricing: []routing.ModelPricingEntry{{
-			Models: []string{"gpt-5.4-mini"}, BillingMode: routing.BillingModeToken,
-			InputPrice: &groupInput, OutputPrice: &groupOutput,
-		}},
-	}
+	group := &routing.Group{ID: groupID, RateMultiplier: 2}
 
 	pricing := svc.PublicModelPricing(context.Background(), group, "gpt-5.4-mini")
 
-	if pricing.InputPricePerToken != groupInput*group.RateMultiplier || pricing.OutputPricePerToken != groupOutput*group.RateMultiplier {
+	if pricing.InputPricePerToken != pricingConfigInput*group.RateMultiplier || pricing.OutputPricePerToken != pricingConfigOutput*group.RateMultiplier {
 		t.Fatalf("group display price = (%g, %g), want (%g, %g)",
 			pricing.InputPricePerToken, pricing.OutputPricePerToken,
-			groupInput*group.RateMultiplier, groupOutput*group.RateMultiplier)
+			pricingConfigInput*group.RateMultiplier, pricingConfigOutput*group.RateMultiplier)
 	}
 }
 
 func TestModelMarketplaceGroupExplicitZeroPricingRemainsPriced(t *testing.T) {
 	zero := 0.0
 	billingService := newMarketplaceCalculator(nil, nil)
-	svc := newMarketplaceFixture(nil, nil,
-
-		billingService, NewModelPricingResolver(nil, billingService),
-	)
-	group := &routing.Group{
-		ID: 906, RateMultiplier: 1, LongContextPricingEnabled: true,
-		ModelPricing: []routing.ModelPricingEntry{{
-			Models: []string{"gpt-5.4"}, BillingMode: routing.BillingModeToken,
-			InputPrice: &zero, OutputPrice: &zero,
-		}},
-	}
+	settings := billingpricing.DefaultBillingSettings()
+	svc := marketplaceWithConfig(billingService, 906, settings, []routing.ModelPricingEntry{{Models: []string{"gpt-5.4"}, BillingMode: routing.BillingModeToken, InputPrice: &zero, OutputPrice: &zero}})
+	group := &routing.Group{ID: 906, RateMultiplier: 1}
 
 	pricing := svc.PublicModelPricing(context.Background(), group, "gpt-5.4")
 
@@ -549,11 +533,10 @@ func TestModelMarketplaceGroupExplicitZeroPricingRemainsPriced(t *testing.T) {
 
 func TestModelMarketplaceGroupCanDisableBuiltInLongContextDisplay(t *testing.T) {
 	billingService := newMarketplaceCalculator(nil, nil)
-	svc := newMarketplaceFixture(nil, nil,
-
-		billingService, NewModelPricingResolver(nil, billingService),
-	)
-	group := &routing.Group{ID: 907, RateMultiplier: 1, LongContextPricingEnabled: false}
+	settings := billingpricing.DefaultBillingSettings()
+	settings.LongContextPricingEnabled = false
+	svc := marketplaceWithConfig(billingService, 907, settings, nil)
+	group := &routing.Group{ID: 907, RateMultiplier: 1}
 
 	pricing := svc.PublicModelPricing(context.Background(), group, "gpt-5.4")
 
@@ -613,9 +596,8 @@ func TestModelMarketplaceDisplayPricing_SharedImageRateUsesGroupMultiplier(t *te
 	group := &routing.Group{
 		ID:             1,
 		RateMultiplier: 2.0,
-		ModelPricing:   testImageModelPricing(map[string]*float64{"1K": &image1K}),
 	}
-	svc := newMarketplaceFixture(nil, nil, newMarketplaceCalculator(nil, map[string]*billingpricing.ModelPricing{}), nil)
+	svc := marketplaceWithConfig(newMarketplaceCalculator(nil, map[string]*billingpricing.ModelPricing{}), 1, billingpricing.DefaultBillingSettings(), testImageModelPricing(map[string]*float64{"1K": &image1K}))
 
 	pricing := svc.PublicModelPricing(context.Background(), group, "gpt-image-1")
 

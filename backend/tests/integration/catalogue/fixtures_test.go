@@ -126,7 +126,7 @@ type cataloguePrices struct {
 }
 
 func (p cataloguePrices) Quote(ctx context.Context, request routing.MarketplaceQuoteRequest) pricing.ModelDisplayPricing {
-	return p.resolver.PublicQuote(ctx, billing.PublicQuoteInput{PricingInput: billing.PricingInput{Model: request.Model, GroupID: &request.GroupID, Group: &billing.PriceGroup{ModelPricing: request.ModelPricing, LongContextPricingEnabled: request.LongContextPricingEnabled}}, RateMultiplier: request.RateMultiplier, FreeFastApplicable: request.FreeFastApplicable})
+	return p.resolver.PublicQuote(ctx, billing.PublicQuoteInput{PricingInput: billing.PricingInput{Model: request.Model, GroupID: &request.GroupID}, RateMultiplier: request.RateMultiplier, FreeFastApplicable: request.FreeFastApplicable})
 }
 
 func (p cataloguePrices) GetModelModalities(model string) ([]string, []string) {

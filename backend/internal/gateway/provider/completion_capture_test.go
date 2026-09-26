@@ -17,10 +17,10 @@ import (
 
 // 原生捕获在提交时读取输入，提交后不会再随请求对象、档位或价卡变化。
 func TestCompletionCaptureKeepsTurnTimeAndIndependentInputs(t *testing.T) {
-	price, multiplier := 0.25, 1.5
+	multiplier := 1.5
 	groupID := int64(17)
 	key := &apikey.APIKey{ID: 2, GroupID: &groupID, Group: &routing.Group{
-		ID: groupID, ModelPricing: []routing.ModelPricingEntry{{Models: []string{"model"}, InputPrice: &price}},
+		ID: groupID, RateMultiplier: 0.25,
 	}}
 	user := &identity.User{ID: 3, Balance: 9}
 	target := &account.Record{ID: 4, RateMultiplier: &multiplier, Extra: map[string]any{account.AccountExtraUpstreamRequestIDHeader: "X-Request-ID"}}
@@ -35,7 +35,7 @@ func TestCompletionCaptureKeepsTurnTimeAndIndependentInputs(t *testing.T) {
 	user.Balance = 10
 	out := CaptureOpenAI(ctx, in)
 	user.Balance = 90
-	price = 9
+	key.Group.RateMultiplier = 9
 	multiplier = 8
 	groupID = 99
 	result.ImageOutputSizes[0] = "4K"
@@ -45,7 +45,7 @@ func TestCompletionCaptureKeepsTurnTimeAndIndependentInputs(t *testing.T) {
 	require.Equal(t, turnAt, out.PricingAt)
 	require.Equal(t, 10.0, out.User.Balance)
 	require.Equal(t, int64(17), *out.APIKey.GroupID)
-	require.Equal(t, 0.25, *out.APIKey.Group.Price.ModelPricing[0].InputPrice)
+	require.Equal(t, 0.25, out.APIKey.Group.RateMultiplier)
 	require.Equal(t, 1.5, out.Account.RateMultiplier)
 	require.Equal(t, []string{"1K"}, out.Result.ImageOutputSizes)
 	require.Equal(t, 1, out.Result.ImageSizeBreakdown["1K"])

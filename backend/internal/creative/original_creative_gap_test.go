@@ -404,7 +404,6 @@ func TestCreativeListModelsFallbacks(t *testing.T) {
 	openaiGroup.ID = 21
 	openaiGroup.Name = "ChatGPT Image"
 
-	openaiGroup.ModelPricing = nil
 	groupRepo.byID[21] = openaiGroup
 	groupRepo.active = append(groupRepo.active, *openaiGroup)
 	accountRepo.byGroup[21] = []accountcore.Record{{
@@ -420,7 +419,7 @@ func TestCreativeListModelsFallbacks(t *testing.T) {
 	// gemini 分组：无显式图片价、账号无映射 → 默认候选 + 尺寸回退 ["1K","2K","4K"]。
 	geminiGroup := newCreativeTestGroup()
 	geminiGroup.ID = 22
-	geminiGroup.ModelPricing = nil
+
 	groupRepo.byID[22] = geminiGroup
 	groupRepo.active = append(groupRepo.active, *geminiGroup)
 	accountRepo.byGroup[22] = []accountcore.Record{{
@@ -438,7 +437,6 @@ func TestCreativeListModelsFallbacks(t *testing.T) {
 	grokGroup.ID = 23
 	grokGroup.Name = "Grok Imagine"
 
-	grokGroup.ModelPricing = nil
 	groupRepo.byID[23] = grokGroup
 	groupRepo.active = append(groupRepo.active, *grokGroup)
 	accountRepo.byGroup[23] = []accountcore.Record{{
@@ -457,7 +455,7 @@ func TestCreativeListModelsFallbacks(t *testing.T) {
 	pricedGroup.Name = "GPT Image Priced"
 
 	price1k := 0.02
-	pricedGroup.ModelPricing = testImageModelPricing(map[string]*float64{"1K": &price1k})
+	setCreativeConfigPricing(svc, pricedGroup.ID, testImageModelPricing(map[string]*float64{"1K": &price1k}))
 	groupRepo.byID[24] = pricedGroup
 	groupRepo.active = append(groupRepo.active, *pricedGroup)
 	accountRepo.byGroup[24] = []accountcore.Record{{
@@ -635,8 +633,6 @@ func TestCreativePricingUsesResolvedPricingConfigPrice(t *testing.T) {
 	group := newCreativeTestGroup()
 	group.ID = 100
 
-	group.ModelPricing = nil
-
 	require.InDelta(t, 1, svc.CreativePrice(context.Background(), creativeGroupProjection(group), "gpt-image-2", "1K"), 1e-9)
 	require.InDelta(t, 1, svc.CreativePrice(context.Background(), creativeGroupProjection(group), "gpt-image-2", "2K"), 1e-9)
 	require.InDelta(t, 1, svc.CreativePrice(context.Background(), creativeGroupProjection(group), "gpt-image-2", "4K"), 1e-9)
@@ -656,7 +652,7 @@ func TestCreativePricingUsesResolvedPricingConfigPrice(t *testing.T) {
 	svc.ImageUnitPrice = creativePriceFixture(nil, resolver)
 	geminiGroup := newCreativeTestGroup()
 	geminiGroup.ID = 100
-	geminiGroup.ModelPricing = nil
+
 	require.InDelta(t, price512, svc.CreativePrice(context.Background(), creativeGroupProjection(geminiGroup), "gemini-3.1-flash-image", "512"), 1e-9)
 	resolver = newResolverWithPricingConfig(t, []routing.ModelPricingEntry{{
 		Models:          []string{"gemini-3.1-flash-image"},

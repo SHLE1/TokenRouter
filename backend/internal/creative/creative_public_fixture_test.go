@@ -8,6 +8,8 @@ import (
 	"log/slog"
 	"time"
 
+	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
+
 	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 
@@ -96,7 +98,7 @@ func creativeGroupProjection(value *routing.Group) *creative.GroupView {
 	if value == nil {
 		return nil
 	}
-	return &creative.GroupView{ID: value.ID, Name: value.Name, ClaudeCodeOnly: value.ClaudeCodeOnly, IsExclusive: value.IsExclusive, AllowImageGeneration: value.AllowImageGeneration, Active: value.IsActive(), RateMultiplier: value.RateMultiplier, RoutingPolicy: value.RoutingPolicy.Clone(), ProtocolFallbacks: value.ProtocolFallbacks, Operations: creative.OperationsForGroup(value.ResponsesImagePolicy != "" || value.ProtocolFallbacks != nil, value.AllowsClientProtocol), Price: billing.PriceGroup{ModelPricing: value.ModelPricing, LongContextPricingEnabled: value.LongContextPricingEnabled}}
+	return &creative.GroupView{ID: value.ID, Name: value.Name, ClaudeCodeOnly: value.ClaudeCodeOnly, IsExclusive: value.IsExclusive, AllowImageGeneration: value.AllowImageGeneration, Active: value.IsActive(), RateMultiplier: value.RateMultiplier, RoutingPolicy: value.RoutingPolicy.Clone(), ProtocolFallbacks: value.ProtocolFallbacks, Operations: creative.OperationsForGroup(value.ResponsesImagePolicy != "" || value.ProtocolFallbacks != nil, value.AllowsClientProtocol)}
 }
 
 // creativePriceFixture 只投影可选目录/解析器，价格算法与回退仍调用 billing。
@@ -111,7 +113,7 @@ func creativePriceFixture(calculator *billing.Calculator, resolver *billing.Pric
 				slog.Debug("failed to get model pricing from LiteLLM, using fallback", "model", model, "error", err)
 			})
 		}
-		value, err := selected.ResolveImageUnitPrice(ctx, billing.PricingInput{Model: model, GroupID: &group.ID, Group: &group.Price}, size)
+		value, err := selected.ResolveImageUnitPrice(ctx, billing.PricingInput{Model: model, GroupID: &group.ID}, size)
 		return value, err == nil
 	}
 }
@@ -197,4 +199,28 @@ func newCreativePublicFixture(repo creative.CreativeRunRepository, keys creative
 		return completion.ResolveUsageRateMultiplier(ctx, userID, &group.ID, &completion.GroupSnapshot{ID: group.ID, RateMultiplier: group.RateMultiplier}, fallback, sub, nil), true
 	}
 	return core
+}
+
+// setCreativeConfigPricing 为指定分组装配共享价表，保留其它分组的报价来源。
+func setCreativeConfigPricing(svc *creative.Public, groupID int64, cards []routing.ModelPricingEntry) {
+	previous := svc.ImageUnitPrice
+	config := routing.PricingConfig{ID: groupID, Status: routing.StatusActive, GroupIDs: []int64{groupID}, ModelPricing: cards}
+	source := routing.NewPricingConfigService(&creativeConfigPrices{config: config}, nil)
+	resolver := billingtestkit.PriceResolver(source, billingtestkit.Calculator(0, nil, nil))
+	svc.ImageUnitPrice = func(ctx context.Context, group *creative.GroupView, model, size string) (float64, bool) {
+		if group.ID != groupID {
+			return previous(ctx, group, model, size)
+		}
+		price, err := resolver.ResolveImageUnitPrice(ctx, billing.PricingInput{Model: model, GroupID: &groupID}, size)
+		return price, err == nil
+	}
+}
+
+type creativeConfigPrices struct {
+	routing.PricingConfigRepository
+	config routing.PricingConfig
+}
+
+func (s *creativeConfigPrices) ListAll(context.Context) ([]routing.PricingConfig, error) {
+	return []routing.PricingConfig{s.config}, nil
 }

@@ -29,26 +29,15 @@ type CreateGroupRequest struct {
 	RateMultiplier             float64                                 `json:"rate_multiplier"`
 	IsExclusive                bool                                    `json:"is_exclusive"`
 	// 会话隔离开启后拒绝其它分组已归属的显式会话切入。
-	SessionIsolationEnabled   bool                        `json:"session_isolation_enabled"`
-	LongContextPricingEnabled *bool                       `json:"long_context_pricing_enabled"`
-	ModelPricing              []routing.ModelPricingEntry `json:"model_pricing"`
-	// 图片生成权限与批量图片策略，价格统一由模型价卡提供。
-	AllowImageGeneration            bool     `json:"allow_image_generation"`
-	AllowBatchImageGeneration       bool     `json:"allow_batch_image_generation"`
-	BatchImageDiscountMultiplier    *float64 `json:"batch_image_discount_multiplier"`
-	BatchImageHoldMultiplier        *float64 `json:"batch_image_hold_multiplier"`
-	PeakRateEnabled                 bool     `json:"peak_rate_enabled"`
-	PeakStart                       string   `json:"peak_start"`
-	PeakEnd                         string   `json:"peak_end"`
-	PeakRateMultiplier              *float64 `json:"peak_rate_multiplier"`
-	WebSearchPricePerCall           *float64 `json:"web_search_price_per_call"`
-	SearchPricePer1k                *float64 `json:"search_price_per_1k"`
-	AudioRealtimePricePerMin        *float64 `json:"audio_realtime_price_per_min"`
-	AudioTtsPricePerMillionChars    *float64 `json:"audio_tts_price_per_million_chars"`
-	AudioSttPricePerHour            *float64 `json:"audio_stt_price_per_hour"`
-	ClaudeCodeOnly                  bool     `json:"claude_code_only"`
-	FallbackGroupID                 *int64   `json:"fallback_group_id"`
-	FallbackGroupIDOnInvalidRequest *int64   `json:"fallback_group_id_on_invalid_request"`
+	SessionIsolationEnabled bool `json:"session_isolation_enabled"`
+
+	// 图片生成权限独立于共享价格配置。
+	AllowImageGeneration      bool `json:"allow_image_generation"`
+	AllowBatchImageGeneration bool `json:"allow_batch_image_generation"`
+
+	ClaudeCodeOnly                  bool   `json:"claude_code_only"`
+	FallbackGroupID                 *int64 `json:"fallback_group_id"`
+	FallbackGroupIDOnInvalidRequest *int64 `json:"fallback_group_id_on_invalid_request"`
 	// UnavailableFallbackGroupID 当前分组停用时 API Key 优先回退到的分组。
 	UnavailableFallbackGroupID *int64 `json:"unavailable_fallback_group_id"`
 	// 模型路由配置（仅 anthropic 平台使用）
@@ -70,7 +59,7 @@ type CreateGroupRequest struct {
 	// 新策略优先于旧布尔输入，省略时保持兼容。
 	OpenAIFastPolicy *string `json:"openai_fast_policy"`
 	// OpenAI 分组的 Fast 请求是否按 Standard 价格计费。
-	FreeOpenAIFast          bool                                 `json:"free_openai_fast"`
+
 	RequireOAuthOnly        bool                                 `json:"require_oauth_only"`
 	RequirePrivacySet       bool                                 `json:"require_privacy_set"`
 	DefaultMappedModel      string                               `json:"default_mapped_model"`
@@ -100,27 +89,16 @@ type UpdateGroupRequest struct {
 	RateMultiplier             *float64                                 `json:"rate_multiplier"`
 	IsExclusive                *bool                                    `json:"is_exclusive"`
 	// nil 表示不修改会话隔离开关。
-	SessionIsolationEnabled   *bool                        `json:"session_isolation_enabled"`
-	Status                    string                       `json:"status" binding:"omitempty,oneof=active inactive"`
-	LongContextPricingEnabled *bool                        `json:"long_context_pricing_enabled"`
-	ModelPricing              *[]routing.ModelPricingEntry `json:"model_pricing"`
-	// 图片生成权限与批量图片策略，价格统一由模型价卡提供。
-	AllowImageGeneration            *bool    `json:"allow_image_generation"`
-	AllowBatchImageGeneration       *bool    `json:"allow_batch_image_generation"`
-	BatchImageDiscountMultiplier    *float64 `json:"batch_image_discount_multiplier"`
-	BatchImageHoldMultiplier        *float64 `json:"batch_image_hold_multiplier"`
-	PeakRateEnabled                 *bool    `json:"peak_rate_enabled"`
-	PeakStart                       *string  `json:"peak_start"`
-	PeakEnd                         *string  `json:"peak_end"`
-	PeakRateMultiplier              *float64 `json:"peak_rate_multiplier"`
-	WebSearchPricePerCall           *float64 `json:"web_search_price_per_call"`
-	SearchPricePer1k                *float64 `json:"search_price_per_1k"`
-	AudioRealtimePricePerMin        *float64 `json:"audio_realtime_price_per_min"`
-	AudioTtsPricePerMillionChars    *float64 `json:"audio_tts_price_per_million_chars"`
-	AudioSttPricePerHour            *float64 `json:"audio_stt_price_per_hour"`
-	ClaudeCodeOnly                  *bool    `json:"claude_code_only"`
-	FallbackGroupID                 *int64   `json:"fallback_group_id"`
-	FallbackGroupIDOnInvalidRequest *int64   `json:"fallback_group_id_on_invalid_request"`
+	SessionIsolationEnabled *bool  `json:"session_isolation_enabled"`
+	Status                  string `json:"status" binding:"omitempty,oneof=active inactive"`
+
+	// 图片生成权限独立于共享价格配置。
+	AllowImageGeneration      *bool `json:"allow_image_generation"`
+	AllowBatchImageGeneration *bool `json:"allow_batch_image_generation"`
+
+	ClaudeCodeOnly                  *bool  `json:"claude_code_only"`
+	FallbackGroupID                 *int64 `json:"fallback_group_id"`
+	FallbackGroupIDOnInvalidRequest *int64 `json:"fallback_group_id_on_invalid_request"`
 	// UnavailableFallbackGroupID 当前分组停用时 API Key 优先回退到的分组。
 	UnavailableFallbackGroupID *int64 `json:"unavailable_fallback_group_id"`
 	// 模型路由配置（仅 anthropic 平台使用）
@@ -142,7 +120,7 @@ type UpdateGroupRequest struct {
 	// 新策略优先于旧布尔输入，省略时保持兼容。
 	OpenAIFastPolicy *string `json:"openai_fast_policy"`
 	// OpenAI 分组的 Fast 请求是否按 Standard 价格计费。
-	FreeOpenAIFast          *bool                                 `json:"free_openai_fast"`
+
 	RequireOAuthOnly        *bool                                 `json:"require_oauth_only"`
 	RequirePrivacySet       *bool                                 `json:"require_privacy_set"`
 	DefaultMappedModel      *string                               `json:"default_mapped_model"`
@@ -288,11 +266,6 @@ func (h *GroupHandler) Create(c *gin.Context) {
 		req.AllowedProtocols = req.LegacyAllowedClientProtocols
 	}
 
-	if err := routing.ValidatePeakRateConfig(req.PeakRateEnabled, req.PeakStart, req.PeakEnd, float64ValueOrDefault(req.PeakRateMultiplier, 1.0)); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-
 	group, err := h.adminService.CreateGroup(c.Request.Context(), &routing.CreateGroupInput{
 		Name:                            req.Name,
 		Description:                     req.Description,
@@ -303,22 +276,9 @@ func (h *GroupHandler) Create(c *gin.Context) {
 		RateMultiplier:                  req.RateMultiplier,
 		IsExclusive:                     req.IsExclusive,
 		SessionIsolationEnabled:         req.SessionIsolationEnabled,
-		LongContextPricingEnabled:       req.LongContextPricingEnabled,
-		ModelPricing:                    req.ModelPricing,
 		RoutingPolicy:                   req.RoutingPolicy,
 		AllowImageGeneration:            req.AllowImageGeneration,
 		AllowBatchImageGeneration:       req.AllowBatchImageGeneration,
-		BatchImageDiscountMultiplier:    req.BatchImageDiscountMultiplier,
-		BatchImageHoldMultiplier:        req.BatchImageHoldMultiplier,
-		PeakRateEnabled:                 req.PeakRateEnabled,
-		PeakStart:                       req.PeakStart,
-		PeakEnd:                         req.PeakEnd,
-		PeakRateMultiplier:              req.PeakRateMultiplier,
-		WebSearchPricePerCall:           req.WebSearchPricePerCall,
-		SearchPricePer1k:                req.SearchPricePer1k,
-		AudioRealtimePricePerMin:        req.AudioRealtimePricePerMin,
-		AudioTTSPricePerMillionChars:    req.AudioTtsPricePerMillionChars,
-		AudioSTTPricePerHour:            req.AudioSttPricePerHour,
 		ClaudeCodeOnly:                  req.ClaudeCodeOnly,
 		FallbackGroupID:                 req.FallbackGroupID,
 		FallbackGroupIDOnInvalidRequest: req.FallbackGroupIDOnInvalidRequest,
@@ -335,7 +295,6 @@ func (h *GroupHandler) Create(c *gin.Context) {
 		AllowLive:                       req.AllowLive,
 		ForceOpenAIFast:                 req.ForceOpenAIFast,
 		OpenAIFastPolicy:                req.OpenAIFastPolicy,
-		FreeOpenAIFast:                  req.FreeOpenAIFast,
 		RequireOAuthOnly:                req.RequireOAuthOnly,
 		RequirePrivacySet:               req.RequirePrivacySet,
 		DefaultMappedModel:              req.DefaultMappedModel,
@@ -432,22 +391,9 @@ func (h *GroupHandler) Update(c *gin.Context) {
 		IsExclusive:                     req.IsExclusive,
 		SessionIsolationEnabled:         req.SessionIsolationEnabled,
 		Status:                          req.Status,
-		LongContextPricingEnabled:       req.LongContextPricingEnabled,
-		ModelPricing:                    req.ModelPricing,
 		RoutingPolicy:                   req.RoutingPolicy,
 		AllowImageGeneration:            req.AllowImageGeneration,
 		AllowBatchImageGeneration:       req.AllowBatchImageGeneration,
-		BatchImageDiscountMultiplier:    req.BatchImageDiscountMultiplier,
-		BatchImageHoldMultiplier:        req.BatchImageHoldMultiplier,
-		PeakRateEnabled:                 req.PeakRateEnabled,
-		PeakStart:                       req.PeakStart,
-		PeakEnd:                         req.PeakEnd,
-		PeakRateMultiplier:              req.PeakRateMultiplier,
-		WebSearchPricePerCall:           req.WebSearchPricePerCall,
-		SearchPricePer1k:                req.SearchPricePer1k,
-		AudioRealtimePricePerMin:        req.AudioRealtimePricePerMin,
-		AudioTTSPricePerMillionChars:    req.AudioTtsPricePerMillionChars,
-		AudioSTTPricePerHour:            req.AudioSttPricePerHour,
 		ClaudeCodeOnly:                  req.ClaudeCodeOnly,
 		FallbackGroupID:                 req.FallbackGroupID,
 		FallbackGroupIDOnInvalidRequest: req.FallbackGroupIDOnInvalidRequest,
@@ -464,7 +410,6 @@ func (h *GroupHandler) Update(c *gin.Context) {
 		AllowLive:                       req.AllowLive,
 		ForceOpenAIFast:                 req.ForceOpenAIFast,
 		OpenAIFastPolicy:                req.OpenAIFastPolicy,
-		FreeOpenAIFast:                  req.FreeOpenAIFast,
 		RequireOAuthOnly:                req.RequireOAuthOnly,
 		RequirePrivacySet:               req.RequirePrivacySet,
 		DefaultMappedModel:              req.DefaultMappedModel,

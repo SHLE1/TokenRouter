@@ -4,8 +4,6 @@ package postgres
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
-	"log/slog"
 
 	dbent "github.com/TokenFlux/TokenRouter/ent"
 	keycore "github.com/TokenFlux/TokenRouter/internal/apikey"
@@ -58,14 +56,6 @@ func groupEntityToKeyView(g *dbent.Group) *routing.Group {
 		return nil
 	}
 	routingPolicy := routing.DecodeGroupRoutingPolicy(g.RoutingPolicy)
-	var modelPricing []keycore.ModelPricingEntry
-	if len(g.ModelPricing) > 0 {
-		if err := json.Unmarshal(g.ModelPricing, &modelPricing); err != nil {
-			slog.Warn("group model_pricing unmarshal failed; falling back to shared/builtin pricing",
-				"group_id", g.ID, "error", err)
-			modelPricing = nil
-		}
-	}
 	return &routing.Group{
 		ID:                              g.ID,
 		Name:                            g.Name,
@@ -81,15 +71,6 @@ func groupEntityToKeyView(g *dbent.Group) *routing.Group {
 		SessionIsolationEnabled:         g.SessionIsolationEnabled,
 		AllowImageGeneration:            g.AllowImageGeneration,
 		AllowBatchImageGeneration:       g.AllowBatchImageGeneration,
-		BatchImageDiscountMultiplier:    g.BatchImageDiscountMultiplier,
-		BatchImageHoldMultiplier:        g.BatchImageHoldMultiplier,
-		WebSearchPricePerCall:           g.WebSearchPricePerCall,
-		SearchPricePer1k:                g.SearchPricePer1k,
-		AudioRealtimePricePerMin:        g.AudioRealtimePricePerMin,
-		AudioTTSPricePerMillionChars:    g.AudioTtsPricePerMillionChars,
-		AudioSTTPricePerHour:            g.AudioSttPricePerHour,
-		LongContextPricingEnabled:       g.LongContextPricingEnabled,
-		ModelPricing:                    modelPricing,
 		RoutingPolicy:                   routingPolicy,
 		ClaudeCodeOnly:                  g.ClaudeCodeOnly,
 		FallbackGroupID:                 g.FallbackGroupID,
@@ -107,7 +88,6 @@ func groupEntityToKeyView(g *dbent.Group) *routing.Group {
 		AllowLive:                       g.AllowLive,
 		ForceOpenAIFast:                 g.ForceOpenaiFast,
 		OpenAIFastPolicy:                g.OpenaiFastPolicy,
-		FreeOpenAIFast:                  g.FreeOpenaiFast,
 		RequireOAuthOnly:                g.RequireOauthOnly,
 		RequirePrivacySet:               g.RequirePrivacySet,
 		DefaultMappedModel:              g.DefaultMappedModel,
@@ -117,10 +97,6 @@ func groupEntityToKeyView(g *dbent.Group) *routing.Group {
 		MaxReasoningEffort:              g.MaxReasoningEffort,
 		MaxReasoningEffortOverLimit:     g.MaxReasoningEffortOverLimit,
 		ReasoningEffortMappings:         g.ReasoningEffortMappings,
-		PeakRateEnabled:                 g.PeakRateEnabled,
-		PeakStart:                       g.PeakStart,
-		PeakEnd:                         g.PeakEnd,
-		PeakRateMultiplier:              g.PeakRateMultiplier,
 		CreatedAt:                       g.CreatedAt,
 		UpdatedAt:                       g.UpdatedAt,
 	}

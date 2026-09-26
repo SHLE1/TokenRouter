@@ -16,7 +16,7 @@ func creativeGroupProjection(value *routing.Group) *creative.GroupView {
 	if value == nil {
 		return nil
 	}
-	return &creative.GroupView{ID: value.ID, Name: value.Name, IsExclusive: value.IsExclusive, AllowImageGeneration: value.AllowImageGeneration, Active: value.IsActive(), RateMultiplier: value.RateMultiplier, Operations: creative.OperationsForGroup(value.ResponsesImagePolicy != "" || value.ProtocolFallbacks != nil, value.AllowsClientProtocol), Price: billing.PriceGroup{ModelPricing: value.ModelPricing, LongContextPricingEnabled: value.LongContextPricingEnabled}}
+	return &creative.GroupView{ID: value.ID, Name: value.Name, IsExclusive: value.IsExclusive, AllowImageGeneration: value.AllowImageGeneration, Active: value.IsActive(), RateMultiplier: value.RateMultiplier, Operations: creative.OperationsForGroup(value.ResponsesImagePolicy != "" || value.ProtocolFallbacks != nil, value.AllowsClientProtocol)}
 }
 
 // creativePriceFixture 只投影可选目录/解析器，价格算法与回退仍调用 billing。
@@ -31,7 +31,7 @@ func creativePriceFixture(calculator *billing.Calculator, resolver *billing.Pric
 				slog.Debug("failed to get model pricing from LiteLLM, using fallback", "model", model, "error", err)
 			})
 		}
-		value, err := selected.ResolveImageUnitPrice(ctx, billing.PricingInput{Model: model, GroupID: &group.ID, Group: &group.Price}, size)
+		value, err := selected.ResolveImageUnitPrice(ctx, billing.PricingInput{Model: model, GroupID: &group.ID}, size)
 		return value, err == nil
 	}
 }

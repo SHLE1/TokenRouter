@@ -624,6 +624,7 @@ func (s *PricingConfigService) Create(ctx context.Context, input *CreatePricingC
 	}
 
 	pricingConfig := &PricingConfig{
+		BillingSettings:    pricing.DefaultBillingSettings(),
 		Name:               input.Name,
 		Description:        input.Description,
 		Status:             StatusActive,
@@ -633,6 +634,9 @@ func (s *PricingConfigService) Create(ctx context.Context, input *CreatePricingC
 		ModelPricing: input.ModelPricing,
 
 		AccountStatsPricingRules: input.AccountStatsPricingRules,
+	}
+	if err := input.BillingSettingsPatch.Apply(&pricingConfig.BillingSettings); err != nil {
+		return nil, err
 	}
 	if pricingConfig.BillingModelSource == "" {
 		pricingConfig.BillingModelSource = BillingModelSourceGroupMapped
@@ -652,6 +656,7 @@ func (s *PricingConfigService) Create(ctx context.Context, input *CreatePricingC
 	}
 
 	s.invalidateCache()
+	s.invalidateAuthCacheForGroups(ctx, pricingConfig.GroupIDs)
 	return s.repo.GetByID(ctx, pricingConfig.ID)
 }
 
@@ -694,6 +699,9 @@ func (s *PricingConfigService) Update(ctx context.Context, id int64, input *Upda
 
 // applyUpdateInput 将更新请求的字段应用到价格配置实体上。
 func (s *PricingConfigService) applyUpdateInput(ctx context.Context, pricingConfig *PricingConfig, input *UpdatePricingConfigInput) error {
+	if err := input.BillingSettingsPatch.Apply(&pricingConfig.BillingSettings); err != nil {
+		return err
+	}
 	if input.Name != "" && input.Name != pricingConfig.Name {
 		exists, err := s.repo.ExistsByNameExcluding(ctx, input.Name, pricingConfig.ID)
 		if err != nil {
@@ -899,6 +907,7 @@ func detectConflicts(entries []modelEntry, errCode, label string) error {
 
 // CreatePricingConfigInput 创建价格配置输入
 type CreatePricingConfigInput struct {
+	BillingSettingsPatch
 	Name         string
 	Description  string
 	GroupIDs     []int64
@@ -911,6 +920,7 @@ type CreatePricingConfigInput struct {
 
 // UpdatePricingConfigInput 更新价格配置输入
 type UpdatePricingConfigInput struct {
+	BillingSettingsPatch
 	Name         string
 	Description  *string
 	Status       string
@@ -976,4 +986,13 @@ func (s *PricingConfigService) ResolveRoutingModel(ctx context.Context, groupID 
 		return mapped
 	}
 	return requestedModel
+}
+
+// GetEffectiveBillingSettings 不依赖模型条目，只有配置级开关的价表也能生效。
+func (s *PricingConfigService) GetEffectiveBillingSettings(ctx context.Context, groupID int64) pricing.BillingSettings {
+	config, err := s.GetPricingConfigForGroup(ctx, groupID)
+	if err != nil || config == nil {
+		return pricing.DefaultBillingSettings()
+	}
+	return config.BillingSettings.Clone()
 }

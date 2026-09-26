@@ -357,13 +357,11 @@ func TestAdminService_UpdateGroup_OpenAIFastInvalidatesAuthCache(t *testing.T) {
 
 	group, err := svc.UpdateGroup(context.Background(), existingGroup.ID, &routing.UpdateGroupInput{
 		ForceOpenAIFast: &enabled,
-		FreeOpenAIFast:  &enabled,
 	})
 
 	require.NoError(t, err)
 	require.NotNil(t, group)
 	require.True(t, repo.updated.ForceOpenAIFast)
-	require.True(t, repo.updated.FreeOpenAIFast)
 	require.Equal(t, []int64{existingGroup.ID}, invalidator.groupIDs)
 }
 

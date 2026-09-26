@@ -150,26 +150,23 @@
       @close="closeDialog"
     >
       <div class="pricing-dialog-body">
-        <!-- Tab Bar -->
-        <div class="flex items-center border-b border-gray-200 dark:border-dark-700 flex-shrink-0 -mx-4 sm:-mx-6 px-4 sm:px-6 -mt-3 sm:-mt-4">
-          <!-- Basic Settings Tab -->
+        <div role="tablist" :aria-label="t('admin.pricing.editPricingConfig')" class="flex shrink-0 items-center overflow-x-auto border-b border-gray-200 dark:border-dark-700">
           <button
-            type="button"
-            @click="activeTab = 'basic'"
-            class="pricing-tab"
-            :class="activeTab === 'basic' ? 'pricing-tab-active' : 'pricing-tab-inactive'"
-          >
-            {{ t('admin.pricing.form.basicSettings', '基础设置') }}
-          </button>
-          <button type="button" @click="activeTab = 'pricing'" class="pricing-tab" :class="activeTab === 'pricing' ? 'pricing-tab-active' : 'pricing-tab-inactive'">
-            {{ t('admin.pricing.columns.pricing') }}
-          </button>
+            v-for="tab in dialogTabs" :id="`pricing-tab-${tab.key}`" :key="tab.key"
+            type="button" role="tab" :aria-selected="activeTab === tab.key"
+            :aria-controls="`pricing-panel-${tab.key}`" :tabindex="activeTab === tab.key ? 0 : -1"
+            class="pricing-tab" :class="activeTab === tab.key ? 'pricing-tab-active' : 'pricing-tab-inactive'"
+            @click="activeTab = tab.key" @keydown="onDialogTabKeydown($event, tab.key)"
+          >{{ t(tab.label) }}</button>
         </div>
 
         <!-- Tab Content -->
-        <form id="pricing-form" @submit.prevent="handleSubmit" class="flex-1 overflow-y-auto pt-4">
+        <form ref="dialogForm" novalidate id="pricing-form" @submit.prevent="handleSubmit" class="flex-1 overflow-y-auto pt-4">
+          <section id="pricing-panel-billing" v-show="activeTab === 'billing'" role="tabpanel" aria-labelledby="pricing-tab-billing" data-pricing-panel="billing">
+            <BillingSettingsPanel v-model="form.billing_settings" />
+          </section>
           <!-- Basic Settings Tab -->
-          <div v-show="activeTab === 'basic'" class="space-y-5">
+          <div id="pricing-panel-basic" v-show="activeTab === 'basic'" role="tabpanel" aria-labelledby="pricing-tab-basic" data-pricing-panel="basic" class="space-y-5">
             <!-- Name -->
             <div>
               <label class="input-label">{{ t('admin.pricing.form.name', 'Name') }} <span class="text-red-500">*</span></label>
@@ -201,7 +198,7 @@
 
             <!-- Billing Basis -->
             <div>
-              <label class="input-label">{{ t('admin.pricing.form.billingModelSource', 'Billing model source') }}</label>
+              <label class="input-label">{{ t('admin.pricing.form.billingModelSource', 'User billing model source') }}</label>
               <Select v-model="form.billing_model_source" :options="billingModelSourceOptions" />
               <p class="mt-1 text-xs text-gray-400" data-testid="billing-model-source-hint">
                 {{ billingModelSourceHint }}
@@ -215,6 +212,7 @@
           <div
             v-for="(section, sIdx) in form.sections"
             :key="sIdx"
+            id="pricing-panel-pricing" role="tabpanel" aria-labelledby="pricing-tab-pricing" data-pricing-panel="pricing"
             v-show="activeTab === 'pricing'"
             class="space-y-4"
           >
@@ -226,35 +224,36 @@
                   ({{ t('admin.pricing.form.selectedCount', { count: section.group_ids.length }, `已选 ${section.group_ids.length} 个`) }})
                 </span>
               </label>
-              <div class="max-h-40 overflow-auto rounded-control border border-gray-200 bg-gray-50 p-2 dark:border-dark-600 dark:bg-dark-900">
+              <div class="max-h-40 overflow-auto rounded-control border border-gray-200 p-3 dark:border-dark-600">
                 <div v-if="groupsLoading" class="py-2 text-center text-xs text-gray-500">
                   {{ t('common.loading', 'Loading...') }}
                 </div>
                 <div v-else-if="allGroups.length === 0" class="py-2 text-center text-xs text-gray-500">
                   {{ t('admin.pricing.form.noGroupsAvailable', 'No groups available') }}
                 </div>
-                <div v-else class="flex flex-wrap gap-1">
+                <div v-else class="flex flex-wrap gap-2">
                   <label
                     v-for="group in allGroups"
                     :key="group.id"
-                    class="inline-flex cursor-pointer items-center gap-1.5 rounded-compact border border-gray-200 px-2 py-1 text-xs transition-colors hover:bg-gray-50 dark:border-dark-600 dark:hover:bg-dark-700"
+                    class="inline-flex max-w-full cursor-pointer items-center gap-2 rounded-control p-1.5 transition-colors hover:bg-gray-50 dark:hover:bg-dark-700"
                     :class="[
-                      section.group_ids.includes(group.id) ? 'bg-primary-50 border-primary-300 dark:bg-primary-900/20 dark:border-primary-700' : '',
-                      isGroupInOtherPricingConfig(group.id) ? 'opacity-40' : ''
+                      section.group_ids.includes(group.id) ? 'bg-primary-50 dark:bg-primary-900/20' : '',
+                      isGroupInOtherPricingConfig(group.id) ? 'cursor-not-allowed opacity-40' : ''
                     ]"
                   >
                     <input
                       type="checkbox"
                       :checked="section.group_ids.includes(group.id)"
                       :disabled="isGroupInOtherPricingConfig(group.id)"
-                      class="h-3 w-3 rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
+                      class="h-4 w-4 shrink-0 rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
                       @change="toggleGroupInSection(sIdx, group.id)"
                     />
-                    <span :class="['font-medium', 'text-gray-900 dark:text-gray-100']">{{ group.name }}</span>
-                    <span
-                      :class="['rounded-full px-1 py-0 text-xs', 'bg-gray-100 dark:bg-dark-700']"
-                    >{{ group.rate_multiplier }}x</span>
-                    <span class="text-xs text-gray-400">{{ group.account_count || 0 }}</span>
+                    <GroupBadge
+                      :name="group.name"
+                      :display-brand="group.display_brand"
+                      :rate-multiplier="group.rate_multiplier"
+                      class="min-w-0"
+                    />
                     <span
                       v-if="isGroupInOtherPricingConfig(group.id)"
                       class="text-xs text-gray-400"
@@ -474,7 +473,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { nextTick, ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import { extractApiErrorMessage } from '@/utils/apiError'
@@ -497,6 +496,9 @@ import EmptyState from '@/components/common/EmptyState.vue'
 import Select from '@/components/common/Select.vue'
 import Icon from '@/components/icons/Icon.vue'
 import Toggle from '@/components/common/Toggle.vue'
+import GroupBadge from '@/components/common/GroupBadge.vue'
+import BillingSettingsPanel from '@/components/admin/pricing/BillingSettingsPanel.vue'
+import { defaultBillingSettings, billingSettingsToAPI, validateBillingSettings } from '@/components/admin/pricing/billingSettings'
 import DefaultPricingPanel from '@/components/admin/pricing/DefaultPricingPanel.vue'
 import PricingEntryCard from '@/components/admin/pricing/PricingEntryCard.vue'
 import { getPersistedPageSize } from '@/composables/usePersistedPageSize'
@@ -575,6 +577,26 @@ const submitting = ref(false)
 const showDeleteDialog = ref(false)
 const deletingPricingConfig = ref<PricingConfig | null>(null)
 const activeTab = ref<string>('basic')
+const dialogForm = ref<HTMLFormElement | null>(null)
+const dialogTabs = [
+  { key: 'basic', label: 'admin.pricing.form.basicSettings' },
+  { key: 'pricing', label: 'admin.pricing.form.modelPricing' },
+  { key: 'billing', label: 'admin.pricing.billingSettings.title' },
+]
+
+// 键盘切换与鼠标使用同一页签状态，保持草稿和焦点顺序。
+function onDialogTabKeydown(event: KeyboardEvent, key: string) {
+  const index = dialogTabs.findIndex(tab => tab.key === key)
+  let next = index
+  if (event.key === 'ArrowRight') next = (index + 1) % dialogTabs.length
+  else if (event.key === 'ArrowLeft') next = (index + dialogTabs.length - 1) % dialogTabs.length
+  else if (event.key === 'Home') next = 0
+  else if (event.key === 'End') next = dialogTabs.length - 1
+  else return
+  event.preventDefault()
+  activeTab.value = dialogTabs[next].key
+  document.getElementById(`pricing-tab-${activeTab.value}`)?.focus()
+}
 
 // Groups
 const allGroups = ref<AdminGroup[]>([])
@@ -585,6 +607,7 @@ const allPricingConfigsForConflict = ref<PricingConfig[]>([])
 
 // Form data
 const form = reactive({
+  billing_settings: defaultBillingSettings(),
   name: '',
   description: '',
   status: 'active',
@@ -606,7 +629,6 @@ const billingModelSourceHint = computed(() => {
 })
 
 let abortController: AbortController | null = null
-
 
 // ── Helpers ──
 function formatDate(value: string): string {
@@ -989,6 +1011,7 @@ function resetForm() {
   form.description = ''
   form.status = 'active'
 
+  form.billing_settings = defaultBillingSettings()
   form.billing_model_source = 'group_mapped'
   form.sections = [emptyPricingSection()]
   activeTab.value = 'basic'
@@ -1010,10 +1033,10 @@ async function openEditDialog(pricingConfig: PricingConfig) {
   form.description = pricingConfig.description || ''
   form.status = pricingConfig.status
 
+  form.billing_settings = Object.fromEntries(Object.entries(defaultBillingSettings()).map(([key, fallback]) => [key, pricingConfig[key as keyof PricingConfig] ?? fallback])) as typeof form.billing_settings
   form.billing_model_source = pricingConfig.billing_model_source || 'group_mapped'
   await Promise.all([loadGroups(), loadAllPricingConfigsForConflict()])
   form.sections = apiToForm(pricingConfig)
-
 
   // Populate ruleAccountNameCache for existing rule accounts
   await populateRuleAccountNameCache()
@@ -1055,8 +1078,25 @@ function closeDialog() {
 
 async function handleSubmit() {
   if (submitting.value) return
+  const invalid = Array.from(dialogForm.value?.querySelectorAll<HTMLInputElement>('input') ?? [])
+    .find(field => field.willValidate && !field.validity.valid)
+  if (invalid) {
+    activeTab.value = invalid.closest<HTMLElement>('[data-pricing-panel]')?.dataset.pricingPanel ?? 'basic'
+    await nextTick()
+    invalid.focus()
+    invalid.reportValidity()
+    return
+  }
   if (!form.name.trim()) {
+    activeTab.value = 'basic'
     appStore.showError(t('admin.pricing.nameRequired', 'Please enter a price configuration name'))
+    return
+  }
+
+  const settingsError = validateBillingSettings(form.billing_settings)
+  if (settingsError) {
+    activeTab.value = 'billing'
+    appStore.showError(t(`admin.pricing.billingSettings.${settingsError}`))
     return
   }
 
@@ -1084,7 +1124,6 @@ async function handleSubmit() {
       activeTab.value = 'pricing'
       return
     }
-
   }
 
   // 倍率只能调整已配置的定价，不能单独继承系统默认价。
@@ -1120,6 +1159,7 @@ async function handleSubmit() {
         model_pricing,
 
         billing_model_source: form.billing_model_source,
+        ...billingSettingsToAPI(form.billing_settings),
 
         account_stats_pricing_rules: accountStatsRulesToAPI()
       }
@@ -1133,6 +1173,7 @@ async function handleSubmit() {
         model_pricing,
 
         billing_model_source: form.billing_model_source,
+        ...billingSettingsToAPI(form.billing_settings),
 
         account_stats_pricing_rules: accountStatsRulesToAPI()
       }

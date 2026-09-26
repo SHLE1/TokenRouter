@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
+
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
@@ -11,6 +13,7 @@ import (
 // Configuration 是迁移前的组合输入。测试装配时将它投影为独立的价格和分组策略，
 // 使已有协议用例继续验证同一请求行为；生产实体不包含这些策略字段。
 type Configuration struct {
+	BillingSettings          *pricing.BillingSettings
 	ID                       int64
 	Name                     string
 	Description              string
@@ -28,7 +31,11 @@ type Configuration struct {
 }
 
 func (c Configuration) Price() routing.PricingConfig {
-	return routing.PricingConfig{ID: c.ID, Name: c.Name, Description: c.Description, Status: c.Status, BillingModelSource: c.BillingModelSource, CreatedAt: c.CreatedAt, UpdatedAt: c.UpdatedAt, GroupIDs: c.GroupIDs, ModelPricing: c.ModelPricing, AccountStatsPricingRules: c.AccountStatsPricingRules}
+	settings := pricing.DefaultBillingSettings()
+	if c.BillingSettings != nil {
+		settings = c.BillingSettings.Clone()
+	}
+	return routing.PricingConfig{BillingSettings: settings, ID: c.ID, Name: c.Name, Description: c.Description, Status: c.Status, BillingModelSource: c.BillingModelSource, CreatedAt: c.CreatedAt, UpdatedAt: c.UpdatedAt, GroupIDs: c.GroupIDs, ModelPricing: c.ModelPricing, AccountStatsPricingRules: c.AccountStatsPricingRules}
 }
 
 func (c Configuration) Policy() routing.GroupRoutingPolicy {

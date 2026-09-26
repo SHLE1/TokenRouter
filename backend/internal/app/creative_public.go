@@ -91,7 +91,6 @@ func provideS13CreativePublic(repo creative.CreativeRunRepository, keys *keypost
 			price, err := pricing.ResolveImageUnitPrice(ctx, billing.PricingInput{
 				Model:   model,
 				GroupID: &g.ID,
-				Group:   &g.Price,
 			}, size)
 			return price, err == nil
 		},
@@ -168,10 +167,6 @@ func creativeGroupView(g *routing.Group) *creative.GroupView {
 		RateMultiplier:       g.RateMultiplier,
 		RoutingPolicy:        g.RoutingPolicy.Clone(), ProtocolFallbacks: g.ProtocolFallbacks,
 		Operations: creative.OperationsForGroup(g.ResponsesImagePolicy != "" || g.ProtocolFallbacks != nil, g.AllowsClientProtocol),
-		Price: billing.PriceGroup{
-			ModelPricing:              g.ModelPricing,
-			LongContextPricingEnabled: g.LongContextPricingEnabled,
-		},
 	}
 }
 

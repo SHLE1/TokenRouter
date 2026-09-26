@@ -11,17 +11,15 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
-	gatewaycapture "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 
 	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/stretchr/testify/require"
 )
 
 // 展示必须补齐首段、中间空档和尾段，并与同一上下文的实际单价一致。
 func TestPricingDisplayPreservesDefaultRanges(t *testing.T) {
-	for _, source := range []string{"group", "channel"} {
+	for _, source := range []string{"channel"} {
 		for _, freeFast := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/freeFast=%v", source, freeFast), func(t *testing.T) {
 				card := routing.ModelPricingEntry{
@@ -33,14 +31,19 @@ func TestPricingDisplayPreservesDefaultRanges(t *testing.T) {
 						{MinTokens: 100, MaxTokens: testPtrInt(150), InputPrice: testPtrFloat64(0.002)},
 					},
 				}
-				group := &routing.Group{ID: 100, RateMultiplier: 1.5, FreeOpenAIFast: freeFast, ModelPricing: []routing.ModelPricingEntry{card}}
+				group := &routing.Group{
+					ID:             100,
+					RateMultiplier: 1.5,
+				}
 				rCalculator := billingtestkit.ResolverCalculator()
 				r := billingtestkit.ResolverWithCards(t, rCalculator, nil)
 				if source == "channel" {
 					rCalculator = billingtestkit.ResolverCalculator()
 					r = billingtestkit.ResolverWithCards(t, rCalculator, []routing.ModelPricingEntry{card})
-					group.ModelPricing = nil
 				}
+				settings := pricing.DefaultBillingSettings()
+				settings.FreeOpenAIFast = freeFast
+				r = billingtestkit.SharedPriceResolver(rCalculator, group.ID, settings, []routing.ModelPricingEntry{card})
 				market := newPricingMarketplaceFixture(nil, nil, r, rCalculator, nil, nil, nil)
 				display := market.PublicModelPricing(context.Background(), group, "custom-ranges")
 				require.Len(t, display.ContextIntervals, 5)
@@ -67,7 +70,7 @@ func TestPricingDisplayPreservesDefaultRanges(t *testing.T) {
 						}
 					}
 					cost, err := rCalculator.CalculateCostUnified(billing.CostInput{
-						Ctx: context.Background(), Model: "custom-ranges", Group: gatewaycapture.ProjectCompletionPriceGroup(group), GroupID: &group.ID,
+						Ctx: context.Background(), Model: "custom-ranges", GroupID: &group.ID,
 						Tokens: pricing.UsageTokens{InputTokens: count}, RateMultiplier: group.RateMultiplier, Resolver: r,
 					})
 					require.NoError(t, err)
@@ -90,7 +93,11 @@ func TestPricingDisplayOnlyFlattensCompleteUniformRanges(t *testing.T) {
 		if pricedBase {
 			card.InputPrice = testPtrFloat64(0.001)
 		}
-		group := &routing.Group{ID: 1, RateMultiplier: 1, ModelPricing: []routing.ModelPricingEntry{card}}
+		group := &routing.Group{
+			ID:             1,
+			RateMultiplier: 1,
+		}
+		r = billingtestkit.SharedPriceResolver(rCalculator, 1, pricing.DefaultBillingSettings(), []routing.ModelPricingEntry{card})
 		market := newPricingMarketplaceFixture(nil, nil, r, rCalculator, nil, nil, nil)
 		display := market.PublicModelPricing(context.Background(), group, "custom-uniform")
 		if pricedBase {
@@ -106,7 +113,7 @@ func TestPricingDisplayOnlyFlattensCompleteUniformRanges(t *testing.T) {
 
 // 倍率只调整存在的基础价；显式默认零价和显式区间零价仍是有效免费价格。
 func TestPricingIntervalsDistinguishMissingBaseFromExplicitZero(t *testing.T) {
-	for _, source := range []string{"group", "channel"} {
+	for _, source := range []string{"channel"} {
 		for _, kind := range []string{"missing", "builtin", "zero_base", "zero_interval"} {
 			t.Run(source+"/"+kind, func(t *testing.T) {
 				model := "custom-no-base"
@@ -123,18 +130,20 @@ func TestPricingIntervalsDistinguishMissingBaseFromExplicitZero(t *testing.T) {
 				if kind == "zero_interval" {
 					card.Intervals[0].InputPrice = testPtrFloat64(0)
 				}
-				_, err := (routing.PricingConfigValidation{LoadLocation: pricingprovider.LoadPricingLocation}).NormalizeGroupPricing(capability.PlatformOpenAI, []routing.ModelPricingEntry{card})
+				err := (routing.PricingConfigValidation{LoadLocation: pricingprovider.LoadPricingLocation}).PricingEntries([]routing.ModelPricingEntry{card})
 				require.NoError(t, err)
-				group := &routing.Group{ID: 100, RateMultiplier: 1, ModelPricing: []routing.ModelPricingEntry{card}}
+				group := &routing.Group{
+					ID:             100,
+					RateMultiplier: 1,
+				}
 				rCalculator := billingtestkit.ResolverCalculator()
 				r := billingtestkit.ResolverWithCards(t, rCalculator, nil)
 				if source == "channel" {
 					rCalculator = billingtestkit.ResolverCalculator()
 					r = billingtestkit.ResolverWithCards(t, rCalculator, []routing.ModelPricingEntry{card})
-					group.ModelPricing = nil
 				}
 				cost, err := rCalculator.CalculateCostUnified(billing.CostInput{
-					Ctx: context.Background(), Model: model, Group: gatewaycapture.ProjectCompletionPriceGroup(group), GroupID: &group.ID,
+					Ctx: context.Background(), Model: model, GroupID: &group.ID,
 					Tokens: pricing.UsageTokens{InputTokens: 50}, RateMultiplier: 1, Resolver: r,
 				})
 				market := newPricingMarketplaceFixture(nil, nil, r, rCalculator, nil, nil, nil)
@@ -160,16 +169,14 @@ func TestPricingIntervalsDistinguishMissingBaseFromExplicitZero(t *testing.T) {
 // 部分范围有显式价格不代表其它范围也有价；缺价的倍率区间必须继续报缺价。
 func TestPricingMissingMultiplierRangeDoesNotBorrowOtherIntervalPrice(t *testing.T) {
 	rCalculator := billingtestkit.ResolverCalculator()
-	r := billingtestkit.PriceResolver(nil, rCalculator)
+	r := billingtestkit.SharedPriceResolver(rCalculator, 1, pricing.DefaultBillingSettings(), []routing.ModelPricingEntry{{Models: []string{"custom-partial"}, BillingMode: routing.BillingModeToken, Intervals: []routing.PricingInterval{{MinTokens: 0, MaxTokens: testPtrInt(100), InputMultiplier: testPtrFloat64(2)}, {MinTokens: 100, InputPrice: testPtrFloat64(0.003)}}}})
 	group := &routing.Group{
-		ID: 1, RateMultiplier: 1, ModelPricing: []routing.ModelPricingEntry{{
-			Models: []string{"custom-partial"}, BillingMode: routing.BillingModeToken,
-			Intervals: []routing.PricingInterval{{MinTokens: 0, MaxTokens: testPtrInt(100), InputMultiplier: testPtrFloat64(2)}, {MinTokens: 100, InputPrice: testPtrFloat64(0.003)}},
-		}},
+		ID:             1,
+		RateMultiplier: 1,
 	}
 	for _, count := range []int{50, 150} {
 		cost, err := rCalculator.CalculateCostUnified(billing.CostInput{
-			Ctx: context.Background(), Model: "custom-partial", Group: gatewaycapture.ProjectCompletionPriceGroup(group),
+			Ctx: context.Background(), Model: "custom-partial", GroupID: &group.ID,
 			Tokens: pricing.UsageTokens{InputTokens: count}, RateMultiplier: 1, Resolver: r,
 		})
 		if count <= 100 {

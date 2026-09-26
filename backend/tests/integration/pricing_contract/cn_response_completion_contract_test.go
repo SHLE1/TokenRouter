@@ -40,25 +40,18 @@ func TestFilterCNProviderBillingModelCandidates(t *testing.T) {
 	))
 }
 
-func TestFilterCNProviderBillingModelCandidatesKeepsExplicitGroupPricing(t *testing.T) {
+func TestFilterCNProviderBillingModelCandidatesKeepsExplicitConfigPricing(t *testing.T) {
 	inputPrice := 0.000001
 	outputPrice := 0.000002
 	billing := billingtestkit.Calculator(0, nil, nil)
-	svc := completion.NewRecorder(completion.Dependencies{
-		Calculator: billing,
-		Prices:     billingtestkit.PriceResolver(nil, billing),
-	}, completion.RecorderOptions{DefaultMultiplier: 1})
-
-	group := &routing.Group{
-		ID: 1,
-
-		ModelPricing: []routing.ModelPricingEntry{{
-			Models:      []string{"claude-sonnet-4-5"},
-			BillingMode: routing.BillingModeToken,
-			InputPrice:  &inputPrice,
-			OutputPrice: &outputPrice,
-		}},
-	}
+	resolver := billingtestkit.SharedPriceResolver(billing, 1, pricing.DefaultBillingSettings(), []routing.ModelPricingEntry{{
+		Models:      []string{"claude-sonnet-4-5"},
+		BillingMode: routing.BillingModeToken,
+		InputPrice:  &inputPrice,
+		OutputPrice: &outputPrice,
+	}})
+	svc := completion.NewRecorder(completion.Dependencies{Calculator: billing, Prices: resolver}, completion.RecorderOptions{DefaultMultiplier: 1})
+	group := &routing.Group{ID: 1}
 	apiKey := &apikey.APIKey{Group: group}
 	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformKimi}}
 

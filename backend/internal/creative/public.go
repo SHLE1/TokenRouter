@@ -48,7 +48,6 @@ type GroupView struct {
 	RateMultiplier                            float64
 	Operations                                map[string][]string
 	ProtocolFallbacks                         map[protocol.ProtocolID][]protocol.ProtocolID
-	Price                                     billing.PriceGroup
 	RoutingPolicy                             routing.GroupRoutingPolicy
 }
 type GroupReader interface {

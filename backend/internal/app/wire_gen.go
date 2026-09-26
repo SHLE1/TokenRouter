@@ -496,7 +496,7 @@ func initializeApplication(ctx context.Context, cfg *config.Config, info BuildIn
 	qoderChatHandler := provideQoderChat(routePlanner, providerQoderRuntime, qoderRequestRefresh, concurrencyService, fundingAdmission, apiKeyService, errorPassthroughService, usageRecordWorkerPool, gatewayCompletionRecorders, appQoderRequestActivity, appGatewayRequestActivity, generic)
 	batchImageRepository := postgres12.NewBatchImageRepository(db)
 	batchImageQueue := provideBatchQueue(redisClient, cfg)
-	pricing := provideBatchPricing(priceResolver, groupRepository)
+	pricing := provideBatchPricing(priceResolver, groupRepository, pricingConfigService)
 	batchimageRegistry := provideS13BatchRegistry(cfg)
 	batchimagePublic := provideS13BatchPublic(batchImageRepository, accountStore, pricingConfigService, groupRepository, groupRateStore, batchImageQueue, pricing, funds, settlementStore, apiKeyAuthCacheInvalidator, cfg, batchimageRegistry)
 	batchImageDownloadLimiter := provideBatchDownloadLimiter(redisClient, cfg)

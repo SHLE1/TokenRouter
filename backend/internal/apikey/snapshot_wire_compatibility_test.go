@@ -56,6 +56,21 @@ func migrateSnapshotPricingFields(value any) {
 	switch node := value.(type) {
 	case map[string]any:
 		delete(node, "platform")
+		delete(node, "peak_rate_enabled")
+		delete(node, "peak_start")
+		delete(node, "peak_end")
+		delete(node, "peak_rate_multiplier")
+		delete(node, "long_context_pricing_enabled")
+		delete(node, "free_openai_fast")
+		delete(node, "batch_image_discount_multiplier")
+		delete(node, "batch_image_hold_multiplier")
+		delete(node, "web_search_price_per_call")
+		delete(node, "search_price_per_1k")
+		delete(node, "audio_realtime_price_per_min")
+		delete(node, "audio_tts_price_per_million_chars")
+		delete(node, "audio_stt_price_per_hour")
+		delete(node, "model_pricing")
+
 		delete(node, "messages_dispatch_model_config")
 		delete(node, "opus_mapped_model")
 		delete(node, "sonnet_mapped_model")

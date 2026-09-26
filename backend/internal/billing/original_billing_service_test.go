@@ -1152,20 +1152,21 @@ func TestGetModelPricing_GrokOfficialFamilyCards(t *testing.T) {
 	}
 }
 
-func TestCalculateCostUnified_GroupLongContextToggleUsesPresetLadder(t *testing.T) {
+func TestCalculateCostUnified_ConfigLongContextToggleUsesPresetLadder(t *testing.T) {
 	svc := newTestCalculator()
-	resolver := billingtestkit.PriceResolver(nil, svc)
+	settings := billingpricing.DefaultBillingSettings()
+	settings.LongContextPricingEnabled = false
+	resolver, source := settingsResolver(svc, settings, nil)
 	tokens := billingpricing.UsageTokens{InputTokens: 250000, OutputTokens: 1000}
 
-	off := &routing.Group{LongContextPricingEnabled: false}
 	disabled, err := svc.CalculateCostUnified(billing.CostInput{
-		Model: "grok-4.5", Group: projectPriceGroup(off), Tokens: tokens, RateMultiplier: 1, Resolver: resolver,
+		Model: "grok-4.5", GroupID: billingtestkit.GroupID(), Tokens: tokens, RateMultiplier: 1, Resolver: resolver,
 	})
 	require.NoError(t, err)
 
-	on := &routing.Group{LongContextPricingEnabled: true}
+	source.settings.LongContextPricingEnabled = true
 	enabled, err := svc.CalculateCostUnified(billing.CostInput{
-		Model: "grok-4.5", Group: projectPriceGroup(on), Tokens: tokens, RateMultiplier: 1, Resolver: resolver,
+		Model: "grok-4.5", GroupID: billingtestkit.GroupID(), Tokens: tokens, RateMultiplier: 1, Resolver: resolver,
 	})
 	require.NoError(t, err)
 

@@ -8,8 +8,6 @@ import (
 	purepricing "github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 )
 
-const PricingSourceGroup = purepricing.PricingSourceGroup
-
 const PricingSourceConfig = purepricing.PricingSourceConfig
 
 const PricingSourceLiteLLM = purepricing.PricingSourceLiteLLM
@@ -25,33 +23,22 @@ type ResolvedPricing = purepricing.ResolvedPricing
 type PricingInput struct {
 	Model   string
 	GroupID *int64 // nil 表示不检查共享价格配置
-	Group   *PriceGroup
 }
 
-// Resolve 获取旧分组/共享价格配置输入，纯包唯一决定价卡优先级和金额策略。
+// Resolve 按关联价格配置与内置价格解析价卡及计费设置。
 // @project-doc docs/domains/routing_and_billing.md#group_model_pricing
 func (r *PriceResolver) Resolve(ctx context.Context, input PricingInput) *ResolvedPricing {
-	group := MatchGroupModelPricing(input.Group, input.Model, r.lookup)
 	var configPricing *ModelPricingEntry
-	if !purepricing.PriceCardOverrides(group) && input.GroupID != nil && r.pricingConfigs != nil {
+	if input.GroupID != nil && r.pricingConfigs != nil {
 		configPricing = r.LookupConfigPricingNormalized(ctx, *input.GroupID, input.Model)
 	}
 	var base *ModelPricing
 	source := PricingSourceUnpriced
-	if purepricing.PriceCardNeedsBase(purepricing.SelectPriceCard(group, configPricing)) {
+	if purepricing.PriceCardNeedsBase(configPricing) {
 		base, source = r.ResolveBasePricing(input.Model)
 	}
-	return purepricing.ResolvePriceCards(group, configPricing, base, source, input.Group == nil || input.Group.LongContextPricingEnabled)
-}
-
-// MatchGroupModelPricing 获取旧分组输入，具体匹配由纯定价唯一执行。
-func MatchGroupModelPricing(group *PriceGroup, model string, candidates ModelCandidates) *ModelPricingEntry {
-	if group == nil {
-		return nil
-	}
-	return LookupPricingForModel(model, func(candidate string) *ModelPricingEntry {
-		return purepricing.MatchPriceCard(group.ModelPricing, candidate)
-	}, candidates)
+	settings := r.BillingSettings(ctx, input.GroupID)
+	return purepricing.ResolvePriceCards(configPricing, base, source, settings.LongContextPricingEnabled)
 }
 
 // ResolveBasePricing 从 LiteLLM 或 Fallback 获取基础定价
@@ -76,7 +63,7 @@ func (r *PriceResolver) LookupConfigPricingNormalized(ctx context.Context, group
 	}, r.lookup)
 }
 
-// LookupPricingForModel 统一分组与共享价格配置的候选顺序，完整请求名的精确/通配价卡优先。
+// LookupPricingForModel 统一共享价格配置的候选顺序，完整请求名的精确/通配价卡优先。
 func LookupPricingForModel(model string, lookup func(string) *ModelPricingEntry, identities ModelCandidates) *ModelPricingEntry {
 	if pricing := lookup(model); pricing != nil {
 		return pricing
@@ -127,11 +114,6 @@ func (r *PriceResolver) GetRequestTierPriceByContextValue(resolved *ResolvedPric
 	return purepricing.GetRequestTierPriceByContextValue(resolved, totalContextTokens)
 }
 
-// PriceGroup 只包含定价规则所需字段，nil 与显式空集合保持区别。
-type PriceGroup struct {
-	ModelPricing              []ModelPricingEntry
-	LongContextPricingEnabled bool
-}
 type ConfigPrices interface {
 	GetEffectiveConfigModelPricing(context.Context, int64, string) *ModelPricingEntry
 }
@@ -141,7 +123,7 @@ type ModelIdentity struct {
 }
 type ModelCandidates func(string) ModelIdentity
 
-// PriceResolver 保留分组、共享价格配置、目录的按需读取顺序。
+// PriceResolver 按分组关联读取共享价格配置，并按需查询模型目录。
 type PriceResolver struct {
 	pricingConfigs ConfigPrices
 	calculator     *Calculator
@@ -159,4 +141,16 @@ func NewPriceResolver(pricingConfigs ConfigPrices, calculator *Calculator, looku
 		accountStats = stats[0]
 	}
 	return &PriceResolver{pricingConfigs: pricingConfigs, calculator: calculator, lookup: lookup, observe: observe, accountStats: accountStats}
+}
+
+// BillingSettings 读取分组关联的有效配置，无关联时使用统一默认值。
+func (r *PriceResolver) BillingSettings(ctx context.Context, groupID *int64) purepricing.BillingSettings {
+	if r != nil && groupID != nil {
+		if source, ok := r.pricingConfigs.(interface {
+			GetEffectiveBillingSettings(context.Context, int64) purepricing.BillingSettings
+		}); ok {
+			return source.GetEffectiveBillingSettings(ctx, *groupID).Clone()
+		}
+	}
+	return purepricing.DefaultBillingSettings()
 }

@@ -19,8 +19,6 @@ import (
 
 	apikeypostgres "github.com/TokenFlux/TokenRouter/internal/apikey/postgres"
 
-	pricingprovider "github.com/TokenFlux/TokenRouter/internal/billing/provider"
-
 	identitypostgres "github.com/TokenFlux/TokenRouter/internal/identity/postgres"
 
 	postgresinfra "github.com/TokenFlux/TokenRouter/internal/infra/postgres"
@@ -53,7 +51,6 @@ func provideGroupReader(store *routingpostgres.GroupStore) routing.GroupReposito
 
 func provideRoutingGroupAdmin(store *routingpostgres.GroupStore, accounts *accountpostgres.AccountStore, keys *apikeypostgres.KeyStore, invalidator apikey.APIKeyAuthCacheInvalidator, modelConfigs *routing.PricingConfigService, settings *settingscore.Store, defaults *scheduler.AdminDefaults) *routing.GroupAdmin {
 	return routing.NewGroupAdmin(store, store, store, routingGroupAccounts{Store: accounts, Defaults: accountprovider.ModelDefaults()}, keys, invalidator, modelConfigs, routing.GroupAdminOptions{
-		Pricing:       routing.PricingConfigValidation{LoadLocation: pricingprovider.LoadPricingLocation},
 		DefaultModels: routingprovider.DefaultGroupModelCandidates,
 		GlobalWeights: func(ctx context.Context) (policy.ScoreWeights, error) {
 			return scheduler.LoadValidationWeights(ctx, settings, *defaults)

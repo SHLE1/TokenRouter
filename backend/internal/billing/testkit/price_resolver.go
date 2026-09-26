@@ -81,3 +81,10 @@ func PriceResolver(pricingConfigs *routing.PricingConfigService, calculator *bil
 		slog.Debug("failed to get model pricing from LiteLLM, using fallback", "model", model, "error", err)
 	}, stats)
 }
+
+// SharedPriceResolver 用真实配置服务为单个测试分组提供价卡和计费设置。
+func SharedPriceResolver(calculator *billing.Calculator, groupID int64, settings billingpricing.BillingSettings, cards []routing.ModelPricingEntry) *billing.PriceResolver {
+	rows := []routingtestkit.Configuration{{ID: groupID, Status: routing.StatusActive, GroupIDs: []int64{groupID}, BillingSettings: &settings, ModelPricing: cards}}
+	configs := routingtestkit.ModelConfigFromData(routingtestkit.ModelConfigDataFromRows(rows, nil))
+	return PriceResolver(configs, calculator)
+}

@@ -18,7 +18,7 @@ import (
 // s05IsolationKey 覆盖认证快照的可变引用，凭据与地址均为本地测试数据。
 func s05IsolationKey() *apikey.APIKey {
 	groupID, teamID, subscriptionID := int64(3), int64(4), int64(5)
-	threshold, price := 3.0, 0.2
+	threshold := 3.0
 	now := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
 	return &apikey.APIKey{
 		ID: 1, UserID: 2, Key: "s05-test-only", GroupID: &groupID, TeamID: &teamID, PreferredSubscriptionID: &subscriptionID, ExpiresAt: &now,
@@ -27,7 +27,7 @@ func s05IsolationKey() *apikey.APIKey {
 		Team: &team.Team{ID: 4}, TeamMembership: &team.TeamMembership{ID: 6, DailyWindowStart: &now},
 		Group: &routing.Group{
 			ID: 3, ModelRouting: map[string][]int64{"model": {7, 8}}, SupportedModelScopes: []string{"claude"},
-			ModelsListConfig: routing.GroupModelsListConfig{Enabled: true, Models: []string{"model"}}, WebSearchPricePerCall: &price,
+			ModelsListConfig: routing.GroupModelsListConfig{Enabled: true, Models: []string{"model"}},
 		},
 	}
 }
@@ -53,7 +53,6 @@ func TestS05AuthSnapshotIsolation(t *testing.T) {
 		"routing_slice": func(k *apikey.APIKey) { k.Group.ModelRouting["model"][0] = 99 },
 		"scopes":        func(k *apikey.APIKey) { k.Group.SupportedModelScopes[0] = "changed" },
 		"models":        func(k *apikey.APIKey) { k.Group.ModelsListConfig.Models[0] = "changed" },
-		"price":         func(k *apikey.APIKey) { *k.Group.WebSearchPricePerCall = 99 },
 	}
 	for name, change := range changes {
 		for _, direction := range []string{"source", "request"} {

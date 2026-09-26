@@ -310,3 +310,18 @@ func ResolveSubscription(ctx context.Context, current *billing.UserSubscription,
 	}
 	return sub
 }
+
+// keyWithBillingSettings 在结算开始时读取共享设置，认证快照不携带价格配置。
+func (s *Recorder) keyWithBillingSettings(ctx context.Context, key *KeySnapshot) *KeySnapshot {
+	key = SnapshotKey(key)
+	if key == nil || key.Group == nil {
+		return key
+	}
+	g := key.Group
+	settings := s.resolver.BillingSettings(ctx, &g.ID)
+	g.PeakRateEnabled, g.PeakStart, g.PeakEnd, g.PeakRateMultiplier = settings.PeakRateEnabled, settings.PeakStart, settings.PeakEnd, settings.PeakRateMultiplier
+	g.FreeOpenAIFast = settings.FreeOpenAIFast
+	g.WebSearchPricePerCall, g.SearchPricePer1k = settings.WebSearchPricePerCall, settings.SearchPricePer1k
+	g.AudioPrice = &pricing.AudioPriceConfig{RealtimePerMin: settings.AudioRealtimePricePerMin, TTSPerMChars: settings.AudioTTSPricePerMillionChars, STTPerHour: settings.AudioSTTPricePerHour}
+	return key
+}

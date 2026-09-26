@@ -112,7 +112,7 @@ OpenAI 分组以 `openai_fast_policy` 选择 `follow_request`、`force_priority`
 
 新字段优先于旧 `force_openai_fast`；旧 true 映射为强制 Fast，false 映射为跟随请求，更新时均省略则保留。其它平台清除策略，公开分组不返回管理策略。迁移 269 保留旧开关行为，新字段经过分组复制、仓储和认证快照传递，当前认证缓存为 v40，版本不匹配时重建快照。
 
-`free_openai_fast` 是同一分组的用户计费策略，不会改变出站 `service_tier`。只有 OpenAI 账号实际按 `priority`/`fast` 计费时才生效；网关使用同一模型映射、渠道价卡、峰值和长上下文时刻重新取得 Standard 价格，将其写入用户侧 `ActualCost` 和统一结算的基础金额，同时保留 Fast `TotalCost` 给 Usage Log、账号统计和账号额度。Standard 定价缺失时沿用零成本缺价记录，不能借此绕过原有定价错误边界；非 OpenAI 账号、普通 tier 和不可信认证快照均不适用。
+`free_openai_fast` 是关联价格配置的用户计费策略，不会改变出站 `service_tier`。只有 OpenAI 账号实际按 `priority`/`fast` 计费时才生效；网关使用同一模型映射、渠道价卡、峰值和长上下文时刻重新取得 Standard 价格，将其写入用户侧 `ActualCost` 和统一结算的基础金额，同时保留 Fast `TotalCost` 给 Usage Log、账号统计和账号额度。Standard 定价缺失时沿用零成本缺价记录，不能借此绕过原有定价错误边界；非 OpenAI 账号、普通 tier 和不可信认证快照均不适用。
 
 该字段随 API Key 认证快照传递；当前 v40 的快照与失效规则见[账号调度与缓存一致性](../architecture/account_scheduling_and_cache.md)。
 

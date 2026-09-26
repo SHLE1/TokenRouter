@@ -9,16 +9,20 @@ import (
 )
 
 // batchPricingGroups 只投影任务报价所需字段，读取仍由任务用例按需触发。
-type batchPricingGroups struct{ source routing.GroupRepository }
+type batchPricingGroups struct {
+	source   routing.GroupRepository
+	settings *routing.PricingConfigService
+}
 
 func (r batchPricingGroups) GetByIDLite(ctx context.Context, id int64) (*batchimage.GroupView, error) {
 	value, err := r.source.GetByIDLite(ctx, id)
 	if value == nil {
 		return nil, err
 	}
-	return &batchimage.GroupView{ID: value.ID, AllowBatchImageGeneration: value.AllowBatchImageGeneration, RateMultiplier: value.RateMultiplier, BatchImageDiscountMultiplier: value.BatchImageDiscountMultiplier, BatchImageHoldMultiplier: value.BatchImageHoldMultiplier, Price: billing.PriceGroup{ModelPricing: value.ModelPricing, LongContextPricingEnabled: value.LongContextPricingEnabled}}, err
+	settings := r.settings.GetEffectiveBillingSettings(ctx, id)
+	return &batchimage.GroupView{ID: value.ID, AllowBatchImageGeneration: value.AllowBatchImageGeneration, RateMultiplier: value.RateMultiplier, BatchImageDiscountMultiplier: settings.BatchImageDiscountMultiplier, BatchImageHoldMultiplier: settings.BatchImageHoldMultiplier}, err
 }
 
-func provideBatchPricing(resolver *billing.PriceResolver, groups routing.GroupRepository) *batchimage.Pricing {
-	return &batchimage.Pricing{Resolver: resolver, GroupRepo: batchPricingGroups{groups}}
+func provideBatchPricing(resolver *billing.PriceResolver, groups routing.GroupRepository, configs *routing.PricingConfigService) *batchimage.Pricing {
+	return &batchimage.Pricing{Resolver: resolver, GroupRepo: batchPricingGroups{groups, configs}}
 }

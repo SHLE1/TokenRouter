@@ -52,6 +52,7 @@ func SnapshotResult(in *Result) *Result {
 	}
 	return &out
 }
+
 func SnapshotAccount(in *AccountSnapshot) *AccountSnapshot {
 	if in == nil {
 		return nil
@@ -65,6 +66,7 @@ func SnapshotAccount(in *AccountSnapshot) *AccountSnapshot {
 	}
 	return &out
 }
+
 func SnapshotKey(in *KeySnapshot) *KeySnapshot {
 	if in == nil {
 		return nil
@@ -75,14 +77,6 @@ func SnapshotKey(in *KeySnapshot) *KeySnapshot {
 	out.PreferredSubscriptionID = cloneInt64(in.PreferredSubscriptionID)
 	if in.Group != nil {
 		g := *in.Group
-		if g.Price != nil {
-			p := *g.Price
-			p.ModelPricing = slices.Clone(p.ModelPricing)
-			for i := range p.ModelPricing {
-				p.ModelPricing[i] = p.ModelPricing[i].Clone()
-			}
-			g.Price = &p
-		}
 		g.WebSearchPricePerCall = cloneFloat(g.WebSearchPricePerCall)
 		g.SearchPricePer1k = cloneFloat(g.SearchPricePer1k)
 		if g.AudioPrice != nil {
@@ -96,6 +90,7 @@ func SnapshotKey(in *KeySnapshot) *KeySnapshot {
 	}
 	return &out
 }
+
 func cloneNotifyUser(in *billing.UserSummary) *billing.UserSummary {
 	if in == nil {
 		return nil
@@ -112,6 +107,7 @@ func cloneNotifyUser(in *billing.UserSummary) *billing.UserSummary {
 		TotalRecharged:             in.TotalRecharged,
 	}
 }
+
 func cloneString(v *string) *string {
 	if v == nil {
 		return nil
@@ -119,6 +115,7 @@ func cloneString(v *string) *string {
 	out := *v
 	return &out
 }
+
 func cloneInt64(v *int64) *int64 {
 	if v == nil {
 		return nil
@@ -126,6 +123,7 @@ func cloneInt64(v *int64) *int64 {
 	out := *v
 	return &out
 }
+
 func cloneInt(v *int) *int {
 	if v == nil {
 		return nil
@@ -133,6 +131,7 @@ func cloneInt(v *int) *int {
 	out := *v
 	return &out
 }
+
 func cloneFloat(v *float64) *float64 {
 	if v == nil {
 		return nil

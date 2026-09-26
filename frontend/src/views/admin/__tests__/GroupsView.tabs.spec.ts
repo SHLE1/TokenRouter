@@ -6,10 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import GroupsView from '../GroupsView.vue'
 import Select from '@/components/common/Select.vue'
 import GroupClientProtocolSelector from '@/components/admin/group/GroupClientProtocolSelector.vue'
-import PricingEntryCard from '@/components/admin/pricing/PricingEntryCard.vue'
-import { pricingEntryFromAPI } from '@/components/admin/pricing/pricingForm'
 import { defaultRoutingPolicy } from '@/components/admin/group/routingPolicy'
-import type { ModelPricingEntry } from '@/api/admin/pricing'
 import type { AdminGroup } from '@/types'
 
 const { groups, showError } = vi.hoisted(() => ({
@@ -45,7 +42,6 @@ function group(): AdminGroup {
     id: 42, name: 'Existing', rate_multiplier: 1, status: 'active',
     scheduler_type: 'basic', is_exclusive: false, model_routing: null,
     supported_model_scopes: ['claude', 'gemini_text', 'gemini_image'],
-
   } as AdminGroup
 }
 
@@ -114,69 +110,22 @@ it('编辑历史停用策略后保存即应用，打开表单时不提前更新�
 })
 
 describe.each(['create', 'edit'] as const)('GroupsView %s tabs', mode => {
-  it('通用分组显示功能、价格、模型和协议设置', async () => {
+  it('分组只保留基本、功能、模型和协议页签', async () => {
     const wrapper = await open(mode, 'mixed')
     const keys = wrapper.findAll('[data-group-tab-button]').map(button => button.attributes('data-group-tab-button'))
-    expect(keys).toEqual(['general', 'features', 'routing', 'pricing', 'protocol'])
+    expect(wrapper.find('[data-group-tab-button="pricing"]').exists()).toBe(false)
+    expect(keys).toEqual(['general', 'features', 'routing', 'protocol'])
     expect(wrapper.get('[data-group-tab="general"]').isVisible()).toBe(true)
-    expect(wrapper.get('[data-tour="group-form-multiplier"]').element.closest('[data-group-tab]')?.getAttribute('data-group-tab')).toBe('pricing')
+    expect(wrapper.get('[data-tour="group-form-multiplier"]').element.closest('[data-group-tab]')?.getAttribute('data-group-tab')).toBe('general')
     expect(wrapper.getComponent(GroupClientProtocolSelector).element.closest('[data-group-tab]')?.getAttribute('data-group-tab')).toBe('protocol')
     expect(wrapper.find('[data-group-field="reasoning"]').exists()).toBe(true)
     expect(wrapper.find('[data-group-field="image-capabilities"]').exists()).toBe(false)
   })
 
-  it('完整价卡在创建和编辑中开放区间及倍率，提交后可重新回填', async () => {
-    const pricing: ModelPricingEntry = {
-      models: ['gpt-test'], billing_mode: 'token', price_multiplier: 1.2,
-      fast_multiplier: 1.5, flex_multiplier: 0.4, max_reasoning_effort_multiplier: 2,
-      input_price: 0, output_price: 0.000003, cache_write_price: null, cache_write_1h_price: 0.000005,
-      cache_read_price: null, image_input_price: null, image_output_price: null, per_request_price: null,
-      intervals: [{ min_tokens: 100000, max_tokens: null, tier_label: '', input_price: 0.000002,
-        output_price: null, cache_write_price: null, cache_read_price: null, input_multiplier: null,
-        output_multiplier: 2, cache_write_multiplier: null, cache_read_multiplier: null, per_request_price: null, sort_order: 0 }],
-      time_pricing: { timezone: 'Asia/Shanghai', weekdays_only: true, periods: [{ start_time: '09:00:00', end_time: '10:00:00', multiplier: 0.5 }] },
-    }
-    const wrapper = await open(mode, 'openai', { model_pricing: [pricing], free_openai_fast: true })
-    await tab(wrapper, 'pricing')
-    if (mode === 'create') {
-      await wrapper.findAll('button').find(button => button.text().includes('admin.groups.modelPricing.add'))!.trigger('click')
-      wrapper.getComponent(PricingEntryCard).vm.$emit('update', pricingEntryFromAPI(pricing))
-      await flushPromises()
-    }
-    const card = wrapper.getComponent(PricingEntryCard)
-    expect(card.props('hideTokenIntervals')).toBe(false)
-    expect(card.props('enableTierMultipliers')).toBe(true)
-    expect(card.props('enableTimePricing')).toBe(true)
-    expect(card.props('entry').output_price).toBe(3)
-    await wrapper.get(`#${mode}-group-form`).trigger('submit')
-    await flushPromises()
-    const payload = mode === 'create' ? groups.create.mock.calls[0]?.[0] : groups.update.mock.calls[0]?.[1]
-    expect(payload.model_pricing[0]).toMatchObject(pricing)
-    const reopened = await open('edit', 'openai', payload)
-    await tab(reopened, 'pricing')
-    expect(reopened.getComponent(PricingEntryCard).props('entry')).toEqual(pricingEntryFromAPI(payload.model_pricing[0]))
-  })
-
-  it('冲突模型阻止提交，并定位回计费页', async () => {
+  it('跨页草稿一次提交，基础倍率与 Fast 路由策略保存，重新打开回到通用', async () => {
     const wrapper = await open(mode, 'openai')
-    await tab(wrapper, 'pricing')
-    await wrapper.findAll('button').find(button => button.text().includes('admin.groups.modelPricing.add'))!.trigger('click')
-    const card = wrapper.getComponent(PricingEntryCard)
-    card.vm.$emit('update', { ...card.props('entry'), models: ['gpt-test', 'gpt-test'], fast_multiplier: 1.5 })
-    await tab(wrapper, 'general')
-    await wrapper.get(`#${mode}-group-form`).trigger('submit')
-    await flushPromises()
-    expect(groups.create).not.toHaveBeenCalled()
-    expect(groups.update).not.toHaveBeenCalled()
-    expect(showError).toHaveBeenCalledWith(expect.stringContaining('modelConflict'))
-    expect(wrapper.get('[data-group-tab="pricing"]').isVisible()).toBe(true)
-  })
-
-  it('跨页草稿一次提交，强制与免费 Fast 独立保存，重新打开回到通用', async () => {
-    const wrapper = await open(mode, 'openai')
-    await tab(wrapper, 'pricing')
+    await tab(wrapper, 'routing')
     await wrapper.get('[data-tour="group-form-multiplier"]').setValue('1.5')
-    await wrapper.get(`[data-testid="${mode}-free-openai-fast"]`).trigger('click')
     await tab(wrapper, 'features')
     const force = wrapper.get(`[data-testid="${mode}-openai-fast"]`).getComponent(Select)
     expect(force.props('modelValue')).toBe('follow_request')
@@ -191,12 +140,11 @@ describe.each(['create', 'edit'] as const)('GroupsView %s tabs', mode => {
     await wrapper.get('[data-group-tab="routing"]').findAll('button').find(button => button.text() === 'common.add')!.trigger('click')
     await wrapper.get('input[aria-label="admin.groups.routingPolicy.source"]').setValue('claude-sonnet-4-6')
     await wrapper.get('input[aria-label="admin.groups.routingPolicy.target"]').setValue('gpt-test')
-    await tab(wrapper, 'pricing')
+    await tab(wrapper, 'routing')
     expect((wrapper.get('[data-tour="group-form-multiplier"]').element as HTMLInputElement).value).toBe('1.5')
     await wrapper.get(`#${mode}-group-form`).trigger('submit')
     await flushPromises()
     const payload = mode === 'create' ? groups.create.mock.calls[0]?.[0] : groups.update.mock.calls[0]?.[1]
-    expect(payload).toMatchObject({ rate_multiplier: 1.5, openai_fast_policy: 'force_ultrafast', free_openai_fast: true, allowed_protocols: ['anthropic_messages'] })
     expect(payload.routing_policy.model_mapping).toEqual({ 'claude-sonnet-4-6': 'gpt-test' })
     expect(payload.messages_dispatch_model_config).toBeUndefined()
     expect(wrapper.find(`#${mode}-group-form`).exists()).toBe(false)
@@ -207,7 +155,7 @@ describe.each(['create', 'edit'] as const)('GroupsView %s tabs', mode => {
   it('隐藏页签的名称、倍率和推理错误均可定位且阻止提交', async () => {
     const wrapper = await open(mode, 'openai')
     await wrapper.get('[data-group-field="name"] input').setValue('   ')
-    await tab(wrapper, 'pricing')
+    await tab(wrapper, 'routing')
     await wrapper.get(`#${mode}-group-form`).trigger('submit')
     await flushPromises()
     expect(wrapper.get('[data-group-tab="general"]').isVisible()).toBe(true)
@@ -215,7 +163,7 @@ describe.each(['create', 'edit'] as const)('GroupsView %s tabs', mode => {
     await wrapper.get('[data-tour="group-form-multiplier"]').setValue('-1')
     await wrapper.get(`#${mode}-group-form`).trigger('submit')
     await flushPromises()
-    expect(wrapper.get('[data-group-tab="pricing"]').isVisible()).toBe(true)
+    expect(wrapper.get('[data-group-tab="general"]').isVisible()).toBe(true)
     await wrapper.get('[data-tour="group-form-multiplier"]').setValue('1')
     await tab(wrapper, 'features')
     await wrapper.get('[data-group-field="reasoning"] button').trigger('click')
@@ -230,7 +178,7 @@ describe.each(['create', 'edit'] as const)('GroupsView %s tabs', mode => {
   it('探测缺少模型或提示词时回到通用并定位具体字段', async () => {
     const wrapper = await open(mode, 'openai')
     await wrapper.get('[data-group-field="probe"] button').trigger('click')
-    await tab(wrapper, 'pricing')
+    await tab(wrapper, 'routing')
     await wrapper.get(`#${mode}-group-form`).trigger('submit')
     await flushPromises()
     expect(wrapper.get('[data-group-tab="general"]').isVisible()).toBe(true)
@@ -245,61 +193,6 @@ describe.each(['create', 'edit'] as const)('GroupsView %s tabs', mode => {
     expect(document.activeElement).toBe(wrapper.get('[data-group-field="probe-prompt"]').element)
     expect(showError).toHaveBeenLastCalledWith('admin.groups.availabilityProbe.promptRequired')
     expect(groups[mode === 'create' ? 'create' : 'update']).not.toHaveBeenCalled()
-  })
-
-  it('批量图片协议独立控制价格字段，关闭后保留其它入口', async () => {
-    const wrapper = await open(mode, 'gemini', { allowed_protocols: ['gemini_generate_content'] })
-    await tab(wrapper, 'protocol')
-    const protocols = wrapper.getComponent(GroupClientProtocolSelector)
-    protocols.vm.$emit('update:modelValue', ['gemini_generate_content','image_batches'])
-    await flushPromises()
-    await tab(wrapper, 'pricing')
-    const batch = wrapper.findAll('input').find(input => input.attributes('placeholder') === '0.5')!
-    expect(batch.isVisible()).toBe(true)
-    await batch.setValue('0.4')
-    protocols.vm.$emit('update:modelValue', ['gemini_generate_content'])
-    await flushPromises()
-    expect(wrapper.findAll('input').some(input => input.attributes('placeholder') === '0.5')).toBe(false)
-    await wrapper.get(`#${mode}-group-form`).trigger('submit')
-    await flushPromises()
-    const payload = mode === 'create' ? groups.create.mock.calls[0]?.[0] : groups.update.mock.calls[0]?.[1]
-    expect(payload.allowed_protocols).toEqual(['gemini_generate_content'])
-    expect(payload.allow_image_generation).toBeUndefined()
-  })
-
-  it('协议控制不再显示专用模型覆盖，价格组件切页保持展开状态', async () => {
-    const wrapper = await open(mode, 'openai')
-    await tab(wrapper, 'protocol')
-    expect(wrapper.text()).not.toContain('admin.groups.openaiMessages.exactMappingTitle')
-    expect(wrapper.find('[data-group-tab="protocol"] input[type="text"]').exists()).toBe(false)
-    await tab(wrapper, 'pricing')
-    await wrapper.findAll('button').find(button => button.text().includes('admin.groups.modelPricing.add'))!.trigger('click')
-    const card = wrapper.getComponent(PricingEntryCard)
-    await card.get('.cursor-pointer').trigger('click')
-    const collapsedBefore = card.get('.collapsible-content').classes()
-    await tab(wrapper, 'general')
-    await tab(wrapper, 'pricing')
-    expect(wrapper.getComponent(PricingEntryCard).element).toBe(card.element)
-    expect(card.get('.collapsible-content').classes()).toEqual(collapsedBefore)
-  })
-
-  it('计费开关继续显示关联字段并保存正确的布尔值', async () => {
-    const wrapper = await open(mode, 'grok')
-    await tab(wrapper, 'pricing')
-    expect(wrapper.find('input[type="checkbox"]').exists()).toBe(false)
-    for (const field of ['peak_rate_enabled', 'long_context_pricing_enabled']) {
-      await wrapper.get(`[data-group-setting="${field}"]`).trigger('click')
-    }
-    const times = wrapper.findAll('input[type="time"]')
-    expect(times).toHaveLength(2)
-    await times[0]!.setValue('09:00')
-    await times[1]!.setValue('10:00')
-    expect(wrapper.find('[data-group-setting=\"image_rate_independent\"]').exists()).toBe(false)
-    expect(wrapper.find('[data-group-setting=\"video_rate_independent\"]').exists()).toBe(false)
-    await wrapper.get(`#${mode}-group-form`).trigger('submit')
-    await flushPromises()
-    const payload = mode === 'create' ? groups.create.mock.calls[0]?.[0] : groups.update.mock.calls[0]?.[1]
-    expect(payload).toMatchObject({ peak_rate_enabled: true, long_context_pricing_enabled: false })
   })
 
   it('模型系列与模型列表开关保留展示选择结果', async () => {
@@ -321,23 +214,6 @@ describe.each(['create', 'edit'] as const)('GroupsView %s tabs', mode => {
     const payload = mode === 'create' ? groups.create.mock.calls[0]?.[0] : groups.update.mock.calls[0]?.[1]
     expect(payload.supported_model_scopes).toEqual(['gemini_image'])
     expect(payload.models_list_config).toMatchObject({ enabled: true, models: [] })
-  })
-
-  it('校验隐藏页签中的折叠价格条目时先展开再聚焦', async () => {
-    const wrapper = await open(mode, 'openai')
-    await tab(wrapper, 'pricing')
-    await wrapper.findAll('button').find(button => button.text().includes('admin.groups.modelPricing.add'))!.trigger('click')
-    const card = wrapper.getComponent(PricingEntryCard)
-    await card.get('input[type="number"]').setValue('-1')
-    await card.get('.cursor-pointer').trigger('click')
-    expect(card.get('.collapsible-content').classes()).toContain('collapsible-content--collapsed')
-    await tab(wrapper, 'general')
-    await wrapper.get(`#${mode}-group-form`).trigger('submit')
-    await flushPromises()
-    expect(wrapper.get('[data-group-tab="pricing"]').isVisible()).toBe(true)
-    expect(card.get('.collapsible-content').classes()).not.toContain('collapsible-content--collapsed')
-    expect(document.activeElement).toBe(card.get('input[type="number"]').element)
-    expect(groups[mode === 'create' ? 'create' : 'update']).not.toHaveBeenCalled()
   })
 })
 

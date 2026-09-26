@@ -34,14 +34,6 @@ type Group struct {
 	Description *string `json:"description,omitempty"`
 	// RateMultiplier holds the value of the "rate_multiplier" field.
 	RateMultiplier float64 `json:"rate_multiplier,omitempty"`
-	// 是否启用高峰时段倍率
-	PeakRateEnabled bool `json:"peak_rate_enabled,omitempty"`
-	// 高峰开始时间 HH:MM（含），如 14:00；空表示未配置；不支持跨天
-	PeakStart string `json:"peak_start,omitempty"`
-	// 高峰结束时间 HH:MM（不含），必须大于 peak_start；不支持跨天，如 22:00-02:00
-	PeakEnd string `json:"peak_end,omitempty"`
-	// 高峰时段叠加倍率，仅在 peak_rate_enabled 且处于 [peak_start, peak_end) 时乘入文本倍率
-	PeakRateMultiplier float64 `json:"peak_rate_multiplier,omitempty"`
 	// IsExclusive holds the value of the "is_exclusive" field.
 	IsExclusive bool `json:"is_exclusive,omitempty"`
 	// Status holds the value of the "status" field.
@@ -58,26 +50,8 @@ type Group struct {
 	AllowImageGeneration bool `json:"allow_image_generation,omitempty"`
 	// 是否允许该分组使用批量图片生成能力
 	AllowBatchImageGeneration bool `json:"allow_batch_image_generation,omitempty"`
-	// 批量图片生成折扣倍率，最终单价会乘以该值；0 表示免费
-	BatchImageDiscountMultiplier float64 `json:"batch_image_discount_multiplier,omitempty"`
-	// 批量图片生成冻结价格比例，按普通生图原价乘以该比例冻结，结算后释放差额
-	BatchImageHoldMultiplier float64 `json:"batch_image_hold_multiplier,omitempty"`
-	// Codex alpha/search 网页搜索单次价格（USD/次）；nil 表示使用默认价 0.01（官方 $10/1000 次）
-	WebSearchPricePerCall *float64 `json:"web_search_price_per_call,omitempty"`
-	// 搜索工具每千次调用价格（web_search 等）
-	SearchPricePer1k *float64 `json:"search_price_per_1k,omitempty"`
-	// Voice realtime 每分钟价格（USD）
-	AudioRealtimePricePerMin *float64 `json:"audio_realtime_price_per_min,omitempty"`
-	// TTS 每百万字符价格（USD）
-	AudioTtsPricePerMillionChars *float64 `json:"audio_tts_price_per_million_chars,omitempty"`
-	// STT 每小时价格（USD）
-	AudioSttPricePerHour *float64 `json:"audio_stt_price_per_hour,omitempty"`
-	// 是否应用内置模型的长上下文阶梯价格；不影响自定义价卡区间
-	LongContextPricingEnabled bool `json:"long_context_pricing_enabled,omitempty"`
 	// 分组独立模型与功能策略
 	RoutingPolicy jsontext.Value `json:"routing_policy,omitempty"`
-	// 分组逐模型定价；优先级高于共享价格配置和网关默认价
-	ModelPricing jsontext.Value `json:"model_pricing,omitempty"`
 	// 是否仅允许 Claude Code 客户端
 	ClaudeCodeOnly bool `json:"claude_code_only,omitempty"`
 	// 非 Claude Code 请求降级使用的分组 ID
@@ -110,8 +84,6 @@ type Group struct {
 	OpenaiFastPolicy string `json:"openai_fast_policy,omitempty"`
 	// 是否强制此 OpenAI 分组请求使用 service_tier=priority
 	ForceOpenaiFast bool `json:"force_openai_fast,omitempty"`
-	// 是否让此 OpenAI 分组的 Fast 请求按 Standard 价格计费
-	FreeOpenaiFast bool `json:"free_openai_fast,omitempty"`
 	// 仅允许非 apikey 类型账号关联到此分组
 	RequireOauthOnly bool `json:"require_oauth_only,omitempty"`
 	// 调度时仅允许 privacy 已成功设置的账号
@@ -249,15 +221,15 @@ func (*Group) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case group.FieldAdvancedSchedulerOverrides, group.FieldRoutingPolicy, group.FieldModelPricing, group.FieldModelRouting, group.FieldSupportedModelScopes, group.FieldAllowedProtocols, group.FieldProtocolFallbacks, group.FieldModelsListConfig, group.FieldAvailabilityProbeConfig, group.FieldReasoningEffortMappings:
+		case group.FieldAdvancedSchedulerOverrides, group.FieldRoutingPolicy, group.FieldModelRouting, group.FieldSupportedModelScopes, group.FieldAllowedProtocols, group.FieldProtocolFallbacks, group.FieldModelsListConfig, group.FieldAvailabilityProbeConfig, group.FieldReasoningEffortMappings:
 			values[i] = new([]byte)
-		case group.FieldPeakRateEnabled, group.FieldIsExclusive, group.FieldAllowImageGeneration, group.FieldAllowBatchImageGeneration, group.FieldLongContextPricingEnabled, group.FieldClaudeCodeOnly, group.FieldModelRoutingEnabled, group.FieldMcpXMLInject, group.FieldAllowMessagesDispatch, group.FieldAllowLive, group.FieldForceOpenaiFast, group.FieldFreeOpenaiFast, group.FieldRequireOauthOnly, group.FieldRequirePrivacySet, group.FieldSessionIsolationEnabled:
+		case group.FieldIsExclusive, group.FieldAllowImageGeneration, group.FieldAllowBatchImageGeneration, group.FieldClaudeCodeOnly, group.FieldModelRoutingEnabled, group.FieldMcpXMLInject, group.FieldAllowMessagesDispatch, group.FieldAllowLive, group.FieldForceOpenaiFast, group.FieldRequireOauthOnly, group.FieldRequirePrivacySet, group.FieldSessionIsolationEnabled:
 			values[i] = new(sql.NullBool)
-		case group.FieldRateMultiplier, group.FieldPeakRateMultiplier, group.FieldBatchImageDiscountMultiplier, group.FieldBatchImageHoldMultiplier, group.FieldWebSearchPricePerCall, group.FieldSearchPricePer1k, group.FieldAudioRealtimePricePerMin, group.FieldAudioTtsPricePerMillionChars, group.FieldAudioSttPricePerHour:
+		case group.FieldRateMultiplier:
 			values[i] = new(sql.NullFloat64)
 		case group.FieldID, group.FieldFallbackGroupID, group.FieldFallbackGroupIDOnInvalidRequest, group.FieldUnavailableFallbackGroupID, group.FieldSortOrder, group.FieldRpmLimit:
 			values[i] = new(sql.NullInt64)
-		case group.FieldName, group.FieldDescription, group.FieldPeakStart, group.FieldPeakEnd, group.FieldStatus, group.FieldDuplicateOperationID, group.FieldSchedulerType, group.FieldDisplayBrand, group.FieldResponsesImagePolicy, group.FieldOpenaiFastPolicy, group.FieldDefaultMappedModel, group.FieldMaxReasoningEffort, group.FieldMaxReasoningEffortOverLimit:
+		case group.FieldName, group.FieldDescription, group.FieldStatus, group.FieldDuplicateOperationID, group.FieldSchedulerType, group.FieldDisplayBrand, group.FieldResponsesImagePolicy, group.FieldOpenaiFastPolicy, group.FieldDefaultMappedModel, group.FieldMaxReasoningEffort, group.FieldMaxReasoningEffortOverLimit:
 			values[i] = new(sql.NullString)
 		case group.FieldCreatedAt, group.FieldUpdatedAt, group.FieldDeletedAt:
 			values[i] = new(sql.NullTime)
@@ -320,30 +292,6 @@ func (_m *Group) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.RateMultiplier = value.Float64
 			}
-		case group.FieldPeakRateEnabled:
-			if value, ok := values[i].(*sql.NullBool); !ok {
-				return fmt.Errorf("unexpected type %T for field peak_rate_enabled", values[i])
-			} else if value.Valid {
-				_m.PeakRateEnabled = value.Bool
-			}
-		case group.FieldPeakStart:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field peak_start", values[i])
-			} else if value.Valid {
-				_m.PeakStart = value.String
-			}
-		case group.FieldPeakEnd:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field peak_end", values[i])
-			} else if value.Valid {
-				_m.PeakEnd = value.String
-			}
-		case group.FieldPeakRateMultiplier:
-			if value, ok := values[i].(*sql.NullFloat64); !ok {
-				return fmt.Errorf("unexpected type %T for field peak_rate_multiplier", values[i])
-			} else if value.Valid {
-				_m.PeakRateMultiplier = value.Float64
-			}
 		case group.FieldIsExclusive:
 			if value, ok := values[i].(*sql.NullBool); !ok {
 				return fmt.Errorf("unexpected type %T for field is_exclusive", values[i])
@@ -395,73 +343,12 @@ func (_m *Group) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.AllowBatchImageGeneration = value.Bool
 			}
-		case group.FieldBatchImageDiscountMultiplier:
-			if value, ok := values[i].(*sql.NullFloat64); !ok {
-				return fmt.Errorf("unexpected type %T for field batch_image_discount_multiplier", values[i])
-			} else if value.Valid {
-				_m.BatchImageDiscountMultiplier = value.Float64
-			}
-		case group.FieldBatchImageHoldMultiplier:
-			if value, ok := values[i].(*sql.NullFloat64); !ok {
-				return fmt.Errorf("unexpected type %T for field batch_image_hold_multiplier", values[i])
-			} else if value.Valid {
-				_m.BatchImageHoldMultiplier = value.Float64
-			}
-		case group.FieldWebSearchPricePerCall:
-			if value, ok := values[i].(*sql.NullFloat64); !ok {
-				return fmt.Errorf("unexpected type %T for field web_search_price_per_call", values[i])
-			} else if value.Valid {
-				_m.WebSearchPricePerCall = new(float64)
-				*_m.WebSearchPricePerCall = value.Float64
-			}
-		case group.FieldSearchPricePer1k:
-			if value, ok := values[i].(*sql.NullFloat64); !ok {
-				return fmt.Errorf("unexpected type %T for field search_price_per_1k", values[i])
-			} else if value.Valid {
-				_m.SearchPricePer1k = new(float64)
-				*_m.SearchPricePer1k = value.Float64
-			}
-		case group.FieldAudioRealtimePricePerMin:
-			if value, ok := values[i].(*sql.NullFloat64); !ok {
-				return fmt.Errorf("unexpected type %T for field audio_realtime_price_per_min", values[i])
-			} else if value.Valid {
-				_m.AudioRealtimePricePerMin = new(float64)
-				*_m.AudioRealtimePricePerMin = value.Float64
-			}
-		case group.FieldAudioTtsPricePerMillionChars:
-			if value, ok := values[i].(*sql.NullFloat64); !ok {
-				return fmt.Errorf("unexpected type %T for field audio_tts_price_per_million_chars", values[i])
-			} else if value.Valid {
-				_m.AudioTtsPricePerMillionChars = new(float64)
-				*_m.AudioTtsPricePerMillionChars = value.Float64
-			}
-		case group.FieldAudioSttPricePerHour:
-			if value, ok := values[i].(*sql.NullFloat64); !ok {
-				return fmt.Errorf("unexpected type %T for field audio_stt_price_per_hour", values[i])
-			} else if value.Valid {
-				_m.AudioSttPricePerHour = new(float64)
-				*_m.AudioSttPricePerHour = value.Float64
-			}
-		case group.FieldLongContextPricingEnabled:
-			if value, ok := values[i].(*sql.NullBool); !ok {
-				return fmt.Errorf("unexpected type %T for field long_context_pricing_enabled", values[i])
-			} else if value.Valid {
-				_m.LongContextPricingEnabled = value.Bool
-			}
 		case group.FieldRoutingPolicy:
 			if value, ok := values[i].(*[]byte); !ok {
 				return fmt.Errorf("unexpected type %T for field routing_policy", values[i])
 			} else if value != nil && len(*value) > 0 {
 				if err := json.Unmarshal(*value, &_m.RoutingPolicy); err != nil {
 					return fmt.Errorf("unmarshal field routing_policy: %w", err)
-				}
-			}
-		case group.FieldModelPricing:
-			if value, ok := values[i].(*[]byte); !ok {
-				return fmt.Errorf("unexpected type %T for field model_pricing", values[i])
-			} else if value != nil && len(*value) > 0 {
-				if err := json.Unmarshal(*value, &_m.ModelPricing); err != nil {
-					return fmt.Errorf("unmarshal field model_pricing: %w", err)
 				}
 			}
 		case group.FieldClaudeCodeOnly:
@@ -570,12 +457,6 @@ func (_m *Group) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field force_openai_fast", values[i])
 			} else if value.Valid {
 				_m.ForceOpenaiFast = value.Bool
-			}
-		case group.FieldFreeOpenaiFast:
-			if value, ok := values[i].(*sql.NullBool); !ok {
-				return fmt.Errorf("unexpected type %T for field free_openai_fast", values[i])
-			} else if value.Valid {
-				_m.FreeOpenaiFast = value.Bool
 			}
 		case group.FieldRequireOauthOnly:
 			if value, ok := values[i].(*sql.NullBool); !ok {
@@ -746,18 +627,6 @@ func (_m *Group) String() string {
 	builder.WriteString("rate_multiplier=")
 	builder.WriteString(fmt.Sprintf("%v", _m.RateMultiplier))
 	builder.WriteString(", ")
-	builder.WriteString("peak_rate_enabled=")
-	builder.WriteString(fmt.Sprintf("%v", _m.PeakRateEnabled))
-	builder.WriteString(", ")
-	builder.WriteString("peak_start=")
-	builder.WriteString(_m.PeakStart)
-	builder.WriteString(", ")
-	builder.WriteString("peak_end=")
-	builder.WriteString(_m.PeakEnd)
-	builder.WriteString(", ")
-	builder.WriteString("peak_rate_multiplier=")
-	builder.WriteString(fmt.Sprintf("%v", _m.PeakRateMultiplier))
-	builder.WriteString(", ")
 	builder.WriteString("is_exclusive=")
 	builder.WriteString(fmt.Sprintf("%v", _m.IsExclusive))
 	builder.WriteString(", ")
@@ -784,45 +653,8 @@ func (_m *Group) String() string {
 	builder.WriteString("allow_batch_image_generation=")
 	builder.WriteString(fmt.Sprintf("%v", _m.AllowBatchImageGeneration))
 	builder.WriteString(", ")
-	builder.WriteString("batch_image_discount_multiplier=")
-	builder.WriteString(fmt.Sprintf("%v", _m.BatchImageDiscountMultiplier))
-	builder.WriteString(", ")
-	builder.WriteString("batch_image_hold_multiplier=")
-	builder.WriteString(fmt.Sprintf("%v", _m.BatchImageHoldMultiplier))
-	builder.WriteString(", ")
-	if v := _m.WebSearchPricePerCall; v != nil {
-		builder.WriteString("web_search_price_per_call=")
-		builder.WriteString(fmt.Sprintf("%v", *v))
-	}
-	builder.WriteString(", ")
-	if v := _m.SearchPricePer1k; v != nil {
-		builder.WriteString("search_price_per_1k=")
-		builder.WriteString(fmt.Sprintf("%v", *v))
-	}
-	builder.WriteString(", ")
-	if v := _m.AudioRealtimePricePerMin; v != nil {
-		builder.WriteString("audio_realtime_price_per_min=")
-		builder.WriteString(fmt.Sprintf("%v", *v))
-	}
-	builder.WriteString(", ")
-	if v := _m.AudioTtsPricePerMillionChars; v != nil {
-		builder.WriteString("audio_tts_price_per_million_chars=")
-		builder.WriteString(fmt.Sprintf("%v", *v))
-	}
-	builder.WriteString(", ")
-	if v := _m.AudioSttPricePerHour; v != nil {
-		builder.WriteString("audio_stt_price_per_hour=")
-		builder.WriteString(fmt.Sprintf("%v", *v))
-	}
-	builder.WriteString(", ")
-	builder.WriteString("long_context_pricing_enabled=")
-	builder.WriteString(fmt.Sprintf("%v", _m.LongContextPricingEnabled))
-	builder.WriteString(", ")
 	builder.WriteString("routing_policy=")
 	builder.WriteString(fmt.Sprintf("%v", _m.RoutingPolicy))
-	builder.WriteString(", ")
-	builder.WriteString("model_pricing=")
-	builder.WriteString(fmt.Sprintf("%v", _m.ModelPricing))
 	builder.WriteString(", ")
 	builder.WriteString("claude_code_only=")
 	builder.WriteString(fmt.Sprintf("%v", _m.ClaudeCodeOnly))
@@ -877,9 +709,6 @@ func (_m *Group) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("force_openai_fast=")
 	builder.WriteString(fmt.Sprintf("%v", _m.ForceOpenaiFast))
-	builder.WriteString(", ")
-	builder.WriteString("free_openai_fast=")
-	builder.WriteString(fmt.Sprintf("%v", _m.FreeOpenaiFast))
 	builder.WriteString(", ")
 	builder.WriteString("require_oauth_only=")
 	builder.WriteString(fmt.Sprintf("%v", _m.RequireOauthOnly))

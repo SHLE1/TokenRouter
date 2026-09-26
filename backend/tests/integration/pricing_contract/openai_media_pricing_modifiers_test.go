@@ -28,7 +28,7 @@ func TestOpenAIMediaPricingUsesModifierOnlyCards(t *testing.T) {
 		if media == "video" {
 			model = "grok-imagine-video"
 		}
-		for _, scope := range []string{"group", "channel"} {
+		for _, scope := range []string{"channel"} {
 			for _, kind := range []string{"fast", "flex", "max", "time", "combined"} {
 				t.Run(media+"/"+scope+"/"+kind, func(t *testing.T) {
 					card := routing.ModelPricingEntry{Models: []string{model}, BillingMode: routing.BillingModeToken}
@@ -55,11 +55,9 @@ func TestOpenAIMediaPricingUsesModifierOnlyCards(t *testing.T) {
 					}}))
 					group := &routing.Group{ID: 100}
 					var pricingConfigCards []routing.ModelPricingEntry
-					if scope == "group" {
-						group.ModelPricing = []routing.ModelPricingEntry{card}
-					} else {
-						pricingConfigCards = []routing.ModelPricingEntry{card}
-					}
+
+					pricingConfigCards = []routing.ModelPricingEntry{card}
+
 					resolver := billingtestkit.ResolverWithCards(t, billing, pricingConfigCards)
 					svc := completion.NewRecorder(completion.Dependencies{Calculator: billing, Prices: resolver}, completion.RecorderOptions{DefaultMultiplier: 1})
 
@@ -84,7 +82,7 @@ func TestOpenAIMediaPricingUsesModifierOnlyCards(t *testing.T) {
 	}
 }
 
-// 分组纯倍率继承到按图或按秒价卡时保持原模式，不叠加 token 专属倍率。
+// 共享按图或按秒价卡保持原模式，不叠加 token 专属倍率。
 func TestOpenAIMediaModifiersPreserveInheritedRequestBilling(t *testing.T) {
 	for _, mode := range []routing.BillingMode{routing.BillingModeImage, routing.BillingModeVideo} {
 		t.Run(string(mode), func(t *testing.T) {
@@ -98,10 +96,7 @@ func TestOpenAIMediaModifiersPreserveInheritedRequestBilling(t *testing.T) {
 			}
 			billing := newCalculator(nil, nil)
 			resolver := billingtestkit.ResolverWithCards(t, billing, []routing.ModelPricingEntry{{Models: []string{model}, BillingMode: mode, PerRequestPrice: testPtrFloat64(0.25)}})
-			group := &routing.Group{ID: 100, ModelPricing: []routing.ModelPricingEntry{{
-				Models: []string{model}, FastMultiplier: testPtrFloat64(3),
-				TimePricing: &routing.TimePricingConfig{Timezone: "UTC", Periods: []routing.TimePricingPeriod{{StartTime: "00:00", EndTime: "12:00", Multiplier: 2}}},
-			}}}
+			group := &routing.Group{ID: 100}
 			svc := completion.NewRecorder(completion.Dependencies{Calculator: billing, Prices: resolver}, completion.RecorderOptions{DefaultMultiplier: 1})
 
 			cost, err := svc.CalculateOpenAIRecordUsageCostAt(context.Background(), gatewaycapture.ProjectOpenAICompletionResult(result, nil), gatewaycapture.ProjectCompletionKey(&apikey.APIKey{Group: group}), []string{model}, 1.5, 0.7, 0.8, 1,
@@ -117,17 +112,15 @@ func TestOpenAIMediaModifiersPreserveInheritedRequestBilling(t *testing.T) {
 // 放宽媒体价卡识别不能让国产供应商通过倍率条目启用 Claude 内置回退价。
 func TestCNProviderPricingModifiersDoNotCountAsExplicitPrices(t *testing.T) {
 	for _, platform := range []string{capability.PlatformKimi, capability.PlatformZhipu, capability.PlatformDeepseek} {
-		for _, scope := range []string{"group", "channel"} {
+		for _, scope := range []string{"channel"} {
 			t.Run(platform+"/"+scope, func(t *testing.T) {
 				model := "claude-sonnet-4"
 				card := routing.ModelPricingEntry{Models: []string{model}, FastMultiplier: testPtrFloat64(2)}
 				group := &routing.Group{ID: 100}
 				var pricingConfigCards []routing.ModelPricingEntry
-				if scope == "group" {
-					group.ModelPricing = []routing.ModelPricingEntry{card}
-				} else {
-					pricingConfigCards = []routing.ModelPricingEntry{card}
-				}
+
+				pricingConfigCards = []routing.ModelPricingEntry{card}
+
 				resolver := billingtestkit.ResolverWithCards(t, newCalculator(nil, nil), pricingConfigCards)
 				svc := completion.NewRecorder(completion.Dependencies{Prices: resolver}, completion.RecorderOptions{DefaultMultiplier: 1})
 
@@ -135,7 +128,8 @@ func TestCNProviderPricingModifiersDoNotCountAsExplicitPrices(t *testing.T) {
 				require.NotNil(t, svc.ResolveOpenAIConfigPricing(context.Background(), model, gatewaycapture.ProjectCompletionKey(key)))
 				require.Empty(t, svc.FilterCNProviderBillingModelCandidates(context.Background(), gatewaycapture.ProjectCompletionAccount(gatewaycapture.ExecutionCompletionRecord(&gatewaycapture.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: platform}})), gatewaycapture.ProjectCompletionKey(key), []string{model}))
 				// 显式零价仍是管理员的定价合同，应允许候选进入结算。
-				group.ModelPricing = []routing.ModelPricingEntry{{Models: []string{model}, InputPrice: testPtrFloat64(0)}}
+				resolver = billingtestkit.SharedPriceResolver(newCalculator(nil, nil), group.ID, pricing.DefaultBillingSettings(), []routing.ModelPricingEntry{{Models: []string{model}, InputPrice: testPtrFloat64(0)}})
+				svc = completion.NewRecorder(completion.Dependencies{Calculator: newCalculator(nil, nil), Prices: resolver}, completion.RecorderOptions{DefaultMultiplier: 1})
 				require.Equal(t, []string{model}, svc.FilterCNProviderBillingModelCandidates(context.Background(), gatewaycapture.ProjectCompletionAccount(gatewaycapture.ExecutionCompletionRecord(&gatewaycapture.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: platform}})), gatewaycapture.ProjectCompletionKey(key), []string{model}))
 			})
 		}

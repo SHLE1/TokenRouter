@@ -129,7 +129,7 @@ func TestSnapshotIsolatesQueueInputs(t *testing.T) {
 	at := time.Date(2026, 9, 16, 3, 4, 5, 0, time.UTC)
 	in := &Input{
 		PricingAt:    at,
-		APIKey:       &KeySnapshot{GroupID: &group, Group: &GroupSnapshot{Price: &billing.PriceGroup{ModelPricing: []pricing.ModelPricingEntry{{Models: []string{"model"}}}}, AudioPrice: &pricing.AudioPriceConfig{RealtimePerMin: &threshold}}},
+		APIKey:       &KeySnapshot{GroupID: &group, Group: &GroupSnapshot{AudioPrice: &pricing.AudioPriceConfig{RealtimePerMin: &threshold}}},
 		User:         &PayerSnapshot{Notification: &billing.UserSummary{BalanceNotifyThreshold: &threshold}},
 		Result:       &Result{ServiceTier: &tier, ImageOutputSizes: []string{"1K"}, ImageSizeBreakdown: map[string]int{"1K": 1}},
 		Subscription: &billing.UserSubscription{ID: 1, Plan: &billing.SubscriptionPlan{GroupIDs: []int64{7}, GroupRateMultipliers: map[int64]float64{7: 2}}},
@@ -141,7 +141,6 @@ func TestSnapshotIsolatesQueueInputs(t *testing.T) {
 	in.Result.ImageOutputSizes[0] = "4K"
 	in.Result.ImageSizeBreakdown["1K"] = 9
 	in.Subscription.Plan.GroupRateMultipliers[7] = 8
-	in.APIKey.Group.Price.ModelPricing[0].Models[0] = "other"
 	require.Equal(t, at, frozen.PricingAt)
 	require.Equal(t, int64(7), *frozen.APIKey.GroupID)
 	require.Equal(t, "priority", *frozen.Result.ServiceTier)
@@ -150,5 +149,4 @@ func TestSnapshotIsolatesQueueInputs(t *testing.T) {
 	require.Equal(t, []string{"1K"}, frozen.Result.ImageOutputSizes)
 	require.Equal(t, 1, frozen.Result.ImageSizeBreakdown["1K"])
 	require.Equal(t, 2.0, frozen.Subscription.Plan.GroupRateMultipliers[7])
-	require.Equal(t, "model", frozen.APIKey.Group.Price.ModelPricing[0].Models[0])
 }

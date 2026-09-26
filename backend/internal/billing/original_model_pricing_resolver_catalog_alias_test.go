@@ -105,23 +105,18 @@ func TestGroupAndPricingCatalogAliasPrecedence(t *testing.T) {
 		t.Run(tc.alias, func(t *testing.T) {
 			price, zero := 9e-6, 0.0
 			card := routing.ModelPricingEntry{Models: []string{tc.base}, InputPrice: &price}
-			for _, scope := range []string{pricing.PricingSourceGroup, pricing.PricingSourceConfig} {
-				group := &routing.Group{ID: 990, LongContextPricingEnabled: true}
+			for _, scope := range []string{pricing.PricingSourceConfig} {
+				group := &routing.Group{ID: 990}
 
 				repository := &routingtestkit.ConfigRows{Platforms: map[int64]string{group.ID: tc.platform}}
 				pricingConfigs := routingtestkit.NewPricingConfigService(repository, nil, routing.PricingConfigOptions{Now: time.Now, LoadLocation: provider.LoadPricingLocation})
 				resolver := billingtestkit.PriceResolver(pricingConfigs, newCalculator(&config.Config{}, nil))
 				resolve := func(cards []routing.ModelPricingEntry) *pricing.ResolvedPricing {
-					group.ModelPricing = nil
 					configPricing := routingtestkit.Configuration{ID: 990, Status: billing.StatusActive, GroupIDs: []int64{group.ID}}
-					if scope == pricing.PricingSourceGroup {
-						group.ModelPricing = cards
-					} else {
-						configPricing.ModelPricing = cards
-					}
+					configPricing.ModelPricing = cards
 					repository.Values = []routingtestkit.Configuration{configPricing}
 					pricingConfigs.InvalidateCache()
-					return resolver.Resolve(context.Background(), billing.PricingInput{Model: tc.alias, GroupID: &group.ID, Group: projectPriceGroup(group)})
+					return resolver.Resolve(context.Background(), billing.PricingInput{Model: tc.alias, GroupID: &group.ID})
 				}
 				base := resolve([]routing.ModelPricingEntry{card})
 				require.Equal(t, scope, base.Source)

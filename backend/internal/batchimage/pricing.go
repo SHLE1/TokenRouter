@@ -22,19 +22,7 @@ func (r *Pricing) BatchImageUnitPrice(ctx context.Context, input BatchImagePrice
 	if r == nil || r.Resolver == nil {
 		return 0, ErrBatchImageSettlementPricingMissing
 	}
-	group := input.Group
-	if group == nil && input.GroupID != nil && r.GroupRepo != nil {
-		var err error
-		group, err = r.GroupRepo.GetByIDLite(ctx, *input.GroupID)
-		if err != nil {
-			return 0, err
-		}
-	}
-	var priceGroup *billing.PriceGroup
-	if group != nil {
-		priceGroup = &group.Price
-	}
-	price, err := r.Resolver.ResolveImageUnitPrice(ctx, billing.PricingInput{Model: input.Model, GroupID: input.GroupID, Group: priceGroup}, input.ImageSize)
+	price, err := r.Resolver.ResolveImageUnitPrice(ctx, billing.PricingInput{Model: input.Model, GroupID: input.GroupID}, input.ImageSize)
 	if err != nil {
 		return 0, fmt.Errorf("%w: %v", ErrBatchImageSettlementPricingMissing, err)
 	}

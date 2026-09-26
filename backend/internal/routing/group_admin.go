@@ -98,14 +98,6 @@ func (s *GroupAdmin) CreateGroup(ctx context.Context, input *CreateGroupInput) (
 		allowedClientProtocols = capability.DefaultGroupClientProtocols(platform)
 	}
 
-	modelPricing, err := s.options.Pricing.NormalizeGroupPricing(platform, input.ModelPricing)
-	if err != nil {
-		return nil, err
-	}
-	longContextPricingEnabled := true
-	if input.LongContextPricingEnabled != nil {
-		longContextPricingEnabled = *input.LongContextPricingEnabled
-	}
 	maxReasoningEffort, err := NormalizeMaxReasoningEffortForPlatform(PlatformOpenAI, input.MaxReasoningEffort)
 	if err != nil {
 		return nil, infraerrors.Newf(infraerrors.Category(400), "INVALID_MAX_REASONING_EFFORT", "%v", err)
@@ -117,42 +109,6 @@ func (s *GroupAdmin) CreateGroup(ctx context.Context, input *CreateGroupInput) (
 	reasoningEffortMappings, err := NormalizeReasoningEffortMappings(PlatformOpenAI, input.ReasoningEffortMappings)
 	if err != nil {
 		return nil, infraerrors.Newf(infraerrors.Category(400), "INVALID_REASONING_EFFORT_MAPPING", "%v", err)
-	}
-
-	// 工具与语音价格：负数表示清除，0 保留（表示免费）
-	webSearchPricePerCall := NormalizePrice(input.WebSearchPricePerCall)
-	searchPricePer1k := NormalizePrice(input.SearchPricePer1k)
-	audioRealtimePricePerMin := NormalizePrice(input.AudioRealtimePricePerMin)
-	audioTTSPricePerMillionChars := NormalizePrice(input.AudioTTSPricePerMillionChars)
-	audioSTTPricePerHour := NormalizePrice(input.AudioSTTPricePerHour)
-	batchImageDiscountMultiplier := 0.5
-	if input.BatchImageDiscountMultiplier != nil {
-		if *input.BatchImageDiscountMultiplier < 0 {
-			return nil, errors.New("batch_image_discount_multiplier must be >= 0")
-		}
-		batchImageDiscountMultiplier = *input.BatchImageDiscountMultiplier
-	}
-	batchImageHoldMultiplier := 0.6
-	if input.BatchImageHoldMultiplier != nil {
-		if *input.BatchImageHoldMultiplier < 0 {
-			return nil, errors.New("batch_image_hold_multiplier must be >= 0")
-		}
-		batchImageHoldMultiplier = *input.BatchImageHoldMultiplier
-	}
-	// 不变式：hold 比例 >= discount 比例。否则批量任务成功率足够高时
-	// 实际成本会超过冻结额，结算永远失败、用户冻结余额无法解冻。
-	if batchImageHoldMultiplier < batchImageDiscountMultiplier {
-		return nil, errors.New("batch_image_hold_multiplier must be >= batch_image_discount_multiplier")
-	}
-
-	peakRateMultiplier := 1.0
-	if input.PeakRateMultiplier != nil {
-		peakRateMultiplier = *input.PeakRateMultiplier
-	}
-	// 高峰配置先归一化再校验，确保创建和更新写路径行为一致。
-	peakRateEnabled, peakStart, peakEnd, peakRateMultiplier := NormalizePeakRateConfig(input.PeakRateEnabled, input.PeakStart, input.PeakEnd, peakRateMultiplier)
-	if err := ValidatePeakRateConfig(peakRateEnabled, peakStart, peakEnd, peakRateMultiplier); err != nil {
-		return nil, err
 	}
 
 	// 校验降级分组
@@ -239,22 +195,9 @@ func (s *GroupAdmin) CreateGroup(ctx context.Context, input *CreateGroupInput) (
 		IsExclusive:                     input.IsExclusive,
 		SessionIsolationEnabled:         input.SessionIsolationEnabled,
 		Status:                          StatusActive,
-		LongContextPricingEnabled:       longContextPricingEnabled,
-		ModelPricing:                    modelPricing,
 		RoutingPolicy:                   input.RoutingPolicy.Clone(),
 		AllowImageGeneration:            allowImageGeneration,
 		AllowBatchImageGeneration:       allowBatchImageGeneration,
-		BatchImageDiscountMultiplier:    batchImageDiscountMultiplier,
-		BatchImageHoldMultiplier:        batchImageHoldMultiplier,
-		PeakRateEnabled:                 peakRateEnabled,
-		PeakStart:                       peakStart,
-		PeakEnd:                         peakEnd,
-		PeakRateMultiplier:              peakRateMultiplier,
-		WebSearchPricePerCall:           webSearchPricePerCall,
-		SearchPricePer1k:                searchPricePer1k,
-		AudioRealtimePricePerMin:        audioRealtimePricePerMin,
-		AudioTTSPricePerMillionChars:    audioTTSPricePerMillionChars,
-		AudioSTTPricePerHour:            audioSTTPricePerHour,
 		ClaudeCodeOnly:                  input.ClaudeCodeOnly,
 		FallbackGroupID:                 input.FallbackGroupID,
 		FallbackGroupIDOnInvalidRequest: fallbackOnInvalidRequest,
@@ -268,7 +211,6 @@ func (s *GroupAdmin) CreateGroup(ctx context.Context, input *CreateGroupInput) (
 		AllowLive:                       input.AllowLive,
 		ForceOpenAIFast:                 input.ForceOpenAIFast,
 		OpenAIFastPolicy:                fastPolicy,
-		FreeOpenAIFast:                  input.FreeOpenAIFast,
 		RequireOAuthOnly:                input.RequireOAuthOnly,
 		RequirePrivacySet:               input.RequirePrivacySet,
 		DefaultMappedModel:              input.DefaultMappedModel,
@@ -376,14 +318,6 @@ func (s *GroupAdmin) NextGroupSortOrder(ctx context.Context) (int, error) {
 		return 0, errors.New("group sort order overflow")
 	}
 	return next, nil
-}
-
-// NormalizePrice 将负数转换为 nil（表示使用默认价格），0 保留（表示免费）
-func NormalizePrice(price *float64) *float64 {
-	if price == nil || *price < 0 {
-		return nil
-	}
-	return price
 }
 
 // ValidateFallbackGroup 校验降级分组的有效性
@@ -496,23 +430,12 @@ func (s *GroupAdmin) UpdateGroup(ctx context.Context, id int64, input *UpdateGro
 	if input.Status != "" {
 		group.Status = input.Status
 	}
-	if input.LongContextPricingEnabled != nil {
-		group.LongContextPricingEnabled = *input.LongContextPricingEnabled
-	}
 	if input.RoutingPolicy != nil {
 		if err := ValidateGroupRoutingPolicy(*input.RoutingPolicy); err != nil {
 			return nil, err
 		}
 		group.RoutingPolicy = input.RoutingPolicy.Clone()
 	}
-	if input.ModelPricing != nil {
-		modelPricing, normalizeErr := s.options.Pricing.NormalizeGroupPricing("", *input.ModelPricing)
-		if normalizeErr != nil {
-			return nil, normalizeErr
-		}
-		group.ModelPricing = modelPricing
-	}
-
 	// 图片能力和批量图片策略独立于模型价卡。
 	if input.AllowImageGeneration != nil {
 		group.AllowImageGeneration = *input.AllowImageGeneration
@@ -523,58 +446,6 @@ func (s *GroupAdmin) UpdateGroup(ctx context.Context, id int64, input *UpdateGro
 	if !group.AllowImageGeneration {
 		group.AllowBatchImageGeneration = false
 	}
-	if input.BatchImageDiscountMultiplier != nil {
-		if *input.BatchImageDiscountMultiplier < 0 {
-			return nil, errors.New("batch_image_discount_multiplier must be >= 0")
-		}
-		group.BatchImageDiscountMultiplier = *input.BatchImageDiscountMultiplier
-	}
-	if input.BatchImageHoldMultiplier != nil {
-		if *input.BatchImageHoldMultiplier < 0 {
-			return nil, errors.New("batch_image_hold_multiplier must be >= 0")
-		}
-		group.BatchImageHoldMultiplier = *input.BatchImageHoldMultiplier
-	}
-	// 仅在本次更新显式触碰任一比例时校验合并后的不变式（hold >= discount），
-	// 避免存量脏数据阻塞其他字段的正常更新（提交侧另有钳制兜底）。
-	if (input.BatchImageDiscountMultiplier != nil || input.BatchImageHoldMultiplier != nil) &&
-		group.BatchImageHoldMultiplier < group.BatchImageDiscountMultiplier {
-		return nil, errors.New("batch_image_hold_multiplier must be >= batch_image_discount_multiplier")
-	}
-	if input.PeakRateEnabled != nil {
-		group.PeakRateEnabled = *input.PeakRateEnabled
-	}
-	if input.PeakStart != nil {
-		group.PeakStart = *input.PeakStart
-	}
-	if input.PeakEnd != nil {
-		group.PeakEnd = *input.PeakEnd
-	}
-	if input.PeakRateMultiplier != nil {
-		group.PeakRateMultiplier = *input.PeakRateMultiplier
-	}
-	group.PeakRateEnabled, group.PeakStart, group.PeakEnd, group.PeakRateMultiplier = NormalizePeakRateConfig(group.PeakRateEnabled, group.PeakStart, group.PeakEnd, group.PeakRateMultiplier)
-	// 收敛校验：Update 可能只传部分 peak 字段，需对合并后的最终配置统一校验，
-	// 防止单独修改 start/end 导致最终 start>=end 等非法配置入库。与 CreateGroup 同一收口。
-	if err := ValidatePeakRateConfig(group.PeakRateEnabled, group.PeakStart, group.PeakEnd, group.PeakRateMultiplier); err != nil {
-		return nil, err
-	}
-	if input.WebSearchPricePerCall != nil {
-		group.WebSearchPricePerCall = NormalizePrice(input.WebSearchPricePerCall)
-	}
-	if input.SearchPricePer1k != nil {
-		group.SearchPricePer1k = NormalizePrice(input.SearchPricePer1k)
-	}
-	if input.AudioRealtimePricePerMin != nil {
-		group.AudioRealtimePricePerMin = NormalizePrice(input.AudioRealtimePricePerMin)
-	}
-	if input.AudioTTSPricePerMillionChars != nil {
-		group.AudioTTSPricePerMillionChars = NormalizePrice(input.AudioTTSPricePerMillionChars)
-	}
-	if input.AudioSTTPricePerHour != nil {
-		group.AudioSTTPricePerHour = NormalizePrice(input.AudioSTTPricePerHour)
-	}
-
 	// Claude Code 客户端限制
 	if input.ClaudeCodeOnly != nil {
 		group.ClaudeCodeOnly = *input.ClaudeCodeOnly
@@ -647,9 +518,6 @@ func (s *GroupAdmin) UpdateGroup(ctx context.Context, id int64, input *UpdateGro
 			return nil, err
 		}
 		group.OpenAIFastPolicy = policy
-	}
-	if input.FreeOpenAIFast != nil {
-		group.FreeOpenAIFast = *input.FreeOpenAIFast
 	}
 	if input.RequireOAuthOnly != nil {
 		group.RequireOAuthOnly = *input.RequireOAuthOnly

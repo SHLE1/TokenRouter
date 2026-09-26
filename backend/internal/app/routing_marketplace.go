@@ -2,13 +2,12 @@ package app
 
 import (
 	"context"
+	"log/slog"
+	"time"
 
 	routingprovider "github.com/TokenFlux/TokenRouter/internal/routing/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/usage"
-
-	"log/slog"
-	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
@@ -46,7 +45,6 @@ func (s marketplaceStats) PublicStats(ctx context.Context) (routingdto.ModelMark
 func (p marketplacePrices) Quote(ctx context.Context, request routing.MarketplaceQuoteRequest) pricing.ModelDisplayPricing {
 	return p.resolver.PublicQuote(ctx, billing.PublicQuoteInput{PricingInput: billing.PricingInput{
 		Model: request.Model, GroupID: &request.GroupID,
-		Group: &billing.PriceGroup{ModelPricing: request.ModelPricing, LongContextPricingEnabled: request.LongContextPricingEnabled},
 	}, RateMultiplier: request.RateMultiplier, FreeFastApplicable: request.FreeFastApplicable})
 }
 

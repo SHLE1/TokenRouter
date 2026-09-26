@@ -2,6 +2,8 @@
  * 管理员价格配置接口
  */
 
+import type { BillingSettings } from '@/components/admin/pricing/billingSettings'
+
 import { apiClient } from '../client'
 
 export type BillingMode = 'token' | 'per_request' | 'image' | 'video'
@@ -68,7 +70,7 @@ export interface AccountStatsPricingRule {
   pricing: ModelPricingEntry[]
 }
 
-export interface PricingConfig {
+export interface PricingConfig extends BillingSettings {
   id: number
   name: string
   description: string
@@ -81,7 +83,7 @@ export interface PricingConfig {
   updated_at: string
 }
 
-export interface CreatePricingConfigRequest {
+export interface CreatePricingConfigRequest extends Partial<BillingSettings> {
   name: string
   description?: string
   group_ids?: number[]
@@ -90,7 +92,7 @@ export interface CreatePricingConfigRequest {
   account_stats_pricing_rules?: AccountStatsPricingRule[]
 }
 
-export interface UpdatePricingConfigRequest {
+export interface UpdatePricingConfigRequest extends Partial<BillingSettings> {
   name?: string
   description?: string
   status?: string

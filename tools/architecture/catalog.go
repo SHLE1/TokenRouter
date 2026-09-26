@@ -123,7 +123,7 @@ internal/server/httpx`, Tests: "internal/identity internal/infra/postgres/..."},
 internal/billing internal/gateway/httpapi internal/infra/postgres/... internal/infra/telemetry/...
 internal/pkg/ internal/protocol internal/routing internal/routing/capability
 internal/routing/modelmap internal/server/httpx internal/upstream internal/upstream/gemini
-internal/upstream/vertex internal/usage`, Tests: `internal/billing/provider internal/billing/testkit internal/config internal/gateway/completion
+internal/upstream/vertex internal/usage`, Tests: `internal/billing/pricing internal/billing/provider internal/billing/testkit internal/config internal/gateway/completion
 internal/gateway/modeltrace internal/gateway/provider/modelidentity internal/testutil/assertion
 internal/testutil/postgrescontainer internal/testutil/rediscontainer`},
 	"internal/billing": {Production: `ent/... internal/billing/... internal/egress internal/gateway/provider
@@ -422,7 +422,7 @@ recording_pricing_stub_helpers_test.go`},
 	{Scope: "internal/payment/postgres", Imports: "internal/billing/postgres", Files: "consumer_order_snapshot_test.go"},
 	{Scope: "internal/routing", Imports: "internal/routing/provider", Files: `group_admin_original_fixture_test.go
 marketplace_fixture_test.go`},
-	{Scope: "internal/routing", Imports: "internal/billing/provider", Files: `group_admin_original_fixture_test.go marketplace_catalog_fixture_test.go marketplace_fixture_test.go`},
+	{Scope: "internal/routing", Imports: "internal/billing/provider", Files: `marketplace_catalog_fixture_test.go marketplace_fixture_test.go`},
 	{Scope: "internal/routing", Imports: "internal/account/provider", Files: "group_management_ports_original_test.go"},
 	{Scope: "internal/routing", Imports: "internal/gateway/provider/modelidentity", Files: "marketplace_catalog_fixture_test.go marketplace_fixture_test.go marketplace_quote_fixture_test.go"},
 	{Scope: "internal/scheduler/rediscache", Imports: "internal/account/provider", Files: "scheduler_cache_integration_test.go scheduler_cache_unit_test.go"},

@@ -154,7 +154,7 @@ func TestS09QoderHTTPStorageChain(t *testing.T) {
 	eligibility := billing.NewEligibility(billingredis.NewBillingCache(rdb), s09BalanceReader{f.db}, nil, func() billing.EligibilityOptions { return billing.EligibilityOptions{RunMode: "standard"} }, nil)
 	eligibility.Start()
 	t.Cleanup(eligibility.Stop)
-	price := &pricing.ResolvedPricing{Mode: pricing.BillingModeToken, Source: pricing.PricingSourceGroup, BasePricing: &pricing.ModelPricing{InputPricePerToken: 0.01, OutputPricePerToken: 0.02}}
+	price := &pricing.ResolvedPricing{Mode: pricing.BillingModeToken, Source: pricing.PricingSourceConfig, BasePricing: &pricing.ModelPricing{InputPricePerToken: 0.01, OutputPricePerToken: 0.02}}
 	for _, tc := range []struct {
 		name                string
 		stream, partial     bool

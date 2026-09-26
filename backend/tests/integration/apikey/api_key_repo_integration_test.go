@@ -225,19 +225,15 @@ func (s *APIKeyRepoSuite) TestGetByKey_NotFound() {
 
 func (s *APIKeyRepoSuite) TestGetByKeyForAuth_PreservesSelectedGroupFields() {
 	user := s.mustCreateUser("getbykey-auth-dispatch@test.com")
-	// 认证查询的列投影必须完整带回区间与倍率，不能只在管理读取中可见。
-	modelPricing := `[{"models":["gpt-test"],"billing_mode":"token","fast_multiplier":1.5,"flex_multiplier":0.4,"max_reasoning_effort_multiplier":2,"intervals":[{"min_tokens":100,"input_multiplier":2}],"time_pricing":{"timezone":"UTC","periods":[{"start_time":"09:00","end_time":"10:00","multiplier":0.5}]}}]`
+	// 认证查询保留路由策略与基础倍率，价格从独立配置读取。
 	lbTopK := 4
 	group, err := s.client.Group.Create().
 		SetName("g-auth-dispatch").
-		SetModelPricing([]byte(modelPricing)).
 		SetStatus(billing.StatusActive).
 		SetRateMultiplier(1).
 		SetSchedulerType(string(routing.GroupSchedulerTypeAdvanced)).
 		SetAdvancedSchedulerOverrides(routing.GroupAdvancedSchedulerOverrides{LBTopK: &lbTopK}).
 		SetForceOpenaiFast(true).
-		SetFreeOpenaiFast(true).
-		SetWebSearchPricePerCall(0.008).
 		SetAllowedProtocols([]protocol.ProtocolID{
 			protocol.ProtocolAnthropicMessages,
 			protocol.ProtocolOpenAIResponses,
@@ -260,8 +256,6 @@ func (s *APIKeyRepoSuite) TestGetByKeyForAuth_PreservesSelectedGroupFields() {
 	got, err := s.repo.GetByKeyForAuth(s.ctx, key.Key)
 	s.Require().NoError(err)
 	s.Require().NotNil(got.Group)
-	s.Require().NotNil(got.Group.WebSearchPricePerCall)
-	s.Require().InDelta(0.008, *got.Group.WebSearchPricePerCall, 1e-12)
 	s.Require().Equal([]protocol.ProtocolID{
 		protocol.ProtocolAnthropicMessages,
 		protocol.ProtocolOpenAIResponses,
@@ -272,14 +266,6 @@ func (s *APIKeyRepoSuite) TestGetByKeyForAuth_PreservesSelectedGroupFields() {
 	s.Require().NotNil(got.Group.AdvancedSchedulerOverrides.LBTopK)
 	s.Require().Equal(4, *got.Group.AdvancedSchedulerOverrides.LBTopK)
 	s.Require().True(got.Group.ForceOpenAIFast)
-	s.Require().True(got.Group.FreeOpenAIFast)
-	s.Require().Len(got.Group.ModelPricing, 1)
-	pricing := got.Group.ModelPricing[0]
-	s.Require().Equal(1.5, *pricing.FastMultiplier)
-	s.Require().Equal(0.4, *pricing.FlexMultiplier)
-	s.Require().Equal(2.0, *pricing.MaxReasoningEffortMultiplier)
-	s.Require().Equal(2.0, *pricing.Intervals[0].InputMultiplier)
-	s.Require().Equal(0.5, pricing.TimePricing.Periods[0].Multiplier)
 }
 
 // --- Update ---

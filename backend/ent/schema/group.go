@@ -49,22 +49,6 @@ func (Group) Fields() []ent.Field {
 		field.Float("rate_multiplier").
 			SchemaType(map[string]string{dialect.Postgres: "decimal(10,4)"}).
 			Default(1.0),
-		// 高峰时段倍率（由迁移 177 添加）
-		field.Bool("peak_rate_enabled").
-			Default(false).
-			Comment("是否启用高峰时段倍率"),
-		field.String("peak_start").
-			MaxLen(5).
-			Default("").
-			Comment("高峰开始时间 HH:MM（含），如 14:00；空表示未配置；不支持跨天"),
-		field.String("peak_end").
-			MaxLen(5).
-			Default("").
-			Comment("高峰结束时间 HH:MM（不含），必须大于 peak_start；不支持跨天，如 22:00-02:00"),
-		field.Float("peak_rate_multiplier").
-			SchemaType(map[string]string{dialect.Postgres: "decimal(10,4)"}).
-			Default(1.0).
-			Comment("高峰时段叠加倍率，仅在 peak_rate_enabled 且处于 [peak_start, peak_end) 时乘入文本倍率"),
 		field.Bool("is_exclusive").
 			Default(false),
 		field.String("status").
@@ -91,62 +75,17 @@ func (Group) Fields() []ent.Field {
 			Default("").
 			Comment("模型广场展示品牌"),
 
-		// 图片生成计费配置（antigravity 和 gemini 平台使用）
+		// 图片生成权限（antigravity 和 gemini 平台使用）
 		field.Bool("allow_image_generation").
 			Default(false).
 			Comment("是否允许该分组使用图片生成能力"),
 		field.Bool("allow_batch_image_generation").
 			Default(false).
 			Comment("是否允许该分组使用批量图片生成能力"),
-		field.Float("batch_image_discount_multiplier").
-			SchemaType(map[string]string{dialect.Postgres: "decimal(10,4)"}).
-			Default(0.5).
-			Comment("批量图片生成折扣倍率，最终单价会乘以该值；0 表示免费"),
-		field.Float("batch_image_hold_multiplier").
-			SchemaType(map[string]string{dialect.Postgres: "decimal(10,4)"}).
-			Default(0.6).
-			Comment("批量图片生成冻结价格比例，按普通生图原价乘以该比例冻结，结算后释放差额"),
-		field.Float("web_search_price_per_call").
-			Optional().
-			Nillable().
-			SchemaType(map[string]string{dialect.Postgres: "decimal(20,8)"}).
-			Comment("Codex alpha/search 网页搜索单次价格（USD/次）；nil 表示使用默认价 0.01（官方 $10/1000 次）"),
 
 		// 搜索与工具调用按每千次显式定价，用于 Grok web_search 等。
-		field.Float("search_price_per_1k").
-			Optional().
-			Nillable().
-			Min(0).
-			SchemaType(map[string]string{dialect.Postgres: "decimal(20,8)"}).
-			Comment("搜索工具每千次调用价格（web_search 等）"),
 
-		// Grok Voice 实时语音、TTS 与 STT 显式定价，不采用文本倍率。
-		field.Float("audio_realtime_price_per_min").
-			Optional().
-			Nillable().
-			Min(0).
-			SchemaType(map[string]string{dialect.Postgres: "decimal(20,8)"}).
-			Comment("Voice realtime 每分钟价格（USD）"),
-		field.Float("audio_tts_price_per_million_chars").
-			Optional().
-			Nillable().
-			Min(0).
-			SchemaType(map[string]string{dialect.Postgres: "decimal(20,8)"}).
-			Comment("TTS 每百万字符价格（USD）"),
-		field.Float("audio_stt_price_per_hour").
-			Optional().
-			Nillable().
-			Min(0).
-			SchemaType(map[string]string{dialect.Postgres: "decimal(20,8)"}).
-			Comment("STT 每小时价格（USD）"),
-		field.Bool("long_context_pricing_enabled").
-			Default(true).
-			Comment("是否应用内置模型的长上下文阶梯价格；不影响自定义价卡区间"),
 		field.JSON("routing_policy", json.RawMessage{}).Optional().Comment("分组独立模型与功能策略"),
-		field.JSON("model_pricing", json.RawMessage{}).
-			Optional().
-			SchemaType(map[string]string{dialect.Postgres: "jsonb"}).
-			Comment("分组逐模型定价；优先级高于共享价格配置和网关默认价"),
 
 		// Claude Code 客户端限制 (added by migration 029)
 		field.Bool("claude_code_only").
@@ -214,9 +153,6 @@ func (Group) Fields() []ent.Field {
 		field.Bool("force_openai_fast").
 			Default(false).
 			Comment("是否强制此 OpenAI 分组请求使用 service_tier=priority"),
-		field.Bool("free_openai_fast").
-			Default(false).
-			Comment("是否让此 OpenAI 分组的 Fast 请求按 Standard 价格计费"),
 		field.Bool("require_oauth_only").
 			Default(false).
 			Comment("仅允许非 apikey 类型账号关联到此分组"),

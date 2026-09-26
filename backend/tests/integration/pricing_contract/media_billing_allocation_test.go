@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
+
 	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
 
@@ -46,14 +48,16 @@ func TestMediaAllocationRatesPreserveBalanceMultiplier(t *testing.T) {
 						card.PerRequestPrice = nil
 						card.InputPrice = testPtrFloat64(0.1)
 					}
-					group := &routing.Group{ID: 88, RateMultiplier: 2, ModelPricing: []routing.ModelPricingEntry{card}, PeakRateEnabled: peak, PeakStart: "11:00", PeakEnd: "13:00", PeakRateMultiplier: 3}
+					group := &routing.Group{ID: 88, RateMultiplier: 2}
+					settings := pricing.DefaultBillingSettings()
+					settings.PeakRateEnabled, settings.PeakStart, settings.PeakEnd, settings.PeakRateMultiplier = peak, "11:00", "13:00", 3
 					key := &apikey.APIKey{ID: 100, GroupID: &group.ID, Group: group}
 					user, account := &identity.User{ID: 200}, &gatewaycapture.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 300, Platform: platform}}
 					subscription := &billing.UserSubscription{ID: 99, Plan: &billing.SubscriptionPlan{ID: 199, GroupIDs: []int64{88}, GroupRateMultipliers: map[int64]float64{88: 0.5}}}
 					now := time.Date(2026, 9, 9, 12, 0, 0, 0, time.Local)
 					if gatewayKind == "openai" {
 						svc := newOpenAIRecordUsageServiceWithBillingRepoForTest(logs, billingRepo, &gatewaytestkit.UserStore{}, &gatewaytestkit.SubscriptionStore{}, nil)
-						svc.Dependencies.Prices = billingtestkit.PriceResolver(nil, svc.Dependencies.Calculator)
+						svc.Dependencies.Prices = billingtestkit.SharedPriceResolver(svc.Dependencies.Calculator, group.ID, settings, []routing.ModelPricingEntry{card})
 						svc.Options.Now = func() time.Time { return now }
 						result := &forwardcore.OpenAIResult{RequestID: name, Model: model, ImageCount: 1, ImageSize: "1K"}
 						if mode == routing.BillingModeToken {
@@ -69,7 +73,7 @@ func TestMediaAllocationRatesPreserveBalanceMultiplier(t *testing.T) {
 						require.NoError(t, svc.RecordOpenAI(context.Background(), &gatewaycapture.OpenAICapture{Result: result, APIKey: key, User: user, Account: gatewaycapture.ExecutionCompletionRecord(account), Subscription: subscription}))
 					} else {
 						svc := newGatewayRecordUsageServiceWithBillingRepoForTest(logs, billingRepo, &gatewaytestkit.UserStore{}, &gatewaytestkit.SubscriptionStore{})
-						svc.Dependencies.Prices = billingtestkit.PriceResolver(nil, svc.Dependencies.Calculator)
+						svc.Dependencies.Prices = billingtestkit.SharedPriceResolver(svc.Dependencies.Calculator, group.ID, settings, []routing.ModelPricingEntry{card})
 						svc.Options.Now = func() time.Time { return now }
 						result := &forwardcore.MessagesResult{RequestID: name, Model: model, ImageCount: 1, ImageSize: "1K"}
 						if mode == routing.BillingModeToken {

@@ -1323,11 +1323,15 @@ func TestGatewayServiceRecordUsage_EmptyImageSizeDefaultsBeforeBillingAndPersist
 		APIKey: &apikey.APIKey{
 			ID:      801,
 			GroupID: i64p(groupID),
-			Group: &routing.Group{
+			Group: configureBillingGroup(svc, &routing.Group{
 				ID:             groupID,
 				RateMultiplier: 1.0,
-				ModelPricing:   testImageModelPricing(map[string]*float64{"2K": &imagePrice2K}),
-			},
+			}, pricing.BillingSettings{
+				LongContextPricingEnabled:    true,
+				PeakRateMultiplier:           1,
+				BatchImageDiscountMultiplier: 0.5,
+				BatchImageHoldMultiplier:     0.6,
+			}, testImageModelPricing(map[string]*float64{"2K": &imagePrice2K})),
 		},
 		User:    &identity.User{ID: 601},
 		Account: &accountcore.Record{ID: 701},
@@ -1372,14 +1376,18 @@ func TestGatewayServiceRecordUsage_PeakRateAffectsTokenModeImageOutputTokens(t *
 		APIKey: &apikey.APIKey{
 			ID:      802,
 			GroupID: i64p(groupID),
-			Group: &routing.Group{
-				ID:                 groupID,
-				RateMultiplier:     1.0,
-				PeakRateEnabled:    true,
-				PeakStart:          "11:59",
-				PeakEnd:            "12:01",
-				PeakRateMultiplier: 3.0,
-			},
+			Group: configureBillingGroup(svc, &routing.Group{
+				ID:             groupID,
+				RateMultiplier: 1.0,
+			}, pricing.BillingSettings{
+				PeakRateEnabled:              true,
+				PeakStart:                    "11:59",
+				PeakEnd:                      "12:01",
+				PeakRateMultiplier:           3.0,
+				LongContextPricingEnabled:    true,
+				BatchImageDiscountMultiplier: 0.5,
+				BatchImageHoldMultiplier:     0.6,
+			}, nil),
 		},
 		User:    &identity.User{ID: 602},
 		Account: &accountcore.Record{ID: 702},

@@ -12,8 +12,8 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/account"
 	creativeprovider "github.com/TokenFlux/TokenRouter/internal/creative/provider"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/modelidentity"
 
+	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
 	creativeredis "github.com/TokenFlux/TokenRouter/internal/creative/rediscache"
 	identity "github.com/TokenFlux/TokenRouter/internal/identity"
@@ -350,13 +350,10 @@ func (r *smokeFakeUserRepo) GetByID(ctx context.Context, id int64) (creative.Use
 	return &identity.User{ID: id}, nil
 }
 
-type smokeFakeGroupRepo struct {
-	price1k float64
-}
+type smokeFakeGroupRepo struct{}
 
 func (r *smokeFakeGroupRepo) GetByIDLite(ctx context.Context, id int64) (*creative.GroupView, error) {
-	price := r.price1k
-	return &creative.GroupView{ID: id, Name: "Smoke Group", Active: true, AllowImageGeneration: true, RateMultiplier: 1, Operations: map[string][]string{creative.PlatformGemini: {creative.CreativeOperationGenerate, creative.CreativeOperationEdit}}, Price: billingcore.PriceGroup{ModelPricing: []routing.ModelPricingEntry{{Models: []string{"*"}, BillingMode: routing.BillingModeImage, PerRequestPrice: &price}}}}, nil
+	return &creative.GroupView{ID: id, Name: "Smoke Group", Active: true, AllowImageGeneration: true, RateMultiplier: 1, Operations: map[string][]string{creative.PlatformGemini: {creative.CreativeOperationGenerate, creative.CreativeOperationEdit}}}, nil
 }
 
 func (r *smokeFakeGroupRepo) ListActive(context.Context) ([]creative.GroupView, error) {
@@ -427,9 +424,10 @@ func TestCreativeFullChainSmoke(t *testing.T) {
 	store := creativeredis.NewCreativeTransientStore(client, &creativeredis.TransientOptions{TransientTTLSeconds: cfg.Creative.TransientTTLSeconds})
 	results := &creative.Results{Repo: repo, TransientStore: store, Queue: queue, Funding: creative.Funding{Store: billing}, TransientTTL: time.Duration(cfg.Creative.TransientTTLSeconds) * time.Second}
 	managed := apikey.ManagedKeys{Store: &smokeFakeManagedKeyRepo{}, Prefix: cfg.Default.APIKeyPrefix, ManagedBy: creative.CreativeManagedBy, NamePrefix: "creative-studio"}
-	prices := billingcore.NewPriceResolver(nil, billingtestkit.Calculator(0, nil, nil), modelidentity.Identity, nil)
+	price := 0.02
+	prices := billingtestkit.SharedPriceResolver(billingtestkit.Calculator(0, nil, nil), 12, pricing.DefaultBillingSettings(), []routing.ModelPricingEntry{{Models: []string{"*"}, BillingMode: routing.BillingModeImage, PerRequestPrice: &price}})
 	svc := &creative.Public{
-		Repo: repo, UserRepo: &smokeFakeUserRepo{}, AccountRepo: &smokeFakeAccountRepo{}, GroupRepo: &smokeFakeGroupRepo{price1k: 0.02}, UserGroupRateRepo: &smokeFakeRateRepo{}, Queue: queue, TransientStore: store, Results: results, Settings: smokeCreativeSettingReader{}, UserNotFound: identity.ErrUserNotFound,
+		Repo: repo, UserRepo: &smokeFakeUserRepo{}, AccountRepo: &smokeFakeAccountRepo{}, GroupRepo: &smokeFakeGroupRepo{}, UserGroupRateRepo: &smokeFakeRateRepo{}, Queue: queue, TransientStore: store, Results: results, Settings: smokeCreativeSettingReader{}, UserNotFound: identity.ErrUserNotFound,
 		Options: creative.PublicOptions{Enabled: cfg.Creative.Enabled, MaxAssetBytes: cfg.Creative.MaxAssetBytes, MaxTotalInputBytes: cfg.Creative.MaxTotalInputBytes, MaxPromptChars: cfg.Creative.MaxPromptChars, DefaultImageSize: cfg.Creative.DefaultImageSize},
 		EnsureKey: func(ctx context.Context, u, g int64) (int64, error) {
 			key, err := managed.Ensure(ctx, u, g)
@@ -439,7 +437,7 @@ func TestCreativeFullChainSmoke(t *testing.T) {
 			return key.ID, nil
 		},
 		ImageUnitPrice: func(ctx context.Context, g *creative.GroupView, m, size string) (float64, bool) {
-			price, err := prices.ResolveImageUnitPrice(ctx, billingcore.PricingInput{Model: m, GroupID: &g.ID, Group: &g.Price}, size)
+			price, err := prices.ResolveImageUnitPrice(ctx, billingcore.PricingInput{Model: m, GroupID: &g.ID}, size)
 			return price, err == nil
 		},
 		SubscriptionMultiplier: func(context.Context, int64, *creative.GroupView, float64) (float64, bool) { return 0, false },

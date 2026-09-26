@@ -7,15 +7,12 @@ import (
 	"testing"
 	time "time"
 
-	"github.com/TokenFlux/TokenRouter/internal/apikey"
-	"github.com/TokenFlux/TokenRouter/internal/apikey/testkit"
-	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
-	"github.com/TokenFlux/TokenRouter/internal/config"
+
 	completion "github.com/TokenFlux/TokenRouter/internal/gateway/completion"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewaycapture "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
-	"github.com/TokenFlux/TokenRouter/internal/identity"
+
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/stretchr/testify/require"
 )
@@ -59,9 +56,9 @@ func TestCalculateOpenAIRecordUsageCostWebSearchPerCall(t *testing.T) {
 
 	// 分组未配置单价：默认 0.01。按次搜索使用不含高峰因子的基础倍率（第 4 个倍率参数 2.0），
 	// 即使 token 倍率（含高峰，3.0）更高也不采用。
-	apiKey := &apikey.APIKey{ID: 1, GroupID: &groupID, Group: &routing.Group{ID: groupID}}
+	apiKey := &completion.KeySnapshot{ID: 1, GroupID: &groupID, Group: &completion.GroupSnapshot{ID: groupID}}
 	result := &forwardcore.OpenAIResult{Model: "gpt-5.6-sol", UpstreamModel: "gpt-5.6-sol", WebSearchCalls: 1}
-	cost, err := svc.CalculateOpenAIRecordUsageCostAt(context.Background(), gatewaycapture.ProjectOpenAICompletionResult(result, nil), gatewaycapture.ProjectCompletionKey(apiKey), []string{"gpt-5.6-sol"}, 3.0, 1.0, 1.0, 2.0, pricing.UsageTokens{}, "", time.Time{})
+	cost, err := svc.CalculateOpenAIRecordUsageCostAt(context.Background(), gatewaycapture.ProjectOpenAICompletionResult(result, nil), apiKey, []string{"gpt-5.6-sol"}, 3.0, 1.0, 1.0, 2.0, pricing.UsageTokens{}, "", time.Time{})
 	require.NoError(t, err)
 	require.Equal(t, string(routing.BillingModePerRequest), cost.BillingMode)
 	require.InDelta(t, 0.01, cost.TotalCost, 1e-12)
@@ -69,7 +66,7 @@ func TestCalculateOpenAIRecordUsageCostWebSearchPerCall(t *testing.T) {
 
 	// 分组配置单价 0.005
 	apiKey.Group.WebSearchPricePerCall = testPtrFloat64(0.005)
-	cost, err = svc.CalculateOpenAIRecordUsageCostAt(context.Background(), gatewaycapture.ProjectOpenAICompletionResult(result, nil), gatewaycapture.ProjectCompletionKey(apiKey), []string{"gpt-5.6-sol"}, 1.0, 1.0, 1.0, 1.0, pricing.UsageTokens{}, "", time.Time{})
+	cost, err = svc.CalculateOpenAIRecordUsageCostAt(context.Background(), gatewaycapture.ProjectOpenAICompletionResult(result, nil), apiKey, []string{"gpt-5.6-sol"}, 1.0, 1.0, 1.0, 1.0, pricing.UsageTokens{}, "", time.Time{})
 	require.NoError(t, err)
 	require.InDelta(t, 0.005, cost.TotalCost, 1e-12)
 	require.InDelta(t, 0.005, cost.ActualCost, 1e-12)
@@ -77,36 +74,6 @@ func TestCalculateOpenAIRecordUsageCostWebSearchPerCall(t *testing.T) {
 	// WebSearchCalls = 0 时不得走按次分支（无定价数据会返回 pricing 错误，
 	// 证明回落到了 token 路径而不是被按次分支吞掉）。
 	result.WebSearchCalls = 0
-	_, err = svc.CalculateOpenAIRecordUsageCostAt(context.Background(), gatewaycapture.ProjectOpenAICompletionResult(result, nil), gatewaycapture.ProjectCompletionKey(apiKey), []string{"gpt-5.6-sol"}, 1.0, 1.0, 1.0, 1.0, pricing.UsageTokens{InputTokens: 10}, "", time.Time{})
+	_, err = svc.CalculateOpenAIRecordUsageCostAt(context.Background(), gatewaycapture.ProjectOpenAICompletionResult(result, nil), apiKey, []string{"gpt-5.6-sol"}, 1.0, 1.0, 1.0, 1.0, pricing.UsageTokens{InputTokens: 10}, "", time.Time{})
 	require.Error(t, err)
-}
-
-func TestAPIKeyService_SnapshotRoundTrip_PreservesWebSearchPricePerCall(t *testing.T) {
-	svc := testkit.NewService(nil, nil, nil, nil, nil, nil, &config.Config{})
-	svc.Start()
-	groupID := int64(9)
-	apiKey := &apikey.APIKey{
-		ID:      1,
-		UserID:  2,
-		GroupID: &groupID,
-		Key:     "k-websearch",
-		Status:  billing.StatusActive,
-		User:    &identity.User{ID: 2, Status: billing.StatusActive, Role: identity.RoleUser},
-		Group: &routing.Group{
-			ID:   groupID,
-			Name: "openai",
-
-			Status:                billing.StatusActive,
-			RateMultiplier:        1,
-			WebSearchPricePerCall: testPtrFloat64(0.008),
-		},
-	}
-
-	snapshot := svc.KeySnapshotFromAPIKey(context.Background(), apiKey)
-	roundTrip := svc.KeySnapshotToAPIKey(apiKey.Key, snapshot)
-
-	require.NotNil(t, roundTrip)
-	require.NotNil(t, roundTrip.Group)
-	require.NotNil(t, roundTrip.Group.WebSearchPricePerCall)
-	require.InDelta(t, 0.008, *roundTrip.Group.WebSearchPricePerCall, 1e-12)
 }

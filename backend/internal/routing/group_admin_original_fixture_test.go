@@ -7,7 +7,6 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
 
-	pricingprovider "github.com/TokenFlux/TokenRouter/internal/billing/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	routingprovider "github.com/TokenFlux/TokenRouter/internal/routing/provider"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
@@ -30,7 +29,6 @@ func newOriginalGroupAdminPorts(repo routing.GroupRepository, duplicate routing.
 		duplicates = originalGroupDuplicatePort{duplicate}
 	}
 	return routing.NewGroupAdmin(originalGroupPort{repo}, duplicates, sortOrder, accounts, keys, invalidator, pricingConfigs, routing.GroupAdminOptions{
-		Pricing:       routing.PricingConfigValidation{LoadLocation: pricingprovider.LoadPricingLocation},
 		DefaultModels: routingprovider.DefaultGroupModelCandidates,
 		GlobalWeights: func(ctx context.Context) (policy.ScoreWeights, error) {
 			defaults := scheduler.DefaultAdminSettingsDefaults()

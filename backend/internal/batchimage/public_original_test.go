@@ -10,6 +10,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
+	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
+
 	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	batchimageprovider "github.com/TokenFlux/TokenRouter/internal/batchimage/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/modeltrace"
@@ -79,7 +82,7 @@ func TestBatchImagePublicService_Submit(t *testing.T) {
 		svc, repo, _, _, _, _ := newTestBatchImagePublicService(true)
 		groupID := int64(7)
 		otherGroupID := int64(8)
-		svc.GroupRepo = batchGroupReader{&publicBatchImageGroupRepo{groups: map[int64]*routing.Group{
+		svc.GroupRepo = batchGroupReader{&publicBatchImageGroupRepo{groups: map[int64]*batchimage.GroupView{
 			groupID: {
 				ID:                        groupID,
 				RateMultiplier:            1,
@@ -120,7 +123,7 @@ func TestBatchImagePublicService_Submit(t *testing.T) {
 	t.Run("applies channel and account model mappings before provider submit", func(t *testing.T) {
 		svc, repo, _, gemini, _, _ := newTestBatchImagePublicService(true)
 		groupID := int64(7)
-		svc.GroupRepo = batchGroupReader{&publicBatchImageGroupRepo{groups: map[int64]*routing.Group{
+		svc.GroupRepo = batchGroupReader{&publicBatchImageGroupRepo{groups: map[int64]*batchimage.GroupView{
 			groupID: {
 				ID:                           groupID,
 				RateMultiplier:               1,
@@ -187,11 +190,10 @@ func TestBatchImagePublicService_Submit(t *testing.T) {
 		accountMultiplier := 1.25
 		accountRepo := testassert.MustType[*publicBatchImageAccountRepo](testassert.MustType[*batchAccountFixture](svc.AccountRepo).source)
 		accountRepo.accounts[1].RateMultiplier = &accountMultiplier
-		svc.GroupRepo = batchGroupReader{&publicBatchImageGroupRepo{groups: map[int64]*routing.Group{
+		svc.GroupRepo = batchGroupReader{&publicBatchImageGroupRepo{groups: map[int64]*batchimage.GroupView{
 			groupID: {
 				ID:                           groupID,
 				RateMultiplier:               2.0,
-				AllowImageGeneration:         true,
 				AllowBatchImageGeneration:    true,
 				BatchImageDiscountMultiplier: 0.8,
 				BatchImageHoldMultiplier:     0.6,
@@ -224,11 +226,10 @@ func TestBatchImagePublicService_Submit(t *testing.T) {
 	t.Run("uses subscription plan group rate before user balance rate", func(t *testing.T) {
 		svc, repo, _, _, _, _ := newTestBatchImagePublicService(true)
 		groupID := int64(7)
-		svc.GroupRepo = batchGroupReader{&publicBatchImageGroupRepo{groups: map[int64]*routing.Group{
+		svc.GroupRepo = batchGroupReader{&publicBatchImageGroupRepo{groups: map[int64]*batchimage.GroupView{
 			groupID: {
 				ID:                           groupID,
 				RateMultiplier:               2,
-				AllowImageGeneration:         true,
 				AllowBatchImageGeneration:    true,
 				BatchImageDiscountMultiplier: 0.5,
 				BatchImageHoldMultiplier:     0.6,
@@ -268,19 +269,17 @@ func TestBatchImagePublicService_Submit(t *testing.T) {
 		svc, repo, _, _, _, _ := newTestBatchImagePublicService(true)
 		groupID := int64(7)
 		imagePrice := 0.134
-		svc.GroupRepo = batchGroupReader{&publicBatchImageGroupRepo{groups: map[int64]*routing.Group{
+		svc.GroupRepo = batchGroupReader{&publicBatchImageGroupRepo{groups: map[int64]*batchimage.GroupView{
 			groupID: {
 				ID:                           groupID,
 				RateMultiplier:               1.0,
-				AllowImageGeneration:         true,
 				AllowBatchImageGeneration:    true,
 				BatchImageDiscountMultiplier: 0.5,
 				BatchImageHoldMultiplier:     0.6,
-				ModelPricing:                 testImageModelPricing(map[string]*float64{"1K": &imagePrice}),
 			},
 		}}}
 
-		svc.Pricing = &batchimage.Pricing{Resolver: publicPriceResolverFixture(), GroupRepo: svc.GroupRepo}
+		svc.Pricing = &batchimage.Pricing{Resolver: billingtestkit.SharedPriceResolver(billingtestkit.Calculator(0, nil, nil), groupID, pricing.DefaultBillingSettings(), testImageModelPricing(map[string]*float64{"1K": &imagePrice})), GroupRepo: svc.GroupRepo}
 
 		got, err := svc.Submit(ctx, batchimage.BatchImageOwner{UserID: 11, APIKeyID: 22, GroupID: &groupID}, validBatchImageSubmitRequest(), "")
 		require.NoError(t, err)
@@ -307,7 +306,7 @@ func TestBatchImagePublicService_Submit(t *testing.T) {
 	t.Run("group batch image disabled rejects before provider submit", func(t *testing.T) {
 		svc, repo, queue, gemini, _, _ := newTestBatchImagePublicService(true)
 		groupID := int64(7)
-		svc.GroupRepo = batchGroupReader{&publicBatchImageGroupRepo{groups: map[int64]*routing.Group{
+		svc.GroupRepo = batchGroupReader{&publicBatchImageGroupRepo{groups: map[int64]*batchimage.GroupView{
 			groupID: {
 				ID:                           groupID,
 				RateMultiplier:               1,
@@ -684,11 +683,10 @@ func TestBatchImagePublicService_ListModels(t *testing.T) {
 	t.Run("returns priced models from selected account group", func(t *testing.T) {
 		svc, _, _, _, _, _ := newTestBatchImagePublicService(true)
 		groupID := int64(7)
-		svc.GroupRepo = batchGroupReader{&publicBatchImageGroupRepo{groups: map[int64]*routing.Group{
+		svc.GroupRepo = batchGroupReader{&publicBatchImageGroupRepo{groups: map[int64]*batchimage.GroupView{
 			groupID: {
 				ID:                           groupID,
 				RateMultiplier:               1,
-				AllowImageGeneration:         true,
 				AllowBatchImageGeneration:    true,
 				BatchImageDiscountMultiplier: 0.5,
 				BatchImageHoldMultiplier:     0.6,
@@ -756,7 +754,7 @@ func TestBatchImagePublicService_ListModels(t *testing.T) {
 	t.Run("rejects when group disables batch image", func(t *testing.T) {
 		svc, _, _, _, _, _ := newTestBatchImagePublicService(true)
 		groupID := int64(7)
-		svc.GroupRepo = batchGroupReader{&publicBatchImageGroupRepo{groups: map[int64]*routing.Group{
+		svc.GroupRepo = batchGroupReader{&publicBatchImageGroupRepo{groups: map[int64]*batchimage.GroupView{
 			groupID: {ID: groupID, AllowBatchImageGeneration: false},
 		}}}
 
@@ -1075,10 +1073,10 @@ var (
 )
 
 type publicBatchImageGroupRepo struct {
-	groups map[int64]*routing.Group
+	groups map[int64]*batchimage.GroupView
 }
 
-func (r *publicBatchImageGroupRepo) GetByIDLite(_ context.Context, id int64) (*routing.Group, error) {
+func (r *publicBatchImageGroupRepo) GetByIDLite(_ context.Context, id int64) (*batchimage.GroupView, error) {
 	if r != nil && r.groups != nil {
 		if group, ok := r.groups[id]; ok {
 			return group, nil

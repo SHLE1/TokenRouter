@@ -6,7 +6,6 @@ import (
 
 // PricingSource 定价来源标识
 const (
-	PricingSourceGroup    = "group"
 	PricingSourceConfig   = "pricing_config"
 	PricingSourceLiteLLM  = "litellm"
 	PricingSourceFallback = "fallback"
@@ -134,9 +133,9 @@ func (r *ResolvedPricing) HasConfiguredPricing() bool {
 	return r != nil && r.ConfigPricing != nil
 }
 
-// HasEffectiveOverridePricing 判断分组或共享价格配置是否提供了显式价格，包括显式零价。
+// HasEffectiveOverridePricing 判断共享价格配置是否提供了显式价格，包括显式零价。
 func (r *ResolvedPricing) HasEffectiveOverridePricing() bool {
-	return r != nil && !r.IsUnpriced() && (r.Source == PricingSourceGroup || r.Source == PricingSourceConfig) &&
+	return r != nil && !r.IsUnpriced() && r.Source == PricingSourceConfig &&
 		r.ConfigPricing != nil && r.ConfigPricing.HasEffectivePricing()
 }
 

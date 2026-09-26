@@ -4,14 +4,13 @@ package provider
 import (
 	"time"
 
+	"github.com/TokenFlux/TokenRouter/internal/billing"
+
 	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
-	"github.com/TokenFlux/TokenRouter/internal/billing"
-	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/completion"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	"github.com/TokenFlux/TokenRouter/internal/identity"
-	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
 func ProjectCompletionKey(v *apikey.APIKey) *completion.KeySnapshot {
@@ -43,19 +42,9 @@ func ProjectCompletionKey(v *apikey.APIKey) *completion.KeySnapshot {
 		out.Group = &completion.GroupSnapshot{
 			ID: g.ID,
 
-			Price:              ProjectCompletionPriceGroup(g),
 			RateMultiplier:     g.RateMultiplier,
-			PeakRateEnabled:    g.PeakRateEnabled,
-			PeakStart:          g.PeakStart,
-			PeakEnd:            g.PeakEnd,
-			PeakRateMultiplier: g.PeakRateMultiplier,
 			Location:           time.Local,
-
-			FreeOpenAIFast:        g.FreeOpenAIFast,
-			SupportsOpenAIFast:    true,
-			WebSearchPricePerCall: g.WebSearchPricePerCall,
-			SearchPricePer1k:      g.GetSearchPricePer1k(),
-			AudioPrice:            groupAudioPriceConfigFromAPIKey(v),
+			SupportsOpenAIFast: true,
 		}
 	}
 	return completion.SnapshotKey(out)
@@ -193,24 +182,4 @@ func completionUserSummary(u *identity.User) *billing.UserSummary {
 		copy(out.BalanceNotifyExtraEmails, u.BalanceNotifyExtraEmails)
 	}
 	return out
-}
-
-// ProjectCompletionPriceGroup 只向计费传递价卡，不传递路由配置与运行状态。
-func ProjectCompletionPriceGroup(group *routing.Group) *billing.PriceGroup {
-	if group == nil {
-		return nil
-	}
-	return &billing.PriceGroup{ModelPricing: group.ModelPricing, LongContextPricingEnabled: group.LongContextPricingEnabled}
-}
-
-func groupAudioPriceConfigFromAPIKey(apiKey *apikey.APIKey) *pricing.AudioPriceConfig {
-	if apiKey == nil || apiKey.Group == nil {
-		return nil
-	}
-	g := apiKey.Group
-	return &pricing.AudioPriceConfig{
-		RealtimePerMin: g.AudioRealtimePricePerMin,
-		TTSPerMChars:   g.AudioTTSPricePerMillionChars,
-		STTPerHour:     g.AudioSTTPricePerHour,
-	}
 }

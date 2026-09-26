@@ -65,7 +65,6 @@ type GroupView struct {
 	ID                                                                     int64
 	AllowBatchImageGeneration                                              bool
 	RateMultiplier, BatchImageDiscountMultiplier, BatchImageHoldMultiplier float64
-	Price                                                                  billing.PriceGroup
 }
 type GroupReader interface {
 	GetByIDLite(context.Context, int64) (*GroupView, error)

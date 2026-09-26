@@ -247,14 +247,18 @@ func TestOpenAIGatewayServiceRecordUsage_PeakRateAffectsTokenModeImageOutputToke
 		APIKey: &apikey.APIKey{
 			ID:      1004,
 			GroupID: i64p(groupID),
-			Group: &routing.Group{
-				ID:                 groupID,
-				RateMultiplier:     groupRate,
-				PeakRateEnabled:    true,
-				PeakStart:          "11:59",
-				PeakEnd:            "12:01",
-				PeakRateMultiplier: 3.0,
-			},
+			Group: configureBillingGroup(svc, &routing.Group{
+				ID:             groupID,
+				RateMultiplier: groupRate,
+			}, pricing.BillingSettings{
+				PeakRateEnabled:              true,
+				PeakStart:                    "11:59",
+				PeakEnd:                      "12:01",
+				PeakRateMultiplier:           3.0,
+				LongContextPricingEnabled:    true,
+				BatchImageDiscountMultiplier: 0.5,
+				BatchImageHoldMultiplier:     0.6,
+			}, nil),
 		},
 		User:    &identity.User{ID: 2004},
 		Account: &accountcore.Record{ID: 3004},
@@ -991,11 +995,15 @@ func TestOpenAIGatewayServiceRecordUsage_GroupControlsLongContextBilling(t *test
 				APIKey: &apikey.APIKey{
 					ID:      int64(1020 + i),
 					GroupID: &groupID,
-					Group: &routing.Group{
-						ID:                        groupID,
-						RateMultiplier:            1,
-						LongContextPricingEnabled: tt.groupEnable,
-					},
+					Group: configureBillingGroup(svc, &routing.Group{
+						ID:             groupID,
+						RateMultiplier: 1,
+					}, pricing.BillingSettings{
+						LongContextPricingEnabled:    tt.groupEnable,
+						PeakRateMultiplier:           1,
+						BatchImageDiscountMultiplier: 0.5,
+						BatchImageHoldMultiplier:     0.6,
+					}, nil),
 				},
 				User: &identity.User{ID: int64(2020 + i)},
 				Account: &accountcore.Record{
@@ -1054,12 +1062,15 @@ func TestOpenAIGatewayServiceRecordUsage_GrokLongContextFollowsGroupToggle(t *te
 				APIKey: &apikey.APIKey{
 					ID:      int64(1030 + i),
 					GroupID: &groupID,
-					Group: &routing.Group{
-						ID: groupID,
-
-						RateMultiplier:            1,
-						LongContextPricingEnabled: tt.groupEnable,
-					},
+					Group: configureBillingGroup(svc, &routing.Group{
+						ID:             groupID,
+						RateMultiplier: 1,
+					}, pricing.BillingSettings{
+						LongContextPricingEnabled:    tt.groupEnable,
+						PeakRateMultiplier:           1,
+						BatchImageDiscountMultiplier: 0.5,
+						BatchImageHoldMultiplier:     0.6,
+					}, nil),
 				},
 				User:    &identity.User{ID: int64(2030 + i)},
 				Account: &accountcore.Record{ID: int64(3030 + i), Platform: capability.PlatformGrok, Type: capability.AccountTypeOAuth},
@@ -1988,11 +1999,15 @@ func TestOpenAIGatewayServiceRecordUsage_EmptyImageSizeDefaultsBeforeBillingAndP
 		APIKey: &apikey.APIKey{
 			ID:      11201,
 			GroupID: i64p(groupID),
-			Group: &routing.Group{
+			Group: configureBillingGroup(svc, &routing.Group{
 				ID:             groupID,
 				RateMultiplier: 1.0,
-				ModelPricing:   testImageModelPricing(map[string]*float64{"2K": &imagePrice2K}),
-			},
+			}, pricing.BillingSettings{
+				LongContextPricingEnabled:    true,
+				PeakRateMultiplier:           1,
+				BatchImageDiscountMultiplier: 0.5,
+				BatchImageHoldMultiplier:     0.6,
+			}, testImageModelPricing(map[string]*float64{"2K": &imagePrice2K})),
 		},
 		User:    &identity.User{ID: 21201},
 		Account: &accountcore.Record{ID: 31201},
@@ -2032,11 +2047,15 @@ func TestOpenAIGatewayServiceRecordUsage_OutputImageSizeWinsBeforeBillingAndPers
 		APIKey: &apikey.APIKey{
 			ID:      11202,
 			GroupID: i64p(groupID),
-			Group: &routing.Group{
+			Group: configureBillingGroup(svc, &routing.Group{
 				ID:             groupID,
 				RateMultiplier: 1.0,
-				ModelPricing:   testImageModelPricing(map[string]*float64{"1K": &imagePrice1K, "4K": &imagePrice4K}),
-			},
+			}, pricing.BillingSettings{
+				LongContextPricingEnabled:    true,
+				PeakRateMultiplier:           1,
+				BatchImageDiscountMultiplier: 0.5,
+				BatchImageHoldMultiplier:     0.6,
+			}, testImageModelPricing(map[string]*float64{"1K": &imagePrice1K, "4K": &imagePrice4K})),
 		},
 		User:    &identity.User{ID: 21202},
 		Account: &accountcore.Record{ID: 31202},
@@ -2082,11 +2101,15 @@ func TestOpenAIGatewayServiceRecordUsage_ImageUsesPerImageBillingEvenWithUsageTo
 		APIKey: &apikey.APIKey{
 			ID:      1008,
 			GroupID: i64p(groupID),
-			Group: &routing.Group{
+			Group: configureBillingGroup(svc, &routing.Group{
 				ID:             groupID,
 				RateMultiplier: 1.0,
-				ModelPricing:   testImageModelPricing(map[string]*float64{"1K": &imagePrice}),
-			},
+			}, pricing.BillingSettings{
+				LongContextPricingEnabled:    true,
+				PeakRateMultiplier:           1,
+				BatchImageDiscountMultiplier: 0.5,
+				BatchImageHoldMultiplier:     0.6,
+			}, testImageModelPricing(map[string]*float64{"1K": &imagePrice})),
 		},
 		User:    &identity.User{ID: 2008},
 		Account: &accountcore.Record{ID: 3008},
@@ -2122,11 +2145,15 @@ func TestOpenAIGatewayServiceRecordUsage_ImageSharedMultiplierPreservesExistingB
 		APIKey: &apikey.APIKey{
 			ID:      10121,
 			GroupID: i64p(groupID),
-			Group: &routing.Group{
+			Group: configureBillingGroup(svc, &routing.Group{
 				ID:             groupID,
 				RateMultiplier: 0.15,
-				ModelPricing:   testImageModelPricing(map[string]*float64{"1K": &imagePrice}),
-			},
+			}, pricing.BillingSettings{
+				LongContextPricingEnabled:    true,
+				PeakRateMultiplier:           1,
+				BatchImageDiscountMultiplier: 0.5,
+				BatchImageHoldMultiplier:     0.6,
+			}, testImageModelPricing(map[string]*float64{"1K": &imagePrice})),
 		},
 		User:    &identity.User{ID: 20121},
 		Account: &accountcore.Record{ID: 30121},
@@ -2165,11 +2192,15 @@ func TestOpenAIGatewayServiceRecordUsage_ImageSharedMultiplierUsesUserGroupOverr
 		APIKey: &apikey.APIKey{
 			ID:      10125,
 			GroupID: i64p(groupID),
-			Group: &routing.Group{
+			Group: configureBillingGroup(svc, &routing.Group{
 				ID:             groupID,
 				RateMultiplier: 0.15,
-				ModelPricing:   testImageModelPricing(map[string]*float64{"1K": &imagePrice}),
-			},
+			}, pricing.BillingSettings{
+				LongContextPricingEnabled:    true,
+				PeakRateMultiplier:           1,
+				BatchImageDiscountMultiplier: 0.5,
+				BatchImageHoldMultiplier:     0.6,
+			}, testImageModelPricing(map[string]*float64{"1K": &imagePrice})),
 		},
 		User:    &identity.User{ID: 20125},
 		Account: &accountcore.Record{ID: 30125},
@@ -2245,12 +2276,15 @@ func TestOpenAIGatewayServiceRecordUsage_GroupImagePriceOverridesPricingConfigIm
 		APIKey: &apikey.APIKey{
 			ID:      10127,
 			GroupID: i64p(groupID),
-			Group: &routing.Group{
-				ID: groupID,
-
+			Group: configureBillingGroup(svc, &routing.Group{
+				ID:             groupID,
 				RateMultiplier: 1,
-				ModelPricing:   testImageModelPricing(map[string]*float64{"2K": &groupImagePrice2K}),
-			},
+			}, pricing.BillingSettings{
+				LongContextPricingEnabled:    true,
+				PeakRateMultiplier:           1,
+				BatchImageDiscountMultiplier: 0.5,
+				BatchImageHoldMultiplier:     0.6,
+			}, testImageModelPricing(map[string]*float64{"2K": &groupImagePrice2K})),
 		},
 		User:    &identity.User{ID: 20127},
 		Account: &accountcore.Record{ID: 30127, Platform: capability.PlatformGrok},
@@ -2288,12 +2322,15 @@ func TestOpenAIGatewayServiceRecordUsage_GroupVideoPriceOverridesPricingConfigIm
 		APIKey: &apikey.APIKey{
 			ID:      10128,
 			GroupID: i64p(groupID),
-			Group: &routing.Group{
-				ID: groupID,
-
+			Group: configureBillingGroup(svc, &routing.Group{
+				ID:             groupID,
 				RateMultiplier: 1,
-				ModelPricing:   testVideoModelPricing(map[string]*float64{"720p": &groupVideoPrice720P}),
-			},
+			}, pricing.BillingSettings{
+				LongContextPricingEnabled:    true,
+				PeakRateMultiplier:           1,
+				BatchImageDiscountMultiplier: 0.5,
+				BatchImageHoldMultiplier:     0.6,
+			}, testVideoModelPricing(map[string]*float64{"720p": &groupVideoPrice720P})),
 		},
 		User:    &identity.User{ID: 20128},
 		Account: &accountcore.Record{ID: 30128, Platform: capability.PlatformGrok},
@@ -2494,10 +2531,9 @@ func TestGatewayServiceCalculateRecordUsageCost_PricingConfigImageBillingUsesSiz
 	require.InDelta(t, 0.80, cost.ActualCost, 1e-12)
 }
 
-func TestGatewayServiceCalculateRecordUsageCost_GroupImagePriceOverridesPricingConfigImagePrice(t *testing.T) {
+func TestGatewayServiceCalculateRecordUsageCost_UsesSharedImagePrice(t *testing.T) {
 	groupID := int64(129)
 	pricingConfigPrice := 0.25
-	groupImagePrice2K := 0.021
 
 	svc := completion.NewRecorder(completion.Dependencies{
 		Calculator: NewBillingService(&config.Config{}, nil),
@@ -2509,10 +2545,7 @@ func TestGatewayServiceCalculateRecordUsageCost_GroupImagePriceOverridesPricingC
 
 			nil), gatewaycapture.ProjectCompletionKey(&apikey.APIKey{
 			GroupID: i64p(groupID),
-			Group: &routing.Group{
-				ID:           groupID,
-				ModelPricing: testImageModelPricing(map[string]*float64{"2K": &groupImagePrice2K}),
-			},
+			Group:   &routing.Group{ID: groupID},
 		}), gatewaycapture.ProjectCompletionAccount(nil), "gemini-image",
 		"gemini-image",
 		"",
@@ -2524,8 +2557,8 @@ func TestGatewayServiceCalculateRecordUsageCost_GroupImagePriceOverridesPricingC
 
 	require.NotNil(t, cost)
 	require.Equal(t, string(routing.BillingModeImage), cost.BillingMode)
-	require.InDelta(t, 0.042, cost.TotalCost, 1e-12)
-	require.InDelta(t, 0.042, cost.ActualCost, 1e-12)
+	require.InDelta(t, 0.50, cost.TotalCost, 1e-12)
+	require.InDelta(t, 0.50, cost.ActualCost, 1e-12)
 }
 
 func TestGatewayServiceCalculateRecordUsageCost_PricingConfigImageBillingNormalizesMissingSizeTier(t *testing.T) {
@@ -2711,17 +2744,24 @@ func TestOpenAIGatewayServiceRecordUsage_FreeOpenAIFastChargesStandard(t *testin
 	apiKey := &apikey.APIKey{
 		ID:      1020,
 		GroupID: &groupID,
-		Group: &routing.Group{
-			ID: groupID, Status: billing.StatusActive,
-			Hydrated: true, RateMultiplier: 0.5, FreeOpenAIFast: true,
-			ModelPricing: []routing.ModelPricingEntry{{
-				Models:         []string{"gpt-5.6-sol"},
-				BillingMode:    routing.BillingModeToken,
-				InputPrice:     &inputPrice,
-				OutputPrice:    &outputPrice,
-				FastMultiplier: &fastMultiplier,
-			}},
-		},
+		Group: configureBillingGroup(svc, &routing.Group{
+			ID:             groupID,
+			Status:         billing.StatusActive,
+			Hydrated:       true,
+			RateMultiplier: 0.5,
+		}, pricing.BillingSettings{
+			FreeOpenAIFast:               true,
+			LongContextPricingEnabled:    true,
+			PeakRateMultiplier:           1,
+			BatchImageDiscountMultiplier: 0.5,
+			BatchImageHoldMultiplier:     0.6,
+		}, []routing.ModelPricingEntry{{
+			Models:         []string{"gpt-5.6-sol"},
+			BillingMode:    routing.BillingModeToken,
+			InputPrice:     &inputPrice,
+			OutputPrice:    &outputPrice,
+			FastMultiplier: &fastMultiplier,
+		}}),
 	}
 
 	err := svc.RecordOpenAI(context.Background(), &gatewaycapture.OpenAICapture{
@@ -2757,12 +2797,12 @@ func TestOpenAIGatewayServiceRecordUsage_FreeOpenAIFastChargesStandard(t *testin
 
 // TestGroupBillsOpenAIFastAtStandardRequiresOpenAIAccount 锁定平台、账号和档位三重边界。
 func TestGroupBillsOpenAIFastAtStandardRequiresOpenAIAccount(t *testing.T) {
-	apiKey := &apikey.APIKey{Group: &routing.Group{FreeOpenAIFast: true}}
+	apiKey := &completion.KeySnapshot{Group: &completion.GroupSnapshot{FreeOpenAIFast: true, SupportsOpenAIFast: true}}
 
-	require.True(t, completion.GroupBillsOpenAIFastAtStandard(gatewaycapture.ProjectCompletionKey(apiKey), gatewaycapture.ProjectCompletionAccount(&accountcore.Record{Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth}), "priority"))
-	require.True(t, completion.GroupBillsOpenAIFastAtStandard(gatewaycapture.ProjectCompletionKey(apiKey), gatewaycapture.ProjectCompletionAccount(&accountcore.Record{Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth}), " FAST "))
-	require.False(t, completion.GroupBillsOpenAIFastAtStandard(gatewaycapture.ProjectCompletionKey(apiKey), gatewaycapture.ProjectCompletionAccount(&accountcore.Record{Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth}), "standard"))
-	require.False(t, completion.GroupBillsOpenAIFastAtStandard(gatewaycapture.ProjectCompletionKey(apiKey), gatewaycapture.ProjectCompletionAccount(&accountcore.Record{Platform: capability.PlatformGrok, Type: capability.AccountTypeAPIKey}), "priority"))
+	require.True(t, completion.GroupBillsOpenAIFastAtStandard(apiKey, gatewaycapture.ProjectCompletionAccount(&accountcore.Record{Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth}), "priority"))
+	require.True(t, completion.GroupBillsOpenAIFastAtStandard(apiKey, gatewaycapture.ProjectCompletionAccount(&accountcore.Record{Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth}), " FAST "))
+	require.False(t, completion.GroupBillsOpenAIFastAtStandard(apiKey, gatewaycapture.ProjectCompletionAccount(&accountcore.Record{Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth}), "standard"))
+	require.False(t, completion.GroupBillsOpenAIFastAtStandard(apiKey, gatewaycapture.ProjectCompletionAccount(&accountcore.Record{Platform: capability.PlatformGrok, Type: capability.AccountTypeAPIKey}), "priority"))
 }
 
 func TestOpenAIGatewayServiceRecordUsage_ServiceTierNeverRaisedByUpstreamResponse(t *testing.T) {

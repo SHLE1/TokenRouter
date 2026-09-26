@@ -27,7 +27,7 @@ type batchAccountsFixtureSource interface {
 	ListSchedulableByGroupIDAndPlatform(context.Context, int64, string) ([]accountcore.Record, error)
 }
 type batchGroupFixtureSource interface {
-	GetByIDLite(context.Context, int64) (*routing.Group, error)
+	GetByIDLite(context.Context, int64) (*batchimage.GroupView, error)
 }
 
 type batchAccountFixture struct {
@@ -73,12 +73,7 @@ func (r batchGroupReader) GetByIDLite(ctx context.Context, id int64) (*batchimag
 	return batchGroupProjection(v), err
 }
 
-func batchGroupProjection(v *routing.Group) *batchimage.GroupView {
-	if v == nil {
-		return nil
-	}
-	return &batchimage.GroupView{ID: v.ID, AllowBatchImageGeneration: v.AllowBatchImageGeneration, RateMultiplier: v.RateMultiplier, BatchImageDiscountMultiplier: v.BatchImageDiscountMultiplier, BatchImageHoldMultiplier: v.BatchImageHoldMultiplier, Price: billing.PriceGroup{ModelPricing: v.ModelPricing, LongContextPricingEnabled: v.LongContextPricingEnabled}}
-}
+func batchGroupProjection(v *batchimage.GroupView) *batchimage.GroupView { return v }
 
 func taskFixtureBilling(core *batchimage.Public) batchimage.FundingStore { return core.Funding.Store }
 
@@ -89,7 +84,7 @@ func newBatchPublicFixture(repo batchimage.BatchImageRepository, accounts batchA
 		core.AccountRepo = &batchAccountFixture{source: accounts, registry: registry}
 	}
 	if groups == nil {
-		groups = &publicBatchImageGroupRepo{groups: map[int64]*routing.Group{7: {ID: 7, AllowBatchImageGeneration: true, RateMultiplier: 1, BatchImageDiscountMultiplier: 0.5, BatchImageHoldMultiplier: 0.6}}}
+		groups = &publicBatchImageGroupRepo{groups: map[int64]*batchimage.GroupView{7: {ID: 7, AllowBatchImageGeneration: true, RateMultiplier: 1, BatchImageDiscountMultiplier: 0.5, BatchImageHoldMultiplier: 0.6}}}
 	}
 	core.GroupRepo = batchGroupReader{groups}
 	if pricingConfigs != nil {

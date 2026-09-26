@@ -754,32 +754,6 @@ func TestAPIKeyServiceSnapshotRoundTripPreservesIndependentModelMapping(t *testi
 	require.Equal(t, "gpt-5.6-luna", snapshot.ModelMapping["review"])
 }
 
-func TestAPIKeyServiceSnapshotRoundTripPreservesGroupModelPricing(t *testing.T) {
-	svc := testkit.NewService(nil, nil, nil, nil, nil, nil, &config.Config{})
-	svc.Start()
-	groupID := int64(9)
-	inputPrice := 1e-6
-	apiKey := &apikey.APIKey{
-		ID: 1, UserID: 2, GroupID: &groupID, Key: "k-group-pricing", Status: billing.StatusActive,
-		User: &identity.User{ID: 2, Status: billing.StatusActive},
-		Group: &routing.Group{
-			ID: groupID, Name: "openai", Status: billing.StatusActive,
-			LongContextPricingEnabled: true,
-			ModelPricing: []routing.ModelPricingEntry{{
-				Models: []string{"gpt-5.4"}, BillingMode: routing.BillingModeToken, InputPrice: &inputPrice,
-			}},
-		},
-	}
-
-	snapshot := svc.KeySnapshotFromAPIKey(context.Background(), apiKey)
-	roundTrip := svc.KeySnapshotToAPIKey(apiKey.Key, snapshot)
-
-	require.True(t, roundTrip.Group.LongContextPricingEnabled)
-	require.Equal(t, apiKey.Group.ModelPricing, roundTrip.Group.ModelPricing)
-	roundTrip.Group.ModelPricing[0].Models[0] = "changed"
-	require.Equal(t, "gpt-5.4", snapshot.Group.ModelPricing[0].Models[0])
-}
-
 func TestAPIKeyService_SnapshotRoundTrip_PreservesReasoningEffortPolicy(t *testing.T) {
 	svc := testkit.NewService(nil, nil, nil, nil, nil, nil, &config.Config{})
 	svc.Start()

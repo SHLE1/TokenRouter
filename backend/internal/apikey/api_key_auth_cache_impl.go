@@ -17,7 +17,7 @@ import (
 	"github.com/dgraph-io/ristretto"
 )
 
-const KeyApiKeyAuthSnapshotVersion = 44
+const KeyApiKeyAuthSnapshotVersion = 45
 
 type KeyApiKeyAuthCacheConfig struct {
 	l1Size        int
@@ -465,13 +465,6 @@ func (s *APIKeyService) KeySnapshotFromAPIKey(ctx context.Context, apiKey *APIKe
 			SessionIsolationEnabled:         apiKey.Group.SessionIsolationEnabled,
 			AllowImageGeneration:            apiKey.Group.AllowImageGeneration,
 			AllowBatchImageGeneration:       apiKey.Group.AllowBatchImageGeneration,
-			WebSearchPricePerCall:           clonePointer(apiKey.Group.WebSearchPricePerCall),
-			SearchPricePer1k:                clonePointer(apiKey.Group.SearchPricePer1k),
-			AudioRealtimePricePerMin:        clonePointer(apiKey.Group.AudioRealtimePricePerMin),
-			AudioTTSPricePerMillionChars:    clonePointer(apiKey.Group.AudioTTSPricePerMillionChars),
-			AudioSTTPricePerHour:            clonePointer(apiKey.Group.AudioSTTPricePerHour),
-			LongContextPricingEnabled:       apiKey.Group.LongContextPricingEnabled,
-			ModelPricing:                    CloneModelPricingEntries(apiKey.Group.ModelPricing),
 			RoutingPolicy:                   apiKey.Group.RoutingPolicy.Clone(),
 			ClaudeCodeOnly:                  apiKey.Group.ClaudeCodeOnly,
 			FallbackGroupID:                 clonePointer(apiKey.Group.FallbackGroupID),
@@ -487,17 +480,12 @@ func (s *APIKeyService) KeySnapshotFromAPIKey(ctx context.Context, apiKey *APIKe
 			AllowLive:                       apiKey.Group.AllowLive,
 			ForceOpenAIFast:                 apiKey.Group.ForceOpenAIFast,
 			OpenAIFastPolicy:                s.groupPolicy(apiKey.Group),
-			FreeOpenAIFast:                  apiKey.Group.FreeOpenAIFast,
 			DefaultMappedModel:              apiKey.Group.DefaultMappedModel,
 			ModelsListConfig:                cloneModelsList(apiKey.Group.ModelsListConfig),
 			RPMLimit:                        apiKey.Group.RPMLimit,
 			MaxReasoningEffort:              apiKey.Group.MaxReasoningEffort,
 			MaxReasoningEffortOverLimit:     apiKey.Group.MaxReasoningEffortOverLimit,
 			ReasoningEffortMappings:         slices.Clone(apiKey.Group.ReasoningEffortMappings),
-			PeakRateEnabled:                 apiKey.Group.PeakRateEnabled,
-			PeakStart:                       apiKey.Group.PeakStart,
-			PeakEnd:                         apiKey.Group.PeakEnd,
-			PeakRateMultiplier:              apiKey.Group.PeakRateMultiplier,
 		}
 	}
 	if apiKey.IsComposite {
@@ -594,13 +582,6 @@ func (s *APIKeyService) KeySnapshotToAPIKey(key string, snapshot *APIKeyAuthSnap
 			SessionIsolationEnabled:         snapshot.Group.SessionIsolationEnabled,
 			AllowImageGeneration:            snapshot.Group.AllowImageGeneration,
 			AllowBatchImageGeneration:       snapshot.Group.AllowBatchImageGeneration,
-			WebSearchPricePerCall:           clonePointer(snapshot.Group.WebSearchPricePerCall),
-			SearchPricePer1k:                clonePointer(snapshot.Group.SearchPricePer1k),
-			AudioRealtimePricePerMin:        clonePointer(snapshot.Group.AudioRealtimePricePerMin),
-			AudioTTSPricePerMillionChars:    clonePointer(snapshot.Group.AudioTTSPricePerMillionChars),
-			AudioSTTPricePerHour:            clonePointer(snapshot.Group.AudioSTTPricePerHour),
-			LongContextPricingEnabled:       snapshot.Group.LongContextPricingEnabled,
-			ModelPricing:                    CloneModelPricingEntries(snapshot.Group.ModelPricing),
 			RoutingPolicy:                   snapshot.Group.RoutingPolicy.Clone(),
 			ClaudeCodeOnly:                  snapshot.Group.ClaudeCodeOnly,
 			FallbackGroupID:                 clonePointer(snapshot.Group.FallbackGroupID),
@@ -616,17 +597,12 @@ func (s *APIKeyService) KeySnapshotToAPIKey(key string, snapshot *APIKeyAuthSnap
 			AllowLive:                       snapshot.Group.AllowLive,
 			ForceOpenAIFast:                 snapshot.Group.ForceOpenAIFast,
 			OpenAIFastPolicy:                snapshot.Group.OpenAIFastPolicy,
-			FreeOpenAIFast:                  snapshot.Group.FreeOpenAIFast,
 			DefaultMappedModel:              snapshot.Group.DefaultMappedModel,
 			ModelsListConfig:                cloneModelsList(snapshot.Group.ModelsListConfig),
 			RPMLimit:                        snapshot.Group.RPMLimit,
 			MaxReasoningEffort:              snapshot.Group.MaxReasoningEffort,
 			MaxReasoningEffortOverLimit:     snapshot.Group.MaxReasoningEffortOverLimit,
 			ReasoningEffortMappings:         slices.Clone(snapshot.Group.ReasoningEffortMappings),
-			PeakRateEnabled:                 snapshot.Group.PeakRateEnabled,
-			PeakStart:                       snapshot.Group.PeakStart,
-			PeakEnd:                         snapshot.Group.PeakEnd,
-			PeakRateMultiplier:              snapshot.Group.PeakRateMultiplier,
 		}
 	}
 	if snapshot.IsComposite {
@@ -659,23 +635,18 @@ func KeyAuthGroupSnapshotFromGroup(group *routing.Group) *APIKeyAuthGroupSnapsho
 		Status: group.Status, RateMultiplier: group.RateMultiplier,
 		SessionIsolationEnabled: group.SessionIsolationEnabled, AllowImageGeneration: group.AllowImageGeneration,
 		AllowBatchImageGeneration: group.AllowBatchImageGeneration,
-		WebSearchPricePerCall:     clonePointer(group.WebSearchPricePerCall),
-		SearchPricePer1k:          clonePointer(group.SearchPricePer1k), AudioRealtimePricePerMin: clonePointer(group.AudioRealtimePricePerMin),
-		AudioTTSPricePerMillionChars: clonePointer(group.AudioTTSPricePerMillionChars), AudioSTTPricePerHour: clonePointer(group.AudioSTTPricePerHour),
-		LongContextPricingEnabled: group.LongContextPricingEnabled, ModelPricing: CloneModelPricingEntries(group.ModelPricing),
-		RoutingPolicy:   group.RoutingPolicy.Clone(),
-		ClaudeCodeOnly:  group.ClaudeCodeOnly,
-		FallbackGroupID: clonePointer(group.FallbackGroupID), FallbackGroupIDOnInvalidRequest: clonePointer(group.FallbackGroupIDOnInvalidRequest),
+		RoutingPolicy:             group.RoutingPolicy.Clone(),
+		ClaudeCodeOnly:            group.ClaudeCodeOnly,
+		FallbackGroupID:           clonePointer(group.FallbackGroupID), FallbackGroupIDOnInvalidRequest: clonePointer(group.FallbackGroupIDOnInvalidRequest),
 		UnavailableFallbackGroupID: clonePointer(group.UnavailableFallbackGroupID), ModelRouting: cloneModelRouting(group.ModelRouting),
 		ModelRoutingEnabled: group.ModelRoutingEnabled, MCPXMLInject: group.MCPXMLInject,
 		ProtocolFallbacks: protocol.CloneFallbacks(group.ProtocolFallbacks), ResponsesImagePolicy: group.ResponsesImagePolicy,
 		SupportedModelScopes: slices.Clone(group.SupportedModelScopes), AllowedProtocols: cloneGroupClientProtocols(group.AllowedProtocols),
-		AllowLive: group.AllowLive, ForceOpenAIFast: group.ForceOpenAIFast, OpenAIFastPolicy: group.OpenAIFastPolicy, FreeOpenAIFast: group.FreeOpenAIFast, DefaultMappedModel: group.DefaultMappedModel,
+		AllowLive: group.AllowLive, ForceOpenAIFast: group.ForceOpenAIFast, OpenAIFastPolicy: group.OpenAIFastPolicy, DefaultMappedModel: group.DefaultMappedModel,
 		ModelsListConfig: cloneModelsList(group.ModelsListConfig),
 		RPMLimit:         group.RPMLimit, MaxReasoningEffort: group.MaxReasoningEffort,
 		MaxReasoningEffortOverLimit: group.MaxReasoningEffortOverLimit,
-		ReasoningEffortMappings:     slices.Clone(group.ReasoningEffortMappings), PeakRateEnabled: group.PeakRateEnabled,
-		PeakStart: group.PeakStart, PeakEnd: group.PeakEnd, PeakRateMultiplier: group.PeakRateMultiplier,
+		ReasoningEffortMappings:     slices.Clone(group.ReasoningEffortMappings),
 	}
 }
 
@@ -690,36 +661,17 @@ func KeyGroupFromAuthSnapshot(snapshot *APIKeyAuthGroupSnapshot) *routing.Group 
 		Status: snapshot.Status, Hydrated: true, RateMultiplier: snapshot.RateMultiplier,
 		SessionIsolationEnabled: snapshot.SessionIsolationEnabled,
 		AllowImageGeneration:    snapshot.AllowImageGeneration, AllowBatchImageGeneration: snapshot.AllowBatchImageGeneration,
-		WebSearchPricePerCall: clonePointer(snapshot.WebSearchPricePerCall), SearchPricePer1k: clonePointer(snapshot.SearchPricePer1k),
-		AudioRealtimePricePerMin:     clonePointer(snapshot.AudioRealtimePricePerMin),
-		AudioTTSPricePerMillionChars: clonePointer(snapshot.AudioTTSPricePerMillionChars),
-		AudioSTTPricePerHour:         clonePointer(snapshot.AudioSTTPricePerHour),
-		LongContextPricingEnabled:    snapshot.LongContextPricingEnabled,
-		ModelPricing:                 CloneModelPricingEntries(snapshot.ModelPricing),
-		RoutingPolicy:                snapshot.RoutingPolicy.Clone(),
-		ClaudeCodeOnly:               snapshot.ClaudeCodeOnly, FallbackGroupID: clonePointer(snapshot.FallbackGroupID),
+		RoutingPolicy:  snapshot.RoutingPolicy.Clone(),
+		ClaudeCodeOnly: snapshot.ClaudeCodeOnly, FallbackGroupID: clonePointer(snapshot.FallbackGroupID),
 		FallbackGroupIDOnInvalidRequest: clonePointer(snapshot.FallbackGroupIDOnInvalidRequest),
 		UnavailableFallbackGroupID:      clonePointer(snapshot.UnavailableFallbackGroupID), ModelRouting: cloneModelRouting(snapshot.ModelRouting),
 		ModelRoutingEnabled: snapshot.ModelRoutingEnabled, MCPXMLInject: snapshot.MCPXMLInject,
 		ProtocolFallbacks: protocol.CloneFallbacks(snapshot.ProtocolFallbacks), ResponsesImagePolicy: snapshot.ResponsesImagePolicy,
 		SupportedModelScopes: slices.Clone(snapshot.SupportedModelScopes), AllowedProtocols: cloneGroupClientProtocols(snapshot.AllowedProtocols),
-		AllowLive: snapshot.AllowLive, ForceOpenAIFast: snapshot.ForceOpenAIFast, OpenAIFastPolicy: snapshot.OpenAIFastPolicy, FreeOpenAIFast: snapshot.FreeOpenAIFast, DefaultMappedModel: snapshot.DefaultMappedModel,
+		AllowLive: snapshot.AllowLive, ForceOpenAIFast: snapshot.ForceOpenAIFast, OpenAIFastPolicy: snapshot.OpenAIFastPolicy, DefaultMappedModel: snapshot.DefaultMappedModel,
 		ModelsListConfig: cloneModelsList(snapshot.ModelsListConfig),
 		RPMLimit:         snapshot.RPMLimit, MaxReasoningEffort: snapshot.MaxReasoningEffort,
 		MaxReasoningEffortOverLimit: snapshot.MaxReasoningEffortOverLimit,
-		ReasoningEffortMappings:     slices.Clone(snapshot.ReasoningEffortMappings), PeakRateEnabled: snapshot.PeakRateEnabled,
-		PeakStart: snapshot.PeakStart, PeakEnd: snapshot.PeakEnd, PeakRateMultiplier: snapshot.PeakRateMultiplier,
+		ReasoningEffortMappings:     slices.Clone(snapshot.ReasoningEffortMappings),
 	}
-}
-
-// CloneModelPricingEntries 复制认证快照中的价卡切片，避免请求对象修改缓存内容。
-func CloneModelPricingEntries(entries []ModelPricingEntry) []ModelPricingEntry {
-	if entries == nil {
-		return nil
-	}
-	cloned := make([]ModelPricingEntry, len(entries))
-	for i := range entries {
-		cloned[i] = entries[i].Clone()
-	}
-	return cloned
 }

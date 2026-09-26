@@ -72,27 +72,22 @@ func TestGetModelPricing_DeepseekUsesOfficialRatesForStaleEntries(t *testing.T) 
 	}
 }
 
-func TestCalculateCostUnified_DeepseekPeakDoesNotOverrideGroupPricing(t *testing.T) {
+func TestCalculateCostUnified_DeepseekPeakDoesNotOverrideConfigPricing(t *testing.T) {
 	bs := newCalculator(&config.Config{}, nil)
-	resolver := billingtestkit.PriceResolver(nil, bs)
 	inputPrice, outputPrice := 1e-6, 2e-6
-	group := &routing.Group{
-		ID: 1,
-
-		ModelPricing: []routing.ModelPricingEntry{{
-			Models:      []string{"deepseek-v4-flash"},
-			BillingMode: routing.BillingModeToken,
-			InputPrice:  &inputPrice,
-			OutputPrice: &outputPrice,
-		}},
-	}
+	resolver, _ := settingsResolver(bs, billingpricing.DefaultBillingSettings(), []routing.ModelPricingEntry{{
+		Models:      []string{"deepseek-v4-flash"},
+		BillingMode: routing.BillingModeToken,
+		InputPrice:  &inputPrice,
+		OutputPrice: &outputPrice,
+	}})
 	tokens := billingpricing.UsageTokens{InputTokens: 1000, OutputTokens: 500, CacheReadTokens: 1000}
 	for _, pricingAt := range []time.Time{
 		time.Date(2026, 8, 24, 12, 0, 0, 0, time.UTC),
 		time.Date(2026, 8, 24, 2, 0, 0, 0, time.UTC),
 	} {
 		cost, err := bs.CalculateCostUnified(billing.CostInput{
-			Ctx: context.Background(), Model: "deepseek-v4-flash", Group: projectPriceGroup(group),
+			Ctx: context.Background(), Model: "deepseek-v4-flash", GroupID: billingtestkit.GroupID(),
 			Tokens: tokens, RateMultiplier: 1, PricingAt: pricingAt, Resolver: resolver,
 		})
 		require.NoError(t, err)

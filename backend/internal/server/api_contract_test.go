@@ -406,11 +406,10 @@ func TestAPIContracts(t *testing.T) {
 				// 普通用户可见的分组列表不应包含内部字段，同时保留公开的会话隔离开关。
 				deps.groupRepo.SetActive([]routing.Group{
 					{
-						ID:                 10,
-						Name:               "Group One",
-						Description:        "desc",
-						RateMultiplier:     1.5,
-						PeakRateMultiplier: 1.0,
+						ID:             10,
+						Name:           "Group One",
+						Description:    "desc",
+						RateMultiplier: 1.5,
 						AllowedProtocols: []protocolcore.ProtocolID{
 							protocolcore.ProtocolAnthropicMessages,
 							protocolcore.ProtocolOpenAIResponses,

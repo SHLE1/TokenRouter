@@ -518,7 +518,7 @@ func ApplyModelSpecificPricingPolicy(model string, pricing *ModelPricing, policy
 }
 
 // ApplyModelSpecificPricingPolicyEx 应用模型专属定价修正；forceDeepSeekRates 为 false
-// 时保留分组或共享价格配置对 DeepSeek 的显式价格，避免官方价覆盖运营者配置。
+// 时保留共享价格配置对 DeepSeek 的显式价格，避免官方价覆盖运营者配置。
 func ApplyModelSpecificPricingPolicyEx(model string, pricing *ModelPricing, forceDeepSeekRates bool, policy ModelPolicy) *ModelPricing {
 	if pricing == nil {
 		return nil
@@ -629,7 +629,7 @@ func DisplayPricingFromResolved(model string, rateMultiplier float64, resolved *
 		}
 		return ModelDisplayPricing{}, false
 	case BillingModeImage, BillingModePerRequest:
-		if resolved.Source != PricingSourceGroup && resolved.Source != PricingSourceConfig {
+		if resolved.Source != PricingSourceConfig {
 			return ModelDisplayPricing{}, false
 		}
 		if resolved.Mode == BillingModePerRequest && !LooksLikeImageModel(model) {
@@ -981,7 +981,7 @@ const (
 	DefaultSearchPricePer1k = 5.0
 
 	// 通用实时语音默认采用 think-fast-1.0 价格；think-fast-2.0 可通过
-	// 分组或共享价格配置逐模型价格独立配置。
+	// 共享价格配置逐模型价格独立配置。
 	DefaultAudioRealtimePricePerMin     = 0.05
 	DefaultAudioTTSPricePerMillionChars = 15.0
 	DefaultAudioSTTPricePerHour         = 0.10

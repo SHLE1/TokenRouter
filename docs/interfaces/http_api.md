@@ -307,8 +307,12 @@ app 为所有需要幂等的用户和管理员 HTTP 处理器显式绑定同一�
 
 分组管理请求与列表筛选不再接受上游平台，旧 `platform`、`is_default` 字段明确返回 400。分组 `routing_policy.model_mapping` 为 `Record<string,string>`，`allowed_models` 为 `string[]`，不再包一层平台键。账号列表仍可按账号自身平台筛选。
 
-`/api/v1/admin/pricing/configs` 及其 `/:id` 子路由提供共享价格配置 CRUD。请求只接受价格字段，模型映射、白名单和功能字段必须通过分组的 `routing_policy` 保存；共享价卡、分组覆盖价和账号成本价卡都不包含 `platform`，模型规则统一校验重叠；未知价格配置字段返回 400。原 `/api/v1/admin/channels` 路由已移除并返回 404，管理脚本需要切换地址。
+`/api/v1/admin/pricing/configs` 及其 `/:id` 子路由提供共享价格配置 CRUD。请求只接受价格字段，模型映射、白名单和功能字段必须通过分组的 `routing_policy` 保存；共享价卡和账号成本价卡都不包含 `platform`，模型规则统一校验重叠；未知价格配置字段返回 400。原 `/api/v1/admin/channels` 路由已移除并返回 404，管理脚本需要切换地址。
 
 默认价只读查询位于 `/api/v1/admin/pricing/defaults`、`/model` 和 `/models`，`/model` 和 `/models` 不再要求上游平台参数，默认目录列表可保留模型来源标签筛选。具体价格口径见[管理员默认价格查询](model_catalog_and_marketplace.md#gateway_default_pricing)。模型链字段使用 `group_mapped` 语义；历史用量中的共享价格关联字段为 `pricing_config_id`，数值沿用原 ID。
 
 管理员手动更新价格目录使用 `POST /api/v1/admin/pricing/defaults/update`，不接收价格来源地址或文件路径，复用服务端已配置的目录来源。普通 GET 查询和列表刷新不触发更新。
+
+价格配置创建、更新和响应包含 `peak_rate_enabled`、`peak_start`、`peak_end`、`peak_rate_multiplier`、`long_context_pricing_enabled`、`free_openai_fast`、`batch_image_discount_multiplier`、`batch_image_hold_multiplier`，以及 `web_search_price_per_call`、`search_price_per_1k`、`audio_realtime_price_per_min`、`audio_tts_price_per_million_chars`、`audio_stt_price_per_hour`。更新时省略设置表示不改动；五项可空单价传 `null` 清除覆盖、传 `0` 表示免费。预扣倍率不得低于折扣倍率，高峰只接受同日有效窗口。
+
+分组接口移除上述价格字段及 `model_pricing`；`rate_multiplier` 仍属于分组。控制台将基础倍率放在分组“基本”页，其余设置统一在价格配置的“计费设置”页编辑。旧分组值不复制到价格配置。

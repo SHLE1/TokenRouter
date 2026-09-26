@@ -368,13 +368,6 @@ func (r *KeyStore) GetByKeyForAuth(ctx context.Context, key string) (*keycore.AP
 				group.FieldRateMultiplier,
 				group.FieldAllowImageGeneration,
 				group.FieldAllowBatchImageGeneration,
-				group.FieldWebSearchPricePerCall,
-				group.FieldSearchPricePer1k,
-				group.FieldAudioRealtimePricePerMin,
-				group.FieldAudioTtsPricePerMillionChars,
-				group.FieldAudioSttPricePerHour,
-				group.FieldLongContextPricingEnabled,
-				group.FieldModelPricing,
 				group.FieldRoutingPolicy,
 				group.FieldClaudeCodeOnly,
 				group.FieldFallbackGroupID,
@@ -389,7 +382,6 @@ func (r *KeyStore) GetByKeyForAuth(ctx context.Context, key string) (*keycore.AP
 				group.FieldAllowLive,
 				group.FieldForceOpenaiFast,
 				group.FieldOpenaiFastPolicy,
-				group.FieldFreeOpenaiFast,
 				group.FieldDefaultMappedModel,
 				group.FieldModelsListConfig,
 				group.FieldRpmLimit,
@@ -397,10 +389,6 @@ func (r *KeyStore) GetByKeyForAuth(ctx context.Context, key string) (*keycore.AP
 				group.FieldMaxReasoningEffortOverLimit,
 				group.FieldReasoningEffortMappings,
 				group.FieldSessionIsolationEnabled,
-				group.FieldPeakRateEnabled,
-				group.FieldPeakStart,
-				group.FieldPeakEnd,
-				group.FieldPeakRateMultiplier,
 			)
 		}).
 		WithCompositeGroups(func(q *dbent.APIKeyCompositeGroupQuery) {

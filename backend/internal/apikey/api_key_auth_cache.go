@@ -115,25 +115,20 @@ type APIKeyAuthGroupSnapshot struct {
 
 	SchedulerType GroupSchedulerType `json:"scheduler_type"`
 	// AdvancedSchedulerOverrides 随认证快照下发，避免请求期回读分组配置。
-	AdvancedSchedulerOverrides      GroupAdvancedSchedulerOverrides `json:"advanced_scheduler_overrides"`
-	IsExclusive                     bool                            `json:"is_exclusive"`
-	Status                          string                          `json:"status"`
-	RateMultiplier                  float64                         `json:"rate_multiplier"`
-	SessionIsolationEnabled         bool                            `json:"session_isolation_enabled"`
-	AllowImageGeneration            bool                            `json:"allow_image_generation"`
-	AllowBatchImageGeneration       bool                            `json:"allow_batch_image_generation"`
-	WebSearchPricePerCall           *float64                        `json:"web_search_price_per_call,omitempty"`
-	SearchPricePer1k                *float64                        `json:"search_price_per_1k,omitempty"`
-	AudioRealtimePricePerMin        *float64                        `json:"audio_realtime_price_per_min,omitempty"`
-	AudioTTSPricePerMillionChars    *float64                        `json:"audio_tts_price_per_million_chars,omitempty"`
-	AudioSTTPricePerHour            *float64                        `json:"audio_stt_price_per_hour,omitempty"`
-	LongContextPricingEnabled       bool                            `json:"long_context_pricing_enabled"`
-	RoutingPolicy                   routing.GroupRoutingPolicy      `json:"routing_policy"`
-	ModelPricing                    []ModelPricingEntry             `json:"model_pricing,omitempty"`
-	ClaudeCodeOnly                  bool                            `json:"claude_code_only"`
-	FallbackGroupID                 *int64                          `json:"fallback_group_id,omitempty"`
-	FallbackGroupIDOnInvalidRequest *int64                          `json:"fallback_group_id_on_invalid_request,omitempty"`
-	UnavailableFallbackGroupID      *int64                          `json:"unavailable_fallback_group_id,omitempty"`
+	AdvancedSchedulerOverrides GroupAdvancedSchedulerOverrides `json:"advanced_scheduler_overrides"`
+	IsExclusive                bool                            `json:"is_exclusive"`
+	Status                     string                          `json:"status"`
+	RateMultiplier             float64                         `json:"rate_multiplier"`
+	SessionIsolationEnabled    bool                            `json:"session_isolation_enabled"`
+	AllowImageGeneration       bool                            `json:"allow_image_generation"`
+	AllowBatchImageGeneration  bool                            `json:"allow_batch_image_generation"`
+
+	RoutingPolicy routing.GroupRoutingPolicy `json:"routing_policy"`
+
+	ClaudeCodeOnly                  bool   `json:"claude_code_only"`
+	FallbackGroupID                 *int64 `json:"fallback_group_id,omitempty"`
+	FallbackGroupIDOnInvalidRequest *int64 `json:"fallback_group_id_on_invalid_request,omitempty"`
+	UnavailableFallbackGroupID      *int64 `json:"unavailable_fallback_group_id,omitempty"`
 
 	// Model routing is used by gateway account selection, so it must be part of auth cache snapshot.
 	// Only anthropic groups use these fields; others may leave them empty.
@@ -153,8 +148,7 @@ type APIKeyAuthGroupSnapshot struct {
 	ForceOpenAIFast bool `json:"force_openai_fast"`
 	// OpenAIFastPolicy 保存管理员选择的互斥加速策略。
 	OpenAIFastPolicy string `json:"openai_fast_policy"`
-	// FreeOpenAIFast 保留组级免费 Fast 计费策略，供异步计费无需回源即可执行。
-	FreeOpenAIFast     bool                  `json:"free_openai_fast"`
+
 	DefaultMappedModel string                `json:"default_mapped_model,omitempty"`
 	ModelsListConfig   GroupModelsListConfig `json:"models_list_config,omitempty"`
 
@@ -167,14 +161,6 @@ type APIKeyAuthGroupSnapshot struct {
 	MaxReasoningEffortOverLimit string `json:"max_reasoning_effort_over_limit,omitempty"`
 	// ReasoningEffortMappings 在应用上限前改写显式的推理强度值。
 	ReasoningEffortMappings []ReasoningEffortMapping `json:"reasoning_effort_mappings"`
-
-	// 高峰时段倍率：PeakRateEnabled 为 true 且请求时刻处于 [PeakStart, PeakEnd) 时，
-	// token 计费倍率额外乘以 PeakRateMultiplier（详见 Group.PeakMultiplierAt）。
-	// 必须随快照缓存，否则扣费路径拿到的 apiKey.Group 缺字段、高峰倍率失效。
-	PeakRateEnabled    bool    `json:"peak_rate_enabled"`
-	PeakStart          string  `json:"peak_start"`
-	PeakEnd            string  `json:"peak_end"`
-	PeakRateMultiplier float64 `json:"peak_rate_multiplier"`
 }
 
 // APIKeyAuthCacheEntry 缓存条目，支持负缓存

@@ -6,8 +6,6 @@ import (
 	"slices"
 
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
-
-	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 )
 
 // CloneGroup 复制跨缓存/模块边界的可变值，保留省略与显式空集合。
@@ -22,17 +20,7 @@ func CloneGroupConfig(g *GroupConfig) *GroupConfig {
 		out.ModelProtocols[model] = slices.Clone(protocols)
 	}
 	out.RoutingPolicy = g.RoutingPolicy.Clone()
-	out.WebSearchPricePerCall = cloneGroupPointer(g.WebSearchPricePerCall)
-	out.SearchPricePer1k = cloneGroupPointer(g.SearchPricePer1k)
-	out.AudioRealtimePricePerMin = cloneGroupPointer(g.AudioRealtimePricePerMin)
-	out.AudioTTSPricePerMillionChars = cloneGroupPointer(g.AudioTTSPricePerMillionChars)
-	out.AudioSTTPricePerHour = cloneGroupPointer(g.AudioSTTPricePerHour)
-	if g.ModelPricing != nil {
-		out.ModelPricing = make([]pricing.ModelPricingEntry, len(g.ModelPricing))
-		for i := range g.ModelPricing {
-			out.ModelPricing[i] = g.ModelPricing[i].Clone()
-		}
-	}
+
 	out.FallbackGroupID = cloneGroupPointer(g.FallbackGroupID)
 	out.FallbackGroupIDOnInvalidRequest = cloneGroupPointer(g.FallbackGroupIDOnInvalidRequest)
 	out.UnavailableFallbackGroupID = cloneGroupPointer(g.UnavailableFallbackGroupID)

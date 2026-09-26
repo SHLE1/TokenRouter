@@ -27,6 +27,7 @@ const (
 
 // PricingConfig 价格配置实体
 type PricingConfig struct {
+	pricing.BillingSettings
 	ID                 int64
 	Name               string
 	Description        string
@@ -38,7 +39,7 @@ type PricingConfig struct {
 
 	// 关联的分组 ID 列表
 	GroupIDs []int64
-	// 模型定价列表（每条含 Platform 字段）
+	// 共享模型定价列表
 	ModelPricing []ModelPricingEntry
 
 	// 账号统计定价
@@ -48,7 +49,7 @@ type PricingConfig struct {
 // AccountStatsPricingRule 定义账号成本统计的定价规则。
 type AccountStatsPricingRule = pricing.AccountStatsPricingRule
 
-// ModelPricingEntry 为分组和共享价格配置提供同一种价卡。
+// ModelPricingEntry 定义共享价格配置的模型价卡。
 type ModelPricingEntry = pricing.ModelPricingEntry
 
 // TimePricingConfig 定义每日分时倍率。
@@ -93,6 +94,7 @@ func (c *PricingConfig) Clone() *PricingConfig {
 		return nil
 	}
 	cp := *c
+	cp.BillingSettings = c.BillingSettings.Clone()
 	if c.GroupIDs != nil {
 		cp.GroupIDs = make([]int64, len(c.GroupIDs))
 		copy(cp.GroupIDs, c.GroupIDs)

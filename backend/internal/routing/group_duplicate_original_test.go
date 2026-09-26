@@ -53,7 +53,6 @@ func cloneGroupForDuplicateTest(group *routing.Group) *routing.Group {
 		return nil
 	}
 	cloned := *group
-	cloned.WebSearchPricePerCall = routing.CloneGroupValuePointer(group.WebSearchPricePerCall)
 	cloned.FallbackGroupID = routing.CloneGroupValuePointer(group.FallbackGroupID)
 	cloned.FallbackGroupIDOnInvalidRequest = routing.CloneGroupValuePointer(group.FallbackGroupIDOnInvalidRequest)
 	cloned.UnavailableFallbackGroupID = routing.CloneGroupValuePointer(group.UnavailableFallbackGroupID)
@@ -120,32 +119,23 @@ func groupDuplicateTestPointer[T any](value T) *T { return &value }
 func TestDuplicateGroupCopiesConfigurationDeeplyAndResetsRuntimeState(t *testing.T) {
 	createdAt := time.Date(2026, time.July, 1, 2, 3, 4, 0, time.UTC)
 	source := &routing.Group{
-		ID:          41,
-		Name:        "高级订阅",
-		Description: "configuration",
-
+		ID:            41,
+		Name:          "高级订阅",
+		Description:   "configuration",
 		SchedulerType: routing.GroupSchedulerTypeAdvanced,
 		AdvancedSchedulerOverrides: routing.GroupAdvancedSchedulerOverrides{
 			StickyWeightedEnabled: groupDuplicateTestPointer(true),
 			LBTopK:                groupDuplicateTestPointer(3),
 			WeightPriority:        groupDuplicateTestPointer(4.5),
 		},
-		DisplayBrand:       "OpenAI",
-		RateMultiplier:     1.75,
-		PeakRateEnabled:    true,
-		PeakStart:          "09:00",
-		PeakEnd:            "18:00",
-		PeakRateMultiplier: 1.2,
-		IsExclusive:        true,
-
+		DisplayBrand:                    "OpenAI",
+		RateMultiplier:                  1.75,
+		IsExclusive:                     true,
 		Status:                          billing.StatusActive,
 		Hydrated:                        true,
 		SessionIsolationEnabled:         true,
 		AllowImageGeneration:            true,
 		AllowBatchImageGeneration:       true,
-		BatchImageDiscountMultiplier:    0.4,
-		BatchImageHoldMultiplier:        0.7,
-		WebSearchPricePerCall:           groupDuplicateTestPointer(0.005),
 		ClaudeCodeOnly:                  true,
 		FallbackGroupID:                 groupDuplicateTestPointer(int64(7)),
 		FallbackGroupIDOnInvalidRequest: groupDuplicateTestPointer(int64(8)),
@@ -163,7 +153,6 @@ func TestDuplicateGroupCopiesConfigurationDeeplyAndResetsRuntimeState(t *testing
 		AllowMessagesDispatch:       true,
 		AllowLive:                   true,
 		ForceOpenAIFast:             true,
-		FreeOpenAIFast:              true,
 		RequireOAuthOnly:            true,
 		RequirePrivacySet:           true,
 		DefaultMappedModel:          "gpt-5.4",
@@ -179,7 +168,6 @@ func TestDuplicateGroupCopiesConfigurationDeeplyAndResetsRuntimeState(t *testing
 		ActiveAccountCount:          8,
 		RateLimitedAccountCount:     2,
 		DuplicateOperationID:        "old-operation-must-not-copy",
-		ModelPricing:                originalImagePricing(map[string]*float64{"1K": groupDuplicateTestPointer(0.01), "2K": groupDuplicateTestPointer(0.02), "4K": groupDuplicateTestPointer(0.04)}),
 	}
 	repo := newDuplicateGroupRepoStub(source)
 	repo.sourceBindings[source.ID] = []accountcore.GroupMembership{
@@ -202,10 +190,7 @@ func TestDuplicateGroupCopiesConfigurationDeeplyAndResetsRuntimeState(t *testing
 	require.Equal(t, source.DisplayBrand, duplicate.DisplayBrand)
 	require.Equal(t, source.SessionIsolationEnabled, duplicate.SessionIsolationEnabled)
 	require.Equal(t, source.RateMultiplier, duplicate.RateMultiplier)
-	require.Equal(t, source.PeakRateMultiplier, duplicate.PeakRateMultiplier)
-	require.Equal(t, source.WebSearchPricePerCall, duplicate.WebSearchPricePerCall)
 	require.Equal(t, source.ForceOpenAIFast, duplicate.ForceOpenAIFast)
-	require.Equal(t, source.FreeOpenAIFast, duplicate.FreeOpenAIFast)
 	require.Equal(t, source.FallbackGroupID, duplicate.FallbackGroupID)
 	require.Equal(t, source.UnavailableFallbackGroupID, duplicate.UnavailableFallbackGroupID)
 	require.Equal(t, source.ModelRouting, duplicate.ModelRouting)

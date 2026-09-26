@@ -1,18 +1,11 @@
 package pricingcontract
 
 import (
-	"context"
 	"math"
 	"testing"
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway/completion"
-	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
-
-	"github.com/TokenFlux/TokenRouter/internal/apikey"
-	"github.com/TokenFlux/TokenRouter/internal/billing"
-	"github.com/TokenFlux/TokenRouter/internal/identity"
-	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
 // TestPeakMultiplier_GatewayBillingSequence 调用 gateway_service.recordUsageCore 与
@@ -21,8 +14,7 @@ import (
 // 若有人调换叠加顺序或把高峰并入 imageMultiplier，此测试会失败。
 func TestPeakMultiplier_GatewayBillingSequence(t *testing.T) {
 	const baseMultiplier = 0.8
-	apiKey := &apikey.APIKey{Group: newPeakGroup(true, "14:00", "18:00", 3.0)}
-	keySnapshot := gatewayprovider.ProjectCompletionKey(apiKey)
+	keySnapshot := &completion.KeySnapshot{Group: newPeakGroup(true, "14:00", "18:00", 3.0)}
 	// 原合同在UTC运行，显式指定快照时区，避免改变同进程其他测试。
 	keySnapshot.Group.Location = time.UTC
 	approxEq := func(a, b float64) bool { return math.Abs(a-b) < 1e-9 }
@@ -64,38 +56,9 @@ func TestPeakMultiplier_GatewayBillingSequence(t *testing.T) {
 // TestPeakMultiplier_SnapshotRoundTrip 防回归：认证缓存快照（APIKeyAuthGroupSnapshot）
 // 必须携带高峰倍率 4 字段，否则扣费路径拿到的 apiKey.Group 会缺字段、PeakMultiplierAt 恒降级为 1.0。
 // 调用真实链路 snapshotFromAPIKey → snapshotToAPIKey，验证 peak 配置经快照往返后仍生效。
-func TestPeakMultiplier_SnapshotRoundTrip(t *testing.T) {
-	apiKey := &apikey.APIKey{
-		User:  &identity.User{ID: 1, Status: billing.StatusActive, Role: identity.RoleUser},
-		Group: newPeakGroup(true, "14:00", "18:00", 3.0),
-	}
-	svc := apikey.NewAPIKeyService(nil, nil, nil, nil, nil, nil, &apikey.Options{})
 
-	snapshot := svc.KeySnapshotFromAPIKey(context.Background(), apiKey)
-	if snapshot == nil || snapshot.Group == nil {
-		t.Fatalf("snapshot or snapshot.Group must not be nil")
-	}
-	restored := svc.KeySnapshotToAPIKey("k", snapshot)
-	if restored.Group == nil {
-		t.Fatalf("restored.Group must not be nil")
-	}
-
-	if !restored.Group.PeakRateEnabled ||
-		restored.Group.PeakStart != "14:00" ||
-		restored.Group.PeakEnd != "18:00" ||
-		restored.Group.PeakRateMultiplier != 3.0 {
-		t.Fatalf("peak fields lost in snapshot round-trip: %+v", restored.Group)
-	}
-	if got := restored.Group.PeakMultiplierAt(at(15, 30)); got != 3.0 {
-		t.Fatalf("peak hour multiplier after round-trip: got %v, want 3.0", got)
-	}
-	if got := restored.Group.PeakMultiplierAt(at(20, 0)); got != 1.0 {
-		t.Fatalf("off-peak multiplier after round-trip: got %v, want 1.0", got)
-	}
-}
-
-func newPeakGroup(enabled bool, start, end string, mult float64) *routing.Group {
-	return &routing.Group{
+func newPeakGroup(enabled bool, start, end string, mult float64) *completion.GroupSnapshot {
+	return &completion.GroupSnapshot{
 		PeakRateEnabled:    enabled,
 		PeakStart:          start,
 		PeakEnd:            end,

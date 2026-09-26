@@ -1512,47 +1512,46 @@ func TestApplyTokenOverrides_IntervalDoesNotPolluteFallbackPrices(t *testing.T) 
 	require.False(t, fp.ImageOutputPriceExplicit, "fallback ImageOutputPriceExplicit polluted")
 }
 
-func TestResolve_GroupPricingOverridesPricingConfig(t *testing.T) {
+func TestResolve_SharedPricingIsAuthoritative(t *testing.T) {
 	r := newResolverWithPricingConfig(t, []routing.ModelPricingEntry{{
 		Models: []string{"claude-sonnet-4"}, BillingMode: routing.BillingModeToken,
 		InputPrice: testPtrFloat64(10e-6), OutputPrice: testPtrFloat64(20e-6),
 	}})
-	group := &routing.Group{ID: 100, ModelPricing: []routing.ModelPricingEntry{{
-		Models: []string{"claude-sonnet-*"}, BillingMode: routing.BillingModeToken,
-		InputPrice: testPtrFloat64(1e-6), OutputPrice: testPtrFloat64(2e-6),
-	}}}
-	resolved := r.Resolve(context.Background(), billing.PricingInput{Model: "claude-sonnet-4", GroupID: billingtestkit.GroupID(), Group: projectPriceGroup(group)})
 
-	require.Equal(t, billingpricing.PricingSourceGroup, resolved.Source)
-	require.InDelta(t, 1e-6, resolved.BasePricing.InputPricePerToken, 1e-12)
-	require.InDelta(t, 2e-6, resolved.BasePricing.OutputPricePerToken, 1e-12)
+	resolved := r.Resolve(context.Background(), billing.PricingInput{Model: "claude-sonnet-4", GroupID: billingtestkit.GroupID()})
+
+	require.Equal(t, billingpricing.PricingSourceConfig, resolved.Source)
+	require.InDelta(t, 10e-6, resolved.BasePricing.InputPricePerToken, 1e-12)
+	require.InDelta(t, 20e-6, resolved.BasePricing.OutputPricePerToken, 1e-12)
 }
 
-func TestResolve_GroupContextIntervalsOverridePresetRegardlessOfToggle(t *testing.T) {
+func TestResolve_ConfigIntervalsOverridePresetRegardlessOfToggle(t *testing.T) {
 	prices := billingtestkit.ResolverFallbackPrices()
 	prices["claude-sonnet-4"].LongContextInputThreshold = 200000
 	prices["claude-sonnet-4"].LongContextThresholdInclusive = true
 	prices["claude-sonnet-4"].LongContextInputMultiplier = 2
 	prices["claude-sonnet-4"].LongContextOutputMultiplier = 2
 	bs := newCalculatorWithPrices(nil, nil, prices)
-	r := billingtestkit.PriceResolver(nil, bs)
-	group := &routing.Group{ID: 100, ModelPricing: []routing.ModelPricingEntry{{
+	settings := billingpricing.DefaultBillingSettings()
+	settings.LongContextPricingEnabled = false
+	cards := []routing.ModelPricingEntry{{
 		Models: []string{"claude-sonnet-4"}, BillingMode: routing.BillingModeToken,
 		InputPrice: testPtrFloat64(1e-6), OutputPrice: testPtrFloat64(2e-6),
 		Intervals: []routing.PricingInterval{
 			{MinTokens: 0, MaxTokens: testPtrInt(200000), InputPrice: testPtrFloat64(9e-6)},
 			{MinTokens: 200000, InputPrice: testPtrFloat64(18e-6)},
 		},
-	}}}
+	}}
 
-	resolved := r.Resolve(context.Background(), billing.PricingInput{Model: "claude-sonnet-4", Group: projectPriceGroup(group)})
+	r, source := settingsResolver(bs, settings, cards)
+	resolved := r.Resolve(context.Background(), billing.PricingInput{Model: "claude-sonnet-4", GroupID: billingtestkit.GroupID()})
 	require.False(t, resolved.LongContextPricingEnabled)
 	require.Len(t, resolved.Intervals, 2)
 	require.InDelta(t, 18e-6, r.GetIntervalPricing(resolved, 300000).InputPricePerToken, 1e-12)
 	require.Equal(t, 200000, resolved.BasePricing.LongContextInputThreshold)
 
-	group.LongContextPricingEnabled = true
-	resolved = r.Resolve(context.Background(), billing.PricingInput{Model: "claude-sonnet-4", Group: projectPriceGroup(group)})
+	source.settings.LongContextPricingEnabled = true
+	resolved = r.Resolve(context.Background(), billing.PricingInput{Model: "claude-sonnet-4", GroupID: billingtestkit.GroupID()})
 	require.True(t, resolved.LongContextPricingEnabled)
 	require.Len(t, resolved.Intervals, 2)
 	require.InDelta(t, 18e-6, r.GetIntervalPricing(resolved, 300000).InputPricePerToken, 1e-12)
@@ -1562,14 +1561,14 @@ func TestResolve_GroupContextIntervalsOverridePresetRegardlessOfToggle(t *testin
 
 func TestCalculateCostUnified_UsesContinuousMediaUnits(t *testing.T) {
 	bs := billingtestkit.ResolverCalculator()
-	r := billingtestkit.PriceResolver(nil, bs)
 	price := 0.08
-	group := &routing.Group{ModelPricing: []routing.ModelPricingEntry{{
+	cards := []routing.ModelPricingEntry{{
 		Models: []string{"grok-voice-think-fast-2.0"}, BillingMode: routing.BillingModePerRequest,
 		PerRequestPrice: &price,
-	}}}
+	}}
+	r, _ := settingsResolver(bs, billingpricing.DefaultBillingSettings(), cards)
 	cost, err := bs.CalculateCostUnified(billing.CostInput{
-		Ctx: context.Background(), Model: "grok-voice-think-fast-2.0", Group: projectPriceGroup(group),
+		Ctx: context.Background(), Model: "grok-voice-think-fast-2.0", GroupID: billingtestkit.GroupID(),
 		UsageUnits: 1.5, RateMultiplier: 1, Resolver: r,
 	})
 	require.NoError(t, err)

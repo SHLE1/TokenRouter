@@ -59,14 +59,12 @@ func TestGroupRepoSuite(t *testing.T) {
 // --- Create / GetByID / Update / Delete ---
 
 func (s *GroupRepoSuite) TestCreate() {
-	webSearchPrice := 0.008
 	group := &routing.Group{
 		Name: "test-create",
 
-		RateMultiplier:        1.0,
-		IsExclusive:           false,
-		Status:                billing.StatusActive,
-		WebSearchPricePerCall: &webSearchPrice,
+		RateMultiplier: 1.0,
+		IsExclusive:    false,
+		Status:         billing.StatusActive,
 
 		AllowedProtocols:     capability.DefaultGroupClientProtocols(capability.PlatformOpenAI),
 		ProtocolFallbacks:    capability.DefaultProtocolFallbacks(capability.PlatformOpenAI),
@@ -80,8 +78,6 @@ func (s *GroupRepoSuite) TestCreate() {
 	got, err := s.repo.GetByID(s.ctx, group.ID)
 	s.Require().NoError(err, "GetByID")
 	s.Require().Equal("test-create", got.Name)
-	s.Require().NotNil(got.WebSearchPricePerCall)
-	s.Require().InDelta(webSearchPrice, *got.WebSearchPricePerCall, 1e-12)
 }
 
 func (s *GroupRepoSuite) TestCreateFromSourcePreservesPriorityAndFiltersIneligibleAccounts() {
@@ -1105,46 +1101,6 @@ func (s *GroupRepoSuite) TestDelete_SoftDeletedGroup_lockForUpdate() {
 	s.Require().ErrorIs(err, routing.ErrGroupNotFound)
 }
 
-// TestModelPricingRoundTrip 验证分组完整价卡通过 JSONB 创建、更新和清空，不需要新增表列。
-func (s *GroupRepoSuite) TestModelPricingRoundTrip() {
-	fast, flex, max, price, outputMultiplier := 1.5, 0.4, 2.0, 0.0, 3.0
-	group := &routing.Group{
-		Name: "pricing-roundtrip", RateMultiplier: 1,
-		Status: billing.StatusActive, LongContextPricingEnabled: true, FreeOpenAIFast: true,
-		ModelPricing: []routing.ModelPricingEntry{{
-			Models: []string{"gpt-test"}, BillingMode: routing.BillingModeToken,
-			InputPrice: &price, FastMultiplier: &fast, FlexMultiplier: &flex, MaxReasoningEffortMultiplier: &max,
-			Intervals: []routing.PricingInterval{{MinTokens: 100, OutputMultiplier: &outputMultiplier}},
-			TimePricing: &routing.TimePricingConfig{
-				Timezone: "Asia/Tokyo", WeekdaysOnly: true,
-				Periods: []routing.TimePricingPeriod{{StartTime: "09:00", EndTime: "10:00", Multiplier: 0.5}},
-			},
-		}},
-
-		AllowedProtocols:     capability.DefaultGroupClientProtocols(capability.PlatformOpenAI),
-		ProtocolFallbacks:    capability.DefaultProtocolFallbacks(capability.PlatformOpenAI),
-		ResponsesImagePolicy: "inherit",
-	}
-	s.Require().NoError(s.repo.Create(s.ctx, group))
-	got, err := s.repo.GetByID(s.ctx, group.ID)
-	s.Require().NoError(err)
-	s.Require().Equal(group.ModelPricing, got.ModelPricing)
-	s.Require().True(got.LongContextPricingEnabled)
-	s.Require().True(got.FreeOpenAIFast)
-	got.ModelPricing[0].TimePricing.Periods[0].Multiplier = 0.25
-	*got.ModelPricing[0].FastMultiplier = 1
-	s.Require().NoError(s.repo.Update(s.ctx, got))
-	updated, err := s.repo.GetByID(s.ctx, got.ID)
-	s.Require().NoError(err)
-	s.Require().Equal(got.ModelPricing, updated.ModelPricing)
-	updated.ModelPricing = []routing.ModelPricingEntry{}
-	s.Require().NoError(s.repo.Update(s.ctx, updated))
-	empty, err := s.repo.GetByID(s.ctx, updated.ID)
-	s.Require().NoError(err)
-	s.Require().Empty(empty.ModelPricing)
-}
-
-// SetupSuite 保留同套件共享库、各测试独立事务的原隔离边界。
 func (s *GroupRepoSuite) SetupSuite() { s.client, _ = routingDatabase(s.T()) }
 
 func (s *GroupRepoSuite) transaction(t *testing.T) *dbent.Tx {

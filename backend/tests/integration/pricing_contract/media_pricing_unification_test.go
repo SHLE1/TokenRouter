@@ -23,7 +23,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 相同价卡放在分组或共享价格配置，图片按张、视频按秒和按次模式必须得到相同结果。
+// 共享价格配置的价卡，图片按张、视频按秒和按次模式必须得到相同结果。
 func TestMediaPricingCardsHaveSameGroupAndPricingConfigSemantics(t *testing.T) {
 	for _, media := range []string{"image", "video"} {
 		for _, perRequest := range []bool{false, true} {
@@ -46,15 +46,12 @@ func TestMediaPricingCardsHaveSameGroupAndPricingConfigSemantics(t *testing.T) {
 				if zero {
 					price = 0
 				}
-				for _, scope := range []string{"group", "channel"} {
+				for _, scope := range []string{"channel"} {
 					t.Run(media+"/"+string(mode)+"/"+scope+"/"+map[bool]string{true: "free", false: "paid"}[zero], func(t *testing.T) {
 						card := routing.ModelPricingEntry{Models: []string{model}, BillingMode: mode, PerRequestPrice: testPtrFloat64(9), Intervals: []routing.PricingInterval{{TierLabel: tier, PerRequestPrice: &price}}}
 						group := &routing.Group{ID: 100, RateMultiplier: 1.5}
 						cards := []routing.ModelPricingEntry{card}
-						if scope == "group" {
-							group.ModelPricing = cards
-							cards = nil
-						}
+
 						billing := newCalculator(nil, nil)
 						resolver := billingtestkit.ResolverWithCards(t, billing, cards)
 						svc := completion.NewRecorder(completion.Dependencies{Calculator: billing, Prices: resolver}, completion.RecorderOptions{DefaultMultiplier: 1})
@@ -85,27 +82,27 @@ func TestAsyncImageUnitPricingUsesCardsAndPerImageFallback(t *testing.T) {
 		size string
 		want float64
 	}{{"512", 0}, {"1K", 0.4}, {"4K", 0.4}} {
-		price, err := batch.BatchImageUnitPrice(ctx, batchimage.BatchImagePriceInput{Model: model, GroupID: &group.ID, Group: &batchimage.GroupView{Price: *gatewaycapture.ProjectCompletionPriceGroup(group)}, ImageSize: tc.size})
+		price, err := batch.BatchImageUnitPrice(ctx, batchimage.BatchImagePriceInput{Model: model, GroupID: &group.ID, Group: &batchimage.GroupView{}, ImageSize: tc.size})
 		require.NoError(t, err)
 		require.InDelta(t, tc.want, price, 1e-12)
 		unit, ok := creativeService.ImageUnitPrice(ctx, creativeGroupProjection(group), model, tc.size)
 		require.True(t, ok)
 		require.Equal(t, price, unit)
 	}
-	group.ModelPricing = []routing.ModelPricingEntry{{Models: []string{model}, BillingMode: routing.BillingModeImage, PerRequestPrice: testPtrFloat64(0.6)}}
-	price, err := resolver.ResolveImageUnitPrice(ctx, billingcore.PricingInput{Model: model, GroupID: &group.ID, Group: gatewaycapture.ProjectCompletionPriceGroup(group)}, "1K")
+	resolver = billingtestkit.SharedPriceResolver(billing, group.ID, pricing.DefaultBillingSettings(), []routing.ModelPricingEntry{{Models: []string{model}, BillingMode: routing.BillingModeImage, PerRequestPrice: testPtrFloat64(0.6)}})
+	price, err := resolver.ResolveImageUnitPrice(ctx, billingcore.PricingInput{Model: model, GroupID: &group.ID}, "1K")
 	require.NoError(t, err)
 	require.InDelta(t, 0.6, price, 1e-12)
-	group.ModelPricing = []routing.ModelPricingEntry{{Models: []string{model}, BillingMode: routing.BillingModeImage, Intervals: []routing.PricingInterval{{TierLabel: "512", PerRequestPrice: testPtrFloat64(0)}}}}
-	price, err = resolver.ResolveImageUnitPrice(ctx, billingcore.PricingInput{Model: model, GroupID: &group.ID, Group: gatewaycapture.ProjectCompletionPriceGroup(group)}, "2K")
+	resolver = billingtestkit.SharedPriceResolver(billing, group.ID, pricing.DefaultBillingSettings(), []routing.ModelPricingEntry{{Models: []string{model}, BillingMode: routing.BillingModeImage, Intervals: []routing.PricingInterval{{TierLabel: "512", PerRequestPrice: testPtrFloat64(0)}}}})
+	price, err = resolver.ResolveImageUnitPrice(ctx, billingcore.PricingInput{Model: model, GroupID: &group.ID}, "2K")
 	require.NoError(t, err)
 	require.InDelta(t, 0.3, price, 1e-12)
-	price, err = resolver.ResolveImageUnitPrice(ctx, billingcore.PricingInput{Model: model, GroupID: &group.ID, Group: gatewaycapture.ProjectCompletionPriceGroup(group)}, "512")
+	price, err = resolver.ResolveImageUnitPrice(ctx, billingcore.PricingInput{Model: model, GroupID: &group.ID}, "512")
 	require.NoError(t, err)
 	require.Zero(t, price)
 
-	group.ModelPricing = []routing.ModelPricingEntry{{Models: []string{model}, BillingMode: routing.BillingModeToken, ImageOutputPrice: testPtrFloat64(0.000009)}}
-	price, err = resolver.ResolveImageUnitPrice(ctx, billingcore.PricingInput{Model: model, GroupID: &group.ID, Group: gatewaycapture.ProjectCompletionPriceGroup(group)}, "2K")
+	resolver = billingtestkit.SharedPriceResolver(billing, group.ID, pricing.DefaultBillingSettings(), []routing.ModelPricingEntry{{Models: []string{model}, BillingMode: routing.BillingModeToken, ImageOutputPrice: testPtrFloat64(0.000009)}})
+	price, err = resolver.ResolveImageUnitPrice(ctx, billingcore.PricingInput{Model: model, GroupID: &group.ID}, "2K")
 	require.NoError(t, err)
 	require.InDelta(t, 0.3, price, 1e-12)
 }

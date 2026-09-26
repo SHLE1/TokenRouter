@@ -179,14 +179,6 @@ func (r *gatewayStandaloneSearchRun) Complete(c *gin.Context, req searchtools.St
 
 	// request ID 是结算幂等键，必须按调用唯一；查询、IP 或 UA 哈希会错误合并重复搜索。
 	searchRequestID := searchLabel + ":" + uuid.NewString()
-	if apiKey.Group != nil {
-		if p := apiKey.Group.GetSearchPricePer1k(); p != nil && *p == 0 {
-			logging.L().With(
-				zap.String("component", "handler.gateway.web_search"),
-				zap.Int64("group_id", apiKey.Group.ID),
-			).Info("gateway.web_search.search_price_per_1k_explicit_free")
-		}
-	}
 	// 入队前固化资金与报文投影，worker 不再读取请求中的实体。
 	completionInput := gatewaycapture.CaptureMessages(CompletionContext(c), &gatewaycapture.MessagesCapture{
 		Result: &forwardcore.MessagesResult{

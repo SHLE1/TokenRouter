@@ -16,9 +16,6 @@ func TestAPIKeyService_SnapshotRoundTrip_PreservesGroupCaptureControls(t *testin
 	svc := testkit.NewService(nil, nil, nil, nil, nil, nil, nil)
 	svc.Start()
 	groupID := int64(9)
-	videoPrice480P := 0.08
-	videoPrice720P := 0.14
-	videoPrice1080P := 0.25
 	stickyWeighted := false
 	lbTopK := 3
 	apiKey := &apikey.APIKey{
@@ -35,9 +32,8 @@ func TestAPIKeyService_SnapshotRoundTrip_PreservesGroupCaptureControls(t *testin
 			Concurrency: 3,
 		},
 		Group: &routing.Group{
-			ID:   groupID,
-			Name: "openai-images",
-
+			ID:            groupID,
+			Name:          "openai-images",
 			SchedulerType: routing.GroupSchedulerTypeAdvanced,
 			AdvancedSchedulerOverrides: routing.GroupAdvancedSchedulerOverrides{
 				StickyWeightedEnabled: &stickyWeighted,
@@ -47,11 +43,6 @@ func TestAPIKeyService_SnapshotRoundTrip_PreservesGroupCaptureControls(t *testin
 			RateMultiplier:          1,
 			SessionIsolationEnabled: true,
 			AllowImageGeneration:    true,
-			ModelPricing: []routing.ModelPricingEntry{{Models: []string{"*"}, BillingMode: routing.BillingModeVideo, Intervals: []routing.PricingInterval{
-				{TierLabel: "480p", PerRequestPrice: &videoPrice480P},
-				{TierLabel: "720p", PerRequestPrice: &videoPrice720P},
-				{TierLabel: "1080p", PerRequestPrice: &videoPrice1080P},
-			}}},
 		},
 	}
 
@@ -67,6 +58,4 @@ func TestAPIKeyService_SnapshotRoundTrip_PreservesGroupCaptureControls(t *testin
 	require.NotSame(t, apiKey.Group.AdvancedSchedulerOverrides.LBTopK, roundTrip.Group.AdvancedSchedulerOverrides.LBTopK)
 	require.True(t, roundTrip.Group.SessionIsolationEnabled)
 	require.True(t, roundTrip.Group.AllowImageGeneration)
-	require.Equal(t, apiKey.Group.ModelPricing, roundTrip.Group.ModelPricing)
-	require.NotSame(t, apiKey.Group.ModelPricing[0].Intervals[0].PerRequestPrice, roundTrip.Group.ModelPricing[0].Intervals[0].PerRequestPrice)
 }

@@ -136,8 +136,6 @@
             >
           </template>
 
-
-
           <template #cell-display_brand="{ value }">
             <span v-if="value" :class="displayBrandBadgeClass(value)">
               <ProviderIcon :brand="String(value)" size="14px" />
@@ -348,7 +346,6 @@
         novalidate
         class="group-dialog-form"
       >
-
         <GroupFormTabs ref="createGroupTabsRef" id-prefix="create-group">
           <template #general>
             <h4 class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('admin.groups.tabs.identity') }}</h4>
@@ -373,6 +370,22 @@
                 class="input"
                 :placeholder="t('admin.groups.optionalDescription')"
               ></textarea>
+            </div>
+            <div>
+              <label for="create-group-rate-multiplier" class="input-label">{{
+                t("admin.groups.form.rateMultiplier")
+              }}</label>
+              <input
+                id="create-group-rate-multiplier"
+                v-model.number="createForm.rate_multiplier"
+                type="number"
+                step="0.001"
+                min="0.001"
+                required
+                class="input"
+                data-tour="group-form-multiplier"
+              />
+              <p class="input-hint">{{ t("admin.groups.rateMultiplierHint") }}</p>
             </div>
             <div>
               <label class="input-label">{{
@@ -1045,250 +1058,7 @@
               </div>
             </div>
           </template>
-          <template #pricing>
-            <div>
-              <label class="input-label">{{
-                t("admin.groups.form.rateMultiplier")
-              }}</label>
-              <input
-                v-model.number="createForm.rate_multiplier"
-                type="number"
-                step="0.001"
-                min="0.001"
-                required
-                class="input"
-                data-tour="group-form-multiplier"
-              />
-              <p class="input-hint">{{ t("admin.groups.rateMultiplierHint") }}</p>
-            </div>
-            <div class="border-t pt-4">
-              <div class="mb-4 flex items-center justify-between gap-4">
-                <label for="create-group-peak-rate-enabled" class="min-w-0 text-sm text-gray-700 dark:text-gray-300">{{ t('admin.groups.peakRate.enable') }}</label>
-                <Toggle
-                  id="create-group-peak-rate-enabled"
-                  v-model="createForm.peak_rate_enabled"
-                  :aria-label="t('admin.groups.peakRate.enable')"
-                  data-group-setting="peak_rate_enabled"
-                />
-              </div>
-              <div
-                v-if="createForm.peak_rate_enabled"
-                class="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3"
-              >
-                <div>
-                  <label class="input-label">{{ t("admin.groups.peakRate.peakStart") }}</label>
-                  <input
-                    v-model="createForm.peak_start"
-                    type="time"
-                    class="input"
-                  />
-                </div>
-                <div>
-                  <label class="input-label">{{ t("admin.groups.peakRate.peakEnd") }}</label>
-                  <input
-                    v-model="createForm.peak_end"
-                    type="time"
-                    class="input"
-                  />
-                </div>
-                <div>
-                  <label class="input-label">{{ t("admin.groups.peakRate.peakMultiplier") }}</label>
-                  <input
-                    v-model.number="createForm.peak_rate_multiplier"
-                    type="number"
-                    step="0.001"
-                    min="0"
-                    class="input"
-                    placeholder="1"
-                    :title="t('admin.groups.peakRate.multiplierHint')"
-                  />
-                </div>
-              </div>
-            </div>
-            <div class="border-t border-gray-200 pt-4 mt-4 dark:border-dark-400">
-              <div class="flex flex-wrap items-start justify-between gap-3">
-                <div class="min-w-0 flex-1">
-                  <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t("admin.groups.modelPricing.title") }}</h4>
-                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ t("admin.groups.modelPricing.description") }}</p>
-                </div>
-                <button type="button" class="btn btn-secondary shrink-0 whitespace-nowrap" @click="addGroupPricing(createForm.model_pricing)">
-                  <Icon name="plus" size="sm" class="mr-1" />{{ t("admin.groups.modelPricing.add") }}
-                </button>
-              </div>
-              <div class="mt-3 flex items-center justify-between gap-4">
-                <div class="min-w-0">
-                  <label for="create-group-long-context-pricing-enabled" class="block text-sm text-gray-700 dark:text-gray-300">{{ t('admin.groups.modelPricing.longContext') }}</label>
-                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ t('admin.groups.modelPricing.longContextHint') }}</p>
-                </div>
-                <Toggle
-                  id="create-group-long-context-pricing-enabled"
-                  v-model="createForm.long_context_pricing_enabled"
-                  :aria-label="t('admin.groups.modelPricing.longContext')"
-                  data-group-setting="long_context_pricing_enabled"
-                />
-              </div>
-              <div class="mt-3 space-y-2" data-group-field="model-pricing">
-                <PricingEntryCard v-for="(entry, index) in createForm.model_pricing" :key="index" :entry="entry"  enable-tier-multipliers enable-time-pricing @update="createForm.model_pricing[index] = $event" @remove="createForm.model_pricing.splice(index, 1)" />
-              </div>
-            </div>
-            <div
 
-              class="border-t border-gray-200 dark:border-dark-400 pt-4 mt-4"
-              data-testid="create-free-openai-fast-section"
-            >
-              <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                {{ t("admin.groups.openaiFast.title") }}
-              </h4>
-
-              <div class="mt-4 flex items-center justify-between">
-                <label class="text-sm text-gray-600 dark:text-gray-400">
-                  {{ t("admin.groups.openaiFast.free") }}
-                </label>
-                <Toggle
-                  :model-value="createForm.free_openai_fast"
-                  data-group-setting="free_openai_fast"
-                  :aria-label="t('admin.groups.openaiFast.free')"
-                  data-testid="create-free-openai-fast"
-                  @update:model-value="createForm.free_openai_fast = !createForm.free_openai_fast"
-                />
-              </div>
-              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                {{ t("admin.groups.openaiFast.freeHint") }}
-              </p>
-            </div>
-            <div v-if="createForm.allowed_protocols.includes('image_batches')" class="border-t border-gray-200 pt-4 dark:border-dark-700">
-                <h4 class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('admin.groups.tabs.batchPricing') }}</h4>
-                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                  {{ t("admin.groups.imagePricing.batchSectionHint") }}
-                </p>
-                <div
-                  v-if="createForm.allowed_protocols.includes('image_batches')"
-                  class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2"
-                >
-                  <div>
-                    <label class="input-label">{{
-                      t("admin.groups.imagePricing.batchDiscountMultiplier")
-                    }}</label>
-                    <input
-                      v-model.number="createForm.batch_image_discount_multiplier"
-                      type="number"
-                      step="0.0001"
-                      min="0"
-                      class="input"
-                      placeholder="0.5"
-                    />
-                  </div>
-                  <div>
-                    <label class="input-label">{{
-                      t("admin.groups.imagePricing.batchHoldMultiplier")
-                    }}</label>
-                    <input
-                      v-model.number="createForm.batch_image_hold_multiplier"
-                      type="number"
-                      step="0.0001"
-                      min="0"
-                      class="input"
-                      placeholder="0.6"
-                    />
-                  </div>
-                </div>
-              </div>
-
-            <div
-
-              class="border-t border-gray-200 dark:border-dark-400 pt-4 mt-4"
-            >
-              <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                {{ t("admin.groups.webSearchPricing.title") }}
-              </h4>
-              <div>
-                <label class="input-label">{{
-                  t("admin.groups.webSearchPricing.pricePerCall")
-                }}</label>
-                <input
-                  v-model.number="createForm.web_search_price_per_call"
-                  type="number"
-                  step="0.001"
-                  min="0"
-                  placeholder="0.01"
-                  class="input"
-                />
-                <p class="input-hint">
-                  {{ t("admin.groups.webSearchPricing.pricePerCallHint") }}
-                </p>
-                <div
-                  class="mt-2 rounded-control bg-gray-50 p-3 text-xs text-gray-600 dark:bg-dark-700 dark:text-gray-300"
-                >
-                  {{
-                    t("admin.groups.webSearchPricing.finalPricePreview", {
-                      price: createWebSearchFinalPricePreview,
-                    })
-                  }}
-                </div>
-              </div>
-            </div>
-            <div
-
-              class="border-t border-gray-200 dark:border-dark-400 pt-4 mt-4"
-            >
-              <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                {{ t("admin.groups.explicitPricing.title") }}
-              </h4>
-              <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                {{ t("admin.groups.explicitPricing.description") }}
-              </p>
-              <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
-                <div>
-                  <label class="input-label">{{ t("admin.groups.explicitPricing.searchPricePer1k") }}</label>
-                  <input
-                    v-model.number="createForm.search_price_per_1k"
-                    type="number"
-                    step="0.000001"
-                    min="0"
-                    class="input"
-                    :placeholder="t('admin.groups.explicitPricing.pricePlaceholder')"
-                    data-testid="create-search-price"
-                  />
-                </div>
-                <div>
-                  <label class="input-label">{{ t("admin.groups.voicePricing.audioRealtimePerMin") }}</label>
-                  <input
-                    v-model.number="createForm.audio_realtime_price_per_min"
-                    type="number"
-                    step="0.000001"
-                    min="0"
-                    class="input"
-                    :placeholder="t('admin.groups.voicePricing.pricePlaceholder')"
-                    data-testid="create-audio-realtime-price"
-                  />
-                </div>
-                <div>
-                  <label class="input-label">{{ t("admin.groups.voicePricing.audioTtsPerMillionChars") }}</label>
-                  <input
-                    v-model.number="createForm.audio_tts_price_per_million_chars"
-                    type="number"
-                    step="0.000001"
-                    min="0"
-                    class="input"
-                    :placeholder="t('admin.groups.voicePricing.pricePlaceholder')"
-                    data-testid="create-audio-tts-price"
-                  />
-                </div>
-                <div>
-                  <label class="input-label">{{ t("admin.groups.voicePricing.audioSttPerHour") }}</label>
-                  <input
-                    v-model.number="createForm.audio_stt_price_per_hour"
-                    type="number"
-                    step="0.000001"
-                    min="0"
-                    class="input"
-                    :placeholder="t('admin.groups.voicePricing.pricePlaceholder')"
-                    data-testid="create-audio-stt-price"
-                  />
-                </div>
-              </div>
-            </div>
-          </template>
           <template #protocol>
             <GroupClientProtocolSelector
               v-model="createForm.allowed_protocols"
@@ -1515,7 +1285,6 @@
         novalidate
         class="group-dialog-form"
       >
-
         <GroupFormTabs ref="editGroupTabsRef" id-prefix="edit-group">
           <template #general>
             <h4 class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('admin.groups.tabs.identity') }}</h4>
@@ -1538,6 +1307,21 @@
                 rows="3"
                 class="input"
               ></textarea>
+            </div>
+            <div>
+              <label for="edit-group-rate-multiplier" class="input-label">{{
+                t("admin.groups.form.rateMultiplier")
+              }}</label>
+              <input
+                id="edit-group-rate-multiplier"
+                v-model.number="editForm.rate_multiplier"
+                type="number"
+                step="0.001"
+                min="0.001"
+                required
+                class="input"
+                data-tour="group-form-multiplier"
+              />
             </div>
             <div>
               <label class="input-label">{{
@@ -2231,249 +2015,7 @@
               </div>
             </div>
           </template>
-          <template #pricing>
-            <div>
-              <label class="input-label">{{
-                t("admin.groups.form.rateMultiplier")
-              }}</label>
-              <input
-                v-model.number="editForm.rate_multiplier"
-                type="number"
-                step="0.001"
-                min="0.001"
-                required
-                class="input"
-                data-tour="group-form-multiplier"
-              />
-            </div>
-            <div class="border-t pt-4">
-              <div class="mb-4 flex items-center justify-between gap-4">
-                <label for="edit-group-peak-rate-enabled" class="min-w-0 text-sm text-gray-700 dark:text-gray-300">{{ t('admin.groups.peakRate.enable') }}</label>
-                <Toggle
-                  id="edit-group-peak-rate-enabled"
-                  v-model="editForm.peak_rate_enabled"
-                  :aria-label="t('admin.groups.peakRate.enable')"
-                  data-group-setting="peak_rate_enabled"
-                />
-              </div>
-              <div
-                v-if="editForm.peak_rate_enabled"
-                class="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3"
-              >
-                <div>
-                  <label class="input-label">{{ t("admin.groups.peakRate.peakStart") }}</label>
-                  <input
-                    v-model="editForm.peak_start"
-                    type="time"
-                    class="input"
-                  />
-                </div>
-                <div>
-                  <label class="input-label">{{ t("admin.groups.peakRate.peakEnd") }}</label>
-                  <input
-                    v-model="editForm.peak_end"
-                    type="time"
-                    class="input"
-                  />
-                </div>
-                <div>
-                  <label class="input-label">{{ t("admin.groups.peakRate.peakMultiplier") }}</label>
-                  <input
-                    v-model.number="editForm.peak_rate_multiplier"
-                    type="number"
-                    step="0.001"
-                    min="0"
-                    class="input"
-                    placeholder="1"
-                    :title="t('admin.groups.peakRate.multiplierHint')"
-                  />
-                </div>
-              </div>
-            </div>
-            <div class="border-t border-gray-200 pt-4 mt-4 dark:border-dark-400">
-              <div class="flex flex-wrap items-start justify-between gap-3">
-                <div class="min-w-0 flex-1">
-                  <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t("admin.groups.modelPricing.title") }}</h4>
-                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ t("admin.groups.modelPricing.description") }}</p>
-                </div>
-                <button type="button" class="btn btn-secondary shrink-0 whitespace-nowrap" @click="addGroupPricing(editForm.model_pricing)">
-                  <Icon name="plus" size="sm" class="mr-1" />{{ t("admin.groups.modelPricing.add") }}
-                </button>
-              </div>
-              <div class="mt-3 flex items-center justify-between gap-4">
-                <div class="min-w-0">
-                  <label for="edit-group-long-context-pricing-enabled" class="block text-sm text-gray-700 dark:text-gray-300">{{ t('admin.groups.modelPricing.longContext') }}</label>
-                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ t('admin.groups.modelPricing.longContextHint') }}</p>
-                </div>
-                <Toggle
-                  id="edit-group-long-context-pricing-enabled"
-                  v-model="editForm.long_context_pricing_enabled"
-                  :aria-label="t('admin.groups.modelPricing.longContext')"
-                  data-group-setting="long_context_pricing_enabled"
-                />
-              </div>
-              <div class="mt-3 space-y-2" data-group-field="model-pricing">
-                <PricingEntryCard v-for="(entry, index) in editForm.model_pricing" :key="index" :entry="entry"  enable-tier-multipliers enable-time-pricing @update="editForm.model_pricing[index] = $event" @remove="editForm.model_pricing.splice(index, 1)" />
-              </div>
-            </div>
-            <div
 
-              class="border-t border-gray-200 dark:border-dark-400 pt-4 mt-4"
-              data-testid="edit-free-openai-fast-section"
-            >
-              <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                {{ t("admin.groups.openaiFast.title") }}
-              </h4>
-
-              <div class="mt-4 flex items-center justify-between">
-                <label class="text-sm text-gray-600 dark:text-gray-400">
-                  {{ t("admin.groups.openaiFast.free") }}
-                </label>
-                <Toggle
-                  :model-value="editForm.free_openai_fast"
-                  data-group-setting="free_openai_fast"
-                  :aria-label="t('admin.groups.openaiFast.free')"
-                  data-testid="edit-free-openai-fast"
-                  @update:model-value="editForm.free_openai_fast = !editForm.free_openai_fast"
-                />
-              </div>
-              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                {{ t("admin.groups.openaiFast.freeHint") }}
-              </p>
-            </div>
-            <div v-if="editForm.allowed_protocols.includes('image_batches')" class="border-t border-gray-200 pt-4 dark:border-dark-700">
-                <h4 class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('admin.groups.tabs.batchPricing') }}</h4>
-                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                  {{ t("admin.groups.imagePricing.batchSectionHint") }}
-                </p>
-                <div
-                  v-if="editForm.allowed_protocols.includes('image_batches')"
-                  class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2"
-                >
-                  <div>
-                    <label class="input-label">{{
-                      t("admin.groups.imagePricing.batchDiscountMultiplier")
-                    }}</label>
-                    <input
-                      v-model.number="editForm.batch_image_discount_multiplier"
-                      type="number"
-                      step="0.0001"
-                      min="0"
-                      class="input"
-                      placeholder="0.5"
-                    />
-                  </div>
-                  <div>
-                    <label class="input-label">{{
-                      t("admin.groups.imagePricing.batchHoldMultiplier")
-                    }}</label>
-                    <input
-                      v-model.number="editForm.batch_image_hold_multiplier"
-                      type="number"
-                      step="0.0001"
-                      min="0"
-                      class="input"
-                      placeholder="0.6"
-                    />
-                  </div>
-                </div>
-              </div>
-
-            <div
-
-              class="border-t border-gray-200 dark:border-dark-400 pt-4 mt-4"
-            >
-              <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                {{ t("admin.groups.webSearchPricing.title") }}
-              </h4>
-              <div>
-                <label class="input-label">{{
-                  t("admin.groups.webSearchPricing.pricePerCall")
-                }}</label>
-                <input
-                  v-model.number="editForm.web_search_price_per_call"
-                  type="number"
-                  step="0.001"
-                  min="0"
-                  placeholder="0.01"
-                  class="input"
-                />
-                <p class="input-hint">
-                  {{ t("admin.groups.webSearchPricing.pricePerCallHint") }}
-                </p>
-                <div
-                  class="mt-2 rounded-control bg-gray-50 p-3 text-xs text-gray-600 dark:bg-dark-700 dark:text-gray-300"
-                >
-                  {{
-                    t("admin.groups.webSearchPricing.finalPricePreview", {
-                      price: editWebSearchFinalPricePreview,
-                    })
-                  }}
-                </div>
-              </div>
-            </div>
-            <div
-
-              class="border-t border-gray-200 dark:border-dark-400 pt-4 mt-4"
-            >
-              <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                {{ t("admin.groups.explicitPricing.title") }}
-              </h4>
-              <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                {{ t("admin.groups.explicitPricing.description") }}
-              </p>
-              <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
-                <div>
-                  <label class="input-label">{{ t("admin.groups.explicitPricing.searchPricePer1k") }}</label>
-                  <input
-                    v-model.number="editForm.search_price_per_1k"
-                    type="number"
-                    step="0.000001"
-                    min="0"
-                    class="input"
-                    :placeholder="t('admin.groups.explicitPricing.pricePlaceholder')"
-                    data-testid="edit-search-price"
-                  />
-                </div>
-                <div>
-                  <label class="input-label">{{ t("admin.groups.voicePricing.audioRealtimePerMin") }}</label>
-                  <input
-                    v-model.number="editForm.audio_realtime_price_per_min"
-                    type="number"
-                    step="0.000001"
-                    min="0"
-                    class="input"
-                    :placeholder="t('admin.groups.voicePricing.pricePlaceholder')"
-                    data-testid="edit-audio-realtime-price"
-                  />
-                </div>
-                <div>
-                  <label class="input-label">{{ t("admin.groups.voicePricing.audioTtsPerMillionChars") }}</label>
-                  <input
-                    v-model.number="editForm.audio_tts_price_per_million_chars"
-                    type="number"
-                    step="0.000001"
-                    min="0"
-                    class="input"
-                    :placeholder="t('admin.groups.voicePricing.pricePlaceholder')"
-                    data-testid="edit-audio-tts-price"
-                  />
-                </div>
-                <div>
-                  <label class="input-label">{{ t("admin.groups.voicePricing.audioSttPerHour") }}</label>
-                  <input
-                    v-model.number="editForm.audio_stt_price_per_hour"
-                    type="number"
-                    step="0.000001"
-                    min="0"
-                    class="input"
-                    :placeholder="t('admin.groups.voicePricing.pricePlaceholder')"
-                    data-testid="edit-audio-stt-price"
-                  />
-                </div>
-              </div>
-            </div>
-          </template>
           <template #protocol>
             <GroupClientProtocolSelector
               v-model="editForm.allowed_protocols"
@@ -2849,11 +2391,6 @@ import GroupAdvancedSchedulerOverridesModal from "@/components/admin/group/Group
 import GroupRoutingPolicyFields from '@/components/admin/group/GroupRoutingPolicyFields.vue';
 import { defaultRoutingPolicy, cloneRoutingPolicy } from '@/components/admin/group/routingPolicy';
 import GroupFormTabs from "@/components/admin/group/GroupFormTabs.vue";
-import PricingEntryCard from "@/components/admin/pricing/PricingEntryCard.vue";
-import type { PricingFormEntry } from "@/components/admin/pricing/types";
-import { createDefaultTimePricingForm } from "@/components/admin/pricing/types";
-import { pricingEntryFromAPI, pricingEntryToAPI, validatePricingForm } from "@/components/admin/pricing/pricingForm";
-import type { ModelPricingEntry } from "@/api/admin/pricing";
 import { VueDraggable } from "vue-draggable-plus";
 import { createStableObjectKeyResolver } from "@/utils/stableObjectKey";
 import { getFloatingPanelPosition } from "@/utils/floatingPanel";
@@ -2880,7 +2417,6 @@ import {
 import { createModelsListCandidatesTracker } from "./groupsModelsListCandidates";
 import { normalizeSupportedModelScopesForPlatform } from "./groupsSupportedModelScopes";
 import {
-  normalizeGroupOpenAIFast,
   normalizeGroupOpenAIFastPolicy,
 } from "./groupsOpenAIFast";
 import {
@@ -2891,21 +2427,6 @@ import {
   reasoningEffortOverLimitDowngrade,
   type ReasoningEffortMappingRow,
 } from "./groupsReasoningEffort";
-
-// 分组与渠道共享完整价卡，空值表示继承，不隐式写入 1 倍。
-const emptyGroupPricing = (): PricingFormEntry => ({
-  models: [], billing_mode: "token", price_multiplier: null,
-  fast_mode_multiplier: null, fast_multiplier: null, flex_multiplier: null,
-  max_reasoning_effort_multiplier: null,
-  input_price: null, output_price: null, cache_write_price: null, cache_write_1h_price: null,
-  cache_read_price: null, image_input_price: null, image_output_price: null,
-  per_request_price: null, intervals: [], time_pricing: createDefaultTimePricingForm(),
-});
-const addGroupPricing = (entries: PricingFormEntry[]) => entries.push(emptyGroupPricing());
-const groupPricingFromAPI = (pricing: ModelPricingEntry[] | undefined): PricingFormEntry[] =>
-  (pricing || []).map(pricingEntryFromAPI);
-const groupPricingToAPI = (pricing: PricingFormEntry[]): ModelPricingEntry[] =>
-  pricing.filter(entry => entry.models.length > 0).map(entry => pricingEntryToAPI(entry));
 
 const { t } = useI18n();
 const appStore = useAppStore();
@@ -3093,7 +2614,6 @@ const statusOptions = computed(() => [
   { value: "inactive", label: t("admin.accounts.status.inactive") },
 ]);
 
-
 const schedulerTypeOptions = computed(() => [
   { value: "basic", label: t("admin.groups.scheduler.basic") },
   { value: "advanced", label: t("admin.groups.scheduler.advanced") },
@@ -3135,7 +2655,6 @@ const saveAdvancedSchedulerOverrides = (value: GroupAdvancedSchedulerOverrides) 
   }
   closeAdvancedSchedulerOverrides();
 };
-
 
 // 降级分组选项（创建时）- 仅包含未启用 claude_code_only 的分组
 const fallbackGroupOptions = computed(() => {
@@ -3431,26 +2950,12 @@ const createForm = reactive({
   is_exclusive: false,
   // 会话隔离开关
   session_isolation_enabled: false,
-  long_context_pricing_enabled: true,
-  model_pricing: [] as PricingFormEntry[],
+
   routing_policy: defaultRoutingPolicy(),
-  // 图片生成计费配置
+  // 图片生成权限
   allow_image_generation: false,
   allow_batch_image_generation: false,
-  batch_image_discount_multiplier: 0.5,
-  batch_image_hold_multiplier: 0.6,
-  // 视频生成计费配置（仅 Grok 平台）
-  // Codex 网页搜索按次计费（仅 openai 平台使用）；null = 使用默认价 0.01
-  web_search_price_per_call: null as number | null,
-  search_price_per_1k: null as number | null,
-  audio_realtime_price_per_min: null as number | null,
-  audio_tts_price_per_million_chars: null as number | null,
-  audio_stt_price_per_hour: null as number | null,
-  // 高峰时段倍率配置
-  peak_rate_enabled: false,
-  peak_start: "",
-  peak_end: "",
-  peak_rate_multiplier: 1.0,
+
   // Claude Code 客户端限制（仅 anthropic 平台使用）
   claude_code_only: false,
   fallback_group_id: null as number | null,
@@ -3461,8 +2966,7 @@ const createForm = reactive({
   allow_live: false,
   // OpenAI 分组级 Fast 强制策略
   openai_fast_policy: "follow_request",
-  // OpenAI 分组级免费 Fast 计费策略
-  free_openai_fast: false,
+
   // 账号过滤控制（OpenAI/Antigravity 平台）
   require_oauth_only: false,
   require_privacy_set: false,
@@ -3841,26 +3345,12 @@ const editForm = reactive({
   // 会话隔离开关
   session_isolation_enabled: false,
   status: "active" as "active" | "inactive",
-  long_context_pricing_enabled: true,
-  model_pricing: [] as PricingFormEntry[],
+
   routing_policy: defaultRoutingPolicy(),
-  // 图片生成计费配置
+  // 图片生成权限
   allow_image_generation: false,
   allow_batch_image_generation: false,
-  batch_image_discount_multiplier: 0.5,
-  batch_image_hold_multiplier: 0.6,
-  // 视频生成计费配置（仅 Grok 平台）
-  // Codex 网页搜索按次计费（仅 openai 平台使用）；null = 使用默认价 0.01
-  web_search_price_per_call: null as number | null,
-  search_price_per_1k: null as number | null,
-  audio_realtime_price_per_min: null as number | null,
-  audio_tts_price_per_million_chars: null as number | null,
-  audio_stt_price_per_hour: null as number | null,
-  // 高峰时段倍率配置
-  peak_rate_enabled: false,
-  peak_start: "",
-  peak_end: "",
-  peak_rate_multiplier: 1.0,
+
   // Claude Code 客户端限制（仅 anthropic 平台使用）
   claude_code_only: false,
   fallback_group_id: null as number | null,
@@ -3871,8 +3361,7 @@ const editForm = reactive({
   allow_live: false,
   // OpenAI 分组级 Fast 强制策略
   openai_fast_policy: "follow_request",
-  // OpenAI 分组级免费 Fast 计费策略
-  free_openai_fast: false,
+
   default_mapped_model: '',
   // 账号过滤控制（OpenAI/Antigravity 平台）
   require_oauth_only: false,
@@ -3923,80 +3412,6 @@ watch(protocolCatalog, (catalog) => {
   }
 });
 
-
-type BatchImagePricingFormState = {
-  allowed_protocols: ProtocolID[];
-  allow_image_generation: boolean;
-  allow_batch_image_generation: boolean;
-  rate_multiplier: number;
-  batch_image_discount_multiplier: number;
-  batch_image_hold_multiplier: number;
-  peak_rate_enabled: boolean;
-  peak_start: string;
-  peak_end: string;
-  peak_rate_multiplier: number;
-};
-
-const normalizePreviewNumber = (value: number | string | null | undefined, fallback = 0) => {
-  if (value === null || value === undefined || value === "") {
-    return fallback;
-  }
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
-};
-
-const parsePreviewPrice = (value: number | string | null | undefined) => {
-  if (value === null || value === undefined || value === "") {
-    return null;
-  }
-  const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
-};
-
-const formatToolPricePreview = (value: number | string | null | undefined) => {
-  if (value === null || value === undefined || value === "") {
-    return t("admin.groups.webSearchPricing.notConfigured");
-  }
-  const price = Number(value);
-  if (!Number.isFinite(price) || price < 0) {
-    return t("admin.groups.webSearchPricing.notConfigured");
-  }
-  return `$${price.toFixed(6).replace(/0+$/, "").replace(/\.$/, "")}`;
-};
-
-// Codex 网页搜索单次默认价（与后端 defaultWebSearchPricePerCall 一致，官方 $10/1000 次）
-const DEFAULT_WEB_SEARCH_PRICE_PER_CALL = 0.01;
-
-const buildWebSearchFinalPricePreview = (form: {
-  web_search_price_per_call: number | string | null;
-  rate_multiplier: number | string | null;
-}) => {
-  const basePrice =
-    parsePreviewPrice(form.web_search_price_per_call) ??
-    DEFAULT_WEB_SEARCH_PRICE_PER_CALL;
-  const multiplier = normalizePreviewNumber(form.rate_multiplier, 1);
-  return formatToolPricePreview(basePrice * multiplier);
-};
-
-const createWebSearchFinalPricePreview = computed(() =>
-  buildWebSearchFinalPricePreview(createForm),
-);
-const editWebSearchFinalPricePreview = computed(() =>
-  buildWebSearchFinalPricePreview(editForm),
-);
-
-const resetDisabledBatchImagePricing = (
-  form: Pick<
-    BatchImagePricingFormState,
-    "allowed_protocols" | "batch_image_discount_multiplier" | "batch_image_hold_multiplier"
-  >,
-) => {
-  if (!form.allowed_protocols.includes("image_batches")) {
-    form.batch_image_discount_multiplier = 0.5;
-    form.batch_image_hold_multiplier = 0.6;
-  }
-};
-
 // 根据分组类型返回不同的删除确认消息
 const deleteConfirmMessage = computed(() => {
   if (!deletingGroup.value) {
@@ -4018,8 +3433,6 @@ const loadLiveCapability = async () => {
   liveCapability.value = await liveCapabilityRequest;
   return liveCapability.value ?? { supported: false };
 };
-
-
 
 const confirmUnsupportedLive = () => {
   if (pendingLiveForm.value === "create") createForm.allow_live = true;
@@ -4090,7 +3503,6 @@ const loadUnavailableFallbackGroups = async () => {
 
 const formatGroupBalance = (cost: number | null | undefined): string =>
   formatBalanceAmount(cost, { fractionDigits: 2 });
-
 
 const normalizeDisplayBrand = (value: string): string => value.trim().slice(0, 50);
 
@@ -4210,27 +3622,16 @@ const closeCreateModal = () => {
   createForm.session_isolation_enabled = false;
   createForm.allow_image_generation = false;
   createForm.allow_batch_image_generation = false;
-  createForm.batch_image_discount_multiplier = 0.5;
-  createForm.batch_image_hold_multiplier = 0.6;
-  createForm.long_context_pricing_enabled = true;
-  createForm.model_pricing = [];
+
   createForm.routing_policy = defaultRoutingPolicy();
-  createForm.web_search_price_per_call = null;
-  createForm.search_price_per_1k = null;
-  createForm.audio_realtime_price_per_min = null;
-  createForm.audio_tts_price_per_million_chars = null;
-  createForm.audio_stt_price_per_hour = null;
-  createForm.peak_rate_enabled = false;
-  createForm.peak_start = "";
-  createForm.peak_end = "";
-  createForm.peak_rate_multiplier = 1.0;
+
   createForm.claude_code_only = false;
   createForm.fallback_group_id = null;
   createForm.fallback_group_id_on_invalid_request = null;
   createForm.unavailable_fallback_group_id = null;
   createForm.allow_live = false;
   createForm.openai_fast_policy = "follow_request";
-  createForm.free_openai_fast = false;
+
   createForm.require_oauth_only = false;
   createForm.require_privacy_set = false;
   createForm.supported_model_scopes = ["claude", "gemini_text", "gemini_image"];
@@ -4246,20 +3647,6 @@ const closeCreateModal = () => {
   createModelRoutingRules.value = [];
 };
 
-const normalizeNonnegativeMultiplier = (
-  value: number | string | null | undefined,
-): number => {
-  if (value === null || value === undefined || value === "") {
-    return 1;
-  }
-  const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 1;
-};
-
-// 创建请求中空字符串表示未配置，转换为后端可解析的 null。
-const emptyToNull = <T>(value: T | ""): T | null =>
-  value === "" ? null : value;
-
 // 整份表单统一校验，业务校验失败也要定位到对应页签中的字段。
 const validateGroupForm = async (target: "create" | "edit"): Promise<boolean> => {
   const form = target === "create" ? createForm : editForm;
@@ -4271,12 +3658,6 @@ const validateGroupForm = async (target: "create" | "edit"): Promise<boolean> =>
   if (!form.name.trim()) {
     appStore.showError(t("admin.groups.nameRequired"));
     await tabs?.revealField('[data-group-field="name"]');
-    return false;
-  }
-  const pricingError = validatePricingForm(form.model_pricing, t);
-  if (pricingError) {
-    appStore.showError(pricingError);
-    await tabs?.revealField('[data-group-field="model-pricing"]');
     return false;
   }
   if (reasoning && !reasoning.validate()) {
@@ -4313,27 +3694,19 @@ const handleCreateGroup = async () => {
       responses_image_policy: createForm.responses_image_policy,
       display_brand: normalizeDisplayBrand(createForm.display_brand),
       routing_policy: createForm.routing_policy,
-      model_pricing: groupPricingToAPI(
-        createForm.model_pricing,
 
-      ),
       model_routing: convertRoutingRulesToApiFormat(
         createModelRoutingRules.value,
       ),
       models_list_config: buildModelsListConfig(createModelsListState),
       availability_probe_config: availabilityProbeConfig,
       supported_model_scopes: normalizeSupportedModelScopesForPlatform(
-
         createForm.supported_model_scopes,
       ),
       openai_fast_policy: normalizeGroupOpenAIFastPolicy(
-
         createForm.openai_fast_policy,
       ),
-      free_openai_fast: normalizeGroupOpenAIFast(
 
-        createForm.free_openai_fast,
-      ),
       max_reasoning_effort_over_limit: normalizeReasoningEffortOverLimit(
         createForm.max_reasoning_effort_over_limit,
       ),
@@ -4349,37 +3722,6 @@ const handleCreateGroup = async () => {
     delete (requestData as any).availability_probe_max_retries;
     delete (requestData as any).availability_probe_user_agent;
 
-    resetDisabledBatchImagePricing(requestData);
-    requestData.batch_image_discount_multiplier = normalizeNonnegativeMultiplier(
-      requestData.batch_image_discount_multiplier,
-    );
-    requestData.batch_image_hold_multiplier = normalizeNonnegativeMultiplier(
-      requestData.batch_image_hold_multiplier,
-    );
-
-    // 工具与语音价格输入清空时 v-model.number 产生 ""，直接提交会被后端 *float64 反序列化拒绝（400），
-    // 创建时按"未配置"（null）处理。
-    requestData.search_price_per_1k = emptyToNull(
-      requestData.search_price_per_1k,
-    );
-    requestData.audio_realtime_price_per_min = emptyToNull(
-      requestData.audio_realtime_price_per_min,
-    );
-    requestData.audio_tts_price_per_million_chars = emptyToNull(
-      requestData.audio_tts_price_per_million_chars,
-    );
-    requestData.audio_stt_price_per_hour = emptyToNull(
-      requestData.audio_stt_price_per_hour,
-    );
-    requestData.web_search_price_per_call = emptyToNull(
-      requestData.web_search_price_per_call,
-    );
-    requestData.peak_rate_enabled = createForm.peak_rate_enabled;
-    requestData.peak_start = createForm.peak_start;
-    requestData.peak_end = createForm.peak_end;
-    requestData.peak_rate_multiplier = normalizeNonnegativeMultiplier(
-      createForm.peak_rate_multiplier,
-    );
     await adminAPI.groups.create(requestData);
     appStore.showSuccess(t("admin.groups.groupCreated"));
     closeCreateModal();
@@ -4414,26 +3756,12 @@ const handleEdit = async (group: AdminGroup) => {
   editForm.session_isolation_enabled =
     group.session_isolation_enabled ?? false;
   editForm.status = group.status;
-  editForm.long_context_pricing_enabled =
-    group.long_context_pricing_enabled ?? true;
-  editForm.model_pricing = groupPricingFromAPI(group.model_pricing);
+
   editForm.routing_policy = cloneRoutingPolicy(group.routing_policy);
   editForm.allow_image_generation = group.allowed_protocols?.some(id => ['openai_images_generations','openai_images_edits','image_batches'].includes(id)) ?? false;
   editForm.allow_batch_image_generation =
     group.allowed_protocols?.includes('image_batches') ?? false;
-  editForm.batch_image_discount_multiplier =
-    group.batch_image_discount_multiplier ?? 0.5;
-  editForm.batch_image_hold_multiplier = group.batch_image_hold_multiplier ?? 0.6;
 
-  editForm.web_search_price_per_call = group.web_search_price_per_call ?? null;
-  editForm.search_price_per_1k = group.search_price_per_1k ?? null;
-  editForm.audio_realtime_price_per_min = group.audio_realtime_price_per_min ?? null;
-  editForm.audio_tts_price_per_million_chars = group.audio_tts_price_per_million_chars ?? null;
-  editForm.audio_stt_price_per_hour = group.audio_stt_price_per_hour ?? null;
-  editForm.peak_rate_enabled = group.peak_rate_enabled ?? false;
-  editForm.peak_start = group.peak_start ?? "";
-  editForm.peak_end = group.peak_end ?? "";
-  editForm.peak_rate_multiplier = group.peak_rate_multiplier ?? 1.0;
   editForm.claude_code_only = group.claude_code_only || false;
   editForm.fallback_group_id = group.fallback_group_id;
   editForm.fallback_group_id_on_invalid_request =
@@ -4441,7 +3769,6 @@ const handleEdit = async (group: AdminGroup) => {
   editForm.unavailable_fallback_group_id =
     group.unavailable_fallback_group_id;
   editForm.allowed_protocols = effectiveGroupClientProtocols(
-
     group.allowed_protocols,
   );
   editForm.protocol_fallbacks = { ...group.protocol_fallbacks };
@@ -4449,13 +3776,9 @@ const handleEdit = async (group: AdminGroup) => {
   editForm.responses_image_policy = group.responses_image_policy ?? "inherit";
   editForm.allow_live = group.allowed_protocols?.includes('openai_live') ?? false;
   editForm.openai_fast_policy = normalizeGroupOpenAIFastPolicy(
-
     group.openai_fast_policy ?? (group.force_openai_fast ? "force_priority" : "follow_request"),
   );
-  editForm.free_openai_fast = normalizeGroupOpenAIFast(
 
-    group.free_openai_fast ?? false,
-  );
   editForm.require_oauth_only = group.require_oauth_only ?? false;
   editForm.require_privacy_set = group.require_privacy_set ?? false;
   editForm.model_routing_enabled = group.model_routing_enabled || false;
@@ -4468,7 +3791,6 @@ const handleEdit = async (group: AdminGroup) => {
   editForm.copy_accounts_from_group_ids = []; // 复制账号字段每次编辑时重置为空
   editForm.rpm_limit = group.rpm_limit ?? 0;
   editForm.max_reasoning_effort = normalizeReasoningEffortForPlatform(
-
     group.max_reasoning_effort,
   );
   editForm.max_reasoning_effort_over_limit = normalizeReasoningEffortOverLimit(
@@ -4476,7 +3798,6 @@ const handleEdit = async (group: AdminGroup) => {
   );
   editForm.reasoning_effort_mappings = reasoningEffortMappingsToRows(
     group.reasoning_effort_mappings,
-
   );
   resetAvailabilityProbeFormState(editForm, group.availability_probe_config);
   resetModelsListState(editModelsListState, group.models_list_config);
@@ -4506,22 +3827,12 @@ const closeEditModal = () => {
   editForm.unavailable_fallback_group_id = null;
   editForm.copy_accounts_from_group_ids = [];
   resetAvailabilityProbeFormState(editForm);
-  editForm.peak_rate_enabled = false;
-  editForm.peak_start = "";
-  editForm.peak_end = "";
-  editForm.peak_rate_multiplier = 1.0;
 
-  editForm.long_context_pricing_enabled = true;
-  editForm.model_pricing = [];
   editForm.routing_policy = defaultRoutingPolicy();
-  editForm.web_search_price_per_call = null;
-  editForm.search_price_per_1k = null;
-  editForm.audio_realtime_price_per_min = null;
-  editForm.audio_tts_price_per_million_chars = null;
-  editForm.audio_stt_price_per_hour = null;
+
   editForm.allow_live = false;
   editForm.openai_fast_policy = "follow_request";
-  editForm.free_openai_fast = false;
+
   resetModelsListState(editModelsListState);
 };
 
@@ -4544,10 +3855,7 @@ const handleUpdateGroup = async () => {
       responses_image_policy: editForm.responses_image_policy,
       display_brand: normalizeDisplayBrand(editForm.display_brand),
       routing_policy: editForm.routing_policy,
-      model_pricing: groupPricingToAPI(
-        editForm.model_pricing,
 
-      ),
       fallback_group_id:
         editForm.fallback_group_id === null ? 0 : editForm.fallback_group_id,
       fallback_group_id_on_invalid_request:
@@ -4564,17 +3872,12 @@ const handleUpdateGroup = async () => {
       models_list_config: buildModelsListConfig(editModelsListState),
       availability_probe_config: availabilityProbeConfig,
       supported_model_scopes: normalizeSupportedModelScopesForPlatform(
-
         editForm.supported_model_scopes,
       ),
       openai_fast_policy: normalizeGroupOpenAIFastPolicy(
-
         editForm.openai_fast_policy,
       ),
-      free_openai_fast: normalizeGroupOpenAIFast(
 
-        editForm.free_openai_fast,
-      ),
       max_reasoning_effort_over_limit: normalizeReasoningEffortOverLimit(
         editForm.max_reasoning_effort_over_limit,
       ),
@@ -4590,39 +3893,6 @@ const handleUpdateGroup = async () => {
     delete (payload as any).availability_probe_max_retries;
     delete (payload as any).availability_probe_user_agent;
 
-    resetDisabledBatchImagePricing(payload);
-    payload.batch_image_discount_multiplier = normalizeNonnegativeMultiplier(
-      payload.batch_image_discount_multiplier,
-    );
-    payload.batch_image_hold_multiplier = normalizeNonnegativeMultiplier(
-      payload.batch_image_hold_multiplier,
-    );
-
-    // 工具与语音价格输入清空时 v-model.number 产生 ""，直接提交会被后端 *float64 反序列化拒绝（400）。
-    // 更新语义中 null 表示"不修改"，因此清空后的字段发送 -1：后端 normalizePrice 将负价归一为
-    // NULL，从而真正清除已配置的价格。
-    const emptyPriceToClear = (v: any) => (v === "" || v === null ? -1 : v);
-    payload.search_price_per_1k = emptyPriceToClear(
-      payload.search_price_per_1k,
-    );
-    payload.audio_realtime_price_per_min = emptyPriceToClear(
-      payload.audio_realtime_price_per_min,
-    );
-    payload.audio_tts_price_per_million_chars = emptyPriceToClear(
-      payload.audio_tts_price_per_million_chars,
-    );
-    payload.audio_stt_price_per_hour = emptyPriceToClear(
-      payload.audio_stt_price_per_hour,
-    );
-    payload.web_search_price_per_call = emptyPriceToClear(
-      payload.web_search_price_per_call,
-    );
-    payload.peak_rate_enabled = editForm.peak_rate_enabled;
-    payload.peak_start = editForm.peak_start;
-    payload.peak_end = editForm.peak_end;
-    payload.peak_rate_multiplier = normalizeNonnegativeMultiplier(
-      editForm.peak_rate_multiplier,
-    );
     await adminAPI.groups.update(editingGroup.value.id, payload);
     appStore.showSuccess(t("admin.groups.groupUpdated"));
     closeEditModal();
@@ -4717,34 +3987,6 @@ watch(editAvailabilityProbeModelOptions, (options) => {
     editForm.availability_probe_model_id = "";
   }
 });
-
-watch(
-  () => createForm.allow_image_generation,
-  () => {
-    resetDisabledBatchImagePricing(createForm);
-  },
-);
-
-watch(
-  () => createForm.allowed_protocols.join(","),
-  () => {
-    resetDisabledBatchImagePricing(createForm);
-  },
-);
-
-watch(
-  () => editForm.allow_image_generation,
-  () => {
-    resetDisabledBatchImagePricing(editForm);
-  },
-);
-
-watch(
-  () => editForm.allowed_protocols.join(","),
-  () => {
-    resetDisabledBatchImagePricing(editForm);
-  },
-);
 
 // 点击外部关闭账号搜索下拉框
 const handleClickOutside = (event: MouseEvent) => {

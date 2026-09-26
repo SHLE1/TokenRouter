@@ -20,25 +20,11 @@ type Group struct {
 	IsExclusive    bool                             `json:"is_exclusive"`
 	Status         string                           `json:"status"`
 	// 会话隔离开启后，目标分组会拒绝其它分组已归属的显式会话切入。
-	SessionIsolationEnabled   bool `json:"session_isolation_enabled"`
-	LongContextPricingEnabled bool `json:"long_context_pricing_enabled"`
+	SessionIsolationEnabled bool `json:"session_isolation_enabled"`
 
-	// 图片生成权限与批量图片策略，价格统一由模型价卡提供。
-	AllowImageGeneration         bool    `json:"-"`
-	AllowBatchImageGeneration    bool    `json:"-"`
-	BatchImageDiscountMultiplier float64 `json:"batch_image_discount_multiplier"`
-	BatchImageHoldMultiplier     float64 `json:"batch_image_hold_multiplier"`
-	// 高峰时段倍率配置
-	PeakRateEnabled    bool    `json:"peak_rate_enabled"`
-	PeakStart          string  `json:"peak_start"`
-	PeakEnd            string  `json:"peak_end"`
-	PeakRateMultiplier float64 `json:"peak_rate_multiplier"`
-	// Codex alpha/search 网页搜索单次价格（USD/次）；null 表示使用默认价 0.01
-	WebSearchPricePerCall        *float64 `json:"web_search_price_per_call"`
-	SearchPricePer1k             *float64 `json:"search_price_per_1k"`
-	AudioRealtimePricePerMin     *float64 `json:"audio_realtime_price_per_min"`
-	AudioTtsPricePerMillionChars *float64 `json:"audio_tts_price_per_million_chars"`
-	AudioSttPricePerHour         *float64 `json:"audio_stt_price_per_hour"`
+	// 图片生成权限独立于共享价格配置。
+	AllowImageGeneration      bool `json:"-"`
+	AllowBatchImageGeneration bool `json:"-"`
 
 	// Claude Code 客户端限制
 	ClaudeCodeOnly  bool   `json:"claude_code_only"`
@@ -91,15 +77,12 @@ type AdminGroup[A any] struct {
 	ForceOpenAIFast bool `json:"force_openai_fast"`
 	// OpenAIFastPolicy 保存管理员选择的互斥加速策略。
 	OpenAIFastPolicy string `json:"openai_fast_policy"`
-	// FreeOpenAIFast 仅管理端可见，用于控制 OpenAI 分组的 Fast 计费。
-	FreeOpenAIFast bool `json:"free_openai_fast"`
+
 	// SchedulerType 仅管理端可见，用于配置分组调度器。
 	SchedulerType string `json:"scheduler_type"`
 	// AdvancedSchedulerOverrides 仅管理端可见；空字段继承网关通用设置。
 	AdvancedSchedulerOverrides routing.GroupAdvancedSchedulerOverrides `json:"advanced_scheduler_overrides"`
-	// ModelPricing 是分组覆盖共享价格配置与内置价格的管理员价卡。
-	RoutingPolicy routing.GroupRoutingPolicy  `json:"routing_policy"`
-	ModelPricing  []routing.ModelPricingEntry `json:"model_pricing"`
+	RoutingPolicy              routing.GroupRoutingPolicy              `json:"routing_policy"`
 
 	// 模型路由配置（仅 anthropic 平台使用）
 	ModelRouting        map[string][]int64 `json:"model_routing"`

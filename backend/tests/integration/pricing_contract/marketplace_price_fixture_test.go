@@ -39,8 +39,9 @@ func (p marketplaceFixturePrices) Quote(ctx context.Context, req routing.Marketp
 			slog.Debug("failed to get model pricing from LiteLLM, using fallback", "model", model, "error", err)
 		})
 	}
-	return resolver.PublicQuote(ctx, billing.PublicQuoteInput{PricingInput: billing.PricingInput{Model: req.Model, GroupID: &req.GroupID, Group: &billing.PriceGroup{ModelPricing: req.ModelPricing, LongContextPricingEnabled: req.LongContextPricingEnabled}}, RateMultiplier: req.RateMultiplier, FreeFastApplicable: req.FreeFastApplicable})
+	return resolver.PublicQuote(ctx, billing.PublicQuoteInput{PricingInput: billing.PricingInput{Model: req.Model, GroupID: &req.GroupID}, RateMultiplier: req.RateMultiplier, FreeFastApplicable: req.FreeFastApplicable})
 }
+
 func (p marketplaceFixturePrices) GetModelModalities(model string) ([]string, []string) {
 	return p.calculator.GetModelModalities(model)
 }

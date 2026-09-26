@@ -20,7 +20,7 @@ func TestAPIKeyAuthSnapshotGroupForceOpenAIFastRoundtrip(t *testing.T) {
 		User: &identity.User{ID: 40, Status: billing.StatusActive},
 		Group: &routing.Group{
 			ID: groupID, Name: "fast-roundtrip", Status: billing.StatusActive,
-			Hydrated: true, ForceOpenAIFast: true, FreeOpenAIFast: true,
+			Hydrated: true, ForceOpenAIFast: true,
 		},
 	}
 	svc := newAPIKeyTestService(apiKeyTestDependencies{})
@@ -36,7 +36,6 @@ func TestAPIKeyAuthSnapshotGroupForceOpenAIFastRoundtrip(t *testing.T) {
 	require.NotNil(t, materialized.Group)
 	require.True(t, materialized.Group.Hydrated)
 	require.True(t, materialized.Group.ForceOpenAIFast)
-	require.True(t, materialized.Group.FreeOpenAIFast)
 	require.Equal(t, apikey.KeyApiKeyAuthSnapshotVersion, cached.Snapshot.Version)
 }
 

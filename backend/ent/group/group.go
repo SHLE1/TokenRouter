@@ -30,14 +30,6 @@ const (
 	FieldDescription = "description"
 	// FieldRateMultiplier holds the string denoting the rate_multiplier field in the database.
 	FieldRateMultiplier = "rate_multiplier"
-	// FieldPeakRateEnabled holds the string denoting the peak_rate_enabled field in the database.
-	FieldPeakRateEnabled = "peak_rate_enabled"
-	// FieldPeakStart holds the string denoting the peak_start field in the database.
-	FieldPeakStart = "peak_start"
-	// FieldPeakEnd holds the string denoting the peak_end field in the database.
-	FieldPeakEnd = "peak_end"
-	// FieldPeakRateMultiplier holds the string denoting the peak_rate_multiplier field in the database.
-	FieldPeakRateMultiplier = "peak_rate_multiplier"
 	// FieldIsExclusive holds the string denoting the is_exclusive field in the database.
 	FieldIsExclusive = "is_exclusive"
 	// FieldStatus holds the string denoting the status field in the database.
@@ -54,26 +46,8 @@ const (
 	FieldAllowImageGeneration = "allow_image_generation"
 	// FieldAllowBatchImageGeneration holds the string denoting the allow_batch_image_generation field in the database.
 	FieldAllowBatchImageGeneration = "allow_batch_image_generation"
-	// FieldBatchImageDiscountMultiplier holds the string denoting the batch_image_discount_multiplier field in the database.
-	FieldBatchImageDiscountMultiplier = "batch_image_discount_multiplier"
-	// FieldBatchImageHoldMultiplier holds the string denoting the batch_image_hold_multiplier field in the database.
-	FieldBatchImageHoldMultiplier = "batch_image_hold_multiplier"
-	// FieldWebSearchPricePerCall holds the string denoting the web_search_price_per_call field in the database.
-	FieldWebSearchPricePerCall = "web_search_price_per_call"
-	// FieldSearchPricePer1k holds the string denoting the search_price_per_1k field in the database.
-	FieldSearchPricePer1k = "search_price_per_1k"
-	// FieldAudioRealtimePricePerMin holds the string denoting the audio_realtime_price_per_min field in the database.
-	FieldAudioRealtimePricePerMin = "audio_realtime_price_per_min"
-	// FieldAudioTtsPricePerMillionChars holds the string denoting the audio_tts_price_per_million_chars field in the database.
-	FieldAudioTtsPricePerMillionChars = "audio_tts_price_per_million_chars"
-	// FieldAudioSttPricePerHour holds the string denoting the audio_stt_price_per_hour field in the database.
-	FieldAudioSttPricePerHour = "audio_stt_price_per_hour"
-	// FieldLongContextPricingEnabled holds the string denoting the long_context_pricing_enabled field in the database.
-	FieldLongContextPricingEnabled = "long_context_pricing_enabled"
 	// FieldRoutingPolicy holds the string denoting the routing_policy field in the database.
 	FieldRoutingPolicy = "routing_policy"
-	// FieldModelPricing holds the string denoting the model_pricing field in the database.
-	FieldModelPricing = "model_pricing"
 	// FieldClaudeCodeOnly holds the string denoting the claude_code_only field in the database.
 	FieldClaudeCodeOnly = "claude_code_only"
 	// FieldFallbackGroupID holds the string denoting the fallback_group_id field in the database.
@@ -106,8 +80,6 @@ const (
 	FieldOpenaiFastPolicy = "openai_fast_policy"
 	// FieldForceOpenaiFast holds the string denoting the force_openai_fast field in the database.
 	FieldForceOpenaiFast = "force_openai_fast"
-	// FieldFreeOpenaiFast holds the string denoting the free_openai_fast field in the database.
-	FieldFreeOpenaiFast = "free_openai_fast"
 	// FieldRequireOauthOnly holds the string denoting the require_oauth_only field in the database.
 	FieldRequireOauthOnly = "require_oauth_only"
 	// FieldRequirePrivacySet holds the string denoting the require_privacy_set field in the database.
@@ -216,10 +188,6 @@ var Columns = []string{
 	FieldName,
 	FieldDescription,
 	FieldRateMultiplier,
-	FieldPeakRateEnabled,
-	FieldPeakStart,
-	FieldPeakEnd,
-	FieldPeakRateMultiplier,
 	FieldIsExclusive,
 	FieldStatus,
 	FieldDuplicateOperationID,
@@ -228,16 +196,7 @@ var Columns = []string{
 	FieldDisplayBrand,
 	FieldAllowImageGeneration,
 	FieldAllowBatchImageGeneration,
-	FieldBatchImageDiscountMultiplier,
-	FieldBatchImageHoldMultiplier,
-	FieldWebSearchPricePerCall,
-	FieldSearchPricePer1k,
-	FieldAudioRealtimePricePerMin,
-	FieldAudioTtsPricePerMillionChars,
-	FieldAudioSttPricePerHour,
-	FieldLongContextPricingEnabled,
 	FieldRoutingPolicy,
-	FieldModelPricing,
 	FieldClaudeCodeOnly,
 	FieldFallbackGroupID,
 	FieldFallbackGroupIDOnInvalidRequest,
@@ -254,7 +213,6 @@ var Columns = []string{
 	FieldAllowLive,
 	FieldOpenaiFastPolicy,
 	FieldForceOpenaiFast,
-	FieldFreeOpenaiFast,
 	FieldRequireOauthOnly,
 	FieldRequirePrivacySet,
 	FieldDefaultMappedModel,
@@ -307,18 +265,6 @@ var (
 	NameValidator func(string) error
 	// DefaultRateMultiplier holds the default value on creation for the "rate_multiplier" field.
 	DefaultRateMultiplier float64
-	// DefaultPeakRateEnabled holds the default value on creation for the "peak_rate_enabled" field.
-	DefaultPeakRateEnabled bool
-	// DefaultPeakStart holds the default value on creation for the "peak_start" field.
-	DefaultPeakStart string
-	// PeakStartValidator is a validator for the "peak_start" field. It is called by the builders before save.
-	PeakStartValidator func(string) error
-	// DefaultPeakEnd holds the default value on creation for the "peak_end" field.
-	DefaultPeakEnd string
-	// PeakEndValidator is a validator for the "peak_end" field. It is called by the builders before save.
-	PeakEndValidator func(string) error
-	// DefaultPeakRateMultiplier holds the default value on creation for the "peak_rate_multiplier" field.
-	DefaultPeakRateMultiplier float64
 	// DefaultIsExclusive holds the default value on creation for the "is_exclusive" field.
 	DefaultIsExclusive bool
 	// DefaultStatus holds the default value on creation for the "status" field.
@@ -341,20 +287,6 @@ var (
 	DefaultAllowImageGeneration bool
 	// DefaultAllowBatchImageGeneration holds the default value on creation for the "allow_batch_image_generation" field.
 	DefaultAllowBatchImageGeneration bool
-	// DefaultBatchImageDiscountMultiplier holds the default value on creation for the "batch_image_discount_multiplier" field.
-	DefaultBatchImageDiscountMultiplier float64
-	// DefaultBatchImageHoldMultiplier holds the default value on creation for the "batch_image_hold_multiplier" field.
-	DefaultBatchImageHoldMultiplier float64
-	// SearchPricePer1kValidator is a validator for the "search_price_per_1k" field. It is called by the builders before save.
-	SearchPricePer1kValidator func(float64) error
-	// AudioRealtimePricePerMinValidator is a validator for the "audio_realtime_price_per_min" field. It is called by the builders before save.
-	AudioRealtimePricePerMinValidator func(float64) error
-	// AudioTtsPricePerMillionCharsValidator is a validator for the "audio_tts_price_per_million_chars" field. It is called by the builders before save.
-	AudioTtsPricePerMillionCharsValidator func(float64) error
-	// AudioSttPricePerHourValidator is a validator for the "audio_stt_price_per_hour" field. It is called by the builders before save.
-	AudioSttPricePerHourValidator func(float64) error
-	// DefaultLongContextPricingEnabled holds the default value on creation for the "long_context_pricing_enabled" field.
-	DefaultLongContextPricingEnabled bool
 	// DefaultClaudeCodeOnly holds the default value on creation for the "claude_code_only" field.
 	DefaultClaudeCodeOnly bool
 	// DefaultModelRoutingEnabled holds the default value on creation for the "model_routing_enabled" field.
@@ -379,8 +311,6 @@ var (
 	DefaultOpenaiFastPolicy string
 	// DefaultForceOpenaiFast holds the default value on creation for the "force_openai_fast" field.
 	DefaultForceOpenaiFast bool
-	// DefaultFreeOpenaiFast holds the default value on creation for the "free_openai_fast" field.
-	DefaultFreeOpenaiFast bool
 	// DefaultRequireOauthOnly holds the default value on creation for the "require_oauth_only" field.
 	DefaultRequireOauthOnly bool
 	// DefaultRequirePrivacySet holds the default value on creation for the "require_privacy_set" field.
@@ -447,26 +377,6 @@ func ByRateMultiplier(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldRateMultiplier, opts...).ToFunc()
 }
 
-// ByPeakRateEnabled orders the results by the peak_rate_enabled field.
-func ByPeakRateEnabled(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldPeakRateEnabled, opts...).ToFunc()
-}
-
-// ByPeakStart orders the results by the peak_start field.
-func ByPeakStart(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldPeakStart, opts...).ToFunc()
-}
-
-// ByPeakEnd orders the results by the peak_end field.
-func ByPeakEnd(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldPeakEnd, opts...).ToFunc()
-}
-
-// ByPeakRateMultiplier orders the results by the peak_rate_multiplier field.
-func ByPeakRateMultiplier(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldPeakRateMultiplier, opts...).ToFunc()
-}
-
 // ByIsExclusive orders the results by the is_exclusive field.
 func ByIsExclusive(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldIsExclusive, opts...).ToFunc()
@@ -500,46 +410,6 @@ func ByAllowImageGeneration(opts ...sql.OrderTermOption) OrderOption {
 // ByAllowBatchImageGeneration orders the results by the allow_batch_image_generation field.
 func ByAllowBatchImageGeneration(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldAllowBatchImageGeneration, opts...).ToFunc()
-}
-
-// ByBatchImageDiscountMultiplier orders the results by the batch_image_discount_multiplier field.
-func ByBatchImageDiscountMultiplier(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldBatchImageDiscountMultiplier, opts...).ToFunc()
-}
-
-// ByBatchImageHoldMultiplier orders the results by the batch_image_hold_multiplier field.
-func ByBatchImageHoldMultiplier(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldBatchImageHoldMultiplier, opts...).ToFunc()
-}
-
-// ByWebSearchPricePerCall orders the results by the web_search_price_per_call field.
-func ByWebSearchPricePerCall(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldWebSearchPricePerCall, opts...).ToFunc()
-}
-
-// BySearchPricePer1k orders the results by the search_price_per_1k field.
-func BySearchPricePer1k(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldSearchPricePer1k, opts...).ToFunc()
-}
-
-// ByAudioRealtimePricePerMin orders the results by the audio_realtime_price_per_min field.
-func ByAudioRealtimePricePerMin(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldAudioRealtimePricePerMin, opts...).ToFunc()
-}
-
-// ByAudioTtsPricePerMillionChars orders the results by the audio_tts_price_per_million_chars field.
-func ByAudioTtsPricePerMillionChars(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldAudioTtsPricePerMillionChars, opts...).ToFunc()
-}
-
-// ByAudioSttPricePerHour orders the results by the audio_stt_price_per_hour field.
-func ByAudioSttPricePerHour(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldAudioSttPricePerHour, opts...).ToFunc()
-}
-
-// ByLongContextPricingEnabled orders the results by the long_context_pricing_enabled field.
-func ByLongContextPricingEnabled(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldLongContextPricingEnabled, opts...).ToFunc()
 }
 
 // ByClaudeCodeOnly orders the results by the claude_code_only field.
@@ -600,11 +470,6 @@ func ByOpenaiFastPolicy(opts ...sql.OrderTermOption) OrderOption {
 // ByForceOpenaiFast orders the results by the force_openai_fast field.
 func ByForceOpenaiFast(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldForceOpenaiFast, opts...).ToFunc()
-}
-
-// ByFreeOpenaiFast orders the results by the free_openai_fast field.
-func ByFreeOpenaiFast(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldFreeOpenaiFast, opts...).ToFunc()
 }
 
 // ByRequireOauthOnly orders the results by the require_oauth_only field.

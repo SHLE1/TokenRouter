@@ -30,7 +30,6 @@ type GroupPricingInvalidator interface{ InvalidateCache() }
 
 // GroupAdminOptions 注入读取时机和原有闭合事务；规则不依赖装配和具体存储。
 type GroupAdminOptions struct {
-	Pricing       PricingConfigValidation
 	DefaultModels func(string) []string
 	GlobalWeights func(context.Context) (policy.ScoreWeights, error)
 	Mutate        func(context.Context, func(context.Context) error) error

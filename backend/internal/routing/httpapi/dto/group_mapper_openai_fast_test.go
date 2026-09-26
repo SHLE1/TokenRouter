@@ -15,7 +15,7 @@ import (
 func TestGroupMapperExposesOpenAIFastOnlyToAdmins(t *testing.T) {
 	group := &routing.Group{
 		ID: 7, Name: "fast", Status: billing.StatusActive,
-		ForceOpenAIFast: true, FreeOpenAIFast: true,
+		ForceOpenAIFast: true,
 	}
 
 	userJSON, err := json.Marshal(GroupFromService(group))
@@ -26,5 +26,5 @@ func TestGroupMapperExposesOpenAIFastOnlyToAdmins(t *testing.T) {
 	adminJSON, err := json.Marshal(GroupFromServiceAdmin(group))
 	require.NoError(t, err)
 	require.Contains(t, string(adminJSON), `"force_openai_fast":true`)
-	require.Contains(t, string(adminJSON), `"free_openai_fast":true`)
+	require.NotContains(t, string(adminJSON), `"free_openai_fast"`)
 }

@@ -93,10 +93,6 @@ func createGroupRecord(ctx context.Context, client *dbent.Client, groupIn *routi
 	if err != nil {
 		return err
 	}
-	modelPricing, err := json.Marshal(groupIn.ModelPricing)
-	if err != nil {
-		return fmt.Errorf("marshal group model pricing: %w", err)
-	}
 	builder := client.Group.Create().
 		SetName(groupIn.Name).
 		SetDescription(groupIn.Description).
@@ -110,15 +106,6 @@ func createGroupRecord(ctx context.Context, client *dbent.Client, groupIn *routi
 		SetSessionIsolationEnabled(groupIn.SessionIsolationEnabled).
 		SetAllowImageGeneration(groupIn.AllowImageGeneration).
 		SetAllowBatchImageGeneration(groupIn.AllowBatchImageGeneration).
-		SetBatchImageDiscountMultiplier(groupIn.BatchImageDiscountMultiplier).
-		SetBatchImageHoldMultiplier(groupIn.BatchImageHoldMultiplier).
-		SetNillableWebSearchPricePerCall(groupIn.WebSearchPricePerCall).
-		SetNillableSearchPricePer1k(groupIn.SearchPricePer1k).
-		SetNillableAudioRealtimePricePerMin(groupIn.AudioRealtimePricePerMin).
-		SetNillableAudioTtsPricePerMillionChars(groupIn.AudioTTSPricePerMillionChars).
-		SetNillableAudioSttPricePerHour(groupIn.AudioSTTPricePerHour).
-		SetLongContextPricingEnabled(groupIn.LongContextPricingEnabled).
-		SetModelPricing(modelPricing).
 		SetRoutingPolicy(routingPolicy).
 		SetClaudeCodeOnly(groupIn.ClaudeCodeOnly).
 		SetNillableFallbackGroupID(groupIn.FallbackGroupID).
@@ -133,7 +120,6 @@ func createGroupRecord(ctx context.Context, client *dbent.Client, groupIn *routi
 		SetAllowLive(groupIn.AllowLive).
 		SetForceOpenaiFast(groupIn.ForceOpenAIFast).
 		SetOpenaiFastPolicy(groupIn.EffectiveOpenAIFastPolicy()).
-		SetFreeOpenaiFast(groupIn.FreeOpenAIFast).
 		SetRequireOauthOnly(groupIn.RequireOAuthOnly).
 		SetRequirePrivacySet(groupIn.RequirePrivacySet).
 		SetDefaultMappedModel(groupIn.DefaultMappedModel).
@@ -142,11 +128,7 @@ func createGroupRecord(ctx context.Context, client *dbent.Client, groupIn *routi
 		SetRpmLimit(groupIn.RPMLimit).
 		SetMaxReasoningEffort(groupIn.MaxReasoningEffort).
 		SetMaxReasoningEffortOverLimit(groupIn.MaxReasoningEffortOverLimit).
-		SetReasoningEffortMappings(groupIn.ReasoningEffortMappings).
-		SetPeakRateEnabled(groupIn.PeakRateEnabled).
-		SetPeakStart(groupIn.PeakStart).
-		SetPeakEnd(groupIn.PeakEnd).
-		SetPeakRateMultiplier(groupIn.PeakRateMultiplier)
+		SetReasoningEffortMappings(groupIn.ReasoningEffortMappings)
 	if groupIn.DuplicateOperationID != "" {
 		builder = builder.SetDuplicateOperationID(groupIn.DuplicateOperationID)
 	}
@@ -273,10 +255,6 @@ func (r *GroupStore) Update(ctx context.Context, groupIn *routing.Group) error {
 	if err != nil {
 		return err
 	}
-	modelPricing, err := json.Marshal(groupIn.ModelPricing)
-	if err != nil {
-		return fmt.Errorf("marshal group model pricing: %w", err)
-	}
 
 	builder := client.Group.UpdateOneID(groupIn.ID).
 		SetName(groupIn.Name).
@@ -291,10 +269,6 @@ func (r *GroupStore) Update(ctx context.Context, groupIn *routing.Group) error {
 		SetSessionIsolationEnabled(groupIn.SessionIsolationEnabled).
 		SetAllowImageGeneration(groupIn.AllowImageGeneration).
 		SetAllowBatchImageGeneration(groupIn.AllowBatchImageGeneration).
-		SetBatchImageDiscountMultiplier(groupIn.BatchImageDiscountMultiplier).
-		SetBatchImageHoldMultiplier(groupIn.BatchImageHoldMultiplier).
-		SetLongContextPricingEnabled(groupIn.LongContextPricingEnabled).
-		SetModelPricing(modelPricing).
 		SetRoutingPolicy(routingPolicy).
 		SetClaudeCodeOnly(groupIn.ClaudeCodeOnly).
 		SetModelRoutingEnabled(groupIn.ModelRoutingEnabled).
@@ -306,7 +280,6 @@ func (r *GroupStore) Update(ctx context.Context, groupIn *routing.Group) error {
 		SetAllowLive(groupIn.AllowLive).
 		SetForceOpenaiFast(groupIn.ForceOpenAIFast).
 		SetOpenaiFastPolicy(groupIn.EffectiveOpenAIFastPolicy()).
-		SetFreeOpenaiFast(groupIn.FreeOpenAIFast).
 		SetRequireOauthOnly(groupIn.RequireOAuthOnly).
 		SetRequirePrivacySet(groupIn.RequirePrivacySet).
 		SetDefaultMappedModel(groupIn.DefaultMappedModel).
@@ -315,37 +288,7 @@ func (r *GroupStore) Update(ctx context.Context, groupIn *routing.Group) error {
 		SetRpmLimit(groupIn.RPMLimit).
 		SetMaxReasoningEffort(groupIn.MaxReasoningEffort).
 		SetMaxReasoningEffortOverLimit(groupIn.MaxReasoningEffortOverLimit).
-		SetReasoningEffortMappings(groupIn.ReasoningEffortMappings).
-		SetPeakRateEnabled(groupIn.PeakRateEnabled).
-		SetPeakStart(groupIn.PeakStart).
-		SetPeakEnd(groupIn.PeakEnd).
-		SetPeakRateMultiplier(groupIn.PeakRateMultiplier)
-
-	if groupIn.WebSearchPricePerCall != nil {
-		builder = builder.SetWebSearchPricePerCall(*groupIn.WebSearchPricePerCall)
-	} else {
-		builder = builder.ClearWebSearchPricePerCall()
-	}
-	if groupIn.SearchPricePer1k != nil {
-		builder = builder.SetSearchPricePer1k(*groupIn.SearchPricePer1k)
-	} else {
-		builder = builder.ClearSearchPricePer1k()
-	}
-	if groupIn.AudioRealtimePricePerMin != nil {
-		builder = builder.SetAudioRealtimePricePerMin(*groupIn.AudioRealtimePricePerMin)
-	} else {
-		builder = builder.ClearAudioRealtimePricePerMin()
-	}
-	if groupIn.AudioTTSPricePerMillionChars != nil {
-		builder = builder.SetAudioTtsPricePerMillionChars(*groupIn.AudioTTSPricePerMillionChars)
-	} else {
-		builder = builder.ClearAudioTtsPricePerMillionChars()
-	}
-	if groupIn.AudioSTTPricePerHour != nil {
-		builder = builder.SetAudioSttPricePerHour(*groupIn.AudioSTTPricePerHour)
-	} else {
-		builder = builder.ClearAudioSttPricePerHour()
-	}
+		SetReasoningEffortMappings(groupIn.ReasoningEffortMappings)
 
 	// 处理 FallbackGroupID：nil 时清除，否则设置
 	if groupIn.FallbackGroupID != nil {

@@ -4,7 +4,6 @@ package accessview
 import (
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
 )
 
@@ -24,41 +23,18 @@ type GroupConfig struct {
 	AdvancedSchedulerOverrides GroupAdvancedSchedulerOverrides
 	DisplayBrand               string
 	RateMultiplier             float64
-	// 高峰时段倍率：peak_rate_enabled 为 true 且当前时刻处于 [PeakStart, PeakEnd) 时，
-	// token 计费倍率额外乘以 PeakRateMultiplier。详见 PeakMultiplierAt。
-	PeakRateEnabled    bool
-	PeakStart          string
-	PeakEnd            string
-	PeakRateMultiplier float64
-	IsExclusive        bool
-	Status             string
-	Hydrated           bool // indicates the group was loaded from a trusted repository source
+	IsExclusive                bool
+	Status                     string
+	Hydrated                   bool // indicates the group was loaded from a trusted repository source
 	// DuplicateOperationID 仅用于恢复已提交的一键复制结果，不得映射到 API DTO。
 	DuplicateOperationID string
 
 	// SessionIsolationEnabled 表示目标分组是否拒绝其它分组已归属的显式会话切入。
 	SessionIsolationEnabled bool
 
-	// 图片生成权限与批量图片策略，价格统一由模型价卡提供。
-	AllowImageGeneration         bool
-	AllowBatchImageGeneration    bool
-	BatchImageDiscountMultiplier float64
-	BatchImageHoldMultiplier     float64
-	// Codex alpha/search 网页搜索单次价格（USD/次，仅 openai 平台使用）；
-	// nil 表示使用默认价 defaultWebSearchPricePerCall（官方 $10/1000 次）。
-	WebSearchPricePerCall *float64
-
-	// 搜索工具每千次调用的显式定价。
-	SearchPricePer1k *float64
-	// Grok Voice 显式定价（分组级，不按文本 RateMultiplier）。
-	AudioRealtimePricePerMin     *float64
-	AudioTTSPricePerMillionChars *float64
-	AudioSTTPricePerHour         *float64
-
-	// ModelPricing 为命中模型覆盖共享价格配置与内置基础价格。
-	// LongContextPricingEnabled 仅控制内置长上下文倍率，不改变分组或共享价格配置自定义区间。
-	LongContextPricingEnabled bool
-	ModelPricing              []pricing.ModelPricingEntry
+	// 图片生成权限独立于共享价格配置。
+	AllowImageGeneration      bool
+	AllowBatchImageGeneration bool
 
 	// Claude Code 客户端限制
 	ClaudeCodeOnly  bool
@@ -95,8 +71,7 @@ type GroupConfig struct {
 	ForceOpenAIFast bool
 	// OpenAIFastPolicy 保存管理员选择的互斥加速策略。
 	OpenAIFastPolicy string
-	// FreeOpenAIFast 让 OpenAI 分组的 Fast 请求按 Standard 价格向用户计费。
-	FreeOpenAIFast     bool
+
 	RequireOAuthOnly   bool // 仅允许非 apikey 类型账号关联（OpenAI/Antigravity/Anthropic/Gemini）
 	RequirePrivacySet  bool // 调度时仅允许 privacy 已成功设置的账号（OpenAI/Antigravity/Anthropic/Gemini）
 	DefaultMappedModel string

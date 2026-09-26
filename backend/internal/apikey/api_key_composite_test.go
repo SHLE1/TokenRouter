@@ -111,12 +111,13 @@ func TestCompositeAPIKeyAuthSnapshotRoundTrip(t *testing.T) {
 			{
 				ID: 30, APIKeyID: 10, GroupID: 40, Prefix: "GPT", NormalizedPrefix: "gpt", SortOrder: 1,
 				Group: &routing.Group{
-					ID: 40, Name: "OpenAI", Status: billing.StatusActive, IsExclusive: true,
-					RateMultiplier: 1.25, AllowImageGeneration: true, RPMLimit: 80,
-					LongContextPricingEnabled: true,
-					ModelPricing: []routing.ModelPricingEntry{{
-						Models: []string{"gpt-5.4"}, BillingMode: routing.BillingModeToken,
-					}},
+					ID:                   40,
+					Name:                 "OpenAI",
+					Status:               billing.StatusActive,
+					IsExclusive:          true,
+					RateMultiplier:       1.25,
+					AllowImageGeneration: true,
+					RPMLimit:             80,
 					AllowedProtocols: []protocol.ProtocolID{
 						protocol.ProtocolOpenAIResponses,
 						protocol.ProtocolOpenAIChatCompletions,
@@ -142,8 +143,6 @@ func TestCompositeAPIKeyAuthSnapshotRoundTrip(t *testing.T) {
 	require.True(t, restored.CompositeGroups[0].Group.Hydrated)
 	require.Equal(t, 1.25, restored.CompositeGroups[0].Group.RateMultiplier)
 	require.True(t, restored.CompositeGroups[0].Group.AllowImageGeneration)
-	require.True(t, restored.CompositeGroups[0].Group.LongContextPricingEnabled)
-	require.Equal(t, key.CompositeGroups[0].Group.ModelPricing, restored.CompositeGroups[0].Group.ModelPricing)
 	require.Equal(t, []protocol.ProtocolID{
 		protocol.ProtocolOpenAIResponses,
 		protocol.ProtocolOpenAIChatCompletions,

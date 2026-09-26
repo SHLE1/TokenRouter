@@ -23593,11 +23593,6 @@ type GroupMutation struct {
 	description                             *string
 	rate_multiplier                         *float64
 	addrate_multiplier                      *float64
-	peak_rate_enabled                       *bool
-	peak_start                              *string
-	peak_end                                *string
-	peak_rate_multiplier                    *float64
-	addpeak_rate_multiplier                 *float64
 	is_exclusive                            *bool
 	status                                  *string
 	duplicate_operation_id                  *string
@@ -23606,25 +23601,8 @@ type GroupMutation struct {
 	display_brand                           *string
 	allow_image_generation                  *bool
 	allow_batch_image_generation            *bool
-	batch_image_discount_multiplier         *float64
-	addbatch_image_discount_multiplier      *float64
-	batch_image_hold_multiplier             *float64
-	addbatch_image_hold_multiplier          *float64
-	web_search_price_per_call               *float64
-	addweb_search_price_per_call            *float64
-	search_price_per_1k                     *float64
-	addsearch_price_per_1k                  *float64
-	audio_realtime_price_per_min            *float64
-	addaudio_realtime_price_per_min         *float64
-	audio_tts_price_per_million_chars       *float64
-	addaudio_tts_price_per_million_chars    *float64
-	audio_stt_price_per_hour                *float64
-	addaudio_stt_price_per_hour             *float64
-	long_context_pricing_enabled            *bool
 	routing_policy                          *jsontext.Value
 	appendrouting_policy                    jsontext.Value
-	model_pricing                           *jsontext.Value
-	appendmodel_pricing                     jsontext.Value
 	claude_code_only                        *bool
 	fallback_group_id                       *int64
 	addfallback_group_id                    *int64
@@ -23647,7 +23625,6 @@ type GroupMutation struct {
 	allow_live                              *bool
 	openai_fast_policy                      *string
 	force_openai_fast                       *bool
-	free_openai_fast                        *bool
 	require_oauth_only                      *bool
 	require_privacy_set                     *bool
 	default_mapped_model                    *string
@@ -24044,170 +24021,6 @@ func (m *GroupMutation) ResetRateMultiplier() {
 	m.addrate_multiplier = nil
 }
 
-// SetPeakRateEnabled sets the "peak_rate_enabled" field.
-func (m *GroupMutation) SetPeakRateEnabled(b bool) {
-	m.peak_rate_enabled = &b
-}
-
-// PeakRateEnabled returns the value of the "peak_rate_enabled" field in the mutation.
-func (m *GroupMutation) PeakRateEnabled() (r bool, exists bool) {
-	v := m.peak_rate_enabled
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldPeakRateEnabled returns the old "peak_rate_enabled" field's value of the Group entity.
-// If the Group object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *GroupMutation) OldPeakRateEnabled(ctx context.Context) (v bool, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldPeakRateEnabled is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldPeakRateEnabled requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldPeakRateEnabled: %w", err)
-	}
-	return oldValue.PeakRateEnabled, nil
-}
-
-// ResetPeakRateEnabled resets all changes to the "peak_rate_enabled" field.
-func (m *GroupMutation) ResetPeakRateEnabled() {
-	m.peak_rate_enabled = nil
-}
-
-// SetPeakStart sets the "peak_start" field.
-func (m *GroupMutation) SetPeakStart(s string) {
-	m.peak_start = &s
-}
-
-// PeakStart returns the value of the "peak_start" field in the mutation.
-func (m *GroupMutation) PeakStart() (r string, exists bool) {
-	v := m.peak_start
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldPeakStart returns the old "peak_start" field's value of the Group entity.
-// If the Group object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *GroupMutation) OldPeakStart(ctx context.Context) (v string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldPeakStart is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldPeakStart requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldPeakStart: %w", err)
-	}
-	return oldValue.PeakStart, nil
-}
-
-// ResetPeakStart resets all changes to the "peak_start" field.
-func (m *GroupMutation) ResetPeakStart() {
-	m.peak_start = nil
-}
-
-// SetPeakEnd sets the "peak_end" field.
-func (m *GroupMutation) SetPeakEnd(s string) {
-	m.peak_end = &s
-}
-
-// PeakEnd returns the value of the "peak_end" field in the mutation.
-func (m *GroupMutation) PeakEnd() (r string, exists bool) {
-	v := m.peak_end
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldPeakEnd returns the old "peak_end" field's value of the Group entity.
-// If the Group object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *GroupMutation) OldPeakEnd(ctx context.Context) (v string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldPeakEnd is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldPeakEnd requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldPeakEnd: %w", err)
-	}
-	return oldValue.PeakEnd, nil
-}
-
-// ResetPeakEnd resets all changes to the "peak_end" field.
-func (m *GroupMutation) ResetPeakEnd() {
-	m.peak_end = nil
-}
-
-// SetPeakRateMultiplier sets the "peak_rate_multiplier" field.
-func (m *GroupMutation) SetPeakRateMultiplier(f float64) {
-	m.peak_rate_multiplier = &f
-	m.addpeak_rate_multiplier = nil
-}
-
-// PeakRateMultiplier returns the value of the "peak_rate_multiplier" field in the mutation.
-func (m *GroupMutation) PeakRateMultiplier() (r float64, exists bool) {
-	v := m.peak_rate_multiplier
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldPeakRateMultiplier returns the old "peak_rate_multiplier" field's value of the Group entity.
-// If the Group object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *GroupMutation) OldPeakRateMultiplier(ctx context.Context) (v float64, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldPeakRateMultiplier is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldPeakRateMultiplier requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldPeakRateMultiplier: %w", err)
-	}
-	return oldValue.PeakRateMultiplier, nil
-}
-
-// AddPeakRateMultiplier adds f to the "peak_rate_multiplier" field.
-func (m *GroupMutation) AddPeakRateMultiplier(f float64) {
-	if m.addpeak_rate_multiplier != nil {
-		*m.addpeak_rate_multiplier += f
-	} else {
-		m.addpeak_rate_multiplier = &f
-	}
-}
-
-// AddedPeakRateMultiplier returns the value that was added to the "peak_rate_multiplier" field in this mutation.
-func (m *GroupMutation) AddedPeakRateMultiplier() (r float64, exists bool) {
-	v := m.addpeak_rate_multiplier
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// ResetPeakRateMultiplier resets all changes to the "peak_rate_multiplier" field.
-func (m *GroupMutation) ResetPeakRateMultiplier() {
-	m.peak_rate_multiplier = nil
-	m.addpeak_rate_multiplier = nil
-}
-
 // SetIsExclusive sets the "is_exclusive" field.
 func (m *GroupMutation) SetIsExclusive(b bool) {
 	m.is_exclusive = &b
@@ -24509,504 +24322,6 @@ func (m *GroupMutation) ResetAllowBatchImageGeneration() {
 	m.allow_batch_image_generation = nil
 }
 
-// SetBatchImageDiscountMultiplier sets the "batch_image_discount_multiplier" field.
-func (m *GroupMutation) SetBatchImageDiscountMultiplier(f float64) {
-	m.batch_image_discount_multiplier = &f
-	m.addbatch_image_discount_multiplier = nil
-}
-
-// BatchImageDiscountMultiplier returns the value of the "batch_image_discount_multiplier" field in the mutation.
-func (m *GroupMutation) BatchImageDiscountMultiplier() (r float64, exists bool) {
-	v := m.batch_image_discount_multiplier
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldBatchImageDiscountMultiplier returns the old "batch_image_discount_multiplier" field's value of the Group entity.
-// If the Group object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *GroupMutation) OldBatchImageDiscountMultiplier(ctx context.Context) (v float64, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldBatchImageDiscountMultiplier is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldBatchImageDiscountMultiplier requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldBatchImageDiscountMultiplier: %w", err)
-	}
-	return oldValue.BatchImageDiscountMultiplier, nil
-}
-
-// AddBatchImageDiscountMultiplier adds f to the "batch_image_discount_multiplier" field.
-func (m *GroupMutation) AddBatchImageDiscountMultiplier(f float64) {
-	if m.addbatch_image_discount_multiplier != nil {
-		*m.addbatch_image_discount_multiplier += f
-	} else {
-		m.addbatch_image_discount_multiplier = &f
-	}
-}
-
-// AddedBatchImageDiscountMultiplier returns the value that was added to the "batch_image_discount_multiplier" field in this mutation.
-func (m *GroupMutation) AddedBatchImageDiscountMultiplier() (r float64, exists bool) {
-	v := m.addbatch_image_discount_multiplier
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// ResetBatchImageDiscountMultiplier resets all changes to the "batch_image_discount_multiplier" field.
-func (m *GroupMutation) ResetBatchImageDiscountMultiplier() {
-	m.batch_image_discount_multiplier = nil
-	m.addbatch_image_discount_multiplier = nil
-}
-
-// SetBatchImageHoldMultiplier sets the "batch_image_hold_multiplier" field.
-func (m *GroupMutation) SetBatchImageHoldMultiplier(f float64) {
-	m.batch_image_hold_multiplier = &f
-	m.addbatch_image_hold_multiplier = nil
-}
-
-// BatchImageHoldMultiplier returns the value of the "batch_image_hold_multiplier" field in the mutation.
-func (m *GroupMutation) BatchImageHoldMultiplier() (r float64, exists bool) {
-	v := m.batch_image_hold_multiplier
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldBatchImageHoldMultiplier returns the old "batch_image_hold_multiplier" field's value of the Group entity.
-// If the Group object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *GroupMutation) OldBatchImageHoldMultiplier(ctx context.Context) (v float64, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldBatchImageHoldMultiplier is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldBatchImageHoldMultiplier requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldBatchImageHoldMultiplier: %w", err)
-	}
-	return oldValue.BatchImageHoldMultiplier, nil
-}
-
-// AddBatchImageHoldMultiplier adds f to the "batch_image_hold_multiplier" field.
-func (m *GroupMutation) AddBatchImageHoldMultiplier(f float64) {
-	if m.addbatch_image_hold_multiplier != nil {
-		*m.addbatch_image_hold_multiplier += f
-	} else {
-		m.addbatch_image_hold_multiplier = &f
-	}
-}
-
-// AddedBatchImageHoldMultiplier returns the value that was added to the "batch_image_hold_multiplier" field in this mutation.
-func (m *GroupMutation) AddedBatchImageHoldMultiplier() (r float64, exists bool) {
-	v := m.addbatch_image_hold_multiplier
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// ResetBatchImageHoldMultiplier resets all changes to the "batch_image_hold_multiplier" field.
-func (m *GroupMutation) ResetBatchImageHoldMultiplier() {
-	m.batch_image_hold_multiplier = nil
-	m.addbatch_image_hold_multiplier = nil
-}
-
-// SetWebSearchPricePerCall sets the "web_search_price_per_call" field.
-func (m *GroupMutation) SetWebSearchPricePerCall(f float64) {
-	m.web_search_price_per_call = &f
-	m.addweb_search_price_per_call = nil
-}
-
-// WebSearchPricePerCall returns the value of the "web_search_price_per_call" field in the mutation.
-func (m *GroupMutation) WebSearchPricePerCall() (r float64, exists bool) {
-	v := m.web_search_price_per_call
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldWebSearchPricePerCall returns the old "web_search_price_per_call" field's value of the Group entity.
-// If the Group object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *GroupMutation) OldWebSearchPricePerCall(ctx context.Context) (v *float64, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldWebSearchPricePerCall is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldWebSearchPricePerCall requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldWebSearchPricePerCall: %w", err)
-	}
-	return oldValue.WebSearchPricePerCall, nil
-}
-
-// AddWebSearchPricePerCall adds f to the "web_search_price_per_call" field.
-func (m *GroupMutation) AddWebSearchPricePerCall(f float64) {
-	if m.addweb_search_price_per_call != nil {
-		*m.addweb_search_price_per_call += f
-	} else {
-		m.addweb_search_price_per_call = &f
-	}
-}
-
-// AddedWebSearchPricePerCall returns the value that was added to the "web_search_price_per_call" field in this mutation.
-func (m *GroupMutation) AddedWebSearchPricePerCall() (r float64, exists bool) {
-	v := m.addweb_search_price_per_call
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// ClearWebSearchPricePerCall clears the value of the "web_search_price_per_call" field.
-func (m *GroupMutation) ClearWebSearchPricePerCall() {
-	m.web_search_price_per_call = nil
-	m.addweb_search_price_per_call = nil
-	m.clearedFields[group.FieldWebSearchPricePerCall] = struct{}{}
-}
-
-// WebSearchPricePerCallCleared returns if the "web_search_price_per_call" field was cleared in this mutation.
-func (m *GroupMutation) WebSearchPricePerCallCleared() bool {
-	_, ok := m.clearedFields[group.FieldWebSearchPricePerCall]
-	return ok
-}
-
-// ResetWebSearchPricePerCall resets all changes to the "web_search_price_per_call" field.
-func (m *GroupMutation) ResetWebSearchPricePerCall() {
-	m.web_search_price_per_call = nil
-	m.addweb_search_price_per_call = nil
-	delete(m.clearedFields, group.FieldWebSearchPricePerCall)
-}
-
-// SetSearchPricePer1k sets the "search_price_per_1k" field.
-func (m *GroupMutation) SetSearchPricePer1k(f float64) {
-	m.search_price_per_1k = &f
-	m.addsearch_price_per_1k = nil
-}
-
-// SearchPricePer1k returns the value of the "search_price_per_1k" field in the mutation.
-func (m *GroupMutation) SearchPricePer1k() (r float64, exists bool) {
-	v := m.search_price_per_1k
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldSearchPricePer1k returns the old "search_price_per_1k" field's value of the Group entity.
-// If the Group object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *GroupMutation) OldSearchPricePer1k(ctx context.Context) (v *float64, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldSearchPricePer1k is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldSearchPricePer1k requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldSearchPricePer1k: %w", err)
-	}
-	return oldValue.SearchPricePer1k, nil
-}
-
-// AddSearchPricePer1k adds f to the "search_price_per_1k" field.
-func (m *GroupMutation) AddSearchPricePer1k(f float64) {
-	if m.addsearch_price_per_1k != nil {
-		*m.addsearch_price_per_1k += f
-	} else {
-		m.addsearch_price_per_1k = &f
-	}
-}
-
-// AddedSearchPricePer1k returns the value that was added to the "search_price_per_1k" field in this mutation.
-func (m *GroupMutation) AddedSearchPricePer1k() (r float64, exists bool) {
-	v := m.addsearch_price_per_1k
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// ClearSearchPricePer1k clears the value of the "search_price_per_1k" field.
-func (m *GroupMutation) ClearSearchPricePer1k() {
-	m.search_price_per_1k = nil
-	m.addsearch_price_per_1k = nil
-	m.clearedFields[group.FieldSearchPricePer1k] = struct{}{}
-}
-
-// SearchPricePer1kCleared returns if the "search_price_per_1k" field was cleared in this mutation.
-func (m *GroupMutation) SearchPricePer1kCleared() bool {
-	_, ok := m.clearedFields[group.FieldSearchPricePer1k]
-	return ok
-}
-
-// ResetSearchPricePer1k resets all changes to the "search_price_per_1k" field.
-func (m *GroupMutation) ResetSearchPricePer1k() {
-	m.search_price_per_1k = nil
-	m.addsearch_price_per_1k = nil
-	delete(m.clearedFields, group.FieldSearchPricePer1k)
-}
-
-// SetAudioRealtimePricePerMin sets the "audio_realtime_price_per_min" field.
-func (m *GroupMutation) SetAudioRealtimePricePerMin(f float64) {
-	m.audio_realtime_price_per_min = &f
-	m.addaudio_realtime_price_per_min = nil
-}
-
-// AudioRealtimePricePerMin returns the value of the "audio_realtime_price_per_min" field in the mutation.
-func (m *GroupMutation) AudioRealtimePricePerMin() (r float64, exists bool) {
-	v := m.audio_realtime_price_per_min
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldAudioRealtimePricePerMin returns the old "audio_realtime_price_per_min" field's value of the Group entity.
-// If the Group object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *GroupMutation) OldAudioRealtimePricePerMin(ctx context.Context) (v *float64, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldAudioRealtimePricePerMin is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldAudioRealtimePricePerMin requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldAudioRealtimePricePerMin: %w", err)
-	}
-	return oldValue.AudioRealtimePricePerMin, nil
-}
-
-// AddAudioRealtimePricePerMin adds f to the "audio_realtime_price_per_min" field.
-func (m *GroupMutation) AddAudioRealtimePricePerMin(f float64) {
-	if m.addaudio_realtime_price_per_min != nil {
-		*m.addaudio_realtime_price_per_min += f
-	} else {
-		m.addaudio_realtime_price_per_min = &f
-	}
-}
-
-// AddedAudioRealtimePricePerMin returns the value that was added to the "audio_realtime_price_per_min" field in this mutation.
-func (m *GroupMutation) AddedAudioRealtimePricePerMin() (r float64, exists bool) {
-	v := m.addaudio_realtime_price_per_min
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// ClearAudioRealtimePricePerMin clears the value of the "audio_realtime_price_per_min" field.
-func (m *GroupMutation) ClearAudioRealtimePricePerMin() {
-	m.audio_realtime_price_per_min = nil
-	m.addaudio_realtime_price_per_min = nil
-	m.clearedFields[group.FieldAudioRealtimePricePerMin] = struct{}{}
-}
-
-// AudioRealtimePricePerMinCleared returns if the "audio_realtime_price_per_min" field was cleared in this mutation.
-func (m *GroupMutation) AudioRealtimePricePerMinCleared() bool {
-	_, ok := m.clearedFields[group.FieldAudioRealtimePricePerMin]
-	return ok
-}
-
-// ResetAudioRealtimePricePerMin resets all changes to the "audio_realtime_price_per_min" field.
-func (m *GroupMutation) ResetAudioRealtimePricePerMin() {
-	m.audio_realtime_price_per_min = nil
-	m.addaudio_realtime_price_per_min = nil
-	delete(m.clearedFields, group.FieldAudioRealtimePricePerMin)
-}
-
-// SetAudioTtsPricePerMillionChars sets the "audio_tts_price_per_million_chars" field.
-func (m *GroupMutation) SetAudioTtsPricePerMillionChars(f float64) {
-	m.audio_tts_price_per_million_chars = &f
-	m.addaudio_tts_price_per_million_chars = nil
-}
-
-// AudioTtsPricePerMillionChars returns the value of the "audio_tts_price_per_million_chars" field in the mutation.
-func (m *GroupMutation) AudioTtsPricePerMillionChars() (r float64, exists bool) {
-	v := m.audio_tts_price_per_million_chars
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldAudioTtsPricePerMillionChars returns the old "audio_tts_price_per_million_chars" field's value of the Group entity.
-// If the Group object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *GroupMutation) OldAudioTtsPricePerMillionChars(ctx context.Context) (v *float64, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldAudioTtsPricePerMillionChars is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldAudioTtsPricePerMillionChars requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldAudioTtsPricePerMillionChars: %w", err)
-	}
-	return oldValue.AudioTtsPricePerMillionChars, nil
-}
-
-// AddAudioTtsPricePerMillionChars adds f to the "audio_tts_price_per_million_chars" field.
-func (m *GroupMutation) AddAudioTtsPricePerMillionChars(f float64) {
-	if m.addaudio_tts_price_per_million_chars != nil {
-		*m.addaudio_tts_price_per_million_chars += f
-	} else {
-		m.addaudio_tts_price_per_million_chars = &f
-	}
-}
-
-// AddedAudioTtsPricePerMillionChars returns the value that was added to the "audio_tts_price_per_million_chars" field in this mutation.
-func (m *GroupMutation) AddedAudioTtsPricePerMillionChars() (r float64, exists bool) {
-	v := m.addaudio_tts_price_per_million_chars
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// ClearAudioTtsPricePerMillionChars clears the value of the "audio_tts_price_per_million_chars" field.
-func (m *GroupMutation) ClearAudioTtsPricePerMillionChars() {
-	m.audio_tts_price_per_million_chars = nil
-	m.addaudio_tts_price_per_million_chars = nil
-	m.clearedFields[group.FieldAudioTtsPricePerMillionChars] = struct{}{}
-}
-
-// AudioTtsPricePerMillionCharsCleared returns if the "audio_tts_price_per_million_chars" field was cleared in this mutation.
-func (m *GroupMutation) AudioTtsPricePerMillionCharsCleared() bool {
-	_, ok := m.clearedFields[group.FieldAudioTtsPricePerMillionChars]
-	return ok
-}
-
-// ResetAudioTtsPricePerMillionChars resets all changes to the "audio_tts_price_per_million_chars" field.
-func (m *GroupMutation) ResetAudioTtsPricePerMillionChars() {
-	m.audio_tts_price_per_million_chars = nil
-	m.addaudio_tts_price_per_million_chars = nil
-	delete(m.clearedFields, group.FieldAudioTtsPricePerMillionChars)
-}
-
-// SetAudioSttPricePerHour sets the "audio_stt_price_per_hour" field.
-func (m *GroupMutation) SetAudioSttPricePerHour(f float64) {
-	m.audio_stt_price_per_hour = &f
-	m.addaudio_stt_price_per_hour = nil
-}
-
-// AudioSttPricePerHour returns the value of the "audio_stt_price_per_hour" field in the mutation.
-func (m *GroupMutation) AudioSttPricePerHour() (r float64, exists bool) {
-	v := m.audio_stt_price_per_hour
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldAudioSttPricePerHour returns the old "audio_stt_price_per_hour" field's value of the Group entity.
-// If the Group object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *GroupMutation) OldAudioSttPricePerHour(ctx context.Context) (v *float64, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldAudioSttPricePerHour is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldAudioSttPricePerHour requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldAudioSttPricePerHour: %w", err)
-	}
-	return oldValue.AudioSttPricePerHour, nil
-}
-
-// AddAudioSttPricePerHour adds f to the "audio_stt_price_per_hour" field.
-func (m *GroupMutation) AddAudioSttPricePerHour(f float64) {
-	if m.addaudio_stt_price_per_hour != nil {
-		*m.addaudio_stt_price_per_hour += f
-	} else {
-		m.addaudio_stt_price_per_hour = &f
-	}
-}
-
-// AddedAudioSttPricePerHour returns the value that was added to the "audio_stt_price_per_hour" field in this mutation.
-func (m *GroupMutation) AddedAudioSttPricePerHour() (r float64, exists bool) {
-	v := m.addaudio_stt_price_per_hour
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// ClearAudioSttPricePerHour clears the value of the "audio_stt_price_per_hour" field.
-func (m *GroupMutation) ClearAudioSttPricePerHour() {
-	m.audio_stt_price_per_hour = nil
-	m.addaudio_stt_price_per_hour = nil
-	m.clearedFields[group.FieldAudioSttPricePerHour] = struct{}{}
-}
-
-// AudioSttPricePerHourCleared returns if the "audio_stt_price_per_hour" field was cleared in this mutation.
-func (m *GroupMutation) AudioSttPricePerHourCleared() bool {
-	_, ok := m.clearedFields[group.FieldAudioSttPricePerHour]
-	return ok
-}
-
-// ResetAudioSttPricePerHour resets all changes to the "audio_stt_price_per_hour" field.
-func (m *GroupMutation) ResetAudioSttPricePerHour() {
-	m.audio_stt_price_per_hour = nil
-	m.addaudio_stt_price_per_hour = nil
-	delete(m.clearedFields, group.FieldAudioSttPricePerHour)
-}
-
-// SetLongContextPricingEnabled sets the "long_context_pricing_enabled" field.
-func (m *GroupMutation) SetLongContextPricingEnabled(b bool) {
-	m.long_context_pricing_enabled = &b
-}
-
-// LongContextPricingEnabled returns the value of the "long_context_pricing_enabled" field in the mutation.
-func (m *GroupMutation) LongContextPricingEnabled() (r bool, exists bool) {
-	v := m.long_context_pricing_enabled
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldLongContextPricingEnabled returns the old "long_context_pricing_enabled" field's value of the Group entity.
-// If the Group object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *GroupMutation) OldLongContextPricingEnabled(ctx context.Context) (v bool, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldLongContextPricingEnabled is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldLongContextPricingEnabled requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldLongContextPricingEnabled: %w", err)
-	}
-	return oldValue.LongContextPricingEnabled, nil
-}
-
-// ResetLongContextPricingEnabled resets all changes to the "long_context_pricing_enabled" field.
-func (m *GroupMutation) ResetLongContextPricingEnabled() {
-	m.long_context_pricing_enabled = nil
-}
-
 // SetRoutingPolicy sets the "routing_policy" field.
 func (m *GroupMutation) SetRoutingPolicy(j jsontext.Value) {
 	m.routing_policy = &j
@@ -25070,71 +24385,6 @@ func (m *GroupMutation) ResetRoutingPolicy() {
 	m.routing_policy = nil
 	m.appendrouting_policy = nil
 	delete(m.clearedFields, group.FieldRoutingPolicy)
-}
-
-// SetModelPricing sets the "model_pricing" field.
-func (m *GroupMutation) SetModelPricing(j jsontext.Value) {
-	m.model_pricing = &j
-	m.appendmodel_pricing = nil
-}
-
-// ModelPricing returns the value of the "model_pricing" field in the mutation.
-func (m *GroupMutation) ModelPricing() (r jsontext.Value, exists bool) {
-	v := m.model_pricing
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldModelPricing returns the old "model_pricing" field's value of the Group entity.
-// If the Group object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *GroupMutation) OldModelPricing(ctx context.Context) (v jsontext.Value, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldModelPricing is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldModelPricing requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldModelPricing: %w", err)
-	}
-	return oldValue.ModelPricing, nil
-}
-
-// AppendModelPricing adds j to the "model_pricing" field.
-func (m *GroupMutation) AppendModelPricing(j jsontext.Value) {
-	m.appendmodel_pricing = append(m.appendmodel_pricing, j...)
-}
-
-// AppendedModelPricing returns the list of values that were appended to the "model_pricing" field in this mutation.
-func (m *GroupMutation) AppendedModelPricing() (jsontext.Value, bool) {
-	if len(m.appendmodel_pricing) == 0 {
-		return nil, false
-	}
-	return m.appendmodel_pricing, true
-}
-
-// ClearModelPricing clears the value of the "model_pricing" field.
-func (m *GroupMutation) ClearModelPricing() {
-	m.model_pricing = nil
-	m.appendmodel_pricing = nil
-	m.clearedFields[group.FieldModelPricing] = struct{}{}
-}
-
-// ModelPricingCleared returns if the "model_pricing" field was cleared in this mutation.
-func (m *GroupMutation) ModelPricingCleared() bool {
-	_, ok := m.clearedFields[group.FieldModelPricing]
-	return ok
-}
-
-// ResetModelPricing resets all changes to the "model_pricing" field.
-func (m *GroupMutation) ResetModelPricing() {
-	m.model_pricing = nil
-	m.appendmodel_pricing = nil
-	delete(m.clearedFields, group.FieldModelPricing)
 }
 
 // SetClaudeCodeOnly sets the "claude_code_only" field.
@@ -25876,42 +25126,6 @@ func (m *GroupMutation) OldForceOpenaiFast(ctx context.Context) (v bool, err err
 // ResetForceOpenaiFast resets all changes to the "force_openai_fast" field.
 func (m *GroupMutation) ResetForceOpenaiFast() {
 	m.force_openai_fast = nil
-}
-
-// SetFreeOpenaiFast sets the "free_openai_fast" field.
-func (m *GroupMutation) SetFreeOpenaiFast(b bool) {
-	m.free_openai_fast = &b
-}
-
-// FreeOpenaiFast returns the value of the "free_openai_fast" field in the mutation.
-func (m *GroupMutation) FreeOpenaiFast() (r bool, exists bool) {
-	v := m.free_openai_fast
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldFreeOpenaiFast returns the old "free_openai_fast" field's value of the Group entity.
-// If the Group object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *GroupMutation) OldFreeOpenaiFast(ctx context.Context) (v bool, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldFreeOpenaiFast is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldFreeOpenaiFast requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldFreeOpenaiFast: %w", err)
-	}
-	return oldValue.FreeOpenaiFast, nil
-}
-
-// ResetFreeOpenaiFast resets all changes to the "free_openai_fast" field.
-func (m *GroupMutation) ResetFreeOpenaiFast() {
-	m.free_openai_fast = nil
 }
 
 // SetRequireOauthOnly sets the "require_oauth_only" field.
@@ -26667,7 +25881,7 @@ func (m *GroupMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *GroupMutation) Fields() []string {
-	fields := make([]string, 0, 55)
+	fields := make([]string, 0, 41)
 	if m.created_at != nil {
 		fields = append(fields, group.FieldCreatedAt)
 	}
@@ -26685,18 +25899,6 @@ func (m *GroupMutation) Fields() []string {
 	}
 	if m.rate_multiplier != nil {
 		fields = append(fields, group.FieldRateMultiplier)
-	}
-	if m.peak_rate_enabled != nil {
-		fields = append(fields, group.FieldPeakRateEnabled)
-	}
-	if m.peak_start != nil {
-		fields = append(fields, group.FieldPeakStart)
-	}
-	if m.peak_end != nil {
-		fields = append(fields, group.FieldPeakEnd)
-	}
-	if m.peak_rate_multiplier != nil {
-		fields = append(fields, group.FieldPeakRateMultiplier)
 	}
 	if m.is_exclusive != nil {
 		fields = append(fields, group.FieldIsExclusive)
@@ -26722,35 +25924,8 @@ func (m *GroupMutation) Fields() []string {
 	if m.allow_batch_image_generation != nil {
 		fields = append(fields, group.FieldAllowBatchImageGeneration)
 	}
-	if m.batch_image_discount_multiplier != nil {
-		fields = append(fields, group.FieldBatchImageDiscountMultiplier)
-	}
-	if m.batch_image_hold_multiplier != nil {
-		fields = append(fields, group.FieldBatchImageHoldMultiplier)
-	}
-	if m.web_search_price_per_call != nil {
-		fields = append(fields, group.FieldWebSearchPricePerCall)
-	}
-	if m.search_price_per_1k != nil {
-		fields = append(fields, group.FieldSearchPricePer1k)
-	}
-	if m.audio_realtime_price_per_min != nil {
-		fields = append(fields, group.FieldAudioRealtimePricePerMin)
-	}
-	if m.audio_tts_price_per_million_chars != nil {
-		fields = append(fields, group.FieldAudioTtsPricePerMillionChars)
-	}
-	if m.audio_stt_price_per_hour != nil {
-		fields = append(fields, group.FieldAudioSttPricePerHour)
-	}
-	if m.long_context_pricing_enabled != nil {
-		fields = append(fields, group.FieldLongContextPricingEnabled)
-	}
 	if m.routing_policy != nil {
 		fields = append(fields, group.FieldRoutingPolicy)
-	}
-	if m.model_pricing != nil {
-		fields = append(fields, group.FieldModelPricing)
 	}
 	if m.claude_code_only != nil {
 		fields = append(fields, group.FieldClaudeCodeOnly)
@@ -26799,9 +25974,6 @@ func (m *GroupMutation) Fields() []string {
 	}
 	if m.force_openai_fast != nil {
 		fields = append(fields, group.FieldForceOpenaiFast)
-	}
-	if m.free_openai_fast != nil {
-		fields = append(fields, group.FieldFreeOpenaiFast)
 	}
 	if m.require_oauth_only != nil {
 		fields = append(fields, group.FieldRequireOauthOnly)
@@ -26853,14 +26025,6 @@ func (m *GroupMutation) Field(name string) (ent.Value, bool) {
 		return m.Description()
 	case group.FieldRateMultiplier:
 		return m.RateMultiplier()
-	case group.FieldPeakRateEnabled:
-		return m.PeakRateEnabled()
-	case group.FieldPeakStart:
-		return m.PeakStart()
-	case group.FieldPeakEnd:
-		return m.PeakEnd()
-	case group.FieldPeakRateMultiplier:
-		return m.PeakRateMultiplier()
 	case group.FieldIsExclusive:
 		return m.IsExclusive()
 	case group.FieldStatus:
@@ -26877,26 +26041,8 @@ func (m *GroupMutation) Field(name string) (ent.Value, bool) {
 		return m.AllowImageGeneration()
 	case group.FieldAllowBatchImageGeneration:
 		return m.AllowBatchImageGeneration()
-	case group.FieldBatchImageDiscountMultiplier:
-		return m.BatchImageDiscountMultiplier()
-	case group.FieldBatchImageHoldMultiplier:
-		return m.BatchImageHoldMultiplier()
-	case group.FieldWebSearchPricePerCall:
-		return m.WebSearchPricePerCall()
-	case group.FieldSearchPricePer1k:
-		return m.SearchPricePer1k()
-	case group.FieldAudioRealtimePricePerMin:
-		return m.AudioRealtimePricePerMin()
-	case group.FieldAudioTtsPricePerMillionChars:
-		return m.AudioTtsPricePerMillionChars()
-	case group.FieldAudioSttPricePerHour:
-		return m.AudioSttPricePerHour()
-	case group.FieldLongContextPricingEnabled:
-		return m.LongContextPricingEnabled()
 	case group.FieldRoutingPolicy:
 		return m.RoutingPolicy()
-	case group.FieldModelPricing:
-		return m.ModelPricing()
 	case group.FieldClaudeCodeOnly:
 		return m.ClaudeCodeOnly()
 	case group.FieldFallbackGroupID:
@@ -26929,8 +26075,6 @@ func (m *GroupMutation) Field(name string) (ent.Value, bool) {
 		return m.OpenaiFastPolicy()
 	case group.FieldForceOpenaiFast:
 		return m.ForceOpenaiFast()
-	case group.FieldFreeOpenaiFast:
-		return m.FreeOpenaiFast()
 	case group.FieldRequireOauthOnly:
 		return m.RequireOauthOnly()
 	case group.FieldRequirePrivacySet:
@@ -26972,14 +26116,6 @@ func (m *GroupMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldDescription(ctx)
 	case group.FieldRateMultiplier:
 		return m.OldRateMultiplier(ctx)
-	case group.FieldPeakRateEnabled:
-		return m.OldPeakRateEnabled(ctx)
-	case group.FieldPeakStart:
-		return m.OldPeakStart(ctx)
-	case group.FieldPeakEnd:
-		return m.OldPeakEnd(ctx)
-	case group.FieldPeakRateMultiplier:
-		return m.OldPeakRateMultiplier(ctx)
 	case group.FieldIsExclusive:
 		return m.OldIsExclusive(ctx)
 	case group.FieldStatus:
@@ -26996,26 +26132,8 @@ func (m *GroupMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldAllowImageGeneration(ctx)
 	case group.FieldAllowBatchImageGeneration:
 		return m.OldAllowBatchImageGeneration(ctx)
-	case group.FieldBatchImageDiscountMultiplier:
-		return m.OldBatchImageDiscountMultiplier(ctx)
-	case group.FieldBatchImageHoldMultiplier:
-		return m.OldBatchImageHoldMultiplier(ctx)
-	case group.FieldWebSearchPricePerCall:
-		return m.OldWebSearchPricePerCall(ctx)
-	case group.FieldSearchPricePer1k:
-		return m.OldSearchPricePer1k(ctx)
-	case group.FieldAudioRealtimePricePerMin:
-		return m.OldAudioRealtimePricePerMin(ctx)
-	case group.FieldAudioTtsPricePerMillionChars:
-		return m.OldAudioTtsPricePerMillionChars(ctx)
-	case group.FieldAudioSttPricePerHour:
-		return m.OldAudioSttPricePerHour(ctx)
-	case group.FieldLongContextPricingEnabled:
-		return m.OldLongContextPricingEnabled(ctx)
 	case group.FieldRoutingPolicy:
 		return m.OldRoutingPolicy(ctx)
-	case group.FieldModelPricing:
-		return m.OldModelPricing(ctx)
 	case group.FieldClaudeCodeOnly:
 		return m.OldClaudeCodeOnly(ctx)
 	case group.FieldFallbackGroupID:
@@ -27048,8 +26166,6 @@ func (m *GroupMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldOpenaiFastPolicy(ctx)
 	case group.FieldForceOpenaiFast:
 		return m.OldForceOpenaiFast(ctx)
-	case group.FieldFreeOpenaiFast:
-		return m.OldFreeOpenaiFast(ctx)
 	case group.FieldRequireOauthOnly:
 		return m.OldRequireOauthOnly(ctx)
 	case group.FieldRequirePrivacySet:
@@ -27121,34 +26237,6 @@ func (m *GroupMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetRateMultiplier(v)
 		return nil
-	case group.FieldPeakRateEnabled:
-		v, ok := value.(bool)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetPeakRateEnabled(v)
-		return nil
-	case group.FieldPeakStart:
-		v, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetPeakStart(v)
-		return nil
-	case group.FieldPeakEnd:
-		v, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetPeakEnd(v)
-		return nil
-	case group.FieldPeakRateMultiplier:
-		v, ok := value.(float64)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetPeakRateMultiplier(v)
-		return nil
 	case group.FieldIsExclusive:
 		v, ok := value.(bool)
 		if !ok {
@@ -27205,75 +26293,12 @@ func (m *GroupMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetAllowBatchImageGeneration(v)
 		return nil
-	case group.FieldBatchImageDiscountMultiplier:
-		v, ok := value.(float64)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetBatchImageDiscountMultiplier(v)
-		return nil
-	case group.FieldBatchImageHoldMultiplier:
-		v, ok := value.(float64)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetBatchImageHoldMultiplier(v)
-		return nil
-	case group.FieldWebSearchPricePerCall:
-		v, ok := value.(float64)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetWebSearchPricePerCall(v)
-		return nil
-	case group.FieldSearchPricePer1k:
-		v, ok := value.(float64)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetSearchPricePer1k(v)
-		return nil
-	case group.FieldAudioRealtimePricePerMin:
-		v, ok := value.(float64)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetAudioRealtimePricePerMin(v)
-		return nil
-	case group.FieldAudioTtsPricePerMillionChars:
-		v, ok := value.(float64)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetAudioTtsPricePerMillionChars(v)
-		return nil
-	case group.FieldAudioSttPricePerHour:
-		v, ok := value.(float64)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetAudioSttPricePerHour(v)
-		return nil
-	case group.FieldLongContextPricingEnabled:
-		v, ok := value.(bool)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetLongContextPricingEnabled(v)
-		return nil
 	case group.FieldRoutingPolicy:
 		v, ok := value.(jsontext.Value)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetRoutingPolicy(v)
-		return nil
-	case group.FieldModelPricing:
-		v, ok := value.(jsontext.Value)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetModelPricing(v)
 		return nil
 	case group.FieldClaudeCodeOnly:
 		v, ok := value.(bool)
@@ -27387,13 +26412,6 @@ func (m *GroupMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetForceOpenaiFast(v)
 		return nil
-	case group.FieldFreeOpenaiFast:
-		v, ok := value.(bool)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetFreeOpenaiFast(v)
-		return nil
 	case group.FieldRequireOauthOnly:
 		v, ok := value.(bool)
 		if !ok {
@@ -27475,30 +26493,6 @@ func (m *GroupMutation) AddedFields() []string {
 	if m.addrate_multiplier != nil {
 		fields = append(fields, group.FieldRateMultiplier)
 	}
-	if m.addpeak_rate_multiplier != nil {
-		fields = append(fields, group.FieldPeakRateMultiplier)
-	}
-	if m.addbatch_image_discount_multiplier != nil {
-		fields = append(fields, group.FieldBatchImageDiscountMultiplier)
-	}
-	if m.addbatch_image_hold_multiplier != nil {
-		fields = append(fields, group.FieldBatchImageHoldMultiplier)
-	}
-	if m.addweb_search_price_per_call != nil {
-		fields = append(fields, group.FieldWebSearchPricePerCall)
-	}
-	if m.addsearch_price_per_1k != nil {
-		fields = append(fields, group.FieldSearchPricePer1k)
-	}
-	if m.addaudio_realtime_price_per_min != nil {
-		fields = append(fields, group.FieldAudioRealtimePricePerMin)
-	}
-	if m.addaudio_tts_price_per_million_chars != nil {
-		fields = append(fields, group.FieldAudioTtsPricePerMillionChars)
-	}
-	if m.addaudio_stt_price_per_hour != nil {
-		fields = append(fields, group.FieldAudioSttPricePerHour)
-	}
 	if m.addfallback_group_id != nil {
 		fields = append(fields, group.FieldFallbackGroupID)
 	}
@@ -27524,22 +26518,6 @@ func (m *GroupMutation) AddedField(name string) (ent.Value, bool) {
 	switch name {
 	case group.FieldRateMultiplier:
 		return m.AddedRateMultiplier()
-	case group.FieldPeakRateMultiplier:
-		return m.AddedPeakRateMultiplier()
-	case group.FieldBatchImageDiscountMultiplier:
-		return m.AddedBatchImageDiscountMultiplier()
-	case group.FieldBatchImageHoldMultiplier:
-		return m.AddedBatchImageHoldMultiplier()
-	case group.FieldWebSearchPricePerCall:
-		return m.AddedWebSearchPricePerCall()
-	case group.FieldSearchPricePer1k:
-		return m.AddedSearchPricePer1k()
-	case group.FieldAudioRealtimePricePerMin:
-		return m.AddedAudioRealtimePricePerMin()
-	case group.FieldAudioTtsPricePerMillionChars:
-		return m.AddedAudioTtsPricePerMillionChars()
-	case group.FieldAudioSttPricePerHour:
-		return m.AddedAudioSttPricePerHour()
 	case group.FieldFallbackGroupID:
 		return m.AddedFallbackGroupID()
 	case group.FieldFallbackGroupIDOnInvalidRequest:
@@ -27565,62 +26543,6 @@ func (m *GroupMutation) AddField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddRateMultiplier(v)
-		return nil
-	case group.FieldPeakRateMultiplier:
-		v, ok := value.(float64)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.AddPeakRateMultiplier(v)
-		return nil
-	case group.FieldBatchImageDiscountMultiplier:
-		v, ok := value.(float64)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.AddBatchImageDiscountMultiplier(v)
-		return nil
-	case group.FieldBatchImageHoldMultiplier:
-		v, ok := value.(float64)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.AddBatchImageHoldMultiplier(v)
-		return nil
-	case group.FieldWebSearchPricePerCall:
-		v, ok := value.(float64)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.AddWebSearchPricePerCall(v)
-		return nil
-	case group.FieldSearchPricePer1k:
-		v, ok := value.(float64)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.AddSearchPricePer1k(v)
-		return nil
-	case group.FieldAudioRealtimePricePerMin:
-		v, ok := value.(float64)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.AddAudioRealtimePricePerMin(v)
-		return nil
-	case group.FieldAudioTtsPricePerMillionChars:
-		v, ok := value.(float64)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.AddAudioTtsPricePerMillionChars(v)
-		return nil
-	case group.FieldAudioSttPricePerHour:
-		v, ok := value.(float64)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.AddAudioSttPricePerHour(v)
 		return nil
 	case group.FieldFallbackGroupID:
 		v, ok := value.(int64)
@@ -27674,26 +26596,8 @@ func (m *GroupMutation) ClearedFields() []string {
 	if m.FieldCleared(group.FieldDuplicateOperationID) {
 		fields = append(fields, group.FieldDuplicateOperationID)
 	}
-	if m.FieldCleared(group.FieldWebSearchPricePerCall) {
-		fields = append(fields, group.FieldWebSearchPricePerCall)
-	}
-	if m.FieldCleared(group.FieldSearchPricePer1k) {
-		fields = append(fields, group.FieldSearchPricePer1k)
-	}
-	if m.FieldCleared(group.FieldAudioRealtimePricePerMin) {
-		fields = append(fields, group.FieldAudioRealtimePricePerMin)
-	}
-	if m.FieldCleared(group.FieldAudioTtsPricePerMillionChars) {
-		fields = append(fields, group.FieldAudioTtsPricePerMillionChars)
-	}
-	if m.FieldCleared(group.FieldAudioSttPricePerHour) {
-		fields = append(fields, group.FieldAudioSttPricePerHour)
-	}
 	if m.FieldCleared(group.FieldRoutingPolicy) {
 		fields = append(fields, group.FieldRoutingPolicy)
-	}
-	if m.FieldCleared(group.FieldModelPricing) {
-		fields = append(fields, group.FieldModelPricing)
 	}
 	if m.FieldCleared(group.FieldFallbackGroupID) {
 		fields = append(fields, group.FieldFallbackGroupID)
@@ -27730,26 +26634,8 @@ func (m *GroupMutation) ClearField(name string) error {
 	case group.FieldDuplicateOperationID:
 		m.ClearDuplicateOperationID()
 		return nil
-	case group.FieldWebSearchPricePerCall:
-		m.ClearWebSearchPricePerCall()
-		return nil
-	case group.FieldSearchPricePer1k:
-		m.ClearSearchPricePer1k()
-		return nil
-	case group.FieldAudioRealtimePricePerMin:
-		m.ClearAudioRealtimePricePerMin()
-		return nil
-	case group.FieldAudioTtsPricePerMillionChars:
-		m.ClearAudioTtsPricePerMillionChars()
-		return nil
-	case group.FieldAudioSttPricePerHour:
-		m.ClearAudioSttPricePerHour()
-		return nil
 	case group.FieldRoutingPolicy:
 		m.ClearRoutingPolicy()
-		return nil
-	case group.FieldModelPricing:
-		m.ClearModelPricing()
 		return nil
 	case group.FieldFallbackGroupID:
 		m.ClearFallbackGroupID()
@@ -27789,18 +26675,6 @@ func (m *GroupMutation) ResetField(name string) error {
 	case group.FieldRateMultiplier:
 		m.ResetRateMultiplier()
 		return nil
-	case group.FieldPeakRateEnabled:
-		m.ResetPeakRateEnabled()
-		return nil
-	case group.FieldPeakStart:
-		m.ResetPeakStart()
-		return nil
-	case group.FieldPeakEnd:
-		m.ResetPeakEnd()
-		return nil
-	case group.FieldPeakRateMultiplier:
-		m.ResetPeakRateMultiplier()
-		return nil
 	case group.FieldIsExclusive:
 		m.ResetIsExclusive()
 		return nil
@@ -27825,35 +26699,8 @@ func (m *GroupMutation) ResetField(name string) error {
 	case group.FieldAllowBatchImageGeneration:
 		m.ResetAllowBatchImageGeneration()
 		return nil
-	case group.FieldBatchImageDiscountMultiplier:
-		m.ResetBatchImageDiscountMultiplier()
-		return nil
-	case group.FieldBatchImageHoldMultiplier:
-		m.ResetBatchImageHoldMultiplier()
-		return nil
-	case group.FieldWebSearchPricePerCall:
-		m.ResetWebSearchPricePerCall()
-		return nil
-	case group.FieldSearchPricePer1k:
-		m.ResetSearchPricePer1k()
-		return nil
-	case group.FieldAudioRealtimePricePerMin:
-		m.ResetAudioRealtimePricePerMin()
-		return nil
-	case group.FieldAudioTtsPricePerMillionChars:
-		m.ResetAudioTtsPricePerMillionChars()
-		return nil
-	case group.FieldAudioSttPricePerHour:
-		m.ResetAudioSttPricePerHour()
-		return nil
-	case group.FieldLongContextPricingEnabled:
-		m.ResetLongContextPricingEnabled()
-		return nil
 	case group.FieldRoutingPolicy:
 		m.ResetRoutingPolicy()
-		return nil
-	case group.FieldModelPricing:
-		m.ResetModelPricing()
 		return nil
 	case group.FieldClaudeCodeOnly:
 		m.ResetClaudeCodeOnly()
@@ -27902,9 +26749,6 @@ func (m *GroupMutation) ResetField(name string) error {
 		return nil
 	case group.FieldForceOpenaiFast:
 		m.ResetForceOpenaiFast()
-		return nil
-	case group.FieldFreeOpenaiFast:
-		m.ResetFreeOpenaiFast()
 		return nil
 	case group.FieldRequireOauthOnly:
 		m.ResetRequireOauthOnly()

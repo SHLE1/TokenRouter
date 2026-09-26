@@ -39,36 +39,6 @@ func TestAdminServiceCreateGroupUsesUnifiedClientProtocolDefaults(t *testing.T) 
 	require.False(t, group.AllowLive)
 }
 
-func TestAdminServiceCreateGroupDefaultsLongContextPricingOn(t *testing.T) {
-	t.Run("omitted defaults on", func(t *testing.T) {
-		repo := &groupRepoStubForAdmin{}
-		svc := newOriginalGroupAdmin(repo, nil, nil)
-
-		group, err := svc.CreateGroup(context.Background(), &routing.CreateGroupInput{
-			Name: "default-long-context", RateMultiplier: 1,
-		})
-
-		require.NoError(t, err)
-		require.True(t, group.LongContextPricingEnabled)
-		require.True(t, repo.created.LongContextPricingEnabled)
-	})
-
-	t.Run("explicit false remains off", func(t *testing.T) {
-		repo := &groupRepoStubForAdmin{}
-		svc := newOriginalGroupAdmin(repo, nil, nil)
-		disabled := false
-
-		group, err := svc.CreateGroup(context.Background(), &routing.CreateGroupInput{
-			Name: "disabled-long-context", RateMultiplier: 1,
-			LongContextPricingEnabled: &disabled,
-		})
-
-		require.NoError(t, err)
-		require.False(t, group.LongContextPricingEnabled)
-		require.False(t, repo.created.LongContextPricingEnabled)
-	})
-}
-
 func TestAdminServiceGroupAvailabilityProbeConfigReturnsBadRequest(t *testing.T) {
 	invalidRetries := routing.MaxGroupAvailabilityProbeMaxRetries + 1
 	invalidConfig := routing.GroupAvailabilityProbeConfig{
@@ -516,16 +486,15 @@ func TestAdminServiceCreateGroupAllowsExplicitBatchProtocol(t *testing.T) {
 // 功能策略保存于分组，执行时仅由适用账号使用。
 func TestAdminServiceCreateGroupPreservesFastPolicies(t *testing.T) {
 	repo := &groupRepoStubForAdmin{}
-	group, err := newOriginalGroupAdmin(repo, nil, nil).CreateGroup(context.Background(), &routing.CreateGroupInput{Name: "fast", RateMultiplier: 1, ForceOpenAIFast: true, FreeOpenAIFast: true})
+	group, err := newOriginalGroupAdmin(repo, nil, nil).CreateGroup(context.Background(), &routing.CreateGroupInput{Name: "fast", RateMultiplier: 1, ForceOpenAIFast: true})
 	require.NoError(t, err)
 	require.True(t, group.ForceOpenAIFast)
-	require.True(t, group.FreeOpenAIFast)
 }
 
 func TestAdminServiceUpdateGroupPreservesFastPolicies(t *testing.T) {
 	existingGroup := &routing.Group{
 		ID: 1, Name: "existing-fast", Status: billing.StatusActive,
-		ForceOpenAIFast: true, FreeOpenAIFast: true,
+		ForceOpenAIFast: true,
 	}
 	repo := &groupRepoStubForAdmin{getByID: existingGroup}
 	svc := newOriginalGroupAdmin(repo, nil, nil)
@@ -535,7 +504,6 @@ func TestAdminServiceUpdateGroupPreservesFastPolicies(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, group)
 	require.True(t, repo.updated.ForceOpenAIFast)
-	require.True(t, repo.updated.FreeOpenAIFast)
 }
 
 func TestAdminService_UpdateGroup_PreservesImageGenerationControlsWhenOmitted(t *testing.T) {
@@ -647,75 +615,6 @@ func TestAdminService_UpdateGroup_PreservesDescriptionWhenNil(t *testing.T) {
 	require.Equal(t, "keep me", repo.updated.Description, "nil 应保留原有分组描述")
 }
 
-func TestAdminService_CreateGroup_BatchImagePricingSettings(t *testing.T) {
-	repo := &groupRepoStubForAdmin{}
-	svc := newOriginalGroupAdmin(repo, nil, nil)
-	discount := 0.8
-	hold := 0.9
-
-	group, err := svc.CreateGroup(context.Background(), &routing.CreateGroupInput{
-		Name: "batch-image-pricing",
-
-		RateMultiplier:               1,
-		BatchImageDiscountMultiplier: &discount,
-		BatchImageHoldMultiplier:     &hold,
-	})
-	require.NoError(t, err)
-	require.NotNil(t, group)
-	require.NotNil(t, repo.created)
-	require.InDelta(t, 0.8, repo.created.BatchImageDiscountMultiplier, 1e-12)
-	require.InDelta(t, 0.9, repo.created.BatchImageHoldMultiplier, 1e-12)
-}
-
-func TestAdminService_CreateGroup_RejectsHoldBelowDiscount(t *testing.T) {
-	repo := &groupRepoStubForAdmin{}
-	svc := newOriginalGroupAdmin(repo, nil, nil)
-	discount := 0.8
-	hold := 0.6
-
-	_, err := svc.CreateGroup(context.Background(), &routing.CreateGroupInput{
-		Name: "batch-image-pricing-invalid",
-
-		RateMultiplier:               1,
-		BatchImageDiscountMultiplier: &discount,
-		BatchImageHoldMultiplier:     &hold,
-	})
-	require.Error(t, err)
-	require.Nil(t, repo.created)
-}
-
-func TestAdminService_GroupBatchImagePricingValidation(t *testing.T) {
-	tests := []struct {
-		name  string
-		input *routing.CreateGroupInput
-	}{
-		{
-			name: "negative_discount",
-			input: func() *routing.CreateGroupInput {
-				v := -0.1
-				return &routing.CreateGroupInput{Name: "bad-discount", RateMultiplier: 1, BatchImageDiscountMultiplier: &v}
-			}(),
-		},
-		{
-			name: "negative_hold",
-			input: func() *routing.CreateGroupInput {
-				v := -0.1
-				return &routing.CreateGroupInput{Name: "bad-hold", RateMultiplier: 1, BatchImageHoldMultiplier: &v}
-			}(),
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			repo := &groupRepoStubForAdmin{}
-			svc := newOriginalGroupAdmin(repo, nil, nil)
-
-			_, err := svc.CreateGroup(context.Background(), tt.input)
-			require.Error(t, err)
-			require.Nil(t, repo.created)
-		})
-	}
-}
-
 func TestAdminService_UpdateGroup_ReasoningEffortMappingsTriState(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -822,57 +721,6 @@ func TestAdminServiceUpdateGroupPreservesReasoningPolicy(t *testing.T) {
 	require.Equal(t, "medium", repo.updated.MaxReasoningEffort)
 	require.Equal(t, routing.ReasoningEffortOverLimitDeny, repo.updated.MaxReasoningEffortOverLimit)
 	require.Equal(t, existing.ReasoningEffortMappings, repo.updated.ReasoningEffortMappings)
-}
-
-func TestAdminService_UpdateGroup_NormalizesPeakRateWhenDisabled(t *testing.T) {
-	existingGroup := &routing.Group{
-		ID:   1,
-		Name: "existing-group",
-
-		Status:             billing.StatusActive,
-		PeakRateEnabled:    true,
-		PeakStart:          "14:00",
-		PeakEnd:            "18:00",
-		PeakRateMultiplier: 3,
-	}
-	repo := &groupRepoStubForAdmin{getByID: existingGroup}
-	svc := newOriginalGroupAdmin(repo, nil, nil)
-
-	disabled := false
-	group, err := svc.UpdateGroup(context.Background(), 1, &routing.UpdateGroupInput{
-		PeakRateEnabled: &disabled,
-	})
-	require.NoError(t, err)
-	require.NotNil(t, group)
-	require.NotNil(t, repo.updated)
-	require.False(t, repo.updated.PeakRateEnabled)
-	require.Equal(t, "14:00", repo.updated.PeakStart)
-	require.Equal(t, "18:00", repo.updated.PeakEnd)
-	require.Equal(t, 3.0, repo.updated.PeakRateMultiplier)
-}
-
-func TestAdminService_UpdateGroup_ScrubsInvalidDisabledPeakRate(t *testing.T) {
-	existingGroup := &routing.Group{
-		ID:   1,
-		Name: "existing-group",
-
-		Status:             billing.StatusActive,
-		PeakRateEnabled:    false,
-		PeakStart:          "bad",
-		PeakEnd:            "18:00",
-		PeakRateMultiplier: -1,
-	}
-	repo := &groupRepoStubForAdmin{getByID: existingGroup}
-	svc := newOriginalGroupAdmin(repo, nil, nil)
-
-	group, err := svc.UpdateGroup(context.Background(), 1, &routing.UpdateGroupInput{})
-	require.NoError(t, err)
-	require.NotNil(t, group)
-	require.NotNil(t, repo.updated)
-	require.False(t, repo.updated.PeakRateEnabled)
-	require.Equal(t, "", repo.updated.PeakStart)
-	require.Equal(t, "18:00", repo.updated.PeakEnd)
-	require.Equal(t, 1.0, repo.updated.PeakRateMultiplier)
 }
 
 func TestAdminServiceUpdateGroupPreservesMessagesDispatchPolicy(t *testing.T) {

@@ -78,9 +78,7 @@ type KeySnapshot struct {
 
 // GroupSnapshot 只含完成计费字段，不接收路由/调度实体。
 type GroupSnapshot struct {
-	ID int64
-
-	Price                                   *billing.PriceGroup
+	ID                                      int64
 	RateMultiplier                          float64
 	PeakRateEnabled                         bool
 	PeakStart, PeakEnd                      string
@@ -95,7 +93,7 @@ func (g *GroupSnapshot) PeakMultiplierAt(at time.Time) float64 {
 	if g.Location != nil {
 		at = at.In(g.Location)
 	}
-	return (&routing.Group{PeakRateEnabled: g.PeakRateEnabled, PeakStart: g.PeakStart, PeakEnd: g.PeakEnd, PeakRateMultiplier: g.PeakRateMultiplier}).PeakMultiplierAt(at)
+	return (&pricing.BillingSettings{PeakRateEnabled: g.PeakRateEnabled, PeakStart: g.PeakStart, PeakEnd: g.PeakEnd, PeakRateMultiplier: g.PeakRateMultiplier}).PeakMultiplierAt(at)
 }
 
 // Input 是异步完成快照，调用方通过 Snapshot 后提交队列；不保留原请求体。

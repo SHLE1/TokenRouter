@@ -58,7 +58,6 @@ type CostInput struct {
 	Ctx             context.Context
 	Model           string
 	GroupID         *int64 // 用于共享价格配置定价查找
-	Group           *PriceGroup
 	Tokens          UsageTokens
 	RequestCount    int     // 按次计费时使用
 	UsageUnits      float64 // 音频等连续计量单位（分钟/小时/百万字符）
@@ -89,7 +88,6 @@ func (s *Calculator) CalculateCostUnified(input CostInput) (*CostBreakdown, erro
 		resolved = input.Resolver.Resolve(input.Ctx, PricingInput{
 			Model:   input.Model,
 			GroupID: input.GroupID,
-			Group:   input.Group,
 		})
 	}
 

@@ -366,7 +366,7 @@ func (s *Marketplace) PublicModelPricing(ctx context.Context, group *Group, mode
 	if s.prices == nil {
 		return pricing.UnknownDisplayPricing()
 	}
-	return s.prices.Quote(ctx, MarketplaceQuoteRequest{Model: model, GroupID: group.ID, ModelPricing: group.ModelPricing, LongContextPricingEnabled: group.LongContextPricingEnabled, RateMultiplier: group.RateMultiplier, FreeFastApplicable: group.FreeOpenAIFast && true})
+	return s.prices.Quote(ctx, MarketplaceQuoteRequest{Model: model, GroupID: group.ID, RateMultiplier: group.RateMultiplier, FreeFastApplicable: true})
 }
 
 func (s *Marketplace) resolveGroupModels(ctx context.Context, group *Group) []MarketplaceModelDef {
@@ -493,12 +493,10 @@ type MarketplaceAvailability interface {
 	GetSummaryByGroupIDs(context.Context, []int64, int, int, string, time.Time) (map[int64]*GroupAvailabilitySummary, error)
 }
 type MarketplaceQuoteRequest struct {
-	Model                     string
-	GroupID                   int64
-	ModelPricing              []ModelPricingEntry
-	LongContextPricingEnabled bool
-	RateMultiplier            float64
-	FreeFastApplicable        bool
+	Model              string
+	GroupID            int64
+	RateMultiplier     float64
+	FreeFastApplicable bool
 }
 type MarketplacePrices interface {
 	Quote(context.Context, MarketplaceQuoteRequest) pricing.ModelDisplayPricing

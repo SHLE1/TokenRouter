@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
+
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
@@ -27,6 +29,7 @@ type PricingHandler struct {
 }
 
 type createPricingConfigRequest struct {
+	billingSettingsRequest
 	Name         string                `json:"name" binding:"required,max=100"`
 	Description  string                `json:"description"`
 	GroupIDs     []int64               `json:"group_ids"`
@@ -38,6 +41,7 @@ type createPricingConfigRequest struct {
 }
 
 type updatePricingConfigRequest struct {
+	billingSettingsRequest
 	Name         string                 `json:"name" binding:"omitempty,max=100"`
 	Description  *string                `json:"description"`
 	Status       string                 `json:"status" binding:"omitempty,oneof=active disabled"`
@@ -107,6 +111,7 @@ type accountStatsPricingRuleRequest struct {
 }
 
 type pricingConfigResponse struct {
+	pricing.BillingSettings
 	ID                 int64  `json:"id"`
 	Name               string `json:"name"`
 	Description        string `json:"description"`
@@ -193,10 +198,11 @@ func pricingConfigToResponse(ch *routing.PricingConfig) *pricingConfigResponse {
 		return nil
 	}
 	resp := &pricingConfigResponse{
-		ID:          ch.ID,
-		Name:        ch.Name,
-		Description: ch.Description,
-		Status:      ch.Status,
+		BillingSettings: ch.BillingSettings.Clone(),
+		ID:              ch.ID,
+		Name:            ch.Name,
+		Description:     ch.Description,
+		Status:          ch.Status,
 
 		GroupIDs: ch.GroupIDs,
 
@@ -467,10 +473,11 @@ func (h *PricingHandler) Create(c *gin.Context) {
 	}
 
 	pricingConfig, err := h.pricingConfigs.Create(c.Request.Context(), &routing.CreatePricingConfigInput{
-		Name:         req.Name,
-		Description:  req.Description,
-		GroupIDs:     req.GroupIDs,
-		ModelPricing: pricing,
+		BillingSettingsPatch: req.patch(),
+		Name:                 req.Name,
+		Description:          req.Description,
+		GroupIDs:             req.GroupIDs,
+		ModelPricing:         pricing,
 
 		BillingModelSource: req.BillingModelSource,
 
@@ -500,10 +507,11 @@ func (h *PricingHandler) Update(c *gin.Context) {
 	}
 
 	input := &routing.UpdatePricingConfigInput{
-		Name:        req.Name,
-		Description: req.Description,
-		Status:      req.Status,
-		GroupIDs:    req.GroupIDs,
+		BillingSettingsPatch: req.patch(),
+		Name:                 req.Name,
+		Description:          req.Description,
+		Status:               req.Status,
+		GroupIDs:             req.GroupIDs,
 
 		BillingModelSource: req.BillingModelSource,
 	}

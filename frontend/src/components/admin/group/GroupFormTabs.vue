@@ -20,7 +20,7 @@
       </button>
     </div>
     <div ref="contentRef" class="group-tab-content">
-      <!-- 所有页签持续挂载，避免定价条目和推理规则的内部草稿在切页时丢失。 -->
+      <!-- 所有页签持续挂载，避免模型策略和推理规则的内部草稿在切页时丢失。 -->
       <section
         v-for="tab in allTabs"
         v-show="activeTab === tab && visibleTabs.includes(tab)"
@@ -44,7 +44,7 @@ import { useI18n } from 'vue-i18n'
 
 defineProps<{ idPrefix: string }>()
 const { t } = useI18n()
-const allTabs = ['general', 'features', 'routing', 'pricing', 'protocol'] as const
+const allTabs = ['general', 'features', 'routing', 'protocol'] as const
 type GroupFormTab = typeof allTabs[number]
 const activeTab = ref<GroupFormTab>('general')
 const rootRef = ref<HTMLElement | null>(null)

@@ -745,25 +745,11 @@ export interface Group {
   is_exclusive: boolean
   session_isolation_enabled: boolean
   status: 'active' | 'inactive'
-  long_context_pricing_enabled: boolean
-  // 图片生成计费配置
+
+  // 图片生成权限
   allow_image_generation: boolean
   allow_batch_image_generation: boolean
-  batch_image_discount_multiplier: number
-  batch_image_hold_multiplier: number
-  // 可选的 Grok 视频模型族与分辨率价格覆盖。
-  // Codex 网页搜索单次价格（USD/次）；null 表示使用默认价 0.01
-  web_search_price_per_call: number | null
-  // Grok Voice 显式定价（分组级）
-  search_price_per_1k: number | null
-  audio_realtime_price_per_min: number | null
-  audio_tts_price_per_million_chars: number | null
-  audio_stt_price_per_hour: number | null
-  // 高峰时段倍率配置
-  peak_rate_enabled: boolean
-  peak_start: string
-  peak_end: string
-  peak_rate_multiplier: number
+
   // Claude Code 客户端限制
   claude_code_only: boolean
   fallback_group_id: number | null
@@ -805,11 +791,10 @@ export interface AdminGroup extends Group {
   force_openai_fast?: boolean
   openai_fast_policy?: GroupOpenAIFastPolicy
   // 仅管理端可配置，公开分组接口不返回该计费策略。
-  free_openai_fast?: boolean
+
   // 仅管理端可配置，公开分组接口不返回调度器模式。
   scheduler_type: GroupSchedulerType
   advanced_scheduler_overrides?: GroupAdvancedSchedulerOverrides
-  model_pricing: import('@/api/admin/pricing').ModelPricingEntry[]
 
   // 模型路由配置（仅管理员可见，内部信息）
   model_routing: Record<string, number[]> | null
@@ -957,25 +942,15 @@ export interface CreateGroupRequest {
   rate_multiplier?: number
   is_exclusive?: boolean
   session_isolation_enabled?: boolean
-  long_context_pricing_enabled?: boolean
+
   force_openai_fast?: boolean
   openai_fast_policy?: GroupOpenAIFastPolicy
-  free_openai_fast?: boolean
+
   routing_policy?: GroupRoutingPolicy
-  model_pricing?: import('@/api/admin/pricing').ModelPricingEntry[]
+
   allow_image_generation?: boolean
   allow_batch_image_generation?: boolean
-  batch_image_discount_multiplier?: number
-  batch_image_hold_multiplier?: number
-  web_search_price_per_call?: number | null
-  search_price_per_1k?: number | null
-  audio_realtime_price_per_min?: number | null
-  audio_tts_price_per_million_chars?: number | null
-  audio_stt_price_per_hour?: number | null
-  peak_rate_enabled?: boolean
-  peak_start?: string
-  peak_end?: string
-  peak_rate_multiplier?: number
+
   claude_code_only?: boolean
   fallback_group_id?: number | null
   fallback_group_id_on_invalid_request?: number | null
@@ -1013,25 +988,15 @@ export interface UpdateGroupRequest {
   is_exclusive?: boolean
   session_isolation_enabled?: boolean
   status?: 'active' | 'inactive'
-  long_context_pricing_enabled?: boolean
+
   force_openai_fast?: boolean
   openai_fast_policy?: GroupOpenAIFastPolicy
-  free_openai_fast?: boolean
+
   routing_policy?: GroupRoutingPolicy
-  model_pricing?: import('@/api/admin/pricing').ModelPricingEntry[]
+
   allow_image_generation?: boolean
   allow_batch_image_generation?: boolean
-  batch_image_discount_multiplier?: number
-  batch_image_hold_multiplier?: number
-  web_search_price_per_call?: number | null
-  search_price_per_1k?: number | null
-  audio_realtime_price_per_min?: number | null
-  audio_tts_price_per_million_chars?: number | null
-  audio_stt_price_per_hour?: number | null
-  peak_rate_enabled?: boolean
-  peak_start?: string
-  peak_end?: string
-  peak_rate_multiplier?: number
+
   claude_code_only?: boolean
   fallback_group_id?: number | null
   fallback_group_id_on_invalid_request?: number | null

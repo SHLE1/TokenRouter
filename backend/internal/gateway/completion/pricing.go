@@ -35,7 +35,7 @@ func (s *Recorder) CalculateRecordUsageCost(
 		return s.CalculateImageCost(ctx, result, apiKey, account, billingModel, requestedModel, billingModelSource, groupMappedModel, billingModel, nil, imageMultiplier, opts.PricingAt)
 	}
 
-	// 语音用量优先按分组模型的连续单位价格结算，未配置时沿用分组通用音频价。
+	// 语音用量优先按价格配置的连续单位价格结算，未配置时沿用价格配置通用音频价。
 	if result.AudioUsage != nil {
 		resolved, pricingModel := s.resolveConfigPricingForUsage(
 			ctx, billingModel, apiKey,
@@ -43,10 +43,10 @@ func (s *Recorder) CalculateRecordUsageCost(
 		if resolved != nil && resolved.Mode == BillingModePerRequest {
 			gid := apiKey.Group.ID
 			cost, err := s.billingService.CalculateCostUnified(CostInput{
-				Ctx:            ctx,
-				Model:          pricingModel,
-				GroupID:        &gid,
-				Group:          apiKey.Group.Price,
+				Ctx:     ctx,
+				Model:   pricingModel,
+				GroupID: &gid,
+
 				UsageUnits:     result.AudioUsage.DurationOrUnits,
 				SizeTier:       result.AudioUsage.Mode,
 				RateMultiplier: multiplier,
@@ -86,7 +86,7 @@ func (s *Recorder) ResolveConfigPricing(ctx context.Context, billingModel string
 		return nil
 	}
 	gid := apiKey.Group.ID
-	resolved := s.resolver.Resolve(ctx, PricingInput{Model: billingModel, GroupID: &gid, Group: apiKey.Group.Price})
+	resolved := s.resolver.Resolve(ctx, PricingInput{Model: billingModel, GroupID: &gid})
 	if resolved.HasConfiguredPricing() {
 		return resolved
 	}
@@ -119,10 +119,10 @@ func (s *Recorder) CalculateImageCost(
 		}
 		gid := apiKey.Group.ID
 		cost, err := s.billingService.CalculateCostUnified(CostInput{
-			Ctx:            ctx,
-			Model:          resolvedModel,
-			GroupID:        &gid,
-			Group:          apiKey.Group.Price,
+			Ctx:     ctx,
+			Model:   resolvedModel,
+			GroupID: &gid,
+
 			Tokens:         tokens,
 			RequestCount:   result.ImageCount,
 			SizeTier:       sizeTier,
@@ -170,14 +170,14 @@ func (s *Recorder) CalculateTokenCost(
 		opts = &PricingOptions{}
 	}
 
-	// 分组或共享价格配置显式价格优先，并按价格配置选择计费模型。
+	// 共享价格配置显式价格优先，并按价格配置选择计费模型。
 	if resolved, resolvedModel := s.resolveConfigPricingForUsage(ctx, billingModel, apiKey); resolved != nil {
 		gid := apiKey.Group.ID
 		cost, err = s.billingService.CalculateCostUnified(CostInput{
-			Ctx:             ctx,
-			Model:           resolvedModel,
-			GroupID:         &gid,
-			Group:           apiKey.Group.Price,
+			Ctx:     ctx,
+			Model:   resolvedModel,
+			GroupID: &gid,
+
 			Tokens:          tokens,
 			RequestCount:    1,
 			RateMultiplier:  multiplier,
@@ -192,10 +192,10 @@ func (s *Recorder) CalculateTokenCost(
 		case s.resolver != nil && apiKey.Group != nil:
 			gid := apiKey.Group.ID
 			cost, err = s.billingService.CalculateCostUnified(CostInput{
-				Ctx:             ctx,
-				Model:           billingModel,
-				GroupID:         &gid,
-				Group:           apiKey.Group.Price,
+				Ctx:     ctx,
+				Model:   billingModel,
+				GroupID: &gid,
+
 				Tokens:          tokens,
 				RequestCount:    1,
 				RateMultiplier:  multiplier,
@@ -234,9 +234,9 @@ func (s *Recorder) CalculateOpenAIRecordUsageCostAt(
 	billingModel := firstUsageBillingModel(billingModels)
 	if result != nil && result.WebSearchCalls > 0 {
 		// Codex alpha/search 网页搜索按次计费：上游不返回 usage/token 字段，单价只取
-		// 分组覆盖价（nil 时默认 0.01 = 官方 $10/1000 次），不参与共享模型价卡定价。
+		// 配置单价（nil 时默认 0.01 = 官方 $10/1000 次），不参与共享模型价卡定价。
 		// 倍率与 image/video 按次口径一致：使用不含高峰因子的基础倍率
-		//（用户专属 > 分组 rate_multiplier > 系统默认），与分组表单的价格预览承诺一致。
+		//（用户专属 > 分组 rate_multiplier > 系统默认）。
 		return s.billingService.CalculateWebSearchCost(result.WebSearchCalls, webSearchPricePerCallFromAPIKey(apiKey), webSearchMultiplier), nil
 	}
 	if IsGrokVideoUsageResult(result, billingModels) {
@@ -249,7 +249,7 @@ func (s *Recorder) CalculateOpenAIRecordUsageCostAt(
 			(resolved.Mode == BillingModePerRequest) {
 			gid := apiKey.Group.ID
 			return s.billingService.CalculateCostUnified(CostInput{
-				Ctx: ctx, Model: billingModel, GroupID: &gid, Group: apiKey.Group.Price,
+				Ctx: ctx, Model: billingModel, GroupID: &gid,
 				UsageUnits: result.AudioUsage.DurationOrUnits, SizeTier: result.AudioUsage.Mode,
 				RateMultiplier: webSearchMultiplier, Resolver: s.resolver, Resolved: resolved,
 			})
@@ -371,10 +371,10 @@ func (s *Recorder) CalculateOpenAIRecordUsageTokenCostAt(
 	if s.resolver != nil && apiKey.Group != nil {
 		gid := apiKey.Group.ID
 		return s.billingService.CalculateCostUnified(CostInput{
-			Ctx:             ctx,
-			Model:           billingModel,
-			GroupID:         &gid,
-			Group:           apiKey.Group.Price,
+			Ctx:     ctx,
+			Model:   billingModel,
+			GroupID: &gid,
+
 			Tokens:          tokens,
 			RequestCount:    1,
 			RateMultiplier:  multiplier,
@@ -402,7 +402,7 @@ func (s *Recorder) CalculateOpenAIImageCost(ctx context.Context, billingModel st
 	resolved := s.ResolveOpenAIConfigPricing(ctx, billingModel, apiKey)
 	if resolved != nil {
 		cost, err := s.billingService.CalculateCostUnified(CostInput{
-			Ctx: ctx, Model: billingModel, GroupID: apiKey.GroupID, Group: apiKey.Group.Price,
+			Ctx: ctx, Model: billingModel, GroupID: apiKey.GroupID,
 			RequestCount: result.ImageCount, SizeTier: sizeTier, RateMultiplier: multiplier,
 			Resolver: s.resolver, Resolved: resolved,
 		})
@@ -429,7 +429,7 @@ func (s *Recorder) CalculateOpenAIVideoCost(ctx context.Context, billingModel st
 			units *= float64(durationSeconds)
 		}
 		cost, err := s.billingService.CalculateCostUnified(CostInput{
-			Ctx: ctx, Model: billingModel, GroupID: apiKey.GroupID, Group: apiKey.Group.Price,
+			Ctx: ctx, Model: billingModel, GroupID: apiKey.GroupID,
 			RequestCount: videoCount, UsageUnits: units, SizeTier: resolution, RateMultiplier: multiplier,
 			Resolver: s.resolver, Resolved: resolved,
 		})
@@ -482,7 +482,7 @@ func (s *Recorder) ResolveOpenAIConfigPricing(ctx context.Context, billingModel 
 		return nil
 	}
 	gid := apiKey.Group.ID
-	resolved := s.resolver.Resolve(ctx, PricingInput{Model: billingModel, GroupID: &gid, Group: apiKey.Group.Price})
+	resolved := s.resolver.Resolve(ctx, PricingInput{Model: billingModel, GroupID: &gid})
 	if resolved.HasConfiguredPricing() {
 		return resolved
 	}

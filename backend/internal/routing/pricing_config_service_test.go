@@ -2127,8 +2127,8 @@ func TestValidatePricingEntries_RejectsTimePricingForNonTokenMode(t *testing.T) 
 	require.Contains(t, err.Error(), "TIME_PRICING_UNSUPPORTED_MODE")
 }
 
-func TestNormalizeGroupModelPricingAcceptsTimePricing(t *testing.T) {
-	_, err := (PricingConfigValidation{LoadLocation: time.LoadLocation}).NormalizeGroupPricing(PlatformOpenAI, []ModelPricingEntry{{
+func TestModelPricingAcceptsTimePricing(t *testing.T) {
+	err := (PricingConfigValidation{LoadLocation: time.LoadLocation}).PricingEntries([]ModelPricingEntry{{
 		Models: []string{"gpt-5"},
 		TimePricing: &TimePricingConfig{
 			Timezone: "Asia/Shanghai",

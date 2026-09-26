@@ -19,7 +19,7 @@ import (
 
 // provideS13BatchPublic 直接绑定原生提交用例，共享任务、账号、资金和模型配置读取实例。
 func provideS13BatchPublic(repo batchimage.BatchImageRepository, accounts *accountpostgres.AccountStore, modelConfigs *routing.PricingConfigService, groups routing.GroupRepository, rates billing.UserGroupRateRepository, queue batchimage.BatchImageQueue, pricing *batchimage.Pricing, funds *billing.Funds, subscriptions *billingpostgres.SettlementStore, auth apikey.APIKeyAuthCacheInvalidator, cfg *config.Config, registry *batchimage.Registry[batchprovider.BatchImageProvider]) *batchimage.Public {
-	core := &batchimage.Public{Now: time.Now, Repo: repo, AccountRepo: &batchprovider.Candidates{Source: accounts, Registry: registry, ObserveModel: modeltrace.RegisterStage}, GroupRepo: batchPricingGroups{groups}, UserGroupRateRepo: rates, Queue: queue, Pricing: pricing, Funding: batchimage.Funding{Store: funds, Observe: creativeObserve}, Observe: creativeObserve}
+	core := &batchimage.Public{Now: time.Now, Repo: repo, AccountRepo: &batchprovider.Candidates{Source: accounts, Registry: registry, ObserveModel: modeltrace.RegisterStage}, GroupRepo: batchPricingGroups{groups, modelConfigs}, UserGroupRateRepo: rates, Queue: queue, Pricing: pricing, Funding: batchimage.Funding{Store: funds, Observe: creativeObserve}, Observe: creativeObserve}
 	if modelConfigs != nil {
 		core.PricingConfigService = modelConfigs
 	}

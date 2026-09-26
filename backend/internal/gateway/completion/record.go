@@ -15,7 +15,7 @@ func (s *Recorder) RecordAnthropic(ctx context.Context, input *Input, opts *Pric
 		opts = &PricingOptions{}
 	}
 	result := input.Result
-	apiKey := input.APIKey
+	apiKey := s.keyWithBillingSettings(ctx, input.APIKey)
 	user := input.User
 	account := input.Account
 	subscription := input.Subscription
@@ -241,7 +241,7 @@ func (s *Recorder) RecordOpenAI(ctx context.Context, input *Input) error {
 	if s.health != nil && input.Account != nil && (input.Account.OpenAI || input.Account.CNProvider) {
 		s.health.ResetOpenAI403Counter(ctx, input.Account.ID)
 	}
-	apiKey, user, account, subscription := input.APIKey, input.User, input.Account, input.Subscription
+	apiKey, user, account, subscription := s.keyWithBillingSettings(ctx, input.APIKey), input.User, input.Account, input.Subscription
 	if apiKey == nil || user == nil || account == nil {
 		return errors.New("openai usage input requires api key, user, and account")
 	}

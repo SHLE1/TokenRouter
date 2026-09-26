@@ -589,15 +589,12 @@ func fmtInputKey(runID string, idx int) string {
 // ---------------------------------------------------------------------------
 
 func newCreativeTestGroup() *routing.Group {
-	price1k := 0.02
-	price2k := 0.04
 	return &routing.Group{
 		ID:                   12,
 		Name:                 "Gemini Image",
 		Status:               billing.StatusActive,
 		AllowImageGeneration: true,
 		RateMultiplier:       1,
-		ModelPricing:         testImageModelPricing(map[string]*float64{"1K": &price1k, "2K": &price2k}),
 	}
 }
 
@@ -622,7 +619,7 @@ func newCreativeTestAccountRepo() *creativeFakeAccountRepo {
 
 func newCreativeTestService() *creative.Public {
 	group := newCreativeTestGroup()
-	return newCreativePublicFixture(newCreativeFakeRunRepo(),
+	svc := newCreativePublicFixture(newCreativeFakeRunRepo(),
 		&creativeFakeManagedKeyRepo{},
 		&creativeFakeUserRepo{user: &identity.User{ID: 7}},
 		newCreativeTestAccountRepo(),
@@ -645,6 +642,9 @@ func newCreativeTestService() *creative.Public {
 			},
 			Default: config.DefaultConfig{APIKeyPrefix: "sk-"},
 		})
+	price1k, price2k := 0.02, 0.04
+	setCreativeConfigPricing(svc, group.ID, testImageModelPricing(map[string]*float64{"1K": &price1k, "2K": &price2k}))
+	return svc
 }
 
 func makeTestPNG(t *testing.T, width, height int) []byte {
