@@ -948,115 +948,6 @@
                 {{ t("admin.groups.invalidRequestFallback.hint") }}
               </p>
             </div>
-            <div  class="border-t pt-4">
-              <div class="relative mb-1.5 flex items-center gap-1">
-                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {{ t("admin.groups.supportedScopes.title") }}
-                </label>
-                <!-- Help Tooltip -->
-                <div class="group inline-flex">
-                  <Icon
-                    name="questionCircle"
-                    size="sm"
-                    :stroke-width="2"
-                    class="cursor-help text-gray-400 transition-colors hover:text-primary-500 dark:text-gray-500 dark:hover:text-primary-400"
-                  />
-                  <div
-                    class="pointer-events-none absolute bottom-full left-0 z-50 mb-2 w-72 max-w-full opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:opacity-100"
-                  >
-                    <div
-                      class="rounded-control bg-gray-900 p-3 text-white shadow-lg dark:bg-gray-800"
-                    >
-                      <p class="text-xs leading-relaxed text-gray-300">
-                        {{ t("admin.groups.supportedScopes.tooltip") }}
-                      </p>
-                      <div
-                        class="absolute -bottom-1.5 left-3 h-3 w-3 rotate-45 bg-gray-900 dark:bg-gray-800"
-                      ></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="space-y-2">
-                <div class="flex items-center justify-between gap-4">
-                  <label for="create-group-claude" class="min-w-0 text-sm text-gray-700 dark:text-gray-300">{{ t('admin.groups.supportedScopes.claude') }}</label>
-                  <Toggle
-                    id="create-group-claude"
-                    :model-value="createForm.supported_model_scopes.includes('claude')"
-                    @update:model-value="toggleCreateScope('claude')"
-                    :aria-label="t('admin.groups.supportedScopes.claude')"
-                    data-group-setting="claude"
-                  />
-                </div>
-                <div class="flex items-center justify-between gap-4">
-                  <label for="create-group-gemini-text" class="min-w-0 text-sm text-gray-700 dark:text-gray-300">{{ t('admin.groups.supportedScopes.geminiText') }}</label>
-                  <Toggle
-                    id="create-group-gemini-text"
-                    :model-value="createForm.supported_model_scopes.includes('gemini_text')"
-                    @update:model-value="toggleCreateScope('gemini_text')"
-                    :aria-label="t('admin.groups.supportedScopes.geminiText')"
-                    data-group-setting="gemini_text"
-                  />
-                </div>
-                <div class="flex items-center justify-between gap-4">
-                  <label for="create-group-gemini-image" class="min-w-0 text-sm text-gray-700 dark:text-gray-300">{{ t('admin.groups.supportedScopes.geminiImage') }}</label>
-                  <Toggle
-                    id="create-group-gemini-image"
-                    :model-value="createForm.supported_model_scopes.includes('gemini_image')"
-                    @update:model-value="toggleCreateScope('gemini_image')"
-                    :aria-label="t('admin.groups.supportedScopes.geminiImage')"
-                    data-group-setting="gemini_image"
-                  />
-                </div>
-              </div>
-              <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                {{ t("admin.groups.supportedScopes.hint") }}
-              </p>
-            </div>
-            <div  class="border-t pt-4">
-              <div class="relative mb-1.5 flex items-center gap-1">
-                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {{ t("admin.groups.mcpXml.title") }}
-                </label>
-                <div class="group inline-flex">
-                  <Icon
-                    name="questionCircle"
-                    size="sm"
-                    :stroke-width="2"
-                    class="cursor-help text-gray-400 transition-colors hover:text-primary-500 dark:text-gray-500 dark:hover:text-primary-400"
-                  />
-                  <div
-                    class="pointer-events-none absolute bottom-full left-0 z-50 mb-2 w-72 max-w-full opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:opacity-100"
-                  >
-                    <div
-                      class="rounded-control bg-gray-900 p-3 text-white shadow-lg dark:bg-gray-800"
-                    >
-                      <p class="text-xs leading-relaxed text-gray-300">
-                        {{ t("admin.groups.mcpXml.tooltip") }}
-                      </p>
-                      <div
-                        class="absolute -bottom-1.5 left-3 h-3 w-3 rotate-45 bg-gray-900 dark:bg-gray-800"
-                      ></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="flex items-center gap-3">
-                <Toggle
-                  :model-value="createForm.mcp_xml_inject"
-                  data-group-setting="mcp_xml_inject"
-                  :aria-label="t('admin.groups.mcpXml.title')"
-                  @update:model-value="createForm.mcp_xml_inject = !createForm.mcp_xml_inject"
-                />
-                <span class="text-sm text-gray-500 dark:text-gray-400">
-                  {{
-                    createForm.mcp_xml_inject
-                      ? t("admin.groups.mcpXml.enabled")
-                      : t("admin.groups.mcpXml.disabled")
-                  }}
-                </span>
-              </div>
-            </div>
           </template>
 
           <template #protocol>
@@ -1905,115 +1796,6 @@
                 {{ t("admin.groups.invalidRequestFallback.hint") }}
               </p>
             </div>
-            <div  class="border-t pt-4">
-              <div class="relative mb-1.5 flex items-center gap-1">
-                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {{ t("admin.groups.supportedScopes.title") }}
-                </label>
-                <!-- Help Tooltip -->
-                <div class="group inline-flex">
-                  <Icon
-                    name="questionCircle"
-                    size="sm"
-                    :stroke-width="2"
-                    class="cursor-help text-gray-400 transition-colors hover:text-primary-500 dark:text-gray-500 dark:hover:text-primary-400"
-                  />
-                  <div
-                    class="pointer-events-none absolute bottom-full left-0 z-50 mb-2 w-72 max-w-full opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:opacity-100"
-                  >
-                    <div
-                      class="rounded-control bg-gray-900 p-3 text-white shadow-lg dark:bg-gray-800"
-                    >
-                      <p class="text-xs leading-relaxed text-gray-300">
-                        {{ t("admin.groups.supportedScopes.tooltip") }}
-                      </p>
-                      <div
-                        class="absolute -bottom-1.5 left-3 h-3 w-3 rotate-45 bg-gray-900 dark:bg-gray-800"
-                      ></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="space-y-2">
-                <div class="flex items-center justify-between gap-4">
-                  <label for="edit-group-claude" class="min-w-0 text-sm text-gray-700 dark:text-gray-300">{{ t('admin.groups.supportedScopes.claude') }}</label>
-                  <Toggle
-                    id="edit-group-claude"
-                    :model-value="editForm.supported_model_scopes.includes('claude')"
-                    @update:model-value="toggleEditScope('claude')"
-                    :aria-label="t('admin.groups.supportedScopes.claude')"
-                    data-group-setting="claude"
-                  />
-                </div>
-                <div class="flex items-center justify-between gap-4">
-                  <label for="edit-group-gemini-text" class="min-w-0 text-sm text-gray-700 dark:text-gray-300">{{ t('admin.groups.supportedScopes.geminiText') }}</label>
-                  <Toggle
-                    id="edit-group-gemini-text"
-                    :model-value="editForm.supported_model_scopes.includes('gemini_text')"
-                    @update:model-value="toggleEditScope('gemini_text')"
-                    :aria-label="t('admin.groups.supportedScopes.geminiText')"
-                    data-group-setting="gemini_text"
-                  />
-                </div>
-                <div class="flex items-center justify-between gap-4">
-                  <label for="edit-group-gemini-image" class="min-w-0 text-sm text-gray-700 dark:text-gray-300">{{ t('admin.groups.supportedScopes.geminiImage') }}</label>
-                  <Toggle
-                    id="edit-group-gemini-image"
-                    :model-value="editForm.supported_model_scopes.includes('gemini_image')"
-                    @update:model-value="toggleEditScope('gemini_image')"
-                    :aria-label="t('admin.groups.supportedScopes.geminiImage')"
-                    data-group-setting="gemini_image"
-                  />
-                </div>
-              </div>
-              <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                {{ t("admin.groups.supportedScopes.hint") }}
-              </p>
-            </div>
-            <div  class="border-t pt-4">
-              <div class="relative mb-1.5 flex items-center gap-1">
-                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {{ t("admin.groups.mcpXml.title") }}
-                </label>
-                <div class="group inline-flex">
-                  <Icon
-                    name="questionCircle"
-                    size="sm"
-                    :stroke-width="2"
-                    class="cursor-help text-gray-400 transition-colors hover:text-primary-500 dark:text-gray-500 dark:hover:text-primary-400"
-                  />
-                  <div
-                    class="pointer-events-none absolute bottom-full left-0 z-50 mb-2 w-72 max-w-full opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:opacity-100"
-                  >
-                    <div
-                      class="rounded-control bg-gray-900 p-3 text-white shadow-lg dark:bg-gray-800"
-                    >
-                      <p class="text-xs leading-relaxed text-gray-300">
-                        {{ t("admin.groups.mcpXml.tooltip") }}
-                      </p>
-                      <div
-                        class="absolute -bottom-1.5 left-3 h-3 w-3 rotate-45 bg-gray-900 dark:bg-gray-800"
-                      ></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="flex items-center gap-3">
-                <Toggle
-                  :model-value="editForm.mcp_xml_inject"
-                  data-group-setting="mcp_xml_inject"
-                  :aria-label="t('admin.groups.mcpXml.title')"
-                  @update:model-value="editForm.mcp_xml_inject = !editForm.mcp_xml_inject"
-                />
-                <span class="text-sm text-gray-500 dark:text-gray-400">
-                  {{
-                    editForm.mcp_xml_inject
-                      ? t("admin.groups.mcpXml.enabled")
-                      : t("admin.groups.mcpXml.disabled")
-                  }}
-                </span>
-              </div>
-            </div>
           </template>
 
           <template #protocol>
@@ -2415,7 +2197,6 @@ import {
   setModelsListCandidates,
 } from "./groupsModelsList";
 import { createModelsListCandidatesTracker } from "./groupsModelsListCandidates";
-import { normalizeSupportedModelScopesForPlatform } from "./groupsSupportedModelScopes";
 import {
   normalizeGroupOpenAIFastPolicy,
 } from "./groupsOpenAIFast";
@@ -2972,10 +2753,6 @@ const createForm = reactive({
   require_privacy_set: false,
   // 模型路由开关
   model_routing_enabled: false,
-  // 支持的模型系列（仅 antigravity 平台）
-  supported_model_scopes: ["claude", "gemini_text", "gemini_image"] as string[],
-  // MCP XML 协议注入开关（仅 antigravity 平台）
-  mcp_xml_inject: true,
   // 从分组复制账号
   copy_accounts_from_group_ids: [] as number[],
   // 分组级 RPM 限制（每用户每分钟最大请求数；0 = 不限制）
@@ -3109,26 +2886,6 @@ const removeSelectedAccount = (
   if (!rule) return;
 
   rule.accounts = rule.accounts.filter((a) => a.id !== accountId);
-};
-
-// 切换创建表单的模型系列选择
-const toggleCreateScope = (scope: string) => {
-  const idx = createForm.supported_model_scopes.indexOf(scope);
-  if (idx === -1) {
-    createForm.supported_model_scopes.push(scope);
-  } else {
-    createForm.supported_model_scopes.splice(idx, 1);
-  }
-};
-
-// 切换编辑表单的模型系列选择
-const toggleEditScope = (scope: string) => {
-  const idx = editForm.supported_model_scopes.indexOf(scope);
-  if (idx === -1) {
-    editForm.supported_model_scopes.push(scope);
-  } else {
-    editForm.supported_model_scopes.splice(idx, 1);
-  }
 };
 
 // 处理账号搜索输入框聚焦
@@ -3368,10 +3125,6 @@ const editForm = reactive({
   require_privacy_set: false,
   // 模型路由开关
   model_routing_enabled: false,
-  // 支持的模型系列（仅 antigravity 平台）
-  supported_model_scopes: ["claude", "gemini_text", "gemini_image"] as string[],
-  // MCP XML 协议注入开关（仅 antigravity 平台）
-  mcp_xml_inject: true,
   // 从分组复制账号
   copy_accounts_from_group_ids: [] as number[],
   // 分组级 RPM 限制（每用户每分钟最大请求数；0 = 不限制）
@@ -3634,8 +3387,6 @@ const closeCreateModal = () => {
 
   createForm.require_oauth_only = false;
   createForm.require_privacy_set = false;
-  createForm.supported_model_scopes = ["claude", "gemini_text", "gemini_image"];
-  createForm.mcp_xml_inject = true;
   createForm.copy_accounts_from_group_ids = [];
   createForm.rpm_limit = 0;
   createForm.max_reasoning_effort = "";
@@ -3700,9 +3451,6 @@ const handleCreateGroup = async () => {
       ),
       models_list_config: buildModelsListConfig(createModelsListState),
       availability_probe_config: availabilityProbeConfig,
-      supported_model_scopes: normalizeSupportedModelScopesForPlatform(
-        createForm.supported_model_scopes,
-      ),
       openai_fast_policy: normalizeGroupOpenAIFastPolicy(
         createForm.openai_fast_policy,
       ),
@@ -3782,12 +3530,6 @@ const handleEdit = async (group: AdminGroup) => {
   editForm.require_oauth_only = group.require_oauth_only ?? false;
   editForm.require_privacy_set = group.require_privacy_set ?? false;
   editForm.model_routing_enabled = group.model_routing_enabled || false;
-  editForm.supported_model_scopes = group.supported_model_scopes || [
-    "claude",
-    "gemini_text",
-    "gemini_image",
-  ];
-  editForm.mcp_xml_inject = group.mcp_xml_inject ?? true;
   editForm.copy_accounts_from_group_ids = []; // 复制账号字段每次编辑时重置为空
   editForm.rpm_limit = group.rpm_limit ?? 0;
   editForm.max_reasoning_effort = normalizeReasoningEffortForPlatform(
@@ -3871,9 +3613,6 @@ const handleUpdateGroup = async () => {
       ),
       models_list_config: buildModelsListConfig(editModelsListState),
       availability_probe_config: availabilityProbeConfig,
-      supported_model_scopes: normalizeSupportedModelScopesForPlatform(
-        editForm.supported_model_scopes,
-      ),
       openai_fast_policy: normalizeGroupOpenAIFastPolicy(
         editForm.openai_fast_policy,
       ),

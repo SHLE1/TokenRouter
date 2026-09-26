@@ -1209,12 +1209,6 @@ affiliates: {
         searchAccountPlaceholder: 'Search accounts...',
         accountsHint: 'Select accounts to prioritize for this model pattern'
       },
-      mcpXml: {
-        title: 'MCP XML Protocol Injection',
-        tooltip: 'When enabled, if the request contains MCP tools, an XML format call protocol prompt will be injected into the system prompt. Disable this to avoid interference with certain clients.',
-        enabled: 'Enabled',
-        disabled: 'Disabled'
-      },
       claudeMaxSimulation: {
         title: 'Claude Max Usage Simulation',
         tooltip:
@@ -1222,14 +1216,6 @@ affiliates: {
         enabled: 'Enabled (simulate 1h cache)',
         disabled: 'Disabled',
         hint: 'Only token categories in usage billing logs are adjusted. No per-request mapping state is persisted.'
-      },
-      supportedScopes: {
-        title: 'Supported Model Families',
-        tooltip: 'Select the model families this group supports. Unchecked families will not be routed to this group.',
-        claude: 'Claude',
-        geminiText: 'Gemini Text',
-        geminiImage: 'Gemini Image',
-        hint: 'Select at least one model family'
       }
     },
 }

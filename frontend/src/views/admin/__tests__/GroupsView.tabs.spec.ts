@@ -195,13 +195,12 @@ describe.each(['create', 'edit'] as const)('GroupsView %s tabs', mode => {
     expect(groups[mode === 'create' ? 'create' : 'update']).not.toHaveBeenCalled()
   })
 
-  it('模型系列与模型列表开关保留展示选择结果', async () => {
+  it('模型列表保留展示选择结果，提交不包含已移除的分组设置', async () => {
     const wrapper = await open(mode, 'antigravity')
     await tab(wrapper, 'features')
-    for (const scope of ['claude', 'gemini_text']) {
-      await wrapper.get(`[data-group-setting="${scope}"]`).trigger('click')
+    for (const setting of ['claude', 'gemini_text', 'gemini_image', 'mcp_xml_inject']) {
+      expect(wrapper.find(`[data-group-setting="${setting}"]`).exists()).toBe(false)
     }
-    expect(wrapper.get('[data-group-setting="gemini_image"]').attributes('aria-checked')).toBe('true')
     await tab(wrapper, 'protocol')
     await wrapper.get('[data-group-setting="enabled"]').trigger('click')
     const model = wrapper.get('[data-model-visibility="gpt-test"]')
@@ -212,7 +211,8 @@ describe.each(['create', 'edit'] as const)('GroupsView %s tabs', mode => {
     await wrapper.get(`#${mode}-group-form`).trigger('submit')
     await flushPromises()
     const payload = mode === 'create' ? groups.create.mock.calls[0]?.[0] : groups.update.mock.calls[0]?.[1]
-    expect(payload.supported_model_scopes).toEqual(['gemini_image'])
+    expect(payload).not.toHaveProperty('supported_model_scopes')
+    expect(payload).not.toHaveProperty('mcp_xml_inject')
     expect(payload.models_list_config).toMatchObject({ enabled: true, models: [] })
   })
 })
