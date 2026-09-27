@@ -85,7 +85,7 @@ func (s *PricingService) Stop() {
 	logging.LegacyPrintf("service.pricing", "%s", "[Pricing] Service stopped")
 }
 
-// startUpdateScheduler 启动定时调度器：每个周期先做远程目录哈希同步（配置了 remote_url 时），
+// StartUpdateScheduler 启动定时调度器：每个周期先做远程目录哈希同步（配置了 remote_url 时），
 // 再比对 fallback/override 文件指纹做本地热重载（配置了任一文件时）。两者都未配置则不启动。
 func (s *PricingService) StartUpdateScheduler() {
 	if s == nil || s.options == nil {
