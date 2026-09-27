@@ -62,7 +62,7 @@ func TestGatewayHandlerPreCancelledCompatibleRequestsDoNotSelectProvider(t *test
 	gatewayService.Recorder = newHTTPCompletionFixture(nil, nil,
 		nil, nil, nil, nil, nil, false)
 
-	cfg := &config.Config{RunMode: config.RunModeSimple}
+	cfg := &config.Config{}
 	billingCacheService := newBillingEligibilityFixture(cfg)
 	billingCacheService.Start()
 	t.Cleanup(billingCacheService.Stop)

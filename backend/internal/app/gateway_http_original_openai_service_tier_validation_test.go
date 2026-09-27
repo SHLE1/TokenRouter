@@ -38,7 +38,7 @@ func newServiceTierHandlerTest(t *testing.T) *gatewayHTTPEndpointsFixture {
 	t.Helper()
 	return newGatewayHTTPEndpoints(gatewayHTTPFixtureInput{
 		Source:  &gatewayExecutionFixture{},
-		Funding: newFundingAdmissionFixture(newBillingEligibilityFixture(&config.Config{RunMode: config.RunModeSimple}), &config.Config{RunMode: config.RunModeSimple}),
+		Funding: newFundingAdmissionFixture(newBillingEligibilityFixture(&config.Config{}), &config.Config{}),
 		Keys:    &apikey.APIKeyService{},
 		Concurrency: gatewayhttp.NewConcurrencyHelper(scheduler.NewConcurrencyService(
 			&httptestkit.ConcurrencySequence{UserSeq: []bool{true}}, scheduler.Diagnostics{

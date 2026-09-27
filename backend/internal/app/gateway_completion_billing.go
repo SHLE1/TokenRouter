@@ -44,7 +44,6 @@ func ProvideGatewayCompletionRecorders(
 ) GatewayCompletionRecorders {
 	options := completion.RecorderOptions{DefaultMultiplier: 1, Now: timezone.NewCalendar(time.Local).Now}
 	if cfg != nil {
-		options.Simple = cfg.RunMode == config.RunModeSimple
 		options.DefaultMultiplier = cfg.Default.RateMultiplier
 	}
 	subscriptions, _ := funds.(completion.SubscriptionReader)

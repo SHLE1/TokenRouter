@@ -11,7 +11,7 @@ import (
 
 // newHTTPCompletionFixture 显式绑定原HTTP测试的完成依赖，不再从旧网关回取隐式装配。
 func newHTTPCompletionFixture(cfg *config.Config, logs usage.UsageLogRepository, calculator *billing.Calculator, eligibility *billing.Eligibility, activity completion.ProviderActivity, modelConfigs *routing.PricingConfigService, health completion.HealthObserver, openAI bool) *completion.Recorder {
-	f := gatewaytestkit.NewRecording(logs, nil, nil, false)
+	f := gatewaytestkit.NewRecording(logs, &gatewaytestkit.SettlementStore{}, nil, false)
 	f.Dependencies.Calculator = calculator
 	f.Dependencies.Health = health
 	f.GroupPolicies = modelConfigs
@@ -20,7 +20,6 @@ func newHTTPCompletionFixture(cfg *config.Config, logs usage.UsageLogRepository,
 	f.Options.DefaultMultiplier = 1
 	if cfg != nil {
 		f.Options.DefaultMultiplier = cfg.Default.RateMultiplier
-		f.Options.Simple = cfg.RunMode == config.RunModeSimple
 	}
 	return f.Core(nil, openAI)
 }

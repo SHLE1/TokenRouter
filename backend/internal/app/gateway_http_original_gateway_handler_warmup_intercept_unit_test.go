@@ -245,10 +245,10 @@ func newTestGatewayHandler(t *testing.T, group *routing.Group, providers []*gate
 		// balanceNotifyService
 		responseHeaderFilterForTest(nil),
 	)
-	// simple 用例保留原完成器，不通过旧网关对象取回。
+	// 预热用例直接绑定完成器。
 	gwSvc.Recorder = newHTTPCompletionFixture(nil, nil, nil, nil, nil, nil, nil, false)
 
-	cfg := &config.Config{RunMode: config.RunModeSimple}
+	cfg := &config.Config{}
 	billingCacheSvc := newBillingEligibilityFixture(cfg)
 	billingCacheSvc.Start()
 

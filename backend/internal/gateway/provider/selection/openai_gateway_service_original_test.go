@@ -605,7 +605,7 @@ func TestOpenAISelectProviderWithLoadAwareness_StickyCapacitySpilloverKeepsBindi
 			2: {ProviderID: 2, LoadRate: 10},
 		},
 	}
-	cfg := &config.Config{RunMode: config.RunModeStandard}
+	cfg := &config.Config{}
 	cfg.Gateway.Scheduling.LoadBatchEnabled = true
 	cfg.Gateway.Scheduling.StickySessionMaxWaiting = 1
 

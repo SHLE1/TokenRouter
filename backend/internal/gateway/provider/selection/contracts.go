@@ -93,7 +93,6 @@ type GeminiDependencies struct {
 
 // Options 是启动配置的显式投影；零值与配置缺省由 app 区分。
 type Options struct {
-	Simple            bool
 	Scheduling        schedulercore.FlowOptions
 	DebugRouting      bool
 	StickyTTL         time.Duration

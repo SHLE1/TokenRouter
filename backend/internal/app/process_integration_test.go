@@ -188,12 +188,25 @@ func TestS02ProcessModes(t *testing.T) {
 		require.NoError(t, os.WriteFile(filepath.Join(dir, "config.yaml"), data, 0o600))
 		return dir, []string{"PGAPPNAME=s02-" + mode}
 	}
+	// 旧运行模式键仅作为升级兼容输入，启动不能修改既有管理员并发。
 	for _, mode := range []string{"standard", "simple"} {
 		t.Run(mode+"-sigterm", func(t *testing.T) {
+			administrators := make(map[int64]int)
+			for _, concurrency := range []int{5, 12, 30} {
+				row, createErr := fixture.client.User.Create().SetEmail(fmt.Sprintf("upgrade-%s-%d@example.test", mode, concurrency)).SetPasswordHash("hash").SetRole("admin").SetConcurrency(concurrency).Save(ctx)
+				require.NoError(t, createErr)
+				administrators[row.ID] = concurrency
+				t.Cleanup(func() { require.NoError(t, fixture.client.User.DeleteOneID(row.ID).Exec(context.Background())) })
+			}
 			port := freeServerPort(t)
 			dir, env := configFor(t, mode, "s02_contracts", port)
 			p := startTestProcess(t, binary, dir, env)
 			waitProcessHTTP(t, p, port, "/health")
+			for id, concurrency := range administrators {
+				current, readErr := fixture.client.User.Get(ctx, id)
+				require.NoError(t, readErr)
+				require.Equal(t, concurrency, current.Concurrency)
+			}
 			require.NoError(t, p.cmd.Process.Signal(syscall.SIGTERM))
 			require.NoError(t, p.wait(t, 40*time.Second), p.output.text())
 			logs := p.output.text()

@@ -1,7 +1,6 @@
 package app
 
 import (
-	"github.com/TokenFlux/TokenRouter/internal/config"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/provider/postgres"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
@@ -14,14 +13,13 @@ type gatewayModelAvailability struct {
 	Resolved   routing.ModelAvailabilityDiagnoser
 }
 
-func provideGatewayModelAvailability(store *postgres.ProviderStore, modelConfigs *routing.PricingConfigService, cfg *config.Config) *gatewayModelAvailability {
-	simple := cfg != nil && cfg.RunMode == config.RunModeSimple
+func provideGatewayModelAvailability(store *postgres.ProviderStore, modelConfigs *routing.PricingConfigService) *gatewayModelAvailability {
 	var source gatewayprovider.AvailabilityProviders
 	if store != nil {
 		source = store
 	}
-	general := gatewayprovider.NewModelAvailability(source, modelConfigs, simple, false)
-	compatible := gatewayprovider.NewModelAvailability(source, modelConfigs, simple, true)
+	general := gatewayprovider.NewModelAvailability(source, modelConfigs, false)
+	compatible := gatewayprovider.NewModelAvailability(source, modelConfigs, true)
 	return &gatewayModelAvailability{
 		Messages:   routing.ModelAvailabilityDiagnoserFunc(general.DiagnoseGeneral),
 		Compatible: routing.ModelAvailabilityDiagnoserFunc(compatible.DiagnoseCompatible),

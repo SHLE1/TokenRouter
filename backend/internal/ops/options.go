@@ -17,7 +17,6 @@ type Options struct {
 	Database         struct{ MaxOpenConns int }
 	Redis            struct{ PoolSize int }
 	Log              LogOptions
-	RunMode          string
 	Timezone         string
 	IsNotFound       func(error) bool
 	Logf             func(string, ...any)

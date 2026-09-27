@@ -1929,31 +1929,6 @@ func TestOpenAIGatewayServiceRecordUsage_InferredSubscriptionUsesPlanGroupRate(t
 	require.Equal(t, 1, billingRepo.ResolveCalls)
 }
 
-func TestOpenAIGatewayServiceRecordUsage_SimpleModeSkipsBillingAfterPersist(t *testing.T) {
-	usageRepo := &completiontestkit.UsageLogStore{Inserted: true}
-	userRepo := &completiontestkit.UserStore{}
-	subRepo := &completiontestkit.SubscriptionStore{}
-	svc := newOpenAIRecordUsageServiceForTest(usageRepo, userRepo, subRepo, nil)
-	svc.Options.Simple = true
-
-	err := svc.RecordOpenAI(context.Background(), &gatewaycapture.OpenAICapture{
-		Result: &forwardcore.OpenAIResult{
-			RequestID: "resp_simple_mode",
-			Usage:     openai.ForwardUsage{InputTokens: 10, OutputTokens: 5},
-			Model:     "gpt-5.1",
-			Duration:  time.Second,
-		},
-		APIKey:   &apikey.APIKey{ID: 1000},
-		User:     &identity.User{ID: 2000},
-		Provider: &providercore.Record{ID: 3000},
-	})
-
-	require.NoError(t, err)
-	require.Equal(t, 1, usageRepo.Calls)
-	require.Equal(t, 0, userRepo.DeductCalls)
-	require.Equal(t, 0, subRepo.IncrementCalls)
-}
-
 func TestOpenAIGatewayServiceRecordUsage_ImageOnlyUsageStillPersists(t *testing.T) {
 	usageRepo := &completiontestkit.UsageLogStore{Inserted: true}
 	userRepo := &completiontestkit.UserStore{}

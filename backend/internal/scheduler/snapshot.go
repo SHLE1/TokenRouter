@@ -964,9 +964,9 @@ func (s *SnapshotService) rebuildFullSnapshot(ctx context.Context, reason string
 		return ErrSchedulerCacheNotReady
 	}
 
-	// 当前模式所需的全局读取必须先成功：桶注册表始终必需，standard 还需活跃分组 ID；
+	// 桶注册表和活跃分组 ID 必须先读取成功；
 	// 失败时不执行 Capture/Retire/Reopen 或 DB 查询。
-	// simple 模式不获取分组生命周期权威；standard 的 stale candidate 仍须在租约内 fresh 确认后才能退休。
+	// 过期候选仍须在租约内重新确认分组状态后才能退休。
 	registered, err := s.cache.ListBuckets(ctx)
 	if err != nil {
 		return err

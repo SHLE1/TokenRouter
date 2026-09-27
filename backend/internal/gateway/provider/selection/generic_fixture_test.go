@@ -36,7 +36,7 @@ func selectionOptionsForTest(cfg *config.Config) Options {
 	if cfg == nil {
 		return options
 	}
-	options.Simple = cfg.RunMode == config.RunModeSimple
+
 	value := cfg.Gateway.Scheduling
 	options.Scheduling = scheduler.FlowOptions{LoadBatchEnabled: value.LoadBatchEnabled, PreferSoonestReset: value.PreferSoonestReset, FallbackMaxWaiting: value.FallbackMaxWaiting, StickySessionMaxWaiting: value.StickySessionMaxWaiting, FallbackSelectionMode: value.FallbackSelectionMode, FallbackWaitTimeout: value.FallbackWaitTimeout, StickySessionWaitTimeout: value.StickySessionWaitTimeout}
 	ws := cfg.Gateway.OpenAIWS

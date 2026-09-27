@@ -121,7 +121,7 @@ func healthyGrokOAuthGatewayTestProvider(id int64, token string) *gatewayprovide
 
 func TestOpenAIProviderSchedulerLoadBalanceAppliesGrokFreeQuotaGate(t *testing.T) {
 	cfg := grokFreeQuotaTestConfig()
-	cfg.RunMode = config.RunModeSimple
+
 	providers := []gatewayprovider.ExecutionProvider{
 		{Record: provider.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformGrok, Type: capability.ProviderTypeOAuth, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Credentials: map[string]any{"model_whitelist": []string{"*"}, "subscription_tier": "free"}}},
 		{Record: provider.Record{LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformGrok, Type: capability.ProviderTypeOAuth, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Credentials: map[string]any{"model_whitelist": []string{"*"}, "subscription_tier": "pro"}}},

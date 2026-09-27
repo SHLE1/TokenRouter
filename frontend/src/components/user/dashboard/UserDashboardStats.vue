@@ -3,7 +3,7 @@
   <!-- 卡片在移动端纵向排布（图标在上、文字占满卡宽），桌面端保持横向图标+文字，避免窄屏下数值与中文被折断 -->
   <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
     <!-- Balance -->
-    <div v-if="!isSimple" class="card p-4">
+    <div class="card p-4">
       <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-3">
         <div class="shrink-0 self-start rounded-control bg-emerald-100 p-2 dark:bg-emerald-900/30">
           <BalanceIcon size="md" class="text-emerald-600 dark:text-emerald-400" />
@@ -152,7 +152,6 @@ import { formatTokensK } from '@/utils/format'
 defineProps<{
   stats: UserStatsType
   balance: number
-  isSimple: boolean
 }>()
 const { t } = useI18n()
 const { formatBalanceAmount } = useBalanceDisplay()

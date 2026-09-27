@@ -301,15 +301,15 @@ func TestGroupIsolation_GroupedKey_ShouldOnlyScheduleMatchingGroupProviders(t *t
 }
 
 // ============================================================================
-// Part 3: SimpleMode 旁路测试
+// 显式分组边界回归。
 // ============================================================================
 
-func TestGroupIsolation_SimpleMode_RequiresExplicitGroup(t *testing.T) {
-	// SimpleMode 应跳过分组隔离，使用 ListSchedulableByPlatform 返回所有提供商。
+func TestGroupIsolation_RequiresExplicitGroup(t *testing.T) {
+	// 缺少明确分组时，不允许读取全局提供商池。
 	// 测试非 useMixed 路径（platform=openai，不会触发 mixed 调度逻辑）。
 	ctx := context.Background()
 
-	// 混合未分组和已分组提供商，SimpleMode 下应全部可调度
+	// 混合未分组和已分组提供商，调用仍须指定分组。
 	providers := []gatewayprovider.ExecutionProvider{
 		{Record: providercore.Record{
 			Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Priority: 2, Status: billing.StatusActive, Schedulable: true,
@@ -332,19 +332,19 @@ func TestGroupIsolation_SimpleMode_RequiresExplicitGroup(t *testing.T) {
 	}
 	cache := &mockGatewayCacheForPlatform{}
 
-	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Providers: repo}, Shared: Shared{Cache: cache}}, &config.Config{RunMode: config.RunModeSimple})
+	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Providers: repo}, Shared: Shared{Cache: cache}}, &config.Config{})
 
-	// groupID=nil 时，SimpleMode 应使用 ListSchedulableByPlatform（不过滤分组）
+	// groupID=nil 时直接拒绝，不读取任何提供商池。
 	acc, err := svc.selectProviderForModelWithPlatform(ctx, nil, "", "", nil, capability.PlatformOpenAI)
 	require.Error(t, err, "请求必须明确绑定分组")
 	require.Nil(t, acc)
 }
 
-func TestGroupIsolation_SimpleMode_RejectsImplicitGroupedProvider(t *testing.T) {
-	// SimpleMode + groupID=nil 时，已分组提供商也应该可被调度
+func TestGroupIsolation_RejectsImplicitGroupedProvider(t *testing.T) {
+	// groupID=nil 时，即使有已分组提供商也不允许调度。
 	ctx := context.Background()
 
-	// 只有已分组提供商，在 standard 模式下 groupID=nil 会报错，但 simple 模式应正常
+	// 只有已分组提供商也不能替调用者推断目标分组。
 	providers := []gatewayprovider.ExecutionProvider{
 		{Record: providercore.Record{
 			Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Priority: 1, Status: billing.StatusActive, Schedulable: true,
@@ -362,7 +362,7 @@ func TestGroupIsolation_SimpleMode_RejectsImplicitGroupedProvider(t *testing.T) 
 	}
 	cache := &mockGatewayCacheForPlatform{}
 
-	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Providers: repo}, Shared: Shared{Cache: cache}}, &config.Config{RunMode: config.RunModeSimple})
+	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Providers: repo}, Shared: Shared{Cache: cache}}, &config.Config{})
 
 	acc, err := svc.selectProviderForModelWithPlatform(ctx, nil, "", "", nil, capability.PlatformOpenAI)
 	require.Error(t, err, "请求必须明确绑定分组")

@@ -40,9 +40,11 @@ type authHTTPFixture struct {
 	googleIDTokenVerifier provider.GoogleIDTokenVerifier
 }
 
-var pendingOAuthCreateAccountPreCommitHook func(context.Context, *dbent.PendingAuthSession) error
-var wechatOAuthAccessTokenURL = provider.DefaultWeChatTokenURL
-var wechatOAuthUserInfoURL = provider.DefaultWeChatUserInfoURL
+var (
+	pendingOAuthCreateAccountPreCommitHook func(context.Context, *dbent.PendingAuthSession) error
+	wechatOAuthAccessTokenURL              = provider.DefaultWeChatTokenURL
+	wechatOAuthUserInfoURL                 = provider.DefaultWeChatUserInfoURL
+)
 
 // authBackgroundFixture 的后台工作由测试拥有，数据库释放前先等待已接受操作。
 func authBackgroundFixture(t *testing.T) func(string, func()) bool {
@@ -57,6 +59,7 @@ func authBackgroundFixture(t *testing.T) func(string, func()) bool {
 	})
 	return tasks.Go
 }
+
 func newAuthHTTPFixture(t *testing.T, input *authHTTPFixture) *authHTTPFixture {
 	t.Helper()
 	bindAuthHTTPFixture(t, input)
@@ -75,14 +78,12 @@ func bindAuthHTTPFixture(t *testing.T, h *authHTTPFixture) {
 	if h.settingSvc != nil {
 		sessionSettings = h.settingSvc
 	}
-	mode := config.RunModeStandard
 	secret := ""
 	if h.cfg != nil {
-		mode = h.cfg.RunMode
 		secret = strings.TrimSpace(h.cfg.JWT.Secret)
 	}
 	var pending *identityhttp.PendingHandler
-	session := identityhttp.NewSessionHandler(h.authService, h.userService, sessionSettings, h.redeemService, h.totpService, flow, identityhttp.SessionHTTPOptions{RunMode: mode, AuditActor: middleware.SetAuditActor, BackendMode: func(ctx context.Context) bool {
+	session := identityhttp.NewSessionHandler(h.authService, h.userService, sessionSettings, h.redeemService, h.totpService, flow, identityhttp.SessionHTTPOptions{AuditActor: middleware.SetAuditActor, BackendMode: func(ctx context.Context) bool {
 		if h.settingSvc == nil {
 			return false
 		}

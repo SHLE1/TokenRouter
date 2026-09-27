@@ -64,12 +64,12 @@ func (e recordEffects) Settled(SettlementInput, *billing.UsageBillingApplyResult
 type recordModels struct{}
 
 func (recordModels) Candidates(model string, _ ...string) []string { return []string{model} }
-func recordFixture(simple bool) (*Recorder, *recordStore, *recordWriter, *Input, *[]string) {
+func recordFixture() (*Recorder, *recordStore, *recordWriter, *Input, *[]string) {
 	events := []string{}
 	funds := &recordStore{events: &events}
 	logs := &recordWriter{events: &events}
 	calculator := billing.NewCalculator(nil, billing.CalculatorOptions{DefaultRateMultiplier: 1})
-	recorder := NewRecorder(Dependencies{Calculator: calculator, Funds: funds, Models: recordModels{}, Logs: logs, Effects: recordEffects{&events}}, RecorderOptions{Simple: simple, DefaultMultiplier: 1})
+	recorder := NewRecorder(Dependencies{Calculator: calculator, Funds: funds, Models: recordModels{}, Logs: logs, Effects: recordEffects{&events}}, RecorderOptions{DefaultMultiplier: 1})
 	input := &Input{
 		Result:    &Result{Model: "claude-sonnet-4-5", Usage: TokenUsage{InputTokens: 10, OutputTokens: 2, CacheReadInputTokens: 3, CacheCreationInputTokens: 1}},
 		RequestID: "fixed",
@@ -83,7 +83,7 @@ func recordFixture(simple bool) (*Recorder, *recordStore, *recordWriter, *Input,
 func TestRecordSettlementFailureRetainsUnsettledFact(t *testing.T) {
 	for _, openAI := range []bool{false, true} {
 		t.Run(map[bool]string{false: "anthropic", true: "openai"}[openAI], func(t *testing.T) {
-			core, funds, logs, in, events := recordFixture(false)
+			core, funds, logs, in, events := recordFixture()
 			funds.err = errors.New("settlement failed")
 			ctx, cancel := context.WithCancel(context.Background())
 			cancel()
@@ -106,20 +106,13 @@ func TestRecordSettlementFailureRetainsUnsettledFact(t *testing.T) {
 }
 
 func TestRecordLogFailureDoesNotResettle(t *testing.T) {
-	core, funds, logs, in, events := recordFixture(false)
+	core, funds, logs, in, events := recordFixture()
 	logs.bestErr = errors.New("queue full")
 	logs.errorSync = errors.New("database unavailable")
 	require.NoError(t, core.Record(context.Background(), in, true))
 	require.Equal(t, 1, funds.calls)
 	require.Equal(t, []string{"funds", "effects", "best", "sync"}, *events)
 	require.Greater(t, logs.rows[1].ActualCost, 0.0)
-}
-
-func TestRecordSimpleOnlyWritesAndUpdatesActivity(t *testing.T) {
-	core, funds, _, in, events := recordFixture(true)
-	require.NoError(t, core.Record(context.Background(), in, false))
-	require.Zero(t, funds.calls)
-	require.Equal(t, []string{"best", "used"}, *events)
 }
 
 func TestSnapshotIsolatesQueueInputs(t *testing.T) {

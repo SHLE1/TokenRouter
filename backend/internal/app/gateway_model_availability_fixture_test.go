@@ -13,9 +13,9 @@ func newExecutionAvailabilityForTest(store gatewayprovider.ExecutionProviderStor
 	if store != nil {
 		source = gatewaytestkit.AvailabilityStore{Source: store}
 	}
-	simple := cfg != nil && cfg.RunMode == config.RunModeSimple
-	general := gatewayprovider.NewModelAvailability(source, modelConfigs, simple, false)
-	compatible := gatewayprovider.NewModelAvailability(source, modelConfigs, simple, true)
+
+	general := gatewayprovider.NewModelAvailability(source, modelConfigs, false)
+	compatible := gatewayprovider.NewModelAvailability(source, modelConfigs, true)
 	return &gatewayModelAvailability{
 		Messages:   routing.ModelAvailabilityDiagnoserFunc(general.DiagnoseGeneral),
 		Compatible: routing.ModelAvailabilityDiagnoserFunc(compatible.DiagnoseCompatible),

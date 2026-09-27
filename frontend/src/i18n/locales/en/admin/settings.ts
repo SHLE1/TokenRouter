@@ -716,7 +716,7 @@ export default {
         title: 'Recharge / Subscription Page',
         description: 'Show a "Recharge / Subscription" entry in the sidebar and open the configured URL in an iframe',
         enabled: 'Show Recharge / Subscription Entry',
-        enabledHint: 'Only shown in standard mode (not simple mode)',
+        enabledHint: 'Show the entry when a recharge / subscription URL is configured',
         url: 'Recharge / Subscription URL',
         urlPlaceholder: 'https://example.com/purchase',
         urlHint: 'Must be an absolute http(s) URL',

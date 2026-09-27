@@ -98,7 +98,7 @@ func TestRuntimeGroupFallbackRechecksAuthorizationBeforeFunding(t *testing.T) {
 			}
 			keys := testkit.NewService(nil, fallbackUserRepository{user: user}, fallbackGroupRepository{group: group}, nil, nil, nil, nil)
 			funds := &fallbackFundingCheck{}
-			resolver := provideRuntimeGroupFallbackResolver(keys, admission.NewFundingAdmission(funds, nil, nil), nil, nil)
+			resolver := provideRuntimeGroupFallbackResolver(keys, admission.NewFundingAdmission(funds, nil), nil, nil)
 			key, sub, err := resolver(context.Background(), &apikey.APIKey{UserID: 7, User: user}, 20, protocol.ProtocolAnthropicMessages)
 			require.Error(t, err)
 			require.Nil(t, key)
@@ -116,7 +116,7 @@ func TestRuntimeGroupFallbackChecksSelectedSubscriptionCoverage(t *testing.T) {
 	subscription := &billing.UserSubscription{ID: subscriptionID, UserID: 7, Status: "active", StartsAt: time.Now().Add(-time.Hour), ExpiresAt: time.Now().Add(time.Hour), Plan: &billing.SubscriptionPlan{GroupIDs: []int64{10}}}
 	subscriptions := billing.NewSubscriptionService(nil, fallbackSubscriptionRepository{value: subscription}, nil)
 	funds := &fallbackFundingCheck{}
-	resolver := provideRuntimeGroupFallbackResolver(keys, admission.NewFundingAdmission(funds, nil, nil), subscriptions, nil)
+	resolver := provideRuntimeGroupFallbackResolver(keys, admission.NewFundingAdmission(funds, nil), subscriptions, nil)
 	_, _, err := resolver(context.Background(), &apikey.APIKey{UserID: 7, User: user, BillingMode: "subscription", PreferredSubscriptionID: &subscriptionID}, 20, protocol.ProtocolAnthropicMessages)
 	require.ErrorIs(t, err, billing.ErrPreferredSubscriptionGroup)
 	require.Zero(t, funds.calls)
@@ -130,7 +130,7 @@ func TestRuntimeGroupFallbackPreservesSessionNamespace(t *testing.T) {
 			keys := testkit.NewService(nil, fallbackUserRepository{user: user}, fallbackGroupRepository{group: target}, nil, nil, nil, nil)
 			funds := &fallbackFundingCheck{}
 			cache := &fallbackIsolationCache{ownerID: 10}
-			resolver := provideRuntimeGroupFallbackResolver(keys, admission.NewFundingAdmission(funds, nil, nil), nil, cache)
+			resolver := provideRuntimeGroupFallbackResolver(keys, admission.NewFundingAdmission(funds, nil), nil, cache)
 			ctx := requeststate.WithSessionIsolation(context.Background(), session.SessionIsolationSourceGateway, "explicit-session")
 			originalGroupID := int64(10)
 			original := &apikey.APIKey{ID: 1, UserID: 7, User: &identity.User{ID: 8}, GroupID: &originalGroupID, Group: &routing.Group{ID: 10}, BillingMode: "auto"}
@@ -161,7 +161,7 @@ func TestRuntimeGroupFallbackStopsOnFundingDenial(t *testing.T) {
 	keys := testkit.NewService(nil, fallbackUserRepository{user: user}, fallbackGroupRepository{group: target}, nil, nil, nil, nil)
 	funds := &fallbackFundingCheck{denied: billing.ErrAPIKeyRateLimit1dExceeded}
 	cache := &fallbackIsolationCache{ownerID: 10}
-	resolver := provideRuntimeGroupFallbackResolver(keys, admission.NewFundingAdmission(funds, nil, nil), nil, cache)
+	resolver := provideRuntimeGroupFallbackResolver(keys, admission.NewFundingAdmission(funds, nil), nil, cache)
 	ctx := requeststate.WithSessionIsolation(context.Background(), session.SessionIsolationSourceGateway, "explicit-session")
 	resolved, subscription, err := resolver(ctx, &apikey.APIKey{ID: 1, UserID: 7, User: user, BillingMode: "balance"}, 20, protocol.ProtocolAnthropicMessages)
 	require.ErrorIs(t, err, billing.ErrAPIKeyRateLimit1dExceeded)
@@ -210,7 +210,7 @@ func TestClientGroupFallbackAuthorizesWholeChain(t *testing.T) {
 			repo := fallbackGroupRepository{groups: map[int64]*routing.Group{firstID: first, secondID: second, thirdID: third}}
 			keys := testkit.NewService(nil, fallbackUserRepository{user: user}, repo, nil, nil, nil, nil)
 			funds, rpm := &fallbackFundingCheck{}, &clientFallbackRPM{}
-			resolve := provideClientGroupFallbackResolver(keys, admission.NewFundingAdmission(funds, rpm, nil), subscriptions, nil)
+			resolve := provideClientGroupFallbackResolver(keys, admission.NewFundingAdmission(funds, rpm), subscriptions, nil)
 			resolved, _, err := resolve(context.Background(), key, protocol.ProtocolOpenAIResponses)
 			require.Zero(t, rpm.calls)
 			require.Equal(t, firstID, *key.GroupID)

@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/app/bootstrap"
-	"github.com/TokenFlux/TokenRouter/internal/config"
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 
@@ -22,17 +21,14 @@ import (
 
 // Config paths
 const (
-	ConfigFileName             = "config.yaml"
-	InstallLockFile            = ".installed"
-	defaultUserConcurrency     = 5
-	simpleModeAdminConcurrency = 30
-	defaultMigrationTimeout    = 60 * time.Second
+	ConfigFileName          = "config.yaml"
+	InstallLockFile         = ".installed"
+	defaultUserConcurrency  = 5
+	defaultMigrationTimeout = 60 * time.Second
 )
 
+// setupDefaultAdminConcurrency 使用统一的首次管理员并发默认值。
 func setupDefaultAdminConcurrency() int {
-	if strings.EqualFold(strings.TrimSpace(os.Getenv("RUN_MODE")), config.RunModeSimple) {
-		return simpleModeAdminConcurrency
-	}
 	return defaultUserConcurrency
 }
 
@@ -151,6 +147,7 @@ func NeedsSetup() bool {
 func buildDatabaseConnectionDSNs(cfg *DatabaseConfig) (bootstrapDSN, targetDSN string) {
 	return bootstrap.BuildDatabaseConnectionDSNs(cfg)
 }
+
 func TestDatabaseConnection(cfg *DatabaseConfig) error {
 	return bootstrap.TestSetupDatabaseConnection(cfg)
 }
@@ -206,12 +203,13 @@ func Install(cfg *SetupConfig) error {
 // createInstallLock creates a lock file to prevent re-installation attacks
 func createInstallLock() error {
 	content := fmt.Sprintf("installed_at=%s\n", time.Now().UTC().Format(time.RFC3339))
-	return os.WriteFile(GetInstallLockPath(), []byte(content), 0400) // Read-only for owner
+	return os.WriteFile(GetInstallLockPath(), []byte(content), 0o400) // Read-only for owner
 }
 
 func initializeDatabase(cfg *SetupConfig) error {
 	return bootstrap.InitializeSetupDatabase(context.Background(), &cfg.Database, cfg.migrationTimeout())
 }
+
 func (cfg *SetupConfig) migrationTimeout() time.Duration {
 	if cfg != nil && cfg.MigrationTimeoutSeconds > 0 {
 		return time.Duration(cfg.MigrationTimeoutSeconds) * time.Second
@@ -296,7 +294,7 @@ func writeConfigFile(cfg *SetupConfig) error {
 		return err
 	}
 
-	return os.WriteFile(GetConfigFilePath(), data, 0600)
+	return os.WriteFile(GetConfigFilePath(), data, 0o600)
 }
 
 func generateSecret(length int) (string, error) {

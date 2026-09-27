@@ -320,9 +320,9 @@ const frozenBalance = computed(() => Number(user.value?.frozen_balance || 0))
 const balanceFrozenText = computed(() => t('common.frozenBalance') === 'common.frozenBalance' ? '冻结金额' : t('common.frozenBalance'))
 const balanceFrozenLabel = computed(() => `${balanceFrozenText.value} ${formatHeaderMoney(frozenBalance.value)}`)
 
-// 只在标准模式的管理员下显示新手引导按钮
+// 只向管理员显示新手引导按钮
 const showOnboardingButton = computed(() => {
-  return !authStore.isSimpleMode && user.value?.role === 'admin'
+  return user.value?.role === 'admin'
 })
 
 const displayName = computed(() => {

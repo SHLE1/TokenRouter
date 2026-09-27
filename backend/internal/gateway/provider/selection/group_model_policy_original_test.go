@@ -160,7 +160,7 @@ func TestModelAvailabilityDiagnosisAcceptsPricingConfigAlias(t *testing.T) {
 		Shared: Shared{GroupPolicies: routingtestkit.PricingConfig(groupID, capability.PlatformOpenAI, pricingConfig)},
 	}, nil)
 
-	diagnosis := gatewayprovider.NewModelAvailability(gatewaytestkit.AvailabilityStore{Source: repo}, svc.groupPolicies, false, true).DiagnoseCompatible(context.Background(), &groupID, "client-alias", capability.PlatformOpenAI)
+	diagnosis := gatewayprovider.NewModelAvailability(gatewaytestkit.AvailabilityStore{Source: repo}, svc.groupPolicies, true).DiagnoseCompatible(context.Background(), &groupID, "client-alias", capability.PlatformOpenAI)
 	require.True(t, diagnosis.HasProvidersInPool)
 	require.True(t, diagnosis.HasModelSupport)
 }

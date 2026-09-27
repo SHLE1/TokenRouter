@@ -1706,7 +1706,7 @@ func TestOpenAIResponses_APIKeyPassthroughPool5xxRetriesThenExhaustsMaxSwitches(
 			},
 		},
 	}
-	cfg := &config.Config{RunMode: config.RunModeSimple}
+	cfg := &config.Config{}
 	cfg.Default.RateMultiplier = 1
 	cfg.Security.URLAllowlist.Enabled = false
 	cfg.Gateway.MaxProviderSwitches = 1
@@ -1812,7 +1812,7 @@ func TestOpenAIResponses_APIKeyPassthroughPoolAuthFailureRetriesThenSwitchesToHe
 					},
 				},
 			}
-			cfg := &config.Config{RunMode: config.RunModeSimple}
+			cfg := &config.Config{}
 			cfg.Default.RateMultiplier = 1
 			cfg.Security.URLAllowlist.Enabled = false
 			cfg.Gateway.MaxProviderSwitches = 1
@@ -1898,7 +1898,7 @@ func TestOpenAIResponses_APIKeyPassthroughSSERateLimitUsesConfiguredPoolRetry(t 
 			},
 		},
 	}
-	cfg := &config.Config{RunMode: config.RunModeSimple}
+	cfg := &config.Config{}
 	cfg.Default.RateMultiplier = 1
 	cfg.Security.URLAllowlist.Enabled = false
 	cfg.Gateway.MaxProviderSwitches = 1
@@ -2056,7 +2056,7 @@ func TestOpenAIResponsesWebSocket_FailoverOnUpstreamUsageLimitEvent(t *testing.T
 	}
 
 	cfg := &config.Config{}
-	cfg.RunMode = config.RunModeSimple
+
 	cfg.Default.RateMultiplier = 1
 	cfg.Security.URLAllowlist.Enabled = false
 	cfg.Security.URLAllowlist.AllowInsecureHTTP = true
@@ -2268,7 +2268,7 @@ func TestOpenAIResponsesWebSocket_FirstOutputTimeoutWithoutDownstreamReusesClien
 	}
 
 	cfg := &config.Config{}
-	cfg.RunMode = config.RunModeSimple
+
 	cfg.Default.RateMultiplier = 1
 	cfg.Security.URLAllowlist.Enabled = false
 	cfg.Security.URLAllowlist.AllowInsecureHTTP = true
@@ -2454,7 +2454,7 @@ func runOpenAIResponsesWebSocketUsageLogCase(t *testing.T, tc openAIResponsesWSU
 	}
 
 	cfg := &config.Config{}
-	cfg.RunMode = config.RunModeSimple
+
 	cfg.Default.RateMultiplier = 1
 	cfg.Security.URLAllowlist.Enabled = false
 	cfg.Security.URLAllowlist.AllowInsecureHTTP = true

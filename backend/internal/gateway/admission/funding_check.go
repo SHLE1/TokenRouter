@@ -21,22 +21,19 @@ type RPMCheck interface {
 
 // FundingAdmission 固定绑定两个用例，保持资金错误先于 RPM 消费。
 type FundingAdmission struct {
-	funds  FundingCheck
-	rpm    RPMCheck
-	simple func() bool
+	funds FundingCheck
+	rpm   RPMCheck
 }
 
-func NewFundingAdmission(funds FundingCheck, rpm RPMCheck, simple func() bool) *FundingAdmission {
-	return &FundingAdmission{funds: funds, rpm: rpm, simple: simple}
+// NewFundingAdmission 固定资金与 RPM 检查依赖。
+func NewFundingAdmission(funds FundingCheck, rpm RPMCheck) *FundingAdmission {
+	return &FundingAdmission{funds: funds, rpm: rpm}
 }
 
-// Check 首先检查资金，再读取原运行模式并执行 RPM；不在资金拒绝时累计次数。
+// Check 首先检查资金，通过后执行 RPM；不在资金拒绝时累计次数。
 func (a *FundingAdmission) Check(ctx context.Context, input billing.CheckInput, user *scheduler.RPMUser, group *scheduler.RPMGroup) error {
 	if err := a.CheckFunding(ctx, input); err != nil {
 		return err
-	}
-	if a.simple != nil && a.simple() {
-		return nil
 	}
 	if a.rpm == nil || user == nil {
 		return nil

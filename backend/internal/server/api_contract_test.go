@@ -246,8 +246,7 @@ func TestAPIContracts(t *testing.T) {
 							"can_unbind": false,
 							"bind_start_path": "/api/v1/auth/oauth/dingtalk/bind/start?intent=bind_current_user&redirect=%2Fsettings%2Fprofile"
 						}
-					},
-					"run_mode": "standard"
+					}
 				}
 			}`,
 		},
@@ -1767,7 +1766,6 @@ func newContractDeps(t *testing.T, setup func(*testing.T, *contractDeps)) *contr
 		Default: config.DefaultConfig{
 			APIKeyPrefix: "sk-",
 		},
-		RunMode: config.RunModeStandard,
 	}
 
 	usageRepo := newStubUsageLogRepo()
@@ -1804,7 +1802,7 @@ func newContractDeps(t *testing.T, setup func(*testing.T, *contractDeps)) *contr
 	settingService := settingFixture.Runtime
 	authSettings := identitytestkit.Settings(settingRepo, cfg)
 
-	authHandler := identityhttp.NewSessionHandler(nil, userService, authSettings, redeemService, nil, nil, identityhttp.SessionHTTPOptions{RunMode: cfg.RunMode})
+	authHandler := identityhttp.NewSessionHandler(nil, userService, authSettings, redeemService, nil, nil, identityhttp.SessionHTTPOptions{})
 	apiKeyHandler := keyhttp.NewAPIKeyHandler(apiKeyService, func(group *routing.Group, capacity *accessview.GroupCapacitySummary) *routingdto.Group {
 		result := routingdto.GroupFromRouting(apikey.RoutingGroup(group))
 		if result != nil && capacity != nil {

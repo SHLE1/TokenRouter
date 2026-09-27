@@ -139,9 +139,9 @@ describe('AppSidebar admin personal menu', () => {
   })
 })
 
-describe('AppSidebar simple mode', () => {
+describe('AppSidebar risk control', () => {
   it('keeps enabled risk control visible to administrators', () => {
-    // 风控路由和设置入口在简单模式下可用，侧栏不能单独隐藏同一功能。
+    // 风控入口遵守独立功能开关。
     const start = componentSource.indexOf("path: '/admin/risk-control'")
     const end = componentSource.indexOf("path: '/admin/redeem'", start)
     const riskControlItem = componentSource.slice(start, end)
@@ -149,6 +149,5 @@ describe('AppSidebar simple mode', () => {
     expect(start).toBeGreaterThanOrEqual(0)
     expect(end).toBeGreaterThan(start)
     expect(riskControlItem).toContain('risk_control_enabled')
-    expect(riskControlItem).not.toContain('hideInSimpleMode')
   })
 })

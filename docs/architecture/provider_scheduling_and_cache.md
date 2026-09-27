@@ -18,7 +18,7 @@
 
 调度使用请求携带的分组、强制平台、客户端模型、映射后的模型、endpoint/媒体意图、协议 transport、OAuth/privacy 要求和可选 session 标识。提供商优先级统一来自 `providers.priority`；`provider_groups` 只表达成员关系，不保存分组内优先级。
 
-普通请求读取分组内全部提供商的平台无关快照。平台为空的 `single` bucket 包含九类提供商平台；指定平台的 bucket 只用于专用入口或明确的能力选择。`/antigravity/*` 等强制入口附加提供商平台过滤，并保留分组成员、模型和协议门禁。standard 与 simple 模式使用相同的分组范围；未分组提供商不进入请求候选池。
+普通请求读取分组内全部提供商的平台无关快照。平台为空的 `single` bucket 包含九类提供商平台；指定平台的 bucket 只用于专用入口或明确的能力选择。`/antigravity/*` 等强制入口附加提供商平台过滤，并保留分组成员、模型和协议门禁。所有请求遵守显式分组范围；未分组提供商不进入请求候选池。
 
 同一提供商可能属于多个分组；每个 bucket 的资格和模型范围独立计算，但提供商全局优先级在所有分组中一致。分组查询按 `providers.priority`、`provider_id` 稳定排序。
 
@@ -72,7 +72,7 @@ Spark 影子的母提供商资格由 `provider.ParentHealthyForShadow` 统一判
 
 错误率和 TTFT 使用共享的运行时 EWMA；错误率以 0% 为初始基线，没有反馈样本时按 0% 计算，归一化健康度为 1，首次失败会从该零基线更新 EWMA 并立即低于完全未观测提供商。每个聚合值还保存样本数和最近观测时间。诊断对未观测错误率明确显示“0%（未观测）”，负载、TTFT、窗口重置或平台额度快照缺失时则标注“未观测，使用中性值”，而不是把提供商表示为失败或不可调度。负载分母使用提供商的 `EffectiveLoadFactor()`。分组覆盖、全局运行时设置与进程默认值均逐字段标注来源，保证诊断公式和实际高级调度路径共用相同有效参数。
 
-模型缺失错误的诊断直接由 `routing.ModelAvailability` 读取持久配置提供商池，app 将同一 provider 存储与分组策略读取实例绑定到 Messages、兼容文本、已解析模型三种端口。该查询忽略临时限流、过载和停调，同时复核分组、提供商协议路线与模型范围，不能拿调度快照的空池证明模型不存在；standard/simple 均限定在显式分组的提供商关联内，缺少分组时不读取提供商池。HTTP 与计数执行端分别接收诊断和选择能力。已解析模型不再经过分组映射；未解析模型使用 `PricingConfigService.ResolveRoutingModel` 的唯一规则。
+模型缺失错误的诊断直接由 `routing.ModelAvailability` 读取持久配置提供商池，app 将同一 provider 存储与分组策略读取实例绑定到 Messages、兼容文本、已解析模型三种端口。该查询忽略临时限流、过载和停调，同时复核分组、提供商协议路线与模型范围，不能拿调度快照的空池证明模型不存在；候选限定在显式分组的提供商关联内，缺少分组时不读取提供商池。HTTP 与计数执行端分别接收诊断和选择能力。已解析模型不再经过分组映射；未解析模型使用 `PricingConfigService.ResolveRoutingModel` 的唯一规则。
 
 OpenAI 兼容选择、诊断与 WS 复核共用 `ModelPolicy.SupportsCompatibleRouting`，透传提供商同样遵守显式白名单、映射与默认模型目录。
 

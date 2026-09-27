@@ -11,7 +11,7 @@ import (
 // Cyber 只改变记录分类，继续复用原计费与失败事实路径。
 func TestRecordCyberRetainsFailureFactAndDoesNotResettleLogFailure(t *testing.T) {
 	for _, failed := range []bool{false, true} {
-		core, funds, logs, in, _ := recordFixture(false)
+		core, funds, logs, in, _ := recordFixture()
 		if failed {
 			funds.err = errors.New("settlement failed")
 		} else {
@@ -30,19 +30,15 @@ func TestRecordCyberRetainsFailureFactAndDoesNotResettleLogFailure(t *testing.T)
 		require.False(t, in.CyberBlocked)
 	}
 }
-func TestRecordCyberPreservesZeroUsageAndSimple(t *testing.T) {
-	for _, simple := range []bool{false, true} {
-		core, funds, logs, in, _ := recordFixture(simple)
-		in.Result.Usage = TokenUsage{}
-		core.RecordCyber(context.Background(), in)
-		if simple {
-			require.Zero(t, funds.calls)
-		} else {
-			require.Equal(t, 1, funds.calls)
-			require.Zero(t, funds.command.BillableAmountUSD)
-		}
-		require.NotEmpty(t, logs.rows)
-		require.Zero(t, logs.rows[0].ActualCost)
-		require.Equal(t, RequestTypeCyberBlocked, logs.rows[0].RequestType)
-	}
+
+// 零用量审核记录也进入结算，金额保持为零。
+func TestRecordCyberPreservesZeroUsage(t *testing.T) {
+	core, funds, logs, in, _ := recordFixture()
+	in.Result.Usage = TokenUsage{}
+	core.RecordCyber(context.Background(), in)
+	require.Equal(t, 1, funds.calls)
+	require.Zero(t, funds.command.BillableAmountUSD)
+	require.NotEmpty(t, logs.rows)
+	require.Zero(t, logs.rows[0].ActualCost)
+	require.Equal(t, RequestTypeCyberBlocked, logs.rows[0].RequestType)
 }

@@ -31,7 +31,6 @@ func provideSchedulerSnapshot(cache scheduler.SnapshotCache, outbox scheduler.Sc
 	if cfg != nil {
 		v := cfg.Gateway.Scheduling
 		options = &scheduler.SnapshotOptions{
-			Simple:            cfg.RunMode == config.RunModeSimple,
 			DbFallbackEnabled: v.DbFallbackEnabled, DbFallbackMaxQPS: v.DbFallbackMaxQPS, DbFallbackTimeoutSeconds: v.DbFallbackTimeoutSeconds,
 			OutboxPollIntervalSeconds: v.OutboxPollIntervalSeconds, FullRebuildIntervalSeconds: v.FullRebuildIntervalSeconds, OutboxLagWarnSeconds: v.OutboxLagWarnSeconds,
 			OutboxLagRebuildSeconds: v.OutboxLagRebuildSeconds, OutboxLagRebuildFailures: v.OutboxLagRebuildFailures, OutboxBacklogRebuildRows: v.OutboxBacklogRebuildRows,

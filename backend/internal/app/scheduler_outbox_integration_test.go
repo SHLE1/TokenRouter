@@ -37,7 +37,7 @@ func TestSchedulerSnapshotOutboxReplay(t *testing.T) {
 	cache := schedulerredis.NewSnapshotCache(rdb, codec.ProviderCodec{})
 	store.SetEvents(app.NewS16ProviderEvents(store, nil))
 	outbox := schedulerpostgres.NewSchedulerOutboxRepository(f.db)
-	cfg := &config.Config{RunMode: config.RunModeStandard}
+	cfg := &config.Config{}
 	cfg.Gateway.Scheduling.OutboxPollIntervalSeconds = 1
 	cfg.Gateway.Scheduling.DbFallbackEnabled = true
 	value := &provider.Record{Name: "outbox-replay-" + time.Now().Format("150405.000000"), Platform: provider.PlatformOpenAI, Type: provider.ProviderTypeAPIKey, Status: provider.StatusActive, Schedulable: true, Concurrency: 3, Priority: 1, Credentials: map[string]any{}, Extra: map[string]any{}}

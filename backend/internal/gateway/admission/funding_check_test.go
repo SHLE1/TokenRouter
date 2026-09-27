@@ -24,7 +24,7 @@ func (f rpmCheckFixture) Check(ctx context.Context, user *scheduler.RPMUser, gro
 
 // 准入拒绝不得消耗RPM；等待后的资金复查也不能再次累计。
 func TestFundingAdmissionPreservesOrderAndWaitBoundary(t *testing.T) {
-	for _, mode := range []string{"rejected", "standard", "simple", "after_wait"} {
+	for _, mode := range []string{"rejected", "accepted", "after_wait"} {
 		t.Run(mode, func(t *testing.T) {
 			var events []string
 			denied := errors.New("funding denied")
@@ -42,7 +42,7 @@ func TestFundingAdmissionPreservesOrderAndWaitBoundary(t *testing.T) {
 				require.Equal(t, int64(22), group.ID)
 				return nil
 			})
-			checker := NewFundingAdmission(funds, rpm, func() bool { events = append(events, "mode"); return mode == "simple" })
+			checker := NewFundingAdmission(funds, rpm)
 			input := billing.CheckInput{Payer: &billing.UserSummary{ID: 11}}
 			if mode == "after_wait" {
 				require.NoError(t, checker.CheckFunding(context.Background(), input))
@@ -56,11 +56,7 @@ func TestFundingAdmissionPreservesOrderAndWaitBoundary(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
-			if mode == "simple" {
-				require.Equal(t, []string{"funds", "mode"}, events)
-			} else {
-				require.Equal(t, []string{"funds", "mode", "rpm"}, events)
-			}
+			require.Equal(t, []string{"funds", "rpm"}, events)
 		})
 	}
 }

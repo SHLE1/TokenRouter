@@ -33,7 +33,7 @@ func activeBillingEligibilitySubscription(limit float64, used float64) *UserSubs
 func newBillingEligibilityService(t *testing.T, balance float64) *Eligibility {
 	t.Helper()
 
-	svc := newOriginalEligibility(nil, &balanceLoadUserRepoStub{balance: balance}, nil, &EligibilityOptions{RunMode: "standard"})
+	svc := newOriginalEligibility(nil, &balanceLoadUserRepoStub{balance: balance}, nil, &EligibilityOptions{})
 	svc.Start()
 	t.Cleanup(svc.Stop)
 	return svc
@@ -134,7 +134,7 @@ func TestBillingEligibility_BalanceModeIgnoresProvidedSubscription(t *testing.T)
 
 func TestBillingEligibility_UnlimitedSubscriptionDoesNotRequireBalance(t *testing.T) {
 	now := time.Now()
-	svc := newOriginalEligibility(nil, nil, nil, &EligibilityOptions{RunMode: "standard"})
+	svc := newOriginalEligibility(nil, nil, nil, &EligibilityOptions{})
 	svc.Start()
 	t.Cleanup(svc.Stop)
 

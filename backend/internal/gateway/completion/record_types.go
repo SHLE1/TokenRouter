@@ -205,7 +205,6 @@ type Dependencies struct {
 	Observe        func(string, string)
 }
 type RecorderOptions struct {
-	Simple            bool
 	DefaultMultiplier float64
 	Now               func() time.Time
 }
@@ -224,7 +223,6 @@ type Recorder struct {
 	logs              LogWriter
 	effects           Effects
 	observe           func(string, string)
-	simple            bool
 	defaultMultiplier float64
 	now               func() time.Time
 }
@@ -249,7 +247,6 @@ func NewRecorder(d Dependencies, o RecorderOptions) *Recorder {
 		logs:              d.Logs,
 		effects:           d.Effects,
 		observe:           d.Observe,
-		simple:            o.Simple,
 		defaultMultiplier: o.DefaultMultiplier,
 		now:               o.Now,
 	}

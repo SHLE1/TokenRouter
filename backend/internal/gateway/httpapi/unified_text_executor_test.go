@@ -106,7 +106,7 @@ func TestUnifiedNativeUsageSurvivesCaptureAndRecord(t *testing.T) {
 	result.NativeUsage.InputTokens = 999
 	require.Equal(t, 100, input.Result.Usage.InputTokens)
 	logs := &unifiedRecordWriter{}
-	recorder := completion.NewRecorder(completion.Dependencies{Calculator: billing.NewCalculator(nil, billing.CalculatorOptions{DefaultRateMultiplier: 1}), Logs: logs, Effects: unifiedRecordEffects{}, Models: unifiedRecordModels{}}, completion.RecorderOptions{Simple: true, DefaultMultiplier: 1})
+	recorder := completion.NewRecorder(completion.Dependencies{Calculator: billing.NewCalculator(nil, billing.CalculatorOptions{DefaultRateMultiplier: 1}), Funds: unifiedRecordFunds{}, Logs: logs, Effects: unifiedRecordEffects{}, Models: unifiedRecordModels{}}, completion.RecorderOptions{DefaultMultiplier: 1})
 	require.NoError(t, recorder.Record(context.Background(), input, true))
 	require.Len(t, logs.rows, 1)
 	row := logs.rows[0]
@@ -128,3 +128,10 @@ func TestUnifiedNativeUsageSurvivesCaptureAndRecord(t *testing.T) {
 type unifiedSearchSource struct{}
 
 func (unifiedSearchSource) Current() searchtools.Searcher { return nil }
+
+// unifiedRecordFunds 让协议用量测试通过真实完成链调用结算端口。
+type unifiedRecordFunds struct{}
+
+func (unifiedRecordFunds) Apply(_ context.Context, command *billing.UsageBillingCommand) (*billing.UsageBillingApplyResult, error) {
+	return &billing.UsageBillingApplyResult{Applied: true, BalanceAmountUSD: command.BillableAmountUSD}, nil
+}

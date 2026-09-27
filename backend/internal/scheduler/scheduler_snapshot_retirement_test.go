@@ -159,7 +159,7 @@ func TestSchedulerFullRebuildCapturesAllRegistryTokensBeforeDBLoad(t *testing.T)
 			return []SnapshotProvider{snapshotTestProvider{ID: 6101, Platform: PlatformOpenAI, Status: StatusActive, Schedulable: true}}, nil
 		},
 	}
-	svc := NewSnapshotService(cache, nil, repo, &retirementGroupRepo{groups: []SnapshotGroup{{ID: 61, Status: StatusActive}}}, &SnapshotOptions{Simple: "standard" == "simple", DbFallbackEnabled: true})
+	svc := NewSnapshotService(cache, nil, repo, &retirementGroupRepo{groups: []SnapshotGroup{{ID: 61, Status: StatusActive}}}, &SnapshotOptions{DbFallbackEnabled: true})
 
 	result := make(chan error, 1)
 	go func() { result <- svc.triggerFullRebuild("retirement_race_a") }()
@@ -201,7 +201,7 @@ func TestSchedulerRebuildRetireAfterDBLoadFencesPublish(t *testing.T) {
 			return []SnapshotProvider{snapshotTestProvider{ID: 6201, Platform: PlatformOpenAI, Status: StatusActive, Schedulable: true}}, nil
 		},
 	}
-	svc := NewSnapshotService(cache, nil, repo, nil, &SnapshotOptions{Simple: "standard" == "simple", DbFallbackEnabled: true})
+	svc := NewSnapshotService(cache, nil, repo, nil, &SnapshotOptions{DbFallbackEnabled: true})
 
 	result := make(chan error, 1)
 	go func() {
@@ -234,7 +234,7 @@ func TestSchedulerFallbackReturnsDBProvidersWhenBucketRetired(t *testing.T) {
 	repo := &retirementProviderSource{
 		providers: []SnapshotProvider{snapshotTestProvider{ID: 6301, Platform: PlatformOpenAI, Status: StatusActive, Schedulable: true}},
 	}
-	svc := NewSnapshotService(cache, nil, repo, nil, &SnapshotOptions{Simple: "standard" == "simple", DbFallbackEnabled: true})
+	svc := NewSnapshotService(cache, nil, repo, nil, &SnapshotOptions{DbFallbackEnabled: true})
 	groupID := bucket.GroupID
 
 	providers, useMixed, err := svc.ListSchedulableProviders(context.Background(), &groupID, bucket.Platform, false)

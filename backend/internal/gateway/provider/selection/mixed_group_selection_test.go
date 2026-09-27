@@ -54,38 +54,36 @@ func mixedGroupProvider(id int64, platform, model string, groupID int64) gateway
 	return *gatewayadapter.NewExecutionProvider(&value)
 }
 
-// 每个入口先验证模型与协议，再在同组跨平台选择；simple 同样保留成员边界。
+// 每个入口先验证模型与协议，再在同组跨平台选择，保留分组成员边界。
 func TestMixedGroupSelectsModelOnActualProviderPlatform(t *testing.T) {
 	for _, mode := range []routing.GroupSchedulerType{routing.GroupSchedulerTypeBasic, routing.GroupSchedulerTypeAdvanced} {
-		for _, simple := range []bool{false, true} {
-			t.Run(fmt.Sprintf("%s/simple=%v", mode, simple), func(t *testing.T) {
-				group := &routing.Group{ID: 91, Hydrated: true, Status: routing.StatusActive, SchedulerType: mode}
-				repo := &mixedGroupProviders{values: []gatewayadapter.ExecutionProvider{
-					mixedGroupProvider(1, capability.PlatformAnthropic, "claude-test", group.ID),
-					mixedGroupProvider(2, capability.PlatformOpenAI, "gpt-test", group.ID),
-					mixedGroupProvider(3, capability.PlatformGemini, "gemini-test", group.ID),
-					mixedGroupProvider(4, capability.PlatformOpenAI, "gpt-test", 92),
-				}}
-				options := DefaultOptions()
-				options.Simple = simple
-				selector := NewCompatible(CompatibleDependencies{Reads: Reads{Providers: repo}}, options)
-				for _, source := range []protocol.ProtocolID{protocol.ProtocolAnthropicMessages, protocol.ProtocolOpenAIResponses, protocol.ProtocolOpenAIChatCompletions} {
-					ctx := requeststate.WithClientProtocol(requeststate.WithGroup(context.Background(), group), source)
-					for i, model := range []string{"claude-test", "gpt-test", "gemini-test"} {
-						selected, _, err := selector.SelectProviderWithSchedulerForCapability(ctx, &group.ID, "", "", model, nil, egress.OpenAIUpstreamTransportHTTPSSE, provider.OpenAIEndpointCapabilityTextGeneration, false, false)
-						require.NoError(t, err, "%s %s", source, model)
-						require.NotNil(t, selected)
-						require.Equal(t, int64(i+1), selected.Provider.Record.ID)
-						if selected.ReleaseFunc != nil {
-							selected.ReleaseFunc()
-						}
+		t.Run(string(mode), func(t *testing.T) {
+			group := &routing.Group{ID: 91, Hydrated: true, Status: routing.StatusActive, SchedulerType: mode}
+			repo := &mixedGroupProviders{values: []gatewayadapter.ExecutionProvider{
+				mixedGroupProvider(1, capability.PlatformAnthropic, "claude-test", group.ID),
+				mixedGroupProvider(2, capability.PlatformOpenAI, "gpt-test", group.ID),
+				mixedGroupProvider(3, capability.PlatformGemini, "gemini-test", group.ID),
+				mixedGroupProvider(4, capability.PlatformOpenAI, "gpt-test", 92),
+			}}
+			options := DefaultOptions()
+
+			selector := NewCompatible(CompatibleDependencies{Reads: Reads{Providers: repo}}, options)
+			for _, source := range []protocol.ProtocolID{protocol.ProtocolAnthropicMessages, protocol.ProtocolOpenAIResponses, protocol.ProtocolOpenAIChatCompletions} {
+				ctx := requeststate.WithClientProtocol(requeststate.WithGroup(context.Background(), group), source)
+				for i, model := range []string{"claude-test", "gpt-test", "gemini-test"} {
+					selected, _, err := selector.SelectProviderWithSchedulerForCapability(ctx, &group.ID, "", "", model, nil, egress.OpenAIUpstreamTransportHTTPSSE, provider.OpenAIEndpointCapabilityTextGeneration, false, false)
+					require.NoError(t, err, "%s %s", source, model)
+					require.NotNil(t, selected)
+					require.Equal(t, int64(i+1), selected.Provider.Record.ID)
+					if selected.ReleaseFunc != nil {
+						selected.ReleaseFunc()
 					}
 				}
-				for _, queried := range repo.groupQueries {
-					require.Equal(t, group.ID, queried)
-				}
-			})
-		}
+			}
+			for _, queried := range repo.groupQueries {
+				require.Equal(t, group.ID, queried)
+			}
+		})
 	}
 }
 

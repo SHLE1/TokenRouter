@@ -275,7 +275,6 @@
                 </span>
               </div>
 
-
             </div>
           </template>
           <template #cell-capacity="{ row }">
@@ -2098,9 +2097,7 @@ const allColumns = computed(() => {
     { key: 'schedulable', label: t('admin.providers.columns.schedulable'), sortable: true },
     { key: 'today_stats', label: t('admin.providers.columns.todayStats'), sortable: false }
   ]
-  if (!authStore.isSimpleMode) {
-    c.push({ key: 'groups', label: t('admin.providers.columns.groups'), sortable: false })
-  }
+  c.push({ key: 'groups', label: t('admin.providers.columns.groups'), sortable: false })
   c.push({ key: 'usage', label: t('admin.providers.columns.usageWindows'), sortable: false })
   c.push(
     { key: 'proxy', label: t('admin.providers.columns.proxy'), sortable: false },

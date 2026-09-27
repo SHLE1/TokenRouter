@@ -401,7 +401,6 @@ func TestSelectProviderWithLoadAwareness_StickyReadReuse(t *testing.T) {
 	)
 
 	cfg := &config.Config{
-		RunMode: config.RunModeStandard,
 		Gateway: config.GatewayConfig{
 			Scheduling: config.GatewaySchedulingConfig{
 				LoadBatchEnabled:         true,

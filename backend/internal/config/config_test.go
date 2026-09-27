@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 	"os"
@@ -417,26 +418,6 @@ func TestLoadForBootstrapAllowsMissingJWTSecret(t *testing.T) {
 	}
 	if cfg.JWT.Secret != "" {
 		t.Fatalf("LoadForBootstrap() should keep empty jwt.secret during bootstrap")
-	}
-}
-
-func TestNormalizeRunMode(t *testing.T) {
-	tests := []struct {
-		input    string
-		expected string
-	}{
-		{"simple", "simple"},
-		{"SIMPLE", "simple"},
-		{"standard", "standard"},
-		{"invalid", "standard"},
-		{"", "standard"},
-	}
-
-	for _, tt := range tests {
-		result := NormalizeRunMode(tt.input)
-		if result != tt.expected {
-			t.Errorf("NormalizeRunMode(%q) = %q, want %q", tt.input, result, tt.expected)
-		}
 	}
 }
 
@@ -2664,5 +2645,37 @@ func TestLoad_DefaultGatewayImageStreamConfig(t *testing.T) {
 	}
 	if cfg.Gateway.ImageStreamDataIntervalTimeout <= cfg.Gateway.StreamDataIntervalTimeout {
 		t.Fatalf("image stream timeout = %d, want greater than ordinary stream timeout %d", cfg.Gateway.ImageStreamDataIntervalTimeout, cfg.Gateway.StreamDataIntervalTimeout)
+	}
+}
+
+// 旧部署参数作为未知键忽略，不改变任何启动配置。
+func TestLoadIgnoresLegacyRunMode(t *testing.T) {
+	for _, legacy := range []struct{ name, env, yaml string }{
+		{name: "未设置"},
+		{name: "旧环境变量", env: "simple"},
+		{name: "旧配置文件", yaml: "run_mode: simple\n"},
+		{name: "旧配置组合", env: "simple", yaml: "run_mode: standard\n"},
+	} {
+		t.Run(legacy.name, func(t *testing.T) {
+			resetViperWithJWTSecret(t)
+			t.Setenv("RUN_MODE", "")
+			file := filepath.Join(t.TempDir(), "config.yaml")
+			require.NoError(t, os.WriteFile(file, []byte("timezone: UTC\n"), 0o600))
+			t.Setenv("CONFIG_FILE", file)
+			t.Setenv("TOTP_ENCRYPTION_KEY", strings.Repeat("a", 64))
+			baseline, err := Load()
+			require.NoError(t, err)
+			viper.Reset()
+			t.Setenv("RUN_MODE", legacy.env)
+			require.NoError(t, os.WriteFile(file, []byte("timezone: UTC\n"+legacy.yaml), 0o600))
+			actual, err := Load()
+			require.NoError(t, err)
+			// 配置内含原子缓存指针，只比较对外配置值。
+			before, err := json.Marshal(baseline)
+			require.NoError(t, err)
+			after, err := json.Marshal(actual)
+			require.NoError(t, err)
+			require.JSONEq(t, string(before), string(after))
+		})
 	}
 }

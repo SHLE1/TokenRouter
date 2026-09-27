@@ -61,7 +61,7 @@ func TestSearchNativePortsCompleteEachRequestOnce(t *testing.T) {
 			fixture := testkit.NewRecording(logs, funds, nil, false)
 			fixture.Dependencies.Calculator = billingtestkit.Calculator(1.1, nil, map[string]*pricing.ModelPricing{"grok-web-search": {}, "grok-x-search": {}})
 			recorder := fixture.Core(nil, false)
-			ports := SearchPorts{Selector: target, Funding: admission.NewFundingAdmission(checks, nil, nil), Recorder: recorder}
+			ports := SearchPorts{Selector: target, Funding: admission.NewFundingAdmission(checks, nil), Recorder: recorder}
 			handler := NewSearchHandler(ports)
 			var priorID string
 			for i := 1; i <= 2; i++ {

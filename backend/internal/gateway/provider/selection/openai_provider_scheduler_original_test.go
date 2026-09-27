@@ -2223,7 +2223,7 @@ func TestOpenAIGatewayService_SelectProviderWithScheduler_DBFreshGroupRecheckRel
 		providersByID:     map[int64]*gatewayprovider.ExecutionProvider{stalePrimary.Record.ID: stalePrimary, staleBackup.Record.ID: staleBackup},
 	}
 	acquiredIDs, releasedIDs := []int64{}, []int64{}
-	cfg := &config.Config{RunMode: config.RunModeStandard}
+	cfg := &config.Config{}
 	svc := newCompatibleSelectionForTest(CompatibleDependencies{
 		Reads: Reads{
 			Providers: schedulerTestOpenAIProviderRepo{providers: []gatewayprovider.ExecutionProvider{dbPrimary, dbBackup}},
@@ -2263,7 +2263,7 @@ func TestOpenAIGatewayService_SelectProviderWithLoadAwareness_DBFreshGroupRechec
 		snapshotProviders: []*gatewayprovider.ExecutionProvider{stalePrimary, staleBackup},
 		providersByID:     map[int64]*gatewayprovider.ExecutionProvider{stalePrimary.Record.ID: stalePrimary, staleBackup.Record.ID: staleBackup},
 	}
-	cfg := &config.Config{RunMode: config.RunModeStandard}
+	cfg := &config.Config{}
 	cfg.Gateway.Scheduling.LoadBatchEnabled = true
 	svc := newCompatibleSelectionForTest(CompatibleDependencies{
 		Reads: Reads{
@@ -2283,7 +2283,7 @@ func TestOpenAIGatewayService_SelectProviderWithLoadAwareness_DBFreshGroupRechec
 	require.Equal(t, staleBackup.Record.ID, selection.WaitPlan.ProviderID)
 }
 
-func TestOpenAIGatewayService_RecheckSelectedOpenAIProviderFromDB_SimpleModeKeepsGroupBoundary(t *testing.T) {
+func TestOpenAIGatewayService_RecheckSelectedOpenAIProviderFromDB_KeepsGroupBoundary(t *testing.T) {
 	grouped := gatewayprovider.ExecutionProvider{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 34301, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, GroupIDs: []int64{99}}}
 	svc := newCompatibleSelectionForTest(CompatibleDependencies{
 		Reads: Reads{
@@ -2292,7 +2292,7 @@ func TestOpenAIGatewayService_RecheckSelectedOpenAIProviderFromDB_SimpleModeKeep
 		},
 
 		Shared: Shared{},
-	}, &config.Config{RunMode: config.RunModeSimple})
+	}, &config.Config{})
 
 	requestedGroupID := int64(100)
 
@@ -2312,7 +2312,7 @@ func TestOpenAIGatewayService_RecheckSelectedOpenAIProviderFromDB_SimpleModeKeep
 					nil, nil)),
 		},
 		Shared: Shared{},
-	}, &config.Config{RunMode: config.RunModeStandard})
+	}, &config.Config{})
 
 	require.Nil(t, standardSvc.recheckSelectedOpenAIProviderFromDB(context.Background(), &grouped, nil, capability.PlatformOpenAI, "gpt-5.1", false, ""))
 	require.Nil(t, standardSvc.recheckSelectedOpenAIProviderFromDB(context.Background(), &ungrouped, nil, capability.PlatformOpenAI, "gpt-5.1", false, ""))

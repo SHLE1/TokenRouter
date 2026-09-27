@@ -255,8 +255,8 @@ func (c *batchSnapshotCache) bucketState(bucket SchedulerBucket) (locks, attempt
 	return c.locks[bucket], c.setAttempts[bucket], c.versions[bucket], append([]batchSnapshotWrite(nil), c.writes[bucket]...)
 }
 
-func newBatchQueryTestService(cache SnapshotCache, providers SnapshotProviderSource, runMode string) *SnapshotService {
-	return NewSnapshotService(cache, nil, providers, nil, &SnapshotOptions{Simple: runMode == "simple"})
+func newBatchQueryTestService(cache SnapshotCache, providers SnapshotProviderSource) *SnapshotService {
+	return NewSnapshotService(cache, nil, providers, nil, &SnapshotOptions{})
 }
 
 func TestSchedulerRebuildBatchReusesSingleForcedQueryAndKeepsSnapshotsIndependent(t *testing.T) {
@@ -270,7 +270,7 @@ func TestSchedulerRebuildBatchReusesSingleForcedQueryAndKeepsSnapshotsIndependen
 		require.Equal(t, wantCaptures, cache.captureCount(), "all tokens must be prepared before the first DB query")
 		wantCaptures += 2
 	}
-	svc := newBatchQueryTestService(cache, repo, "standard")
+	svc := newBatchQueryTestService(cache, repo)
 
 	require.NoError(t, svc.rebuildBuckets(context.Background(), []SchedulerBucket{single, forced}, "first"))
 	queryKey := batchProviderQueryKey{groupID: groupID, platform: PlatformOpenAI}
@@ -306,7 +306,7 @@ func TestSchedulerRebuildBatchReusesProviderPayloadForSingleForced(t *testing.T)
 	forced := SchedulerBucket{GroupID: groupID, Platform: PlatformOpenAI, Mode: SchedulerModeForced}
 	cache := newBatchSnapshotProviderIDCache()
 	repo := newBatchProviderQueryRepo()
-	svc := newBatchQueryTestService(cache, repo, "standard")
+	svc := newBatchQueryTestService(cache, repo)
 
 	for run := 1; run <= 2; run++ {
 		require.NoError(t, svc.rebuildBuckets(context.Background(), []SchedulerBucket{single, forced}, "reuse"))
@@ -327,7 +327,7 @@ func TestSchedulerRebuildBatchDoesNotReuseProviderPayloadAfterFirstWriterFailure
 	wantErr := errors.New("snapshot write failed")
 	cache := newBatchSnapshotProviderIDCache()
 	cache.setErrors[single] = wantErr
-	svc := newBatchQueryTestService(cache, newBatchProviderQueryRepo(), "standard")
+	svc := newBatchQueryTestService(cache, newBatchProviderQueryRepo())
 
 	err := svc.rebuildBuckets(context.Background(), []SchedulerBucket{single, forced}, "failure")
 	require.ErrorIs(t, err, wantErr)
@@ -349,7 +349,7 @@ func TestSchedulerRebuildBatchDoesNotReuseProviderPayloadAfterLateFirstWriterFai
 	wantErr := errors.New("snapshot activation failed")
 	cache := newBatchSnapshotProviderIDCache()
 	cache.fullLateErr[single] = wantErr
-	svc := newBatchQueryTestService(cache, newBatchProviderQueryRepo(), "standard")
+	svc := newBatchQueryTestService(cache, newBatchProviderQueryRepo())
 
 	err := svc.rebuildBuckets(context.Background(), []SchedulerBucket{single, forced}, "late-failure")
 	require.ErrorIs(t, err, wantErr)
@@ -370,7 +370,7 @@ func TestSchedulerRebuildBatchDoesNotReuseProviderPayloadAfterLockBusy(t *testin
 	forced := SchedulerBucket{GroupID: groupID, Platform: PlatformOpenAI, Mode: SchedulerModeForced}
 	cache := newBatchSnapshotProviderIDCache()
 	cache.lockBusy[single] = true
-	svc := newBatchQueryTestService(cache, newBatchProviderQueryRepo(), "standard")
+	svc := newBatchQueryTestService(cache, newBatchProviderQueryRepo())
 
 	require.NoError(t, svc.rebuildBuckets(context.Background(), []SchedulerBucket{single, forced}, "busy"))
 	full, idOnly := cache.reuseCounts(single)
@@ -391,7 +391,7 @@ func TestSchedulerRebuildBatchKeepsMixedAndDifferentQueriesOnFullWrites(t *testi
 	anthropicSingle := SchedulerBucket{GroupID: groupID, Platform: PlatformAnthropic, Mode: SchedulerModeSingle}
 	anthropicMixed := SchedulerBucket{GroupID: groupID, Platform: PlatformAnthropic, Mode: SchedulerModeMixed}
 	cache := newBatchSnapshotProviderIDCache()
-	svc := newBatchQueryTestService(cache, newBatchProviderQueryRepo(), "standard")
+	svc := newBatchQueryTestService(cache, newBatchProviderQueryRepo())
 
 	require.NoError(t, svc.rebuildBuckets(context.Background(), []SchedulerBucket{openAISingle, openAIForced, anthropicSingle, anthropicMixed}, "scope"))
 	full, idOnly := cache.reuseCounts(openAISingle)
@@ -420,7 +420,7 @@ func TestSchedulerRebuildBatchPropagatesProviderIDOnlyWriteFailure(t *testing.T)
 	wantErr := errors.New("id-only write failed")
 	cache := newBatchSnapshotProviderIDCache()
 	cache.idOnlyError[forced] = wantErr
-	svc := newBatchQueryTestService(cache, newBatchProviderQueryRepo(), "standard")
+	svc := newBatchQueryTestService(cache, newBatchProviderQueryRepo())
 
 	err := svc.rebuildBuckets(context.Background(), []SchedulerBucket{single, forced}, "id-error")
 	require.ErrorIs(t, err, wantErr)
@@ -435,7 +435,7 @@ func TestSchedulerRebuildBatchReusesSuccessfulEmptyProviderIDs(t *testing.T) {
 	forced := SchedulerBucket{GroupID: groupID, Platform: PlatformOpenAI, Mode: SchedulerModeForced}
 	cache := newBatchSnapshotProviderIDCache()
 	cache.returnEmpty = true
-	svc := newBatchQueryTestService(cache, newBatchProviderQueryRepo(), "standard")
+	svc := newBatchQueryTestService(cache, newBatchProviderQueryRepo())
 
 	require.NoError(t, svc.rebuildBuckets(context.Background(), []SchedulerBucket{single, forced}, "empty"))
 	full, idOnly := cache.reuseCounts(single)
@@ -453,9 +453,9 @@ func TestSchedulerRebuildBatchReusesProviderPayloadForSimpleGroupZero(t *testing
 	single := SchedulerBucket{GroupID: 0, Platform: PlatformOpenAI, Mode: SchedulerModeSingle}
 	forced := SchedulerBucket{GroupID: 0, Platform: PlatformOpenAI, Mode: SchedulerModeForced}
 	cache := newBatchSnapshotProviderIDCache()
-	svc := newBatchQueryTestService(cache, newBatchProviderQueryRepo(), "simple")
+	svc := newBatchQueryTestService(cache, newBatchProviderQueryRepo())
 
-	require.NoError(t, svc.rebuildBuckets(context.Background(), []SchedulerBucket{single, forced}, "simple"))
+	require.NoError(t, svc.rebuildBuckets(context.Background(), []SchedulerBucket{single, forced}, "test"))
 	full, idOnly := cache.reuseCounts(single)
 	require.Equal(t, 1, full)
 	require.Zero(t, idOnly)
@@ -493,7 +493,7 @@ func TestSchedulerRebuildBatchKeepsMixedAndDifferentKeysIndependent(t *testing.T
 	}
 	cache := newBatchSnapshotCache()
 	repo := newBatchProviderQueryRepo()
-	svc := newBatchQueryTestService(cache, repo, "standard")
+	svc := newBatchQueryTestService(cache, repo)
 
 	require.NoError(t, svc.rebuildBuckets(context.Background(), buckets, "test"))
 	require.Equal(t, 2, repo.callCount(batchProviderQueryKey{groupID: groupID, platform: PlatformAnthropic}))
@@ -509,12 +509,12 @@ func TestSchedulerRebuildBatchKeepsMixedAndDifferentKeysIndependent(t *testing.T
 	}
 }
 
-func TestSchedulerRebuildBatchKeepsSimpleModeBucketGroupsIndependent(t *testing.T) {
+func TestSchedulerRebuildBatchKeepsBucketGroupsIndependent(t *testing.T) {
 	single := SchedulerBucket{GroupID: 204, Platform: PlatformOpenAI, Mode: SchedulerModeSingle}
 	forced := SchedulerBucket{GroupID: 0, Platform: PlatformOpenAI, Mode: SchedulerModeForced}
 	cache := newBatchSnapshotCache()
 	repo := newBatchProviderQueryRepo()
-	svc := newBatchQueryTestService(cache, repo, "simple")
+	svc := newBatchQueryTestService(cache, repo)
 
 	require.NoError(t, svc.rebuildBuckets(context.Background(), []SchedulerBucket{single, forced}, "test"))
 	require.Equal(t, 1, repo.callCount(batchProviderQueryKey{groupID: 204, platform: PlatformOpenAI}))
@@ -543,7 +543,7 @@ func TestSchedulerRebuildBatchDoesNotCacheMixedOrHistoricalQueries(t *testing.T)
 			token, err := cache.CaptureBucketWriteToken(context.Background(), tc.bucket)
 			require.NoError(t, err)
 			repo := newBatchProviderQueryRepo()
-			svc := newBatchQueryTestService(cache, repo, "standard")
+			svc := newBatchQueryTestService(cache, repo)
 			tasks := []schedulerBucketWriteTask{
 				{bucket: tc.bucket, token: token},
 				{bucket: tc.bucket, token: token},
@@ -573,7 +573,7 @@ func TestSchedulerRebuildBatchRetriesQueryFailureForFollowingBucket(t *testing.T
 		{providers: []SnapshotProvider{snapshotTestProvider{ID: 2051, Name: "retry", Platform: PlatformOpenAI}}},
 	}
 	cache := newBatchSnapshotCache()
-	svc := newBatchQueryTestService(cache, repo, "standard")
+	svc := newBatchQueryTestService(cache, repo)
 
 	err := svc.rebuildBuckets(context.Background(), []SchedulerBucket{single, forced}, "test")
 	require.ErrorIs(t, err, wantErr)
@@ -598,7 +598,7 @@ func TestSchedulerFullRebuildSharesSuccessfulQueryAcrossStrictAndOrdinarySegment
 	forcedToken, err := cache.CaptureBucketWriteToken(context.Background(), forced)
 	require.NoError(t, err)
 	repo := newBatchProviderQueryRepo()
-	svc := newBatchQueryTestService(cache, repo, "standard")
+	svc := newBatchQueryTestService(cache, repo)
 
 	err = svc.prepareAndRebuildFullSnapshot(
 		context.Background(),
@@ -626,7 +626,7 @@ func TestSchedulerRebuildBatchPreservesLockBusyAndFencingPolicy(t *testing.T) {
 		cache := newBatchSnapshotCache()
 		cache.lockBusy[single] = true
 		repo := newBatchProviderQueryRepo()
-		svc := newBatchQueryTestService(cache, repo, "standard")
+		svc := newBatchQueryTestService(cache, repo)
 
 		require.NoError(t, svc.rebuildBuckets(context.Background(), []SchedulerBucket{single, forced}, "test"))
 		require.Equal(t, 1, repo.callCount(batchProviderQueryKey{groupID: groupID, platform: PlatformOpenAI}))
@@ -645,7 +645,7 @@ func TestSchedulerRebuildBatchPreservesLockBusyAndFencingPolicy(t *testing.T) {
 		forcedToken, err := cache.CaptureBucketWriteToken(context.Background(), forced)
 		require.NoError(t, err)
 		repo := newBatchProviderQueryRepo()
-		svc := newBatchQueryTestService(cache, repo, "standard")
+		svc := newBatchQueryTestService(cache, repo)
 
 		err = svc.prepareAndRebuildFullSnapshot(
 			context.Background(),
@@ -665,7 +665,7 @@ func TestSchedulerRebuildBatchPreservesLockBusyAndFencingPolicy(t *testing.T) {
 		cache := newBatchSnapshotCache()
 		cache.setErrors[single] = ErrSchedulerBucketWriteFenced
 		repo := newBatchProviderQueryRepo()
-		svc := newBatchQueryTestService(cache, repo, "standard")
+		svc := newBatchQueryTestService(cache, repo)
 
 		require.NoError(t, svc.rebuildBuckets(context.Background(), []SchedulerBucket{single, forced}, "test"))
 		require.Equal(t, 1, repo.callCount(batchProviderQueryKey{groupID: groupID, platform: PlatformOpenAI}))
@@ -707,7 +707,7 @@ func TestSchedulerRebuildBatchReleasesResultsAfterLastConsumer(t *testing.T) {
 			maxResident = resident
 		}
 	}
-	svc := newBatchQueryTestService(cache, repo, "standard")
+	svc := newBatchQueryTestService(cache, repo)
 
 	err := svc.rebuildPreparedBucketTasks(context.Background(), tasks, "test", false, queries)
 	require.ErrorIs(t, err, wantLockErr)
@@ -769,7 +769,7 @@ func BenchmarkSchedulerRebuildBatchQueryReuse(b *testing.B) {
 			providers := make([]SnapshotProvider, tc.size)
 			svc := newBatchQueryTestService(
 				&batchQueryBenchmarkCache{},
-				&batchQueryBenchmarkRepo{providers: providers}, "standard",
+				&batchQueryBenchmarkRepo{providers: providers},
 			)
 			b.ReportAllocs()
 			b.ResetTimer()

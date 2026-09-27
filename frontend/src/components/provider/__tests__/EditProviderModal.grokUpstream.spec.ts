@@ -3,10 +3,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent } from 'vue'
 import { mount } from '@vue/test-utils'
 
-const { updateProviderMock, checkMixedChannelRiskMock, authIsSimpleMode } = vi.hoisted(() => ({
+const { updateProviderMock, checkMixedChannelRiskMock } = vi.hoisted(() => ({
   updateProviderMock: vi.fn(),
   checkMixedChannelRiskMock: vi.fn(),
-  authIsSimpleMode: { value: true }
 }))
 
 vi.mock('@/stores/app', () => ({
@@ -14,14 +13,6 @@ vi.mock('@/stores/app', () => ({
     showError: vi.fn(),
     showSuccess: vi.fn(),
     showInfo: vi.fn()
-  })
-}))
-
-vi.mock('@/stores/auth', () => ({
-  useAuthStore: () => ({
-    get isSimpleMode() {
-      return authIsSimpleMode.value
-    }
   })
 }))
 
@@ -119,7 +110,6 @@ function mountModal(provider: any) {
 
 describe('EditProviderModal Grok OAuth upstream config', () => {
   beforeEach(() => {
-    authIsSimpleMode.value = true
     updateProviderMock.mockReset()
     checkMixedChannelRiskMock.mockReset()
     checkMixedChannelRiskMock.mockResolvedValue({ has_risk: false })

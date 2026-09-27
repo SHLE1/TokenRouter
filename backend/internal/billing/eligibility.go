@@ -507,10 +507,6 @@ func (s *Eligibility) QueueUpdateAPIKeyRateLimitUsage(apiKeyID int64, cost float
 // CheckBillingEligibility 检查用户是否有资格发起请求。
 // auto 模式保留订阅额度耗尽后回退余额的历史行为；指定订阅和仅余额模式严格遵循 Key 配置。
 func (s *Eligibility) CheckBillingEligibility(ctx context.Context, user *UserSummary, apiKey *KeySnapshot, group *GroupSnapshot, subscription *UserSubscription, platform string) error {
-	// 简易模式：跳过所有计费检查
-	if s.options().RunMode == RunModeSimple {
-		return nil
-	}
 	if s.circuitBreaker != nil && !s.circuitBreaker.Allow() {
 		return ErrBillingServiceUnavailable
 	}

@@ -116,7 +116,7 @@ func provideIdentityHTTP(g *identityAuthGraph, users *identity.UserService, cfg 
 	flow := &identity.PendingFlow{Store: identitypostgres.NewPendingRepository(g.Client, time.Now), Database: &identitypostgres.PendingFlowDatabase{Client: g.Client, Auth: g.Core, Profiles: users}, Auth: g.Core, Profiles: users}
 	var pending *identityhttp.PendingHandler
 	session := identityhttp.NewSessionHandler(g.Core, users, runtime, redeems, totp, flow, identityhttp.SessionHTTPOptions{
-		RunMode: cfg.RunMode, BackendMode: runtime.ReadBackendMode, AuditActor: middleware.SetAuditActor,
+		BackendMode: runtime.ReadBackendMode, AuditActor: middleware.SetAuditActor,
 		ClearPendingCookies: func(c *gin.Context) {
 			secure := identityhttp.IsRequestHTTPS(c)
 			identityhttp.ClearOAuthPendingSessionCookie(c, secure)

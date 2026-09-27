@@ -162,9 +162,6 @@ func runMainServer(ctx context.Context, restarter *lifecycle.Restarter) (err err
 	if err := logging.Init(app.OptionsFromConfig(cfg.Log)); err != nil {
 		return fmt.Errorf("initialize logger: %w", err)
 	}
-	if cfg.RunMode == config.RunModeSimple {
-		log.Println("⚠️  WARNING: Running in SIMPLE mode - billing and quota checks are DISABLED")
-	}
 	syncOnReturn = false
 	application, err := app.Initialize(ctx, cfg, app.BuildInfo{Version: Version, BuildType: BuildType}, restarter)
 	if err != nil {

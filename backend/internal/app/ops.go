@@ -86,7 +86,7 @@ func provideOpsOptions(cfg *config.Config) *ops.Options {
 	if cfg == nil {
 		return nil
 	}
-	o := &ops.Options{RunMode: cfg.RunMode, Timezone: cfg.Timezone, IsNotFound: func(e error) bool { return errors.Is(e, sql.ErrNoRows) || errors.Is(e, ops.ErrRowNotFound) }, Logf: func(f string, a ...any) { logger.LegacyPrintf("service.ops", f, a...) }}
+	o := &ops.Options{Timezone: cfg.Timezone, IsNotFound: func(e error) bool { return errors.Is(e, sql.ErrNoRows) || errors.Is(e, ops.ErrRowNotFound) }, Logf: func(f string, a ...any) { logger.LegacyPrintf("service.ops", f, a...) }}
 	o.CleanupCompleted = func(counts string) {
 		logger.L().Info("[OpsCleanup] cleanup complete", zap.String("component", "service.ops_cleanup"), zap.String("deleted_counts", counts))
 	}

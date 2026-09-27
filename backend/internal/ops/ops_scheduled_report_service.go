@@ -37,8 +37,7 @@ type OpsScheduledReportService struct {
 	instanceID string
 	loc        *time.Location
 
-	distributedLockOn bool
-	warnNoRedisOnce   sync.Once
+	warnNoRedisOnce sync.Once
 
 	startOnce sync.Once
 	stopOnce  sync.Once
@@ -54,8 +53,6 @@ func NewOpsScheduledReportService(
 	redisClient RuntimeCache,
 	cfg *Options,
 ) *OpsScheduledReportService {
-	lockOn := cfg == nil || strings.TrimSpace(cfg.RunMode) != "simple"
-
 	loc := time.Local
 	if cfg != nil && strings.TrimSpace(cfg.Timezone) != "" {
 		if parsed, err := time.LoadLocation(strings.TrimSpace(cfg.Timezone)); err == nil && parsed != nil {
@@ -69,15 +66,14 @@ func NewOpsScheduledReportService(
 		redisClient:  redisClient,
 		cfg:          cfg,
 
-		instanceID:        uuid.NewString(),
-		loc:               loc,
-		distributedLockOn: lockOn,
-		warnNoRedisOnce:   sync.Once{},
-		startOnce:         sync.Once{},
-		stopOnce:          sync.Once{},
-		stopCtx:           nil,
-		stop:              nil,
-		wg:                sync.WaitGroup{},
+		instanceID:      uuid.NewString(),
+		loc:             loc,
+		warnNoRedisOnce: sync.Once{},
+		startOnce:       sync.Once{},
+		stopOnce:        sync.Once{},
+		stopCtx:         nil,
+		stop:            nil,
+		wg:              sync.WaitGroup{},
 	}
 }
 
@@ -786,7 +782,7 @@ func buildOpsProviderHealthEmailHTML(title string, start, end time.Time, avail *
 }
 
 func (s *OpsScheduledReportService) tryAcquireLeaderLock(ctx context.Context) (func(), bool) {
-	if s == nil || !s.distributedLockOn {
+	if s == nil {
 		return nil, true
 	}
 	if s.redisClient == nil {

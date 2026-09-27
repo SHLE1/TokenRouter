@@ -1425,7 +1425,6 @@
         <p class="input-hint">{{ t('admin.providers.selectAllowedModels') }}</p>
         <ModelWhitelistSelector v-model="antigravityWhitelistModels" platform="antigravity" />
 
-
         <!-- Mapping Mode Only (no toggle for Antigravity) -->
         <div>
           <div class="mb-3 rounded-control bg-purple-50 p-3 dark:bg-purple-900/20">
@@ -1636,7 +1635,6 @@
         <!-- Model Restriction Section (Antigravity 已在上层条件排除) -->
         <div class="border-t border-gray-200 pt-4 dark:border-dark-600">
           <label class="input-label">{{ t('admin.providers.modelRestriction') }}</label>
-
 
             <!-- Mode Toggle -->
             <div class="mb-4 flex gap-2">
@@ -2373,7 +2371,6 @@
         class="border-t border-gray-200 pt-4 dark:border-dark-600"
       >
         <label class="input-label">{{ t('admin.providers.modelRestriction') }}</label>
-
 
           <!-- Mode Toggle -->
           <div class="mb-4 flex gap-2">
@@ -3324,7 +3321,7 @@
           </div>
         </div>
 
-        <!-- Group Selection - 仅标准模式显示 -->
+        <!-- 分组选择 -->
         <GroupSelector
           v-model="form.group_ids"
           :groups="groups"
@@ -4285,7 +4282,6 @@ const getTempUnschedRuleKey = createStableObjectKeyResolver<TempUnschedRuleForm>
 const geminiOAuthType = ref<'code_assist' | 'google_one' | 'ai_studio'>('google_one')
 const geminiAIStudioOAuthEnabled = ref(false)
 
-
 const openAIOAuthClientPolicyOptions = computed(() => [
   { value: 'any', label: t('admin.providers.openai.clientPolicyAny') },
   { value: 'codex_only', label: t('admin.providers.openai.clientPolicyCodexOnly') },
@@ -4403,7 +4399,6 @@ const openaiResponsesWebSocketV2Mode = computed({
 const openAIWSModeConcurrencyHintKey = computed(() =>
   resolveOpenAIWSModeConcurrencyHintKey(openaiResponsesWebSocketV2Mode.value)
 )
-
 
 const openAIOAuthImportDefaults = ref<OpenAIOAuthImportDefaults | null>(null)
 const openAIOAuthImportDefaultsLoaded = ref(false)
@@ -5198,7 +5193,6 @@ const splitTempUnschedKeywords = (value: string) => {
     .map((item) => item.trim())
     .filter((item) => item.length > 0)
 }
-
 
 // 普通提交、批量授权与导入入口共用此边界，不能遗漏原生集合。
 async function createProtocolProvider(payload: CreateProviderRequest) {

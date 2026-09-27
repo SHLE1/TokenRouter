@@ -28,7 +28,6 @@ import (
 )
 
 func TestOpenAIGatewayHandlerResponses_ImageIntentRejectedByImageConcurrency(t *testing.T) {
-
 	body := `{"model":"gpt-5.4","input":"draw","tools":[{"type":"image_generation"}]}`
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -49,8 +48,10 @@ func TestOpenAIGatewayHandlerResponses_ImageIntentRejectedByImageConcurrency(t *
 		Source:  &gatewayExecutionFixture{},
 		Funding: &admission.FundingAdmission{},
 		Keys:    &apikey.APIKeyService{},
-		Concurrency: gatewayhttp.NewConcurrencyHelper(scheduler.NewConcurrencyService(&httptestkit.ConcurrencySequence{UserSeq: []bool{true}}, scheduler.Diagnostics{Logf: logging.LegacyPrintf,
-			Event: logging.Event},
+		Concurrency: gatewayhttp.NewConcurrencyHelper(scheduler.NewConcurrencyService(&httptestkit.ConcurrencySequence{UserSeq: []bool{true}}, scheduler.Diagnostics{
+			Logf:  logging.LegacyPrintf,
+			Event: logging.Event,
+		},
 		), gatewayhttp.SSEPingFormatNone, 0),
 		Rules: nil,
 		Config: &config.Config{Gateway: config.GatewayConfig{ImageConcurrency: config.ImageConcurrencyConfig{
@@ -75,7 +76,6 @@ func TestOpenAIGatewayHandlerResponses_ImageIntentRejectedByImageConcurrency(t *
 }
 
 func TestOpenAIGatewayHandlerResponses_TextOnlyNotRejectedByImageConcurrency(t *testing.T) {
-
 	body := `{"model":"gpt-5.4","input":"write code"}`
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -94,10 +94,12 @@ func TestOpenAIGatewayHandlerResponses_TextOnlyNotRejectedByImageConcurrency(t *
 
 	h := newGatewayHTTPEndpoints(gatewayHTTPFixtureInput{
 		Source:  &gatewayExecutionFixture{},
-		Funding: newFundingAdmissionFixture(newBillingEligibilityFixture(&config.Config{RunMode: config.RunModeSimple}), &config.Config{RunMode: config.RunModeSimple}),
+		Funding: newFundingAdmissionFixture(newBillingEligibilityFixture(&config.Config{}), &config.Config{}),
 		Keys:    &apikey.APIKeyService{},
-		Concurrency: gatewayhttp.NewConcurrencyHelper(scheduler.NewConcurrencyService(&httptestkit.ConcurrencySequence{UserSeq: []bool{true}}, scheduler.Diagnostics{Logf: logging.LegacyPrintf,
-			Event: logging.Event},
+		Concurrency: gatewayhttp.NewConcurrencyHelper(scheduler.NewConcurrencyService(&httptestkit.ConcurrencySequence{UserSeq: []bool{true}}, scheduler.Diagnostics{
+			Logf:  logging.LegacyPrintf,
+			Event: logging.Event,
+		},
 		), gatewayhttp.SSEPingFormatNone, 0),
 		Config: &config.Config{Gateway: config.GatewayConfig{ImageConcurrency: config.ImageConcurrencyConfig{
 			Enabled:               true,

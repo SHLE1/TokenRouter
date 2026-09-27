@@ -66,7 +66,7 @@ func (c *bulkEventSnapshotCache) capturedBuckets() []SchedulerBucket {
 }
 
 func newBulkEventTestService(cache SnapshotCache, providers SnapshotProviderSource) *SnapshotService {
-	return NewSnapshotService(cache, nil, providers, nil, &SnapshotOptions{Simple: "standard" == "simple"})
+	return NewSnapshotService(cache, nil, providers, nil, &SnapshotOptions{})
 }
 
 func bulkEventPayload(providerIDs []int64, groupIDs []int64) map[string]any {
@@ -169,10 +169,10 @@ func TestSchedulerBulkProviderEventDoesNotCrossCurrentGroupsBetweenPlatforms(t *
 	require.ElementsMatch(t, dedupeBuckets(want), cache.capturedBuckets())
 }
 
-func TestSchedulerBulkProviderEventKeepsGroupMembershipInSimpleMode(t *testing.T) {
+func TestSchedulerBulkProviderEventKeepsGroupMembershipIn(t *testing.T) {
 	cache := newBulkEventSnapshotCache()
 	repo := newBulkEventProviderRepo(&snapshotTestProvider{ID: 11, Platform: PlatformOpenAI, GroupIDs: []int64{71}})
-	svc := NewSnapshotService(cache, nil, repo, nil, &SnapshotOptions{Simple: true})
+	svc := NewSnapshotService(cache, nil, repo, nil, &SnapshotOptions{})
 
 	err := svc.handleBulkProviderEvent(context.Background(), bulkEventPayload([]int64{11}, []int64{72}), make(map[batchSeenKey]struct{}))
 

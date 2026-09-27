@@ -3,8 +3,6 @@ package httpapi
 import (
 	"net/http"
 	"strings"
-
-	"github.com/TokenFlux/TokenRouter/internal/apikey"
 )
 
 // IsBatchImageManagementRequest 标识不会创建新生成任务的批任务管理请求。
@@ -59,16 +57,4 @@ func IsAPIKeyUsageRequest(method, path string) bool {
 	default:
 		return false
 	}
-}
-
-// ShouldResolveAPIKeyBillingInSimpleMode 为不执行资金预检的简易模式保留必要的权益上下文。
-// 严格指定订阅的复合 Key 必须据此过滤模型列表，避免在简易模式泄露套餐外映射。
-func ShouldResolveAPIKeyBillingInSimpleMode(apiKey *apikey.APIKey, method, path string) bool {
-	if IsAPIKeyUsageRequest(method, path) {
-		return true
-	}
-	return apiKey != nil &&
-		apiKey.IsComposite &&
-		apikey.APIKeyEffectiveBillingMode(apiKey) == apikey.APIKeyBillingModeSubscription &&
-		IsCompositeKeyModelListEndpoint(method, path)
 }

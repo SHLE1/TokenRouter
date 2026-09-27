@@ -140,7 +140,7 @@ func TestOpenAIGatewayHandlerImages_ServerErrorFailsOverAndReturnsClearErrorWhen
 	}
 	providerRepo := openAIImagesFailoverProviderRepo{providers: providers}
 	upstream := &openAIImagesFailoverHTTPUpstream{}
-	cfg := &config.Config{RunMode: config.RunModeSimple}
+	cfg := &config.Config{}
 	gatewayService, gatewayServiceChoices, gatewayServiceCredentialPort := newOpenAIExecutionAndSelectionFixture(
 		providerRepo,
 		nil,

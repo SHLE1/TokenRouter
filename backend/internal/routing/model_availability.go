@@ -158,7 +158,6 @@ type AvailabilityReader func(context.Context, *int64, []string, bool) ([]Availab
 
 // ModelAvailability 用已有查询边界区分永久模型缺失和暂时容量不足；自身无缓存。
 type ModelAvailability struct {
-	Simple   bool
 	Read     AvailabilityReader
 	MapModel func(context.Context, *int64, string) string
 }
@@ -170,7 +169,7 @@ func (f ModelAvailabilityDiagnoserFunc) DiagnoseModelAvailabilityForPlatform(ctx
 	return f(ctx, group, model, platform)
 }
 
-// availabilityPlatforms 与调度使用同一提供商平台目录，simple 模式也不扩大组成员范围。
+// availabilityPlatforms 与调度使用同一提供商平台目录，候选始终限定在分组成员内。
 func availabilityPlatforms(platform string) []string {
 	if platform = strings.TrimSpace(platform); platform != "" {
 		return []string{platform}

@@ -49,7 +49,6 @@ type SnapshotGroupSource interface {
 
 // SnapshotOptions 由 app 投影，保留 nil 配置与显式关闭 fallback 的区别。
 type SnapshotOptions struct {
-	Simple                     bool
 	DbFallbackEnabled          bool
 	DbFallbackMaxQPS           int
 	DbFallbackTimeoutSeconds   int

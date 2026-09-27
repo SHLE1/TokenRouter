@@ -79,7 +79,7 @@ OpenAI 文本、Responses、WS、Images 和辅助执行器共用请求构造、�
 
 主入口先处理 `-version` 和 `-setup`：前者只输出构建信息，后者执行 CLI 安装。正常启动时，未安装则执行 AUTO_SETUP 或启动独立 setup server，已配置则构造完整应用。setup 的迁移调用精简 bootstrap，不构造业务 worker。
 
-完整应用先初始化日志，再由 bootstrap 初始化时区和 PostgreSQL，在原十分钟迁移预算内执行迁移与暂时错误重试，补齐持久 JWT secret、完整校验配置，并在 simple 模式补齐默认分组和管理员并发。Ent 与 SQL 共享连接，只有一个关闭拥有者。
+完整应用先初始化日志，再由 bootstrap 初始化时区和 PostgreSQL，在原十分钟迁移预算内执行迁移与暂时错误重试，补齐持久 JWT secret、完整校验配置；首次管理员使用默认并发 5，已有管理员配置保持原值，不自动创建默认分组。Ent 与 SQL 共享连接，只有一个关闭拥有者。
 
 app 在 bootstrap 成功后固定共享 Calendar，显式传入用量、支付、推广、团队 HTTP 和计费、提供商、路由装配。用量存储、聚合事务、仪表盘按日缓存、团队日统计、资金结算、Key 按日计数与公开站点时区展示均使用注入的日期对象。用户时区覆盖及无效值回退仍按各入口原有规则执行，团队查询保持只使用服务端时区。
 
@@ -156,6 +156,6 @@ Gin engine 的顺序为 Recovery、可信代理设置、全局日志/客户端�
 
 app 构造唯一 backup 核心、归档执行器、动态存储工厂、ops/maintenance 更新用例与系统操作锁。维护的停止认领和取消先于 HTTP 请求等待，维护收尾及备份任务等待完成后才关闭共享 SQL/Redis。备份、维护和精简命令直接使用入口；cron、存储缓存及操作锁均由所属模块唯一持有。
 
-setup 只调用 app/bootstrap 的连接测试、迁移和身份初始化能力；identity/postgres 拥有首次管理员及 simple 管理员并发补齐，routing/postgres 拥有 simple 默认分组。它们不走普通注册或管理用例，不触发赠送、通知或后台 worker。两个维护命令在主体返回前关闭已取得连接，再由 main 决定退出码。
+setup 只调用 app/bootstrap 的连接测试、迁移和身份初始化能力；identity/postgres 拥有首次管理员创建，初始化不自动创建分组。它们不走普通注册或管理用例，不触发赠送、通知或后台 worker。两个维护命令在主体返回前关闭已取得连接，再由 main 决定退出码。
 
 相关入口：[项目总览](../project_overview.md)、[架构目录](index.md)、[运维目录](../operations/index.md)。

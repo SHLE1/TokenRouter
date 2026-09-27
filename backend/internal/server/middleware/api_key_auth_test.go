@@ -38,7 +38,7 @@ func TestAPIKeyAuthRejectsOversizedCredentialsBeforeLookup(t *testing.T) {
 		calls.Add(1)
 		return nil, apikey.ErrAPIKeyNotFound
 	}}
-	cfg := &config.Config{RunMode: config.RunModeSimple}
+	cfg := &config.Config{}
 	svc := testkit.NewService(repo, nil, nil, nil, nil, nil, cfg)
 	svc.Start()
 
@@ -61,7 +61,7 @@ func TestAPIKeyAuthRejectsOversizedCredentialsBeforeLookup(t *testing.T) {
 	require.Zero(t, calls.Load())
 }
 
-func TestSimpleModeBypassesQuotaCheck(t *testing.T) {
+func TestAPIKeyAuthEnforcesQuotaAndCredentials(t *testing.T) {
 	group := &routing.Group{
 		ID:       42,
 		Name:     "sub",
@@ -95,8 +95,8 @@ func TestSimpleModeBypassesQuotaCheck(t *testing.T) {
 		},
 	}
 
-	t.Run("standard_mode_completes_maintenance_before_request", func(t *testing.T) {
-		cfg := &config.Config{RunMode: config.RunModeStandard}
+	t.Run("completes_maintenance_before_request", func(t *testing.T) {
+		cfg := &config.Config{}
 		cfg.SubscriptionMaintenance.WorkerCount = 1
 		cfg.SubscriptionMaintenance.QueueSize = 1
 
@@ -161,8 +161,8 @@ func TestSimpleModeBypassesQuotaCheck(t *testing.T) {
 		}
 	})
 
-	t.Run("standard_mode_revalidates_cas_loser_from_database", func(t *testing.T) {
-		cfg := &config.Config{RunMode: config.RunModeStandard}
+	t.Run("revalidates_cas_loser_from_database", func(t *testing.T) {
+		cfg := &config.Config{}
 		apiKeyService := testkit.NewService(apiKeyRepo, nil, nil, nil, nil, nil, cfg)
 		apiKeyService.Start()
 
@@ -211,8 +211,17 @@ func TestSimpleModeBypassesQuotaCheck(t *testing.T) {
 		require.Equal(t, http.StatusTooManyRequests, w.Code)
 	})
 
-	t.Run("simple_mode_bypasses_quota_check", func(t *testing.T) {
-		cfg := &config.Config{RunMode: config.RunModeSimple}
+	t.Run("旧配置仍检查配额", func(t *testing.T) {
+		t.Setenv("RUN_MODE", "simple")
+		// 已耗尽 Key 配额必须在调用上游之前拒绝。
+		originalQuota, originalUsed := apiKey.Quota, apiKey.QuotaUsed
+		apiKey.Quota, apiKey.QuotaUsed = 1, 1
+		defer func() { apiKey.Quota, apiKey.QuotaUsed = originalQuota, originalUsed }()
+		// 本场景仅使用余额，订阅行为由独立用例验证。
+		originalBillingMode := apiKey.BillingMode
+		apiKey.BillingMode = apikey.APIKeyBillingModeBalance
+		defer func() { apiKey.BillingMode = originalBillingMode }()
+		cfg := &config.Config{}
 		apiKeyService := testkit.NewService(apiKeyRepo, nil, nil, nil, nil, nil, cfg)
 		apiKeyService.Start()
 		subscriptionService := newSubscriptionAuthFixture(&stubUserSubscriptionRepo{})
@@ -223,11 +232,15 @@ func TestSimpleModeBypassesQuotaCheck(t *testing.T) {
 		req.Header.Set("x-api-key", apiKey.Key)
 		router.ServeHTTP(w, req)
 
-		require.Equal(t, http.StatusOK, w.Code)
+		require.Equal(t, http.StatusTooManyRequests, w.Code)
 	})
 
-	t.Run("simple_mode_accepts_lowercase_bearer", func(t *testing.T) {
-		cfg := &config.Config{RunMode: config.RunModeSimple}
+	t.Run("接受小写Bearer凭据", func(t *testing.T) {
+		// 本场景仅使用余额，订阅行为由独立用例验证。
+		originalBillingMode := apiKey.BillingMode
+		apiKey.BillingMode = apikey.APIKeyBillingModeBalance
+		defer func() { apiKey.BillingMode = originalBillingMode }()
+		cfg := &config.Config{}
 		apiKeyService := testkit.NewService(apiKeyRepo, nil, nil, nil, nil, nil, cfg)
 		apiKeyService.Start()
 		subscriptionService := newSubscriptionAuthFixture(&stubUserSubscriptionRepo{})
@@ -241,8 +254,8 @@ func TestSimpleModeBypassesQuotaCheck(t *testing.T) {
 		require.Equal(t, http.StatusOK, w.Code)
 	})
 
-	t.Run("standard_mode_falls_back_to_balance_when_subscription_is_exhausted", func(t *testing.T) {
-		cfg := &config.Config{RunMode: config.RunModeStandard}
+	t.Run("falls_back_to_balance_when_subscription_is_exhausted", func(t *testing.T) {
+		cfg := &config.Config{}
 		apiKeyService := testkit.NewService(apiKeyRepo, nil, nil, nil, nil, nil, cfg)
 		apiKeyService.Start()
 
@@ -319,7 +332,7 @@ func TestAPIKeyAuthPreferredSubscriptionRejectsPlanRestrictedGroup(t *testing.T)
 		copySubscription := *subscription
 		return &copySubscription, nil
 	}}
-	cfg := &config.Config{RunMode: config.RunModeStandard}
+	cfg := &config.Config{}
 	apiKeyService := testkit.NewService(repo, nil, nil, nil, nil, nil, cfg)
 	apiKeyService.Start()
 	subscriptionService := newSubscriptionAuthFixture(subscriptionRepo)
@@ -371,7 +384,7 @@ func TestAPIKeyAuthPreferredSubscriptionDoesNotFallBackAfterQuotaExhaustion(t *t
 		copySubscription := *subscription
 		return &copySubscription, nil
 	}}
-	cfg := &config.Config{RunMode: config.RunModeStandard}
+	cfg := &config.Config{}
 	apiKeyService := testkit.NewService(repo, nil, nil, nil, nil, nil, cfg)
 	apiKeyService.Start()
 	subscriptionService := newSubscriptionAuthFixture(subscriptionRepo)
@@ -386,7 +399,7 @@ func TestAPIKeyAuthPreferredSubscriptionDoesNotFallBackAfterQuotaExhaustion(t *t
 	requireAPIKeyAuthError(t, w, "USAGE_LIMIT_EXCEEDED", billingcore.ErrDailyLimitExceeded.Error())
 }
 
-func TestAPIKeyAuthSimpleUsageKeepsPreferredSubscriptionSource(t *testing.T) {
+func TestAPIKeyAuthUsageKeepsPreferredSubscriptionSource(t *testing.T) {
 	now := time.Now()
 	group := &routing.Group{ID: 9, Status: billingcore.StatusActive, Hydrated: true}
 	user := &identity.User{ID: 7, Status: billingcore.StatusActive, Role: identity.RoleUser, Balance: 100}
@@ -394,7 +407,7 @@ func TestAPIKeyAuthSimpleUsageKeepsPreferredSubscriptionSource(t *testing.T) {
 	apiKey := &apikey.APIKey{
 		ID:                      100,
 		UserID:                  user.ID,
-		Key:                     "simple-usage-preferred-plan",
+		Key:                     "usage-preferred-plan",
 		Status:                  apikey.StatusAPIKeyActive,
 		GroupID:                 &group.ID,
 		Group:                   group,
@@ -421,7 +434,7 @@ func TestAPIKeyAuthSimpleUsageKeepsPreferredSubscriptionSource(t *testing.T) {
 		copySubscription := *subscription
 		return &copySubscription, nil
 	}}
-	cfg := &config.Config{RunMode: config.RunModeSimple}
+	cfg := &config.Config{}
 	apiKeyService := testkit.NewService(apiKeyRepo, nil, nil, nil, nil, nil, cfg)
 	apiKeyService.Start()
 	subscriptionService := newSubscriptionAuthFixture(subscriptionRepo)
@@ -496,7 +509,7 @@ func TestAPIKeyAuthAntigravityUsageKeepsUnavailablePreferredSubscription(t *test
 		copySubscription := *subscription
 		return &copySubscription, nil
 	}}
-	cfg := &config.Config{RunMode: config.RunModeStandard}
+	cfg := &config.Config{}
 	apiKeyService := testkit.NewService(apiKeyRepo, nil, nil, nil, nil, nil, cfg)
 	apiKeyService.Start()
 	subscriptionService := newSubscriptionAuthFixture(subscriptionRepo)
@@ -553,7 +566,7 @@ func TestAPIKeyAuthRejectsUnboundGroupBeforeSubscriptionSelection(t *testing.T) 
 		copySubscription := *subscription
 		return &copySubscription, nil
 	}}
-	cfg := &config.Config{RunMode: config.RunModeStandard}
+	cfg := &config.Config{}
 	apiKeyService := testkit.NewService(apiKeyRepo, nil, nil, nil, nil, nil, cfg)
 	apiKeyService.Start()
 	subscriptionService := newSubscriptionAuthFixture(subscriptionRepo)
@@ -604,7 +617,7 @@ func TestAPIKeyAuthSetsGroupContext(t *testing.T) {
 		},
 	}
 
-	cfg := &config.Config{RunMode: config.RunModeSimple}
+	cfg := &config.Config{}
 	apiKeyService := testkit.NewService(apiKeyRepo, nil, nil, nil, nil, nil, cfg)
 	apiKeyService.Start()
 	router := gin.New()
@@ -671,7 +684,7 @@ func TestAPIKeyAuthRejectsExclusiveGroupWhenUserNoLongerAllowed(t *testing.T) {
 		},
 	}
 
-	cfg := &config.Config{RunMode: config.RunModeSimple}
+	cfg := &config.Config{}
 	apiKeyService := testkit.NewService(apiKeyRepo, nil, nil, nil, nil, nil, cfg)
 	apiKeyService.Start()
 	router := newAuthTestRouter(apiKeyService, nil, cfg)
@@ -720,7 +733,7 @@ func TestAPIKeyAuthOverwritesInvalidContextGroup(t *testing.T) {
 		},
 	}
 
-	cfg := &config.Config{RunMode: config.RunModeSimple}
+	cfg := &config.Config{}
 	apiKeyService := testkit.NewService(apiKeyRepo, nil, nil, nil, nil, nil, cfg)
 	apiKeyService.Start()
 	router := gin.New()
@@ -836,7 +849,7 @@ func TestAPIKeyAuthRejectsUnavailableGroup(t *testing.T) {
 					return &clone, nil
 				},
 			}
-			cfg := &config.Config{RunMode: config.RunModeStandard}
+			cfg := &config.Config{}
 			apiKeyService := testkit.NewService(apiKeyRepo, nil, nil, nil, nil, nil, cfg)
 			apiKeyService.Start()
 			router := gin.New()
@@ -912,7 +925,7 @@ func TestAPIKeyAuthRejectsUserDisabledPublicGroup(t *testing.T) {
 			return &clone, nil
 		},
 	}
-	cfg := &config.Config{RunMode: config.RunModeStandard}
+	cfg := &config.Config{}
 	apiKeyService := testkit.NewService(apiKeyRepo, nil, nil, nil, nil, nil, cfg)
 	apiKeyService.Start()
 	router := gin.New()
@@ -1004,7 +1017,7 @@ func TestAPIKeyAuthMarksOnlyExpectedIngressRejections(t *testing.T) {
 			repo := &stubApiKeyRepo{getByKey: func(context.Context, string) (*apikey.APIKey, error) {
 				return nil, tt.repoErr
 			}}
-			cfg := &config.Config{RunMode: config.RunModeSimple}
+			cfg := &config.Config{}
 			apiKeyService := testkit.NewService(repo, nil, nil, nil, nil, nil, cfg)
 			apiKeyService.Start()
 			router := gin.New()
@@ -1068,7 +1081,7 @@ func TestAPIKeyAuthSetsOpsFallbackKeyOnEarlyAbort(t *testing.T) {
 			return &clone, nil
 		},
 	}
-	cfg := &config.Config{RunMode: config.RunModeStandard}
+	cfg := &config.Config{}
 	apiKeyService := testkit.NewService(apiKeyRepo, nil, nil, nil, nil, nil, cfg)
 	apiKeyService.Start()
 
@@ -1135,7 +1148,7 @@ func TestAPIKeyAuthGoogleSetsOpsFallbackKeyOnEarlyAbort(t *testing.T) {
 			return &clone, nil
 		},
 	}
-	cfg := &config.Config{RunMode: config.RunModeStandard}
+	cfg := &config.Config{}
 	apiKeyService := testkit.NewService(apiKeyRepo, nil, nil, nil, nil, nil, cfg)
 	apiKeyService.Start()
 
@@ -1198,7 +1211,7 @@ func TestAPIKeyAuthGoogleRejectsExclusiveGroupWhenUserNoLongerAllowed(t *testing
 			return &clone, nil
 		},
 	}
-	cfg := &config.Config{RunMode: config.RunModeSimple}
+	cfg := &config.Config{}
 	apiKeyService := testkit.NewService(apiKeyRepo, nil, nil, nil, nil, nil, cfg)
 	apiKeyService.Start()
 
@@ -1313,7 +1326,7 @@ func TestAPIKeyAuthUsesExplicitUnavailableFallback(t *testing.T) {
 				defaultGroupID:  {ID: defaultGroupID, Name: "openai-default", Status: billingcore.StatusActive, Hydrated: true, RateMultiplier: 1},
 			}}
 
-			cfg := &config.Config{RunMode: config.RunModeStandard}
+			cfg := &config.Config{}
 			apiKeyService := testkit.NewService(apiKeyRepo, nil, groupRepo, nil, nil, nil, cfg)
 			apiKeyService.Start()
 			router := gin.New()
@@ -1389,7 +1402,7 @@ func TestAPIKeyAuthRejectsDisabledGroupWhenFallbackDisabled(t *testing.T) {
 		defaultGroupID:  {ID: defaultGroupID, Name: "explicit-fallback", Status: billingcore.StatusActive, Hydrated: true, RateMultiplier: 1},
 	}}
 
-	cfg := &config.Config{RunMode: config.RunModeStandard}
+	cfg := &config.Config{}
 	apiKeyService := testkit.NewService(apiKeyRepo, nil, groupRepo, nil, nil, nil, cfg)
 	apiKeyService.Start()
 	router := gin.New()
@@ -1434,7 +1447,7 @@ func TestAPIKeyAuthIPRestrictionUsesTrustedPathWhenSwitchDisabled(t *testing.T) 
 		},
 	}
 
-	cfg := &config.Config{RunMode: config.RunModeSimple}
+	cfg := &config.Config{}
 	cfg.SetTrustForwardedIPForAPIKeyACL(false)
 	apiKeyService := testkit.NewService(apiKeyRepo, nil, nil, nil, nil, nil, cfg)
 	apiKeyService.Start()
@@ -1496,7 +1509,7 @@ func TestAPIKeyAuthIPRestrictionIncludesClientIPForBlacklistDenial(t *testing.T)
 		},
 	}
 
-	cfg := &config.Config{RunMode: config.RunModeSimple}
+	cfg := &config.Config{}
 	apiKeyService := testkit.NewService(apiKeyRepo, nil, nil, nil, nil, nil, cfg)
 	apiKeyService.Start()
 	router := gin.New()
@@ -1544,7 +1557,7 @@ func TestAPIKeyAuthIPRestrictionUsesConfiguredTrustedProxy(t *testing.T) {
 		},
 	}
 
-	cfg := &config.Config{RunMode: config.RunModeSimple}
+	cfg := &config.Config{}
 	cfg.SetTrustForwardedIPForAPIKeyACL(false)
 	apiKeyService := testkit.NewService(apiKeyRepo, nil, nil, nil, nil, nil, cfg)
 	apiKeyService.Start()
@@ -1594,7 +1607,7 @@ func TestAPIKeyAuthIPRestrictionUsesForwardedClientIPInDenialWhenTrusted(t *test
 		},
 	}
 
-	cfg := &config.Config{RunMode: config.RunModeSimple}
+	cfg := &config.Config{}
 	cfg.SetTrustForwardedIPForAPIKeyACL(false)
 	apiKeyService := testkit.NewService(apiKeyRepo, nil, nil, nil, nil, nil, cfg)
 	apiKeyService.Start()
@@ -1652,7 +1665,7 @@ func TestAPIKeyAuthTouchesLastUsedOnSuccess(t *testing.T) {
 		},
 	}
 
-	cfg := &config.Config{RunMode: config.RunModeSimple}
+	cfg := &config.Config{}
 	apiKeyService := testkit.NewService(apiKeyRepo, nil, nil, nil, nil, nil, cfg)
 	apiKeyService.Start()
 	router := newAuthTestRouter(apiKeyService, nil, cfg)
@@ -1699,7 +1712,7 @@ func TestAPIKeyAuthTouchLastUsedFailureDoesNotBlock(t *testing.T) {
 		},
 	}
 
-	cfg := &config.Config{RunMode: config.RunModeSimple}
+	cfg := &config.Config{}
 	apiKeyService := testkit.NewService(apiKeyRepo, nil, nil, nil, nil, nil, cfg)
 	apiKeyService.Start()
 	router := newAuthTestRouter(apiKeyService, nil, cfg)
@@ -1745,7 +1758,7 @@ func TestAPIKeyAuthTouchesLastUsedInStandardMode(t *testing.T) {
 		},
 	}
 
-	cfg := &config.Config{RunMode: config.RunModeStandard}
+	cfg := &config.Config{}
 	apiKeyService := testkit.NewService(apiKeyRepo, nil, nil, nil, nil, nil, cfg)
 	apiKeyService.Start()
 	router := newAuthTestRouter(apiKeyService, nil, cfg)
@@ -1773,7 +1786,7 @@ func TestAPIKeyAuthRemovedBillingPathUsesNormalQuotaChecks(t *testing.T) {
 			return &clone, nil
 		},
 	}
-	cfg := &config.Config{RunMode: config.RunModeStandard}
+	cfg := &config.Config{}
 	apiKeyService := testkit.NewService(apiKeyRepo, nil, nil, nil, nil, nil, cfg)
 	apiKeyService.Start()
 	router := newAuthTestRouter(apiKeyService, nil, cfg)
@@ -1801,7 +1814,7 @@ func TestAPIKeyAuthUsageStillTouchesLastUsed(t *testing.T) {
 			return nil
 		},
 	}
-	cfg := &config.Config{RunMode: config.RunModeStandard}
+	cfg := &config.Config{}
 	apiKeyService := testkit.NewService(apiKeyRepo, nil, nil, nil, nil, nil, cfg)
 	apiKeyService.Start()
 	router := newAuthTestRouter(apiKeyService, nil, cfg)
@@ -1843,7 +1856,7 @@ func TestAPIKeyAuthAllowsBalanceBelowMinimumReserve(t *testing.T) {
 		},
 	}
 
-	cfg := &config.Config{RunMode: config.RunModeStandard}
+	cfg := &config.Config{}
 	cfg.Billing.MinimumBalanceReserve = 0.01
 	apiKeyService := testkit.NewService(apiKeyRepo, nil, nil, nil, nil, nil, cfg)
 	apiKeyService.Start()
@@ -1887,7 +1900,7 @@ func TestAPIKeyAuthRejectsExhaustedBalance(t *testing.T) {
 		},
 	}
 
-	cfg := &config.Config{RunMode: config.RunModeStandard}
+	cfg := &config.Config{}
 	apiKeyService := testkit.NewService(apiKeyRepo, nil, nil, nil, nil, nil, cfg)
 	apiKeyService.Start()
 	router := newAuthTestRouter(apiKeyService, nil, cfg)
@@ -1918,7 +1931,7 @@ func TestAPIKeyAuthOpenAIQuotaErrorFormat(t *testing.T) {
 		return &clone, nil
 	}}
 
-	cfg := &config.Config{RunMode: config.RunModeStandard}
+	cfg := &config.Config{}
 	router := newAuthTestRouter(testkit.NewService(apiKeyRepo, nil, nil, nil, nil, nil, cfg), nil, cfg)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
@@ -1958,7 +1971,7 @@ func TestAPIKeyAuthQuotaErrorKeepsLegacyFormatOutsideResponses(t *testing.T) {
 		return &clone, nil
 	}}
 
-	cfg := &config.Config{RunMode: config.RunModeStandard}
+	cfg := &config.Config{}
 	router := newAuthTestRouter(testkit.NewService(apiKeyRepo, nil, nil, nil, nil, nil, cfg), nil, cfg)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
@@ -1985,7 +1998,7 @@ func TestAPIKeyAuthAllowsBatchManagementAfterQuotaExhaustion(t *testing.T) {
 		return &clone, nil
 	}}
 
-	cfg := &config.Config{RunMode: config.RunModeStandard}
+	cfg := &config.Config{}
 	router := newAuthTestRouter(testkit.NewService(apiKeyRepo, nil, nil, nil, nil, nil, cfg), nil, cfg)
 	requests := []struct {
 		method string
@@ -2020,7 +2033,7 @@ func TestAPIKeyAuthCompositeModelListStillChecksQuota(t *testing.T) {
 		clone := *apiKey
 		return &clone, nil
 	}}
-	cfg := &config.Config{RunMode: config.RunModeStandard}
+	cfg := &config.Config{}
 	router := newAuthTestRouter(testkit.NewService(repo, nil, nil, nil, nil, nil, cfg), nil, cfg)
 
 	for _, path := range []string{"/v1/models", "/v1/images/batches/models"} {

@@ -225,7 +225,6 @@
         <div v-if="provider.platform !== 'antigravity'" class="border-t border-gray-200 pt-4 dark:border-dark-600">
           <label class="input-label">{{ t('admin.providers.modelRestriction') }}</label>
 
-
             <!-- Mode Toggle -->
             <div class="mb-4 flex gap-2">
               <button
@@ -616,7 +615,6 @@
         class="border-t border-gray-200 pt-4 dark:border-dark-600"
       >
         <label class="input-label">{{ t('admin.providers.modelRestriction') }}</label>
-
 
           <!-- Mode Toggle -->
           <div class="mb-4 flex gap-2">
@@ -1189,7 +1187,6 @@
         <p class="input-hint">{{ t('admin.providers.selectAllowedModels') }}</p>
         <ModelWhitelistSelector v-model="antigravityWhitelistModels" platform="antigravity" />
 
-
         <!-- Mapping Mode Only (no toggle for Antigravity) -->
         <div>
           <div class="mb-3 rounded-control bg-purple-50 p-3 dark:bg-purple-900/20">
@@ -1419,7 +1416,6 @@
           </button>
         </div>
       </div>
-
 
       <div
         v-if="supportsProviderSchedulingThresholdOverride"
@@ -2327,7 +2323,7 @@
         </div>
       </div>
 
-      <!-- Group Selection - 仅标准模式显示 -->
+      <!-- 分组选择 -->
       <GroupSelector
         v-model="form.group_ids"
         :groups="groups"
@@ -2641,8 +2637,6 @@ watch(editProviderMode, (mode, previousMode) => {
   editBaseUrl.value = defaultCNBaseUrl(props.provider!.platform, mode, editApiProtocol.value)
 })
 
-
-
 // 端点预设同时更新模式和协议，保持表单字段一致。
 function onCnPresetSelect(preset: { mode: CnProviderMode; protocol: CnApiProtocol; url: string }) {
   editProviderMode.value = preset.mode
@@ -2935,7 +2929,6 @@ const openaiResponsesWebSocketV2Mode = computed({
 const openAIWSModeConcurrencyHintKey = computed(() =>
   resolveOpenAIWSModeConcurrencyHintKey(openaiResponsesWebSocketV2Mode.value)
 )
-
 
 // OpenAI 订阅档位手动覆盖选项(清空 + Plus/Pro/Free;别名/自定义值友好显示且保留 canonical)
 const planTypeOptions = computed(() =>

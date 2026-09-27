@@ -85,14 +85,5 @@ func InitEnt(ctx context.Context, cfg *config.Config) (_ *ent.Client, _ *sql.DB,
 		return nil, nil, fmt.Errorf("validate config after secret bootstrap: %w", err)
 	}
 
-	// SIMPLE 模式只设置管理员并发，不自动创建或选择分组。
-	if cfg.RunMode == config.RunModeSimple {
-		seedCtx, seedCancel := context.WithTimeout(ctx, 30*time.Second)
-		defer seedCancel()
-		if err := ensureSimpleModeAdminConcurrency(seedCtx, client); err != nil {
-			return nil, nil, err
-		}
-	}
-
 	return client, drv.DB(), nil
 }

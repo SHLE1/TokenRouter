@@ -22,7 +22,7 @@ import (
 
 func TestDiagnoseModelAvailabilityForPlatform_NoModel_AlwaysAvailable(t *testing.T) {
 	repo := &availabilityProviderStore{providers: nil, providersByID: map[int64]*gatewayprovider.ExecutionProvider{}}
-	svc := newAvailabilityForTest(repo, nil, false, false)
+	svc := newAvailabilityForTest(repo, nil, false)
 
 	diag := svc.DiagnoseGeneral(context.Background(), availabilityFixtureGroupID(), "", capability.PlatformOpenAI)
 
@@ -32,7 +32,7 @@ func TestDiagnoseModelAvailabilityForPlatform_NoModel_AlwaysAvailable(t *testing
 
 func TestDiagnoseModelAvailabilityForPlatform_EmptyPlatformKeepsEmptyGroupEmpty(t *testing.T) {
 	repo := &availabilityProviderStore{providers: nil, providersByID: map[int64]*gatewayprovider.ExecutionProvider{}}
-	svc := newAvailabilityForTest(repo, nil, false, false)
+	svc := newAvailabilityForTest(repo, nil, false)
 
 	diag := svc.DiagnoseGeneral(context.Background(), availabilityFixtureGroupID(), "gpt-5", "")
 
@@ -51,7 +51,7 @@ func TestDiagnoseModelAvailabilityForPlatform_NilReceiver(t *testing.T) {
 
 func TestDiagnoseModelAvailabilityForPlatform_NoProvidersInPool(t *testing.T) {
 	repo := &availabilityProviderStore{providers: nil, providersByID: map[int64]*gatewayprovider.ExecutionProvider{}}
-	svc := newAvailabilityForTest(repo, nil, false, false)
+	svc := newAvailabilityForTest(repo, nil, false)
 
 	diag := svc.DiagnoseGeneral(context.Background(), availabilityFixtureGroupID(), "gpt-5", capability.PlatformOpenAI)
 
@@ -79,7 +79,7 @@ func TestDiagnoseModelAvailabilityForPlatform_ExplicitMappingMatches(t *testing.
 	for i := range repo.providers {
 		repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 	}
-	svc := newAvailabilityForTest(repo, nil, false, false)
+	svc := newAvailabilityForTest(repo, nil, false)
 
 	diag := svc.DiagnoseGeneral(context.Background(), availabilityFixtureGroupID(), "gpt-5.1-codex-mini", capability.PlatformOpenAI)
 
@@ -97,7 +97,7 @@ func TestDiagnoseModelAvailabilityUsesDefaultCatalogForEmptyScope(t *testing.T) 
 	for i := range repo.providers {
 		repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 	}
-	svc := newAvailabilityForTest(repo, nil, false, false)
+	svc := newAvailabilityForTest(repo, nil, false)
 
 	diag := svc.DiagnoseGeneral(context.Background(), availabilityFixtureGroupID(), "gpt-5.1-codex-mini", capability.PlatformOpenAI)
 
@@ -126,7 +126,7 @@ func TestDiagnoseModelAvailabilityForPlatform_WildcardMappingMatches(t *testing.
 	for i := range repo.providers {
 		repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 	}
-	svc := newAvailabilityForTest(repo, nil, false, false)
+	svc := newAvailabilityForTest(repo, nil, false)
 
 	diag := svc.DiagnoseGeneral(context.Background(), availabilityFixtureGroupID(), "gpt-5.1-codex-mini", capability.PlatformOpenAI)
 
@@ -167,7 +167,7 @@ func TestDiagnoseModelAvailabilityForPlatform_NoMatchingModel_ReturnsNotFoundSig
 	for i := range repo.providers {
 		repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 	}
-	svc := newAvailabilityForTest(repo, nil, false, false)
+	svc := newAvailabilityForTest(repo, nil, false)
 
 	diag := svc.DiagnoseGeneral(context.Background(), &groupID, "gpt-5.1-codex-mini", capability.PlatformOpenAI)
 
@@ -199,7 +199,7 @@ func TestDiagnoseModelAvailabilityForPlatform_RateLimitedSupportingProviderRemai
 		providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 	}
 	require.False(t, repo.providers[0].View().IsSchedulable(), "test provider must be excluded from normal scheduling while cooling down")
-	svc := newAvailabilityForTest(repo, nil, false, false)
+	svc := newAvailabilityForTest(repo, nil, false)
 
 	// 诊断必须绕过只反映瞬时状态的快照。
 
@@ -233,7 +233,7 @@ func TestOpenAIDiagnoseModelAvailabilityForPlatform_RateLimitedSupportingProvide
 		providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 	}
 	require.False(t, repo.providers[0].View().IsSchedulable(), "test provider must be excluded from normal scheduling while cooling down")
-	svc := newAvailabilityForTest(repo, nil, false, true)
+	svc := newAvailabilityForTest(repo, nil, true)
 
 	// 诊断必须绕过只反映瞬时状态的快照。
 
@@ -263,7 +263,7 @@ func TestDiagnoseModelAvailabilityForPlatform_WrongPlatformFiltersOut(t *testing
 	for i := range repo.providers {
 		repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 	}
-	svc := newAvailabilityForTest(repo, nil, false, false)
+	svc := newAvailabilityForTest(repo, nil, false)
 
 	diag := svc.DiagnoseGeneral(context.Background(), availabilityFixtureGroupID(), "gpt-5", capability.PlatformOpenAI)
 
@@ -289,7 +289,7 @@ func TestOpenAIGatewayDiagnoseModelAvailabilityForPlatform_GrokPlatformFiltersOp
 	for i := range repo.providers {
 		repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 	}
-	svc := newAvailabilityForTest(repo, nil, false, true)
+	svc := newAvailabilityForTest(repo, nil, true)
 
 	diag := svc.DiagnoseCompatible(context.Background(), availabilityFixtureGroupID(), "grok-4.3", capability.PlatformGrok)
 
@@ -341,7 +341,7 @@ func (m *availabilityProviderStore) ListModelAvailabilityCandidates(_ context.Co
 func availabilityFixtureGroupID() *int64 { id := int64(71); return &id }
 
 // 原有模型诊断用例都显式声明测试分组，模型范围保持各用例原配置。
-func newAvailabilityForTest(repo *availabilityProviderStore, policies *routing.PricingConfigService, simple, compatible bool) *routing.ModelAvailability {
+func newAvailabilityForTest(repo *availabilityProviderStore, policies *routing.PricingConfigService, compatible bool) *routing.ModelAvailability {
 	for i := range repo.providers {
 		value := &repo.providers[i].Record
 		if len(value.GroupIDs) == 0 && len(value.ProviderGroups) == 0 {
@@ -351,40 +351,39 @@ func newAvailabilityForTest(repo *availabilityProviderStore, policies *routing.P
 			value.Type = capability.ProviderTypeAPIKey
 		}
 	}
-	return gatewayprovider.NewModelAvailability(repo, policies, simple, compatible)
+	return gatewayprovider.NewModelAvailability(repo, policies, compatible)
 }
 
-// 普通与 simple 模式都只诊断明确分组的提供商，空平台聚合各提供商平台。
+// 模型可用性只诊断明确分组的提供商，空平台聚合各提供商平台。
 func TestModelAvailabilityUsesExplicitGroupAcrossPlatforms(t *testing.T) {
 	groupID := int64(71)
 	otherGroup := int64(72)
-	for _, simple := range []bool{false, true} {
-		for _, compatible := range []bool{false, true} {
-			repo := &availabilityProviderStore{providers: []gatewayprovider.ExecutionProvider{
-				{Record: providercore.Record{ID: 1, Platform: capability.PlatformAnthropic, Type: capability.ProviderTypeAPIKey, Status: billing.StatusActive, Schedulable: true, GroupIDs: []int64{groupID}, Credentials: map[string]any{"model_whitelist": []string{"claude-test"}}}},
-				{Record: providercore.Record{ID: 2, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey, Status: billing.StatusActive, Schedulable: true, GroupIDs: []int64{groupID}, Credentials: map[string]any{"model_whitelist": []string{"gpt-test"}}}},
-				{Record: providercore.Record{ID: 3, Platform: capability.PlatformGemini, Type: capability.ProviderTypeAPIKey, Status: billing.StatusActive, Schedulable: true, GroupIDs: []int64{otherGroup}, Credentials: map[string]any{"model_whitelist": []string{"gemini-test"}}}},
-			}}
-			service := gatewayprovider.NewModelAvailability(repo, nil, simple, compatible)
-			for _, model := range []string{"claude-test", "gpt-test"} {
-				result := service.DiagnoseGeneral(context.Background(), &groupID, model, "")
-				require.True(t, result.HasModelSupport)
-				require.ElementsMatch(t, capability.ProviderPlatforms(), repo.platforms)
-				require.False(t, repo.includeGrouped)
-			}
-			require.False(t, service.DiagnoseGeneral(context.Background(), &groupID, "gemini-test", "").HasModelSupport)
-			forced := service.DiagnoseGeneral(context.Background(), &groupID, "claude-test", capability.PlatformOpenAI)
-			require.True(t, forced.HasProvidersInPool)
-			require.False(t, forced.HasModelSupport)
-			calls := repo.calls
-			require.Equal(t, routing.ModelAvailabilityDiagnosis{}, service.DiagnoseGeneral(context.Background(), nil, "gpt-test", ""))
-			require.Equal(t, routing.ModelAvailabilityDiagnosis{}, service.DiagnoseCompatible(context.Background(), nil, "gpt-test", ""))
-			require.Equal(t, routing.ModelAvailabilityDiagnosis{}, service.DiagnoseCompatibleRouting(context.Background(), nil, "gpt-test", ""))
-			require.Equal(t, calls, repo.calls, "缺少分组时不应读取候选池")
-			ctx := apikey.WithForcePlatform(context.Background(), capability.PlatformGemini)
-			require.False(t, service.DiagnoseCompatibleRouting(ctx, &groupID, "gpt-test", "").HasProvidersInPool)
-			require.Equal(t, []string{capability.PlatformGemini}, repo.platforms)
+
+	for _, compatible := range []bool{false, true} {
+		repo := &availabilityProviderStore{providers: []gatewayprovider.ExecutionProvider{
+			{Record: providercore.Record{ID: 1, Platform: capability.PlatformAnthropic, Type: capability.ProviderTypeAPIKey, Status: billing.StatusActive, Schedulable: true, GroupIDs: []int64{groupID}, Credentials: map[string]any{"model_whitelist": []string{"claude-test"}}}},
+			{Record: providercore.Record{ID: 2, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey, Status: billing.StatusActive, Schedulable: true, GroupIDs: []int64{groupID}, Credentials: map[string]any{"model_whitelist": []string{"gpt-test"}}}},
+			{Record: providercore.Record{ID: 3, Platform: capability.PlatformGemini, Type: capability.ProviderTypeAPIKey, Status: billing.StatusActive, Schedulable: true, GroupIDs: []int64{otherGroup}, Credentials: map[string]any{"model_whitelist": []string{"gemini-test"}}}},
+		}}
+		service := gatewayprovider.NewModelAvailability(repo, nil, compatible)
+		for _, model := range []string{"claude-test", "gpt-test"} {
+			result := service.DiagnoseGeneral(context.Background(), &groupID, model, "")
+			require.True(t, result.HasModelSupport)
+			require.ElementsMatch(t, capability.ProviderPlatforms(), repo.platforms)
+			require.False(t, repo.includeGrouped)
 		}
+		require.False(t, service.DiagnoseGeneral(context.Background(), &groupID, "gemini-test", "").HasModelSupport)
+		forced := service.DiagnoseGeneral(context.Background(), &groupID, "claude-test", capability.PlatformOpenAI)
+		require.True(t, forced.HasProvidersInPool)
+		require.False(t, forced.HasModelSupport)
+		calls := repo.calls
+		require.Equal(t, routing.ModelAvailabilityDiagnosis{}, service.DiagnoseGeneral(context.Background(), nil, "gpt-test", ""))
+		require.Equal(t, routing.ModelAvailabilityDiagnosis{}, service.DiagnoseCompatible(context.Background(), nil, "gpt-test", ""))
+		require.Equal(t, routing.ModelAvailabilityDiagnosis{}, service.DiagnoseCompatibleRouting(context.Background(), nil, "gpt-test", ""))
+		require.Equal(t, calls, repo.calls, "缺少分组时不应读取候选池")
+		ctx := apikey.WithForcePlatform(context.Background(), capability.PlatformGemini)
+		require.False(t, service.DiagnoseCompatibleRouting(ctx, &groupID, "gpt-test", "").HasProvidersInPool)
+		require.Equal(t, []string{capability.PlatformGemini}, repo.platforms)
 	}
 }
 
@@ -393,7 +392,7 @@ func TestModelAvailabilityChecksProtocolWithoutTreatingCooldownAsMissingModel(t 
 	group := &routing.Group{ID: 71, Hydrated: true, Status: routing.StatusActive, ProtocolFallbacks: map[protocol.ProtocolID][]protocol.ProtocolID{protocol.ProtocolAnthropicMessages: {}}}
 	until := time.Now().Add(time.Hour)
 	repo := &availabilityProviderStore{providers: []gatewayprovider.ExecutionProvider{{Record: providercore.Record{ID: 2, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey, Status: billing.StatusActive, Schedulable: true, GroupIDs: []int64{group.ID}, RateLimitResetAt: &until, Credentials: map[string]any{"model_whitelist": []string{"gpt-test"}}}}}}
-	service := gatewayprovider.NewModelAvailability(repo, nil, false, true)
+	service := gatewayprovider.NewModelAvailability(repo, nil, true)
 	ctx := requeststate.WithClientProtocol(requeststate.WithGroup(context.Background(), group), protocol.ProtocolAnthropicMessages)
 	denied := service.DiagnoseCompatible(ctx, &group.ID, "gpt-test", "")
 	require.True(t, denied.HasProvidersInPool)

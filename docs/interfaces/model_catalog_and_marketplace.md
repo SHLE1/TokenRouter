@@ -86,7 +86,7 @@ GPT-5.6 系列的内置目录、白名单和配置导出只提供 `gpt-5.6-sol/t
 
 每个实例的 runner 不允许分钟级 cron 轮次重叠；单轮只领取不超过实例 worker 数量的到期 Group，使每个已领取分组都能立即执行，并由 PostgreSQL 租约阻止其它实例重复领取。维护、领取和每个分组的探测分别使用独立超时预算，慢维护不能挤占合法重试窗口。管理 Group API 中不合法的 `availability_probe_config` 统一返回 HTTP `400` 和 reason `INVALID_AVAILABILITY_PROBE_CONFIG`。
 
-永久模型可用性诊断由 `routing.ModelAvailability` 执行，通过独立持久候选查询区分模型缺失和暂时容量不足。所有入口按明确的组内关联查询候选，simple 模式和 Antigravity 提供商也不扩大成员范围；失败或无法诊断时仍保守交给 503 分支，不把暂时限流误报为 404。
+永久模型可用性诊断由 `routing.ModelAvailability` 执行，通过独立持久候选查询区分模型缺失和暂时容量不足。所有入口按明确的组内关联查询候选，Antigravity 提供商也不扩大成员范围；失败或无法诊断时仍保守交给 503 分支，不把暂时限流误报为 404。
 
 ## 一致性边界
 

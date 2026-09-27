@@ -185,7 +185,7 @@ Ollama Cloud 的设置、状态、会话、自动刷新和主动刷新路由直�
 
 ## API Key 结算策略接口
 
-普通 Key 必须明确绑定一个可用分组。历史未绑定 Key 的字符串保留，调用前需完成绑定；standard 和 simple 模式都没有无分组调度入口。`fallback_when_group_unavailable` 只允许使用管理员显式配置的回退组，目标组重新接受权限、模型、协议、团队及订阅范围检查。
+普通 Key 必须明确绑定一个可用分组。历史未绑定 Key 的字符串保留，调用前需完成绑定；系统没有无分组调度入口。`fallback_when_group_unavailable` 只允许使用管理员显式配置的回退组，目标组重新接受权限、模型、协议、团队及订阅范围检查。
 
 创建/更新请求对旧 `fallback_to_default_group_when_unavailable` 字段返回 400，包括显式 false 或 null。配置页面与生成的客户端配置使用新字段，不根据提供商平台选择默认组。
 

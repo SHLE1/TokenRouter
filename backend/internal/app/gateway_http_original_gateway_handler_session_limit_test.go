@@ -103,7 +103,7 @@ func newGatewaySessionLimitFixture(t *testing.T, providerType string, failover b
 		providers = append(providers, &second)
 	}
 	sessions := &gatewaySessionLimitCacheStub{registered: make(map[int64][]string), unregistered: make(map[int64][]string)}
-	cfg := &config.Config{RunMode: config.RunModeSimple}
+	cfg := &config.Config{}
 	snapshots := scheduler.NewSnapshotService(&fakeSchedulerCache{providers: providers}, nil, nil, nil, nil, scheduler.SnapshotBindings{})
 	billingCache := newBillingEligibilityFixture(cfg)
 	billingCache.Start()

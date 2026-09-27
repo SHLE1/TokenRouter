@@ -16,7 +16,6 @@ func (o Observe) Printf(component, format string, args ...any) {
 // EligibilityOptions 是计费准入的独立运行参数。
 type EligibilityOptions struct {
 	Dates   DateRuntime
-	RunMode string
 	Billing BillingOptions
 }
 type BillingOptions struct {
@@ -29,8 +28,6 @@ type CircuitBreakerOptions struct {
 	ResetTimeoutSeconds int
 	HalfOpenRequests    int
 }
-
-const RunModeSimple = "simple"
 
 // BalanceReader 仅返回权益快照，不允许通过普通实体更新余额。
 type BalanceReader interface {

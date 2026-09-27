@@ -3,13 +3,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 
-const { updateProviderMock, checkMixedChannelRiskMock, getWebSearchEmulationConfigMock, getSettingsMock, listTLSProfilesMock, authIsSimpleMode } = vi.hoisted(() => ({
+const { updateProviderMock, checkMixedChannelRiskMock, getWebSearchEmulationConfigMock, getSettingsMock, listTLSProfilesMock } = vi.hoisted(() => ({
   updateProviderMock: vi.fn(),
   checkMixedChannelRiskMock: vi.fn(),
   getWebSearchEmulationConfigMock: vi.fn(),
   getSettingsMock: vi.fn(),
   listTLSProfilesMock: vi.fn(),
-  authIsSimpleMode: { value: true }
 }))
 
 function coerceSelectStubValue(value: string, options: unknown[]): string | number | boolean | null {
@@ -22,14 +21,6 @@ vi.mock('@/stores/app', () => ({
     showError: vi.fn(),
     showSuccess: vi.fn(),
     showInfo: vi.fn()
-  })
-}))
-
-vi.mock('@/stores/auth', () => ({
-  useAuthStore: () => ({
-    get isSimpleMode() {
-      return authIsSimpleMode.value
-    }
   })
 }))
 
@@ -347,7 +338,6 @@ function mountModal(provider = buildProvider()) {
 
 describe('EditProviderModal', () => {
   beforeEach(() => {
-    authIsSimpleMode.value = true
     updateProviderMock.mockReset()
     checkMixedChannelRiskMock.mockReset()
     getWebSearchEmulationConfigMock.mockReset()
@@ -580,7 +570,6 @@ describe('EditProviderModal', () => {
       }
     })
   })
-
 
   it.each([
     {
@@ -866,7 +855,6 @@ describe('EditProviderModal', () => {
   })
 
   it('only submits model mapping credentials when saving an OpenAI spark shadow provider', async () => {
-    authIsSimpleMode.value = false
     const provider = buildOpenAISparkShadowProvider()
     updateProviderMock.mockReset()
     checkMixedChannelRiskMock.mockReset()

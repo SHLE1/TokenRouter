@@ -51,7 +51,7 @@ func TestS16NativeCompletionRuntimeOneFinancialEffect(t *testing.T) {
 		wheel.Stop()
 		logs.StopUsageBatchers()
 	})
-	cfg := &config.Config{RunMode: config.RunModeStandard}
+	cfg := &config.Config{}
 	cfg.Default.RateMultiplier = 1
 	rates := app.NewS16GatewayBillingRates(nil, cfg)
 	health := app.NewS16ProviderHealthRuntime(providers, nil, cfg, nil, nil, nil, nil, nil)

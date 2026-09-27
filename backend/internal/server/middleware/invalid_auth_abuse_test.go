@@ -20,7 +20,6 @@ import (
 
 func invalidAuthAbuseTestConfig(threshold int) *config.Config {
 	return &config.Config{
-		RunMode: config.RunModeSimple,
 		APIKeyAuth: config.APIKeyAuthCacheConfig{InvalidAbuse: config.InvalidAuthAbuseConfig{
 			Enabled: true, Threshold: threshold, WindowSeconds: 60, BlockSeconds: 60, Capacity: 256,
 		}},

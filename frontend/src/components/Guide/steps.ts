@@ -11,9 +11,8 @@ export interface RoutedDriveStep extends DriveStep {
  * 管理员完整引导流程
  * 交互式引导：指引用户实际操作
  * @param t 国际化函数
- * @param isSimpleMode 是否为简易模式（简易模式下会过滤分组相关步骤）
  */
-export const getAdminSteps = (t: (key: string) => string, isSimpleMode = false): DriveStep[] => {
+export const getAdminSteps = (t: (key: string) => string): DriveStep[] => {
   const allSteps: DriveStep[] = [
   // ========== 欢迎介绍 ==========
   {
@@ -222,20 +221,6 @@ export const getAdminSteps = (t: (key: string) => string, isSimpleMode = false):
     }
   }
   ]
-
-  // 简易模式下过滤分组相关步骤
-  if (isSimpleMode) {
-    return allSteps.filter(step => {
-      const element = step.element as string | undefined
-      // 过滤掉分组管理和提供商分组选择相关步骤
-      return !element || (
-        !element.includes('sidebar-group-manage') &&
-        !element.includes('groups-create-btn') &&
-        !element.includes('group-form-') &&
-        !element.includes('provider-form-groups')
-      )
-    })
-  }
 
   return allSteps
 }

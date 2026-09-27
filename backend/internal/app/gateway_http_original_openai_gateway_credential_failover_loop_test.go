@@ -962,7 +962,7 @@ func newGrokCredentialFailoverHandler(t *testing.T, mode string) (*gatewayHTTPEn
 		upstream.rateLimitIDs = map[int64]bool{801: true}
 		upstream.failureStatus = map[int64]int{802: http.StatusInternalServerError}
 	}
-	cfg := &config.Config{RunMode: config.RunModeSimple}
+	cfg := &config.Config{}
 	cfg.Gateway.MaxProviderSwitches = 3
 	billingCache := newBillingEligibilityFixture(cfg)
 	billingCache.Start()

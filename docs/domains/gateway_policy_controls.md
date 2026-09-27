@@ -53,7 +53,7 @@ Images 生成/编辑独立控制，Responses 图片工具使用 `responses_image
 
 客户端限制的逐组读取与回退由 routing 的 `ResolveClientGroup` 唯一执行。通用入口保留原读取错误，OpenAI 快照入口仍可保留未解析分组；客户端识别在读取当前分组后按原短路顺序执行。强制平台旁路和最终分组的资金、权限复查仍由各入口拥有。
 
-普通 Key 创建和调用均要求明确选组；系统不自动创建或寻找默认组，simple 模式也不会把未分组提供商放入候选池。Key 的 `fallback_when_group_unavailable` 仅授权管理员明确配置的不可用回退。
+普通 Key 创建和调用均要求明确选组；系统不自动创建或寻找默认组，未分组提供商不会进入候选池。Key 的 `fallback_when_group_unavailable` 仅授权管理员明确配置的不可用回退。
 
 Group 的 fallback 包括客户端限制 fallback、invalid-request fallback 和 unavailable fallback。它们是显式的跨分组策略：目标分组仍要重新执行 Key、模型、协议、权限、计费和 `scheduler_type` 约束；强制平台入口另行保留提供商平台条件，不能只把原提供商列表替换掉。循环、目标失效或策略不匹配必须终止。
 

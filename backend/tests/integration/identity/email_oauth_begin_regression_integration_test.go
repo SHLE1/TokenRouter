@@ -57,6 +57,7 @@ func (s05OAuthSettings) GetValue(_ context.Context, key string) (string, error) 
 	}
 	return "", nil
 }
+
 func (s s05OAuthSettings) GetMultiple(ctx context.Context, keys []string) (map[string]string, error) {
 	out := map[string]string{}
 	for _, key := range keys {
@@ -89,7 +90,7 @@ func TestS05EmailOAuthBeginFailureCompensatesUser(t *testing.T) {
 	settings := identitytestkit.Settings(s05OAuthSettings{}, cfg)
 	auth := identitytestkit.Auth(client, &identity.AuthDependencies{Users: users, RefreshTokens: rediscache.NewRefreshTokenCache(rediscontainer.New(t)), Options: identitytestkit.AuthOptions(cfg), Settings: settings})
 	flow := &identity.PendingFlow{Store: identitypostgres.NewPendingRepository(client), Database: &identitypostgres.PendingFlowDatabase{Client: client, Auth: auth}, Auth: auth}
-	sessionHTTP := identityhttp.NewSessionHandler(auth, nil, settings, nil, nil, flow, identityhttp.SessionHTTPOptions{RunMode: cfg.RunMode})
+	sessionHTTP := identityhttp.NewSessionHandler(auth, nil, settings, nil, nil, flow, identityhttp.SessionHTTPOptions{})
 	pendingHTTP := identityhttp.NewPendingHandler(sessionHTTP, flow, identityhttp.PendingHTTPOptions{})
 	h := identityhttp.NewEmailOAuthHandler(pendingHTTP, nil, nil)
 	email := "s05-" + uuid.NewString() + "@example.invalid"

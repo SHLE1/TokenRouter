@@ -157,7 +157,7 @@ func TestMixedGroupTextHTTP(t *testing.T) {
 				defer upstream.Close()
 				groupID := int64(42)
 				group := &routing.Group{ID: groupID, Hydrated: true, Name: "mixed", Status: "active", RateMultiplier: 1, AllowedProtocols: []protocol.ProtocolID{protocol.ProtocolAnthropicMessages, protocol.ProtocolOpenAIResponses, protocol.ProtocolOpenAIChatCompletions}}
-				cfg := &config.Config{RunMode: config.RunModeSimple}
+				cfg := &config.Config{}
 				cfg.Default.RateMultiplier = 1
 				cfg.Security.URLAllowlist.Enabled = false
 				cfg.Security.URLAllowlist.AllowInsecureHTTP = true

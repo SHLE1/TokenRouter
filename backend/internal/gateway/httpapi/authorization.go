@@ -23,7 +23,6 @@ type AuthorizationSubscriptions interface {
 
 // APIKeyAuthorizationOptions 只携带入口选项、观测与旧 context 投影，不接收完整配置。
 type APIKeyAuthorizationOptions struct {
-	Simple         bool
 	Authentication keyhttp.AuthenticationOptions
 	BindLegacyKey  func(*gin.Context, *apikey.APIKey)
 }
@@ -96,32 +95,7 @@ func NewAPIKeyAuthorization(apiKeyService *apikey.APIKeyService, subscriptionSer
 			IsBatchImageBillingBypassRequest(c.Request.Method, c.Request.URL.Path) ||
 			(apiKey.IsComposite && IsGrokVideoTaskRead(c.Request.Method, c.Request.URL.Path))
 
-		// ── 4. SimpleMode → early return ─────────────────────────────
-
-		if options.Simple {
-			// 简易模式不执行计费拦截，但用量查询和复合 Key 模型列表仍需读取指定套餐范围。
-			if ShouldResolveAPIKeyBillingInSimpleMode(apiKey, c.Request.Method, c.Request.URL.Path) {
-				if billingContext, billingErr := admission.ResolveFundingFromKey(c.Request.Context(), apiKey, subscriptionService, false); billingErr == nil && billingContext != nil {
-					c.Set("api_key_billing", billingContext)
-					if billingContext.Subscription != nil {
-						c.Set("subscription", billingContext.Subscription)
-					}
-				}
-			}
-			c.Set("api_key", apiKey)
-			c.Set("user", authctx.AuthSubject{
-				UserID:      apiKey.User.ID,
-				Concurrency: apiKey.User.Concurrency,
-			})
-			c.Set("user_role", apiKey.User.Role)
-			options.bind(c, apiKey)
-			_ = apiKeyService.TouchLastUsed(c.Request.Context(), apiKey.ID)
-			keyhttp.SetAccessPrincipal(c, access)
-			c.Next()
-			return
-		}
-
-		// ── 5. 解析 Key 的结算来源 ───────────────────────────────────
+		// 解析 Key 的结算来源。
 
 		billingContext, billingErr := admission.ResolveFundingFromKey(c.Request.Context(), apiKey, subscriptionService, !skipBilling)
 		if billingErr != nil {
@@ -140,7 +114,7 @@ func NewAPIKeyAuthorization(apiKeyService *apikey.APIKeyService, subscriptionSer
 			subscription = billingContext.Subscription
 		}
 
-		// ── 6. 计费执行（skipBilling 时整块跳过） ────────────────────
+		// 消费入口执行资金和 Key 限额检查。
 
 		if !skipBilling {
 			checked, failure := admission.CheckConsumption(c.Request.Context(), admission.ConsumptionInput{Status: apiKey.Status, Limits: apiKey, Balance: apiKey.User.Balance, Subscription: subscription}, subscriptionService)
@@ -168,7 +142,7 @@ func NewAPIKeyAuthorization(apiKeyService *apikey.APIKeyService, subscriptionSer
 			}
 		}
 
-		// ── 7. 设置上下文 → Next ─────────────────────────────────────
+		// 写入认证上下文后执行后续处理器。
 
 		if billingContext != nil {
 			c.Set("api_key_billing", billingContext)
@@ -228,29 +202,6 @@ func NewGoogleAPIKeyAuthorization(apiKeyService *apikey.APIKeyService, subscript
 		skipBilling := IsAPIKeyUsageRequest(c.Request.Method, c.Request.URL.Path) ||
 			IsBatchImageBillingBypassRequest(c.Request.Method, c.Request.URL.Path) ||
 			(apiKey.IsComposite && IsGrokVideoTaskRead(c.Request.Method, c.Request.URL.Path))
-
-		// 简易模式不执行计费拦截，但用量查询和复合 Key 模型列表仍需读取指定套餐范围。
-		if options.Simple {
-			if ShouldResolveAPIKeyBillingInSimpleMode(apiKey, c.Request.Method, c.Request.URL.Path) {
-				if billingContext, billingErr := admission.ResolveFundingFromKey(c.Request.Context(), apiKey, subscriptionService, false); billingErr == nil && billingContext != nil {
-					c.Set("api_key_billing", billingContext)
-					if billingContext.Subscription != nil {
-						c.Set("subscription", billingContext.Subscription)
-					}
-				}
-			}
-			c.Set("api_key", apiKey)
-			c.Set("user", authctx.AuthSubject{
-				UserID:      apiKey.User.ID,
-				Concurrency: apiKey.User.Concurrency,
-			})
-			c.Set("user_role", apiKey.User.Role)
-			options.bind(c, apiKey)
-			_ = apiKeyService.TouchLastUsed(c.Request.Context(), apiKey.ID)
-			keyhttp.SetAccessPrincipal(c, access)
-			c.Next()
-			return
-		}
 
 		// 非消费请求（包括 /v1/usage 和批任务管理）只读取配置快照，不因资金来源失效而拒绝。
 		billingContext, billingErr := admission.ResolveFundingFromKey(c.Request.Context(), apiKey, subscriptionService, !skipBilling)

@@ -161,7 +161,7 @@ func newOpenAIResponsesFailoverTestHandler(t *testing.T, upstream httpclient.Ups
 		},
 	}
 	providerRepo := openAIResponsesFailoverProviderRepo{providers: providers}
-	cfg := &config.Config{RunMode: config.RunModeSimple}
+	cfg := &config.Config{}
 	gatewayService, gatewayServiceChoices, gatewayServiceCredentialPort := newOpenAIExecutionAndSelectionFixture(
 		providerRepo,
 		nil,

@@ -19,24 +19,25 @@ import (
 
 // newGatewayAuthorization 不执行业务规则；装配同一原生 Key 与订阅实例。
 func newGatewayAuthorization(keys *apikey.APIKeyService, subscriptions *billing.SubscriptionService, cfg *config.Config, google bool) gin.HandlerFunc {
-	options := gatewayhttp.APIKeyAuthorizationOptions{Simple: cfg.RunMode == config.RunModeSimple, Authentication: keyhttp.AuthenticationOptions{
-		Google: google, Context: func(c *gin.Context) context.Context { return c.Request.Context() },
-		ClientIP: func(c *gin.Context) string {
-			return clientip.GetSecurityClientIP(c, cfg.TrustForwardedIPForAPIKeyACL())
+	options := gatewayhttp.APIKeyAuthorizationOptions{
+		Authentication: keyhttp.AuthenticationOptions{
+			Google: google, Context: func(c *gin.Context) context.Context { return c.Request.Context() },
+			ClientIP: func(c *gin.Context) string {
+				return clientip.GetSecurityClientIP(c, cfg.TrustForwardedIPForAPIKeyACL())
+			},
+			AbuseClientKey: middleware.InvalidAuthClientKey, NonConsuming: func(c *gin.Context) bool {
+				return gatewayhttp.IsAPIKeyNonConsumingRequest(c.Request.Method, c.Request.URL.Path)
+			},
+			Rejected: func(c *gin.Context, reason string) {
+				middleware.MarkIngressRejected(c, middleware.IngressRejectReason(reason))
+			},
+			BusinessLimited: func(c *gin.Context, reason string) {
+				gatewayhttp.MarkOpsClientBusinessLimited(c, reason)
+			},
+			Loaded: func(c *gin.Context, key *apikey.APIKey) {
+				keyhttp.SetOpsFallbackAPIKey(c, apikey.CopyAPIKey(key))
+			},
 		},
-		AbuseClientKey: middleware.InvalidAuthClientKey, NonConsuming: func(c *gin.Context) bool {
-			return gatewayhttp.IsAPIKeyNonConsumingRequest(c.Request.Method, c.Request.URL.Path)
-		},
-		Rejected: func(c *gin.Context, reason string) {
-			middleware.MarkIngressRejected(c, middleware.IngressRejectReason(reason))
-		},
-		BusinessLimited: func(c *gin.Context, reason string) {
-			gatewayhttp.MarkOpsClientBusinessLimited(c, reason)
-		},
-		Loaded: func(c *gin.Context, key *apikey.APIKey) {
-			keyhttp.SetOpsFallbackAPIKey(c, apikey.CopyAPIKey(key))
-		},
-	},
 		BindLegacyKey: func(c *gin.Context, key *apikey.APIKey) {
 			legacy := apikey.CopyAPIKey(key)
 			c.Set(string(keyhttp.ContextKeyAPIKey), legacy)

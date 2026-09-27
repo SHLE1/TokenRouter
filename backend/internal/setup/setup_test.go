@@ -57,14 +57,14 @@ func TestDecideAdminBootstrap(t *testing.T) {
 }
 
 func TestSetupDefaultAdminConcurrency(t *testing.T) {
-	t.Run("simple mode admin uses higher concurrency", func(t *testing.T) {
+	t.Run("旧配置不改变初始并发", func(t *testing.T) {
 		t.Setenv("RUN_MODE", "simple")
-		if got := setupDefaultAdminConcurrency(); got != simpleModeAdminConcurrency {
-			t.Fatalf("setupDefaultAdminConcurrency()=%d, want %d", got, simpleModeAdminConcurrency)
+		if got := setupDefaultAdminConcurrency(); got != defaultUserConcurrency {
+			t.Fatalf("setupDefaultAdminConcurrency()=%d, want %d", got, defaultUserConcurrency)
 		}
 	})
 
-	t.Run("standard mode keeps existing default", func(t *testing.T) {
+	t.Run("初始管理员使用默认并发", func(t *testing.T) {
 		t.Setenv("RUN_MODE", "standard")
 		if got := setupDefaultAdminConcurrency(); got != defaultUserConcurrency {
 			t.Fatalf("setupDefaultAdminConcurrency()=%d, want %d", got, defaultUserConcurrency)

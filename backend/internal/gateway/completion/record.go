@@ -83,7 +83,7 @@ func (s *Recorder) RecordAnthropic(ctx context.Context, input *Input, opts *Pric
 	// 计算费用
 	cost := s.CalculateRecordUsageCost(ctx, result, apiKey, provider, billingModel, requestedModel, input.BillingModelSource, input.GroupMappedModel, multiplier, imageMultiplier, opts)
 
-	// 预填 billing_type 仅用于 simple mode / 持久化前对象，真实扣费结果会在统一扣费后回填。
+	// 预填 billing_type 仅用于 持久化前对象，真实扣费结果会在统一扣费后回填。
 	isSubscriptionBilling := subscription != nil
 	billingType := BillingTypeBalance
 	if isSubscriptionBilling {
@@ -109,13 +109,6 @@ func (s *Recorder) RecordAnthropic(ctx context.Context, input *Input, opts *Pric
 				ImageOutputTokens:   result.Usage.ImageOutputTokens,
 			},
 		)
-	}
-
-	if s.simple {
-		s.WriteUsage(ctx, usageLog, "service.gateway")
-		s.printf("service.gateway", "[SIMPLE MODE] Usage recorded (not billed): user=%d, tokens=%d", usageLog.UserID, usageLog.TotalTokens())
-		s.effects.ProviderUsed(provider.ID)
-		return nil
 	}
 
 	subscriptionMultiplier, balanceMultiplier, subscriptionMultiplierScale := RatesForMode(apiKey, cost, subscriptionMultiplier, balanceMultiplier, rateNow)
@@ -360,7 +353,7 @@ func (s *Recorder) RecordOpenAI(ctx context.Context, input *Input) error {
 		cost.ActualCost = standardCost.ActualCost
 	}
 
-	// 预填 billing_type 仅用于 simple mode / 持久化前对象，真实扣费结果会在统一扣费后回填。
+	// 预填 billing_type 仅用于 持久化前对象，真实扣费结果会在统一扣费后回填。
 	isSubscriptionBilling := subscription != nil
 	billingType := BillingTypeBalance
 	if isSubscriptionBilling {
@@ -505,13 +498,6 @@ func (s *Recorder) RecordOpenAI(ctx context.Context, input *Input) error {
 		s.applyProviderStatsCost(ctx, usageLog,
 			provider.ID, *apiKey.GroupID, result.UpstreamModel, requestedModel, input.GroupMappedModel,
 			tokens)
-	}
-
-	if s.simple {
-		s.WriteUsage(ctx, usageLog, "service.openai_gateway")
-		s.printf("service.openai_gateway", "[SIMPLE MODE] Usage recorded (not billed): user=%d, tokens=%d", usageLog.UserID, usageLog.TotalTokens())
-		s.effects.ProviderUsed(provider.ID)
-		return nil
 	}
 
 	subscriptionMultiplier, balanceMultiplier, subscriptionMultiplierScale := RatesForMode(apiKey, cost, subscriptionMultiplier, balanceMultiplier, rateNow)

@@ -36,7 +36,6 @@ type PromotionPreview struct {
 
 // SessionHTTPOptions 注入 HTTP 观察、Cookie 操作和启动参数，不接受整份 config。
 type SessionHTTPOptions struct {
-	RunMode             string
 	BackendMode         func(context.Context) bool
 	AuditActor          func(*gin.Context, int64, string)
 	ClearPendingCookies func(*gin.Context)
@@ -56,14 +55,17 @@ type SessionHandler struct {
 func NewSessionHandler(auth *identity.AuthService, users *identity.UserService, settings SessionHTTPSettings, redeems InvitationReader, totp *identity.TotpService, pending *identity.PendingFlow, options SessionHTTPOptions) *SessionHandler {
 	return &SessionHandler{auth, users, settings, redeems, totp, pending, options}
 }
+
 func (h *SessionHandler) respondWithTokenPair(c *gin.Context, u *identity.User) {
 	RespondWithTokenPair(c, h.authService, u)
 }
+
 func (h *SessionHandler) auditActor(c *gin.Context, id int64, email string) {
 	if h.options.AuditActor != nil {
 		h.options.AuditActor(c, id, email)
 	}
 }
+
 func (h *SessionHandler) isBackendModeEnabled(ctx context.Context) bool {
 	if h == nil || h.options.BackendMode == nil {
 		return false
@@ -356,17 +358,7 @@ func (h *SessionHandler) GetCurrentUser(c *gin.Context) {
 		return
 	}
 
-	type UserResponse struct {
-		UserProfileResponse
-		RunMode string `json:"run_mode"`
-	}
-
-	runMode := h.options.RunMode
-
-	response.Success(c, UserResponse{
-		UserProfileResponse: UserProfileResponseFromService(user, identities),
-		RunMode:             runMode,
-	})
+	response.Success(c, UserProfileResponseFromService(user, identities))
 }
 
 // ValidatePromoCodeRequest 验证优惠码请求
