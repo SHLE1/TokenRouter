@@ -92,17 +92,6 @@ func (g *projectionScope) pointers(values []*gatewayprovider.ExecutionProvider) 
 	return out
 }
 
-func (g *projectionScope) loads(values []providerWithLoad) []schedulercore.FlowLoad {
-	if values == nil {
-		return nil
-	}
-	out := make([]schedulercore.FlowLoad, len(values))
-	for i, a := range values {
-		out[i] = schedulercore.FlowLoad{Provider: g.provider(a.provider), LoadInfo: a.loadInfo}
-	}
-	return out
-}
-
 func (g *projectionScope) selection(value *gatewayprovider.SelectionResult) *schedulercore.FlowSelection {
 	if value == nil {
 		return nil
