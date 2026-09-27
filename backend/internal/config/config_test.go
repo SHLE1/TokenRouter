@@ -79,28 +79,6 @@ func TestLoadServerTimingConfig(t *testing.T) {
 	})
 }
 
-func TestLoadRejectsLegacyAdvancedSchedulerConfig(t *testing.T) {
-	t.Run("legacy YAML key", func(t *testing.T) {
-		resetViperWithJWTSecret(t)
-		configFile := filepath.Join(t.TempDir(), "config.yaml")
-		require.NoError(t, os.WriteFile(configFile, []byte("gateway:\n  openai_ws:\n    lb_top_k: 3\n"), 0o600))
-		t.Setenv("CONFIG_FILE", configFile)
-
-		_, err := Load()
-		require.ErrorContains(t, err, "gateway.openai_ws.lb_top_k")
-		require.ErrorContains(t, err, "gateway.advanced_scheduler.lb_top_k")
-	})
-
-	t.Run("legacy environment variable", func(t *testing.T) {
-		resetViperWithJWTSecret(t)
-		t.Setenv("GATEWAY_OPENAI_SCHEDULER_STICKY_ESCAPE_ENABLED", "false")
-
-		_, err := Load()
-		require.ErrorContains(t, err, "GATEWAY_OPENAI_SCHEDULER_STICKY_ESCAPE_ENABLED")
-		require.ErrorContains(t, err, "GATEWAY_ADVANCED_SCHEDULER_STICKY_ESCAPE_ENABLED")
-	})
-}
-
 func TestLoadAdvancedSchedulerStickyEscapeZeroBoundaries(t *testing.T) {
 	t.Run("YAML 保留显式零错误率", func(t *testing.T) {
 		resetViperWithJWTSecret(t)

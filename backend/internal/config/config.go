@@ -1592,10 +1592,7 @@ func load(allowMissingJWTSecret bool) (*Config, error) {
 		}
 		// 配置文件不存在时使用默认值
 	}
-	if err := rejectLegacyProviderConfig(); err != nil {
-		return nil, err
-	}
-	if err := rejectLegacyAdvancedSchedulerConfig(); err != nil {
+	if err := applyLegacyConfigCompatibility(); err != nil {
 		return nil, err
 	}
 	trustedProxiesEnv, trustedProxiesEnvConfigured := os.LookupEnv("SERVER_TRUSTED_PROXIES")
@@ -1614,6 +1611,7 @@ func load(allowMissingJWTSecret bool) (*Config, error) {
 		cfg.Security.ForwardedClientIPHeaders = normalizeStringSlice(strings.Split(forwardedClientIPHeadersEnv, ","))
 	}
 	cfg.Server.TrustedProxiesConfigured = trustedProxiesConfigured
+	cfg.Gateway.ConnectionPoolIsolation = normalizeLegacyConnectionPoolIsolation(cfg.Gateway.ConnectionPoolIsolation)
 	// 作为兜底保留：setEnvReachableDefaults 已用实际默认值 true 注册该键，
 	// 因而 IsSet 通常恒为 true；若后续误删注册，这里仍能守住默认行为。
 	if !cfg.Gateway.AdvancedScheduler.StickyEscapeEnabled && !viper.IsSet("gateway.advanced_scheduler.sticky_escape_enabled") {
@@ -1746,39 +1744,6 @@ func load(allowMissingJWTSecret bool) (*Config, error) {
 	}
 
 	return &cfg, nil
-}
-
-// rejectLegacyAdvancedSchedulerConfig 拒绝已迁移的 OpenAI 专属调度配置。
-// 旧部署必须先改用 gateway.advanced_scheduler，避免旧键被静默忽略造成策略漂移。
-func rejectLegacyAdvancedSchedulerConfig() error {
-	legacy := []struct {
-		configKey   string
-		envKey      string
-		replacement string
-	}{
-		{"gateway.openai_ws.lb_top_k", "GATEWAY_OPENAI_WS_LB_TOP_K", "gateway.advanced_scheduler.lb_top_k"},
-		{"gateway.openai_ws.scheduler_score_weights.priority", "GATEWAY_OPENAI_WS_SCHEDULER_SCORE_WEIGHTS_PRIORITY", "gateway.advanced_scheduler.score_weights.priority"},
-		{"gateway.openai_ws.scheduler_score_weights.load", "GATEWAY_OPENAI_WS_SCHEDULER_SCORE_WEIGHTS_LOAD", "gateway.advanced_scheduler.score_weights.load"},
-		{"gateway.openai_ws.scheduler_score_weights.queue", "GATEWAY_OPENAI_WS_SCHEDULER_SCORE_WEIGHTS_QUEUE", "gateway.advanced_scheduler.score_weights.queue"},
-		{"gateway.openai_ws.scheduler_score_weights.error_rate", "GATEWAY_OPENAI_WS_SCHEDULER_SCORE_WEIGHTS_ERROR_RATE", "gateway.advanced_scheduler.score_weights.error_rate"},
-		{"gateway.openai_ws.scheduler_score_weights.ttft", "GATEWAY_OPENAI_WS_SCHEDULER_SCORE_WEIGHTS_TTFT", "gateway.advanced_scheduler.score_weights.ttft"},
-		{"gateway.openai_ws.scheduler_score_weights.reset", "GATEWAY_OPENAI_WS_SCHEDULER_SCORE_WEIGHTS_RESET", "gateway.advanced_scheduler.score_weights.reset"},
-		{"gateway.openai_ws.scheduler_score_weights.quota_headroom", "GATEWAY_OPENAI_WS_SCHEDULER_SCORE_WEIGHTS_QUOTA_HEADROOM", "gateway.advanced_scheduler.score_weights.quota_headroom"},
-		{"gateway.openai_ws.scheduler_score_weights.previous_response", "GATEWAY_OPENAI_WS_SCHEDULER_SCORE_WEIGHTS_PREVIOUS_RESPONSE", "gateway.advanced_scheduler.score_weights.previous_response"},
-		{"gateway.openai_ws.scheduler_score_weights.session_sticky", "GATEWAY_OPENAI_WS_SCHEDULER_SCORE_WEIGHTS_SESSION_STICKY", "gateway.advanced_scheduler.score_weights.session_sticky"},
-		{"gateway.openai_scheduler.sticky_escape_enabled", "GATEWAY_OPENAI_SCHEDULER_STICKY_ESCAPE_ENABLED", "gateway.advanced_scheduler.sticky_escape_enabled"},
-		{"gateway.openai_scheduler.sticky_escape_ttft_ms", "GATEWAY_OPENAI_SCHEDULER_STICKY_ESCAPE_TTFT_MS", "gateway.advanced_scheduler.sticky_escape_ttft_ms"},
-		{"gateway.openai_scheduler.sticky_escape_error_rate", "GATEWAY_OPENAI_SCHEDULER_STICKY_ESCAPE_ERROR_RATE", "gateway.advanced_scheduler.sticky_escape_error_rate"},
-	}
-	for _, item := range legacy {
-		if viper.InConfig(item.configKey) {
-			return fmt.Errorf("deprecated configuration %q is no longer supported; use %q", item.configKey, item.replacement)
-		}
-		if _, ok := os.LookupEnv(item.envKey); ok {
-			return fmt.Errorf("deprecated environment variable %q is no longer supported; use %q", item.envKey, strings.ToUpper(strings.ReplaceAll(strings.ReplaceAll(item.replacement, ".", "_"), "-", "_")))
-		}
-	}
-	return nil
 }
 
 // configureConfigSource 优先使用显式 CONFIG_FILE，否则按既有目录顺序搜索 config.yaml。

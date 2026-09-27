@@ -47,6 +47,10 @@
 
 少量变量有显式绑定或专用解析：`ENABLE_SERVER_TIMING`，逗号分隔的 `SERVER_TRUSTED_PROXIES` 和 `SECURITY_FORWARDED_CLIENT_IP_HEADERS`，以及受兼容条件约束的旧 WeChat 变量。
 
+提供商改名后的六个启动配置项在加载时兼容旧名称：`gateway.max_account_switches`、`gateway.max_account_switches_gemini`，以及 `gateway.openai_ws` 下的 `max_conns_per_account`、`min_idle_per_account`、`max_idle_per_account`、`dynamic_max_conns_by_account_concurrency_enabled`。旧 YAML 键和对应大写环境变量均映射到 `provider` 新名称，保留原值；连接池隔离模式 `account` / `account_proxy` 分别规范为 `provider` / `provider_proxy`。映射只在内存中完成，不重写部署文件，适用于只读挂载和环境变量部署。
+
+兼容键的优先级为：新环境变量 > 旧环境变量 > 新 YAML 键 > 旧 YAML 键 > 默认值。空环境变量沿用 Viper 的未设置语义，显式 `0` 和 `false` 会保留。名称过期不会阻止启动；映射后仍按新字段校验类型、范围和组合。
+
 国产供应商周期用量监控属于启动时进程配置 `gateway.cn_providers`。`monitor_enabled` 默认关闭；开启后默认每 10 分钟运行一次、并发 4、单提供商探测超时 20 秒、整轮预算 300 秒，余额临时停调阈值 `balance_threshold` 默认 `0.5`。对应键为 `interval_minutes`、`concurrency`、`probe_timeout_seconds` 和 `round_timeout_seconds`，修改后需要重启。管理员手动查询不受监控开关影响；自定义中继的自动监控还要求启用并命中 `security.url_allowlist.upstream_hosts`。
 
 时区的优先级是标准 `TZ`、兼容 `TIMEZONE`、配置文件、默认 `Asia/Shanghai`。`TZ` 非空时必须显式覆盖 `TIMEZONE`，使容器运行时、应用本地日统计和 PostgreSQL 连接时区使用同一部署者选择；无效 IANA 名称仍在启动校验中失败。
@@ -118,7 +122,7 @@ usage、audit、ops 的静态参数由 app 投影为各模块 Options；动态 O
 
 进程配置的默认参数位于 `gateway.advanced_scheduler`，包含 `lb_top_k`、`score_weights`、`ewma_error_rate_alpha`、`ewma_ttft_alpha` 与粘性逃逸阈值。两个 alpha 要求 `0 < alpha <= 1`；sticky escape 的 TTFT 阈值必须为正数，错误率阈值必须在 `0..1`，显式错误率 `0` 表示任意正错误率即可触发逃逸。
 
-旧的 `gateway.openai_ws.lb_top_k`、`gateway.openai_ws.scheduler_score_weights.*` 和 `gateway.openai_scheduler.sticky_escape_*` 均不再兼容，启动校验会明确拒绝；管理设置请求中的 `openai_advanced_scheduler_*` 或旧全局开关也会返回弃用错误，而不是被静默忽略。OpenAI 配额自动暂停仍是 OpenAI 专属设置，不属于通用高级调度参数。
+旧进程配置 `gateway.openai_ws.lb_top_k`、`gateway.openai_ws.scheduler_score_weights.*` 和 `gateway.openai_scheduler.sticky_escape_*` 在加载时分别映射到 `gateway.advanced_scheduler` 的 `lb_top_k`、`score_weights.*` 和 `sticky_escape_*`，对应环境变量也兼容，优先级与上面的兼容键一致。管理设置请求中的 `openai_advanced_scheduler_*` 或旧全局开关仍返回弃用错误。OpenAI 配额自动暂停仍是 OpenAI 专属设置，不属于通用高级调度参数。
 
 Grok 文本转发有三项数据库运行时设置：`grok_default_text_model`、`grok_cross_client_model_map_enabled` 和 `grok_default_base_url_mode`。默认模型与跨客户端开关共同发布进程级模型映射快照；当前开关只在 Grok 分组的 Anthropic Messages 派发阶段生效，将 Claude 模型 ID 映射到默认文本模型，不改写 Responses 或 Chat Completions 中的其他模型。
 

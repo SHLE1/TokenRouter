@@ -304,11 +304,11 @@
 <a id="provider_name_migration"></a>
 ### 提供商名称统一
 
-迁移 `282_rename_accounts_to_providers.sql` 将上游接入实体统一为 Provider，管理端路径为 `/admin/providers`，API 为 `/api/v1/admin/providers`。相关请求、响应、查询和配置键采用 `provider` 命名。旧管理入口与旧字段不提供兼容；第三方协议的 `account_id`、`account_uuid`、Service Account 和控制台登录账户保留原义。
+迁移 `282_rename_accounts_to_providers.sql` 将上游接入实体统一为 Provider，管理端路径为 `/admin/providers`，API 为 `/api/v1/admin/providers`。相关请求、响应、查询和配置键采用 `provider` 命名。旧管理入口与旧请求结构字段不提供兼容；启动配置兼容读取旧名称，规则见[配置来源](../interfaces/configuration.md#configuration_sources)。第三方协议的 `account_id`、`account_uuid`、Service Account 和控制台登录账户保留原义。
 
 数据库表、列、约束、索引和序列原地改名，历史用量与费用数值保持不变，不回填 `usage_logs`，不重建索引或预聚合。现行配置只迁移明确归本项目所有的键和路径，以及额度告警的邮件模板占位符；模型别名、自定义请求头、第三方 JSON 和其它设置键保持原样，新旧自有键冲突时整个事务回滚；历史日志原文不修改，旧调度 outbox 和错误事件实体字段在读取边界转换；错误阶段筛选同时匹配历史 `account_auth`，对外展示 `provider_auth`。创作和批量图片的旧 `provider` 平台字段改为 `platform`。
 
-SQL 事务的锁等待上限为 10 秒，执行上限为 120 秒，失败后全部回滚。锁等待失败时先检查占用表的事务，再重试启动；应用不主动终止其它会话。升级前停止全部旧实例并等待在途请求结束，备份 PostgreSQL、Redis 和配置，按错误提示替换 YAML/环境变量中的旧键。备份耗时不计入命名迁移目标。
+SQL 事务的锁等待上限为 10 秒，执行上限为 120 秒，失败后全部回滚。锁等待失败时先检查占用表的事务，再重试启动；应用不主动终止其它会话。升级前停止全部旧实例并等待在途请求结束，备份 PostgreSQL、Redis 和配置。YAML 和环境变量中的旧提供商配置名、旧 OpenAI 调度配置名及连接池隔离模式会在加载时转换，无需先手动改名即可升级。备份耗时不计入命名迁移目标。
 
 新实例在开放流量和装配后台任务之前，分批迁移 Redis 并发、会话、限流、临时停调和窗口费用键，保留数据类型及剩余 TTL。目标键冲突时停止启动并保留双方；解决冲突后，使用 `migration:provider-names:v1` 中的批次进度继续。该标记不是允许新旧实例混跑的机制，升级期间必须保持旧实例停机。调度快照使用 `sched:v4`，API Key 认证快照版本为 46，仪表盘统计缓存使用 v2；旧快照不参与新版本查询。
 
