@@ -16,7 +16,7 @@ import (
 type ResponsesTarget struct {
 	// 已有桥接读取器直接解释原流，不增加另一层帧过滤。
 	PassRawStream  bool
-	AccountID      int64
+	ProviderID     int64
 	Model          string
 	Enter          func() (func(), error)
 	Exchange       ResponsesExchange
@@ -26,7 +26,7 @@ type ResponsesTarget struct {
 	ReadResponse   func(*http.Response, upstream.AttemptInput, upstream.OutputSink) (upstream.ResponsesObservation, error)
 }
 
-func (t *ResponsesTarget) TargetID() int64  { return t.AccountID }
+func (t *ResponsesTarget) TargetID() int64  { return t.ProviderID }
 func (*ResponsesTarget) String() string     { return "grok responses target" }
 func (t *ResponsesTarget) GoString() string { return t.String() }
 

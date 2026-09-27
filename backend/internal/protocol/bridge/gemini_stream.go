@@ -44,7 +44,8 @@ type GeminiToAnthropicStreamProcessor struct {
 
 // NewGeminiToAnthropicStreamProcessor 创建流式响应处理器
 func NewGeminiToAnthropicStreamProcessor(originalModel string, runtime GeminiConversionRuntime) *GeminiToAnthropicStreamProcessor {
-	return &GeminiToAnthropicStreamProcessor{runtime: runtime,
+	return &GeminiToAnthropicStreamProcessor{
+		runtime:       runtime,
 		blockType:     BlockTypeNone,
 		originalModel: originalModel,
 	}
@@ -72,7 +73,7 @@ func usageToMap(u ClaudeUsage) map[string]any {
 	return m
 }
 
-// ProcessResponse 转换平台已解包的 Gemini 事件，不执行传输或读取账号状态。
+// ProcessResponse 转换平台已解包的 Gemini 事件，不执行传输或读取提供商状态。
 func (p *GeminiToAnthropicStreamProcessor) ProcessResponse(v1Resp *GeminiResponseInput) []byte {
 	geminiResp := &v1Resp.Response
 
@@ -553,6 +554,7 @@ func (p *GeminiToAnthropicStreamProcessor) TakeDiagnostics() []string {
 	p.diagnostics = nil
 	return out
 }
+
 func (p *GeminiToAnthropicStreamProcessor) addDiagnostic(format string, args ...any) {
 	p.diagnostics = append(p.diagnostics, fmt.Sprintf(format, args...))
 }

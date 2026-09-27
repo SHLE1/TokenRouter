@@ -21,7 +21,7 @@ func Snapshot(in *Input) *Input {
 		v.Notification = cloneNotifyUser(in.User.Notification)
 		out.User = &v
 	}
-	out.Account = SnapshotAccount(in.Account)
+	out.Provider = SnapshotProvider(in.Provider)
 	if in.Subscription != nil {
 		v := &billing.UserSubscription{ID: in.Subscription.ID}
 		if p := in.Subscription.Plan; p != nil {
@@ -53,12 +53,12 @@ func SnapshotResult(in *Result) *Result {
 	return &out
 }
 
-func SnapshotAccount(in *AccountSnapshot) *AccountSnapshot {
+func SnapshotProvider(in *ProviderSnapshot) *ProviderSnapshot {
 	if in == nil {
 		return nil
 	}
 	out := *in
-	out.CredentialAccountID = cloneInt64(in.CredentialAccountID)
+	out.CredentialProviderID = cloneInt64(in.CredentialProviderID)
 	if in.Notification != nil {
 		v := *in.Notification
 		v.Dimensions = slices.Clone(v.Dimensions)

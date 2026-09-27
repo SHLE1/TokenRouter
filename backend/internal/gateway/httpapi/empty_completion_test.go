@@ -15,14 +15,14 @@ import (
 func TestEmptyCompletionKeepsOneObservationAndFailure(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
-		create  func(*gin.Context, *UpstreamErrorAccount, string) *forward.UpstreamFailoverError
+		create  func(*gin.Context, *UpstreamErrorProvider, string) *forward.UpstreamFailoverError
 		message string
 	}{
 		{"chat", NewOpenAISilentRefusalFailoverError, openAISilentRefusalUpstreamMessage},
 		{"responses", NewOpenAIResponsesEmptyCompletedFailoverError, openAIResponsesEmptyCompletedMessage},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			for _, selected := range []*UpstreamErrorAccount{nil, {ID: 7, Name: "fixture", Platform: "openai"}} {
+			for _, selected := range []*UpstreamErrorProvider{nil, {ID: 7, Name: "fixture", Platform: "openai"}} {
 				c, _ := gin.CreateTestContext(httptest.NewRecorder())
 				failure := tc.create(c, selected, " request-7 ")
 				require.Equal(t, http.StatusBadGateway, failure.StatusCode)
@@ -37,10 +37,10 @@ func TestEmptyCompletionKeepsOneObservationAndFailure(t *testing.T) {
 				require.Equal(t, "request-7", events[0].UpstreamRequestID)
 				require.Equal(t, "openai", events[0].Platform)
 				if selected == nil {
-					require.Zero(t, events[0].AccountID)
+					require.Zero(t, events[0].ProviderID)
 				} else {
-					require.Equal(t, selected.ID, events[0].AccountID)
-					require.Equal(t, selected.Name, events[0].AccountName)
+					require.Equal(t, selected.ID, events[0].ProviderID)
+					require.Equal(t, selected.Name, events[0].ProviderName)
 				}
 			}
 		})

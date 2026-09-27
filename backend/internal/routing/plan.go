@@ -5,11 +5,11 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
-// PlanInput 由最终分组确定后提供，不提前绑定账号或最终上游协议。
+// PlanInput 由最终分组确定后提供，不提前绑定提供商或最终上游协议。
 type PlanInput struct {
 	GroupID        *int64
 	RequestedModel string
@@ -18,7 +18,7 @@ type PlanInput struct {
 	ClientProtocol capability.ProtocolID
 }
 
-// RoutePlan 固化本次分组与协议策略；账号、模型重写及执行重试继续按原时序提供。
+// RoutePlan 固化本次分组与协议策略；提供商、模型重写及执行重试继续按原时序提供。
 // 字段保持私有，调用方不能修改一次尝试使用的 fallback 映射。
 type RoutePlan struct {
 	models         ModelChain
@@ -57,22 +57,22 @@ func Plan(input PlanInput) RoutePlan {
 	return plan
 }
 
-// CandidatePlan 是单个候选的当次结果，不写入账号或调度缓存。
+// CandidatePlan 是单个候选的当次结果，不写入提供商或调度缓存。
 type CandidatePlan struct {
 	Models           ModelChain
-	AccountID        int64
+	ProviderID       int64
 	GroupID          int64
 	ClientProtocol   capability.ProtocolID
 	UpstreamProtocol capability.ProtocolID
 }
 
 // ResolveCandidate 保留原生优先和单步转换，每次 fresh/数据库复核重新调用。
-func (p RoutePlan) ResolveCandidate(candidate account.AccountSnapshot) (CandidatePlan, bool) {
+func (p RoutePlan) ResolveCandidate(candidate provider.ProviderSnapshot) (CandidatePlan, bool) {
 	target, ok := capability.ResolveRoute(candidate.Protocols(), p.clientProtocol, p.fallbacks)
 	if !ok {
 		return CandidatePlan{}, false
 	}
-	return CandidatePlan{Models: p.models, AccountID: candidate.ID, GroupID: p.groupID, ClientProtocol: p.clientProtocol, UpstreamProtocol: target}, true
+	return CandidatePlan{Models: p.models, ProviderID: candidate.ID, GroupID: p.groupID, ClientProtocol: p.clientProtocol, UpstreamProtocol: target}, true
 }
 
 // GroupID 和 SchedulerType 返回本次最终分组值，不重新读取共享配置。

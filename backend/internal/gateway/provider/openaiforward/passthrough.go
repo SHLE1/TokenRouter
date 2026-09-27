@@ -75,12 +75,12 @@ func RunPassthrough(ctx context.Context, in PassthroughInput, p PassthroughPorts
 		}
 		reqStream = gjson.GetBytes(body, "stream").Bool()
 
-		accountScopedBody, accountScoped, scopeErr := p.AccountIdentityRaw(body)
+		providerScopedBody, providerScoped, scopeErr := p.ProviderIdentityRaw(body)
 		if scopeErr != nil {
 			return nil, scopeErr
 		}
-		if accountScoped {
-			body = accountScopedBody
+		if providerScoped {
+			body = providerScopedBody
 		}
 
 		p.StageFingerprint(nil)
@@ -97,7 +97,7 @@ func RunPassthrough(ctx context.Context, in PassthroughInput, p PassthroughPorts
 					body = updatedBody
 				}
 			}
-			// nil 也必须覆盖，避免 failover 复用前一个账号的收敛 ID。
+			// nil 也必须覆盖，避免 failover 复用前一个提供商的收敛 ID。
 			p.StageFingerprint(fingerprintIDs)
 		}
 	}
@@ -189,7 +189,7 @@ func RunPassthrough(ctx context.Context, in PassthroughInput, p PassthroughPorts
 	}
 
 	p.Log(
-		"[OpenAI 自动透传] 命中自动透传分支: account=%d name=%s type=%s model=%s stream=%v",
+		"[OpenAI 自动透传] 命中自动透传分支: provider=%d name=%s type=%s model=%s stream=%v",
 		profile.ID,
 		profile.Name,
 		profile.Type,
@@ -234,7 +234,7 @@ func RunPassthrough(ctx context.Context, in PassthroughInput, p PassthroughPorts
 		resp, err = p.SendPass(upstreamReq)
 		p.Latency(time.Since(upstreamStart))
 		if err != nil {
-			// 未收到 HTTP 响应时交给外层切换账号，持久故障仍由统一处理器临时摘除。
+			// 未收到 HTTP 响应时交给外层切换提供商，持久故障仍由统一处理器临时摘除。
 			return nil, p.TransportErrorPass(ctx, err)
 		}
 		if resp.StatusCode >= 400 {
@@ -246,7 +246,7 @@ func RunPassthrough(ctx context.Context, in PassthroughInput, p PassthroughPorts
 				return nil, fmt.Errorf("normalize passthrough rejected Responses field retry body: %w", retryErr)
 			} else if changed && rejectedFieldRetryState.Allow(retryBody) {
 				body = retryBody
-				p.Log("[OpenAI] Retrying passthrough request after %s (account: %s)", reason, profile.Name)
+				p.Log("[OpenAI] Retrying passthrough request after %s (provider: %s)", reason, profile.Name)
 				continue
 			}
 			if !agentTaskRecoveryTried && p.IsAgentIdentity(ctx) && p.InvalidAgentTask(resp.StatusCode, probeBody) {
@@ -265,14 +265,14 @@ func RunPassthrough(ctx context.Context, in PassthroughInput, p PassthroughPorts
 				compactModelFallbackRetried = true
 				p.UpstreamModelObserved(fallbackModel)
 				p.Log(
-					"[OpenAI passthrough] Retrying explicit compact request once with fallback model (account: %s, from: %s, to: %s, upstream_code: %s)",
+					"[OpenAI passthrough] Retrying explicit compact request once with fallback model (provider: %s, from: %s, to: %s, upstream_code: %s)",
 					profile.Name, fromModel, fallbackModel, p.ErrorCode(probeBody),
 				)
 				continue
 			}
 
 			// 透传模式默认保持原样代理；容量错误以及 API-key 上游的瞬时
-			// 5xx 应先触发多账号 failover，且此时尚未写入下游响应。
+			// 5xx 应先触发多提供商 failover，且此时尚未写入下游响应。
 			// probeBody 已在上方任务探测时读取过一次，直接复用避免重复读取。
 			if p.ShouldFailover(resp.StatusCode, probeBody) {
 				return nil, p.FailoverError(ctx, resp, body, probeBody)

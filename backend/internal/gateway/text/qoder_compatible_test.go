@@ -6,7 +6,7 @@ import (
 	"maps"
 	"testing"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/stretchr/testify/require"
 )
 
@@ -24,10 +24,11 @@ func (*qoderCompatibleFixture) Context() context.Context { return context.Backgr
 func (p *qoderCompatibleFixture) Select(excluded map[int64]struct{}) (Selection, error) {
 	p.exclusions = append(p.exclusions, maps.Clone(excluded))
 	p.selects++
-	return Selection{Account: account.AccountSnapshot{ID: int64(p.selects)}}, nil
+	return Selection{Provider: provider.ProviderSnapshot{ID: int64(p.selects)}}, nil
 }
 func (p *qoderCompatibleFixture) SelectionFailed(error, bool, bool, error) { p.failed = true }
 func (p *qoderCompatibleFixture) Acquire(bool) bool                        { p.acquires++; return true }
+
 func (p *qoderCompatibleFixture) Forward() QoderCompatibleOutcome {
 	p.forwards++
 	out := p.results[0]
@@ -67,14 +68,14 @@ func TestQoderCompatibleAttemptBoundaries(t *testing.T) {
 		require.Equal(t, 2, p.selects)
 		require.Equal(t, 1, p.successes)
 	})
-	t.Run("同账号刷新仍重新获取尝试资源", func(t *testing.T) {
+	t.Run("同提供商刷新仍重新获取尝试资源", func(t *testing.T) {
 		p := &qoderCompatibleFixture{results: []QoderCompatibleOutcome{{Err: failure, CanRefresh: true}, {}}, refresh: QoderRefreshResult{Ready: true}}
 		RunQoderCompatible(p, 3)
 		require.Equal(t, 1, p.selects)
 		require.Equal(t, 2, p.acquires)
 		require.Equal(t, 1, p.successes)
 	})
-	t.Run("刷新进行中到达账号上限不再选择", func(t *testing.T) {
+	t.Run("刷新进行中到达提供商上限不再选择", func(t *testing.T) {
 		p := &qoderCompatibleFixture{results: []QoderCompatibleOutcome{{Err: failure, CanRefresh: true}}, refresh: QoderRefreshResult{Pending: true}}
 		RunQoderCompatible(p, 1)
 		require.True(t, p.pending)
@@ -83,8 +84,8 @@ func TestQoderCompatibleAttemptBoundaries(t *testing.T) {
 	})
 }
 
-// 原旧 helper 的账号排除与预算断言现在执行实际兼容入口循环。
-func TestQoderGatewayRefreshInProgressMarksAccountForFailoverUntilBudgetExhausted(t *testing.T) {
+// 原旧 helper 的提供商排除与预算断言现在执行实际兼容入口循环。
+func TestQoderGatewayRefreshInProgressMarksProviderForFailoverUntilBudgetExhausted(t *testing.T) {
 	failure := errors.New("refresh pending")
 	result := QoderCompatibleOutcome{Err: failure, CanRefresh: true}
 	fixture := &qoderCompatibleFixture{results: []QoderCompatibleOutcome{result, result, result}, refresh: QoderRefreshResult{Pending: true}}

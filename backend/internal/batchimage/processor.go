@@ -71,7 +71,7 @@ func (p *ProviderProcessor) Process(ctx context.Context, batchID string) (BatchI
 		return BatchImageProcessResult{Terminal: true}, nil
 	}
 
-	provider, err := p.ResolveProvider(ctx, job)
+	platform, err := p.ResolveProvider(ctx, job)
 	if err != nil {
 		return BatchImageProcessResult{}, err
 	}
@@ -80,17 +80,17 @@ func (p *ProviderProcessor) Process(ctx context.Context, batchID string) (BatchI
 	}
 
 	if job.Status == BatchImageJobStatusIndexing {
-		return p.IndexAndSettle(ctx, job, provider)
+		return p.IndexAndSettle(ctx, job, platform)
 	}
 
-	status, err := provider.Get(ctx, job)
+	status, err := platform.Get(ctx, job)
 	if ctx.Err() != nil {
 		return BatchImageProcessResult{}, ctx.Err()
 	}
 	if err != nil {
 		p.warn("batch_image.provider_status_check_failed",
 			"batch_id", job.BatchID,
-			"provider", job.Provider,
+			"platform", job.Platform,
 			"provider_job_name", BatchImageDerefString(job.ProviderJobName),
 			"error", err,
 		)
@@ -127,7 +127,7 @@ func (p *ProviderProcessor) Process(ctx context.Context, batchID string) (BatchI
 			}
 			job.Status = BatchImageJobStatusIndexing
 		}
-		return p.IndexAndSettle(ctx, job, provider)
+		return p.IndexAndSettle(ctx, job, platform)
 	case BatchProviderStateFailed, BatchProviderStateExpired:
 		code := strings.TrimSpace(status.ErrorCode)
 		if code == "" && status.InternalState == BatchProviderStateExpired {
@@ -166,7 +166,8 @@ func (p *ProviderProcessor) Process(ctx context.Context, batchID string) (BatchI
 		return BatchImageProcessResult{RequeueAfter: p.RequeueDelay(status.SuggestedRequeueAfter)}, nil
 	}
 }
-func (p *ProviderProcessor) IndexAndSettle(ctx context.Context, job *BatchImageJob, provider BoundProvider) (BatchImageProcessResult, error) {
+
+func (p *ProviderProcessor) IndexAndSettle(ctx context.Context, job *BatchImageJob, platform BoundProvider) (BatchImageProcessResult, error) {
 	indexer := p.Indexer
 	if indexer == nil {
 		indexer = &ResultIndexer{Repo: p.Repo, Observe: p.Observe}
@@ -175,7 +176,7 @@ func (p *ProviderProcessor) IndexAndSettle(ctx context.Context, job *BatchImageJ
 		indexer.Repo = p.Repo
 	}
 
-	result, err := indexer.Index(ctx, job, provider)
+	result, err := indexer.Index(ctx, job, platform)
 	if ctx.Err() != nil {
 		return BatchImageProcessResult{}, ctx.Err()
 	}
@@ -221,6 +222,7 @@ func (p *ProviderProcessor) IndexAndSettle(ctx context.Context, job *BatchImageJ
 	}
 	return BatchImageProcessResult{RequeueAfter: time.Millisecond}, nil
 }
+
 func (p *ProviderProcessor) ReleaseTerminalHold(ctx context.Context, job *BatchImageJob) error {
 	if p == nil || job == nil {
 		return nil
@@ -236,6 +238,7 @@ func (p *ProviderProcessor) ReleaseTerminalHold(ctx context.Context, job *BatchI
 	}
 	return nil
 }
+
 func (p *ProviderProcessor) PersistProviderOutputRef(ctx context.Context, job *BatchImageJob, ref string) error {
 	ref = strings.TrimSpace(ref)
 	if ref == "" || job == nil || BatchImageDerefString(job.ProviderOutputRef) == ref {
@@ -247,6 +250,7 @@ func (p *ProviderProcessor) PersistProviderOutputRef(ctx context.Context, job *B
 	job.ProviderOutputRef = &ref
 	return nil
 }
+
 func (p *ProviderProcessor) RequeueDelay(suggested time.Duration) time.Duration {
 	if suggested > 0 {
 		return suggested
@@ -256,6 +260,7 @@ func (p *ProviderProcessor) RequeueDelay(suggested time.Duration) time.Duration 
 	}
 	return DefaultBatchImageProcessorRequeue
 }
+
 func IsBatchImageProcessorDoneStatus(status string) bool {
 	if status == BatchImageJobStatusSettling {
 		return true
@@ -269,8 +274,8 @@ type BatchImageIndexResult struct {
 	TotalCount   int
 }
 
-func (i *ResultIndexer) Index(ctx context.Context, job *BatchImageJob, provider BoundProvider) (*BatchImageIndexResult, error) {
-	if i == nil || i.Repo == nil || job == nil || provider == nil {
+func (i *ResultIndexer) Index(ctx context.Context, job *BatchImageJob, platform BoundProvider) (*BatchImageIndexResult, error) {
+	if i == nil || i.Repo == nil || job == nil || platform == nil {
 		return nil, ErrBatchImageIndexOutputMissing
 	}
 	expected, err := i.ListExpectedCustomIDs(ctx, job.BatchID)
@@ -278,7 +283,7 @@ func (i *ResultIndexer) Index(ctx context.Context, job *BatchImageJob, provider 
 		return nil, err
 	}
 
-	r, _, err := provider.OpenResult(ctx, job)
+	r, _, err := platform.OpenResult(ctx, job)
 	if ctx.Err() != nil {
 		if r != nil {
 			_ = r.Close()
@@ -317,7 +322,7 @@ func (i *ResultIndexer) Index(ctx context.Context, job *BatchImageJob, provider 
 		if err != nil {
 			return nil, err
 		}
-		// 与提交时的 custom_id 集对账：provider 输出中未知/多余的行不能进入 item 表，
+		// 与提交时的 custom_id 集对账：platform 输出中未知/多余的行不能进入 item 表，
 		// 否则 success+fail > item_count 会让结算永远校验失败。
 		if len(expected) > 0 {
 			if _, ok := expected[parsed.CustomID]; !ok {
@@ -360,7 +365,7 @@ func (i *ResultIndexer) Index(ctx context.Context, job *BatchImageJob, provider 
 		return nil, err
 	}
 	// 输出中漏掉的已提交项必须补失败记录，而不是静默消失：
-	// 否则用户看不到该项，且只按成功数计费会掩盖 provider 的丢单。
+	// 否则用户看不到该项，且只按成功数计费会掩盖 platform 的丢单。
 	missingCount := 0
 	if len(expected) > 0 {
 		missingIDs := make([]string, 0)
@@ -377,7 +382,7 @@ func (i *ResultIndexer) Index(ctx context.Context, job *BatchImageJob, provider 
 				Status:               BatchImageItemStatusFailed,
 				ProviderSourceObject: BatchImageOptionalStringPtr(sourceObject),
 				ErrorCode:            BatchImageStringPtr("PROVIDER_RESULT_MISSING"),
-				ErrorMessage:         BatchImageStringPtr("provider output did not include a result for this item"),
+				ErrorMessage:         BatchImageStringPtr("platform output did not include a result for this item"),
 				IndexedAt:            &now,
 			})
 			result.FailCount++
@@ -415,7 +420,7 @@ func (i *ResultIndexer) Index(ctx context.Context, job *BatchImageJob, provider 
 }
 
 // ListExpectedCustomIDs 返回该 job 当前 item 表中的全部 custom_id 集合，
-// 即提交时预创建（或上一轮索引重建）的完整条目清单，用于与 provider 输出对账。
+// 即提交时预创建（或上一轮索引重建）的完整条目清单，用于与 platform 输出对账。
 func (i *ResultIndexer) ListExpectedCustomIDs(ctx context.Context, batchID string) (map[string]struct{}, error) {
 	const pageSize = 500
 	expected := make(map[string]struct{})
@@ -489,15 +494,16 @@ func ParseBatchImageResultLine(line []byte, lineNumber int) (*ParsedBatchImageRe
 	if _, hasResponse := obj["response"]; hasResponse || BatchImageHasCandidates(obj) {
 		parsed.Status = BatchImageParsedStatusFailed
 		parsed.ErrorCode = "EMPTY_IMAGE_OUTPUT"
-		parsed.ErrorMessage = "provider response contained no image output"
+		parsed.ErrorMessage = "platform response contained no image output"
 		return parsed, nil
 	}
 
 	parsed.Status = BatchImageParsedStatusFailed
 	parsed.ErrorCode = "PROVIDER_ITEM_FAILED"
-	parsed.ErrorMessage = "provider result line contained no image output"
+	parsed.ErrorMessage = "platform result line contained no image output"
 	return parsed, nil
 }
+
 func BatchImageFindImageParts(obj map[string]any) (int, string) {
 	count, mimeType := BatchImageFindImagePartsInCandidates(BatchImageNestedAny(obj, "response", "candidates"))
 	if count > 0 {
@@ -505,6 +511,7 @@ func BatchImageFindImageParts(obj map[string]any) (int, string) {
 	}
 	return BatchImageFindImagePartsInCandidates(obj["candidates"])
 }
+
 func BatchImageFindImagePartsInCandidates(raw any) (int, string) {
 	candidates, ok := raw.([]any)
 	if !ok {
@@ -544,6 +551,7 @@ func BatchImageFindImagePartsInCandidates(raw any) (int, string) {
 	}
 	return count, firstMime
 }
+
 func BatchImageFailureFromProviderFields(obj map[string]any) (string, string, bool) {
 	if status, ok := obj["status"].(map[string]any); ok {
 		message := BatchImageFirstNonEmptyString(BatchImageMapString(status, "message"), BatchImageMapString(status, "details"))
@@ -557,6 +565,7 @@ func BatchImageFailureFromProviderFields(obj map[string]any) (string, string, bo
 	}
 	return "", "", false
 }
+
 func BatchImageMapFailureCode(code, message string) string {
 	text := strings.ToLower(strings.TrimSpace(code + " " + message))
 	switch {
@@ -570,6 +579,7 @@ func BatchImageMapFailureCode(code, message string) string {
 		return "PROVIDER_ITEM_FAILED"
 	}
 }
+
 func BatchImageFileExtension(mimeType string) string {
 	switch strings.ToLower(strings.TrimSpace(mimeType)) {
 	case "image/png":
@@ -582,6 +592,7 @@ func BatchImageFileExtension(mimeType string) string {
 		return ""
 	}
 }
+
 func BatchImageHasCandidates(obj map[string]any) bool {
 	if _, ok := obj["candidates"]; ok {
 		return true
@@ -589,6 +600,7 @@ func BatchImageHasCandidates(obj map[string]any) bool {
 	_, ok := BatchImageNestedAny(obj, "response", "candidates").([]any)
 	return ok
 }
+
 func BatchImageMapString(m map[string]any, key string) string {
 	if m == nil {
 		return ""
@@ -604,12 +616,14 @@ func BatchImageMapString(m map[string]any, key string) string {
 		return ""
 	}
 }
+
 func BatchImageNestedString(m map[string]any, keys ...string) string {
 	if nested, ok := BatchImageNestedAny(m, keys...).(string); ok {
 		return strings.TrimSpace(nested)
 	}
 	return ""
 }
+
 func BatchImageNestedAny(m map[string]any, keys ...string) any {
 	var current any = m
 	for _, key := range keys {
@@ -621,6 +635,7 @@ func BatchImageNestedAny(m map[string]any, keys ...string) any {
 	}
 	return current
 }
+
 func FirstMap(values ...any) (map[string]any, bool) {
 	for _, value := range values {
 		if m, ok := value.(map[string]any); ok {
@@ -629,6 +644,7 @@ func FirstMap(values ...any) (map[string]any, bool) {
 	}
 	return nil, false
 }
+
 func BatchImageFirstNonEmptyString(values ...string) string {
 	for _, value := range values {
 		if strings.TrimSpace(value) != "" {

@@ -12,11 +12,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/gateway"
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/qoder"
 	"github.com/stretchr/testify/require"
@@ -37,8 +37,10 @@ func (c fixtureClient) StreamRequestContext(context.Context, *qoder.SessionConte
 	return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(c.body))}, nil
 }
 
-const successfulQoderStream = "data: {\"body\":\"{\\\"choices\\\":[{\\\"delta\\\":{\\\"content\\\":\\\"served\\\"}}]}\"}\n\ndata: {\"body\":\"{\\\"usage\\\":{\\\"prompt_tokens\\\":12,\\\"completion_tokens\\\":3}}\"}\n\ndata: {\"body\":\"[DONE]\"}\n\n"
-const qoderFailureFrame = "data: {\"body\":\"{\\\"code\\\":\\\"500\\\",\\\"message\\\":\\\"fixture failure\\\"}\",\"statusCodeValue\":502}\n\n"
+const (
+	successfulQoderStream = "data: {\"body\":\"{\\\"choices\\\":[{\\\"delta\\\":{\\\"content\\\":\\\"served\\\"}}]}\"}\n\ndata: {\"body\":\"{\\\"usage\\\":{\\\"prompt_tokens\\\":12,\\\"completion_tokens\\\":3}}\"}\n\ndata: {\"body\":\"[DONE]\"}\n\n"
+	qoderFailureFrame     = "data: {\"body\":\"{\\\"code\\\":\\\"500\\\",\\\"message\\\":\\\"fixture failure\\\"}\",\"statusCodeValue\":502}\n\n"
+)
 
 func TestQoderNativeGatewayAttemptsAndCompletion(t *testing.T) {
 	for _, tc := range []struct {
@@ -70,8 +72,8 @@ func TestQoderNativeGatewayAttemptsAndCompletion(t *testing.T) {
 					_, ok := excluded[1]
 					require.True(t, ok)
 				}
-				target := &qoder.Target{AccountID: id, Site: qoder.SiteGlobal, UserType: "personal_standard", Session: func(context.Context) (*qoder.SessionContext, error) { return &qoder.SessionContext{}, nil }, Client: func() (qoder.StreamClient, error) { return client, nil }}
-				return &gateway.Selection{Snapshot: account.AccountSnapshot{ID: id}, Acquired: true, Release: func() { releases.Add(1) }, Executor: executor, Input: upstream.AttemptInput{Protocol: protocol.ProtocolOpenAIChatCompletions, Body: request.Body, Stream: tc.stream, Target: target}, Bind: func(context.Context, upstream.AttemptResult) { bindings.Add(1) }, Complete: func(_ context.Context, r upstream.AttemptResult) {
+				target := &qoder.Target{ProviderID: id, Site: qoder.SiteGlobal, UserType: "personal_standard", Session: func(context.Context) (*qoder.SessionContext, error) { return &qoder.SessionContext{}, nil }, Client: func() (qoder.StreamClient, error) { return client, nil }}
+				return &gateway.Selection{Snapshot: provider.ProviderSnapshot{ID: id}, Acquired: true, Release: func() { releases.Add(1) }, Executor: executor, Input: upstream.AttemptInput{Protocol: protocol.ProtocolOpenAIChatCompletions, Body: request.Body, Stream: tc.stream, Target: target}, Bind: func(context.Context, upstream.AttemptResult) { bindings.Add(1) }, Complete: func(_ context.Context, r upstream.AttemptResult) {
 					completions.Add(1)
 					require.Equal(t, 12, r.Usage.InputTokens)
 					require.Equal(t, 3, r.Usage.OutputTokens)
@@ -141,6 +143,7 @@ func (s *s09BlockingSink) Emit(event upstream.OutputEvent) error {
 	}
 	return nil
 }
+
 func TestQoderNativeGatewaySlowSinkAndWriteFailure(t *testing.T) {
 	for _, fail := range []bool{false, true} {
 		t.Run(fmt.Sprint(fail), func(t *testing.T) {
@@ -186,6 +189,7 @@ func (c s09CancelableQoderClient) StreamRequestContext(ctx context.Context, _ *q
 	<-ctx.Done()
 	return nil, ctx.Err()
 }
+
 func TestQoderNativeGatewayNonstreamCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

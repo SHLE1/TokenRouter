@@ -2,17 +2,15 @@
 package app
 
 import (
-	"github.com/TokenFlux/TokenRouter/internal/scheduler"
-
 	"context"
-
 	"database/sql"
-
 	"time"
+
+	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 
 	dbent "github.com/TokenFlux/TokenRouter/ent"
 
-	accountpostgres "github.com/TokenFlux/TokenRouter/internal/account/postgres"
+	providerpostgres "github.com/TokenFlux/TokenRouter/internal/provider/postgres"
 
 	"github.com/TokenFlux/TokenRouter/internal/app/lifecycle"
 
@@ -35,14 +33,15 @@ import (
 
 func provideEgressProxyStore(client *dbent.Client, db *sql.DB) *egresspostgres.ProxyStore {
 	return egresspostgres.NewProxyStore(client, db, egresspostgres.ProxyStoreOptions{
-		Accounts: func(exec postgresinfra.Executor) egresspostgres.ProxyAccountParticipant {
-			return accountpostgres.ProxyChangesInTx(exec)
+		Providers: func(exec postgresinfra.Executor) egresspostgres.ProxyProviderParticipant {
+			return providerpostgres.ProxyChangesInTx(exec)
 		},
 		Enqueue: func(ctx context.Context, exec postgresinfra.Executor, payload any) error {
-			return schedulerpostgres.EnqueueSchedulerChange(ctx, exec, scheduler.SchedulerOutboxEventAccountBulkChanged, nil, nil, payload)
+			return schedulerpostgres.EnqueueSchedulerChange(ctx, exec, scheduler.SchedulerOutboxEventProviderBulkChanged, nil, nil, payload)
 		},
 	})
 }
+
 func provideEgressProbe(cfg *config.Config) egress.ProxyExitInfoProber {
 	options := egressprovider.ProxyProbeOptions{ValidateResolvedIP: true}
 	if cfg != nil {
@@ -56,15 +55,19 @@ func provideEgressProbe(cfg *config.Config) egress.ProxyExitInfoProber {
 	}
 	return egressprovider.NewProxyExitInfoProber(options)
 }
+
 func provideEgressAdmin(store *egresspostgres.ProxyStore, prober egress.ProxyExitInfoProber, cache egress.ProxyLatencyCache, tasks *lifecycle.Tasks) *egress.ProxyAdmin {
 	return egress.NewProxyAdmin(store, prober, cache, egressprovider.ProxyQualityHTTP{}, egress.ProxyAdminOptions{Now: time.Now, Tasks: tasks, Diagnostics: egress.Diagnostics{Logf: logging.LegacyPrintf}})
 }
+
 func provideEgressProfiles(repo egress.TLSFingerprintProfileRepository, cache egress.TLSFingerprintProfileCache) *egress.TLSFingerprintProfileService {
 	return egress.NewTLSFingerprintProfileService(repo, cache, egress.Diagnostics{Logf: logging.LegacyPrintf})
 }
+
 func provideEgressRouters(repo egress.TLSFingerprintRouterRepository, cache egress.TLSFingerprintRouterCache) *egress.TLSFingerprintRouterService {
 	return egress.NewTLSFingerprintRouterService(repo, cache, egress.Diagnostics{Logf: logging.LegacyPrintf})
 }
+
 func provideEgressCollector(cfg *config.Config) *egressprovider.TLSFingerprintCollectorService {
 	options := egressprovider.CollectorOptions{Now: time.Now, Diagnostics: egress.Diagnostics{Logf: logging.LegacyPrintf}}
 	if cfg != nil {
@@ -79,6 +82,7 @@ func provideEgressCollector(cfg *config.Config) *egressprovider.TLSFingerprintCo
 	}
 	return egressprovider.NewTLSFingerprintCollectorService(options)
 }
+
 func provideEgressProfileHTTP(core *egress.TLSFingerprintProfileService, collector *egressprovider.TLSFingerprintCollectorService) *egresshttp.TLSFingerprintProfileHandler {
 	return egresshttp.NewTLSFingerprintProfileHandler(core, collector)
 }
@@ -86,6 +90,7 @@ func provideEgressProfileHTTP(core *egress.TLSFingerprintProfileService, collect
 func provideProxyTransfer(admin *egress.ProxyAdmin, tasks *lifecycle.Tasks) *egress.ProxyTransfer {
 	return egress.NewProxyTransfer(admin, tasks, time.Now)
 }
+
 func provideProxyHTTP(admin *egress.ProxyAdmin, transfers *egress.ProxyTransfer) *egresshttp.ProxyHandler {
 	return egresshttp.NewProxyHandler(admin, transfers)
 }

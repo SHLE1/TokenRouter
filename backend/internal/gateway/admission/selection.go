@@ -39,8 +39,8 @@ func DiagnoseSelection(ctx context.Context, diag routing.ModelAvailabilityDiagno
 		return fallback
 	}
 	result := diag.DiagnoseModelAvailabilityForPlatform(ctx, groupID, routingModel, platform)
-	if result.HasAccountsInPool && !result.HasModelSupport {
-		return SelectionProblem{Kind: SelectionModelNotFound, Message: fmt.Sprintf("Model %q is not supported by any configured account in this group", displayModel)}
+	if result.HasProvidersInPool && !result.HasModelSupport {
+		return SelectionProblem{Kind: SelectionModelNotFound, Message: fmt.Sprintf("Model %q is not supported by any configured provider in this group", displayModel)}
 	}
 	return fallback
 }
@@ -58,5 +58,5 @@ func RefineSelectionFailure(err error, fallback SelectionProblem) SelectionProbl
 	if parseErr != nil || count <= 0 {
 		return fallback
 	}
-	return SelectionProblem{Kind: SelectionRateLimited, Message: "All available accounts are currently rate-limited. Please retry later."}
+	return SelectionProblem{Kind: SelectionRateLimited, Message: "All available providers are currently rate-limited. Please retry later."}
 }

@@ -43,7 +43,7 @@ type Group struct {
 	// OpenAI Live 接口开关
 	AllowLive bool `json:"-"`
 
-	// 账号过滤控制（仅 OpenAI/Antigravity 平台有效）
+	// 提供商过滤控制（仅 OpenAI/Antigravity 平台有效）
 	RequireOAuthOnly  bool `json:"require_oauth_only"`
 	RequirePrivacySet bool `json:"require_privacy_set"`
 
@@ -70,7 +70,7 @@ type GroupCapacity struct {
 }
 
 // AdminGroup 是管理员接口使用的 group DTO（包含敏感/内部字段）。
-// 注意：普通用户接口不得返回 model_routing/account_count/account_groups 等内部信息。
+// 注意：普通用户接口不得返回 model_routing/provider_count/provider_groups 等内部信息。
 type AdminGroup[A any] struct {
 	Group
 	// ForceOpenAIFast 仅管理端可见，用于控制 OpenAI 分组的 Fast 策略。
@@ -98,11 +98,11 @@ type AdminGroup[A any] struct {
 	AvailabilityProbeConfig routing.GroupAvailabilityProbeConfig `json:"availability_probe_config"`
 
 	// 支持的模型系列（仅 antigravity 平台使用）
-	SupportedModelScopes    []string `json:"supported_model_scopes"`
-	AccountGroups           []A      `json:"account_groups,omitempty"`
-	AccountCount            int64    `json:"account_count,omitempty"`
-	ActiveAccountCount      int64    `json:"active_account_count,omitempty"`
-	RateLimitedAccountCount int64    `json:"rate_limited_account_count,omitempty"`
+	SupportedModelScopes     []string `json:"supported_model_scopes"`
+	ProviderGroups           []A      `json:"provider_groups,omitempty"`
+	ProviderCount            int64    `json:"provider_count,omitempty"`
+	ActiveProviderCount      int64    `json:"active_provider_count,omitempty"`
+	RateLimitedProviderCount int64    `json:"rate_limited_provider_count,omitempty"`
 
 	// 分组排序
 	SortOrder int `json:"sort_order"`

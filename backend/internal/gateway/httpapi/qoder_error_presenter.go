@@ -67,22 +67,22 @@ func (p QoderErrorPresenter) Failure(c *gin.Context, err error) *HTTPFailure {
 		result.Status = 429
 		result.Type = "rate_limit_error"
 		result.Message = "Too many pending requests, please retry later"
-	case gateway.FailureUserSlot, gateway.FailureAccountSlot:
-		if failure.Stage == gateway.FailureAccountSlot && failure.Cause != nil && failure.Cause.Error() == "no available accounts" {
+	case gateway.FailureUserSlot, gateway.FailureProviderSlot:
+		if failure.Stage == gateway.FailureProviderSlot && failure.Cause != nil && failure.Cause.Error() == "no available providers" {
 			MarkOpsRoutingCapacityLimited(c)
 			result.Status = 503
 			result.Type = "api_error"
-			result.Message = "No available accounts"
+			result.Message = "No available providers"
 			return result
 		}
 		slot := "user"
-		if failure.Stage == gateway.FailureAccountSlot {
-			slot = "account"
+		if failure.Stage == gateway.FailureProviderSlot {
+			slot = "provider"
 		}
 		result.Status, result.Type, _, result.Message = ConcurrencyErrorResponse(failure.Cause, slot)
 	case gateway.FailureRefreshPending:
 		result.Status = 503
-		result.Message = "Qoder account refresh is still in progress, please retry shortly"
+		result.Message = "Qoder provider refresh is still in progress, please retry shortly"
 		result.RetryAfter = 1
 	case gateway.FailureSelection:
 		MarkOpsRoutingCapacityLimitedIfNoAvailable(c, failure.Cause)
@@ -94,7 +94,7 @@ func (p QoderErrorPresenter) Failure(c *gin.Context, err error) *HTTPFailure {
 		if !handled {
 			result.Status = 503
 			result.Type = "api_error"
-			result.Message = "No available accounts: " + failure.Cause.Error()
+			result.Message = "No available providers: " + failure.Cause.Error()
 		}
 	case gateway.FailureUpstream, gateway.FailureExhausted:
 		status, kind, message, ok := p.Details(c, failure.Cause)
@@ -104,7 +104,7 @@ func (p QoderErrorPresenter) Failure(c *gin.Context, err error) *HTTPFailure {
 			result.Message = message
 			SetOpsUpstreamError(c, p.Describe(failure.Cause).SourceStatus, message, "")
 		} else if failure.Stage == gateway.FailureExhausted {
-			result.Message = "All available accounts exhausted"
+			result.Message = "All available providers exhausted"
 		}
 	}
 	return result

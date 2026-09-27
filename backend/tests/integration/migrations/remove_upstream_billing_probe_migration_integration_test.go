@@ -12,7 +12,7 @@ import (
 )
 
 func TestMigration236RemovesUpstreamBillingProbeDataIdempotently(t *testing.T) {
-	tx := testTx(t)
+	tx := historicalTx(t, "282_")
 	ctx := context.Background()
 	migrationSQL, err := dbmigrations.FS.ReadFile("236_remove_upstream_billing_probe.sql")
 	require.NoError(t, err)

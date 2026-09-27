@@ -20,7 +20,7 @@ Manages user authentication state, login/logout, and token persistence.
 **Actions:**
 
 - `login(credentials)` - Authenticate user with username/password
-- `register(userData)` - Register new user account
+- `register(userData)` - Register new user provider
 - `logout()` - Clear authentication and logout
 - `checkAuth()` - Restore session from localStorage
 - `refreshUser()` - Fetch latest user data from server

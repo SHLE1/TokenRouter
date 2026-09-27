@@ -58,31 +58,35 @@ type QoderCompatibleBackend interface {
 type QoderCompatibleHandler struct {
 	requestLifetime
 
-	backend     QoderCompatibleBackend
-	concurrency *ConcurrencyHelper
-	maxAccounts int
+	backend      QoderCompatibleBackend
+	concurrency  *ConcurrencyHelper
+	maxProviders int
 }
 
 func NewQoderCompatibleHandler(backend QoderCompatibleBackend, concurrency *ConcurrencyHelper, max int) *QoderCompatibleHandler {
-	return &QoderCompatibleHandler{backend: backend, concurrency: concurrency, maxAccounts: max}
+	return &QoderCompatibleHandler{backend: backend, concurrency: concurrency, maxProviders: max}
 }
 func (h *QoderCompatibleHandler) Messages(c *gin.Context)  { h.handle(c, QoderMessages) }
 func (h *QoderCompatibleHandler) Responses(c *gin.Context) { h.handle(c, QoderResponses) }
 
 // ChatCompletions 提供手写装配入口；生产 Chat 使用 Execute 契约。
 func (h *QoderCompatibleHandler) ChatCompletions(c *gin.Context) { h.handle(c, QoderChat) }
+
 func (h *QoderCompatibleHandler) errorResponse(c *gin.Context, status int, kind, message string, endpoint QoderEndpoint) {
 	WriteQoderError(c, status, kind, message, endpoint)
 }
+
 func (h *QoderCompatibleHandler) handleConcurrencyError(c *gin.Context, err error, kind string, started bool, endpoint QoderEndpoint) {
 	h.backend.ConcurrencyError(c, err, kind, started, endpoint)
 }
+
 func qoderReleaseMode(stream bool) scheduler.ReleaseMode {
 	if stream {
 		return scheduler.ReleaseOnCompletion
 	}
 	return scheduler.ReleaseOnCancel
 }
+
 func (h *QoderCompatibleHandler) handle(c *gin.Context, endpoint QoderEndpoint) {
 	format := "openai"
 	if endpoint == QoderMessages {
@@ -210,5 +214,5 @@ func (h *QoderCompatibleHandler) handle(c *gin.Context, endpoint QoderEndpoint) 
 	}
 
 	call := QoderCompatibleCall{Endpoint: endpoint, Key: apiKey, Subject: subject, Subscription: subscription, Body: body, AttemptBody: forwardBody, Model: reqModel, Stream: reqStream, StreamStarted: &streamStarted, SessionHash: sessionHash, Plan: plan, Log: reqLog}
-	textflow.RunQoderCompatible(h.backend.Execution(c, call), h.maxAccounts)
+	textflow.RunQoderCompatible(h.backend.Execution(c, call), h.maxProviders)
 }

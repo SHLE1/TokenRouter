@@ -14,9 +14,9 @@ import (
 )
 
 type GeminiRecoveryInput struct {
-	AccountID                                          int64
-	AccountName, ProjectID, Model, Action, AccessToken string
-	Body                                               []byte
+	ProviderID                                          int64
+	ProviderName, ProjectID, Model, Action, AccessToken string
+	Body                                                []byte
 }
 type GeminiRecoveryOptions struct {
 	Retry                             func([]byte) (*http.Response, error)
@@ -58,7 +58,7 @@ func RecoverGemini(ctx context.Context, input GeminiRecoveryInput, resp *http.Re
 		options.IsModelNotFound(resp.StatusCode, respBody) {
 		fallbackModel := options.FallbackModel(ctx)
 		if fallbackModel != "" && fallbackModel != mappedModel {
-			logger.LegacyPrintf("service.antigravity_gateway", "[Antigravity] Model not found (%s), retrying with fallback model %s (account: %s)", mappedModel, fallbackModel, input.AccountName)
+			logger.LegacyPrintf("service.antigravity_gateway", "[Antigravity] Model not found (%s), retrying with fallback model %s (provider: %s)", mappedModel, fallbackModel, input.ProviderName)
 
 			fallbackWrapped, err := WrapV1InternalRequest(projectID, fallbackModel, injectedBody)
 			if err == nil {
@@ -76,7 +76,7 @@ func RecoverGemini(ctx context.Context, input GeminiRecoveryInput, resp *http.Re
 		}
 	}
 
-	// Gemini 原生请求中的 thoughtSignature 可能来自旧上下文/旧账号，触发上游严格校验后返回
+	// Gemini 原生请求中的 thoughtSignature 可能来自旧上下文/旧提供商，触发上游严格校验后返回
 	// "Corrupted thought signature."。检测到此类 400 时，将 thoughtSignature 清理为 dummy 值后重试一次。
 	signatureCheckBody := respBody
 	if unwrapped, unwrapErr := (&ResponseAdapter{}).UnwrapV1InternalResponse(respBody); unwrapErr == nil && len(unwrapped) > 0 {
@@ -89,8 +89,8 @@ func RecoverGemini(ctx context.Context, input GeminiRecoveryInput, resp *http.Re
 		upstreamMsg := logredact.SanitizeUpstreamQueries(strings.TrimSpace(googlewire.ExtractPlatformMessage(signatureCheckBody)))
 		upstreamDetail := options.ErrorDetail(signatureCheckBody)
 		options.Observe(RetryObservation{
-			AccountID:          input.AccountID,
-			AccountName:        input.AccountName,
+			ProviderID:         input.ProviderID,
+			ProviderName:       input.ProviderName,
 			UpstreamStatusCode: resp.StatusCode,
 			UpstreamRequestID:  resp.Header.Get("x-request-id"),
 			Kind:               "signature_error",
@@ -98,7 +98,7 @@ func RecoverGemini(ctx context.Context, input GeminiRecoveryInput, resp *http.Re
 			Detail:             upstreamDetail,
 		})
 
-		logger.LegacyPrintf("service.antigravity_gateway", "Antigravity Gemini account %d: detected signature-related 400, retrying with cleaned thought signatures", input.AccountID)
+		logger.LegacyPrintf("service.antigravity_gateway", "Antigravity Gemini provider %d: detected signature-related 400, retrying with cleaned thought signatures", input.ProviderID)
 
 		cleanedInjectedBody := options.CleanSignatures(injectedBody)
 		retryWrappedBody, wrapErr := WrapV1InternalRequest(projectID, mappedModel, cleanedInjectedBody)
@@ -116,8 +116,8 @@ func RecoverGemini(ctx context.Context, input GeminiRecoveryInput, resp *http.Re
 						retryOpsBody = retryUnwrapped
 					}
 					options.Observe(RetryObservation{
-						AccountID:          input.AccountID,
-						AccountName:        input.AccountName,
+						ProviderID:         input.ProviderID,
+						ProviderName:       input.ProviderName,
 						UpstreamStatusCode: retryResp.StatusCode,
 						UpstreamRequestID:  retryResp.Header.Get("x-request-id"),
 						Kind:               "signature_retry",
@@ -133,10 +133,10 @@ func RecoverGemini(ctx context.Context, input GeminiRecoveryInput, resp *http.Re
 					contentType = resp.Header.Get("Content-Type")
 				}
 			} else {
-				if switchErr, ok := IsAntigravityAccountSwitchError(retryErr); ok {
+				if switchErr, ok := IsAntigravityProviderSwitchError(retryErr); ok {
 					options.Observe(RetryObservation{
-						AccountID:          input.AccountID,
-						AccountName:        input.AccountName,
+						ProviderID:         input.ProviderID,
+						ProviderName:       input.ProviderName,
 						UpstreamStatusCode: http.StatusServiceUnavailable,
 						Kind:               "failover",
 						Message:            logredact.SanitizeUpstreamQueries(retryErr.Error()),
@@ -144,16 +144,16 @@ func RecoverGemini(ctx context.Context, input GeminiRecoveryInput, resp *http.Re
 					return result, switchErr
 				}
 				options.Observe(RetryObservation{
-					AccountID:          input.AccountID,
-					AccountName:        input.AccountName,
+					ProviderID:         input.ProviderID,
+					ProviderName:       input.ProviderName,
 					UpstreamStatusCode: 0,
 					Kind:               "signature_retry_request_error",
 					Message:            logredact.SanitizeUpstreamQueries(retryErr.Error()),
 				})
-				logger.LegacyPrintf("service.antigravity_gateway", "Antigravity Gemini account %d: signature retry request failed: %v", input.AccountID, retryErr)
+				logger.LegacyPrintf("service.antigravity_gateway", "Antigravity Gemini provider %d: signature retry request failed: %v", input.ProviderID, retryErr)
 			}
 		} else {
-			logger.LegacyPrintf("service.antigravity_gateway", "Antigravity Gemini account %d: signature retry wrap failed: %v", input.AccountID, wrapErr)
+			logger.LegacyPrintf("service.antigravity_gateway", "Antigravity Gemini provider %d: signature retry wrap failed: %v", input.ProviderID, wrapErr)
 		}
 	}
 

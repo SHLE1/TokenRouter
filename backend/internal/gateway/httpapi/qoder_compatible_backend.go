@@ -107,15 +107,15 @@ func (h *QoderCompatibleRuntime) Execution(c *gin.Context, call QoderCompatibleC
 	endpoint := QoderEndpoint(call.Endpoint)
 	groupMapping := call.Plan.Mapping()
 
-	recordUsage := func(account QoderCompatibleTarget, result *forwardcore.MessagesResult) {
+	recordUsage := func(provider QoderCompatibleTarget, result *forwardcore.MessagesResult) {
 		userAgent := c.GetHeader("User-Agent")
 		clientIP := clientip.GetClientIP(c)
 		requestPayloadHash := billing.HashUsageRequestPayload(body)
 		inboundEndpoint := GetInboundEndpoint(c)
-		upstreamEndpoint := GetUpstreamEndpoint(c, account.Snapshot().Platform)
+		upstreamEndpoint := GetUpstreamEndpoint(c, provider.Snapshot().Platform)
 
 		// 入队前固化资金与报文投影，worker 不再读取请求中的实体。
-		completionInput := account.Completion(CompletionContext(c), QoderCompletionCapture{
+		completionInput := provider.Completion(CompletionContext(c), QoderCompletionCapture{
 			Result: result, Key: apiKey, Subscription: subscription,
 			InboundEndpoint: inboundEndpoint, UpstreamEndpoint: upstreamEndpoint, UserAgent: userAgent, ClientIP: clientIP,
 			PayloadHash: requestPayloadHash, Body: append([]byte(nil), body...), Pricing: groupMapping.ToUsageFields(reqModel, result.UpstreamModel),
@@ -123,17 +123,17 @@ func (h *QoderCompatibleRuntime) Execution(c *gin.Context, call QoderCompatibleC
 		completionRuntime := h.options.Recorder
 		h.submitUsageRecordTask(c, func(ctx context.Context) {
 			if err := completionRuntime.Record(ctx, completionInput, false); err != nil {
-				reqLog.Error("qoder.record_usage_failed", zap.Int64("account_id", completionInput.Account.ID), zap.Error(err))
+				reqLog.Error("qoder.record_usage_failed", zap.Int64("provider_id", completionInput.Provider.ID), zap.Error(err))
 			}
 		})
 	}
 
 	// finishPartial 不把服务失败当成成功，也不允许已有服务的请求进入下一次推理。
-	finishPartial := func(account QoderCompatibleTarget, result *forwardcore.MessagesResult, forwardErr error) bool {
+	finishPartial := func(provider QoderCompatibleTarget, result *forwardcore.MessagesResult, forwardErr error) bool {
 		if forwardErr == nil || result == nil {
 			return false
 		}
-		recordUsage(account, result)
+		recordUsage(provider, result)
 		if qoderRequestCanceled(c.Request.Context(), forwardErr) {
 			return true
 		}

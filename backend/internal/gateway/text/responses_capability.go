@@ -3,25 +3,25 @@ package text
 import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
-// ResponsesCapability 根据显式生图意图选择账号必须支持的端点能力。
-func ResponsesCapability(imageIntent bool, platform string) accountcore.OpenAIEndpointCapability {
+// ResponsesCapability 根据显式生图意图选择提供商必须支持的端点能力。
+func ResponsesCapability(imageIntent bool, platform string) providercore.OpenAIEndpointCapability {
 	if imageIntent && platform == capability.PlatformOpenAI {
-		return accountcore.OpenAIEndpointCapabilityResponses
+		return providercore.OpenAIEndpointCapabilityResponses
 	}
-	return accountcore.OpenAIEndpointCapabilityTextGeneration
+	return providercore.OpenAIEndpointCapabilityTextGeneration
 }
 
 // RequiredResponsesCapability 让两类压缩都要求 Responses 能力，
-// 其中原生 V2 还必须通过自身独立的账号模式和探测状态门禁。
-func RequiredResponsesCapability(imageIntent bool, nativeCompactionV2 bool, legacyCompact bool, platform string) accountcore.OpenAIEndpointCapability {
+// 其中原生 V2 还必须通过自身独立的提供商模式和探测状态门禁。
+func RequiredResponsesCapability(imageIntent bool, nativeCompactionV2 bool, legacyCompact bool, platform string) providercore.OpenAIEndpointCapability {
 	if nativeCompactionV2 && platform == capability.PlatformOpenAI {
-		return accountcore.OpenAIEndpointCapabilityRemoteCompactionV2
+		return providercore.OpenAIEndpointCapabilityRemoteCompactionV2
 	}
 	if legacyCompact && platform == capability.PlatformOpenAI {
-		return accountcore.OpenAIEndpointCapabilityResponses
+		return providercore.OpenAIEndpointCapabilityResponses
 	}
 	return ResponsesCapability(imageIntent, platform)
 }

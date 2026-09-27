@@ -5,7 +5,6 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/selection"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/config"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
@@ -14,6 +13,7 @@ import (
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/promptpolicy"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 	"github.com/gin-gonic/gin"
@@ -35,7 +35,7 @@ func (p openAITokenExecution) TokenSessionHash(c *gin.Context, body []byte) stri
 }
 
 func (p openAITokenExecution) SelectCount(ctx context.Context, group *int64, hash, model, platform string) (gatewayhttp.OpenAICountTarget, error) {
-	value, err := p.choices.SelectAccountForTokenCount(ctx, group, hash, model, account.OpenAIEndpointCapabilityTextGeneration, platform)
+	value, err := p.choices.SelectProviderForTokenCount(ctx, group, hash, model, provider.OpenAIEndpointCapabilityTextGeneration, platform)
 	if value == nil {
 		return nil, err
 	}
@@ -43,11 +43,11 @@ func (p openAITokenExecution) SelectCount(ctx context.Context, group *int64, has
 }
 
 func (p openAITokenExecution) SelectInputTokens(ctx context.Context, group *int64, hash, model, routingModel string, excluded map[int64]struct{}, platform string) (gatewayhttp.InputTokensSelection, error) {
-	selected, _, err := p.choices.SelectAccountWithSchedulerForCapabilityAndRoutingModel(scheduler.WithSelectOnly(ctx), group, "", hash, model, routingModel, excluded, egress.OpenAIUpstreamTransportAny, account.OpenAIEndpointCapabilityTextGeneration, false, false, platform)
-	if err != nil || selected == nil || selected.Account == nil {
+	selected, _, err := p.choices.SelectProviderWithSchedulerForCapabilityAndRoutingModel(scheduler.WithSelectOnly(ctx), group, "", hash, model, routingModel, excluded, egress.OpenAIUpstreamTransportAny, provider.OpenAIEndpointCapabilityTextGeneration, false, false, platform)
+	if err != nil || selected == nil || selected.Provider == nil {
 		return gatewayhttp.InputTokensSelection{}, err
 	}
-	result := gatewayhttp.InputTokensSelection{Target: openAITokenTarget{source: p.OpenAIAuxiliary, value: selected.Account}}
+	result := gatewayhttp.InputTokensSelection{Target: openAITokenTarget{source: p.OpenAIAuxiliary, value: selected.Provider}}
 	if selected.Acquired {
 		result.Release = selected.ReleaseFunc
 	}
@@ -57,10 +57,10 @@ func (p openAITokenExecution) SelectInputTokens(ctx context.Context, group *int6
 // openAITokenTarget 将凭据留在受控调用内，仅向 HTTP 提供独立选择快照。
 type openAITokenTarget struct {
 	source *gatewayhttp.OpenAIAuxiliary
-	value  *gatewayprovider.ExecutionAccount
+	value  *gatewayprovider.ExecutionProvider
 }
 
-func (t openAITokenTarget) Snapshot() account.AccountSnapshot {
+func (t openAITokenTarget) Snapshot() provider.ProviderSnapshot {
 	return gatewayprovider.ExecutionSnapshot(t.value)
 }
 
@@ -79,8 +79,8 @@ func provideOpenAITokensHTTP(source *gatewayhttp.OpenAIAuxiliary, funding *admis
 	options := gatewayhttp.OpenAITokenOptions{MaxSwitches: 3}
 	if cfg != nil {
 		options.MaxBodyBytes = cfg.Gateway.MaxBodySize
-		if cfg.Gateway.MaxAccountSwitches > 0 {
-			options.MaxSwitches = cfg.Gateway.MaxAccountSwitches
+		if cfg.Gateway.MaxProviderSwitches > 0 {
+			options.MaxSwitches = cfg.Gateway.MaxProviderSwitches
 		}
 	}
 	ports := gatewayhttp.OpenAITokenPorts{Execution: openAITokenExecution{OpenAIAuxiliary: source, choices: choices, planner: planner}, Funding: funding}

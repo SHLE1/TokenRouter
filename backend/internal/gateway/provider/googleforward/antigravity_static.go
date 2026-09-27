@@ -15,15 +15,15 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/antigravity"
 )
 
-// ForwardUpstream 衔接账号与 HTTP 错误策略和结果，单次执行由原生模块关闭资源。
-func (s *Antigravity) ForwardUpstream(ctx context.Context, output Output, account *gatewayprovider.ExecutionAccount, body []byte) (*forwardcore.MessagesResult, error) {
+// ForwardUpstream 衔接提供商与 HTTP 错误策略和结果，单次执行由原生模块关闭资源。
+func (s *Antigravity) ForwardUpstream(ctx context.Context, output Output, provider *gatewayprovider.ExecutionProvider, body []byte) (*forwardcore.MessagesResult, error) {
 	c := &attempt{Output: output}
 
 	started := time.Now()
-	prefix := logPrefix(c.GetHeader("session_id"), account.Record.Name)
+	prefix := logPrefix(c.GetHeader("session_id"), provider.Record.Name)
 	req, model, stream, err := antigravity.BuildStaticRequest(ctx, body, antigravity.StaticRequestInput{
-		BaseURL:  account.View().GetCredential("base_url"),
-		APIKey:   account.View().GetCredential("api_key"),
+		BaseURL:  provider.View().GetCredential("base_url"),
+		APIKey:   provider.View().GetCredential("api_key"),
 		Version:  c.GetHeader("anthropic-version"),
 		Beta:     c.GetHeader("anthropic-beta"),
 		Sanitize: anthropic.SanitizeAnthropicBodyForBetaTokens,
@@ -32,20 +32,20 @@ func (s *Antigravity) ForwardUpstream(ctx context.Context, output Output, accoun
 		return nil, err
 	}
 	proxyURL := ""
-	if account.Record.ProxyID != nil && account.Record.Proxy != nil {
-		proxyURL = account.Record.Proxy.URL()
+	if provider.Record.ProxyID != nil && provider.Record.Proxy != nil {
+		proxyURL = provider.Record.Proxy.URL()
 	}
 	handled := false
 	target := &antigravity.Target{
-		AccountID: account.Record.ID,
-		Model:     model,
-		Mode:      antigravity.ModeStaticClaudeResponse,
-		StartedAt: started,
-		Response:  s.antigravityResponseAdapter(c).Options,
-		Enter:     s.Enter,
+		ProviderID: provider.Record.ID,
+		Model:      model,
+		Mode:       antigravity.ModeStaticClaudeResponse,
+		StartedAt:  started,
+		Response:   s.antigravityResponseAdapter(c).Options,
+		Enter:      s.Enter,
 
 		Exchange: func(context.Context) (*http.Response, error) {
-			resp, err := s.Transport.Do(req, proxyURL, account.Record.ID, account.Record.Concurrency)
+			resp, err := s.Transport.Do(req, proxyURL, provider.Record.ID, provider.Record.Concurrency)
 			if err != nil {
 				logging.LegacyPrintf("service.antigravity_gateway", "%s upstream request failed: %v", prefix, err)
 				return nil, fmt.Errorf("upstream request failed: %w", err)
@@ -59,7 +59,7 @@ func (s *Antigravity) ForwardUpstream(ctx context.Context, output Output, accoun
 			}
 			respBody := s.readUpstreamErrorBody(resp)
 			if resp.StatusCode == http.StatusTooManyRequests {
-				s.handleUpstreamError(ctx, prefix, account, resp.StatusCode, resp.Header, respBody, model, 0, "", false)
+				s.handleUpstreamError(ctx, prefix, provider, resp.StatusCode, resp.Header, respBody, model, 0, "", false)
 			}
 			c.Raw(resp.StatusCode, resp.Header.Get("Content-Type"), respBody)
 			handled = true

@@ -15,7 +15,7 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
@@ -25,8 +25,8 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-type nonJSONTempUnschedAccountRepo struct {
-	gatewayprovider.ExecutionAccountStore
+type nonJSONTempUnschedProviderRepo struct {
+	gatewayprovider.ExecutionProviderStore
 
 	tempUnschedCalls    int
 	tempReason          string
@@ -35,13 +35,13 @@ type nonJSONTempUnschedAccountRepo struct {
 	modelReason         string
 }
 
-func (r *nonJSONTempUnschedAccountRepo) SetTempUnschedulable(_ context.Context, _ int64, _ time.Time, reason string) error {
+func (r *nonJSONTempUnschedProviderRepo) SetTempUnschedulable(_ context.Context, _ int64, _ time.Time, reason string) error {
 	r.tempUnschedCalls++
 	r.tempReason = reason
 	return nil
 }
 
-func (r *nonJSONTempUnschedAccountRepo) SetModelRateLimit(_ context.Context, _ int64, scope string, _ time.Time, reason ...string) error {
+func (r *nonJSONTempUnschedProviderRepo) SetModelRateLimit(_ context.Context, _ int64, scope string, _ time.Time, reason ...string) error {
 	r.modelRateLimitCalls++
 	r.modelScope = scope
 	if len(reason) > 0 {
@@ -51,7 +51,6 @@ func (r *nonJSONTempUnschedAccountRepo) SetModelRateLimit(_ context.Context, _ i
 }
 
 func TestHandleNonStreamingResponse_NonJSON2xxTriggersFailover(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
@@ -69,7 +68,7 @@ func TestHandleNonStreamingResponse_NonJSON2xxTriggersFailover(t *testing.T) {
 		&messageforward.Options{Configured: true, PreserveContentType: true, ResponseReadLimit: 134217728}, messageforward.Dependencies{Health: newPartialHealthFixture()}, nil,
 	)
 
-	usage, err := nonStreamResponseFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1}}, "claude-sonnet-4-6", "claude-sonnet-4-6")
+	usage, err := nonStreamResponseFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}, "claude-sonnet-4-6", "claude-sonnet-4-6")
 
 	require.Nil(t, usage)
 	var failoverErr *forwardcore.UpstreamFailoverError
@@ -81,7 +80,6 @@ func TestHandleNonStreamingResponse_NonJSON2xxTriggersFailover(t *testing.T) {
 }
 
 func TestHandleNonStreamingResponse_ValidJSONUnchanged(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
@@ -96,7 +94,7 @@ func TestHandleNonStreamingResponse_ValidJSONUnchanged(t *testing.T) {
 		&messageforward.Options{Configured: true, PreserveContentType: true, ResponseReadLimit: 134217728}, messageforward.Dependencies{Health: newPartialHealthFixture()}, nil,
 	)
 
-	usage, err := nonStreamResponseFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1}}, "claude-sonnet-4-6", "claude-sonnet-4-6")
+	usage, err := nonStreamResponseFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}, "claude-sonnet-4-6", "claude-sonnet-4-6")
 
 	require.NoError(t, err)
 	require.NotNil(t, usage)
@@ -106,7 +104,6 @@ func TestHandleNonStreamingResponse_ValidJSONUnchanged(t *testing.T) {
 }
 
 func TestHandleNonStreamingResponseAnthropicAPIKeyPassthrough_NonJSON2xxTriggersFailover(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
@@ -119,7 +116,7 @@ func TestHandleNonStreamingResponseAnthropicAPIKeyPassthrough_NonJSON2xxTriggers
 	}
 	svc := newResponseRuntimeFixture(&messageforward.Options{Configured: true, PreserveContentType: true, ResponseReadLimit: 134217728}, messageforward.Dependencies{}, nil)
 
-	usage, err := passthroughResponseFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 2}})
+	usage, err := passthroughResponseFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 2}})
 
 	require.Nil(t, usage)
 	var failoverErr *forwardcore.UpstreamFailoverError
@@ -130,7 +127,6 @@ func TestHandleNonStreamingResponseAnthropicAPIKeyPassthrough_NonJSON2xxTriggers
 }
 
 func TestHandleNonStreamingResponseAnthropicAPIKeyPassthrough_ValidJSONUnchanged(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
@@ -143,7 +139,7 @@ func TestHandleNonStreamingResponseAnthropicAPIKeyPassthrough_ValidJSONUnchanged
 	}
 	svc := newResponseRuntimeFixture(&messageforward.Options{Configured: true, PreserveContentType: true, ResponseReadLimit: 134217728}, messageforward.Dependencies{}, nil)
 
-	usage, err := passthroughResponseFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 2}})
+	usage, err := passthroughResponseFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 2}})
 
 	require.NoError(t, err)
 	require.NotNil(t, usage)
@@ -177,7 +173,6 @@ func TestHandleNonStreamingResponseAnthropicAPIKeyPassthrough_ForceCacheBillingR
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			rec := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(rec)
 			c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
@@ -188,7 +183,7 @@ func TestHandleNonStreamingResponseAnthropicAPIKeyPassthrough_ForceCacheBillingR
 			}
 			svc := newResponseRuntimeFixture(&messageforward.Options{Configured: true, PreserveContentType: true, ResponseReadLimit: 134217728}, messageforward.Dependencies{}, nil)
 
-			usage, err := passthroughResponseFixture(svc, requeststate.WithForceCacheBilling(context.Background()), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 2}})
+			usage, err := passthroughResponseFixture(svc, requeststate.WithForceCacheBilling(context.Background()), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 2}})
 
 			require.NoError(t, err)
 			require.Equal(t, int(gjson.Get(tt.body, "usage.input_tokens").Int()), usage.InputTokens, "本地计费必须保留未归类的输入 token")
@@ -199,30 +194,32 @@ func TestHandleNonStreamingResponseAnthropicAPIKeyPassthrough_ForceCacheBillingR
 }
 
 func TestHandleNonStreamingResponse_NonJSON2xxMatchesModelScopedTempUnschedulableRule(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
 
-	repo := &nonJSONTempUnschedAccountRepo{}
-	healthObserver := gatewaytestkit.NewHealthObserver(gatewaytestkit.HealthInput{Store: repo, Options: accountcore.HealthOptions{}})
+	repo := &nonJSONTempUnschedProviderRepo{}
+	healthObserver := gatewaytestkit.NewHealthObserver(gatewaytestkit.HealthInput{Store: repo, Options: providercore.HealthOptions{}})
 
 	svc := newResponseRuntimeFixture(
 		&messageforward.Options{Configured: true, PreserveContentType: true, ResponseReadLimit: 134217728}, messageforward.Dependencies{Health: healthObserver}, nil,
 	)
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 3,
-		Platform: capability.PlatformAnthropic,
-		Type:     capability.AccountTypeAPIKey,
-		Credentials: map[string]any{
-			"temp_unschedulable_enabled": true,
-			"temp_unschedulable_rules": []any{
-				map[string]any{
-					"error_code":       float64(http.StatusBadGateway),
-					"keywords":         []any{"upstream request failed"},
-					"duration_minutes": float64(10),
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 3,
+			Platform: capability.PlatformAnthropic,
+			Type:     capability.ProviderTypeAPIKey,
+			Credentials: map[string]any{
+				"temp_unschedulable_enabled": true,
+				"temp_unschedulable_rules": []any{
+					map[string]any{
+						"error_code":       float64(http.StatusBadGateway),
+						"keywords":         []any{"upstream request failed"},
+						"duration_minutes": float64(10),
+					},
 				},
 			},
-		}},
+		},
 	}
 	body := []byte("(upstream request failed)")
 	resp := &http.Response{
@@ -231,7 +228,7 @@ func TestHandleNonStreamingResponse_NonJSON2xxMatchesModelScopedTempUnschedulabl
 		Body:       io.NopCloser(bytes.NewReader(body)),
 	}
 
-	_, err := nonStreamResponseFixture(svc, context.Background(), resp, c, account, "claude-sonnet-4-6", "claude-sonnet-4-6")
+	_, err := nonStreamResponseFixture(svc, context.Background(), resp, c, provider, "claude-sonnet-4-6", "claude-sonnet-4-6")
 
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.True(t, errors.As(err, &failoverErr))

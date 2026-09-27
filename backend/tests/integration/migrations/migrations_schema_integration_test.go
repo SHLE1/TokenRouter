@@ -49,18 +49,19 @@ func TestMigrationsRunner_IsIdempotent_AndSchemaIsUpToDate(t *testing.T) {
 	requireColumn(t, tx, "users", "username", "character varying", 100, false)
 	requireColumn(t, tx, "users", "notes", "text", 0, false)
 
-	// accounts: schedulable and rate-limit fields
-	requireColumn(t, tx, "accounts", "notes", "text", 0, true)
-	requireColumn(t, tx, "accounts", "schedulable", "boolean", 0, false)
-	requireColumn(t, tx, "accounts", "rate_limited_at", "timestamp with time zone", 0, true)
-	requireColumn(t, tx, "accounts", "rate_limit_reset_at", "timestamp with time zone", 0, true)
-	requireColumn(t, tx, "accounts", "overload_until", "timestamp with time zone", 0, true)
-	requireColumn(t, tx, "accounts", "session_window_status", "character varying", 20, true)
-	requireIndex(t, tx, "accounts", "idx_accounts_autopause_expiry_due")
+	// providers: schedulable and rate-limit fields
+	requireColumn(t, tx, "providers", "notes", "text", 0, true)
+	requireColumn(t, tx, "providers", "schedulable", "boolean", 0, false)
+	requireColumn(t, tx, "providers", "rate_limited_at", "timestamp with time zone", 0, true)
+	requireColumn(t, tx, "providers", "rate_limit_reset_at", "timestamp with time zone", 0, true)
+	requireColumn(t, tx, "providers", "overload_until", "timestamp with time zone", 0, true)
+	requireColumn(t, tx, "providers", "session_window_status", "character varying", 20, true)
+	requireIndex(t, tx, "providers", "idx_providers_autopause_expiry_due")
 
 	// groups: OpenAI Live 与免费 Fast 默认关闭，管理员显式开启后才可访问。
 	requireColumn(t, tx, "groups", "allow_live", "boolean", 0, false)
-	requireColumn(t, tx, "groups", "free_openai_fast", "boolean", 0, false)
+	requireNoColumn(t, tx, "groups", "free_openai_fast")
+	requireColumn(t, tx, "pricing_configs", "free_openai_fast", "boolean", 0, false)
 
 	// api_keys: key length should be 128
 	requireColumn(t, tx, "api_keys", "key", "character varying", 128, false)
@@ -220,8 +221,8 @@ func TestMigrationsRunner_IsIdempotent_AndSchemaIsUpToDate(t *testing.T) {
 	require.NoError(t, tx.QueryRowContext(context.Background(), "SELECT to_regclass('public.orphan_allowed_groups_audit')").Scan(&orphanAuditRegclass))
 	require.True(t, orphanAuditRegclass.Valid, "expected orphan_allowed_groups_audit table to exist")
 
-	// account_groups: created_at should be timestamptz
-	requireColumn(t, tx, "account_groups", "created_at", "timestamp with time zone", 0, false)
+	// provider_groups: created_at should be timestamptz
+	requireColumn(t, tx, "provider_groups", "created_at", "timestamp with time zone", 0, false)
 
 	// user_allowed_groups: created_at should be timestamptz
 	requireColumn(t, tx, "user_allowed_groups", "created_at", "timestamp with time zone", 0, false)

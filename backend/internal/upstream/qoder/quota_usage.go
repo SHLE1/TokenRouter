@@ -83,7 +83,7 @@ func qoderJSONHasAnyField(fields map[string]json.RawMessage, names ...string) bo
 	return false
 }
 
-// NormalizeQuotaProgress 只归一化供应商计量，不执行账号健康或资金决策。
+// NormalizeQuotaProgress 只归一化供应商计量，不执行提供商健康或资金决策。
 func NormalizeQuotaProgress(raw *QuotaProgress, useCapAsTotal bool) *QuotaProgress {
 	if raw == nil {
 		return nil

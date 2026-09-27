@@ -6,10 +6,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestUpstreamFailoverErrorNextAccountActionPreservesLegacyRetry(t *testing.T) {
+func TestUpstreamFailoverErrorNextProviderActionPreservesLegacyRetry(t *testing.T) {
 	t.Parallel()
 
-	require.True(t, (&UpstreamFailoverError{}).ShouldRetryNextAccount())
-	require.True(t, (&UpstreamFailoverError{NextAccountAction: NextAccountRetry}).ShouldRetryNextAccount())
-	require.False(t, (&UpstreamFailoverError{NextAccountAction: NextAccountStop}).ShouldRetryNextAccount())
+	require.True(t, (&UpstreamFailoverError{}).ShouldRetryNextProvider())
+	require.True(t, (&UpstreamFailoverError{NextProviderAction: NextProviderRetry}).ShouldRetryNextProvider())
+	require.False(t, (&UpstreamFailoverError{NextProviderAction: NextProviderStop}).ShouldRetryNextProvider())
 }

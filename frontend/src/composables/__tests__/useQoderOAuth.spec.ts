@@ -45,7 +45,7 @@ beforeEach(() => {
 describe('useQoderOAuth', () => {
   it('generates an authorization URL and stores session state', async () => {
     vi.mocked(adminAPI.qoder.generateAuthUrl).mockResolvedValueOnce({
-      auth_url: 'https://qoder.com/device/selectAccounts?nonce=n',
+      auth_url: 'https://qoder.com/device/selectProviders?nonce=n',
       session_id: 'session-id',
       state: 'state-value',
       expires_in: 600,
@@ -57,7 +57,7 @@ describe('useQoderOAuth', () => {
 
     expect(ok).toBe(true)
     expect(adminAPI.qoder.generateAuthUrl).toHaveBeenCalledWith({ proxy_id: 7, site: 'cn' })
-    expect(oauth.authUrl.value).toBe('https://qoder.com/device/selectAccounts?nonce=n')
+    expect(oauth.authUrl.value).toBe('https://qoder.com/device/selectProviders?nonce=n')
     expect(oauth.sessionId.value).toBe('session-id')
     expect(oauth.state.value).toBe('state-value')
     expect(oauth.pollInterval.value).toBe(2)

@@ -15,7 +15,7 @@ import (
 	identity "github.com/TokenFlux/TokenRouter/internal/identity"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/timezone"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 	"github.com/stretchr/testify/require"
 )
@@ -34,12 +34,13 @@ func (s *s08CountingSQL) QueryContext(ctx context.Context, q string, a ...any) (
 	s.calls = append(s.calls, s08SQLCall{q, a})
 	return s.sqlExecutor.QueryContext(ctx, q, a...)
 }
+
 func TestS08QueryShapeMatchesPlanning(t *testing.T) {
 	ctx := context.Background()
 	tx := testEntTx(t)
 	client := tx.Client()
 	writer := NewUsageLogRepositoryWithSQL(client, tx, timezone.NewCalendar(time.Local))
-	account := mustCreateAccount(t, client, &accountcore.Record{Name: "s08-query-shape"})
+	provider := mustCreateProvider(t, client, &providercore.Record{Name: "s08-query-shape"})
 	ids := []int64{}
 	keys := []int64{}
 	for i := 0; i < 8; i++ {
@@ -48,7 +49,7 @@ func TestS08QueryShapeMatchesPlanning(t *testing.T) {
 		ids = append(ids, u.ID)
 		keys = append(keys, key.ID)
 		for j := 0; j < 4; j++ {
-			_, e := writer.Create(ctx, &usage.UsageLog{UserID: u.ID, APIKeyID: key.ID, AccountID: account.ID, Model: "planning", InputTokens: 10, OutputTokens: 5, TotalCost: 0.1, ActualCost: 0.1, CreatedAt: time.Now().Add(-time.Hour)})
+			_, e := writer.Create(ctx, &usage.UsageLog{UserID: u.ID, APIKeyID: key.ID, ProviderID: provider.ID, Model: "planning", InputTokens: 10, OutputTokens: 5, TotalCost: 0.1, ActualCost: 0.1, CreatedAt: time.Now().Add(-time.Hour)})
 			require.NoError(t, e)
 		}
 	}

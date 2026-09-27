@@ -302,8 +302,8 @@ const buildPayload = (): CreateUsageCleanupTaskRequest | null => {
   if (localFilters.value.api_key_id && localFilters.value.api_key_id > 0) {
     payload.api_key_id = localFilters.value.api_key_id
   }
-  if (localFilters.value.account_id && localFilters.value.account_id > 0) {
-    payload.account_id = localFilters.value.account_id
+  if (localFilters.value.provider_id && localFilters.value.provider_id > 0) {
+    payload.provider_id = localFilters.value.provider_id
   }
   if (localFilters.value.group_id && localFilters.value.group_id > 0) {
     payload.group_id = localFilters.value.group_id

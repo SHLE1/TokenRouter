@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 
@@ -22,8 +22,8 @@ func TestGetAvailableModels_UsesShortCacheAndSupportsInvalidation(t *testing.T) 
 	resetModelListMetrics()
 
 	groupID := int64(9)
-	repo := &modelsListAccountRepoStub{
-		byGroup: map[int64][]account.Record{
+	repo := &modelsListProviderRepoStub{
+		byGroup: map[int64][]provider.Record{
 			groupID: {
 				{
 					ID:       1,
@@ -62,7 +62,7 @@ func TestGetAvailableModels_UsesShortCacheAndSupportsInvalidation(t *testing.T) 
 	require.Equal(t, int64(1), repo.listByGroupCalls.Load())
 
 	// 更新仓储数据，但缓存未失效前应继续返回旧值。
-	repo.byGroup[groupID] = []account.Record{
+	repo.byGroup[groupID] = []provider.Record{
 		{
 			ID:       3,
 			Platform: capability.PlatformAnthropic,
@@ -93,14 +93,14 @@ func TestGetAvailableModels_UsesShortCacheAndSupportsInvalidation(t *testing.T) 
 func TestGetAvailableModels_ErrorAndGlobalListBranches(t *testing.T) {
 	resetModelListMetrics()
 
-	errRepo := &modelsListAccountRepoStub{
+	errRepo := &modelsListProviderRepoStub{
 		err: errors.New("db error"),
 	}
 	svcErr := newModelListFixture(errRepo)
 	require.Nil(t, svcErr.Available(context.Background(), nil, ""))
 
-	okRepo := &modelsListAccountRepoStub{
-		all: []account.Record{
+	okRepo := &modelsListProviderRepoStub{
+		all: []provider.Record{
 			{
 				ID:       1,
 				Platform: capability.PlatformAnthropic,
@@ -132,21 +132,21 @@ func TestGetAvailableModels_ErrorAndGlobalListBranches(t *testing.T) {
 // 透传只改变传输，显式白名单及映射在目录聚合时仍生效。
 func TestGetAvailableModelsPassthroughPreservesExplicitScope(t *testing.T) {
 	groupID := int64(10)
-	first := account.Record{ID: 1, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey, Credentials: map[string]any{
+	first := provider.Record{ID: 1, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey, Credentials: map[string]any{
 		"model_mapping": map[string]any{"custom-alias": "custom-upstream"}, "model_whitelist": []string{"custom-upstream"},
 	}, Extra: map[string]any{"openai_passthrough": true}}
-	second := account.Record{ID: 2, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey, Credentials: map[string]any{
+	second := provider.Record{ID: 2, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey, Credentials: map[string]any{
 		"model_mapping": map[string]any{"other-alias": "other-upstream"}, "model_whitelist": []string{"other-upstream"},
 	}}
-	repo := &modelsListAccountRepoStub{byGroup: map[int64][]account.Record{groupID: {first, second}}}
+	repo := &modelsListProviderRepoStub{byGroup: map[int64][]provider.Record{groupID: {first, second}}}
 	models := newModelListFixture(repo).Available(context.Background(), &groupID, capability.PlatformOpenAI)
 	require.ElementsMatch(t, []string{"custom-alias", "custom-upstream", "other-alias", "other-upstream"}, models)
 }
 
 func TestGetAvailableModels_GlobalListPreservesMappedModelsWithOpenAIPassthrough(t *testing.T) {
 	groupID := int64(11)
-	repo := &modelsListAccountRepoStub{
-		byGroup: map[int64][]account.Record{
+	repo := &modelsListProviderRepoStub{
+		byGroup: map[int64][]provider.Record{
 			groupID: {
 				{
 					ID:       1,
@@ -212,7 +212,7 @@ func TestInvalidateAvailableModelsCache_ByDimensions(t *testing.T) {
 	})
 }
 
-// newModelListFixture 共用原生账号投影，只为原缓存断言指定一分钟 TTL。
+// newModelListFixture 共用原生提供商投影，只为原缓存断言指定一分钟 TTL。
 func newModelListFixture(rows catalogueRows) *routing.ModelList {
 	catalogue := newCatalogueFixture(rows, nil, nil)
 	return routing.NewModelList(catalogue.Read, time.Minute)

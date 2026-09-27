@@ -7,7 +7,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/app/lifecycle"
 	"github.com/TokenFlux/TokenRouter/internal/config"
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/selection"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
@@ -16,7 +16,7 @@ import (
 )
 
 // provideLiveExecution 构造不启动观察者；Live与HTTP/WS共用凭据、拨号器和后台任务拥有者。
-func provideLiveExecution(cfg *config.Config, auxiliary *gatewayhttp.OpenAIAuxiliary, cache session.GatewayCache, concurrency *scheduler.ConcurrencyService, choices *selection.Compatible, routes *provider.RoutePlanner, recorders GatewayCompletionRecorders, tasks *lifecycle.Tasks, manager *lifecycle.Manager, grok *gatewayhttp.GrokExecutor) *gatewayhttp.OpenAILiveExecutor {
+func provideLiveExecution(cfg *config.Config, auxiliary *gatewayhttp.OpenAIAuxiliary, cache session.GatewayCache, concurrency *scheduler.ConcurrencyService, choices *selection.Compatible, routes *gatewayadapter.RoutePlanner, recorders GatewayCompletionRecorders, tasks *lifecycle.Tasks, manager *lifecycle.Manager, grok *gatewayhttp.GrokExecutor) *gatewayhttp.OpenAILiveExecutor {
 	out := &gatewayhttp.OpenAILiveExecutor{
 		Options:  gatewayhttp.OpenAILiveOptions{MaxSessionDuration: time.Hour, ObserverRetryInterval: time.Second},
 		Requests: auxiliary.Requests, Selection: choices, Routes: routes, Usage: recorders.OpenAI,

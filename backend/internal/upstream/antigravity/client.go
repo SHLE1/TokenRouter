@@ -251,7 +251,7 @@ func (c *Client) GetUserInfo(ctx context.Context, accessToken string) (*UserInfo
 	return &userInfo, nil
 }
 
-// LoadCodeAssist 获取账户信息，返回解析后的结构体和原始 JSON
+// LoadCodeAssist 获取提供商信息，返回解析后的结构体和原始 JSON
 // 支持 URL fallback：sandbox → daily → prod
 func (c *Client) LoadCodeAssist(ctx context.Context, accessToken string) (*LoadCodeAssistResponse, map[string]any, error) {
 	reqBody := LoadCodeAssistRequest{}
@@ -322,9 +322,9 @@ func (c *Client) LoadCodeAssist(ctx context.Context, accessToken string) (*LoadC
 	return nil, nil, lastErr
 }
 
-// OnboardUser 触发账号 onboarding，并返回 project_id
+// OnboardUser 触发提供商 onboarding，并返回 project_id
 // 说明：
-// 1) 部分账号 loadCodeAssist 不会立即返回 cloudaicompanionProject；
+// 1) 部分提供商 loadCodeAssist 不会立即返回 cloudaicompanionProject；
 // 2) 这时需要调用 onboardUser 完成初始化，之后才能拿到 project_id。
 func (c *Client) OnboardUser(ctx context.Context, accessToken, tierID string) (string, error) {
 	tierID = strings.TrimSpace(tierID)

@@ -8,7 +8,7 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 	"github.com/TokenFlux/TokenRouter/internal/moderation"
-	"github.com/TokenFlux/TokenRouter/internal/moderation/provider"
+	moderationadapter "github.com/TokenFlux/TokenRouter/internal/moderation/provider"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
@@ -19,8 +19,8 @@ func newHTTPModeration(t *testing.T, settings moderation.SettingRepository, repo
 	var background sync.WaitGroup
 	t.Cleanup(background.Wait)
 	core := moderation.NewContentModerationService(settings, repo, nil, nil, nil, nil, nil, moderation.Runtime{
-		Audit:         provider.NewAuditClient(),
-		SnapshotMedia: provider.SnapshotMedia,
+		Audit:         moderationadapter.NewAuditClient(),
+		SnapshotMedia: moderationadapter.SnapshotMedia,
 		Background:    func(_ string, fn func()) { background.Go(fn) },
 		CyberText:     openai.IsOpenAICyberWarningText,
 		CyberPolicy:   openai.DetectOpenAICyberPolicy,

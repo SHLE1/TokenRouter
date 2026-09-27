@@ -70,7 +70,7 @@
 
 ## 升级与恢复
 
-以下迁移专题保留各版本的切换与回退条件。文中 v34 至 v39 等缓存版本指对应迁移发布时的状态；当前认证缓存为 v41，部署当前代码时以[调度与缓存文档](../architecture/account_scheduling_and_cache.md)为准。后续迁移可能替代早期字段，不能只按某个历史专题判断当前接口。
+以下迁移专题保留各版本的切换与回退条件。文中 v34 至 v39 等缓存版本指对应迁移发布时的状态；当前认证缓存为 v41，部署当前代码时以[调度与缓存文档](../architecture/provider_scheduling_and_cache.md)为准。后续迁移可能替代早期字段，不能只按某个历史专题判断当前接口。
 
 <a id="maintenance_execution"></a>
 ### 备份与维护执行
@@ -85,7 +85,7 @@
 
 ### 分组价格设置归入价格配置
 
-迁移 `281_pricing_config_billing_settings.sql` 在价格配置增加计费设置，删除分组对应价格列和模型覆盖价。已有价格配置的价卡、账号成本规则和分组关联保留，新增设置采用默认值；旧分组价格不复制，管理员需要在价格配置重新设置需要保留的价格策略。
+迁移 `281_pricing_config_billing_settings.sql` 在价格配置增加计费设置，删除分组对应价格列和模型覆盖价。已有价格配置的价卡、提供商成本规则和分组关联保留，新增设置采用默认值；旧分组价格不复制，管理员需要在价格配置重新设置需要保留的价格策略。
 
 升级前备份 PostgreSQL，停止全部旧实例和 worker，再启动新版执行迁移。旧二进制仍依赖已删除列，不能与新版混跑。认证缓存版本更新为 v45，旧价格快照不再被读取。升级后检查关联配置、公开报价和新请求扣费；已提交图片任务继续使用原价格及资金快照，历史用量不重算。回退时同时恢复升级前数据库备份和旧二进制。
 
@@ -93,19 +93,19 @@
 
 迁移 `276_platform_independent_pricing.sql` 与 `277_platform_independent_groups.sql` 删除价格平台、分组平台、默认组和用户平台额度，旧实例与新版不能同时运行。
 
-1. 使用新版的 `--check-group-platform-migration` 只读预检价卡冲突、未绑定分组的 Key 和账号模型范围。处理不可比较的价格规则后重新预检。
+1. 使用新版的 `--check-group-platform-migration` 只读预检价卡冲突、未绑定分组的 Key 和提供商模型范围。处理不可比较的价格规则后重新预检。
 2. 备份并验证完整 PostgreSQL 数据，停止所有旧实例与 worker。历史未绑定 Key 必须由管理员明确选组，迁移不会替它选择默认组。
 3. 启动新版执行前向迁移。每个 SQL 文件在独立事务内提交；276 已成功而 277 失败时，保持停机并修复后重试，不能重新启动旧版。
 4. 确认迁移完成后重建调度快照和认证缓存，再恢复流量。抽样检查混合组路由、报价与实扣、平台统计、历史任务和未绑定 Key 的错误提示。
 5. 回退时停止新版，并将升级前数据库备份与旧二进制一同恢复。迁移归档仅用于核对，不是可直接执行的 Down 迁移。
 
-预检可运行 `server --check-group-platform-migration > group-migration-preview.json`，使用与服务相同的数据库配置，只读取数据库，不执行迁移或启动后台任务。报告列出每个价格范围的合并前后规则、冲突、未绑定 Key ID、全部账号的显式目录扩展，以及最近 30 天使用过但新模型范围不再接受的模型；不输出 Key 字符串或账号凭据。复杂价格冲突会返回非零退出码，未绑定 Key 和模型范围差异作为待配置项列出。
+预检可运行 `server --check-group-platform-migration > group-migration-preview.json`，使用与服务相同的数据库配置，只读取数据库，不执行迁移或启动后台任务。报告列出每个价格范围的合并前后规则、冲突、未绑定 Key ID、全部提供商的显式目录扩展，以及最近 30 天使用过但新模型范围不再接受的模型；不输出 Key 字符串或提供商凭据。复杂价格冲突会返回非零退出码，未绑定 Key 和模型范围差异作为待配置项列出。
 
-同一配置、同一模型的可比较显式单价逐项取最大，输入与输出可能来自不同旧平台。全部为空的桶保持继承，显式零价保留；空值与显式值、不同计费模式/区间/倍率/分时规则，以及重叠但不同的模型通配规则都会阻断迁移。账号成本规则按各自匹配条件及排序独立合并，不跨规则取高。缓存使用认证快照 v42 和 `sched:v3:`，旧空间不再被新版读取。
+同一配置、同一模型的可比较显式单价逐项取最大，输入与输出可能来自不同旧平台。全部为空的桶保持继承，显式零价保留；空值与显式值、不同计费模式/区间/倍率/分时规则，以及重叠但不同的模型通配规则都会阻断迁移。提供商成本规则按各自匹配条件及排序独立合并，不跨规则取高。缓存使用认证快照 v42 和 `sched:v3:`，旧空间不再被新版读取。
 
 价格归档保存在 `platform_independent_pricing_archive`。分组归档 `platform_independent_group_archive` 保留原平台、默认组标记和完整策略，其中未生效的平台草稿不转为生效配置。平台额度及其默认设置归档到 `removed_platform_quota_archive` 后退出运行时。旧 `allow_ungrouped_key_scheduling` 设置单独保存在 `platform_independent_setting_archive`，随后从运行设置删除。
 
-旧使用记录先按升级前的统计口径固化 `platform`，旧错误记录仅补齐空平台；新记录使用实际账号平台。迁移不会清空预聚合、重算账单或改变已提交任务的 provider 与资金快照。创作台的迁移 `278_creative_provider_snapshot.sql` 增加 `provider`，从已绑定账号回填历史任务；新任务在调用上游前保存供应商与账号。协议 fallback 的旧单目标变为数组，未配置项显式设为空数组以保持仅原生，存量 `allowed_protocols` 原样保留。
+旧使用记录先按升级前的统计口径固化 `platform`，旧错误记录仅补齐空平台；新记录使用实际提供商平台。迁移不会清空预聚合、重算账单或改变已提交任务的 provider 与资金快照。创作台的迁移 `278_creative_provider_snapshot.sql` 增加 `provider`，从已绑定提供商回填历史任务；新任务在调用上游前保存供应商与提供商。协议 fallback 的旧单目标变为数组，未配置项显式设为空数组以保持仅原生，存量 `allowed_protocols` 原样保留。
 
 ### 数据共享功能下线
 
@@ -156,9 +156,9 @@
 
 ### 渠道缓存写入 1h 分档迁移
 
-迁移 `261_channel_cache_write_1h_pricing.sql` 为渠道模型价、渠道 token 区间、账号统计模型价和账号统计区间增加可空 `cache_write_1h_price`。NULL 表示兼容旧的 `cache_write_price` 两档同价语义，显式 0 表示 1h 缓存写入免费；迁移只新增列且可重复执行。应用层会在用量带有 5m/1h 明细时分别计算，否则按聚合缓存创建 token 回退，避免历史记录改变金额。
+迁移 `261_channel_cache_write_1h_pricing.sql` 为渠道模型价、渠道 token 区间、提供商统计模型价和提供商统计区间增加可空 `cache_write_1h_price`。NULL 表示兼容旧的 `cache_write_price` 两档同价语义，显式 0 表示 1h 缓存写入免费；迁移只新增列且可重复执行。应用层会在用量带有 5m/1h 明细时分别计算，否则按聚合缓存创建 token 回退，避免历史记录改变金额。
 
-升级后应抽样验证旧渠道配置仍返回相同总价、新配置的 5m/1h API 往返、账号统计成本和模型广场展示，并确认所有实例已运行包含该迁移的版本后再开放 1h 字段写入。
+升级后应抽样验证旧渠道配置仍返回相同总价、新配置的 5m/1h API 往返、提供商统计成本和模型广场展示，并确认所有实例已运行包含该迁移的版本后再开放 1h 字段写入。
 
 ### 分组 OpenAI Fast 强制策略迁移
 
@@ -170,7 +170,7 @@
 
 迁移 `263_group_reasoning_effort_over_limit.sql` 为 `groups` 增加非空 `max_reasoning_effort_over_limit`，默认 `downgrade`，并记录 `deny` 的拒绝语义。上游同名迁移使用的编号不直接复用；本 fork 按现有最大迁移号递增为 263。管理服务只允许 `downgrade` 或 `deny`，且 `deny` 仅对 OpenAI 分组开放；平台切换到其它类型时会清除上限并恢复默认降档动作。
 
-认证缓存版本由 v34 升至 v35，快照增加该动作。HTTP Responses/Chat、Messages 兼容桥和 Responses WebSocket 都在出站前执行“模型范围映射后再比较上限”的规则；拒绝请求属于本地业务限制，不应进入账号故障转移或 SLA 失败统计。Messages 只对显式 `output_config.effort` 绑定策略，避免改变缺省请求的桥接默认值。部署时先执行迁移并升级全部后端实例，确认旧快照失效、管理 API 往返字段正确，再开放 `deny` 配置。旧二进制会忽略新列，不能在混跑期间依赖拒绝语义；回退时无需删除列，但应停止写入新动作并重新构建缓存。
+认证缓存版本由 v34 升至 v35，快照增加该动作。HTTP Responses/Chat、Messages 兼容桥和 Responses WebSocket 都在出站前执行“模型范围映射后再比较上限”的规则；拒绝请求属于本地业务限制，不应进入提供商故障转移或 SLA 失败统计。Messages 只对显式 `output_config.effort` 绑定策略，避免改变缺省请求的桥接默认值。部署时先执行迁移并升级全部后端实例，确认旧快照失效、管理 API 往返字段正确，再开放 `deny` 配置。旧二进制会忽略新列，不能在混跑期间依赖拒绝语义；回退时无需删除列，但应停止写入新动作并重新构建缓存。
 
 ### 分组 Fast/Ultra Fast 策略
 
@@ -178,29 +178,29 @@
 
 ### OpenAI 能力探测下线
 
-迁移 `270_openai_manual_protocol_capabilities.sql` 将 OpenAI 账号原生 V2/旧版 Compact 的自动模式固定为升级前有效开关，保留人工 force_on/force_off，并清除 Responses 与压缩的历史探测字段。没有明确不支持结论的自动账号保持开启。文本路由继续使用已有管理员三态，双协议模式不再因探测结果降级为 Chat；国产供应商改用其显式协议配置生成路由。
+迁移 `270_openai_manual_protocol_capabilities.sql` 将 OpenAI 提供商原生 V2/旧版 Compact 的自动模式固定为升级前有效开关，保留人工 force_on/force_off，并清除 Responses 与压缩的历史探测字段。没有明确不支持结论的自动提供商保持开启。文本路由继续使用已有管理员三态，双协议模式不再因探测结果降级为 Chat；国产供应商改用其显式协议配置生成路由。
 
-迁移 `271_clean_openai_import_capability_state.sql` 补充清理 `openai_oauth_import_defaults` 模板的历史探测字段，将显式 `auto` 转为开启；模板缺失的开关、显式关闭、账号默认值和其它参数保持原样。该迁移可重复执行，不创建缺失模板，不覆盖非法 JSON、非对象模板或非对象 Extra。JSONB 无法表示的 Unicode（例如 `\u0000`）及超范围数值同样保留原始文本，避免辅助配置阻断启动；容错仅覆盖 JSONB 转换块，数据库读写异常仍正常报错。读写边界继续丢弃旧客户端输入，防止废弃状态重新写入；既有迁移文件保留以满足校验和约束。
+迁移 `271_clean_openai_import_capability_state.sql` 补充清理 `openai_oauth_import_defaults` 模板的历史探测字段，将显式 `auto` 转为开启；模板缺失的开关、显式关闭、提供商默认值和其它参数保持原样。该迁移可重复执行，不创建缺失模板，不覆盖非法 JSON、非对象模板或非对象 Extra。JSONB 无法表示的 Unicode（例如 `\u0000`）及超范围数值同样保留原始文本，避免辅助配置阻断启动；容错仅覆盖 JSONB 转换块，数据库读写异常仍正常报错。读写边界继续丢弃旧客户端输入，防止废弃状态重新写入；既有迁移文件保留以满足校验和约束。
 
-全部后端升级后再开放新的管理控件；旧实例仍可能执行探测和旧路由逻辑，不支持依赖新行为的新旧混跑。迁移更新账号 extra 后沿用调度投影失效机制。回退二进制不会恢复被清理的探测状态；需要精确回退时使用升级前数据库备份。验证时覆盖两个协议的单选/双选、两类压缩开关以及手动测试不改变配置。
+全部后端升级后再开放新的管理控件；旧实例仍可能执行探测和旧路由逻辑，不支持依赖新行为的新旧混跑。迁移更新提供商 extra 后沿用调度投影失效机制。回退二进制不会恢复被清理的探测状态；需要精确回退时使用升级前数据库备份。验证时覆盖两个协议的单选/双选、两类压缩开关以及手动测试不改变配置。
 
 ### 分组 OpenAI Fast Standard 计费迁移
 
 迁移 `264_group_free_openai_fast.sql` 为 `groups` 增加默认关闭的 `free_openai_fast` 布尔列。管理 API、分组复制和认证快照只对 OpenAI 分组保留该策略；平台切换到其它类型时由服务层清零。上游请求仍使用 Fast/priority，只有用户侧结算在同一模型、渠道和计费时刻重新采用 Standard 价格。
 
-认证缓存版本由 v35 升至 v36，快照新增免费 Fast 字段。Usage Log 的 Fast `total_cost` 继续作为账号统计和账号额度的成本基数，Standard `actual_cost` 与统一结算基础金额用于余额、订阅和 API Key 配额。迁移是幂等新增列，但旧后端不会读取该策略；发布时先执行迁移并升级全部后端实例，确认旧 v35 快照失效、管理 API 往返字段正确，再开放开关。回退旧二进制不会删除列，且不能在混跑期间依赖免费 Fast 价格语义。
+认证缓存版本由 v35 升至 v36，快照新增免费 Fast 字段。Usage Log 的 Fast `total_cost` 继续作为提供商统计和提供商额度的成本基数，Standard `actual_cost` 与统一结算基础金额用于余额、订阅和 API Key 配额。迁移是幂等新增列，但旧后端不会读取该策略；发布时先执行迁移并升级全部后端实例，确认旧 v35 快照失效、管理 API 往返字段正确，再开放开关。回退旧二进制不会删除列，且不能在混跑期间依赖免费 Fast 价格语义。
 
-### OpenAI 账号级长上下文计费开关下线
+### OpenAI 提供商级长上下文计费开关下线
 
-迁移 `241_remove_openai_long_context_billing_toggle.sql` 幂等删除迁移 203 创建的两个账号同步触发器和两个函数，并从所有账号 `extra` 中移除 `openai_long_context_billing_enabled`，保留其它 JSONB 数据。新服务仍把该键视为废弃输入：账号创建、更新、批量更新、导入和 CRS 同步即使收到非法类型也会静默丢弃，不再保存或返回旧校验错误。
+迁移 `241_remove_openai_long_context_billing_toggle.sql` 幂等删除迁移 203 创建的两个提供商同步触发器和两个函数，并从所有提供商 `extra` 中移除 `openai_long_context_billing_enabled`，保留其它 JSONB 数据。新服务仍把该键视为废弃输入：提供商创建、更新、批量更新、导入和 CRS 同步即使收到非法类型也会静默丢弃，不再保存或返回旧校验错误。
 
-整份替换语义的单账号更新只携带废弃键时等同未提供 `extra`，不会清空其它配置；显式 `extra:{}` 仍表示清空允许清空的字段，废弃键与有效字段并存时只处理有效字段。账号数据导入会在计算幂等指纹前丢弃该键，因此旧键缺失、任意旧值和非法类型均表示同一逻辑请求。
+整份替换语义的单提供商更新只携带废弃键时等同未提供 `extra`，不会清空其它配置；显式 `extra:{}` 仍表示清空允许清空的字段，废弃键与有效字段并存时只处理有效字段。提供商数据导入会在计算幂等指纹前丢弃该键，因此旧键缺失、任意旧值和非法类型均表示同一逻辑请求。
 
-升级后，长上下文用户价格只由分组逐模型基础价、渠道显式区间、模型内置阶梯、分组长上下文开关和分组倍率决定。渠道显式区间优先且不会重复叠加模型内置倍率，也不受分组开关影响；没有显式区间时，开关决定是否按模型广场公开的长上下文档结算。账号统计和账号 `quota_used` 统一使用 `COALESCE(account_stats_cost, total_cost) × account_rate_multiplier`，显式零账号成本不累计额度；这不改变用户余额、订阅或 API Key 配额继续使用 `ActualCost` 的规则。
+升级后，长上下文用户价格只由分组逐模型基础价、渠道显式区间、模型内置阶梯、分组长上下文开关和分组倍率决定。渠道显式区间优先且不会重复叠加模型内置倍率，也不受分组开关影响；没有显式区间时，开关决定是否按模型广场公开的长上下文档结算。提供商统计和提供商 `quota_used` 统一使用 `COALESCE(provider_stats_cost, total_cost) × provider_rate_multiplier`，显式零提供商成本不累计额度；这不改变用户余额、订阅或 API Key 配额继续使用 `ActualCost` 的规则。
 
-这是不支持新旧后端混跑的一次性升级。发布前必须停止接流量并排空全部旧实例，验证 PostgreSQL 备份可恢复，再只启动一个新实例执行迁移；确认触发器、函数和旧键已清理，抽样核对模型广场区间价与实扣一致后，才能扩容其它新实例。旧实例不能连接已迁移数据库，否则可能重新写入废弃键或按旧账号开关产生不同用户价格。
+这是不支持新旧后端混跑的一次性升级。发布前必须停止接流量并排空全部旧实例，验证 PostgreSQL 备份可恢复，再只启动一个新实例执行迁移；确认触发器、函数和旧键已清理，抽样核对模型广场区间价与实扣一致后，才能扩容其它新实例。旧实例不能连接已迁移数据库，否则可能重新写入废弃键或按旧提供商开关产生不同用户价格。
 
-发布说明必须明确：此前关闭账号开关的 OpenAI 请求在超过模型阈值后，会开始按模型广场长上下文价格扣费。仅回退二进制不能恢复旧版精确行为；需要回滚时应停止全部新实例，恢复升级前 PostgreSQL 备份，再启动旧版本，不能通过手工补键或删除迁移记录代替数据库恢复。
+发布说明必须明确：此前关闭提供商开关的 OpenAI 请求在超过模型阈值后，会开始按模型广场长上下文价格扣费。仅回退二进制不能恢复旧版精确行为；需要回滚时应停止全部新实例，恢复升级前 PostgreSQL 备份，再启动旧版本，不能通过手工补键或删除迁移记录代替数据库恢复。
 
 ### 通用高级调度器迁移
 
@@ -210,9 +210,9 @@
 
 迁移 `239_add_group_advanced_scheduler_overrides.sql` 为 `groups` 增加非空 JSONB `advanced_scheduler_overrides`，默认 `{}`，并约束顶层必须是对象。它不修改既有分组模式或全局权重；空对象让所有分组继续继承网关通用参数。升级后管理端可仅为高级分组保存需要偏离全局的字段，认证快照版本会再次提升以避免旧缓存缺失覆盖值。
 
-迁移 `240_remove_account_group_priority.sql` 幂等删除 `account_groups.priority` 以及依赖该列的三个索引。该字段没有完整的产品配置入口，真实调度和模型市场统一使用 `accounts.priority`；迁移后 AccountGroup 只表达账号与分组的成员关系。迁移会先按名称删除历史索引再删除列，既支持完整历史 schema，也支持缺少部分索引的兼容数据库。
+迁移 `240_remove_account_group_priority.sql` 幂等删除 `provider_groups.priority` 以及依赖该列的三个索引。该字段没有完整的产品配置入口，真实调度和模型市场统一使用 `providers.priority`；迁移后 ProviderGroup 只表达提供商与分组的成员关系。迁移会先按名称删除历史索引再删除列，既支持完整历史 schema，也支持缺少部分索引的兼容数据库。
 
-这是破坏性的一次性升级，不支持新旧二进制或新旧前端混跑。先停止全部旧实例、备份 PostgreSQL 与配置，再启动一个新实例完成迁移，确认认证快照因版本变化而重建、分组模式和通用设置符合预期，并抽样核对账号仍按全局优先级排序后，再扩容其它新实例。仅回退二进制不能恢复已删除的旧设置或 `account_groups.priority`；需要回滚时应停止新实例并恢复升级前的数据库备份和配置。
+这是破坏性的一次性升级，不支持新旧二进制或新旧前端混跑。先停止全部旧实例、备份 PostgreSQL 与配置，再启动一个新实例完成迁移，确认认证快照因版本变化而重建、分组模式和通用设置符合预期，并抽样核对提供商仍按全局优先级排序后，再扩容其它新实例。仅回退二进制不能恢复已删除的旧设置或 `provider_groups.priority`；需要回滚时应停止新实例并恢复升级前的数据库备份和配置。
 
 ### 分组客户端协议迁移
 
@@ -224,13 +224,13 @@
 
 ### 上游声明倍率探测下线
 
-迁移 `236_remove_upstream_billing_probe.sql` 幂等删除账号 JSONB 中的 `upstream_billing_probe`、`upstream_billing_probe_enabled`，并删除设置 `upstream_billing_probe_settings`、`openai_low_upstream_rate_priority_enabled`、`openai_oauth_scheduling_rate_multiplier`、`openai_advanced_scheduler_weight_upstream_cost`。
+迁移 `236_remove_upstream_billing_probe.sql` 幂等删除提供商 JSONB 中的 `upstream_billing_probe`、`upstream_billing_probe_enabled`，并删除设置 `upstream_billing_probe_settings`、`openai_low_upstream_rate_priority_enabled`、`openai_oauth_scheduling_rate_multiplier`、`openai_advanced_scheduler_weight_upstream_cost`。
 
-迁移不改动其它账号 extra 或设置。旧配置项 `gateway.openai_ws.scheduler_score_weights.upstream_cost` 已失去行为，升级前应从配置文件、Secret 和环境模板中移除。
+迁移不改动其它提供商 extra 或设置。旧配置项 `gateway.openai_ws.scheduler_score_weights.upstream_cost` 已失去行为，升级前应从配置文件、Secret 和环境模板中移除。
 
-这是无兼容路由和弃用期的破坏性升级。发布时先停止并确认全部旧实例退出，再备份 PostgreSQL 和旧配置，然后启动一个新实例完成迁移，最后扩容其余新实例；禁止新旧二进制混跑，否则旧进程可能重新写回已删除数据。`GET /v1/sub2api/billing` 和全部 `/api/v1/admin/accounts/*upstream-billing-probe*` 路由在新版本上返回普通 `404`。
+这是无兼容路由和弃用期的破坏性升级。发布时先停止并确认全部旧实例退出，再备份 PostgreSQL 和旧配置，然后启动一个新实例完成迁移，最后扩容其余新实例；禁止新旧二进制混跑，否则旧进程可能重新写回已删除数据。`GET /v1/sub2api/billing` 和全部 `/api/v1/admin/providers/*upstream-billing-probe*` 路由在新版本上返回普通 `404`。
 
-不扫描或清理 Redis。遗留探测 leader lock 按原有 2 分钟 TTL 自然过期；这不会恢复任何探测任务。升级后应确认迁移可重复执行、无关账号 extra 和设置保持不变、Ollama Cloud/额度/endpoint capability 探测正常，以及声明倍率不再影响账号排序或评分。
+不扫描或清理 Redis。遗留探测 leader lock 按原有 2 分钟 TTL 自然过期；这不会恢复任何探测任务。升级后应确认迁移可重复执行、无关提供商 extra 和设置保持不变、Ollama Cloud/额度/endpoint capability 探测正常，以及声明倍率不再影响提供商排序或评分。
 
 只回退二进制无法恢复已删除的快照与设置。需要回滚时，先停止全部新实例，恢复升级前 PostgreSQL 备份和旧配置，再启动旧版本；不得通过手工删除迁移记录或让旧实例在已迁移数据库上重建历史数据。
 
@@ -265,9 +265,9 @@
 
 ### 统一协议能力切换
 
-迁移 `273_unify_protocol_capabilities.sql` 将旧账号文本路由/工作负载转为 `credentials.upstream_protocols`，把分组文本集合改名为 `allowed_protocols`，回填已有媒体、Live、Voice、搜索入口和显式转换映射，并保留 CN 分协议地址。原图片开关关闭的 OpenAI/Grok 分组迁移为 Responses 图片 `block`，开启的为 `inherit`。旧内部布尔列保留为派生镜像；新管理响应只提供统一配置。
+迁移 `273_unify_protocol_capabilities.sql` 将旧提供商文本路由/工作负载转为 `credentials.upstream_protocols`，把分组文本集合改名为 `allowed_protocols`，回填已有媒体、Live、Voice、搜索入口和显式转换映射，并保留 CN 分协议地址。原图片开关关闭的 OpenAI/Grok 分组迁移为 Responses 图片 `block`，开启的为 `inherit`。旧内部布尔列保留为派生镜像；新管理响应只提供统一配置。
 
-此次升级按一次切换执行：先备份并验证恢复，停止全部旧实例，再启动一个新实例完成迁移，重建认证缓存 v40 和 `sched:v2:` 调度缓存，抽样确认 CN 自定义地址、OpenAI/PAT 原生边界、分组转换、媒体入口和既有任务管理后再扩容。迁移可重放，不覆盖已保存的新空集合或转换配置。旧固定 CN 协议及 OpenAI 强制协议只迁移真实存在的字段；混合账号在同一分组中共享同一个显式转换目标，应抽样确认目标账号已启用该协议。回退必须恢复升级前数据库，不能只回退二进制。
+此次升级按一次切换执行：先备份并验证恢复，停止全部旧实例，再启动一个新实例完成迁移，重建认证缓存 v40 和 `sched:v2:` 调度缓存，抽样确认 CN 自定义地址、OpenAI/PAT 原生边界、分组转换、媒体入口和既有任务管理后再扩容。迁移可重放，不覆盖已保存的新空集合或转换配置。旧固定 CN 协议及 OpenAI 强制协议只迁移真实存在的字段；混合提供商在同一分组中共享同一个显式转换目标，应抽样确认目标提供商已启用该协议。回退必须恢复升级前数据库，不能只回退二进制。
 
 相关文档：[系统架构](../architecture/system_architecture.md)、[配置边界](../interfaces/configuration.md)、[运维目录](index.md)。
 
@@ -283,9 +283,9 @@
 
 ### 移除重复价格与图片设置
 
-迁移 `275_remove_redundant_pricing_controls.sql` 删除 `pricing_configs.apply_pricing_to_account_stats`，并清理 `groups.routing_policy.features_config.codex_image_generation_bridge`。账号成本保留独立规则与网关默认模型价回退，不再提供复用用户自定义价的开关。分组图片设置只保留协议控制，优先级为分组显式协议设置、账号覆盖、全局默认值；旧兜底值直接移除，不提升为会覆盖账号设置的分组显式策略。
+迁移 `275_remove_redundant_pricing_controls.sql` 删除 `pricing_configs.apply_pricing_to_provider_stats`，并清理 `groups.routing_policy.features_config.codex_image_generation_bridge`。提供商成本保留独立规则与网关默认模型价回退，不再提供复用用户自定义价的开关。分组图片设置只保留协议控制，优先级为分组显式协议设置、提供商覆盖、全局默认值；旧兜底值直接移除，不提升为会覆盖提供商设置的分组显式策略。
 
-升级前停止旧实例并备份数据库，随后启动新实例执行迁移。此迁移支持重复执行，不修改价格条目、账号成本规则、历史账单或任务定价快照。回滚需要恢复升级前数据库及旧版本。
+升级前停止旧实例并备份数据库，随后启动新实例执行迁移。此迁移支持重复执行，不修改价格条目、提供商成本规则、历史账单或任务定价快照。回滚需要恢复升级前数据库及旧版本。
 
 
 ### Messages 系列默认映射下线
@@ -300,3 +300,18 @@
 迁移 `280_remove_messages_dispatch_model_config.sql` 删除分组的专用模型覆盖列，旧规则直接停止生效，不自动复制到通用映射。现有 `routing_policy.model_mapping`、分组身份和其它策略保持不变，迁移支持重复执行。
 
 创建、编辑、复制分组和认证快照不再携带该配置，旧管理请求返回 400。认证快照升至 v44 后重新回源；前后端需同时升级，回退仍使用升级前数据库备份与旧版本。
+
+<a id="provider_name_migration"></a>
+### 提供商名称统一
+
+迁移 `282_rename_accounts_to_providers.sql` 将上游接入实体统一为 Provider，管理端路径为 `/admin/providers`，API 为 `/api/v1/admin/providers`。相关请求、响应、查询和配置键采用 `provider` 命名。旧管理入口与旧字段不提供兼容；第三方协议的 `account_id`、`account_uuid`、Service Account 和控制台登录账户保留原义。
+
+数据库表、列、约束、索引和序列原地改名，历史用量与费用数值保持不变，不回填 `usage_logs`，不重建索引或预聚合。现行提供商配置、设置键和邮件模板占位符同步迁移；历史日志原文不修改，旧调度 outbox 和错误事件实体字段在读取边界转换；错误阶段筛选同时匹配历史 `account_auth`，对外展示 `provider_auth`。创作和批量图片的旧 `provider` 平台字段改为 `platform`。
+
+SQL 事务的锁等待上限为 10 秒，执行上限为 120 秒，失败后全部回滚。锁等待失败时先检查占用表的事务，再重试启动；应用不主动终止其它会话。升级前停止全部旧实例并等待在途请求结束，备份 PostgreSQL、Redis 和配置，按错误提示替换 YAML/环境变量中的旧键。备份耗时不计入命名迁移目标。
+
+新实例在开放流量和装配后台任务之前，分批迁移 Redis 并发、会话、限流、临时停调和窗口费用键，保留数据类型及剩余 TTL。目标键冲突时停止启动并保留双方；解决冲突后，使用 `migration:provider-names:v1` 中的批次进度继续。该标记不是允许新旧实例混跑的机制，升级期间必须保持旧实例停机。调度快照使用 `sched:v4`，API Key 认证快照版本为 46，仪表盘统计缓存使用 v2；旧快照不参与新版本查询。
+
+JSON 导出格式标识仍为 `sub2api-data`，版本为 2，集合名为 `providers`。导入拒绝缺失版本、旧版本、旧格式标识及 `accounts` 集合；CRS、Codex 等外部格式由专用入口按对方协议读取。新版 JSON 导出仍不包含分组关联与 Spark 影子的独立配置。
+
+先启动一个新实例完成迁移与抽样验证，再恢复其它实例。回退需要停止全部新实例并恢复升级前数据库、Redis 和配置，不能只替换二进制。隔离 PostgreSQL 18 测试中，100 万条用量记录连同索引约 470 MB，元数据迁移耗时约 0.08 秒，表及 26 个索引的物理文件标识不变；生产停机窗口仍需按实际配置量、Redis 键数量和锁等待演练；更早未执行的历史迁移耗时另计。

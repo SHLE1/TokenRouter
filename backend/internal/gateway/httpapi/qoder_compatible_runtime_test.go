@@ -8,7 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/completion"
@@ -16,6 +15,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
@@ -56,14 +56,14 @@ func (*qoderRuntimeContract) Acquired() bool                  { return true }
 func (f *qoderRuntimeContract) ReleaseFunc() func() {
 	return func() { f.events = append(f.events, "release") }
 }
-func (*qoderRuntimeContract) WaitPlan() *scheduler.AccountWaitPlan { return nil }
+func (*qoderRuntimeContract) WaitPlan() *scheduler.ProviderWaitPlan { return nil }
 func (f *qoderRuntimeContract) Report(_ int64, ok bool, _ *forward.MessagesResult) {
 	require.Equal(f.t, !f.partial, ok)
 	f.events = append(f.events, "report")
 }
 func (f *qoderRuntimeContract) Switched() { f.t.Fatal("已有用量不得再次切号") }
-func (*qoderRuntimeContract) Snapshot() account.AccountSnapshot {
-	return account.AccountSnapshot{ID: 1, Platform: "qoder", Concurrency: 1}
+func (*qoderRuntimeContract) Snapshot() provider.ProviderSnapshot {
+	return provider.ProviderSnapshot{ID: 1, Platform: "qoder", Concurrency: 1}
 }
 
 func (f *qoderRuntimeContract) Forward(_ context.Context, c *gin.Context, body []byte, wire protocol.ProtocolID, model string) (*forward.MessagesResult, error) {
@@ -91,7 +91,7 @@ func (f *qoderRuntimeContract) Completion(_ context.Context, capture QoderComple
 	f.captures++
 	require.Equal(f.t, "client-model", gjson.GetBytes(capture.Body, "model").String())
 	require.Equal(f.t, 3, capture.Result.Usage.InputTokens)
-	return &completion.Input{Account: &completion.AccountSnapshot{ID: 1}, Result: &completion.Result{}}
+	return &completion.Input{Provider: &completion.ProviderSnapshot{ID: 1}, Result: &completion.Result{}}
 }
 
 func (f *qoderRuntimeContract) Record(ctx context.Context, _ *completion.Input, openAI bool) error {

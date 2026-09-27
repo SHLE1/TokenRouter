@@ -73,8 +73,8 @@ type CreateGroupRequest struct {
 	MaxReasoningEffortOverLimit string `json:"max_reasoning_effort_over_limit"`
 	// OpenAI/Codex 推理强度映射，可按模型精确名、前缀或后缀限定。
 	ReasoningEffortMappings []routing.ReasoningEffortMapping `json:"reasoning_effort_mappings"`
-	// 从指定分组复制账号（创建后自动绑定）
-	CopyAccountsFromGroupIDs []int64 `json:"copy_accounts_from_group_ids"`
+	// 从指定分组复制提供商（创建后自动绑定）
+	CopyProvidersFromGroupIDs []int64 `json:"copy_providers_from_group_ids"`
 }
 
 // UpdateGroupRequest represents update group request
@@ -134,8 +134,8 @@ type UpdateGroupRequest struct {
 	MaxReasoningEffortOverLimit *string `json:"max_reasoning_effort_over_limit"`
 	// nil 不修改，空数组清空，非空数组替换。
 	ReasoningEffortMappings *[]routing.ReasoningEffortMapping `json:"reasoning_effort_mappings"`
-	// 从指定分组复制账号（同步操作：先清空当前分组的账号绑定，再绑定源分组的账号）
-	CopyAccountsFromGroupIDs []int64 `json:"copy_accounts_from_group_ids"`
+	// 从指定分组复制提供商（同步操作：先清空当前分组的提供商绑定，再绑定源分组的提供商）
+	CopyProvidersFromGroupIDs []int64 `json:"copy_providers_from_group_ids"`
 }
 
 // List handles listing all groups with pagination
@@ -304,7 +304,7 @@ func (h *GroupHandler) Create(c *gin.Context) {
 		MaxReasoningEffort:              req.MaxReasoningEffort,
 		MaxReasoningEffortOverLimit:     req.MaxReasoningEffortOverLimit,
 		ReasoningEffortMappings:         req.ReasoningEffortMappings,
-		CopyAccountsFromGroupIDs:        req.CopyAccountsFromGroupIDs,
+		CopyProvidersFromGroupIDs:       req.CopyProvidersFromGroupIDs,
 	})
 	if err != nil {
 		response.ErrorFrom(c, err)
@@ -314,7 +314,7 @@ func (h *GroupHandler) Create(c *gin.Context) {
 	response.Success(c, groupdto.AdminGroupFromRouting[struct{}](group))
 }
 
-// Duplicate 创建停用状态的分组副本，并保留源分组的账号绑定。
+// Duplicate 创建停用状态的分组副本，并保留源分组的提供商绑定。
 // 接口：POST /api/v1/admin/groups/:id/duplicate。
 func (h *GroupHandler) Duplicate(c *gin.Context) {
 	groupID, err := strconv.ParseInt(c.Param("id"), 10, 64)
@@ -419,7 +419,7 @@ func (h *GroupHandler) Update(c *gin.Context) {
 		MaxReasoningEffort:              req.MaxReasoningEffort,
 		MaxReasoningEffortOverLimit:     req.MaxReasoningEffortOverLimit,
 		ReasoningEffortMappings:         req.ReasoningEffortMappings,
-		CopyAccountsFromGroupIDs:        req.CopyAccountsFromGroupIDs,
+		CopyProvidersFromGroupIDs:       req.CopyProvidersFromGroupIDs,
 	})
 	if err != nil {
 		response.ErrorFrom(c, err)
@@ -499,7 +499,7 @@ func (h *GroupHandler) UpdateSortOrder(c *gin.Context) {
 	response.Success(c, gin.H{"message": "Sort order updated successfully"})
 }
 
-// GroupAdministration 仅包含路由管理用例，不把账号、身份和调账聚合接口带入 HTTP。
+// GroupAdministration 仅包含路由管理用例，不把提供商、身份和调账聚合接口带入 HTTP。
 type GroupAdministration interface {
 	ListGroups(context.Context, int, int, string, string, string, *bool, string, string) ([]routing.Group, int64, error)
 	GetAllGroups(context.Context) ([]routing.Group, error)
@@ -528,11 +528,4 @@ func NewGroupHandler(admin GroupAdministration, resources ...GroupResources) *Gr
 		handler.resources = resources[0]
 	}
 	return handler
-}
-
-func float64ValueOrDefault(value *float64, fallback float64) float64 {
-	if value == nil {
-		return fallback
-	}
-	return *value
 }

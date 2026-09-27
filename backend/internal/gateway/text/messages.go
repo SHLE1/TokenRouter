@@ -1,4 +1,4 @@
-// Package text 拥有文本入口的账号尝试次序，HTTP 只执行同步输出。
+// Package text 拥有文本入口的提供商尝试次序，HTTP 只执行同步输出。
 package text
 
 import (
@@ -8,8 +8,8 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/failover"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
 // AttemptFailure 仅把原始错误与不可变重试投影一起传递，核心不解析供应商报文。
@@ -35,11 +35,11 @@ const (
 	FailurePromptTooLong
 )
 
-// Selection 只包含本次尝试的账号视图和既有重试上限，不持有凭据。
+// Selection 只包含本次尝试的提供商视图和既有重试上限，不持有凭据。
 type Selection struct {
 	Plan         routing.CandidatePlan
 	PlanProvided bool
-	Account      account.AccountSnapshot
+	Provider     provider.ProviderSnapshot
 	RetryLimit   int
 }
 type Outcome struct {
@@ -65,7 +65,7 @@ type MessageOptions struct {
 	Observe                failover.Observe
 }
 
-// MessagePorts 的方法均为单步能力；外部实现不能再包一层账号切换循环。
+// MessagePorts 的方法均为单步能力；外部实现不能再包一层提供商切换循环。
 // 每次请求的输出与目标由适配实例持有，固定依赖在构造 HTTP 入口时绑定。
 type MessagePorts interface {
 	Context() context.Context
@@ -74,7 +74,7 @@ type MessagePorts interface {
 	PrepareAttempt() bool
 	Select(map[int64]struct{}) (Selection, error)
 	FirstSelectionFailure(error, bool)
-	SingleAccountRetry()
+	SingleProviderRetry()
 	Canceled()
 	Exhausted(*AttemptFailure, string, bool)
 	Intercept() bool
@@ -90,7 +90,7 @@ type MessagePorts interface {
 	TempUnscheduleRetryableError(context.Context, int64, *AttemptFailure)
 }
 
-// RunMessages 保留原有两层控制：请求只有一次分组回退，每个分组只有一套账号尝试循环。
+// RunMessages 保留原有两层控制：请求只有一次分组回退，每个分组只有一套提供商尝试循环。
 func RunMessages(options MessageOptions, p MessagePorts) {
 	served := false
 	defer func() { p.Finish(served) }()
@@ -106,15 +106,15 @@ func RunMessages(options MessageOptions, p MessagePorts) {
 			if !p.PrepareAttempt() {
 				return
 			}
-			selected, err := p.Select(state.FailedAccountIDs)
+			selected, err := p.Select(state.FailedProviderIDs)
 			if err != nil {
-				if len(state.FailedAccountIDs) == 0 {
+				if len(state.FailedProviderIDs) == 0 {
 					p.FirstSelectionFailure(err, fallbackUsed)
 					return
 				}
 				switch state.HandleSelectionExhausted(p.Context()) {
 				case failover.FailoverContinue:
-					p.SingleAccountRetry()
+					p.SingleProviderRetry()
 					continue
 				case failover.FailoverCanceled:
 					p.Canceled()
@@ -136,7 +136,7 @@ func RunMessages(options MessageOptions, p MessagePorts) {
 				return
 			}
 			if outcome.Skip {
-				state.FailedAccountIDs[selected.Account.ID] = struct{}{}
+				state.FailedProviderIDs[selected.Provider.ID] = struct{}{}
 				continue
 			}
 			if outcome.Err != nil {
@@ -160,16 +160,16 @@ func RunMessages(options MessageOptions, p MessagePorts) {
 				}
 				if outcome.Failure != nil {
 					if outcome.OutputChanged {
-						p.Exhausted(outcome.Failure, selected.Account.Platform, true)
+						p.Exhausted(outcome.Failure, selected.Provider.Platform, true)
 						return
 					}
-					switch state.HandleFailoverError(p.Context(), p, selected.Account.ID, selected.Account.Platform, selected.RetryLimit, outcome.Failure) {
+					switch state.HandleFailoverError(p.Context(), p, selected.Provider.ID, selected.Provider.Platform, selected.RetryLimit, outcome.Failure) {
 					case failover.FailoverContinue:
 						p.Switched()
-						p.Abandon(selected.Account.ID)
+						p.Abandon(selected.Provider.ID)
 						continue
 					case failover.FailoverExhausted:
-						p.Exhausted(state.LastFailoverErr, selected.Account.Platform, false)
+						p.Exhausted(state.LastFailoverErr, selected.Provider.Platform, false)
 						return
 					case failover.FailoverCanceled:
 						p.Canceled()

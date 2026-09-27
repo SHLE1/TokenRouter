@@ -4,7 +4,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/TokenFlux/TokenRouter/internal/egress/provider"
+	egressadapter "github.com/TokenFlux/TokenRouter/internal/egress/provider"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
@@ -16,7 +16,6 @@ import (
 
 func (p *OpenAIResponseOutput) ImageOptions(c *gin.Context) upstreamopenai.ImageResponseOptions {
 	return upstreamopenai.ImageResponseOptions{
-
 		PreserveContentType: p.Options.Configured && !p.Options.ResponseHeadersEnabled,
 
 		ReadLimit: func() int64 { return p.Options.ReadLimit },
@@ -32,7 +31,7 @@ func (p *OpenAIResponseOutput) ImageOptions(c *gin.Context) upstreamopenai.Image
 			return err
 		},
 
-		ResponseHeaders: func(dst, src http.Header) { provider.WriteFilteredHeaders(dst, src, p.Headers) },
+		ResponseHeaders: func(dst, src http.Header) { egressadapter.WriteFilteredHeaders(dst, src, p.Headers) },
 
 		ObserveError: func(status int, message, detail string) { SetOpsUpstreamError(c, status, message, detail) },
 
@@ -41,7 +40,7 @@ func (p *OpenAIResponseOutput) ImageOptions(c *gin.Context) upstreamopenai.Image
 		},
 
 		EmptyOutput: func(body []byte) error {
-			return &forwardcore.UpstreamFailoverError{StatusCode: http.StatusBadGateway, ResponseBody: body, RetryableOnSameAccount: true}
+			return &forwardcore.UpstreamFailoverError{StatusCode: http.StatusBadGateway, ResponseBody: body, RetryableOnSameProvider: true}
 		},
 
 		Summary: p.ImageNoOutputSummary,

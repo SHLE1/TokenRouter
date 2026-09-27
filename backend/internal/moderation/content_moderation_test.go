@@ -1457,7 +1457,7 @@ func TestContentModerationCheck_HashBlockLogsDoNotIncreaseNextViolationCount(t *
 	require.Equal(t, 1, logs[1].ViolationCount)
 }
 
-func TestContentModerationAutoBanSkipsAdminAccount(t *testing.T) {
+func TestContentModerationAutoBanSkipsAdminProvider(t *testing.T) {
 	var slogOutput bytes.Buffer
 	previousLogger := slog.Default()
 	slog.SetDefault(slog.New(slog.NewTextHandler(&slogOutput, nil)))
@@ -1676,7 +1676,8 @@ func TestContentModerationClearFlaggedInputHashesAndStatusCount(t *testing.T) {
 		strings.Repeat("a", 64): {},
 		strings.Repeat("b", 64): {},
 	}}
-	svc := &ContentModerationService{runtime: testModerationRuntime(),
+	svc := &ContentModerationService{
+		runtime: testModerationRuntime(),
 		settingRepo: &contentModerationTestSettingRepo{values: map[string]string{
 			SettingKeyRiskControlEnabled:      "true",
 			SettingKeyContentModerationConfig: string(rawCfg),
@@ -2009,8 +2010,8 @@ func TestContentModerationRecordCyberWarning_DefaultRecordsWithoutBan(t *testing
 		RequestID:      "req_1",
 		UserID:         userID,
 		UserEmail:      "user@example.com",
-		AccountID:      2001,
-		AccountName:    "openai-1",
+		ProviderID:     2001,
+		ProviderName:   "openai-1",
 		UpstreamStatus: 400,
 		ResponseBody:   []byte(`{"error":{"message":"This request may pose a cybersecurity risk. token=abc123456789xyz"}}`),
 		PromptExcerpt:  "inspect target sk-proj-1234567890abcdef",
@@ -2049,8 +2050,8 @@ func TestContentModerationRecordCyberWarning_BansWhenCyberThresholdReached(t *te
 		RequestID:      "req_1",
 		UserID:         userID,
 		UserEmail:      "user@example.com",
-		AccountID:      2001,
-		AccountName:    "openai-1",
+		ProviderID:     2001,
+		ProviderName:   "openai-1",
 		UpstreamStatus: 400,
 		WarningText:    "This content was flagged for possible cybersecurity risk.",
 	})
@@ -2086,8 +2087,8 @@ func TestContentModerationRecordCyberWarning_CountsExistingWindowWarnings(t *tes
 		RequestID:      "req_2",
 		UserID:         userID,
 		UserEmail:      "user@example.com",
-		AccountID:      2001,
-		AccountName:    "openai-1",
+		ProviderID:     2001,
+		ProviderName:   "openai-1",
 		UpstreamStatus: 400,
 		WarningText:    "This request may pose a cybersecurity risk.",
 	})

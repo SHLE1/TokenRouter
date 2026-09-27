@@ -22,74 +22,74 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// ForwardPorts 是平台单次执行边界；账号切换循环仍唯一位于 gateway/text。
+// ForwardPorts 是平台单次执行边界；提供商切换循环仍唯一位于 gateway/text。
 type ForwardPorts struct {
 	AntigravityAvailable   bool
-	BedrockCompat          func(*gin.Context, []byte, string, *gatewaycapture.ExecutionAccount, *int64) []byte
-	ForwardAntigravity     func(context.Context, *gin.Context, *gatewaycapture.ExecutionAccount, []byte, bool) (*forwardcore.MessagesResult, error)
+	BedrockCompat          func(*gin.Context, []byte, string, *gatewaycapture.ExecutionProvider, *int64) []byte
+	ForwardAntigravity     func(context.Context, *gin.Context, *gatewaycapture.ExecutionProvider, []byte, bool) (*forwardcore.MessagesResult, error)
 	ForwardAntigravityChat func(
 		ctx context.Context,
 		c *gin.Context,
-		account *gatewaycapture.ExecutionAccount,
+		provider *gatewaycapture.ExecutionProvider,
 		body []byte,
 		_ *requeststate.ParsedRequest,
 	) (*forwardcore.MessagesResult, error)
-	ForwardAntigravityGemini    func(context.Context, *gin.Context, *gatewaycapture.ExecutionAccount, string, string, bool, []byte, bool, ...forwardcore.GeminiSessionOption) (*forwardcore.MessagesResult, error)
+	ForwardAntigravityGemini    func(context.Context, *gin.Context, *gatewaycapture.ExecutionProvider, string, string, bool, []byte, bool, ...forwardcore.GeminiSessionOption) (*forwardcore.MessagesResult, error)
 	ForwardAntigravityResponses func(
 		ctx context.Context,
 		c *gin.Context,
-		account *gatewaycapture.ExecutionAccount,
+		provider *gatewaycapture.ExecutionProvider,
 		body []byte,
 		_ *requeststate.ParsedRequest,
 	) (*forwardcore.MessagesResult, error)
 	ForwardChat func(
 		ctx context.Context,
 		c *gin.Context,
-		account *gatewaycapture.ExecutionAccount,
+		provider *gatewaycapture.ExecutionProvider,
 		body []byte,
 		parsed *requeststate.ParsedRequest,
 	) (*forwardcore.MessagesResult, error)
-	ForwardGemini     func(context.Context, *gin.Context, *gatewaycapture.ExecutionAccount, []byte) (*forwardcore.MessagesResult, error)
+	ForwardGemini     func(context.Context, *gin.Context, *gatewaycapture.ExecutionProvider, []byte) (*forwardcore.MessagesResult, error)
 	ForwardGeminiChat func(
 		ctx context.Context,
 		c *gin.Context,
-		account *gatewaycapture.ExecutionAccount,
+		provider *gatewaycapture.ExecutionProvider,
 		body []byte,
 	) (*forwardcore.MessagesResult, error)
-	ForwardGeminiNative    func(ctx context.Context, c *gin.Context, account *gatewaycapture.ExecutionAccount, originalModel string, action string, stream bool, body []byte) (*forwardcore.MessagesResult, error)
+	ForwardGeminiNative    func(ctx context.Context, c *gin.Context, provider *gatewaycapture.ExecutionProvider, originalModel string, action string, stream bool, body []byte) (*forwardcore.MessagesResult, error)
 	ForwardGeminiResponses func(
 		ctx context.Context,
 		c *gin.Context,
-		account *gatewaycapture.ExecutionAccount,
+		provider *gatewaycapture.ExecutionProvider,
 		body []byte,
 		_ *requeststate.ParsedRequest,
 	) (*forwardcore.MessagesResult, error)
-	ForwardMessages  func(context.Context, *gin.Context, *gatewaycapture.ExecutionAccount, *requeststate.ParsedRequest) (*forwardcore.MessagesResult, error)
+	ForwardMessages  func(context.Context, *gin.Context, *gatewaycapture.ExecutionProvider, *requeststate.ParsedRequest) (*forwardcore.MessagesResult, error)
 	ForwardResponses func(
 		ctx context.Context,
 		c *gin.Context,
-		account *gatewaycapture.ExecutionAccount,
+		provider *gatewaycapture.ExecutionProvider,
 		body []byte,
 		parsed *requeststate.ParsedRequest,
 	) (*forwardcore.MessagesResult, error)
 	GeminiAvailable        bool
 	ReplaceModel           func(body []byte, newModel string) []byte
-	SaveGeminiSession      func(_ context.Context, groupID int64, prefixHash, digestChain, uuid string, accountID int64, oldDigestChain string) error
-	WriteMappedClaudeError func(*gin.Context, *gatewaycapture.ExecutionAccount, int, string, []byte) error
+	SaveGeminiSession      func(_ context.Context, groupID int64, prefixHash, digestChain, uuid string, providerID int64, oldDigestChain string) error
+	WriteMappedClaudeError func(*gin.Context, *gatewaycapture.ExecutionProvider, int, string, []byte) error
 }
 
 // SelectionPorts 连接同一选择、会话及反馈拥有者，不创建第二份状态。
 type SelectionPorts struct {
-	AccountSwitched    func(*gatewaycapture.SelectionResult)
-	BindSticky         func(context.Context, *int64, string, int64) error
-	IncrementRPM       func(context.Context, int64) error
-	NewSessionAttempts func() *scheduler.SessionAttempts
-	ReportSchedule     func(*gatewaycapture.SelectionResult, int64, bool, *forwardcore.MessagesResult)
-	CachedSession      func(context.Context, *int64, string) (int64, error)
-	SelectAccount      func(context.Context, *int64, string, string, map[int64]struct{}, string, int64) (*gatewaycapture.SelectionResult, error)
-	SingleAccountGroup func(context.Context, *int64) bool
-	TempUnschedule     func(context.Context, int64, *forwardcore.UpstreamFailoverError)
-	TrackSession       func(*scheduler.SessionAttempts, *gatewaycapture.ExecutionAccount, string)
+	ProviderSwitched    func(*gatewaycapture.SelectionResult)
+	BindSticky          func(context.Context, *int64, string, int64) error
+	IncrementRPM        func(context.Context, int64) error
+	NewSessionAttempts  func() *scheduler.SessionAttempts
+	ReportSchedule      func(*gatewaycapture.SelectionResult, int64, bool, *forwardcore.MessagesResult)
+	CachedSession       func(context.Context, *int64, string) (int64, error)
+	SelectProvider      func(context.Context, *int64, string, string, map[int64]struct{}, string, int64) (*gatewaycapture.SelectionResult, error)
+	SingleProviderGroup func(context.Context, *int64) bool
+	TempUnschedule      func(context.Context, int64, *forwardcore.UpstreamFailoverError)
+	TrackSession        func(*scheduler.SessionAttempts, *gatewaycapture.ExecutionProvider, string)
 }
 
 // Bindings 在构造期间固定依赖，Open 仅创建本请求和尝试的数据。
@@ -114,46 +114,46 @@ type messageExecutionDependencies struct {
 	forwardResponses                      func(
 		ctx context.Context,
 		c *gin.Context,
-		account *gatewaycapture.ExecutionAccount,
+		provider *gatewaycapture.ExecutionProvider,
 		body []byte,
 		parsed *requeststate.ParsedRequest,
 	) (*forwardcore.MessagesResult, error)
 	forwardChat func(
 		ctx context.Context,
 		c *gin.Context,
-		account *gatewaycapture.ExecutionAccount,
+		provider *gatewaycapture.ExecutionProvider,
 		body []byte,
 		parsed *requeststate.ParsedRequest,
 	) (*forwardcore.MessagesResult, error)
 	forwardAntigravityResponses func(
 		ctx context.Context,
 		c *gin.Context,
-		account *gatewaycapture.ExecutionAccount,
+		provider *gatewaycapture.ExecutionProvider,
 		body []byte,
 		_ *requeststate.ParsedRequest,
 	) (*forwardcore.MessagesResult, error)
 	forwardAntigravityChat func(
 		ctx context.Context,
 		c *gin.Context,
-		account *gatewaycapture.ExecutionAccount,
+		provider *gatewaycapture.ExecutionProvider,
 		body []byte,
 		_ *requeststate.ParsedRequest,
 	) (*forwardcore.MessagesResult, error)
 	forwardGeminiResponses func(
 		ctx context.Context,
 		c *gin.Context,
-		account *gatewaycapture.ExecutionAccount,
+		provider *gatewaycapture.ExecutionProvider,
 		body []byte,
 		_ *requeststate.ParsedRequest,
 	) (*forwardcore.MessagesResult, error)
 	forwardGeminiChat func(
 		ctx context.Context,
 		c *gin.Context,
-		account *gatewaycapture.ExecutionAccount,
+		provider *gatewaycapture.ExecutionProvider,
 		body []byte,
 	) (*forwardcore.MessagesResult, error)
-	forwardGeminiNative              func(ctx context.Context, c *gin.Context, account *gatewaycapture.ExecutionAccount, originalModel string, action string, stream bool, body []byte) (*forwardcore.MessagesResult, error)
-	saveGeminiSession                func(_ context.Context, groupID int64, prefixHash, digestChain, uuid string, accountID int64, oldDigestChain string) error
+	forwardGeminiNative              func(ctx context.Context, c *gin.Context, provider *gatewaycapture.ExecutionProvider, originalModel string, action string, stream bool, body []byte) (*forwardcore.MessagesResult, error)
+	saveGeminiSession                func(_ context.Context, groupID int64, prefixHash, digestChain, uuid string, providerID int64, oldDigestChain string) error
 	replaceModel                     func(body []byte, newModel string) []byte
 	responsesErrorResponse           func(c *gin.Context, status int, code, message string)
 	chatCompletionsErrorResponse     func(c *gin.Context, status int, errType, message string)
@@ -162,22 +162,22 @@ type messageExecutionDependencies struct {
 	handleGeminiFailoverExhausted    func(c *gin.Context, failoverErr *forwardcore.UpstreamFailoverError)
 
 	prepareGatewayAttemptRequest      func(context.Context, *requeststate.ParsedRequest, []byte, *apikey.APIKey, string) (*requeststate.ParsedRequest, routing.GroupMappingResult, error)
-	selectAccount                     func(context.Context, *int64, string, string, map[int64]struct{}, string, int64) (*gatewaycapture.SelectionResult, error)
-	trackSession                      func(*scheduler.SessionAttempts, *gatewaycapture.ExecutionAccount, string)
+	selectProvider                    func(context.Context, *int64, string, string, map[int64]struct{}, string, int64) (*gatewaycapture.SelectionResult, error)
+	trackSession                      func(*scheduler.SessionAttempts, *gatewaycapture.ExecutionProvider, string)
 	newSessionAttempts                func() *scheduler.SessionAttempts
-	singleAccountGroup                func(context.Context, *int64) bool
+	singleProviderGroup               func(context.Context, *int64) bool
 	reportSchedule                    func(*gatewaycapture.SelectionResult, int64, bool, *forwardcore.MessagesResult)
 	incrementRPM                      func(context.Context, int64) error
 	bindSticky                        func(context.Context, *int64, string, int64) error
 	cachedSession                     func(context.Context, *int64, string) (int64, error)
-	accountSwitched                   func(*gatewaycapture.SelectionResult)
+	providerSwitched                  func(*gatewaycapture.SelectionResult)
 	tempUnschedule                    func(context.Context, int64, *forwardcore.UpstreamFailoverError)
-	bedrockCompat                     func(*gin.Context, []byte, string, *gatewaycapture.ExecutionAccount, *int64) []byte
-	forwardMessages                   func(context.Context, *gin.Context, *gatewaycapture.ExecutionAccount, *requeststate.ParsedRequest) (*forwardcore.MessagesResult, error)
-	forwardAntigravity                func(context.Context, *gin.Context, *gatewaycapture.ExecutionAccount, []byte, bool) (*forwardcore.MessagesResult, error)
-	forwardGemini                     func(context.Context, *gin.Context, *gatewaycapture.ExecutionAccount, []byte) (*forwardcore.MessagesResult, error)
-	forwardAntigravityGemini          func(context.Context, *gin.Context, *gatewaycapture.ExecutionAccount, string, string, bool, []byte, bool, ...forwardcore.GeminiSessionOption) (*forwardcore.MessagesResult, error)
-	writeMappedClaudeError            func(*gin.Context, *gatewaycapture.ExecutionAccount, int, string, []byte) error
+	bedrockCompat                     func(*gin.Context, []byte, string, *gatewaycapture.ExecutionProvider, *int64) []byte
+	forwardMessages                   func(context.Context, *gin.Context, *gatewaycapture.ExecutionProvider, *requeststate.ParsedRequest) (*forwardcore.MessagesResult, error)
+	forwardAntigravity                func(context.Context, *gin.Context, *gatewaycapture.ExecutionProvider, []byte, bool) (*forwardcore.MessagesResult, error)
+	forwardGemini                     func(context.Context, *gin.Context, *gatewaycapture.ExecutionProvider, []byte) (*forwardcore.MessagesResult, error)
+	forwardAntigravityGemini          func(context.Context, *gin.Context, *gatewaycapture.ExecutionProvider, string, string, bool, []byte, bool, ...forwardcore.GeminiSessionOption) (*forwardcore.MessagesResult, error)
+	writeMappedClaudeError            func(*gin.Context, *gatewaycapture.ExecutionProvider, int, string, []byte) error
 	resolveFallback                   func(context.Context, *apikey.APIKey, int64, protocol.ProtocolID) (*apikey.APIKey, *billing.UserSubscription, error)
 	planRoute                         func(context.Context, *apikey.APIKey, string) routing.RoutePlan
 	diagnoser                         routing.ModelAvailabilityDiagnoser
@@ -186,7 +186,7 @@ type messageExecutionDependencies struct {
 	concurrencyHelper                 *gatewayhttp.ConcurrencyHelper
 	userMsgQueueHelper                *gatewayhttp.UserMsgQueueHelper
 	messageWaitTimeout                time.Duration
-	getUserMsgQueueMode               func(*gatewaycapture.ExecutionAccount, *requeststate.ParsedRequest) string
+	getUserMsgQueueMode               func(*gatewaycapture.ExecutionProvider, *requeststate.ParsedRequest) string
 	errorResponse                     func(*gin.Context, int, string, string)
 	handleStreamingAwareError         func(*gin.Context, int, string, string, bool)
 	handleStreamingAwareErrorWithCode func(*gin.Context, int, string, string, string, bool)
@@ -218,14 +218,14 @@ func New(b Bindings) *Runtime {
 		replaceModel:                      b.Forward.ReplaceModel,
 		saveGeminiSession:                 b.Forward.SaveGeminiSession,
 		writeMappedClaudeError:            b.Forward.WriteMappedClaudeError,
-		accountSwitched:                   b.Selection.AccountSwitched,
+		providerSwitched:                  b.Selection.ProviderSwitched,
 		bindSticky:                        b.Selection.BindSticky,
 		incrementRPM:                      b.Selection.IncrementRPM,
 		newSessionAttempts:                b.Selection.NewSessionAttempts,
 		reportSchedule:                    b.Selection.ReportSchedule,
 		cachedSession:                     b.Selection.CachedSession,
-		selectAccount:                     b.Selection.SelectAccount,
-		singleAccountGroup:                b.Selection.SingleAccountGroup,
+		selectProvider:                    b.Selection.SelectProvider,
+		singleProviderGroup:               b.Selection.SingleProviderGroup,
 		tempUnschedule:                    b.Selection.TempUnschedule,
 		trackSession:                      b.Selection.TrackSession,
 		resolveFallback:                   b.ResolveFallback,
@@ -252,7 +252,7 @@ func New(b Bindings) *Runtime {
 		prepareGatewayAttemptRequest: func(ctx context.Context, parsed *requeststate.ParsedRequest, body []byte, key *apikey.APIKey, model string) (*requeststate.ParsedRequest, routing.GroupMappingResult, error) {
 			return gatewayhttp.PrepareGroupAttempt(ctx, parsed, body, key, model, b.PlanRoute)
 		},
-		getUserMsgQueueMode: func(value *gatewaycapture.ExecutionAccount, parsed *requeststate.ParsedRequest) string {
+		getUserMsgQueueMode: func(value *gatewaycapture.ExecutionProvider, parsed *requeststate.ParsedRequest) string {
 			if b.Queue == nil || !value.View().IsAnthropicOAuthOrSetupToken() || !requeststate.IsRealUserMessage(parsed) {
 				return ""
 			}

@@ -6,7 +6,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/failover"
 )
 
-// InputTokensPorts 不提供用户并发、资金提交或完成任务；选择器若交付账号槽，单次 Forward 负责释放。
+// InputTokensPorts 不提供用户并发、资金提交或完成任务；选择器若交付提供商槽，单次 Forward 负责释放。
 type InputTokensPorts interface {
 	Context() context.Context
 	Select(map[int64]struct{}) (Selection, bool, error)
@@ -40,14 +40,14 @@ func RunInputTokens(p InputTokensPorts, maxSwitches int) {
 			p.Exhausted(failure)
 			return
 		}
-		if failure.Policy.RetryableOnSameAccount && same[selected.Account.ID] < selected.RetryLimit {
-			same[selected.Account.ID]++
-			if !failover.SleepWithContext(p.Context(), failover.SameAccountRetryDelay) {
+		if failure.Policy.RetryableOnSameProvider && same[selected.Provider.ID] < selected.RetryLimit {
+			same[selected.Provider.ID]++
+			if !failover.SleepWithContext(p.Context(), failover.SameProviderRetryDelay) {
 				return
 			}
 			continue
 		}
-		excluded[selected.Account.ID] = struct{}{}
+		excluded[selected.Provider.ID] = struct{}{}
 		last = failure
 		if switches >= maxSwitches {
 			p.Exhausted(failure)

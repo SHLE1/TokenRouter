@@ -104,7 +104,7 @@ func TransformRequest(ctx context.Context, prepared *Prelude, profile Profile, p
 		}
 		if openai.StripOpenAIImageGenerationTools(decoded) {
 			markDecodedModified()
-			p.Log("[OpenAI] Stripped /responses image_generation tool for Codex client by account policy")
+			p.Log("[OpenAI] Stripped /responses image_generation tool for Codex client by provider policy")
 		}
 		imageIntent = p.IsImageGenerationIntentMap("/v1/responses", reqModel, decoded)
 		explicitImageIntent = p.IsExplicitImageGenerationIntentMap("/v1/responses", reqModel, decoded)
@@ -131,7 +131,7 @@ func TransformRequest(ctx context.Context, prepared *Prelude, profile Profile, p
 		}
 	}
 	if billingModel != requestedModel {
-		p.Log("[OpenAI] Model mapping applied: %s -> %s (account: %s, isCodexCLI: %v)", requestedModel, billingModel, profile.Name, isCodexCLI)
+		p.Log("[OpenAI] Model mapping applied: %s -> %s (provider: %s, isCodexCLI: %v)", requestedModel, billingModel, profile.Name, isCodexCLI)
 	}
 	reqModel = billingModel
 	if upstreamModel != requestedModel {
@@ -139,9 +139,9 @@ func TransformRequest(ctx context.Context, prepared *Prelude, profile Profile, p
 	}
 	if upstreamModel != billingModel {
 		if isCompactRequest {
-			p.Log("[OpenAI] Compact model mapping applied: %s -> %s (account: %s, isCodexCLI: %v)", requestedModel, upstreamModel, profile.Name, isCodexCLI)
+			p.Log("[OpenAI] Compact model mapping applied: %s -> %s (provider: %s, isCodexCLI: %v)", requestedModel, upstreamModel, profile.Name, isCodexCLI)
 		} else {
-			p.Log("[OpenAI] Upstream model resolved: %s -> %s (account: %s, type: %s, isCodexCLI: %v)", billingModel, upstreamModel, profile.Name, profile.Type, isCodexCLI)
+			p.Log("[OpenAI] Upstream model resolved: %s -> %s (provider: %s, type: %s, isCodexCLI: %v)", billingModel, upstreamModel, profile.Name, profile.Type, isCodexCLI)
 		}
 	}
 	if strings.TrimSpace(gjson.GetBytes(body, "text.format.type").String()) == "json_schema" ||
@@ -193,7 +193,7 @@ func TransformRequest(ctx context.Context, prepared *Prelude, profile Profile, p
 		}
 		if openai.HasOpenAIImageGenerationTool(decoded) {
 			imageIntent = true
-			p.Log("[OpenAI] /responses image_generation request inbound_model=%s mapped_model=%s account_type=%s", requestView.Model, upstreamModel, profile.Type)
+			p.Log("[OpenAI] /responses image_generation request inbound_model=%s mapped_model=%s provider_type=%s", requestView.Model, upstreamModel, profile.Type)
 		}
 		if codexImageGenerationBridgeEnabled && p.ApplyCodexImageGenerationBridgeInstructions(decoded) {
 			markDecodedModified()
@@ -201,7 +201,7 @@ func TransformRequest(ctx context.Context, prepared *Prelude, profile Profile, p
 		}
 	} else if imageGenerationAllowed && imageIntent && p.OpenAIRequestBodyHasImageGenerationDeclaration(body) {
 		// 完整 image_generation tool 只做 raw 计费读取，校验/桥接/旧字段迁移命中时才展开大 input map。
-		p.Log("[OpenAI] /responses image_generation request inbound_model=%s mapped_model=%s account_type=%s", requestView.Model, upstreamModel, profile.Type)
+		p.Log("[OpenAI] /responses image_generation request inbound_model=%s mapped_model=%s provider_type=%s", requestView.Model, upstreamModel, profile.Type)
 	}
 
 	if p.IsCodexSparkModel(upstreamModel) && openai.OpenAIRequestBodyMayContainImageInput(body) {
@@ -265,7 +265,7 @@ func TransformRequest(ctx context.Context, prepared *Prelude, profile Profile, p
 		if codexResult.Modified {
 			markDecodedModified()
 		}
-		// 指纹收敛 ID 只在本次 Forward 内共享，避免跨账号 failover 复用 Gin context 中的旧值。
+		// 指纹收敛 ID 只在本次 Forward 内共享，避免跨提供商 failover 复用 Gin context 中的旧值。
 		// 带真实 device_id 时补齐 client_metadata 安装标识，与真实 Codex 对齐（compact 形态不同，跳过）。
 		if !isCompactRequest && p.ClientMetadata(decoded) {
 			markDecodedModified()
@@ -273,8 +273,8 @@ func TransformRequest(ctx context.Context, prepared *Prelude, profile Profile, p
 		if currentClientPromptCacheKey, ok := decoded["prompt_cache_key"].(string); ok {
 			clientPromptCacheKey = currentClientPromptCacheKey
 		}
-		// 账号命名空间与指纹收敛独立：保留客户端身份数量，但不能在换号后跨 OAuth 凭据复用。
-		if !isCompactRequest && p.AccountIdentity(decoded) {
+		// 提供商命名空间与指纹收敛独立：保留客户端身份数量，但不能在换号后跨 OAuth 凭据复用。
+		if !isCompactRequest && p.ProviderIdentity(decoded) {
 			markDecodedModified()
 		}
 		p.ClearFingerprint()
@@ -293,7 +293,7 @@ func TransformRequest(ctx context.Context, prepared *Prelude, profile Profile, p
 			upstreamModel = codexResult.NormalizedModel
 		}
 		if strings.TrimSpace(clientPromptCacheKey) != "" {
-			// 报文已包含账号隔离值；此处保留原始值，保证 Header 构造只派生命名空间一次。
+			// 报文已包含提供商隔离值；此处保留原始值，保证 Header 构造只派生命名空间一次。
 			promptCacheKey = clientPromptCacheKey
 		} else if currentPromptCacheKey, ok := decoded["prompt_cache_key"].(string); ok && currentPromptCacheKey != "" {
 			// 客户端未提供键时，保留指纹收敛注入的既有默认值。

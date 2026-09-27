@@ -3,16 +3,16 @@ package selection
 import (
 	"context"
 
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
 )
 
-// geminiSelector 的关联表只存在于本次调用，返回值继续使用原账号读取快照。
+// geminiSelector 的关联表只存在于本次调用，返回值继续使用原提供商读取快照。
 func (s *Gemini) geminiSelector() (*scheduler.GeminiSelector, *projectionScope) {
-	scope := &projectionScope{accounts: map[uint64]*provider.ExecutionAccount{}, groups: map[uint64]*routing.Group{}}
+	scope := &projectionScope{providers: map[uint64]*gatewayadapter.ExecutionProvider{}, groups: map[uint64]*routing.Group{}}
 	ports := scheduler.GeminiSelectionPorts{
 		Resolve: func(ctx context.Context, id *int64) (string, bool, bool, *scheduler.FlowGroup, error) {
 			platform, mixed, forced, group, err := s.resolvePlatformAndSchedulingMode(ctx, id)
@@ -22,32 +22,32 @@ func (s *Gemini) geminiSelector() (*scheduler.GeminiSelector, *projectionScope) 
 			return requeststate.WithGroup(ctx, scope.oldGroup(group))
 		},
 		Effective: s.advancedSchedulerEffectiveSettingsForRequest,
-		Sticky: func(ctx context.Context, id *int64, hash, key, model string, excluded map[int64]struct{}, platform string, mixed bool) *scheduler.FlowAccount {
-			return scope.account(s.tryStickySessionHit(ctx, id, hash, key, model, excluded, platform, mixed))
+		Sticky: func(ctx context.Context, id *int64, hash, key, model string, excluded map[int64]struct{}, platform string, mixed bool) *scheduler.FlowProvider {
+			return scope.provider(s.tryStickySessionHit(ctx, id, hash, key, model, excluded, platform, mixed))
 		},
-		List: func(ctx context.Context, id *int64, platform string, forced bool) ([]scheduler.FlowAccount, error) {
-			values, err := s.listSchedulableAccountsOnce(ctx, id, platform, forced)
+		List: func(ctx context.Context, id *int64, platform string, forced bool) ([]scheduler.FlowProvider, error) {
+			values, err := s.listSchedulableProvidersOnce(ctx, id, platform, forced)
 			return scope.values(values), err
 		},
-		Eligible: func(ctx context.Context, values []scheduler.FlowAccount, model string, excluded map[int64]struct{}, platform string, mixed bool) []*scheduler.FlowAccount {
-			return scope.pointers(s.eligibleGeminiAccounts(ctx, scope.oldValues(values), model, excluded, platform, mixed))
+		Eligible: func(ctx context.Context, values []scheduler.FlowProvider, model string, excluded map[int64]struct{}, platform string, mixed bool) []*scheduler.FlowProvider {
+			return scope.pointers(s.eligibleGeminiProviders(ctx, scope.oldValues(values), model, excluded, platform, mixed))
 		},
-		Advanced: func(ctx context.Context, id *int64, hash, key string, values []*scheduler.FlowAccount, settings policy.EffectiveSettings) *scheduler.FlowAccount {
-			var targets []*provider.ExecutionAccount
+		Advanced: func(ctx context.Context, id *int64, hash, key string, values []*scheduler.FlowProvider, settings policy.EffectiveSettings) *scheduler.FlowProvider {
+			var targets []*gatewayadapter.ExecutionProvider
 			if values != nil {
-				targets = make([]*provider.ExecutionAccount, len(values))
+				targets = make([]*gatewayadapter.ExecutionProvider, len(values))
 				for i, v := range values {
-					targets[i] = scope.oldAccount(v)
+					targets[i] = scope.oldProvider(v)
 				}
 			}
-			return scope.account(s.selectAdvancedGeminiAccount(ctx, id, hash, key, targets, settings))
+			return scope.provider(s.selectAdvancedGeminiProvider(ctx, id, hash, key, targets, settings))
 		},
-		Unsupported: func(ctx context.Context, values []scheduler.FlowAccount, model, platform string, excluded map[int64]struct{}, mixed bool) error {
+		Unsupported: func(ctx context.Context, values []scheduler.FlowProvider, model, platform string, excluded map[int64]struct{}, mixed bool) error {
 			return s.groupModelUnsupportedErrorIfApplicable(ctx, scope.oldValues(values), model, platform, excluded, mixed)
 		},
-		Hydrate: func(ctx context.Context, value *scheduler.FlowAccount) (*scheduler.FlowAccount, error) {
-			out, err := s.hydrateSelectedAccount(ctx, scope.oldAccount(value))
-			return scope.account(out), err
+		Hydrate: func(ctx context.Context, value *scheduler.FlowProvider) (*scheduler.FlowProvider, error) {
+			out, err := s.hydrateSelectedProvider(ctx, scope.oldProvider(value))
+			return scope.provider(out), err
 		},
 	}
 	return scheduler.NewGeminiSelector(ports, s.cache), scope

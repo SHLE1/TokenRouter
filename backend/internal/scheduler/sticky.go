@@ -14,10 +14,10 @@ import (
 
 // StickyCache 只持有调度粘性与显式会话分组归属，不包含登录或上游远端会话。
 type StickyCache interface {
-	GetSessionAccountID(context.Context, int64, string) (int64, error)
-	SetSessionAccountID(context.Context, int64, string, int64, time.Duration) error
+	GetSessionProviderID(context.Context, int64, string) (int64, error)
+	SetSessionProviderID(context.Context, int64, string, int64, time.Duration) error
 	RefreshSessionTTL(context.Context, int64, string, time.Duration) error
-	DeleteSessionAccountID(context.Context, int64, string) error
+	DeleteSessionProviderID(context.Context, int64, string) error
 }
 type SessionOwnerCache interface {
 	SetSessionOwnerGroupID(context.Context, int64, string, string, int64, time.Duration) (bool, error)
@@ -53,6 +53,7 @@ type StickySession struct {
 func NewStickySession(cache StickyCache, options StickyOptions, stats *StickyStats) *StickySession {
 	return &StickySession{cache: cache, options: options, stats: stats}
 }
+
 func (s *StickySession) SessionKey(hash string) string {
 	v := strings.TrimSpace(hash)
 	if v == "" {
@@ -60,6 +61,7 @@ func (s *StickySession) SessionKey(hash string) string {
 	}
 	return s.options.Prefix + v
 }
+
 func (s *StickySession) LegacyKey(hash, legacy string) string {
 	v := strings.TrimSpace(legacy)
 	if v == "" {
@@ -71,6 +73,7 @@ func (s *StickySession) LegacyKey(hash, legacy string) string {
 	}
 	return key
 }
+
 func (s *StickySession) LegacyTTL(ttl time.Duration) time.Duration {
 	if ttl <= 0 {
 		ttl = s.options.DefaultTTL
@@ -80,6 +83,7 @@ func (s *StickySession) LegacyTTL(ttl time.Duration) time.Duration {
 	}
 	return ttl
 }
+
 func DeriveSessionHashes(sessionID string) (currentHash string, legacyHash string) {
 	normalized := strings.TrimSpace(sessionID)
 	if normalized == "" {
@@ -91,6 +95,7 @@ func DeriveSessionHashes(sessionID string) (currentHash string, legacyHash strin
 	legacyHash = hex.EncodeToString(sum[:])
 	return currentHash, legacyHash
 }
+
 func (s *StickySession) Get(ctx context.Context, groupID int64, sessionHash, legacyHash string) (int64, error) {
 	if s == nil || s.cache == nil {
 		return 0, nil
@@ -101,30 +106,30 @@ func (s *StickySession) Get(ctx context.Context, groupID int64, sessionHash, leg
 		return 0, nil
 	}
 
-	accountID, err := s.cache.GetSessionAccountID(ctx, groupID, primaryKey)
-	if err == nil && accountID > 0 {
-		return accountID, nil
+	providerID, err := s.cache.GetSessionProviderID(ctx, groupID, primaryKey)
+	if err == nil && providerID > 0 {
+		return providerID, nil
 	}
 	if !s.options.ReadLegacy {
-		return accountID, err
+		return providerID, err
 	}
 
 	legacyKey := s.LegacyKey(sessionHash, legacyHash)
 	if legacyKey == "" {
-		return accountID, err
+		return providerID, err
 	}
 
 	s.stats.readFallbackTotal.Add(1)
-	legacyAccountID, legacyErr := s.cache.GetSessionAccountID(ctx, groupID, legacyKey)
-	if legacyErr == nil && legacyAccountID > 0 {
+	legacyProviderID, legacyErr := s.cache.GetSessionProviderID(ctx, groupID, legacyKey)
+	if legacyErr == nil && legacyProviderID > 0 {
 		s.stats.readFallbackHit.Add(1)
-		return legacyAccountID, nil
+		return legacyProviderID, nil
 	}
-	return accountID, err
+	return providerID, err
 }
 
-func (s *StickySession) Set(ctx context.Context, groupID int64, sessionHash, legacyHash string, accountID int64, ttl time.Duration) error {
-	if s == nil || s.cache == nil || accountID <= 0 {
+func (s *StickySession) Set(ctx context.Context, groupID int64, sessionHash, legacyHash string, providerID int64, ttl time.Duration) error {
+	if s == nil || s.cache == nil || providerID <= 0 {
 		return nil
 	}
 	primaryKey := s.SessionKey(sessionHash)
@@ -132,7 +137,7 @@ func (s *StickySession) Set(ctx context.Context, groupID int64, sessionHash, leg
 		return nil
 	}
 
-	if err := s.cache.SetSessionAccountID(ctx, groupID, primaryKey, accountID, ttl); err != nil {
+	if err := s.cache.SetSessionProviderID(ctx, groupID, primaryKey, providerID, ttl); err != nil {
 		return err
 	}
 
@@ -143,7 +148,7 @@ func (s *StickySession) Set(ctx context.Context, groupID int64, sessionHash, leg
 	if legacyKey == "" {
 		return nil
 	}
-	if err := s.cache.SetSessionAccountID(ctx, groupID, legacyKey, accountID, s.LegacyTTL(ttl)); err != nil {
+	if err := s.cache.SetSessionProviderID(ctx, groupID, legacyKey, providerID, s.LegacyTTL(ttl)); err != nil {
 		return err
 	}
 	s.stats.dualWriteTotal.Add(1)
@@ -180,14 +185,14 @@ func (s *StickySession) Delete(ctx context.Context, groupID int64, sessionHash, 
 		return nil
 	}
 
-	err := s.cache.DeleteSessionAccountID(ctx, groupID, primaryKey)
+	err := s.cache.DeleteSessionProviderID(ctx, groupID, primaryKey)
 	if !s.options.ReadLegacy && !s.options.DualWriteLegacy {
 		return err
 	}
 
 	legacyKey := s.LegacyKey(sessionHash, legacyHash)
 	if legacyKey != "" {
-		_ = s.cache.DeleteSessionAccountID(ctx, groupID, legacyKey)
+		_ = s.cache.DeleteSessionProviderID(ctx, groupID, legacyKey)
 	}
 	return err
 }

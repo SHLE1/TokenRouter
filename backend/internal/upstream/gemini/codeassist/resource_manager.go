@@ -1,4 +1,4 @@
-// Resource Manager 查询执行与结果选择保持既有顺序，由账号授权用例按需调用。
+// Resource Manager 查询执行与结果选择保持既有顺序，由提供商授权用例按需调用。
 package codeassist
 
 import (
@@ -32,6 +32,7 @@ type ResourceManagerOptions struct {
 func FetchProjectIDFromResourceManager(ctx context.Context, accessToken, proxyURL string) (string, error) {
 	return FetchProjectWithOptions(ctx, accessToken, proxyURL, ResourceManagerOptions{})
 }
+
 func FetchProjectWithOptions(ctx context.Context, accessToken, proxyURL string, options ResourceManagerOptions) (string, error) {
 	endpoint := options.Endpoint
 	if endpoint == "" {

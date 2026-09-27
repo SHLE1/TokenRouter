@@ -239,7 +239,7 @@ Empty state placeholder with icon, message, and optional action button.
 ```vue
 <EmptyState
   title="No users found"
-  description="Get started by creating your first user account."
+  description="Get started by creating your first user provider."
   action-text="Add User"
   :action-to="{ name: 'users-create' }"
 />

@@ -36,6 +36,7 @@ func (c openAIWSCoreFrames) ReadFrame(ctx context.Context) (int, []byte, error) 
 	typ, body, err := c.FrameConn.ReadFrame(ctx)
 	return int(typ), body, err
 }
+
 func (c openAIWSCoreFrames) WriteFrame(ctx context.Context, typ int, body []byte) error {
 	return c.FrameConn.WriteFrame(ctx, coderws.MessageType(typ), body)
 }
@@ -44,7 +45,7 @@ func (s *OpenAIWebSocketExecutor) proxyResponsesWebSocketV2Passthrough(
 	ctx context.Context,
 	c *gin.Context,
 	clientConn *coderws.Conn,
-	account *gatewayprovider.ExecutionAccount,
+	provider *gatewayprovider.ExecutionProvider,
 	token string,
 	firstClientMessage []byte,
 	hooks *gatewayws.OpenAIIngressHooks,
@@ -57,18 +58,18 @@ func (s *OpenAIWebSocketExecutor) proxyResponsesWebSocketV2Passthrough(
 	if clientConn == nil {
 		return errors.New("client websocket is nil")
 	}
-	if account == nil {
-		return errors.New("account is nil")
+	if provider == nil {
+		return errors.New("provider is nil")
 	}
-	if err := validateOpenAIWSBearerToken(account, token); err != nil {
+	if err := validateOpenAIWSBearerToken(provider, token); err != nil {
 		return err
 	}
-	port := &wsPassthroughAdapter{service: s, request: c, account: account, token: token, hooks: hooks, decision: wsDecision, router: tlsRouterMatch}
+	port := &wsPassthroughAdapter{service: s, request: c, provider: provider, token: token, hooks: hooks, decision: wsDecision, router: tlsRouterMatch}
 	var coreHooks *gatewayws.PassthroughHooks
 	if hooks != nil {
 		coreHooks = &gatewayws.PassthroughHooks{IngressHooks: wsIngressHooks(hooks), InitialRequestModel: hooks.InitialRequestModel, InitialTurnStartedAt: hooks.InitialTurnStartedAt, OnUpstreamError: hooks.OnUpstreamError}
 	}
-	runtime := gatewayws.PassthroughSession{Port: port, Hooks: coreHooks, Options: gatewayws.PassthroughOptions{AccountID: account.Record.ID, OAuth: account.View().IsOpenAIOAuth(), WriteTimeout: s.openAIWSWriteTimeout(), IdleTimeout: s.openAIWSPassthroughIdleTimeout(), InterTurnIdleTimeout: s.openAIWSIngressInterTurnIdleTimeout()}}
+	runtime := gatewayws.PassthroughSession{Port: port, Hooks: coreHooks, Options: gatewayws.PassthroughOptions{ProviderID: provider.Record.ID, OAuth: provider.View().IsOpenAIOAuth(), WriteTimeout: s.openAIWSWriteTimeout(), IdleTimeout: s.openAIWSPassthroughIdleTimeout(), InterTurnIdleTimeout: s.openAIWSIngressInterTurnIdleTimeout()}}
 	return runtime.Run(ctx, WSClientFrames{Conn: clientConn}, firstClientMessage)
 }
 

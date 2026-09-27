@@ -14,9 +14,9 @@ describe('admin platform filters', () => {
     }
   })
 
-  it('uses the concrete catalog for account and error filters', () => {
+  it('uses the concrete catalog for provider and error filters', () => {
     for (const path of [
-      'src/components/admin/account/AccountTableFilters.vue',
+      'src/components/admin/provider/ProviderTableFilters.vue',
       'src/components/admin/ErrorPassthroughRulesModal.vue'
     ]) {
       const source = readSource(path)
@@ -24,7 +24,7 @@ describe('admin platform filters', () => {
     }
   })
 
-  it('keeps the operations helper on the shared catalog for actual account platforms', () => {
+  it('keeps the operations helper on the shared catalog for actual provider platforms', () => {
     const source = readSource('src/views/admin/ops/platformOptions.ts')
     expect(source).toContain('CONCRETE_PLATFORM_OPTIONS')
   })

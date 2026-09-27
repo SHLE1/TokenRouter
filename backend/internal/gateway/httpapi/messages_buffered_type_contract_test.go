@@ -13,7 +13,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 	upstreamopenai "github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 
@@ -24,7 +24,6 @@ import (
 )
 
 func TestHandleAnthropicBufferedStreamingResponse_OverridesUpstreamContentType(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
@@ -39,7 +38,7 @@ func TestHandleAnthropicBufferedStreamingResponse_OverridesUpstreamContentType(t
 	output := &OpenAIResponseOutput{Options: OpenAIResponseOptions{Configured: true, ReadLimit: 128 * 1024 * 1024}, Headers: egress.CompileHeaderFilter(egress.ResponseHeaderOptions{})}
 
 	result, err := upstreamopenai.ReadMessagesBuffered(
-		resp, upstream.NewDeferredOutputContext(ResponseSink{Writer: c.Writer}), output.MessagesOptions(c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation}}, resp, "claude-sonnet-4-5", "gpt-5.4", "gpt-5.4"), "claude-sonnet-4-5", "gpt-5.4", time.Now(),
+		resp, upstream.NewDeferredOutputContext(ResponseSink{Writer: c.Writer}), output.MessagesOptions(c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation}}, resp, "claude-sonnet-4-5", "gpt-5.4", "gpt-5.4"), "claude-sonnet-4-5", "gpt-5.4", time.Now(),
 	)
 	require.NoError(t, err)
 	require.NotNil(t, result)

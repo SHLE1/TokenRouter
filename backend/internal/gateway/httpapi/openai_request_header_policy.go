@@ -16,7 +16,7 @@ var openaiAllowedHeaders = map[string]bool{
 	"user-agent":      true,
 	"originator":      true,
 	"session_id":      true,
-	// Codex 设备/会话标识参与账号 namespace 隔离，必须在进入请求构造器时保留。
+	// Codex 设备/会话标识参与提供商 namespace 隔离，必须在进入请求构造器时保留。
 	"installation_id":            true,
 	"x-codex-installation-id":    true,
 	"session-id":                 true,

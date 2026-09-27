@@ -23,9 +23,9 @@ import (
 
 	routing "github.com/TokenFlux/TokenRouter/internal/routing"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 	teampostgres "github.com/TokenFlux/TokenRouter/internal/team/postgres"
@@ -55,9 +55,9 @@ func TestUsageBillingRepositoryApply_DeduplicatesBalanceBilling(t *testing.T) {
 		Name:   "billing",
 		Quota:  1,
 	})
-	account := mustCreateAccount(t, client, &accountcore.Record{
-		Name: "usage-billing-account-" + uuid.NewString(),
-		Type: capability.AccountTypeAPIKey,
+	provider := mustCreateProvider(t, client, &providercore.Record{
+		Name: "usage-billing-provider-" + uuid.NewString(),
+		Type: capability.ProviderTypeAPIKey,
 	})
 
 	requestID := uuid.NewString()
@@ -65,8 +65,8 @@ func TestUsageBillingRepositoryApply_DeduplicatesBalanceBilling(t *testing.T) {
 		RequestID:           requestID,
 		APIKeyID:            apiKey.ID,
 		UserID:              user.ID,
-		AccountID:           account.ID,
-		AccountType:         capability.AccountTypeAPIKey,
+		ProviderID:          provider.ID,
+		ProviderType:        capability.ProviderTypeAPIKey,
 		BillableAmountUSD:   1.25,
 		APIKeyQuotaCost:     1.25,
 		APIKeyRateLimitCost: 1.25,
@@ -149,7 +149,7 @@ func TestUsageBillingRepositoryApply_DeduplicatesSubscriptionBilling(t *testing.
 		RequestID:         requestID,
 		APIKeyID:          apiKey.ID,
 		UserID:            user.ID,
-		AccountID:         0,
+		ProviderID:        0,
 		BillableAmountUSD: 2.5,
 	}
 
@@ -550,9 +550,9 @@ func runUsageBillingConcurrentUsageLogInsert(t *testing.T, teamRequest bool) {
 		Key:    "sk-usage-billing-lock-order-" + uuid.NewString(),
 		Name:   "billing-lock-order",
 	})
-	account := mustCreateAccount(t, client, &accountcore.Record{
-		Name: "usage-billing-lock-order-account-" + uuid.NewString(),
-		Type: capability.AccountTypeAPIKey,
+	provider := mustCreateProvider(t, client, &providercore.Record{
+		Name: "usage-billing-lock-order-provider-" + uuid.NewString(),
+		Type: capability.ProviderTypeAPIKey,
 	})
 	windowStart := time.Now().Add(-time.Hour)
 	subscription := mustCreateSubscription(t, client, &billing.UserSubscription{
@@ -605,7 +605,7 @@ func runUsageBillingConcurrentUsageLogInsert(t *testing.T, teamRequest bool) {
 		BillingUserID:  owner.ID,
 		TeamID:         teamID,
 		APIKeyID:       apiKey.ID,
-		AccountID:      account.ID,
+		ProviderID:     provider.ID,
 		RequestID:      usageRequestID,
 		Model:          "gpt-5",
 		SubscriptionID: &subscription.ID,
@@ -1098,40 +1098,40 @@ func TestUsageBillingRepositoryApply_RequestFingerprintConflict(t *testing.T) {
 	require.ErrorIs(t, err, billing.ErrUsageBillingRequestConflict)
 }
 
-func TestUsageBillingRepositoryApply_UpdatesAccountQuota(t *testing.T) {
+func TestUsageBillingRepositoryApply_UpdatesProviderQuota(t *testing.T) {
 	ctx := context.Background()
 	client := testEntClient(t)
 	repo := newSettlementFixture(integrationDB)
 
 	user := mustCreateUser(t, client, &identity.User{
-		Email:        fmt.Sprintf("usage-billing-account-user-%d@example.com", time.Now().UnixNano()),
+		Email:        fmt.Sprintf("usage-billing-provider-user-%d@example.com", time.Now().UnixNano()),
 		PasswordHash: "hash",
 	})
 	apiKey := mustCreateApiKey(t, client, &apikey.APIKey{
 		UserID: user.ID,
-		Key:    "sk-usage-billing-account-" + uuid.NewString(),
-		Name:   "billing-account",
+		Key:    "sk-usage-billing-provider-" + uuid.NewString(),
+		Name:   "billing-provider",
 	})
-	account := mustCreateAccount(t, client, &accountcore.Record{
-		Name: "usage-billing-account-quota-" + uuid.NewString(),
-		Type: capability.AccountTypeAPIKey,
+	provider := mustCreateProvider(t, client, &providercore.Record{
+		Name: "usage-billing-provider-quota-" + uuid.NewString(),
+		Type: capability.ProviderTypeAPIKey,
 		Extra: map[string]any{
 			"quota_limit": 100.0,
 		},
 	})
 
 	_, err := repo.Apply(ctx, &billing.UsageBillingCommand{
-		RequestID:        uuid.NewString(),
-		APIKeyID:         apiKey.ID,
-		UserID:           user.ID,
-		AccountID:        account.ID,
-		AccountType:      capability.AccountTypeAPIKey,
-		AccountQuotaCost: 3.5,
+		RequestID:         uuid.NewString(),
+		APIKeyID:          apiKey.ID,
+		UserID:            user.ID,
+		ProviderID:        provider.ID,
+		ProviderType:      capability.ProviderTypeAPIKey,
+		ProviderQuotaCost: 3.5,
 	})
 	require.NoError(t, err)
 
 	var quotaUsed float64
-	require.NoError(t, integrationDB.QueryRowContext(ctx, "SELECT COALESCE((extra->>'quota_used')::numeric, 0) FROM accounts WHERE id = $1", account.ID).Scan(&quotaUsed))
+	require.NoError(t, integrationDB.QueryRowContext(ctx, "SELECT COALESCE((extra->>'quota_used')::numeric, 0) FROM providers WHERE id = $1", provider.ID).Scan(&quotaUsed))
 	require.InDelta(t, 3.5, quotaUsed, 0.000001)
 }
 
@@ -1151,75 +1151,75 @@ func TestUsageBillingRepositoryApply_EnqueuesSchedulerOutboxOnQuotaCrossing(t *t
 			Key:    "sk-usage-billing-outbox-" + uuid.NewString(),
 			Name:   "billing-outbox",
 		})
-		account := mustCreateAccount(t, client, &accountcore.Record{
+		provider := mustCreateProvider(t, client, &providercore.Record{
 			Name:  "usage-billing-outbox-" + uuid.NewString(),
-			Type:  capability.AccountTypeAPIKey,
+			Type:  capability.ProviderTypeAPIKey,
 			Extra: extra,
 		})
-		return apiKey.ID, account.ID
+		return apiKey.ID, provider.ID
 	}
 
-	outboxCountFor := func(t *testing.T, accountID int64) int {
+	outboxCountFor := func(t *testing.T, providerID int64) int {
 		t.Helper()
 		var count int
 		require.NoError(t, integrationDB.QueryRowContext(ctx,
-			"SELECT COUNT(*) FROM scheduler_outbox WHERE event_type = $1 AND account_id = $2",
-			scheduler.SchedulerOutboxEventAccountChanged, accountID,
+			"SELECT COUNT(*) FROM scheduler_outbox WHERE event_type = $1 AND provider_id = $2",
+			scheduler.SchedulerOutboxEventProviderChanged, providerID,
 		).Scan(&count))
 		return count
 	}
 
 	t.Run("daily_first_crossing_enqueues", func(t *testing.T) {
-		apiKeyID, accountID := newFixture(t, map[string]any{
+		apiKeyID, providerID := newFixture(t, map[string]any{
 			"quota_daily_limit": 10.0,
 		})
 		// 第一次低于日限额：不应入队 outbox
 		_, err := repo.Apply(ctx, &billing.UsageBillingCommand{
-			RequestID:        uuid.NewString(),
-			APIKeyID:         apiKeyID,
-			AccountID:        accountID,
-			AccountType:      capability.AccountTypeAPIKey,
-			AccountQuotaCost: 4,
+			RequestID:         uuid.NewString(),
+			APIKeyID:          apiKeyID,
+			ProviderID:        providerID,
+			ProviderType:      capability.ProviderTypeAPIKey,
+			ProviderQuotaCost: 4,
 		})
 		require.NoError(t, err)
-		require.Equal(t, 0, outboxCountFor(t, accountID), "below limit should not enqueue")
+		require.Equal(t, 0, outboxCountFor(t, providerID), "below limit should not enqueue")
 
 		// 第二次跨越日限额：应入队一次 outbox
 		_, err = repo.Apply(ctx, &billing.UsageBillingCommand{
-			RequestID:        uuid.NewString(),
-			APIKeyID:         apiKeyID,
-			AccountID:        accountID,
-			AccountType:      capability.AccountTypeAPIKey,
-			AccountQuotaCost: 8,
+			RequestID:         uuid.NewString(),
+			APIKeyID:          apiKeyID,
+			ProviderID:        providerID,
+			ProviderType:      capability.ProviderTypeAPIKey,
+			ProviderQuotaCost: 8,
 		})
 		require.NoError(t, err)
-		require.Equal(t, 1, outboxCountFor(t, accountID), "crossing daily limit should enqueue once")
+		require.Equal(t, 1, outboxCountFor(t, providerID), "crossing daily limit should enqueue once")
 
 		// 再次递增（已超）：不应重复入队
 		_, err = repo.Apply(ctx, &billing.UsageBillingCommand{
-			RequestID:        uuid.NewString(),
-			APIKeyID:         apiKeyID,
-			AccountID:        accountID,
-			AccountType:      capability.AccountTypeAPIKey,
-			AccountQuotaCost: 2,
+			RequestID:         uuid.NewString(),
+			APIKeyID:          apiKeyID,
+			ProviderID:        providerID,
+			ProviderType:      capability.ProviderTypeAPIKey,
+			ProviderQuotaCost: 2,
 		})
 		require.NoError(t, err)
-		require.Equal(t, 1, outboxCountFor(t, accountID), "subsequent increments beyond limit should not re-enqueue")
+		require.Equal(t, 1, outboxCountFor(t, providerID), "subsequent increments beyond limit should not re-enqueue")
 	})
 
 	t.Run("weekly_first_crossing_enqueues", func(t *testing.T) {
-		apiKeyID, accountID := newFixture(t, map[string]any{
+		apiKeyID, providerID := newFixture(t, map[string]any{
 			"quota_weekly_limit": 10.0,
 		})
 		_, err := repo.Apply(ctx, &billing.UsageBillingCommand{
-			RequestID:        uuid.NewString(),
-			APIKeyID:         apiKeyID,
-			AccountID:        accountID,
-			AccountType:      capability.AccountTypeAPIKey,
-			AccountQuotaCost: 15, // 单次即跨越
+			RequestID:         uuid.NewString(),
+			APIKeyID:          apiKeyID,
+			ProviderID:        providerID,
+			ProviderType:      capability.ProviderTypeAPIKey,
+			ProviderQuotaCost: 15, // 单次即跨越
 		})
 		require.NoError(t, err)
-		require.Equal(t, 1, outboxCountFor(t, accountID), "single-shot crossing weekly limit should enqueue once")
+		require.Equal(t, 1, outboxCountFor(t, providerID), "single-shot crossing weekly limit should enqueue once")
 	})
 }
 

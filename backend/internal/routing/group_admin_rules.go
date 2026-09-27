@@ -26,10 +26,10 @@ func (s *GroupAdmin) ValidateUnavailableFallbackGroup(ctx context.Context, curre
 	return nil
 }
 
-func ConfiguredModelsListCandidateIDs(accounts []GroupAccount, _ string) []string {
+func ConfiguredModelsListCandidateIDs(providers []GroupProvider, _ string) []string {
 	modelSet := make(map[string]struct{})
 	hasAnyConfiguredModels := false
-	for _, acc := range accounts {
+	for _, acc := range providers {
 		requestModels := acc.Models
 		if len(requestModels) == 0 {
 			continue
@@ -124,6 +124,6 @@ func SanitizeGroupMessagesDispatchFields(g *Group) {
 	if g == nil {
 		return
 	}
-	// 派生镜像只表达入口准入；模型映射是否适用由实际执行账号判断。
+	// 派生镜像只表达入口准入；模型映射是否适用由实际执行提供商判断。
 	g.AllowMessagesDispatch = g.AllowsClientProtocol(protocol.ProtocolAnthropicMessages)
 }

@@ -11,15 +11,15 @@ import (
 
 // SettlementInput 固定本次计算和主体投影；只有结算成功才传给提交后副作用端口。
 type SettlementInput struct {
-	Cost                                                                                                      *CostBreakdown
-	User                                                                                                      *PayerSnapshot
-	APIKey                                                                                                    *KeySnapshot
-	Account                                                                                                   *AccountSnapshot
-	Subscription                                                                                              *billing.UserSubscription
-	RequestPayloadHash                                                                                        string
-	AccountRateMultiplier, SubscriptionRateMultiplier, SubscriptionRateMultiplierScale, BalanceRateMultiplier float64
-	QuotaUpdates                                                                                              bool
-	BillingBaseAmountUSD                                                                                      *float64
+	Cost                                                                                                       *CostBreakdown
+	User                                                                                                       *PayerSnapshot
+	APIKey                                                                                                     *KeySnapshot
+	Provider                                                                                                   *ProviderSnapshot
+	Subscription                                                                                               *billing.UserSubscription
+	RequestPayloadHash                                                                                         string
+	ProviderRateMultiplier, SubscriptionRateMultiplier, SubscriptionRateMultiplierScale, BalanceRateMultiplier float64
+	QuotaUpdates                                                                                               bool
+	BillingBaseAmountUSD                                                                                       *float64
 }
 type usageBillingParams = SettlementInput
 
@@ -31,12 +31,12 @@ func (p *SettlementInput) shouldUpdateRateLimits() bool {
 	return p.Cost.ActualCost > 0 && p.APIKey.HasRateLimits && p.QuotaUpdates
 }
 
-func (p *SettlementInput) shouldUpdateAccountQuota(cost float64) bool {
-	return cost > 0 && p.Account.QuotaEligible && p.Account.HasQuotaLimit
+func (p *SettlementInput) shouldUpdateProviderQuota(cost float64) bool {
+	return cost > 0 && p.Provider.QuotaEligible && p.Provider.HasQuotaLimit
 }
 
 func BuildCommand(requestID string, usageLog *UsageLog, p *usageBillingParams) *billing.UsageBillingCommand {
-	if p == nil || p.Cost == nil || p.APIKey == nil || p.User == nil || p.Account == nil {
+	if p == nil || p.Cost == nil || p.APIKey == nil || p.User == nil || p.Provider == nil {
 		return nil
 	}
 
@@ -46,8 +46,8 @@ func BuildCommand(requestID string, usageLog *UsageLog, p *usageBillingParams) *
 		APIKeyBillingMode:  p.APIKey.BillingMode,
 		UserID:             p.User.ID,
 		ActorUserID:        p.User.ID,
-		AccountID:          p.Account.ID,
-		AccountType:        p.Account.Type,
+		ProviderID:         p.Provider.ID,
+		ProviderType:       p.Provider.Type,
 		RequestPayloadHash: strings.TrimSpace(p.RequestPayloadHash),
 	}
 	if p.APIKey.PreferredSubscriptionID != nil {
@@ -98,27 +98,27 @@ func BuildCommand(requestID string, usageLog *UsageLog, p *usageBillingParams) *
 	if p.shouldUpdateRateLimits() {
 		cmd.APIKeyRateLimitCost = p.Cost.ActualCost
 	}
-	accountQuotaCost := AccountQuotaCost(usageLog, p)
-	if p.shouldUpdateAccountQuota(accountQuotaCost) {
-		cmd.AccountQuotaCost = accountQuotaCost
+	providerQuotaCost := ProviderQuotaCost(usageLog, p)
+	if p.shouldUpdateProviderQuota(providerQuotaCost) {
+		cmd.ProviderQuotaCost = providerQuotaCost
 	}
 
 	cmd.Normalize()
 	return cmd
 }
 
-func AccountQuotaCost(usageLog *UsageLog, p *usageBillingParams) float64 {
+func ProviderQuotaCost(usageLog *UsageLog, p *usageBillingParams) float64 {
 	if p == nil || p.Cost == nil {
 		return 0
 	}
 	baseCost := p.Cost.TotalCost
-	if usageLog != nil && usageLog.AccountStatsCost != nil {
-		baseCost = *usageLog.AccountStatsCost
+	if usageLog != nil && usageLog.ProviderStatsCost != nil {
+		baseCost = *usageLog.ProviderStatsCost
 	}
-	if baseCost <= 0 || p.AccountRateMultiplier <= 0 {
+	if baseCost <= 0 || p.ProviderRateMultiplier <= 0 {
 		return 0
 	}
-	return baseCost * p.AccountRateMultiplier
+	return baseCost * p.ProviderRateMultiplier
 }
 
 func ApplyRateMultipliers(cmd *billing.UsageBillingCommand, p *usageBillingParams) {
@@ -165,7 +165,7 @@ func (s *Recorder) Apply(ctx context.Context, requestID string, usageLog *UsageL
 	}
 
 	if result == nil || !result.Applied {
-		s.effects.AccountUsed(p.Account.ID)
+		s.effects.ProviderUsed(p.Provider.ID)
 		return false, nil
 	}
 

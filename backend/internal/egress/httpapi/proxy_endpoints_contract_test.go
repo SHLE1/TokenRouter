@@ -69,7 +69,7 @@ func TestProxyHandlerEndpoints(t *testing.T) {
 	require.Equal(t, http.StatusOK, rec.Code)
 
 	rec = httptest.NewRecorder()
-	req = httptest.NewRequest(http.MethodGet, "/api/v1/admin/proxies/4/accounts", nil)
+	req = httptest.NewRequest(http.MethodGet, "/api/v1/admin/proxies/4/providers", nil)
 	router.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code)
 }

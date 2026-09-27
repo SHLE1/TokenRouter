@@ -18,34 +18,35 @@ import (
 )
 
 func newHelperTestContext(method, path string) (*gin.Context, *httptest.ResponseRecorder) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(method, path, nil)
 	return c, rec
 }
 
-func TestWaitForSlotWithPingTimeout_AccountAndUserAcquire(t *testing.T) {
+func TestWaitForSlotWithPingTimeout_ProviderAndUserAcquire(t *testing.T) {
 	cache := &httptestkit.ConcurrencySequence{
-		AccountSeq: []bool{false, true},
-		UserSeq:    []bool{false, true},
+		ProviderSeq: []bool{false, true},
+		UserSeq:     []bool{false, true},
 	}
-	concurrency := scheduler.NewConcurrencyService(cache, scheduler.Diagnostics{Logf: logging.LegacyPrintf,
+	concurrency := scheduler.NewConcurrencyService(cache, scheduler.Diagnostics{
+		Logf: logging.LegacyPrintf,
 
-		Event: logging.Event},
+		Event: logging.Event,
+	},
 	)
 	helper := NewConcurrencyHelper(concurrency, SSEPingFormatNone, 5*time.Millisecond)
 
-	t.Run("account_slot_acquired_after_retry", func(t *testing.T) {
+	t.Run("provider_slot_acquired_after_retry", func(t *testing.T) {
 		c, _ := newHelperTestContext(http.MethodPost, "/v1/messages")
 		streamStarted := false
-		release, err := helper.WaitForSlotWithPingTimeout(c, "account", 101, 2, time.Second, false, &streamStarted, true)
+		release, err := helper.WaitForSlotWithPingTimeout(c, "provider", 101, 2, time.Second, false, &streamStarted, true)
 		require.NoError(t, err)
 		require.NotNil(t, release)
 		require.False(t, streamStarted)
 		release()
-		require.GreaterOrEqual(t, cache.AccountAcquireCalls, 2)
-		require.GreaterOrEqual(t, cache.AccountReleaseCalls, 1)
+		require.GreaterOrEqual(t, cache.ProviderAcquireCalls, 2)
+		require.GreaterOrEqual(t, cache.ProviderReleaseCalls, 1)
 	})
 
 	t.Run("user_slot_acquired_after_retry", func(t *testing.T) {
@@ -64,9 +65,11 @@ func TestAcquireUserSlotWithWait_ImmediateAcquireSkipsWaitQueue(t *testing.T) {
 	cache := &httptestkit.ConcurrencySequence{
 		UserSeq: []bool{true},
 	}
-	concurrency := scheduler.NewConcurrencyService(cache, scheduler.Diagnostics{Logf: logging.LegacyPrintf,
+	concurrency := scheduler.NewConcurrencyService(cache, scheduler.Diagnostics{
+		Logf: logging.LegacyPrintf,
 
-		Event: logging.Event},
+		Event: logging.Event,
+	},
 	)
 	helper := NewConcurrencyHelper(concurrency, SSEPingFormatNone, 5*time.Millisecond)
 	c, _ := newHelperTestContext(http.MethodPost, "/v1/messages")
@@ -87,9 +90,11 @@ func TestAcquireUserSlotWithWait_TracksAPIKeySlot(t *testing.T) {
 	cache := &httptestkit.ConcurrencySequence{
 		UserSeq: []bool{true},
 	}
-	concurrency := scheduler.NewConcurrencyService(cache, scheduler.Diagnostics{Logf: logging.LegacyPrintf,
+	concurrency := scheduler.NewConcurrencyService(cache, scheduler.Diagnostics{
+		Logf: logging.LegacyPrintf,
 
-		Event: logging.Event},
+		Event: logging.Event,
+	},
 	)
 	helper := NewConcurrencyHelper(concurrency, SSEPingFormatNone, 5*time.Millisecond)
 	c, _ := newHelperTestContext(http.MethodPost, "/v1/messages")
@@ -112,9 +117,11 @@ func TestTryAcquireUserSlotForAPIKey_TracksAPIKeySlot(t *testing.T) {
 	cache := &httptestkit.ConcurrencySequence{
 		UserSeq: []bool{true},
 	}
-	concurrency := scheduler.NewConcurrencyService(cache, scheduler.Diagnostics{Logf: logging.LegacyPrintf,
+	concurrency := scheduler.NewConcurrencyService(cache, scheduler.Diagnostics{
+		Logf: logging.LegacyPrintf,
 
-		Event: logging.Event},
+		Event: logging.Event,
+	},
 	)
 	helper := NewConcurrencyHelper(concurrency, SSEPingFormatNone, 5*time.Millisecond)
 
@@ -136,9 +143,11 @@ func TestAcquireUserSlotWithWait_WaitSuccessDecrementsBeforeReturn(t *testing.T)
 		UserSeq:     []bool{false, true},
 		WaitAllowed: true,
 	}
-	concurrency := scheduler.NewConcurrencyService(cache, scheduler.Diagnostics{Logf: logging.LegacyPrintf,
+	concurrency := scheduler.NewConcurrencyService(cache, scheduler.Diagnostics{
+		Logf: logging.LegacyPrintf,
 
-		Event: logging.Event},
+		Event: logging.Event,
+	},
 	)
 	helper := NewConcurrencyHelper(concurrency, SSEPingFormatNone, 5*time.Millisecond)
 	c, _ := newHelperTestContext(http.MethodPost, "/v1/messages")
@@ -161,9 +170,11 @@ func TestAcquireUserSlotWithWait_WaitQueueFull(t *testing.T) {
 	cache := &httptestkit.ConcurrencySequence{
 		UserSeq: []bool{false},
 	}
-	concurrency := scheduler.NewConcurrencyService(cache, scheduler.Diagnostics{Logf: logging.LegacyPrintf,
+	concurrency := scheduler.NewConcurrencyService(cache, scheduler.Diagnostics{
+		Logf: logging.LegacyPrintf,
 
-		Event: logging.Event},
+		Event: logging.Event,
+	},
 	)
 	helper := NewConcurrencyHelper(concurrency, SSEPingFormatNone, 5*time.Millisecond)
 	c, _ := newHelperTestContext(http.MethodPost, "/v1/messages")
@@ -183,9 +194,11 @@ func TestAcquireUserSlotWithWait_TimeoutDecrementsWaitQueue(t *testing.T) {
 		UserSeq:     []bool{false, false, false},
 		WaitAllowed: true,
 	}
-	concurrency := scheduler.NewConcurrencyService(cache, scheduler.Diagnostics{Logf: logging.LegacyPrintf,
+	concurrency := scheduler.NewConcurrencyService(cache, scheduler.Diagnostics{
+		Logf: logging.LegacyPrintf,
 
-		Event: logging.Event},
+		Event: logging.Event,
+	},
 	)
 	helper := NewConcurrencyHelper(concurrency, SSEPingFormatNone, 5*time.Millisecond)
 	c, _ := newHelperTestContext(http.MethodPost, "/v1/messages")
@@ -212,9 +225,11 @@ func TestAcquireUserSlotWithWait_RequestCancelDecrementsWaitQueue(t *testing.T) 
 			close(cancelled)
 		},
 	}
-	concurrency := scheduler.NewConcurrencyService(cache, scheduler.Diagnostics{Logf: logging.LegacyPrintf,
+	concurrency := scheduler.NewConcurrencyService(cache, scheduler.Diagnostics{
+		Logf: logging.LegacyPrintf,
 
-		Event: logging.Event},
+		Event: logging.Event,
+	},
 	)
 	helper := NewConcurrencyHelper(concurrency, SSEPingFormatNone, 5*time.Millisecond)
 	c, _ := newHelperTestContext(http.MethodPost, "/v1/messages")
@@ -235,18 +250,20 @@ func TestAcquireUserSlotWithWait_RequestCancelDecrementsWaitQueue(t *testing.T) 
 
 func TestWaitForSlotWithPingTimeout_TimeoutAndStreamPing(t *testing.T) {
 	cache := &httptestkit.ConcurrencySequence{
-		AccountSeq: []bool{false, false, false},
+		ProviderSeq: []bool{false, false, false},
 	}
-	concurrency := scheduler.NewConcurrencyService(cache, scheduler.Diagnostics{Logf: logging.LegacyPrintf,
+	concurrency := scheduler.NewConcurrencyService(cache, scheduler.Diagnostics{
+		Logf: logging.LegacyPrintf,
 
-		Event: logging.Event},
+		Event: logging.Event,
+	},
 	)
 
 	t.Run("timeout_returns_concurrency_error", func(t *testing.T) {
 		helper := NewConcurrencyHelper(concurrency, SSEPingFormatNone, 5*time.Millisecond)
 		c, _ := newHelperTestContext(http.MethodPost, "/v1/messages")
 		streamStarted := false
-		release, err := helper.WaitForSlotWithPingTimeout(c, "account", 101, 2, 130*time.Millisecond, false, &streamStarted, true)
+		release, err := helper.WaitForSlotWithPingTimeout(c, "provider", 101, 2, 130*time.Millisecond, false, &streamStarted, true)
 		require.Nil(t, release)
 		var cErr *ConcurrencyError
 		require.ErrorAs(t, err, &cErr)
@@ -257,7 +274,7 @@ func TestWaitForSlotWithPingTimeout_TimeoutAndStreamPing(t *testing.T) {
 		helper := NewConcurrencyHelper(concurrency, SSEPingFormatComment, 10*time.Millisecond)
 		c, rec := newHelperTestContext(http.MethodPost, "/v1/messages")
 		streamStarted := false
-		release, err := helper.WaitForSlotWithPingTimeout(c, "account", 101, 2, 70*time.Millisecond, true, &streamStarted, true)
+		release, err := helper.WaitForSlotWithPingTimeout(c, "provider", 101, 2, 70*time.Millisecond, true, &streamStarted, true)
 		require.Nil(t, release)
 		var cErr *ConcurrencyError
 		require.ErrorAs(t, err, &cErr)
@@ -269,11 +286,13 @@ func TestWaitForSlotWithPingTimeout_TimeoutAndStreamPing(t *testing.T) {
 
 func TestWaitForSlotWithPingTimeout_ParentContextCanceled(t *testing.T) {
 	cache := &httptestkit.ConcurrencySequence{
-		AccountSeq: []bool{false},
+		ProviderSeq: []bool{false},
 	}
-	concurrency := scheduler.NewConcurrencyService(cache, scheduler.Diagnostics{Logf: logging.LegacyPrintf,
+	concurrency := scheduler.NewConcurrencyService(cache, scheduler.Diagnostics{
+		Logf: logging.LegacyPrintf,
 
-		Event: logging.Event},
+		Event: logging.Event,
+	},
 	)
 	helper := NewConcurrencyHelper(concurrency, SSEPingFormatNone, 5*time.Millisecond)
 	c, _ := newHelperTestContext(http.MethodPost, "/v1/messages")
@@ -282,7 +301,7 @@ func TestWaitForSlotWithPingTimeout_ParentContextCanceled(t *testing.T) {
 	cancel()
 
 	streamStarted := false
-	release, err := helper.WaitForSlotWithPingTimeout(c, "account", 101, 2, time.Second, false, &streamStarted, true)
+	release, err := helper.WaitForSlotWithPingTimeout(c, "provider", 101, 2, time.Second, false, &streamStarted, true)
 	require.Nil(t, release)
 	require.ErrorIs(t, err, context.Canceled)
 	var cErr *ConcurrencyError
@@ -293,35 +312,39 @@ func TestWaitForSlotWithPingTimeout_AcquireError(t *testing.T) {
 	errCache := &httptestkit.ConcurrencySequenceWithError{
 		Err: errors.New("redis unavailable"),
 	}
-	concurrency := scheduler.NewConcurrencyService(errCache, scheduler.Diagnostics{Logf: logging.LegacyPrintf,
+	concurrency := scheduler.NewConcurrencyService(errCache, scheduler.Diagnostics{
+		Logf: logging.LegacyPrintf,
 
-		Event: logging.Event},
+		Event: logging.Event,
+	},
 	)
 	helper := NewConcurrencyHelper(concurrency, SSEPingFormatNone, 5*time.Millisecond)
 	c, _ := newHelperTestContext(http.MethodPost, "/v1/messages")
 	streamStarted := false
-	release, err := helper.WaitForSlotWithPingTimeout(c, "account", 1, 1, 200*time.Millisecond, false, &streamStarted, true)
+	release, err := helper.WaitForSlotWithPingTimeout(c, "provider", 1, 1, 200*time.Millisecond, false, &streamStarted, true)
 	require.Nil(t, release)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "redis unavailable")
 }
 
-func TestAcquireAccountSlotWithWaitTimeout_ImmediateAttemptBeforeBackoff(t *testing.T) {
+func TestAcquireProviderSlotWithWaitTimeout_ImmediateAttemptBeforeBackoff(t *testing.T) {
 	cache := &httptestkit.ConcurrencySequence{
-		AccountSeq: []bool{false},
+		ProviderSeq: []bool{false},
 	}
-	concurrency := scheduler.NewConcurrencyService(cache, scheduler.Diagnostics{Logf: logging.LegacyPrintf,
+	concurrency := scheduler.NewConcurrencyService(cache, scheduler.Diagnostics{
+		Logf: logging.LegacyPrintf,
 
-		Event: logging.Event},
+		Event: logging.Event,
+	},
 	)
 	helper := NewConcurrencyHelper(concurrency, SSEPingFormatNone, 5*time.Millisecond)
 	c, _ := newHelperTestContext(http.MethodPost, "/v1/messages")
 	streamStarted := false
 
-	release, err := helper.AcquireAccountSlotWithWaitTimeout(c, 301, 1, 30*time.Millisecond, false, &streamStarted)
+	release, err := helper.AcquireProviderSlotWithWaitTimeout(c, 301, 1, 30*time.Millisecond, false, &streamStarted)
 	require.Nil(t, release)
 	var cErr *ConcurrencyError
 	require.ErrorAs(t, err, &cErr)
 	require.True(t, cErr.IsTimeout)
-	require.GreaterOrEqual(t, cache.AccountAcquireCalls, 1)
+	require.GreaterOrEqual(t, cache.ProviderAcquireCalls, 1)
 }

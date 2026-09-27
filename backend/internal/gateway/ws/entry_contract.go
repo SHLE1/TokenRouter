@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/completion"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/failover"
 	"github.com/TokenFlux/TokenRouter/internal/moderation"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
@@ -40,20 +40,20 @@ type EntryInput struct {
 	FirstTurnStartedAt     time.Time
 	ClientIP               string
 	UserAgent              string
-	MaxAccountSwitches     int
+	MaxProviderSwitches    int
 }
 
-// EntryAccount 保留无凭据的账号资格和展示投影。
-type EntryAccount struct {
-	account.AccountSnapshot
+// EntryProvider 保留无凭据的提供商资格和展示投影。
+type EntryProvider struct {
+	provider.ProviderSnapshot
 	Name   string
 	Shadow bool
 }
 type EntrySelection struct {
-	Account     *EntryAccount
+	Provider    *EntryProvider
 	Acquired    bool
 	ReleaseFunc func()
-	WaitPlan    *scheduler.AccountWaitPlan
+	WaitPlan    *scheduler.ProviderWaitPlan
 	Target      EntryTarget
 }
 type EntryDecision struct {
@@ -94,7 +94,7 @@ type EntryHooks struct {
 	AfterTurn                   func(TurnCapture)
 }
 
-// EntryTarget 是已选账号的受控单次执行能力，不向核心暴露凭据。
+// EntryTarget 是已选提供商的受控单次执行能力，不向核心暴露凭据。
 type EntryTarget interface {
 	MappedModel(string) string
 	Report(string, bool, *int)
@@ -116,7 +116,7 @@ type EntryCompletion interface {
 	Record(context.Context, *completion.Input, bool) error
 }
 
-// EntryPorts 提供单步能力，账号循环、每轮资源及完成时序由 RunEntry 拥有。
+// EntryPorts 提供单步能力，提供商循环、每轮资源及完成时序由 RunEntry 拥有。
 type EntryPorts interface {
 	Logger() EntryLogger
 	SetLogger(EntryLogger)
@@ -142,7 +142,7 @@ type EntryPorts interface {
 	PolicyDenied()
 	FeatureDenied()
 	AcquireUser(context.Context) (func(), bool, error)
-	AcquireAccount(context.Context, int64, int) (func(), bool, error)
+	AcquireProvider(context.Context, int64, int) (func(), bool, error)
 	WrapRelease(context.Context, func()) func()
 	Eligibility(context.Context) error
 	LoadSubscription()

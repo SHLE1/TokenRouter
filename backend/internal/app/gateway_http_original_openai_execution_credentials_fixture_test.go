@@ -3,15 +3,15 @@ package app
 import (
 	"context"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
 // HTTP 集成夹具复用所传存储和 token 源，不创建第二个缓存或刷新器。
-func newOpenAIExecutionCredentialsForTest(repo gatewayprovider.ExecutionAccountStore, grok *account.GrokTokenSource) *account.OpenAIExecutionCredentials {
-	out := &account.OpenAIExecutionCredentials{}
+func newOpenAIExecutionCredentialsForTest(repo gatewayprovider.ExecutionProviderStore, grok *provider.GrokTokenSource) *provider.OpenAIExecutionCredentials {
+	out := &provider.OpenAIExecutionCredentials{}
 	if repo != nil {
-		out.Parent = func(ctx context.Context, id int64) (*account.Record, error) {
+		out.Parent = func(ctx context.Context, id int64) (*provider.Record, error) {
 			value, err := repo.GetByID(ctx, id)
 			return gatewayprovider.ExecutionRecord(value), err
 		}

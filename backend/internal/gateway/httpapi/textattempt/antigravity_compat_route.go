@@ -5,9 +5,9 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
-// shouldUseAntigravityCompat 判断账号是否需要走 Antigravity 原生兼容桥。
-func shouldUseAntigravityCompat(account *gatewayprovider.ExecutionAccount) bool {
-	return account != nil &&
-		account.Record.Platform == capability.PlatformAntigravity &&
-		account.Record.Type == capability.AccountTypeOAuth
+// shouldUseAntigravityCompat 判断提供商是否需要走 Antigravity 原生兼容桥。
+func shouldUseAntigravityCompat(provider *gatewayprovider.ExecutionProvider) bool {
+	return provider != nil &&
+		provider.Record.Platform == capability.PlatformAntigravity &&
+		provider.Record.Type == capability.ProviderTypeOAuth
 }

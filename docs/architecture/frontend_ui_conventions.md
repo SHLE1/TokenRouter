@@ -43,7 +43,7 @@
 - 几何单一来源是 Toggle  scoped 样式里的 CSS 变量（`--toggle-track-w/h`、`--toggle-thumb`、`--toggle-inset`），开态位移由 `calc(轨道宽 − 滑块 − 2×边距)` 推导，改档位只调变量。
 - 档位：`size="md"`（44×24）/ `size="sm"`（36×20），`variant="inset"`（滑块内嵌，默认）/ `variant="flush"`（大滑块贴边，原 Headless 手写风）。
 - 配色：开态默认 `toggle-active`（≡ `bg-primary-600`）；关态由 `off-tone` 选档——`default`（gray-300）/ `soft`（gray-200，手写迁移站点的原色）。个别站点的亮色开态（`bg-primary-500`）或 hover 配色用 `on-class` / `off-class` 整串透传，不新增档位。
-- 异步保存场景用 `:model-value` + `@update:model-value` 受控写法，值由处理器写回（参考 AccountsView 的可调度开关）。
+- 异步保存场景用 `:model-value` + `@update:model-value` 受控写法，值由处理器写回（参考 ProvidersView 的可调度开关）。
 
 ## 菜单与浮层
 
@@ -93,7 +93,7 @@
 - 图表主题的唯一入口是 `composables/useChartTheme.ts`：响应式 `colors`（text/muted/grid 三档语义，zinc 体系）+ `onThemeChange` 重绘钩子。禁止 `document.documentElement.classList.contains('dark')` 快照判断（门禁拦截）——它没有响应式依赖，切主题不重算，曾导致 8 处图表切主题不换色。vue-chartjs 场景 colors 变响应式即自动重绘；Stripe Elements 等命令式场景用 watch + `elements.update({ appearance })` 重应用。
 - 分布图调色板只有一份 `CHART_PALETTE`（12 色，按切片排名取色），"Others" 聚合切片用 `CHART_OTHER_COLOR`;token 趋势序列色用 `CHART_SERIES_COLORS`。刻度字号 `CHART_TICK_FONT_SIZE`(10)、图例字号 `CHART_LEGEND_FONT_SIZE`(11)。
 - 业务色例外留在本地：TeamMemberUsageCharts 成员固定配色（跨图表按成员稳定取色）、OpsSwitchRateTrendChart 与 DashboardView 的品牌调网格/刻度色（dark-200/primary-900 字面值）、DailyRevenueChart 的线/填充色对。
-- token 数量格式化统一 `utils/format.ts` 的 `formatTokens`（两位小数 + 千分位）与 `formatTokensK`（一位小数），语义不同不混用；AccountTodayStatsCell 的 K1/M2 混合精度是有意的本地变体。
+- token 数量格式化统一 `utils/format.ts` 的 `formatTokens`（两位小数 + 千分位）与 `formatTokensK`（一位小数），语义不同不混用；ProviderTodayStatsCell 的 K1/M2 混合精度是有意的本地变体。
 
 ## 动画与时长
 
@@ -123,9 +123,9 @@
 - `onboarding.css` 覆盖 driver.js 第三方样式时的 `!important`。
 - i18n 文案中内嵌的导览 HTML（`src/i18n/**`）属于内容字符串，其 inline style 不参与 token 校验。
 - 测试文件里的负断言（断言某类名不存在）会命中扫描，行尾加 `check-ui-allow` 豁免。
-- 弹窗分诊保留的手写外壳：RedeemView 成功结果弹窗（成功图标头 + 着色 footer）、BackupView R2Guide 与 SubscriptionsView 指南弹窗（max-w-2xl 无 BaseDialog 对应档位）、AnnouncementPopup 与 AnnouncementBell 弹窗（独立层级梯队 + 定制过渡）、两个 AccountTestModal 的图片灯箱（媒体覆盖层，用强遮罩档）、KeysView 列设置面板（p-2/shadow-xl 漂移值保留）。新增弹窗默认走 BaseDialog，不复刻这些结构。
+- 弹窗分诊保留的手写外壳：RedeemView 成功结果弹窗（成功图标头 + 着色 footer）、BackupView R2Guide 与 SubscriptionsView 指南弹窗（max-w-2xl 无 BaseDialog 对应档位）、AnnouncementPopup 与 AnnouncementBell 弹窗（独立层级梯队 + 定制过渡）、两个 ProviderTestModal 的图片灯箱（媒体覆盖层，用强遮罩档）、KeysView 列设置面板（p-2/shadow-xl 漂移值保留）。新增弹窗默认走 BaseDialog，不复刻这些结构。
 - RiskControlView 搜索框的 `pl-9` 图标留白（与 `input-icon-*` 档位值都不重合，局部保留）。
-- AccountsView 的鼠标跟随操作菜单（定位语义独特，不走 `getFloatingPanelPosition`）。
+- ProvidersView 的鼠标跟随操作菜单（定位语义独特，不走 `getFloatingPanelPosition`）。
 - textarea 内容驱动高度、GroupBadge 方角造型、OpsDashboard 的 250ms 路由同步防抖（语义不同于搜索防抖）、CreativeCanvas 工具条与 CreativeRunHistory 条目详情的结构性展开动画，均属局部语义，不强行入档。
 
 ## 校验

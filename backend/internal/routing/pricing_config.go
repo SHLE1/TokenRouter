@@ -42,12 +42,12 @@ type PricingConfig struct {
 	// 共享模型定价列表
 	ModelPricing []ModelPricingEntry
 
-	// 账号统计定价
-	AccountStatsPricingRules []AccountStatsPricingRule // 自定义账号统计定价规则（按 SortOrder 排序，先命中为准）
+	// 提供商统计定价
+	ProviderStatsPricingRules []ProviderStatsPricingRule // 自定义提供商统计定价规则（按 SortOrder 排序，先命中为准）
 }
 
-// AccountStatsPricingRule 定义账号成本统计的定价规则。
-type AccountStatsPricingRule = pricing.AccountStatsPricingRule
+// ProviderStatsPricingRule 定义提供商成本统计的定价规则。
+type ProviderStatsPricingRule = pricing.ProviderStatsPricingRule
 
 // ModelPricingEntry 定义共享价格配置的模型价卡。
 type ModelPricingEntry = pricing.ModelPricingEntry
@@ -106,22 +106,22 @@ func (c *PricingConfig) Clone() *PricingConfig {
 		}
 	}
 
-	if c.AccountStatsPricingRules != nil {
-		cp.AccountStatsPricingRules = make([]AccountStatsPricingRule, len(c.AccountStatsPricingRules))
-		for i, rule := range c.AccountStatsPricingRules {
-			cp.AccountStatsPricingRules[i] = rule
+	if c.ProviderStatsPricingRules != nil {
+		cp.ProviderStatsPricingRules = make([]ProviderStatsPricingRule, len(c.ProviderStatsPricingRules))
+		for i, rule := range c.ProviderStatsPricingRules {
+			cp.ProviderStatsPricingRules[i] = rule
 			if rule.GroupIDs != nil {
-				cp.AccountStatsPricingRules[i].GroupIDs = make([]int64, len(rule.GroupIDs))
-				copy(cp.AccountStatsPricingRules[i].GroupIDs, rule.GroupIDs)
+				cp.ProviderStatsPricingRules[i].GroupIDs = make([]int64, len(rule.GroupIDs))
+				copy(cp.ProviderStatsPricingRules[i].GroupIDs, rule.GroupIDs)
 			}
-			if rule.AccountIDs != nil {
-				cp.AccountStatsPricingRules[i].AccountIDs = make([]int64, len(rule.AccountIDs))
-				copy(cp.AccountStatsPricingRules[i].AccountIDs, rule.AccountIDs)
+			if rule.ProviderIDs != nil {
+				cp.ProviderStatsPricingRules[i].ProviderIDs = make([]int64, len(rule.ProviderIDs))
+				copy(cp.ProviderStatsPricingRules[i].ProviderIDs, rule.ProviderIDs)
 			}
 			if rule.Pricing != nil {
-				cp.AccountStatsPricingRules[i].Pricing = make([]ModelPricingEntry, len(rule.Pricing))
+				cp.ProviderStatsPricingRules[i].Pricing = make([]ModelPricingEntry, len(rule.Pricing))
 				for j := range rule.Pricing {
-					cp.AccountStatsPricingRules[i].Pricing[j] = rule.Pricing[j].Clone()
+					cp.ProviderStatsPricingRules[i].Pricing[j] = rule.Pricing[j].Clone()
 				}
 			}
 		}

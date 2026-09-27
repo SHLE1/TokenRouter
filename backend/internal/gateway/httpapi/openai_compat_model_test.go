@@ -18,10 +18,10 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/ops"
@@ -70,18 +70,21 @@ func TestForwardAsAnthropic_UsesExactFableMessagesDispatchModel(t *testing.T) {
 	}}
 
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream, options: &responsesFixtureOptions{Request: OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{Enabled: false}}}})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-		Name:        "openai-oauth",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeOAuth,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"access_token":       "oauth-token",
-			"chatgpt_account_id": "chatgpt-acc",
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1,
+			Name:        "openai-oauth",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeOAuth,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"access_token":       "oauth-token",
+				"chatgpt_account_id": "chatgpt-acc",
+			},
+		},
 	}
 
-	result, err := svc.Text.Messages(context.Background(), c, account, body, "", "gpt-5.6-sol")
+	result, err := svc.Text.Messages(context.Background(), c, provider, body, "", "gpt-5.6-sol")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, "claude-fable-5", result.Model)
@@ -114,21 +117,24 @@ func TestForwardAsAnthropic_NormalizesRoutingAndEffortForGpt54XHigh(t *testing.T
 	}}
 
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream, options: &responsesFixtureOptions{Request: OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{Enabled: false}}}})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-		Name:        "openai-oauth",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeOAuth,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"access_token":       "oauth-token",
-			"chatgpt_account_id": "chatgpt-acc",
-			"model_mapping": map[string]any{
-				"gpt-5.4": "gpt-5.4",
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1,
+			Name:        "openai-oauth",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeOAuth,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"access_token":       "oauth-token",
+				"chatgpt_account_id": "chatgpt-acc",
+				"model_mapping": map[string]any{
+					"gpt-5.4": "gpt-5.4",
+				},
 			},
-		}},
+		},
 	}
 
-	result, err := svc.Text.Messages(context.Background(), c, account, body, "", "gpt-5.4")
+	result, err := svc.Text.Messages(context.Background(), c, provider, body, "", "gpt-5.4")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, "gpt-5.4-xhigh", result.Model)
@@ -151,7 +157,7 @@ func TestForwardAsAnthropic_PreservesMaxForFinalGPT56ResponsesModel(t *testing.T
 
 	tests := []struct {
 		name          string
-		account       *gatewayprovider.ExecutionAccount
+		provider      *gatewayprovider.ExecutionProvider
 		model         string
 		defaultMapped string
 		effort        string
@@ -160,7 +166,7 @@ func TestForwardAsAnthropic_PreservesMaxForFinalGPT56ResponsesModel(t *testing.T
 	}{
 		{
 			name:       "API Key mapping keeps Luna max",
-			account:    rawGPT56ResponsesAPIKeyAccount("luna", "gpt-5.6-luna"),
+			provider:   rawGPT56ResponsesAPIKeyProvider("luna", "gpt-5.6-luna"),
 			model:      "luna",
 			effort:     "max",
 			wantModel:  "gpt-5.6-luna",
@@ -168,7 +174,7 @@ func TestForwardAsAnthropic_PreservesMaxForFinalGPT56ResponsesModel(t *testing.T
 		},
 		{
 			name:       "OAuth mapping keeps Sol max",
-			account:    rawGPT56ResponsesOAuthAccount("sol", "gpt-5.6-sol"),
+			provider:   rawGPT56ResponsesOAuthProvider("sol", "gpt-5.6-sol"),
 			model:      "sol",
 			effort:     "max",
 			wantModel:  "gpt-5.6-sol",
@@ -176,7 +182,7 @@ func TestForwardAsAnthropic_PreservesMaxForFinalGPT56ResponsesModel(t *testing.T
 		},
 		{
 			name:       "old model still maps max to xhigh",
-			account:    rawGPT56ResponsesAPIKeyAccount("gpt-5.5", "gpt-5.5"),
+			provider:   rawGPT56ResponsesAPIKeyProvider("gpt-5.5", "gpt-5.5"),
 			model:      "gpt-5.5",
 			effort:     "max",
 			wantModel:  "gpt-5.5",
@@ -184,7 +190,7 @@ func TestForwardAsAnthropic_PreservesMaxForFinalGPT56ResponsesModel(t *testing.T
 		},
 		{
 			name:       "mapping from GPT56 to old model downgrades max",
-			account:    rawGPT56ResponsesAPIKeyAccount("gpt-5.6-sol", "gpt-5.5"),
+			provider:   rawGPT56ResponsesAPIKeyProvider("gpt-5.6-sol", "gpt-5.5"),
 			model:      "gpt-5.6-sol",
 			effort:     "max",
 			wantModel:  "gpt-5.5",
@@ -192,7 +198,7 @@ func TestForwardAsAnthropic_PreservesMaxForFinalGPT56ResponsesModel(t *testing.T
 		},
 		{
 			name:       "GPT56 default remains medium",
-			account:    rawGPT56ResponsesAPIKeyAccount("gpt-5.6-sol", "gpt-5.6-sol"),
+			provider:   rawGPT56ResponsesAPIKeyProvider("gpt-5.6-sol", "gpt-5.6-sol"),
 			model:      "gpt-5.6-sol",
 			wantModel:  "gpt-5.6-sol",
 			wantEffort: "medium",
@@ -215,7 +221,7 @@ func TestForwardAsAnthropic_PreservesMaxForFinalGPT56ResponsesModel(t *testing.T
 			upstream := &auxiliaryHTTPRecorder{resp: openAICompatSSECompletedResponse("resp_gpt56_"+tt.name, tt.wantModel)}
 			svc := newResponsesFixture(responsesFixtureInputs{transport: upstream, options: &responsesFixtureOptions{Request: OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{Enabled: false}}}})
 
-			result, err := svc.Text.Messages(context.Background(), c, tt.account, []byte(body), "", tt.defaultMapped)
+			result, err := svc.Text.Messages(context.Background(), c, tt.provider, []byte(body), "", tt.defaultMapped)
 			require.NoError(t, err)
 			require.NotNil(t, result)
 			require.Equal(t, tt.wantModel, result.UpstreamModel)
@@ -227,34 +233,40 @@ func TestForwardAsAnthropic_PreservesMaxForFinalGPT56ResponsesModel(t *testing.T
 	}
 }
 
-// rawGPT56ResponsesAPIKeyAccount 构造带模型映射的 Responses API Key 测试账号。
-func rawGPT56ResponsesAPIKeyAccount(requestedModel, mappedModel string) *gatewayprovider.ExecutionAccount {
-	return &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 501,
-		Name:        "gpt56-apikey",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":       "sk-test",
-			"base_url":      "https://api.example.com/v1",
-			"model_mapping": map[string]any{requestedModel: mappedModel},
+// rawGPT56ResponsesAPIKeyProvider 构造带模型映射的 Responses API Key 测试提供商。
+func rawGPT56ResponsesAPIKeyProvider(requestedModel, mappedModel string) *gatewayprovider.ExecutionProvider {
+	return &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 501,
+			Name:        "gpt56-apikey",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":       "sk-test",
+				"base_url":      "https://api.example.com/v1",
+				"model_mapping": map[string]any{requestedModel: mappedModel},
+			},
+			Extra: map[string]any{"use_responses_api": true},
 		},
-		Extra: map[string]any{"use_responses_api": true}},
 	}
 }
 
-// rawGPT56ResponsesOAuthAccount 构造带模型映射的 Responses OAuth 测试账号。
-func rawGPT56ResponsesOAuthAccount(requestedModel, mappedModel string) *gatewayprovider.ExecutionAccount {
-	return &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 502,
-		Name:        "gpt56-oauth",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeOAuth,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"access_token":       "oauth-token",
-			"chatgpt_account_id": "chatgpt-acc",
-			"model_mapping":      map[string]any{requestedModel: mappedModel},
-		}},
+// rawGPT56ResponsesOAuthProvider 构造带模型映射的 Responses OAuth 测试提供商。
+func rawGPT56ResponsesOAuthProvider(requestedModel, mappedModel string) *gatewayprovider.ExecutionProvider {
+	return &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 502,
+			Name:        "gpt56-oauth",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeOAuth,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"access_token":       "oauth-token",
+				"chatgpt_account_id": "chatgpt-acc",
+				"model_mapping":      map[string]any{requestedModel: mappedModel},
+			},
+		},
 	}
 }
 
@@ -284,21 +296,24 @@ func TestForwardAsAnthropic_MappedClaudeModelAcceptsChatUsageShape(t *testing.T)
 	}}
 
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream, options: &responsesFixtureOptions{Request: OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{Enabled: false}}}})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-		Name:        "openai-apikey",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":  "sk-test",
-			"base_url": "https://api.openai.com/v1",
-			"model_mapping": map[string]any{
-				"gpt-5.5": "gpt-5.5",
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1,
+			Name:        "openai-apikey",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":  "sk-test",
+				"base_url": "https://api.openai.com/v1",
+				"model_mapping": map[string]any{
+					"gpt-5.5": "gpt-5.5",
+				},
 			},
-		}},
+		},
 	}
 
-	result, err := svc.Text.Messages(context.Background(), c, account, body, "", "gpt-5.5")
+	result, err := svc.Text.Messages(context.Background(), c, provider, body, "", "gpt-5.5")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, "claude-opus-4-7", result.Model)
@@ -332,18 +347,21 @@ func TestForwardAsAnthropic_InjectsPromptCacheKeyForAPIKeyMessagesDispatch(t *te
 	}}
 
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream, options: &responsesFixtureOptions{Request: OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{Enabled: false}}}})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-		Name:        "openai-apikey",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":  "sk-test",
-			"base_url": "https://api.openai.com/v1",
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1,
+			Name:        "openai-apikey",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":  "sk-test",
+				"base_url": "https://api.openai.com/v1",
+			},
+		},
 	}
 
-	result, err := svc.Text.Messages(context.Background(), c, account, body, "stable-cache-key", "gpt-5.3-codex")
+	result, err := svc.Text.Messages(context.Background(), c, provider, body, "stable-cache-key", "gpt-5.3-codex")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, "stable-cache-key", gjson.GetBytes(upstream.lastBody, "prompt_cache_key").String())
@@ -373,18 +391,21 @@ func TestForwardAsAnthropic_AutoDerivesPromptCacheKeyWhenMessagesDispatchHasNoSe
 	}}
 
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream, options: &responsesFixtureOptions{Request: OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{Enabled: false}}}})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-		Name:        "openai-apikey",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":  "sk-test",
-			"base_url": "https://api.openai.com/v1",
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1,
+			Name:        "openai-apikey",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":  "sk-test",
+				"base_url": "https://api.openai.com/v1",
+			},
+		},
 	}
 
-	result, err := svc.Text.Messages(context.Background(), c, account, body, "", "gpt-5.3-codex")
+	result, err := svc.Text.Messages(context.Background(), c, provider, body, "", "gpt-5.3-codex")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	cacheKey := gjson.GetBytes(upstream.lastBody, "prompt_cache_key").String()
@@ -406,15 +427,18 @@ func TestForwardAsAnthropic_GPT6AstraPromptCacheIdentityStableAcrossAppendedTurn
 				openAICompatSSECompletedResponse("resp_gpt6_second", mappedModel),
 			}}
 			svc := newResponsesFixture(responsesFixtureInputs{transport: upstream, options: &responsesFixtureOptions{Request: OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{Enabled: false}}}})
-			account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 6615,
-				Name:        "openai-apikey",
-				Platform:    capability.PlatformOpenAI,
-				Type:        capability.AccountTypeAPIKey,
-				Concurrency: 1,
-				Credentials: map[string]any{
-					"api_key":  "sk-test",
-					"base_url": "https://api.openai.com/v1",
-				}},
+			provider := &gatewayprovider.ExecutionProvider{
+				Record: providercore.Record{
+					LoadLocation: time.LoadLocation, ID: 6615,
+					Name:        "openai-apikey",
+					Platform:    capability.PlatformOpenAI,
+					Type:        capability.ProviderTypeAPIKey,
+					Concurrency: 1,
+					Credentials: map[string]any{
+						"api_key":  "sk-test",
+						"base_url": "https://api.openai.com/v1",
+					},
+				},
 			}
 
 			bodies := [][]byte{
@@ -427,7 +451,7 @@ func TestForwardAsAnthropic_GPT6AstraPromptCacheIdentityStableAcrossAppendedTurn
 				c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", bytes.NewReader(body))
 				c.Request.Header.Set("Content-Type", "application/json")
 
-				result, err := svc.Text.Messages(context.Background(), c, account, body, "", mappedModel)
+				result, err := svc.Text.Messages(context.Background(), c, provider, body, "", mappedModel)
 				require.NoError(t, err)
 				require.NotNil(t, result)
 			}
@@ -470,18 +494,21 @@ func TestForwardAsAnthropic_DoesNotAutoDerivePromptCacheKeyForNonCodexModel(t *t
 	}}
 
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream, options: &responsesFixtureOptions{Request: OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{Enabled: false}}}})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-		Name:        "openai-apikey",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":  "sk-test",
-			"base_url": "https://api.openai.com/v1",
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1,
+			Name:        "openai-apikey",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":  "sk-test",
+				"base_url": "https://api.openai.com/v1",
+			},
+		},
 	}
 
-	result, err := svc.Text.Messages(context.Background(), c, account, body, "", "gpt-4o")
+	result, err := svc.Text.Messages(context.Background(), c, provider, body, "", "gpt-4o")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.False(t, gjson.GetBytes(upstream.lastBody, "prompt_cache_key").Exists())
@@ -501,18 +528,21 @@ func TestForwardAsAnthropic_OAuthNonCodexModelRestoresCodexIdentity(t *testing.T
 
 	upstream := &auxiliaryHTTPRecorder{resp: openAICompatSSECompletedResponse("resp_bridge_identity", "gpt-4o")}
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream, options: &responsesFixtureOptions{Request: OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{Enabled: false}}}})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-		Name:        "openai-oauth",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeOAuth,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"access_token":       "oauth-token",
-			"chatgpt_account_id": "chatgpt-acc",
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1,
+			Name:        "openai-oauth",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeOAuth,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"access_token":       "oauth-token",
+				"chatgpt_account_id": "chatgpt-acc",
+			},
+		},
 	}
 
-	result, err := svc.Text.Messages(context.Background(), c, account, body, "", "gpt-4o")
+	result, err := svc.Text.Messages(context.Background(), c, provider, body, "", "gpt-4o")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.NotNil(t, upstream.lastReq)
@@ -549,18 +579,21 @@ func TestForwardAsAnthropic_TrimsFullReplayOnlyForCodexCompatModels(t *testing.T
 		}}
 
 		svc := newResponsesFixture(responsesFixtureInputs{transport: upstream, options: &responsesFixtureOptions{Request: OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{Enabled: false}}}})
-		account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-			Name:        "openai-apikey",
-			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeAPIKey,
-			Concurrency: 1,
-			Credentials: map[string]any{
-				"api_key":  "sk-test",
-				"base_url": "https://api.openai.com/v1",
-			}},
+		provider := &gatewayprovider.ExecutionProvider{
+			Record: providercore.Record{
+				LoadLocation: time.LoadLocation, ID: 1,
+				Name:        "openai-apikey",
+				Platform:    capability.PlatformOpenAI,
+				Type:        capability.ProviderTypeAPIKey,
+				Concurrency: 1,
+				Credentials: map[string]any{
+					"api_key":  "sk-test",
+					"base_url": "https://api.openai.com/v1",
+				},
+			},
 		}
 
-		result, err := svc.Text.Messages(context.Background(), c, account, body, "", mappedModel)
+		result, err := svc.Text.Messages(context.Background(), c, provider, body, "", mappedModel)
 		require.NoError(t, err)
 		require.NotNil(t, result)
 		return upstream.lastBody
@@ -594,18 +627,21 @@ func TestForwardAsAnthropic_OAuthCompatKeepsFullReplayForCacheGrowth(t *testing.
 
 	upstream := &auxiliaryHTTPRecorder{resp: openAICompatSSECompletedResponse("resp_oauth_trim", "gpt-5.4")}
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream, options: &responsesFixtureOptions{Request: OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{Enabled: false}}}})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-		Name:        "openai-oauth",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeOAuth,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"access_token":       "oauth-token",
-			"chatgpt_account_id": "chatgpt-acc",
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1,
+			Name:        "openai-oauth",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeOAuth,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"access_token":       "oauth-token",
+				"chatgpt_account_id": "chatgpt-acc",
+			},
+		},
 	}
 
-	result, err := svc.Text.Messages(context.Background(), c, account, body, "", "gpt-5.4")
+	result, err := svc.Text.Messages(context.Background(), c, provider, body, "", "gpt-5.4")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, int64(12+4), gjson.GetBytes(upstream.lastBody, "input.#").Int())
@@ -621,16 +657,19 @@ func TestForwardAsAnthropic_AttachesPreviousResponseIDForCompatContinuation(t *t
 
 	upstream := &auxiliaryHTTPRecorder{}
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream, options: &responsesFixtureOptions{Request: OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{Enabled: false}}}})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-		Name:        "openai-apikey",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":  "sk-test",
-			"base_url": "https://api.openai.com/v1",
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1,
+			Name:        "openai-apikey",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":  "sk-test",
+				"base_url": "https://api.openai.com/v1",
+			},
+			Extra: map[string]any{providercore.ExtraKeyResponsesContinuationSupported: true},
 		},
-		Extra: map[string]any{accountcore.ExtraKeyResponsesContinuationSupported: true}},
 	}
 
 	firstBody := []byte(`{"model":"claude-sonnet-4-5","max_tokens":16,"messages":[{"role":"user","content":"first"}],"stream":false}`)
@@ -640,7 +679,7 @@ func TestForwardAsAnthropic_AttachesPreviousResponseIDForCompatContinuation(t *t
 	firstCtx.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", bytes.NewReader(firstBody))
 	firstCtx.Request.Header.Set("Content-Type", "application/json")
 
-	firstResult, err := svc.Text.Messages(context.Background(), firstCtx, account, firstBody, "stable-cache-key", "gpt-5.3-codex")
+	firstResult, err := svc.Text.Messages(context.Background(), firstCtx, provider, firstBody, "stable-cache-key", "gpt-5.3-codex")
 	require.NoError(t, err)
 	require.NotNil(t, firstResult)
 	require.Equal(t, "resp_first", firstResult.ResponseID)
@@ -653,7 +692,7 @@ func TestForwardAsAnthropic_AttachesPreviousResponseIDForCompatContinuation(t *t
 	secondCtx.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", bytes.NewReader(secondBody))
 	secondCtx.Request.Header.Set("Content-Type", "application/json")
 
-	secondResult, err := svc.Text.Messages(context.Background(), secondCtx, account, secondBody, "stable-cache-key", "gpt-5.3-codex")
+	secondResult, err := svc.Text.Messages(context.Background(), secondCtx, provider, secondBody, "stable-cache-key", "gpt-5.3-codex")
 	require.NoError(t, err)
 	require.NotNil(t, secondResult)
 	require.Equal(t, "resp_second", secondResult.ResponseID)
@@ -669,17 +708,20 @@ func TestForwardAsAnthropic_DoesNotAttachPreviousResponseIDWhenCapabilityDisable
 
 	upstream := &auxiliaryHTTPRecorder{resp: openAICompatSSECompletedResponse("resp_disabled", "gpt-5.3-codex")}
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream, options: &responsesFixtureOptions{Request: OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{Enabled: false}}}})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-		Name:        "nested-sub2api",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":  "sk-test",
-			"base_url": "https://inner-sub2api.example/v1",
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1,
+			Name:        "nested-sub2api",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":  "sk-test",
+				"base_url": "https://inner-sub2api.example/v1",
+			},
+		},
 	}
-	svc.Text.Continuation.BindResponse(session.CompatResponseKey(account.Record.ID, 0, "stable-cache-key"), "resp_should_not_attach")
+	svc.Text.Continuation.BindResponse(session.CompatResponseKey(provider.Record.ID, 0, "stable-cache-key"), "resp_should_not_attach")
 
 	body := []byte(`{"model":"claude-sonnet-4-5","max_tokens":16,"messages":[{"role":"user","content":"hello"}],"stream":false}`)
 	rec := httptest.NewRecorder()
@@ -687,7 +729,7 @@ func TestForwardAsAnthropic_DoesNotAttachPreviousResponseIDWhenCapabilityDisable
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", bytes.NewReader(body))
 	c.Request.Header.Set("Content-Type", "application/json")
 
-	result, err := svc.Text.Messages(context.Background(), c, account, body, "stable-cache-key", "gpt-5.3-codex")
+	result, err := svc.Text.Messages(context.Background(), c, provider, body, "stable-cache-key", "gpt-5.3-codex")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.False(t, gjson.GetBytes(upstream.lastBody, "previous_response_id").Exists())
@@ -698,24 +740,27 @@ func TestForwardAsAnthropic_ReplaysWithoutContinuationWhenNestedOAuthRejectsHTTP
 
 	upstream := &auxiliaryHTTPRecorder{}
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream, options: &responsesFixtureOptions{Request: OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{Enabled: false}}}})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-		Name:        "nested-sub2api",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":  "sk-test",
-			"base_url": "https://inner-sub2api.example/v1",
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1,
+			Name:        "nested-sub2api",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":  "sk-test",
+				"base_url": "https://inner-sub2api.example/v1",
+			},
+			Extra: map[string]any{providercore.ExtraKeyResponsesContinuationSupported: true},
 		},
-		Extra: map[string]any{accountcore.ExtraKeyResponsesContinuationSupported: true}},
 	}
-	svc.Text.Continuation.BindResponse(session.CompatResponseKey(account.Record.ID, 0, "stable-cache-key"), "resp_nested")
+	svc.Text.Continuation.BindResponse(session.CompatResponseKey(provider.Record.ID, 0, "stable-cache-key"), "resp_nested")
 	body := []byte(`{"model":"claude-sonnet-4-5","max_tokens":16,"messages":[{"role":"user","content":"first"},{"role":"assistant","content":"ok"},{"role":"user","content":"second"}],"stream":false}`)
 	upstream.responses = []*http.Response{
 		{
 			StatusCode: http.StatusBadRequest,
 			Header:     http.Header{"Content-Type": []string{"application/json"}},
-			Body:       io.NopCloser(strings.NewReader(`{"error":{"message":"previous_response_id requires an OpenAI API-key account for HTTP requests"}}`)),
+			Body:       io.NopCloser(strings.NewReader(`{"error":{"message":"previous_response_id requires an OpenAI API-key provider for HTTP requests"}}`)),
 		},
 		openAICompatSSECompletedResponse("resp_replayed_nested", "gpt-5.3-codex"),
 	}
@@ -725,7 +770,7 @@ func TestForwardAsAnthropic_ReplaysWithoutContinuationWhenNestedOAuthRejectsHTTP
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", bytes.NewReader(body))
 	c.Request.Header.Set("Content-Type", "application/json")
 
-	result, err := svc.Text.Messages(context.Background(), c, account, body, "stable-cache-key", "gpt-5.3-codex")
+	result, err := svc.Text.Messages(context.Background(), c, provider, body, "stable-cache-key", "gpt-5.3-codex")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, "resp_replayed_nested", result.ResponseID)
@@ -739,16 +784,19 @@ func TestForwardAsAnthropic_PreviousResponseIDKeepsMultiToolCallContext(t *testi
 
 	upstream := &auxiliaryHTTPRecorder{}
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream, options: &responsesFixtureOptions{Request: OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{Enabled: false}}}})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-		Name:        "openai-apikey",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":  "sk-test",
-			"base_url": "https://api.openai.com/v1",
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1,
+			Name:        "openai-apikey",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":  "sk-test",
+				"base_url": "https://api.openai.com/v1",
+			},
+			Extra: map[string]any{providercore.ExtraKeyResponsesContinuationSupported: true},
 		},
-		Extra: map[string]any{accountcore.ExtraKeyResponsesContinuationSupported: true}},
 	}
 
 	firstBody := []byte(`{"model":"claude-sonnet-4-5","max_tokens":16,"messages":[{"role":"user","content":"inspect files"}],"stream":false}`)
@@ -758,7 +806,7 @@ func TestForwardAsAnthropic_PreviousResponseIDKeepsMultiToolCallContext(t *testi
 	firstCtx.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", bytes.NewReader(firstBody))
 	firstCtx.Request.Header.Set("Content-Type", "application/json")
 
-	firstResult, err := svc.Text.Messages(context.Background(), firstCtx, account, firstBody, "stable-cache-key", "gpt-5.3-codex")
+	firstResult, err := svc.Text.Messages(context.Background(), firstCtx, provider, firstBody, "stable-cache-key", "gpt-5.3-codex")
 	require.NoError(t, err)
 	require.NotNil(t, firstResult)
 
@@ -769,7 +817,7 @@ func TestForwardAsAnthropic_PreviousResponseIDKeepsMultiToolCallContext(t *testi
 	secondCtx.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", bytes.NewReader(secondBody))
 	secondCtx.Request.Header.Set("Content-Type", "application/json")
 
-	secondResult, err := svc.Text.Messages(context.Background(), secondCtx, account, secondBody, "stable-cache-key", "gpt-5.3-codex")
+	secondResult, err := svc.Text.Messages(context.Background(), secondCtx, provider, secondBody, "stable-cache-key", "gpt-5.3-codex")
 	require.NoError(t, err)
 	require.NotNil(t, secondResult)
 	require.Equal(t, "resp_first_tools", gjson.GetBytes(upstream.lastBody, "previous_response_id").String())
@@ -790,19 +838,22 @@ func TestForwardAsAnthropic_ReplaysFullToolHistoryWhenPreviousResponseUnavailabl
 
 	upstream := &auxiliaryHTTPRecorder{}
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream, options: &responsesFixtureOptions{Request: OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{Enabled: false}}}})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-		Name:        "openai-apikey",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":  "sk-test",
-			"base_url": "https://api.openai.com/v1",
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1,
+			Name:        "openai-apikey",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":  "sk-test",
+				"base_url": "https://api.openai.com/v1",
+			},
+			Extra: map[string]any{providercore.ExtraKeyResponsesContinuationSupported: true},
 		},
-		Extra: map[string]any{accountcore.ExtraKeyResponsesContinuationSupported: true}},
 	}
 
-	svc.Text.Continuation.BindResponse(session.CompatResponseKey(account.Record.ID, 0, "stable-cache-key"), "resp_missing")
+	svc.Text.Continuation.BindResponse(session.CompatResponseKey(provider.Record.ID, 0, "stable-cache-key"), "resp_missing")
 	secondBody := []byte(`{"model":"claude-sonnet-4-5","max_tokens":16,"messages":[{"role":"user","content":"first"},{"role":"assistant","content":[{"type":"tool_use","id":"call_1","name":"lookup","input":{"q":"first"}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"call_1","content":"found"},{"type":"text","text":"second"}]}],"tools":[{"name":"lookup","input_schema":{"type":"object"}}],"stream":false}`)
 	upstream.responses = []*http.Response{
 		{
@@ -819,7 +870,7 @@ func TestForwardAsAnthropic_ReplaysFullToolHistoryWhenPreviousResponseUnavailabl
 	c.Request.Header.Set("Content-Type", "application/json")
 
 	tlsMatch := egress.TLSFingerprintRouterMatchResult{Matched: true, UpstreamUserAgent: "router-agent"}
-	result, err := svc.Text.Messages(context.Background(), c, account, secondBody, "stable-cache-key", "gpt-5.3-codex", tlsMatch)
+	result, err := svc.Text.Messages(context.Background(), c, provider, secondBody, "stable-cache-key", "gpt-5.3-codex", tlsMatch)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, "resp_replayed", result.ResponseID)
@@ -861,20 +912,23 @@ func TestForwardAsAnthropic_PreviousResponseUnavailableRetryFailureDoesNotLoop(t
 	}
 	upstream := &auxiliaryHTTPRecorder{responses: []*http.Response{unavailable(), unavailable()}}
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream, options: &responsesFixtureOptions{Request: OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{Enabled: false}}}})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{"api_key": "sk-test", "base_url": "https://api.openai.com/v1"},
-		Extra:       map[string]any{accountcore.ExtraKeyResponsesContinuationSupported: true}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1,
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{"api_key": "sk-test", "base_url": "https://api.openai.com/v1"},
+			Extra:       map[string]any{providercore.ExtraKeyResponsesContinuationSupported: true},
+		},
 	}
-	svc.Text.Continuation.BindResponse(session.CompatResponseKey(account.Record.ID, 0, "stable-cache-key"), "resp_missing")
+	svc.Text.Continuation.BindResponse(session.CompatResponseKey(provider.Record.ID, 0, "stable-cache-key"), "resp_missing")
 	body := []byte(`{"model":"claude-sonnet-4-5","max_tokens":16,"messages":[{"role":"user","content":"hello"}],"stream":false}`)
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", bytes.NewReader(body))
 
-	_, _ = svc.Text.Messages(context.Background(), c, account, body, "stable-cache-key", "gpt-5.3-codex")
+	_, _ = svc.Text.Messages(context.Background(), c, provider, body, "stable-cache-key", "gpt-5.3-codex")
 	require.Len(t, upstream.requests, 2)
 	require.True(t, gjson.GetBytes(upstream.bodies[0], "previous_response_id").Exists())
 	require.False(t, gjson.GetBytes(upstream.bodies[1], "previous_response_id").Exists())
@@ -885,19 +939,22 @@ func TestForwardAsAnthropic_DisablesAPIKeyContinuationWhenUpstreamRequiresWebSoc
 
 	upstream := &auxiliaryHTTPRecorder{}
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream, options: &responsesFixtureOptions{Request: OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{Enabled: false}}}})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-		Name:        "openai-apikey",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":  "sk-test",
-			"base_url": "https://api.openai.com/v1",
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1,
+			Name:        "openai-apikey",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":  "sk-test",
+				"base_url": "https://api.openai.com/v1",
+			},
+			Extra: map[string]any{providercore.ExtraKeyResponsesContinuationSupported: true},
 		},
-		Extra: map[string]any{accountcore.ExtraKeyResponsesContinuationSupported: true}},
 	}
 
-	svc.Text.Continuation.BindResponse(session.CompatResponseKey(account.Record.ID, 0, "stable-cache-key"), "resp_http_unsupported")
+	svc.Text.Continuation.BindResponse(session.CompatResponseKey(provider.Record.ID, 0, "stable-cache-key"), "resp_http_unsupported")
 	body := []byte(`{"model":"claude-sonnet-4-5","max_tokens":16,"messages":[{"role":"user","content":"first"},{"role":"assistant","content":"ok"},{"role":"user","content":"second"}],"stream":false}`)
 	upstream.responses = []*http.Response{
 		{
@@ -914,7 +971,7 @@ func TestForwardAsAnthropic_DisablesAPIKeyContinuationWhenUpstreamRequiresWebSoc
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", bytes.NewReader(body))
 	c.Request.Header.Set("Content-Type", "application/json")
 
-	result, err := svc.Text.Messages(context.Background(), c, account, body, "stable-cache-key", "gpt-5.5")
+	result, err := svc.Text.Messages(context.Background(), c, provider, body, "stable-cache-key", "gpt-5.5")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, "resp_replayed", result.ResponseID)
@@ -927,7 +984,7 @@ func TestForwardAsAnthropic_DisablesAPIKeyContinuationWhenUpstreamRequiresWebSoc
 	laterCtx.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", bytes.NewReader(body))
 	laterCtx.Request.Header.Set("Content-Type", "application/json")
 
-	laterResult, err := svc.Text.Messages(context.Background(), laterCtx, account, body, "stable-cache-key", "gpt-5.5")
+	laterResult, err := svc.Text.Messages(context.Background(), laterCtx, provider, body, "stable-cache-key", "gpt-5.5")
 	require.NoError(t, err)
 	require.NotNil(t, laterResult)
 	require.Equal(t, "resp_later", laterResult.ResponseID)
@@ -952,16 +1009,19 @@ func TestForwardAsAnthropic_APIKeyMetadataSessionSurvivesChangingCacheControlAnc
 		openAICompatSSECompletedResponse("resp_second", "gpt-5.4-mini"),
 	}}
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream, options: &responsesFixtureOptions{Request: OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{Enabled: false}}}})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-		Name:        "openai-apikey",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":  "sk-test",
-			"base_url": "https://api.openai.com/v1",
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1,
+			Name:        "openai-apikey",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":  "sk-test",
+				"base_url": "https://api.openai.com/v1",
+			},
+			Extra: map[string]any{providercore.ExtraKeyResponsesContinuationSupported: true},
 		},
-		Extra: map[string]any{accountcore.ExtraKeyResponsesContinuationSupported: true}},
 	}
 
 	firstRec := httptest.NewRecorder()
@@ -969,21 +1029,21 @@ func TestForwardAsAnthropic_APIKeyMetadataSessionSurvivesChangingCacheControlAnc
 	firstCtx.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", bytes.NewReader(firstBody))
 	firstCtx.Request.Header.Set("Content-Type", "application/json")
 
-	firstResult, err := svc.Text.Messages(context.Background(), firstCtx, account, firstBody, "", "gpt-5.4-mini")
+	firstResult, err := svc.Text.Messages(context.Background(), firstCtx, provider, firstBody, "", "gpt-5.4-mini")
 	require.NoError(t, err)
 	require.NotNil(t, firstResult)
 	firstKey := gjson.GetBytes(upstream.bodies[0], "prompt_cache_key").String()
 	require.NotEmpty(t, firstKey)
 	require.True(t, strings.HasPrefix(firstKey, "anthropic-metadata-"))
 
-	svc.Text.Continuation.Disable(session.CompatResponseKey(account.Record.ID, 0, firstKey))
+	svc.Text.Continuation.Disable(session.CompatResponseKey(provider.Record.ID, 0, firstKey))
 
 	secondRec := httptest.NewRecorder()
 	secondCtx, _ := gin.CreateTestContext(secondRec)
 	secondCtx.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", bytes.NewReader(secondBody))
 	secondCtx.Request.Header.Set("Content-Type", "application/json")
 
-	secondResult, err := svc.Text.Messages(context.Background(), secondCtx, account, secondBody, "", "gpt-5.4-mini")
+	secondResult, err := svc.Text.Messages(context.Background(), secondCtx, provider, secondBody, "", "gpt-5.4-mini")
 	require.NoError(t, err)
 	require.NotNil(t, secondResult)
 	require.Len(t, upstream.requests, 2)
@@ -1001,17 +1061,20 @@ func TestForwardAsAnthropic_DoesNotAttachPreviousResponseIDForOAuthCompat(t *tes
 
 	upstream := &auxiliaryHTTPRecorder{resp: openAICompatSSECompletedResponse("resp_oauth_next", "gpt-5.4")}
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream, options: &responsesFixtureOptions{Request: OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{Enabled: false}}}})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-		Name:        "openai-oauth",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeOAuth,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"access_token":       "oauth-token",
-			"chatgpt_account_id": "chatgpt-acc",
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1,
+			Name:        "openai-oauth",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeOAuth,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"access_token":       "oauth-token",
+				"chatgpt_account_id": "chatgpt-acc",
+			},
+		},
 	}
-	svc.Text.Continuation.BindResponse(session.CompatResponseKey(account.Record.ID, 0, "stable-cache-key"), "resp_oauth_prev")
+	svc.Text.Continuation.BindResponse(session.CompatResponseKey(provider.Record.ID, 0, "stable-cache-key"), "resp_oauth_prev")
 
 	body := []byte(`{"model":"claude-sonnet-4-5","max_tokens":16,"messages":[{"role":"user","content":"first"},{"role":"assistant","content":"ok"},{"role":"user","content":"second"}],"stream":false}`)
 	rec := httptest.NewRecorder()
@@ -1019,7 +1082,7 @@ func TestForwardAsAnthropic_DoesNotAttachPreviousResponseIDForOAuthCompat(t *tes
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", bytes.NewReader(body))
 	c.Request.Header.Set("Content-Type", "application/json")
 
-	result, err := svc.Text.Messages(context.Background(), c, account, body, "stable-cache-key", "gpt-5.4")
+	result, err := svc.Text.Messages(context.Background(), c, provider, body, "stable-cache-key", "gpt-5.4")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.False(t, gjson.GetBytes(upstream.lastBody, "previous_response_id").Exists())
@@ -1035,15 +1098,18 @@ func TestForwardAsAnthropic_ReusesOAuthCodexTurnState(t *testing.T) {
 		openAICompatSSECompletedResponse("resp_oauth_second", "gpt-5.4"),
 	}}
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream, options: &responsesFixtureOptions{Request: OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{Enabled: false}}}})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-		Name:        "openai-oauth",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeOAuth,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"access_token":       "oauth-token",
-			"chatgpt_account_id": "chatgpt-acc",
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1,
+			Name:        "openai-oauth",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeOAuth,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"access_token":       "oauth-token",
+				"chatgpt_account_id": "chatgpt-acc",
+			},
+		},
 	}
 
 	firstBody := []byte(`{"model":"claude-sonnet-4-5","max_tokens":16,"messages":[{"role":"user","content":"first"}],"stream":false}`)
@@ -1052,7 +1118,7 @@ func TestForwardAsAnthropic_ReusesOAuthCodexTurnState(t *testing.T) {
 	firstCtx.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", bytes.NewReader(firstBody))
 	firstCtx.Request.Header.Set("Content-Type", "application/json")
 
-	firstResult, err := svc.Text.Messages(context.Background(), firstCtx, account, firstBody, "stable-cache-key", "gpt-5.4")
+	firstResult, err := svc.Text.Messages(context.Background(), firstCtx, provider, firstBody, "stable-cache-key", "gpt-5.4")
 	require.NoError(t, err)
 	require.NotNil(t, firstResult)
 	require.Empty(t, upstream.requests[0].Header.Get("x-codex-turn-state"))
@@ -1064,11 +1130,11 @@ func TestForwardAsAnthropic_ReusesOAuthCodexTurnState(t *testing.T) {
 	secondCtx.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", bytes.NewReader(secondBody))
 	secondCtx.Request.Header.Set("Content-Type", "application/json")
 
-	secondResult, err := svc.Text.Messages(context.Background(), secondCtx, account, secondBody, "stable-cache-key", "gpt-5.4")
+	secondResult, err := svc.Text.Messages(context.Background(), secondCtx, provider, secondBody, "stable-cache-key", "gpt-5.4")
 	require.NoError(t, err)
 	require.NotNil(t, secondResult)
 	require.Equal(t, "turn_state_first", upstream.requests[1].Header.Get("x-codex-turn-state"))
-	require.Equal(t, upstreamcore.GenerateSessionUUID(openai.IsolateOpenAIUpstreamSessionID(0, accountprovider.CodexIdentityNamespace(account.View()), "stable-cache-key")), upstream.requests[1].Header.Get("session_id"))
+	require.Equal(t, upstreamcore.GenerateSessionUUID(openai.IsolateOpenAIUpstreamSessionID(0, provideradapter.CodexIdentityNamespace(provider.View()), "stable-cache-key")), upstream.requests[1].Header.Get("session_id"))
 	require.Empty(t, upstream.requests[1].Header.Get("conversation_id"))
 	requireOpenAIMessagesCodexIdentity(t, upstream.requests[1], openai.CodexCLIUserAgent, openai.CodexDefaultOriginator)
 	require.False(t, gjson.GetBytes(upstream.bodies[1], "prompt_cache_key").Exists())
@@ -1076,7 +1142,6 @@ func TestForwardAsAnthropic_ReusesOAuthCodexTurnState(t *testing.T) {
 }
 
 func TestForwardAsAnthropic_OAuthRestoresCodexIdentityHeaders(t *testing.T) {
-
 	const tuiUA = "codex-tui/9.9.9 (Mac OS X 14.0; arm64) iTerm (codex-tui; 9.9.9)"
 	tests := []struct {
 		name           string
@@ -1113,18 +1178,21 @@ func TestForwardAsAnthropic_OAuthRestoresCodexIdentityHeaders(t *testing.T) {
 
 			upstream := &auxiliaryHTTPRecorder{resp: openAICompatSSECompletedResponse("resp_identity", "gpt-5.4")}
 			svc := newResponsesFixture(responsesFixtureInputs{transport: upstream, options: &responsesFixtureOptions{Request: OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{Enabled: false}}}})
-			account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-				Name:        "openai-oauth",
-				Platform:    capability.PlatformOpenAI,
-				Type:        capability.AccountTypeOAuth,
-				Concurrency: 1,
-				Credentials: map[string]any{
-					"access_token":       "oauth-token",
-					"chatgpt_account_id": "chatgpt-acc",
-				}},
+			provider := &gatewayprovider.ExecutionProvider{
+				Record: providercore.Record{
+					LoadLocation: time.LoadLocation, ID: 1,
+					Name:        "openai-oauth",
+					Platform:    capability.PlatformOpenAI,
+					Type:        capability.ProviderTypeOAuth,
+					Concurrency: 1,
+					Credentials: map[string]any{
+						"access_token":       "oauth-token",
+						"chatgpt_account_id": "chatgpt-acc",
+					},
+				},
 			}
 
-			result, err := svc.Text.Messages(context.Background(), c, account, body, "", "gpt-5.4")
+			result, err := svc.Text.Messages(context.Background(), c, provider, body, "", "gpt-5.4")
 			require.NoError(t, err)
 			require.NotNil(t, result)
 			requireOpenAIMessagesCodexIdentity(t, upstream.lastReq, tt.wantUserAgent, tt.wantOriginator)
@@ -1142,15 +1210,18 @@ func TestForwardAsAnthropic_OAuthDigestFallbackReusesTurnStateWithoutExplicitKey
 		openAICompatSSECompletedResponse("resp_oauth_digest_second", "gpt-5.4"),
 	}}
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream, options: &responsesFixtureOptions{Request: OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{Enabled: false}}}})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-		Name:        "openai-oauth",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeOAuth,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"access_token":       "oauth-token",
-			"chatgpt_account_id": "chatgpt-acc",
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1,
+			Name:        "openai-oauth",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeOAuth,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"access_token":       "oauth-token",
+				"chatgpt_account_id": "chatgpt-acc",
+			},
+		},
 	}
 
 	firstBody := []byte(`{"model":"claude-sonnet-4-5","max_tokens":16,"messages":[{"role":"user","content":"first"}],"stream":false}`)
@@ -1159,7 +1230,7 @@ func TestForwardAsAnthropic_OAuthDigestFallbackReusesTurnStateWithoutExplicitKey
 	firstCtx.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", bytes.NewReader(firstBody))
 	firstCtx.Request.Header.Set("Content-Type", "application/json")
 
-	firstResult, err := svc.Text.Messages(context.Background(), firstCtx, account, firstBody, "", "gpt-5.4")
+	firstResult, err := svc.Text.Messages(context.Background(), firstCtx, provider, firstBody, "", "gpt-5.4")
 	require.NoError(t, err)
 	require.NotNil(t, firstResult)
 	firstSessionID := upstream.requests[0].Header.Get("session_id")
@@ -1174,7 +1245,7 @@ func TestForwardAsAnthropic_OAuthDigestFallbackReusesTurnStateWithoutExplicitKey
 	secondCtx.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", bytes.NewReader(secondBody))
 	secondCtx.Request.Header.Set("Content-Type", "application/json")
 
-	secondResult, err := svc.Text.Messages(context.Background(), secondCtx, account, secondBody, "", "gpt-5.4")
+	secondResult, err := svc.Text.Messages(context.Background(), secondCtx, provider, secondBody, "", "gpt-5.4")
 	require.NoError(t, err)
 	require.NotNil(t, secondResult)
 	require.Equal(t, firstSessionID, upstream.requests[1].Header.Get("session_id"))
@@ -1195,15 +1266,18 @@ func TestForwardAsAnthropic_OAuthMetadataSessionSurvivesDigestPrefixRewrite(t *t
 		openAICompatSSECompletedResponse("resp_oauth_metadata_second", "gpt-5.5"),
 	}}
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream, options: &responsesFixtureOptions{Request: OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{Enabled: false}}}})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-		Name:        "openai-oauth",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeOAuth,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"access_token":       "oauth-token",
-			"chatgpt_account_id": "chatgpt-acc",
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1,
+			Name:        "openai-oauth",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeOAuth,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"access_token":       "oauth-token",
+				"chatgpt_account_id": "chatgpt-acc",
+			},
+		},
 	}
 	metadata := `{"user_id":"{\"device_id\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"account_uuid\":\"\",\"session_id\":\"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa\"}"}`
 
@@ -1213,7 +1287,7 @@ func TestForwardAsAnthropic_OAuthMetadataSessionSurvivesDigestPrefixRewrite(t *t
 	firstCtx.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", bytes.NewReader(firstBody))
 	firstCtx.Request.Header.Set("Content-Type", "application/json")
 
-	firstResult, err := svc.Text.Messages(context.Background(), firstCtx, account, firstBody, "", "gpt-5.5")
+	firstResult, err := svc.Text.Messages(context.Background(), firstCtx, provider, firstBody, "", "gpt-5.5")
 	require.NoError(t, err)
 	require.NotNil(t, firstResult)
 	firstSessionID := upstream.requests[0].Header.Get("session_id")
@@ -1227,7 +1301,7 @@ func TestForwardAsAnthropic_OAuthMetadataSessionSurvivesDigestPrefixRewrite(t *t
 	secondCtx.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", bytes.NewReader(secondBody))
 	secondCtx.Request.Header.Set("Content-Type", "application/json")
 
-	secondResult, err := svc.Text.Messages(context.Background(), secondCtx, account, secondBody, "", "gpt-5.5")
+	secondResult, err := svc.Text.Messages(context.Background(), secondCtx, provider, secondBody, "", "gpt-5.5")
 	require.NoError(t, err)
 	require.NotNil(t, secondResult)
 	require.Equal(t, firstSessionID, upstream.requests[1].Header.Get("session_id"))
@@ -1247,15 +1321,18 @@ func TestForwardAsAnthropic_OAuthMetadataSessionSurvivesChangingCacheControlAnch
 		openAICompatSSECompletedResponse("resp_oauth_cache_anchor_second", "gpt-5.5"),
 	}}
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream, options: &responsesFixtureOptions{Request: OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{Enabled: false}}}})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-		Name:        "openai-oauth",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeOAuth,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"access_token":       "oauth-token",
-			"chatgpt_account_id": "chatgpt-acc",
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1,
+			Name:        "openai-oauth",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeOAuth,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"access_token":       "oauth-token",
+				"chatgpt_account_id": "chatgpt-acc",
+			},
+		},
 	}
 	metadata := `{"user_id":"{\"device_id\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"account_uuid\":\"\",\"session_id\":\"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb\"}"}`
 
@@ -1265,7 +1342,7 @@ func TestForwardAsAnthropic_OAuthMetadataSessionSurvivesChangingCacheControlAnch
 	firstCtx.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", bytes.NewReader(firstBody))
 	firstCtx.Request.Header.Set("Content-Type", "application/json")
 
-	firstResult, err := svc.Text.Messages(context.Background(), firstCtx, account, firstBody, "", "gpt-5.5")
+	firstResult, err := svc.Text.Messages(context.Background(), firstCtx, provider, firstBody, "", "gpt-5.5")
 	require.NoError(t, err)
 	require.NotNil(t, firstResult)
 	firstSessionID := upstream.requests[0].Header.Get("session_id")
@@ -1279,7 +1356,7 @@ func TestForwardAsAnthropic_OAuthMetadataSessionSurvivesChangingCacheControlAnch
 	secondCtx.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", bytes.NewReader(secondBody))
 	secondCtx.Request.Header.Set("Content-Type", "application/json")
 
-	secondResult, err := svc.Text.Messages(context.Background(), secondCtx, account, secondBody, "", "gpt-5.5")
+	secondResult, err := svc.Text.Messages(context.Background(), secondCtx, provider, secondBody, "", "gpt-5.5")
 	require.NoError(t, err)
 	require.NotNil(t, secondResult)
 	require.Equal(t, firstSessionID, upstream.requests[1].Header.Get("session_id"))
@@ -1294,15 +1371,18 @@ func TestForwardAsAnthropic_OAuthKeepsSystemAsDeveloperInput(t *testing.T) {
 
 	upstream := &auxiliaryHTTPRecorder{resp: openAICompatSSECompletedResponse("resp_oauth_system", "gpt-5.4")}
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream, options: &responsesFixtureOptions{Request: OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{Enabled: false}}}})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-		Name:        "openai-oauth",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeOAuth,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"access_token":       "oauth-token",
-			"chatgpt_account_id": "chatgpt-acc",
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1,
+			Name:        "openai-oauth",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeOAuth,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"access_token":       "oauth-token",
+				"chatgpt_account_id": "chatgpt-acc",
+			},
+		},
 	}
 
 	body := []byte(`{"model":"claude-sonnet-4-5","max_tokens":16,"system":[{"type":"text","text":"project instructions","cache_control":{"type":"ephemeral"}}],"messages":[{"role":"user","content":"first"}],"stream":false}`)
@@ -1311,7 +1391,7 @@ func TestForwardAsAnthropic_OAuthKeepsSystemAsDeveloperInput(t *testing.T) {
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", bytes.NewReader(body))
 	c.Request.Header.Set("Content-Type", "application/json")
 
-	result, err := svc.Text.Messages(context.Background(), c, account, body, "", "gpt-5.4")
+	result, err := svc.Text.Messages(context.Background(), c, provider, body, "", "gpt-5.4")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, "developer", gjson.GetBytes(upstream.lastBody, "input.0.role").String())
@@ -1328,15 +1408,18 @@ func TestForwardAsAnthropic_OAuthAddsClaudeCodeTodoGuardForCompatModel(t *testin
 
 	upstream := &auxiliaryHTTPRecorder{resp: openAICompatSSECompletedResponse("resp_oauth_todo_guard", "gpt-5.5")}
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream, options: &responsesFixtureOptions{Request: OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{Enabled: false}}}})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-		Name:        "openai-oauth",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeOAuth,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"access_token":       "oauth-token",
-			"chatgpt_account_id": "chatgpt-acc",
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1,
+			Name:        "openai-oauth",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeOAuth,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"access_token":       "oauth-token",
+				"chatgpt_account_id": "chatgpt-acc",
+			},
+		},
 	}
 
 	body := []byte(`{"model":"claude-sonnet-4-5","max_tokens":16,"system":"project instructions","messages":[{"role":"user","content":"review files"}],"stream":false}`)
@@ -1345,7 +1428,7 @@ func TestForwardAsAnthropic_OAuthAddsClaudeCodeTodoGuardForCompatModel(t *testin
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", bytes.NewReader(body))
 	c.Request.Header.Set("Content-Type", "application/json")
 
-	result, err := svc.Text.Messages(context.Background(), c, account, body, "", "gpt-5.5")
+	result, err := svc.Text.Messages(context.Background(), c, provider, body, "", "gpt-5.5")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, "developer", gjson.GetBytes(upstream.lastBody, "input.0.role").String())
@@ -1360,15 +1443,18 @@ func TestForwardAsAnthropic_OAuthPreservesClaudeCodeToolCallID(t *testing.T) {
 
 	upstream := &auxiliaryHTTPRecorder{resp: openAICompatSSECompletedResponse("resp_oauth_tool", "gpt-5.4")}
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream, options: &responsesFixtureOptions{Request: OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{Enabled: false}}}})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-		Name:        "openai-oauth",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeOAuth,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"access_token":       "oauth-token",
-			"chatgpt_account_id": "chatgpt-acc",
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1,
+			Name:        "openai-oauth",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeOAuth,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"access_token":       "oauth-token",
+				"chatgpt_account_id": "chatgpt-acc",
+			},
+		},
 	}
 
 	body := []byte(`{"model":"claude-sonnet-4-5","max_tokens":16,"messages":[{"role":"user","content":"list files"},{"role":"assistant","content":[{"type":"tool_use","id":"toolu_123","name":"Bash","input":{"command":"ls"}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_123","content":"ok"}]}],"tools":[{"name":"Bash","description":"run shell","input_schema":{"type":"object","properties":{"command":{"type":"string"}}}}],"stream":false}`)
@@ -1377,7 +1463,7 @@ func TestForwardAsAnthropic_OAuthPreservesClaudeCodeToolCallID(t *testing.T) {
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", bytes.NewReader(body))
 	c.Request.Header.Set("Content-Type", "application/json")
 
-	result, err := svc.Text.Messages(context.Background(), c, account, body, "stable-cache-key", "gpt-5.4")
+	result, err := svc.Text.Messages(context.Background(), c, provider, body, "stable-cache-key", "gpt-5.4")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, "toolu_123", gjson.GetBytes(upstream.lastBody, `input.#(type=="function_call").call_id`).String())
@@ -1392,16 +1478,19 @@ func TestForwardAsAnthropic_StoresStreamingResponseIDWithoutUsage(t *testing.T) 
 
 	upstream := &auxiliaryHTTPRecorder{}
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream, options: &responsesFixtureOptions{Request: OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{Enabled: false}}}})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-		Name:        "openai-apikey",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":  "sk-test",
-			"base_url": "https://api.openai.com/v1",
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1,
+			Name:        "openai-apikey",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":  "sk-test",
+				"base_url": "https://api.openai.com/v1",
+			},
+			Extra: map[string]any{providercore.ExtraKeyResponsesContinuationSupported: true},
 		},
-		Extra: map[string]any{accountcore.ExtraKeyResponsesContinuationSupported: true}},
 	}
 
 	firstBody := []byte(`{"model":"claude-sonnet-4-5","max_tokens":16,"messages":[{"role":"user","content":"first"}],"stream":true}`)
@@ -1411,7 +1500,7 @@ func TestForwardAsAnthropic_StoresStreamingResponseIDWithoutUsage(t *testing.T) 
 	firstCtx.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", bytes.NewReader(firstBody))
 	firstCtx.Request.Header.Set("Content-Type", "application/json")
 
-	firstResult, err := svc.Text.Messages(context.Background(), firstCtx, account, firstBody, "stable-cache-key", "gpt-5.3-codex")
+	firstResult, err := svc.Text.Messages(context.Background(), firstCtx, provider, firstBody, "stable-cache-key", "gpt-5.3-codex")
 	require.NoError(t, err)
 	require.NotNil(t, firstResult)
 	require.Equal(t, "resp_stream_first", firstResult.ResponseID)
@@ -1423,7 +1512,7 @@ func TestForwardAsAnthropic_StoresStreamingResponseIDWithoutUsage(t *testing.T) 
 	secondCtx.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", bytes.NewReader(secondBody))
 	secondCtx.Request.Header.Set("Content-Type", "application/json")
 
-	secondResult, err := svc.Text.Messages(context.Background(), secondCtx, account, secondBody, "stable-cache-key", "gpt-5.3-codex")
+	secondResult, err := svc.Text.Messages(context.Background(), secondCtx, provider, secondBody, "stable-cache-key", "gpt-5.3-codex")
 	require.NoError(t, err)
 	require.NotNil(t, secondResult)
 	require.Equal(t, "resp_stream_first", gjson.GetBytes(upstream.lastBody, "previous_response_id").String())
@@ -1492,18 +1581,21 @@ func TestForwardAsAnthropic_ForcedCodexInstructionsTemplatePrependsRenderedInstr
 	}}
 
 	svc := newResponsesFixture(responsesFixtureInputs{options: &responsesFixtureOptions{ForcedTemplate: "server-prefix\n\n{{ .ExistingInstructions }}"}, transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-		Name:        "openai-oauth",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeOAuth,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"access_token":       "oauth-token",
-			"chatgpt_account_id": "chatgpt-acc",
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1,
+			Name:        "openai-oauth",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeOAuth,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"access_token":       "oauth-token",
+				"chatgpt_account_id": "chatgpt-acc",
+			},
+		},
 	}
 
-	result, err := svc.Text.Messages(context.Background(), c, account, body, "", "gpt-5.1")
+	result, err := svc.Text.Messages(context.Background(), c, provider, body, "", "gpt-5.1")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, "server-prefix\n\nclient-system", gjson.GetBytes(upstream.lastBody, "instructions").String())
@@ -1531,25 +1623,27 @@ func TestForwardAsAnthropic_ForcedCodexInstructionsTemplateUsesCachedTemplateCon
 	}}
 
 	svc := newResponsesFixture(responsesFixtureInputs{options: &responsesFixtureOptions{ForcedTemplate: "cached-prefix\n\n{{ .ExistingInstructions }}"}, transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-		Name:        "openai-oauth",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeOAuth,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"access_token":       "oauth-token",
-			"chatgpt_account_id": "chatgpt-acc",
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1,
+			Name:        "openai-oauth",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeOAuth,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"access_token":       "oauth-token",
+				"chatgpt_account_id": "chatgpt-acc",
+			},
+		},
 	}
 
-	result, err := svc.Text.Messages(context.Background(), c, account, body, "", "gpt-5.1")
+	result, err := svc.Text.Messages(context.Background(), c, provider, body, "", "gpt-5.1")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, "cached-prefix\n\nclient-system", gjson.GetBytes(upstream.lastBody, "instructions").String())
 }
 
 func TestForwardAsAnthropic_ClientDisconnectDrainsUpstreamUsage(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Writer = &openAICompatFailingWriter{ResponseWriter: c.Writer, failAfter: 0}
@@ -1574,18 +1668,21 @@ func TestForwardAsAnthropic_ClientDisconnectDrainsUpstreamUsage(t *testing.T) {
 	}}
 
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-		Name:        "openai-oauth",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeOAuth,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"access_token":       "oauth-token",
-			"chatgpt_account_id": "chatgpt-acc",
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1,
+			Name:        "openai-oauth",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeOAuth,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"access_token":       "oauth-token",
+				"chatgpt_account_id": "chatgpt-acc",
+			},
+		},
 	}
 
-	result, err := svc.Text.Messages(context.Background(), c, account, body, "", "gpt-5.1")
+	result, err := svc.Text.Messages(context.Background(), c, provider, body, "", "gpt-5.1")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, 9, result.Usage.InputTokens)
@@ -1594,7 +1691,6 @@ func TestForwardAsAnthropic_ClientDisconnectDrainsUpstreamUsage(t *testing.T) {
 }
 
 func TestForwardAsAnthropic_TerminalUsageWithoutUpstreamCloseReturns(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Writer = &openAICompatFailingWriter{ResponseWriter: c.Writer, failAfter: 0}
@@ -1614,15 +1710,18 @@ func TestForwardAsAnthropic_TerminalUsageWithoutUpstreamCloseReturns(t *testing.
 	}}
 
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-		Name:        "openai-oauth",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeOAuth,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"access_token":       "oauth-token",
-			"chatgpt_account_id": "chatgpt-acc",
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1,
+			Name:        "openai-oauth",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeOAuth,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"access_token":       "oauth-token",
+				"chatgpt_account_id": "chatgpt-acc",
+			},
+		},
 	}
 
 	type forwardResult struct {
@@ -1631,7 +1730,7 @@ func TestForwardAsAnthropic_TerminalUsageWithoutUpstreamCloseReturns(t *testing.
 	}
 	resultCh := make(chan forwardResult, 1)
 	go func() {
-		result, err := svc.Text.Messages(context.Background(), c, account, body, "", "gpt-5.1")
+		result, err := svc.Text.Messages(context.Background(), c, provider, body, "", "gpt-5.1")
 		resultCh <- forwardResult{result: result, err: err}
 	}()
 
@@ -1648,7 +1747,6 @@ func TestForwardAsAnthropic_TerminalUsageWithoutUpstreamCloseReturns(t *testing.
 }
 
 func TestForwardAsAnthropic_EventNamedTerminalWithoutUpstreamCloseReturns(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Writer = &openAICompatFailingWriter{ResponseWriter: c.Writer, failAfter: 0}
@@ -1673,15 +1771,18 @@ func TestForwardAsAnthropic_EventNamedTerminalWithoutUpstreamCloseReturns(t *tes
 	}}
 
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-		Name:        "openai-oauth",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeOAuth,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"access_token":       "oauth-token",
-			"chatgpt_account_id": "chatgpt-acc",
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1,
+			Name:        "openai-oauth",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeOAuth,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"access_token":       "oauth-token",
+				"chatgpt_account_id": "chatgpt-acc",
+			},
+		},
 	}
 
 	type forwardResult struct {
@@ -1690,7 +1791,7 @@ func TestForwardAsAnthropic_EventNamedTerminalWithoutUpstreamCloseReturns(t *tes
 	}
 	resultCh := make(chan forwardResult, 1)
 	go func() {
-		result, err := svc.Text.Messages(context.Background(), c, account, body, "", "gpt-5.1")
+		result, err := svc.Text.Messages(context.Background(), c, provider, body, "", "gpt-5.1")
 		resultCh <- forwardResult{result: result, err: err}
 	}()
 
@@ -1707,7 +1808,6 @@ func TestForwardAsAnthropic_EventNamedTerminalWithoutUpstreamCloseReturns(t *tes
 }
 
 func TestForwardAsAnthropic_EventNamedTerminalWithKeepaliveReturns(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Writer = &openAICompatFailingWriter{ResponseWriter: c.Writer, failAfter: 0}
@@ -1734,15 +1834,18 @@ func TestForwardAsAnthropic_EventNamedTerminalWithKeepaliveReturns(t *testing.T)
 	}}
 
 	svc := newResponsesFixture(responsesFixtureInputs{options: &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamKeepaliveInterval: 5}}, transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-		Name:        "openai-oauth",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeOAuth,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"access_token":       "oauth-token",
-			"chatgpt_account_id": "chatgpt-acc",
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1,
+			Name:        "openai-oauth",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeOAuth,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"access_token":       "oauth-token",
+				"chatgpt_account_id": "chatgpt-acc",
+			},
+		},
 	}
 
 	type forwardResult struct {
@@ -1751,7 +1854,7 @@ func TestForwardAsAnthropic_EventNamedTerminalWithKeepaliveReturns(t *testing.T)
 	}
 	resultCh := make(chan forwardResult, 1)
 	go func() {
-		result, err := svc.Text.Messages(context.Background(), c, account, body, "", "gpt-5.1")
+		result, err := svc.Text.Messages(context.Background(), c, provider, body, "", "gpt-5.1")
 		resultCh <- forwardResult{result: result, err: err}
 	}()
 
@@ -1768,7 +1871,6 @@ func TestForwardAsAnthropic_EventNamedTerminalWithKeepaliveReturns(t *testing.T)
 }
 
 func TestForwardAsAnthropic_BufferedTerminalWithoutUpstreamCloseReturns(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	body := []byte(`{"model":"gpt-5.4","max_tokens":16,"messages":[{"role":"user","content":"hello"}],"stream":false}`)
@@ -1787,15 +1889,18 @@ func TestForwardAsAnthropic_BufferedTerminalWithoutUpstreamCloseReturns(t *testi
 	}}
 
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-		Name:        "openai-oauth",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeOAuth,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"access_token":       "oauth-token",
-			"chatgpt_account_id": "chatgpt-acc",
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1,
+			Name:        "openai-oauth",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeOAuth,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"access_token":       "oauth-token",
+				"chatgpt_account_id": "chatgpt-acc",
+			},
+		},
 	}
 
 	type forwardResult struct {
@@ -1804,7 +1909,7 @@ func TestForwardAsAnthropic_BufferedTerminalWithoutUpstreamCloseReturns(t *testi
 	}
 	resultCh := make(chan forwardResult, 1)
 	go func() {
-		result, err := svc.Text.Messages(context.Background(), c, account, body, "", "gpt-5.1")
+		result, err := svc.Text.Messages(context.Background(), c, provider, body, "", "gpt-5.1")
 		resultCh <- forwardResult{result: result, err: err}
 	}()
 
@@ -1822,7 +1927,6 @@ func TestForwardAsAnthropic_BufferedTerminalWithoutUpstreamCloseReturns(t *testi
 }
 
 func TestForwardAsAnthropic_BufferedEventNamedTerminalWithoutUpstreamCloseReturns(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	body := []byte(`{"model":"gpt-5.4","max_tokens":16,"messages":[{"role":"user","content":"hello"}],"stream":false}`)
@@ -1846,15 +1950,18 @@ func TestForwardAsAnthropic_BufferedEventNamedTerminalWithoutUpstreamCloseReturn
 	}}
 
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-		Name:        "openai-oauth",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeOAuth,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"access_token":       "oauth-token",
-			"chatgpt_account_id": "chatgpt-acc",
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1,
+			Name:        "openai-oauth",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeOAuth,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"access_token":       "oauth-token",
+				"chatgpt_account_id": "chatgpt-acc",
+			},
+		},
 	}
 
 	type forwardResult struct {
@@ -1863,7 +1970,7 @@ func TestForwardAsAnthropic_BufferedEventNamedTerminalWithoutUpstreamCloseReturn
 	}
 	resultCh := make(chan forwardResult, 1)
 	go func() {
-		result, err := svc.Text.Messages(context.Background(), c, account, body, "", "gpt-5.1")
+		result, err := svc.Text.Messages(context.Background(), c, provider, body, "", "gpt-5.1")
 		resultCh <- forwardResult{result: result, err: err}
 	}()
 
@@ -1881,7 +1988,6 @@ func TestForwardAsAnthropic_BufferedEventNamedTerminalWithoutUpstreamCloseReturn
 }
 
 func TestForwardAsAnthropic_MissingTerminalBeforeOutputReturnsFailoverAndOps(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	body := []byte(`{"model":"gpt-5.4","max_tokens":16,"messages":[{"role":"user","content":"hello"}],"stream":true}`)
@@ -1896,18 +2002,21 @@ func TestForwardAsAnthropic_MissingTerminalBeforeOutputReturnsFailoverAndOps(t *
 	}}
 
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-		Name:        "openai-oauth",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeOAuth,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"access_token":       "oauth-token",
-			"chatgpt_account_id": "chatgpt-acc",
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1,
+			Name:        "openai-oauth",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeOAuth,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"access_token":       "oauth-token",
+				"chatgpt_account_id": "chatgpt-acc",
+			},
+		},
 	}
 
-	result, err := svc.Text.Messages(context.Background(), c, account, body, "", "gpt-5.1")
+	result, err := svc.Text.Messages(context.Background(), c, provider, body, "", "gpt-5.1")
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.True(t, errors.As(err, &failoverErr), "missing terminal before output must use failover path")
@@ -1923,13 +2032,12 @@ func TestForwardAsAnthropic_MissingTerminalBeforeOutputReturnsFailoverAndOps(t *
 	require.Len(t, events, 1)
 	require.Equal(t, "failover", events[0].Kind)
 	require.Equal(t, http.StatusBadGateway, events[0].UpstreamStatusCode)
-	require.Equal(t, int64(1), events[0].AccountID)
+	require.Equal(t, int64(1), events[0].ProviderID)
 	require.Equal(t, "rid_missing_terminal", events[0].UpstreamRequestID)
 	require.Contains(t, events[0].Message, "terminal event")
 }
 
 func TestForwardAsAnthropic_MissingTerminalAfterOutputRecordsOpsWithoutFailover(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	body := []byte(`{"model":"gpt-5.4","max_tokens":16,"messages":[{"role":"user","content":"hello"}],"stream":true}`)
@@ -1949,18 +2057,21 @@ func TestForwardAsAnthropic_MissingTerminalAfterOutputRecordsOpsWithoutFailover(
 	}}
 
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-		Name:        "openai-oauth",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeOAuth,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"access_token":       "oauth-token",
-			"chatgpt_account_id": "chatgpt-acc",
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1,
+			Name:        "openai-oauth",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeOAuth,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"access_token":       "oauth-token",
+				"chatgpt_account_id": "chatgpt-acc",
+			},
+		},
 	}
 
-	result, err := svc.Text.Messages(context.Background(), c, account, body, "", "gpt-5.1")
+	result, err := svc.Text.Messages(context.Background(), c, provider, body, "", "gpt-5.1")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "missing terminal event")
 	var failoverErr *forwardcore.UpstreamFailoverError
@@ -1975,13 +2086,12 @@ func TestForwardAsAnthropic_MissingTerminalAfterOutputRecordsOpsWithoutFailover(
 	require.Len(t, events, 1)
 	require.Equal(t, "stream_missing_terminal", events[0].Kind)
 	require.Equal(t, http.StatusBadGateway, events[0].UpstreamStatusCode)
-	require.Equal(t, int64(1), events[0].AccountID)
+	require.Equal(t, int64(1), events[0].ProviderID)
 	require.Equal(t, "rid_partial_missing_terminal", events[0].UpstreamRequestID)
 	require.Contains(t, events[0].Message, "terminal event")
 }
 
 func TestForwardAsAnthropic_MissingTerminalAfterClientDisconnectSkipsOpsAndFailover(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Writer = &openAICompatFailingWriter{ResponseWriter: c.Writer, failAfter: 0}
@@ -2000,18 +2110,21 @@ func TestForwardAsAnthropic_MissingTerminalAfterClientDisconnectSkipsOpsAndFailo
 	}}
 
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-		Name:        "openai-oauth",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeOAuth,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"access_token":       "oauth-token",
-			"chatgpt_account_id": "chatgpt-acc",
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1,
+			Name:        "openai-oauth",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeOAuth,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"access_token":       "oauth-token",
+				"chatgpt_account_id": "chatgpt-acc",
+			},
+		},
 	}
 
-	result, err := svc.Text.Messages(context.Background(), c, account, body, "", "gpt-5.1")
+	result, err := svc.Text.Messages(context.Background(), c, provider, body, "", "gpt-5.1")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "missing terminal event")
 	var failoverErr *forwardcore.UpstreamFailoverError
@@ -2024,7 +2137,6 @@ func TestForwardAsAnthropic_MissingTerminalAfterClientDisconnectSkipsOpsAndFailo
 }
 
 func TestForwardAsAnthropic_CompleteStreamDoesNotRecordMissingTerminalOps(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	body := []byte(`{"model":"gpt-5.4","max_tokens":16,"messages":[{"role":"user","content":"hello"}],"stream":true}`)
@@ -2048,18 +2160,21 @@ func TestForwardAsAnthropic_CompleteStreamDoesNotRecordMissingTerminalOps(t *tes
 	}}
 
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-		Name:        "openai-oauth",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeOAuth,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"access_token":       "oauth-token",
-			"chatgpt_account_id": "chatgpt-acc",
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1,
+			Name:        "openai-oauth",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeOAuth,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"access_token":       "oauth-token",
+				"chatgpt_account_id": "chatgpt-acc",
+			},
+		},
 	}
 
-	result, err := svc.Text.Messages(context.Background(), c, account, body, "", "gpt-5.1")
+	result, err := svc.Text.Messages(context.Background(), c, provider, body, "", "gpt-5.1")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, 9, result.Usage.InputTokens)
@@ -2079,7 +2194,6 @@ func openAICompatOpsEvents(t *testing.T, c *gin.Context) []*ops.OpsUpstreamError
 }
 
 func TestForwardAsAnthropic_UpstreamRequestIgnoresClientCancel(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	reqCtx, cancel := context.WithCancel(context.Background())
@@ -2101,18 +2215,21 @@ func TestForwardAsAnthropic_UpstreamRequestIgnoresClientCancel(t *testing.T) {
 	}}
 
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-		Name:        "openai-oauth",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeOAuth,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"access_token":       "oauth-token",
-			"chatgpt_account_id": "chatgpt-acc",
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1,
+			Name:        "openai-oauth",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeOAuth,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"access_token":       "oauth-token",
+				"chatgpt_account_id": "chatgpt-acc",
+			},
+		},
 	}
 
-	result, err := svc.Text.Messages(reqCtx, c, account, body, "", "gpt-5.1")
+	result, err := svc.Text.Messages(reqCtx, c, provider, body, "", "gpt-5.1")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.NotNil(t, upstream.lastReq)

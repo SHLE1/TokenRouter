@@ -37,7 +37,7 @@ func newRetirementRaceCache(buckets ...SchedulerBucket) *retirementRaceCache {
 	}
 }
 
-func (c *retirementRaceCache) GetSnapshot(context.Context, SchedulerBucket) ([]SnapshotAccount, bool, error) {
+func (c *retirementRaceCache) GetSnapshot(context.Context, SchedulerBucket) ([]SnapshotProvider, bool, error) {
 	return nil, false, nil
 }
 
@@ -55,7 +55,7 @@ func (c *retirementRaceCache) CaptureBucketWriteToken(_ context.Context, bucket 
 	return SchedulerBucketWriteToken{Bucket: bucket, Epoch: c.epochs[key]}, nil
 }
 
-func (c *retirementRaceCache) SetSnapshot(_ context.Context, bucket SchedulerBucket, token SchedulerBucketWriteToken, _ []SnapshotAccount) error {
+func (c *retirementRaceCache) SetSnapshot(_ context.Context, bucket SchedulerBucket, token SchedulerBucketWriteToken, _ []SnapshotProvider) error {
 	if c.beforeSet != nil {
 		c.beforeSet()
 	}
@@ -150,16 +150,16 @@ func TestSchedulerFullRebuildCapturesAllRegistryTokensBeforeDBLoad(t *testing.T)
 	dbStarted := make(chan struct{})
 	releaseDB := make(chan struct{})
 	var firstDB sync.Once
-	repo := &retirementAccountSource{
-		listPlatformFunc: func(context.Context, string) ([]SnapshotAccount, error) {
+	repo := &retirementProviderSource{
+		listPlatformFunc: func(context.Context, string) ([]SnapshotProvider, error) {
 			firstDB.Do(func() {
 				close(dbStarted)
 				<-releaseDB
 			})
-			return []SnapshotAccount{snapshotTestAccount{ID: 6101, Platform: PlatformOpenAI, Status: StatusActive, Schedulable: true}}, nil
+			return []SnapshotProvider{snapshotTestProvider{ID: 6101, Platform: PlatformOpenAI, Status: StatusActive, Schedulable: true}}, nil
 		},
 	}
-	svc := NewSnapshotService(cache, nil, repo, &retirementGroupRepo{groups: []SnapshotGroup{SnapshotGroup{ID: 61, Status: StatusActive}}}, &SnapshotOptions{Simple: "standard" == "simple", DbFallbackEnabled: true})
+	svc := NewSnapshotService(cache, nil, repo, &retirementGroupRepo{groups: []SnapshotGroup{{ID: 61, Status: StatusActive}}}, &SnapshotOptions{Simple: "standard" == "simple", DbFallbackEnabled: true})
 
 	result := make(chan error, 1)
 	go func() { result <- svc.triggerFullRebuild("retirement_race_a") }()
@@ -195,10 +195,10 @@ func TestSchedulerRebuildRetireAfterDBLoadFencesPublish(t *testing.T) {
 		close(setEntered)
 		<-releaseSet
 	}
-	repo := &retirementAccountSource{
-		listPlatformFunc: func(context.Context, string) ([]SnapshotAccount, error) {
+	repo := &retirementProviderSource{
+		listPlatformFunc: func(context.Context, string) ([]SnapshotProvider, error) {
 			close(dbReturned)
-			return []SnapshotAccount{snapshotTestAccount{ID: 6201, Platform: PlatformOpenAI, Status: StatusActive, Schedulable: true}}, nil
+			return []SnapshotProvider{snapshotTestProvider{ID: 6201, Platform: PlatformOpenAI, Status: StatusActive, Schedulable: true}}, nil
 		},
 	}
 	svc := NewSnapshotService(cache, nil, repo, nil, &SnapshotOptions{Simple: "standard" == "simple", DbFallbackEnabled: true})
@@ -227,20 +227,20 @@ func TestSchedulerRebuildRetireAfterDBLoadFencesPublish(t *testing.T) {
 	require.Zero(t, cache.version(bucket), "retirement before allocation must not advance the snapshot version")
 }
 
-func TestSchedulerFallbackReturnsDBAccountsWhenBucketRetired(t *testing.T) {
+func TestSchedulerFallbackReturnsDBProvidersWhenBucketRetired(t *testing.T) {
 	bucket := SchedulerBucket{GroupID: 63, Platform: PlatformOpenAI, Mode: SchedulerModeSingle}
 	cache := newRetirementRaceCache()
 	require.NoError(t, cache.RetireBucket(context.Background(), bucket))
-	repo := &retirementAccountSource{
-		accounts: []SnapshotAccount{snapshotTestAccount{ID: 6301, Platform: PlatformOpenAI, Status: StatusActive, Schedulable: true}},
+	repo := &retirementProviderSource{
+		providers: []SnapshotProvider{snapshotTestProvider{ID: 6301, Platform: PlatformOpenAI, Status: StatusActive, Schedulable: true}},
 	}
 	svc := NewSnapshotService(cache, nil, repo, nil, &SnapshotOptions{Simple: "standard" == "simple", DbFallbackEnabled: true})
 	groupID := bucket.GroupID
 
-	accounts, useMixed, err := svc.ListSchedulableAccounts(context.Background(), &groupID, bucket.Platform, false)
+	providers, useMixed, err := svc.ListSchedulableProviders(context.Background(), &groupID, bucket.Platform, false)
 	require.NoError(t, err)
 	require.False(t, useMixed)
-	require.Len(t, accounts, 1)
+	require.Len(t, providers, 1)
 	setAttempts, published := cache.counts(bucket)
 	require.Zero(t, setAttempts)
 	require.Zero(t, published)

@@ -27,8 +27,8 @@ type GrokFailurePorts struct {
 	NewFailover      func(GrokRetry, bool) error
 }
 
-// ResolveGrokFailure 保留内容拒绝、账号策略、切号和最终错误改写的原先优先级。
-// Rewrite 只在决定不切号后调用，不能把展示规则升级为账号健康策略。
+// ResolveGrokFailure 保留内容拒绝、提供商策略、切号和最终错误改写的原先优先级。
+// Rewrite 只在决定不切号后调用，不能把展示规则升级为提供商健康策略。
 func ResolveGrokFailure(status int, message string, p GrokFailurePorts) error {
 	if rejected, client := p.ContentRejection(); rejected {
 		p.Observe("http_error", client)
@@ -63,7 +63,7 @@ func ResolveGrokFailure(status int, message string, p GrokFailurePorts) error {
 	return fmt.Errorf("upstream error: %d %s", status, message)
 }
 
-// EmbeddingFailurePorts 按原顺序读取纯分类、应用账号策略及写出响应。
+// EmbeddingFailurePorts 按原顺序读取纯分类、应用提供商策略及写出响应。
 type EmbeddingFailurePorts struct {
 	InvalidRequest func() bool
 	ApplyPolicy    func()
@@ -110,13 +110,13 @@ func ResolveAlphaFailure(status int, p AlphaFailurePorts) error {
 		p.Prepare()
 	}
 	disabled := false
-	if AlphaAccountErrorSideEffects(status) {
+	if AlphaProviderErrorSideEffects(status) {
 		disabled = p.ApplySideEffects()
 	}
 	return p.NewFailover(disabled)
 }
 
-// ImageFailurePorts 分离一次授权恢复、失败观测、账号策略与旧错误类型投影。
+// ImageFailurePorts 分离一次授权恢复、失败观测、提供商策略与旧错误类型投影。
 type ImageFailurePorts struct {
 	Recover     func() (bool, error)
 	Failover    func() bool

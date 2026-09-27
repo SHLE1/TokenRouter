@@ -5,68 +5,72 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
 	"github.com/stretchr/testify/require"
 )
 
 func TestBuildOAuthMetadataUserID_FallbackWithoutAccountUUID(t *testing.T) {
-
 	parsed := &requeststate.ParsedRequest{
 		Model:          "claude-sonnet-4-5",
 		Stream:         true,
 		MetadataUserID: "",
 	}
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 123,
-		Type:  capability.AccountTypeOAuth,
-		Extra: map[string]any{}}, // 刻意省略账号与客户端标识
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 123,
+			Type:  capability.ProviderTypeOAuth,
+			Extra: map[string]any{},
+		}, // 刻意省略提供商与客户端标识
 	}
 
 	fp := &anthropic.Fingerprint{ClientID: "deadbeef"} // 旧格式使用此客户端标识
 
-	got := metadataUserID(parsed, account, fp)
+	got := metadataUserID(parsed, provider, fp)
 	require.NotEmpty(t, got)
 
-	// 旧格式在账号标识缺失时保留空字段。
+	// 旧格式在提供商标识缺失时保留空字段。
 	re := regexp.MustCompile(`^user_[a-zA-Z0-9]+_account__session_[a-f0-9-]{36}$`)
 	require.True(t, re.MatchString(got), "unexpected user_id format: %s", got)
 }
 
 func TestBuildOAuthMetadataUserID_UsesAccountUUIDWhenPresent(t *testing.T) {
-
 	parsed := &requeststate.ParsedRequest{
 		Model:          "claude-sonnet-4-5",
 		Stream:         true,
 		MetadataUserID: "",
 	}
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 123,
-		Type: capability.AccountTypeOAuth,
-		Extra: map[string]any{
-			"account_uuid":      "acc-uuid",
-			"claude_user_id":    "clientid123",
-			"anthropic_user_id": "",
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 123,
+			Type: capability.ProviderTypeOAuth,
+			Extra: map[string]any{
+				"account_uuid":      "acc-uuid",
+				"claude_user_id":    "clientid123",
+				"anthropic_user_id": "",
+			},
+		},
 	}
 
-	got := metadataUserID(parsed, account, nil)
+	got := metadataUserID(parsed, provider, nil)
 	require.NotEmpty(t, got)
 
-	// 账号标识存在时写入完整身份字段。
+	// 提供商标识存在时写入完整身份字段。
 	re := regexp.MustCompile(`^user_clientid123_account_acc-uuid_session_[a-f0-9-]{36}$`)
 	require.True(t, re.MatchString(got), "unexpected user_id format: %s", got)
 }
 
 // TestBuildOAuthMetadataUserID_SessionIDStableAcrossTurns 验证伪装路径合成的
 // metadata.user_id 在同一会话多轮请求间保持不变（session_id 稳定），贴近真实 Claude Code
-// 进程级稳定的 session。账号 / 指纹 / UA 版本均相同，唯一可能变化的就是 session_id，
+// 进程级稳定的 session。提供商 / 指纹 / UA 版本均相同，唯一可能变化的就是 session_id，
 // 因此直接比较完整 user_id 字符串即可判定 session_id 是否稳定。
 func TestBuildOAuthMetadataUserID_SessionIDStableAcrossTurns(t *testing.T) {
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 777, Type: capability.AccountTypeOAuth, Extra: map[string]any{"account_uuid": "acc-uuid"}}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 777, Type: capability.ProviderTypeOAuth, Extra: map[string]any{"account_uuid": "acc-uuid"}}}
 	fp := &anthropic.Fingerprint{ClientID: "clientid777", UserAgent: "claude-cli/2.1.161 (external, cli)"}
 
 	mustParse := func(body string) *requeststate.ParsedRequest {
@@ -88,9 +92,9 @@ func TestBuildOAuthMetadataUserID_SessionIDStableAcrossTurns(t *testing.T) {
 		`{"role":"assistant","content":"answer 2"},` +
 		`{"role":"user","content":"third question"}]}`)
 
-	id1 := metadataUserID(round1, account, fp)
-	id2 := metadataUserID(round2, account, fp)
-	id3 := metadataUserID(round3, account, fp)
+	id1 := metadataUserID(round1, provider, fp)
+	id2 := metadataUserID(round2, provider, fp)
+	id3 := metadataUserID(round3, provider, fp)
 
 	require.NotEmpty(t, id1)
 	require.Equal(t, id1, id2, "session_id 应随对话增长保持不变")
@@ -99,6 +103,6 @@ func TestBuildOAuthMetadataUserID_SessionIDStableAcrossTurns(t *testing.T) {
 	// 不同的首条 user 消息应派生出不同的 session_id（不同会话）。
 	other := mustParse(`{"model":"claude-sonnet-4-5","system":"sys","messages":[` +
 		`{"role":"user","content":"a completely different opener"}]}`)
-	idOther := metadataUserID(other, account, fp)
+	idOther := metadataUserID(other, provider, fp)
 	require.NotEqual(t, id1, idOther, "不同首条消息应派生不同 session_id")
 }

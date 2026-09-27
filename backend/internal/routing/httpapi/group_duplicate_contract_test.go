@@ -74,8 +74,8 @@ func duplicateGroupHandlerFixture() *routing.Group {
 
 		Status:               "inactive",
 		RateMultiplier:       1,
-		AccountCount:         3,
-		ActiveAccountCount:   2,
+		ProviderCount:        3,
+		ActiveProviderCount:  2,
 		DuplicateOperationID: "internal-operation-must-not-leak",
 		ModelRouting:         map[string][]int64{"claude-*": {7}},
 	}
@@ -93,7 +93,7 @@ func TestDuplicateGroupHandlerReturnsAdminDTOWithoutOperationMetadata(t *testing
 	require.Equal(t, 1, svc.calls)
 	require.Contains(t, recorder.Body.String(), `"name":"primary (Copy)"`)
 	require.Contains(t, recorder.Body.String(), `"status":"inactive"`)
-	require.Contains(t, recorder.Body.String(), `"account_count":3`)
+	require.Contains(t, recorder.Body.String(), `"provider_count":3`)
 	require.NotContains(t, recorder.Body.String(), "duplicate_operation_id")
 	require.NotContains(t, recorder.Body.String(), "internal-operation-must-not-leak")
 }

@@ -7,13 +7,13 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	postgresinfra "github.com/TokenFlux/TokenRouter/internal/infra/postgres"
 	"github.com/TokenFlux/TokenRouter/internal/payment"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/google/uuid"
 )
 
-func providePaymentExpiry(runtime *payment.Runtime, cache account.CNMonitorLeader, db *sql.DB) *payment.OrderExpiry {
+func providePaymentExpiry(runtime *payment.Runtime, cache provider.CNMonitorLeader, db *sql.DB) *payment.OrderExpiry {
 	owner := uuid.NewString()
 	var advisory func(context.Context, string) (func(), bool)
 	if db != nil {
@@ -22,7 +22,7 @@ func providePaymentExpiry(runtime *payment.Runtime, cache account.CNMonitorLeade
 		}
 	}
 	runner := payment.NewOrderExpiry(runtime.OrderLifecycle, time.Minute, payment.ExpiryRuntime{Acquire: func(ctx context.Context) (func(), bool) {
-		return account.AcquireSingletonLease(ctx, cache, advisory, payment.OrderExpiryLeaderKey, owner, payment.OrderExpiryLeaderTTL)
+		return provider.AcquireSingletonLease(ctx, cache, advisory, payment.OrderExpiryLeaderKey, owner, payment.OrderExpiryLeaderTTL)
 	}, Observe: observePaymentExpiryRuntime})
 	return runner
 }

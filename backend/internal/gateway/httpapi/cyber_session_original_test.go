@@ -193,11 +193,11 @@ var (
 	_ session.CyberSessionBlockStore = (*comboCacheAndStore)(nil)
 )
 
-func (c *comboCacheAndStore) GetSessionAccountID(_ context.Context, _ int64, _ string) (int64, error) {
+func (c *comboCacheAndStore) GetSessionProviderID(_ context.Context, _ int64, _ string) (int64, error) {
 	return 0, errors.New("stub")
 }
 
-func (c *comboCacheAndStore) SetSessionAccountID(_ context.Context, _ int64, _ string, _ int64, _ time.Duration) error {
+func (c *comboCacheAndStore) SetSessionProviderID(_ context.Context, _ int64, _ string, _ int64, _ time.Duration) error {
 	return nil
 }
 
@@ -205,7 +205,7 @@ func (c *comboCacheAndStore) RefreshSessionTTL(_ context.Context, _ int64, _ str
 	return nil
 }
 
-func (c *comboCacheAndStore) DeleteSessionAccountID(_ context.Context, _ int64, _ string) error {
+func (c *comboCacheAndStore) DeleteSessionProviderID(_ context.Context, _ int64, _ string) error {
 	return nil
 }
 

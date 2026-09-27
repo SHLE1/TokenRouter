@@ -310,12 +310,12 @@ func parseCyberWarningFilter(c *gin.Context, withPagination bool) (service.Conte
 		}
 		filter.UserID = &userID
 	}
-	if raw := strings.TrimSpace(c.Query("account_id")); raw != "" {
-		accountID, err := strconv.ParseInt(raw, 10, 64)
-		if err != nil || accountID <= 0 {
-			return filter, "Invalid account_id", false
+	if raw := strings.TrimSpace(c.Query("provider_id")); raw != "" {
+		providerID, err := strconv.ParseInt(raw, 10, 64)
+		if err != nil || providerID <= 0 {
+			return filter, "Invalid provider_id", false
 		}
-		filter.AccountID = &accountID
+		filter.ProviderID = &providerID
 	}
 	if raw := strings.TrimSpace(c.Query("from")); raw != "" {
 		t, _, err := parseContentModerationDate(raw)

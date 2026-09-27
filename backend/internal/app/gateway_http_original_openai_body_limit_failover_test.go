@@ -14,12 +14,11 @@ import (
 )
 
 func TestOpenAIBodyLimitFailoverExhausted_ReturnsRedactedJSON413(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", bytes.NewReader(nil))
 
-	(newGatewayHTTPEndpoints(gatewayHTTPFixtureInput{})).openAIAttemptSupport().HandleFailoverExhausted(c, bodyLimitFailoverTestError(), false)
+	newGatewayHTTPEndpoints(gatewayHTTPFixtureInput{}).openAIAttemptSupport().HandleFailoverExhausted(c, bodyLimitFailoverTestError(), false)
 
 	require.Equal(t, http.StatusRequestEntityTooLarge, rec.Code)
 	var envelope map[string]any
@@ -32,12 +31,11 @@ func TestOpenAIBodyLimitFailoverExhausted_ReturnsRedactedJSON413(t *testing.T) {
 }
 
 func TestOpenAIBodyLimitFailoverExhausted_ReturnsRedactedResponsesSSE(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", bytes.NewReader(nil))
 
-	(newGatewayHTTPEndpoints(gatewayHTTPFixtureInput{})).openAIAttemptSupport().HandleFailoverExhausted(c, bodyLimitFailoverTestError(), true)
+	newGatewayHTTPEndpoints(gatewayHTTPFixtureInput{}).openAIAttemptSupport().HandleFailoverExhausted(c, bodyLimitFailoverTestError(), true)
 
 	body := rec.Body.String()
 	require.True(t, strings.HasPrefix(body, "event: response.failed\n"))
@@ -47,13 +45,12 @@ func TestOpenAIBodyLimitFailoverExhausted_ReturnsRedactedResponsesSSE(t *testing
 }
 
 func TestOpenAIBodyLimitFailoverExhausted_ReturnsRedactedAnthropicError(t *testing.T) {
-
 	t.Run("json", func(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(rec)
 		c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", bytes.NewReader(nil))
 
-		(newGatewayHTTPEndpoints(gatewayHTTPFixtureInput{})).openAIAttemptSupport().HandleAnthropicFailoverExhausted(c, bodyLimitFailoverTestError(), false)
+		newGatewayHTTPEndpoints(gatewayHTTPFixtureInput{}).openAIAttemptSupport().HandleAnthropicFailoverExhausted(c, bodyLimitFailoverTestError(), false)
 
 		require.Equal(t, http.StatusRequestEntityTooLarge, rec.Code)
 		var envelope map[string]any
@@ -70,7 +67,7 @@ func TestOpenAIBodyLimitFailoverExhausted_ReturnsRedactedAnthropicError(t *testi
 		c, _ := gin.CreateTestContext(rec)
 		c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", bytes.NewReader(nil))
 
-		(newGatewayHTTPEndpoints(gatewayHTTPFixtureInput{})).openAIAttemptSupport().HandleAnthropicFailoverExhausted(c, bodyLimitFailoverTestError(), true)
+		newGatewayHTTPEndpoints(gatewayHTTPFixtureInput{}).openAIAttemptSupport().HandleAnthropicFailoverExhausted(c, bodyLimitFailoverTestError(), true)
 
 		body := rec.Body.String()
 		require.True(t, strings.HasPrefix(body, "event: error\n"))
@@ -82,12 +79,12 @@ func TestOpenAIBodyLimitFailoverExhausted_ReturnsRedactedAnthropicError(t *testi
 
 func bodyLimitFailoverTestError() *forwardcore.UpstreamFailoverError {
 	return &forwardcore.UpstreamFailoverError{
-		StatusCode:        http.StatusRequestEntityTooLarge,
-		ResponseBody:      []byte(`{"error":{"message":"proxy limit secret=must-not-leak"}}`),
-		Scope:             forwardcore.GatewayFailureScopeAccount,
-		Reason:            forwardcore.GatewayFailureReason("openai_request_body_too_large"),
-		NextAccountAction: forwardcore.NextAccountRetry,
-		ClientStatusCode:  http.StatusRequestEntityTooLarge,
-		ClientMessage:     "Request payload is too large",
+		StatusCode:         http.StatusRequestEntityTooLarge,
+		ResponseBody:       []byte(`{"error":{"message":"proxy limit secret=must-not-leak"}}`),
+		Scope:              forwardcore.GatewayFailureScopeProvider,
+		Reason:             forwardcore.GatewayFailureReason("openai_request_body_too_large"),
+		NextProviderAction: forwardcore.NextProviderRetry,
+		ClientStatusCode:   http.StatusRequestEntityTooLarge,
+		ClientMessage:      "Request payload is too large",
 	}
 }

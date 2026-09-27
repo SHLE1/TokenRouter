@@ -12,7 +12,7 @@ const {
   getUsageSummary,
   getCapacitySummary,
   getLiveCapability,
-  listAccounts,
+  listProviders,
   showError,
   showSuccess,
   isCurrentStep,
@@ -24,7 +24,7 @@ const {
   getUsageSummary: vi.fn(),
   getCapacitySummary: vi.fn(),
   getLiveCapability: vi.fn(),
-  listAccounts: vi.fn(),
+  listProviders: vi.fn(),
   showError: vi.fn(),
   showSuccess: vi.fn(),
   isCurrentStep: vi.fn(),
@@ -41,7 +41,7 @@ const messages: Record<string, string> = {
   'admin.groups.columns.rateMultiplier': 'Rate Multiplier',
   'admin.groups.columns.exclusive': 'Exclusive',
   'admin.groups.columns.sessionIsolation': 'Session Isolation',
-  'admin.groups.columns.accounts': 'Accounts',
+  'admin.groups.columns.providers': 'Providers',
   'admin.groups.columns.capacity': 'Capacity',
   'admin.groups.columns.usage': 'Usage',
   'admin.groups.columns.status': 'Status',
@@ -62,8 +62,8 @@ vi.mock('@/api/admin', () => ({
       delete: vi.fn(),
       updateSortOrder: vi.fn(),
     },
-    accounts: {
-      list: listAccounts,
+    providers: {
+      list: listProviders,
     },
   },
 }))
@@ -128,9 +128,9 @@ const createGroup = (overrides: Partial<AdminGroup> = {}): AdminGroup => ({
   model_routing_enabled: false,
   mcp_xml_inject: true,
   supported_model_scopes: [],
-  account_count: 3,
-  active_account_count: 2,
-  rate_limited_account_count: 1,
+  provider_count: 3,
+  active_provider_count: 2,
+  rate_limited_provider_count: 1,
   models_list_config: undefined,
   sort_order: 10,
   ...overrides,
@@ -237,7 +237,7 @@ describe('admin GroupsView column settings', () => {
     getUsageSummary.mockReset()
     getCapacitySummary.mockReset()
     getLiveCapability.mockReset()
-    listAccounts.mockReset()
+    listProviders.mockReset()
     showError.mockReset()
     showSuccess.mockReset()
     isCurrentStep.mockReset()
@@ -255,7 +255,7 @@ describe('admin GroupsView column settings', () => {
     getUsageSummary.mockResolvedValue([])
     getCapacitySummary.mockResolvedValue([])
     getLiveCapability.mockResolvedValue({ supported: false, reason: 'test server unsupported' })
-    listAccounts.mockResolvedValue({ items: [], total: 0, page: 1, page_size: 20, pages: 0 })
+    listProviders.mockResolvedValue({ items: [], total: 0, page: 1, page_size: 20, pages: 0 })
     isCurrentStep.mockReturnValue(false)
   })
 
@@ -289,7 +289,7 @@ describe('admin GroupsView column settings', () => {
       'rate_multiplier',
       'is_exclusive',
       'session_isolation_enabled',
-      'account_count',
+      'provider_count',
       'capacity',
       'usage',
       'status',
@@ -323,7 +323,7 @@ describe('admin GroupsView column settings', () => {
       'rate_multiplier',
       'is_exclusive',
       'session_isolation_enabled',
-      'account_count',
+      'provider_count',
       'status',
       'actions',
     ])
@@ -341,7 +341,7 @@ describe('admin GroupsView column settings', () => {
       'rate_multiplier',
       'is_exclusive',
       'session_isolation_enabled',
-      'account_count',
+      'provider_count',
       'capacity',
       'status',
       'actions',
@@ -375,7 +375,7 @@ describe('admin GroupsView column settings', () => {
       'rate_multiplier',
       'is_exclusive',
       'session_isolation_enabled',
-      'account_count',
+      'provider_count',
       'capacity',
       'status',
       'actions',
@@ -398,7 +398,7 @@ describe('admin GroupsView column settings', () => {
       'rate_multiplier',
       'is_exclusive',
       'session_isolation_enabled',
-      'account_count',
+      'provider_count',
       'capacity',
       'usage',
       'status',

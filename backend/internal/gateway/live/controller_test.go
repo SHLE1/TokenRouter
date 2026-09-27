@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// cancelClaimStore 在成功取得控制权的边界取消，验证取消后不执行后续账号查询。
+// cancelClaimStore 在成功取得控制权的边界取消，验证取消后不执行后续提供商查询。
 type cancelClaimStore struct {
 	session.LiveCallStore
 	cancel   context.CancelFunc
@@ -23,6 +23,7 @@ func (s *cancelClaimStore) ClaimLiveController(context.Context, string, string, 
 	s.cancel()
 	return true, nil
 }
+
 func (s *cancelClaimStore) ReleaseLiveController(ctx context.Context, _ string, _ string) (bool, error) {
 	if ctx.Err() != nil {
 		return false, ctx.Err()
@@ -42,6 +43,7 @@ func (p *controllerPorts) Target(context.Context, *session.LiveCallRecord) (Targ
 	p.queries.Add(1)
 	return nil, errors.New("unexpected target read")
 }
+
 func (p *controllerPorts) BeginObserver(string) (context.Context, func(), bool) {
 	return nil, nil, false
 }
@@ -100,10 +102,11 @@ func (p *finalizePorts) Leases() (scheduler.LiveConcurrencyCache, error) { retur
 func (p *finalizePorts) RecordZeroUsage(context.Context, *session.LiveCallRecord, int) {
 	p.writes.Add(1)
 }
+
 func TestFinalizeClaimsOnceBeforeLeaseAndZeroUsage(t *testing.T) {
 	ports := &finalizePorts{store: &finalizeStore{}, leases: &finalLeases{}}
 	core := New(ports, time.Second, 1<<20)
-	record := &session.LiveCallRecord{CallHash: "call", AccountID: 1, UserID: 2, APIKeyID: 3, LeaseID: "lease", CreatedAt: time.Now()}
+	record := &session.LiveCallRecord{CallHash: "call", ProviderID: 1, UserID: 2, APIKeyID: 3, LeaseID: "lease", CreatedAt: time.Now()}
 	core.Finalize(record)
 	core.Finalize(record)
 	require.Equal(t, int32(1), ports.writes.Load())

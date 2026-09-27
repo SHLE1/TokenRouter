@@ -12,12 +12,15 @@ import (
 	"go.uber.org/zap"
 )
 
-type TemplateData struct{ ExistingInstructions, OriginalModel, NormalizedModel, BillingModel, UpstreamModel string }
-type MessagesProfile struct {
-	Profile
-	ID                                       int64
-	GrokOAuth, Shadow, ContinuationSupported bool
-}
+type (
+	TemplateData    struct{ ExistingInstructions, OriginalModel, NormalizedModel, BillingModel, UpstreamModel string }
+	MessagesProfile struct {
+		Profile
+		ID                                       int64
+		GrokOAuth, Shadow, ContinuationSupported bool
+	}
+)
+
 type MessagesPorts interface {
 	Prepare(context.Context) (MessagesProfile, Dispatch, error)
 	Dispatch(context.Context, Dispatch, []byte, string, string) (*Result, error)
@@ -55,7 +58,7 @@ type MessagesPorts interface {
 	ForcedInstructions(body map[string]any, text string, data TemplateData) (bool, error)
 	EnsureInstructions(body map[string]any)
 	TodoGuardBody(body map[string]any)
-	AccountIdentity(body map[string]any, key int64)
+	ProviderIdentity(body map[string]any, key int64)
 	TurnState(ctx context.Context, key string) string
 	ApplyEffort(ctx context.Context, body []byte) ([]byte, bool, error)
 	ApplyFast(ctx context.Context, model string, body []byte) ([]byte, error)

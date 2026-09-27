@@ -13,7 +13,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/timezone"
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/stretchr/testify/require"
 )
 
@@ -25,14 +25,14 @@ func TestUsageLog_GetStatsWithFilters_AggregatesAndEndpoints(t *testing.T) {
 
 	user := mustCreateUser(t, client, &identity.User{Email: "stats@test.com"})
 	apiKey := mustCreateApiKey(t, client, &apikey.APIKey{UserID: user.ID, Key: "sk-stats-1", Name: "k"})
-	account := mustCreateAccount(t, client, &accountcore.Record{Name: "acc-stats"})
+	provider := mustCreateProvider(t, client, &providercore.Record{Name: "acc-stats"})
 
 	now := time.Now().UTC()
 	inboundEndpoint := "/v1/messages"
 	upstreamEndpoint := "/v1/responses"
 	for i := 0; i < 3; i++ {
 		_, err := repo.Create(ctx, &usage.UsageLog{
-			UserID: user.ID, APIKeyID: apiKey.ID, AccountID: account.ID,
+			UserID: user.ID, APIKeyID: apiKey.ID, ProviderID: provider.ID,
 			Model: "claude-3", InputTokens: 2, OutputTokens: 3,
 			CacheCreationTokens: 4, CacheReadTokens: 5,
 			TotalCost: 0.5, ActualCost: 0.4, CreatedAt: now,
@@ -68,12 +68,12 @@ func TestUsageLog_GetModelStats_MergesCompositePrefix(t *testing.T) {
 
 	user := mustCreateUser(t, client, &identity.User{Email: "model-stats-composite@test.com"})
 	apiKey := mustCreateApiKey(t, client, &apikey.APIKey{UserID: user.ID, Key: "sk-model-stats-composite", Name: "k"})
-	account := mustCreateAccount(t, client, &accountcore.Record{Name: "acc-model-stats-composite"})
+	provider := mustCreateProvider(t, client, &providercore.Record{Name: "acc-model-stats-composite"})
 	now := time.Now().UTC()
 
 	for _, requestedModel := range []string{"gpt-5.6-sol", "GPT/gpt-5.6-sol"} {
 		_, err := repo.Create(ctx, &usage.UsageLog{
-			UserID: user.ID, APIKeyID: apiKey.ID, AccountID: account.ID,
+			UserID: user.ID, APIKeyID: apiKey.ID, ProviderID: provider.ID,
 			Model: "gpt-5.6-sol", RequestedModel: requestedModel,
 			InputTokens: 10, OutputTokens: 5, TotalCost: 0.1, ActualCost: 0.1,
 			CreatedAt: now,

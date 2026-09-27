@@ -6,21 +6,23 @@ import "github.com/TokenFlux/TokenRouter/internal/protocol/anthropic"
 // Claude Code 客户端相关常量
 
 // Beta 值来自唯一 wire 定义，默认 Header 组合仍由平台拥有。
-const BetaOAuth = anthropic.BetaOAuth
-const BetaClaudeCode = anthropic.BetaClaudeCode
-const BetaInterleavedThinking = anthropic.BetaInterleavedThinking
-const BetaFineGrainedToolStreaming = anthropic.BetaFineGrainedToolStreaming
-const BetaTokenCounting = anthropic.BetaTokenCounting
-const BetaContext1M = anthropic.BetaContext1M
-const BetaFastMode = anthropic.BetaFastMode
-const BetaPromptCachingScope = anthropic.BetaPromptCachingScope
-const BetaEffort = anthropic.BetaEffort
-const BetaRedactThinking = anthropic.BetaRedactThinking
-const BetaContextManagement = anthropic.BetaContextManagement
-const BetaExtendedCacheTTL = anthropic.BetaExtendedCacheTTL
-const BetaServerSideFallback = anthropic.BetaServerSideFallback
-const BetaFallbackCredit = anthropic.BetaFallbackCredit
-const BetaFallbackCreditLegacy = anthropic.BetaFallbackCreditLegacy
+const (
+	BetaOAuth                    = anthropic.BetaOAuth
+	BetaClaudeCode               = anthropic.BetaClaudeCode
+	BetaInterleavedThinking      = anthropic.BetaInterleavedThinking
+	BetaFineGrainedToolStreaming = anthropic.BetaFineGrainedToolStreaming
+	BetaTokenCounting            = anthropic.BetaTokenCounting
+	BetaContext1M                = anthropic.BetaContext1M
+	BetaFastMode                 = anthropic.BetaFastMode
+	BetaPromptCachingScope       = anthropic.BetaPromptCachingScope
+	BetaEffort                   = anthropic.BetaEffort
+	BetaRedactThinking           = anthropic.BetaRedactThinking
+	BetaContextManagement        = anthropic.BetaContextManagement
+	BetaExtendedCacheTTL         = anthropic.BetaExtendedCacheTTL
+	BetaServerSideFallback       = anthropic.BetaServerSideFallback
+	BetaFallbackCredit           = anthropic.BetaFallbackCredit
+	BetaFallbackCreditLegacy     = anthropic.BetaFallbackCreditLegacy
+)
 
 // DroppedBetas 是转发时需要从 anthropic-beta header 中移除的 beta token 列表。
 // 这些 token 是客户端特有的，不应透传给上游 API。
@@ -47,10 +49,10 @@ const CountTokensBetaHeader = BetaClaudeCode + "," + BetaOAuth + "," + BetaInter
 // OAuth mimic 路径统一使用 FullClaudeCodeMimicryBetas。
 const HaikuBetaHeader = BetaOAuth + "," + BetaInterleavedThinking
 
-// APIKeyBetaHeader API-key 账号建议使用的 anthropic-beta header（不包含 oauth）
+// APIKeyBetaHeader API-key 提供商建议使用的 anthropic-beta header（不包含 oauth）
 const APIKeyBetaHeader = BetaClaudeCode + "," + BetaInterleavedThinking + "," + BetaFineGrainedToolStreaming
 
-// APIKeyHaikuBetaHeader Haiku 模型在 API-key 账号下使用的 anthropic-beta header（不包含 oauth / claude-code）
+// APIKeyHaikuBetaHeader Haiku 模型在 API-key 提供商下使用的 anthropic-beta header（不包含 oauth / claude-code）
 const APIKeyHaikuBetaHeader = BetaInterleavedThinking
 
 // DefaultCacheControlTTL 是网关代理为自己生成的 cache_control 块默认使用的 ttl。
@@ -67,13 +69,13 @@ const DefaultCacheControlTTL = "5m"
 const CLICurrentVersion = "2.1.220"
 
 // FullClaudeCodeMimicryBetas 返回最"像"真实 Claude Code CLI 的完整 beta 列表，
-// 用于 OAuth 账号伪装成 Claude Code 时使用。
+// 用于 OAuth 提供商伪装成 Claude Code 时使用。
 // 顺序与真实 CLI 抓包一致。
 //
 // 使用建议：
 //   - OAuth mimic：所有模型（包括 Haiku）都使用这整份列表。
 //   - OAuth 真实客户端透传：保留客户端 beta；未提供时使用模型对应默认值。
-//   - API-key 账号：不要使用本函数，参见 APIKeyBetaHeader。
+//   - API-key 提供商：不要使用本函数，参见 APIKeyBetaHeader。
 //   - 不默认加入 redact-thinking，避免上游抹除 thinking 内容；客户端显式传入时由合并逻辑保留。
 func FullClaudeCodeMimicryBetas() []string {
 	return []string{

@@ -3,13 +3,13 @@ package composite
 import (
 	"github.com/TokenFlux/TokenRouter/internal/team"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/audit"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/creative"
 	"github.com/TokenFlux/TokenRouter/internal/moderation"
 	"github.com/TokenFlux/TokenRouter/internal/notification"
 	"github.com/TokenFlux/TokenRouter/internal/ops"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/search"
 	"github.com/TokenFlux/TokenRouter/internal/usage"
@@ -50,7 +50,7 @@ func Parse(settings map[string]string, options ReadOptions) *Snapshot {
 	result.ApplySearchAdminReadSettings(search.ReadAdminSettings(settings))
 	result.ApplyOpsAdminReadSettings(ops.ReadAdminSettings(settings))
 	result.ApplyPaymentAdminReadSettings(payment.ReadAdminSettings(settings))
-	result.ApplyAccountAdminReadSettings(account.ReadAdminSettings(settings))
+	result.ApplyProviderAdminReadSettings(provider.ReadAdminSettings(settings))
 	result.ApplyGatewayAdminReadSettings(gateway.ReadAdminSettings(settings, options.Gateway))
 	result.ApplyBillingAdminReadSettings(billing.ReadAdminSettings(settings, options.DefaultBalance))
 	result.ApplyUsageAdminReadSettings(usage.ReadAdminSettings(settings))

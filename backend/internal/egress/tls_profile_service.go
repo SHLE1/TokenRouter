@@ -166,7 +166,7 @@ func (s *TLSFingerprintProfileService) getRandomProfile() *TLSFingerprintProfile
 }
 
 // ResolveTLSProfileByID 根据指定 profile ID 解析运行时 TLS Profile。
-// 调用方仍需传入账号，用于校验 TLS 指纹能力和启用开关。
+// 调用方仍需传入提供商，用于校验 TLS 指纹能力和启用开关。
 func (s *TLSFingerprintProfileService) ResolveTLSProfileByID(enabled bool, id int64) *TLSFingerprintProfile {
 	if !enabled {
 		return nil
@@ -187,7 +187,7 @@ func (s *TLSFingerprintProfileService) ResolveTLSProfileByID(enabled bool, id in
 }
 
 // ResolveRoutableTLSProfileByID 解析 TLS 路由器规则指向的 Profile。
-// 与账号固定模板不同，正数 ID 不存在时返回 ok=false，让调用方回退账号固定模板。
+// 与提供商固定模板不同，正数 ID 不存在时返回 ok=false，让调用方回退提供商固定模板。
 func (s *TLSFingerprintProfileService) ResolveRoutableTLSProfileByID(enabled bool, id int64) (*TLSFingerprintProfile, bool) {
 	if !enabled {
 		return nil, false
@@ -209,7 +209,7 @@ func (s *TLSFingerprintProfileService) ResolveRoutableTLSProfileByID(enabled boo
 }
 
 // ResolveTokenTLSProfileByID 解析 ChatGPT OAuth token 请求专用的 TLS 模板。
-// 该路径可能发生在账号创建前，因此不依赖账号上的 TLS 开关。
+// 该路径可能发生在提供商创建前，因此不依赖提供商上的 TLS 开关。
 func (s *TLSFingerprintProfileService) ResolveTokenTLSProfileByID(id int64) (*TLSFingerprintProfile, bool) {
 	if s == nil {
 		return nil, false

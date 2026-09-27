@@ -54,11 +54,11 @@ func NormalizeOpenAIResponsesImageOnlyModel(reqBody map[string]any) bool {
 	return openai.NormalizeOpenAIResponsesImageOnlyModel(reqBody, media.IsImageGenerationModel(openai.FirstNonEmptyString(reqBody["model"])))
 }
 
-func ApplyCodexClientMetadata(reqBody map[string]any, account *ExecutionAccount) bool {
-	if account == nil {
+func ApplyCodexClientMetadata(reqBody map[string]any, provider *ExecutionProvider) bool {
+	if provider == nil {
 		return false
 	}
-	return openai.ApplyCodexClientMetadata(reqBody, account.View().GetOpenAIDeviceID())
+	return openai.ApplyCodexClientMetadata(reqBody, provider.View().GetOpenAIDeviceID())
 }
 
 func IsOpenAICompatMessagesBridgeBody(body []byte) bool {

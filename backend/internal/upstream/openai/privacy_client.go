@@ -12,14 +12,18 @@ import (
 	"github.com/imroc/req/v3"
 )
 
-type PrivacyClientFactory func(string) (*req.Client, error)
-type ChatGPTAccountInfo = wire.ChatGPTAccountInfo
-type PrivacyEndpoints struct{ Settings, Accounts, Subscriptions string }
-type PrivacyClient struct{ Endpoints PrivacyEndpoints }
+type (
+	PrivacyClientFactory func(string) (*req.Client, error)
+	ChatGPTAccountInfo   = wire.ChatGPTAccountInfo
+	PrivacyEndpoints     struct{ Settings, Providers, Subscriptions string }
+	PrivacyClient        struct{ Endpoints PrivacyEndpoints }
+)
 
-const PrivacyModeTrainingOff = "training_off"
-const PrivacyModeFailed = "training_set_failed"
-const PrivacyModeCFBlocked = "training_set_cf_blocked"
+const (
+	PrivacyModeTrainingOff = "training_off"
+	PrivacyModeFailed      = "training_set_failed"
+	PrivacyModeCFBlocked   = "training_set_cf_blocked"
+)
 
 // disableOpenAITraining 调用 ChatGPT 设置接口关闭训练数据共享。
 // 返回 privacy_mode 值：成功时为 training_off，失败时为对应失败原因。
@@ -49,7 +53,6 @@ func (p PrivacyClient) DisableOpenAITraining(ctx context.Context, clientFactory 
 		SetQueryParam("feature", "training_allowed").
 		SetQueryParam("value", "false").
 		Patch(p.Endpoints.Settings)
-
 	if err != nil {
 		slog.Warn("openai_privacy_request_error", "error", err.Error())
 		return PrivacyModeFailed
@@ -72,9 +75,9 @@ func (p PrivacyClient) DisableOpenAITraining(ctx context.Context, clientFactory 
 	return PrivacyModeTrainingOff
 }
 
-// fetchChatGPTAccountInfo 调用 ChatGPT backend-api 获取账号信息。
+// fetchChatGPTAccountInfo 调用 ChatGPT backend-api 获取提供商信息。
 // 当 id_token 不包含这些字段时（例如 Mobile RT）作为兜底来源。
-// orgID 用于在个人账号和团队账号并存时匹配正确账号。
+// orgID 用于在个人提供商和团队提供商并存时匹配正确提供商。
 // 任意失败都返回 nil，保持 best-effort 且不阻塞主流程。
 func (p PrivacyClient) FetchChatGPTAccountInfo(ctx context.Context, clientFactory PrivacyClientFactory, accessToken, proxyURL, orgID string) *ChatGPTAccountInfo {
 	if accessToken == "" || clientFactory == nil {
@@ -98,8 +101,7 @@ func (p PrivacyClient) FetchChatGPTAccountInfo(ctx context.Context, clientFactor
 		SetHeader("Referer", "https://chatgpt.com/").
 		SetHeader("Accept", "application/json").
 		SetSuccessResult(&result).
-		Get(p.Endpoints.Accounts)
-
+		Get(p.Endpoints.Providers)
 	if err != nil {
 		slog.Debug("chatgpt_account_check_request_error", "error", err.Error())
 		return nil
@@ -112,32 +114,32 @@ func (p PrivacyClient) FetchChatGPTAccountInfo(ctx context.Context, clientFactor
 
 	info := &ChatGPTAccountInfo{}
 
-	accounts, ok := result["accounts"].(map[string]any)
+	providers, ok := result["accounts"].(map[string]any)
 	if !ok {
 		slog.Debug("chatgpt_account_check_no_accounts", "body", Truncate(resp.String(), 300))
 		return nil
 	}
 
-	// 优先匹配 orgID 对应的账号（access_token JWT 中的 poid）
+	// 优先匹配 orgID 对应的提供商（access_token JWT 中的 poid）
 	if orgID != "" {
-		if acctRaw, ok := accounts[orgID]; ok {
+		if acctRaw, ok := providers[orgID]; ok {
 			if acct, ok := acctRaw.(map[string]any); ok {
 				if IsUsableChatGPTAccountCandidate(acct, time.Now()) {
-					FillAccountInfo(info, acct, orgID)
+					FillProviderInfo(info, acct, orgID)
 				}
 			}
 		}
 	}
 
-	// 未匹配到时，遍历所有账号：优先 is_default，次选非 free
+	// 未匹配到时，遍历所有提供商：优先 is_default，次选非 free
 	if info.PlanType == "" {
 		type candidate struct {
-			planType  string
-			expiresAt string
-			accountID string
+			planType   string
+			expiresAt  string
+			providerID string
 		}
 		var defaultC, paidC, anyC candidate
-		for key, acctRaw := range accounts {
+		for key, acctRaw := range providers {
 			acct, ok := acctRaw.(map[string]any)
 			if !ok {
 				continue
@@ -154,8 +156,8 @@ func (p PrivacyClient) FetchChatGPTAccountInfo(ctx context.Context, clientFactor
 			if anyC.planType == "" {
 				anyC = candidate{planType, ea, id}
 			}
-			if account, ok := acct["account"].(map[string]any); ok {
-				if isDefault, _ := account["is_default"].(bool); isDefault {
+			if provider, ok := acct["account"].(map[string]any); ok {
+				if isDefault, _ := provider["is_default"].(bool); isDefault {
 					defaultC = candidate{planType, ea, id}
 				}
 			}
@@ -166,11 +168,11 @@ func (p PrivacyClient) FetchChatGPTAccountInfo(ctx context.Context, clientFactor
 		// 优先级：default > 非 free > 任意
 		switch {
 		case defaultC.planType != "":
-			info.PlanType, info.SubscriptionExpiresAt, info.AccountID = defaultC.planType, defaultC.expiresAt, defaultC.accountID
+			info.PlanType, info.SubscriptionExpiresAt, info.ProviderID = defaultC.planType, defaultC.expiresAt, defaultC.providerID
 		case paidC.planType != "":
-			info.PlanType, info.SubscriptionExpiresAt, info.AccountID = paidC.planType, paidC.expiresAt, paidC.accountID
+			info.PlanType, info.SubscriptionExpiresAt, info.ProviderID = paidC.planType, paidC.expiresAt, paidC.providerID
 		default:
-			info.PlanType, info.SubscriptionExpiresAt, info.AccountID = anyC.planType, anyC.expiresAt, anyC.accountID
+			info.PlanType, info.SubscriptionExpiresAt, info.ProviderID = anyC.planType, anyC.expiresAt, anyC.providerID
 		}
 	}
 
@@ -184,11 +186,11 @@ func (p PrivacyClient) FetchChatGPTAccountInfo(ctx context.Context, clientFactor
 }
 
 // fetchChatGPTSubscriptionExpiresAt 读取 ChatGPT/Codex 客户端使用的轻量订阅接口。
-// 部分 Plus 账号已不在 accounts/check 暴露 entitlement.expires_at，
+// 部分 Plus 提供商已不在 providers/check 暴露 entitlement.expires_at，
 // 但该接口仍会返回 active_until。
-func (p PrivacyClient) FetchChatGPTSubscriptionExpiresAt(ctx context.Context, clientFactory PrivacyClientFactory, accessToken, proxyURL, accountID string) string {
-	accountID = strings.TrimSpace(accountID)
-	if accessToken == "" || accountID == "" || clientFactory == nil {
+func (p PrivacyClient) FetchChatGPTSubscriptionExpiresAt(ctx context.Context, clientFactory PrivacyClientFactory, accessToken, proxyURL, providerID string) string {
+	providerID = strings.TrimSpace(providerID)
+	if accessToken == "" || providerID == "" || clientFactory == nil {
 		return ""
 	}
 
@@ -214,7 +216,7 @@ func (p PrivacyClient) FetchChatGPTSubscriptionExpiresAt(ctx context.Context, cl
 		SetHeader("Referer", "https://chatgpt.com/").
 		SetHeader("Accept", "application/json").
 		SetSuccessResult(&result).
-		SetQueryParam("account_id", accountID).
+		SetQueryParam("account_id", providerID).
 		Get(p.Endpoints.Subscriptions)
 	if err != nil {
 		slog.Debug("chatgpt_subscription_request_error", "error", err.Error())
@@ -235,31 +237,31 @@ func (p PrivacyClient) FetchChatGPTSubscriptionExpiresAt(ctx context.Context, cl
 		return ""
 	}
 
-	slog.Info("chatgpt_subscription_success", "plan_type", result.PlanType, "subscription_expires_at", activeUntil, "account_id", accountID)
+	slog.Info("chatgpt_subscription_success", "plan_type", result.PlanType, "subscription_expires_at", activeUntil, "account_id", providerID)
 	return activeUntil
 }
 
-// fillAccountInfo 从单个 account 对象中提取套餐、到期时间和来源账号。
-func FillAccountInfo(info *ChatGPTAccountInfo, acct map[string]any, fallbackID string) {
+// fillProviderInfo 从单个 provider 对象中提取套餐、到期时间和来源提供商。
+func FillProviderInfo(info *ChatGPTAccountInfo, acct map[string]any, fallbackID string) {
 	info.PlanType = ExtractPlanType(acct)
 	info.SubscriptionExpiresAt = ExtractEntitlementExpiresAt(acct)
-	info.AccountID = ChatGPTAccountObjectID(acct, fallbackID)
+	info.ProviderID = ChatGPTAccountObjectID(acct, fallbackID)
 }
 
-// chatGPTAccountObjectID 优先读取对象内的真实账号 ID；map key 仅用于缺失时兜底。
+// chatGPTProviderObjectID 优先读取对象内的真实提供商 ID；map key 仅用于缺失时兜底。
 func ChatGPTAccountObjectID(acct map[string]any, fallbackID string) string {
-	if account, ok := acct["account"].(map[string]any); ok {
-		if id, ok := account["account_id"].(string); ok && strings.TrimSpace(id) != "" {
+	if provider, ok := acct["account"].(map[string]any); ok {
+		if id, ok := provider["account_id"].(string); ok && strings.TrimSpace(id) != "" {
 			return strings.TrimSpace(id)
 		}
 	}
 	return strings.TrimSpace(fallbackID)
 }
 
-// extractPlanType 从单个 account 对象中提取 plan_type
+// extractPlanType 从单个 provider 对象中提取 plan_type
 func ExtractPlanType(acct map[string]any) string {
-	if account, ok := acct["account"].(map[string]any); ok {
-		if planType, ok := account["plan_type"].(string); ok && planType != "" {
+	if provider, ok := acct["account"].(map[string]any); ok {
+		if planType, ok := provider["plan_type"].(string); ok && planType != "" {
 			return planType
 		}
 	}
@@ -270,11 +272,12 @@ func ExtractPlanType(acct map[string]any) string {
 	}
 	return ""
 }
+
 func IsUsableChatGPTAccountCandidate(acct map[string]any, now time.Time) bool {
 	if acct == nil || HasChatGPTAccountDeactivatedMarker(acct) {
 		return false
 	}
-	if account, ok := acct["account"].(map[string]any); ok && HasChatGPTAccountDeactivatedMarker(account) {
+	if provider, ok := acct["account"].(map[string]any); ok && HasChatGPTAccountDeactivatedMarker(provider) {
 		return false
 	}
 
@@ -288,6 +291,7 @@ func IsUsableChatGPTAccountCandidate(acct map[string]any, now time.Time) bool {
 	}
 	return expiry.After(now)
 }
+
 func HasChatGPTAccountDeactivatedMarker(obj map[string]any) bool {
 	for _, key := range []string{"deactivated", "is_deactivated", "disabled", "is_disabled"} {
 		if value, ok := obj[key].(bool); ok && value {
@@ -319,6 +323,7 @@ func ExtractEntitlementExpiresAt(acct map[string]any) string {
 	ea, _ := entitlement["expires_at"].(string)
 	return ea
 }
+
 func Truncate(s string, n int) string {
 	if len(s) <= n {
 		return s

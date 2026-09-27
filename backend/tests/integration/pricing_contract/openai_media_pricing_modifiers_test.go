@@ -7,11 +7,11 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 	pricingprovider "github.com/TokenFlux/TokenRouter/internal/billing/provider"
 	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	completion "github.com/TokenFlux/TokenRouter/internal/gateway/completion"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
@@ -126,11 +126,11 @@ func TestCNProviderPricingModifiersDoNotCountAsExplicitPrices(t *testing.T) {
 
 				key := &apikey.APIKey{Group: group}
 				require.NotNil(t, svc.ResolveOpenAIConfigPricing(context.Background(), model, gatewaycapture.ProjectCompletionKey(key)))
-				require.Empty(t, svc.FilterCNProviderBillingModelCandidates(context.Background(), gatewaycapture.ProjectCompletionAccount(gatewaycapture.ExecutionCompletionRecord(&gatewaycapture.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: platform}})), gatewaycapture.ProjectCompletionKey(key), []string{model}))
+				require.Empty(t, svc.FilterCNProviderBillingModelCandidates(context.Background(), gatewaycapture.ProjectCompletionProvider(gatewaycapture.ExecutionCompletionRecord(&gatewaycapture.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: platform}})), gatewaycapture.ProjectCompletionKey(key), []string{model}))
 				// 显式零价仍是管理员的定价合同，应允许候选进入结算。
 				resolver = billingtestkit.SharedPriceResolver(newCalculator(nil, nil), group.ID, pricing.DefaultBillingSettings(), []routing.ModelPricingEntry{{Models: []string{model}, InputPrice: testPtrFloat64(0)}})
 				svc = completion.NewRecorder(completion.Dependencies{Calculator: newCalculator(nil, nil), Prices: resolver}, completion.RecorderOptions{DefaultMultiplier: 1})
-				require.Equal(t, []string{model}, svc.FilterCNProviderBillingModelCandidates(context.Background(), gatewaycapture.ProjectCompletionAccount(gatewaycapture.ExecutionCompletionRecord(&gatewaycapture.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: platform}})), gatewaycapture.ProjectCompletionKey(key), []string{model}))
+				require.Equal(t, []string{model}, svc.FilterCNProviderBillingModelCandidates(context.Background(), gatewaycapture.ProjectCompletionProvider(gatewaycapture.ExecutionCompletionRecord(&gatewaycapture.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: platform}})), gatewaycapture.ProjectCompletionKey(key), []string{model}))
 			})
 		}
 	}

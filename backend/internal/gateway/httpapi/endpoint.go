@@ -3,8 +3,8 @@ package httpapi
 import (
 	"strings"
 
-	accounterrors "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
+	providererrors "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/gin-gonic/gin"
 )
@@ -164,7 +164,7 @@ func isBareOrSubpathOf(path, root string) bool {
 	return path == root || strings.HasPrefix(path, root+"/")
 }
 
-// DeriveUpstreamEndpoint 根据账号平台和归一化后的入站端点推导上游端点。
+// DeriveUpstreamEndpoint 根据提供商平台和归一化后的入站端点推导上游端点。
 //
 // 平台规则：OpenAI 与 Grok 默认转到 /v1/responses，并保留 /compact 等子路径；
 // Grok 原始 Chat 请求会由转发结果覆盖实际上游端点。embeddings、alpha search 等
@@ -197,7 +197,7 @@ func DeriveUpstreamEndpoint(inbound, rawRequestPath, platform string) string {
 		return EndpointGeminiModels
 
 	case capability.PlatformAntigravity:
-		// Antigravity 账号同时承载 Claude 与 Gemini。
+		// Antigravity 提供商同时承载 Claude 与 Gemini。
 		if inbound == EndpointGeminiModels {
 			return EndpointGeminiModels
 		}
@@ -284,13 +284,13 @@ func GetInboundEndpoint(c *gin.Context) string {
 }
 
 // GetUpstreamEndpoint derives the upstream endpoint from the context
-// and the account platform. Handlers call this after scheduling an
-// account, passing account.Platform.
+// and the provider platform. Handlers call this after scheduling an
+// provider, passing provider.Platform.
 func GetUpstreamEndpoint(c *gin.Context, platform string) string {
 	// OpenAI 转发服务维护独立的运行时端点上下文，覆盖普通入站推导。
 	// 这对 force_chat_completions 的错误路径尤为重要：此时可能没有
 	// ForwardResult，不能把入站 /v1/responses 误报成上游端点。
-	if platform == capability.PlatformOpenAI || platform == capability.PlatformGrok || accounterrors.IsCNProvider(platform) {
+	if platform == capability.PlatformOpenAI || platform == capability.PlatformGrok || providererrors.IsCNProvider(platform) {
 		if endpoint := GetActualOpenAIUpstreamEndpoint(c); endpoint != "" {
 			return endpoint
 		}

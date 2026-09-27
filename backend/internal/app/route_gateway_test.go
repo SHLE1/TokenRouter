@@ -154,7 +154,7 @@ func TestGatewayRoutesClientProtocolGateRejectsAliasesBeforeReadingBody(t *testi
 	}
 }
 
-// 计数入口先执行分组协议门禁，账号选中后才决定实际计数能力。
+// 计数入口先执行分组协议门禁，提供商选中后才决定实际计数能力。
 func TestGatewayRoutesCountTokensHonorsProtocolGate(t *testing.T) {
 	tests := []struct {
 		name     string

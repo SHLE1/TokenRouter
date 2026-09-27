@@ -7,12 +7,12 @@ import (
 
 	moderationcore "github.com/TokenFlux/TokenRouter/internal/moderation"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/app/lifecycle"
 	"github.com/TokenFlux/TokenRouter/internal/audit"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/completion"
 	"github.com/TokenFlux/TokenRouter/internal/notification"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
 type queuesRuntimeReady struct{}
@@ -21,12 +21,12 @@ func provideQueuesRuntime(
 	emailQueue *notification.EmailQueueService,
 	billingCache *billing.Eligibility,
 	usageRecordWorkerPool *completion.UsageRecordWorkerPool,
-	ollamaCloudUsage *account.OllamaCloudUsageService,
+	ollamaCloudUsage *provider.OllamaCloudUsageService,
 	auditLog *audit.AuditLogService,
-	grokQuota *account.GrokQuotaService,
-	openaiQuota *account.OpenAIQuotaService,
+	grokQuota *provider.GrokQuotaService,
+	openaiQuota *provider.OpenAIQuotaService,
 	manager *lifecycle.Manager,
-	deferred *account.DeferredService,
+	deferred *provider.DeferredService,
 	contentModeration *moderationcore.ContentModerationService,
 ) *queuesRuntimeReady {
 	manager.Register(lifecycle.Hook{Name: "EmailQueueService", StartOrder: 930, StopOrder: 70, Start: func(ctx context.Context) error {

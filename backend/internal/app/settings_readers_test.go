@@ -27,12 +27,12 @@ func TestSettingsReadersSharePublishedState(t *testing.T) {
 	repo := &readerStoreProbe{}
 	store := settings.New(repo)
 	gatewayRuntime := provideGatewaySettings(store)
-	account := provideAccountSettings(store)
+	provider := provideProviderSettings(store)
 	quota := provideQuotaSettings(store)
 	routing := provideRoutingSettings(store)
 	moderation := provideModerationSettings(store)
 	searchRuntime := search.NewConfigService(store, nil, nil, search.NewRegistry())
-	readers := provideGatewayRuntimeReaders(store, gatewayRuntime, account, quota, routing, moderation, searchRuntime)
+	readers := provideGatewayRuntimeReaders(store, gatewayRuntime, provider, quota, routing, moderation, searchRuntime)
 	t.Cleanup(func() {
 		// 清除本测试安装的默认 UA 读取器，避免影响同进程的其他装配契约。
 		openai.SetCodexCanonicalUserAgentResolver(nil)
@@ -40,13 +40,13 @@ func TestSettingsReadersSharePublishedState(t *testing.T) {
 	})
 	require.Zero(t, repo.reads)
 	require.Same(t, gatewayRuntime, readers.Gateway)
-	require.Same(t, account, readers.Account)
+	require.Same(t, provider, readers.Provider)
 	require.Same(t, quota, readers.Quota)
 	require.Same(t, routing, readers.Routing)
 	require.Same(t, moderation, readers.Moderation)
 	require.Same(t, searchRuntime, readers.Search)
 	require.Same(t, store, readers.Scheduler)
-	account.ApplySchedulingThresholds(map[string]int{"openai": 73})
-	require.Equal(t, 73, readers.Account.GetAccountSchedulingThresholds(context.Background())["openai"])
+	provider.ApplySchedulingThresholds(map[string]int{"openai": 73})
+	require.Equal(t, 73, readers.Provider.GetProviderSchedulingThresholds(context.Background())["openai"])
 	require.Zero(t, repo.reads, "提交后发布必须命中执行消费者共用的缓存")
 }

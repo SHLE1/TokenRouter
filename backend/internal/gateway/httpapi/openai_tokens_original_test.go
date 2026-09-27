@@ -34,7 +34,7 @@ func assertOpenAITextEventBefore(t *testing.T, events []string, a, b string) {
 	require.Greater(t, bi, ai, events)
 }
 
-// 计数端口不暴露用户/账号槽或完成提交，测试失败路径不能偷偷进入这些能力。
+// 计数端口不暴露用户/提供商槽或完成提交，测试失败路径不能偷偷进入这些能力。
 func (p *tokenEntryOriginalProbe) CountExecution(_ *gin.Context, call OpenAICountCall) textflow.SingleCountPorts {
 	p.mark("count-execution")
 	return &openAITextCountProbe{parent: p, call: call}
@@ -112,27 +112,34 @@ func (p *tokenEntryOriginalProbe) Access(*gin.Context) (*apikey.APIKey, bool) {
 	p.mark("access")
 	return p.key, p.key != nil
 }
+
 func (p *tokenEntryOriginalProbe) Plan(_ context.Context, key *apikey.APIKey, model string) routing.RoutePlan {
 	p.mark("plan")
 	return routing.Plan(routing.PlanInput{GroupID: key.GroupID, RequestedModel: model})
 }
+
 func (p *tokenEntryOriginalProbe) Eligibility(context.Context, *apikey.APIKey, *billing.UserSubscription) error {
 	p.mark("eligibility")
 	return p.eligibility
 }
+
 func (p *tokenEntryOriginalProbe) SessionHash(*gin.Context, OpenAISessionInput, []byte) string {
 	return "session"
 }
-func (p *tokenEntryOriginalProbe) MessageAccountModel(_ context.Context, _ *apikey.APIKey, model string) string {
+
+func (p *tokenEntryOriginalProbe) MessageProviderModel(_ context.Context, _ *apikey.APIKey, model string) string {
 	return model
 }
+
 func (p *tokenEntryOriginalProbe) MappedBodyCache(body []byte) func(bool, string) []byte {
 	p.mark("mapped-cache")
 	return func(bool, string) []byte { return body }
 }
+
 func (p *tokenEntryOriginalProbe) ApplyUserPromptReplacementToBody(_ context.Context, body []byte, _ string) []byte {
 	return body
 }
+
 func newNativeTokenEntryProbe(t *testing.T, body string) (*tokenEntryOriginalProbe, *OpenAITokensHandler, *gin.Context, *httptest.ResponseRecorder, io.ReadCloser) {
 	t.Helper()
 	writer := httptest.NewRecorder()

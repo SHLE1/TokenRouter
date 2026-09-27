@@ -25,7 +25,7 @@ type stubConcurrencyCacheForTest struct {
 	waitErr              error
 	waitCount            int
 	waitCountErr         error
-	loadBatch            map[int64]*AccountLoadInfo
+	loadBatch            map[int64]*ProviderLoadInfo
 	loadBatchErr         error
 	usersLoadBatch       map[int64]*UserLoadInfo
 	usersLoadErr         error
@@ -36,7 +36,7 @@ type stubConcurrencyCacheForTest struct {
 	apiKeyConcurrencyErr error
 
 	// 记录调用
-	releasedAccountIDs       []int64
+	releasedProviderIDs      []int64
 	releasedRequestIDs       []string
 	loadBatchCalls           atomic.Int64
 	trackedAPIKeyIDs         []int64
@@ -84,58 +84,72 @@ func (c *ingressLeaseCacheForTest) ReleaseOpenAIWSIngressLease(ctx context.Conte
 	return c.releaseIngressErr
 }
 
-var _ ConcurrencyCache = (*stubConcurrencyCacheForTest)(nil)
-var _ OpenAIWSIngressLeaseCache = (*ingressLeaseCacheForTest)(nil)
+var (
+	_ ConcurrencyCache          = (*stubConcurrencyCacheForTest)(nil)
+	_ OpenAIWSIngressLeaseCache = (*ingressLeaseCacheForTest)(nil)
+)
 
-func (c *stubConcurrencyCacheForTest) AcquireAccountSlot(_ context.Context, _ int64, _ int, _ string) (bool, error) {
+func (c *stubConcurrencyCacheForTest) AcquireProviderSlot(_ context.Context, _ int64, _ int, _ string) (bool, error) {
 	return c.acquireResult, c.acquireErr
 }
-func (c *stubConcurrencyCacheForTest) ReleaseAccountSlot(_ context.Context, accountID int64, requestID string) error {
-	c.releasedAccountIDs = append(c.releasedAccountIDs, accountID)
+
+func (c *stubConcurrencyCacheForTest) ReleaseProviderSlot(_ context.Context, providerID int64, requestID string) error {
+	c.releasedProviderIDs = append(c.releasedProviderIDs, providerID)
 	c.releasedRequestIDs = append(c.releasedRequestIDs, requestID)
 	return c.releaseErr
 }
-func (c *stubConcurrencyCacheForTest) GetAccountConcurrency(_ context.Context, _ int64) (int, error) {
+
+func (c *stubConcurrencyCacheForTest) GetProviderConcurrency(_ context.Context, _ int64) (int, error) {
 	return c.concurrency, c.concurrencyErr
 }
-func (c *stubConcurrencyCacheForTest) GetAccountConcurrencyBatch(_ context.Context, accountIDs []int64) (map[int64]int, error) {
-	result := make(map[int64]int, len(accountIDs))
-	for _, accountID := range accountIDs {
+
+func (c *stubConcurrencyCacheForTest) GetProviderConcurrencyBatch(_ context.Context, providerIDs []int64) (map[int64]int, error) {
+	result := make(map[int64]int, len(providerIDs))
+	for _, providerID := range providerIDs {
 		if c.concurrencyErr != nil {
 			return nil, c.concurrencyErr
 		}
-		result[accountID] = c.concurrency
+		result[providerID] = c.concurrency
 	}
 	return result, nil
 }
-func (c *stubConcurrencyCacheForTest) IncrementAccountWaitCount(_ context.Context, _ int64, _ int) (bool, error) {
+
+func (c *stubConcurrencyCacheForTest) IncrementProviderWaitCount(_ context.Context, _ int64, _ int) (bool, error) {
 	return c.waitAllowed, c.waitErr
 }
-func (c *stubConcurrencyCacheForTest) DecrementAccountWaitCount(_ context.Context, _ int64) error {
+
+func (c *stubConcurrencyCacheForTest) DecrementProviderWaitCount(_ context.Context, _ int64) error {
 	return nil
 }
-func (c *stubConcurrencyCacheForTest) GetAccountWaitingCount(_ context.Context, _ int64) (int, error) {
+
+func (c *stubConcurrencyCacheForTest) GetProviderWaitingCount(_ context.Context, _ int64) (int, error) {
 	return c.waitCount, c.waitCountErr
 }
+
 func (c *stubConcurrencyCacheForTest) AcquireUserSlot(_ context.Context, _ int64, _ int, _ string) (bool, error) {
 	return c.acquireResult, c.acquireErr
 }
+
 func (c *stubConcurrencyCacheForTest) ReleaseUserSlot(_ context.Context, _ int64, _ string) error {
 	return c.releaseErr
 }
+
 func (c *stubConcurrencyCacheForTest) GetUserConcurrency(_ context.Context, _ int64) (int, error) {
 	return c.concurrency, c.concurrencyErr
 }
+
 func (c *stubConcurrencyCacheForTest) TrackAPIKeySlot(_ context.Context, apiKeyID int64, requestID string) error {
 	c.trackedAPIKeyIDs = append(c.trackedAPIKeyIDs, apiKeyID)
 	c.trackedAPIKeyRequestIDs = append(c.trackedAPIKeyRequestIDs, requestID)
 	return c.apiKeyTrackErr
 }
+
 func (c *stubConcurrencyCacheForTest) ReleaseAPIKeySlot(_ context.Context, apiKeyID int64, requestID string) error {
 	c.releasedAPIKeyIDs = append(c.releasedAPIKeyIDs, apiKeyID)
 	c.releasedAPIKeyRequestIDs = append(c.releasedAPIKeyRequestIDs, requestID)
 	return c.apiKeyReleaseErr
 }
+
 func (c *stubConcurrencyCacheForTest) GetAPIKeyConcurrencyBatch(_ context.Context, apiKeyIDs []int64) (map[int64]int, error) {
 	if c.apiKeyConcurrencyErr != nil {
 		return nil, c.apiKeyConcurrencyErr
@@ -146,24 +160,29 @@ func (c *stubConcurrencyCacheForTest) GetAPIKeyConcurrencyBatch(_ context.Contex
 	}
 	return result, nil
 }
+
 func (c *stubConcurrencyCacheForTest) IncrementWaitCount(_ context.Context, _ int64, _ int) (bool, error) {
 	return c.waitAllowed, c.waitErr
 }
+
 func (c *stubConcurrencyCacheForTest) DecrementWaitCount(_ context.Context, _ int64) error {
 	return nil
 }
-func (c *stubConcurrencyCacheForTest) GetAccountsLoadBatch(_ context.Context, _ []AccountWithConcurrency) (map[int64]*AccountLoadInfo, error) {
+
+func (c *stubConcurrencyCacheForTest) GetProvidersLoadBatch(_ context.Context, _ []ProviderWithConcurrency) (map[int64]*ProviderLoadInfo, error) {
 	c.loadBatchCalls.Add(1)
 	return c.loadBatch, c.loadBatchErr
 }
+
 func (c *stubConcurrencyCacheForTest) GetUsersLoadBatch(_ context.Context, _ []UserWithConcurrency) (map[int64]*UserLoadInfo, error) {
 	return c.usersLoadBatch, c.usersLoadErr
 }
-func (c *stubConcurrencyCacheForTest) CleanupExpiredAccountSlots(_ context.Context, _ int64) error {
+
+func (c *stubConcurrencyCacheForTest) CleanupExpiredProviderSlots(_ context.Context, _ int64) error {
 	return c.cleanupErr
 }
 
-func (c *stubConcurrencyCacheForTest) CleanupExpiredAccountSlotKeys(_ context.Context) error {
+func (c *stubConcurrencyCacheForTest) CleanupExpiredProviderSlotKeys(_ context.Context) error {
 	return c.cleanupErr
 }
 
@@ -193,68 +212,68 @@ func TestCleanupStaleProcessSlots_DelegatesPrefix(t *testing.T) {
 	require.Equal(t, RequestIDPrefix(), cache.cleanupPrefix)
 }
 
-func TestAcquireAccountSlot_Success(t *testing.T) {
+func TestAcquireProviderSlot_Success(t *testing.T) {
 	cache := &stubConcurrencyCacheForTest{acquireResult: true}
 	svc := NewConcurrencyService(cache)
 
-	result, err := svc.AcquireAccountSlot(context.Background(), 1, 5)
+	result, err := svc.AcquireProviderSlot(context.Background(), 1, 5)
 	require.NoError(t, err)
 	require.True(t, result.Acquired)
 	require.NotNil(t, result.ReleaseFunc)
 }
 
-func TestAcquireAccountSlot_Failure(t *testing.T) {
+func TestAcquireProviderSlot_Failure(t *testing.T) {
 	cache := &stubConcurrencyCacheForTest{acquireResult: false}
 	svc := NewConcurrencyService(cache)
 
-	result, err := svc.AcquireAccountSlot(context.Background(), 1, 5)
+	result, err := svc.AcquireProviderSlot(context.Background(), 1, 5)
 	require.NoError(t, err)
 	require.False(t, result.Acquired)
 	require.Nil(t, result.ReleaseFunc)
 }
 
-func TestAcquireAccountSlot_UnlimitedConcurrency(t *testing.T) {
+func TestAcquireProviderSlot_UnlimitedConcurrency(t *testing.T) {
 	svc := NewConcurrencyService(&stubConcurrencyCacheForTest{})
 
 	for _, maxConcurrency := range []int{0, -1} {
-		result, err := svc.AcquireAccountSlot(context.Background(), 1, maxConcurrency)
+		result, err := svc.AcquireProviderSlot(context.Background(), 1, maxConcurrency)
 		require.NoError(t, err)
 		require.True(t, result.Acquired, "maxConcurrency=%d 应无限制通过", maxConcurrency)
 		require.NotNil(t, result.ReleaseFunc, "ReleaseFunc 应为 no-op 函数")
 	}
 }
 
-func TestAcquireAccountSlot_CacheError(t *testing.T) {
+func TestAcquireProviderSlot_CacheError(t *testing.T) {
 	cache := &stubConcurrencyCacheForTest{acquireErr: errors.New("redis down")}
 	svc := NewConcurrencyService(cache)
 
-	result, err := svc.AcquireAccountSlot(context.Background(), 1, 5)
+	result, err := svc.AcquireProviderSlot(context.Background(), 1, 5)
 	require.Error(t, err)
 	require.Nil(t, result)
 }
 
-func TestAcquireAccountSlot_ReleaseDecrements(t *testing.T) {
+func TestAcquireProviderSlot_ReleaseDecrements(t *testing.T) {
 	cache := &stubConcurrencyCacheForTest{acquireResult: true}
 	svc := NewConcurrencyService(cache)
 
-	result, err := svc.AcquireAccountSlot(context.Background(), 42, 5)
+	result, err := svc.AcquireProviderSlot(context.Background(), 42, 5)
 	require.NoError(t, err)
 	require.True(t, result.Acquired)
 
 	// 调用 ReleaseFunc 应释放槽位
 	result.ReleaseFunc()
 
-	require.Len(t, cache.releasedAccountIDs, 1)
-	require.Equal(t, int64(42), cache.releasedAccountIDs[0])
+	require.Len(t, cache.releasedProviderIDs, 1)
+	require.Equal(t, int64(42), cache.releasedProviderIDs[0])
 	require.Len(t, cache.releasedRequestIDs, 1)
 	require.NotEmpty(t, cache.releasedRequestIDs[0], "requestID 不应为空")
 }
 
-func TestAcquireUserSlot_IndependentFromAccount(t *testing.T) {
+func TestAcquireUserSlot_IndependentFromProvider(t *testing.T) {
 	cache := &stubConcurrencyCacheForTest{acquireResult: true}
 	svc := NewConcurrencyService(cache)
 
-	// 用户槽位获取应独立于账户槽位
+	// 用户槽位获取应独立于提供商槽位
 	result, err := svc.AcquireUserSlot(context.Background(), 100, 3)
 	require.NoError(t, err)
 	require.True(t, result.Acquired)
@@ -456,67 +475,67 @@ func TestGenerateRequestID_UsesStablePrefixAndMonotonicCounter(t *testing.T) {
 	require.Equal(t, n1+1, n2, "计数器应单调递增")
 }
 
-func TestGetAccountsLoadBatch_ReturnsCorrectData(t *testing.T) {
-	expected := map[int64]*AccountLoadInfo{
-		1: {AccountID: 1, CurrentConcurrency: 3, WaitingCount: 0, LoadRate: 60},
-		2: {AccountID: 2, CurrentConcurrency: 5, WaitingCount: 2, LoadRate: 100},
+func TestGetProvidersLoadBatch_ReturnsCorrectData(t *testing.T) {
+	expected := map[int64]*ProviderLoadInfo{
+		1: {ProviderID: 1, CurrentConcurrency: 3, WaitingCount: 0, LoadRate: 60},
+		2: {ProviderID: 2, CurrentConcurrency: 5, WaitingCount: 2, LoadRate: 100},
 	}
 	cache := &stubConcurrencyCacheForTest{loadBatch: expected}
 	svc := NewConcurrencyService(cache)
 
-	accounts := []AccountWithConcurrency{
+	providers := []ProviderWithConcurrency{
 		{ID: 1, MaxConcurrency: 5},
 		{ID: 2, MaxConcurrency: 5},
 	}
-	result, err := svc.GetAccountsLoadBatch(context.Background(), accounts)
+	result, err := svc.GetProvidersLoadBatch(context.Background(), providers)
 	require.NoError(t, err)
 	require.Equal(t, expected, result)
 }
 
-func TestGetAccountsLoadBatch_NilCache(t *testing.T) {
+func TestGetProvidersLoadBatch_NilCache(t *testing.T) {
 	svc := &ConcurrencyService{cache: nil}
 
-	result, err := svc.GetAccountsLoadBatch(context.Background(), nil)
+	result, err := svc.GetProvidersLoadBatch(context.Background(), nil)
 	require.NoError(t, err)
 	require.Empty(t, result)
 }
 
-func TestGetAccountsLoadBatch_UsesShortTTLCache(t *testing.T) {
+func TestGetProvidersLoadBatch_UsesShortTTLCache(t *testing.T) {
 	cache := &stubConcurrencyCacheForTest{
-		loadBatch: map[int64]*AccountLoadInfo{
-			1: {AccountID: 1, CurrentConcurrency: 1, LoadRate: 20},
+		loadBatch: map[int64]*ProviderLoadInfo{
+			1: {ProviderID: 1, CurrentConcurrency: 1, LoadRate: 20},
 		},
 	}
 	svc := NewConcurrencyService(cache)
-	svc.SetAccountLoadBatchCacheTTL(time.Second)
+	svc.SetProviderLoadBatchCacheTTL(time.Second)
 
-	accounts := []AccountWithConcurrency{{ID: 1, MaxConcurrency: 5}}
-	first, err := svc.GetAccountsLoadBatch(context.Background(), accounts)
+	providers := []ProviderWithConcurrency{{ID: 1, MaxConcurrency: 5}}
+	first, err := svc.GetProvidersLoadBatch(context.Background(), providers)
 	require.NoError(t, err)
 	require.Equal(t, 1, first[int64(1)].CurrentConcurrency)
 
-	cache.loadBatch[1] = &AccountLoadInfo{AccountID: 1, CurrentConcurrency: 4, LoadRate: 80}
-	second, err := svc.GetAccountsLoadBatch(context.Background(), accounts)
+	cache.loadBatch[1] = &ProviderLoadInfo{ProviderID: 1, CurrentConcurrency: 4, LoadRate: 80}
+	second, err := svc.GetProvidersLoadBatch(context.Background(), providers)
 	require.NoError(t, err)
 	require.Equal(t, 1, second[int64(1)].CurrentConcurrency)
 	require.Equal(t, int64(1), cache.loadBatchCalls.Load())
 }
 
-func TestGetAccountsLoadBatchFresh_BypassesShortTTLCache(t *testing.T) {
+func TestGetProvidersLoadBatchFresh_BypassesShortTTLCache(t *testing.T) {
 	cache := &stubConcurrencyCacheForTest{
-		loadBatch: map[int64]*AccountLoadInfo{
-			1: {AccountID: 1, CurrentConcurrency: 1, LoadRate: 20},
+		loadBatch: map[int64]*ProviderLoadInfo{
+			1: {ProviderID: 1, CurrentConcurrency: 1, LoadRate: 20},
 		},
 	}
 	svc := NewConcurrencyService(cache)
-	svc.SetAccountLoadBatchCacheTTL(time.Second)
+	svc.SetProviderLoadBatchCacheTTL(time.Second)
 
-	accounts := []AccountWithConcurrency{{ID: 1, MaxConcurrency: 5}}
-	_, err := svc.GetAccountsLoadBatch(context.Background(), accounts)
+	providers := []ProviderWithConcurrency{{ID: 1, MaxConcurrency: 5}}
+	_, err := svc.GetProvidersLoadBatch(context.Background(), providers)
 	require.NoError(t, err)
 
-	cache.loadBatch[1] = &AccountLoadInfo{AccountID: 1, CurrentConcurrency: 4, LoadRate: 80}
-	fresh, err := svc.GetAccountsLoadBatchFresh(context.Background(), accounts)
+	cache.loadBatch[1] = &ProviderLoadInfo{ProviderID: 1, CurrentConcurrency: 4, LoadRate: 80}
+	fresh, err := svc.GetProvidersLoadBatchFresh(context.Background(), providers)
 	require.NoError(t, err)
 	require.Equal(t, 4, fresh[int64(1)].CurrentConcurrency)
 	require.Equal(t, int64(2), cache.loadBatchCalls.Load())
@@ -575,28 +594,28 @@ func TestCalculateMaxWait(t *testing.T) {
 	}
 }
 
-func TestGetAccountWaitingCount(t *testing.T) {
+func TestGetProviderWaitingCount(t *testing.T) {
 	cache := &stubConcurrencyCacheForTest{waitCount: 5}
 	svc := NewConcurrencyService(cache)
 
-	count, err := svc.GetAccountWaitingCount(context.Background(), 1)
+	count, err := svc.GetProviderWaitingCount(context.Background(), 1)
 	require.NoError(t, err)
 	require.Equal(t, 5, count)
 }
 
-func TestGetAccountWaitingCount_NilCache(t *testing.T) {
+func TestGetProviderWaitingCount_NilCache(t *testing.T) {
 	svc := &ConcurrencyService{cache: nil}
 
-	count, err := svc.GetAccountWaitingCount(context.Background(), 1)
+	count, err := svc.GetProviderWaitingCount(context.Background(), 1)
 	require.NoError(t, err)
 	require.Equal(t, 0, count)
 }
 
-func TestGetAccountConcurrencyBatch(t *testing.T) {
+func TestGetProviderConcurrencyBatch(t *testing.T) {
 	cache := &stubConcurrencyCacheForTest{concurrency: 3}
 	svc := NewConcurrencyService(cache)
 
-	result, err := svc.GetAccountConcurrencyBatch(context.Background(), []int64{1, 2, 3})
+	result, err := svc.GetProviderConcurrencyBatch(context.Background(), []int64{1, 2, 3})
 	require.NoError(t, err)
 	require.Len(t, result, 3)
 	for _, id := range []int64{1, 2, 3} {
@@ -604,19 +623,19 @@ func TestGetAccountConcurrencyBatch(t *testing.T) {
 	}
 }
 
-func TestIncrementAccountWaitCount_FailOpen(t *testing.T) {
+func TestIncrementProviderWaitCount_FailOpen(t *testing.T) {
 	cache := &stubConcurrencyCacheForTest{waitErr: errors.New("redis error")}
 	svc := NewConcurrencyService(cache)
 
-	allowed, err := svc.EnterAccountWait(context.Background(), 1, 10)
+	allowed, err := svc.EnterProviderWait(context.Background(), 1, 10)
 	require.NoError(t, err, "Redis 错误不应传播")
 	require.True(t, allowed.Allowed, "Redis 错误时应 fail-open")
 }
 
-func TestIncrementAccountWaitCount_NilCache(t *testing.T) {
+func TestIncrementProviderWaitCount_NilCache(t *testing.T) {
 	svc := &ConcurrencyService{cache: nil}
 
-	allowed, err := svc.EnterAccountWait(context.Background(), 1, 10)
+	allowed, err := svc.EnterProviderWait(context.Background(), 1, 10)
 	require.NoError(t, err)
 	require.True(t, allowed.Allowed)
 }

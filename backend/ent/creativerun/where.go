@@ -89,14 +89,14 @@ func APIKeyID(v int64) predicate.CreativeRun {
 	return predicate.CreativeRun(sql.FieldEQ(FieldAPIKeyID, v))
 }
 
-// AccountID applies equality check predicate on the "account_id" field. It's identical to AccountIDEQ.
-func AccountID(v int64) predicate.CreativeRun {
-	return predicate.CreativeRun(sql.FieldEQ(FieldAccountID, v))
+// ProviderID applies equality check predicate on the "provider_id" field. It's identical to ProviderIDEQ.
+func ProviderID(v int64) predicate.CreativeRun {
+	return predicate.CreativeRun(sql.FieldEQ(FieldProviderID, v))
 }
 
-// Provider applies equality check predicate on the "provider" field. It's identical to ProviderEQ.
-func Provider(v string) predicate.CreativeRun {
-	return predicate.CreativeRun(sql.FieldEQ(FieldProvider, v))
+// Platform applies equality check predicate on the "platform" field. It's identical to PlatformEQ.
+func Platform(v string) predicate.CreativeRun {
+	return predicate.CreativeRun(sql.FieldEQ(FieldPlatform, v))
 }
 
 // Model applies equality check predicate on the "model" field. It's identical to ModelEQ.
@@ -609,119 +609,119 @@ func APIKeyIDLTE(v int64) predicate.CreativeRun {
 	return predicate.CreativeRun(sql.FieldLTE(FieldAPIKeyID, v))
 }
 
-// AccountIDEQ applies the EQ predicate on the "account_id" field.
-func AccountIDEQ(v int64) predicate.CreativeRun {
-	return predicate.CreativeRun(sql.FieldEQ(FieldAccountID, v))
+// ProviderIDEQ applies the EQ predicate on the "provider_id" field.
+func ProviderIDEQ(v int64) predicate.CreativeRun {
+	return predicate.CreativeRun(sql.FieldEQ(FieldProviderID, v))
 }
 
-// AccountIDNEQ applies the NEQ predicate on the "account_id" field.
-func AccountIDNEQ(v int64) predicate.CreativeRun {
-	return predicate.CreativeRun(sql.FieldNEQ(FieldAccountID, v))
+// ProviderIDNEQ applies the NEQ predicate on the "provider_id" field.
+func ProviderIDNEQ(v int64) predicate.CreativeRun {
+	return predicate.CreativeRun(sql.FieldNEQ(FieldProviderID, v))
 }
 
-// AccountIDIn applies the In predicate on the "account_id" field.
-func AccountIDIn(vs ...int64) predicate.CreativeRun {
-	return predicate.CreativeRun(sql.FieldIn(FieldAccountID, vs...))
+// ProviderIDIn applies the In predicate on the "provider_id" field.
+func ProviderIDIn(vs ...int64) predicate.CreativeRun {
+	return predicate.CreativeRun(sql.FieldIn(FieldProviderID, vs...))
 }
 
-// AccountIDNotIn applies the NotIn predicate on the "account_id" field.
-func AccountIDNotIn(vs ...int64) predicate.CreativeRun {
-	return predicate.CreativeRun(sql.FieldNotIn(FieldAccountID, vs...))
+// ProviderIDNotIn applies the NotIn predicate on the "provider_id" field.
+func ProviderIDNotIn(vs ...int64) predicate.CreativeRun {
+	return predicate.CreativeRun(sql.FieldNotIn(FieldProviderID, vs...))
 }
 
-// AccountIDGT applies the GT predicate on the "account_id" field.
-func AccountIDGT(v int64) predicate.CreativeRun {
-	return predicate.CreativeRun(sql.FieldGT(FieldAccountID, v))
+// ProviderIDGT applies the GT predicate on the "provider_id" field.
+func ProviderIDGT(v int64) predicate.CreativeRun {
+	return predicate.CreativeRun(sql.FieldGT(FieldProviderID, v))
 }
 
-// AccountIDGTE applies the GTE predicate on the "account_id" field.
-func AccountIDGTE(v int64) predicate.CreativeRun {
-	return predicate.CreativeRun(sql.FieldGTE(FieldAccountID, v))
+// ProviderIDGTE applies the GTE predicate on the "provider_id" field.
+func ProviderIDGTE(v int64) predicate.CreativeRun {
+	return predicate.CreativeRun(sql.FieldGTE(FieldProviderID, v))
 }
 
-// AccountIDLT applies the LT predicate on the "account_id" field.
-func AccountIDLT(v int64) predicate.CreativeRun {
-	return predicate.CreativeRun(sql.FieldLT(FieldAccountID, v))
+// ProviderIDLT applies the LT predicate on the "provider_id" field.
+func ProviderIDLT(v int64) predicate.CreativeRun {
+	return predicate.CreativeRun(sql.FieldLT(FieldProviderID, v))
 }
 
-// AccountIDLTE applies the LTE predicate on the "account_id" field.
-func AccountIDLTE(v int64) predicate.CreativeRun {
-	return predicate.CreativeRun(sql.FieldLTE(FieldAccountID, v))
+// ProviderIDLTE applies the LTE predicate on the "provider_id" field.
+func ProviderIDLTE(v int64) predicate.CreativeRun {
+	return predicate.CreativeRun(sql.FieldLTE(FieldProviderID, v))
 }
 
-// AccountIDIsNil applies the IsNil predicate on the "account_id" field.
-func AccountIDIsNil() predicate.CreativeRun {
-	return predicate.CreativeRun(sql.FieldIsNull(FieldAccountID))
+// ProviderIDIsNil applies the IsNil predicate on the "provider_id" field.
+func ProviderIDIsNil() predicate.CreativeRun {
+	return predicate.CreativeRun(sql.FieldIsNull(FieldProviderID))
 }
 
-// AccountIDNotNil applies the NotNil predicate on the "account_id" field.
-func AccountIDNotNil() predicate.CreativeRun {
-	return predicate.CreativeRun(sql.FieldNotNull(FieldAccountID))
+// ProviderIDNotNil applies the NotNil predicate on the "provider_id" field.
+func ProviderIDNotNil() predicate.CreativeRun {
+	return predicate.CreativeRun(sql.FieldNotNull(FieldProviderID))
 }
 
-// ProviderEQ applies the EQ predicate on the "provider" field.
-func ProviderEQ(v string) predicate.CreativeRun {
-	return predicate.CreativeRun(sql.FieldEQ(FieldProvider, v))
+// PlatformEQ applies the EQ predicate on the "platform" field.
+func PlatformEQ(v string) predicate.CreativeRun {
+	return predicate.CreativeRun(sql.FieldEQ(FieldPlatform, v))
 }
 
-// ProviderNEQ applies the NEQ predicate on the "provider" field.
-func ProviderNEQ(v string) predicate.CreativeRun {
-	return predicate.CreativeRun(sql.FieldNEQ(FieldProvider, v))
+// PlatformNEQ applies the NEQ predicate on the "platform" field.
+func PlatformNEQ(v string) predicate.CreativeRun {
+	return predicate.CreativeRun(sql.FieldNEQ(FieldPlatform, v))
 }
 
-// ProviderIn applies the In predicate on the "provider" field.
-func ProviderIn(vs ...string) predicate.CreativeRun {
-	return predicate.CreativeRun(sql.FieldIn(FieldProvider, vs...))
+// PlatformIn applies the In predicate on the "platform" field.
+func PlatformIn(vs ...string) predicate.CreativeRun {
+	return predicate.CreativeRun(sql.FieldIn(FieldPlatform, vs...))
 }
 
-// ProviderNotIn applies the NotIn predicate on the "provider" field.
-func ProviderNotIn(vs ...string) predicate.CreativeRun {
-	return predicate.CreativeRun(sql.FieldNotIn(FieldProvider, vs...))
+// PlatformNotIn applies the NotIn predicate on the "platform" field.
+func PlatformNotIn(vs ...string) predicate.CreativeRun {
+	return predicate.CreativeRun(sql.FieldNotIn(FieldPlatform, vs...))
 }
 
-// ProviderGT applies the GT predicate on the "provider" field.
-func ProviderGT(v string) predicate.CreativeRun {
-	return predicate.CreativeRun(sql.FieldGT(FieldProvider, v))
+// PlatformGT applies the GT predicate on the "platform" field.
+func PlatformGT(v string) predicate.CreativeRun {
+	return predicate.CreativeRun(sql.FieldGT(FieldPlatform, v))
 }
 
-// ProviderGTE applies the GTE predicate on the "provider" field.
-func ProviderGTE(v string) predicate.CreativeRun {
-	return predicate.CreativeRun(sql.FieldGTE(FieldProvider, v))
+// PlatformGTE applies the GTE predicate on the "platform" field.
+func PlatformGTE(v string) predicate.CreativeRun {
+	return predicate.CreativeRun(sql.FieldGTE(FieldPlatform, v))
 }
 
-// ProviderLT applies the LT predicate on the "provider" field.
-func ProviderLT(v string) predicate.CreativeRun {
-	return predicate.CreativeRun(sql.FieldLT(FieldProvider, v))
+// PlatformLT applies the LT predicate on the "platform" field.
+func PlatformLT(v string) predicate.CreativeRun {
+	return predicate.CreativeRun(sql.FieldLT(FieldPlatform, v))
 }
 
-// ProviderLTE applies the LTE predicate on the "provider" field.
-func ProviderLTE(v string) predicate.CreativeRun {
-	return predicate.CreativeRun(sql.FieldLTE(FieldProvider, v))
+// PlatformLTE applies the LTE predicate on the "platform" field.
+func PlatformLTE(v string) predicate.CreativeRun {
+	return predicate.CreativeRun(sql.FieldLTE(FieldPlatform, v))
 }
 
-// ProviderContains applies the Contains predicate on the "provider" field.
-func ProviderContains(v string) predicate.CreativeRun {
-	return predicate.CreativeRun(sql.FieldContains(FieldProvider, v))
+// PlatformContains applies the Contains predicate on the "platform" field.
+func PlatformContains(v string) predicate.CreativeRun {
+	return predicate.CreativeRun(sql.FieldContains(FieldPlatform, v))
 }
 
-// ProviderHasPrefix applies the HasPrefix predicate on the "provider" field.
-func ProviderHasPrefix(v string) predicate.CreativeRun {
-	return predicate.CreativeRun(sql.FieldHasPrefix(FieldProvider, v))
+// PlatformHasPrefix applies the HasPrefix predicate on the "platform" field.
+func PlatformHasPrefix(v string) predicate.CreativeRun {
+	return predicate.CreativeRun(sql.FieldHasPrefix(FieldPlatform, v))
 }
 
-// ProviderHasSuffix applies the HasSuffix predicate on the "provider" field.
-func ProviderHasSuffix(v string) predicate.CreativeRun {
-	return predicate.CreativeRun(sql.FieldHasSuffix(FieldProvider, v))
+// PlatformHasSuffix applies the HasSuffix predicate on the "platform" field.
+func PlatformHasSuffix(v string) predicate.CreativeRun {
+	return predicate.CreativeRun(sql.FieldHasSuffix(FieldPlatform, v))
 }
 
-// ProviderEqualFold applies the EqualFold predicate on the "provider" field.
-func ProviderEqualFold(v string) predicate.CreativeRun {
-	return predicate.CreativeRun(sql.FieldEqualFold(FieldProvider, v))
+// PlatformEqualFold applies the EqualFold predicate on the "platform" field.
+func PlatformEqualFold(v string) predicate.CreativeRun {
+	return predicate.CreativeRun(sql.FieldEqualFold(FieldPlatform, v))
 }
 
-// ProviderContainsFold applies the ContainsFold predicate on the "provider" field.
-func ProviderContainsFold(v string) predicate.CreativeRun {
-	return predicate.CreativeRun(sql.FieldContainsFold(FieldProvider, v))
+// PlatformContainsFold applies the ContainsFold predicate on the "platform" field.
+func PlatformContainsFold(v string) predicate.CreativeRun {
+	return predicate.CreativeRun(sql.FieldContainsFold(FieldPlatform, v))
 }
 
 // ModelEQ applies the EQ predicate on the "model" field.

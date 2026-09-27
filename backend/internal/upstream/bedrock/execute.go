@@ -1,4 +1,4 @@
-// 本文件适配统一的单次平台执行契约；用户计费和账号切换始终由调用方拥有。
+// 本文件适配统一的单次平台执行契约；用户计费和提供商切换始终由调用方拥有。
 package bedrock
 
 import (
@@ -15,27 +15,28 @@ import (
 )
 
 type Target struct {
-	AccountID int64
-	Request   RequestOptions
-	Retry     RetryPolicy
-	Stream    StreamOptions
-	StartedAt time.Time
-	Enter     func() (func(), error)
-	Accepted  func()
-	ReadBody  func(io.Reader) ([]byte, error)
-	HTTPError func(context.Context, *http.Response) (upstream.AttemptResult, error)
+	ProviderID int64
+	Request    RequestOptions
+	Retry      RetryPolicy
+	Stream     StreamOptions
+	StartedAt  time.Time
+	Enter      func() (func(), error)
+	Accepted   func()
+	ReadBody   func(io.Reader) ([]byte, error)
+	HTTPError  func(context.Context, *http.Response) (upstream.AttemptResult, error)
 }
 
 func (t *Target) TargetID() int64 {
 	if t == nil {
 		return 0
 	}
-	return t.AccountID
+	return t.ProviderID
 }
-func (t *Target) String() string   { return fmt.Sprintf("bedrock target account=%d", t.TargetID()) }
+
+func (t *Target) String() string   { return fmt.Sprintf("bedrock target provider=%d", t.TargetID()) }
 func (t *Target) GoString() string { return t.String() }
 
-// Executor 不持有账号或运行时缓存；请求体为原调用方按本次 beta 投影准备的字节。
+// Executor 不持有提供商或运行时缓存；请求体为原调用方按本次 beta 投影准备的字节。
 type Executor struct{}
 
 func (Executor) Execute(ctx context.Context, input upstream.AttemptInput, sink upstream.OutputSink) (result upstream.AttemptResult, failure error) {

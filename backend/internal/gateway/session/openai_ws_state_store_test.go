@@ -10,47 +10,47 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestOpenAIWSStateStore_BindGetDeleteResponseAccount(t *testing.T) {
+func TestOpenAIWSStateStore_BindGetDeleteResponseProvider(t *testing.T) {
 	cache := &stubGatewayCache{}
 	store := NewOpenAIWSStateStore(cache)
 	ctx := context.Background()
 	groupID := int64(7)
 
-	require.NoError(t, store.BindResponseAccount(ctx, groupID, "resp_abc", 101, time.Minute))
+	require.NoError(t, store.BindResponseProvider(ctx, groupID, "resp_abc", 101, time.Minute))
 
-	accountID, err := store.GetResponseAccount(ctx, groupID, "resp_abc")
+	providerID, err := store.GetResponseProvider(ctx, groupID, "resp_abc")
 	require.NoError(t, err)
-	require.Equal(t, int64(101), accountID)
+	require.Equal(t, int64(101), providerID)
 
-	require.NoError(t, store.DeleteResponseAccount(ctx, groupID, "resp_abc"))
-	accountID, err = store.GetResponseAccount(ctx, groupID, "resp_abc")
+	require.NoError(t, store.DeleteResponseProvider(ctx, groupID, "resp_abc"))
+	providerID, err = store.GetResponseProvider(ctx, groupID, "resp_abc")
 	require.NoError(t, err)
-	require.Zero(t, accountID)
+	require.Zero(t, providerID)
 }
 
-func TestOpenAIWSStateStore_ResponseAccountLocalCacheIsGroupScoped(t *testing.T) {
+func TestOpenAIWSStateStore_ResponseProviderLocalCacheIsGroupScoped(t *testing.T) {
 	store := NewOpenAIWSStateStore(nil)
 	ctx := context.Background()
 
-	require.NoError(t, store.BindResponseAccount(ctx, 7, "resp_shared", 101, time.Minute))
+	require.NoError(t, store.BindResponseProvider(ctx, 7, "resp_shared", 101, time.Minute))
 
-	accountID, err := store.GetResponseAccount(ctx, 7, "resp_shared")
+	providerID, err := store.GetResponseProvider(ctx, 7, "resp_shared")
 	require.NoError(t, err)
-	require.Equal(t, int64(101), accountID)
+	require.Equal(t, int64(101), providerID)
 
-	accountID, err = store.GetResponseAccount(ctx, 8, "resp_shared")
+	providerID, err = store.GetResponseProvider(ctx, 8, "resp_shared")
 	require.NoError(t, err)
-	require.Zero(t, accountID, "本地 response 绑定必须按 group 隔离，避免跨组命中")
+	require.Zero(t, providerID, "本地 response 绑定必须按 group 隔离，避免跨组命中")
 
-	require.NoError(t, store.BindResponseAccount(ctx, 8, "resp_shared", 202, time.Minute))
-	accountID, err = store.GetResponseAccount(ctx, 8, "resp_shared")
+	require.NoError(t, store.BindResponseProvider(ctx, 8, "resp_shared", 202, time.Minute))
+	providerID, err = store.GetResponseProvider(ctx, 8, "resp_shared")
 	require.NoError(t, err)
-	require.Equal(t, int64(202), accountID)
+	require.Equal(t, int64(202), providerID)
 
-	require.NoError(t, store.DeleteResponseAccount(ctx, 7, "resp_shared"))
-	accountID, err = store.GetResponseAccount(ctx, 8, "resp_shared")
+	require.NoError(t, store.DeleteResponseProvider(ctx, 7, "resp_shared"))
+	providerID, err = store.GetResponseProvider(ctx, 8, "resp_shared")
 	require.NoError(t, err)
-	require.Equal(t, int64(202), accountID, "删除某个 group 的绑定不应影响其它 group")
+	require.Equal(t, int64(202), providerID, "删除某个 group 的绑定不应影响其它 group")
 }
 
 func TestOpenAIWSStateStore_HTTPResponseOwnerPersistsAcrossStoreInstances(t *testing.T) {
@@ -121,23 +121,23 @@ func TestOpenAIWSStateStore_SessionConnTTL(t *testing.T) {
 	require.False(t, ok)
 }
 
-func TestOpenAIWSStateStore_GetResponseAccount_NoStaleAfterCacheMiss(t *testing.T) {
+func TestOpenAIWSStateStore_GetResponseProvider_NoStaleAfterCacheMiss(t *testing.T) {
 	cache := &stubGatewayCache{sessionBindings: map[string]int64{}}
 	store := NewOpenAIWSStateStore(cache)
 	ctx := context.Background()
 	groupID := int64(17)
 	responseID := "resp_cache_stale"
-	cacheKey := openAIWSResponseAccountCacheKey(responseID)
+	cacheKey := openAIWSResponseProviderCacheKey(responseID)
 
 	cache.sessionBindings[cacheKey] = 501
-	accountID, err := store.GetResponseAccount(ctx, groupID, responseID)
+	providerID, err := store.GetResponseProvider(ctx, groupID, responseID)
 	require.NoError(t, err)
-	require.Equal(t, int64(501), accountID)
+	require.Equal(t, int64(501), providerID)
 
 	delete(cache.sessionBindings, cacheKey)
-	accountID, err = store.GetResponseAccount(ctx, groupID, responseID)
+	providerID, err = store.GetResponseProvider(ctx, groupID, responseID)
 	require.NoError(t, err)
-	require.Zero(t, accountID, "上游缓存失效后不应继续命中本地陈旧映射")
+	require.Zero(t, providerID, "上游缓存失效后不应继续命中本地陈旧映射")
 }
 
 func TestOpenAIWSStateStore_MaybeCleanupRemovesExpiredIncrementally(t *testing.T) {
@@ -211,7 +211,7 @@ type openAIWSStateStoreTimeoutProbeCache struct {
 	delDeadlineDelta  time.Duration
 }
 
-func (c *openAIWSStateStoreTimeoutProbeCache) GetSessionAccountID(ctx context.Context, _ int64, _ string) (int64, error) {
+func (c *openAIWSStateStoreTimeoutProbeCache) GetSessionProviderID(ctx context.Context, _ int64, _ string) (int64, error) {
 	if deadline, ok := ctx.Deadline(); ok {
 		c.getHasDeadline = true
 		c.getDeadlineDelta = time.Until(deadline)
@@ -219,7 +219,7 @@ func (c *openAIWSStateStoreTimeoutProbeCache) GetSessionAccountID(ctx context.Co
 	return 123, nil
 }
 
-func (c *openAIWSStateStoreTimeoutProbeCache) SetSessionAccountID(ctx context.Context, _ int64, _ string, _ int64, _ time.Duration) error {
+func (c *openAIWSStateStoreTimeoutProbeCache) SetSessionProviderID(ctx context.Context, _ int64, _ string, _ int64, _ time.Duration) error {
 	if deadline, ok := ctx.Deadline(); ok {
 		c.setHasDeadline = true
 		c.setDeadlineDelta = time.Until(deadline)
@@ -231,7 +231,7 @@ func (c *openAIWSStateStoreTimeoutProbeCache) RefreshSessionTTL(context.Context,
 	return nil
 }
 
-func (c *openAIWSStateStoreTimeoutProbeCache) DeleteSessionAccountID(ctx context.Context, _ int64, _ string) error {
+func (c *openAIWSStateStoreTimeoutProbeCache) DeleteSessionProviderID(ctx context.Context, _ int64, _ string) error {
 	if deadline, ok := ctx.Deadline(); ok {
 		c.deleteHasDeadline = true
 		c.delDeadlineDelta = time.Until(deadline)
@@ -257,18 +257,18 @@ func TestOpenAIWSStateStore_RedisOpsUseShortTimeout(t *testing.T) {
 	ctx := context.Background()
 	groupID := int64(5)
 
-	err := store.BindResponseAccount(ctx, groupID, "resp_timeout_probe", 11, time.Minute)
+	err := store.BindResponseProvider(ctx, groupID, "resp_timeout_probe", 11, time.Minute)
 	require.Error(t, err)
 
-	accountID, getErr := store.GetResponseAccount(ctx, groupID, "resp_timeout_probe")
+	providerID, getErr := store.GetResponseProvider(ctx, groupID, "resp_timeout_probe")
 	require.NoError(t, getErr)
-	require.Equal(t, int64(11), accountID, "本地缓存命中应优先返回已绑定账号")
+	require.Equal(t, int64(11), providerID, "本地缓存命中应优先返回已绑定提供商")
 
-	require.NoError(t, store.DeleteResponseAccount(ctx, groupID, "resp_timeout_probe"))
+	require.NoError(t, store.DeleteResponseProvider(ctx, groupID, "resp_timeout_probe"))
 
-	require.True(t, probe.setHasDeadline, "SetSessionAccountID 应携带独立超时上下文")
-	require.True(t, probe.deleteHasDeadline, "DeleteSessionAccountID 应携带独立超时上下文")
-	require.False(t, probe.getHasDeadline, "GetSessionAccountID 本用例应由本地缓存命中，不触发 Redis 读取")
+	require.True(t, probe.setHasDeadline, "SetSessionProviderID 应携带独立超时上下文")
+	require.True(t, probe.deleteHasDeadline, "DeleteSessionProviderID 应携带独立超时上下文")
+	require.False(t, probe.getHasDeadline, "GetSessionProviderID 本用例应由本地缓存命中，不触发 Redis 读取")
 	require.Greater(t, probe.setDeadlineDelta, 2*time.Second)
 	require.LessOrEqual(t, probe.setDeadlineDelta, 3*time.Second)
 	require.Greater(t, probe.delDeadlineDelta, 2*time.Second)
@@ -276,10 +276,10 @@ func TestOpenAIWSStateStore_RedisOpsUseShortTimeout(t *testing.T) {
 
 	probe2 := &openAIWSStateStoreTimeoutProbeCache{}
 	store2 := NewOpenAIWSStateStore(probe2)
-	accountID2, err2 := store2.GetResponseAccount(ctx, groupID, "resp_cache_only")
+	providerID2, err2 := store2.GetResponseProvider(ctx, groupID, "resp_cache_only")
 	require.NoError(t, err2)
-	require.Equal(t, int64(123), accountID2)
-	require.True(t, probe2.getHasDeadline, "GetSessionAccountID 在缓存未命中时应携带独立超时上下文")
+	require.Equal(t, int64(123), providerID2)
+	require.True(t, probe2.getHasDeadline, "GetSessionProviderID 在缓存未命中时应携带独立超时上下文")
 	require.Greater(t, probe2.getDeadlineDelta, 2*time.Second)
 	require.LessOrEqual(t, probe2.getDeadlineDelta, 3*time.Second)
 }

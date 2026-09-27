@@ -11,8 +11,8 @@ import (
 	"testing"
 	time "time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
@@ -23,27 +23,30 @@ import (
 // thinking-enabled 兜底，导致 kimi/zhipu/deepseek 平台分组的 /v1/messages 请求
 // usage_log.reasoning_effort 恒为 NULL。
 
-func nativeAnthropicTestAccount() *gatewayprovider.ExecutionAccount {
-	return &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 702,
-		Name:        "kimi-native",
-		Platform:    capability.PlatformKimi,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":      "sk-test",
-			"api_protocol": accountcore.APIProtocolAnthropic,
-			"api_base_urls": map[string]any{
-				accountcore.APIProtocolAnthropic: "http://anthropic.example",
+func nativeAnthropicTestProvider() *gatewayprovider.ExecutionProvider {
+	return &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 702,
+			Name:        "kimi-native",
+			Platform:    capability.PlatformKimi,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":      "sk-test",
+				"api_protocol": providercore.APIProtocolAnthropic,
+				"api_base_urls": map[string]any{
+					providercore.APIProtocolAnthropic: "http://anthropic.example",
+				},
 			},
-		}},
+		},
 	}
 }
 
-func nativeAnthropicGLMTestAccount() *gatewayprovider.ExecutionAccount {
-	account := nativeAnthropicTestAccount()
-	account.Record.Name = "zhipu-native"
-	account.Record.Platform = capability.PlatformZhipu
-	return account
+func nativeAnthropicGLMTestProvider() *gatewayprovider.ExecutionProvider {
+	provider := nativeAnthropicTestProvider()
+	provider.Record.Name = "zhipu-native"
+	provider.Record.Platform = capability.PlatformZhipu
+	return provider
 }
 
 func nativeAnthropicBufferedResponse() *http.Response {
@@ -86,7 +89,6 @@ data: {"type":"message_stop"}
 }
 
 func TestNativeAnthropicPassthroughRecordsOutputConfigEffort(t *testing.T) {
-
 	body := []byte(`{"model":"k3","max_tokens":32,"stream":false,` +
 		`"output_config":{"effort":"low"},` +
 		`"messages":[{"role":"user","content":"hi"}]}`)
@@ -94,7 +96,7 @@ func TestNativeAnthropicPassthroughRecordsOutputConfigEffort(t *testing.T) {
 	svc := newResponsesFixture(responsesFixtureInputs{options: protocolHTTPOptions(), transport: upstream})
 
 	result, err := svc.Text.Messages(context.Background(),
-		adaptiveProtocolTestContext("/v1/messages", body), nativeAnthropicTestAccount(), body, "", "")
+		adaptiveProtocolTestContext("/v1/messages", body), nativeAnthropicTestProvider(), body, "", "")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.NotNil(t, result.ReasoningEffort)
@@ -102,7 +104,6 @@ func TestNativeAnthropicPassthroughRecordsOutputConfigEffort(t *testing.T) {
 }
 
 func TestNativeAnthropicPassthroughThinkingEnabledFallback(t *testing.T) {
-
 	// 未显式传 effort，但 thinking 已启用：k3 属于 passback-required 白名单，应兜底记为 high。
 	body := []byte(`{"model":"k3","max_tokens":32,"stream":false,` +
 		`"thinking":{"type":"enabled","budget_tokens":1024},` +
@@ -111,7 +112,7 @@ func TestNativeAnthropicPassthroughThinkingEnabledFallback(t *testing.T) {
 	svc := newResponsesFixture(responsesFixtureInputs{options: protocolHTTPOptions(), transport: upstream})
 
 	result, err := svc.Text.Messages(context.Background(),
-		adaptiveProtocolTestContext("/v1/messages", body), nativeAnthropicTestAccount(), body, "", "")
+		adaptiveProtocolTestContext("/v1/messages", body), nativeAnthropicTestProvider(), body, "", "")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.NotNil(t, result.ReasoningEffort)
@@ -119,7 +120,6 @@ func TestNativeAnthropicPassthroughThinkingEnabledFallback(t *testing.T) {
 }
 
 func TestNativeAnthropicPassthroughStreamRecordsEffort(t *testing.T) {
-
 	body := []byte(`{"model":"k3","max_tokens":32,"stream":true,` +
 		`"output_config":{"effort":"max"},` +
 		`"messages":[{"role":"user","content":"hi"}]}`)
@@ -127,7 +127,7 @@ func TestNativeAnthropicPassthroughStreamRecordsEffort(t *testing.T) {
 	svc := newResponsesFixture(responsesFixtureInputs{options: protocolHTTPOptions(), transport: upstream})
 
 	result, err := svc.Text.Messages(context.Background(),
-		adaptiveProtocolTestContext("/v1/messages", body), nativeAnthropicTestAccount(), body, "", "")
+		adaptiveProtocolTestContext("/v1/messages", body), nativeAnthropicTestProvider(), body, "", "")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.NotNil(t, result.ReasoningEffort)
@@ -135,7 +135,6 @@ func TestNativeAnthropicPassthroughStreamRecordsEffort(t *testing.T) {
 }
 
 func TestNativeAnthropicPassthroughNoEffortStaysNil(t *testing.T) {
-
 	// 既无 output_config.effort 也未启用 thinking：保持 nil，不做语义注入。
 	body := []byte(`{"model":"k3","max_tokens":32,"stream":false,` +
 		`"messages":[{"role":"user","content":"hi"}]}`)
@@ -143,14 +142,13 @@ func TestNativeAnthropicPassthroughNoEffortStaysNil(t *testing.T) {
 	svc := newResponsesFixture(responsesFixtureInputs{options: protocolHTTPOptions(), transport: upstream})
 
 	result, err := svc.Text.Messages(context.Background(),
-		adaptiveProtocolTestContext("/v1/messages", body), nativeAnthropicTestAccount(), body, "", "")
+		adaptiveProtocolTestContext("/v1/messages", body), nativeAnthropicTestProvider(), body, "", "")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Nil(t, result.ReasoningEffort)
 }
 
 func TestNativeAnthropicPassthroughNormalizesGLM53Thinking(t *testing.T) {
-
 	tests := []struct {
 		name       string
 		stream     bool
@@ -185,7 +183,7 @@ func TestNativeAnthropicPassthroughNormalizesGLM53Thinking(t *testing.T) {
 			svc := newResponsesFixture(responsesFixtureInputs{options: protocolHTTPOptions(), transport: upstream})
 
 			_, err := svc.Text.Messages(context.Background(),
-				adaptiveProtocolTestContext("/v1/messages", body), nativeAnthropicGLMTestAccount(), body, "", "")
+				adaptiveProtocolTestContext("/v1/messages", body), nativeAnthropicGLMTestProvider(), body, "", "")
 			require.NoError(t, err)
 			require.Equal(t, "enabled", gjson.GetBytes(upstream.lastBody, "thinking.type").String())
 			require.Equal(t, tt.wantEffort, gjson.GetBytes(upstream.lastBody, "output_config.effort").String())
@@ -194,7 +192,6 @@ func TestNativeAnthropicPassthroughNormalizesGLM53Thinking(t *testing.T) {
 }
 
 func TestNativeAnthropicPassthroughLeavesOtherThinkingUntouched(t *testing.T) {
-
 	tests := []struct {
 		name string
 		body string
@@ -209,7 +206,7 @@ func TestNativeAnthropicPassthroughLeavesOtherThinkingUntouched(t *testing.T) {
 			upstream := &auxiliaryHTTPRecorder{resp: nativeAnthropicBufferedResponse()}
 			svc := newResponsesFixture(responsesFixtureInputs{options: protocolHTTPOptions(), transport: upstream})
 			_, err := svc.Text.Messages(context.Background(),
-				adaptiveProtocolTestContext("/v1/messages", body), nativeAnthropicGLMTestAccount(), body, "", "")
+				adaptiveProtocolTestContext("/v1/messages", body), nativeAnthropicGLMTestProvider(), body, "", "")
 			require.NoError(t, err)
 			require.JSONEq(t, tt.body, string(upstream.lastBody))
 		})

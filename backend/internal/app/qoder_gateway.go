@@ -12,13 +12,13 @@ import (
 
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/app/lifecycle"
 	"github.com/TokenFlux/TokenRouter/internal/gateway"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/completion"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway/errorpolicy"
@@ -35,7 +35,7 @@ import (
 )
 
 // provideQoderChat 在组合根一次绑定依赖；HTTP 入口不再组装业务回调。
-func provideQoderChat(planner *gatewayprovider.RoutePlanner, q *gatewayprovider.QoderRuntime, refresh *accountprovider.QoderRequestRefresh, c *scheduler.ConcurrencyService, b *admission.FundingAdmission, k *apikey.APIKeyService, r *errorpolicy.ErrorPassthroughService, pool *completion.UsageRecordWorkerPool, recorders GatewayCompletionRecorders, activity *qoderRequestActivity, requests *gatewayRequestActivity, choices *selection.Generic) *gatewayhttp.QoderChatHandler {
+func provideQoderChat(planner *gatewayprovider.RoutePlanner, q *gatewayprovider.QoderRuntime, refresh *provideradapter.QoderRequestRefresh, c *scheduler.ConcurrencyService, b *admission.FundingAdmission, k *apikey.APIKeyService, r *errorpolicy.ErrorPassthroughService, pool *completion.UsageRecordWorkerPool, recorders GatewayCompletionRecorders, activity *qoderRequestActivity, requests *gatewayRequestActivity, choices *selection.Generic) *gatewayhttp.QoderChatHandler {
 	runtime := &qoderRuntime{Routes: planner, Choices: choices, Qoder: q, Refresh: refresh, Billing: b, Keys: k, Completions: pool, Recorder: recorders.Forward}
 	useCase := gateway.NewQoderExecutor(3, 30*time.Second, c, runtime)
 	useCase.Enter = activity.Enter
@@ -105,8 +105,8 @@ func (o *qoderHTTPObservation) Prepared(request gateway.Request) {
 	gatewayhttp.SetOpsLatencyMs(o.c, gatewayhttp.OpsAuthLatencyMsKey, time.Since(request.Metadata.StartedAt).Milliseconds())
 }
 
-func (o *qoderHTTPObservation) Selected(snapshot account.AccountSnapshot) {
-	gatewayhttp.SetOpsSelectedAccount(o.c, snapshot.ID, snapshot.Platform)
+func (o *qoderHTTPObservation) Selected(snapshot provider.ProviderSnapshot) {
+	gatewayhttp.SetOpsSelectedProvider(o.c, snapshot.ID, snapshot.Platform)
 }
 
 func (o *qoderHTTPObservation) Waiting(string) scheduler.WaitObserver {

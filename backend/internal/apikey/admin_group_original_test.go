@@ -356,19 +356,19 @@ func (s *groupRepoStubForGroupUpdate) ExistsByName(context.Context, string) (boo
 	panic("unexpected")
 }
 
-func (s *groupRepoStubForGroupUpdate) GetAccountCount(context.Context, int64) (int64, int64, error) {
+func (s *groupRepoStubForGroupUpdate) GetProviderCount(context.Context, int64) (int64, int64, error) {
 	panic("unexpected")
 }
 
-func (s *groupRepoStubForGroupUpdate) DeleteAccountGroupsByGroupID(context.Context, int64) (int64, error) {
+func (s *groupRepoStubForGroupUpdate) DeleteProviderGroupsByGroupID(context.Context, int64) (int64, error) {
 	panic("unexpected")
 }
 
-func (s *groupRepoStubForGroupUpdate) GetAccountIDsByGroupIDs(context.Context, []int64) ([]int64, error) {
+func (s *groupRepoStubForGroupUpdate) GetProviderIDsByGroupIDs(context.Context, []int64) ([]int64, error) {
 	panic("unexpected")
 }
 
-func (s *groupRepoStubForGroupUpdate) BindAccountsToGroup(context.Context, int64, []int64) error {
+func (s *groupRepoStubForGroupUpdate) BindProvidersToGroup(context.Context, int64, []int64) error {
 	panic("unexpected")
 }
 

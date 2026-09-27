@@ -1,4 +1,4 @@
-// 本文件仅构建 Qoder 原生凭据与执行供应商交换，缓存和失效由 account 拥有。
+// 本文件仅构建 Qoder 原生凭据与执行供应商交换，缓存和失效由 provider 拥有。
 package qoder
 
 import (
@@ -67,11 +67,13 @@ func (v *CredentialInput) GetCredential(key string) string {
 	return ""
 }
 
-type PATExchanger func(context.Context, string, *MachineIdentity) (*AuthIdentity, error)
-type CNPATExchanger func(context.Context, string, *MachineIdentity) (*AuthIdentity, time.Time, error)
-type OrganizationTagsGetter func(context.Context, string, string) (*OrganizationTags, error)
+type (
+	PATExchanger           func(context.Context, string, *MachineIdentity) (*AuthIdentity, error)
+	CNPATExchanger         func(context.Context, string, *MachineIdentity) (*AuthIdentity, time.Time, error)
+	OrganizationTagsGetter func(context.Context, string, string) (*OrganizationTags, error)
+)
 
-// SessionBuilder 无缓存或后台状态，Doer 是按本次账号投影生成的传输入口。
+// SessionBuilder 无缓存或后台状态，Doer 是按本次提供商投影生成的传输入口。
 type SessionBuilder struct {
 	ExchangePAT   PATExchanger
 	ExchangeCNPAT CNPATExchanger
@@ -81,10 +83,11 @@ type SessionBuilder struct {
 
 func credentialSite(v *CredentialInput) (Site, error) {
 	if v == nil {
-		return SiteGlobal, fmt.Errorf("qoder: account is nil")
+		return SiteGlobal, fmt.Errorf("qoder: provider is nil")
 	}
 	return ParseSite(v.Site)
 }
+
 func credentialProfile(v *CredentialInput) (Profile, error) {
 	site, err := credentialSite(v)
 	if err != nil {
@@ -92,20 +95,22 @@ func credentialProfile(v *CredentialInput) (Profile, error) {
 	}
 	return ProfileForSite(site)
 }
+
 func credentialRefreshMode(v *CredentialInput) (string, error) {
 	if v == nil {
-		return "", fmt.Errorf("qoder: account is nil")
+		return "", fmt.Errorf("qoder: provider is nil")
 	}
 	return ParseRefreshMode(v.RefreshMode)
 }
-func (p *SessionBuilder) BuildSession(ctx context.Context, account *CredentialInput) (*SessionContext, time.Time, error) {
-	site, err := credentialSite(account)
+
+func (p *SessionBuilder) BuildSession(ctx context.Context, provider *CredentialInput) (*SessionContext, time.Time, error) {
+	site, err := credentialSite(provider)
 	if err != nil {
 		return nil, time.Time{}, err
 	}
-	pat := strings.TrimSpace(account.GetCredential("pat"))
+	pat := strings.TrimSpace(provider.GetCredential("pat"))
 	if pat == "" {
-		refreshMode, modeErr := credentialRefreshMode(account)
+		refreshMode, modeErr := credentialRefreshMode(provider)
 		if modeErr != nil {
 			return nil, time.Time{}, modeErr
 		}
@@ -114,19 +119,19 @@ func (p *SessionBuilder) BuildSession(ctx context.Context, account *CredentialIn
 		}
 	}
 	if pat != "" {
-		machine := MachineForCredentials(account)
+		machine := MachineForCredentials(provider)
 		var identity *AuthIdentity
 		var expiresAt time.Time
 		if site == SiteCN {
 			exchangePAT := p.ExchangeCNPAT
 			if exchangePAT == nil {
-				exchangePAT = p.defaultExchangeCNPAT(account)
+				exchangePAT = p.defaultExchangeCNPAT(provider)
 			}
 			identity, expiresAt, err = exchangePAT(ctx, pat, machine)
 		} else {
 			exchangePAT := p.ExchangePAT
 			if exchangePAT == nil {
-				exchangePAT = p.defaultExchangePAT(account)
+				exchangePAT = p.defaultExchangePAT(provider)
 			}
 			identity, err = exchangePAT(ctx, pat, machine)
 		}
@@ -134,47 +139,49 @@ func (p *SessionBuilder) BuildSession(ctx context.Context, account *CredentialIn
 			// PAT exchange 失败通常是永久错误（无效凭据），不跳过缓存
 			return nil, time.Time{}, fmt.Errorf("qoder pat exchange: %w", err)
 		}
-		ApplyIdentityMetadata(identity, account)
+		ApplyIdentityMetadata(identity, provider)
 		// populateOrganizationFromAPI 在 session 创建前调用，避免缓存后并发修改 identity
 		if site == SiteGlobal {
-			p.populateOrganizationFromAPI(ctx, account, identity)
+			p.populateOrganizationFromAPI(ctx, provider, identity)
 		}
 		session, sessionErr := NewSessionForSite(identity, machine, site)
 		return session, expiresAt, sessionErr
 	}
 
-	token := strings.TrimSpace(account.GetCredential("security_oauth_token"))
-	machineID := strings.TrimSpace(account.GetCredential("machine_id"))
+	token := strings.TrimSpace(provider.GetCredential("security_oauth_token"))
+	machineID := strings.TrimSpace(provider.GetCredential("machine_id"))
 	if token != "" {
 		if machineID == "" {
 			return nil, time.Time{}, errors.New("qoder credentials require machine_id with security_oauth_token")
 		}
-		if FirstNonEmptyQoder(account.GetCredential("uid"), account.GetCredential("aid")) == "" {
+		if FirstNonEmptyQoder(provider.GetCredential("uid"), provider.GetCredential("aid")) == "" {
 			return nil, time.Time{}, errors.New("qoder credentials require uid or aid with security_oauth_token")
 		}
 		identity := &AuthIdentity{
-			Name:               FirstNonEmptyQoder(account.GetCredential("name"), account.Name),
-			AID:                FirstNonEmptyQoder(account.GetCredential("aid"), account.GetCredential("uid")),
-			UID:                FirstNonEmptyQoder(account.GetCredential("uid"), account.GetCredential("aid")),
-			UserType:           FirstNonEmptyQoder(account.GetCredential("user_type"), "personal_standard"),
+			Name:               FirstNonEmptyQoder(provider.GetCredential("name"), provider.Name),
+			AID:                FirstNonEmptyQoder(provider.GetCredential("aid"), provider.GetCredential("uid")),
+			UID:                FirstNonEmptyQoder(provider.GetCredential("uid"), provider.GetCredential("aid")),
+			UserType:           FirstNonEmptyQoder(provider.GetCredential("user_type"), "personal_standard"),
 			SecurityOauthToken: token,
-			RefreshToken:       account.GetCredential("refresh_token"),
+			RefreshToken:       provider.GetCredential("refresh_token"),
 		}
-		ApplyIdentityMetadata(identity, account)
-		p.populateOrganizationFromAPI(ctx, account, identity)
-		machine := MachineForCredentials(account)
+		ApplyIdentityMetadata(identity, provider)
+		p.populateOrganizationFromAPI(ctx, provider, identity)
+		machine := MachineForCredentials(provider)
 		session, sessionErr := NewSessionForSite(identity, machine, site)
 		return session, time.Time{}, sessionErr
 	}
 
 	return nil, time.Time{}, errors.New("qoder credentials require pat or security_oauth_token+machine_id")
 }
-func (p *SessionBuilder) defaultExchangePAT(account *CredentialInput) PATExchanger {
+
+func (p *SessionBuilder) defaultExchangePAT(provider *CredentialInput) PATExchanger {
 	return func(ctx context.Context, pat string, machine *MachineIdentity) (*AuthIdentity, error) {
 		return ExchangePATContext(ctx, pat, machine, "", p.Doer)
 	}
 }
-func (p *SessionBuilder) defaultExchangeCNPAT(account *CredentialInput) CNPATExchanger {
+
+func (p *SessionBuilder) defaultExchangeCNPAT(provider *CredentialInput) CNPATExchanger {
 	return func(ctx context.Context, pat string, machine *MachineIdentity) (*AuthIdentity, time.Time, error) {
 		profile, err := ProfileForSite(SiteCN)
 		if err != nil {
@@ -183,7 +190,8 @@ func (p *SessionBuilder) defaultExchangeCNPAT(account *CredentialInput) CNPATExc
 		return ExchangeQoderCN20PATContext(ctx, pat, machine, profile, p.Doer)
 	}
 }
-func (p *SessionBuilder) populateOrganizationFromAPI(ctx context.Context, account *CredentialInput, identity *AuthIdentity) {
+
+func (p *SessionBuilder) populateOrganizationFromAPI(ctx context.Context, provider *CredentialInput, identity *AuthIdentity) {
 	if p == nil || identity == nil {
 		return
 	}
@@ -203,7 +211,7 @@ func (p *SessionBuilder) populateOrganizationFromAPI(ctx context.Context, accoun
 	if p.GetOrgTags != nil {
 		tags, err = p.GetOrgTags(ctx, token, uid)
 	} else {
-		tags, err = p.GetOrganizationTags(ctx, account, token, uid)
+		tags, err = p.GetOrganizationTags(ctx, provider, token, uid)
 	}
 	if err != nil || tags == nil {
 		return
@@ -211,12 +219,13 @@ func (p *SessionBuilder) populateOrganizationFromAPI(ctx context.Context, accoun
 	identity.OrganizationID = strings.TrimSpace(tags.OrganizationID)
 	identity.OrganizationName = strings.TrimSpace(tags.OrganizationName)
 }
-func (p *SessionBuilder) GetOrganizationTags(ctx context.Context, account *CredentialInput, token, uid string) (*OrganizationTags, error) {
+
+func (p *SessionBuilder) GetOrganizationTags(ctx context.Context, provider *CredentialInput, token, uid string) (*OrganizationTags, error) {
 	uid = strings.TrimSpace(uid)
 	if uid == "" {
 		return nil, fmt.Errorf("qoder: organization tags require uid")
 	}
-	profile, err := credentialProfile(account)
+	profile, err := credentialProfile(provider)
 	if err != nil {
 		return nil, err
 	}
@@ -248,31 +257,32 @@ func (p *SessionBuilder) GetOrganizationTags(ctx context.Context, account *Crede
 	}
 	return NewOAuthClientForProfile(profile, nil).GetOrganizationTags(ctx, token, uid)
 }
-func ApplyIdentityMetadata(identity *AuthIdentity, account *CredentialInput) {
-	if identity == nil || account == nil {
+
+func ApplyIdentityMetadata(identity *AuthIdentity, provider *CredentialInput) {
+	if identity == nil || provider == nil {
 		return
 	}
 	if strings.TrimSpace(identity.Name) == "" {
-		identity.Name = FirstNonEmptyQoder(account.GetCredential("name"), account.Name)
+		identity.Name = FirstNonEmptyQoder(provider.GetCredential("name"), provider.Name)
 	}
 	if strings.TrimSpace(identity.OrganizationID) == "" {
-		identity.OrganizationID = account.GetCredential("organization_id")
+		identity.OrganizationID = provider.GetCredential("organization_id")
 	}
 	if strings.TrimSpace(identity.OrganizationName) == "" {
-		identity.OrganizationName = account.GetCredential("organization_name")
+		identity.OrganizationName = provider.GetCredential("organization_name")
 	}
 }
 
-// MachineForCredentials 读取持久化机器身份，并对旧账号使用兼容回退值。
-func MachineForCredentials(account *CredentialInput) *MachineIdentity {
-	if account == nil {
+// MachineForCredentials 读取持久化机器身份，并对旧提供商使用兼容回退值。
+func MachineForCredentials(provider *CredentialInput) *MachineIdentity {
+	if provider == nil {
 		return NewMachine()
 	}
-	site, err := credentialSite(account)
+	site, err := credentialSite(provider)
 	if err != nil {
 		site = SiteGlobal
 	}
-	machineID := strings.TrimSpace(account.GetCredential("machine_id"))
+	machineID := strings.TrimSpace(provider.GetCredential("machine_id"))
 	if machineID == "" {
 		machineID = NewMachineForSite(site).MachineID
 	}
@@ -282,7 +292,7 @@ func MachineForCredentials(account *CredentialInput) *MachineIdentity {
 	}
 	return &MachineIdentity{
 		MachineID:    machineID,
-		MachineToken: FirstNonEmptyQoder(account.GetCredential("machine_token"), machineID),
-		MachineType:  FirstNonEmptyQoder(account.GetCredential("machine_type"), "5"),
+		MachineToken: FirstNonEmptyQoder(provider.GetCredential("machine_token"), machineID),
+		MachineType:  FirstNonEmptyQoder(provider.GetCredential("machine_type"), "5"),
 	}
 }

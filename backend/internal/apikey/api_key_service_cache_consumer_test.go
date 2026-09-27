@@ -220,20 +220,20 @@ func (s *authGroupRepoStub) ExistsByName(ctx context.Context, name string) (bool
 	panic("unexpected ExistsByName call")
 }
 
-func (s *authGroupRepoStub) GetAccountCount(ctx context.Context, groupID int64) (int64, int64, error) {
-	panic("unexpected GetAccountCount call")
+func (s *authGroupRepoStub) GetProviderCount(ctx context.Context, groupID int64) (int64, int64, error) {
+	panic("unexpected GetProviderCount call")
 }
 
-func (s *authGroupRepoStub) DeleteAccountGroupsByGroupID(ctx context.Context, groupID int64) (int64, error) {
-	panic("unexpected DeleteAccountGroupsByGroupID call")
+func (s *authGroupRepoStub) DeleteProviderGroupsByGroupID(ctx context.Context, groupID int64) (int64, error) {
+	panic("unexpected DeleteProviderGroupsByGroupID call")
 }
 
-func (s *authGroupRepoStub) GetAccountIDsByGroupIDs(ctx context.Context, groupIDs []int64) ([]int64, error) {
-	panic("unexpected GetAccountIDsByGroupIDs call")
+func (s *authGroupRepoStub) GetProviderIDsByGroupIDs(ctx context.Context, groupIDs []int64) ([]int64, error) {
+	panic("unexpected GetProviderIDsByGroupIDs call")
 }
 
-func (s *authGroupRepoStub) BindAccountsToGroup(ctx context.Context, groupID int64, accountIDs []int64) error {
-	panic("unexpected BindAccountsToGroup call")
+func (s *authGroupRepoStub) BindProvidersToGroup(ctx context.Context, groupID int64, providerIDs []int64) error {
+	panic("unexpected BindProvidersToGroup call")
 }
 
 func (s *authGroupRepoStub) UpdateSortOrders(ctx context.Context, updates []routing.GroupSortOrderUpdate) error {

@@ -6,10 +6,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
 	gatewaytestkit "github.com/TokenFlux/TokenRouter/internal/gateway/testkit"
 	protocolcore "github.com/TokenFlux/TokenRouter/internal/protocol"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/qoder"
 	"github.com/gin-gonic/gin"
@@ -130,23 +130,23 @@ func TestQoderThinkingFlowsThroughAllEndpoints(t *testing.T) {
 			recorder := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(recorder)
 			credentials := map[string]any{"site": string(tt.site)}
-			account := &accountcore.Record{
+			provider := &providercore.Record{
 				ID:          int64(920 + index),
 				Name:        "qoder-" + string(tt.site),
 				Platform:    capability.PlatformQoder,
-				Type:        capability.AccountTypeCosy,
+				Type:        capability.ProviderTypeCosy,
 				Credentials: credentials,
 			}
 			client := &gatewaytestkit.QoderClient{
 				Body: "data: {\"body\":\"{\\\"choices\\\":[{\\\"delta\\\":{\\\"content\\\":\\\"OK\\\"}}]}\"}\n\n" +
 					"data: {\"body\":\"[DONE]\"}\n\n",
 			}
-			service := gatewaytestkit.NewQoderFixture(accountprovider.NewQoderTokenProvider(qoder.SessionBuilder{}),
+			service := gatewaytestkit.NewQoderFixture(provideradapter.NewQoderTokenProvider(qoder.SessionBuilder{}),
 				client, nil)
 
-			service.Tokens.Core.Sessions = map[int64]accountcore.QoderSessionCacheEntry[*qoder.SessionContext]{
-				account.ID: {
-					CredentialsHash: accountcore.QoderCredentialsHash(account.Credentials),
+			service.Tokens.Core.Sessions = map[int64]providercore.QoderSessionCacheEntry[*qoder.SessionContext]{
+				provider.ID: {
+					CredentialsHash: providercore.QoderCredentialsHash(provider.Credentials),
 					Session:         &qoder.SessionContext{Identity: &qoder.AuthIdentity{SecurityOauthToken: "token"}},
 				},
 			}
@@ -154,11 +154,11 @@ func TestQoderThinkingFlowsThroughAllEndpoints(t *testing.T) {
 			var err error
 			switch tt.endpoint {
 			case "chat":
-				_, err = ForwardQoderAttempt(context.Background(), c, service.Runtime, account, []byte(tt.body), protocolcore.ProtocolOpenAIChatCompletions)
+				_, err = ForwardQoderAttempt(context.Background(), c, service.Runtime, provider, []byte(tt.body), protocolcore.ProtocolOpenAIChatCompletions)
 			case "responses":
-				_, err = ForwardQoderAttempt(context.Background(), c, service.Runtime, account, []byte(tt.body), protocolcore.ProtocolOpenAIResponses)
+				_, err = ForwardQoderAttempt(context.Background(), c, service.Runtime, provider, []byte(tt.body), protocolcore.ProtocolOpenAIResponses)
 			case "messages":
-				_, err = ForwardQoderAttempt(context.Background(), c, service.Runtime, account, []byte(tt.body), protocolcore.ProtocolAnthropicMessages)
+				_, err = ForwardQoderAttempt(context.Background(), c, service.Runtime, provider, []byte(tt.body), protocolcore.ProtocolAnthropicMessages)
 			default:
 				t.Fatalf("unexpected endpoint %q", tt.endpoint)
 			}
@@ -169,15 +169,14 @@ func TestQoderThinkingFlowsThroughAllEndpoints(t *testing.T) {
 	}
 }
 
-func TestQoderThinkingUsesAccountMappedRouteKey(t *testing.T) {
-
+func TestQoderThinkingUsesProviderMappedRouteKey(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
-	account := &accountcore.Record{
+	provider := &providercore.Record{
 		ID:       901,
 		Name:     "qoder-global",
 		Platform: capability.PlatformQoder,
-		Type:     capability.AccountTypeCosy,
+		Type:     capability.ProviderTypeCosy,
 		Credentials: map[string]any{
 			"site": "global",
 			"model_mapping": map[string]any{
@@ -189,12 +188,12 @@ func TestQoderThinkingUsesAccountMappedRouteKey(t *testing.T) {
 		Body: "data: {\"body\":\"{\\\"choices\\\":[{\\\"delta\\\":{\\\"content\\\":\\\"OK\\\"}}]}\"}\n\n" +
 			"data: {\"body\":\"[DONE]\"}\n\n",
 	}
-	service := gatewaytestkit.NewQoderFixture(accountprovider.NewQoderTokenProvider(qoder.SessionBuilder{}),
+	service := gatewaytestkit.NewQoderFixture(provideradapter.NewQoderTokenProvider(qoder.SessionBuilder{}),
 		client, nil)
 
-	service.Tokens.Core.Sessions = map[int64]accountcore.QoderSessionCacheEntry[*qoder.SessionContext]{
-		account.ID: {
-			CredentialsHash: accountcore.QoderCredentialsHash(account.Credentials),
+	service.Tokens.Core.Sessions = map[int64]providercore.QoderSessionCacheEntry[*qoder.SessionContext]{
+		provider.ID: {
+			CredentialsHash: providercore.QoderCredentialsHash(provider.Credentials),
 			Session:         &qoder.SessionContext{Identity: &qoder.AuthIdentity{SecurityOauthToken: "token"}},
 		},
 	}
@@ -205,7 +204,7 @@ func TestQoderThinkingUsesAccountMappedRouteKey(t *testing.T) {
 		"stream":true
 	}`)
 
-	result, err := ForwardQoderAttempt(context.Background(), c, service.Runtime, account, body, protocolcore.ProtocolOpenAIChatCompletions)
+	result, err := ForwardQoderAttempt(context.Background(), c, service.Runtime, provider, body, protocolcore.ProtocolOpenAIChatCompletions)
 	require.NoError(t, err)
 	require.Equal(t, "qmodel_38max", result.UpstreamModel)
 	payload := qoderLastUpstreamPayloadForTest(t, client)

@@ -15,15 +15,15 @@ type GeminiSelectionPorts struct {
 	Resolve     func(context.Context, *int64) (string, bool, bool, *FlowGroup, error)
 	WithGroup   func(context.Context, *FlowGroup) context.Context
 	Effective   func(context.Context, *int64) policy.EffectiveSettings
-	Sticky      func(context.Context, *int64, string, string, string, map[int64]struct{}, string, bool) *FlowAccount
-	List        func(context.Context, *int64, string, bool) ([]FlowAccount, error)
-	Eligible    func(context.Context, []FlowAccount, string, map[int64]struct{}, string, bool) []*FlowAccount
-	Advanced    func(context.Context, *int64, string, string, []*FlowAccount, policy.EffectiveSettings) *FlowAccount
-	Unsupported func(context.Context, []FlowAccount, string, string, map[int64]struct{}, bool) error
-	Hydrate     func(context.Context, *FlowAccount) (*FlowAccount, error)
+	Sticky      func(context.Context, *int64, string, string, string, map[int64]struct{}, string, bool) *FlowProvider
+	List        func(context.Context, *int64, string, bool) ([]FlowProvider, error)
+	Eligible    func(context.Context, []FlowProvider, string, map[int64]struct{}, string, bool) []*FlowProvider
+	Advanced    func(context.Context, *int64, string, string, []*FlowProvider, policy.EffectiveSettings) *FlowProvider
+	Unsupported func(context.Context, []FlowProvider, string, string, map[int64]struct{}, bool) error
+	Hydrate     func(context.Context, *FlowProvider) (*FlowProvider, error)
 }
 
-// GeminiSelector 只在已准入组内选择账号，强制平台只收窄候选，不取得请求槽。
+// GeminiSelector 只在已准入组内选择提供商，强制平台只收窄候选，不取得请求槽。
 type GeminiSelector struct {
 	ports GeminiSelectionPorts
 	cache StickyCache
@@ -33,7 +33,7 @@ func NewGeminiSelector(ports GeminiSelectionPorts, cache StickyCache) *GeminiSel
 	return &GeminiSelector{ports: ports, cache: cache}
 }
 
-func (s *GeminiSelector) SelectOnly(ctx context.Context, input SelectionInput) (*FlowAccount, error) {
+func (s *GeminiSelector) SelectOnly(ctx context.Context, input SelectionInput) (*FlowProvider, error) {
 	platform, mixed, forced, group, err := s.ports.Resolve(ctx, input.GroupID)
 	if err != nil {
 		return nil, err
@@ -51,10 +51,10 @@ func (s *GeminiSelector) SelectOnly(ctx context.Context, input SelectionInput) (
 	}
 	values, err := s.ports.List(ctx, input.GroupID, platform, forced)
 	if err != nil {
-		return nil, fmt.Errorf("query accounts failed: %w", err)
+		return nil, fmt.Errorf("query providers failed: %w", err)
 	}
 	eligible := s.ports.Eligible(ctx, values, input.RequestedModel, input.ExcludedIDs, platform, mixed)
-	var selected *FlowAccount
+	var selected *FlowProvider
 	if advanced {
 		selected = s.ports.Advanced(ctx, input.GroupID, input.SessionHash, cacheKey, eligible, settings)
 	} else {
@@ -65,23 +65,23 @@ func (s *GeminiSelector) SelectOnly(ctx context.Context, input SelectionInput) (
 			return nil, err
 		}
 		if input.RequestedModel != "" {
-			return nil, fmt.Errorf("no available Gemini accounts supporting model: %s", input.RequestedModel)
+			return nil, fmt.Errorf("no available Gemini providers supporting model: %s", input.RequestedModel)
 		}
-		return nil, errors.New("no available Gemini accounts")
+		return nil, errors.New("no available Gemini providers")
 	}
 	if input.SessionHash != "" {
 		var groupID int64
 		if input.GroupID != nil {
 			groupID = *input.GroupID
 		}
-		_ = s.cache.SetSessionAccountID(ctx, groupID, cacheKey, selected.ID, time.Hour)
+		_ = s.cache.SetSessionProviderID(ctx, groupID, cacheKey, selected.ID, time.Hour)
 	}
 	return s.ports.Hydrate(ctx, selected)
 }
 
 // BestGeminiCandidate 保留原遍历顺序和优先级/未使用/OAuth/LRU 决胜规则。
-func BestGeminiCandidate(values []*FlowAccount) *FlowAccount {
-	var selected *FlowAccount
+func BestGeminiCandidate(values []*FlowProvider) *FlowProvider {
+	var selected *FlowProvider
 	for _, value := range values {
 		if value != nil && (selected == nil || BetterGeminiCandidate(value, selected)) {
 			selected = value
@@ -90,7 +90,7 @@ func BestGeminiCandidate(values []*FlowAccount) *FlowAccount {
 	return selected
 }
 
-func BetterGeminiCandidate(candidate, current *FlowAccount) bool {
+func BetterGeminiCandidate(candidate, current *FlowProvider) bool {
 	if candidate.Priority < current.Priority {
 		return true
 	}
@@ -103,7 +103,7 @@ func BetterGeminiCandidate(candidate, current *FlowAccount) bool {
 	case candidate.LastUsedAt != nil && current.LastUsedAt == nil:
 		return false
 	case candidate.LastUsedAt == nil && current.LastUsedAt == nil:
-		return candidate.Type == capability.AccountTypeOAuth && current.Type != capability.AccountTypeOAuth
+		return candidate.Type == capability.ProviderTypeOAuth && current.Type != capability.ProviderTypeOAuth
 	default:
 		return candidate.LastUsedAt.Before(*current.LastUsedAt)
 	}

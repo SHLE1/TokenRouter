@@ -8,7 +8,7 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"github.com/stretchr/testify/require"
 )
@@ -25,13 +25,13 @@ func (s *grokMediaEligibilityProberStub) ProbeMediaEligibility(context.Context, 
 	return s.eligible, s.reason, s.err
 }
 
-func TestEnsureGrokMediaAccountEligibility(t *testing.T) {
-	t.Run("non oauth account does not probe", func(t *testing.T) {
+func TestEnsureGrokMediaProviderEligibility(t *testing.T) {
+	t.Run("non oauth provider does not probe", func(t *testing.T) {
 		prober := &grokMediaEligibilityProberStub{}
 
-		account := &ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformGrok, Type: capability.AccountTypeAPIKey}}
+		provider := &ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformGrok, Type: capability.ProviderTypeAPIKey}}
 
-		eligible, reason, err := CheckGrokMediaEligibility(context.Background(), account, prober)
+		eligible, reason, err := CheckGrokMediaEligibility(context.Background(), provider, prober)
 
 		require.NoError(t, err)
 		require.True(t, eligible)
@@ -42,9 +42,9 @@ func TestEnsureGrokMediaAccountEligibility(t *testing.T) {
 	t.Run("unobserved oauth is probed before forwarding", func(t *testing.T) {
 		prober := &grokMediaEligibilityProberStub{eligible: true, reason: "eligible"}
 
-		account := &ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 7, Platform: capability.PlatformGrok, Type: capability.AccountTypeOAuth}}
+		provider := &ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 7, Platform: capability.PlatformGrok, Type: capability.ProviderTypeOAuth}}
 
-		eligible, reason, err := CheckGrokMediaEligibility(context.Background(), account, prober)
+		eligible, reason, err := CheckGrokMediaEligibility(context.Background(), provider, prober)
 
 		require.NoError(t, err)
 		require.True(t, eligible)
@@ -54,9 +54,9 @@ func TestEnsureGrokMediaAccountEligibility(t *testing.T) {
 
 	t.Run("missing prober fails closed", func(t *testing.T) {
 		var prober GrokMediaEligibilityProber
-		account := &ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 8, Platform: capability.PlatformGrok, Type: capability.AccountTypeOAuth}}
+		provider := &ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 8, Platform: capability.PlatformGrok, Type: capability.ProviderTypeOAuth}}
 
-		eligible, reason, err := CheckGrokMediaEligibility(context.Background(), account, prober)
+		eligible, reason, err := CheckGrokMediaEligibility(context.Background(), provider, prober)
 
 		require.Error(t, err)
 		require.False(t, eligible)
@@ -67,9 +67,9 @@ func TestEnsureGrokMediaAccountEligibility(t *testing.T) {
 		probeErr := errors.New("probe failed")
 		prober := &grokMediaEligibilityProberStub{reason: "billing_unobserved", err: probeErr}
 
-		account := &ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 9, Platform: capability.PlatformGrok, Type: capability.AccountTypeOAuth}}
+		provider := &ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 9, Platform: capability.PlatformGrok, Type: capability.ProviderTypeOAuth}}
 
-		eligible, reason, err := CheckGrokMediaEligibility(context.Background(), account, prober)
+		eligible, reason, err := CheckGrokMediaEligibility(context.Background(), provider, prober)
 
 		require.ErrorIs(t, err, probeErr)
 		require.False(t, eligible)

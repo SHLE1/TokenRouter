@@ -67,11 +67,11 @@ func entrySucceeded(r *ForwardResult) bool {
 	return r.UpstreamTerminalEvent == "response.completed" || r.UpstreamTerminalEvent == "response.done"
 }
 
-// ErrEntryLocalRoutingRejected 只标记本地账号资格拒绝，不把它记作上游故障。
+// ErrEntryLocalRoutingRejected 只标记本地提供商资格拒绝，不把它记作上游故障。
 var ErrEntryLocalRoutingRejected = errors.New("local websocket routing rejected")
 
 func EntryLocalRoutingReason(model string) string {
-	return fmt.Sprintf("model %s is not available for this websocket group or account", strings.TrimSpace(model))
+	return fmt.Sprintf("model %s is not available for this websocket group or provider", strings.TrimSpace(model))
 }
 
 func EntryLocalRoutingCause(err error) error {

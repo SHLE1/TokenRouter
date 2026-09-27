@@ -36,11 +36,11 @@ func (c *sessionIsolationCacheStub) ownerTTL(userID int64, source, sessionHash s
 	return c.ownerTTLs[c.ownerKey(userID, source, sessionHash)]
 }
 
-func (c *sessionIsolationCacheStub) GetSessionAccountID(context.Context, int64, string) (int64, error) {
+func (c *sessionIsolationCacheStub) GetSessionProviderID(context.Context, int64, string) (int64, error) {
 	return 0, errors.New("not found")
 }
 
-func (c *sessionIsolationCacheStub) SetSessionAccountID(context.Context, int64, string, int64, time.Duration) error {
+func (c *sessionIsolationCacheStub) SetSessionProviderID(context.Context, int64, string, int64, time.Duration) error {
 	return nil
 }
 
@@ -48,7 +48,7 @@ func (c *sessionIsolationCacheStub) RefreshSessionTTL(context.Context, int64, st
 	return nil
 }
 
-func (c *sessionIsolationCacheStub) DeleteSessionAccountID(context.Context, int64, string) error {
+func (c *sessionIsolationCacheStub) DeleteSessionProviderID(context.Context, int64, string) error {
 	return nil
 }
 

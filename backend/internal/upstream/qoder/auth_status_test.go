@@ -86,7 +86,7 @@ func TestRefreshCosySessionForProfileUsesGatewayRefreshPath(t *testing.T) {
 
 		inner, err := json.Marshal(AuthStatusResult{
 			ID:                 "uid-1",
-			AccountID:          "aid-1",
+			ProviderID:         "aid-1",
 			OrganizationID:     "org-1",
 			SecurityOauthToken: "new-token",
 			RefreshToken:       "new-refresh",

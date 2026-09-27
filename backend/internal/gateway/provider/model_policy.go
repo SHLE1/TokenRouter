@@ -4,12 +4,12 @@ import (
 	"context"
 	"strings"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/media"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/modeltrace"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/antigravity"
@@ -19,15 +19,15 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/vertex"
 )
 
-// ModelPolicy 只组合账号的模型配置与当次不可变路线，不持有查询、缓存或执行资源。
-// Route 独立于 Record，不能进入持久化账号或调度快照。
+// ModelPolicy 只组合提供商的模型配置与当次不可变路线，不持有查询、缓存或执行资源。
+// Route 独立于 Record，不能进入持久化提供商或调度快照。
 type ModelPolicy struct {
-	Record *account.Record
+	Record *provider.Record
 	Route  requeststate.AttemptRoute
 }
 
-func (p ModelPolicy) protocolTarget() account.ProtocolTarget {
-	return account.ProtocolTarget{Record: p.Record, Protocol: p.Route.Protocol()}
+func (p ModelPolicy) protocolTarget() provider.ProtocolTarget {
+	return provider.ProtocolTarget{Record: p.Record, Protocol: p.Route.Protocol()}
 }
 
 // Mapped 保留原调用点读取模型配置以及一跳映射。
@@ -39,9 +39,9 @@ func (p ModelPolicy) Mapped(model string) string {
 	return mapped
 }
 
-// ResolveMapped 保留单步映射命中信息，并在当次尝试的匹配时点读取账号配置。
+// ResolveMapped 保留单步映射命中信息，并在当次尝试的匹配时点读取提供商配置。
 func (p ModelPolicy) ResolveMapped(model string) (string, bool) {
-	return p.Route.ResolveModel(p.Record.ID, p.Record.Platform, account.ResolveModelMapping(p.Record, accountprovider.ModelDefaults()), model)
+	return p.Route.ResolveModel(p.Record.ID, p.Record.Platform, provider.ResolveModelMapping(p.Record, provideradapter.ModelDefaults()), model)
 }
 
 func (p ModelPolicy) ForwardModel(requested, dispatchMapped string) string {
@@ -70,20 +70,20 @@ func (p ModelPolicy) RawChat() bool {
 	if p.Record != nil && p.Route.Protocol() != "" {
 		return p.Route.Protocol() == protocol.ProtocolOpenAIChatCompletions
 	}
-	if p.Record == nil || p.Record.Type != capability.AccountTypeAPIKey {
+	if p.Record == nil || p.Record.Type != capability.ProviderTypeAPIKey {
 		return false
 	}
 	if p.Record.IsCNProvider() {
 		switch p.protocolTarget().GetAPIProtocol() {
-		case account.APIProtocolChatCompletions:
+		case provider.APIProtocolChatCompletions:
 			return true
-		case account.APIProtocolAdaptive:
+		case provider.APIProtocolAdaptive:
 			return !p.Record.SupportsNativeCNResponses()
 		default:
 			return false
 		}
 	}
-	return account.ResolveUpstreamTextProtocol(p.Record.Extra, account.TextProtocolResponses) == account.TextProtocolChatCompletions
+	return provider.ResolveUpstreamTextProtocol(p.Record.Extra, provider.TextProtocolResponses) == provider.TextProtocolChatCompletions
 }
 
 // OpenAIUpstream 按压缩规则与普通单跳映射解析模型，透传只影响传输方式。
@@ -107,7 +107,7 @@ func (p ModelPolicy) OpenAIUpstream(requested string, compact, _ bool) string {
 		return ""
 	}
 	if compact {
-		compactModel := strings.TrimSpace(account.ResolveCompactForwardModel(p.Record, model))
+		compactModel := strings.TrimSpace(provider.ResolveCompactForwardModel(p.Record, model))
 		if compactModel != "" && compactModel != model {
 			return compactModel
 		}
@@ -143,7 +143,7 @@ func (p ModelPolicy) Bedrock(model string) (string, bool) {
 	return bedrock.ResolveBedrockModelID(p.bedrockInput(model), model)
 }
 
-// BedrockRoute 复用账号单步映射和平台区域规则，不改变资格或来源区域。
+// BedrockRoute 复用提供商单步映射和平台区域规则，不改变资格或来源区域。
 func (p ModelPolicy) BedrockRoute(model string) (bedrock.BedrockModelRoute, error) {
 	return bedrock.ResolveBedrockModelRoute(p.bedrockInput(model), model)
 }
@@ -153,11 +153,11 @@ func (p ModelPolicy) AnthropicUpstream(mapped string) string {
 		return ""
 	}
 	mapped = strings.TrimSpace(mapped)
-	if mapped == "" || p.Record.Platform != capability.PlatformAnthropic || p.Record.Type == capability.AccountTypeAPIKey || p.Record.IsBedrock() {
+	if mapped == "" || p.Record.Platform != capability.PlatformAnthropic || p.Record.Type == capability.ProviderTypeAPIKey || p.Record.IsBedrock() {
 		return mapped
 	}
 	normalized := anthropic.NormalizeModelID(mapped)
-	if p.Record.Type == capability.AccountTypeServiceAccount {
+	if p.Record.Type == capability.ProviderTypeServiceAccount {
 		return vertex.NormalizeVertexAnthropicModelID(normalized)
 	}
 	return normalized
@@ -180,23 +180,23 @@ func (p ModelPolicy) Supports(ctx context.Context, model string) bool {
 		if strings.TrimSpace(model) == "" {
 			return true
 		}
-		return accountprovider.FinalAntigravityModel(value, model, modelThinking(ctx)) != ""
+		return provideradapter.FinalAntigravityModel(value, model, modelThinking(ctx)) != ""
 	}
 	if value.IsBedrock() {
-		if !value.IsModelSupported(model, accountprovider.ModelDefaults(), accountprovider.ModelRules(value)) {
+		if !value.IsModelSupported(model, provideradapter.ModelDefaults(), provideradapter.ModelRules(value)) {
 			return false
 		}
 		_, ok := p.Bedrock(model)
 		return ok
 	}
-	if value.Platform == capability.PlatformAnthropic && value.Type != capability.AccountTypeAPIKey {
-		mapped := account.ResolveForwardMappedModel(value, model, accountprovider.ModelDefaults())
-		return value.FinalModelWhitelisted(p.AnthropicUpstream(mapped), accountprovider.ModelDefaults(), accountprovider.ModelRules(value))
+	if value.Platform == capability.PlatformAnthropic && value.Type != capability.ProviderTypeAPIKey {
+		mapped := provider.ResolveForwardMappedModel(value, model, provideradapter.ModelDefaults())
+		return value.FinalModelWhitelisted(p.AnthropicUpstream(mapped), provideradapter.ModelDefaults(), provideradapter.ModelRules(value))
 	}
-	rules := accountprovider.ModelRules(value)
+	rules := provideradapter.ModelRules(value)
 	// OAuth 目录资格与实际转发共用已知别名规则，避免推理后缀在选号时被误拒绝。
 	rules.NormalizeOpenAI = NormalizeCodexModel
-	return value.IsModelSupported(model, accountprovider.ModelDefaults(), rules)
+	return value.IsModelSupported(model, provideradapter.ModelDefaults(), rules)
 }
 
 // UpstreamModel 保留最终模型登记时点；目录和执行共用平台规则。
@@ -213,11 +213,11 @@ func (p ModelPolicy) UpstreamModel(ctx context.Context, requested string) string
 		}
 		model = mapped
 	} else if value.Platform == capability.PlatformAntigravity {
-		model = accountprovider.FinalAntigravityModel(value, requested, modelThinking(ctx))
+		model = provideradapter.FinalAntigravityModel(value, requested, modelThinking(ctx))
 	} else if value.Platform == capability.PlatformOpenAI || value.Platform == capability.PlatformGrok {
 		model = p.OpenAIUpstream(requested, false, true)
 	} else {
-		mapped := account.ResolveForwardMappedModel(value, requested, accountprovider.ModelDefaults())
+		mapped := provider.ResolveForwardMappedModel(value, requested, provideradapter.ModelDefaults())
 		if value.Platform == capability.PlatformQoder {
 			site, err := qoder.ParseSite(value.GetCredential("site"))
 			if err != nil {
@@ -244,7 +244,7 @@ func (p ModelPolicy) LimitKeys(ctx context.Context, requested string) []string {
 	case capability.PlatformOpenAI, capability.PlatformGrok:
 		key = p.CanonicalSchedulingModel(requested)
 	case capability.PlatformAntigravity:
-		key = accountprovider.FinalAntigravityModel(value, requested, modelThinking(ctx))
+		key = provideradapter.FinalAntigravityModel(value, requested, modelThinking(ctx))
 	}
 	key = strings.TrimSpace(key)
 	if key == "" {
@@ -258,12 +258,12 @@ func (p ModelPolicy) LimitKeys(ctx context.Context, requested string) []string {
 		}
 	case capability.PlatformOpenAI:
 		images := media.IsImageGenerationModel(requested) || media.IsImageGenerationModel(key) || requeststate.OpenAIImageGenerationIntentFromContext(ctx)
-		if images && key != account.OpenAIImageGenerationRateLimitKey {
-			keys = append(keys, account.OpenAIImageGenerationRateLimitKey)
+		if images && key != provider.OpenAIImageGenerationRateLimitKey {
+			keys = append(keys, provider.OpenAIImageGenerationRateLimitKey)
 		}
 	case capability.PlatformAnthropic:
-		if anthropic.IsAnthropicFableModel(key) && key != account.AnthropicFableRateLimitKey {
-			keys = append(keys, account.AnthropicFableRateLimitKey)
+		if anthropic.IsAnthropicFableModel(key) && key != provider.AnthropicFableRateLimitKey {
+			keys = append(keys, provider.AnthropicFableRateLimitKey)
 		}
 	}
 	return keys

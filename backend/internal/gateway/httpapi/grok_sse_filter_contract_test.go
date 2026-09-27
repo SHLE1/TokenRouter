@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/protocol/bridge"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/grok"
@@ -177,7 +177,7 @@ func TestGrokResponsesBillingPingFilterConvertsPartialPingFrameAtEOF(t *testing.
 }
 
 // 非 Grok 入口经过实际响应输出，保留 ping 与终态报文。
-func TestGrokResponsesBillingPingFilterDoesNotFilterNonGrokAccounts(t *testing.T) {
+func TestGrokResponsesBillingPingFilterDoesNotFilterNonGrokProviders(t *testing.T) {
 	input := "event: ping\ndata: {\"type\":\"ping\",\"cost\":\"0\"}\n\n" +
 		"event: response.completed\ndata: {\"type\":\"response.completed\",\"response\":{\"id\":\"non-grok\",\"usage\":{\"input_tokens\":1,\"output_tokens\":1},\"output\":[]}}\n\n"
 	body := io.NopCloser(strings.NewReader(input))
@@ -186,14 +186,13 @@ func TestGrokResponsesBillingPingFilterDoesNotFilterNonGrokAccounts(t *testing.T
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
 	output := &OpenAIResponseOutput{Options: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}
-	_, err := output.Stream(context.Background(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{Platform: capability.PlatformOpenAI}}, time.Now(), "model", "model", "")
+	_, err := output.Stream(context.Background(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{Platform: capability.PlatformOpenAI}}, time.Now(), "model", "model", "")
 	require.NoError(t, err)
 	require.NoError(t, body.Close())
 	require.Equal(t, input, recorder.Body.String())
 }
 
 func TestGrokResponsesBillingPingFilterPreservesUsageAndTerminalEvent(t *testing.T) {
-
 	input := strings.Join([]string{
 		"event: ping",
 		`data: {"type":"ping","x-opencode-type":"inference-cost","cost":"0"}`,
@@ -202,7 +201,7 @@ func TestGrokResponsesBillingPingFilterPreservesUsageAndTerminalEvent(t *testing
 		`data: {"type":"response.completed","response":{"id":"resp_1","usage":{"input_tokens":3,"output_tokens":5}}}`,
 		"",
 	}, "\n")
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformGrok}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformGrok}}
 	resp := &http.Response{
 		StatusCode: http.StatusOK,
 		Header:     http.Header{},
@@ -215,7 +214,7 @@ func TestGrokResponsesBillingPingFilterPreservesUsageAndTerminalEvent(t *testing
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
 	svc := &OpenAIResponseOutput{Options: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}, Corrector: openai.NewCodexToolCorrector()}
 
-	result, err := svc.Stream(context.Background(), resp, c, account, time.Now(), "grok-4.5", "grok-4.5", "")
+	result, err := svc.Stream(context.Background(), resp, c, provider, time.Now(), "grok-4.5", "grok-4.5", "")
 	require.NoError(t, err)
 	require.Equal(t, 3, result.Usage.InputTokens)
 	require.Equal(t, 5, result.Usage.OutputTokens)

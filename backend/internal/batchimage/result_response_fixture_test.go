@@ -22,7 +22,7 @@ func requireBatchImagePublicJSONHasNoInternals(t *testing.T, body string) {
 		"provider_output_ref",
 		"gcs_input_uri",
 		"gcs_output_uri",
-		"account_id",
+		"provider_id",
 		"service_account",
 		"api_key",
 		"download_url",

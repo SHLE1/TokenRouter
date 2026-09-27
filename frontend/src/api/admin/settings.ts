@@ -54,7 +54,7 @@ type DefaultSubscriptionInput = Partial<DefaultSubscriptionSetting> & {
 
 export type SchedulingThresholdPlatformType = "openai" | "anthropic" | "grok" | "kimi" | "zhipu"
 
-export type AccountSchedulingThresholdsMap = Record<SchedulingThresholdPlatformType, number>
+export type ProviderSchedulingThresholdsMap = Record<SchedulingThresholdPlatformType, number>
 
 // 与后端 AllowedSchedulingThresholdPlatforms 保持一致（deepseek 为余额型，
 // 走余额检测而非用量阈值）。
@@ -67,10 +67,10 @@ export const SCHEDULING_THRESHOLD_PLATFORMS: SchedulingThresholdPlatformType[] =
 ]
 
 /** 将各平台自动停调阈值归一化到 1 到 100，100 表示关闭。 */
-export function normalizeAccountSchedulingThresholdsMap(
+export function normalizeProviderSchedulingThresholdsMap(
   input?: Partial<Record<SchedulingThresholdPlatformType, number>> | null,
-): AccountSchedulingThresholdsMap {
-  const result = {} as AccountSchedulingThresholdsMap
+): ProviderSchedulingThresholdsMap {
+  const result = {} as ProviderSchedulingThresholdsMap
   for (const platform of SCHEDULING_THRESHOLD_PLATFORMS) {
     const value = input?.[platform]
     result[platform] = typeof value === "number" && Number.isFinite(value)
@@ -81,10 +81,10 @@ export function normalizeAccountSchedulingThresholdsMap(
 }
 
 /** 保存前清洗各平台自动停调阈值。 */
-export function sanitizeAccountSchedulingThresholdsMap(
+export function sanitizeProviderSchedulingThresholdsMap(
   input?: Partial<Record<SchedulingThresholdPlatformType, number>> | null,
-): AccountSchedulingThresholdsMap {
-  return normalizeAccountSchedulingThresholdsMap(input)
+): ProviderSchedulingThresholdsMap {
+  return normalizeProviderSchedulingThresholdsMap(input)
 }
 
 export type AuthSourceType =
@@ -228,7 +228,7 @@ const WECHAT_CONNECT_MODE_OPTIONS: WeChatConnectModeOption[] = [
   {
     value: "mp",
     labelZh: "公众号",
-    labelEn: "Official Account",
+    labelEn: "Official Provider",
   },
   {
     value: "mobile",
@@ -242,7 +242,7 @@ const WECHAT_CONNECT_MODE_ALIASES: Record<string, WeChatConnectMode> = {
   official: "open",
   wx_open: "open",
   mp: "mp",
-  official_account: "mp",
+  official_provider: "mp",
   wechat_mp: "mp",
   mini_program: "mp",
   mobile: "mobile",
@@ -629,8 +629,8 @@ export interface SystemSettings {
   grok_cross_client_model_map_enabled: boolean;
   grok_default_base_url_mode: string;
 
-  // 各平台账号自动暂停阈值，100 表示禁用。
-  account_scheduling_thresholds: AccountSchedulingThresholdsMap;
+  // 各平台提供商自动暂停阈值，100 表示禁用。
+  provider_scheduling_thresholds: ProviderSchedulingThresholdsMap;
 
   // Identity patch configuration (Claude -> Gemini)
   enable_identity_patch: boolean;
@@ -701,7 +701,7 @@ export interface SystemSettings {
   payment_visible_method_wxpay_source?: string;
   payment_visible_method_alipay_enabled?: boolean;
   payment_visible_method_wxpay_enabled?: boolean;
-  openai_account_quota_auto_pause?: OpenAIQuotaAutoPauseSettings;
+  openai_provider_quota_auto_pause?: OpenAIQuotaAutoPauseSettings;
   advanced_scheduler_sticky_weighted_enabled?: boolean;
   advanced_scheduler_subscription_priority_enabled?: boolean;
   advanced_scheduler_ewma_error_rate_alpha?: string;
@@ -735,13 +735,13 @@ export interface SystemSettings {
   advanced_scheduler_effective_sticky_escape_ttft_ms?: string;
   advanced_scheduler_effective_sticky_escape_error_rate?: string;
 
-  // 余额、订阅到期与账号限额通知
+  // 余额、订阅到期与提供商限额通知
   balance_low_notify_enabled: boolean;
   balance_low_notify_threshold: number;
   balance_low_notify_recharge_url: string;
   subscription_expiry_notify_enabled: boolean;
-  account_quota_notify_enabled: boolean;
-  account_quota_notify_emails: NotifyEmailEntry[];
+  provider_quota_notify_enabled: boolean;
+  provider_quota_notify_emails: NotifyEmailEntry[];
   // OpenAI fast/flex 策略
   openai_fast_policy_settings?: OpenAIFastPolicySettings;
 
@@ -953,7 +953,7 @@ export interface UpdateSettingsRequest {
   grok_default_text_model?: string;
   grok_cross_client_model_map_enabled?: boolean;
   grok_default_base_url_mode?: string;
-  account_scheduling_thresholds?: AccountSchedulingThresholdsMap;
+  provider_scheduling_thresholds?: ProviderSchedulingThresholdsMap;
   enable_identity_patch?: boolean;
   identity_patch_prompt?: string;
   ops_monitoring_enabled?: boolean;
@@ -1011,7 +1011,7 @@ export interface UpdateSettingsRequest {
   payment_visible_method_wxpay_source?: string;
   payment_visible_method_alipay_enabled?: boolean;
   payment_visible_method_wxpay_enabled?: boolean;
-  openai_account_quota_auto_pause?: OpenAIQuotaAutoPauseSettings;
+  openai_provider_quota_auto_pause?: OpenAIQuotaAutoPauseSettings;
   advanced_scheduler_sticky_weighted_enabled?: boolean;
   advanced_scheduler_subscription_priority_enabled?: boolean;
   advanced_scheduler_ewma_error_rate_alpha?: string;
@@ -1029,13 +1029,13 @@ export interface UpdateSettingsRequest {
   advanced_scheduler_weight_quota_headroom?: string;
   advanced_scheduler_weight_previous_response?: string;
   advanced_scheduler_weight_session_sticky?: string;
-  // 余额、订阅到期与账号限额通知
+  // 余额、订阅到期与提供商限额通知
   balance_low_notify_enabled?: boolean;
   balance_low_notify_threshold?: number;
   balance_low_notify_recharge_url?: string;
   subscription_expiry_notify_enabled?: boolean;
-  account_quota_notify_enabled?: boolean;
-  account_quota_notify_emails?: NotifyEmailEntry[];
+  provider_quota_notify_enabled?: boolean;
+  provider_quota_notify_emails?: NotifyEmailEntry[];
   // OpenAI fast/flex 策略
   openai_fast_policy_settings?: OpenAIFastPolicySettings;
 
@@ -1338,7 +1338,7 @@ export async function updateOpenAI403CooldownSettings(
 
 // ==================== OpenAI OAuth Import Defaults ====================
 
-export interface OpenAIOAuthImportAccountDefaults {
+export interface OpenAIOAuthImportProviderDefaults {
   notes?: string | null
   concurrency?: number | null
   priority?: number | null
@@ -1348,7 +1348,7 @@ export interface OpenAIOAuthImportAccountDefaults {
 }
 
 export interface OpenAIOAuthImportDefaults {
-  account?: OpenAIOAuthImportAccountDefaults
+  provider?: OpenAIOAuthImportProviderDefaults
   credentials?: Record<string, unknown>
   extra?: Record<string, unknown>
 }

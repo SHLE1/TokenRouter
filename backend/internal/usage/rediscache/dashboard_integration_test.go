@@ -26,7 +26,7 @@ func TestDashboardCacheLegacyKeyAndTTL(t *testing.T) {
 	raw := redis.NewClient(options)
 	t.Cleanup(func() { _ = raw.Close() })
 	cache := NewDashboardCache(raw, "prod")
-	const key = "prod:dashboard:stats:v1"
+	const key = "prod:dashboard:stats:v2"
 	const legacy = `{"total_requests":7,"total_actual_cost":0.125}`
 	require.NoError(t, raw.Set(ctx, key, legacy, time.Minute).Err())
 	value, err := cache.GetDashboardStats(ctx)
@@ -46,7 +46,7 @@ func TestDashboardCacheLegacyKeyAndTTL(t *testing.T) {
 	require.ErrorIs(t, err, usage.ErrDashboardStatsCacheMiss)
 	unprefixed := NewDashboardCache(raw, "")
 	require.NoError(t, unprefixed.SetDashboardStats(ctx, next, time.Minute))
-	value, err = raw.Get(ctx, "dashboard:stats:v1").Result()
+	value, err = raw.Get(ctx, "dashboard:stats:v2").Result()
 	require.NoError(t, err)
 	require.Equal(t, next, value)
 }

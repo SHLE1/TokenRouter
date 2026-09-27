@@ -12,12 +12,12 @@ import (
 
 // UserMsgQueueCache 用户消息串行队列 Redis 缓存接口
 type UserMsgQueueCache interface {
-	// AcquireLock 尝试获取账号级串行锁
-	AcquireLock(ctx context.Context, accountID int64, requestID string, lockTtlMs int) (acquired bool, err error)
+	// AcquireLock 尝试获取提供商级串行锁
+	AcquireLock(ctx context.Context, providerID int64, requestID string, lockTtlMs int) (acquired bool, err error)
 	// ReleaseLock 释放锁并记录完成时间
-	ReleaseLock(ctx context.Context, accountID int64, requestID string) (released bool, err error)
+	ReleaseLock(ctx context.Context, providerID int64, requestID string) (released bool, err error)
 	// GetLastCompletedMs 获取上次完成时间（毫秒时间戳，Redis TIME 源）
-	GetLastCompletedMs(ctx context.Context, accountID int64) (int64, error)
+	GetLastCompletedMs(ctx context.Context, providerID int64) (int64, error)
 	// GetCurrentTimeMs 获取 Redis 服务器当前时间（毫秒），与 ReleaseLock 记录的时间源一致
 	GetCurrentTimeMs(ctx context.Context) (int64, error)
 	// ReconcileExpiredLockCandidates 处理锁索引中的到期候选，按真实 PTTL 清理或刷新索引
@@ -31,7 +31,7 @@ type QueueLockResult struct {
 }
 
 // UserMessageQueueService 用户消息串行队列服务
-// 对真实用户消息实施账号级串行化 + RPM 自适应延迟
+// 对真实用户消息实施提供商级串行化 + RPM 自适应延迟
 type UserMessageQueueService struct {
 	runtime     WorkerRuntime
 	diagnostics Diagnostics
@@ -55,7 +55,7 @@ func NewUserMessageQueueService(cache UserMsgQueueCache, rpmCache RPMCache, cfg 
 }
 
 // TryAcquire 尝试立即获取串行锁
-func (s *UserMessageQueueService) TryAcquire(ctx context.Context, accountID int64) (*QueueLockResult, error) {
+func (s *UserMessageQueueService) TryAcquire(ctx context.Context, providerID int64) (*QueueLockResult, error) {
 	operation, done, err := s.runtime.Enter(ctx, "TryAcquire")
 	if err != nil {
 		return nil, err
@@ -72,9 +72,9 @@ func (s *UserMessageQueueService) TryAcquire(ctx context.Context, accountID int6
 		lockTTL = 120000
 	}
 
-	acquired, err := s.cache.AcquireLock(ctx, accountID, requestID, lockTTL)
+	acquired, err := s.cache.AcquireLock(ctx, providerID, requestID, lockTTL)
 	if err != nil {
-		s.diagnostics.printf("service.umq", "AcquireLock failed for account %d: %v", accountID, err)
+		s.diagnostics.printf("service.umq", "AcquireLock failed for provider %d: %v", providerID, err)
 		return &QueueLockResult{Acquired: true}, nil // fail-open
 	}
 
@@ -85,24 +85,24 @@ func (s *UserMessageQueueService) TryAcquire(ctx context.Context, accountID int6
 }
 
 // Release 释放串行锁
-func (s *UserMessageQueueService) Release(ctx context.Context, accountID int64, requestID string) error {
+func (s *UserMessageQueueService) Release(ctx context.Context, providerID int64, requestID string) error {
 	if s.cache == nil || requestID == "" {
 		return nil
 	}
-	released, err := s.cache.ReleaseLock(ctx, accountID, requestID)
+	released, err := s.cache.ReleaseLock(ctx, providerID, requestID)
 	if err != nil {
-		s.diagnostics.printf("service.umq", "ReleaseLock failed for account %d: %v", accountID, err)
+		s.diagnostics.printf("service.umq", "ReleaseLock failed for provider %d: %v", providerID, err)
 		return err
 	}
 	if !released {
-		s.diagnostics.printf("service.umq", "ReleaseLock no-op for account %d (requestID mismatch or expired)", accountID)
+		s.diagnostics.printf("service.umq", "ReleaseLock no-op for provider %d (requestID mismatch or expired)", providerID)
 	}
 	return nil
 }
 
 // EnforceDelay 根据 RPM 负载执行自适应延迟
 // 使用 Redis TIME 确保与 releaseLockScript 记录的时间源一致
-func (s *UserMessageQueueService) EnforceDelay(ctx context.Context, accountID int64, baseRPM int) error {
+func (s *UserMessageQueueService) EnforceDelay(ctx context.Context, providerID int64, baseRPM int) error {
 	operation, done, err := s.runtime.Enter(ctx, "EnforceDelay")
 	if err != nil {
 		return err
@@ -114,16 +114,16 @@ func (s *UserMessageQueueService) EnforceDelay(ctx context.Context, accountID in
 	}
 
 	// 先检查历史记录：没有历史则无需延迟，避免不必要的 RPM 查询
-	lastMs, err := s.cache.GetLastCompletedMs(ctx, accountID)
+	lastMs, err := s.cache.GetLastCompletedMs(ctx, providerID)
 	if err != nil {
-		s.diagnostics.printf("service.umq", "GetLastCompletedMs failed for account %d: %v", accountID, err)
+		s.diagnostics.printf("service.umq", "GetLastCompletedMs failed for provider %d: %v", providerID, err)
 		return nil // fail-open
 	}
 	if lastMs == 0 {
 		return nil // 没有历史记录，无需延迟
 	}
 
-	delay := s.CalculateRPMAwareDelay(ctx, accountID, baseRPM)
+	delay := s.CalculateRPMAwareDelay(ctx, providerID, baseRPM)
 	if delay <= 0 {
 		return nil
 	}
@@ -162,7 +162,7 @@ func (s *UserMessageQueueService) EnforceDelay(ctx context.Context, accountID in
 // 0.5 ≤ ratio < 0.8 → 线性插值 MinDelay..MaxDelay
 // ratio ≥ 0.8 → MaxDelay
 // 返回值包含 ±15% 随机抖动（anti-detection + 避免惊群效应）
-func (s *UserMessageQueueService) CalculateRPMAwareDelay(ctx context.Context, accountID int64, baseRPM int) time.Duration {
+func (s *UserMessageQueueService) CalculateRPMAwareDelay(ctx context.Context, providerID int64, baseRPM int) time.Duration {
 	minDelay := time.Duration(s.cfg.MinDelayMs) * time.Millisecond
 	maxDelay := time.Duration(s.cfg.MaxDelayMs) * time.Millisecond
 
@@ -182,9 +182,9 @@ func (s *UserMessageQueueService) CalculateRPMAwareDelay(ctx context.Context, ac
 	if baseRPM <= 0 || s.rpmCache == nil {
 		baseDelay = minDelay
 	} else {
-		currentRPM, err := s.rpmCache.GetRPM(ctx, accountID)
+		currentRPM, err := s.rpmCache.GetRPM(ctx, providerID)
 		if err != nil {
-			s.diagnostics.printf("service.umq", "GetRPM failed for account %d: %v", accountID, err)
+			s.diagnostics.printf("service.umq", "GetRPM failed for provider %d: %v", providerID, err)
 			baseDelay = minDelay // fail-open
 		} else {
 			ratio := float64(currentRPM) / float64(baseRPM)
@@ -223,11 +223,13 @@ func (s *UserMessageQueueService) StartCleanupWorker(interval time.Duration) {
 		}
 	}})
 }
+
 func (s *UserMessageQueueService) Stop() {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	_ = s.StopContext(ctx)
 }
+
 func (s *UserMessageQueueService) StopContext(ctx context.Context) error {
 	if s == nil {
 		return nil

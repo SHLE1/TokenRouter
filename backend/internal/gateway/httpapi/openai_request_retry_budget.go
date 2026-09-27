@@ -9,8 +9,8 @@ import (
 const openAIResponsesRejectedFieldRetryBudgetContextKey = "openai_responses_rejected_field_retry_budget"
 
 // openAIResponsesRejectedFieldRetryStateForRequest returns a fresh loop guard
-// for one account attempt backed by the inbound request's shared retry budget.
-// A later account may apply the same compatibility transform, while all account
+// for one provider attempt backed by the inbound request's shared retry budget.
+// A later provider may apply the same compatibility transform, while all provider
 // attempts together remain bounded.
 func openAIResponsesRejectedFieldRetryStateForRequest(c *gin.Context, initialBody []byte) *openai.ResponsesRejectedFieldRetryState {
 	var budget *openai.ResponsesRejectedFieldRetryBudget

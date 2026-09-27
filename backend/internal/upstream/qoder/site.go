@@ -7,11 +7,11 @@ import (
 	"strings"
 )
 
-// Site 表示 Qoder 账号所属站点。
+// Site 表示 Qoder 提供商所属站点。
 type Site string
 
 const (
-	// SiteGlobal 表示 Qoder 国际站，也是旧账号的兼容默认值。
+	// SiteGlobal 表示 Qoder 国际站，也是旧提供商的兼容默认值。
 	SiteGlobal Site = "global"
 	// SiteCN 表示 Qoder 国内站。
 	SiteCN Site = "cn"
@@ -65,7 +65,7 @@ type Profile struct {
 	OAuthClientID          string
 }
 
-// ParseSite 严格解析站点；空值按国际站处理以兼容旧账号。
+// ParseSite 严格解析站点；空值按国际站处理以兼容旧提供商。
 func ParseSite(value string) (Site, error) {
 	switch Site(strings.ToLower(strings.TrimSpace(value))) {
 	case "", SiteGlobal:

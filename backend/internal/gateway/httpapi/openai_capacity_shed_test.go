@@ -1,8 +1,6 @@
 package httpapi
 
 import (
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
-
 	"context"
 	"errors"
 	"io"
@@ -11,6 +9,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
@@ -22,29 +22,29 @@ import (
 
 // --- mock: 只记录临时不可调度写入，其余方法不应被调用 ---
 
-type capacityShedAccountRepoStub struct {
-	gatewayprovider.ExecutionAccountStore
+type capacityShedProviderRepoStub struct {
+	gatewayprovider.ExecutionProviderStore
 	// 嵌入接口，未实现的方法会 panic（不应被调用）
 
 	tempUnschedCalls int
 }
 
-func (r *capacityShedAccountRepoStub) SetTempUnschedulable(_ context.Context, _ int64, _ time.Time, _ string) error {
+func (r *capacityShedProviderRepoStub) SetTempUnschedulable(_ context.Context, _ int64, _ time.Time, _ string) error {
 	r.tempUnschedCalls++
 	return nil
 }
 
-func (r *capacityShedAccountRepoStub) GetByID(_ context.Context, id int64) (*gatewayprovider.ExecutionAccount, error) {
-	return &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: id, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth}}, nil
+func (r *capacityShedProviderRepoStub) GetByID(_ context.Context, id int64) (*gatewayprovider.ExecutionProvider, error) {
+	return &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: id, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}}, nil
 }
 
-// 上游容量降载是请求级信号：故障因素（客户端身份、模型容量）与账号无关，
-// 同账号重试用尽后不得把账号临时摘掉——否则一个被降载的请求会顺着 failover
-// 把整池账号逐个封禁，而每个账号都会以同一个错误失败。
+// 上游容量降载是请求级信号：故障因素（客户端身份、模型容量）与提供商无关，
+// 同提供商重试用尽后不得把提供商临时摘掉——否则一个被降载的请求会顺着 failover
+// 把整池提供商逐个封禁，而每个提供商都会以同一个错误失败。
 
-// 非池模式账号同样要先在同账号重试：换号不改变降载因素。
-func TestStreamFailedEventCapacityShedRetriesOnSameAccount(t *testing.T) {
-	nonPool := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth}}
+// 非池模式提供商同样要先在同提供商重试：换号不改变降载因素。
+func TestStreamFailedEventCapacityShedRetriesOnSameProvider(t *testing.T) {
+	nonPool := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}}
 
 	for _, code := range []string{"server_is_overloaded", "slow_down"} {
 		payload := []byte(`{"type":"response.failed","response":{"error":{"code":"` + code + `"}}}`)
@@ -52,13 +52,13 @@ func TestStreamFailedEventCapacityShedRetriesOnSameAccount(t *testing.T) {
 		require.True(t, gatewayprovider.OpenAIStreamFailureRetryable(nonPool, payload, "overloaded"), code)
 	}
 
-	// 非降载的 failed 事件在非池模式下仍不做同账号重试，避免放大改动面。
+	// 非降载的 failed 事件在非池模式下仍不做同提供商重试，避免放大改动面。
 	other := []byte(`{"type":"response.failed","response":{"error":{"code":"server_error"}}}`)
 	require.False(t, openai.IsOpenAIUpstreamCapacityShedEvent(other))
 	require.False(t, gatewayprovider.OpenAIStreamFailureRetryable(nonPool, other, "boom"))
 }
 
-func TestOpenAIHTTPCapacityShedIsRequestScopedForOAuthAccounts(t *testing.T) {
+func TestOpenAIHTTPCapacityShedIsRequestScopedForOAuthProviders(t *testing.T) {
 	payload := []byte(`{"error":{"type":"server_error","message":"Our servers are currently overloaded. Please try again later."}}`)
 	failoverErr := gatewayprovider.NewOpenAIUpstreamFailure(
 		http.StatusBadRequest,
@@ -68,18 +68,18 @@ func TestOpenAIHTTPCapacityShedIsRequestScopedForOAuthAccounts(t *testing.T) {
 		false,
 	)
 
-	require.True(t, failoverErr.RetryableOnSameAccount)
+	require.True(t, failoverErr.RetryableOnSameProvider)
 	require.True(t, failoverErr.RequestScopedTransient)
 
-	repo := &capacityShedAccountRepoStub{}
-	accountcore.NewRetryCooldown(capacityRetryStore{repo}, accountcore.RetryCooldownOptions{}).Apply(context.Background(), accountcore.RetryCooldownInput{AccountID: 1, Status: failoverErr.StatusCode, Retryable: failoverErr.RetryableOnSameAccount, RequestScopedTransient: failoverErr.RequestScopedTransient})
+	repo := &capacityShedProviderRepoStub{}
+	providercore.NewRetryCooldown(capacityRetryStore{repo}, providercore.RetryCooldownOptions{}).Apply(context.Background(), providercore.RetryCooldownInput{ProviderID: 1, Status: failoverErr.StatusCode, Retryable: failoverErr.RetryableOnSameProvider, RequestScopedTransient: failoverErr.RequestScopedTransient})
 	require.Zero(t, repo.tempUnschedCalls)
 
-	healthObserver := newHTTPHealthFixture(repo, &responsesFixtureOptions{}, nil, accountcore.HealthOptions{}, nil)
+	healthObserver := newHTTPHealthFixture(repo, &responsesFixtureOptions{}, nil, providercore.HealthOptions{}, nil)
 
 	gateway := newResponsesFixture(responsesFixtureInputs{health: healthObserver})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth}}
-	require.False(t, gatewayprovider.ApplyOpenAIResponseHealth(context.Background(), gateway.Output.Health, account, http.StatusBadRequest, nil, payload, false, "gpt-5").StopScheduling)
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}}
+	require.False(t, gatewayprovider.ApplyOpenAIResponseHealth(context.Background(), gateway.Output.Health, provider, http.StatusBadRequest, nil, payload, false, "gpt-5").StopScheduling)
 	require.Zero(t, repo.tempUnschedCalls)
 }
 
@@ -114,7 +114,6 @@ func TestOpenAIStreamErrorFrameDoesNotStartClientOutput(t *testing.T) {
 }
 
 func TestOpenAIStreamMetadataPreambleAndMessageOnlyOverloadFailOver(t *testing.T) {
-
 	largeMetadata := strings.Repeat("x", 16*1024)
 	stream := strings.Join([]string{
 		"event: response.created",
@@ -133,19 +132,19 @@ func TestOpenAIStreamMetadataPreambleAndMessageOnlyOverloadFailOver(t *testing.T
 
 	tests := []struct {
 		name string
-		run  func(*OpenAIResponsesExecutor, *gin.Context, *http.Response, *gatewayprovider.ExecutionAccount) error
+		run  func(*OpenAIResponsesExecutor, *gin.Context, *http.Response, *gatewayprovider.ExecutionProvider) error
 	}{
 		{
 			name: "native",
-			run: func(svc *OpenAIResponsesExecutor, c *gin.Context, resp *http.Response, account *gatewayprovider.ExecutionAccount) error {
-				_, err := svc.Output.Stream(c.Request.Context(), resp, c, account, time.Now(), "model", "model", "")
+			run: func(svc *OpenAIResponsesExecutor, c *gin.Context, resp *http.Response, provider *gatewayprovider.ExecutionProvider) error {
+				_, err := svc.Output.Stream(c.Request.Context(), resp, c, provider, time.Now(), "model", "model", "")
 				return err
 			},
 		},
 		{
 			name: "passthrough",
-			run: func(svc *OpenAIResponsesExecutor, c *gin.Context, resp *http.Response, account *gatewayprovider.ExecutionAccount) error {
-				_, err := svc.Output.PassthroughStream(c.Request.Context(), resp, c, account, time.Now(), "model", "model")
+			run: func(svc *OpenAIResponsesExecutor, c *gin.Context, resp *http.Response, provider *gatewayprovider.ExecutionProvider) error {
+				_, err := svc.Output.PassthroughStream(c.Request.Context(), resp, c, provider, time.Now(), "model", "model")
 				return err
 			},
 		},
@@ -162,13 +161,13 @@ func TestOpenAIStreamMetadataPreambleAndMessageOnlyOverloadFailOver(t *testing.T
 				Body:       io.NopCloser(strings.NewReader(stream)),
 				Header:     http.Header{"X-Request-Id": []string{"rid-message-only-overload"}},
 			}
-			account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth, Name: "acc"}}
+			provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth, Name: "acc"}}
 
-			err := tt.run(svc, c, resp, account)
+			err := tt.run(svc, c, resp, provider)
 			require.Error(t, err)
 			var failoverErr *forwardcore.UpstreamFailoverError
 			require.ErrorAs(t, err, &failoverErr)
-			require.True(t, failoverErr.RetryableOnSameAccount)
+			require.True(t, failoverErr.RetryableOnSameProvider)
 			require.True(t, failoverErr.RequestScopedTransient)
 			require.Equal(t, http.StatusServiceUnavailable, failoverErr.ClientStatusCode)
 			require.Contains(t, failoverErr.ClientMessage, "servers are currently overloaded")
@@ -179,9 +178,8 @@ func TestOpenAIStreamMetadataPreambleAndMessageOnlyOverloadFailOver(t *testing.T
 }
 
 // 回归用例（真实上游降载序列）：created → in_progress → error 帧 → response.failed。
-// 期望仍然走 pre-output failover（同账号重试 + 请求级瞬时标记），且不向客户端写出任何字节。
+// 期望仍然走 pre-output failover（同提供商重试 + 请求级瞬时标记），且不向客户端写出任何字节。
 func TestOpenAIStreamCapacityShedErrorFramePrecedingFailedStillFailsOver(t *testing.T) {
-
 	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
@@ -208,11 +206,11 @@ func TestOpenAIStreamCapacityShedErrorFramePrecedingFailedStillFailsOver(t *test
 		Header: http.Header{"X-Request-Id": []string{"rid-shed-error-then-failed"}},
 	}
 
-	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth, Name: "acc"}}, time.Now(), "model", "model", "")
+	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth, Name: "acc"}}, time.Now(), "model", "model", "")
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)
-	require.True(t, failoverErr.RetryableOnSameAccount)
+	require.True(t, failoverErr.RetryableOnSameProvider)
 	require.True(t, failoverErr.RequestScopedTransient)
 	require.False(t, c.Writer.Written())
 	require.Empty(t, rec.Body.String())
@@ -222,7 +220,6 @@ func TestOpenAIStreamCapacityShedErrorFramePrecedingFailedStillFailsOver(t *test
 // 可重试的 server_error 再通过唯一 response.failed 终态转发——Codex 对
 // server_is_overloaded/slow_down 判致命并终止会话，对其余错误码执行内置退避重试。
 func TestOpenAIStreamCapacityShedAfterOutputRewritesCodeForClient(t *testing.T) {
-
 	logSink, restore := captureHandlerStructuredLog(t)
 	defer restore()
 	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}
@@ -251,7 +248,7 @@ func TestOpenAIStreamCapacityShedAfterOutputRewritesCodeForClient(t *testing.T) 
 		Header: http.Header{"X-Request-Id": []string{"rid-shed-after-output"}},
 	}
 
-	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth, Name: "acc"}}, time.Now(), "model", "model", "")
+	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth, Name: "acc"}}, time.Now(), "model", "model", "")
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.False(t, errors.As(err, &failoverErr))
@@ -335,9 +332,9 @@ func TestSanitizeOpenAICapacityShedErrorCodeForClient(t *testing.T) {
 }
 
 // 只转换读取投影，后续冷却调用同一原生存储替身。
-type capacityRetryStore struct{ *capacityShedAccountRepoStub }
+type capacityRetryStore struct{ *capacityShedProviderRepoStub }
 
-func (s capacityRetryStore) GetByID(ctx context.Context, id int64) (*accountcore.Record, error) {
-	value, err := s.capacityShedAccountRepoStub.GetByID(ctx, id)
+func (s capacityRetryStore) GetByID(ctx context.Context, id int64) (*providercore.Record, error) {
+	value, err := s.capacityShedProviderRepoStub.GetByID(ctx, id)
 	return gatewayprovider.ExecutionRecord(value), err
 }

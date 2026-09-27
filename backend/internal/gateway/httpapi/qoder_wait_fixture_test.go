@@ -11,63 +11,63 @@ import (
 type helperConcurrencyCacheStub struct {
 	mu sync.Mutex
 
-	accountSeq []bool
-	userSeq    []bool
+	providerSeq []bool
+	userSeq     []bool
 
-	accountAcquireCalls int
-	userAcquireCalls    int
-	accountReleaseCalls int
-	userReleaseCalls    int
-	waitAllowed         bool
-	waitIncrementCalls  int
-	waitDecrementCalls  int
-	waitMaxWait         int
-	waitIncrementHook   func()
-	apiKeyTrackCalls    int
-	apiKeyReleaseCalls  int
-	apiKeyTrackIDs      []int64
+	providerAcquireCalls int
+	userAcquireCalls     int
+	providerReleaseCalls int
+	userReleaseCalls     int
+	waitAllowed          bool
+	waitIncrementCalls   int
+	waitDecrementCalls   int
+	waitMaxWait          int
+	waitIncrementHook    func()
+	apiKeyTrackCalls     int
+	apiKeyReleaseCalls   int
+	apiKeyTrackIDs       []int64
 }
 
-func (s *helperConcurrencyCacheStub) AcquireAccountSlot(ctx context.Context, accountID int64, maxConcurrency int, requestID string) (bool, error) {
+func (s *helperConcurrencyCacheStub) AcquireProviderSlot(ctx context.Context, providerID int64, maxConcurrency int, requestID string) (bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.accountAcquireCalls++
-	if len(s.accountSeq) == 0 {
+	s.providerAcquireCalls++
+	if len(s.providerSeq) == 0 {
 		return false, nil
 	}
-	v := s.accountSeq[0]
-	s.accountSeq = s.accountSeq[1:]
+	v := s.providerSeq[0]
+	s.providerSeq = s.providerSeq[1:]
 	return v, nil
 }
 
-func (s *helperConcurrencyCacheStub) ReleaseAccountSlot(ctx context.Context, accountID int64, requestID string) error {
+func (s *helperConcurrencyCacheStub) ReleaseProviderSlot(ctx context.Context, providerID int64, requestID string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.accountReleaseCalls++
+	s.providerReleaseCalls++
 	return nil
 }
 
-func (s *helperConcurrencyCacheStub) GetAccountConcurrency(ctx context.Context, accountID int64) (int, error) {
+func (s *helperConcurrencyCacheStub) GetProviderConcurrency(ctx context.Context, providerID int64) (int, error) {
 	return 0, nil
 }
 
-func (s *helperConcurrencyCacheStub) GetAccountConcurrencyBatch(ctx context.Context, accountIDs []int64) (map[int64]int, error) {
-	out := make(map[int64]int, len(accountIDs))
-	for _, accountID := range accountIDs {
-		out[accountID] = 0
+func (s *helperConcurrencyCacheStub) GetProviderConcurrencyBatch(ctx context.Context, providerIDs []int64) (map[int64]int, error) {
+	out := make(map[int64]int, len(providerIDs))
+	for _, providerID := range providerIDs {
+		out[providerID] = 0
 	}
 	return out, nil
 }
 
-func (s *helperConcurrencyCacheStub) IncrementAccountWaitCount(ctx context.Context, accountID int64, maxWait int) (bool, error) {
+func (s *helperConcurrencyCacheStub) IncrementProviderWaitCount(ctx context.Context, providerID int64, maxWait int) (bool, error) {
 	return true, nil
 }
 
-func (s *helperConcurrencyCacheStub) DecrementAccountWaitCount(ctx context.Context, accountID int64) error {
+func (s *helperConcurrencyCacheStub) DecrementProviderWaitCount(ctx context.Context, providerID int64) error {
 	return nil
 }
 
-func (s *helperConcurrencyCacheStub) GetAccountWaitingCount(ctx context.Context, accountID int64) (int, error) {
+func (s *helperConcurrencyCacheStub) GetProviderWaitingCount(ctx context.Context, providerID int64) (int, error) {
 	return 0, nil
 }
 
@@ -141,10 +141,10 @@ func (s *helperConcurrencyCacheStub) DecrementWaitCount(ctx context.Context, use
 	return nil
 }
 
-func (s *helperConcurrencyCacheStub) GetAccountsLoadBatch(ctx context.Context, accounts []scheduler.AccountWithConcurrency) (map[int64]*scheduler.AccountLoadInfo, error) {
-	out := make(map[int64]*scheduler.AccountLoadInfo, len(accounts))
-	for _, acc := range accounts {
-		out[acc.ID] = &scheduler.AccountLoadInfo{AccountID: acc.ID}
+func (s *helperConcurrencyCacheStub) GetProvidersLoadBatch(ctx context.Context, providers []scheduler.ProviderWithConcurrency) (map[int64]*scheduler.ProviderLoadInfo, error) {
+	out := make(map[int64]*scheduler.ProviderLoadInfo, len(providers))
+	for _, acc := range providers {
+		out[acc.ID] = &scheduler.ProviderLoadInfo{ProviderID: acc.ID}
 	}
 	return out, nil
 }
@@ -157,11 +157,11 @@ func (s *helperConcurrencyCacheStub) GetUsersLoadBatch(ctx context.Context, user
 	return out, nil
 }
 
-func (s *helperConcurrencyCacheStub) CleanupExpiredAccountSlots(ctx context.Context, accountID int64) error {
+func (s *helperConcurrencyCacheStub) CleanupExpiredProviderSlots(ctx context.Context, providerID int64) error {
 	return nil
 }
 
-func (s *helperConcurrencyCacheStub) CleanupExpiredAccountSlotKeys(ctx context.Context) error {
+func (s *helperConcurrencyCacheStub) CleanupExpiredProviderSlotKeys(ctx context.Context) error {
 	return nil
 }
 

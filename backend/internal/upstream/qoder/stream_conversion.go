@@ -48,7 +48,7 @@ const (
 )
 
 // DefaultQoderModelAliases 将兜底的 TokenRouter 请求侧 alias 映射到 Qoder API key。
-// 已配置 model_mapping 的 Qoder 账号以账号配置为准，此表仅作为兜底路由和默认展示面。
+// 已配置 model_mapping 的 Qoder 提供商以提供商配置为准，此表仅作为兜底路由和默认展示面。
 var DefaultQoderModelAliases = map[string]QoderModelInfo{
 	// 通过加密 reasoning metadata 确认该路由为 Claude Opus 4.6。
 	"claude-opus-4-6": {Key: "ultimate", Source: "system", Provider: "Claude", Notes: "Confirmed Claude Opus 4.6 via encrypted reasoning metadata.", DisplayName: "Claude Opus 4.6"},
@@ -2730,7 +2730,7 @@ func LookupQoderModelAlias(model string) (QoderModelInfo, bool) {
 	return info, ok
 }
 
-// LookupQoderModelAliasForSite 只解析账号站点实际支持的公开 alias。
+// LookupQoderModelAliasForSite 只解析提供商站点实际支持的公开 alias。
 func LookupQoderModelAliasForSite(site Site, model string) (QoderModelInfo, bool) {
 	model = NormalizeQoderAliasModel(model)
 	if _, ok := AliasForSite(site, model); !ok {
@@ -2739,9 +2739,11 @@ func LookupQoderModelAliasForSite(site Site, model string) (QoderModelInfo, bool
 	info, ok := DefaultQoderModelAliases[model]
 	return info, ok
 }
+
 func NormalizeQoderAliasModel(model string) string {
 	return strings.ToLower(strings.TrimSpace(model))
 }
+
 func FirstNonEmptyQoder(values ...string) string {
 	for _, value := range values {
 		if strings.TrimSpace(value) != "" {

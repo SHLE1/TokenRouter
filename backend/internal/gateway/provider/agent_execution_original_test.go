@@ -13,12 +13,12 @@ import (
 	"testing"
 	"time"
 
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 
 	"github.com/TokenFlux/TokenRouter/internal/pkg/querycache"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/stretchr/testify/require"
 )
@@ -42,40 +42,40 @@ func TestEnsureAgentIdentityTaskPersistsAndRedactsCredentials(t *testing.T) {
 		_, _ = w.Write([]byte(`{"task_id":"task-persisted"}`))
 	}))
 	defer server.Close()
-	coordinator := &accountcore.OpenAITaskCoordinator{}
-	register := func(ctx context.Context, value *accountcore.Record) (string, error) {
-		return accountprovider.RegisterAgentIdentityTask(ctx, value, server.URL)
+	coordinator := &providercore.OpenAITaskCoordinator{}
+	register := func(ctx context.Context, value *providercore.Record) (string, error) {
+		return provideradapter.RegisterAgentIdentityTask(ctx, value, server.URL)
 	}
 
 	repo := &agentIdentityCredentialsRepo{}
-	account := &ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 7, Type: capability.AccountTypeOAuth, Platform: capability.PlatformOpenAI, Credentials: map[string]any{
-		"auth_mode":          accountcore.OpenAIAuthModeAgentIdentity,
+	provider := &ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 7, Type: capability.ProviderTypeOAuth, Platform: capability.PlatformOpenAI, Credentials: map[string]any{
+		"auth_mode":          providercore.OpenAIAuthModeAgentIdentity,
 		"agent_runtime_id":   key.RuntimeID,
 		"agent_private_key":  privateKey,
-		"chatgpt_account_id": "account-test",
+		"chatgpt_account_id": "provider-test",
 	}}}
 	service := NewExecutionAgentIdentity(coordinator, repo, register, nil)
-	require.NoError(t, service.Ensure(context.Background(), account, ""))
-	require.Equal(t, "task-persisted", account.View().GetCredential("task_id"))
+	require.NoError(t, service.Ensure(context.Background(), provider, ""))
+	require.Equal(t, "task-persisted", provider.View().GetCredential("task_id"))
 	require.Equal(t, "task-persisted", repo.credentials["task_id"])
-	require.True(t, accountcore.IsSensitiveCredentialKey("agent_private_key"))
+	require.True(t, providercore.IsSensitiveCredentialKey("agent_private_key"))
 	redacted := make(map[string]any)
-	for key, value := range account.Record.Credentials {
-		if !accountcore.IsSensitiveCredentialKey(key) {
+	for key, value := range provider.Record.Credentials {
+		if !providercore.IsSensitiveCredentialKey(key) {
 			redacted[key] = value
 		}
 	}
 	require.NotContains(t, string(mustAgentIdentityJSON(t, redacted)), privateKey)
 }
 
-func TestEnsureAgentIdentityTaskSharesLockAcrossServicesForSameAccount(t *testing.T) {
+func TestEnsureAgentIdentityTaskSharesLockAcrossServicesForSameProvider(t *testing.T) {
 	key, privateKey := newTestAgentIdentityKey(t)
-	account := &ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 9001, Type: capability.AccountTypeOAuth, Platform: capability.PlatformOpenAI, Credentials: map[string]any{
-		"auth_mode":         accountcore.OpenAIAuthModeAgentIdentity,
+	provider := &ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 9001, Type: capability.ProviderTypeOAuth, Platform: capability.PlatformOpenAI, Credentials: map[string]any{
+		"auth_mode":         providercore.OpenAIAuthModeAgentIdentity,
 		"agent_runtime_id":  key.RuntimeID,
 		"agent_private_key": privateKey,
 	}}}
-	repo := &agentIdentityCredentialsRepo{account: account}
+	repo := &agentIdentityCredentialsRepo{provider: provider}
 	registerCalls := 0
 	var registerMu sync.Mutex
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -85,14 +85,14 @@ func TestEnsureAgentIdentityTaskSharesLockAcrossServicesForSameAccount(t *testin
 		_, _ = w.Write([]byte(`{"task_id":"task-shared"}`))
 	}))
 	defer server.Close()
-	coordinator := &accountcore.OpenAITaskCoordinator{}
-	register := func(ctx context.Context, value *accountcore.Record) (string, error) {
-		return accountprovider.RegisterAgentIdentityTask(ctx, value, server.URL)
+	coordinator := &providercore.OpenAITaskCoordinator{}
+	register := func(ctx context.Context, value *providercore.Record) (string, error) {
+		return provideradapter.RegisterAgentIdentityTask(ctx, value, server.URL)
 	}
 
 	start := make(chan struct{})
 	errors := make(chan error, 2)
-	requests := []*ExecutionAccount{cloneAgentIdentityTestAccount(account), cloneAgentIdentityTestAccount(account)}
+	requests := []*ExecutionProvider{cloneAgentIdentityTestProvider(provider), cloneAgentIdentityTestProvider(provider)}
 	for _, request := range requests {
 		go func() {
 			<-start
@@ -105,25 +105,25 @@ func TestEnsureAgentIdentityTaskSharesLockAcrossServicesForSameAccount(t *testin
 	registerMu.Lock()
 	defer registerMu.Unlock()
 	require.Equal(t, 1, registerCalls)
-	require.Equal(t, "task-shared", repo.account.View().GetCredential("task_id"))
+	require.Equal(t, "task-shared", repo.provider.View().GetCredential("task_id"))
 }
 
-func cloneAgentIdentityTestAccount(account *ExecutionAccount) *ExecutionAccount {
-	copy := *account
-	copy.Record.Credentials = querycache.ShallowMap(account.Record.Credentials)
+func cloneAgentIdentityTestProvider(provider *ExecutionProvider) *ExecutionProvider {
+	copy := *provider
+	copy.Record.Credentials = querycache.ShallowMap(provider.Record.Credentials)
 	return &copy
 }
 
 type agentIdentityCredentialsRepo struct {
-	ExecutionAccountStore
+	ExecutionProviderStore
 
 	credentials map[string]any
-	account     *ExecutionAccount
+	provider    *ExecutionProvider
 	mu          sync.Mutex
 }
 
-func (r *agentIdentityCredentialsRepo) GetByID(_ context.Context, _ int64) (*ExecutionAccount, error) {
-	return r.account, nil
+func (r *agentIdentityCredentialsRepo) GetByID(_ context.Context, _ int64) (*ExecutionProvider, error) {
+	return r.provider, nil
 }
 
 func (r *agentIdentityCredentialsRepo) UpdateCredentials(_ context.Context, _ int64, credentials map[string]any) error {

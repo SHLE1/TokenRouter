@@ -6,8 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 
 	"github.com/gin-gonic/gin"
@@ -54,7 +54,7 @@ func TestResolveGrokUpstreamUserAgentNeverPassthrough(t *testing.T) {
 	c.Request.Header.Set("User-Agent", "claude-cli/2.0.0 (Mac OS; arm64)")
 
 	executor := &GrokExecutor{Routes: gatewayprovider.GrokRoutes{Validate: xai.ValidateBaseURL}}
-	target := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{Platform: capability.PlatformGrok, Type: capability.AccountTypeOAuth}}
+	target := &gatewayprovider.ExecutionProvider{Record: providercore.Record{Platform: capability.PlatformGrok, Type: capability.ProviderTypeOAuth}}
 	request, err := executor.BuildResponsesRequest(context.Background(), c, target, []byte(`{}`), "token", "", false)
 	require.NoError(t, err)
 	require.Equal(t, xai.CLIUserAgent(xai.CLIClientVersion), request.Header.Get("User-Agent"))

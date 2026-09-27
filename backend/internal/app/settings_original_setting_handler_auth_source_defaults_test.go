@@ -139,7 +139,6 @@ func (s *failingAuthSourceSettingsRepoStub) Delete(ctx context.Context, key stri
 }
 
 func TestSettingHandler_GetSettings_InjectsAuthSourceDefaults(t *testing.T) {
-
 	repo := &settingHandlerRepoStub{
 		values: map[string]string{
 			identity.SettingKeyRegistrationEnabled:                 "true",
@@ -174,7 +173,6 @@ func TestSettingHandler_GetSettings_InjectsAuthSourceDefaults(t *testing.T) {
 }
 
 func TestSettingHandler_UpdateSettings_PreservesOmittedAuthSourceDefaults(t *testing.T) {
-
 	repo := &settingHandlerRepoStub{
 		values: map[string]string{
 			identity.SettingKeyRegistrationEnabled:                    "false",
@@ -221,7 +219,6 @@ func TestSettingHandler_UpdateSettings_PreservesOmittedAuthSourceDefaults(t *tes
 }
 
 func TestSettingHandler_UpdateSettings_AcceptsMarkdownCustomMenuURL(t *testing.T) {
-
 	repo := &settingHandlerRepoStub{
 		values: map[string]string{
 			promotion.SettingKeyPromoCodeEnabled: "true",
@@ -258,7 +255,6 @@ func TestSettingHandler_UpdateSettings_AcceptsMarkdownCustomMenuURL(t *testing.T
 }
 
 func TestSettingHandler_UpdateSettings_RejectsEmptyMarkdownCustomMenuSlug(t *testing.T) {
-
 	repo := &settingHandlerRepoStub{
 		values: map[string]string{
 			promotion.SettingKeyPromoCodeEnabled: "true",
@@ -295,11 +291,10 @@ func TestSettingHandler_UpdateSettings_RejectsEmptyMarkdownCustomMenuSlug(t *tes
 }
 
 func TestSettingHandler_UpdateSettings_PersistsPaymentVisibleMethodsAndAdvancedScheduler(t *testing.T) {
-
 	repo := &settingHandlerRepoStub{
 		values: map[string]string{
 			promotion.SettingKeyPromoCodeEnabled: "true",
-			ops.SettingKeyOpsAdvancedSettings:    `{"data_retention":{"cleanup_enabled":true,"cleanup_schedule":"0 4 * * *","error_log_retention_days":12,"minute_metrics_retention_days":8,"hourly_metrics_retention_days":30},"aggregation":{"aggregation_enabled":true},"openai_account_quota_auto_pause":{"default_threshold_5h":0.6,"default_threshold_7d":0.7},"ignore_count_tokens_errors":true,"ignore_context_canceled":true,"ignore_no_available_accounts":false,"ignore_invalid_api_key_errors":false,"ignore_insufficient_balance_errors":true,"display_openai_token_stats":false,"display_alert_events":true,"auto_refresh_enabled":false,"auto_refresh_interval_seconds":30}`,
+			ops.SettingKeyOpsAdvancedSettings:    `{"data_retention":{"cleanup_enabled":true,"cleanup_schedule":"0 4 * * *","error_log_retention_days":12,"minute_metrics_retention_days":8,"hourly_metrics_retention_days":30},"aggregation":{"aggregation_enabled":true},"openai_provider_quota_auto_pause":{"default_threshold_5h":0.6,"default_threshold_7d":0.7},"ignore_count_tokens_errors":true,"ignore_context_canceled":true,"ignore_no_available_providers":false,"ignore_invalid_api_key_errors":false,"ignore_insufficient_balance_errors":true,"display_openai_token_stats":false,"display_alert_events":true,"auto_refresh_enabled":false,"auto_refresh_interval_seconds":30}`,
 		},
 	}
 	options, _ := newCompositeSettingsHTTPFixture(repo, &config.Config{Default: config.DefaultConfig{UserConcurrency: 5}})
@@ -314,7 +309,7 @@ func TestSettingHandler_UpdateSettings_PersistsPaymentVisibleMethodsAndAdvancedS
 		"payment_visible_method_alipay_enabled":            true,
 		"payment_visible_method_wxpay_enabled":             false,
 		"advanced_scheduler_subscription_priority_enabled": true,
-		"openai_account_quota_auto_pause": map[string]any{
+		"openai_provider_quota_auto_pause": map[string]any{
 			"default_threshold_5h": 0.95,
 			"default_threshold_7d": 0.9,
 		},
@@ -340,8 +335,8 @@ func TestSettingHandler_UpdateSettings_PersistsPaymentVisibleMethodsAndAdvancedS
 	require.True(t, advanced.DataRetention.CleanupEnabled)
 	require.Equal(t, "0 4 * * *", advanced.DataRetention.CleanupSchedule)
 	require.NotContains(t, repo.values[ops.SettingKeyOpsAdvancedSettings], `"aggregation"`)
-	require.Equal(t, 0.95, advanced.OpenAIAccountQuotaAutoPause.DefaultThreshold5h)
-	require.Equal(t, 0.9, advanced.OpenAIAccountQuotaAutoPause.DefaultThreshold7d)
+	require.Equal(t, 0.95, advanced.OpenAIProviderQuotaAutoPause.DefaultThreshold5h)
+	require.Equal(t, 0.9, advanced.OpenAIProviderQuotaAutoPause.DefaultThreshold7d)
 
 	var resp response.Response
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
@@ -352,14 +347,13 @@ func TestSettingHandler_UpdateSettings_PersistsPaymentVisibleMethodsAndAdvancedS
 	require.Equal(t, true, data["payment_visible_method_alipay_enabled"])
 	require.Equal(t, false, data["payment_visible_method_wxpay_enabled"])
 	require.Equal(t, true, data["advanced_scheduler_subscription_priority_enabled"])
-	quota, ok := data["openai_account_quota_auto_pause"].(map[string]any)
+	quota, ok := data["openai_provider_quota_auto_pause"].(map[string]any)
 	require.True(t, ok)
 	require.Equal(t, 0.95, quota["default_threshold_5h"])
 	require.Equal(t, 0.9, quota["default_threshold_7d"])
 }
 
 func TestSettingHandler_UpdateSettings_PreservesLegacyBlankPaymentVisibleMethodSource(t *testing.T) {
-
 	repo := &settingHandlerRepoStub{
 		values: map[string]string{
 			promotion.SettingKeyPromoCodeEnabled:             "true",
@@ -391,7 +385,6 @@ func TestSettingHandler_UpdateSettings_PreservesLegacyBlankPaymentVisibleMethodS
 }
 
 func TestSettingHandler_UpdateSettings_PersistsExplicitFalseOIDCCompatibilityFlags(t *testing.T) {
-
 	repo := &settingHandlerRepoStub{
 		values: map[string]string{
 			promotion.SettingKeyPromoCodeEnabled:              "true",
@@ -447,7 +440,6 @@ func TestSettingHandler_UpdateSettings_PersistsExplicitFalseOIDCCompatibilityFla
 }
 
 func TestSettingHandler_UpdateSettings_DoesNotSolidifyImplicitOIDCSecurityDefaultsOnLegacyUpgrade(t *testing.T) {
-
 	repo := &settingHandlerRepoStub{
 		values: map[string]string{
 			promotion.SettingKeyPromoCodeEnabled:               "true",
@@ -516,7 +508,6 @@ func TestSettingHandler_UpdateSettings_DoesNotSolidifyImplicitOIDCSecurityDefaul
 }
 
 func TestSettingHandler_UpdateSettings_RejectsInvalidPaymentVisibleMethodSource(t *testing.T) {
-
 	repo := &settingHandlerRepoStub{
 		values: map[string]string{
 			promotion.SettingKeyPromoCodeEnabled: "true",
@@ -544,7 +535,6 @@ func TestSettingHandler_UpdateSettings_RejectsInvalidPaymentVisibleMethodSource(
 }
 
 func TestSettingHandler_UpdateSettings_DoesNotPersistPartialSystemSettingsWhenAuthSourceDefaultsFail(t *testing.T) {
-
 	repo := &failingAuthSourceSettingsRepoStub{
 		values: map[string]string{
 			identity.SettingKeyRegistrationEnabled:                 "false",

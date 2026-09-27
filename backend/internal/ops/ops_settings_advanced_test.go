@@ -33,6 +33,7 @@ func TestGetOpsAdvancedSettings_DefaultSnapshotHidesOpenAITokenStats(t *testing.
 		t.Fatalf("hot-path snapshot read touched repository: get=%d get_multiple=%d", repo.getValueCalls, repo.getMultipleCalls)
 	}
 }
+
 func TestUpdateOpsAdvancedSettings_PersistsOpenAITokenStatsVisibility(t *testing.T) {
 	repo := newRuntimeSettingRepoStub()
 	svc := &OpsService{settingRepo: repo}
@@ -67,6 +68,7 @@ func TestUpdateOpsAdvancedSettings_PersistsOpenAITokenStatsVisibility(t *testing
 		t.Fatalf("snapshot reload performed repository read: before=%d after=%d", readsAfterUpdate, got)
 	}
 }
+
 func TestGetOpsAdvancedSettings_BackfillsNewDisplayFlagsFromDefaults(t *testing.T) {
 	repo := newRuntimeSettingRepoStub()
 	svc := &OpsService{settingRepo: repo}
@@ -84,7 +86,7 @@ func TestGetOpsAdvancedSettings_BackfillsNewDisplayFlagsFromDefaults(t *testing.
 		},
 		"ignore_count_tokens_errors":    true,
 		"ignore_context_canceled":       true,
-		"ignore_no_available_accounts":  false,
+		"ignore_no_available_providers": false,
 		"ignore_invalid_api_key_errors": true,
 		"auto_refresh_enabled":          false,
 		"auto_refresh_interval_seconds": 30,
@@ -112,6 +114,7 @@ func TestGetOpsAdvancedSettings_BackfillsNewDisplayFlagsFromDefaults(t *testing.
 		t.Fatalf("legacy cleanup tuning = %d/%d, want default backfill 1000/200", cfg.DataRetention.CleanupBatchSize, cfg.DataRetention.CleanupPauseMS)
 	}
 }
+
 func TestUpdateOpsAdvancedSettings_NormalizesIgnoredStatusCodes(t *testing.T) {
 	repo := newRuntimeSettingRepoStub()
 	svc := &OpsService{settingRepo: repo}
@@ -127,6 +130,7 @@ func TestUpdateOpsAdvancedSettings_NormalizesIgnoredStatusCodes(t *testing.T) {
 		t.Fatalf("IgnoredStatusCodes = %#v, want normalized [401 403]", got)
 	}
 }
+
 func TestUpdateOpsAdvancedSettings_AllowsEmptyIgnoredStatusCodes(t *testing.T) {
 	repo := newRuntimeSettingRepoStub()
 	svc := &OpsService{settingRepo: repo}

@@ -60,8 +60,8 @@ func TestChatCompletionsRejectsGPTImageModelsBeforeScheduling(t *testing.T) {
 				require.Equal(t, http.StatusBadRequest, recorder.Code)
 				require.Equal(t, "invalid_request_error", gjson.Get(recorder.Body.String(), "error.type").String())
 				require.Contains(t, gjson.Get(recorder.Body.String(), "error.message").String(), "Chat Completions")
-				_, selected := c.Get(gatewayhttp.OpsAccountIDKey)
-				require.False(t, selected, "rejection must happen before account selection")
+				_, selected := c.Get(gatewayhttp.OpsProviderIDKey)
+				require.False(t, selected, "rejection must happen before provider selection")
 			})
 		}
 	}
@@ -102,8 +102,8 @@ func TestChatCompletionsRejectsGroupMappedImageModel(t *testing.T) {
 
 			require.Equal(t, http.StatusBadRequest, recorder.Code)
 			require.Contains(t, gjson.Get(recorder.Body.String(), "error.message").String(), "Chat Completions")
-			_, selected := c.Get(gatewayhttp.OpsAccountIDKey)
-			require.False(t, selected, "分组映射后的端点拒绝必须发生在账号选择之前")
+			_, selected := c.Get(gatewayhttp.OpsProviderIDKey)
+			require.False(t, selected, "分组映射后的端点拒绝必须发生在提供商选择之前")
 		})
 	}
 }
@@ -128,7 +128,7 @@ func TestOpenAIChatCompletionsImageModelRejectionDoesNotAcquireConcurrency(t *te
 	h.ChatCompletions(c)
 
 	require.Equal(t, http.StatusBadRequest, recorder.Code)
-	require.Zero(t, acquireCalls.Load(), "rejection must happen before user/account concurrency and scheduling")
+	require.Zero(t, acquireCalls.Load(), "rejection must happen before user/provider concurrency and scheduling")
 }
 
 func newOpenAIImageChatRejectionHandler(t *testing.T) *gatewayHTTPEndpointsFixture {

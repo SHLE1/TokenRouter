@@ -5,7 +5,7 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 
@@ -19,9 +19,9 @@ func GroupResponsesExplicitToolPolicy(group *routing.Group, inherited string) st
 	}
 	switch group.ResponsesImagePolicy {
 	case "block":
-		return accountcore.CodexImagePolicyStrip
+		return providercore.CodexImagePolicyStrip
 	case "enabled", "disabled":
-		return accountcore.CodexImagePolicyAllow
+		return providercore.CodexImagePolicyAllow
 	default:
 		return inherited
 	}
@@ -42,12 +42,12 @@ func APIKeyGroup(apiKey *apikey.APIKey) *routing.Group {
 	return apiKey.Group
 }
 
-// ResponseImagePolicy 按分组显式协议策略、账号覆盖和全局默认值的优先级读取图片桥接设置。
+// ResponseImagePolicy 按分组显式协议策略、提供商覆盖和全局默认值的优先级读取图片桥接设置。
 type ResponseImagePolicy struct {
 	DefaultEnabled bool
 }
 
-func (s *ResponseImagePolicy) Enabled(ctx context.Context, account *ExecutionAccount, apiKey *apikey.APIKey) bool {
+func (s *ResponseImagePolicy) Enabled(ctx context.Context, provider *ExecutionProvider, apiKey *apikey.APIKey) bool {
 	if group := ResponsesPolicyGroup(ctx, APIKeyGroup(apiKey)); group != nil {
 		switch group.ResponsesImagePolicy {
 		case "enabled":
@@ -57,7 +57,7 @@ func (s *ResponseImagePolicy) Enabled(ctx context.Context, account *ExecutionAcc
 		}
 	}
 
-	if override := ExecutionProtocolRecord(account).CodexImageGenerationBridgeOverride(); override != nil {
+	if override := ExecutionProtocolRecord(provider).CodexImageGenerationBridgeOverride(); override != nil {
 		return *override
 	}
 	return s != nil && s.DefaultEnabled

@@ -40,7 +40,7 @@ func BuildPassthroughRequest(ctx context.Context, body []byte, options Passthrou
 		}
 	}
 
-	// 故障转移换号后，不能把已知由旧账号签发的回合状态送往新账号。
+	// 故障转移换号后，不能把已知由旧提供商签发的回合状态送往新提供商。
 	options.GuardTurnState(req.Header)
 	req.Header.Del("authorization")
 	req.Header.Del("x-api-key")
@@ -63,8 +63,8 @@ func BuildPassthroughRequest(ctx context.Context, body []byte, options Passthrou
 		StripLegacyResponsesBeta(req.Header)
 		promptCacheKey := strings.TrimSpace(gjson.GetBytes(body, "prompt_cache_key").String())
 		req.Host = "chatgpt.com"
-		if err := options.AccountHeaders(ctx, req.Header); err != nil {
-			return nil, fmt.Errorf("resolve chatgpt account headers: %w", err)
+		if err := options.ProviderHeaders(ctx, req.Header); err != nil {
+			return nil, fmt.Errorf("resolve chatgpt provider headers: %w", err)
 		}
 		apiKeyID := options.APIKeyID()
 
@@ -102,14 +102,14 @@ func BuildPassthroughRequest(ctx context.Context, body []byte, options Passthrou
 		}
 	} else if options.IsCompact() {
 		// 透传白名单会放行客户端的 Accept: text/event-stream；compact 上游是
-		// unary JSON 协议，API-key 账号同样强制 Accept，避免上游按 SSE 返回
+		// unary JSON 协议，API-key 提供商同样强制 Accept，避免上游按 SSE 返回
 		// （#3777 期望行为 4）。
 		req.Header.Set("accept", "application/json")
 	}
 
 	options.ApplyUserAgent(req)
-	// 透传模式与普通路径共享账号 namespace 和已解析的指纹。
-	options.ApplyAccountIdentity(req.Header)
+	// 透传模式与普通路径共享提供商 namespace 和已解析的指纹。
+	options.ApplyProviderIdentity(req.Header)
 	options.ApplyFingerprint(req.Header)
 	// 终态收口：透传路径的 OAuth 与非透传完全一致，同样强制统一出站身份
 	// （User-Agent / originator / version 同源自洽），客户端自报身份不会到达上游。
@@ -123,7 +123,7 @@ func BuildPassthroughRequest(ctx context.Context, body []byte, options Passthrou
 
 	options.OverrideHeaders(req.Header)
 	options.OpenCodeSession(req.Header)
-	// x-codex-beta-features：按真实 Codex 的会话级行为补注（在账号级覆写之后，
+	// x-codex-beta-features：按真实 Codex 的会话级行为补注（在提供商级覆写之后，
 	// 保证不被覆盖丢失）。
 	options.BetaFeatures(req.Header)
 	options.RoutingHint(req.Header, body)

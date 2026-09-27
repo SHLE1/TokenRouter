@@ -18,10 +18,10 @@ func TestDigestSessionStore_SaveAndFind(t *testing.T) {
 
 	store.Save(1, "prefix", "s:a1-u:b2-m:c3", "uuid-1", 100, "")
 
-	uuid, accountID, _, found := store.Find(1, "prefix", "s:a1-u:b2-m:c3")
+	uuid, providerID, _, found := store.Find(1, "prefix", "s:a1-u:b2-m:c3")
 	require.True(t, found)
 	assert.Equal(t, "uuid-1", uuid)
-	assert.Equal(t, int64(100), accountID)
+	assert.Equal(t, int64(100), providerID)
 }
 
 func TestDigestSessionStore_PrefixMatch(t *testing.T) {
@@ -31,10 +31,10 @@ func TestDigestSessionStore_PrefixMatch(t *testing.T) {
 	store.Save(1, "prefix", "u:a-m:b", "uuid-short", 10, "")
 
 	// 用长链查找，应前缀匹配到短链
-	uuid, accountID, matchedChain, found := store.Find(1, "prefix", "u:a-m:b-u:c-m:d")
+	uuid, providerID, matchedChain, found := store.Find(1, "prefix", "u:a-m:b-u:c-m:d")
 	require.True(t, found)
 	assert.Equal(t, "uuid-short", uuid)
-	assert.Equal(t, int64(10), accountID)
+	assert.Equal(t, int64(10), providerID)
 	assert.Equal(t, "u:a-m:b", matchedChain)
 }
 
@@ -46,16 +46,16 @@ func TestDigestSessionStore_LongestPrefixMatch(t *testing.T) {
 	store.Save(1, "prefix", "u:a-m:b-u:c", "uuid-3", 3, "")
 
 	// 应匹配最深的 "u:a-m:b-u:c"（从完整 chain 逐段截断，先命中最长的）
-	uuid, accountID, _, found := store.Find(1, "prefix", "u:a-m:b-u:c-m:d-u:e")
+	uuid, providerID, _, found := store.Find(1, "prefix", "u:a-m:b-u:c-m:d-u:e")
 	require.True(t, found)
 	assert.Equal(t, "uuid-3", uuid)
-	assert.Equal(t, int64(3), accountID)
+	assert.Equal(t, int64(3), providerID)
 
 	// 查找中等长度，应匹配到 "u:a-m:b"
-	uuid, accountID, _, found = store.Find(1, "prefix", "u:a-m:b-u:x")
+	uuid, providerID, _, found = store.Find(1, "prefix", "u:a-m:b-u:x")
 	require.True(t, found)
 	assert.Equal(t, "uuid-2", uuid)
-	assert.Equal(t, int64(2), accountID)
+	assert.Equal(t, int64(2), providerID)
 }
 
 func TestDigestSessionStore_SaveDeletesOldChain(t *testing.T) {
@@ -72,10 +72,10 @@ func TestDigestSessionStore_SaveDeletesOldChain(t *testing.T) {
 	assert.False(t, found, "old chain should be deleted")
 
 	// 新链应能找到
-	uuid, accountID, _, found := store.Find(1, "prefix", "u:a-m:b-u:c-m:d")
+	uuid, providerID, _, found := store.Find(1, "prefix", "u:a-m:b-u:c-m:d")
 	require.True(t, found)
 	assert.Equal(t, "uuid-1", uuid)
-	assert.Equal(t, int64(100), accountID)
+	assert.Equal(t, int64(100), providerID)
 }
 
 func TestDigestSessionStore_DifferentSessionsNoInterference(t *testing.T) {
@@ -85,15 +85,15 @@ func TestDigestSessionStore_DifferentSessionsNoInterference(t *testing.T) {
 	store.Save(1, "prefix", "s:sys-u:user1", "uuid-1", 100, "")
 	store.Save(1, "prefix", "s:sys-u:user2", "uuid-2", 200, "")
 
-	uuid, accountID, _, found := store.Find(1, "prefix", "s:sys-u:user1-m:reply1")
+	uuid, providerID, _, found := store.Find(1, "prefix", "s:sys-u:user1-m:reply1")
 	require.True(t, found)
 	assert.Equal(t, "uuid-1", uuid)
-	assert.Equal(t, int64(100), accountID)
+	assert.Equal(t, int64(100), providerID)
 
-	uuid, accountID, _, found = store.Find(1, "prefix", "s:sys-u:user2-m:reply2")
+	uuid, providerID, _, found = store.Find(1, "prefix", "s:sys-u:user2-m:reply2")
 	require.True(t, found)
 	assert.Equal(t, "uuid-2", uuid)
-	assert.Equal(t, int64(200), accountID)
+	assert.Equal(t, int64(200), providerID)
 }
 
 func TestDigestSessionStore_NoMatch(t *testing.T) {
@@ -181,9 +181,9 @@ func TestDigestSessionStore_MultipleSessions(t *testing.T) {
 	store := NewDigestSessionStore()
 
 	sessions := []struct {
-		chain     string
-		uuid      string
-		accountID int64
+		chain      string
+		uuid       string
+		providerID int64
 	}{
 		{"u:session1", "uuid-1", 1},
 		{"u:session2-m:reply2", "uuid-2", 2},
@@ -191,22 +191,22 @@ func TestDigestSessionStore_MultipleSessions(t *testing.T) {
 	}
 
 	for _, sess := range sessions {
-		store.Save(1, "prefix", sess.chain, sess.uuid, sess.accountID, "")
+		store.Save(1, "prefix", sess.chain, sess.uuid, sess.providerID, "")
 	}
 
 	// 验证每个会话都能正确查找
 	for _, sess := range sessions {
-		uuid, accountID, _, found := store.Find(1, "prefix", sess.chain)
+		uuid, providerID, _, found := store.Find(1, "prefix", sess.chain)
 		require.True(t, found, "should find session: %s", sess.chain)
 		assert.Equal(t, sess.uuid, uuid)
-		assert.Equal(t, sess.accountID, accountID)
+		assert.Equal(t, sess.providerID, providerID)
 	}
 
 	// 验证继续对话的场景
-	uuid, accountID, _, found := store.Find(1, "prefix", "u:session2-m:reply2-u:newmsg")
+	uuid, providerID, _, found := store.Find(1, "prefix", "u:session2-m:reply2-u:newmsg")
 	require.True(t, found)
 	assert.Equal(t, "uuid-2", uuid)
-	assert.Equal(t, int64(2), accountID)
+	assert.Equal(t, int64(2), providerID)
 }
 
 func TestDigestSessionStore_Performance1000Sessions(t *testing.T) {
@@ -305,8 +305,8 @@ func TestDigestSessionStore_SaveSameChainNoDelete(t *testing.T) {
 	store.Save(1, "prefix", "u:a-m:b", "uuid-1", 100, "u:a-m:b")
 
 	// 仍然能找到
-	uuid, accountID, _, found := store.Find(1, "prefix", "u:a-m:b")
+	uuid, providerID, _, found := store.Find(1, "prefix", "u:a-m:b")
 	require.True(t, found)
 	assert.Equal(t, "uuid-1", uuid)
-	assert.Equal(t, int64(100), accountID)
+	assert.Equal(t, int64(100), providerID)
 }

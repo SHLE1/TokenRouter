@@ -27,7 +27,7 @@ import { AppLayout } from '@/components/layout'
 **Features:**
 
 - Responsive sidebar (collapsible), positioned below the global header
-- Full-width global header with branding and account actions
+- Full-width global header with branding and provider actions
 - Main content area with route title and slot
 - Automatically adjusts margin based on sidebar state
 
@@ -50,7 +50,7 @@ Navigation sidebar with user and admin sections.
   - Admin Dashboard
   - Users
   - Groups
-  - Accounts
+  - Providers
   - Proxies
   - Redeem Codes
 - Collapsible sidebar with toggle button
@@ -100,7 +100,7 @@ Simple centered layout for authentication pages (login/register).
     <!-- Optional footer slot -->
     <template #footer>
       <p>
-        Don't have an account?
+        Don't have an provider?
         <router-link to="/register" class="text-indigo-600 hover:underline"> Sign up </router-link>
       </p>
     </template>
@@ -186,7 +186,7 @@ Components use HTML entity icons for simplicity:
 - &#128268; Admin
 - &#128101; Users
 - &#128193; Folder (Groups)
-- &#127760; Globe (Accounts)
+- &#127760; Globe (Providers)
 - &#128260; Network (Proxies)
 - &#127991; Ticket (Redeem Codes)
 

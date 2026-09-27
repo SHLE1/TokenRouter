@@ -42,7 +42,7 @@ func WriteOpenAIFailoverExhausted(c *gin.Context, failure *OpenAIFailoverError, 
 	if failure.ContinuationUnsupported {
 		message := strings.TrimSpace(failure.ClientMessage)
 		if message == "" {
-			message = "previous_response_id requires an OpenAI API-key account for HTTP requests"
+			message = "previous_response_id requires an OpenAI API-key provider for HTTP requests"
 		}
 		write(c, http.StatusBadRequest, "invalid_request_error", message, started)
 		return
@@ -106,6 +106,7 @@ func CopyFailoverRetryAfter(c *gin.Context, headers http.Header) {
 	}
 	c.Header("Retry-After", retryAfter)
 }
+
 func IsSafeRetryAfter(value string) bool {
 	digitsOnly := true
 	for _, char := range value {
@@ -124,6 +125,7 @@ func IsSafeRetryAfter(value string) bool {
 	}
 	return !retryAt.After(time.Now().Add(7 * 24 * time.Hour))
 }
+
 func MapOpenAIUpstreamError(statusCode int) (int, string, string) {
 	switch statusCode {
 	case 401:

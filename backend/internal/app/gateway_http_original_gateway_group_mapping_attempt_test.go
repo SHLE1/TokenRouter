@@ -43,7 +43,7 @@ func TestPrepareGatewayAttemptRequestUsesCurrentAPIKeyGroupMapping(t *testing.T)
 		},
 	}, nil, routing.PricingConfigOptions{Warn: slog.Warn, Now: time.Now, LoadLocation: pricingprovider.LoadPricingLocation},
 	)
-	handler := newGatewayExecutionHandlerWithPricingConfigForTest(&gatewayExecutionAccountRows{}, pricingConfigService)
+	handler := newGatewayExecutionHandlerWithPricingConfigForTest(&gatewayExecutionProviderRows{}, pricingConfigService)
 	body := []byte(`{"model":"client-alias","messages":[{"role":"user","content":"hello"}]}`)
 	parsed, err := requeststate.ParseGatewayRequest(requeststate.NewRequestBodyRef(body), capability.PlatformAnthropic)
 	require.NoError(t, err)
@@ -89,7 +89,7 @@ func TestPrepareGatewayAttemptRequestUsesGeminiGroupMapping(t *testing.T) {
 	}, nil, routing.PricingConfigOptions{Warn: slog.Warn, Now: time.
 		Now, LoadLocation: pricingprovider.LoadPricingLocation},
 	)
-	handler := newGatewayExecutionHandlerWithPricingConfigForTest(&gatewayExecutionAccountRows{}, pricingConfigService)
+	handler := newGatewayExecutionHandlerWithPricingConfigForTest(&gatewayExecutionProviderRows{}, pricingConfigService)
 	body := []byte(`{"model":"client-alias","messages":[{"role":"user","content":"hello"}]}`)
 	parsed, err := requeststate.ParseGatewayRequest(requeststate.NewRequestBodyRef(body), capability.PlatformAnthropic)
 	require.NoError(t, err)

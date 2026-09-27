@@ -1,6 +1,7 @@
 package messageforward_test
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
@@ -10,9 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"bytes"
-
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
@@ -21,6 +19,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 	gatewaytestkit "github.com/TokenFlux/TokenRouter/internal/gateway/testkit"
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	claude "github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
 	"github.com/gin-gonic/gin"
@@ -28,7 +27,7 @@ import (
 )
 
 type gatewayForwardErrorPolicyRepoStub struct {
-	gatewayprovider.ExecutionAccountStore
+	gatewayprovider.ExecutionProviderStore
 
 	tempCalls           int
 	overloadCalls       int
@@ -36,8 +35,8 @@ type gatewayForwardErrorPolicyRepoStub struct {
 }
 
 type gatewayForwardModelRateLimitCall struct {
-	accountID int64
-	scope     string
+	providerID int64
+	scope      string
 }
 
 func (r *gatewayForwardErrorPolicyRepoStub) SetTempUnschedulable(context.Context, int64, time.Time, string) error {
@@ -46,7 +45,7 @@ func (r *gatewayForwardErrorPolicyRepoStub) SetTempUnschedulable(context.Context
 }
 
 func (r *gatewayForwardErrorPolicyRepoStub) SetModelRateLimit(_ context.Context, id int64, scope string, _ time.Time, _ ...string) error {
-	r.modelRateLimitCalls = append(r.modelRateLimitCalls, gatewayForwardModelRateLimitCall{accountID: id, scope: scope})
+	r.modelRateLimitCalls = append(r.modelRateLimitCalls, gatewayForwardModelRateLimitCall{providerID: id, scope: scope})
 	return nil
 }
 
@@ -63,31 +62,34 @@ func (r *gatewayForwardErrorPolicyRepoStub) SetOverloaded(context.Context, int64
 func newForwardPartialUsageServiceForTest(upstream *anthropicHTTPUpstreamRecorder) *messageforward.Runtime {
 	return newPartialRuntime(upstream, nil)
 }
-func newPartialRuntime(upstream *anthropicHTTPUpstreamRecorder, store gatewayprovider.ExecutionAccountStore) *messageforward.Runtime {
+
+func newPartialRuntime(upstream *anthropicHTTPUpstreamRecorder, store gatewayprovider.ExecutionProviderStore) *messageforward.Runtime {
 	return messageforward.NewRuntime(messageforward.Dependencies{
 		Transport: upstream,
 		Search:    gatewayprovider.NewSearchTools(nil, nil),
 		Health:    gatewaytestkit.NewHealthObserver(gatewaytestkit.HealthInput{Store: store}),
-		Deferred:  &accountcore.DeferredService{},
+		Deferred:  &providercore.DeferredService{},
 	}, messageforward.Options{Configured: true, MaxLineSize: 500 * 1024 * 1024, ResponseReadLimit: 128 * 1024 * 1024, PreserveContentType: true})
 }
 
-func newAnthropicOAuthAccountForPartialUsageTest() *gatewayprovider.ExecutionAccount {
-	return &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 501,
-		Name:        "anthropic-oauth-partial-usage",
-		Platform:    capability.PlatformAnthropic,
-		Type:        capability.AccountTypeOAuth,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"access_token": "oauth-token",
+func newAnthropicOAuthProviderForPartialUsageTest() *gatewayprovider.ExecutionProvider {
+	return &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 501,
+			Name:        "anthropic-oauth-partial-usage",
+			Platform:    capability.PlatformAnthropic,
+			Type:        capability.ProviderTypeOAuth,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"access_token": "oauth-token",
+			},
+			Status:      billing.StatusActive,
+			Schedulable: true,
 		},
-		Status:      billing.StatusActive,
-		Schedulable: true},
 	}
 }
 
 func TestGatewayService_Forward_StreamMissingTerminalPreservesPartialUsage(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
@@ -121,7 +123,7 @@ func TestGatewayService_Forward_StreamMissingTerminalPreservesPartialUsage(t *te
 	svc := newForwardPartialUsageServiceForTest(upstream)
 
 	ctx := requeststate.SetClaudeCodeClient(context.Background(), true)
-	result, err := svc.Execute(ctx, gatewayhttp.NewMessageForwardBoundary(c, nil), newAnthropicOAuthAccountForPartialUsageTest(), parsed)
+	result, err := svc.Execute(ctx, gatewayhttp.NewMessageForwardBoundary(c, nil), newAnthropicOAuthProviderForPartialUsageTest(), parsed)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "missing terminal event")
 	require.NotNil(t, result, "流中断但已观测到 usage 时必须返回部分结果")
@@ -135,7 +137,6 @@ func TestGatewayService_Forward_StreamMissingTerminalPreservesPartialUsage(t *te
 }
 
 func TestGatewayService_Forward_StreamReadErrorAfterOutputPreservesPartialUsage(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
@@ -153,7 +154,7 @@ func TestGatewayService_Forward_StreamReadErrorAfterOutputPreservesPartialUsage(
 	}}
 	svc := newForwardPartialUsageServiceForTest(upstream)
 
-	result, err := svc.Execute(context.Background(), gatewayhttp.NewMessageForwardBoundary(c, nil), newAnthropicOAuthAccountForPartialUsageTest(), parsed)
+	result, err := svc.Execute(context.Background(), gatewayhttp.NewMessageForwardBoundary(c, nil), newAnthropicOAuthProviderForPartialUsageTest(), parsed)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "stream read error")
 	require.NotNil(t, result)
@@ -162,7 +163,6 @@ func TestGatewayService_Forward_StreamReadErrorAfterOutputPreservesPartialUsage(
 }
 
 func TestGatewayService_Forward_StreamErrorWithoutUsageReturnsNilResult(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
@@ -177,14 +177,13 @@ func TestGatewayService_Forward_StreamErrorWithoutUsageReturnsNilResult(t *testi
 	}}
 	svc := newForwardPartialUsageServiceForTest(upstream)
 
-	result, err := svc.Execute(context.Background(), gatewayhttp.NewMessageForwardBoundary(c, nil), newAnthropicOAuthAccountForPartialUsageTest(), parsed)
+	result, err := svc.Execute(context.Background(), gatewayhttp.NewMessageForwardBoundary(c, nil), newAnthropicOAuthProviderForPartialUsageTest(), parsed)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "missing terminal event")
 	require.Nil(t, result, "无已观测 usage 时不应生成零用量记录")
 }
 
 func TestGatewayService_Forward_FailoverErrorKeepsNilResult(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
@@ -201,7 +200,7 @@ func TestGatewayService_Forward_FailoverErrorKeepsNilResult(t *testing.T) {
 	}}
 	svc := newForwardPartialUsageServiceForTest(upstream)
 
-	result, err := svc.Execute(context.Background(), gatewayhttp.NewMessageForwardBoundary(c, nil), newAnthropicOAuthAccountForPartialUsageTest(), parsed)
+	result, err := svc.Execute(context.Background(), gatewayhttp.NewMessageForwardBoundary(c, nil), newAnthropicOAuthProviderForPartialUsageTest(), parsed)
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)
@@ -209,7 +208,6 @@ func TestGatewayService_Forward_FailoverErrorKeepsNilResult(t *testing.T) {
 }
 
 func TestGatewayService_AnthropicAPIKeyPassthrough_ForwardStreamMissingTerminalPreservesPartialUsage(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
@@ -233,7 +231,7 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_ForwardStreamMissingTerminalP
 	}}
 	svc := newForwardPartialUsageServiceForTest(upstream)
 
-	result, err := svc.Execute(context.Background(), gatewayhttp.NewMessageForwardBoundary(c, nil), newAnthropicAPIKeyAccountForTest(), parsed)
+	result, err := svc.Execute(context.Background(), gatewayhttp.NewMessageForwardBoundary(c, nil), newAnthropicAPIKeyProviderForTest(), parsed)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "missing terminal event")
 	require.NotNil(t, result)
@@ -245,7 +243,6 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_ForwardStreamMissingTerminalP
 }
 
 func TestGatewayService_Forward_PreOutputSSEOverloadedErrorUsesSemantic529(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
@@ -260,12 +257,12 @@ func TestGatewayService_Forward_PreOutputSSEOverloadedErrorUsesSemantic529(t *te
 	}}
 	repo := &gatewayForwardErrorPolicyRepoStub{}
 	svc := newPartialRuntime(upstream, repo)
-	account := newAnthropicOAuthAccountForPartialUsageTest()
-	account.Record.Credentials["temp_unschedulable_enabled"] = true
-	account.Record.Credentials["temp_unschedulable_rules"] = []any{map[string]any{
+	provider := newAnthropicOAuthProviderForPartialUsageTest()
+	provider.Record.Credentials["temp_unschedulable_enabled"] = true
+	provider.Record.Credentials["temp_unschedulable_rules"] = []any{map[string]any{
 		"error_code": float64(529), "keywords": []any{"Overloaded"}, "duration_minutes": float64(10),
 	}}
-	result, err := svc.Execute(context.Background(), gatewayhttp.NewMessageForwardBoundary(c, nil), account, parsed)
+	result, err := svc.Execute(context.Background(), gatewayhttp.NewMessageForwardBoundary(c, nil), provider, parsed)
 	require.Error(t, err)
 	require.Nil(t, result)
 	var failoverErr *forwardcore.UpstreamFailoverError
@@ -274,11 +271,10 @@ func TestGatewayService_Forward_PreOutputSSEOverloadedErrorUsesSemantic529(t *te
 	require.JSONEq(t, errorJSON, string(failoverErr.ResponseBody))
 	require.Equal(t, 1, repo.overloadCalls, "synthetic 529 must apply global overload cooldown")
 	require.Empty(t, repo.modelRateLimitCalls, "global 529 cooldown must take precedence over custom model rules")
-	require.Empty(t, rec.Body.String(), "pre-output overload must remain eligible for account failover")
+	require.Empty(t, rec.Body.String(), "pre-output overload must remain eligible for provider failover")
 }
 
 func TestGatewayService_Forward_PostOutputSSEOverloadedErrorKeepsExistingStatus(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
@@ -294,7 +290,7 @@ func TestGatewayService_Forward_PostOutputSSEOverloadedErrorKeepsExistingStatus(
 	}}
 	repo := &gatewayForwardErrorPolicyRepoStub{}
 	svc := newPartialRuntime(upstream, repo)
-	result, err := svc.Execute(context.Background(), gatewayhttp.NewMessageForwardBoundary(c, nil), newAnthropicOAuthAccountForPartialUsageTest(), parsed)
+	result, err := svc.Execute(context.Background(), gatewayhttp.NewMessageForwardBoundary(c, nil), newAnthropicOAuthProviderForPartialUsageTest(), parsed)
 	require.Error(t, err)
 	require.Nil(t, result)
 	var sseErr *claude.StreamErrorEventError
@@ -310,25 +306,28 @@ type anthropicHTTPUpstreamRecorder struct {
 	err      error
 }
 
-func newAnthropicAPIKeyAccountForTest() *gatewayprovider.ExecutionAccount {
-	return &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 201,
-		Name:        "anthropic-apikey-pass-test",
-		Platform:    capability.PlatformAnthropic,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":  "upstream-anthropic-key",
-			"base_url": "https://api.anthropic.com",
+func newAnthropicAPIKeyProviderForTest() *gatewayprovider.ExecutionProvider {
+	return &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 201,
+			Name:        "anthropic-apikey-pass-test",
+			Platform:    capability.PlatformAnthropic,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":  "upstream-anthropic-key",
+				"base_url": "https://api.anthropic.com",
+			},
+			Extra: map[string]any{
+				"anthropic_passthrough": true,
+			},
+			Status:      billing.StatusActive,
+			Schedulable: true,
 		},
-		Extra: map[string]any{
-			"anthropic_passthrough": true,
-		},
-		Status:      billing.StatusActive,
-		Schedulable: true},
 	}
 }
 
-func (u *anthropicHTTPUpstreamRecorder) Do(req *http.Request, proxyURL string, accountID int64, accountConcurrency int) (*http.Response, error) {
+func (u *anthropicHTTPUpstreamRecorder) Do(req *http.Request, proxyURL string, providerID int64, providerConcurrency int) (*http.Response, error) {
 	u.lastReq = req
 	if req != nil && req.Body != nil {
 		b, _ := io.ReadAll(req.Body)
@@ -342,8 +341,8 @@ func (u *anthropicHTTPUpstreamRecorder) Do(req *http.Request, proxyURL string, a
 	return u.resp, nil
 }
 
-func (u *anthropicHTTPUpstreamRecorder) DoWithTLS(req *http.Request, proxyURL string, accountID int64, accountConcurrency int, profile *tlsfingerprint.Profile) (*http.Response, error) {
-	return u.Do(req, proxyURL, accountID, accountConcurrency)
+func (u *anthropicHTTPUpstreamRecorder) DoWithTLS(req *http.Request, proxyURL string, providerID int64, providerConcurrency int, profile *tlsfingerprint.Profile) (*http.Response, error) {
+	return u.Do(req, proxyURL, providerID, providerConcurrency)
 }
 
 type streamReadCloser struct {

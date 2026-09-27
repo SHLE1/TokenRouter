@@ -1,4 +1,4 @@
-// OAuth wire 值与表单编码不持有授权会话、账号或交换客户端。
+// OAuth wire 值与表单编码不持有授权会话、提供商或交换客户端。
 package openai
 
 import "net/url"

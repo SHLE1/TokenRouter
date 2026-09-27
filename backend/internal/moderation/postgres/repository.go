@@ -410,14 +410,14 @@ func insertContentModerationCyberWarning(ctx context.Context, q sqlQueryRower, w
 	if warning.GroupID != nil {
 		groupID = *warning.GroupID
 	}
-	var accountID any
-	if warning.AccountID != nil {
-		accountID = *warning.AccountID
+	var providerID any
+	if warning.ProviderID != nil {
+		providerID = *warning.ProviderID
 	}
 	err = q.QueryRowContext(ctx, `
 INSERT INTO content_moderation_cyber_warnings (
     request_id, user_id, user_email, billing_user_id, team_id, api_key_id, api_key_name, group_id, group_name,
-    account_id, account_name, endpoint, model, upstream_status, warning_text, prompt_excerpt,
+    provider_id, provider_name, endpoint, model, upstream_status, warning_text, prompt_excerpt,
 	    violation_count, auto_banned, email_sent,
 	    source, input_items, content_complete, audit_complete, text_unit_count, image_unit_count,
 	    failed_unit_count, failed_units
@@ -429,7 +429,7 @@ INSERT INTO content_moderation_cyber_warnings (
 	    $26, $27::jsonb
 ) RETURNING id, created_at`,
 		warning.RequestID, userID, warning.UserEmail, billingUserID, teamID, apiKeyID, warning.APIKeyName, groupID, warning.GroupName,
-		accountID, warning.AccountName, warning.Endpoint, warning.Model, warning.UpstreamStatus, warning.WarningText, warning.PromptExcerpt,
+		providerID, warning.ProviderName, warning.Endpoint, warning.Model, warning.UpstreamStatus, warning.WarningText, warning.PromptExcerpt,
 		warning.ViolationCount, warning.AutoBanned, warning.EmailSent,
 		warning.Source, string(inputItems), warning.ContentComplete, warning.AuditComplete, warning.TextUnitCount, warning.ImageUnitCount,
 		warning.FailedUnitCount, string(failedUnits),
@@ -530,7 +530,7 @@ func (r *Store) ListCyberWarnings(ctx context.Context, filter service.ContentMod
 SELECT
     w.id, w.request_id, w.user_id, w.user_email, w.billing_user_id, w.team_id,
     w.api_key_id, w.api_key_name, w.group_id, w.group_name,
-    w.account_id, w.account_name, w.endpoint, w.model, w.upstream_status, w.warning_text, w.prompt_excerpt,
+    w.provider_id, w.provider_name, w.endpoint, w.model, w.upstream_status, w.warning_text, w.prompt_excerpt,
 	    w.violation_count, w.auto_banned, w.email_sent, COALESCE(u.status, ''),
 	    w.source, w.content_complete, w.audit_complete, w.text_unit_count, w.image_unit_count, w.failed_unit_count,
 	    w.created_at
@@ -548,7 +548,7 @@ LIMIT $`+fmt.Sprint(len(queryArgs)-1)+` OFFSET $`+fmt.Sprint(len(queryArgs)),
 	items := make([]service.ContentModerationCyberWarning, 0)
 	for rows.Next() {
 		var item service.ContentModerationCyberWarning
-		var userID, billingUserID, teamID, apiKeyID, groupID, accountID sql.NullInt64
+		var userID, billingUserID, teamID, apiKeyID, groupID, providerID sql.NullInt64
 		if err := rows.Scan(
 			&item.ID,
 			&item.RequestID,
@@ -560,8 +560,8 @@ LIMIT $`+fmt.Sprint(len(queryArgs)-1)+` OFFSET $`+fmt.Sprint(len(queryArgs)),
 			&item.APIKeyName,
 			&groupID,
 			&item.GroupName,
-			&accountID,
-			&item.AccountName,
+			&providerID,
+			&item.ProviderName,
 			&item.Endpoint,
 			&item.Model,
 			&item.UpstreamStatus,
@@ -601,9 +601,9 @@ LIMIT $`+fmt.Sprint(len(queryArgs)-1)+` OFFSET $`+fmt.Sprint(len(queryArgs)),
 			v := groupID.Int64
 			item.GroupID = &v
 		}
-		if accountID.Valid {
-			v := accountID.Int64
-			item.AccountID = &v
+		if providerID.Valid {
+			v := providerID.Int64
+			item.ProviderID = &v
 		}
 		items = append(items, item)
 	}
@@ -616,13 +616,13 @@ LIMIT $`+fmt.Sprint(len(queryArgs)-1)+` OFFSET $`+fmt.Sprint(len(queryArgs)),
 // GetCyberWarning 返回 Cyber 命中时保存的完整当前轮快照和媒体元数据。
 func (r *Store) GetCyberWarning(ctx context.Context, id int64) (*service.ContentModerationCyberWarning, error) {
 	var item service.ContentModerationCyberWarning
-	var userID, billingUserID, teamID, apiKeyID, groupID, accountID sql.NullInt64
+	var userID, billingUserID, teamID, apiKeyID, groupID, providerID sql.NullInt64
 	var inputItemsRaw, failedUnitsRaw []byte
 	err := r.db.QueryRowContext(ctx, `
 SELECT
     w.id, w.request_id, w.user_id, w.user_email, w.billing_user_id, w.team_id,
     w.api_key_id, w.api_key_name, w.group_id, w.group_name,
-    w.account_id, w.account_name, w.endpoint, w.model, w.upstream_status, w.warning_text, w.prompt_excerpt,
+    w.provider_id, w.provider_name, w.endpoint, w.model, w.upstream_status, w.warning_text, w.prompt_excerpt,
     w.violation_count, w.auto_banned, w.email_sent, COALESCE(u.status, ''),
     w.source, w.input_items, w.content_complete, w.audit_complete, w.text_unit_count, w.image_unit_count,
     w.failed_unit_count, w.failed_units, w.created_at
@@ -632,7 +632,7 @@ WHERE w.id = $1
 `, id).Scan(
 		&item.ID, &item.RequestID, &userID, &item.UserEmail, &billingUserID, &teamID,
 		&apiKeyID, &item.APIKeyName, &groupID, &item.GroupName,
-		&accountID, &item.AccountName, &item.Endpoint, &item.Model, &item.UpstreamStatus, &item.WarningText, &item.PromptExcerpt,
+		&providerID, &item.ProviderName, &item.Endpoint, &item.Model, &item.UpstreamStatus, &item.WarningText, &item.PromptExcerpt,
 		&item.ViolationCount, &item.AutoBanned, &item.EmailSent, &item.UserStatus,
 		&item.Source, &inputItemsRaw, &item.ContentComplete, &item.AuditComplete, &item.TextUnitCount, &item.ImageUnitCount,
 		&item.FailedUnitCount, &failedUnitsRaw, &item.CreatedAt,
@@ -660,9 +660,9 @@ WHERE w.id = $1
 		value := groupID.Int64
 		item.GroupID = &value
 	}
-	if accountID.Valid {
-		value := accountID.Int64
-		item.AccountID = &value
+	if providerID.Valid {
+		value := providerID.Int64
+		item.ProviderID = &value
 	}
 	_ = json.Unmarshal(inputItemsRaw, &item.InputItems)
 	_ = json.Unmarshal(failedUnitsRaw, &item.FailedUnits)
@@ -787,12 +787,12 @@ SELECT
     COUNT(*),
     COUNT(DISTINCT NULLIF(request_id, '')),
     COUNT(DISTINCT user_id),
-    COUNT(DISTINCT account_id)
+    COUNT(DISTINCT provider_id)
 FROM content_moderation_cyber_warnings w `+whereSQL, args...).Scan(
 		&result.Events,
 		&result.Requests,
 		&result.Users,
-		&result.Accounts,
+		&result.Providers,
 	); err != nil {
 		return nil, fmt.Errorf("summary content moderation cyber warnings: %w", err)
 	}
@@ -827,35 +827,35 @@ LIMIT 100`, args...)
 		return nil, fmt.Errorf("iterate content moderation cyber user summary: %w", err)
 	}
 
-	accountRows, err := r.db.QueryContext(ctx, `
+	providerRows, err := r.db.QueryContext(ctx, `
 SELECT
     COUNT(*) AS count,
-    w.account_id,
-    COALESCE(NULLIF(MAX(w.account_name), ''), 'unknown') AS account_name,
+    w.provider_id,
+    COALESCE(NULLIF(MAX(w.provider_name), ''), 'unknown') AS provider_name,
     COUNT(DISTINCT w.user_id) AS users,
     to_char(MAX(w.created_at AT TIME ZONE 'Asia/Shanghai'), 'YYYY-MM-DD HH24:MI:SS') AS last_seen
 FROM content_moderation_cyber_warnings w `+whereSQL+`
-GROUP BY w.account_id
+GROUP BY w.provider_id
 ORDER BY count DESC, last_seen DESC
 LIMIT 100`, args...)
 	if err != nil {
-		return nil, fmt.Errorf("summary content moderation cyber warnings by account: %w", err)
+		return nil, fmt.Errorf("summary content moderation cyber warnings by provider: %w", err)
 	}
-	defer func() { _ = accountRows.Close() }()
-	for accountRows.Next() {
-		var item service.ContentModerationCyberAccountSummary
-		var accountID sql.NullInt64
-		if err := accountRows.Scan(&item.Count, &accountID, &item.AccountName, &item.Users, &item.LastSeen); err != nil {
-			return nil, fmt.Errorf("scan content moderation cyber account summary: %w", err)
+	defer func() { _ = providerRows.Close() }()
+	for providerRows.Next() {
+		var item service.ContentModerationCyberProviderSummary
+		var providerID sql.NullInt64
+		if err := providerRows.Scan(&item.Count, &providerID, &item.ProviderName, &item.Users, &item.LastSeen); err != nil {
+			return nil, fmt.Errorf("scan content moderation cyber provider summary: %w", err)
 		}
-		if accountID.Valid {
-			v := accountID.Int64
-			item.AccountID = &v
+		if providerID.Valid {
+			v := providerID.Int64
+			item.ProviderID = &v
 		}
-		result.ByAccount = append(result.ByAccount, item)
+		result.ByProvider = append(result.ByProvider, item)
 	}
-	if err := accountRows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate content moderation cyber account summary: %w", err)
+	if err := providerRows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate content moderation cyber provider summary: %w", err)
 	}
 	return result, nil
 }
@@ -960,14 +960,14 @@ func buildContentModerationCyberWhere(filter service.ContentModerationCyberWarni
 	if filter.UserID != nil {
 		add("w.user_id = $%d", *filter.UserID)
 	}
-	if filter.AccountID != nil {
-		add("w.account_id = $%d", *filter.AccountID)
+	if filter.ProviderID != nil {
+		add("w.provider_id = $%d", *filter.ProviderID)
 	}
 	if search := strings.TrimSpace(filter.Search); search != "" {
 		like := "%" + search + "%"
 		args = append(args, like, like, like, like, like, like, like)
 		idx := len(args) - 6
-		where = append(where, fmt.Sprintf("(w.request_id ILIKE $%d OR w.user_email ILIKE $%d OR w.api_key_name ILIKE $%d OR w.account_name ILIKE $%d OR w.model ILIKE $%d OR w.warning_text ILIKE $%d OR w.prompt_excerpt ILIKE $%d)", idx, idx+1, idx+2, idx+3, idx+4, idx+5, idx+6))
+		where = append(where, fmt.Sprintf("(w.request_id ILIKE $%d OR w.user_email ILIKE $%d OR w.api_key_name ILIKE $%d OR w.provider_name ILIKE $%d OR w.model ILIKE $%d OR w.warning_text ILIKE $%d OR w.prompt_excerpt ILIKE $%d)", idx, idx+1, idx+2, idx+3, idx+4, idx+5, idx+6))
 	}
 	if filter.From != nil && !filter.From.IsZero() {
 		add("w.created_at >= $%d", *filter.From)

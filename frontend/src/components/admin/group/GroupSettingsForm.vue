@@ -106,18 +106,18 @@
         :id-prefix="idPrefix"
         :enabled="form.model_routing_enabled"
         :rules="routingRules"
-        :search="accountSearch"
+        :search="providerSearch"
         :get-key="getRuleKey"
         @enabled="form.model_routing_enabled = $event"
         @add="emit('addRule')"
         @remove="emit('removeRule', $event)"
         @pattern="(rule, value) => emit('rulePattern', rule, value)"
-        @search="(rule, keyword) => emit('searchAccounts', rule, keyword)"
-        @focus="emit('focusAccounts', $event)"
-        @select-account="
-          (rule, account) => emit('selectAccount', rule, account)
+        @search="(rule, keyword) => emit('searchProviders', rule, keyword)"
+        @focus="emit('focusProviders', $event)"
+        @select-provider="
+          (rule, provider) => emit('selectProvider', rule, provider)
         "
-        @remove-account="(rule, id) => emit('removeAccount', rule, id)"
+        @remove-provider="(rule, id) => emit('removeProvider', rule, id)"
       />
       <GroupModelsListFields
         :id-prefix="idPrefix"
@@ -132,16 +132,16 @@
     </template>
 
     <template #scheduling>
-      <GroupFormSection :title="t('admin.groups.settings.accountSelection')">
-        <div v-if="options.copyAccounts.length">
+      <GroupFormSection :title="t('admin.groups.settings.providerSelection')">
+        <div v-if="options.copyProviders.length">
           <div class="mb-2 flex items-center gap-2">
             <label
-              :for="`${idPrefix}-copy-accounts`"
+              :for="`${idPrefix}-copy-providers`"
               class="input-label mb-0"
-              >{{ t('admin.groups.copyAccounts.title') }}</label
+              >{{ t('admin.groups.copyProviders.title') }}</label
             >
             <HelpTooltip
-              :content="t('admin.groups.copyAccounts.tooltip')"
+              :content="t('admin.groups.copyProviders.tooltip')"
               :tooltip-id="`${idPrefix}-copy-help`"
               trigger="both"
               :closable="false"
@@ -150,7 +150,7 @@
                 <button
                   type="button"
                   class="inline-flex rounded-compact text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
-                  :aria-label="t('admin.groups.copyAccounts.title')"
+                  :aria-label="t('admin.groups.copyProviders.title')"
                   :aria-describedby="`${idPrefix}-copy-help`"
                 >
                   <Icon name="questionCircle" size="sm" />
@@ -159,11 +159,11 @@
             </HelpTooltip>
           </div>
           <div
-            v-if="form.copy_accounts_from_group_ids.length"
+            v-if="form.copy_providers_from_group_ids.length"
             class="mb-2 flex flex-wrap gap-2"
           >
             <span
-              v-for="groupId in form.copy_accounts_from_group_ids"
+              v-for="groupId in form.copy_providers_from_group_ids"
               :key="groupId"
               class="inline-flex max-w-full items-center gap-2 rounded-compact bg-primary-100 px-2 py-1 text-xs text-primary-700 dark:bg-primary-900/30 dark:text-primary-300"
             >
@@ -179,8 +179,8 @@
                   })
                 "
                 @click="
-                  form.copy_accounts_from_group_ids =
-                    form.copy_accounts_from_group_ids.filter(
+                  form.copy_providers_from_group_ids =
+                    form.copy_providers_from_group_ids.filter(
                       (id) => id !== groupId,
                     )
                 "
@@ -191,25 +191,25 @@
           </div>
           <Select
             :aria-label="t('admin.groups.form.status')"
-            :id="`${idPrefix}-copy-accounts`"
+            :id="`${idPrefix}-copy-providers`"
             :model-value="null"
             :options="copyOptions"
-            :placeholder="t('admin.groups.copyAccounts.selectPlaceholder')"
+            :placeholder="t('admin.groups.copyProviders.selectPlaceholder')"
             @change="addCopyGroup"
           />
-          <p class="input-hint">{{ t('admin.groups.copyAccounts.hint') }}</p>
+          <p class="input-hint">{{ t('admin.groups.copyProviders.hint') }}</p>
         </div>
         <GroupSettingRow
           :id="`${idPrefix}-oauth`"
           v-model="form.require_oauth_only"
-          :label="t('admin.groups.accountFilters.oauthOnly')"
+          :label="t('admin.groups.providerFilters.oauthOnly')"
           :hint="t('admin.groups.settings.oauthHint')"
           setting="require_oauth_only"
         />
         <GroupSettingRow
           :id="`${idPrefix}-privacy`"
           v-model="form.require_privacy_set"
-          :label="t('admin.groups.accountFilters.privacyRequired')"
+          :label="t('admin.groups.providerFilters.privacyRequired')"
           :hint="t('admin.groups.settings.privacyHint')"
           setting="require_privacy_set"
         />
@@ -480,9 +480,9 @@ import ReasoningEffortPolicyFields from './ReasoningEffortPolicyFields.vue'
 import GroupRequestCompatibilityFields from './GroupRequestCompatibilityFields.vue'
 import type { ModelsListState } from '@/views/admin/groupsModelsList'
 import type {
-  GroupAccountSearchState,
+  GroupProviderSearchState,
   GroupModelRoutingRule,
-  GroupRoutingAccount,
+  GroupRoutingProvider,
   GroupSettingsDraft,
   GroupSettingsOptions,
 } from './groupSettingsTypes'
@@ -494,7 +494,7 @@ const props = defineProps<{
   routingRules: GroupModelRoutingRule[]
   modelsList: ModelsListState
   modelsListLoading: boolean
-  accountSearch: GroupAccountSearchState
+  providerSearch: GroupProviderSearchState
   getRuleKey: (rule: GroupModelRoutingRule) => string
 }>()
 const emit = defineEmits<{
@@ -503,10 +503,10 @@ const emit = defineEmits<{
   addRule: []
   removeRule: [rule: GroupModelRoutingRule]
   rulePattern: [rule: GroupModelRoutingRule, value: string]
-  searchAccounts: [rule: GroupModelRoutingRule, keyword: string]
-  focusAccounts: [rule: GroupModelRoutingRule]
-  selectAccount: [rule: GroupModelRoutingRule, account: GroupRoutingAccount]
-  removeAccount: [rule: GroupModelRoutingRule, accountId: number]
+  searchProviders: [rule: GroupModelRoutingRule, keyword: string]
+  focusProviders: [rule: GroupModelRoutingRule]
+  selectProvider: [rule: GroupModelRoutingRule, provider: GroupRoutingProvider]
+  removeProvider: [rule: GroupModelRoutingRule, providerId: number]
   modelsEnabled: [value: boolean]
   selectModel: [id: string, value: boolean]
   selectAllModels: []
@@ -534,7 +534,7 @@ const providerBrandOptions = defaultProviderBrandOptions
 const statusOptions = computed(() =>
   ['active', 'inactive'].map((value) => ({
     value,
-    label: t(`admin.accounts.status.${value}`),
+    label: t(`admin.providers.status.${value}`),
   })),
 )
 const schedulerOptions = computed(() =>
@@ -564,24 +564,24 @@ const advancedSummary = computed(() => {
     : t('admin.groups.advancedSchedulerOverrides.allInherited')
 })
 const copyOptions = computed(() =>
-  props.options.copyAccounts.map((option) => ({
+  props.options.copyProviders.map((option) => ({
     ...option,
-    disabled: props.modelValue.copy_accounts_from_group_ids.includes(
+    disabled: props.modelValue.copy_providers_from_group_ids.includes(
       Number(option.value),
     ),
   })),
 )
 function copyGroupLabel(id: number) {
   return (
-    props.options.copyAccounts.find((option) => option.value === id)?.label ??
+    props.options.copyProviders.find((option) => option.value === id)?.label ??
     `#${id}`
   )
 }
 function addCopyGroup(value: string | number | boolean | null) {
   const id = Number(value)
-  if (id && !form.value.copy_accounts_from_group_ids.includes(id)) {
-    form.value.copy_accounts_from_group_ids = [
-      ...form.value.copy_accounts_from_group_ids,
+  if (id && !form.value.copy_providers_from_group_ids.includes(id)) {
+    form.value.copy_providers_from_group_ids = [
+      ...form.value.copy_providers_from_group_ids,
       id,
     ]
   }

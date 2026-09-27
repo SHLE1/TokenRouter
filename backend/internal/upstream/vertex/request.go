@@ -53,7 +53,7 @@ func FilterBetaTokens(header string, drop map[string]struct{}) string {
 	return strings.Join(out, ",")
 }
 
-// AnthropicRequestOptions 是现有 HTTP/账号策略的显式投影，调用顺序保持。
+// AnthropicRequestOptions 是现有 HTTP/提供商策略的显式投影，调用顺序保持。
 type AnthropicRequestOptions struct {
 	ClientBeta           string
 	ClientHeaders        http.Header

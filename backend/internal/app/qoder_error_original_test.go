@@ -17,7 +17,7 @@ import (
 )
 
 func TestQoderGatewayErrorDetailsAppliesPassthroughRule(t *testing.T) {
-	customMessage := "Use another Qoder account"
+	customMessage := "Use another Qoder provider"
 	responseCode := http.StatusTeapot
 	svc := errorpolicy.NewErrorPassthroughService(&qoderErrorPassthroughRepoStub{
 		rules: []*errorpolicy.ErrorPassthroughRule{

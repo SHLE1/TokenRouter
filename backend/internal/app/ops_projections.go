@@ -1,51 +1,53 @@
-// Ops 直接绑定新账号/身份模块的只读查询，不持有业务缓存。
+// Ops 直接绑定新提供商/身份模块的只读查询，不持有业务缓存。
 package app
 
 import (
 	"context"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
-	accountpostgres "github.com/TokenFlux/TokenRouter/internal/account/postgres"
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 	identitypostgres "github.com/TokenFlux/TokenRouter/internal/identity/postgres"
 	"github.com/TokenFlux/TokenRouter/internal/ops"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/querycache"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
+	providerpostgres "github.com/TokenFlux/TokenRouter/internal/provider/postgres"
 )
 
-type opsAccounts struct{ store *accountpostgres.AccountStore }
+type opsProviderReader struct {
+	store *providerpostgres.ProviderStore
+}
 
-func (a opsAccounts) ListPage(ctx context.Context, p pagination.PaginationParams, platform string, group int64) ([]ops.AccountObservation, *pagination.PaginationResult, error) {
+func (a opsProviderReader) ListPage(ctx context.Context, p pagination.PaginationParams, platform string, group int64) ([]ops.ProviderObservation, *pagination.PaginationResult, error) {
 	v, pg, e := a.store.ListWithFilters(ctx, p, platform, "", "", "", group, "")
-	return opsAccountViews(v), pg, e
+	return opsProviderViews(v), pg, e
 }
 
-func (a opsAccounts) ListOpsAccountsForStats(ctx context.Context, platform string, g *int64) ([]ops.AccountObservation, error) {
-	v, e := a.store.ListOpsAccountsForStats(ctx, platform, g)
-	return opsAccountViews(v), e
+func (a opsProviderReader) ListOpsProvidersForStats(ctx context.Context, platform string, g *int64) ([]ops.ProviderObservation, error) {
+	v, e := a.store.ListOpsProvidersForStats(ctx, platform, g)
+	return opsProviderViews(v), e
 }
 
-func (a opsAccounts) ListSchedulable(ctx context.Context) ([]ops.AccountObservation, error) {
+func (a opsProviderReader) ListSchedulable(ctx context.Context) ([]ops.ProviderObservation, error) {
 	v, e := a.store.ListSchedulable(ctx)
-	return opsAccountViews(v), e
+	return opsProviderViews(v), e
 }
 
-func (a opsAccounts) ListSchedulableAccountLoads(ctx context.Context) ([]ops.AccountWithConcurrency, error) {
-	v, e := a.store.ListSchedulableAccountLoads(ctx)
+func (a opsProviderReader) ListSchedulableProviderLoads(ctx context.Context) ([]ops.ProviderWithConcurrency, error) {
+	v, e := a.store.ListSchedulableProviderLoads(ctx)
 	if e != nil {
 		return nil, e
 	}
-	out := make([]ops.AccountWithConcurrency, len(v))
+	out := make([]ops.ProviderWithConcurrency, len(v))
 	for i, a := range v {
-		out[i] = ops.AccountWithConcurrency{ID: a.ID, MaxConcurrency: a.MaxConcurrency}
+		out[i] = ops.ProviderWithConcurrency{ID: a.ID, MaxConcurrency: a.MaxConcurrency}
 	}
 	return out, nil
 }
 
-func opsAccountViews(a []account.Record) []ops.AccountObservation {
-	out := make([]ops.AccountObservation, len(a))
+func opsProviderViews(a []provider.Record) []ops.ProviderObservation {
+	out := make([]ops.ProviderObservation, len(a))
 	for i, v := range a {
-		out[i] = ops.AccountObservation{ID: v.ID, Name: v.Name, Platform: v.Platform, Status: v.Status, ErrorMessage: v.ErrorMessage, Schedulable: v.Schedulable, Concurrency: v.Concurrency, LoadFactor: v.EffectiveLoadFactor(), TempUnschedulableUntil: v.TempUnschedulableUntil, RateLimitResetAt: v.RateLimitResetAt, OverloadUntil: v.OverloadUntil}
+		out[i] = ops.ProviderObservation{ID: v.ID, Name: v.Name, Platform: v.Platform, Status: v.Status, ErrorMessage: v.ErrorMessage, Schedulable: v.Schedulable, Concurrency: v.Concurrency, LoadFactor: v.EffectiveLoadFactor(), TempUnschedulableUntil: v.TempUnschedulableUntil, RateLimitResetAt: v.RateLimitResetAt, OverloadUntil: v.OverloadUntil}
 		if v.Groups != nil {
 			out[i].Groups = make([]*ops.GroupObservation, len(v.Groups))
 			for j, g := range v.Groups {

@@ -7,11 +7,11 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/config"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/accessview"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
@@ -21,47 +21,47 @@ import (
 )
 
 type advancedSchedulerDiagnosticSourceStub struct {
-	account  *gatewayprovider.ExecutionAccount
-	group    *routing.Group
-	accounts []gatewayprovider.ExecutionAccount
-	pool     []gatewayprovider.ExecutionAccount
+	provider  *gatewayprovider.ExecutionProvider
+	group     *routing.Group
+	providers []gatewayprovider.ExecutionProvider
+	pool      []gatewayprovider.ExecutionProvider
 }
 
 type advancedSchedulerDiagnosticConcurrencyCache struct {
 	scheduler.ConcurrencyCache
-	requests [][]scheduler.AccountWithConcurrency
+	requests [][]scheduler.ProviderWithConcurrency
 }
 
-func (c *advancedSchedulerDiagnosticConcurrencyCache) GetAccountsLoadBatch(_ context.Context, accounts []scheduler.AccountWithConcurrency) (map[int64]*scheduler.AccountLoadInfo, error) {
-	c.requests = append(c.requests, append([]scheduler.AccountWithConcurrency(nil), accounts...))
-	result := make(map[int64]*scheduler.AccountLoadInfo, len(accounts))
-	for _, account := range accounts {
-		result[account.ID] = &scheduler.AccountLoadInfo{AccountID: account.ID}
+func (c *advancedSchedulerDiagnosticConcurrencyCache) GetProvidersLoadBatch(_ context.Context, providers []scheduler.ProviderWithConcurrency) (map[int64]*scheduler.ProviderLoadInfo, error) {
+	c.requests = append(c.requests, append([]scheduler.ProviderWithConcurrency(nil), providers...))
+	result := make(map[int64]*scheduler.ProviderLoadInfo, len(providers))
+	for _, provider := range providers {
+		result[provider.ID] = &scheduler.ProviderLoadInfo{ProviderID: provider.ID}
 	}
 	return result, nil
 }
 
-func (s *advancedSchedulerDiagnosticSourceStub) GetAccount(_ context.Context, _ int64) (*gatewayprovider.ExecutionAccount, error) {
-	return s.account, nil
+func (s *advancedSchedulerDiagnosticSourceStub) GetProvider(_ context.Context, _ int64) (*gatewayprovider.ExecutionProvider, error) {
+	return s.provider, nil
 }
 
 func (s *advancedSchedulerDiagnosticSourceStub) GetGroup(_ context.Context, _ int64) (*routing.Group, error) {
 	return s.group, nil
 }
 
-func (s *advancedSchedulerDiagnosticSourceStub) ListAccountsForSchedulerScoreFilter(ctx context.Context, _, _, _, _ string, groupID int64, _ string) ([]gatewayprovider.ExecutionAccount, error) {
+func (s *advancedSchedulerDiagnosticSourceStub) ListProvidersForSchedulerScoreFilter(ctx context.Context, _, _, _, _ string, groupID int64, _ string) ([]gatewayprovider.ExecutionProvider, error) {
 	if groupID <= 0 && s.group != nil {
 		groupID = s.group.ID
 	}
-	for i := range s.accounts {
-		prepareSelectionFixtureAccount(ctx, &s.accounts[i], &groupID)
+	for i := range s.providers {
+		prepareSelectionFixtureProvider(ctx, &s.providers[i], &groupID)
 	}
-	return s.accounts, nil
+	return s.providers, nil
 }
 
-func (s *advancedSchedulerDiagnosticSourceStub) ListSchedulableAccountsForAdvancedSchedulerScore(ctx context.Context, groupID *int64, _ string) ([]gatewayprovider.ExecutionAccount, error) {
+func (s *advancedSchedulerDiagnosticSourceStub) ListSchedulableProvidersForAdvancedSchedulerScore(ctx context.Context, groupID *int64, _ string) ([]gatewayprovider.ExecutionProvider, error) {
 	for i := range s.pool {
-		prepareSelectionFixtureAccount(ctx, &s.pool[i], groupID)
+		prepareSelectionFixtureProvider(ctx, &s.pool[i], groupID)
 	}
 	return s.pool, nil
 }
@@ -125,42 +125,42 @@ func TestAdvancedSchedulerScoreDiagnosticService_UsesActualFormulaAndSafeDTO(t *
 			WeightSessionSticky:    advancedSchedulerDiagnosticFloat(3),
 		},
 	}
-	target := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	target := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 101,
-			Name:          "target",
-			Platform:      capability.PlatformGemini,
-			Type:          capability.AccountTypeOAuth,
-			Status:        billing.StatusActive,
-			Schedulable:   true,
-			Priority:      1,
-			Credentials:   map[string]any{"model_whitelist": []string{"*"}, "access_token": "secret-token"},
-			AccountGroups: []accountcore.GroupMembership{{GroupID: group.ID, Group: (*accessview.GroupConfig)(group)}},
+			Name:           "target",
+			Platform:       capability.PlatformGemini,
+			Type:           capability.ProviderTypeOAuth,
+			Status:         billing.StatusActive,
+			Schedulable:    true,
+			Priority:       1,
+			Credentials:    map[string]any{"model_whitelist": []string{"*"}, "access_token": "secret-token"},
+			ProviderGroups: []providercore.GroupMembership{{GroupID: group.ID, Group: (*accessview.GroupConfig)(group)}},
 		},
 	}
-	other := gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	other := gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 102,
 			Name:        "other",
 			Platform:    capability.PlatformGemini,
-			Type:        capability.AccountTypeOAuth,
+			Type:        capability.ProviderTypeOAuth,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Priority:    2,
 		},
 	}
 	source := &advancedSchedulerDiagnosticSourceStub{
-		account:  target,
-		group:    group,
-		accounts: []gatewayprovider.ExecutionAccount{*target, other},
-		pool:     []gatewayprovider.ExecutionAccount{*target, other},
+		provider:  target,
+		group:     group,
+		providers: []gatewayprovider.ExecutionProvider{*target, other},
+		pool:      []gatewayprovider.ExecutionProvider{*target, other},
 	}
 
 	diagnostics := withDiagnosticParameters(newDiagnosticsForTest(source, nil))
 
 	result, err := diagnostics.GetDetail(context.Background(), target.Record.ID, policy.AdvancedSchedulerScoreDiagnosticRequest{
-		GroupID:         group.ID,
-		StickyAccountID: target.Record.ID,
+		GroupID:          group.ID,
+		StickyProviderID: target.Record.ID,
 	})
 	require.NoError(t, err)
 	require.NotNil(t, result.Detail)
@@ -203,23 +203,23 @@ func TestAdvancedSchedulerScoreDiagnosticService_UsesActualFormulaAndSafeDTO(t *
 
 func TestAdvancedSchedulerScoreDiagnosticService_UsesProcessConfigBeforeFallback(t *testing.T) {
 	group := &routing.Group{ID: 501, Name: "advanced", SchedulerType: routing.GroupSchedulerTypeAdvanced}
-	target := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	target := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 5011,
-			Name:          "target",
-			Platform:      capability.PlatformGemini,
-			Status:        billing.StatusActive,
-			Schedulable:   true,
-			Priority:      1,
-			AccountGroups: []accountcore.GroupMembership{{GroupID: group.ID, Group: (*accessview.GroupConfig)(group)}},
+			Name:           "target",
+			Platform:       capability.PlatformGemini,
+			Status:         billing.StatusActive,
+			Schedulable:    true,
+			Priority:       1,
+			ProviderGroups: []providercore.GroupMembership{{GroupID: group.ID, Group: (*accessview.GroupConfig)(group)}},
 		},
 	}
-	other := gatewayprovider.ExecutionAccount{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 5012, Name: "other", Platform: capability.PlatformGemini, Status: billing.StatusActive, Schedulable: true, Priority: 2}}
+	other := gatewayprovider.ExecutionProvider{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 5012, Name: "other", Platform: capability.PlatformGemini, Status: billing.StatusActive, Schedulable: true, Priority: 2}}
 	source := &advancedSchedulerDiagnosticSourceStub{
-		account:  target,
-		group:    group,
-		accounts: []gatewayprovider.ExecutionAccount{*target, other},
-		pool:     []gatewayprovider.ExecutionAccount{*target, other},
+		provider:  target,
+		group:     group,
+		providers: []gatewayprovider.ExecutionProvider{*target, other},
+		pool:      []gatewayprovider.ExecutionProvider{*target, other},
 	}
 	cfg := &config.Config{
 		Gateway: config.GatewayConfig{AdvancedScheduler: config.GatewayAdvancedSchedulerConfig{
@@ -243,7 +243,7 @@ func TestAdvancedSchedulerScoreDiagnosticService_UsesProcessConfigBeforeFallback
 	require.Equal(t, "process_default", prioritySetting.Source)
 }
 
-func TestAdvancedSchedulerScoreDiagnosticService_HardStickyForcesAccountOutsideTopK(t *testing.T) {
+func TestAdvancedSchedulerScoreDiagnosticService_HardStickyForcesProviderOutsideTopK(t *testing.T) {
 	group := &routing.Group{
 		ID:   701,
 		Name: "advanced",
@@ -261,20 +261,20 @@ func TestAdvancedSchedulerScoreDiagnosticService_HardStickyForcesAccountOutsideT
 			WeightQuotaHeadroom:   advancedSchedulerDiagnosticFloat(0),
 		},
 	}
-	target := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	target := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 7011, Name: "sticky", Platform: capability.PlatformGemini, Status: billing.StatusActive,
-			Schedulable: true, Priority: 100, AccountGroups: []accountcore.GroupMembership{{GroupID: group.ID, Group: (*accessview.GroupConfig)(group)}},
+			Schedulable: true, Priority: 100, ProviderGroups: []providercore.GroupMembership{{GroupID: group.ID, Group: (*accessview.GroupConfig)(group)}},
 		},
 	}
-	best := gatewayprovider.ExecutionAccount{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 7012, Name: "best", Platform: capability.PlatformGemini, Status: billing.StatusActive, Schedulable: true, Priority: 1}}
+	best := gatewayprovider.ExecutionProvider{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 7012, Name: "best", Platform: capability.PlatformGemini, Status: billing.StatusActive, Schedulable: true, Priority: 1}}
 	source := &advancedSchedulerDiagnosticSourceStub{
-		account: target, group: group, accounts: []gatewayprovider.ExecutionAccount{*target, best}, pool: []gatewayprovider.ExecutionAccount{best, *target},
+		provider: target, group: group, providers: []gatewayprovider.ExecutionProvider{*target, best}, pool: []gatewayprovider.ExecutionProvider{best, *target},
 	}
 	diagnostics := withDiagnosticParameters(newDiagnosticsForTest(source, nil))
 
 	result, err := diagnostics.GetDetail(context.Background(), target.Record.ID, policy.AdvancedSchedulerScoreDiagnosticRequest{
-		GroupID: group.ID, StickyAccountID: target.Record.ID,
+		GroupID: group.ID, StickyProviderID: target.Record.ID,
 	})
 
 	require.NoError(t, err)
@@ -299,20 +299,20 @@ func TestAdvancedSchedulerScoreDiagnosticService_SubscriptionPriorityUsesSubscri
 			SubscriptionPriorityEnabled: advancedSchedulerDiagnosticBool(true),
 		},
 	}
-	target := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
-			Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 8011, Name: "regular", Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey,
-			Status: billing.StatusActive, Schedulable: true, AccountGroups: []accountcore.GroupMembership{{GroupID: group.ID, Group: (*accessview.GroupConfig)(group)}},
+	target := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 8011, Name: "regular", Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey,
+			Status: billing.StatusActive, Schedulable: true, ProviderGroups: []providercore.GroupMembership{{GroupID: group.ID, Group: (*accessview.GroupConfig)(group)}},
 		},
 	}
-	subscription := gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
-			LoadLocation: time.LoadLocation, ID: 8012, Name: "subscription", Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth,
+	subscription := gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 8012, Name: "subscription", Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth,
 			Status: billing.StatusActive, Schedulable: true, Credentials: map[string]any{"model_whitelist": []string{"*"}, "plan_type": "plus"},
 		},
 	}
 	source := &advancedSchedulerDiagnosticSourceStub{
-		account: target, group: group, accounts: []gatewayprovider.ExecutionAccount{*target, subscription}, pool: []gatewayprovider.ExecutionAccount{*target, subscription},
+		provider: target, group: group, providers: []gatewayprovider.ExecutionProvider{*target, subscription}, pool: []gatewayprovider.ExecutionProvider{*target, subscription},
 	}
 	diagnostics := withDiagnosticParameters(newDiagnosticsForTest(source, nil))
 
@@ -330,20 +330,20 @@ func TestAdvancedSchedulerScoreDiagnosticService_SubscriptionPriorityUsesSubscri
 	require.Equal(t, "active_pool", signal.State)
 }
 
-func TestAdvancedSchedulerScoreDiagnosticService_CountsMoreThanOneThousandExcludedAccounts(t *testing.T) {
+func TestAdvancedSchedulerScoreDiagnosticService_CountsMoreThanOneThousandExcludedProviders(t *testing.T) {
 	group := &routing.Group{ID: 901, Name: "advanced", SchedulerType: routing.GroupSchedulerTypeAdvanced}
-	target := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	target := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 9011, Name: "target", Platform: capability.PlatformGemini, Status: billing.StatusActive, Schedulable: true,
-			AccountGroups: []accountcore.GroupMembership{{GroupID: group.ID, Group: (*accessview.GroupConfig)(group)}},
+			ProviderGroups: []providercore.GroupMembership{{GroupID: group.ID, Group: (*accessview.GroupConfig)(group)}},
 		},
 	}
-	allAccounts := make([]gatewayprovider.ExecutionAccount, 0, 1002)
-	allAccounts = append(allAccounts, *target)
+	allProviders := make([]gatewayprovider.ExecutionProvider, 0, 1002)
+	allProviders = append(allProviders, *target)
 	for index := 0; index < 1001; index++ {
-		allAccounts = append(allAccounts, gatewayprovider.ExecutionAccount{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: int64(9100 + index), Platform: capability.PlatformGemini, Status: billing.StatusDisabled}})
+		allProviders = append(allProviders, gatewayprovider.ExecutionProvider{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: int64(9100 + index), Platform: capability.PlatformGemini, Status: billing.StatusDisabled}})
 	}
-	source := &advancedSchedulerDiagnosticSourceStub{account: target, group: group, accounts: allAccounts, pool: []gatewayprovider.ExecutionAccount{*target}}
+	source := &advancedSchedulerDiagnosticSourceStub{provider: target, group: group, providers: allProviders, pool: []gatewayprovider.ExecutionProvider{*target}}
 	diagnostics := withDiagnosticParameters(newDiagnosticsForTest(source, nil))
 
 	result, err := diagnostics.GetDetail(context.Background(), target.Record.ID, policy.AdvancedSchedulerScoreDiagnosticRequest{GroupID: group.ID})
@@ -351,7 +351,7 @@ func TestAdvancedSchedulerScoreDiagnosticService_CountsMoreThanOneThousandExclud
 	require.NoError(t, err)
 	require.Equal(t, 1002, result.Detail.CandidatePool.TotalCandidates)
 	require.Equal(t, 1001, result.Detail.CandidatePool.ExcludedCandidates)
-	require.Equal(t, 1001, result.Detail.CandidatePool.ExclusionReasons["account_inactive"])
+	require.Equal(t, 1001, result.Detail.CandidatePool.ExclusionReasons["provider_inactive"])
 }
 
 func TestAdvancedSchedulerScoreDiagnosticService_StableSortsLargeCandidatePool(t *testing.T) {
@@ -367,18 +367,18 @@ func TestAdvancedSchedulerScoreDiagnosticService_StableSortsLargeCandidatePool(t
 			WeightQuotaHeadroom: advancedSchedulerDiagnosticFloat(0),
 		},
 	}
-	accounts := make([]gatewayprovider.ExecutionAccount, 0, 1101)
+	providers := make([]gatewayprovider.ExecutionProvider, 0, 1101)
 	for index := 1100; index >= 0; index-- {
-		accounts = append(accounts, gatewayprovider.ExecutionAccount{
-			Record: accountcore.Record{
+		providers = append(providers, gatewayprovider.ExecutionProvider{
+			Record: providercore.Record{
 				Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: int64(10000 + index), Platform: capability.PlatformGemini, Status: billing.StatusActive,
 				Schedulable: true, Priority: index % 7,
 			},
 		})
 	}
-	target := &accounts[len(accounts)-1]
-	target.Record.AccountGroups = []accountcore.GroupMembership{{GroupID: group.ID, Group: (*accessview.GroupConfig)(group)}}
-	source := &advancedSchedulerDiagnosticSourceStub{account: target, group: group, accounts: accounts, pool: accounts}
+	target := &providers[len(providers)-1]
+	target.Record.ProviderGroups = []providercore.GroupMembership{{GroupID: group.ID, Group: (*accessview.GroupConfig)(group)}}
+	source := &advancedSchedulerDiagnosticSourceStub{provider: target, group: group, providers: providers, pool: providers}
 	diagnostics := withDiagnosticParameters(newDiagnosticsForTest(source, nil))
 
 	result, err := diagnostics.GetDetail(context.Background(), target.Record.ID, policy.AdvancedSchedulerScoreDiagnosticRequest{GroupID: group.ID})
@@ -401,20 +401,20 @@ func TestAdvancedSchedulerScoreDiagnosticService_LoadUsesEffectiveLoadFactor(t *
 		Event: logging.Event,
 	},
 	)))
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1101, Concurrency: 2, LoadFactor: advancedSchedulerDiagnosticInt(7)}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1101, Concurrency: 2, LoadFactor: advancedSchedulerDiagnosticInt(7)}}
 
 	core, scope := diagnostics.diagnosticCore()
-	core.LoadMap(context.Background(), scope.accounts([]*gatewayprovider.ExecutionAccount{account}))
+	core.LoadMap(context.Background(), scope.providers([]*gatewayprovider.ExecutionProvider{provider}))
 
 	require.Len(t, cache.requests, 1)
-	require.Equal(t, []scheduler.AccountWithConcurrency{{ID: account.Record.ID, MaxConcurrency: 7}}, cache.requests[0])
+	require.Equal(t, []scheduler.ProviderWithConcurrency{{ID: provider.Record.ID, MaxConcurrency: 7}}, cache.requests[0])
 }
 
 func TestAdvancedSchedulerScoreDiagnosticService_FiltersModelRuntimeBlock(t *testing.T) {
 	group := &routing.Group{ID: 1201, SchedulerType: routing.GroupSchedulerTypeAdvanced}
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
-			Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 12011, GroupIDs: []int64{1201}, Type: capability.AccountTypeAPIKey, Platform: capability.PlatformGemini, Status: billing.StatusActive, Schedulable: true,
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 12011, GroupIDs: []int64{1201}, Type: capability.ProviderTypeAPIKey, Platform: capability.PlatformGemini, Status: billing.StatusActive, Schedulable: true,
 			Extra: map[string]any{"model_rate_limits": map[string]any{
 				"gemini-3-pro": map[string]any{"rate_limit_reset_at": time.Now().Add(time.Hour).UTC().Format(time.RFC3339)},
 			}},
@@ -424,7 +424,7 @@ func TestAdvancedSchedulerScoreDiagnosticService_FiltersModelRuntimeBlock(t *tes
 
 	core, scope := diagnostics.diagnosticCore()
 	reason := core.HardFilterReason(
-		context.Background(), scope.account(account), scope.group(group),
+		context.Background(), scope.provider(provider), scope.group(group),
 		policy.AdvancedSchedulerScoreDiagnosticRequest{GroupID: group.ID, RequestedModel: "gemini-3-pro"}, time.Now(),
 	)
 
@@ -438,16 +438,16 @@ func TestAdvancedSchedulerScoreDiagnosticService_EscapedStickyUsesRegularWindowC
 			StickyWeightedEnabled: advancedSchedulerDiagnosticBool(false),
 		},
 	}
-	target := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
-			Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 13011, Platform: capability.PlatformAnthropic, Type: capability.AccountTypeOAuth, Status: billing.StatusActive, Schedulable: true,
-			Extra:         map[string]any{"window_cost_limit": 10.0, "window_cost_sticky_reserve": 5.0},
-			AccountGroups: []accountcore.GroupMembership{{GroupID: group.ID, Group: (*accessview.GroupConfig)(group)}},
+	target := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 13011, Platform: capability.PlatformAnthropic, Type: capability.ProviderTypeOAuth, Status: billing.StatusActive, Schedulable: true,
+			Extra:          map[string]any{"window_cost_limit": 10.0, "window_cost_sticky_reserve": 5.0},
+			ProviderGroups: []providercore.GroupMembership{{GroupID: group.ID, Group: (*accessview.GroupConfig)(group)}},
 		},
 	}
-	other := gatewayprovider.ExecutionAccount{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 13012, Platform: capability.PlatformAnthropic, Type: capability.AccountTypeOAuth, Status: billing.StatusActive, Schedulable: true}}
+	other := gatewayprovider.ExecutionProvider{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 13012, Platform: capability.PlatformAnthropic, Type: capability.ProviderTypeOAuth, Status: billing.StatusActive, Schedulable: true}}
 	source := &advancedSchedulerDiagnosticSourceStub{
-		account: target, group: group, accounts: []gatewayprovider.ExecutionAccount{*target, other}, pool: []gatewayprovider.ExecutionAccount{*target, other},
+		provider: target, group: group, providers: []gatewayprovider.ExecutionProvider{*target, other}, pool: []gatewayprovider.ExecutionProvider{*target, other},
 	}
 	cfg := &config.Config{Gateway: config.GatewayConfig{AdvancedScheduler: config.GatewayAdvancedSchedulerConfig{
 		StickyEscapeEnabled: true, StickyEscapeTTFTMs: 15000, StickyEscapeErrorRate: 0.55,
@@ -464,7 +464,7 @@ func TestAdvancedSchedulerScoreDiagnosticService_EscapedStickyUsesRegularWindowC
 	diagnostics.gatewayService = NewGeneric(GenericDependencies{Window: window, WindowPrefetchAvailable: true}, DefaultOptions())
 
 	result, err := diagnostics.GetDetail(context.Background(), target.Record.ID, policy.AdvancedSchedulerScoreDiagnosticRequest{
-		GroupID: group.ID, StickyAccountID: target.Record.ID,
+		GroupID: group.ID, StickyProviderID: target.Record.ID,
 	})
 
 	require.NoError(t, err)

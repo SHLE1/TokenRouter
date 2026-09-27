@@ -3,7 +3,7 @@ package rediscache
 import (
 	"testing"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/stretchr/testify/require"
 )
@@ -20,18 +20,18 @@ func TestFilterSchedulerCredentialsKeepsSubscriptionPlanType(t *testing.T) {
 	require.NotContains(t, filtered, "refresh_token")
 }
 
-func TestSchedulerMetadataAccountKeepsOpenAISubscriptionIdentity(t *testing.T) {
-	account := accountcore.Record{
+func TestSchedulerMetadataProviderKeepsOpenAISubscriptionIdentity(t *testing.T) {
+	provider := providercore.Record{
 		ID:       24,
 		Platform: capability.PlatformOpenAI,
-		Type:     capability.AccountTypeOAuth,
+		Type:     capability.ProviderTypeOAuth,
 		Credentials: map[string]any{
 			"plan_type":    "plus",
 			"access_token": "secret-access-token",
 		},
 	}
 
-	metadata := buildSchedulerMetadataAccount(account)
+	metadata := buildSchedulerMetadataProvider(provider)
 
 	require.True(t, metadata.IsOpenAIChatGPTSubscription())
 	require.Empty(t, metadata.GetCredential("access_token"))

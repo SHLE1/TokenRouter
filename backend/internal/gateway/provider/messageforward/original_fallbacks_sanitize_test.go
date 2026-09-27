@@ -9,8 +9,8 @@ import (
 	"testing"
 	time "time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
@@ -21,14 +21,16 @@ import (
 )
 
 func TestBuildUpstreamRequest_OAuthMimicHaiku_StripsFallbacksEndToEnd(t *testing.T) {
-
 	c := &requestBoundaryFixture{}
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 601, Platform: capability.PlatformAnthropic, Type: capability.AccountTypeOAuth,
-		Credentials: map[string]any{"access_token": "oauth-tok"},
-		Status:      billing.StatusActive,
-		Schedulable: true},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 601, Platform: capability.PlatformAnthropic, Type: capability.ProviderTypeOAuth,
+			Credentials: map[string]any{"access_token": "oauth-tok"},
+			Status:      billing.StatusActive,
+			Schedulable: true,
+		},
 	}
 	// 客户端默认透传 "fallbacks":"default"（Claude Code / SDK / OpenCode 等）
 	body := []byte(`{"model":"claude-haiku-4-5","fallbacks":"default","messages":[]}`)
@@ -36,7 +38,7 @@ func TestBuildUpstreamRequest_OAuthMimicHaiku_StripsFallbacksEndToEnd(t *testing
 	req, _, err := svc.buildRequest(
 		context.Background(), c, &AttemptState{},
 
-		account, body,
+		provider, body,
 		"oauth-tok", "oauth", "claude-haiku-4-5", false, true, // mimicClaudeCode=true
 	)
 	require.NoError(t, err)
@@ -56,7 +58,6 @@ func TestBuildUpstreamRequest_OAuthMimicHaiku_StripsFallbacksEndToEnd(t *testing
 // API-key passthrough + 客户端 header 未带 fallback beta → strip
 
 func TestBuildUpstreamRequestAnthropicAPIKeyPassthrough_StripsFallbacksWhenClientHeaderMissingBeta(t *testing.T) {
-
 	c := &requestBoundaryFixture{}
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
 	// 客户端仅带 oauth beta，不带 server-side-fallback-2026-07-01
@@ -67,7 +68,7 @@ func TestBuildUpstreamRequestAnthropicAPIKeyPassthrough_StripsFallbacksWhenClien
 	req, _, err := svc.buildPassthroughRequest(
 		context.Background(), c, &AttemptState{},
 
-		newAnthropicAPIKeyPassthroughAccountForBetaTest(), body, "token",
+		newAnthropicAPIKeyPassthroughProviderForBetaTest(), body, "token",
 	)
 	require.NoError(t, err)
 	require.False(t, gjson.GetBytes(readUpstreamBodyForTest(t, req), "fallbacks").Exists(),
@@ -77,7 +78,6 @@ func TestBuildUpstreamRequestAnthropicAPIKeyPassthrough_StripsFallbacksWhenClien
 // API-key passthrough + 客户端 header 带 fallback beta → 保留（不过度删除）
 
 func TestBuildUpstreamRequestAnthropicAPIKeyPassthrough_PreservesFallbacksWhenClientHeaderHasBeta(t *testing.T) {
-
 	c := &requestBoundaryFixture{}
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
 	c.Request.Header.Set("Anthropic-Beta", "oauth-2025-04-20,server-side-fallback-2026-07-01")
@@ -88,7 +88,7 @@ func TestBuildUpstreamRequestAnthropicAPIKeyPassthrough_PreservesFallbacksWhenCl
 	req, _, err := svc.buildPassthroughRequest(
 		context.Background(), c, &AttemptState{},
 
-		newAnthropicAPIKeyPassthroughAccountForBetaTest(), body, "token",
+		newAnthropicAPIKeyPassthroughProviderForBetaTest(), body, "token",
 	)
 	require.NoError(t, err)
 

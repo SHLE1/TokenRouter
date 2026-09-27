@@ -6,18 +6,18 @@ import (
 	"context"
 	"testing"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/stretchr/testify/require"
 )
 
 // 原地域模型与市场一致性断言使用相同的原生目录和报价实现。
-func newBedrockRoutingTestAccount(id int64, region string, forceGlobal bool) accountcore.Record {
-	account := accountcore.Record{
-		ID: id, Platform: capability.PlatformAnthropic, Type: capability.AccountTypeBedrock,
+func newBedrockRoutingTestProvider(id int64, region string, forceGlobal bool) providercore.Record {
+	provider := providercore.Record{
+		ID: id, Platform: capability.PlatformAnthropic, Type: capability.ProviderTypeBedrock,
 		Status: billing.StatusActive, Schedulable: true, Concurrency: 5, Priority: int(id),
 		Credentials: map[string]any{
 			"aws_region": region, "auth_mode": "sigv4",
@@ -25,9 +25,9 @@ func newBedrockRoutingTestAccount(id int64, region string, forceGlobal bool) acc
 		},
 	}
 	if forceGlobal {
-		account.Credentials["aws_force_global"] = "true"
+		provider.Credentials["aws_force_global"] = "true"
 	}
-	return account
+	return provider
 }
 
 type bedrockMarketplaceGroups struct {
@@ -47,11 +47,11 @@ func TestBedrockRegionRouting_MarketplaceUsesSharedResolution(t *testing.T) {
 			name = "全局可用"
 		}
 		t.Run(name, func(t *testing.T) {
-			account := newBedrockRoutingTestAccount(1, "ap-northeast-1", forceGlobal)
-			account.GroupIDs = []int64{groupID}
-			account.AccountGroups = []accountcore.GroupMembership{{AccountID: 1, GroupID: groupID}}
-			account.Credentials["model_mapping"] = map[string]any{"client-alias": "claude-sonnet-5"}
-			repo := &modelsListAccountRepoStub{all: []accountcore.Record{account}, byGroup: map[int64][]accountcore.Record{groupID: {account}}}
+			provider := newBedrockRoutingTestProvider(1, "ap-northeast-1", forceGlobal)
+			provider.GroupIDs = []int64{groupID}
+			provider.ProviderGroups = []providercore.GroupMembership{{ProviderID: 1, GroupID: groupID}}
+			provider.Credentials["model_mapping"] = map[string]any{"client-alias": "claude-sonnet-5"}
+			repo := &modelsListProviderRepoStub{all: []providercore.Record{provider}, byGroup: map[int64][]providercore.Record{groupID: {provider}}}
 			gateway := newCatalogueFixture(repo, nil, nil)
 			models := gateway.ResolveRequestableModels(context.Background(), &groupID, capability.PlatformAnthropic)
 			if forceGlobal {
@@ -60,7 +60,7 @@ func TestBedrockRegionRouting_MarketplaceUsesSharedResolution(t *testing.T) {
 				require.NotContains(t, routing.RequestableModelIDs(models.Models), "client-alias")
 			}
 			marketplace := newCatalogueMarketplace(
-				&bedrockMarketplaceGroups{groups: []routing.Group{{ID: groupID, Name: "Bedrock", Status: billing.StatusActive, RateMultiplier: 1, ActiveAccountCount: 1}}},
+				&bedrockMarketplaceGroups{groups: []routing.Group{{ID: groupID, Name: "Bedrock", Status: billing.StatusActive, RateMultiplier: 1, ActiveProviderCount: 1}}},
 				gateway, billingtestkit.Calculator(0, nil, nil),
 			)
 			groups, err := marketplace.ListPublic(context.Background())

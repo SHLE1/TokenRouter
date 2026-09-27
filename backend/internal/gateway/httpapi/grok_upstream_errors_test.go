@@ -12,25 +12,25 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/grok"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 )
 
-// handleGrokAccountUpstreamError 保留测试中的布尔断言写法；生产代码统一使用完整决策。
-func (s *wsExecutionFixture) handleGrokAccountUpstreamError(
+// handleGrokProviderUpstreamError 保留测试中的布尔断言写法；生产代码统一使用完整决策。
+func (s *wsExecutionFixture) handleGrokProviderUpstreamError(
 	ctx context.Context,
-	account *gatewayprovider.ExecutionAccount,
+	provider *gatewayprovider.ExecutionProvider,
 	statusCode int,
 	headers http.Header,
 	responseBody []byte,
 	requestedModel ...string,
 ) bool {
-	return gatewayprovider.ApplyGrokExecutionHealth(ctx, s.Output.GrokHealth, account, statusCode, headers, responseBody, "", requestedModel...).StopScheduling
+	return gatewayprovider.ApplyGrokExecutionHealth(ctx, s.Output.GrokHealth, provider, statusCode, headers, responseBody, "", requestedModel...).StopScheduling
 }
 
 func TestIsGrokContentPolicyRejection(t *testing.T) {
@@ -77,15 +77,15 @@ func TestIsGrokContentPolicyRejection(t *testing.T) {
 			want:   false,
 		},
 		{
-			name:   "account policy suspension is not request policy",
+			name:   "provider policy suspension is not request policy",
 			status: http.StatusForbidden,
-			body:   `{"error":{"message":"account suspended due to policy violation"}}`,
+			body:   `{"error":{"message":"provider suspended due to policy violation"}}`,
 			want:   false,
 		},
 		{
-			name:   "structured account suspension overrides policy reason",
+			name:   "structured provider suspension overrides policy reason",
 			status: http.StatusForbidden,
-			body:   `{"error":{"code":"account_suspended","reason":"policy_violation","message":"account suspended due to policy violation"}}`,
+			body:   `{"error":{"code":"account_suspended","reason":"policy_violation","message":"provider suspended due to policy violation"}}`,
 			want:   false,
 		},
 		{
@@ -107,13 +107,13 @@ func TestIsGrokContentPolicyRejection(t *testing.T) {
 			want:   true,
 		},
 		{
-			name:   "permission-denied entitlement stays on the account path",
+			name:   "permission-denied entitlement stays on the provider path",
 			status: http.StatusForbidden,
 			body:   `{"code":"permission-denied","error":"Access to the chat endpoint is denied"}`,
 			want:   false,
 		},
 		{
-			name:   "structured account code overrides usage guidelines phrase",
+			name:   "structured provider code overrides usage guidelines phrase",
 			status: http.StatusForbidden,
 			body:   `{"error":{"code":"account_suspended","message":"Content violates usage guidelines."}}`,
 			want:   false,
@@ -134,17 +134,19 @@ func TestIsGrokContentPolicyRejection(t *testing.T) {
 }
 
 func TestGrokContentPolicy403SharedErrorFallbackDoesNotMutate(t *testing.T) {
-
 	body := []byte(`{"error":{"code":"content_filter","message":"prohibited content"}}`)
-	repo := &grokQuotaAccountRepo{}
-	svc := newWSFixture(wsFixtureInputs{accounts: repo})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 4719,
-		Platform: capability.PlatformGrok,
-		Type:     capability.AccountTypeOAuth,
-		Credentials: map[string]any{
-			"custom_error_codes_enabled": true,
-			"custom_error_codes":         []any{float64(http.StatusTooManyRequests)},
-		}},
+	repo := &grokQuotaProviderRepo{}
+	svc := newWSFixture(wsFixtureInputs{providers: repo})
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 4719,
+			Platform: capability.PlatformGrok,
+			Type:     capability.ProviderTypeOAuth,
+			Credentials: map[string]any{
+				"custom_error_codes_enabled": true,
+				"custom_error_codes":         []any{float64(http.StatusTooManyRequests)},
+			},
+		},
 	}
 
 	newContext := func() (*gin.Context, *httptest.ResponseRecorder) {
@@ -160,7 +162,7 @@ func TestGrokContentPolicy403SharedErrorFallbackDoesNotMutate(t *testing.T) {
 		Header:     http.Header{"Content-Type": []string{"application/json"}},
 		Body:       io.NopCloser(strings.NewReader(string(body))),
 	}
-	_, err := svc.Output.ResponseError(context.Background(), resp, c, account, nil, "grok-4.5")
+	_, err := svc.Output.ResponseError(context.Background(), resp, c, provider, nil, "grok-4.5")
 	require.Error(t, err)
 	require.Equal(t, http.StatusForbidden, recorder.Code)
 	require.Contains(t, recorder.Body.String(), "invalid_request_error")
@@ -171,7 +173,7 @@ func TestGrokContentPolicy403SharedErrorFallbackDoesNotMutate(t *testing.T) {
 		Header:     http.Header{"Content-Type": []string{"application/json"}},
 		Body:       io.NopCloser(strings.NewReader(string(body))),
 	}
-	_, err = svc.Output.CompatError(resp, c, account, WriteForwardChatError, WriteForwardChatErrorBody, "grok-4.5")
+	_, err = svc.Output.CompatError(resp, c, provider, WriteForwardChatError, WriteForwardChatErrorBody, "grok-4.5")
 	require.Error(t, err)
 	require.Equal(t, http.StatusForbidden, recorder.Code)
 	require.Contains(t, recorder.Body.String(), "invalid_request_error")
@@ -182,17 +184,19 @@ func TestGrokContentPolicy403SharedErrorFallbackDoesNotMutate(t *testing.T) {
 }
 
 func TestGrokContentPolicy403MediaResponseBypassesCustomErrorCodes(t *testing.T) {
-
 	body := `{"error":{"code":"new_sensitive","message":"image is sensitive"}}`
-	repo := &grokQuotaAccountRepo{}
-	svc := newWSFixture(wsFixtureInputs{accounts: repo})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 4720,
-		Platform: capability.PlatformGrok,
-		Type:     capability.AccountTypeOAuth,
-		Credentials: map[string]any{
-			"custom_error_codes_enabled": true,
-			"custom_error_codes":         []any{float64(http.StatusTooManyRequests)},
-		}},
+	repo := &grokQuotaProviderRepo{}
+	svc := newWSFixture(wsFixtureInputs{providers: repo})
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 4720,
+			Platform: capability.PlatformGrok,
+			Type:     capability.ProviderTypeOAuth,
+			Credentials: map[string]any{
+				"custom_error_codes_enabled": true,
+				"custom_error_codes":         []any{float64(http.StatusTooManyRequests)},
+			},
+		},
 	}
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
@@ -203,7 +207,7 @@ func TestGrokContentPolicy403MediaResponseBypassesCustomErrorCodes(t *testing.T)
 		Body:       io.NopCloser(strings.NewReader(body)),
 	}
 
-	_, err := mediaErrorResponseFixture(svc.Grok, context.Background(), resp, c, account, "request-id", "grok-imagine")
+	_, err := mediaErrorResponseFixture(svc.Grok, context.Background(), resp, c, provider, "request-id", "grok-imagine")
 	require.Error(t, err)
 	require.Equal(t, http.StatusForbidden, recorder.Code)
 	require.Contains(t, recorder.Body.String(), "invalid_request_error")
@@ -213,8 +217,7 @@ func TestGrokContentPolicy403MediaResponseBypassesCustomErrorCodes(t *testing.T)
 }
 
 func TestGrokContentPolicySSEErrorDoesNotMutateOrFailover(t *testing.T) {
-
-	repo := &grokQuotaAccountRepo{}
+	repo := &grokQuotaProviderRepo{}
 	upstream := &auxiliaryHTTPRecorder{resp: &http.Response{
 		StatusCode: http.StatusOK,
 		Header:     http.Header{"Content-Type": []string{"text/event-stream"}},
@@ -222,8 +225,8 @@ func TestGrokContentPolicySSEErrorDoesNotMutateOrFailover(t *testing.T) {
 			"data: {\"type\":\"error\",\"error\":{\"code\":\"new_sensitive\",\"message\":\"text is sensitive\"}}\n\n",
 		)),
 	}}
-	svc := newWSFixture(wsFixtureInputs{accounts: repo, transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 4721, Platform: capability.PlatformGrok, Type: capability.AccountTypeOAuth, Concurrency: 1}}
+	svc := newWSFixture(wsFixtureInputs{providers: repo, transport: upstream})
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 4721, Platform: capability.PlatformGrok, Type: capability.ProviderTypeOAuth, Concurrency: 1}}
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodGet, "/v1/responses", nil)
@@ -231,7 +234,7 @@ func TestGrokContentPolicySSEErrorDoesNotMutateOrFailover(t *testing.T) {
 	var writes [][]byte
 
 	result, err := svc.proxyOpenAIWSHTTPBridgeTurn(
-		context.Background(), c, account, "access-token", payload, len(payload),
+		context.Background(), c, provider, "access-token", payload, len(payload),
 		"grok-4.5", "grok-4.5", "", "", "", "cache-id", 1,
 		func(message []byte) error {
 			writes = append(writes, append([]byte(nil), message...))
@@ -248,20 +251,20 @@ func TestGrokContentPolicySSEErrorDoesNotMutateOrFailover(t *testing.T) {
 	require.Zero(t, repo.tempUnschedCalls)
 	require.Zero(t, repo.rateLimitedCalls)
 	require.Zero(t, repo.updateCalls)
-	require.False(t, wsFixtureAccountBlocked(svc, account))
+	require.False(t, wsFixtureProviderBlocked(svc, provider))
 }
 
 func TestGrokPermissionDeniedContentRefusalDoesNotMutateOrFailover(t *testing.T) {
-	repo := &grokQuotaAccountRepo{}
-	svc := newWSFixture(wsFixtureInputs{accounts: repo})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 4785, Platform: capability.PlatformGrok, Type: capability.AccountTypeOAuth}}
+	repo := &grokQuotaProviderRepo{}
+	svc := newWSFixture(wsFixtureInputs{providers: repo})
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 4785, Platform: capability.PlatformGrok, Type: capability.ProviderTypeOAuth}}
 	body := []byte(`{"code":"permission-denied","error":"Content violates usage guidelines. "}`)
 
-	svc.handleGrokAccountUpstreamError(context.Background(), account, http.StatusForbidden, nil, body)
+	svc.handleGrokProviderUpstreamError(context.Background(), provider, http.StatusForbidden, nil, body)
 
 	require.Zero(t, repo.tempUnschedCalls)
 	require.Zero(t, repo.rateLimitedCalls)
 	require.Zero(t, repo.updateCalls)
-	require.False(t, wsFixtureAccountBlocked(svc, account))
+	require.False(t, wsFixtureProviderBlocked(svc, provider))
 	require.False(t, gatewayprovider.ShouldFailoverGrokResponse(http.StatusForbidden, body))
 }

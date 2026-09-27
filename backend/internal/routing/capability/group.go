@@ -15,7 +15,7 @@ var canonicalGroupClientProtocols = func() []ProtocolID {
 	return out
 }()
 
-// SupportedGroupClientProtocols 返回所有公开入口；上游资格在逐账号选路时判断。
+// SupportedGroupClientProtocols 返回所有公开入口；上游资格在逐提供商选路时判断。
 func SupportedGroupClientProtocols(_ string) []ProtocolID {
 	return append([]ProtocolID{}, canonicalGroupClientProtocols...)
 }

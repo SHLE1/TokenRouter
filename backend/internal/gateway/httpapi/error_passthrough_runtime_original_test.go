@@ -13,10 +13,10 @@ import (
 
 	gatewaytestkit "github.com/TokenFlux/TokenRouter/internal/gateway/testkit"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/errorpolicy"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/gin-gonic/gin"
@@ -26,7 +26,6 @@ import (
 )
 
 func TestApplyErrorPassthroughRule_NoBoundService(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 
@@ -47,7 +46,6 @@ func TestApplyErrorPassthroughRule_NoBoundService(t *testing.T) {
 }
 
 func TestOpenAIHandleErrorResponse_NoRuleKeepsDefault(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 
@@ -58,9 +56,9 @@ func TestOpenAIHandleErrorResponse_NoRuleKeepsDefault(t *testing.T) {
 		Body:       io.NopCloser(bytes.NewReader(respBody)),
 		Header:     http.Header{},
 	}
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 12, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 12, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
 
-	_, err := svc.ResponseError(context.Background(), resp, c, account, nil)
+	_, err := svc.ResponseError(context.Background(), resp, c, provider, nil)
 	require.Error(t, err)
 	assert.Equal(t, http.StatusBadGateway, rec.Code)
 
@@ -73,7 +71,6 @@ func TestOpenAIHandleErrorResponse_NoRuleKeepsDefault(t *testing.T) {
 }
 
 func TestOpenAIHandleErrorResponse_InvalidRequest400PassesThrough(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 
@@ -87,9 +84,9 @@ func TestOpenAIHandleErrorResponse_InvalidRequest400PassesThrough(t *testing.T) 
 			"X-Request-Id": {"req_invalid_arguments"},
 		},
 	}
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 12, Name: "openai", Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 12, Name: "openai", Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
 
-	_, err := svc.ResponseError(context.Background(), resp, c, account, nil)
+	_, err := svc.ResponseError(context.Background(), resp, c, provider, nil)
 
 	require.Error(t, err)
 	require.Equal(t, http.StatusBadRequest, rec.Code)
@@ -100,7 +97,6 @@ func TestOpenAIHandleErrorResponse_InvalidRequest400PassesThrough(t *testing.T) 
 }
 
 func TestOpenAIHandleErrorResponse_TransientInvalidRequest400KeepsGatewayError(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 
@@ -111,9 +107,9 @@ func TestOpenAIHandleErrorResponse_TransientInvalidRequest400KeepsGatewayError(t
 		Body:       io.NopCloser(bytes.NewReader(respBody)),
 		Header:     http.Header{},
 	}
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 12, Name: "openai", Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 12, Name: "openai", Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
 
-	_, err := svc.ResponseError(context.Background(), resp, c, account, nil)
+	_, err := svc.ResponseError(context.Background(), resp, c, provider, nil)
 
 	require.Error(t, err)
 	require.Equal(t, http.StatusBadGateway, rec.Code)
@@ -121,7 +117,6 @@ func TestOpenAIHandleErrorResponse_TransientInvalidRequest400KeepsGatewayError(t
 }
 
 func TestOpenAIHandleErrorResponse_OtherInvalidRequest400PassesThroughDetails(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 
@@ -132,9 +127,9 @@ func TestOpenAIHandleErrorResponse_OtherInvalidRequest400PassesThroughDetails(t 
 		Body:       io.NopCloser(bytes.NewReader(respBody)),
 		Header:     http.Header{},
 	}
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 12, Name: "openai", Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 12, Name: "openai", Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
 
-	_, err := svc.ResponseError(context.Background(), resp, c, account, nil)
+	_, err := svc.ResponseError(context.Background(), resp, c, provider, nil)
 
 	require.Error(t, err)
 	require.Equal(t, http.StatusBadRequest, rec.Code)
@@ -145,7 +140,6 @@ func TestOpenAIHandleErrorResponse_OtherInvalidRequest400PassesThroughDetails(t 
 }
 
 func TestOpenAIHandleErrorResponsePassthrough_InvalidRequest400PassesThrough(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
@@ -156,9 +150,9 @@ func TestOpenAIHandleErrorResponsePassthrough_InvalidRequest400PassesThrough(t *
 		StatusCode: http.StatusBadRequest,
 		Header:     http.Header{"Content-Type": {"application/json"}},
 	}
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 12, Name: "openai", Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 12, Name: "openai", Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}}
 
-	err := svc.PassthroughError(context.Background(), resp, c, account, []byte(`{"model":"gpt-5.5"}`), respBody)
+	err := svc.PassthroughError(context.Background(), resp, c, provider, []byte(`{"model":"gpt-5.5"}`), respBody)
 
 	require.Error(t, err)
 	require.Equal(t, http.StatusBadRequest, rec.Code)
@@ -168,7 +162,6 @@ func TestOpenAIHandleErrorResponsePassthrough_InvalidRequest400PassesThrough(t *
 }
 
 func TestOpenAIHandleCompatErrorResponse_InvalidRequest400PreservesDetails(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", nil)
@@ -180,9 +173,9 @@ func TestOpenAIHandleCompatErrorResponse_InvalidRequest400PreservesDetails(t *te
 		Body:       io.NopCloser(bytes.NewReader(respBody)),
 		Header:     http.Header{},
 	}
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 12, Name: "openai", Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 12, Name: "openai", Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}}
 
-	_, err := svc.CompatError(resp, c, account, WriteForwardChatError, WriteForwardChatErrorBody)
+	_, err := svc.CompatError(resp, c, provider, WriteForwardChatError, WriteForwardChatErrorBody)
 
 	require.Error(t, err)
 	require.Equal(t, http.StatusBadRequest, rec.Code)
@@ -192,7 +185,6 @@ func TestOpenAIHandleCompatErrorResponse_InvalidRequest400PreservesDetails(t *te
 }
 
 func TestOpenAIHandleCompatMessagesErrorResponse_InvalidRequest400PreservesDetails(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
@@ -204,9 +196,9 @@ func TestOpenAIHandleCompatMessagesErrorResponse_InvalidRequest400PreservesDetai
 		Body:       io.NopCloser(bytes.NewReader(respBody)),
 		Header:     http.Header{},
 	}
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 12, Name: "openai", Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 12, Name: "openai", Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}}
 
-	_, err := svc.CompatError(resp, c, account, WriteForwardAnthropicError, WriteForwardAnthropicErrorBody)
+	_, err := svc.CompatError(resp, c, provider, WriteForwardAnthropicError, WriteForwardAnthropicErrorBody)
 
 	require.Error(t, err)
 	require.Equal(t, http.StatusBadRequest, rec.Code)
@@ -214,7 +206,6 @@ func TestOpenAIHandleCompatMessagesErrorResponse_InvalidRequest400PreservesDetai
 }
 
 func TestOpenAIHandleErrorResponse_ContextWindow502KeepsMessageWithoutFailover(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/", nil)
@@ -226,9 +217,9 @@ func TestOpenAIHandleErrorResponse_ContextWindow502KeepsMessageWithoutFailover(t
 		Body:       io.NopCloser(bytes.NewReader(respBody)),
 		Header:     http.Header{},
 	}
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 14, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 14, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
 
-	_, err := svc.ResponseError(context.Background(), resp, c, account, nil)
+	_, err := svc.ResponseError(context.Background(), resp, c, provider, nil)
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.False(t, errors.As(err, &failoverErr))
@@ -243,7 +234,6 @@ func TestOpenAIHandleErrorResponse_ContextWindow502KeepsMessageWithoutFailover(t
 }
 
 func TestOpenAIHandleErrorResponse_AppliesRuleFor422(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 
@@ -257,9 +247,9 @@ func TestOpenAIHandleErrorResponse_AppliesRuleFor422(t *testing.T) {
 		Body:       io.NopCloser(bytes.NewReader(respBody)),
 		Header:     http.Header{},
 	}
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
 
-	_, err := svc.ResponseError(context.Background(), resp, c, account, nil)
+	_, err := svc.ResponseError(context.Background(), resp, c, provider, nil)
 	require.Error(t, err)
 	assert.Equal(t, http.StatusTeapot, rec.Code)
 
@@ -272,7 +262,6 @@ func TestOpenAIHandleErrorResponse_AppliesRuleFor422(t *testing.T) {
 }
 
 func TestApplyErrorPassthroughRule_SkipMonitoringSetsContextKey(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 
@@ -301,7 +290,6 @@ func TestApplyErrorPassthroughRule_SkipMonitoringSetsContextKey(t *testing.T) {
 }
 
 func TestApplyErrorPassthroughRule_NoSkipMonitoringDoesNotSetContextKey(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 
@@ -329,7 +317,6 @@ func TestApplyErrorPassthroughRule_NoSkipMonitoringDoesNotSetContextKey(t *testi
 // ---- ResponseCommittedKey: service 层写完错误响应后标记，handler 层检查跳过兜底写入 ----
 
 func TestOpenAIHandleErrorResponse_SetsResponseCommitted(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 
@@ -339,9 +326,9 @@ func TestOpenAIHandleErrorResponse_SetsResponseCommitted(t *testing.T) {
 		Body:       io.NopCloser(bytes.NewReader([]byte(`{"error":{"message":"rate limit exceeded"}}`))),
 		Header:     http.Header{},
 	}
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 101, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 101, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
 
-	_, err := svc.ResponseError(context.Background(), resp, c, account, nil)
+	_, err := svc.ResponseError(context.Background(), resp, c, provider, nil)
 	require.Error(t, err)
 	assert.True(t, IsResponseCommitted(c), "OpenAI non-failover path must mark response committed")
 }

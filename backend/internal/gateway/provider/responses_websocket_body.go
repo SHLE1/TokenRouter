@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 
 	s09wire "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
@@ -14,13 +14,13 @@ import (
 	"github.com/tidwall/sjson"
 )
 
-func NormalizeOpenAIResponsesWebSocketCompatibilityBody(body []byte, account *accountcore.Record, responsesLite bool) ([]byte, bool, error) {
-	if account == nil || !account.IsOpenAI() {
+func NormalizeOpenAIResponsesWebSocketCompatibilityBody(body []byte, provider *providercore.Record, responsesLite bool) ([]byte, bool, error) {
+	if provider == nil || !provider.IsOpenAI() {
 		return body, false, nil
 	}
 	normalized := body
 	changed := false
-	if account.IsOpenAIOAuthLike() {
+	if provider.IsOpenAIOAuthLike() {
 		var err error
 		normalized, changed, err = NormalizeOpenAIResponsesLegacyIngress(body)
 		if err != nil {
@@ -33,7 +33,7 @@ func NormalizeOpenAIResponsesWebSocketCompatibilityBody(body []byte, account *ac
 		normalized = next
 		changed = true
 	}
-	if account.IsOpenAIApiKey() {
+	if provider.IsOpenAIApiKey() {
 		if next, normalizedParallel, err := openai.NormalizeOpenAIParallelToolCallsWithoutTools(normalized, responsesLite); err != nil {
 			return body, false, err
 		} else if normalizedParallel {
@@ -53,7 +53,7 @@ func NormalizeOpenAIResponsesWebSocketCompatibilityBody(body []byte, account *ac
 		normalized = sanitized
 		changed = true
 	}
-	if account != nil && account.IsOpenAI() && account.IsOAuth() {
+	if provider != nil && provider.IsOpenAI() && provider.IsOAuth() {
 		if reasoningBody, reasoningChanged, err := openai.NormalizeOpenAIResponsesReasoningMode(normalized); err != nil {
 			return body, false, err
 		} else if reasoningChanged {
@@ -61,7 +61,7 @@ func NormalizeOpenAIResponsesWebSocketCompatibilityBody(body []byte, account *ac
 			changed = true
 		}
 	}
-	if account != nil && account.IsOpenAIOAuthLike() {
+	if provider != nil && provider.IsOpenAIOAuthLike() {
 		oauthBody, oauthChanged, err := s09wire.NormalizeOpenAIOAuthResponsesCompatibilityBody(normalized)
 		if err != nil {
 			return body, false, err
@@ -80,7 +80,7 @@ func NormalizeOpenAIResponsesWebSocketCompatibilityBody(body []byte, account *ac
 			changed = true
 		}
 	}
-	needsOrphanCleanup := account != nil && account.IsOpenAIOAuthLike() &&
+	needsOrphanCleanup := provider != nil && provider.IsOpenAIOAuthLike() &&
 		gjson.GetBytes(normalized, "input").IsArray()
 	if needsOrphanCleanup {
 		var reqBody map[string]any
@@ -126,8 +126,8 @@ func NormalizeOpenAIResponsesWebSocketCompatibilityBody(body []byte, account *ac
 			changed = true
 		}
 	}
-	if account != nil {
-		if schemaBody, schemaChanged, err := SanitizeOpenAIResponsesToolSchemasForPlatform(normalized, account.Platform); err != nil {
+	if provider != nil {
+		if schemaBody, schemaChanged, err := SanitizeOpenAIResponsesToolSchemasForPlatform(normalized, provider.Platform); err != nil {
 			return body, false, fmt.Errorf("normalize websocket tool schemas: %w", err)
 		} else if schemaChanged {
 			normalized = schemaBody

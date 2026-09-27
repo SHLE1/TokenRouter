@@ -11,7 +11,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/creative"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
@@ -23,35 +23,35 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/vertex"
 )
 
-// CreativeTargets 固定任务所需的技术依赖，每次选号后只创建该账号的受控目标。
+// CreativeTargets 固定任务所需的技术依赖，每次选号后只创建该提供商的受控目标。
 type CreativeTargets struct {
 	Requests interface {
-		ImagesURL(*ExecutionAccount, string) (string, error)
+		ImagesURL(*ExecutionProvider, string) (string, error)
 		ValidateBaseURL(string) (string, error)
-		TLSProfile(*ExecutionAccount, ...egress.TLSFingerprintRouterMatchResult) *tlsfingerprint.Profile
+		TLSProfile(*ExecutionProvider, ...egress.TLSFingerprintRouterMatchResult) *tlsfingerprint.Profile
 	}
-	Credentials  *accountcore.OpenAIExecutionCredentials
+	Credentials  *providercore.OpenAIExecutionCredentials
 	Identity     *ExecutionAgentIdentity
 	Transport    httpclient.UpstreamTransport
 	Routes       GrokRoutes
-	GeminiTokens *accountcore.GeminiTokenSource
+	GeminiTokens *providercore.GeminiTokenSource
 	Enter        func() (func(), error)
 }
 
-// ForAccount 不读取凭据或启动请求，各端口继续在实际执行时求值。
-func (gateway *CreativeTargets) ForAccount(account *ExecutionAccount) *creativeprovider.Target {
+// ForProvider 不读取凭据或启动请求，各端口继续在实际执行时求值。
+func (gateway *CreativeTargets) ForProvider(provider *ExecutionProvider) *creativeprovider.Target {
 	target := &creativeprovider.Target{}
 	if gateway == nil {
 		return target
 	}
 	token := func(ctx context.Context) (string, error) {
-		value, _, err := gateway.Credentials.Resolve(ctx, ExecutionRecord(account))
+		value, _, err := gateway.Credentials.Resolve(ctx, ExecutionRecord(provider))
 		return value, err
 	}
 	target.OpenAI = &creativeprovider.OpenAIOptions{
 		Token: token,
 		URL: func(endpoint string) (string, error) {
-			targetURL, err := gateway.Requests.ImagesURL(account, endpoint)
+			targetURL, err := gateway.Requests.ImagesURL(provider, endpoint)
 			if err != nil {
 				return "", creative.CreativeNonRetryableError("creative openai base url invalid: %s", err.Error())
 			}
@@ -61,42 +61,42 @@ func (gateway *CreativeTargets) ForAccount(account *ExecutionAccount) *creativep
 			return req.WithContext(upstream.WithHTTPUpstreamProfile(req.Context(), upstream.HTTPUpstreamProfileOpenAI))
 		},
 		AuthHeaders: func(ctx context.Context, token string) (http.Header, error) {
-			return gateway.Identity.Headers(ctx, account, token)
+			return gateway.Identity.Headers(ctx, provider, token)
 		},
-		ApplyHeaders: BindExecutionHeaders(account),
+		ApplyHeaders: BindExecutionHeaders(provider),
 		Do: func(req *http.Request) (*http.Response, error) {
-			return gateway.Transport.DoWithTLS(req, creativeTargetProxyURL(account), account.Record.ID, account.Record.Concurrency, gateway.Requests.TLSProfile(account))
+			return gateway.Transport.DoWithTLS(req, creativeTargetProxyURL(provider), provider.Record.ID, provider.Record.Concurrency, gateway.Requests.TLSProfile(provider))
 		},
 	}
 	target.Grok = &creativeprovider.GrokOptions{
-		OAuth: account.View().IsGrokOAuth(),
+		OAuth: provider.View().IsGrokOAuth(),
 		Token: token,
 		URL: func(endpoint grok.GrokMediaEndpoint) (string, error) {
-			return gateway.Routes.Media(account, endpoint, "")
+			return gateway.Routes.Media(provider, endpoint, "")
 		},
 		Prepare: func(req *http.Request) *http.Request {
 			return req.WithContext(upstream.WithHTTPUpstreamProfile(req.Context(), upstream.HTTPUpstreamProfileGrok))
 		},
-		ApplyHeaders: BindExecutionHeaders(account),
+		ApplyHeaders: BindExecutionHeaders(provider),
 		Do: func(req *http.Request) (*http.Response, error) {
-			return gateway.Transport.Do(req, creativeTargetProxyURL(account), account.Record.ID, account.Record.Concurrency)
+			return gateway.Transport.Do(req, creativeTargetProxyURL(provider), provider.Record.ID, provider.Record.Concurrency)
 		},
 	}
 	target.Gemini = func(model string) gemininative.ImageOptions {
 		options := gemininative.ImageOptions{
-			Mode:                  gemininative.CredentialMode(account.Record.Type),
+			Mode:                  gemininative.CredentialMode(provider.Record.Type),
 			Model:                 model,
-			ProjectID:             account.View().GetCredential("project_id"),
-			APIKey:                func() string { return account.View().GetCredential("api_key") },
-			BaseURL:               func() string { return account.View().GetGeminiBaseURL(geminicli.AIStudioBaseURL) },
+			ProjectID:             provider.View().GetCredential("project_id"),
+			APIKey:                func() string { return provider.View().GetCredential("api_key") },
+			BaseURL:               func() string { return provider.View().GetGeminiBaseURL(geminicli.AIStudioBaseURL) },
 			ValidateURL:           gateway.Requests.ValidateBaseURL,
 			ValidateGeminiBaseURL: gateway.validateGeminiBaseURL,
 			VertexURL: func() (string, error) {
-				return vertex.BuildVertexGeminiURL(ExecutionProtocolRecord(account).VertexProjectID(vertex.ServiceAccountProjectID), ExecutionProtocolRecord(account).VertexLocation(model), model, "generateContent", false)
+				return vertex.BuildVertexGeminiURL(ExecutionProtocolRecord(provider).VertexProjectID(vertex.ServiceAccountProjectID), ExecutionProtocolRecord(provider).VertexLocation(model), model, "generateContent", false)
 			},
-			ApplyHeaders: BindExecutionHeaders(account),
+			ApplyHeaders: BindExecutionHeaders(provider),
 			Do: func(req *http.Request) (*http.Response, error) {
-				return gateway.Transport.Do(req, creativeTargetProxyURL(account), account.Record.ID, account.Record.Concurrency)
+				return gateway.Transport.Do(req, creativeTargetProxyURL(provider), provider.Record.ID, provider.Record.Concurrency)
 			},
 			HTTPError:    func(status int, message string) error { return creative.CreativeHTTPStatusError(status, message) },
 			Invalid:      func(format string, args ...any) error { return creative.CreativeNonRetryableError(format, args...) },
@@ -105,7 +105,7 @@ func (gateway *CreativeTargets) ForAccount(account *ExecutionAccount) *creativep
 		}
 		if gateway.GeminiTokens != nil {
 			options.Token = func(ctx context.Context) (string, error) {
-				return ExecutionToken(ctx, gateway.GeminiTokens, account)
+				return ExecutionToken(ctx, gateway.GeminiTokens, provider)
 			}
 		}
 		return options
@@ -125,7 +125,7 @@ func (s *CreativeTargets) validateGeminiBaseURL(raw string) (string, error) {
 	return validated, nil
 }
 
-func creativeTargetProxyURL(value *ExecutionAccount) string {
+func creativeTargetProxyURL(value *ExecutionProvider) string {
 	if value == nil || value.Record.ProxyID == nil || value.Record.Proxy == nil {
 		return ""
 	}

@@ -36,7 +36,7 @@ func TestDefaultModelsContainsGPT6Astra(t *testing.T) {
 	t.Fatal("默认 OpenAI 模型列表应包含 gpt-6-astra")
 }
 
-func TestDefaultModelsPreferConcreteGPT56SolForAccountTests(t *testing.T) {
+func TestDefaultModelsPreferConcreteGPT56SolForProviderTests(t *testing.T) {
 	require.NotEmpty(t, DefaultModels)
 	require.Equal(t, "gpt-5.6-sol", DefaultModels[0].ID)
 }

@@ -12,7 +12,7 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 	"github.com/TokenFlux/TokenRouter/internal/moderation"
-	"github.com/TokenFlux/TokenRouter/internal/moderation/provider"
+	moderationadapter "github.com/TokenFlux/TokenRouter/internal/moderation/provider"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
@@ -23,8 +23,8 @@ func newLiveModerationRuntime(t *testing.T, settings moderation.SettingRepositor
 	var background sync.WaitGroup
 	t.Cleanup(background.Wait)
 	core := moderation.NewContentModerationService(settings, repo, nil, nil, nil, nil, nil, moderation.Runtime{
-		Audit:         provider.NewAuditClient(),
-		SnapshotMedia: provider.SnapshotMedia,
+		Audit:         moderationadapter.NewAuditClient(),
+		SnapshotMedia: moderationadapter.SnapshotMedia,
 		Background:    func(_ string, fn func()) { background.Go(fn) },
 		CyberText:     openai.IsOpenAICyberWarningText,
 		CyberPolicy:   openai.DetectOpenAICyberPolicy,
@@ -52,6 +52,7 @@ func (s *liveModerationSettings) GetValue(_ context.Context, key string) (string
 	}
 	return "", settings.ErrSettingNotFound
 }
+
 func (s *liveModerationSettings) Get(ctx context.Context, key string) (*settings.Setting, error) {
 	v, e := s.GetValue(ctx, key)
 	if e != nil {
@@ -59,6 +60,7 @@ func (s *liveModerationSettings) Get(ctx context.Context, key string) (*settings
 	}
 	return &settings.Setting{Key: key, Value: v}, nil
 }
+
 func (s *liveModerationSettings) GetMultiple(_ context.Context, keys []string) (map[string]string, error) {
 	out := map[string]string{}
 	for _, k := range keys {
@@ -77,6 +79,7 @@ type liveModerationLogs struct {
 func (*liveModerationLogs) CreateLog(context.Context, *moderation.ContentModerationLog) error {
 	return nil
 }
+
 func (*liveModerationLogs) CountFlaggedByUserSince(context.Context, int64, time.Time) (int, error) {
 	return 0, nil
 }

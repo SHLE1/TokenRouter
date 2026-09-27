@@ -12,12 +12,12 @@ import (
 	"testing"
 	time "time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
 	testkit "github.com/TokenFlux/TokenRouter/internal/apikey/testkit"
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	authctx "github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	apikey "github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
@@ -39,40 +39,40 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// openAIResponsesFailoverAccountRepo 为 failover 用例提供按平台选号和账号回读。
-type openAIResponsesFailoverAccountRepo struct {
-	gatewayprovider.ExecutionAccountStore
+// openAIResponsesFailoverProviderRepo 为 failover 用例提供按平台选号和提供商回读。
+type openAIResponsesFailoverProviderRepo struct {
+	gatewayprovider.ExecutionProviderStore
 
-	accounts []gatewayprovider.ExecutionAccount
+	providers []gatewayprovider.ExecutionProvider
 }
 
-func (r openAIResponsesFailoverAccountRepo) GetByID(_ context.Context, id int64) (*gatewayprovider.ExecutionAccount, error) {
-	for i := range r.accounts {
-		if r.accounts[i].Record.ID == id {
-			account := r.accounts[i]
-			return &account, nil
+func (r openAIResponsesFailoverProviderRepo) GetByID(_ context.Context, id int64) (*gatewayprovider.ExecutionProvider, error) {
+	for i := range r.providers {
+		if r.providers[i].Record.ID == id {
+			provider := r.providers[i]
+			return &provider, nil
 		}
 	}
-	return nil, scheduler.ErrNoAvailableAccounts
+	return nil, scheduler.ErrNoAvailableProviders
 }
 
-func (r openAIResponsesFailoverAccountRepo) ListSchedulableByGroupIDAndPlatform(_ context.Context, _ int64, platform string) ([]gatewayprovider.ExecutionAccount, error) {
-	return r.accountsForPlatform(platform), nil
+func (r openAIResponsesFailoverProviderRepo) ListSchedulableByGroupIDAndPlatform(_ context.Context, _ int64, platform string) ([]gatewayprovider.ExecutionProvider, error) {
+	return r.providersForPlatform(platform), nil
 }
 
-func (r openAIResponsesFailoverAccountRepo) ListSchedulableByPlatform(_ context.Context, platform string) ([]gatewayprovider.ExecutionAccount, error) {
-	return r.accountsForPlatform(platform), nil
+func (r openAIResponsesFailoverProviderRepo) ListSchedulableByPlatform(_ context.Context, platform string) ([]gatewayprovider.ExecutionProvider, error) {
+	return r.providersForPlatform(platform), nil
 }
 
-func (r openAIResponsesFailoverAccountRepo) ListSchedulableUngroupedByPlatform(_ context.Context, platform string) ([]gatewayprovider.ExecutionAccount, error) {
-	return r.accountsForPlatform(platform), nil
+func (r openAIResponsesFailoverProviderRepo) ListSchedulableUngroupedByPlatform(_ context.Context, platform string) ([]gatewayprovider.ExecutionProvider, error) {
+	return r.providersForPlatform(platform), nil
 }
 
-func (r openAIResponsesFailoverAccountRepo) accountsForPlatform(platform string) []gatewayprovider.ExecutionAccount {
-	out := make([]gatewayprovider.ExecutionAccount, 0, len(r.accounts))
-	for _, account := range r.accounts {
-		if platform == "" || account.Record.Platform == platform {
-			out = append(out, account)
+func (r openAIResponsesFailoverProviderRepo) providersForPlatform(platform string) []gatewayprovider.ExecutionProvider {
+	out := make([]gatewayprovider.ExecutionProvider, 0, len(r.providers))
+	for _, provider := range r.providers {
+		if platform == "" || provider.Record.Platform == platform {
+			out = append(out, provider)
 		}
 	}
 	return out
@@ -83,15 +83,15 @@ func (r openAIResponsesFailoverAccountRepo) accountsForPlatform(platform string)
 type openAIResponsesFailoverCancelUpstream struct {
 	httpclient.
 		UpstreamTransport
-	mu         sync.Mutex
-	accountIDs []int64
-	onFirstDo  func()
+	mu          sync.Mutex
+	providerIDs []int64
+	onFirstDo   func()
 }
 
-func (u *openAIResponsesFailoverCancelUpstream) Do(_ *http.Request, _ string, accountID int64, _ int) (*http.Response, error) {
+func (u *openAIResponsesFailoverCancelUpstream) Do(_ *http.Request, _ string, providerID int64, _ int) (*http.Response, error) {
 	u.mu.Lock()
-	u.accountIDs = append(u.accountIDs, accountID)
-	first := len(u.accountIDs) == 1
+	u.providerIDs = append(u.providerIDs, providerID)
+	first := len(u.providerIDs) == 1
 	u.mu.Unlock()
 	if first && u.onFirstDo != nil {
 		u.onFirstDo()
@@ -106,29 +106,29 @@ func (u *openAIResponsesFailoverCancelUpstream) Do(_ *http.Request, _ string, ac
 func (u *openAIResponsesFailoverCancelUpstream) DoWithTLS(
 	req *http.Request,
 	proxyURL string,
-	accountID int64,
-	accountConcurrency int,
+	providerID int64,
+	providerConcurrency int,
 	_ *tlsfingerprint.Profile,
 ) (*http.Response, error) {
-	return u.Do(req, proxyURL, accountID, accountConcurrency)
+	return u.Do(req, proxyURL, providerID, providerConcurrency)
 }
 
 func (u *openAIResponsesFailoverCancelUpstream) calls() []int64 {
 	u.mu.Lock()
 	defer u.mu.Unlock()
-	return append([]int64(nil), u.accountIDs...)
+	return append([]int64(nil), u.providerIDs...)
 }
 
 func newOpenAIResponsesFailoverTestHandler(t *testing.T, upstream httpclient.UpstreamTransport) *gatewayHTTPEndpointsFixture {
 	t.Helper()
 	proxyID := int64(11)
-	accounts := []gatewayprovider.ExecutionAccount{
+	providers := []gatewayprovider.ExecutionProvider{
 		{
-			Record: accountcore.Record{
+			Record: providercore.Record{
 				LoadLocation: time.LoadLocation, ID: 1,
-				Name:        "responses-account-1",
+				Name:        "responses-provider-1",
 				Platform:    capability.PlatformOpenAI,
-				Type:        capability.AccountTypeOAuth,
+				Type:        capability.ProviderTypeOAuth,
 				Status:      billing.StatusActive,
 				Schedulable: true,
 				Concurrency: 0,
@@ -147,11 +147,11 @@ func newOpenAIResponsesFailoverTestHandler(t *testing.T, upstream httpclient.Ups
 			},
 		},
 		{
-			Record: accountcore.Record{
+			Record: providercore.Record{
 				LoadLocation: time.LoadLocation, ID: 2,
-				Name:        "responses-account-2",
+				Name:        "responses-provider-2",
 				Platform:    capability.PlatformOpenAI,
-				Type:        capability.AccountTypeOAuth,
+				Type:        capability.ProviderTypeOAuth,
 				Status:      billing.StatusActive,
 				Schedulable: true,
 				Concurrency: 0,
@@ -160,10 +160,10 @@ func newOpenAIResponsesFailoverTestHandler(t *testing.T, upstream httpclient.Ups
 			},
 		},
 	}
-	accountRepo := openAIResponsesFailoverAccountRepo{accounts: accounts}
+	providerRepo := openAIResponsesFailoverProviderRepo{providers: providers}
 	cfg := &config.Config{RunMode: config.RunModeSimple}
 	gatewayService, gatewayServiceChoices, gatewayServiceCredentialPort := newOpenAIExecutionAndSelectionFixture(
-		accountRepo,
+		providerRepo,
 		nil,
 		cfg,
 		nil,
@@ -173,7 +173,7 @@ func newOpenAIResponsesFailoverTestHandler(t *testing.T, upstream httpclient.Ups
 
 		upstream,
 		nil,
-		nil, newOpenAIExecutionCredentialsForTest(accountRepo,
+		nil, newOpenAIExecutionCredentialsForTest(providerRepo,
 
 			nil), nil,
 		nil,
@@ -207,7 +207,7 @@ func newOpenAIResponsesFailoverTestHandler(t *testing.T, upstream httpclient.Ups
 		nil,
 		nil,
 		nil,
-		cfg, nil, newExecutionAvailabilityForTest(accountRepo,
+		cfg, nil, newExecutionAvailabilityForTest(providerRepo,
 
 			nil, cfg), gatewayServiceChoices,
 	)
@@ -241,8 +241,8 @@ func newOpenAIResponsesFailoverTestContext(t *testing.T, ctx context.Context) (*
 
 // TestOpenAIGatewayHandlerResponses_FailoverAbortsWhenClientDisconnected 复现
 // #4257：客户端在上游请求在途期间断开，上游随后返回可 failover 的 520。
-// 期望：不再用已取消的 context 重新选号（不触达账号 2）、不把取消误报成
-// 502 账号耗尽、请求按 499 归类。
+// 期望：不再用已取消的 context 重新选号（不触达提供商 2）、不把取消误报成
+// 502 提供商耗尽、请求按 499 归类。
 func TestOpenAIGatewayHandlerResponses_FailoverAbortsWhenClientDisconnected(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -252,7 +252,7 @@ func TestOpenAIGatewayHandlerResponses_FailoverAbortsWhenClientDisconnected(t *t
 
 	handler.Responses(c)
 
-	require.Equal(t, []int64{1}, upstream.calls(), "客户端断开后不应再切换到账号 2")
+	require.Equal(t, []int64{1}, upstream.calls(), "客户端断开后不应再切换到提供商 2")
 	require.Equal(t, gatewayhttp.StatusClientClosedRequest, c.Writer.Status(), "应按 499 归类")
 	require.Zero(t, rec.Body.Len(), "不应写入 502 错误响应体")
 
@@ -270,7 +270,7 @@ func TestOpenAIGatewayHandlerResponses_FailoverAbortsWhenClientDisconnected(t *t
 }
 
 // TestOpenAIGatewayHandlerResponses_FailoverContinuesForConnectedClient 回归
-// 守卫：客户端在线时 failover 行为不变——切换到账号 2，两个账号都 520 后按
+// 守卫：客户端在线时 failover 行为不变——切换到提供商 2，两个提供商都 520 后按
 // 耗尽返回 502。
 func TestOpenAIGatewayHandlerResponses_FailoverContinuesForConnectedClient(t *testing.T) {
 	logSink, restore := captureHandlerStructuredLog(t)
@@ -282,7 +282,7 @@ func TestOpenAIGatewayHandlerResponses_FailoverContinuesForConnectedClient(t *te
 
 	handler.Responses(c)
 
-	require.Equal(t, []int64{1, 2}, upstream.calls(), "在线客户端应正常切换账号")
+	require.Equal(t, []int64{1, 2}, upstream.calls(), "在线客户端应正常切换提供商")
 	require.Equal(t, http.StatusBadGateway, rec.Code)
 	require.Equal(t, "upstream_error", gjson.GetBytes(rec.Body.Bytes(), "error.type").String())
 	require.True(t, logSink.ContainsMessageAtLevel("openai.upstream_failover_switching", "warn"))

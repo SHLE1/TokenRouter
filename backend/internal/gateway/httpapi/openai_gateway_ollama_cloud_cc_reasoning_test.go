@@ -12,8 +12,8 @@ import (
 	"testing"
 	time "time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/ollama"
 	"github.com/gin-gonic/gin"
@@ -21,83 +21,86 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-func ollamaCloudRawChatCompletionsTestAccount() *gatewayprovider.ExecutionAccount {
-	return &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 143,
-		Name:     "DeepSeek Ollama",
-		Platform: capability.PlatformOpenAI,
-		Type:     capability.AccountTypeAPIKey,
-		Credentials: map[string]any{
-			"api_key":  "sk-test",
-			"base_url": "https://ollama.com",
+func ollamaCloudRawChatCompletionsTestProvider() *gatewayprovider.ExecutionProvider {
+	return &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 143,
+			Name:     "DeepSeek Ollama",
+			Platform: capability.PlatformOpenAI,
+			Type:     capability.ProviderTypeAPIKey,
+			Credentials: map[string]any{
+				"api_key":  "sk-test",
+				"base_url": "https://ollama.com",
+			},
+			Extra: map[string]any{
+				providercore.ExtraKeyTextRouteMode: string(providercore.TextRouteModeForceChatCompletions),
+			},
 		},
-		Extra: map[string]any{
-			accountcore.ExtraKeyTextRouteMode: string(accountcore.TextRouteModeForceChatCompletions),
-		}},
 	}
 }
 
-func TestIsOllamaCloudRawChatCompletionsAccount(t *testing.T) {
+func TestIsOllamaCloudRawChatCompletionsProvider(t *testing.T) {
 	t.Parallel()
 
 	t.Run("ollama.com + force_chat_completions", func(t *testing.T) {
 		t.Parallel()
-		require.True(t, gatewayprovider.IsOllamaCloudRawChatCompletionsAccount(ollamaCloudRawChatCompletionsTestAccount()))
+		require.True(t, gatewayprovider.IsOllamaCloudRawChatCompletionsProvider(ollamaCloudRawChatCompletionsTestProvider()))
 	})
 
 	t.Run("ollama.com + historical probe is ignored", func(t *testing.T) {
 		t.Parallel()
-		account := ollamaCloudRawChatCompletionsTestAccount()
-		account.Record.Extra = map[string]any{
-			accountcore.ExtraKeyTextRouteMode: string(accountcore.TextRouteModePreserveClientProtocol),
+		provider := ollamaCloudRawChatCompletionsTestProvider()
+		provider.Record.Extra = map[string]any{
+			providercore.ExtraKeyTextRouteMode: string(providercore.TextRouteModePreserveClientProtocol),
 		}
-		require.False(t, gatewayprovider.IsOllamaCloudRawChatCompletionsAccount(account))
+		require.False(t, gatewayprovider.IsOllamaCloudRawChatCompletionsProvider(provider))
 	})
 
 	t.Run("extra usage signal without ollama host", func(t *testing.T) {
 		t.Parallel()
-		account := rawChatCompletionsTestAccount()
-		account.Record.Credentials["base_url"] = "https://example.invalid/v1"
-		account.Record.Extra = map[string]any{
-			accountcore.ExtraKeyTextRouteMode:            string(accountcore.TextRouteModeForceChatCompletions),
-			accountcore.OllamaCloudUsageSnapshotExtraKey: map[string]any{"status": "ok"},
+		provider := rawChatCompletionsTestProvider()
+		provider.Record.Credentials["base_url"] = "https://example.invalid/v1"
+		provider.Record.Extra = map[string]any{
+			providercore.ExtraKeyTextRouteMode:            string(providercore.TextRouteModeForceChatCompletions),
+			providercore.OllamaCloudUsageSnapshotExtraKey: map[string]any{"status": "ok"},
 		}
-		require.True(t, gatewayprovider.IsOllamaCloudRawChatCompletionsAccount(account))
+		require.True(t, gatewayprovider.IsOllamaCloudRawChatCompletionsProvider(provider))
 	})
 
 	t.Run("official DeepSeek", func(t *testing.T) {
 		t.Parallel()
-		account := rawChatCompletionsTestAccount()
-		account.Record.Name = "DeepSeek"
-		account.Record.Credentials["base_url"] = "https://api.deepseek.com"
-		account.Record.Extra = map[string]any{
-			accountcore.ExtraKeyTextRouteMode: string(accountcore.TextRouteModeForceChatCompletions),
+		provider := rawChatCompletionsTestProvider()
+		provider.Record.Name = "DeepSeek"
+		provider.Record.Credentials["base_url"] = "https://api.deepseek.com"
+		provider.Record.Extra = map[string]any{
+			providercore.ExtraKeyTextRouteMode: string(providercore.TextRouteModeForceChatCompletions),
 		}
-		require.False(t, gatewayprovider.IsOllamaCloudRawChatCompletionsAccount(account))
+		require.False(t, gatewayprovider.IsOllamaCloudRawChatCompletionsProvider(provider))
 	})
 
 	t.Run("OpenCode Go extra", func(t *testing.T) {
 		t.Parallel()
-		account := rawChatCompletionsTestAccount()
-		account.Record.Credentials["base_url"] = "https://opencode.ai/zen/go/v1"
-		account.Record.Extra = map[string]any{
-			accountcore.ExtraKeyTextRouteMode: string(accountcore.TextRouteModeForceChatCompletions),
-			"opencode_go_usage_auto_refresh":  true,
+		provider := rawChatCompletionsTestProvider()
+		provider.Record.Credentials["base_url"] = "https://opencode.ai/zen/go/v1"
+		provider.Record.Extra = map[string]any{
+			providercore.ExtraKeyTextRouteMode: string(providercore.TextRouteModeForceChatCompletions),
+			"opencode_go_usage_auto_refresh":   true,
 		}
-		require.False(t, gatewayprovider.IsOllamaCloudRawChatCompletionsAccount(account))
+		require.False(t, gatewayprovider.IsOllamaCloudRawChatCompletionsProvider(provider))
 	})
 
 	t.Run("ollama.com without force_chat_completions", func(t *testing.T) {
 		t.Parallel()
-		account := ollamaCloudRawChatCompletionsTestAccount()
-		account.Record.Extra = nil
-		require.False(t, gatewayprovider.IsOllamaCloudRawChatCompletionsAccount(account))
+		provider := ollamaCloudRawChatCompletionsTestProvider()
+		provider.Record.Extra = nil
+		require.False(t, gatewayprovider.IsOllamaCloudRawChatCompletionsProvider(provider))
 	})
 
 	t.Run("anthropic ollama.com", func(t *testing.T) {
 		t.Parallel()
-		account := ollamaCloudRawChatCompletionsTestAccount()
-		account.Record.Platform = capability.PlatformAnthropic
-		require.False(t, gatewayprovider.IsOllamaCloudRawChatCompletionsAccount(account))
+		provider := ollamaCloudRawChatCompletionsTestProvider()
+		provider.Record.Platform = capability.PlatformAnthropic
+		require.False(t, gatewayprovider.IsOllamaCloudRawChatCompletionsProvider(provider))
 	})
 }
 
@@ -164,31 +167,31 @@ func TestNormalizeOllamaCloudChatCompletionsRequest(t *testing.T) {
 	require.False(t, gjson.GetBytes(out, "messages.0.reasoning").Exists())
 }
 
-func TestApplyOllamaCloudRawChatCompletionsLeavesForeignAccountsUnchanged(t *testing.T) {
+func TestApplyOllamaCloudRawChatCompletionsLeavesForeignProvidersUnchanged(t *testing.T) {
 	t.Parallel()
 
 	reqBody := []byte(`{"messages":[{"role":"assistant","reasoning_content":"prev","content":""}]}`)
 	respBody := []byte(`{"choices":[{"delta":{"reasoning":"abc"}}]}`)
 	sseLine := `data: {"choices":[{"delta":{"reasoning":"abc"}}]}`
 
-	official := rawChatCompletionsTestAccount()
+	official := rawChatCompletionsTestProvider()
 	official.Record.Name = "DeepSeek"
 	official.Record.Credentials["base_url"] = "https://api.deepseek.com"
 	official.Record.Extra = map[string]any{
-		accountcore.ExtraKeyTextRouteMode: string(accountcore.TextRouteModeForceChatCompletions),
+		providercore.ExtraKeyTextRouteMode: string(providercore.TextRouteModeForceChatCompletions),
 	}
 
-	opencode := rawChatCompletionsTestAccount()
+	opencode := rawChatCompletionsTestProvider()
 	opencode.Record.Credentials["base_url"] = "https://opencode.ai/zen/go/v1"
 	opencode.Record.Extra = map[string]any{
-		accountcore.ExtraKeyTextRouteMode: string(accountcore.TextRouteModeForceChatCompletions),
-		"opencode_go_usage_auto_refresh":  true,
+		providercore.ExtraKeyTextRouteMode: string(providercore.TextRouteModeForceChatCompletions),
+		"opencode_go_usage_auto_refresh":   true,
 	}
 
-	for _, account := range []*gatewayprovider.ExecutionAccount{official, opencode} {
-		require.Equal(t, reqBody, gatewayprovider.ApplyOllamaCloudRawChatCompletionsRequest(account, reqBody))
-		require.Equal(t, respBody, gatewayprovider.ApplyOllamaCloudRawChatCompletionsResponse(account, respBody))
-		require.Equal(t, sseLine, gatewayprovider.ApplyOllamaCloudRawChatCompletionsSSELine(account, sseLine))
+	for _, provider := range []*gatewayprovider.ExecutionProvider{official, opencode} {
+		require.Equal(t, reqBody, gatewayprovider.ApplyOllamaCloudRawChatCompletionsRequest(provider, reqBody))
+		require.Equal(t, respBody, gatewayprovider.ApplyOllamaCloudRawChatCompletionsResponse(provider, respBody))
+		require.Equal(t, sseLine, gatewayprovider.ApplyOllamaCloudRawChatCompletionsSSELine(provider, sseLine))
 	}
 }
 
@@ -205,7 +208,6 @@ func TestNormalizeOllamaCloudChatCompletionsSSELine(t *testing.T) {
 }
 
 func TestForwardAsRawChatCompletions_OllamaCloudReasoningAliasStreaming(t *testing.T) {
-
 	body := []byte(`{"model":"deepseek-v4-pro","messages":[{"role":"user","content":"hello"}],"stream":true}`)
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -232,7 +234,7 @@ func TestForwardAsRawChatCompletions_OllamaCloudReasoningAliasStreaming(t *testi
 
 	svc := newResponsesFixture(responsesFixtureInputs{options: protocolHTTPOptions(), transport: upstream})
 
-	result, err := svc.Text.RawChat(context.Background(), c, ollamaCloudRawChatCompletionsTestAccount(), body, "")
+	result, err := svc.Text.RawChat(context.Background(), c, ollamaCloudRawChatCompletionsTestProvider(), body, "")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, 3, result.Usage.InputTokens)
@@ -245,7 +247,6 @@ func TestForwardAsRawChatCompletions_OllamaCloudReasoningAliasStreaming(t *testi
 }
 
 func TestForwardAsRawChatCompletions_OllamaCloudThinkingAliasNonStreaming(t *testing.T) {
-
 	body := []byte(`{"model":"deepseek-v4-pro","messages":[{"role":"user","content":"hello"},{"role":"assistant","reasoning_content":"prev","content":""}],"stream":false}`)
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -261,7 +262,7 @@ func TestForwardAsRawChatCompletions_OllamaCloudThinkingAliasNonStreaming(t *tes
 
 	svc := newResponsesFixture(responsesFixtureInputs{options: protocolHTTPOptions(), transport: upstream})
 
-	result, err := svc.Text.RawChat(context.Background(), c, ollamaCloudRawChatCompletionsTestAccount(), body, "")
+	result, err := svc.Text.RawChat(context.Background(), c, ollamaCloudRawChatCompletionsTestProvider(), body, "")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, "prev", gjson.GetBytes(upstream.lastBody, "messages.1.reasoning").String())

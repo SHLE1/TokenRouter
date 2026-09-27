@@ -64,12 +64,12 @@ func ForwardNativeMessages(ctx context.Context, body []byte, defaultMappedModel 
 	body = p.StripEmpty(body)
 	body = p.FilterSearch(body, upstreamModel)
 
-	p.Log("[CN Anthropic 直通] account=%d(%s) platform=%s model=%s upstream=%s stream=%v",
+	p.Log("[CN Anthropic 直通] provider=%d(%s) platform=%s model=%s upstream=%s stream=%v",
 		profile.ID, profile.Name, profile.Platform, originalModel, upstreamModel, clientStream)
 
 	apiKey := strings.TrimSpace(p.ProtocolAPIKey())
 	if apiKey == "" {
-		return nil, fmt.Errorf("account %d missing api_key", profile.ID)
+		return nil, fmt.Errorf("provider %d missing api_key", profile.ID)
 	}
 	targetURL, err := p.TargetURL()
 	if err != nil {
@@ -160,7 +160,7 @@ func ForwardNativeResponses(ctx context.Context, body []byte, defaultMappedModel
 	reqStream := true
 
 	p.Debug("openai responses: forwarding via native anthropic endpoint",
-		zap.Int64("account_id", profile.ID),
+		zap.Int64("provider_id", profile.ID),
 		zap.String("original_model", originalModel),
 		zap.String("billing_model", billingModel),
 		zap.String("upstream_model", upstreamModel),
@@ -179,7 +179,7 @@ func ForwardNativeResponses(ctx context.Context, body []byte, defaultMappedModel
 
 	apiKey := strings.TrimSpace(p.ProtocolAPIKey())
 	if apiKey == "" {
-		return nil, fmt.Errorf("account %d missing api_key", profile.ID)
+		return nil, fmt.Errorf("provider %d missing api_key", profile.ID)
 	}
 	targetURL, err := p.TargetURL()
 	if err != nil {
@@ -257,7 +257,7 @@ func ForwardNativeChat(ctx context.Context, body []byte, defaultMappedModel stri
 	reqStream := true
 
 	p.Debug("openai chat_completions: forwarding via native anthropic endpoint",
-		zap.Int64("account_id", profile.ID),
+		zap.Int64("provider_id", profile.ID),
 		zap.String("original_model", originalModel),
 		zap.String("billing_model", billingModel),
 		zap.String("upstream_model", upstreamModel),
@@ -276,7 +276,7 @@ func ForwardNativeChat(ctx context.Context, body []byte, defaultMappedModel stri
 
 	apiKey := strings.TrimSpace(p.ProtocolAPIKey())
 	if apiKey == "" {
-		return nil, fmt.Errorf("account %d missing api_key", profile.ID)
+		return nil, fmt.Errorf("provider %d missing api_key", profile.ID)
 	}
 	targetURL, err := p.TargetURL()
 	if err != nil {

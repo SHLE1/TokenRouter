@@ -7,25 +7,25 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 	"github.com/TokenFlux/TokenRouter/internal/ops"
 	opspg "github.com/TokenFlux/TokenRouter/internal/ops/postgres"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/timezone"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 	"github.com/stretchr/testify/require"
 )
 
-// TestPlatformSnapshotSurvivesAccountChanges 验证原始查询与两种预聚合都保持请求发生时的平台。
-func TestPlatformSnapshotSurvivesAccountChanges(t *testing.T) {
+// TestPlatformSnapshotSurvivesProviderChanges 验证原始查询与两种预聚合都保持请求发生时的平台。
+func TestPlatformSnapshotSurvivesProviderChanges(t *testing.T) {
 	ctx := context.Background()
 	client := testEntClient(t)
 	user := mustCreateUser(t, client, &identity.User{Email: "platform-snapshot@test.local"})
 	group := mustCreateGroup(t, client, &routing.Group{Name: "mixed-platform-snapshot", RateMultiplier: 1})
 	key := mustCreateApiKey(t, client, &apikey.APIKey{UserID: user.ID, Key: "platform-snapshot-key", Name: "snapshot", GroupID: &group.ID})
-	account := mustCreateAccount(t, client, &accountcore.Record{Name: "snapshot-account", Platform: "openai"})
+	provider := mustCreateProvider(t, client, &providercore.Record{Name: "snapshot-provider", Platform: "openai"})
 	calendar := timezone.NewCalendar(time.UTC)
 	repo := NewUsageLogRepositoryWithSQL(client, integrationDB, calendar)
 	defer repo.StopUsageBatchers()
@@ -37,7 +37,7 @@ func TestPlatformSnapshotSurvivesAccountChanges(t *testing.T) {
 			require.NoError(t, err)
 		}
 	})
-	log := &usage.UsageLog{UserID: user.ID, APIKeyID: key.ID, AccountID: account.ID, Platform: "openai", RequestID: "snapshot-openai", Model: "shared-model", GroupID: &group.ID, InputTokens: 12, ActualCost: 2, CreatedAt: start.Add(time.Minute)}
+	log := &usage.UsageLog{UserID: user.ID, APIKeyID: key.ID, ProviderID: provider.ID, Platform: "openai", RequestID: "snapshot-openai", Model: "shared-model", GroupID: &group.ID, InputTokens: 12, ActualCost: 2, CreatedAt: start.Add(time.Minute)}
 	inserted, err := repo.Create(ctx, log)
 	require.NoError(t, err)
 	require.True(t, inserted)
@@ -47,7 +47,7 @@ func TestPlatformSnapshotSurvivesAccountChanges(t *testing.T) {
 	inserted, err = repo.Create(ctx, &other)
 	require.NoError(t, err)
 	require.True(t, inserted)
-	_, err = integrationDB.ExecContext(ctx, "UPDATE accounts SET platform='gemini' WHERE id=$1", account.ID)
+	_, err = integrationDB.ExecContext(ctx, "UPDATE providers SET platform='gemini' WHERE id=$1", provider.ID)
 	require.NoError(t, err)
 	loaded, err := repo.GetByID(ctx, log.ID)
 	require.NoError(t, err)

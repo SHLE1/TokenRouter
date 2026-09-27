@@ -7,8 +7,6 @@ import (
 
 	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/admission"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/completion"
@@ -17,6 +15,8 @@ import (
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 
@@ -29,12 +29,12 @@ type qoderCompatibleExecution struct {
 	choices *selection.Generic
 	*gatewayprovider.RoutePlanner
 	runtime *gatewayprovider.QoderRuntime
-	refresh *accountprovider.QoderRequestRefresh
+	refresh *provideradapter.QoderRequestRefresh
 	keys    *apikey.APIKeyService
 }
 
 func (p *qoderCompatibleExecution) Select(ctx context.Context, id *int64, hash, model string, excluded map[int64]struct{}, userID int64) (gatewayhttp.QoderCompatibleSelection, error) {
-	value, err := p.choices.SelectAccountWithLoadAwareness(ctx, id, hash, model, excluded, "", userID)
+	value, err := p.choices.SelectProviderWithLoadAwareness(ctx, id, hash, model, excluded, "", userID)
 	if err != nil {
 		return nil, err
 	}
@@ -51,24 +51,28 @@ type qoderCompatibleSelection struct {
 }
 
 func (s *qoderCompatibleSelection) Target() gatewayhttp.QoderCompatibleTarget {
-	return &qoderCompatibleTarget{owner: s.owner, value: s.value.Account}
+	return &qoderCompatibleTarget{owner: s.owner, value: s.value.Provider}
 }
-func (s *qoderCompatibleSelection) Acquired() bool                       { return s.value.Acquired }
-func (s *qoderCompatibleSelection) ReleaseFunc() func()                  { return s.value.ReleaseFunc }
-func (s *qoderCompatibleSelection) WaitPlan() *scheduler.AccountWaitPlan { return s.value.WaitPlan }
+
+func (s *qoderCompatibleSelection) Acquired() bool { return s.value.Acquired }
+
+func (s *qoderCompatibleSelection) ReleaseFunc() func() { return s.value.ReleaseFunc }
+
+func (s *qoderCompatibleSelection) WaitPlan() *scheduler.ProviderWaitPlan { return s.value.WaitPlan }
+
 func (s *qoderCompatibleSelection) Report(id int64, ok bool, result *forward.MessagesResult) {
-	s.owner.choices.ReportAdvancedAccountScheduleResult(s.value, id, ok, result)
+	s.owner.choices.ReportAdvancedProviderScheduleResult(s.value, id, ok, result)
 }
 
-func (s *qoderCompatibleSelection) Switched() { s.owner.choices.RecordAdvancedAccountSwitch(s.value) }
+func (s *qoderCompatibleSelection) Switched() { s.owner.choices.RecordAdvancedProviderSwitch(s.value) }
 
-// qoderCompatibleTarget 把旧执行账号限制在单次调用目标内；HTTP 只取得原生快照。
+// qoderCompatibleTarget 把旧执行提供商限制在单次调用目标内；HTTP 只取得原生快照。
 type qoderCompatibleTarget struct {
 	owner *qoderCompatibleExecution
-	value *gatewayprovider.ExecutionAccount
+	value *gatewayprovider.ExecutionProvider
 }
 
-func (t *qoderCompatibleTarget) Snapshot() account.AccountSnapshot {
+func (t *qoderCompatibleTarget) Snapshot() provider.ProviderSnapshot {
 	return gatewayprovider.ExecutionSnapshot(t.value)
 }
 
@@ -77,16 +81,16 @@ func (t *qoderCompatibleTarget) Forward(ctx context.Context, c *gin.Context, bod
 }
 
 func (t *qoderCompatibleTarget) Refresh(ctx context.Context) (gatewayhttp.QoderCompatibleTarget, error) {
-	value, err := t.owner.refresh.RefreshAccountSession(ctx, gatewayprovider.ExecutionRecord(t.value))
+	value, err := t.owner.refresh.RefreshProviderSession(ctx, gatewayprovider.ExecutionRecord(t.value))
 	if value == nil {
 		return nil, err
 	}
-	return &qoderCompatibleTarget{owner: t.owner, value: gatewayprovider.NewExecutionAccount(value)}, err
+	return &qoderCompatibleTarget{owner: t.owner, value: gatewayprovider.NewExecutionProvider(value)}, err
 }
 
 func (t *qoderCompatibleTarget) Completion(ctx context.Context, capture gatewayhttp.QoderCompletionCapture) *completion.Input {
 	return gatewayprovider.CaptureMessages(ctx, &gatewayprovider.MessagesCapture{
-		Result: capture.Result, APIKey: capture.Key, User: capture.Key.User, Account: gatewayprovider.ExecutionCompletionRecord(t.value),
+		Result: capture.Result, APIKey: capture.Key, User: capture.Key.User, Provider: gatewayprovider.ExecutionCompletionRecord(t.value),
 		Subscription: capture.Subscription, InboundEndpoint: capture.InboundEndpoint, UpstreamEndpoint: capture.UpstreamEndpoint,
 		UserAgent: capture.UserAgent, IPAddress: capture.ClientIP, RequestPayloadHash: capture.PayloadHash, RequestBody: capture.Body,
 		APIKeyService: t.owner.keys, PricingUsageFields: capture.Pricing,
@@ -94,7 +98,7 @@ func (t *qoderCompatibleTarget) Completion(ctx context.Context, capture gatewayh
 }
 
 // provideQoderCompatibleHTTP 直接构造原生固定端口，共享原池、计费、刷新及活动屏障。
-func provideQoderCompatibleHTTP(source *gatewayprovider.RoutePlanner, runtime *gatewayprovider.QoderRuntime, refresh *accountprovider.QoderRequestRefresh, concurrency *scheduler.ConcurrencyService, funding *admission.FundingAdmission, keys *apikey.APIKeyService, rules *errorpolicy.ErrorPassthroughService, pool *completion.UsageRecordWorkerPool, recorders GatewayCompletionRecorders, activity *gatewayRequestActivity, qoderActivity *qoderRequestActivity, choices *selection.Generic) *gatewayhttp.QoderCompatibleHandler {
+func provideQoderCompatibleHTTP(source *gatewayprovider.RoutePlanner, runtime *gatewayprovider.QoderRuntime, refresh *provideradapter.QoderRequestRefresh, concurrency *scheduler.ConcurrencyService, funding *admission.FundingAdmission, keys *apikey.APIKeyService, rules *errorpolicy.ErrorPassthroughService, pool *completion.UsageRecordWorkerPool, recorders GatewayCompletionRecorders, activity *gatewayRequestActivity, qoderActivity *qoderRequestActivity, choices *selection.Generic) *gatewayhttp.QoderCompatibleHandler {
 	slots := gatewayhttp.NewConcurrencyHelper(concurrency, gatewayhttp.SSEPingFormatComment, 0)
 	var matcher gatewayhttp.ErrorRuleMatcher
 	if rules != nil {

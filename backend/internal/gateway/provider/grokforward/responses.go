@@ -20,8 +20,8 @@ import (
 func Forward(ctx context.Context, p Ports, o Options, in Input) (*forwardcore.OpenAIResult, error) {
 	body, originalModel, reqStream, startTime := in.Body, in.OriginalModel, in.Stream, in.StartedAt
 
-	if in.AccountType != "oauth" && in.AccountType != "apikey" {
-		return nil, fmt.Errorf("grok account type %s is not supported by Responses forwarding", in.AccountType)
+	if in.ProviderType != "oauth" && in.ProviderType != "apikey" {
+		return nil, fmt.Errorf("grok provider type %s is not supported by Responses forwarding", in.ProviderType)
 	}
 	billingModel := p.BillingModel(originalModel)
 	upstreamModel := p.UpstreamModel(billingModel)
@@ -78,9 +78,9 @@ func Forward(ctx context.Context, p Ports, o Options, in Input) (*forwardcore.Op
 	var handledResult *forwardcore.OpenAIResult
 	var handleErr error
 	target := &grok.ResponsesTarget{
-		AccountID: in.AccountID,
-		Model:     upstreamModel,
-		Enter:     o.Enter,
+		ProviderID: in.ProviderID,
+		Model:      upstreamModel,
+		Enter:      o.Enter,
 		Exchange: grok.ResponsesExchange{
 			Build: func(body []byte) (*http.Request, error) {
 				return p.Build(upstreamCtx, body, cacheIdentity, true)
@@ -117,8 +117,8 @@ func Forward(ctx context.Context, p Ports, o Options, in Input) (*forwardcore.Op
 				}
 				p.Observe(Notice{
 					Platform:           in.Platform,
-					AccountID:          in.AccountID,
-					AccountName:        in.AccountName,
+					ProviderID:         in.ProviderID,
+					ProviderName:       in.ProviderName,
 					UpstreamStatusCode: resp.StatusCode,
 					UpstreamRequestID:  firstNonEmpty(resp.Header.Get("x-request-id"), resp.Header.Get("xai-request-id")),
 					Kind:               kind,
@@ -128,21 +128,21 @@ func Forward(ctx context.Context, p Ports, o Options, in Input) (*forwardcore.Op
 					handledResult, handleErr = p.HandleError(ctx, resp, patchedBody, upstreamModel)
 					return true, handleErr
 				}
-				// 配额/限流响应写入团队模型覆盖层；容量属于请求压力，不应隐藏健康账号。
+				// 配额/限流响应写入团队模型覆盖层；容量属于请求压力，不应隐藏健康提供商。
 				if p.ShouldMarkTeam(resp.StatusCode, respBody) {
 					p.MarkTeam(upstreamModel)
 				}
 				if kind == "failover" {
 					retry := p.RetryMetadata(resp.StatusCode, respBody)
 					return true, p.Failure(Failure{
-						StatusCode:               resp.StatusCode,
-						ResponseBody:             respBody,
-						ResponseHeaders:          resp.Header.Clone(),
-						RetryableOnSameAccount:   retry.Retryable || decision.RetrySameAccount,
-						RequestScopedTransient:   retry.Retryable && resp.StatusCode == http.StatusTooManyRequests,
-						SameAccountRetryDelay:    retry.Delay,
-						SameAccountRetryDeadline: retry.Deadline,
-						SameAccountRetryMax:      retry.Max,
+						StatusCode:                resp.StatusCode,
+						ResponseBody:              respBody,
+						ResponseHeaders:           resp.Header.Clone(),
+						RetryableOnSameProvider:   retry.Retryable || decision.RetrySameProvider,
+						RequestScopedTransient:    retry.Retryable && resp.StatusCode == http.StatusTooManyRequests,
+						SameProviderRetryDelay:    retry.Delay,
+						SameProviderRetryDeadline: retry.Deadline,
+						SameProviderRetryMax:      retry.Max,
 					})
 				}
 				handledResult, handleErr = p.HandleError(ctx, resp, patchedBody, upstreamModel)
@@ -161,7 +161,8 @@ func Forward(ctx context.Context, p Ports, o Options, in Input) (*forwardcore.Op
 		},
 	}
 	sink := p.Sink()
-	nativeResult, err := (grok.ResponsesExecutor{}).Execute(upstreamCtx, upstream.AttemptInput{Protocol: protocol.ProtocolOpenAIResponses,
+	nativeResult, err := (grok.ResponsesExecutor{}).Execute(upstreamCtx, upstream.AttemptInput{
+		Protocol:      protocol.ProtocolOpenAIResponses,
 		Body:          patchedBody,
 		ResponseModel: originalModel,
 		Stream:        reqStream,
@@ -212,5 +213,4 @@ func Forward(ctx context.Context, p Ports, o Options, in Input) (*forwardcore.Op
 		result.ImageOutputSizes = imageOutputSizes
 	}
 	return result, nil
-
 }

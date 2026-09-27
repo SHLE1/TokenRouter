@@ -29,7 +29,7 @@ func (s *BucketLocks) AcquireBucketLease(ctx context.Context, bucket scheduler.S
 		return nil, false, err
 	}
 	owner := hex.EncodeToString(token[:])
-	key := "sched:v3:lock:" + bucket.String()
+	key := "sched:v4:lock:" + bucket.String()
 	acquired, err := s.client.SetNX(ctx, key, owner, ttl).Result()
 	if err != nil || !acquired {
 		return nil, acquired, err

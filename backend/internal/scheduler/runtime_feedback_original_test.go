@@ -43,7 +43,7 @@ func TestAdvancedSchedulerRuntimeFeedbackSnapshot_RecordsSamplesAndObservedTime(
 	require.InDelta(t, 240, snapshot.TTFT, 0.000001)
 }
 
-func TestOpenAIAccountRuntimeStats_ReportAndSnapshot(t *testing.T) {
+func TestOpenAIProviderRuntimeStats_ReportAndSnapshot(t *testing.T) {
 	stats := scheduler.NewRuntimeStats(time.Now)
 	stats.Report(1001, true, nil)
 	firstTTFT := 100
@@ -58,13 +58,13 @@ func TestOpenAIAccountRuntimeStats_ReportAndSnapshot(t *testing.T) {
 	require.Equal(t, 1, stats.Size())
 }
 
-func TestOpenAIAccountRuntimeStats_ReportConcurrent(t *testing.T) {
+func TestOpenAIProviderRuntimeStats_ReportConcurrent(t *testing.T) {
 	stats := scheduler.NewRuntimeStats(time.Now)
 
 	const (
-		accountCount = 4
-		workers      = 16
-		iterations   = 800
+		providerCount = 4
+		workers       = 16
+		iterations    = 800
 	)
 	var wg sync.WaitGroup
 	wg.Add(workers)
@@ -73,18 +73,18 @@ func TestOpenAIAccountRuntimeStats_ReportConcurrent(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for i := 0; i < iterations; i++ {
-				accountID := int64(i%accountCount + 1)
+				providerID := int64(i%providerCount + 1)
 				success := (i+worker)%3 != 0
 				ttft := 80 + (i+worker)%40
-				stats.Report(accountID, success, &ttft)
+				stats.Report(providerID, success, &ttft)
 			}
 		}()
 	}
 	wg.Wait()
 
-	require.Equal(t, accountCount, stats.Size())
-	for accountID := int64(1); accountID <= accountCount; accountID++ {
-		errorRate, ttft, hasTTFT := stats.Snapshot(accountID)
+	require.Equal(t, providerCount, stats.Size())
+	for providerID := int64(1); providerID <= providerCount; providerID++ {
+		errorRate, ttft, hasTTFT := stats.Snapshot(providerID)
 		require.GreaterOrEqual(t, errorRate, 0.0)
 		require.LessOrEqual(t, errorRate, 1.0)
 		require.True(t, hasTTFT)

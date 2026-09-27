@@ -1,6 +1,6 @@
 import overview from './overview'
 import pricing from './pricing'
-import accounts from './accounts'
+import providers from './providers'
 import resources from './resources'
 import ops from './ops'
 import settings from './settings'
@@ -9,7 +9,7 @@ import audit from './audit'
 export default {
     protocols: {
       nativeTitle: 'Native upstream protocols',
-      nativeHint: 'Only native protocols for this account type are shown. An empty set disables new calls.',
+      nativeHint: 'Only native protocols for this provider type are shown. An empty set disables new calls.',
       loadError: 'Failed to load protocol capabilities. Please reopen the form.',
       fallback: 'Convert when unavailable',
       fallbackWhen: 'If unavailable',
@@ -20,8 +20,8 @@ export default {
       imagePolicyHint: 'Controls image-generation tools in conversations. Separate image generation and editing endpoints are unaffected.',
       imagePolicyOptions: {
         inherit: {
-          label: 'Follow account and global settings',
-          description: 'Use the account setting for this group. If the account has no override, use the global setting.',
+          label: 'Follow provider and global settings',
+          description: 'Use the provider setting for this group. If the provider has no override, use the global setting.',
         },
         enabled: {
           label: 'Automatically add an image tool',
@@ -37,11 +37,11 @@ export default {
         },
       },
       groupTitle: 'Protocol controls',
-      groupHint: 'Try each account’s native protocol first, then the allowed conversion targets in order. Automatic mode uses the routes supported by the server.',
+      groupHint: 'Try each provider’s native protocol first, then the allowed conversion targets in order. Automatic mode uses the routes supported by the server.',
     },
   ...overview,
   ...pricing,
-  ...accounts,
+  ...providers,
   ...resources,
   ...ops,
   ...settings,

@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
 	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 
@@ -31,7 +31,7 @@ func (s *OpenAIWebSocketExecutor) executeWSIngressAdapter(
 	ctx context.Context,
 	c *gin.Context,
 	clientConn *coderws.Conn,
-	account *gatewayprovider.ExecutionAccount,
+	provider *gatewayprovider.ExecutionProvider,
 	token string,
 	firstClientMessage []byte,
 	hooks *gatewayws.OpenAIIngressHooks,
@@ -45,19 +45,19 @@ func (s *OpenAIWebSocketExecutor) executeWSIngressAdapter(
 	if clientConn == nil {
 		return errors.New("client websocket is nil")
 	}
-	if account == nil {
-		return errors.New("account is nil")
+	if provider == nil {
+		return errors.New("provider is nil")
 	}
-	// 复用 Gin 上下文时清理上一个账号留下的工具名称映射。
+	// 复用 Gin 上下文时清理上一个提供商留下的工具名称映射。
 	SetCodexToolNameReverse(c, nil)
-	if _, err := PrepareCodexIdentity(ctx, c, s.Requests.Accounts, account); err != nil {
+	if _, err := PrepareCodexIdentity(ctx, c, s.Requests.Providers, provider); err != nil {
 		return err
 	}
-	if err := validateOpenAIWSBearerToken(account, token); err != nil {
+	if err := validateOpenAIWSBearerToken(provider, token); err != nil {
 		return err
 	}
 
-	tlsRouterMatch := s.Requests.MatchTLS(c, account)
+	tlsRouterMatch := s.Requests.MatchTLS(c, provider)
 
 	// 预取一次 OpenAI Fast Policy settings，绑定到 ctx，让该 WS session
 	// 内所有帧的 evaluateOpenAIFastPolicy 调用复用同一份快照，避免每帧
@@ -70,7 +70,7 @@ func (s *OpenAIWebSocketExecutor) executeWSIngressAdapter(
 
 	// The handler normally owns this registration across retry attempts. Direct
 	// callers still get the same session-scoped preemption behavior here.
-	if preemptCtx, cleanupPreempt, armed := s.BeginOpenAIWSIngressSessionPreemption(ctx, c, account, firstClientMessage); armed {
+	if preemptCtx, cleanupPreempt, armed := s.BeginOpenAIWSIngressSessionPreemption(ctx, c, provider, firstClientMessage); armed {
 		ctx = preemptCtx
 		defer cleanupPreempt()
 		defer func() {
@@ -81,29 +81,29 @@ func (s *OpenAIWebSocketExecutor) executeWSIngressAdapter(
 	}
 
 	var routeErr error
-	account, routeErr = gatewayprovider.AccountForProtocolAttempt(ctx, account)
+	provider, routeErr = gatewayprovider.ProviderForProtocolAttempt(ctx, provider)
 	if routeErr != nil {
 		return routeErr
 	}
-	wsDecision := s.Selection.ResolveTransport(account)
-	forceHTTPBridge := account.Record.Platform == capability.PlatformGrok || account.Route.Protocol() == protocol.ProtocolOpenAIResponses
+	wsDecision := s.Selection.ResolveTransport(provider)
+	forceHTTPBridge := provider.Record.Platform == capability.PlatformGrok || provider.Route.Protocol() == protocol.ProtocolOpenAIResponses
 	modeRouterV2Enabled := s != nil && s.Options != nil && s.Options.ModeRouterV2Enabled
-	ingressMode := accountcore.OpenAIWSIngressModeCtxPool
+	ingressMode := providercore.OpenAIWSIngressModeCtxPool
 	if modeRouterV2Enabled && !forceHTTPBridge {
-		ingressMode = account.View().ResolveOpenAIResponsesWebSocketV2Mode(s.Options.IngressModeDefault)
-		if ingressMode == accountcore.OpenAIWSIngressModeOff {
+		ingressMode = provider.View().ResolveOpenAIResponsesWebSocketV2Mode(s.Options.IngressModeDefault)
+		if ingressMode == providercore.OpenAIWSIngressModeOff {
 			return NewOpenAIWSClientCloseError(
 				coderws.StatusPolicyViolation,
-				"websocket mode is disabled for this account",
+				"websocket mode is disabled for this provider",
 				nil,
 			)
 		}
 		switch ingressMode {
-		case accountcore.OpenAIWSIngressModePassthrough:
+		case providercore.OpenAIWSIngressModePassthrough:
 			if wsDecision.Transport != egress.OpenAIUpstreamTransportResponsesWebsocketV2 {
 				return fmt.Errorf("websocket ingress requires ws_v2 transport, got=%s", wsDecision.Transport)
 			}
-			if s.shouldBridgeOpenAIWSPassthroughFirstMessage(account, firstClientMessage) {
+			if s.shouldBridgeOpenAIWSPassthroughFirstMessage(provider, firstClientMessage) {
 				forceHTTPBridge = true
 				break
 			}
@@ -114,16 +114,16 @@ func (s *OpenAIWebSocketExecutor) executeWSIngressAdapter(
 				ctx,
 				c,
 				clientConn,
-				account,
+				provider,
 				token,
 				firstClientMessage,
 				hooks,
 				wsDecision,
 				tlsRouterMatch,
 			)
-		case accountcore.OpenAIWSIngressModeHTTPBridge:
+		case providercore.OpenAIWSIngressModeHTTPBridge:
 			forceHTTPBridge = true
-		case accountcore.OpenAIWSIngressModeCtxPool, accountcore.OpenAIWSIngressModeShared, accountcore.OpenAIWSIngressModeDedicated:
+		case providercore.OpenAIWSIngressModeCtxPool, providercore.OpenAIWSIngressModeShared, providercore.OpenAIWSIngressModeDedicated:
 			// continue
 		default:
 			return NewOpenAIWSClientCloseError(
@@ -136,7 +136,7 @@ func (s *OpenAIWebSocketExecutor) executeWSIngressAdapter(
 	if !forceHTTPBridge && wsDecision.Transport != egress.OpenAIUpstreamTransportResponsesWebsocketV2 {
 		return fmt.Errorf("websocket ingress requires ws_v2 transport, got=%s", wsDecision.Transport)
 	}
-	dedicatedMode := modeRouterV2Enabled && ingressMode == accountcore.OpenAIWSIngressModeDedicated
+	dedicatedMode := modeRouterV2Enabled && ingressMode == providercore.OpenAIWSIngressModeDedicated
 
 	wsURL := ""
 	wsHost := "-"
@@ -146,7 +146,7 @@ func (s *OpenAIWebSocketExecutor) executeWSIngressAdapter(
 		wsPath = "/v1/responses"
 	} else {
 		var err error
-		wsURL, err = s.buildOpenAIResponsesWSURL(account)
+		wsURL, err = s.buildOpenAIResponsesWSURL(provider)
 		if err != nil {
 			return fmt.Errorf("build ws url: %w", err)
 		}
@@ -160,7 +160,7 @@ func (s *OpenAIWebSocketExecutor) executeWSIngressAdapter(
 
 	state := &gatewayws.IngressState{TurnState: strings.TrimSpace(c.GetHeader(openAIWSTurnStateHeader))}
 
-	normalizer := &gatewayws.RequestNormalizer{State: state, Options: gatewayws.NormalizeOptions{AccountID: account.Record.ID, OAuth: account.View().IsOpenAIOAuth(), ForceHTTPBridge: forceHTTPBridge}, Port: &wsRequestAdapter{wsPassthroughAdapter: &wsPassthroughAdapter{service: s, request: c, account: account, hooks: hooks}, client: clientConn, isCodex: isCodexCLI}}
+	normalizer := &gatewayws.RequestNormalizer{State: state, Options: gatewayws.NormalizeOptions{ProviderID: provider.Record.ID, OAuth: provider.View().IsOpenAIOAuth(), ForceHTTPBridge: forceHTTPBridge}, Port: &wsRequestAdapter{wsPassthroughAdapter: &wsPassthroughAdapter{service: s, request: c, provider: provider, hooks: hooks}, client: clientConn, isCodex: isCodexCLI}}
 	parseClientPayload := func(raw []byte, replace bool, turn int) (gatewayws.ClientPayload, error) {
 		return normalizer.Normalize(ctx, raw, replace, turn)
 	}
@@ -184,7 +184,7 @@ func (s *OpenAIWebSocketExecutor) executeWSIngressAdapter(
 		if readErr != nil {
 			var closeErr *OpenAIWSClientCloseError
 			if errors.As(readErr, &closeErr) && closeErr.StatusCode() == coderws.StatusNormalClosure {
-				gatewayprovider.LogOpenAIWSModeInfo("ingress_ws_inter_turn_idle_timeout account_id=%d timeout_seconds=%d", account.Record.ID, int(idleTimeout.Seconds()))
+				gatewayprovider.LogOpenAIWSModeInfo("ingress_ws_inter_turn_idle_timeout provider_id=%d timeout_seconds=%d", provider.Record.ID, int(idleTimeout.Seconds()))
 			}
 			return nil, readErr
 		}
@@ -203,12 +203,11 @@ func (s *OpenAIWebSocketExecutor) executeWSIngressAdapter(
 	var baseAcquireReq openai.WSAcquireRequest
 	var pool *openai.WSConnPool
 	openPool := func(firstPayload gatewayws.ClientPayload) error {
-
 		firstRoutingFields := gjson.GetManyBytes(firstPayload.PayloadRaw, "model", "service_tier")
 		wsHeaders, _, buildHdrErr := s.buildOpenAIWSHeaders(
 			ctx,
 			c,
-			account,
+			provider,
 			token,
 			wsDecision,
 			isCodexCLI,
@@ -222,19 +221,19 @@ func (s *OpenAIWebSocketExecutor) executeWSIngressAdapter(
 		if buildHdrErr != nil {
 			return fmt.Errorf("build ws headers: %w", buildHdrErr)
 		}
-		tlsProfile, tlsProfileKey := s.Requests.WSTLSProfile(account, tlsRouterMatch)
+		tlsProfile, tlsProfileKey := s.Requests.WSTLSProfile(provider, tlsRouterMatch)
 		baseAcquireReq = openai.WSAcquireRequest{
-			Account: openAIWSPoolAccountView(account),
-			WSURL:   wsURL,
-			Headers: wsHeaders,
+			Provider: openAIWSPoolProviderView(provider),
+			WSURL:    wsURL,
+			Headers:  wsHeaders,
 			HeadersFactory: func(factoryCtx context.Context, headers http.Header) (http.Header, error) {
-				return s.Requests.Identity.RefreshHeaders(factoryCtx, account, headers)
+				return s.Requests.Identity.RefreshHeaders(factoryCtx, provider, headers)
 			},
 			TLSProfile:    tlsProfile,
 			TLSProfileKey: tlsProfileKey,
 			ProxyURL: func() string {
-				if account.Record.ProxyID != nil && account.Record.Proxy != nil {
-					return account.Record.Proxy.URL()
+				if provider.Record.ProxyID != nil && provider.Record.Proxy != nil {
+					return provider.Record.Proxy.URL()
 				}
 				return ""
 			}(),
@@ -245,9 +244,9 @@ func (s *OpenAIWebSocketExecutor) executeWSIngressAdapter(
 			return errors.New("openai ws conn pool is nil")
 		}
 		gatewayprovider.LogOpenAIWSModeInfo(
-			"ingress_ws_protocol_confirm account_id=%d account_type=%s transport=%s ws_host=%s ws_path=%s ws_mode=%s store_disabled=%v has_session_hash=%v has_previous_response_id=%v",
-			account.Record.ID,
-			account.Record.Type, gatewayprovider.NormalizeOpenAIWSLogValue(string(wsDecision.Transport)), wsHost,
+			"ingress_ws_protocol_confirm provider_id=%d provider_type=%s transport=%s ws_host=%s ws_path=%s ws_mode=%s store_disabled=%v has_session_hash=%v has_previous_response_id=%v",
+			provider.Record.ID,
+			provider.Record.Type, gatewayprovider.NormalizeOpenAIWSLogValue(string(wsDecision.Transport)), wsHost,
 			wsPath, gatewayprovider.NormalizeOpenAIWSLogValue(ingressMode), state.StoreDisabled,
 			state.SessionHash != "",
 			firstPayload.PreviousResponseID != "",
@@ -255,9 +254,9 @@ func (s *OpenAIWebSocketExecutor) executeWSIngressAdapter(
 
 		if debugEnabled {
 			gatewayprovider.LogOpenAIWSModeDebug(
-				"ingress_ws_start account_id=%d account_type=%s transport=%s ws_host=%s preferred_conn_id=%s has_session_hash=%v has_previous_response_id=%v store_disabled=%v",
-				account.Record.ID,
-				account.Record.Type, gatewayprovider.NormalizeOpenAIWSLogValue(string(wsDecision.Transport)), wsHost, gatewayprovider.TruncateOpenAIWSLogValue(state.PreferredConnID, gatewayprovider.OpenAIWSIDValueMaxLen), state.SessionHash != "",
+				"ingress_ws_start provider_id=%d provider_type=%s transport=%s ws_host=%s preferred_conn_id=%s has_session_hash=%v has_previous_response_id=%v store_disabled=%v",
+				provider.Record.ID,
+				provider.Record.Type, gatewayprovider.NormalizeOpenAIWSLogValue(string(wsDecision.Transport)), wsHost, gatewayprovider.TruncateOpenAIWSLogValue(state.PreferredConnID, gatewayprovider.OpenAIWSIDValueMaxLen), state.SessionHash != "",
 				firstPayload.PreviousResponseID != "",
 				state.StoreDisabled,
 			)
@@ -265,8 +264,8 @@ func (s *OpenAIWebSocketExecutor) executeWSIngressAdapter(
 		if firstPayload.PreviousResponseID != "" {
 			firstPreviousResponseIDKind := protocolopenai.ClassifyOpenAIPreviousResponseIDKind(firstPayload.PreviousResponseID)
 			gatewayprovider.LogOpenAIWSModeInfo(
-				"ingress_ws_continuation_probe account_id=%d turn=%d previous_response_id=%s previous_response_id_kind=%s preferred_conn_id=%s session_hash=%s header_session_id=%s header_conversation_id=%s has_turn_state=%v turn_state_len=%d has_prompt_cache_key=%v store_disabled=%v",
-				account.Record.ID,
+				"ingress_ws_continuation_probe provider_id=%d turn=%d previous_response_id=%s previous_response_id_kind=%s preferred_conn_id=%s session_hash=%s header_session_id=%s header_conversation_id=%s has_turn_state=%v turn_state_len=%d has_prompt_cache_key=%v store_disabled=%v",
+				provider.Record.ID,
 				1, gatewayprovider.TruncateOpenAIWSLogValue(firstPayload.PreviousResponseID, gatewayprovider.OpenAIWSIDValueMaxLen), gatewayprovider.NormalizeOpenAIWSLogValue(firstPreviousResponseIDKind), gatewayprovider.TruncateOpenAIWSLogValue(state.PreferredConnID, gatewayprovider.OpenAIWSIDValueMaxLen), gatewayprovider.TruncateOpenAIWSLogValue(state.SessionHash, 12), gatewayprovider.OpenAIWSHeaderValueForLog(baseAcquireReq.Headers, "session_id"), gatewayprovider.OpenAIWSHeaderValueForLog(baseAcquireReq.Headers, "conversation_id"), state.TurnState != "",
 				len(state.TurnState),
 				firstPayload.PromptCacheKey != "",
@@ -292,16 +291,16 @@ func (s *OpenAIWebSocketExecutor) executeWSIngressAdapter(
 		lease, acquireErr := pool.Acquire(acquireCtx, req)
 		acquireCancel()
 		var dialErr *openai.WSDialError
-		if acquireErr != nil && s.Requests.Identity.UsesAgentIdentity(ctx, account) && errors.As(acquireErr, &dialErr) && openai.IsAgentTaskInvalidWSDialError(dialErr) && allowRecovery {
+		if acquireErr != nil && s.Requests.Identity.UsesAgentIdentity(ctx, provider) && errors.As(acquireErr, &dialErr) && openai.IsAgentTaskInvalidWSDialError(dialErr) && allowRecovery {
 			return nil, &gatewayws.AcquireRecoveryError{Err: acquireErr}
 		}
 		if acquireErr != nil {
-			canonicalModel := gatewayprovider.ExecutionModelPolicy(account).CanonicalSchedulingModel(state.OriginalModel)
-			errorDecision := s.handleOpenAIWSDialTransientFailure(ctx, account, canonicalModel, acquireErr)
+			canonicalModel := gatewayprovider.ExecutionModelPolicy(provider).CanonicalSchedulingModel(state.OriginalModel)
+			errorDecision := s.handleOpenAIWSDialTransientFailure(ctx, provider, canonicalModel, acquireErr)
 			dialStatus, dialClass, dialCloseStatus, dialCloseReason, dialRespServer, dialRespVia, dialRespCFRay, dialRespReqID := gatewayprovider.SummarizeOpenAIWSDialError(acquireErr)
 			gatewayprovider.LogOpenAIWSModeInfo(
-				"ingress_ws_upstream_acquire_fail account_id=%d turn=%d reason=%s dial_status=%d dial_class=%s dial_close_status=%s dial_close_reason=%s dial_resp_server=%s dial_resp_via=%s dial_resp_cf_ray=%s dial_resp_x_request_id=%s cause=%s preferred_conn_id=%s force_preferred_conn=%v ws_host=%s ws_path=%s proxy_enabled=%v",
-				account.Record.ID,
+				"ingress_ws_upstream_acquire_fail provider_id=%d turn=%d reason=%s dial_status=%d dial_class=%s dial_close_status=%s dial_close_reason=%s dial_resp_server=%s dial_resp_via=%s dial_resp_cf_ray=%s dial_resp_x_request_id=%s cause=%s preferred_conn_id=%s force_preferred_conn=%v ws_host=%s ws_path=%s proxy_enabled=%v",
+				provider.Record.ID,
 				turn, gatewayprovider.NormalizeOpenAIWSLogValue(openai.ClassifyWSAcquireError(acquireErr)), dialStatus,
 				dialClass,
 				dialCloseStatus, gatewayprovider.TruncateOpenAIWSLogValue(dialCloseReason, gatewayprovider.OpenAIWSHeaderValueMaxLen), dialRespServer,
@@ -310,7 +309,7 @@ func (s *OpenAIWebSocketExecutor) executeWSIngressAdapter(
 				dialRespReqID, gatewayprovider.TruncateOpenAIWSLogValue(acquireErr.Error(), gatewayprovider.OpenAIWSLogValueMaxLen), gatewayprovider.TruncateOpenAIWSLogValue(preferred, gatewayprovider.OpenAIWSIDValueMaxLen), forcePreferredConn,
 				wsHost,
 				wsPath,
-				account.Record.ProxyID != nil && account.Record.Proxy != nil,
+				provider.Record.ProxyID != nil && provider.Record.Proxy != nil,
 			)
 			var dialErr *openai.WSDialError
 			if errors.As(acquireErr, &dialErr) && dialErr != nil && dialErr.StatusCode != 0 {
@@ -318,17 +317,17 @@ func (s *OpenAIWebSocketExecutor) executeWSIngressAdapter(
 					return nil, openAIWSGenericPolicyCloseError(dialErr.StatusCode)
 				}
 				if turn == 1 && errorDecision.ShouldFailoverWithDefaults(
-					gatewayprovider.ExecutionErrorPolicy(account),
+					gatewayprovider.ExecutionErrorPolicy(provider),
 					dialErr.StatusCode,
 					dialErr.StatusCode == http.StatusTooManyRequests,
-					s.shouldFailoverOpenAIWSError(account, dialErr.StatusCode, dialErr.ResponseBody),
+					s.shouldFailoverOpenAIWSError(provider, dialErr.StatusCode, dialErr.ResponseBody),
 				) {
 					return nil, gatewayprovider.NewOpenAIUpstreamFailure(
 						dialErr.StatusCode,
 						dialErr.ResponseHeaders,
 						dialErr.ResponseBody,
 						upstream.ExtractErrorMessage(dialErr.ResponseBody),
-						errorDecision.RetryableOnSameAccount(gatewayprovider.ExecutionErrorPolicy(account), dialErr.StatusCode),
+						errorDecision.RetryableOnSameProvider(gatewayprovider.ExecutionErrorPolicy(provider), dialErr.StatusCode),
 					)
 				}
 			}
@@ -362,8 +361,8 @@ func (s *OpenAIWebSocketExecutor) executeWSIngressAdapter(
 			baseAcquireReq.Headers = updatedHeaders
 		}
 		gatewayprovider.LogOpenAIWSModeInfo(
-			"ingress_ws_upstream_connected account_id=%d turn=%d conn_id=%s conn_reused=%v conn_pick_ms=%d queue_wait_ms=%d preferred_conn_id=%s",
-			account.Record.ID,
+			"ingress_ws_upstream_connected provider_id=%d turn=%d conn_id=%s conn_reused=%v conn_pick_ms=%d queue_wait_ms=%d preferred_conn_id=%s",
+			provider.Record.ID,
 			turn, gatewayprovider.TruncateOpenAIWSLogValue(connID, gatewayprovider.OpenAIWSIDValueMaxLen), lease.Reused(),
 			lease.ConnPickDuration().Milliseconds(),
 			lease.QueueWaitDuration().Milliseconds(), gatewayprovider.TruncateOpenAIWSLogValue(preferred, gatewayprovider.OpenAIWSIDValueMaxLen),
@@ -374,16 +373,16 @@ func (s *OpenAIWebSocketExecutor) executeWSIngressAdapter(
 	port := &wsIngressAdapter{
 		ParseFn: parseClientPayload, ReadFn: readClientMessage,
 		GenerateHashFn:  func(body []byte) string { return GenerateOpenAISessionHash(c, body) },
-		StoreDisabledFn: func(body []byte) bool { return s.isOpenAIWSStoreDisabledInRequestRaw(body, account) },
+		StoreDisabledFn: func(body []byte) bool { return s.isOpenAIWSStoreDisabledInRequestRaw(body, provider) },
 		ShouldBridgeFn: func(payload gatewayws.ClientPayload) bool {
-			return forceHTTPBridge || s.shouldBridgeOpenAIWSHTTP(account, payload.PayloadBytes, payload.PreviousResponseID)
+			return forceHTTPBridge || s.shouldBridgeOpenAIWSHTTP(provider, payload.PayloadBytes, payload.PreviousResponseID)
 		},
 		InvalidFn: s.Lineage.Digests, StripFn: s.Lineage.Strip,
 		BridgeIdentityFn: func(body []byte, model string) (string, error) {
-			return resolveGrokWSCacheIdentity(c, account, body, model)
+			return resolveGrokWSCacheIdentity(c, provider, body, model)
 		},
 		BridgeFn: func(ctx context.Context, input gatewayws.ClientPayload, body []byte, identity string, turn int) (*gatewayws.ForwardResult, error) {
-			result, err := s.proxyOpenAIWSHTTPBridgeTurn(ctx, c, account, token, body, len(body), input.OriginalModel, input.RoutingModel, input.ImageBillingModel, input.ImageSizeTier, input.ImageInputSize, identity, turn, writeClientMessage, tlsRouterMatch)
+			result, err := s.proxyOpenAIWSHTTPBridgeTurn(ctx, c, provider, token, body, len(body), input.OriginalModel, input.RoutingModel, input.ImageBillingModel, input.ImageSizeTier, input.ImageInputSize, identity, turn, writeClientMessage, tlsRouterMatch)
 			return gatewayprovider.ProjectWSResult(result), err
 		},
 		SetStateFn: func(turnState, sessionHash string) {
@@ -396,7 +395,7 @@ func (s *OpenAIWebSocketExecutor) executeWSIngressAdapter(
 		},
 		OpenPoolFn: openPool,
 		RecoverAcquireFn: func(ctx context.Context) error {
-			return s.Requests.Identity.Recover(ctx, account, account.View().GetCredential("task_id"))
+			return s.Requests.Identity.Recover(ctx, provider, provider.View().GetCredential("task_id"))
 		},
 		AcquireFn: func(turn int, preferred string, force bool, allowRecovery bool) (gatewayws.ConnLease, error) {
 			lease, err := acquireTurnLease(turn, preferred, force, allowRecovery)
@@ -406,7 +405,7 @@ func (s *OpenAIWebSocketExecutor) executeWSIngressAdapter(
 			return &wsIngressLease{lease}, nil
 		},
 		RelayFn: func(turn int, lease gatewayws.ConnLease, input gatewayws.ClientPayload) (*gatewayws.ForwardResult, error) {
-			streamPort := &wsStreamAdapter{wsPassthroughAdapter: &wsPassthroughAdapter{service: s, request: c, account: account, hooks: hooks}, state: state, groupID: groupID, writeClient: writeClientMessage}
+			streamPort := &wsStreamAdapter{wsPassthroughAdapter: &wsPassthroughAdapter{service: s, request: c, provider: provider, hooks: hooks}, state: state, groupID: groupID, writeClient: writeClientMessage}
 			var streamHooks *gatewayws.StreamHooks
 			if hooks != nil {
 				streamHooks = &gatewayws.StreamHooks{OnUpstreamError: hooks.OnUpstreamError}
@@ -416,7 +415,7 @@ func (s *OpenAIWebSocketExecutor) executeWSIngressAdapter(
 			if !ok {
 				panic("unexpected websocket ingress lease type")
 			}
-			return gatewayws.RelayTurn(ctx, streamPort, typedLease, input, turn, gatewayws.StreamOptions{AccountID: account.Record.ID, WriteTimeout: s.openAIWSWriteTimeout(), ReadTimeout: s.openAIWSReadTimeout(), PreviousRecovery: s.openAIWSIngressPreviousResponseRecoveryEnabled(), Debug: debugEnabled}, streamHooks)
+			return gatewayws.RelayTurn(ctx, streamPort, typedLease, input, turn, gatewayws.StreamOptions{ProviderID: provider.Record.ID, WriteTimeout: s.openAIWSWriteTimeout(), ReadTimeout: s.openAIWSReadTimeout(), PreviousRecovery: s.openAIWSIngressPreviousResponseRecoveryEnabled(), Debug: debugEnabled}, streamHooks)
 		},
 
 		PinFn:       func(id int64, conn string) bool { return pool.PinConn(id, conn) },
@@ -426,18 +425,18 @@ func (s *OpenAIWebSocketExecutor) executeWSIngressAdapter(
 		UpdateHeadersFn: func(nextPayload gatewayws.ClientPayload, turnState string) {
 			nextRoutingFields := gjson.GetManyBytes(nextPayload.PayloadRaw, "model", "service_tier")
 			if nextPayload.PromptCacheKey != "" {
-				updatedHeaders, _, err := s.buildOpenAIWSHeaders(ctx, c, account, token, wsDecision, isCodexCLI, turnState, strings.TrimSpace(c.GetHeader(openai.WSTurnMetadataHeader)), nextPayload.PromptCacheKey, nextRoutingFields[0].String(), nextRoutingFields[1].String(), tlsRouterMatch)
+				updatedHeaders, _, err := s.buildOpenAIWSHeaders(ctx, c, provider, token, wsDecision, isCodexCLI, turnState, strings.TrimSpace(c.GetHeader(openai.WSTurnMetadataHeader)), nextPayload.PromptCacheKey, nextRoutingFields[0].String(), nextRoutingFields[1].String(), tlsRouterMatch)
 				if err != nil {
-					gatewayprovider.LogOpenAIWSModeInfo("ingress_ws_update_headers_failed account_id=%d err=%v", account.Record.ID, err)
+					gatewayprovider.LogOpenAIWSModeInfo("ingress_ws_update_headers_failed provider_id=%d err=%v", provider.Record.ID, err)
 				} else {
 					baseAcquireReq.Headers = updatedHeaders
 				}
 			}
-			SetOpenAICodexRoutingHint(baseAcquireReq.Headers, account, nextRoutingFields[0].String(), nextRoutingFields[1].String())
+			SetOpenAICodexRoutingHint(baseAcquireReq.Headers, provider, nextRoutingFields[0].String(), nextRoutingFields[1].String())
 		},
 	}
 	runtime := gatewayws.IngressSession{State: state, Store: stateStore, Codec: wsReplayCodec{}, Port: port, Hooks: wsIngressHooks(hooks), Options: gatewayws.IngressOptions{
-		AccountID: account.Record.ID, AccountType: account.Record.Type, Platform: account.Record.Platform, GroupID: groupID,
+		ProviderID: provider.Record.ID, ProviderType: provider.Record.Type, Platform: provider.Record.Platform, GroupID: groupID,
 		Debug: debugEnabled, BridgeThreshold: s.openAIWSHTTPBridgeThresholdBytes(), PreviousRecovery: s.openAIWSIngressPreviousResponseRecoveryEnabled(), StoreDisabledMode: s.openAIWSStoreDisabledConnMode(),
 		PreflightPingIdle: openAIWSIngressPreflightPingIdle, HealthCheckTimeout: openai.WSConnHealthCheckTimeout, ResponseStickyTTL: s.OpenAIHTTPResponseStickyTTL(), SessionStickyTTL: s.Selection.SessionStickyTTL(),
 	}}

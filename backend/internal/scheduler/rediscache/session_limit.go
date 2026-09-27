@@ -13,22 +13,22 @@ import (
 // 会话限制缓存常量定义
 //
 // 设计说明：
-// 使用 Redis 有序集合（Sorted Set）跟踪每个账号的活跃会话：
-// - Key: session_limit:account:{accountID}
+// 使用 Redis 有序集合（Sorted Set）跟踪每个提供商的活跃会话：
+// - Key: session_limit:provider:{providerID}
 // - Member: sessionUUID（从 metadata.user_id 中提取）
 // - Score: Unix 时间戳（会话最后活跃时间）
 //
 // 通过 ZREMRANGEBYSCORE 自动清理过期会话，无需手动管理 TTL
 const (
 	// 会话限制键前缀
-	// 格式: session_limit:account:{accountID}
-	sessionLimitKeyPrefix = "session_limit:account:"
+	// 格式: session_limit:provider:{providerID}
+	sessionLimitKeyPrefix = "session_limit:provider:"
 )
 
 var (
 	// registerSessionScript 注册会话活动
 	// 使用 Redis TIME 命令获取服务器时间，避免多实例时钟不同步
-	// KEYS[1] = session_limit:account:{accountID}
+	// KEYS[1] = session_limit:provider:{providerID}
 	// ARGV[1] = maxSessions
 	// ARGV[2] = idleTimeout（秒）
 	// ARGV[3] = sessionUUID
@@ -73,7 +73,7 @@ var (
 	`)
 
 	// refreshSessionScript 刷新会话时间戳
-	// KEYS[1] = session_limit:account:{accountID}
+	// KEYS[1] = session_limit:provider:{providerID}
 	// ARGV[1] = idleTimeout（秒）
 	// ARGV[2] = sessionUUID
 	refreshSessionScript = redis.NewScript(`
@@ -97,7 +97,7 @@ var (
 	`)
 
 	// getActiveSessionCountScript 获取活跃会话数
-	// KEYS[1] = session_limit:account:{accountID}
+	// KEYS[1] = session_limit:provider:{providerID}
 	// ARGV[1] = idleTimeout（秒）
 	getActiveSessionCountScript = redis.NewScript(`
 		-- 兼容 3.2-4.x：脚本使用 TIME，需启用按效果复制，确保写入能同步到从库。
@@ -117,7 +117,7 @@ var (
 	`)
 
 	// isSessionActiveScript 检查会话是否活跃
-	// KEYS[1] = session_limit:account:{accountID}
+	// KEYS[1] = session_limit:provider:{providerID}
 	// ARGV[1] = idleTimeout（秒）
 	// ARGV[2] = sessionUUID
 	isSessionActiveScript = redis.NewScript(`
@@ -180,17 +180,17 @@ func NewSessionLimitCache(rdb *redis.Client, defaultIdleTimeoutMinutes int) sche
 }
 
 // sessionLimitKey 生成会话限制的 Redis 键
-func sessionLimitKey(accountID int64) string {
-	return fmt.Sprintf("%s%d", sessionLimitKeyPrefix, accountID)
+func sessionLimitKey(providerID int64) string {
+	return fmt.Sprintf("%s%d", sessionLimitKeyPrefix, providerID)
 }
 
 // RegisterSession 注册会话活动
-func (c *sessionLimitCache) RegisterSession(ctx context.Context, accountID int64, sessionUUID string, maxSessions int, idleTimeout time.Duration) (bool, error) {
+func (c *sessionLimitCache) RegisterSession(ctx context.Context, providerID int64, sessionUUID string, maxSessions int, idleTimeout time.Duration) (bool, error) {
 	if sessionUUID == "" || maxSessions <= 0 {
 		return true, nil // 无效参数，默认允许
 	}
 
-	key := sessionLimitKey(accountID)
+	key := sessionLimitKey(providerID)
 	idleTimeoutSeconds := int(idleTimeout.Seconds())
 	if idleTimeoutSeconds <= 0 {
 		idleTimeoutSeconds = int(c.defaultIdleTimeout.Seconds())
@@ -204,21 +204,21 @@ func (c *sessionLimitCache) RegisterSession(ctx context.Context, accountID int64
 }
 
 // UnregisterSession 立即移除会话注册（不等待空闲超时）
-// 请求最终失败时调用：上游从未服务该会话，继续占槽会卡住 max_sessions 受限的账号
-func (c *sessionLimitCache) UnregisterSession(ctx context.Context, accountID int64, sessionUUID string) error {
+// 请求最终失败时调用：上游从未服务该会话，继续占槽会卡住 max_sessions 受限的提供商
+func (c *sessionLimitCache) UnregisterSession(ctx context.Context, providerID int64, sessionUUID string) error {
 	if sessionUUID == "" {
 		return nil
 	}
-	return c.rdb.ZRem(ctx, sessionLimitKey(accountID), sessionUUID).Err()
+	return c.rdb.ZRem(ctx, sessionLimitKey(providerID), sessionUUID).Err()
 }
 
 // RefreshSession 刷新会话时间戳
-func (c *sessionLimitCache) RefreshSession(ctx context.Context, accountID int64, sessionUUID string, idleTimeout time.Duration) error {
+func (c *sessionLimitCache) RefreshSession(ctx context.Context, providerID int64, sessionUUID string, idleTimeout time.Duration) error {
 	if sessionUUID == "" {
 		return nil
 	}
 
-	key := sessionLimitKey(accountID)
+	key := sessionLimitKey(providerID)
 	idleTimeoutSeconds := int(idleTimeout.Seconds())
 	if idleTimeoutSeconds <= 0 {
 		idleTimeoutSeconds = int(c.defaultIdleTimeout.Seconds())
@@ -229,8 +229,8 @@ func (c *sessionLimitCache) RefreshSession(ctx context.Context, accountID int64,
 }
 
 // GetActiveSessionCount 获取活跃会话数
-func (c *sessionLimitCache) GetActiveSessionCount(ctx context.Context, accountID int64) (int, error) {
-	key := sessionLimitKey(accountID)
+func (c *sessionLimitCache) GetActiveSessionCount(ctx context.Context, providerID int64) (int, error) {
+	key := sessionLimitKey(providerID)
 	idleTimeoutSeconds := int(c.defaultIdleTimeout.Seconds())
 
 	result, err := getActiveSessionCountScript.Run(ctx, c.rdb, []string{key}, idleTimeoutSeconds).Int()
@@ -240,37 +240,37 @@ func (c *sessionLimitCache) GetActiveSessionCount(ctx context.Context, accountID
 	return result, nil
 }
 
-// GetActiveSessionCountBatch 批量获取多个账号的活跃会话数
-func (c *sessionLimitCache) GetActiveSessionCountBatch(ctx context.Context, accountIDs []int64, idleTimeouts map[int64]time.Duration) (map[int64]int, error) {
-	if len(accountIDs) == 0 {
+// GetActiveSessionCountBatch 批量获取多个提供商的活跃会话数
+func (c *sessionLimitCache) GetActiveSessionCountBatch(ctx context.Context, providerIDs []int64, idleTimeouts map[int64]time.Duration) (map[int64]int, error) {
+	if len(providerIDs) == 0 {
 		return make(map[int64]int), nil
 	}
 
-	results := make(map[int64]int, len(accountIDs))
+	results := make(map[int64]int, len(providerIDs))
 
 	// 使用 pipeline 批量执行
 	pipe := c.rdb.Pipeline()
 
-	cmds := make(map[int64]*redis.Cmd, len(accountIDs))
-	for _, accountID := range accountIDs {
-		key := sessionLimitKey(accountID)
-		// 使用各账号自己的 idleTimeout，如果没有则用默认值
+	cmds := make(map[int64]*redis.Cmd, len(providerIDs))
+	for _, providerID := range providerIDs {
+		key := sessionLimitKey(providerID)
+		// 使用各提供商自己的 idleTimeout，如果没有则用默认值
 		idleTimeout := c.defaultIdleTimeout
 		if idleTimeouts != nil {
-			if t, ok := idleTimeouts[accountID]; ok && t > 0 {
+			if t, ok := idleTimeouts[providerID]; ok && t > 0 {
 				idleTimeout = t
 			}
 		}
 		idleTimeoutSeconds := int(idleTimeout.Seconds())
-		cmds[accountID] = getActiveSessionCountScript.Eval(ctx, pipe, []string{key}, idleTimeoutSeconds)
+		cmds[providerID] = getActiveSessionCountScript.Eval(ctx, pipe, []string{key}, idleTimeoutSeconds)
 	}
 
 	// 执行 pipeline，即使部分失败也尝试获取成功的结果
 	_, _ = pipe.Exec(ctx)
 
-	for accountID, cmd := range cmds {
+	for providerID, cmd := range cmds {
 		if result, err := cmd.Int(); err == nil {
-			results[accountID] = result
+			results[providerID] = result
 		}
 	}
 
@@ -278,12 +278,12 @@ func (c *sessionLimitCache) GetActiveSessionCountBatch(ctx context.Context, acco
 }
 
 // IsSessionActive 检查会话是否活跃
-func (c *sessionLimitCache) IsSessionActive(ctx context.Context, accountID int64, sessionUUID string) (bool, error) {
+func (c *sessionLimitCache) IsSessionActive(ctx context.Context, providerID int64, sessionUUID string) (bool, error) {
 	if sessionUUID == "" {
 		return false, nil
 	}
 
-	key := sessionLimitKey(accountID)
+	key := sessionLimitKey(providerID)
 	idleTimeoutSeconds := int(c.defaultIdleTimeout.Seconds())
 
 	result, err := isSessionActiveScript.Run(ctx, c.rdb, []string{key}, idleTimeoutSeconds, sessionUUID).Int()

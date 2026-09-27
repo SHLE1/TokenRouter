@@ -36,7 +36,7 @@ type OpenAIImagesUpstreamError struct {
 	UpstreamRequestID string
 
 	// SynthesizedFromModelText 表示网关从模型纯文本输出推断出错误，而不是从上游结构化错误帧读取。
-	// 该判定只描述当前轮次（模型返回文字而非图片），不代表账号能力失效；详见
+	// 该判定只描述当前轮次（模型返回文字而非图片），不代表提供商能力失效；详见
 	// shouldCoolOpenAIImagesToolForError。
 	SynthesizedFromModelText bool
 }
@@ -618,7 +618,7 @@ func OpenAIImagesUpstreamErrorFromSSEPayload(payload []byte) *OpenAIImagesUpstre
 	case "response.incomplete":
 		// 上游在生成预算内未产出图片（超时/被截断），返回 response.incomplete 而非 error。
 		// 旧逻辑识别不到，统一报成模糊的 "upstream did not return image output" + 502，
-		// 且不触发 failover。这里把它显式建模为可重试的上游错误，使其能换账号重试。
+		// 且不触发 failover。这里把它显式建模为可重试的上游错误，使其能换提供商重试。
 		return OpenAIImagesIncompleteUpstreamError(gjson.GetBytes(payload, "response"))
 	default:
 		return nil
@@ -725,8 +725,8 @@ func OpenAIImagesTextFallbackErrorForText(text string) *OpenAIImagesUpstreamErro
 		ErrorType:  "upstream_error",
 		Code:       "image_generation_unavailable",
 		Message:    "Upstream did not execute image generation",
-		// 该错误从模型文字推断而来，而非上游错误帧：足以让本轮切换账号，
-		// 但不能证明当前账号图片工具未来 30 分钟不可用。
+		// 该错误从模型文字推断而来，而非上游错误帧：足以让本轮切换提供商，
+		// 但不能证明当前提供商图片工具未来 30 分钟不可用。
 		SynthesizedFromModelText: true,
 	}
 }
@@ -787,7 +787,7 @@ func SummarizeOpenAIImagesNoOutputBodyWithSnippet(body []byte, includeBody bool,
 // OpenAIImagesIncompleteUpstreamError 从 response.incomplete 事件构建可重试的上游错误。
 // incomplete_details.reason 常见取值：max_output_tokens / content_filter 等。
 // content_filter 视为客户端错误（400，重试无意义）；其余（生成超时/截断）视为
-// 可重试的 502，触发 failover 换账号重试。
+// 可重试的 502，触发 failover 换提供商重试。
 func OpenAIImagesIncompleteUpstreamError(response gjson.Result) *OpenAIImagesUpstreamError {
 	if !response.Exists() {
 		return nil

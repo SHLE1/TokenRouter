@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway/moderationflow"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 	"github.com/gin-gonic/gin"
 )
@@ -45,7 +45,7 @@ func ClearOpsCyberPolicy(c *gin.Context) {
 
 // MarkOpenAICyberPolicyEvent 由平台适配解析原生事件，HTTP 只保存观测值。
 func MarkOpenAICyberPolicyEvent(c *gin.Context, payload []byte, upstreamStatus int, usage *openai.ForwardUsage) bool {
-	mark := provider.ParseOpenAICyberPolicyEvent(payload, upstreamStatus, usage)
+	mark := gatewayadapter.ParseOpenAICyberPolicyEvent(payload, upstreamStatus, usage)
 	if mark == nil {
 		return false
 	}

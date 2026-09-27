@@ -5,14 +5,14 @@ package provider_test
 import (
 	"context"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	xai "github.com/TokenFlux/TokenRouter/internal/upstream/grok"
 )
 
 type grokOAuthClientStub struct {
 	refreshResponse     *xai.TokenResponse
 	ssoResponse         *xai.TokenResponse
-	loginResult         *accountcore.GrokPasswordLoginResult
+	loginResult         *providercore.GrokPasswordLoginResult
 	loginEmail          string
 	loginPassword       string
 	exchangeCalls       int
@@ -29,7 +29,7 @@ func (s *grokOAuthClientStub) RefreshToken(context.Context, string, string, stri
 	return s.refreshResponse, nil
 }
 
-func (s *grokOAuthClientStub) LoginWithPassword(_ context.Context, email, password, _ string) (*accountcore.GrokPasswordLoginResult, error) {
+func (s *grokOAuthClientStub) LoginWithPassword(_ context.Context, email, password, _ string) (*providercore.GrokPasswordLoginResult, error) {
 	s.loginEmail = email
 	s.loginPassword = password
 	return s.loginResult, nil

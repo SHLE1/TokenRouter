@@ -30,7 +30,7 @@ const (
 	NotificationEmailEventSubscriptionExpiryReminder  = "subscription.expiry_reminder"
 	NotificationEmailEventBalanceLow                  = "balance.low"
 	NotificationEmailEventBalanceRechargeSuccess      = "balance.recharge_success"
-	NotificationEmailEventAccountQuotaAlert           = "account.quota_alert"
+	NotificationEmailEventProviderQuotaAlert          = "provider.quota_alert"
 	NotificationEmailEventContentModerationViolation  = "content_moderation.violation_notice"
 	NotificationEmailEventContentModerationDisabled   = "content_moderation.account_disabled"
 	NotificationEmailEventOpsAlert                    = "ops.alert"
@@ -913,8 +913,8 @@ func notificationEmailSampleVariables(locale string) map[string]string {
 			"recharge_amount":     "50.00",
 			"order_id":            "1024",
 			"unsubscribe_url":     "https://example.com/unsubscribe",
-			"account_id":          "1001",
-			"account_name":        "openai-main",
+			"provider_id":         "1001",
+			"provider_name":       "openai-main",
 			"platform":            "openai",
 			"quota_dimension":     "每日额度",
 			"quota_used":          "80.00",
@@ -964,8 +964,8 @@ func notificationEmailSampleVariables(locale string) map[string]string {
 		"recharge_amount":     "50.00",
 		"order_id":            "1024",
 		"unsubscribe_url":     "https://example.com/unsubscribe",
-		"account_id":          "1001",
-		"account_name":        "openai-main",
+		"provider_id":         "1001",
+		"provider_name":       "openai-main",
 		"platform":            "openai",
 		"quota_dimension":     "Daily quota",
 		"quota_used":          "80.00",
@@ -1032,7 +1032,7 @@ var notificationEmailEventOrder = []string{
 	NotificationEmailEventSubscriptionExpiryReminder,
 	NotificationEmailEventBalanceLow,
 	NotificationEmailEventBalanceRechargeSuccess,
-	NotificationEmailEventAccountQuotaAlert,
+	NotificationEmailEventProviderQuotaAlert,
 	NotificationEmailEventContentModerationViolation,
 	NotificationEmailEventContentModerationDisabled,
 	NotificationEmailEventOpsAlert,
@@ -1104,14 +1104,14 @@ var notificationEmailEventDefinitions = map[string]NotificationEmailEventInfo{
 		Optional:     false,
 		Placeholders: append(append([]string{}, notificationEmailCommonPlaceholders...), "recharge_amount", "current_balance", "order_id"),
 	},
-	NotificationEmailEventAccountQuotaAlert: {
-		Event:       NotificationEmailEventAccountQuotaAlert,
-		Label:       "Account quota alert",
-		Description: "Sent to configured admin notification emails when an upstream account quota threshold is crossed.",
+	NotificationEmailEventProviderQuotaAlert: {
+		Event:       NotificationEmailEventProviderQuotaAlert,
+		Label:       "Provider quota alert",
+		Description: "Sent to configured admin notification emails when an upstream provider quota threshold is crossed.",
 		Category:    "admin",
 		Optional:    false,
 		Placeholders: append(append([]string{}, notificationEmailCommonPlaceholders...),
-			"account_id", "account_name", "platform", "quota_dimension", "quota_used", "quota_limit", "quota_remaining", "quota_threshold"),
+			"provider_id", "provider_name", "platform", "quota_dimension", "quota_used", "quota_limit", "quota_remaining", "quota_threshold"),
 	},
 	NotificationEmailEventContentModerationViolation: {
 		Event:       NotificationEmailEventContentModerationViolation,
@@ -1143,7 +1143,7 @@ var notificationEmailEventDefinitions = map[string]NotificationEmailEventInfo{
 	NotificationEmailEventOpsScheduledReport: {
 		Event:       NotificationEmailEventOpsScheduledReport,
 		Label:       "Ops scheduled report",
-		Description: "Sent to configured operations recipients for scheduled daily/weekly/error/account-health reports.",
+		Description: "Sent to configured operations recipients for scheduled daily/weekly/error/provider-health reports.",
 		Category:    "ops",
 		Optional:    false,
 		Placeholders: append(
@@ -1316,13 +1316,13 @@ var notificationEmailOfficialTemplates = map[string]map[string]notificationEmail
 			<p>订单号：{{order_id}}</p>`),
 		},
 	},
-	NotificationEmailEventAccountQuotaAlert: {
+	NotificationEmailEventProviderQuotaAlert: {
 		notificationEmailDefaultLocale: {
-			Subject: "[{{site_name}}] Account quota alert - {{account_name}}",
-			HTML: notificationEmailCard("#dc2626", "Account quota alert", `
-<p>The upstream account <strong>{{account_name}}</strong> has crossed its configured quota alert threshold.</p>
+			Subject: "[{{site_name}}] Provider quota alert - {{provider_name}}",
+			HTML: notificationEmailCard("#dc2626", "Provider quota alert", `
+<p>The upstream provider <strong>{{provider_name}}</strong> has crossed its configured quota alert threshold.</p>
 <table style="width:100%;border-collapse:collapse;">
-  <tr><td>Account ID</td><td>{{account_id}}</td></tr>
+  <tr><td>Provider ID</td><td>{{provider_id}}</td></tr>
   <tr><td>Platform</td><td>{{platform}}</td></tr>
   <tr><td>Dimension</td><td>{{quota_dimension}}</td></tr>
   <tr><td>Used / Limit</td><td>{{quota_used}} / {{quota_limit}}</td></tr>
@@ -1331,11 +1331,11 @@ var notificationEmailOfficialTemplates = map[string]map[string]notificationEmail
 </table>`),
 		},
 		notificationEmailLocaleChinese: {
-			Subject: "[{{site_name}}] 账号限额告警 - {{account_name}}",
-			HTML: notificationEmailCard("#dc2626", "账号限额告警", `
-<p>上游账号 <strong>{{account_name}}</strong> 已触发配置的额度告警阈值。</p>
+			Subject: "[{{site_name}}] 提供商限额告警 - {{provider_name}}",
+			HTML: notificationEmailCard("#dc2626", "提供商限额告警", `
+<p>上游提供商 <strong>{{provider_name}}</strong> 已触发配置的额度告警阈值。</p>
 <table style="width:100%;border-collapse:collapse;">
-  <tr><td>账号 ID</td><td>{{account_id}}</td></tr>
+  <tr><td>提供商 ID</td><td>{{provider_id}}</td></tr>
   <tr><td>平台</td><td>{{platform}}</td></tr>
   <tr><td>维度</td><td>{{quota_dimension}}</td></tr>
   <tr><td>已用 / 限额</td><td>{{quota_used}} / {{quota_limit}}</td></tr>

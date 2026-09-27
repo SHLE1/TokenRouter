@@ -6,7 +6,7 @@ import (
 	"context"
 
 	"github.com/TokenFlux/TokenRouter/internal/app/lifecycle"
-	"github.com/TokenFlux/TokenRouter/internal/billing/provider"
+	billingadapter "github.com/TokenFlux/TokenRouter/internal/billing/provider"
 	"github.com/TokenFlux/TokenRouter/internal/server/runtimeconfig"
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway"
@@ -16,7 +16,7 @@ import (
 type bootRuntimeReady struct{}
 
 func provideBootRuntime(
-	pricing *provider.PricingService,
+	pricing *billingadapter.PricingService,
 	manager *lifecycle.Manager,
 	settingService *gateway.RuntimeSettings, forwarded *runtimeconfig.ForwardedSettings,
 ) *bootRuntimeReady {

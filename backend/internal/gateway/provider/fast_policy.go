@@ -75,8 +75,9 @@ func SupportsFastMode(ctx context.Context, resolver *billing.PriceResolver, mode
 // Bedrock、Vertex 和 OAuth/Setup Token 路径不会由单 Key 策略注入 Fast。
 func SupportsAnthropicFastMode(ctx context.Context, resolver *billing.PriceResolver,
 
-	account *ExecutionAccount, model string) bool {
-	return account != nil && account.View().IsAnthropic() && account.Record.Type == capability.AccountTypeAPIKey &&
+	provider *ExecutionProvider, model string,
+) bool {
+	return provider != nil && provider.View().IsAnthropic() && provider.Record.Type == capability.ProviderTypeAPIKey &&
 		SupportsFastMode(ctx, resolver, model)
 }
 
@@ -97,7 +98,7 @@ func addAnthropicBetaToken(header, token string) string {
 func ApplyAnthropicFastMode(
 	ctx context.Context, resolver *billing.PriceResolver,
 
-	account *ExecutionAccount,
+	provider *ExecutionProvider,
 	model string,
 	body []byte,
 	headers http.Header,
@@ -105,7 +106,7 @@ func ApplyAnthropicFastMode(
 	policy := APIKeyFastModePolicy(ctx)
 
 	if policy == apikey.APIKeyFastModePolicyForceOff {
-		if account == nil || !account.View().IsAnthropic() {
+		if provider == nil || !provider.View().IsAnthropic() {
 			return body, headers, nil
 		}
 		if headers == nil {
@@ -125,7 +126,7 @@ func ApplyAnthropicFastMode(
 		return updated, cloned, nil
 	}
 
-	if !SupportsAnthropicFastMode(ctx, resolver, account, model) {
+	if !SupportsAnthropicFastMode(ctx, resolver, provider, model) {
 		return body, headers, nil
 	}
 	if headers == nil {

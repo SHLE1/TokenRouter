@@ -15,9 +15,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
@@ -36,15 +36,18 @@ func newOpenAIImagesTestService(upstream httpclient.UpstreamTransport) *OpenAIIm
 	return newImagesFixture(imagesFixtureInputs{transport: upstream})
 }
 
-func newOpenAIImagesAPIKeyAccount() *gatewayprovider.ExecutionAccount {
-	return &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 31,
-		Name:     "openai-apikey-images",
-		Platform: capability.PlatformOpenAI,
-		Type:     capability.AccountTypeAPIKey,
-		Credentials: map[string]any{
-			"api_key":  "sk-test",
-			"base_url": "https://api.openai.com/v1",
-		}},
+func newOpenAIImagesAPIKeyProvider() *gatewayprovider.ExecutionProvider {
+	return &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 31,
+			Name:     "openai-apikey-images",
+			Platform: capability.PlatformOpenAI,
+			Type:     capability.ProviderTypeAPIKey,
+			Credentials: map[string]any{
+				"api_key":  "sk-test",
+				"base_url": "https://api.openai.com/v1",
+			},
+		},
 	}
 }
 
@@ -79,7 +82,7 @@ func TestForwardOpenAIImagesAPIKey_NonStreamDetachesUpstreamContext(t *testing.T
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // 客户端已断开
 
-	result, err := svc.ForwardImages(ctx, c, newOpenAIImagesAPIKeyAccount(), body, parsed, "")
+	result, err := svc.ForwardImages(ctx, c, newOpenAIImagesAPIKeyProvider(), body, parsed, "")
 
 	require.NoError(t, err, "客户端断开不应把已在出图的上游调用打断成 context canceled")
 	require.NotNil(t, result)
@@ -116,7 +119,7 @@ func TestForwardOpenAIImagesAPIKey_StreamKeepsDetachedUpstreamContext(t *testing
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	_, _ = svc.ForwardImages(ctx, c, newOpenAIImagesAPIKeyAccount(), body, parsed, "")
+	_, _ = svc.ForwardImages(ctx, c, newOpenAIImagesAPIKeyProvider(), body, parsed, "")
 
 	require.NotNil(t, recorder.lastReq)
 	require.NoError(t, recorder.lastReq.Context().Err(),

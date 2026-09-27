@@ -1,4 +1,4 @@
-// WebSocket 握手复用同一账号身份端口，保留平台专属头的原始应用顺序。
+// WebSocket 握手复用同一提供商身份端口，保留平台专属头的原始应用顺序。
 package openai
 
 import (
@@ -26,7 +26,6 @@ func (v WSHeaderOptions) GoString() string { return v.String() }
 
 // BuildWSHeaders 不读取入站 Context，不持有凭据存储或客户端。
 func BuildWSHeaders(ctx context.Context, options WSHeaderOptions) (http.Header, error) {
-
 	headers := make(http.Header)
 	if !options.AgentIdentity {
 		headers.Set("authorization", "Bearer "+options.Token)
@@ -56,7 +55,7 @@ func BuildWSHeaders(ctx context.Context, options WSHeaderOptions) (http.Header, 
 			}
 		}
 	}
-	// OAuth 账号：将 apiKeyID 混入 session 标识符，防止跨用户会话碰撞。
+	// OAuth 提供商：将 apiKeyID 混入 session 标识符，防止跨用户会话碰撞。
 	if options.UsesCodex() {
 		apiKeyID := options.APIKeyID()
 		if sessionID != "" {
@@ -79,12 +78,12 @@ func BuildWSHeaders(ctx context.Context, options WSHeaderOptions) (http.Header, 
 	if metadata := strings.TrimSpace(options.TurnMetadata); metadata != "" {
 		headers.Set(WSTurnMetadataHeader, metadata)
 	}
-	options.ApplyAccountIdentity(headers)
+	options.ApplyProviderIdentity(headers)
 	options.ApplyFingerprint(headers)
 
 	if options.UsesCodex() {
-		if err := options.AccountHeaders(ctx, headers); err != nil {
-			return nil, fmt.Errorf("resolve chatgpt account headers: %w", err)
+		if err := options.ProviderHeaders(ctx, headers); err != nil {
+			return nil, fmt.Errorf("resolve chatgpt provider headers: %w", err)
 		}
 		headers.Set("originator", options.Originator())
 	}
@@ -106,7 +105,7 @@ func BuildWSHeaders(ctx context.Context, options WSHeaderOptions) (http.Header, 
 		EnforceCodexIdentityHeadersWithUA(headers, "")
 	}
 
-	// 账号级请求头覆写（仅 openai api_key 账号启用时生效；OAuth 路径 no-op）。
+	// 提供商级请求头覆写（仅 openai api_key 提供商启用时生效；OAuth 路径 no-op）。
 	// 覆盖所有 WS 模式（ctx_pool/dedicated/passthrough）的握手头。
 	options.OverrideHeaders(headers)
 	// HTTP 与 WebSocket 共用同一份 Codex 会话级能力协商，连接池也会据此

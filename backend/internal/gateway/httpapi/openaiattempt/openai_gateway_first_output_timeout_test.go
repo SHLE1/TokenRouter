@@ -14,7 +14,6 @@ import (
 )
 
 func TestOpenAIForwardMayFailoverOnlyAfterNonSemanticWrite(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	before := httpapi.OpenAICompactKeepaliveAdjustedWrittenSize(c)
@@ -29,7 +28,7 @@ func TestOpenAIForwardMayFailoverOnlyAfterNonSemanticWrite(t *testing.T) {
 	require.False(t, OpenAIForwardMayFailover(c, before, &forwardcore.UpstreamFailoverError{}))
 }
 
-func TestOpenAIFirstOutputFailoverStopsAfterOneAccountSwitch(t *testing.T) {
+func TestOpenAIFirstOutputFailoverStopsAfterOneProviderSwitch(t *testing.T) {
 	failoverErr := &forwardcore.UpstreamFailoverError{SafeToFailoverAfterWrite: true}
 	count := 0
 

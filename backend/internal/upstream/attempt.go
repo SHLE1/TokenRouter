@@ -51,7 +51,7 @@ type AttemptResult struct {
 	ServiceTier, ReasoningEffort string
 }
 
-// Executor 只完成本次尝试，账号切换和资金完成处理由网关拥有。
+// Executor 只完成本次尝试，提供商切换和资金完成处理由网关拥有。
 // @project-doc docs/architecture/gateway_request_lifecycle.md#upstream_attempt_ownership
 type Executor interface {
 	Execute(context.Context, AttemptInput, OutputSink) (AttemptResult, error)

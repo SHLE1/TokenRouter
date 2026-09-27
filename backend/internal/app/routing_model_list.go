@@ -2,17 +2,17 @@
 package app
 
 import (
-	accountpostgres "github.com/TokenFlux/TokenRouter/internal/account/postgres"
+	"time"
+
+	providerpostgres "github.com/TokenFlux/TokenRouter/internal/provider/postgres"
 
 	"github.com/TokenFlux/TokenRouter/internal/config"
 
 	"github.com/TokenFlux/TokenRouter/internal/routing"
-
-	"time"
 )
 
 // provideRoutingModelList 由 app 投影原 15 秒默认 TTL；缓存无构造启动副作用。
-func provideRoutingModelList(repo *accountpostgres.AccountStore, cfg *config.Config) *routing.ModelList {
+func provideRoutingModelList(repo *providerpostgres.ProviderStore, cfg *config.Config) *routing.ModelList {
 	return routing.NewModelList(catalogueReader(repo), resolveModelsListCacheTTL(cfg))
 }
 

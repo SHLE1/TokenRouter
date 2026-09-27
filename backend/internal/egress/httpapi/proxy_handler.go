@@ -79,34 +79,34 @@ func (h *ProxyHandler) List(c *gin.Context) {
 		search = search[:100]
 	}
 
-	proxies, total, err := h.adminService.ListProxiesWithAccountCount(c.Request.Context(), page, pageSize, protocol, status, search, sortBy, sortOrder)
+	proxies, total, err := h.adminService.ListProxiesWithProviderCount(c.Request.Context(), page, pageSize, protocol, status, search, sortBy, sortOrder)
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return
 	}
 
-	out := make([]AdminProxyWithAccountCount, 0, len(proxies))
+	out := make([]AdminProxyWithProviderCount, 0, len(proxies))
 	for i := range proxies {
-		out = append(out, *ProxyWithAccountCountFromServiceAdmin(&proxies[i]))
+		out = append(out, *ProxyWithProviderCountFromServiceAdmin(&proxies[i]))
 	}
 	response.Paginated(c, out, total, page, pageSize)
 }
 
 // GetAll handles getting all active proxies without pagination
 // GET /api/v1/admin/proxies/all
-// Optional query param: with_count=true to include account count per proxy
+// Optional query param: with_count=true to include provider count per proxy
 func (h *ProxyHandler) GetAll(c *gin.Context) {
 	withCount := c.Query("with_count") == "true"
 
 	if withCount {
-		proxies, err := h.adminService.GetAllProxiesWithAccountCount(c.Request.Context())
+		proxies, err := h.adminService.GetAllProxiesWithProviderCount(c.Request.Context())
 		if err != nil {
 			response.ErrorFrom(c, err)
 			return
 		}
-		out := make([]AdminProxyWithAccountCount, 0, len(proxies))
+		out := make([]AdminProxyWithProviderCount, 0, len(proxies))
 		for i := range proxies {
-			out = append(out, *ProxyWithAccountCountFromServiceAdmin(&proxies[i]))
+			out = append(out, *ProxyWithProviderCountFromServiceAdmin(&proxies[i]))
 		}
 		response.Success(c, out)
 		return
@@ -306,32 +306,32 @@ func (h *ProxyHandler) GetStats(c *gin.Context) {
 	// Return mock data for now
 	_ = proxyID
 	response.Success(c, gin.H{
-		"total_accounts":  0,
-		"active_accounts": 0,
-		"total_requests":  0,
-		"success_rate":    100.0,
-		"average_latency": 0,
+		"total_providers":  0,
+		"active_providers": 0,
+		"total_requests":   0,
+		"success_rate":     100.0,
+		"average_latency":  0,
 	})
 }
 
-// GetProxyAccounts handles getting accounts using a proxy
-// GET /api/v1/admin/proxies/:id/accounts
-func (h *ProxyHandler) GetProxyAccounts(c *gin.Context) {
+// GetProxyProviders handles getting providers using a proxy
+// GET /api/v1/admin/proxies/:id/providers
+func (h *ProxyHandler) GetProxyProviders(c *gin.Context) {
 	proxyID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
 		response.BadRequest(c, "Invalid proxy ID")
 		return
 	}
 
-	accounts, err := h.adminService.GetProxyAccounts(c.Request.Context(), proxyID)
+	providers, err := h.adminService.GetProxyProviders(c.Request.Context(), proxyID)
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return
 	}
 
-	out := make([]ProxyAccountSummary, 0, len(accounts))
-	for i := range accounts {
-		out = append(out, *ProxyAccountSummaryFromService(&accounts[i]))
+	out := make([]ProxyProviderSummary, 0, len(providers))
+	for i := range providers {
+		out = append(out, *ProxyProviderSummaryFromService(&providers[i]))
 	}
 	response.Success(c, out)
 }

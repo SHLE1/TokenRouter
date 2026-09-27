@@ -56,25 +56,25 @@ func mustCreateAPIKeyRepoUser(t *testing.T, ctx context.Context, client *dbent.C
 	return identitypostgres.UserFromEntity(u)
 }
 
-func mustCreateAPIKeyRepoAccount(t *testing.T, ctx context.Context, client *dbent.Client, name string) int64 {
+func mustCreateAPIKeyRepoProvider(t *testing.T, ctx context.Context, client *dbent.Client, name string) int64 {
 	t.Helper()
-	account, err := client.Account.Create().
+	provider, err := client.Provider.Create().
 		SetName(name).
 		SetPlatform(capability.PlatformOpenAI).
-		SetType(capability.AccountTypeAPIKey).
+		SetType(capability.ProviderTypeAPIKey).
 		SetStatus(billing.StatusActive).
 		SetCredentials(map[string]any{"api_key": "sk-test"}).
 		Save(ctx)
 	require.NoError(t, err)
-	return account.ID
+	return provider.ID
 }
 
-func mustCreateAPIKeyRepoUsageLog(t *testing.T, ctx context.Context, client *dbent.Client, userID, apiKeyID, accountID int64, requestID string, createdAt time.Time, ipAddress *string) {
+func mustCreateAPIKeyRepoUsageLog(t *testing.T, ctx context.Context, client *dbent.Client, userID, apiKeyID, providerID int64, requestID string, createdAt time.Time, ipAddress *string) {
 	t.Helper()
 	builder := client.UsageLog.Create().
 		SetUserID(userID).
 		SetAPIKeyID(apiKeyID).
-		SetAccountID(accountID).
+		SetProviderID(providerID).
 		SetRequestID(requestID).
 		SetModel("gpt-5").
 		SetCreatedAt(createdAt)
@@ -89,7 +89,7 @@ func TestAPIKeyRepositoryListByUserIDAttachesLastUsedIP(t *testing.T) {
 	repo, client := newAPIKeyRepoSQLite(t)
 	ctx := context.Background()
 	user := mustCreateAPIKeyRepoUser(t, ctx, client, "list-last-used-ip@test.com")
-	accountID := mustCreateAPIKeyRepoAccount(t, ctx, client, "acc-list-last-used-ip")
+	providerID := mustCreateAPIKeyRepoProvider(t, ctx, client, "acc-list-last-used-ip")
 
 	withLogs := &apikey.APIKey{
 		UserID: user.ID,
@@ -117,10 +117,10 @@ func TestAPIKeyRepositoryListByUserIDAttachesLastUsedIP(t *testing.T) {
 	newerEmptyIP := ""
 	newestIP := "203.0.113.20"
 	base := time.Now().UTC().Add(-3 * time.Hour).Truncate(time.Second)
-	mustCreateAPIKeyRepoUsageLog(t, ctx, client, user.ID, withLogs.ID, accountID, "req-last-ip-older", base, &olderIP)
-	mustCreateAPIKeyRepoUsageLog(t, ctx, client, user.ID, withLogs.ID, accountID, "req-last-ip-empty", base.Add(time.Hour), &newerEmptyIP)
-	mustCreateAPIKeyRepoUsageLog(t, ctx, client, user.ID, withLogs.ID, accountID, "req-last-ip-newest", base.Add(2*time.Hour), &newestIP)
-	mustCreateAPIKeyRepoUsageLog(t, ctx, client, user.ID, emptyOnly.ID, accountID, "req-empty-ip", base.Add(3*time.Hour), &newerEmptyIP)
+	mustCreateAPIKeyRepoUsageLog(t, ctx, client, user.ID, withLogs.ID, providerID, "req-last-ip-older", base, &olderIP)
+	mustCreateAPIKeyRepoUsageLog(t, ctx, client, user.ID, withLogs.ID, providerID, "req-last-ip-empty", base.Add(time.Hour), &newerEmptyIP)
+	mustCreateAPIKeyRepoUsageLog(t, ctx, client, user.ID, withLogs.ID, providerID, "req-last-ip-newest", base.Add(2*time.Hour), &newestIP)
+	mustCreateAPIKeyRepoUsageLog(t, ctx, client, user.ID, emptyOnly.ID, providerID, "req-empty-ip", base.Add(3*time.Hour), &newerEmptyIP)
 
 	keys, _, err := repo.ListByUserID(ctx, user.ID, pagination.PaginationParams{Page: 1, PageSize: 10}, apikey.APIKeyListFilters{})
 	require.NoError(t, err)

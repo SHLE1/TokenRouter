@@ -5,79 +5,82 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/media"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 )
 
 // HealthInput 只组合原生健康测试依赖，不能执行业务规则或复制缓存。
 type HealthInput struct {
-	Store   provider.ExecutionAccountStore
-	Cache   account.TempUnschedCache
-	Options account.HealthOptions
-	Readers *provider.RuntimeReaders
+	Store   gatewayadapter.ExecutionProviderStore
+	Cache   provider.TempUnschedCache
+	Options provider.HealthOptions
+	Readers *gatewayadapter.RuntimeReaders
 }
 
-type healthStore struct{ provider.ExecutionAccountStore }
-
-func (s healthStore) GetByID(ctx context.Context, id int64) (*account.Record, error) {
-	value, err := s.ExecutionAccountStore.GetByID(ctx, id)
-	return provider.ExecutionRecord(value), err
+type healthStore struct {
+	gatewayadapter.ExecutionProviderStore
 }
-func (s healthStore) ListByPlatform(ctx context.Context, platform string) ([]account.Record, error) {
-	values, err := s.ExecutionAccountStore.ListByPlatform(ctx, platform)
+
+func (s healthStore) GetByID(ctx context.Context, id int64) (*provider.Record, error) {
+	value, err := s.ExecutionProviderStore.GetByID(ctx, id)
+	return gatewayadapter.ExecutionRecord(value), err
+}
+
+func (s healthStore) ListByPlatform(ctx context.Context, platform string) ([]provider.Record, error) {
+	values, err := s.ExecutionProviderStore.ListByPlatform(ctx, platform)
 	if values == nil {
 		return nil, err
 	}
-	out := make([]account.Record, len(values))
+	out := make([]provider.Record, len(values))
 	for i := range values {
-		out[i] = *provider.ExecutionRecord(&values[i])
+		out[i] = *gatewayadapter.ExecutionRecord(&values[i])
 	}
 	return out, err
 }
 
 // NewHealthObserver 构造独立测试图；全部裁决调用生产原生实现。
-func NewHealthObserver(input HealthInput) *accountprovider.UpstreamHealth {
+func NewHealthObserver(input HealthInput) *provideradapter.UpstreamHealth {
 	options := input.Options
 	options.Now = time.Now
 	options.Warn, options.Info = slog.Warn, slog.Info
-	options.APIKeyHealthWarn = accountprovider.LogAPIKeyHealthWarning
+	options.APIKeyHealthWarn = provideradapter.LogAPIKeyHealthWarning
 	options.SessionWindows = input.Store
 	if input.Readers != nil {
-		source := input.Readers.Account
+		source := input.Readers.Provider
 		options.APIKeyHealthSettings = source.GetOpenAIAPIKeyHealthBreakerSettings
 		options.RateLimit429Settings = source.GetRateLimit429CooldownSettings
 		options.ForbiddenSettings = source.GetOpenAI403CooldownSettings
 		options.OverloadSettings = source.GetOverloadCooldownSettings
 		options.HasThresholdSettings = func() bool { return true }
-		options.Thresholds = source.GetAccountSchedulingThresholds
-		options.StreamSettings = func(ctx context.Context) (*account.StreamTimeoutSettings, error, bool) {
+		options.Thresholds = source.GetProviderSchedulingThresholds
+		options.StreamSettings = func(ctx context.Context) (*provider.StreamTimeoutSettings, error, bool) {
 			v, err := source.GetStreamTimeoutSettings(ctx)
 			return v, err, true
 		}
 	}
-	var store account.HealthStore
-	var teamStore account.TeamLinkedStore
+	var store provider.HealthStore
+	var teamStore provider.TeamLinkedStore
 	if input.Store != nil {
 		store = healthStore{input.Store}
 		teamStore = healthStore{input.Store}
 	}
-	var recovery *account.RecoveryService
+	var recovery *provider.RecoveryService
 	options.ClearWindowRateLimit = func(ctx context.Context, id int64) error { return recovery.ClearRateLimit(ctx, id) }
-	health := account.NewHealthService(store, input.Cache, options)
-	recovery = account.NewRecoveryService(healthStore{input.Store}, input.Cache, account.RecoveryOptions{Now: time.Now, Warn: slog.Warn, ResetCounter: health.ResetForbiddenCounter, InvalidateToken: options.InvalidateUnauthorizedToken})
-	return &accountprovider.UpstreamHealth{
+	health := provider.NewHealthService(store, input.Cache, options)
+	recovery = provider.NewRecoveryService(healthStore{input.Store}, input.Cache, provider.RecoveryOptions{Now: time.Now, Warn: slog.Warn, ResetCounter: health.ResetForbiddenCounter, InvalidateToken: options.InvalidateUnauthorizedToken})
+	return &provideradapter.UpstreamHealth{
 		Core: health,
-		Team: account.NewTeamLinkedHealth(teamStore, account.TeamLinkedOptions{Now: time.Now, Warn: slog.Warn, Block: options.Block}),
-		Limits: &accountprovider.RateLimitObserver{Health: health, Plans: input.Store, NextGeminiDaily: func() *int64 {
+		Team: provider.NewTeamLinkedHealth(teamStore, provider.TeamLinkedOptions{Now: time.Now, Warn: slog.Warn, Block: options.Block}),
+		Limits: &provideradapter.RateLimitObserver{Health: health, Plans: input.Store, NextGeminiDaily: func() *int64 {
 			location, err := time.LoadLocation("America/Los_Angeles")
 			if err != nil {
 				location = time.FixedZone("PST", -8*3600)
 			}
-			reset := account.GeminiDailyResetTime(time.Now(), location).Unix()
+			reset := provider.GeminiDailyResetTime(time.Now(), location).Unix()
 			return &reset
 		}},
-		Models: &accountprovider.ModelHealth{Health: health, CodexRules: provider.CodexModelRules(), IsImageModel: media.IsGPTImageGenerationModel},
+		Models: &provideradapter.ModelHealth{Health: health, CodexRules: gatewayadapter.CodexModelRules(), IsImageModel: media.IsGPTImageGenerationModel},
 	}
 }

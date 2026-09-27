@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
 // VoiceRequest 是完成原鉴权/审核后的报文投影，不负责重新读取请求体。
@@ -25,16 +25,16 @@ type VoiceOutcome struct {
 	RetryNext bool
 }
 type VoicePorts interface {
-	SelectVoice(context.Context, map[int64]struct{}) (account.AccountSnapshot, bool, error)
-	AcquireVoice(context.Context, account.AccountSnapshot) (func(), bool)
-	ForwardVoice(context.Context, account.AccountSnapshot, VoiceRequest) VoiceOutcome
-	CompleteVoice(context.Context, account.AccountSnapshot, VoiceRequest, *VoiceResult)
+	SelectVoice(context.Context, map[int64]struct{}) (provider.ProviderSnapshot, bool, error)
+	AcquireVoice(context.Context, provider.ProviderSnapshot) (func(), bool)
+	ForwardVoice(context.Context, provider.ProviderSnapshot, VoiceRequest) VoiceOutcome
+	CompleteVoice(context.Context, provider.ProviderSnapshot, VoiceRequest, *VoiceResult)
 }
 
 // VoiceFailure 只在候选耗尽时交给 HTTP 输出；其它错误仍由原生响应 Adapter 输出。
 type VoiceFailure struct {
-	NoAccounts bool
-	Last       error
+	NoProviders bool
+	Last        error
 }
 
 func RunVoice(ctx context.Context, request VoiceRequest, ports VoicePorts) *VoiceFailure {
@@ -43,7 +43,7 @@ func RunVoice(ctx context.Context, request VoiceRequest, ports VoicePorts) *Voic
 	for range 4 {
 		selected, present, err := ports.SelectVoice(ctx, excluded)
 		if err != nil || !present {
-			return &VoiceFailure{NoAccounts: last == nil, Last: last}
+			return &VoiceFailure{NoProviders: last == nil, Last: last}
 		}
 		release, acquired := ports.AcquireVoice(ctx, selected)
 		if !acquired {

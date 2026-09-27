@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	paymentpostgres "github.com/TokenFlux/TokenRouter/internal/payment/postgres"
 	paymenttestkit "github.com/TokenFlux/TokenRouter/internal/payment/testkit"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"entgo.io/ent/dialect"
 	dbent "github.com/TokenFlux/TokenRouter/ent"
@@ -55,7 +55,7 @@ func (l *paymentS12Leader) ReleaseLeaderLock(context.Context, string, string) er
 func TestPaymentS12ExpiryRepeatedStart(t *testing.T) {
 	l := &paymentS12Leader{entered: make(chan struct{}, 4)}
 	s := payment.NewOrderExpiry(paymenttestkit.Lifecycle(nil, nil, nil, nil, nil, false), time.Hour, payment.ExpiryRuntime{Acquire: func(ctx context.Context) (func(), bool) {
-		return account.AcquireSingletonLease(ctx, l, nil, payment.OrderExpiryLeaderKey, "fixture", payment.OrderExpiryLeaderTTL)
+		return provider.AcquireSingletonLease(ctx, l, nil, payment.OrderExpiryLeaderKey, "fixture", payment.OrderExpiryLeaderTTL)
 	}})
 	s.Start(context.Background())
 	<-l.entered
@@ -67,10 +67,11 @@ func TestPaymentS12ExpiryRepeatedStart(t *testing.T) {
 	}
 	require.NoError(t, s.StopContext(context.Background()))
 }
+
 func TestPaymentS12ExpiryStartAfterStop(t *testing.T) {
 	l := &paymentS12Leader{entered: make(chan struct{}, 4)}
 	s := payment.NewOrderExpiry(paymenttestkit.Lifecycle(nil, nil, nil, nil, nil, false), time.Hour, payment.ExpiryRuntime{Acquire: func(ctx context.Context) (func(), bool) {
-		return account.AcquireSingletonLease(ctx, l, nil, payment.OrderExpiryLeaderKey, "fixture", payment.OrderExpiryLeaderTTL)
+		return provider.AcquireSingletonLease(ctx, l, nil, payment.OrderExpiryLeaderKey, "fixture", payment.OrderExpiryLeaderTTL)
 	}})
 	require.NoError(t, s.StopContext(context.Background()))
 	s.Start(context.Background())
@@ -81,6 +82,7 @@ func TestPaymentS12ExpiryStartAfterStop(t *testing.T) {
 	}
 	require.NoError(t, s.StopContext(context.Background()))
 }
+
 func TestPaymentS12ExpiryStopCancelsQuery(t *testing.T) {
 	d := &paymentS12Driver{entered: make(chan context.Context, 1), release: make(chan struct{})}
 	client := dbent.NewClient(dbent.Driver(d))
@@ -101,6 +103,7 @@ func TestPaymentS12ExpiryStopCancelsQuery(t *testing.T) {
 	close(d.release)
 	<-done
 }
+
 func TestPaymentS12ProvidersFailedInitialLoadRetries(t *testing.T) {
 	d := &paymentS12Driver{}
 	s := payment.NewProviderBindings(paymentpostgres.NewInstanceStore(dbent.NewClient(dbent.Driver(d))), payment.NewRegistry(), nil, payment.BindingRuntime{}, false)
@@ -110,6 +113,7 @@ func TestPaymentS12ProvidersFailedInitialLoadRetries(t *testing.T) {
 		t.Errorf("首次加载失败被标成已加载，后续不重试：query calls=%d", d.calls.Load())
 	}
 }
+
 func TestPaymentS12ProvidersFailedRefreshPreservesPublished(t *testing.T) {
 	d := &paymentS12Driver{}
 	reg := payment.NewRegistry()

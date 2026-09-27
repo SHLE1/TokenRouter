@@ -48,7 +48,7 @@ func (s *Trace) Close() error {
 }
 
 // Capture 只在需要保留错误诊断或启用日志时读取报文。
-func (s *Trace) Capture(req *http.Request, body []byte, target *gatewayprovider.ExecutionAccount, tokenType string, mimic, retain bool) string {
+func (s *Trace) Capture(req *http.Request, body []byte, target *gatewayprovider.ExecutionProvider, tokenType string, mimic, retain bool) string {
 	if !retain && (s == nil || !s.mimic) {
 		return ""
 	}
@@ -119,7 +119,7 @@ func extractSystemPreviewFromBody(body []byte) string {
 	}
 }
 
-func CaptureLine(req *http.Request, body []byte, account *gatewayprovider.ExecutionAccount, tokenType string, mimicClaudeCode bool) string {
+func CaptureLine(req *http.Request, body []byte, provider *gatewayprovider.ExecutionProvider, tokenType string, mimicClaudeCode bool) string {
 	if req == nil {
 		return ""
 	}
@@ -165,13 +165,13 @@ func CaptureLine(req *http.Request, body []byte, account *gatewayprovider.Execut
 
 	aid := int64(0)
 	aname := ""
-	if account != nil {
-		aid = account.Record.ID
-		aname = account.Record.Name
+	if provider != nil {
+		aid = provider.Record.ID
+		aname = provider.Record.Name
 	}
 
 	return fmt.Sprintf(
-		"url=%s account=%d(%s) tokenType=%s mimic=%t meta.user_id=%q system.preview=%q headers={%s}",
+		"url=%s provider=%d(%s) tokenType=%s mimic=%t meta.user_id=%q system.preview=%q headers={%s}",
 		req.URL.String(),
 		aid,
 		aname,
@@ -197,14 +197,14 @@ func (s *Trace) open(path string) {
 	// 确保父目录存在
 	if dir := filepath.Dir(path); dir != "." {
 		//nolint:gosec // 调试日志路径来自管理员环境变量，允许显式指定。
-		if err := os.MkdirAll(dir, 0755); err != nil {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
 			slog.Error("failed to create gateway debug log directory", "dir", dir, "error", err)
 			return
 		}
 	}
 
 	//nolint:gosec // 调试日志路径来自管理员环境变量，允许显式指定。
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
 	if err != nil {
 		slog.Error("failed to open gateway debug log file", "path", path, "error", err)
 		return

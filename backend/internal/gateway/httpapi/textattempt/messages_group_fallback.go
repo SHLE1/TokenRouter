@@ -33,7 +33,7 @@ func (b *messageAttemptBridge) Fallback(cause error, fallbackUsed bool) bool {
 	target := b.fallbackGroupID
 	if fallbackUsed || key == nil || key.Group == nil || target == nil || *target <= 0 || *target == key.Group.ID || d.resolveFallback == nil || d.planRoute == nil {
 		if d.writeMappedClaudeError != nil {
-			_ = d.writeMappedClaudeError(b.c, b.account, tooLong.StatusCode, tooLong.RequestID, tooLong.Body)
+			_ = d.writeMappedClaudeError(b.c, b.provider, tooLong.StatusCode, tooLong.RequestID, tooLong.Body)
 		}
 		return false
 	}
@@ -58,15 +58,15 @@ func (b *messageAttemptBridge) Fallback(cause error, fallbackUsed bool) bool {
 	ctx = apikey.WithRuntimeAPIKey(ctx, resolved)
 	ctx = requeststate.WithPrefetchedStickySession(ctx, 0, 0)
 	b.hasBoundSession = false
-	b.sessionBoundAccountID = 0
+	b.sessionBoundProviderID = 0
 	if d.cachedSession != nil && b.sessionKey != "" {
-		accountID, cacheErr := d.cachedSession(ctx, resolved.GroupID, b.sessionKey)
+		providerID, cacheErr := d.cachedSession(ctx, resolved.GroupID, b.sessionKey)
 		if cacheErr != nil {
 			b.reqLog.Warn("gateway.fallback_sticky_lookup_failed", zap.Error(cacheErr))
-		} else if accountID > 0 {
+		} else if providerID > 0 {
 			b.hasBoundSession = true
-			b.sessionBoundAccountID = accountID
-			ctx = requeststate.WithPrefetchedStickySession(ctx, accountID, resolved.Group.ID)
+			b.sessionBoundProviderID = providerID
+			ctx = requeststate.WithPrefetchedStickySession(ctx, providerID, resolved.Group.ID)
 		}
 	}
 	plan := d.planRoute(ctx, resolved, b.reqModel)

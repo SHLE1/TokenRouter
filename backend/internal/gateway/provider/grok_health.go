@@ -4,21 +4,21 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 )
 
-// ApplyGrokExecutionHealth 只投影当前尝试和已解码账号，原有写入仍由账号模块执行。
-func ApplyGrokExecutionHealth(ctx context.Context, health *accountprovider.GrokHealth, target *ExecutionAccount, status int, headers http.Header, body []byte, teamModel string, models ...string) account.UpstreamErrorDecision {
+// ApplyGrokExecutionHealth 只投影当前尝试和已解码提供商，原有写入仍由提供商模块执行。
+func ApplyGrokExecutionHealth(ctx context.Context, health *provideradapter.GrokHealth, target *ExecutionProvider, status int, headers http.Header, body []byte, teamModel string, models ...string) provider.UpstreamErrorDecision {
 	if health == nil || target == nil {
-		return account.UpstreamErrorDecision{Policy: account.ErrorPolicyNone}
+		return provider.UpstreamErrorDecision{Policy: provider.ErrorPolicyNone}
 	}
-	return health.ObserveError(ctx, target.View(), accountprovider.GrokHealthInput{
+	return health.ObserveError(ctx, target.View(), provideradapter.GrokHealthInput{
 		Observation:     HealthObservationFromContext(ctx, status, headers, body, models),
 		Models:          models,
 		QuotaModel:      teamModel,
 		TeamModel:       teamModel,
-		RequestScoped:   IsRequestScopedAccountFailure(target, status, body),
-		ServerTransient: IsTransientAccountFailure(status, body),
+		RequestScoped:   IsRequestScopedProviderFailure(target, status, body),
+		ServerTransient: IsTransientProviderFailure(status, body),
 	})
 }

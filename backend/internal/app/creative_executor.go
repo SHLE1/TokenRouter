@@ -6,7 +6,6 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/selection"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/config"
 	"github.com/TokenFlux/TokenRouter/internal/creative"
@@ -14,6 +13,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
@@ -40,11 +40,11 @@ func provideCreativeExecutor(cfg *config.Config, groups creativeprovider.Executi
 		}
 	}
 	project := func(result *gatewayprovider.SelectionResult, err error) (*creative.Selection, error) {
-		if result == nil || result.Account == nil {
+		if result == nil || result.Provider == nil {
 			return nil, err
 		}
-		value := result.Account
-		selection := &creative.Selection{AccountID: value.Record.ID, Platform: value.Record.Platform, Acquired: result.Acquired, Waiting: result.WaitPlan != nil, Release: result.ReleaseFunc}
+		value := result.Provider
+		selection := &creative.Selection{ProviderID: value.Record.ID, Platform: value.Record.Platform, Acquired: result.Acquired, Waiting: result.WaitPlan != nil, Release: result.ReleaseFunc}
 		selection.ResolveModel = func(ctx context.Context, model string) string {
 			policy := gatewayprovider.ExecutionModelPolicy(value)
 			if !policy.Supports(ctx, model) {
@@ -53,7 +53,7 @@ func provideCreativeExecutor(cfg *config.Config, groups creativeprovider.Executi
 			return policy.UpstreamModel(ctx, model)
 		}
 		selection.Execute = func(ctx context.Context, run creative.CreativeRun, payload creative.CreativeRunPayload, model string) ([]creative.CreativeOutput, error) {
-			return targets.ForAccount(value).ExecutePlatform(ctx, value.Record.Platform, run, payload, model)
+			return targets.ForProvider(value).ExecutePlatform(ctx, value.Record.Platform, run, payload, model)
 		}
 		selection.Report = func(model string, success bool) {
 			if value.Record.ID <= 0 {
@@ -62,11 +62,11 @@ func provideCreativeExecutor(cfg *config.Config, groups creativeprovider.Executi
 			switch value.Record.Platform {
 			case capability.PlatformOpenAI, capability.PlatformGrok:
 				if targets != nil {
-					choices.ReportOpenAIAccountScheduleResultForSelection(result, value.Record.ID, model, success, nil)
+					choices.ReportOpenAIProviderScheduleResultForSelection(result, value.Record.ID, model, success, nil)
 				}
 			case capability.PlatformGemini:
 				if generic != nil {
-					generic.ReportAdvancedAccountScheduleResult(result, value.Record.ID, success, nil)
+					generic.ReportAdvancedProviderScheduleResult(result, value.Record.ID, success, nil)
 				}
 			}
 		}
@@ -75,19 +75,19 @@ func provideCreativeExecutor(cfg *config.Config, groups creativeprovider.Executi
 	if targets != nil {
 		out.OpenAI = func(ctx context.Context, run creative.CreativeRun) (*creative.Selection, error) {
 			id := run.GroupID
-			value, _, err := choices.SelectAccountWithSchedulerForImages(ctx, &id, "", run.Model, nil, account.OpenAIImagesCapabilityNative)
+			value, _, err := choices.SelectProviderWithSchedulerForImages(ctx, &id, "", run.Model, nil, provider.OpenAIImagesCapabilityNative)
 			return project(value, err)
 		}
 		out.Grok = func(ctx context.Context, run creative.CreativeRun) (*creative.Selection, error) {
 			id := run.GroupID
-			value, _, err := choices.SelectAccountWithSchedulerForCapability(ctx, &id, "", "", run.Model, nil, egress.OpenAIUpstreamTransportHTTPSSE, account.OpenAIEndpointCapabilityGrokMediaGeneration, false, false, capability.PlatformGrok)
+			value, _, err := choices.SelectProviderWithSchedulerForCapability(ctx, &id, "", "", run.Model, nil, egress.OpenAIUpstreamTransportHTTPSSE, provider.OpenAIEndpointCapabilityGrokMediaGeneration, false, false, capability.PlatformGrok)
 			return project(value, err)
 		}
 	}
 	if generic != nil {
 		out.Gemini = func(ctx context.Context, run creative.CreativeRun) (*creative.Selection, error) {
 			id := run.GroupID
-			value, err := generic.SelectAccountWithLoadAwareness(ctx, &id, "", run.Model, nil, "", 0)
+			value, err := generic.SelectProviderWithLoadAwareness(ctx, &id, "", run.Model, nil, "", 0)
 			return project(value, err)
 		}
 	}

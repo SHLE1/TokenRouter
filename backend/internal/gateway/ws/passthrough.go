@@ -54,8 +54,8 @@ func (s *PassthroughSession) Run(ctx context.Context, clientConn ClientSocket, f
 	usageMeta := NewUsageMeta(initialRequestModel, firstClientMessage, p)
 	usageMeta.CaptureRequestedReasoningEffort(originalFirstClientMessage, initialRequestModel)
 	p.Log(fmt.Sprintf(
-		"relay_start account_id=%d model=%s previous_response_id=%s first_message_type=%s first_message_bytes=%d",
-		o.AccountID,
+		"relay_start provider_id=%d model=%s previous_response_id=%s first_message_type=%s first_message_bytes=%d",
+		o.ProviderID,
 		p.Truncate(requestModel, 160),
 		p.Truncate(requestPreviousResponseID, 64),
 		"text",
@@ -119,12 +119,12 @@ func (s *PassthroughSession) Run(ctx context.Context, clientConn ClientSocket, f
 		}
 		firstClientMessage = liteFirstMessage
 	}
-	accountScopedFirst, accountScoped, scopeErr := p.ScopeIdentity(firstClientMessage)
+	providerScopedFirst, providerScoped, scopeErr := p.ScopeIdentity(firstClientMessage)
 	if scopeErr != nil {
 		return p.CloseError(1008, "invalid websocket identity metadata", scopeErr)
 	}
-	if accountScoped {
-		firstClientMessage = accountScopedFirst
+	if providerScoped {
+		firstClientMessage = providerScopedFirst
 	}
 	firstPolicyCtx := ctx
 	updatedFirst, blocked, policyErr := p.FastPolicy(firstPolicyCtx, 1, firstUpstreamModel, firstClientMessage, true)
@@ -311,12 +311,12 @@ func (s *PassthroughSession) Run(ctx context.Context, clientConn ClientSocket, f
 				}
 			}
 			if isResponseCreate || eventType == "session.update" {
-				accountScopedPayload, accountScoped, scopeErr := p.ScopeIdentity(payload)
+				providerScopedPayload, providerScoped, scopeErr := p.ScopeIdentity(payload)
 				if scopeErr != nil {
 					return payload, nil, p.CloseError(1008, "invalid websocket identity metadata", scopeErr)
 				}
-				if accountScoped {
-					payload = accountScopedPayload
+				if providerScoped {
+					payload = providerScopedPayload
 				}
 			}
 			originalResponseCreate := payload
@@ -571,8 +571,8 @@ func (s *PassthroughSession) Run(ctx context.Context, clientConn ClientSocket, f
 					FirstTokenMs:                turn.FirstTokenMs,
 				}
 				p.Log(fmt.Sprintf(
-					"relay_turn_completed account_id=%d turn=%d request_id=%s terminal_event=%s duration_ms=%d first_token_ms=%d input_tokens=%d output_tokens=%d cache_read_tokens=%d",
-					o.AccountID,
+					"relay_turn_completed provider_id=%d turn=%d request_id=%s terminal_event=%s duration_ms=%d first_token_ms=%d input_tokens=%d output_tokens=%d cache_read_tokens=%d",
+					o.ProviderID,
 					turnNo,
 					p.Truncate(turnResult.RequestID, 64),
 					p.Truncate(turn.TerminalEventType, 160),
@@ -632,8 +632,8 @@ func (s *PassthroughSession) Run(ctx context.Context, clientConn ClientSocket, f
 
 			OnTrace: func(event RelayTraceEvent) {
 				p.Log(fmt.Sprintf(
-					"relay_trace account_id=%d stage=%s direction=%s msg_type=%s bytes=%d graceful=%v wrote_downstream=%v err=%s",
-					o.AccountID,
+					"relay_trace provider_id=%d stage=%s direction=%s msg_type=%s bytes=%d graceful=%v wrote_downstream=%v err=%s",
+					o.ProviderID,
 					p.Truncate(event.Stage, 160),
 					p.Truncate(event.Direction, 160),
 					p.Truncate(event.MessageType, 160),
@@ -682,8 +682,8 @@ func (s *PassthroughSession) Run(ctx context.Context, clientConn ClientSocket, f
 	turnCount := int(completedTurns.Load())
 	if relayExit == nil {
 		p.Log(fmt.Sprintf(
-			"relay_completed account_id=%d request_id=%s terminal_event=%s duration_ms=%d c2u_frames=%d u2c_frames=%d dropped_frames=%d turns=%d",
-			o.AccountID,
+			"relay_completed provider_id=%d request_id=%s terminal_event=%s duration_ms=%d c2u_frames=%d u2c_frames=%d dropped_frames=%d turns=%d",
+			o.ProviderID,
 			p.Truncate(result.RequestID, 64),
 			p.Truncate(relayResult.TerminalEventType, 160),
 			result.Duration.Milliseconds(),
@@ -708,8 +708,8 @@ func (s *PassthroughSession) Run(ctx context.Context, clientConn ClientSocket, f
 		return nil
 	}
 	p.Log(fmt.Sprintf(
-		"relay_failed account_id=%d stage=%s wrote_downstream=%v err=%s duration_ms=%d c2u_frames=%d u2c_frames=%d dropped_frames=%d turns=%d",
-		o.AccountID,
+		"relay_failed provider_id=%d stage=%s wrote_downstream=%v err=%s duration_ms=%d c2u_frames=%d u2c_frames=%d dropped_frames=%d turns=%d",
+		o.ProviderID,
 		p.Truncate(relayExit.Stage, 160),
 		relayExit.WroteDownstream,
 		p.Truncate(errorText(relayExit.Err), 160),
@@ -729,7 +729,7 @@ func (s *PassthroughSession) Run(ctx context.Context, clientConn ClientSocket, f
 		if turnCount == 0 && !relayExit.WroteDownstream {
 			relayErr = failoverErr
 		} else {
-			// handler 在账号重试之间只保留首个 response.create；后续轮次超时后重放它
+			// handler 在提供商重试之间只保留首个 response.create；后续轮次超时后重放它
 			// 会重复执行首轮，因此后续轮次直接结束客户端会话。
 			relayErr = p.CloseError(
 				1001,

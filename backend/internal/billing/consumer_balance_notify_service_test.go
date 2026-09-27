@@ -98,15 +98,15 @@ func TestResolvedThreshold_NegativeLimit(t *testing.T) {
 // ---------- buildQuotaDimsFromState ----------
 
 func TestBuildQuotaDimsFromState_UsesStateValues(t *testing.T) {
-	// Usage values should come from the state, not the account.
-	a := &QuotaNotifyAccount{
+	// Usage values should come from the state, not the provider.
+	a := &QuotaNotifyProvider{
 		Dimensions: []QuotaNotifyDimension{
 			{Name: "daily", Enabled: true, Threshold: 100, ThresholdType: "fixed", CurrentUsed: 999, Limit: 999},
 			{Name: "weekly"},
 			{Name: "total"},
 		},
 	}
-	state := &AccountQuotaState{
+	state := &ProviderQuotaState{
 		DailyUsed:   77.0,
 		DailyLimit:  500.0,
 		WeeklyUsed:  88.0,
@@ -116,7 +116,7 @@ func TestBuildQuotaDimsFromState_UsesStateValues(t *testing.T) {
 	}
 	dims := quotaDimsFromCommitted(a, state)
 	require.Len(t, dims, 3)
-	// Settings from account (enabled, threshold, thresholdType)
+	// Settings from provider (enabled, threshold, thresholdType)
 	require.True(t, dims[0].Enabled)
 	require.Equal(t, 100.0, dims[0].Threshold)
 	// Usage from state

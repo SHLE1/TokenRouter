@@ -53,11 +53,11 @@ type OpsService struct {
 	cfg                    *Options
 	preAggregationSettings PreAggregationReader
 
-	accountRepo AccountReader
-	userRepo    UserReader
+	providerRepo ProviderReader
+	userRepo     UserReader
 
-	// getAccountAvailability is a unit-test hook for overriding account availability lookup.
-	getAccountAvailability func(ctx context.Context, platformFilter string, groupIDFilter *int64) (*OpsAccountAvailability, error)
+	// getProviderAvailability is a unit-test hook for overriding provider availability lookup.
+	getProviderAvailability func(ctx context.Context, platformFilter string, groupIDFilter *int64) (*OpsProviderAvailability, error)
 
 	concurrencyService ConcurrencyReader
 
@@ -73,7 +73,7 @@ type OpsService struct {
 	// quotaAutoPauseSink 由 wire 注入（通常是 SettingService.SetOpenAIQuotaAutoPauseSettings）。
 	// UpdateOpsAdvancedSettings 写入新配置后调用，把最新的配额自动暂停全局默认阈值
 	// 立即同步到调度热路径读取的内存缓存，避免下次请求才能感知新值。
-	quotaAutoPauseSink func(OpsOpenAIAccountQuotaAutoPauseSettings)
+	quotaAutoPauseSink func(OpsOpenAIProviderQuotaAutoPauseSettings)
 
 	// 已发布快照不可变；网关读取无锁，互斥锁仅用于串行化启动和管理更新。
 	runtimeSettings   atomic.Pointer[opsRuntimeSettingsSnapshot]
@@ -113,7 +113,7 @@ func (s *OpsService) SetCleanupReloader(r CleanupReloader) {
 // SetOpenAIQuotaAutoPauseSettingsSink 由 wire 注入，把最新的配额自动暂停全局默认
 // 阈值推送到调度热路径读取的内存缓存。同 SetCleanupReloader 的解耦目的：避免 OpsService
 // 持有 *SettingService 引入循环依赖。
-func (s *OpsService) SetOpenAIQuotaAutoPauseSettingsSink(sink func(OpsOpenAIAccountQuotaAutoPauseSettings)) {
+func (s *OpsService) SetOpenAIQuotaAutoPauseSettingsSink(sink func(OpsOpenAIProviderQuotaAutoPauseSettings)) {
 	if s == nil {
 		return
 	}
@@ -124,14 +124,14 @@ func NewOpsService(
 	opsRepo OpsRepository,
 	settingRepo Settings,
 	cfg *Options,
-	accountRepo AccountReader,
+	providerRepo ProviderReader,
 	userRepo UserReader,
 	concurrencyService ConcurrencyReader,
 
 	systemLogSink *OpsSystemLogSink,
 	logging LogControl,
 ) *OpsService {
-	svc := BuildOpsService(opsRepo, settingRepo, cfg, accountRepo, userRepo, concurrencyService, systemLogSink, logging)
+	svc := BuildOpsService(opsRepo, settingRepo, cfg, providerRepo, userRepo, concurrencyService, systemLogSink, logging)
 	svc.initRuntimeSettings(context.Background())
 	svc.ApplyRuntimeLogConfigOnStartup(context.Background())
 	return svc
@@ -142,7 +142,7 @@ func BuildOpsService(
 	opsRepo OpsRepository,
 	settingRepo Settings,
 	cfg *Options,
-	accountRepo AccountReader,
+	providerRepo ProviderReader,
 	userRepo UserReader,
 	concurrencyService ConcurrencyReader,
 
@@ -154,8 +154,8 @@ func BuildOpsService(
 		settingRepo: settingRepo,
 		cfg:         cfg,
 
-		accountRepo: accountRepo,
-		userRepo:    userRepo,
+		providerRepo: providerRepo,
+		userRepo:     userRepo,
 
 		concurrencyService: concurrencyService,
 
@@ -492,7 +492,7 @@ func (s *OpsService) prepareErrorLogInput(ctx context.Context, entry *OpsInsertE
 		entry.ErrorType = "api_error"
 	}
 
-	// 凭据获取属于网关账号认证阶段，而非推理 HTTP 尝试。
+	// 凭据获取属于网关提供商认证阶段，而非推理 HTTP 尝试。
 	// 在持久化边界强制该归属，避免较早的推理尝试状态或文本泄漏到顶层认证字段，
 	// 即使调用方传入了过期的单值上下文也不例外。
 	for i := len(entry.UpstreamErrors) - 1; i >= 0; i-- {
@@ -500,8 +500,8 @@ func (s *OpsService) prepareErrorLogInput(ctx context.Context, entry *OpsInsertE
 		if last == nil {
 			continue
 		}
-		if last.Stage == string("account_auth") {
-			entry.ErrorPhase = string("account_auth")
+		if last.Stage == string("provider_auth") {
+			entry.ErrorPhase = string("provider_auth")
 			entry.ErrorOwner = "provider"
 			entry.ErrorSource = "gateway"
 			code := 0
@@ -525,7 +525,7 @@ func (s *OpsService) prepareErrorLogInput(ctx context.Context, entry *OpsInsertE
 	}
 
 	// Sanitize upstream error context if provided by gateway services.
-	if entry.UpstreamStatusCode != nil && *entry.UpstreamStatusCode <= 0 && entry.ErrorPhase != string("account_auth") {
+	if entry.UpstreamStatusCode != nil && *entry.UpstreamStatusCode <= 0 && entry.ErrorPhase != string("provider_auth") {
 		entry.UpstreamStatusCode = nil
 	}
 	if entry.UpstreamErrorMessage != nil {
@@ -578,7 +578,7 @@ func sanitizeOpsUpstreamErrors(entry *OpsInsertErrorLogInput) error {
 		out := *ev
 
 		out.Platform = truncateString(strings.TrimSpace(out.Platform), 32)
-		out.AccountName = truncateString(strings.TrimSpace(out.AccountName), 128)
+		out.ProviderName = truncateString(strings.TrimSpace(out.ProviderName), 128)
 		out.UpstreamRequestID = truncateString(strings.TrimSpace(out.UpstreamRequestID), 128)
 		out.UpstreamURL = truncateString(strings.TrimSpace(out.UpstreamURL), 2048)
 		if body := strings.TrimSpace(out.UpstreamResponseBody); body != "" {
@@ -591,8 +591,8 @@ func sanitizeOpsUpstreamErrors(entry *OpsInsertErrorLogInput) error {
 		out.Scope = truncateString(strings.TrimSpace(out.Scope), 64)
 		out.Reason = truncateString(strings.TrimSpace(out.Reason), 128)
 
-		if out.AccountID < 0 {
-			out.AccountID = 0
+		if out.ProviderID < 0 {
+			out.ProviderID = 0
 		}
 		if out.UpstreamStatusCode < 0 {
 			out.UpstreamStatusCode = 0

@@ -53,7 +53,7 @@ func (s *Service) ProxyLiveSideband(
 		go s.Observe(record)
 		return context.Cause(ctx)
 	}
-	account, err := s.ports.Target(ctx, record)
+	provider, err := s.ports.Target(ctx, record)
 	if err != nil {
 		releaseController()
 		go s.Observe(record)
@@ -64,7 +64,7 @@ func (s *Service) ProxyLiveSideband(
 		go s.Observe(record)
 		return context.Cause(ctx)
 	}
-	upstream, err := account.Dial(ctx)
+	upstream, err := provider.Dial(ctx)
 	if err != nil {
 		releaseController()
 		go s.Observe(record)
@@ -85,7 +85,7 @@ func (s *Service) ProxyLiveSideband(
 				return
 			}
 			if messageType == TextFrame {
-				rewritten, clientModel, internalModels, rewriteErr := account.Rewrite(proxyCtx, payload)
+				rewritten, clientModel, internalModels, rewriteErr := provider.Rewrite(proxyCtx, payload)
 				if rewriteErr != nil {
 					errCh <- rewriteErr
 					return
@@ -375,18 +375,18 @@ func (s *Service) RefreshLease(record *session.LiveCallRecord) bool {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), liveRedisOperationTimeout)
 	defer cancel()
-	refreshed, err := cache.RefreshLiveLease(ctx, record.AccountID, record.UserID, record.APIKeyID, record.LeaseID)
+	refreshed, err := cache.RefreshLiveLease(ctx, record.ProviderID, record.UserID, record.APIKeyID, record.LeaseID)
 	return err == nil && refreshed
 }
 
-func (s *Service) ReleaseLease(accountID, userID, apiKeyID int64, leaseID string) {
+func (s *Service) ReleaseLease(providerID, userID, apiKeyID int64, leaseID string) {
 	cache, err := s.ports.Leases()
 	if err != nil {
 		return
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), liveRedisOperationTimeout)
 	defer cancel()
-	_ = cache.ReleaseLiveLease(ctx, accountID, userID, apiKeyID, leaseID)
+	_ = cache.ReleaseLiveLease(ctx, providerID, userID, apiKeyID, leaseID)
 }
 
 func (s *Service) Finalize(record *session.LiveCallRecord) {
@@ -403,13 +403,14 @@ func (s *Service) Finalize(record *session.LiveCallRecord) {
 	if err != nil || !first {
 		return
 	}
-	s.ReleaseLease(record.AccountID, record.UserID, record.APIKeyID, record.LeaseID)
+	s.ReleaseLease(record.ProviderID, record.UserID, record.APIKeyID, record.LeaseID)
 	duration := int(time.Since(record.CreatedAt).Milliseconds())
 	if duration < 0 {
 		duration = 0
 	}
 	s.ports.RecordZeroUsage(context.Background(), record, duration)
 }
+
 func waitLiveObserver(ctx context.Context, delay time.Duration) bool {
 	timer := time.NewTimer(delay)
 	defer timer.Stop()

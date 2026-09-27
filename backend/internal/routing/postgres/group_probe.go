@@ -135,11 +135,11 @@ func (r *GroupAvailabilityProbeStore) SaveResultAndScheduleNext(ctx context.Cont
 
 	if _, err := tx.ExecContext(ctx, `
 		INSERT INTO group_availability_probe_results (
-			group_id, account_id, model_id, status, success, latency_ms,
+			group_id, provider_id, model_id, status, success, latency_ms,
 			error_message, started_at, finished_at, created_at
 		)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
-	`, result.GroupID, result.AccountID, result.ModelID, result.Status, result.Success, result.LatencyMs, nullableProbeString(result.ErrorMessage), result.StartedAt, result.FinishedAt); err != nil {
+	`, result.GroupID, result.ProviderID, result.ModelID, result.Status, result.Success, result.LatencyMs, nullableProbeString(result.ErrorMessage), result.StartedAt, result.FinishedAt); err != nil {
 		return err
 	}
 

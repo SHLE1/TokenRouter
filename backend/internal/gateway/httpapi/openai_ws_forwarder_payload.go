@@ -1,10 +1,6 @@
 package httpapi
 
 import (
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
-	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
-	forward "github.com/TokenFlux/TokenRouter/internal/gateway/provider/openaiforward"
-
 	"context"
 	"errors"
 	"fmt"
@@ -12,8 +8,12 @@ import (
 	"net/url"
 	"strings"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	forward "github.com/TokenFlux/TokenRouter/internal/gateway/provider/openaiforward"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
+
 	"github.com/TokenFlux/TokenRouter/internal/egress"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	upstreamopenai "github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 
@@ -21,34 +21,34 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-func validateOpenAIWSBearerToken(account *gatewayprovider.ExecutionAccount, token string) error {
-	if account == nil {
-		return errors.New("account is nil")
+func validateOpenAIWSBearerToken(provider *gatewayprovider.ExecutionProvider, token string) error {
+	if provider == nil {
+		return errors.New("provider is nil")
 	}
-	if strings.TrimSpace(token) == "" && !account.View().IsOpenAIAgentIdentity() {
+	if strings.TrimSpace(token) == "" && !provider.View().IsOpenAIAgentIdentity() {
 		return errors.New("token is empty")
 	}
 	return nil
 }
 
-func (s *OpenAIWebSocketExecutor) buildOpenAIResponsesWSURL(account *gatewayprovider.ExecutionAccount) (string, error) {
-	if account == nil {
-		return "", errors.New("account is nil")
+func (s *OpenAIWebSocketExecutor) buildOpenAIResponsesWSURL(provider *gatewayprovider.ExecutionProvider) (string, error) {
+	if provider == nil {
+		return "", errors.New("provider is nil")
 	}
 	var targetURL string
-	switch account.Record.Type {
-	case capability.AccountTypeOAuth:
+	switch provider.Record.Type {
+	case capability.ProviderTypeOAuth:
 		targetURL = chatgptCodexURL
-	case capability.AccountTypeSetupToken:
-		if account.View().IsOpenAIOAuthLike() {
+	case capability.ProviderTypeSetupToken:
+		if provider.View().IsOpenAIOAuthLike() {
 			targetURL = chatgptCodexURL
 		} else {
 			targetURL = openaiPlatformAPIURL
 		}
-	case capability.AccountTypeAPIKey:
-		baseURL := gatewayprovider.ExecutionProtocolTarget(account).GetOpenAIBaseURL()
-		if _, unified := account.Record.Credentials[accountcore.UpstreamProtocolsKey]; gatewayprovider.ExecutionProtocolTarget(account).UsesNativeCNResponses() && (unified || gatewayprovider.ExecutionProtocolTarget(account).IsAdaptiveAPIProtocol()) {
-			baseURL = gatewayprovider.ExecutionProtocolTarget(account).GetCNProtocolBaseURL(accountcore.APIProtocolResponses)
+	case capability.ProviderTypeAPIKey:
+		baseURL := gatewayprovider.ExecutionProtocolTarget(provider).GetOpenAIBaseURL()
+		if _, unified := provider.Record.Credentials[providercore.UpstreamProtocolsKey]; gatewayprovider.ExecutionProtocolTarget(provider).UsesNativeCNResponses() && (unified || gatewayprovider.ExecutionProtocolTarget(provider).IsAdaptiveAPIProtocol()) {
+			baseURL = gatewayprovider.ExecutionProtocolTarget(provider).GetCNProtocolBaseURL(providercore.APIProtocolResponses)
 		}
 		if baseURL == "" {
 			targetURL = openaiPlatformAPIURL
@@ -57,7 +57,7 @@ func (s *OpenAIWebSocketExecutor) buildOpenAIResponsesWSURL(account *gatewayprov
 			if err != nil {
 				return "", err
 			}
-			targetURL = forward.ResponsesEndpoint(account.Record.Platform, validatedURL)
+			targetURL = forward.ResponsesEndpoint(provider.Record.Platform, validatedURL)
 		}
 	default:
 		targetURL = openaiPlatformAPIURL
@@ -83,7 +83,7 @@ func (s *OpenAIWebSocketExecutor) buildOpenAIResponsesWSURL(account *gatewayprov
 func (s *OpenAIWebSocketExecutor) buildOpenAIWSHeaders(
 	ctx context.Context,
 	c *gin.Context,
-	account *gatewayprovider.ExecutionAccount,
+	provider *gatewayprovider.ExecutionProvider,
 	token string,
 	decision egress.OpenAIWSProtocolDecision,
 	isCodexCLI bool,
@@ -96,7 +96,7 @@ func (s *OpenAIWebSocketExecutor) buildOpenAIWSHeaders(
 ) (http.Header, OpenAIWSSessionHeaderResolution, error) {
 	var sessionResolution OpenAIWSSessionHeaderResolution
 	headers, err := upstreamopenai.BuildWSHeaders(ctx, upstreamopenai.WSHeaderOptions{
-		AgentIdentity: account != nil && account.View().IsOpenAIAgentIdentity(), Token: token,
+		AgentIdentity: provider != nil && provider.View().IsOpenAIAgentIdentity(), Token: token,
 		TurnState: turnState, TurnMetadata: turnMetadata,
 		BetaV1: openAIWSBetaV1Value, BetaV2: openAIWSBetaV2Value,
 		LegacyWS: decision.Transport == egress.OpenAIUpstreamTransportResponsesWebsocket,
@@ -121,38 +121,38 @@ func (s *OpenAIWebSocketExecutor) buildOpenAIWSHeaders(
 			if c != nil && c.Request != nil {
 				reqCtx = c.Request.Context()
 			}
-			s.Requests.ApplyUserAgentHeader(reqCtx, c, account, headers, true, routerMatch...)
+			s.Requests.ApplyUserAgentHeader(reqCtx, c, provider, headers, true, routerMatch...)
 		},
 		ResponsesRequestOptions: upstreamopenai.ResponsesRequestOptions{
-			UsesCodex: func() bool { return account != nil && account.View().UsesOpenAICodexProtocol() },
+			UsesCodex: func() bool { return provider != nil && provider.View().UsesOpenAICodexProtocol() },
 			APIKeyID:  func() int64 { return APIKeyIDFromContext(c) },
 			IsolateSession: func(keyID int64, value string) string {
-				return upstreamopenai.IsolateOpenAIUpstreamSessionID(keyID, accountprovider.CodexIdentityNamespace(CodexIdentityRecord(c, account.View())), value)
+				return upstreamopenai.IsolateOpenAIUpstreamSessionID(keyID, provideradapter.CodexIdentityNamespace(CodexIdentityRecord(c, provider.View())), value)
 			},
-			ApplyAccountIdentity: func(headers http.Header) {
-				upstreamopenai.ApplyCodexAccountIdentityHeaders(headers, accountprovider.CodexIdentityNamespace(CodexIdentityRecord(c, account.View())), APIKeyIDFromContext(c))
+			ApplyProviderIdentity: func(headers http.Header) {
+				upstreamopenai.ApplyCodexProviderIdentityHeaders(headers, provideradapter.CodexIdentityNamespace(CodexIdentityRecord(c, provider.View())), APIKeyIDFromContext(c))
 			},
-			ApplyFingerprint: func(headers http.Header) { ApplyStagedCodexFingerprintHeaders(c, account.View(), headers) },
-			AccountHeaders: func(ctx context.Context, headers http.Header) error {
-				return gatewayprovider.CredentialChatGPTHeaders(ctx, s.Requests.Accounts, headers, account)
+			ApplyFingerprint: func(headers http.Header) { ApplyStagedCodexFingerprintHeaders(c, provider.View(), headers) },
+			ProviderHeaders: func(ctx context.Context, headers http.Header) error {
+				return gatewayprovider.CredentialChatGPTHeaders(ctx, s.Requests.Providers, headers, provider)
 			},
 			Originator:      func() string { return ResolveOpenAIUpstreamOriginator(c, isCodexCLI, routerMatch...) },
-			OverrideHeaders: gatewayprovider.BindExecutionHeaders(account),
+			OverrideHeaders: gatewayprovider.BindExecutionHeaders(provider),
 			BetaFeatures: func(headers http.Header) {
-				ApplyOpenAICodexBetaFeatures(c, account != nil && account.View().IsOpenAIOAuthLike(), headers)
+				ApplyOpenAICodexBetaFeatures(c, provider != nil && provider.View().IsOpenAIOAuthLike(), headers)
 			},
 			RoutingHint: func(headers http.Header, _ []byte) {
-				SetOpenAICodexRoutingHint(headers, account, routingModel, routingServiceTier)
+				SetOpenAICodexRoutingHint(headers, provider, routingModel, routingServiceTier)
 			},
 			Diagnostics: func(headers http.Header, _ []byte) {
-				LogOpenAIRoutingDiagnostics(ctx, account, string(decision.Transport), routingModel, routingServiceTier, strings.TrimSpace(headers.Get(OpenAICodexRoutingHintHeader)) != "", "soft_routing_hint")
+				LogOpenAIRoutingDiagnostics(ctx, provider, string(decision.Transport), routingModel, routingServiceTier, strings.TrimSpace(headers.Get(OpenAICodexRoutingHintHeader)) != "", "soft_routing_hint")
 			},
 		},
 	})
 	return headers, sessionResolution, err
 }
 
-func (s *OpenAIWebSocketExecutor) buildOpenAIWSCreatePayload(reqBody map[string]any, account *gatewayprovider.ExecutionAccount) map[string]any {
+func (s *OpenAIWebSocketExecutor) buildOpenAIWSCreatePayload(reqBody map[string]any, provider *gatewayprovider.ExecutionProvider) map[string]any {
 	// OpenAI WS Mode 协议：response.create 字段与 HTTP /responses 基本一致。
 	// 保留 stream 字段（与 Codex CLI 一致），仅移除 background。
 	payload := make(map[string]any, len(reqBody)+1)
@@ -167,14 +167,14 @@ func (s *OpenAIWebSocketExecutor) buildOpenAIWSCreatePayload(reqBody map[string]
 	payload["type"] = "response.create"
 
 	// OAuth 默认保持 store=false，避免误依赖服务端历史。
-	if account != nil && account.View().UsesOpenAICodexProtocol() && !s.isOpenAIWSStoreRecoveryAllowed(account) {
+	if provider != nil && provider.View().UsesOpenAICodexProtocol() && !s.isOpenAIWSStoreRecoveryAllowed(provider) {
 		payload["store"] = false
 	}
 	return payload
 }
 
-func (s *OpenAIWebSocketExecutor) isOpenAIWSStoreRecoveryAllowed(account *gatewayprovider.ExecutionAccount) bool {
-	if account != nil && account.View().IsOpenAIWSAllowStoreRecoveryEnabled() {
+func (s *OpenAIWebSocketExecutor) isOpenAIWSStoreRecoveryAllowed(provider *gatewayprovider.ExecutionProvider) bool {
+	if provider != nil && provider.View().IsOpenAIWSAllowStoreRecoveryEnabled() {
 		return true
 	}
 	if s != nil && s.Options != nil && s.Options.AllowStoreRecovery {
@@ -183,8 +183,8 @@ func (s *OpenAIWebSocketExecutor) isOpenAIWSStoreRecoveryAllowed(account *gatewa
 	return false
 }
 
-func (s *OpenAIWebSocketExecutor) isOpenAIWSStoreDisabledInRequest(reqBody map[string]any, account *gatewayprovider.ExecutionAccount) bool {
-	if account != nil && account.View().UsesOpenAICodexProtocol() && !s.isOpenAIWSStoreRecoveryAllowed(account) {
+func (s *OpenAIWebSocketExecutor) isOpenAIWSStoreDisabledInRequest(reqBody map[string]any, provider *gatewayprovider.ExecutionProvider) bool {
+	if provider != nil && provider.View().UsesOpenAICodexProtocol() && !s.isOpenAIWSStoreRecoveryAllowed(provider) {
 		return true
 	}
 	if len(reqBody) == 0 {
@@ -201,8 +201,8 @@ func (s *OpenAIWebSocketExecutor) isOpenAIWSStoreDisabledInRequest(reqBody map[s
 	return !storeEnabled
 }
 
-func (s *OpenAIWebSocketExecutor) isOpenAIWSStoreDisabledInRequestRaw(reqBody []byte, account *gatewayprovider.ExecutionAccount) bool {
-	if account != nil && account.View().UsesOpenAICodexProtocol() && !s.isOpenAIWSStoreRecoveryAllowed(account) {
+func (s *OpenAIWebSocketExecutor) isOpenAIWSStoreDisabledInRequestRaw(reqBody []byte, provider *gatewayprovider.ExecutionProvider) bool {
+	if provider != nil && provider.View().UsesOpenAICodexProtocol() && !s.isOpenAIWSStoreRecoveryAllowed(provider) {
 		return true
 	}
 	if len(reqBody) == 0 {

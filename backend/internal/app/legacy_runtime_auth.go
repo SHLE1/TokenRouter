@@ -3,10 +3,10 @@
 package app
 
 import (
-	accountauth "github.com/TokenFlux/TokenRouter/internal/account"
-	"github.com/TokenFlux/TokenRouter/internal/account/provider"
-
 	"context"
+
+	providerauth "github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/app/lifecycle"
@@ -19,14 +19,14 @@ type authRuntimeReady struct{}
 func provideAuthRuntime(
 	apiKeyService *apikey.APIKeyService,
 	errorPassthrough *errorpolicy.ErrorPassthroughService,
-	oauth *accountauth.ClaudeAuthorization,
-	openaiOAuth *accountauth.OpenAIAuthorization,
-	geminiOAuth *accountauth.GeminiAuthorization,
-	antigravityOAuth *accountauth.AntigravityAuthorization,
-	qoderOAuth *provider.QoderAuthorization,
-	qoderTokens *provider.QoderTokenProvider,
+	oauth *providerauth.ClaudeAuthorization,
+	openaiOAuth *providerauth.OpenAIAuthorization,
+	geminiOAuth *providerauth.GeminiAuthorization,
+	antigravityOAuth *providerauth.AntigravityAuthorization,
+	qoderOAuth *provideradapter.QoderAuthorization,
+	qoderTokens *provideradapter.QoderTokenProvider,
 
-	grokOAuth *accountauth.GrokAuthorization,
+	grokOAuth *providerauth.GrokAuthorization,
 	tlsFingerprintProfile *egress.TLSFingerprintProfileService,
 	tlsFingerprintRouter *egress.TLSFingerprintRouterService,
 	manager *lifecycle.Manager,
@@ -135,8 +135,10 @@ func provideAuthRuntime(
 		return nil
 	}})
 
-	manager.Register(lifecycle.Hook{Name: "ErrorPassthroughService", StartOrder: 190, StopOrder: 810,
+	manager.Register(lifecycle.Hook{
+		Name: "ErrorPassthroughService", StartOrder: 190, StopOrder: 810,
 		Start: errorPassthrough.StartContext,
-		Stop:  errorPassthrough.StopContext})
+		Stop:  errorPassthrough.StopContext,
+	})
 	return &authRuntimeReady{}
 }

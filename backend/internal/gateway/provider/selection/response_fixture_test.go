@@ -8,7 +8,7 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/config"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/rediscache/codec"
@@ -29,32 +29,32 @@ func responseSelectionParameters() *scheduler.Parameters {
 }
 
 // selectPreviousResponseForTest 组合原入口的上下文及模型投影，不为私有合同扩大生产 API。
-func selectPreviousResponseForTest(s *Compatible, ctx context.Context, group *int64, previous, model string, excluded map[int64]struct{}, compact bool) (*provider.SelectionResult, error) {
+func selectPreviousResponseForTest(s *Compatible, ctx context.Context, group *int64, previous, model string, excluded map[int64]struct{}, compact bool) (*gatewayadapter.SelectionResult, error) {
 	ctx = s.withCandidatePolicy(ctx, group, "")
 	ctx = s.withOpenAIGroupPrivacyRequirement(ctx, group)
 	model = s.resolveGroupRoutingModel(ctx, group, model)
-	return s.selectAccountByPreviousResponseIDForCapability(ctx, group, previous, model, excluded, "", compact)
+	return s.selectProviderByPreviousResponseIDForCapability(ctx, group, previous, model, excluded, "", compact)
 }
 
 // 以下替身仅实现选择合同实际使用的读取；意外访问其他能力直接暴露测试缺口。
-type selectionAccountFixture struct {
-	Accounts
-	accounts []provider.ExecutionAccount
+type selectionProviderFixture struct {
+	Providers
+	providers []gatewayadapter.ExecutionProvider
 }
 
-func (r selectionAccountFixture) GetByID(ctx context.Context, id int64) (*provider.ExecutionAccount, error) {
-	for i := range r.accounts {
-		if r.accounts[i].Record.ID == id {
-			prepareSelectionFixtureAccount(ctx, &r.accounts[i], nil)
-			return &r.accounts[i], nil
+func (r selectionProviderFixture) GetByID(ctx context.Context, id int64) (*gatewayadapter.ExecutionProvider, error) {
+	for i := range r.providers {
+		if r.providers[i].Record.ID == id {
+			prepareSelectionFixtureProvider(ctx, &r.providers[i], nil)
+			return &r.providers[i], nil
 		}
 	}
-	return nil, errors.New("account not found")
+	return nil, errors.New("provider not found")
 }
 
-func (r selectionAccountFixture) ListSchedulableByPlatform(_ context.Context, platform string) ([]provider.ExecutionAccount, error) {
-	var out []provider.ExecutionAccount
-	for _, value := range r.accounts {
+func (r selectionProviderFixture) ListSchedulableByPlatform(_ context.Context, platform string) ([]gatewayadapter.ExecutionProvider, error) {
+	var out []gatewayadapter.ExecutionProvider
+	for _, value := range r.providers {
 		if value.Record.Platform == platform {
 			out = append(out, value)
 		}
@@ -62,11 +62,11 @@ func (r selectionAccountFixture) ListSchedulableByPlatform(_ context.Context, pl
 	return out, nil
 }
 
-func (r selectionAccountFixture) ListSchedulableByGroupIDAndPlatform(ctx context.Context, groupID int64, platform string) ([]provider.ExecutionAccount, error) {
+func (r selectionProviderFixture) ListSchedulableByGroupIDAndPlatform(ctx context.Context, groupID int64, platform string) ([]gatewayadapter.ExecutionProvider, error) {
 	return r.ListSchedulableByGroupIDAndPlatforms(ctx, groupID, []string{platform})
 }
 
-func (r selectionAccountFixture) ListSchedulableUngroupedByPlatform(ctx context.Context, platform string) ([]provider.ExecutionAccount, error) {
+func (r selectionProviderFixture) ListSchedulableUngroupedByPlatform(ctx context.Context, platform string) ([]gatewayadapter.ExecutionProvider, error) {
 	return r.ListSchedulableByPlatform(ctx, platform)
 }
 
@@ -75,20 +75,20 @@ type responseCacheFixture struct {
 	session.GatewayCache
 }
 
-func (c *responseCacheFixture) GetSessionAccountID(ctx context.Context, group int64, key string) (int64, error) {
-	return c.stickyCacheFixture.GetSessionAccountID(ctx, group, key)
+func (c *responseCacheFixture) GetSessionProviderID(ctx context.Context, group int64, key string) (int64, error) {
+	return c.stickyCacheFixture.GetSessionProviderID(ctx, group, key)
 }
 
-func (c *responseCacheFixture) SetSessionAccountID(ctx context.Context, group int64, key string, id int64, ttl time.Duration) error {
-	return c.stickyCacheFixture.SetSessionAccountID(ctx, group, key, id, ttl)
+func (c *responseCacheFixture) SetSessionProviderID(ctx context.Context, group int64, key string, id int64, ttl time.Duration) error {
+	return c.stickyCacheFixture.SetSessionProviderID(ctx, group, key, id, ttl)
 }
 
 func (c *responseCacheFixture) RefreshSessionTTL(ctx context.Context, group int64, key string, ttl time.Duration) error {
 	return c.stickyCacheFixture.RefreshSessionTTL(ctx, group, key, ttl)
 }
 
-func (c *responseCacheFixture) DeleteSessionAccountID(ctx context.Context, group int64, key string) error {
-	return c.stickyCacheFixture.DeleteSessionAccountID(ctx, group, key)
+func (c *responseCacheFixture) DeleteSessionProviderID(ctx context.Context, group int64, key string) error {
+	return c.stickyCacheFixture.DeleteSessionProviderID(ctx, group, key)
 }
 
 type selectionConcurrencyFixture struct {
@@ -96,46 +96,46 @@ type selectionConcurrencyFixture struct {
 	acquireResults  map[int64]bool
 	waitCounts      map[int64]int
 	loadBatchErr    error
-	loadMap         map[int64]*scheduler.AccountLoadInfo
+	loadMap         map[int64]*scheduler.ProviderLoadInfo
 	skipDefaultLoad bool
 }
 
-func (c selectionConcurrencyFixture) AcquireAccountSlot(_ context.Context, id int64, _ int, _ string) (bool, error) {
+func (c selectionConcurrencyFixture) AcquireProviderSlot(_ context.Context, id int64, _ int, _ string) (bool, error) {
 	if value, ok := c.acquireResults[id]; ok {
 		return value, nil
 	}
 	return true, nil
 }
 
-func (selectionConcurrencyFixture) ReleaseAccountSlot(context.Context, int64, string) error {
+func (selectionConcurrencyFixture) ReleaseProviderSlot(context.Context, int64, string) error {
 	return nil
 }
 
-func (c selectionConcurrencyFixture) GetAccountWaitingCount(_ context.Context, id int64) (int, error) {
+func (c selectionConcurrencyFixture) GetProviderWaitingCount(_ context.Context, id int64) (int, error) {
 	return c.waitCounts[id], nil
 }
 
-func (c selectionConcurrencyFixture) GetAccountsLoadBatch(ctx context.Context, accounts []scheduler.AccountWithConcurrency) (map[int64]*scheduler.AccountLoadInfo, error) {
+func (c selectionConcurrencyFixture) GetProvidersLoadBatch(ctx context.Context, providers []scheduler.ProviderWithConcurrency) (map[int64]*scheduler.ProviderLoadInfo, error) {
 	if c.loadBatchErr != nil {
 		return nil, c.loadBatchErr
 	}
-	out := make(map[int64]*scheduler.AccountLoadInfo, len(accounts))
+	out := make(map[int64]*scheduler.ProviderLoadInfo, len(providers))
 	if c.skipDefaultLoad && c.loadMap != nil {
-		for _, acc := range accounts {
+		for _, acc := range providers {
 			if load, ok := c.loadMap[acc.ID]; ok {
 				out[acc.ID] = load
 			}
 		}
 		return out, nil
 	}
-	for _, acc := range accounts {
+	for _, acc := range providers {
 		if c.loadMap != nil {
 			if load, ok := c.loadMap[acc.ID]; ok {
 				out[acc.ID] = load
 				continue
 			}
 		}
-		out[acc.ID] = &scheduler.AccountLoadInfo{AccountID: acc.ID, LoadRate: 0}
+		out[acc.ID] = &scheduler.ProviderLoadInfo{ProviderID: acc.ID, LoadRate: 0}
 	}
 	return out, nil
 }
@@ -143,11 +143,11 @@ func (c selectionConcurrencyFixture) GetAccountsLoadBatch(ctx context.Context, a
 // selectionSnapshotFixture 经真实快照读取器解码，数据库重检仍读取另一份新状态。
 type selectionSnapshotFixture struct {
 	scheduler.SnapshotCache
-	accountsByID map[int64]*provider.ExecutionAccount
+	providersByID map[int64]*gatewayadapter.ExecutionProvider
 }
 
-func (s *selectionSnapshotFixture) GetAccount(_ context.Context, id int64) (scheduler.SnapshotAccount, error) {
-	value := s.accountsByID[id]
+func (s *selectionSnapshotFixture) GetProvider(_ context.Context, id int64) (scheduler.SnapshotProvider, error) {
+	value := s.providersByID[id]
 	if value == nil {
 		return nil, nil
 	}
@@ -155,24 +155,24 @@ func (s *selectionSnapshotFixture) GetAccount(_ context.Context, id int64) (sche
 	return codec.WrapRecord(&copy), nil
 }
 
-type groupAwareStubOpenAIAccountRepo struct {
-	selectionAccountFixture
+type groupAwareStubOpenAIProviderRepo struct {
+	selectionProviderFixture
 }
 
-func (r groupAwareStubOpenAIAccountRepo) ListSchedulableByGroupIDAndPlatform(ctx context.Context, groupID int64, platform string) ([]provider.ExecutionAccount, error) {
-	var result []provider.ExecutionAccount
-	for _, acc := range r.accounts {
-		if acc.Record.Platform == platform && openAIStickyAccountMatchesGroup(&acc, &groupID) {
+func (r groupAwareStubOpenAIProviderRepo) ListSchedulableByGroupIDAndPlatform(ctx context.Context, groupID int64, platform string) ([]gatewayadapter.ExecutionProvider, error) {
+	var result []gatewayadapter.ExecutionProvider
+	for _, acc := range r.providers {
+		if acc.Record.Platform == platform && openAIStickyProviderMatchesGroup(&acc, &groupID) {
 			result = append(result, acc)
 		}
 	}
 	return result, nil
 }
 
-func (r groupAwareStubOpenAIAccountRepo) ListSchedulableUngroupedByPlatform(ctx context.Context, platform string) ([]provider.ExecutionAccount, error) {
-	var result []provider.ExecutionAccount
-	for _, acc := range r.accounts {
-		if acc.Record.Platform == platform && openAIStickyAccountMatchesGroup(&acc, nil) {
+func (r groupAwareStubOpenAIProviderRepo) ListSchedulableUngroupedByPlatform(ctx context.Context, platform string) ([]gatewayadapter.ExecutionProvider, error) {
+	var result []gatewayadapter.ExecutionProvider
+	for _, acc := range r.providers {
+		if acc.Record.Platform == platform && openAIStickyProviderMatchesGroup(&acc, nil) {
 			result = append(result, acc)
 		}
 	}
@@ -181,7 +181,7 @@ func (r groupAwareStubOpenAIAccountRepo) ListSchedulableUngroupedByPlatform(ctx 
 
 // codex 配额读取合同保留写入哨兵，任何原不应发生的持久化仍使断言失败。
 type openAICodexExtraListRepo struct {
-	selectionAccountFixture
+	selectionProviderFixture
 	rateLimitCh chan time.Time
 }
 
@@ -192,48 +192,48 @@ func (r *openAICodexExtraListRepo) SetRateLimited(_ context.Context, _ int64, at
 	return nil
 }
 
-// hydrationAccountSource 保留原回源错误，不自行模拟补全成功或失败。
-type hydrationAccountSource struct {
-	scheduler.SnapshotAccountSource
-	source Accounts
+// hydrationProviderSource 保留原回源错误，不自行模拟补全成功或失败。
+type hydrationProviderSource struct {
+	scheduler.SnapshotProviderSource
+	source Providers
 }
 
-func (s hydrationAccountSource) GetByID(ctx context.Context, id int64) (scheduler.SnapshotAccount, error) {
+func (s hydrationProviderSource) GetByID(ctx context.Context, id int64) (scheduler.SnapshotProvider, error) {
 	value, err := s.source.GetByID(ctx, id)
-	return codec.WrapRecord(provider.ExecutionRecord(value)), err
+	return codec.WrapRecord(gatewayadapter.ExecutionRecord(value)), err
 }
 
-func (r selectionAccountFixture) ListSchedulableByGroupIDAndPlatforms(ctx context.Context, groupID int64, platforms []string) ([]provider.ExecutionAccount, error) {
-	var result []provider.ExecutionAccount
-	for i := range r.accounts {
-		prepareSelectionFixtureAccount(ctx, &r.accounts[i], &groupID)
-		if slices.Contains(platforms, r.accounts[i].Record.Platform) && openAIStickyAccountMatchesGroup(&r.accounts[i], &groupID) {
-			result = append(result, r.accounts[i])
+func (r selectionProviderFixture) ListSchedulableByGroupIDAndPlatforms(ctx context.Context, groupID int64, platforms []string) ([]gatewayadapter.ExecutionProvider, error) {
+	var result []gatewayadapter.ExecutionProvider
+	for i := range r.providers {
+		prepareSelectionFixtureProvider(ctx, &r.providers[i], &groupID)
+		if slices.Contains(platforms, r.providers[i].Record.Platform) && openAIStickyProviderMatchesGroup(&r.providers[i], &groupID) {
+			result = append(result, r.providers[i])
 		}
 	}
 	return result, nil
 }
 
-func (r groupAwareStubOpenAIAccountRepo) ListSchedulableByGroupIDAndPlatforms(ctx context.Context, groupID int64, platforms []string) ([]provider.ExecutionAccount, error) {
-	var result []provider.ExecutionAccount
-	for i := range r.accounts {
-		if slices.Contains(platforms, r.accounts[i].Record.Platform) && openAIStickyAccountMatchesGroup(&r.accounts[i], &groupID) {
-			prepareSelectionFixtureAccount(ctx, &r.accounts[i], &groupID)
-			result = append(result, r.accounts[i])
+func (r groupAwareStubOpenAIProviderRepo) ListSchedulableByGroupIDAndPlatforms(ctx context.Context, groupID int64, platforms []string) ([]gatewayadapter.ExecutionProvider, error) {
+	var result []gatewayadapter.ExecutionProvider
+	for i := range r.providers {
+		if slices.Contains(platforms, r.providers[i].Record.Platform) && openAIStickyProviderMatchesGroup(&r.providers[i], &groupID) {
+			prepareSelectionFixtureProvider(ctx, &r.providers[i], &groupID)
+			result = append(result, r.providers[i])
 		}
 	}
 	return result, nil
 }
 
-func (r groupAwareStubOpenAIAccountRepo) GetByID(ctx context.Context, id int64) (*provider.ExecutionAccount, error) {
-	for i := range r.accounts {
-		if r.accounts[i].Record.ID == id {
-			copy := r.accounts[i]
+func (r groupAwareStubOpenAIProviderRepo) GetByID(ctx context.Context, id int64) (*gatewayadapter.ExecutionProvider, error) {
+	for i := range r.providers {
+		if r.providers[i].Record.ID == id {
+			copy := r.providers[i]
 			groups := copy.Record.GroupIDs
-			prepareSelectionFixtureAccount(ctx, &copy, nil)
+			prepareSelectionFixtureProvider(ctx, &copy, nil)
 			copy.Record.GroupIDs = groups
 			return &copy, nil
 		}
 	}
-	return nil, errors.New("account not found")
+	return nil, errors.New("provider not found")
 }

@@ -48,8 +48,8 @@ type PayerSnapshot struct {
 	Notification *billing.UserSummary
 }
 
-// AccountSnapshot 不携带凭据或健康可变字段。
-type AccountSnapshot struct {
+// ProviderSnapshot 不携带凭据或健康可变字段。
+type ProviderSnapshot struct {
 	CacheTTLOverrideEnabled                                     bool
 	CacheTTLOverrideTarget                                      string
 	AnthropicOAuthOrSetupToken                                  bool
@@ -58,9 +58,9 @@ type AccountSnapshot struct {
 	Type                                                        string
 	RateMultiplier                                              float64
 	OpenAI, CNProvider, OAuthLike, QuotaEligible, HasQuotaLimit bool
-	// CredentialAccountID 仅供账户端口按原时机读取影子母账号。
-	CredentialAccountID *int64
-	Notification        *billing.QuotaNotifyAccount
+	// CredentialProviderID 仅供提供商端口按原时机读取影子母提供商。
+	CredentialProviderID *int64
+	Notification         *billing.QuotaNotifyProvider
 }
 
 // KeySnapshot 冻结请求取得的资金绑定；行为用户和付款用户不能互相替代。
@@ -101,7 +101,7 @@ type Input struct {
 	Result                                                                   *Result
 	APIKey                                                                   *KeySnapshot
 	User                                                                     *PayerSnapshot
-	Account                                                                  *AccountSnapshot
+	Provider                                                                 *ProviderSnapshot
 	Subscription                                                             *billing.UserSubscription
 	InboundEndpoint, UpstreamEndpoint, UserAgent, IPAddress, ClientSessionID string
 	RequestID, RequestPayloadHash, CacheOverrideTarget                       string
@@ -148,8 +148,8 @@ type SubscriptionReader interface {
 type RateReader interface {
 	Resolve(context.Context, int64, int64, float64) float64
 }
-type AccountReader interface {
-	CredentialAccount(context.Context, AccountSnapshot) (*AccountSnapshot, error)
+type ProviderReader interface {
+	CredentialProvider(context.Context, ProviderSnapshot) (*ProviderSnapshot, error)
 }
 type (
 	HealthObserver  interface{ ResetOpenAI403Counter(context.Context, int64) }
@@ -164,13 +164,13 @@ type LogWriter interface {
 type BestEffortLogWriter interface {
 	CreateBestEffort(context.Context, *usage.UsageLog) error
 }
-type AccountStats interface {
-	ResolveAccountStats(context.Context, billing.AccountStatsCostInput) *float64
+type ProviderStats interface {
+	ResolveProviderStats(context.Context, billing.ProviderStatsCostInput) *float64
 }
 
 // Effects 只消费已提交资金结果，具体缓存及通知由原领域能力持有。
 type Effects interface {
-	AccountUsed(int64)
+	ProviderUsed(int64)
 	InvalidateAuth(context.Context, string)
 	Settled(SettlementInput, *billing.UsageBillingApplyResult)
 }
@@ -183,7 +183,7 @@ type BillingEvent struct {
 	Kind, Component, RequestID, RequestedModel, MappedModel, UpstreamModel, Model, Platform string
 	RequestedTier, ObservedTier, BilledTier                                                 string
 	Models                                                                                  []string
-	KeyID, AccountID                                                                        int64
+	KeyID, ProviderID                                                                       int64
 	GroupID                                                                                 *int64
 	SearchCount                                                                             int
 	Err                                                                                     error
@@ -193,11 +193,11 @@ type Dependencies struct {
 	CacheInjection CacheInjectionPolicy
 	Calculator     *billing.Calculator
 	Prices         *billing.PriceResolver
-	AccountStats   AccountStats
+	ProviderStats  ProviderStats
 	Funds          Store
 	Subscriptions  SubscriptionReader
 	Rates          RateReader
-	Accounts       AccountReader
+	Providers      ProviderReader
 	Health         HealthObserver
 	Models         ModelCandidates
 	Logs           LogWriter
@@ -214,11 +214,11 @@ type Recorder struct {
 	cacheInjection    CacheInjectionPolicy
 	billingService    *billing.Calculator
 	resolver          *billing.PriceResolver
-	stats             AccountStats
+	stats             ProviderStats
 	store             Store
 	subscriptions     SubscriptionReader
 	rates             RateReader
-	accounts          AccountReader
+	providers         ProviderReader
 	health            HealthObserver
 	models            ModelCandidates
 	logs              LogWriter
@@ -239,11 +239,11 @@ func NewRecorder(d Dependencies, o RecorderOptions) *Recorder {
 		cacheInjection:    d.CacheInjection,
 		billingService:    d.Calculator,
 		resolver:          d.Prices,
-		stats:             d.AccountStats,
+		stats:             d.ProviderStats,
 		store:             d.Funds,
 		subscriptions:     d.Subscriptions,
 		rates:             d.Rates,
-		accounts:          d.Accounts,
+		providers:         d.Providers,
 		health:            d.Health,
 		models:            d.Models,
 		logs:              d.Logs,

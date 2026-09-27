@@ -27,10 +27,10 @@ import (
 )
 
 // 剩余转发测试的构造夹具；不再用于模型目录 HTTP。
-type gatewayExecutionAccountRows struct {
-	gatewayprovider.ExecutionAccountStore
+type gatewayExecutionProviderRows struct {
+	gatewayprovider.ExecutionProviderStore
 
-	byGroup map[int64][]gatewayprovider.ExecutionAccount
+	byGroup map[int64][]gatewayprovider.ExecutionProvider
 }
 
 type gatewayExecutionPricingConfigRows struct {
@@ -56,21 +56,21 @@ func (s *gatewayExecutionPricingConfigRows) GetGroupPlatforms(ctx context.Contex
 	return platforms, nil
 }
 
-func (s *gatewayExecutionAccountRows) ListSchedulableByGroupID(ctx context.Context, groupID int64) ([]gatewayprovider.ExecutionAccount, error) {
-	accounts, ok := s.byGroup[groupID]
+func (s *gatewayExecutionProviderRows) ListSchedulableByGroupID(ctx context.Context, groupID int64) ([]gatewayprovider.ExecutionProvider, error) {
+	providers, ok := s.byGroup[groupID]
 	if !ok {
 		return nil, nil
 	}
-	out := make([]gatewayprovider.ExecutionAccount, len(accounts))
-	copy(out, accounts)
+	out := make([]gatewayprovider.ExecutionProvider, len(providers))
+	copy(out, providers)
 	return out, nil
 }
 
-func newGatewayExecutionHandlerForTest(repo gatewayprovider.ExecutionAccountStore) *messageEndpointsFixture {
+func newGatewayExecutionHandlerForTest(repo gatewayprovider.ExecutionProviderStore) *messageEndpointsFixture {
 	return newGatewayExecutionHandlerWithPricingConfigForTest(repo, nil)
 }
 
-func newGatewayExecutionHandlerWithPricingConfigForTest(repo gatewayprovider.ExecutionAccountStore, pricingConfigService *routing.PricingConfigService) *messageEndpointsFixture {
+func newGatewayExecutionHandlerWithPricingConfigForTest(repo gatewayprovider.ExecutionProviderStore, pricingConfigService *routing.PricingConfigService) *messageEndpointsFixture {
 	source, choices, messages := newGenericExecutionAndSelectionFixture(repo, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, pricingConfigService, nil, responseHeaderFilterForTest(nil))
 	return newMessageEndpointsFixture(source, messages, nil, nil, gatewayhttp.MessagesHTTPOptions{MaxBodyBytes: openAITextOptions(nil).MaxBodyBytes, MaxSwitches: 0, MaxGeminiSwitches: 0}, newExecutionAvailabilityForTest(repo, pricingConfigService, nil), choices)
 }
@@ -117,16 +117,16 @@ func newMessageEndpointsFixture(source *messageExecutionFixture, messages *gatew
 	if source != nil {
 		b.Recorder = source.Recorder
 		b.Selection = textattempt.SelectionPorts{
-			SelectAccount:      choices.SelectAccountWithLoadAwareness,
-			TrackSession:       choices.TrackSessionAttempt,
-			NewSessionAttempts: choices.NewSessionAttempts,
-			SingleAccountGroup: choices.IsSingleAntigravityAccountGroup,
-			ReportSchedule:     choices.ReportAdvancedAccountScheduleResult,
-			IncrementRPM:       choices.IncrementAccountRPM,
-			BindSticky:         choices.BindStickySession,
-			CachedSession:      choices.GetCachedSessionAccountID,
-			AccountSwitched:    choices.RecordAdvancedAccountSwitch,
-			TempUnschedule:     messageRetryCooldown(source.Cooldown),
+			SelectProvider:      choices.SelectProviderWithLoadAwareness,
+			TrackSession:        choices.TrackSessionAttempt,
+			NewSessionAttempts:  choices.NewSessionAttempts,
+			SingleProviderGroup: choices.IsSingleAntigravityProviderGroup,
+			ReportSchedule:      choices.ReportAdvancedProviderScheduleResult,
+			IncrementRPM:        choices.IncrementProviderRPM,
+			BindSticky:          choices.BindStickySession,
+			CachedSession:       choices.GetCachedSessionProviderID,
+			ProviderSwitched:    choices.RecordAdvancedProviderSwitch,
+			TempUnschedule:      messageRetryCooldown(source.Cooldown),
 		}
 		b.Forward = textattempt.ForwardPorts{
 			SaveGeminiSession: messageDigestSave(source.Digest),
@@ -148,7 +148,7 @@ func newMessageEndpointsFixture(source *messageExecutionFixture, messages *gatew
 	}
 	if source != nil {
 		bindings.IsolateSession = messageSessionIsolation(source.Cache)
-		bindings.CachedSession = choices.GetCachedSessionAccountID
+		bindings.CachedSession = choices.GetCachedSessionProviderID
 	}
 	runtime := textattempt.New(b)
 	var prompts *promptpolicy.Service

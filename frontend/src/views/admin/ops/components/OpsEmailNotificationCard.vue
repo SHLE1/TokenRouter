@@ -128,8 +128,8 @@ const editorValidation = computed(() => {
   )
   if (digestErr) errors.push(digestErr)
   const accErr = validateCronField(
-    draft.value.report.account_health_enabled,
-    draft.value.report.account_health_schedule
+    draft.value.report.provider_health_enabled,
+    draft.value.report.provider_health_schedule
   )
   if (accErr) errors.push(accErr)
 
@@ -137,9 +137,9 @@ const editorValidation = computed(() => {
     errors.push(t('admin.ops.email.validation.digestMinCountRange'))
   }
 
-  const thr = draft.value.report.account_health_error_rate_threshold
+  const thr = draft.value.report.provider_health_error_rate_threshold
   if (!(typeof thr === 'number' && Number.isFinite(thr) && thr >= 0 && thr <= 100)) {
-    errors.push(t('admin.ops.email.validation.accountHealthThresholdRange'))
+    errors.push(t('admin.ops.email.validation.providerHealthThresholdRange'))
   }
 
   return { valid: errors.length === 0, errors }
@@ -411,17 +411,17 @@ onMounted(() => {
                 <input v-model.number="draft.report.error_digest_min_count" type="number" min="0" max="1000000" class="input" />
               </div>
               <div>
-                <div class="mb-1 text-xs font-medium text-gray-600 dark:text-gray-300">{{ t('admin.ops.email.accountHealth') }}</div>
+                <div class="mb-1 text-xs font-medium text-gray-600 dark:text-gray-300">{{ t('admin.ops.email.providerHealth') }}</div>
                 <div class="flex items-center gap-2">
                   <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                    <input v-model="draft.report.account_health_enabled" type="checkbox" class="h-4 w-4 rounded-compact border-gray-300" />
+                    <input v-model="draft.report.provider_health_enabled" type="checkbox" class="h-4 w-4 rounded-compact border-gray-300" />
                   </label>
-                  <input v-model="draft.report.account_health_schedule" type="text" class="input" :placeholder="t('admin.ops.email.cronPlaceholder')" />
+                  <input v-model="draft.report.provider_health_schedule" type="text" class="input" :placeholder="t('admin.ops.email.cronPlaceholder')" />
                 </div>
               </div>
               <div>
-                <div class="mb-1 text-xs font-medium text-gray-600 dark:text-gray-300">{{ t('admin.ops.email.accountHealthThreshold') }}</div>
-                <input v-model.number="draft.report.account_health_error_rate_threshold" type="number" min="0" max="100" step="0.1" class="input" />
+                <div class="mb-1 text-xs font-medium text-gray-600 dark:text-gray-300">{{ t('admin.ops.email.providerHealthThreshold') }}</div>
+                <input v-model.number="draft.report.provider_health_error_rate_threshold" type="number" min="0" max="100" step="0.1" class="input" />
               </div>
             </div>
             <div class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ t('admin.ops.email.reportHint') }}</div>

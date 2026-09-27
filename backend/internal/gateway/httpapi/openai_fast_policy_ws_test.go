@@ -15,13 +15,13 @@ import (
 
 	sessiontestkit "github.com/TokenFlux/TokenRouter/internal/gateway/session/testkit"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/gateway"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 	gatewayws "github.com/TokenFlux/TokenRouter/internal/gateway/ws"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	protocolforward "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 
@@ -45,10 +45,10 @@ import (
 
 func TestWSResponseCreate_DefaultPassesPriorityAndNormalizesFast(t *testing.T) {
 	svc := newWSFastPolicy(t, tierpolicy.Default())
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
 
 	frame := []byte(`{"type":"response.create","model":"gpt-5.5","service_tier":"priority","input":[{"type":"input_text","text":"hi"}]}`)
-	updated, blocked, err := gatewayws.ApplyServiceTierFrame(frame, "gpt-5.5", svc.Input(context.Background(), account, "gpt-5.5"))
+	updated, blocked, err := gatewayws.ApplyServiceTierFrame(frame, "gpt-5.5", svc.Input(context.Background(), provider, "gpt-5.5"))
 	require.NoError(t, err)
 	require.Nil(t, blocked)
 	require.Equal(t, "priority", gjson.GetBytes(updated, "service_tier").String(), "default policy should preserve priority tier")
@@ -58,14 +58,14 @@ func TestWSResponseCreate_DefaultPassesPriorityAndNormalizesFast(t *testing.T) {
 	require.Equal(t, "hi", gjson.GetBytes(updated, "input.0.text").String())
 
 	frame = []byte(`{"type":"response.create","model":"gpt-5.5","service_tier":"fast"}`)
-	updated, blocked, err = gatewayws.ApplyServiceTierFrame(frame, "gpt-5.5", svc.Input(context.Background(), account, "gpt-5.5"))
+	updated, blocked, err = gatewayws.ApplyServiceTierFrame(frame, "gpt-5.5", svc.Input(context.Background(), provider, "gpt-5.5"))
 	require.NoError(t, err)
 	require.Nil(t, blocked)
 	require.Equal(t, "priority", gjson.GetBytes(updated, "service_tier").String(), "fast alias should normalize before reaching upstream")
 
 	// 混合大小写和前后空白的别名也应归一化。
 	frame = []byte(`{"type":"response.create","model":"gpt-5.5","service_tier":"  Fast  "}`)
-	updated, blocked, err = gatewayws.ApplyServiceTierFrame(frame, "gpt-5.5", svc.Input(context.Background(), account, "gpt-5.5"))
+	updated, blocked, err = gatewayws.ApplyServiceTierFrame(frame, "gpt-5.5", svc.Input(context.Background(), provider, "gpt-5.5"))
 	require.NoError(t, err)
 	require.Nil(t, blocked)
 	require.Equal(t, "priority", gjson.GetBytes(updated, "service_tier").String())
@@ -73,14 +73,14 @@ func TestWSResponseCreate_DefaultPassesPriorityAndNormalizesFast(t *testing.T) {
 
 func TestWSResponseCreate_RejectsUltraBeforeUpstream(t *testing.T) {
 	svc := newWSFastPolicy(t, tierpolicy.Default())
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
 
 	frames := [][]byte{
 		[]byte(`{"type":"response.create","model":"gpt-5.6-sol","reasoning":{"effort":"ultra"}}`),
 		[]byte(`{"type":"session.update","session":{"model":"gpt-5.6-sol-ultra"}}`),
 	}
 	for _, frame := range frames {
-		updated, blocked, err := gatewayws.ApplyServiceTierFrame(frame, "gpt-5.6-sol", svc.Input(context.Background(), account, "gpt-5.6-sol"))
+		updated, blocked, err := gatewayws.ApplyServiceTierFrame(frame, "gpt-5.6-sol", svc.Input(context.Background(), provider, "gpt-5.6-sol"))
 		require.ErrorContains(t, err, "not supported")
 		require.Nil(t, blocked)
 		require.Equal(t, frame, updated)
@@ -89,16 +89,16 @@ func TestWSResponseCreate_RejectsUltraBeforeUpstream(t *testing.T) {
 
 func TestWSResponseCreate_ExplicitFilterStripsServiceTier(t *testing.T) {
 	svc := newWSFastPolicy(t, openAIFastFilterPriorityPolicy())
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
 
 	frame := []byte(`{"type":"response.create","model":"gpt-5.5","service_tier":"priority","input":[{"type":"input_text","text":"hi"}]}`)
-	updated, blocked, err := gatewayws.ApplyServiceTierFrame(frame, "gpt-5.5", svc.Input(context.Background(), account, "gpt-5.5"))
+	updated, blocked, err := gatewayws.ApplyServiceTierFrame(frame, "gpt-5.5", svc.Input(context.Background(), provider, "gpt-5.5"))
 	require.NoError(t, err)
 	require.Nil(t, blocked)
 	require.NotContains(t, string(updated), `"service_tier"`, "filter action should strip service_tier")
 
 	frame = []byte(`{"type":"response.create","model":"gpt-5.5","service_tier":"fast"}`)
-	updated, blocked, err = gatewayws.ApplyServiceTierFrame(frame, "gpt-5.5", svc.Input(context.Background(), account, "gpt-5.5"))
+	updated, blocked, err = gatewayws.ApplyServiceTierFrame(frame, "gpt-5.5", svc.Input(context.Background(), provider, "gpt-5.5"))
 	require.NoError(t, err)
 	require.Nil(t, blocked)
 	require.NotContains(t, string(updated), `"service_tier"`)
@@ -121,17 +121,17 @@ func TestWSResponseCreate_UserScopedRuleOverridesGlobalRule(t *testing.T) {
 		},
 	}
 	svc := newWSFastPolicy(t, settings)
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
 	frame := []byte(`{"type":"response.create","model":"gpt-5.5","service_tier":"priority"}`)
 
 	allowedUserCtx := apikey.WithAccessSnapshot(context.Background(), apikey.AccessSnapshot{PayerUserID: int64(42)})
-	updated, blocked, err := gatewayws.ApplyServiceTierFrame(frame, "gpt-5.5", svc.Input(allowedUserCtx, account, "gpt-5.5"))
+	updated, blocked, err := gatewayws.ApplyServiceTierFrame(frame, "gpt-5.5", svc.Input(allowedUserCtx, provider, "gpt-5.5"))
 	require.NoError(t, err)
 	require.Nil(t, blocked)
 	require.Equal(t, "priority", gjson.GetBytes(updated, "service_tier").String())
 
 	otherUserCtx := apikey.WithAccessSnapshot(context.Background(), apikey.AccessSnapshot{PayerUserID: int64(43)})
-	updated, blocked, err = gatewayws.ApplyServiceTierFrame(frame, "gpt-5.5", svc.Input(otherUserCtx, account, "gpt-5.5"))
+	updated, blocked, err = gatewayws.ApplyServiceTierFrame(frame, "gpt-5.5", svc.Input(otherUserCtx, provider, "gpt-5.5"))
 	require.NoError(t, err)
 	require.Nil(t, blocked)
 	require.NotContains(t, string(updated), `"service_tier"`)
@@ -146,11 +146,11 @@ func TestWSResponseCreate_ForcePriorityRewritesKnownTier(t *testing.T) {
 		}},
 	}
 	svc := newWSFastPolicy(t, settings)
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
 
 	for _, tier := range []string{"flex", "auto", "default", "scale", "fast", "priority", "ultrafast"} {
 		frame := []byte(`{"type":"response.create","model":"gpt-5.5","service_tier":"` + tier + `"}`)
-		updated, blocked, err := gatewayws.ApplyServiceTierFrame(frame, "gpt-5.5", svc.Input(context.Background(), account, "gpt-5.5"))
+		updated, blocked, err := gatewayws.ApplyServiceTierFrame(frame, "gpt-5.5", svc.Input(context.Background(), provider, "gpt-5.5"))
 		require.NoError(t, err)
 		require.Nil(t, blocked)
 		require.Equal(t, tierpolicy.OpenAIFastTierPriority, gjson.GetBytes(updated, "service_tier").String(),
@@ -160,11 +160,11 @@ func TestWSResponseCreate_ForcePriorityRewritesKnownTier(t *testing.T) {
 
 func TestWSResponseCreate_FlexPassThrough(t *testing.T) {
 	svc := newWSFastPolicy(t, tierpolicy.Default())
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
 
 	// 默认配置没有规则；flex 应保持原样。
 	frame := []byte(`{"type":"response.create","model":"gpt-5.5","service_tier":"flex"}`)
-	updated, blocked, err := gatewayws.ApplyServiceTierFrame(frame, "gpt-5.5", svc.Input(context.Background(), account, "gpt-5.5"))
+	updated, blocked, err := gatewayws.ApplyServiceTierFrame(frame, "gpt-5.5", svc.Input(context.Background(), provider, "gpt-5.5"))
 	require.NoError(t, err)
 	require.Nil(t, blocked)
 	require.Equal(t, "flex", gjson.GetBytes(updated, "service_tier").String(), "flex frames must reach upstream untouched under default policy")
@@ -182,10 +182,10 @@ func TestWSResponseCreate_BlockReturnsTypedError(t *testing.T) {
 		}},
 	}
 	svc := newWSFastPolicy(t, settings)
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
 
 	frame := []byte(`{"type":"response.create","model":"gpt-5.5","service_tier":"priority"}`)
-	updated, blocked, err := gatewayws.ApplyServiceTierFrame(frame, "gpt-5.5", svc.Input(context.Background(), account, "gpt-5.5"))
+	updated, blocked, err := gatewayws.ApplyServiceTierFrame(frame, "gpt-5.5", svc.Input(context.Background(), provider, "gpt-5.5"))
 	require.NoError(t, err)
 	require.NotNil(t, blocked)
 	require.Equal(t, "ws fast blocked", blocked.Message)
@@ -195,10 +195,10 @@ func TestWSResponseCreate_BlockReturnsTypedError(t *testing.T) {
 
 func TestWSResponseCreate_NoServiceTierUntouched(t *testing.T) {
 	svc := newWSFastPolicy(t, tierpolicy.Default())
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
 
 	frame := []byte(`{"type":"response.create","model":"gpt-5.5","input":[]}`)
-	updated, blocked, err := gatewayws.ApplyServiceTierFrame(frame, "gpt-5.5", svc.Input(context.Background(), account, "gpt-5.5"))
+	updated, blocked, err := gatewayws.ApplyServiceTierFrame(frame, "gpt-5.5", svc.Input(context.Background(), provider, "gpt-5.5"))
 	require.NoError(t, err)
 	require.Nil(t, blocked)
 	require.Equal(t, string(frame), string(updated), "no service_tier present must result in zero mutation")
@@ -215,11 +215,11 @@ func TestWSResponseCreate_NonResponseCreateFrameUntouched(t *testing.T) {
 		}},
 	}
 	svc := newWSFastPolicy(t, settings)
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
 
 	// response.cancel happens to carry a service_tier-shaped field — must not be touched.
 	frame := []byte(`{"type":"response.cancel","service_tier":"priority"}`)
-	updated, blocked, err := gatewayws.ApplyServiceTierFrame(frame, "gpt-5.5", svc.Input(context.Background(), account, "gpt-5.5"))
+	updated, blocked, err := gatewayws.ApplyServiceTierFrame(frame, "gpt-5.5", svc.Input(context.Background(), provider, "gpt-5.5"))
 	require.NoError(t, err)
 	require.Nil(t, blocked)
 	require.Equal(t, string(frame), string(updated))
@@ -240,19 +240,19 @@ func TestWSResponseCreate_EmptyTypeFrameUntouched(t *testing.T) {
 		}},
 	}
 	svc := newWSFastPolicy(t, settings)
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
 
 	// Frame with no "type" field: must pass through completely unchanged
 	// even with a service_tier-shaped field present.
 	frame := []byte(`{"service_tier":"priority","model":"gpt-5.5"}`)
-	updated, blocked, err := gatewayws.ApplyServiceTierFrame(frame, "gpt-5.5", svc.Input(context.Background(), account, "gpt-5.5"))
+	updated, blocked, err := gatewayws.ApplyServiceTierFrame(frame, "gpt-5.5", svc.Input(context.Background(), provider, "gpt-5.5"))
 	require.NoError(t, err)
 	require.Nil(t, blocked)
 	require.Equal(t, string(frame), string(updated), "empty type must NOT be policy-checked — Realtime spec requires type, malformed frames are passed through")
 
 	// Explicit empty string also passes through.
 	frame = []byte(`{"type":"","service_tier":"priority","model":"gpt-5.5"}`)
-	updated, blocked, err = gatewayws.ApplyServiceTierFrame(frame, "gpt-5.5", svc.Input(context.Background(), account, "gpt-5.5"))
+	updated, blocked, err = gatewayws.ApplyServiceTierFrame(frame, "gpt-5.5", svc.Input(context.Background(), provider, "gpt-5.5"))
 	require.NoError(t, err)
 	require.Nil(t, blocked)
 	require.Equal(t, string(frame), string(updated))
@@ -317,11 +317,11 @@ func TestPolicyEnforcingFrameConn_FollowupFrameWithoutModelUsesCapturedModel(t *
 	// fallback 是否生效（默认配置没有规则，fallback 与否结果一致，
 	// 不能用来覆盖此回归）。
 	svc := newWSFastPolicy(t, gpt55WhitelistFastPolicy())
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
 
 	// Simulate the passthrough adapter capturing model from the first frame.
 	firstFrame := []byte(`{"type":"response.create","model":"gpt-5.5","service_tier":"priority"}`)
-	capturedSessionModel := openAIWSPassthroughPolicyModelForFrame(account, firstFrame)
+	capturedSessionModel := openAIWSPassthroughPolicyModelForFrame(provider, firstFrame)
 	require.Equal(t, "gpt-5.5", capturedSessionModel)
 
 	// Follow-up frame deliberately omits "model" — Realtime allows this.
@@ -336,11 +336,11 @@ func TestPolicyEnforcingFrameConn_FollowupFrameWithoutModelUsesCapturedModel(t *
 			if msgType != coderws.MessageText {
 				return payload, nil, nil
 			}
-			model := openAIWSPassthroughPolicyModelForFrame(account, payload)
+			model := openAIWSPassthroughPolicyModelForFrame(provider, payload)
 			if model == "" {
 				model = capturedSessionModel
 			}
-			return gatewayws.ApplyServiceTierFrame(payload, model, svc.Input(context.Background(), account, model))
+			return gatewayws.ApplyServiceTierFrame(payload, model, svc.Input(context.Background(), provider, model))
 		},
 	}
 
@@ -354,20 +354,23 @@ func TestPolicyEnforcingFrameConn_FollowupFrameWithoutModelUsesCapturedModel(t *
 	require.Equal(t, "response.create", gjson.GetBytes(payload, "type").String())
 }
 
-func TestOpenAIWSPassthroughPolicyModelDoesNotApplyAccountMapping(t *testing.T) {
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI,
-		Type: capability.AccountTypeOAuth,
-		Credentials: map[string]any{
-			"model_mapping": map[string]any{"public-model": "private-model"},
+func TestOpenAIWSPassthroughPolicyModelDoesNotApplyProviderMapping(t *testing.T) {
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI,
+			Type: capability.ProviderTypeOAuth,
+			Credentials: map[string]any{
+				"model_mapping": map[string]any{"public-model": "private-model"},
+			},
+			Extra: map[string]any{"openai_passthrough": true},
 		},
-		Extra: map[string]any{"openai_passthrough": true}},
 	}
 
 	responseCreate := []byte(`{"type":"response.create","model":"public-model"}`)
-	require.Equal(t, "public-model", openAIWSPassthroughPolicyModelForFrame(account, responseCreate))
+	require.Equal(t, "public-model", openAIWSPassthroughPolicyModelForFrame(provider, responseCreate))
 
 	sessionUpdate := []byte(`{"type":"session.update","session":{"model":"public-model"}}`)
-	require.Equal(t, "public-model", openAIWSPassthroughPolicyModelFromSessionFrame(account, sessionUpdate))
+	require.Equal(t, "public-model", openAIWSPassthroughPolicyModelFromSessionFrame(provider, sessionUpdate))
 }
 
 // TestPolicyEnforcingFrameConn_WithoutCapturedFallbackPolicyMisses pins the
@@ -378,7 +381,7 @@ func TestOpenAIWSPassthroughPolicyModelDoesNotApplyAccountMapping(t *testing.T) 
 func TestPolicyEnforcingFrameConn_WithoutCapturedFallbackPolicyMisses(t *testing.T) {
 	// 同样使用带 whitelist 的策略以观察 leak。
 	svc := newWSFastPolicy(t, gpt55WhitelistFastPolicy())
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
 
 	followupFrame := []byte(`{"type":"response.create","service_tier":"priority"}`)
 	inner := &fakePassthroughFrameConn{reads: [][]byte{followupFrame}}
@@ -386,8 +389,8 @@ func TestPolicyEnforcingFrameConn_WithoutCapturedFallbackPolicyMisses(t *testing
 		inner: inner,
 		filter: func(msgType coderws.MessageType, payload []byte) ([]byte, *tierpolicy.BlockedError, error) {
 			// NO fallback — emulate the pre-fix behavior.
-			model := openAIWSPassthroughPolicyModelForFrame(account, payload)
-			return gatewayws.ApplyServiceTierFrame(payload, model, svc.Input(context.Background(), account, model))
+			model := openAIWSPassthroughPolicyModelForFrame(provider, payload)
+			return gatewayws.ApplyServiceTierFrame(payload, model, svc.Input(context.Background(), provider, model))
 		},
 	}
 
@@ -404,7 +407,6 @@ func TestPolicyEnforcingFrameConn_WithoutCapturedFallbackPolicyMisses(t *testing
 // ProxyResponsesWebSocketFromClient 入口会话管线和 captureConn 上游，验证
 // service_tier=fast 的客户端帧在写入上游前会被管理员显式策略归一化并过滤。
 func TestWSResponseCreate_IngressFiltersServiceTierBeforeUpstream(t *testing.T) {
-
 	options := &wsFixtureOptions{}
 	options.Request.URLPolicy.Enabled = false
 	options.Request.URLPolicy.AllowInsecureHTTP = true
@@ -412,9 +414,9 @@ func TestWSResponseCreate_IngressFiltersServiceTierBeforeUpstream(t *testing.T) 
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerAccount = 1
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 1
+	options.Pool.MaxConnsPerProvider = 1
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 1
 	options.Pool.QueueLimitPerConn = 8
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 3
@@ -436,17 +438,20 @@ func TestWSResponseCreate_IngressFiltersServiceTierBeforeUpstream(t *testing.T) 
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool, readers: newExecutionReadersFixture(repo, options)})
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 901,
-		Name:        "openai-ws-filter",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Status:      billing.StatusActive,
-		Schedulable: true,
-		Concurrency: 1,
-		Credentials: map[string]any{"api_key": "sk-test"},
-		Extra: map[string]any{
-			"responses_websockets_v2_enabled": true,
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 901,
+			Name:        "openai-ws-filter",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Status:      billing.StatusActive,
+			Schedulable: true,
+			Concurrency: 1,
+			Credentials: map[string]any{"api_key": "sk-test"},
+			Extra: map[string]any{
+				"responses_websockets_v2_enabled": true,
+			},
+		},
 	}
 
 	serverErrCh := make(chan error, 1)
@@ -474,7 +479,7 @@ func TestWSResponseCreate_IngressFiltersServiceTierBeforeUpstream(t *testing.T) 
 			serverErrCh <- readErr
 			return
 		}
-		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, account, "sk-test", firstMessage, nil)
+		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, provider, "sk-test", firstMessage, nil)
 	}))
 	defer wsServer.Close()
 
@@ -516,7 +521,6 @@ func TestWSResponseCreate_IngressFiltersServiceTierBeforeUpstream(t *testing.T) 
 // asserts that with a custom block rule, the client receives a Realtime-style
 // error event AND the upstream FrameConn never receives the offending frame.
 func TestWSResponseCreate_IngressBlockSendsErrorEventAndSkipsUpstream(t *testing.T) {
-
 	options := &wsFixtureOptions{}
 	options.Request.URLPolicy.Enabled = false
 	options.Request.URLPolicy.AllowInsecureHTTP = true
@@ -524,9 +528,9 @@ func TestWSResponseCreate_IngressBlockSendsErrorEventAndSkipsUpstream(t *testing
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerAccount = 1
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 1
+	options.Pool.MaxConnsPerProvider = 1
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 1
 	options.Pool.QueueLimitPerConn = 8
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 3
@@ -556,17 +560,20 @@ func TestWSResponseCreate_IngressBlockSendsErrorEventAndSkipsUpstream(t *testing
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool, readers: newExecutionReadersFixture(repo, options)})
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 902,
-		Name:        "openai-ws-block",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Status:      billing.StatusActive,
-		Schedulable: true,
-		Concurrency: 1,
-		Credentials: map[string]any{"api_key": "sk-test"},
-		Extra: map[string]any{
-			"responses_websockets_v2_enabled": true,
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 902,
+			Name:        "openai-ws-block",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Status:      billing.StatusActive,
+			Schedulable: true,
+			Concurrency: 1,
+			Credentials: map[string]any{"api_key": "sk-test"},
+			Extra: map[string]any{
+				"responses_websockets_v2_enabled": true,
+			},
+		},
 	}
 
 	serverErrCh := make(chan error, 1)
@@ -594,7 +601,7 @@ func TestWSResponseCreate_IngressBlockSendsErrorEventAndSkipsUpstream(t *testing
 			serverErrCh <- readErr
 			return
 		}
-		proxyErr := svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, account, "sk-test", firstMessage, nil)
+		proxyErr := svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, provider, "sk-test", firstMessage, nil)
 		// Mirror the production handler (openai_gateway_handler.go:1325-1328):
 		// when the proxy returns an OpenAIWSClientCloseError, surface its
 		// status code to the client via a graceful close handshake. Without
@@ -686,10 +693,10 @@ func TestApplyOpenAIFastPolicyToBody_BlockShortCircuitsUpstream(t *testing.T) {
 		}},
 	}
 	svc := newWSFastPolicy(t, settings)
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
 
 	body := []byte(`{"model":"gpt-5.5","service_tier":"priority","input":[]}`)
-	updated, err := tierpolicy.ApplyBody(body, svc.Input(context.Background(), account, "gpt-5.5"))
+	updated, err := tierpolicy.ApplyBody(body, svc.Input(context.Background(), provider, "gpt-5.5"))
 	require.Error(t, err)
 	var blocked *tierpolicy.BlockedError
 	require.True(t, errors.As(err, &blocked), "block must surface as typed error so caller can skip upstream HTTP request")
@@ -704,7 +711,7 @@ func TestApplyOpenAIFastPolicyToBody_BlockShortCircuitsUpstream(t *testing.T) {
 // （Anthropic -> Responses + BetaFastMode + policy），不启动真实上游 HTTP 服务。
 func TestForwardAsAnthropicMessages_BetaFastModePassesOpenAIFastPolicyByDefault(t *testing.T) {
 	svc := newWSFastPolicy(t, tierpolicy.Default())
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
 
 	// Step 1: parse Anthropic request (mirrors openai_gateway_messages.go:38-50).
 	anthropicBody := []byte(`{"model":"gpt-5.5","max_tokens":64,"messages":[{"role":"user","content":"hi"}]}`)
@@ -725,7 +732,7 @@ func TestForwardAsAnthropicMessages_BetaFastModePassesOpenAIFastPolicyByDefault(
 	require.NoError(t, err)
 	require.Equal(t, "priority", gjson.GetBytes(responsesBody, "service_tier").String(), "前置：beta 翻译应当注入 priority")
 
-	upstreamBody, policyErr := tierpolicy.ApplyBody(responsesBody, svc.Input(context.Background(), account, "gpt-5.5"))
+	upstreamBody, policyErr := tierpolicy.ApplyBody(responsesBody, svc.Input(context.Background(), provider, "gpt-5.5"))
 	require.NoError(t, policyErr)
 
 	// 第 4 步：默认策略必须保留显式 fast/priority 请求。
@@ -744,7 +751,7 @@ func TestForwardAsAnthropicMessages_BetaFastModePassesOpenAIFastPolicyByDefault(
 // resolves to gpt-5.5 and the policy filters service_tier.
 func TestPolicyEnforcingFrameConn_SessionUpdateRotatesCapturedModel(t *testing.T) {
 	svc := newWSFastPolicy(t, gpt55WhitelistFastPolicy())
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
 
 	// Frame 1: response.create with whitelist-miss model — under default
 	// rule fallback=pass, service_tier stays.
@@ -758,7 +765,7 @@ func TestPolicyEnforcingFrameConn_SessionUpdateRotatesCapturedModel(t *testing.T
 
 	// Replicate the production wiring in openai_ws_v2_passthrough_adapter.go
 	// so capturedSessionModel state is shared across frames.
-	capturedSessionModel := openAIWSPassthroughPolicyModelForFrame(account, first)
+	capturedSessionModel := openAIWSPassthroughPolicyModelForFrame(provider, first)
 	require.Equal(t, "gpt-4o", capturedSessionModel)
 	wrapper := &openAIWSPolicyEnforcingFrameConn{
 		inner: inner,
@@ -766,14 +773,14 @@ func TestPolicyEnforcingFrameConn_SessionUpdateRotatesCapturedModel(t *testing.T
 			if msgType != coderws.MessageText {
 				return payload, nil, nil
 			}
-			if updated := openAIWSPassthroughPolicyModelFromSessionFrame(account, payload); updated != "" {
+			if updated := openAIWSPassthroughPolicyModelFromSessionFrame(provider, payload); updated != "" {
 				capturedSessionModel = updated
 			}
-			model := openAIWSPassthroughPolicyModelForFrame(account, payload)
+			model := openAIWSPassthroughPolicyModelForFrame(provider, payload)
 			if model == "" {
 				model = capturedSessionModel
 			}
-			return gatewayws.ApplyServiceTierFrame(payload, model, svc.Input(context.Background(), account, model))
+			return gatewayws.ApplyServiceTierFrame(payload, model, svc.Input(context.Background(), provider, model))
 		},
 	}
 
@@ -801,21 +808,21 @@ func TestPolicyEnforcingFrameConn_SessionUpdateRotatesCapturedModel(t *testing.T
 // client→upstream session.update frames rotate the captured model;
 // server→client events (session.created) and unrelated frames must not.
 func TestPolicyModelFromSessionFrame_OnlySessionUpdate(t *testing.T) {
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
 
 	// session.created is a server→client event in the OpenAI Realtime
 	// protocol — clients never send it, so this filter (which only runs on
 	// the client→upstream direction) must ignore it even if it appears.
 	created := []byte(`{"type":"session.created","session":{"model":"gpt-5.5"}}`)
-	require.Empty(t, openAIWSPassthroughPolicyModelFromSessionFrame(account, created))
+	require.Empty(t, openAIWSPassthroughPolicyModelFromSessionFrame(provider, created))
 
 	// Non-session.* frames must NOT trigger rotation.
 	notSession := []byte(`{"type":"response.create","session":{"model":"gpt-9"}}`)
-	require.Empty(t, openAIWSPassthroughPolicyModelFromSessionFrame(account, notSession))
+	require.Empty(t, openAIWSPassthroughPolicyModelFromSessionFrame(provider, notSession))
 
 	// Missing session.model returns empty — caller keeps the old captured value.
 	noModel := []byte(`{"type":"session.update","session":{"voice":"alloy"}}`)
-	require.Empty(t, openAIWSPassthroughPolicyModelFromSessionFrame(account, noModel))
+	require.Empty(t, openAIWSPassthroughPolicyModelFromSessionFrame(provider, noModel))
 }
 
 // --- Fix2: native /responses normalize "fast" → "priority" on pass ---
@@ -837,30 +844,30 @@ func TestApplyOpenAIFastPolicyToBody_PassNormalizesFastAlias(t *testing.T) {
 		}},
 	}
 	svc := newWSFastPolicy(t, settings)
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
 
 	// gpt-4 + "fast" → fallback pass. Body must be rewritten to "priority".
 	body := []byte(`{"model":"gpt-4","service_tier":"fast"}`)
-	updated, err := tierpolicy.ApplyBody(body, svc.Input(context.Background(), account, "gpt-4"))
+	updated, err := tierpolicy.ApplyBody(body, svc.Input(context.Background(), provider, "gpt-4"))
 	require.NoError(t, err)
 	require.Equal(t, "priority", gjson.GetBytes(updated, "service_tier").String(),
 		"fix2: pass action must still normalize 'fast' → 'priority' so upstream OpenAI accepts the slug")
 
 	// Already-canonical "priority" on pass: zero mutation (byte-equal).
 	body = []byte(`{"model":"gpt-4","service_tier":"priority"}`)
-	updated, err = tierpolicy.ApplyBody(body, svc.Input(context.Background(), account, "gpt-4"))
+	updated, err = tierpolicy.ApplyBody(body, svc.Input(context.Background(), provider, "gpt-4"))
 	require.NoError(t, err)
 	require.Equal(t, string(body), string(updated))
 
 	// Mixed-case alias → normalized.
 	body = []byte(`{"model":"gpt-4","service_tier":"  Fast  "}`)
-	updated, err = tierpolicy.ApplyBody(body, svc.Input(context.Background(), account, "gpt-4"))
+	updated, err = tierpolicy.ApplyBody(body, svc.Input(context.Background(), provider, "gpt-4"))
 	require.NoError(t, err)
 	require.Equal(t, "priority", gjson.GetBytes(updated, "service_tier").String())
 
 	// Unrecognized tier → still no-op (not normalized, since normTier == "").
 	body = []byte(`{"model":"gpt-4","service_tier":"turbo"}`)
-	updated, err = tierpolicy.ApplyBody(body, svc.Input(context.Background(), account, "gpt-4"))
+	updated, err = tierpolicy.ApplyBody(body, svc.Input(context.Background(), provider, "gpt-4"))
 	require.NoError(t, err)
 	require.Equal(t, string(body), string(updated))
 }
@@ -875,7 +882,7 @@ func TestApplyOpenAIFastPolicyToBody_PassNormalizesFastAlias(t *testing.T) {
 // contract those two helpers must uphold for the adapter's billing path.
 func TestPassthroughBilling_PostFilterServiceTier(t *testing.T) {
 	svc := newWSFastPolicy(t, openAIFastFilterPriorityPolicy())
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
 
 	raw := []byte(`{"type":"response.create","model":"gpt-5.5","service_tier":"priority"}`)
 
@@ -888,7 +895,7 @@ func TestPassthroughBilling_PostFilterServiceTier(t *testing.T) {
 		"sanity: raw first frame carries priority that pre-fix billing would have reported")
 
 	// 应用显式策略过滤（gpt-5.5 + priority -> filter）。
-	filtered, blocked, err := gatewayws.ApplyServiceTierFrame(raw, "gpt-5.5", svc.Input(context.Background(), account, "gpt-5.5"))
+	filtered, blocked, err := gatewayws.ApplyServiceTierFrame(raw, "gpt-5.5", svc.Input(context.Background(), provider, "gpt-5.5"))
 	require.NoError(t, err)
 	require.Nil(t, blocked)
 	require.NotContains(t, string(filtered), `"service_tier"`)
@@ -902,7 +909,7 @@ func TestPassthroughBilling_PostFilterServiceTier(t *testing.T) {
 	// And the byte-level invariant the adapter relies on: filtering an
 	// already-filtered frame is a no-op (idempotent), so re-running the
 	// policy doesn't accidentally re-introduce the field.
-	again, blocked2, err := gatewayws.ApplyServiceTierFrame(filtered, "gpt-5.5", svc.Input(context.Background(), account, "gpt-5.5"))
+	again, blocked2, err := gatewayws.ApplyServiceTierFrame(filtered, "gpt-5.5", svc.Input(context.Background(), provider, "gpt-5.5"))
 	require.NoError(t, err)
 	require.Nil(t, blocked2)
 	require.Equal(t, string(filtered), string(again),
@@ -917,7 +924,7 @@ func TestPassthroughBilling_PostFilterServiceTier(t *testing.T) {
 // type-assertion `reqBody["service_tier"].(string); ok` guard.
 func TestApplyOpenAIFastPolicyToBody_NonStringServiceTier(t *testing.T) {
 	svc := newWSFastPolicy(t, tierpolicy.Default())
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
 
 	// Number — gjson .String() coerces to "1" which is not a recognized
 	// tier alias; normalize returns "" → policy no-ops.
@@ -929,7 +936,7 @@ func TestApplyOpenAIFastPolicyToBody_NonStringServiceTier(t *testing.T) {
 		[]byte(`{"model":"gpt-5.5","service_tier":true}`),
 	}
 	for _, body := range cases {
-		updated, err := tierpolicy.ApplyBody(body, svc.Input(context.Background(), account, "gpt-5.5"))
+		updated, err := tierpolicy.ApplyBody(body, svc.Input(context.Background(), provider, "gpt-5.5"))
 		require.NoError(t, err, "non-string service_tier must not error: %s", string(body))
 		require.Equal(t, string(body), string(updated),
 			"non-string service_tier must pass through unchanged: %s", string(body))
@@ -938,7 +945,7 @@ func TestApplyOpenAIFastPolicyToBody_NonStringServiceTier(t *testing.T) {
 	// Same guard for the WS response.create entry.
 	for _, body := range cases {
 		frame := body
-		updated, blocked, err := gatewayws.ApplyServiceTierFrame(frame, "gpt-5.5", svc.Input(context.Background(), account, "gpt-5.5"))
+		updated, blocked, err := gatewayws.ApplyServiceTierFrame(frame, "gpt-5.5", svc.Input(context.Background(), provider, "gpt-5.5"))
 		require.NoError(t, err, "non-string service_tier ws frame must not error: %s", string(frame))
 		require.Nil(t, blocked, "non-string service_tier must not trigger block: %s", string(frame))
 		require.Equal(t, string(frame), string(updated),
@@ -965,7 +972,7 @@ func TestApplyOpenAIFastPolicyToBody_NonStringServiceTier(t *testing.T) {
 //     也不能覆盖计费指针。
 func TestPassthroughBilling_MultiTurnServiceTierFollowsFilteredFrames(t *testing.T) {
 	svc := newWSFastPolicy(t, openAIFastFilterPriorityPolicy())
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
 
 	// 镜像生产过滤闭包（openai_ws_v2_passthrough_adapter.go 的
 	// proxyResponsesWebSocketV2Passthrough），确保生产代码移除逐帧 Store 时测试会失败。
@@ -975,14 +982,14 @@ func TestPassthroughBilling_MultiTurnServiceTierFollowsFilteredFrames(t *testing
 		if msgType != coderws.MessageText {
 			return payload, nil, nil
 		}
-		if updated := openAIWSPassthroughPolicyModelFromSessionFrame(account, payload); updated != "" {
+		if updated := openAIWSPassthroughPolicyModelFromSessionFrame(provider, payload); updated != "" {
 			capturedSessionModel = updated
 		}
-		model := openAIWSPassthroughPolicyModelForFrame(account, payload)
+		model := openAIWSPassthroughPolicyModelForFrame(provider, payload)
 		if model == "" {
 			model = capturedSessionModel
 		}
-		out, blocked, policyErr := gatewayws.ApplyServiceTierFrame(payload, model, svc.Input(context.Background(), account, model))
+		out, blocked, policyErr := gatewayws.ApplyServiceTierFrame(payload, model, svc.Input(context.Background(), provider, model))
 		if policyErr == nil && blocked == nil &&
 			strings.TrimSpace(gjson.GetBytes(payload, "type").String()) == "response.create" {
 			requestServiceTierPtr.Store(requeststate.ExtractOpenAIServiceTierFromBody(out))
@@ -993,11 +1000,11 @@ func TestPassthroughBilling_MultiTurnServiceTierFollowsFilteredFrames(t *testing
 	// First-frame initialization mirrors the adapter: extract from the
 	// post-filter payload so a filter-on-first-frame clears the outbound tier.
 	firstFrame := []byte(`{"type":"response.create","model":"gpt-5.5","service_tier":"priority"}`)
-	firstOut, firstBlocked, firstErr := gatewayws.ApplyServiceTierFrame(firstFrame, "gpt-5.5", svc.Input(context.Background(), account, "gpt-5.5"))
+	firstOut, firstBlocked, firstErr := gatewayws.ApplyServiceTierFrame(firstFrame, "gpt-5.5", svc.Input(context.Background(), provider, "gpt-5.5"))
 	require.NoError(t, firstErr)
 	require.Nil(t, firstBlocked)
 	requestServiceTierPtr.Store(requeststate.ExtractOpenAIServiceTierFromBody(firstOut))
-	capturedSessionModel = openAIWSPassthroughPolicyModelForFrame(account, firstFrame)
+	capturedSessionModel = openAIWSPassthroughPolicyModelForFrame(provider, firstFrame)
 	require.Nil(t, requestServiceTierPtr.Load(),
 		"turn 1: filter strips service_tier=priority, leaving a nil outbound tier")
 
@@ -1037,12 +1044,12 @@ func TestPassthroughBilling_MultiTurnServiceTierFollowsFilteredFrames(t *testing
 
 func TestPassthroughUsageMeta_TracksReasoningEffortAcrossTurns(t *testing.T) {
 	svc := newWSFastPolicy(t, tierpolicy.Default())
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
 
 	firstFrame := []byte(`{"type":"response.create","model":"gpt-5.5","reasoning":{"effort":"medium"},"service_tier":"priority"}`)
 	meta := newOpenAIWSPassthroughUsageMeta("", firstFrame)
-	capturedSessionModel := openAIWSPassthroughPolicyModelForFrame(account, firstFrame)
-	firstOut, firstBlocked, firstErr := gatewayws.ApplyServiceTierFrame(firstFrame, capturedSessionModel, svc.Input(context.Background(), account, capturedSessionModel))
+	capturedSessionModel := openAIWSPassthroughPolicyModelForFrame(provider, firstFrame)
+	firstOut, firstBlocked, firstErr := gatewayws.ApplyServiceTierFrame(firstFrame, capturedSessionModel, svc.Input(context.Background(), provider, capturedSessionModel))
 	require.NoError(t, firstErr)
 	require.Nil(t, firstBlocked)
 	meta.initFromFirstFrame(firstOut, capturedSessionModel)
@@ -1050,16 +1057,16 @@ func TestPassthroughUsageMeta_TracksReasoningEffortAcrossTurns(t *testing.T) {
 	require.Equal(t, "medium", *meta.reasoningEffort.Load())
 
 	process := func(payload []byte) ([]byte, *tierpolicy.BlockedError, error) {
-		if updated := openAIWSPassthroughPolicyModelFromSessionFrame(account, payload); updated != "" {
+		if updated := openAIWSPassthroughPolicyModelFromSessionFrame(provider, payload); updated != "" {
 			capturedSessionModel = updated
 		}
 		meta.updateSessionRequestModel(payload)
 		requestModelForThisFrame := meta.requestModelForFrame(payload)
-		model := openAIWSPassthroughPolicyModelForFrame(account, payload)
+		model := openAIWSPassthroughPolicyModelForFrame(provider, payload)
 		if model == "" {
 			model = capturedSessionModel
 		}
-		out, blocked, policyErr := gatewayws.ApplyServiceTierFrame(payload, model, svc.Input(context.Background(), account, model))
+		out, blocked, policyErr := gatewayws.ApplyServiceTierFrame(payload, model, svc.Input(context.Background(), provider, model))
 		if policyErr == nil && blocked == nil &&
 			strings.TrimSpace(gjson.GetBytes(payload, "type").String()) == "response.create" {
 			meta.updateFromResponseCreate(out, model, requestModelForThisFrame)
@@ -1113,7 +1120,7 @@ func TestPassthroughBilling_BlockedFrameDoesNotMutateServiceTier(t *testing.T) {
 		}},
 	}
 	svc := newWSFastPolicy(t, blockSettings)
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
 
 	var requestServiceTierPtr atomic.Pointer[string]
 	flexValue := "flex"
@@ -1123,7 +1130,7 @@ func TestPassthroughBilling_BlockedFrameDoesNotMutateServiceTier(t *testing.T) {
 		if msgType != coderws.MessageText {
 			return payload, nil, nil
 		}
-		out, blocked, policyErr := gatewayws.ApplyServiceTierFrame(payload, "gpt-5.5", svc.Input(context.Background(), account, "gpt-5.5"))
+		out, blocked, policyErr := gatewayws.ApplyServiceTierFrame(payload, "gpt-5.5", svc.Input(context.Background(), provider, "gpt-5.5"))
 		if policyErr == nil && blocked == nil &&
 			strings.TrimSpace(gjson.GetBytes(payload, "type").String()) == "response.create" {
 			requestServiceTierPtr.Store(requeststate.ExtractOpenAIServiceTierFromBody(out))

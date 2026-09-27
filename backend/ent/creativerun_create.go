@@ -89,30 +89,30 @@ func (_c *CreativeRunCreate) SetAPIKeyID(v int64) *CreativeRunCreate {
 	return _c
 }
 
-// SetAccountID sets the "account_id" field.
-func (_c *CreativeRunCreate) SetAccountID(v int64) *CreativeRunCreate {
-	_c.mutation.SetAccountID(v)
+// SetProviderID sets the "provider_id" field.
+func (_c *CreativeRunCreate) SetProviderID(v int64) *CreativeRunCreate {
+	_c.mutation.SetProviderID(v)
 	return _c
 }
 
-// SetNillableAccountID sets the "account_id" field if the given value is not nil.
-func (_c *CreativeRunCreate) SetNillableAccountID(v *int64) *CreativeRunCreate {
+// SetNillableProviderID sets the "provider_id" field if the given value is not nil.
+func (_c *CreativeRunCreate) SetNillableProviderID(v *int64) *CreativeRunCreate {
 	if v != nil {
-		_c.SetAccountID(*v)
+		_c.SetProviderID(*v)
 	}
 	return _c
 }
 
-// SetProvider sets the "provider" field.
-func (_c *CreativeRunCreate) SetProvider(v string) *CreativeRunCreate {
-	_c.mutation.SetProvider(v)
+// SetPlatform sets the "platform" field.
+func (_c *CreativeRunCreate) SetPlatform(v string) *CreativeRunCreate {
+	_c.mutation.SetPlatform(v)
 	return _c
 }
 
-// SetNillableProvider sets the "provider" field if the given value is not nil.
-func (_c *CreativeRunCreate) SetNillableProvider(v *string) *CreativeRunCreate {
+// SetNillablePlatform sets the "platform" field if the given value is not nil.
+func (_c *CreativeRunCreate) SetNillablePlatform(v *string) *CreativeRunCreate {
 	if v != nil {
-		_c.SetProvider(*v)
+		_c.SetPlatform(*v)
 	}
 	return _c
 }
@@ -610,9 +610,9 @@ func (_c *CreativeRunCreate) defaults() {
 		v := creativerun.DefaultUpdatedAt()
 		_c.mutation.SetUpdatedAt(v)
 	}
-	if _, ok := _c.mutation.Provider(); !ok {
-		v := creativerun.DefaultProvider
-		_c.mutation.SetProvider(v)
+	if _, ok := _c.mutation.Platform(); !ok {
+		v := creativerun.DefaultPlatform
+		_c.mutation.SetPlatform(v)
 	}
 	if _, ok := _c.mutation.RequestedModel(); !ok {
 		v := creativerun.DefaultRequestedModel
@@ -726,12 +726,12 @@ func (_c *CreativeRunCreate) check() error {
 	if _, ok := _c.mutation.APIKeyID(); !ok {
 		return &ValidationError{Name: "api_key_id", err: errors.New(`ent: missing required field "CreativeRun.api_key_id"`)}
 	}
-	if _, ok := _c.mutation.Provider(); !ok {
-		return &ValidationError{Name: "provider", err: errors.New(`ent: missing required field "CreativeRun.provider"`)}
+	if _, ok := _c.mutation.Platform(); !ok {
+		return &ValidationError{Name: "platform", err: errors.New(`ent: missing required field "CreativeRun.platform"`)}
 	}
-	if v, ok := _c.mutation.Provider(); ok {
-		if err := creativerun.ProviderValidator(v); err != nil {
-			return &ValidationError{Name: "provider", err: fmt.Errorf(`ent: validator failed for field "CreativeRun.provider": %w`, err)}
+	if v, ok := _c.mutation.Platform(); ok {
+		if err := creativerun.PlatformValidator(v); err != nil {
+			return &ValidationError{Name: "platform", err: fmt.Errorf(`ent: validator failed for field "CreativeRun.platform": %w`, err)}
 		}
 	}
 	if _, ok := _c.mutation.Model(); !ok {
@@ -926,13 +926,13 @@ func (_c *CreativeRunCreate) createSpec() (*CreativeRun, *sqlgraph.CreateSpec) {
 		_spec.SetField(creativerun.FieldAPIKeyID, field.TypeInt64, value)
 		_node.APIKeyID = value
 	}
-	if value, ok := _c.mutation.AccountID(); ok {
-		_spec.SetField(creativerun.FieldAccountID, field.TypeInt64, value)
-		_node.AccountID = &value
+	if value, ok := _c.mutation.ProviderID(); ok {
+		_spec.SetField(creativerun.FieldProviderID, field.TypeInt64, value)
+		_node.ProviderID = &value
 	}
-	if value, ok := _c.mutation.Provider(); ok {
-		_spec.SetField(creativerun.FieldProvider, field.TypeString, value)
-		_node.Provider = value
+	if value, ok := _c.mutation.Platform(); ok {
+		_spec.SetField(creativerun.FieldPlatform, field.TypeString, value)
+		_node.Platform = value
 	}
 	if value, ok := _c.mutation.Model(); ok {
 		_spec.SetField(creativerun.FieldModel, field.TypeString, value)
@@ -1210,39 +1210,39 @@ func (u *CreativeRunUpsert) AddAPIKeyID(v int64) *CreativeRunUpsert {
 	return u
 }
 
-// SetAccountID sets the "account_id" field.
-func (u *CreativeRunUpsert) SetAccountID(v int64) *CreativeRunUpsert {
-	u.Set(creativerun.FieldAccountID, v)
+// SetProviderID sets the "provider_id" field.
+func (u *CreativeRunUpsert) SetProviderID(v int64) *CreativeRunUpsert {
+	u.Set(creativerun.FieldProviderID, v)
 	return u
 }
 
-// UpdateAccountID sets the "account_id" field to the value that was provided on create.
-func (u *CreativeRunUpsert) UpdateAccountID() *CreativeRunUpsert {
-	u.SetExcluded(creativerun.FieldAccountID)
+// UpdateProviderID sets the "provider_id" field to the value that was provided on create.
+func (u *CreativeRunUpsert) UpdateProviderID() *CreativeRunUpsert {
+	u.SetExcluded(creativerun.FieldProviderID)
 	return u
 }
 
-// AddAccountID adds v to the "account_id" field.
-func (u *CreativeRunUpsert) AddAccountID(v int64) *CreativeRunUpsert {
-	u.Add(creativerun.FieldAccountID, v)
+// AddProviderID adds v to the "provider_id" field.
+func (u *CreativeRunUpsert) AddProviderID(v int64) *CreativeRunUpsert {
+	u.Add(creativerun.FieldProviderID, v)
 	return u
 }
 
-// ClearAccountID clears the value of the "account_id" field.
-func (u *CreativeRunUpsert) ClearAccountID() *CreativeRunUpsert {
-	u.SetNull(creativerun.FieldAccountID)
+// ClearProviderID clears the value of the "provider_id" field.
+func (u *CreativeRunUpsert) ClearProviderID() *CreativeRunUpsert {
+	u.SetNull(creativerun.FieldProviderID)
 	return u
 }
 
-// SetProvider sets the "provider" field.
-func (u *CreativeRunUpsert) SetProvider(v string) *CreativeRunUpsert {
-	u.Set(creativerun.FieldProvider, v)
+// SetPlatform sets the "platform" field.
+func (u *CreativeRunUpsert) SetPlatform(v string) *CreativeRunUpsert {
+	u.Set(creativerun.FieldPlatform, v)
 	return u
 }
 
-// UpdateProvider sets the "provider" field to the value that was provided on create.
-func (u *CreativeRunUpsert) UpdateProvider() *CreativeRunUpsert {
-	u.SetExcluded(creativerun.FieldProvider)
+// UpdatePlatform sets the "platform" field to the value that was provided on create.
+func (u *CreativeRunUpsert) UpdatePlatform() *CreativeRunUpsert {
+	u.SetExcluded(creativerun.FieldPlatform)
 	return u
 }
 
@@ -1950,45 +1950,45 @@ func (u *CreativeRunUpsertOne) UpdateAPIKeyID() *CreativeRunUpsertOne {
 	})
 }
 
-// SetAccountID sets the "account_id" field.
-func (u *CreativeRunUpsertOne) SetAccountID(v int64) *CreativeRunUpsertOne {
+// SetProviderID sets the "provider_id" field.
+func (u *CreativeRunUpsertOne) SetProviderID(v int64) *CreativeRunUpsertOne {
 	return u.Update(func(s *CreativeRunUpsert) {
-		s.SetAccountID(v)
+		s.SetProviderID(v)
 	})
 }
 
-// AddAccountID adds v to the "account_id" field.
-func (u *CreativeRunUpsertOne) AddAccountID(v int64) *CreativeRunUpsertOne {
+// AddProviderID adds v to the "provider_id" field.
+func (u *CreativeRunUpsertOne) AddProviderID(v int64) *CreativeRunUpsertOne {
 	return u.Update(func(s *CreativeRunUpsert) {
-		s.AddAccountID(v)
+		s.AddProviderID(v)
 	})
 }
 
-// UpdateAccountID sets the "account_id" field to the value that was provided on create.
-func (u *CreativeRunUpsertOne) UpdateAccountID() *CreativeRunUpsertOne {
+// UpdateProviderID sets the "provider_id" field to the value that was provided on create.
+func (u *CreativeRunUpsertOne) UpdateProviderID() *CreativeRunUpsertOne {
 	return u.Update(func(s *CreativeRunUpsert) {
-		s.UpdateAccountID()
+		s.UpdateProviderID()
 	})
 }
 
-// ClearAccountID clears the value of the "account_id" field.
-func (u *CreativeRunUpsertOne) ClearAccountID() *CreativeRunUpsertOne {
+// ClearProviderID clears the value of the "provider_id" field.
+func (u *CreativeRunUpsertOne) ClearProviderID() *CreativeRunUpsertOne {
 	return u.Update(func(s *CreativeRunUpsert) {
-		s.ClearAccountID()
+		s.ClearProviderID()
 	})
 }
 
-// SetProvider sets the "provider" field.
-func (u *CreativeRunUpsertOne) SetProvider(v string) *CreativeRunUpsertOne {
+// SetPlatform sets the "platform" field.
+func (u *CreativeRunUpsertOne) SetPlatform(v string) *CreativeRunUpsertOne {
 	return u.Update(func(s *CreativeRunUpsert) {
-		s.SetProvider(v)
+		s.SetPlatform(v)
 	})
 }
 
-// UpdateProvider sets the "provider" field to the value that was provided on create.
-func (u *CreativeRunUpsertOne) UpdateProvider() *CreativeRunUpsertOne {
+// UpdatePlatform sets the "platform" field to the value that was provided on create.
+func (u *CreativeRunUpsertOne) UpdatePlatform() *CreativeRunUpsertOne {
 	return u.Update(func(s *CreativeRunUpsert) {
-		s.UpdateProvider()
+		s.UpdatePlatform()
 	})
 }
 
@@ -2955,45 +2955,45 @@ func (u *CreativeRunUpsertBulk) UpdateAPIKeyID() *CreativeRunUpsertBulk {
 	})
 }
 
-// SetAccountID sets the "account_id" field.
-func (u *CreativeRunUpsertBulk) SetAccountID(v int64) *CreativeRunUpsertBulk {
+// SetProviderID sets the "provider_id" field.
+func (u *CreativeRunUpsertBulk) SetProviderID(v int64) *CreativeRunUpsertBulk {
 	return u.Update(func(s *CreativeRunUpsert) {
-		s.SetAccountID(v)
+		s.SetProviderID(v)
 	})
 }
 
-// AddAccountID adds v to the "account_id" field.
-func (u *CreativeRunUpsertBulk) AddAccountID(v int64) *CreativeRunUpsertBulk {
+// AddProviderID adds v to the "provider_id" field.
+func (u *CreativeRunUpsertBulk) AddProviderID(v int64) *CreativeRunUpsertBulk {
 	return u.Update(func(s *CreativeRunUpsert) {
-		s.AddAccountID(v)
+		s.AddProviderID(v)
 	})
 }
 
-// UpdateAccountID sets the "account_id" field to the value that was provided on create.
-func (u *CreativeRunUpsertBulk) UpdateAccountID() *CreativeRunUpsertBulk {
+// UpdateProviderID sets the "provider_id" field to the value that was provided on create.
+func (u *CreativeRunUpsertBulk) UpdateProviderID() *CreativeRunUpsertBulk {
 	return u.Update(func(s *CreativeRunUpsert) {
-		s.UpdateAccountID()
+		s.UpdateProviderID()
 	})
 }
 
-// ClearAccountID clears the value of the "account_id" field.
-func (u *CreativeRunUpsertBulk) ClearAccountID() *CreativeRunUpsertBulk {
+// ClearProviderID clears the value of the "provider_id" field.
+func (u *CreativeRunUpsertBulk) ClearProviderID() *CreativeRunUpsertBulk {
 	return u.Update(func(s *CreativeRunUpsert) {
-		s.ClearAccountID()
+		s.ClearProviderID()
 	})
 }
 
-// SetProvider sets the "provider" field.
-func (u *CreativeRunUpsertBulk) SetProvider(v string) *CreativeRunUpsertBulk {
+// SetPlatform sets the "platform" field.
+func (u *CreativeRunUpsertBulk) SetPlatform(v string) *CreativeRunUpsertBulk {
 	return u.Update(func(s *CreativeRunUpsert) {
-		s.SetProvider(v)
+		s.SetPlatform(v)
 	})
 }
 
-// UpdateProvider sets the "provider" field to the value that was provided on create.
-func (u *CreativeRunUpsertBulk) UpdateProvider() *CreativeRunUpsertBulk {
+// UpdatePlatform sets the "platform" field to the value that was provided on create.
+func (u *CreativeRunUpsertBulk) UpdatePlatform() *CreativeRunUpsertBulk {
 	return u.Update(func(s *CreativeRunUpsert) {
-		s.UpdateProvider()
+		s.UpdatePlatform()
 	})
 }
 

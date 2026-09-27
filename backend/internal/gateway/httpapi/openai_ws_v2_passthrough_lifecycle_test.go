@@ -15,13 +15,13 @@ import (
 
 	sessiontestkit "github.com/TokenFlux/TokenRouter/internal/gateway/session/testkit"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/moderationflow"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	gatewayws "github.com/TokenFlux/TokenRouter/internal/gateway/ws"
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
@@ -135,7 +135,7 @@ func passthroughLifecycleConfig() *wsFixtureOptions {
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
 	options.WS.ModeRouterV2Enabled = true
-	options.WS.IngressModeDefault = accountcore.OpenAIWSIngressModeCtxPool
+	options.WS.IngressModeDefault = providercore.OpenAIWSIngressModeCtxPool
 	options.WS.IngressInterTurnIdleTimeoutSeconds = 1
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 1
@@ -143,18 +143,21 @@ func passthroughLifecycleConfig() *wsFixtureOptions {
 	return options
 }
 
-func passthroughLifecycleAccount() *gatewayprovider.ExecutionAccount {
-	return &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 901,
-		Name:        "passthrough-lifecycle",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Status:      billing.StatusActive,
-		Schedulable: true,
-		Concurrency: 1,
-		Credentials: map[string]any{"api_key": "sk-test"},
-		Extra: map[string]any{
-			"openai_apikey_responses_websockets_v2_mode": accountcore.OpenAIWSIngressModePassthrough,
-		}},
+func passthroughLifecycleProvider() *gatewayprovider.ExecutionProvider {
+	return &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 901,
+			Name:        "passthrough-lifecycle",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Status:      billing.StatusActive,
+			Schedulable: true,
+			Concurrency: 1,
+			Credentials: map[string]any{"api_key": "sk-test"},
+			Extra: map[string]any{
+				"openai_apikey_responses_websockets_v2_mode": providercore.OpenAIWSIngressModePassthrough,
+			},
+		},
 	}
 }
 
@@ -162,16 +165,16 @@ func startPassthroughLifecycleServer(
 	t *testing.T,
 	controlCtx context.Context,
 	svc *wsExecutionFixture,
-	account *gatewayprovider.ExecutionAccount,
+	provider *gatewayprovider.ExecutionProvider,
 ) (*httptest.Server, <-chan error) {
-	return startPassthroughLifecycleServerWithHooks(t, controlCtx, svc, account, nil)
+	return startPassthroughLifecycleServerWithHooks(t, controlCtx, svc, provider, nil)
 }
 
 func startPassthroughLifecycleServerWithHooks(
 	t *testing.T,
 	controlCtx context.Context,
 	svc *wsExecutionFixture,
-	account *gatewayprovider.ExecutionAccount,
+	provider *gatewayprovider.ExecutionProvider,
 	hooksFactory func(*gin.Context) *gatewayws.OpenAIIngressHooks,
 ) (*httptest.Server, <-chan error) {
 	t.Helper()
@@ -209,13 +212,12 @@ func startPassthroughLifecycleServerWithHooks(
 		if hooksFactory != nil {
 			hooks = hooksFactory(ginCtx)
 		}
-		serverErr <- svc.ProxyResponsesWebSocketFromClient(controlCtx, ginCtx, conn, account, "sk-test", firstMessage, hooks)
+		serverErr <- svc.ProxyResponsesWebSocketFromClient(controlCtx, ginCtx, conn, provider, "sk-test", firstMessage, hooks)
 	}))
 	return server, serverErr
 }
 
 func TestPassthroughLifecycle_CyberTerminalEventsMarkBeforeAfterTurn(t *testing.T) {
-
 	tests := []struct {
 		name        string
 		events      []string
@@ -262,7 +264,7 @@ func TestPassthroughLifecycle_CyberTerminalEventsMarkBeforeAfterTurn(t *testing.
 				t,
 				controlCtx,
 				newPassthroughLifecycleService(passthroughLifecycleConfig(), upstream),
-				passthroughLifecycleAccount(),
+				passthroughLifecycleProvider(),
 				func(c *gin.Context) *gatewayws.OpenAIIngressHooks {
 					return &gatewayws.OpenAIIngressHooks{AfterTurn: func(_ gatewayws.OpenAITurnCapture) {
 						afterTurnCalls.Add(1)
@@ -306,24 +308,23 @@ func TestPassthroughLifecycle_CyberTerminalEventsMarkBeforeAfterTurn(t *testing.
 	}
 }
 
-func TestPassthroughLifecycle_NonCyberFailureKeepsAccountSideEffects(t *testing.T) {
-
+func TestPassthroughLifecycle_NonCyberFailureKeepsProviderSideEffects(t *testing.T) {
 	controlCtx, cancelControl := context.WithCancelCause(context.Background())
 	defer cancelControl(context.Canceled)
 	upstream := newStagedPassthroughConn()
 	upstream.Send(`{"type":"response.failed","response":{"id":"resp_non_cyber","error":{"type":"authentication_error","code":"invalid_api_key","status_code":401,"message":"credential rejected"},"usage":{"input_tokens":3,"output_tokens":1}}}`)
-	repo := &openAIStream403AccountRepo{}
+	repo := &openAIStream403ProviderRepo{}
 	svc := newPassthroughLifecycleService(passthroughLifecycleConfig(), upstream)
-	setWSFixtureHealth(svc, newUpstreamHealthForTest(repo, svc.options, nil, accountcore.HealthOptions{}, nil))
+	setWSFixtureHealth(svc, newUpstreamHealthForTest(repo, svc.options, nil, providercore.HealthOptions{}, nil))
 
-	account := passthroughLifecycleAccount()
+	provider := passthroughLifecycleProvider()
 
 	markSeen := make(chan *moderationflow.Mark, 1)
 	server, serverErr := startPassthroughLifecycleServerWithHooks(
 		t,
 		controlCtx,
 		svc,
-		account,
+		provider,
 		func(c *gin.Context) *gatewayws.OpenAIIngressHooks {
 			return &gatewayws.OpenAIIngressHooks{AfterTurn: func(_ gatewayws.OpenAITurnCapture) {
 				markSeen <- GetOpsCyberPolicy(c)
@@ -343,8 +344,8 @@ func TestPassthroughLifecycle_NonCyberFailureKeepsAccountSideEffects(t *testing.
 	case <-time.After(3 * time.Second):
 		t.Fatal("non-cyber terminal event did not complete its turn")
 	}
-	require.Equal(t, 1, repo.setErrorCalls, "non-cyber credential failure must retain account failure side effects")
-	require.True(t, wsFixtureAccountBlocked(svc, account))
+	require.Equal(t, 1, repo.setErrorCalls, "non-cyber credential failure must retain provider failure side effects")
+	require.True(t, wsFixtureProviderBlocked(svc, provider))
 	require.NoError(t, clientConn.Close(coderws.StatusNormalClosure, "done"))
 	select {
 	case <-serverErr:
@@ -353,19 +354,18 @@ func TestPassthroughLifecycle_NonCyberFailureKeepsAccountSideEffects(t *testing.
 	}
 }
 
-func TestPassthroughLifecycle_CyberSkipsFailureAccountSideEffects(t *testing.T) {
-
+func TestPassthroughLifecycle_CyberSkipsFailureProviderSideEffects(t *testing.T) {
 	controlCtx, cancelControl := context.WithCancelCause(context.Background())
 	defer cancelControl(context.Canceled)
 	upstream := newStagedPassthroughConn()
 	upstream.Send(`{"type":"response.failed","response":{"id":"resp_cyber_auth","error":{"type":"authentication_error","code":"cyber_policy","status_code":401,"message":"request blocked"}}}`)
-	repo := &openAIStream403AccountRepo{}
+	repo := &openAIStream403ProviderRepo{}
 	svc := newPassthroughLifecycleService(passthroughLifecycleConfig(), upstream)
-	setWSFixtureHealth(svc, newUpstreamHealthForTest(repo, svc.options, nil, accountcore.HealthOptions{}, nil))
+	setWSFixtureHealth(svc, newUpstreamHealthForTest(repo, svc.options, nil, providercore.HealthOptions{}, nil))
 
-	account := passthroughLifecycleAccount()
+	provider := passthroughLifecycleProvider()
 
-	server, serverErr := startPassthroughLifecycleServer(t, controlCtx, svc, account)
+	server, serverErr := startPassthroughLifecycleServer(t, controlCtx, svc, provider)
 	defer server.Close()
 	clientConn := dialPassthroughLifecycleClient(t, server)
 	defer func() { _ = clientConn.CloseNow() }()
@@ -373,8 +373,8 @@ func TestPassthroughLifecycle_CyberSkipsFailureAccountSideEffects(t *testing.T) 
 	event, err := readPassthroughLifecycleFrame(t, clientConn, 3*time.Second)
 	require.NoError(t, err)
 	require.Equal(t, "response.failed", gjson.GetBytes(event, "type").String())
-	require.Zero(t, repo.setErrorCalls, "cyber_policy is request-scoped and must not cool down the account")
-	require.False(t, wsFixtureAccountBlocked(svc, account))
+	require.Zero(t, repo.setErrorCalls, "cyber_policy is request-scoped and must not cool down the provider")
+	require.False(t, wsFixtureProviderBlocked(svc, provider))
 
 	require.NoError(t, clientConn.Close(coderws.StatusNormalClosure, "done"))
 	select {
@@ -385,7 +385,6 @@ func TestPassthroughLifecycle_CyberSkipsFailureAccountSideEffects(t *testing.T) 
 }
 
 func TestPassthroughLifecycle_CloseReasonTruncationPreservesUTF8(t *testing.T) {
-
 	controlCtx, cancelControl := context.WithCancelCause(context.Background())
 	defer cancelControl(context.Canceled)
 	upstream := newStagedPassthroughConn()
@@ -396,7 +395,7 @@ func TestPassthroughLifecycle_CloseReasonTruncationPreservesUTF8(t *testing.T) {
 		t,
 		controlCtx,
 		newPassthroughLifecycleService(passthroughLifecycleConfig(), upstream),
-		passthroughLifecycleAccount(),
+		passthroughLifecycleProvider(),
 	)
 	defer server.Close()
 	clientConn := dialPassthroughLifecycleClient(t, server)
@@ -487,11 +486,10 @@ func TestOpenAIWSPassthroughTurnLifecycle_SerializesTerminalCommitAndNextTurn(t 
 }
 
 func TestPassthroughLifecycle_LeaseLossSendsRetryClose(t *testing.T) {
-
 	controlCtx, cancelControl := context.WithCancelCause(context.Background())
 	upstream := newStagedPassthroughConn()
 	upstream.Send(`{"type":"response.created","response":{"id":"resp_lease","model":"gpt-5.1"}}`)
-	server, serverErr := startPassthroughLifecycleServer(t, controlCtx, newPassthroughLifecycleService(passthroughLifecycleConfig(), upstream), passthroughLifecycleAccount())
+	server, serverErr := startPassthroughLifecycleServer(t, controlCtx, newPassthroughLifecycleService(passthroughLifecycleConfig(), upstream), passthroughLifecycleProvider())
 	defer server.Close()
 	clientConn := dialPassthroughLifecycleClient(t, server)
 	defer func() { _ = clientConn.CloseNow() }()
@@ -514,12 +512,11 @@ func TestPassthroughLifecycle_LeaseLossSendsRetryClose(t *testing.T) {
 }
 
 func TestPassthroughLifecycle_CompletedTurnStartsInterTurnIdle(t *testing.T) {
-
 	controlCtx, cancelControl := context.WithCancelCause(context.Background())
 	defer cancelControl(context.Canceled)
 	upstream := newStagedPassthroughConn()
 	upstream.Send(`{"type":"response.completed","response":{"id":"resp_idle","model":"gpt-5.1","usage":{"input_tokens":1,"output_tokens":1}}}`)
-	server, serverErr := startPassthroughLifecycleServer(t, controlCtx, newPassthroughLifecycleService(passthroughLifecycleConfig(), upstream), passthroughLifecycleAccount())
+	server, serverErr := startPassthroughLifecycleServer(t, controlCtx, newPassthroughLifecycleService(passthroughLifecycleConfig(), upstream), passthroughLifecycleProvider())
 	defer server.Close()
 	clientConn := dialPassthroughLifecycleClient(t, server)
 	defer func() { _ = clientConn.CloseNow() }()
@@ -540,12 +537,11 @@ func TestPassthroughLifecycle_CompletedTurnStartsInterTurnIdle(t *testing.T) {
 }
 
 func TestPassthroughLifecycle_ActiveTurnInactivityUsesReadTimeout(t *testing.T) {
-
 	controlCtx, cancelControl := context.WithCancelCause(context.Background())
 	defer cancelControl(context.Canceled)
 	upstream := newStagedPassthroughConn()
 	upstream.Send(`{"type":"response.output_text.delta","response_id":"resp_active","delta":"hello"}`)
-	server, serverErr := startPassthroughLifecycleServer(t, controlCtx, newPassthroughLifecycleService(passthroughLifecycleConfig(), upstream), passthroughLifecycleAccount())
+	server, serverErr := startPassthroughLifecycleServer(t, controlCtx, newPassthroughLifecycleService(passthroughLifecycleConfig(), upstream), passthroughLifecycleProvider())
 	defer server.Close()
 	clientConn := dialPassthroughLifecycleClient(t, server)
 	defer func() { _ = clientConn.CloseNow() }()
@@ -570,14 +566,13 @@ func TestPassthroughLifecycle_ActiveTurnInactivityUsesReadTimeout(t *testing.T) 
 }
 
 func TestPassthroughLifecycle_PreambleAllowsPromptClientCancel(t *testing.T) {
-
 	controlCtx, cancelControl := context.WithCancelCause(context.Background())
 	defer cancelControl(context.Canceled)
 	options := passthroughLifecycleConfig()
 	options.Output.OpenAIFirstOutputTimeoutSeconds = 3
 	upstream := newStagedPassthroughConn()
 	upstream.Send(`{"type":"response.created","response":{"id":"resp_cancel","model":"gpt-5.1"}}`)
-	server, serverErr := startPassthroughLifecycleServer(t, controlCtx, newPassthroughLifecycleService(options, upstream), passthroughLifecycleAccount())
+	server, serverErr := startPassthroughLifecycleServer(t, controlCtx, newPassthroughLifecycleService(options, upstream), passthroughLifecycleProvider())
 	defer server.Close()
 	clientConn := dialPassthroughLifecycleClient(t, server)
 	defer func() { _ = clientConn.CloseNow() }()
@@ -602,14 +597,13 @@ func TestPassthroughLifecycle_PreambleAllowsPromptClientCancel(t *testing.T) {
 }
 
 func TestPassthroughLifecycle_RejectsOverlappingResponseCreate(t *testing.T) {
-
 	controlCtx, cancelControl := context.WithCancelCause(context.Background())
 	defer cancelControl(context.Canceled)
 	options := passthroughLifecycleConfig()
 	options.Output.OpenAIFirstOutputTimeoutSeconds = 3
 	upstream := newStagedPassthroughConn()
 	upstream.Send(`{"type":"response.created","response":{"id":"resp_overlap_first","model":"gpt-5.1"}}`)
-	server, serverErr := startPassthroughLifecycleServer(t, controlCtx, newPassthroughLifecycleService(options, upstream), passthroughLifecycleAccount())
+	server, serverErr := startPassthroughLifecycleServer(t, controlCtx, newPassthroughLifecycleService(options, upstream), passthroughLifecycleProvider())
 	defer server.Close()
 	clientConn := dialPassthroughLifecycleClient(t, server)
 	defer func() { _ = clientConn.CloseNow() }()
@@ -640,7 +634,6 @@ func TestPassthroughLifecycle_RejectsOverlappingResponseCreate(t *testing.T) {
 }
 
 func TestPassthroughLifecycle_ActiveTurnActivityRefreshesReadTimeout(t *testing.T) {
-
 	controlCtx, cancelControl := context.WithCancelCause(context.Background())
 	defer cancelControl(context.Canceled)
 	upstream := newStagedPassthroughConn()
@@ -657,7 +650,7 @@ func TestPassthroughLifecycle_ActiveTurnActivityRefreshesReadTimeout(t *testing.
 			upstream.Send(event)
 		}
 	}()
-	server, serverErr := startPassthroughLifecycleServer(t, controlCtx, newPassthroughLifecycleService(passthroughLifecycleConfig(), upstream), passthroughLifecycleAccount())
+	server, serverErr := startPassthroughLifecycleServer(t, controlCtx, newPassthroughLifecycleService(passthroughLifecycleConfig(), upstream), passthroughLifecycleProvider())
 	defer server.Close()
 	clientConn := dialPassthroughLifecycleClient(t, server)
 	defer func() { _ = clientConn.CloseNow() }()
@@ -681,7 +674,6 @@ func TestPassthroughLifecycle_ActiveTurnActivityRefreshesReadTimeout(t *testing.
 }
 
 func TestPassthroughLifecycle_TerminalSwitchesToInterTurnIdleTimeout(t *testing.T) {
-
 	controlCtx, cancelControl := context.WithCancelCause(context.Background())
 	defer cancelControl(context.Canceled)
 	options := passthroughLifecycleConfig()
@@ -689,7 +681,7 @@ func TestPassthroughLifecycle_TerminalSwitchesToInterTurnIdleTimeout(t *testing.
 	options.WS.IngressInterTurnIdleTimeoutSeconds = 2
 	upstream := newStagedPassthroughConn()
 	upstream.Send(`{"type":"response.completed","response":{"id":"resp_idle_first","model":"gpt-5.1","usage":{"input_tokens":1,"output_tokens":1}}}`)
-	server, serverErr := startPassthroughLifecycleServer(t, controlCtx, newPassthroughLifecycleService(options, upstream), passthroughLifecycleAccount())
+	server, serverErr := startPassthroughLifecycleServer(t, controlCtx, newPassthroughLifecycleService(options, upstream), passthroughLifecycleProvider())
 	defer server.Close()
 	clientConn := dialPassthroughLifecycleClient(t, server)
 	defer func() { _ = clientConn.CloseNow() }()
@@ -726,11 +718,10 @@ func TestPassthroughLifecycle_TerminalSwitchesToInterTurnIdleTimeout(t *testing.
 }
 
 func TestPassthroughLifecycle_FirstOutputTimeoutRemainsBounded(t *testing.T) {
-
 	controlCtx, cancelControl := context.WithCancelCause(context.Background())
 	defer cancelControl(context.Canceled)
 	upstream := newStagedPassthroughConn()
-	server, serverErr := startPassthroughLifecycleServer(t, controlCtx, newPassthroughLifecycleService(passthroughLifecycleConfig(), upstream), passthroughLifecycleAccount())
+	server, serverErr := startPassthroughLifecycleServer(t, controlCtx, newPassthroughLifecycleService(passthroughLifecycleConfig(), upstream), passthroughLifecycleProvider())
 	defer server.Close()
 	clientConn := dialPassthroughLifecycleClient(t, server)
 	defer func() { _ = clientConn.CloseNow() }()
@@ -747,12 +738,11 @@ func TestPassthroughLifecycle_FirstOutputTimeoutRemainsBounded(t *testing.T) {
 }
 
 func TestPassthroughLifecycle_ResponseCreatedTimeoutClosesWithoutFailover(t *testing.T) {
-
 	controlCtx, cancelControl := context.WithCancelCause(context.Background())
 	defer cancelControl(context.Canceled)
 	upstream := newStagedPassthroughConn()
 	upstream.Send(`{"type":"response.created","response":{"id":"resp_preamble","model":"gpt-5.1"}}`)
-	server, serverErr := startPassthroughLifecycleServer(t, controlCtx, newPassthroughLifecycleService(passthroughLifecycleConfig(), upstream), passthroughLifecycleAccount())
+	server, serverErr := startPassthroughLifecycleServer(t, controlCtx, newPassthroughLifecycleService(passthroughLifecycleConfig(), upstream), passthroughLifecycleProvider())
 	defer server.Close()
 	clientConn := dialPassthroughLifecycleClient(t, server)
 	defer func() { _ = clientConn.CloseNow() }()
@@ -779,12 +769,11 @@ func TestPassthroughLifecycle_ResponseCreatedTimeoutClosesWithoutFailover(t *tes
 }
 
 func TestPassthroughLifecycle_SecondTurnTimeoutIsNotFailoverSafe(t *testing.T) {
-
 	controlCtx, cancelControl := context.WithCancelCause(context.Background())
 	defer cancelControl(context.Canceled)
 	upstream := newStagedPassthroughConn()
 	upstream.Send(`{"type":"response.completed","response":{"id":"resp_first","model":"gpt-5.1","usage":{"input_tokens":1,"output_tokens":1}}}`)
-	server, serverErr := startPassthroughLifecycleServer(t, controlCtx, newPassthroughLifecycleService(passthroughLifecycleConfig(), upstream), passthroughLifecycleAccount())
+	server, serverErr := startPassthroughLifecycleServer(t, controlCtx, newPassthroughLifecycleService(passthroughLifecycleConfig(), upstream), passthroughLifecycleProvider())
 	defer server.Close()
 	clientConn := dialPassthroughLifecycleClient(t, server)
 	defer func() { _ = clientConn.CloseNow() }()
@@ -809,7 +798,7 @@ func TestPassthroughLifecycle_SecondTurnTimeoutIsNotFailoverSafe(t *testing.T) {
 	select {
 	case err := <-serverErr:
 		var failoverErr *forwardcore.UpstreamFailoverError
-		require.NotErrorAs(t, err, &failoverErr, "handler must not replay the initial request on another account for a later-turn timeout")
+		require.NotErrorAs(t, err, &failoverErr, "handler must not replay the initial request on another provider for a later-turn timeout")
 		var closeErr *OpenAIWSClientCloseError
 		require.ErrorAs(t, err, &closeErr)
 		require.Equal(t, coderws.StatusGoingAway, closeErr.StatusCode())

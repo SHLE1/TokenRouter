@@ -23,8 +23,8 @@ import (
 	"go.uber.org/zap"
 )
 
-// OpenAIAccountScheduleModel 保留实际输出模型、请求观测和账号规则的原优先级。
-func OpenAIAccountScheduleModel(c *gin.Context, account *gatewayprovider.ExecutionAccount, forwardModel string, requireCompact bool, result *forwardcore.OpenAIResult) string {
+// OpenAIProviderScheduleModel 保留实际输出模型、请求观测和提供商规则的原优先级。
+func OpenAIProviderScheduleModel(c *gin.Context, provider *gatewayprovider.ExecutionProvider, forwardModel string, requireCompact bool, result *forwardcore.OpenAIResult) string {
 	if result != nil {
 		if actual := strings.TrimSpace(result.UpstreamModel); actual != "" {
 			return actual
@@ -37,24 +37,24 @@ func OpenAIAccountScheduleModel(c *gin.Context, account *gatewayprovider.Executi
 			}
 		}
 	}
-	return gatewayprovider.ExecutionModelPolicy(account).OpenAIUpstream(forwardModel, requireCompact, false)
+	return gatewayprovider.ExecutionModelPolicy(provider).OpenAIUpstream(forwardModel, requireCompact, false)
 }
 
-// AppendOpenAIAccountProxyLogFields 只追加可公开定位代理的字段，避免把代理凭据写入日志。
-func AppendOpenAIAccountProxyLogFields(fields []zap.Field, account *gatewayprovider.ExecutionAccount) []zap.Field {
-	if account == nil {
+// AppendOpenAIProviderProxyLogFields 只追加可公开定位代理的字段，避免把代理凭据写入日志。
+func AppendOpenAIProviderProxyLogFields(fields []zap.Field, provider *gatewayprovider.ExecutionProvider) []zap.Field {
+	if provider == nil {
 		return fields
 	}
-	if account.Record.Proxy != nil {
+	if provider.Record.Proxy != nil {
 		return append(fields,
-			zap.Int64("proxy_id", account.Record.Proxy.ID),
-			zap.String("proxy_name", account.Record.Proxy.Name),
-			zap.String("proxy_host", account.Record.Proxy.Host),
-			zap.Int("proxy_port", account.Record.Proxy.Port),
+			zap.Int64("proxy_id", provider.Record.Proxy.ID),
+			zap.String("proxy_name", provider.Record.Proxy.Name),
+			zap.String("proxy_host", provider.Record.Proxy.Host),
+			zap.Int("proxy_port", provider.Record.Proxy.Port),
 		)
 	}
-	if account.Record.ProxyID != nil {
-		return append(fields, zap.Int64p("proxy_id", account.Record.ProxyID))
+	if provider.Record.ProxyID != nil {
+		return append(fields, zap.Int64p("proxy_id", provider.Record.ProxyID))
 	}
 	return fields
 }
@@ -108,7 +108,7 @@ func (h *Support) EnsureAnthropicErrorResponse(c *gin.Context, streamStarted boo
 	return true
 }
 
-func (h *Support) AcquireResponsesAccountSlot(
+func (h *Support) AcquireResponsesProviderSlot(
 	c *gin.Context,
 	groupID *int64,
 	sessionHash string,
@@ -117,14 +117,14 @@ func (h *Support) AcquireResponsesAccountSlot(
 	streamStarted *bool,
 	reqLog *zap.Logger,
 ) (func(), bool) {
-	release, result := h.AcquireOpenAIAccountSlot(c, groupID, sessionHash, selection, reqStream, streamStarted, reqLog, nil)
+	release, result := h.AcquireOpenAIProviderSlot(c, groupID, sessionHash, selection, reqStream, streamStarted, reqLog, nil)
 	return release, result
 }
 
-// AcquireOpenAIAccountSlot centralizes scheduler selection admission. The
+// AcquireOpenAIProviderSlot centralizes scheduler selection admission. The
 // optional error writer lets non-Responses endpoints retain their wire format
 // while sharing the same WaitPlan, cancellation, and release semantics.
-func (h *Support) AcquireOpenAIAccountSlot(
+func (h *Support) AcquireOpenAIProviderSlot(
 	c *gin.Context,
 	groupID *int64,
 	sessionHash string,
@@ -139,11 +139,11 @@ func (h *Support) AcquireOpenAIAccountSlot(
 			gatewayhttp.DefaultOpenAIErrorOutput().WriteStreamingErrorWithCode(c, status, errType, code, message, *streamStarted, false)
 		}
 	}
-	var projected *gatewayhttp.SelectedAccountSlot
-	if selection != nil && selection.Account != nil {
-		projected = &gatewayhttp.SelectedAccountSlot{CompleteBeforeRelease: reqStream && selection.Account.Record.Platform == capability.PlatformQoder, AccountID: selection.Account.Record.ID, Acquired: selection.Acquired, ReleaseFunc: selection.ReleaseFunc, WaitPlan: selection.WaitPlan}
+	var projected *gatewayhttp.SelectedProviderSlot
+	if selection != nil && selection.Provider != nil {
+		projected = &gatewayhttp.SelectedProviderSlot{CompleteBeforeRelease: reqStream && selection.Provider.Record.Platform == capability.PlatformQoder, ProviderID: selection.Provider.Record.ID, Acquired: selection.Acquired, ReleaseFunc: selection.ReleaseFunc, WaitPlan: selection.WaitPlan}
 	}
-	release, ok := gatewayhttp.AcquireSelectedAccountSlot(c, groupID, sessionHash, projected, reqStream, streamStarted, reqLog, writeError, h.Concurrency, h.Sticky, gatewayhttp.AccountSlotHooks{Acquired: gatewayhttp.MarkOpsAccountSlotAcquired, CapacityLimited: gatewayhttp.MarkOpsRoutingCapacityLimited})
+	release, ok := gatewayhttp.AcquireSelectedProviderSlot(c, groupID, sessionHash, projected, reqStream, streamStarted, reqLog, writeError, h.Concurrency, h.Sticky, gatewayhttp.ProviderSlotHooks{Acquired: gatewayhttp.MarkOpsProviderSlotAcquired, CapacityLimited: gatewayhttp.MarkOpsRoutingCapacityLimited})
 	if !ok {
 		return release, false
 	}
@@ -204,14 +204,14 @@ func (h *Support) EnsureOpenAIStreamReadErrorResponse(c *gin.Context, err error,
 	return true
 }
 
-func (h *Support) RecordCyberPolicyIfMarked(c *gin.Context, apiKey *apikey.APIKey, account *gatewayprovider.ExecutionAccount, subscription *billing.UserSubscription, model string, forwardErrored bool, cyberBlockArg any, pricingFields routing.PricingUsageFields, requestPayloadHash string, nativeCompaction ...bool) bool {
+func (h *Support) RecordCyberPolicyIfMarked(c *gin.Context, apiKey *apikey.APIKey, provider *gatewayprovider.ExecutionProvider, subscription *billing.UserSubscription, model string, forwardErrored bool, cyberBlockArg any, pricingFields routing.PricingUsageFields, requestPayloadHash string, nativeCompaction ...bool) bool {
 	mark := gatewayhttp.GetOpsCyberPolicy(c)
 	if mark == nil || c == nil {
 		return false
 	}
 	call := gatewayhttp.CyberPolicyCall{
 		Key:            apikey.CopyAPIKey(apiKey),
-		Account:        moderationAccountView(account),
+		Provider:       moderationProviderView(provider),
 		Model:          model,
 		ForwardErrored: forwardErrored,
 	}
@@ -234,12 +234,12 @@ func (h *Support) RecordCyberPolicyIfMarked(c *gin.Context, apiKey *apikey.APIKe
 		compaction = nativeCompaction[0]
 	}
 	platform := capability.PlatformOpenAI
-	if account != nil && strings.TrimSpace(account.Record.Platform) != "" {
-		platform = account.Record.Platform
+	if provider != nil && strings.TrimSpace(provider.Record.Platform) != "" {
+		platform = provider.Record.Platform
 	}
 	call.Usage = gatewayprovider.CaptureCyber(c.Request.Context(), gatewayprovider.CyberCapture{
 		APIKey:             apiKey,
-		Account:            gatewayprovider.ExecutionCompletionRecord(account),
+		Provider:           gatewayprovider.ExecutionCompletionRecord(provider),
 		Subscription:       subscription,
 		RequestID:          c.Writer.Header().Get("X-Request-Id"),
 		Model:              model,
@@ -289,11 +289,11 @@ func OpenAIRequestAllowsFailoverReplay(c *gin.Context) bool {
 	return !gatewayhttp.FailoverClientGone(c)
 }
 
-func EnsureOpenAIPoolModeSessionHash(sessionHash string, account *gatewayprovider.ExecutionAccount) string {
-	if sessionHash != "" || account == nil || !account.View().IsPoolMode() {
+func EnsureOpenAIPoolModeSessionHash(sessionHash string, provider *gatewayprovider.ExecutionProvider) string {
+	if sessionHash != "" || provider == nil || !provider.View().IsPoolMode() {
 		return sessionHash
 	}
-	// 为当前请求生成一次性粘性会话键，确保同账号重试不会重新负载均衡到其他账号。
+	// 为当前请求生成一次性粘性会话键，确保同提供商重试不会重新负载均衡到其他提供商。
 	return "openai-pool-retry-" + uuid.NewString()
 }
 

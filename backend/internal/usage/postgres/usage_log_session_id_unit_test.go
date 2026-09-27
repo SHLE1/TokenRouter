@@ -18,7 +18,7 @@ func newSessionIDUsageLog(sessionID *string) *usage.UsageLog {
 	return &usage.UsageLog{
 		UserID:       1,
 		APIKeyID:     2,
-		AccountID:    3,
+		ProviderID:   3,
 		RequestID:    "req-session-id",
 		Model:        "claude-3",
 		InputTokens:  10,
@@ -105,7 +105,7 @@ func TestUsageLogInsertQueries_IncludeSessionID(t *testing.T) {
 func TestPrepareUsageLogInsert_RequestedReasoningEffortArgWiring(t *testing.T) {
 	requested := "max"
 	prepared := prepareUsageLogInsert(&usage.UsageLog{
-		UserID: 1, APIKeyID: 2, AccountID: 3, RequestID: "req-effort", Model: "gpt-5",
+		UserID: 1, APIKeyID: 2, ProviderID: 3, RequestID: "req-effort", Model: "gpt-5",
 		RequestedReasoningEffort: &requested,
 	})
 	value, ok := prepared.args[len(prepared.args)-3].(sql.NullString)

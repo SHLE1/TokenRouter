@@ -25,7 +25,7 @@ type opsSystemLogCleanupRequest struct {
 	ClientRequestID string `json:"client_request_id"`
 	UserID          *int64 `json:"user_id"`
 	APIKeyID        *int64 `json:"api_key_id"`
-	AccountID       *int64 `json:"account_id"`
+	ProviderID      *int64 `json:"provider_id"`
 	Platform        string `json:"platform"`
 	Model           string `json:"model"`
 	Query           string `json:"q"`
@@ -84,13 +84,13 @@ func (h *OpsHandler) ListSystemLogs(c *gin.Context) {
 		}
 		filter.APIKeyID = &id
 	}
-	if v := strings.TrimSpace(c.Query("account_id")); v != "" {
+	if v := strings.TrimSpace(c.Query("provider_id")); v != "" {
 		id, parseErr := strconv.ParseInt(v, 10, 64)
 		if parseErr != nil || id <= 0 {
-			response.BadRequest(c, "Invalid account_id")
+			response.BadRequest(c, "Invalid provider_id")
 			return
 		}
-		filter.AccountID = &id
+		filter.ProviderID = &id
 	}
 
 	result, err := h.opsService.ListSystemLogs(c.Request.Context(), filter)
@@ -164,7 +164,7 @@ func (h *OpsHandler) CleanupSystemLogs(c *gin.Context) {
 		ClientRequestID: strings.TrimSpace(req.ClientRequestID),
 		UserID:          req.UserID,
 		APIKeyID:        req.APIKeyID,
-		AccountID:       req.AccountID,
+		ProviderID:      req.ProviderID,
 		Platform:        strings.TrimSpace(req.Platform),
 		Model:           strings.TrimSpace(req.Model),
 		Query:           strings.TrimSpace(req.Query),

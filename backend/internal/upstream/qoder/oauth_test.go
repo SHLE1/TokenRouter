@@ -112,7 +112,7 @@ func TestExchangeQoderCN20PATCompletesUserInfoAndStatus(t *testing.T) {
 			_ = json.NewEncoder(w).Encode(AuthStatusResult{
 				Name:             "Status User",
 				ID:               "cosy-uid",
-				AccountID:        "cosy-aid",
+				ProviderID:       "cosy-aid",
 				OrganizationID:   "org-cn",
 				OrganizationName: "CN Org",
 				UserType:         "enterprise_standard",

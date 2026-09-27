@@ -456,14 +456,14 @@ func (s *OpsAlertEvaluatorService) computeRuleMetric(
 			return float64(*systemMetrics.ConcurrencyQueueDepth), true
 		}
 		return 0, false
-	case "group_available_accounts":
+	case "group_available_providers":
 		if groupID == nil || *groupID <= 0 {
 			return 0, false
 		}
 		if s == nil || s.opsService == nil {
 			return 0, false
 		}
-		availability, err := s.opsService.GetAccountAvailability(ctx, platform, groupID)
+		availability, err := s.opsService.GetProviderAvailability(ctx, platform, groupID)
 		if err != nil || availability == nil {
 			return 0, false
 		}
@@ -478,31 +478,31 @@ func (s *OpsAlertEvaluatorService) computeRuleMetric(
 		if s == nil || s.opsService == nil {
 			return 0, false
 		}
-		availability, err := s.opsService.GetAccountAvailability(ctx, platform, groupID)
+		availability, err := s.opsService.GetProviderAvailability(ctx, platform, groupID)
 		if err != nil || availability == nil {
 			return 0, false
 		}
 		return computeGroupAvailableRatio(availability.Group), true
-	case "account_rate_limited_count":
+	case "provider_rate_limited_count":
 		if s == nil || s.opsService == nil {
 			return 0, false
 		}
-		availability, err := s.opsService.GetAccountAvailability(ctx, platform, groupID)
+		availability, err := s.opsService.GetProviderAvailability(ctx, platform, groupID)
 		if err != nil || availability == nil {
 			return 0, false
 		}
-		return float64(countAccountsByCondition(availability.Accounts, func(acc *AccountAvailability) bool {
+		return float64(countProvidersByCondition(availability.Providers, func(acc *ProviderAvailability) bool {
 			return acc.IsRateLimited
 		})), true
-	case "account_error_count":
+	case "provider_error_count":
 		if s == nil || s.opsService == nil {
 			return 0, false
 		}
-		availability, err := s.opsService.GetAccountAvailability(ctx, platform, groupID)
+		availability, err := s.opsService.GetProviderAvailability(ctx, platform, groupID)
 		if err != nil || availability == nil {
 			return 0, false
 		}
-		return float64(countAccountsByCondition(availability.Accounts, func(acc *AccountAvailability) bool {
+		return float64(countProvidersByCondition(availability.Providers, func(acc *ProviderAvailability) bool {
 			return acc.HasError && acc.TempUnschedulableUntil == nil
 		})), true
 	case "group_rate_limit_ratio":
@@ -512,39 +512,39 @@ func (s *OpsAlertEvaluatorService) computeRuleMetric(
 		if s == nil || s.opsService == nil {
 			return 0, false
 		}
-		availability, err := s.opsService.GetAccountAvailability(ctx, platform, groupID)
+		availability, err := s.opsService.GetProviderAvailability(ctx, platform, groupID)
 		if err != nil || availability == nil {
 			return 0, false
 		}
-		if availability.Group == nil || availability.Group.TotalAccounts <= 0 {
+		if availability.Group == nil || availability.Group.TotalProviders <= 0 {
 			return 0, true
 		}
-		return (float64(availability.Group.RateLimitCount) / float64(availability.Group.TotalAccounts)) * 100, true
-	case "account_error_ratio":
+		return (float64(availability.Group.RateLimitCount) / float64(availability.Group.TotalProviders)) * 100, true
+	case "provider_error_ratio":
 		if s == nil || s.opsService == nil {
 			return 0, false
 		}
-		availability, err := s.opsService.GetAccountAvailability(ctx, platform, groupID)
+		availability, err := s.opsService.GetProviderAvailability(ctx, platform, groupID)
 		if err != nil || availability == nil {
 			return 0, false
 		}
-		total := int64(len(availability.Accounts))
+		total := int64(len(availability.Providers))
 		if total <= 0 {
 			return 0, true
 		}
-		errorCount := countAccountsByCondition(availability.Accounts, func(acc *AccountAvailability) bool {
+		errorCount := countProvidersByCondition(availability.Providers, func(acc *ProviderAvailability) bool {
 			return acc.HasError && acc.TempUnschedulableUntil == nil
 		})
 		return (float64(errorCount) / float64(total)) * 100, true
-	case "overload_account_count":
+	case "overload_provider_count":
 		if s == nil || s.opsService == nil {
 			return 0, false
 		}
-		availability, err := s.opsService.GetAccountAvailability(ctx, platform, groupID)
+		availability, err := s.opsService.GetProviderAvailability(ctx, platform, groupID)
 		if err != nil || availability == nil {
 			return 0, false
 		}
-		return float64(countAccountsByCondition(availability.Accounts, func(acc *AccountAvailability) bool {
+		return float64(countProvidersByCondition(availability.Providers, func(acc *ProviderAvailability) bool {
 			return acc.IsOverloaded
 		})), true
 	case "proxy_expired_count":
@@ -1040,23 +1040,23 @@ func (l *slidingWindowLimiter) Allow(now time.Time) bool {
 }
 
 // computeGroupAvailableRatio returns the available percentage for a group.
-// Formula: (AvailableCount / TotalAccounts) * 100.
-// Returns 0 when TotalAccounts is 0.
+// Formula: (AvailableCount / TotalProviders) * 100.
+// Returns 0 when TotalProviders is 0.
 func computeGroupAvailableRatio(group *GroupAvailability) float64 {
-	if group == nil || group.TotalAccounts <= 0 {
+	if group == nil || group.TotalProviders <= 0 {
 		return 0
 	}
-	return (float64(group.AvailableCount) / float64(group.TotalAccounts)) * 100
+	return (float64(group.AvailableCount) / float64(group.TotalProviders)) * 100
 }
 
-// countAccountsByCondition counts accounts that satisfy the given condition.
-func countAccountsByCondition(accounts map[int64]*AccountAvailability, condition func(*AccountAvailability) bool) int64 {
-	if len(accounts) == 0 || condition == nil {
+// countProvidersByCondition counts providers that satisfy the given condition.
+func countProvidersByCondition(providers map[int64]*ProviderAvailability, condition func(*ProviderAvailability) bool) int64 {
+	if len(providers) == 0 || condition == nil {
 		return 0
 	}
 	var count int64
-	for _, account := range accounts {
-		if account != nil && condition(account) {
+	for _, provider := range providers {
+		if provider != nil && condition(provider) {
 			count++
 		}
 	}

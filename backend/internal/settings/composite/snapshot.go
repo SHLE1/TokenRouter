@@ -2,11 +2,11 @@
 package composite
 
 import (
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/creative"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/promptpolicy"
 	"github.com/TokenFlux/TokenRouter/internal/identity/contact"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/site"
 )
 
@@ -223,7 +223,7 @@ type Snapshot struct {
 	EnableIdentityPatch bool   `json:"enable_identity_patch"`
 	IdentityPatchPrompt string `json:"identity_patch_prompt"`
 
-	// Grok 模型映射策略；账号映射为空时使用这里的默认值。
+	// Grok 模型映射策略；提供商映射为空时使用这里的默认值。
 	GrokDefaultTextModel           string `json:"grok_default_text_model"`
 	GrokCrossClientModelMapEnabled bool   `json:"grok_cross_client_model_map_enabled"`
 	GrokDefaultBaseURLMode         string `json:"grok_default_base_url_mode"`
@@ -244,7 +244,7 @@ type Snapshot struct {
 
 	// Gateway forwarding behavior
 	OpenAITTFTMode                         string // Responses first_token_ms 统计口径（默认 semantic）
-	EnableFingerprintUnification           bool   // 是否统一 OAuth 账号的指纹头（默认 true）
+	EnableFingerprintUnification           bool   // 是否统一 OAuth 提供商的指纹头（默认 true）
 	EnableMetadataPassthrough              bool   // 是否透传客户端原始 metadata（默认 false）
 	EnableCCHSigning                       bool   // 已废弃 no-op：新版 CLI 取消 cch 签名后网关不再注入/签名 cch，开关无效果
 	EnableClaudeOAuthSystemPromptInjection bool   // 是否对 Claude OAuth mimic 路径注入 Claude Code system blocks（默认 true）
@@ -302,8 +302,8 @@ type Snapshot struct {
 	AdvancedSchedulerEffectiveStickyEscapeEnabled    bool
 	AdvancedSchedulerEffectiveStickyEscapeTTFTMs     string
 	AdvancedSchedulerEffectiveStickyEscapeErrorRate  string
-	// OpenAIQuotaAutoPauseSettings 是 OpenAI 账号配额自动暂停的全局默认阈值，存储在 ops_advanced_settings 中。
-	OpenAIQuotaAutoPauseSettings account.QuotaAutoPauseSettings
+	// OpenAIQuotaAutoPauseSettings 是 OpenAI 提供商配额自动暂停的全局默认阈值，存储在 ops_advanced_settings 中。
+	OpenAIQuotaAutoPauseSettings provider.QuotaAutoPauseSettings
 	// OpenAIQuotaAutoPauseSettingsSet 标记本次系统设置更新是否显式带了配额自动暂停配置，避免旧客户端误覆盖。
 	OpenAIQuotaAutoPauseSettingsSet bool
 
@@ -315,12 +315,12 @@ type Snapshot struct {
 	// 订阅到期提醒
 	SubscriptionExpiryNotifyEnabled bool
 
-	// 账号限额通知
-	AccountQuotaNotifyEnabled bool
-	AccountQuotaNotifyEmails  []contact.Entry
+	// 提供商限额通知
+	ProviderQuotaNotifyEnabled bool
+	ProviderQuotaNotifyEmails  []contact.Entry
 
-	// 系统全局账号自动停调阈值（key = platform，100 = disabled）
-	AccountSchedulingThresholds map[string]int `json:"account_scheduling_thresholds"`
+	// 系统全局提供商自动停调阈值（key = platform，100 = disabled）
+	ProviderSchedulingThresholds map[string]int `json:"provider_scheduling_thresholds"`
 
 	// 允许终端用户在用量页查看自己的失败请求
 	AllowUserViewErrorRequests bool

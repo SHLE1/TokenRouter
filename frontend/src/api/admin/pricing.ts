@@ -62,11 +62,11 @@ export interface ModelPricingEntry {
   time_pricing?: TimePricingConfig | null
 }
 
-export interface AccountStatsPricingRule {
+export interface ProviderStatsPricingRule {
   id?: number
   name: string
   group_ids: number[]
-  account_ids: number[]
+  provider_ids: number[]
   pricing: ModelPricingEntry[]
 }
 
@@ -78,7 +78,7 @@ export interface PricingConfig extends BillingSettings {
   billing_model_source: string // "requested" | "group_mapped" | "upstream"
   group_ids: number[]
   model_pricing: ModelPricingEntry[]
-  account_stats_pricing_rules: AccountStatsPricingRule[]
+  provider_stats_pricing_rules: ProviderStatsPricingRule[]
   created_at: string
   updated_at: string
 }
@@ -89,7 +89,7 @@ export interface CreatePricingConfigRequest extends Partial<BillingSettings> {
   group_ids?: number[]
   model_pricing?: ModelPricingEntry[]
   billing_model_source?: string
-  account_stats_pricing_rules?: AccountStatsPricingRule[]
+  provider_stats_pricing_rules?: ProviderStatsPricingRule[]
 }
 
 export interface UpdatePricingConfigRequest extends Partial<BillingSettings> {
@@ -99,7 +99,7 @@ export interface UpdatePricingConfigRequest extends Partial<BillingSettings> {
   group_ids?: number[]
   model_pricing?: ModelPricingEntry[]
   billing_model_source?: string
-  account_stats_pricing_rules?: AccountStatsPricingRule[]
+  provider_stats_pricing_rules?: ProviderStatsPricingRule[]
 }
 
 interface PaginatedResponse<T> {

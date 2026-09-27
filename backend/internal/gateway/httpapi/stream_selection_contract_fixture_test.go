@@ -17,11 +17,11 @@ import (
 // streamSelectionDiagnosticSource 为真实流执行后的下一次选择提供可调度查询投影。
 // 流夹具原本只提供传输字段；诊断 API 所需的分组与活动状态只补在查询副本中。
 type streamSelectionDiagnosticSource struct {
-	value gatewayprovider.ExecutionAccount
+	value gatewayprovider.ExecutionProvider
 	group routing.Group
 }
 
-func (s streamSelectionDiagnosticSource) GetAccount(context.Context, int64) (*gatewayprovider.ExecutionAccount, error) {
+func (s streamSelectionDiagnosticSource) GetProvider(context.Context, int64) (*gatewayprovider.ExecutionProvider, error) {
 	return &s.value, nil
 }
 
@@ -29,16 +29,16 @@ func (s streamSelectionDiagnosticSource) GetGroup(context.Context, int64) (*rout
 	return &s.group, nil
 }
 
-func (s streamSelectionDiagnosticSource) ListAccountsForSchedulerScoreFilter(context.Context, string, string, string, string, int64, string) ([]gatewayprovider.ExecutionAccount, error) {
-	return []gatewayprovider.ExecutionAccount{s.value}, nil
+func (s streamSelectionDiagnosticSource) ListProvidersForSchedulerScoreFilter(context.Context, string, string, string, string, int64, string) ([]gatewayprovider.ExecutionProvider, error) {
+	return []gatewayprovider.ExecutionProvider{s.value}, nil
 }
 
-func (s streamSelectionDiagnosticSource) ListSchedulableAccountsForAdvancedSchedulerScore(context.Context, *int64, string) ([]gatewayprovider.ExecutionAccount, error) {
-	return []gatewayprovider.ExecutionAccount{s.value}, nil
+func (s streamSelectionDiagnosticSource) ListSchedulableProvidersForAdvancedSchedulerScore(context.Context, *int64, string) ([]gatewayprovider.ExecutionProvider, error) {
+	return []gatewayprovider.ExecutionProvider{s.value}, nil
 }
 
 // selectionDiagnosticForStreamTest 通过实际诊断接口观察同一代理熔断实例。
-func selectionDiagnosticForStreamTest(t *testing.T, source *OpenAIResponsesExecutor, value *gatewayprovider.ExecutionAccount) (bool, string) {
+func selectionDiagnosticForStreamTest(t *testing.T, source *OpenAIResponsesExecutor, value *gatewayprovider.ExecutionProvider) (bool, string) {
 	t.Helper()
 	copy := *value
 	copy.Record.Status = "active"

@@ -32,7 +32,7 @@ func (f poolRoundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) {
 
 // poolTestOptions 替换实际网络，仍通过正式 Do 执行获取、结果通知和 Body 释放。
 func poolTestOptions(id int64, captured **http.Client) UpstreamRequestOptions {
-	return UpstreamRequestOptions{AccountID: id, Isolation: "account_proxy", MaxClients: 2, IdleTTL: 15 * time.Minute, Settings: upstreamTestSettings(), PrepareClient: func(client *http.Client) *http.Client {
+	return UpstreamRequestOptions{ProviderID: id, Isolation: "provider_proxy", MaxClients: 2, IdleTTL: 15 * time.Minute, Settings: upstreamTestSettings(), PrepareClient: func(client *http.Client) *http.Client {
 		if captured != nil {
 			*captured = client
 		}
@@ -48,6 +48,7 @@ func poolTestOptions(id int64, captured **http.Client) UpstreamRequestOptions {
 		return &clone
 	}}
 }
+
 func poolTestRequest(t *testing.T) *http.Request {
 	t.Helper()
 	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "https://example.com/", nil)
@@ -106,9 +107,9 @@ func TestUpstreamPoolFailureReleasesEntry(t *testing.T) {
 	require.NoError(t, resp.Body.Close())
 }
 
-// TestUpstreamPoolIsolationAndConfigurationChange 保留账号、代理和配置变化对复用身份的影响。
+// TestUpstreamPoolIsolationAndConfigurationChange 保留提供商、代理和配置变化对复用身份的影响。
 func TestUpstreamPoolIsolationAndConfigurationChange(t *testing.T) {
-	for _, isolation := range []string{"proxy", "account", "account_proxy"} {
+	for _, isolation := range []string{"proxy", "provider", "provider_proxy"} {
 		t.Run(isolation, func(t *testing.T) {
 			pool := NewUpstreamPool()
 			var first, again, other *http.Client
@@ -174,7 +175,7 @@ func TestUpstreamPoolIdleTTLDoesNotEvictActive(t *testing.T) {
 	a, err := pool.acquire(opts)
 	require.NoError(t, err)
 	atomic.StoreInt64(&a.lastUsed, time.Now().Add(-2*time.Minute).UnixNano())
-	opts.AccountID = 2
+	opts.ProviderID = 2
 	_, err = pool.acquire(opts)
 	require.NoError(t, err)
 	found := false

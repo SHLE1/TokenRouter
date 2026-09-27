@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/settings"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
 )
@@ -39,7 +39,7 @@ func (s betaSettingsFixture) GetValue(_ context.Context, key string) (string, er
 
 func newBetaRuntime(values map[string]string) *gateway.RuntimeSettings {
 	return gateway.NewRuntimeSettings(betaSettingsFixture{values: values}, settings.ErrSettingNotFound, func() *gateway.BetaPolicySettings {
-		return provider.GatewayBetaPolicy(anthropic.DefaultBetaPolicySettings())
+		return gatewayadapter.GatewayBetaPolicy(anthropic.DefaultBetaPolicySettings())
 	})
 }
 

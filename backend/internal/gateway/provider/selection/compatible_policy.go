@@ -26,7 +26,7 @@ func (s *Compatible) CheckGroupModelRestriction(ctx context.Context, groupID *in
 	return s.groupPolicies.IsModelRestricted(ctx, *groupID, billingModel)
 }
 
-// resolveGroupRoutingModel 返回 OpenAI 账号调度层使用的分组映射后模型。
+// resolveGroupRoutingModel 返回 OpenAI 提供商调度层使用的分组映射后模型。
 func (s *Compatible) resolveGroupRoutingModel(ctx context.Context, groupID *int64, requestedModel string) string {
 	if s == nil {
 		return requestedModel
@@ -36,14 +36,14 @@ func (s *Compatible) resolveGroupRoutingModel(ctx context.Context, groupID *int6
 	)
 }
 
-// isUpstreamRoutingModelRestrictedByGroup 使用已经完成分组映射及协议专用映射的账号层模型检查最终上游模型。
-func (s *Compatible) UpstreamRoutingModelRestricted(ctx context.Context, groupID int64, account *gatewayprovider.ExecutionAccount, routingModel string, requireCompact bool) bool {
+// isUpstreamRoutingModelRestrictedByGroup 使用已经完成分组映射及协议专用映射的提供商层模型检查最终上游模型。
+func (s *Compatible) UpstreamRoutingModelRestricted(ctx context.Context, groupID int64, provider *gatewayprovider.ExecutionProvider, routingModel string, requireCompact bool) bool {
 	if s.groupPolicies == nil {
 		return false
 	}
-	upstreamModel := gatewayprovider.ExecutionModelPolicy(account).UpstreamModel(ctx, routingModel)
+	upstreamModel := gatewayprovider.ExecutionModelPolicy(provider).UpstreamModel(ctx, routingModel)
 	if requireCompact {
-		upstreamModel = gatewayprovider.ExecutionModelPolicy(account).OpenAIUpstream(routingModel, true, requeststate.OpenAIHTTPPassthroughRoutingFromContext(ctx))
+		upstreamModel = gatewayprovider.ExecutionModelPolicy(provider).OpenAIUpstream(routingModel, true, requeststate.OpenAIHTTPPassthroughRoutingFromContext(ctx))
 	}
 	if upstreamModel == "" {
 		return false

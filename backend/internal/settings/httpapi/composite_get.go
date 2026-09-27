@@ -290,8 +290,8 @@ func (h *Handler) GetSettings(c *gin.Context) {
 		BalanceLowNotifyThreshold:                        settings.BalanceLowNotifyThreshold,
 		BalanceLowNotifyRechargeURL:                      settings.BalanceLowNotifyRechargeURL,
 		SubscriptionExpiryNotifyEnabled:                  settings.SubscriptionExpiryNotifyEnabled,
-		AccountQuotaNotifyEnabled:                        settings.AccountQuotaNotifyEnabled,
-		AccountQuotaNotifyEmails:                         identitydto.NotifyEmailEntriesFromIdentity(settings.AccountQuotaNotifyEmails),
+		ProviderQuotaNotifyEnabled:                       settings.ProviderQuotaNotifyEnabled,
+		ProviderQuotaNotifyEmails:                        identitydto.NotifyEmailEntriesFromIdentity(settings.ProviderQuotaNotifyEmails),
 		PaymentEnabled:                                   paymentCfg.Enabled,
 		PaymentMinAmount:                                 paymentCfg.MinAmount,
 		PaymentMaxAmount:                                 paymentCfg.MaxAmount,
@@ -316,7 +316,7 @@ func (h *Handler) GetSettings(c *gin.Context) {
 		PaymentCancelRateLimitMode:                       paymentCfg.CancelRateLimitMode,
 		PaymentAlipayForceQRCode:                         paymentCfg.AlipayForceQRCode,
 		PaymentAlipayMobilePrecreateDeepLink:             paymentCfg.AlipayMobilePrecreateDeepLink,
-		AccountSchedulingThresholds:                      settings.AccountSchedulingThresholds,
+		ProviderSchedulingThresholds:                     settings.ProviderSchedulingThresholds,
 		AllowUserViewErrorRequests:                       settings.AllowUserViewErrorRequests,
 	}
 

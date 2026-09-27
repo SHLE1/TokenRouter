@@ -90,7 +90,7 @@ func TestCreativeWorkerRuntimeStatus(t *testing.T) {
 	select {
 	case <-executor.overlapped:
 	case <-time.After(2 * time.Second):
-		t.Fatal("两个创作台任务未同时进入 provider")
+		t.Fatal("两个创作台任务未同时进入 platform")
 	}
 	require.Eventually(t, func() bool {
 		status := runtime.Status()
@@ -161,16 +161,16 @@ func (r *parallelCreativeRunRepo) GetCreativeRunByRunID(ctx context.Context, run
 	return cloneCreativeParallelValue(v), nil
 }
 
-func (r *parallelCreativeRunRepo) MarkCreativeRunRunning(ctx context.Context, runID string, accountID int64, now time.Time) error {
+func (r *parallelCreativeRunRepo) MarkCreativeRunRunning(ctx context.Context, runID string, providerID int64, now time.Time) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	return r.creativeFakeRunRepo.MarkCreativeRunRunning(ctx, runID, accountID, now)
+	return r.creativeFakeRunRepo.MarkCreativeRunRunning(ctx, runID, providerID, now)
 }
 
-func (r *parallelCreativeRunRepo) SetCreativeRunExecution(ctx context.Context, runID string, accountID int64, provider string, now time.Time) error {
+func (r *parallelCreativeRunRepo) SetCreativeRunExecution(ctx context.Context, runID string, providerID int64, platform string, now time.Time) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	return r.creativeFakeRunRepo.SetCreativeRunExecution(ctx, runID, accountID, provider, now)
+	return r.creativeFakeRunRepo.SetCreativeRunExecution(ctx, runID, providerID, platform, now)
 }
 
 func (r *parallelCreativeRunRepo) MarkCreativeRunSucceeded(ctx context.Context, runID string, actualCost float64, now time.Time) error {
@@ -242,7 +242,7 @@ func (c *parallelCreativeUserCache) ReleaseUserSlot(context.Context, int64, stri
 	return nil
 }
 
-// overlappingCreativeExecutor 在两个 provider 调用同时进入时通知测试，然后等待统一放行。
+// overlappingCreativeExecutor 在两个 platform 调用同时进入时通知测试，然后等待统一放行。
 type overlappingCreativeExecutor struct {
 	active      atomic.Int64
 	overlapped  chan struct{}
@@ -253,7 +253,7 @@ type overlappingCreativeExecutor struct {
 
 func (e *overlappingCreativeExecutor) Prepare(_ context.Context, run creative.CreativeRun) (*creative.CreativeExecution, error) {
 	return &creative.CreativeExecution{
-		AccountID: 55,
+		ProviderID: 55,
 		Target: creativeFixtureTarget(func(ctx context.Context, run creative.CreativeRun, payload creative.CreativeRunPayload) (*creative.CreativeExecuteResult, error) {
 			return e.Execute(ctx, run, payload, nil)
 		}),
@@ -274,8 +274,8 @@ func (e *overlappingCreativeExecutor) Execute(ctx context.Context, _ creative.Cr
 	}
 	e.active.Add(-1)
 	return &creative.CreativeExecuteResult{
-		Outputs:   []creative.CreativeOutput{{Index: 0, Bytes: []byte("img"), Mime: "image/png"}},
-		AccountID: 55,
+		Outputs:    []creative.CreativeOutput{{Index: 0, Bytes: []byte("img"), Mime: "image/png"}},
+		ProviderID: 55,
 	}, nil
 }
 
@@ -287,7 +287,7 @@ func (e *overlappingCreativeExecutor) allow() {
 	e.releaseOnce.Do(func() { close(e.release) })
 }
 
-// TestCreativeWorkerRuntimeParallelProviderExecution 验证两个 worker 可让同一用户的两个任务并行进入 provider。
+// TestCreativeWorkerRuntimeParallelProviderExecution 验证两个 worker 可让同一用户的两个任务并行进入 platform。
 func TestCreativeWorkerRuntimeParallelProviderExecution(t *testing.T) {
 	fixture := newCreativeWorkerFixture()
 	seedCreativeRun(fixture, "crun_parallel_1", true)
@@ -324,7 +324,7 @@ func TestCreativeWorkerRuntimeParallelProviderExecution(t *testing.T) {
 	select {
 	case <-executor.overlapped:
 	case <-time.After(2 * time.Second):
-		t.Fatal("两个创作台任务未同时进入 provider")
+		t.Fatal("两个创作台任务未同时进入 platform")
 	}
 	executor.allow()
 	// 并行成功契约等待两条链完成，再单独验证停止；停止取消由专门回归覆盖。
@@ -428,10 +428,10 @@ func (r *parallelCreativeRunRepo) SetCreativeRunProvisioningPhase(ctx context.Co
 }
 
 // 并行替身的所有仓储入口共用同一把锁。
-func (r *parallelCreativeRunRepo) MarkCreativeRunProviderSucceeded(ctx context.Context, runID string, accountID int64, now time.Time) error {
+func (r *parallelCreativeRunRepo) MarkCreativeRunProviderSucceeded(ctx context.Context, runID string, providerID int64, now time.Time) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	return r.creativeFakeRunRepo.MarkCreativeRunProviderSucceeded(ctx, runID, accountID, now)
+	return r.creativeFakeRunRepo.MarkCreativeRunProviderSucceeded(ctx, runID, providerID, now)
 }
 
 // 并行替身的所有仓储入口共用同一把锁。
@@ -455,10 +455,10 @@ func cloneCreativeParallelValue[T any](v T) T {
 }
 
 // 新增闭合操作也必须参与并行替身的同一同步边界。
-func (r *parallelCreativeRunRepo) RecordProviderOutcome(ctx context.Context, id string, accountID int64, outputs []creative.CreativeRunOutput, now time.Time) error {
+func (r *parallelCreativeRunRepo) RecordProviderOutcome(ctx context.Context, id string, providerID int64, outputs []creative.CreativeRunOutput, now time.Time) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	return r.creativeFakeRunRepo.RecordProviderOutcome(ctx, id, accountID, outputs, now)
+	return r.creativeFakeRunRepo.RecordProviderOutcome(ctx, id, providerID, outputs, now)
 }
 
 func (r *parallelCreativeRunRepo) CompleteProviderOutcome(ctx context.Context, id string, cost float64, lost bool, now time.Time) error {

@@ -572,8 +572,8 @@ type ContentModerationCyberWarning struct {
 	APIKeyName      string                        `json:"api_key_name"`
 	GroupID         *int64                        `json:"group_id,omitempty"`
 	GroupName       string                        `json:"group_name"`
-	AccountID       *int64                        `json:"account_id,omitempty"`
-	AccountName     string                        `json:"account_name"`
+	ProviderID      *int64                        `json:"provider_id,omitempty"`
+	ProviderName    string                        `json:"provider_name"`
 	Endpoint        string                        `json:"endpoint"`
 	Model           string                        `json:"model"`
 	UpstreamStatus  int                           `json:"upstream_status"`
@@ -613,8 +613,8 @@ type ContentModerationCyberWarningInput struct {
 	APIKeyName     string
 	GroupID        *int64
 	GroupName      string
-	AccountID      int64
-	AccountName    string
+	ProviderID     int64
+	ProviderName   string
 	Endpoint       string
 	Model          string
 	UpstreamStatus int
@@ -638,7 +638,7 @@ type ContentModerationLogFilter struct {
 type ContentModerationCyberWarningFilter struct {
 	Pagination pagination.PaginationParams
 	UserID     *int64
-	AccountID  *int64
+	ProviderID *int64
 	Search     string
 	From       *time.Time
 	To         *time.Time
@@ -646,12 +646,12 @@ type ContentModerationCyberWarningFilter struct {
 
 // ContentModerationCyberSummary 是 cyber 警告统计总览。
 type ContentModerationCyberSummary struct {
-	Events    int64                                  `json:"events"`
-	Requests  int64                                  `json:"requests"`
-	Users     int64                                  `json:"users"`
-	Accounts  int64                                  `json:"accounts"`
-	ByUser    []ContentModerationCyberUserSummary    `json:"by_user"`
-	ByAccount []ContentModerationCyberAccountSummary `json:"by_account"`
+	Events     int64                                   `json:"events"`
+	Requests   int64                                   `json:"requests"`
+	Users      int64                                   `json:"users"`
+	Providers  int64                                   `json:"providers"`
+	ByUser     []ContentModerationCyberUserSummary     `json:"by_user"`
+	ByProvider []ContentModerationCyberProviderSummary `json:"by_provider"`
 }
 
 // ContentModerationCyberUserSummary 是按用户聚合的 cyber 警告统计。
@@ -663,13 +663,13 @@ type ContentModerationCyberUserSummary struct {
 	LastSeen  string `json:"last_seen"`
 }
 
-// ContentModerationCyberAccountSummary 是按上游账号聚合的 cyber 警告统计。
-type ContentModerationCyberAccountSummary struct {
-	Count       int64  `json:"count"`
-	AccountID   *int64 `json:"account_id,omitempty"`
-	AccountName string `json:"account_name"`
-	Users       int64  `json:"users"`
-	LastSeen    string `json:"last_seen"`
+// ContentModerationCyberProviderSummary 是按上游提供商聚合的 cyber 警告统计。
+type ContentModerationCyberProviderSummary struct {
+	Count        int64  `json:"count"`
+	ProviderID   *int64 `json:"provider_id,omitempty"`
+	ProviderName string `json:"provider_name"`
+	Users        int64  `json:"users"`
+	LastSeen     string `json:"last_seen"`
 }
 
 type ContentModerationCleanupResult struct {
@@ -2871,7 +2871,7 @@ func (s *ContentModerationService) persistContentModerationLog(ctx context.Conte
 	}
 	autoBanJustApplied := false
 	if applySideEffects {
-		autoBanJustApplied = s.applyFlaggedAccountSideEffects(ctx, cfg, log)
+		autoBanJustApplied = s.applyFlaggedProviderSideEffects(ctx, cfg, log)
 		s.sendFlaggedNotificationSideEffects(ctx, cfg, log, autoBanJustApplied)
 	}
 	if len(log.Media) > 0 {
@@ -2885,7 +2885,7 @@ func (s *ContentModerationService) persistContentModerationLog(ctx context.Conte
 	}
 }
 
-func (s *ContentModerationService) applyFlaggedAccountSideEffects(ctx context.Context, cfg *ContentModerationConfig, log *ContentModerationLog) bool {
+func (s *ContentModerationService) applyFlaggedProviderSideEffects(ctx context.Context, cfg *ContentModerationConfig, log *ContentModerationLog) bool {
 	if s == nil || cfg == nil || log == nil || !log.Flagged || log.UserID == nil || *log.UserID <= 0 {
 		return false
 	}
@@ -2963,9 +2963,9 @@ func (s *ContentModerationService) buildCyberWarning(input ContentModerationCybe
 	if input.APIKeyID > 0 {
 		apiKeyID = &input.APIKeyID
 	}
-	var accountID *int64
-	if input.AccountID > 0 {
-		accountID = &input.AccountID
+	var providerID *int64
+	if input.ProviderID > 0 {
+		providerID = &input.ProviderID
 	}
 	content := input.Content
 	if content.IsEmpty() && strings.TrimSpace(input.PromptExcerpt) != "" {
@@ -2990,8 +2990,8 @@ func (s *ContentModerationService) buildCyberWarning(input ContentModerationCybe
 		APIKeyName:     strings.TrimSpace(input.APIKeyName),
 		GroupID:        cloneInt64Ptr(input.GroupID),
 		GroupName:      strings.TrimSpace(input.GroupName),
-		AccountID:      accountID,
-		AccountName:    strings.TrimSpace(input.AccountName),
+		ProviderID:     providerID,
+		ProviderName:   strings.TrimSpace(input.ProviderName),
 		Endpoint:       strings.TrimSpace(input.Endpoint),
 		Model:          strings.TrimSpace(input.Model),
 		UpstreamStatus: input.UpstreamStatus,

@@ -8,7 +8,7 @@ import (
 )
 
 // StripThinkingSignaturesJSON 从 Claude 历史记录中移除 thinking.signature，
-// 使另一个 Grok OAuth 账号在解密失败后仍能接收多轮工具续接。没有修改时返回 false。
+// 使另一个 Grok OAuth 提供商在解密失败后仍能接收多轮工具续接。没有修改时返回 false。
 func StripThinkingSignaturesJSON(body []byte) ([]byte, bool) {
 	if len(body) == 0 || !bytes.Contains(body, []byte(`"signature"`)) {
 		return body, false

@@ -1,0 +1,9 @@
+// 本文件维护 provider 的所属能力；兼容入口复用唯一实现。
+package provider
+
+// 持久化键沿用现有格式，旧平台消费者通过别名访问。
+const (
+	CNUsageMonitorSnapshotExtraKey   = "cn_usage_monitor_snapshot"
+	UpstreamUsageQueryExtraKey       = "upstream_usage_query"
+	OllamaCloudUsageSnapshotExtraKey = "ollama_cloud_usage_snapshot"
+)

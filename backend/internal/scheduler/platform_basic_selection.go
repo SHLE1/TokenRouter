@@ -6,32 +6,32 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
 // 基础平台选择保留自己的 LRU、粘性溢出和复核顺序，不合并高级调度策略。
-func (s *PlatformSelector) selectBasicOnlyRoutes(ctx context.Context, groupID *int64, platform string, sessionHash string, requestedModel string, routingModel string, excludedIDs map[int64]struct{}, requireCompact bool, stickyAccountID int64, requiredCapability account.OpenAIEndpointCapability) (*FlowAccount, error) {
+func (s *PlatformSelector) selectBasicOnlyRoutes(ctx context.Context, groupID *int64, platform string, sessionHash string, requestedModel string, routingModel string, excludedIDs map[int64]struct{}, requireCompact bool, stickyProviderID int64, requiredCapability provider.OpenAIEndpointCapability) (*FlowProvider, error) {
 	platform = strings.TrimSpace(platform)
 	if s.ports.CheckPricing(ctx, groupID, requestedModel) {
 		s.diagnostics.event("warn", "group model restriction blocked request",
 			"group_id", derefGroupID(groupID),
 			"model", requestedModel)
-		return nil, fmt.Errorf("%w supporting model: %s (group model restriction)", ErrNoAvailableAccounts, requestedModel)
+		return nil, fmt.Errorf("%w supporting model: %s (group model restriction)", ErrNoAvailableProviders, requestedModel)
 	}
 
-	if account := s.tryBasicSticky(ctx, groupID, platform, sessionHash, requestedModel, routingModel, excludedIDs, requireCompact, stickyAccountID, requiredCapability); account != nil {
-		return account, nil
+	if provider := s.tryBasicSticky(ctx, groupID, platform, sessionHash, requestedModel, routingModel, excludedIDs, requireCompact, stickyProviderID, requiredCapability); provider != nil {
+		return provider, nil
 	}
 
-	accounts, err := s.ports.ListCandidates(ctx, groupID, platform)
+	providers, err := s.ports.ListCandidates(ctx, groupID, platform)
 	if err != nil {
-		return nil, fmt.Errorf("query accounts failed: %w", err)
+		return nil, fmt.Errorf("query providers failed: %w", err)
 	}
 
-	selected, compactBlocked := s.SelectBestBasic(ctx, groupID, platform, accounts, requestedModel, routingModel, excludedIDs, requireCompact, requiredCapability)
+	selected, compactBlocked := s.SelectBestBasic(ctx, groupID, platform, providers, requestedModel, routingModel, excludedIDs, requireCompact, requiredCapability)
 
 	if selected == nil {
-		return nil, s.ports.Unavailable(ctx, requestedModel, routingModel, compactBlocked, "", accounts)
+		return nil, s.ports.Unavailable(ctx, requestedModel, routingModel, compactBlocked, "", providers)
 	}
 
 	hydrated, err := s.ports.Hydrate(ctx, selected)
@@ -46,81 +46,81 @@ func (s *PlatformSelector) selectBasicOnlyRoutes(ctx context.Context, groupID *i
 	return hydrated, nil
 }
 
-func (s *PlatformSelector) tryBasicSticky(ctx context.Context, groupID *int64, platform string, sessionHash, requestedModel string, routingModel string, excludedIDs map[int64]struct{}, requireCompact bool, stickyAccountID int64, requiredCapability account.OpenAIEndpointCapability) *FlowAccount {
+func (s *PlatformSelector) tryBasicSticky(ctx context.Context, groupID *int64, platform string, sessionHash, requestedModel string, routingModel string, excludedIDs map[int64]struct{}, requireCompact bool, stickyProviderID int64, requiredCapability provider.OpenAIEndpointCapability) *FlowProvider {
 	if sessionHash == "" {
 		return nil
 	}
 	platform = strings.TrimSpace(platform)
 
-	accountID := stickyAccountID
-	if accountID <= 0 {
+	providerID := stickyProviderID
+	if providerID <= 0 {
 		var err error
-		accountID, err = s.ports.GetSticky(ctx, groupID, sessionHash)
-		if err != nil || accountID <= 0 {
+		providerID, err = s.ports.GetSticky(ctx, groupID, sessionHash)
+		if err != nil || providerID <= 0 {
 			return nil
 		}
 	}
 
-	if _, excluded := excludedIDs[accountID]; excluded {
+	if _, excluded := excludedIDs[providerID]; excluded {
 		return nil
 	}
 
-	account, err := s.ports.GetSchedulable(ctx, accountID)
+	provider, err := s.ports.GetSchedulable(ctx, providerID)
 	if err != nil {
 		return nil
 	}
 
-	// 检查账号是否需要清理粘性会话
+	// 检查提供商是否需要清理粘性会话
 	// Check if sticky session should be cleared
-	if s.ports.ClearSticky(account, routingModel) || !s.ports.MatchesGroup(account, groupID) {
+	if s.ports.ClearSticky(provider, routingModel) || !s.ports.MatchesGroup(provider, groupID) {
 		_ = s.ports.DeleteSticky(ctx, groupID, sessionHash)
 		return nil
 	}
 
-	// 验证账号是否可用于当前请求
-	// Verify account is usable for current request
-	if !s.ports.BasicEligible(ctx, account, platform, routingModel, false, requiredCapability) {
+	// 验证提供商是否可用于当前请求
+	// Verify provider is usable for current request
+	if !s.ports.BasicEligible(ctx, provider, platform, routingModel, false, requiredCapability) {
 		return nil
 	}
-	if !s.ports.PrivacyAllowed(ctx, groupID, account) {
+	if !s.ports.PrivacyAllowed(ctx, groupID, provider) {
 		return nil
 	}
-	if !s.ports.ShadowAllowed(ctx, account) || !s.ports.ParentHealthy(account, s.ports.ParentLookup(ctx)) {
+	if !s.ports.ShadowAllowed(ctx, provider) || !s.ports.ParentHealthy(provider, s.ports.ParentLookup(ctx)) {
 		_ = s.ports.DeleteSticky(ctx, groupID, sessionHash)
 		return nil
 	}
-	if s.ports.RuntimeBlocked(account, routingModel) {
+	if s.ports.RuntimeBlocked(provider, routingModel) {
 		_ = s.ports.DeleteSticky(ctx, groupID, sessionHash)
 		return nil
 	}
-	account = s.ports.Recheck(ctx, account, groupID, platform, routingModel, requireCompact, requiredCapability)
-	if account == nil || !s.ports.MatchesGroup(account, groupID) {
+	provider = s.ports.Recheck(ctx, provider, groupID, platform, routingModel, requireCompact, requiredCapability)
+	if provider == nil || !s.ports.MatchesGroup(provider, groupID) {
 		_ = s.ports.DeleteSticky(ctx, groupID, sessionHash)
 		return nil
 	}
 	if groupID != nil && s.ports.NeedsGroupCheck(ctx, groupID) &&
-		s.ports.GroupModelRestricted(ctx, *groupID, account, routingModel, requireCompact) {
+		s.ports.GroupModelRestricted(ctx, *groupID, provider, routingModel, requireCompact) {
 		_ = s.ports.DeleteSticky(ctx, groupID, sessionHash)
 		return nil
 	}
 
-	// 刷新会话 TTL 并返回账号
-	// Refresh session TTL and return account
+	// 刷新会话 TTL 并返回提供商
+	// Refresh session TTL and return provider
 	_ = s.ports.RefreshSticky(ctx, groupID, sessionHash, s.ports.BasicStickyTTL)
-	return account
+	return provider
 }
 
-func (s *PlatformSelector) SelectBestBasic(ctx context.Context, groupID *int64, platform string, accounts []FlowAccount, requestedModel string, routingModel string, excludedIDs map[int64]struct{}, requireCompact bool, requiredCapability account.OpenAIEndpointCapability) (*FlowAccount, bool) {
+func (s *PlatformSelector) SelectBestBasic(ctx context.Context, groupID *int64, platform string, providers []FlowProvider, requestedModel string, routingModel string, excludedIDs map[int64]struct{}, requireCompact bool, requiredCapability provider.OpenAIEndpointCapability) (*FlowProvider, bool) {
 	platform = strings.TrimSpace(platform)
 	compactBlocked := false
 	needsUpstreamCheck := s.ports.NeedsGroupCheck(ctx, groupID)
-	eligible := make([]*FlowAccount, 0, len(accounts))
+	eligible := make([]*FlowProvider, 0, len(providers))
 
-	for i := range accounts {
-		acc := &accounts[i]
+	for i := range providers {
+		acc := &providers[i]
 
-		// 跳过被排除的账号
-		// Skip excluded accounts
+		// 跳过被排除的提供商
+		// Skip excluded providers
 		if _, excluded := excludedIDs[acc.ID]; excluded {
 			continue
 		}
@@ -157,7 +157,7 @@ func (s *PlatformSelector) SelectBestBasic(ctx context.Context, groupID *int64, 
 	return eligible[0], compactBlocked
 }
 
-func (s *PlatformSelector) isBetterBasic(candidate, current *FlowAccount) bool {
+func (s *PlatformSelector) isBetterBasic(candidate, current *FlowProvider) bool {
 	// 优先级更高（数值更小）
 	// Higher priority (lower value)
 	if candidate.Priority < current.Priority {
@@ -185,105 +185,105 @@ func (s *PlatformSelector) isBetterBasic(candidate, current *FlowAccount) bool {
 	}
 }
 
-func (s *PlatformSelector) selectBasicRoutes(ctx context.Context, groupID *int64, platform string, sessionHash string, requestedModel string, routingModel string, excludedIDs map[int64]struct{}, requireCompact bool, requiredCapability account.OpenAIEndpointCapability) (*FlowSelection, error) {
+func (s *PlatformSelector) selectBasicRoutes(ctx context.Context, groupID *int64, platform string, sessionHash string, requestedModel string, routingModel string, excludedIDs map[int64]struct{}, requireCompact bool, requiredCapability provider.OpenAIEndpointCapability) (*FlowSelection, error) {
 	platform = strings.TrimSpace(platform)
 	if s.ports.CheckPricing(ctx, groupID, requestedModel) {
 		s.diagnostics.event("warn", "group model restriction blocked request",
 			"group_id", derefGroupID(groupID),
 			"model", requestedModel)
-		return nil, fmt.Errorf("%w supporting model: %s (group model restriction)", ErrNoAvailableAccounts, requestedModel)
+		return nil, fmt.Errorf("%w supporting model: %s (group model restriction)", ErrNoAvailableProviders, requestedModel)
 	}
 
 	cfg := s.ports.Options()
 	needsUpstreamCheck := s.ports.NeedsGroupCheck(ctx, groupID)
-	var stickyAccountID int64
+	var stickyProviderID int64
 	if sessionHash != "" && s.ports.CacheAvailable {
-		if accountID, err := s.ports.GetSticky(ctx, groupID, sessionHash); err == nil {
-			stickyAccountID = accountID
+		if providerID, err := s.ports.GetSticky(ctx, groupID, sessionHash); err == nil {
+			stickyProviderID = providerID
 		}
 	}
 	if s.concurrency == nil || !cfg.LoadBatchEnabled {
-		account, err := s.selectBasicOnlyRoutes(ctx, groupID, platform, sessionHash, requestedModel, routingModel, excludedIDs, requireCompact, stickyAccountID, requiredCapability)
+		provider, err := s.selectBasicOnlyRoutes(ctx, groupID, platform, sessionHash, requestedModel, routingModel, excludedIDs, requireCompact, stickyProviderID, requiredCapability)
 		if err != nil {
 			return nil, err
 		}
-		if !s.ports.PrivacyAllowed(ctx, groupID, account) {
+		if !s.ports.PrivacyAllowed(ctx, groupID, provider) {
 			return nil, s.ports.Unavailable(ctx, requestedModel, routingModel, false, "", nil)
 		}
-		result, err := s.ports.Acquire(ctx, account.ID, account.Concurrency)
+		result, err := s.ports.Acquire(ctx, provider.ID, provider.Concurrency)
 		if err == nil && result != nil && result.Acquired {
-			return s.ports.CompleteAcquired(ctx, account, result.ReleaseFunc)
+			return s.ports.CompleteAcquired(ctx, provider, result.ReleaseFunc)
 		}
-		if stickyAccountID > 0 && stickyAccountID == account.ID && s.concurrency != nil {
-			waitingCount, _ := s.concurrency.GetAccountWaitingCount(ctx, account.ID)
+		if stickyProviderID > 0 && stickyProviderID == provider.ID && s.concurrency != nil {
+			waitingCount, _ := s.concurrency.GetProviderWaitingCount(ctx, provider.ID)
 			if waitingCount < cfg.StickySessionMaxWaiting {
-				return s.ports.Complete(ctx, account, false, nil, &AccountWaitPlan{
-					AccountID:      account.ID,
-					MaxConcurrency: account.Concurrency,
+				return s.ports.Complete(ctx, provider, false, nil, &ProviderWaitPlan{
+					ProviderID:     provider.ID,
+					MaxConcurrency: provider.Concurrency,
 					Timeout:        cfg.StickySessionWaitTimeout,
 					MaxWaiting:     cfg.StickySessionMaxWaiting,
 				})
 			}
 		}
-		return s.ports.Complete(ctx, account, false, nil, &AccountWaitPlan{
-			AccountID:      account.ID,
-			MaxConcurrency: account.Concurrency,
+		return s.ports.Complete(ctx, provider, false, nil, &ProviderWaitPlan{
+			ProviderID:     provider.ID,
+			MaxConcurrency: provider.Concurrency,
 			Timeout:        cfg.FallbackWaitTimeout,
 			MaxWaiting:     cfg.FallbackMaxWaiting,
 		})
 	}
 
-	accounts, err := s.ports.ListCandidates(ctx, groupID, platform)
+	providers, err := s.ports.ListCandidates(ctx, groupID, platform)
 	if err != nil {
 		return nil, err
 	}
-	if len(accounts) == 0 {
+	if len(providers) == 0 {
 		return nil, s.ports.Unavailable(
 			ctx,
 			requestedModel,
 			routingModel,
 			false,
 			PlatformFilterStats{}.Summary(""),
-			accounts,
+			providers,
 		)
 	}
 
-	isExcluded := func(accountID int64) bool {
+	isExcluded := func(providerID int64) bool {
 		if excludedIDs == nil {
 			return false
 		}
-		_, excluded := excludedIDs[accountID]
+		_, excluded := excludedIDs[providerID]
 		return excluded
 	}
 
-	// 粘性账号的有界等待队列已满时，第二层可以为当前请求临时借用其它账号；
-	// 该容量溢出只对单次请求有效，不能把整段会话的持久绑定迁移到冷缓存账号。
+	// 粘性提供商的有界等待队列已满时，第二层可以为当前请求临时借用其它提供商；
+	// 该容量溢出只对单次请求有效，不能把整段会话的持久绑定迁移到冷缓存提供商。
 	stickySpillover := false
 	if sessionHash != "" {
-		accountID := stickyAccountID
-		if accountID > 0 && !isExcluded(accountID) {
-			account, err := s.ports.GetSchedulable(ctx, accountID)
+		providerID := stickyProviderID
+		if providerID > 0 && !isExcluded(providerID) {
+			provider, err := s.ports.GetSchedulable(ctx, providerID)
 			if err == nil {
-				clearSticky := s.ports.ClearSticky(account, routingModel) || !s.ports.MatchesGroup(account, groupID)
+				clearSticky := s.ports.ClearSticky(provider, routingModel) || !s.ports.MatchesGroup(provider, groupID)
 				if clearSticky {
 					_ = s.ports.DeleteSticky(ctx, groupID, sessionHash)
 				}
-				if !clearSticky && s.ports.BasicEligible(ctx, account, platform, routingModel, false, requiredCapability) && s.ports.PrivacyAllowed(ctx, groupID, account) {
-					account = s.ports.Recheck(ctx, account, groupID, platform, routingModel, requireCompact, requiredCapability)
-					if account == nil {
+				if !clearSticky && s.ports.BasicEligible(ctx, provider, platform, routingModel, false, requiredCapability) && s.ports.PrivacyAllowed(ctx, groupID, provider) {
+					provider = s.ports.Recheck(ctx, provider, groupID, platform, routingModel, requireCompact, requiredCapability)
+					if provider == nil {
 						_ = s.ports.DeleteSticky(ctx, groupID, sessionHash)
-					} else if !s.ports.MatchesGroup(account, groupID) {
+					} else if !s.ports.MatchesGroup(provider, groupID) {
 						_ = s.ports.DeleteSticky(ctx, groupID, sessionHash)
-					} else if s.ports.RuntimeBlocked(account, routingModel) {
+					} else if s.ports.RuntimeBlocked(provider, routingModel) {
 						_ = s.ports.DeleteSticky(ctx, groupID, sessionHash)
-					} else if needsUpstreamCheck && s.ports.GroupModelRestricted(ctx, *groupID, account, routingModel, requireCompact) {
+					} else if needsUpstreamCheck && s.ports.GroupModelRestricted(ctx, *groupID, provider, routingModel, requireCompact) {
 						_ = s.ports.DeleteSticky(ctx, groupID, sessionHash)
-					} else if !s.ports.ShadowAllowed(ctx, account) || !s.ports.ParentHealthy(account, s.ports.ParentLookup(ctx)) {
+					} else if !s.ports.ShadowAllowed(ctx, provider) || !s.ports.ParentHealthy(provider, s.ports.ParentLookup(ctx)) {
 						_ = s.ports.DeleteSticky(ctx, groupID, sessionHash)
 					} else {
-						result, err := s.ports.Acquire(ctx, accountID, account.Concurrency)
+						result, err := s.ports.Acquire(ctx, providerID, provider.Concurrency)
 						if err == nil && result != nil && result.Acquired {
-							selection, selectErr := s.ports.CompleteAcquired(ctx, account, result.ReleaseFunc)
+							selection, selectErr := s.ports.CompleteAcquired(ctx, provider, result.ReleaseFunc)
 							if selectErr != nil {
 								return nil, selectErr
 							}
@@ -291,11 +291,11 @@ func (s *PlatformSelector) selectBasicRoutes(ctx context.Context, groupID *int64
 							return selection, nil
 						}
 
-						waitingCount, _ := s.concurrency.GetAccountWaitingCount(ctx, accountID)
+						waitingCount, _ := s.concurrency.GetProviderWaitingCount(ctx, providerID)
 						if waitingCount < cfg.StickySessionMaxWaiting {
-							return s.ports.Complete(ctx, account, false, nil, &AccountWaitPlan{
-								AccountID:      accountID,
-								MaxConcurrency: account.Concurrency,
+							return s.ports.Complete(ctx, provider, false, nil, &ProviderWaitPlan{
+								ProviderID:     providerID,
+								MaxConcurrency: provider.Concurrency,
 								Timeout:        cfg.StickySessionWaitTimeout,
 								MaxWaiting:     cfg.StickySessionMaxWaiting,
 							})
@@ -307,23 +307,23 @@ func (s *PlatformSelector) selectBasicRoutes(ctx context.Context, groupID *int64
 		}
 	}
 
-	parentCacheL2 := make(map[int64]*FlowAccount)
-	parentLookupL2 := func(id int64) *FlowAccount {
+	parentCacheL2 := make(map[int64]*FlowProvider)
+	parentLookupL2 := func(id int64) *FlowProvider {
 		if a, ok := parentCacheL2[id]; ok {
 			return a
 		}
-		if s.ports.ReadAccountDB == nil {
+		if s.ports.ReadProviderDB == nil {
 			return nil
 		}
-		a, _ := s.ports.ReadAccountDB(ctx, id)
+		a, _ := s.ports.ReadProviderDB(ctx, id)
 		parentCacheL2[id] = a
 		return a
 	}
 	baseCandidateCount := 0
-	filterStats := PlatformFilterStats{Pool: len(accounts)}
-	candidates := make([]*FlowAccount, 0, len(accounts))
-	for i := range accounts {
-		acc := &accounts[i]
+	filterStats := PlatformFilterStats{Pool: len(providers)}
+	candidates := make([]*FlowProvider, 0, len(providers))
+	for i := range providers {
+		acc := &providers[i]
 		if isExcluded(acc.ID) {
 			filterStats.Exclude("excluded")
 			continue
@@ -360,27 +360,27 @@ func (s *PlatformSelector) selectBasicRoutes(ctx context.Context, groupID *int64
 			routingModel,
 			false,
 			filterStats.Summary(""),
-			accounts,
+			providers,
 		)
 	}
-	accountLoads := make([]AccountWithConcurrency, 0, len(candidates))
+	providerLoads := make([]ProviderWithConcurrency, 0, len(candidates))
 	for _, acc := range candidates {
-		accountLoads = append(accountLoads, AccountWithConcurrency{
+		providerLoads = append(providerLoads, ProviderWithConcurrency{
 			ID:             acc.ID,
 			MaxConcurrency: acc.EffectiveLoadFactor(),
 		})
 	}
 
-	tryAcquireFromLoadMap := func(loadMap map[int64]*AccountLoadInfo) (*FlowSelection, bool, error) {
+	tryAcquireFromLoadMap := func(loadMap map[int64]*ProviderLoadInfo) (*FlowSelection, bool, error) {
 		var available []FlowLoad
 		for _, acc := range candidates {
 			loadInfo := loadMap[acc.ID]
 			if loadInfo == nil {
-				loadInfo = &AccountLoadInfo{AccountID: acc.ID}
+				loadInfo = &ProviderLoadInfo{ProviderID: acc.ID}
 			}
 			if loadInfo.LoadRate < 100 {
 				available = append(available, FlowLoad{
-					Account:  acc,
+					Provider: acc,
 					LoadInfo: loadInfo,
 				})
 			}
@@ -392,30 +392,30 @@ func (s *PlatformSelector) selectBasicRoutes(ctx context.Context, groupID *int64
 
 		sort.SliceStable(available, func(i, j int) bool {
 			a, b := available[i], available[j]
-			if a.Account.Priority != b.Account.Priority {
-				return a.Account.Priority < b.Account.Priority
+			if a.Provider.Priority != b.Provider.Priority {
+				return a.Provider.Priority < b.Provider.Priority
 			}
 			if a.LoadInfo.LoadRate != b.LoadInfo.LoadRate {
 				return a.LoadInfo.LoadRate < b.LoadInfo.LoadRate
 			}
 			switch {
-			case a.Account.LastUsedAt == nil && b.Account.LastUsedAt != nil:
+			case a.Provider.LastUsedAt == nil && b.Provider.LastUsedAt != nil:
 				return true
-			case a.Account.LastUsedAt != nil && b.Account.LastUsedAt == nil:
+			case a.Provider.LastUsedAt != nil && b.Provider.LastUsedAt == nil:
 				return false
-			case a.Account.LastUsedAt == nil && b.Account.LastUsedAt == nil:
+			case a.Provider.LastUsedAt == nil && b.Provider.LastUsedAt == nil:
 				return false
 			default:
-				return a.Account.LastUsedAt.Before(*b.Account.LastUsedAt)
+				return a.Provider.LastUsedAt.Before(*b.Provider.LastUsedAt)
 			}
 		})
 		flowShuffleWithinSortGroups(available)
 		selectionOrder := make([]FlowLoad, 0, len(available))
 		if requireCompact {
-			// 先尝试快照已启用的账号，再复核可能已由管理员重新启用的旧快照。
+			// 先尝试快照已启用的提供商，再复核可能已由管理员重新启用的旧快照。
 			appendEnabled := func(out []FlowLoad, enabled bool) []FlowLoad {
 				for _, item := range available {
-					if s.ports.CompactAllowed(item.Account) == enabled {
+					if s.ports.CompactAllowed(item.Provider) == enabled {
 						out = append(out, item)
 					}
 				}
@@ -428,7 +428,7 @@ func (s *PlatformSelector) selectBasicRoutes(ctx context.Context, groupID *int64
 		}
 
 		for _, item := range selectionOrder {
-			fresh := s.ports.Fresh(ctx, item.Account, platform, routingModel, false, requiredCapability)
+			fresh := s.ports.Fresh(ctx, item.Provider, platform, routingModel, false, requiredCapability)
 			if fresh == nil {
 				continue
 			}
@@ -454,10 +454,10 @@ func (s *PlatformSelector) selectBasicRoutes(ctx context.Context, groupID *int64
 		return nil, true, nil
 	}
 
-	loadMap, err := s.concurrency.GetAccountsLoadBatch(ctx, accountLoads)
+	loadMap, err := s.concurrency.GetProvidersLoadBatch(ctx, providerLoads)
 	if err != nil {
-		ordered := append([]*FlowAccount(nil), candidates...)
-		flowSortAccountsByPriorityAndLastUsed(ordered, false)
+		ordered := append([]*FlowProvider(nil), candidates...)
+		flowSortProvidersByPriorityAndLastUsed(ordered, false)
 		if requireCompact {
 			ordered = s.prioritizeBasicCompact(ordered)
 		}
@@ -491,7 +491,7 @@ func (s *PlatformSelector) selectBasicRoutes(ctx context.Context, groupID *int64
 		} else if selection != nil {
 			return selection, nil
 		} else if attempted {
-			if freshLoadMap, loadErr := s.concurrency.GetAccountsLoadBatchFresh(ctx, accountLoads); loadErr == nil {
+			if freshLoadMap, loadErr := s.concurrency.GetProvidersLoadBatchFresh(ctx, providerLoads); loadErr == nil {
 				if selection, _, selectErr := tryAcquireFromLoadMap(freshLoadMap); selectErr != nil {
 					return nil, selectErr
 				} else if selection != nil {
@@ -501,7 +501,7 @@ func (s *PlatformSelector) selectBasicRoutes(ctx context.Context, groupID *int64
 		}
 	}
 
-	flowSortAccountsByPriorityAndLastUsed(candidates, false)
+	flowSortProvidersByPriorityAndLastUsed(candidates, false)
 	if requireCompact {
 		candidates = s.prioritizeBasicCompact(candidates)
 	}
@@ -517,8 +517,8 @@ func (s *PlatformSelector) selectBasicRoutes(ctx context.Context, groupID *int64
 		if needsUpstreamCheck && s.ports.GroupModelRestricted(ctx, *groupID, fresh, routingModel, requireCompact) {
 			continue
 		}
-		return s.ports.Complete(ctx, fresh, false, nil, &AccountWaitPlan{
-			AccountID:      fresh.ID,
+		return s.ports.Complete(ctx, fresh, false, nil, &ProviderWaitPlan{
+			ProviderID:     fresh.ID,
 			MaxConcurrency: fresh.Concurrency,
 			Timeout:        cfg.FallbackWaitTimeout,
 			MaxWaiting:     cfg.FallbackMaxWaiting,
@@ -526,30 +526,30 @@ func (s *PlatformSelector) selectBasicRoutes(ctx context.Context, groupID *int64
 	}
 
 	if requireCompact && baseCandidateCount > 0 {
-		return nil, ErrNoAvailableCompactAccounts
+		return nil, ErrNoAvailableCompactProviders
 	}
-	return nil, s.ports.Unavailable(ctx, requestedModel, routingModel, false, "", accounts)
+	return nil, s.ports.Unavailable(ctx, requestedModel, routingModel, false, "", providers)
 }
 
-func (s *PlatformSelector) prioritizeBasicCompact(accounts []*FlowAccount) []*FlowAccount {
-	if len(accounts) == 0 {
+func (s *PlatformSelector) prioritizeBasicCompact(providers []*FlowProvider) []*FlowProvider {
+	if len(providers) == 0 {
 		return nil
 	}
-	enabled := make([]*FlowAccount, 0, len(accounts))
-	disabled := make([]*FlowAccount, 0, len(accounts))
-	for _, account := range accounts {
-		if s.ports.CompactAllowed(account) {
-			enabled = append(enabled, account)
+	enabled := make([]*FlowProvider, 0, len(providers))
+	disabled := make([]*FlowProvider, 0, len(providers))
+	for _, provider := range providers {
+		if s.ports.CompactAllowed(provider) {
+			enabled = append(enabled, provider)
 		} else {
-			disabled = append(disabled, account)
+			disabled = append(disabled, provider)
 		}
 	}
 	return append(enabled, disabled...)
 }
 
-// SelectBasicOnly 只选择并补全账号，不取得请求槽或注册会话。
-func (s *PlatformSelector) SelectBasicOnly(ctx context.Context, input PlatformSelectionInput) (*FlowAccount, error) {
-	return s.selectBasicOnlyRoutes(ctx, input.GroupID, input.Platform, input.SessionHash, input.RequestedModel, input.RoutingModel, input.ExcludedIDs, input.RequireCompact, input.StickyAccountID, input.RequiredCapability)
+// SelectBasicOnly 只选择并补全提供商，不取得请求槽或注册会话。
+func (s *PlatformSelector) SelectBasicOnly(ctx context.Context, input PlatformSelectionInput) (*FlowProvider, error) {
+	return s.selectBasicOnlyRoutes(ctx, input.GroupID, input.Platform, input.SessionHash, input.RequestedModel, input.RoutingModel, input.ExcludedIDs, input.RequireCompact, input.StickyProviderID, input.RequiredCapability)
 }
 
 func (s *PlatformSelector) SelectBasic(ctx context.Context, input PlatformSelectionInput) (*FlowSelection, error) {

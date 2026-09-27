@@ -3,7 +3,7 @@ package ops
 import "time"
 
 // UserErrorRequest 是面向终端用户的"错误请求"精简脱敏视图（白名单）。
-// 严禁包含 account / api_key_prefix / upstream_endpoint / user_email 等
+// 严禁包含 provider / api_key_prefix / upstream_endpoint / user_email 等
 // 敏感或内部字段。注：message（网关标准化错误描述）与 key_name
 // （用户自有 API Key 名称，KeysView 中本就可见）经产品决策对该用户开放；
 // client_ip / user_agent / group_name / request_type / stream 均为该用户
@@ -44,7 +44,7 @@ func MapUserErrorCategory(phase, errType string) string {
 		return "auth"
 	case "routing":
 		return "service_unavailable"
-	case "account_auth", "upstream", "network":
+	case "provider_auth", "upstream", "network":
 		return "upstream"
 	case "internal":
 		return "internal"
@@ -73,7 +73,7 @@ func CategoryToFilter(category string) (phases []string, errorTypes []string) {
 	case "service_unavailable":
 		return []string{"routing"}, nil
 	case "upstream":
-		return []string{"account_auth", "upstream", "network"}, nil
+		return []string{"provider_auth", "upstream", "network"}, nil
 	case "internal":
 		return []string{"internal"}, nil
 	case "rate_limit":

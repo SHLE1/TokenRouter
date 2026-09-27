@@ -7,12 +7,13 @@ import (
 
 type guardianParentAffinityKey struct{}
 
-// GuardianParentAffinity 只含请求内会话散列，不含可公开或反向读取的账号 ID。
+// GuardianParentAffinity 只含请求内会话散列，不含可公开或反向读取的提供商 ID。
 type GuardianParentAffinity struct{ CurrentSessionHash, LegacySessionHash string }
 
 func WithGuardianParentAffinity(ctx context.Context, value GuardianParentAffinity) context.Context {
 	return context.WithValue(ctx, guardianParentAffinityKey{}, value)
 }
+
 func GuardianParentAffinityFromContext(ctx context.Context) (GuardianParentAffinity, bool) {
 	if ctx == nil {
 		return GuardianParentAffinity{}, false

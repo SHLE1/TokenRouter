@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/media"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 	"github.com/coder/websocket"
@@ -28,7 +28,7 @@ type AuxiliaryHTTPInput struct {
 type RealtimeHTTPExecution interface {
 	media.RealtimePorts
 	Relay(context.Context, upstream.FrameConn, upstream.FrameConn) (bool, error)
-	CompleteRealtime(context.Context, account.AccountSnapshot, string, time.Duration)
+	CompleteRealtime(context.Context, provider.ProviderSnapshot, string, time.Duration)
 }
 
 // AuxiliaryHTTPPorts 只补充辅助入口独有的装配，不暴露供应商或存储实现。
@@ -275,7 +275,7 @@ func (h *AuxiliaryHandler) GrokRealtime(c *gin.Context) {
 	lease := admitted.Lease
 	if lease == nil {
 		if !admitted.CandidateSeen {
-			h.ports.Error(c, 503, "api_error", "No available Grok accounts")
+			h.ports.Error(c, 503, "api_error", "No available Grok providers")
 		} else {
 			h.ports.Error(c, 502, "upstream_error", "Grok realtime upstream unavailable")
 		}
@@ -298,7 +298,7 @@ func (h *AuxiliaryHandler) GrokRealtime(c *gin.Context) {
 		}
 	}
 	if media.RealtimeAudioUsage(elapsed, observed) != nil {
-		p.CompleteRealtime(c.Request.Context(), lease.Account, model, elapsed)
+		p.CompleteRealtime(c.Request.Context(), lease.Provider, model, elapsed)
 	}
 }
 

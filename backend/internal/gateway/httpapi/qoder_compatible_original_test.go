@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 
@@ -27,7 +27,6 @@ import (
 )
 
 func TestQoderGatewaySessionHashUsesPreviousResponseID(t *testing.T) {
-
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
@@ -39,7 +38,6 @@ func TestQoderGatewaySessionHashUsesPreviousResponseID(t *testing.T) {
 }
 
 func TestQoderGatewaySessionHashHeaderPrecedence(t *testing.T) {
-
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
@@ -65,26 +63,25 @@ func TestQoderBindStickySessionsUsesDetachedContextAfterCancel(t *testing.T) {
 	require.False(t, cache.sawCanceledContext)
 	require.True(t, cache.sawDeadline)
 	require.Len(t, cache.calls, 2)
-	require.Equal(t, qoderStickyBindCall{groupID: 12, sessionHash: "request-session-hash", accountID: 99}, cache.calls[0])
-	require.Equal(t, qoderStickyBindCall{groupID: 12, sessionHash: qoderStickySessionHashFromSeed("resp_qoder_bind"), accountID: 99}, cache.calls[1])
+	require.Equal(t, qoderStickyBindCall{groupID: 12, sessionHash: "request-session-hash", providerID: 99}, cache.calls[0])
+	require.Equal(t, qoderStickyBindCall{groupID: 12, sessionHash: qoderStickySessionHashFromSeed("resp_qoder_bind"), providerID: 99}, cache.calls[1])
 }
 
-func TestQoderGatewayShouldRefreshAccountOnlyForUnwrittenAuthErrors(t *testing.T) {
+func TestQoderGatewayShouldRefreshProviderOnlyForUnwrittenAuthErrors(t *testing.T) {
 	handler := &QoderCompatibleRuntime{
 		options: QoderCompatibleOptions{PlatformAvailable: true, MayRefresh: qoder.MayRefreshAttempt},
 	}
 
-	require.True(t, handler.shouldRefreshQoderAccount(&qoder.APIError{StatusCode: http.StatusUnauthorized}, false))
-	require.True(t, handler.shouldRefreshQoderAccount(&qoder.APIError{StatusCode: http.StatusForbidden}, false))
-	require.False(t, handler.shouldRefreshQoderAccount(&qoder.APIError{StatusCode: http.StatusForbidden, Code: "115"}, false))
-	require.False(t, handler.shouldRefreshQoderAccount(&qoder.APIError{StatusCode: http.StatusForbidden, Code: "112"}, false))
-	require.False(t, handler.shouldRefreshQoderAccount(&qoder.APIError{StatusCode: http.StatusTooManyRequests}, false))
-	require.False(t, handler.shouldRefreshQoderAccount(&qoder.APIError{StatusCode: http.StatusUnauthorized}, true))
-	require.False(t, (&QoderCompatibleRuntime{}).shouldRefreshQoderAccount(&qoder.APIError{StatusCode: http.StatusUnauthorized}, false))
+	require.True(t, handler.shouldRefreshQoderProvider(&qoder.APIError{StatusCode: http.StatusUnauthorized}, false))
+	require.True(t, handler.shouldRefreshQoderProvider(&qoder.APIError{StatusCode: http.StatusForbidden}, false))
+	require.False(t, handler.shouldRefreshQoderProvider(&qoder.APIError{StatusCode: http.StatusForbidden, Code: "115"}, false))
+	require.False(t, handler.shouldRefreshQoderProvider(&qoder.APIError{StatusCode: http.StatusForbidden, Code: "112"}, false))
+	require.False(t, handler.shouldRefreshQoderProvider(&qoder.APIError{StatusCode: http.StatusTooManyRequests}, false))
+	require.False(t, handler.shouldRefreshQoderProvider(&qoder.APIError{StatusCode: http.StatusUnauthorized}, true))
+	require.False(t, (&QoderCompatibleRuntime{}).shouldRefreshQoderProvider(&qoder.APIError{StatusCode: http.StatusUnauthorized}, false))
 }
 
 func TestQoderGatewayFailoverExhaustedUsesLastQoderError(t *testing.T) {
-
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest(http.MethodPost, "/qoder/v1/chat/completions", nil)
@@ -102,7 +99,6 @@ func TestQoderGatewayFailoverExhaustedUsesLastQoderError(t *testing.T) {
 }
 
 func TestQoderGatewayStreamingAwareError_MessagesKeepsGenericSSEError(t *testing.T) {
-
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
@@ -118,7 +114,6 @@ func TestQoderGatewayStreamingAwareError_MessagesKeepsGenericSSEError(t *testing
 }
 
 func TestQoderGatewayStreamingAwareError_ChatCompletionsStreamingEmitsOpenAIErrorAndDone(t *testing.T) {
-
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", nil)
@@ -135,7 +130,6 @@ func TestQoderGatewayStreamingAwareError_ChatCompletionsStreamingEmitsOpenAIErro
 }
 
 func TestQoderGatewayStreamingAwareError_NonStreamingAfterKeepaliveKeepsJSON(t *testing.T) {
-
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", nil)
@@ -155,7 +149,6 @@ func TestQoderGatewayStreamingAwareError_NonStreamingAfterKeepaliveKeepsJSON(t *
 }
 
 func TestQoderGatewaySubmitUsageRecordIgnoresRequestCancellation(t *testing.T) {
-
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	reqCtx, cancel := context.WithCancel(context.Background())
@@ -238,25 +231,26 @@ func TestQoderNonStreamReleaseStillFiresOnClientCancel(t *testing.T) {
 	}
 }
 
-func TestQoderGatewayAccountSlotWaitQueueFullReturnsRateLimitBeforePollingSlot(t *testing.T) {
-
+func TestQoderGatewayProviderSlotWaitQueueFullReturnsRateLimitBeforePollingSlot(t *testing.T) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest(http.MethodPost, "/qoder/v1/chat/completions", nil)
 
-	cache := &qoderAccountWaitCacheStub{
+	cache := &qoderProviderWaitCacheStub{
 		helperConcurrencyCacheStub: &helperConcurrencyCacheStub{},
-		accountWaitAllowed:         false,
+		providerWaitAllowed:        false,
 	}
 	h := &QoderCompatibleRuntime{
-		concurrencyHelper: NewConcurrencyHelper(scheduler.NewConcurrencyService(cache, scheduler.Diagnostics{Logf: logging.LegacyPrintf,
-			Event: logging.Event},
+		concurrencyHelper: NewConcurrencyHelper(scheduler.NewConcurrencyService(cache, scheduler.Diagnostics{
+			Logf:  logging.LegacyPrintf,
+			Event: logging.Event,
+		},
 		), SSEPingFormatNone, 0),
 	}
 	streamStarted := false
 
-	release, err := h.acquireQoderAccountSlotWithWait(c, &accountcore.AccountSnapshot{ID: 77, Concurrency: 1}, &scheduler.AccountWaitPlan{
-		AccountID:      77,
+	release, err := h.acquireQoderProviderSlotWithWait(c, &providercore.ProviderSnapshot{ID: 77, Concurrency: 1}, &scheduler.ProviderWaitPlan{
+		ProviderID:     77,
 		MaxConcurrency: 1,
 		Timeout:        time.Millisecond,
 		MaxWaiting:     2,
@@ -265,32 +259,33 @@ func TestQoderGatewayAccountSlotWaitQueueFullReturnsRateLimitBeforePollingSlot(t
 	require.Nil(t, release)
 	var waitErr *WaitQueueFullError
 	require.ErrorAs(t, err, &waitErr)
-	require.Equal(t, "account", waitErr.SlotType)
-	require.Equal(t, 1, cache.accountWaitIncrementCalls)
-	require.Equal(t, 2, cache.accountWaitMaxWaiting)
-	require.Equal(t, 0, cache.accountAcquireCalls, "full wait queue should reject before polling account slots")
-	require.Equal(t, 0, cache.accountWaitDecrementCalls)
+	require.Equal(t, "provider", waitErr.SlotType)
+	require.Equal(t, 1, cache.providerWaitIncrementCalls)
+	require.Equal(t, 2, cache.providerWaitMaxWaiting)
+	require.Equal(t, 0, cache.providerAcquireCalls, "full wait queue should reject before polling provider slots")
+	require.Equal(t, 0, cache.providerWaitDecrementCalls)
 }
 
-func TestQoderGatewayAccountSlotWaitCountDecrementsWhenWaitTimesOut(t *testing.T) {
-
+func TestQoderGatewayProviderSlotWaitCountDecrementsWhenWaitTimesOut(t *testing.T) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest(http.MethodPost, "/qoder/v1/chat/completions", nil)
 
-	cache := &qoderAccountWaitCacheStub{
-		helperConcurrencyCacheStub: &helperConcurrencyCacheStub{accountSeq: []bool{false}},
-		accountWaitAllowed:         true,
+	cache := &qoderProviderWaitCacheStub{
+		helperConcurrencyCacheStub: &helperConcurrencyCacheStub{providerSeq: []bool{false}},
+		providerWaitAllowed:        true,
 	}
 	h := &QoderCompatibleRuntime{
-		concurrencyHelper: NewConcurrencyHelper(scheduler.NewConcurrencyService(cache, scheduler.Diagnostics{Logf: logging.LegacyPrintf,
-			Event: logging.Event},
+		concurrencyHelper: NewConcurrencyHelper(scheduler.NewConcurrencyService(cache, scheduler.Diagnostics{
+			Logf:  logging.LegacyPrintf,
+			Event: logging.Event,
+		},
 		), SSEPingFormatNone, 0),
 	}
 	streamStarted := false
 
-	release, err := h.acquireQoderAccountSlotWithWait(c, &accountcore.AccountSnapshot{ID: 78, Concurrency: 1}, &scheduler.AccountWaitPlan{
-		AccountID:      78,
+	release, err := h.acquireQoderProviderSlotWithWait(c, &providercore.ProviderSnapshot{ID: 78, Concurrency: 1}, &scheduler.ProviderWaitPlan{
+		ProviderID:     78,
 		MaxConcurrency: 1,
 		Timeout:        time.Millisecond,
 		MaxWaiting:     3,
@@ -299,32 +294,33 @@ func TestQoderGatewayAccountSlotWaitCountDecrementsWhenWaitTimesOut(t *testing.T
 	require.Nil(t, release)
 	var concurrencyErr *ConcurrencyError
 	require.ErrorAs(t, err, &concurrencyErr)
-	require.Equal(t, "account", concurrencyErr.SlotType)
-	require.Equal(t, 1, cache.accountWaitIncrementCalls)
-	require.Equal(t, 3, cache.accountWaitMaxWaiting)
-	require.Equal(t, 1, cache.accountAcquireCalls)
-	require.Equal(t, 1, cache.accountWaitDecrementCalls)
+	require.Equal(t, "provider", concurrencyErr.SlotType)
+	require.Equal(t, 1, cache.providerWaitIncrementCalls)
+	require.Equal(t, 3, cache.providerWaitMaxWaiting)
+	require.Equal(t, 1, cache.providerAcquireCalls)
+	require.Equal(t, 1, cache.providerWaitDecrementCalls)
 }
 
-func TestQoderGatewayAccountSlotWaitCountDecrementsAfterAcquire(t *testing.T) {
-
+func TestQoderGatewayProviderSlotWaitCountDecrementsAfterAcquire(t *testing.T) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest(http.MethodPost, "/qoder/v1/chat/completions", nil)
 
-	cache := &qoderAccountWaitCacheStub{
-		helperConcurrencyCacheStub: &helperConcurrencyCacheStub{accountSeq: []bool{true}},
-		accountWaitAllowed:         true,
+	cache := &qoderProviderWaitCacheStub{
+		helperConcurrencyCacheStub: &helperConcurrencyCacheStub{providerSeq: []bool{true}},
+		providerWaitAllowed:        true,
 	}
 	h := &QoderCompatibleRuntime{
-		concurrencyHelper: NewConcurrencyHelper(scheduler.NewConcurrencyService(cache, scheduler.Diagnostics{Logf: logging.LegacyPrintf,
-			Event: logging.Event},
+		concurrencyHelper: NewConcurrencyHelper(scheduler.NewConcurrencyService(cache, scheduler.Diagnostics{
+			Logf:  logging.LegacyPrintf,
+			Event: logging.Event,
+		},
 		), SSEPingFormatNone, 0),
 	}
 	streamStarted := false
 
-	release, err := h.acquireQoderAccountSlotWithWait(c, &accountcore.AccountSnapshot{ID: 79, Concurrency: 1}, &scheduler.AccountWaitPlan{
-		AccountID:      79,
+	release, err := h.acquireQoderProviderSlotWithWait(c, &providercore.ProviderSnapshot{ID: 79, Concurrency: 1}, &scheduler.ProviderWaitPlan{
+		ProviderID:     79,
 		MaxConcurrency: 1,
 		Timeout:        time.Second,
 		MaxWaiting:     4,
@@ -332,42 +328,42 @@ func TestQoderGatewayAccountSlotWaitCountDecrementsAfterAcquire(t *testing.T) {
 
 	require.NoError(t, err)
 	require.NotNil(t, release)
-	require.Equal(t, 1, cache.accountWaitIncrementCalls)
-	require.Equal(t, 4, cache.accountWaitMaxWaiting)
-	require.Equal(t, 1, cache.accountAcquireCalls)
-	require.Equal(t, 1, cache.accountWaitDecrementCalls)
+	require.Equal(t, 1, cache.providerWaitIncrementCalls)
+	require.Equal(t, 4, cache.providerWaitMaxWaiting)
+	require.Equal(t, 1, cache.providerAcquireCalls)
+	require.Equal(t, 1, cache.providerWaitDecrementCalls)
 	release()
-	require.Equal(t, 1, cache.accountReleaseCalls)
+	require.Equal(t, 1, cache.providerReleaseCalls)
 }
 
-type qoderAccountWaitCacheStub struct {
+type qoderProviderWaitCacheStub struct {
 	*helperConcurrencyCacheStub
 
-	accountWaitAllowed        bool
-	accountWaitIncrementCalls int
-	accountWaitDecrementCalls int
-	accountWaitMaxWaiting     int
+	providerWaitAllowed        bool
+	providerWaitIncrementCalls int
+	providerWaitDecrementCalls int
+	providerWaitMaxWaiting     int
 }
 
-func (s *qoderAccountWaitCacheStub) IncrementAccountWaitCount(ctx context.Context, accountID int64, maxWait int) (bool, error) {
+func (s *qoderProviderWaitCacheStub) IncrementProviderWaitCount(ctx context.Context, providerID int64, maxWait int) (bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.accountWaitIncrementCalls++
-	s.accountWaitMaxWaiting = maxWait
-	return s.accountWaitAllowed, nil
+	s.providerWaitIncrementCalls++
+	s.providerWaitMaxWaiting = maxWait
+	return s.providerWaitAllowed, nil
 }
 
-func (s *qoderAccountWaitCacheStub) DecrementAccountWaitCount(ctx context.Context, accountID int64) error {
+func (s *qoderProviderWaitCacheStub) DecrementProviderWaitCount(ctx context.Context, providerID int64) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.accountWaitDecrementCalls++
+	s.providerWaitDecrementCalls++
 	return nil
 }
 
 type qoderStickyBindCall struct {
 	groupID     int64
 	sessionHash string
-	accountID   int64
+	providerID  int64
 }
 
 type qoderStickyBindCacheStub struct {
@@ -376,11 +372,11 @@ type qoderStickyBindCacheStub struct {
 	sawDeadline        bool
 }
 
-func (s *qoderStickyBindCacheStub) GetSessionAccountID(context.Context, int64, string) (int64, error) {
+func (s *qoderStickyBindCacheStub) GetSessionProviderID(context.Context, int64, string) (int64, error) {
 	return 0, nil
 }
 
-func (s *qoderStickyBindCacheStub) SetSessionAccountID(ctx context.Context, groupID int64, sessionHash string, accountID int64, _ time.Duration) error {
+func (s *qoderStickyBindCacheStub) SetSessionProviderID(ctx context.Context, groupID int64, sessionHash string, providerID int64, _ time.Duration) error {
 	if ctx.Err() != nil {
 		s.sawCanceledContext = true
 		return ctx.Err()
@@ -388,7 +384,7 @@ func (s *qoderStickyBindCacheStub) SetSessionAccountID(ctx context.Context, grou
 	if _, ok := ctx.Deadline(); ok {
 		s.sawDeadline = true
 	}
-	s.calls = append(s.calls, qoderStickyBindCall{groupID: groupID, sessionHash: sessionHash, accountID: accountID})
+	s.calls = append(s.calls, qoderStickyBindCall{groupID: groupID, sessionHash: sessionHash, providerID: providerID})
 	return nil
 }
 
@@ -396,7 +392,7 @@ func (s *qoderStickyBindCacheStub) RefreshSessionTTL(context.Context, int64, str
 	return nil
 }
 
-func (s *qoderStickyBindCacheStub) DeleteSessionAccountID(context.Context, int64, string) error {
+func (s *qoderStickyBindCacheStub) DeleteSessionProviderID(context.Context, int64, string) error {
 	return nil
 }
 
@@ -418,10 +414,10 @@ type qoderStickyExecutionStub struct {
 	cache session.GatewayCache
 }
 
-func (s *qoderStickyExecutionStub) BindStickySession(ctx context.Context, id *int64, hash string, accountID int64) error {
+func (s *qoderStickyExecutionStub) BindStickySession(ctx context.Context, id *int64, hash string, providerID int64) error {
 	var groupID int64
 	if id != nil {
 		groupID = *id
 	}
-	return s.cache.SetSessionAccountID(ctx, groupID, hash, accountID, time.Hour)
+	return s.cache.SetSessionProviderID(ctx, groupID, hash, providerID, time.Hour)
 }

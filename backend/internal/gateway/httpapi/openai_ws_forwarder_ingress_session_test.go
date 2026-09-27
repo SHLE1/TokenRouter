@@ -15,10 +15,9 @@ import (
 
 	sessiontestkit "github.com/TokenFlux/TokenRouter/internal/gateway/session/testkit"
 
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/settings"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
@@ -26,6 +25,7 @@ import (
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	gatewayws "github.com/TokenFlux/TokenRouter/internal/gateway/ws"
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
@@ -160,9 +160,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_KeepLeaseAcrossT
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerAccount = 1
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 1
+	options.Pool.MaxConnsPerProvider = 1
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 1
 	options.Pool.QueueLimitPerConn = 8
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 3
@@ -181,12 +181,12 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_KeepLeaseAcrossT
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 114,
 			Name:        "openai-ingress-session-lease",
 			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeAPIKey,
+			Type:        capability.ProviderTypeAPIKey,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Concurrency: 1,
@@ -262,7 +262,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_KeepLeaseAcrossT
 			return
 		}
 
-		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, account, "sk-test", firstMessage, hooks)
+		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, provider, "sk-test", firstMessage, hooks)
 	}))
 	defer wsServer.Close()
 
@@ -334,9 +334,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_LeaseLossSendsRe
 	options.WS.Enabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerAccount = 1
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 1
+	options.Pool.MaxConnsPerProvider = 1
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 1
 	options.Pool.QueueLimitPerConn = 8
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 3
@@ -356,12 +356,12 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_LeaseLossSendsRe
 	defer pool.Close()
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 118,
 			Name:        "openai-ingress-lease-loss",
 			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeAPIKey,
+			Type:        capability.ProviderTypeAPIKey,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Concurrency: 1,
@@ -402,7 +402,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_LeaseLossSendsRe
 			controlCtx,
 			ginCtx,
 			conn,
-			account,
+			provider,
 			"sk-test",
 			firstMessage,
 			&gatewayws.OpenAIIngressHooks{ClientLifecycleContext: lifecycleCtx},
@@ -455,9 +455,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_IdleTimeoutRelea
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
 	options.WS.IngressInterTurnIdleTimeoutSeconds = 1
-	options.Pool.MaxConnsPerAccount = 1
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 1
+	options.Pool.MaxConnsPerProvider = 1
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 1
 	options.Pool.QueueLimitPerConn = 8
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 3
@@ -471,12 +471,12 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_IdleTimeoutRelea
 	pool.SetClientDialerForTest(captureDialer)
 	defer pool.Close()
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 116,
 			Name:        "openai-ingress-idle-timeout",
 			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeAPIKey,
+			Type:        capability.ProviderTypeAPIKey,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Concurrency: 1,
@@ -504,7 +504,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_IdleTimeoutRelea
 		rec := httptest.NewRecorder()
 		ginCtx, _ := gin.CreateTestContext(rec)
 		ginCtx.Request = r.Clone(r.Context())
-		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, account, "sk-test", firstMessage, nil)
+		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, provider, "sk-test", firstMessage, nil)
 	}))
 	defer wsServer.Close()
 
@@ -543,7 +543,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_IdleTimeoutRelea
 		t.Fatal("timed out waiting for idle ingress session to close")
 	}
 
-	state, ok := pool.SnapshotAccountState(account.Record.ID)
+	state, ok := pool.SnapshotProviderState(provider.Record.ID)
 	require.True(t, ok)
 	require.Zero(t, state.PinnedConnections, "idle close must unpin a store=false session")
 	require.Zero(t, state.LeasedConnections, "idle close must release every upstream lease")
@@ -557,9 +557,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_FollowupCreateCa
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerAccount = 1
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 1
+	options.Pool.MaxConnsPerProvider = 1
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 1
 	options.Pool.QueueLimitPerConn = 8
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 3
@@ -575,12 +575,12 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_FollowupCreateCa
 	pool := newOpenAIWSConnPool(options)
 	pool.SetClientDialerForTest(captureDialer)
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 115,
 			Name:        "openai-ingress-omit-model",
 			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeAPIKey,
+			Type:        capability.ProviderTypeAPIKey,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Concurrency: 1,
@@ -628,7 +628,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_FollowupCreateCa
 			return
 		}
 
-		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, account, "sk-test", firstMessage, nil)
+		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, provider, "sk-test", firstMessage, nil)
 	}))
 	defer wsServer.Close()
 
@@ -689,9 +689,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ReplacesFollowup
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerAccount = 1
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 1
+	options.Pool.MaxConnsPerProvider = 1
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 1
 	options.Pool.QueueLimitPerConn = 8
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 3
@@ -712,12 +712,12 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ReplacesFollowup
 	pool := newOpenAIWSConnPool(options)
 	pool.SetClientDialerForTest(captureDialer)
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, readers: settingService, prompts: promptpolicy.New(settingService.Scheduler, settings.ErrSettingNotFound, slog.Warn), corrector: openai.NewCodexToolCorrector(), pool: pool})
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 116,
 			Name:        "openai-ingress-user-prompt-replacement",
 			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeAPIKey,
+			Type:        capability.ProviderTypeAPIKey,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Concurrency: 1,
@@ -762,7 +762,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ReplacesFollowup
 			return
 		}
 
-		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, account, "sk-test", firstMessage, nil)
+		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, provider, "sk-test", firstMessage, nil)
 	}))
 	defer wsServer.Close()
 
@@ -819,9 +819,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_CodexImageBridge
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerAccount = 1
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 1
+	options.Pool.MaxConnsPerProvider = 1
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 1
 	options.Pool.QueueLimitPerConn = 8
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 3
@@ -850,12 +850,12 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_CodexImageBridge
 			AllowImageGeneration: true,
 		},
 	}
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 31,
 			Name:        "openai-codex-image-ws",
 			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeOAuth,
+			Type:        capability.ProviderTypeOAuth,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Concurrency: 1,
@@ -902,7 +902,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_CodexImageBridge
 			return
 		}
 
-		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, account, "test-token", firstMessage, nil)
+		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, provider, "test-token", firstMessage, nil)
 	}))
 	defer wsServer.Close()
 
@@ -1035,10 +1035,10 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_DedicatedModeDoe
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
 	options.WS.ModeRouterV2Enabled = true
-	options.WS.IngressModeDefault = accountcore.OpenAIWSIngressModeShared
-	options.Pool.MaxConnsPerAccount = 1
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 1
+	options.WS.IngressModeDefault = providercore.OpenAIWSIngressModeShared
+	options.Pool.MaxConnsPerProvider = 1
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 1
 	options.Pool.QueueLimitPerConn = 8
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 3
@@ -1062,12 +1062,12 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_DedicatedModeDoe
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 441,
 			Name:        "openai-ingress-dedicated",
 			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeAPIKey,
+			Type:        capability.ProviderTypeAPIKey,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Concurrency: 1,
@@ -1075,7 +1075,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_DedicatedModeDoe
 				"api_key": "sk-test",
 			},
 			Extra: map[string]any{
-				"openai_apikey_responses_websockets_v2_mode": accountcore.OpenAIWSIngressModeDedicated,
+				"openai_apikey_responses_websockets_v2_mode": providercore.OpenAIWSIngressModeDedicated,
 			},
 		},
 	}
@@ -1112,7 +1112,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_DedicatedModeDoe
 			return
 		}
 
-		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, account, "sk-test", firstMessage, nil)
+		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, provider, "sk-test", firstMessage, nil)
 	}))
 	defer wsServer.Close()
 
@@ -1162,7 +1162,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PassthroughModeR
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
 	options.WS.ModeRouterV2Enabled = true
-	options.WS.IngressModeDefault = accountcore.OpenAIWSIngressModeCtxPool
+	options.WS.IngressModeDefault = providercore.OpenAIWSIngressModeCtxPool
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 3
 	options.WS.WriteTimeoutSeconds = 3
@@ -1179,12 +1179,12 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PassthroughModeR
 	captureDialer := &openAIWSCaptureDialer{conn: upstreamConn}
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), dialer: captureDialer})
 
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 452,
 			Name:        "openai-ingress-passthrough",
 			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeAPIKey,
+			Type:        capability.ProviderTypeAPIKey,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Concurrency: 1,
@@ -1196,7 +1196,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PassthroughModeR
 				},
 			},
 			Extra: map[string]any{
-				"openai_apikey_responses_websockets_v2_mode": accountcore.OpenAIWSIngressModePassthrough,
+				"openai_apikey_responses_websockets_v2_mode": providercore.OpenAIWSIngressModePassthrough,
 			},
 		},
 	}
@@ -1261,7 +1261,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PassthroughModeR
 			return
 		}
 
-		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, account, "sk-test", firstMessage, hooks)
+		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, provider, "sk-test", firstMessage, hooks)
 	}))
 	defer wsServer.Close()
 
@@ -1374,7 +1374,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_HTTPBridgeModeRe
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
 	options.WS.ModeRouterV2Enabled = true
-	options.WS.IngressModeDefault = accountcore.OpenAIWSIngressModeCtxPool
+	options.WS.IngressModeDefault = providercore.OpenAIWSIngressModeCtxPool
 	options.WS.ReadTimeoutSeconds = 3
 	options.WS.WriteTimeoutSeconds = 3
 
@@ -1391,12 +1391,12 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_HTTPBridgeModeRe
 	}
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: upstream, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector()})
 
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 552,
 			Name:        "openai-ingress-http-bridge",
 			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeAPIKey,
+			Type:        capability.ProviderTypeAPIKey,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Concurrency: 1,
@@ -1407,7 +1407,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_HTTPBridgeModeRe
 				},
 			},
 			Extra: map[string]any{
-				"openai_apikey_responses_websockets_v2_mode": accountcore.OpenAIWSIngressModeHTTPBridge,
+				"openai_apikey_responses_websockets_v2_mode": providercore.OpenAIWSIngressModeHTTPBridge,
 			},
 		},
 	}
@@ -1461,7 +1461,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_HTTPBridgeModeRe
 			return
 		}
 
-		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, account, "sk-test", firstMessage, hooks)
+		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, provider, "sk-test", firstMessage, hooks)
 	}))
 	defer wsServer.Close()
 
@@ -1582,7 +1582,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PassthroughBridg
 			options.WS.APIKeyEnabled = true
 			options.WS.ResponsesWebsocketsV2 = true
 			options.WS.ModeRouterV2Enabled = true
-			options.WS.IngressModeDefault = accountcore.OpenAIWSIngressModeCtxPool
+			options.WS.IngressModeDefault = providercore.OpenAIWSIngressModeCtxPool
 			options.WS.HTTPBridgeEnabled = true
 			options.WS.HTTPBridgeThresholdBytes = tt.threshold
 
@@ -1592,17 +1592,17 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PassthroughBridg
 			dialer := &openAIWSCaptureDialer{conn: upstreamConn}
 			httpUpstream := &auxiliaryHTTPRecorder{}
 			svc := newWSFixture(wsFixtureInputs{options: options, transport: httpUpstream, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), dialer: dialer})
-			account := &gatewayprovider.ExecutionAccount{
-				Record: accountcore.Record{
+			provider := &gatewayprovider.ExecutionProvider{
+				Record: providercore.Record{
 					LoadLocation: time.LoadLocation, ID: 453,
 					Platform:    capability.PlatformOpenAI,
-					Type:        capability.AccountTypeAPIKey,
+					Type:        capability.ProviderTypeAPIKey,
 					Status:      billing.StatusActive,
 					Schedulable: true,
 					Concurrency: 1,
 					Credentials: map[string]any{"api_key": "sk-test"},
 					Extra: map[string]any{
-						"openai_apikey_responses_websockets_v2_mode": accountcore.OpenAIWSIngressModePassthrough,
+						"openai_apikey_responses_websockets_v2_mode": providercore.OpenAIWSIngressModePassthrough,
 					},
 				},
 			}
@@ -1623,7 +1623,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PassthroughBridg
 				rec := httptest.NewRecorder()
 				ginCtx, _ := gin.CreateTestContext(rec)
 				ginCtx.Request = r
-				errCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, account, "sk-test", firstMessage, nil)
+				errCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, provider, "sk-test", firstMessage, nil)
 			}))
 			defer wsServer.Close()
 
@@ -1671,7 +1671,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PassthroughHeade
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
 	options.WS.ModeRouterV2Enabled = true
-	options.WS.IngressModeDefault = accountcore.OpenAIWSIngressModeCtxPool
+	options.WS.IngressModeDefault = providercore.OpenAIWSIngressModeCtxPool
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 3
 	options.WS.WriteTimeoutSeconds = 3
@@ -1683,12 +1683,12 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PassthroughHeade
 	}
 	captureDialer := &openAIWSCaptureDialer{conn: upstreamConn}
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), dialer: captureDialer})
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 453,
 			Name:        "openai-ingress-passthrough-headers",
 			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeOAuth,
+			Type:        capability.ProviderTypeOAuth,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Concurrency: 1,
@@ -1696,7 +1696,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PassthroughHeade
 				"access_token": "oauth-token",
 			},
 			Extra: map[string]any{
-				"openai_oauth_responses_websockets_v2_mode": accountcore.OpenAIWSIngressModePassthrough,
+				"openai_oauth_responses_websockets_v2_mode": providercore.OpenAIWSIngressModePassthrough,
 			},
 		},
 	}
@@ -1735,7 +1735,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PassthroughHeade
 			return
 		}
 
-		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, account, "oauth-token", firstMessage, nil)
+		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, provider, "oauth-token", firstMessage, nil)
 	}))
 	defer wsServer.Close()
 
@@ -1779,7 +1779,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PassthroughHeade
 		t.Fatal("等待 passthrough websocket 结束超时")
 	}
 
-	require.Equal(t, openai.IsolateOpenAIUpstreamSessionID(0, accountprovider.CodexIdentityNamespace(account.View()), "pcache_passthrough"), captureDialer.lastHeaders.Get("session_id"))
+	require.Equal(t, openai.IsolateOpenAIUpstreamSessionID(0, provideradapter.CodexIdentityNamespace(provider.View()), "pcache_passthrough"), captureDialer.lastHeaders.Get("session_id"))
 	require.Equal(t, "turn-state-1", captureDialer.lastHeaders.Get(openAIWSTurnStateHeader))
 	require.Equal(t, "turn-meta-1", captureDialer.lastHeaders.Get(openai.WSTurnMetadataHeader))
 	require.Len(t, upstreamConn.writes, 1)
@@ -1803,16 +1803,16 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ModeOffReturnsPo
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
 	options.WS.ModeRouterV2Enabled = true
-	options.WS.IngressModeDefault = accountcore.OpenAIWSIngressModeShared
+	options.WS.IngressModeDefault = providercore.OpenAIWSIngressModeShared
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: newOpenAIWSConnPool(options)})
 
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 442,
 			Name:        "openai-ingress-off",
 			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeAPIKey,
+			Type:        capability.ProviderTypeAPIKey,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Concurrency: 1,
@@ -1820,7 +1820,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ModeOffReturnsPo
 				"api_key": "sk-test",
 			},
 			Extra: map[string]any{
-				"openai_apikey_responses_websockets_v2_mode": accountcore.OpenAIWSIngressModeOff,
+				"openai_apikey_responses_websockets_v2_mode": providercore.OpenAIWSIngressModeOff,
 			},
 		},
 	}
@@ -1857,7 +1857,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ModeOffReturnsPo
 			return
 		}
 
-		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, account, "sk-test", firstMessage, nil)
+		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, provider, "sk-test", firstMessage, nil)
 	}))
 	defer wsServer.Close()
 
@@ -1879,7 +1879,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ModeOffReturnsPo
 		var closeErr *OpenAIWSClientCloseError
 		require.ErrorAs(t, serverErr, &closeErr)
 		require.Equal(t, coderws.StatusPolicyViolation, closeErr.StatusCode())
-		require.Equal(t, "websocket mode is disabled for this account", closeErr.Reason())
+		require.Equal(t, "websocket mode is disabled for this provider", closeErr.Reason())
 	case <-time.After(5 * time.Second):
 		t.Fatal("等待 ingress websocket 结束超时")
 	}
@@ -1893,9 +1893,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerAccount = 1
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 1
+	options.Pool.MaxConnsPerProvider = 1
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 1
 	options.Pool.QueueLimitPerConn = 8
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 3
@@ -1913,12 +1913,12 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 140,
 			Name:        "openai-ingress-prev-preflight-rewrite",
 			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeAPIKey,
+			Type:        capability.ProviderTypeAPIKey,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Concurrency: 1,
@@ -1963,7 +1963,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 			return
 		}
 
-		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, account, "sk-test", firstMessage, nil)
+		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, provider, "sk-test", firstMessage, nil)
 	}))
 	defer wsServer.Close()
 
@@ -2028,9 +2028,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerAccount = 2
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 2
+	options.Pool.MaxConnsPerProvider = 2
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 2
 	options.Pool.QueueLimitPerConn = 8
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 3
@@ -2054,12 +2054,12 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 142,
 			Name:        "openai-ingress-prev-strict-drop-before-ping",
 			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeAPIKey,
+			Type:        capability.ProviderTypeAPIKey,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Concurrency: 1,
@@ -2104,7 +2104,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 			return
 		}
 
-		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, account, "sk-test", firstMessage, nil)
+		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, provider, "sk-test", firstMessage, nil)
 	}))
 	defer wsServer.Close()
 
@@ -2168,9 +2168,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreEnabledSkip
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerAccount = 1
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 1
+	options.Pool.MaxConnsPerProvider = 1
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 1
 	options.Pool.QueueLimitPerConn = 8
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 3
@@ -2188,12 +2188,12 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreEnabledSkip
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 143,
 			Name:        "openai-ingress-store-enabled-skip-strict",
 			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeAPIKey,
+			Type:        capability.ProviderTypeAPIKey,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Concurrency: 1,
@@ -2238,7 +2238,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreEnabledSkip
 			return
 		}
 
-		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, account, "sk-test", firstMessage, nil)
+		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, provider, "sk-test", firstMessage, nil)
 	}))
 	defer wsServer.Close()
 
@@ -2293,9 +2293,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerAccount = 1
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 1
+	options.Pool.MaxConnsPerProvider = 1
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 1
 	options.Pool.QueueLimitPerConn = 8
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 3
@@ -2313,12 +2313,12 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 141,
 			Name:        "openai-ingress-prev-preflight-skip-fco",
 			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeAPIKey,
+			Type:        capability.ProviderTypeAPIKey,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Concurrency: 1,
@@ -2363,7 +2363,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 			return
 		}
 
-		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, account, "sk-test", firstMessage, nil)
+		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, provider, "sk-test", firstMessage, nil)
 	}))
 	defer wsServer.Close()
 
@@ -2418,9 +2418,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledFun
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerAccount = 1
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 1
+	options.Pool.MaxConnsPerProvider = 1
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 1
 	options.Pool.QueueLimitPerConn = 8
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 3
@@ -2438,12 +2438,12 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledFun
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 143,
 			Name:        "openai-ingress-fco-auto-prev",
 			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeAPIKey,
+			Type:        capability.ProviderTypeAPIKey,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Concurrency: 1,
@@ -2488,7 +2488,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledFun
 			return
 		}
 
-		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, account, "sk-test", firstMessage, nil)
+		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, provider, "sk-test", firstMessage, nil)
 	}))
 	defer wsServer.Close()
 
@@ -2543,9 +2543,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledToo
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerAccount = 1
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 1
+	options.Pool.MaxConnsPerProvider = 1
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 1
 	options.Pool.QueueLimitPerConn = 8
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 3
@@ -2563,12 +2563,12 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledToo
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 145,
 			Name:        "openai-ingress-tool-search-output-auto-prev",
 			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeAPIKey,
+			Type:        capability.ProviderTypeAPIKey,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Concurrency: 1,
@@ -2613,7 +2613,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledToo
 			return
 		}
 
-		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, account, "sk-test", firstMessage, nil)
+		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, provider, "sk-test", firstMessage, nil)
 	}))
 	defer wsServer.Close()
 
@@ -2671,9 +2671,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledFun
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerAccount = 1
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 1
+	options.Pool.MaxConnsPerProvider = 1
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 1
 	options.Pool.QueueLimitPerConn = 8
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 3
@@ -2691,12 +2691,12 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledFun
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 144,
 			Name:        "openai-ingress-fco-auto-prev-skip",
 			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeAPIKey,
+			Type:        capability.ProviderTypeAPIKey,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Concurrency: 1,
@@ -2741,7 +2741,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledFun
 			return
 		}
 
-		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, account, "sk-test", firstMessage, nil)
+		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, provider, "sk-test", firstMessage, nil)
 	}))
 	defer wsServer.Close()
 
@@ -2797,9 +2797,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledFun
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerAccount = 1
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 1
+	options.Pool.MaxConnsPerProvider = 1
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 1
 	options.Pool.QueueLimitPerConn = 8
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 3
@@ -2819,12 +2819,12 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledFun
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 114,
 			Name:        "openai-ingress-tool-context",
 			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeAPIKey,
+			Type:        capability.ProviderTypeAPIKey,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Concurrency: 1,
@@ -2869,7 +2869,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledFun
 			return
 		}
 
-		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, account, "sk-test", firstMessage, nil)
+		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, provider, "sk-test", firstMessage, nil)
 	}))
 	defer wsServer.Close()
 
@@ -2924,9 +2924,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledFun
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerAccount = 1
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 1
+	options.Pool.MaxConnsPerProvider = 1
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 1
 	options.Pool.QueueLimitPerConn = 8
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 3
@@ -2946,12 +2946,12 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledFun
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 115,
 			Name:        "openai-ingress-item-reference",
 			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeAPIKey,
+			Type:        capability.ProviderTypeAPIKey,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Concurrency: 1,
@@ -2996,7 +2996,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledFun
 			return
 		}
 
-		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, account, "sk-test", firstMessage, nil)
+		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, provider, "sk-test", firstMessage, nil)
 	}))
 	defer wsServer.Close()
 
@@ -3057,9 +3057,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PreflightPingFai
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerAccount = 1
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 1
+	options.Pool.MaxConnsPerProvider = 1
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 1
 	options.Pool.QueueLimitPerConn = 8
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 3
@@ -3083,12 +3083,12 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PreflightPingFai
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 116,
 			Name:        "openai-ingress-preflight-ping",
 			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeAPIKey,
+			Type:        capability.ProviderTypeAPIKey,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Concurrency: 1,
@@ -3133,7 +3133,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PreflightPingFai
 			return
 		}
 
-		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, account, "sk-test", firstMessage, nil)
+		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, provider, "sk-test", firstMessage, nil)
 	}))
 	defer wsServer.Close()
 
@@ -3193,9 +3193,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledStr
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerAccount = 2
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 2
+	options.Pool.MaxConnsPerProvider = 2
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 2
 	options.Pool.QueueLimitPerConn = 8
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 3
@@ -3219,12 +3219,12 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledStr
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 121,
 			Name:        "openai-ingress-preflight-ping-strict-affinity",
 			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeAPIKey,
+			Type:        capability.ProviderTypeAPIKey,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Concurrency: 1,
@@ -3269,7 +3269,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledStr
 			return
 		}
 
-		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, account, "sk-test", firstMessage, nil)
+		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, provider, "sk-test", firstMessage, nil)
 	}))
 	defer wsServer.Close()
 
@@ -3339,9 +3339,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerAccount = 2
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 2
+	options.Pool.MaxConnsPerProvider = 2
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 2
 	options.Pool.QueueLimitPerConn = 8
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 3
@@ -3365,12 +3365,12 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 128,
 			Name:        "openai-ingress-preflight-replay-function-output-with-context",
 			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeAPIKey,
+			Type:        capability.ProviderTypeAPIKey,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Concurrency: 1,
@@ -3415,7 +3415,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 			return
 		}
 
-		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, account, "sk-test", firstMessage, nil)
+		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, provider, "sk-test", firstMessage, nil)
 	}))
 	defer wsServer.Close()
 
@@ -3488,9 +3488,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerAccount = 2
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 2
+	options.Pool.MaxConnsPerProvider = 2
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 2
 	options.Pool.QueueLimitPerConn = 8
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 3
@@ -3514,12 +3514,12 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 129,
 			Name:        "openai-ingress-preflight-replay-function-output",
 			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeAPIKey,
+			Type:        capability.ProviderTypeAPIKey,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Concurrency: 1,
@@ -3564,7 +3564,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 			return
 		}
 
-		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, account, "sk-test", firstMessage, nil)
+		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, provider, "sk-test", firstMessage, nil)
 	}))
 	defer wsServer.Close()
 
@@ -3628,9 +3628,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerAccount = 2
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 2
+	options.Pool.MaxConnsPerProvider = 2
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 2
 	options.Pool.QueueLimitPerConn = 8
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 3
@@ -3654,12 +3654,12 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 130,
 			Name:        "openai-ingress-preflight-replay-only-function-output",
 			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeAPIKey,
+			Type:        capability.ProviderTypeAPIKey,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Concurrency: 1,
@@ -3704,7 +3704,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 			return
 		}
 
-		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, account, "sk-test", firstMessage, nil)
+		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, provider, "sk-test", firstMessage, nil)
 	}))
 	defer wsServer.Close()
 
@@ -3762,9 +3762,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_WriteFailBeforeD
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerAccount = 1
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 1
+	options.Pool.MaxConnsPerProvider = 1
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 1
 	options.Pool.QueueLimitPerConn = 8
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 3
@@ -3788,12 +3788,12 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_WriteFailBeforeD
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 117,
 			Name:        "openai-ingress-write-retry",
 			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeAPIKey,
+			Type:        capability.ProviderTypeAPIKey,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Concurrency: 1,
@@ -3856,7 +3856,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_WriteFailBeforeD
 			return
 		}
 
-		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, account, "sk-test", firstMessage, hooks)
+		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, provider, "sk-test", firstMessage, hooks)
 	}))
 	defer wsServer.Close()
 
@@ -3923,9 +3923,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PreviousResponse
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
 	options.WS.IngressPreviousResponseRecoveryEnabled = true
-	options.Pool.MaxConnsPerAccount = 1
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 1
+	options.Pool.MaxConnsPerProvider = 1
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 1
 	options.Pool.QueueLimitPerConn = 8
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 3
@@ -3950,12 +3950,12 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PreviousResponse
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 118,
 			Name:        "openai-ingress-prev-recovery",
 			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeAPIKey,
+			Type:        capability.ProviderTypeAPIKey,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Concurrency: 1,
@@ -4000,7 +4000,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PreviousResponse
 			return
 		}
 
-		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, account, "sk-test", firstMessage, nil)
+		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, provider, "sk-test", firstMessage, nil)
 	}))
 	defer wsServer.Close()
 
@@ -4067,9 +4067,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledStr
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
 	options.WS.IngressPreviousResponseRecoveryEnabled = true
-	options.Pool.MaxConnsPerAccount = 1
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 1
+	options.Pool.MaxConnsPerProvider = 1
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 1
 	options.Pool.QueueLimitPerConn = 8
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 3
@@ -4094,12 +4094,12 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledStr
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 122,
 			Name:        "openai-ingress-prev-strict-layer2",
 			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeAPIKey,
+			Type:        capability.ProviderTypeAPIKey,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Concurrency: 1,
@@ -4144,7 +4144,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledStr
 			return
 		}
 
-		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, account, "sk-test", firstMessage, nil)
+		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, provider, "sk-test", firstMessage, nil)
 	}))
 	defer wsServer.Close()
 
@@ -4216,9 +4216,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PreviousResponse
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
 	options.WS.IngressPreviousResponseRecoveryEnabled = true
-	options.Pool.MaxConnsPerAccount = 1
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 1
+	options.Pool.MaxConnsPerProvider = 1
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 1
 	options.Pool.QueueLimitPerConn = 8
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 3
@@ -4243,12 +4243,12 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PreviousResponse
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 120,
 			Name:        "openai-ingress-prev-recovery-once",
 			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeAPIKey,
+			Type:        capability.ProviderTypeAPIKey,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Concurrency: 1,
@@ -4293,7 +4293,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PreviousResponse
 			return
 		}
 
-		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, account, "sk-test", firstMessage, nil)
+		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, provider, "sk-test", firstMessage, nil)
 	}))
 	defer wsServer.Close()
 
@@ -4362,12 +4362,12 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_RejectsMessageID
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector()})
 
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 119,
 			Name:        "openai-ingress-prev-validation",
 			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeAPIKey,
+			Type:        capability.ProviderTypeAPIKey,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Concurrency: 1,
@@ -4412,7 +4412,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_RejectsMessageID
 			return
 		}
 
-		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, account, "sk-test", firstMessage, nil)
+		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, provider, "sk-test", firstMessage, nil)
 	}))
 	defer wsServer.Close()
 
@@ -4578,9 +4578,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ClientDisconnect
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerAccount = 1
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 1
+	options.Pool.MaxConnsPerProvider = 1
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 1
 	options.Pool.QueueLimitPerConn = 8
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 3
@@ -4602,12 +4602,12 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ClientDisconnect
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 115,
 			Name:        "openai-ingress-client-disconnect",
 			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeAPIKey,
+			Type:        capability.ProviderTypeAPIKey,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Concurrency: 1,
@@ -4665,7 +4665,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ClientDisconnect
 			return
 		}
 
-		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, account, "sk-test", firstMessage, hooks)
+		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, provider, "sk-test", firstMessage, hooks)
 	}))
 	defer wsServer.Close()
 
@@ -4708,9 +4708,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ReportsCyberErro
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerAccount = 1
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 1
+	options.Pool.MaxConnsPerProvider = 1
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 1
 	options.Pool.QueueLimitPerConn = 8
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 3
@@ -4723,12 +4723,12 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ReportsCyberErro
 	pool.SetClientDialerForTest(dialer)
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 119,
 			Name:        "openai-ingress-cyber-error",
 			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeAPIKey,
+			Type:        capability.ProviderTypeAPIKey,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Concurrency: 1,
@@ -4787,7 +4787,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ReportsCyberErro
 			return
 		}
 
-		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, account, "sk-test", firstMessage, hooks)
+		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, provider, "sk-test", firstMessage, hooks)
 	}))
 	defer wsServer.Close()
 
@@ -4835,9 +4835,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ReportsCyberFail
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerAccount = 1
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 1
+	options.Pool.MaxConnsPerProvider = 1
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 1
 	options.Pool.QueueLimitPerConn = 8
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 3
@@ -4850,12 +4850,12 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ReportsCyberFail
 	pool.SetClientDialerForTest(dialer)
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 120,
 			Name:        "openai-ingress-cyber-failed",
 			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeAPIKey,
+			Type:        capability.ProviderTypeAPIKey,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Concurrency: 1,
@@ -4910,7 +4910,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ReportsCyberFail
 			return
 		}
 
-		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, account, "sk-test", firstMessage, hooks)
+		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, provider, "sk-test", firstMessage, hooks)
 	}))
 	defer wsServer.Close()
 
@@ -4956,9 +4956,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_InvalidEncrypted
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerAccount = 1
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 1
+	options.Pool.MaxConnsPerProvider = 1
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 1
 	options.Pool.QueueLimitPerConn = 8
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 3
@@ -4979,12 +4979,12 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_InvalidEncrypted
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 119,
 			Name:        "openai-ingress-enc-lineage",
 			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeAPIKey,
+			Type:        capability.ProviderTypeAPIKey,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Concurrency: 1,
@@ -5029,7 +5029,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_InvalidEncrypted
 			return
 		}
 
-		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, account, "sk-test", firstMessage, nil)
+		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, provider, "sk-test", firstMessage, nil)
 	}))
 	defer wsServer.Close()
 

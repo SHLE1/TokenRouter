@@ -14,7 +14,7 @@ type ExecutionHints struct {
 	HealthModel            string
 	SessionIsolationSource string
 	SessionIsolationHash   string
-	// 选择快照只携带本次阈值、分组要求和单次降级标记，不写入共享账号缓存。
+	// 选择快照只携带本次阈值、分组要求和单次降级标记，不写入共享提供商缓存。
 	QuotaAutoPauseThreshold5h   float64
 	QuotaAutoPauseThreshold7d   float64
 	GroupPrivacyRequirement     Hint[bool]
@@ -26,10 +26,10 @@ type ExecutionHints struct {
 	OpenAIImagesEndpoint        bool
 	IsMaxTokensOneHaikuRequest  Hint[bool]
 	ThinkingEnabled             Hint[bool]
-	PrefetchedStickyAccountID   Hint[int64]
+	PrefetchedStickyProviderID  Hint[int64]
 	PrefetchedStickyGroupID     Hint[int64]
-	SingleAccountRetry          Hint[bool]
-	AccountSwitchCount          Hint[int]
+	SingleProviderRetry         Hint[bool]
+	ProviderSwitchCount         Hint[int]
 }
 
 // 客户端和能力标记只保存入口已经作出的判断，不重新解析报文或读取设置。
@@ -103,19 +103,19 @@ func WithThinkingEnabled(ctx context.Context, value bool) context.Context {
 	return updateHints(ctx, func(h *ExecutionHints) { h.ThinkingEnabled = Hint[bool]{value, true} })
 }
 
-func WithPrefetchedStickySession(ctx context.Context, accountID, groupID int64) context.Context {
+func WithPrefetchedStickySession(ctx context.Context, providerID, groupID int64) context.Context {
 	return updateHints(ctx, func(h *ExecutionHints) {
-		h.PrefetchedStickyAccountID = Hint[int64]{accountID, true}
+		h.PrefetchedStickyProviderID = Hint[int64]{providerID, true}
 		h.PrefetchedStickyGroupID = Hint[int64]{groupID, true}
 	})
 }
 
-func WithSingleAccountRetry(ctx context.Context, value bool) context.Context {
-	return updateHints(ctx, func(h *ExecutionHints) { h.SingleAccountRetry = Hint[bool]{value, true} })
+func WithSingleProviderRetry(ctx context.Context, value bool) context.Context {
+	return updateHints(ctx, func(h *ExecutionHints) { h.SingleProviderRetry = Hint[bool]{value, true} })
 }
 
-func WithAccountSwitchCount(ctx context.Context, value int) context.Context {
-	return updateHints(ctx, func(h *ExecutionHints) { h.AccountSwitchCount = Hint[int]{value, true} })
+func WithProviderSwitchCount(ctx context.Context, value int) context.Context {
+	return updateHints(ctx, func(h *ExecutionHints) { h.ProviderSwitchCount = Hint[int]{value, true} })
 }
 
 func IsMaxTokensOneHaikuRequestFromContext(ctx context.Context) (bool, bool) {
@@ -128,8 +128,8 @@ func ThinkingEnabledFromContext(ctx context.Context) (bool, bool) {
 	return h.Value, h.Set
 }
 
-func PrefetchedStickyAccountIDFromContext(ctx context.Context) (int64, bool) {
-	h := ExecutionHintsFromContext(ctx).PrefetchedStickyAccountID
+func PrefetchedStickyProviderIDFromContext(ctx context.Context) (int64, bool) {
+	h := ExecutionHintsFromContext(ctx).PrefetchedStickyProviderID
 	return h.Value, h.Set
 }
 
@@ -138,13 +138,13 @@ func PrefetchedStickyGroupIDFromContext(ctx context.Context) (int64, bool) {
 	return h.Value, h.Set
 }
 
-func SingleAccountRetryFromContext(ctx context.Context) (bool, bool) {
-	h := ExecutionHintsFromContext(ctx).SingleAccountRetry
+func SingleProviderRetryFromContext(ctx context.Context) (bool, bool) {
+	h := ExecutionHintsFromContext(ctx).SingleProviderRetry
 	return h.Value, h.Set
 }
 
-func AccountSwitchCountFromContext(ctx context.Context) (int, bool) {
-	h := ExecutionHintsFromContext(ctx).AccountSwitchCount
+func ProviderSwitchCountFromContext(ctx context.Context) (int, bool) {
+	h := ExecutionHintsFromContext(ctx).ProviderSwitchCount
 	return h.Value, h.Set
 }
 

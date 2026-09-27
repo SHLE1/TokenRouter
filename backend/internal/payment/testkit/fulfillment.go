@@ -7,7 +7,7 @@ import (
 	dbent "github.com/TokenFlux/TokenRouter/ent"
 	"github.com/TokenFlux/TokenRouter/internal/payment"
 	paymentpostgres "github.com/TokenFlux/TokenRouter/internal/payment/postgres"
-	"github.com/TokenFlux/TokenRouter/internal/payment/provider"
+	paymentadapter "github.com/TokenFlux/TokenRouter/internal/payment/provider"
 	"github.com/TokenFlux/TokenRouter/internal/promotion"
 )
 
@@ -41,6 +41,6 @@ func fulfillment(client *dbent.Client, redeem payment.FulfillmentRedeemer, subsc
 			return rebates
 		},
 	})
-	bindings := payment.NewProviderBindings(paymentpostgres.NewInstanceStore(client), registry, nil, payment.BindingRuntime{Factory: provider.CreateProvider}, loaded)
+	bindings := payment.NewProviderBindings(paymentpostgres.NewInstanceStore(client), registry, nil, payment.BindingRuntime{Factory: paymentadapter.CreateProvider}, loaded)
 	return payment.NewFulfillment(store, bindings, registry, redeem, subscriptions, runtime)
 }

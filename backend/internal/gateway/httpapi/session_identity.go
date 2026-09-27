@@ -70,7 +70,7 @@ func ExplicitOpenAISessionID(c *gin.Context, body []byte) string {
 	return sessionID
 }
 
-// ExplicitOpenAIRequestSessionID 按客户端显式会话信号读取身份，选定账号后再应用其平台约束。
+// ExplicitOpenAIRequestSessionID 按客户端显式会话信号读取身份，选定提供商后再应用其平台约束。
 func ExplicitOpenAIRequestSessionID(c *gin.Context, body []byte) string {
 	if c == nil {
 		return ""
@@ -128,7 +128,7 @@ func GenerateOpenAISessionHash(c *gin.Context, body []byte) string {
 
 // GenerateOpenAISessionHashWithFallback 先按常规信号生成会话哈希；
 // 当未携带 session_id/conversation_id/prompt_cache_key 时，使用 fallbackSeed 生成稳定哈希。
-// 该方法用于 WS ingress，避免会话信号缺失时发生跨账号漂移。
+// 该方法用于 WS ingress，避免会话信号缺失时发生跨提供商漂移。
 func GenerateOpenAISessionHashWithFallback(c *gin.Context, body []byte, fallbackSeed string) string {
 	sessionHash := GenerateOpenAISessionHash(c, body)
 	if sessionHash != "" {
@@ -161,7 +161,7 @@ func ExtractClientSessionID(c *gin.Context) string {
 	return gatewaysession.ExtractClientSessionID(c.GetHeader, clientSessionIDHeaders, IsGrokRequestContext(c))
 }
 
-// IsGrokRequestContext 使用已选账号、强制路由或显式 Grok 会话头，不推断分组平台。
+// IsGrokRequestContext 使用已选提供商、强制路由或显式 Grok 会话头，不推断分组平台。
 func IsGrokRequestContext(c *gin.Context) bool {
 	if c == nil {
 		return false

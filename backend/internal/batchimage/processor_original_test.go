@@ -13,9 +13,9 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/batchimage"
 	batchimageprovider "github.com/TokenFlux/TokenRouter/internal/batchimage/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/stretchr/testify/require"
 )
 
@@ -103,11 +103,11 @@ func TestBatchImageResultIndexer_WritesCountsAndReplacesItems(t *testing.T) {
 	repo := newFakeBatchImageRepository()
 	outputRef := "files/output"
 	job := &batchimage.BatchImageJob{BatchID: "imgbatch_index", ProviderOutputRef: &outputRef}
-	provider := &fakeProcessorProvider{result: output}
+	platform := &fakeProcessorProvider{result: output}
 
-	result, err := (&batchimage.ResultIndexer{Repo: repo, Observe: resultObserve}).Index(context.Background(), job, batchimageprovider.BindAccount(provider, accountcore.CloneRecord(&accountcore.Record{})))
+	result, err := (&batchimage.ResultIndexer{Repo: repo, Observe: resultObserve}).Index(context.Background(), job, batchimageprovider.BindProvider(platform, providercore.CloneRecord(&providercore.Record{})))
 	require.NoError(t, err)
-	require.True(t, provider.openResultCalled)
+	require.True(t, platform.openResultCalled)
 	require.Equal(t, 1, result.SuccessCount)
 	require.Equal(t, 1, result.FailCount)
 	require.Equal(t, 2, result.TotalCount)
@@ -120,8 +120,8 @@ func TestBatchImageResultIndexer_WritesCountsAndReplacesItems(t *testing.T) {
 
 	// 重新索引时与现有 custom_id 集对账：未知的 "ok2" 被丢弃，
 	// 输出中缺失的 ok/bad 补为 PROVIDER_RESULT_MISSING 失败记录。
-	provider.result = `{"key":"ok2","response":{"candidates":[{"content":{"parts":[{"inlineData":{"mimeType":"image/webp","data":"` + batchImageTestData + `"}}]}}]}}` + "\n"
-	result, err = (&batchimage.ResultIndexer{Repo: repo, Observe: resultObserve}).Index(context.Background(), job, batchimageprovider.BindAccount(provider, accountcore.CloneRecord(&accountcore.Record{})))
+	platform.result = `{"key":"ok2","response":{"candidates":[{"content":{"parts":[{"inlineData":{"mimeType":"image/webp","data":"` + batchImageTestData + `"}}]}}]}}` + "\n"
+	result, err = (&batchimage.ResultIndexer{Repo: repo, Observe: resultObserve}).Index(context.Background(), job, batchimageprovider.BindProvider(platform, providercore.CloneRecord(&providercore.Record{})))
 	require.NoError(t, err)
 	require.Equal(t, 2, result.TotalCount)
 	require.Equal(t, 0, result.SuccessCount)
@@ -145,15 +145,15 @@ func TestBatchImageResultIndexer_ReconcilesMissingAndUnknownCustomIDs(t *testing
 		{JobID: job.BatchID, CustomID: "b", Status: batchimage.BatchImageItemStatusPending},
 		{JobID: job.BatchID, CustomID: "c", Status: batchimage.BatchImageItemStatusPending},
 	}))
-	// provider 输出：a 成功，b 失败，c 漏掉，多出未知的 x。
+	// platform 输出：a 成功，b 失败，c 漏掉，多出未知的 x。
 	output := strings.Join([]string{
 		`{"key":"a","response":{"candidates":[{"content":{"parts":[{"inlineData":{"mimeType":"image/png","data":"` + batchImageTestData + `"}}]}}]}}`,
 		`{"key":"b","error":{"code":"SAFETY","message":"blocked"}}`,
 		`{"key":"x","error":{"code":"UNKNOWN","message":"not ours"}}`,
 	}, "\n") + "\n"
-	provider := &fakeProcessorProvider{result: output}
+	platform := &fakeProcessorProvider{result: output}
 
-	result, err := (&batchimage.ResultIndexer{Repo: repo, Observe: resultObserve}).Index(context.Background(), job, batchimageprovider.BindAccount(provider, accountcore.CloneRecord(&accountcore.Record{})))
+	result, err := (&batchimage.ResultIndexer{Repo: repo, Observe: resultObserve}).Index(context.Background(), job, batchimageprovider.BindProvider(platform, providercore.CloneRecord(&providercore.Record{})))
 	require.NoError(t, err)
 	require.Equal(t, 3, result.TotalCount)
 	require.Equal(t, 1, result.SuccessCount)
@@ -185,7 +185,7 @@ func TestBatchImageResultIndexer_EmptyInvalidAndDuplicateOutput(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := newFakeBatchImageRepository()
-			_, err := (&batchimage.ResultIndexer{Repo: repo, Observe: resultObserve}).Index(context.Background(), &batchimage.BatchImageJob{BatchID: "imgbatch_bad"}, batchimageprovider.BindAccount(&fakeProcessorProvider{result: tt.body}, accountcore.CloneRecord(&accountcore.Record{})))
+			_, err := (&batchimage.ResultIndexer{Repo: repo, Observe: resultObserve}).Index(context.Background(), &batchimage.BatchImageJob{BatchID: "imgbatch_bad"}, batchimageprovider.BindProvider(&fakeProcessorProvider{result: tt.body}, providercore.CloneRecord(&providercore.Record{})))
 			require.ErrorIs(t, err, tt.want)
 			require.Empty(t, repo.items["imgbatch_bad"])
 		})
@@ -194,54 +194,54 @@ func TestBatchImageResultIndexer_EmptyInvalidAndDuplicateOutput(t *testing.T) {
 
 func TestBatchImageProviderProcessor_ValidationAndTerminalCases(t *testing.T) {
 	ctx := context.Background()
-	accountID := int64(10)
+	providerID := int64(10)
 	providerJob := "providers/job"
 
-	t.Run("terminal job returns without provider call", func(t *testing.T) {
+	t.Run("terminal job returns without platform call", func(t *testing.T) {
 		repo := newFakeBatchImageRepository()
 		repo.jobs["imgbatch_done"] = &batchimage.BatchImageJob{BatchID: "imgbatch_done", Status: batchimage.BatchImageJobStatusFailed}
-		provider := &fakeProcessorProvider{}
-		got, err := (newBatchProcessorFixture(repo, batchimage.NewRegistry[batchimageprovider.BatchImageProvider](provider), &fakeBatchImageAccountResolver{account: &accountcore.Record{}}, nil, nil, nil, 0)).Process(ctx, "imgbatch_done")
+		platform := &fakeProcessorProvider{}
+		got, err := newBatchProcessorFixture(repo, batchimage.NewRegistry[batchimageprovider.BatchImageProvider](platform), &fakeBatchImageProviderResolver{provider: &providercore.Record{}}, nil, nil, nil, 0).Process(ctx, "imgbatch_done")
 		require.NoError(t, err)
 		require.True(t, got.Terminal)
-		require.False(t, provider.getCalled)
+		require.False(t, platform.getCalled)
 	})
 
-	t.Run("missing provider", func(t *testing.T) {
+	t.Run("missing platform", func(t *testing.T) {
 		repo := newFakeBatchImageRepository()
-		repo.jobs["imgbatch_missing_provider"] = &batchimage.BatchImageJob{BatchID: "imgbatch_missing_provider", Status: batchimage.BatchImageJobStatusSubmitted, Provider: "missing", AccountID: &accountID, ProviderJobName: &providerJob}
-		_, err := (newBatchProcessorFixture(repo, batchimage.NewRegistry[batchimageprovider.BatchImageProvider](), &fakeBatchImageAccountResolver{account: &accountcore.Record{}}, nil, nil, nil, 0)).Process(ctx, "imgbatch_missing_provider")
+		repo.jobs["imgbatch_missing_provider"] = &batchimage.BatchImageJob{BatchID: "imgbatch_missing_provider", Status: batchimage.BatchImageJobStatusSubmitted, Platform: "missing", ProviderID: &providerID, ProviderJobName: &providerJob}
+		_, err := newBatchProcessorFixture(repo, batchimage.NewRegistry[batchimageprovider.BatchImageProvider](), &fakeBatchImageProviderResolver{provider: &providercore.Record{}}, nil, nil, nil, 0).Process(ctx, "imgbatch_missing_provider")
 		require.ErrorIs(t, err, batchimage.ErrBatchImageUnsupportedProvider)
 	})
 
-	t.Run("missing account id", func(t *testing.T) {
+	t.Run("missing provider id", func(t *testing.T) {
 		repo := newFakeBatchImageRepository()
-		repo.jobs["imgbatch_missing_account"] = &batchimage.BatchImageJob{BatchID: "imgbatch_missing_account", Status: batchimage.BatchImageJobStatusSubmitted, Provider: "fake", ProviderJobName: &providerJob}
-		_, err := (newBatchProcessorFixture(repo, batchimage.NewRegistry[batchimageprovider.BatchImageProvider](&fakeProcessorProvider{}), &fakeBatchImageAccountResolver{account: &accountcore.Record{}}, nil, nil, nil, 0)).Process(ctx, "imgbatch_missing_account")
-		require.ErrorIs(t, err, batchimage.ErrBatchImageMissingAccountID)
+		repo.jobs["imgbatch_missing_provider"] = &batchimage.BatchImageJob{BatchID: "imgbatch_missing_provider", Status: batchimage.BatchImageJobStatusSubmitted, Platform: "fake", ProviderJobName: &providerJob}
+		_, err := newBatchProcessorFixture(repo, batchimage.NewRegistry[batchimageprovider.BatchImageProvider](&fakeProcessorProvider{}), &fakeBatchImageProviderResolver{provider: &providercore.Record{}}, nil, nil, nil, 0).Process(ctx, "imgbatch_missing_provider")
+		require.ErrorIs(t, err, batchimage.ErrBatchImageMissingProviderID)
 	})
 
-	t.Run("missing provider job name", func(t *testing.T) {
+	t.Run("missing platform job name", func(t *testing.T) {
 		repo := newFakeBatchImageRepository()
-		repo.jobs["imgbatch_missing_name"] = &batchimage.BatchImageJob{BatchID: "imgbatch_missing_name", Status: batchimage.BatchImageJobStatusSubmitted, Provider: "fake", AccountID: &accountID}
-		_, err := (newBatchProcessorFixture(repo, batchimage.NewRegistry[batchimageprovider.BatchImageProvider](&fakeProcessorProvider{}), &fakeBatchImageAccountResolver{account: &accountcore.Record{}}, nil, nil, nil, 0)).Process(ctx, "imgbatch_missing_name")
+		repo.jobs["imgbatch_missing_name"] = &batchimage.BatchImageJob{BatchID: "imgbatch_missing_name", Status: batchimage.BatchImageJobStatusSubmitted, Platform: "fake", ProviderID: &providerID}
+		_, err := newBatchProcessorFixture(repo, batchimage.NewRegistry[batchimageprovider.BatchImageProvider](&fakeProcessorProvider{}), &fakeBatchImageProviderResolver{provider: &providercore.Record{}}, nil, nil, nil, 0).Process(ctx, "imgbatch_missing_name")
 		require.ErrorIs(t, err, batchimage.ErrBatchImageMissingProviderJobName)
 	})
 }
 
 func TestBatchImageProviderProcessor_StatusFlow(t *testing.T) {
 	ctx := context.Background()
-	accountID := int64(10)
+	providerID := int64(10)
 	providerJob := "providers/job"
 	newJob := func(status string) *batchimage.BatchImageJob {
-		return &batchimage.BatchImageJob{BatchID: "imgbatch_flow", Status: status, Provider: "fake", AccountID: &accountID, ProviderJobName: &providerJob}
+		return &batchimage.BatchImageJob{BatchID: "imgbatch_flow", Status: status, Platform: "fake", ProviderID: &providerID, ProviderJobName: &providerJob}
 	}
 
 	t.Run("running status updates and requeues", func(t *testing.T) {
 		repo := newFakeBatchImageRepository()
 		repo.jobs["imgbatch_flow"] = newJob(batchimage.BatchImageJobStatusSubmitted)
-		provider := &fakeProcessorProvider{status: &batchimage.BatchProviderStatus{InternalState: batchimage.BatchProviderStateRunning, RawState: "RUNNING", SuggestedRequeueAfter: 12 * time.Second}}
-		got, err := newTestBatchImageProcessor(repo, provider).Process(ctx, "imgbatch_flow")
+		platform := &fakeProcessorProvider{status: &batchimage.BatchProviderStatus{InternalState: batchimage.BatchProviderStateRunning, RawState: "RUNNING", SuggestedRequeueAfter: 12 * time.Second}}
+		got, err := newTestBatchImageProcessor(repo, platform).Process(ctx, "imgbatch_flow")
 		require.NoError(t, err)
 		require.False(t, got.Terminal)
 		require.Equal(t, 12*time.Second, got.RequeueAfter)
@@ -251,19 +251,19 @@ func TestBatchImageProviderProcessor_StatusFlow(t *testing.T) {
 	t.Run("queued status requeues", func(t *testing.T) {
 		repo := newFakeBatchImageRepository()
 		repo.jobs["imgbatch_flow"] = newJob(batchimage.BatchImageJobStatusSubmitted)
-		provider := &fakeProcessorProvider{status: &batchimage.BatchProviderStatus{InternalState: batchimage.BatchProviderStateQueued}}
-		got, err := newTestBatchImageProcessor(repo, provider).Process(ctx, "imgbatch_flow")
+		platform := &fakeProcessorProvider{status: &batchimage.BatchProviderStatus{InternalState: batchimage.BatchProviderStateQueued}}
+		got, err := newTestBatchImageProcessor(repo, platform).Process(ctx, "imgbatch_flow")
 		require.NoError(t, err)
 		require.False(t, got.Terminal)
 		require.Equal(t, batchimage.DefaultBatchImageProcessorRequeue, got.RequeueAfter)
 		require.Equal(t, batchimage.BatchImageJobStatusSubmitted, repo.jobs["imgbatch_flow"].Status)
 	})
 
-	t.Run("transient provider get error requeues", func(t *testing.T) {
+	t.Run("transient platform get error requeues", func(t *testing.T) {
 		repo := newFakeBatchImageRepository()
 		repo.jobs["imgbatch_flow"] = newJob(batchimage.BatchImageJobStatusSubmitted)
-		provider := &fakeProcessorProvider{getErr: errors.New("temporary upstream failure")}
-		got, err := newTestBatchImageProcessor(repo, provider).Process(ctx, "imgbatch_flow")
+		platform := &fakeProcessorProvider{getErr: errors.New("temporary upstream failure")}
+		got, err := newTestBatchImageProcessor(repo, platform).Process(ctx, "imgbatch_flow")
 		require.NoError(t, err)
 		require.False(t, got.Terminal)
 		require.Equal(t, time.Minute, got.RequeueAfter)
@@ -272,11 +272,11 @@ func TestBatchImageProviderProcessor_StatusFlow(t *testing.T) {
 	t.Run("succeeded indexes and settles from submitted", func(t *testing.T) {
 		repo := newFakeBatchImageRepository()
 		repo.jobs["imgbatch_flow"] = newJob(batchimage.BatchImageJobStatusSubmitted)
-		provider := &fakeProcessorProvider{
+		platform := &fakeProcessorProvider{
 			status: &batchimage.BatchProviderStatus{InternalState: batchimage.BatchProviderStateSucceeded, RawState: "SUCCEEDED", ProviderOutputRef: "files/output"},
 			result: `{"key":"ok","response":{"candidates":[{"content":{"parts":[{"inlineData":{"mimeType":"image/png","data":"` + batchImageTestData + `"}}]}}]}}` + "\n",
 		}
-		got, err := newTestBatchImageProcessor(repo, provider).Process(ctx, "imgbatch_flow")
+		got, err := newTestBatchImageProcessor(repo, platform).Process(ctx, "imgbatch_flow")
 		require.NoError(t, err)
 		require.False(t, got.Terminal)
 		require.Equal(t, time.Millisecond, got.RequeueAfter)
@@ -286,18 +286,18 @@ func TestBatchImageProviderProcessor_StatusFlow(t *testing.T) {
 		require.Equal(t, batchimage.BatchImageCounts{SuccessCount: 1}, repo.counts["imgbatch_flow"])
 	})
 
-	t.Run("failed provider marks job failed", func(t *testing.T) {
+	t.Run("failed platform marks job failed", func(t *testing.T) {
 		repo := newFakeBatchImageRepository()
 		repo.jobs["imgbatch_flow"] = newJob(batchimage.BatchImageJobStatusRunning)
-		provider := &fakeProcessorProvider{status: &batchimage.BatchProviderStatus{InternalState: batchimage.BatchProviderStateFailed, RawState: "FAILED", ErrorCode: "BAD_PROMPT", ErrorMessage: "bad prompt"}}
-		got, err := newTestBatchImageProcessor(repo, provider).Process(ctx, "imgbatch_flow")
+		platform := &fakeProcessorProvider{status: &batchimage.BatchProviderStatus{InternalState: batchimage.BatchProviderStateFailed, RawState: "FAILED", ErrorCode: "BAD_PROMPT", ErrorMessage: "bad prompt"}}
+		got, err := newTestBatchImageProcessor(repo, platform).Process(ctx, "imgbatch_flow")
 		require.NoError(t, err)
 		require.True(t, got.Terminal)
 		require.Equal(t, batchimage.BatchImageJobStatusFailed, repo.jobs["imgbatch_flow"].Status)
 		require.Equal(t, "BAD_PROMPT", batchimage.BatchImageDerefString(repo.jobs["imgbatch_flow"].LastErrorCode))
 	})
 
-	t.Run("cancelled provider marks job cancelled", func(t *testing.T) {
+	t.Run("cancelled platform marks job cancelled", func(t *testing.T) {
 		repo := newFakeBatchImageRepository()
 		repo.jobs["imgbatch_flow"] = newJob(batchimage.BatchImageJobStatusRunning)
 		apiKeyID := int64(22)
@@ -306,8 +306,8 @@ func TestBatchImageProviderProcessor_StatusFlow(t *testing.T) {
 		repo.jobs["imgbatch_flow"].APIKeyID = &apiKeyID
 		repo.jobs["imgbatch_flow"].EstimatedCost = holdAmount
 		repo.jobs["imgbatch_flow"].HoldAmount = &holdAmount
-		provider := &fakeProcessorProvider{status: &batchimage.BatchProviderStatus{InternalState: batchimage.BatchProviderStateCancelled, RawState: "CANCELLED"}}
-		processor := newTestBatchImageProcessor(repo, provider)
+		platform := &fakeProcessorProvider{status: &batchimage.BatchProviderStatus{InternalState: batchimage.BatchProviderStateCancelled, RawState: "CANCELLED"}}
+		processor := newTestBatchImageProcessor(repo, platform)
 		billing := &fakeBatchImageBillingRepo{}
 		processor.Funding = nativeTaskFundingFixture(billing)
 		got, err := processor.Process(ctx, "imgbatch_flow")
@@ -325,24 +325,23 @@ func TestCanTransitionBatchImageJob_PR5DirectIndexing(t *testing.T) {
 	require.True(t, batchimage.CanTransitionBatchImageJob(batchimage.BatchImageJobStatusIndexing, batchimage.BatchImageJobStatusFailed))
 }
 
-func newTestBatchImageProcessor(repo *fakeBatchImageRepository, provider *fakeProcessorProvider) *batchimage.ProviderProcessor {
+func newTestBatchImageProcessor(repo *fakeBatchImageRepository, platform *fakeProcessorProvider) *batchimage.ProviderProcessor {
 	return newBatchProcessorFixture(repo,
-		batchimage.NewRegistry[batchimageprovider.BatchImageProvider](provider),
-		&fakeBatchImageAccountResolver{account: &accountcore.Record{}},
+		batchimage.NewRegistry[batchimageprovider.BatchImageProvider](platform),
+		&fakeBatchImageProviderResolver{provider: &providercore.Record{}},
 		&batchimage.ResultIndexer{Repo: repo, Observe: resultObserve}, nil, nil, 0)
-
 }
 
-type fakeBatchImageAccountResolver struct {
-	account *accountcore.Record
-	err     error
+type fakeBatchImageProviderResolver struct {
+	provider *providercore.Record
+	err      error
 }
 
-func (r *fakeBatchImageAccountResolver) GetByID(context.Context, int64) (*accountcore.Record, error) {
+func (r *fakeBatchImageProviderResolver) GetByID(context.Context, int64) (*providercore.Record, error) {
 	if r.err != nil {
 		return nil, r.err
 	}
-	return r.account, nil
+	return r.provider, nil
 }
 
 type fakeProcessorProvider struct {
@@ -355,13 +354,15 @@ type fakeProcessorProvider struct {
 }
 
 func (p *fakeProcessorProvider) Name() string { return "fake" }
-func (p *fakeProcessorProvider) SupportsAccount(*accountcore.Record) bool {
+func (p *fakeProcessorProvider) SupportsProvider(*providercore.Record) bool {
 	return true
 }
-func (p *fakeProcessorProvider) Submit(context.Context, *batchimage.BatchImageJob, *accountcore.Record, batchimage.BatchImageInput) (*batchimage.BatchProviderJob, error) {
+
+func (p *fakeProcessorProvider) Submit(context.Context, *batchimage.BatchImageJob, *providercore.Record, batchimage.BatchImageInput) (*batchimage.BatchProviderJob, error) {
 	panic("Submit must not be called by PR5 processor")
 }
-func (p *fakeProcessorProvider) Get(context.Context, *batchimage.BatchImageJob, *accountcore.Record) (*batchimage.BatchProviderStatus, error) {
+
+func (p *fakeProcessorProvider) Get(context.Context, *batchimage.BatchImageJob, *providercore.Record) (*batchimage.BatchProviderStatus, error) {
 	p.getCalled = true
 	if p.getErr != nil {
 		return nil, p.getErr
@@ -371,14 +372,17 @@ func (p *fakeProcessorProvider) Get(context.Context, *batchimage.BatchImageJob, 
 	}
 	return p.status, nil
 }
-func (p *fakeProcessorProvider) Cancel(context.Context, *batchimage.BatchImageJob, *accountcore.Record) error {
+
+func (p *fakeProcessorProvider) Cancel(context.Context, *batchimage.BatchImageJob, *providercore.Record) error {
 	return nil
 }
-func (p *fakeProcessorProvider) OpenResult(context.Context, *batchimage.BatchImageJob, *accountcore.Record) (io.ReadCloser, string, error) {
+
+func (p *fakeProcessorProvider) OpenResult(context.Context, *batchimage.BatchImageJob, *providercore.Record) (io.ReadCloser, string, error) {
 	p.openResultCalled = true
 	return io.NopCloser(strings.NewReader(p.result)), "application/jsonl", nil
 }
-func (p *fakeProcessorProvider) Cleanup(context.Context, *batchimage.BatchImageJob, *accountcore.Record, batchimage.CleanupTarget) error {
+
+func (p *fakeProcessorProvider) Cleanup(context.Context, *batchimage.BatchImageJob, *providercore.Record, batchimage.CleanupTarget) error {
 	return nil
 }
 

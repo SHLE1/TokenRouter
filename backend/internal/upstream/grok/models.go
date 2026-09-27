@@ -5,8 +5,10 @@ import (
 	"sync/atomic"
 )
 
-var runtimeMappingOpts atomic.Value // ModelMappingOptions
-var runtimeMappingVersion atomic.Uint64
+var (
+	runtimeMappingOpts    atomic.Value // ModelMappingOptions
+	runtimeMappingVersion atomic.Uint64
+)
 
 func init() {
 	runtimeMappingOpts.Store(ModelMappingOptions{})
@@ -19,7 +21,7 @@ func SetRuntimeModelMappingOptions(opts ModelMappingOptions) {
 	runtimeMappingVersion.Add(1)
 }
 
-// RuntimeModelMappingVersion 在运行时映射配置变化时递增，用于让账号映射缓存立即失效。
+// RuntimeModelMappingVersion 在运行时映射配置变化时递增，用于让提供商映射缓存立即失效。
 func RuntimeModelMappingVersion() uint64 {
 	return runtimeMappingVersion.Load()
 }
@@ -37,9 +39,8 @@ func RuntimeModelMappingOptions() ModelMappingOptions {
 // DefaultResponsesModel 是 Grok Responses 请求未指定模型时使用的默认模型。
 const DefaultResponsesModel = "grok-4.5"
 
-// modelIDAliases 只描述平台内置的上游 ID 标准化规则，不参与账号映射或模型发现。
+// modelIDAliases 只描述平台内置的上游 ID 标准化规则，不参与提供商映射或模型发现。
 var modelIDAliases = map[string]string{
-
 	"grok": DefaultResponsesModel,
 
 	"grok-latest": DefaultResponsesModel,
@@ -121,7 +122,6 @@ var defaultModels = []Model{
 // grokTextResponsesModelAliases 是 Responses 路径接受的 Grok 文本模型权威映射，
 // 把客户端别名和无日期别名归一为上游规范 ID。
 var grokTextResponsesModelAliases = map[string]string{
-
 	"grok": DefaultTextModel,
 
 	"grok-latest": DefaultTextModel,
@@ -226,7 +226,7 @@ func ModelMappingWithOptions(opts ModelMappingOptions) map[string]string {
 	return mapping
 }
 
-// NormalizeModelID 在账号映射和白名单校验后，将 Grok 精确别名转换为上游模型 ID。
+// NormalizeModelID 在提供商映射和白名单校验后，将 Grok 精确别名转换为上游模型 ID。
 // 未知模型保持透传，避免限制自定义 xAI 兼容上游。
 func NormalizeModelID(model string) string {
 	model = strings.TrimSpace(model)

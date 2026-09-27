@@ -1,12 +1,12 @@
 package httpapi
 
 import (
-	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
-	"github.com/TokenFlux/TokenRouter/internal/scheduler"
-
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
+	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
@@ -31,7 +31,6 @@ func TestResolveOpenAIMessagesMetadataSession_PreservesExplicitPromptCacheKey(t 
 }
 
 func TestResolveOpenAIMessagesMetadataSession_ClaudeCodeHeaderOverridesContentFallback(t *testing.T) {
-
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
@@ -48,13 +47,12 @@ func TestResolveOpenAIMessagesMetadataSession_ClaudeCodeHeaderOverridesContentFa
 	hash2, cacheKey2 := metadataSessionForTest(c, contentHash2, "", "gpt-5.6-sol", body2)
 	want, _ := scheduler.DeriveSessionHashes("claude-session-001")
 	require.Equal(t, want, hash1)
-	require.Equal(t, hash1, hash2, "the same Claude Code session must keep one sticky account across changed turn bodies")
+	require.Equal(t, hash1, hash2, "the same Claude Code session must keep one sticky provider across changed turn bodies")
 	require.Empty(t, cacheKey1, "routing-only fix must not create an upstream prompt cache key")
 	require.Empty(t, cacheKey2, "routing-only fix must not create an upstream prompt cache key")
 }
 
 func TestResolveOpenAIMessagesMetadataSession_OpenAISignalWinsOverClaudeHeader(t *testing.T) {
-
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
@@ -66,7 +64,6 @@ func TestResolveOpenAIMessagesMetadataSession_OpenAISignalWinsOverClaudeHeader(t
 }
 
 func TestResolveOpenAIMessagesMetadataSession_BlankClaudeHeaderKeepsContentFallback(t *testing.T) {
-
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)

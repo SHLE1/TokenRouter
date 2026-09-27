@@ -6,7 +6,7 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway/execution"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 )
@@ -22,7 +22,7 @@ type FundingState = execution.FundingState
 type ExecutionResult = execution.ExecutionResult
 
 // QoderRuntime 在组合根绑定一次；HTTP 调用只提供请求值与同步输出端口。
-// 恢复和选择端口不拥有额外的账号尝试循环。
+// 恢复和选择端口不拥有额外的提供商尝试循环。
 type QoderRuntime interface {
 	Prepare(context.Context, Request) (Request, error)
 	Check(context.Context, Request, bool) error
@@ -36,13 +36,13 @@ type QoderRuntime interface {
 // ExecutionObserver 只同步报告 HTTP 观测和等待心跳，不交给异步完成任务。
 type ExecutionObserver interface {
 	Prepared(Request)
-	Selected(account.AccountSnapshot)
+	Selected(provider.ProviderSnapshot)
 	Waiting(string) scheduler.WaitObserver
 }
 
 // NewQoderExecutor 将固定依赖接到唯一的既有尝试状态机。
-func NewQoderExecutor(maxAccounts int, waitTimeout time.Duration, concurrency *scheduler.ConcurrencyService, runtime QoderRuntime) *QoderUseCase {
-	return &QoderUseCase{MaxAccounts: maxAccounts, WaitTimeout: waitTimeout, concurrency: concurrency, runtime: runtime}
+func NewQoderExecutor(maxProviders int, waitTimeout time.Duration, concurrency *scheduler.ConcurrencyService, runtime QoderRuntime) *QoderUseCase {
+	return &QoderUseCase{MaxProviders: maxProviders, WaitTimeout: waitTimeout, concurrency: concurrency, runtime: runtime}
 }
 
 // Execute 不要求调用者组装选择、刷新、计费或完成回调。

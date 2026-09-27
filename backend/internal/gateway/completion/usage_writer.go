@@ -39,8 +39,8 @@ func (s *Recorder) WriteUsage(ctx context.Context, usageLog *UsageLog, logKey st
 	}
 }
 
-// applyAccountStatsCost 保留原查价时机和账号基础成本与用户实扣的独立性。
-func (s *Recorder) applyAccountStatsCost(ctx context.Context, row *UsageLog, accountID, groupID int64, upstream, requested, mapped string, tokens UsageTokens) {
+// applyProviderStatsCost 保留原查价时机和提供商基础成本与用户实扣的独立性。
+func (s *Recorder) applyProviderStatsCost(ctx context.Context, row *UsageLog, providerID, groupID int64, upstream, requested, mapped string, tokens UsageTokens) {
 	if upstream == "" {
 		upstream = requested
 	}
@@ -55,7 +55,7 @@ func (s *Recorder) applyAccountStatsCost(ctx context.Context, row *UsageLog, acc
 	if source == nil {
 		return
 	}
-	row.AccountStatsCost = source.ResolveAccountStats(ctx, billing.AccountStatsCostInput{
-		PreferRequestedModel: row.Platform == "qoder", AccountID: accountID, GroupID: groupID, UpstreamModel: upstream, RequestedModel: requested, MappedModel: mapped, Tokens: tokens, RequestCount: count, ServiceTier: stringValueOrEmpty(row.ServiceTier), ReasoningEffort: stringValueOrEmpty(row.ReasoningEffort),
+	row.ProviderStatsCost = source.ResolveProviderStats(ctx, billing.ProviderStatsCostInput{
+		PreferRequestedModel: row.Platform == "qoder", ProviderID: providerID, GroupID: groupID, UpstreamModel: upstream, RequestedModel: requested, MappedModel: mapped, Tokens: tokens, RequestCount: count, ServiceTier: stringValueOrEmpty(row.ServiceTier), ReasoningEffort: stringValueOrEmpty(row.ReasoningEffort),
 	})
 }

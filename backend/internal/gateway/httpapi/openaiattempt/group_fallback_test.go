@@ -46,7 +46,7 @@ func TestGroupFallbackRebuildsPlanAndKeepsForcedPlatform(t *testing.T) {
 				return routing.Plan(routing.PlanInput{Group: key.Group, RequestedModel: requested, ClientProtocol: protocol.ProtocolAnthropicMessages, GroupMapping: routing.GroupMappingResult{MappedModel: "target-model", Mapped: true}})
 			},
 		},
-		sessions: SessionPorts{StickyAccountID: func(ctx context.Context, groupID *int64, _ string) int64 {
+		sessions: SessionPorts{StickyProviderID: func(ctx context.Context, groupID *int64, _ string) int64 {
 			require.Equal(t, targetID, *groupID)
 			oldGroup, _ := requeststate.PrefetchedStickyGroupIDFromContext(ctx)
 			require.Zero(t, oldGroup)
@@ -63,7 +63,7 @@ func TestGroupFallbackRebuildsPlanAndKeepsForcedPlatform(t *testing.T) {
 	require.Same(t, target, bridge.apiKey)
 	forced, _ := apikey.ForcePlatformFromContext(bridge.Context())
 	require.Equal(t, "antigravity", forced)
-	sticky, _ := requeststate.PrefetchedStickyAccountIDFromContext(bridge.Context())
+	sticky, _ := requeststate.PrefetchedStickyProviderIDFromContext(bridge.Context())
 	require.Equal(t, int64(23), sticky)
 	require.True(t, bridge.hasBoundSession)
 	handled, retry = bridge.TryGroupFallback(&antigravity.PromptTooLongError{})

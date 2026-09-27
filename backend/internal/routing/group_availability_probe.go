@@ -21,7 +21,7 @@ type GroupAvailabilityProbeDueGroup struct {
 // GroupAvailabilityProbeResult 是单次主动探测结果。
 type GroupAvailabilityProbeResult struct {
 	GroupID      int64
-	AccountID    *int64
+	ProviderID   *int64
 	ModelID      string
 	Status       string
 	Success      bool

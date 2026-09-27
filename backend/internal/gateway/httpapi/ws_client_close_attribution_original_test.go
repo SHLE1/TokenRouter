@@ -11,22 +11,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// issue #6105：入站 Responses WebSocket 的正常结束会被记成账号故障。
+// issue #6105：入站 Responses WebSocket 的正常结束会被记成提供商故障。
 //
 // 归因发生在 openai_gateway_handler.go 的 ingress 收尾处：只有
 // *service.OpenAIWSClientCloseError 且状态码为 1000 被认作正常关闭，其余一律落到
-// shouldReportOpenAIWSProxyAccountFailure —— 而它只排除 model-switch 与
+// shouldReportOpenAIWSProxyProviderFailure —— 而它只排除 model-switch 与
 // session-preempted 两种。于是客户端干净关闭（底层直接回裸 coderws.CloseError{1000}）
 // 与客户端中途断开（context.Canceled，收尾用 1001 关闭）都会喂给
 // ObserveOpenAIAPIKeyHealthFailure 与 scheduler.ReportResult(success=false)，
-// 累积到阈值即把上游账号熔断出调度池。
+// 累积到阈值即把上游提供商熔断出调度池。
 //
-// 这些用例钉住判定本身，与既有的 TestShouldReportOpenAIWSProxyAccountFailure 同一层级：
+// 这些用例钉住判定本身，与既有的 TestShouldReportOpenAIWSProxyProviderFailure 同一层级：
 // 调用点位于一个需要真实上游 WS 才能进入的巨型 handler 循环内，仓库既有约定就是直接测判定函数。
 
 // 缺陷主复现之一：客户端干净关闭。底层 conn.Read 的错误被 ReadOpenAIWSClientMessage
 // 原样返回，没有任何地方把它包成 *OpenAIWSClientCloseError，所以旧断言看不见它。
-func TestOpenAIWSIngressEndedByClient_BareNormalClosureIsNotAccountFailure(t *testing.T) {
+func TestOpenAIWSIngressEndedByClient_BareNormalClosureIsNotProviderFailure(t *testing.T) {
 	err := coderws.CloseError{Code: coderws.StatusNormalClosure, Reason: "client done"}
 
 	// 前提：这正是旧判据漏掉它的原因——类型不匹配，不是状态码不匹配。
@@ -40,7 +40,7 @@ func TestOpenAIWSIngressEndedByClient_BareNormalClosureIsNotAccountFailure(t *te
 }
 
 // 同一形状被包一层（例如 ingress 把 read 错误裹进上下文）时也必须认得。
-func TestOpenAIWSIngressEndedByClient_WrappedBareNormalClosureIsNotAccountFailure(t *testing.T) {
+func TestOpenAIWSIngressEndedByClient_WrappedBareNormalClosureIsNotProviderFailure(t *testing.T) {
 	err := fmt.Errorf("ingress turn 3: %w",
 		coderws.CloseError{Code: coderws.StatusNormalClosure, Reason: "client done"})
 
@@ -50,11 +50,11 @@ func TestOpenAIWSIngressEndedByClient_WrappedBareNormalClosureIsNotAccountFailur
 // 缺陷主复现之二：客户端中途断开。ReadOpenAIWSClientMessage 在 controlCtx.Done()
 // 分支用 StatusGoingAway 收尾并把 context.Canceled 作为 cause，所以「只认 1000」
 // 这一条判据根本匹配不到它。
-func TestOpenAIWSIngressEndedByClient_ClientCancelDuringTurnIsNotAccountFailure(t *testing.T) {
+func TestOpenAIWSIngressEndedByClient_ClientCancelDuringTurnIsNotProviderFailure(t *testing.T) {
 	err := NewOpenAIWSClientCloseError(
 		coderws.StatusGoingAway, "websocket request canceled", context.Canceled)
 
-	// 前提：状态码是 1001 不是 1000，旧判据必然放行到账号归因。
+	// 前提：状态码是 1001 不是 1000，旧判据必然放行到提供商归因。
 	var closeErr *OpenAIWSClientCloseError
 	require.ErrorAs(t, err, &closeErr)
 	require.Equal(t, coderws.StatusGoingAway, closeErr.StatusCode())
@@ -79,12 +79,12 @@ func TestOpenAIWSIngressEndedByClient_GoingAwayWithoutCancellationStillReported(
 		coderws.StatusGoingAway, "upstream going away", errors.New("upstream closed session"))
 
 	require.False(t, ResponsesWSEndedByClient(err, ResponsesWSCloseInfo(err)))
-	require.True(t, gatewayws.EntryShouldReportFailure(err), "真实上游故障仍须归因账号")
+	require.True(t, gatewayws.EntryShouldReportFailure(err), "真实上游故障仍须归因提供商")
 }
 
-// 契约没有丢：真正的故障仍然惩罚账号。判定组合与调用点一致——
-// openAIWSIngressEndedByClient 为假才会走到 shouldReportOpenAIWSProxyAccountFailure。
-func TestOpenAIWSIngressEndedByClient_AbnormalClosuresStillReportAccountFailure(t *testing.T) {
+// 契约没有丢：真正的故障仍然惩罚提供商。判定组合与调用点一致——
+// openAIWSIngressEndedByClient 为假才会走到 shouldReportOpenAIWSProxyProviderFailure。
+func TestOpenAIWSIngressEndedByClient_AbnormalClosuresStillReportProviderFailure(t *testing.T) {
 	cases := []struct {
 		name string
 		err  error
@@ -125,12 +125,13 @@ func TestOpenAIWSIngressEndedByClient_AbnormalClosuresStillReportAccountFailure(
 
 // 不变式：同一条错误，日志侧与归因侧必须给出一致的结论。
 // summarizeWSCloseErrorForLog 一直用 coderws.CloseStatus 读关闭码，这正是缺陷时期
-// WARN 打印 close_status=1000(StatusNormalClosure) 却同时把账号记为故障的原因。
+// WARN 打印 close_status=1000(StatusNormalClosure) 却同时把提供商记为故障的原因。
 // 以后任何一侧改了读法，这条会红。
 func TestOpenAIWSIngressEndedByClient_MatchesCloseCodeReportedInLog(t *testing.T) {
 	errs := []error{
 		coderws.CloseError{Code: coderws.StatusNormalClosure, Reason: "client done"},
-		fmt.Errorf("ingress turn 3: %w", coderws.CloseError{Code: coderws.StatusNormalClosure}), NewOpenAIWSClientCloseError(coderws.StatusNormalClosure, "websocket idle timeout", context.DeadlineExceeded), NewOpenAIWSClientCloseError(coderws.StatusGoingAway, "websocket request canceled", context.Canceled), coderws.CloseError{Code: coderws.StatusAbnormalClosure, Reason: "connection reset"},
+		fmt.Errorf("ingress turn 3: %w", coderws.CloseError{Code: coderws.StatusNormalClosure}), NewOpenAIWSClientCloseError(coderws.StatusNormalClosure, "websocket idle timeout", context.DeadlineExceeded), NewOpenAIWSClientCloseError(coderws.StatusGoingAway, "websocket request canceled", context.Canceled),
+		coderws.CloseError{Code: coderws.StatusAbnormalClosure, Reason: "connection reset"},
 		errors.New("upstream websocket read failed"),
 	}
 
@@ -139,7 +140,7 @@ func TestOpenAIWSIngressEndedByClient_MatchesCloseCodeReportedInLog(t *testing.T
 			closeStatus, _ := SummarizeWSCloseErrorForLog(err)
 			if closeStatus == "1000(StatusNormalClosure)" {
 				require.True(t, ResponsesWSEndedByClient(err, ResponsesWSCloseInfo(err)),
-					"日志按 1000 归类为正常关闭，归因侧不得同时判为账号故障")
+					"日志按 1000 归类为正常关闭，归因侧不得同时判为提供商故障")
 			}
 		})
 	}

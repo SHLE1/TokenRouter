@@ -129,18 +129,18 @@ type PriceResolver struct {
 	calculator     *Calculator
 	lookup         ModelCandidates
 	observe        func(string, error)
-	accountStats   AccountStatsSource
+	providerStats  ProviderStatsSource
 }
 
-func NewPriceResolver(pricingConfigs ConfigPrices, calculator *Calculator, lookup ModelCandidates, observe func(string, error), stats ...AccountStatsSource) *PriceResolver {
+func NewPriceResolver(pricingConfigs ConfigPrices, calculator *Calculator, lookup ModelCandidates, observe func(string, error), stats ...ProviderStatsSource) *PriceResolver {
 	if observe == nil {
 		observe = func(string, error) {}
 	}
-	var accountStats AccountStatsSource
+	var providerStats ProviderStatsSource
 	if len(stats) > 0 {
-		accountStats = stats[0]
+		providerStats = stats[0]
 	}
-	return &PriceResolver{pricingConfigs: pricingConfigs, calculator: calculator, lookup: lookup, observe: observe, accountStats: accountStats}
+	return &PriceResolver{pricingConfigs: pricingConfigs, calculator: calculator, lookup: lookup, observe: observe, providerStats: providerStats}
 }
 
 // BillingSettings 读取分组关联的有效配置，无关联时使用统一默认值。

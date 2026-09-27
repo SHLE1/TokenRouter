@@ -7,8 +7,8 @@ import (
 	"sort"
 	"testing"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	creativeprovider "github.com/TokenFlux/TokenRouter/internal/creative/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/creative"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
@@ -17,22 +17,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type creativeCatalogTestAccounts struct{ values []creative.CatalogAccount }
+type creativeCatalogTestProviders struct{ values []creative.CatalogProvider }
 
-func (a creativeCatalogTestAccounts) ListSchedulableByGroupIDAndPlatform(context.Context, int64, string) ([]creative.CatalogAccount, error) {
+func (a creativeCatalogTestProviders) ListSchedulableByGroupIDAndPlatform(context.Context, int64, string) ([]creative.CatalogProvider, error) {
 	return a.values, nil
 }
 
-// 通过正式目录入口验证账号候选，避免测试保留另一套不含分组策略的展开规则。
-func creativeAccountModelsForTest(t *testing.T, value *accountcore.Record) []string {
+// 通过正式目录入口验证提供商候选，避免测试保留另一套不含分组策略的展开规则。
+func creativeProviderModelsForTest(t *testing.T, value *providercore.Record) []string {
 	t.Helper()
-	value = accountcore.CloneRecord(value)
+	value = providercore.CloneRecord(value)
 	value.Status = "active"
 	if value.Type == "" {
 		value.Type = "apikey"
 	}
 	value.Schedulable = true
-	svc := &creative.Public{AccountRepo: creativeCatalogTestAccounts{[]creative.CatalogAccount{creativeprovider.CatalogAccount(value)}}}
+	svc := &creative.Public{ProviderRepo: creativeCatalogTestProviders{[]creative.CatalogProvider{creativeprovider.CatalogProvider(value)}}}
 	models, err := svc.CreativeModelsForGroup(context.Background(), &creative.GroupView{ID: 12, Operations: creative.OperationsForGroup(false, nil)})
 	require.NoError(t, err)
 	result := make([]string, 0, len(models))
@@ -51,10 +51,10 @@ func TestCreativeOperationsForPlatform(t *testing.T) {
 	require.Nil(t, creative.CreativeOperationsForPlatform(capability.PlatformAnthropic))
 }
 
-// TestCreativeGrokDefaultImageCandidates 校验无映射账号包含 Grok Imagine 图片候选，尤其是画质模型。
+// TestCreativeGrokDefaultImageCandidates 校验无映射提供商包含 Grok Imagine 图片候选，尤其是画质模型。
 func TestCreativeGrokDefaultImageCandidates(t *testing.T) {
-	account := &accountcore.Record{Platform: capability.PlatformGrok, Credentials: map[string]any{}}
-	models := creativeAccountModelsForTest(t, account)
+	provider := &providercore.Record{Platform: capability.PlatformGrok, Credentials: map[string]any{}}
+	models := creativeProviderModelsForTest(t, provider)
 	require.Contains(t, models, "grok-imagine-image")
 	require.Contains(t, models, "grok-imagine-image-quality")
 	require.Contains(t, models, "grok-imagine-image-2.0")
@@ -62,56 +62,56 @@ func TestCreativeGrokDefaultImageCandidates(t *testing.T) {
 
 // TestCreativeGrokDefaultImageCandidatesWithQualityWhitelist 校验精确白名单不会漏掉画质模型。
 func TestCreativeGrokDefaultImageCandidatesWithQualityWhitelist(t *testing.T) {
-	account := &accountcore.Record{
+	provider := &providercore.Record{
 		Platform: capability.PlatformGrok,
 		Credentials: map[string]any{
 			"model_whitelist": []string{"grok-imagine-image-quality"},
 		},
 	}
-	models := creativeAccountModelsForTest(t, account)
+	models := creativeProviderModelsForTest(t, provider)
 	require.Equal(t, []string{"grok-imagine-image-quality"}, models)
 }
 
 // TestCreativeMappedFinalModelCapability 确保文本请求别名映射到图片模型时按最终模型校验。
 func TestCreativeMappedFinalModelCapability(t *testing.T) {
-	account := &accountcore.Record{
+	provider := &providercore.Record{
 		Platform: capability.PlatformOpenAI,
 		Credentials: map[string]any{
 			"model_mapping":   map[string]any{"draw-alias": "gpt-image-2", "text-alias": "gpt-5.4"},
 			"model_whitelist": []string{"gpt-image-2", "gpt-5.4"},
 		},
 	}
-	models := creativeAccountModelsForTest(t, account)
+	models := creativeProviderModelsForTest(t, provider)
 	// 非图片目标不能进入目录。
 	require.NotContains(t, models, "text-alias")
 	// 反向映射目标为图片模型的别名必须被保留。
-	account.Credentials["model_mapping"] = map[string]any{"draw-alias": "gpt-image-2"}
-	models = creativeAccountModelsForTest(t, account)
+	provider.Credentials["model_mapping"] = map[string]any{"draw-alias": "gpt-image-2"}
+	models = creativeProviderModelsForTest(t, provider)
 	require.Contains(t, models, "draw-alias")
 	require.Contains(t, models, "gpt-image-2", "最终模型也可以直接请求")
 }
 
 // TestCreativeGrokConfiguredImageWhitelistCandidates 校验代理侧图片模型变体能从显式白名单进入候选。
 func TestCreativeGrokConfiguredImageWhitelistCandidates(t *testing.T) {
-	account := &accountcore.Record{
+	provider := &providercore.Record{
 		Platform: capability.PlatformGrok,
 		Credentials: map[string]any{
 			"model_whitelist": []string{"grok-imagine-image-lite"},
 		},
 	}
-	models := creativeAccountModelsForTest(t, account)
+	models := creativeProviderModelsForTest(t, provider)
 	require.Equal(t, []string{"grok-imagine-image-lite"}, models)
 }
 
-// TestCreativeGeminiConfiguredImageWhitelistCandidates 校验 Gemini 无映射账号不会漏掉图片模型变体。
+// TestCreativeGeminiConfiguredImageWhitelistCandidates 校验 Gemini 无映射提供商不会漏掉图片模型变体。
 func TestCreativeGeminiConfiguredImageWhitelistCandidates(t *testing.T) {
-	account := &accountcore.Record{
+	provider := &providercore.Record{
 		Platform: capability.PlatformGemini,
 		Credentials: map[string]any{
 			"model_whitelist": []string{"gemini-3-pro-image-quality", "gemini-2.5-flash"},
 		},
 	}
-	models := creativeAccountModelsForTest(t, account)
+	models := creativeProviderModelsForTest(t, provider)
 	require.Equal(t, []string{"gemini-3-pro-image-quality"}, models)
 }
 
@@ -122,22 +122,22 @@ func TestCreativeDirectoryAndCreateUseGroupPolicy(t *testing.T) {
 			t.Run(platform+"/"+source, func(t *testing.T) {
 				svc := newCreativeTestService()
 				final := map[string]string{creative.PlatformOpenAI: "gpt-image-2", creative.PlatformGemini: "gemini-3-pro-image", creative.PlatformGrok: "grok-imagine-image-2.0"}[platform]
-				allowed := map[string]string{routing.BillingModelSourceRequested: "DRAW-*", routing.BillingModelSourceGroupMapped: "account-alias", routing.BillingModelSourceUpstream: final}[source]
+				allowed := map[string]string{routing.BillingModelSourceRequested: "DRAW-*", routing.BillingModelSourceGroupMapped: "provider-alias", routing.BillingModelSourceUpstream: final}[source]
 				group := newCreativeTestGroup()
 
 				group.RoutingPolicy = routing.GroupRoutingPolicy{
 					Enabled: true, RestrictModels: true, RestrictionModelSource: source,
-					ModelMapping:  map[string]string{"draw-*": "account-alias", "account-alias": "forbidden-group-hop"},
+					ModelMapping:  map[string]string{"draw-*": "provider-alias", "provider-alias": "forbidden-group-hop"},
 					AllowedModels: []string{allowed},
 				}
 				groups := testassert.MustType[*creativeFakeGroupRepo](testassert.MustType[creativeGroupReader](svc.GroupRepo).source)
 				groups.byID[group.ID] = group
 				groups.active = []routing.Group{*group}
-				accounts := testassert.MustType[*creativeFakeAccountRepo](testassert.MustType[creativeAccountReader](svc.AccountRepo).source)
-				accounts.byGroup[group.ID] = []accountcore.Record{{
+				providers := testassert.MustType[*creativeFakeProviderRepo](testassert.MustType[creativeProviderReader](svc.ProviderRepo).source)
+				providers.byGroup[group.ID] = []providercore.Record{{
 					ID: 55, Platform: platform, Status: "active", Schedulable: true,
 					Credentials: map[string]any{
-						"model_mapping":   map[string]any{"account-alias": final, final: "forbidden-account-hop"},
+						"model_mapping":   map[string]any{"provider-alias": final, final: "forbidden-provider-hop"},
 						"model_whitelist": []string{final},
 					},
 				}}

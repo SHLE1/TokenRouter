@@ -9,50 +9,49 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
 )
 
-func TestNormalizeOpenAICodexCompactReasoningEffortForAccountScopesCompatibility(t *testing.T) {
-
+func TestNormalizeOpenAICodexCompactReasoningEffortForProviderScopesCompatibility(t *testing.T) {
 	body := []byte(`{"model":"gpt-5.6-sol","input":"compact me","reasoning":{"effort":"max"}}`)
 
 	tests := []struct {
-		name    string
-		path    string
-		account *gatewayprovider.ExecutionAccount
-		changed bool
-		want    string
+		name     string
+		path     string
+		provider *gatewayprovider.ExecutionProvider
+		changed  bool
+		want     string
 	}{
 		{
-			name:    "OpenAI OAuth compact 降级",
-			path:    "/openai/v1/responses/compact",
-			account: &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth}},
-			changed: true,
-			want:    "xhigh",
+			name:     "OpenAI OAuth compact 降级",
+			path:     "/openai/v1/responses/compact",
+			provider: &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}},
+			changed:  true,
+			want:     "xhigh",
 		},
 		{
-			name:    "OpenAI OAuth 普通请求保留",
-			path:    "/openai/v1/responses",
-			account: &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth}},
-			want:    "max",
+			name:     "OpenAI OAuth 普通请求保留",
+			path:     "/openai/v1/responses",
+			provider: &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}},
+			want:     "max",
 		},
 		{
-			name:    "OpenAI API Key compact 保留",
-			path:    "/openai/v1/responses/compact",
-			account: &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}},
-			want:    "max",
+			name:     "OpenAI API Key compact 保留",
+			path:     "/openai/v1/responses/compact",
+			provider: &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}},
+			want:     "max",
 		},
 		{
-			name:    "Grok OAuth compact 保留",
-			path:    "/openai/v1/responses/compact",
-			account: &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformGrok, Type: capability.AccountTypeOAuth}},
-			want:    "max",
+			name:     "Grok OAuth compact 保留",
+			path:     "/openai/v1/responses/compact",
+			provider: &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformGrok, Type: capability.ProviderTypeOAuth}},
+			want:     "max",
 		},
 	}
 
@@ -62,7 +61,7 @@ func TestNormalizeOpenAICodexCompactReasoningEffortForAccountScopesCompatibility
 			c, _ := gin.CreateTestContext(rec)
 			c.Request = httptest.NewRequest(http.MethodPost, tt.path, nil)
 
-			adapter := openAIForwardPreludeAdapter{c: c, account: tt.account}
+			adapter := openAIForwardPreludeAdapter{c: c, provider: tt.provider}
 			normalized, changed, err := adapter.CompactEffort(body)
 
 			require.NoError(t, err)
@@ -73,7 +72,6 @@ func TestNormalizeOpenAICodexCompactReasoningEffortForAccountScopesCompatibility
 }
 
 func TestOpenAIGatewayServiceForwardPreservesGPT56MaxEffort(t *testing.T) {
-
 	upstream := &auxiliaryHTTPRecorder{
 		resp: &http.Response{
 			StatusCode: http.StatusOK,
@@ -84,16 +82,19 @@ func TestOpenAIGatewayServiceForwardPreservesGPT56MaxEffort(t *testing.T) {
 	cfg := &responsesFixtureOptions{}
 	cfg.Request.URLPolicy.Enabled = false
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg, transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 7,
-		Name:        "openai-apikey",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":  "sk-test",
-			"base_url": "https://example.com",
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 7,
+			Name:        "openai-apikey",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":  "sk-test",
+				"base_url": "https://example.com",
+			},
+			Extra: map[string]any{"use_responses_api": true},
 		},
-		Extra: map[string]any{"use_responses_api": true}},
 	}
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -101,7 +102,7 @@ func TestOpenAIGatewayServiceForwardPreservesGPT56MaxEffort(t *testing.T) {
 	SetOpenAIClientTransport(c, OpenAIClientTransportHTTP)
 
 	body := []byte(`{"model":"gpt-5.6-sol","stream":false,"reasoning":{"effort":"max"},"input":"hello"}`)
-	result, err := svc.Forward(context.Background(), c, account, body)
+	result, err := svc.Forward(context.Background(), c, provider, body)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -111,7 +112,6 @@ func TestOpenAIGatewayServiceForwardPreservesGPT56MaxEffort(t *testing.T) {
 }
 
 func TestOpenAIGatewayServiceForwardPreservesMappedGPT56MaxEffort(t *testing.T) {
-
 	upstream := &auxiliaryHTTPRecorder{
 		resp: &http.Response{
 			StatusCode: http.StatusOK,
@@ -122,19 +122,22 @@ func TestOpenAIGatewayServiceForwardPreservesMappedGPT56MaxEffort(t *testing.T) 
 	cfg := &responsesFixtureOptions{}
 	cfg.Request.URLPolicy.Enabled = false
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg, transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 9,
-		Name:        "openai-apikey-mapped",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":  "sk-test",
-			"base_url": "https://example.com",
-			"model_mapping": map[string]any{
-				"sol": "gpt-5.6-sol",
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 9,
+			Name:        "openai-apikey-mapped",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":  "sk-test",
+				"base_url": "https://example.com",
+				"model_mapping": map[string]any{
+					"sol": "gpt-5.6-sol",
+				},
 			},
+			Extra: map[string]any{"use_responses_api": true},
 		},
-		Extra: map[string]any{"use_responses_api": true}},
 	}
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -142,7 +145,7 @@ func TestOpenAIGatewayServiceForwardPreservesMappedGPT56MaxEffort(t *testing.T) 
 	SetOpenAIClientTransport(c, OpenAIClientTransportHTTP)
 
 	body := []byte(`{"model":"sol","stream":false,"reasoning":{"effort":"max"},"input":"hello"}`)
-	result, err := svc.Forward(context.Background(), c, account, body)
+	result, err := svc.Forward(context.Background(), c, provider, body)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -153,7 +156,6 @@ func TestOpenAIGatewayServiceForwardPreservesMappedGPT56MaxEffort(t *testing.T) 
 }
 
 func TestOpenAIGatewayServiceForwardOAuthCompactDowngradesMaxEffort(t *testing.T) {
-
 	upstream := &auxiliaryHTTPRecorder{
 		resp: &http.Response{
 			StatusCode: http.StatusOK,
@@ -164,17 +166,20 @@ func TestOpenAIGatewayServiceForwardOAuthCompactDowngradesMaxEffort(t *testing.T
 	cfg := &responsesFixtureOptions{}
 	cfg.Request.URLPolicy.Enabled = false
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg, transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 8,
-		Name:        "openai-oauth",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeOAuth,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"access_token":       "oauth-token",
-			"chatgpt_account_id": "chatgpt-acc",
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 8,
+			Name:        "openai-oauth",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeOAuth,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"access_token":       "oauth-token",
+				"chatgpt_account_id": "chatgpt-acc",
+			},
+			Status:      billing.StatusActive,
+			Schedulable: true,
 		},
-		Status:      billing.StatusActive,
-		Schedulable: true},
 	}
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -182,7 +187,7 @@ func TestOpenAIGatewayServiceForwardOAuthCompactDowngradesMaxEffort(t *testing.T
 	SetOpenAIClientTransport(c, OpenAIClientTransportHTTP)
 
 	body := []byte(`{"model":"gpt-5.6-sol","instructions":"compact-test","input":"hello","reasoning":{"effort":"max"}}`)
-	result, err := svc.Forward(context.Background(), c, account, body)
+	result, err := svc.Forward(context.Background(), c, provider, body)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -194,7 +199,6 @@ func TestOpenAIGatewayServiceForwardOAuthCompactDowngradesMaxEffort(t *testing.T
 }
 
 func TestOpenAIGatewayServiceForwardOAuthRemoteCompactV2PreservesResponsesWire(t *testing.T) {
-
 	upstream := &auxiliaryHTTPRecorder{
 		resp: &http.Response{
 			StatusCode: http.StatusOK,
@@ -209,20 +213,23 @@ func TestOpenAIGatewayServiceForwardOAuthRemoteCompactV2PreservesResponsesWire(t
 	cfg := &responsesFixtureOptions{}
 	cfg.Request.URLPolicy.Enabled = false
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg, transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 10,
-		Name:        "openai-oauth-responses",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeOAuth,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"access_token":       "oauth-token",
-			"chatgpt_account_id": "chatgpt-acc",
-			"compact_model_mapping": map[string]any{
-				"gpt-5.6-sol": "gpt-5.6-sol-openai-compact",
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 10,
+			Name:        "openai-oauth-responses",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeOAuth,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"access_token":       "oauth-token",
+				"chatgpt_account_id": "chatgpt-acc",
+				"compact_model_mapping": map[string]any{
+					"gpt-5.6-sol": "gpt-5.6-sol-openai-compact",
+				},
 			},
+			Status:      billing.StatusActive,
+			Schedulable: true,
 		},
-		Status:      billing.StatusActive,
-		Schedulable: true},
 	}
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -231,7 +238,7 @@ func TestOpenAIGatewayServiceForwardOAuthRemoteCompactV2PreservesResponsesWire(t
 	SetOpenAIClientTransport(c, OpenAIClientTransportHTTP)
 
 	body := []byte(`{"model":"gpt-5.6-sol","stream":true,"instructions":"response-test","input":[{"type":"message","role":"user","content":"hello"},{"type":"compaction_trigger"}],"reasoning":{"effort":"max","context":"all_turns"}}`)
-	result, err := svc.Forward(context.Background(), c, account, body)
+	result, err := svc.Forward(context.Background(), c, provider, body)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -250,7 +257,6 @@ func TestOpenAIGatewayServiceForwardOAuthRemoteCompactV2PreservesResponsesWire(t
 }
 
 func TestOpenAIGatewayServiceForwardAPIKeyRemoteCompactV2PreservesResponsesWire(t *testing.T) {
-
 	upstream := &auxiliaryHTTPRecorder{
 		resp: &http.Response{
 			StatusCode: http.StatusOK,
@@ -265,21 +271,24 @@ func TestOpenAIGatewayServiceForwardAPIKeyRemoteCompactV2PreservesResponsesWire(
 	cfg := &responsesFixtureOptions{}
 	cfg.Request.URLPolicy.Enabled = false
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg, transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 11,
-		Name:        "openai-apikey-responses",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":  "sk-test",
-			"base_url": "https://example.com/v1",
-			"compact_model_mapping": map[string]any{
-				"gpt-5.6-sol": "gpt-5.6-sol-openai-compact",
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 11,
+			Name:        "openai-apikey-responses",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":  "sk-test",
+				"base_url": "https://example.com/v1",
+				"compact_model_mapping": map[string]any{
+					"gpt-5.6-sol": "gpt-5.6-sol-openai-compact",
+				},
 			},
+			Extra:       map[string]any{"use_responses_api": true},
+			Status:      billing.StatusActive,
+			Schedulable: true,
 		},
-		Extra:       map[string]any{"use_responses_api": true},
-		Status:      billing.StatusActive,
-		Schedulable: true},
 	}
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -288,7 +297,7 @@ func TestOpenAIGatewayServiceForwardAPIKeyRemoteCompactV2PreservesResponsesWire(
 	SetOpenAIClientTransport(c, OpenAIClientTransportHTTP)
 
 	body := []byte(`{"model":"gpt-5.6-sol","stream":true,"instructions":"response-test","input":[{"type":"message","role":"user","content":"hello"},{"type":"compaction_trigger"}],"reasoning":{"effort":"max","context":"all_turns"}}`)
-	result, err := svc.Forward(context.Background(), c, account, body)
+	result, err := svc.Forward(context.Background(), c, provider, body)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)

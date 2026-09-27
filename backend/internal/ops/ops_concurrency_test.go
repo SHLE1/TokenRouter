@@ -8,82 +8,82 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type opsAccountStatsRepoStub struct {
-	AccountReader
-	accounts       []AccountObservation
+type opsProviderStatsRepoStub struct {
+	ProviderReader
+	providers      []ProviderObservation
 	platformFilter string
 	groupIDFilter  *int64
 }
 
-// ListOpsAccountsForStats 记录轻量查询参数，验证服务不会退回通用分页查询。
-func (r *opsAccountStatsRepoStub) ListOpsAccountsForStats(_ context.Context, platformFilter string, groupIDFilter *int64) ([]AccountObservation, error) {
+// ListOpsProvidersForStats 记录轻量查询参数，验证服务不会退回通用分页查询。
+func (r *opsProviderStatsRepoStub) ListOpsProvidersForStats(_ context.Context, platformFilter string, groupIDFilter *int64) ([]ProviderObservation, error) {
 	r.platformFilter = platformFilter
 	r.groupIDFilter = groupIDFilter
-	return r.accounts, nil
+	return r.providers, nil
 }
 
-type opsAccountStatsFallbackRepoStub struct {
-	AccountReader
+type opsProviderStatsFallbackRepoStub struct {
+	ProviderReader
 	platformFilter string
 	groupIDFilter  int64
 }
 
 // ListWithFilters 模拟尚未实现轻量查询接口的仓储，锁定兼容回退行为。
-func (r *opsAccountStatsFallbackRepoStub) ListPage(
+func (r *opsProviderStatsFallbackRepoStub) ListPage(
 	_ context.Context,
 	params pagination.PaginationParams,
 	platform string,
 	groupID int64,
-) ([]AccountObservation, *pagination.PaginationResult, error) {
+) ([]ProviderObservation, *pagination.PaginationResult, error) {
 	r.platformFilter = platform
 	r.groupIDFilter = groupID
-	accounts := []AccountObservation{{ID: 1, Name: "account-1"}}
-	return accounts, &pagination.PaginationResult{Page: params.Page, PageSize: params.PageSize, Total: 1}, nil
+	providers := []ProviderObservation{{ID: 1, Name: "provider-1"}}
+	return providers, &pagination.PaginationResult{Page: params.Page, PageSize: params.PageSize, Total: 1}, nil
 }
 
-func TestListAllAccountsForOpsUsesLightweightRepository(t *testing.T) {
+func TestListAllProvidersForOpsUsesLightweightRepository(t *testing.T) {
 	groupID := int64(42)
-	repo := &opsAccountStatsRepoStub{accounts: []AccountObservation{{ID: 1}}}
-	service := &OpsService{accountRepo: repo}
+	repo := &opsProviderStatsRepoStub{providers: []ProviderObservation{{ID: 1}}}
+	service := &OpsService{providerRepo: repo}
 
-	accounts, err := service.listAllAccountsForOps(context.Background(), PlatformOpenAI, &groupID)
+	providers, err := service.listAllProvidersForOps(context.Background(), PlatformOpenAI, &groupID)
 
 	require.NoError(t, err)
-	require.Len(t, accounts, 1)
+	require.Len(t, providers, 1)
 	require.Equal(t, PlatformOpenAI, repo.platformFilter)
 	require.Same(t, &groupID, repo.groupIDFilter)
 }
 
-func TestListAllAccountsForOpsFallbackPassesGroupFilter(t *testing.T) {
+func TestListAllProvidersForOpsFallbackPassesGroupFilter(t *testing.T) {
 	groupID := int64(77)
-	repo := &opsAccountStatsFallbackRepoStub{}
-	service := &OpsService{accountRepo: repo}
+	repo := &opsProviderStatsFallbackRepoStub{}
+	service := &OpsService{providerRepo: repo}
 
-	accounts, err := service.listAllAccountsForOps(context.Background(), PlatformAnthropic, &groupID)
+	providers, err := service.listAllProvidersForOps(context.Background(), PlatformAnthropic, &groupID)
 
 	require.NoError(t, err)
-	require.Len(t, accounts, 1)
+	require.Len(t, providers, 1)
 	require.Equal(t, PlatformAnthropic, repo.platformFilter)
 	require.Equal(t, groupID, repo.groupIDFilter)
 }
 
-func TestGetAccountAvailabilityStatsOnlyAggregatesSelectedGroup(t *testing.T) {
+func TestGetProviderAvailabilityStatsOnlyAggregatesSelectedGroup(t *testing.T) {
 	targetGroupID := int64(7)
 	otherGroup := &GroupObservation{ID: 8, Name: "其他分组"}
 	targetGroup := &GroupObservation{ID: targetGroupID, Name: "目标分组"}
-	repo := &opsAccountStatsRepoStub{accounts: []AccountObservation{
+	repo := &opsProviderStatsRepoStub{providers: []ProviderObservation{
 		{
 			ID:          11,
-			Name:        "多分组账号",
+			Name:        "多分组提供商",
 			Platform:    PlatformAnthropic,
 			Status:      StatusActive,
 			Schedulable: true,
 			Groups:      []*GroupObservation{otherGroup, targetGroup},
 		},
 	}}
-	service := &OpsService{accountRepo: repo}
+	service := &OpsService{providerRepo: repo}
 
-	_, groups, accounts, _, err := service.GetAccountAvailabilityStats(
+	_, groups, providers, _, err := service.GetProviderAvailabilityStats(
 		context.Background(),
 		PlatformAnthropic,
 		&targetGroupID,
@@ -93,6 +93,6 @@ func TestGetAccountAvailabilityStatsOnlyAggregatesSelectedGroup(t *testing.T) {
 	require.Contains(t, groups, targetGroupID)
 	require.NotContains(t, groups, otherGroup.ID)
 	require.Len(t, groups, 1)
-	require.Equal(t, targetGroupID, accounts[11].GroupID)
-	require.Equal(t, targetGroup.Name, accounts[11].GroupName)
+	require.Equal(t, targetGroupID, providers[11].GroupID)
+	require.Equal(t, targetGroup.Name, providers[11].GroupName)
 }

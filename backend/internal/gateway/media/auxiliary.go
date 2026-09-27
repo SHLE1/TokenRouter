@@ -47,8 +47,8 @@ func AlphaEndpointUnsupported(apiKey bool, statusCode int) bool {
 	return apiKey && (statusCode == 404 || statusCode == 405)
 }
 
-// AlphaAccountErrorSideEffects 保留工具端点拒绝与账号全局健康之间的边界。
-func AlphaAccountErrorSideEffects(statusCode int) bool {
+// AlphaProviderErrorSideEffects 保留工具端点拒绝与提供商全局健康之间的边界。
+func AlphaProviderErrorSideEffects(statusCode int) bool {
 	switch statusCode {
 	case 401, 404, 405:
 		return false

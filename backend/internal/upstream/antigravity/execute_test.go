@@ -60,7 +60,7 @@ func TestExecuteProtocolOutputsAndRelease(t *testing.T) {
 				defer server.Close()
 				var closes, releases atomic.Int32
 				sink := &executionSink{}
-				target := &Target{AccountID: 12, Model: "gemini-fixture", Mode: tc.mode, IncludeUsage: true, Response: executionResponseOptions(), Enter: func() (func(), error) { return func() { releases.Add(1) }, nil }, Exchange: func(ctx context.Context) (*http.Response, error) {
+				target := &Target{ProviderID: 12, Model: "gemini-fixture", Mode: tc.mode, IncludeUsage: true, Response: executionResponseOptions(), Enter: func() (func(), error) { return func() { releases.Add(1) }, nil }, Exchange: func(ctx context.Context) (*http.Response, error) {
 					req, err := http.NewRequestWithContext(ctx, http.MethodPost, server.URL, nil)
 					if err != nil {
 						return nil, err
@@ -180,6 +180,7 @@ func (r failedAfterPayload) Read(p []byte) (int, error) {
 	}
 	return n, err
 }
+
 func TestExecutePartialUsageSurvivesReadFailure(t *testing.T) {
 	body := "data: {\"response\":{\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"hello\"}]}}],\"usageMetadata\":{\"promptTokenCount\":9}}}\n\ndata: {\"response\":{\"usageMetadata\":{\"candidatesTokenCount\":4}}}\n\n"
 	target := &Target{Mode: ModeClaudeResponse, Response: executionResponseOptions(), Exchange: func(context.Context) (*http.Response, error) {

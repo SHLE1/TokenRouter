@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
@@ -18,7 +18,6 @@ import (
 )
 
 func TestForwardResponsesInputTokensCustomRelayUsesLocalEstimate(t *testing.T) {
-
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses/input_tokens", nil)
@@ -27,12 +26,15 @@ func TestForwardResponsesInputTokensCustomRelayUsesLocalEstimate(t *testing.T) {
 	svc := newAuxiliaryFixture(auxiliaryFixtureInputs{
 		transport: upstream,
 	})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 159, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey, Concurrency: 1,
-		Credentials: map[string]any{"api_key": "relay-key", "base_url": "https://relay.example/v1"}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 159, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey, Concurrency: 1,
+			Credentials: map[string]any{"api_key": "relay-key", "base_url": "https://relay.example/v1"},
+		},
 	}
 	body := []byte(`{"model":"gpt-5.4","instructions":"Be concise.","input":"hello world","tools":[{"type":"function","name":"lookup","description":"Look up a value","parameters":{"type":"object"}}]}`)
 
-	err := svc.ForwardResponsesInputTokens(context.Background(), c, account, body)
+	err := svc.ForwardResponsesInputTokens(context.Background(), c, provider, body)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, recorder.Code)
 	require.Equal(t, "response.input_tokens", gjson.Get(recorder.Body.String(), "object").String())
@@ -41,14 +43,13 @@ func TestForwardResponsesInputTokensCustomRelayUsesLocalEstimate(t *testing.T) {
 }
 
 func TestForwardResponsesInputTokensGrokUsesLocalEstimate(t *testing.T) {
-
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses/input_tokens", nil)
 	svc := newAuxiliaryFixture(auxiliaryFixtureInputs{})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 160, Platform: capability.PlatformGrok, Type: capability.AccountTypeOAuth}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 160, Platform: capability.PlatformGrok, Type: capability.ProviderTypeOAuth}}
 
-	err := svc.ForwardResponsesInputTokens(context.Background(), c, account, []byte(`{"model":"grok-4.1","input":"hello world"}`))
+	err := svc.ForwardResponsesInputTokens(context.Background(), c, provider, []byte(`{"model":"grok-4.1","input":"hello world"}`))
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, recorder.Code)
 	require.Equal(t, "response.input_tokens", gjson.Get(recorder.Body.String(), "object").String())
@@ -56,7 +57,6 @@ func TestForwardResponsesInputTokensGrokUsesLocalEstimate(t *testing.T) {
 }
 
 func TestForwardResponsesInputTokensUpstream404FallsBackLocally(t *testing.T) {
-
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses/input_tokens", nil)
@@ -68,12 +68,15 @@ func TestForwardResponsesInputTokensUpstream404FallsBackLocally(t *testing.T) {
 	svc := newAuxiliaryFixture(auxiliaryFixtureInputs{
 		transport: upstream,
 	})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 171, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey, Concurrency: 1,
-		Credentials: map[string]any{"api_key": "official-key", "base_url": "https://api.openai.com/v1"}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 171, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey, Concurrency: 1,
+			Credentials: map[string]any{"api_key": "official-key", "base_url": "https://api.openai.com/v1"},
+		},
 	}
 	body := []byte(`{"model":"gpt-5.4","instructions":"Be concise.","input":"hello world"}`)
 
-	err := svc.ForwardResponsesInputTokens(context.Background(), c, account, body)
+	err := svc.ForwardResponsesInputTokens(context.Background(), c, provider, body)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, recorder.Code)
 	require.Equal(t, "response.input_tokens", gjson.Get(recorder.Body.String(), "object").String())

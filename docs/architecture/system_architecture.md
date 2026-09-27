@@ -43,7 +43,7 @@
 | --- | --- |
 | cmd/server、config、app/bootstrap | 参数与版本信息、配置加载、数据库引导、迁移及持久密钥 |
 | app、app/lifecycle | 组合生产实例、配置投影、端口绑定、启停和失败回收 |
-| 业务模块 | 按身份、账号、路由、资金、任务等主题维护用例与规则 |
+| 业务模块 | 按身份、提供商、路由、资金、任务等主题维护用例与规则 |
 | 模块内 HTTP、PostgreSQL、Redis、provider | 处理协议、存储和外部能力，向核心实现所需端口 |
 | gateway、upstream、protocol | 分别负责入站编排、供应商交换和报文/转换规则 |
 | infra、pkg | 提供技术资源、通用值类型和计算工具 |
@@ -52,17 +52,17 @@
 
 app 构造 settings.Store，并把同一存储交给各领域设置读取器。公开站点信息由 site 投影，综合设置由 settings/composite 组合读取、准备、保存和应用。幂等 HTTP 处理器显式绑定同一个协调器；协调器和清理任务共用 SQL 连接池，各自接收日志观察出口。
 
-账号、路由、调度、计费与用量的存储和缓存也由 app 构造。账号健康、快速阻断、模型短暂失败与快照节流共享实际拥有者；选择、固定账号 WS 复核和管理诊断复用资格规则与调度反馈。Agent Identity 协调器只构造一次，已持久账号共享进程内按账号锁，各入口分别管理未持久账号的互斥。
+提供商、路由、调度、计费与用量的存储和缓存也由 app 构造。提供商健康、快速阻断、模型短暂失败与快照节流共享实际拥有者；选择、固定提供商 WS 复核和管理诊断复用资格规则与调度反馈。Agent Identity 协调器只构造一次，已持久提供商共享进程内按提供商锁，各入口分别管理未持久提供商的互斥。
 
 OpenAI 文本、Responses、WS、Images 和辅助执行器共用请求构造、响应输出、凭据与连接资源。Messages、Google 和 Grok 执行适配分别连接所属平台。app 先构造完成 Recorder，再绑定执行器；完成输入在请求期冻结，异步任务不读取 Gin Context。平台分派、部分结果和重试边界见[请求生命周期](gateway_request_lifecycle.md)。
 
-通知接收业务模块已确定的事件；identity 持有验证码和重置凭据，billing/account 判断阈值。search 的配置、注册表与在途跟踪在网关间共享。site 拥有公告、公开设置和页面权限，web 消费公开投影；这些职责的专题入口见[模块导航](backend_modules.md#module_topics)。
+通知接收业务模块已确定的事件；identity 持有验证码和重置凭据，billing/provider 判断阈值。search 的配置、注册表与在途跟踪在网关间共享。site 拥有公告、公开设置和页面权限，web 消费公开投影；这些职责的专题入口见[模块导航](backend_modules.md#module_topics)。
 
 ### 规则与存储边界
 
 `protocol` 维护协议值、报文与转换状态，`routing/capability` 判断原生协议、准入与单步转换，`routing/modelmap` 提供模型匹配，routing 决定路由与 effort 映射。`billing/pricing` 负责纯查价和费用计算，billing/provider 加载目录并维护热更新；纯协议和定价算法不执行配置读取或 I/O。
 
-`gateway/provider.ExecutionAccount` 组合 `account.Record` 与当次 `AttemptRoute`，不参与数据库或缓存编码。管理 DTO、无凭据候选与执行目标使用不同投影。配置、CAS、outbox、消费累计和快照编码分别由所属存储与规则实现维护，app 只绑定端口和转换投影。
+`gateway/provider.ExecutionProvider` 组合 `provider.Record` 与当次 `AttemptRoute`，不参与数据库或缓存编码。管理 DTO、无凭据候选与执行目标使用不同投影。配置、CAS、outbox、消费累计和快照编码分别由所属存储与规则实现维护，app 只绑定端口和转换投影。
 
 普通结算通过 billing/postgres 的闭合事务完成。身份、团队、支付和任务等外层事务使用明确的同连接参与能力；参与者不自行提交或发布成功副作用。creative 与 batchimage 独立管理任务、输出和完成资格，共享 billing.Funds；退款的外部渠道调用放在短事务之间。用量记录、订单状态与通知结果不能代替资金提交事实。
 
@@ -81,7 +81,7 @@ OpenAI 文本、Responses、WS、Images 和辅助执行器共用请求构造、�
 
 完整应用先初始化日志，再由 bootstrap 初始化时区和 PostgreSQL，在原十分钟迁移预算内执行迁移与暂时错误重试，补齐持久 JWT secret、完整校验配置，并在 simple 模式补齐默认分组和管理员并发。Ent 与 SQL 共享连接，只有一个关闭拥有者。
 
-app 在 bootstrap 成功后固定共享 Calendar，显式传入用量、支付、推广、团队 HTTP 和计费、账号、路由装配。用量存储、聚合事务、仪表盘按日缓存、团队日统计、资金结算、Key 按日计数与公开站点时区展示均使用注入的日期对象。用户时区覆盖及无效值回退仍按各入口原有规则执行，团队查询保持只使用服务端时区。
+app 在 bootstrap 成功后固定共享 Calendar，显式传入用量、支付、推广、团队 HTTP 和计费、提供商、路由装配。用量存储、聚合事务、仪表盘按日缓存、团队日统计、资金结算、Key 按日计数与公开站点时区展示均使用注入的日期对象。用户时区覆盖及无效值回退仍按各入口原有规则执行，团队查询保持只使用服务端时区。
 
 `pkg/timezone` 提供 Calendar 与时间文本解析。生产中只有 `app/bootstrap.InitTimezone` 写入 `time.Local`，保留默认上海时区、错误文本和初始化顺序。
 
@@ -93,7 +93,7 @@ billing 的余额/Key 缓存队列 和订阅过期提醒由 app 绑定到现有�
 
 搜索运行时先于 HTTP 开放初始化，所有配置代次共享在途计数；配置替换只退役旧客户端的空闲连接，不取消已进入的搜索。关闭时停止新搜索并等待额度清理。审核先封闭队列并等待；邮件队列在通知生产者之后排空，预算耗尽会取消 SMTP 并报告未完成项。HTTP 五秒与后台三十秒总预算保持独立，超时不能被报告成排空成功。
 
-任务 HTTP 的提交、下载与管理调用由 TaskRequestsAndDownloads 关闭屏障跟踪。HTTP 退出后先封闭新调用、等待已有调用，再停止任务拉取与恢复循环。worker 停止不可逆，重复停止共享结果；创作台生成阶段的用户/账号槽由 scheduler.Lease 逆序释放。任何阶段超时都保留后续共享依赖，不能把预算结束描述成任务全部完成。
+任务 HTTP 的提交、下载与管理调用由 TaskRequestsAndDownloads 关闭屏障跟踪。HTTP 退出后先封闭新调用、等待已有调用，再停止任务拉取与恢复循环。worker 停止不可逆，重复停止共享结果；创作台生成阶段的用户/提供商槽由 scheduler.Lease 逆序释放。任何阶段超时都保留后续共享依赖，不能把预算结束描述成任务全部完成。
 
 identity 的会话、TOTP、资料操作和 pending 存取，以及 apikey 的过期、活动时间、滥用限制与 outbox 取时，由 app 在构造时注入系统时钟函数。各原取时点继续独立读取，JWT 库内验证与签发使用相同来源；团队与成员额度的日期对象继续保留原时区和 DST 边界。
 
@@ -111,7 +111,7 @@ Stop 和 Cleanup 共享一次执行结果。超时报告未完成任务，停止
 
 新增 goroutine、定时器、队列或连接时，必须登记实际拥有者、启动点、接收封闭方式和完成等待。按需资源由已有拥有者管理，不能在运行时从业务模块反向调用 app 注册新组件。应用清理表按职责拆在 app 的运行时绑定文件中，并与 Wire 图一起验证。
 
-调度快照、并发、串行队列和运行反馈由 app 绑定唯一 scheduler 实例，构造不启动。快照启停与网关读取直接调用 `scheduler.SnapshotService`，账号事件通过其窄发布端口更新快照；执行目标的投影只在执行边界进行。模型目录短缓存由同一时间轮直接清理 `routing.ModelList`。完整 handler 结束后停止调度新认领、取消等待并等待在途资源释放，再关闭 Redis/SQL。快照的初始重建仍异步，重复启动不重建，停止后不重开；遗留持久 outbox 留待下次消费或周期重建恢复。
+调度快照、并发、串行队列和运行反馈由 app 绑定唯一 scheduler 实例，构造不启动。快照启停与网关读取直接调用 `scheduler.SnapshotService`，提供商事件通过其窄发布端口更新快照；执行目标的投影只在执行边界进行。模型目录短缓存由同一时间轮直接清理 `routing.ModelList`。完整 handler 结束后停止调度新认领、取消等待并等待在途资源释放，再关闭 Redis/SQL。快照的初始重建仍异步，重复启动不重建，停止后不重开；遗留持久 outbox 留待下次消费或周期重建恢复。
 
 usage 聚合器在停止时取消运行 context 和重试等待，拒绝新重算并等待已进入的工作；审计与系统日志 sink 的重复 Start 不会创建第二个 worker，Stop 后不能重开。Ops 错误采集队列仍在第一次入队时启动工作，队列实例与清理 hook 已在 app 构造期绑定。实时采样与订阅计数由 Ops 持有，WebSocket 握手和帧由 HTTP Adapter 处理；空闲停止与应用停止使用同一实例。
 
@@ -119,13 +119,13 @@ usage 聚合器在停止时取消运行 context 和重试等待，拒绝新重�
 
 | 存储 | 所有权与使用方式 | 失败或丢失影响 |
 | --- | --- | --- |
-| PostgreSQL | 用户、身份、团队、Key、分组、价格配置、账号、设置、订单、订阅、持久任务、用量和审计的权威状态 | 连接、迁移或密钥初始化失败会阻止完整应用启动；写失败不得由缓存结果伪装成成功 |
+| PostgreSQL | 用户、身份、团队、Key、分组、价格配置、提供商、设置、订单、订阅、持久任务、用量和审计的权威状态 | 连接、迁移或密钥初始化失败会阻止完整应用启动；写失败不得由缓存结果伪装成成功 |
 | Redis | 缓存、限流、并发槽、会话/粘性、分布式锁、调度快照、队列及跨实例失效；个别短期任务按 TTL 保存在 Redis | 影响依功能而异：安全入口可 fail-close，调度可受控回源，缓存可重建，在途短期任务可能丢失；必须由具体契约定义 |
 | 本地数据目录 | 定价快照、日志、前端覆盖及部分部署配置 | 多实例默认不共享；容器部署必须挂载持久卷并在备份计划中显式纳入 |
 | S3 兼容存储 | 备份等可选大对象 | 备份客户端按运行时设置构造，不能在启动时固定旧凭据；对象可用性与数据库元数据生命周期必须协同 |
 | Google Cloud Storage | Vertex 批量图片输入、输出和中间 JSONL | 由 Vertex 批量图片 provider 按作业前缀管理；不得向 API 用户暴露内部 URI |
 | 创作台临时数据 | Redis `creative:payload:`、`creative:input:`、`creative:mask:`、`creative:output:` 键（TTL 默认 30 分钟）与 `creative:queue:*` 队列；PostgreSQL 存 `creative_runs`/`creative_run_outputs` 元数据及 `creative_run_outbox` durable 动作 | 素材与 prompt 明文不入 PostgreSQL，因此不进入备份；临时输出过期即不可恢复，任务降级 `result_lost`，客户端 ack 先写元数据再删除输出键，删除失败由 reconciler 补偿 |
-| 上游供应商 | 模型推理、OAuth、配额与供应商任务 | 失败通过平台适配器、账号状态和故障转移收敛；不能把上游瞬时错误写成永久本地事实 |
+| 上游供应商 | 模型推理、OAuth、配额与供应商任务 | 失败通过平台适配器、提供商状态和故障转移收敛；不能把上游瞬时错误写成永久本地事实 |
 
 Ent schema 是主要实体的代码模型，手写 SQL 迁移是已部署数据库的演进权威。各模块 PostgreSQL Adapter 使用 Ent 和底层 `*sql.DB` 完成复杂聚合、批量更新及显式事务；两种访问方式共享同一连接池。
 
@@ -147,9 +147,9 @@ Gin engine 的顺序为 Recovery、可信代理设置、全局日志/客户端�
 - 初始化失败分硬失败和可降级失败。数据库、迁移、最终配置校验和 HTTP server 构造属于硬门槛；例如远程定价初始化失败会记录警告并使用本地回退。新增降级必须明确是否会放宽认证、计费或 SSRF 等安全边界。
 - 每个实例都会构造完整后台服务集合；已有单执行者任务继续使用各自的数据库/Redis 锁。
 
-出站、路由与账号的运行接口分别为 EgressPolicy、RoutePlan 和 AccountSnapshot。策略与模型配置跨请求边界提供独立副本；候选协议和账号映射在原 attempt/使用时点重新求值。account 的刷新协调、管理/用量查询、周期维护与 Deferred 由 app 持有并登记停止，egress 的采集监听仍按需开启。`account/postgres`、`routing/postgres`、`egress/postgres` 拥有各自存储，Redis 健康计数与 TLS 缓存在所属 Adapter 中；共享 SQL/Redis/HTTP 池仍只有原技术实例。
+出站、路由与提供商的运行接口分别为 EgressPolicy、RoutePlan 和 ProviderSnapshot。策略与模型配置跨请求边界提供独立副本；候选协议和提供商映射在原 attempt/使用时点重新求值。provider 的刷新协调、管理/用量查询、周期维护与 Deferred 由 app 持有并登记停止，egress 的采集监听仍按需开启。`provider/postgres`、`routing/postgres`、`egress/postgres` 拥有各自存储，Redis 健康计数与 TLS 缓存在所属 Adapter 中；共享 SQL/Redis/HTTP 池仍只有原技术实例。
 
-分组管理直接读取 AccountStore 与 KeyStore，容量查询直接读取账号轻量投影，身份/Key/billing 的分组策略和价格配置读取直接绑定 routing。平台目录、动态设置和调度来源由 app 按职责直接组合，执行消费者共享已装配的规则与缓存实例。`account_groups`、代理联动及账号资金重置由同连接参与能力协作，不新增事务 context；配置更新不覆盖独立消费与运行字段。具体契约见[路由与计费](../domains/routing_and_billing.md)、[账号维护](../operations/account_maintenance.md)和[出站传输](../operations/upstream_transport_security.md)。
+分组管理直接读取 ProviderStore 与 KeyStore，容量查询直接读取提供商轻量投影，身份/Key/billing 的分组策略和价格配置读取直接绑定 routing。平台目录、动态设置和调度来源由 app 按职责直接组合，执行消费者共享已装配的规则与缓存实例。`provider_groups`、代理联动及提供商资金重置由同连接参与能力协作，不新增事务 context；配置更新不覆盖独立消费与运行字段。具体契约见[路由与计费](../domains/routing_and_billing.md)、[提供商维护](../operations/provider_maintenance.md)和[出站传输](../operations/upstream_transport_security.md)。
 
 <a id="backup_and_maintenance"></a>
 ## 备份与系统维护装配

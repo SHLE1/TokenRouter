@@ -5,17 +5,17 @@ import (
 	"errors"
 	"net/http"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
-func (s *OpenAIRequests) DetectClient(c *gin.Context, account *gatewayprovider.ExecutionAccount, tlsRouterMatch egress.TLSFingerprintRouterMatchResult) accountcore.CodexClientRestrictionDetectionResult {
+func (s *OpenAIRequests) DetectClient(c *gin.Context, provider *gatewayprovider.ExecutionProvider, tlsRouterMatch egress.TLSFingerprintRouterMatchResult) providercore.CodexClientRestrictionDetectionResult {
 	ctx := context.Background()
 	if c != nil && c.Request != nil {
 		ctx = c.Request.Context()
@@ -25,33 +25,34 @@ func (s *OpenAIRequests) DetectClient(c *gin.Context, account *gatewayprovider.E
 			return "", ""
 		}
 		return c.GetHeader("User-Agent"), c.GetHeader("originator")
-	}, account, tlsRouterMatch)
+	}, provider, tlsRouterMatch)
 }
 
 // DetectClientInput 保留动态全局设置的读取时机，仅分离客户端数据来源。
-func (s *OpenAIRequests) DetectClientInput(ctx context.Context, readClient func() (string, string), account *gatewayprovider.ExecutionAccount, tlsRouterMatch egress.TLSFingerprintRouterMatchResult) accountcore.CodexClientRestrictionDetectionResult {
+func (s *OpenAIRequests) DetectClientInput(ctx context.Context, readClient func() (string, string), provider *gatewayprovider.ExecutionProvider, tlsRouterMatch egress.TLSFingerprintRouterMatchResult) providercore.CodexClientRestrictionDetectionResult {
 	var globalAllowedClients []string
-	if account != nil && account.View().IsCodexCLIOnlyEnabled() && s != nil && s.Readers != nil {
+	if provider != nil && provider.View().IsCodexCLIOnlyEnabled() && s != nil && s.Readers != nil {
 		if s.Readers.Gateway.IsOpenAIAllowClaudeCodeCodexPluginEnabled(ctx) {
 			globalAllowedClients = []string{openai.AllowedClientClaudeCode}
 		}
 	}
-	return s.clientDetector().DetectClient(readClient, gatewayprovider.ExecutionRecord(account), globalAllowedClients, tlsRouterMatch.Matched)
+	return s.clientDetector().DetectClient(readClient, gatewayprovider.ExecutionRecord(provider), globalAllowedClients, tlsRouterMatch.Matched)
 }
-func LogCodexCLIOnlyDetection(ctx context.Context, c *gin.Context, account *gatewayprovider.ExecutionAccount, apiKeyID int64, result accountcore.CodexClientRestrictionDetectionResult, body []byte) {
+
+func LogCodexCLIOnlyDetection(ctx context.Context, c *gin.Context, provider *gatewayprovider.ExecutionProvider, apiKeyID int64, result providercore.CodexClientRestrictionDetectionResult, body []byte) {
 	if !result.Enabled {
 		return
 	}
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	accountID := int64(0)
-	if account != nil {
-		accountID = account.Record.ID
+	providerID := int64(0)
+	if provider != nil {
+		providerID = provider.Record.ID
 	}
 	fields := []zap.Field{
 		zap.String("component", "service.openai_gateway"),
-		zap.Int64("account_id", accountID),
+		zap.Int64("provider_id", providerID),
 		zap.Bool("codex_cli_only_enabled", result.Enabled),
 		zap.Bool("codex_official_client_match", result.Matched),
 		zap.String("reject_reason", result.Reason),
@@ -71,10 +72,10 @@ func LogCodexCLIOnlyDetection(ctx context.Context, c *gin.Context, account *gate
 }
 
 // EnforceClient 在非 /responses 主入口上复用 OpenAI OAuth 客户端访问策略。
-func (s *OpenAIRequests) EnforceClient(ctx context.Context, c *gin.Context, account *gatewayprovider.ExecutionAccount, body []byte, tlsRouterMatch egress.TLSFingerprintRouterMatchResult) error {
-	result := s.DetectClient(c, account, tlsRouterMatch)
+func (s *OpenAIRequests) EnforceClient(ctx context.Context, c *gin.Context, provider *gatewayprovider.ExecutionProvider, body []byte, tlsRouterMatch egress.TLSFingerprintRouterMatchResult) error {
+	result := s.DetectClient(c, provider, tlsRouterMatch)
 	apiKeyID := APIKeyIDFromContext(c)
-	LogCodexCLIOnlyDetection(ctx, c, account, apiKeyID, result, body)
+	LogCodexCLIOnlyDetection(ctx, c, provider, apiKeyID, result, body)
 	if !result.Enabled || result.Matched {
 		return nil
 	}
@@ -94,7 +95,7 @@ func (s *OpenAIRequests) EnforceClient(ctx context.Context, c *gin.Context, acco
 func (s *OpenAIRequests) ApplyUserAgentHeader(
 	ctx context.Context,
 	c *gin.Context,
-	account *gatewayprovider.ExecutionAccount,
+	provider *gatewayprovider.ExecutionProvider,
 	headers http.Header,
 	passthrough bool,
 	routerMatch ...egress.TLSFingerprintRouterMatchResult,
@@ -103,63 +104,68 @@ func (s *OpenAIRequests) ApplyUserAgentHeader(
 		return
 	}
 	req := &http.Request{Header: headers}
-	s.ApplyUserAgent(ctx, c, account, req, passthrough, routerMatch...)
+	s.ApplyUserAgent(ctx, c, provider, req, passthrough, routerMatch...)
 }
-func (s *OpenAIRequests) MatchTLS(c *gin.Context, account *gatewayprovider.ExecutionAccount) egress.TLSFingerprintRouterMatchResult {
+
+func (s *OpenAIRequests) MatchTLS(c *gin.Context, provider *gatewayprovider.ExecutionProvider) egress.TLSFingerprintRouterMatchResult {
 	return s.MatchTLSInput(func() string {
 		if c == nil {
 			return ""
 		}
 		return c.GetHeader("User-Agent")
-	}, account)
+	}, provider)
 }
 
-// MatchTLSInput 在账号确有 Router 后才读取 User-Agent。
-func (s *OpenAIRequests) MatchTLSInput(readUserAgent func() string, account *gatewayprovider.ExecutionAccount) egress.TLSFingerprintRouterMatchResult {
-	if s == nil || s.Routers == nil || account == nil || account.View().GetTLSFingerprintRouterID() <= 0 {
+// MatchTLSInput 在提供商确有 Router 后才读取 User-Agent。
+func (s *OpenAIRequests) MatchTLSInput(readUserAgent func() string, provider *gatewayprovider.ExecutionProvider) egress.TLSFingerprintRouterMatchResult {
+	if s == nil || s.Routers == nil || provider == nil || provider.View().GetTLSFingerprintRouterID() <= 0 {
 		return egress.TLSFingerprintRouterMatchResult{}
 	}
 	userAgent := readUserAgent()
-	return s.Routers.MatchUserAgent(account.View().GetTLSFingerprintRouterID(), userAgent)
+	return s.Routers.MatchUserAgent(provider.View().GetTLSFingerprintRouterID(), userAgent)
 }
 
 // TLSProfile 保留未装配时的短路，选择规则唯一归 egress。
-func (s *OpenAIRequests) TLSProfile(value *gatewayprovider.ExecutionAccount, routerMatch ...egress.TLSFingerprintRouterMatchResult) *tlsfingerprint.Profile {
+func (s *OpenAIRequests) TLSProfile(value *gatewayprovider.ExecutionProvider, routerMatch ...egress.TLSFingerprintRouterMatchResult) *tlsfingerprint.Profile {
 	if s == nil || s.Profiles == nil {
 		return nil
 	}
 	return s.Profiles.ResolveRequestTLS(gatewayprovider.ExecutionTLSSelection(value, routerMatch))
 }
-func (s *OpenAIRequests) WSTLSProfile(account *gatewayprovider.ExecutionAccount, routerMatch ...egress.TLSFingerprintRouterMatchResult) (*tlsfingerprint.Profile, string) {
-	profile := s.TLSProfile(account, routerMatch...)
+
+func (s *OpenAIRequests) WSTLSProfile(provider *gatewayprovider.ExecutionProvider, routerMatch ...egress.TLSFingerprintRouterMatchResult) (*tlsfingerprint.Profile, string) {
+	profile := s.TLSProfile(provider, routerMatch...)
 	if profile == nil {
 		return nil, ""
 	}
 	// Responses WebSocket 是 HTTP/1.1 Upgrade，连接池键也按剥离 h2 后的模板隔离。
 	profile = tlsfingerprint.HTTP1OnlyProfile(profile)
-	return profile, egress.WebSocketTLSIdentity(gatewayprovider.ExecutionTLSSelection(account, routerMatch), true, tlsfingerprint.CacheKey(profile))
+	return profile, egress.WebSocketTLSIdentity(gatewayprovider.ExecutionTLSSelection(provider, routerMatch), true, tlsfingerprint.CacheKey(profile))
 }
-func openAIClientPolicyForbiddenMessage(result accountcore.CodexClientRestrictionDetectionResult) string {
+
+func openAIClientPolicyForbiddenMessage(result providercore.CodexClientRestrictionDetectionResult) string {
 	// 按策略返回更明确的拒绝原因，同时保留旧 codex_cli_only 测试和客户端提示语义。
-	if result.Policy == accountcore.OpenAIOAuthClientPolicyCodexOnly {
-		return "This account only allows Codex official clients"
+	if result.Policy == providercore.OpenAIOAuthClientPolicyCodexOnly {
+		return "This provider only allows Codex official clients"
 	}
-	if result.Policy == accountcore.OpenAIOAuthClientPolicyTLSRouterMatchedOnly {
-		return "This account only allows clients matched by the configured TLS router"
+	if result.Policy == providercore.OpenAIOAuthClientPolicyTLSRouterMatchedOnly {
+		return "This provider only allows clients matched by the configured TLS router"
 	}
-	return "This account only allows configured OpenAI OAuth clients"
+	return "This provider only allows configured OpenAI OAuth clients"
 }
-func (s *OpenAIRequests) ApplyUserAgent(ctx context.Context, _ *gin.Context, value *gatewayprovider.ExecutionAccount, req *http.Request, passthrough bool, matches ...egress.TLSFingerprintRouterMatchResult) {
+
+func (s *OpenAIRequests) ApplyUserAgent(ctx context.Context, _ *gin.Context, value *gatewayprovider.ExecutionProvider, req *http.Request, passthrough bool, matches ...egress.TLSFingerprintRouterMatchResult) {
 	var match egress.TLSFingerprintRouterMatchResult
 	if len(matches) > 0 {
 		match = matches[0]
 	}
 	s.ClientPolicy.ApplyUserAgent(ctx, gatewayprovider.ExecutionRecord(value), req, passthrough, match)
 }
-func (s *OpenAIRequests) clientDetector() accountcore.ClientRestrictionDetector {
+
+func (s *OpenAIRequests) clientDetector() providercore.ClientRestrictionDetector {
 	if s != nil && s.Detector != nil {
 		return s.Detector
 	}
 	force := s != nil && s.Options.ForceCLI
-	return &accountcore.CodexClientDetector{Options: accountcore.CodexClientOptions{ForceCLI: force, OfficialUserAgent: openai.IsCodexOfficialClientRequestStrict, OfficialOriginator: openai.IsCodexOfficialClientOriginator, AllowedClients: openai.MatchAllowedClients}}
+	return &providercore.CodexClientDetector{Options: providercore.CodexClientOptions{ForceCLI: force, OfficialUserAgent: openai.IsCodexOfficialClientRequestStrict, OfficialOriginator: openai.IsCodexOfficialClientOriginator, AllowedClients: openai.MatchAllowedClients}}
 }

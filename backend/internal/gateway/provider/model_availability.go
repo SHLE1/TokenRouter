@@ -4,19 +4,19 @@ import (
 	"context"
 	"strings"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
-// AvailabilityAccounts 只读取持久配置候选，不使用瞬时调度缓存或执行凭据入口。
-type AvailabilityAccounts interface {
-	ListModelAvailabilityCandidates(context.Context, *int64, []string, bool) ([]account.Record, error)
+// AvailabilityProviders 只读取持久配置候选，不使用瞬时调度缓存或执行凭据入口。
+type AvailabilityProviders interface {
+	ListModelAvailabilityCandidates(context.Context, *int64, []string, bool) ([]provider.Record, error)
 }
 
-// NewModelAvailability 绑定账号查询与分组映射读取端口，不维护独立缓存。
-// @project-doc docs/architecture/account_scheduling_and_cache.md#advanced_scheduler_selection
-func NewModelAvailability(source AvailabilityAccounts, groupPolicies *routing.PricingConfigService, simple, compatible bool) *routing.ModelAvailability {
+// NewModelAvailability 绑定提供商查询与分组映射读取端口，不维护独立缓存。
+// @project-doc docs/architecture/provider_scheduling_and_cache.md#advanced_scheduler_selection
+func NewModelAvailability(source AvailabilityProviders, groupPolicies *routing.PricingConfigService, simple, compatible bool) *routing.ModelAvailability {
 	result := &routing.ModelAvailability{
 		Simple:   simple,
 		MapModel: groupPolicies.ResolveRoutingModel,
@@ -24,7 +24,7 @@ func NewModelAvailability(source AvailabilityAccounts, groupPolicies *routing.Pr
 	if source == nil {
 		return result
 	}
-	result.Read = func(ctx context.Context, group *int64, platforms []string, grouped bool) ([]routing.AvailabilityAccount, error) {
+	result.Read = func(ctx context.Context, group *int64, platforms []string, grouped bool) ([]routing.AvailabilityProvider, error) {
 		if forced, ok := apikey.ForcePlatformFromContext(ctx); ok && strings.TrimSpace(forced) != "" {
 			platforms = []string{forced}
 		}
@@ -32,10 +32,10 @@ func NewModelAvailability(source AvailabilityAccounts, groupPolicies *routing.Pr
 		if err != nil {
 			return nil, err
 		}
-		out := make([]routing.AvailabilityAccount, len(values))
+		out := make([]routing.AvailabilityProvider, len(values))
 		for i := range values {
 			record := &values[i]
-			out[i] = routing.AvailabilityAccount{
+			out[i] = routing.AvailabilityProvider{
 				Platform: record.Platform,
 				Supports: func(ctx context.Context, model string) bool {
 					policy := ModelPolicy{Record: record}
@@ -54,7 +54,7 @@ func NewModelAvailability(source AvailabilityAccounts, groupPolicies *routing.Pr
 	return result
 }
 
-// SupportsCompatibleRouting 使用账号平台的模型能力规则，透传账号也受模型范围约束。
+// SupportsCompatibleRouting 使用提供商平台的模型能力规则，透传提供商也受模型范围约束。
 func (p ModelPolicy) SupportsCompatibleRouting(ctx context.Context, model string) bool {
 	model = strings.TrimSpace(model)
 	if model == "" {

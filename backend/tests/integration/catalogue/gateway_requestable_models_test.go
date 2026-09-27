@@ -9,8 +9,8 @@ import (
 
 	routingtestkit "github.com/TokenFlux/TokenRouter/internal/routing/testkit"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	pricingprovider "github.com/TokenFlux/TokenRouter/internal/billing/provider"
@@ -19,7 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestResolveRequestableModels_RequiresModelLevelSchedulability 验证可见模型至少存在一个未被模型级限流的账号。
+// TestResolveRequestableModels_RequiresModelLevelSchedulability 验证可见模型至少存在一个未被模型级限流的提供商。
 func TestResolveRequestableModels_RequiresModelLevelSchedulability(t *testing.T) {
 	groupID := int64(4120)
 	pricingConfig := routingtestkit.Configuration{
@@ -28,7 +28,7 @@ func TestResolveRequestableModels_RequiresModelLevelSchedulability(t *testing.T)
 		ModelMapping: map[string]string{"client-alias": "group-model"},
 	}
 	future := time.Now().Add(10 * time.Minute).Format(time.RFC3339)
-	limitedAccount := accountcore.Record{
+	limitedProvider := providercore.Record{
 		ID:       80,
 		Platform: capability.PlatformOpenAI,
 		Credentials: map[string]any{
@@ -41,19 +41,19 @@ func TestResolveRequestableModels_RequiresModelLevelSchedulability(t *testing.T)
 			},
 		},
 	}
-	healthyAccount := limitedAccount
-	healthyAccount.ID = 81
-	healthyAccount.Extra = nil
+	healthyProvider := limitedProvider
+	healthyProvider.ID = 81
+	healthyProvider.Extra = nil
 	pricingConfigService := routingtestkit.PricingConfig(groupID, capability.PlatformOpenAI, pricingConfig)
 
-	t.Run("全部账号均被模型限流时隐藏", func(t *testing.T) {
-		svc := newCatalogueFixture(&modelsListAccountRepoStub{byGroup: map[int64][]accountcore.Record{groupID: {limitedAccount}}}, pricingConfigService, nil)
+	t.Run("全部提供商均被模型限流时隐藏", func(t *testing.T) {
+		svc := newCatalogueFixture(&modelsListProviderRepoStub{byGroup: map[int64][]providercore.Record{groupID: {limitedProvider}}}, pricingConfigService, nil)
 		result := svc.ResolveRequestableModels(context.Background(), &groupID, capability.PlatformOpenAI)
 		require.NotContains(t, routing.RequestableModelIDs(result.Models), "client-alias")
 	})
 
-	t.Run("至少一个健康账号时保留", func(t *testing.T) {
-		svc := newCatalogueFixture(&modelsListAccountRepoStub{byGroup: map[int64][]accountcore.Record{groupID: {limitedAccount, healthyAccount}}}, pricingConfigService, nil)
+	t.Run("至少一个健康提供商时保留", func(t *testing.T) {
+		svc := newCatalogueFixture(&modelsListProviderRepoStub{byGroup: map[int64][]providercore.Record{groupID: {limitedProvider, healthyProvider}}}, pricingConfigService, nil)
 		result := svc.ResolveRequestableModels(context.Background(), &groupID, capability.PlatformOpenAI)
 		require.Contains(t, routing.RequestableModelIDs(result.Models), "client-alias")
 	})
@@ -68,20 +68,20 @@ func (s *requestableModelsPricingConfigRepoStub) ListAll(context.Context) ([]rou
 	return nil, s.err
 }
 
-// sequencedRequestableModelsAccountRepoStub 模拟第一次账号查询失败、第二次查询恢复。
-type sequencedRequestableModelsAccountRepoStub struct {
+// sequencedRequestableModelsProviderRepoStub 模拟第一次提供商查询失败、第二次查询恢复。
+type sequencedRequestableModelsProviderRepoStub struct {
 	catalogueRows
-	accounts []accountcore.Record
-	calls    int
+	providers []providercore.Record
+	calls     int
 }
 
-// ListSchedulableByGroupID 在首次调用返回临时错误，后续调用返回当前账号快照。
-func (s *sequencedRequestableModelsAccountRepoStub) ListSchedulableByGroupID(context.Context, int64) ([]accountcore.Record, error) {
+// ListSchedulableByGroupID 在首次调用返回临时错误，后续调用返回当前提供商快照。
+func (s *sequencedRequestableModelsProviderRepoStub) ListSchedulableByGroupID(context.Context, int64) ([]providercore.Record, error) {
 	s.calls++
 	if s.calls == 1 {
-		return nil, errors.New("temporary account query failure")
+		return nil, errors.New("temporary provider query failure")
 	}
-	return append([]accountcore.Record(nil), s.accounts...), nil
+	return append([]providercore.Record(nil), s.providers...), nil
 }
 
 // requestableModelByID 从解析结果中查找指定客户端模型。
@@ -118,7 +118,7 @@ func TestResolveRequestableModels_UsesConfiguredPricingBasis(t *testing.T) {
 					InputPrice: &inputPrice,
 				}},
 			}
-			account := accountcore.Record{
+			provider := providercore.Record{
 				ID:       61,
 				Platform: capability.PlatformOpenAI,
 				Credentials: map[string]any{
@@ -126,7 +126,7 @@ func TestResolveRequestableModels_UsesConfiguredPricingBasis(t *testing.T) {
 					"model_whitelist": []any{"upstream-model"},
 				},
 			}
-			repo := &modelsListAccountRepoStub{byGroup: map[int64][]accountcore.Record{groupID: {account}}}
+			repo := &modelsListProviderRepoStub{byGroup: map[int64][]providercore.Record{groupID: {provider}}}
 			svc := newCatalogueFixture(repo, routingtestkit.PricingConfig(groupID, capability.PlatformOpenAI, pricingConfig), nil)
 
 			result := svc.ResolveRequestableModels(context.Background(), &groupID, capability.PlatformOpenAI)
@@ -153,7 +153,7 @@ func TestResolveRequestableModels_WildcardsMatchConcreteCandidateOnly(t *testing
 			InputPrice: &price,
 		}},
 	}
-	account := accountcore.Record{
+	provider := providercore.Record{
 		ID:       62,
 		Platform: capability.PlatformOpenAI,
 		Credentials: map[string]any{
@@ -164,7 +164,7 @@ func TestResolveRequestableModels_WildcardsMatchConcreteCandidateOnly(t *testing
 			"model_whitelist": []any{"upstream-model"},
 		},
 	}
-	svc := newCatalogueFixture(&modelsListAccountRepoStub{byGroup: map[int64][]accountcore.Record{groupID: {account}}}, routingtestkit.PricingConfig(groupID, capability.PlatformOpenAI, pricingConfig), nil)
+	svc := newCatalogueFixture(&modelsListProviderRepoStub{byGroup: map[int64][]providercore.Record{groupID: {provider}}}, routingtestkit.PricingConfig(groupID, capability.PlatformOpenAI, pricingConfig), nil)
 
 	result := svc.ResolveRequestableModels(context.Background(), &groupID, capability.PlatformOpenAI)
 	model, ok := requestableModelByID(result.Models, "client-one")
@@ -174,9 +174,9 @@ func TestResolveRequestableModels_WildcardsMatchConcreteCandidateOnly(t *testing
 	require.NotContains(t, routing.RequestableModelIDs(result.Models), "group-*")
 }
 
-func TestResolveRequestableModels_UnrestrictedAccountAddsDefaultsAndMappingSource(t *testing.T) {
+func TestResolveRequestableModels_UnrestrictedProviderAddsDefaultsAndMappingSource(t *testing.T) {
 	groupID := int64(4103)
-	account := accountcore.Record{
+	provider := providercore.Record{
 		ID:       63,
 		Platform: capability.PlatformOpenAI,
 		Credentials: map[string]any{
@@ -187,7 +187,7 @@ func TestResolveRequestableModels_UnrestrictedAccountAddsDefaultsAndMappingSourc
 			},
 		},
 	}
-	svc := newCatalogueFixture(&modelsListAccountRepoStub{byGroup: map[int64][]accountcore.Record{groupID: {account}}}, nil, nil)
+	svc := newCatalogueFixture(&modelsListProviderRepoStub{byGroup: map[int64][]providercore.Record{groupID: {provider}}}, nil, nil)
 
 	result := svc.ResolveRequestableModels(context.Background(), &groupID, capability.PlatformOpenAI)
 	ids := routing.RequestableModelIDs(result.Models)
@@ -197,22 +197,22 @@ func TestResolveRequestableModels_UnrestrictedAccountAddsDefaultsAndMappingSourc
 	require.NotContains(t, ids, "gpt-*")
 }
 
-func TestResolveRequestableModels_QoderUsesSchedulableAccountSiteUnion(t *testing.T) {
+func TestResolveRequestableModels_QoderUsesSchedulableProviderSiteUnion(t *testing.T) {
 	groupID := int64(4121)
-	global := accountcore.Record{
+	global := providercore.Record{
 		ID:          90,
 		Platform:    capability.PlatformQoder,
-		Type:        capability.AccountTypeCosy,
+		Type:        capability.ProviderTypeCosy,
 		Credentials: map[string]any{"site": "global"},
 	}
-	cn := accountcore.Record{
+	cn := providercore.Record{
 		ID:          91,
 		Platform:    capability.PlatformQoder,
-		Type:        capability.AccountTypeCosy,
+		Type:        capability.ProviderTypeCosy,
 		Credentials: map[string]any{"site": "cn"},
 	}
-	resolve := func(accounts ...accountcore.Record) []string {
-		svc := newCatalogueFixture(&modelsListAccountRepoStub{byGroup: map[int64][]accountcore.Record{groupID: accounts}}, nil, nil)
+	resolve := func(providers ...providercore.Record) []string {
+		svc := newCatalogueFixture(&modelsListProviderRepoStub{byGroup: map[int64][]providercore.Record{groupID: providers}}, nil, nil)
 		result := svc.ResolveRequestableModels(context.Background(), &groupID, capability.PlatformQoder)
 		return routing.RequestableModelIDs(result.Models)
 	}
@@ -250,27 +250,27 @@ func TestResolveRequestableModels_QoderUsesSchedulableAccountSiteUnion(t *testin
 	require.NotContains(t, resolve(cn), "claude-opus-4-6", "显式映射不能扩大CN站点硬能力")
 }
 
-func TestResolveRequestableModels_AccountWhitelistRemovesUnsupportedCandidate(t *testing.T) {
+func TestResolveRequestableModels_ProviderWhitelistRemovesUnsupportedCandidate(t *testing.T) {
 	groupID := int64(4104)
 	pricingConfig := routingtestkit.Configuration{
 		ID:           54,
 		Status:       billing.StatusActive,
 		ModelMapping: map[string]string{"blocked-alias": "blocked-final"},
 	}
-	account := accountcore.Record{
+	provider := providercore.Record{
 		ID:       64,
 		Platform: capability.PlatformOpenAI,
 		Credentials: map[string]any{
 			"model_whitelist": []any{"allowed-final"},
 		},
 	}
-	svc := newCatalogueFixture(&modelsListAccountRepoStub{byGroup: map[int64][]accountcore.Record{groupID: {account}}}, routingtestkit.PricingConfig(groupID, capability.PlatformOpenAI, pricingConfig), nil)
+	svc := newCatalogueFixture(&modelsListProviderRepoStub{byGroup: map[int64][]providercore.Record{groupID: {provider}}}, routingtestkit.PricingConfig(groupID, capability.PlatformOpenAI, pricingConfig), nil)
 
 	result := svc.ResolveRequestableModels(context.Background(), &groupID, capability.PlatformOpenAI)
 	require.NotContains(t, routing.RequestableModelIDs(result.Models), "blocked-alias")
 }
 
-func TestResolveRequestableModels_UpstreamPricingAmbiguousAcrossAccounts(t *testing.T) {
+func TestResolveRequestableModels_UpstreamPricingAmbiguousAcrossProviders(t *testing.T) {
 	groupID := int64(4105)
 	pricingConfig := routingtestkit.Configuration{
 		ID:                 55,
@@ -278,11 +278,11 @@ func TestResolveRequestableModels_UpstreamPricingAmbiguousAcrossAccounts(t *test
 		BillingModelSource: routing.BillingModelSourceUpstream,
 		ModelMapping:       map[string]string{"client-alias": "group-model"},
 	}
-	accounts := []accountcore.Record{
+	providers := []providercore.Record{
 		{ID: 65, Platform: capability.PlatformOpenAI, Credentials: map[string]any{"model_mapping": map[string]any{"group-model": "upstream-a"}}},
 		{ID: 66, Platform: capability.PlatformOpenAI, Credentials: map[string]any{"model_mapping": map[string]any{"group-model": "upstream-b"}}},
 	}
-	svc := newCatalogueFixture(&modelsListAccountRepoStub{byGroup: map[int64][]accountcore.Record{groupID: accounts}}, routingtestkit.PricingConfig(groupID, capability.PlatformOpenAI, pricingConfig), nil)
+	svc := newCatalogueFixture(&modelsListProviderRepoStub{byGroup: map[int64][]providercore.Record{groupID: providers}}, routingtestkit.PricingConfig(groupID, capability.PlatformOpenAI, pricingConfig), nil)
 
 	result := svc.ResolveRequestableModels(context.Background(), &groupID, capability.PlatformOpenAI)
 	model, ok := requestableModelByID(result.Models, "client-alias")
@@ -306,15 +306,15 @@ func TestResolveRequestableModels_UpstreamUsesBedrockRegionalModel(t *testing.T)
 			InputPrice: &price,
 		}},
 	}
-	account := accountcore.Record{
+	provider := providercore.Record{
 		ID:       74,
 		Platform: capability.PlatformAnthropic,
-		Type:     capability.AccountTypeBedrock,
+		Type:     capability.ProviderTypeBedrock,
 		Credentials: map[string]any{
 			"aws_region": "us-east-1",
 		},
 	}
-	svc := newCatalogueFixture(&modelsListAccountRepoStub{byGroup: map[int64][]accountcore.Record{groupID: {account}}}, routingtestkit.PricingConfig(groupID, capability.PlatformAnthropic, pricingConfig), nil)
+	svc := newCatalogueFixture(&modelsListProviderRepoStub{byGroup: map[int64][]providercore.Record{groupID: {provider}}}, routingtestkit.PricingConfig(groupID, capability.PlatformAnthropic, pricingConfig), nil)
 
 	result := svc.ResolveRequestableModels(context.Background(), &groupID, capability.PlatformAnthropic)
 	model, ok := requestableModelByID(result.Models, "claude-sonnet-4-5")
@@ -330,8 +330,8 @@ func TestResolveRequestableModels_UpstreamMarksAntigravityThinkingVariantAmbiguo
 		Status:             billing.StatusActive,
 		BillingModelSource: routing.BillingModelSourceUpstream,
 	}
-	account := accountcore.Record{ID: 75, Platform: capability.PlatformAntigravity}
-	svc := newCatalogueFixture(&modelsListAccountRepoStub{byGroup: map[int64][]accountcore.Record{groupID: {account}}}, routingtestkit.PricingConfig(groupID, capability.PlatformAntigravity, pricingConfig), nil)
+	provider := providercore.Record{ID: 75, Platform: capability.PlatformAntigravity}
+	svc := newCatalogueFixture(&modelsListProviderRepoStub{byGroup: map[int64][]providercore.Record{groupID: {provider}}}, routingtestkit.PricingConfig(groupID, capability.PlatformAntigravity, pricingConfig), nil)
 
 	result := svc.ResolveRequestableModels(context.Background(), &groupID, capability.PlatformAntigravity)
 	model, ok := requestableModelByID(result.Models, "claude-sonnet-4-5")
@@ -347,15 +347,15 @@ func TestResolveRequestableModels_UpstreamNormalizesAnthropicOAuthMapping(t *tes
 		Status:             billing.StatusActive,
 		BillingModelSource: routing.BillingModelSourceUpstream,
 	}
-	account := accountcore.Record{
+	provider := providercore.Record{
 		ID:       76,
 		Platform: capability.PlatformAnthropic,
-		Type:     capability.AccountTypeOAuth,
+		Type:     capability.ProviderTypeOAuth,
 		Credentials: map[string]any{
 			"model_mapping": map[string]any{"client-alias": "claude-sonnet-4-5"},
 		},
 	}
-	svc := newCatalogueFixture(&modelsListAccountRepoStub{byGroup: map[int64][]accountcore.Record{groupID: {account}}}, routingtestkit.PricingConfig(groupID, capability.PlatformAnthropic, pricingConfig), nil)
+	svc := newCatalogueFixture(&modelsListProviderRepoStub{byGroup: map[int64][]providercore.Record{groupID: {provider}}}, routingtestkit.PricingConfig(groupID, capability.PlatformAnthropic, pricingConfig), nil)
 
 	result := svc.ResolveRequestableModels(context.Background(), &groupID, capability.PlatformAnthropic)
 	model, ok := requestableModelByID(result.Models, "client-alias")
@@ -364,7 +364,7 @@ func TestResolveRequestableModels_UpstreamNormalizesAnthropicOAuthMapping(t *tes
 	require.False(t, model.PricingAmbiguous)
 }
 
-// TestResolveRequestableModels_OpenAIUsesActualForwardedModel 验证 OpenAI OAuth 与自动透传账号使用真实上游模型定价。
+// TestResolveRequestableModels_OpenAIUsesActualForwardedModel 验证 OpenAI OAuth 与自动透传提供商使用真实上游模型定价。
 func TestResolveRequestableModels_OpenAIUsesActualForwardedModel(t *testing.T) {
 	price := 0.09
 	tests := []struct {
@@ -372,28 +372,28 @@ func TestResolveRequestableModels_OpenAIUsesActualForwardedModel(t *testing.T) {
 		groupID            int64
 		pricingConfigModel string
 		pricingModel       string
-		account            accountcore.Record
+		provider           providercore.Record
 	}{
 		{
 			name:               "OAuth 别名归一化",
 			groupID:            4118,
 			pricingConfigModel: "gpt-5.6-sol-high",
 			pricingModel:       "gpt-5.6-sol",
-			account: accountcore.Record{
+			provider: providercore.Record{
 				ID:       78,
 				Platform: capability.PlatformOpenAI,
-				Type:     capability.AccountTypeOAuth,
+				Type:     capability.ProviderTypeOAuth,
 			},
 		},
 		{
-			name:               "自动透传保留账号映射",
+			name:               "自动透传保留提供商映射",
 			groupID:            4119,
 			pricingConfigModel: "passthrough-model",
 			pricingModel:       "mapped-model",
-			account: accountcore.Record{
+			provider: providercore.Record{
 				ID:       79,
 				Platform: capability.PlatformOpenAI,
-				Type:     capability.AccountTypeOAuth,
+				Type:     capability.ProviderTypeOAuth,
 				Extra:    map[string]any{"openai_passthrough": true},
 				Credentials: map[string]any{
 					"model_mapping": map[string]any{"passthrough-model": "mapped-model"},
@@ -415,11 +415,11 @@ func TestResolveRequestableModels_OpenAIUsesActualForwardedModel(t *testing.T) {
 					InputPrice: &price,
 				}},
 			}
-			svc := newCatalogueFixture(&modelsListAccountRepoStub{byGroup: map[int64][]accountcore.Record{tt.groupID: {tt.account}}}, routingtestkit.PricingConfig(tt.groupID, capability.PlatformOpenAI, pricingConfig), nil)
+			svc := newCatalogueFixture(&modelsListProviderRepoStub{byGroup: map[int64][]providercore.Record{tt.groupID: {tt.provider}}}, routingtestkit.PricingConfig(tt.groupID, capability.PlatformOpenAI, pricingConfig), nil)
 
 			snapshots, err := svc.Read(context.Background(), &tt.groupID)
 			require.NoError(t, err)
-			require.True(t, snapshots[0].Rules.Supports(context.Background(), tt.pricingConfigModel), "账号模型范围应接受最终规范模型")
+			require.True(t, snapshots[0].Rules.Supports(context.Background(), tt.pricingConfigModel), "提供商模型范围应接受最终规范模型")
 			require.Equal(t, []string{tt.pricingModel}, snapshots[0].Rules.UpstreamModels(context.Background(), tt.pricingConfigModel), "目录应使用实际转发模型")
 			result := svc.ResolveRequestableModels(context.Background(), &tt.groupID, capability.PlatformOpenAI)
 			model, ok := requestableModelByID(result.Models, "client-alias")
@@ -438,8 +438,8 @@ func TestResolveRequestableModels_RestrictionEmptyDoesNotFallBack(t *testing.T) 
 		BillingModelSource: routing.BillingModelSourceRequested,
 		RestrictModels:     true,
 	}
-	account := accountcore.Record{ID: 67, Platform: capability.PlatformOpenAI}
-	svc := newCatalogueFixture(&modelsListAccountRepoStub{byGroup: map[int64][]accountcore.Record{groupID: {account}}}, routingtestkit.PricingConfig(groupID, capability.PlatformOpenAI, pricingConfig), nil)
+	provider := providercore.Record{ID: 67, Platform: capability.PlatformOpenAI}
+	svc := newCatalogueFixture(&modelsListProviderRepoStub{byGroup: map[int64][]providercore.Record{groupID: {provider}}}, routingtestkit.PricingConfig(groupID, capability.PlatformOpenAI, pricingConfig), nil)
 
 	result := svc.ResolveRequestableModels(context.Background(), &groupID, capability.PlatformOpenAI)
 	require.True(t, result.Restricted)
@@ -459,14 +459,14 @@ func TestResolveRequestableModelsUsesUnifiedPriceSpace(t *testing.T) {
 			InputPrice: &price,
 		}},
 	}
-	account := accountcore.Record{
+	provider := providercore.Record{
 		ID:       68,
 		Platform: capability.PlatformAnthropic,
 		Credentials: map[string]any{
 			"model_mapping": map[string]any{"same-model": "same-model"},
 		},
 	}
-	svc := newCatalogueFixture(&modelsListAccountRepoStub{byGroup: map[int64][]accountcore.Record{groupID: {account}}}, routingtestkit.PricingConfig(groupID, capability.PlatformAnthropic, pricingConfig), nil)
+	svc := newCatalogueFixture(&modelsListProviderRepoStub{byGroup: map[int64][]providercore.Record{groupID: {provider}}}, routingtestkit.PricingConfig(groupID, capability.PlatformAnthropic, pricingConfig), nil)
 
 	result := svc.ResolveRequestableModels(context.Background(), &groupID, capability.PlatformAnthropic)
 	require.True(t, result.Restricted)
@@ -486,26 +486,26 @@ func TestResolveRequestableModels_QoderRequiresEffectivePricing(t *testing.T) {
 			{Models: []string{"qoder-*"}, InputPrice: &effectivePrice},
 		},
 	}
-	account := accountcore.Record{ID: 69, Platform: capability.PlatformQoder, Type: capability.AccountTypeCosy, Credentials: map[string]any{"model_mapping": map[string]any{"qoder-model": "qmodel"}, "model_whitelist": []string{"qmodel"}}}
-	svc := newCatalogueFixture(&modelsListAccountRepoStub{byGroup: map[int64][]accountcore.Record{groupID: {account}}}, routingtestkit.PricingConfig(groupID, capability.PlatformQoder, pricingConfig), nil)
+	provider := providercore.Record{ID: 69, Platform: capability.PlatformQoder, Type: capability.ProviderTypeCosy, Credentials: map[string]any{"model_mapping": map[string]any{"qoder-model": "qmodel"}, "model_whitelist": []string{"qmodel"}}}
+	svc := newCatalogueFixture(&modelsListProviderRepoStub{byGroup: map[int64][]providercore.Record{groupID: {provider}}}, routingtestkit.PricingConfig(groupID, capability.PlatformQoder, pricingConfig), nil)
 
 	result := svc.ResolveRequestableModels(context.Background(), &groupID, capability.PlatformQoder)
 	require.Contains(t, routing.RequestableModelIDs(result.Models), "qoder-model")
 }
 
-func TestResolveRequestableModels_AccountQueryFailureKeepsFallback(t *testing.T) {
+func TestResolveRequestableModels_ProviderQueryFailureKeepsFallback(t *testing.T) {
 	groupID := int64(4109)
-	svc := newCatalogueFixture(&modelsListAccountRepoStub{err: errors.New("temporary failure")}, nil, nil)
+	svc := newCatalogueFixture(&modelsListProviderRepoStub{err: errors.New("temporary failure")}, nil, nil)
 
 	result := svc.ResolveRequestableModels(context.Background(), &groupID, capability.PlatformOpenAI)
 	require.False(t, result.Restricted)
 	require.Contains(t, routing.RequestableModelIDs(result.Models), "gpt-5.5")
 }
 
-// TestResolveRequestableModels_SecondAccountQueryRestoresWhitelistCandidates 验证缓存层查询失败后仍使用当前账号白名单。
-func TestResolveRequestableModels_SecondAccountQueryRestoresWhitelistCandidates(t *testing.T) {
+// TestResolveRequestableModels_SecondProviderQueryRestoresWhitelistCandidates 验证缓存层查询失败后仍使用当前提供商白名单。
+func TestResolveRequestableModels_SecondProviderQueryRestoresWhitelistCandidates(t *testing.T) {
 	groupID := int64(4121)
-	repo := &sequencedRequestableModelsAccountRepoStub{accounts: []accountcore.Record{{
+	repo := &sequencedRequestableModelsProviderRepoStub{providers: []providercore.Record{{
 		ID:       82,
 		Platform: capability.PlatformOpenAI,
 		Credentials: map[string]any{
@@ -517,13 +517,13 @@ func TestResolveRequestableModels_SecondAccountQueryRestoresWhitelistCandidates(
 	result := svc.ResolveRequestableModels(context.Background(), &groupID, capability.PlatformOpenAI)
 
 	require.Equal(t, 2, repo.calls)
-	require.True(t, result.HadExplicitAccountModels)
+	require.True(t, result.HadExplicitProviderModels)
 	require.Equal(t, []string{"private-model"}, routing.RequestableModelIDs(result.Models))
 }
 
-func TestResolveRequestableModels_PricingConfigQueryFailureKeepsAccountCandidates(t *testing.T) {
+func TestResolveRequestableModels_PricingConfigQueryFailureKeepsProviderCandidates(t *testing.T) {
 	groupID := int64(4113)
-	account := accountcore.Record{
+	provider := providercore.Record{
 		ID:       73,
 		Platform: capability.PlatformOpenAI,
 		Credentials: map[string]any{
@@ -531,7 +531,7 @@ func TestResolveRequestableModels_PricingConfigQueryFailureKeepsAccountCandidate
 			"model_whitelist": []any{"upstream-model"},
 		},
 	}
-	svc := newCatalogueFixture(&modelsListAccountRepoStub{byGroup: map[int64][]accountcore.Record{groupID: {account}}}, routing.NewPricingConfigService(&requestableModelsPricingConfigRepoStub{
+	svc := newCatalogueFixture(&modelsListProviderRepoStub{byGroup: map[int64][]providercore.Record{groupID: {provider}}}, routing.NewPricingConfigService(&requestableModelsPricingConfigRepoStub{
 		err: errors.New("temporary price configuration failure"),
 	}, nil, routing.PricingConfigOptions{
 		// 价格读取失败不影响独立的分组策略读取。
@@ -548,10 +548,10 @@ func TestResolveRequestableModels_PricingConfigQueryFailureKeepsAccountCandidate
 	require.Contains(t, routing.RequestableModelIDs(result.Models), "client-alias")
 }
 
-// TestResolveRequestableModels_PricingConfigQueryFailureKeepsEmptyAccountPoolEmpty 验证价格配置读取失败不会为无账号分组伪造默认模型。
-func TestResolveRequestableModels_PricingConfigQueryFailureKeepsEmptyAccountPoolEmpty(t *testing.T) {
+// TestResolveRequestableModels_PricingConfigQueryFailureKeepsEmptyProviderPoolEmpty 验证价格配置读取失败不会为无提供商分组伪造默认模型。
+func TestResolveRequestableModels_PricingConfigQueryFailureKeepsEmptyProviderPoolEmpty(t *testing.T) {
 	groupID := int64(4117)
-	svc := newCatalogueFixture(&modelsListAccountRepoStub{byGroup: map[int64][]accountcore.Record{groupID: {}}}, routing.NewPricingConfigService(&requestableModelsPricingConfigRepoStub{
+	svc := newCatalogueFixture(&modelsListProviderRepoStub{byGroup: map[int64][]providercore.Record{groupID: {}}}, routing.NewPricingConfigService(&requestableModelsPricingConfigRepoStub{
 		err: errors.New("temporary price configuration failure"),
 	}, nil, routing.PricingConfigOptions{
 		Warn: slog.Warn,
@@ -583,7 +583,7 @@ func TestModelMarketplaceUsesResolvedGroupMappedPricingModel(t *testing.T) {
 			OutputPrice: &outputPrice,
 		}},
 	}
-	account := accountcore.Record{
+	provider := providercore.Record{
 		ID:       70,
 		Platform: capability.PlatformOpenAI,
 		Credentials: map[string]any{
@@ -593,7 +593,7 @@ func TestModelMarketplaceUsesResolvedGroupMappedPricingModel(t *testing.T) {
 	}
 	pricingConfigService := routingtestkit.PricingConfig(groupID, capability.PlatformOpenAI, pricingConfig)
 	billingService := billingtestkit.Calculator(0, nil, nil)
-	gatewayService := newCatalogueFixture(&modelsListAccountRepoStub{byGroup: map[int64][]accountcore.Record{groupID: {account}}}, pricingConfigService, cataloguePriceResolver(pricingConfigService, billingService))
+	gatewayService := newCatalogueFixture(&modelsListProviderRepoStub{byGroup: map[int64][]providercore.Record{groupID: {provider}}}, pricingConfigService, cataloguePriceResolver(pricingConfigService, billingService))
 	marketplace := newCatalogueMarketplace(nil, gatewayService, billingService)
 
 	models := marketplace.ModelsForGroup(context.Background(), &routing.Group{ID: groupID, RateMultiplier: 1})
@@ -623,13 +623,13 @@ func TestModelMarketplaceKeepsAmbiguousUpstreamModelUnpriced(t *testing.T) {
 			{Models: []string{"upstream-b"}, InputPrice: &price},
 		},
 	}
-	accounts := []accountcore.Record{
+	providers := []providercore.Record{
 		{ID: 71, Platform: capability.PlatformOpenAI, Credentials: map[string]any{"model_mapping": map[string]any{"group-model": "upstream-a"}, "model_whitelist": []any{"upstream-a"}}},
 		{ID: 72, Platform: capability.PlatformOpenAI, Credentials: map[string]any{"model_mapping": map[string]any{"group-model": "upstream-b"}, "model_whitelist": []any{"upstream-b"}}},
 	}
 	pricingConfigService := routingtestkit.PricingConfig(groupID, capability.PlatformOpenAI, pricingConfig)
 	billingService := billingtestkit.Calculator(0, nil, nil)
-	gatewayService := newCatalogueFixture(&modelsListAccountRepoStub{byGroup: map[int64][]accountcore.Record{groupID: accounts}}, pricingConfigService, cataloguePriceResolver(pricingConfigService, billingService))
+	gatewayService := newCatalogueFixture(&modelsListProviderRepoStub{byGroup: map[int64][]providercore.Record{groupID: providers}}, pricingConfigService, cataloguePriceResolver(pricingConfigService, billingService))
 	marketplace := newCatalogueMarketplace(nil, gatewayService, billingService)
 
 	models := marketplace.ModelsForGroup(context.Background(), &routing.Group{ID: groupID, RateMultiplier: 1})

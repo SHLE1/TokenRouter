@@ -3,53 +3,55 @@ package app
 import (
 	"context"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
-	accountpostgres "github.com/TokenFlux/TokenRouter/internal/account/postgres"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
+	providerpostgres "github.com/TokenFlux/TokenRouter/internal/provider/postgres"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	routingpostgres "github.com/TokenFlux/TokenRouter/internal/routing/postgres"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/rediscache/codec"
 )
 
-type schedulerAccountSource struct{ *accountpostgres.AccountStore }
+type schedulerProviderSource struct {
+	*providerpostgres.ProviderStore
+}
 
-func (r schedulerAccountSource) GetByID(ctx context.Context, id int64) (scheduler.SnapshotAccount, error) {
-	value, err := r.AccountStore.GetByID(ctx, id)
+func (r schedulerProviderSource) GetByID(ctx context.Context, id int64) (scheduler.SnapshotProvider, error) {
+	value, err := r.ProviderStore.GetByID(ctx, id)
 	return codec.WrapRecord(value), err
 }
 
-func (r schedulerAccountSource) GetByIDs(ctx context.Context, ids []int64) ([]scheduler.SnapshotAccount, error) {
-	value, err := r.AccountStore.GetByIDs(ctx, ids)
+func (r schedulerProviderSource) GetByIDs(ctx context.Context, ids []int64) ([]scheduler.SnapshotProvider, error) {
+	value, err := r.ProviderStore.GetByIDs(ctx, ids)
 	return wrapSchedulerRecordPointers(value), err
 }
 
-func (r schedulerAccountSource) ListSchedulableByPlatform(ctx context.Context, platform string) ([]scheduler.SnapshotAccount, error) {
-	value, err := r.AccountStore.ListSchedulableByPlatform(ctx, platform)
+func (r schedulerProviderSource) ListSchedulableByPlatform(ctx context.Context, platform string) ([]scheduler.SnapshotProvider, error) {
+	value, err := r.ProviderStore.ListSchedulableByPlatform(ctx, platform)
 	return wrapSchedulerRecords(value), err
 }
 
-func (r schedulerAccountSource) ListSchedulableUngroupedByPlatform(ctx context.Context, platform string) ([]scheduler.SnapshotAccount, error) {
-	value, err := r.AccountStore.ListSchedulableUngroupedByPlatform(ctx, platform)
+func (r schedulerProviderSource) ListSchedulableUngroupedByPlatform(ctx context.Context, platform string) ([]scheduler.SnapshotProvider, error) {
+	value, err := r.ProviderStore.ListSchedulableUngroupedByPlatform(ctx, platform)
 	return wrapSchedulerRecords(value), err
 }
 
-func (r schedulerAccountSource) ListSchedulableByPlatforms(ctx context.Context, platforms []string) ([]scheduler.SnapshotAccount, error) {
-	value, err := r.AccountStore.ListSchedulableByPlatforms(ctx, platforms)
+func (r schedulerProviderSource) ListSchedulableByPlatforms(ctx context.Context, platforms []string) ([]scheduler.SnapshotProvider, error) {
+	value, err := r.ProviderStore.ListSchedulableByPlatforms(ctx, platforms)
 	return wrapSchedulerRecords(value), err
 }
 
-func (r schedulerAccountSource) ListSchedulableUngroupedByPlatforms(ctx context.Context, platforms []string) ([]scheduler.SnapshotAccount, error) {
-	value, err := r.AccountStore.ListSchedulableUngroupedByPlatforms(ctx, platforms)
+func (r schedulerProviderSource) ListSchedulableUngroupedByPlatforms(ctx context.Context, platforms []string) ([]scheduler.SnapshotProvider, error) {
+	value, err := r.ProviderStore.ListSchedulableUngroupedByPlatforms(ctx, platforms)
 	return wrapSchedulerRecords(value), err
 }
 
-func (r schedulerAccountSource) ListSchedulableByGroupIDAndPlatform(ctx context.Context, group int64, platform string) ([]scheduler.SnapshotAccount, error) {
-	value, err := r.AccountStore.ListSchedulableByGroupIDAndPlatform(ctx, group, platform)
+func (r schedulerProviderSource) ListSchedulableByGroupIDAndPlatform(ctx context.Context, group int64, platform string) ([]scheduler.SnapshotProvider, error) {
+	value, err := r.ProviderStore.ListSchedulableByGroupIDAndPlatform(ctx, group, platform)
 	return wrapSchedulerRecords(value), err
 }
 
-func (r schedulerAccountSource) ListSchedulableByGroupIDAndPlatforms(ctx context.Context, group int64, platforms []string) ([]scheduler.SnapshotAccount, error) {
-	value, err := r.AccountStore.ListSchedulableByGroupIDAndPlatforms(ctx, group, platforms)
+func (r schedulerProviderSource) ListSchedulableByGroupIDAndPlatforms(ctx context.Context, group int64, platforms []string) ([]scheduler.SnapshotProvider, error) {
+	value, err := r.ProviderStore.ListSchedulableByGroupIDAndPlatforms(ctx, group, platforms)
 	return wrapSchedulerRecords(value), err
 }
 
@@ -88,11 +90,11 @@ func (r schedulerGroupSource) ListActiveIDs(ctx context.Context) ([]int64, error
 	return r.GroupStore.ListActiveIDs(ctx)
 }
 
-func wrapSchedulerRecords(values []account.Record) []scheduler.SnapshotAccount {
+func wrapSchedulerRecords(values []provider.Record) []scheduler.SnapshotProvider {
 	if values == nil {
 		return nil
 	}
-	out := make([]scheduler.SnapshotAccount, len(values))
+	out := make([]scheduler.SnapshotProvider, len(values))
 	for i := range values {
 		out[i] = codec.WrapRecord(&values[i])
 	}

@@ -20,8 +20,10 @@ type ModelStat = usage.ModelStat
 type UserUsageTrendPoint = usage.UserUsageTrendPoint
 
 // UserSpendingRankingItem represents a user spending ranking row.
-type UserSpendingRankingItem = usage.UserSpendingRankingItem
-type UserSpendingRankingResponse = usage.UserSpendingRankingResponse
+type (
+	UserSpendingRankingItem     = usage.UserSpendingRankingItem
+	UserSpendingRankingResponse = usage.UserSpendingRankingResponse
+)
 
 // APIKeyUsageTrendPoint represents API key usage trend data point
 type APIKeyUsageTrendPoint = usage.APIKeyUsageTrendPoint
@@ -250,17 +252,17 @@ func (r *Store) GetUserModelStats(ctx context.Context, userID int64, startTime, 
 }
 
 // GetUsageTrendWithFilters returns usage trend data with optional filters
-func (r *Store) GetUsageTrendWithFilters(ctx context.Context, startTime, endTime time.Time, granularity string, userID, apiKeyID, accountID, groupID int64, model string, requestType *int16, stream *bool, billingType *int8) (results []TrendDataPoint, err error) {
-	return r.getUsageTrendWithFilters(ctx, startTime, endTime, granularity, userID, apiKeyID, accountID, groupID, 0, model, "", requestType, stream, billingType, "", false, false, nil)
+func (r *Store) GetUsageTrendWithFilters(ctx context.Context, startTime, endTime time.Time, granularity string, userID, apiKeyID, providerID, groupID int64, model string, requestType *int16, stream *bool, billingType *int8) (results []TrendDataPoint, err error) {
+	return r.getUsageTrendWithFilters(ctx, startTime, endTime, granularity, userID, apiKeyID, providerID, groupID, 0, model, "", requestType, stream, billingType, "", false, false, nil)
 }
 
 func (r *Store) GetUsageTrendWithUsageFilters(ctx context.Context, startTime, endTime time.Time, granularity string, filters UsageLogFilters) (results []TrendDataPoint, err error) {
-	return r.getUsageTrendWithFilters(ctx, startTime, endTime, granularity, filters.UserID, filters.APIKeyID, filters.AccountID, filters.GroupID, filters.TeamID, filters.Model, filters.ModelFilterSource, filters.RequestType, filters.Stream, filters.BillingType, filters.BillingMode, filters.PersonalOnly, filters.IncludeOwnedTeam, filters.NativeCompactionV2)
+	return r.getUsageTrendWithFilters(ctx, startTime, endTime, granularity, filters.UserID, filters.APIKeyID, filters.ProviderID, filters.GroupID, filters.TeamID, filters.Model, filters.ModelFilterSource, filters.RequestType, filters.Stream, filters.BillingType, filters.BillingMode, filters.PersonalOnly, filters.IncludeOwnedTeam, filters.NativeCompactionV2)
 }
 
-func (r *Store) getUsageTrendWithFilters(ctx context.Context, startTime, endTime time.Time, granularity string, userID, apiKeyID, accountID, groupID, teamID int64, model string, modelSource string, requestType *int16, stream *bool, billingType *int8, billingMode string, personalOnly bool, includeOwnedTeam bool, nativeCompactionV2 *bool) (results []TrendDataPoint, err error) {
+func (r *Store) getUsageTrendWithFilters(ctx context.Context, startTime, endTime time.Time, granularity string, userID, apiKeyID, providerID, groupID, teamID int64, model string, modelSource string, requestType *int16, stream *bool, billingType *int8, billingMode string, personalOnly bool, includeOwnedTeam bool, nativeCompactionV2 *bool) (results []TrendDataPoint, err error) {
 	analyticsFilters := UsageLogFilters{
-		UserID: userID, APIKeyID: apiKeyID, AccountID: accountID, GroupID: groupID,
+		UserID: userID, APIKeyID: apiKeyID, ProviderID: providerID, GroupID: groupID,
 		TeamID: teamID, Model: model, ModelFilterSource: modelSource,
 		RequestType: requestType, Stream: stream, BillingType: billingType,
 		BillingMode: billingMode, PersonalOnly: personalOnly, IncludeOwnedTeam: includeOwnedTeam,
@@ -271,7 +273,7 @@ func (r *Store) getUsageTrendWithFilters(ctx context.Context, startTime, endTime
 	} else if aggregateErr != nil {
 		r.logUsageAnalyticsFallback("usage_trend", aggregateErr)
 	}
-	if teamID == 0 && shouldUsePreaggregatedTrend(granularity, userID, apiKeyID, accountID, groupID, model, requestType, stream, billingType, billingMode, personalOnly, includeOwnedTeam, nativeCompactionV2) {
+	if teamID == 0 && shouldUsePreaggregatedTrend(granularity, userID, apiKeyID, providerID, groupID, model, requestType, stream, billingType, billingMode, personalOnly, includeOwnedTeam, nativeCompactionV2) {
 		aggregated, aggregatedErr := r.getUsageTrendFromAggregates(ctx, startTime, endTime, granularity)
 		if aggregatedErr == nil && len(aggregated) > 0 {
 			return aggregated, nil
@@ -307,9 +309,9 @@ func (r *Store) getUsageTrendWithFilters(ctx context.Context, startTime, endTime
 		query += fmt.Sprintf(" AND api_key_id = $%d", len(args)+1)
 		args = append(args, apiKeyID)
 	}
-	if accountID > 0 {
-		query += fmt.Sprintf(" AND account_id = $%d", len(args)+1)
-		args = append(args, accountID)
+	if providerID > 0 {
+		query += fmt.Sprintf(" AND provider_id = $%d", len(args)+1)
+		args = append(args, providerID)
 	}
 	if groupID > 0 {
 		query += fmt.Sprintf(" AND group_id = $%d", len(args)+1)
@@ -352,7 +354,7 @@ func (r *Store) getUsageTrendWithFilters(ctx context.Context, startTime, endTime
 	return results, nil
 }
 
-func shouldUsePreaggregatedTrend(granularity string, userID, apiKeyID, accountID, groupID int64, model string, requestType *int16, stream *bool, billingType *int8, billingMode string, personalOnly bool, includeOwnedTeam bool, nativeCompactionV2 *bool) bool {
+func shouldUsePreaggregatedTrend(granularity string, userID, apiKeyID, providerID, groupID int64, model string, requestType *int16, stream *bool, billingType *int8, billingMode string, personalOnly bool, includeOwnedTeam bool, nativeCompactionV2 *bool) bool {
 	if granularity != "day" && granularity != "hour" {
 		return false
 	}
@@ -360,7 +362,7 @@ func shouldUsePreaggregatedTrend(granularity string, userID, apiKeyID, accountID
 		!includeOwnedTeam &&
 		userID == 0 &&
 		apiKeyID == 0 &&
-		accountID == 0 &&
+		providerID == 0 &&
 		groupID == 0 &&
 		model == "" &&
 		requestType == nil &&
@@ -434,23 +436,23 @@ func (r *Store) getUsageTrendFromAggregates(ctx context.Context, startTime, endT
 }
 
 // GetModelStatsWithFilters returns model statistics with optional filters
-func (r *Store) GetModelStatsWithFilters(ctx context.Context, startTime, endTime time.Time, userID, apiKeyID, accountID, groupID int64, requestType *int16, stream *bool, billingType *int8) (results []ModelStat, err error) {
-	return r.getModelStatsWithFiltersBySource(ctx, startTime, endTime, userID, apiKeyID, accountID, groupID, 0, "", requestType, stream, billingType, usage.ModelSourceRequested, "", false, false, nil)
+func (r *Store) GetModelStatsWithFilters(ctx context.Context, startTime, endTime time.Time, userID, apiKeyID, providerID, groupID int64, requestType *int16, stream *bool, billingType *int8) (results []ModelStat, err error) {
+	return r.getModelStatsWithFiltersBySource(ctx, startTime, endTime, userID, apiKeyID, providerID, groupID, 0, "", requestType, stream, billingType, usage.ModelSourceRequested, "", false, false, nil)
 }
 
 // GetModelStatsWithFiltersBySource returns model statistics with optional filters and model source dimension.
 // source: requested | upstream | mapping.
-func (r *Store) GetModelStatsWithFiltersBySource(ctx context.Context, startTime, endTime time.Time, userID, apiKeyID, accountID, groupID int64, requestType *int16, stream *bool, billingType *int8, source string) (results []ModelStat, err error) {
-	return r.getModelStatsWithFiltersBySource(ctx, startTime, endTime, userID, apiKeyID, accountID, groupID, 0, "", requestType, stream, billingType, source, "", false, false, nil)
+func (r *Store) GetModelStatsWithFiltersBySource(ctx context.Context, startTime, endTime time.Time, userID, apiKeyID, providerID, groupID int64, requestType *int16, stream *bool, billingType *int8, source string) (results []ModelStat, err error) {
+	return r.getModelStatsWithFiltersBySource(ctx, startTime, endTime, userID, apiKeyID, providerID, groupID, 0, "", requestType, stream, billingType, source, "", false, false, nil)
 }
 
 func (r *Store) GetModelStatsWithUsageFiltersBySource(ctx context.Context, startTime, endTime time.Time, filters UsageLogFilters, source string) (results []ModelStat, err error) {
-	return r.getModelStatsWithFiltersBySource(ctx, startTime, endTime, filters.UserID, filters.APIKeyID, filters.AccountID, filters.GroupID, filters.TeamID, filters.Model, filters.RequestType, filters.Stream, filters.BillingType, source, filters.BillingMode, filters.PersonalOnly, filters.IncludeOwnedTeam, filters.NativeCompactionV2)
+	return r.getModelStatsWithFiltersBySource(ctx, startTime, endTime, filters.UserID, filters.APIKeyID, filters.ProviderID, filters.GroupID, filters.TeamID, filters.Model, filters.RequestType, filters.Stream, filters.BillingType, source, filters.BillingMode, filters.PersonalOnly, filters.IncludeOwnedTeam, filters.NativeCompactionV2)
 }
 
-func (r *Store) getModelStatsWithFiltersBySource(ctx context.Context, startTime, endTime time.Time, userID, apiKeyID, accountID, groupID, teamID int64, model string, requestType *int16, stream *bool, billingType *int8, source string, billingMode string, personalOnly bool, includeOwnedTeam bool, nativeCompactionV2 *bool) (results []ModelStat, err error) {
+func (r *Store) getModelStatsWithFiltersBySource(ctx context.Context, startTime, endTime time.Time, userID, apiKeyID, providerID, groupID, teamID int64, model string, requestType *int16, stream *bool, billingType *int8, source string, billingMode string, personalOnly bool, includeOwnedTeam bool, nativeCompactionV2 *bool) (results []ModelStat, err error) {
 	analyticsFilters := UsageLogFilters{
-		UserID: userID, APIKeyID: apiKeyID, AccountID: accountID, GroupID: groupID,
+		UserID: userID, APIKeyID: apiKeyID, ProviderID: providerID, GroupID: groupID,
 		TeamID: teamID, Model: model, ModelFilterSource: source,
 		RequestType: requestType, Stream: stream, BillingType: billingType,
 		BillingMode: billingMode, PersonalOnly: personalOnly, IncludeOwnedTeam: includeOwnedTeam,
@@ -461,8 +463,8 @@ func (r *Store) getModelStatsWithFiltersBySource(ctx context.Context, startTime,
 	} else if aggregateErr != nil {
 		r.logUsageAnalyticsFallback("model_stats", aggregateErr)
 	}
-	// “实际”始终表示用户实际扣费，账号成本由独立的 account_cost 字段承载。
-	accountCostExpr := "COALESCE(SUM(COALESCE(account_stats_cost, total_cost) * COALESCE(account_rate_multiplier, 1)), 0) as account_cost"
+	// “实际”始终表示用户实际扣费，提供商成本由独立的 provider_cost 字段承载。
+	providerCostExpr := "COALESCE(SUM(COALESCE(provider_stats_cost, total_cost) * COALESCE(provider_rate_multiplier, 1)), 0) as provider_cost"
 	modelExpr := resolveModelDimensionExpression(source)
 	args := []any{startTime, endTime}
 	usageSource, scopeCondition, args, scopeErr := r.buildUsageLogScopeSource(ctx, args, userID, includeOwnedTeam, "")
@@ -484,7 +486,7 @@ func (r *Store) getModelStatsWithFiltersBySource(ctx context.Context, startTime,
 			%s
 		FROM %s
 		WHERE created_at >= $1 AND created_at < $2
-	`, modelExpr, accountCostExpr, usageSource)
+	`, modelExpr, providerCostExpr, usageSource)
 
 	if scopeCondition != "" {
 		query += " AND " + scopeCondition
@@ -493,9 +495,9 @@ func (r *Store) getModelStatsWithFiltersBySource(ctx context.Context, startTime,
 		query += fmt.Sprintf(" AND api_key_id = $%d", len(args)+1)
 		args = append(args, apiKeyID)
 	}
-	if accountID > 0 {
-		query += fmt.Sprintf(" AND account_id = $%d", len(args)+1)
-		args = append(args, accountID)
+	if providerID > 0 {
+		query += fmt.Sprintf(" AND provider_id = $%d", len(args)+1)
+		args = append(args, providerID)
 	}
 	if groupID > 0 {
 		query += fmt.Sprintf(" AND group_id = $%d", len(args)+1)
@@ -542,17 +544,17 @@ func (r *Store) getModelStatsWithFiltersBySource(ctx context.Context, startTime,
 }
 
 // GetGroupStatsWithFilters returns group usage statistics with optional filters
-func (r *Store) GetGroupStatsWithFilters(ctx context.Context, startTime, endTime time.Time, userID, apiKeyID, accountID, groupID int64, requestType *int16, stream *bool, billingType *int8) (results []usage.GroupStat, err error) {
-	return r.getGroupStatsWithFilters(ctx, startTime, endTime, userID, apiKeyID, accountID, groupID, 0, "", requestType, stream, billingType, "", false, false, nil)
+func (r *Store) GetGroupStatsWithFilters(ctx context.Context, startTime, endTime time.Time, userID, apiKeyID, providerID, groupID int64, requestType *int16, stream *bool, billingType *int8) (results []usage.GroupStat, err error) {
+	return r.getGroupStatsWithFilters(ctx, startTime, endTime, userID, apiKeyID, providerID, groupID, 0, "", requestType, stream, billingType, "", false, false, nil)
 }
 
 func (r *Store) GetGroupStatsWithUsageFilters(ctx context.Context, startTime, endTime time.Time, filters UsageLogFilters) (results []usage.GroupStat, err error) {
-	return r.getGroupStatsWithFilters(ctx, startTime, endTime, filters.UserID, filters.APIKeyID, filters.AccountID, filters.GroupID, filters.TeamID, filters.Model, filters.RequestType, filters.Stream, filters.BillingType, filters.BillingMode, filters.PersonalOnly, filters.IncludeOwnedTeam, filters.NativeCompactionV2)
+	return r.getGroupStatsWithFilters(ctx, startTime, endTime, filters.UserID, filters.APIKeyID, filters.ProviderID, filters.GroupID, filters.TeamID, filters.Model, filters.RequestType, filters.Stream, filters.BillingType, filters.BillingMode, filters.PersonalOnly, filters.IncludeOwnedTeam, filters.NativeCompactionV2)
 }
 
-func (r *Store) getGroupStatsWithFilters(ctx context.Context, startTime, endTime time.Time, userID, apiKeyID, accountID, groupID, teamID int64, model string, requestType *int16, stream *bool, billingType *int8, billingMode string, personalOnly bool, includeOwnedTeam bool, nativeCompactionV2 *bool) (results []usage.GroupStat, err error) {
+func (r *Store) getGroupStatsWithFilters(ctx context.Context, startTime, endTime time.Time, userID, apiKeyID, providerID, groupID, teamID int64, model string, requestType *int16, stream *bool, billingType *int8, billingMode string, personalOnly bool, includeOwnedTeam bool, nativeCompactionV2 *bool) (results []usage.GroupStat, err error) {
 	analyticsFilters := UsageLogFilters{
-		UserID: userID, APIKeyID: apiKeyID, AccountID: accountID, GroupID: groupID,
+		UserID: userID, APIKeyID: apiKeyID, ProviderID: providerID, GroupID: groupID,
 		TeamID: teamID, Model: model, ModelFilterSource: usage.ModelSourceRequested,
 		RequestType: requestType, Stream: stream, BillingType: billingType,
 		BillingMode: billingMode, PersonalOnly: personalOnly, IncludeOwnedTeam: includeOwnedTeam,
@@ -576,7 +578,7 @@ func (r *Store) getGroupStatsWithFilters(ctx context.Context, startTime, endTime
 			COALESCE(SUM(ul.input_tokens + ul.output_tokens + ul.cache_creation_tokens + ul.cache_read_tokens), 0) as total_tokens,
 			COALESCE(SUM(ul.total_cost), 0) as cost,
 			COALESCE(SUM(ul.actual_cost), 0) as actual_cost,
-			COALESCE(SUM(COALESCE(ul.account_stats_cost, ul.total_cost) * COALESCE(ul.account_rate_multiplier, 1)), 0) as account_cost
+			COALESCE(SUM(COALESCE(ul.provider_stats_cost, ul.total_cost) * COALESCE(ul.provider_rate_multiplier, 1)), 0) as provider_cost
 		FROM %s
 		LEFT JOIN groups g ON g.id = ul.group_id
 		WHERE ul.created_at >= $1 AND ul.created_at < $2
@@ -589,9 +591,9 @@ func (r *Store) getGroupStatsWithFilters(ctx context.Context, startTime, endTime
 		query += fmt.Sprintf(" AND ul.api_key_id = $%d", len(args)+1)
 		args = append(args, apiKeyID)
 	}
-	if accountID > 0 {
-		query += fmt.Sprintf(" AND ul.account_id = $%d", len(args)+1)
-		args = append(args, accountID)
+	if providerID > 0 {
+		query += fmt.Sprintf(" AND ul.provider_id = $%d", len(args)+1)
+		args = append(args, providerID)
 	}
 	if groupID > 0 {
 		query += fmt.Sprintf(" AND ul.group_id = $%d", len(args)+1)
@@ -639,7 +641,7 @@ func (r *Store) getGroupStatsWithFilters(ctx context.Context, startTime, endTime
 			&row.TotalTokens,
 			&row.Cost,
 			&row.ActualCost,
-			&row.AccountCost,
+			&row.ProviderCost,
 		); err != nil {
 			return nil, err
 		}
@@ -669,7 +671,7 @@ func (r *Store) GetUserBreakdownStats(ctx context.Context, startTime, endTime ti
 			COALESCE(SUM(ul.input_tokens + ul.output_tokens + ul.cache_creation_tokens + ul.cache_read_tokens), 0) as total_tokens,
 			COALESCE(SUM(ul.total_cost), 0) as cost,
 			COALESCE(SUM(ul.actual_cost), 0) as actual_cost,
-			COALESCE(SUM(COALESCE(ul.account_stats_cost, ul.total_cost) * COALESCE(ul.account_rate_multiplier, 1)), 0) as account_cost
+			COALESCE(SUM(COALESCE(ul.provider_stats_cost, ul.total_cost) * COALESCE(ul.provider_rate_multiplier, 1)), 0) as provider_cost
 		FROM usage_logs ul
 		LEFT JOIN users u ON u.id = COALESCE(ul.billing_user_id, ul.user_id)
 		WHERE ul.created_at >= $1 AND ul.created_at < $2
@@ -697,9 +699,9 @@ func (r *Store) GetUserBreakdownStats(ctx context.Context, startTime, endTime ti
 		query += fmt.Sprintf(" AND ul.api_key_id = $%d", len(args)+1)
 		args = append(args, dim.APIKeyID)
 	}
-	if dim.AccountID > 0 {
-		query += fmt.Sprintf(" AND ul.account_id = $%d", len(args)+1)
-		args = append(args, dim.AccountID)
+	if dim.ProviderID > 0 {
+		query += fmt.Sprintf(" AND ul.provider_id = $%d", len(args)+1)
+		args = append(args, dim.ProviderID)
 	}
 	if dim.RequestType != nil {
 		condition, conditionArgs := buildRequestTypeFilterConditionWithAlias(len(args)+1, *dim.RequestType, "ul")
@@ -752,7 +754,7 @@ func (r *Store) GetUserBreakdownStats(ctx context.Context, startTime, endTime ti
 			&row.TotalTokens,
 			&row.Cost,
 			&row.ActualCost,
-			&row.AccountCost,
+			&row.ProviderCost,
 		); err != nil {
 			return nil, err
 		}
@@ -871,7 +873,7 @@ func scanModelStatsRows(rows *sql.Rows) ([]ModelStat, error) {
 			&row.TotalTokens,
 			&row.Cost,
 			&row.ActualCost,
-			&row.AccountCost,
+			&row.ProviderCost,
 		); err != nil {
 			return nil, err
 		}

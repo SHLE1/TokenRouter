@@ -1,8 +1,6 @@
 package httpapi
 
 import (
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
-
 	"context"
 	"errors"
 	"fmt"
@@ -11,7 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/egress/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
+
+	egressadapter "github.com/TokenFlux/TokenRouter/internal/egress/provider"
 	"github.com/TokenFlux/TokenRouter/internal/ops"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/logredact"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
@@ -37,7 +37,7 @@ import (
 func (s *OpenAIAuxiliary) ForwardEmbeddings(
 	ctx context.Context,
 	c *gin.Context,
-	account *gatewayprovider.ExecutionAccount,
+	provider *gatewayprovider.ExecutionProvider,
 	body []byte,
 	defaultMappedModel string,
 ) (*forwardcore.OpenAIResult, error) {
@@ -49,8 +49,8 @@ func (s *OpenAIAuxiliary) ForwardEmbeddings(
 		return nil, fmt.Errorf("missing model in request")
 	}
 
-	billingModel := gatewayprovider.ExecutionModelPolicy(account).ForwardModel(originalModel, defaultMappedModel)
-	upstreamModel := gatewayprovider.ExecutionModelPolicy(account).NormalizeOpenAI(billingModel)
+	billingModel := gatewayprovider.ExecutionModelPolicy(provider).ForwardModel(originalModel, defaultMappedModel)
+	upstreamModel := gatewayprovider.ExecutionModelPolicy(provider).NormalizeOpenAI(billingModel)
 	SetOpsUpstreamModel(c, upstreamModel)
 	upstreamBody := body
 	if upstreamModel != originalModel {
@@ -58,19 +58,19 @@ func (s *OpenAIAuxiliary) ForwardEmbeddings(
 	}
 
 	logging.L().Debug("openai embeddings: forwarding",
-		zap.Int64("account_id", account.Record.ID),
+		zap.Int64("provider_id", provider.Record.ID),
 		zap.String("original_model", originalModel),
 		zap.String("billing_model", billingModel),
 		zap.String("upstream_model", upstreamModel),
 	)
 
-	apiKey := strings.TrimSpace(account.View().GetOpenAIProtocolAPIKey())
+	apiKey := strings.TrimSpace(provider.View().GetOpenAIProtocolAPIKey())
 	if apiKey == "" {
-		return nil, fmt.Errorf("account %d missing api_key", account.Record.ID)
+		return nil, fmt.Errorf("provider %d missing api_key", provider.Record.ID)
 	}
-	// 协议感知：Anthropic 协议账号的凭证 base_url 指向 /anthropic 端点，
+	// 协议感知：Anthropic 协议提供商的凭证 base_url 指向 /anthropic 端点，
 	// embeddings 需使用 OpenAI 格式 base。
-	baseURL := gatewayprovider.ExecutionProtocolTarget(account).GetOpenAIFormatBaseURL()
+	baseURL := gatewayprovider.ExecutionProtocolTarget(provider).GetOpenAIFormatBaseURL()
 	if baseURL == "" {
 		baseURL = "https://api.openai.com"
 	}
@@ -81,8 +81,8 @@ func (s *OpenAIAuxiliary) ForwardEmbeddings(
 	targetURL := buildOpenAIEmbeddingsURL(validatedURL)
 
 	proxyURL := ""
-	if account.Record.Proxy != nil {
-		proxyURL = account.Record.Proxy.URL()
+	if provider.Record.Proxy != nil {
+		proxyURL = provider.Record.Proxy.URL()
 	}
 	forwardHeaders := make(http.Header)
 	for key, values := range c.Request.Header {
@@ -91,8 +91,7 @@ func (s *OpenAIAuxiliary) ForwardEmbeddings(
 		}
 	}
 	target := &mediaprovider.EmbeddingsOptions{
-
-		AccountID: account.Record.ID,
+		ProviderID: provider.Record.ID,
 
 		Model: upstreamModel,
 
@@ -102,9 +101,9 @@ func (s *OpenAIAuxiliary) ForwardEmbeddings(
 
 		ForwardHeaders: forwardHeaders,
 
-		UserAgent: account.View().GetOpenAIUserAgent(),
+		UserAgent: provider.View().GetOpenAIUserAgent(),
 
-		ApplyHeaders: gatewayprovider.BindExecutionHeaders(account),
+		ApplyHeaders: gatewayprovider.BindExecutionHeaders(provider),
 
 		RequestContext: gatewayprovider.DetachUpstreamContext,
 
@@ -113,19 +112,18 @@ func (s *OpenAIAuxiliary) ForwardEmbeddings(
 		StartedAt: startTime,
 
 		Do: func(request *http.Request) (*http.Response, error) {
-			return s.Requests.Transport.Do(request, proxyURL, account.Record.ID, account.Record.Concurrency)
+			return s.Requests.Transport.Do(request, proxyURL, provider.Record.ID, provider.Record.Concurrency)
 		},
 
 		TransportError: func(err error) error {
 			safeErr := logredact.SanitizeUpstreamQueries(err.Error())
 			SetOpsUpstreamError(c, 0, safeErr, "")
 			AppendOpsUpstreamError(c, ops.OpsUpstreamErrorEvent{
+				Platform: provider.Record.Platform,
 
-				Platform: account.Record.Platform,
+				ProviderID: provider.Record.ID,
 
-				AccountID: account.Record.ID,
-
-				AccountName: account.Record.Name,
+				ProviderName: provider.Record.Name,
 
 				UpstreamStatusCode: 0,
 
@@ -141,23 +139,23 @@ func (s *OpenAIAuxiliary) ForwardEmbeddings(
 
 		HTTPError: func(resp *http.Response, respBody []byte) error {
 			upstreamMsg := logredact.SanitizeUpstreamQueries(strings.TrimSpace(upstream.ExtractErrorMessage(respBody)))
-			var decision accountcore.UpstreamErrorDecision
+			var decision providercore.UpstreamErrorDecision
 			return gatewaymedia.ResolveEmbeddingFailure(resp.StatusCode, gatewaymedia.EmbeddingFailurePorts{
 				InvalidRequest: func() bool { return openai.IsOpenAIClientInvalidRequestError(resp.StatusCode, upstreamMsg, respBody) },
 				ApplyPolicy: func() {
-					if account.Record.Platform == capability.PlatformGrok {
-						decision = gatewayprovider.ApplyGrokExecutionHealth(ctx, s.Output.GrokHealth, account, resp.StatusCode, resp.Header, respBody, "", upstreamModel)
+					if provider.Record.Platform == capability.PlatformGrok {
+						decision = gatewayprovider.ApplyGrokExecutionHealth(ctx, s.Output.GrokHealth, provider, resp.StatusCode, resp.Header, respBody, "", upstreamModel)
 					} else {
-						decision = gatewayprovider.ApplyOpenAIResponseHealth(ctx, s.Output.Health, account, resp.StatusCode, resp.Header, respBody, false, upstreamModel)
+						decision = gatewayprovider.ApplyOpenAIResponseHealth(ctx, s.Output.Health, provider, resp.StatusCode, resp.Header, respBody, false, upstreamModel)
 					}
 				},
 				Generic: func() bool { return decision.ShouldReturnGenericError() },
 				Failover: func() bool {
 					defaultFailover := gatewayprovider.ShouldFailoverOpenAIResponse(resp.StatusCode, upstreamMsg, respBody)
-					if account.Record.Platform == capability.PlatformGrok {
+					if provider.Record.Platform == capability.PlatformGrok {
 						defaultFailover = gatewayprovider.ShouldFailoverGrokResponse(resp.StatusCode, respBody)
 					}
-					return decision.ShouldFailover(gatewayprovider.ExecutionErrorPolicy(account), resp.StatusCode, defaultFailover)
+					return decision.ShouldFailover(gatewayprovider.ExecutionErrorPolicy(provider), resp.StatusCode, defaultFailover)
 				},
 				RecordFailover: func() {
 					upstreamDetail := ""
@@ -169,12 +167,11 @@ func (s *OpenAIAuxiliary) ForwardEmbeddings(
 						upstreamDetail = logredact.TruncateUTF8(string(respBody), maxBytes)
 					}
 					AppendOpsUpstreamError(c, ops.OpsUpstreamErrorEvent{
+						Platform: provider.Record.Platform,
 
-						Platform: account.Record.Platform,
+						ProviderID: provider.Record.ID,
 
-						AccountID: account.Record.ID,
-
-						AccountName: account.Record.Name,
+						ProviderName: provider.Record.Name,
 
 						UpstreamStatusCode: resp.StatusCode,
 
@@ -188,15 +185,15 @@ func (s *OpenAIAuxiliary) ForwardEmbeddings(
 					})
 				},
 				NewFailover: func() error {
-					shouldDisable := gatewayprovider.ApplyOpenAIResponseHealth(ctx, s.Output.Health, account, resp.StatusCode, resp.Header, respBody, false, upstreamModel).StopScheduling
-					retryableOnSameAccount := !shouldDisable && account.View().IsPoolMode() && account.View().IsPoolModeRetryableStatus(resp.StatusCode)
-					if account.View().IsOpenAIOAuth() && resp.StatusCode == http.StatusTooManyRequests {
-						return (gatewayprovider.OpenAIFailoverPolicy{Health: s.Output.Health}).NewAccountFailure(account, resp.StatusCode, resp.Header, respBody, upstreamMsg, shouldDisable, retryableOnSameAccount)
+					shouldDisable := gatewayprovider.ApplyOpenAIResponseHealth(ctx, s.Output.Health, provider, resp.StatusCode, resp.Header, respBody, false, upstreamModel).StopScheduling
+					retryableOnSameProvider := !shouldDisable && provider.View().IsPoolMode() && provider.View().IsPoolModeRetryableStatus(resp.StatusCode)
+					if provider.View().IsOpenAIOAuth() && resp.StatusCode == http.StatusTooManyRequests {
+						return (gatewayprovider.OpenAIFailoverPolicy{Health: s.Output.Health}).NewProviderFailure(provider, resp.StatusCode, resp.Header, respBody, upstreamMsg, shouldDisable, retryableOnSameProvider)
 					}
 					if gatewayprovider.IsOpenAIHTTPUpstreamAccessStateError(resp.StatusCode, upstreamMsg, respBody) {
-						return gatewayprovider.NewOpenAIUpstreamFailure(resp.StatusCode, resp.Header, respBody, upstreamMsg, retryableOnSameAccount)
+						return gatewayprovider.NewOpenAIUpstreamFailure(resp.StatusCode, resp.Header, respBody, upstreamMsg, retryableOnSameProvider)
 					}
-					return &forwardcore.UpstreamFailoverError{StatusCode: resp.StatusCode, ResponseBody: respBody, RetryableOnSameAccount: retryableOnSameAccount}
+					return &forwardcore.UpstreamFailoverError{StatusCode: resp.StatusCode, ResponseBody: respBody, RetryableOnSameProvider: retryableOnSameProvider}
 				},
 				Forward: func() { WriteEmbeddingsUpstreamResponse(c, resp, respBody, s.Output.Headers) },
 				Write: func(response gatewaymedia.ErrorResponse) {
@@ -217,7 +214,7 @@ func (s *OpenAIAuxiliary) ForwardEmbeddings(
 		},
 
 		WriteHeaders: func(output, input http.Header) {
-			provider.WriteFilteredHeaders(output, input, s.Output.Headers)
+			egressadapter.WriteFilteredHeaders(output, input, s.Output.Headers)
 		},
 	}
 	result, err := (mediaprovider.Embeddings{Options: *target}).Execute(ctx, upstream.AttemptInput{
@@ -229,7 +226,6 @@ func (s *OpenAIAuxiliary) ForwardEmbeddings(
 		return nil, err
 	}
 	return &forwardcore.OpenAIResult{
-
 		RequestID: result.RequestID,
 
 		UpstreamHeaders: result.UpstreamHeaders,

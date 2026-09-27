@@ -68,7 +68,7 @@ func (s *UsageClient) FetchUsageWithOptions(ctx context.Context, opts *UsageFetc
 
 	// 如果有 TLS Profile 且有 HTTPUpstream，使用 DoWithTLS
 	if opts.TLSProfile != nil && s.DoTLS != nil {
-		resp, err = s.DoTLS(req, opts.ProxyURL, opts.AccountID, 0, opts.TLSProfile)
+		resp, err = s.DoTLS(req, opts.ProxyURL, opts.ProviderID, 0, opts.TLSProfile)
 		if err != nil {
 			return nil, fmt.Errorf("request with TLS fingerprint failed: %w", err)
 		}
@@ -109,7 +109,7 @@ func (s *UsageClient) FetchUsageWithOptions(ctx context.Context, opts *UsageFetc
 type UsageFetchOptions struct {
 	AccessToken string                  // OAuth access token
 	ProxyURL    string                  // 代理 URL（可选）
-	AccountID   int64                   // 账号 ID（用于连接池隔离）
+	ProviderID  int64                   // 提供商 ID（用于连接池隔离）
 	TLSProfile  *tlsfingerprint.Profile // TLS 指纹 Profile（nil 表示不启用）
 	Fingerprint *Fingerprint            // 缓存的指纹信息（User-Agent 等）
 }

@@ -16,20 +16,20 @@ const (
 	openAIResponsesEmptyCompletedMessage = "OpenAI upstream returned an empty response.completed stream with no output and no usage"
 )
 
-func NewOpenAISilentRefusalFailoverError(c *gin.Context, account *UpstreamErrorAccount, upstreamRequestID string) *forwardcore.UpstreamFailoverError {
-	accountID := int64(0)
-	accountName := ""
+func NewOpenAISilentRefusalFailoverError(c *gin.Context, provider *UpstreamErrorProvider, upstreamRequestID string) *forwardcore.UpstreamFailoverError {
+	providerID := int64(0)
+	providerName := ""
 	platform := capability.PlatformOpenAI
-	if account != nil {
-		accountID = account.ID
-		accountName = account.Name
-		platform = account.Platform
+	if provider != nil {
+		providerID = provider.ID
+		providerName = provider.Name
+		platform = provider.Platform
 	}
 	SetOpsUpstreamError(c, http.StatusBadGateway, openAISilentRefusalUpstreamMessage, "")
 	AppendOpsUpstreamError(c, ops.OpsUpstreamErrorEvent{
 		Platform:           platform,
-		AccountID:          accountID,
-		AccountName:        accountName,
+		ProviderID:         providerID,
+		ProviderName:       providerName,
 		UpstreamStatusCode: http.StatusBadGateway,
 		UpstreamRequestID:  upstreamRequestID,
 		Kind:               "failover",
@@ -49,20 +49,20 @@ func NewOpenAISilentRefusalFailoverError(c *gin.Context, account *UpstreamErrorA
 
 // NewOpenAIResponsesEmptyCompletedFailoverError 将空 Responses 终态标记为可重试的上游异常。
 // 这类响应没有任何可见输出、用量或错误，不应作为成功请求结算。
-func NewOpenAIResponsesEmptyCompletedFailoverError(c *gin.Context, account *UpstreamErrorAccount, upstreamRequestID string) *forwardcore.UpstreamFailoverError {
-	accountID := int64(0)
-	accountName := ""
+func NewOpenAIResponsesEmptyCompletedFailoverError(c *gin.Context, provider *UpstreamErrorProvider, upstreamRequestID string) *forwardcore.UpstreamFailoverError {
+	providerID := int64(0)
+	providerName := ""
 	platform := capability.PlatformOpenAI
-	if account != nil {
-		accountID = account.ID
-		accountName = account.Name
-		platform = account.Platform
+	if provider != nil {
+		providerID = provider.ID
+		providerName = provider.Name
+		platform = provider.Platform
 	}
 	SetOpsUpstreamError(c, http.StatusBadGateway, openAIResponsesEmptyCompletedMessage, "")
 	AppendOpsUpstreamError(c, ops.OpsUpstreamErrorEvent{
 		Platform:           platform,
-		AccountID:          accountID,
-		AccountName:        accountName,
+		ProviderID:         providerID,
+		ProviderName:       providerName,
 		UpstreamStatusCode: http.StatusBadGateway,
 		UpstreamRequestID:  upstreamRequestID,
 		Kind:               "failover",
@@ -80,8 +80,8 @@ func NewOpenAIResponsesEmptyCompletedFailoverError(c *gin.Context, account *Upst
 	}
 }
 
-// UpstreamErrorAccount 只传递已选账号的安全观测字段。
-type UpstreamErrorAccount struct {
+// UpstreamErrorProvider 只传递已选提供商的安全观测字段。
+type UpstreamErrorProvider struct {
 	ID             int64
 	Name, Platform string
 }

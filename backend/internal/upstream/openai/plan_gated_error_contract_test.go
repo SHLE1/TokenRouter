@@ -15,13 +15,13 @@ func TestIsOpenAICodexPlanGatedModelError(t *testing.T) {
 		{
 			name:       "400 codex plan gated detail payload",
 			statusCode: http.StatusBadRequest,
-			body:       []byte(`{"detail":"The 'gpt-5.6-sol' model is not supported when using Codex with a ChatGPT account."}`),
+			body:       []byte(`{"detail":"The 'gpt-5.6-sol' model is not supported when using Codex with a ChatGPT provider."}`),
 			want:       true,
 		},
 		{
 			name:       "400 codex plan gated error message payload",
 			statusCode: http.StatusBadRequest,
-			body:       []byte(`{"error":{"message":"The 'gpt-5.4' model is not supported when using Codex with a ChatGPT account."}}`),
+			body:       []byte(`{"error":{"message":"The 'gpt-5.4' model is not supported when using Codex with a ChatGPT provider."}}`),
 			want:       true,
 		},
 		{
@@ -33,7 +33,7 @@ func TestIsOpenAICodexPlanGatedModelError(t *testing.T) {
 		{
 			name:       "404 with plan gated message does not match",
 			statusCode: http.StatusNotFound,
-			body:       []byte(`{"detail":"The 'gpt-5.6-sol' model is not supported when using Codex with a ChatGPT account."}`),
+			body:       []byte(`{"detail":"The 'gpt-5.6-sol' model is not supported when using Codex with a ChatGPT provider."}`),
 			want:       false,
 		},
 		{

@@ -1,4 +1,4 @@
-// 供应商报文分类与用量观测不改变账号资格、错误重写或资金处理。
+// 供应商报文分类与用量观测不改变提供商资格、错误重写或资金处理。
 package grok
 
 import (
@@ -10,19 +10,19 @@ import (
 )
 
 // IsGrokContentPolicyRejection 识别 xAI 针对单次请求的内容安全拒绝。
-// 这类失败由提示词或媒体内容引起，切换 OAuth 账号无法改变结果，反而会错误消耗账号池。
-// 匹配条件必须保持严格：账号权益或封禁消息也可能提到策略，但仍应走正常的账号故障转移路径。
+// 这类失败由提示词或媒体内容引起，切换 OAuth 提供商无法改变结果，反而会错误消耗提供商池。
+// 匹配条件必须保持严格：提供商权益或封禁消息也可能提到策略，但仍应走正常的提供商故障转移路径。
 func IsGrokContentPolicyRejection(statusCode int, responseBody []byte) bool {
 	if statusCode != http.StatusForbidden || len(responseBody) == 0 {
 		return false
 	}
-	if GrokAccountAccessMessage(string(responseBody)) {
+	if GrokProviderAccessMessage(string(responseBody)) {
 		return false
 	}
 
 	var payload any
 	if json.Unmarshal(responseBody, &payload) == nil {
-		if GrokStructuredAccountAccessMarker(payload) {
+		if GrokStructuredProviderAccessMarker(payload) {
 			return false
 		}
 		if GrokStructuredContentPolicyMarker(payload) {
@@ -32,30 +32,32 @@ func IsGrokContentPolicyRejection(statusCode int, responseBody []byte) bool {
 
 	return GrokContentPolicyMessage(string(responseBody))
 }
-func GrokStructuredAccountAccessMarker(value any) bool {
+
+func GrokStructuredProviderAccessMarker(value any) bool {
 	switch node := value.(type) {
 	case map[string]any:
 		for key, child := range node {
 			normalizedKey := NormalizeGrokErrorMarker(key)
 			switch normalizedKey {
 			case "code", "error_code", "type", "category", "reason":
-				if marker, ok := child.(string); ok && IsGrokAccountAccessCode(marker) {
+				if marker, ok := child.(string); ok && IsGrokProviderAccessCode(marker) {
 					return true
 				}
 			}
-			if GrokStructuredAccountAccessMarker(child) {
+			if GrokStructuredProviderAccessMarker(child) {
 				return true
 			}
 		}
 	case []any:
 		for _, child := range node {
-			if GrokStructuredAccountAccessMarker(child) {
+			if GrokStructuredProviderAccessMarker(child) {
 				return true
 			}
 		}
 	}
 	return false
 }
+
 func GrokStructuredContentPolicyMarker(value any) bool {
 	switch node := value.(type) {
 	case map[string]any:
@@ -80,12 +82,14 @@ func GrokStructuredContentPolicyMarker(value any) bool {
 	}
 	return false
 }
+
 func NormalizeGrokErrorMarker(value string) string {
 	value = strings.ToLower(strings.TrimSpace(value))
 	value = strings.ReplaceAll(value, "-", "_")
 	value = strings.ReplaceAll(value, " ", "_")
 	return value
 }
+
 func IsGrokContentPolicyCode(value string) bool {
 	switch NormalizeGrokErrorMarker(value) {
 	case "content_filter",
@@ -99,7 +103,8 @@ func IsGrokContentPolicyCode(value string) bool {
 		return false
 	}
 }
-func IsGrokAccountAccessCode(value string) bool {
+
+func IsGrokProviderAccessCode(value string) bool {
 	switch NormalizeGrokErrorMarker(value) {
 	case "account_suspended",
 		"account_disabled",
@@ -115,11 +120,12 @@ func IsGrokAccountAccessCode(value string) bool {
 		return false
 	}
 }
-func GrokAccountAccessMessage(value string) bool {
+
+func GrokProviderAccessMessage(value string) bool {
 	lower := strings.ToLower(strings.TrimSpace(value))
 	for _, phrase := range []string{
-		"account suspended",
-		"account has been suspended",
+		"provider suspended",
+		"provider has been suspended",
 		"account disabled",
 		"account has been disabled",
 		"user suspended",
@@ -134,13 +140,14 @@ func GrokAccountAccessMessage(value string) bool {
 	}
 	return false
 }
+
 func GrokContentPolicyMessage(value string) bool {
 	lower := strings.ToLower(strings.TrimSpace(value))
 	if lower == "" {
 		return false
 	}
 
-	// xAI 媒体安全响应会使用这些明确短语，不会与普通账号策略或权益消息混淆。
+	// xAI 媒体安全响应会使用这些明确短语，不会与普通提供商策略或权益消息混淆。
 	for _, phrase := range []string{
 		"the moderation feature is not available",
 		"image is sensitive",
@@ -171,12 +178,14 @@ func GrokContentPolicyMessage(value string) bool {
 
 	return false
 }
+
 func GrokContentPolicyClientMessage(message string) string {
 	if message == "" {
 		return "Request blocked by upstream content policy"
 	}
 	return message
 }
+
 func IsGrokDecoderCompatibilityError(statusCode int, responseBody []byte) bool {
 	if statusCode != http.StatusUnprocessableEntity || len(responseBody) == 0 {
 		return false
@@ -202,6 +211,7 @@ func IsGrokDecoderCompatibilityError(statusCode int, responseBody []byte) bool {
 	}
 	return false
 }
+
 func GrokStructuredErrorMessageCandidates(body []byte) []string {
 	candidates := make([]string, 0, 6)
 	appendCandidate := func(result gjson.Result) {

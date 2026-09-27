@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 	"github.com/stretchr/testify/require"
 )
@@ -45,6 +45,7 @@ func (d *openAIWSCountingDialer) DialCount() int {
 	defer d.mu.Unlock()
 	return d.dialCount
 }
+
 func (d *openAIWSCountingDialer) LastTLSProfile() *tlsfingerprint.Profile {
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -68,6 +69,7 @@ func (c *openAIWSFakeConn) WriteJSON(ctx context.Context, value any) error {
 	_ = value
 	return nil
 }
+
 func (c *openAIWSFakeConn) ReadMessage(ctx context.Context) ([]byte, error) {
 	_ = ctx
 	c.mu.Lock()
@@ -77,10 +79,12 @@ func (c *openAIWSFakeConn) ReadMessage(ctx context.Context) ([]byte, error) {
 	}
 	return []byte(`{"type":"response.completed","response":{"id":"resp_fake"}}`), nil
 }
+
 func (c *openAIWSFakeConn) Ping(ctx context.Context) error {
 	_ = ctx
 	return nil
 }
+
 func (c *openAIWSFakeConn) Close() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -97,6 +101,7 @@ func (c *openAIWSBlockingConn) WriteJSON(ctx context.Context, value any) error {
 	_ = value
 	return nil
 }
+
 func (c *openAIWSBlockingConn) ReadMessage(ctx context.Context) ([]byte, error) {
 	delay := c.readDelay
 	if delay <= 0 {
@@ -112,10 +117,12 @@ func (c *openAIWSBlockingConn) ReadMessage(ctx context.Context) ([]byte, error) 
 		return []byte(`{"type":"response.completed","response":{"id":"resp_blocking"}}`), nil
 	}
 }
+
 func (c *openAIWSBlockingConn) Ping(ctx context.Context) error {
 	_ = ctx
 	return nil
 }
+
 func (c *openAIWSBlockingConn) Close() error {
 	return nil
 }
@@ -127,7 +134,7 @@ func TestOpenAIWSConnPoolShutdownSealsLazyCreation(t *testing.T) {
 	require.Nil(t, svc.Connections.Pool())
 	pool := newOpenAIWSConnPool(nil)
 	pool.Close()
-	_, err := pool.Acquire(context.Background(), openai.WSAcquireRequest{Account: openAIWSPoolAccountView(&gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1}}), WSURL: "wss://example.test"})
+	_, err := pool.Acquire(context.Background(), openai.WSAcquireRequest{Provider: openAIWSPoolProviderView(&gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}), WSURL: "wss://example.test"})
 	require.ErrorIs(t, err, openai.ErrWSConnClosed)
 	pool.Close()
 }

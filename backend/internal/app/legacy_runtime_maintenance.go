@@ -1,4 +1,4 @@
-// 登记账号维护资源的启动、停止与依赖顺序。
+// 登记提供商维护资源的启动、停止与依赖顺序。
 // 启动按停止依赖的逆序排列，纯预热在消费者启动前完成。
 package app
 
@@ -11,21 +11,21 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 	"github.com/TokenFlux/TokenRouter/internal/site"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/app/lifecycle"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/config"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
 type maintenanceRuntimeReady struct{}
 
 func provideMaintenanceRuntime(
-	tokenRefresh *account.BackgroundRefreshService,
-	accountExpiry *account.ExpiryService,
+	tokenRefresh *provider.BackgroundRefreshService,
+	providerExpiry *provider.ExpiryService,
 	proxyExpiry *egress.ProxyExpiryService,
 	subscriptionExpiry *billing.SubscriptionExpiryService,
 	announcementExpiry *site.AnnouncementExpiryService,
-	scheduledTestRunner *account.ScheduledTestRunnerService,
+	scheduledTestRunner *provider.ScheduledTestRunnerService,
 	groupAvailabilityProbeRunner *routing.GroupAvailabilityProbeRunnerService,
 	cfg *config.Config,
 	manager *lifecycle.Manager,
@@ -43,14 +43,14 @@ func provideMaintenanceRuntime(
 		}
 		return nil
 	}})
-	manager.Register(lifecycle.Hook{Name: "AccountExpiryService", StartOrder: 980, StopOrder: 20, Start: func(ctx context.Context) error {
-		if accountExpiry != nil {
-			accountExpiry.Start()
+	manager.Register(lifecycle.Hook{Name: "ProviderExpiryService", StartOrder: 980, StopOrder: 20, Start: func(ctx context.Context) error {
+		if providerExpiry != nil {
+			providerExpiry.Start()
 		}
 		return nil
 	}, Stop: func(ctx context.Context) error {
-		if accountExpiry != nil {
-			return accountExpiry.StopContext(ctx)
+		if providerExpiry != nil {
+			return providerExpiry.StopContext(ctx)
 		}
 		return nil
 	}})

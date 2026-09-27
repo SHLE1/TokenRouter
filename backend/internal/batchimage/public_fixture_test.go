@@ -7,7 +7,7 @@ import (
 
 	testassert "github.com/TokenFlux/TokenRouter/internal/testutil/assertion"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/batchimage"
@@ -21,30 +21,30 @@ import (
 )
 
 // 测试源只保存旧交叉契约的输入，所有候选与资金规则使用原生模块。
-type batchAccountsFixtureSource interface {
-	GetByID(context.Context, int64) (*accountcore.Record, error)
-	ListSchedulableByPlatform(context.Context, string) ([]accountcore.Record, error)
-	ListSchedulableByGroupIDAndPlatform(context.Context, int64, string) ([]accountcore.Record, error)
+type batchProvidersFixtureSource interface {
+	GetByID(context.Context, int64) (*providercore.Record, error)
+	ListSchedulableByPlatform(context.Context, string) ([]providercore.Record, error)
+	ListSchedulableByGroupIDAndPlatform(context.Context, int64, string) ([]providercore.Record, error)
 }
 type batchGroupFixtureSource interface {
 	GetByIDLite(context.Context, int64) (*batchimage.GroupView, error)
 }
 
-type batchAccountFixture struct {
-	source   batchAccountsFixtureSource
+type batchProviderFixture struct {
+	source   batchProvidersFixtureSource
 	registry *batchimage.Registry[batchprovider.BatchImageProvider]
 }
 
-func (r *batchAccountFixture) project(value *accountcore.Record) *batchimage.Candidate {
-	return (&batchprovider.Candidates{Registry: r.registry, ObserveModel: modeltrace.RegisterStage}).Project(accountcore.CloneRecord(value))
+func (r *batchProviderFixture) project(value *providercore.Record) *batchimage.Candidate {
+	return (&batchprovider.Candidates{Registry: r.registry, ObserveModel: modeltrace.RegisterStage}).Project(providercore.CloneRecord(value))
 }
 
-func (r *batchAccountFixture) GetByID(ctx context.Context, id int64) (*batchimage.Candidate, error) {
+func (r *batchProviderFixture) GetByID(ctx context.Context, id int64) (*batchimage.Candidate, error) {
 	v, err := r.source.GetByID(ctx, id)
 	return r.project(v), err
 }
 
-func (r *batchAccountFixture) values(rows []accountcore.Record) []batchimage.Candidate {
+func (r *batchProviderFixture) values(rows []providercore.Record) []batchimage.Candidate {
 	out := make([]batchimage.Candidate, len(rows))
 	for i := range rows {
 		out[i] = *r.project(&rows[i])
@@ -52,18 +52,18 @@ func (r *batchAccountFixture) values(rows []accountcore.Record) []batchimage.Can
 	return out
 }
 
-func (r *batchAccountFixture) ListSchedulableByPlatform(ctx context.Context, p string) ([]batchimage.Candidate, error) {
+func (r *batchProviderFixture) ListSchedulableByPlatform(ctx context.Context, p string) ([]batchimage.Candidate, error) {
 	v, err := r.source.ListSchedulableByPlatform(ctx, p)
 	return r.values(v), err
 }
 
-func (r *batchAccountFixture) ListSchedulableByGroupIDAndPlatform(ctx context.Context, id int64, p string) ([]batchimage.Candidate, error) {
+func (r *batchProviderFixture) ListSchedulableByGroupIDAndPlatform(ctx context.Context, id int64, p string) ([]batchimage.Candidate, error) {
 	v, err := r.source.ListSchedulableByGroupIDAndPlatform(ctx, id, p)
 	return r.values(v), err
 }
 
-func rebindBatchFixtureAccounts(core *batchimage.Public, source batchAccountsFixtureSource) batchimage.AccountReader {
-	return &batchAccountFixture{source: source, registry: testassert.MustType[*batchAccountFixture](core.AccountRepo).registry}
+func rebindBatchFixtureProviders(core *batchimage.Public, source batchProvidersFixtureSource) batchimage.ProviderReader {
+	return &batchProviderFixture{source: source, registry: testassert.MustType[*batchProviderFixture](core.ProviderRepo).registry}
 }
 
 type batchGroupReader struct{ source batchGroupFixtureSource }
@@ -78,10 +78,10 @@ func batchGroupProjection(v *batchimage.GroupView) *batchimage.GroupView { retur
 func taskFixtureBilling(core *batchimage.Public) batchimage.FundingStore { return core.Funding.Store }
 
 // newBatchPublicFixture 只构造端口与选项；测试修改的资金替身仍在调用时读取。
-func newBatchPublicFixture(repo batchimage.BatchImageRepository, accounts batchAccountsFixtureSource, pricingConfigs *routing.PricingConfigService, groups batchGroupFixtureSource, rates batchimage.BatchImageUserGroupRateRepository, queue batchimage.BatchImageQueue, registry *batchimage.Registry[batchprovider.BatchImageProvider], prices batchimage.ImagePricer, funds batchimage.FundingStore, auth apikey.APIKeyAuthCacheInvalidator, cfg *config.Config) *batchimage.Public {
+func newBatchPublicFixture(repo batchimage.BatchImageRepository, providers batchProvidersFixtureSource, pricingConfigs *routing.PricingConfigService, groups batchGroupFixtureSource, rates batchimage.BatchImageUserGroupRateRepository, queue batchimage.BatchImageQueue, registry *batchimage.Registry[batchprovider.BatchImageProvider], prices batchimage.ImagePricer, funds batchimage.FundingStore, auth apikey.APIKeyAuthCacheInvalidator, cfg *config.Config) *batchimage.Public {
 	core := &batchimage.Public{Repo: repo, UserGroupRateRepo: rates, Queue: queue, Pricing: prices, Funding: nativeTaskFundingFixture(funds), Observe: resultObserve}
-	if accounts != nil {
-		core.AccountRepo = &batchAccountFixture{source: accounts, registry: registry}
+	if providers != nil {
+		core.ProviderRepo = &batchProviderFixture{source: providers, registry: registry}
 	}
 	if groups == nil {
 		groups = &publicBatchImageGroupRepo{groups: map[int64]*batchimage.GroupView{7: {ID: 7, AllowBatchImageGeneration: true, RateMultiplier: 1, BatchImageDiscountMultiplier: 0.5, BatchImageHoldMultiplier: 0.6}}}

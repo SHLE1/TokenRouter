@@ -1,6 +1,6 @@
 package ops
 
-import accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+import providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 // Ops settings models stored in DB `settings` table (JSON blobs).
 
@@ -19,18 +19,18 @@ type OpsEmailAlertConfig struct {
 }
 
 type OpsEmailReportConfig struct {
-	Enabled                         bool     `json:"enabled"`
-	Recipients                      []string `json:"recipients"`
-	DailySummaryEnabled             bool     `json:"daily_summary_enabled"`
-	DailySummarySchedule            string   `json:"daily_summary_schedule"`
-	WeeklySummaryEnabled            bool     `json:"weekly_summary_enabled"`
-	WeeklySummarySchedule           string   `json:"weekly_summary_schedule"`
-	ErrorDigestEnabled              bool     `json:"error_digest_enabled"`
-	ErrorDigestSchedule             string   `json:"error_digest_schedule"`
-	ErrorDigestMinCount             int      `json:"error_digest_min_count"`
-	AccountHealthEnabled            bool     `json:"account_health_enabled"`
-	AccountHealthSchedule           string   `json:"account_health_schedule"`
-	AccountHealthErrorRateThreshold float64  `json:"account_health_error_rate_threshold"`
+	Enabled                          bool     `json:"enabled"`
+	Recipients                       []string `json:"recipients"`
+	DailySummaryEnabled              bool     `json:"daily_summary_enabled"`
+	DailySummarySchedule             string   `json:"daily_summary_schedule"`
+	WeeklySummaryEnabled             bool     `json:"weekly_summary_enabled"`
+	WeeklySummarySchedule            string   `json:"weekly_summary_schedule"`
+	ErrorDigestEnabled               bool     `json:"error_digest_enabled"`
+	ErrorDigestSchedule              string   `json:"error_digest_schedule"`
+	ErrorDigestMinCount              int      `json:"error_digest_min_count"`
+	ProviderHealthEnabled            bool     `json:"provider_health_enabled"`
+	ProviderHealthSchedule           string   `json:"provider_health_schedule"`
+	ProviderHealthErrorRateThreshold float64  `json:"provider_health_error_rate_threshold"`
 }
 
 // OpsEmailNotificationConfigUpdateRequest allows partial updates, while the
@@ -94,11 +94,11 @@ type OpsAlertRuntimeSettings struct {
 
 // OpsAdvancedSettings 存储运维模块自身的高级配置；预聚合由统一设置单独管理。
 type OpsAdvancedSettings struct {
-	DataRetention               OpsDataRetentionSettings               `json:"data_retention"`
-	OpenAIAccountQuotaAutoPause OpsOpenAIAccountQuotaAutoPauseSettings `json:"openai_account_quota_auto_pause"`
-	IgnoreCountTokensErrors     bool                                   `json:"ignore_count_tokens_errors"`
-	IgnoreContextCanceled       bool                                   `json:"ignore_context_canceled"`
-	IgnoreNoAvailableAccounts   bool                                   `json:"ignore_no_available_accounts"`
+	DataRetention                OpsDataRetentionSettings                `json:"data_retention"`
+	OpenAIProviderQuotaAutoPause OpsOpenAIProviderQuotaAutoPauseSettings `json:"openai_provider_quota_auto_pause"`
+	IgnoreCountTokensErrors      bool                                    `json:"ignore_count_tokens_errors"`
+	IgnoreContextCanceled        bool                                    `json:"ignore_context_canceled"`
+	IgnoreNoAvailableProviders   bool                                    `json:"ignore_no_available_providers"`
 	// 兼容旧客户端的字段；服务端始终将其规范为 true。
 	IgnoreInvalidApiKeyErrors       bool  `json:"ignore_invalid_api_key_errors"`
 	IgnoreInsufficientBalanceErrors bool  `json:"ignore_insufficient_balance_errors"`
@@ -109,8 +109,8 @@ type OpsAdvancedSettings struct {
 	AutoRefreshIntervalSec          int   `json:"auto_refresh_interval_seconds"`
 }
 
-// OpsOpenAIAccountQuotaAutoPauseSettings 保持旧设置 JSON，阈值归账号健康。
-type OpsOpenAIAccountQuotaAutoPauseSettings = accountcore.QuotaAutoPauseSettings
+// OpsOpenAIProviderQuotaAutoPauseSettings 保持旧设置 JSON，阈值归提供商健康。
+type OpsOpenAIProviderQuotaAutoPauseSettings = providercore.QuotaAutoPauseSettings
 
 type OpsDataRetentionSettings struct {
 	CleanupEnabled             bool   `json:"cleanup_enabled"`

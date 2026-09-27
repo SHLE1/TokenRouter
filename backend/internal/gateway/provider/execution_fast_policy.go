@@ -19,11 +19,11 @@ type ExecutionFastPolicy struct {
 	Prices  *billing.PriceResolver
 }
 
-// Evaluate 返回指定账号、模型和 service_tier 应执行的动作及错误消息。
+// Evaluate 返回指定提供商、模型和 service_tier 应执行的动作及错误消息。
 // 策略服务不可用或没有规则命中时返回 pass，调用方可安全地直接放行。
 //
 // 匹配规则：
-//   - Scope 按账号类型过滤（all / oauth / apikey / bedrock）
+//   - Scope 按提供商类型过滤（all / oauth / apikey / bedrock）
 //   - UserIDs 非空时按 API Key 所属的可信用户 ID 过滤
 //   - ServiceTier 必须为空、all 或等于归一化后的 tier
 //   - ModelWhitelist 将规则限制到指定模型，FallbackAction 处理未匹配模型
@@ -37,7 +37,7 @@ type ExecutionFastPolicy struct {
 //     维度天然互斥；同一 (scope, tier) 下若多条规则的 model whitelist
 //     发生重叠，admin 可通过规则顺序明确意图。因此采用 first-match 而
 //     非 BetaPolicy 那样的"block 覆盖 filter 覆盖 pass"语义。
-func (s *ExecutionFastPolicy) Evaluate(ctx context.Context, account *ExecutionAccount, model, serviceTier string) (action, errMsg string) {
+func (s *ExecutionFastPolicy) Evaluate(ctx context.Context, provider *ExecutionProvider, model, serviceTier string) (action, errMsg string) {
 	if s == nil || s.Readers == nil {
 		return anthropic.BetaPolicyActionPass, ""
 	}
@@ -53,7 +53,7 @@ func (s *ExecutionFastPolicy) Evaluate(ctx context.Context, account *ExecutionAc
 		}
 		settings = fetched
 	}
-	return tierpolicy.Evaluate(settings, openAIFastPolicyUserID(ctx), account != nil && account.View().IsOAuth(), account != nil && account.View().IsBedrock(), model, tier)
+	return tierpolicy.Evaluate(settings, openAIFastPolicyUserID(ctx), provider != nil && provider.View().IsOAuth(), provider != nil && provider.View().IsBedrock(), model, tier)
 }
 
 // openAIFastPolicyUserID 从可信请求上下文读取 API Key 所属用户 ID。
@@ -99,9 +99,9 @@ func FastPolicySettingsFromContext(ctx context.Context) *tierpolicy.OpenAIFastPo
 	return nil
 }
 
-// GroupFastPolicy 只信任认证链路完整加载的分组，并限于 OpenAI 账号。
-func GroupFastPolicy(ctx context.Context, account *ExecutionAccount) string {
-	if ctx == nil || account == nil || !account.View().IsOpenAI() {
+// GroupFastPolicy 只信任认证链路完整加载的分组，并限于 OpenAI 提供商。
+func GroupFastPolicy(ctx context.Context, provider *ExecutionProvider) string {
+	if ctx == nil || provider == nil || !provider.View().IsOpenAI() {
 		return routing.GroupOpenAIFastPolicyFollowRequest
 	}
 	group, _ := requeststate.GroupFromContext(ctx)
@@ -111,7 +111,7 @@ func GroupFastPolicy(ctx context.Context, account *ExecutionAccount) string {
 	return group.EffectiveOpenAIFastPolicy()
 }
 
-func (s *ExecutionFastPolicy) Input(ctx context.Context, value *ExecutionAccount, model string) tierpolicy.DecisionInput {
+func (s *ExecutionFastPolicy) Input(ctx context.Context, value *ExecutionProvider, model string) tierpolicy.DecisionInput {
 	return tierpolicy.DecisionInput{
 		Model: model, GroupPolicy: GroupFastPolicy(ctx, value), OpenAI: value != nil && value.View().IsOpenAI(),
 		Evaluate: func(tier string) (string, string) { return s.Evaluate(ctx, value, model, tier) },
@@ -122,7 +122,7 @@ func (s *ExecutionFastPolicy) Input(ctx context.Context, value *ExecutionAccount
 	}
 }
 
-func (s *ExecutionFastPolicy) ForceOnSupported(ctx context.Context, account *ExecutionAccount, model string) bool {
-	return account != nil && account.View().IsOpenAI() &&
+func (s *ExecutionFastPolicy) ForceOnSupported(ctx context.Context, provider *ExecutionProvider, model string) bool {
+	return provider != nil && provider.View().IsOpenAI() &&
 		SupportsFastMode(ctx, s.Prices, model)
 }

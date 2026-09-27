@@ -1,4 +1,4 @@
-// Chat 原生分片、工具身份和终态解析保持独立，不引入账号或取消策略。
+// Chat 原生分片、工具身份和终态解析保持独立，不引入提供商或取消策略。
 package openai
 
 import (
@@ -98,7 +98,7 @@ func OpenAIChatCompletionServiceTierEventType(payload []byte) string {
 // 覆盖首包合法 id/name，最终得到 {"id":"","name":"",...} 导致
 // ToolNotFoundError: unknown tool ""。这里无状态剔除空串字段（缺失
 // 即不覆盖），不补写、不记忆首包 id/name，适用于所有走 raw CC 直转
-// 路径的账号（不限定 DeepSeek）。
+// 路径的提供商（不限定 DeepSeek）。
 //
 // 只处理流式 chunk 的 delta.tool_calls；非流式 message.tool_calls 不属于
 // 本 helper 范围。

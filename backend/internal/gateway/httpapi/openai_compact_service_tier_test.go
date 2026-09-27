@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 	"github.com/gin-gonic/gin"
@@ -38,7 +38,6 @@ func TestNormalizeOpenAICompactRequestBodyPreservesServiceTier(t *testing.T) {
 }
 
 func TestOpenAIOAuthCompactHTTPBuildersUsePreservedServiceTierInRoutingHint(t *testing.T) {
-
 	body := []byte(`{
 		"model":"gpt-5.6-sol",
 		"input":[{"type":"message","role":"user","content":"hello"}],
@@ -50,11 +49,14 @@ func TestOpenAIOAuthCompactHTTPBuildersUsePreservedServiceTierInRoutingHint(t *t
 	require.True(t, changed)
 	require.Equal(t, "priority", gjson.GetBytes(normalized, "service_tier").String())
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI,
-		Type: capability.AccountTypeOAuth,
-		Credentials: map[string]any{
-			"chatgpt_account_id": "test-account",
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI,
+			Type: capability.ProviderTypeOAuth,
+			Credentials: map[string]any{
+				"chatgpt_account_id": "test-provider",
+			},
+		},
 	}
 	svc := newResponsesFixture(responsesFixtureInputs{})
 
@@ -66,7 +68,7 @@ func TestOpenAIOAuthCompactHTTPBuildersUsePreservedServiceTierInRoutingHint(t *t
 			name: "ordinary",
 			build: func(c *gin.Context) (*http.Request, error) {
 				return svc.Requests.Build(
-					context.Background(), c, account, normalized, "test-token",
+					context.Background(), c, provider, normalized, "test-token",
 					false, "", true,
 				)
 			},
@@ -75,7 +77,7 @@ func TestOpenAIOAuthCompactHTTPBuildersUsePreservedServiceTierInRoutingHint(t *t
 			name: "passthrough",
 			build: func(c *gin.Context) (*http.Request, error) {
 				return svc.Requests.BuildPassthrough(
-					context.Background(), c, account, normalized, "test-token",
+					context.Background(), c, provider, normalized, "test-token",
 				)
 			},
 		},

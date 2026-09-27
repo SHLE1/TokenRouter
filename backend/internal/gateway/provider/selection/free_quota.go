@@ -4,20 +4,20 @@ import (
 	"context"
 	"sync/atomic"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
-func (s *compatiblePicker) filterGrokFreeQuotaAccounts(_ context.Context, accounts []gatewayprovider.ExecutionAccount) []gatewayprovider.ExecutionAccount {
+func (s *compatiblePicker) filterGrokFreeQuotaProviders(_ context.Context, providers []gatewayprovider.ExecutionProvider) []gatewayprovider.ExecutionProvider {
 	if s == nil || s.service == nil || s.service.newFreeQuotaGate == nil {
-		return accounts
+		return providers
 	}
 	gate := loadFreeQuotaGate(&s.freeQuotaGate, s.service.newFreeQuotaGate)
-	return filterFreeQuotaProjection(gate, accounts)
+	return filterFreeQuotaProjection(gate, providers)
 }
 
 // loadFreeQuotaGate 只登记一个实例，构造未启动工作，因此竞争中未发布对象不需要清理。
-func loadFreeQuotaGate(slot *atomic.Pointer[account.FreeQuotaGate], factory func() *account.FreeQuotaGate) *account.FreeQuotaGate {
+func loadFreeQuotaGate(slot *atomic.Pointer[provider.FreeQuotaGate], factory func() *provider.FreeQuotaGate) *provider.FreeQuotaGate {
 	if gate := slot.Load(); gate != nil {
 		return gate
 	}
@@ -28,30 +28,30 @@ func loadFreeQuotaGate(slot *atomic.Pointer[account.FreeQuotaGate], factory func
 	return slot.Load()
 }
 
-func (s *Generic) filterGrokFreeQuotaAccountsForGateway(_ context.Context, accounts []gatewayprovider.ExecutionAccount) []gatewayprovider.ExecutionAccount {
+func (s *Generic) filterGrokFreeQuotaProvidersForGateway(_ context.Context, providers []gatewayprovider.ExecutionProvider) []gatewayprovider.ExecutionProvider {
 	if s == nil {
-		return accounts
+		return providers
 	}
-	return filterFreeQuotaProjection(s.freeQuotaGate, accounts)
+	return filterFreeQuotaProjection(s.freeQuotaGate, providers)
 }
 
 // 旧执行形状仅投影资格与结果，不拥有缓存或裁决算法。
-func filterFreeQuotaProjection(gate *account.FreeQuotaGate, accounts []gatewayprovider.ExecutionAccount) []gatewayprovider.ExecutionAccount {
+func filterFreeQuotaProjection(gate *provider.FreeQuotaGate, providers []gatewayprovider.ExecutionProvider) []gatewayprovider.ExecutionProvider {
 	if gate == nil {
-		return accounts
+		return providers
 	}
-	candidates := make([]account.FreeQuotaCandidate, len(accounts))
-	for i := range accounts {
-		candidates[i] = account.FreeQuotaCandidate{ID: accounts[i].Record.ID, Eligible: account.IsExplicitGrokFreeOAuthAccount(gatewayprovider.ExecutionProtocolRecord(&accounts[i]))}
+	candidates := make([]provider.FreeQuotaCandidate, len(providers))
+	for i := range providers {
+		candidates[i] = provider.FreeQuotaCandidate{ID: providers[i].Record.ID, Eligible: provider.IsExplicitGrokFreeOAuthProvider(gatewayprovider.ExecutionProtocolRecord(&providers[i]))}
 	}
 	blocked := gate.Blocked(candidates)
 	if blocked == nil {
-		return accounts
+		return providers
 	}
-	filtered := make([]gatewayprovider.ExecutionAccount, 0, len(accounts))
+	filtered := make([]gatewayprovider.ExecutionProvider, 0, len(providers))
 	for i, candidate := range candidates {
 		if !candidate.Eligible || !blocked[candidate.ID] {
-			filtered = append(filtered, accounts[i])
+			filtered = append(filtered, providers[i])
 		}
 	}
 	return filtered

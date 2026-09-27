@@ -9,11 +9,11 @@ import (
 	"strings"
 	"time"
 
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	mediaprovider "github.com/TokenFlux/TokenRouter/internal/gateway/media/provider"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 
 	upstreamcore "github.com/TokenFlux/TokenRouter/internal/upstream"
@@ -26,12 +26,12 @@ import (
 
 // ForwardGrokVoice 转发官方 xAI Voice HTTP API，包括 TTS、STT 和自定义 Voice 子资源。
 // TTS 返回音频字节、STT 返回 JSON，且 xAI 可能附加格式专用响应头，因此响应保持透传。
-func (s *GrokExecutor) ForwardGrokVoice(ctx context.Context, c *gin.Context, account *gatewayprovider.ExecutionAccount, endpoint string, body []byte, contentType string) (*forwardcore.OpenAIResult, error) {
-	if s == nil || account == nil {
-		return nil, fmt.Errorf("grok voice service/account is required")
+func (s *GrokExecutor) ForwardGrokVoice(ctx context.Context, c *gin.Context, provider *gatewayprovider.ExecutionProvider, endpoint string, body []byte, contentType string) (*forwardcore.OpenAIResult, error) {
+	if s == nil || provider == nil {
+		return nil, fmt.Errorf("grok voice service/provider is required")
 	}
-	if account.Record.Platform != capability.PlatformGrok {
-		return nil, fmt.Errorf("account platform %s is not supported for grok voice", account.Record.Platform)
+	if provider.Record.Platform != capability.PlatformGrok {
+		return nil, fmt.Errorf("provider platform %s is not supported for grok voice", provider.Record.Platform)
 	}
 	var err error
 	endpoint, baseEndpoint, err := grok.ValidateVoiceEndpoint(endpoint)
@@ -39,11 +39,11 @@ func (s *GrokExecutor) ForwardGrokVoice(ctx context.Context, c *gin.Context, acc
 		return nil, err
 	}
 
-	token, _, err := s.Credentials.Resolve(ctx, RequestCredentialBudget(c), CredentialObserver{Context: c}, account)
+	token, _, err := s.Credentials.Resolve(ctx, RequestCredentialBudget(c), CredentialObserver{Context: c}, provider)
 	if err != nil {
 		return nil, err
 	}
-	targetURL, err := s.Routes.Voice(account, endpoint)
+	targetURL, err := s.Routes.Voice(provider, endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -55,34 +55,34 @@ func (s *GrokExecutor) ForwardGrokVoice(ctx context.Context, c *gin.Context, acc
 		method = c.Request.Method
 	}
 	req, err := grok.BuildVoiceRequest(upstreamCtx, method, targetURL, token, contentType, body, func(headers http.Header) {
-		if account.View().IsGrokOAuth() && isGrokCLIProxyTarget(targetURL) {
+		if provider.View().IsGrokOAuth() && isGrokCLIProxyTarget(targetURL) {
 			grok.ApplyCLIHeaders(headers)
 		}
-		accountprovider.ApplyAccountHeaderOverrides(gatewayprovider.ExecutionProtocolRecord(account), headers)
+		provideradapter.ApplyProviderHeaderOverrides(gatewayprovider.ExecutionProtocolRecord(provider), headers)
 	})
 	if err != nil {
 		return nil, err
 	}
 	proxyURL := ""
-	if account.Record.ProxyID != nil && account.Record.Proxy != nil {
-		proxyURL = account.Record.Proxy.URL()
+	if provider.Record.ProxyID != nil && provider.Record.Proxy != nil {
+		proxyURL = provider.Record.Proxy.URL()
 	}
 	var handledResult *forwardcore.OpenAIResult
 	handled := false
 	target := &mediaprovider.GrokVoiceOptions{
-		AccountID:    account.Record.ID,
+		ProviderID:   provider.Record.ID,
 		Endpoint:     endpoint,
 		BaseEndpoint: baseEndpoint,
 		ContentType:  contentType,
 		Request:      req,
 		Enter:        s.Enter,
 		Do: func(req *http.Request) (*http.Response, error) {
-			return s.Transport.Do(req, proxyURL, account.Record.ID, account.Record.Concurrency)
+			return s.Transport.Do(req, proxyURL, provider.Record.ID, provider.Record.Concurrency)
 		},
 		AfterExchange: func(elapsed time.Duration, err error) error {
 			SetOpsLatencyMs(c, OpsUpstreamLatencyMsKey, elapsed.Milliseconds())
 			if err != nil {
-				return s.Failure.Handle(ctx, c, account, err, false)
+				return s.Failure.Handle(ctx, c, provider, err, false)
 			}
 			return nil
 		},
@@ -92,7 +92,7 @@ func (s *GrokExecutor) ForwardGrokVoice(ctx context.Context, c *gin.Context, acc
 			}
 			handled = true
 			var err error
-			handledResult, err = s.handleGrokMediaErrorResponse(ctx, resp, c, account, resp.Header.Get("x-request-id"), endpoint)
+			handledResult, err = s.handleGrokMediaErrorResponse(ctx, resp, c, provider, resp.Header.Get("x-request-id"), endpoint)
 			return true, err
 		},
 		ReadBody: func(reader io.Reader) ([]byte, error) {
@@ -132,14 +132,14 @@ func (s *GrokExecutor) ForwardGrokVoice(ctx context.Context, c *gin.Context, acc
 
 // ProxyGrokRealtime 将 JSON Realtime 事件中继到 xAI 原生 Voice WebSocket。
 // 音频以 base64 包含在 JSON 事件中，保持原始 JSON 字节即可，无需转换协议事件类型。
-func (s *GrokExecutor) ProxyGrokRealtime(ctx context.Context, c *gin.Context, client *coderws.Conn, account *gatewayprovider.ExecutionAccount, token, model string) (bool, error) {
-	if s == nil || client == nil || account == nil {
-		return false, fmt.Errorf("realtime service, client, and account are required")
+func (s *GrokExecutor) ProxyGrokRealtime(ctx context.Context, c *gin.Context, client *coderws.Conn, provider *gatewayprovider.ExecutionProvider, token, model string) (bool, error) {
+	if s == nil || client == nil || provider == nil {
+		return false, fmt.Errorf("realtime service, client, and provider are required")
 	}
-	if account.Record.Platform != capability.PlatformGrok {
-		return false, fmt.Errorf("account platform %s is not supported for grok realtime", account.Record.Platform)
+	if provider.Record.Platform != capability.PlatformGrok {
+		return false, fmt.Errorf("provider platform %s is not supported for grok realtime", provider.Record.Platform)
 	}
-	upstream, err := s.OpenGrokRealtime(ctx, account, token, model)
+	upstream, err := s.OpenGrokRealtime(ctx, provider, token, model)
 	if err != nil {
 		return false, err
 	}
@@ -147,23 +147,23 @@ func (s *GrokExecutor) ProxyGrokRealtime(ctx context.Context, c *gin.Context, cl
 	return s.ProxyGrokRealtimeConn(ctx, c, client, upstream)
 }
 
-func (s *GrokExecutor) OpenGrokRealtime(ctx context.Context, account *gatewayprovider.ExecutionAccount, token, model string) (*grok.RealtimeSession, error) {
-	if s == nil || account == nil || account.Record.Platform != capability.PlatformGrok {
-		return nil, fmt.Errorf("grok realtime account is required")
+func (s *GrokExecutor) OpenGrokRealtime(ctx context.Context, provider *gatewayprovider.ExecutionProvider, token, model string) (*grok.RealtimeSession, error) {
+	if s == nil || provider == nil || provider.Record.Platform != capability.PlatformGrok {
+		return nil, fmt.Errorf("grok realtime provider is required")
 	}
-	base, err := s.Routes.Voice(account, "realtime")
+	base, err := s.Routes.Voice(provider, "realtime")
 	if err != nil {
 		return nil, err
 	}
-	return mediaprovider.DialRealtime(ctx, s.grokRealtimeOptions(account, base, token, model))
+	return mediaprovider.DialRealtime(ctx, s.grokRealtimeOptions(provider, base, token, model))
 }
 
-// HandleGrokRealtimeUpstreamError 为下游升级前失败的 WebSocket 握手应用共享 Grok 账号策略。
-func (s *GrokExecutor) HandleGrokRealtimeUpstreamError(ctx context.Context, account *gatewayprovider.ExecutionAccount, statusCode int, body []byte) {
+// HandleGrokRealtimeUpstreamError 为下游升级前失败的 WebSocket 握手应用共享 Grok 提供商策略。
+func (s *GrokExecutor) HandleGrokRealtimeUpstreamError(ctx context.Context, provider *gatewayprovider.ExecutionProvider, statusCode int, body []byte) {
 	if statusCode <= 0 {
 		statusCode = http.StatusBadGateway
 	}
-	_ = gatewayprovider.ApplyGrokExecutionHealth(ctx, s.Health, account, statusCode, nil, body, "")
+	_ = gatewayprovider.ApplyGrokExecutionHealth(ctx, s.Health, provider, statusCode, nil, body, "")
 }
 
 func (s *GrokExecutor) ProxyGrokRealtimeConn(ctx context.Context, c *gin.Context, client *coderws.Conn, upstream *grok.RealtimeSession) (bool, error) {
@@ -173,18 +173,18 @@ func (s *GrokExecutor) ProxyGrokRealtimeConn(ctx context.Context, c *gin.Context
 	return grok.RelayRealtime(ctx, grokClientFrames{client}, upstream)
 }
 
-func (s *GrokExecutor) ProbeGrokRealtime(ctx context.Context, account *gatewayprovider.ExecutionAccount, token, model string) error {
-	if s == nil || account == nil {
-		return fmt.Errorf("realtime service and account are required")
+func (s *GrokExecutor) ProbeGrokRealtime(ctx context.Context, provider *gatewayprovider.ExecutionProvider, token, model string) error {
+	if s == nil || provider == nil {
+		return fmt.Errorf("realtime service and provider are required")
 	}
-	if account.Record.Platform != capability.PlatformGrok {
-		return fmt.Errorf("account platform %s is not supported for grok realtime", account.Record.Platform)
+	if provider.Record.Platform != capability.PlatformGrok {
+		return fmt.Errorf("provider platform %s is not supported for grok realtime", provider.Record.Platform)
 	}
-	base, err := s.Routes.Voice(account, "realtime")
+	base, err := s.Routes.Voice(provider, "realtime")
 	if err != nil {
 		return err
 	}
-	return mediaprovider.ProbeRealtime(ctx, s.grokRealtimeOptions(account, base, token, model))
+	return mediaprovider.ProbeRealtime(ctx, s.grokRealtimeOptions(provider, base, token, model))
 }
 
 // HTTP/既有 WS SDK 只转换同步帧接口，升级与连接租约仍由原入口拥有。
@@ -194,6 +194,7 @@ func (c grokClientFrames) ReadFrame(ctx context.Context) (upstreamcore.FrameKind
 	kind, data, err := c.conn.Read(ctx)
 	return upstreamcore.FrameKind(kind), data, err
 }
+
 func (c grokClientFrames) WriteFrame(ctx context.Context, kind upstreamcore.FrameKind, data []byte) error {
 	return c.conn.Write(ctx, coderws.MessageType(kind), data)
 }
@@ -205,38 +206,39 @@ func (c grokUpstreamFrames) ReadFrame(ctx context.Context) (upstreamcore.FrameKi
 	data, err := c.conn.ReadMessage(ctx)
 	return upstreamcore.FrameText, data, err
 }
+
 func (c grokUpstreamFrames) WriteFrame(ctx context.Context, _ upstreamcore.FrameKind, data []byte) error {
 	return c.conn.WriteJSON(ctx, json.RawMessage(data))
 }
 func (c grokUpstreamFrames) Close() error { return c.conn.Close() }
 
 // 装配既有 WS dialer、代理和 TLS 快照，不更改共享客户端。
-func (s *GrokExecutor) grokRealtimeOptions(account *gatewayprovider.ExecutionAccount, base, token, model string) mediaprovider.RealtimeOptions {
+func (s *GrokExecutor) grokRealtimeOptions(provider *gatewayprovider.ExecutionProvider, base, token, model string) mediaprovider.RealtimeOptions {
 	proxyURL := ""
-	if account.Record.ProxyID != nil && account.Record.Proxy != nil {
-		proxyURL = account.Record.Proxy.URL()
+	if provider.Record.ProxyID != nil && provider.Record.Proxy != nil {
+		proxyURL = provider.Record.Proxy.URL()
 	}
 	options := mediaprovider.RealtimeOptions{
 		BaseURL:      base,
 		Token:        token,
 		Model:        model,
-		ApplyHeaders: gatewayprovider.BindExecutionHeaders(account),
+		ApplyHeaders: gatewayprovider.BindExecutionHeaders(provider),
 		Enter:        s.Enter,
 		Dial: func(ctx context.Context, target string, headers http.Header) (upstreamcore.FrameConn, int, error) {
-			conn, status, _, err := s.Dialer.Dial(ctx, target, headers, proxyURL, s.TLSProfile(account))
+			conn, status, _, err := s.Dialer.Dial(ctx, target, headers, proxyURL, s.TLSProfile(provider))
 			if conn == nil {
 				return nil, status, err
 			}
 			return grokUpstreamFrames{conn}, status, err
 		},
 	}
-	if account.View().IsGrokOAuth() {
+	if provider.View().IsGrokOAuth() {
 		options.CLIHeaders = grok.ApplyCLIHeaders
 	}
 	return options
 }
 
-// ProxyGrokRealtimeFrames 接收受控帧连接，供 media 持有关闭和账号槽所有权。
+// ProxyGrokRealtimeFrames 接收受控帧连接，供 media 持有关闭和提供商槽所有权。
 func (s *GrokExecutor) ProxyGrokRealtimeFrames(ctx context.Context, client *coderws.Conn, conn upstreamcore.FrameConn) (bool, error) {
 	if s == nil || client == nil || conn == nil {
 		return false, fmt.Errorf("realtime connection is required")

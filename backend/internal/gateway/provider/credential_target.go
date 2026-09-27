@@ -1,19 +1,19 @@
-// 凭据目标适配只投影母账号查询；影子资格规则由 account 唯一实现。
+// 凭据目标适配只投影母提供商查询；影子资格规则由 provider 唯一实现。
 package provider
 
 import (
 	"context"
 	"net/http"
 
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
-func CredentialAccount(ctx context.Context, repo ExecutionAccountReader, value *ExecutionAccount) (*ExecutionAccount, error) {
+func CredentialProvider(ctx context.Context, repo ExecutionProviderReader, value *ExecutionProvider) (*ExecutionProvider, error) {
 	input := ExecutionRecord(value)
-	var parent *ExecutionAccount
-	resolved, err := accountcore.ResolveCredentialRecord(ctx, func(ctx context.Context, id int64) (*accountcore.Record, error) {
+	var parent *ExecutionProvider
+	resolved, err := providercore.ResolveCredentialRecord(ctx, func(ctx context.Context, id int64) (*providercore.Record, error) {
 		var readErr error
 		parent, readErr = repo.GetByID(ctx, id)
 		return ExecutionRecord(parent), readErr
@@ -27,17 +27,17 @@ func CredentialAccount(ctx context.Context, repo ExecutionAccountReader, value *
 	return parent, nil
 }
 
-// ExecutionAccountReader 只开放此处所需的一次账号读取。
-type ExecutionAccountReader interface {
-	GetByID(context.Context, int64) (*ExecutionAccount, error)
+// ExecutionProviderReader 只开放此处所需的一次提供商读取。
+type ExecutionProviderReader interface {
+	GetByID(context.Context, int64) (*ExecutionProvider, error)
 }
 
-// CredentialChatGPTHeaders 保留先解析母账号、再应用请求头的原顺序。
-func CredentialChatGPTHeaders(ctx context.Context, reader ExecutionAccountReader, headers http.Header, value *ExecutionAccount) error {
-	resolved, err := CredentialAccount(ctx, reader, value)
+// CredentialChatGPTHeaders 保留先解析母提供商、再应用请求头的原顺序。
+func CredentialChatGPTHeaders(ctx context.Context, reader ExecutionProviderReader, headers http.Header, value *ExecutionProvider) error {
+	resolved, err := CredentialProvider(ctx, reader, value)
 	if err != nil {
 		return err
 	}
-	accountprovider.SetChatGPTAccountHeaders(headers, resolved.View())
+	provideradapter.SetChatGPTAccountHeaders(headers, resolved.View())
 	return nil
 }

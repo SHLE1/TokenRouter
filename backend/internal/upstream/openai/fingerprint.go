@@ -1,4 +1,4 @@
-// Codex 指纹收敛只操作每次尝试的 ID 状态，账号配置与种子读取由调用方投影。
+// Codex 指纹收敛只操作每次尝试的 ID 状态，提供商配置与种子读取由调用方投影。
 package openai
 
 import (
@@ -13,8 +13,8 @@ import (
 )
 
 // ResolveFingerprintIDs 在原取时和随机 ID 时点建立本次尝试的唯一状态。
-func ResolveFingerprintIDs(accountID int64, seed, clientSessionID, mode string, installation func(string) string, now func() time.Time, newTurnID func() string) *FingerprintIDs {
-	ids := &FingerprintIDs{AccountID: accountID, Mode: mode, TurnStartedAtUnixMs: now().UnixMilli()}
+func ResolveFingerprintIDs(providerID int64, seed, clientSessionID, mode string, installation func(string) string, now func() time.Time, newTurnID func() string) *FingerprintIDs {
+	ids := &FingerprintIDs{ProviderID: providerID, Mode: mode, TurnStartedAtUnixMs: now().UnixMilli()}
 	ids.InstallationID = installation(seed)
 	if ids.InstallationID == "" {
 		return nil
@@ -41,7 +41,7 @@ func ResolveFingerprintIDs(accountID int64, seed, clientSessionID, mode string, 
 	return nil
 }
 
-// ResolveConvergedSessionID 返回账号级恒定的 session_id。
+// ResolveConvergedSessionID 返回提供商级恒定的 session_id。
 func ResolveConvergedSessionID(seed string) string {
 	if seed == "" {
 		return ""
@@ -65,7 +65,7 @@ func ResolveConvergedThreadID(seed, clientSessionID string) string {
 // client_metadata.session_id，用于识别 root prompt_cache_key 的默认值。
 // 字段仅供同次尝试的适配投影，保持原私有状态不进入 JSON 的行为。
 type FingerprintIDs struct {
-	AccountID                     int64  `json:"-"`
+	ProviderID                    int64  `json:"-"`
 	Mode                          string `json:"-"`
 	InstallationID                string `json:"-"`
 	SessionID                     string `json:"-"`

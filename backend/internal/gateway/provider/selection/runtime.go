@@ -6,12 +6,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	schedulercore "github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
@@ -19,32 +19,32 @@ import (
 // Generic 只组合通用选择所需的读取、资格和资源；尝试切换与平台转发不属于本对象。
 type Generic struct {
 	options                 Options
-	accountRepo             Accounts
+	providerRepo            Providers
 	groupRepo               Groups
 	schedulerSnapshot       Snapshots
 	cache                   schedulercore.StickyCache
 	concurrencyService      *schedulercore.ConcurrencyService
-	healthObserver          *accountprovider.UpstreamHealth
+	healthObserver          *provideradapter.UpstreamHealth
 	groupPolicies           *routing.PricingConfigService
 	schedulerParameters     *schedulercore.Parameters
-	advancedAccountStats    *schedulercore.RuntimeStats
-	freeQuotaGate           *account.FreeQuotaGate
+	advancedProviderStats   *schedulercore.RuntimeStats
+	freeQuotaGate           *provider.FreeQuotaGate
 	window                  *billing.WindowCostGuard
 	windowPrefetchAvailable bool
 	rpmCache                schedulercore.RPMCache
 	sessionLimitCache       schedulercore.SessionLimitCache
-	setAccountError         func(context.Context, int64, string) error
+	setProviderError        func(context.Context, int64, string) error
 }
 
 // NewGeneric 绑定唯一状态拥有者，执行凭据只留在单次选择的适配作用域。
-// @project-doc docs/architecture/account_scheduling_and_cache.md#advanced_scheduler_selection
+// @project-doc docs/architecture/provider_scheduling_and_cache.md#advanced_scheduler_selection
 func NewGeneric(deps GenericDependencies, options Options) *Generic {
 	if deps.Window == nil {
 		deps.Window = defaultWindowCostGuard()
 	}
 	return &Generic{
 		options:           options,
-		accountRepo:       deps.Accounts,
+		providerRepo:      deps.Providers,
 		groupRepo:         deps.Groups,
 		schedulerSnapshot: deps.Snapshot,
 		cache:             deps.Cache,
@@ -54,14 +54,14 @@ func NewGeneric(deps GenericDependencies, options Options) *Generic {
 		groupPolicies:       deps.GroupPolicies,
 		schedulerParameters: deps.Parameters,
 
-		advancedAccountStats:    deps.Feedback,
+		advancedProviderStats:   deps.Feedback,
 		freeQuotaGate:           deps.FreeQuota,
 		window:                  deps.Window,
 		windowPrefetchAvailable: deps.WindowPrefetchAvailable,
 
 		rpmCache:          deps.RPM,
 		sessionLimitCache: deps.Sessions,
-		setAccountError:   deps.SetAccountError,
+		setProviderError:  deps.SetProviderError,
 	}
 }
 
@@ -70,20 +70,20 @@ type Compatible struct {
 	generic             *Generic
 	gemini              *Gemini
 	options             Options
-	accountRepo         Accounts
+	providerRepo        Providers
 	schedulerSnapshot   Snapshots
 	schedulingGroups    func(context.Context, int64) (*routing.Group, error)
 	cache               schedulercore.StickyCache
 	concurrencyService  *schedulercore.ConcurrencyService
-	healthObserver      *accountprovider.UpstreamHealth
+	healthObserver      *provideradapter.UpstreamHealth
 	groupPolicies       *routing.PricingConfigService
 	schedulerParameters *schedulercore.Parameters
-	openaiAccountStats  *schedulercore.RuntimeStats
-	quotaSettings       *account.QuotaSettingsCache
-	freeQuotaGate       *account.FreeQuotaGate
-	newFreeQuotaGate    func() *account.FreeQuotaGate
-	runtime             *account.RuntimeBlockState
-	modelTransient      *account.ModelTransientState
+	openaiProviderStats *schedulercore.RuntimeStats
+	quotaSettings       *provider.QuotaSettingsCache
+	freeQuotaGate       *provider.FreeQuotaGate
+	newFreeQuotaGate    func() *provider.FreeQuotaGate
+	runtime             *provider.RuntimeBlockState
+	modelTransient      *provider.ModelTransientState
 	proxyCircuit        *egress.ProxyStreamCircuit
 	proxyFailOpenLogAt  atomic.Int64
 	responseState       session.OpenAIWSStateStore
@@ -94,10 +94,10 @@ type Compatible struct {
 
 func NewCompatible(deps CompatibleDependencies, options Options) *Compatible {
 	if deps.RuntimeBlocks == nil {
-		deps.RuntimeBlocks = account.NewRuntimeBlockState(time.Now)
+		deps.RuntimeBlocks = provider.NewRuntimeBlockState(time.Now)
 	}
 	if deps.ModelTransient == nil {
-		deps.ModelTransient = account.NewModelTransientState(0)
+		deps.ModelTransient = provider.NewModelTransientState(0)
 	}
 	if deps.ProxyCircuit == nil {
 		deps.ProxyCircuit = egress.NewProxyStreamCircuit(egress.DefaultProxyStreamCircuitSettings())
@@ -112,7 +112,7 @@ func NewCompatible(deps CompatibleDependencies, options Options) *Compatible {
 	return &Compatible{
 		generic: deps.Generic, gemini: deps.Gemini,
 		options:           options,
-		accountRepo:       deps.Accounts,
+		providerRepo:      deps.Providers,
 		schedulerSnapshot: deps.Snapshot,
 		schedulingGroups:  groups,
 		cache:             deps.Cache,
@@ -122,10 +122,10 @@ func NewCompatible(deps CompatibleDependencies, options Options) *Compatible {
 		groupPolicies:       deps.GroupPolicies,
 		schedulerParameters: deps.Parameters,
 
-		openaiAccountStats: deps.Feedback,
-		quotaSettings:      deps.QuotaSettings,
-		freeQuotaGate:      deps.FreeQuota,
-		newFreeQuotaGate:   deps.NewAdvancedFreeQuota,
+		openaiProviderStats: deps.Feedback,
+		quotaSettings:       deps.QuotaSettings,
+		freeQuotaGate:       deps.FreeQuota,
+		newFreeQuotaGate:    deps.NewAdvancedFreeQuota,
 
 		runtime:        deps.RuntimeBlocks,
 		modelTransient: deps.ModelTransient,
@@ -137,36 +137,36 @@ func NewCompatible(deps CompatibleDependencies, options Options) *Compatible {
 
 // Gemini 仅持有 Gemini/混合池的无槽选择依赖，凭据和报文执行留在各自拥有者。
 type Gemini struct {
-	options              Options
-	accountRepo          Accounts
-	groupRepo            Groups
-	schedulerSnapshot    Snapshots
-	cache                schedulercore.StickyCache
-	schedulerParameters  *schedulercore.Parameters
-	advancedAccountStats *schedulercore.RuntimeStats
-	quotaPrecheck        *account.GeminiPrecheck
+	options               Options
+	providerRepo          Providers
+	groupRepo             Groups
+	schedulerSnapshot     Snapshots
+	cache                 schedulercore.StickyCache
+	schedulerParameters   *schedulercore.Parameters
+	advancedProviderStats *schedulercore.RuntimeStats
+	quotaPrecheck         *provider.GeminiPrecheck
 }
 
 func NewGemini(deps GeminiDependencies, options Options) *Gemini {
 	return &Gemini{
 		options:           options,
-		accountRepo:       deps.Accounts,
+		providerRepo:      deps.Providers,
 		groupRepo:         deps.Groups,
 		schedulerSnapshot: deps.Snapshot,
 		cache:             deps.Cache,
 
-		schedulerParameters:  deps.Parameters,
-		advancedAccountStats: deps.Feedback,
-		quotaPrecheck:        deps.QuotaPrecheck,
+		schedulerParameters:   deps.Parameters,
+		advancedProviderStats: deps.Feedback,
+		quotaPrecheck:         deps.QuotaPrecheck,
 	}
 }
 
 // DiagnosticSource 只允许原诊断读取；安全 DTO 仍由 scheduler 核心产生。
 type DiagnosticSource interface {
-	GetAccount(context.Context, int64) (*provider.ExecutionAccount, error)
+	GetProvider(context.Context, int64) (*gatewayadapter.ExecutionProvider, error)
 	GetGroup(context.Context, int64) (*routing.Group, error)
-	ListAccountsForSchedulerScoreFilter(context.Context, string, string, string, string, int64, string) ([]provider.ExecutionAccount, error)
-	ListSchedulableAccountsForAdvancedSchedulerScore(context.Context, *int64, string) ([]provider.ExecutionAccount, error)
+	ListProvidersForSchedulerScoreFilter(context.Context, string, string, string, string, int64, string) ([]gatewayadapter.ExecutionProvider, error)
+	ListSchedulableProvidersForAdvancedSchedulerScore(context.Context, *int64, string) ([]gatewayadapter.ExecutionProvider, error)
 }
 
 // Diagnostics 与真实选择共用参数、反馈和资格实例，不抢槽或写入粘性。

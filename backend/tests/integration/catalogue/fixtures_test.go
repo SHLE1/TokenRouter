@@ -6,11 +6,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/modelidentity"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	routingprovider "github.com/TokenFlux/TokenRouter/internal/routing/provider"
 )
@@ -19,18 +19,18 @@ const modelRateLimitsKey = "model_rate_limits"
 
 // catalogueRows 只提供原两种目录查询，保留计数及失败顺序断言。
 type catalogueRows interface {
-	ListSchedulable(context.Context) ([]account.Record, error)
-	ListSchedulableByGroupID(context.Context, int64) ([]account.Record, error)
+	ListSchedulable(context.Context) ([]provider.Record, error)
+	ListSchedulableByGroupID(context.Context, int64) ([]provider.Record, error)
 }
-type modelsListAccountRepoStub struct {
-	byGroup          map[int64][]account.Record
-	all              []account.Record
+type modelsListProviderRepoStub struct {
+	byGroup          map[int64][]provider.Record
+	all              []provider.Record
 	err              error
 	listByGroupCalls atomic.Int64
 	listAllCalls     atomic.Int64
 }
 
-func (s *modelsListAccountRepoStub) ListSchedulableByGroupID(_ context.Context, id int64) ([]account.Record, error) {
+func (s *modelsListProviderRepoStub) ListSchedulableByGroupID(_ context.Context, id int64) ([]provider.Record, error) {
 	s.listByGroupCalls.Add(1)
 	if s.err != nil {
 		return nil, s.err
@@ -39,17 +39,17 @@ func (s *modelsListAccountRepoStub) ListSchedulableByGroupID(_ context.Context, 
 	if !ok {
 		return nil, nil
 	}
-	out := make([]account.Record, len(values))
+	out := make([]provider.Record, len(values))
 	copy(out, values)
 	return out, nil
 }
 
-func (s *modelsListAccountRepoStub) ListSchedulable(context.Context) ([]account.Record, error) {
+func (s *modelsListProviderRepoStub) ListSchedulable(context.Context) ([]provider.Record, error) {
 	s.listAllCalls.Add(1)
 	if s.err != nil {
 		return nil, s.err
 	}
-	out := make([]account.Record, len(s.all))
+	out := make([]provider.Record, len(s.all))
 	copy(out, s.all)
 	return out, nil
 }
@@ -61,10 +61,10 @@ type catalogueFixture struct {
 
 // newCatalogueFixture 构造原无缓存手工装配，读取和资格均使用原生实现。
 func newCatalogueFixture(rows catalogueRows, pricingConfigs *routing.PricingConfigService, prices *billing.PriceResolver) *catalogueFixture {
-	var read func(context.Context, *int64) ([]routing.CatalogueAccount, error)
+	var read func(context.Context, *int64) ([]routing.CatalogueProvider, error)
 	if rows != nil {
-		read = func(ctx context.Context, id *int64) ([]routing.CatalogueAccount, error) {
-			var values []account.Record
+		read = func(ctx context.Context, id *int64) ([]routing.CatalogueProvider, error) {
+			var values []provider.Record
 			var err error
 			if id != nil {
 				values, err = rows.ListSchedulableByGroupID(ctx, *id)
@@ -78,16 +78,16 @@ func newCatalogueFixture(rows catalogueRows, pricingConfigs *routing.PricingConf
 			for index := range values {
 				if values[index].Type == "" {
 					switch values[index].Platform {
-					case account.PlatformQoder:
-						values[index].Type = account.AccountTypeCosy
-					case account.PlatformAntigravity:
-						values[index].Type = account.AccountTypeOAuth
+					case provider.PlatformQoder:
+						values[index].Type = provider.ProviderTypeCosy
+					case provider.PlatformAntigravity:
+						values[index].Type = provider.ProviderTypeOAuth
 					default:
-						values[index].Type = account.AccountTypeAPIKey
+						values[index].Type = provider.ProviderTypeAPIKey
 					}
 				}
 			}
-			return gatewayprovider.CatalogueAccounts(values), nil
+			return gatewayprovider.CatalogueProviders(values), nil
 		}
 	}
 	var pricingConfigPort routing.CataloguePolicies
@@ -98,22 +98,22 @@ func newCatalogueFixture(rows catalogueRows, pricingConfigs *routing.PricingConf
 	return &catalogueFixture{RequestableCatalogue: core, prices: prices}
 }
 
-type accountStatsSource struct{ pricingConfigs *routing.PricingConfigService }
+type providerStatsSource struct{ pricingConfigs *routing.PricingConfigService }
 
-func (s accountStatsSource) AccountStatsGroup(ctx context.Context, id int64) (*billing.AccountStatsPricingConfig, error) {
+func (s providerStatsSource) ProviderStatsGroup(ctx context.Context, id int64) (*billing.ProviderStatsPricingConfig, error) {
 	v, e := s.pricingConfigs.GetPricingConfigForGroup(ctx, id)
 	if e != nil || v == nil {
 		return nil, e
 	}
-	return &billing.AccountStatsPricingConfig{Rules: v.AccountStatsPricingRules}, nil
+	return &billing.ProviderStatsPricingConfig{Rules: v.ProviderStatsPricingRules}, nil
 }
 
 func cataloguePriceResolver(pricingConfigs *routing.PricingConfigService, calculator *billing.Calculator) *billing.PriceResolver {
 	var source billing.ConfigPrices
-	var stats billing.AccountStatsSource
+	var stats billing.ProviderStatsSource
 	if pricingConfigs != nil {
 		source = pricingConfigs
-		stats = accountStatsSource{pricingConfigs}
+		stats = providerStatsSource{pricingConfigs}
 	}
 	return billing.NewPriceResolver(source, calculator, modelidentity.Identity, func(model string, err error) {
 		slog.Debug("failed to get model pricing from LiteLLM, using fallback", "model", model, "error", err)

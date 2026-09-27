@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
@@ -15,6 +14,7 @@ import (
 	gatewaycapture "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/server/clientip"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/grok"
@@ -46,25 +46,25 @@ func (h *Runtime) resolveCompositeGrokVideoAPIKey(
 	} else {
 		selected.Group = &routing.Group{ID: owner.GroupID, Status: billing.StatusActive, Hydrated: true}
 	}
-	return &selected, owner.AccountID, nil
+	return &selected, owner.ProviderID, nil
 }
 
 // grokMediaRequiredCapability 仅限制新的媒体生成请求，状态查询必须保持可路由。
-func grokMediaRequiredCapability(endpoint grok.GrokMediaEndpoint) accountcore.OpenAIEndpointCapability {
+func grokMediaRequiredCapability(endpoint grok.GrokMediaEndpoint) providercore.OpenAIEndpointCapability {
 	if endpoint.IsGenerationRequest() {
-		return accountcore.OpenAIEndpointCapabilityGrokMediaGeneration
+		return providercore.OpenAIEndpointCapabilityGrokMediaGeneration
 	}
 	return ""
 }
 
-func grokMediaScheduleModel(account *gatewaycapture.ExecutionAccount, routingModel string, result *forwardcore.OpenAIResult) string {
+func grokMediaScheduleModel(provider *gatewaycapture.ExecutionProvider, routingModel string, result *forwardcore.OpenAIResult) string {
 	if result != nil && strings.TrimSpace(result.UpstreamModel) != "" {
 		return result.UpstreamModel
 	}
-	if account == nil {
+	if provider == nil {
 		return strings.TrimSpace(routingModel)
 	}
-	return gatewaycapture.ExecutionModelPolicy(account).Mapped(routingModel)
+	return gatewaycapture.ExecutionModelPolicy(provider).Mapped(routingModel)
 }
 
 func isGrokVideoCreateEndpoint(endpoint grok.GrokMediaEndpoint) bool {
@@ -122,7 +122,7 @@ func recordGrokMediaUsage(
 	apiKey *apikey.APIKey,
 	subject authctx.AuthSubject,
 	subscription *billing.UserSubscription,
-	account *gatewaycapture.ExecutionAccount,
+	provider *gatewaycapture.ExecutionProvider,
 	result *forwardcore.OpenAIResult,
 	requestModel string,
 	groupMapping routing.GroupMappingResult,
@@ -141,7 +141,7 @@ func recordGrokMediaUsage(
 		payloadForHash = []byte(requestID)
 	}
 	inboundEndpoint := gatewayhttp.GetInboundEndpoint(c)
-	upstreamEndpoint := gatewayhttp.GetUpstreamEndpoint(c, account.Record.Platform)
+	upstreamEndpoint := gatewayhttp.GetUpstreamEndpoint(c, provider.Record.Platform)
 
 	pricingUsageFields := gatewayhttp.ClientRequestedUsageFields(c, groupMapping, requestModel, result.UpstreamModel)
 	videoTaskID := ""
@@ -159,7 +159,7 @@ func recordGrokMediaUsage(
 		Result:             result,
 		APIKey:             apiKey,
 		User:               apiKey.User,
-		Account:            gatewaycapture.ExecutionCompletionRecord(account),
+		Provider:           gatewaycapture.ExecutionCompletionRecord(provider),
 		Subscription:       subscription,
 		InboundEndpoint:    inboundEndpoint,
 		UpstreamEndpoint:   upstreamEndpoint,
@@ -178,7 +178,7 @@ func recordGrokMediaUsage(
 		zap.Int64("api_key_id", apiKey.ID),
 		zap.Any("group_id", apiKey.GroupID),
 		zap.String("model", requestModel),
-		zap.Int64("account_id", account.Record.ID),
+		zap.Int64("provider_id", provider.Record.ID),
 	)
 	videoTasks := h.bindings.VideoTasks()
 	actorID, keyID := subject.UserID, apiKey.ID
@@ -204,11 +204,11 @@ type grokVideoObserver struct{ log *zap.Logger }
 func (o grokVideoObserver) ObserveVideo(n gatewaymedia.VideoNotice) {
 	switch n.Kind {
 	case "bind_failed":
-		o.log.Warn("grok_media.bind_video_request_account_failed", zap.Int64("account_id", n.AccountID), zap.String("request_id", n.TaskID), zap.Error(n.Err))
+		o.log.Warn("grok_media.bind_video_request_provider_failed", zap.Int64("provider_id", n.ProviderID), zap.String("request_id", n.TaskID), zap.Error(n.Err))
 	case "store_retry":
-		o.log.Warn("grok_media.store_video_pending_billing_failed_retrying", zap.Int64("account_id", n.AccountID), zap.String("request_id", n.TaskID), zap.Error(n.Err))
+		o.log.Warn("grok_media.store_video_pending_billing_failed_retrying", zap.Int64("provider_id", n.ProviderID), zap.String("request_id", n.TaskID), zap.Error(n.Err))
 	case "store_failed":
-		o.log.Error("grok_media.store_video_pending_billing_failed", zap.Int64("account_id", n.AccountID), zap.String("request_id", n.TaskID), zap.Error(n.Err))
+		o.log.Error("grok_media.store_video_pending_billing_failed", zap.Int64("provider_id", n.ProviderID), zap.String("request_id", n.TaskID), zap.Error(n.Err))
 	case "load_failed":
 		o.log.Warn("grok_media.video_pending_billing_load_failed", zap.String("request_id", n.TaskID), zap.Error(n.Err))
 	case "missing_pending":

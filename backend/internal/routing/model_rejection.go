@@ -5,14 +5,14 @@ import (
 	"strings"
 )
 
-// ModelRejectionRules 只读取候选资格与显式模型规则，不读取账号凭据或存储。
+// ModelRejectionRules 只读取候选资格与显式模型规则，不读取提供商凭据或存储。
 type ModelRejectionRules interface {
 	IsSchedulable() bool
 	GetConfiguredRequestModels() []string
 	IsModelSupported(string) bool
 }
 
-// ModelRejectionSource 保留逐账号懒读取，默认目录由平台适配器提供。
+// ModelRejectionSource 保留逐提供商懒读取，默认目录由平台适配器提供。
 type ModelRejectionSource struct {
 	Platform string
 	Rules    ModelRejectionRules
@@ -20,11 +20,11 @@ type ModelRejectionSource struct {
 }
 
 // AvailableModelsForRejection 只生成原错误展示目录，不扩展可调度能力。
-func AvailableModelsForRejection(accounts []ModelRejectionSource, platform string) []string {
+func AvailableModelsForRejection(providers []ModelRejectionSource, platform string) []string {
 	modelSet := make(map[string]struct{})
 	hasConfiguredModels := false
-	for i := range accounts {
-		value := &accounts[i]
+	for i := range providers {
+		value := &providers[i]
 		if !value.Rules.IsSchedulable() || !matchesRejectionPlatform(value, platform) {
 			continue
 		}
@@ -67,10 +67,10 @@ func matchesRejectionPlatform(value *ModelRejectionSource, platform string) bool
 }
 
 // NewGroupModelRejection 保留空请求或空候选时不新增错误的原边界。
-func NewGroupModelRejection(platform, requested string, accounts []ModelRejectionSource) error {
+func NewGroupModelRejection(platform, requested string, providers []ModelRejectionSource) error {
 	requested = strings.TrimSpace(requested)
-	if requested == "" || len(accounts) == 0 {
+	if requested == "" || len(providers) == 0 {
 		return nil
 	}
-	return &GroupModelUnsupportedError{Platform: platform, RequestedModel: requested, AvailableModels: AvailableModelsForRejection(accounts, platform)}
+	return &GroupModelUnsupportedError{Platform: platform, RequestedModel: requested, AvailableModels: AvailableModelsForRejection(providers, platform)}
 }

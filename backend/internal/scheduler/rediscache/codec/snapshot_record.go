@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
 
 // recordSnapshot 的凭据仅能由 Adapter 解包；调度核心接口只暴露重建元数据。
-type recordSnapshot struct{ value *account.Record }
+type recordSnapshot struct{ value *provider.Record }
 
 func (s recordSnapshot) SnapshotMetadata() scheduler.SnapshotMetadata {
 	return scheduler.SnapshotMetadata{
@@ -18,15 +18,15 @@ func (s recordSnapshot) SnapshotMetadata() scheduler.SnapshotMetadata {
 	}
 }
 
-func WrapRecord(value *account.Record) scheduler.SnapshotAccount {
+func WrapRecord(value *provider.Record) scheduler.SnapshotProvider {
 	if value == nil {
 		return nil
 	}
 	return recordSnapshot{value: value}
 }
 
-// RecordValue 仅供受控账号读取和缓存编码使用，不向评分核心输出凭据。
-func RecordValue(value scheduler.SnapshotAccount) (*account.Record, error) {
+// RecordValue 仅供受控提供商读取和缓存编码使用，不向评分核心输出凭据。
+func RecordValue(value scheduler.SnapshotProvider) (*provider.Record, error) {
 	if value == nil {
 		return nil, nil
 	}

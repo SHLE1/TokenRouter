@@ -12,9 +12,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-const gatewayStreamHeartbeatBytesKey = "gateway_stream_heartbeat_bytes"
-const maxConcurrencyWait = 30 * time.Second
-const DefaultPingInterval = 10 * time.Second
+const (
+	gatewayStreamHeartbeatBytesKey = "gateway_stream_heartbeat_bytes"
+	maxConcurrencyWait             = 30 * time.Second
+	DefaultPingInterval            = 10 * time.Second
+)
 
 func RecordStreamHeartbeat(c *gin.Context, written int) {
 	if c == nil || written <= 0 {
@@ -84,13 +86,13 @@ func NewConcurrencyHelper(concurrencyService *scheduler.ConcurrencyService, ping
 	}
 }
 
-// EnterUserWait 和 EnterAccountWait 仅转接有所有权的等待结果。
+// EnterUserWait 和 EnterProviderWait 仅转接有所有权的等待结果。
 func (h *ConcurrencyHelper) EnterUserWait(ctx context.Context, id int64, limit int) (scheduler.WaitResult, error) {
 	return h.concurrencyService.EnterUserWait(ctx, id, limit)
 }
 
-func (h *ConcurrencyHelper) EnterAccountWait(ctx context.Context, id int64, limit int) (scheduler.WaitResult, error) {
-	return h.concurrencyService.EnterAccountWait(ctx, id, limit)
+func (h *ConcurrencyHelper) EnterProviderWait(ctx context.Context, id int64, limit int) (scheduler.WaitResult, error) {
+	return h.concurrencyService.EnterProviderWait(ctx, id, limit)
 }
 
 // TryAcquireUserSlot 尝试立即获取用户并发槽位。
@@ -115,7 +117,7 @@ func (h *ConcurrencyHelper) TryAcquireUserSlotForAPIKey(ctx context.Context, use
 	return h.withAPIKeySlot(ctx, apiKeyID, releaseFunc), true, nil
 }
 
-// AcquireOpenAIWSIngressLease 独立于单轮用户和账号槽位，限制整个客户端 WebSocket 生命周期。
+// AcquireOpenAIWSIngressLease 独立于单轮用户和提供商槽位，限制整个客户端 WebSocket 生命周期。
 func (h *ConcurrencyHelper) AcquireOpenAIWSIngressLease(ctx context.Context, apiKeyID int64, maxConnections int) (*scheduler.OpenAIWSIngressLease, bool, error) {
 	if h == nil || h.concurrencyService == nil {
 		return nil, false, fmt.Errorf("concurrency service is unavailable")
@@ -123,10 +125,10 @@ func (h *ConcurrencyHelper) AcquireOpenAIWSIngressLease(ctx context.Context, api
 	return h.concurrencyService.AcquireOpenAIWSIngressLease(ctx, apiKeyID, maxConnections)
 }
 
-// TryAcquireAccountSlot 尝试立即获取账号并发槽位。
+// TryAcquireProviderSlot 尝试立即获取提供商并发槽位。
 // 返回值: (releaseFunc, acquired, error)
-func (h *ConcurrencyHelper) TryAcquireAccountSlot(ctx context.Context, accountID int64, maxConcurrency int) (func(), bool, error) {
-	result, err := h.concurrencyService.AcquireAccountSlot(ctx, accountID, maxConcurrency)
+func (h *ConcurrencyHelper) TryAcquireProviderSlot(ctx context.Context, providerID int64, maxConcurrency int) (func(), bool, error) {
+	result, err := h.concurrencyService.AcquireProviderSlot(ctx, providerID, maxConcurrency)
 	if err != nil {
 		return nil, false, err
 	}
@@ -170,14 +172,14 @@ func (h *ConcurrencyHelper) withAPIKeySlot(ctx context.Context, apiKeyID int64, 
 	}
 }
 
-// AcquireAccountSlotWithWait acquires an account concurrency slot, waiting if necessary.
+// AcquireProviderSlotWithWait acquires an provider concurrency slot, waiting if necessary.
 // For streaming requests, sends ping events during the wait.
 // streamStarted is updated if streaming response has begun.
-func (h *ConcurrencyHelper) AcquireAccountSlotWithWait(c *gin.Context, accountID int64, maxConcurrency int, isStream bool, streamStarted *bool) (func(), error) {
+func (h *ConcurrencyHelper) AcquireProviderSlotWithWait(c *gin.Context, providerID int64, maxConcurrency int, isStream bool, streamStarted *bool) (func(), error) {
 	ctx := c.Request.Context()
 
 	// Try to acquire immediately
-	releaseFunc, acquired, err := h.TryAcquireAccountSlot(ctx, accountID, maxConcurrency)
+	releaseFunc, acquired, err := h.TryAcquireProviderSlot(ctx, providerID, maxConcurrency)
 	if err != nil {
 		return nil, err
 	}
@@ -187,7 +189,7 @@ func (h *ConcurrencyHelper) AcquireAccountSlotWithWait(c *gin.Context, accountID
 	}
 
 	// Need to wait - handle streaming ping if needed
-	return h.waitForSlotWithPing(c, "account", accountID, maxConcurrency, isStream, streamStarted)
+	return h.waitForSlotWithPing(c, "provider", providerID, maxConcurrency, isStream, streamStarted)
 }
 
 // waitForSlotWithPing waits for a concurrency slot, sending ping events for streaming requests.
@@ -202,9 +204,9 @@ func (h *ConcurrencyHelper) WaitForSlotWithPingTimeout(c *gin.Context, slotType 
 		WaitObserver(c, h.pingFormat, h.pingInterval, isStream, streamStarted, true))
 }
 
-// AcquireAccountSlotWithWaitTimeout acquires an account slot with a custom timeout (keeps SSE ping).
-func (h *ConcurrencyHelper) AcquireAccountSlotWithWaitTimeout(c *gin.Context, accountID int64, maxConcurrency int, timeout time.Duration, isStream bool, streamStarted *bool) (func(), error) {
-	return h.WaitForSlotWithPingTimeout(c, "account", accountID, maxConcurrency, timeout, isStream, streamStarted, true)
+// AcquireProviderSlotWithWaitTimeout acquires an provider slot with a custom timeout (keeps SSE ping).
+func (h *ConcurrencyHelper) AcquireProviderSlotWithWaitTimeout(c *gin.Context, providerID int64, maxConcurrency int, timeout time.Duration, isStream bool, streamStarted *bool) (func(), error) {
+	return h.WaitForSlotWithPingTimeout(c, "provider", providerID, maxConcurrency, timeout, isStream, streamStarted, true)
 }
 
 // WaitObserver 只负责原有 HTTP 心跳和首次输出标记；串行队列保留无 Flusher 时不输出的降级。

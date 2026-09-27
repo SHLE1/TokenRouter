@@ -62,8 +62,8 @@ func GenerateGeminiPrefixHash(userID, apiKeyID int64, ip, userAgent, platform, m
 }
 
 // ParseGeminiSessionValue 解析 Gemini 会话缓存值
-// 格式: {uuid}:{accountID}
-func ParseGeminiSessionValue(value string) (uuid string, accountID int64, ok bool) {
+// 格式: {uuid}:{providerID}
+func ParseGeminiSessionValue(value string) (uuid string, providerID int64, ok bool) {
 	if value == "" {
 		return "", 0, false
 	}
@@ -75,18 +75,18 @@ func ParseGeminiSessionValue(value string) (uuid string, accountID int64, ok boo
 	}
 
 	uuid = value[:i]
-	accountID, err := strconv.ParseInt(value[i+1:], 10, 64)
+	providerID, err := strconv.ParseInt(value[i+1:], 10, 64)
 	if err != nil {
 		return "", 0, false
 	}
 
-	return uuid, accountID, true
+	return uuid, providerID, true
 }
 
 // FormatGeminiSessionValue 格式化 Gemini 会话缓存值
-// 格式: {uuid}:{accountID}
-func FormatGeminiSessionValue(uuid string, accountID int64) string {
-	return uuid + ":" + strconv.FormatInt(accountID, 10)
+// 格式: {uuid}:{providerID}
+func FormatGeminiSessionValue(uuid string, providerID int64) string {
+	return uuid + ":" + strconv.FormatInt(providerID, 10)
 }
 
 // geminiDigestSessionKeyPrefix Gemini 摘要 fallback 会话 key 前缀
@@ -94,7 +94,7 @@ const geminiDigestSessionKeyPrefix = "gemini:digest:"
 
 // GenerateGeminiDigestSessionKey 生成 Gemini 摘要 fallback 的 sessionKey
 // 组合 prefixHash 前 8 位 + uuid 前 8 位，确保不同会话产生不同的 sessionKey
-// 用于在 SelectAccountWithLoadAwareness 中保持粘性会话
+// 用于在 SelectProviderWithLoadAwareness 中保持粘性会话
 func GenerateGeminiDigestSessionKey(prefixHash, uuid string) string {
 	prefix := prefixHash
 	if len(prefixHash) >= 8 {

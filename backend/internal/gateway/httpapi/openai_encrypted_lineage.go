@@ -75,7 +75,7 @@ func (s *OpenAIEncryptedLineage) MarkPayload(
 	c *gin.Context,
 	payload []byte,
 	logKey string,
-	accountID int64,
+	providerID int64,
 	turn int,
 ) {
 	digests := openai.CollectOpenAIEncryptedContentDigestsRaw(payload)
@@ -87,7 +87,7 @@ func (s *OpenAIEncryptedLineage) MarkPayload(
 		s.SessionHash(c, payload),
 		digests,
 	)
-	gatewayprovider.LogOpenAIWSModeInfo("%s account_id=%d turn=%d digests=%d", logKey, accountID, turn, len(digests))
+	gatewayprovider.LogOpenAIWSModeInfo("%s provider_id=%d turn=%d digests=%d", logKey, providerID, turn, len(digests))
 }
 
 // Strip 对 payload 执行会话失效密文剥离并
@@ -97,24 +97,24 @@ func (s *OpenAIEncryptedLineage) Strip(
 	payload []byte,
 	invalid map[string]struct{},
 	logKey string,
-	accountID int64,
+	providerID int64,
 	turn int,
 ) ([]byte, int) {
 	strippedPayload, strippedCount, stripErr := openai.StripOpenAIInvalidEncryptedContentRaw(payload, invalid)
 	if stripErr != nil {
 		gatewayprovider.LogOpenAIWSModeInfo(
-			"%s_skip account_id=%d turn=%d reason=strip_error cause=%s",
+			"%s_skip provider_id=%d turn=%d reason=strip_error cause=%s",
 			logKey,
-			accountID,
+			providerID,
 			turn, gatewayprovider.TruncateOpenAIWSLogValue(stripErr.Error(), gatewayprovider.OpenAIWSLogValueMaxLen),
 		)
 		return payload, 0
 	}
 	if strippedCount > 0 {
 		gatewayprovider.LogOpenAIWSModeInfo(
-			"%s account_id=%d turn=%d stripped_items=%d",
+			"%s provider_id=%d turn=%d stripped_items=%d",
 			logKey,
-			accountID,
+			providerID,
 			turn,
 			strippedCount,
 		)

@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/protocol/wirejson"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/stretchr/testify/require"
 )
 
@@ -91,7 +91,7 @@ func TestOpenAIResponsesInputTextIsNeverSilentlyTruncated(t *testing.T) {
 
 	encoded, err := wirejson.Marshal(reqBody)
 	require.NoError(t, err)
-	preserved, changed, err := NormalizeOpenAIResponsesWebSocketCompatibilityBody(encoded, &accountcore.Record{Platform: accountcore.PlatformOpenAI, Type: accountcore.AccountTypeAPIKey}, false)
+	preserved, changed, err := NormalizeOpenAIResponsesWebSocketCompatibilityBody(encoded, &providercore.Record{Platform: providercore.PlatformOpenAI, Type: providercore.ProviderTypeAPIKey}, false)
 	require.NoError(t, err)
 	require.False(t, changed)
 	var decoded map[string]any
@@ -126,19 +126,19 @@ func TestOpenAIResponsesInputNeverRequestsPreemptiveTruncation(t *testing.T) {
 	largeOutput := []byte(`{"input":[{"type":"function_call_output","output":"` + strings.Repeat("x", openAIResponsesInputTextMaxChars+1) + `"}]}`)
 
 	{
-		preserved, changed, err := NormalizeOpenAIResponsesWebSocketCompatibilityBody(short, &accountcore.Record{Platform: accountcore.PlatformOpenAI, Type: accountcore.AccountTypeAPIKey}, false)
+		preserved, changed, err := NormalizeOpenAIResponsesWebSocketCompatibilityBody(short, &providercore.Record{Platform: providercore.PlatformOpenAI, Type: providercore.ProviderTypeAPIKey}, false)
 		require.NoError(t, err)
 		require.False(t, changed)
 		require.Equal(t, short, preserved)
 	}
 	{
-		preserved, changed, err := NormalizeOpenAIResponsesWebSocketCompatibilityBody(largeUnrelated, &accountcore.Record{Platform: accountcore.PlatformOpenAI, Type: accountcore.AccountTypeAPIKey}, false)
+		preserved, changed, err := NormalizeOpenAIResponsesWebSocketCompatibilityBody(largeUnrelated, &providercore.Record{Platform: providercore.PlatformOpenAI, Type: providercore.ProviderTypeAPIKey}, false)
 		require.NoError(t, err)
 		require.False(t, changed)
 		require.Equal(t, largeUnrelated, preserved)
 	}
 	{
-		preserved, changed, err := NormalizeOpenAIResponsesWebSocketCompatibilityBody(largeOutput, &accountcore.Record{Platform: accountcore.PlatformOpenAI, Type: accountcore.AccountTypeAPIKey}, false)
+		preserved, changed, err := NormalizeOpenAIResponsesWebSocketCompatibilityBody(largeOutput, &providercore.Record{Platform: providercore.PlatformOpenAI, Type: providercore.ProviderTypeAPIKey}, false)
 		require.NoError(t, err)
 		require.False(t, changed)
 		require.Equal(t, largeOutput, preserved)

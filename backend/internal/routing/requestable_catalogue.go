@@ -2,15 +2,15 @@ package routing
 
 import "context"
 
-// RequestableCatalogue 组合唯一短缓存与原账号查询；自身不持有第二份缓存或计费实例。
+// RequestableCatalogue 组合唯一短缓存与原提供商查询；自身不持有第二份缓存或计费实例。
 type RequestableCatalogue struct {
 	Models   *ModelList
-	Read     func(context.Context, *int64) ([]CatalogueAccount, error)
+	Read     func(context.Context, *int64) ([]CatalogueProvider, error)
 	Resolver RequestableResolver
 	Warn     func(string, ...any)
 }
 
-func (c *RequestableCatalogue) Prefetch(ctx context.Context) ([]CatalogueAccount, bool, error) {
+func (c *RequestableCatalogue) Prefetch(ctx context.Context) ([]CatalogueProvider, bool, error) {
 	if c == nil || c.Read == nil {
 		return nil, false, nil
 	}
@@ -28,18 +28,18 @@ func (c *RequestableCatalogue) ResolveRequestableModels(ctx context.Context, gro
 		models = &ModelList{Read: c.Read}
 	}
 	base := models.Available(ctx, groupID, platform)
-	accounts, err := c.Read(ctx, groupID)
+	providers, err := c.Read(ctx, groupID)
 	if err != nil {
 		if c.Warn != nil {
 			var id int64
 			if groupID != nil {
 				id = *groupID
 			}
-			c.Warn("failed to load accounts for requestable model resolution", "group_id", id, "platform", platform, "error", err)
+			c.Warn("failed to load providers for requestable model resolution", "group_id", id, "platform", platform, "error", err)
 		}
 		result := RequestableModelsFallback(base, platform, c.Resolver.Defaults)
-		result.HadExplicitAccountModels = len(base) > 0
+		result.HadExplicitProviderModels = len(base) > 0
 		return result
 	}
-	return c.Resolver.ResolveWithAccounts(ctx, groupID, platform, base, accounts)
+	return c.Resolver.ResolveWithProviders(ctx, groupID, platform, base, providers)
 }

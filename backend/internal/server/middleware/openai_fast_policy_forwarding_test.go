@@ -12,16 +12,16 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway"
 
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/selection"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	gatewaytestkit "github.com/TokenFlux/TokenRouter/internal/gateway/testkit"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/apikey/testkit"
@@ -84,14 +84,14 @@ func TestAPIKeyAuthForwardsUserScopedOpenAIFastPolicyToUpstream(t *testing.T) {
 
 	// 转发与原生选择使用同一响应归属、阻断和传输状态；本场景配置保持 simple 与 WS 关闭。
 	responses := session.NewOpenAIWSStateStore(nil, gatewayprovider.LogOpenAIWSModeInfo)
-	transient := accountcore.NewModelTransientState(0)
+	transient := providercore.NewModelTransientState(0)
 	circuit := egress.NewProxyStreamCircuit(egress.DefaultProxyStreamCircuitSettings())
-	blocks := accountcore.NewRuntimeBlockState(time.Now)
+	blocks := providercore.NewRuntimeBlockState(time.Now)
 	choices := selection.NewCompatible(selection.CompatibleDependencies{Responses: responses, ModelTransient: transient, ProxyCircuit: circuit, RuntimeBlocks: blocks}, selection.Options{Simple: true, WS: &egress.OpenAIWSOptions{}})
-	output := &gatewayhttp.OpenAIResponseOutput{Options: gatewayhttp.OpenAIResponseOptions{Configured: true, ReadLimit: config.DefaultUpstreamResponseReadMaxBytes}, Health: &accountprovider.OpenAIResponseHealth{Runtime: blocks, ModelTransient: transient}, Corrector: openai.NewCodexToolCorrector(), ProxyCircuit: circuit, Responses: responses, ResponseTTL: choices.OpenAIHTTPResponseStickyTTL, Headers: responseHeaderFilterForTest(cfg)}
+	output := &gatewayhttp.OpenAIResponseOutput{Options: gatewayhttp.OpenAIResponseOptions{Configured: true, ReadLimit: config.DefaultUpstreamResponseReadMaxBytes}, Health: &provideradapter.OpenAIResponseHealth{Runtime: blocks, ModelTransient: transient}, Corrector: openai.NewCodexToolCorrector(), ProxyCircuit: circuit, Responses: responses, ResponseTTL: choices.OpenAIHTTPResponseStickyTTL, Headers: responseHeaderFilterForTest(cfg)}
 	transport := &openAIFastPolicyForwardingHTTPUpstream{client: upstreamServer.Client()}
-	requests := &gatewayhttp.OpenAIRequests{Options: gatewayhttp.OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{AllowInsecureHTTP: true}}, Transport: transport, Readers: settingService, Credentials: &accountcore.OpenAIExecutionCredentials{}, Identity: gatewayprovider.NewExecutionAgentIdentity(&accountcore.OpenAITaskCoordinator{}, nil, nil, nil), ClientPolicy: &accountprovider.OpenAIProbePolicy{Available: true, DefaultBrowserUserAgent: gateway.DefaultOpenAICodexUserAgent}}
-	text := &gatewayhttp.OpenAITextExecutor{Requests: requests, Output: output, FastPolicy: &gatewayprovider.ExecutionFastPolicy{Readers: settingService}, CodexUsage: &accountprovider.CodexUsageObserver{}, ResponseTTL: choices.OpenAIHTTPResponseStickyTTL, Compact: &gatewayhttp.CompactExecutor{}}
+	requests := &gatewayhttp.OpenAIRequests{Options: gatewayhttp.OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{AllowInsecureHTTP: true}}, Transport: transport, Readers: settingService, Credentials: &providercore.OpenAIExecutionCredentials{}, Identity: gatewayprovider.NewExecutionAgentIdentity(&providercore.OpenAITaskCoordinator{}, nil, nil, nil), ClientPolicy: &provideradapter.OpenAIProbePolicy{Available: true, DefaultBrowserUserAgent: gateway.DefaultOpenAICodexUserAgent}}
+	text := &gatewayhttp.OpenAITextExecutor{Requests: requests, Output: output, FastPolicy: &gatewayprovider.ExecutionFastPolicy{Readers: settingService}, CodexUsage: &provideradapter.CodexUsageObserver{}, ResponseTTL: choices.OpenAIHTTPResponseStickyTTL, Compact: &gatewayhttp.CompactExecutor{}}
 	executor := &gatewayhttp.OpenAIResponsesExecutor{Requests: requests, Output: output, Text: text, Lineage: &gatewayhttp.OpenAIEncryptedLineage{Store: responses, TTL: choices.SessionStickyTTL}, ImageBridge: &gatewayprovider.ResponseImagePolicy{}, ResolveTransport: choices.ResolveTransport}
 
 	groupID := int64(101)
@@ -108,12 +108,12 @@ func TestAPIKeyAuthForwardsUserScopedOpenAIFastPolicyToUpstream(t *testing.T) {
 	}
 	apiKeyService := testkit.NewService(&openAIFastPolicyForwardingAPIKeyRepo{apiKeys: apiKeys}, nil, nil, nil, nil, nil, cfg)
 	apiKeyService.Start()
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 900,
 			Name:        "openai-upstream",
 			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeAPIKey,
+			Type:        capability.ProviderTypeAPIKey,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Concurrency: 1,
@@ -134,7 +134,7 @@ func TestAPIKeyAuthForwardsUserScopedOpenAIFastPolicyToUpstream(t *testing.T) {
 			return
 		}
 		gatewayhttp.SetOpenAIClientTransport(c, gatewayhttp.OpenAIClientTransportHTTP)
-		if _, forwardErr := executor.Forward(c.Request.Context(), c, account, body); forwardErr != nil {
+		if _, forwardErr := executor.Forward(c.Request.Context(), c, provider, body); forwardErr != nil {
 			c.Status(http.StatusBadGateway)
 			return
 		}
@@ -217,6 +217,6 @@ func (u *openAIFastPolicyForwardingHTTPUpstream) Do(req *http.Request, _ string,
 	return u.client.Do(req)
 }
 
-func (u *openAIFastPolicyForwardingHTTPUpstream) DoWithTLS(req *http.Request, proxyURL string, accountID int64, accountConcurrency int, _ *tlsfingerprint.Profile) (*http.Response, error) {
-	return u.Do(req, proxyURL, accountID, accountConcurrency)
+func (u *openAIFastPolicyForwardingHTTPUpstream) DoWithTLS(req *http.Request, proxyURL string, providerID int64, providerConcurrency int, _ *tlsfingerprint.Profile) (*http.Response, error) {
+	return u.Do(req, proxyURL, providerID, providerConcurrency)
 }

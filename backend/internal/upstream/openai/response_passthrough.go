@@ -71,7 +71,7 @@ func ReadPassthroughStreaming(ctx context.Context, resp *http.Response, c *upstr
 	suppressCurrentEvent := false
 	responseFailedPending := false
 	var bareErrorPayload []byte
-	bareErrorAccountSideEffectsPending := false
+	bareErrorProviderSideEffectsPending := false
 	upstreamRequestID := strings.TrimSpace(resp.Header.Get("x-request-id"))
 	// pendingLines 在首个可见输出前保留前导事件，确保无输出失败仍可安全 failover。
 	pendingLines := make([]string, 0, 8)
@@ -98,7 +98,7 @@ func ReadPassthroughStreaming(ctx context.Context, resp *http.Response, c *upstr
 	//   1. 提交 HTTP 响应头，让下游知道连接活着；
 	//   2. 刷新中间层的空闲超时（proxy_read_timeout 衡量的是两次读之间的间隔，
 	//      不是请求总时长），长推理因此不再被误杀；
-	//   3. 不写出任何 pendingLines、不泄露账号相关的头，
+	//   3. 不写出任何 pendingLines、不泄露提供商相关的头，
 	//      且心跳字节已由 OpenAICompactKeepaliveAdjustedWrittenSize 排除，
 	//      所以 pre-output failover 的能力完全不受影响（#3887 的记账在此复用）。
 	//
@@ -125,7 +125,7 @@ func ReadPassthroughStreaming(ctx context.Context, resp *http.Response, c *upstr
 		for _, pending := range pendingLines {
 			if _, err := fmt.Fprintln(w, pending); err != nil {
 				clientDisconnected = true
-				options.Logf("[OpenAI passthrough] Client disconnected during streaming, continue draining upstream for usage: account=%d", options.AccountID)
+				options.Logf("[OpenAI passthrough] Client disconnected during streaming, continue draining upstream for usage: provider=%d", options.ProviderID)
 				return false
 			}
 		}
@@ -136,9 +136,9 @@ func ReadPassthroughStreaming(ctx context.Context, resp *http.Response, c *upstr
 		if !sawBareError || sawResponseFailed || failureDelivered {
 			return
 		}
-		if bareErrorAccountSideEffectsPending {
+		if bareErrorProviderSideEffectsPending {
 			options.TerminalSideEffects(bareErrorPayload, failedMessage, resp.Header, mappedModel)
-			bareErrorAccountSideEffectsPending = false
+			bareErrorProviderSideEffectsPending = false
 		}
 		if clientDisconnected || !writePendingLines() {
 			return
@@ -267,11 +267,11 @@ func ReadPassthroughStreaming(ctx context.Context, resp *http.Response, c *upstr
 				if outputStarted && !cyberHit {
 					if codexFailureTerminal && eventType == "error" {
 						// Wait for the authoritative response.failed before mutating
-						// account health; EOF synthesis applies the pending effect.
-						bareErrorAccountSideEffectsPending = true
+						// provider health; EOF synthesis applies the pending effect.
+						bareErrorProviderSideEffectsPending = true
 					} else {
 						options.TerminalSideEffects(dataBytes, failedMessage, resp.Header, mappedModel)
-						bareErrorAccountSideEffectsPending = false
+						bareErrorProviderSideEffectsPending = false
 					}
 				}
 				if !outputStarted {
@@ -349,7 +349,7 @@ func ReadPassthroughStreaming(ctx context.Context, resp *http.Response, c *upstr
 			if lineStartsClientOutput && trimmedData != "[DONE]" && !wire.OpenAIStreamEventTypeIsTerminal(eventType) {
 				semanticOutputSeen = true
 			}
-			// 透传流在写出前也要识别空 completed，确保仍可安全切换账号。
+			// 透传流在写出前也要识别空 completed，确保仍可安全切换提供商。
 			if (eventType == "response.completed" || eventType == "response.done") &&
 				!sawFailedEvent && !semanticOutputSeen && !clientOutputStarted &&
 				wire.OpenAIResponsesCompletedEventIsEmpty(dataBytes, usage) {
@@ -391,7 +391,7 @@ func ReadPassthroughStreaming(ctx context.Context, resp *http.Response, c *upstr
 			}
 			if _, err := fmt.Fprintln(w, line); err != nil {
 				clientDisconnected = true
-				options.Logf("[OpenAI passthrough] Client disconnected during streaming, continue draining upstream for usage: account=%d", options.AccountID)
+				options.Logf("[OpenAI passthrough] Client disconnected during streaming, continue draining upstream for usage: provider=%d", options.ProviderID)
 			} else {
 				clientOutputStarted = true
 				flushPending = true
@@ -419,7 +419,7 @@ func ReadPassthroughStreaming(ctx context.Context, resp *http.Response, c *upstr
 			return resultWithUsage(), fmt.Errorf("stream usage incomplete: %w", err)
 		}
 		if errors.Is(err, bufio.ErrTooLong) {
-			options.Logf("[OpenAI passthrough] SSE line too long: account=%d max_size=%d error=%v", options.AccountID, maxLineSize, err)
+			options.Logf("[OpenAI passthrough] SSE line too long: provider=%d max_size=%d error=%v", options.ProviderID, maxLineSize, err)
 			return resultWithUsage(), err
 		}
 		if !options.ClientOutputStarted(clientOutputStarted) {
@@ -434,8 +434,8 @@ func ReadPassthroughStreaming(ctx context.Context, resp *http.Response, c *upstr
 			return resultWithUsage(), fmt.Errorf("stream usage incomplete after disconnect: %w", err)
 		}
 		options.RecordDisconnect(err, upstreamRequestID)
-		options.Logf("[OpenAI passthrough] 流读取异常中断: account=%d request_id=%s err=%v",
-			options.AccountID,
+		options.Logf("[OpenAI passthrough] 流读取异常中断: provider=%d request_id=%s err=%v",
+			options.ProviderID,
 			upstreamRequestID,
 			err,
 		)
@@ -484,7 +484,6 @@ func ReadPassthroughNonStreaming(ctx context.Context, resp *http.Response, sink 
 		}
 	}
 	if !usageParsed {
-
 		usage = wire.ParseSSEUsageFromBody(string(body))
 	}
 	options.MissingUsage(resp, usage, "json", false)
@@ -512,7 +511,6 @@ func ReadPassthroughNonStreaming(ctx context.Context, resp *http.Response, sink 
 		c.Data(resp.StatusCode, contentType, body)
 	}
 	return &NonStreamingResult{
-
 		Usage:            usage,
 		ResponseID:       wire.ExtractOpenAIResponseIDFromJSONBytes(body),
 		ImageCount:       wire.CountOpenAIResponseImageOutputsFromJSONBytes(body),
@@ -592,7 +590,6 @@ func ReadPassthroughSSEAsJSON(resp *http.Response, sink upstream.OutputSink, opt
 	}
 
 	return &NonStreamingResult{
-
 		Usage:            usage,
 		ResponseID:       wire.ExtractOpenAIResponseIDFromJSONBytes(body),
 		ImageCount:       wire.CountOpenAIImageOutputsFromSSEBody(bodyText),

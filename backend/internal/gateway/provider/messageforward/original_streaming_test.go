@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
@@ -26,7 +26,6 @@ import (
 // --- parseSSEUsage 测试 ---
 
 func TestHandleStreamingResponse_CacheTokens(t *testing.T) {
-
 	svc := newStreamingRuntimeFixture(0)
 
 	rec := httptest.NewRecorder()
@@ -43,7 +42,7 @@ func TestHandleStreamingResponse_CacheTokens(t *testing.T) {
 		_, _ = pw.Write([]byte("data: [DONE]\n\n"))
 	}()
 
-	result, err := streamResponseFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", false)
+	result, err := streamResponseFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", false)
 	_ = pr.Close()
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -55,7 +54,6 @@ func TestHandleStreamingResponse_CacheTokens(t *testing.T) {
 }
 
 func TestHandleStreamingResponse_EmptyStream(t *testing.T) {
-
 	svc := newStreamingRuntimeFixture(0)
 
 	rec := httptest.NewRecorder()
@@ -70,7 +68,7 @@ func TestHandleStreamingResponse_EmptyStream(t *testing.T) {
 		_ = pw.Close()
 	}()
 
-	result, err := streamResponseFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", false)
+	result, err := streamResponseFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", false)
 	_ = pr.Close()
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "missing terminal event")
@@ -78,7 +76,6 @@ func TestHandleStreamingResponse_EmptyStream(t *testing.T) {
 }
 
 func TestHandleStreamingResponse_SpecialCharactersInJSON(t *testing.T) {
-
 	svc := newStreamingRuntimeFixture(0)
 
 	rec := httptest.NewRecorder()
@@ -97,7 +94,7 @@ func TestHandleStreamingResponse_SpecialCharactersInJSON(t *testing.T) {
 		_, _ = pw.Write([]byte("data: [DONE]\n\n"))
 	}()
 
-	result, err := streamResponseFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", false)
+	result, err := streamResponseFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", false)
 	_ = pr.Close()
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -111,9 +108,8 @@ func TestHandleStreamingResponse_SpecialCharactersInJSON(t *testing.T) {
 }
 
 // 上游中途读错误（如 HTTP/2 GOAWAY 触发的 unexpected EOF）发生在向客户端写入任何字节前：
-// 网关应返回 *UpstreamFailoverError 触发账号 failover/重试，而不是把错误事件直接发给客户端。
+// 网关应返回 *UpstreamFailoverError 触发提供商 failover/重试，而不是把错误事件直接发给客户端。
 func TestHandleStreamingResponse_StreamReadErrorBeforeOutput_TriggersFailover(t *testing.T) {
-
 	svc := newStreamingRuntimeFixture(0)
 
 	rec := httptest.NewRecorder()
@@ -126,7 +122,7 @@ func TestHandleStreamingResponse_StreamReadErrorBeforeOutput_TriggersFailover(t 
 		Body:       &streamReadCloser{err: io.ErrUnexpectedEOF},
 	}
 
-	result, err := streamResponseFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", false)
+	result, err := streamResponseFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", false)
 
 	require.Error(t, err)
 	require.Nil(t, result, "失败移交场景下不应返回 streamingResult")
@@ -134,7 +130,7 @@ func TestHandleStreamingResponse_StreamReadErrorBeforeOutput_TriggersFailover(t 
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.True(t, errors.As(err, &failoverErr), "未输出过字节时 stream read error 必须包成 UpstreamFailoverError，期望: %v", err)
 	require.Equal(t, http.StatusBadGateway, failoverErr.StatusCode)
-	require.True(t, failoverErr.RetryableOnSameAccount, "GOAWAY 类错误应允许同账号重试")
+	require.True(t, failoverErr.RetryableOnSameProvider, "GOAWAY 类错误应允许同提供商重试")
 
 	// ResponseBody 必须是 Anthropic 标准 error 格式：
 	// 1) ExtractUpstreamErrorMessage 能正确从 error.message 提取消息（被 handleFailoverExhausted / ops 日志依赖）
@@ -152,7 +148,6 @@ func TestHandleStreamingResponse_StreamReadErrorBeforeOutput_TriggersFailover(t 
 // 上游已经发送过事件（c.Writer 已写过字节）后再发生读错误：
 // SSE 协议无 resume，网关只能透传 stream_read_error 错误事件给客户端，不能 failover。
 func TestHandleStreamingResponse_StreamReadErrorAfterOutput_PassesThrough(t *testing.T) {
-
 	svc := newStreamingRuntimeFixture(0)
 
 	rec := httptest.NewRecorder()
@@ -169,7 +164,7 @@ func TestHandleStreamingResponse_StreamReadErrorAfterOutput_PassesThrough(t *tes
 		},
 	}
 
-	result, err := streamResponseFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", false)
+	result, err := streamResponseFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", false)
 
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "stream read error", "已开始流后应透传普通 stream read error")
@@ -192,7 +187,6 @@ func TestHandleStreamingResponse_StreamReadErrorAfterOutput_PassesThrough(t *tes
 // 服务器地址。sanitizeStreamError 必须剥离这些信息，避免基础设施拓扑通过
 // failover ResponseBody 或 SSE error 帧返回给客户端。
 func TestHandleStreamingResponse_FailoverBodyDoesNotLeakAddresses(t *testing.T) {
-
 	svc := newStreamingRuntimeFixture(0)
 
 	rec := httptest.NewRecorder()
@@ -215,7 +209,7 @@ func TestHandleStreamingResponse_FailoverBodyDoesNotLeakAddresses(t *testing.T) 
 		Body:       &streamReadCloser{err: netErr},
 	}
 
-	_, err := streamResponseFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", false)
+	_, err := streamResponseFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", false)
 	require.Error(t, err)
 
 	var failoverErr *forwardcore.UpstreamFailoverError
@@ -234,7 +228,6 @@ func TestHandleStreamingResponse_FailoverBodyDoesNotLeakAddresses(t *testing.T) 
 // 上游 HTTP 200 + SSE 流体内 event:error 帧应保留 data 行原文，
 // 这是 Forward 后续补全 UpstreamFailoverError.ResponseBody 与 Ops 日志的前提。
 func TestHandleStreamingResponse_SSEErrorEvent_ReturnsTypedErrorWithRawData(t *testing.T) {
-
 	svc := newStreamingRuntimeFixture(0)
 
 	rec := httptest.NewRecorder()
@@ -251,7 +244,7 @@ func TestHandleStreamingResponse_SSEErrorEvent_ReturnsTypedErrorWithRawData(t *t
 		_, _ = pw.Write([]byte("event: error\ndata: " + errorJSON + "\n\n"))
 	}()
 
-	result, err := streamResponseFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", false)
+	result, err := streamResponseFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", false)
 	_ = pr.Close()
 
 	require.Error(t, err)
@@ -266,7 +259,6 @@ func TestHandleStreamingResponse_SSEErrorEvent_ReturnsTypedErrorWithRawData(t *t
 
 // 上游只发 event:error 而没有 data 行时，也要返回 typed error，避免上层走不到 stream_error 分支。
 func TestHandleStreamingResponse_SSEErrorEvent_EmptyDataLine(t *testing.T) {
-
 	svc := newStreamingRuntimeFixture(0)
 
 	rec := httptest.NewRecorder()
@@ -281,7 +273,7 @@ func TestHandleStreamingResponse_SSEErrorEvent_EmptyDataLine(t *testing.T) {
 		_, _ = pw.Write([]byte("event: error\n\n"))
 	}()
 
-	_, err := streamResponseFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", false)
+	_, err := streamResponseFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", false)
 	_ = pr.Close()
 
 	require.Error(t, err)
@@ -293,7 +285,6 @@ func TestHandleStreamingResponse_SSEErrorEvent_EmptyDataLine(t *testing.T) {
 // 上游先发部分流输出再发 event:error 时，仍要保留真实错误体；
 // handler 层会因已写客户端响应而停止继续换号。
 func TestHandleStreamingResponse_SSEErrorEvent_AfterPartialStreamOutput(t *testing.T) {
-
 	svc := newStreamingRuntimeFixture(0)
 
 	rec := httptest.NewRecorder()
@@ -311,7 +302,7 @@ func TestHandleStreamingResponse_SSEErrorEvent_AfterPartialStreamOutput(t *testi
 		_, _ = pw.Write([]byte("event: error\ndata: " + errorJSON + "\n\n"))
 	}()
 
-	_, err := streamResponseFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", false)
+	_, err := streamResponseFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", false)
 	_ = pr.Close()
 
 	require.Error(t, err)
@@ -324,7 +315,6 @@ func TestHandleStreamingResponse_SSEErrorEvent_AfterPartialStreamOutput(t *testi
 
 // 上游 event:error 的 data 行不是合法 JSON 时，也要保留原始内容，供 Ops detail 排查。
 func TestHandleStreamingResponse_SSEErrorEvent_NonJSONDataLine(t *testing.T) {
-
 	svc := newStreamingRuntimeFixture(0)
 
 	rec := httptest.NewRecorder()
@@ -339,7 +329,7 @@ func TestHandleStreamingResponse_SSEErrorEvent_NonJSONDataLine(t *testing.T) {
 		_, _ = pw.Write([]byte("event: error\ndata: not-a-json-payload\n\n"))
 	}()
 
-	_, err := streamResponseFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", false)
+	_, err := streamResponseFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", false)
 	_ = pr.Close()
 
 	require.Error(t, err)

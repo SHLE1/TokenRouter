@@ -3,8 +3,8 @@ package testkit
 import (
 	"context"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/completion"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 
@@ -41,14 +41,14 @@ type SettlementStore struct {
 	ResolveSub   *billing.UserSubscription
 	ResolveCalls int
 }
-type AccountLookup struct {
-	Account *accountcore.Record
-	Calls   int
+type ProviderLookup struct {
+	Provider *providercore.Record
+	Calls    int
 }
 
-func (s *AccountLookup) GetByID(_ context.Context, _ int64) (*accountcore.Record, error) {
+func (s *ProviderLookup) GetByID(_ context.Context, _ int64) (*providercore.Record, error) {
 	s.Calls++
-	return s.Account, nil
+	return s.Provider, nil
 }
 
 func (s *SettlementStore) Apply(ctx context.Context, cmd *billing.UsageBillingCommand) (*billing.UsageBillingApplyResult, error) {

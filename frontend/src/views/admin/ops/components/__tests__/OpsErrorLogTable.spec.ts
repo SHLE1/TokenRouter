@@ -33,7 +33,7 @@ function mountTable(row: Partial<OpsErrorLog>) {
     request_id: 'req-1',
     message: 'boom',
     user_email: '',
-    account_name: '',
+    provider_name: '',
     group_name: '',
     ...row,
   } as OpsErrorLog
@@ -44,23 +44,23 @@ function mountTable(row: Partial<OpsErrorLog>) {
   })
 }
 
-describe('OpsErrorLogTable user/api-key/account columns', () => {
-  // 回归:上游错误行(phase=upstream, owner=provider)以前在单一「用户」列里只显示账号、
-  // 丢失用户;现在用户/API Key/账号各占独立列,三者同时可见。
-  it('renders user, api key and account in separate columns for an upstream row', () => {
+describe('OpsErrorLogTable user/api-key/provider columns', () => {
+  // 回归:上游错误行(phase=upstream, owner=provider)以前在单一「用户」列里只显示提供商、
+  // 丢失用户;现在用户/API Key/提供商各占独立列,三者同时可见。
+  it('renders user, api key and provider in separate columns for an upstream row', () => {
     const wrapper = mountTable({
       user_id: 2,
       user_email: 'alice@test.com',
       api_key_id: 5,
       api_key_name: 'my-key',
-      account_id: 9,
-      account_name: 'acct-A',
+      provider_id: 9,
+      provider_name: 'acct-A',
     })
 
     const text = wrapper.text()
     expect(text).toContain('alice@test.com') // 用户列(上游行也显示用户)
     expect(text).toContain('my-key') // API Key 列
-    expect(text).toContain('acct-A') // 账号列
+    expect(text).toContain('acct-A') // 提供商列
   })
 
   it('shows the deleted badge for a soft-deleted api key', () => {

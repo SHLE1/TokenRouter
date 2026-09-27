@@ -20,7 +20,7 @@ import (
 func TestS07BucketLeaseExpiredOwnerCannotReleaseSuccessor(t *testing.T) {
 	ctx := context.Background()
 	rdb := testRedis(t)
-	cache := NewSnapshotCache(rdb, codec.AccountCodec{})
+	cache := NewSnapshotCache(rdb, codec.ProviderCodec{})
 	bucket := scheduler.SchedulerBucket{GroupID: 91001, Platform: capability.PlatformOpenAI, Mode: scheduler.SchedulerModeSingle}
 	first, acquired, err := cache.AcquireBucketLease(ctx, bucket, 20*time.Millisecond)
 	require.NoError(t, err)
@@ -29,7 +29,7 @@ func TestS07BucketLeaseExpiredOwnerCannotReleaseSuccessor(t *testing.T) {
 	second, acquired, err := cache.AcquireBucketLease(ctx, bucket, time.Minute)
 	require.NoError(t, err)
 	require.True(t, acquired)
-	key := "sched:v3:lock:" + bucket.String()
+	key := "sched:v4:lock:" + bucket.String()
 	owner, err := rdb.Get(ctx, key).Result()
 	require.NoError(t, err)
 	require.ErrorIs(t, first.Release(ctx), scheduler.ErrBucketLeaseLost)
@@ -53,11 +53,11 @@ func (c s07WaitIncrementFault) IncrementWaitCount(context.Context, int64, int) (
 	return false, errors.New("增加等待计数未确认")
 }
 
-func (c s07WaitIncrementFault) IncrementAccountWaitCount(context.Context, int64, int) (bool, error) {
-	return false, errors.New("增加账号等待计数未确认")
+func (c s07WaitIncrementFault) IncrementProviderWaitCount(context.Context, int64, int) (bool, error) {
+	return false, errors.New("增加提供商等待计数未确认")
 }
 
-// 错误放行后立即退出，不能递减 Redis 中另一个请求持有的用户或账号计数。
+// 错误放行后立即退出，不能递减 Redis 中另一个请求持有的用户或提供商计数。
 func TestS07WaitFailOpenDoesNotReleaseOtherRequest(t *testing.T) {
 	ctx := context.Background()
 	rdb := testRedis(t)
@@ -65,9 +65,9 @@ func TestS07WaitFailOpenDoesNotReleaseOtherRequest(t *testing.T) {
 	userAllowed, err := cache.IncrementWaitCount(ctx, 91001, 20)
 	require.NoError(t, err)
 	require.True(t, userAllowed)
-	accountAllowed, err := cache.IncrementAccountWaitCount(ctx, 91002, 20)
+	providerAllowed, err := cache.IncrementProviderWaitCount(ctx, 91002, 20)
 	require.NoError(t, err)
-	require.True(t, accountAllowed)
+	require.True(t, providerAllowed)
 	concurrency := scheduler.NewConcurrencyService(s07WaitIncrementFault{cache}, scheduler.Diagnostics{
 		Logf: logging.LegacyPrintf,
 
@@ -77,17 +77,17 @@ func TestS07WaitFailOpenDoesNotReleaseOtherRequest(t *testing.T) {
 	user, err := concurrency.EnterUserWait(ctx, 91001, 20)
 	require.NoError(t, err)
 	require.True(t, user.Allowed)
-	account, err := concurrency.EnterAccountWait(ctx, 91002, 20)
+	provider, err := concurrency.EnterProviderWait(ctx, 91002, 20)
 	require.NoError(t, err)
-	require.True(t, account.Allowed)
+	require.True(t, provider.Allowed)
 	user.Release()
-	account.Release()
+	provider.Release()
 	user.Release()
-	account.Release()
+	provider.Release()
 	count, err := rdb.Get(ctx, "concurrency:wait:91001").Int()
 	require.NoError(t, err)
 	require.Equal(t, 1, count)
-	count, err = cache.GetAccountWaitingCount(ctx, 91002)
+	count, err = cache.GetProviderWaitingCount(ctx, 91002)
 	require.NoError(t, err)
 	require.Equal(t, 1, count)
 }

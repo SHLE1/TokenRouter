@@ -1,13 +1,13 @@
 package dto
 
 import (
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	billinghttp "github.com/TokenFlux/TokenRouter/internal/billing/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/creative"
 	gatewaydto "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi/dto"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/promptpolicy"
 	identitydto "github.com/TokenFlux/TokenRouter/internal/identity/httpapi/dto"
 	"github.com/TokenFlux/TokenRouter/internal/payment"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	sitedto "github.com/TokenFlux/TokenRouter/internal/site/httpapi/dto"
 )
 
@@ -304,16 +304,16 @@ type UpdateSettingsRequest struct {
 	AdvancedSchedulerWeightQuotaHeadroom         *string `json:"advanced_scheduler_weight_quota_headroom"`
 	AdvancedSchedulerWeightPreviousResponse      *string `json:"advanced_scheduler_weight_previous_response"`
 	AdvancedSchedulerWeightSessionSticky         *string `json:"advanced_scheduler_weight_session_sticky"`
-	// OpenAI 账号配额自动暂停全局默认阈值。使用指针区分旧客户端未提交与显式提交零值。
-	OpenAIQuotaAutoPauseSettings *account.QuotaAutoPauseSettings `json:"openai_account_quota_auto_pause"`
+	// OpenAI 提供商配额自动暂停全局默认阈值。使用指针区分旧客户端未提交与显式提交零值。
+	OpenAIQuotaAutoPauseSettings *provider.QuotaAutoPauseSettings `json:"openai_provider_quota_auto_pause"`
 
 	// 余额不足提醒
 	BalanceLowNotifyEnabled         *bool                           `json:"balance_low_notify_enabled"`
 	BalanceLowNotifyThreshold       *float64                        `json:"balance_low_notify_threshold"`
 	BalanceLowNotifyRechargeURL     *string                         `json:"balance_low_notify_recharge_url"`
 	SubscriptionExpiryNotifyEnabled *bool                           `json:"subscription_expiry_notify_enabled"`
-	AccountQuotaNotifyEnabled       *bool                           `json:"account_quota_notify_enabled"`
-	AccountQuotaNotifyEmails        *[]identitydto.NotifyEmailEntry `json:"account_quota_notify_emails"`
+	ProviderQuotaNotifyEnabled      *bool                           `json:"provider_quota_notify_enabled"`
+	ProviderQuotaNotifyEmails       *[]identitydto.NotifyEmailEntry `json:"provider_quota_notify_emails"`
 
 	// Payment configuration (integrated into settings, full replace)
 	PaymentEnabled                   *bool                     `json:"payment_enabled"`
@@ -359,8 +359,8 @@ type UpdateSettingsRequest struct {
 	// OpenAI fast/flex 策略（只在请求显式提供时更新）
 	OpenAIFastPolicySettings *gatewaydto.OpenAIFastPolicySettings `json:"openai_fast_policy_settings,omitempty"`
 
-	// 各平台账号自动停调阈值（整体替换语义：nil = 不修改，non-nil = 整体覆盖）。
-	AccountSchedulingThresholds map[string]int `json:"account_scheduling_thresholds"`
+	// 各平台提供商自动停调阈值（整体替换语义：nil = 不修改，non-nil = 整体覆盖）。
+	ProviderSchedulingThresholds map[string]int `json:"provider_scheduling_thresholds"`
 
 	AllowUserViewErrorRequests *bool `json:"allow_user_view_error_requests"`
 }

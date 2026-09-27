@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	notificationcore "github.com/TokenFlux/TokenRouter/internal/notification"
@@ -59,7 +59,7 @@ func provideBillingSubscriptions(groups *routingpostgres.GroupStore, repo billin
 }
 
 func provideSettlementStore(db *sql.DB, calendar timezone.Calendar) *billingpostgres.SettlementStore {
-	return billingpostgres.NewSettlementStore(db, calendar, schedulerpostgres.EnqueueAccountQuotaChangedInTx, billingpostgres.TaskProjectionFactories{
+	return billingpostgres.NewSettlementStore(db, calendar, schedulerpostgres.EnqueueProviderQuotaChangedInTx, billingpostgres.TaskProjectionFactories{
 		creative.FundingScope: func(tx *sql.Tx, ref billing.TaskReference) billingpostgres.TaskProjection {
 			return creativepostgres.NewFundingParticipant(tx, ref.ID)
 		},
@@ -90,8 +90,8 @@ func provideBillingPlans(client *dbent.Client, orders *paymentpostgres.InstanceS
 }
 
 // provideSubscriptionExpiry 注入旧通知与锁策略，构造期间不启动后台任务。
-func provideSubscriptionExpiry(repo billing.UserSubscriptionRepository, settings settingscore.Repository, notification *notificationcore.NotificationEmailService, lock account.CNMonitorLeader, db *sql.DB) *billing.SubscriptionExpiryService {
+func provideSubscriptionExpiry(repo billing.UserSubscriptionRepository, settings settingscore.Repository, notification *notificationcore.NotificationEmailService, lock provider.CNMonitorLeader, db *sql.DB) *billing.SubscriptionExpiryService {
 	return billing.NewSubscriptionExpiryService(repo, billing.ExpiryOptions{Interval: time.Minute, Owner: uuid.NewString(), Now: time.Now, Observe: func(format string, args ...any) { logging.LegacyPrintf("service.subscription_expiry", format, args...) }, Settings: settings, Notifier: expiryNotifications{Service: notification}, Lease: func(ctx context.Context, key, owner string, ttl time.Duration) (func(), bool) {
-		return account.AcquireSingletonLease(ctx, lock, databaseAdvisoryLease(db), key, owner, ttl)
+		return provider.AcquireSingletonLease(ctx, lock, databaseAdvisoryLease(db), key, owner, ttl)
 	}})
 }

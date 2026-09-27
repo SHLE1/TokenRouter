@@ -154,7 +154,6 @@ func StreamResponsePassthrough(
 		case ev, ok := <-events:
 			if !ok {
 				if !clientDisconnected {
-
 					flusher.Flush()
 				}
 				if !sawTerminalEvent {
@@ -179,7 +178,7 @@ func StreamResponsePassthrough(
 					return &StreamResult{Usage: usage, FirstTokenMs: firstTokenMs, ClientDisconnect: true}, fmt.Errorf("stream usage incomplete: %w", ev.err)
 				}
 				if errors.Is(ev.err, bufio.ErrTooLong) {
-					logger.LegacyPrintf("service.gateway", "[Anthropic passthrough] SSE line too long: account=%d max_size=%d error=%v", options.AccountID, maxLineSize, ev.err)
+					logger.LegacyPrintf("service.gateway", "[Anthropic passthrough] SSE line too long: provider=%d max_size=%d error=%v", options.ProviderID, maxLineSize, ev.err)
 					return &StreamResult{Usage: usage, FirstTokenMs: firstTokenMs}, ev.err
 				}
 				return &StreamResult{Usage: usage, FirstTokenMs: firstTokenMs}, fmt.Errorf("stream read error: %w", ev.err)
@@ -216,10 +215,10 @@ func StreamResponsePassthrough(
 				restored := string(RestoreToolNamesInBytes([]byte(line), options.ToolNames))
 				if _, err := io.WriteString(w, restored); err != nil {
 					clientDisconnected = true
-					logger.LegacyPrintf("service.gateway", "[Anthropic passthrough] Client disconnected during streaming, continue draining upstream for usage: account=%d", options.AccountID)
+					logger.LegacyPrintf("service.gateway", "[Anthropic passthrough] Client disconnected during streaming, continue draining upstream for usage: provider=%d", options.ProviderID)
 				} else if _, err := io.WriteString(w, "\n"); err != nil {
 					clientDisconnected = true
-					logger.LegacyPrintf("service.gateway", "[Anthropic passthrough] Client disconnected during streaming, continue draining upstream for usage: account=%d", options.AccountID)
+					logger.LegacyPrintf("service.gateway", "[Anthropic passthrough] Client disconnected during streaming, continue draining upstream for usage: provider=%d", options.ProviderID)
 				} else if line == "" {
 
 					flusher.Flush()
@@ -239,7 +238,7 @@ func StreamResponsePassthrough(
 			if clientDisconnected {
 				return &StreamResult{Usage: usage, FirstTokenMs: firstTokenMs, ClientDisconnect: true}, fmt.Errorf("stream usage incomplete after timeout")
 			}
-			logger.LegacyPrintf("service.gateway", "[Anthropic passthrough] Stream data interval timeout: account=%d model=%s interval=%s", options.AccountID, model, streamInterval)
+			logger.LegacyPrintf("service.gateway", "[Anthropic passthrough] Stream data interval timeout: provider=%d model=%s interval=%s", options.ProviderID, model, streamInterval)
 			if options.OnTimeout != nil {
 				options.OnTimeout(ctx, model)
 			}
@@ -259,7 +258,7 @@ func StreamResponsePassthrough(
 			}
 			if _, err := fmt.Fprint(w, "event: ping\ndata: {\"type\": \"ping\"}\n\n"); err != nil {
 				clientDisconnected = true
-				logger.LegacyPrintf("service.gateway", "[Anthropic passthrough] Client disconnected during keepalive ping, continue draining upstream for usage: account=%d", options.AccountID)
+				logger.LegacyPrintf("service.gateway", "[Anthropic passthrough] Client disconnected during keepalive ping, continue draining upstream for usage: provider=%d", options.ProviderID)
 				continue
 			}
 			flusher.Flush()
@@ -268,6 +267,7 @@ func StreamResponsePassthrough(
 		}
 	}
 }
+
 func ExtractSSEDataLine(line string) (string, bool) {
 	if !strings.HasPrefix(line, "data:") {
 		return "", false

@@ -47,11 +47,11 @@ func provideMessageHTTPBindings(
 	if cfg != nil {
 		options.MaxBodyBytes = cfg.Gateway.MaxBodySize
 		ping = time.Duration(cfg.Concurrency.PingInterval) * time.Second
-		if cfg.Gateway.MaxAccountSwitches > 0 {
-			options.MaxSwitches = cfg.Gateway.MaxAccountSwitches
+		if cfg.Gateway.MaxProviderSwitches > 0 {
+			options.MaxSwitches = cfg.Gateway.MaxProviderSwitches
 		}
-		if cfg.Gateway.MaxAccountSwitchesGemini > 0 {
-			options.MaxGeminiSwitches = cfg.Gateway.MaxAccountSwitchesGemini
+		if cfg.Gateway.MaxProviderSwitchesGemini > 0 {
+			options.MaxGeminiSwitches = cfg.Gateway.MaxProviderSwitchesGemini
 		}
 	}
 	var moderationPort gatewayhttp.ModerationPort
@@ -62,7 +62,7 @@ func provideMessageHTTPBindings(
 		PlanRoute:           planner.PlanKey,
 		ClientGroupFallback: provideClientGroupFallbackResolver(keys, funding, subscriptions, cache),
 		ClientVersions:      settings.GetClaudeCodeVersionBounds, Funding: funding, Moderation: moderationPort, Errors: rules,
-		IsolateSession: messageSessionIsolation(cache), CachedSession: choices.GetCachedSessionAccountID,
+		IsolateSession: messageSessionIsolation(cache), CachedSession: choices.GetCachedSessionProviderID,
 		ObserveCompatibility: func(log *zap.Logger) {
 			gatewayhttp.LogCompatibilityFallback(log, func() gatewayhttp.CompatibilityLogSnapshot {
 				return gatewayCompatibilitySnapshot(shared)

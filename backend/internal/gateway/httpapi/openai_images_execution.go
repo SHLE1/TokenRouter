@@ -34,7 +34,7 @@ const (
 func (s *OpenAIImagesExecutor) ForwardImages(
 	ctx context.Context,
 	c *gin.Context,
-	account *gatewayprovider.ExecutionAccount,
+	provider *gatewayprovider.ExecutionProvider,
 	body []byte,
 	parsed *gatewaymedia.ImageRequest,
 	groupMappedModel string,
@@ -43,20 +43,20 @@ func (s *OpenAIImagesExecutor) ForwardImages(
 	if parsed == nil {
 		return nil, fmt.Errorf("parsed images request is required")
 	}
-	oauth, err := gatewaymedia.ImageExecutionPath(account.Record.Type)
+	oauth, err := gatewaymedia.ImageExecutionPath(provider.Record.Type)
 	if err != nil {
 		return nil, err
 	}
 	if oauth {
-		return s.forwardOpenAIImagesOAuth(ctx, c, account, parsed, groupMappedModel)
+		return s.forwardOpenAIImagesOAuth(ctx, c, provider, parsed, groupMappedModel)
 	}
-	return s.forwardOpenAIImagesAPIKey(ctx, c, account, body, parsed, groupMappedModel)
+	return s.forwardOpenAIImagesAPIKey(ctx, c, provider, body, parsed, groupMappedModel)
 }
 
 func (s *OpenAIImagesExecutor) forwardOpenAIImagesAPIKey(
 	ctx context.Context,
 	c *gin.Context,
-	account *gatewayprovider.ExecutionAccount,
+	provider *gatewayprovider.ExecutionProvider,
 	body []byte,
 	parsed *gatewaymedia.ImageRequest,
 	groupMappedModel string,
@@ -64,7 +64,7 @@ func (s *OpenAIImagesExecutor) forwardOpenAIImagesAPIKey(
 ) (*forwardcore.OpenAIResult, error) {
 	startTime := time.Now()
 	requestModel, upstreamModel, err := gatewaymedia.ResolveImageModels(parsed.Model, groupMappedModel, "", func(model string) string {
-		return gatewayprovider.ExecutionModelPolicy(account).OpenAIUpstream(model, false, false)
+		return gatewayprovider.ExecutionModelPolicy(provider).OpenAIUpstream(model, false, false)
 	})
 	if err != nil {
 		return nil, err
@@ -72,11 +72,11 @@ func (s *OpenAIImagesExecutor) forwardOpenAIImagesAPIKey(
 	SetOpsUpstreamModel(c, upstreamModel)
 	logging.LegacyPrintf(
 		"service.openai_gateway",
-		"[OpenAI] Images request routing request_model=%s upstream_model=%s endpoint=%s account_type=%s",
+		"[OpenAI] Images request routing request_model=%s upstream_model=%s endpoint=%s provider_type=%s",
 		strings.TrimSpace(parsed.Model),
 		upstreamModel,
 		parsed.Endpoint,
-		account.Record.Type,
+		provider.Record.Type,
 	)
 	forwardBody, forwardContentType, err := upstream.RewriteImageModel(body, parsed.ContentType, upstreamModel)
 	if err != nil {
@@ -90,29 +90,29 @@ func (s *OpenAIImagesExecutor) forwardOpenAIImagesAPIKey(
 	upstreamCtx, releaseUpstreamCtx := gatewayprovider.DetachUpstreamContext(ctx)
 	defer releaseUpstreamCtx()
 
-	token, _, err := s.Requests.Credentials.Resolve(upstreamCtx, gatewayprovider.ExecutionRecord(account))
+	token, _, err := s.Requests.Credentials.Resolve(upstreamCtx, gatewayprovider.ExecutionRecord(provider))
 	if err != nil {
 		return nil, err
 	}
-	upstreamReq, err := s.buildOpenAIImagesRequest(upstreamCtx, c, account, forwardBody, forwardContentType, token, parsed.Endpoint, tlsRouterMatch...)
+	upstreamReq, err := s.buildOpenAIImagesRequest(upstreamCtx, c, provider, forwardBody, forwardContentType, token, parsed.Endpoint, tlsRouterMatch...)
 	if err != nil {
 		return nil, err
 	}
 
 	proxyURL := ""
-	if account.Record.ProxyID != nil && account.Record.Proxy != nil {
-		proxyURL = account.Record.Proxy.URL()
+	if provider.Record.ProxyID != nil && provider.Record.Proxy != nil {
+		proxyURL = provider.Record.Proxy.URL()
 	}
 
 	options := s.Output.ImageOptions(c)
-	options.Backfill = func(body []byte) []byte { return s.backfillOpenAIImagesB64JSON(upstreamCtx, account, parsed, body) }
+	options.Backfill = func(body []byte) []byte { return s.backfillOpenAIImagesB64JSON(upstreamCtx, provider, parsed, body) }
 	var legacyHTTPResult *forwardcore.OpenAIResult
 	httpFailure := false
 	target := &mediaprovider.ImagesOptions{
-		AccountID: account.Record.ID,
-		OAuth:     false,
-		Model:     upstreamModel,
-		StartedAt: startTime,
+		ProviderID: provider.Record.ID,
+		OAuth:      false,
+		Model:      upstreamModel,
+		StartedAt:  startTime,
 
 		Request: upstreamReq,
 		Options: options,
@@ -123,7 +123,7 @@ func (s *OpenAIImagesExecutor) forwardOpenAIImagesAPIKey(
 
 		Do: func(req *http.Request) (*http.Response, error) {
 			upstreamStart := time.Now()
-			resp, err := s.Requests.Transport.DoWithTLS(req, proxyURL, account.Record.ID, account.Record.Concurrency, s.Requests.TLSProfile(account, tlsRouterMatch...))
+			resp, err := s.Requests.Transport.DoWithTLS(req, proxyURL, provider.Record.ID, provider.Record.Concurrency, s.Requests.TLSProfile(provider, tlsRouterMatch...))
 			SetOpsLatencyMs(c, OpsUpstreamLatencyMsKey, time.Since(upstreamStart).Milliseconds())
 			return resp, err
 		},
@@ -132,9 +132,9 @@ func (s *OpenAIImagesExecutor) forwardOpenAIImagesAPIKey(
 			safeErr := logredact.SanitizeUpstreamQueries(err.Error())
 			SetOpsUpstreamError(c, 0, safeErr, "")
 			AppendOpsUpstreamError(c, ops.OpsUpstreamErrorEvent{
-				Platform:           account.Record.Platform,
-				AccountID:          account.Record.ID,
-				AccountName:        account.Record.Name,
+				Platform:           provider.Record.Platform,
+				ProviderID:         provider.Record.ID,
+				ProviderName:       provider.Record.Name,
 				UpstreamStatusCode: 0,
 				UpstreamURL:        logredact.SafeUpstreamURL(upstreamReq.URL.String()),
 				Kind:               "request_error",
@@ -145,7 +145,7 @@ func (s *OpenAIImagesExecutor) forwardOpenAIImagesAPIKey(
 
 		ReadErrorBody: s.Output.ReadErrorBody,
 
-		RedactErrorBody: func(body []byte) []byte { return s.Requests.Identity.Redact(upstreamCtx, account, body) },
+		RedactErrorBody: func(body []byte) []byte { return s.Requests.Identity.Redact(upstreamCtx, provider, body) },
 
 		HTTPError: func(resp *http.Response, respBody []byte) error {
 			httpFailure = true
@@ -157,11 +157,11 @@ func (s *OpenAIImagesExecutor) forwardOpenAIImagesAPIKey(
 				},
 				Observe: func() {
 					AppendOpsUpstreamError(c, ops.OpsUpstreamErrorEvent{
-						Platform: account.Record.Platform,
+						Platform: provider.Record.Platform,
 
-						AccountID: account.Record.ID,
+						ProviderID: provider.Record.ID,
 
-						AccountName: account.Record.Name,
+						ProviderName: provider.Record.Name,
 
 						UpstreamStatusCode: resp.StatusCode,
 
@@ -175,22 +175,22 @@ func (s *OpenAIImagesExecutor) forwardOpenAIImagesAPIKey(
 					})
 				},
 				ApplyPolicy: func() bool {
-					shouldDisable = s.Output.ApplyHTTPFailure(upstreamCtx, resp, account, respBody, upstreamModel).StopScheduling
+					shouldDisable = s.Output.ApplyHTTPFailure(upstreamCtx, resp, provider, respBody, upstreamModel).StopScheduling
 					return false
 				},
 				NewFailover: func() error {
-					retryableOnSameAccount := !shouldDisable && account.View().IsPoolMode() && account.View().IsPoolModeRetryableStatus(resp.StatusCode)
-					if account.View().IsOpenAIOAuthLike() && resp.StatusCode == http.StatusTooManyRequests {
-						return (gatewayprovider.OpenAIFailoverPolicy{Health: s.Output.Health}).NewAccountFailure(account, resp.StatusCode, resp.Header, respBody, upstreamMsg, shouldDisable, retryableOnSameAccount)
+					retryableOnSameProvider := !shouldDisable && provider.View().IsPoolMode() && provider.View().IsPoolModeRetryableStatus(resp.StatusCode)
+					if provider.View().IsOpenAIOAuthLike() && resp.StatusCode == http.StatusTooManyRequests {
+						return (gatewayprovider.OpenAIFailoverPolicy{Health: s.Output.Health}).NewProviderFailure(provider, resp.StatusCode, resp.Header, respBody, upstreamMsg, shouldDisable, retryableOnSameProvider)
 					}
 					if gatewayprovider.IsOpenAIHTTPUpstreamAccessStateError(resp.StatusCode, upstreamMsg, respBody) {
-						return gatewayprovider.NewOpenAIUpstreamFailure(resp.StatusCode, resp.Header, respBody, upstreamMsg, retryableOnSameAccount)
+						return gatewayprovider.NewOpenAIUpstreamFailure(resp.StatusCode, resp.Header, respBody, upstreamMsg, retryableOnSameProvider)
 					}
-					return &forwardcore.UpstreamFailoverError{StatusCode: resp.StatusCode, ResponseBody: respBody, RetryableOnSameAccount: retryableOnSameAccount}
+					return &forwardcore.UpstreamFailoverError{StatusCode: resp.StatusCode, ResponseBody: respBody, RetryableOnSameProvider: retryableOnSameProvider}
 				},
 				Handle: func() error {
 					var failure error
-					legacyHTTPResult, failure = s.handleOpenAIImagesErrorResponse(upstreamCtx, resp, c, account, forwardBody, upstreamModel)
+					legacyHTTPResult, failure = s.handleOpenAIImagesErrorResponse(upstreamCtx, resp, c, provider, forwardBody, upstreamModel)
 					return failure
 				},
 			})
@@ -215,19 +215,19 @@ func (s *OpenAIImagesExecutor) forwardOpenAIImagesAPIKey(
 func (s *OpenAIImagesExecutor) buildOpenAIImagesRequest(
 	ctx context.Context,
 	c *gin.Context,
-	account *gatewayprovider.ExecutionAccount,
+	provider *gatewayprovider.ExecutionProvider,
 	body []byte,
 	contentType string,
 	token string,
 	endpoint string,
 	tlsRouterMatch ...egress.TLSFingerprintRouterMatchResult,
 ) (*http.Request, error) {
-	targetURL, err := s.Requests.ImagesURL(account, endpoint)
+	targetURL, err := s.Requests.ImagesURL(provider, endpoint)
 	if err != nil {
 		return nil, err
 	}
 
-	options := s.Requests.ResponseOptions(ctx, c, account, token, targetURL, false, tlsRouterMatch...)
+	options := s.Requests.ResponseOptions(ctx, c, provider, token, targetURL, false, tlsRouterMatch...)
 	options.AllowHeader = func(name string) bool { return AllowOpenAIPassthroughHeader(name) }
 	return upstreamopenai.BuildImagesRequest(ctx, body, contentType, options)
 }
@@ -236,10 +236,10 @@ func (s *OpenAIImagesExecutor) handleOpenAIImagesNonStreamingResponse(
 	ctx context.Context,
 	resp *http.Response,
 	c *gin.Context,
-	account *gatewayprovider.ExecutionAccount,
+	provider *gatewayprovider.ExecutionProvider,
 	parsed *gatewaymedia.ImageRequest,
 ) (openai.ForwardUsage, int, []string, error) {
 	options := s.Output.ImageOptions(c)
-	options.Backfill = func(body []byte) []byte { return s.backfillOpenAIImagesB64JSON(ctx, account, parsed, body) }
+	options.Backfill = func(body []byte) []byte { return s.backfillOpenAIImagesB64JSON(ctx, provider, parsed, body) }
 	return upstreamopenai.ReadImagesNonStreaming(resp, ResponseSink{Writer: c.Writer}, options)
 }

@@ -2104,14 +2104,14 @@ func TestValidatePricingBillingMode(t *testing.T) {
 	}
 }
 
-func TestValidateAccountStatsPricingEntries_RejectsFastModeMultiplier(t *testing.T) {
-	err := (PricingConfigValidation{LoadLocation: time.LoadLocation}).AccountStatsPricing([]ModelPricingEntry{{
+func TestValidateProviderStatsPricingEntries_RejectsFastModeMultiplier(t *testing.T) {
+	err := (PricingConfigValidation{LoadLocation: time.LoadLocation}).ProviderStatsPricing([]ModelPricingEntry{{
 		BillingMode:        BillingModeToken,
 		FastModeMultiplier: testPtrFloat64(2),
 		InputPrice:         testPtrFloat64(0.01),
 	}})
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "fast_mode_multiplier is not supported for account stats pricing")
+	require.Contains(t, err.Error(), "fast_mode_multiplier is not supported for provider stats pricing")
 }
 
 func TestValidatePricingEntries_RejectsTimePricingForNonTokenMode(t *testing.T) {

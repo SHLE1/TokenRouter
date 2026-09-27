@@ -2,12 +2,10 @@ package backup
 
 import (
 	"context"
-
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-
 	"sort"
 	"strings"
 	"sync"
@@ -867,6 +865,7 @@ func (s *BackupService) restoreBackup(ctx context.Context, backupID string) erro
 	}
 	return s.archive.Restore(ctx, record, objectStore)
 }
+
 func (s *BackupService) StartRestore(ctx context.Context, backupID string) (*BackupRecord, error) {
 	ctx, done, beginErr := s.begin(ctx)
 	if beginErr != nil {

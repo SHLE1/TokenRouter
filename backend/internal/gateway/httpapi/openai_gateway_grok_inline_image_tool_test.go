@@ -16,9 +16,9 @@ import (
 
 	gatewaytestkit "github.com/TokenFlux/TokenRouter/internal/gateway/testkit"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 
 	"github.com/gin-gonic/gin"
@@ -27,21 +27,20 @@ import (
 )
 
 func TestForwardGrokChatViaResponsesDropsRedundantViewImage(t *testing.T) {
-
 	body := grokInlineImageChatRequest()
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewReader(body))
 	c.Set("api_key", &apikey.APIKey{ID: 7991})
 
-	account := grokChatBridgeTestAccount(799)
-	repo := &grokQuotaAccountRepo{grokFixtureAccounts: &grokFixtureAccounts{
-		accountsByID: map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: account},
+	provider := grokChatBridgeTestProvider(799)
+	repo := &grokQuotaProviderRepo{grokFixtureProviders: &grokFixtureProviders{
+		providersByID: map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider},
 	}}
 	upstream := &auxiliaryHTTPRecorder{resp: grokChatBridgeCompletedResponse("resp_chat_image", 0)}
-	svc := newResponsesFixture(responsesFixtureInputs{grokTokens: newHTTPGrokTokenFixture(repo, nil), transport: upstream, accounts: repo})
+	svc := newResponsesFixture(responsesFixtureInputs{grokTokens: newHTTPGrokTokenFixture(repo, nil), transport: upstream, providers: repo})
 
-	result, err := svc.Text.Chat(context.Background(), c, account, body, "", "")
+	result, err := svc.Text.Chat(context.Background(), c, provider, body, "", "")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, grok.DefaultCLIBaseURL+"/responses", upstream.lastReq.URL.String())
@@ -50,14 +49,16 @@ func TestForwardGrokChatViaResponsesDropsRedundantViewImage(t *testing.T) {
 }
 
 func TestForwardGrokRawChatDropsRedundantViewImage(t *testing.T) {
-
 	body := grokInlineImageChatRequest()
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewReader(body))
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 800, Platform: capability.PlatformGrok, Type: capability.AccountTypeAPIKey, Concurrency: 1,
-		Credentials: map[string]any{"api_key": "test-key", "base_url": "https://grok.example.test/v1"}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 800, Platform: capability.PlatformGrok, Type: capability.ProviderTypeAPIKey, Concurrency: 1,
+			Credentials: map[string]any{"api_key": "test-key", "base_url": "https://grok.example.test/v1"},
+		},
 	}
 	upstream := &auxiliaryHTTPRecorder{resp: &http.Response{
 		StatusCode: http.StatusOK,
@@ -68,7 +69,7 @@ func TestForwardGrokRawChatDropsRedundantViewImage(t *testing.T) {
 	}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: protocolHTTPOptions(), transport: upstream})
 
-	result, err := svc.Text.Chat(context.Background(), c, account, body, "", "")
+	result, err := svc.Text.Chat(context.Background(), c, provider, body, "", "")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, "https://grok.example.test/v1/chat/completions", upstream.lastReq.URL.String())
@@ -77,7 +78,6 @@ func TestForwardGrokRawChatDropsRedundantViewImage(t *testing.T) {
 }
 
 func TestForwardGrokMessagesDropsRedundantViewImage(t *testing.T) {
-
 	body := []byte(`{
 		"model":"grok-4.6","max_tokens":32,"stream":false,
 		"messages":[{"role":"user","content":[
@@ -95,14 +95,14 @@ func TestForwardGrokMessagesDropsRedundantViewImage(t *testing.T) {
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", bytes.NewReader(body))
 	c.Set("api_key", &apikey.APIKey{ID: 7992})
 
-	account := gatewaytestkit.HealthyGrokOAuthAccount(801, "access-token")
-	repo := &grokQuotaAccountRepo{grokFixtureAccounts: &grokFixtureAccounts{
-		accountsByID: map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: account},
+	provider := gatewaytestkit.HealthyGrokOAuthProvider(801, "access-token")
+	repo := &grokQuotaProviderRepo{grokFixtureProviders: &grokFixtureProviders{
+		providersByID: map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider},
 	}}
 	upstream := &auxiliaryHTTPRecorder{resp: grokMessagesSSECompletedResponse("resp_messages_image", 0)}
-	svc := newResponsesFixture(responsesFixtureInputs{grokTokens: newHTTPGrokTokenFixture(repo, nil), transport: upstream, accounts: repo})
+	svc := newResponsesFixture(responsesFixtureInputs{grokTokens: newHTTPGrokTokenFixture(repo, nil), transport: upstream, providers: repo})
 
-	result, err := svc.Text.Messages(context.Background(), c, account, body, "", "")
+	result, err := svc.Text.Messages(context.Background(), c, provider, body, "", "")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, grok.DefaultCLIBaseURL+"/responses", upstream.lastReq.URL.String())

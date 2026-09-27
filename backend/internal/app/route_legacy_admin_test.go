@@ -2,7 +2,6 @@
 package app
 
 import (
-	routeaccount "github.com/TokenFlux/TokenRouter/internal/account/httpapi"
 	routeapikey "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
 	routeaudit "github.com/TokenFlux/TokenRouter/internal/audit/httpapi"
 	routebackup "github.com/TokenFlux/TokenRouter/internal/backup/httpapi"
@@ -15,6 +14,7 @@ import (
 	routenotification "github.com/TokenFlux/TokenRouter/internal/notification/httpapi"
 	routeops "github.com/TokenFlux/TokenRouter/internal/ops/httpapi"
 	routepromotion "github.com/TokenFlux/TokenRouter/internal/promotion/httpapi"
+	routeprovider "github.com/TokenFlux/TokenRouter/internal/provider/httpapi"
 	routerouting "github.com/TokenFlux/TokenRouter/internal/routing/httpapi"
 	routescheduler "github.com/TokenFlux/TokenRouter/internal/scheduler/httpapi"
 	routesearch "github.com/TokenFlux/TokenRouter/internal/search/httpapi"
@@ -45,7 +45,7 @@ func RegisterAdminRoutes(
 	// 审计中间件挂在认证之后：所有管理面变更类操作 + 敏感读取入审计日志
 	admin.Use(gin.HandlerFunc(auditLog))
 	{
-		// 只读能力目录：账号与分组表单共用后端定义。
+		// 只读能力目录：提供商与分组表单共用后端定义。
 		admin.GET("/protocol-capabilities", protocolCatalog)
 		// 仪表盘
 		registerDashboardRoutes(admin, h)
@@ -56,8 +56,8 @@ func RegisterAdminRoutes(
 		// 分组管理
 		registerGroupRoutes(admin, h)
 
-		// 账号管理
-		registerAccountRoutes(admin, h, stepUpAuth)
+		// 提供商管理
+		registerProviderRoutes(admin, h, stepUpAuth)
 
 		// 公告管理
 		registerAnnouncementRoutes(admin, h)
@@ -186,21 +186,21 @@ func registerGroupRoutes(admin *gin.RouterGroup, h *routeTestHandlers) {
 	routerouting.RegisterGroupRoutes(admin, h.Admin.Group)
 }
 
-func registerAccountRoutes(admin *gin.RouterGroup, h *routeTestHandlers, stepUpAuth routeidentity.StepUpAuthMiddleware) {
-	routeaccount.RegisterAccountRoutes(admin, routeaccount.AccountRouteEndpoints{
-		AccountArchive:     h.Admin.AccountArchive,
-		AccountCRS:         h.Admin.AccountCRS,
-		AccountCodexImport: h.Admin.AccountCodexImport,
-		AccountManagement:  h.Admin.AccountManagement,
-		AccountOAuthUsage:  h.Admin.AccountOAuthUsage,
-		AccountOllama:      h.Admin.AccountOllama,
-		AccountTests:       h.Admin.AccountTests,
-		CodexInviteReset:   h.Admin.CodexInviteReset,
-		OAuth:              h.Admin.OAuth,
-		OpenAIOAuth:        h.Admin.OpenAIOAuth,
-		UpstreamUsage:      h.Admin.UpstreamUsage,
-	}, gin.HandlerFunc(stepUpAuth), func(accounts *gin.RouterGroup) {
-		routescheduler.RegisterAccountDiagnostics(accounts, h.Admin.SchedulerDiagnostics)
+func registerProviderRoutes(admin *gin.RouterGroup, h *routeTestHandlers, stepUpAuth routeidentity.StepUpAuthMiddleware) {
+	routeprovider.RegisterProviderRoutes(admin, routeprovider.ProviderRouteEndpoints{
+		ProviderArchive:     h.Admin.ProviderArchive,
+		ProviderCRS:         h.Admin.ProviderCRS,
+		ProviderCodexImport: h.Admin.ProviderCodexImport,
+		ProviderManagement:  h.Admin.ProviderManagement,
+		ProviderOAuthUsage:  h.Admin.ProviderOAuthUsage,
+		ProviderOllama:      h.Admin.ProviderOllama,
+		ProviderTests:       h.Admin.ProviderTests,
+		CodexInviteReset:    h.Admin.CodexInviteReset,
+		OAuth:               h.Admin.OAuth,
+		OpenAIOAuth:         h.Admin.OpenAIOAuth,
+		UpstreamUsage:       h.Admin.UpstreamUsage,
+	}, gin.HandlerFunc(stepUpAuth), func(providers *gin.RouterGroup) {
+		routescheduler.RegisterProviderDiagnostics(providers, h.Admin.SchedulerDiagnostics)
 	})
 }
 
@@ -209,23 +209,23 @@ func registerAnnouncementRoutes(admin *gin.RouterGroup, h *routeTestHandlers) {
 }
 
 func registerOpenAIOAuthRoutes(admin *gin.RouterGroup, h *routeTestHandlers) {
-	routeaccount.RegisterOpenAIOAuthRoutes(admin, h.Admin.OpenAIOAuth)
+	routeprovider.RegisterOpenAIOAuthRoutes(admin, h.Admin.OpenAIOAuth)
 }
 
 func registerGeminiOAuthRoutes(admin *gin.RouterGroup, h *routeTestHandlers) {
-	routeaccount.RegisterGeminiOAuthRoutes(admin, h.Admin.GeminiOAuth)
+	routeprovider.RegisterGeminiOAuthRoutes(admin, h.Admin.GeminiOAuth)
 }
 
 func registerAntigravityOAuthRoutes(admin *gin.RouterGroup, h *routeTestHandlers) {
-	routeaccount.RegisterAntigravityOAuthRoutes(admin, h.Admin.AntigravityOAuth)
+	routeprovider.RegisterAntigravityOAuthRoutes(admin, h.Admin.AntigravityOAuth)
 }
 
 func registerQoderOAuthRoutes(admin *gin.RouterGroup, h *routeTestHandlers) {
-	routeaccount.RegisterQoderOAuthRoutes(admin, h.Admin.QoderOAuth)
+	routeprovider.RegisterQoderOAuthRoutes(admin, h.Admin.QoderOAuth)
 }
 
 func registerGrokOAuthRoutes(admin *gin.RouterGroup, h *routeTestHandlers) {
-	routeaccount.RegisterGrokOAuthRoutes(admin, h.Admin.GrokOAuth)
+	routeprovider.RegisterGrokOAuthRoutes(admin, h.Admin.GrokOAuth)
 }
 
 func registerProxyRoutes(admin *gin.RouterGroup, h *routeTestHandlers, stepUpAuth routeidentity.StepUpAuthMiddleware) {
@@ -267,7 +267,7 @@ func registerUserAttributeRoutes(admin *gin.RouterGroup, h *routeTestHandlers) {
 }
 
 func registerScheduledTestRoutes(admin *gin.RouterGroup, h *routeTestHandlers) {
-	routeaccount.RegisterScheduledTestRoutes(admin, h.Admin.ScheduledTest)
+	routeprovider.RegisterScheduledTestRoutes(admin, h.Admin.ScheduledTest)
 }
 
 func registerErrorPassthroughRoutes(admin *gin.RouterGroup, h *routeTestHandlers) {
@@ -292,7 +292,7 @@ func registerSettingsRoutes(admin *gin.RouterGroup, h *routeTestHandlers) {
 	routesettings.RegisterSettingsSettingsRoutes(group, &routesettings.Handler{}, &routesettings.PreAggregationHandler{})
 	routecreative.RegisterCreativeSettingsRoutes(group, &routecreative.SettingsHandler{})
 	routeidentity.RegisterIdentitySettingsRoutes(group, &routeidentity.AdminKeySettingsHandler{})
-	routeaccount.RegisterAccountSettingsRoutes(group, &routeaccount.RuntimeSettingsHandler{})
+	routeprovider.RegisterProviderSettingsRoutes(group, &routeprovider.RuntimeSettingsHandler{})
 	serverhttp.RegisterPanelSettingsRoutes(group, &serverhttp.PanelSettingsHandler{})
 	routegateway.RegisterGatewaySettingsRoutes(group, &routegateway.RuntimeSettingsHandler{})
 	routenotification.RegisterSettingsRoutes(group, h.Notification)

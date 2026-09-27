@@ -53,7 +53,7 @@ func (w *recordWriter) Create(ctx context.Context, r *usage.UsageLog) (bool, err
 
 type recordEffects struct{ events *[]string }
 
-func (e recordEffects) AccountUsed(int64) { *e.events = append(*e.events, "used") }
+func (e recordEffects) ProviderUsed(int64) { *e.events = append(*e.events, "used") }
 
 func (e recordEffects) InvalidateAuth(context.Context, string) { *e.events = append(*e.events, "auth") }
 
@@ -75,7 +75,7 @@ func recordFixture(simple bool) (*Recorder, *recordStore, *recordWriter, *Input,
 		RequestID: "fixed",
 		APIKey:    &KeySnapshot{ID: 2, BillingMode: billing.APIKeyBillingModeBalance, ActorUserID: 8},
 		User:      &PayerSnapshot{ID: 1},
-		Account:   &AccountSnapshot{ID: 3, RateMultiplier: 1},
+		Provider:  &ProviderSnapshot{ID: 3, RateMultiplier: 1},
 	}
 	return recorder, funds, logs, input, &events
 }

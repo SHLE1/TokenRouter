@@ -126,7 +126,7 @@ export default {
     groups: 'Groups',
     pricing: 'Price Management',
     subscriptions: 'Subscriptions',
-    accounts: 'Accounts',
+    providers: 'Provider Management',
     proxies: 'Proxies',
     redeemCodes: 'Redeem Codes',
     ops: 'Ops',

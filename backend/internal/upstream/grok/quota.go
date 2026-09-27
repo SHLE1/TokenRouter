@@ -9,12 +9,11 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/usageview"
 )
 
-// GrokFreeRolling24hTokenLimit 是运维软门禁使用的 Free 账号滚动 24 小时名义额度；
+// GrokFreeRolling24hTokenLimit 是运维软门禁使用的 Free 提供商滚动 24 小时名义额度；
 // 上游请求头仍可能返回历史版本的 100 万或 200 万额度快照。
 const GrokFreeRolling24hTokenLimit int64 = 500_000
 
 var grokFreeRolling24hTokenLimits = map[int64]struct{}{
-
 	GrokFreeRolling24hTokenLimit: {},
 
 	1_000_000: {},
@@ -28,7 +27,7 @@ func IsGrokFreeRolling24hTokenLimit(limit int64) bool {
 	return ok
 }
 
-// QuotaWindow 复用账号展示叶子值；供应商解析仍由本包拥有。
+// QuotaWindow 复用提供商展示叶子值；供应商解析仍由本包拥有。
 type QuotaWindow = usageview.QuotaWindow
 
 type QuotaSnapshot = usageview.QuotaSnapshot
@@ -77,7 +76,6 @@ func parseQuotaHeaders(headers http.Header, statusCode int, source string, keepE
 	}
 	now := time.Now().UTC().Format(time.RFC3339)
 	snapshot := &QuotaSnapshot{
-
 		Requests: parseQuotaWindow(headers, "requests"),
 
 		Tokens: parseQuotaWindow(headers, "tokens"),

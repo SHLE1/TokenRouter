@@ -31,7 +31,7 @@ func (r *ErrorPolicyStore) SetError(ctx context.Context, id int64, errorMsg stri
 }
 
 func (r *ErrorPolicyStore) SetModelRateLimit(_ context.Context, id int64, scope string, resetAt time.Time, reason ...string) error {
-	call := ModelLimitCall{AccountID: id, Scope: scope, ResetAt: resetAt}
+	call := ModelLimitCall{ProviderID: id, Scope: scope, ResetAt: resetAt}
 	if len(reason) > 0 {
 		call.Reason = reason[0]
 	}
@@ -102,33 +102,33 @@ func (s *ForbiddenCounter) IncrementOpenAI403Count(_ context.Context, _ int64, _
 	return count, nil
 }
 
-func (s *ForbiddenCounter) ResetOpenAI403Count(_ context.Context, accountID int64) error {
-	s.ResetCalls = append(s.ResetCalls, accountID)
+func (s *ForbiddenCounter) ResetOpenAI403Count(_ context.Context, providerID int64) error {
+	s.ResetCalls = append(s.ResetCalls, providerID)
 	return nil
 }
 
 // RuntimeBlockRecorder 记录运行时阻断和清理，不创建另一份健康状态。
 type RuntimeBlockRecorder struct {
-	Accounts   []*gatewayprovider.ExecutionAccount
+	Providers  []*gatewayprovider.ExecutionProvider
 	Until      []time.Time
 	Reasons    []string
 	ClearedIDs []int64
 }
 
-func (r *RuntimeBlockRecorder) BlockAccountScheduling(account *gatewayprovider.ExecutionAccount, until time.Time, reason string) {
-	r.Accounts = append(r.Accounts, account)
+func (r *RuntimeBlockRecorder) BlockProviderScheduling(provider *gatewayprovider.ExecutionProvider, until time.Time, reason string) {
+	r.Providers = append(r.Providers, provider)
 	r.Until = append(r.Until, until)
 	r.Reasons = append(r.Reasons, reason)
 }
 
-func (r *RuntimeBlockRecorder) ClearAccountSchedulingBlock(accountID int64) {
-	r.ClearedIDs = append(r.ClearedIDs, accountID)
+func (r *RuntimeBlockRecorder) ClearProviderSchedulingBlock(providerID int64) {
+	r.ClearedIDs = append(r.ClearedIDs, providerID)
 }
 
 // ModelLimitCall 记录模型窗口写入的原字段。
 type ModelLimitCall struct {
-	AccountID int64
-	Scope     string
-	ResetAt   time.Time
-	Reason    string
+	ProviderID int64
+	Scope      string
+	ResetAt    time.Time
+	Reason     string
 }

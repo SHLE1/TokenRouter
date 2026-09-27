@@ -157,7 +157,7 @@ func StreamResponse(
 				}
 				if writeErr != nil {
 					clientDisconnected = true
-					logger.LegacyPrintf("service.gateway", "[Bedrock] Client disconnected during streaming, continue draining for usage: account=%d", options.AccountID)
+					logger.LegacyPrintf("service.gateway", "[Bedrock] Client disconnected during streaming, continue draining for usage: provider=%d", options.ProviderID)
 				} else {
 					flusher.Flush()
 				}
@@ -171,7 +171,7 @@ func StreamResponse(
 			if clientDisconnected {
 				return &StreamResult{Usage: usage, FirstTokenMs: firstTokenMs, ClientDisconnect: true}, nil
 			}
-			logger.LegacyPrintf("service.gateway", "[Bedrock] Stream data interval timeout: account=%d model=%s interval=%s", options.AccountID, model, streamInterval)
+			logger.LegacyPrintf("service.gateway", "[Bedrock] Stream data interval timeout: provider=%d model=%s interval=%s", options.ProviderID, model, streamInterval)
 			if options.OnTimeout != nil {
 				options.OnTimeout(ctx, model)
 			}
@@ -416,12 +416,12 @@ func BedrockReadUint16(b []byte) uint16 {
 	return uint16(b[0])<<8 | uint16(b[1])
 }
 
-// StreamOptions 只包含执行技术参数与外层观测回调，不接收账号或配置实体。
+// StreamOptions 只包含执行技术参数与外层观测回调，不接收提供商或配置实体。
 type StreamOptions struct {
-	Observe   func(anthropic.Observation)
-	AccountID int64
-	Interval  time.Duration
-	OnTimeout func(context.Context, string)
+	Observe    func(anthropic.Observation)
+	ProviderID int64
+	Interval   time.Duration
+	OnTimeout  func(context.Context, string)
 }
 type StreamResult struct {
 	Usage            *upstream.TokenUsage

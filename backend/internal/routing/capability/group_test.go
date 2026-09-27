@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 分组协议集合独立于账号平台，默认只开放三个文本入口。
+// 分组协议集合独立于提供商平台，默认只开放三个文本入口。
 func TestGroupClientProtocolMatrix(t *testing.T) {
 	supported := SupportedGroupClientProtocols("")
 	require.Len(t, supported, 21)

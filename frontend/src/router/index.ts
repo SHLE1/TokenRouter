@@ -545,15 +545,15 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
-    path: '/admin/accounts',
-    name: 'AdminAccounts',
-    component: () => import('@/views/admin/AccountsView.vue'),
+    path: '/admin/providers',
+    name: 'AdminProviders',
+    component: () => import('@/views/admin/ProvidersView.vue'),
     meta: {
       requiresAuth: true,
       requiresAdmin: true,
-      title: 'Account Management',
-      titleKey: 'admin.accounts.title',
-      descriptionKey: 'admin.accounts.description'
+      title: 'Provider Management',
+      titleKey: 'admin.providers.title',
+      descriptionKey: 'admin.providers.description'
     }
   },
   {

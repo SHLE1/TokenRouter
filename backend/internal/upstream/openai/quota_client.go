@@ -1,4 +1,4 @@
-// 额度原生客户端执行有界读取、签名 Header 和一次 task 恢复，不保存账号或缓存。
+// 额度原生客户端执行有界读取、签名 Header 和一次 task 恢复，不保存提供商或缓存。
 package openai
 
 import (
@@ -23,7 +23,7 @@ type QuotaClientOptions struct {
 	UserAgent       string
 	URL             func(string, map[string]string) (string, error)
 	Authenticate    func(context.Context) (authorization string, taskID string, err error)
-	AccountHeaders  func(http.Header)
+	ProviderHeaders func(http.Header)
 	Do              func(*http.Request) (*http.Response, error)
 	IsAgentIdentity func() bool
 	RecoverTask     func(context.Context, string) error
@@ -32,13 +32,15 @@ type QuotaClientOptions struct {
 }
 type QuotaClient struct{ Options QuotaClientOptions }
 
-const openaiQuotaUpstreamTimeout = 20 * time.Second
-const openaiQuotaCodexBeta = "codex-1"
-const openaiQuotaCodexOriginator = "Codex Desktop"
-const openaiQuotaCodexLanguageTag = "zh-CN"
-const openaiQuotaSecFetchSite = "none"
-const openaiQuotaSecFetchMode = "no-cors"
-const openaiQuotaSecFetchDest = "empty"
+const (
+	openaiQuotaUpstreamTimeout  = 20 * time.Second
+	openaiQuotaCodexBeta        = "codex-1"
+	openaiQuotaCodexOriginator  = "Codex Desktop"
+	openaiQuotaCodexLanguageTag = "zh-CN"
+	openaiQuotaSecFetchSite     = "none"
+	openaiQuotaSecFetchMode     = "no-cors"
+	openaiQuotaSecFetchDest     = "empty"
+)
 
 func (s *QuotaClient) GetJSON(ctx context.Context, path string, query map[string]string) (map[string]any, error) {
 	target, err := s.Options.URL(path, query)
@@ -126,7 +128,7 @@ func (s *QuotaClient) ApplyHeaders(req *http.Request) (string, error) {
 	req.Header.Set("sec-fetch-mode", openaiQuotaSecFetchMode)
 	req.Header.Set("sec-fetch-dest", openaiQuotaSecFetchDest)
 	req.Header.Set("priority", "u=4, i")
-	s.Options.AccountHeaders(req.Header)
+	s.Options.ProviderHeaders(req.Header)
 	return expectedTaskID, nil
 }
 

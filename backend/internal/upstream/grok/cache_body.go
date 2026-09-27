@@ -41,7 +41,7 @@ func ExtractClaudeCodeSessionIDFromPayload(body []byte) string {
 }
 
 // applyGrokResponsesCacheIdentity 将缓存路由身份写入 xAI Responses 请求。
-// 客户端已有值会被租户隔离值替换，防止共享 OAuth 账号上的缓存冲突。
+// 客户端已有值会被租户隔离值替换，防止共享 OAuth 提供商上的缓存冲突。
 //
 // xAI 会把未携带原生搜索工具的免费 OAuth 请求路由到不可缓存的 build-free 模型。
 // 对原本无工具的请求添加原生工具并设置 tool_choice=none，可选择支持缓存的层级而不
@@ -73,6 +73,7 @@ func ApplyGrokResponsesCacheIdentity(body, intentSourceBody []byte, identity str
 	}
 	return sjson.SetBytes(out, "tool_choice", grokFreeCacheDisabledToolChoice)
 }
+
 func HasGrokResponsesToolIntent(body []byte) bool {
 	if gjson.GetBytes(body, "tools").Exists() || gjson.GetBytes(body, "tool_choice").Exists() {
 		return true
@@ -92,6 +93,7 @@ func HasGrokResponsesToolIntent(body []byte) bool {
 	}
 	return false
 }
+
 func ApplyGrokFreeToolCacheRoute(body, intentSourceBody []byte, knownFree bool, cacheIdentity string, allowPureClientTools, allowFunctionSearch bool) ([]byte, error) {
 	if strings.TrimSpace(cacheIdentity) == "" || !knownFree {
 		return body, nil
@@ -107,6 +109,7 @@ func ApplyGrokFreeToolCacheRoute(body, intentSourceBody []byte, knownFree bool, 
 	}
 	return AppendGrokFreeCacheNativeToolsWithPolicy(body, allowPureClientTools, allowFunctionSearch)
 }
+
 func IsGrokFreeCacheFunctionToolIntent(tools, toolChoice gjson.Result) bool {
 	if !tools.IsArray() {
 		return false
@@ -143,12 +146,15 @@ func IsGrokFreeCacheFunctionToolIntent(tools, toolChoice gjson.Result) bool {
 		return false
 	}
 }
+
 func AppendMissingGrokFreeCacheNativeTools(body []byte) ([]byte, error) {
 	return AppendGrokFreeCacheNativeTools(body, false)
 }
+
 func AppendGrokFreeCacheNativeTools(body []byte, allowPureClientTools bool) ([]byte, error) {
 	return AppendGrokFreeCacheNativeToolsWithPolicy(body, allowPureClientTools, true)
 }
+
 func AppendGrokFreeCacheNativeToolsWithPolicy(body []byte, allowPureClientTools, allowFunctionSearch bool) ([]byte, error) {
 	tools := gjson.GetBytes(body, "tools")
 	if !tools.Exists() || !tools.IsArray() {

@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/audit"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/creative"
@@ -22,6 +21,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
 	"github.com/TokenFlux/TokenRouter/internal/notification"
 	"github.com/TokenFlux/TokenRouter/internal/payment"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/settings/composite"
 
 	billinghttp "github.com/TokenFlux/TokenRouter/internal/billing/httpapi"
@@ -73,7 +73,7 @@ func (h *Handler) ensureActorTotpForStepUp(c *gin.Context) bool {
 	}
 	if !user.TotpEnabled {
 		response.ErrorWithDetails(c, http.StatusBadRequest,
-			"Enable two-factor authentication (TOTP) for your account before turning on step-up verification",
+			"Enable two-factor authentication (TOTP) for your provider before turning on step-up verification",
 			"STEP_UP_ENABLE_REQUIRES_TOTP", nil)
 		return false
 	}
@@ -158,7 +158,7 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 	defer update.Close()
 	c.Request = c.Request.WithContext(update.Context())
 
-	// 管理端保存能力白名单，执行目录再与组内账号的实际能力取交集。
+	// 管理端保存能力白名单，执行目录再与组内提供商的实际能力取交集。
 	if req.CreativeModelSettings != nil {
 		if sanitizer, ok := h.creativeModelReader.(interface {
 			NormalizeCreativeModelSettingsForSave(context.Context, []creative.CreativeModelSetting) ([]creative.CreativeModelSetting, error)
@@ -634,7 +634,7 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 		}
 
 		if req.WeChatConnectMPEnabled && req.WeChatConnectMobileEnabled {
-			response.BadRequest(c, "WeChat Official Account and Mobile App cannot be enabled at the same time")
+			response.BadRequest(c, "WeChat Official Provider and Mobile App cannot be enabled at the same time")
 			return
 		}
 		if req.WeChatConnectMode != "" {
@@ -694,11 +694,11 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 		}
 		if req.WeChatConnectMPEnabled {
 			if req.WeChatConnectMPAppID == "" {
-				response.BadRequest(c, "WeChat Official Account App ID is required when enabled")
+				response.BadRequest(c, "WeChat Official Provider App ID is required when enabled")
 				return
 			}
 			if req.WeChatConnectMPAppSecret == "" {
-				response.BadRequest(c, "WeChat Official Account App Secret is required when enabled")
+				response.BadRequest(c, "WeChat Official Provider App Secret is required when enabled")
 				return
 			}
 		}
@@ -1312,7 +1312,7 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 	}
 
 	settings := &composite.Snapshot{
-		AccountSchedulingThresholds: req.AccountSchedulingThresholds,
+		ProviderSchedulingThresholds: req.ProviderSchedulingThresholds,
 
 		RegistrationEnabled:                 req.RegistrationEnabled,
 		EmailVerifyEnabled:                  req.EmailVerifyEnabled,
@@ -1717,7 +1717,7 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 		AdvancedSchedulerWeightQuotaHeadroom:    stringSetting(req.AdvancedSchedulerWeightQuotaHeadroom, previousSettings.AdvancedSchedulerWeightQuotaHeadroom),
 		AdvancedSchedulerWeightPreviousResponse: stringSetting(req.AdvancedSchedulerWeightPreviousResponse, previousSettings.AdvancedSchedulerWeightPreviousResponse),
 		AdvancedSchedulerWeightSessionSticky:    stringSetting(req.AdvancedSchedulerWeightSessionSticky, previousSettings.AdvancedSchedulerWeightSessionSticky),
-		OpenAIQuotaAutoPauseSettings: func() account.QuotaAutoPauseSettings {
+		OpenAIQuotaAutoPauseSettings: func() provider.QuotaAutoPauseSettings {
 			if req.OpenAIQuotaAutoPauseSettings != nil {
 				return *req.OpenAIQuotaAutoPauseSettings
 			}
@@ -1748,17 +1748,17 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 			}
 			return previousSettings.SubscriptionExpiryNotifyEnabled
 		}(),
-		AccountQuotaNotifyEnabled: func() bool {
-			if req.AccountQuotaNotifyEnabled != nil {
-				return *req.AccountQuotaNotifyEnabled
+		ProviderQuotaNotifyEnabled: func() bool {
+			if req.ProviderQuotaNotifyEnabled != nil {
+				return *req.ProviderQuotaNotifyEnabled
 			}
-			return previousSettings.AccountQuotaNotifyEnabled
+			return previousSettings.ProviderQuotaNotifyEnabled
 		}(),
-		AccountQuotaNotifyEmails: func() []contact.Entry {
-			if req.AccountQuotaNotifyEmails != nil {
-				return identitydto.NotifyEmailEntriesToIdentity(*req.AccountQuotaNotifyEmails)
+		ProviderQuotaNotifyEmails: func() []contact.Entry {
+			if req.ProviderQuotaNotifyEmails != nil {
+				return identitydto.NotifyEmailEntriesToIdentity(*req.ProviderQuotaNotifyEmails)
 			}
-			return previousSettings.AccountQuotaNotifyEmails
+			return previousSettings.ProviderQuotaNotifyEmails
 		}(),
 	}
 
@@ -1960,7 +1960,7 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 		}
 		fields[name] = value
 	}
-	for name, value := range map[string]any{"account_quota_notify_enabled": settings.AccountQuotaNotifyEnabled, "account_quota_notify_emails": settings.AccountQuotaNotifyEmails, "account_scheduling_thresholds": settings.AccountSchedulingThresholds} {
+	for name, value := range map[string]any{"provider_quota_notify_enabled": settings.ProviderQuotaNotifyEnabled, "provider_quota_notify_emails": settings.ProviderQuotaNotifyEmails, "provider_scheduling_thresholds": settings.ProviderSchedulingThresholds} {
 		raw, marshalErr := json.Marshal(value)
 		if marshalErr != nil {
 			response.ErrorFrom(c, marshalErr)
@@ -1979,9 +1979,9 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 		}
 		fields[name] = raw
 	}
-	delete(fields, "openai_account_quota_auto_pause")
+	delete(fields, "openai_provider_quota_auto_pause")
 	if settings.OpenAIQuotaAutoPauseSettingsSet {
-		fields["openai_account_quota_auto_pause"], _ = json.Marshal(settings.OpenAIQuotaAutoPauseSettings)
+		fields["openai_provider_quota_auto_pause"], _ = json.Marshal(settings.OpenAIQuotaAutoPauseSettings)
 	}
 	gatewayRaw, err := json.Marshal(settings.GatewayAdminSettings())
 	if err != nil {
@@ -2285,8 +2285,8 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 		BalanceLowNotifyThreshold:                        updatedSettings.BalanceLowNotifyThreshold,
 		BalanceLowNotifyRechargeURL:                      updatedSettings.BalanceLowNotifyRechargeURL,
 		SubscriptionExpiryNotifyEnabled:                  updatedSettings.SubscriptionExpiryNotifyEnabled,
-		AccountQuotaNotifyEnabled:                        updatedSettings.AccountQuotaNotifyEnabled,
-		AccountQuotaNotifyEmails:                         identitydto.NotifyEmailEntriesFromIdentity(updatedSettings.AccountQuotaNotifyEmails),
+		ProviderQuotaNotifyEnabled:                       updatedSettings.ProviderQuotaNotifyEnabled,
+		ProviderQuotaNotifyEmails:                        identitydto.NotifyEmailEntriesFromIdentity(updatedSettings.ProviderQuotaNotifyEmails),
 		PaymentEnabled:                                   updatedPaymentCfg.Enabled,
 		PaymentMinAmount:                                 updatedPaymentCfg.MinAmount,
 		PaymentMaxAmount:                                 updatedPaymentCfg.MaxAmount,

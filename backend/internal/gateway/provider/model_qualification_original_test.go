@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
 	"github.com/stretchr/testify/require"
@@ -19,18 +19,19 @@ func TestIsModelRateLimited(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		account        *accountcore.Record
+		provider       *providercore.Record
 		requestedModel string
 		expected       bool
 	}{
 		{
 			name: "official model ID hit - claude-sonnet-4-5",
-			account: &accountcore.Record{
-				Extra: map[string]any{"model_rate_limits": map[string]any{
-					"claude-sonnet-4-5": map[string]any{
-						"rate_limit_reset_at": future,
+			provider: &providercore.Record{
+				Extra: map[string]any{
+					"model_rate_limits": map[string]any{
+						"claude-sonnet-4-5": map[string]any{
+							"rate_limit_reset_at": future,
+						},
 					},
-				},
 				},
 			},
 			requestedModel: "claude-sonnet-4-5",
@@ -38,17 +39,18 @@ func TestIsModelRateLimited(t *testing.T) {
 		},
 		{
 			name: "official model ID hit via mapping - request claude-3-5-sonnet, mapped to claude-sonnet-4-5",
-			account: &accountcore.Record{
+			provider: &providercore.Record{
 				Credentials: map[string]any{
 					"model_mapping": map[string]any{
 						"claude-3-5-sonnet": "claude-sonnet-4-5",
 					},
 				},
-				Extra: map[string]any{"model_rate_limits": map[string]any{
-					"claude-sonnet-4-5": map[string]any{
-						"rate_limit_reset_at": future,
+				Extra: map[string]any{
+					"model_rate_limits": map[string]any{
+						"claude-sonnet-4-5": map[string]any{
+							"rate_limit_reset_at": future,
+						},
 					},
-				},
 				},
 			},
 			requestedModel: "claude-3-5-sonnet",
@@ -56,12 +58,13 @@ func TestIsModelRateLimited(t *testing.T) {
 		},
 		{
 			name: "no rate limit - expired",
-			account: &accountcore.Record{
-				Extra: map[string]any{"model_rate_limits": map[string]any{
-					"claude-sonnet-4-5": map[string]any{
-						"rate_limit_reset_at": past,
+			provider: &providercore.Record{
+				Extra: map[string]any{
+					"model_rate_limits": map[string]any{
+						"claude-sonnet-4-5": map[string]any{
+							"rate_limit_reset_at": past,
+						},
 					},
-				},
 				},
 			},
 			requestedModel: "claude-sonnet-4-5",
@@ -69,12 +72,13 @@ func TestIsModelRateLimited(t *testing.T) {
 		},
 		{
 			name: "no rate limit - no matching key",
-			account: &accountcore.Record{
-				Extra: map[string]any{"model_rate_limits": map[string]any{
-					"gemini-3-flash": map[string]any{
-						"rate_limit_reset_at": future,
+			provider: &providercore.Record{
+				Extra: map[string]any{
+					"model_rate_limits": map[string]any{
+						"gemini-3-flash": map[string]any{
+							"rate_limit_reset_at": future,
+						},
 					},
-				},
 				},
 			},
 			requestedModel: "claude-sonnet-4-5",
@@ -82,24 +86,25 @@ func TestIsModelRateLimited(t *testing.T) {
 		},
 		{
 			name:           "no rate limit - unsupported model",
-			account:        &accountcore.Record{},
+			provider:       &providercore.Record{},
 			requestedModel: "gpt-4",
 			expected:       false,
 		},
 		{
 			name:           "no rate limit - empty model",
-			account:        &accountcore.Record{},
+			provider:       &providercore.Record{},
 			requestedModel: "",
 			expected:       false,
 		},
 		{
 			name: "gemini model hit",
-			account: &accountcore.Record{
-				Extra: map[string]any{"model_rate_limits": map[string]any{
-					"gemini-3-pro-high": map[string]any{
-						"rate_limit_reset_at": future,
+			provider: &providercore.Record{
+				Extra: map[string]any{
+					"model_rate_limits": map[string]any{
+						"gemini-3-pro-high": map[string]any{
+							"rate_limit_reset_at": future,
+						},
 					},
-				},
 				},
 			},
 			requestedModel: "gemini-3-pro-high",
@@ -107,13 +112,14 @@ func TestIsModelRateLimited(t *testing.T) {
 		},
 		{
 			name: "antigravity platform - gemini-3-pro-preview mapped to gemini-3-pro-high",
-			account: &accountcore.Record{
+			provider: &providercore.Record{
 				Platform: capability.PlatformAntigravity,
-				Extra: map[string]any{"model_rate_limits": map[string]any{
-					"gemini-3-pro-high": map[string]any{
-						"rate_limit_reset_at": future,
+				Extra: map[string]any{
+					"model_rate_limits": map[string]any{
+						"gemini-3-pro-high": map[string]any{
+							"rate_limit_reset_at": future,
+						},
 					},
-				},
 				},
 			},
 			requestedModel: "gemini-3-pro-preview",
@@ -121,12 +127,14 @@ func TestIsModelRateLimited(t *testing.T) {
 		},
 		{
 			name: "antigravity platform - gemini family rate limit blocks mapped preview",
-			account: &accountcore.Record{
+			provider: &providercore.Record{
 				Platform: capability.PlatformAntigravity,
-				Extra: map[string]any{"model_rate_limits": map[string]any{"antigravity:gemini": map[string]any{
-					"rate_limit_reset_at": future,
-				},
-				},
+				Extra: map[string]any{
+					"model_rate_limits": map[string]any{
+						"antigravity:gemini": map[string]any{
+							"rate_limit_reset_at": future,
+						},
+					},
 				},
 			},
 			requestedModel: "gemini-3-pro-preview",
@@ -134,12 +142,14 @@ func TestIsModelRateLimited(t *testing.T) {
 		},
 		{
 			name: "antigravity platform - gemini family rate limit does not block claude",
-			account: &accountcore.Record{
+			provider: &providercore.Record{
 				Platform: capability.PlatformAntigravity,
-				Extra: map[string]any{"model_rate_limits": map[string]any{"antigravity:gemini": map[string]any{
-					"rate_limit_reset_at": future,
-				},
-				},
+				Extra: map[string]any{
+					"model_rate_limits": map[string]any{
+						"antigravity:gemini": map[string]any{
+							"rate_limit_reset_at": future,
+						},
+					},
 				},
 			},
 			requestedModel: "claude-sonnet-4-5",
@@ -147,13 +157,14 @@ func TestIsModelRateLimited(t *testing.T) {
 		},
 		{
 			name: "non-antigravity platform - gemini-3-pro-preview NOT mapped",
-			account: &accountcore.Record{
+			provider: &providercore.Record{
 				Platform: capability.PlatformGemini,
-				Extra: map[string]any{"model_rate_limits": map[string]any{
-					"gemini-3-pro-high": map[string]any{
-						"rate_limit_reset_at": future,
+				Extra: map[string]any{
+					"model_rate_limits": map[string]any{
+						"gemini-3-pro-high": map[string]any{
+							"rate_limit_reset_at": future,
+						},
 					},
-				},
 				},
 			},
 			requestedModel: "gemini-3-pro-preview",
@@ -161,13 +172,14 @@ func TestIsModelRateLimited(t *testing.T) {
 		},
 		{
 			name: "antigravity platform - claude-opus-4-5-thinking mapped to opus-4-6-thinking",
-			account: &accountcore.Record{
+			provider: &providercore.Record{
 				Platform: capability.PlatformAntigravity,
-				Extra: map[string]any{"model_rate_limits": map[string]any{
-					"claude-opus-4-6-thinking": map[string]any{
-						"rate_limit_reset_at": future,
+				Extra: map[string]any{
+					"model_rate_limits": map[string]any{
+						"claude-opus-4-6-thinking": map[string]any{
+							"rate_limit_reset_at": future,
+						},
 					},
-				},
 				},
 			},
 			requestedModel: "claude-opus-4-5-thinking",
@@ -175,12 +187,13 @@ func TestIsModelRateLimited(t *testing.T) {
 		},
 		{
 			name: "no scope fallback - claude_sonnet should not match",
-			account: &accountcore.Record{
-				Extra: map[string]any{"model_rate_limits": map[string]any{
-					"claude_sonnet": map[string]any{
-						"rate_limit_reset_at": future,
+			provider: &providercore.Record{
+				Extra: map[string]any{
+					"model_rate_limits": map[string]any{
+						"claude_sonnet": map[string]any{
+							"rate_limit_reset_at": future,
+						},
 					},
-				},
 				},
 			},
 			requestedModel: "claude-3-5-sonnet-20241022",
@@ -188,12 +201,14 @@ func TestIsModelRateLimited(t *testing.T) {
 		},
 		{
 			name: "openai image generation family key blocks image model",
-			account: &accountcore.Record{
+			provider: &providercore.Record{
 				Platform: capability.PlatformOpenAI,
-				Extra: map[string]any{"model_rate_limits": map[string]any{accountcore.OpenAIImageGenerationRateLimitKey: map[string]any{
-					"rate_limit_reset_at": future,
-				},
-				},
+				Extra: map[string]any{
+					"model_rate_limits": map[string]any{
+						providercore.OpenAIImageGenerationRateLimitKey: map[string]any{
+							"rate_limit_reset_at": future,
+						},
+					},
 				},
 			},
 			requestedModel: "gpt-image-2",
@@ -201,12 +216,14 @@ func TestIsModelRateLimited(t *testing.T) {
 		},
 		{
 			name: "openai image generation family key does not block text model",
-			account: &accountcore.Record{
+			provider: &providercore.Record{
 				Platform: capability.PlatformOpenAI,
-				Extra: map[string]any{"model_rate_limits": map[string]any{accountcore.OpenAIImageGenerationRateLimitKey: map[string]any{
-					"rate_limit_reset_at": future,
-				},
-				},
+				Extra: map[string]any{
+					"model_rate_limits": map[string]any{
+						providercore.OpenAIImageGenerationRateLimitKey: map[string]any{
+							"rate_limit_reset_at": future,
+						},
+					},
 				},
 			},
 			requestedModel: "gpt-5.4",
@@ -216,7 +233,7 @@ func TestIsModelRateLimited(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := (ModelPolicy{Record: tt.account}).Limited(context.Background(), tt.requestedModel)
+			result := (ModelPolicy{Record: tt.provider}).Limited(context.Background(), tt.requestedModel)
 			if result != tt.expected {
 				t.Errorf("isModelRateLimited(%q) = %v, want %v", tt.requestedModel, result, tt.expected)
 			}
@@ -226,35 +243,38 @@ func TestIsModelRateLimited(t *testing.T) {
 
 func TestIsModelRateLimited_OpenAIImageGenerationIntentBlocksTextModelImageTool(t *testing.T) {
 	future := time.Now().Add(10 * time.Minute).Format(time.RFC3339)
-	account := &accountcore.Record{
+	provider := &providercore.Record{
 		Platform: capability.PlatformOpenAI,
-		Extra: map[string]any{"model_rate_limits": map[string]any{accountcore.OpenAIImageGenerationRateLimitKey: map[string]any{
-			"rate_limit_reset_at": future,
-		},
-		},
+		Extra: map[string]any{
+			"model_rate_limits": map[string]any{
+				providercore.OpenAIImageGenerationRateLimitKey: map[string]any{
+					"rate_limit_reset_at": future,
+				},
+			},
 		},
 	}
 
-	require.False(t, (ModelPolicy{Record: account}).Limited(context.Background(), "gpt-5.4"))
-	require.True(t, (ModelPolicy{Record: account}).Limited(requeststate.WithOpenAIImageGenerationIntent(context.Background()), "gpt-5.4"))
+	require.False(t, (ModelPolicy{Record: provider}).Limited(context.Background(), "gpt-5.4"))
+	require.True(t, (ModelPolicy{Record: provider}).Limited(requeststate.WithOpenAIImageGenerationIntent(context.Background()), "gpt-5.4"))
 }
 
 func TestIsModelRateLimited_Antigravity_ThinkingAffectsModelKey(t *testing.T) {
 	now := time.Now()
 	future := now.Add(10 * time.Minute).Format(time.RFC3339)
 
-	account := &accountcore.Record{
+	provider := &providercore.Record{
 		Platform: capability.PlatformAntigravity,
-		Extra: map[string]any{"model_rate_limits": map[string]any{
-			"claude-sonnet-4-5-thinking": map[string]any{
-				"rate_limit_reset_at": future,
+		Extra: map[string]any{
+			"model_rate_limits": map[string]any{
+				"claude-sonnet-4-5-thinking": map[string]any{
+					"rate_limit_reset_at": future,
+				},
 			},
-		},
 		},
 	}
 
 	ctx := requeststate.WithThinkingEnabled(context.Background(), true)
-	if !(ModelPolicy{Record: account}).Limited(ctx, "claude-sonnet-4-5") {
+	if !(ModelPolicy{Record: provider}).Limited(ctx, "claude-sonnet-4-5") {
 		t.Errorf("expected model to be rate limited")
 	}
 }
@@ -267,26 +287,27 @@ func TestGetModelRateLimitRemainingTime(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		account        *accountcore.Record
+		provider       *providercore.Record
 		requestedModel string
 		minExpected    time.Duration
 		maxExpected    time.Duration
 	}{
 		{
-			name:           "nil account",
-			account:        nil,
+			name:           "nil provider",
+			provider:       nil,
 			requestedModel: "claude-sonnet-4-5",
 			minExpected:    0,
 			maxExpected:    0,
 		},
 		{
 			name: "model rate limited - direct hit",
-			account: &accountcore.Record{
-				Extra: map[string]any{"model_rate_limits": map[string]any{
-					"claude-sonnet-4-5": map[string]any{
-						"rate_limit_reset_at": future10m,
+			provider: &providercore.Record{
+				Extra: map[string]any{
+					"model_rate_limits": map[string]any{
+						"claude-sonnet-4-5": map[string]any{
+							"rate_limit_reset_at": future10m,
+						},
 					},
-				},
 				},
 			},
 			requestedModel: "claude-sonnet-4-5",
@@ -295,17 +316,18 @@ func TestGetModelRateLimitRemainingTime(t *testing.T) {
 		},
 		{
 			name: "model rate limited - via mapping",
-			account: &accountcore.Record{
+			provider: &providercore.Record{
 				Credentials: map[string]any{
 					"model_mapping": map[string]any{
 						"claude-3-5-sonnet": "claude-sonnet-4-5",
 					},
 				},
-				Extra: map[string]any{"model_rate_limits": map[string]any{
-					"claude-sonnet-4-5": map[string]any{
-						"rate_limit_reset_at": future5m,
+				Extra: map[string]any{
+					"model_rate_limits": map[string]any{
+						"claude-sonnet-4-5": map[string]any{
+							"rate_limit_reset_at": future5m,
+						},
 					},
-				},
 				},
 			},
 			requestedModel: "claude-3-5-sonnet",
@@ -314,12 +336,13 @@ func TestGetModelRateLimitRemainingTime(t *testing.T) {
 		},
 		{
 			name: "expired rate limit",
-			account: &accountcore.Record{
-				Extra: map[string]any{"model_rate_limits": map[string]any{
-					"claude-sonnet-4-5": map[string]any{
-						"rate_limit_reset_at": past,
+			provider: &providercore.Record{
+				Extra: map[string]any{
+					"model_rate_limits": map[string]any{
+						"claude-sonnet-4-5": map[string]any{
+							"rate_limit_reset_at": past,
+						},
 					},
-				},
 				},
 			},
 			requestedModel: "claude-sonnet-4-5",
@@ -328,19 +351,20 @@ func TestGetModelRateLimitRemainingTime(t *testing.T) {
 		},
 		{
 			name:           "no rate limit data",
-			account:        &accountcore.Record{},
+			provider:       &providercore.Record{},
 			requestedModel: "claude-sonnet-4-5",
 			minExpected:    0,
 			maxExpected:    0,
 		},
 		{
 			name: "no scope fallback",
-			account: &accountcore.Record{
-				Extra: map[string]any{"model_rate_limits": map[string]any{
-					"claude_sonnet": map[string]any{
-						"rate_limit_reset_at": future5m,
+			provider: &providercore.Record{
+				Extra: map[string]any{
+					"model_rate_limits": map[string]any{
+						"claude_sonnet": map[string]any{
+							"rate_limit_reset_at": future5m,
+						},
 					},
-				},
 				},
 			},
 			requestedModel: "claude-3-5-sonnet-20241022",
@@ -349,13 +373,14 @@ func TestGetModelRateLimitRemainingTime(t *testing.T) {
 		},
 		{
 			name: "antigravity platform - claude-opus-4-5-thinking mapped to opus-4-6-thinking",
-			account: &accountcore.Record{
+			provider: &providercore.Record{
 				Platform: capability.PlatformAntigravity,
-				Extra: map[string]any{"model_rate_limits": map[string]any{
-					"claude-opus-4-6-thinking": map[string]any{
-						"rate_limit_reset_at": future5m,
+				Extra: map[string]any{
+					"model_rate_limits": map[string]any{
+						"claude-opus-4-6-thinking": map[string]any{
+							"rate_limit_reset_at": future5m,
+						},
 					},
-				},
 				},
 			},
 			requestedModel: "claude-opus-4-5-thinking",
@@ -364,12 +389,14 @@ func TestGetModelRateLimitRemainingTime(t *testing.T) {
 		},
 		{
 			name: "antigravity platform - gemini family rate limit remaining",
-			account: &accountcore.Record{
+			provider: &providercore.Record{
 				Platform: capability.PlatformAntigravity,
-				Extra: map[string]any{"model_rate_limits": map[string]any{"antigravity:gemini": map[string]any{
-					"rate_limit_reset_at": future10m,
-				},
-				},
+				Extra: map[string]any{
+					"model_rate_limits": map[string]any{
+						"antigravity:gemini": map[string]any{
+							"rate_limit_reset_at": future10m,
+						},
+					},
 				},
 			},
 			requestedModel: "gemini-3-pro-preview",
@@ -378,12 +405,14 @@ func TestGetModelRateLimitRemainingTime(t *testing.T) {
 		},
 		{
 			name: "antigravity platform - gemini family remaining ignored for claude",
-			account: &accountcore.Record{
+			provider: &providercore.Record{
 				Platform: capability.PlatformAntigravity,
-				Extra: map[string]any{"model_rate_limits": map[string]any{"antigravity:gemini": map[string]any{
-					"rate_limit_reset_at": future10m,
-				},
-				},
+				Extra: map[string]any{
+					"model_rate_limits": map[string]any{
+						"antigravity:gemini": map[string]any{
+							"rate_limit_reset_at": future10m,
+						},
+					},
 				},
 			},
 			requestedModel: "claude-sonnet-4-5",
@@ -394,7 +423,7 @@ func TestGetModelRateLimitRemainingTime(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := (ModelPolicy{Record: tt.account}).LimitRemaining(context.Background(), tt.requestedModel)
+			result := (ModelPolicy{Record: tt.provider}).LimitRemaining(context.Background(), tt.requestedModel)
 			if result < tt.minExpected || result > tt.maxExpected {
 				t.Errorf("GetModelRateLimitRemainingTime() = %v, want between %v and %v", result, tt.minExpected, tt.maxExpected)
 			}
@@ -409,27 +438,28 @@ func TestGetRateLimitRemainingTime(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		account        *accountcore.Record
+		provider       *providercore.Record
 		requestedModel string
 		minExpected    time.Duration
 		maxExpected    time.Duration
 	}{
 		{
-			name:           "nil account",
-			account:        nil,
+			name:           "nil provider",
+			provider:       nil,
 			requestedModel: "claude-sonnet-4-5",
 			minExpected:    0,
 			maxExpected:    0,
 		},
 		{
 			name: "model rate limited - 15 minutes",
-			account: &accountcore.Record{
+			provider: &providercore.Record{
 				Platform: capability.PlatformAntigravity,
-				Extra: map[string]any{"model_rate_limits": map[string]any{
-					"claude-sonnet-4-5": map[string]any{
-						"rate_limit_reset_at": future15m,
+				Extra: map[string]any{
+					"model_rate_limits": map[string]any{
+						"claude-sonnet-4-5": map[string]any{
+							"rate_limit_reset_at": future15m,
+						},
 					},
-				},
 				},
 			},
 			requestedModel: "claude-sonnet-4-5",
@@ -438,13 +468,14 @@ func TestGetRateLimitRemainingTime(t *testing.T) {
 		},
 		{
 			name: "only model rate limited",
-			account: &accountcore.Record{
+			provider: &providercore.Record{
 				Platform: capability.PlatformAntigravity,
-				Extra: map[string]any{"model_rate_limits": map[string]any{
-					"claude-sonnet-4-5": map[string]any{
-						"rate_limit_reset_at": future5m,
+				Extra: map[string]any{
+					"model_rate_limits": map[string]any{
+						"claude-sonnet-4-5": map[string]any{
+							"rate_limit_reset_at": future5m,
+						},
 					},
-				},
 				},
 			},
 			requestedModel: "claude-sonnet-4-5",
@@ -453,7 +484,7 @@ func TestGetRateLimitRemainingTime(t *testing.T) {
 		},
 		{
 			name: "neither rate limited",
-			account: &accountcore.Record{
+			provider: &providercore.Record{
 				Platform: capability.PlatformAntigravity,
 			},
 			requestedModel: "claude-sonnet-4-5",
@@ -464,7 +495,7 @@ func TestGetRateLimitRemainingTime(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := (ModelPolicy{Record: tt.account}).LimitRemaining(context.Background(), tt.requestedModel)
+			result := (ModelPolicy{Record: tt.provider}).LimitRemaining(context.Background(), tt.requestedModel)
 			if result < tt.minExpected || result > tt.maxExpected {
 				t.Errorf("GetRateLimitRemainingTime() = %v, want between %v and %v", result, tt.minExpected, tt.maxExpected)
 			}
@@ -476,13 +507,14 @@ func TestIsModelRateLimited_AnthropicFableFamilyKey(t *testing.T) {
 	now := time.Now()
 	future := now.Add(48 * time.Hour).Format(time.RFC3339)
 
-	account := &accountcore.Record{
+	provider := &providercore.Record{
 		Platform: capability.PlatformAnthropic,
-		Extra: map[string]any{"model_rate_limits": map[string]any{
-			accountcore.AnthropicFableRateLimitKey: map[string]any{
-				"rate_limit_reset_at": future,
+		Extra: map[string]any{
+			"model_rate_limits": map[string]any{
+				providercore.AnthropicFableRateLimitKey: map[string]any{
+					"rate_limit_reset_at": future,
+				},
 			},
-		},
 		},
 	}
 
@@ -499,9 +531,9 @@ func TestIsModelRateLimited_AnthropicFableFamilyKey(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.requestedModel, func(t *testing.T) {
-			got := (ModelPolicy{Record: account}).Limited(context.Background(), tc.requestedModel)
+			got := (ModelPolicy{Record: provider}).Limited(context.Background(), tc.requestedModel)
 			require.Equal(t, tc.expected, got)
-			remaining := (ModelPolicy{Record: account}).LimitRemaining(context.Background(), tc.requestedModel)
+			remaining := (ModelPolicy{Record: provider}).LimitRemaining(context.Background(), tc.requestedModel)
 			require.Equal(t, tc.expected, remaining > 0)
 		})
 	}

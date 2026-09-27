@@ -13,10 +13,10 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway/media"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/ops"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
@@ -24,7 +24,6 @@ import (
 )
 
 func TestOpenAIImagesJSONKeepalive_KeepsOAuthNonStreamResponseValid(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/images/generations", nil)
@@ -60,7 +59,6 @@ func TestOpenAIImagesJSONKeepalive_KeepsOAuthNonStreamResponseValid(t *testing.T
 // 回归：failover 第 2+ 轮时，上一轮心跳残留的空白字节不得被误判为“已写响应”，
 // 可重试上游错误必须仍转换为 UpstreamFailoverError，不能吞掉换号机会。
 func TestOpenAIImagesJSONKeepalive_HeartbeatBeforeForwardStillFailsOver(t *testing.T) {
-
 	body := []byte(`{"model":"gpt-image-2","prompt":"draw a cat","response_format":"b64_json"}`)
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/images/generations", bytes.NewReader(body))
@@ -90,16 +88,19 @@ func TestOpenAIImagesJSONKeepalive_HeartbeatBeforeForwardStillFailsOver(t *testi
 	defer stop()
 	waitForImageExecutionKeepalive(t, c)
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 22,
-		Name:     "openai-oauth-heartbeat-failover",
-		Platform: capability.PlatformOpenAI,
-		Type:     capability.AccountTypeOAuth,
-		Credentials: map[string]any{
-			"access_token": "token-123",
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 22,
+			Name:     "openai-oauth-heartbeat-failover",
+			Platform: capability.PlatformOpenAI,
+			Type:     capability.ProviderTypeOAuth,
+			Credentials: map[string]any{
+				"access_token": "token-123",
+			},
+		},
 	}
 
-	result, err := svc.ForwardImages(context.Background(), c, account, body, parsed, "")
+	result, err := svc.ForwardImages(context.Background(), c, provider, body, parsed, "")
 
 	require.Nil(t, result)
 	var failoverErr *forwardcore.UpstreamFailoverError
@@ -114,7 +115,7 @@ func TestOpenAIImagesJSONKeepalive_HeartbeatBeforeForwardStillFailsOver(t *testi
 	require.True(t, ok)
 	require.Len(t, events, 1)
 	require.Equal(t, "failover", events[0].Kind)
-	require.Equal(t, account.Record.ID, events[0].AccountID)
+	require.Equal(t, provider.Record.ID, events[0].ProviderID)
 	require.Equal(t, http.StatusBadGateway, events[0].UpstreamStatusCode)
 }
 

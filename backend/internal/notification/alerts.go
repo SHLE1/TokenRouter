@@ -20,12 +20,15 @@ type AlertDelivery struct {
 func NewAlertDelivery(email Sender, n *NotificationEmailService) *AlertDelivery {
 	return &AlertDelivery{emailService: email, notificationEmailService: n}
 }
+
 func (s *AlertDelivery) SetNotificationEmailService(n *NotificationEmailService) {
 	s.notificationEmailService = n
 }
 
-const emailSendTimeout = 30 * time.Second
-const thresholdTypePercentage = "percentage"
+const (
+	emailSendTimeout        = 30 * time.Second
+	thresholdTypePercentage = "percentage"
+)
 
 // quotaDimLabels maps dimension names to display labels.
 var quotaDimLabels = map[string]string{
@@ -97,7 +100,7 @@ func (s *AlertDelivery) SendBalanceLowEmails(recipients []string, userID int64, 
 }
 
 // sendQuotaAlertEmails sends quota alert notification to admin emails.
-func (s *AlertDelivery) SendQuotaAlertEmails(adminEmails []string, accountID int64, accountName, platform string, dim contract.QuotaDimension, used float64, siteName string) {
+func (s *AlertDelivery) SendQuotaAlertEmails(adminEmails []string, providerID int64, providerName, platform string, dim contract.QuotaDimension, used float64, siteName string) {
 	dimLabel := quotaDimLabels[dim.Name]
 	if dimLabel == "" {
 		dimLabel = dim.Name
@@ -118,15 +121,15 @@ func (s *AlertDelivery) SendQuotaAlertEmails(adminEmails []string, accountID int
 		for _, to := range adminEmails {
 			ctx, cancel := context.WithTimeout(context.Background(), emailSendTimeout)
 			err := s.notificationEmailService.Send(ctx, NotificationEmailSendInput{
-				Event:          NotificationEmailEventAccountQuotaAlert,
+				Event:          NotificationEmailEventProviderQuotaAlert,
 				RecipientEmail: to,
 				RecipientName:  EmailRecipientName(to),
-				SourceType:     "account_quota",
-				SourceID:       fmt.Sprintf("%d-%s", accountID, dim.Name),
+				SourceType:     "provider_quota",
+				SourceID:       fmt.Sprintf("%d-%s", providerID, dim.Name),
 				ReminderKey:    time.Now().UTC().Format("2006-01-02"),
 				Variables: map[string]string{
-					"account_id":      strconv.FormatInt(accountID, 10),
-					"account_name":    accountName,
+					"provider_id":     strconv.FormatInt(providerID, 10),
+					"provider_name":   providerName,
 					"platform":        platform,
 					"quota_dimension": dimLabel,
 					"quota_used":      fmt.Sprintf("%.2f", used),
@@ -138,10 +141,10 @@ func (s *AlertDelivery) SendQuotaAlertEmails(adminEmails []string, accountID int
 			cancel()
 			if err != nil {
 				if ShouldFallbackNotificationEmail(err) {
-					slog.Warn("template account quota alert failed; falling back to built-in body", "to", to, "account_id", accountID, "dimension", dim.Name, "err", err.Error())
+					slog.Warn("template provider quota alert failed; falling back to built-in body", "to", to, "provider_id", providerID, "dimension", dim.Name, "err", err.Error())
 					fallbackRecipients = append(fallbackRecipients, to)
 				} else {
-					slog.Warn("template account quota alert delivery failed; not sending fallback to avoid duplicates", "to", to, "account_id", accountID, "dimension", dim.Name, "err", err.Error())
+					slog.Warn("template provider quota alert delivery failed; not sending fallback to avoid duplicates", "to", to, "provider_id", providerID, "dimension", dim.Name, "err", err.Error())
 				}
 			}
 		}
@@ -151,9 +154,9 @@ func (s *AlertDelivery) SendQuotaAlertEmails(adminEmails []string, accountID int
 		adminEmails = fallbackRecipients
 	}
 
-	subject := fmt.Sprintf("[%s] 账号限额告警 / Account Quota Alert - %s", SanitizeEmailHeader(siteName), SanitizeEmailHeader(accountName))
-	body := s.BuildQuotaAlertEmailBody(accountID, html.EscapeString(accountName), html.EscapeString(platform), html.EscapeString(dimLabel), used, dim.Limit, remaining, thresholdDisplay, html.EscapeString(siteName))
-	s.sendEmails(adminEmails, subject, body, "account", accountName, "dimension", dim.Name)
+	subject := fmt.Sprintf("[%s] 提供商限额告警 / Provider Quota Alert - %s", SanitizeEmailHeader(siteName), SanitizeEmailHeader(providerName))
+	body := s.BuildQuotaAlertEmailBody(providerID, html.EscapeString(providerName), html.EscapeString(platform), html.EscapeString(dimLabel), used, dim.Limit, remaining, thresholdDisplay, html.EscapeString(siteName))
+	s.sendEmails(adminEmails, subject, body, "provider", providerName, "dimension", dim.Name)
 }
 
 // balanceLowEmailTemplate is the HTML template for balance low notifications.
@@ -195,8 +198,8 @@ const balanceLowEmailTemplate = `<!DOCTYPE html>
 </body>
 </html>`
 
-// quotaAlertEmailTemplate is the HTML template for account quota alert notifications.
-// Format args: siteName, accountID, accountName, platform, dimLabel, used, limitStr, remaining, thresholdDisplay.
+// quotaAlertEmailTemplate is the HTML template for provider quota alert notifications.
+// Format args: siteName, providerID, providerName, platform, dimLabel, used, limitStr, remaining, thresholdDisplay.
 const quotaAlertEmailTemplate = `<!DOCTYPE html>
 <html>
 <head>
@@ -218,9 +221,9 @@ const quotaAlertEmailTemplate = `<!DOCTYPE html>
     <div class="container">
         <div class="header"><h1>%s</h1></div>
         <div class="content">
-            <p style="font-size: 18px; color: #333; text-align: center;">账号限额告警 / Account Quota Alert</p>
-            <div class="metric"><span class="metric-label">账号 ID / Account ID</span><span class="metric-value">#%d</span></div>
-            <div class="metric"><span class="metric-label">账号 / Account</span><span class="metric-value">%s</span></div>
+            <p style="font-size: 18px; color: #333; text-align: center;">提供商限额告警 / Provider Quota Alert</p>
+            <div class="metric"><span class="metric-label">提供商 ID / Provider ID</span><span class="metric-value">#%d</span></div>
+            <div class="metric"><span class="metric-label">提供商 / Provider</span><span class="metric-value">%s</span></div>
             <div class="metric"><span class="metric-label">平台 / Platform</span><span class="metric-value">%s</span></div>
             <div class="metric"><span class="metric-label">维度 / Dimension</span><span class="metric-value">%s</span></div>
             <div class="metric"><span class="metric-label">已使用 / Used</span><span class="metric-value">$%.2f</span></div>
@@ -228,8 +231,8 @@ const quotaAlertEmailTemplate = `<!DOCTYPE html>
             <div class="metric"><span class="metric-label">剩余额度 / Remaining</span><span class="metric-value">$%.2f</span></div>
             <div class="metric"><span class="metric-label">提醒阈值 / Alert Threshold</span><span class="metric-value">%s</span></div>
             <div class="info">
-                <p>账号剩余额度已低于提醒阈值，请及时关注。</p>
-                <p>Account remaining quota has fallen below the alert threshold.</p>
+                <p>提供商剩余额度已低于提醒阈值，请及时关注。</p>
+                <p>Provider remaining quota has fallen below the alert threshold.</p>
             </div>
         </div>
         <div class="footer"><p>此邮件由系统自动发送，请勿回复。</p></div>
@@ -246,15 +249,17 @@ func (s *AlertDelivery) BuildBalanceLowEmailBody(userName string, balance, thres
 	return fmt.Sprintf(balanceLowEmailTemplate, siteName, userName, userName, balance, threshold, threshold, rechargeBlock)
 }
 
-// buildQuotaAlertEmailBody builds HTML email for account quota alert.
-func (s *AlertDelivery) BuildQuotaAlertEmailBody(accountID int64, accountName, platform, dimLabel string, used, limit, remaining float64, thresholdDisplay, siteName string) string {
+// buildQuotaAlertEmailBody builds HTML email for provider quota alert.
+func (s *AlertDelivery) BuildQuotaAlertEmailBody(providerID int64, providerName, platform, dimLabel string, used, limit, remaining float64, thresholdDisplay, siteName string) string {
 	limitStr := fmt.Sprintf("$%.2f", limit)
 	if limit <= 0 {
 		limitStr = "无限制 / Unlimited"
 	}
-	return fmt.Sprintf(quotaAlertEmailTemplate, siteName, accountID, accountName, platform, dimLabel, used, limitStr, remaining, thresholdDisplay)
+	return fmt.Sprintf(quotaAlertEmailTemplate, siteName, providerID, providerName, platform, dimLabel, used, limitStr, remaining, thresholdDisplay)
 }
 
-const quotaDimDaily = "daily"
-const quotaDimWeekly = "weekly"
-const quotaDimTotal = "total"
+const (
+	quotaDimDaily  = "daily"
+	quotaDimWeekly = "weekly"
+	quotaDimTotal  = "total"
+)

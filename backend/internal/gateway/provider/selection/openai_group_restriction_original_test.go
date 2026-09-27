@@ -7,9 +7,9 @@ import (
 	"testing"
 	time "time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	routingtestkit "github.com/TokenFlux/TokenRouter/internal/routing/testkit"
@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestOpenAISelectAccountForModelWithExclusions_GroupMappedRestrictionRejectsEarly(t *testing.T) {
+func TestOpenAISelectProviderForModelWithExclusions_GroupMappedRestrictionRejectsEarly(t *testing.T) {
 	t.Parallel()
 
 	pricingConfigSvc := routingtestkit.NewConfigServiceFixture(routingtestkit.StandardPricingConfigRepository(routingtestkit.Configuration{
@@ -34,7 +34,7 @@ func TestOpenAISelectAccountForModelWithExclusions_GroupMappedRestrictionRejects
 
 	svc := newCompatibleSelectionForTest(CompatibleDependencies{
 		Reads: Reads{
-			Accounts: selectionAccountFixture{accounts: []gatewayprovider.ExecutionAccount{{Record: accountcore.Record{
+			Providers: selectionProviderFixture{providers: []gatewayprovider.ExecutionProvider{{Record: providercore.Record{
 				Credentials:  map[string]any{"model_whitelist": []string{"*"}},
 				LoadLocation: time.LoadLocation,
 				ID:           1, Platform: capability.PlatformOpenAI, Status: billing.StatusActive,
@@ -45,12 +45,12 @@ func TestOpenAISelectAccountForModelWithExclusions_GroupMappedRestrictionRejects
 	}, nil)
 
 	groupID := int64(10)
-	_, err := svc.SelectAccountForModelWithExclusions(context.Background(), &groupID, "", "gpt-4.1", nil)
-	require.ErrorIs(t, err, scheduler.ErrNoAvailableAccounts)
+	_, err := svc.SelectProviderForModelWithExclusions(context.Background(), &groupID, "", "gpt-4.1", nil)
+	require.ErrorIs(t, err, scheduler.ErrNoAvailableProviders)
 	require.Contains(t, err.Error(), "group model restriction")
 }
 
-func TestOpenAISelectAccountForModelWithExclusions_UpstreamRestrictionSkipsDisallowedAccount(t *testing.T) {
+func TestOpenAISelectProviderForModelWithExclusions_UpstreamRestrictionSkipsDisallowedProvider(t *testing.T) {
 	t.Parallel()
 
 	pricingConfigSvc := routingtestkit.NewConfigServiceFixture(routingtestkit.StandardPricingConfigRepository(routingtestkit.Configuration{
@@ -66,13 +66,13 @@ func TestOpenAISelectAccountForModelWithExclusions_UpstreamRestrictionSkipsDisal
 
 	svc := newCompatibleSelectionForTest(CompatibleDependencies{
 		Reads: Reads{
-			Accounts: selectionAccountFixture{accounts: []gatewayprovider.ExecutionAccount{
-				{Record: accountcore.Record{
+			Providers: selectionProviderFixture{providers: []gatewayprovider.ExecutionProvider{
+				{Record: providercore.Record{
 					LoadLocation: time.LoadLocation,
 					ID:           1, Platform: capability.PlatformOpenAI, Status: billing.StatusActive,
 					Schedulable: true, Priority: 10, Credentials: map[string]any{"model_mapping": map[string]any{"gpt-4.1": "gpt-4o"}},
 				}},
-				{Record: accountcore.Record{
+				{Record: providercore.Record{
 					LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformOpenAI, Status: billing.StatusActive,
 					Schedulable: true, Priority: 20,
 					Credentials: map[string]any{"model_mapping": map[string]any{"gpt-4.1": "o3-mini"}},
@@ -83,13 +83,13 @@ func TestOpenAISelectAccountForModelWithExclusions_UpstreamRestrictionSkipsDisal
 	}, nil)
 
 	groupID := int64(10)
-	account, err := svc.SelectAccountForModelWithExclusions(context.Background(), &groupID, "", "gpt-4.1", nil)
+	provider, err := svc.SelectProviderForModelWithExclusions(context.Background(), &groupID, "", "gpt-4.1", nil)
 	require.NoError(t, err)
-	require.NotNil(t, account)
-	require.Equal(t, int64(2), account.Record.ID)
+	require.NotNil(t, provider)
+	require.Equal(t, int64(2), provider.Record.ID)
 }
 
-func TestOpenAISelectAccountForModelWithExclusions_StickyRestrictedUpstreamFallsBack(t *testing.T) {
+func TestOpenAISelectProviderForModelWithExclusions_StickyRestrictedUpstreamFallsBack(t *testing.T) {
 	t.Parallel()
 
 	pricingConfigSvc := routingtestkit.NewConfigServiceFixture(routingtestkit.StandardPricingConfigRepository(routingtestkit.Configuration{
@@ -108,13 +108,13 @@ func TestOpenAISelectAccountForModelWithExclusions_StickyRestrictedUpstreamFalls
 	}
 	svc := newCompatibleSelectionForTest(CompatibleDependencies{
 		Reads: Reads{
-			Accounts: selectionAccountFixture{accounts: []gatewayprovider.ExecutionAccount{
-				{Record: accountcore.Record{
+			Providers: selectionProviderFixture{providers: []gatewayprovider.ExecutionProvider{
+				{Record: providercore.Record{
 					LoadLocation: time.LoadLocation,
 					ID:           1, Platform: capability.PlatformOpenAI, Status: billing.StatusActive,
 					Schedulable: true, Priority: 10, Credentials: map[string]any{"model_mapping": map[string]any{"gpt-4.1": "gpt-4o"}},
 				}},
-				{Record: accountcore.Record{
+				{Record: providercore.Record{
 					LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformOpenAI, Status: billing.StatusActive,
 					Schedulable: true, Priority: 20,
 					Credentials: map[string]any{"model_mapping": map[string]any{"gpt-4.1": "o3-mini"}},
@@ -129,10 +129,10 @@ func TestOpenAISelectAccountForModelWithExclusions_StickyRestrictedUpstreamFalls
 	}, nil)
 
 	groupID := int64(10)
-	account, err := svc.SelectAccountForModelWithExclusions(context.Background(), &groupID, "sticky-session", "gpt-4.1", nil)
+	provider, err := svc.SelectProviderForModelWithExclusions(context.Background(), &groupID, "sticky-session", "gpt-4.1", nil)
 	require.NoError(t, err)
-	require.NotNil(t, account)
-	require.Equal(t, int64(2), account.Record.ID)
+	require.NotNil(t, provider)
+	require.Equal(t, int64(2), provider.Record.ID)
 	require.Equal(t, 1, cache.deletedSessions["openai:sticky-session"])
 	require.Equal(t, int64(2), cache.sessionBindings["openai:sticky-session"])
 }

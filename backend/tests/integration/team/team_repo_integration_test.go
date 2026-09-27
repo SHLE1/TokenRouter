@@ -21,9 +21,9 @@ import (
 	identity "github.com/TokenFlux/TokenRouter/internal/identity"
 	"github.com/TokenFlux/TokenRouter/internal/identity/postgres"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/team"
 	teampostgres "github.com/TokenFlux/TokenRouter/internal/team/postgres"
@@ -131,16 +131,16 @@ func TestTeamMembershipAndBillingAreIdempotent(t *testing.T) {
 
 	teamID := teamCtx.Team.ID
 	apiKey := mustCreateApiKey(t, integrationEntClient, &apikey.APIKey{UserID: member.ID, TeamID: &teamID, Key: "sk-team-" + uuid.NewString(), Name: "team"})
-	account := mustCreateAccount(t, integrationEntClient, &accountcore.Record{Name: "team-account-" + uuid.NewString(), Type: capability.AccountTypeAPIKey})
-	billingRepo := billingpostgres.NewSettlementStore(integrationDB, timezone.NewCalendar(time.Local), schedulerpostgres.EnqueueAccountQuotaChangedInTx, billingpostgres.TaskProjectionFactories{})
+	provider := mustCreateProvider(t, integrationEntClient, &providercore.Record{Name: "team-provider-" + uuid.NewString(), Type: capability.ProviderTypeAPIKey})
+	billingRepo := billingpostgres.NewSettlementStore(integrationDB, timezone.NewCalendar(time.Local), schedulerpostgres.EnqueueProviderQuotaChangedInTx, billingpostgres.TaskProjectionFactories{})
 	command := &billing.UsageBillingCommand{
 		RequestID:         uuid.NewString(),
 		APIKeyID:          apiKey.ID,
 		UserID:            owner.ID,
 		ActorUserID:       member.ID,
 		TeamID:            &teamID,
-		AccountID:         account.ID,
-		AccountType:       capability.AccountTypeAPIKey,
+		ProviderID:        provider.ID,
+		ProviderType:      capability.ProviderTypeAPIKey,
 		BillableAmountUSD: 1.25,
 	}
 	firstResult, err := billingRepo.Apply(ctx, command)
@@ -324,7 +324,7 @@ func TestTeamMemberUsageSeriesKeepsDepartedMemberHistory(t *testing.T) {
 	teamID := teamCtx.Team.ID
 	ownerKey := mustCreateApiKey(t, integrationEntClient, &apikey.APIKey{UserID: owner.ID, TeamID: &teamID, Key: "sk-team-usage-owner-" + uuid.NewString()})
 	memberKey := mustCreateApiKey(t, integrationEntClient, &apikey.APIKey{UserID: member.ID, TeamID: &teamID, Key: "sk-team-usage-member-" + uuid.NewString()})
-	account := mustCreateAccount(t, integrationEntClient, &accountcore.Record{Name: "team-usage-" + uuid.NewString(), Type: capability.AccountTypeAPIKey})
+	provider := mustCreateProvider(t, integrationEntClient, &providercore.Record{Name: "team-usage-" + uuid.NewString(), Type: capability.ProviderTypeAPIKey})
 	createdAt := time.Now().UTC()
 	for _, item := range []struct {
 		userID   int64
@@ -339,7 +339,7 @@ func TestTeamMemberUsageSeriesKeepsDepartedMemberHistory(t *testing.T) {
 			BillingUserID: owner.ID,
 			TeamID:        &teamID,
 			APIKeyID:      item.apiKeyID,
-			AccountID:     account.ID,
+			ProviderID:    provider.ID,
 			RequestID:     uuid.NewString(),
 			Model:         "team-usage-test",
 			InputTokens:   10,

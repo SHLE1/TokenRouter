@@ -14,7 +14,7 @@ import (
 )
 
 // Available 返回分组下可见的模型列表。
-// 它会聚合每个账号显式配置的“可请求模型”（model_mapping 的 key 或独立 model_whitelist）。
+// 它会聚合每个提供商显式配置的“可请求模型”（model_mapping 的 key 或独立 model_whitelist）。
 func (s *ModelList) Available(ctx context.Context, groupID *int64, platform string) []string {
 	cacheKey := ModelListCacheKey(groupID, platform)
 	if s.Cache != nil {
@@ -27,17 +27,17 @@ func (s *ModelList) Available(ctx context.Context, groupID *int64, platform stri
 	}
 	sharedModelListMetrics.Miss.Add(1)
 
-	var accounts []CatalogueAccount
+	var providers []CatalogueProvider
 	var err error
 
-	accounts, err = s.Read(ctx, groupID)
+	providers, err = s.Read(ctx, groupID)
 
-	if err != nil || len(accounts) == 0 {
+	if err != nil || len(providers) == 0 {
 		return nil
 	}
 
-	models := ConfiguredRequestModelsFromAccounts(accounts, platform)
-	// 没有账号显式模型范围时返回 nil，由调用方使用平台默认模型。
+	models := ConfiguredRequestModelsFromProviders(providers, platform)
+	// 没有提供商显式模型范围时返回 nil，由调用方使用平台默认模型。
 	if len(models) == 0 {
 		if s.Cache != nil {
 			s.Cache.Set(cacheKey, []string(nil), s.TTL)
@@ -93,10 +93,10 @@ func ModelListCacheKey(groupID *int64, platform string) string {
 type ModelList struct {
 	Cache *gocache.Cache
 	TTL   time.Duration
-	Read  func(context.Context, *int64) ([]CatalogueAccount, error)
+	Read  func(context.Context, *int64) ([]CatalogueProvider, error)
 }
 
-func NewModelList(read func(context.Context, *int64) ([]CatalogueAccount, error), ttl time.Duration) *ModelList {
+func NewModelList(read func(context.Context, *int64) ([]CatalogueProvider, error), ttl time.Duration) *ModelList {
 	return &ModelList{Cache: gocache.New(ttl, 0), TTL: ttl, Read: read}
 }
 

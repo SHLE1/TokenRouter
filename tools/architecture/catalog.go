@@ -89,10 +89,10 @@ github.com/stretchr/testify/suite`},
 }
 
 var moduleDependencies = map[string]dependencySet{
-	"ent": {Production: `ent/... internal/account internal/apikey internal/billing internal/egress internal/identity
+	"ent": {Production: `ent/... internal/provider internal/apikey internal/billing internal/egress internal/identity
 internal/promotion internal/protocol internal/routing internal/routing/accessview
 internal/routing/capability internal/scheduler/policy internal/site`, Tests: ""},
-	"internal/account": {Production: `ent/... internal/account/... internal/billing internal/egress internal/egress/httpapi/dto
+	"internal/provider": {Production: `ent/... internal/provider/... internal/billing internal/egress internal/egress/httpapi/dto
 internal/egress/provider internal/idempotency internal/idempotency/httpapi internal/identity/contact
 internal/infra/httpclient/... internal/infra/postgres/... internal/infra/redis/...
 internal/infra/telemetry/... internal/pkg/ internal/protocol internal/protocol/anthropic
@@ -119,7 +119,7 @@ internal/infra/postgres/... internal/infra/telemetry/... internal/pkg/ internal/
 internal/settings`, Tests: ""},
 	"internal/backup": {Production: `internal/backup/... internal/identity/httpapi/authctx internal/infra/telemetry/... internal/pkg/
 internal/server/httpx`, Tests: "internal/identity internal/infra/postgres/..."},
-	"internal/batchimage": {Production: `ent/... internal/account internal/account/provider internal/apikey internal/batchimage/...
+	"internal/batchimage": {Production: `ent/... internal/provider internal/provider/provider internal/apikey internal/batchimage/...
 internal/billing internal/gateway/httpapi internal/infra/postgres/... internal/infra/telemetry/...
 internal/pkg/ internal/protocol internal/routing internal/routing/capability
 internal/routing/modelmap internal/server/httpx internal/upstream internal/upstream/gemini
@@ -136,7 +136,7 @@ internal/testutil/rediscontainer internal/testutil/sqlite internal/upstream/grok
 internal/upstream/openai`},
 	"internal/config": {Production: `internal/config/... internal/identity/authconfig internal/scheduler/policy
 internal/server/clientip/policy internal/server/httpconfig`, Tests: ""},
-	"internal/creative": {Production: `ent/... internal/account internal/account/provider internal/billing internal/billing/pricing
+	"internal/creative": {Production: `ent/... internal/provider internal/provider/provider internal/billing internal/billing/pricing
 internal/creative/... internal/identity/httpapi/authctx internal/infra/postgres/... internal/pkg/
 internal/protocol internal/protocol/gemini internal/routing internal/routing/capability internal/routing/modelmap
 internal/scheduler internal/server/httpx internal/settings internal/upstream
@@ -144,10 +144,10 @@ internal/upstream/gemini internal/upstream/grok internal/usage`, Tests: `interna
 internal/gateway/completion internal/gateway/media internal/gateway/provider/modelidentity
 internal/identity internal/infra/telemetry/... internal/moderation internal/routing/capability
 internal/testutil/assertion`},
-	"internal/egress": {Production: `ent/... internal/account/transfer internal/egress/... internal/idempotency/httpapi
+	"internal/egress": {Production: `ent/... internal/provider/transfer internal/egress/... internal/idempotency/httpapi
 internal/infra/httpclient/... internal/infra/postgres/... internal/infra/telemetry/... internal/pkg/
 internal/server/httpx`, Tests: "internal/billing"},
-	"internal/gateway": {Production: `ent/... internal/account internal/account/provider internal/apikey internal/apikey/httpapi
+	"internal/gateway": {Production: `ent/... internal/provider internal/provider/provider internal/apikey internal/apikey/httpapi
 internal/billing internal/billing/pricing internal/billing/testkit internal/creative
 internal/creative/provider internal/egress internal/egress/provider internal/gateway/...
 internal/identity internal/identity/httpapi/authctx internal/infra/httpclient/...
@@ -182,7 +182,7 @@ internal/upstream`, Tests: `internal/egress internal/gateway/media internal/iden
 internal/upstream/openai`},
 	"internal/notification": {Production: `internal/infra/telemetry/... internal/notification/... internal/pkg/ internal/server/httpx
 internal/settings`, Tests: "internal/testutil/assertion"},
-	"internal/ops": {Production: `internal/account internal/apikey internal/idempotency internal/idempotency/httpapi
+	"internal/ops": {Production: `internal/provider internal/apikey internal/idempotency internal/idempotency/httpapi
 internal/identity/httpapi/authctx internal/infra/httpclient/... internal/infra/postgres/...
 internal/infra/telemetry/... internal/notification/contract internal/ops/... internal/pkg/
 internal/scheduler internal/server/httpx internal/server/middleware internal/settings
@@ -196,24 +196,24 @@ internal/promotion internal/server/httpx internal/settings`, Tests: "internal/te
 internal/identity/httpapi/dto internal/pkg/ internal/promotion/... internal/server/httpx
 internal/settings`, Tests: ""},
 	"internal/protocol": {Production: "internal/protocol/...", Tests: "internal/testutil/assertion"},
-	"internal/routing": {Production: `ent/... internal/account internal/apikey/httpapi/dto internal/billing internal/billing/pricing
+	"internal/routing": {Production: `ent/... internal/provider internal/apikey/httpapi/dto internal/billing internal/billing/pricing
 internal/billing/provider internal/idempotency internal/idempotency/httpapi
 internal/infra/postgres/... internal/infra/telemetry/... internal/pkg/ internal/protocol
 internal/protocol/openai internal/routing/... internal/scheduler/policy internal/server/httpx
 internal/settings internal/upstream/anthropic internal/upstream/antigravity
 internal/upstream/deepseek internal/upstream/kimi internal/upstream/zhipu
 internal/upstream/gemini/codeassist internal/upstream/grok internal/upstream/openai
-internal/upstream/qoder`, Tests: `internal/account/provider internal/apikey internal/billing/testkit internal/gateway/media
+internal/upstream/qoder`, Tests: `internal/provider/provider internal/apikey internal/billing/testkit internal/gateway/media
 internal/gateway/provider internal/gateway/provider/modelidentity internal/idempotency/testkit
 internal/identity/httpapi/authctx internal/scheduler`},
-	"internal/scheduler": {Production: `internal/account internal/egress internal/infra/postgres/... internal/infra/telemetry/...
+	"internal/scheduler": {Production: `internal/provider internal/egress internal/infra/postgres/... internal/infra/telemetry/...
 internal/pkg/ internal/routing internal/routing/accessview internal/routing/capability
-internal/scheduler/... internal/server/httpx internal/settings`, Tests: "internal/account/provider internal/billing internal/protocol internal/testutil/postgrescontainer"},
+internal/scheduler/... internal/server/httpx internal/settings`, Tests: "internal/provider/provider internal/billing internal/protocol internal/testutil/postgrescontainer"},
 	"internal/search": {Production: `internal/infra/httpclient/... internal/pkg/ internal/search/... internal/server/httpx
 internal/settings`, Tests: ""},
 	"internal/server": {Production: `internal/apikey/httpapi internal/audit/httpapi internal/identity internal/identity/httpapi
 internal/identity/httpapi/authctx internal/infra/telemetry/... internal/pkg/ internal/server/...
-internal/settings`, Tests: `internal/account internal/account/httpapi internal/account/provider internal/apikey
+internal/settings`, Tests: `internal/provider internal/provider/httpapi internal/provider/provider internal/apikey
 internal/apikey/testkit internal/billing internal/billing/httpapi internal/billing/postgres
 internal/config internal/egress internal/gateway internal/gateway/httpapi internal/gateway/provider
 internal/gateway/provider/selection internal/gateway/requeststate internal/gateway/session
@@ -223,7 +223,7 @@ internal/protocol internal/routing internal/routing/accessview internal/routing/
 internal/routing/httpapi/dto internal/scheduler internal/settings/httpapi internal/settings/testkit
 internal/site internal/team internal/upstream/anthropic internal/upstream/openai internal/usage
 internal/usage/httpapi internal/usage/httpapi/ports`},
-	"internal/settings": {Production: `ent/... internal/account internal/audit internal/billing internal/billing/httpapi internal/config
+	"internal/settings": {Production: `ent/... internal/provider internal/audit internal/billing internal/billing/httpapi internal/config
 internal/creative internal/gateway internal/gateway/admission internal/gateway/clientmeta
 internal/gateway/httpapi/dto internal/gateway/promptpolicy internal/gateway/testkit
 internal/gateway/tierpolicy internal/identity internal/identity/authconfig internal/identity/contact
@@ -247,7 +247,7 @@ internal/infra/telemetry/... internal/pkg/ internal/protocol internal/protocol/a
 internal/protocol/bridge internal/protocol/gemini internal/protocol/google internal/protocol/grok
 internal/protocol/openai internal/protocol/wirejson internal/routing/capability
 internal/routing/modelmap internal/upstream/...`, Tests: "internal/testutil/assertion internal/testutil/rediscontainer"},
-	"internal/usage": {Production: `ent/... internal/account internal/apikey internal/apikey/httpapi/dto internal/apikey/postgres
+	"internal/usage": {Production: `ent/... internal/provider internal/apikey internal/apikey/httpapi/dto internal/apikey/postgres
 internal/billing internal/billing/httpapi internal/billing/postgres internal/billing/pricing
 internal/idempotency/httpapi internal/identity internal/identity/contact
 internal/identity/httpapi/authctx internal/identity/httpapi/dto internal/identity/postgres
@@ -261,10 +261,10 @@ internal/routing/capability internal/testutil/assertion migrations`},
 }
 
 var leafDependencies = map[string]dependencySet{
-	"internal/account/httpapi/dto": {Production: `internal/account internal/account/httpapi/dto internal/egress/httpapi/dto internal/routing
+	"internal/provider/httpapi/dto": {Production: `internal/provider internal/provider/httpapi/dto internal/egress/httpapi/dto internal/routing
 internal/routing/httpapi/dto`, Tests: "internal/routing/capability"},
-	"internal/account/transfer":   {Production: "internal/account/transfer internal/egress", Tests: ""},
-	"internal/account/usageview":  {Production: "internal/account/usageview internal/upstream/usageview", Tests: ""},
+	"internal/provider/transfer":  {Production: "internal/provider/transfer internal/egress", Tests: ""},
+	"internal/provider/usageview": {Production: "internal/provider/usageview internal/upstream/usageview", Tests: ""},
 	"internal/apikey/httpapi/dto": {Production: "internal/apikey internal/apikey/httpapi/dto internal/routing", Tests: "internal/billing"},
 	"internal/app/bootstrap": {Production: `ent ent/securitysecret internal/app/bootstrap internal/config internal/identity
 internal/identity/postgres internal/infra/crypto internal/infra/postgres internal/infra/redis
@@ -275,7 +275,7 @@ internal/infra/telemetry/logging internal/pkg/timezone internal/routing/postgres
 	"internal/egress/httpapi/dto":  {Production: "internal/egress internal/egress/httpapi/dto", Tests: ""},
 	"internal/egress/urlpolicy":    {Production: "internal/egress/urlpolicy internal/pkg/ipmatch", Tests: ""},
 	"internal/gateway/clientmeta":  {Production: "internal/gateway/clientmeta internal/protocol/anthropic internal/protocol/openai", Tests: "internal/gateway/requeststate"},
-	"internal/gateway/execution": {Production: `internal/account internal/apikey internal/billing internal/gateway/execution
+	"internal/gateway/execution": {Production: `internal/provider internal/apikey internal/billing internal/gateway/execution
 internal/gateway/requeststate internal/routing internal/upstream`, Tests: ""},
 	"internal/gateway/httpapi/dto":      {Production: "internal/gateway/httpapi/dto", Tests: ""},
 	"internal/gateway/modeldisplay":     {Production: "internal/gateway/modeldisplay internal/routing/capability", Tests: ""},
@@ -312,7 +312,7 @@ internal/scheduler/policy`, Tests: "internal/billing internal/routing/capability
 	"internal/server/clientip/policy": {Production: "internal/server/clientip/policy", Tests: ""},
 	"internal/server/httpapi/dto":     {Production: "internal/server/httpapi/dto", Tests: ""},
 	"internal/server/httpconfig":      {Production: "internal/server/httpconfig", Tests: ""},
-	"internal/settings/httpapi/dto": {Production: `internal/account internal/billing/httpapi internal/creative internal/gateway/httpapi/dto
+	"internal/settings/httpapi/dto": {Production: `internal/provider internal/billing/httpapi internal/creative internal/gateway/httpapi/dto
 internal/gateway/promptpolicy internal/identity internal/identity/httpapi/dto internal/ops
 internal/payment internal/settings/httpapi/dto internal/site/httpapi/dto`, Tests: ""},
 	"internal/site/httpapi/dto":       {Production: "internal/site/httpapi/dto", Tests: ""},
@@ -372,7 +372,7 @@ var pureFileStandard = map[string]string{
 }
 
 var ioFileExceptions = map[string]string{
-	"internal/account/health_spark.go":                           "net/http",
+	"internal/provider/health_spark.go":                          "net/http",
 	"internal/backup/backup_test.go":                             "database/sql",
 	"internal/gateway/httpapi/live_moderation_fixture_test.go":   "database/sql",
 	"internal/moderation/legacy_fixture_test.go":                 "database/sql",
@@ -382,9 +382,9 @@ var ioFileExceptions = map[string]string{
 // 窄权限属于指定文件，不能由相邻文件或目标子包继承。
 var filePermissions = []filePermission{
 	{Scope: "migrations", Imports: "internal/routing/postgres", Files: "platform_independent_pricing_integration_test.go"},
-	{Scope: "migrations", Imports: "internal/infra/postgres github.com/lib/pq github.com/testcontainers/testcontainers-go/modules/postgres", Files: "platform_independent_groups_integration_test.go platform_independent_pricing_integration_test.go"},
+	{Scope: "migrations", Imports: "internal/infra/postgres github.com/lib/pq github.com/testcontainers/testcontainers-go/modules/postgres", Files: "platform_independent_groups_integration_test.go platform_independent_pricing_integration_test.go provider_names_integration_test.go"},
 	{Scope: "internal/usage/postgres", Imports: "internal/ops/postgres", Files: "platform_snapshot_integration_test.go"},
-	{Scope: "internal/account", Imports: "internal/account/provider", Files: `admin_editor_original_fixture_test.go admin_legacy_extra_original_test.go
+	{Scope: "internal/provider", Imports: "internal/provider/provider", Files: `admin_editor_original_fixture_test.go admin_legacy_extra_original_test.go
 admin_shadow_original_test.go`},
 	{Scope: "internal/apikey", Imports: "internal/apikey/postgres", Files: "admin_group_original_test.go"},
 	{Scope: "internal/apikey/postgres", Imports: "internal/billing/postgres internal/usage/postgres/query", Files: "key_store.go"},
@@ -423,9 +423,9 @@ recording_pricing_stub_helpers_test.go`},
 	{Scope: "internal/routing", Imports: "internal/routing/provider", Files: `group_admin_original_fixture_test.go
 marketplace_fixture_test.go`},
 	{Scope: "internal/routing", Imports: "internal/billing/provider", Files: `marketplace_catalog_fixture_test.go marketplace_fixture_test.go`},
-	{Scope: "internal/routing", Imports: "internal/account/provider", Files: "group_management_ports_original_test.go"},
+	{Scope: "internal/routing", Imports: "internal/provider/provider", Files: "group_management_ports_original_test.go"},
 	{Scope: "internal/routing", Imports: "internal/gateway/provider/modelidentity", Files: "marketplace_catalog_fixture_test.go marketplace_fixture_test.go marketplace_quote_fixture_test.go"},
-	{Scope: "internal/scheduler/rediscache", Imports: "internal/account/provider", Files: "scheduler_cache_integration_test.go scheduler_cache_unit_test.go"},
+	{Scope: "internal/scheduler/rediscache", Imports: "internal/provider/provider", Files: "scheduler_cache_integration_test.go scheduler_cache_unit_test.go"},
 	{Scope: "internal/search", Imports: "internal/search/provider", Files: "config_original_test.go"},
 	{Scope: "internal/setup", Imports: "internal/app/bootstrap", Files: "setup.go"},
 	{Scope: "internal/team/postgres", Imports: "internal/apikey/postgres internal/billing/postgres", Files: "invitation_preview_original_test.go"},
@@ -437,8 +437,8 @@ marketplace_fixture_test.go`},
 }
 
 var permissionSubscopes = map[string]string{
-	"internal/account": `internal/account/httpapi internal/account/postgres internal/account/provider
-internal/account/rediscache internal/account/transfer internal/account/usageview`,
+	"internal/provider": `internal/provider/httpapi internal/provider/postgres internal/provider/provider
+internal/provider/rediscache internal/provider/transfer internal/provider/usageview`,
 	"internal/apikey": "internal/apikey/httpapi internal/apikey/postgres internal/apikey/rediscache internal/apikey/testkit",
 	"internal/backup": "internal/backup/httpapi internal/backup/provider",
 	"internal/batchimage": `internal/batchimage/httpapi internal/batchimage/postgres internal/batchimage/provider

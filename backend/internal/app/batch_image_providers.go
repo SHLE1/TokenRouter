@@ -1,15 +1,15 @@
 package app
 
 import (
-	"github.com/TokenFlux/TokenRouter/internal/batchimage/provider"
+	batchimageadapter "github.com/TokenFlux/TokenRouter/internal/batchimage/provider"
 	"github.com/TokenFlux/TokenRouter/internal/config"
 )
 
-func batchVertexOptions(cfg *config.Config) provider.VertexBatchImageProviderOptions {
+func batchVertexOptions(cfg *config.Config) batchimageadapter.VertexBatchImageProviderOptions {
 	if cfg == nil {
-		return provider.VertexBatchImageProviderOptions{}
+		return batchimageadapter.VertexBatchImageProviderOptions{}
 	}
-	return provider.VertexBatchImageProviderOptions{
+	return batchimageadapter.VertexBatchImageProviderOptions{
 		Enabled:                cfg.BatchImage.VertexEnabled,
 		ProjectID:              cfg.BatchImage.VertexProjectID,
 		Location:               cfg.BatchImage.VertexLocation,

@@ -98,12 +98,12 @@ func TestUsageLogFromService_IncludesServiceTierForUserAndAdmin(t *testing.T) {
 	inboundEndpoint := "/v1/chat/completions"
 	upstreamEndpoint := "/v1/responses"
 	log := &usage.UsageLog{
-		RequestID:             "req_3",
-		Model:                 "gpt-5.4",
-		ServiceTier:           &serviceTier,
-		InboundEndpoint:       &inboundEndpoint,
-		UpstreamEndpoint:      &upstreamEndpoint,
-		AccountRateMultiplier: f64Ptr(1.5),
+		RequestID:              "req_3",
+		Model:                  "gpt-5.4",
+		ServiceTier:            &serviceTier,
+		InboundEndpoint:        &inboundEndpoint,
+		UpstreamEndpoint:       &upstreamEndpoint,
+		ProviderRateMultiplier: f64Ptr(1.5),
 	}
 
 	userDTO := dto.FromUsage(log)
@@ -120,8 +120,8 @@ func TestUsageLogFromService_IncludesServiceTierForUserAndAdmin(t *testing.T) {
 	require.Equal(t, inboundEndpoint, *adminDTO.InboundEndpoint)
 	require.NotNil(t, adminDTO.UpstreamEndpoint)
 	require.Equal(t, upstreamEndpoint, *adminDTO.UpstreamEndpoint)
-	require.NotNil(t, adminDTO.AccountRateMultiplier)
-	require.InDelta(t, 1.5, *adminDTO.AccountRateMultiplier, 1e-12)
+	require.NotNil(t, adminDTO.ProviderRateMultiplier)
+	require.InDelta(t, 1.5, *adminDTO.ProviderRateMultiplier, 1e-12)
 }
 
 // TestUsageLogFromService_IncludesRequestedEffort 验证请求档位与实际档位都能稳定出现在 DTO。
@@ -188,21 +188,21 @@ func TestUsageLogFromService_KeepsUserBillingAndIPWithoutAdminCostFields(t *test
 	t.Parallel()
 
 	ipAddress := "203.0.113.10"
-	accountRateMultiplier := 1.5
-	accountStatsCost := 0.21
+	providerRateMultiplier := 1.5
+	providerStatsCost := 0.21
 	log := &usage.UsageLog{
-		RequestID:             "req_user_visible_billing",
-		Model:                 "gpt-5.4",
-		InputCost:             0.01,
-		OutputCost:            0.02,
-		CacheCreationCost:     0.03,
-		CacheReadCost:         0.04,
-		TotalCost:             0.10,
-		ActualCost:            0.08,
-		RateMultiplier:        0.8,
-		IPAddress:             &ipAddress,
-		AccountRateMultiplier: &accountRateMultiplier,
-		AccountStatsCost:      &accountStatsCost,
+		RequestID:              "req_user_visible_billing",
+		Model:                  "gpt-5.4",
+		InputCost:              0.01,
+		OutputCost:             0.02,
+		CacheCreationCost:      0.03,
+		CacheReadCost:          0.04,
+		TotalCost:              0.10,
+		ActualCost:             0.08,
+		RateMultiplier:         0.8,
+		IPAddress:              &ipAddress,
+		ProviderRateMultiplier: &providerRateMultiplier,
+		ProviderStatsCost:      &providerStatsCost,
 	}
 
 	userDTO := dto.FromUsage(log)
@@ -218,9 +218,9 @@ func TestUsageLogFromService_KeepsUserBillingAndIPWithoutAdminCostFields(t *test
 
 	userJSON, err := json.Marshal(userDTO)
 	require.NoError(t, err)
-	require.NotContains(t, string(userJSON), "account_rate_multiplier")
-	require.NotContains(t, string(userJSON), "account_stats_cost")
-	require.NotContains(t, string(userJSON), "account_cost")
+	require.NotContains(t, string(userJSON), "provider_rate_multiplier")
+	require.NotContains(t, string(userJSON), "provider_stats_cost")
+	require.NotContains(t, string(userJSON), "provider_cost")
 }
 
 func TestUsageLogFromService_FallsBackToLegacyModelWhenRequestedModelMissing(t *testing.T) {

@@ -1,4 +1,4 @@
-// Executor 拥有单次任务尝试的准备、输出检查和反馈，不持有账号凭据或具体平台服务。
+// Executor 拥有单次任务尝试的准备、输出检查和反馈，不持有提供商凭据或具体平台服务。
 package creative
 
 import (
@@ -17,7 +17,7 @@ type ExecutionGroup struct {
 	ConfigureContext func(context.Context, string, string) context.Context
 }
 type Selection struct {
-	AccountID         int64
+	ProviderID        int64
 	Platform          string
 	Acquired, Waiting bool
 	ResolveModel      func(context.Context, string) string
@@ -49,23 +49,23 @@ func (e *Executor) Prepare(ctx context.Context, run CreativeRun) (*CreativeExecu
 		return nil, CreativeNonRetryableError("creative model %s is restricted by group %d", run.Model, run.GroupID)
 	}
 	platforms := []string{PlatformOpenAI, PlatformGemini, PlatformGrok}
-	if run.Provider != "" {
-		platforms = []string{run.Provider}
+	if run.Platform != "" {
+		platforms = []string{run.Platform}
 	}
 	var lastErr error
 	for _, platform := range platforms {
 		if group.AllowsOperation != nil && !group.AllowsOperation(platform, run.Operation) {
 			continue
 		}
-		selectAccount := map[string]func(context.Context, CreativeRun) (*Selection, error){PlatformOpenAI: e.OpenAI, PlatformGrok: e.Grok, PlatformGemini: e.Gemini}[platform]
-		if selectAccount == nil {
+		selectProvider := map[string]func(context.Context, CreativeRun) (*Selection, error){PlatformOpenAI: e.OpenAI, PlatformGrok: e.Grok, PlatformGemini: e.Gemini}[platform]
+		if selectProvider == nil {
 			continue
 		}
 		selectionCtx := ctx
 		if group.ConfigureContext != nil {
 			selectionCtx = group.ConfigureContext(ctx, platform, run.Operation)
 		}
-		selection, selectErr := selectAccount(selectionCtx, run)
+		selection, selectErr := selectProvider(selectionCtx, run)
 		if selectErr != nil {
 			lastErr = selectErr
 			continue
@@ -87,12 +87,12 @@ func (e *Executor) Prepare(ctx context.Context, run CreativeRun) (*CreativeExecu
 			lastErr = CreativeNonRetryableError("creative upstream model %s is unavailable for group %d", model, run.GroupID)
 			continue
 		}
-		return &CreativeExecution{AccountID: selection.AccountID, Provider: selection.Platform, UpstreamModel: model, ReleaseFunc: selection.Release, Target: NewExecutionTarget(selection, model, e.Timeout)}, nil
+		return &CreativeExecution{ProviderID: selection.ProviderID, Platform: selection.Platform, UpstreamModel: model, ReleaseFunc: selection.Release, Target: NewExecutionTarget(selection, model, e.Timeout)}, nil
 	}
 	if lastErr != nil {
 		return nil, lastErr
 	}
-	return nil, CreativeNonRetryableError("no compatible creative account available for group %d model %s", run.GroupID, run.Model)
+	return nil, CreativeNonRetryableError("no compatible creative provider available for group %d model %s", run.GroupID, run.Model)
 }
 func (e *Executor) IsRetryable(err error) bool { return IsRetryableCreativeError(err) }
 
@@ -102,7 +102,7 @@ type preparedExecution struct {
 	timeout   time.Duration
 }
 
-// NewExecutionTarget 将本次账号、模型、反馈及预算固化，不再次选取账号。
+// NewExecutionTarget 将本次提供商、模型、反馈及预算固化，不再次选取提供商。
 func NewExecutionTarget(selection *Selection, model string, timeout time.Duration) ExecutionTarget {
 	if timeout <= 0 {
 		timeout = 5 * time.Minute
@@ -125,7 +125,7 @@ func (t *preparedExecution) Execute(ctx context.Context, run CreativeRun, payloa
 	switch s.Platform {
 	case PlatformOpenAI, PlatformGrok, PlatformGemini:
 	default:
-		return nil, CreativeNonRetryableError("creative executor unsupported account platform %s", s.Platform)
+		return nil, CreativeNonRetryableError("creative executor unsupported provider platform %s", s.Platform)
 	}
 	outputs, err := s.Execute(ctx, run, payload, model)
 	if err == nil {
@@ -137,5 +137,5 @@ func (t *preparedExecution) Execute(ctx context.Context, run CreativeRun, payloa
 	if err != nil {
 		return nil, err
 	}
-	return &CreativeExecuteResult{Outputs: outputs, AccountID: s.AccountID}, nil
+	return &CreativeExecuteResult{Outputs: outputs, ProviderID: s.ProviderID}, nil
 }

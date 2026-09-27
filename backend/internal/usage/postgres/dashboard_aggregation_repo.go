@@ -309,7 +309,7 @@ func (r *AggregationStore) upsertHourlyAggregates(ctx context.Context, start, en
 				COALESCE(SUM(cache_read_tokens), 0) AS cache_read_tokens,
 				COALESCE(SUM(total_cost), 0) AS total_cost,
 				COALESCE(SUM(actual_cost), 0) AS actual_cost,
-				COALESCE(SUM(COALESCE(account_stats_cost, total_cost) * COALESCE(account_rate_multiplier, 1)), 0) AS account_cost,
+				COALESCE(SUM(COALESCE(provider_stats_cost, total_cost) * COALESCE(provider_rate_multiplier, 1)), 0) AS provider_cost,
 				COALESCE(SUM(COALESCE(duration_ms, 0)), 0) AS total_duration_ms
 			FROM usage_logs
 			WHERE created_at >= $1 AND created_at < $2
@@ -330,7 +330,7 @@ func (r *AggregationStore) upsertHourlyAggregates(ctx context.Context, start, en
 			cache_read_tokens,
 			total_cost,
 			actual_cost,
-			account_cost,
+			provider_cost,
 			total_duration_ms,
 			active_users,
 			computed_at
@@ -344,7 +344,7 @@ func (r *AggregationStore) upsertHourlyAggregates(ctx context.Context, start, en
 			hourly.cache_read_tokens,
 			hourly.total_cost,
 			hourly.actual_cost,
-			hourly.account_cost,
+			hourly.provider_cost,
 			hourly.total_duration_ms,
 			COALESCE(user_counts.active_users, 0) AS active_users,
 			NOW()
@@ -359,7 +359,7 @@ func (r *AggregationStore) upsertHourlyAggregates(ctx context.Context, start, en
 			cache_read_tokens = EXCLUDED.cache_read_tokens,
 			total_cost = EXCLUDED.total_cost,
 			actual_cost = EXCLUDED.actual_cost,
-			account_cost = EXCLUDED.account_cost,
+			provider_cost = EXCLUDED.provider_cost,
 			total_duration_ms = EXCLUDED.total_duration_ms,
 			active_users = EXCLUDED.active_users,
 			computed_at = EXCLUDED.computed_at
@@ -381,7 +381,7 @@ func (r *AggregationStore) upsertDailyAggregates(ctx context.Context, start, end
 				COALESCE(SUM(cache_read_tokens), 0) AS cache_read_tokens,
 				COALESCE(SUM(total_cost), 0) AS total_cost,
 				COALESCE(SUM(actual_cost), 0) AS actual_cost,
-				COALESCE(SUM(account_cost), 0) AS account_cost,
+				COALESCE(SUM(provider_cost), 0) AS provider_cost,
 				COALESCE(SUM(total_duration_ms), 0) AS total_duration_ms
 			FROM usage_dashboard_hourly
 			WHERE bucket_start >= $1 AND bucket_start < $2
@@ -402,7 +402,7 @@ func (r *AggregationStore) upsertDailyAggregates(ctx context.Context, start, end
 			cache_read_tokens,
 			total_cost,
 			actual_cost,
-			account_cost,
+			provider_cost,
 			total_duration_ms,
 			active_users,
 			computed_at
@@ -416,7 +416,7 @@ func (r *AggregationStore) upsertDailyAggregates(ctx context.Context, start, end
 			daily.cache_read_tokens,
 			daily.total_cost,
 			daily.actual_cost,
-			daily.account_cost,
+			daily.provider_cost,
 			daily.total_duration_ms,
 			COALESCE(user_counts.active_users, 0) AS active_users,
 			NOW()
@@ -431,7 +431,7 @@ func (r *AggregationStore) upsertDailyAggregates(ctx context.Context, start, end
 			cache_read_tokens = EXCLUDED.cache_read_tokens,
 			total_cost = EXCLUDED.total_cost,
 			actual_cost = EXCLUDED.actual_cost,
-			account_cost = EXCLUDED.account_cost,
+			provider_cost = EXCLUDED.provider_cost,
 			total_duration_ms = EXCLUDED.total_duration_ms,
 			active_users = EXCLUDED.active_users,
 			computed_at = EXCLUDED.computed_at

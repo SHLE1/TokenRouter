@@ -24,7 +24,8 @@ type PricingMigrationScope struct {
 	Conflicts []pricing.MergeConflict     `json:"conflicts,omitempty"`
 }
 
-// PreviewPricingMigration 在只读一致性事务中检查所有价卡作用域，失败不修改持久数据。
+// PreviewPricingMigration 读取迁移 276 之前的 schema，历史 accounts 表名在此保留。
+// 预检使用只读一致性事务，失败不修改持久数据。
 func PreviewPricingMigration(ctx context.Context, db *sql.DB) (PricingMigrationPreview, error) {
 	report := PricingMigrationPreview{Scopes: []PricingMigrationScope{}, UnboundKeyIDs: []int64{}}
 	tx, err := db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelRepeatableRead, ReadOnly: true})

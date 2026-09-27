@@ -1,4 +1,4 @@
-// Package openaiforward 编排当前账号的 HTTP 恢复与响应消费，账号切换仍由 gateway/text 拥有。
+// Package openaiforward 编排当前提供商的 HTTP 恢复与响应消费，提供商切换仍由 gateway/text 拥有。
 package openaiforward
 
 import (
@@ -18,11 +18,11 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// HTTPInput 只携带已完成分组及账号处理的请求快照，不包含业务实体或凭据。
+// HTTPInput 只携带已完成分组及提供商处理的请求快照，不包含业务实体或凭据。
 type HTTPInput struct {
 	Body, LineageEntryBody                                     []byte
-	AccountID                                                  int64
-	AccountName, Platform                                      string
+	ProviderID                                                 int64
+	ProviderName, Platform                                     string
 	RequestedModel, OriginalModel, BillingModel, UpstreamModel string
 	ReasoningEffort                                            *string
 	ReasoningEffortValue                                       string
@@ -135,16 +135,16 @@ func RunHTTP(ctx context.Context, input HTTPInput, o HTTPOptions) (*Result, erro
 					o.MarkInvalidLineage(input.LineageEntryBody)
 					encryptedRetried = true
 					rejected.Remember(body)
-					o.Log("[OpenAI] Retrying non-WSv2 request once after invalid_encrypted_content (account: %s)", input.AccountName)
+					o.Log("[OpenAI] Retrying non-WSv2 request once after invalid_encrypted_content (provider: %s)", input.ProviderName)
 					continue
 				}
-				o.Log("[OpenAI] Skip non-WSv2 invalid_encrypted_content retry because encrypted state items are missing (account: %s)", input.AccountName)
+				o.Log("[OpenAI] Skip non-WSv2 invalid_encrypted_content retry because encrypted state items are missing (provider: %s)", input.ProviderName)
 			}
 			if retryBody, reason, changed, retryErr := openai.NormalizeOpenAIResponsesRejectedFieldRetryBody(resp.StatusCode, body, payload); retryErr != nil {
 				return nil, fmt.Errorf("normalize rejected Responses field retry body: %w", retryErr)
 			} else if changed && rejected.Allow(retryBody) {
 				body = retryBody
-				o.Log("[OpenAI] Retrying non-WSv2 request after %s (account: %s)", reason, input.AccountName)
+				o.Log("[OpenAI] Retrying non-WSv2 request after %s (provider: %s)", reason, input.ProviderName)
 				continue
 			}
 			if retryBody, model, retry := o.CompactRetry(body, resp.StatusCode, message, payload, compactRetried); retry {
@@ -154,7 +154,7 @@ func RunHTTP(ctx context.Context, input HTTPInput, o HTTPOptions) (*Result, erro
 				upstreamModel = model
 				compactRetried = true
 				o.ObserveUpstreamModel(model)
-				o.Log("[OpenAI] Retrying explicit compact request once with fallback model (account: %s, from: %s, to: %s, upstream_code: %s)", input.AccountName, from, model, code)
+				o.Log("[OpenAI] Retrying explicit compact request once with fallback model (provider: %s, from: %s, to: %s, upstream_code: %s)", input.ProviderName, from, model, code)
 				continue
 			}
 			if o.ShouldFailover(resp.StatusCode, message, payload) {

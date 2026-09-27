@@ -1,4 +1,4 @@
-// 图片回填不带账号实体，只接收技术参数与已判定的开关。
+// 图片回填不带提供商实体，只接收技术参数与已判定的开关。
 // @project-doc docs/interfaces/openai_upstream.md#images_url_backfill
 package openai
 
@@ -35,6 +35,7 @@ func (options ImageBackfillOptions) ReportFailure(index int) {
 		options.Failure(index)
 	}
 }
+
 func (options ImageBackfillOptions) Backfill(ctx context.Context, body []byte) []byte {
 	if !options.Enabled || !gjson.ValidBytes(body) || (options.Stream || strings.EqualFold(strings.TrimSpace(options.ResponseFormat), "url")) {
 		return body

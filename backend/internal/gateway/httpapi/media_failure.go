@@ -6,21 +6,21 @@ import (
 	"go.uber.org/zap"
 )
 
-// MediaNoAccount 是共同选路分类的只读结果，不把路由查询实现带入 HTTP 适配。
-type MediaNoAccount struct {
+// MediaNoProvider 是共同选路分类的只读结果，不把路由查询实现带入 HTTP 适配。
+type MediaNoProvider struct {
 	ModelNotFound bool
 	Status        int
 	Type, Message string
 }
 type MediaFailureContext struct {
 	Grok, Generation, StreamStarted bool
-	BoundAccountID, AccountID       int64
+	BoundProviderID, ProviderID     int64
 	WriterBefore                    int
 	Context                         *gin.Context
 	Log                             *zap.Logger
 }
 type MediaFailurePorts interface {
-	MediaClassify() MediaNoAccount
+	MediaClassify() MediaNoProvider
 	MediaNoAvailable(error) bool
 	MediaCapacity(error, bool)
 	MediaError(int, string, string, bool)
@@ -49,7 +49,7 @@ func WriteGenerationFailure(f media.GenerationFailure, state MediaFailureContext
 			}
 			message := classification.Message
 			if !classification.ModelNotFound {
-				message = "No available compatible accounts"
+				message = "No available compatible providers"
 			}
 			p.MediaError(classification.Status, classification.Type, message, true)
 			return
@@ -72,7 +72,7 @@ func WriteGenerationFailure(f media.GenerationFailure, state MediaFailureContext
 		if !communicated && (!recorded || state.Context.Writer.Size() == state.WriterBefore) {
 			fallback = p.MediaEnsureFallback(f.Err)
 		}
-		fields := []zap.Field{zap.Int64("account_id", state.AccountID), zap.Bool("fallback_error_response_written", fallback), zap.Bool("upstream_error_response_already_written", communicated), zap.Error(f.Err)}
+		fields := []zap.Field{zap.Int64("provider_id", state.ProviderID), zap.Bool("fallback_error_response_written", fallback), zap.Bool("upstream_error_response_already_written", communicated), zap.Error(f.Err)}
 		if p.MediaWarnFailure(fallback) {
 			state.Log.Warn("openai.images.forward_failed", fields...)
 		} else {
@@ -80,18 +80,19 @@ func WriteGenerationFailure(f media.GenerationFailure, state MediaFailureContext
 		}
 	}
 }
+
 func writeGrokGenerationFailure(f media.GenerationFailure, state MediaFailureContext, p MediaFailurePorts) {
 	switch f.Stage {
 	case "ineligible":
 		p.MediaCapacity(nil, false)
-		p.MediaError(503, "grok_media_no_eligible_account", "No eligible Grok media accounts", false)
+		p.MediaError(503, "grok_media_no_eligible_provider", "No eligible Grok media providers", false)
 	case "bound_unavailable":
-		state.Log.Warn("grok_media.video_lookup_bound_account_unavailable", zap.Int64("bound_account_id", state.BoundAccountID), zap.Int64("selected_account_id", f.SelectedID))
+		state.Log.Warn("grok_media.video_lookup_bound_provider_unavailable", zap.Int64("bound_provider_id", state.BoundProviderID), zap.Int64("selected_provider_id", f.SelectedID))
 		p.MediaError(404, "not_found_error", "Video request not found", false)
 	case "selection", "empty_selection":
 		if state.Generation && (f.Stage == "empty_selection" || (p.MediaNoAvailable(f.Err) && (f.Excluded == 0 || (f.EligibilityRejected && f.Outcome.Err == nil)))) {
 			p.MediaCapacity(f.Err, f.Stage != "empty_selection")
-			p.MediaError(503, "grok_media_no_eligible_account", "No eligible Grok media accounts", false)
+			p.MediaError(503, "grok_media_no_eligible_provider", "No eligible Grok media providers", false)
 			return
 		}
 		if f.Stage == "empty_selection" || f.Excluded == 0 {
@@ -113,6 +114,6 @@ func writeGrokGenerationFailure(f media.GenerationFailure, state MediaFailureCon
 		if !p.MediaCommunicated(f.Err) && !f.Outcome.OutputChanged {
 			p.MediaError(502, "upstream_error", "Upstream request failed", false)
 		}
-		state.Log.Warn("grok_media.forward_failed", zap.Int64("account_id", state.AccountID), zap.Error(f.Err))
+		state.Log.Warn("grok_media.forward_failed", zap.Int64("provider_id", state.ProviderID), zap.Error(f.Err))
 	}
 }

@@ -59,14 +59,14 @@ func BuildAlphaSearchRequest(ctx context.Context, body []byte, options AlphaSear
 
 	if options.OAuth() {
 		req.Host = "chatgpt.com"
-		if err := options.AccountHeaders(ctx, req.Header); err != nil {
-			return nil, fmt.Errorf("resolve chatgpt account headers: %w", err)
+		if err := options.ProviderHeaders(ctx, req.Header); err != nil {
+			return nil, fmt.Errorf("resolve chatgpt provider headers: %w", err)
 		}
 
 		if turnMetadata := options.InboundHeader("X-Codex-Turn-Metadata"); turnMetadata != "" {
 			req.Header.Set("X-Codex-Turn-Metadata", turnMetadata)
 		}
-		options.ApplyAccountIdentity(req.Header)
+		options.ApplyProviderIdentity(req.Header)
 		if version := options.InboundHeader("Version"); version != "" {
 			req.Header.Set("Version", version)
 		} else {
@@ -100,8 +100,8 @@ func BuildAlphaSearchResponsesRequest(ctx context.Context, alphaBody []byte, bod
 		}
 	}
 	req.Host = "chatgpt.com"
-	if err := options.AccountHeaders(ctx, req.Header); err != nil {
-		return nil, fmt.Errorf("resolve chatgpt account headers: %w", err)
+	if err := options.ProviderHeaders(ctx, req.Header); err != nil {
+		return nil, fmt.Errorf("resolve chatgpt provider headers: %w", err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
@@ -136,7 +136,7 @@ func BuildAlphaSearchResponsesRequest(ctx context.Context, alphaBody []byte, bod
 // 属于官方默认客户端头，必须保留。
 //
 // alpha/search 使用专用构造器生成官方 SearchClient 的最小线协议形态；
-// 该函数作为最后一道防线，避免账号 header 覆写或后续改动重新带入
+// 该函数作为最后一道防线，避免提供商 header 覆写或后续改动重新带入
 // Responses 专用头，使 PAT 的 alpha/search 被上游按错误认证路径处理。
 func StripAlphaSearchResponsesHeaders(headers http.Header, liteHeader string) {
 	if headers == nil {

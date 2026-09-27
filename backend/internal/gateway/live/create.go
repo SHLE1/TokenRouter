@@ -15,12 +15,12 @@ import (
 	"github.com/tidwall/sjson"
 )
 
-// Created 只返回公共响应和选中账号标识，不携带凭据或旧账号实体。
+// Created 只返回公共响应和选中提供商标识，不携带凭据或旧提供商实体。
 type Created struct {
-	SDP       []byte
-	CallID    string
-	Location  string
-	AccountID int64
+	SDP        []byte
+	CallID     string
+	Location   string
+	ProviderID int64
 }
 
 // CreateTarget 提供一次选号的模型投影、客户端资格和供应商交换。
@@ -30,7 +30,7 @@ type CreateTarget interface {
 	Create(context.Context, *session.LiveCallRequest, string) (*Created, error)
 }
 
-// Candidate 拥有当前账号槽的释放能力，Live 租约接替后立即释放普通槽。
+// Candidate 拥有当前提供商槽的释放能力，Live 租约接替后立即释放普通槽。
 type Candidate struct {
 	ID          int64
 	Concurrency int
@@ -39,7 +39,7 @@ type Candidate struct {
 	Target      CreateTarget
 }
 
-// CreatePorts 注入凭据、选路和观测能力，不包含资金或账号业务实体。
+// CreatePorts 注入凭据、选路和观测能力，不包含资金或提供商业务实体。
 type CreatePorts interface {
 	PrepareAttestation(context.Context) (string, string, error)
 	Select(context.Context, *int64, string, map[int64]struct{}) (*Candidate, error)
@@ -60,10 +60,12 @@ type Creator struct {
 func NewCreator(runtime *Service, ports CreatePorts, maxDuration time.Duration) *Creator {
 	return &Creator{runtime: runtime, ports: ports, maxDuration: maxDuration}
 }
+
 func HashCallID(callID string) string {
 	sum := sha256.Sum256([]byte(callID))
 	return hex.EncodeToString(sum[:])
 }
+
 func liveGroupID(id *int64) int64 {
 	if id == nil {
 		return 0
@@ -72,7 +74,7 @@ func liveGroupID(id *int64) int64 {
 }
 
 // CreateLiveCall 创建 Frameless 会话。调用方须在调用期间持有普通用户槽位；
-// 调度器持有的普通账号槽位会被同一个 Live 租约原子接替。
+// 调度器持有的普通提供商槽位会被同一个 Live 租约原子接替。
 func (s *Creator) Create(
 	ctx context.Context,
 	request *session.LiveCallRequest,
@@ -117,12 +119,12 @@ func (s *Creator) Create(
 			return nil, session.ErrLiveConcurrencyFull
 		}
 
-		account := selection
-		routingModel, upstreamModel, routingErr := account.Target.ResolveModel(ctx, model)
+		provider := selection
+		routingModel, upstreamModel, routingErr := provider.Target.ResolveModel(ctx, model)
 
 		if routingErr != nil {
 			selection.ReleaseFunc()
-			excluded[account.ID] = struct{}{}
+			excluded[provider.ID] = struct{}{}
 			lastErr = routingErr
 			continue
 		}
@@ -136,17 +138,17 @@ func (s *Creator) Create(
 			return nil, rewriteErr
 		}
 		upstreamRequest := &session.LiveCallRequest{SDP: request.SDP, Session: upstreamSession}
-		if !account.Target.AllowsClient(ctx, identity) {
+		if !provider.Target.AllowsClient(ctx, identity) {
 			selection.ReleaseFunc()
-			excluded[account.ID] = struct{}{}
+			excluded[provider.ID] = struct{}{}
 			lastErr = session.ErrLiveClientPolicyDenied
 			continue
 		}
 		leaseID := s.ports.NewLeaseID()
 		acquired, acquireErr := liveCache.AcquireLiveLease(
 			ctx,
-			account.ID,
-			account.Concurrency,
+			provider.ID,
+			provider.Concurrency,
 			identity.UserID,
 			userMaxConcurrency,
 			identity.APIKeyID,
@@ -161,14 +163,14 @@ func (s *Creator) Create(
 			return nil, session.ErrLiveConcurrencyFull
 		}
 
-		created, createErr := account.Target.Create(ctx, upstreamRequest, attestation)
+		created, createErr := provider.Target.Create(ctx, upstreamRequest, attestation)
 		selection.ReleaseFunc()
 		if createErr != nil {
-			s.runtime.ReleaseLease(account.ID, identity.UserID, identity.APIKeyID, leaseID)
+			s.runtime.ReleaseLease(provider.ID, identity.UserID, identity.APIKeyID, leaseID)
 			if !s.ports.ShouldFailover(createErr) {
 				return nil, createErr
 			}
-			excluded[account.ID] = struct{}{}
+			excluded[provider.ID] = struct{}{}
 			lastErr = createErr
 			continue
 		}
@@ -178,7 +180,7 @@ func (s *Creator) Create(
 		record := &session.LiveCallRecord{
 			CallID:                created.CallID,
 			CallHash:              HashCallID(created.CallID),
-			AccountID:             account.ID,
+			ProviderID:            provider.ID,
 			APIKeyID:              identity.APIKeyID,
 			ActorUserID:           identity.ActorUserID,
 			UserID:                identity.UserID,
@@ -201,10 +203,10 @@ func (s *Creator) Create(
 		}
 		mappingTTL := s.maxDuration + 5*time.Minute
 		if saveErr := store.SaveLiveCall(ctx, record, mappingTTL); saveErr != nil {
-			s.runtime.ReleaseLease(account.ID, identity.UserID, identity.APIKeyID, leaseID)
+			s.runtime.ReleaseLease(provider.ID, identity.UserID, identity.APIKeyID, leaseID)
 			return nil, fmt.Errorf("save live call mapping: %w", saveErr)
 		}
-		created.AccountID = account.ID
+		created.ProviderID = provider.ID
 		s.ports.Observe(record)
 		return created, nil
 	}

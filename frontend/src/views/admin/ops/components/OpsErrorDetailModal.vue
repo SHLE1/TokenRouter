@@ -31,11 +31,11 @@
 
         <div class="rounded-surface bg-gray-50 p-4 dark:bg-dark-950">
           <div class="text-xs font-bold uppercase tracking-wider text-gray-400">
-            {{ isUpstreamError(detail) ? t('admin.ops.errorDetail.account') : t('admin.ops.errorDetail.user') }}
+            {{ isUpstreamError(detail) ? t('admin.ops.errorDetail.provider') : t('admin.ops.errorDetail.user') }}
           </div>
           <div class="mt-1 text-sm font-medium text-gray-900 dark:text-white">
             <template v-if="isUpstreamError(detail)">
-              {{ detail.account_name || (detail.account_id != null ? String(detail.account_id) : '—') }}
+              {{ detail.provider_name || (detail.provider_id != null ? String(detail.provider_id) : '—') }}
             </template>
             <template v-else>
               {{ detail.user_email || (detail.user_id != null ? String(detail.user_id) : '—') }}

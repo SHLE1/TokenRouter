@@ -58,8 +58,8 @@ func describeUsageCleanupFilters(filters UsageCleanupFilters) string {
 	if filters.APIKeyID != nil {
 		parts = append(parts, fmt.Sprintf("api_key_id=%d", *filters.APIKeyID))
 	}
-	if filters.AccountID != nil {
-		parts = append(parts, fmt.Sprintf("account_id=%d", *filters.AccountID))
+	if filters.ProviderID != nil {
+		parts = append(parts, fmt.Sprintf("provider_id=%d", *filters.ProviderID))
 	}
 	if filters.GroupID != nil {
 		parts = append(parts, fmt.Sprintf("group_id=%d", *filters.GroupID))
@@ -277,7 +277,6 @@ func (s *UsageCleanupService) executeTask(ctx context.Context, task *UsageCleanu
 	} else {
 		s.logMessage("service.usage_cleanup", "[UsageCleanup] task succeeded: task=%d deleted_rows=%d duration=%s", task.ID, deletedTotal, time.Since(start))
 	}
-
 }
 
 func (s *UsageCleanupService) markTaskFailed(taskID int64, deletedRows int64, err error) {
@@ -381,8 +380,8 @@ func sanitizeUsageCleanupFilters(filters *UsageCleanupFilters) {
 	if filters.APIKeyID != nil && *filters.APIKeyID <= 0 {
 		filters.APIKeyID = nil
 	}
-	if filters.AccountID != nil && *filters.AccountID <= 0 {
-		filters.AccountID = nil
+	if filters.ProviderID != nil && *filters.ProviderID <= 0 {
+		filters.ProviderID = nil
 	}
 	if filters.GroupID != nil && *filters.GroupID <= 0 {
 		filters.GroupID = nil

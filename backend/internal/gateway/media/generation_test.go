@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/failover"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/stretchr/testify/require"
 )
 
@@ -22,26 +22,31 @@ type generationStub struct {
 
 func (p *generationStub) SelectGeneration(context.Context, map[int64]struct{}) (GenerationSelection, bool, error) {
 	p.selected++
-	return GenerationSelection{Account: account.AccountSnapshot{ID: 1}, RetryLimit: 1}, true, nil
+	return GenerationSelection{Provider: provider.ProviderSnapshot{ID: 1}, RetryLimit: 1}, true, nil
 }
 func (p *generationStub) ActivateGeneration(GenerationSelection) { p.activated++ }
 func (p *generationStub) GenerationEligible(context.Context, GenerationSelection) (bool, string, error) {
 	return !p.rejected, "denied", nil
 }
+
 func (p *generationStub) AcquireGeneration(context.Context, GenerationSelection) (func(), bool) {
 	p.acquired++
 	return func() { p.released++; p.events = append(p.events, "release") }, true
 }
+
 func (p *generationStub) StartGenerationKeepalive() func() {
 	return func() { p.keepaliveStopped++; p.events = append(p.events, "keepalive_stop") }
 }
+
 func (p *generationStub) ForwardGeneration(context.Context, GenerationSelection, []byte) GenerationOutcome {
 	return p.outcomes[p.selected-1]
 }
+
 func (p *generationStub) ReportGeneration(_ context.Context, _ GenerationSelection, _ *GenerationResult, success bool, _ error) {
 	p.reports = append(p.reports, success)
 	p.events = append(p.events, "report")
 }
+
 func (p *generationStub) CompleteGeneration(context.Context, GenerationSelection, *GenerationResult) {
 	p.completed++
 	p.events = append(p.events, "complete")
@@ -54,6 +59,7 @@ func (p *generationStub) EndGeneration(f GenerationFailure) {
 	p.terminal = &f
 	p.events = append(p.events, "end")
 }
+
 func TestImagesLoopPartialOutputCompletesAndStopsKeepalive(t *testing.T) {
 	p := &generationStub{outcomes: []GenerationOutcome{{Result: &GenerationResult{ImageCount: 2}, Err: errors.New("tail failure")}}}
 	RunImages(context.Background(), GenerationRequest{RoutingStarted: time.Now()}, p)
@@ -63,6 +69,7 @@ func TestImagesLoopPartialOutputCompletesAndStopsKeepalive(t *testing.T) {
 	require.Nil(t, p.terminal)
 	require.Equal(t, []string{"release", "complete", "keepalive_stop"}, p.events)
 }
+
 func TestImagesLoopStopsSwitchingAfterOutput(t *testing.T) {
 	p := &generationStub{outcomes: []GenerationOutcome{{Err: errors.New("upstream"), Failure: &failover.FailureInfo{RetryNext: true}, OutputChanged: true}}}
 	RunImages(context.Background(), GenerationRequest{MaxSwitches: 3, RoutingStarted: time.Now()}, p)
@@ -71,31 +78,34 @@ func TestImagesLoopStopsSwitchingAfterOutput(t *testing.T) {
 	require.Equal(t, "exhausted", p.terminal.Stage)
 	require.Equal(t, []string{"release", "report", "end", "keepalive_stop"}, p.events)
 }
-func TestImagesLoopPreservesUserErrorAndSameAccountRetry(t *testing.T) {
+
+func TestImagesLoopPreservesUserErrorAndSameProviderRetry(t *testing.T) {
 	p := &generationStub{outcomes: []GenerationOutcome{{Err: errors.New("bad prompt"), ImageError: true}}}
 	RunImages(context.Background(), GenerationRequest{Stream: true, RoutingStarted: time.Now()}, p)
 	require.Equal(t, []bool{true}, p.reports)
 	require.Zero(t, p.completed)
 	require.Zero(t, p.switched)
-	p = &generationStub{outcomes: []GenerationOutcome{{Err: errors.New("retry"), Failure: &failover.FailureInfo{RetryableOnSameAccount: true, RetryNext: true, SameAccountRetryDelay: time.Millisecond}}, {Result: &GenerationResult{ImageCount: 1}}}}
+	p = &generationStub{outcomes: []GenerationOutcome{{Err: errors.New("retry"), Failure: &failover.FailureInfo{RetryableOnSameProvider: true, RetryNext: true, SameProviderRetryDelay: time.Millisecond}}, {Result: &GenerationResult{ImageCount: 1}}}}
 	RunImages(context.Background(), GenerationRequest{MaxSwitches: 1, RoutingStarted: time.Now()}, p)
 	require.Equal(t, 2, p.released)
 	require.Equal(t, 1, p.completed)
 	require.Zero(t, p.switched)
 }
+
 func TestGrokLoopBoundLookupDoesNotSwitchOrProbeEligibility(t *testing.T) {
 	p := &generationStub{}
-	RunGrokMedia(context.Background(), GenerationRequest{VideoLookup: true, BoundAccountID: 8, RoutingStarted: time.Now()}, p)
+	RunGrokMedia(context.Background(), GenerationRequest{VideoLookup: true, BoundProviderID: 8, RoutingStarted: time.Now()}, p)
 	require.Equal(t, "bound_unavailable", p.terminal.Stage)
 	require.Zero(t, p.activated)
 	require.Zero(t, p.acquired)
 	p = &generationStub{outcomes: []GenerationOutcome{{Err: errors.New("lookup"), Failure: &failover.FailureInfo{RetryNext: true}, ReportFailure: false}}}
-	RunGrokMedia(context.Background(), GenerationRequest{VideoLookup: true, BoundAccountID: 1, RoutingStarted: time.Now()}, p)
+	RunGrokMedia(context.Background(), GenerationRequest{VideoLookup: true, BoundProviderID: 1, RoutingStarted: time.Now()}, p)
 	require.Equal(t, 1, p.released)
 	require.Empty(t, p.reports)
 	require.Zero(t, p.switched)
 	require.Equal(t, "exhausted", p.terminal.Stage)
 }
+
 func TestGrokLoopEligibilityAndCancellationBudgets(t *testing.T) {
 	p := &generationStub{rejected: true}
 	RunGrokMedia(context.Background(), GenerationRequest{Generation: true, MaxSwitches: 1, RoutingStarted: time.Now()}, p)

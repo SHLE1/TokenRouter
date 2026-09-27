@@ -12,8 +12,8 @@ import (
 
 	responseupstream "github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/gateway"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 
@@ -83,7 +83,6 @@ func TestOpenAIResponsesTTFTStartsAtCompletedImage(t *testing.T) {
 }
 
 func TestOpenAINativeMetadataDoesNotDisarmFirstOutputTimeout(t *testing.T) {
-
 	svc := newResponsesFixture(responsesFixtureInputs{readers: newHTTPReadersFixture(&gatewaytestkit.FastPolicySettingsRepo{Values: map[string]string{gateway.SettingKeyOpenAITTFTMode: gateway.OpenAITTFTModeVisible}}, nil), options: &responsesFixtureOptions{Response: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize, OpenAIFirstOutputTimeoutSeconds: 1}}})
 	reader, writer := io.Pipe()
 	writerDone := make(chan struct{})
@@ -99,9 +98,9 @@ func TestOpenAINativeMetadataDoesNotDisarmFirstOutputTimeout(t *testing.T) {
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
 	resp := &http.Response{StatusCode: http.StatusOK, Header: http.Header{}, Body: reader}
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Name: "account_test", Platform: capability.PlatformOpenAI}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Name: "provider_test", Platform: capability.PlatformOpenAI}}
 
-	_, err := svc.Output.Stream(context.Background(), resp, c, account, time.Now(), "test-model", "test-model", "")
+	_, err := svc.Output.Stream(context.Background(), resp, c, provider, time.Now(), "test-model", "test-model", "")
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)
 	require.True(t, failoverErr.SafeToFailoverAfterWrite)
@@ -133,19 +132,19 @@ func runSyntheticVisibleTTFTStream(t *testing.T, passthrough bool, visibleDelay 
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
 	resp := &http.Response{StatusCode: http.StatusOK, Header: http.Header{}, Body: reader}
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Name: "account_test", Platform: capability.PlatformOpenAI}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Name: "provider_test", Platform: capability.PlatformOpenAI}}
 	started := time.Now()
 
 	var result *responseupstream.StreamingResult
 	var err error
 	if passthrough {
 		var passthroughResult *responseupstream.StreamingResult
-		passthroughResult, err = svc.Output.PassthroughStream(context.Background(), resp, c, account, started, "test-model", "test-model")
+		passthroughResult, err = svc.Output.PassthroughStream(context.Background(), resp, c, provider, started, "test-model", "test-model")
 		if passthroughResult != nil {
 			result = &responseupstream.StreamingResult{FirstTokenMs: passthroughResult.FirstTokenMs}
 		}
 	} else {
-		result, err = svc.Output.Stream(context.Background(), resp, c, account, started, "test-model", "test-model", "")
+		result, err = svc.Output.Stream(context.Background(), resp, c, provider, started, "test-model", "test-model", "")
 	}
 	require.NoError(t, err)
 	require.NotNil(t, result)

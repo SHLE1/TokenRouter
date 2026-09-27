@@ -66,21 +66,21 @@ func TestMaxReasoningPricing_IntervalsAndBillingModes(t *testing.T) {
 	}
 }
 
-// 账号自定义价独立于用户费用，模型价兜底按实际档位计价。
-func TestMaxReasoningPricing_AccountStatsPriority(t *testing.T) {
+// 提供商自定义价独立于用户费用，模型价兜底按实际档位计价。
+func TestMaxReasoningPricing_ProviderStatsPriority(t *testing.T) {
 	bs := newCalculator(nil, nil)
-	pricingConfig := &routingtestkit.Configuration{ID: 1, Status: billing.StatusActive, AccountStatsPricingRules: []routing.AccountStatsPricingRule{{
+	pricingConfig := &routingtestkit.Configuration{ID: 1, Status: billing.StatusActive, ProviderStatsPricingRules: []routing.ProviderStatsPricingRule{{
 		GroupIDs: []int64{10}, Pricing: []routing.ModelPricingEntry{{Models: []string{"claude-fable-5-1"}, InputPrice: testPtrFloat64(0.01)}},
 	}}}
 	cs := newTestPricingConfigServiceForStats(t, pricingConfig, 10, capability.PlatformAnthropic)
 	tokens := pricing.UsageTokens{InputTokens: 100}
-	cost := contractAccountStatsCost(context.Background(), cs, bs, "", 1, 10, "claude-fable-5-1", "", tokens, 1, 9, "priority", "max")
+	cost := contractProviderStatsCost(context.Background(), cs, bs, "", 1, 10, "claude-fable-5-1", "", tokens, 1, 9, "priority", "max")
 	require.NotNil(t, cost)
 	require.InDelta(t, 1, *cost, 1e-12)
-	pricingConfig.AccountStatsPricingRules = nil
+	pricingConfig.ProviderStatsPricingRules = nil
 	cs = newTestPricingConfigServiceForStats(t, pricingConfig, 10, capability.PlatformAnthropic)
-	standard := contractAccountStatsCost(context.Background(), cs, bs, "", 1, 10, "claude-fable-5-1", "", tokens, 1, 9, "", "xhigh")
-	cost = contractAccountStatsCost(context.Background(), cs, bs, "", 1, 10, "claude-fable-5-1", "", tokens, 1, 9, "", "max")
+	standard := contractProviderStatsCost(context.Background(), cs, bs, "", 1, 10, "claude-fable-5-1", "", tokens, 1, 9, "", "xhigh")
+	cost = contractProviderStatsCost(context.Background(), cs, bs, "", 1, 10, "claude-fable-5-1", "", tokens, 1, 9, "", "max")
 	require.NotNil(t, standard)
 	require.NotNil(t, cost)
 	require.InDelta(t, *standard*3, *cost, 1e-12)

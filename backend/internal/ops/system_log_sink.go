@@ -318,7 +318,7 @@ func (s *OpsSystemLogSink) flushBatch(baseCtx context.Context, batch []*logevent
 
 		userID := AsInt64Ptr(fields["user_id"])
 		apiKeyID := AsInt64Ptr(fields["api_key_id"])
-		accountID := AsInt64Ptr(fields["account_id"])
+		providerID := AsInt64Ptr(fields["provider_id"])
 
 		// 统一脱敏后写入索引。
 		message := logredact.RedactText(strings.TrimSpace(event.Message))
@@ -339,7 +339,7 @@ func (s *OpsSystemLogSink) flushBatch(baseCtx context.Context, batch []*logevent
 			ClientRequestID: clientRequestID,
 			UserID:          userID,
 			APIKeyID:        apiKeyID,
-			AccountID:       accountID,
+			ProviderID:      providerID,
 			Platform:        platform,
 			Model:           model,
 			ExtraJSON:       extraJSON,

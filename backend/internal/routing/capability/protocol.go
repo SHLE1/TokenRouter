@@ -47,18 +47,18 @@ func buildProtocolCatalog() []Protocol {
 }
 
 // NativeProtocolOptions 只表达认证方式具备的原生协议，不包含兼容转换入口。
-func NativeProtocolOptions(platform, accountType, authMode string) []ProtocolID {
+func NativeProtocolOptions(platform, providerType, authMode string) []ProtocolID {
 	var selected []ProtocolID
 	switch platform {
 	case PlatformAnthropic:
-		if slices.Contains([]string{AccountTypeOAuth, AccountTypeSetupToken, AccountTypeAPIKey, AccountTypeBedrock, AccountTypeServiceAccount}, accountType) {
+		if slices.Contains([]string{ProviderTypeOAuth, ProviderTypeSetupToken, ProviderTypeAPIKey, ProviderTypeBedrock, ProviderTypeServiceAccount}, providerType) {
 			selected = []ProtocolID{ProtocolAnthropicMessages}
 		}
 	case PlatformOpenAI:
-		switch accountType {
-		case AccountTypeAPIKey:
+		switch providerType {
+		case ProviderTypeAPIKey:
 			selected = []ProtocolID{ProtocolOpenAIResponses, ProtocolOpenAIChatCompletions, ProtocolEmbeddings, ProtocolImagesGenerations, ProtocolImagesEdits, ProtocolResponsesWebSocket, ProtocolResponsesCompact, ProtocolAlphaSearch}
-		case AccountTypeOAuth:
+		case ProviderTypeOAuth:
 			selected = []ProtocolID{ProtocolOpenAIResponses, ProtocolResponsesWebSocket, ProtocolResponsesCompact}
 			if authMode != "personalAccessToken" {
 				selected = append(selected, ProtocolAlphaSearch)
@@ -68,34 +68,34 @@ func NativeProtocolOptions(platform, accountType, authMode string) []ProtocolID 
 			}
 		}
 	case PlatformKimi, PlatformDeepseek, PlatformZhipu:
-		if accountType == AccountTypeAPIKey {
+		if providerType == ProviderTypeAPIKey {
 			selected = []ProtocolID{ProtocolAnthropicMessages, ProtocolOpenAIChatCompletions}
 			if platform != PlatformZhipu {
 				selected = append(selected, ProtocolOpenAIResponses)
 			}
 		}
 	case PlatformGemini:
-		switch accountType {
-		case AccountTypeOAuth:
+		switch providerType {
+		case ProviderTypeOAuth:
 			selected = []ProtocolID{ProtocolGeminiGenerateContent}
-		case AccountTypeAPIKey:
+		case ProviderTypeAPIKey:
 			selected = []ProtocolID{ProtocolGeminiGenerateContent, ProtocolGeminiBatch}
-		case AccountTypeServiceAccount:
+		case ProviderTypeServiceAccount:
 			selected = []ProtocolID{ProtocolGeminiGenerateContent, ProtocolVertexBatch}
 		}
 	case PlatformAntigravity:
-		if accountType == AccountTypeUpstream {
+		if providerType == ProviderTypeUpstream {
 			selected = []ProtocolID{ProtocolAnthropicMessages}
 		}
-		if accountType == AccountTypeOAuth {
+		if providerType == ProviderTypeOAuth {
 			selected = []ProtocolID{ProtocolGeminiGenerateContent}
 		}
 	case PlatformQoder:
-		if accountType == AccountTypeCosy {
+		if providerType == ProviderTypeCosy {
 			selected = []ProtocolID{ProtocolQoderChat}
 		}
 	case PlatformGrok:
-		if accountType == AccountTypeAPIKey || accountType == AccountTypeOAuth {
+		if providerType == ProviderTypeAPIKey || providerType == ProviderTypeOAuth {
 			selected = []ProtocolID{ProtocolOpenAIResponses, ProtocolOpenAIChatCompletions, ProtocolImagesGenerations, ProtocolImagesEdits, ProtocolVideosGenerations, ProtocolVideosEdits, ProtocolVideosExtensions, ProtocolTTS, ProtocolSTT, ProtocolCustomVoices, ProtocolVoiceRealtime}
 		}
 	}
@@ -150,18 +150,18 @@ func ProtocolFallbackTargets(platform string, source ProtocolID) []ProtocolID {
 	return out
 }
 
-// SupportsProtocolConversion 在候选账号层收窄转换边，禁止把 OAuth 专属适配套用到 API Key。
-func SupportsProtocolConversion(platform, accountType, authMode string, source, target ProtocolID) bool {
+// SupportsProtocolConversion 在候选提供商层收窄转换边，禁止把 OAuth 专属适配套用到 API Key。
+func SupportsProtocolConversion(platform, providerType, authMode string, source, target ProtocolID) bool {
 	if !slices.Contains(ProtocolFallbackTargets(platform, source), target) {
 		return false
 	}
 	if source == ProtocolImagesGenerations || source == ProtocolImagesEdits {
-		return platform == PlatformOpenAI && accountType == AccountTypeOAuth
+		return platform == PlatformOpenAI && providerType == ProviderTypeOAuth
 	}
 	if source == ProtocolAlphaSearch {
-		return platform == PlatformOpenAI && accountType == AccountTypeOAuth && authMode == "personalAccessToken"
+		return platform == PlatformOpenAI && providerType == ProviderTypeOAuth && authMode == "personalAccessToken"
 	}
-	return slices.Contains(NativeProtocolOptions(platform, accountType, authMode), target)
+	return slices.Contains(NativeProtocolOptions(platform, providerType, authMode), target)
 }
 
 // ProtocolCatalog 返回深复制的只读投影，调用方不能修改进程能力定义。

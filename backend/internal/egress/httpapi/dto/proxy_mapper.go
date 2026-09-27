@@ -26,13 +26,13 @@ func ProxyFromEgress(p *egress.Proxy) *Proxy {
 	}
 }
 
-func ProxyWithAccountCountFromEgress(p *egress.ProxyWithAccountCount) *ProxyWithAccountCount {
+func ProxyWithProviderCountFromEgress(p *egress.ProxyWithProviderCount) *ProxyWithProviderCount {
 	if p == nil {
 		return nil
 	}
-	return &ProxyWithAccountCount{
+	return &ProxyWithProviderCount{
 		Proxy:          *ProxyFromEgress(&p.Proxy),
-		AccountCount:   p.AccountCount,
+		ProviderCount:  p.ProviderCount,
 		LatencyMs:      p.LatencyMs,
 		LatencyStatus:  p.LatencyStatus,
 		LatencyMessage: p.LatencyMessage,
@@ -65,9 +65,9 @@ func ProxyFromEgressAdmin(p *egress.Proxy) *AdminProxy {
 	}
 }
 
-// ProxyWithAccountCountFromEgressAdmin converts a service ProxyWithAccountCount to AdminProxyWithAccountCount DTO.
+// ProxyWithProviderCountFromEgressAdmin converts a service ProxyWithProviderCount to AdminProxyWithProviderCount DTO.
 // It includes the password field - user-facing endpoints must not use this.
-func ProxyWithAccountCountFromEgressAdmin(p *egress.ProxyWithAccountCount) *AdminProxyWithAccountCount {
+func ProxyWithProviderCountFromEgressAdmin(p *egress.ProxyWithProviderCount) *AdminProxyWithProviderCount {
 	if p == nil {
 		return nil
 	}
@@ -75,9 +75,9 @@ func ProxyWithAccountCountFromEgressAdmin(p *egress.ProxyWithAccountCount) *Admi
 	if admin == nil {
 		return nil
 	}
-	return &AdminProxyWithAccountCount{
+	return &AdminProxyWithProviderCount{
 		AdminProxy:     *admin,
-		AccountCount:   p.AccountCount,
+		ProviderCount:  p.ProviderCount,
 		LatencyMs:      p.LatencyMs,
 		LatencyStatus:  p.LatencyStatus,
 		LatencyMessage: p.LatencyMessage,
@@ -94,11 +94,11 @@ func ProxyWithAccountCountFromEgressAdmin(p *egress.ProxyWithAccountCount) *Admi
 	}
 }
 
-func ProxyAccountSummaryFromEgress(a *egress.ProxyAccountSummary) *ProxyAccountSummary {
+func ProxyProviderSummaryFromEgress(a *egress.ProxyProviderSummary) *ProxyProviderSummary {
 	if a == nil {
 		return nil
 	}
-	return &ProxyAccountSummary{
+	return &ProxyProviderSummary{
 		ID:       a.ID,
 		Name:     a.Name,
 		Platform: a.Platform,

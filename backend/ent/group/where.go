@@ -1559,21 +1559,21 @@ func HasUsageLogsWith(preds ...predicate.UsageLog) predicate.Group {
 	})
 }
 
-// HasAccounts applies the HasEdge predicate on the "accounts" edge.
-func HasAccounts() predicate.Group {
+// HasProviders applies the HasEdge predicate on the "providers" edge.
+func HasProviders() predicate.Group {
 	return predicate.Group(func(s *sql.Selector) {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, true, AccountsTable, AccountsPrimaryKey...),
+			sqlgraph.Edge(sqlgraph.M2M, true, ProvidersTable, ProvidersPrimaryKey...),
 		)
 		sqlgraph.HasNeighbors(s, step)
 	})
 }
 
-// HasAccountsWith applies the HasEdge predicate on the "accounts" edge with a given conditions (other predicates).
-func HasAccountsWith(preds ...predicate.Account) predicate.Group {
+// HasProvidersWith applies the HasEdge predicate on the "providers" edge with a given conditions (other predicates).
+func HasProvidersWith(preds ...predicate.Provider) predicate.Group {
 	return predicate.Group(func(s *sql.Selector) {
-		step := newAccountsStep()
+		step := newProvidersStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)
@@ -1628,21 +1628,21 @@ func HasDisabledPublicUsersWith(preds ...predicate.User) predicate.Group {
 	})
 }
 
-// HasAccountGroups applies the HasEdge predicate on the "account_groups" edge.
-func HasAccountGroups() predicate.Group {
+// HasProviderGroups applies the HasEdge predicate on the "provider_groups" edge.
+func HasProviderGroups() predicate.Group {
 	return predicate.Group(func(s *sql.Selector) {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, true, AccountGroupsTable, AccountGroupsColumn),
+			sqlgraph.Edge(sqlgraph.O2M, true, ProviderGroupsTable, ProviderGroupsColumn),
 		)
 		sqlgraph.HasNeighbors(s, step)
 	})
 }
 
-// HasAccountGroupsWith applies the HasEdge predicate on the "account_groups" edge with a given conditions (other predicates).
-func HasAccountGroupsWith(preds ...predicate.AccountGroup) predicate.Group {
+// HasProviderGroupsWith applies the HasEdge predicate on the "provider_groups" edge with a given conditions (other predicates).
+func HasProviderGroupsWith(preds ...predicate.ProviderGroup) predicate.Group {
 	return predicate.Group(func(s *sql.Selector) {
-		step := newAccountGroupsStep()
+		step := newProviderGroupsStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

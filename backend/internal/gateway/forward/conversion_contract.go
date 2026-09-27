@@ -8,10 +8,10 @@ import (
 // ConversionInput 固化本次平台类型，凭据由受控端口按原时机取得。
 type ConversionInput struct{ OAuth bool }
 
-// ErrorDecision 是健康策略的决定投影，不把账号实体传入核心。
-type ErrorDecision struct{ Generic, Failover, RetrySameAccount bool }
+// ErrorDecision 是健康策略的决定投影，不把提供商实体传入核心。
+type ErrorDecision struct{ Generic, Failover, RetrySameProvider bool }
 
-// ConversionPorts 将网络和账号能力限制为单步操作；转换和失败顺序由核心拥有。
+// ConversionPorts 将网络和提供商能力限制为单步操作；转换和失败顺序由核心拥有。
 type ConversionPorts interface {
 	NormalizeResponses([]byte) ([]byte, bool, error)
 	ResolveModel(context.Context, string) string

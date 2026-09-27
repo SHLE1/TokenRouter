@@ -192,7 +192,7 @@ func TestSyncPricingModels_QoderUsesDefaultAliases(t *testing.T) {
 		"deepseek-v4-pro",
 		"deepseek-v4-flash",
 		"minimax-m3",
-		// 无账号上下文时需要在国际站模型后追加国内站独有模型。
+		// 无提供商上下文时需要在国际站模型后追加国内站独有模型。
 		"qwen3.6-flash",
 		"minimax-m2.7",
 	}, body.Data.Models)

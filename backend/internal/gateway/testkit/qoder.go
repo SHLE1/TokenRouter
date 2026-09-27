@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/qoder"
 )
 
@@ -59,6 +59,7 @@ func (c *QoderClient) BodyAt(index int) []byte {
 	}
 	return append([]byte(nil), c.Bodies[index]...)
 }
+
 func (c *QoderClient) BodyCount() int {
 	if c == nil {
 		return 0
@@ -69,7 +70,7 @@ func (c *QoderClient) BodyCount() int {
 // QoderFixture 保存测试绑定，客户端替换仅供原有阻塞流夹具在执行前配置。
 type QoderFixture struct {
 	Runtime *gatewayprovider.QoderRuntime
-	Tokens  *accountprovider.QoderTokenProvider
+	Tokens  *provideradapter.QoderTokenProvider
 	Client  qoder.StreamClient
 }
 
@@ -80,18 +81,18 @@ func (c qoderFixtureClient) StreamRequestContext(ctx context.Context, session *q
 }
 
 // NewQoderFixture 构造唯一运行时；不提供旧 Service 方法或另一套循环。
-func NewQoderFixture(tokens *accountprovider.QoderTokenProvider, client qoder.StreamClient, conversations *qoder.QoderConversationStore) *QoderFixture {
+func NewQoderFixture(tokens *provideradapter.QoderTokenProvider, client qoder.StreamClient, conversations *qoder.QoderConversationStore) *QoderFixture {
 	f := &QoderFixture{Tokens: tokens, Client: client}
 	f.Runtime = gatewayprovider.NewQoderRuntime(gatewayprovider.QoderRuntimeOptions{Tokens: tokens, Client: qoderFixtureClient{fixture: f}, Conversations: conversations})
 	return f
 }
 
-func NewDefaultQoderFixture() (*account.Record, *QoderFixture, *QoderClient) {
-	value := &account.Record{ID: 8801, Name: "qoder", Platform: account.PlatformQoder, Type: account.AccountTypeCosy, Credentials: map[string]any{}}
+func NewDefaultQoderFixture() (*provider.Record, *QoderFixture, *QoderClient) {
+	value := &provider.Record{ID: 8801, Name: "qoder", Platform: provider.PlatformQoder, Type: provider.ProviderTypeCosy, Credentials: map[string]any{}}
 	client := &QoderClient{Body: "data: {\"body\":\"{\\\"choices\\\":[{\\\"delta\\\":{\\\"content\\\":\\\"OK\\\"}}]}\"}\n\n" +
 		"data: {\"body\":\"{\\\"usage\\\":{\\\"prompt_tokens\\\":1,\\\"completion_tokens\\\":1,\\\"total_tokens\\\":2}}\"}\n\n" +
 		"data: {\"body\":\"[DONE]\"}\n\n"}
-	tokens := accountprovider.NewQoderTokenProvider(qoder.SessionBuilder{})
-	tokens.Core.Sessions = map[int64]account.QoderSessionCacheEntry[*qoder.SessionContext]{value.ID: {CredentialsHash: account.QoderCredentialsHash(value.Credentials), Session: &qoder.SessionContext{Identity: &qoder.AuthIdentity{SecurityOauthToken: "token"}}}}
+	tokens := provideradapter.NewQoderTokenProvider(qoder.SessionBuilder{})
+	tokens.Core.Sessions = map[int64]provider.QoderSessionCacheEntry[*qoder.SessionContext]{value.ID: {CredentialsHash: provider.QoderCredentialsHash(value.Credentials), Session: &qoder.SessionContext{Identity: &qoder.AuthIdentity{SecurityOauthToken: "token"}}}}
 	return value, NewQoderFixture(tokens, client, qoder.NewQoderConversationStore(qoder.QoderConversationTTL)), client
 }

@@ -6,12 +6,12 @@ import (
 	"context"
 	"reflect"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
 // 旧后台用例替身补入实际条件写契约，保留原写入计数、失败注入和提交后取消断言。
-func (r *tokenRefreshAccountRepo) UpdateOAuthCredentialsIfUnchanged(ctx context.Context, version account.CredentialVersion, credentials map[string]any) (bool, error) {
-	current := r.accountsByID[version.ID]
+func (r *tokenRefreshProviderRepo) UpdateOAuthCredentialsIfUnchanged(ctx context.Context, version provider.CredentialVersion, credentials map[string]any) (bool, error) {
+	current := r.providersByID[version.ID]
 	if current == nil {
 		return false, nil
 	}

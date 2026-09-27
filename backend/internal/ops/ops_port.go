@@ -66,11 +66,11 @@ type OpsInsertErrorLogInput struct {
 	RequestID       string
 	ClientRequestID string
 
-	UserID    *int64
-	APIKeyID  *int64
-	AccountID *int64
-	GroupID   *int64
-	ClientIP  *string
+	UserID     *int64
+	APIKeyID   *int64
+	ProviderID *int64
+	GroupID    *int64
+	ClientIP   *string
 
 	Platform    string
 	Model       string
@@ -141,8 +141,8 @@ type OpsInsertSystemMetricsInput struct {
 	Upstream429Count             int64
 	Upstream529Count             int64
 
-	TokenConsumed      int64
-	AccountSwitchCount int64
+	TokenConsumed       int64
+	ProviderSwitchCount int64
 
 	QPS *float64
 	TPS *float64
@@ -194,7 +194,7 @@ type OpsInsertSystemLogInput struct {
 	ClientRequestID string
 	UserID          *int64
 	APIKeyID        *int64
-	AccountID       *int64
+	ProviderID      *int64
 	Platform        string
 	Model           string
 	ExtraJSON       string
@@ -212,7 +212,7 @@ type OpsSystemLogFilter struct {
 	ClientRequestID string
 	UserID          *int64
 	APIKeyID        *int64
-	AccountID       *int64
+	ProviderID      *int64
 	Platform        string
 	Model           string
 	Query           string
@@ -233,7 +233,7 @@ type OpsSystemLogCleanupFilter struct {
 	ClientRequestID string
 	UserID          *int64
 	APIKeyID        *int64
-	AccountID       *int64
+	ProviderID      *int64
 	Platform        string
 	Model           string
 	Query           string
@@ -282,7 +282,7 @@ type OpsSystemMetricsSnapshot struct {
 
 	GoroutineCount        *int   `json:"goroutine_count"`
 	ConcurrencyQueueDepth *int   `json:"concurrency_queue_depth"`
-	AccountSwitchCount    *int64 `json:"account_switch_count"`
+	ProviderSwitchCount   *int64 `json:"provider_switch_count"`
 }
 
 type OpsUpsertJobHeartbeatInput struct {

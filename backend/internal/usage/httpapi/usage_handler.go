@@ -584,7 +584,7 @@ func (h *UsageHandler) Stats(c *gin.Context) {
 		response.ErrorFrom(c, err)
 		return
 	}
-	stats.TotalAccountCost = nil
+	stats.TotalProviderCost = nil
 	stats.UpstreamEndpoints = nil
 	stats.EndpointPaths = nil
 

@@ -7,14 +7,14 @@ import (
 	"errors"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	gatewaytestkit "github.com/TokenFlux/TokenRouter/internal/gateway/testkit"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 )
 
-type grokQuotaAccountRepo struct {
-	*grokFixtureAccounts
+type grokQuotaProviderRepo struct {
+	*grokFixtureProviders
 	updates               map[int64]map[string]any
 	updateCalls           int
 	rateLimitedCalls      int
@@ -30,14 +30,14 @@ type grokQuotaAccountRepo struct {
 	recoveryClearResult   bool
 }
 
-func (r *grokQuotaAccountRepo) UpdateExtra(_ context.Context, id int64, updates map[string]any) error {
+func (r *grokQuotaProviderRepo) UpdateExtra(_ context.Context, id int64, updates map[string]any) error {
 	r.updateCalls++
 	if r.updates == nil {
 		r.updates = make(map[int64]map[string]any)
 	}
 	r.updates[id] = updates
-	if r.grokFixtureAccounts != nil {
-		value := r.accountsByID[id]
+	if r.grokFixtureProviders != nil {
+		value := r.providersByID[id]
 		if value != nil {
 			if value.Record.Extra == nil {
 				value.Record.Extra = make(map[string]any)
@@ -51,25 +51,25 @@ func (r *grokQuotaAccountRepo) UpdateExtra(_ context.Context, id int64, updates 
 	return nil
 }
 
-func (r *grokQuotaAccountRepo) SetRateLimited(_ context.Context, id int64, resetAt time.Time) error {
+func (r *grokQuotaProviderRepo) SetRateLimited(_ context.Context, id int64, resetAt time.Time) error {
 	r.rateLimitedCalls++
 	r.lastRateLimitedID = id
 	r.lastRateLimitResetAt = resetAt
 	return nil
 }
 
-func (r *grokQuotaAccountRepo) SetRateLimitedIfLater(ctx context.Context, id int64, resetAt time.Time) error {
+func (r *grokQuotaProviderRepo) SetRateLimitedIfLater(ctx context.Context, id int64, resetAt time.Time) error {
 	return r.SetRateLimited(ctx, id, resetAt)
 }
 
-func (r *grokQuotaAccountRepo) ClearRateLimitIfObserved(_ context.Context, _ int64, observedLimitedAt, observedResetAt time.Time) (bool, error) {
+func (r *grokQuotaProviderRepo) ClearRateLimitIfObserved(_ context.Context, _ int64, observedLimitedAt, observedResetAt time.Time) (bool, error) {
 	r.recoveryClearCalls++
 	r.recoveryObservedAt = observedLimitedAt
 	r.recoveryObservedReset = observedResetAt
 	return r.recoveryClearResult, nil
 }
 
-func (r *grokQuotaAccountRepo) SetTempUnschedulable(_ context.Context, id int64, until time.Time, reason string) error {
+func (r *grokQuotaProviderRepo) SetTempUnschedulable(_ context.Context, id int64, until time.Time, reason string) error {
 	r.tempUnschedCalls++
 	r.lastTempUnschedID = id
 	r.lastTempUnschedUntil = until
@@ -77,20 +77,21 @@ func (r *grokQuotaAccountRepo) SetTempUnschedulable(_ context.Context, id int64,
 	return nil
 }
 
-// grokFixtureAccounts 保留原按ID回读的指针和计数，其他写入复用测试底座。
-type grokFixtureAccounts struct {
+// grokFixtureProviders 保留原按ID回读的指针和计数，其他写入复用测试底座。
+type grokFixtureProviders struct {
 	gatewaytestkit.HealthStoreBase
-	accountsByID map[int64]*gatewayprovider.ExecutionAccount
-	getByIDCalls int
+	providersByID map[int64]*gatewayprovider.ExecutionProvider
+	getByIDCalls  int
 }
 
-func (r *grokFixtureAccounts) GetByID(_ context.Context, id int64) (*gatewayprovider.ExecutionAccount, error) {
+func (r *grokFixtureProviders) GetByID(_ context.Context, id int64) (*gatewayprovider.ExecutionProvider, error) {
 	r.getByIDCalls++
-	if value, ok := r.accountsByID[id]; ok {
+	if value, ok := r.providersByID[id]; ok {
 		return value, nil
 	}
-	return nil, errors.New("account not found")
+	return nil, errors.New("provider not found")
 }
-func newHTTPGrokTokenFixture(store gatewayprovider.ExecutionAccountStore, cache accountcore.AccessTokenCache) *accountcore.GrokTokenSource {
-	return &accountcore.GrokTokenSource{Repository: gatewaytestkit.TokenRepository(store), Cache: cache, Policy: accountcore.GrokProviderRefreshPolicy()}
+
+func newHTTPGrokTokenFixture(store gatewayprovider.ExecutionProviderStore, cache providercore.AccessTokenCache) *providercore.GrokTokenSource {
+	return &providercore.GrokTokenSource{Repository: gatewaytestkit.TokenRepository(store), Cache: cache, Policy: providercore.GrokProviderRefreshPolicy()}
 }

@@ -77,6 +77,7 @@ func (a *Sub2APIUsageAdapter) Query(ctx context.Context, input *usagecontract.Re
 	}
 	return ParseSub2APIUsage(body)
 }
+
 func ParseSub2APIUsage(body []byte) (*usageview.UpstreamUsageInfo, error) {
 	var response Sub2APIUsageResponse
 	if err := json.Unmarshal(body, &response); err != nil {
@@ -97,6 +98,7 @@ func ParseSub2APIUsage(body []byte) (*usageview.UpstreamUsageInfo, error) {
 		return nil, usageview.ErrUpstreamUsageInvalidResponse
 	}
 }
+
 func NormalizeSub2APIQuotaLimited(response *Sub2APIUsageResponse) (*usageview.UpstreamUsageInfo, error) {
 	if response.Status != "active" && response.Status != "quota_exhausted" && response.Status != "expired" {
 		return nil, usageview.ErrUpstreamUsageInvalidResponse
@@ -143,6 +145,7 @@ func NormalizeSub2APIQuotaLimited(response *Sub2APIUsageResponse) (*usageview.Up
 		Limits:   limits, Subscription: subscription, ExpiresAt: expiresAt,
 	}, nil
 }
+
 func NormalizeSub2APIUnrestricted(response *Sub2APIUsageResponse) (*usageview.UpstreamUsageInfo, error) {
 	if response.Unit != "USD" || strings.TrimSpace(response.PlanName) == "" || response.Remaining == nil || !usageview.ValidFiniteNumber(*response.Remaining) {
 		return nil, usageview.ErrUpstreamUsageInvalidResponse
@@ -181,6 +184,7 @@ func NormalizeSub2APIUnrestricted(response *Sub2APIUsageResponse) (*usageview.Up
 	}
 	return &usageview.UpstreamUsageInfo{Provider: usageview.UpstreamUsageAdapterSub2API, Mode: "subscription", Unit: response.Unit, Subscription: subscription, ExpiresAt: expiresAt}, nil
 }
+
 func NormalizeSub2APISubscription(planName string, raw *Sub2APISubscription, legacyRemaining ...*float64) (*usageview.UpstreamUsageSubscription, error) {
 	if raw == nil {
 		return nil, nil
@@ -222,6 +226,7 @@ func NormalizeSub2APISubscription(planName string, raw *Sub2APISubscription, leg
 	}
 	return &usageview.UpstreamUsageSubscription{PlanName: strings.TrimSpace(planName), Remaining: &minimum, ExpiresAt: expiresAt, Limits: limits}, nil
 }
+
 func NormalizeSub2APISubscriptionLimits(raw *Sub2APISubscription) ([]usageview.UpstreamUsageLimit, error) {
 	type subscriptionInput struct {
 		name     string
@@ -263,6 +268,7 @@ func NormalizeSub2APISubscriptionLimits(raw *Sub2APISubscription) ([]usageview.U
 	}
 	return limits, nil
 }
+
 func NormalizeSub2APIRateLimits(raw []Sub2APIRateLimit) ([]usageview.UpstreamUsageLimit, error) {
 	limits := make([]usageview.UpstreamUsageLimit, 0, len(raw))
 	seen := make(map[string]struct{}, len(raw))
@@ -291,6 +297,7 @@ func NormalizeSub2APIRateLimits(raw []Sub2APIRateLimit) ([]usageview.UpstreamUsa
 	}
 	return limits, nil
 }
+
 func ValidateSub2APIWindowStart(raw json.RawMessage) error {
 	trimmed := strings.TrimSpace(string(raw))
 	if trimmed == "" {
@@ -310,7 +317,7 @@ func ValidateSub2APIWindowStart(raw json.RawMessage) error {
 
 // ZivvUsageAdapter 对接 Zivv 自研网关公开给 API Key 的余额接口。
 // Zivv 的 Anthropic Base URL 通常是站点根地址，因此显式请求带版本段的
-// /v1/user/balance；已有的 URL 构造器会避免账号 Base URL 已带 /v1 时重复拼接。
+// /v1/user/balance；已有的 URL 构造器会避免提供商 Base URL 已带 /v1 时重复拼接。
 type ZivvUsageAdapter struct{}
 
 func (*ZivvUsageAdapter) Name() string { return usageview.UpstreamUsageAdapterZivv }
@@ -336,6 +343,7 @@ func (a *ZivvUsageAdapter) Query(ctx context.Context, input *usagecontract.Reque
 	}
 	return ParseZivvUsage(body)
 }
+
 func ParseZivvUsage(body []byte) (*usageview.UpstreamUsageInfo, error) {
 	var response ZivvUsageResponse
 	if err := json.Unmarshal(body, &response); err != nil {
@@ -479,6 +487,7 @@ func (a *NewAPIUsageAdapter) Query(ctx context.Context, input *usagecontract.Req
 	tokenUsage.Balance = wallet.Balance
 	return tokenUsage, nil
 }
+
 func (a *NewAPIUsageAdapter) queryDisplaySettings(ctx context.Context, client *usageclient.Client) NewAPIUsageDisplaySettings {
 	settings := NewAPIUsageDisplaySettings{Unit: "USD", QuotaPerUnit: newAPIDefaultQuotaPerUnit, USDExchangeRate: 1}
 	endpoint, err := usageclient.UpstreamUsageStatusEndpoint(client.BaseURL)
@@ -512,6 +521,7 @@ func (a *NewAPIUsageAdapter) queryDisplaySettings(ctx context.Context, client *u
 	}
 	return settings
 }
+
 func (a *NewAPIUsageAdapter) queryTokenUsage(ctx context.Context, client *usageclient.Client, settings NewAPIUsageDisplaySettings) (*usageview.UpstreamUsageInfo, *NewAPITokenUsageResponse, error) {
 	endpoint, err := usageclient.UpstreamUsageTokenEndpoint(client.BaseURL)
 	if err != nil {
@@ -537,7 +547,7 @@ func (a *NewAPIUsageAdapter) queryTokenUsage(ctx context.Context, client *usagec
 
 // queryWallet 查询用户钱包。不同 New API 分支的认证方式并不一致：
 // 配置用户 PAT 时先请求官方 /api/user/self，否则尝试带 API Key 的 /user/balance。
-// 两个路径都是适配器固定协议，不能由账号配置改写。
+// 两个路径都是适配器固定协议，不能由提供商配置改写。
 func (a *NewAPIUsageAdapter) queryWallet(
 	ctx context.Context,
 	client *usageclient.Client,
@@ -643,6 +653,7 @@ func NormalizeNewAPITokenWallet(response *NewAPITokenUsageResponse, settings New
 	}
 	return nil, false, nil
 }
+
 func ParseNewAPIWalletBalance(body []byte, settings NewAPIUsageDisplaySettings) (*usageview.UpstreamUsageInfo, error) {
 	var response NewAPIWalletBalanceResponse
 	if err := json.Unmarshal(body, &response); err != nil {
@@ -769,6 +780,7 @@ func ParseNewAPIWalletBalance(body []byte, settings NewAPIUsageDisplaySettings) 
 	}
 	return NewAPIWalletAmountUsage(unit, used, total, remaining)
 }
+
 func ParseNewAPIUserSelfWallet(body []byte, settings NewAPIUsageDisplaySettings, expectedUserID string) (*usageview.UpstreamUsageInfo, error) {
 	var response NewAPIWalletBalanceResponse
 	if err := json.Unmarshal(body, &response); err != nil {
@@ -798,10 +810,11 @@ func ParseNewAPIUserSelfWallet(body []byte, settings NewAPIUsageDisplaySettings,
 		remainingValue := NormalizeNewAPIQuota(*remaining, settings)
 		remaining = &remainingValue
 	}
-	// used_quota 是账号生命周期累计用量，并非某个钱包周期内的已用金额；
+	// used_quota 是提供商生命周期累计用量，并非某个钱包周期内的已用金额；
 	// 这里仅返回当前可用余额，避免虚构“钱包总额”。
 	return NewAPIWalletAmountUsage(unit, nil, nil, remaining)
 }
+
 func NewAPIWalletAmountUsage(unit string, used, total, remaining *float64) (*usageview.UpstreamUsageInfo, error) {
 	amount := &usageview.UpstreamUsageAmount{Used: used, Total: total, Remaining: remaining}
 	if err := usageview.ValidateUsageAmount(amount); err != nil {
@@ -809,6 +822,7 @@ func NewAPIWalletAmountUsage(unit string, used, total, remaining *float64) (*usa
 	}
 	return &usageview.UpstreamUsageInfo{Provider: usageview.UpstreamUsageAdapterNewAPI, Mode: "balance", Unit: unit, Balance: amount}, nil
 }
+
 func ConfiguredNewAPIUserID(raw string) (string, error) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
@@ -820,6 +834,7 @@ func ConfiguredNewAPIUserID(raw string) (string, error) {
 	}
 	return strconv.FormatInt(value, 10), nil
 }
+
 func ParseNewAPINumber(raw json.RawMessage) (*float64, error) {
 	raw = NonEmptyJSON(raw)
 	if raw == nil {
@@ -846,6 +861,7 @@ func ParseNewAPINumber(raw json.RawMessage) (*float64, error) {
 	}
 	return &value, nil
 }
+
 func ParseNewAPIInteger(raw json.RawMessage) (string, error) {
 	value, err := ParseNewAPINumber(raw)
 	if err != nil || value == nil || *value <= 0 || math.Trunc(*value) != *value {
@@ -853,12 +869,14 @@ func ParseNewAPIInteger(raw json.RawMessage) (string, error) {
 	}
 	return strconv.FormatInt(int64(*value), 10), nil
 }
+
 func NonEmptyJSON(raw json.RawMessage) json.RawMessage {
 	if len(raw) == 0 || strings.TrimSpace(string(raw)) == "" || strings.TrimSpace(string(raw)) == "null" {
 		return nil
 	}
 	return raw
 }
+
 func FirstNewAPIRaw(values ...json.RawMessage) json.RawMessage {
 	for _, value := range values {
 		if raw := NonEmptyJSON(value); raw != nil {
@@ -867,6 +885,7 @@ func FirstNewAPIRaw(values ...json.RawMessage) json.RawMessage {
 	}
 	return nil
 }
+
 func NormalizeNewAPIWalletUnit(raw, fallback string) (string, bool) {
 	switch strings.ToUpper(strings.TrimSpace(raw)) {
 	case "USD", "$", "US$":
@@ -881,6 +900,7 @@ func NormalizeNewAPIWalletUnit(raw, fallback string) (string, bool) {
 	}
 	return fallback, false
 }
+
 func ParseNewAPITokenUsage(body []byte) (*NewAPITokenUsageResponse, error) {
 	var response NewAPITokenUsageResponse
 	if err := json.Unmarshal(body, &response); err != nil {
@@ -914,6 +934,7 @@ func ParseNewAPITokenUsage(body []byte) (*NewAPITokenUsageResponse, error) {
 	}
 	return &response, nil
 }
+
 func NormalizeNewAPITokenUsage(response *NewAPITokenUsageResponse, settings NewAPIUsageDisplaySettings) (*usageview.UpstreamUsageInfo, error) {
 	if response == nil || response.Data == nil {
 		return nil, usageview.ErrUpstreamUsageInvalidResponse
@@ -959,6 +980,7 @@ func NormalizeNewAPITokenUsage(response *NewAPITokenUsageResponse, settings NewA
 		ExpiresAt: expiresAt,
 	}, nil
 }
+
 func NormalizeNewAPIQuota(value float64, settings NewAPIUsageDisplaySettings) float64 {
 	if settings.Unit == "TOKENS" {
 		return value
@@ -977,6 +999,7 @@ func NormalizeNewAPIQuota(value float64, settings NewAPIUsageDisplaySettings) fl
 	}
 	return converted
 }
+
 func NormalizeNewAPITime(value int64) (*time.Time, error) {
 	if value <= 0 {
 		return nil, nil
@@ -994,6 +1017,7 @@ func NormalizeNewAPITime(value int64) (*time.Time, error) {
 	}
 	return &result, nil
 }
+
 func NormalizeTime(value *time.Time) (*time.Time, error) {
 	if value == nil {
 		return nil, nil
@@ -1004,6 +1028,7 @@ func NormalizeTime(value *time.Time) (*time.Time, error) {
 	normalized := value.UTC()
 	return &normalized, nil
 }
+
 func CloseEnough(left, right float64) bool {
 	return math.Abs(left-right) <= math.Max(0.000001, math.Max(math.Abs(left), math.Abs(right))*0.00001)
 }

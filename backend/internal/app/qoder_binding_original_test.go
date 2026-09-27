@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/qoder"
 	"github.com/stretchr/testify/require"
 )
@@ -13,14 +13,14 @@ import (
 func TestNewQoderGatewayServiceUsesInjectedRefreshAPI(t *testing.T) {
 	tokens := provideQoderTokens(nil, nil)
 	t.Cleanup(func() { require.NoError(t, tokens.StopContext(context.Background())) })
-	coordinator := &account.OAuthRefreshAPI{}
+	coordinator := &provider.OAuthRefreshAPI{}
 	refresh := provideQoderRequestRefresh(nil, tokens, coordinator, nil, nil)
 	runtime := provideQoderRuntime(tokens, nil, nil, nil)
 	require.Same(t, coordinator, refresh.Coordinator)
 	require.Same(t, tokens, refresh.Tokens)
-	value := &account.Record{ID: 1, Platform: account.PlatformQoder, Type: account.AccountTypeCosy, Credentials: map[string]any{}}
+	value := &provider.Record{ID: 1, Platform: provider.PlatformQoder, Type: provider.ProviderTypeCosy, Credentials: map[string]any{}}
 	session := &qoder.SessionContext{Identity: &qoder.AuthIdentity{SecurityOauthToken: "fixture"}}
-	tokens.Core.Sessions[value.ID] = account.QoderSessionCacheEntry[*qoder.SessionContext]{CredentialsHash: account.QoderCredentialsHash(value.Credentials), Session: session}
+	tokens.Core.Sessions[value.ID] = provider.QoderSessionCacheEntry[*qoder.SessionContext]{CredentialsHash: provider.QoderCredentialsHash(value.Credentials), Session: session}
 	got, err := runtime.Target(qoder.RequestMetadata{}, value).Session(context.Background())
 	require.NoError(t, err)
 	require.Same(t, session, got)

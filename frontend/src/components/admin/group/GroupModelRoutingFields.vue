@@ -49,36 +49,36 @@
           </button>
         </div>
         <div>
-          <label :for="`${getKey(rule)}-accounts`" class="input-label">{{
-            t('admin.groups.modelRouting.accounts')
+          <label :for="`${getKey(rule)}-providers`" class="input-label">{{
+            t('admin.groups.modelRouting.providers')
           }}</label>
-          <div v-if="rule.accounts.length" class="mb-2 flex flex-wrap gap-2">
+          <div v-if="rule.providers.length" class="mb-2 flex flex-wrap gap-2">
             <span
-              v-for="account in rule.accounts"
-              :key="account.id"
+              v-for="provider in rule.providers"
+              :key="provider.id"
               class="inline-flex max-w-full items-center gap-2 rounded-compact bg-primary-100 px-2 py-1 text-xs text-primary-700 dark:bg-primary-900/30 dark:text-primary-300"
             >
-              <span class="min-w-0 break-all">{{ account.name }}</span>
+              <span class="min-w-0 break-all">{{ provider.name }}</span>
               <button
                 type="button"
                 class="shrink-0 rounded-compact focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
                 :aria-label="
-                  t('admin.groups.settings.removeItem', { name: account.name })
+                  t('admin.groups.settings.removeItem', { name: provider.name })
                 "
-                @click="emit('removeAccount', rule, account.id)"
+                @click="emit('removeProvider', rule, provider.id)"
               >
                 <Icon name="x" size="sm" />
               </button>
             </span>
           </div>
-          <div class="relative account-search-container">
+          <div class="relative provider-search-container">
             <input
-              :id="`${getKey(rule)}-accounts`"
+              :id="`${getKey(rule)}-providers`"
               :value="search.keywords[getKey(rule)] || ''"
               type="text"
               class="input"
               :placeholder="
-                t('admin.groups.modelRouting.searchAccountPlaceholder')
+                t('admin.groups.modelRouting.searchProviderPlaceholder')
               "
               @input="
                 emit('search', rule, ($event.target as HTMLInputElement).value)
@@ -93,29 +93,29 @@
               class="dropdown absolute left-0 right-0 z-50 mt-1 max-h-menu-sm overflow-auto"
             >
               <button
-                v-for="account in search.results[getKey(rule)]"
-                :key="account.id"
+                v-for="provider in search.results[getKey(rule)]"
+                :key="provider.id"
                 type="button"
                 class="dropdown-item-sm"
                 :disabled="
-                  rule.accounts.some((selected) => selected.id === account.id)
+                  rule.providers.some((selected) => selected.id === provider.id)
                 "
                 :class="{
-                  'opacity-50': rule.accounts.some(
-                    (selected) => selected.id === account.id,
+                  'opacity-50': rule.providers.some(
+                    (selected) => selected.id === provider.id,
                   ),
                 }"
-                @click="emit('selectAccount', rule, account)"
+                @click="emit('selectProvider', rule, provider)"
               >
-                <span class="min-w-0 break-all">{{ account.name }}</span>
+                <span class="min-w-0 break-all">{{ provider.name }}</span>
                 <span class="shrink-0 text-xs text-gray-400"
-                  >#{{ account.id }}</span
+                  >#{{ provider.id }}</span
                 >
               </button>
             </div>
           </div>
           <p class="input-hint">
-            {{ t('admin.groups.modelRouting.accountsHint') }}
+            {{ t('admin.groups.modelRouting.providersHint') }}
           </p>
         </div>
       </div>
@@ -134,9 +134,9 @@ import Icon from '@/components/icons/Icon.vue'
 import GroupFormSection from './GroupFormSection.vue'
 import GroupSettingRow from './GroupSettingRow.vue'
 import type {
-  GroupAccountSearchState,
+  GroupProviderSearchState,
   GroupModelRoutingRule,
-  GroupRoutingAccount,
+  GroupRoutingProvider,
 } from './groupSettingsTypes'
 
 // 不复制规则对象，保证页面的搜索键和取消请求逻辑始终指向同一条规则。
@@ -144,7 +144,7 @@ defineProps<{
   idPrefix: string
   enabled: boolean
   rules: GroupModelRoutingRule[]
-  search: GroupAccountSearchState
+  search: GroupProviderSearchState
   getKey: (rule: GroupModelRoutingRule) => string
 }>()
 const emit = defineEmits<{
@@ -154,8 +154,8 @@ const emit = defineEmits<{
   pattern: [rule: GroupModelRoutingRule, value: string]
   search: [rule: GroupModelRoutingRule, keyword: string]
   focus: [rule: GroupModelRoutingRule]
-  selectAccount: [rule: GroupModelRoutingRule, account: GroupRoutingAccount]
-  removeAccount: [rule: GroupModelRoutingRule, accountId: number]
+  selectProvider: [rule: GroupModelRoutingRule, provider: GroupRoutingProvider]
+  removeProvider: [rule: GroupModelRoutingRule, providerId: number]
 }>()
 const { t } = useI18n()
 </script>

@@ -3,17 +3,17 @@
 package messageforward_test
 
 import (
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/messageforward"
-
 	"io"
-
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/messageforward"
+
 	time "time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewaycapture "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
@@ -33,15 +33,15 @@ func TestMaxReasoningPricing_AnthropicForwardReportsOutboundEffort(t *testing.T)
 				stream := "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_1\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[],\"model\":\"claude-fable-5-1\",\"usage\":{\"input_tokens\":100}}}\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"},\"usage\":{\"output_tokens\":1}}\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"}\n\n"
 				upstream := &anthropicHTTPUpstreamRecorder{resp: &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": {"text/event-stream"}}, Body: io.NopCloser(strings.NewReader(stream))}}
 				svc := newHTTPRuntimeFixture(&messageforward.Options{Configured: true, PreserveContentType: true, ResponseReadLimit: 134217728}, messageforward.Dependencies{Transport: upstream}, nil)
-				account := &gatewaycapture.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Type: capability.AccountTypeAPIKey, Credentials: map[string]any{"api_key": "test-key", "base_url": "https://api.anthropic.com"}}}
+				provider := &gatewaycapture.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Type: capability.ProviderTypeAPIKey, Credentials: map[string]any{"api_key": "test-key", "base_url": "https://api.anthropic.com"}}}
 				c, _ := gin.CreateTestContext(httptest.NewRecorder())
 				c.Request = httptest.NewRequest(http.MethodPost, "/v1/"+protocol, nil)
 				var result *forwardcore.MessagesResult
 				var err error
 				if protocol == "responses" {
-					result, err = svc.ForwardAsResponses(c.Request.Context(), c, account, []byte(`{"model":"claude-fable-5-1","input":"hi","reasoning":{"effort":"`+effort+`"}}`), nil)
+					result, err = svc.ForwardAsResponses(c.Request.Context(), c, provider, []byte(`{"model":"claude-fable-5-1","input":"hi","reasoning":{"effort":"`+effort+`"}}`), nil)
 				} else {
-					result, err = svc.ForwardAsChatCompletions(c.Request.Context(), c, account, []byte(`{"model":"claude-fable-5-1","messages":[{"role":"user","content":"hi"}],"reasoning_effort":"`+effort+`"}`), nil)
+					result, err = svc.ForwardAsChatCompletions(c.Request.Context(), c, provider, []byte(`{"model":"claude-fable-5-1","messages":[{"role":"user","content":"hi"}],"reasoning_effort":"`+effort+`"}`), nil)
 				}
 				require.NoError(t, err)
 				require.NotNil(t, result.ReasoningEffort)

@@ -1,4 +1,4 @@
-// 本文件组合原生请求；URL/账户政策由调用方投影，不接收旧账号或 Gin。
+// 本文件组合原生请求；URL/提供商政策由调用方投影，不接收旧提供商或 Gin。
 package anthropic
 
 import (
@@ -15,7 +15,7 @@ import (
 type RequestOptions struct {
 	OriginalPolicy                   func(context.Context, string, string) (map[string]struct{}, error)
 	InjectAPIKeyBeta                 bool
-	AccountID                        int64
+	ProviderID                       int64
 	OAuth, MaskSession, APIKeyBearer bool
 	AccountUUID                      string
 	ClientHeaders                    http.Header
@@ -38,6 +38,7 @@ func SetAPIKeyAuthHeader(header http.Header, bearer bool, token string) {
 		SetHeaderRaw(header, "x-api-key", token)
 	}
 }
+
 func BuildRequest(ctx context.Context, body []byte, token, tokenType, modelID string, reqStream, mimicClaudeCode bool, options RequestOptions) (*http.Request, []byte, error) {
 	body = StripDeferredToolCacheControl(body)
 	targetURL, err := options.URL()
@@ -50,7 +51,7 @@ func BuildRequest(ctx context.Context, body []byte, token, tokenType, modelID st
 		return nil, nil, err
 	}
 
-	// OAuth账号：应用统一指纹和metadata重写（受设置开关控制）
+	// OAuth提供商：应用统一指纹和metadata重写（受设置开关控制）
 	var fingerprint *Fingerprint
 	enableFP, enableMPT := true, false
 	if options.Forwarding != nil {
@@ -58,22 +59,22 @@ func BuildRequest(ctx context.Context, body []byte, token, tokenType, modelID st
 	}
 	if options.OAuth && options.Fingerprint != nil {
 		// 1. 获取或创建指纹（包含随机生成的ClientID）
-		fp, err := options.Fingerprint.GetOrCreateFingerprint(ctx, options.AccountID, clientHeaders)
+		fp, err := options.Fingerprint.GetOrCreateFingerprint(ctx, options.ProviderID, clientHeaders)
 		if err != nil {
-			logger.LegacyPrintf("service.gateway", "Warning: failed to get fingerprint for account %d: %v", options.AccountID, err)
+			logger.LegacyPrintf("service.gateway", "Warning: failed to get fingerprint for provider %d: %v", options.ProviderID, err)
 			// 失败时降级为透传原始headers
 		} else {
 			if enableFP {
 				fingerprint = fp
 			}
 
-			// 2. 重写metadata.user_id（需要指纹中的ClientID和账号的account_uuid）
+			// 2. 重写metadata.user_id（需要指纹中的ClientID和提供商的account_uuid）
 			// 如果启用了会话ID伪装，会在重写后替换 session 部分为固定值
 			// 当 metadata 透传开启时跳过重写
 			if !enableMPT {
-				accountUUID := options.AccountUUID
-				if accountUUID != "" && fp.ClientID != "" {
-					if newBody, err := options.Fingerprint.RewriteUserIDWithMasking(ctx, body, options.AccountID, options.MaskSession, accountUUID, fp.ClientID, fp.UserAgent); err == nil && len(newBody) > 0 {
+				providerUUID := options.AccountUUID
+				if providerUUID != "" && fp.ClientID != "" {
+					if newBody, err := options.Fingerprint.RewriteUserIDWithMasking(ctx, body, options.ProviderID, options.MaskSession, providerUUID, fp.ClientID, fp.UserAgent); err == nil && len(newBody) > 0 {
 						body = newBody
 					}
 				}
@@ -81,7 +82,7 @@ func BuildRequest(ctx context.Context, body []byte, token, tokenType, modelID st
 		}
 	}
 
-	// 后续伪装会覆盖缓存 UA；即使没有账号指纹，也按最终出站 UA 同步计费标记。
+	// 后续伪装会覆盖缓存 UA；即使没有提供商指纹，也按最终出站 UA 同步计费标记。
 	if billingUA := EffectiveBillingUserAgent(tokenType, mimicClaudeCode, fingerprint); billingUA != "" {
 		body = SyncBillingHeaderVersion(body, billingUA)
 	}
@@ -101,7 +102,7 @@ func BuildRequest(ctx context.Context, body []byte, token, tokenType, modelID st
 		tokenType, mimicClaudeCode, modelID, clientHeaders, body, effectiveDropSet, options.InjectAPIKeyBeta,
 	)
 
-	// 账号覆写了 anthropic-beta 时，覆写值即最终上游值（由下方 ApplyHeaderOverrides 写入）：
+	// 提供商覆写了 anthropic-beta 时，覆写值即最终上游值（由下方 ApplyHeaderOverrides 写入）：
 	// body 能力净化必须以覆写值为准，否则 header/body 不对称会被上游 400。
 	if beta, ok := options.BetaOverride(); ok {
 		finalBetaHeader, finalBetaShouldSet = beta, true
@@ -146,7 +147,7 @@ func BuildRequest(ctx context.Context, body []byte, token, tokenType, modelID st
 		}
 	}
 
-	// OAuth账号：应用缓存的指纹到请求头（覆盖白名单透传的头）
+	// OAuth提供商：应用缓存的指纹到请求头（覆盖白名单透传的头）
 	if fingerprint != nil {
 		options.Fingerprint.ApplyFingerprint(req, fingerprint)
 	}
@@ -185,7 +186,7 @@ func BuildRequest(ctx context.Context, body []byte, token, tokenType, modelID st
 		}
 	}
 
-	// 账号级请求头覆写（仅 anthropic/openai api_key 账号启用时生效；OAuth 路径 no-op）。
+	// 提供商级请求头覆写（仅 anthropic/openai api_key 提供商启用时生效；OAuth 路径 no-op）。
 	// 放在所有 header 逻辑之后，确保配置值对同名头拥有最终决定权。
 	options.ApplyOverrides(req.Header)
 

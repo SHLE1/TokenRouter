@@ -1,4 +1,4 @@
-// 会话与日志标识原语保持既有字节格式，平台共享但不读取账号。
+// 会话与日志标识原语保持既有字节格式，平台共享但不读取提供商。
 package upstream
 
 import (
@@ -27,6 +27,7 @@ func IsolateSessionID(apiKeyID int64, raw string) string {
 	_, _ = h.WriteString(raw)
 	return fmt.Sprintf("%016x", h.Sum64())
 }
+
 func HashSensitiveValueForLog(raw string) string {
 	value := strings.TrimSpace(raw)
 	if value == "" {

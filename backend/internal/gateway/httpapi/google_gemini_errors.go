@@ -16,26 +16,25 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// GeminiOutput 持有当前 HTTP 交换与静态输出配置，不承载账号、重试或资金状态。
+// GeminiOutput 持有当前 HTTP 交换与静态输出配置，不承载提供商、重试或资金状态。
 type GeminiOutput struct {
 	GoogleOutput
 	Options googleforward.Options
 }
 
 // GeminiCustomCodeSkippedError 对自定义错误码未命中的请求隐藏上游细节并返回 500。
-func (s *GeminiOutput) GeminiCustomCodeSkippedError(account *gatewayprovider.ExecutionAccount, upstreamStatus int, upstreamRequestID string, body []byte, write func()) error {
+func (s *GeminiOutput) GeminiCustomCodeSkippedError(provider *gatewayprovider.ExecutionProvider, upstreamStatus int, upstreamRequestID string, body []byte, write func()) error {
 	c := s.Context
 
 	upstreamMsg := logredact.SanitizeUpstreamQueries(strings.TrimSpace(upstream.ExtractErrorMessage(body)))
 	upstreamDetail := s.Options.ErrorDetail(body)
 	SetOpsUpstreamError(c, upstreamStatus, upstreamMsg, upstreamDetail)
 	AppendOpsUpstreamError(c, ops.OpsUpstreamErrorEvent{
+		Platform: provider.Record.Platform,
 
-		Platform: account.Record.Platform,
+		ProviderID: provider.Record.ID,
 
-		AccountID: account.Record.ID,
-
-		AccountName: account.Record.Name,
+		ProviderName: provider.Record.Name,
 
 		UpstreamStatusCode: upstreamStatus,
 
@@ -55,7 +54,7 @@ func (s *GeminiOutput) GeminiCustomCodeSkippedError(account *gatewayprovider.Exe
 }
 
 // GeminiNativeUpstreamError 按原始状态码和响应体透传不可切换的 Gemini 错误。
-func (s *GeminiOutput) GeminiNativeUpstreamError(account *gatewayprovider.ExecutionAccount, resp *http.Response, respBody []byte, requestID string, isOAuth bool) error {
+func (s *GeminiOutput) GeminiNativeUpstreamError(provider *gatewayprovider.ExecutionProvider, resp *http.Response, respBody []byte, requestID string, isOAuth bool) error {
 	c := s.Context
 
 	respBody = gemininative.UnwrapIfNeeded(isOAuth, respBody)
@@ -63,12 +62,11 @@ func (s *GeminiOutput) GeminiNativeUpstreamError(account *gatewayprovider.Execut
 	upstreamDetail := s.Options.ErrorDetail(respBody)
 	SetOpsUpstreamError(c, resp.StatusCode, upstreamMsg, upstreamDetail)
 	AppendOpsUpstreamError(c, ops.OpsUpstreamErrorEvent{
+		Platform: provider.Record.Platform,
 
-		Platform: account.Record.Platform,
+		ProviderID: provider.Record.ID,
 
-		AccountID: account.Record.ID,
-
-		AccountName: account.Record.Name,
+		ProviderName: provider.Record.Name,
 
 		UpstreamStatusCode: resp.StatusCode,
 
@@ -92,7 +90,7 @@ func (s *GeminiOutput) GeminiNativeUpstreamError(account *gatewayprovider.Execut
 	return fmt.Errorf("gemini upstream error: %d message=%s", resp.StatusCode, upstreamMsg)
 }
 
-func (s *GeminiOutput) GeminiMappedError(account *gatewayprovider.ExecutionAccount, upstreamStatus int, upstreamRequestID string, body []byte) error {
+func (s *GeminiOutput) GeminiMappedError(provider *gatewayprovider.ExecutionProvider, upstreamStatus int, upstreamRequestID string, body []byte) error {
 	c := s.Context
 
 	MarkResponseCommitted(c)
@@ -108,12 +106,11 @@ func (s *GeminiOutput) GeminiMappedError(account *gatewayprovider.ExecutionAccou
 	}
 	SetOpsUpstreamError(c, upstreamStatus, upstreamMsg, upstreamDetail)
 	AppendOpsUpstreamError(c, ops.OpsUpstreamErrorEvent{
+		Platform: provider.Record.Platform,
 
-		Platform: account.Record.Platform,
+		ProviderID: provider.Record.ID,
 
-		AccountID: account.Record.ID,
-
-		AccountName: account.Record.Name,
+		ProviderName: provider.Record.Name,
 
 		UpstreamStatusCode: upstreamStatus,
 
@@ -295,8 +292,7 @@ func (s *GeminiOutput) GoogleError(status int, message string) error {
 }
 
 func (s *GeminiOutput) GeminiOpenAICompatMappedError(
-
-	account *gatewayprovider.ExecutionAccount,
+	provider *gatewayprovider.ExecutionProvider,
 	upstreamStatus int,
 	upstreamRequestID string,
 	body []byte,
@@ -306,14 +302,13 @@ func (s *GeminiOutput) GeminiOpenAICompatMappedError(
 
 	upstreamMsg := logredact.SanitizeUpstreamQueries(strings.TrimSpace(upstream.ExtractErrorMessage(body)))
 	SetOpsUpstreamError(c, upstreamStatus, upstreamMsg, "")
-	if account != nil {
+	if provider != nil {
 		AppendOpsUpstreamError(c, ops.OpsUpstreamErrorEvent{
+			Platform: provider.Record.Platform,
 
-			Platform: account.Record.Platform,
+			ProviderID: provider.Record.ID,
 
-			AccountID: account.Record.ID,
-
-			AccountName: account.Record.Name,
+			ProviderName: provider.Record.Name,
 
 			UpstreamStatusCode: upstreamStatus,
 
@@ -392,9 +387,9 @@ func (s *GeminiOutput) GeminiOpenAICompatMappedError(
 	if upstreamMsg != "" && errMsg == "Upstream request failed" {
 		errMsg = upstreamMsg
 	}
-	// 池模式的 4xx 不会切换账号，客户端需要看到上游给出的具体校验原因；
-	// 普通账号仍保留兼容层的通用错误文案。
-	if account != nil && account.View().IsPoolMode() && upstreamStatus >= http.StatusBadRequest && upstreamMsg != "" {
+	// 池模式的 4xx 不会切换提供商，客户端需要看到上游给出的具体校验原因；
+	// 普通提供商仍保留兼容层的通用错误文案。
+	if provider != nil && provider.View().IsPoolMode() && upstreamStatus >= http.StatusBadRequest && upstreamMsg != "" {
 		errMsg = upstreamMsg
 	}
 	return s.GeminiOpenAICompatError(protocol, statusCode, errType, errMsg)
@@ -402,7 +397,6 @@ func (s *GeminiOutput) GeminiOpenAICompatMappedError(
 
 // GeminiOpenAICompatError 按客户端入口输出对应的 OpenAI 错误格式。
 func (s *GeminiOutput) GeminiOpenAICompatError(
-
 	protocol gemininative.OpenAICompatProtocol,
 	status int,
 	errType string,

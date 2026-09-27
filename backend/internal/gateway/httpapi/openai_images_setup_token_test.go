@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/media"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	upstreamcore "github.com/TokenFlux/TokenRouter/internal/upstream"
 	"github.com/gin-gonic/gin"
@@ -20,7 +20,6 @@ import (
 )
 
 func TestOpenAISetupTokenImagesUsesOAuthResponsesPath(t *testing.T) {
-
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/images/generations", nil)
 
@@ -30,10 +29,13 @@ func TestOpenAISetupTokenImagesUsesOAuthResponsesPath(t *testing.T) {
 		Body:       io.NopCloser(strings.NewReader(`{"error":{"message":"rate limited"}}`)),
 	}}
 	svc := newImagesFixture(imagesFixtureInputs{transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 73,
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeSetupToken,
-		Credentials: map[string]any{"access_token": "setup-token"}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 73,
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeSetupToken,
+			Credentials: map[string]any{"access_token": "setup-token"},
+		},
 	}
 	parsed := &media.ImageRequest{
 		Endpoint:       upstreamcore.OpenAIImagesGenerationsEndpoint,
@@ -43,13 +45,13 @@ func TestOpenAISetupTokenImagesUsesOAuthResponsesPath(t *testing.T) {
 		ResponseFormat: "b64_json",
 	}
 
-	result, err := svc.ForwardImages(context.Background(), c, account, nil, parsed, "")
+	result, err := svc.ForwardImages(context.Background(), c, provider, nil, parsed, "")
 
 	require.Nil(t, result)
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)
 	require.Equal(t, http.StatusTooManyRequests, failoverErr.StatusCode)
-	require.True(t, failoverErr.RetryableOnSameAccount)
-	require.False(t, failoverErr.SameAccountRetryDeadline.IsZero())
+	require.True(t, failoverErr.RetryableOnSameProvider)
+	require.False(t, failoverErr.SameProviderRetryDeadline.IsZero())
 	require.Contains(t, upstream.lastReq.URL.String(), "/backend-api/codex/responses")
 }

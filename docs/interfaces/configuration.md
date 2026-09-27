@@ -19,7 +19,7 @@
 | 进程基础设施配置 | server、database、Redis、日志、CORS、JWT、worker/queue、连接池和硬安全开关 | `config.Config`，由默认值/YAML/环境变量加载 | 通常启动时读取，修改后重启 |
 | 引导与持久安全密钥 | 初始 DB/Redis、管理员创建、JWT secret、安装锁 | setup 流程、`config.yaml`、`security_secrets` | 仅首次安装或启动引导阶段 |
 | 数据库运行时设置 | 注册、OAuth、SMTP、面板限流、step-up、部分调度/超时、展示和功能开关 | `settings.Store` + 各模块运行读取器 | getter/cached snapshot/on-update，按设置实现热生效 |
-| 领域配置 | 用户、团队、API Key、分组、渠道、账号、套餐、支付实例 | 对应 Ent schema/service | CRUD 事务后失效领域缓存 |
+| 领域配置 | 用户、团队、API Key、分组、渠道、提供商、套餐、支付实例 | 对应 Ent schema/service | CRUD 事务后失效领域缓存 |
 | 前端构建/开发配置 | API base、WS base、dev proxy、dev port | Vite `VITE_*` | 构建或 dev server 启动时注入 |
 
 同名概念可能跨层，但要有明确接管语义。例如进程 `security.trust_forwarded_ip_for_api_key_acl` 提供启动默认值，数据库设置可以在运行时覆盖安全客户端 IP 策略；读取方必须使用运行时 snapshot，而不是持续读取旧的 struct 字段。相反，数据库地址和 Redis 连接池不能通过管理后台热切换。
@@ -47,7 +47,7 @@
 
 少量变量有显式绑定或专用解析：`ENABLE_SERVER_TIMING`，逗号分隔的 `SERVER_TRUSTED_PROXIES` 和 `SECURITY_FORWARDED_CLIENT_IP_HEADERS`，以及受兼容条件约束的旧 WeChat 变量。
 
-国产供应商周期用量监控属于启动时进程配置 `gateway.cn_providers`。`monitor_enabled` 默认关闭；开启后默认每 10 分钟运行一次、并发 4、单账号探测超时 20 秒、整轮预算 300 秒，余额临时停调阈值 `balance_threshold` 默认 `0.5`。对应键为 `interval_minutes`、`concurrency`、`probe_timeout_seconds` 和 `round_timeout_seconds`，修改后需要重启。管理员手动查询不受监控开关影响；自定义中继的自动监控还要求启用并命中 `security.url_allowlist.upstream_hosts`。
+国产供应商周期用量监控属于启动时进程配置 `gateway.cn_providers`。`monitor_enabled` 默认关闭；开启后默认每 10 分钟运行一次、并发 4、单提供商探测超时 20 秒、整轮预算 300 秒，余额临时停调阈值 `balance_threshold` 默认 `0.5`。对应键为 `interval_minutes`、`concurrency`、`probe_timeout_seconds` 和 `round_timeout_seconds`，修改后需要重启。管理员手动查询不受监控开关影响；自定义中继的自动监控还要求启用并命中 `security.url_allowlist.upstream_hosts`。
 
 时区的优先级是标准 `TZ`、兼容 `TIMEZONE`、配置文件、默认 `Asia/Shanghai`。`TZ` 非空时必须显式覆盖 `TIMEZONE`，使容器运行时、应用本地日统计和 PostgreSQL 连接时区使用同一部署者选择；无效 IANA 名称仍在启动校验中失败。
 
@@ -61,7 +61,7 @@
 
 加载完成后会做字符串规范化、枚举回退、派生默认、文件读取和完整 `Validate`。无效安全 header、URL、数值范围、模式组合或必要 secret 会让启动失败；不应等到某个请求首次使用时才发现。自动生成的 TOTP key 只适合开发，`EncryptionKeyConfigured=false` 会阻止后台把 TOTP 当成生产可用配置。
 
-环境变量优先于 YAML，因此排查“文件修改不生效”时先检查容器环境。不得在日志、错误或管理响应中输出数据库密码、JWT/TOTP secret、OAuth secret、对象存储 secret 或账号凭据。
+环境变量优先于 YAML，因此排查“文件修改不生效”时先检查容器环境。不得在日志、错误或管理响应中输出数据库密码、JWT/TOTP secret、OAuth secret、对象存储 secret 或提供商凭据。
 
 ## 首次初始化
 
@@ -76,11 +76,11 @@ setup 使用 `DATA_DIR > 可写 /app/data > 当前目录` 选择 `config.yaml` �
 
 usage、audit、ops 的静态参数由 app 投影为各模块 Options；动态 Ops 设置与日志配置继续由原数据库键控制。统一预聚合控制器位于 `settings/preaggregation`，仍有十五秒缓存及原更新通知，不新增设置格式或发布订阅协议。运行日志的应用、持久化失败后回滚和清理 Reload 顺序保持不变。
 
-`settings` 是 `key/value/updated_at` 表，删除键表示恢复该 getter 的默认语义。`settings.Store` 与其 PostgreSQL Adapter 拥有通用存取、现有版本字段和更新通知；身份注册/安全/captcha、OAuth 配置解释、账号冷却与导入模板、推广开关、用量排行、审计保留期和网关策略已分别由所属模块实现；面板限流配置与缓存归 `server/runtimeconfig`。
+`settings` 是 `key/value/updated_at` 表，删除键表示恢复该 getter 的默认语义。`settings.Store` 与其 PostgreSQL Adapter 拥有通用存取、现有版本字段和更新通知；身份注册/安全/captcha、OAuth 配置解释、提供商冷却与导入模板、推广开关、用量排行、审计保留期和网关策略已分别由所属模块实现；面板限流配置与缓存归 `server/runtimeconfig`。
 
-创作运行开关和模型列表由 app 直接注入 `creative.RuntimeSettings`，保持即时读取；路由容量使用同一个 `account.QuotaSettingsCache`。各读取器共享已装配的缓存实例。`settings/composite` 只组合领域值投影、准备顺序及提交后应用；`settings/httpapi` 保留扁平 binding、权限、审计和响应。测试也直接使用原生读取、准备、提交和发布能力。
+创作运行开关和模型列表由 app 直接注入 `creative.RuntimeSettings`，保持即时读取；路由容量使用同一个 `provider.QuotaSettingsCache`。各读取器共享已装配的缓存实例。`settings/composite` 只组合领域值投影、准备顺序及提交后应用；`settings/httpapi` 保留扁平 binding、权限、审计和响应。测试也直接使用原生读取、准备、提交和发布能力。
 
-生产网关使用所属模块的设置读取器。执行适配器的 `RuntimeReaders` 只持有同一网关、账号、配额、路由、审核与搜索实例，以及调度读取端口；它不解释设置、不缓存或启动任务。提示词替换由 HTTP 与 WS 构造时直接注入同一个 promptpolicy 实例。Antigravity 日志/流预算由 app 投影静态值，身份补丁仍逐请求读取，失败默认开启与空提示词回退不变。HTTP 客户端版本与余额展示单位分别直接读取 gateway 与 billing。中间件、路由与存储回归已按各自端口改绑，保留可选指针为 nil 时的原有认证边界。
+生产网关使用所属模块的设置读取器。执行适配器的 `RuntimeReaders` 只持有同一网关、提供商、配额、路由、审核与搜索实例，以及调度读取端口；它不解释设置、不缓存或启动任务。提示词替换由 HTTP 与 WS 构造时直接注入同一个 promptpolicy 实例。Antigravity 日志/流预算由 app 投影静态值，身份补丁仍逐请求读取，失败默认开启与空提示词回退不变。HTTP 客户端版本与余额展示单位分别直接读取 gateway 与 billing。中间件、路由与存储回归已按各自端口改绑，保留可选指针为 nil 时的原有认证边界。
 
 综合设置 `PUT /api/v1/admin/settings` 在读取旧值前进入实例内更新保护；app 对综合输入的 295 个字段静态注册唯一业务所有者、持久键和顺序，构造时拒绝重复所有权；装配测试检查遗漏和重复字段。系统设置、认证默认值、Fast 策略及支付设置先完成校验与投影，再进行一次原子批量写入。任何提交前失败均不发布运行状态或成功通知。提交后的必要运行应用失败返回 `SETTINGS_APPLY_FAILED`，metadata 标明 `persisted=true` 及失败模块；已保存的配置不会被伪装成回滚，也不自动重写或重试。
 
@@ -98,7 +98,7 @@ usage、audit、ops 的静态参数由 app 投影为各模块 Options；动态 O
 
 `creative_model_settings` 保存创作台允许使用的全局生图模型与能力白名单（JSON 数组），每项为 `group_id`、`model` 和 `operations`，通用能力值仅允许 `generate`、`edit`、`inpaint`，实际平台交集为 OpenAI 三项、Gemini/Grok 的 `generate`/`edit`。默认值为 `[]`，空列表表示创作台没有任何可用生图模型；不需要数据库迁移。
 
-管理 PUT 省略字段时保留旧值，显式发送 `[]` 时清空；保存校验正整数分组 ID、非空模型名、至少一项能力和分组+模型唯一性，并按当前可请求候选模型的能力移除不支持的操作，移除后无能力的条目删除；无法解析的历史模型配置暂时保留。读取损坏 JSON 或读取失败按空列表处理并记录日志，设置不建立外键，因此失效分组/账号配置会保留并在恢复后重新生效。
+管理 PUT 省略字段时保留旧值，显式发送 `[]` 时清空；保存校验正整数分组 ID、非空模型名、至少一项能力和分组+模型唯一性，并按当前可请求候选模型的能力移除不支持的操作，移除后无能力的条目删除；无法解析的历史模型配置暂时保留。读取损坏 JSON 或读取失败按空列表处理并记录日志，设置不建立外键，因此失效分组/提供商配置会保留并在恢复后重新生效。
 
 `usage_ranking_enabled`、`usage_ranking_sort_by`、`usage_ranking_show_total_tokens`、`usage_ranking_show_requests`、`usage_ranking_show_actual_cost` 与既有 `usage_ranking_limit` 共同控制用户侧用量排行。排行行的 `user_id` 表示付款主体；团队 Key 的请求按 `billing_user_id` 归到团队 Owner，Usage 明细中的 `user_id` 仍表示实际行为成员。
 
@@ -110,7 +110,7 @@ usage、audit、ops 的静态参数由 app 投影为各模块 Options；动态 O
 
 它们在“网关设置 - 通用设置”编辑，由 `scheduler.SettingsRuntime` 使用原五秒 TTL/singleflight 读取。app 绑定唯一实例，设置更新发布到该实例；每次返回独立 map，批量读取失败仍按原顺序逐键降级。数值留空时继承 `gateway.advanced_scheduler` 的进程默认值；sticky escape 开关和两个阈值也支持热更新。不存在 `advanced_scheduler_enabled` 全局开关，缺失参数只回退到进程配置默认值，不能改变任意分组的模式。
 
-管理 Group API 还接受 `advanced_scheduler_overrides` 作为稀疏对象，仅在 `scheduler_type=advanced` 的实际调度中使用。创建缺省为 `{}`；更新时省略字段保持原对象，传 `{}` 清除全部覆盖，字段内未出现的值继续继承全局设置。`false` 与 `0` 不等于未设置，都会作为显式覆盖保存；合并后的七项基础评分权重全部为零也是有效配置，此时评分相同的候选按账号全局优先级和账号 ID 稳定排序，不会静默恢复全局权重。
+管理 Group API 还接受 `advanced_scheduler_overrides` 作为稀疏对象，仅在 `scheduler_type=advanced` 的实际调度中使用。创建缺省为 `{}`；更新时省略字段保持原对象，传 `{}` 清除全部覆盖，字段内未出现的值继续继承全局设置。`false` 与 `0` 不等于未设置，都会作为显式覆盖保存；合并后的七项基础评分权重全部为零也是有效配置，此时评分相同的候选按提供商全局优先级和提供商 ID 稳定排序，不会静默恢复全局权重。
 
 合并后的基础权重和完整权重总和都必须是有限值，写入会拒绝导致溢出的稀疏覆盖；运行时若读到历史异常对象，权重回退到全局有效值。该字段随认证快照缓存并提升快照版本；公开用户分组接口不会返回它或 `scheduler_type`。
 
@@ -122,9 +122,9 @@ usage、audit、ops 的静态参数由 app 投影为各模块 Options；动态 O
 
 Grok 文本转发有三项数据库运行时设置：`grok_default_text_model`、`grok_cross_client_model_map_enabled` 和 `grok_default_base_url_mode`。默认模型与跨客户端开关共同发布进程级模型映射快照；当前开关只在 Grok 分组的 Anthropic Messages 派发阶段生效，将 Claude 模型 ID 映射到默认文本模型，不改写 Responses 或 Chat Completions 中的其他模型。
 
-base URL 模式只在账号未保存显式端点时生效，可选 CLI 代理、公共 API、`us-east-1`、`us-west-2` 和 `eu-west-1`。这些设置可热更新，不覆盖账号显式 URL，也不改变媒体/Voice 的官方端点选择。
+base URL 模式只在提供商未保存显式端点时生效，可选 CLI 代理、公共 API、`us-east-1`、`us-west-2` 和 `eu-west-1`。这些设置可热更新，不覆盖提供商显式 URL，也不改变媒体/Voice 的官方端点选择。
 
-`account_scheduling_thresholds` 是整体替换的 JSON map，只允许 OpenAI、Anthropic 和 Grok 的 1-100 整数，100 表示关闭对应平台自动停调；账号可在自身凭据中覆盖。管理设置的部分更新省略该字段时必须保留数据库值和进程缓存，不能把前端初始默认值当成显式更新。
+`provider_scheduling_thresholds` 是整体替换的 JSON map，只允许 OpenAI、Anthropic 和 Grok 的 1-100 整数，100 表示关闭对应平台自动停调；提供商可在自身凭据中覆盖。管理设置的部分更新省略该字段时必须保留数据库值和进程缓存，不能把前端初始默认值当成显式更新。
 
 `gateway.grok` 属于启动时进程配置。`password_auth_enabled` 默认关闭并控制邮箱密码到 SSO/OAuth 的敏感入口；Free OAuth 本地软门禁由 `free_quota_soft_gate_enabled`、`free_quota_token_limit`、`free_quota_soft_gate_percent`、`free_quota_window_hours` 和 `free_quota_stats_cache_seconds` 控制。
 
@@ -134,7 +134,7 @@ base URL 模式只在账号未保存显式端点时生效，可选 CLI 代理、
 
 阿里云启用时必须具备 Scene ID、Prefix、AccessKey ID、AccessKey Secret 及 `cn` 或 `sgp` 地域。公开设置只返回各提供方的启用状态、站点和渲染所需的非敏感参数；管理响应只返回 secret 的“已配置”标记，空白更新保留原值，审计仅记录字段发生写入而不记录内容。腾讯与阿里云 Web SDK 所需的脚本、连接、iframe、worker 和样式来源由默认 CSP 与运行时 CSP 补全逻辑共同维护，覆盖自定义旧策略时也不能遗漏，其中阿里云静态资源允许 `https://*.alicdn.com`。
 
-Google GIS 同样由默认策略与旧自定义策略增强共同允许：`script-src` 仅加入 `https://accounts.google.com/gsi/client`，`frame-src`/`connect-src` 加入 `https://accounts.google.com/gsi/`，`style-src` 加入 `https://accounts.google.com/gsi/style`。tf CLI 网页导入在 `connect-src` 中只允许 `http://127.0.0.1:43110` 到 `43119` 十个精确 Origin；代码默认策略、旧自定义策略增强和 `deploy/config.example.yaml` 必须同步，不能扩大为端口或局域网通配符。完整边界见 [tf CLI 网页导入](tf_cli_web_import.md)。
+Google GIS 同样由默认策略与旧自定义策略增强共同允许：`script-src` 仅加入 `https://providers.google.com/gsi/client`，`frame-src`/`connect-src` 加入 `https://providers.google.com/gsi/`，`style-src` 加入 `https://providers.google.com/gsi/style`。tf CLI 网页导入在 `connect-src` 中只允许 `http://127.0.0.1:43110` 到 `43119` 十个精确 Origin；代码默认策略、旧自定义策略增强和 `deploy/config.example.yaml` 必须同步，不能扩大为端口或局域网通配符。完整边界见 [tf CLI 网页导入](tf_cli_web_import.md)。
 
 SMTP 的测试连接与实际发送共用同一建连路径和超时。`smtp_use_tls=true` 先按隐式 TLS 连接；仅当服务端以明文 SMTP 问候响应时改用强制 STARTTLS，服务端不支持升级时直接失败，不能明文发送认证。`smtp_use_tls=false` 保留机会式 STARTTLS，并在服务端不提供扩展时允许现有明文语义。两条路径都在认证成功后忽略非标准 QUIT 响应，因此后台连接测试与实际发信能力保持一致。
 
@@ -152,7 +152,7 @@ SMTP 发送和管理测试均传递 context，取消会中止拨号、TLS 和在
 
 search.ConfigService 持有唯一的配置缓存、singleflight 和当前 Manager 注册表。供应商选择、额度和停机见[搜索编排](../domains/search_orchestration.md)。成功保存推进本进程发布代次；旧回源或旧 Manager 构建不得覆盖新保存。该代次不写入数据库或 Redis，没有增加缓存协议。保存、读取、展示与 provider 配置边界复制所有可变指针和 slice，读取方不能修改运行快照。
 
-配置缺键、错误缓存 TTL、空 API Key 保留、管理字段与专用脱敏投影沿用原语义；管理测试不占额度。代理无法解析时跳过该供应商，不能隐式直连；账号代理与供应商代理保留原优先级。配置改变不扩大到 Grok 或 AlphaSearch 的原生搜索策略。
+配置缺键、错误缓存 TTL、空 API Key 保留、管理字段与专用脱敏投影沿用原语义；管理测试不占额度。代理无法解析时跳过该供应商，不能隐式直连；提供商代理与供应商代理保留原优先级。配置改变不扩大到 Grok 或 AlphaSearch 的原生搜索策略。
 
 热路径设置必须使用以下一种明确策略：
 
@@ -169,7 +169,7 @@ search.ConfigService 持有唯一的配置缓存、singleflight 和当前 Manage
 
 结构化、有关联和独立生命周期的业务配置使用专用表：
 
-- 分组拥有平台、倍率、能力、回退、策略和主动可用性探测参数；渠道拥有模型映射与价格；账号拥有上游凭据、代理和调度状态。
+- 分组拥有平台、倍率、能力、回退、策略和主动可用性探测参数；渠道拥有模型映射与价格；提供商拥有上游凭据、代理和调度状态。
 - Subscription Plan、支付 provider instance、API Key、团队和用户属性都有各自不变量与审计路径。
 - Ops/pre-aggregation 等既有进程 hard switch 又有运行时开关时，进程开关是上限：数据库不能开启部署者显式硬关闭的能力。
 

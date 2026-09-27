@@ -31,7 +31,7 @@ func TestOpsServiceRecordErrorBatch_SanitizesAndBatches(t *testing.T) {
 			UpstreamErrorDetail:  strPtr(detail),
 			UpstreamErrors: []*OpsUpstreamErrorEvent{
 				{
-					AccountID:          -2,
+					ProviderID:         -2,
 					UpstreamStatusCode: 429,
 					Message:            " token leaked ",
 					Detail:             `{"refresh_token":"secret"}`,
@@ -127,7 +127,7 @@ func TestOpsServiceRecordErrorBatch_SkipsFallbackAfterContextCanceled(t *testing
 	require.Equal(t, 0, singleCalls)
 }
 
-func TestOpsServiceRecordErrorPersistsExplicitAccountAuthStatusZero(t *testing.T) {
+func TestOpsServiceRecordErrorPersistsExplicitProviderAuthStatusZero(t *testing.T) {
 	t.Parallel()
 
 	var captured *OpsInsertErrorLogInput
@@ -153,26 +153,26 @@ func TestOpsServiceRecordErrorPersistsExplicitAccountAuthStatusZero(t *testing.T
 		UpstreamErrors: []*OpsUpstreamErrorEvent{
 			{Stage: "inference", UpstreamStatusCode: 403, Message: staleMessage, Detail: staleDetail},
 			{
-				Stage: "account_auth", Scope: "account",
-				Reason: "grok_oauth_credential_revoked", Message: "Grok OAuth credentials require account action",
+				Stage: "provider_auth", Scope: "provider",
+				Reason: "grok_oauth_credential_revoked", Message: "Grok OAuth credentials require provider action",
 			},
 		},
 	})
 
 	require.NoError(t, err)
 	require.NotNil(t, captured)
-	require.Equal(t, "account_auth", captured.ErrorPhase)
+	require.Equal(t, "provider_auth", captured.ErrorPhase)
 	require.Equal(t, "provider", captured.ErrorOwner)
 	require.Equal(t, "gateway", captured.ErrorSource)
 	require.NotNil(t, captured.UpstreamStatusCode)
 	require.Zero(t, *captured.UpstreamStatusCode)
 	require.NotNil(t, captured.UpstreamErrorMessage)
-	require.Equal(t, "Grok OAuth credentials require account action", *captured.UpstreamErrorMessage)
+	require.Equal(t, "Grok OAuth credentials require provider action", *captured.UpstreamErrorMessage)
 	require.Nil(t, captured.UpstreamErrorDetail)
 	require.Nil(t, captured.UpstreamErrors)
 	require.NotNil(t, captured.UpstreamErrorsJSON)
 	require.Contains(t, *captured.UpstreamErrorsJSON, `"upstream_status_code":403`)
-	require.Contains(t, *captured.UpstreamErrorsJSON, `"stage":"account_auth"`)
+	require.Contains(t, *captured.UpstreamErrorsJSON, `"stage":"provider_auth"`)
 }
 
 func strPtr(v string) *string {

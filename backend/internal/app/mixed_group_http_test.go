@@ -12,13 +12,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
 	keytestkit "github.com/TokenFlux/TokenRouter/internal/apikey/testkit"
 	"github.com/TokenFlux/TokenRouter/internal/config"
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/googleforward"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/messageforward"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
@@ -28,6 +27,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 	"github.com/gin-gonic/gin"
@@ -35,25 +35,25 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// mixedHTTPAccounts 只提供持久账号查询，资格与排序使用真实选择器。
-type mixedHTTPAccounts struct {
-	provider.ExecutionAccountStore
-	values []provider.ExecutionAccount
+// mixedHTTPProviders 只提供持久提供商查询，资格与排序使用真实选择器。
+type mixedHTTPProviders struct {
+	gatewayadapter.ExecutionProviderStore
+	values []gatewayadapter.ExecutionProvider
 }
 
-func (*mixedHTTPAccounts) completeGroupProjection() {}
+func (*mixedHTTPProviders) completeGroupProjection() {}
 
-func (s *mixedHTTPAccounts) GetByID(_ context.Context, id int64) (*provider.ExecutionAccount, error) {
+func (s *mixedHTTPProviders) GetByID(_ context.Context, id int64) (*gatewayadapter.ExecutionProvider, error) {
 	for _, value := range s.values {
 		if value.Record.ID == id {
-			return provider.NewExecutionAccount(&value.Record), nil
+			return gatewayadapter.NewExecutionProvider(&value.Record), nil
 		}
 	}
 	return nil, nil
 }
 
-func (s *mixedHTTPAccounts) GetByIDs(ctx context.Context, ids []int64) ([]*provider.ExecutionAccount, error) {
-	var out []*provider.ExecutionAccount
+func (s *mixedHTTPProviders) GetByIDs(ctx context.Context, ids []int64) ([]*gatewayadapter.ExecutionProvider, error) {
+	var out []*gatewayadapter.ExecutionProvider
 	for _, id := range ids {
 		value, _ := s.GetByID(ctx, id)
 		if value != nil {
@@ -63,37 +63,37 @@ func (s *mixedHTTPAccounts) GetByIDs(ctx context.Context, ids []int64) ([]*provi
 	return out, nil
 }
 
-func (s *mixedHTTPAccounts) ListSchedulableByGroupIDAndPlatforms(_ context.Context, id int64, platforms []string) ([]provider.ExecutionAccount, error) {
-	var out []provider.ExecutionAccount
+func (s *mixedHTTPProviders) ListSchedulableByGroupIDAndPlatforms(_ context.Context, id int64, platforms []string) ([]gatewayadapter.ExecutionProvider, error) {
+	var out []gatewayadapter.ExecutionProvider
 	for _, value := range s.values {
 		if slices.Contains(value.Record.GroupIDs, id) && slices.Contains(platforms, value.Record.Platform) {
-			out = append(out, *provider.NewExecutionAccount(&value.Record))
+			out = append(out, *gatewayadapter.NewExecutionProvider(&value.Record))
 		}
 	}
 	return out, nil
 }
 
-func (s *mixedHTTPAccounts) ListSchedulableByGroupIDAndPlatform(ctx context.Context, id int64, p string) ([]provider.ExecutionAccount, error) {
+func (s *mixedHTTPProviders) ListSchedulableByGroupIDAndPlatform(ctx context.Context, id int64, p string) ([]gatewayadapter.ExecutionProvider, error) {
 	return s.ListSchedulableByGroupIDAndPlatforms(ctx, id, []string{p})
 }
-func (s *mixedHTTPAccounts) SetError(context.Context, int64, string) error { return nil }
-func (s *mixedHTTPAccounts) SetTempUnschedulable(context.Context, int64, time.Time, string) error {
+func (s *mixedHTTPProviders) SetError(context.Context, int64, string) error { return nil }
+func (s *mixedHTTPProviders) SetTempUnschedulable(context.Context, int64, time.Time, string) error {
 	return nil
 }
-func (s *mixedHTTPAccounts) UpdateLastUsed(context.Context, int64) error { return nil }
-func (s *mixedHTTPAccounts) BatchUpdateLastUsed(context.Context, map[int64]time.Time) error {
+func (s *mixedHTTPProviders) UpdateLastUsed(context.Context, int64) error { return nil }
+func (s *mixedHTTPProviders) BatchUpdateLastUsed(context.Context, map[int64]time.Time) error {
 	return nil
 }
 
-// mixedHTTPTransport 真正经过本地 HTTP server，记录实际选择账号和上游端点。
+// mixedHTTPTransport 真正经过本地 HTTP server，记录实际选择提供商和上游端点。
 type mixedHTTPTransport struct {
-	mu       sync.Mutex
-	accounts []int64
+	mu        sync.Mutex
+	providers []int64
 }
 
 func (s *mixedHTTPTransport) Do(req *http.Request, _ string, id int64, _ int) (*http.Response, error) {
 	s.mu.Lock()
-	s.accounts = append(s.accounts, id)
+	s.providers = append(s.providers, id)
 	s.mu.Unlock()
 	return http.DefaultClient.Do(req)
 }
@@ -105,7 +105,7 @@ func (s *mixedHTTPTransport) DoWithTLS(req *http.Request, p string, id int64, n 
 func (s *mixedHTTPTransport) calls() []int64 {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return slices.Clone(s.accounts)
+	return slices.Clone(s.providers)
 }
 
 type mixedHTTPNoSearch struct{}
@@ -116,7 +116,7 @@ func mixedUpstreamResponse(w http.ResponseWriter, r *http.Request, failAnthropic
 	body, _ := io.ReadAll(r.Body)
 	if failAnthropic && strings.Contains(r.URL.Path, "/messages") {
 		w.WriteHeader(502)
-		_, _ = io.WriteString(w, `{"error":{"type":"overloaded_error","message":"retry another account"}}`)
+		_, _ = io.WriteString(w, `{"error":{"type":"overloaded_error","message":"retry another provider"}}`)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -161,23 +161,23 @@ func TestMixedGroupTextHTTP(t *testing.T) {
 				cfg.Default.RateMultiplier = 1
 				cfg.Security.URLAllowlist.Enabled = false
 				cfg.Security.URLAllowlist.AllowInsecureHTTP = true
-				cfg.Gateway.MaxAccountSwitches = 2
-				accounts := &mixedHTTPAccounts{}
+				cfg.Gateway.MaxProviderSwitches = 2
+				providers := &mixedHTTPProviders{}
 				for index, p := range []string{"anthropic", "openai", "gemini"} {
-					record := &account.Record{ID: int64(index + 1), Name: p, Platform: p, Type: "apikey", Status: "active", Schedulable: true, Priority: index + 1, Concurrency: 1, GroupIDs: []int64{groupID}, Credentials: map[string]any{"api_key": "test-key", "base_url": upstream.URL}}
+					record := &provider.Record{ID: int64(index + 1), Name: p, Platform: p, Type: "apikey", Status: "active", Schedulable: true, Priority: index + 1, Concurrency: 1, GroupIDs: []int64{groupID}, Credentials: map[string]any{"api_key": "test-key", "base_url": upstream.URL}}
 					if p == "openai" && platform == "failover" {
 						record.Credentials["model_mapping"] = map[string]any{"claude-sonnet-4-5-20250929": "gpt-5.4"}
 					}
-					accounts.values = append(accounts.values, *provider.NewExecutionAccount(record))
+					providers.values = append(providers.values, *gatewayadapter.NewExecutionProvider(record))
 				}
 				transport := &mixedHTTPTransport{}
-				source, choices, credentials := newOpenAIExecutionAndSelectionFixture(accounts, nil, cfg, nil, nil, nil, transport, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+				source, choices, credentials := newOpenAIExecutionAndSelectionFixture(providers, nil, cfg, nil, nil, nil, transport, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 				logs := &gatewaytestkit.UsageLogStore{Inserted: true}
 				funds := &gatewaytestkit.SettlementStore{}
 				recording := gatewaytestkit.NewRecording(logs, funds, nil, false)
 				recording.Options.DefaultMultiplier = 1
 				source.Recorder = recording.Core(nil, true)
-				native := &gatewayhttp.UnifiedTextExecutor{OpenAI: source.Responses, Anthropic: gatewayhttp.NewMessagesExecutor(messageforward.NewRuntime(messageforward.Dependencies{Credentials: &account.MessageCredentialSource{}, Transport: transport, Deferred: &account.DeferredService{}, Search: searchtools.NewEmulator(mixedHTTPNoSearch{}, nil, nil, nil, nil, nil)}, messageforward.Options{Configured: true, AllowInsecureHTTP: true, ResponseReadLimit: 1 << 20}), nil), Gemini: &gatewayhttp.GeminiExecutor{Runtime: &googleforward.Gemini{Transport: transport, Options: googleforward.Options{Configured: true, AllowInsecureHTTP: true, ResponseReadLimit: 1 << 20}}}}
+				native := &gatewayhttp.UnifiedTextExecutor{OpenAI: source.Responses, Anthropic: gatewayhttp.NewMessagesExecutor(messageforward.NewRuntime(messageforward.Dependencies{Credentials: &provider.MessageCredentialSource{}, Transport: transport, Deferred: &provider.DeferredService{}, Search: searchtools.NewEmulator(mixedHTTPNoSearch{}, nil, nil, nil, nil, nil)}, messageforward.Options{Configured: true, AllowInsecureHTTP: true, ResponseReadLimit: 1 << 20}), nil), Gemini: &gatewayhttp.GeminiExecutor{Runtime: &googleforward.Gemini{Transport: transport, Options: googleforward.Options{Configured: true, AllowInsecureHTTP: true, ResponseReadLimit: 1 << 20}}}}
 				eligibility := newBillingEligibilityFixture(cfg)
 				t.Cleanup(eligibility.Stop)
 				resources := provideOpenAIHTTPResources(scheduler.NewConcurrencyService(nil), cfg)
@@ -223,7 +223,7 @@ func TestMixedGroupTextHTTP(t *testing.T) {
 				}
 				require.Equal(t, 1, funds.Calls, "一次成功只能提交一次资金扣费")
 				require.Equal(t, 1, logs.Calls)
-				require.Equal(t, expected, logs.LastLog.AccountID)
+				require.Equal(t, expected, logs.LastLog.ProviderID)
 				require.Equal(t, map[int64]string{1: "anthropic", 2: "openai", 3: "gemini"}[expected], logs.LastLog.Platform)
 			})
 		}

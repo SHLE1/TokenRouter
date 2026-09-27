@@ -52,9 +52,9 @@ func (s *OpenAIWSConnections) Dialer() openai.WSClientDialer {
 	return s.dialer
 }
 
-func (s *OpenAIWSConnections) InvalidateAccount(accountID int64) {
+func (s *OpenAIWSConnections) InvalidateProvider(providerID int64) {
 	if pool := s.Pool(); pool != nil {
-		pool.ClearAccount(accountID)
+		pool.ClearProvider(providerID)
 	}
 }
 

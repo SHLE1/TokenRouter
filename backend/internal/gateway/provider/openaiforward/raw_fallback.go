@@ -90,7 +90,7 @@ func MessagesViaRawChat(ctx context.Context, body []byte, defaultMappedModel str
 	}
 
 	p.Debug("openai messages: forwarding via raw chat completions",
-		zap.Int64("account_id", profile.ID),
+		zap.Int64("provider_id", profile.ID),
 		zap.String("original_model", originalModel),
 		zap.String("billing_model", billingModel),
 		zap.String("upstream_model", upstreamModel),
@@ -131,6 +131,7 @@ func MessagesViaRawChat(ctx context.Context, body []byte, defaultMappedModel str
 	}
 	return FromCompatResult(result, billingModel), err
 }
+
 func ResponsesViaRawChat(ctx context.Context, body []byte, p RawFallbackPorts) (*Result, error) {
 	profile := p.Profile()
 	startTime := time.Now()
@@ -196,7 +197,7 @@ func ResponsesViaRawChat(ctx context.Context, body []byte, p RawFallbackPorts) (
 	}
 
 	p.Debug("openai responses: forwarding via raw chat completions",
-		zap.Int64("account_id", profile.ID),
+		zap.Int64("provider_id", profile.ID),
 		zap.String("original_model", originalModel),
 		zap.String("billing_model", billingModel),
 		zap.String("upstream_model", upstreamModel),

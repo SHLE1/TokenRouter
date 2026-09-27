@@ -20,27 +20,27 @@ const (
 	geminiExchangeOpenAI
 )
 
-func (s *Gemini) geminiExchangeOptions(c *attempt, ctx context.Context, account *gatewayprovider.ExecutionAccount, model string, mode geminiExchangeMode, protocol gemininative.OpenAICompatProtocol) gemininative.ExchangeOptions {
+func (s *Gemini) geminiExchangeOptions(c *attempt, ctx context.Context, provider *gatewayprovider.ExecutionProvider, model string, mode geminiExchangeMode, protocol gemininative.OpenAICompatProtocol) gemininative.ExchangeOptions {
 	options := gemininative.ExchangeOptions{
-		AccountID:   account.Record.ID,
-		AccountName: account.Record.Name,
-		Platform:    account.Record.Platform,
-		MaxRetries:  geminiMaxRetries,
-		ReadError:   s.readUpstreamErrorBody,
-		Sanitize:    logredact.SanitizeUpstreamQueries,
-		Message:     upstream.ExtractErrorMessage,
+		ProviderID:   provider.Record.ID,
+		ProviderName: provider.Record.Name,
+		Platform:     provider.Record.Platform,
+		MaxRetries:   geminiMaxRetries,
+		ReadError:    s.readUpstreamErrorBody,
+		Sanitize:     logredact.SanitizeUpstreamQueries,
+		Message:      upstream.ExtractErrorMessage,
 		CheckPolicy: func(ctx context.Context, resp *http.Response) (bool, *http.Response) {
-			return s.checkErrorPolicyInLoop(ctx, account, resp, model)
+			return s.checkErrorPolicyInLoop(ctx, provider, resp, model)
 		},
-		ShouldRetry: func(code int) bool { return s.shouldRetryGeminiUpstreamError(account, code) },
+		ShouldRetry: func(code int) bool { return s.shouldRetryGeminiUpstreamError(provider, code) },
 		OnStatus: func(ctx context.Context, status int, header http.Header, body []byte) {
-			s.observeHealth(ctx, account, status, header, body)
+			s.observeHealth(ctx, provider, status, header, body)
 		},
 		Observe: func(value gemininative.ExchangeNotice) {
 			c.Observe(ops.OpsUpstreamErrorEvent{
 				Platform:           value.Platform,
-				AccountID:          value.AccountID,
-				AccountName:        value.AccountName,
+				ProviderID:         value.ProviderID,
+				ProviderName:       value.ProviderName,
 				UpstreamStatusCode: value.UpstreamStatusCode,
 				UpstreamRequestID:  value.UpstreamRequestID,
 				Kind:               value.Kind,

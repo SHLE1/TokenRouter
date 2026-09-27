@@ -12,7 +12,7 @@ import (
 
 // 隔离旧表验证两轮迁移的回填、幂等以及无关配置保留。
 func TestOpenAIManualCapabilityMigrations(t *testing.T) {
-	tx := testTx(t)
+	tx := historicalTx(t, "282_")
 	ctx := context.Background()
 	_, err := tx.ExecContext(ctx, `CREATE SCHEMA manual_capability_test; SET LOCAL search_path TO manual_capability_test;
  CREATE TABLE groups(id BIGINT,platform TEXT,force_openai_fast BOOLEAN);

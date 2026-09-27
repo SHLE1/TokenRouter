@@ -9,18 +9,20 @@ import (
 
 // 记录各端口调用，确认提取后仍延迟读取全局模型且按原次序释放旧响应。
 type recoveryPorts struct {
-	calls        []string
-	accountModel string
+	calls         []string
+	providerModel string
 }
 
-func (p *recoveryPorts) AccountModel(model string) (string, bool) {
-	p.calls = append(p.calls, "account:"+model)
-	return p.accountModel, p.accountModel != ""
+func (p *recoveryPorts) ProviderModel(model string) (string, bool) {
+	p.calls = append(p.calls, "provider:"+model)
+	return p.providerModel, p.providerModel != ""
 }
+
 func (p *recoveryPorts) GlobalModel() string {
 	p.calls = append(p.calls, "global")
 	return "global-fallback"
 }
+
 func (p *recoveryPorts) ResolveGlobalModel(model string) string {
 	p.calls = append(p.calls, "resolve:"+model)
 	return model
@@ -28,20 +30,21 @@ func (p *recoveryPorts) ResolveGlobalModel(model string) string {
 func (p *recoveryPorts) ObserveRetry(_ []byte, _ string) { p.calls = append(p.calls, "observe") }
 func (p *recoveryPorts) CloseResponse()                  { p.calls = append(p.calls, "close") }
 func (p *recoveryPorts) SetModel(model string)           { p.calls = append(p.calls, "model:"+model) }
+
 func (p *recoveryPorts) LogRetry(from, to, code string) {
 	p.calls = append(p.calls, "log:"+from+":"+to+":"+code)
 }
 
 func TestRecoveryPortOrderAndSingleRetry(t *testing.T) {
 	for _, tc := range []struct {
-		name, accountModel, fallback string
-		reads                        []string
+		name, providerModel, fallback string
+		reads                         []string
 	}{
-		{name: "account", accountModel: "account-fallback", fallback: "account-fallback", reads: []string{"account:client"}},
-		{name: "global", fallback: "global-fallback", reads: []string{"account:client", "global", "resolve:global-fallback"}},
+		{name: "provider", providerModel: "provider-fallback", fallback: "provider-fallback", reads: []string{"provider:client"}},
+		{name: "global", fallback: "global-fallback", reads: []string{"provider:client", "global", "resolve:global-fallback"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			p := &recoveryPorts{accountModel: tc.accountModel}
+			p := &recoveryPorts{providerModel: tc.providerModel}
 			r := Recovery{
 				Models:        p,
 				ContextWindow: func(string, []byte) bool { return false },

@@ -17,7 +17,7 @@ export interface GroupSettingsDraft {
   is_exclusive: boolean
   scheduler_type: GroupSchedulerType
   advanced_scheduler_overrides: GroupAdvancedSchedulerOverrides
-  copy_accounts_from_group_ids: number[]
+  copy_providers_from_group_ids: number[]
   require_oauth_only: boolean
   require_privacy_set: boolean
   session_isolation_enabled: boolean
@@ -50,26 +50,26 @@ export interface GroupSettingsOption extends Record<string, unknown> {
 }
 
 export interface GroupSettingsOptions {
-  copyAccounts: GroupSettingsOption[]
+  copyProviders: GroupSettingsOption[]
   unavailableFallback: GroupSettingsOption[]
   invalidRequestFallback: GroupSettingsOption[]
   clientFallback: GroupSettingsOption[]
   probeModels: GroupSettingsOption[]
 }
 
-export interface GroupRoutingAccount {
+export interface GroupRoutingProvider {
   id: number
   name: string
 }
 
 export interface GroupModelRoutingRule {
   pattern: string
-  accounts: GroupRoutingAccount[]
+  providers: GroupRoutingProvider[]
 }
 
 // 搜索状态仍由页面按稳定规则标识管理，删除规则后可取消尚未完成的请求。
-export interface GroupAccountSearchState {
+export interface GroupProviderSearchState {
   keywords: Record<string, string>
-  results: Record<string, GroupRoutingAccount[]>
+  results: Record<string, GroupRoutingProvider[]>
   open: Record<string, boolean>
 }

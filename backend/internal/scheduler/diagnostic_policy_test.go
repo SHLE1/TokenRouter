@@ -20,7 +20,7 @@ func TestDiagnosticPolicySignalsOnlyReturnsContextualOrEnabledStrategies(t *test
 
 	effective.StickyWeightedEnabled = true
 	effective.SubscriptionPriorityEnabled = true
-	signals := diagnosticPolicySignals(group, AdvancedSchedulerScoreDiagnosticRequest{StickyAccountID: 99}, effective, diagnosticPolicyOutcome{
+	signals := diagnosticPolicySignals(group, AdvancedSchedulerScoreDiagnosticRequest{StickyProviderID: 99}, effective, diagnosticPolicyOutcome{
 		sessionStickyState:     "weighted",
 		subscriptionPoolActive: true,
 	})
@@ -34,15 +34,15 @@ func TestDiagnosticPolicySignalsOnlyReturnsContextualOrEnabledStrategies(t *test
 func TestDiagnosticWeightedPreviousResponseIsIgnoredOutsideOpenAI(t *testing.T) {
 	group := &DiagnosticGroup{ID: 602, Advanced: true}
 	outcome := diagnosticHardStickyPolicyOutcome(
-		[]*DiagnosticAccount{{ID: 99, Platform: capability.PlatformGemini}},
+		[]*DiagnosticProvider{{ID: 99, Platform: capability.PlatformGemini}},
 		group,
-		AdvancedSchedulerScoreDiagnosticRequest{PreviousResponseAccountID: 99, StickyAccountID: 99},
+		AdvancedSchedulerScoreDiagnosticRequest{PreviousResponseProviderID: 99, StickyProviderID: 99},
 		policy.EffectiveSettings{StickyWeightedEnabled: true},
 		nil,
 		policy.StickyEscapeConfig{},
 	)
 
-	require.Zero(t, outcome.forcedAccountID)
+	require.Zero(t, outcome.forcedProviderID)
 	require.Equal(t, "ignored", outcome.previousResponseState)
 	require.Equal(t, "weighted", outcome.sessionStickyState)
 }

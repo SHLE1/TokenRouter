@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account/transfer"
+	"github.com/TokenFlux/TokenRouter/internal/provider/transfer"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 
@@ -28,7 +28,6 @@ type proxyImportResponse struct {
 }
 
 func setupProxyDataRouter(t *testing.T) (*gin.Engine, *proxyAdminFixture) {
-
 	router := gin.New()
 	adminSvc := newProxyAdminFixture()
 
@@ -75,10 +74,10 @@ func TestProxyExportDataRespectsFilters(t *testing.T) {
 	var resp proxyDataResponse
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
 	require.Equal(t, 0, resp.Code)
-	require.Empty(t, resp.Data.Type)
-	require.Equal(t, 0, resp.Data.Version)
+	require.Equal(t, transfer.DataType, resp.Data.Type)
+	require.Equal(t, transfer.DataVersion, resp.Data.Version)
 	require.Len(t, resp.Data.Proxies, 1)
-	require.Len(t, resp.Data.Accounts, 0)
+	require.Len(t, resp.Data.Providers, 0)
 	require.Equal(t, "https", resp.Data.Proxies[0].Protocol)
 	require.Equal(t, 1, adminSvc.lastListProxies.calls)
 	require.Equal(t, "https", adminSvc.lastListProxies.protocol)
@@ -155,7 +154,7 @@ func TestProxyExportDataPassesSortParams(t *testing.T) {
 	require.Equal(t, "asc", adminSvc.lastListProxies.sortOrder)
 }
 
-func TestProxyExportDataSortByAccountCountUsesAccountCountListing(t *testing.T) {
+func TestProxyExportDataSortByProviderCountUsesProviderCountListing(t *testing.T) {
 	router, adminSvc := setupProxyDataRouter(t)
 
 	adminSvc.proxies = []egress.Proxy{
@@ -176,7 +175,7 @@ func TestProxyExportDataSortByAccountCountUsesAccountCountListing(t *testing.T) 
 			Status:   billing.StatusActive,
 		},
 	}
-	adminSvc.proxyCounts = []egress.ProxyWithAccountCount{
+	adminSvc.proxyCounts = []egress.ProxyWithProviderCount{
 		{
 			Proxy: egress.Proxy{
 				ID:       2,
@@ -186,7 +185,7 @@ func TestProxyExportDataSortByAccountCountUsesAccountCountListing(t *testing.T) 
 				Port:     8081,
 				Status:   billing.StatusActive,
 			},
-			AccountCount: 9,
+			ProviderCount: 9,
 		},
 		{
 			Proxy: egress.Proxy{
@@ -197,12 +196,12 @@ func TestProxyExportDataSortByAccountCountUsesAccountCountListing(t *testing.T) 
 				Port:     8080,
 				Status:   billing.StatusActive,
 			},
-			AccountCount: 1,
+			ProviderCount: 1,
 		},
 	}
 
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/proxies/data?sort_by=account_count&sort_order=desc", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/proxies/data?sort_by=provider_count&sort_order=desc", nil)
 	router.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code)
 
@@ -257,7 +256,7 @@ func TestProxyImportDataReusesAndTriggersLatencyProbe(t *testing.T) {
 					"status":    "active",
 				},
 			},
-			"accounts": []map[string]any{},
+			"providers": []map[string]any{},
 		},
 	}
 

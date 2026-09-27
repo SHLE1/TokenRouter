@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	protocolforward "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
@@ -34,25 +34,25 @@ const openAIInputTokensFallbackMinimum = 1
 func (s *OpenAIAuxiliary) ForwardCountTokensAsAnthropic(
 	ctx context.Context,
 	c *gin.Context,
-	account *gatewayprovider.ExecutionAccount,
+	provider *gatewayprovider.ExecutionProvider,
 	body []byte,
 	defaultMappedModel string,
 ) error {
-	if account == nil {
-		writeAnthropicCountTokensError(c, http.StatusServiceUnavailable, "api_error", "No available OpenAI accounts")
-		return fmt.Errorf("count_tokens: missing account")
+	if provider == nil {
+		writeAnthropicCountTokensError(c, http.StatusServiceUnavailable, "api_error", "No available OpenAI providers")
+		return fmt.Errorf("count_tokens: missing provider")
 	}
 
-	// 三家国产供应商的兼容层都没有可依赖的 count_tokens 端点；无论账号使用
-	// Chat、Anthropic 还是 Responses 上游协议，都只做本地估算且不改变账号状态。
-	if account.View().IsCNProvider() || account.View().IsGrok() {
+	// 三家国产供应商的兼容层都没有可依赖的 count_tokens 端点；无论提供商使用
+	// Chat、Anthropic 还是 Responses 上游协议，都只做本地估算且不改变提供商状态。
+	if provider.View().IsCNProvider() || provider.View().IsGrok() {
 		estimated, err := tokenestimate.Anthropic(body)
 		if err != nil {
 			writeAnthropicCountTokensError(c, http.StatusBadRequest, "invalid_request_error", "Failed to parse request body")
 			return fmt.Errorf("count_tokens: estimate cn provider input tokens: %w", err)
 		}
 		logging.L().Debug("openai count_tokens: cn provider local estimate",
-			zap.Int64("account_id", account.Record.ID),
+			zap.Int64("provider_id", provider.Record.ID),
 			zap.Int("estimated_input_tokens", estimated),
 		)
 		c.JSON(http.StatusOK, gin.H{
@@ -61,7 +61,7 @@ func (s *OpenAIAuxiliary) ForwardCountTokensAsAnthropic(
 		return nil
 	}
 
-	prepared, err := gatewayprovider.PrepareAnthropicInputTokens(body, account, defaultMappedModel)
+	prepared, err := gatewayprovider.PrepareAnthropicInputTokens(body, provider, defaultMappedModel)
 	if err != nil {
 		writeAnthropicCountTokensError(c, http.StatusBadRequest, "invalid_request_error", "Failed to parse request body")
 		return err
@@ -74,41 +74,41 @@ func (s *OpenAIAuxiliary) ForwardCountTokensAsAnthropic(
 	}
 
 	logging.L().Debug("openai count_tokens: model mapping applied",
-		zap.Int64("account_id", account.Record.ID),
+		zap.Int64("provider_id", provider.Record.ID),
 		zap.String("original_model", prepared.OriginalModel),
 		zap.String("normalized_model", prepared.NormalizedModel),
 		zap.String("billing_model", prepared.BillingModel),
 		zap.String("upstream_model", prepared.UpstreamModel),
 	)
 
-	token, _, err := s.Requests.Credentials.Resolve(ctx, gatewayprovider.ExecutionRecord(account))
+	token, _, err := s.Requests.Credentials.Resolve(ctx, gatewayprovider.ExecutionRecord(provider))
 	if err != nil {
 		writeAnthropicCountTokensError(c, http.StatusBadGateway, "upstream_error", "Failed to get access token")
 		return fmt.Errorf("get access token: %w", err)
 	}
 
-	upstreamReq, err := s.buildInputTokensUpstreamRequest(ctx, c, account, upstreamBody, token)
+	upstreamReq, err := s.buildInputTokensUpstreamRequest(ctx, c, provider, upstreamBody, token)
 	if err != nil {
 		writeAnthropicCountTokensError(c, http.StatusInternalServerError, "api_error", "Failed to build request")
 		return fmt.Errorf("build input_tokens request: %w", err)
 	}
 
 	proxyURL := ""
-	if account.Record.Proxy != nil {
-		proxyURL = account.Record.Proxy.URL()
+	if provider.Record.Proxy != nil {
+		proxyURL = provider.Record.Proxy.URL()
 	}
 	return openai.CountInputTokens(upstreamReq, openai.InputTokensOptions{
 		Enter: s.Enter,
 		Do: func(req *http.Request) (*http.Response, error) {
-			return s.Requests.Transport.Do(req, proxyURL, account.Record.ID, account.Record.Concurrency)
+			return s.Requests.Transport.Do(req, proxyURL, provider.Record.ID, provider.Record.Concurrency)
 		},
 		TransportError: func(err error) error {
 			safeErr := logredact.SanitizeUpstreamQueries(err.Error())
 			SetOpsUpstreamError(c, 0, safeErr, "")
 			AppendOpsUpstreamError(c, ops.OpsUpstreamErrorEvent{
-				Platform:           account.Record.Platform,
-				AccountID:          account.Record.ID,
-				AccountName:        account.Record.Name,
+				Platform:           provider.Record.Platform,
+				ProviderID:         provider.Record.ID,
+				ProviderName:       provider.Record.Name,
 				UpstreamStatusCode: 0,
 				Kind:               "request_error",
 				Message:            safeErr,
@@ -118,34 +118,34 @@ func (s *OpenAIAuxiliary) ForwardCountTokensAsAnthropic(
 		},
 		HTTPError: func(resp *http.Response, respBody []byte) error {
 			upstreamMsg := logredact.SanitizeUpstreamQueries(strings.TrimSpace(upstream.ExtractErrorMessage(respBody)))
-			if account.Record.Type == capability.AccountTypeOAuth && isOpenAIOAuthInputTokensUnsupported(resp.StatusCode, respBody) {
-				writeOpenAIOAuthInputTokensFallback(c, account, prepared, resp.StatusCode)
+			if provider.Record.Type == capability.ProviderTypeOAuth && isOpenAIOAuthInputTokensUnsupported(resp.StatusCode, respBody) {
+				writeOpenAIOAuthInputTokensFallback(c, provider, prepared, resp.StatusCode)
 				return nil
 			}
 			if isOpenAIInputTokensUnsupported(resp.StatusCode, respBody) {
 				writeAnthropicCountTokensError(c, http.StatusNotFound, "not_found_error", "Token counting is not supported by upstream")
 				return nil
 			}
-			var decision accountcore.UpstreamErrorDecision
-			if account.Record.Platform == capability.PlatformGrok {
-				decision = gatewayprovider.ApplyGrokExecutionHealth(ctx, s.Output.GrokHealth, account, resp.StatusCode, resp.Header, respBody, "", prepared.UpstreamModel)
+			var decision providercore.UpstreamErrorDecision
+			if provider.Record.Platform == capability.PlatformGrok {
+				decision = gatewayprovider.ApplyGrokExecutionHealth(ctx, s.Output.GrokHealth, provider, resp.StatusCode, resp.Header, respBody, "", prepared.UpstreamModel)
 			} else {
-				decision = gatewayprovider.ApplyOpenAIResponseHealth(ctx, s.Output.Health, account, resp.StatusCode, resp.Header, respBody, false, prepared.UpstreamModel)
+				decision = gatewayprovider.ApplyOpenAIResponseHealth(ctx, s.Output.Health, provider, resp.StatusCode, resp.Header, respBody, false, prepared.UpstreamModel)
 			}
 			if decision.ShouldReturnGenericError() {
 				writeAnthropicCountTokensError(c, http.StatusInternalServerError, "upstream_error", "Upstream gateway error")
 				return fmt.Errorf("input_tokens upstream error: %d (not in custom error codes)", resp.StatusCode)
 			}
 			defaultFailover := gatewayprovider.ShouldFailoverOpenAIResponse(resp.StatusCode, upstreamMsg, respBody)
-			if account.Record.Platform == capability.PlatformGrok {
+			if provider.Record.Platform == capability.PlatformGrok {
 				defaultFailover = gatewayprovider.ShouldFailoverGrokResponse(resp.StatusCode, respBody)
 			}
-			if decision.ShouldFailover(gatewayprovider.ExecutionErrorPolicy(account), resp.StatusCode, defaultFailover) {
+			if decision.ShouldFailover(gatewayprovider.ExecutionErrorPolicy(provider), resp.StatusCode, defaultFailover) {
 				return &protocolforward.UpstreamFailoverError{
-					StatusCode:             resp.StatusCode,
-					ResponseBody:           respBody,
-					ResponseHeaders:        resp.Header.Clone(),
-					RetryableOnSameAccount: decision.RetryableOnSameAccount(gatewayprovider.ExecutionErrorPolicy(account), resp.StatusCode),
+					StatusCode:              resp.StatusCode,
+					ResponseBody:            respBody,
+					ResponseHeaders:         resp.Header.Clone(),
+					RetryableOnSameProvider: decision.RetryableOnSameProvider(gatewayprovider.ExecutionErrorPolicy(provider), resp.StatusCode),
 				}
 			}
 
@@ -159,9 +159,9 @@ func (s *OpenAIAuxiliary) ForwardCountTokensAsAnthropic(
 			}
 			SetOpsUpstreamError(c, resp.StatusCode, upstreamMsg, upstreamDetail)
 			AppendOpsUpstreamError(c, ops.OpsUpstreamErrorEvent{
-				Platform:           account.Record.Platform,
-				AccountID:          account.Record.ID,
-				AccountName:        account.Record.Name,
+				Platform:           provider.Record.Platform,
+				ProviderID:         provider.Record.ID,
+				ProviderName:       provider.Record.Name,
 				UpstreamStatusCode: resp.StatusCode,
 				UpstreamRequestID:  resp.Header.Get("x-request-id"),
 				Kind:               "request_error",
@@ -189,13 +189,13 @@ func (s *OpenAIAuxiliary) ForwardCountTokensAsAnthropic(
 func (s *OpenAIAuxiliary) buildInputTokensUpstreamRequest(
 	ctx context.Context,
 	c *gin.Context,
-	account *gatewayprovider.ExecutionAccount,
+	provider *gatewayprovider.ExecutionProvider,
 	body []byte,
 	token string,
 ) (*http.Request, error) {
 	targetURL := openaiPlatformAPIInputTokensURL
-	if account.Record.Type == capability.AccountTypeAPIKey {
-		if baseURL := gatewayprovider.ExecutionProtocolTarget(account).GetOpenAIBaseURL(); strings.TrimSpace(baseURL) != "" {
+	if provider.Record.Type == capability.ProviderTypeAPIKey {
+		if baseURL := gatewayprovider.ExecutionProtocolTarget(provider).GetOpenAIBaseURL(); strings.TrimSpace(baseURL) != "" {
 			validatedURL, err := s.Requests.ValidateBaseURL(baseURL)
 			if err != nil {
 				return nil, err
@@ -204,14 +204,14 @@ func (s *OpenAIAuxiliary) buildInputTokensUpstreamRequest(
 		}
 	}
 
-	options := s.Requests.ResponseOptions(ctx, c, account, token, targetURL, false)
+	options := s.Requests.ResponseOptions(ctx, c, provider, token, targetURL, false)
 	options.ForwardHeaders = func() http.Header {
 		if c == nil || c.Request == nil {
 			return nil
 		}
 		return c.Request.Header
 	}
-	return openai.BuildInputTokensRequest(ctx, body, options, account.View().GetOpenAIUserAgent)
+	return openai.BuildInputTokensRequest(ctx, body, options, provider.View().GetOpenAIUserAgent)
 }
 
 func writeAnthropicCountTokensError(c *gin.Context, status int, errType, message string) {
@@ -232,21 +232,21 @@ func isOpenAIInputTokensUnsupported(statusCode int, body []byte) bool {
 	return strings.Contains(msg, "input_tokens") && strings.Contains(msg, "not found")
 }
 
-func writeOpenAIOAuthInputTokensFallback(c *gin.Context, account *gatewayprovider.ExecutionAccount, prepared *gatewayprovider.InputTokensPrepared, statusCode int) {
+func writeOpenAIOAuthInputTokensFallback(c *gin.Context, provider *gatewayprovider.ExecutionProvider, prepared *gatewayprovider.InputTokensPrepared, statusCode int) {
 	estimated := openAIInputTokensFallbackMinimum
 	if got, err := tokenestimate.Responses(prepared.Request); err == nil {
 		if got > 0 {
 			estimated = got
 		}
 		logging.L().Info("openai count_tokens: oauth fallback to local tiktoken estimate",
-			zap.Int64("account_id", account.Record.ID),
+			zap.Int64("provider_id", provider.Record.ID),
 			zap.Int("upstream_status", statusCode),
 			zap.Int("estimated_input_tokens", estimated),
 			zap.String("upstream_model", prepared.UpstreamModel),
 		)
 	} else {
 		logging.L().Warn("openai count_tokens: oauth local tiktoken fallback failed, using minimum estimate",
-			zap.Int64("account_id", account.Record.ID),
+			zap.Int64("provider_id", provider.Record.ID),
 			zap.Int("upstream_status", statusCode),
 			zap.Int("estimated_input_tokens", estimated),
 			zap.String("upstream_model", prepared.UpstreamModel),
@@ -282,7 +282,7 @@ func isOpenAIOAuthInputTokensUnsupported(statusCode int, body []byte) bool {
 	}
 
 	// 上游代理可能在请求到达 API 前拦截 OAuth 平台端点，并返回没有结构化错误的 HTML 403 页面。
-	// 该响应属于端点不可用，count_tokens 应回退本地估算且不能影响账号健康状态。
+	// 该响应属于端点不可用，count_tokens 应回退本地估算且不能影响提供商健康状态。
 	if statusCode == http.StatusForbidden && upstream.IsHTMLResponse(body) {
 		return true
 	}

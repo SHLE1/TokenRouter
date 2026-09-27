@@ -13,34 +13,34 @@ type schedulerSnapshotContextCacheStub struct {
 	SnapshotCache
 }
 
-func (s schedulerSnapshotContextCacheStub) GetSnapshot(ctx context.Context, bucket SchedulerBucket) ([]SnapshotAccount, bool, error) {
+func (s schedulerSnapshotContextCacheStub) GetSnapshot(ctx context.Context, bucket SchedulerBucket) ([]SnapshotProvider, bool, error) {
 	return nil, false, ctx.Err()
 }
 
 type schedulerSnapshotFallbackRepoStub struct {
-	SnapshotAccountSource
+	SnapshotProviderSource
 	calls int
 }
 
-func (r *schedulerSnapshotFallbackRepoStub) ListSchedulableByPlatform(ctx context.Context, platform string) ([]SnapshotAccount, error) {
+func (r *schedulerSnapshotFallbackRepoStub) ListSchedulableByPlatform(ctx context.Context, platform string) ([]SnapshotProvider, error) {
 	r.calls++
 	return nil, nil
 }
 
-func (r *schedulerSnapshotFallbackRepoStub) ListSchedulableUngroupedByPlatform(ctx context.Context, platform string) ([]SnapshotAccount, error) {
+func (r *schedulerSnapshotFallbackRepoStub) ListSchedulableUngroupedByPlatform(ctx context.Context, platform string) ([]SnapshotProvider, error) {
 	r.calls++
 	return nil, nil
 }
 
-func TestSchedulerSnapshotService_ListSchedulableAccountsStopsWhenCacheContextCanceled(t *testing.T) {
+func TestSchedulerSnapshotService_ListSchedulableProvidersStopsWhenCacheContextCanceled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	repo := &schedulerSnapshotFallbackRepoStub{}
 	svc := NewSnapshotService(schedulerSnapshotContextCacheStub{}, nil, repo, nil, nil)
 
-	accounts, useMixed, err := svc.ListSchedulableAccounts(ctx, nil, capability.PlatformOpenAI, false)
+	providers, useMixed, err := svc.ListSchedulableProviders(ctx, nil, capability.PlatformOpenAI, false)
 	require.ErrorIs(t, err, context.Canceled)
-	require.Nil(t, accounts)
+	require.Nil(t, providers)
 	require.False(t, useMixed)
 	require.Equal(t, 0, repo.calls)
 }

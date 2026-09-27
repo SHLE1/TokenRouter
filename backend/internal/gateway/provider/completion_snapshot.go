@@ -6,11 +6,11 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/completion"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	"github.com/TokenFlux/TokenRouter/internal/identity"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
 func ProjectCompletionKey(v *apikey.APIKey) *completion.KeySnapshot {
@@ -57,7 +57,7 @@ func ProjectCompletionPayer(v *identity.User) *completion.PayerSnapshot {
 	return &completion.PayerSnapshot{ID: v.ID, Balance: v.Balance, Notification: completionUserSummary(v)}
 }
 
-func ProjectMessagesCompletionResult(v *forwardcore.MessagesResult, a *account.Record) *completion.Result {
+func ProjectMessagesCompletionResult(v *forwardcore.MessagesResult, a *provider.Record) *completion.Result {
 	if v == nil {
 		return nil
 	}
@@ -99,7 +99,7 @@ func ProjectMessagesCompletionResult(v *forwardcore.MessagesResult, a *account.R
 	return completion.SnapshotResult(out)
 }
 
-func ProjectOpenAICompletionResult(v *forwardcore.OpenAIResult, a *account.Record) *completion.Result {
+func ProjectOpenAICompletionResult(v *forwardcore.OpenAIResult, a *provider.Record) *completion.Result {
 	if v == nil {
 		return nil
 	}

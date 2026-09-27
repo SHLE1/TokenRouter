@@ -17,7 +17,7 @@ type Mark struct {
 	Code, Message, Body                           string
 	UpstreamStatus, UpstreamInTok, UpstreamOutTok int
 }
-type Account struct {
+type Provider struct {
 	ID             int64
 	Name, Platform string
 }
@@ -35,10 +35,13 @@ func cloneID(in *int64) *int64 {
 type BlockWriter interface {
 	MarkCyberSessionBlocked(context.Context, string, []string)
 }
-type Tasks interface{ Go(string, func()) bool }
-type OpsWriter interface {
-	Enqueue(*ops.OpsInsertErrorLogInput)
-}
+type (
+	Tasks     interface{ Go(string, func()) bool }
+	OpsWriter interface {
+		Enqueue(*ops.OpsInsertErrorLogInput)
+	}
+)
+
 type Runtime struct {
 	Recorder *completion.Recorder
 	Blocks   BlockWriter
@@ -102,6 +105,7 @@ func BuildBlockPlan(explicit string, transcript []string, scope string) BlockPla
 	}
 	return p
 }
+
 func (r Runtime) MarkBeforeScope(plan BlockPlan) {
 	if len(plan.Keys) == 0 || r.Blocks == nil {
 		return
@@ -124,7 +128,7 @@ type OpsMeta struct {
 	APIKeyPrefix     string
 	UserID           int64
 	APIKeyID         int64
-	AccountID        int64
+	ProviderID       int64
 	GroupID          *int64
 	ClientIP         string
 	CreatedAt        time.Time
@@ -166,8 +170,8 @@ func BuildPolicyOpsEntry(meta OpsMeta, mark *Mark) *ops.OpsInsertErrorLogInput {
 	if meta.APIKeyID > 0 {
 		entry.APIKeyID = &meta.APIKeyID
 	}
-	if meta.AccountID > 0 {
-		entry.AccountID = &meta.AccountID
+	if meta.ProviderID > 0 {
+		entry.ProviderID = &meta.ProviderID
 	}
 	if meta.GroupID != nil {
 		entry.GroupID = cloneID(meta.GroupID)
@@ -177,6 +181,7 @@ func BuildPolicyOpsEntry(meta OpsMeta, mark *Mark) *ops.OpsInsertErrorLogInput {
 	}
 	return entry
 }
+
 func BuildSessionBlockedOpsEntry(meta OpsMeta) *ops.OpsInsertErrorLogInput {
 	rt := int16(usage.RequestTypeCyberBlocked)
 	entry := &ops.OpsInsertErrorLogInput{

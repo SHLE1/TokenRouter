@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
@@ -19,30 +19,30 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type openAIStream403AccountRepo struct {
-	gatewayprovider.ExecutionAccountStore
+type openAIStream403ProviderRepo struct {
+	gatewayprovider.ExecutionProviderStore
 
 	setErrorCalls int
 }
 
-func (r *openAIStream403AccountRepo) SetError(context.Context, int64, string) error {
+func (r *openAIStream403ProviderRepo) SetError(context.Context, int64, string) error {
 	r.setErrorCalls++
 	return nil
 }
 
-type openAIAuthPolicyAccountRepo struct {
-	gatewayprovider.ExecutionAccountStore
+type openAIAuthPolicyProviderRepo struct {
+	gatewayprovider.ExecutionProviderStore
 
 	tempCalls     int
 	setErrorCalls int
 }
 
-func (r *openAIAuthPolicyAccountRepo) SetTempUnschedulable(context.Context, int64, time.Time, string) error {
+func (r *openAIAuthPolicyProviderRepo) SetTempUnschedulable(context.Context, int64, time.Time, string) error {
 	r.tempCalls++
 	return nil
 }
 
-func (r *openAIAuthPolicyAccountRepo) SetError(context.Context, int64, string) error {
+func (r *openAIAuthPolicyProviderRepo) SetError(context.Context, int64, string) error {
 	r.setErrorCalls++
 	return nil
 }
@@ -64,83 +64,85 @@ func (*openAIAuthPolicy403Counter) ResetOpenAI403Count(context.Context, int64) e
 	return nil
 }
 
-func TestOpenAIHTTPAccessStateBadRequestDoesNotDisableAccount(t *testing.T) {
-	repo := &openAIStream403AccountRepo{}
-	svc := newWSFixture(wsFixtureInputs{health: newUpstreamHealthForTest(repo, nil, nil, accountcore.HealthOptions{}, nil)})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 925, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth, Status: billing.StatusActive, Schedulable: true}}
+func TestOpenAIHTTPAccessStateBadRequestDoesNotDisableProvider(t *testing.T) {
+	repo := &openAIStream403ProviderRepo{}
+	svc := newWSFixture(wsFixtureInputs{health: newUpstreamHealthForTest(repo, nil, nil, providercore.HealthOptions{}, nil)})
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 925, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth, Status: billing.StatusActive, Schedulable: true}}
 	body := []byte(`{"error":{"code":"unknown_parameter","message":"Unknown parameter: account disabled"}}`)
 
-	disabled := gatewayprovider.ApplyOpenAIResponseHealth(context.Background(), svc.Output.Health, account, http.StatusBadRequest, nil, body, false).StopScheduling
+	disabled := gatewayprovider.ApplyOpenAIResponseHealth(context.Background(), svc.Output.Health, provider, http.StatusBadRequest, nil, body, false).StopScheduling
 
 	require.False(t, disabled)
 	require.Zero(t, repo.setErrorCalls)
-	require.False(t, wsFixtureAccountBlocked(svc, account))
+	require.False(t, wsFixtureProviderBlocked(svc, provider))
 }
 
 func TestOpenAIStreamEchoedAccessStateMessageDoesNotDisableOrFailover(t *testing.T) {
-	repo := &openAIStream403AccountRepo{}
-	svc := newWSFixture(wsFixtureInputs{health: newUpstreamHealthForTest(repo, nil, nil, accountcore.HealthOptions{}, nil)})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 926, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth, Status: billing.StatusActive, Schedulable: true}}
+	repo := &openAIStream403ProviderRepo{}
+	svc := newWSFixture(wsFixtureInputs{health: newUpstreamHealthForTest(repo, nil, nil, providercore.HealthOptions{}, nil)})
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 926, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth, Status: billing.StatusActive, Schedulable: true}}
 	payload := []byte(`{"type":"response.failed","response":{"error":{"type":"invalid_request_error","code":"unknown_parameter","message":"Unknown parameter: account disabled"}}}`)
 	message := openai.ExtractOpenAISSEErrorMessage(payload)
 
 	require.False(t, gatewayprovider.IsOpenAIUpstreamAccessStateError(message, payload))
 	require.False(t, openai.OpenAIStreamFailedEventShouldFailover(payload, message))
-	status, disabled := svc.Output.TerminalAccountEffects(nil, account, payload, message, nil)
+	status, disabled := svc.Output.TerminalProviderEffects(nil, provider, payload, message, nil)
 	require.Equal(t, http.StatusBadGateway, status)
 	require.False(t, disabled)
 	require.Zero(t, repo.setErrorCalls)
-	require.False(t, wsFixtureAccountBlocked(svc, account))
+	require.False(t, wsFixtureProviderBlocked(svc, provider))
 }
 
 func TestOpenAIHTTPAccessStateTrustsStructuredCode(t *testing.T) {
-	repo := &openAIStream403AccountRepo{}
-	svc := newWSFixture(wsFixtureInputs{health: newUpstreamHealthForTest(repo, nil, nil, accountcore.HealthOptions{}, nil)})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 930, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth, Status: billing.StatusActive, Schedulable: true}}
+	repo := &openAIStream403ProviderRepo{}
+	svc := newWSFixture(wsFixtureInputs{health: newUpstreamHealthForTest(repo, nil, nil, providercore.HealthOptions{}, nil)})
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 930, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth, Status: billing.StatusActive, Schedulable: true}}
 	body := []byte(`{"error":{"code":"organization_deactivated","message":"request rejected"}}`)
 
 	require.True(t, gatewayprovider.IsOpenAIHTTPUpstreamAccessStateError(http.StatusBadRequest, "", body))
 	require.True(t, gatewayprovider.ShouldFailoverOpenAIResponse(http.StatusBadRequest, "", body))
-	require.True(t, gatewayprovider.ApplyOpenAIResponseHealth(context.Background(), svc.Output.Health, account, http.StatusBadRequest, nil, body, false).StopScheduling)
+	require.True(t, gatewayprovider.ApplyOpenAIResponseHealth(context.Background(), svc.Output.Health, provider, http.StatusBadRequest, nil, body, false).StopScheduling)
 	require.Equal(t, 1, repo.setErrorCalls)
-	require.True(t, wsFixtureAccountBlocked(svc, account))
+	require.True(t, wsFixtureProviderBlocked(svc, provider))
 }
 
 func TestOpenAIHTTPAuthMessagesUseExistingStatusPolicies(t *testing.T) {
 	t.Run("oauth 401 remains recoverable", func(t *testing.T) {
-		repo := &openAIAuthPolicyAccountRepo{}
-		rateLimits := newUpstreamHealthForTest(repo, &wsFixtureOptions{}, nil, accountcore.HealthOptions{}, nil)
+		repo := &openAIAuthPolicyProviderRepo{}
+		rateLimits := newUpstreamHealthForTest(repo, &wsFixtureOptions{}, nil, providercore.HealthOptions{}, nil)
 
 		svc := newWSFixture(wsFixtureInputs{health: rateLimits})
-		account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 931, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth, Status: billing.StatusActive, Schedulable: true,
-			Credentials: map[string]any{"refresh_token": "refreshable"}}}
-		body := []byte(`{"error":{"message":"account is disabled"}}`)
+		provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 931, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth, Status: billing.StatusActive, Schedulable: true,
+			Credentials: map[string]any{"refresh_token": "refreshable"},
+		}}
+		body := []byte(`{"error":{"message":"provider is disabled"}}`)
 
 		require.False(t, gatewayprovider.IsOpenAIHTTPUpstreamAccessStateError(http.StatusUnauthorized, "", body))
-		require.True(t, gatewayprovider.ApplyOpenAIResponseHealth(context.Background(), svc.Output.Health, account, http.StatusUnauthorized, nil, body, false).StopScheduling)
+		require.True(t, gatewayprovider.ApplyOpenAIResponseHealth(context.Background(), svc.Output.Health, provider, http.StatusUnauthorized, nil, body, false).StopScheduling)
 		require.Zero(t, repo.setErrorCalls)
 		require.Equal(t, 1, repo.tempCalls)
 	})
 
 	t.Run("403 uses counter cooldown", func(t *testing.T) {
-		repo := &openAIAuthPolicyAccountRepo{}
+		repo := &openAIAuthPolicyProviderRepo{}
 		counter := &openAIAuthPolicy403Counter{counts: []int64{1}}
 		var svc *wsExecutionFixture
 
-		rateLimits := newUpstreamHealthForTest(repo, &wsFixtureOptions{}, nil, accountcore.HealthOptions{ForbiddenCounter: counter, Block: func(v *accountcore.Record, until time.Time, reason string) {
-			wsFixtureBlockAccount(svc, gatewayprovider.NewExecutionAccount(v), until, reason)
+		rateLimits := newUpstreamHealthForTest(repo, &wsFixtureOptions{}, nil, providercore.HealthOptions{ForbiddenCounter: counter, Block: func(v *providercore.Record, until time.Time, reason string) {
+			wsFixtureBlockProvider(svc, gatewayprovider.NewExecutionProvider(v), until, reason)
 		}}, nil)
 
 		svc = newWSFixture(wsFixtureInputs{health: rateLimits})
-		rateLimits.Limits.RetryOpenAI = func(v *accountcore.Record, h http.Header, body []byte) bool {
-			return wsFixtureRetry429(svc, gatewayprovider.NewExecutionAccount(v), h, body)
+		rateLimits.Limits.RetryOpenAI = func(v *providercore.Record, h http.Header, body []byte) bool {
+			return wsFixtureRetry429(svc, gatewayprovider.NewExecutionProvider(v), h, body)
 		}
 
-		account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 932, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth, Status: billing.StatusActive, Schedulable: true}}
+		provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 932, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth, Status: billing.StatusActive, Schedulable: true}}
 		body := []byte(`{"error":{"message":"workspace has been suspended"}}`)
 
 		require.False(t, gatewayprovider.IsOpenAIHTTPUpstreamAccessStateError(http.StatusForbidden, "", body))
-		require.True(t, gatewayprovider.ApplyOpenAIResponseHealth(context.Background(), svc.Output.Health, account, http.StatusForbidden, nil, body, false).StopScheduling)
+		require.True(t, gatewayprovider.ApplyOpenAIResponseHealth(context.Background(), svc.Output.Health, provider, http.StatusForbidden, nil, body, false).StopScheduling)
 		require.Zero(t, repo.setErrorCalls)
 		require.Equal(t, 1, repo.tempCalls)
 	})
@@ -184,7 +186,7 @@ func TestOpenAIStreamBareErrorUsesSemanticFailover(t *testing.T) {
 	require.True(t, openai.OpenAIStreamErrorEventShouldFailover(payload, "slow down"))
 }
 
-func TestOpenAIStream403FailoverRequiresStructuredAccountCredentialSignal(t *testing.T) {
+func TestOpenAIStream403FailoverRequiresStructuredProviderCredentialSignal(t *testing.T) {
 	tests := []struct {
 		name    string
 		payload string
@@ -226,87 +228,86 @@ func TestOpenAIStream403FailoverRequiresStructuredAccountCredentialSignal(t *tes
 	}
 }
 
-func TestOpenAIStream403PostOutputAccountSideEffectsIgnoreRequestPermissionErrors(t *testing.T) {
-	repo := &openAIStream403AccountRepo{}
-	rateLimits := newUpstreamHealthForTest(repo, nil, nil, accountcore.HealthOptions{}, nil)
+func TestOpenAIStream403PostOutputProviderSideEffectsIgnoreRequestPermissionErrors(t *testing.T) {
+	repo := &openAIStream403ProviderRepo{}
+	rateLimits := newUpstreamHealthForTest(repo, nil, nil, providercore.HealthOptions{}, nil)
 
 	svc := newWSFixture(wsFixtureInputs{health: rateLimits})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 918, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 918, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}}
 	payload := []byte(`{"type":"error","error":{"type":"permission_error","code":"forbidden","status_code":403,"message":"access denied for this request"}}`)
 
-	status, disabled := svc.Output.TerminalAccountEffects(nil, account, payload, "access denied for this request", nil)
+	status, disabled := svc.Output.TerminalProviderEffects(nil, provider, payload, "access denied for this request", nil)
 
 	require.Equal(t, http.StatusForbidden, status)
 	require.False(t, disabled)
 	require.Zero(t, repo.setErrorCalls)
-	require.False(t, wsFixtureAccountBlocked(svc, account))
+	require.False(t, wsFixtureProviderBlocked(svc, provider))
 }
 
-func TestOpenAIStream403ExplicitCredentialAuthAppliesAccountSideEffects(t *testing.T) {
-	repo := &openAIStream403AccountRepo{}
-	rateLimits := newUpstreamHealthForTest(repo, nil, nil, accountcore.HealthOptions{}, nil)
+func TestOpenAIStream403ExplicitCredentialAuthAppliesProviderSideEffects(t *testing.T) {
+	repo := &openAIStream403ProviderRepo{}
+	rateLimits := newUpstreamHealthForTest(repo, nil, nil, providercore.HealthOptions{}, nil)
 
 	svc := newWSFixture(wsFixtureInputs{health: rateLimits})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 917, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 917, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}}
 	payload := []byte(`{"type":"error","error":{"type":"permission_error","code":"invalid_api_key","status_code":403,"message":"credential rejected"}}`)
 
-	status, disabled := svc.Output.TerminalAccountEffects(nil, account, payload, "credential rejected", nil)
+	status, disabled := svc.Output.TerminalProviderEffects(nil, provider, payload, "credential rejected", nil)
 
 	require.Equal(t, http.StatusForbidden, status)
 	require.True(t, disabled)
 	require.Equal(t, 1, repo.setErrorCalls)
-	require.True(t, wsFixtureAccountBlocked(svc, account))
+	require.True(t, wsFixtureProviderBlocked(svc, provider))
 }
 
-func TestOpenAIWSStandaloneFailedStructured403AppliesAccountSideEffectsOnce(t *testing.T) {
-	repo := &openAIStream403AccountRepo{}
-	svc := newWSFixture(wsFixtureInputs{health: newUpstreamHealthForTest(repo, nil, nil, accountcore.HealthOptions{}, nil)})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 923, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth}}
+func TestOpenAIWSStandaloneFailedStructured403AppliesProviderSideEffectsOnce(t *testing.T) {
+	repo := &openAIStream403ProviderRepo{}
+	svc := newWSFixture(wsFixtureInputs{health: newUpstreamHealthForTest(repo, nil, nil, providercore.HealthOptions{}, nil)})
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 923, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}}
 	failed := []byte(`{"type":"response.failed","response":{"error":{"type":"permission_error","code":"invalid_api_key","status_code":403,"message":"credential rejected"}}}`)
 
-	require.True(t, svc.handleOpenAIWSFailureAccountSideEffects(context.Background(), account, "gpt-5", nil, failed))
+	require.True(t, svc.handleOpenAIWSFailureProviderSideEffects(context.Background(), provider, "gpt-5", nil, failed))
 	require.Equal(t, 1, repo.setErrorCalls)
-	require.True(t, wsFixtureAccountBlocked(svc, account))
+	require.True(t, wsFixtureProviderBlocked(svc, provider))
 }
 
 func TestOpenAIWSPairedStructured403SideEffectsCanBeDeduplicated(t *testing.T) {
-	repo := &openAIStream403AccountRepo{}
-	svc := newWSFixture(wsFixtureInputs{health: newUpstreamHealthForTest(repo, nil, nil, accountcore.HealthOptions{}, nil)})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 924, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth}}
+	repo := &openAIStream403ProviderRepo{}
+	svc := newWSFixture(wsFixtureInputs{health: newUpstreamHealthForTest(repo, nil, nil, providercore.HealthOptions{}, nil)})
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 924, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}}
 	errorEvent := []byte(`{"type":"error","error":{"code":"workspace_suspended","status_code":403,"message":"workspace is suspended"}}`)
 	failedEvent := []byte(`{"type":"response.failed","response":{"error":{"code":"workspace_suspended","status_code":403,"message":"workspace is suspended"}}}`)
 
-	applied := svc.handleOpenAIWSFailureAccountSideEffects(context.Background(), account, "gpt-5", nil, errorEvent)
+	applied := svc.handleOpenAIWSFailureProviderSideEffects(context.Background(), provider, "gpt-5", nil, errorEvent)
 	if !applied {
-		applied = svc.handleOpenAIWSFailureAccountSideEffects(context.Background(), account, "gpt-5", nil, failedEvent)
+		applied = svc.handleOpenAIWSFailureProviderSideEffects(context.Background(), provider, "gpt-5", nil, failedEvent)
 	}
 
 	require.True(t, applied)
 	require.Equal(t, 1, repo.setErrorCalls)
 }
 
-func TestOpenAIStreamAccessStateAppliesAccountHealthBeforeFailover(t *testing.T) {
+func TestOpenAIStreamAccessStateAppliesProviderHealthBeforeFailover(t *testing.T) {
 	svc := newWSFixture(wsFixtureInputs{})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 919, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeSetupToken}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 919, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeSetupToken}}
 	payload := []byte(`{"type":"response.failed","response":{"error":{"code":"workspace_suspended","message":"workspace is suspended"}}}`)
 
-	status, disabled := svc.Output.TerminalAccountEffects(nil, account, payload, "workspace is suspended", nil)
+	status, disabled := svc.Output.TerminalProviderEffects(nil, provider, payload, "workspace is suspended", nil)
 
 	require.Equal(t, http.StatusForbidden, status)
 	require.True(t, disabled)
-	require.True(t, wsFixtureAccountBlocked(svc, account))
+	require.True(t, wsFixtureProviderBlocked(svc, provider))
 }
 
-func TestOpenAIStreamPairedFailureAppliesAccountSideEffectsOnce(t *testing.T) {
+func TestOpenAIStreamPairedFailureAppliesProviderSideEffectsOnce(t *testing.T) {
 	const upstream = "data: {\"type\":\"response.output_text.delta\",\"delta\":\"partial\"}\n\n" +
 		"data: {\"type\":\"error\",\"error\":{\"status_code\":403,\"code\":\"workspace_suspended\",\"message\":\"workspace is suspended\"}}\n\n" +
 		"data: {\"type\":\"response.failed\",\"response\":{\"id\":\"resp_failed\",\"error\":{\"status_code\":403,\"code\":\"workspace_suspended\",\"message\":\"workspace is suspended\"}}}\n\n"
 
 	t.Run("native", func(t *testing.T) {
-
-		repo := &openAIStream403AccountRepo{}
-		svc := newWSFixture(wsFixtureInputs{options: &wsFixtureOptions{}, corrector: openai.NewCodexToolCorrector(), health: newUpstreamHealthForTest(repo, nil, nil, accountcore.HealthOptions{}, nil)})
-		account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 921, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth}}
+		repo := &openAIStream403ProviderRepo{}
+		svc := newWSFixture(wsFixtureInputs{options: &wsFixtureOptions{}, corrector: openai.NewCodexToolCorrector(), health: newUpstreamHealthForTest(repo, nil, nil, providercore.HealthOptions{}, nil)})
+		provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 921, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}}
 		recorder := newOpenAIResponseFlushRecorder()
 		c, _ := gin.CreateTestContext(recorder)
 		c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
@@ -316,7 +317,7 @@ func TestOpenAIStreamPairedFailureAppliesAccountSideEffectsOnce(t *testing.T) {
 			Body:       io.NopCloser(strings.NewReader(upstream)),
 		}
 
-		result, err := svc.Output.Stream(context.Background(), resp, c, account, time.Now(), "gpt-5", "gpt-5", "")
+		result, err := svc.Output.Stream(context.Background(), resp, c, provider, time.Now(), "gpt-5", "gpt-5", "")
 
 		require.Error(t, err)
 		require.NotNil(t, result)
@@ -324,10 +325,9 @@ func TestOpenAIStreamPairedFailureAppliesAccountSideEffectsOnce(t *testing.T) {
 	})
 
 	t.Run("passthrough", func(t *testing.T) {
-
-		repo := &openAIStream403AccountRepo{}
-		svc := newWSFixture(wsFixtureInputs{options: &wsFixtureOptions{}, health: newUpstreamHealthForTest(repo, nil, nil, accountcore.HealthOptions{}, nil)})
-		account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 922, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth}}
+		repo := &openAIStream403ProviderRepo{}
+		svc := newWSFixture(wsFixtureInputs{options: &wsFixtureOptions{}, health: newUpstreamHealthForTest(repo, nil, nil, providercore.HealthOptions{}, nil)})
+		provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 922, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}}
 		recorder := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(recorder)
 		c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
@@ -344,7 +344,7 @@ func TestOpenAIStreamPairedFailureAppliesAccountSideEffectsOnce(t *testing.T) {
 		}
 
 		result, err := svc.Output.PassthroughStream(
-			context.Background(), resp, c, account, time.Now(), "gpt-5", "gpt-5",
+			context.Background(), resp, c, provider, time.Now(), "gpt-5", "gpt-5",
 		)
 
 		require.Error(t, err)
@@ -354,19 +354,19 @@ func TestOpenAIStreamPairedFailureAppliesAccountSideEffectsOnce(t *testing.T) {
 }
 
 func TestOpenAIStreamOAuthLike429GetsDeadlineWithoutImmediateRuntimeBlock(t *testing.T) {
-	for _, accountType := range []string{capability.AccountTypeOAuth, capability.AccountTypeSetupToken} {
-		t.Run(accountType, func(t *testing.T) {
+	for _, providerType := range []string{capability.ProviderTypeOAuth, capability.ProviderTypeSetupToken} {
+		t.Run(providerType, func(t *testing.T) {
 			svc := newWSFixture(wsFixtureInputs{})
-			account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 920, Platform: capability.PlatformOpenAI, Type: accountType}}
+			provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 920, Platform: capability.PlatformOpenAI, Type: providerType}}
 			payload := []byte(`{"type":"error","error":{"type":"rate_limit_error","code":"rate_limit_exceeded","message":"slow down"}}`)
-			status, disabled := svc.Output.TerminalAccountEffects(nil, account, payload, "slow down", nil)
-			err := (gatewayprovider.OpenAIFailoverPolicy{Health: svc.Output.Health}).NewAccountFailure(account, status, nil, payload, "slow down", disabled, false)
+			status, disabled := svc.Output.TerminalProviderEffects(nil, provider, payload, "slow down", nil)
+			err := (gatewayprovider.OpenAIFailoverPolicy{Health: svc.Output.Health}).NewProviderFailure(provider, status, nil, payload, "slow down", disabled, false)
 
 			require.Equal(t, http.StatusTooManyRequests, status)
 			require.False(t, disabled)
-			require.True(t, err.RetryableOnSameAccount)
-			require.False(t, err.SameAccountRetryDeadline.IsZero())
-			require.False(t, wsFixtureAccountBlocked(svc, account))
+			require.True(t, err.RetryableOnSameProvider)
+			require.False(t, err.SameProviderRetryDeadline.IsZero())
+			require.False(t, wsFixtureProviderBlocked(svc, provider))
 		})
 	}
 }

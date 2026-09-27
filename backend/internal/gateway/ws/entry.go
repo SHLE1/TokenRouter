@@ -17,7 +17,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// RunEntry 拥有入站升级后的准入、账号尝试及每 turn 调度/资金/审核/完成编排。
+// RunEntry 拥有入站升级后的准入、提供商尝试及每 turn 调度/资金/审核/完成编排。
 func RunEntry(ctx context.Context, p EntryPorts, in EntryInput, client ClientSocket, firstMessage []byte) {
 	apiKey, subject, reqLog := in.Key, in.Subject, p.Logger()
 	clientLifecycleCtx, firstTurnStartedAt := in.ClientLifecycleContext, in.FirstTurnStartedAt
@@ -99,14 +99,14 @@ func RunEntry(ctx context.Context, p EntryPorts, in EntryInput, client ClientSoc
 		return
 	}
 
-	// 首轮账号选择必须按分组映射模型 G 判断生图能力，避免别名映射绕过 Responses 能力检查。
+	// 首轮提供商选择必须按分组映射模型 G 判断生图能力，避免别名映射绕过 Responses 能力检查。
 	// 当前分组和分组映射结果进入独立计划，不改变原解析位置。
 	ctx, groupMappingWS := p.Plan(ctx, reqModel)
 	mappedFirstMessage, routingModelWS, _ := p.ImageIntent(reqModel, firstMessage, groupMappingWS)
 	imageIntent := p.ExplicitImage(routingModelWS, mappedFirstMessage)
 	initialSchedulingCtx := ctx
 	if imageIntent {
-		// 首轮账号选择也要遵守显式生图请求的模型级限流。
+		// 首轮提供商选择也要遵守显式生图请求的模型级限流。
 		initialSchedulingCtx = p.ImageContext(initialSchedulingCtx)
 	}
 	if imageIntent && !p.ImagesAllowed() {
@@ -116,15 +116,15 @@ func RunEntry(ctx context.Context, p EntryPorts, in EntryInput, client ClientSoc
 	}
 
 	var currentUserRelease func()
-	var currentAccountRelease func()
-	releaseAccountSlot := func() {
-		if currentAccountRelease != nil {
-			currentAccountRelease()
-			currentAccountRelease = nil
+	var currentProviderRelease func()
+	releaseProviderSlot := func() {
+		if currentProviderRelease != nil {
+			currentProviderRelease()
+			currentProviderRelease = nil
 		}
 	}
 	releaseTurnSlots := func() {
-		releaseAccountSlot()
+		releaseProviderSlot()
 		if currentUserRelease != nil {
 			currentUserRelease()
 			currentUserRelease = nil
@@ -192,20 +192,20 @@ func RunEntry(ctx context.Context, p EntryPorts, in EntryInput, client ClientSoc
 		}
 	}
 	ctx = p.Guardian(ctx, firstMessage, reqModel)
-	maxAccountSwitches := in.MaxAccountSwitches
+	maxProviderSwitches := in.MaxProviderSwitches
 	switchCount := 0
-	failedAccountIDs := make(map[int64]struct{})
+	failedProviderIDs := make(map[int64]struct{})
 	var lastFailoverErr *EntryFailure
 	var oauth429FailoverState failover.OAuth429State
 	wsAttemptMessage := append([]byte(nil), firstMessage...)
-	handleWSFailover := func(selection *EntrySelection, account *EntryAccount, failoverErr *EntryFailure) bool {
+	handleWSFailover := func(selection *EntrySelection, provider *EntryProvider, failoverErr *EntryFailure) bool {
 		if ctx.Err() != nil {
 			return false
 		}
 		if failoverErr.ReportScheduleFailure {
 			selection.Target.Report(selection.Target.MappedModel(groupMappingWS.MappedModel), false, nil)
 		}
-		releaseAccountSlot()
+		releaseProviderSlot()
 		if !failoverErr.RetryNext {
 			p.CloseFailover(failoverErr)
 			return false
@@ -214,9 +214,9 @@ func RunEntry(ctx context.Context, p EntryPorts, in EntryInput, client ClientSoc
 			return false
 		}
 		selection.Target.Switched()
-		failedAccountIDs[account.ID] = struct{}{}
+		failedProviderIDs[provider.ID] = struct{}{}
 		lastFailoverErr = failoverErr
-		if switchCount >= maxAccountSwitches {
+		if switchCount >= maxProviderSwitches {
 			p.CloseFailover(failoverErr)
 			return false
 		}
@@ -226,10 +226,10 @@ func RunEntry(ctx context.Context, p EntryPorts, in EntryInput, client ClientSoc
 			return false
 		}
 		reqLog.Warn("openai.websocket_upstream_failover_switching",
-			EntryInt64("account_id", account.ID),
+			EntryInt64("provider_id", provider.ID),
 			EntryInt("upstream_status", failoverErr.StatusCode),
 			EntryInt("switch_count", switchCount),
-			EntryInt("max_switches", maxAccountSwitches),
+			EntryInt("max_switches", maxProviderSwitches),
 		)
 		if ctx.Err() != nil {
 			return false
@@ -237,78 +237,78 @@ func RunEntry(ctx context.Context, p EntryPorts, in EntryInput, client ClientSoc
 		return ensureUserSlotHeld()
 	}
 
-	// 与 HTTP Responses 路径保持一致：生图意图请求要求账号支持 Responses API（#4417）。
+	// 与 HTTP Responses 路径保持一致：生图意图请求要求提供商支持 Responses API（#4417）。
 	// WSv2 传输本身已隐含 Responses 支持，此处为防御性对齐。
-	// 首轮显式意图已按分组映射模型 G 判断，被动 namespace 不会误过滤账号（#4476）。
+	// 首轮显式意图已按分组映射模型 G 判断，被动 namespace 不会误过滤提供商（#4476）。
 	requiredCapability := imageIntent && requestPlatform == "openai"
 
 	for {
 		if ctx.Err() != nil {
 			return
 		}
-		reqLog.Debug("openai.websocket_account_selecting", EntryInt("excluded_account_count", len(failedAccountIDs)))
-		selection, scheduleDecision, err := p.Select(initialSchedulingCtx, previousResponseID, sessionHash, reqModel, failedAccountIDs, requiredCapability, previousResponseCanMove, requestPlatform)
+		reqLog.Debug("openai.websocket_provider_selecting", EntryInt("excluded_provider_count", len(failedProviderIDs)))
+		selection, scheduleDecision, err := p.Select(initialSchedulingCtx, previousResponseID, sessionHash, reqModel, failedProviderIDs, requiredCapability, previousResponseCanMove, requestPlatform)
 		if err != nil {
-			reqLog.Warn("openai.websocket_account_select_failed",
+			reqLog.Warn("openai.websocket_provider_select_failed",
 				EntryError(p.SelectionLogError(err, requestPlatform)),
-				EntryInt("excluded_account_count", len(failedAccountIDs)),
+				EntryInt("excluded_provider_count", len(failedProviderIDs)),
 			)
 			if lastFailoverErr != nil {
 				p.CloseFailover(lastFailoverErr)
 			} else {
-				p.Close(1013, "no available account")
+				p.Close(1013, "no available provider")
 			}
 			return
 		}
-		if selection == nil || selection.Account == nil {
+		if selection == nil || selection.Provider == nil {
 			if lastFailoverErr != nil {
 				p.CloseFailover(lastFailoverErr)
 			} else {
-				p.Close(1013, "no available account")
+				p.Close(1013, "no available provider")
 			}
 			return
 		}
 
-		account := selection.Account
-		accountMaxConcurrency := account.Concurrency
+		provider := selection.Provider
+		providerMaxConcurrency := provider.Concurrency
 		if selection.WaitPlan != nil && selection.WaitPlan.MaxConcurrency > 0 {
-			accountMaxConcurrency = selection.WaitPlan.MaxConcurrency
+			providerMaxConcurrency = selection.WaitPlan.MaxConcurrency
 		}
-		accountReleaseFunc := selection.ReleaseFunc
+		providerReleaseFunc := selection.ReleaseFunc
 		if !selection.Acquired {
 			if selection.WaitPlan == nil {
-				p.Close(1013, "account is busy, please retry later")
+				p.Close(1013, "provider is busy, please retry later")
 				return
 			}
-			fastReleaseFunc, fastAcquired, err := p.AcquireAccount(
+			fastReleaseFunc, fastAcquired, err := p.AcquireProvider(
 				ctx,
-				account.ID,
+				provider.ID,
 				selection.WaitPlan.MaxConcurrency,
 			)
 			if err != nil {
-				reqLog.Warn("openai.websocket_account_slot_acquire_failed", EntryInt64("account_id", account.ID), EntryError(err))
-				p.Close(1011, "failed to acquire account concurrency slot")
+				reqLog.Warn("openai.websocket_provider_slot_acquire_failed", EntryInt64("provider_id", provider.ID), EntryError(err))
+				p.Close(1011, "failed to acquire provider concurrency slot")
 				return
 			}
 			if !fastAcquired {
-				p.Close(1013, "account is busy, please retry later")
+				p.Close(1013, "provider is busy, please retry later")
 				return
 			}
-			accountReleaseFunc = fastReleaseFunc
+			providerReleaseFunc = fastReleaseFunc
 		}
-		currentAccountRelease = p.WrapRelease(ctx, accountReleaseFunc)
-		if err := p.BindSticky(ctx, sessionHash, account.ID); err != nil {
-			reqLog.Warn("openai.websocket_bind_sticky_session_failed", EntryInt64("account_id", account.ID), EntryError(err))
+		currentProviderRelease = p.WrapRelease(ctx, providerReleaseFunc)
+		if err := p.BindSticky(ctx, sessionHash, provider.ID); err != nil {
+			reqLog.Warn("openai.websocket_bind_sticky_session_failed", EntryInt64("provider_id", provider.ID), EntryError(err))
 		}
 
 		err = selection.Target.Credential(ctx)
 		if err != nil {
-			reqLog.Warn("openai.websocket_get_access_token_failed", EntryInt64("account_id", account.ID), EntryError(err))
+			reqLog.Warn("openai.websocket_get_access_token_failed", EntryInt64("provider_id", provider.ID), EntryError(err))
 			if ctx.Err() != nil {
 				return
 			}
 			if failoverErr, ok := p.Failover(err); ok {
-				if handleWSFailover(selection, account, failoverErr) {
+				if handleWSFailover(selection, provider, failoverErr) {
 					continue
 				}
 				return
@@ -317,14 +317,14 @@ func RunEntry(ctx context.Context, p EntryPorts, in EntryInput, client ClientSoc
 			return
 		}
 		if err := selection.Target.EnforceClient(ctx, firstMessage); err != nil {
-			reqLog.Warn("openai.websocket_client_policy_rejected", EntryInt64("account_id", account.ID), EntryError(err))
+			reqLog.Warn("openai.websocket_client_policy_rejected", EntryInt64("provider_id", provider.ID), EntryError(err))
 			p.Close(1008, "client is not allowed")
 			return
 		}
 
-		reqLog.Debug("openai.websocket_account_selected",
-			EntryInt64("account_id", account.ID),
-			EntryString("account_name", account.Name),
+		reqLog.Debug("openai.websocket_provider_selected",
+			EntryInt64("provider_id", provider.ID),
+			EntryString("provider_name", provider.Name),
 			EntryString("schedule_layer", scheduleDecision.Layer),
 			EntryInt("candidate_count", scheduleDecision.CandidateCount),
 		)
@@ -382,7 +382,7 @@ func RunEntry(ctx context.Context, p EntryPorts, in EntryInput, client ClientSoc
 					)
 				}
 				if turnImageIntent {
-					// 后续 turn 的账号资格检查必须包含该轮生图限流范围。
+					// 后续 turn 的提供商资格检查必须包含该轮生图限流范围。
 					turnCtx = p.ImageContext(turnCtx)
 				}
 				turnCapability := turnImageIntent && requestPlatform == "openai"
@@ -451,21 +451,21 @@ func RunEntry(ctx context.Context, p EntryPorts, in EntryInput, client ClientSoc
 				if !userAcquired {
 					return p.CloseError(1013, "too many concurrent requests, please retry later", nil)
 				}
-				accountReleaseFunc, accountAcquired, err := p.AcquireAccount(ctx, account.ID, accountMaxConcurrency)
+				providerReleaseFunc, providerAcquired, err := p.AcquireProvider(ctx, provider.ID, providerMaxConcurrency)
 				if err != nil {
 					if userReleaseFunc != nil {
 						userReleaseFunc()
 					}
-					return p.CloseError(1011, "failed to acquire account concurrency slot", err)
+					return p.CloseError(1011, "failed to acquire provider concurrency slot", err)
 				}
-				if !accountAcquired {
+				if !providerAcquired {
 					if userReleaseFunc != nil {
 						userReleaseFunc()
 					}
-					return p.CloseError(1013, "account is busy, please retry later", nil)
+					return p.CloseError(1013, "provider is busy, please retry later", nil)
 				}
 				currentUserRelease = p.WrapRelease(ctx, userReleaseFunc)
-				currentAccountRelease = p.WrapRelease(ctx, accountReleaseFunc)
+				currentProviderRelease = p.WrapRelease(ctx, providerReleaseFunc)
 				return nil
 			},
 			OnUpstreamError: func(turn int, originalModel string, statusCode int, responseBody []byte, warningText string) {
@@ -506,7 +506,7 @@ func RunEntry(ctx context.Context, p EntryPorts, in EntryInput, client ClientSoc
 						return
 					}
 					reqLog.Warn("openai.websocket_partial_error_with_image_result",
-						EntryInt64("account_id", account.ID),
+						EntryInt64("provider_id", provider.ID),
 						EntryInt("image_count", result.ImageCount),
 						EntryError(turnErr),
 					)
@@ -517,7 +517,7 @@ func RunEntry(ctx context.Context, p EntryPorts, in EntryInput, client ClientSoc
 				// WS 每个 turn 的分组映射可能覆盖默认计费模型，统一在记录用量前解析。
 				result.BillingModel = EntryBillingModel(result, turnGroupMapping, turnModel, result.UpstreamModel)
 				// 排除 spark 影子:其 codex_* 仅由 QueryUsage(/wham/usage bengalfox)更新(外审第7轮 P1)。
-				if account.Type == "oauth" && !account.Shadow {
+				if provider.Type == "oauth" && !provider.Shadow {
 					selection.Target.UpdateUsage(ctx, result.ResponseHeaders)
 				}
 				scheduleModel := strings.TrimSpace(result.UpstreamModel)
@@ -534,21 +534,21 @@ func RunEntry(ctx context.Context, p EntryPorts, in EntryInput, client ClientSoc
 				recorder, report := p.CompletionRecorder(), p.CompletionObserver()
 				p.SubmitCompletion(result, func(taskCtx context.Context) {
 					if err := recorder.Record(taskCtx, completionInput, true); err != nil {
-						report(completionInput.Account.ID, completionInput.Result.RequestID, err)
+						report(completionInput.Provider.ID, completionInput.Result.RequestID, err)
 					}
 				})
 			},
 		}
 
-		// 原生 WS turn 执行器在解析首帧时执行分组及账号映射，此处只处理会话链字段。
+		// 原生 WS turn 执行器在解析首帧时执行分组及提供商映射，此处只处理会话链字段。
 		wsFirstMessage := append([]byte(nil), wsAttemptMessage...)
-		// 切组/会话失配防护：previous_response_id 未在当前分组命中粘连账号时，
-		// 说明该会话链不属于本次调度到的账号；原样转发会触发上游会话链鉴权失败。
+		// 切组/会话失配防护：previous_response_id 未在当前分组命中粘连提供商时，
+		// 说明该会话链不属于本次调度到的提供商；原样转发会触发上游会话链鉴权失败。
 		// 因此只在上下文可迁移时剥离首包 previous_response_id，后续 turn 仍由 WS 转发层处理。
 		if previousResponseID != "" && !scheduleDecision.StickyPreviousHit && previousResponseCanMove {
 			wsFirstMessage = p.RemovePrevious(wsFirstMessage)
 			reqLog.Debug("openai.websocket_previous_response_id_stripped_cross_group",
-				EntryInt64("account_id", account.ID),
+				EntryInt64("provider_id", provider.ID),
 				EntryString("schedule_layer", scheduleDecision.Layer),
 			)
 		}
@@ -573,12 +573,12 @@ func RunEntry(ctx context.Context, p EntryPorts, in EntryInput, client ClientSoc
 				if retryCurrentTurn {
 					previousResponseID = ""
 					reqLog.Warn("openai.websocket_current_turn_failover_retry",
-						EntryInt64("account_id", account.ID),
+						EntryInt64("provider_id", provider.ID),
 						EntryInt("upstream_status", failoverErr.StatusCode),
 						EntryInt("retry_payload_bytes", len(retryPayload)),
 					)
 				}
-				if handleWSFailover(selection, account, failoverErr) {
+				if handleWSFailover(selection, provider, failoverErr) {
 					continue
 				}
 				return
@@ -586,7 +586,7 @@ func RunEntry(ctx context.Context, p EntryPorts, in EntryInput, client ClientSoc
 
 			if errors.Is(context.Cause(ctx), scheduler.ErrOpenAIWSIngressLeaseLost) {
 				reqLog.Warn("openai.websocket_ingress_lease_lost",
-					EntryInt64("account_id", account.ID),
+					EntryInt64("provider_id", provider.ID),
 					EntryError(err),
 				)
 				p.Close(1013, "websocket ingress capacity lease lost; please reconnect")
@@ -600,7 +600,7 @@ func RunEntry(ctx context.Context, p EntryPorts, in EntryInput, client ClientSoc
 			}
 
 			if p.EndedByClient(err) {
-				closedFields := []EntryField{EntryInt64("account_id", account.ID)}
+				closedFields := []EntryField{EntryInt64("provider_id", provider.ID)}
 				if hasClientCloseErr {
 					closedFields = append(closedFields, EntryString("reason", closeErr.Reason))
 				} else {
@@ -629,7 +629,7 @@ func RunEntry(ctx context.Context, p EntryPorts, in EntryInput, client ClientSoc
 			p.Close(1011, "upstream websocket proxy failed")
 			return
 		}
-		reqLog.Info("openai.websocket_ingress_closed", EntryInt64("account_id", account.ID))
+		reqLog.Info("openai.websocket_ingress_closed", EntryInt64("provider_id", provider.ID))
 		return
 	}
 }

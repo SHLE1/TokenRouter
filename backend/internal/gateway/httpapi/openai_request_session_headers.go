@@ -22,11 +22,11 @@ import (
 const openCodeSessionHeader = "X-OpenCode-Session"
 
 // ApplyOpenCodeSessionHeader forwards the caller-owned conversation identifier
-// only to OpenCode's official API origin. The caller applies this after account
+// only to OpenCode's official API origin. The caller applies this after provider
 // header overrides so a per-conversation value cannot be replaced by a fixed
-// account-wide override.
-func ApplyOpenCodeSessionHeader(c *gin.Context, account *gatewayprovider.ExecutionAccount, targetURL string, headers http.Header) {
-	if c == nil || c.Request == nil || account == nil || account.Record.Type != capability.AccountTypeAPIKey || headers == nil {
+// provider-wide override.
+func ApplyOpenCodeSessionHeader(c *gin.Context, provider *gatewayprovider.ExecutionProvider, targetURL string, headers http.Header) {
+	if c == nil || c.Request == nil || provider == nil || provider.Record.Type != capability.ProviderTypeAPIKey || headers == nil {
 		return
 	}
 
@@ -46,6 +46,7 @@ func ApplyOpenCodeSessionHeader(c *gin.Context, account *gatewayprovider.Executi
 	}
 	headers.Set(openCodeSessionHeader, sessionID)
 }
+
 func ResolveOpenAIUpstreamOriginator(c *gin.Context, isOfficialClient bool, routerMatch ...egress.TLSFingerprintRouterMatchResult) string {
 	return ResolveOpenAIUpstreamOriginatorForClient(func() string {
 		if c == nil {
@@ -68,16 +69,16 @@ const OpenAICodexRoutingHintHeader = "x-codex-routing-hint"
 
 // SetOpenAICodexRoutingHint 为 OpenAI OAuth 请求生成 Codex 后端路由提示。
 // model 必须是最终上游模型名，serviceTier 必须已应用本地策略改写与过滤。
-func SetOpenAICodexRoutingHint(headers http.Header, account *gatewayprovider.ExecutionAccount, model string, serviceTier string) {
+func SetOpenAICodexRoutingHint(headers http.Header, provider *gatewayprovider.ExecutionProvider, model string, serviceTier string) {
 	if headers == nil {
 		return
 	}
 
 	// 路由提示由网关独占控制。生成前删除所有大小写变体，避免 API Key、
-	// Provider 凭证路径透传调用方或账号头覆盖注入的提示；Header.Del 只会
+	// Provider 凭证路径透传调用方或提供商头覆盖注入的提示；Header.Del 只会
 	// 删除规范化键，而入站映射可能保留原始小写键。
 	DeleteOpenAIHeaderEqualFold(headers, OpenAICodexRoutingHintHeader)
-	if account == nil || !account.View().IsOpenAIOAuthLike() {
+	if provider == nil || !provider.View().IsOpenAIOAuthLike() {
 		return
 	}
 
@@ -106,6 +107,7 @@ func SetOpenAICodexRoutingHint(headers http.Header, account *gatewayprovider.Exe
 	}
 	headers.Set(OpenAICodexRoutingHintHeader, hint)
 }
+
 func DeleteOpenAIHeaderEqualFold(headers http.Header, name string) {
 	if headers == nil {
 		return
@@ -117,16 +119,17 @@ func DeleteOpenAIHeaderEqualFold(headers http.Header, name string) {
 		}
 	}
 }
-func SetOpenAICodexRoutingHintFromBody(headers http.Header, account *gatewayprovider.ExecutionAccount, body []byte) {
+
+func SetOpenAICodexRoutingHintFromBody(headers http.Header, provider *gatewayprovider.ExecutionProvider, body []byte) {
 	fields := gjson.GetManyBytes(body, "model", "service_tier")
-	SetOpenAICodexRoutingHint(headers, account, fields[0].String(), fields[1].String())
+	SetOpenAICodexRoutingHint(headers, provider, fields[0].String(), fields[1].String())
 }
 
 // LogOpenAIRoutingDiagnostics 仅记录网关推导出的路由状态；该逻辑位于携带认证
 // 信息的链路中，因此明确不记录任何请求头值、令牌或凭证。
 func LogOpenAIRoutingDiagnostics(
 	ctx context.Context,
-	account *gatewayprovider.ExecutionAccount,
+	provider *gatewayprovider.ExecutionProvider,
 	transport string,
 	model string,
 	serviceTier string,
@@ -136,24 +139,25 @@ func LogOpenAIRoutingDiagnostics(
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	accountID := int64(0)
-	if account != nil {
-		accountID = account.Record.ID
+	providerID := int64(0)
+	if provider != nil {
+		providerID = provider.Record.ID
 	}
 
 	logging.FromContext(ctx).Debug("openai routing decision",
 		zap.String("component", "service.openai_routing"),
 		zap.String("transport", strings.TrimSpace(transport)),
-		zap.Int64("account_id", accountID),
+		zap.Int64("provider_id", providerID),
 		zap.String("final_model", strings.TrimSpace(model)),
 		zap.String("final_service_tier", protocolopenai.ServiceTierValue(serviceTier)),
 		zap.Bool("routing_hint_generated", hintGenerated),
 		zap.String("ws_affinity_decision", strings.TrimSpace(wsAffinityDecision)),
 	)
 }
+
 func LogOpenAIRoutingDiagnosticsFromBody(
 	ctx context.Context,
-	account *gatewayprovider.ExecutionAccount,
+	provider *gatewayprovider.ExecutionProvider,
 	transport string,
 	headers http.Header,
 	body []byte,
@@ -162,7 +166,7 @@ func LogOpenAIRoutingDiagnosticsFromBody(
 	fields := gjson.GetManyBytes(body, "model", "service_tier")
 	LogOpenAIRoutingDiagnostics(
 		ctx,
-		account,
+		provider,
 		transport,
 		fields[0].String(),
 		fields[1].String(),

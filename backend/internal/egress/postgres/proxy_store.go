@@ -17,14 +17,14 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
 )
 
-// ProxyAccountParticipant 不拥有事务；操作必须落到给定连接。
-type ProxyAccountParticipant interface {
+// ProxyProviderParticipant 不拥有事务；操作必须落到给定连接。
+type ProxyProviderParticipant interface {
 	InvalidateSnapshots(context.Context, int64) ([]int64, error)
 	Reassign(context.Context, int64, *int64) ([]int64, error)
 }
 type ProxyStoreOptions struct {
-	Accounts func(postgresinfra.Executor) ProxyAccountParticipant
-	Enqueue  func(context.Context, postgresinfra.Executor, any) error
+	Providers func(postgresinfra.Executor) ProxyProviderParticipant
+	Enqueue   func(context.Context, postgresinfra.Executor, any) error
 }
 
 func NewProxyStore(client *dbent.Client, db postgresinfra.Executor, options ProxyStoreOptions) *ProxyStore {
@@ -39,7 +39,7 @@ type ProxyStore struct {
 	sql     postgresinfra.Executor
 }
 
-const proxyAccountOutboxChunkSize = 500
+const proxyProviderOutboxChunkSize = 500
 
 func (r *ProxyStore) Create(ctx context.Context, proxyIn *egress.Proxy) error {
 	builder := r.client.Proxy.Create().
@@ -181,11 +181,11 @@ func (r *ProxyStore) updateProxyAndInvalidateOllamaSnapshot(ctx context.Context,
 	if currentIdentity == ProxyConnectionIdentityFromProxy(proxyIn) {
 		return updated, nil
 	}
-	accountIDs, err := r.changes.Accounts(client).InvalidateSnapshots(ctx, proxyIn.ID)
+	providerIDs, err := r.changes.Providers(client).InvalidateSnapshots(ctx, proxyIn.ID)
 	if err != nil {
 		return nil, err
 	}
-	if err := r.EnqueueAccountChanges(ctx, client, accountIDs); err != nil {
+	if err := r.EnqueueProviderChanges(ctx, client, providerIDs); err != nil {
 		return nil, err
 	}
 	return updated, nil
@@ -215,14 +215,14 @@ func lockProxyConnectionIdentity(ctx context.Context, client *dbent.Client, prox
 	return identity, rows.Err()
 }
 
-func (r *ProxyStore) EnqueueAccountChanges(ctx context.Context, exec postgresinfra.Executor, accountIDs []int64) error {
-	accountIDs = SortedUniqueAccountIDs(accountIDs)
-	for start := 0; start < len(accountIDs); start += proxyAccountOutboxChunkSize {
-		end := start + proxyAccountOutboxChunkSize
-		if end > len(accountIDs) {
-			end = len(accountIDs)
+func (r *ProxyStore) EnqueueProviderChanges(ctx context.Context, exec postgresinfra.Executor, providerIDs []int64) error {
+	providerIDs = SortedUniqueProviderIDs(providerIDs)
+	for start := 0; start < len(providerIDs); start += proxyProviderOutboxChunkSize {
+		end := start + proxyProviderOutboxChunkSize
+		if end > len(providerIDs) {
+			end = len(providerIDs)
 		}
-		payload := map[string]any{"account_ids": accountIDs[start:end]}
+		payload := map[string]any{"provider_ids": providerIDs[start:end]}
 		if err := r.changes.Enqueue(ctx, exec, payload); err != nil {
 			return err
 		}
@@ -277,8 +277,8 @@ func (r *ProxyStore) ListWithFilters(ctx context.Context, params pagination.Pagi
 	return outProxies, pagination.ResultFromTotal(int64(total), params), nil
 }
 
-// ListWithFiltersAndAccountCount lists proxies with filters and includes account count per proxy
-func (r *ProxyStore) ListWithFiltersAndAccountCount(ctx context.Context, params pagination.PaginationParams, protocol, status, search string) ([]egress.ProxyWithAccountCount, *pagination.PaginationResult, error) {
+// ListWithFiltersAndProviderCount lists proxies with filters and includes provider count per proxy
+func (r *ProxyStore) ListWithFiltersAndProviderCount(ctx context.Context, params pagination.PaginationParams, protocol, status, search string) ([]egress.ProxyWithProviderCount, *pagination.PaginationResult, error) {
 	q := r.client.Proxy.Query()
 	if protocol != "" {
 		q = q.Where(proxy.ProtocolEQ(protocol))
@@ -295,8 +295,8 @@ func (r *ProxyStore) ListWithFiltersAndAccountCount(ctx context.Context, params 
 		return nil, nil, err
 	}
 
-	if strings.EqualFold(strings.TrimSpace(params.SortBy), "account_count") {
-		return r.listWithAccountCountSort(ctx, q, params, total)
+	if strings.EqualFold(strings.TrimSpace(params.SortBy), "provider_count") {
+		return r.listWithProviderCountSort(ctx, q, params, total)
 	}
 
 	proxiesQuery := q.
@@ -311,10 +311,10 @@ func (r *ProxyStore) ListWithFiltersAndAccountCount(ctx context.Context, params 
 		return nil, nil, err
 	}
 
-	return r.buildProxyWithAccountCountResult(ctx, proxies, params, int64(total))
+	return r.buildProxyWithProviderCountResult(ctx, proxies, params, int64(total))
 }
 
-func (r *ProxyStore) listWithAccountCountSort(ctx context.Context, q *dbent.ProxyQuery, params pagination.PaginationParams, total int) ([]egress.ProxyWithAccountCount, *pagination.PaginationResult, error) {
+func (r *ProxyStore) listWithProviderCountSort(ctx context.Context, q *dbent.ProxyQuery, params pagination.PaginationParams, total int) ([]egress.ProxyWithProviderCount, *pagination.PaginationResult, error) {
 	proxies, err := q.
 		Order(dbent.Desc(proxy.FieldID)).
 		All(ctx)
@@ -322,40 +322,40 @@ func (r *ProxyStore) listWithAccountCountSort(ctx context.Context, q *dbent.Prox
 		return nil, nil, err
 	}
 
-	result, _, err := r.buildProxyWithAccountCountResult(ctx, proxies, params, int64(total))
+	result, _, err := r.buildProxyWithProviderCountResult(ctx, proxies, params, int64(total))
 	if err != nil {
 		return nil, nil, err
 	}
 
 	sortOrder := params.NormalizedSortOrder(pagination.SortOrderDesc)
 	sort.SliceStable(result, func(i, j int) bool {
-		if result[i].AccountCount == result[j].AccountCount {
+		if result[i].ProviderCount == result[j].ProviderCount {
 			return result[i].ID > result[j].ID
 		}
 		if sortOrder == pagination.SortOrderAsc {
-			return result[i].AccountCount < result[j].AccountCount
+			return result[i].ProviderCount < result[j].ProviderCount
 		}
-		return result[i].AccountCount > result[j].AccountCount
+		return result[i].ProviderCount > result[j].ProviderCount
 	})
 
 	return pagination.Slice(result, params), pagination.ResultFromTotal(int64(total), params), nil
 }
 
-func (r *ProxyStore) buildProxyWithAccountCountResult(ctx context.Context, proxies []*dbent.Proxy, params pagination.PaginationParams, total int64) ([]egress.ProxyWithAccountCount, *pagination.PaginationResult, error) {
-	counts, err := r.GetAccountCountsForProxies(ctx)
+func (r *ProxyStore) buildProxyWithProviderCountResult(ctx context.Context, proxies []*dbent.Proxy, params pagination.PaginationParams, total int64) ([]egress.ProxyWithProviderCount, *pagination.PaginationResult, error) {
+	counts, err := r.GetProviderCountsForProxies(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	result := make([]egress.ProxyWithAccountCount, 0, len(proxies))
+	result := make([]egress.ProxyWithProviderCount, 0, len(proxies))
 	for i := range proxies {
 		proxyOut := ProxyEntity(proxies[i])
 		if proxyOut == nil {
 			continue
 		}
-		result = append(result, egress.ProxyWithAccountCount{
-			Proxy:        *proxyOut,
-			AccountCount: counts[proxyOut.ID],
+		result = append(result, egress.ProxyWithProviderCount{
+			Proxy:         *proxyOut,
+			ProviderCount: counts[proxyOut.ID],
 		})
 	}
 
@@ -426,19 +426,19 @@ func (r *ProxyStore) ExistsByHostPortAuth(ctx context.Context, host string, port
 	return count > 0, err
 }
 
-// CountAccountsByProxyID returns the number of accounts using a specific proxy
-func (r *ProxyStore) CountAccountsByProxyID(ctx context.Context, proxyID int64) (int64, error) {
+// CountProvidersByProxyID returns the number of providers using a specific proxy
+func (r *ProxyStore) CountProvidersByProxyID(ctx context.Context, proxyID int64) (int64, error) {
 	var count int64
-	if err := postgresinfra.ScanSingleRow(ctx, r.sql, "SELECT COUNT(*) FROM accounts WHERE proxy_id = $1 AND deleted_at IS NULL", []any{proxyID}, &count); err != nil {
+	if err := postgresinfra.ScanSingleRow(ctx, r.sql, "SELECT COUNT(*) FROM providers WHERE proxy_id = $1 AND deleted_at IS NULL", []any{proxyID}, &count); err != nil {
 		return 0, err
 	}
 	return count, nil
 }
 
-func (r *ProxyStore) ListAccountSummariesByProxyID(ctx context.Context, proxyID int64) ([]egress.ProxyAccountSummary, error) {
+func (r *ProxyStore) ListProviderSummariesByProxyID(ctx context.Context, proxyID int64) ([]egress.ProxyProviderSummary, error) {
 	rows, err := r.sql.QueryContext(ctx, `
 		SELECT id, name, platform, type, notes
-		FROM accounts
+		FROM providers
 		WHERE proxy_id = $1 AND deleted_at IS NULL
 		ORDER BY id DESC
 	`, proxyID)
@@ -447,7 +447,7 @@ func (r *ProxyStore) ListAccountSummariesByProxyID(ctx context.Context, proxyID 
 	}
 	defer func() { _ = rows.Close() }()
 
-	out := make([]egress.ProxyAccountSummary, 0)
+	out := make([]egress.ProxyProviderSummary, 0)
 	for rows.Next() {
 		var (
 			id       int64
@@ -463,7 +463,7 @@ func (r *ProxyStore) ListAccountSummariesByProxyID(ctx context.Context, proxyID 
 		if notes.Valid {
 			notesPtr = &notes.String
 		}
-		out = append(out, egress.ProxyAccountSummary{
+		out = append(out, egress.ProxyProviderSummary{
 			ID:       id,
 			Name:     name,
 			Platform: platform,
@@ -477,9 +477,9 @@ func (r *ProxyStore) ListAccountSummariesByProxyID(ctx context.Context, proxyID 
 	return out, nil
 }
 
-// GetAccountCountsForProxies returns a map of proxy ID to account count for all proxies
-func (r *ProxyStore) GetAccountCountsForProxies(ctx context.Context) (counts map[int64]int64, err error) {
-	rows, err := r.sql.QueryContext(ctx, "SELECT proxy_id, COUNT(*) AS count FROM accounts WHERE proxy_id IS NOT NULL AND deleted_at IS NULL GROUP BY proxy_id")
+// GetProviderCountsForProxies returns a map of proxy ID to provider count for all proxies
+func (r *ProxyStore) GetProviderCountsForProxies(ctx context.Context) (counts map[int64]int64, err error) {
+	rows, err := r.sql.QueryContext(ctx, "SELECT proxy_id, COUNT(*) AS count FROM providers WHERE proxy_id IS NOT NULL AND deleted_at IS NULL GROUP BY proxy_id")
 	if err != nil {
 		return nil, err
 	}
@@ -504,8 +504,8 @@ func (r *ProxyStore) GetAccountCountsForProxies(ctx context.Context) (counts map
 	return counts, nil
 }
 
-// ListActiveWithAccountCount returns all active proxies with account count, sorted by creation time descending
-func (r *ProxyStore) ListActiveWithAccountCount(ctx context.Context) ([]egress.ProxyWithAccountCount, error) {
+// ListActiveWithProviderCount returns all active proxies with provider count, sorted by creation time descending
+func (r *ProxyStore) ListActiveWithProviderCount(ctx context.Context) ([]egress.ProxyWithProviderCount, error) {
 	proxies, err := r.client.Proxy.Query().
 		Where(proxy.StatusEQ(egress.StatusActive)).
 		Order(dbent.Desc(proxy.FieldCreatedAt)).
@@ -514,22 +514,22 @@ func (r *ProxyStore) ListActiveWithAccountCount(ctx context.Context) ([]egress.P
 		return nil, err
 	}
 
-	// Get account counts
-	counts, err := r.GetAccountCountsForProxies(ctx)
+	// Get provider counts
+	counts, err := r.GetProviderCountsForProxies(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	// Build result with account counts
-	result := make([]egress.ProxyWithAccountCount, 0, len(proxies))
+	// Build result with provider counts
+	result := make([]egress.ProxyWithProviderCount, 0, len(proxies))
 	for i := range proxies {
 		proxyOut := ProxyEntity(proxies[i])
 		if proxyOut == nil {
 			continue
 		}
-		result = append(result, egress.ProxyWithAccountCount{
-			Proxy:        *proxyOut,
-			AccountCount: counts[proxyOut.ID],
+		result = append(result, egress.ProxyWithProviderCount{
+			Proxy:         *proxyOut,
+			ProviderCount: counts[proxyOut.ID],
 		})
 	}
 
@@ -585,10 +585,10 @@ func (r *ProxyStore) ListAllForFallback(ctx context.Context) ([]egress.Proxy, er
 	return out, nil
 }
 
-// SweepExpiredProxies 扫描到期 active 代理，标记 expired 并按 fallback 策略改写绑定账号的 proxy_id，
-// 最终触发 scheduler outbox 使 Redis 快照缓存失效。返回受影响的账号行数。
-// 原子性边界：每个过期代理的「标记 expired + 改投账号」在各自子事务内原子执行（见 sweepOneExpiredProxy）；
-// 全部代理处理完后若有账号被改投，再统一 enqueue 一次 account_bulk_changed 事件——该 enqueue 在子事务之外
+// SweepExpiredProxies 扫描到期 active 代理，标记 expired 并按 fallback 策略改写绑定提供商的 proxy_id，
+// 最终触发 scheduler outbox 使 Redis 快照缓存失效。返回受影响的提供商行数。
+// 原子性边界：每个过期代理的「标记 expired + 改投提供商」在各自子事务内原子执行（见 sweepOneExpiredProxy）；
+// 全部代理处理完后若有提供商被改投，再统一 enqueue 一次 provider_bulk_changed 事件——该 enqueue 在子事务之外
 // （走 r.sql、失败仅记日志、由调度器周期性 full rebuild 兜底），故「改投 → 失效」整体并非原子。
 func (r *ProxyStore) SweepExpiredProxies(ctx context.Context, now time.Time) (int64, error) {
 	// 快照读（事务前）：允许脏读不影响正确性，事务内已加锁写。
@@ -602,7 +602,7 @@ func (r *ProxyStore) SweepExpiredProxies(ctx context.Context, now time.Time) (in
 	}
 
 	var totalChanged int64
-	allChangedAccountIDs := make([]int64, 0)
+	allChangedProviderIDs := make([]int64, 0)
 
 	for _, p := range all {
 		if p.Status != egress.StatusActive || !p.IsExpired(now) {
@@ -612,46 +612,46 @@ func (r *ProxyStore) SweepExpiredProxies(ctx context.Context, now time.Time) (in
 		target, change := egress.ResolveProxyFallbackTarget(p, byID, now)
 		if !change && p.FallbackMode == egress.FallbackModeProxy {
 			// 配置了 proxy 回退但链路无解（成环或全部已过期），记录告警日志
-			logger.LegacyPrintf("repository.proxy", "[ProxyExpiry] proxy %d expired but fallback chain unresolved (cycle/all-expired); accounts kept", p.ID)
+			logger.LegacyPrintf("repository.proxy", "[ProxyExpiry] proxy %d expired but fallback chain unresolved (cycle/all-expired); providers kept", p.ID)
 		}
 
-		changedAccountIDs, sweepErr := r.sweepOneExpiredProxy(ctx, p.ID, target, change)
+		changedProviderIDs, sweepErr := r.sweepOneExpiredProxy(ctx, p.ID, target, change)
 		if sweepErr != nil {
 			return totalChanged, sweepErr
 		}
-		totalChanged += int64(len(changedAccountIDs))
-		allChangedAccountIDs = append(allChangedAccountIDs, changedAccountIDs...)
+		totalChanged += int64(len(changedProviderIDs))
+		allChangedProviderIDs = append(allChangedProviderIDs, changedProviderIDs...)
 	}
 
-	changedAccountIDs := SortedUniqueAccountIDs(allChangedAccountIDs)
-	if len(changedAccountIDs) > 0 {
-		// 各代理的改投事务已经提交；这里仅汇总真实被 UPDATE 命中的账号，
+	changedProviderIDs := SortedUniqueProviderIDs(allChangedProviderIDs)
+	if len(changedProviderIDs) > 0 {
+		// 各代理的改投事务已经提交；这里仅汇总真实被 UPDATE 命中的提供商，
 		// 避免代理到期时用全量重建刷新所有调度分桶。
-		payload := map[string]any{"account_ids": changedAccountIDs}
+		payload := map[string]any{"provider_ids": changedProviderIDs}
 		if err := r.changes.Enqueue(ctx, r.sql, payload); err != nil {
-			logger.LegacyPrintf("repository.proxy", "[SchedulerOutbox] enqueue proxy expiry account changes failed: err=%v", err)
+			logger.LegacyPrintf("repository.proxy", "[SchedulerOutbox] enqueue proxy expiry provider changes failed: err=%v", err)
 		}
 	}
 	return totalChanged, nil
 }
 
-func SortedUniqueAccountIDs(accountIDs []int64) []int64 {
-	if len(accountIDs) < 2 {
-		return accountIDs
+func SortedUniqueProviderIDs(providerIDs []int64) []int64 {
+	if len(providerIDs) < 2 {
+		return providerIDs
 	}
-	sort.Slice(accountIDs, func(i, j int) bool { return accountIDs[i] < accountIDs[j] })
+	sort.Slice(providerIDs, func(i, j int) bool { return providerIDs[i] < providerIDs[j] })
 	write := 1
-	for _, accountID := range accountIDs[1:] {
-		if accountID == accountIDs[write-1] {
+	for _, providerID := range providerIDs[1:] {
+		if providerID == providerIDs[write-1] {
 			continue
 		}
-		accountIDs[write] = accountID
+		providerIDs[write] = providerID
 		write++
 	}
-	return accountIDs[:write]
+	return providerIDs[:write]
 }
 
-// sweepOneExpiredProxy 在单事务内原子执行：标记代理 expired + 改投绑定账号。
+// sweepOneExpiredProxy 在单事务内原子执行：标记代理 expired + 改投绑定提供商。
 // 若 r.client 已绑定事务（测试注入场景），直接在 r.sql 上执行，由外层事务保证原子性。
 func (r *ProxyStore) sweepOneExpiredProxy(ctx context.Context, proxyID int64, target *int64, change bool) ([]int64, error) {
 	// 尝试开启子事务；若 r.client 已是事务 client，则返回 ErrTxStarted，退回使用 r.sql。
@@ -665,9 +665,9 @@ func (r *ProxyStore) sweepOneExpiredProxy(ctx context.Context, proxyID int64, ta
 	}
 
 	// 使用新事务执行
-	var accountIDs []int64
+	var providerIDs []int64
 	var err error
-	accountIDs, err = r.sweepOneExpiredProxyOnExec(ctx, tx, proxyID, target, change)
+	providerIDs, err = r.sweepOneExpiredProxyOnExec(ctx, tx, proxyID, target, change)
 	if err != nil {
 		_ = tx.Rollback()
 		return nil, err
@@ -675,10 +675,10 @@ func (r *ProxyStore) sweepOneExpiredProxy(ctx context.Context, proxyID int64, ta
 	if commitErr := tx.Commit(); commitErr != nil {
 		return nil, commitErr
 	}
-	return accountIDs, nil
+	return providerIDs, nil
 }
 
-// sweepOneExpiredProxyOnExec 在给定的 postgresinfra.Executor 上执行：标记 expired + 改投账号。
+// sweepOneExpiredProxyOnExec 在给定的 postgresinfra.Executor 上执行：标记 expired + 改投提供商。
 func (r *ProxyStore) sweepOneExpiredProxyOnExec(ctx context.Context, exec postgresinfra.Executor, proxyID int64, target *int64, change bool) ([]int64, error) {
 	if _, err := exec.ExecContext(ctx,
 		`UPDATE proxies SET status=$1, updated_at=NOW() WHERE id=$2 AND deleted_at IS NULL`,
@@ -686,16 +686,16 @@ func (r *ProxyStore) sweepOneExpiredProxyOnExec(ctx context.Context, exec postgr
 		return nil, err
 	}
 	if !change {
-		accountIDs, err := r.changes.Accounts(exec).InvalidateSnapshots(ctx, proxyID)
+		providerIDs, err := r.changes.Providers(exec).InvalidateSnapshots(ctx, proxyID)
 		if err != nil {
 			return nil, err
 		}
-		if err := r.EnqueueAccountChanges(ctx, exec, accountIDs); err != nil {
+		if err := r.EnqueueProviderChanges(ctx, exec, providerIDs); err != nil {
 			return nil, err
 		}
 		return nil, nil
 	}
-	return r.changes.Accounts(exec).Reassign(ctx, proxyID, target)
+	return r.changes.Providers(exec).Reassign(ctx, proxyID, target)
 }
 
 // CountExpired 返回已过期（status=expired）的代理数量。

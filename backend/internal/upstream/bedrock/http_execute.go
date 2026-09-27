@@ -1,4 +1,4 @@
-// 本文件保留同账号的既有重试边界；全局 failover 仍由调用方拥有。
+// 本文件保留同提供商的既有重试边界；全局 failover 仍由调用方拥有。
 package bedrock
 
 import (

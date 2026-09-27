@@ -14,9 +14,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestOpenAIResponsesEmptyCompletedFailsOver 验证标准流和透传流都会在写出前切换空终态账号。
+// TestOpenAIResponsesEmptyCompletedFailsOver 验证标准流和透传流都会在写出前切换空终态提供商。
 func TestOpenAIResponsesEmptyCompletedFailsOver(t *testing.T) {
-
 	for _, passthrough := range []bool{false, true} {
 		name := "managed"
 		if passthrough {
@@ -36,10 +35,10 @@ func TestOpenAIResponsesEmptyCompletedFailsOver(t *testing.T) {
 			}}
 			svc := newOpenAIImageGenerationControlTestService(upstream)
 			c, recorder := newOpenAIImageGenerationControlTestContext(true, "codex_cli_rs/0.144.1")
-			account := newOpenAIImageGenerationControlTestAccount()
-			account.Record.Extra = map[string]any{"openai_passthrough": passthrough}
+			provider := newOpenAIImageGenerationControlTestProvider()
+			provider.Record.Extra = map[string]any{"openai_passthrough": passthrough}
 
-			result, err := svc.Forward(context.Background(), c, account, []byte(`{"model":"gpt-5.6-sol","stream":true,"input":"continue"}`))
+			result, err := svc.Forward(context.Background(), c, provider, []byte(`{"model":"gpt-5.6-sol","stream":true,"input":"continue"}`))
 
 			require.Nil(t, result)
 			var failoverErr *forwardcore.UpstreamFailoverError
@@ -54,7 +53,6 @@ func TestOpenAIResponsesEmptyCompletedFailsOver(t *testing.T) {
 
 // TestOpenAIResponsesEmptyCompletedExemptions 锁定有输出、有用量或有输出项的合法终态。
 func TestOpenAIResponsesEmptyCompletedExemptions(t *testing.T) {
-
 	tests := []struct {
 		name string
 		body string
@@ -86,10 +84,10 @@ func TestOpenAIResponsesEmptyCompletedExemptions(t *testing.T) {
 				}}
 				svc := newOpenAIImageGenerationControlTestService(upstream)
 				c, recorder := newOpenAIImageGenerationControlTestContext(true, "codex_cli_rs/0.144.1")
-				account := newOpenAIImageGenerationControlTestAccount()
-				account.Record.Extra = map[string]any{"openai_passthrough": passthrough}
+				provider := newOpenAIImageGenerationControlTestProvider()
+				provider.Record.Extra = map[string]any{"openai_passthrough": passthrough}
 
-				result, err := svc.Forward(context.Background(), c, account, []byte(`{"model":"gpt-5.6-sol","stream":true,"input":"continue"}`))
+				result, err := svc.Forward(context.Background(), c, provider, []byte(`{"model":"gpt-5.6-sol","stream":true,"input":"continue"}`))
 
 				require.NoError(t, err, "passthrough=%v", passthrough)
 				require.NotNil(t, result)

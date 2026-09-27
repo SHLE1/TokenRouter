@@ -3,46 +3,48 @@ package selection
 import (
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
-func isOpenAIAccount(account *gatewayprovider.ExecutionAccount) bool {
-	return account != nil && (account.Record.Platform == capability.PlatformOpenAI || account.Record.Platform == capability.PlatformGrok)
+func isOpenAIProvider(provider *gatewayprovider.ExecutionProvider) bool {
+	return provider != nil && (provider.Record.Platform == capability.PlatformOpenAI || provider.Record.Platform == capability.PlatformGrok)
 }
 
-func (s *Compatible) isOpenAIAccountRuntimeBlocked(account *gatewayprovider.ExecutionAccount) bool {
-	if s == nil || !isOpenAIAccount(account) {
+func (s *Compatible) isOpenAIProviderRuntimeBlocked(provider *gatewayprovider.ExecutionProvider) bool {
+	if s == nil || !isOpenAIProvider(provider) {
 		return false
 	}
-	return s.runtimeBlockState().Blocked(account.Record.ID, func() string { return accountcore.RefreshCredentialIdentity(gatewayprovider.ExecutionRecord(account)) })
+	return s.runtimeBlockState().Blocked(provider.Record.ID, func() string {
+		return providercore.RefreshCredentialIdentity(gatewayprovider.ExecutionRecord(provider))
+	})
 }
 
-func openAIAccountModelTransientModel(canonicalModel string) string {
-	return accountcore.NormalizeTransientModel(canonicalModel)
+func openAIProviderModelTransientModel(canonicalModel string) string {
+	return providercore.NormalizeTransientModel(canonicalModel)
 }
 
-func (s *Compatible) clearOpenAIAccountModelTransientState(accountID int64, model string) {
-	state := s.getOpenAIAccountModelTransientState()
+func (s *Compatible) clearOpenAIProviderModelTransientState(providerID int64, model string) {
+	state := s.getOpenAIProviderModelTransientState()
 	if state == nil {
 		return
 	}
-	state.RecordSuccess(accountID, model)
+	state.RecordSuccess(providerID, model)
 }
 
-func (s *Compatible) isOpenAIAccountModelRuntimeBlocked(account *gatewayprovider.ExecutionAccount, requestedModel string) bool {
-	if s == nil || account == nil {
+func (s *Compatible) isOpenAIProviderModelRuntimeBlocked(provider *gatewayprovider.ExecutionProvider, requestedModel string) bool {
+	if s == nil || provider == nil {
 		return false
 	}
-	state := s.getOpenAIAccountModelTransientState()
+	state := s.getOpenAIProviderModelTransientState()
 	if state == nil {
 		return false
 	}
-	canonicalModel := gatewayprovider.ExecutionModelPolicy(account).CanonicalSchedulingModel(requestedModel)
-	return state.IsBlocked(account.Record.ID, openAIAccountModelTransientModel(canonicalModel), time.Now())
+	canonicalModel := gatewayprovider.ExecutionModelPolicy(provider).CanonicalSchedulingModel(requestedModel)
+	return state.IsBlocked(provider.Record.ID, openAIProviderModelTransientModel(canonicalModel), time.Now())
 }
 
-func (s *Compatible) isOpenAIAccountRequestRuntimeBlocked(account *gatewayprovider.ExecutionAccount, requestedModel string) bool {
-	return s != nil && (s.isOpenAIAccountRuntimeBlocked(account) || s.isOpenAIAccountModelRuntimeBlocked(account, requestedModel))
+func (s *Compatible) isOpenAIProviderRequestRuntimeBlocked(provider *gatewayprovider.ExecutionProvider, requestedModel string) bool {
+	return s != nil && (s.isOpenAIProviderRuntimeBlocked(provider) || s.isOpenAIProviderModelRuntimeBlocked(provider, requestedModel))
 }

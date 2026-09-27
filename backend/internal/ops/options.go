@@ -68,7 +68,7 @@ type GroupObservation struct {
 	ID   int64
 	Name string
 }
-type AccountObservation struct {
+type ProviderObservation struct {
 	ID                                                      int64
 	Name, Platform, Status, ErrorMessage                    string
 	Schedulable                                             bool
@@ -77,32 +77,32 @@ type AccountObservation struct {
 	TempUnschedulableUntil, RateLimitResetAt, OverloadUntil *time.Time
 }
 
-func (a AccountObservation) EffectiveLoadFactor() int { return a.LoadFactor }
+func (a ProviderObservation) EffectiveLoadFactor() int { return a.LoadFactor }
 
 type UserObservation struct {
 	ID              int64
 	Email, Username string
 	Concurrency     int
 }
-type AccountReader interface {
-	ListPage(context.Context, pagination.PaginationParams, string, int64) ([]AccountObservation, *pagination.PaginationResult, error)
+type ProviderReader interface {
+	ListPage(context.Context, pagination.PaginationParams, string, int64) ([]ProviderObservation, *pagination.PaginationResult, error)
 }
-type AccountStatsReader interface {
-	ListOpsAccountsForStats(context.Context, string, *int64) ([]AccountObservation, error)
+type ProviderStatsReader interface {
+	ListOpsProvidersForStats(context.Context, string, *int64) ([]ProviderObservation, error)
 }
 type UserReader interface {
 	ListActivePage(context.Context, pagination.PaginationParams) ([]UserObservation, *pagination.PaginationResult, error)
 }
 type ConcurrencyReader interface {
-	GetAccountsLoadBatch(context.Context, []scheduler.AccountWithConcurrency) (map[int64]*scheduler.AccountLoadInfo, error)
+	GetProvidersLoadBatch(context.Context, []scheduler.ProviderWithConcurrency) (map[int64]*scheduler.ProviderLoadInfo, error)
 	GetUsersLoadBatch(context.Context, []scheduler.UserWithConcurrency) (map[int64]*scheduler.UserLoadInfo, error)
 }
 type (
-	AccountWithConcurrency = scheduler.AccountWithConcurrency
-	AccountLoadInfo        = scheduler.AccountLoadInfo
-	UserWithConcurrency    = scheduler.UserWithConcurrency
-	UserLoadInfo           = scheduler.UserLoadInfo
-	AuthHealthReader       interface {
+	ProviderWithConcurrency = scheduler.ProviderWithConcurrency
+	ProviderLoadInfo        = scheduler.ProviderLoadInfo
+	UserWithConcurrency     = scheduler.UserWithConcurrency
+	UserLoadInfo            = scheduler.UserLoadInfo
+	AuthHealthReader        interface {
 		Health(context.Context) apikey.AuthCacheInvalidationHealth
 	}
 )

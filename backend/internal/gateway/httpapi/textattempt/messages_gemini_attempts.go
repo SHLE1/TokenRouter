@@ -34,13 +34,13 @@ type geminiMessageAttemptBridge struct {
 // Select 保留 Gemini Messages 的既有差异，循环复用 gateway/text。
 func (b *geminiMessageAttemptBridge) Select(excluded map[int64]struct{}) (textflow.Selection, error) {
 	var err error
-	b.selection, err = b.binding().selectAccount(b.c.Request.Context(), b.apiKey.GroupID, b.sessionKey, b.reqModel, excluded, "", int64(0)) // Gemini 不使用会话限制
+	b.selection, err = b.binding().selectProvider(b.c.Request.Context(), b.apiKey.GroupID, b.sessionKey, b.reqModel, excluded, "", int64(0)) // Gemini 不使用会话限制
 	if err != nil {
 		return textflow.Selection{}, err
 	}
-	b.account = b.selection.Account
-	gatewayhttp.SetOpsSelectedAccount(b.c, b.account.Record.ID, b.account.Record.Platform)
-	return gatewaycapture.CaptureTextSelection(b.account), nil
+	b.provider = b.selection.Provider
+	gatewayhttp.SetOpsSelectedProvider(b.c, b.provider.Record.ID, b.provider.Record.Platform)
+	return gatewaycapture.CaptureTextSelection(b.provider), nil
 }
 
 // FirstSelectionFailure 保留 Gemini Messages 的既有差异，循环复用 gateway/text。
@@ -50,11 +50,11 @@ func (b *geminiMessageAttemptBridge) FirstSelectionFailure(err error, _ bool) {
 	}) {
 		return
 	}
-	cls := classifyNoAccountErrorFromGin(b.c, b.binding().diagnoser, b.apiKey, b.reqModel, b.reqModel, capability.PlatformGemini)
+	cls := classifyNoProviderErrorFromGin(b.c, b.binding().diagnoser, b.apiKey, b.reqModel, b.reqModel, capability.PlatformGemini)
 	if !cls.ModelNotFound {
 		gatewayhttp.MarkOpsRoutingCapacityLimitedIfNoAvailable(b.c, err)
 	}
-	b.reqLog.Warn("gateway.select_account_no_available",
+	b.reqLog.Warn("gateway.select_provider_no_available",
 		zap.String("model", b.reqModel),
 		zap.Int64p("group_id", b.apiKey.GroupID),
 		zap.String("platform", b.platform),
@@ -63,71 +63,71 @@ func (b *geminiMessageAttemptBridge) FirstSelectionFailure(err error, _ bool) {
 	)
 	message := cls.Message
 	if !cls.ModelNotFound {
-		message = "No available accounts: " + err.Error()
+		message = "No available providers: " + err.Error()
 	}
 	b.binding().handleStreamingAwareError(b.c, cls.Status, cls.ErrType, message, *b.streamStarted)
 }
 
 // Acquire 保留 Gemini Messages 的既有差异，循环复用 gateway/text。
 func (b *geminiMessageAttemptBridge) Acquire() bool {
-	// 3. 获取账号并发槽位
-	b.accountReleaseFunc = b.selection.ReleaseFunc
+	// 3. 获取提供商并发槽位
+	b.providerReleaseFunc = b.selection.ReleaseFunc
 	if !b.selection.Acquired {
 		if b.selection.WaitPlan == nil {
 			gatewayhttp.MarkOpsRoutingCapacityLimited(b.c)
-			b.reqLog.Warn("gateway.select_account_no_slot_no_wait_plan",
-				zap.Int64("account_id", b.account.Record.ID),
+			b.reqLog.Warn("gateway.select_provider_no_slot_no_wait_plan",
+				zap.Int64("provider_id", b.provider.Record.ID),
 				zap.String("model", b.reqModel),
 				zap.String("platform", b.platform),
 			)
-			b.binding().handleStreamingAwareError(b.c, http.StatusServiceUnavailable, "api_error", "No available accounts", *b.streamStarted)
+			b.binding().handleStreamingAwareError(b.c, http.StatusServiceUnavailable, "api_error", "No available providers", *b.streamStarted)
 			return false
 		}
-		accountWaitCounted := false
-		waitEntry, err := b.binding().concurrencyHelper.EnterAccountWait(b.c.Request.Context(), b.account.Record.ID, b.selection.WaitPlan.MaxWaiting)
+		providerWaitCounted := false
+		waitEntry, err := b.binding().concurrencyHelper.EnterProviderWait(b.c.Request.Context(), b.provider.Record.ID, b.selection.WaitPlan.MaxWaiting)
 		canWait := waitEntry.Allowed
 		if err != nil {
-			b.reqLog.Warn("gateway.account_wait_counter_increment_failed", zap.Int64("account_id", b.account.Record.ID), zap.Error(err))
+			b.reqLog.Warn("gateway.provider_wait_counter_increment_failed", zap.Int64("provider_id", b.provider.Record.ID), zap.Error(err))
 		} else if !canWait {
-			b.reqLog.Info("gateway.account_wait_queue_full",
-				zap.Int64("account_id", b.account.Record.ID),
+			b.reqLog.Info("gateway.provider_wait_queue_full",
+				zap.Int64("provider_id", b.provider.Record.ID),
 				zap.Int("max_waiting", b.selection.WaitPlan.MaxWaiting),
 			)
 			b.binding().handleStreamingAwareErrorWithCode(b.c, http.StatusTooManyRequests, "rate_limit_error", gatewayhttp.GatewayQueueFullCode, "Too many pending requests, please retry later", *b.streamStarted)
 			return false
 		}
 		if err == nil && canWait {
-			accountWaitCounted = true
+			providerWaitCounted = true
 		}
 		releaseWait := func() {
-			if accountWaitCounted {
+			if providerWaitCounted {
 				waitEntry.Release()
-				accountWaitCounted = false
+				providerWaitCounted = false
 			}
 		}
 
-		b.accountReleaseFunc, err = b.binding().concurrencyHelper.AcquireAccountSlotWithWaitTimeout(
+		b.providerReleaseFunc, err = b.binding().concurrencyHelper.AcquireProviderSlotWithWaitTimeout(
 			b.c,
-			b.account.Record.ID,
+			b.provider.Record.ID,
 			b.selection.WaitPlan.MaxConcurrency,
 			b.selection.WaitPlan.Timeout,
 			b.reqStream,
 			b.streamStarted,
 		)
 		if err != nil {
-			b.reqLog.Warn("gateway.account_slot_acquire_failed", zap.Int64("account_id", b.account.Record.ID), zap.Error(err))
+			b.reqLog.Warn("gateway.provider_slot_acquire_failed", zap.Int64("provider_id", b.provider.Record.ID), zap.Error(err))
 			releaseWait()
-			b.binding().handleConcurrencyError(b.c, err, "account", *b.streamStarted)
+			b.binding().handleConcurrencyError(b.c, err, "provider", *b.streamStarted)
 			return false
 		}
 		// Slot acquired: no longer waiting in queue.
 		releaseWait()
-		if err := b.binding().bindSticky(b.c.Request.Context(), b.apiKey.GroupID, b.sessionKey, b.account.Record.ID); err != nil {
-			b.reqLog.Warn("gateway.bind_sticky_session_failed", zap.Int64("account_id", b.account.Record.ID), zap.Error(err))
+		if err := b.binding().bindSticky(b.c.Request.Context(), b.apiKey.GroupID, b.sessionKey, b.provider.Record.ID); err != nil {
+			b.reqLog.Warn("gateway.bind_sticky_session_failed", zap.Int64("provider_id", b.provider.Record.ID), zap.Error(err))
 		}
 	}
-	// 账号槽位/等待计数需要在超时或断开时安全回收
-	b.accountReleaseFunc = scheduler.WrapRelease(b.c.Request.Context(), scheduler.ReleaseOnCancel, b.accountReleaseFunc)
+	// 提供商槽位/等待计数需要在超时或断开时安全回收
+	b.providerReleaseFunc = scheduler.WrapRelease(b.c.Request.Context(), scheduler.ReleaseOnCancel, b.providerReleaseFunc)
 
 	return true
 }
@@ -135,19 +135,19 @@ func (b *geminiMessageAttemptBridge) Acquire() bool {
 // Forward 保留 Gemini Messages 的既有差异，循环复用 gateway/text。
 func (b *geminiMessageAttemptBridge) Forward(state textflow.AttemptState) textflow.Outcome {
 	var err error
-	// 转发请求 - 根据账号平台分流
+	// 转发请求 - 根据提供商平台分流
 
 	requestCtx := b.c.Request.Context()
 	if state.SwitchCount > 0 {
-		requestCtx = requeststate.WithAccountSwitchCount(requestCtx, state.SwitchCount)
+		requestCtx = requeststate.WithProviderSwitchCount(requestCtx, state.SwitchCount)
 	}
 	// 记录 Forward 前已写入字节数，Forward 后若增加则说明 SSE 内容已发，禁止 failover
 	b.writerSizeBeforeForward = b.c.Writer.Size()
-	if b.account.Record.Platform == capability.PlatformAntigravity {
+	if b.provider.Record.Platform == capability.PlatformAntigravity {
 		b.result, err = b.binding().forwardAntigravityGemini(
 			requestCtx,
 			b.c,
-			b.account,
+			b.provider,
 			b.forwardModel,
 			"generateContent",
 			b.reqStream,
@@ -156,12 +156,12 @@ func (b *geminiMessageAttemptBridge) Forward(state textflow.AttemptState) textfl
 			forwardcore.WithGeminiSession(derefGroupID(b.apiKey.GroupID), b.sessionKey),
 		)
 	} else {
-		b.result, err = b.binding().forwardGemini(requestCtx, b.c, b.account, b.forwardBody)
+		b.result, err = b.binding().forwardGemini(requestCtx, b.c, b.provider, b.forwardBody)
 	}
-	if b.accountReleaseFunc != nil {
-		b.accountReleaseFunc()
+	if b.providerReleaseFunc != nil {
+		b.providerReleaseFunc()
 	}
-	b.binding().reportSchedule(b.selection, b.account.Record.ID, err == nil, b.result)
+	b.binding().reportSchedule(b.selection, b.provider.Record.ID, err == nil, b.result)
 	out := textflow.Outcome{Attempt: messageObservedAttempt(b.result, err), Err: err, HasResult: b.result != nil, OutputChanged: b.c.Writer.Size() != b.writerSizeBeforeForward}
 	out.Attempt.HTTPCommitted = b.c.Writer.Written()
 	out.Attempt.RetryCommitted = out.OutputChanged
@@ -177,9 +177,9 @@ func (b *geminiMessageAttemptBridge) Success() {
 	// RPM 计数递增（Forward 成功后）
 	// 注意：TOCTOU 竞态是已知且可接受的设计权衡，与 WindowCost 一致的 soft-limit 模式。
 	// 在高并发下可能短暂超出 RPM 限制，但不会导致请求失败。
-	if b.account.View().IsAnthropicOAuthOrSetupToken() && gatewaycapture.ExecutionRuntimeConfig(b.account).GetBaseRPM() > 0 {
-		if err := b.binding().incrementRPM(b.c.Request.Context(), b.account.Record.ID); err != nil {
-			b.reqLog.Warn("gateway.rpm_increment_failed", zap.Int64("account_id", b.account.Record.ID), zap.Error(err))
+	if b.provider.View().IsAnthropicOAuthOrSetupToken() && gatewaycapture.ExecutionRuntimeConfig(b.provider).GetBaseRPM() > 0 {
+		if err := b.binding().incrementRPM(b.c.Request.Context(), b.provider.Record.ID); err != nil {
+			b.reqLog.Warn("gateway.rpm_increment_failed", zap.Int64("provider_id", b.provider.Record.ID), zap.Error(err))
 		}
 	}
 }
@@ -191,7 +191,7 @@ func (b *geminiMessageAttemptBridge) Complete(state textflow.AttemptState) {
 	clientIP := clientip.GetClientIP(b.c)
 	requestPayloadHash := billing.HashUsageRequestPayload(b.body)
 	inboundEndpoint := gatewayhttp.GetInboundEndpoint(b.c)
-	upstreamEndpoint := gatewayhttp.GetUpstreamEndpoint(b.c, b.account.Record.Platform)
+	upstreamEndpoint := gatewayhttp.GetUpstreamEndpoint(b.c, b.provider.Record.Platform)
 
 	if b.result.ReasoningEffort == nil {
 		b.result.ReasoningEffort = protocol.NormalizeClaudeOutputEffort(b.parsedReq.OutputEffort)
@@ -216,7 +216,7 @@ func (b *geminiMessageAttemptBridge) Complete(state textflow.AttemptState) {
 
 		APIKey:             b.apiKey,
 		User:               b.apiKey.User,
-		Account:            gatewaycapture.ExecutionCompletionRecord(b.account),
+		Provider:           gatewaycapture.ExecutionCompletionRecord(b.provider),
 		Subscription:       b.subscription,
 		InboundEndpoint:    inboundEndpoint,
 		UpstreamEndpoint:   upstreamEndpoint,
@@ -240,7 +240,7 @@ func (b *geminiMessageAttemptBridge) Complete(state textflow.AttemptState) {
 				zap.Int64("api_key_id", completionInput.APIKey.ID),
 				zap.Any("group_id", completionInput.APIKey.GroupID),
 				zap.String("model", completionModel),
-				zap.Int64("account_id", completionInput.Account.ID),
+				zap.Int64("provider_id", completionInput.Provider.ID),
 			).Error("gateway.record_usage_failed", zap.Error(err))
 		}
 	})
@@ -249,8 +249,8 @@ func (b *geminiMessageAttemptBridge) Complete(state textflow.AttemptState) {
 func (b *geminiMessageAttemptBridge) Begin() {
 	b.currentAPIKey = b.apiKey
 	b.currentSubscription = b.subscription
-	if b.binding().singleAccountGroup(b.Context(), b.apiKey.GroupID) {
-		b.SingleAccountRetry()
+	if b.binding().singleProviderGroup(b.Context(), b.apiKey.GroupID) {
+		b.SingleProviderRetry()
 	}
 }
 func (b *geminiMessageAttemptBridge) PrepareAttempt() bool { return true }

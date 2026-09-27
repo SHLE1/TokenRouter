@@ -50,7 +50,8 @@ type countedResponse struct {
 
 func (r *countedResponse) Close() error { r.closed.Add(1); return r.ReadCloser.Close() }
 func executionTarget(server *httptest.Server, stream, passthrough bool, closed *atomic.Int32) *Target {
-	return &Target{AccountID: 7, Model: "claude-test", Passthrough: passthrough, Exchange: ExchangeOptions{Stream: stream, MaxAttempts: 1, MaxElapsed: time.Second,
+	return &Target{ProviderID: 7, Model: "claude-test", Passthrough: passthrough, Exchange: ExchangeOptions{
+		Stream: stream, MaxAttempts: 1, MaxElapsed: time.Second,
 		Context: func(ctx context.Context, _ bool) (context.Context, context.CancelFunc) { return ctx, func() {} },
 		Build: func(ctx context.Context, body []byte) (*http.Request, []byte, error) {
 			req, err := http.NewRequestWithContext(ctx, http.MethodPost, server.URL, bytes.NewReader(body))
@@ -66,6 +67,7 @@ func executionTarget(server *httptest.Server, stream, passthrough bool, closed *
 		TransportError: func(_ context.Context, err error, _ string) error { return err },
 	}, Response: ResponseOptions{ReadBody: io.ReadAll, InvalidJSON: func(_ context.Context, _ *http.Response, _ []byte, err error) error { return err }}}
 }
+
 func executeInput(target *Target, stream bool) upstream.AttemptInput {
 	return upstream.AttemptInput{Target: target, Protocol: protocol.ProtocolAnthropicMessages, ResponseModel: "claude-test", Body: []byte(`{"model":"claude-test"}`), Stream: stream}
 }
@@ -94,6 +96,7 @@ func TestExecuteNonStreamObservedZero(t *testing.T) {
 		})
 	}
 }
+
 func TestExecuteStreamingProgressAndPartialFailure(t *testing.T) {
 	for _, pass := range []bool{false, true} {
 		for _, partial := range []bool{false, true} {
@@ -161,6 +164,7 @@ func TestExecuteStreamingProgressAndPartialFailure(t *testing.T) {
 		}
 	}
 }
+
 func TestExecuteNonStreamCancellationClosesAttempt(t *testing.T) {
 	entered := make(chan struct{})
 	stopServer := make(chan struct{})

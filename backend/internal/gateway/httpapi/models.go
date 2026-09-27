@@ -27,7 +27,7 @@ type ModelsBackend interface {
 	SafeModelSegment(string) bool
 }
 
-// GeminiModelReader 只允许对已选择的执行目标读取模型资源，不暴露账号凭据。
+// GeminiModelReader 只允许对已选择的执行目标读取模型资源，不暴露提供商凭据。
 type GeminiModelReader interface {
 	Read(context.Context, string) (*ModelHTTPResponse, error)
 }
@@ -89,11 +89,11 @@ func (h *ModelsHandler) Models(c *gin.Context) {
 		platform = forcedPlatform
 	}
 
-	// 统一按分组映射、账号映射和分组白名单解析真实可请求模型。
+	// 统一按分组映射、提供商映射和分组白名单解析真实可请求模型。
 	resolution := h.backend.Resolve(c.Request.Context(), groupID, platform)
 	availableModels := routing.RequestableModelIDs(resolution.Models)
 	if apiKey != nil && apiKey.Group != nil && customListEnabled(apiKey.Group) {
-		// 自定义列表只能与已通过分组策略和账号校验的模型取交集，不能重新加入被拒绝的模型。
+		// 自定义列表只能与已通过分组策略和提供商校验的模型取交集，不能重新加入被拒绝的模型。
 		availableModels = FilterModelsByCustomList(availableModels, nil, apiKey.Group.ModelsListConfig.Models)
 		availableModels = apikey.AppendAPIKeyModelAliases(availableModels, apiKey.ModelMapping)
 		h.WriteCustomModelsList(c, platform, availableModels)

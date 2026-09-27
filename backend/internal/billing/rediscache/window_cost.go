@@ -1,4 +1,4 @@
-// 账号五小时窗口费用缓存保持原 key、三十秒 TTL 与浮点读取语义。
+// 提供商五小时窗口费用缓存保持原 key、三十秒 TTL 与浮点读取语义。
 package rediscache
 
 import (
@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	windowCostKeyPrefix = "window_cost:account:"
+	windowCostKeyPrefix = "window_cost:provider:"
 	windowCostCacheTTL  = 30 * time.Second
 )
 
@@ -23,8 +23,8 @@ func windowCostKey(id int64) string                         { return fmt.Sprintf
 // ========== 5h窗口费用缓存实现 ==========
 
 // GetWindowCost 获取缓存的窗口费用
-func (c *WindowCostCache) GetWindowCost(ctx context.Context, accountID int64) (float64, bool, error) {
-	key := windowCostKey(accountID)
+func (c *WindowCostCache) GetWindowCost(ctx context.Context, providerID int64) (float64, bool, error) {
+	key := windowCostKey(providerID)
 	val, err := c.rdb.Get(ctx, key).Float64()
 	if err == redis.Nil {
 		return 0, false, nil // 缓存未命中
@@ -36,21 +36,21 @@ func (c *WindowCostCache) GetWindowCost(ctx context.Context, accountID int64) (f
 }
 
 // SetWindowCost 设置窗口费用缓存
-func (c *WindowCostCache) SetWindowCost(ctx context.Context, accountID int64, cost float64) error {
-	key := windowCostKey(accountID)
+func (c *WindowCostCache) SetWindowCost(ctx context.Context, providerID int64, cost float64) error {
+	key := windowCostKey(providerID)
 	return c.rdb.Set(ctx, key, cost, windowCostCacheTTL).Err()
 }
 
 // GetWindowCostBatch 批量获取窗口费用缓存
-func (c *WindowCostCache) GetWindowCostBatch(ctx context.Context, accountIDs []int64) (map[int64]float64, error) {
-	if len(accountIDs) == 0 {
+func (c *WindowCostCache) GetWindowCostBatch(ctx context.Context, providerIDs []int64) (map[int64]float64, error) {
+	if len(providerIDs) == 0 {
 		return make(map[int64]float64), nil
 	}
 
 	// 构建批量查询的 keys
-	keys := make([]string, len(accountIDs))
-	for i, accountID := range accountIDs {
-		keys[i] = windowCostKey(accountID)
+	keys := make([]string, len(providerIDs))
+	for i, providerID := range providerIDs {
+		keys[i] = windowCostKey(providerID)
 	}
 
 	// 使用 MGET 批量获取
@@ -59,7 +59,7 @@ func (c *WindowCostCache) GetWindowCostBatch(ctx context.Context, accountIDs []i
 		return nil, err
 	}
 
-	results := make(map[int64]float64, len(accountIDs))
+	results := make(map[int64]float64, len(providerIDs))
 	for i, val := range vals {
 		if val == nil {
 			continue // 缓存未命中
@@ -68,10 +68,10 @@ func (c *WindowCostCache) GetWindowCostBatch(ctx context.Context, accountIDs []i
 		switch v := val.(type) {
 		case string:
 			if cost, err := strconv.ParseFloat(v, 64); err == nil {
-				results[accountIDs[i]] = cost
+				results[providerIDs[i]] = cost
 			}
 		case float64:
-			results[accountIDs[i]] = v
+			results[providerIDs[i]] = v
 		}
 	}
 

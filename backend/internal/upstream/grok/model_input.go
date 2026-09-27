@@ -1,4 +1,4 @@
-// Grok 报文规则保留旧平台差异；所有方法只处理本次输入，不持有账号或请求全局状态。
+// Grok 报文规则保留旧平台差异；所有方法只处理本次输入，不持有提供商或请求全局状态。
 package grok
 
 import (
@@ -181,6 +181,7 @@ func (m BodyCodec) NormalizeGrokToolOutput(value any, callID string) (string, []
 	}
 	return m.GrokStructuredToolOutputString(stripped, "(empty)"), images
 }
+
 func (m BodyCodec) StripGrokToolOutputImages(value any, callID string) (any, []GrokToolOutputImage, bool) {
 	switch typed := value.(type) {
 	case []any:
@@ -238,6 +239,7 @@ func (m BodyCodec) StripGrokToolOutputImages(value any, callID string) (any, []G
 		return value, nil, value != nil
 	}
 }
+
 func (m BodyCodec) GrokStructuredToolOutputString(value any, fallback string) string {
 	parts, ok := value.([]any)
 	if !ok || len(parts) == 0 {
@@ -283,6 +285,7 @@ func (m BodyCodec) ExtractGrokToolOutputImages(item map[string]any, callID strin
 	}
 	return images
 }
+
 func (m BodyCodec) GrokToolOutputImageURL(value any) string {
 	switch image := value.(type) {
 	case string:
@@ -304,6 +307,7 @@ func (m BodyCodec) GrokToolOutputImageURL(value any) string {
 	}
 	return ""
 }
+
 func (m BodyCodec) AppendGrokToolOutputImageMessage(items []any, images []GrokToolOutputImage) []any {
 	if len(images) == 0 {
 		return items
@@ -330,6 +334,7 @@ func (m BodyCodec) AppendGrokToolOutputImageMessage(items []any, images []GrokTo
 		"content": content,
 	})
 }
+
 func (m BodyCodec) PairGrokReplayCallIDs(items []any) (map[int]string, map[int]string) {
 	callIDs := make(map[int]string)
 	outputIDs := make(map[int]string)
@@ -418,6 +423,7 @@ func (m BodyCodec) PairGrokReplayCallIDs(items []any) (map[int]string, map[int]s
 	}
 	return callIDs, outputIDs
 }
+
 func (m BodyCodec) IsGrokReplayCallType(itemType string) bool {
 	switch itemType {
 	case "function_call", "custom_tool_call", "tool_search_call":
@@ -426,6 +432,7 @@ func (m BodyCodec) IsGrokReplayCallType(itemType string) bool {
 		return false
 	}
 }
+
 func (m BodyCodec) IsGrokReplayOutputType(itemType string) bool {
 	switch itemType {
 	case "function_call_output", "custom_tool_call_output", "tool_search_output", "tool_search_call_output":
@@ -434,6 +441,7 @@ func (m BodyCodec) IsGrokReplayOutputType(itemType string) bool {
 		return false
 	}
 }
+
 func (m BodyCodec) FirstNonEmptyGrokString(values ...any) string {
 	for _, value := range values {
 		if text := strings.TrimSpace(m.GrokStringValue(value)); text != "" {
@@ -442,6 +450,7 @@ func (m BodyCodec) FirstNonEmptyGrokString(values ...any) string {
 	}
 	return ""
 }
+
 func (m BodyCodec) FirstNonNilGrokJSONValue(values ...any) any {
 	for _, value := range values {
 		if value != nil {
@@ -450,6 +459,7 @@ func (m BodyCodec) FirstNonNilGrokJSONValue(values ...any) any {
 	}
 	return nil
 }
+
 func (m BodyCodec) SanitizeGrokMessageContent(content any) (any, bool) {
 	switch value := content.(type) {
 	case nil:
@@ -483,6 +493,7 @@ func (m BodyCodec) SanitizeGrokMessageContent(content any) (any, bool) {
 		return content, true
 	}
 }
+
 func (m BodyCodec) GrokContentPartHasImageURL(part map[string]any) bool {
 	for _, field := range []string{"file_id", "file_data"} {
 		if strings.TrimSpace(m.GrokStringValue(part[field])) != "" {
@@ -501,10 +512,12 @@ func (m BodyCodec) GrokContentPartHasImageURL(part map[string]any) bool {
 		return false
 	}
 }
+
 func (m BodyCodec) GrokStringValue(value any) string {
 	text, _ := value.(string)
 	return text
 }
+
 func (m BodyCodec) GrokModelInputString(value any, fallback string) string {
 	if text, ok := value.(string); ok {
 		if strings.TrimSpace(text) == "" {
@@ -521,10 +534,12 @@ func (m BodyCodec) GrokModelInputString(value any, fallback string) string {
 	}
 	return string(encoded)
 }
+
 func (m BodyCodec) GrokIsCompleteOutputMessage(item map[string]any) bool {
 	return strings.TrimSpace(m.GrokStringValue(item["id"])) != "" &&
 		strings.TrimSpace(m.GrokStringValue(item["status"])) != ""
 }
+
 func (m BodyCodec) CollapseGrokAssistantOutputText(content any) (string, bool) {
 	parts, ok := content.([]any)
 	if !ok || len(parts) == 0 {

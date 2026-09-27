@@ -12,9 +12,9 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
-// AlphaSearchTarget 不暴露完整账号，准备好的请求禁止序列化或日志展开。
+// AlphaSearchTarget 不暴露完整提供商，准备好的请求禁止序列化或日志展开。
 type AlphaSearchOptions struct {
-	AccountID         int64
+	ProviderID        int64
 	Request           *http.Request `json:"-"`
 	ResponsesFallback bool
 	Model             string
@@ -30,7 +30,7 @@ type AlphaSearchOptions struct {
 
 // String 防止技术参数中的令牌或请求被默认日志展开。
 func (o AlphaSearchOptions) String() string {
-	return fmt.Sprintf("media AlphaSearch account=%d", o.AccountID)
+	return fmt.Sprintf("media AlphaSearch provider=%d", o.ProviderID)
 }
 func (o AlphaSearchOptions) GoString() string { return o.String() }
 
@@ -39,7 +39,7 @@ type AlphaSearch struct{ Options AlphaSearchOptions }
 func (e AlphaSearch) Execute(ctx context.Context, input upstream.AttemptInput, sink upstream.OutputSink) (upstream.AttemptResult, error) {
 	o := e.Options
 	target := &openai.AlphaSearchTarget{
-		AccountID:         o.AccountID,
+		ProviderID:        o.ProviderID,
 		Request:           o.Request,
 		ResponsesFallback: o.ResponsesFallback,
 		Model:             o.Model,

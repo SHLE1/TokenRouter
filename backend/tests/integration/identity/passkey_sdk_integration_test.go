@@ -18,7 +18,7 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 	identitypostgres "github.com/TokenFlux/TokenRouter/internal/identity/postgres"
-	"github.com/TokenFlux/TokenRouter/internal/identity/provider"
+	identityadapter "github.com/TokenFlux/TokenRouter/internal/identity/provider"
 	identityredis "github.com/TokenFlux/TokenRouter/internal/identity/rediscache"
 	"github.com/fxamacker/cbor/v2"
 	"github.com/stretchr/testify/require"
@@ -33,7 +33,7 @@ func TestS05PasskeySDKCeremony(t *testing.T) {
 	user := mustCreateUser(t, client, &identity.User{})
 	users := identitypostgres.NewUserStore(client, integrationDB)
 	repo := identitypostgres.NewPasskeyRepository(integrationDB)
-	verifier, e := provider.NewPasskeyVerifier(provider.PasskeyOptions{Enabled: true, RPID: "example.com", RPDisplayName: "S05", RPOrigins: []string{"https://example.com"}})
+	verifier, e := identityadapter.NewPasskeyVerifier(identityadapter.PasskeyOptions{Enabled: true, RPID: "example.com", RPDisplayName: "S05", RPOrigins: []string{"https://example.com"}})
 	require.NoError(t, e)
 	core := identity.NewPasskeyService(true, verifier, repo, identityredis.NewPasskeySessionStore(rediscontainer.New(t)), users)
 	encode := base64.RawURLEncoding.EncodeToString

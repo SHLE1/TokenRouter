@@ -16,8 +16,6 @@ import (
 
 	sessiontestkit "github.com/TokenFlux/TokenRouter/internal/gateway/session/testkit"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
@@ -25,6 +23,8 @@ import (
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
 	"github.com/TokenFlux/TokenRouter/internal/protocol/wirejson"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	upstreamcore "github.com/TokenFlux/TokenRouter/internal/upstream"
@@ -38,7 +38,6 @@ import (
 )
 
 func TestOpenAIGatewayService_Forward_WSv2_SuccessAndBindSticky(t *testing.T) {
-
 	type receivedPayload struct {
 		Type               string
 		PreviousResponseID string
@@ -115,7 +114,7 @@ func TestOpenAIGatewayService_Forward_WSv2_SuccessAndBindSticky(t *testing.T) {
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerAccount = 2
+	options.Pool.MaxConnsPerProvider = 2
 	options.Pool.QueueLimitPerConn = 8
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 30
@@ -133,24 +132,27 @@ func TestOpenAIGatewayService_Forward_WSv2_SuccessAndBindSticky(t *testing.T) {
 	cache := &sessiontestkit.StickyCache{}
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: upstream, cache: cache, corrector: openai.NewCodexToolCorrector()})
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 9,
-		Name:        "openai-ws",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Status:      billing.StatusActive,
-		Schedulable: true,
-		Concurrency: 2,
-		Credentials: map[string]any{
-			"api_key":  "sk-test",
-			"base_url": wsServer.URL,
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 9,
+			Name:        "openai-ws",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Status:      billing.StatusActive,
+			Schedulable: true,
+			Concurrency: 2,
+			Credentials: map[string]any{
+				"api_key":  "sk-test",
+				"base_url": wsServer.URL,
+			},
+			Extra: map[string]any{
+				"responses_websockets_v2_enabled": true,
+			},
 		},
-		Extra: map[string]any{
-			"responses_websockets_v2_enabled": true,
-		}},
 	}
 
 	body := []byte(`{"model":"gpt-5.1","stream":false,"previous_response_id":"resp_prev_1","input":[{"type":"input_text","text":"hello"}]}`)
-	result, err := svc.Responses.Forward(context.Background(), c, account, body)
+	result, err := svc.Responses.Forward(context.Background(), c, provider, body)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, 12, result.Usage.InputTokens)
@@ -167,9 +169,9 @@ func TestOpenAIGatewayService_Forward_WSv2_SuccessAndBindSticky(t *testing.T) {
 	require.False(t, received.Stream, "应保持客户端 stream=false 的原始语义")
 
 	store := svc.State
-	mappedAccountID, getErr := store.GetResponseAccount(context.Background(), groupID, "resp_new_1")
+	mappedProviderID, getErr := store.GetResponseProvider(context.Background(), groupID, "resp_new_1")
 	require.NoError(t, getErr)
-	require.Equal(t, account.Record.ID, mappedAccountID)
+	require.Equal(t, provider.Record.ID, mappedProviderID)
 	connID, ok := store.GetResponseConn("resp_new_1")
 	require.True(t, ok)
 	require.NotEmpty(t, connID)
@@ -179,7 +181,6 @@ func TestOpenAIGatewayService_Forward_WSv2_SuccessAndBindSticky(t *testing.T) {
 }
 
 func TestOpenAIGatewayService_Forward_WSv2_UsesPatchedBodyAfterValidationDecode(t *testing.T) {
-
 	type receivedPayload struct {
 		MaxCompletionTokensExists bool
 	}
@@ -233,22 +234,25 @@ func TestOpenAIGatewayService_Forward_WSv2_UsesPatchedBodyAfterValidationDecode(
 
 	svc := newWSFixture(wsFixtureInputs{options: options, corrector: openai.NewCodexToolCorrector()})
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 10,
-		Name:        "openai-ws",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Status:      billing.StatusActive,
-		Schedulable: true,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":  "sk-test",
-			"base_url": wsServer.URL,
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 10,
+			Name:        "openai-ws",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Status:      billing.StatusActive,
+			Schedulable: true,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":  "sk-test",
+				"base_url": wsServer.URL,
+			},
+			Extra: map[string]any{"responses_websockets_v2_enabled": true},
 		},
-		Extra: map[string]any{"responses_websockets_v2_enabled": true}},
 	}
 
 	body := []byte(`{"model":"gpt-5.4","stream":false,"max_completion_tokens":12,"tools":[{"type":"image_generation"}],"input":[{"type":"input_text","text":"hello"}]}`)
-	result, err := svc.Responses.Forward(context.Background(), c, account, body)
+	result, err := svc.Responses.Forward(context.Background(), c, provider, body)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.True(t, result.OpenAIWSMode)
@@ -258,7 +262,6 @@ func TestOpenAIGatewayService_Forward_WSv2_UsesPatchedBodyAfterValidationDecode(
 }
 
 func TestOpenAIGatewayService_Forward_WSv2_ResponseFailedCarriesUpstreamWarning(t *testing.T) {
-
 	upgrader := websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
 	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
@@ -290,33 +293,36 @@ func TestOpenAIGatewayService_Forward_WSv2_ResponseFailedCarriesUpstreamWarning(
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerAccount = 1
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 1
+	options.Pool.MaxConnsPerProvider = 1
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 1
 	options.Pool.QueueLimitPerConn = 8
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 5
 	options.WS.WriteTimeoutSeconds = 3
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector()})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 19,
-		Name:        "openai-ws-cyber",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Status:      billing.StatusActive,
-		Schedulable: true,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":  "sk-test",
-			"base_url": wsServer.URL,
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 19,
+			Name:        "openai-ws-cyber",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Status:      billing.StatusActive,
+			Schedulable: true,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":  "sk-test",
+				"base_url": wsServer.URL,
+			},
+			Extra: map[string]any{
+				"responses_websockets_v2_enabled": true,
+			},
 		},
-		Extra: map[string]any{
-			"responses_websockets_v2_enabled": true,
-		}},
 	}
 
 	body := []byte(`{"model":"gpt-5.1","stream":false,"input":[{"type":"input_text","text":"hello"}]}`)
-	result, err := svc.Responses.Forward(context.Background(), c, account, body)
+	result, err := svc.Responses.Forward(context.Background(), c, provider, body)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -327,7 +333,6 @@ func TestOpenAIGatewayService_Forward_WSv2_ResponseFailedCarriesUpstreamWarning(
 }
 
 func TestOpenAIGatewayService_Forward_WSv2_ResponseFailedTopLevelErrorCarriesUpstreamWarning(t *testing.T) {
-
 	var attempts atomic.Int32
 	upgrader := websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
 	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -361,9 +366,9 @@ func TestOpenAIGatewayService_Forward_WSv2_ResponseFailedTopLevelErrorCarriesUps
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerAccount = 1
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 1
+	options.Pool.MaxConnsPerProvider = 1
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 1
 	options.Pool.QueueLimitPerConn = 8
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 5
@@ -372,24 +377,27 @@ func TestOpenAIGatewayService_Forward_WSv2_ResponseFailedTopLevelErrorCarriesUps
 	options.WS.RetryBackoffMaxMS = 1
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector()})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 20,
-		Name:        "openai-ws-cyber-top-level",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Status:      billing.StatusActive,
-		Schedulable: true,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":  "sk-test",
-			"base_url": wsServer.URL,
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 20,
+			Name:        "openai-ws-cyber-top-level",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Status:      billing.StatusActive,
+			Schedulable: true,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":  "sk-test",
+				"base_url": wsServer.URL,
+			},
+			Extra: map[string]any{
+				"responses_websockets_v2_enabled": true,
+			},
 		},
-		Extra: map[string]any{
-			"responses_websockets_v2_enabled": true,
-		}},
 	}
 
 	body := []byte(`{"model":"gpt-5.1","stream":false,"input":[{"type":"input_text","text":"hello"}]}`)
-	result, err := svc.Responses.Forward(context.Background(), c, account, body)
+	result, err := svc.Responses.Forward(context.Background(), c, provider, body)
 
 	require.Error(t, err)
 	require.Nil(t, result)
@@ -402,7 +410,6 @@ func TestOpenAIGatewayService_Forward_WSv2_ResponseFailedTopLevelErrorCarriesUps
 }
 
 func TestOpenAIGatewayService_Forward_WSv2_ErrorEventCarriesCyberWarning(t *testing.T) {
-
 	var attempts atomic.Int32
 	upgrader := websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
 	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -436,9 +443,9 @@ func TestOpenAIGatewayService_Forward_WSv2_ErrorEventCarriesCyberWarning(t *test
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerAccount = 1
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 1
+	options.Pool.MaxConnsPerProvider = 1
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 1
 	options.Pool.QueueLimitPerConn = 8
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 5
@@ -447,24 +454,27 @@ func TestOpenAIGatewayService_Forward_WSv2_ErrorEventCarriesCyberWarning(t *test
 	options.WS.RetryBackoffMaxMS = 1
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector()})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 22,
-		Name:        "openai-ws-error-cyber",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Status:      billing.StatusActive,
-		Schedulable: true,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":  "sk-test",
-			"base_url": wsServer.URL,
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 22,
+			Name:        "openai-ws-error-cyber",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Status:      billing.StatusActive,
+			Schedulable: true,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":  "sk-test",
+				"base_url": wsServer.URL,
+			},
+			Extra: map[string]any{
+				"responses_websockets_v2_enabled": true,
+			},
 		},
-		Extra: map[string]any{
-			"responses_websockets_v2_enabled": true,
-		}},
 	}
 
 	body := []byte(`{"model":"gpt-5.1","stream":false,"input":[{"type":"input_text","text":"hello"}]}`)
-	result, err := svc.Responses.Forward(context.Background(), c, account, body)
+	result, err := svc.Responses.Forward(context.Background(), c, provider, body)
 
 	require.Error(t, err)
 	require.Nil(t, result)
@@ -479,7 +489,6 @@ func TestOpenAIGatewayService_Forward_WSv2_ErrorEventCarriesCyberWarning(t *test
 }
 
 func TestOpenAIGatewayService_Forward_WSv2_ResponseFailedTopLevelServerErrorStillRetries(t *testing.T) {
-
 	var attempts atomic.Int32
 	upgrader := websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
 	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -520,9 +529,9 @@ func TestOpenAIGatewayService_Forward_WSv2_ResponseFailedTopLevelServerErrorStil
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerAccount = 1
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 1
+	options.Pool.MaxConnsPerProvider = 1
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 1
 	options.Pool.QueueLimitPerConn = 8
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 5
@@ -532,24 +541,27 @@ func TestOpenAIGatewayService_Forward_WSv2_ResponseFailedTopLevelServerErrorStil
 	options.WS.RetryJitterRatio = 0
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector()})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 21,
-		Name:        "openai-ws-server-error-retry",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Status:      billing.StatusActive,
-		Schedulable: true,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":  "sk-test",
-			"base_url": wsServer.URL,
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 21,
+			Name:        "openai-ws-server-error-retry",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Status:      billing.StatusActive,
+			Schedulable: true,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":  "sk-test",
+				"base_url": wsServer.URL,
+			},
+			Extra: map[string]any{
+				"responses_websockets_v2_enabled": true,
+			},
 		},
-		Extra: map[string]any{
-			"responses_websockets_v2_enabled": true,
-		}},
 	}
 
 	body := []byte(`{"model":"gpt-5.1","stream":false,"input":[{"type":"input_text","text":"hello"}]}`)
-	result, err := svc.Responses.Forward(context.Background(), c, account, body)
+	result, err := svc.Responses.Forward(context.Background(), c, provider, body)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -559,7 +571,6 @@ func TestOpenAIGatewayService_Forward_WSv2_ResponseFailedTopLevelServerErrorStil
 }
 
 func TestOpenAIGatewayService_Forward_WSv2_ImageGenerationCountsOutputs(t *testing.T) {
-
 	upgrader := websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
 	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
@@ -633,9 +644,9 @@ func TestOpenAIGatewayService_Forward_WSv2_ImageGenerationCountsOutputs(t *testi
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerAccount = 1
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 1
+	options.Pool.MaxConnsPerProvider = 1
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 1
 	options.Pool.QueueLimitPerConn = 8
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 5
@@ -643,24 +654,27 @@ func TestOpenAIGatewayService_Forward_WSv2_ImageGenerationCountsOutputs(t *testi
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector()})
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 10,
-		Name:        "openai-ws-image",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Status:      billing.StatusActive,
-		Schedulable: true,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":  "sk-test",
-			"base_url": wsServer.URL,
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 10,
+			Name:        "openai-ws-image",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Status:      billing.StatusActive,
+			Schedulable: true,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":  "sk-test",
+				"base_url": wsServer.URL,
+			},
+			Extra: map[string]any{
+				"responses_websockets_v2_enabled": true,
+			},
 		},
-		Extra: map[string]any{
-			"responses_websockets_v2_enabled": true,
-		}},
 	}
 
 	body := []byte(`{"model":"gpt-5.4","stream":false,"input":"draw","tools":[{"type":"image_generation","model":"gpt-image-2","size":"1024x1024"}],"tool_choice":{"type":"image_generation"}}`)
-	result, err := svc.Responses.Forward(context.Background(), c, account, body)
+	result, err := svc.Responses.Forward(context.Background(), c, provider, body)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, "resp_ws_image_1", result.RequestID)
@@ -686,7 +700,6 @@ func requestToJSONString(payload map[string]any) string {
 }
 
 func TestOpenAIGatewayService_BuildOpenAIWSHeadersPreservesCodexIdentity(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodGet, "/v1/responses", nil)
@@ -696,11 +709,11 @@ func TestOpenAIGatewayService_BuildOpenAIWSHeadersPreservesCodexIdentity(t *test
 	c.Request.Header.Set("X-Test", "blocked")
 
 	svc := newWSFixture(wsFixtureInputs{})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
 	headers, _, err := svc.buildOpenAIWSHeaders(
 		context.Background(),
 		c,
-		account,
+		provider,
 		"token", egress.OpenAIWSProtocolDecision{Transport: egress.OpenAIUpstreamTransportResponsesWebsocketV2}, true,
 		"",
 		"",
@@ -716,7 +729,6 @@ func TestOpenAIGatewayService_BuildOpenAIWSHeadersPreservesCodexIdentity(t *test
 }
 
 func TestOpenAIGatewayService_BuildOpenAIWSHeadersDeviceModePreservesNamespacedClientSessionIdentity(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodGet, "/v1/responses", nil)
@@ -728,8 +740,8 @@ func TestOpenAIGatewayService_BuildOpenAIWSHeadersDeviceModePreservesNamespacedC
 	c.Request.Header.Set("x-client-request-id", "client-request")
 	c.Request.Header.Set("x-sub2api-request-id", "internal-request")
 
-	account := gatewayprovider.NewExecutionAccount(newTestOAuthAccount(1300, map[string]any{accountcore.CodexFingerprintModeExtraKey: "device"}))
-	ids := accountprovider.CodexFingerprintIDsFromRequest(account.View(), c.Request.Header)
+	provider := gatewayprovider.NewExecutionProvider(newTestOAuthProvider(1300, map[string]any{providercore.CodexFingerprintModeExtraKey: "device"}))
+	ids := provideradapter.CodexFingerprintIDsFromRequest(provider.View(), c.Request.Header)
 	require.NotNil(t, ids)
 	StageCodexFingerprintIDs(c, ids)
 
@@ -737,7 +749,7 @@ func TestOpenAIGatewayService_BuildOpenAIWSHeadersDeviceModePreservesNamespacedC
 	headers, _, err := svc.buildOpenAIWSHeaders(
 		context.Background(),
 		c,
-		account,
+		provider,
 		"token", egress.OpenAIWSProtocolDecision{Transport: egress.OpenAIUpstreamTransportResponsesWebsocketV2}, true,
 		"",
 		"",
@@ -749,24 +761,23 @@ func TestOpenAIGatewayService_BuildOpenAIWSHeadersDeviceModePreservesNamespacedC
 	require.NoError(t, err)
 	require.Equal(t, ids.InstallationID, headers.Get("x-codex-installation-id"))
 	require.NotEqual(t, "client-installation", headers.Get("x-codex-installation-id"))
-	require.Equal(t, openai.ScopeCodexAccountIdentityValue(accountprovider.CodexIdentityNamespace(account.View()), 0, "window", "client-window"), headers.Get("x-codex-window-id"))
-	require.Equal(t, openai.ScopeCodexAccountIdentityValue(accountprovider.CodexIdentityNamespace(account.View()), 0, "session", "client-session"), headers.Get("session-id"))
-	require.Equal(t, openai.ScopeCodexAccountIdentityValue(accountprovider.CodexIdentityNamespace(account.View()), 0, "thread", "client-thread"), headers.Get("thread-id"))
-	require.Equal(t, openai.ScopeCodexAccountIdentityValue(accountprovider.CodexIdentityNamespace(account.View()), 0, "request", "client-request"), headers.Get("x-client-request-id"))
+	require.Equal(t, openai.ScopeCodexProviderIdentityValue(provideradapter.CodexIdentityNamespace(provider.View()), 0, "window", "client-window"), headers.Get("x-codex-window-id"))
+	require.Equal(t, openai.ScopeCodexProviderIdentityValue(provideradapter.CodexIdentityNamespace(provider.View()), 0, "session", "client-session"), headers.Get("session-id"))
+	require.Equal(t, openai.ScopeCodexProviderIdentityValue(provideradapter.CodexIdentityNamespace(provider.View()), 0, "thread", "client-thread"), headers.Get("thread-id"))
+	require.Equal(t, openai.ScopeCodexProviderIdentityValue(provideradapter.CodexIdentityNamespace(provider.View()), 0, "request", "client-request"), headers.Get("x-client-request-id"))
 	require.Empty(t, headers.Get("x-sub2api-request-id"))
 }
 
-func TestLogOpenAIWSBindResponseAccountWarn(t *testing.T) {
+func TestLogOpenAIWSBindResponseProviderWarn(t *testing.T) {
 	require.NotPanics(t, func() {
-		gatewayprovider.LogOpenAIWSBindResponseAccountWarn(1, 2, "resp_ok", nil)
+		gatewayprovider.LogOpenAIWSBindResponseProviderWarn(1, 2, "resp_ok", nil)
 	})
 	require.NotPanics(t, func() {
-		gatewayprovider.LogOpenAIWSBindResponseAccountWarn(1, 2, "resp_err", errors.New("bind failed"))
+		gatewayprovider.LogOpenAIWSBindResponseProviderWarn(1, 2, "resp_err", errors.New("bind failed"))
 	})
 }
 
 func TestOpenAIGatewayService_Forward_WSv2_RewriteModelAndToolCallsOnCompletedEvent(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/responses", nil)
@@ -781,9 +792,9 @@ func TestOpenAIGatewayService_Forward_WSv2_RewriteModelAndToolCallsOnCompletedEv
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerAccount = 1
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 1
+	options.Pool.MaxConnsPerProvider = 1
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 1
 	options.Pool.QueueLimitPerConn = 8
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 5
@@ -800,26 +811,29 @@ func TestOpenAIGatewayService_Forward_WSv2_RewriteModelAndToolCallsOnCompletedEv
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1301,
-		Name:        "openai-rewrite",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Status:      billing.StatusActive,
-		Schedulable: true,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key": "sk-test",
-			"model_mapping": map[string]any{
-				"custom-original-model": "gpt-5.1",
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1301,
+			Name:        "openai-rewrite",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Status:      billing.StatusActive,
+			Schedulable: true,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key": "sk-test",
+				"model_mapping": map[string]any{
+					"custom-original-model": "gpt-5.1",
+				},
+			},
+			Extra: map[string]any{
+				"responses_websockets_v2_enabled": true,
 			},
 		},
-		Extra: map[string]any{
-			"responses_websockets_v2_enabled": true,
-		}},
 	}
 
 	body := []byte(`{"model":"custom-original-model","stream":false,"input":[{"type":"input_text","text":"hello"}]}`)
-	result, err := svc.Responses.Forward(context.Background(), c, account, body)
+	result, err := svc.Responses.Forward(context.Background(), c, provider, body)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, "resp_model_tool_1", result.RequestID)
@@ -830,7 +844,6 @@ func TestOpenAIGatewayService_Forward_WSv2_RewriteModelAndToolCallsOnCompletedEv
 }
 
 func TestOpenAIGatewayService_Forward_WSv2_ResponseFailedIsNotSchedulingSuccess(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/responses", nil)
@@ -839,7 +852,7 @@ func TestOpenAIGatewayService_Forward_WSv2_ResponseFailedIsNotSchedulingSuccess(
 	options := newOpenAIWSV2TestConfig()
 	options.Request.URLPolicy.Enabled = false
 	options.Request.URLPolicy.AllowInsecureHTTP = true
-	options.Pool.MinIdlePerAccount = 0
+	options.Pool.MinIdlePerProvider = 0
 
 	captureConn := &openAIWSCaptureConn{events: [][]byte{
 		[]byte(`{"type":"response.failed","response":{"id":"resp_failed_1","model":"gpt-5.5","error":{"code":"server_error","message":"Internal error"}}}`),
@@ -847,31 +860,33 @@ func TestOpenAIGatewayService_Forward_WSv2_ResponseFailedIsNotSchedulingSuccess(
 	pool := newOpenAIWSConnPool(options)
 	pool.SetClientDialerForTest(&openAIWSCaptureDialer{conn: captureConn})
 
-	svc := newWSFixture(wsFixtureInputs{options: options, health: newUpstreamHealthForTest(transientCooldownAccountRepo{}, options, nil, accountcore.HealthOptions{}, nil), transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1302,
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Status:      billing.StatusActive,
-		Schedulable: true,
-		Concurrency: 1,
-		Credentials: map[string]any{"api_key": "sk-test"},
-		Extra:       map[string]any{"responses_websockets_v2_enabled": true}},
+	svc := newWSFixture(wsFixtureInputs{options: options, health: newUpstreamHealthForTest(transientCooldownProviderRepo{}, options, nil, providercore.HealthOptions{}, nil), transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1302,
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Status:      billing.StatusActive,
+			Schedulable: true,
+			Concurrency: 1,
+			Credentials: map[string]any{"api_key": "sk-test"},
+			Extra:       map[string]any{"responses_websockets_v2_enabled": true},
+		},
 	}
-	svc.Output.Health.ModelTransient.RecordFailure(account.Record.ID, accountcore.NormalizeTransientModel("gpt-5.5"), time.Now())
+	svc.Output.Health.ModelTransient.RecordFailure(provider.Record.ID, providercore.NormalizeTransientModel("gpt-5.5"), time.Now())
 
-	result, err := svc.Responses.Forward(context.Background(), c, account, []byte(`{"model":"gpt-5.5","stream":false,"input":"hello"}`))
+	result, err := svc.Responses.Forward(context.Background(), c, provider, []byte(`{"model":"gpt-5.5","stream":false,"input":"hello"}`))
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, "response.failed", result.UpstreamTerminalEvent)
 	require.False(t, result.SucceededForScheduling())
-	require.True(t, wsFixtureModelBlocked(svc, account, "gpt-5.5"))
+	require.True(t, wsFixtureModelBlocked(svc, provider, "gpt-5.5"))
 }
 
 // TestOpenAIGatewayService_Forward_WSv2_ResponseFailedCustomStatusFailsOver
-// 验证终止失败事件命中自定义错误码时，在下游写入前返回账号故障转移错误。
+// 验证终止失败事件命中自定义错误码时，在下游写入前返回提供商故障转移错误。
 func TestOpenAIGatewayService_Forward_WSv2_ResponseFailedCustomStatusFailsOver(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/responses", nil)
@@ -880,7 +895,7 @@ func TestOpenAIGatewayService_Forward_WSv2_ResponseFailedCustomStatusFailsOver(t
 	options := newOpenAIWSV2TestConfig()
 	options.Request.URLPolicy.Enabled = false
 	options.Request.URLPolicy.AllowInsecureHTTP = true
-	options.Pool.MinIdlePerAccount = 0
+	options.Pool.MinIdlePerProvider = 0
 
 	captureConn := &openAIWSCaptureConn{events: [][]byte{
 		[]byte(`{"type":"response.failed","response":{"id":"resp_failed_policy","model":"gpt-5.5","error":{"status_code":422,"code":"configured","message":"configured failure"}}}`),
@@ -888,34 +903,36 @@ func TestOpenAIGatewayService_Forward_WSv2_ResponseFailedCustomStatusFailsOver(t
 	pool := newOpenAIWSConnPool(options)
 	pool.SetClientDialerForTest(&openAIWSCaptureDialer{conn: captureConn})
 	repo := &openAIWSPolicyRepo{}
-	svc := newWSFixture(wsFixtureInputs{options: options, health: newUpstreamHealthForTest(repo, options, nil, accountcore.HealthOptions{}, nil), transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1303,
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Status:      billing.StatusActive,
-		Schedulable: true,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":                    "sk-test",
-			"custom_error_codes_enabled": true,
-			"custom_error_codes":         []any{float64(http.StatusUnprocessableEntity)},
+	svc := newWSFixture(wsFixtureInputs{options: options, health: newUpstreamHealthForTest(repo, options, nil, providercore.HealthOptions{}, nil), transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1303,
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Status:      billing.StatusActive,
+			Schedulable: true,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":                    "sk-test",
+				"custom_error_codes_enabled": true,
+				"custom_error_codes":         []any{float64(http.StatusUnprocessableEntity)},
+			},
+			Extra: map[string]any{"responses_websockets_v2_enabled": true},
 		},
-		Extra: map[string]any{"responses_websockets_v2_enabled": true}},
 	}
 
-	result, err := svc.Responses.Forward(context.Background(), c, account, []byte(`{"model":"gpt-5.5","stream":false,"input":"hello"}`))
+	result, err := svc.Responses.Forward(context.Background(), c, provider, []byte(`{"model":"gpt-5.5","stream":false,"input":"hello"}`))
 
 	require.Nil(t, result)
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)
 	require.Equal(t, http.StatusUnprocessableEntity, failoverErr.StatusCode)
-	require.False(t, failoverErr.RetryableOnSameAccount)
+	require.False(t, failoverErr.RetryableOnSameProvider)
 	require.False(t, c.Writer.Written())
 	require.Equal(t, 1, repo.setErrorCalls)
 }
 
 func TestOpenAIGatewayService_Forward_WSv2_PoolReuseNotOneToOne(t *testing.T) {
-
 	var upgradeCount atomic.Int64
 	var sequence atomic.Int64
 	upgrader := websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
@@ -970,29 +987,32 @@ func TestOpenAIGatewayService_Forward_WSv2_PoolReuseNotOneToOne(t *testing.T) {
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerAccount = 2
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 1
+	options.Pool.MaxConnsPerProvider = 2
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 1
 	options.Pool.QueueLimitPerConn = 8
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 30
 	options.WS.WriteTimeoutSeconds = 10
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector()})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 19,
-		Name:        "openai-ws",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Status:      billing.StatusActive,
-		Schedulable: true,
-		Concurrency: 2,
-		Credentials: map[string]any{
-			"api_key":  "sk-test",
-			"base_url": wsServer.URL,
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 19,
+			Name:        "openai-ws",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Status:      billing.StatusActive,
+			Schedulable: true,
+			Concurrency: 2,
+			Credentials: map[string]any{
+				"api_key":  "sk-test",
+				"base_url": wsServer.URL,
+			},
+			Extra: map[string]any{
+				"responses_websockets_v2_enabled": true,
+			},
 		},
-		Extra: map[string]any{
-			"responses_websockets_v2_enabled": true,
-		}},
 	}
 
 	for i := 0; i < 2; i++ {
@@ -1004,7 +1024,7 @@ func TestOpenAIGatewayService_Forward_WSv2_PoolReuseNotOneToOne(t *testing.T) {
 		c.Set("api_key", &apikey.APIKey{GroupID: &groupID})
 
 		body := []byte(`{"model":"gpt-5.1","stream":false,"previous_response_id":"resp_prev_reuse","input":[{"type":"input_text","text":"hello"}]}`)
-		result, err := svc.Responses.Forward(context.Background(), c, account, body)
+		result, err := svc.Responses.Forward(context.Background(), c, provider, body)
 		require.NoError(t, err)
 		require.NotNil(t, result)
 		require.True(t, strings.HasPrefix(result.RequestID, "resp_reuse_"))
@@ -1018,7 +1038,6 @@ func TestOpenAIGatewayService_Forward_WSv2_PoolReuseNotOneToOne(t *testing.T) {
 }
 
 func TestOpenAIGatewayService_Forward_WSv2_OAuthStoreFalseByDefault(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/responses", nil)
@@ -1035,9 +1054,9 @@ func TestOpenAIGatewayService_Forward_WSv2_OAuthStoreFalseByDefault(t *testing.T
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
 	options.WS.AllowStoreRecovery = false
-	options.Pool.MaxConnsPerAccount = 1
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 1
+	options.Pool.MaxConnsPerProvider = 1
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 1
 
 	captureConn := &openAIWSCaptureConn{
 		events: [][]byte{
@@ -1049,23 +1068,26 @@ func TestOpenAIGatewayService_Forward_WSv2_OAuthStoreFalseByDefault(t *testing.T
 	pool.SetClientDialerForTest(captureDialer)
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 29,
-		Name:        "openai-oauth",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeOAuth,
-		Status:      billing.StatusActive,
-		Schedulable: true,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"access_token": "oauth-token-1",
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 29,
+			Name:        "openai-oauth",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeOAuth,
+			Status:      billing.StatusActive,
+			Schedulable: true,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"access_token": "oauth-token-1",
+			},
+			Extra: map[string]any{
+				"responses_websockets_v2_enabled": true,
+			},
 		},
-		Extra: map[string]any{
-			"responses_websockets_v2_enabled": true,
-		}},
 	}
 
 	body := []byte(`{"model":"gpt-5.1","stream":false,"store":true,"input":[{"type":"input_text","text":"hello","namespace":"native-wsv2"}]}`)
-	result, err := svc.Responses.Forward(context.Background(), c, account, body)
+	result, err := svc.Responses.Forward(context.Background(), c, provider, body)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, "resp_oauth_1", result.RequestID)
@@ -1079,14 +1101,13 @@ func TestOpenAIGatewayService_Forward_WSv2_OAuthStoreFalseByDefault(t *testing.T
 	require.Equal(t, "native-wsv2", gjson.Get(requestJSON, "input.0.namespace").String(), "OAuth WSv2 应保留原生 namespace")
 	require.Equal(t, openAIWSBetaV2Value, captureDialer.lastHeaders.Get("OpenAI-Beta"))
 	require.Equal(t, "remote_compaction_v2", captureDialer.lastHeaders.Get("x-codex-beta-features"))
-	// OAuth 账号的 session_id/conversation_id 应同时按 API key 和上游账号隔离，
+	// OAuth 提供商的 session_id/conversation_id 应同时按 API key 和上游提供商隔离，
 	// 测试中未设置 api_key 到 context，apiKeyID=0。
-	require.Equal(t, openai.IsolateOpenAIUpstreamSessionID(0, accountprovider.CodexIdentityNamespace(account.View()), "sess-oauth-1"), captureDialer.lastHeaders.Get("session_id"))
-	require.Equal(t, openai.IsolateOpenAIUpstreamSessionID(0, accountprovider.CodexIdentityNamespace(account.View()), "conv-oauth-1"), captureDialer.lastHeaders.Get("conversation_id"))
+	require.Equal(t, openai.IsolateOpenAIUpstreamSessionID(0, provideradapter.CodexIdentityNamespace(provider.View()), "sess-oauth-1"), captureDialer.lastHeaders.Get("session_id"))
+	require.Equal(t, openai.IsolateOpenAIUpstreamSessionID(0, provideradapter.CodexIdentityNamespace(provider.View()), "conv-oauth-1"), captureDialer.lastHeaders.Get("conversation_id"))
 }
 
 func TestOpenAIGatewayService_Forward_WSv2_OAuthSanitizesInvalidNativeToolItemID(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/responses", nil)
@@ -1097,9 +1118,9 @@ func TestOpenAIGatewayService_Forward_WSv2_OAuthSanitizesInvalidNativeToolItemID
 	options := newOpenAIWSV2TestConfig()
 	options.Request.URLPolicy.Enabled = false
 	options.Request.URLPolicy.AllowInsecureHTTP = true
-	options.Pool.MaxConnsPerAccount = 1
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 1
+	options.Pool.MaxConnsPerProvider = 1
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 1
 	options.Pool.QueueLimitPerConn = 8
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 3
@@ -1114,21 +1135,24 @@ func TestOpenAIGatewayService_Forward_WSv2_OAuthSanitizesInvalidNativeToolItemID
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 5662,
-		Name:        "openai-oauth-ws-tool-history",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeOAuth,
-		Status:      billing.StatusActive,
-		Schedulable: true,
-		Concurrency: 1,
-		Credentials: map[string]any{"access_token": "test-oauth-token"},
-		Extra: map[string]any{
-			"responses_websockets_v2_enabled": true,
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 5662,
+			Name:        "openai-oauth-ws-tool-history",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeOAuth,
+			Status:      billing.StatusActive,
+			Schedulable: true,
+			Concurrency: 1,
+			Credentials: map[string]any{"access_token": "test-oauth-token"},
+			Extra: map[string]any{
+				"responses_websockets_v2_enabled": true,
+			},
+		},
 	}
 
 	body := []byte(`{"model":"gpt-5.6-sol","stream":false,"instructions":"Continue the task.","input":[{"type":"custom_tool_call","id":"fc_hotfix_probe","call_id":"fc_hotfix","name":"exec","input":"pwd","status":"completed"},{"type":"custom_tool_call_output","call_id":"fc_hotfix","output":"done"}]}`)
-	result, err := svc.Responses.Forward(context.Background(), c, account, body)
+	result, err := svc.Responses.Forward(context.Background(), c, provider, body)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -1144,7 +1168,6 @@ func TestOpenAIGatewayService_Forward_WSv2_OAuthSanitizesInvalidNativeToolItemID
 }
 
 func TestOpenAIGatewayService_Forward_WSv2_OAuthOriginatorCompatibility(t *testing.T) {
-
 	// 上游要求 originator 与最终 user-agent 首段配套（issue #3901）：
 	// originator 一律由最终 UA 推导；推导不出官方身份时整体回退默认 Codex TUI 身份。
 	tests := []struct {
@@ -1185,9 +1208,9 @@ func TestOpenAIGatewayService_Forward_WSv2_OAuthOriginatorCompatibility(t *testi
 			options.WS.APIKeyEnabled = true
 			options.WS.ResponsesWebsocketsV2 = true
 			options.WS.AllowStoreRecovery = false
-			options.Pool.MaxConnsPerAccount = 1
-			options.Pool.MinIdlePerAccount = 0
-			options.Pool.MaxIdlePerAccount = 1
+			options.Pool.MaxConnsPerProvider = 1
+			options.Pool.MinIdlePerProvider = 0
+			options.Pool.MaxIdlePerProvider = 1
 
 			captureConn := &openAIWSCaptureConn{
 				events: [][]byte{
@@ -1199,23 +1222,26 @@ func TestOpenAIGatewayService_Forward_WSv2_OAuthOriginatorCompatibility(t *testi
 			pool.SetClientDialerForTest(captureDialer)
 
 			svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
-			account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 129,
-				Name:        "openai-oauth",
-				Platform:    capability.PlatformOpenAI,
-				Type:        capability.AccountTypeOAuth,
-				Status:      billing.StatusActive,
-				Schedulable: true,
-				Concurrency: 1,
-				Credentials: map[string]any{
-					"access_token": "oauth-token-1",
+			provider := &gatewayprovider.ExecutionProvider{
+				Record: providercore.Record{
+					LoadLocation: time.LoadLocation, ID: 129,
+					Name:        "openai-oauth",
+					Platform:    capability.PlatformOpenAI,
+					Type:        capability.ProviderTypeOAuth,
+					Status:      billing.StatusActive,
+					Schedulable: true,
+					Concurrency: 1,
+					Credentials: map[string]any{
+						"access_token": "oauth-token-1",
+					},
+					Extra: map[string]any{
+						"responses_websockets_v2_enabled": true,
+					},
 				},
-				Extra: map[string]any{
-					"responses_websockets_v2_enabled": true,
-				}},
 			}
 
 			body := []byte(`{"model":"gpt-5.1","stream":false,"input":[{"type":"input_text","text":"hello"}]}`)
-			result, err := svc.Responses.Forward(context.Background(), c, account, body)
+			result, err := svc.Responses.Forward(context.Background(), c, provider, body)
 			require.NoError(t, err)
 			require.NotNil(t, result)
 			require.Equal(t, tt.wantOriginator, captureDialer.lastHeaders.Get("originator"))
@@ -1225,7 +1251,6 @@ func TestOpenAIGatewayService_Forward_WSv2_OAuthOriginatorCompatibility(t *testi
 }
 
 func TestOpenAIGatewayService_Forward_WSv2_HeaderSessionFallbackFromPromptCacheKey(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/responses", nil)
@@ -1238,9 +1263,9 @@ func TestOpenAIGatewayService_Forward_WSv2_HeaderSessionFallbackFromPromptCacheK
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerAccount = 1
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 1
+	options.Pool.MaxConnsPerProvider = 1
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 1
 
 	captureConn := &openAIWSCaptureConn{
 		events: [][]byte{
@@ -1252,36 +1277,38 @@ func TestOpenAIGatewayService_Forward_WSv2_HeaderSessionFallbackFromPromptCacheK
 	pool.SetClientDialerForTest(captureDialer)
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 31,
-		Name:        "openai-oauth",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeOAuth,
-		Status:      billing.StatusActive,
-		Schedulable: true,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"access_token": "oauth-token-1",
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 31,
+			Name:        "openai-oauth",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeOAuth,
+			Status:      billing.StatusActive,
+			Schedulable: true,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"access_token": "oauth-token-1",
+			},
+			Extra: map[string]any{
+				"responses_websockets_v2_enabled": true,
+			},
 		},
-		Extra: map[string]any{
-			"responses_websockets_v2_enabled": true,
-		}},
 	}
 
 	body := []byte(`{"model":"gpt-5.1","stream":true,"prompt_cache_key":"pcache_123","input":[{"type":"input_text","text":"hi"}]}`)
-	result, err := svc.Responses.Forward(context.Background(), c, account, body)
+	result, err := svc.Responses.Forward(context.Background(), c, provider, body)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, "resp_prompt_cache_key", result.RequestID)
 
-	// OAuth 账号的 session_id 应同时按 API key 和上游账号隔离（apiKeyID=0）。
-	require.Equal(t, openai.IsolateOpenAIUpstreamSessionID(0, accountprovider.CodexIdentityNamespace(account.View()), "pcache_123"), captureDialer.lastHeaders.Get("session_id"))
+	// OAuth 提供商的 session_id 应同时按 API key 和上游提供商隔离（apiKeyID=0）。
+	require.Equal(t, openai.IsolateOpenAIUpstreamSessionID(0, provideradapter.CodexIdentityNamespace(provider.View()), "pcache_123"), captureDialer.lastHeaders.Get("session_id"))
 	require.Empty(t, captureDialer.lastHeaders.Get("conversation_id"))
 	require.NotNil(t, captureConn.lastWrite)
 	require.True(t, gjson.Get(requestToJSONString(captureConn.lastWrite), "stream").Exists())
 }
 
 func TestOpenAIGatewayService_Forward_WSv2_ResponseDoneUsageParsed(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/responses", nil)
@@ -1294,9 +1321,9 @@ func TestOpenAIGatewayService_Forward_WSv2_ResponseDoneUsageParsed(t *testing.T)
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerAccount = 1
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 1
+	options.Pool.MaxConnsPerProvider = 1
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 1
 
 	captureConn := &openAIWSCaptureConn{
 		events: [][]byte{
@@ -1308,23 +1335,26 @@ func TestOpenAIGatewayService_Forward_WSv2_ResponseDoneUsageParsed(t *testing.T)
 	pool.SetClientDialerForTest(captureDialer)
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 32,
-		Name:        "openai-ws-done",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Status:      billing.StatusActive,
-		Schedulable: true,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key": "sk-test",
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 32,
+			Name:        "openai-ws-done",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Status:      billing.StatusActive,
+			Schedulable: true,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key": "sk-test",
+			},
+			Extra: map[string]any{
+				"responses_websockets_v2_enabled": true,
+			},
 		},
-		Extra: map[string]any{
-			"responses_websockets_v2_enabled": true,
-		}},
 	}
 
 	body := []byte(`{"model":"gpt-5.1","stream":false,"input":[{"type":"input_text","text":"hi"}]}`)
-	result, err := svc.Responses.Forward(context.Background(), c, account, body)
+	result, err := svc.Responses.Forward(context.Background(), c, provider, body)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, "resp_done_usage", result.RequestID)
@@ -1336,7 +1366,6 @@ func TestOpenAIGatewayService_Forward_WSv2_ResponseDoneUsageParsed(t *testing.T)
 }
 
 func TestOpenAIGatewayService_Forward_WSv1_Unsupported(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/responses", nil)
@@ -1361,24 +1390,27 @@ func TestOpenAIGatewayService_Forward_WSv1_Unsupported(t *testing.T) {
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: upstream, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector()})
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 39,
-		Name:        "openai-ws-v1",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Status:      billing.StatusActive,
-		Schedulable: true,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":  "sk-test",
-			"base_url": "https://api.openai.com/v1/responses",
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 39,
+			Name:        "openai-ws-v1",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Status:      billing.StatusActive,
+			Schedulable: true,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":  "sk-test",
+				"base_url": "https://api.openai.com/v1/responses",
+			},
+			Extra: map[string]any{
+				"responses_websockets_v2_enabled": true,
+			},
 		},
-		Extra: map[string]any{
-			"responses_websockets_v2_enabled": true,
-		}},
 	}
 
 	body := []byte(`{"model":"gpt-5.1","stream":false,"previous_response_id":"resp_prev_v1","input":[{"type":"input_text","text":"hello"}]}`)
-	result, err := svc.Responses.Forward(context.Background(), c, account, body)
+	result, err := svc.Responses.Forward(context.Background(), c, provider, body)
 	require.Error(t, err)
 	require.Nil(t, result)
 	require.Contains(t, err.Error(), "ws v1")
@@ -1388,7 +1420,6 @@ func TestOpenAIGatewayService_Forward_WSv1_Unsupported(t *testing.T) {
 }
 
 func TestOpenAIGatewayService_Forward_WSv2_TurnStateAndMetadataReplayOnReconnect(t *testing.T) {
-
 	var connIndex atomic.Int64
 	headersCh := make(chan http.Header, 4)
 	upgrader := websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
@@ -1439,26 +1470,29 @@ func TestOpenAIGatewayService_Forward_WSv2_TurnStateAndMetadataReplayOnReconnect
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerAccount = 1
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 0
+	options.Pool.MaxConnsPerProvider = 1
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 0
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector()})
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 49,
-		Name:        "openai-turn-state",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Status:      billing.StatusActive,
-		Schedulable: true,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":  "sk-test",
-			"base_url": wsServer.URL,
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 49,
+			Name:        "openai-turn-state",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Status:      billing.StatusActive,
+			Schedulable: true,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":  "sk-test",
+				"base_url": wsServer.URL,
+			},
+			Extra: map[string]any{
+				"responses_websockets_v2_enabled": true,
+			},
 		},
-		Extra: map[string]any{
-			"responses_websockets_v2_enabled": true,
-		}},
 	}
 
 	reqBody := []byte(`{"model":"gpt-5.1","stream":false,"input":[{"type":"input_text","text":"hello"}]}`)
@@ -1467,7 +1501,7 @@ func TestOpenAIGatewayService_Forward_WSv2_TurnStateAndMetadataReplayOnReconnect
 	c1.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/responses", nil)
 	c1.Request.Header.Set("session_id", "session_turn_state")
 	c1.Request.Header.Set("x-codex-turn-metadata", "turn_meta_1")
-	result1, err := svc.Responses.Forward(context.Background(), c1, account, reqBody)
+	result1, err := svc.Responses.Forward(context.Background(), c1, provider, reqBody)
 	require.NoError(t, err)
 	require.NotNil(t, result1)
 
@@ -1480,14 +1514,14 @@ func TestOpenAIGatewayService_Forward_WSv2_TurnStateAndMetadataReplayOnReconnect
 	// 主动淘汰连接，模拟下一次请求发生重连。
 	connID, hasConn := store.GetResponseConn(result1.RequestID)
 	require.True(t, hasConn)
-	svc.Connections.Pool().EvictConnection(account.Record.ID, connID)
+	svc.Connections.Pool().EvictConnection(provider.Record.ID, connID)
 
 	rec2 := httptest.NewRecorder()
 	c2, _ := gin.CreateTestContext(rec2)
 	c2.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/responses", nil)
 	c2.Request.Header.Set("session_id", "session_turn_state")
 	c2.Request.Header.Set("x-codex-turn-metadata", "turn_meta_2")
-	result2, err := svc.Responses.Forward(context.Background(), c2, account, reqBody)
+	result2, err := svc.Responses.Forward(context.Background(), c2, provider, reqBody)
 	require.NoError(t, err)
 	require.NotNil(t, result2)
 
@@ -1499,7 +1533,6 @@ func TestOpenAIGatewayService_Forward_WSv2_TurnStateAndMetadataReplayOnReconnect
 }
 
 func TestOpenAIGatewayService_Forward_WSv2_GeneratePrewarm(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/responses", nil)
@@ -1513,9 +1546,9 @@ func TestOpenAIGatewayService_Forward_WSv2_GeneratePrewarm(t *testing.T) {
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
 	options.WS.PrewarmGenerateEnabled = true
-	options.Pool.MaxConnsPerAccount = 1
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 1
+	options.Pool.MaxConnsPerProvider = 1
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 1
 
 	captureConn := &openAIWSCaptureConn{
 		events: [][]byte{
@@ -1529,23 +1562,26 @@ func TestOpenAIGatewayService_Forward_WSv2_GeneratePrewarm(t *testing.T) {
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 59,
-		Name:        "openai-prewarm",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Status:      billing.StatusActive,
-		Schedulable: true,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key": "sk-test",
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 59,
+			Name:        "openai-prewarm",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Status:      billing.StatusActive,
+			Schedulable: true,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key": "sk-test",
+			},
+			Extra: map[string]any{
+				"responses_websockets_v2_enabled": true,
+			},
 		},
-		Extra: map[string]any{
-			"responses_websockets_v2_enabled": true,
-		}},
 	}
 
 	body := []byte(`{"model":"gpt-5.1","stream":false,"input":[{"type":"input_text","text":"hello"}]}`)
-	result, err := svc.Responses.Forward(context.Background(), c, account, body)
+	result, err := svc.Responses.Forward(context.Background(), c, provider, body)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, "resp_main_1", result.RequestID)
@@ -1565,19 +1601,22 @@ func TestOpenAIGatewayService_PrewarmReadHonorsParentContext(t *testing.T) {
 	options.WS.WriteTimeoutSeconds = 3
 
 	svc := newWSFixture(wsFixtureInputs{options: options, corrector: openai.NewCodexToolCorrector()})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 601,
-		Name:        "openai-prewarm-timeout",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Status:      billing.StatusActive,
-		Schedulable: true},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 601,
+			Name:        "openai-prewarm-timeout",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Status:      billing.StatusActive,
+			Schedulable: true,
+		},
 	}
-	conn := openai.NewWSConn("prewarm_ctx_conn", account.Record.ID, &openAIWSBlockingConn{
+	conn := openai.NewWSConn("prewarm_ctx_conn", provider.Record.ID, &openAIWSBlockingConn{
 		readDelay: 200 * time.Millisecond,
 	}, nil, nil, "")
 	lease := &openai.WSConnLease{
-		AccountID: account.Record.ID,
-		Conn:      conn,
+		ProviderID: provider.Record.ID,
+		Conn:       conn,
 	}
 	payload := map[string]any{
 		"type":  "response.create",
@@ -1593,7 +1632,7 @@ func TestOpenAIGatewayService_PrewarmReadHonorsParentContext(t *testing.T) {
 		"",
 		map[string]any{"model": "gpt-5.1"},
 		"gpt-5.1",
-		account,
+		provider,
 		nil,
 		0,
 	)
@@ -1604,7 +1643,6 @@ func TestOpenAIGatewayService_PrewarmReadHonorsParentContext(t *testing.T) {
 }
 
 func TestOpenAIGatewayService_Forward_WSv2_TurnMetadataInPayloadOnConnReuse(t *testing.T) {
-
 	options := &wsFixtureOptions{}
 	options.Request.URLPolicy.Enabled = false
 	options.Request.URLPolicy.AllowInsecureHTTP = true
@@ -1612,9 +1650,9 @@ func TestOpenAIGatewayService_Forward_WSv2_TurnMetadataInPayloadOnConnReuse(t *t
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerAccount = 1
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 1
+	options.Pool.MaxConnsPerProvider = 1
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 1
 
 	captureConn := &openAIWSCaptureConn{
 		events: [][]byte{
@@ -1628,19 +1666,22 @@ func TestOpenAIGatewayService_Forward_WSv2_TurnMetadataInPayloadOnConnReuse(t *t
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 69,
-		Name:        "openai-turn-metadata",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Status:      billing.StatusActive,
-		Schedulable: true,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key": "sk-test",
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 69,
+			Name:        "openai-turn-metadata",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Status:      billing.StatusActive,
+			Schedulable: true,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key": "sk-test",
+			},
+			Extra: map[string]any{
+				"responses_websockets_v2_enabled": true,
+			},
 		},
-		Extra: map[string]any{
-			"responses_websockets_v2_enabled": true,
-		}},
 	}
 
 	body := []byte(`{"model":"gpt-5.1","stream":false,"input":[{"type":"input_text","text":"hello"}]}`)
@@ -1650,7 +1691,7 @@ func TestOpenAIGatewayService_Forward_WSv2_TurnMetadataInPayloadOnConnReuse(t *t
 	c1.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/responses", nil)
 	c1.Request.Header.Set("session_id", "session-metadata-reuse")
 	c1.Request.Header.Set("x-codex-turn-metadata", "turn_meta_payload_1")
-	result1, err := svc.Responses.Forward(context.Background(), c1, account, body)
+	result1, err := svc.Responses.Forward(context.Background(), c1, provider, body)
 	require.NoError(t, err)
 	require.NotNil(t, result1)
 	require.Equal(t, "resp_meta_1", result1.RequestID)
@@ -1664,12 +1705,12 @@ func TestOpenAIGatewayService_Forward_WSv2_TurnMetadataInPayloadOnConnReuse(t *t
 	c2.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/responses", nil)
 	c2.Request.Header.Set("session_id", "session-metadata-reuse")
 	c2.Request.Header.Set("x-codex-turn-metadata", "turn_meta_payload_2")
-	result2, err := svc.Responses.Forward(context.Background(), c2, account, body)
+	result2, err := svc.Responses.Forward(context.Background(), c2, provider, body)
 	require.NoError(t, err)
 	require.NotNil(t, result2)
 	require.Equal(t, "resp_meta_2", result2.RequestID)
 
-	require.Equal(t, 1, captureDialer.DialCount(), "同一账号两轮请求应复用同一 WS 连接")
+	require.Equal(t, 1, captureDialer.DialCount(), "同一提供商两轮请求应复用同一 WS 连接")
 	require.Len(t, captureConn.writes, 2)
 
 	firstWrite = requestToJSONString(captureConn.writes[0])
@@ -1679,7 +1720,6 @@ func TestOpenAIGatewayService_Forward_WSv2_TurnMetadataInPayloadOnConnReuse(t *t
 }
 
 func TestOpenAIGatewayService_Forward_WSv2StoreFalseSessionConnIsolation(t *testing.T) {
-
 	var upgradeCount atomic.Int64
 	var sequence atomic.Int64
 	upgrader := websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
@@ -1724,27 +1764,30 @@ func TestOpenAIGatewayService_Forward_WSv2StoreFalseSessionConnIsolation(t *test
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerAccount = 4
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 4
+	options.Pool.MaxConnsPerProvider = 4
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 4
 	options.WS.StoreDisabledForceNewConn = true
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector()})
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 79,
-		Name:        "openai-store-false",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Status:      billing.StatusActive,
-		Schedulable: true,
-		Concurrency: 2,
-		Credentials: map[string]any{
-			"api_key":  "sk-test",
-			"base_url": wsServer.URL,
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 79,
+			Name:        "openai-store-false",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Status:      billing.StatusActive,
+			Schedulable: true,
+			Concurrency: 2,
+			Credentials: map[string]any{
+				"api_key":  "sk-test",
+				"base_url": wsServer.URL,
+			},
+			Extra: map[string]any{
+				"responses_websockets_v2_enabled": true,
+			},
 		},
-		Extra: map[string]any{
-			"responses_websockets_v2_enabled": true,
-		}},
 	}
 
 	body := []byte(`{"model":"gpt-5.1","stream":false,"store":false,"input":[{"type":"input_text","text":"hello"}]}`)
@@ -1753,7 +1796,7 @@ func TestOpenAIGatewayService_Forward_WSv2StoreFalseSessionConnIsolation(t *test
 	c1, _ := gin.CreateTestContext(rec1)
 	c1.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/responses", nil)
 	c1.Request.Header.Set("session_id", "session_store_false_a")
-	result1, err := svc.Responses.Forward(context.Background(), c1, account, body)
+	result1, err := svc.Responses.Forward(context.Background(), c1, provider, body)
 	require.NoError(t, err)
 	require.NotNil(t, result1)
 	require.Equal(t, int64(1), upgradeCount.Load())
@@ -1762,7 +1805,7 @@ func TestOpenAIGatewayService_Forward_WSv2StoreFalseSessionConnIsolation(t *test
 	c2, _ := gin.CreateTestContext(rec2)
 	c2.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/responses", nil)
 	c2.Request.Header.Set("session_id", "session_store_false_a")
-	result2, err := svc.Responses.Forward(context.Background(), c2, account, body)
+	result2, err := svc.Responses.Forward(context.Background(), c2, provider, body)
 	require.NoError(t, err)
 	require.NotNil(t, result2)
 	require.Equal(t, int64(1), upgradeCount.Load(), "同一 session(store=false) 应复用同一 WS 连接")
@@ -1771,14 +1814,13 @@ func TestOpenAIGatewayService_Forward_WSv2StoreFalseSessionConnIsolation(t *test
 	c3, _ := gin.CreateTestContext(rec3)
 	c3.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/responses", nil)
 	c3.Request.Header.Set("session_id", "session_store_false_b")
-	result3, err := svc.Responses.Forward(context.Background(), c3, account, body)
+	result3, err := svc.Responses.Forward(context.Background(), c3, provider, body)
 	require.NoError(t, err)
 	require.NotNil(t, result3)
 	require.Equal(t, int64(2), upgradeCount.Load(), "不同 session(store=false) 应隔离连接，避免续链状态互相覆盖")
 }
 
 func TestOpenAIGatewayService_Forward_WSv2StoreFalseDisableForceNewConnAllowsReuse(t *testing.T) {
-
 	var upgradeCount atomic.Int64
 	var sequence atomic.Int64
 	upgrader := websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
@@ -1823,27 +1865,30 @@ func TestOpenAIGatewayService_Forward_WSv2StoreFalseDisableForceNewConnAllowsReu
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerAccount = 1
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 1
+	options.Pool.MaxConnsPerProvider = 1
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 1
 	options.WS.StoreDisabledForceNewConn = false
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector()})
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 80,
-		Name:        "openai-store-false-reuse",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Status:      billing.StatusActive,
-		Schedulable: true,
-		Concurrency: 2,
-		Credentials: map[string]any{
-			"api_key":  "sk-test",
-			"base_url": wsServer.URL,
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 80,
+			Name:        "openai-store-false-reuse",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Status:      billing.StatusActive,
+			Schedulable: true,
+			Concurrency: 2,
+			Credentials: map[string]any{
+				"api_key":  "sk-test",
+				"base_url": wsServer.URL,
+			},
+			Extra: map[string]any{
+				"responses_websockets_v2_enabled": true,
+			},
 		},
-		Extra: map[string]any{
-			"responses_websockets_v2_enabled": true,
-		}},
 	}
 
 	body := []byte(`{"model":"gpt-5.1","stream":false,"store":false,"input":[{"type":"input_text","text":"hello"}]}`)
@@ -1852,7 +1897,7 @@ func TestOpenAIGatewayService_Forward_WSv2StoreFalseDisableForceNewConnAllowsReu
 	c1, _ := gin.CreateTestContext(rec1)
 	c1.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/responses", nil)
 	c1.Request.Header.Set("session_id", "session_store_false_reuse_a")
-	result1, err := svc.Responses.Forward(context.Background(), c1, account, body)
+	result1, err := svc.Responses.Forward(context.Background(), c1, provider, body)
 	require.NoError(t, err)
 	require.NotNil(t, result1)
 	require.Equal(t, int64(1), upgradeCount.Load())
@@ -1861,14 +1906,13 @@ func TestOpenAIGatewayService_Forward_WSv2StoreFalseDisableForceNewConnAllowsReu
 	c2, _ := gin.CreateTestContext(rec2)
 	c2.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/responses", nil)
 	c2.Request.Header.Set("session_id", "session_store_false_reuse_b")
-	result2, err := svc.Responses.Forward(context.Background(), c2, account, body)
+	result2, err := svc.Responses.Forward(context.Background(), c2, provider, body)
 	require.NoError(t, err)
 	require.NotNil(t, result2)
 	require.Equal(t, int64(1), upgradeCount.Load(), "关闭强制新连后，不同 session(store=false) 可复用连接")
 }
 
 func TestOpenAIGatewayService_Forward_WSv2ReadTimeoutAppliesPerRead(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/responses", nil)
@@ -1881,9 +1925,9 @@ func TestOpenAIGatewayService_Forward_WSv2ReadTimeoutAppliesPerRead(t *testing.T
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerAccount = 1
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 1
+	options.Pool.MaxConnsPerProvider = 1
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 1
 	options.Pool.QueueLimitPerConn = 8
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 1
@@ -1913,23 +1957,26 @@ func TestOpenAIGatewayService_Forward_WSv2ReadTimeoutAppliesPerRead(t *testing.T
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: upstream, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 81,
-		Name:        "openai-read-timeout",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Status:      billing.StatusActive,
-		Schedulable: true,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key": "sk-test",
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 81,
+			Name:        "openai-read-timeout",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Status:      billing.StatusActive,
+			Schedulable: true,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key": "sk-test",
+			},
+			Extra: map[string]any{
+				"responses_websockets_v2_enabled": true,
+			},
 		},
-		Extra: map[string]any{
-			"responses_websockets_v2_enabled": true,
-		}},
 	}
 
 	body := []byte(`{"model":"gpt-5.1","stream":false,"input":[{"type":"input_text","text":"hello"}]}`)
-	result, err := svc.Responses.Forward(context.Background(), c, account, body)
+	result, err := svc.Responses.Forward(context.Background(), c, provider, body)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, "resp_timeout_ok", result.RequestID)

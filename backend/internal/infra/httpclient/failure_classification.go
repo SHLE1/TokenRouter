@@ -7,7 +7,7 @@ import (
 	"syscall"
 )
 
-// TransportFailure 只描述技术故障，账号摘除、重试和观察仍由调用方决定。
+// TransportFailure 只描述技术故障，提供商摘除、重试和观察仍由调用方决定。
 type TransportFailure struct {
 	Persistent bool
 }

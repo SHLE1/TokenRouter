@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
-	accountpostgres "github.com/TokenFlux/TokenRouter/internal/account/postgres"
 	"github.com/TokenFlux/TokenRouter/internal/app"
 	"github.com/TokenFlux/TokenRouter/internal/config"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
+	providerpostgres "github.com/TokenFlux/TokenRouter/internal/provider/postgres"
 	routingpostgres "github.com/TokenFlux/TokenRouter/internal/routing/postgres"
 	schedulerpostgres "github.com/TokenFlux/TokenRouter/internal/scheduler/postgres"
 	schedulerredis "github.com/TokenFlux/TokenRouter/internal/scheduler/rediscache"
@@ -33,16 +33,16 @@ func TestSchedulerSnapshotOutboxReplay(t *testing.T) {
 	t.Cleanup(func() { require.NoError(t, rdb.Close()) })
 	_, err = f.db.ExecContext(ctx, "TRUNCATE scheduler_outbox")
 	require.NoError(t, err)
-	store := accountpostgres.NewAccountStore(f.client, f.db, accountpostgres.AccountStoreOptions{})
-	cache := schedulerredis.NewSnapshotCache(rdb, codec.AccountCodec{})
-	store.SetEvents(app.NewS16AccountEvents(store, nil))
+	store := providerpostgres.NewProviderStore(f.client, f.db, providerpostgres.ProviderStoreOptions{})
+	cache := schedulerredis.NewSnapshotCache(rdb, codec.ProviderCodec{})
+	store.SetEvents(app.NewS16ProviderEvents(store, nil))
 	outbox := schedulerpostgres.NewSchedulerOutboxRepository(f.db)
 	cfg := &config.Config{RunMode: config.RunModeStandard}
 	cfg.Gateway.Scheduling.OutboxPollIntervalSeconds = 1
 	cfg.Gateway.Scheduling.DbFallbackEnabled = true
-	value := &account.Record{Name: "outbox-replay-" + time.Now().Format("150405.000000"), Platform: account.PlatformOpenAI, Type: account.AccountTypeAPIKey, Status: account.StatusActive, Schedulable: true, Concurrency: 3, Priority: 1, Credentials: map[string]any{}, Extra: map[string]any{}}
+	value := &provider.Record{Name: "outbox-replay-" + time.Now().Format("150405.000000"), Platform: provider.PlatformOpenAI, Type: provider.ProviderTypeAPIKey, Status: provider.StatusActive, Schedulable: true, Concurrency: 3, Priority: 1, Credentials: map[string]any{}, Extra: map[string]any{}}
 	require.NoError(t, store.Create(ctx, value))
-	require.NoError(t, cache.SetAccount(ctx, codec.WrapRecord(value)))
+	require.NoError(t, cache.SetProvider(ctx, codec.WrapRecord(value)))
 	groups := routingpostgres.NewGroupStore(f.client, f.db, routingpostgres.GroupStoreOptions{})
 	runtime := app.NewS16Snapshot(cache, outbox, store, groups, cfg)
 	runtime.Start()
@@ -53,7 +53,7 @@ func TestSchedulerSnapshotOutboxReplay(t *testing.T) {
 	require.NotNil(t, updated.LastUsedAt)
 	expected := updated.LastUsedAt.Unix()
 	require.Eventually(t, func() bool {
-		cached, err := cache.GetAccount(ctx, value.ID)
+		cached, err := cache.GetProvider(ctx, value.ID)
 		if err != nil || cached == nil {
 			return false
 		}

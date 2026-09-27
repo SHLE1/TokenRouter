@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
@@ -37,7 +37,7 @@ type creativeFakeRunRepo struct {
 	createErr    error
 	createParams []creative.CreateCreativeRunParams
 	transition   []string
-	setAccountN  int
+	setProviderN int
 }
 
 const testCreativeWorkspaceID = "11111111-1111-4111-8111-111111111111"
@@ -67,7 +67,7 @@ func (r *creativeFakeRunRepo) CreateCreativeRun(ctx context.Context, params crea
 		GroupID:                    params.GroupID,
 		APIKeyID:                   params.APIKeyID,
 		Model:                      params.Model,
-		Provider:                   params.Provider,
+		Platform:                   params.Platform,
 		RequestedModel:             params.RequestedModel,
 		Operation:                  params.Operation,
 		RequestedOutputCount:       params.RequestedOutputCount,
@@ -160,7 +160,7 @@ func (r *creativeFakeRunRepo) TransitionCreativeRunStatus(ctx context.Context, r
 	return nil
 }
 
-func (r *creativeFakeRunRepo) MarkCreativeRunRunning(ctx context.Context, runID string, accountID int64, now time.Time) error {
+func (r *creativeFakeRunRepo) MarkCreativeRunRunning(ctx context.Context, runID string, providerID int64, now time.Time) error {
 	run, ok := r.runs[runID]
 	if !ok {
 		return creative.ErrCreativeRunNotFound
@@ -172,22 +172,22 @@ func (r *creativeFakeRunRepo) MarkCreativeRunRunning(ctx context.Context, runID 
 		return creative.ErrCreativeInvalidTransition
 	}
 	run.Status = creative.CreativeRunStatusRunning
-	if accountID > 0 {
-		run.AccountID = &accountID
+	if providerID > 0 {
+		run.ProviderID = &providerID
 	}
 	run.StartedAt = &now
 	return nil
 }
 
-func (r *creativeFakeRunRepo) SetCreativeRunExecution(ctx context.Context, runID string, accountID int64, provider string, now time.Time) error {
+func (r *creativeFakeRunRepo) SetCreativeRunExecution(ctx context.Context, runID string, providerID int64, platform string, now time.Time) error {
 	run, ok := r.runs[runID]
 	if !ok {
 		return creative.ErrCreativeRunNotFound
 	}
-	if accountID > 0 {
-		run.AccountID = &accountID
-		run.Provider = provider
-		r.setAccountN++
+	if providerID > 0 {
+		run.ProviderID = &providerID
+		run.Platform = platform
+		r.setProviderN++
 	}
 	return nil
 }
@@ -296,13 +296,13 @@ func (r *creativeFakeRunRepo) SetCreativeRunProvisioningPhase(ctx context.Contex
 	return nil
 }
 
-func (r *creativeFakeRunRepo) MarkCreativeRunProviderSucceeded(ctx context.Context, runID string, accountID int64, now time.Time) error {
+func (r *creativeFakeRunRepo) MarkCreativeRunProviderSucceeded(ctx context.Context, runID string, providerID int64, now time.Time) error {
 	run, ok := r.runs[runID]
 	if !ok {
 		return creative.ErrCreativeRunNotFound
 	}
-	if accountID > 0 {
-		run.AccountID = &accountID
+	if providerID > 0 {
+		run.ProviderID = &providerID
 	}
 	run.ProviderResultRecordedAt = &now
 	if run.Status == creative.CreativeRunStatusRunning {
@@ -382,11 +382,11 @@ func (r *creativeFakeGroupRepo) ListActive(ctx context.Context) ([]routing.Group
 	return r.active, nil
 }
 
-type creativeFakeAccountRepo struct {
-	byGroup map[int64][]accountcore.Record
+type creativeFakeProviderRepo struct {
+	byGroup map[int64][]providercore.Record
 }
 
-func (r *creativeFakeAccountRepo) ListSchedulableByGroupIDAndPlatform(ctx context.Context, groupID int64, platform string) ([]accountcore.Record, error) {
+func (r *creativeFakeProviderRepo) ListSchedulableByGroupIDAndPlatform(ctx context.Context, groupID int64, platform string) ([]providercore.Record, error) {
 	return r.byGroup[groupID], nil
 }
 
@@ -598,9 +598,9 @@ func newCreativeTestGroup() *routing.Group {
 	}
 }
 
-func newCreativeTestAccountRepo() *creativeFakeAccountRepo {
-	return &creativeFakeAccountRepo{
-		byGroup: map[int64][]accountcore.Record{
+func newCreativeTestProviderRepo() *creativeFakeProviderRepo {
+	return &creativeFakeProviderRepo{
+		byGroup: map[int64][]providercore.Record{
 			12: {
 				{
 					ID:          55,
@@ -622,7 +622,7 @@ func newCreativeTestService() *creative.Public {
 	svc := newCreativePublicFixture(newCreativeFakeRunRepo(),
 		&creativeFakeManagedKeyRepo{},
 		&creativeFakeUserRepo{user: &identity.User{ID: 7}},
-		newCreativeTestAccountRepo(),
+		newCreativeTestProviderRepo(),
 		&creativeFakeGroupRepo{byID: map[int64]*routing.Group{12: group}, active: []routing.Group{*group}},
 		&creativeFakeRateRepo{},
 		&creativeFakeQueue{}, nil, newCreativeFakeTransient(),
@@ -671,7 +671,7 @@ func configureOpenAICreativeTestService(svc *creative.Public) {
 	group.Name = "OpenAI Image"
 
 	testassert.MustType[*creativeFakeGroupRepo](testassert.MustType[creativeGroupReader](svc.GroupRepo).source).byID[group.ID] = group
-	testassert.MustType[*creativeFakeAccountRepo](testassert.MustType[creativeAccountReader](svc.AccountRepo).source).byGroup[group.ID] = []accountcore.Record{{
+	testassert.MustType[*creativeFakeProviderRepo](testassert.MustType[creativeProviderReader](svc.ProviderRepo).source).byGroup[group.ID] = []providercore.Record{{
 		ID:          57,
 		Platform:    capability.PlatformOpenAI,
 		Status:      billing.StatusActive,
@@ -690,7 +690,7 @@ func configureGrok2CreativeTestService(svc *creative.Public) {
 	group.Name = "Grok Imagine 2"
 
 	testassert.MustType[*creativeFakeGroupRepo](testassert.MustType[creativeGroupReader](svc.GroupRepo).source).byID[group.ID] = group
-	testassert.MustType[*creativeFakeAccountRepo](testassert.MustType[creativeAccountReader](svc.AccountRepo).source).byGroup[group.ID] = []accountcore.Record{{
+	testassert.MustType[*creativeFakeProviderRepo](testassert.MustType[creativeProviderReader](svc.ProviderRepo).source).byGroup[group.ID] = []providercore.Record{{
 		ID:          58,
 		Platform:    capability.PlatformGrok,
 		Status:      billing.StatusActive,
@@ -819,7 +819,7 @@ func TestValidateCreateParams(t *testing.T) {
 		group := newCreativeTestGroup()
 
 		testassert.MustType[*creativeFakeGroupRepo](testassert.MustType[creativeGroupReader](svc.GroupRepo).source).byID[12] = group
-		testassert.MustType[*creativeFakeAccountRepo](testassert.MustType[creativeAccountReader](svc.AccountRepo).source).byGroup[12] = []accountcore.Record{{
+		testassert.MustType[*creativeFakeProviderRepo](testassert.MustType[creativeProviderReader](svc.ProviderRepo).source).byGroup[12] = []providercore.Record{{
 			ID:          56,
 			Platform:    capability.PlatformGrok,
 			Status:      billing.StatusActive,
@@ -838,7 +838,7 @@ func TestValidateCreateParams(t *testing.T) {
 		group := newCreativeTestGroup()
 
 		testassert.MustType[*creativeFakeGroupRepo](testassert.MustType[creativeGroupReader](svc.GroupRepo).source).byID[12] = group
-		testassert.MustType[*creativeFakeAccountRepo](testassert.MustType[creativeAccountReader](svc.AccountRepo).source).byGroup[12] = []accountcore.Record{{
+		testassert.MustType[*creativeFakeProviderRepo](testassert.MustType[creativeProviderReader](svc.ProviderRepo).source).byGroup[12] = []providercore.Record{{
 			ID: 56, Platform: capability.PlatformGrok, Status: billing.StatusActive, Schedulable: true,
 			Credentials: map[string]any{"model_mapping": map[string]any{"grok-imagine": "grok-imagine"}},
 		}}
@@ -1178,11 +1178,11 @@ func TestCreativeGeminiNanoBananaCandidates(t *testing.T) {
 	}
 	require.False(t, creative.IsCreativeGeminiImageModel("nano-banana"), "不完整的 nano-banana 名称不应被识别")
 
-	account := &accountcore.Record{Platform: capability.PlatformGemini, Credentials: map[string]any{}}
-	models := creativeAccountModelsForTest(t, account)
+	provider := &providercore.Record{Platform: capability.PlatformGemini, Credentials: map[string]any{}}
+	models := creativeProviderModelsForTest(t, provider)
 	require.NotContains(t, models, "nano-banana-pro")
-	account.Credentials["model_whitelist"] = []string{"nano-banana-pro", "nano-banana-2"}
-	models = creativeAccountModelsForTest(t, account)
+	provider.Credentials["model_whitelist"] = []string{"nano-banana-pro", "nano-banana-2"}
+	models = creativeProviderModelsForTest(t, provider)
 	require.Contains(t, models, "nano-banana-pro")
 	require.Contains(t, models, "nano-banana-2")
 }
@@ -1215,7 +1215,7 @@ func TestCreativeModelSettingsFilterAndCreateValidation(t *testing.T) {
 }
 
 // 测试存储模拟闭合成功事实操作；真实回滚由 PostgreSQL 集成测试验证。
-func (r *creativeFakeRunRepo) RecordProviderOutcome(ctx context.Context, id string, accountID int64, outputs []creative.CreativeRunOutput, now time.Time) error {
+func (r *creativeFakeRunRepo) RecordProviderOutcome(ctx context.Context, id string, providerID int64, outputs []creative.CreativeRunOutput, now time.Time) error {
 	run, err := r.GetCreativeRunByRunID(ctx, id)
 	if err != nil {
 		return err
@@ -1228,7 +1228,7 @@ func (r *creativeFakeRunRepo) RecordProviderOutcome(ctx context.Context, id stri
 			return err
 		}
 	}
-	return r.MarkCreativeRunProviderSucceeded(ctx, id, accountID, now)
+	return r.MarkCreativeRunProviderSucceeded(ctx, id, providerID, now)
 }
 
 func (r *creativeFakeRunRepo) CompleteProviderOutcome(ctx context.Context, id string, cost float64, lost bool, now time.Time) error {

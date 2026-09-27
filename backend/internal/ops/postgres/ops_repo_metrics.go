@@ -43,7 +43,7 @@ INSERT INTO ops_system_metrics (
   upstream_529_count,
 
   token_consumed,
-  account_switch_count,
+  provider_switch_count,
   qps,
   tps,
 
@@ -113,7 +113,7 @@ INSERT INTO ops_system_metrics (
 		input.Upstream529Count,
 
 		input.TokenConsumed,
-		input.AccountSwitchCount,
+		input.ProviderSwitchCount,
 		opsNullFloat64(input.QPS),
 		opsNullFloat64(input.TPS),
 
@@ -190,7 +190,7 @@ SELECT
 
   goroutine_count,
   concurrency_queue_depth,
-  account_switch_count
+  provider_switch_count
 FROM ops_system_metrics
 WHERE window_minutes = $1
   AND platform IS NULL
@@ -215,7 +215,7 @@ LIMIT 1`
 	var dbWaiting sql.NullInt64
 	var goroutines sql.NullInt64
 	var queueDepth sql.NullInt64
-	var accountSwitchCount sql.NullInt64
+	var providerSwitchCount sql.NullInt64
 
 	if err := r.db.QueryRowContext(ctx, q, windowMinutes).Scan(
 		&out.ID,
@@ -237,7 +237,7 @@ LIMIT 1`
 		&dbWaiting,
 		&goroutines,
 		&queueDepth,
-		&accountSwitchCount,
+		&providerSwitchCount,
 	); err != nil {
 		return nil, err
 	}
@@ -306,9 +306,9 @@ LIMIT 1`
 		v := int(queueDepth.Int64)
 		out.ConcurrencyQueueDepth = &v
 	}
-	if accountSwitchCount.Valid {
-		v := accountSwitchCount.Int64
-		out.AccountSwitchCount = &v
+	if providerSwitchCount.Valid {
+		v := providerSwitchCount.Int64
+		out.ProviderSwitchCount = &v
 	}
 
 	return &out, nil

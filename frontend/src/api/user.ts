@@ -97,7 +97,7 @@ export async function toggleNotifyEmail(email: string, disabled: boolean): Promi
 }
 
 export async function sendEmailBindingCode(email: string): Promise<void> {
-  await apiClient.post('/user/account-bindings/email/send-code', { email })
+  await apiClient.post('/user/provider-bindings/email/send-code', { email })
 }
 
 export async function bindEmailIdentity(payload: {
@@ -105,14 +105,14 @@ export async function bindEmailIdentity(payload: {
   verify_code: string
   password: string
 }): Promise<User> {
-  const { data } = await apiClient.post<User>('/user/account-bindings/email', payload)
+  const { data } = await apiClient.post<User>('/user/provider-bindings/email', payload)
   return data
 }
 
 export type BindableOAuthProvider = Exclude<UserAuthProvider, 'email'>
 
 export async function unbindAuthIdentity(provider: BindableOAuthProvider): Promise<User> {
-  const { data } = await apiClient.delete<User>(`/user/account-bindings/${provider}`)
+  const { data } = await apiClient.delete<User>(`/user/provider-bindings/${provider}`)
   return data
 }
 

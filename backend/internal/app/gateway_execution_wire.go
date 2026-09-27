@@ -3,7 +3,7 @@
 package app
 
 import (
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/google/wire"
 )
 
@@ -21,7 +21,7 @@ var gatewayExecutionProviders = wire.NewSet(
 	provideOpenAIResponseOutput,
 	provideReasoningHistory,
 	provideRequestCredentialExecutor,
-	provider.NewRoutePlanner,
+	gatewayadapter.NewRoutePlanner,
 	provideRetryCooldown,
 	provideGatewayRequestDebug,
 	provideMessagesExecution,

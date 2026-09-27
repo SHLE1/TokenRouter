@@ -1,7 +1,7 @@
 import type { ProtocolID } from '@/types'
 import { protocolCatalog } from '@/api/admin/protocolCapabilities'
 
-// 分组共用入口目录，账号原生能力在选号时检查。
+// 分组共用入口目录，提供商原生能力在选号时检查。
 function orderedProtocols(protocols: Iterable<ProtocolID>): ProtocolID[] {
   const selected = new Set(protocols)
   return (protocolCatalog.value?.protocols ?? []).filter(protocol => !protocol.upstream_only && selected.has(protocol.id)).map(protocol => protocol.id)

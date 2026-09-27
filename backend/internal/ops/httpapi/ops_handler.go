@@ -145,13 +145,13 @@ func (h *OpsHandler) GetErrorLogs(c *gin.Context) {
 		}
 		filter.GroupID = &id
 	}
-	if v := strings.TrimSpace(c.Query("account_id")); v != "" {
+	if v := strings.TrimSpace(c.Query("provider_id")); v != "" {
 		id, err := strconv.ParseInt(v, 10, 64)
 		if err != nil || id <= 0 {
-			response.BadRequest(c, "Invalid account_id")
+			response.BadRequest(c, "Invalid provider_id")
 			return
 		}
-		filter.AccountID = &id
+		filter.ProviderID = &id
 	}
 
 	if v := strings.TrimSpace(c.Query("user_id")); v != "" {
@@ -274,13 +274,13 @@ func (h *OpsHandler) ListRequestErrors(c *gin.Context) {
 		}
 		filter.GroupID = &id
 	}
-	if v := strings.TrimSpace(c.Query("account_id")); v != "" {
+	if v := strings.TrimSpace(c.Query("provider_id")); v != "" {
 		id, err := strconv.ParseInt(v, 10, 64)
 		if err != nil || id <= 0 {
-			response.BadRequest(c, "Invalid account_id")
+			response.BadRequest(c, "Invalid provider_id")
 			return
 		}
-		filter.AccountID = &id
+		filter.ProviderID = &id
 	}
 
 	if v := strings.TrimSpace(c.Query("resolved")); v != "" {
@@ -386,7 +386,7 @@ func (h *OpsHandler) ListRequestErrorUpstreamErrors(c *gin.Context) {
 		filter.EndTime = &endTime
 	}
 	filter.View = "all"
-	filter.ErrorPhasesAny = []string{"upstream", "account_auth"}
+	filter.ErrorPhasesAny = []string{"upstream", "provider_auth"}
 	// 提供方健康列表同时包含已恢复的推理错误和凭据错误记录。
 	filter.IncludeRecoveredUpstream = true
 	filter.Owner = "provider"
@@ -470,7 +470,7 @@ func (h *OpsHandler) ListUpstreamErrors(c *gin.Context) {
 	}
 
 	filter.View = parseOpsViewParam(c)
-	filter.ErrorPhasesAny = []string{"upstream", "account_auth"}
+	filter.ErrorPhasesAny = []string{"upstream", "provider_auth"}
 	// 提供方健康列表同时包含已恢复的推理错误和凭据错误记录。
 	filter.IncludeRecoveredUpstream = true
 	filter.Owner = "provider"
@@ -488,13 +488,13 @@ func (h *OpsHandler) ListUpstreamErrors(c *gin.Context) {
 		}
 		filter.GroupID = &id
 	}
-	if v := strings.TrimSpace(c.Query("account_id")); v != "" {
+	if v := strings.TrimSpace(c.Query("provider_id")); v != "" {
 		id, err := strconv.ParseInt(v, 10, 64)
 		if err != nil || id <= 0 {
-			response.BadRequest(c, "Invalid account_id")
+			response.BadRequest(c, "Invalid provider_id")
 			return
 		}
-		filter.AccountID = &id
+		filter.ProviderID = &id
 	}
 
 	if v := strings.TrimSpace(c.Query("resolved")); v != "" {
@@ -608,13 +608,13 @@ func (h *OpsHandler) ListRequestDetails(c *gin.Context) {
 		}
 		filter.APIKeyID = &id
 	}
-	if v := strings.TrimSpace(c.Query("account_id")); v != "" {
+	if v := strings.TrimSpace(c.Query("provider_id")); v != "" {
 		id, err := strconv.ParseInt(v, 10, 64)
 		if err != nil || id <= 0 {
-			response.BadRequest(c, "Invalid account_id")
+			response.BadRequest(c, "Invalid provider_id")
 			return
 		}
-		filter.AccountID = &id
+		filter.ProviderID = &id
 	}
 	if v := strings.TrimSpace(c.Query("group_id")); v != "" {
 		id, err := strconv.ParseInt(v, 10, 64)

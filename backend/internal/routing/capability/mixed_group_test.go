@@ -8,7 +8,7 @@ import (
 )
 
 func TestMixedGroupAutomaticAndExplicitRoutes(t *testing.T) {
-	// 相同 Chat 请求根据候选账号选择不同的一跳路线，原生协议始终优先。
+	// 相同 Chat 请求根据候选提供商选择不同的一跳路线，原生协议始终优先。
 	for _, tc := range []struct {
 		platform string
 		target   ProtocolID
@@ -18,7 +18,7 @@ func TestMixedGroupAutomaticAndExplicitRoutes(t *testing.T) {
 		{PlatformGemini, ProtocolGeminiGenerateContent},
 	} {
 		t.Run(tc.platform, func(t *testing.T) {
-			candidate := AccountProtocols{Platform: tc.platform, Type: AccountTypeAPIKey, Enabled: []ProtocolID{tc.target}}
+			candidate := ProviderProtocols{Platform: tc.platform, Type: ProviderTypeAPIKey, Enabled: []ProtocolID{tc.target}}
 			target, ok := ResolveRoute(candidate, ProtocolOpenAIChatCompletions, nil)
 			require.True(t, ok)
 			require.Equal(t, tc.target, target)

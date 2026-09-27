@@ -9,15 +9,15 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/config"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/app/lifecycle"
-	"github.com/TokenFlux/TokenRouter/internal/egress/provider"
+	egressadapter "github.com/TokenFlux/TokenRouter/internal/egress/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 	"github.com/TokenFlux/TokenRouter/internal/idempotency"
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
 	"github.com/TokenFlux/TokenRouter/internal/infra/timingwheel"
 	"github.com/TokenFlux/TokenRouter/internal/payment"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 	"github.com/TokenFlux/TokenRouter/internal/usage"
@@ -26,7 +26,7 @@ import (
 type coreRuntimeReady struct{}
 
 func provideCoreRuntime(
-	accountRuntime *account.RuntimeBlockState,
+	providerRuntime *provider.RuntimeBlockState,
 	cfg *config.Config,
 	authCacheInvalidationWorker *apikey.AuthCacheInvalidationWorker,
 	schedulerSnapshot *scheduler.SnapshotService,
@@ -36,7 +36,7 @@ func provideCoreRuntime(
 	usageCleanup *usage.UsageCleanupService,
 	idempotencyCleanup *idempotency.IdempotencyCleanupService,
 	paymentOrderExpiry *payment.OrderExpiry,
-	tlsFingerprintCollector *provider.TLSFingerprintCollectorService,
+	tlsFingerprintCollector *egressadapter.TLSFingerprintCollectorService,
 	manager *lifecycle.Manager,
 	timingWheel *timingwheel.Wheel,
 	digestStore *session.DigestSessionStore,
@@ -121,7 +121,8 @@ func provideCoreRuntime(
 		return nil
 	}})
 
-	manager.Register(lifecycle.Hook{Name: "RuntimeLocalCaches", StartOrder: 185, StopOrder: 815,
+	manager.Register(lifecycle.Hook{
+		Name: "RuntimeLocalCaches", StartOrder: 185, StopOrder: 815,
 		Start: func(context.Context) error {
 			timingWheel.ScheduleRecurring("runtime:local_caches", time.Minute, func() {
 				models.Expire()
@@ -132,7 +133,8 @@ func provideCoreRuntime(
 				}
 			})
 			return nil
-		}, Stop: func(context.Context) error { timingWheel.CancelAndWait("runtime:local_caches"); return nil }})
+		}, Stop: func(context.Context) error { timingWheel.CancelAndWait("runtime:local_caches"); return nil },
+	})
 	manager.Register(lifecycle.Hook{Name: "UsageLogBatchers", StartOrder: 952, StopOrder: 48, Stop: func(context.Context) error {
 		if closer, ok := usageRepo.(interface{ StopUsageBatchers() }); ok {
 			closer.StopUsageBatchers()

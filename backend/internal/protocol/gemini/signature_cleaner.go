@@ -5,16 +5,16 @@ import (
 )
 
 // CleanGeminiNativeThoughtSignatures 从 Gemini 原生 API 请求中替换 thoughtSignature 字段为 dummy 签名，
-// 以避免跨账号签名验证错误。
+// 以避免跨提供商签名验证错误。
 //
-// 当粘性会话切换账号时（例如原账号异常、不可调度等），旧账号返回的 thoughtSignature
-// 会导致新账号的签名验证失败。通过替换为 dummy 签名，跳过签名验证。
+// 当粘性会话切换提供商时（例如原提供商异常、不可调度等），旧提供商返回的 thoughtSignature
+// 会导致新提供商的签名验证失败。通过替换为 dummy 签名，跳过签名验证。
 //
 // CleanGeminiNativeThoughtSignatures replaces thoughtSignature fields with dummy signature
-// in Gemini native API requests to avoid cross-account signature validation errors.
+// in Gemini native API requests to avoid cross-provider signature validation errors.
 //
-// When sticky session switches accounts (e.g., original account becomes unavailable),
-// thoughtSignatures from the old account will cause validation failures on the new account.
+// When sticky session switches providers (e.g., original provider becomes unavailable),
+// thoughtSignatures from the old provider will cause validation failures on the new provider.
 // By replacing with dummy signature, we skip signature validation.
 func CleanNativeThoughtSignatures(body []byte, placeholder string) []byte {
 	if len(body) == 0 {

@@ -114,7 +114,7 @@
               <th class="pb-2 text-right">{{ t('admin.dashboard.requests') }}</th>
               <th class="pb-2 text-right">{{ t('admin.dashboard.tokens') }}</th>
               <th class="pb-2 text-right">{{ t('admin.dashboard.actual') }}</th>
-              <th v-if="showAccountCost" class="pb-2 text-right">{{ t('admin.dashboard.accountCost') }}</th>
+              <th v-if="showProviderCost" class="pb-2 text-right">{{ t('admin.dashboard.providerCost') }}</th>
               <th v-if="showStandardCost" class="pb-2 text-right">{{ t('admin.dashboard.standard') }}</th>
             </tr>
           </thead>
@@ -145,8 +145,8 @@
                 <td class="py-1.5 text-right text-green-600 dark:text-green-400">
                   {{ balanceUnitSymbol }}{{ formatCost(model.actual_cost) }}
                 </td>
-                <td v-if="showAccountCost" class="py-1.5 text-right text-orange-500 dark:text-orange-400">
-                  {{ usdUnitSymbol }}{{ formatCost(model.account_cost) }}
+                <td v-if="showProviderCost" class="py-1.5 text-right text-orange-500 dark:text-orange-400">
+                  {{ usdUnitSymbol }}{{ formatCost(model.provider_cost) }}
                 </td>
                 <td v-if="showStandardCost" class="py-1.5 text-right text-gray-400 dark:text-gray-500">
                   {{ usdUnitSymbol }}{{ formatCost(model.cost) }}
@@ -157,7 +157,7 @@
                   <UserBreakdownSubTable
                     :items="breakdownItems"
                     :loading="breakdownLoading"
-                    :show-account-cost="showAccountCost"
+                    :show-provider-cost="showProviderCost"
                     :show-standard-cost="showStandardCost"
                   />
                 </td>
@@ -284,7 +284,7 @@ const props = withDefaults(defineProps<{
   showSourceToggle?: boolean
   showMetricToggle?: boolean
   enableBreakdown?: boolean
-  showAccountCost?: boolean
+  showProviderCost?: boolean
   showStandardCost?: boolean
   rankingLoading?: boolean
   rankingError?: boolean
@@ -305,7 +305,7 @@ const props = withDefaults(defineProps<{
   showSourceToggle: false,
   showMetricToggle: false,
   enableBreakdown: true,
-  showAccountCost: true,
+  showProviderCost: true,
   showStandardCost: true,
   rankingLoading: false,
   rankingError: false
@@ -347,9 +347,9 @@ const emit = defineEmits<{
 }>()
 
 const enableRankingView = computed(() => props.enableRankingView)
-const showAccountCost = computed(() => props.showAccountCost)
+const showProviderCost = computed(() => props.showProviderCost)
 const showStandardCost = computed(() => props.showStandardCost)
-const distributionColspan = computed(() => 4 + (showAccountCost.value ? 1 : 0) + (showStandardCost.value ? 1 : 0))
+const distributionColspan = computed(() => 4 + (showProviderCost.value ? 1 : 0) + (showStandardCost.value ? 1 : 0))
 const activeView = ref<'model_distribution' | 'spending_ranking'>('model_distribution')
 
 const chartColors = CHART_PALETTE

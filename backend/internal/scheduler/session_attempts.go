@@ -19,7 +19,7 @@ func NewSessionAttempts(cache SessionLimitCache, diagnostics Diagnostics) *Sessi
 	return &SessionAttempts{cache: cache, diagnostics: diagnostics, entries: map[int64]*AttemptLease{}}
 }
 
-// Track 接管原入口已处理的会话绑定；同账号再次选择保留原“最新投影替换”语义。
+// Track 接管原入口已处理的会话绑定；同提供商再次选择保留原“最新投影替换”语义。
 func (s *SessionAttempts) Track(binding SessionBinding) {
 	if binding.SessionID == "" {
 		return
@@ -33,14 +33,14 @@ func (s *SessionAttempts) Track(binding SessionBinding) {
 		attempt.Release()
 		return
 	}
-	if previous := s.entries[binding.AccountID]; previous != nil {
+	if previous := s.entries[binding.ProviderID]; previous != nil {
 		attempt.resources.Own(previous.resources.Release)
 	}
-	s.entries[binding.AccountID] = attempt
+	s.entries[binding.ProviderID] = attempt
 	s.mu.Unlock()
 }
 
-// Own 将本次账号或串行资源交给对应尝试；提前释放与最终 Finish 共用同一个释放函数。
+// Own 将本次提供商或串行资源交给对应尝试；提前释放与最终 Finish 共用同一个释放函数。
 func (s *SessionAttempts) Own(id int64, release func()) {
 	if release == nil {
 		return
@@ -55,7 +55,7 @@ func (s *SessionAttempts) Own(id int64, release func()) {
 	}
 }
 
-// Abandon 保留切号时立即注销原账号会话的时机。
+// Abandon 保留切号时立即注销原提供商会话的时机。
 func (s *SessionAttempts) Abandon(id int64) {
 	s.mu.Lock()
 	attempt := s.entries[id]

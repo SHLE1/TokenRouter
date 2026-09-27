@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 摘要续接保持账号/Key 隔离、最长前缀、旧链替换与原到期边界。
+// 摘要续接保持提供商/Key 隔离、最长前缀、旧链替换与原到期边界。
 func TestAnthropicPromptCacheScopePrefixAndExpiry(t *testing.T) {
 	now := time.Date(2026, 9, 23, 0, 0, 0, 0, time.UTC)
 	store := NewAnthropicPromptCache(func() time.Time { return now })
@@ -33,7 +33,7 @@ func TestAnthropicPromptCacheScopePrefixAndExpiry(t *testing.T) {
 	require.Empty(t, chain)
 }
 
-// 并发消费者使用同一原生实例，不能串入其它账号的相同摘要。
+// 并发消费者使用同一原生实例，不能串入其它提供商的相同摘要。
 func TestAnthropicPromptCacheConcurrentBindings(t *testing.T) {
 	store := NewAnthropicPromptCache(time.Now)
 	var pending sync.WaitGroup

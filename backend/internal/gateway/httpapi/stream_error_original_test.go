@@ -181,7 +181,7 @@ func TestGatewayAdmissionErrorPreservesGatewayCode(t *testing.T) {
 func TestOpenAIAdmissionErrorPreservesGatewayCodeAcrossResponsesSSE(t *testing.T) {
 	c, w := newGinContextForEndpoint(t, EndpointResponses)
 	h := &OpenAITextHandler{backend: streamErrorBackendFixture{}}
-	h.WriteStreamingErrorWithCode(c, http.StatusTooManyRequests, "rate_limit_error", GatewayConcurrencyLimitCode, "Concurrency limit exceeded for account, please retry later", true, false)
+	h.WriteStreamingErrorWithCode(c, http.StatusTooManyRequests, "rate_limit_error", GatewayConcurrencyLimitCode, "Concurrency limit exceeded for provider, please retry later", true, false)
 
 	_, errObj := parseResponsesFailedSSE(t, w.Body.String())
 	assert.Equal(t, GatewayConcurrencyLimitCode, errObj["code"])
@@ -217,7 +217,6 @@ func TestInboundIsResponses_CoversAllRoutes(t *testing.T) {
 
 // 用 c.Request.URL.Path 作为 fallback（当 c.FullPath() 为空时，例如某些测试 fixture）。
 func TestInboundIsResponses_FallsBackToURLPath(t *testing.T) {
-
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest(http.MethodPost, "/responses", nil)
@@ -286,9 +285,11 @@ type streamErrorBackendFixture struct{ OpenAITextBackend }
 func (streamErrorBackendFixture) StopCompact(c *gin.Context) bool {
 	return StopOpenAICompactSSEKeepaliveCommitted(c)
 }
+
 func (streamErrorBackendFixture) MarkStream(c *gin.Context, kind, message string, status int) {
 	MarkOpsStreamError(c, kind, message, status)
 }
+
 func (streamErrorBackendFixture) ErrorMetadata(c *gin.Context) (string, string) {
 	return ErrorRequestID(c), ErrorRequestModel(c)
 }

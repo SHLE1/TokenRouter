@@ -42,8 +42,8 @@ func TestWSPoolRepeatedStartAndClose(t *testing.T) {
 	pool.Start()
 	require.True(t, pool.closed)
 	_, err := pool.Acquire(context.Background(), WSAcquireRequest{
-		Account: &WSPoolAccount{ID: 1, Type: "oauth", Concurrency: 1},
-		WSURL:   "wss://example.invalid/responses",
+		Provider: &WSPoolProvider{ID: 1, Type: "oauth", Concurrency: 1},
+		WSURL:    "wss://example.invalid/responses",
 	})
 	require.ErrorIs(t, err, ErrWSConnClosed)
 }

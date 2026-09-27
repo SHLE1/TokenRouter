@@ -10,14 +10,14 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func compatResponseKey(c *gin.Context, account *gatewayprovider.ExecutionAccount, promptCacheKey string) string {
+func compatResponseKey(c *gin.Context, provider *gatewayprovider.ExecutionProvider, promptCacheKey string) string {
 	key := strings.TrimSpace(promptCacheKey)
-	if account == nil || key == "" {
+	if provider == nil || key == "" {
 		return ""
 	}
 	apiKeyID := int64(0)
 	if c != nil {
 		apiKeyID = APIKeyIDFromContext(c)
 	}
-	return session.CompatResponseKey(account.Record.ID, apiKeyID, key)
+	return session.CompatResponseKey(provider.Record.ID, apiKeyID, key)
 }

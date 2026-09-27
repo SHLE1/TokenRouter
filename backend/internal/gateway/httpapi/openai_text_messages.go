@@ -128,7 +128,7 @@ func (h *OpenAITextHandler) Messages(c *gin.Context) {
 	if groupMappedModel == "" {
 		groupMappedModel = reqModel
 	}
-	accountLayerModel := h.backend.MessageAccountModel(c.Request.Context(), apiKey, groupMappedModel)
+	providerLayerModel := h.backend.MessageProviderModel(c.Request.Context(), apiKey, groupMappedModel)
 
 	// 绑定错误透传服务，允许 service 层在非 failover 错误场景复用规则。
 	h.backend.BindErrors(c)
@@ -183,7 +183,7 @@ func (h *OpenAITextHandler) Messages(c *gin.Context) {
 		Protocol: protocol.ProtocolAnthropicMessages, Key: apiKey, Subject: subject, Subscription: subscription,
 		Body: body, Model: reqModel, SessionHash: sessionHash, Platform: requestPlatform, Stream: reqStream,
 		StreamStarted: &streamStarted, RoutingStart: routingStart, Log: reqLog, Mapping: groupMappingMsg,
-		AccountLayerModel: accountLayerModel, PromptCacheKey: promptCacheKey,
+		ProviderLayerModel: providerLayerModel, PromptCacheKey: promptCacheKey,
 	}
 	h.executeText(c, call, execution.TextOpenAIMessages)
 }

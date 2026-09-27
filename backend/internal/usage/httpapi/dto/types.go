@@ -20,14 +20,14 @@ type (
 
 // UsageLog 是普通用户接口使用的 usage log DTO（不包含管理员字段）。
 type UsageLog struct {
-	ID        int64  `json:"id"`
-	UserID    int64  `json:"user_id"`
-	TeamID    *int64 `json:"team_id,omitempty"`
-	APIKeyID  int64  `json:"api_key_id"`
-	AccountID int64  `json:"account_id"`
-	Platform  string `json:"platform"`
-	RequestID string `json:"request_id"`
-	Model     string `json:"model"`
+	ID         int64  `json:"id"`
+	UserID     int64  `json:"user_id"`
+	TeamID     *int64 `json:"team_id,omitempty"`
+	APIKeyID   int64  `json:"api_key_id"`
+	ProviderID int64  `json:"provider_id"`
+	Platform   string `json:"platform"`
+	RequestID  string `json:"request_id"`
+	Model      string `json:"model"`
 	// ServiceTier records the OpenAI service tier used for billing, e.g. "priority" / "flex".
 	ServiceTier *string `json:"service_tier,omitempty"`
 	// ReasoningEffort 是最终转发给上游的推理档位。
@@ -126,22 +126,22 @@ type AdminUsageLog struct {
 	// BillingTier 计费层级标签（per_request/image 模式）
 	BillingTier *string `json:"billing_tier,omitempty"`
 
-	// AccountRateMultiplier 账号计费倍率快照（nil 表示按 1.0 处理）
-	AccountRateMultiplier *float64 `json:"account_rate_multiplier"`
-	// AccountStatsCost 自定义定价规则计算的账号统计费用（nil 表示使用默认公式）
-	AccountStatsCost *float64 `json:"account_stats_cost,omitempty"`
+	// ProviderRateMultiplier 提供商计费倍率快照（nil 表示按 1.0 处理）
+	ProviderRateMultiplier *float64 `json:"provider_rate_multiplier"`
+	// ProviderStatsCost 自定义定价规则计算的提供商统计费用（nil 表示使用默认公式）
+	ProviderStatsCost *float64 `json:"provider_stats_cost,omitempty"`
 
 	// IPAddress 用户请求 IP
 	IPAddress *string `json:"ip_address,omitempty"`
 
-	// Account 最小账号信息（避免泄露敏感字段）
-	Account *AccountSummary `json:"account,omitempty"`
+	// Provider 最小提供商信息（避免泄露敏感字段）
+	Provider *ProviderSummary `json:"provider,omitempty"`
 }
 
 // UsageLogTiming 展示请求进入网关后各阶段相对于入口的毫秒数。
 type UsageLogTiming struct {
 	RequestContentLength           *int64 `json:"request_content_length,omitempty"`
-	AccountSlotAcquiredMs          *int64 `json:"account_slot_acquired_ms,omitempty"`
+	ProviderSlotAcquiredMs         *int64 `json:"provider_slot_acquired_ms,omitempty"`
 	UpstreamGetConnMs              *int64 `json:"upstream_get_conn_ms,omitempty"`
 	UpstreamGotConnMs              *int64 `json:"upstream_got_conn_ms,omitempty"`
 	UpstreamWroteRequestMs         *int64 `json:"upstream_wrote_request_ms,omitempty"`
@@ -161,7 +161,7 @@ type UsageCleanupFilters struct {
 	EndTime     time.Time `json:"end_time"`
 	UserID      *int64    `json:"user_id,omitempty"`
 	APIKeyID    *int64    `json:"api_key_id,omitempty"`
-	AccountID   *int64    `json:"account_id,omitempty"`
+	ProviderID  *int64    `json:"provider_id,omitempty"`
 	GroupID     *int64    `json:"group_id,omitempty"`
 	Model       *string   `json:"model,omitempty"`
 	RequestType *string   `json:"request_type,omitempty"`
@@ -183,9 +183,9 @@ type UsageCleanupTask struct {
 	UpdatedAt    time.Time           `json:"updated_at"`
 }
 
-// AccountSummary is a minimal account info for usage log display.
+// ProviderSummary is a minimal provider info for usage log display.
 // It intentionally excludes sensitive fields like Credentials, Proxy, etc.
-type AccountSummary struct {
+type ProviderSummary struct {
 	ID   int64  `json:"id"`
 	Name string `json:"name"`
 }

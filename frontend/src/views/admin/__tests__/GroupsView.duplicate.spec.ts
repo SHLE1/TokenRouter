@@ -45,7 +45,7 @@ vi.mock('@/api/admin', () => ({
       delete: vi.fn(),
       updateSortOrder: vi.fn()
     },
-    accounts: {
+    providers: {
       list: vi.fn(),
       getById: vi.fn()
     }
@@ -110,9 +110,9 @@ const sourceGroup: AdminGroup = {
   model_routing_enabled: false,
   mcp_xml_inject: true,
   supported_model_scopes: [],
-  account_count: 1,
-  active_account_count: 1,
-  rate_limited_account_count: 0,
+  provider_count: 1,
+  active_provider_count: 1,
+  rate_limited_provider_count: 0,
   models_list_config: undefined,
   sort_order: 10
 }

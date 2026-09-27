@@ -11,63 +11,63 @@ import (
 type ConcurrencySequence struct {
 	Mu sync.Mutex
 
-	AccountSeq []bool
-	UserSeq    []bool
+	ProviderSeq []bool
+	UserSeq     []bool
 
-	AccountAcquireCalls int
-	UserAcquireCalls    int
-	AccountReleaseCalls int
-	UserReleaseCalls    int
-	WaitAllowed         bool
-	WaitIncrementCalls  int
-	WaitDecrementCalls  int
-	WaitMaxWait         int
-	WaitIncrementHook   func()
-	APIKeyTrackCalls    int
-	APIKeyReleaseCalls  int
-	APIKeyTrackIDs      []int64
+	ProviderAcquireCalls int
+	UserAcquireCalls     int
+	ProviderReleaseCalls int
+	UserReleaseCalls     int
+	WaitAllowed          bool
+	WaitIncrementCalls   int
+	WaitDecrementCalls   int
+	WaitMaxWait          int
+	WaitIncrementHook    func()
+	APIKeyTrackCalls     int
+	APIKeyReleaseCalls   int
+	APIKeyTrackIDs       []int64
 }
 
-func (s *ConcurrencySequence) AcquireAccountSlot(ctx context.Context, accountID int64, maxConcurrency int, requestID string) (bool, error) {
+func (s *ConcurrencySequence) AcquireProviderSlot(ctx context.Context, providerID int64, maxConcurrency int, requestID string) (bool, error) {
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
-	s.AccountAcquireCalls++
-	if len(s.AccountSeq) == 0 {
+	s.ProviderAcquireCalls++
+	if len(s.ProviderSeq) == 0 {
 		return false, nil
 	}
-	v := s.AccountSeq[0]
-	s.AccountSeq = s.AccountSeq[1:]
+	v := s.ProviderSeq[0]
+	s.ProviderSeq = s.ProviderSeq[1:]
 	return v, nil
 }
 
-func (s *ConcurrencySequence) ReleaseAccountSlot(ctx context.Context, accountID int64, requestID string) error {
+func (s *ConcurrencySequence) ReleaseProviderSlot(ctx context.Context, providerID int64, requestID string) error {
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
-	s.AccountReleaseCalls++
+	s.ProviderReleaseCalls++
 	return nil
 }
 
-func (s *ConcurrencySequence) GetAccountConcurrency(ctx context.Context, accountID int64) (int, error) {
+func (s *ConcurrencySequence) GetProviderConcurrency(ctx context.Context, providerID int64) (int, error) {
 	return 0, nil
 }
 
-func (s *ConcurrencySequence) GetAccountConcurrencyBatch(ctx context.Context, accountIDs []int64) (map[int64]int, error) {
-	out := make(map[int64]int, len(accountIDs))
-	for _, accountID := range accountIDs {
-		out[accountID] = 0
+func (s *ConcurrencySequence) GetProviderConcurrencyBatch(ctx context.Context, providerIDs []int64) (map[int64]int, error) {
+	out := make(map[int64]int, len(providerIDs))
+	for _, providerID := range providerIDs {
+		out[providerID] = 0
 	}
 	return out, nil
 }
 
-func (s *ConcurrencySequence) IncrementAccountWaitCount(ctx context.Context, accountID int64, maxWait int) (bool, error) {
+func (s *ConcurrencySequence) IncrementProviderWaitCount(ctx context.Context, providerID int64, maxWait int) (bool, error) {
 	return true, nil
 }
 
-func (s *ConcurrencySequence) DecrementAccountWaitCount(ctx context.Context, accountID int64) error {
+func (s *ConcurrencySequence) DecrementProviderWaitCount(ctx context.Context, providerID int64) error {
 	return nil
 }
 
-func (s *ConcurrencySequence) GetAccountWaitingCount(ctx context.Context, accountID int64) (int, error) {
+func (s *ConcurrencySequence) GetProviderWaitingCount(ctx context.Context, providerID int64) (int, error) {
 	return 0, nil
 }
 
@@ -141,10 +141,10 @@ func (s *ConcurrencySequence) DecrementWaitCount(ctx context.Context, userID int
 	return nil
 }
 
-func (s *ConcurrencySequence) GetAccountsLoadBatch(ctx context.Context, accounts []scheduler.AccountWithConcurrency) (map[int64]*scheduler.AccountLoadInfo, error) {
-	out := make(map[int64]*scheduler.AccountLoadInfo, len(accounts))
-	for _, acc := range accounts {
-		out[acc.ID] = &scheduler.AccountLoadInfo{AccountID: acc.ID}
+func (s *ConcurrencySequence) GetProvidersLoadBatch(ctx context.Context, providers []scheduler.ProviderWithConcurrency) (map[int64]*scheduler.ProviderLoadInfo, error) {
+	out := make(map[int64]*scheduler.ProviderLoadInfo, len(providers))
+	for _, acc := range providers {
+		out[acc.ID] = &scheduler.ProviderLoadInfo{ProviderID: acc.ID}
 	}
 	return out, nil
 }
@@ -157,11 +157,11 @@ func (s *ConcurrencySequence) GetUsersLoadBatch(ctx context.Context, users []sch
 	return out, nil
 }
 
-func (s *ConcurrencySequence) CleanupExpiredAccountSlots(ctx context.Context, accountID int64) error {
+func (s *ConcurrencySequence) CleanupExpiredProviderSlots(ctx context.Context, providerID int64) error {
 	return nil
 }
 
-func (s *ConcurrencySequence) CleanupExpiredAccountSlotKeys(ctx context.Context) error {
+func (s *ConcurrencySequence) CleanupExpiredProviderSlotKeys(ctx context.Context) error {
 	return nil
 }
 
@@ -174,6 +174,6 @@ type ConcurrencySequenceWithError struct {
 	Err error
 }
 
-func (s *ConcurrencySequenceWithError) AcquireAccountSlot(ctx context.Context, accountID int64, maxConcurrency int, requestID string) (bool, error) {
+func (s *ConcurrencySequenceWithError) AcquireProviderSlot(ctx context.Context, providerID int64, maxConcurrency int, requestID string) (bool, error) {
 	return false, s.Err
 }

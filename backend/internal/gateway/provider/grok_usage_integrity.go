@@ -16,11 +16,11 @@ func HasBillableGrokChatUsage(usage openai.ForwardUsage) bool {
 		usage.CacheReadInputTokens > 0
 }
 
-// RequiresBillableGrokChatUsage 根据实际账号平台和最终模型身份识别 Grok 流量。
-// Grok 可由通用 OpenAI 兼容账号承载，因此不能只检查 account.Platform；同时不使用
+// RequiresBillableGrokChatUsage 根据实际提供商平台和最终模型身份识别 Grok 流量。
+// Grok 可由通用 OpenAI 兼容提供商承载，因此不能只检查 provider.Platform；同时不使用
 // 未映射的客户端模型，避免 Grok 命名别名映射到非 Grok 上游时被误判。
-func RequiresBillableGrokChatUsage(account *ExecutionAccount, models ...string) bool {
-	if account != nil && account.Record.Platform == capability.PlatformGrok {
+func RequiresBillableGrokChatUsage(provider *ExecutionProvider, models ...string) bool {
+	if provider != nil && provider.Record.Platform == capability.PlatformGrok {
 		return true
 	}
 	for _, model := range models {

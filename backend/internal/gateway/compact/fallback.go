@@ -24,14 +24,14 @@ func (f *Failure) Error() string {
 	return f.Message
 }
 
-// Models 按需读取账号专用规则和全局回退，不提前触发无须执行的映射。
+// Models 按需读取提供商专用规则和全局回退，不提前触发无须执行的映射。
 type Models interface {
-	AccountModel(string) (string, bool)
+	ProviderModel(string) (string, bool)
 	GlobalModel() string
 	ResolveGlobalModel(string) string
 }
 
-// Recovery 只持有模型投影和纯协议操作；不拥有账号切换或第二套重试循环。
+// Recovery 只持有模型投影和纯协议操作；不拥有提供商切换或第二套重试循环。
 type Recovery struct {
 	Models        Models
 	ContextWindow func(string, []byte) bool
@@ -45,10 +45,10 @@ type Request struct {
 	Body                     []byte
 }
 
-// ResolveModel 保留账号 compact 专用规则优先，以及全局规则的延迟求值。
+// ResolveModel 保留提供商 compact 专用规则优先，以及全局规则的延迟求值。
 func (r Recovery) ResolveModel(requested string) string {
 	requested = strings.TrimSpace(requested)
-	if mapped, ok := r.Models.AccountModel(requested); ok {
+	if mapped, ok := r.Models.ProviderModel(requested); ok {
 		if mapped = strings.TrimSpace(mapped); mapped != "" {
 			return mapped
 		}
@@ -68,7 +68,7 @@ func (r Recovery) NewFailure(explicit bool, payload []byte, message string) *Fai
 	return &Failure{Payload: append([]byte(nil), payload...), Message: logredact.SanitizeUpstreamQueries(strings.TrimSpace(message))}
 }
 
-// Prepare 仅允许一次同账号恢复，调用方仍独占输出与重试窗口。
+// Prepare 仅允许一次同提供商恢复，调用方仍独占输出与重试窗口。
 func (r Recovery) Prepare(in Request, status int, message string, payload []byte) ([]byte, string, bool) {
 	if in.AlreadyRetried || !in.Explicit || !r.ModelFailure(status, message, payload) {
 		return in.Body, "", false

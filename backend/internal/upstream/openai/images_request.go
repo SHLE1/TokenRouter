@@ -1,4 +1,4 @@
-// Images 请求保留原认证、客户端头、UA、内容类型与账号覆写顺序。
+// Images 请求保留原认证、客户端头、UA、内容类型与提供商覆写顺序。
 package openai
 
 import (
@@ -38,7 +38,7 @@ func BuildImagesRequest(ctx context.Context, body []byte, contentType string, op
 	if strings.TrimSpace(contentType) != "" {
 		req.Header.Set("Content-Type", contentType)
 	}
-	// 账号级请求头覆写（仅 openai api_key 账号启用时生效；OAuth 路径 no-op）
+	// 提供商级请求头覆写（仅 openai api_key 提供商启用时生效；OAuth 路径 no-op）
 	options.OverrideHeaders(req.Header)
 	return req, nil
 }

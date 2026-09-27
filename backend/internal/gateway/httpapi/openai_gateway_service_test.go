@@ -19,12 +19,12 @@ import (
 
 	gatewaytestkit "github.com/TokenFlux/TokenRouter/internal/gateway/testkit"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/errorpolicy"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 	"github.com/TokenFlux/TokenRouter/internal/ops"
@@ -38,65 +38,67 @@ import (
 )
 
 // 编译期接口断言
-var _ gatewayprovider.ExecutionAccountStore = (*stubOpenAIAccountRepo)(nil)
-var _ session.GatewayCache = (*sessiontestkit.StickyCache)(nil)
+var (
+	_ gatewayprovider.ExecutionProviderStore = (*stubOpenAIProviderRepo)(nil)
+	_ session.GatewayCache                   = (*sessiontestkit.StickyCache)(nil)
+)
 
-type stubOpenAIAccountRepo struct {
-	gatewayprovider.ExecutionAccountStore
+type stubOpenAIProviderRepo struct {
+	gatewayprovider.ExecutionProviderStore
 
-	accounts []gatewayprovider.
+	providers []gatewayprovider.
 
-		// tempUnschedulableOpenAIAccountRepo 记录临时不可调度规则写入的模型范围。
-		ExecutionAccount
+		// tempUnschedulableOpenAIProviderRepo 记录临时不可调度规则写入的模型范围。
+		ExecutionProvider
 }
 
-type tempUnschedulableOpenAIAccountRepo struct {
-	stubOpenAIAccountRepo
-	modelRateLimitAccountID int64
-	modelRateLimitKey       string
+type tempUnschedulableOpenAIProviderRepo struct {
+	stubOpenAIProviderRepo
+	modelRateLimitProviderID int64
+	modelRateLimitKey        string
 }
 
-func (r *tempUnschedulableOpenAIAccountRepo) SetModelRateLimit(_ context.Context, accountID int64, modelKey string, _ time.Time, _ ...string) error {
-	r.modelRateLimitAccountID = accountID
+func (r *tempUnschedulableOpenAIProviderRepo) SetModelRateLimit(_ context.Context, providerID int64, modelKey string, _ time.Time, _ ...string) error {
+	r.modelRateLimitProviderID = providerID
 	r.modelRateLimitKey = modelKey
 	return nil
 }
 
-func (r stubOpenAIAccountRepo) GetByID(ctx context.Context, id int64) (*gatewayprovider.ExecutionAccount, error) {
-	for i := range r.accounts {
-		if r.accounts[i].Record.ID == id {
-			return &r.accounts[i], nil
+func (r stubOpenAIProviderRepo) GetByID(ctx context.Context, id int64) (*gatewayprovider.ExecutionProvider, error) {
+	for i := range r.providers {
+		if r.providers[i].Record.ID == id {
+			return &r.providers[i], nil
 		}
 	}
-	return nil, errors.New("account not found")
+	return nil, errors.New("provider not found")
 }
 
-func (r stubOpenAIAccountRepo) GetByIDs(ctx context.Context, ids []int64) ([]*gatewayprovider.ExecutionAccount, error) {
+func (r stubOpenAIProviderRepo) GetByIDs(ctx context.Context, ids []int64) ([]*gatewayprovider.ExecutionProvider, error) {
 	if len(ids) == 0 {
-		return []*gatewayprovider.ExecutionAccount{}, nil
+		return []*gatewayprovider.ExecutionProvider{}, nil
 	}
-	index := make(map[int64]*gatewayprovider.ExecutionAccount, len(r.accounts))
-	for i := range r.accounts {
-		account := &r.accounts[i]
-		index[account.Record.ID] = account
+	index := make(map[int64]*gatewayprovider.ExecutionProvider, len(r.providers))
+	for i := range r.providers {
+		provider := &r.providers[i]
+		index[provider.Record.ID] = provider
 	}
-	out := make([]*gatewayprovider.ExecutionAccount, 0, len(ids))
+	out := make([]*gatewayprovider.ExecutionProvider, 0, len(ids))
 	seen := make(map[int64]struct{}, len(ids))
 	for _, id := range ids {
 		if _, ok := seen[id]; ok {
 			continue
 		}
 		seen[id] = struct{}{}
-		if account, ok := index[id]; ok {
-			out = append(out, account)
+		if provider, ok := index[id]; ok {
+			out = append(out, provider)
 		}
 	}
 	return out, nil
 }
 
-func (r stubOpenAIAccountRepo) ListSchedulableByGroupIDAndPlatform(ctx context.Context, groupID int64, platform string) ([]gatewayprovider.ExecutionAccount, error) {
-	var result []gatewayprovider.ExecutionAccount
-	for _, acc := range r.accounts {
+func (r stubOpenAIProviderRepo) ListSchedulableByGroupIDAndPlatform(ctx context.Context, groupID int64, platform string) ([]gatewayprovider.ExecutionProvider, error) {
+	var result []gatewayprovider.ExecutionProvider
+	for _, acc := range r.providers {
 		if acc.Record.Platform == platform {
 			result = append(result, acc)
 		}
@@ -104,9 +106,9 @@ func (r stubOpenAIAccountRepo) ListSchedulableByGroupIDAndPlatform(ctx context.C
 	return result, nil
 }
 
-func (r stubOpenAIAccountRepo) ListSchedulableByPlatform(ctx context.Context, platform string) ([]gatewayprovider.ExecutionAccount, error) {
-	var result []gatewayprovider.ExecutionAccount
-	for _, acc := range r.accounts {
+func (r stubOpenAIProviderRepo) ListSchedulableByPlatform(ctx context.Context, platform string) ([]gatewayprovider.ExecutionProvider, error) {
+	var result []gatewayprovider.ExecutionProvider
+	for _, acc := range r.providers {
 		if acc.Record.Platform == platform {
 			result = append(result, acc)
 		}
@@ -114,12 +116,11 @@ func (r stubOpenAIAccountRepo) ListSchedulableByPlatform(ctx context.Context, pl
 	return result, nil
 }
 
-func (r stubOpenAIAccountRepo) ListSchedulableUngroupedByPlatform(ctx context.Context, platform string) ([]gatewayprovider.ExecutionAccount, error) {
+func (r stubOpenAIProviderRepo) ListSchedulableUngroupedByPlatform(ctx context.Context, platform string) ([]gatewayprovider.ExecutionProvider, error) {
 	return r.ListSchedulableByPlatform(ctx, platform)
 }
 
 func TestOpenAIGatewayService_ForwardAsAnthropic_CapacityShedReturnsRequestScopedFailoverWithoutCommit(t *testing.T) {
-
 	body := []byte(`{"model":"gpt-5.4","max_tokens":32,"messages":[{"role":"user","content":"hello"}],"stream":false}`)
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -144,36 +145,39 @@ func TestOpenAIGatewayService_ForwardAsAnthropic_CapacityShedReturnsRequestScope
 			}, "\n"))),
 		},
 	}}
-	repo := &tempUnschedulableOpenAIAccountRepo{}
-	healthObserver := newHTTPHealthFixture(repo, &responsesFixtureOptions{}, nil, accountcore.HealthOptions{}, nil)
+	repo := &tempUnschedulableOpenAIProviderRepo{}
+	healthObserver := newHTTPHealthFixture(repo, &responsesFixtureOptions{}, nil, providercore.HealthOptions{}, nil)
 
 	svc := newResponsesFixture(responsesFixtureInputs{options: &responsesFixtureOptions{Request: OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{
 		Enabled: false, AllowInsecureHTTP: true,
 	}}}, transport: upstream, health: healthObserver})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 5099, Name: "temporary-unschedulable", Platform: capability.PlatformOpenAI,
-		Type: capability.AccountTypeAPIKey, Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":                    "sk-test",
-			"base_url":                   "http://upstream.example",
-			"model_provider":             "env-openai",
-			"temp_unschedulable_enabled": true,
-			"temp_unschedulable_rules": []any{map[string]any{
-				"error_code":       float64(http.StatusBadRequest),
-				"keywords":         []any{"our servers are currently overloaded", "please try again later"},
-				"duration_minutes": float64(1),
-			}},
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 5099, Name: "temporary-unschedulable", Platform: capability.PlatformOpenAI,
+			Type: capability.ProviderTypeAPIKey, Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":                    "sk-test",
+				"base_url":                   "http://upstream.example",
+				"model_provider":             "env-openai",
+				"temp_unschedulable_enabled": true,
+				"temp_unschedulable_rules": []any{map[string]any{
+					"error_code":       float64(http.StatusBadRequest),
+					"keywords":         []any{"our servers are currently overloaded", "please try again later"},
+					"duration_minutes": float64(1),
+				}},
+			},
+		},
 	}
 
-	_, err := svc.Text.Messages(context.Background(), c, account, body, "", "")
+	_, err := svc.Text.Messages(context.Background(), c, provider, body, "", "")
 
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)
 	require.Equal(t, http.StatusBadRequest, failoverErr.StatusCode)
-	require.True(t, failoverErr.ShouldRetryNextAccount())
-	require.True(t, failoverErr.RetryableOnSameAccount)
+	require.True(t, failoverErr.ShouldRetryNextProvider())
+	require.True(t, failoverErr.RetryableOnSameProvider)
 	require.True(t, failoverErr.RequestScopedTransient)
-	require.Zero(t, repo.modelRateLimitAccountID, "request-scoped capacity shedding must not change account health")
+	require.Zero(t, repo.modelRateLimitProviderID, "request-scoped capacity shedding must not change provider health")
 	require.Empty(t, repo.modelRateLimitKey)
 	require.False(t, IsResponseCommitted(c))
 	require.Equal(t, http.StatusOK, rec.Code)
@@ -183,10 +187,10 @@ func TestOpenAIGatewayService_ForwardAsAnthropic_CapacityShedReturnsRequestScope
 	secondContext, _ := gin.CreateTestContext(secondRec)
 	secondContext.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", bytes.NewReader(body))
 	secondContext.Request.Header.Set("Content-Type", "application/json")
-	secondAccount := *account
-	secondAccount.Record.ID = 5100
-	secondAccount.Record.Name = "healthy-failover-account"
-	result, secondErr := svc.Text.Messages(context.Background(), secondContext, &secondAccount, body, "", "")
+	secondProvider := *provider
+	secondProvider.Record.ID = 5100
+	secondProvider.Record.Name = "healthy-failover-provider"
+	result, secondErr := svc.Text.Messages(context.Background(), secondContext, &secondProvider, body, "", "")
 	require.NoError(t, secondErr)
 	require.NotNil(t, result)
 	require.Equal(t, "resp_second", result.ResponseID)
@@ -283,8 +287,7 @@ func TestExtractOpenAIUsage_PreservesResponseUsagePriority(t *testing.T) {
 	require.Equal(t, 5, usage.OutputTokens)
 }
 
-func TestOpenAIGatewayService_BindHTTPResponseAccount(t *testing.T) {
-
+func TestOpenAIGatewayService_BindHTTPResponseProvider(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/responses", nil)
@@ -293,12 +296,12 @@ func TestOpenAIGatewayService_BindHTTPResponseAccount(t *testing.T) {
 	SetHTTPResponseOwner(c, 601, 501)
 
 	svc := newResponsesFixture(responsesFixtureInputs{})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 37001, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}}
-	svc.Output.BindResponseAccount(context.Background(), c, account, "resp_http_001")
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 37001, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
+	svc.Output.BindResponseProvider(context.Background(), c, provider, "resp_http_001")
 
-	got, err := svc.Lineage.Store.GetResponseAccount(context.Background(), groupID, "resp_http_001")
+	got, err := svc.Lineage.Store.GetResponseProvider(context.Background(), groupID, "resp_http_001")
 	require.NoError(t, err)
-	require.Equal(t, account.Record.ID, got)
+	require.Equal(t, provider.Record.ID, got)
 
 	owned, err := session.ValidateHTTPResponseOwner(context.Background(), func() session.HTTPResponseOwnerReader { return svc.Lineage.Store }, groupID, "resp_http_001", 601, 501)
 	require.NoError(t, err)
@@ -318,7 +321,6 @@ func TestOpenAIGatewayService_BindHTTPResponseAccount(t *testing.T) {
 }
 
 func TestOpenAIStreamingTimeout(t *testing.T) {
-
 	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 1, StreamKeepaliveInterval: 0, MaxLineSize: openAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
@@ -334,7 +336,7 @@ func TestOpenAIStreamingTimeout(t *testing.T) {
 	}
 
 	start := time.Now()
-	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1}}, start, "model", "model", "")
+	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}, start, "model", "model", "")
 	_ = pw.Close()
 	_ = pr.Close()
 
@@ -347,7 +349,6 @@ func TestOpenAIStreamingTimeout(t *testing.T) {
 }
 
 func TestOpenAIStreamingContextCanceledReturnsIncompleteErrorWithoutInjectingErrorEvent(t *testing.T) {
-
 	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: openAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
@@ -363,7 +364,7 @@ func TestOpenAIStreamingContextCanceledReturnsIncompleteErrorWithoutInjectingErr
 		Header:     http.Header{},
 	}
 
-	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", "")
+	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", "")
 	if err == nil || !strings.Contains(err.Error(), "stream usage incomplete") {
 		t.Fatalf("expected incomplete stream error, got %v", err)
 	}
@@ -373,7 +374,6 @@ func TestOpenAIStreamingContextCanceledReturnsIncompleteErrorWithoutInjectingErr
 }
 
 func TestOpenAIStreamingReadErrorBeforeOutputReturnsFailover(t *testing.T) {
-
 	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: openAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
@@ -387,7 +387,7 @@ func TestOpenAIStreamingReadErrorBeforeOutputReturnsFailover(t *testing.T) {
 		Header:     http.Header{"X-Request-Id": []string{"rid-disconnect"}},
 	}
 
-	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
+	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)
@@ -397,13 +397,15 @@ func TestOpenAIStreamingReadErrorBeforeOutputReturnsFailover(t *testing.T) {
 }
 
 func TestOpenAIStreamingPostOutputDisconnectQuarantinesSharedProxyWithoutSameStreamFailover(t *testing.T) {
-
 	proxyID := int64(4698)
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 469801,
-		Name:     "oauth-on-shared-proxy",
-		Platform: capability.PlatformOpenAI,
-		Type:     capability.AccountTypeOAuth,
-		ProxyID:  &proxyID},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 469801,
+			Name:     "oauth-on-shared-proxy",
+			Platform: capability.PlatformOpenAI,
+			Type:     capability.ProviderTypeOAuth,
+			ProxyID:  &proxyID,
+		},
 	}
 	svc := newResponsesFixture(responsesFixtureInputs{options: &responsesFixtureOptions{Response: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}})
 	// 本用例需要把两次循环视为独立故障，关闭生产环境的并发断流折叠窗口。
@@ -434,22 +436,21 @@ func TestOpenAIStreamingPostOutputDisconnectQuarantinesSharedProxyWithoutSameStr
 			Header: http.Header{"X-Request-Id": []string{"rid-proxy-disconnect"}},
 		}
 
-		_, err := svc.Output.Stream(c.Request.Context(), resp, c, account, time.Now(), "gpt-5.6-sol", "gpt-5.6-sol", "")
+		_, err := svc.Output.Stream(c.Request.Context(), resp, c, provider, time.Now(), "gpt-5.6-sol", "gpt-5.6-sol", "")
 		require.Error(t, err)
 		var failoverErr *forwardcore.UpstreamFailoverError
 		require.False(t, errors.As(err, &failoverErr), "post-output disconnect must not fail over inside the same stream")
 		require.Contains(t, rec.Body.String(), "partial")
 	}
 
-	compatible, reason := selectionDiagnosticForStreamTest(t, svc, account)
-	require.False(t, compatible, "the next request must exclude accounts sharing the quarantined proxy")
+	compatible, reason := selectionDiagnosticForStreamTest(t, svc, provider)
+	require.False(t, compatible, "the next request must exclude providers sharing the quarantined proxy")
 	require.Equal(t, "proxy_stream_quarantined", reason)
 }
 
 func TestOpenAIStreamingTerminalAndClientCancellationDoNotQuarantineProxy(t *testing.T) {
-
 	proxyID := int64(4699)
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 469901, Name: "oauth", Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth, ProxyID: &proxyID}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 469901, Name: "oauth", Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth, ProxyID: &proxyID}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: &responsesFixtureOptions{Response: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}})
 
 	terminalRecorder := httptest.NewRecorder()
@@ -467,7 +468,7 @@ func TestOpenAIStreamingTerminalAndClientCancellationDoNotQuarantineProxy(t *tes
 		},
 		Header: http.Header{},
 	}
-	_, err := svc.Output.Stream(terminalCtx.Request.Context(), terminalResp, terminalCtx, account, time.Now(), "model", "model", "")
+	_, err := svc.Output.Stream(terminalCtx.Request.Context(), terminalResp, terminalCtx, provider, time.Now(), "model", "model", "")
 	require.NoError(t, err)
 
 	for range 2 {
@@ -484,17 +485,16 @@ func TestOpenAIStreamingTerminalAndClientCancellationDoNotQuarantineProxy(t *tes
 			},
 			Header: http.Header{},
 		}
-		_, err = svc.Output.Stream(c.Request.Context(), resp, c, account, time.Now(), "model", "model", "")
+		_, err = svc.Output.Stream(c.Request.Context(), resp, c, provider, time.Now(), "model", "model", "")
 		require.Error(t, err)
 	}
 
-	compatible, reason := selectionDiagnosticForStreamTest(t, svc, account)
+	compatible, reason := selectionDiagnosticForStreamTest(t, svc, provider)
 	require.True(t, compatible)
 	require.Empty(t, reason)
 }
 
 func TestOpenAIStreamingResponseFailedBeforeOutputReturnsFailover(t *testing.T) {
-
 	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: openAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
@@ -518,19 +518,18 @@ func TestOpenAIStreamingResponseFailedBeforeOutputReturnsFailover(t *testing.T) 
 		Header: http.Header{"X-Request-Id": []string{"rid-failed"}},
 	}
 
-	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
+	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)
 	require.Equal(t, http.StatusBadGateway, failoverErr.StatusCode)
-	require.False(t, failoverErr.RetryableOnSameAccount)
+	require.False(t, failoverErr.RetryableOnSameProvider)
 	require.Contains(t, string(failoverErr.ResponseBody), "An error occurred while processing your request")
 	require.False(t, c.Writer.Written())
 	require.Empty(t, rec.Body.String())
 }
 
 func TestOpenAIStreamingResponseFailedCapacityBeforeOutputReturnsFailover(t *testing.T) {
-
 	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: openAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
@@ -548,28 +547,30 @@ func TestOpenAIStreamingResponseFailedCapacityBeforeOutputReturnsFailover(t *tes
 		Header: http.Header{"X-Request-Id": []string{"rid-capacity"}},
 	}
 
-	// 池模式的瞬态容量错误即使未显式配置 502，也应在同一账号上受限重试。
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-		Platform: capability.PlatformOpenAI,
-		Type:     capability.AccountTypeAPIKey,
-		Name:     "pool-account",
-		Credentials: map[string]any{
-			"pool_mode": true,
-		}},
+	// 池模式的瞬态容量错误即使未显式配置 502，也应在同一提供商上受限重试。
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1,
+			Platform: capability.PlatformOpenAI,
+			Type:     capability.ProviderTypeAPIKey,
+			Name:     "pool-provider",
+			Credentials: map[string]any{
+				"pool_mode": true,
+			},
+		},
 	}
-	_, err := svc.Output.Stream(c.Request.Context(), resp, c, account, time.Now(), "model", "model", "")
+	_, err := svc.Output.Stream(c.Request.Context(), resp, c, provider, time.Now(), "model", "model", "")
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)
 	require.Equal(t, http.StatusBadGateway, failoverErr.StatusCode)
-	require.True(t, failoverErr.RetryableOnSameAccount)
+	require.True(t, failoverErr.RetryableOnSameProvider)
 	require.Contains(t, string(failoverErr.ResponseBody), "selected model is at capacity")
 	require.False(t, c.Writer.Written())
 	require.Empty(t, rec.Body.String())
 }
 
 func TestOpenAIStreamingResponseFailedBeforeOutputServerOverloadedCodeReturnsFailover(t *testing.T) {
-
 	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: openAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
@@ -590,7 +591,7 @@ func TestOpenAIStreamingResponseFailedBeforeOutputServerOverloadedCodeReturnsFai
 		Header: http.Header{"X-Request-Id": []string{"rid-overloaded-failed"}},
 	}
 
-	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
+	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)
@@ -601,7 +602,6 @@ func TestOpenAIStreamingResponseFailedBeforeOutputServerOverloadedCodeReturnsFai
 }
 
 func TestOpenAIStreamingResponseFailedBeforeOutputRateLimitUsesPoolRetryPolicy(t *testing.T) {
-
 	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: openAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
@@ -616,7 +616,7 @@ func TestOpenAIStreamingResponseFailedBeforeOutputRateLimitUsesPoolRetryPolicy(t
 			`data: {"type":"response.created","response":{"id":"resp_1"}}`,
 			"",
 			"event: response.failed",
-			`data: {"type":"response.failed","response":{"id":"resp_1","status":"failed","error":{"type":"invalid_request_error","code":"rate_limit_exceeded","message":"Concurrency limit exceeded for account, please retry later"}}}`,
+			`data: {"type":"response.failed","response":{"id":"resp_1","status":"failed","error":{"type":"invalid_request_error","code":"rate_limit_exceeded","message":"Concurrency limit exceeded for provider, please retry later"}}}`,
 			"",
 		}, "\n"))),
 		Header: http.Header{
@@ -624,23 +624,26 @@ func TestOpenAIStreamingResponseFailedBeforeOutputRateLimitUsesPoolRetryPolicy(t
 			"Retry-After":  []string{"1"},
 		},
 	}
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-		Platform: capability.PlatformOpenAI,
-		Type:     capability.AccountTypeAPIKey,
-		Name:     "pool-account",
-		Credentials: map[string]any{
-			"pool_mode":                    true,
-			"pool_mode_retry_count":        float64(1),
-			"pool_mode_retry_status_codes": []any{float64(http.StatusTooManyRequests)},
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1,
+			Platform: capability.PlatformOpenAI,
+			Type:     capability.ProviderTypeAPIKey,
+			Name:     "pool-provider",
+			Credentials: map[string]any{
+				"pool_mode":                    true,
+				"pool_mode_retry_count":        float64(1),
+				"pool_mode_retry_status_codes": []any{float64(http.StatusTooManyRequests)},
+			},
+		},
 	}
 
-	_, err := svc.Output.Stream(c.Request.Context(), resp, c, account, time.Now(), "model", "model", "")
+	_, err := svc.Output.Stream(c.Request.Context(), resp, c, provider, time.Now(), "model", "model", "")
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)
 	require.Equal(t, http.StatusTooManyRequests, failoverErr.StatusCode)
-	require.True(t, failoverErr.RetryableOnSameAccount)
+	require.True(t, failoverErr.RetryableOnSameProvider)
 	require.Equal(t, "1", http.Header(failoverErr.ResponseHeaders).Get("Retry-After"))
 	require.Equal(t, "rate_limit_error", gjson.GetBytes(failoverErr.ResponseBody, "error.type").String())
 	require.Contains(t, string(failoverErr.ResponseBody), "Concurrency limit exceeded")
@@ -655,10 +658,9 @@ func TestOpenAIStreamingResponseFailedBeforeOutputRateLimitUsesPoolRetryPolicy(t
 	require.Equal(t, http.StatusTooManyRequests, opsEvents[len(opsEvents)-1].UpstreamStatusCode)
 }
 
-// 流内 rate limit 进入 OAuth 同账号重试窗口，但不立即写账号级限流/封禁状态：
-// HTTP 200 流的 x-codex-* 头不能让窗口内的账号提前失去调度资格。
-func TestOpenAIStreamingResponseFailedRateLimitDoesNotBlockAccountScheduling(t *testing.T) {
-
+// 流内 rate limit 进入 OAuth 同提供商重试窗口，但不立即写提供商级限流/封禁状态：
+// HTTP 200 流的 x-codex-* 头不能让窗口内的提供商提前失去调度资格。
+func TestOpenAIStreamingResponseFailedRateLimitDoesNotBlockProviderScheduling(t *testing.T) {
 	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: openAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
@@ -672,7 +674,7 @@ func TestOpenAIStreamingResponseFailedRateLimitDoesNotBlockAccountScheduling(t *
 			`data: {"type":"response.created","response":{"id":"resp_1"}}`,
 			"",
 			"event: response.failed",
-			`data: {"type":"response.failed","response":{"id":"resp_1","status":"failed","error":{"code":"rate_limit_exceeded","message":"Concurrency limit exceeded for account, please retry later"}}}`,
+			`data: {"type":"response.failed","response":{"id":"resp_1","status":"failed","error":{"code":"rate_limit_exceeded","message":"Concurrency limit exceeded for provider, please retry later"}}}`,
 			"",
 		}, "\n"))),
 		Header: http.Header{
@@ -681,20 +683,19 @@ func TestOpenAIStreamingResponseFailedRateLimitDoesNotBlockAccountScheduling(t *
 			"Retry-After":                         []string{"1"},
 		},
 	}
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 11, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth, Name: "oauth-account"}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 11, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth, Name: "oauth-provider"}}
 
-	_, err := svc.Output.Stream(c.Request.Context(), resp, c, account, time.Now(), "model", "model", "")
+	_, err := svc.Output.Stream(c.Request.Context(), resp, c, provider, time.Now(), "model", "model", "")
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)
 	require.Equal(t, http.StatusTooManyRequests, failoverErr.StatusCode)
-	require.True(t, failoverErr.RetryableOnSameAccount)
-	require.False(t, failoverErr.SameAccountRetryDeadline.IsZero())
-	require.False(t, httpFixtureRuntimeBlocked(svc, account))
+	require.True(t, failoverErr.RetryableOnSameProvider)
+	require.False(t, failoverErr.SameProviderRetryDeadline.IsZero())
+	require.False(t, httpFixtureRuntimeBlocked(svc, provider))
 }
 
 func TestOpenAIStreamingResponseFailedAfterOutputSanitizesVerboseResponseForClient(t *testing.T) {
-
 	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: openAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
@@ -723,7 +724,7 @@ func TestOpenAIStreamingResponseFailedAfterOutputSanitizesVerboseResponseForClie
 		Header: http.Header{"X-Request-Id": []string{"rid-failed-after-output"}},
 	}
 
-	result, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
+	result, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.False(t, errors.As(err, &failoverErr), "流已向客户端输出后不得重放请求")
@@ -742,7 +743,6 @@ func TestOpenAIStreamingResponseFailedAfterOutputSanitizesVerboseResponseForClie
 }
 
 func TestOpenAIStreamingContextWindowResponseFailedBeforeOutputPassesThrough(t *testing.T) {
-
 	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: openAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
@@ -763,7 +763,7 @@ func TestOpenAIStreamingContextWindowResponseFailedBeforeOutputPassesThrough(t *
 		Header: http.Header{"X-Request-Id": []string{"rid-context-window-failed"}},
 	}
 
-	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
+	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.False(t, errors.As(err, &failoverErr))
@@ -774,7 +774,6 @@ func TestOpenAIStreamingContextWindowResponseFailedBeforeOutputPassesThrough(t *
 }
 
 func TestOpenAIStreamingContextWindowResponseFailedBeforeOutputAppliesPassthroughRule(t *testing.T) {
-
 	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: openAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
@@ -802,7 +801,7 @@ func TestOpenAIStreamingContextWindowResponseFailedBeforeOutputAppliesPassthroug
 		Header: http.Header{"X-Request-Id": []string{"rid-context-window-passthrough-rule"}},
 	}
 
-	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
+	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.False(t, errors.As(err, &failoverErr))
@@ -821,7 +820,6 @@ func TestOpenAIStreamingContextWindowResponseFailedBeforeOutputAppliesPassthroug
 }
 
 func TestOpenAIStreamingPreambleOnlyMissingTerminalReturnsFailover(t *testing.T) {
-
 	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: openAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
@@ -842,7 +840,7 @@ func TestOpenAIStreamingPreambleOnlyMissingTerminalReturnsFailover(t *testing.T)
 		Header: http.Header{"X-Request-Id": []string{"rid-missing-terminal"}},
 	}
 
-	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
+	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)
@@ -851,7 +849,6 @@ func TestOpenAIStreamingPreambleOnlyMissingTerminalReturnsFailover(t *testing.T)
 }
 
 func TestOpenAIStreamingPreambleKeepaliveUsesDownstreamIdle(t *testing.T) {
-
 	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 1, MaxLineSize: openAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
@@ -876,7 +873,7 @@ func TestOpenAIStreamingPreambleKeepaliveUsesDownstreamIdle(t *testing.T) {
 		_, _ = pw.Write([]byte("data: {\"type\":\"response.completed\",\"response\":{\"usage\":{\"input_tokens\":1,\"output_tokens\":2}}}\n\n"))
 	}()
 
-	result, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
+	result, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
 	_ = pr.Close()
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -885,7 +882,6 @@ func TestOpenAIStreamingPreambleKeepaliveUsesDownstreamIdle(t *testing.T) {
 }
 
 func TestOpenAIStreamingNormalizesTerminalOutputFromDeltas(t *testing.T) {
-
 	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: openAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
@@ -908,7 +904,7 @@ func TestOpenAIStreamingNormalizesTerminalOutputFromDeltas(t *testing.T) {
 		Header: http.Header{"X-Request-Id": []string{"rid-sdk-parse"}},
 	}
 
-	result, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
+	result, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -922,7 +918,6 @@ func TestOpenAIStreamingNormalizesTerminalOutputFromDeltas(t *testing.T) {
 }
 
 func TestOpenAIStreamingNormalizesTerminalOutputToEmptyArray(t *testing.T) {
-
 	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: openAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
@@ -939,7 +934,7 @@ func TestOpenAIStreamingNormalizesTerminalOutputToEmptyArray(t *testing.T) {
 		Header: http.Header{"X-Request-Id": []string{"rid-empty-output"}},
 	}
 
-	result, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
+	result, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -952,7 +947,6 @@ func TestOpenAIStreamingNormalizesTerminalOutputToEmptyArray(t *testing.T) {
 }
 
 func TestOpenAIStreamingPolicyResponseFailedBeforeOutputPassesThrough(t *testing.T) {
-
 	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: openAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
@@ -973,7 +967,7 @@ func TestOpenAIStreamingPolicyResponseFailedBeforeOutputPassesThrough(t *testing
 		Header: http.Header{"X-Request-Id": []string{"rid-policy-failed"}},
 	}
 
-	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
+	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.False(t, errors.As(err, &failoverErr))
@@ -983,7 +977,6 @@ func TestOpenAIStreamingPolicyResponseFailedBeforeOutputPassesThrough(t *testing
 }
 
 func TestOpenAIStreamingPolicyResponseFailedCarriesHTTPStatusWarning(t *testing.T) {
-
 	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: openAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
@@ -1004,7 +997,7 @@ func TestOpenAIStreamingPolicyResponseFailedCarriesHTTPStatusWarning(t *testing.
 		Header: http.Header{"X-Request-Id": []string{"rid-policy-failed"}},
 	}
 
-	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
+	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
 
 	require.Error(t, err)
 	warning, ok := forwardcore.WarningFromError(err)
@@ -1015,7 +1008,6 @@ func TestOpenAIStreamingPolicyResponseFailedCarriesHTTPStatusWarning(t *testing.
 }
 
 func TestOpenAIStreamingCybersecurityRiskResponseFailedCarriesHTTPStatusWarning(t *testing.T) {
-
 	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: openAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
@@ -1036,7 +1028,7 @@ func TestOpenAIStreamingCybersecurityRiskResponseFailedCarriesHTTPStatusWarning(
 		Header: http.Header{"X-Request-Id": []string{"rid-cybersecurity-risk"}},
 	}
 
-	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
+	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
 
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError
@@ -1049,19 +1041,17 @@ func TestOpenAIStreamingCybersecurityRiskResponseFailedCarriesHTTPStatusWarning(
 }
 
 func TestOpenAIShouldFailoverUpstreamResponse_CyberWarningDoesNotFailover(t *testing.T) {
-
 	body := []byte(`{"error":{"message":"This request has been flagged for potentially high-risk cyber activity."}}`)
 
 	require.False(t,
 		gatewayprovider.ShouldFailoverOpenAIResponse(http.StatusUnauthorized, "This request has been flagged for potentially high-risk cyber activity.", body),
 	)
 	require.True(t,
-		gatewayprovider.ShouldFailoverOpenAIResponse(http.StatusUnauthorized, "User account is not active", []byte(`{"code":"USER_INACTIVE","message":"User account is not active"}`)),
+		gatewayprovider.ShouldFailoverOpenAIResponse(http.StatusUnauthorized, "User provider is not active", []byte(`{"code":"USER_INACTIVE","message":"User provider is not active"}`)),
 	)
 }
 
 func TestOpenAIHandleErrorResponse_CyberWarningPassesThroughMessage(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
@@ -1073,9 +1063,9 @@ func TestOpenAIHandleErrorResponse_CyberWarningPassesThroughMessage(t *testing.T
 		Body:       io.NopCloser(strings.NewReader(`{"error":{"message":"` + message + `"}}`)),
 		Header:     http.Header{},
 	}
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Name: "openai", Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Name: "openai", Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
 
-	_, err := svc.Output.ResponseError(context.Background(), resp, c, account, []byte(`{"model":"gpt-5"}`))
+	_, err := svc.Output.ResponseError(context.Background(), resp, c, provider, []byte(`{"model":"gpt-5"}`))
 
 	require.Error(t, err)
 	require.Equal(t, http.StatusForbidden, rec.Code)
@@ -1087,7 +1077,6 @@ func TestOpenAIHandleErrorResponse_CyberWarningPassesThroughMessage(t *testing.T
 }
 
 func TestOpenAIStreamingClientDisconnectDrainsUpstreamUsage(t *testing.T) {
-
 	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: openAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
@@ -1109,7 +1098,7 @@ func TestOpenAIStreamingClientDisconnectDrainsUpstreamUsage(t *testing.T) {
 		_, _ = pw.Write([]byte("data: {\"type\":\"response.completed\",\"response\":{\"usage\":{\"input_tokens\":3,\"output_tokens\":5,\"input_tokens_details\":{\"cached_tokens\":1}}}}\n\n"))
 	}()
 
-	result, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", "")
+	result, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", "")
 	_ = pr.Close()
 	if err != nil {
 		t.Fatalf("expected nil error, got %v", err)
@@ -1126,7 +1115,6 @@ func TestOpenAIStreamingClientDisconnectDrainsUpstreamUsage(t *testing.T) {
 }
 
 func TestOpenAIStreamingMissingTerminalEventReturnsIncompleteError(t *testing.T) {
-
 	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: openAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
@@ -1146,7 +1134,7 @@ func TestOpenAIStreamingMissingTerminalEventReturnsIncompleteError(t *testing.T)
 		_, _ = pw.Write([]byte("data: {\"type\":\"response.output_text.delta\",\"delta\":\"partial\",\"output_index\":0}\n\n"))
 	}()
 
-	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", "")
+	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", "")
 	_ = pr.Close()
 	if err == nil || !strings.Contains(err.Error(), "missing terminal event") {
 		t.Fatalf("expected missing terminal event error, got %v", err)
@@ -1154,7 +1142,6 @@ func TestOpenAIStreamingMissingTerminalEventReturnsIncompleteError(t *testing.T)
 }
 
 func TestOpenAIStreamingPassthroughMissingTerminalEventReturnsIncompleteError(t *testing.T) {
-
 	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
@@ -1174,7 +1161,7 @@ func TestOpenAIStreamingPassthroughMissingTerminalEventReturnsIncompleteError(t 
 		_, _ = pw.Write([]byte("data: {\"type\":\"response.output_text.delta\",\"delta\":\"partial\",\"output_index\":0}\n\n"))
 	}()
 
-	_, err := svc.Output.PassthroughStream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "", "")
+	_, err := svc.Output.PassthroughStream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "", "")
 	_ = pr.Close()
 	if err == nil || !strings.Contains(err.Error(), "missing terminal event") {
 		t.Fatalf("expected missing terminal event error, got %v", err)
@@ -1182,9 +1169,8 @@ func TestOpenAIStreamingPassthroughMissingTerminalEventReturnsIncompleteError(t 
 }
 
 func TestOpenAIStreamingPassthroughPostOutputDisconnectQuarantinesSharedProxy(t *testing.T) {
-
 	proxyID := int64(4698)
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 469804, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey, ProxyID: &proxyID}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 469804, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey, ProxyID: &proxyID}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: &responsesFixtureOptions{Response: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}})
 	// 本用例需要把两次循环视为独立故障，关闭生产环境的并发断流折叠窗口。
 	svc.Output.ProxyCircuit = egress.NewProxyStreamCircuit(egress.ProxyStreamCircuitSettings{
@@ -1207,18 +1193,17 @@ func TestOpenAIStreamingPassthroughPostOutputDisconnectQuarantinesSharedProxy(t 
 			Header: http.Header{"X-Request-Id": []string{"rid-passthrough-proxy-disconnect"}},
 		}
 
-		_, err := svc.Output.PassthroughStream(c.Request.Context(), resp, c, account, time.Now(), "model", "model")
+		_, err := svc.Output.PassthroughStream(c.Request.Context(), resp, c, provider, time.Now(), "model", "model")
 		require.Error(t, err)
 		var failoverErr *forwardcore.UpstreamFailoverError
 		require.False(t, errors.As(err, &failoverErr), "post-output disconnect must not fail over inside the same stream")
 		require.Contains(t, rec.Body.String(), "partial")
 	}
 
-	require.True(t, svc.Output.ProxyCircuit.IsBlocked(*account.Record.ProxyID, time.Now()))
+	require.True(t, svc.Output.ProxyCircuit.IsBlocked(*provider.Record.ProxyID, time.Now()))
 }
 
 func TestOpenAIStreamingPassthroughResponseFailedBeforeOutputReturnsFailover(t *testing.T) {
-
 	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
@@ -1239,7 +1224,7 @@ func TestOpenAIStreamingPassthroughResponseFailedBeforeOutputReturnsFailover(t *
 		Header: http.Header{"X-Request-Id": []string{"rid-passthrough-failed"}},
 	}
 
-	_, err := svc.Output.PassthroughStream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "", "")
+	_, err := svc.Output.PassthroughStream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "", "")
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)
@@ -1250,7 +1235,6 @@ func TestOpenAIStreamingPassthroughResponseFailedBeforeOutputReturnsFailover(t *
 }
 
 func TestOpenAIStreamingPassthroughContextWindowResponseFailedBeforeOutputAppliesPassthroughRule(t *testing.T) {
-
 	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
@@ -1278,7 +1262,7 @@ func TestOpenAIStreamingPassthroughContextWindowResponseFailedBeforeOutputApplie
 		Header: http.Header{"X-Request-Id": []string{"rid-pass-context-window-passthrough-rule"}},
 	}
 
-	_, err := svc.Output.PassthroughStream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "", "")
+	_, err := svc.Output.PassthroughStream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "", "")
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.False(t, errors.As(err, &failoverErr))
@@ -1297,7 +1281,6 @@ func TestOpenAIStreamingPassthroughContextWindowResponseFailedBeforeOutputApplie
 }
 
 func TestOpenAIStreamingPassthroughContextWindowResponseFailedBeforeOutputWithoutRulePassesThrough(t *testing.T) {
-
 	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
@@ -1318,7 +1301,7 @@ func TestOpenAIStreamingPassthroughContextWindowResponseFailedBeforeOutputWithou
 		Header: http.Header{"X-Request-Id": []string{"rid-pass-context-window-no-rule"}},
 	}
 
-	_, err := svc.Output.PassthroughStream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "", "")
+	_, err := svc.Output.PassthroughStream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "", "")
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.False(t, errors.As(err, &failoverErr))
@@ -1329,7 +1312,6 @@ func TestOpenAIStreamingPassthroughContextWindowResponseFailedBeforeOutputWithou
 }
 
 func TestOpenAIStreamingPassthroughResponseFailedAfterOutputSanitizesVerboseResponseForClient(t *testing.T) {
-
 	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
@@ -1358,7 +1340,7 @@ func TestOpenAIStreamingPassthroughResponseFailedAfterOutputSanitizesVerboseResp
 		Header: http.Header{"X-Request-Id": []string{"rid-pass-failed-after-output"}},
 	}
 
-	result, err := svc.Output.PassthroughStream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "", "")
+	result, err := svc.Output.PassthroughStream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "", "")
 	require.Error(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, 123, result.Usage.InputTokens)
@@ -1375,7 +1357,6 @@ func TestOpenAIStreamingPassthroughResponseFailedAfterOutputSanitizesVerboseResp
 }
 
 func TestOpenAIStreamingPassthroughResponseDoneWithoutDoneMarkerStillSucceeds(t *testing.T) {
-
 	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
@@ -1395,7 +1376,7 @@ func TestOpenAIStreamingPassthroughResponseDoneWithoutDoneMarkerStillSucceeds(t 
 		_, _ = pw.Write([]byte("data: {\"type\":\"response.done\",\"response\":{\"usage\":{\"input_tokens\":2,\"output_tokens\":3,\"input_tokens_details\":{\"cached_tokens\":1}}}}\n\n"))
 	}()
 
-	result, err := svc.Output.PassthroughStream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "", "")
+	result, err := svc.Output.PassthroughStream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "", "")
 	_ = pr.Close()
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -1406,7 +1387,6 @@ func TestOpenAIStreamingPassthroughResponseDoneWithoutDoneMarkerStillSucceeds(t 
 }
 
 func TestOpenAIStreamingPassthroughResponseIncompleteWithoutDoneMarkerStillSucceeds(t *testing.T) {
-
 	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
@@ -1426,7 +1406,7 @@ func TestOpenAIStreamingPassthroughResponseIncompleteWithoutDoneMarkerStillSucce
 		_, _ = pw.Write([]byte("data: {\"type\":\"response.incomplete\",\"response\":{\"usage\":{\"input_tokens\":2,\"output_tokens\":3,\"input_tokens_details\":{\"cached_tokens\":1}}}}\n\n"))
 	}()
 
-	result, err := svc.Output.PassthroughStream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "", "")
+	result, err := svc.Output.PassthroughStream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "", "")
 	_ = pr.Close()
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -1437,7 +1417,6 @@ func TestOpenAIStreamingPassthroughResponseIncompleteWithoutDoneMarkerStillSucce
 }
 
 func TestOpenAIStreamingTooLong(t *testing.T) {
-
 	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: 64 * 1024}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
@@ -1459,7 +1438,7 @@ func TestOpenAIStreamingTooLong(t *testing.T) {
 		_, _ = pw.Write([]byte(payload))
 	}()
 
-	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 2}}, time.Now(), "model", "model", "")
+	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 2}}, time.Now(), "model", "model", "")
 	_ = pr.Close()
 
 	if !errors.Is(err, bufio.ErrTooLong) {
@@ -1471,7 +1450,6 @@ func TestOpenAIStreamingTooLong(t *testing.T) {
 }
 
 func TestOpenAINonStreamingContentTypePassThrough(t *testing.T) {
-
 	cfg := &responsesFixtureOptions{Headers: egress.ResponseHeaderOptions{Enabled: false}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
@@ -1486,7 +1464,7 @@ func TestOpenAINonStreamingContentTypePassThrough(t *testing.T) {
 		Header:     http.Header{"Content-Type": []string{"application/vnd.test+json"}},
 	}
 
-	_, err := svc.Output.NonStream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation}}, "model", "model")
+	_, err := svc.Output.NonStream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation}}, "model", "model")
 	if err != nil {
 		t.Fatalf("handleNonStreamingResponse error: %v", err)
 	}
@@ -1497,7 +1475,6 @@ func TestOpenAINonStreamingContentTypePassThrough(t *testing.T) {
 }
 
 func TestOpenAINonStreamingContentTypeDefault(t *testing.T) {
-
 	cfg := &responsesFixtureOptions{Headers: egress.ResponseHeaderOptions{Enabled: false}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
@@ -1512,7 +1489,7 @@ func TestOpenAINonStreamingContentTypeDefault(t *testing.T) {
 		Header:     http.Header{},
 	}
 
-	_, err := svc.Output.NonStream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation}}, "model", "model")
+	_, err := svc.Output.NonStream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation}}, "model", "model")
 	if err != nil {
 		t.Fatalf("handleNonStreamingResponse error: %v", err)
 	}
@@ -1523,7 +1500,6 @@ func TestOpenAINonStreamingContentTypeDefault(t *testing.T) {
 }
 
 func TestOpenAIStreamingHeadersOverride(t *testing.T) {
-
 	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: openAIResponseDefaultMaxLineSize}, Headers: egress.ResponseHeaderOptions{Enabled: false}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
@@ -1547,7 +1523,7 @@ func TestOpenAIStreamingHeadersOverride(t *testing.T) {
 		_, _ = pw.Write([]byte("data: {\"type\":\"response.completed\",\"response\":{}}\n\n"))
 	}()
 
-	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", "")
+	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", "")
 	_ = pr.Close()
 	if err != nil {
 		t.Fatalf("handleStreamingResponse error: %v", err)
@@ -1565,7 +1541,6 @@ func TestOpenAIStreamingHeadersOverride(t *testing.T) {
 }
 
 func TestOpenAIStreamingReuseScannerBufferAndStillWorks(t *testing.T) {
-
 	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: openAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
@@ -1585,7 +1560,7 @@ func TestOpenAIStreamingReuseScannerBufferAndStillWorks(t *testing.T) {
 		_, _ = pw.Write([]byte("data: {\"type\":\"response.completed\",\"response\":{\"usage\":{\"input_tokens\":1,\"output_tokens\":2,\"input_tokens_details\":{\"cached_tokens\":3}}}}\n\n"))
 	}()
 
-	result, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", "")
+	result, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", "")
 	_ = pr.Close()
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -1596,7 +1571,6 @@ func TestOpenAIStreamingReuseScannerBufferAndStillWorks(t *testing.T) {
 }
 
 func TestOpenAIInvalidBaseURLWhenAllowlistDisabled(t *testing.T) {
-
 	cfg := &responsesFixtureOptions{Request: OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{Enabled: false}}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
@@ -1604,12 +1578,15 @@ func TestOpenAIInvalidBaseURLWhenAllowlistDisabled(t *testing.T) {
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/", nil)
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Credentials: map[string]any{"base_url": "://invalid-url"}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Credentials: map[string]any{"base_url": "://invalid-url"},
+		},
 	}
 
-	_, err := svc.Requests.Build(c.Request.Context(), c, account, []byte("{}"), "token", false, "", false)
+	_, err := svc.Requests.Build(c.Request.Context(), c, provider, []byte("{}"), "token", false, "", false)
 	if err == nil {
 		t.Fatalf("expected error for invalid base_url when allowlist disabled")
 	}
@@ -1663,7 +1640,6 @@ func TestOpenAIValidateUpstreamBaseURLEnabledEnforcesAllowlist(t *testing.T) {
 }
 
 func TestOpenAIResponsesRequestPathSuffix(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 
@@ -1726,15 +1702,14 @@ func TestNormalizeOpenAICompactRequestBodyDropsParallelToolCallsWithoutUsableToo
 }
 
 func TestOpenAIBuildUpstreamRequestOpenAIPassthroughPreservesCompactPath(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses/compact", bytes.NewReader([]byte(`{"model":"gpt-5"}`)))
 
 	svc := newResponsesFixture(responsesFixtureInputs{})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Type: capability.AccountTypeOAuth}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Type: capability.ProviderTypeOAuth}}
 
-	req, err := svc.Requests.BuildPassthrough(c.Request.Context(), c, account, []byte(`{"model":"gpt-5"}`), "token")
+	req, err := svc.Requests.BuildPassthrough(c.Request.Context(), c, provider, []byte(`{"model":"gpt-5"}`), "token")
 	require.NoError(t, err)
 	require.Equal(t, chatgptCodexURL+"/compact", req.URL.String())
 	require.Equal(t, "application/json", req.Header.Get("Accept"))
@@ -1745,46 +1720,46 @@ func TestOpenAIBuildUpstreamRequestOpenAIPassthroughPreservesCompactPath(t *test
 }
 
 func TestOpenAIBuildUpstreamRequestOpenAIPassthroughPreservesExplicitAPIKeyBetaHeader(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", bytes.NewReader([]byte(`{"model":"gpt-5"}`)))
 	c.Request.Header.Set("OpenAI-Beta", "api-key-specific-beta")
 
 	svc := newResponsesFixture(responsesFixtureInputs{options: &responsesFixtureOptions{Request: OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{Enabled: false}}}})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
 
-	req, err := svc.Requests.BuildPassthrough(c.Request.Context(), c, account, []byte(`{"model":"gpt-5"}`), "token")
+	req, err := svc.Requests.BuildPassthrough(c.Request.Context(), c, provider, []byte(`{"model":"gpt-5"}`), "token")
 	require.NoError(t, err)
 	require.Equal(t, "api-key-specific-beta", req.Header.Get("OpenAI-Beta"), "OAuth-only backport must not alter API-key passthrough headers")
 }
 
 func TestOpenAIBuildUpstreamRequestOpenAIPassthroughDoesNotPropagateInternalRequestID(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", bytes.NewReader([]byte(`{"model":"gpt-5"}`)))
 	c.Request.Header.Set("X-Sub2API-Request-ID", "internal-request-123")
 
 	svc := newResponsesFixture(responsesFixtureInputs{})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth}}
-	req, err := svc.Requests.BuildPassthrough(c.Request.Context(), c, account, []byte(`{"model":"gpt-5"}`), "token")
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}}
+	req, err := svc.Requests.BuildPassthrough(c.Request.Context(), c, provider, []byte(`{"model":"gpt-5"}`), "token")
 	require.NoError(t, err)
 	require.Empty(t, req.Header.Get("X-Sub2API-Request-ID"))
 }
 
 func TestOpenAIBuildUpstreamRequestCompactForcesJSONAcceptForOAuth(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses/compact", bytes.NewReader([]byte(`{"model":"gpt-5"}`)))
 
 	svc := newResponsesFixture(responsesFixtureInputs{})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Type: capability.AccountTypeOAuth,
-		Credentials: map[string]any{"chatgpt_account_id": "chatgpt-acc"}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, Type: capability.ProviderTypeOAuth,
+			Credentials: map[string]any{"chatgpt_account_id": "chatgpt-acc"},
+		},
 	}
 
-	req, err := svc.Requests.Build(c.Request.Context(), c, account, []byte(`{"model":"gpt-5"}`), "token", false, "", true)
+	req, err := svc.Requests.Build(c.Request.Context(), c, provider, []byte(`{"model":"gpt-5"}`), "token", false, "", true)
 	require.NoError(t, err)
 	require.Equal(t, chatgptCodexURL+"/compact", req.URL.String())
 	require.Equal(t, "application/json", req.Header.Get("Accept"))
@@ -1795,7 +1770,6 @@ func TestOpenAIBuildUpstreamRequestCompactForcesJSONAcceptForOAuth(t *testing.T)
 }
 
 func TestOpenAIBuildUpstreamRequestOAuthMessagesBridgeUsesSessionOnly(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	body := []byte(`{"model":"gpt-5.5","prompt_cache_key":"anthropic-metadata-session-1","input":[{"type":"message","role":"developer","content":[{"type":"input_text","text":"<sub2api-claude-code-todo-guard>"}]},{"type":"message","role":"user","content":"hello"}]}`)
@@ -1804,11 +1778,14 @@ func TestOpenAIBuildUpstreamRequestOAuthMessagesBridgeUsesSessionOnly(t *testing
 	c.Request.Header.Set("originator", "codex_cli_rs")
 
 	svc := newResponsesFixture(responsesFixtureInputs{})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Type: capability.AccountTypeOAuth,
-		Credentials: map[string]any{"chatgpt_account_id": "chatgpt-acc"}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, Type: capability.ProviderTypeOAuth,
+			Credentials: map[string]any{"chatgpt_account_id": "chatgpt-acc"},
+		},
 	}
 
-	req, err := svc.Requests.Build(c.Request.Context(), c, account, body, "token", true, "anthropic-metadata-session-1", false)
+	req, err := svc.Requests.Build(c.Request.Context(), c, provider, body, "token", true, "anthropic-metadata-session-1", false)
 	require.NoError(t, err)
 	require.NotEmpty(t, req.Header.Get("Session_Id"))
 	require.Empty(t, req.Header.Get("Conversation_Id"))
@@ -1817,24 +1794,25 @@ func TestOpenAIBuildUpstreamRequestOAuthMessagesBridgeUsesSessionOnly(t *testing
 }
 
 func TestOpenAIBuildUpstreamRequestPreservesCompactPathForAPIKeyBaseURL(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/responses/compact", bytes.NewReader([]byte(`{"model":"gpt-5"}`)))
 
 	svc := newResponsesFixture(responsesFixtureInputs{options: &responsesFixtureOptions{Request: OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{Enabled: false}}}})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Type: capability.AccountTypeAPIKey,
-		Platform:    capability.PlatformOpenAI,
-		Credentials: map[string]any{"base_url": "https://example.com/v1"}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, Type: capability.ProviderTypeAPIKey,
+			Platform:    capability.PlatformOpenAI,
+			Credentials: map[string]any{"base_url": "https://example.com/v1"},
+		},
 	}
 
-	req, err := svc.Requests.Build(c.Request.Context(), c, account, []byte(`{"model":"gpt-5"}`), "token", false, "", false)
+	req, err := svc.Requests.Build(c.Request.Context(), c, provider, []byte(`{"model":"gpt-5"}`), "token", false, "", false)
 	require.NoError(t, err)
 	require.Equal(t, "https://example.com/v1/responses/compact", req.URL.String())
 }
 
 func TestOpenAIBuildUpstreamRequestOAuthOfficialClientOriginatorCompatibility(t *testing.T) {
-
 	// 上游要求 originator 与最终 User-Agent 首段配套（issue #3901）：
 	// originator 一律由最终 UA 推导；推导不出官方身份时整体回退默认 Codex TUI 身份。
 	tests := []struct {
@@ -1869,12 +1847,15 @@ func TestOpenAIBuildUpstreamRequestOAuthOfficialClientOriginatorCompatibility(t 
 			}
 
 			svc := newResponsesFixture(responsesFixtureInputs{})
-			account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Type: capability.AccountTypeOAuth,
-				Credentials: map[string]any{"chatgpt_account_id": "chatgpt-acc"}},
+			provider := &gatewayprovider.ExecutionProvider{
+				Record: providercore.Record{
+					LoadLocation: time.LoadLocation, Type: capability.ProviderTypeOAuth,
+					Credentials: map[string]any{"chatgpt_account_id": "chatgpt-acc"},
+				},
 			}
 
 			isCodexCLI := openai.IsCodexOfficialClientByHeaders(c.GetHeader("User-Agent"), c.GetHeader("originator"))
-			req, err := svc.Requests.Build(c.Request.Context(), c, account, []byte(`{"model":"gpt-5"}`), "token", false, "", isCodexCLI)
+			req, err := svc.Requests.Build(c.Request.Context(), c, provider, []byte(`{"model":"gpt-5"}`), "token", false, "", isCodexCLI)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantOriginator, req.Header.Get("originator"))
 			require.Equal(t, tt.wantUA, req.Header.Get("User-Agent"))
@@ -1883,7 +1864,6 @@ func TestOpenAIBuildUpstreamRequestOAuthOfficialClientOriginatorCompatibility(t 
 }
 
 func TestOpenAIBuildUpstreamRequestUsesTLSRouterUpstreamHeaders(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", bytes.NewReader([]byte(`{"model":"gpt-5"}`)))
@@ -1891,12 +1871,15 @@ func TestOpenAIBuildUpstreamRequestUsesTLSRouterUpstreamHeaders(t *testing.T) {
 	c.Request.Header.Set("originator", "opencode")
 
 	svc := newResponsesFixture(responsesFixtureInputs{})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI,
-		Type: capability.AccountTypeOAuth,
-		Credentials: map[string]any{
-			"chatgpt_account_id": "chatgpt-acc",
-			"user_agent":         "codex-tui/9.8.0 account-fallback",
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI,
+			Type: capability.ProviderTypeOAuth,
+			Credentials: map[string]any{
+				"chatgpt_account_id": "chatgpt-acc",
+				"user_agent":         "codex-tui/9.8.0 provider-fallback",
+			},
+		},
 	}
 	routerMatch := egress.TLSFingerprintRouterMatchResult{
 		Matched:                 true,
@@ -1907,31 +1890,33 @@ func TestOpenAIBuildUpstreamRequestUsesTLSRouterUpstreamHeaders(t *testing.T) {
 		UpstreamOriginator:      "codex-tui",
 	}
 
-	req, err := svc.Requests.Build(c.Request.Context(), c, account, []byte(`{"model":"gpt-5"}`), "token", false, "", false, routerMatch)
+	req, err := svc.Requests.Build(c.Request.Context(), c, provider, []byte(`{"model":"gpt-5"}`), "token", false, "", false, routerMatch)
 	require.NoError(t, err)
 	require.Equal(t, routerMatch.UpstreamUserAgent, req.Header.Get("User-Agent"))
 	require.Equal(t, routerMatch.UpstreamOriginator, req.Header.Get("originator"))
 }
 
-func TestOpenAIBuildUpstreamRequestRouterEmptyUAUsesAccountFallback(t *testing.T) {
-
+func TestOpenAIBuildUpstreamRequestRouterEmptyUAUsesProviderFallback(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", bytes.NewReader([]byte(`{"model":"gpt-5"}`)))
 	c.Request.Header.Set("User-Agent", "opencode/1.0")
 
 	svc := newResponsesFixture(responsesFixtureInputs{})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI,
-		Type: capability.AccountTypeOAuth,
-		Credentials: map[string]any{
-			"chatgpt_account_id": "chatgpt-acc",
-			"user_agent":         "codex-tui/9.8.0 account-fallback",
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI,
+			Type: capability.ProviderTypeOAuth,
+			Credentials: map[string]any{
+				"chatgpt_account_id": "chatgpt-acc",
+				"user_agent":         "codex-tui/9.8.0 provider-fallback",
+			},
+		},
 	}
 
-	req, err := svc.Requests.Build(c.Request.Context(), c, account, []byte(`{"model":"gpt-5"}`), "token", false, "", false, egress.TLSFingerprintRouterMatchResult{Matched: true})
+	req, err := svc.Requests.Build(c.Request.Context(), c, provider, []byte(`{"model":"gpt-5"}`), "token", false, "", false, egress.TLSFingerprintRouterMatchResult{Matched: true})
 	require.NoError(t, err)
-	require.Equal(t, "codex-tui/9.8.0 account-fallback", req.Header.Get("User-Agent"))
+	require.Equal(t, "codex-tui/9.8.0 provider-fallback", req.Header.Get("User-Agent"))
 	require.Equal(t, "codex-tui", req.Header.Get("originator"))
 }
 
@@ -2031,7 +2016,6 @@ func TestExtractCodexFinalResponse_SampleReplay(t *testing.T) {
 }
 
 func TestHandleSSEToJSON_CompletedEventReturnsJSON(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/", nil)
@@ -2060,7 +2044,6 @@ func TestHandleSSEToJSON_CompletedEventReturnsJSON(t *testing.T) {
 }
 
 func TestHandleNonStreamingResponse_APIKeyFallsBackToSSEBodyWhenContentTypeIsWrong(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
@@ -2076,9 +2059,9 @@ func TestHandleNonStreamingResponse_APIKeyFallsBackToSSEBodyWhenContentTypeIsWro
 			`data: [DONE]`,
 		}, "\n"))),
 	}
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Type: capability.AccountTypeAPIKey}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Type: capability.ProviderTypeAPIKey}}
 
-	result, err := svc.Output.NonStream(context.Background(), resp, c, account, "gpt-5.4", "gpt-5.4")
+	result, err := svc.Output.NonStream(context.Background(), resp, c, provider, "gpt-5.4", "gpt-5.4")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, 3, result.Usage.InputTokens)
@@ -2089,7 +2072,6 @@ func TestHandleNonStreamingResponse_APIKeyFallsBackToSSEBodyWhenContentTypeIsWro
 }
 
 func TestHandleNonStreamingResponse_OAuthJSONBodyWithDataEventTextKeepsJSONUsage(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses/compact", nil)
@@ -2105,9 +2087,9 @@ func TestHandleNonStreamingResponse_OAuthJSONBodyWithDataEventTextKeepsJSONUsage
 		Header:     http.Header{"Content-Type": []string{"application/json"}},
 		Body:       io.NopCloser(strings.NewReader(jsonBody)),
 	}
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 146, Type: capability.AccountTypeOAuth}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 146, Type: capability.ProviderTypeOAuth}}
 
-	result, err := svc.Output.NonStream(context.Background(), resp, c, account, "gpt-5.4", "gpt-5.4")
+	result, err := svc.Output.NonStream(context.Background(), resp, c, provider, "gpt-5.4", "gpt-5.4")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, 11, result.Usage.InputTokens)
@@ -2120,7 +2102,6 @@ func TestHandleNonStreamingResponse_OAuthJSONBodyWithDataEventTextKeepsJSONUsage
 }
 
 func TestHandleSSEToJSON_ReconstructsImageGenerationOutputItemDone(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/", nil)
@@ -2148,7 +2129,6 @@ func TestHandleSSEToJSON_ReconstructsImageGenerationOutputItemDone(t *testing.T)
 }
 
 func TestHandleSSEToJSON_NoFinalResponseKeepsSSEBody(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/", nil)
@@ -2172,7 +2152,6 @@ func TestHandleSSEToJSON_NoFinalResponseKeepsSSEBody(t *testing.T) {
 }
 
 func TestHandleSSEToJSON_ResponseFailedReturnsFailoverBeforeWrite(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/", nil)
@@ -2187,8 +2166,8 @@ func TestHandleSSEToJSON_ResponseFailedReturnsFailoverBeforeWrite(t *testing.T) 
 		`data: [DONE]`,
 	}, "\n"))
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Type: capability.AccountTypeAPIKey, Platform: capability.PlatformOpenAI}}
-	usage, err := svc.Output.SSEAsJSON(context.Background(), resp, c, account, body, "gpt-4o", "gpt-4o")
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Type: capability.ProviderTypeAPIKey, Platform: capability.PlatformOpenAI}}
+	usage, err := svc.Output.SSEAsJSON(context.Background(), resp, c, provider, body, "gpt-4o", "gpt-4o")
 	require.Nil(t, usage)
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)

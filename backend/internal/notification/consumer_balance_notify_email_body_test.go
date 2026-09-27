@@ -65,8 +65,8 @@ func TestBuildBalanceLowEmailBody_NoRechargeURLOmitsButton(t *testing.T) {
 func TestBuildQuotaAlertEmailBody_AllFieldsPresent(t *testing.T) {
 	s := &AlertDelivery{}
 	body := s.BuildQuotaAlertEmailBody(
-		42,            // accountID
-		"acc-foo",     // accountName
+		42,            // providerID
+		"acc-foo",     // providerName
 		"anthropic",   // platform
 		"日限额 / Daily", // dimLabel
 		750.50,        // used

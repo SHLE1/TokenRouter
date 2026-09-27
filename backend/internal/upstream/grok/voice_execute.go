@@ -14,7 +14,7 @@ import (
 )
 
 type VoiceTarget struct {
-	AccountID                           int64
+	ProviderID                          int64
 	Endpoint, BaseEndpoint, ContentType string
 	Request                             *http.Request `json:"-"`
 	Do                                  func(*http.Request) (*http.Response, error)
@@ -25,7 +25,7 @@ type VoiceTarget struct {
 	CopyHeaders                         func(http.Header, http.Header)
 }
 
-func (t *VoiceTarget) TargetID() int64  { return t.AccountID }
+func (t *VoiceTarget) TargetID() int64  { return t.ProviderID }
 func (*VoiceTarget) String() string     { return "grok voice target" }
 func (t *VoiceTarget) GoString() string { return t.String() }
 

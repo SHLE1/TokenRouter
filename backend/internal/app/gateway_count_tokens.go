@@ -9,7 +9,6 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway/promptpolicy"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/config"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/admission"
@@ -18,6 +17,7 @@ import (
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -34,46 +34,46 @@ type countExecution struct {
 }
 
 func (p countExecution) SelectCountTarget(ctx context.Context, id *int64, hash, model string, excluded map[int64]struct{}) (gatewayhttp.CountTarget, error) {
-	value, err := p.choices.SelectAccountForModelWithExclusions(ctx, id, hash, model, excluded)
+	value, err := p.choices.SelectProviderForModelWithExclusions(ctx, id, hash, model, excluded)
 	if err != nil {
 		return nil, err
 	}
-	return countTarget{gateway: p.messages, auxiliary: p.auxiliary, gemini: p.gemini, account: value, choices: p.choices}, nil
+	return countTarget{gateway: p.messages, auxiliary: p.auxiliary, gemini: p.gemini, provider: value, choices: p.choices}, nil
 }
 
 func (p countExecution) PlanCountRoute(ctx context.Context, key *apikey.APIKey, model string) routing.RoutePlan {
 	return p.planner.PlanKey(ctx, key, model)
 }
 
-// countTarget 将已经取得的账号保持在受控调用内，不把凭据暴露给 HTTP。
+// countTarget 将已经取得的提供商保持在受控调用内，不把凭据暴露给 HTTP。
 type countTarget struct {
 	choices   *selection.Generic
 	gateway   *gatewayhttp.MessagesExecutor
 	auxiliary *gatewayhttp.OpenAIAuxiliary
 	gemini    *gatewayhttp.GeminiExecutor
-	account   *gatewayprovider.ExecutionAccount
+	provider  *gatewayprovider.ExecutionProvider
 }
 
-func (t countTarget) Snapshot() account.AccountSnapshot {
-	return gatewayprovider.ExecutionSnapshot(t.account)
+func (t countTarget) Snapshot() provider.ProviderSnapshot {
+	return gatewayprovider.ExecutionSnapshot(t.provider)
 }
-func (t countTarget) RetryLimit() int { return t.account.View().GetPoolModeRetryCount() }
+func (t countTarget) RetryLimit() int { return t.provider.View().GetPoolModeRetryCount() }
 func (t countTarget) ForwardCountTokens(ctx context.Context, c *gin.Context, parsed *requeststate.ParsedRequest) error {
-	return gatewayhttp.ForwardSelectedCountTokens(ctx, c, t.account, parsed, t.gateway, t.auxiliary, t.gemini)
+	return gatewayhttp.ForwardSelectedCountTokens(ctx, c, t.provider, parsed, t.gateway, t.auxiliary, t.gemini)
 }
 
 func (t countTarget) ReleaseSession(ctx context.Context, hash string) {
-	t.choices.ReleaseAccountSession(ctx, t.account, hash)
+	t.choices.ReleaseProviderSession(ctx, t.provider, hash)
 }
 
 // provideCountTokensHTTP 直接装配原生 HTTP，固定依赖不经旧 Handler 工厂。
-func provideCountTokensHTTP(planner *gatewayprovider.RoutePlanner, messages *gatewayhttp.MessagesExecutor, shared *schedulerSharedState, funding *admission.FundingAdmission, rules *errorpolicy.ErrorPassthroughService, cfg *config.Config, activity *gatewayRequestActivity, prompts *promptpolicy.Service, availability *gatewayModelAvailability, choices *selection.Generic, cooldown *account.RetryCooldown, auxiliary *gatewayhttp.OpenAIAuxiliary, gemini *gatewayhttp.GeminiExecutor, clients *messageHTTPBindings) *gatewayhttp.CountTokensHandler {
+func provideCountTokensHTTP(planner *gatewayprovider.RoutePlanner, messages *gatewayhttp.MessagesExecutor, shared *schedulerSharedState, funding *admission.FundingAdmission, rules *errorpolicy.ErrorPassthroughService, cfg *config.Config, activity *gatewayRequestActivity, prompts *promptpolicy.Service, availability *gatewayModelAvailability, choices *selection.Generic, cooldown *provider.RetryCooldown, auxiliary *gatewayhttp.OpenAIAuxiliary, gemini *gatewayhttp.GeminiExecutor, clients *messageHTTPBindings) *gatewayhttp.CountTokensHandler {
 	limit := int64(0)
 	switches := 10
 	if cfg != nil {
 		limit = cfg.Gateway.MaxBodySize
-		if cfg.Gateway.MaxAccountSwitches > 0 {
-			switches = cfg.Gateway.MaxAccountSwitches
+		if cfg.Gateway.MaxProviderSwitches > 0 {
+			switches = cfg.Gateway.MaxProviderSwitches
 		}
 	}
 	var matcher gatewayhttp.ErrorRuleMatcher

@@ -3,7 +3,6 @@ package app
 import (
 	"time"
 
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/app/lifecycle"
 	"github.com/TokenFlux/TokenRouter/internal/config"
@@ -22,6 +21,7 @@ import (
 	textflow "github.com/TokenFlux/TokenRouter/internal/gateway/text"
 	"github.com/TokenFlux/TokenRouter/internal/moderation"
 	"github.com/TokenFlux/TokenRouter/internal/ops"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 	"github.com/gin-gonic/gin"
 )
@@ -88,7 +88,7 @@ func (w fixtureCyberOps) Enqueue(value *ops.OpsInsertErrorLogInput) {
 func newGatewayHTTPEndpoints(input gatewayHTTPFixtureInput) *gatewayHTTPEndpointsFixture {
 	// 准入拒绝测试的空 Source 仍只绑定空端口，不构造可执行上游。
 	if input.Source != nil && input.Source.Text == nil {
-		input.Source.Text = &gatewayhttp.OpenAITextExecutor{Requests: &gatewayhttp.OpenAIRequests{}, CodexUsage: &accountprovider.CodexUsageObserver{}}
+		input.Source.Text = &gatewayhttp.OpenAITextExecutor{Requests: &gatewayhttp.OpenAIRequests{}, CodexUsage: &provideradapter.CodexUsageObserver{}}
 		input.Source.Requests = input.Source.Text.Requests
 	}
 
@@ -152,7 +152,7 @@ func newGatewayHTTPEndpoints(input gatewayHTTPFixtureInput) *gatewayHTTPEndpoint
 	ws := func() *gatewayhttp.ResponsesWSHandler {
 		common, _, blocks := base()
 		options := responsesWSOptions(input.Config)
-		options.MaxAccountSwitches = input.MaxSwitches
+		options.MaxProviderSwitches = input.MaxSwitches
 		return wsentry.New(options, responsesWSBindings(sockets, input.Credentials, input.Funding, input.Keys, common, input.Prompts, blocks, input.Choices, planner))
 	}
 	media := func() *mediaentry.Runtime {

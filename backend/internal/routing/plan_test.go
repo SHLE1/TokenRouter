@@ -3,7 +3,7 @@ package routing
 import (
 	"testing"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/stretchr/testify/require"
 )
@@ -16,11 +16,11 @@ func TestRoutePlanCandidateRecalculationAndIsolation(t *testing.T) {
 		ProtocolFallbacks: map[capability.ProtocolID][]capability.ProtocolID{capability.ProtocolAnthropicMessages: {capability.ProtocolOpenAIResponses}},
 	}
 	plan := Plan(PlanInput{Group: group, ClientProtocol: capability.ProtocolAnthropicMessages})
-	responses := account.AccountSnapshot{ID: 1, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey, EnabledProtocols: []capability.ProtocolID{capability.ProtocolOpenAIResponses}}
-	chat := account.AccountSnapshot{ID: 2, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey, EnabledProtocols: []capability.ProtocolID{capability.ProtocolOpenAIChatCompletions}}
+	responses := provider.ProviderSnapshot{ID: 1, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey, EnabledProtocols: []capability.ProtocolID{capability.ProtocolOpenAIResponses}}
+	chat := provider.ProviderSnapshot{ID: 2, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey, EnabledProtocols: []capability.ProtocolID{capability.ProtocolOpenAIChatCompletions}}
 	first, ok := plan.ResolveCandidate(responses)
 	require.True(t, ok)
-	require.Equal(t, int64(1), first.AccountID)
+	require.Equal(t, int64(1), first.ProviderID)
 	require.Equal(t, capability.ProtocolOpenAIResponses, first.UpstreamProtocol)
 	_, ok = plan.ResolveCandidate(chat)
 	require.False(t, ok)
@@ -32,14 +32,14 @@ func TestRoutePlanCandidateRecalculationAndIsolation(t *testing.T) {
 	fresh := Plan(PlanInput{Group: group, ClientProtocol: capability.ProtocolAnthropicMessages})
 	second, ok := fresh.ResolveCandidate(chat)
 	require.True(t, ok)
-	require.Equal(t, int64(2), second.AccountID)
+	require.Equal(t, int64(2), second.ProviderID)
 	require.Equal(t, capability.ProtocolOpenAIChatCompletions, second.UpstreamProtocol)
 	require.Equal(t, GroupSchedulerTypeAdvanced, plan.SchedulerType())
 	require.Equal(t, int64(7), plan.GroupID())
 	require.Equal(t, []capability.ProtocolID{capability.ProtocolAnthropicMessages}, plan.AllowedProtocols())
 }
 
-// 模型链的客户端/Key/分组模型事实固定，但账号映射在每次匹配时读取独立快照。
+// 模型链的客户端/Key/分组模型事实固定，但提供商映射在每次匹配时读取独立快照。
 func TestRoutePlanModelChainAndAttemptSnapshots(t *testing.T) {
 	groupID := int64(7)
 	mapping := GroupMappingResult{MappedModel: "group-model", PricingConfigID: 9, Mapped: true, BillingModelSource: "requested", RestrictModels: true, RestrictionModelSource: BillingModelSourceUpstream, ClientModel: "prefix/client-model", APIKeyRedirected: true}
@@ -49,20 +49,20 @@ func TestRoutePlanModelChainAndAttemptSnapshots(t *testing.T) {
 	require.Equal(t, mapping, plan.Mapping())
 	require.Equal(t, "prefix/client-model", plan.Models().ClientModel)
 	require.Equal(t, "key-model", plan.Models().RequestedModel)
-	candidate, ok := plan.ResolveCandidate(account.AccountSnapshot{ID: 1, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey, EnabledProtocols: []capability.ProtocolID{capability.ProtocolOpenAIResponses}})
+	candidate, ok := plan.ResolveCandidate(provider.ProviderSnapshot{ID: 1, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey, EnabledProtocols: []capability.ProtocolID{capability.ProtocolOpenAIResponses}})
 	require.True(t, ok)
 	rules := map[string]string{"group-model": "upstream-one", "upstream-one": "must-not-recurse"}
-	snapshot := account.AccountSnapshot{ID: 1, ModelPolicy: account.NewModelRoutingSnapshot(capability.PlatformOpenAI, rules)}
+	snapshot := provider.ProviderSnapshot{ID: 1, ModelPolicy: provider.NewModelRoutingSnapshot(capability.PlatformOpenAI, rules)}
 	rules["group-model"] = "upstream-two"
 	first, matched := candidate.ResolveModel(snapshot, "group-model")
 	require.True(t, matched)
-	require.Equal(t, "upstream-one", first.Models.AccountMappedModel)
+	require.Equal(t, "upstream-one", first.Models.ProviderMappedModel)
 	require.True(t, first.Models.RestrictModels)
 	require.Equal(t, BillingModelSourceUpstream, first.Models.RestrictionModelSource)
-	require.Empty(t, candidate.Models.AccountMappedModel)
-	require.Empty(t, plan.Models().AccountMappedModel)
-	fresh := account.AccountSnapshot{ID: 1, ModelPolicy: account.NewModelRoutingSnapshot(capability.PlatformOpenAI, rules)}
+	require.Empty(t, candidate.Models.ProviderMappedModel)
+	require.Empty(t, plan.Models().ProviderMappedModel)
+	fresh := provider.ProviderSnapshot{ID: 1, ModelPolicy: provider.NewModelRoutingSnapshot(capability.PlatformOpenAI, rules)}
 	second, matched := candidate.ResolveModel(fresh, "group-model")
 	require.True(t, matched)
-	require.Equal(t, "upstream-two", second.Models.AccountMappedModel)
+	require.Equal(t, "upstream-two", second.Models.ProviderMappedModel)
 }

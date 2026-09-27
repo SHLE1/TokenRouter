@@ -38,7 +38,7 @@ type OpenAIRateLimitResetCredits struct {
 // OpenAIQuotaUsage 是暴露给前端的 /wham/usage 精简结果。
 type OpenAIQuotaUsage struct {
 	UserID                string                       `json:"user_id,omitempty"`
-	AccountID             string                       `json:"account_id,omitempty"`
+	ProviderID            string                       `json:"account_id,omitempty"`
 	Email                 string                       `json:"email,omitempty"`
 	PlanType              string                       `json:"plan_type,omitempty"`
 	RateLimit             *OpenAIRateLimit             `json:"rate_limit,omitempty"`

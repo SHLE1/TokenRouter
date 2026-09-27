@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
@@ -26,9 +26,8 @@ type s09AlphaResponseBody struct {
 
 func (b *s09AlphaResponseBody) Close() error { b.closes++; return b.ReadCloser.Close() }
 
-// 可重试错误必须在写入响应前返回给 handler，以便切换账号。
+// 可重试错误必须在写入响应前返回给 handler，以便切换提供商。
 func TestS09AlphaSearchFailoverClosesOriginalResponse(t *testing.T) {
-
 	body := []byte(`{"id":"search-session","model":"gpt-5.6-sol","commands":{}}`)
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
@@ -41,15 +40,18 @@ func TestS09AlphaSearchFailoverClosesOriginalResponse(t *testing.T) {
 		Body:       closedBody,
 	}}
 	service := newAuxiliaryFixture(auxiliaryFixtureInputs{transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 8,
-		Platform: capability.PlatformOpenAI,
-		Type:     capability.AccountTypeAPIKey,
-		Credentials: map[string]any{
-			"api_key": "sk-test",
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 8,
+			Platform: capability.PlatformOpenAI,
+			Type:     capability.ProviderTypeAPIKey,
+			Credentials: map[string]any{
+				"api_key": "sk-test",
+			},
+		},
 	}
 
-	result, err := service.ForwardAlphaSearch(context.Background(), c, account, body)
+	result, err := service.ForwardAlphaSearch(context.Background(), c, provider, body)
 
 	require.Nil(t, result)
 	var failoverErr *forwardcore.UpstreamFailoverError

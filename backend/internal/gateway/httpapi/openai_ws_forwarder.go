@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
@@ -59,8 +59,8 @@ func openAIWSFastModePolicyContext(ctx context.Context, hooks *gatewayws.OpenAII
 }
 
 // resolveOpenAIWSTurnModels 按 R -> G -> U 顺序解析单个 WebSocket turn 的模型。
-// originalModel 始终由调用方另行保留，返回值只用于账号能力判断后的上游请求。
-func resolveOpenAIWSTurnModels(account *gatewayprovider.ExecutionAccount, hooks *gatewayws.OpenAIIngressHooks, turn int, requestedModel string, payload []byte) (string, string, error) {
+// originalModel 始终由调用方另行保留，返回值只用于提供商能力判断后的上游请求。
+func resolveOpenAIWSTurnModels(provider *gatewayprovider.ExecutionProvider, hooks *gatewayws.OpenAIIngressHooks, turn int, requestedModel string, payload []byte) (string, string, error) {
 	routingModel := strings.TrimSpace(requestedModel)
 	if hooks != nil && hooks.ResolveRoutingModel != nil {
 		resolved, err := hooks.ResolveRoutingModel(turn, routingModel, payload)
@@ -77,7 +77,7 @@ func resolveOpenAIWSTurnModels(account *gatewayprovider.ExecutionAccount, hooks 
 		)
 	}
 
-	upstreamModel := gatewayprovider.ExecutionModelPolicy(account).NormalizeOpenAI(accountcore.ResolveForwardMappedModel(gatewayprovider.ExecutionRecord(account), routingModel, accountprovider.ModelDefaults()))
+	upstreamModel := gatewayprovider.ExecutionModelPolicy(provider).NormalizeOpenAI(providercore.ResolveForwardMappedModel(gatewayprovider.ExecutionRecord(provider), routingModel, provideradapter.ModelDefaults()))
 	if upstreamModel == "" {
 		upstreamModel = routingModel
 	}

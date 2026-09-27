@@ -28,7 +28,7 @@ func newTaskFundsFixture(db *sql.DB) *billing.Funds {
 
 // newSettlementFixture 直接构造普通结算与任务资金共用的原生事务存储。
 func newSettlementFixture(db *sql.DB) *billingpostgres.SettlementStore {
-	store := billingpostgres.NewSettlementStore(db, timezone.NewCalendar(time.Local), schedulerpostgres.EnqueueAccountQuotaChangedInTx, billingpostgres.TaskProjectionFactories{
+	store := billingpostgres.NewSettlementStore(db, timezone.NewCalendar(time.Local), schedulerpostgres.EnqueueProviderQuotaChangedInTx, billingpostgres.TaskProjectionFactories{
 		creative.FundingScope: func(tx *sql.Tx, ref billing.TaskReference) billingpostgres.TaskProjection {
 			return creativepostgres.NewFundingParticipant(tx, ref.ID)
 		},

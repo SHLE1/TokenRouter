@@ -12,8 +12,8 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/modelidentity"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry"
 
@@ -36,14 +36,14 @@ import (
 
 func TestClaudeAPIKeyFastModeCannotBypassSystemFilter(t *testing.T) {
 	svc := NewRuntime(Dependencies{Prices: fastModeTestResolver()}, Options{Configured: true})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAnthropic, Type: capability.AccountTypeAPIKey}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAnthropic, Type: capability.ProviderTypeAPIKey}}
 	ctx := fastModeTestContext(apikey.APIKeyFastModePolicyForceOn, "claude-opus-4-8")
 	c := &requestBoundaryFixture{}
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil).WithContext(ctx)
 	// 模拟系统 Beta 策略已将 Claude Fast token 标记为过滤。
 	state := &AttemptState{BetaEvaluated: true, BetaFilters: map[string]struct{}{claude.BetaFastMode: {}}}
 
-	req, wireBody, err := svc.buildRequest(ctx, c, state, account, []byte(`{"model":"claude-opus-4-8","messages":[]}`), "test-key", "apikey", "claude-opus-4-8", false, false)
+	req, wireBody, err := svc.buildRequest(ctx, c, state, provider, []byte(`{"model":"claude-opus-4-8","messages":[]}`), "test-key", "apikey", "claude-opus-4-8", false, false)
 	require.NoError(t, err)
 	require.False(t, gjson.GetBytes(wireBody, "speed").Exists())
 	require.False(t, claude.ContainsBetaToken(claude.GetHeaderRaw(req.Header, "anthropic-beta"), claude.BetaFastMode))

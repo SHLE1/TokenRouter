@@ -5,7 +5,7 @@ package provider
 import (
 	"testing"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
@@ -13,9 +13,9 @@ import (
 
 func TestWebSocketCompatibilityNormalizesTriggerAfterPairedOutputCleanup(t *testing.T) {
 	body := []byte(`{"type":"response.create","model":"gpt-5.4","input":[{"type":"compaction_trigger"},{"type":"function_call","call_id":"call_1","name":"lookup","arguments":"{}"},{"type":"function_call_output","call_id":"call_1","output":"ok"},{"type":"message","role":"user","content":"visible"}]}`)
-	account := &accountcore.Record{Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth}
+	provider := &providercore.Record{Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}
 
-	normalized, changed, err := NormalizeOpenAIResponsesWebSocketCompatibilityBody(body, account, false)
+	normalized, changed, err := NormalizeOpenAIResponsesWebSocketCompatibilityBody(body, provider, false)
 	require.NoError(t, err)
 	require.True(t, changed)
 	items := gjson.GetBytes(normalized, "input").Array()

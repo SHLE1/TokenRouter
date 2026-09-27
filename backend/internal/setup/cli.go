@@ -161,7 +161,7 @@ func RunCLI() error {
 
 	// Admin configuration with validation
 	fmt.Println()
-	fmt.Println("── Admin Account ──")
+	fmt.Println("── Admin Provider ──")
 
 	for {
 		cfg.Admin.Email = promptString(reader, "Admin Email", "admin@example.com")

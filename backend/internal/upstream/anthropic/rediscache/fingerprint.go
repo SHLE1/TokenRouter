@@ -12,19 +12,19 @@ import (
 
 const (
 	FingerprintKeyPrefix   = "fingerprint:"
-	FingerprintTTL         = 7 * 24 * time.Hour // 7天，配合每24小时懒续期可保持活跃账号永不过期
+	FingerprintTTL         = 7 * 24 * time.Hour // 7天，配合每24小时懒续期可保持活跃提供商永不过期
 	maskedSessionKeyPrefix = "masked_session:"
 	maskedSessionTTL       = 15 * time.Minute
 )
 
-// fingerprintKey generates the Redis key for account fingerprint cache.
-func fingerprintKey(accountID int64) string {
-	return fmt.Sprintf("%s%d", FingerprintKeyPrefix, accountID)
+// fingerprintKey generates the Redis key for provider fingerprint cache.
+func fingerprintKey(providerID int64) string {
+	return fmt.Sprintf("%s%d", FingerprintKeyPrefix, providerID)
 }
 
 // maskedSessionKey generates the Redis key for masked session ID cache.
-func maskedSessionKey(accountID int64) string {
-	return fmt.Sprintf("%s%d", maskedSessionKeyPrefix, accountID)
+func maskedSessionKey(providerID int64) string {
+	return fmt.Sprintf("%s%d", maskedSessionKeyPrefix, providerID)
 }
 
 type FingerprintStore struct {
@@ -35,8 +35,8 @@ func NewFingerprintStore(rdb *redis.Client) anthropic.FingerprintCache {
 	return &FingerprintStore{rdb: rdb}
 }
 
-func (c *FingerprintStore) GetFingerprint(ctx context.Context, accountID int64) (*anthropic.Fingerprint, error) {
-	key := fingerprintKey(accountID)
+func (c *FingerprintStore) GetFingerprint(ctx context.Context, providerID int64) (*anthropic.Fingerprint, error) {
+	key := fingerprintKey(providerID)
 	val, err := c.rdb.Get(ctx, key).Result()
 	if err != nil {
 		return nil, err
@@ -48,8 +48,8 @@ func (c *FingerprintStore) GetFingerprint(ctx context.Context, accountID int64) 
 	return &fp, nil
 }
 
-func (c *FingerprintStore) SetFingerprint(ctx context.Context, accountID int64, fp *anthropic.Fingerprint) error {
-	key := fingerprintKey(accountID)
+func (c *FingerprintStore) SetFingerprint(ctx context.Context, providerID int64, fp *anthropic.Fingerprint) error {
+	key := fingerprintKey(providerID)
 	val, err := json.Marshal(fp)
 	if err != nil {
 		return err
@@ -57,8 +57,8 @@ func (c *FingerprintStore) SetFingerprint(ctx context.Context, accountID int64, 
 	return c.rdb.Set(ctx, key, val, FingerprintTTL).Err()
 }
 
-func (c *FingerprintStore) GetMaskedSessionID(ctx context.Context, accountID int64) (string, error) {
-	key := maskedSessionKey(accountID)
+func (c *FingerprintStore) GetMaskedSessionID(ctx context.Context, providerID int64) (string, error) {
+	key := maskedSessionKey(providerID)
 	val, err := c.rdb.Get(ctx, key).Result()
 	if err != nil {
 		if err == redis.Nil {
@@ -69,7 +69,7 @@ func (c *FingerprintStore) GetMaskedSessionID(ctx context.Context, accountID int
 	return val, nil
 }
 
-func (c *FingerprintStore) SetMaskedSessionID(ctx context.Context, accountID int64, sessionID string) error {
-	key := maskedSessionKey(accountID)
+func (c *FingerprintStore) SetMaskedSessionID(ctx context.Context, providerID int64, sessionID string) error {
+	key := maskedSessionKey(providerID)
 	return c.rdb.Set(ctx, key, sessionID, maskedSessionTTL).Err()
 }

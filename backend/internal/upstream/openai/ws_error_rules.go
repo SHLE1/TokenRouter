@@ -9,7 +9,7 @@ import (
 	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 )
 
-// 协议解析沿用原边界，不查询账号或改变执行状态。
+// 协议解析沿用原边界，不查询提供商或改变执行状态。
 func ClassifyWSAcquireError(err error) string {
 	if err == nil {
 		return "acquire_conn"

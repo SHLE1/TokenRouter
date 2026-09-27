@@ -1,4 +1,4 @@
-// 本文件闭合一次 Gemini 平台交换与响应处理，不拥有账号选择或资金提交。
+// 本文件闭合一次 Gemini 平台交换与响应处理，不拥有提供商选择或资金提交。
 package gemini
 
 import (
@@ -23,7 +23,7 @@ const (
 )
 
 type Target struct {
-	AccountID                           int64
+	ProviderID                          int64
 	Model                               string
 	Mode                                ResponseMode
 	Exchange                            ExchangeOptions
@@ -33,7 +33,7 @@ type Target struct {
 	OpenAIProtocol                      OpenAICompatProtocol
 	ClientTools                         bridge.ResponsesClientToolMapping
 	Enter                               func() (func(), error)
-	// BeforeResponse 仅衔接旧 HTTP/账号错误策略；返回 stop 时不再处理响应。
+	// BeforeResponse 仅衔接旧 HTTP/提供商错误策略；返回 stop 时不再处理响应。
 	BeforeResponse func(context.Context, *http.Response, string) (stop bool, err error)
 }
 
@@ -41,9 +41,9 @@ func (t *Target) TargetID() int64 {
 	if t == nil {
 		return 0
 	}
-	return t.AccountID
+	return t.ProviderID
 }
-func (t *Target) String() string   { return fmt.Sprintf("gemini target account=%d", t.TargetID()) }
+func (t *Target) String() string   { return fmt.Sprintf("gemini target provider=%d", t.TargetID()) }
 func (t *Target) GoString() string { return t.String() }
 
 type Executor struct{}

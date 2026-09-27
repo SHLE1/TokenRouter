@@ -29,31 +29,31 @@ func (s *GatewayCacheSuite) SetupTest() {
 	s.cache = gatewayredis.NewGatewayCache(s.RDB)
 }
 
-func (s *GatewayCacheSuite) TestGetSessionAccountID_Missing() {
-	_, err := s.cache.GetSessionAccountID(s.Ctx, 1, "nonexistent")
+func (s *GatewayCacheSuite) TestGetSessionProviderID_Missing() {
+	_, err := s.cache.GetSessionProviderID(s.Ctx, 1, "nonexistent")
 	require.True(s.T(), errors.Is(err, redis.Nil), "expected redis.Nil for missing session")
 }
 
-func (s *GatewayCacheSuite) TestSetAndGetSessionAccountID() {
+func (s *GatewayCacheSuite) TestSetAndGetSessionProviderID() {
 	sessionID := "s1"
-	accountID := int64(99)
+	providerID := int64(99)
 	groupID := int64(1)
 	sessionTTL := 1 * time.Minute
 
-	require.NoError(s.T(), s.cache.SetSessionAccountID(s.Ctx, groupID, sessionID, accountID, sessionTTL), "SetSessionAccountID")
+	require.NoError(s.T(), s.cache.SetSessionProviderID(s.Ctx, groupID, sessionID, providerID, sessionTTL), "SetSessionProviderID")
 
-	sid, err := s.cache.GetSessionAccountID(s.Ctx, groupID, sessionID)
-	require.NoError(s.T(), err, "GetSessionAccountID")
-	require.Equal(s.T(), accountID, sid, "session id mismatch")
+	sid, err := s.cache.GetSessionProviderID(s.Ctx, groupID, sessionID)
+	require.NoError(s.T(), err, "GetSessionProviderID")
+	require.Equal(s.T(), providerID, sid, "session id mismatch")
 }
 
-func (s *GatewayCacheSuite) TestSessionAccountID_TTL() {
+func (s *GatewayCacheSuite) TestSessionProviderID_TTL() {
 	sessionID := "s2"
-	accountID := int64(100)
+	providerID := int64(100)
 	groupID := int64(1)
 	sessionTTL := 1 * time.Minute
 
-	require.NoError(s.T(), s.cache.SetSessionAccountID(s.Ctx, groupID, sessionID, accountID, sessionTTL), "SetSessionAccountID")
+	require.NoError(s.T(), s.cache.SetSessionProviderID(s.Ctx, groupID, sessionID, providerID, sessionTTL), "SetSessionProviderID")
 
 	sessionKey := buildSessionKey(groupID, sessionID)
 	ttl, err := s.RDB.TTL(s.Ctx, sessionKey).Result()
@@ -63,12 +63,12 @@ func (s *GatewayCacheSuite) TestSessionAccountID_TTL() {
 
 func (s *GatewayCacheSuite) TestRefreshSessionTTL() {
 	sessionID := "s3"
-	accountID := int64(101)
+	providerID := int64(101)
 	groupID := int64(1)
 	initialTTL := 1 * time.Minute
 	refreshTTL := 3 * time.Minute
 
-	require.NoError(s.T(), s.cache.SetSessionAccountID(s.Ctx, groupID, sessionID, accountID, initialTTL), "SetSessionAccountID")
+	require.NoError(s.T(), s.cache.SetSessionProviderID(s.Ctx, groupID, sessionID, providerID, initialTTL), "SetSessionProviderID")
 
 	require.NoError(s.T(), s.cache.RefreshSessionTTL(s.Ctx, groupID, sessionID, refreshTTL), "RefreshSessionTTL")
 
@@ -84,20 +84,20 @@ func (s *GatewayCacheSuite) TestRefreshSessionTTL_MissingKey() {
 	require.NoError(s.T(), err, "RefreshSessionTTL on missing key should not error")
 }
 
-func (s *GatewayCacheSuite) TestDeleteSessionAccountID() {
+func (s *GatewayCacheSuite) TestDeleteSessionProviderID() {
 	sessionID := "openai:s4"
-	accountID := int64(102)
+	providerID := int64(102)
 	groupID := int64(1)
 	sessionTTL := 1 * time.Minute
 
-	require.NoError(s.T(), s.cache.SetSessionAccountID(s.Ctx, groupID, sessionID, accountID, sessionTTL), "SetSessionAccountID")
-	require.NoError(s.T(), s.cache.DeleteSessionAccountID(s.Ctx, groupID, sessionID), "DeleteSessionAccountID")
+	require.NoError(s.T(), s.cache.SetSessionProviderID(s.Ctx, groupID, sessionID, providerID, sessionTTL), "SetSessionProviderID")
+	require.NoError(s.T(), s.cache.DeleteSessionProviderID(s.Ctx, groupID, sessionID), "DeleteSessionProviderID")
 
-	_, err := s.cache.GetSessionAccountID(s.Ctx, groupID, sessionID)
+	_, err := s.cache.GetSessionProviderID(s.Ctx, groupID, sessionID)
 	require.True(s.T(), errors.Is(err, redis.Nil), "expected redis.Nil after delete")
 }
 
-func (s *GatewayCacheSuite) TestGetSessionAccountID_CorruptedValue() {
+func (s *GatewayCacheSuite) TestGetSessionProviderID_CorruptedValue() {
 	sessionID := "corrupted"
 	groupID := int64(1)
 	sessionKey := buildSessionKey(groupID, sessionID)
@@ -105,7 +105,7 @@ func (s *GatewayCacheSuite) TestGetSessionAccountID_CorruptedValue() {
 	// Set a non-integer value
 	require.NoError(s.T(), s.RDB.Set(s.Ctx, sessionKey, "not-a-number", 1*time.Minute).Err(), "Set invalid value")
 
-	_, err := s.cache.GetSessionAccountID(s.Ctx, groupID, sessionID)
+	_, err := s.cache.GetSessionProviderID(s.Ctx, groupID, sessionID)
 	require.Error(s.T(), err, "expected error for corrupted value")
 	require.False(s.T(), errors.Is(err, redis.Nil), "expected parsing error, not redis.Nil")
 }

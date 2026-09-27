@@ -129,7 +129,7 @@ func (h *GeminiNativeHandler) GeminiV1BetaModels(c *gin.Context) {
 		zap.Any("group_id", apiKey.GroupID),
 	)
 
-	// 原生入口同样只检查分组协议，实际供应商由账号选择确定。
+	// 原生入口同样只检查分组协议，实际供应商由提供商选择确定。
 	if apiKey.Group == nil || !apiKey.Group.AllowsClientProtocol(protocol.ProtocolGeminiGenerateContent) {
 		WriteGoogleError(c, http.StatusForbidden, "This group does not allow Gemini GenerateContent requests")
 		return
@@ -247,26 +247,26 @@ func (h *GeminiNativeHandler) GeminiV1BetaModels(c *gin.Context) {
 		}
 	}
 
-	// 查询粘性会话绑定的账号 ID（用于检测账号切换）
-	var sessionBoundAccountID int64
+	// 查询粘性会话绑定的提供商 ID（用于检测提供商切换）
+	var sessionBoundProviderID int64
 	if sessionKey != "" {
-		sessionBoundAccountID, _ = h.backend.CachedSession(c.Request.Context(), apiKey.GroupID, sessionKey)
-		if sessionBoundAccountID > 0 {
+		sessionBoundProviderID, _ = h.backend.CachedSession(c.Request.Context(), apiKey.GroupID, sessionKey)
+		if sessionBoundProviderID > 0 {
 			prefetchedGroupID := int64(0)
 			if apiKey.GroupID != nil {
 				prefetchedGroupID = *apiKey.GroupID
 			}
-			h.backend.Prefetch(c, sessionBoundAccountID, prefetchedGroupID)
+			h.backend.Prefetch(c, sessionBoundProviderID, prefetchedGroupID)
 		}
 	}
 
 	// === Gemini 内容摘要会话 Fallback 逻辑 ===
-	// 当原有会话标识无效时（sessionBoundAccountID == 0），尝试基于内容摘要链匹配
+	// 当原有会话标识无效时（sessionBoundProviderID == 0），尝试基于内容摘要链匹配
 	var geminiDigestChain string
 	var geminiPrefixHash string
 	var geminiSessionUUID string
 	var matchedDigestChain string
-	useDigestFallback := sessionBoundAccountID == 0
+	useDigestFallback := sessionBoundProviderID == 0
 
 	if useDigestFallback {
 		// 解析 Gemini 请求体
@@ -292,7 +292,7 @@ func (h *GeminiNativeHandler) GeminiV1BetaModels(c *gin.Context) {
 				)
 
 				// 查找会话
-				foundUUID, foundAccountID, foundMatchedChain, found := h.backend.FindSession(
+				foundUUID, foundProviderID, foundMatchedChain, found := h.backend.FindSession(
 					c.Request.Context(),
 					geminiGroupID(apiKey.GroupID),
 					geminiPrefixHash,
@@ -300,20 +300,20 @@ func (h *GeminiNativeHandler) GeminiV1BetaModels(c *gin.Context) {
 				)
 				if found {
 					matchedDigestChain = foundMatchedChain
-					sessionBoundAccountID = foundAccountID
+					sessionBoundProviderID = foundProviderID
 					geminiSessionUUID = foundUUID
 					reqLog.Info("gemini.digest_fallback_matched",
 						zap.String("session_uuid_prefix", GeminiShortPrefix(foundUUID, 8)),
-						zap.Int64("account_id", foundAccountID),
+						zap.Int64("provider_id", foundProviderID),
 						zap.String("digest_chain", TruncateGeminiDigestChain(geminiDigestChain)),
 					)
 
 					// 关键：如果原 sessionKey 为空，使用 prefixHash + uuid 作为 sessionKey
-					// 这样 SelectAccountWithLoadAwareness 的粘性会话逻辑会优先使用匹配到的账号
+					// 这样 SelectProviderWithLoadAwareness 的粘性会话逻辑会优先使用匹配到的提供商
 					if sessionKey == "" {
 						sessionKey = h.backend.DigestSessionKey(geminiPrefixHash, foundUUID)
 					}
-					_ = h.backend.BindSticky(c.Request.Context(), apiKey.GroupID, sessionKey, foundAccountID)
+					_ = h.backend.BindSticky(c.Request.Context(), apiKey.GroupID, sessionKey, foundProviderID)
 				} else {
 					// 生成新的会话 UUID
 					geminiSessionUUID = h.newID()
@@ -326,8 +326,8 @@ func (h *GeminiNativeHandler) GeminiV1BetaModels(c *gin.Context) {
 		}
 	}
 
-	// 判断是否真的绑定了粘性会话：有 sessionKey 且已经绑定到某个账号
-	hasBoundSession := sessionKey != "" && sessionBoundAccountID > 0
+	// 判断是否真的绑定了粘性会话：有 sessionKey 且已经绑定到某个提供商
+	hasBoundSession := sessionKey != "" && sessionBoundProviderID > 0
 
 	call := GeminiNativeCall{
 		MessagesCall: MessagesCall{
@@ -339,7 +339,7 @@ func (h *GeminiNativeHandler) GeminiV1BetaModels(c *gin.Context) {
 			Stream:          stream,
 			HasBoundSession: hasBoundSession,
 			SessionKey:      sessionKey,
-			BoundAccountID:  sessionBoundAccountID,
+			BoundProviderID: sessionBoundProviderID,
 			StreamStarted:   &streamStarted,
 			Log:             reqLog,
 			Route:           groupMappingRoutePlan,
@@ -354,7 +354,7 @@ func (h *GeminiNativeHandler) GeminiV1BetaModels(c *gin.Context) {
 		SessionUUID:        geminiSessionUUID,
 		MatchedDigestChain: matchedDigestChain,
 		SignatureState: requeststate.GeminiSignatureState{
-			BoundAccountID: sessionBoundAccountID,
+			BoundProviderID: sessionBoundProviderID,
 		},
 	}
 	request := execution.Request{
@@ -372,7 +372,7 @@ func (h *GeminiNativeHandler) GeminiV1BetaModels(c *gin.Context) {
 		},
 		SessionHash: call.SessionKey,
 
-		Text: execution.TextState{Kind: execution.TextNativeGemini, Platform: call.Platform, BoundAccountID: call.BoundAccountID, HasBoundSession: call.HasBoundSession, GeminiModel: call.ModelName, Action: call.Action, UseDigestFallback: call.UseDigestFallback, DigestChain: call.DigestChain, PrefixHash: call.PrefixHash, SessionUUID: call.SessionUUID, MatchedDigestChain: call.MatchedDigestChain, SignatureState: call.SignatureState, Mapping: call.Mapping},
+		Text: execution.TextState{Kind: execution.TextNativeGemini, Platform: call.Platform, BoundProviderID: call.BoundProviderID, HasBoundSession: call.HasBoundSession, GeminiModel: call.ModelName, Action: call.Action, UseDigestFallback: call.UseDigestFallback, DigestChain: call.DigestChain, PrefixHash: call.PrefixHash, SessionUUID: call.SessionUUID, MatchedDigestChain: call.MatchedDigestChain, SignatureState: call.SignatureState, Mapping: call.Mapping},
 	}
 	output := &MessagesOutput{ResponseSink: ResponseSink{Writer: c.Writer}, HTTP: c, Log: call.Log, StreamStarted: call.StreamStarted, Concurrency: call.Concurrency}
 	_, _ = h.executor.Execute(c.Request.Context(), request, output)

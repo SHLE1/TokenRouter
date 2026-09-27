@@ -45,7 +45,7 @@ func TestResolveCLIVersion(t *testing.T) {
 		{"两侧空白被裁掉", "  2.1.251  ", "2.1.251"},
 		{"非法值回落基线", "not-a-version", CLICurrentVersion},
 		{"向下覆盖被拒", "2.0.0", CLICurrentVersion},
-		{"预发布后缀被拒（会毒化账号指纹）", "2.2.0-local", CLICurrentVersion},
+		{"预发布后缀被拒（会毒化提供商指纹）", "2.2.0-local", CLICurrentVersion},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

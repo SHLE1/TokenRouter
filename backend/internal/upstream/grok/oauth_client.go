@@ -26,9 +26,9 @@ type OAuthClient struct {
 }
 
 const (
-	accountsBaseURL      = "https://accounts.x.ai"
-	loginRPCEndpoint     = accountsBaseURL + "/api/rpc"
-	turnstileWebsiteURL  = accountsBaseURL
+	providersBaseURL     = "https://accounts.x.ai"
+	loginRPCEndpoint     = providersBaseURL + "/api/rpc"
+	turnstileWebsiteURL  = providersBaseURL
 	turnstileWebsiteKey  = "0x4AAAAAAAhr9JGVDZbrZOo0"
 	yesCaptchaCreateTask = "https://api.yescaptcha.com/createTask"
 	yesCaptchaGetResult  = "https://api.yescaptcha.com/getTaskResult"
@@ -110,8 +110,8 @@ func (c *OAuthClient) RefreshToken(ctx context.Context, refreshToken, proxyURL, 
 	return &tokenResp, nil
 }
 
-// LoginWithPassword 向 accounts.x.ai 验证密码并返回临时 SSO cookie；
-// 密码和 SSO 信息不得写入账号凭据或日志。
+// LoginWithPassword 向 providers.x.ai 验证密码并返回临时 SSO cookie；
+// 密码和 SSO 信息不得写入提供商凭据或日志。
 func (c *OAuthClient) LoginWithPassword(ctx context.Context, email, password, proxyURL string) (*wiregrok.PasswordLoginResult, error) {
 	turnstileToken, err := solveTurnstile(ctx)
 	if err != nil {
@@ -363,8 +363,8 @@ func createGrokPasswordSession(ctx context.Context, client *http.Client, email, 
 		return "", infraerrors.Newf(infraerrors.Category(http.StatusBadGateway), "GROK_OAUTH_PASSWORD_LOGIN_FAILED", "build password login request failed: %v", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Origin", accountsBaseURL)
-	req.Header.Set("Referer", accountsBaseURL+"/sign-in?redirect=grok-com&email=true")
+	req.Header.Set("Origin", providersBaseURL)
+	req.Header.Set("Referer", providersBaseURL+"/sign-in?redirect=grok-com&email=true")
 	req.Header.Set("User-Agent", "Mozilla/5.0")
 	req.Header.Set("Accept", "*/*")
 	resp, err := client.Do(req)
@@ -403,7 +403,7 @@ func extractGrokSSOToken(ctx context.Context, client *http.Client, cookieSetterU
 	}
 	req.Header.Set("User-Agent", "Mozilla/5.0")
 	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
-	req.Header.Set("Referer", accountsBaseURL+"/")
+	req.Header.Set("Referer", providersBaseURL+"/")
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", infraerrors.Newf(infraerrors.Category(http.StatusBadGateway), "GROK_OAUTH_PASSWORD_LOGIN_FAILED", "follow cookie setter url failed: %v", err)
@@ -426,7 +426,7 @@ func validateGrokCookieSetterURL(rawURL string) (*url.URL, error) {
 		return nil, err
 	}
 	if parsed.Scheme != "https" || !strings.EqualFold(parsed.Hostname(), "accounts.x.ai") {
-		return nil, fmt.Errorf("url must use https://accounts.x.ai")
+		return nil, fmt.Errorf("url must use https://providers.x.ai")
 	}
 	if parsed.User != nil || parsed.Port() != "" || parsed.Fragment != "" || parsed.Opaque != "" {
 		return nil, fmt.Errorf("url contains disallowed authority or fragment components")

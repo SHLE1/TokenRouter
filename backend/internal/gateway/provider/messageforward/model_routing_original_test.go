@@ -12,8 +12,8 @@ import (
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/messageforward"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
@@ -23,7 +23,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-func TestGatewayServiceForwardCountTokensAppliesOAuthAccountMappingBeforeNormalization(t *testing.T) {
+func TestGatewayServiceForwardCountTokensAppliesOAuthProviderMappingBeforeNormalization(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages/count_tokens", nil)
@@ -42,12 +42,12 @@ func TestGatewayServiceForwardCountTokensAppliesOAuthAccountMappingBeforeNormali
 	svc := newHTTPRuntimeFixture(
 		cfg, messageforward.Dependencies{Transport: upstream}, compileResponseHeaderFilter(cfg),
 	)
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 501,
 			Name:        "oauth-count-token-mapping",
 			Platform:    capability.PlatformAnthropic,
-			Type:        capability.AccountTypeOAuth,
+			Type:        capability.ProviderTypeOAuth,
 			Concurrency: 1,
 			Credentials: map[string]any{
 				"access_token":  "oauth-token",
@@ -58,7 +58,7 @@ func TestGatewayServiceForwardCountTokensAppliesOAuthAccountMappingBeforeNormali
 		},
 	}
 
-	err = svc.ForwardCountTokens(context.Background(), c, account, parsed)
+	err = svc.ForwardCountTokens(context.Background(), c, provider, parsed)
 	require.NoError(t, err)
 	require.Equal(t, "claude-sonnet-4-5-20250929", parsed.Model)
 	require.Equal(t, "claude-sonnet-4-5-20250929", gjson.GetBytes(upstream.lastBody, "model").String())
@@ -69,14 +69,14 @@ func TestGatewayServiceAnthropicCompatibilityForwardersUseFinalOAuthModel(t *tes
 		name string
 		path string
 		body []byte
-		call func(*gatewayhttp.MessagesExecutor, context.Context, *gin.Context, *gatewayprovider.ExecutionAccount, []byte) error
+		call func(*gatewayhttp.MessagesExecutor, context.Context, *gin.Context, *gatewayprovider.ExecutionProvider, []byte) error
 	}{
 		{
 			name: "chat completions",
 			path: "/v1/chat/completions",
 			body: []byte(`{"model":"group-model","messages":[{"role":"user","content":"hello"}],"stream":false}`),
-			call: func(svc *gatewayhttp.MessagesExecutor, ctx context.Context, c *gin.Context, account *gatewayprovider.ExecutionAccount, body []byte) error {
-				_, err := svc.ForwardAsChatCompletions(ctx, c, account, body, nil)
+			call: func(svc *gatewayhttp.MessagesExecutor, ctx context.Context, c *gin.Context, provider *gatewayprovider.ExecutionProvider, body []byte) error {
+				_, err := svc.ForwardAsChatCompletions(ctx, c, provider, body, nil)
 				return err
 			},
 		},
@@ -84,8 +84,8 @@ func TestGatewayServiceAnthropicCompatibilityForwardersUseFinalOAuthModel(t *tes
 			name: "responses",
 			path: "/v1/responses",
 			body: []byte(`{"model":"group-model","input":"hello","stream":false}`),
-			call: func(svc *gatewayhttp.MessagesExecutor, ctx context.Context, c *gin.Context, account *gatewayprovider.ExecutionAccount, body []byte) error {
-				_, err := svc.ForwardAsResponses(ctx, c, account, body, nil)
+			call: func(svc *gatewayhttp.MessagesExecutor, ctx context.Context, c *gin.Context, provider *gatewayprovider.ExecutionProvider, body []byte) error {
+				_, err := svc.ForwardAsResponses(ctx, c, provider, body, nil)
 				return err
 			},
 		},
@@ -107,12 +107,12 @@ func TestGatewayServiceAnthropicCompatibilityForwardersUseFinalOAuthModel(t *tes
 			svc := newHTTPRuntimeFixture(
 				cfg, messageforward.Dependencies{Transport: upstream}, compileResponseHeaderFilter(cfg),
 			)
-			account := &gatewayprovider.ExecutionAccount{
-				Record: accountcore.Record{
+			provider := &gatewayprovider.ExecutionProvider{
+				Record: providercore.Record{
 					LoadLocation: time.LoadLocation, ID: 502,
 					Name:        "oauth-compat-mapping",
 					Platform:    capability.PlatformAnthropic,
-					Type:        capability.AccountTypeOAuth,
+					Type:        capability.ProviderTypeOAuth,
 					Concurrency: 1,
 					Credentials: map[string]any{
 						"access_token":  "oauth-token",
@@ -123,7 +123,7 @@ func TestGatewayServiceAnthropicCompatibilityForwardersUseFinalOAuthModel(t *tes
 				},
 			}
 
-			err := tt.call(svc, context.Background(), c, account, tt.body)
+			err := tt.call(svc, context.Background(), c, provider, tt.body)
 			require.Error(t, err)
 			require.Equal(t, "claude-sonnet-4-5-20250929", gjson.GetBytes(upstream.lastBody, "model").String())
 		})

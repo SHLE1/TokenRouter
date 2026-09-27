@@ -30,7 +30,7 @@ type PassthroughPorts interface {
 	Reject(status int, kind, message, param string)
 	CodexModel(model string) bool
 	OAuthBody(body []byte, compact bool) ([]byte, bool, error)
-	AccountIdentityRaw(body []byte) ([]byte, bool, error)
+	ProviderIdentityRaw(body []byte) ([]byte, bool, error)
 	StageFingerprint(ids *openai.FingerprintIDs)
 	Fingerprint() *openai.FingerprintIDs
 	FingerprintBody(body []byte, ids *openai.FingerprintIDs) ([]byte, bool, error)

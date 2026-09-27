@@ -431,7 +431,7 @@ func (r *Store) getBatchUserUsageStatsFromAnalytics(ctx context.Context, userIDs
 			SELECT ul.user_id, ul.platform, ul.actual_cost
 			FROM usage_logs ul
 			LEFT JOIN groups g ON g.id = ul.group_id
-			LEFT JOIN accounts a ON a.id = ul.account_id
+			LEFT JOIN providers a ON a.id = ul.provider_id
 			WHERE ul.user_id = ANY($1) AND ul.actual_cost > 0
 			  AND ((ul.created_at >= $2 AND ul.created_at < $4)
 			    OR (ul.created_at >= $6 AND ul.created_at < $3))

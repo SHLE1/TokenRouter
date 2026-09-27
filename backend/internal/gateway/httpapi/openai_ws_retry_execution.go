@@ -64,6 +64,7 @@ func (s *OpenAIWebSocketExecutor) logOpenAIWSModeBootstrap() {
 		openai.WSMessageReadLimitBytes,
 	)
 }
+
 func classifyOpenAIWSReconnectReason(err error) (string, bool) {
 	if err == nil {
 		return "", false
@@ -114,6 +115,7 @@ func classifyOpenAIWSReconnectReason(err error) (string, bool) {
 		return reason, false
 	}
 }
+
 func resolveOpenAIWSFallbackErrorResponse(err error) (statusCode int, errType string, clientMessage string, upstreamMessage string, ok bool) {
 	if err == nil {
 		return 0, "", "", "", false
@@ -210,7 +212,8 @@ func resolveOpenAIWSFallbackErrorResponse(err error) (statusCode int, errType st
 	clientMessage = upstreamMessage
 	return statusCode, errType, clientMessage, upstreamMessage, true
 }
-func (s *OpenAIWebSocketExecutor) writeOpenAIWSFallbackErrorResponse(c *gin.Context, account *gatewayprovider.ExecutionAccount, wsErr error) bool {
+
+func (s *OpenAIWebSocketExecutor) writeOpenAIWSFallbackErrorResponse(c *gin.Context, provider *gatewayprovider.ExecutionProvider, wsErr error) bool {
 	if c == nil || c.Writer == nil || c.Writer.Written() {
 		return false
 	}
@@ -225,11 +228,11 @@ func (s *OpenAIWebSocketExecutor) writeOpenAIWSFallbackErrorResponse(c *gin.Cont
 		upstreamMessage = clientMessage
 	}
 	SetOpsUpstreamError(c, statusCode, upstreamMessage, "")
-	if account != nil {
+	if provider != nil {
 		AppendOpsUpstreamError(c, ops.OpsUpstreamErrorEvent{
-			Platform:           account.Record.Platform,
-			AccountID:          account.Record.ID,
-			AccountName:        account.Record.Name,
+			Platform:           provider.Record.Platform,
+			ProviderID:         provider.Record.ID,
+			ProviderName:       provider.Record.Name,
 			UpstreamStatusCode: statusCode,
 			Kind:               "ws_error",
 			Message:            upstreamMessage,
@@ -243,6 +246,7 @@ func (s *OpenAIWebSocketExecutor) writeOpenAIWSFallbackErrorResponse(c *gin.Cont
 	})
 	return true
 }
+
 func (s *OpenAIWebSocketExecutor) openAIWSRetryBackoff(attempt int) time.Duration {
 	if attempt <= 0 {
 		return 0
@@ -304,6 +308,7 @@ func (s *OpenAIWebSocketExecutor) openAIWSRetryBackoff(attempt int) time.Duratio
 	}
 	return withJitter
 }
+
 func (s *OpenAIWebSocketExecutor) openAIWSRetryTotalBudget() time.Duration {
 	if s != nil && s.Options != nil {
 		ms := s.Options.RetryTotalBudgetMS
@@ -314,6 +319,7 @@ func (s *OpenAIWebSocketExecutor) openAIWSRetryTotalBudget() time.Duration {
 	}
 	return 0
 }
+
 func (s *OpenAIWebSocketExecutor) recordOpenAIWSRetryAttempt(backoff time.Duration) {
 	if s == nil {
 		return
@@ -323,18 +329,21 @@ func (s *OpenAIWebSocketExecutor) recordOpenAIWSRetryAttempt(backoff time.Durati
 		s.openaiWSRetryMetrics.retryBackoffMs.Add(backoff.Milliseconds())
 	}
 }
+
 func (s *OpenAIWebSocketExecutor) recordOpenAIWSRetryExhausted() {
 	if s == nil {
 		return
 	}
 	s.openaiWSRetryMetrics.retryExhausted.Add(1)
 }
+
 func (s *OpenAIWebSocketExecutor) recordOpenAIWSNonRetryableFastFallback() {
 	if s == nil {
 		return
 	}
 	s.openaiWSRetryMetrics.nonRetryableFastFallback.Add(1)
 }
+
 func (s *OpenAIWebSocketExecutor) SnapshotOpenAIWSRetryMetrics() OpenAIWSRetryMetricsSnapshot {
 	if s == nil {
 		return OpenAIWSRetryMetricsSnapshot{}

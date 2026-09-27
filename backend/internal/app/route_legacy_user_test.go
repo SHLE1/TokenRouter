@@ -29,7 +29,7 @@ func RegisterUserRoutes(
 	authenticated := v1.Group("")
 	authenticated.Use(gin.HandlerFunc(jwtAuth))
 	authenticated.Use(identityhttp.BackendModeUserGuard(legacyBackendModeReader(settingService)))
-	// 面板全局按用户限流：防止单个账号高频刷接口打爆数据库
+	// 面板全局按用户限流：防止单个提供商高频刷接口打爆数据库
 	authenticated.Use(panelRateLimiter.Global())
 	// 用户管理面变更类操作入审计（含 TOTP 启用/禁用、step-up 验证、密码修改等安全事件）
 	authenticated.Use(gin.HandlerFunc(auditLog))

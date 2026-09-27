@@ -24,13 +24,13 @@ func provideModelsHTTP(catalogue *routing.RequestableCatalogue, reader *googlefo
 		},
 		SafeSegment: gemini.IsSafeGeminiModelPathSegment,
 		SelectModel: func(ctx context.Context, id *int64) (gatewayhttp.GeminiModelReader, error) {
-			value, err := choices.SelectAccountForAIStudioEndpoints(ctx, id)
+			value, err := choices.SelectProviderForAIStudioEndpoints(ctx, id)
 			if err != nil {
 				return nil, err
 			}
 			return geminiModelReadTarget{reader, value}, nil
 		},
-		CheckAntigravity: choices.HasAntigravityAccounts,
+		CheckAntigravity: choices.HasAntigravityProviders,
 	}
 	if catalogue != nil {
 		ports.Catalogue = catalogue
@@ -45,7 +45,7 @@ func provideModelsHTTP(catalogue *routing.RequestableCatalogue, reader *googlefo
 // geminiModelReadTarget 固化一次选择，仅允许读取模型资源；不额外回源或重新选择。
 type geminiModelReadTarget struct {
 	reader *googleforward.Gemini
-	value  *gatewayprovider.ExecutionAccount
+	value  *gatewayprovider.ExecutionProvider
 }
 
 func (p geminiModelReadTarget) Read(ctx context.Context, path string) (*gatewayhttp.ModelHTTPResponse, error) {

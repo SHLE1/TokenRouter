@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 
@@ -26,17 +26,17 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_BearerAuthScheme(t *testing.T
 	c.Request.Header.Set("Cookie", "secret=1")
 
 	svc := NewRuntime(Dependencies{}, Options{Configured: true})
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, Platform: capability.PlatformAnthropic,
-			Type: capability.AccountTypeAPIKey,
+			Type: capability.ProviderTypeAPIKey,
 			Credentials: map[string]any{
 				"api_key":  "ollama-key",
 				"base_url": "https://ollama.com",
 			},
 			Extra: map[string]any{
 				"anthropic_passthrough":        true,
-				"anthropic_apikey_auth_scheme": accountcore.AnthropicAPIKeyAuthSchemeAuthorizationBearer,
+				"anthropic_apikey_auth_scheme": providercore.AnthropicAPIKeyAuthSchemeAuthorizationBearer,
 			},
 		},
 	}
@@ -44,7 +44,7 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_BearerAuthScheme(t *testing.T
 	msgReq, wireBody, err := svc.buildPassthroughRequest(
 		context.Background(), c, &AttemptState{},
 
-		account, []byte(`{"model":"gpt-oss:20b","messages":[]}`), "ollama-key",
+		provider, []byte(`{"model":"gpt-oss:20b","messages":[]}`), "ollama-key",
 	)
 	require.NoError(t, err)
 	require.Equal(t, "https://ollama.com/v1/messages?beta=true", msgReq.URL.String())
@@ -56,7 +56,7 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_BearerAuthScheme(t *testing.T
 	countReq, _, err := svc.buildCountRequest(
 		context.Background(), c, &AttemptState{},
 
-		account, []byte(`{"model":"gpt-oss:20b","messages":[]}`), "ollama-key", "apikey", "", false, true,
+		provider, []byte(`{"model":"gpt-oss:20b","messages":[]}`), "ollama-key", "apikey", "", false, true,
 	)
 	require.NoError(t, err)
 	require.Equal(t, "https://ollama.com/v1/messages/count_tokens?beta=true", countReq.URL.String())
@@ -71,10 +71,10 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_BuildRequestRejectsInvalidBas
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
 
 	svc := NewRuntime(Dependencies{}, Options{Configured: true})
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, Platform: capability.PlatformAnthropic,
-			Type: capability.AccountTypeAPIKey,
+			Type: capability.ProviderTypeAPIKey,
 			Credentials: map[string]any{
 				"api_key":  "k",
 				"base_url": "://invalid-url",
@@ -82,7 +82,7 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_BuildRequestRejectsInvalidBas
 		},
 	}
 
-	_, _, err := svc.buildPassthroughRequest(context.Background(), c, &AttemptState{}, account, []byte(`{}`), "k")
+	_, _, err := svc.buildPassthroughRequest(context.Background(), c, &AttemptState{}, provider, []byte(`{}`), "k")
 	require.Error(t, err)
 }
 
@@ -91,19 +91,19 @@ func TestGatewayService_AnthropicOAuth_NotAffectedByAPIKeyPassthroughToggle(t *t
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
 
 	svc := NewRuntime(Dependencies{}, Options{Configured: true})
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, Platform: capability.PlatformAnthropic,
-			Type: capability.AccountTypeOAuth,
+			Type: capability.ProviderTypeOAuth,
 			Extra: map[string]any{
 				"anthropic_passthrough": true,
 			},
 		},
 	}
 
-	require.False(t, account.View().IsAnthropicAPIKeyPassthroughEnabled())
+	require.False(t, provider.View().IsAnthropicAPIKeyPassthroughEnabled())
 
-	req, _, err := svc.buildRequest(context.Background(), c, &AttemptState{}, account, []byte(`{"model":"claude-3-7-sonnet-20250219"}`), "oauth-token", "oauth", "claude-3-7-sonnet-20250219", true, false)
+	req, _, err := svc.buildRequest(context.Background(), c, &AttemptState{}, provider, []byte(`{"model":"claude-3-7-sonnet-20250219"}`), "oauth-token", "oauth", "claude-3-7-sonnet-20250219", true, false)
 	require.NoError(t, err)
 	require.Equal(t, "Bearer oauth-token", claude.GetHeaderRaw(req.Header, "authorization"))
 	require.Contains(t, claude.GetHeaderRaw(req.Header, "anthropic-beta"), claude.BetaOAuth, "OAuth 链路仍应按原逻辑补齐 oauth beta")

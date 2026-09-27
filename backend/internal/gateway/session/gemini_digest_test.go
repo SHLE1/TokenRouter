@@ -204,7 +204,7 @@ func TestParseGeminiSessionValue(t *testing.T) {
 			wantOK:    true,
 		},
 		{
-			name:   "invalid account id",
+			name:   "invalid provider id",
 			value:  "uuid:abc",
 			wantOK: false,
 		},
@@ -223,7 +223,7 @@ func TestParseGeminiSessionValue(t *testing.T) {
 					t.Errorf("uuid: expected %s, got %s", tt.wantUUID, uuid)
 				}
 				if accID != tt.wantAccID {
-					t.Errorf("accountID: expected %d, got %d", tt.wantAccID, accID)
+					t.Errorf("providerID: expected %d, got %d", tt.wantAccID, accID)
 				}
 			}
 		})

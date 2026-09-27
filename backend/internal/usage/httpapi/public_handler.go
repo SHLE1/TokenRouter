@@ -20,10 +20,12 @@ type PublicUsageContext struct {
 	Billing      func(*gin.Context) (*billingcore.APIKeyBillingContext, bool)
 	Subscription func(*gin.Context) (*billingcore.UserSubscription, bool)
 }
-type PublicUserBalance struct{ Balance float64 }
-type PublicBalanceReader interface {
-	GetByID(context.Context, int64) (*PublicUserBalance, error)
-}
+type (
+	PublicUserBalance   struct{ Balance float64 }
+	PublicBalanceReader interface {
+		GetByID(context.Context, int64) (*PublicUserBalance, error)
+	}
+)
 type PublicBalanceQuery func(context.Context, int64) (*PublicUserBalance, error)
 
 func (f PublicBalanceQuery) GetByID(ctx context.Context, id int64) (*PublicUserBalance, error) {
@@ -33,22 +35,26 @@ func (f PublicBalanceQuery) GetByID(ctx context.Context, id int64) (*PublicUserB
 type PublicWindowReader interface {
 	GetRateLimitData(context.Context, int64) (*billingcore.APIKeyRateLimitData, error)
 }
-type BalanceUnitReader interface{ GetBalanceUnitName(context.Context) string }
-type PublicUsageHandler struct {
-	usageService   *usage.UsageService
-	apiKeyService  PublicWindowReader
-	userService    PublicBalanceReader
-	settingService BalanceUnitReader
-	request        PublicUsageContext
-	calendar       timezone.Calendar
-}
+type (
+	BalanceUnitReader  interface{ GetBalanceUnitName(context.Context) string }
+	PublicUsageHandler struct {
+		usageService   *usage.UsageService
+		apiKeyService  PublicWindowReader
+		userService    PublicBalanceReader
+		settingService BalanceUnitReader
+		request        PublicUsageContext
+		calendar       timezone.Calendar
+	}
+)
 
 func NewPublicUsageHandler(u *usage.UsageService, keys PublicWindowReader, users PublicBalanceReader, settings BalanceUnitReader, request PublicUsageContext, calendar timezone.Calendar) *PublicUsageHandler {
 	return &PublicUsageHandler{usageService: u, apiKeyService: keys, userService: users, settingService: settings, request: request, calendar: calendar}
 }
+
 func (h *PublicUsageHandler) errorResponse(c *gin.Context, status int, errType, message string) {
 	c.JSON(status, gin.H{"type": "error", "error": gin.H{"type": errType, "message": message}})
 }
+
 func (h *PublicUsageHandler) calculateSubscriptionRemaining(sub *billingcore.UserSubscription) float64 {
 	return billingcore.SubscriptionRemainingForDisplay(sub)
 }
@@ -312,6 +318,7 @@ func (h *PublicUsageHandler) usageQuotaLimited(c *gin.Context, ctx context.Conte
 
 	c.JSON(http.StatusOK, resp)
 }
+
 func (h *PublicUsageHandler) buildAPIKeyDailyUsage(c *gin.Context, apiKeyID int64, days int) any {
 	if h.usageService == nil {
 		return nil
@@ -383,7 +390,7 @@ func (h *PublicUsageHandler) parseUsageDateRange(c *gin.Context) (time.Time, tim
 	return startTime, endTime
 }
 
-// Usage handles getting account balance and usage statistics for CC Switch integration
+// Usage handles getting provider balance and usage statistics for CC Switch integration
 // GET /v1/usage
 //
 // Two modes:

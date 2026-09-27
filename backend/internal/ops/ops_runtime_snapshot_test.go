@@ -99,13 +99,13 @@ func TestOpsRuntimeSettingsAdministrativeUpdatesAreImmediatelyVisible(t *testing
 	}
 
 	cfg := defaultOpsAdvancedSettings()
-	cfg.IgnoreNoAvailableAccounts = true
+	cfg.IgnoreNoAvailableProviders = true
 	svc.storeAdvancedSettingsSnapshot(cfg)
 	got, err := svc.GetOpsAdvancedSettings(context.Background())
 	if err != nil {
 		t.Fatalf("GetOpsAdvancedSettings() error = %v", err)
 	}
-	if !got.IgnoreNoAvailableAccounts {
+	if !got.IgnoreNoAvailableProviders {
 		t.Fatal("advanced settings update was not visible")
 	}
 	if svc.IsMonitoringEnabled(context.Background()) {
@@ -132,7 +132,7 @@ func TestOpsRuntimeSettingsBackgroundRefreshConverges(t *testing.T) {
 func TestOpsRuntimeSettingsRefreshFailuresKeepLastKnownGoodSnapshot(t *testing.T) {
 	repo := &opsRuntimeRefreshRepo{values: map[string]string{
 		SettingKeyOpsMonitoringEnabled: "false",
-		SettingKeyOpsAdvancedSettings:  `{"ignore_no_available_accounts":true}`,
+		SettingKeyOpsAdvancedSettings:  `{"ignore_no_available_providers":true}`,
 	}}
 	svc := &OpsService{settingRepo: repo}
 	svc.initRuntimeSettings(context.Background())
@@ -146,7 +146,7 @@ func TestOpsRuntimeSettingsRefreshFailuresKeepLastKnownGoodSnapshot(t *testing.T
 	if svc.IsMonitoringEnabled(context.Background()) {
 		t.Fatal("failed refresh overwrote last known monitoring state")
 	}
-	if !svc.OpsAdvancedSettingsSnapshot().IgnoreNoAvailableAccounts {
+	if !svc.OpsAdvancedSettingsSnapshot().IgnoreNoAvailableProviders {
 		t.Fatal("failed refresh overwrote last known advanced settings")
 	}
 }

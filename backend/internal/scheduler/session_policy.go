@@ -7,7 +7,7 @@ import (
 
 // SessionBinding 只包含本次调度允许管理的空闲会话参数。
 type SessionBinding struct {
-	AccountID   int64
+	ProviderID  int64
 	SessionID   string
 	Enabled     bool
 	Limit       int
@@ -19,7 +19,7 @@ func RegisterSession(ctx context.Context, cache SessionLimitCache, input Session
 	if !input.Enabled || input.Limit <= 0 || input.SessionID == "" || cache == nil {
 		return true
 	}
-	allowed, err := cache.RegisterSession(ctx, input.AccountID, input.SessionID, input.Limit, input.IdleTimeout)
+	allowed, err := cache.RegisterSession(ctx, input.ProviderID, input.SessionID, input.Limit, input.IdleTimeout)
 	return err != nil || allowed
 }
 
@@ -28,7 +28,7 @@ func FinishSession(ctx context.Context, cache SessionLimitCache, input SessionBi
 	if outcome.Served || !input.Enabled || input.Limit <= 0 || input.SessionID == "" || cache == nil {
 		return
 	}
-	if err := cache.UnregisterSession(ctx, input.AccountID, input.SessionID); err != nil {
-		diagnostics.event("debug", "session_limit.release_failed", "account_id", input.AccountID, "error", err)
+	if err := cache.UnregisterSession(ctx, input.ProviderID, input.SessionID); err != nil {
+		diagnostics.event("debug", "session_limit.release_failed", "provider_id", input.ProviderID, "error", err)
 	}
 }

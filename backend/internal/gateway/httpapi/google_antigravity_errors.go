@@ -20,7 +20,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// AntigravityOutput 持有当前 HTTP 交换与静态输出配置，不承载账号、重试或资金状态。
+// AntigravityOutput 持有当前 HTTP 交换与静态输出配置，不承载提供商、重试或资金状态。
 type AntigravityOutput struct {
 	GoogleOutput
 	Options googleforward.Options
@@ -37,7 +37,7 @@ func (s *AntigravityOutput) ClaudeError(status int, errType, message string) err
 	return fmt.Errorf("%s", message)
 }
 
-func (s *AntigravityOutput) MappedClaudeError(account *gatewayprovider.ExecutionAccount, upstreamStatus int, upstreamRequestID string, body []byte) error {
+func (s *AntigravityOutput) MappedClaudeError(provider *gatewayprovider.ExecutionProvider, upstreamStatus int, upstreamRequestID string, body []byte) error {
 	c := s.Context
 
 	MarkResponseCommitted(c)
@@ -47,12 +47,11 @@ func (s *AntigravityOutput) MappedClaudeError(account *gatewayprovider.Execution
 	upstreamDetail := s.Options.ErrorDetail(body)
 	SetOpsUpstreamError(c, upstreamStatus, upstreamMsg, upstreamDetail)
 	AppendOpsUpstreamError(c, ops.OpsUpstreamErrorEvent{
+		Platform: provider.Record.Platform,
 
-		Platform: account.Record.Platform,
+		ProviderID: provider.Record.ID,
 
-		AccountID: account.Record.ID,
-
-		AccountName: account.Record.Name,
+		ProviderName: provider.Record.Name,
 
 		UpstreamStatusCode: upstreamStatus,
 
@@ -72,7 +71,7 @@ func (s *AntigravityOutput) MappedClaudeError(account *gatewayprovider.Execution
 
 	// 检查错误透传规则
 	if ptStatus, ptErrType, ptErrMsg, matched := ApplyErrorPassthroughRule(
-		c, account.Record.Platform, upstreamStatus, body,
+		c, provider.Record.Platform, upstreamStatus, body,
 		0, "", "",
 	); matched {
 		c.JSON(ptStatus, gin.H{
@@ -154,7 +153,6 @@ func (s *AntigravityOutput) GoogleError(status int, message string) error {
 }
 
 func (s *AntigravityOutput) AntigravityCompatError(
-
 	status int,
 	errType string,
 	message string,
@@ -174,8 +172,7 @@ func (s *AntigravityOutput) AntigravityCompatError(
 }
 
 func (s *AntigravityOutput) MappedAntigravityCompatError(
-
-	account *gatewayprovider.ExecutionAccount,
+	provider *gatewayprovider.ExecutionProvider,
 	upstreamStatus int,
 	upstreamRequestID string,
 	body []byte,
@@ -186,12 +183,11 @@ func (s *AntigravityOutput) MappedAntigravityCompatError(
 	message := logredact.SanitizeUpstreamQueries(strings.TrimSpace(google.ExtractPlatformMessage(body)))
 	SetOpsUpstreamError(c, upstreamStatus, message, s.Options.ErrorDetail(body))
 	AppendOpsUpstreamError(c, ops.OpsUpstreamErrorEvent{
+		Platform: provider.Record.Platform,
 
-		Platform: account.Record.Platform,
+		ProviderID: provider.Record.ID,
 
-		AccountID: account.Record.ID,
-
-		AccountName: account.Record.Name,
+		ProviderName: provider.Record.Name,
 
 		UpstreamStatusCode: upstreamStatus,
 
@@ -203,7 +199,6 @@ func (s *AntigravityOutput) MappedAntigravityCompatError(
 	})
 	c.JSON(protocolforward.MapStatus(upstreamStatus), gin.H{
 		"error": gin.H{
-
 			"message": antigravity.GetPassthroughOrDefault(message, "Upstream request failed"),
 
 			"type": "upstream_error",
@@ -217,7 +212,6 @@ func (s *AntigravityOutput) MappedAntigravityCompatError(
 }
 
 func (s *AntigravityOutput) MapAntigravityCollectionError(err error) error {
-
 	var failoverError *protocolforward.UpstreamFailoverError
 	if errors.As(err, &failoverError) {
 		return err

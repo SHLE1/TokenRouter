@@ -26,13 +26,13 @@ var validOpsAlertMetricTypes = []string{
 	"memory_usage_percent",
 	"disk_usage_percent",
 	"concurrency_queue_depth",
-	"group_available_accounts",
+	"group_available_providers",
 	"group_available_ratio",
 	"group_rate_limit_ratio",
-	"account_rate_limited_count",
-	"account_error_count",
-	"account_error_ratio",
-	"overload_account_count",
+	"provider_rate_limited_count",
+	"provider_error_count",
+	"provider_error_ratio",
+	"overload_provider_count",
 	"proxy_expired_count",
 	"proxy_expiring_soon_count",
 }
@@ -98,7 +98,7 @@ func isPercentOrRateMetric(metricType string) bool {
 		"disk_usage_percent",
 		"group_available_ratio",
 		"group_rate_limit_ratio",
-		"account_error_ratio":
+		"provider_error_ratio":
 		return true
 	default:
 		return false

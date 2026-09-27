@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/grok"
@@ -128,13 +128,13 @@ func TestGrokMediaRequiredCapability(t *testing.T) {
 	tests := []struct {
 		name     string
 		endpoint grok.GrokMediaEndpoint
-		want     accountcore.OpenAIEndpointCapability
+		want     providercore.OpenAIEndpointCapability
 	}{
-		{name: "image generation", endpoint: grok.GrokMediaEndpointImagesGenerations, want: accountcore.OpenAIEndpointCapabilityGrokMediaGeneration},
-		{name: "image edit", endpoint: grok.GrokMediaEndpointImagesEdits, want: accountcore.OpenAIEndpointCapabilityGrokMediaGeneration},
-		{name: "video generation", endpoint: grok.GrokMediaEndpointVideosGenerations, want: accountcore.OpenAIEndpointCapabilityGrokMediaGeneration},
-		{name: "video edit", endpoint: grok.GrokMediaEndpointVideosEdits, want: accountcore.OpenAIEndpointCapabilityGrokMediaGeneration},
-		{name: "video extension", endpoint: grok.GrokMediaEndpointVideosExtensions, want: accountcore.OpenAIEndpointCapabilityGrokMediaGeneration},
+		{name: "image generation", endpoint: grok.GrokMediaEndpointImagesGenerations, want: providercore.OpenAIEndpointCapabilityGrokMediaGeneration},
+		{name: "image edit", endpoint: grok.GrokMediaEndpointImagesEdits, want: providercore.OpenAIEndpointCapabilityGrokMediaGeneration},
+		{name: "video generation", endpoint: grok.GrokMediaEndpointVideosGenerations, want: providercore.OpenAIEndpointCapabilityGrokMediaGeneration},
+		{name: "video edit", endpoint: grok.GrokMediaEndpointVideosEdits, want: providercore.OpenAIEndpointCapabilityGrokMediaGeneration},
+		{name: "video extension", endpoint: grok.GrokMediaEndpointVideosExtensions, want: providercore.OpenAIEndpointCapabilityGrokMediaGeneration},
 		{name: "video status preserves lookup", endpoint: grok.GrokMediaEndpointVideoStatus, want: ""},
 		{name: "video content preserves lookup", endpoint: grok.GrokMediaEndpointVideoContent, want: ""},
 	}
@@ -147,8 +147,8 @@ func TestGrokMediaRequiredCapability(t *testing.T) {
 }
 
 func TestGrokMediaScheduleModelUsesNormalizedMappedUpstream(t *testing.T) {
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, Platform: capability.PlatformGrok,
 			Credentials: map[string]any{
 				"model_mapping": map[string]any{
@@ -159,10 +159,10 @@ func TestGrokMediaScheduleModelUsesNormalizedMappedUpstream(t *testing.T) {
 		},
 	}
 
-	require.Equal(t, "mapped-video-model", grokMediaScheduleModel(account, "grok-imagine-video", nil))
-	require.Equal(t, "actual-upstream-model", grokMediaScheduleModel(account, "grok-imagine-video", &forwardcore.OpenAIResult{
+	require.Equal(t, "mapped-video-model", grokMediaScheduleModel(provider, "grok-imagine-video", nil))
+	require.Equal(t, "actual-upstream-model", grokMediaScheduleModel(provider, "grok-imagine-video", &forwardcore.OpenAIResult{
 		UpstreamModel: "actual-upstream-model",
 	}))
-	require.Equal(t, "mapped-video-model", grokMediaScheduleModel(account, "grok-imagine-video", &forwardcore.OpenAIResult{}))
+	require.Equal(t, "mapped-video-model", grokMediaScheduleModel(provider, "grok-imagine-video", &forwardcore.OpenAIResult{}))
 	require.Equal(t, "grok-imagine-video", grokMediaScheduleModel(nil, " grok-imagine-video ", nil))
 }

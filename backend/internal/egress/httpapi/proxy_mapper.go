@@ -8,16 +8,16 @@ import (
 
 func ProxyFromService(p *egress.Proxy) *Proxy { return proxydto.ProxyFromEgress(p) }
 
-func ProxyWithAccountCountFromService(p *egress.ProxyWithAccountCount) *ProxyWithAccountCount {
-	return proxydto.ProxyWithAccountCountFromEgress(p)
+func ProxyWithProviderCountFromService(p *egress.ProxyWithProviderCount) *ProxyWithProviderCount {
+	return proxydto.ProxyWithProviderCountFromEgress(p)
 }
 
 func ProxyFromServiceAdmin(p *egress.Proxy) *AdminProxy { return proxydto.ProxyFromEgressAdmin(p) }
 
-func ProxyWithAccountCountFromServiceAdmin(p *egress.ProxyWithAccountCount) *AdminProxyWithAccountCount {
-	return proxydto.ProxyWithAccountCountFromEgressAdmin(p)
+func ProxyWithProviderCountFromServiceAdmin(p *egress.ProxyWithProviderCount) *AdminProxyWithProviderCount {
+	return proxydto.ProxyWithProviderCountFromEgressAdmin(p)
 }
 
-func ProxyAccountSummaryFromService(a *egress.ProxyAccountSummary) *ProxyAccountSummary {
-	return proxydto.ProxyAccountSummaryFromEgress(a)
+func ProxyProviderSummaryFromService(a *egress.ProxyProviderSummary) *ProxyProviderSummary {
+	return proxydto.ProxyProviderSummaryFromEgress(a)
 }

@@ -16,7 +16,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/moderation"
 	moderationhttp "github.com/TokenFlux/TokenRouter/internal/moderation/httpapi"
 	moderationpg "github.com/TokenFlux/TokenRouter/internal/moderation/postgres"
-	"github.com/TokenFlux/TokenRouter/internal/moderation/provider"
+	moderationadapter "github.com/TokenFlux/TokenRouter/internal/moderation/provider"
 	moderationredis "github.com/TokenFlux/TokenRouter/internal/moderation/rediscache"
 	"github.com/TokenFlux/TokenRouter/internal/notification"
 	routingpg "github.com/TokenFlux/TokenRouter/internal/routing/postgres"
@@ -29,17 +29,21 @@ import (
 func provideModerationStore(db *sql.DB) moderation.ContentModerationRepository {
 	return moderationpg.NewContentModerationRepository(db, func(tx *sql.Tx) moderationpg.UserStatusTx { return identitypg.NewRiskStatusParticipant(tx) })
 }
+
 func provideModerationHashes(r *redis.Client) moderation.ContentModerationHashCache {
 	return moderationredis.NewContentModerationHashCache(r)
 }
+
 func provideRiskStatus(users *identitypg.UserStore) *identity.RiskStatusCommands {
 	return identity.NewRiskStatusCommands(users)
 }
+
 func provideRiskDelivery(mail *notification.Mailer, _ *notification.NotificationEmailService) *notification.RiskDelivery {
 	return notification.NewRiskDelivery(mail)
 }
+
 func provideModerationCore(store *settings.Store, repo moderation.ContentModerationRepository, hash moderation.ContentModerationHashCache, groups *routingpg.GroupStore, users *identity.RiskStatusCommands, proxies *egresspg.ProxyStore, keys *apikey.APIKeyService, mail *notification.RiskDelivery, tasks *lifecycle.Tasks) *moderation.ContentModerationService {
-	runtime := moderation.Runtime{Audit: provider.NewAuditClient(), SnapshotMedia: provider.SnapshotMedia, Background: func(name string, fn func()) { tasks.Go(name, fn) }, CyberText: openai.IsOpenAICyberWarningText, CyberPolicy: openai.DetectOpenAICyberPolicy, ErrorMessage: upstream.ExtractErrorMessage, MissingRow: func(e error) bool { return errors.Is(e, sql.ErrNoRows) }, MissingUser: func(e error) bool { return errors.Is(e, identity.ErrUserNotFound) }}
+	runtime := moderation.Runtime{Audit: moderationadapter.NewAuditClient(), SnapshotMedia: moderationadapter.SnapshotMedia, Background: func(name string, fn func()) { tasks.Go(name, fn) }, CyberText: openai.IsOpenAICyberWarningText, CyberPolicy: openai.DetectOpenAICyberPolicy, ErrorMessage: upstream.ExtractErrorMessage, MissingRow: func(e error) bool { return errors.Is(e, sql.ErrNoRows) }, MissingUser: func(e error) bool { return errors.Is(e, identity.ErrUserNotFound) }}
 	core := moderation.NewContentModerationService(store, repo, hash, moderationGroups{groups}, moderationUsers{users}, keys, mail, runtime)
 	core.SetProxyRepository(moderationProxies{proxies})
 	return core
@@ -58,6 +62,7 @@ func (s moderationUsers) GetByID(ctx context.Context, id int64) (*moderation.Use
 	}
 	return &moderation.UserSnapshot{ID: u.ID, Role: u.Role, Status: u.Status, Email: u.Email}, e
 }
+
 func (s moderationUsers) SetStatus(ctx context.Context, id int64, status string) error {
 	return s.users.SetStatus(ctx, id, status)
 }

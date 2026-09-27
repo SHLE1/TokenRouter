@@ -15,14 +15,14 @@ import (
 
 	routingtestkit "github.com/TokenFlux/TokenRouter/internal/routing/testkit"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/stretchr/testify/require"
 )
 
-func TestGatewayAccountLayerUsesGroupMappedModelForSupportAndRateLimit(t *testing.T) {
+func TestGatewayProviderLayerUsesGroupMappedModelForSupportAndRateLimit(t *testing.T) {
 	groupID := int64(4201)
 	pricingConfig := routingtestkit.Configuration{
 		ID:           71,
@@ -43,8 +43,8 @@ func TestGatewayAccountLayerUsesGroupMappedModelForSupportAndRateLimit(t *testin
 		Hydrated: true,
 	})
 	future := time.Now().Add(10 * time.Minute).Format(time.RFC3339)
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, Platform: capability.PlatformAnthropic,
 			Status:      billing.StatusActive,
 			Schedulable: true,
@@ -60,27 +60,27 @@ func TestGatewayAccountLayerUsesGroupMappedModelForSupportAndRateLimit(t *testin
 		},
 	}
 
-	require.True(t, svc.isModelSupportedByAccountWithContext(ctx, account, "client-alias"))
-	require.False(t, svc.isAccountSchedulableForModelSelection(ctx, account, "client-alias"))
-	require.True(t, svc.shouldClearStickySessionForAccountLayer(ctx, account, "client-alias"))
+	require.True(t, svc.isModelSupportedByProviderWithContext(ctx, provider, "client-alias"))
+	require.False(t, svc.isProviderSchedulableForModelSelection(ctx, provider, "client-alias"))
+	require.True(t, svc.shouldClearStickySessionForProviderLayer(ctx, provider, "client-alias"))
 }
 
-func TestGatewayAnthropicAccountSupportMapsBeforePlatformNormalization(t *testing.T) {
+func TestGatewayAnthropicProviderSupportMapsBeforePlatformNormalization(t *testing.T) {
 	tests := []struct {
 		name           string
-		accountType    string
+		providerType   string
 		finalModel     string
 		whitelistModel string
 	}{
 		{
 			name:           "OAuth",
-			accountType:    capability.AccountTypeOAuth,
+			providerType:   capability.ProviderTypeOAuth,
 			finalModel:     "claude-sonnet-4-5-20250929",
 			whitelistModel: "claude-sonnet-4-5-20250929",
 		},
 		{
 			name:           "ServiceAccount",
-			accountType:    capability.AccountTypeServiceAccount,
+			providerType:   capability.ProviderTypeServiceAccount,
 			finalModel:     "claude-sonnet-4-5@20250929",
 			whitelistModel: "claude-sonnet-4-5@20250929",
 		},
@@ -88,10 +88,10 @@ func TestGatewayAnthropicAccountSupportMapsBeforePlatformNormalization(t *testin
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			account := &gatewayprovider.ExecutionAccount{
-				Record: accountcore.Record{
+			provider := &gatewayprovider.ExecutionProvider{
+				Record: providercore.Record{
 					LoadLocation: time.LoadLocation, Platform: capability.PlatformAnthropic,
-					Type: tt.accountType,
+					Type: tt.providerType,
 					Credentials: map[string]any{
 						"model_mapping":   map[string]any{"group-model": "claude-sonnet-4-5"},
 						"model_whitelist": []any{tt.whitelistModel},
@@ -102,18 +102,18 @@ func TestGatewayAnthropicAccountSupportMapsBeforePlatformNormalization(t *testin
 				Reads: Reads{}, Shared: Shared{},
 			}, nil)
 
-			require.True(t, svc.isModelSupportedByAccount(account, "group-model"))
-			require.Equal(t, tt.finalModel, resolveAccountUpstreamModel(context.Background(), account, "group-model"))
+			require.True(t, svc.isModelSupportedByProvider(provider, "group-model"))
+			require.Equal(t, tt.finalModel, resolveProviderUpstreamModel(context.Background(), provider, "group-model"))
 		})
 	}
 }
 
 func TestAdvancedSchedulerUsesRoutingModelAndKeepsRequestedModel(t *testing.T) {
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 72, Status: billing.StatusActive, Schedulable: true,
 			Platform: capability.PlatformOpenAI,
-			Type:     capability.AccountTypeAPIKey,
+			Type:     capability.ProviderTypeAPIKey,
 			Credentials: map[string]any{
 				"model_mapping":   map[string]any{"group-model": "upstream-model"},
 				"model_whitelist": []any{"upstream-model"},
@@ -135,18 +135,18 @@ func TestAdvancedSchedulerUsesRoutingModelAndKeepsRequestedModel(t *testing.T) {
 
 	require.Equal(t, "client-alias", req.RequestedModel)
 	require.Equal(t, "group-model", requestRoutingModel(req))
-	require.True(t, scheduler.isAccountRequestCompatible(context.Background(), account, req))
+	require.True(t, scheduler.isProviderRequestCompatible(context.Background(), provider, req))
 }
 
 // TestOpenAIHTTPPassthroughKeepsExplicitModelScope 验证 OAuth 归一化和自动透传都按真实上游模型限制。
 
-// TestOpenAIHTTPPassthroughKeepsExplicitModelScope 验证自动透传账号不会被保留的旧白名单误拒绝。
+// TestOpenAIHTTPPassthroughKeepsExplicitModelScope 验证自动透传提供商不会被保留的旧白名单误拒绝。
 func TestOpenAIHTTPPassthroughKeepsExplicitModelScope(t *testing.T) {
-	account := gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 76,
 			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeOAuth,
+			Type:        capability.ProviderTypeOAuth,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Extra:       map[string]any{"openai_passthrough": true},
@@ -159,10 +159,10 @@ func TestOpenAIHTTPPassthroughKeepsExplicitModelScope(t *testing.T) {
 	plainCtx := context.Background()
 	passthroughCtx := requeststate.WithOpenAIHTTPPassthroughRouting(plainCtx)
 
-	require.False(t, gatewayprovider.ExecutionModelPolicy(&account).SupportsCompatibleRouting(plainCtx, "client-model"))
-	require.False(t, gatewayprovider.ExecutionModelPolicy(&account).SupportsCompatibleRouting(passthroughCtx, "client-model"))
-	require.False(t, gatewayprovider.CompatibleAccountEligible(plainCtx, &account, capability.PlatformOpenAI, "client-model", false, ""))
-	require.False(t, gatewayprovider.CompatibleAccountEligible(passthroughCtx, &account, capability.PlatformOpenAI, "client-model", false, ""))
+	require.False(t, gatewayprovider.ExecutionModelPolicy(&provider).SupportsCompatibleRouting(plainCtx, "client-model"))
+	require.False(t, gatewayprovider.ExecutionModelPolicy(&provider).SupportsCompatibleRouting(passthroughCtx, "client-model"))
+	require.False(t, gatewayprovider.CompatibleProviderEligible(plainCtx, &provider, capability.PlatformOpenAI, "client-model", false, ""))
+	require.False(t, gatewayprovider.CompatibleProviderEligible(passthroughCtx, &provider, capability.PlatformOpenAI, "client-model", false, ""))
 
 	scheduler := &compatiblePicker{service: newCompatibleSelectionForTest(CompatibleDependencies{
 		Reads: Reads{},
@@ -170,23 +170,23 @@ func TestOpenAIHTTPPassthroughKeepsExplicitModelScope(t *testing.T) {
 		Shared: Shared{},
 	}, nil), stats: schedulercore.NewRuntimeStats(time.Now)}
 	req := schedulercore.PlatformSelectionInput{Platform: capability.PlatformOpenAI, RequestedModel: "client-model", RoutingModel: "client-model"}
-	require.False(t, scheduler.isAccountRequestCompatible(plainCtx, &account, req))
-	require.False(t, scheduler.isAccountRequestCompatible(passthroughCtx, &account, req))
+	require.False(t, scheduler.isProviderRequestCompatible(plainCtx, &provider, req))
+	require.False(t, scheduler.isProviderRequestCompatible(passthroughCtx, &provider, req))
 
-	plainErr := noAvailableOpenAISelectionErrorForRouting(plainCtx, "client-model", "client-model", false, []gatewayprovider.ExecutionAccount{account})
+	plainErr := noAvailableOpenAISelectionErrorForRouting(plainCtx, "client-model", "client-model", false, []gatewayprovider.ExecutionProvider{provider})
 	var modelErr *routing.GroupModelUnsupportedError
 	require.True(t, errors.As(plainErr, &modelErr))
-	passthroughErr := noAvailableOpenAISelectionErrorForRouting(passthroughCtx, "client-model", "client-model", false, []gatewayprovider.ExecutionAccount{account})
+	passthroughErr := noAvailableOpenAISelectionErrorForRouting(passthroughCtx, "client-model", "client-model", false, []gatewayprovider.ExecutionProvider{provider})
 	modelErr = nil
 	require.True(t, errors.As(passthroughErr, &modelErr))
 
-	repo := schedulerTestOpenAIAccountRepo{accounts: []gatewayprovider.ExecutionAccount{account}}
-	svc := newCompatibleSelectionForTest(CompatibleDependencies{Reads: Reads{Accounts: repo}}, nil)
+	repo := schedulerTestOpenAIProviderRepo{providers: []gatewayprovider.ExecutionProvider{provider}}
+	svc := newCompatibleSelectionForTest(CompatibleDependencies{Reads: Reads{Providers: repo}}, nil)
 
 	require.False(t, gatewayprovider.NewModelAvailability(gatewaytestkit.AvailabilityStore{Source: repo}, svc.groupPolicies, false, true).DiagnoseCompatibleRouting(plainCtx, nil, "client-model", capability.PlatformOpenAI).HasModelSupport)
 	require.False(t, gatewayprovider.NewModelAvailability(gatewaytestkit.AvailabilityStore{Source: repo}, svc.groupPolicies, false, true).DiagnoseCompatibleRouting(passthroughCtx, nil, "client-model", capability.PlatformOpenAI).HasModelSupport)
 }
 
-// TestResolveOpenAIWSRoutingModelForAccountStrictlyFollowsBillingBasis 验证长连接每轮都严格按所选依据检查 R、C 或 U。
+// TestResolveOpenAIWSRoutingModelForProviderStrictlyFollowsBillingBasis 验证长连接每轮都严格按所选依据检查 R、C 或 U。
 
-// TestResolveOpenAIWSRoutingModelForAccountRejectsUnsupportedMappedModel 验证后续 turn 不能绕过固定账号的最终白名单。
+// TestResolveOpenAIWSRoutingModelForProviderRejectsUnsupportedMappedModel 验证后续 turn 不能绕过固定提供商的最终白名单。

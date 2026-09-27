@@ -4,21 +4,21 @@ import (
 	"strings"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
-func filterGrokModelQuotaBlockedAccounts(accounts []gatewayprovider.ExecutionAccount, model string, now time.Time) []gatewayprovider.ExecutionAccount {
-	if len(accounts) == 0 || strings.TrimSpace(model) == "" {
-		return accounts
+func filterGrokModelQuotaBlockedProviders(providers []gatewayprovider.ExecutionProvider, model string, now time.Time) []gatewayprovider.ExecutionProvider {
+	if len(providers) == 0 || strings.TrimSpace(model) == "" {
+		return providers
 	}
-	out := make([]gatewayprovider.ExecutionAccount, 0, len(accounts))
-	for i := range accounts {
-		upstreamModel := gatewayprovider.ExecutionModelPolicy(&accounts[i]).CanonicalSchedulingModel(model)
-		if accountcore.IsGrokModelQuotaBlocked(accounts[i].Record.ID, upstreamModel, now) {
+	out := make([]gatewayprovider.ExecutionProvider, 0, len(providers))
+	for i := range providers {
+		upstreamModel := gatewayprovider.ExecutionModelPolicy(&providers[i]).CanonicalSchedulingModel(model)
+		if providercore.IsGrokModelQuotaBlocked(providers[i].Record.ID, upstreamModel, now) {
 			continue
 		}
-		out = append(out, accounts[i])
+		out = append(out, providers[i])
 	}
 	return out
 }

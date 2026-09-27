@@ -3,9 +3,9 @@
 package app
 
 import (
-	"github.com/TokenFlux/TokenRouter/internal/account"
-	"github.com/TokenFlux/TokenRouter/internal/account/rediscache"
 	redisinfra "github.com/TokenFlux/TokenRouter/internal/infra/redis"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
+	"github.com/TokenFlux/TokenRouter/internal/provider/rediscache"
 	"github.com/google/wire"
 )
 
@@ -13,5 +13,5 @@ import (
 var cacheProviders = wire.NewSet(
 	rediscache.NewInternal500CounterCache,
 	redisinfra.NewLeaderLockCache,
-	wire.Bind(new(account.CNMonitorLeader), new(*redisinfra.LeaderLock)),
+	wire.Bind(new(provider.CNMonitorLeader), new(*redisinfra.LeaderLock)),
 )

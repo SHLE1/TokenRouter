@@ -33,7 +33,7 @@ func (p *OpenAIResponseOutput) FirstOutputTimeout(reasoningEffort string) time.D
 func (p *OpenAIResponseOutput) FirstOutputFailure(
 	ctx context.Context,
 	c *gin.Context,
-	account *gatewayprovider.ExecutionAccount,
+	provider *gatewayprovider.ExecutionProvider,
 	startTime time.Time,
 	originalModel string,
 	reasoningEffort string,
@@ -44,19 +44,18 @@ func (p *OpenAIResponseOutput) FirstOutputFailure(
 	elapsed := time.Since(startTime)
 	logging.LegacyPrintf(
 		"service.openai_gateway",
-		"OpenAI first output timeout: account=%d model=%s effort=%s phase=%s elapsed=%s limit=%s",
-		account.Record.ID, originalModel, reasoningEffort, phase, elapsed, timeout,
+		"OpenAI first output timeout: provider=%d model=%s effort=%s phase=%s elapsed=%s limit=%s",
+		provider.Record.ID, originalModel, reasoningEffort, phase, elapsed, timeout,
 	)
 	requestID := strings.TrimSpace(responseHeaders.Get("x-request-id"))
 	AppendOpsUpstreamError(c, ops.OpsUpstreamErrorEvent{
-		Platform: account.Record.Platform, AccountID: account.Record.ID, AccountName: account.Record.Name,
+		Platform: provider.Record.Platform, ProviderID: provider.Record.ID, ProviderName: provider.Record.Name,
 		UpstreamStatusCode: http.StatusGatewayTimeout, UpstreamRequestID: requestID,
 		Kind: "first_output_timeout", Message: "OpenAI upstream produced no semantic output before the deadline",
 		Detail: fmt.Sprintf("phase=%s elapsed_ms=%d timeout_ms=%d", phase, elapsed.Milliseconds(), timeout.Milliseconds()),
 	})
 	if p.Observer != nil {
-		p.Observer.Core.HandleStreamTimeout(ctx, gatewayprovider.ExecutionRecord(account), originalModel)
-
+		p.Observer.Core.HandleStreamTimeout(ctx, gatewayprovider.ExecutionRecord(provider), originalModel)
 	}
 	return &forwardcore.UpstreamFailoverError{
 		StatusCode:      http.StatusGatewayTimeout,

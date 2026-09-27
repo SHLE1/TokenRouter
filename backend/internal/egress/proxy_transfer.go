@@ -90,15 +90,16 @@ func (h *ProxyTransfer) Import(ctx context.Context, items []TransferProxy) (Prox
 	return result, err
 }
 
-// ImportForAccountBinding 保留账号文件导入的再次读取、静默状态同步和原查询顺序。
-func (h *ProxyTransfer) ImportForAccountBinding(ctx context.Context, items []TransferProxy) (map[string]int64, ProxyImportResult, error) {
+// ImportForProviderBinding 保留提供商文件导入的再次读取、静默状态同步和原查询顺序。
+func (h *ProxyTransfer) ImportForProviderBinding(ctx context.Context, items []TransferProxy) (map[string]int64, ProxyImportResult, error) {
 	return h.importItems(ctx, items, true)
 }
-func (h *ProxyTransfer) importItems(ctx context.Context, items []TransferProxy, accountBinding bool) (map[string]int64, ProxyImportResult, error) {
+
+func (h *ProxyTransfer) importItems(ctx context.Context, items []TransferProxy, providerBinding bool) (map[string]int64, ProxyImportResult, error) {
 	result := ProxyImportResult{}
 
 	sortBy := "id"
-	if accountBinding {
+	if providerBinding {
 		sortBy = "created_at"
 	}
 	existingProxies, err := h.listProxiesFiltered(ctx, "", "", "", sortBy, "desc")
@@ -142,7 +143,7 @@ func (h *ProxyTransfer) importItems(ctx context.Context, items []TransferProxy, 
 			result.ProxyReused++
 			originalID := existing.ID
 			canUpdate := true
-			if accountBinding && normalizedStatus != "" {
+			if providerBinding && normalizedStatus != "" {
 				fresh, err := h.adminService.GetProxy(ctx, originalID)
 				if err != nil || fresh == nil {
 					canUpdate = false
@@ -182,7 +183,7 @@ func (h *ProxyTransfer) importItems(ctx context.Context, items []TransferProxy, 
 					Username: existing.Username,
 					Password: existing.Password,
 				}
-				if _, err := h.adminService.UpdateProxy(ctx, originalID, updateInput); err != nil && !accountBinding {
+				if _, err := h.adminService.UpdateProxy(ctx, originalID, updateInput); err != nil && !providerBinding {
 					result.Errors = append(result.Errors, TransferError{
 						Kind:     "proxy",
 						Name:     item.Name,
@@ -191,7 +192,7 @@ func (h *ProxyTransfer) importItems(ctx context.Context, items []TransferProxy, 
 					})
 				}
 			}
-			if !accountBinding {
+			if !providerBinding {
 				latencyProbeIDs = append(latencyProbeIDs, originalID)
 			}
 			continue
@@ -265,7 +266,7 @@ func (h *ProxyTransfer) importItems(ctx context.Context, items []TransferProxy, 
 				Port:           created.Port,
 				Username:       created.Username,
 				Password:       created.Password,
-			}); err != nil && !accountBinding {
+			}); err != nil && !providerBinding {
 				result.Errors = append(result.Errors, TransferError{
 					Kind:     "proxy",
 					Name:     item.Name,
@@ -298,15 +299,16 @@ func (h *ProxyTransfer) getProxiesByIDs(ctx context.Context, ids []int64) ([]Pro
 	}
 	return h.adminService.GetProxiesByIDs(ctx, ids)
 }
+
 func (h *ProxyTransfer) listProxiesFiltered(ctx context.Context, protocol, status, search, sortBy, sortOrder string) ([]Proxy, error) {
 	page := 1
 	pageSize := 1000
 	var out []Proxy
 	sortBy = strings.TrimSpace(sortBy)
-	useAccountCountSort := strings.EqualFold(sortBy, "account_count")
+	useProviderCountSort := strings.EqualFold(sortBy, "provider_count")
 	for {
-		if useAccountCountSort {
-			items, total, err := h.adminService.ListProxiesWithAccountCount(ctx, page, pageSize, protocol, status, search, sortBy, sortOrder)
+		if useProviderCountSort {
+			items, total, err := h.adminService.ListProxiesWithProviderCount(ctx, page, pageSize, protocol, status, search, sortBy, sortOrder)
 			if err != nil {
 				return nil, err
 			}
@@ -331,7 +333,7 @@ func (h *ProxyTransfer) listProxiesFiltered(ctx context.Context, protocol, statu
 	return out, nil
 }
 
-// GetProxiesByIDs 为账号备份提供原顺序的只读代理投影。
+// GetProxiesByIDs 为提供商备份提供原顺序的只读代理投影。
 func (h *ProxyTransfer) GetProxiesByIDs(ctx context.Context, ids []int64) ([]Proxy, error) {
 	return h.getProxiesByIDs(ctx, ids)
 }

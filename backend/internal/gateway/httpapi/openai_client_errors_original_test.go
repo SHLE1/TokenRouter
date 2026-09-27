@@ -12,9 +12,9 @@ import (
 
 	gatewaytestkit "github.com/TokenFlux/TokenRouter/internal/gateway/testkit"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/errorpolicy"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
@@ -30,7 +30,6 @@ const openAIInvalidFunctionParametersBody = `{"error":{` +
 	`"code":"invalid_function_parameters"}}`
 
 func newOpenAIUpstreamClientErrorTestContext() (*gin.Context, *httptest.ResponseRecorder) {
-
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
@@ -45,8 +44,8 @@ func newOpenAIUpstreamClientErrorResponse(statusCode int, body string) *http.Res
 	}
 }
 
-func newOpenAIUpstreamClientErrorTestAccount() *gatewayprovider.ExecutionAccount {
-	return &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth, Name: "acct"}}
+func newOpenAIUpstreamClientErrorTestProvider() *gatewayprovider.ExecutionProvider {
+	return &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth, Name: "acct"}}
 }
 
 // 兼容上游新增测试使用的命名，复用 fork 原有测试夹具。
@@ -59,8 +58,8 @@ func newOpenAIUpstreamErrorResponse(statusCode int, body string) *http.Response 
 	return newOpenAIUpstreamClientErrorResponse(statusCode, body)
 }
 
-func newOpenAIUpstreamErrorTestAccount() *gatewayprovider.ExecutionAccount {
-	return newOpenAIUpstreamClientErrorTestAccount()
+func newOpenAIUpstreamErrorTestProvider() *gatewayprovider.ExecutionProvider {
+	return newOpenAIUpstreamClientErrorTestProvider()
 }
 
 func TestHandleErrorResponse_Deterministic400IsNotRewrappedAs502(t *testing.T) {
@@ -70,7 +69,7 @@ func TestHandleErrorResponse_Deterministic400IsNotRewrappedAs502(t *testing.T) {
 	_, err := svc.ResponseError(
 		context.Background(),
 		newOpenAIUpstreamClientErrorResponse(http.StatusBadRequest, openAIInvalidFunctionParametersBody),
-		c, newOpenAIUpstreamClientErrorTestAccount(), nil,
+		c, newOpenAIUpstreamClientErrorTestProvider(), nil,
 	)
 
 	require.Error(t, err)
@@ -90,7 +89,7 @@ func TestHandleErrorResponse_Deterministic400MatchesCompatSibling(t *testing.T) 
 	_, nativeErr := svc.ResponseError(
 		context.Background(),
 		newOpenAIUpstreamClientErrorResponse(http.StatusBadRequest, openAIInvalidFunctionParametersBody),
-		nativeCtx, newOpenAIUpstreamClientErrorTestAccount(), nil,
+		nativeCtx, newOpenAIUpstreamClientErrorTestProvider(), nil,
 	)
 	require.Error(t, nativeErr)
 
@@ -102,7 +101,7 @@ func TestHandleErrorResponse_Deterministic400MatchesCompatSibling(t *testing.T) 
 	}
 	_, compatErr := svc.CompatError(
 		newOpenAIUpstreamClientErrorResponse(http.StatusBadRequest, openAIInvalidFunctionParametersBody),
-		compatCtx, newOpenAIUpstreamClientErrorTestAccount(), writeError, WriteForwardChatErrorBody,
+		compatCtx, newOpenAIUpstreamClientErrorTestProvider(), writeError, WriteForwardChatErrorBody,
 	)
 	require.Error(t, compatErr)
 	require.Equal(t, compatStatus, nativeRecorder.Code)
@@ -118,7 +117,7 @@ func TestHandleErrorResponse_Transient400KeepsGenericGatewayError(t *testing.T) 
 	_, err := svc.ResponseError(
 		context.Background(),
 		newOpenAIUpstreamClientErrorResponse(http.StatusBadRequest, body),
-		c, newOpenAIUpstreamClientErrorTestAccount(), nil,
+		c, newOpenAIUpstreamClientErrorTestProvider(), nil,
 	)
 
 	require.Error(t, err)
@@ -129,9 +128,9 @@ func TestHandleErrorResponse_Transient400KeepsGenericGatewayError(t *testing.T) 
 func TestHandleErrorResponse_PoolRetryable400StillFailsOver(t *testing.T) {
 	c, recorder := newOpenAIUpstreamClientErrorTestContext()
 	svc := newResponseOutputForTest(OpenAIResponseOptions{})
-	account := newOpenAIUpstreamClientErrorTestAccount()
-	account.Record.Type = capability.AccountTypeAPIKey
-	account.Record.Credentials = map[string]any{
+	provider := newOpenAIUpstreamClientErrorTestProvider()
+	provider.Record.Type = capability.ProviderTypeAPIKey
+	provider.Record.Credentials = map[string]any{
 		"pool_mode":                    true,
 		"pool_mode_retry_status_codes": []any{float64(http.StatusBadRequest)},
 	}
@@ -139,13 +138,13 @@ func TestHandleErrorResponse_PoolRetryable400StillFailsOver(t *testing.T) {
 	_, err := svc.ResponseError(
 		context.Background(),
 		newOpenAIUpstreamClientErrorResponse(http.StatusBadRequest, openAIInvalidFunctionParametersBody),
-		c, account, nil,
+		c, provider, nil,
 	)
 
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)
 	require.Equal(t, http.StatusBadRequest, failoverErr.StatusCode)
-	require.True(t, failoverErr.RetryableOnSameAccount)
+	require.True(t, failoverErr.RetryableOnSameProvider)
 	require.False(t, c.Writer.Written())
 	require.Empty(t, recorder.Body.String())
 }
@@ -162,19 +161,29 @@ func TestHandleErrorResponse_NonDeterministicStatusesKeepGeneric502(t *testing.T
 		wantMsg    string
 	}{
 		// 404/405 可能是上游 base_url 配错（运营方问题），不当成客户端错误暴露。
-		{"not_found", http.StatusNotFound, `{"error":{"message":"Unknown request URL"}}`,
-			http.StatusBadGateway, "upstream_error", "Upstream request failed"},
-		{"unprocessable", http.StatusUnprocessableEntity, `{"error":{"message":"Invalid schema for field messages"}}`,
-			http.StatusBadGateway, "upstream_error", "Upstream request failed"},
-		// 401/402/403 是网关运营方的凭据/账单问题，必须继续对客户端屏蔽上游账号状态。
+		{
+			"not_found", http.StatusNotFound, `{"error":{"message":"Unknown request URL"}}`,
+			http.StatusBadGateway, "upstream_error", "Upstream request failed",
+		},
+		{
+			"unprocessable", http.StatusUnprocessableEntity, `{"error":{"message":"Invalid schema for field messages"}}`,
+			http.StatusBadGateway, "upstream_error", "Upstream request failed",
+		},
+		// 401/402/403 是网关运营方的凭据/账单问题，必须继续对客户端屏蔽上游提供商状态。
 		// 403 的自由文本不能升级成 durable access-state typed failover；只有明确结构化 code 才可以。
-		{"unauthorized", http.StatusUnauthorized, `{"error":{"message":"Incorrect API key provided: sk-abc"}}`,
-			http.StatusBadGateway, "upstream_error", "Upstream authentication failed, please contact administrator"},
-		{"forbidden", http.StatusForbidden, `{"error":{"message":"Your account is deactivated"}}`,
-			http.StatusBadGateway, "upstream_error", "Upstream access forbidden, please contact administrator"},
+		{
+			"unauthorized", http.StatusUnauthorized, `{"error":{"message":"Incorrect API key provided: sk-abc"}}`,
+			http.StatusBadGateway, "upstream_error", "Upstream authentication failed, please contact administrator",
+		},
+		{
+			"forbidden", http.StatusForbidden, `{"error":{"message":"Your provider is deactivated"}}`,
+			http.StatusBadGateway, "upstream_error", "Upstream access forbidden, please contact administrator",
+		},
 		// 429 保持独立映射。
-		{"rate_limited", http.StatusTooManyRequests, `{"error":{"message":"Rate limit reached"}}`,
-			http.StatusTooManyRequests, "rate_limit_error", "Upstream rate limit exceeded, please retry later"},
+		{
+			"rate_limited", http.StatusTooManyRequests, `{"error":{"message":"Rate limit reached"}}`,
+			http.StatusTooManyRequests, "rate_limit_error", "Upstream rate limit exceeded, please retry later",
+		},
 	}
 
 	for _, tc := range cases {
@@ -185,7 +194,7 @@ func TestHandleErrorResponse_NonDeterministicStatusesKeepGeneric502(t *testing.T
 			_, err := svc.ResponseError(
 				context.Background(),
 				newOpenAIUpstreamErrorResponse(tc.statusCode, tc.body),
-				c, newOpenAIUpstreamErrorTestAccount(), nil,
+				c, newOpenAIUpstreamErrorTestProvider(), nil,
 			)
 			require.Error(t, err)
 			if tc.name == "forbidden" {
@@ -211,7 +220,7 @@ func TestHandleErrorResponse_PassthroughRuleStillWinsOver400Branch(t *testing.T)
 	_, err := svc.ResponseError(
 		context.Background(),
 		newOpenAIUpstreamClientErrorResponse(http.StatusBadRequest, openAIInvalidFunctionParametersBody),
-		c, newOpenAIUpstreamClientErrorTestAccount(), nil,
+		c, newOpenAIUpstreamClientErrorTestProvider(), nil,
 	)
 
 	require.Error(t, err)

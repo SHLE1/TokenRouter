@@ -166,7 +166,7 @@ func TestOpsSystemLogSink_StartStopAndFlushSuccess(t *testing.T) {
 			"client_request_id": "creq-1",
 			"user_id":           "12",
 			"api_key_id":        json.Number("56"),
-			"account_id":        json.Number("34"),
+			"provider_id":       json.Number("34"),
 			"platform":          "openai",
 			"model":             "gpt-5",
 		},
@@ -194,8 +194,8 @@ func TestOpsSystemLogSink_StartStopAndFlushSuccess(t *testing.T) {
 	if item.APIKeyID == nil || *item.APIKeyID != 56 {
 		t.Fatalf("unexpected api_key_id: %+v", item.APIKeyID)
 	}
-	if item.AccountID == nil || *item.AccountID != 34 {
-		t.Fatalf("unexpected account_id: %+v", item.AccountID)
+	if item.ProviderID == nil || *item.ProviderID != 34 {
+		t.Fatalf("unexpected provider_id: %+v", item.ProviderID)
 	}
 	if strings.TrimSpace(item.Message) == "" {
 		t.Fatalf("message should not be empty")

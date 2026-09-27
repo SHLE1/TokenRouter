@@ -84,7 +84,7 @@ func newUsageLogBestEffortRequestForTest() usageLogBestEffortRequest {
 		UserID:        1,
 		BillingUserID: 1,
 		APIKeyID:      2,
-		AccountID:     3,
+		ProviderID:    3,
 		RequestID:     "req-best-effort-deadlock",
 		Model:         "gpt-5",
 		InputTokens:   10,

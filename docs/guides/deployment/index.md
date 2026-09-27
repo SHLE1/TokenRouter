@@ -363,8 +363,8 @@ Passkey 登录不会以不可信的 `Host` 或 `Origin` 请求头作为配置回
 
 ### OpenAI Responses WebSocket 首消息超时
 
-账号级 WS mode（包括 `http_bridge`）仅在新版 mode router 开启时生效。关闭该开关时，
-账号级 mode 会被忽略，网关继续使用 legacy `ctx_pool` 行为。可通过 YAML 开启：
+提供商级 WS mode（包括 `http_bridge`）仅在新版 mode router 开启时生效。关闭该开关时，
+提供商级 mode 会被忽略，网关继续使用 legacy `ctx_pool` 行为。可通过 YAML 开启：
 
 ```yaml
 gateway:
@@ -454,7 +454,7 @@ SECURITY_URL_ALLOWLIST_ALLOW_INSECURE_HTTP=true
 **适用场景：**
 - ✅ 开发/测试环境的本地服务器（http://localhost）
 - ✅ 内网可信端点
-- ✅ 获取 HTTPS 前测试账号连通性
+- ✅ 获取 HTTPS 前测试提供商连通性
 - ❌ 生产环境（仅使用 HTTPS）
 
 **未设置此项时的错误示例：**

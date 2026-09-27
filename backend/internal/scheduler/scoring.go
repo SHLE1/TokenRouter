@@ -15,16 +15,16 @@ import (
 )
 
 // RuntimeStats 保存所有高级调度分组共享的运行时反馈。
-// 账号没有反馈样本时，错误率按 0% 处理，其它可选信号仍使用中性值。
+// 提供商没有反馈样本时，错误率按 0% 处理，其它可选信号仍使用中性值。
 type RuntimeStats struct {
-	now          func() time.Time
-	accounts     sync.Map
-	accountCount atomic.Int64
-	switchCount  atomic.Int64
+	now           func() time.Time
+	providers     sync.Map
+	providerCount atomic.Int64
+	switchCount   atomic.Int64
 }
 
 // FeedbackConfig 保存一次请求回写运行时反馈时使用的 EWMA 系数。
-// 统计仍按账号共享，但系数由请求最终命中的分组决定。
+// 统计仍按提供商共享，但系数由请求最终命中的分组决定。
 type FeedbackConfig = policy.FeedbackConfig
 
 const (
@@ -42,7 +42,7 @@ func (s *RuntimeStats) ReportSwitch() {
 	}
 }
 
-type advancedAccountRuntimeStat struct {
+type advancedProviderRuntimeStat struct {
 	errorRateEWMABits atomic.Uint64
 	ttftEWMABits      atomic.Uint64
 	// 诊断页需要区分“零错误率”和“尚无样本”，因此保留样本数与最近观测时间。
@@ -56,24 +56,24 @@ func NewRuntimeStats(now func() time.Time) *RuntimeStats {
 	return &RuntimeStats{now: now}
 }
 
-func (s *RuntimeStats) loadOrCreate(accountID int64) *advancedAccountRuntimeStat {
-	if value, ok := s.accounts.Load(accountID); ok {
-		stat, _ := value.(*advancedAccountRuntimeStat)
+func (s *RuntimeStats) loadOrCreate(providerID int64) *advancedProviderRuntimeStat {
+	if value, ok := s.providers.Load(providerID); ok {
+		stat, _ := value.(*advancedProviderRuntimeStat)
 		if stat != nil {
 			return stat
 		}
 	}
 
-	stat := &advancedAccountRuntimeStat{}
+	stat := &advancedProviderRuntimeStat{}
 	// 未观测错误率按 0% 处理，后续样本从零基线更新 EWMA。
 	stat.errorRateEWMABits.Store(math.Float64bits(0))
 	stat.ttftEWMABits.Store(math.Float64bits(math.NaN()))
-	actual, loaded := s.accounts.LoadOrStore(accountID, stat)
+	actual, loaded := s.providers.LoadOrStore(providerID, stat)
 	if !loaded {
-		s.accountCount.Add(1)
+		s.providerCount.Add(1)
 		return stat
 	}
-	existing, _ := actual.(*advancedAccountRuntimeStat)
+	existing, _ := actual.(*advancedProviderRuntimeStat)
 	if existing != nil {
 		return existing
 	}
@@ -91,8 +91,8 @@ func updateAdvancedSchedulerEWMA(target *atomic.Uint64, sample float64, alpha fl
 	}
 }
 
-func (s *RuntimeStats) Report(accountID int64, success bool, firstTokenMs *int, feedback ...FeedbackConfig) {
-	if s == nil || accountID <= 0 {
+func (s *RuntimeStats) Report(providerID int64, success bool, firstTokenMs *int, feedback ...FeedbackConfig) {
+	if s == nil || providerID <= 0 {
 		return
 	}
 	feedbackConfig := FeedbackConfig{
@@ -102,7 +102,7 @@ func (s *RuntimeStats) Report(accountID int64, success bool, firstTokenMs *int, 
 	if len(feedback) > 0 {
 		feedbackConfig = NormalizeFeedbackConfig(feedback[0])
 	}
-	stat := s.loadOrCreate(accountID)
+	stat := s.loadOrCreate(providerID)
 
 	errorSample := 1.0
 	if success {
@@ -149,15 +149,15 @@ type FeedbackSnapshot struct {
 	LastTTFTAt     *time.Time
 }
 
-func (s *RuntimeStats) FeedbackSnapshot(accountID int64) FeedbackSnapshot {
-	if s == nil || accountID <= 0 {
+func (s *RuntimeStats) FeedbackSnapshot(providerID int64) FeedbackSnapshot {
+	if s == nil || providerID <= 0 {
 		return FeedbackSnapshot{}
 	}
-	value, ok := s.accounts.Load(accountID)
+	value, ok := s.providers.Load(providerID)
 	if !ok {
 		return FeedbackSnapshot{}
 	}
-	stat, _ := value.(*advancedAccountRuntimeStat)
+	stat, _ := value.(*advancedProviderRuntimeStat)
 	if stat == nil {
 		return FeedbackSnapshot{}
 	}
@@ -183,15 +183,15 @@ func (s *RuntimeStats) FeedbackSnapshot(accountID int64) FeedbackSnapshot {
 	return Snapshot
 }
 
-func (s *RuntimeStats) Snapshot(accountID int64) (errorRate float64, ttft float64, hasTTFT bool) {
-	if s == nil || accountID <= 0 {
+func (s *RuntimeStats) Snapshot(providerID int64) (errorRate float64, ttft float64, hasTTFT bool) {
+	if s == nil || providerID <= 0 {
 		return 0, 0, false
 	}
-	value, ok := s.accounts.Load(accountID)
+	value, ok := s.providers.Load(providerID)
 	if !ok {
 		return 0, 0, false
 	}
-	stat, _ := value.(*advancedAccountRuntimeStat)
+	stat, _ := value.(*advancedProviderRuntimeStat)
 	if stat == nil {
 		return 0, 0, false
 	}
@@ -207,13 +207,13 @@ func (s *RuntimeStats) Size() int {
 	if s == nil {
 		return 0
 	}
-	return int(s.accountCount.Load())
+	return int(s.providerCount.Load())
 }
 
 // CandidateScore 是完成平台硬过滤后的通用高级调度候选。
 type CandidateScore struct {
-	Account            *ScoreAccount
-	LoadInfo           *AccountLoadInfo
+	Provider           *ScoreProvider
+	LoadInfo           *ProviderLoadInfo
 	LoadKnown          bool
 	Score              float64
 	BaseScore          float64
@@ -286,20 +286,20 @@ func (h *candidateHeap) Pop() any {
 }
 
 func CandidateBetter(left, right CandidateScore) bool {
-	if left.Account == nil {
+	if left.Provider == nil {
 		return false
 	}
-	if right.Account == nil {
+	if right.Provider == nil {
 		return true
 	}
 	if left.Score != right.Score {
 		return left.Score > right.Score
 	}
-	if left.Account.Priority != right.Account.Priority {
-		return left.Account.Priority < right.Account.Priority
+	if left.Provider.Priority != right.Provider.Priority {
+		return left.Provider.Priority < right.Provider.Priority
 	}
 	// 负载与等待已经进入评分；同分时只用实体 ID 决胜，保持严格且可传递的稳定全序。
-	return left.Account.ID < right.Account.ID
+	return left.Provider.ID < right.Provider.ID
 }
 
 func SelectTopK(candidates []CandidateScore, topK int) []CandidateScore {
@@ -343,61 +343,61 @@ func SortCandidates(candidates []CandidateScore) {
 
 // ScoreInput 只携带平台无关的可选调度信号。
 type ScoreInput struct {
-	Now                     func() time.Time
-	GroupID                 *int64
-	SessionHash             string
-	PreviousResponseID      string
-	RequestedModel          string
-	StickyAccountID         int64
-	StickyPreviousAccountID int64
-	StickyWeighted          bool
-	TopK                    int
-	QuotaHeadroomFactor     func(*ScoreAccount, time.Time) float64
+	Now                      func() time.Time
+	GroupID                  *int64
+	SessionHash              string
+	PreviousResponseID       string
+	RequestedModel           string
+	StickyProviderID         int64
+	StickyPreviousProviderID int64
+	StickyWeighted           bool
+	TopK                     int
+	QuotaHeadroomFactor      func(*ScoreProvider, time.Time) float64
 }
 
 // ScoreCandidates 对硬过滤后的候选执行通用评分，并返回负载偏斜。
-// @project-doc docs/architecture/account_scheduling_and_cache.md#advanced_scheduler_selection
+// @project-doc docs/architecture/provider_scheduling_and_cache.md#advanced_scheduler_selection
 func ScoreCandidates(
-	accounts []*ScoreAccount,
-	loadMap map[int64]*AccountLoadInfo,
+	providers []*ScoreProvider,
+	loadMap map[int64]*ProviderLoadInfo,
 	stats *RuntimeStats,
 	weights policy.ScoreWeights,
 	input ScoreInput,
 	now time.Time,
 ) ([]CandidateScore, float64) {
-	candidates, skew, _ := ScoreCandidatesWithRanges(accounts, loadMap, stats, weights, input, now)
+	candidates, skew, _ := ScoreCandidatesWithRanges(providers, loadMap, stats, weights, input, now)
 	return candidates, skew
 }
 
 // ScoreCandidatesWithRanges 与实际评分共用同一条计算路径，
 // 额外返回归一化范围，供管理员诊断界面逐项解释结果。
 func ScoreCandidatesWithRanges(
-	accounts []*ScoreAccount,
-	loadMap map[int64]*AccountLoadInfo,
+	providers []*ScoreProvider,
+	loadMap map[int64]*ProviderLoadInfo,
 	stats *RuntimeStats,
 	weights policy.ScoreWeights,
 	input ScoreInput,
 	now time.Time,
 ) ([]CandidateScore, float64, ScoreRanges) {
-	candidates := make([]CandidateScore, 0, len(accounts))
-	for _, account := range accounts {
-		if account == nil {
+	candidates := make([]CandidateScore, 0, len(providers))
+	for _, provider := range providers {
+		if provider == nil {
 			continue
 		}
-		loadInfo, loadKnown := loadMap[account.ID]
+		loadInfo, loadKnown := loadMap[provider.ID]
 		if !loadKnown || loadInfo == nil {
-			loadInfo = &AccountLoadInfo{AccountID: account.ID}
+			loadInfo = &ProviderLoadInfo{ProviderID: provider.ID}
 			loadKnown = false
 		}
 		feedback := FeedbackSnapshot{}
 		if stats != nil {
-			feedback = stats.FeedbackSnapshot(account.ID)
+			feedback = stats.FeedbackSnapshot(provider.ID)
 		}
 		candidates = append(candidates, CandidateScore{
-			Account:     account,
+			Provider:    provider,
 			LoadInfo:    loadInfo,
 			LoadKnown:   loadKnown,
-			Priority:    account.Priority,
+			Priority:    provider.Priority,
 			ErrorRate:   feedback.ErrorRate,
 			TTFT:        feedback.TTFT,
 			HasTTFT:     feedback.HasTTFT,
@@ -451,7 +451,7 @@ func ScoreCandidatesWithRanges(
 	hasResetSample := false
 	if weights.Reset > 0 {
 		for _, candidate := range candidates {
-			end := candidate.Account.SessionWindowEnd
+			end := candidate.Provider.SessionWindowEnd
 			if end == nil || !now.Before(*end) {
 				continue
 			}
@@ -483,7 +483,7 @@ func ScoreCandidatesWithRanges(
 
 	quotaFactor := input.QuotaHeadroomFactor
 	if quotaFactor == nil {
-		quotaFactor = func(*ScoreAccount, time.Time) float64 { return 0.5 }
+		quotaFactor = func(*ScoreProvider, time.Time) float64 { return 0.5 }
 	}
 	for i := range candidates {
 		item := &candidates[i]
@@ -508,7 +508,7 @@ func ScoreCandidatesWithRanges(
 		}
 		resetFactor := 0.5
 		if weights.Reset > 0 && hasResetSample {
-			if end := item.Account.SessionWindowEnd; end != nil && now.Before(*end) {
+			if end := item.Provider.SessionWindowEnd; end != nil && now.Before(*end) {
 				if maxResetRemaining > minResetRemaining {
 					resetFactor = 1 - Clamp01((end.Sub(now).Seconds()-minResetRemaining)/(maxResetRemaining-minResetRemaining))
 				} else {
@@ -518,7 +518,7 @@ func ScoreCandidatesWithRanges(
 		}
 		quotaHeadroomFactor := 0.5
 		if weights.QuotaHeadroom > 0 {
-			quotaHeadroomFactor = Clamp01(quotaFactor(item.Account, now))
+			quotaHeadroomFactor = Clamp01(quotaFactor(item.Provider, now))
 		}
 		item.Factors = CandidateFactors{
 			Priority:      priorityFactor,
@@ -538,11 +538,11 @@ func ScoreCandidatesWithRanges(
 			weights.QuotaHeadroom*quotaHeadroomFactor
 		item.Score = item.BaseScore
 		if input.StickyWeighted {
-			if input.StickyPreviousAccountID > 0 && item.Account.ID == input.StickyPreviousAccountID {
+			if input.StickyPreviousProviderID > 0 && item.Provider.ID == input.StickyPreviousProviderID {
 				item.PreviousBonus = weights.Previous
 				item.StickyBonus += item.PreviousBonus
 			}
-			if input.StickyAccountID > 0 && item.Account.ID == input.StickyAccountID {
+			if input.StickyProviderID > 0 && item.Provider.ID == input.StickyProviderID {
 				item.SessionStickyBonus = weights.SessionSticky
 				item.StickyBonus += item.SessionStickyBonus
 			}
@@ -622,7 +622,7 @@ func BuildWeightedSelectionOrder(candidates []CandidateScore, input ScoreInput) 
 		}
 	}
 	for i := range pool {
-		// 将 Top-K 分值平移到正区间，避免单个账号长期垄断。
+		// 将 Top-K 分值平移到正区间，避免单个提供商长期垄断。
 		weight := (pool[i].Score - minScore) + 1.0
 		if math.IsNaN(weight) || math.IsInf(weight, 0) || weight <= 0 {
 			weight = 1.0
@@ -679,16 +679,16 @@ type ScoreSnapshot struct {
 }
 
 func BuildScoreSnapshot(
-	accounts []*ScoreAccount,
-	loadMap map[int64]*AccountLoadInfo,
+	providers []*ScoreProvider,
+	loadMap map[int64]*ProviderLoadInfo,
 	stats *RuntimeStats,
 	group *ScoreGroup,
 	weights policy.ScoreWeights,
 	stickyWeightedEnabled bool,
-	quotaHeadroomFactor func(*ScoreAccount, time.Time) float64,
+	quotaHeadroomFactor func(*ScoreProvider, time.Time) float64,
 	now time.Time,
 ) map[int64]ScoreSnapshot {
-	candidates, _ := ScoreCandidates(accounts, loadMap, stats, weights, ScoreInput{
+	candidates, _ := ScoreCandidates(providers, loadMap, stats, weights, ScoreInput{
 		QuotaHeadroomFactor: quotaHeadroomFactor,
 	}, now)
 	if len(candidates) == 0 {
@@ -702,20 +702,20 @@ func BuildScoreSnapshot(
 			StickyScoreInfinity:   !stickyWeightedEnabled,
 		}
 		if stickyWeightedEnabled {
-			// 上一响应的亲缘加分只适用于实际 OpenAI 账号。
-			platform := candidate.Account.Platform
+			// 上一响应的亲缘加分只适用于实际 OpenAI 提供商。
+			platform := candidate.Provider.Platform
 			score.StickyScore = candidate.Score + weights.SessionSticky
 			if platform == capability.PlatformOpenAI {
 				score.StickyScore += weights.Previous
 			}
 		}
-		result[candidate.Account.ID] = score
+		result[candidate.Provider.ID] = score
 	}
 	return result
 }
 
-// ScoreAccount 只包含评分使用的值，不携带凭据、管理对象或动态设置。
-type ScoreAccount struct {
+// ScoreProvider 只包含评分使用的值，不携带凭据、管理对象或动态设置。
+type ScoreProvider struct {
 	// Name 和 ProjectionID 仅用于只读诊断关联，不参与评分。
 	Name             string
 	ProjectionID     uint64

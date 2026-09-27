@@ -90,9 +90,9 @@ func MarkOpsTimestamp(c *gin.Context, key telemetry.ContextKey) {
 	c.Request = c.Request.WithContext(ctx)
 }
 
-// MarkOpsAccountSlotAcquired 标记账号并发槽位成功获取的时间。
-func MarkOpsAccountSlotAcquired(c *gin.Context) {
-	MarkOpsTimestamp(c, telemetry.AccountSlotAcquiredAt)
+// MarkOpsProviderSlotAcquired 标记提供商并发槽位成功获取的时间。
+func MarkOpsProviderSlotAcquired(c *gin.Context) {
+	MarkOpsTimestamp(c, telemetry.ProviderSlotAcquiredAt)
 }
 
 // SetOpsUpstreamModel stores only the effective model slug for final Ops
@@ -107,7 +107,7 @@ func SetOpsUpstreamModel(c *gin.Context, model string) {
 }
 
 // ClearOpsUpstreamModel invalidates attempt-scoped model attribution before a
-// newly selected account starts credential resolution or upstream dispatch.
+// newly selected provider starts credential resolution or upstream dispatch.
 func ClearOpsUpstreamModel(c *gin.Context) {
 	if c == nil {
 		return
@@ -153,7 +153,7 @@ func OpsClientBusinessLimitedReason(c *gin.Context) string {
 // OpsStreamError 描述网关在「响应状态已固化为 200」之后（keepalive ping 或部分数据
 // 已 flush）就地以 SSE error 帧形式返回的错误。由于 HTTP 状态码停留在 200，
 // 而 ops_error_logger 以 status>=400 为采集触发条件，这类流内失败
-// （并发限流回退、Wait 后二次计费校验失败、流开始后才无可用账号等）本会在错误看板里
+// （并发限流回退、Wait 后二次计费校验失败、流开始后才无可用提供商等）本会在错误看板里
 // 完全隐形。handler.handleStreamingAwareError 负责标记，ops_error_logger 中间件在
 // status<400 分支消费它并补记一条错误日志。
 type OpsStreamError struct {
@@ -174,7 +174,7 @@ type OpsStreamError struct {
 	Turn int
 	// SkipMonitoring snapshots the rule decision for this visible failure.
 	SkipMonitoring  bool
-	AccountID       int64
+	ProviderID      int64
 	UpstreamModel   string
 	UpstreamStatus  int
 	UpstreamMessage string
@@ -259,8 +259,8 @@ func snapshotOpsStreamErrorContext(c *gin.Context, streamErr *OpsStreamError) {
 		return
 	}
 	if c.Request != nil {
-		if accountID, ok := c.Request.Context().Value(telemetry.AccountID).(int64); ok && accountID > 0 {
-			streamErr.AccountID = accountID
+		if providerID, ok := c.Request.Context().Value(telemetry.ProviderID).(int64); ok && providerID > 0 {
+			streamErr.ProviderID = providerID
 		}
 	}
 	if value, ok := c.Get(OpsUpstreamModelKey); ok {

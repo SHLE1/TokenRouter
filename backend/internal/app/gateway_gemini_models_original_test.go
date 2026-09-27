@@ -8,10 +8,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/gemini"
 	"github.com/gin-gonic/gin"
@@ -21,7 +21,7 @@ import (
 // Gemini 原生目录与普通模型目录共用真实候选；自定义列表和 Key 别名只能取其交集。
 func TestGeminiV1BetaListUsesMixedGroupCapabilitiesAndAliases(t *testing.T) {
 	groupID := int64(42)
-	source := &gatewayModelsAccountRepoStub{byGroup: map[int64][]account.Record{groupID: {
+	source := &gatewayModelsProviderRepoStub{byGroup: map[int64][]provider.Record{groupID: {
 		{ID: 1, Platform: "gemini", Type: "apikey", Credentials: map[string]any{"model_whitelist": []string{"gemini-2.5-pro", "gemini-custom", "gemini-2.5-flash"}}},
 		{ID: 2, Platform: "anthropic", Type: "apikey", Credentials: map[string]any{"model_whitelist": []string{"claude-sonnet-4-6"}}},
 	}}}
@@ -55,7 +55,7 @@ func TestGeminiV1BetaListUsesMixedGroupCapabilitiesAndAliases(t *testing.T) {
 	}
 }
 
-func TestGeminiV1BetaCustomListCannotInventAccounts(t *testing.T) {
+func TestGeminiV1BetaCustomListCannotInventProviders(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodGet, "/v1beta/models", nil)
@@ -67,7 +67,7 @@ func TestGeminiV1BetaCustomListCannotInventAccounts(t *testing.T) {
 
 func TestGeminiV1BetaForcedAntigravityKeepsGroupRestrictions(t *testing.T) {
 	groupID := int64(43)
-	source := &gatewayModelsAccountRepoStub{byGroup: map[int64][]account.Record{groupID: {
+	source := &gatewayModelsProviderRepoStub{byGroup: map[int64][]provider.Record{groupID: {
 		{ID: 1, Platform: "antigravity", Type: "oauth", Credentials: map[string]any{"model_whitelist": []string{"gemini-3-flash"}}},
 		{ID: 2, Platform: "gemini", Type: "apikey", Credentials: map[string]any{"model_whitelist": []string{"gemini-2.5-pro"}}},
 	}}}

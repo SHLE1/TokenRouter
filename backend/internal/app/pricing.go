@@ -10,7 +10,7 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway/media"
 
-	"github.com/TokenFlux/TokenRouter/internal/billing/provider"
+	billingadapter "github.com/TokenFlux/TokenRouter/internal/billing/provider"
 	"github.com/TokenFlux/TokenRouter/internal/config"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/modelidentity"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/timezone"
@@ -20,7 +20,9 @@ import (
 )
 
 // pricingCatalog 将目录服务限制为 billing 所需的只读/维护接口。
-type pricingCatalog struct{ source *provider.PricingService }
+type pricingCatalog struct {
+	source *billingadapter.PricingService
+}
 
 func (c pricingCatalog) GetModelPricing(model string) *billing.LiteLLMModelPricing {
 	return c.source.GetModelPricing(model)
@@ -34,8 +36,8 @@ func (c pricingCatalog) GetModelModalities(model string) ([]string, []string) {
 
 // providePricingService 从同一份 bootstrap 配置投影技术参数，构造期间不启动任务。
 // 初始化、周期更新和停止继续由既有 PricingInitialization/PricingService hook 唯一管理。
-func providePricingService(cfg *config.Config, remote provider.PricingRemoteClient) (*provider.PricingService, error) {
-	options := provider.Options{
+func providePricingService(cfg *config.Config, remote billingadapter.PricingRemoteClient) (*billingadapter.PricingService, error) {
+	options := billingadapter.Options{
 		DataDir:                  cfg.Pricing.DataDir,
 		RemoteURL:                cfg.Pricing.RemoteURL,
 		HashURL:                  cfg.Pricing.HashURL,
@@ -51,17 +53,17 @@ func providePricingService(cfg *config.Config, remote provider.PricingRemoteClie
 		ModelLookupCandidates:    modelidentity.CandidatesFactory,
 		IsImageModel:             media.IsImageGenerationModel,
 	}
-	return provider.NewPricingService(options, remote), nil
+	return billingadapter.NewPricingService(options, remote), nil
 }
 
 // provideBillingCalculator 用显式配置投影构造唯一计费实例。
-func provideBillingCalculator(cfg *config.Config, catalog *provider.PricingService, calendar timezone.Calendar) *billing.Calculator {
-	warnings := &provider.PricingWarnings{}
-	return billing.NewCalculator(pricingCatalog{source: catalog}, billing.CalculatorOptions{DefaultRateMultiplier: cfg.Default.RateMultiplier, ModelPolicy: modelidentity.PricingPolicy, Now: calendar.Now, LoadLocation: provider.LoadPricingLocation, FallbackWarning: warnings.Fallback})
+func provideBillingCalculator(cfg *config.Config, catalog *billingadapter.PricingService, calendar timezone.Calendar) *billing.Calculator {
+	warnings := &billingadapter.PricingWarnings{}
+	return billing.NewCalculator(pricingCatalog{source: catalog}, billing.CalculatorOptions{DefaultRateMultiplier: cfg.Default.RateMultiplier, ModelPolicy: modelidentity.PricingPolicy, Now: calendar.Now, LoadLocation: billingadapter.LoadPricingLocation, FallbackWarning: warnings.Fallback})
 }
 
 func provideBillingPriceResolver(modelConfigs *routing.PricingConfigService, calculator *billing.Calculator) *billing.PriceResolver {
 	return billing.NewPriceResolver(modelConfigs, calculator, modelidentity.Identity, func(model string, err error) {
 		slog.DebugContext(context.Background(), "failed to get model pricing from LiteLLM, using fallback", "model", model, "error", err)
-	}, gatewayprovider.AccountStatsSource{Service: modelConfigs})
+	}, gatewayprovider.ProviderStatsSource{Service: modelConfigs})
 }

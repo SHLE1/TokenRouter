@@ -1,4 +1,4 @@
-// 任务公共值与供应商结果契约不携带账号凭据或旧服务实体。
+// 任务公共值与供应商结果契约不携带提供商凭据或旧服务实体。
 package batchimage
 
 import (
@@ -76,7 +76,7 @@ type BatchImageSubmitRequest struct {
 	Model            string                 `json:"model"`
 	TaskName         string                 `json:"task_name"`
 	ParentBatchID    string                 `json:"parent_batch_id"`
-	Provider         string                 `json:"provider"`
+	Platform         string                 `json:"platform"`
 	Items            []BatchImageSubmitItem `json:"items"`
 	ResponseMimeType string                 `json:"response_mime_type"`
 	AspectRatio      string                 `json:"aspect_ratio"`
@@ -121,7 +121,7 @@ type BatchImagePricingSnapshot struct {
 	SubscriptionRateMultiplier float64
 	BalanceRateMultiplier      float64
 	PlanGroupRateEnabled       bool
-	AccountRateMultiplier      float64
+	ProviderRateMultiplier     float64
 	BatchDiscountMultiplier    float64
 	HoldMultiplier             float64
 	BillableUnitPrice          float64
@@ -136,7 +136,7 @@ type BatchImagePublicBatch struct {
 	ParentBatchID   *string  `json:"parent_batch_id,omitempty"`
 	Status          string   `json:"status"`
 	Model           string   `json:"model"`
-	Provider        string   `json:"provider"`
+	Platform        string   `json:"platform"`
 	ItemCount       int      `json:"item_count"`
 	SuccessCount    int      `json:"success_count"`
 	FailCount       int      `json:"fail_count"`
@@ -176,7 +176,7 @@ type BatchImagePublicListResponse struct {
 type BatchImagePublicModel struct {
 	ID       string `json:"id"`
 	Object   string `json:"object"`
-	Provider string `json:"provider"`
+	Platform string `json:"platform"`
 }
 type BatchImagePublicModelsResponse struct {
 	Object string                  `json:"object"`

@@ -20,6 +20,7 @@ type RiskDelivery struct {
 func NewRiskDelivery(mail *Mailer) *RiskDelivery {
 	return &RiskDelivery{emailService: mail, settingRepo: mail.settingRepo}
 }
+
 func (s *RiskDelivery) SendViolationEmail(ctx context.Context, cfg *contract.RiskPolicy, log *contract.RiskLog) error {
 	siteName := s.siteName(ctx)
 	if s.emailService.notificationEmailService != nil {
@@ -44,6 +45,7 @@ func (s *RiskDelivery) SendViolationEmail(ctx context.Context, cfg *contract.Ris
 	body := BuildContentModerationViolationEmailBody(siteName, log, cfg)
 	return s.emailService.SendEmail(ctx, log.UserEmail, subject, body)
 }
+
 func (s *RiskDelivery) SendAccountDisabledEmail(ctx context.Context, cfg *contract.RiskPolicy, log *contract.RiskLog) error {
 	siteName := s.siteName(ctx)
 	if s.emailService.notificationEmailService != nil {
@@ -68,6 +70,7 @@ func (s *RiskDelivery) SendAccountDisabledEmail(ctx context.Context, cfg *contra
 	body := BuildContentModerationAccountDisabledEmailBody(siteName, log, cfg)
 	return s.emailService.SendEmail(ctx, log.UserEmail, subject, body)
 }
+
 func (s *RiskDelivery) SendCyberAccountDisabledEmail(ctx context.Context, cfg *contract.RiskPolicy, warning *contract.RiskWarning) error {
 	siteName := s.siteName(ctx)
 	if s.emailService.notificationEmailService != nil {
@@ -92,18 +95,21 @@ func (s *RiskDelivery) SendCyberAccountDisabledEmail(ctx context.Context, cfg *c
 	body := BuildContentModerationCyberAccountDisabledEmailBody(siteName, warning, cfg)
 	return s.emailService.SendEmail(ctx, warning.UserEmail, subject, body)
 }
+
 func contentModerationEmailUserID(log *contract.RiskLog) int64 {
 	if log == nil || log.UserID == nil {
 		return 0
 	}
 	return *log.UserID
 }
+
 func contentModerationEmailSourceID(log *contract.RiskLog) string {
 	if log == nil || log.ID <= 0 {
 		return ""
 	}
 	return fmt.Sprintf("%d", log.ID)
 }
+
 func contentModerationEmailVariables(log *contract.RiskLog, cfg *contract.RiskPolicy) map[string]string {
 	variables := map[string]string{
 		"triggered_at":        time.Now().UTC().Format(time.RFC3339),
@@ -131,18 +137,21 @@ func contentModerationEmailVariables(log *contract.RiskLog, cfg *contract.RiskPo
 	}
 	return variables
 }
+
 func contentModerationCyberEmailUserID(warning *contract.RiskWarning) int64 {
 	if warning == nil || warning.UserID == nil {
 		return 0
 	}
 	return *warning.UserID
 }
+
 func contentModerationCyberEmailSourceID(warning *contract.RiskWarning) string {
 	if warning == nil || warning.ID <= 0 {
 		return ""
 	}
 	return fmt.Sprintf("%d", warning.ID)
 }
+
 func contentModerationCyberEmailVariables(warning *contract.RiskWarning, cfg *contract.RiskPolicy) map[string]string {
 	variables := map[string]string{
 		"triggered_at":        time.Now().UTC().Format(time.RFC3339),
@@ -165,6 +174,7 @@ func contentModerationCyberEmailVariables(warning *contract.RiskWarning, cfg *co
 	}
 	return variables
 }
+
 func (s *RiskDelivery) siteName(ctx context.Context) string {
 	if s == nil || s.settingRepo == nil {
 		return "Sub2API"
@@ -175,6 +185,7 @@ func (s *RiskDelivery) siteName(ctx context.Context) string {
 	}
 	return strings.TrimSpace(name)
 }
+
 func BuildContentModerationViolationEmailBody(siteName string, log *contract.RiskLog, cfg *contract.RiskPolicy) string {
 	if log == nil {
 		return ""
@@ -227,6 +238,7 @@ func BuildContentModerationViolationEmailBody(siteName string, log *contract.Ris
 		html.EscapeString(siteName),
 	)
 }
+
 func BuildContentModerationAccountDisabledEmailBody(siteName string, log *contract.RiskLog, cfg *contract.RiskPolicy) string {
 	if log == nil {
 		return ""
@@ -275,6 +287,7 @@ func BuildContentModerationAccountDisabledEmailBody(siteName string, log *contra
 		html.EscapeString(siteName),
 	)
 }
+
 func BuildContentModerationCyberAccountDisabledEmailBody(siteName string, warning *contract.RiskWarning, cfg *contract.RiskPolicy) string {
 	if warning == nil {
 		return ""
@@ -302,7 +315,7 @@ func BuildContentModerationCyberAccountDisabledEmailBody(siteName string, warnin
           <tr><td style="padding:12px 0;color:#888;border-bottom:1px solid #fee2e2;">封禁时间</td><td style="padding:12px 0;border-bottom:1px solid #fee2e2;">%s</td></tr>
           <tr><td style="padding:12px 0;color:#888;border-bottom:1px solid #fee2e2;">触发来源</td><td style="padding:12px 0;border-bottom:1px solid #fee2e2;">OpenAI cyber 风控</td></tr>
           <tr><td style="padding:12px 0;color:#888;border-bottom:1px solid #fee2e2;">所属分组</td><td style="padding:12px 0;border-bottom:1px solid #fee2e2;">%s</td></tr>
-          <tr><td style="padding:12px 0;color:#888;border-bottom:1px solid #fee2e2;">上游账号</td><td style="padding:12px 0;border-bottom:1px solid #fee2e2;">%s</td></tr>
+          <tr><td style="padding:12px 0;color:#888;border-bottom:1px solid #fee2e2;">上游提供商</td><td style="padding:12px 0;border-bottom:1px solid #fee2e2;">%s</td></tr>
           <tr><td style="padding:12px 0;color:#888;">累计触发次数</td><td style="padding:12px 0;color:#dc2626;font-weight:700;">%d 次（阈值 %d）</td></tr>
         </table>
       </div>
@@ -316,12 +329,13 @@ func BuildContentModerationCyberAccountDisabledEmailBody(siteName string, warnin
 		html.EscapeString(userName),
 		html.EscapeString(time.Now().Format("2006-01-02 15:04:05")),
 		html.EscapeString(defaultContentModerationString(warning.GroupName, "-")),
-		html.EscapeString(defaultContentModerationString(warning.AccountName, "-")),
+		html.EscapeString(defaultContentModerationString(warning.ProviderName, "-")),
 		warning.ViolationCount,
 		threshold,
 		html.EscapeString(siteName),
 	)
 }
+
 func defaultContentModerationString(value string, fallback string) string {
 	if strings.TrimSpace(value) == "" {
 		return fallback
@@ -329,5 +343,7 @@ func defaultContentModerationString(value string, fallback string) string {
 	return strings.TrimSpace(value)
 }
 
-const defaultContentModerationBanThreshold = 10
-const defaultContentModerationCyberBanThreshold = 10
+const (
+	defaultContentModerationBanThreshold      = 10
+	defaultContentModerationCyberBanThreshold = 10
+)

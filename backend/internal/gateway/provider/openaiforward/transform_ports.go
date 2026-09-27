@@ -1,4 +1,4 @@
-// TransformPorts 注入动态策略与账号侧身份投影；参数中的 map 仅承载 wire JSON。
+// TransformPorts 注入动态策略与提供商侧身份投影；参数中的 map 仅承载 wire JSON。
 package openaiforward
 
 import (
@@ -37,7 +37,7 @@ type TransformPorts interface {
 	EnsureCodexOAuthInstructionsField(body map[string]any)
 	ToolNameReverse(mapping map[string]string)
 	ClientMetadata(body map[string]any) bool
-	AccountIdentity(body map[string]any) bool
+	ProviderIdentity(body map[string]any) bool
 	ClearFingerprint()
 	Fingerprint(ctx context.Context, body map[string]any) (*openai.FingerprintIDs, bool, error)
 	FastDecision(ctx context.Context, model, tier string, hasTier bool) FastDecision

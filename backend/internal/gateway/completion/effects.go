@@ -8,20 +8,20 @@ import (
 )
 
 type (
-	AccountActivity interface{ ScheduleLastUsedUpdate(int64) }
-	AuthInvalidator interface{ InvalidateAuthCacheByKey(context.Context, string) }
+	ProviderActivity interface{ ScheduleLastUsedUpdate(int64) }
+	AuthInvalidator  interface{ InvalidateAuthCacheByKey(context.Context, string) }
 )
 
 // CommitEffects 只安排已提交资金的缓存和通知，保留 billing 的唯一副作用顺序。
 type CommitEffects struct {
 	Funds         billing.SettlementEffects
-	Activity      AccountActivity
+	Activity      ProviderActivity
 	Auth          AuthInvalidator
 	Notifications *billing.BalanceNotifyService
 	Observe       func(string, string)
 }
 
-func (e *CommitEffects) AccountUsed(id int64) { e.Activity.ScheduleLastUsedUpdate(id) }
+func (e *CommitEffects) ProviderUsed(id int64) { e.Activity.ScheduleLastUsedUpdate(id) }
 func (e *CommitEffects) InvalidateAuth(ctx context.Context, key string) {
 	if e.Auth != nil {
 		e.Auth.InvalidateAuthCacheByKey(ctx, key)
@@ -30,9 +30,9 @@ func (e *CommitEffects) InvalidateAuth(ctx context.Context, key string) {
 
 func (e *CommitEffects) Settled(p SettlementInput, result *billing.UsageBillingApplyResult) {
 	effects := e.Funds
-	effects.AccountUsed = func() { e.AccountUsed(p.Account.ID) }
+	effects.ProviderUsed = func() { e.ProviderUsed(p.Provider.ID) }
 	effects.NotifyBalance = func() { e.NotifyBalance(p, result) }
-	effects.NotifyAccount = func() { e.NotifyAccount(p, result) }
+	effects.NotifyProvider = func() { e.NotifyProvider(p, result) }
 	in := billing.SettlementEffectInput{Cost: p.Cost, Result: result, HasUser: p.User != nil}
 	if p.User != nil {
 		in.UserID = p.User.ID
@@ -59,15 +59,15 @@ func (e *CommitEffects) NotifyBalance(p SettlementInput, result *billing.UsageBi
 	e.Notifications.CheckBalanceAfterDeduction(context.Background(), p.User.Notification, billing.BalanceBeforeSettlement(p.User.Balance, result), result.BalanceAmountUSD)
 }
 
-// NotifyAccount 保留账号通知的成本口径，优先使用事务返回额度状态。
-func (e *CommitEffects) NotifyAccount(p SettlementInput, result *billing.UsageBillingApplyResult) {
-	defer e.recoverNotification("notifyAccountQuota")
-	if p.Cost.TotalCost <= 0 || p.Account == nil || !p.Account.QuotaEligible || e.Notifications == nil {
+// NotifyProvider 保留提供商通知的成本口径，优先使用事务返回额度状态。
+func (e *CommitEffects) NotifyProvider(p SettlementInput, result *billing.UsageBillingApplyResult) {
+	defer e.recoverNotification("notifyProviderQuota")
+	if p.Cost.TotalCost <= 0 || p.Provider == nil || !p.Provider.QuotaEligible || e.Notifications == nil {
 		return
 	}
-	var state *billing.AccountQuotaState
+	var state *billing.ProviderQuotaState
 	if result != nil {
 		state = result.QuotaState
 	}
-	e.Notifications.CheckAccountQuotaAfterIncrement(context.Background(), p.Account.Notification, p.Cost.TotalCost*p.AccountRateMultiplier, state)
+	e.Notifications.CheckProviderQuotaAfterIncrement(context.Background(), p.Provider.Notification, p.Cost.TotalCost*p.ProviderRateMultiplier, state)
 }

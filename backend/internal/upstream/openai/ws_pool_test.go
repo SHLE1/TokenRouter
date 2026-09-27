@@ -16,27 +16,27 @@ import (
 
 func TestOpenAIWSConnPool_CleanupStaleAndTrimIdle(t *testing.T) {
 	cfg := &WSPoolOptions{}
-	cfg.MaxIdlePerAccount = 1
+	cfg.MaxIdlePerProvider = 1
 	pool := newStartedWSConnPoolForTest(cfg)
 
-	accountID := int64(10)
-	ap := pool.getOrCreateAccountPool(accountID)
+	providerID := int64(10)
+	ap := pool.getOrCreateProviderPool(providerID)
 
-	stale := NewWSConn("stale", accountID, nil, nil, nil, "")
+	stale := NewWSConn("stale", providerID, nil, nil, nil, "")
 	stale.createdAtNano.Store(time.Now().Add(-2 * time.Hour).UnixNano())
 	stale.lastUsedNano.Store(time.Now().Add(-2 * time.Hour).UnixNano())
 
-	idleOld := NewWSConn("idle_old", accountID, nil, nil, nil, "")
+	idleOld := NewWSConn("idle_old", providerID, nil, nil, nil, "")
 	idleOld.lastUsedNano.Store(time.Now().Add(-10 * time.Minute).UnixNano())
 
-	idleNew := NewWSConn("idle_new", accountID, nil, nil, nil, "")
+	idleNew := NewWSConn("idle_new", providerID, nil, nil, nil, "")
 	idleNew.lastUsedNano.Store(time.Now().Add(-1 * time.Minute).UnixNano())
 
 	ap.conns[stale.id] = stale
 	ap.conns[idleOld.id] = idleOld
 	ap.conns[idleNew.id] = idleNew
 
-	evicted := pool.cleanupAccountLocked(ap, time.Now(), pool.maxConnsHardCap())
+	evicted := pool.cleanupProviderLocked(ap, time.Now(), pool.maxConnsHardCap())
 	closeOpenAIWSConns(evicted)
 
 	require.Nil(t, ap.conns["stale"], "stale connection should be rotated")
@@ -120,12 +120,12 @@ func TestOpenAIWSConn_WriteJSONWithTimeout_NilParentContextUsesBackground(t *tes
 
 func TestOpenAIWSConnPool_TargetConnCountAdaptive(t *testing.T) {
 	cfg := &WSPoolOptions{}
-	cfg.MaxConnsPerAccount = 6
-	cfg.MinIdlePerAccount = 1
+	cfg.MaxConnsPerProvider = 6
+	cfg.MinIdlePerProvider = 1
 	cfg.PoolTargetUtilization = 0.5
 
 	pool := newStartedWSConnPoolForTest(cfg)
-	ap := pool.getOrCreateAccountPool(88)
+	ap := pool.getOrCreateProviderPool(88)
 
 	conn1 := NewWSConn("c1", 88, nil, nil, nil, "")
 	conn2 := NewWSConn("c2", 88, nil, nil, nil, "")
@@ -150,12 +150,12 @@ func TestOpenAIWSConnPool_TargetConnCountAdaptive(t *testing.T) {
 
 func TestOpenAIWSConnPool_TargetConnCountMinIdleZero(t *testing.T) {
 	cfg := &WSPoolOptions{}
-	cfg.MaxConnsPerAccount = 4
-	cfg.MinIdlePerAccount = 0
+	cfg.MaxConnsPerProvider = 4
+	cfg.MinIdlePerProvider = 0
 	cfg.PoolTargetUtilization = 0.8
 
 	pool := newStartedWSConnPoolForTest(cfg)
-	ap := pool.getOrCreateAccountPool(66)
+	ap := pool.getOrCreateProviderPool(66)
 
 	target := pool.targetConnCountLocked(ap, pool.maxConnsHardCap())
 	require.Equal(t, 0, target, "min_idle=0 且无负载时应允许缩容到 0")
@@ -163,28 +163,28 @@ func TestOpenAIWSConnPool_TargetConnCountMinIdleZero(t *testing.T) {
 
 func TestOpenAIWSConnPool_EnsureTargetIdleAsync(t *testing.T) {
 	cfg := &WSPoolOptions{}
-	cfg.MaxConnsPerAccount = 4
-	cfg.MinIdlePerAccount = 2
+	cfg.MaxConnsPerProvider = 4
+	cfg.MinIdlePerProvider = 2
 	cfg.PoolTargetUtilization = 0.8
 	cfg.DialTimeoutSeconds = 1
 
 	pool := newStartedWSConnPoolForTest(cfg)
 	pool.SetClientDialerForTest(&openAIWSFakeDialer{})
 
-	accountID := int64(77)
-	account := &WSPoolAccount{ID: accountID, Type: "apikey"}
-	ap := pool.getOrCreateAccountPool(accountID)
+	providerID := int64(77)
+	provider := &WSPoolProvider{ID: providerID, Type: "apikey"}
+	ap := pool.getOrCreateProviderPool(providerID)
 	ap.mu.Lock()
 	ap.lastAcquire = &WSAcquireRequest{
-		Account: account,
-		WSURL:   "wss://example.com/v1/responses",
+		Provider: provider,
+		WSURL:    "wss://example.com/v1/responses",
 	}
 	ap.mu.Unlock()
 
-	pool.ensureTargetIdleAsync(accountID)
+	pool.ensureTargetIdleAsync(providerID)
 
 	require.Eventually(t, func() bool {
-		ap, ok := pool.getAccountPool(accountID)
+		ap, ok := pool.getProviderPool(providerID)
 		if !ok || ap == nil {
 			return false
 		}
@@ -199,8 +199,8 @@ func TestOpenAIWSConnPool_EnsureTargetIdleAsync(t *testing.T) {
 
 func TestOpenAIWSConnPool_EnsureTargetIdleAsyncCooldown(t *testing.T) {
 	cfg := &WSPoolOptions{}
-	cfg.MaxConnsPerAccount = 4
-	cfg.MinIdlePerAccount = 2
+	cfg.MaxConnsPerProvider = 4
+	cfg.MinIdlePerProvider = 2
 	cfg.PoolTargetUtilization = 0.8
 	cfg.DialTimeoutSeconds = 1
 	cfg.PrewarmCooldownMS = 500
@@ -209,19 +209,19 @@ func TestOpenAIWSConnPool_EnsureTargetIdleAsyncCooldown(t *testing.T) {
 	dialer := &openAIWSCountingDialer{}
 	pool.SetClientDialerForTest(dialer)
 
-	accountID := int64(178)
-	account := &WSPoolAccount{ID: accountID, Type: "apikey"}
-	ap := pool.getOrCreateAccountPool(accountID)
+	providerID := int64(178)
+	provider := &WSPoolProvider{ID: providerID, Type: "apikey"}
+	ap := pool.getOrCreateProviderPool(providerID)
 	ap.mu.Lock()
 	ap.lastAcquire = &WSAcquireRequest{
-		Account: account,
-		WSURL:   "wss://example.com/v1/responses",
+		Provider: provider,
+		WSURL:    "wss://example.com/v1/responses",
 	}
 	ap.mu.Unlock()
 
-	pool.ensureTargetIdleAsync(accountID)
+	pool.ensureTargetIdleAsync(providerID)
 	require.Eventually(t, func() bool {
-		ap, ok := pool.getAccountPool(accountID)
+		ap, ok := pool.getProviderPool(providerID)
 		if !ok || ap == nil {
 			return false
 		}
@@ -233,7 +233,7 @@ func TestOpenAIWSConnPool_EnsureTargetIdleAsyncCooldown(t *testing.T) {
 	require.GreaterOrEqual(t, firstDialCount, 2)
 
 	// 人工制造缺口触发新一轮预热需求。
-	ap, ok := pool.getAccountPool(accountID)
+	ap, ok := pool.getProviderPool(providerID)
 	require.True(t, ok)
 	require.NotNil(t, ap)
 	ap.mu.Lock()
@@ -243,12 +243,12 @@ func TestOpenAIWSConnPool_EnsureTargetIdleAsyncCooldown(t *testing.T) {
 	}
 	ap.mu.Unlock()
 
-	pool.ensureTargetIdleAsync(accountID)
+	pool.ensureTargetIdleAsync(providerID)
 	time.Sleep(120 * time.Millisecond)
 	require.Equal(t, firstDialCount, dialer.DialCount(), "cooldown 窗口内不应再次触发预热")
 
 	time.Sleep(450 * time.Millisecond)
-	pool.ensureTargetIdleAsync(accountID)
+	pool.ensureTargetIdleAsync(providerID)
 	require.Eventually(t, func() bool {
 		return dialer.DialCount() > firstDialCount
 	}, 2*time.Second, 20*time.Millisecond)
@@ -256,8 +256,8 @@ func TestOpenAIWSConnPool_EnsureTargetIdleAsyncCooldown(t *testing.T) {
 
 func TestOpenAIWSConnPool_EnsureTargetIdleAsyncFailureSuppress(t *testing.T) {
 	cfg := &WSPoolOptions{}
-	cfg.MaxConnsPerAccount = 2
-	cfg.MinIdlePerAccount = 1
+	cfg.MaxConnsPerProvider = 2
+	cfg.MinIdlePerProvider = 1
 	cfg.PoolTargetUtilization = 0.8
 	cfg.DialTimeoutSeconds = 1
 	cfg.PrewarmCooldownMS = 0
@@ -266,19 +266,19 @@ func TestOpenAIWSConnPool_EnsureTargetIdleAsyncFailureSuppress(t *testing.T) {
 	dialer := &openAIWSAlwaysFailDialer{}
 	pool.SetClientDialerForTest(dialer)
 
-	accountID := int64(279)
-	account := &WSPoolAccount{ID: accountID, Type: "apikey"}
-	ap := pool.getOrCreateAccountPool(accountID)
+	providerID := int64(279)
+	provider := &WSPoolProvider{ID: providerID, Type: "apikey"}
+	ap := pool.getOrCreateProviderPool(providerID)
 	ap.mu.Lock()
 	ap.lastAcquire = &WSAcquireRequest{
-		Account: account,
-		WSURL:   "wss://example.com/v1/responses",
+		Provider: provider,
+		WSURL:    "wss://example.com/v1/responses",
 	}
 	ap.mu.Unlock()
 
-	pool.ensureTargetIdleAsync(accountID)
+	pool.ensureTargetIdleAsync(providerID)
 	require.Eventually(t, func() bool {
-		ap, ok := pool.getAccountPool(accountID)
+		ap, ok := pool.getProviderPool(providerID)
 		if !ok || ap == nil {
 			return false
 		}
@@ -287,9 +287,9 @@ func TestOpenAIWSConnPool_EnsureTargetIdleAsyncFailureSuppress(t *testing.T) {
 		return !ap.prewarmActive
 	}, 2*time.Second, 20*time.Millisecond)
 
-	pool.ensureTargetIdleAsync(accountID)
+	pool.ensureTargetIdleAsync(providerID)
 	require.Eventually(t, func() bool {
-		ap, ok := pool.getAccountPool(accountID)
+		ap, ok := pool.getProviderPool(providerID)
 		if !ok || ap == nil {
 			return false
 		}
@@ -300,29 +300,29 @@ func TestOpenAIWSConnPool_EnsureTargetIdleAsyncFailureSuppress(t *testing.T) {
 	require.Equal(t, 2, dialer.DialCount())
 
 	// 连续失败达到阈值后，新的预热触发应被抑制，不再继续拨号。
-	pool.ensureTargetIdleAsync(accountID)
+	pool.ensureTargetIdleAsync(providerID)
 	time.Sleep(120 * time.Millisecond)
 	require.Equal(t, 2, dialer.DialCount())
 }
 
 func TestOpenAIWSConnPool_AcquireQueueWaitMetrics(t *testing.T) {
 	cfg := &WSPoolOptions{}
-	cfg.MaxConnsPerAccount = 1
-	cfg.MinIdlePerAccount = 0
+	cfg.MaxConnsPerProvider = 1
+	cfg.MinIdlePerProvider = 0
 	cfg.QueueLimitPerConn = 4
 
 	pool := newStartedWSConnPoolForTest(cfg)
-	accountID := int64(99)
-	account := &WSPoolAccount{ID: accountID, Type: "apikey"}
-	conn := NewWSConn("busy", accountID, &openAIWSFakeConn{}, nil, nil, "")
+	providerID := int64(99)
+	provider := &WSPoolProvider{ID: providerID, Type: "apikey"}
+	conn := NewWSConn("busy", providerID, &openAIWSFakeConn{}, nil, nil, "")
 	require.True(t, conn.tryAcquire()) // 占用连接，触发后续排队
 
-	ap := pool.ensureAccountPoolLocked(accountID)
+	ap := pool.ensureProviderPoolLocked(providerID)
 	ap.mu.Lock()
 	ap.conns[conn.id] = conn
 	ap.lastAcquire = &WSAcquireRequest{
-		Account: account,
-		WSURL:   "wss://example.com/v1/responses",
+		Provider: provider,
+		WSURL:    "wss://example.com/v1/responses",
 	}
 	ap.mu.Unlock()
 
@@ -332,8 +332,8 @@ func TestOpenAIWSConnPool_AcquireQueueWaitMetrics(t *testing.T) {
 	}()
 
 	lease, err := pool.Acquire(context.Background(), WSAcquireRequest{
-		Account: account,
-		WSURL:   "wss://example.com/v1/responses",
+		Provider: provider,
+		WSURL:    "wss://example.com/v1/responses",
 	})
 	require.NoError(t, err)
 	require.NotNil(t, lease)
@@ -349,16 +349,16 @@ func TestOpenAIWSConnPool_AcquireQueueWaitMetrics(t *testing.T) {
 
 func TestOpenAIWSConnPool_DialSuccessWakesTopologyWaiterAndCanceledWaiterDoesNotLoseLease(t *testing.T) {
 	cfg := &WSPoolOptions{}
-	cfg.MaxConnsPerAccount = 1
-	cfg.MinIdlePerAccount = 0
-	cfg.MaxIdlePerAccount = 1
+	cfg.MaxConnsPerProvider = 1
+	cfg.MinIdlePerProvider = 0
+	cfg.MaxIdlePerProvider = 1
 	cfg.QueueLimitPerConn = 4
 
 	pool := newStartedWSConnPoolForTest(cfg)
 	dialer := newOpenAIWSFirstDialBlockingCaptureDialer()
 	pool.SetClientDialerForTest(dialer)
-	account := &WSPoolAccount{ID: 991, Type: "oauth"}
-	req := WSAcquireRequest{Account: account, WSURL: "wss://example.com/v1/responses"}
+	provider := &WSPoolProvider{ID: 991, Type: "oauth"}
+	req := WSAcquireRequest{Provider: provider, WSURL: "wss://example.com/v1/responses"}
 
 	type result struct {
 		lease *WSConnLease
@@ -385,10 +385,10 @@ func TestOpenAIWSConnPool_DialSuccessWakesTopologyWaiterAndCanceledWaiterDoesNot
 	require.NoError(t, first.err)
 	require.NotNil(t, first.lease)
 
-	// 第二次获取会在首次拨号期间等待账号拓扑变化；拨号成功后必须立即唤醒，
+	// 第二次获取会在首次拨号期间等待提供商拓扑变化；拨号成功后必须立即唤醒，
 	// 使其能排队等待新建但仍被占用的连接。
 	require.Eventually(t, func() bool {
-		ap, ok := pool.getAccountPool(account.ID)
+		ap, ok := pool.getProviderPool(provider.ID)
 		if !ok || ap == nil {
 			return false
 		}
@@ -406,7 +406,7 @@ func TestOpenAIWSConnPool_DialSuccessWakesTopologyWaiterAndCanceledWaiterDoesNot
 	second := <-secondCh
 	require.ErrorIs(t, second.err, context.Canceled)
 	require.Nil(t, second.lease)
-	ap, ok := pool.getAccountPool(account.ID)
+	ap, ok := pool.getProviderPool(provider.ID)
 	require.True(t, ok)
 	ap.mu.Lock()
 	require.NotNil(t, ap.lastAcquire)
@@ -423,38 +423,38 @@ func TestOpenAIWSConnPool_DialSuccessWakesTopologyWaiterAndCanceledWaiterDoesNot
 
 func TestOpenAIWSConnPool_PrewarmHintChangeDoesNotInvalidateHealthyDial(t *testing.T) {
 	cfg := &WSPoolOptions{}
-	cfg.MaxConnsPerAccount = 1
-	cfg.MinIdlePerAccount = 1
-	cfg.MaxIdlePerAccount = 1
+	cfg.MaxConnsPerProvider = 1
+	cfg.MinIdlePerProvider = 1
+	cfg.MaxIdlePerProvider = 1
 	cfg.DialTimeoutSeconds = 2
 
 	pool := newStartedWSConnPoolForTest(cfg)
 	dialer := newOpenAIWSFirstDialBlockingCaptureDialer()
 	pool.SetClientDialerForTest(dialer)
-	account := &WSPoolAccount{ID: 992, Type: "oauth"}
+	provider := &WSPoolProvider{ID: 992, Type: "oauth"}
 	oldHeaders := make(http.Header)
 	oldHeaders.Set(openAICodexRoutingHintHeader, "model=gpt-5.6-codex")
 	newHeaders := make(http.Header)
 	newHeaders.Set(openAICodexRoutingHintHeader, "model=gpt-5.6-codex;tier=priority")
-	ap := pool.getOrCreateAccountPool(account.ID)
+	ap := pool.getOrCreateProviderPool(provider.ID)
 	ap.mu.Lock()
 	ap.lastAcquire = &WSAcquireRequest{
-		Account: account,
-		WSURL:   "wss://example.com/v1/responses",
-		Headers: oldHeaders,
+		Provider: provider,
+		WSURL:    "wss://example.com/v1/responses",
+		Headers:  oldHeaders,
 	}
 	ap.mu.Unlock()
 
-	pool.ensureTargetIdleAsync(account.ID)
+	pool.ensureTargetIdleAsync(provider.ID)
 	<-dialer.firstStarted
 
 	// 模拟仅含模型的旧预热拨号期间出现新的 priority 目标；路由提示仅是软建议，
 	// 不应因此丢弃其他方面均兼容的连接。
 	ap.mu.Lock()
 	ap.lastAcquire = &WSAcquireRequest{
-		Account: account,
-		WSURL:   "wss://example.com/v1/responses",
-		Headers: newHeaders,
+		Provider: provider,
+		WSURL:    "wss://example.com/v1/responses",
+		Headers:  newHeaders,
 	}
 	ap.mu.Unlock()
 	close(dialer.releaseFirst)
@@ -473,17 +473,17 @@ func TestOpenAIWSConnPool_PrewarmHintChangeDoesNotInvalidateHealthyDial(t *testi
 	require.Equal(t, 1, dialer.DialCount(), "routing-hint-only changes must not turn advisory metadata into hard reconnects")
 }
 
-func TestOpenAIWSConnPool_ClearAccountWakesIncompatibleTopologyWaiter(t *testing.T) {
+func TestOpenAIWSConnPool_ClearProviderWakesIncompatibleTopologyWaiter(t *testing.T) {
 	cfg := &WSPoolOptions{}
-	cfg.MaxConnsPerAccount = 1
-	cfg.MinIdlePerAccount = 0
-	cfg.MaxIdlePerAccount = 1
+	cfg.MaxConnsPerProvider = 1
+	cfg.MinIdlePerProvider = 0
+	cfg.MaxIdlePerProvider = 1
 
 	pool := newStartedWSConnPoolForTest(cfg)
 	dialer := &openAIWSCountingDialer{}
 	pool.SetClientDialerForTest(dialer)
-	account := &WSPoolAccount{ID: 993, Type: "oauth"}
-	baseReq := WSAcquireRequest{Account: account, WSURL: "wss://example.com/v1/responses"}
+	provider := &WSPoolProvider{ID: 993, Type: "oauth"}
+	baseReq := WSAcquireRequest{Provider: provider, WSURL: "wss://example.com/v1/responses"}
 	betaAReq := baseReq
 	betaAReq.Headers = http.Header{"X-Codex-Beta-Features": {"feature_a"}}
 	betaBReq := baseReq
@@ -506,28 +506,28 @@ func TestOpenAIWSConnPool_ClearAccountWakesIncompatibleTopologyWaiter(t *testing
 	}()
 
 	require.Never(t, func() bool { return dialer.DialCount() > 1 }, 50*time.Millisecond, 5*time.Millisecond)
-	pool.ClearAccount(account.ID)
+	pool.ClearProvider(provider.ID)
 
 	resultB := <-resultCh
 	require.NoError(t, resultB.err)
 	require.NotNil(t, resultB.lease)
 	require.False(t, resultB.lease.Reused())
-	require.Equal(t, 2, dialer.DialCount(), "ClearAccount must wake the waiter to redial immediately")
+	require.Equal(t, 2, dialer.DialCount(), "ClearProvider must wake the waiter to redial immediately")
 	resultB.lease.Release()
 	busy.Release()
 }
 
-func TestOpenAIWSConnPool_ClearAccountDoesNotReviveInFlightDialGeneration(t *testing.T) {
+func TestOpenAIWSConnPool_ClearProviderDoesNotReviveInFlightDialGeneration(t *testing.T) {
 	cfg := &WSPoolOptions{}
-	cfg.MaxConnsPerAccount = 1
-	cfg.MinIdlePerAccount = 0
-	cfg.MaxIdlePerAccount = 1
+	cfg.MaxConnsPerProvider = 1
+	cfg.MinIdlePerProvider = 0
+	cfg.MaxIdlePerProvider = 1
 
 	pool := newStartedWSConnPoolForTest(cfg)
 	dialer := newOpenAIWSFirstDialBlockingCaptureDialer()
 	pool.SetClientDialerForTest(dialer)
-	account := &WSPoolAccount{ID: 994, Type: "oauth"}
-	req := WSAcquireRequest{Account: account, WSURL: "wss://example.com/v1/responses"}
+	provider := &WSPoolProvider{ID: 994, Type: "oauth"}
+	req := WSAcquireRequest{Provider: provider, WSURL: "wss://example.com/v1/responses"}
 
 	type result struct {
 		lease *WSConnLease
@@ -540,7 +540,7 @@ func TestOpenAIWSConnPool_ClearAccountDoesNotReviveInFlightDialGeneration(t *tes
 	}()
 	<-dialer.firstStarted
 
-	pool.ClearAccount(account.ID)
+	pool.ClearProvider(provider.ID)
 	close(dialer.releaseFirst)
 	got := <-resultCh
 	require.NoError(t, got.err)
@@ -548,7 +548,7 @@ func TestOpenAIWSConnPool_ClearAccountDoesNotReviveInFlightDialGeneration(t *tes
 	require.Equal(t, 2, dialer.DialCount(), "the pre-clear dial must be discarded and retried in the new generation")
 	require.True(t, strings.HasSuffix(got.lease.ConnID(), "_2"))
 
-	ap, ok := pool.getAccountPool(account.ID)
+	ap, ok := pool.getProviderPool(provider.ID)
 	require.True(t, ok)
 	ap.mu.Lock()
 	require.Equal(t, uint64(1), ap.generation)
@@ -560,26 +560,26 @@ func TestOpenAIWSConnPool_ClearAccountDoesNotReviveInFlightDialGeneration(t *tes
 
 func TestOpenAIWSConnPool_ForceNewConnSkipsReuse(t *testing.T) {
 	cfg := &WSPoolOptions{}
-	cfg.MaxConnsPerAccount = 2
-	cfg.MinIdlePerAccount = 0
-	cfg.MaxIdlePerAccount = 2
+	cfg.MaxConnsPerProvider = 2
+	cfg.MinIdlePerProvider = 0
+	cfg.MaxIdlePerProvider = 2
 
 	pool := newStartedWSConnPoolForTest(cfg)
 	dialer := &openAIWSCountingDialer{}
 	pool.SetClientDialerForTest(dialer)
 
-	account := &WSPoolAccount{ID: 123, Type: "apikey"}
+	provider := &WSPoolProvider{ID: 123, Type: "apikey"}
 
 	lease1, err := pool.Acquire(context.Background(), WSAcquireRequest{
-		Account: account,
-		WSURL:   "wss://example.com/v1/responses",
+		Provider: provider,
+		WSURL:    "wss://example.com/v1/responses",
 	})
 	require.NoError(t, err)
 	require.NotNil(t, lease1)
 	lease1.Release()
 
 	lease2, err := pool.Acquire(context.Background(), WSAcquireRequest{
-		Account:      account,
+		Provider:     provider,
 		WSURL:        "wss://example.com/v1/responses",
 		ForceNewConn: true,
 	})
@@ -592,8 +592,8 @@ func TestOpenAIWSConnPool_ForceNewConnSkipsReuse(t *testing.T) {
 
 func TestOpenAIWSConnPool_AcquirePassesTLSProfile(t *testing.T) {
 	cfg := &WSPoolOptions{}
-	cfg.MaxConnsPerAccount = 2
-	cfg.MinIdlePerAccount = 0
+	cfg.MaxConnsPerProvider = 2
+	cfg.MinIdlePerProvider = 0
 
 	pool := newStartedWSConnPoolForTest(cfg)
 	dialer := &openAIWSCountingDialer{}
@@ -601,7 +601,7 @@ func TestOpenAIWSConnPool_AcquirePassesTLSProfile(t *testing.T) {
 
 	profile := &tlsfingerprint.Profile{Name: "openai-oauth-tls"}
 	lease, err := pool.Acquire(context.Background(), WSAcquireRequest{
-		Account:    &WSPoolAccount{ID: 223, Type: "oauth"},
+		Provider:   &WSPoolProvider{ID: 223, Type: "oauth"},
 		WSURL:      "wss://example.com/v1/responses",
 		TLSProfile: profile,
 	})
@@ -614,17 +614,17 @@ func TestOpenAIWSConnPool_AcquirePassesTLSProfile(t *testing.T) {
 
 func TestOpenAIWSConnPool_ReusesPreferredConnWithStableRandomTLSProfileKey(t *testing.T) {
 	cfg := &WSPoolOptions{}
-	cfg.MaxConnsPerAccount = 2
-	cfg.MinIdlePerAccount = 0
-	cfg.MaxIdlePerAccount = 2
+	cfg.MaxConnsPerProvider = 2
+	cfg.MinIdlePerProvider = 0
+	cfg.MaxIdlePerProvider = 2
 
 	pool := newStartedWSConnPoolForTest(cfg)
 	dialer := &openAIWSCountingDialer{}
 	pool.SetClientDialerForTest(dialer)
 
-	account := &WSPoolAccount{ID: 224, Type: "oauth"}
+	provider := &WSPoolProvider{ID: 224, Type: "oauth"}
 	lease1, err := pool.Acquire(context.Background(), WSAcquireRequest{
-		Account:       account,
+		Provider:      provider,
 		WSURL:         "wss://example.com/v1/responses",
 		TLSProfile:    &tlsfingerprint.Profile{Name: "random-profile-a"},
 		TLSProfileKey: "tls-random",
@@ -634,7 +634,7 @@ func TestOpenAIWSConnPool_ReusesPreferredConnWithStableRandomTLSProfileKey(t *te
 	lease1.Release()
 
 	lease2, err := pool.Acquire(context.Background(), WSAcquireRequest{
-		Account:         account,
+		Provider:        provider,
 		WSURL:           "wss://example.com/v1/responses",
 		PreferredConnID: connID,
 		TLSProfile:      &tlsfingerprint.Profile{Name: "random-profile-b"},
@@ -650,18 +650,18 @@ func TestOpenAIWSConnPool_ReusesPreferredConnWithStableRandomTLSProfileKey(t *te
 // 下列用例验证 WS 握手 beta feature 的归一化、隔离、淘汰和等待行为。
 func TestOpenAIWSConnPool_AcquireReusesOnlyMatchingBetaFeatures(t *testing.T) {
 	cfg := &WSPoolOptions{}
-	cfg.MaxConnsPerAccount = 2
-	cfg.MinIdlePerAccount = 0
-	cfg.MaxIdlePerAccount = 2
+	cfg.MaxConnsPerProvider = 2
+	cfg.MinIdlePerProvider = 0
+	cfg.MaxIdlePerProvider = 2
 
 	pool := newStartedWSConnPoolForTest(cfg)
 	dialer := &openAIWSCountingDialer{}
 	pool.SetClientDialerForTest(dialer)
 
-	account := &WSPoolAccount{ID: 128, Type: "apikey"}
+	provider := &WSPoolProvider{ID: 128, Type: "apikey"}
 	baseReq := WSAcquireRequest{
-		Account: account,
-		WSURL:   "wss://example.com/v1/responses",
+		Provider: provider,
+		WSURL:    "wss://example.com/v1/responses",
 	}
 
 	plainLease, err := pool.Acquire(context.Background(), baseReq)
@@ -687,7 +687,7 @@ func TestOpenAIWSConnPool_AcquireReusesOnlyMatchingBetaFeatures(t *testing.T) {
 	reorderedLease.Release()
 
 	_, err = pool.Acquire(context.Background(), WSAcquireRequest{
-		Account:            account,
+		Provider:           provider,
 		WSURL:              baseReq.WSURL,
 		Headers:            betaReq.Headers,
 		PreferredConnID:    plainConnID,
@@ -706,27 +706,27 @@ func TestOpenAIWSConnPool_AcquireReusesOnlyMatchingBetaFeatures(t *testing.T) {
 
 func TestOpenAIWSConnPool_AcquireReplacesIdleConnWithDifferentBetaFeatures(t *testing.T) {
 	cfg := &WSPoolOptions{}
-	cfg.MaxConnsPerAccount = 1
-	cfg.MinIdlePerAccount = 0
-	cfg.MaxIdlePerAccount = 1
+	cfg.MaxConnsPerProvider = 1
+	cfg.MinIdlePerProvider = 0
+	cfg.MaxIdlePerProvider = 1
 
 	pool := newStartedWSConnPoolForTest(cfg)
 	dialer := &openAIWSCountingDialer{}
 	pool.SetClientDialerForTest(dialer)
 
-	account := &WSPoolAccount{ID: 129, Type: "apikey"}
+	provider := &WSPoolProvider{ID: 129, Type: "apikey"}
 	plainLease, err := pool.Acquire(context.Background(), WSAcquireRequest{
-		Account: account,
-		WSURL:   "wss://example.com/v1/responses",
+		Provider: provider,
+		WSURL:    "wss://example.com/v1/responses",
 	})
 	require.NoError(t, err)
 	plainConnID := plainLease.ConnID()
 	plainLease.Release()
 
 	betaLease, err := pool.Acquire(context.Background(), WSAcquireRequest{
-		Account: account,
-		WSURL:   "wss://example.com/v1/responses",
-		Headers: http.Header{"X-Codex-Beta-Features": {"remote_compaction_v2"}},
+		Provider: provider,
+		WSURL:    "wss://example.com/v1/responses",
+		Headers:  http.Header{"X-Codex-Beta-Features": {"remote_compaction_v2"}},
 	})
 	require.NoError(t, err)
 	require.False(t, betaLease.Reused())
@@ -739,18 +739,18 @@ func TestOpenAIWSConnPool_AcquireReplacesIdleConnWithDifferentBetaFeatures(t *te
 // 同一 beta 集合下仍必须保留 fork 的 TLS 指纹隔离，且空闲的不兼容连接应被替换。
 func TestOpenAIWSConnPool_AcquireReplacesIdleConnWithMatchingBetaButDifferentTLS(t *testing.T) {
 	cfg := &WSPoolOptions{}
-	cfg.MaxConnsPerAccount = 1
-	cfg.MinIdlePerAccount = 0
-	cfg.MaxIdlePerAccount = 1
+	cfg.MaxConnsPerProvider = 1
+	cfg.MinIdlePerProvider = 0
+	cfg.MaxIdlePerProvider = 1
 
 	pool := newStartedWSConnPoolForTest(cfg)
 	dialer := &openAIWSCountingDialer{}
 	pool.SetClientDialerForTest(dialer)
-	account := &WSPoolAccount{ID: 132, Type: "oauth"}
+	provider := &WSPoolProvider{ID: 132, Type: "oauth"}
 	headers := http.Header{"X-Codex-Beta-Features": {"remote_compaction_v2"}}
 
 	firstLease, err := pool.Acquire(context.Background(), WSAcquireRequest{
-		Account:    account,
+		Provider:   provider,
 		WSURL:      "wss://example.com/v1/responses",
 		Headers:    headers,
 		TLSProfile: &tlsfingerprint.Profile{Name: "tls-profile-a"},
@@ -762,7 +762,7 @@ func TestOpenAIWSConnPool_AcquireReplacesIdleConnWithMatchingBetaButDifferentTLS
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	secondLease, err := pool.Acquire(ctx, WSAcquireRequest{
-		Account:    account,
+		Provider:   provider,
 		WSURL:      "wss://example.com/v1/responses",
 		Headers:    headers,
 		TLSProfile: &tlsfingerprint.Profile{Name: "tls-profile-b"},
@@ -776,15 +776,15 @@ func TestOpenAIWSConnPool_AcquireReplacesIdleConnWithMatchingBetaButDifferentTLS
 
 func TestOpenAIWSConnPool_AcquireWaitsForBusyIncompatibleConnection(t *testing.T) {
 	cfg := &WSPoolOptions{}
-	cfg.MaxConnsPerAccount = 1
-	cfg.MinIdlePerAccount = 0
-	cfg.MaxIdlePerAccount = 1
+	cfg.MaxConnsPerProvider = 1
+	cfg.MinIdlePerProvider = 0
+	cfg.MaxIdlePerProvider = 1
 
 	pool := newStartedWSConnPoolForTest(cfg)
 	dialer := &openAIWSCountingDialer{}
 	pool.SetClientDialerForTest(dialer)
-	account := &WSPoolAccount{ID: 130, Type: "apikey"}
-	baseReq := WSAcquireRequest{Account: account, WSURL: "wss://example.com/v1/responses"}
+	provider := &WSPoolProvider{ID: 130, Type: "apikey"}
+	baseReq := WSAcquireRequest{Provider: provider, WSURL: "wss://example.com/v1/responses"}
 
 	plainLease, err := pool.Acquire(context.Background(), baseReq)
 	require.NoError(t, err)
@@ -820,15 +820,15 @@ func TestOpenAIWSConnPool_AcquireWaitsForBusyIncompatibleConnection(t *testing.T
 
 func TestOpenAIWSConnPool_AcquireReplacesIncompatibleIdleWhenMatchingBusy(t *testing.T) {
 	cfg := &WSPoolOptions{}
-	cfg.MaxConnsPerAccount = 2
-	cfg.MinIdlePerAccount = 0
-	cfg.MaxIdlePerAccount = 2
+	cfg.MaxConnsPerProvider = 2
+	cfg.MinIdlePerProvider = 0
+	cfg.MaxIdlePerProvider = 2
 
 	pool := newStartedWSConnPoolForTest(cfg)
 	dialer := &openAIWSCountingDialer{}
 	pool.SetClientDialerForTest(dialer)
-	account := &WSPoolAccount{ID: 131, Type: "apikey"}
-	baseReq := WSAcquireRequest{Account: account, WSURL: "wss://example.com/v1/responses"}
+	provider := &WSPoolProvider{ID: 131, Type: "apikey"}
+	baseReq := WSAcquireRequest{Provider: provider, WSURL: "wss://example.com/v1/responses"}
 
 	plainLease, err := pool.Acquire(context.Background(), baseReq)
 	require.NoError(t, err)
@@ -853,27 +853,27 @@ func TestOpenAIWSConnPool_AcquireReplacesIncompatibleIdleWhenMatchingBusy(t *tes
 
 func TestOpenAIWSConnPool_AcquireForcePreferredConnUnavailable(t *testing.T) {
 	cfg := &WSPoolOptions{}
-	cfg.MaxConnsPerAccount = 2
-	cfg.MinIdlePerAccount = 0
-	cfg.MaxIdlePerAccount = 2
+	cfg.MaxConnsPerProvider = 2
+	cfg.MinIdlePerProvider = 0
+	cfg.MaxIdlePerProvider = 2
 
 	pool := newStartedWSConnPoolForTest(cfg)
-	account := &WSPoolAccount{ID: 124, Type: "apikey"}
-	ap := pool.getOrCreateAccountPool(account.ID)
-	otherConn := NewWSConn("other_conn", account.ID, &openAIWSFakeConn{}, nil, nil, "")
+	provider := &WSPoolProvider{ID: 124, Type: "apikey"}
+	ap := pool.getOrCreateProviderPool(provider.ID)
+	otherConn := NewWSConn("other_conn", provider.ID, &openAIWSFakeConn{}, nil, nil, "")
 	ap.mu.Lock()
 	ap.conns[otherConn.id] = otherConn
 	ap.mu.Unlock()
 
 	_, err := pool.Acquire(context.Background(), WSAcquireRequest{
-		Account:            account,
+		Provider:           provider,
 		WSURL:              "wss://example.com/v1/responses",
 		ForcePreferredConn: true,
 	})
 	require.ErrorIs(t, err, ErrOpenAIWSPreferredConnUnavailable)
 
 	_, err = pool.Acquire(context.Background(), WSAcquireRequest{
-		Account:            account,
+		Provider:           provider,
 		WSURL:              "wss://example.com/v1/responses",
 		PreferredConnID:    "missing_conn",
 		ForcePreferredConn: true,
@@ -883,16 +883,16 @@ func TestOpenAIWSConnPool_AcquireForcePreferredConnUnavailable(t *testing.T) {
 
 func TestOpenAIWSConnPool_AcquireForcePreferredConnQueuesOnPreferredOnly(t *testing.T) {
 	cfg := &WSPoolOptions{}
-	cfg.MaxConnsPerAccount = 2
-	cfg.MinIdlePerAccount = 0
-	cfg.MaxIdlePerAccount = 2
+	cfg.MaxConnsPerProvider = 2
+	cfg.MinIdlePerProvider = 0
+	cfg.MaxIdlePerProvider = 2
 	cfg.QueueLimitPerConn = 4
 
 	pool := newStartedWSConnPoolForTest(cfg)
-	account := &WSPoolAccount{ID: 125, Type: "apikey"}
-	ap := pool.getOrCreateAccountPool(account.ID)
-	preferredConn := NewWSConn("preferred_conn", account.ID, &openAIWSFakeConn{}, nil, nil, "")
-	otherConn := NewWSConn("other_conn_idle", account.ID, &openAIWSFakeConn{}, nil, nil, "")
+	provider := &WSPoolProvider{ID: 125, Type: "apikey"}
+	ap := pool.getOrCreateProviderPool(provider.ID)
+	preferredConn := NewWSConn("preferred_conn", provider.ID, &openAIWSFakeConn{}, nil, nil, "")
+	otherConn := NewWSConn("other_conn_idle", provider.ID, &openAIWSFakeConn{}, nil, nil, "")
 	require.True(t, preferredConn.tryAcquire(), "先占用 preferred 连接，触发排队获取")
 	ap.mu.Lock()
 	ap.conns[preferredConn.id] = preferredConn
@@ -908,7 +908,7 @@ func TestOpenAIWSConnPool_AcquireForcePreferredConnQueuesOnPreferredOnly(t *test
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	lease, err := pool.Acquire(ctx, WSAcquireRequest{
-		Account:            account,
+		Provider:           provider,
 		WSURL:              "wss://example.com/v1/responses",
 		PreferredConnID:    preferredConn.id,
 		ForcePreferredConn: true,
@@ -924,16 +924,16 @@ func TestOpenAIWSConnPool_AcquireForcePreferredConnQueuesOnPreferredOnly(t *test
 
 func TestOpenAIWSConnPool_AcquireForcePreferredConnDirectAndQueueFull(t *testing.T) {
 	cfg := &WSPoolOptions{}
-	cfg.MaxConnsPerAccount = 2
-	cfg.MinIdlePerAccount = 0
-	cfg.MaxIdlePerAccount = 2
+	cfg.MaxConnsPerProvider = 2
+	cfg.MinIdlePerProvider = 0
+	cfg.MaxIdlePerProvider = 2
 	cfg.QueueLimitPerConn = 1
 
 	pool := newStartedWSConnPoolForTest(cfg)
-	account := &WSPoolAccount{ID: 127, Type: "apikey"}
-	ap := pool.getOrCreateAccountPool(account.ID)
-	preferredConn := NewWSConn("preferred_conn_direct", account.ID, &openAIWSFakeConn{}, nil, nil, "")
-	otherConn := NewWSConn("other_conn_direct", account.ID, &openAIWSFakeConn{}, nil, nil, "")
+	provider := &WSPoolProvider{ID: 127, Type: "apikey"}
+	ap := pool.getOrCreateProviderPool(provider.ID)
+	preferredConn := NewWSConn("preferred_conn_direct", provider.ID, &openAIWSFakeConn{}, nil, nil, "")
+	otherConn := NewWSConn("other_conn_direct", provider.ID, &openAIWSFakeConn{}, nil, nil, "")
 	ap.mu.Lock()
 	ap.conns[preferredConn.id] = preferredConn
 	ap.conns[otherConn.id] = otherConn
@@ -941,7 +941,7 @@ func TestOpenAIWSConnPool_AcquireForcePreferredConnDirectAndQueueFull(t *testing
 	ap.mu.Unlock()
 
 	lease, err := pool.Acquire(context.Background(), WSAcquireRequest{
-		Account:            account,
+		Provider:           provider,
 		WSURL:              "wss://example.com/v1/responses",
 		PreferredConnID:    preferredConn.id,
 		ForcePreferredConn: true,
@@ -953,7 +953,7 @@ func TestOpenAIWSConnPool_AcquireForcePreferredConnDirectAndQueueFull(t *testing
 	require.True(t, preferredConn.tryAcquire())
 	preferredConn.waiters.Store(1)
 	_, err = pool.Acquire(context.Background(), WSAcquireRequest{
-		Account:            account,
+		Provider:           provider,
 		WSURL:              "wss://example.com/v1/responses",
 		PreferredConnID:    preferredConn.id,
 		ForcePreferredConn: true,
@@ -965,21 +965,21 @@ func TestOpenAIWSConnPool_AcquireForcePreferredConnDirectAndQueueFull(t *testing
 
 func TestOpenAIWSConnPool_CleanupSkipsPinnedConn(t *testing.T) {
 	cfg := &WSPoolOptions{}
-	cfg.MaxConnsPerAccount = 2
-	cfg.MaxIdlePerAccount = 0
+	cfg.MaxConnsPerProvider = 2
+	cfg.MaxIdlePerProvider = 0
 
 	pool := newStartedWSConnPoolForTest(cfg)
-	accountID := int64(126)
-	ap := pool.getOrCreateAccountPool(accountID)
-	pinnedConn := NewWSConn("pinned_conn", accountID, &openAIWSFakeConn{}, nil, nil, "")
-	idleConn := NewWSConn("idle_conn", accountID, &openAIWSFakeConn{}, nil, nil, "")
+	providerID := int64(126)
+	ap := pool.getOrCreateProviderPool(providerID)
+	pinnedConn := NewWSConn("pinned_conn", providerID, &openAIWSFakeConn{}, nil, nil, "")
+	idleConn := NewWSConn("idle_conn", providerID, &openAIWSFakeConn{}, nil, nil, "")
 	ap.mu.Lock()
 	ap.conns[pinnedConn.id] = pinnedConn
 	ap.conns[idleConn.id] = idleConn
 	ap.mu.Unlock()
 
-	require.True(t, pool.PinConn(accountID, pinnedConn.id))
-	evicted := pool.cleanupAccountLocked(ap, time.Now(), pool.maxConnsHardCap())
+	require.True(t, pool.PinConn(providerID, pinnedConn.id))
+	evicted := pool.cleanupProviderLocked(ap, time.Now(), pool.maxConnsHardCap())
 	closeOpenAIWSConns(evicted)
 
 	ap.mu.Lock()
@@ -989,8 +989,8 @@ func TestOpenAIWSConnPool_CleanupSkipsPinnedConn(t *testing.T) {
 	require.True(t, pinnedExists, "被 active ingress 绑定的连接不应被 cleanup 回收")
 	require.False(t, idleExists, "非绑定的空闲连接应被回收")
 
-	pool.UnpinConn(accountID, pinnedConn.id)
-	evicted = pool.cleanupAccountLocked(ap, time.Now(), pool.maxConnsHardCap())
+	pool.UnpinConn(providerID, pinnedConn.id)
+	evicted = pool.cleanupProviderLocked(ap, time.Now(), pool.maxConnsHardCap())
 	closeOpenAIWSConns(evicted)
 	ap.mu.Lock()
 	_, pinnedExists = ap.conns[pinnedConn.id]
@@ -1005,111 +1005,111 @@ func TestOpenAIWSConnPool_PinUnpinConnBranches(t *testing.T) {
 
 	cfg := &WSPoolOptions{}
 	pool := newStartedWSConnPoolForTest(cfg)
-	accountID := int64(128)
-	ap := &openAIWSAccountPool{
+	providerID := int64(128)
+	ap := &openAIWSProviderPool{
 		conns: map[string]*WSConn{},
 	}
-	pool.accounts.Store(accountID, ap)
+	pool.providers.Store(providerID, ap)
 
 	require.False(t, pool.PinConn(0, "x"))
 	require.False(t, pool.PinConn(999, "x"))
-	require.False(t, pool.PinConn(accountID, ""))
-	require.False(t, pool.PinConn(accountID, "missing"))
+	require.False(t, pool.PinConn(providerID, ""))
+	require.False(t, pool.PinConn(providerID, "missing"))
 
-	conn := NewWSConn("pin_refcount", accountID, &openAIWSFakeConn{}, nil, nil, "")
+	conn := NewWSConn("pin_refcount", providerID, &openAIWSFakeConn{}, nil, nil, "")
 	ap.mu.Lock()
 	ap.conns[conn.id] = conn
 	ap.mu.Unlock()
-	require.True(t, pool.PinConn(accountID, conn.id))
-	require.True(t, pool.PinConn(accountID, conn.id))
+	require.True(t, pool.PinConn(providerID, conn.id))
+	require.True(t, pool.PinConn(providerID, conn.id))
 
 	ap.mu.Lock()
 	require.Equal(t, 2, ap.pinnedConns[conn.id])
 	ap.mu.Unlock()
 
-	pool.UnpinConn(accountID, conn.id)
+	pool.UnpinConn(providerID, conn.id)
 	ap.mu.Lock()
 	require.Equal(t, 1, ap.pinnedConns[conn.id])
 	ap.mu.Unlock()
 
-	pool.UnpinConn(accountID, conn.id)
+	pool.UnpinConn(providerID, conn.id)
 	ap.mu.Lock()
 	_, exists := ap.pinnedConns[conn.id]
 	ap.mu.Unlock()
 	require.False(t, exists)
 
-	pool.UnpinConn(accountID, conn.id)
-	pool.UnpinConn(accountID, "")
+	pool.UnpinConn(providerID, conn.id)
+	pool.UnpinConn(providerID, "")
 	pool.UnpinConn(0, conn.id)
 	pool.UnpinConn(999, conn.id)
 }
 
-func TestOpenAIWSConnPool_EffectiveMaxConnsByAccount(t *testing.T) {
+func TestOpenAIWSConnPool_EffectiveMaxConnsByProvider(t *testing.T) {
 	cfg := &WSPoolOptions{}
-	cfg.MaxConnsPerAccount = 8
-	cfg.DynamicMaxConnsByAccountConcurrencyEnabled = true
+	cfg.MaxConnsPerProvider = 8
+	cfg.DynamicMaxConnsByProviderConcurrencyEnabled = true
 	cfg.OAuthMaxConnsFactor = 1.0
 	cfg.APIKeyMaxConnsFactor = 0.6
 
 	pool := newStartedWSConnPoolForTest(cfg)
 
-	oauthHigh := &WSPoolAccount{Type: "oauth", Concurrency: 10}
-	require.Equal(t, 8, pool.effectiveMaxConnsByAccount(oauthHigh), "应受全局硬上限约束")
+	oauthHigh := &WSPoolProvider{Type: "oauth", Concurrency: 10}
+	require.Equal(t, 8, pool.effectiveMaxConnsByProvider(oauthHigh), "应受全局硬上限约束")
 
-	oauthLow := &WSPoolAccount{Type: "oauth", Concurrency: 3}
-	require.Equal(t, 3, pool.effectiveMaxConnsByAccount(oauthLow))
+	oauthLow := &WSPoolProvider{Type: "oauth", Concurrency: 3}
+	require.Equal(t, 3, pool.effectiveMaxConnsByProvider(oauthLow))
 
-	apiKeyHigh := &WSPoolAccount{Type: "apikey", Concurrency: 10}
-	require.Equal(t, 6, pool.effectiveMaxConnsByAccount(apiKeyHigh), "API Key 应按系数缩放")
+	apiKeyHigh := &WSPoolProvider{Type: "apikey", Concurrency: 10}
+	require.Equal(t, 6, pool.effectiveMaxConnsByProvider(apiKeyHigh), "API Key 应按系数缩放")
 
-	apiKeyLow := &WSPoolAccount{Type: "apikey", Concurrency: 1}
-	require.Equal(t, 1, pool.effectiveMaxConnsByAccount(apiKeyLow), "最小值应保持为 1")
+	apiKeyLow := &WSPoolProvider{Type: "apikey", Concurrency: 1}
+	require.Equal(t, 1, pool.effectiveMaxConnsByProvider(apiKeyLow), "最小值应保持为 1")
 
-	unlimited := &WSPoolAccount{Type: "oauth", Concurrency: 0}
-	require.Equal(t, 8, pool.effectiveMaxConnsByAccount(unlimited), "无限并发应回退到全局硬上限")
+	unlimited := &WSPoolProvider{Type: "oauth", Concurrency: 0}
+	require.Equal(t, 8, pool.effectiveMaxConnsByProvider(unlimited), "无限并发应回退到全局硬上限")
 
-	require.Equal(t, 8, pool.effectiveMaxConnsByAccount(nil), "缺少账号上下文应回退到全局硬上限")
+	require.Equal(t, 8, pool.effectiveMaxConnsByProvider(nil), "缺少提供商上下文应回退到全局硬上限")
 }
 
 func TestOpenAIWSConnPool_EffectiveMaxConnsDisabledFallbackHardCap(t *testing.T) {
 	cfg := &WSPoolOptions{}
-	cfg.MaxConnsPerAccount = 8
-	cfg.DynamicMaxConnsByAccountConcurrencyEnabled = false
+	cfg.MaxConnsPerProvider = 8
+	cfg.DynamicMaxConnsByProviderConcurrencyEnabled = false
 	cfg.OAuthMaxConnsFactor = 1.0
 	cfg.APIKeyMaxConnsFactor = 1.0
 
 	pool := newStartedWSConnPoolForTest(cfg)
-	account := &WSPoolAccount{Type: "oauth", Concurrency: 2}
-	require.Equal(t, 8, pool.effectiveMaxConnsByAccount(account), "关闭动态模式后应保持旧行为")
+	provider := &WSPoolProvider{Type: "oauth", Concurrency: 2}
+	require.Equal(t, 8, pool.effectiveMaxConnsByProvider(provider), "关闭动态模式后应保持旧行为")
 }
 
-func TestOpenAIWSConnPool_EffectiveMaxConnsByAccount_ModeRouterV2RespectsHardCap(t *testing.T) {
+func TestOpenAIWSConnPool_EffectiveMaxConnsByProvider_ModeRouterV2RespectsHardCap(t *testing.T) {
 	cfg := &WSPoolOptions{}
 	cfg.ModeRouterV2Enabled = true
-	cfg.MaxConnsPerAccount = 8
-	cfg.DynamicMaxConnsByAccountConcurrencyEnabled = true
+	cfg.MaxConnsPerProvider = 8
+	cfg.DynamicMaxConnsByProviderConcurrencyEnabled = true
 	cfg.OAuthMaxConnsFactor = 0.3
 	cfg.APIKeyMaxConnsFactor = 0.6
 
 	pool := newStartedWSConnPoolForTest(cfg)
 
-	high := &WSPoolAccount{Type: "oauth", Concurrency: 20}
-	require.Equal(t, 8, pool.effectiveMaxConnsByAccount(high), "v2 路径也必须受连接池硬上限约束")
+	high := &WSPoolProvider{Type: "oauth", Concurrency: 20}
+	require.Equal(t, 8, pool.effectiveMaxConnsByProvider(high), "v2 路径也必须受连接池硬上限约束")
 
-	nonPositive := &WSPoolAccount{Type: "apikey", Concurrency: 0}
-	require.Equal(t, 0, pool.effectiveMaxConnsByAccount(nonPositive), "并发数<=0 时应不可调度")
+	nonPositive := &WSPoolProvider{Type: "apikey", Concurrency: 0}
+	require.Equal(t, 0, pool.effectiveMaxConnsByProvider(nonPositive), "并发数<=0 时应不可调度")
 }
 
 func TestOpenAIWSConnPool_AcquireRejectsWhenEffectiveMaxConnsIsZero(t *testing.T) {
 	cfg := &WSPoolOptions{}
 	cfg.ModeRouterV2Enabled = true
-	cfg.MaxConnsPerAccount = 8
+	cfg.MaxConnsPerProvider = 8
 	pool := newStartedWSConnPoolForTest(cfg)
 
-	account := &WSPoolAccount{ID: 901, Type: "oauth", Concurrency: 0}
+	provider := &WSPoolProvider{ID: 901, Type: "oauth", Concurrency: 0}
 	_, err := pool.Acquire(context.Background(), WSAcquireRequest{
-		Account: account,
-		WSURL:   "wss://example.com/v1/responses",
+		Provider: provider,
+		WSURL:    "wss://example.com/v1/responses",
 	})
 	require.ErrorIs(t, err, ErrOpenAIWSConnQueueFull)
 }
@@ -1185,12 +1185,12 @@ func TestOpenAIWSConn_ReadAndWriteCanProceedConcurrently(t *testing.T) {
 
 func TestOpenAIWSConnPool_BackgroundPingSweep_EvictsDeadIdleConn(t *testing.T) {
 	cfg := &WSPoolOptions{}
-	cfg.MaxConnsPerAccount = 2
+	cfg.MaxConnsPerProvider = 2
 	pool := newStartedWSConnPoolForTest(cfg)
 
-	accountID := int64(301)
-	ap := pool.getOrCreateAccountPool(accountID)
-	conn := NewWSConn("dead_idle", accountID, &openAIWSPingFailConn{}, nil, nil, "")
+	providerID := int64(301)
+	ap := pool.getOrCreateProviderPool(providerID)
+	conn := NewWSConn("dead_idle", providerID, &openAIWSPingFailConn{}, nil, nil, "")
 	ap.mu.Lock()
 	ap.conns[conn.id] = conn
 	ap.mu.Unlock()
@@ -1205,13 +1205,13 @@ func TestOpenAIWSConnPool_BackgroundPingSweep_EvictsDeadIdleConn(t *testing.T) {
 
 func TestOpenAIWSConnPool_BackgroundCleanupSweep_WithoutAcquire(t *testing.T) {
 	cfg := &WSPoolOptions{}
-	cfg.MaxConnsPerAccount = 2
-	cfg.MaxIdlePerAccount = 2
+	cfg.MaxConnsPerProvider = 2
+	cfg.MaxIdlePerProvider = 2
 	pool := newStartedWSConnPoolForTest(cfg)
 
-	accountID := int64(302)
-	ap := pool.getOrCreateAccountPool(accountID)
-	stale := NewWSConn("stale_bg", accountID, &openAIWSFakeConn{}, nil, nil, "")
+	providerID := int64(302)
+	ap := pool.getOrCreateProviderPool(providerID)
+	stale := NewWSConn("stale_bg", providerID, &openAIWSFakeConn{}, nil, nil, "")
 	stale.createdAtNano.Store(time.Now().Add(-2 * time.Hour).UnixNano())
 	stale.lastUsedNano.Store(time.Now().Add(-2 * time.Hour).UnixNano())
 	ap.mu.Lock()
@@ -1228,16 +1228,16 @@ func TestOpenAIWSConnPool_BackgroundCleanupSweep_WithoutAcquire(t *testing.T) {
 
 func TestOpenAIWSConnPool_RecyclesUnsupportedIdlePingConnection(t *testing.T) {
 	cfg := &WSPoolOptions{}
-	cfg.MaxConnsPerAccount = 2
-	cfg.MaxIdlePerAccount = 2
+	cfg.MaxConnsPerProvider = 2
+	cfg.MaxIdlePerProvider = 2
 	pool := &WSConnPool{cfg: cfg}
 
-	accountID := int64(303)
-	ap := &openAIWSAccountPool{conns: make(map[string]*WSConn)}
-	conn := NewWSConn("stale_unsupported_idle_ping", accountID, &openAIWSIdlePingUnsupportedConn{}, nil, nil, "")
+	providerID := int64(303)
+	ap := &openAIWSProviderPool{conns: make(map[string]*WSConn)}
+	conn := NewWSConn("stale_unsupported_idle_ping", providerID, &openAIWSIdlePingUnsupportedConn{}, nil, nil, "")
 	conn.lastUsedNano.Store(time.Now().Add(-openAIWSConnIdleRecycleAfter - time.Second).UnixNano())
 	ap.conns[conn.id] = conn
-	pool.accounts.Store(accountID, ap)
+	pool.providers.Store(providerID, ap)
 
 	pool.runBackgroundCleanupSweep(time.Now())
 
@@ -1297,57 +1297,57 @@ func TestOpenAIWSConnPool_BackgroundWorkerGuardBranches(t *testing.T) {
 
 func TestOpenAIWSConnPool_SnapshotIdleConnsForPing_SkipsInvalidEntries(t *testing.T) {
 	pool := &WSConnPool{}
-	pool.accounts.Store("invalid-key", &openAIWSAccountPool{})
-	pool.accounts.Store(int64(123), "invalid-value")
+	pool.providers.Store("invalid-key", &openAIWSProviderPool{})
+	pool.providers.Store(int64(123), "invalid-value")
 
-	accountID := int64(123)
-	ap := &openAIWSAccountPool{
+	providerID := int64(123)
+	ap := &openAIWSProviderPool{
 		conns: make(map[string]*WSConn),
 	}
 	ap.conns["nil_conn"] = nil
 
-	leased := NewWSConn("leased", accountID, &openAIWSFakeConn{}, nil, nil, "")
+	leased := NewWSConn("leased", providerID, &openAIWSFakeConn{}, nil, nil, "")
 	require.True(t, leased.tryAcquire())
 	ap.conns[leased.id] = leased
 
-	waiting := NewWSConn("waiting", accountID, &openAIWSFakeConn{}, nil, nil, "")
+	waiting := NewWSConn("waiting", providerID, &openAIWSFakeConn{}, nil, nil, "")
 	waiting.waiters.Store(1)
 	ap.conns[waiting.id] = waiting
 
-	idle := NewWSConn("idle", accountID, &openAIWSFakeConn{}, nil, nil, "")
+	idle := NewWSConn("idle", providerID, &openAIWSFakeConn{}, nil, nil, "")
 	ap.conns[idle.id] = idle
 
-	pool.accounts.Store(accountID, ap)
+	pool.providers.Store(providerID, ap)
 	candidates := pool.snapshotIdleConnsForPing()
 	require.Len(t, candidates, 1)
 	require.Equal(t, idle.id, candidates[0].conn.id)
 }
 
-func TestOpenAIWSConnPool_RunBackgroundCleanupSweep_SkipsInvalidAndUsesAccountCap(t *testing.T) {
+func TestOpenAIWSConnPool_RunBackgroundCleanupSweep_SkipsInvalidAndUsesProviderCap(t *testing.T) {
 	cfg := &WSPoolOptions{}
-	cfg.MaxConnsPerAccount = 4
-	cfg.DynamicMaxConnsByAccountConcurrencyEnabled = true
+	cfg.MaxConnsPerProvider = 4
+	cfg.DynamicMaxConnsByProviderConcurrencyEnabled = true
 
 	pool := &WSConnPool{cfg: cfg}
-	pool.accounts.Store("bad-key", "bad-value")
+	pool.providers.Store("bad-key", "bad-value")
 
-	accountID := int64(2026)
-	ap := &openAIWSAccountPool{
+	providerID := int64(2026)
+	ap := &openAIWSProviderPool{
 		conns: make(map[string]*WSConn),
 	}
 	ap.conns["nil_conn"] = nil
-	stale := NewWSConn("stale_bg_cleanup", accountID, &openAIWSFakeConn{}, nil, nil, "")
+	stale := NewWSConn("stale_bg_cleanup", providerID, &openAIWSFakeConn{}, nil, nil, "")
 	stale.createdAtNano.Store(time.Now().Add(-2 * time.Hour).UnixNano())
 	stale.lastUsedNano.Store(time.Now().Add(-2 * time.Hour).UnixNano())
 	ap.conns[stale.id] = stale
 	ap.lastAcquire = &WSAcquireRequest{
-		Account: &WSPoolAccount{
-			ID:          accountID,
+		Provider: &WSPoolProvider{
+			ID:          providerID,
 			Type:        "apikey",
 			Concurrency: 1,
 		},
 	}
-	pool.accounts.Store(accountID, ap)
+	pool.providers.Store(providerID, ap)
 
 	now := time.Now()
 	require.NotPanics(t, func() {
@@ -1452,16 +1452,16 @@ func TestOpenAIWSConnLease_ReadWriteHelpersAndConnStats(t *testing.T) {
 	require.ErrorIs(t, err, errOpenAIWSConnClosed)
 }
 
-func TestOpenAIWSConnPool_PickOldestIdleAndAccountPoolLoad(t *testing.T) {
+func TestOpenAIWSConnPool_PickOldestIdleAndProviderPoolLoad(t *testing.T) {
 	pool := &WSConnPool{}
-	accountID := int64(404)
-	ap := &openAIWSAccountPool{conns: map[string]*WSConn{}}
+	providerID := int64(404)
+	ap := &openAIWSProviderPool{conns: map[string]*WSConn{}}
 
-	idleOld := NewWSConn("idle_old", accountID, &openAIWSFakeConn{}, nil, nil, "")
+	idleOld := NewWSConn("idle_old", providerID, &openAIWSFakeConn{}, nil, nil, "")
 	idleOld.lastUsedNano.Store(time.Now().Add(-10 * time.Minute).UnixNano())
-	idleNew := NewWSConn("idle_new", accountID, &openAIWSFakeConn{}, nil, nil, "")
+	idleNew := NewWSConn("idle_new", providerID, &openAIWSFakeConn{}, nil, nil, "")
 	idleNew.lastUsedNano.Store(time.Now().Add(-1 * time.Minute).UnixNano())
-	leased := NewWSConn("leased", accountID, &openAIWSFakeConn{}, nil, nil, "")
+	leased := NewWSConn("leased", providerID, &openAIWSFakeConn{}, nil, nil, "")
 	require.True(t, leased.tryAcquire())
 	leased.waiters.Store(2)
 
@@ -1473,17 +1473,17 @@ func TestOpenAIWSConnPool_PickOldestIdleAndAccountPoolLoad(t *testing.T) {
 	require.NotNil(t, oldest)
 	require.Equal(t, idleOld.id, oldest.id)
 
-	inflight, waiters := accountPoolLoadLocked(ap)
+	inflight, waiters := providerPoolLoadLocked(ap)
 	require.Equal(t, 1, inflight)
 	require.Equal(t, 2, waiters)
 
-	pool.accounts.Store(accountID, ap)
-	loadInflight, loadWaiters, conns := pool.AccountPoolLoad(accountID)
+	pool.providers.Store(providerID, ap)
+	loadInflight, loadWaiters, conns := pool.ProviderPoolLoad(providerID)
 	require.Equal(t, 1, loadInflight)
 	require.Equal(t, 2, loadWaiters)
 	require.Equal(t, 3, conns)
 
-	zeroInflight, zeroWaiters, zeroConns := pool.AccountPoolLoad(0)
+	zeroInflight, zeroWaiters, zeroConns := pool.ProviderPoolLoad(0)
 	require.Equal(t, 0, zeroInflight)
 	require.Equal(t, 0, zeroWaiters)
 	require.Equal(t, 0, zeroConns)
@@ -1523,18 +1523,18 @@ func TestOpenAIWSConnPool_Close_ClosesOnlyIdleConnections(t *testing.T) {
 		workerStopCh: make(chan struct{}),
 	}
 
-	accountID := int64(606)
-	ap := &openAIWSAccountPool{
+	providerID := int64(606)
+	ap := &openAIWSProviderPool{
 		conns: map[string]*WSConn{},
 	}
-	idle := NewWSConn("idle_conn", accountID, &openAIWSFakeConn{}, nil, nil, "")
-	leased := NewWSConn("leased_conn", accountID, &openAIWSFakeConn{}, nil, nil, "")
+	idle := NewWSConn("idle_conn", providerID, &openAIWSFakeConn{}, nil, nil, "")
+	leased := NewWSConn("leased_conn", providerID, &openAIWSFakeConn{}, nil, nil, "")
 	require.True(t, leased.tryAcquire())
 
 	ap.conns[idle.id] = idle
 	ap.conns[leased.id] = leased
-	pool.accounts.Store(accountID, ap)
-	pool.accounts.Store("invalid-key", "invalid-value")
+	pool.providers.Store(providerID, ap)
+	pool.providers.Store("invalid-key", "invalid-value")
 
 	pool.Close()
 
@@ -1558,14 +1558,14 @@ func TestOpenAIWSConnPool_Close_ClosesOnlyIdleConnections(t *testing.T) {
 func TestOpenAIWSConnPool_RunBackgroundPingSweep_ConcurrencyLimit(t *testing.T) {
 	cfg := &WSPoolOptions{}
 	pool := newStartedWSConnPoolForTest(cfg)
-	accountID := int64(505)
-	ap := pool.getOrCreateAccountPool(accountID)
+	providerID := int64(505)
+	ap := pool.getOrCreateProviderPool(providerID)
 
 	var current atomic.Int32
 	var maxConcurrent atomic.Int32
 	release := make(chan struct{})
 	for i := 0; i < 25; i++ {
-		conn := NewWSConn(pool.nextConnID(accountID), accountID, &openAIWSPingBlockingConn{
+		conn := NewWSConn(pool.nextConnID(providerID), providerID, &openAIWSPingBlockingConn{
 			current:       &current,
 			maxConcurrent: &maxConcurrent,
 			release:       release,
@@ -1644,9 +1644,9 @@ func TestOpenAIWSConnPool_UtilityBranches(t *testing.T) {
 
 	require.Equal(t, 8, nilPool.maxConnsHardCap())
 	require.False(t, nilPool.dynamicMaxConnsEnabled())
-	require.Equal(t, 1.0, nilPool.maxConnsFactorByAccount(nil))
-	require.Equal(t, 0, nilPool.minIdlePerAccount())
-	require.Equal(t, 4, nilPool.maxIdlePerAccount())
+	require.Equal(t, 1.0, nilPool.maxConnsFactorByProvider(nil))
+	require.Equal(t, 0, nilPool.minIdlePerProvider())
+	require.Equal(t, 4, nilPool.maxIdlePerProvider())
 	require.Equal(t, 256, nilPool.queueLimitPerConn())
 	require.Equal(t, 0.7, nilPool.targetUtilization())
 	require.Equal(t, time.Duration(0), nilPool.prewarmCooldown())
@@ -1654,14 +1654,14 @@ func TestOpenAIWSConnPool_UtilityBranches(t *testing.T) {
 
 	// shouldSuppressPrewarmLocked 覆盖 3 条分支
 	now := time.Now()
-	apNilFail := &openAIWSAccountPool{prewarmFails: 1}
+	apNilFail := &openAIWSProviderPool{prewarmFails: 1}
 	require.False(t, pool.shouldSuppressPrewarmLocked(apNilFail, now))
-	apZeroTime := &openAIWSAccountPool{prewarmFails: 2}
+	apZeroTime := &openAIWSProviderPool{prewarmFails: 2}
 	require.False(t, pool.shouldSuppressPrewarmLocked(apZeroTime, now))
 	require.Equal(t, 0, apZeroTime.prewarmFails)
-	apOldFail := &openAIWSAccountPool{prewarmFails: 2, prewarmFailAt: now.Add(-openAIWSPrewarmFailureWindow - time.Second)}
+	apOldFail := &openAIWSProviderPool{prewarmFails: 2, prewarmFailAt: now.Add(-openAIWSPrewarmFailureWindow - time.Second)}
 	require.False(t, pool.shouldSuppressPrewarmLocked(apOldFail, now))
-	apRecentFail := &openAIWSAccountPool{prewarmFails: openAIWSPrewarmFailureSuppress, prewarmFailAt: now}
+	apRecentFail := &openAIWSProviderPool{prewarmFails: openAIWSPrewarmFailureSuppress, prewarmFailAt: now}
 	require.True(t, pool.shouldSuppressPrewarmLocked(apRecentFail, now))
 
 	// recordConnPickDuration 的保护分支
@@ -1669,18 +1669,18 @@ func TestOpenAIWSConnPool_UtilityBranches(t *testing.T) {
 	pool.recordConnPickDuration(-10 * time.Millisecond)
 	require.Equal(t, int64(1), pool.metrics.connPickTotal.Load())
 
-	// account pool 读写分支
-	require.Nil(t, nilPool.getOrCreateAccountPool(1))
-	require.Nil(t, pool.getOrCreateAccountPool(0))
-	pool.accounts.Store(int64(7), "invalid")
-	ap := pool.getOrCreateAccountPool(7)
+	// provider pool 读写分支
+	require.Nil(t, nilPool.getOrCreateProviderPool(1))
+	require.Nil(t, pool.getOrCreateProviderPool(0))
+	pool.providers.Store(int64(7), "invalid")
+	ap := pool.getOrCreateProviderPool(7)
 	require.NotNil(t, ap)
-	_, ok := pool.getAccountPool(0)
+	_, ok := pool.getProviderPool(0)
 	require.False(t, ok)
-	_, ok = pool.getAccountPool(12345)
+	_, ok = pool.getProviderPool(12345)
 	require.False(t, ok)
-	pool.accounts.Store(int64(8), "bad-type")
-	_, ok = pool.getAccountPool(8)
+	pool.providers.Store(int64(8), "bad-type")
+	_, ok = pool.getProviderPool(8)
 	require.False(t, ok)
 
 	// health check 条件
@@ -1755,18 +1755,18 @@ func TestOpenAIWSConnLease_ReleasedLeaseGuards(t *testing.T) {
 
 func TestOpenAIWSConnLease_MarkBrokenAfterRelease_NoEviction(t *testing.T) {
 	conn := NewWSConn("released_markbroken", 7, &openAIWSFakeConn{}, nil, nil, "")
-	ap := &openAIWSAccountPool{
+	ap := &openAIWSProviderPool{
 		conns: map[string]*WSConn{
 			conn.id: conn,
 		},
 	}
 	pool := &WSConnPool{}
-	pool.accounts.Store(int64(7), ap)
+	pool.providers.Store(int64(7), ap)
 
 	lease := &WSConnLease{
-		pool:      pool,
-		AccountID: 7,
-		Conn:      conn,
+		pool:       pool,
+		ProviderID: 7,
+		Conn:       conn,
 	}
 
 	lease.Release()
@@ -1853,17 +1853,17 @@ func TestOpenAIWSConnPool_CanceledWaiterReturnsDeliveredLease(t *testing.T) {
 
 func TestOpenAIWSConnLease_MarkBrokenEvictsConn(t *testing.T) {
 	pool := newStartedWSConnPoolForTest(&WSPoolOptions{})
-	accountID := int64(5001)
-	conn := NewWSConn("broken_me", accountID, &openAIWSFakeConn{}, nil, nil, "")
-	ap := pool.getOrCreateAccountPool(accountID)
+	providerID := int64(5001)
+	conn := NewWSConn("broken_me", providerID, &openAIWSFakeConn{}, nil, nil, "")
+	ap := pool.getOrCreateProviderPool(providerID)
 	ap.mu.Lock()
 	ap.conns[conn.id] = conn
 	ap.mu.Unlock()
 
 	lease := &WSConnLease{
-		pool:      pool,
-		AccountID: accountID,
-		Conn:      conn,
+		pool:       pool,
+		ProviderID: providerID,
+		Conn:       conn,
 	}
 	lease.MarkBroken()
 
@@ -1876,18 +1876,18 @@ func TestOpenAIWSConnLease_MarkBrokenEvictsConn(t *testing.T) {
 
 func TestOpenAIWSConnPool_TargetConnCountAndPrewarmBranches(t *testing.T) {
 	cfg := &WSPoolOptions{}
-	cfg.MaxConnsPerAccount = 1
+	cfg.MaxConnsPerProvider = 1
 	pool := newStartedWSConnPoolForTest(cfg)
 
 	require.Equal(t, 0, pool.targetConnCountLocked(nil, 1))
-	ap := &openAIWSAccountPool{conns: map[string]*WSConn{}}
+	ap := &openAIWSProviderPool{conns: map[string]*WSConn{}}
 	require.Equal(t, 0, pool.targetConnCountLocked(ap, 0))
 
-	cfg.MinIdlePerAccount = 3
+	cfg.MinIdlePerProvider = 3
 	require.Equal(t, 1, pool.targetConnCountLocked(ap, 1), "minIdle 应被 maxConns 截断")
 
 	// 覆盖 waiters>0 且 target 需要至少 len(conns)+1 的分支
-	cfg.MinIdlePerAccount = 0
+	cfg.MinIdlePerProvider = 0
 	cfg.PoolTargetUtilization = 0.9
 	busy := NewWSConn("busy_target", 2, &openAIWSFakeConn{}, nil, nil, "")
 	require.True(t, busy.tryAcquire())
@@ -1896,23 +1896,23 @@ func TestOpenAIWSConnPool_TargetConnCountAndPrewarmBranches(t *testing.T) {
 	target := pool.targetConnCountLocked(ap, 4)
 	require.GreaterOrEqual(t, target, len(ap.conns)+1)
 
-	// prewarm: account pool 缺失时，拨号后的连接应被关闭并提前返回
+	// prewarm: provider pool 缺失时，拨号后的连接应被关闭并提前返回
 	req := WSAcquireRequest{
-		Account: &WSPoolAccount{ID: 999, Type: "apikey"},
-		WSURL:   "wss://example.com/v1/responses",
+		Provider: &WSPoolProvider{ID: 999, Type: "apikey"},
+		WSURL:    "wss://example.com/v1/responses",
 	}
 	pool.prewarmConns(999, req, 1)
 
 	// prewarm: 拨号失败分支（prewarmFails 累加）
-	accountID := int64(1000)
+	providerID := int64(1000)
 	failPool := newStartedWSConnPoolForTest(cfg)
 	failPool.SetClientDialerForTest(&openAIWSAlwaysFailDialer{})
-	apFail := failPool.getOrCreateAccountPool(accountID)
+	apFail := failPool.getOrCreateProviderPool(providerID)
 	apFail.mu.Lock()
 	apFail.creating = 1
 	apFail.mu.Unlock()
-	req.Account.ID = accountID
-	failPool.prewarmConns(accountID, req, 1)
+	req.Provider.ID = providerID
+	failPool.prewarmConns(providerID, req, 1)
 	apFail.mu.Lock()
 	require.GreaterOrEqual(t, apFail.prewarmFails, 1)
 	apFail.mu.Unlock()
@@ -1925,33 +1925,33 @@ func TestOpenAIWSConnPool_Acquire_ErrorBranches(t *testing.T) {
 
 	pool := newStartedWSConnPoolForTest(&WSPoolOptions{})
 	_, err = pool.Acquire(context.Background(), WSAcquireRequest{
-		Account: &WSPoolAccount{ID: 1},
-		WSURL:   "   ",
+		Provider: &WSPoolProvider{ID: 1},
+		WSURL:    "   ",
 	})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "ws url is empty")
 
 	// target=nil 分支：池满且仅有 nil 连接
 	cfg := &WSPoolOptions{}
-	cfg.MaxConnsPerAccount = 1
+	cfg.MaxConnsPerProvider = 1
 	cfg.QueueLimitPerConn = 1
 	fullPool := newStartedWSConnPoolForTest(cfg)
-	account := &WSPoolAccount{ID: 2001, Type: "apikey"}
-	ap := fullPool.getOrCreateAccountPool(account.ID)
+	provider := &WSPoolProvider{ID: 2001, Type: "apikey"}
+	ap := fullPool.getOrCreateProviderPool(provider.ID)
 	ap.mu.Lock()
 	ap.conns["nil"] = nil
 	ap.lastCleanupAt = time.Now()
 	ap.mu.Unlock()
 	_, err = fullPool.Acquire(context.Background(), WSAcquireRequest{
-		Account: account,
-		WSURL:   "wss://example.com/v1/responses",
+		Provider: provider,
+		WSURL:    "wss://example.com/v1/responses",
 	})
 	require.ErrorIs(t, err, errOpenAIWSConnClosed)
 
 	// queue full 分支：waiters 达上限
-	account2 := &WSPoolAccount{ID: 2002, Type: "apikey"}
-	ap2 := fullPool.getOrCreateAccountPool(account2.ID)
-	conn := NewWSConn("queue_full", account2.ID, &openAIWSFakeConn{}, nil, nil, "")
+	provider2 := &WSPoolProvider{ID: 2002, Type: "apikey"}
+	ap2 := fullPool.getOrCreateProviderPool(provider2.ID)
+	conn := NewWSConn("queue_full", provider2.ID, &openAIWSFakeConn{}, nil, nil, "")
 	require.True(t, conn.tryAcquire())
 	conn.waiters.Store(1)
 	ap2.mu.Lock()
@@ -1959,8 +1959,8 @@ func TestOpenAIWSConnPool_Acquire_ErrorBranches(t *testing.T) {
 	ap2.lastCleanupAt = time.Now()
 	ap2.mu.Unlock()
 	_, err = fullPool.Acquire(context.Background(), WSAcquireRequest{
-		Account: account2,
-		WSURL:   "wss://example.com/v1/responses",
+		Provider: provider2,
+		WSURL:    "wss://example.com/v1/responses",
 	})
 	require.ErrorIs(t, err, ErrOpenAIWSConnQueueFull)
 }
@@ -2294,16 +2294,16 @@ func (d *openAIWSNilConnDialer) Dial(
 
 func TestOpenAIWSConnPool_DialConnNilConnection(t *testing.T) {
 	cfg := &WSPoolOptions{}
-	cfg.MaxConnsPerAccount = 2
+	cfg.MaxConnsPerProvider = 2
 	cfg.DialTimeoutSeconds = 1
 
 	pool := newStartedWSConnPoolForTest(cfg)
 	pool.SetClientDialerForTest(&openAIWSNilConnDialer{})
-	account := &WSPoolAccount{ID: 91, Type: "apikey"}
+	provider := &WSPoolProvider{ID: 91, Type: "apikey"}
 
 	_, err := pool.Acquire(context.Background(), WSAcquireRequest{
-		Account: account,
-		WSURL:   "wss://example.com/v1/responses",
+		Provider: provider,
+		WSURL:    "wss://example.com/v1/responses",
 	})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "nil connection")
@@ -2337,18 +2337,18 @@ func newStartedWSConnPoolForTest(options *WSPoolOptions) *WSConnPool {
 
 func TestOpenAIWSConnPoolHeadersFactoryRunsAtDialAndStalePrewarmIsDiscarded(t *testing.T) {
 	cfg := &WSPoolOptions{}
-	cfg.MaxConnsPerAccount = 1
+	cfg.MaxConnsPerProvider = 1
 	pool := newStartedWSConnPoolForTest(cfg)
 	defer pool.Close()
 	pool.SetClientDialerForTest(&openAIWSFakeDialer{})
 
-	accountID := int64(22)
-	ap := pool.getOrCreateAccountPool(accountID)
+	providerID := int64(22)
+	ap := pool.getOrCreateProviderPool(providerID)
 	factoryCalls := 0
 	latestHeader := ""
 	req := WSAcquireRequest{
-		Account: &WSPoolAccount{ID: accountID, Type: "oauth"},
-		WSURL:   "wss://example.com/v1/responses",
+		Provider: &WSPoolProvider{ID: providerID, Type: "oauth"},
+		WSURL:    "wss://example.com/v1/responses",
 		HeadersFactory: func(_ context.Context, headers http.Header) (http.Header, error) {
 			factoryCalls++
 			latestHeader = "AgentAssertion dial-" + string(rune('0'+factoryCalls))
@@ -2364,19 +2364,19 @@ func TestOpenAIWSConnPoolHeadersFactoryRunsAtDialAndStalePrewarmIsDiscarded(t *t
 	generation := ap.generation
 	ap.mu.Unlock()
 
-	pool.prewarmConns(accountID, req, 1, generation)
+	pool.prewarmConns(providerID, req, 1, generation)
 	require.Equal(t, 1, factoryCalls, "prewarm must generate authorization inside the actual dial")
 	require.Equal(t, "AgentAssertion dial-1", latestHeader)
 
-	pool.ClearAccount(accountID)
+	pool.ClearProvider(providerID)
 	ap.mu.Lock()
 	require.Empty(t, ap.conns, "credential recovery must remove pooled connections")
 	require.Nil(t, ap.lastAcquire, "credential recovery must discard delayed acquire state")
 	require.Equal(t, generation+1, ap.generation)
 	ap.mu.Unlock()
 
-	// ClearAccount 前捕获的预热连接不能在凭据恢复后重新进入连接池。
-	pool.prewarmConns(accountID, req, 1, generation)
+	// ClearProvider 前捕获的预热连接不能在凭据恢复后重新进入连接池。
+	pool.prewarmConns(providerID, req, 1, generation)
 	ap.mu.Lock()
 	require.Empty(t, ap.conns)
 	ap.mu.Unlock()

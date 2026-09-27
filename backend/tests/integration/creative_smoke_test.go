@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	creativeprovider "github.com/TokenFlux/TokenRouter/internal/creative/provider"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
@@ -61,7 +61,7 @@ func (r *smokeFakeRunRepo) CreateCreativeRun(ctx context.Context, params creativ
 		GroupID:              params.GroupID,
 		APIKeyID:             params.APIKeyID,
 		Model:                params.Model,
-		Provider:             params.Provider,
+		Platform:             params.Platform,
 		Operation:            params.Operation,
 		RequestedOutputCount: params.RequestedOutputCount,
 		ImageSize:            params.ImageSize,
@@ -121,7 +121,7 @@ func (r *smokeFakeRunRepo) TransitionCreativeRunStatus(ctx context.Context, runI
 	return nil
 }
 
-func (r *smokeFakeRunRepo) MarkCreativeRunRunning(ctx context.Context, runID string, accountID int64, now time.Time) error {
+func (r *smokeFakeRunRepo) MarkCreativeRunRunning(ctx context.Context, runID string, providerID int64, now time.Time) error {
 	run, ok := r.runs[runID]
 	if !ok {
 		return creative.ErrCreativeRunNotFound
@@ -133,21 +133,21 @@ func (r *smokeFakeRunRepo) MarkCreativeRunRunning(ctx context.Context, runID str
 		return creative.ErrCreativeInvalidTransition
 	}
 	run.Status = creative.CreativeRunStatusRunning
-	if accountID > 0 {
-		run.AccountID = &accountID
+	if providerID > 0 {
+		run.ProviderID = &providerID
 	}
 	run.StartedAt = &now
 	return nil
 }
 
-func (r *smokeFakeRunRepo) SetCreativeRunExecution(ctx context.Context, runID string, accountID int64, provider string, now time.Time) error {
+func (r *smokeFakeRunRepo) SetCreativeRunExecution(ctx context.Context, runID string, providerID int64, provider string, now time.Time) error {
 	run, ok := r.runs[runID]
 	if !ok {
 		return creative.ErrCreativeRunNotFound
 	}
-	if accountID > 0 {
-		run.AccountID = &accountID
-		run.Provider = provider
+	if providerID > 0 {
+		run.ProviderID = &providerID
+		run.Platform = provider
 	}
 	return nil
 }
@@ -253,13 +253,13 @@ func (r *smokeFakeRunRepo) SetCreativeRunProvisioningPhase(ctx context.Context, 
 	return nil
 }
 
-func (r *smokeFakeRunRepo) MarkCreativeRunProviderSucceeded(ctx context.Context, runID string, accountID int64, now time.Time) error {
+func (r *smokeFakeRunRepo) MarkCreativeRunProviderSucceeded(ctx context.Context, runID string, providerID int64, now time.Time) error {
 	run, ok := r.runs[runID]
 	if !ok {
 		return creative.ErrCreativeRunNotFound
 	}
-	if accountID > 0 {
-		run.AccountID = &accountID
+	if providerID > 0 {
+		run.ProviderID = &providerID
 	}
 	run.ProviderResultRecordedAt = &now
 	if run.Status == creative.CreativeRunStatusRunning {
@@ -311,8 +311,8 @@ type smokeFakeExecutor struct{}
 
 func (e *smokeFakeExecutor) Prepare(ctx context.Context, run creative.CreativeRun) (*creative.CreativeExecution, error) {
 	return &creative.CreativeExecution{
-		AccountID:     55,
-		Provider:      creative.PlatformGemini,
+		ProviderID:    55,
+		Platform:      creative.PlatformGemini,
 		Target:        e,
 		UpstreamModel: run.Model,
 		ReleaseFunc:   func() {},
@@ -321,8 +321,8 @@ func (e *smokeFakeExecutor) Prepare(ctx context.Context, run creative.CreativeRu
 
 func (e *smokeFakeExecutor) Execute(ctx context.Context, run creative.CreativeRun, payload creative.CreativeRunPayload) (*creative.CreativeExecuteResult, error) {
 	return &creative.CreativeExecuteResult{
-		Outputs:   []creative.CreativeOutput{{Index: 0, Bytes: []byte("smoke-image-bytes"), Mime: "image/png"}},
-		AccountID: 55,
+		Outputs:    []creative.CreativeOutput{{Index: 0, Bytes: []byte("smoke-image-bytes"), Mime: "image/png"}},
+		ProviderID: 55,
 	}, nil
 }
 
@@ -360,10 +360,10 @@ func (r *smokeFakeGroupRepo) ListActive(context.Context) ([]creative.GroupView, 
 	return nil, nil
 }
 
-type smokeFakeAccountRepo struct{}
+type smokeFakeProviderRepo struct{}
 
-func (r *smokeFakeAccountRepo) ListSchedulableByGroupIDAndPlatform(context.Context, int64, string) ([]creative.CatalogAccount, error) {
-	return []creative.CatalogAccount{creativeprovider.CatalogAccount(&account.Record{ID: 55, Platform: "gemini", Type: "apikey", Status: billingcore.StatusActive, Schedulable: true, Credentials: map[string]any{"model_mapping": map[string]any{"gemini-3.1-flash-image": "gemini-3.1-flash-image"}}})}, nil
+func (r *smokeFakeProviderRepo) ListSchedulableByGroupIDAndPlatform(context.Context, int64, string) ([]creative.CatalogProvider, error) {
+	return []creative.CatalogProvider{creativeprovider.CatalogProvider(&provider.Record{ID: 55, Platform: "gemini", Type: "apikey", Status: billingcore.StatusActive, Schedulable: true, Credentials: map[string]any{"model_mapping": map[string]any{"gemini-3.1-flash-image": "gemini-3.1-flash-image"}}})}, nil
 }
 
 type smokeFakeRateRepo struct{}
@@ -427,7 +427,7 @@ func TestCreativeFullChainSmoke(t *testing.T) {
 	price := 0.02
 	prices := billingtestkit.SharedPriceResolver(billingtestkit.Calculator(0, nil, nil), 12, pricing.DefaultBillingSettings(), []routing.ModelPricingEntry{{Models: []string{"*"}, BillingMode: routing.BillingModeImage, PerRequestPrice: &price}})
 	svc := &creative.Public{
-		Repo: repo, UserRepo: &smokeFakeUserRepo{}, AccountRepo: &smokeFakeAccountRepo{}, GroupRepo: &smokeFakeGroupRepo{}, UserGroupRateRepo: &smokeFakeRateRepo{}, Queue: queue, TransientStore: store, Results: results, Settings: smokeCreativeSettingReader{}, UserNotFound: identity.ErrUserNotFound,
+		Repo: repo, UserRepo: &smokeFakeUserRepo{}, ProviderRepo: &smokeFakeProviderRepo{}, GroupRepo: &smokeFakeGroupRepo{}, UserGroupRateRepo: &smokeFakeRateRepo{}, Queue: queue, TransientStore: store, Results: results, Settings: smokeCreativeSettingReader{}, UserNotFound: identity.ErrUserNotFound,
 		Options: creative.PublicOptions{Enabled: cfg.Creative.Enabled, MaxAssetBytes: cfg.Creative.MaxAssetBytes, MaxTotalInputBytes: cfg.Creative.MaxTotalInputBytes, MaxPromptChars: cfg.Creative.MaxPromptChars, DefaultImageSize: cfg.Creative.DefaultImageSize},
 		EnsureKey: func(ctx context.Context, u, g int64) (int64, error) {
 			key, err := managed.Ensure(ctx, u, g)
@@ -459,7 +459,7 @@ func TestCreativeFullChainSmoke(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, creative.CreativeRunStatusQueued, created.Status)
 	runID := created.ID
-	require.Equal(t, creative.PlatformGemini, repo.runs[runID].Provider)
+	require.Equal(t, creative.PlatformGemini, repo.runs[runID].Platform)
 
 	// 2. worker 从原生队列实现 Reserve → 执行 fake provider → 成功结算。
 	require.NoError(t, worker.RunOnce(ctx))
@@ -494,7 +494,7 @@ func smokeTestPNG(t *testing.T) []byte {
 }
 
 // 新成功事实端口沿用本冒烟测试的内存仓储；真正的原子回滚由 PostgreSQL 回归覆盖。
-func (r *smokeFakeRunRepo) RecordProviderOutcome(ctx context.Context, id string, accountID int64, outputs []creative.CreativeRunOutput, now time.Time) error {
+func (r *smokeFakeRunRepo) RecordProviderOutcome(ctx context.Context, id string, providerID int64, outputs []creative.CreativeRunOutput, now time.Time) error {
 	run, err := r.GetCreativeRunByRunID(ctx, id)
 	if err != nil {
 		return err
@@ -508,7 +508,7 @@ func (r *smokeFakeRunRepo) RecordProviderOutcome(ctx context.Context, id string,
 		snapshots[i] = &value
 	}
 	r.outputs[id] = snapshots
-	return r.MarkCreativeRunProviderSucceeded(ctx, id, accountID, now)
+	return r.MarkCreativeRunProviderSucceeded(ctx, id, providerID, now)
 }
 
 func (r *smokeFakeRunRepo) CompleteProviderOutcome(ctx context.Context, id string, cost float64, lost bool, now time.Time) error {

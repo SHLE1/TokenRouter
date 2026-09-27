@@ -127,7 +127,7 @@ func TestModelsAndAliasesAreSiteAware(t *testing.T) {
 	route, ok = AliasForSite(SiteCN, "minimax-m2.7")
 	require.True(t, ok)
 	require.Equal(t, "mmodel", route)
-	// Preview 既不是公开 alias，也不是已知 route；旧请求只能按 raw key 透传或由账号显式映射。
+	// Preview 既不是公开 alias，也不是已知 route；旧请求只能按 raw key 透传或由提供商显式映射。
 	_, ok = AliasForSite(SiteGlobal, "qwen3.8-max-preview")
 	require.False(t, ok)
 	_, ok = AliasForSite(SiteCN, "qwen3.8-max-preview")
@@ -158,7 +158,7 @@ func TestThinkingCapabilityForSiteUsesSiteSnapshot(t *testing.T) {
 		{site: SiteGlobal, model: "glm-5.3", want: ThinkingLowHighMax},
 		{site: SiteGlobal, model: "glm-5.2", want: ThinkingHighMax},
 		{site: SiteGlobal, model: "kimi-k3", want: ThinkingUnsupported},
-		// 空站点与 ParseSite 的旧账号兼容语义一致，按国际站查询能力。
+		// 空站点与 ParseSite 的旧提供商兼容语义一致，按国际站查询能力。
 		{site: "", model: "deepseek-v4-pro", want: ThinkingHighMax},
 		{site: SiteCN, model: "auto", want: ThinkingUnsupported},
 		{site: SiteCN, model: "qwen3.8-max", want: ThinkingToggleOnly},

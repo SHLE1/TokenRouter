@@ -28,7 +28,7 @@ var usageLogInsertArgTypes = [...]string{
 	"bigint",      // billing_user_id
 	"bigint",      // team_id
 	"bigint",      // api_key_id
-	"bigint",      // account_id
+	"bigint",      // provider_id
 	"text",        // request_id
 	"text",        // model
 	"text",        // requested_model
@@ -55,7 +55,7 @@ var usageLogInsertArgTypes = [...]string{
 	"numeric",     // balance_amount_usd
 	"jsonb",       // billing_allocations
 	"numeric",     // rate_multiplier
-	"numeric",     // account_rate_multiplier
+	"numeric",     // provider_rate_multiplier
 	"smallint",    // billing_type
 	"smallint",    // request_type
 	"boolean",     // stream
@@ -83,7 +83,7 @@ var usageLogInsertArgTypes = [...]string{
 	"text",        // model_mapping_chain
 	"text",        // billing_tier
 	"text",        // billing_mode
-	"numeric",     // account_stats_cost
+	"numeric",     // provider_stats_cost
 	"text",        // upstream_request_id
 	"text",        // session_id
 	"timestamptz", // created_at
@@ -239,7 +239,7 @@ func (r *Store) createSingle(ctx context.Context, sqlq sqlExecutor, log *usage.U
 			billing_user_id,
 			team_id,
 			api_key_id,
-			account_id,
+			provider_id,
 			request_id,
 			model,
 			requested_model,
@@ -266,7 +266,7 @@ func (r *Store) createSingle(ctx context.Context, sqlq sqlExecutor, log *usage.U
 			balance_amount_usd,
 			billing_allocations,
 			rate_multiplier,
-			account_rate_multiplier,
+			provider_rate_multiplier,
 			billing_type,
 			request_type,
 			stream,
@@ -294,7 +294,7 @@ func (r *Store) createSingle(ctx context.Context, sqlq sqlExecutor, log *usage.U
 			model_mapping_chain,
 			billing_tier,
 			billing_mode,
-			account_stats_cost,
+			provider_stats_cost,
 			upstream_request_id,
 			session_id,
 			created_at,
@@ -752,7 +752,7 @@ func buildUsageLogBatchInsertQuery(keys []string, preparedByKey map[string]usage
 			billing_user_id,
 			team_id,
 			api_key_id,
-			account_id,
+			provider_id,
 			request_id,
 			model,
 			requested_model,
@@ -779,7 +779,7 @@ func buildUsageLogBatchInsertQuery(keys []string, preparedByKey map[string]usage
 			balance_amount_usd,
 			billing_allocations,
 			rate_multiplier,
-			account_rate_multiplier,
+			provider_rate_multiplier,
 			billing_type,
 			request_type,
 			stream,
@@ -807,7 +807,7 @@ func buildUsageLogBatchInsertQuery(keys []string, preparedByKey map[string]usage
 			model_mapping_chain,
 			billing_tier,
 			billing_mode,
-			account_stats_cost,
+			provider_stats_cost,
 			upstream_request_id,
 			session_id,
 			created_at,
@@ -849,7 +849,7 @@ func buildUsageLogBatchInsertQuery(keys []string, preparedByKey map[string]usage
 				billing_user_id,
 				team_id,
 				api_key_id,
-				account_id,
+				provider_id,
 				request_id,
 				model,
 				requested_model,
@@ -876,7 +876,7 @@ func buildUsageLogBatchInsertQuery(keys []string, preparedByKey map[string]usage
 				balance_amount_usd,
 				billing_allocations,
 				rate_multiplier,
-				account_rate_multiplier,
+				provider_rate_multiplier,
 				billing_type,
 				request_type,
 				stream,
@@ -904,7 +904,7 @@ func buildUsageLogBatchInsertQuery(keys []string, preparedByKey map[string]usage
 				model_mapping_chain,
 				billing_tier,
 				billing_mode,
-				account_stats_cost,
+				provider_stats_cost,
 				upstream_request_id,
 				session_id,
 				created_at,
@@ -917,7 +917,7 @@ func buildUsageLogBatchInsertQuery(keys []string, preparedByKey map[string]usage
 				billing_user_id,
 				team_id,
 				api_key_id,
-				account_id,
+				provider_id,
 				request_id,
 				model,
 				requested_model,
@@ -944,7 +944,7 @@ func buildUsageLogBatchInsertQuery(keys []string, preparedByKey map[string]usage
 				balance_amount_usd,
 				billing_allocations,
 				rate_multiplier,
-				account_rate_multiplier,
+				provider_rate_multiplier,
 				billing_type,
 				request_type,
 				stream,
@@ -972,7 +972,7 @@ func buildUsageLogBatchInsertQuery(keys []string, preparedByKey map[string]usage
 				model_mapping_chain,
 				billing_tier,
 				billing_mode,
-				account_stats_cost,
+				provider_stats_cost,
 				upstream_request_id,
 				session_id,
 				created_at,
@@ -1025,7 +1025,7 @@ func buildUsageLogBestEffortInsertQuery(preparedList []usageLogInsertPrepared) (
 			billing_user_id,
 			team_id,
 			api_key_id,
-			account_id,
+			provider_id,
 			request_id,
 			model,
 			requested_model,
@@ -1052,7 +1052,7 @@ func buildUsageLogBestEffortInsertQuery(preparedList []usageLogInsertPrepared) (
 			balance_amount_usd,
 			billing_allocations,
 			rate_multiplier,
-			account_rate_multiplier,
+			provider_rate_multiplier,
 			billing_type,
 			request_type,
 			stream,
@@ -1080,7 +1080,7 @@ func buildUsageLogBestEffortInsertQuery(preparedList []usageLogInsertPrepared) (
 			model_mapping_chain,
 			billing_tier,
 			billing_mode,
-			account_stats_cost,
+			provider_stats_cost,
 			upstream_request_id,
 			session_id,
 			created_at,
@@ -1119,7 +1119,7 @@ func buildUsageLogBestEffortInsertQuery(preparedList []usageLogInsertPrepared) (
 			billing_user_id,
 			team_id,
 			api_key_id,
-			account_id,
+			provider_id,
 			request_id,
 			model,
 			requested_model,
@@ -1146,7 +1146,7 @@ func buildUsageLogBestEffortInsertQuery(preparedList []usageLogInsertPrepared) (
 			balance_amount_usd,
 			billing_allocations,
 			rate_multiplier,
-			account_rate_multiplier,
+			provider_rate_multiplier,
 			billing_type,
 			request_type,
 			stream,
@@ -1174,7 +1174,7 @@ func buildUsageLogBestEffortInsertQuery(preparedList []usageLogInsertPrepared) (
 			model_mapping_chain,
 			billing_tier,
 			billing_mode,
-			account_stats_cost,
+			provider_stats_cost,
 			upstream_request_id,
 			session_id,
 			created_at,
@@ -1187,7 +1187,7 @@ func buildUsageLogBestEffortInsertQuery(preparedList []usageLogInsertPrepared) (
 			billing_user_id,
 			team_id,
 			api_key_id,
-			account_id,
+			provider_id,
 			request_id,
 			model,
 			requested_model,
@@ -1214,7 +1214,7 @@ func buildUsageLogBestEffortInsertQuery(preparedList []usageLogInsertPrepared) (
 			balance_amount_usd,
 			billing_allocations,
 			rate_multiplier,
-			account_rate_multiplier,
+			provider_rate_multiplier,
 			billing_type,
 			request_type,
 			stream,
@@ -1242,7 +1242,7 @@ func buildUsageLogBestEffortInsertQuery(preparedList []usageLogInsertPrepared) (
 			model_mapping_chain,
 			billing_tier,
 			billing_mode,
-			account_stats_cost,
+			provider_stats_cost,
 			upstream_request_id,
 			session_id,
 			created_at,
@@ -1263,7 +1263,7 @@ func execUsageLogInsertNoResult(ctx context.Context, sqlq sqlExecutor, prepared 
 			billing_user_id,
 			team_id,
 			api_key_id,
-			account_id,
+			provider_id,
 			request_id,
 			model,
 			requested_model,
@@ -1290,7 +1290,7 @@ func execUsageLogInsertNoResult(ctx context.Context, sqlq sqlExecutor, prepared 
 			balance_amount_usd,
 			billing_allocations,
 			rate_multiplier,
-			account_rate_multiplier,
+			provider_rate_multiplier,
 			billing_type,
 			request_type,
 			stream,
@@ -1318,7 +1318,7 @@ func execUsageLogInsertNoResult(ctx context.Context, sqlq sqlExecutor, prepared 
 			model_mapping_chain,
 			billing_tier,
 			billing_mode,
-			account_stats_cost,
+			provider_stats_cost,
 			upstream_request_id,
 			session_id,
 			created_at,
@@ -1411,7 +1411,7 @@ func prepareUsageLogInsert(log *usage.UsageLog) usageLogInsertPrepared {
 			billingUserID,
 			nullInt64(log.TeamID),
 			log.APIKeyID,
-			log.AccountID,
+			log.ProviderID,
 			requestIDArg,
 			log.Model,
 			nullString(&requestedModel),
@@ -1438,7 +1438,7 @@ func prepareUsageLogInsert(log *usage.UsageLog) usageLogInsertPrepared {
 			log.BalanceAmountUSD,
 			billingAllocationsJSON,
 			rateMultiplier,
-			log.AccountRateMultiplier,
+			log.ProviderRateMultiplier,
 			log.BillingType,
 			requestType,
 			log.Stream,
@@ -1466,9 +1466,9 @@ func prepareUsageLogInsert(log *usage.UsageLog) usageLogInsertPrepared {
 			modelMappingChain,
 			billingTier,
 			billingMode,
-			log.AccountStatsCost, // account_stats_cost
-			upstreamRequestID,    // upstream_request_id
-			sessionID,            // session_id
+			log.ProviderStatsCost, // provider_stats_cost
+			upstreamRequestID,     // upstream_request_id
+			sessionID,             // session_id
 			createdAt,
 			requestedReasoningEffort,
 			log.NativeCompactionV2,
@@ -1499,7 +1499,7 @@ func (r *Store) bestEffortRecentKey(requestID string, apiKeyID int64) (string, b
 	return usageLogBatchKey(requestID, apiKeyID), true
 }
 
-// usagePlatformSnapshot 不从可变的账号或分组关系反查历史归属。
+// usagePlatformSnapshot 不从可变的提供商或分组关系反查历史归属。
 func usagePlatformSnapshot(platform string) string {
 	if value := strings.TrimSpace(platform); value != "" {
 		return value

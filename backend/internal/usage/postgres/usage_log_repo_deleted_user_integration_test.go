@@ -14,7 +14,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/timezone"
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/stretchr/testify/require"
 )
 
@@ -29,7 +29,7 @@ func TestUsageLog_ListWithFilters_ResolvesSoftDeletedUser(t *testing.T) {
 	deleted := mustCreateUser(t, client, &identity.User{Email: "deleted-listfilter@test.com"})
 	apiKey := mustCreateApiKey(t, client, &apikey.APIKey{UserID: deleted.ID, Key: "sk-del-1", Name: "k"})
 	apiKey2 := mustCreateApiKey(t, client, &apikey.APIKey{UserID: active.ID, Key: "sk-act-1", Name: "k"})
-	account := mustCreateAccount(t, client, &accountcore.Record{Name: "acc-listfilter"})
+	provider := mustCreateProvider(t, client, &providercore.Record{Name: "acc-listfilter"})
 
 	now := time.Now().UTC()
 	for _, u := range []struct {
@@ -37,7 +37,7 @@ func TestUsageLog_ListWithFilters_ResolvesSoftDeletedUser(t *testing.T) {
 		kid int64
 	}{{deleted.ID, apiKey.ID}, {active.ID, apiKey2.ID}} {
 		_, err := repo.Create(ctx, &usage.UsageLog{
-			UserID: u.uid, APIKeyID: u.kid, AccountID: account.ID,
+			UserID: u.uid, APIKeyID: u.kid, ProviderID: provider.ID,
 			Model: "claude-3", InputTokens: 1, OutputTokens: 1,
 			TotalCost: 0.1, ActualCost: 0.1, CreatedAt: now,
 		})

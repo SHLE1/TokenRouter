@@ -1,4 +1,4 @@
-// OpenAI→Messages 输出通过纯协议状态转换，HTTP 与账号策略由显式端口传入。
+// OpenAI→Messages 输出通过纯协议状态转换，HTTP 与提供商策略由显式端口传入。
 package openai
 
 import (
@@ -18,7 +18,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// MessagesResponseOptions 只复用相同端口类型，不复用 Chat 的账号裁决或取消策略。
+// MessagesResponseOptions 只复用相同端口类型，不复用 Chat 的提供商裁决或取消策略。
 type MessagesResponseOptions struct {
 	ChatResponseOptions
 	MessagesFailure       func([]byte, string, bool, bool) ChatFailure

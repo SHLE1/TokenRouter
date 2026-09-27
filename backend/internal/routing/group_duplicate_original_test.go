@@ -10,7 +10,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
@@ -26,8 +26,8 @@ type duplicateGroupRepoStub struct {
 	groups             map[int64]*routing.Group
 	names              map[string]struct{}
 	byOperation        map[string]int64
-	sourceBindings     map[int64][]accountcore.GroupMembership
-	createdBindings    map[int64][]accountcore.GroupMembership
+	sourceBindings     map[int64][]providercore.GroupMembership
+	createdBindings    map[int64][]providercore.GroupMembership
 	createdFromSources []int64
 	atomicCreateErr    error
 }
@@ -38,8 +38,8 @@ func newDuplicateGroupRepoStub(source *routing.Group) *duplicateGroupRepoStub {
 		groups:          make(map[int64]*routing.Group),
 		names:           make(map[string]struct{}),
 		byOperation:     make(map[string]int64),
-		sourceBindings:  make(map[int64][]accountcore.GroupMembership),
-		createdBindings: make(map[int64][]accountcore.GroupMembership),
+		sourceBindings:  make(map[int64][]providercore.GroupMembership),
+		createdBindings: make(map[int64][]providercore.GroupMembership),
 	}
 	if source != nil {
 		repo.groups[source.ID] = source
@@ -98,12 +98,12 @@ func (r *duplicateGroupRepoStub) CreateFromSource(_ context.Context, group *rout
 	group.ID = r.nextID
 	group.CreatedAt = time.Now().UTC()
 	group.UpdatedAt = group.CreatedAt
-	bindings := append([]accountcore.GroupMembership(nil), r.sourceBindings[sourceGroupID]...)
+	bindings := append([]providercore.GroupMembership(nil), r.sourceBindings[sourceGroupID]...)
 	for i := range bindings {
 		bindings[i].GroupID = group.ID
 	}
-	group.AccountCount = int64(len(bindings))
-	group.ActiveAccountCount = int64(len(bindings))
+	group.ProviderCount = int64(len(bindings))
+	group.ActiveProviderCount = int64(len(bindings))
 	r.createdBindings[group.ID] = bindings
 	r.createdFromSources = append(r.createdFromSources, sourceGroupID)
 	r.names[group.Name] = struct{}{}
@@ -164,15 +164,15 @@ func TestDuplicateGroupCopiesConfigurationDeeplyAndResetsRuntimeState(t *testing
 		ReasoningEffortMappings:     []routing.ReasoningEffortMapping{{From: "max", To: "xhigh"}},
 		CreatedAt:                   createdAt,
 		UpdatedAt:                   createdAt,
-		AccountCount:                12,
-		ActiveAccountCount:          8,
-		RateLimitedAccountCount:     2,
+		ProviderCount:               12,
+		ActiveProviderCount:         8,
+		RateLimitedProviderCount:    2,
 		DuplicateOperationID:        "old-operation-must-not-copy",
 	}
 	repo := newDuplicateGroupRepoStub(source)
-	repo.sourceBindings[source.ID] = []accountcore.GroupMembership{
-		{AccountID: 13, GroupID: source.ID},
-		{AccountID: 17, GroupID: source.ID},
+	repo.sourceBindings[source.ID] = []providercore.GroupMembership{
+		{ProviderID: 13, GroupID: source.ID},
+		{ProviderID: 17, GroupID: source.ID},
 	}
 	svc := newOriginalGroupAdmin(repo, repo, nil)
 
@@ -201,13 +201,13 @@ func TestDuplicateGroupCopiesConfigurationDeeplyAndResetsRuntimeState(t *testing
 	require.Equal(t, source.MaxReasoningEffort, duplicate.MaxReasoningEffort)
 	require.Equal(t, source.MaxReasoningEffortOverLimit, duplicate.MaxReasoningEffortOverLimit)
 	require.Equal(t, source.ReasoningEffortMappings, duplicate.ReasoningEffortMappings)
-	require.EqualValues(t, 2, duplicate.AccountCount)
-	require.EqualValues(t, 2, duplicate.ActiveAccountCount)
+	require.EqualValues(t, 2, duplicate.ProviderCount)
+	require.EqualValues(t, 2, duplicate.ActiveProviderCount)
 	require.NotEmpty(t, duplicate.DuplicateOperationID)
 	require.Equal(t, []int64{source.ID}, repo.createdFromSources)
-	require.Equal(t, []accountcore.GroupMembership{
-		{AccountID: 13, GroupID: duplicate.ID},
-		{AccountID: 17, GroupID: duplicate.ID},
+	require.Equal(t, []providercore.GroupMembership{
+		{ProviderID: 13, GroupID: duplicate.ID},
+		{ProviderID: 17, GroupID: duplicate.ID},
 	}, repo.createdBindings[duplicate.ID])
 
 	duplicate.ModelRouting["gpt-*"][0] = 999

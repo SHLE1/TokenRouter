@@ -30,7 +30,7 @@ type UsageBillingCommand struct {
 	UserID                          int64
 	ActorUserID                     int64
 	TeamID                          *int64
-	AccountID                       int64
+	ProviderID                      int64
 	GroupID                         *int64
 	BillableAmountUSD               float64
 	BaseAmountUSD                   float64
@@ -40,7 +40,7 @@ type UsageBillingCommand struct {
 	// 批量预占可关闭套餐倍率覆盖，并要求返回后续结算所需的基础金额明细。
 	DisablePlanGroupRateMultiplier bool
 	IncludeAllocationPricing       bool
-	AccountType                    string
+	ProviderType                   string
 	Model                          string
 	ServiceTier                    string
 	ReasoningEffort                string
@@ -54,7 +54,7 @@ type UsageBillingCommand struct {
 
 	APIKeyQuotaCost     float64
 	APIKeyRateLimitCost float64
-	AccountQuotaCost    float64
+	ProviderQuotaCost   float64
 }
 
 func (c *UsageBillingCommand) Normalize() {
@@ -117,7 +117,7 @@ const UsageBillingMonetaryScale = 8
 func (c *UsageBillingCommand) quantizeMonetaryFields() {
 	c.APIKeyQuotaCost = QuantizeUsageBillingAmount(c.APIKeyQuotaCost)
 	c.APIKeyRateLimitCost = QuantizeUsageBillingAmount(c.APIKeyRateLimitCost)
-	c.AccountQuotaCost = QuantizeUsageBillingAmount(c.AccountQuotaCost)
+	c.ProviderQuotaCost = QuantizeUsageBillingAmount(c.ProviderQuotaCost)
 }
 
 // QuantizeUsageBillingAmount 把金额舍入到 UsageBillingMonetaryScale 位小数，
@@ -151,9 +151,9 @@ func buildUsageBillingFingerprint(c *UsageBillingCommand) string {
 		c.UserID,
 		c.ActorUserID,
 		teamID,
-		c.AccountID,
+		c.ProviderID,
 		c.APIKeyID,
-		strings.TrimSpace(c.AccountType),
+		strings.TrimSpace(c.ProviderType),
 		strings.TrimSpace(c.Model),
 		strings.TrimSpace(c.ServiceTier),
 		strings.TrimSpace(c.ReasoningEffort),
@@ -171,7 +171,7 @@ func buildUsageBillingFingerprint(c *UsageBillingCommand) string {
 		c.BalanceRateMultiplier,
 		c.APIKeyQuotaCost,
 		c.APIKeyRateLimitCost,
-		c.AccountQuotaCost,
+		c.ProviderQuotaCost,
 	)
 	raw += fmt.Sprintf("|%s|%d", c.APIKeyBillingMode, preferredSubscriptionID)
 	if payloadHash := strings.TrimSpace(c.RequestPayloadHash); payloadHash != "" {
@@ -189,9 +189,9 @@ func HashUsageRequestPayload(payload []byte) string {
 	return hex.EncodeToString(sum[:])
 }
 
-// AccountQuotaState holds the post-increment quota state returned by the DB transaction.
+// ProviderQuotaState holds the post-increment quota state returned by the DB transaction.
 // All values are post-update (i.e., already include the increment).
-type AccountQuotaState struct {
+type ProviderQuotaState struct {
 	TotalUsed   float64
 	TotalLimit  float64
 	DailyUsed   float64
@@ -203,8 +203,8 @@ type AccountQuotaState struct {
 type UsageBillingApplyResult struct {
 	Applied                 bool
 	APIKeyQuotaExhausted    bool
-	NewBalance              *float64           // post-deduction balance (nil = no balance deduction)
-	QuotaState              *AccountQuotaState // post-increment quota state (nil = no quota increment)
+	NewBalance              *float64            // post-deduction balance (nil = no balance deduction)
+	QuotaState              *ProviderQuotaState // post-increment quota state (nil = no quota increment)
 	SubscriptionAmountUSD   float64
 	BalanceAmountUSD        float64
 	BillingAllocations      []BillingAllocation

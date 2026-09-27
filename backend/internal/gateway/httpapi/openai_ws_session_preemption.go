@@ -5,9 +5,9 @@ import (
 	"errors"
 	"strings"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	gatewayws "github.com/TokenFlux/TokenRouter/internal/gateway/ws"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
@@ -29,7 +29,7 @@ type openAIWSSessionPreemptContextKey struct{}
 func (s *OpenAIWebSocketExecutor) BeginOpenAIWSIngressSessionPreemption(
 	ctx context.Context,
 	c *gin.Context,
-	account *gatewayprovider.ExecutionAccount,
+	provider *gatewayprovider.ExecutionProvider,
 	firstClientMessage []byte,
 ) (context.Context, func(), bool) {
 	if ctx == nil {
@@ -39,18 +39,18 @@ func (s *OpenAIWebSocketExecutor) BeginOpenAIWSIngressSessionPreemption(
 		return ctx, func() {}, true
 	}
 	if s != nil && s.Options != nil && s.Options.ModeRouterV2Enabled &&
-		account != nil && account.View().ResolveOpenAIResponsesWebSocketV2Mode(s.Options.IngressModeDefault) == accountcore.OpenAIWSIngressModePassthrough {
+		provider != nil && provider.View().ResolveOpenAIResponsesWebSocketV2Mode(s.Options.IngressModeDefault) == providercore.OpenAIWSIngressModePassthrough {
 		return ctx, func() {}, false
 	}
 
 	preemptSessionHash := ""
 	preemptGroupID := OpenAIResponseGroupID(c)
-	if account != nil && account.Record.Platform == capability.PlatformOpenAI && account.Record.Type == capability.AccountTypeOAuth {
+	if provider != nil && provider.Record.Platform == capability.PlatformOpenAI && provider.Record.Type == capability.ProviderTypeOAuth {
 		preemptSessionHash = GenerateOpenAISessionHash(c, firstClientMessage)
 	}
 	preemptCtx, cleanup, armed, preemptedPrevious := s.beginOpenAIWSSessionPreemptContext(
 		ctx,
-		account,
+		provider,
 		preemptGroupID, APIKeyIDFromContext(c), preemptSessionHash,
 		false,
 	)
@@ -86,7 +86,7 @@ func (r *openAIWSSessionPreemptRegistry) Begin(key openAIWSSessionPreemptKey, ca
 
 func (s *OpenAIWebSocketExecutor) beginOpenAIWSSessionPreemptContext(
 	ctx context.Context,
-	account *gatewayprovider.ExecutionAccount,
+	provider *gatewayprovider.ExecutionProvider,
 	groupID, apiKeyID int64,
 	sessionHash string,
 	httpIngressWSOneShot bool,
@@ -94,7 +94,7 @@ func (s *OpenAIWebSocketExecutor) beginOpenAIWSSessionPreemptContext(
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	if s == nil || account == nil || account.Record.Platform != capability.PlatformOpenAI || account.Record.Type != capability.AccountTypeOAuth || httpIngressWSOneShot {
+	if s == nil || provider == nil || provider.Record.Platform != capability.PlatformOpenAI || provider.Record.Type != capability.ProviderTypeOAuth || httpIngressWSOneShot {
 		return ctx, func() {}, false, false
 	}
 	key, ok := newOpenAIWSSessionPreemptKey(groupID, apiKeyID, sessionHash)

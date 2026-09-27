@@ -55,29 +55,31 @@ type upstreamClientView struct {
 	protocolMode string
 }
 
-func (s *Client) getClientEntry(proxyURL string, accountID int64, concurrency int, profile upstream.HTTPUpstreamProfile, _, _ bool) (*upstreamClientView, error) {
-	return s.inspectClient(proxyURL, accountID, concurrency, profile, nil)
+func (s *Client) getClientEntry(proxyURL string, providerID int64, concurrency int, profile upstream.HTTPUpstreamProfile, _, _ bool) (*upstreamClientView, error) {
+	return s.inspectClient(proxyURL, providerID, concurrency, profile, nil)
 }
+
 func (s *Client) getClientEntryWithTLS(
 	proxyURL string,
-	accountID int64,
+	providerID int64,
 	concurrency int,
 	tlsProfile *tlsfingerprint.Profile,
 	profile upstream.HTTPUpstreamProfile,
 	_, _ bool,
 ) (*upstreamClientView, error) {
-	return s.inspectClient(proxyURL, accountID, concurrency, profile, tlsProfile)
+	return s.inspectClient(proxyURL, providerID, concurrency, profile, tlsProfile)
 }
+
 func (s *Client) inspectClient(
 	proxyURL string,
-	accountID int64,
+	providerID int64,
 	concurrency int,
 	profile upstream.HTTPUpstreamProfile,
 	tlsProfile *tlsfingerprint.Profile,
 ) (*upstreamClientView, error) {
 	req, _ := http.NewRequest(http.MethodGet, "https://example.com", nil)
 	req = req.WithContext(upstream.WithHTTPUpstreamProfile(req.Context(), profile))
-	opts, err := s.transportOptions(req, proxyURL, accountID, concurrency, tlsProfile)
+	opts, err := s.transportOptions(req, proxyURL, providerID, concurrency, tlsProfile)
 	if err != nil {
 		return nil, err
 	}
@@ -103,9 +105,10 @@ func (s *Client) inspectClient(
 	}
 	return view, nil
 }
-func mustGetOrCreateClient(t *testing.T, svc *Client, proxyURL string, accountID int64, concurrency int) *upstreamClientView {
+
+func mustGetOrCreateClient(t *testing.T, svc *Client, proxyURL string, providerID int64, concurrency int) *upstreamClientView {
 	t.Helper()
-	entry, err := svc.inspectClient(proxyURL, accountID, concurrency, upstream.HTTPUpstreamProfileDefault, nil)
+	entry, err := svc.inspectClient(proxyURL, providerID, concurrency, upstream.HTTPUpstreamProfileDefault, nil)
 	require.NoError(t, err)
 	return entry
 }

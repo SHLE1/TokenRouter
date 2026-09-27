@@ -55,7 +55,7 @@ func (s *BillingRecovery) ReleaseStaleUnsubmittedOnce(ctx context.Context) (int,
 		if err := ctx.Err(); err != nil {
 			return released, err
 		}
-		msg := "batch image submission did not reach provider before recovery cutoff"
+		msg := "batch image submission did not reach platform before recovery cutoff"
 		// 原子转 failed 并复核 stale 条件：List 与转态之间 job 可能已被慢提交
 		// 心跳续期或提交成功（provider_job_name 已写入），此时绝不能退款，
 		// 否则上游任务照常产生成本而用户已拿回冻结余额。
@@ -95,6 +95,7 @@ func (s *BillingRecovery) ReleaseStaleUnsubmittedOnce(ctx context.Context) (int,
 	}
 	return released, lastErr
 }
+
 func (s *BillingRecovery) EnqueueReleaseRetry(ctx context.Context, batchID string) {
 	if s == nil || s.Queue == nil {
 		return

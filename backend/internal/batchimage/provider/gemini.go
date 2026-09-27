@@ -49,21 +49,21 @@ func (p *GeminiAPIBatchImageProvider) Name() string {
 	return core.BatchImageProviderGeminiAPI
 }
 
-func (p *GeminiAPIBatchImageProvider) SupportsAccount(account *Account) bool {
-	return account != nil &&
-		account.Platform == PlatformGemini &&
-		account.Type == AccountTypeAPIKey &&
-		batchImageProviderAPIKey(account) != ""
+func (p *GeminiAPIBatchImageProvider) SupportsProvider(provider *Provider) bool {
+	return provider != nil &&
+		provider.Platform == PlatformGemini &&
+		provider.Type == ProviderTypeAPIKey &&
+		batchImageProviderAPIKey(provider) != ""
 }
 
-func (p *GeminiAPIBatchImageProvider) Submit(ctx context.Context, job *core.BatchImageJob, account *Account, input core.BatchImageInput) (*core.BatchProviderJob, error) {
-	if _, enabled := resolveBatchProtocol(account); !enabled {
-		return nil, core.ErrBatchImageProviderUnsupportedAccount
+func (p *GeminiAPIBatchImageProvider) Submit(ctx context.Context, job *core.BatchImageJob, provider *Provider, input core.BatchImageInput) (*core.BatchProviderJob, error) {
+	if _, enabled := resolveBatchProtocol(provider); !enabled {
+		return nil, core.ErrBatchImageProviderUnsupportedProvider
 	}
-	if account == nil || account.Platform != PlatformGemini || account.Type != AccountTypeAPIKey {
-		return nil, core.ErrBatchImageProviderUnsupportedAccount
+	if provider == nil || provider.Platform != PlatformGemini || provider.Type != ProviderTypeAPIKey {
+		return nil, core.ErrBatchImageProviderUnsupportedProvider
 	}
-	apiKey := batchImageProviderAPIKey(account)
+	apiKey := batchImageProviderAPIKey(provider)
 	if apiKey == "" {
 		return nil, core.ErrBatchImageProviderMissingAPIKey
 	}
@@ -107,11 +107,11 @@ func (p *GeminiAPIBatchImageProvider) Submit(ctx context.Context, job *core.Batc
 	}, nil
 }
 
-func (p *GeminiAPIBatchImageProvider) Get(ctx context.Context, job *core.BatchImageJob, account *Account) (*core.BatchProviderStatus, error) {
-	if account == nil || account.Platform != PlatformGemini || account.Type != AccountTypeAPIKey {
-		return nil, core.ErrBatchImageProviderUnsupportedAccount
+func (p *GeminiAPIBatchImageProvider) Get(ctx context.Context, job *core.BatchImageJob, provider *Provider) (*core.BatchProviderStatus, error) {
+	if provider == nil || provider.Platform != PlatformGemini || provider.Type != ProviderTypeAPIKey {
+		return nil, core.ErrBatchImageProviderUnsupportedProvider
 	}
-	apiKey := batchImageProviderAPIKey(account)
+	apiKey := batchImageProviderAPIKey(provider)
 	if apiKey == "" {
 		return nil, core.ErrBatchImageProviderMissingAPIKey
 	}
@@ -145,11 +145,11 @@ func (p *GeminiAPIBatchImageProvider) Get(ctx context.Context, job *core.BatchIm
 	return status, nil
 }
 
-func (p *GeminiAPIBatchImageProvider) Cancel(ctx context.Context, job *core.BatchImageJob, account *Account) error {
-	if account == nil || account.Platform != PlatformGemini || account.Type != AccountTypeAPIKey {
-		return core.ErrBatchImageProviderUnsupportedAccount
+func (p *GeminiAPIBatchImageProvider) Cancel(ctx context.Context, job *core.BatchImageJob, provider *Provider) error {
+	if provider == nil || provider.Platform != PlatformGemini || provider.Type != ProviderTypeAPIKey {
+		return core.ErrBatchImageProviderUnsupportedProvider
 	}
-	apiKey := batchImageProviderAPIKey(account)
+	apiKey := batchImageProviderAPIKey(provider)
 	if apiKey == "" {
 		return core.ErrBatchImageProviderMissingAPIKey
 	}
@@ -160,11 +160,11 @@ func (p *GeminiAPIBatchImageProvider) Cancel(ctx context.Context, job *core.Batc
 	return MapGeminiClientError(p.client.CancelBatch(ctx, apiKey, jobName))
 }
 
-func (p *GeminiAPIBatchImageProvider) OpenResult(ctx context.Context, job *core.BatchImageJob, account *Account) (io.ReadCloser, string, error) {
-	if account == nil || account.Platform != PlatformGemini || account.Type != AccountTypeAPIKey {
-		return nil, "", core.ErrBatchImageProviderUnsupportedAccount
+func (p *GeminiAPIBatchImageProvider) OpenResult(ctx context.Context, job *core.BatchImageJob, provider *Provider) (io.ReadCloser, string, error) {
+	if provider == nil || provider.Platform != PlatformGemini || provider.Type != ProviderTypeAPIKey {
+		return nil, "", core.ErrBatchImageProviderUnsupportedProvider
 	}
-	apiKey := batchImageProviderAPIKey(account)
+	apiKey := batchImageProviderAPIKey(provider)
 	if apiKey == "" {
 		return nil, "", core.ErrBatchImageProviderMissingAPIKey
 	}
@@ -176,11 +176,11 @@ func (p *GeminiAPIBatchImageProvider) OpenResult(ctx context.Context, job *core.
 	return r, contentType, MapGeminiClientError(err)
 }
 
-func (p *GeminiAPIBatchImageProvider) Cleanup(ctx context.Context, job *core.BatchImageJob, account *Account, target core.CleanupTarget) error {
-	if account == nil || account.Platform != PlatformGemini || account.Type != AccountTypeAPIKey {
-		return core.ErrBatchImageProviderUnsupportedAccount
+func (p *GeminiAPIBatchImageProvider) Cleanup(ctx context.Context, job *core.BatchImageJob, provider *Provider, target core.CleanupTarget) error {
+	if provider == nil || provider.Platform != PlatformGemini || provider.Type != ProviderTypeAPIKey {
+		return core.ErrBatchImageProviderUnsupportedProvider
 	}
-	apiKey := batchImageProviderAPIKey(account)
+	apiKey := batchImageProviderAPIKey(provider)
 	if apiKey == "" {
 		return core.ErrBatchImageProviderMissingAPIKey
 	}
@@ -309,5 +309,7 @@ func NewGeminiBatchHTTPClient(baseURL string, client *http.Client) *GeminiBatchH
 
 type GeminiAPIError = gemininative.GeminiAPIError
 
-var _ BatchImageProvider = (*GeminiAPIBatchImageProvider)(nil)
-var _ GeminiBatchClient = (*GeminiBatchHTTPClient)(nil)
+var (
+	_ BatchImageProvider = (*GeminiAPIBatchImageProvider)(nil)
+	_ GeminiBatchClient  = (*GeminiBatchHTTPClient)(nil)
+)

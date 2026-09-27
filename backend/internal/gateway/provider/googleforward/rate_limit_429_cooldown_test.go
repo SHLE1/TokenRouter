@@ -9,14 +9,14 @@ import (
 	gatewaytestkit "github.com/TokenFlux/TokenRouter/internal/gateway/testkit"
 )
 
-type rateLimit429AccountRepoStub struct {
+type rateLimit429ProviderRepoStub struct {
 	gatewaytestkit.ErrorPolicyStore
 	rateLimitCalls     int
 	lastRateLimitID    int64
 	lastRateLimitReset time.Time
 }
 
-func (r *rateLimit429AccountRepoStub) SetRateLimited(_ context.Context, id int64, resetAt time.Time) error {
+func (r *rateLimit429ProviderRepoStub) SetRateLimited(_ context.Context, id int64, resetAt time.Time) error {
 	r.rateLimitCalls++
 	r.lastRateLimitID = id
 	r.lastRateLimitReset = resetAt

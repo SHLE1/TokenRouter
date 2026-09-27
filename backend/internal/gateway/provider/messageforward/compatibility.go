@@ -1,11 +1,10 @@
 package messageforward
 
 import (
-	"github.com/TokenFlux/TokenRouter/internal/upstream"
-
 	"net/http"
-
 	"strings"
+
+	"github.com/TokenFlux/TokenRouter/internal/upstream"
 )
 
 func messageFailover400(respBody []byte) bool {
@@ -16,7 +15,7 @@ func messageFailover400(respBody []byte) bool {
 		return false
 	}
 
-	// 缺少/错误的 beta header：换账号/链路可能成功（尤其是混合调度时）。
+	// 缺少/错误的 beta header：换提供商/链路可能成功（尤其是混合调度时）。
 	// 更精确匹配 beta 相关的兼容性问题，避免误触发切换。
 	if strings.Contains(msg, "anthropic-beta") ||
 		strings.Contains(msg, "beta feature") ||

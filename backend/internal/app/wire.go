@@ -15,7 +15,7 @@ import (
 func initializeApplication(ctx context.Context, cfg *config.Config, info BuildInfo, manager *lifecycle.Manager, restarter *lifecycle.Restarter, tasks *lifecycle.Tasks) (*Application, error) {
 	wire.Build(
 		egressAssemblyProviders,
-		accountAssemblyProviders,
+		providerAssemblyProviders,
 		gatewayAssemblyProviders,
 		identityAssemblyProviders,
 		apikeyAssemblyProviders,

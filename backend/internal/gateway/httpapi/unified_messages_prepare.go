@@ -5,7 +5,7 @@ import (
 
 	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/clientmeta"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
@@ -36,7 +36,7 @@ func NativeMessageIntercepted(c *gin.Context) bool {
 }
 
 // prepareNativeMessages 保留预热、消息串行化与 Bedrock 清理的先后顺序。
-func (e *UnifiedTextExecutor) prepareNativeMessages(c *gin.Context, target *provider.ExecutionAccount, body []byte) (*requeststate.ParsedRequest, func(), bool, error) {
+func (e *UnifiedTextExecutor) prepareNativeMessages(c *gin.Context, target *gatewayadapter.ExecutionProvider, body []byte) (*requeststate.ParsedRequest, func(), bool, error) {
 	parsed, err := requeststate.ParseGatewayRequest(requeststate.NewRequestBodyRef(body), "anthropic")
 	if err != nil {
 		WriteAnthropicError(c, 400, "invalid_request_error", "", "Failed to parse request body")
@@ -76,11 +76,11 @@ func (e *UnifiedTextExecutor) prepareNativeMessages(c *gin.Context, target *prov
 	}
 	var release func()
 	if e.MessageQueue != nil && target.View().IsAnthropicOAuthOrSetupToken() && requeststate.IsRealUserMessage(parsed) {
-		mode := provider.ExecutionRuntimeConfig(target).GetUserMsgQueueMode()
+		mode := gatewayadapter.ExecutionRuntimeConfig(target).GetUserMsgQueueMode()
 		if mode == "" {
 			mode = e.MessageQueueMode
 		}
-		baseRPM := provider.ExecutionRuntimeConfig(target).GetBaseRPM()
+		baseRPM := gatewayadapter.ExecutionRuntimeConfig(target).GetBaseRPM()
 		started := c.Writer.Written()
 		streamState := &started
 		if value, ok := c.Get(nativeMessageStreamKey); ok {
@@ -88,7 +88,7 @@ func (e *UnifiedTextExecutor) prepareNativeMessages(c *gin.Context, target *prov
 				streamState = pointer
 			}
 		}
-		log := RequestLogger(c, "handler.gateway.messages", zap.Int64("account_id", target.Record.ID))
+		log := RequestLogger(c, "handler.gateway.messages", zap.Int64("provider_id", target.Record.ID))
 		switch mode {
 		case policy.MessageQueueSerialize:
 			var queueErr error

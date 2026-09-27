@@ -44,13 +44,13 @@ type messageAttemptBridge struct {
 	reqModel, platform, sessionKey                 string
 	reqStream, isClaudeCodeClient, hasBoundSession bool
 	streamStarted                                  *bool
-	sessionBoundAccountID                          int64
+	sessionBoundProviderID                         int64
 	reqLog                                         *zap.Logger
 	fallbackGroupID                                *int64
 	sessionAttempts                                *scheduler.SessionAttempts
 	selection                                      *gatewaycapture.SelectionResult
-	account                                        *gatewaycapture.ExecutionAccount
-	accountReleaseFunc                             func()
+	provider                                       *gatewaycapture.ExecutionProvider
+	providerReleaseFunc                            func()
 	attemptGroupMapping                            routing.GroupMappingResult
 	writerSizeBeforeForward                        int
 	result                                         *forwardcore.MessagesResult
@@ -72,35 +72,35 @@ func (b *messageAttemptBridge) PrepareAttempt() bool {
 
 // Select 只执行一次适配操作，重试与分组回退循环由 gateway/text 拥有。
 func (b *messageAttemptBridge) Select(excluded map[int64]struct{}) (textflow.Selection, error) {
-	// 选择支持该模型的账号
-	b.reqLog.Info("sticky.selecting_account",
+	// 选择支持该模型的提供商
+	b.reqLog.Info("sticky.selecting_provider",
 		zap.String("session_key", b.sessionKey),
-		zap.Int64("sticky_bound_account_id", b.sessionBoundAccountID),
+		zap.Int64("sticky_bound_provider_id", b.sessionBoundProviderID),
 		zap.Bool("has_bound_session", b.hasBoundSession),
-		zap.Int("failed_account_count", len(excluded)),
+		zap.Int("failed_provider_count", len(excluded)),
 	)
 	var err error
-	b.selection, err = b.binding().selectAccount(b.c.Request.Context(), b.currentAPIKey.GroupID, b.sessionKey, b.reqModel, excluded, b.parsedReq.MetadataUserID, b.subject.UserID)
+	b.selection, err = b.binding().selectProvider(b.c.Request.Context(), b.currentAPIKey.GroupID, b.sessionKey, b.reqModel, excluded, b.parsedReq.MetadataUserID, b.subject.UserID)
 	if err != nil {
 		return textflow.Selection{}, err
 	}
-	b.account = b.selection.Account
-	gatewayhttp.SetOpsSelectedAccount(b.c, b.account.Record.ID, b.account.Record.Platform)
+	b.provider = b.selection.Provider
+	gatewayhttp.SetOpsSelectedProvider(b.c, b.provider.Record.ID, b.provider.Record.Platform)
 	if b.sessionKey != "" {
-		b.binding().trackSession(b.sessionAttempts, b.account, b.sessionKey)
+		b.binding().trackSession(b.sessionAttempts, b.provider, b.sessionKey)
 	}
 
-	// [DEBUG-STICKY] 打印账号选择结果
-	b.reqLog.Info("sticky.account_selected",
-		zap.Int64("selected_account_id", b.account.Record.ID),
-		zap.String("account_name", b.account.Record.Name),
+	// [DEBUG-STICKY] 打印提供商选择结果
+	b.reqLog.Info("sticky.provider_selected",
+		zap.Int64("selected_provider_id", b.provider.Record.ID),
+		zap.String("provider_name", b.provider.Record.Name),
 		zap.Bool("slot_acquired", b.selection.Acquired),
 		zap.Bool("has_wait_plan", b.selection.WaitPlan != nil),
-		zap.Int64("sticky_bound_account_id", b.sessionBoundAccountID),
-		zap.Bool("sticky_honored", b.sessionBoundAccountID > 0 && b.sessionBoundAccountID == b.account.Record.ID),
+		zap.Int64("sticky_bound_provider_id", b.sessionBoundProviderID),
+		zap.Bool("sticky_honored", b.sessionBoundProviderID > 0 && b.sessionBoundProviderID == b.provider.Record.ID),
 	)
 
-	return gatewaycapture.CaptureTextSelection(b.account), nil
+	return gatewaycapture.CaptureTextSelection(b.provider), nil
 }
 
 // FirstSelectionFailure 只执行一次适配操作，重试与分组回退循环由 gateway/text 拥有。
@@ -110,11 +110,11 @@ func (b *messageAttemptBridge) FirstSelectionFailure(err error, fallbackUsed boo
 	}) {
 		return
 	}
-	cls := classifyNoAccountErrorFromGin(b.c, b.binding().diagnoser, b.currentAPIKey, b.reqModel, b.reqModel, b.platform)
+	cls := classifyNoProviderErrorFromGin(b.c, b.binding().diagnoser, b.currentAPIKey, b.reqModel, b.reqModel, b.platform)
 	if !cls.ModelNotFound {
 		gatewayhttp.MarkOpsRoutingCapacityLimitedIfNoAvailable(b.c, err)
 	}
-	b.reqLog.Warn("gateway.select_account_no_available",
+	b.reqLog.Warn("gateway.select_provider_no_available",
 		zap.String("model", b.reqModel),
 		zap.Int64p("group_id", b.currentAPIKey.GroupID),
 		zap.String("platform", b.platform),
@@ -124,14 +124,14 @@ func (b *messageAttemptBridge) FirstSelectionFailure(err error, fallbackUsed boo
 	)
 	message := cls.Message
 	if !cls.ModelNotFound {
-		message = "No available accounts: " + err.Error()
+		message = "No available providers: " + err.Error()
 	}
 	b.binding().handleStreamingAwareError(b.c, cls.Status, cls.ErrType, message, *b.streamStarted)
 }
 
 // Intercept 只执行一次适配操作，重试与分组回退循环由 gateway/text 拥有。
 func (b *messageAttemptBridge) Intercept() bool {
-	if b.account.View().IsInterceptWarmupEnabled() {
+	if b.provider.View().IsInterceptWarmupEnabled() {
 		interceptType := clientmeta.DetectInterceptType(b.body, b.reqModel, b.parsedReq.MaxTokens, b.isClaudeCodeClient)
 		if interceptType != clientmeta.InterceptTypeNone {
 			if b.selection.Acquired && b.selection.ReleaseFunc != nil {
@@ -151,69 +151,69 @@ func (b *messageAttemptBridge) Intercept() bool {
 
 // Acquire 只执行一次适配操作，重试与分组回退循环由 gateway/text 拥有。
 func (b *messageAttemptBridge) Acquire() bool {
-	// 3. 获取账号并发槽位
-	b.accountReleaseFunc = b.selection.ReleaseFunc
+	// 3. 获取提供商并发槽位
+	b.providerReleaseFunc = b.selection.ReleaseFunc
 	if !b.selection.Acquired {
 		if b.selection.WaitPlan == nil {
 			gatewayhttp.MarkOpsRoutingCapacityLimited(b.c)
-			b.reqLog.Warn("gateway.select_account_no_slot_no_wait_plan",
-				zap.Int64("account_id", b.account.Record.ID),
+			b.reqLog.Warn("gateway.select_provider_no_slot_no_wait_plan",
+				zap.Int64("provider_id", b.provider.Record.ID),
 				zap.String("model", b.reqModel),
 				zap.String("platform", b.platform),
 			)
-			b.binding().handleStreamingAwareError(b.c, http.StatusServiceUnavailable, "api_error", "No available accounts", *b.streamStarted)
+			b.binding().handleStreamingAwareError(b.c, http.StatusServiceUnavailable, "api_error", "No available providers", *b.streamStarted)
 			return false
 		}
-		accountWaitCounted := false
-		waitEntry, err := b.binding().concurrencyHelper.EnterAccountWait(b.c.Request.Context(), b.account.Record.ID, b.selection.WaitPlan.MaxWaiting)
+		providerWaitCounted := false
+		waitEntry, err := b.binding().concurrencyHelper.EnterProviderWait(b.c.Request.Context(), b.provider.Record.ID, b.selection.WaitPlan.MaxWaiting)
 		canWait := waitEntry.Allowed
 		if err != nil {
-			b.reqLog.Warn("gateway.account_wait_counter_increment_failed", zap.Int64("account_id", b.account.Record.ID), zap.Error(err))
+			b.reqLog.Warn("gateway.provider_wait_counter_increment_failed", zap.Int64("provider_id", b.provider.Record.ID), zap.Error(err))
 		} else if !canWait {
-			b.reqLog.Info("gateway.account_wait_queue_full",
-				zap.Int64("account_id", b.account.Record.ID),
+			b.reqLog.Info("gateway.provider_wait_queue_full",
+				zap.Int64("provider_id", b.provider.Record.ID),
 				zap.Int("max_waiting", b.selection.WaitPlan.MaxWaiting),
 			)
 			b.binding().handleStreamingAwareErrorWithCode(b.c, http.StatusTooManyRequests, "rate_limit_error", gatewayhttp.GatewayQueueFullCode, "Too many pending requests, please retry later", *b.streamStarted)
 			return false
 		}
 		if err == nil && canWait {
-			accountWaitCounted = true
+			providerWaitCounted = true
 		}
 		releaseWait := func() {
-			if accountWaitCounted {
+			if providerWaitCounted {
 				waitEntry.Release()
-				accountWaitCounted = false
+				providerWaitCounted = false
 			}
 		}
 
-		b.accountReleaseFunc, err = b.binding().concurrencyHelper.AcquireAccountSlotWithWaitTimeout(
+		b.providerReleaseFunc, err = b.binding().concurrencyHelper.AcquireProviderSlotWithWaitTimeout(
 			b.c,
-			b.account.Record.ID,
+			b.provider.Record.ID,
 			b.selection.WaitPlan.MaxConcurrency,
 			b.selection.WaitPlan.Timeout,
 			b.reqStream,
 			b.streamStarted,
 		)
 		if err != nil {
-			b.reqLog.Warn("gateway.account_slot_acquire_failed", zap.Int64("account_id", b.account.Record.ID), zap.Error(err))
+			b.reqLog.Warn("gateway.provider_slot_acquire_failed", zap.Int64("provider_id", b.provider.Record.ID), zap.Error(err))
 			releaseWait()
-			b.binding().handleConcurrencyError(b.c, err, "account", *b.streamStarted)
+			b.binding().handleConcurrencyError(b.c, err, "provider", *b.streamStarted)
 			return false
 		}
 		// Slot acquired: no longer waiting in queue.
 		releaseWait()
 		b.reqLog.Info("sticky.bind_after_wait",
 			zap.String("session_key", b.sessionKey),
-			zap.Int64("account_id", b.account.Record.ID),
+			zap.Int64("provider_id", b.provider.Record.ID),
 		)
-		if err := b.binding().bindSticky(b.c.Request.Context(), b.currentAPIKey.GroupID, b.sessionKey, b.account.Record.ID); err != nil {
-			b.reqLog.Warn("gateway.bind_sticky_session_failed", zap.Int64("account_id", b.account.Record.ID), zap.Error(err))
+		if err := b.binding().bindSticky(b.c.Request.Context(), b.currentAPIKey.GroupID, b.sessionKey, b.provider.Record.ID); err != nil {
+			b.reqLog.Warn("gateway.bind_sticky_session_failed", zap.Int64("provider_id", b.provider.Record.ID), zap.Error(err))
 		}
 	}
-	// 账号槽位/等待计数需要在超时或断开时安全回收
-	b.accountReleaseFunc = scheduler.WrapRelease(b.c.Request.Context(), scheduler.ReleaseOnCancel, b.accountReleaseFunc)
-	b.sessionAttempts.Own(b.account.Record.ID, b.accountReleaseFunc)
+	// 提供商槽位/等待计数需要在超时或断开时安全回收
+	b.providerReleaseFunc = scheduler.WrapRelease(b.c.Request.Context(), scheduler.ReleaseOnCancel, b.providerReleaseFunc)
+	b.sessionAttempts.Own(b.provider.Record.ID, b.providerReleaseFunc)
 
 	return true
 }
@@ -223,21 +223,21 @@ func (b *messageAttemptBridge) Forward(state textflow.AttemptState) textflow.Out
 	var err error
 	// ===== 用户消息串行队列 START =====
 	var queueRelease func()
-	umqMode := b.binding().getUserMsgQueueMode(b.account, b.attemptParsedReq)
+	umqMode := b.binding().getUserMsgQueueMode(b.provider, b.attemptParsedReq)
 
 	switch umqMode {
 	case queuepolicy.MessageQueueSerialize:
 		// 串行模式：获取锁 + RPM 延迟 + 释放（当前行为不变）
-		baseRPM := gatewaycapture.ExecutionRuntimeConfig(b.account).GetBaseRPM()
+		baseRPM := gatewaycapture.ExecutionRuntimeConfig(b.provider).GetBaseRPM()
 		release, qErr := b.binding().userMsgQueueHelper.AcquireWithWait(
-			b.c, b.account.Record.ID, baseRPM, b.reqStream, b.streamStarted,
+			b.c, b.provider.Record.ID, baseRPM, b.reqStream, b.streamStarted,
 			b.binding().messageWaitTimeout,
 			b.reqLog,
 		)
 		if qErr != nil {
 			// fail-open: 记录 warn，不阻止请求
 			b.reqLog.Warn("gateway.umq_acquire_failed",
-				zap.Int64("account_id", b.account.Record.ID),
+				zap.Int64("provider_id", b.provider.Record.ID),
 				zap.Error(qErr),
 			)
 		} else {
@@ -246,14 +246,14 @@ func (b *messageAttemptBridge) Forward(state textflow.AttemptState) textflow.Out
 
 	case queuepolicy.MessageQueueThrottle:
 		// 软性限速：仅施加 RPM 自适应延迟，不阻塞并发
-		baseRPM := gatewaycapture.ExecutionRuntimeConfig(b.account).GetBaseRPM()
+		baseRPM := gatewaycapture.ExecutionRuntimeConfig(b.provider).GetBaseRPM()
 		if tErr := b.binding().userMsgQueueHelper.ThrottleWithPing(
-			b.c, b.account.Record.ID, baseRPM, b.reqStream, b.streamStarted,
+			b.c, b.provider.Record.ID, baseRPM, b.reqStream, b.streamStarted,
 			b.binding().messageWaitTimeout,
 			b.reqLog,
 		); tErr != nil {
 			b.reqLog.Warn("gateway.umq_throttle_failed",
-				zap.Int64("account_id", b.account.Record.ID),
+				zap.Int64("provider_id", b.provider.Record.ID),
 				zap.Error(tErr),
 			)
 		}
@@ -262,44 +262,44 @@ func (b *messageAttemptBridge) Forward(state textflow.AttemptState) textflow.Out
 		if umqMode != "" {
 			b.reqLog.Warn("gateway.umq_unknown_mode",
 				zap.String("mode", umqMode),
-				zap.Int64("account_id", b.account.Record.ID),
+				zap.Int64("provider_id", b.provider.Record.ID),
 			)
 		}
 	}
 
 	// 用 wrapReleaseOnDone 确保 context 取消时自动释放（仅 serialize 模式有 queueRelease）
 	queueRelease = scheduler.WrapRelease(b.c.Request.Context(), scheduler.ReleaseOnCancel, queueRelease)
-	b.sessionAttempts.Own(b.account.Record.ID, queueRelease)
+	b.sessionAttempts.Own(b.provider.Record.ID, queueRelease)
 	// 注入回调到 ParsedRequest：使用外层 wrapper 以便提前清理 AfterFunc
 	b.attemptParsedReq.OnUpstreamAccepted = queueRelease
 	// ===== 用户消息串行队列 END =====
 
 	// Bedrock CC 兼容：清理 body 专有字段 + 过滤 anthropic-beta header，适用于所有转发路径
-	if err := b.attemptParsedReq.ReplaceBody(b.binding().bedrockCompat(b.c, b.attemptParsedReq.Body.Bytes(), b.attemptParsedReq.Model, b.account, b.currentAPIKey.GroupID)); err != nil {
+	if err := b.attemptParsedReq.ReplaceBody(b.binding().bedrockCompat(b.c, b.attemptParsedReq.Body.Bytes(), b.attemptParsedReq.Model, b.provider, b.currentAPIKey.GroupID)); err != nil {
 		b.binding().errorResponse(b.c, http.StatusBadRequest, "invalid_request_error", "Failed to parse request body")
 		return textflow.Outcome{Stop: true}
 	}
 	attemptBody := b.attemptParsedReq.Body.Bytes()
 
-	// 转发请求 - 根据账号平台分流
+	// 转发请求 - 根据提供商平台分流
 	b.c.Set("parsed_request", b.attemptParsedReq)
 
 	requestCtx := b.c.Request.Context()
 	if state.SwitchCount > 0 {
-		requestCtx = requeststate.WithAccountSwitchCount(requestCtx, state.SwitchCount)
+		requestCtx = requeststate.WithProviderSwitchCount(requestCtx, state.SwitchCount)
 	}
 	if state.ForceCacheBilling {
 		// 将故障转移后的缓存计费语义传给同步响应改写逻辑。
 		requestCtx = requeststate.WithForceCacheBilling(requestCtx)
-		// 分组回退会重建账号尝试状态，这项已触发策略必须保留到请求完成。
+		// 分组回退会重建提供商尝试状态，这项已触发策略必须保留到请求完成。
 		b.c.Request = b.c.Request.WithContext(requestCtx)
 	}
 	// 记录 Forward 前已写入字节数，Forward 后若增加则说明 SSE 内容已发，禁止 failover
 	b.writerSizeBeforeForward = b.c.Writer.Size()
-	if b.account.Record.Platform == capability.PlatformAntigravity && b.account.Record.Type != capability.AccountTypeAPIKey {
-		b.result, err = b.binding().forwardAntigravity(requestCtx, b.c, b.account, attemptBody, b.hasBoundSession)
+	if b.provider.Record.Platform == capability.PlatformAntigravity && b.provider.Record.Type != capability.ProviderTypeAPIKey {
+		b.result, err = b.binding().forwardAntigravity(requestCtx, b.c, b.provider, attemptBody, b.hasBoundSession)
 	} else {
-		b.result, err = b.binding().forwardMessages(requestCtx, b.c, b.account, b.attemptParsedReq)
+		b.result, err = b.binding().forwardMessages(requestCtx, b.c, b.provider, b.attemptParsedReq)
 	}
 
 	// 兜底释放串行锁（正常情况已通过回调提前释放）
@@ -309,10 +309,10 @@ func (b *messageAttemptBridge) Forward(state textflow.AttemptState) textflow.Out
 	// 清理回调引用，防止 failover 重试时旧回调被错误调用
 	b.attemptParsedReq.OnUpstreamAccepted = nil
 
-	if b.accountReleaseFunc != nil {
-		b.accountReleaseFunc()
+	if b.providerReleaseFunc != nil {
+		b.providerReleaseFunc()
 	}
-	b.binding().reportSchedule(b.selection, b.account.Record.ID, err == nil, b.result)
+	b.binding().reportSchedule(b.selection, b.provider.Record.ID, err == nil, b.result)
 
 	out := textflow.Outcome{Attempt: messageObservedAttempt(b.result, err), Err: err, HasResult: b.result != nil, OutputChanged: b.c.Writer.Size() != b.writerSizeBeforeForward}
 	out.Attempt.HTTPCommitted = b.c.Writer.Written()
@@ -343,7 +343,7 @@ func (b *messageAttemptBridge) Complete(state textflow.AttemptState) {
 	clientIP := clientip.GetClientIP(b.c)
 	requestPayloadHash := billing.HashUsageRequestPayload(b.attemptParsedReq.Body.Bytes())
 	inboundEndpoint := gatewayhttp.GetInboundEndpoint(b.c)
-	upstreamEndpoint := gatewayhttp.GetUpstreamEndpoint(b.c, b.account.Record.Platform)
+	upstreamEndpoint := gatewayhttp.GetUpstreamEndpoint(b.c, b.provider.Record.Platform)
 
 	if usageResult.ReasoningEffort == nil {
 		usageResult.ReasoningEffort = protocol.NormalizeClaudeOutputEffort(b.attemptParsedReq.OutputEffort)
@@ -366,7 +366,7 @@ func (b *messageAttemptBridge) Complete(state textflow.AttemptState) {
 
 		APIKey:             b.currentAPIKey,
 		User:               b.currentAPIKey.User,
-		Account:            gatewaycapture.ExecutionCompletionRecord(b.account),
+		Provider:           gatewaycapture.ExecutionCompletionRecord(b.provider),
 		Subscription:       b.currentSubscription,
 		InboundEndpoint:    inboundEndpoint,
 		UpstreamEndpoint:   upstreamEndpoint,
@@ -390,7 +390,7 @@ func (b *messageAttemptBridge) Complete(state textflow.AttemptState) {
 				zap.Int64("api_key_id", completionInput.APIKey.ID),
 				zap.Any("group_id", completionInput.APIKey.GroupID),
 				zap.String("model", completionModel),
-				zap.Int64("account_id", completionInput.Account.ID),
+				zap.Int64("provider_id", completionInput.Provider.ID),
 			).Error("gateway.record_usage_failed", zap.Error(err))
 		}
 	})
@@ -404,22 +404,22 @@ func (b *messageAttemptBridge) OtherFailure(err error) {
 		wroteFallback = b.binding().ensureForwardErrorResponse(b.c, *b.streamStarted)
 	}
 	forwardFailedFields := []zap.Field{
-		zap.Int64("account_id", b.account.Record.ID),
-		zap.String("account_name", b.account.Record.Name),
-		zap.String("account_platform", b.account.Record.Platform),
+		zap.Int64("provider_id", b.provider.Record.ID),
+		zap.String("provider_name", b.provider.Record.Name),
+		zap.String("provider_platform", b.provider.Record.Platform),
 		zap.Bool("fallback_error_response_written", wroteFallback),
 		zap.Bool("upstream_error_response_already_written", upstreamErrorAlreadyCommunicated),
 		zap.Error(err),
 	}
-	if b.account.Record.Proxy != nil {
+	if b.provider.Record.Proxy != nil {
 		forwardFailedFields = append(forwardFailedFields,
-			zap.Int64("proxy_id", b.account.Record.Proxy.ID),
-			zap.String("proxy_name", b.account.Record.Proxy.Name),
-			zap.String("proxy_host", b.account.Record.Proxy.Host),
-			zap.Int("proxy_port", b.account.Record.Proxy.Port),
+			zap.Int64("proxy_id", b.provider.Record.Proxy.ID),
+			zap.String("proxy_name", b.provider.Record.Proxy.Name),
+			zap.String("proxy_host", b.provider.Record.Proxy.Host),
+			zap.Int("proxy_port", b.provider.Record.Proxy.Port),
 		)
-	} else if b.account.Record.ProxyID != nil {
-		forwardFailedFields = append(forwardFailedFields, zap.Int64p("proxy_id", b.account.Record.ProxyID))
+	} else if b.provider.Record.ProxyID != nil {
+		forwardFailedFields = append(forwardFailedFields, zap.Int64p("proxy_id", b.provider.Record.ProxyID))
 	}
 	b.reqLog.Error("gateway.forward_failed", forwardFailedFields...)
 }
@@ -429,20 +429,20 @@ func (b *messageAttemptBridge) Success() {
 	// RPM 计数递增（Forward 成功后）
 	// 注意：TOCTOU 竞态是已知且可接受的设计权衡，与 WindowCost 一致的 soft-limit 模式。
 	// 在高并发下可能短暂超出 RPM 限制，但不会导致请求失败。
-	if b.account.View().IsAnthropicOAuthOrSetupToken() && gatewaycapture.ExecutionRuntimeConfig(b.account).GetBaseRPM() > 0 {
-		if err := b.binding().incrementRPM(b.c.Request.Context(), b.account.Record.ID); err != nil {
-			b.reqLog.Warn("gateway.rpm_increment_failed", zap.Int64("account_id", b.account.Record.ID), zap.Error(err))
+	if b.provider.View().IsAnthropicOAuthOrSetupToken() && gatewaycapture.ExecutionRuntimeConfig(b.provider).GetBaseRPM() > 0 {
+		if err := b.binding().incrementRPM(b.c.Request.Context(), b.provider.Record.ID); err != nil {
+			b.reqLog.Warn("gateway.rpm_increment_failed", zap.Int64("provider_id", b.provider.Record.ID), zap.Error(err))
 		}
 	}
 
 	// 绑定粘性会话（成功转发后绑定/刷新）
 	// - 无现有绑定（首次请求）：创建绑定
-	// - 选中账号与粘性账号一致：刷新 TTL
-	// - 粘性账号因负载/RPM 被跳过、选中了其他账号：不覆盖原绑定，
-	//   下次请求粘性账号恢复后仍可命中
-	if b.sessionKey != "" && (b.sessionBoundAccountID == 0 || b.sessionBoundAccountID == b.account.Record.ID) {
-		if err := b.binding().bindSticky(b.c.Request.Context(), b.currentAPIKey.GroupID, b.sessionKey, b.account.Record.ID); err != nil {
-			b.reqLog.Warn("gateway.bind_sticky_session_failed", zap.Int64("account_id", b.account.Record.ID), zap.Error(err))
+	// - 选中提供商与粘性提供商一致：刷新 TTL
+	// - 粘性提供商因负载/RPM 被跳过、选中了其他提供商：不覆盖原绑定，
+	//   下次请求粘性提供商恢复后仍可命中
+	if b.sessionKey != "" && (b.sessionBoundProviderID == 0 || b.sessionBoundProviderID == b.provider.Record.ID) {
+		if err := b.binding().bindSticky(b.c.Request.Context(), b.currentAPIKey.GroupID, b.sessionKey, b.provider.Record.ID); err != nil {
+			b.reqLog.Warn("gateway.bind_sticky_session_failed", zap.Int64("provider_id", b.provider.Record.ID), zap.Error(err))
 		}
 	}
 }
@@ -455,8 +455,8 @@ func (b *messageAttemptBridge) Begin() {
 		b.fallbackGroupID = b.apiKey.Group.FallbackGroupIDOnInvalidRequest
 	}
 	b.sessionAttempts = b.binding().newSessionAttempts()
-	if b.binding().singleAccountGroup(b.Context(), b.currentAPIKey.GroupID) {
-		b.SingleAccountRetry()
+	if b.binding().singleProviderGroup(b.Context(), b.currentAPIKey.GroupID) {
+		b.SingleProviderRetry()
 	}
 }
 
@@ -466,8 +466,8 @@ func (b *messageAttemptBridge) Finish(served bool) {
 	}
 }
 
-func (b *messageAttemptBridge) SingleAccountRetry() {
-	b.c.Request = b.c.Request.WithContext(requeststate.WithSingleAccountRetry(b.Context(), true))
+func (b *messageAttemptBridge) SingleProviderRetry() {
+	b.c.Request = b.c.Request.WithContext(requeststate.WithSingleProviderRetry(b.Context(), true))
 }
 func (b *messageAttemptBridge) Canceled() { gatewayhttp.FailoverClientGone(b.c) }
 func (b *messageAttemptBridge) Exhausted(err *textflow.AttemptFailure, platform string, forceStream bool) {
@@ -493,7 +493,7 @@ func (b *messageAttemptBridge) PolicyFailure(err error) {
 }
 
 func (b *messageAttemptBridge) Switched() {
-	b.binding().accountSwitched(b.selection)
+	b.binding().providerSwitched(b.selection)
 }
 func (b *messageAttemptBridge) Abandon(id int64) { b.sessionAttempts.Abandon(id) }
 func (b *messageAttemptBridge) TempUnscheduleRetryableError(ctx context.Context, id int64, err *textflow.AttemptFailure) {

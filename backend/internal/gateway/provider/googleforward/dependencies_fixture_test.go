@@ -7,14 +7,14 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/googleforward"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/logredact"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/antigravity"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/gemini"
 )
@@ -22,22 +22,22 @@ import (
 // 夹具只组合原生依赖，规则、缓存与流状态仍来自实际拥有者。
 type geminiDependencies struct {
 	cfg                  *googleforward.Options
-	accountRepo          provider.ExecutionAccountStore
-	tokenProvider        *account.GeminiTokenSource
+	providerRepo         gatewayadapter.ExecutionProviderStore
+	tokenProvider        *provider.GeminiTokenSource
 	httpUpstream         httpclient.UpstreamTransport
-	healthObserver       *accountprovider.UpstreamHealth
-	quotaPrecheck        *account.GeminiPrecheck
+	healthObserver       *provideradapter.UpstreamHealth
+	quotaPrecheck        *provider.GeminiPrecheck
 	responseHeaderFilter *egress.CompiledHeaderFilter
 }
 type antigravityDependencies struct {
 	options          googleforward.Options
-	settingService   *provider.RuntimeReaders
-	accountRepo      provider.ExecutionAccountStore
-	tokenProvider    *account.AntigravityTokenSource
+	settingService   *gatewayadapter.RuntimeReaders
+	providerRepo     gatewayadapter.ExecutionProviderStore
+	tokenProvider    *provider.AntigravityTokenSource
 	httpUpstream     httpclient.UpstreamTransport
-	healthObserver   *accountprovider.UpstreamHealth
+	healthObserver   *provideradapter.UpstreamHealth
 	cache            session.GatewayCache
-	internal500Cache account.Internal500CounterCache
+	internal500Cache provider.Internal500CounterCache
 }
 
 func fixtureOptions(cfg *googleforward.Options) googleforward.Options {
@@ -59,22 +59,25 @@ func geminiQuotaLocation() *time.Location {
 	}
 	return loc
 }
+
 func nextGeminiDailyResetUnix() *int64 {
-	value := account.GeminiDailyResetTime(time.Now(), geminiQuotaLocation()).Unix()
+	value := provider.GeminiDailyResetTime(time.Now(), geminiQuotaLocation()).Unix()
 	return &value
 }
+
 func parseGeminiReset(body []byte) *int64 {
 	return gemini.ParseGeminiRateLimitResetTime(body, nextGeminiDailyResetUnix)
 }
+
 func newGeminiFixture(d geminiDependencies) *googleforward.Gemini {
-	health := &accountprovider.GeminiErrorObserver{
+	health := &provideradapter.GeminiErrorObserver{
 		Other:      d.healthObserver,
 		Precheck:   d.quotaPrecheck,
 		DailyReset: nextGeminiDailyResetUnix,
 		ResetTime:  parseGeminiReset,
 	}
-	if d.accountRepo != nil {
-		health.SetRateLimited = d.accountRepo.SetRateLimited
+	if d.providerRepo != nil {
+		health.SetRateLimited = d.providerRepo.SetRateLimited
 	}
 	return &googleforward.Gemini{
 		Options:      fixtureOptions(d.cfg),
@@ -85,21 +88,22 @@ func newGeminiFixture(d geminiDependencies) *googleforward.Gemini {
 		HeaderFilter: d.responseHeaderFilter,
 	}
 }
+
 func newAntigravityFixture(d antigravityDependencies) *googleforward.Antigravity {
 	o := d.options
-	health := &account.AntigravityHealth{
-		Store:     d.accountRepo,
+	health := &provider.AntigravityHealth{
+		Store:     d.providerRepo,
 		Counter:   d.internal500Cache,
-		ModelKeys: accountprovider.AntigravityModelLimitKeys,
+		ModelKeys: provideradapter.AntigravityModelLimitKeys,
 		Error:     slog.Error,
 		Warn:      slog.Warn,
 		Info:      slog.Info,
 		Logf:      func(format string, args ...any) { logging.LegacyPrintf("service.antigravity_gateway", format, args...) },
 	}
-	retry := &accountprovider.AntigravityRetry{
+	retry := &provideradapter.AntigravityRetry{
 		Health: health,
-		BaseURL: func(value *account.Record) string {
-			return antigravity.ResolveAntigravityForwardBaseURL(os.Getenv("GATEWAY_ANTIGRAVITY_FORWARD_BASE_URL"), accountprovider.AntigravityPaidTier(value))
+		BaseURL: func(value *provider.Record) string {
+			return antigravity.ResolveAntigravityForwardBaseURL(os.Getenv("GATEWAY_ANTIGRAVITY_FORWARD_BASE_URL"), provideradapter.AntigravityPaidTier(value))
 		},
 		BodyLimit: func() int64 {
 			limit := int64(512 << 10)
@@ -114,7 +118,7 @@ func newAntigravityFixture(d antigravityDependencies) *googleforward.Antigravity
 	if d.healthObserver != nil {
 		retry.Policy = d.healthObserver.Core
 	}
-	observer := &accountprovider.AntigravityErrorObserver{
+	observer := &provideradapter.AntigravityErrorObserver{
 		Health:         health,
 		Other:          d.healthObserver,
 		LogConfig:      o.LogConfig,
@@ -122,18 +126,18 @@ func newAntigravityFixture(d antigravityDependencies) *googleforward.Antigravity
 		ResetTime:      parseGeminiReset,
 		DefaultDuration: func() time.Duration {
 			minutes := 0
-			return accountprovider.AntigravityFallbackDuration(minutes, os.Getenv("GATEWAY_ANTIGRAVITY_FALLBACK_COOLDOWN_SECONDS"))
+			return provideradapter.AntigravityFallbackDuration(minutes, os.Getenv("GATEWAY_ANTIGRAVITY_FALLBACK_COOLDOWN_SECONDS"))
 		},
 	}
-	if d.accountRepo != nil {
-		observer.SetRateLimited = d.accountRepo.SetRateLimited
+	if d.providerRepo != nil {
+		observer.SetRateLimited = d.providerRepo.SetRateLimited
 	}
 	r := &googleforward.Antigravity{
 		Options:   o,
 		Tokens:    d.tokenProvider,
 		Retry:     retry,
 		Errors:    observer,
-		Store:     d.accountRepo,
+		Store:     d.providerRepo,
 		Transport: d.httpUpstream,
 		Sticky:    d.cache,
 	}

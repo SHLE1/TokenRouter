@@ -6,7 +6,7 @@ TokenRouter 通过统一 API 提供异步 Gemini 批量图片生成，底层由 
 
 支持 `gemini_api` 和 `vertex` 两类提供商。
 
-API 用户不会看到 Gemini 文件名、Vertex 作业名、GCS 路径、签名 URL、API Key 或服务账号材料。当前实现通过 TokenRouter 代理下载。
+API 用户不会看到 Gemini 文件名、Vertex 作业名、GCS 路径、签名 URL、API Key 或服务提供商材料。当前实现通过 TokenRouter 代理下载。
 
 ## 章节导航
 
@@ -21,7 +21,7 @@ API 用户不会看到 Gemini 文件名、Vertex 作业名、GCS 路径、签名
 
 ## API 路由
 
-创建入口由分组 `allowed_protocols` 的 `image_batches` 控制，API Key/Vertex 账号须分别启用 `gemini_batch_generate_content`/`vertex_batch_prediction`。提交执行器再次检查协议；已有作业的查询、下载、取消和清理由原 provider 与资源绑定处理，不依赖新建入口开关。
+创建入口由分组 `allowed_protocols` 的 `image_batches` 控制，API Key/Vertex 提供商须分别启用 `gemini_batch_generate_content`/`vertex_batch_prediction`。提交执行器再次检查协议；已有作业的查询、下载、取消和清理由原 provider 与资源绑定处理，不依赖新建入口开关。
 
 ```text
 POST   /v1/images/batches
@@ -38,7 +38,7 @@ DELETE /v1/images/batches/{id}/outputs
 ```json
 {
   "model": "gemini-2.5-flash-image",
-  "provider": "gemini_api",
+  "platform": "gemini_api",
   "items": [
     {
       "custom_id": "cover_001",
@@ -86,7 +86,7 @@ DELETE /v1/images/batches/{id}/outputs
   "object": "image.batch",
   "status": "queued",
   "model": "gemini-2.5-flash-image",
-  "provider": "gemini_api",
+  "platform": "gemini_api",
   "item_count": 1,
   "success_count": 0,
   "fail_count": 0,
@@ -149,9 +149,9 @@ output_deleted             -> output_deleted
 
 手工删除输出或 TTL 清理后，状态从 `completed` 变为 `output_deleted`。
 
-任务提交时已固定 provider 和执行账号，轮询、查询、下载、取消与结算沿用该绑定，不因分组成员变化重新选择。使用记录的平台从作业 provider 映射得到，不查询分组平台。
+任务提交时已固定 platform 和执行提供商，轮询、查询、下载、取消与结算沿用该绑定，不因分组成员变化重新选择。使用记录的平台从作业 platform 映射得到，不查询分组平台。
 
-任务提交时必须同时快照三种模型身份：`requested_model` 保存客户端提交值（复合 Key 场景包含自定义分组前缀），`internal_model` 保存复合 Key 选组和 API Key 模型重定向完成后、渠道与账号映射前的内部模型，`model` 保存最终提交给提供商的上游模型。异步结算写使用记录时以 `internal_model` 作为 `usage_logs.model`，并把 `model` 写入 `upstream_model`；迁移前任务没有内部模型快照时，才兼容回退到上游模型。
+任务提交时必须同时快照三种模型身份：`requested_model` 保存客户端提交值（复合 Key 场景包含自定义分组前缀），`internal_model` 保存复合 Key 选组和 API Key 模型重定向完成后、渠道与提供商映射前的内部模型，`model` 保存最终提交给提供商的上游模型。异步结算写使用记录时以 `internal_model` 作为 `usage_logs.model`，并把 `model` 写入 `upstream_model`；迁移前任务没有内部模型快照时，才兼容回退到上游模型。
 
 ## Redis
 
@@ -171,7 +171,7 @@ Redis 结构：
 
 `batchimage.Public` 拥有提交、目录、查询及取消，`PipelineProcessor` 在轮询/索引与结算之间推进，`Cleanup` 和 `Download` 分别拥有清理及输出读取。HTTP 位于 `batchimage/httpapi`，元数据与队列位于 PostgreSQL/Redis Adapter，平台操作位于 `batchimage/provider`。app 直接构造原生 Gemini/Vertex provider，并将唯一 `batchimage.Registry` 注入提交、轮询、下载及清理；Vertex 配置投影也由 app 完成。
 
-下载与清理也由 app 直接构造原生用例，ResultAccess 在原操作时点从账号存储读取已绑定账号，每次供应商操作得到独立凭据副本；下载保留账号资格及脱敏错误，清理保留原错误传播差异。处理、索引、结算及失活资金恢复由 app 直接组合原生实例，读取同一账号存储、billing.Funds、usage 存储和报价器；worker 配置只在 app 投影。提交、目录、查询及取消也已直接绑定原生 Public；候选通过 provider.Candidates 在原查询时点从 AccountStore 投影，复用 account 模型规则和 routing 的逐候选协议解析。套餐读取仍按资金模式触发，指定订阅不会回退。
+下载与清理也由 app 直接构造原生用例，ResultAccess 在原操作时点从提供商存储读取已绑定提供商，每次供应商操作得到独立凭据副本；下载保留提供商资格及脱敏错误，清理保留原错误传播差异。处理、索引、结算及失活资金恢复由 app 直接组合原生实例，读取同一提供商存储、billing.Funds、usage 存储和报价器；worker 配置只在 app 投影。提交、目录、查询及取消也已直接绑定原生 Public；候选通过 provider.Candidates 在原查询时点从 ProviderStore 投影，复用 provider 模型规则和 routing 的逐候选协议解析。套餐读取仍按资金模式触发，指定订阅不会回退。
 
 worker 必须从 Redis 预留作业，不应以数据库扫描循环方式运行。只有 Redis 队列预留返回具体批量作业 ID 后才读取数据库。队列由 `batchimage/rediscache` 唯一实现；取得任务锁后，心跳、ACK 和重排通过持有者句柄原子比较现有锁 token。续期不匹配或无法确认所有权时取消本轮推进，旧 worker 不得清除接管者的活动记录。数据键、字符串 token 与 TTL 不变，也不构成 Redis/PostgreSQL 的分布式事务。
 
@@ -225,20 +225,20 @@ DELETE /v1/images/batches/{id}/outputs
 `gemini_api`：
 
 - 使用 JSONL 文件模式的 Gemini Batch API。
-- 支持配置了 API Key 的 Gemini `apikey` 上游账号。
+- 支持配置了 API Key 的 Gemini `apikey` 上游提供商。
 - 结果文件引用只在内部使用。
 - 永不返回 API Key。
-- 管理员配置符合条件的 Gemini API Key 上游账号后，可以通过 TokenRouter 选择并提交该提供商。
+- 管理员配置符合条件的 Gemini API Key 上游提供商后，可以通过 TokenRouter 选择并提交该提供商。
 
 `vertex`：
 
 - 使用基于受管 GCS JSONL 的 Vertex `BatchPredictionJob`。
-- 支持包含有效服务账号 JSON 的 Gemini `service_account` 上游账号。
+- 支持包含有效服务提供商 JSON 的 Gemini `service_account` 上游提供商。
 - GCS 存储桶和前缀由服务端管理。
 - Vertex 作业名和 GCS 路径只在内部使用。
 - 当前输出只支持 `1K` 或默认值，不支持 `2K`、`4K`。
 
-其他 Gemini 账号或登录类型不会被当前批量图片提供商选择，除非它们通过相同提供商流程公开等价的 API Key 或服务账号凭据。
+其他 Gemini 提供商或登录类型不会被当前批量图片提供商选择，除非它们通过相同提供商流程公开等价的 API Key 或服务提供商凭据。
 
 ## 启用 Google 官方能力
 
@@ -248,17 +248,17 @@ DELETE /v1/images/batches/{id}/outputs
 
 - 使用已启用结算的 Google Cloud 项目。
 - 为项目启用相应 Gemini API 或 Vertex AI API。
-- TokenRouter 运行时使用服务账号或应用默认凭据。
+- TokenRouter 运行时使用服务提供商或应用默认凭据。
 - 为批量图片输入输出创建固定 Cloud Storage 存储桶，并向运行时和 Vertex 服务代理授予最低必要存储桶权限。
-- 在 TokenRouter 中配置项目 ID、区域、受管存储桶、提供商账号、模型白名单和价格。
-- 全局启用 `BATCH_IMAGE_ENABLED`，在目标分组的 `allowed_protocols` 中开启 `image_batches`。分组可混合任意平台，但新作业只选择组内具备 Gemini 或 Vertex 批处理能力的账号；未绑定分组时拒绝提交，不从全局账号池补选。
+- 在 TokenRouter 中配置项目 ID、区域、受管存储桶、提供商提供商、模型白名单和价格。
+- 全局启用 `BATCH_IMAGE_ENABLED`，在目标分组的 `allowed_protocols` 中开启 `image_batches`。分组可混合任意平台，但新作业只选择组内具备 Gemini 或 Vertex 批处理能力的提供商；未绑定分组时拒绝提交，不从全局提供商池补选。
 
 API Key 路径：
 
 - Google API Key 适合 Gemini API 开发和受支持的 Gemini 方法。
 - TokenRouter 的 `x-goog-api-key` 兼容请求头仍要求 TokenRouter Key，而不是普通 Google Key。
-- 不应把普通 Google API Key 记录为 Vertex 服务账号批量作业的默认生产凭据。
-- 管理员配置 Gemini API Key 上游账号后，应在 Google 账号具备必要结算或预付状态时执行一次低成本批量图片验证。没有预付时，只能记录提供商可被选择和调用，以及提交失败会释放预留，不应推断更多能力。
+- 不应把普通 Google API Key 记录为 Vertex 服务提供商批量作业的默认生产凭据。
+- 管理员配置 Gemini API Key 上游提供商后，应在 Google 账号具备必要结算或预付状态时执行一次低成本批量图片验证。没有预付时，只能记录提供商可被选择和调用，以及提交失败会释放预留，不应推断更多能力。
 
 官方参考：
 
@@ -332,7 +332,7 @@ batch_image:
 - 启用 `batch_image.enabled`。
 - 配置 Redis。
 - 需要 worker 消费队列作业时启用 `batch_image.queue_enabled`。
-- 配置提供商账号。
+- 配置提供商提供商。
 - 使用 Vertex 时配置受管 GCS 存储桶。
 - 确认存储桶权限正确。
 - 关闭或妥善管理 GCS 软删除。
@@ -344,7 +344,7 @@ batch_image:
 
 ## 安全检查清单
 
-- 公共响应不包含提供商引用、GCS URI、签名 URL、服务账号材料或 API Key。
+- 公共响应不包含提供商引用、GCS URI、签名 URL、服务提供商材料或 API Key。
 - PostgreSQL 不保存图片字节或 Base64。
 - 日志不记录 Base64。
 - 状态、条目、下载、取消和删除路由都校验所有者，输出删除也遵守同一边界。

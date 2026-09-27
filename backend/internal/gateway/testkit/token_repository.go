@@ -3,20 +3,21 @@ package testkit
 import (
 	"context"
 
-	acctcore "github.com/TokenFlux/TokenRouter/internal/account"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	acctcore "github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
-// tokenRepositoryReader 只投影测试账号，刷新规则仍由账号模块执行。
+// tokenRepositoryReader 只投影测试提供商，刷新规则仍由提供商模块执行。
 type tokenRepositoryReader struct {
-	source gatewayprovider.ExecutionAccountStore
+	source gatewayprovider.ExecutionProviderStore
 }
 
 func (r tokenRepositoryReader) GetByID(ctx context.Context, id int64) (*acctcore.Record, error) {
 	v, err := r.source.GetByID(ctx, id)
 	return gatewayprovider.ExecutionRecord(v), err
 }
-func TokenRepository(repo gatewayprovider.ExecutionAccountStore) acctcore.RefreshRepository {
+
+func TokenRepository(repo gatewayprovider.ExecutionProviderStore) acctcore.RefreshRepository {
 	if repo == nil {
 		return nil
 	}

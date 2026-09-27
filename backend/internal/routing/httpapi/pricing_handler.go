@@ -37,7 +37,7 @@ type createPricingConfigRequest struct {
 
 	BillingModelSource string `json:"billing_model_source" binding:"omitempty,oneof=requested upstream group_mapped"`
 
-	AccountStatsPricingRules []accountStatsPricingRuleRequest `json:"account_stats_pricing_rules"`
+	ProviderStatsPricingRules []providerStatsPricingRuleRequest `json:"provider_stats_pricing_rules"`
 }
 
 type updatePricingConfigRequest struct {
@@ -50,7 +50,7 @@ type updatePricingConfigRequest struct {
 
 	BillingModelSource string `json:"billing_model_source" binding:"omitempty,oneof=requested upstream group_mapped"`
 
-	AccountStatsPricingRules *[]accountStatsPricingRuleRequest `json:"account_stats_pricing_rules"`
+	ProviderStatsPricingRules *[]providerStatsPricingRuleRequest `json:"provider_stats_pricing_rules"`
 }
 
 type modelPricingRequest struct {
@@ -103,11 +103,11 @@ type pricingIntervalRequest struct {
 	SortOrder            int      `json:"sort_order"`
 }
 
-type accountStatsPricingRuleRequest struct {
-	Name       string                `json:"name"`
-	GroupIDs   []int64               `json:"group_ids"`
-	AccountIDs []int64               `json:"account_ids"`
-	Pricing    []modelPricingRequest `json:"pricing"`
+type providerStatsPricingRuleRequest struct {
+	Name        string                `json:"name"`
+	GroupIDs    []int64               `json:"group_ids"`
+	ProviderIDs []int64               `json:"provider_ids"`
+	Pricing     []modelPricingRequest `json:"pricing"`
 }
 
 type pricingConfigResponse struct {
@@ -121,9 +121,9 @@ type pricingConfigResponse struct {
 	GroupIDs     []int64                `json:"group_ids"`
 	ModelPricing []modelPricingResponse `json:"model_pricing"`
 
-	AccountStatsPricingRules []accountStatsPricingRuleResponse `json:"account_stats_pricing_rules"`
-	CreatedAt                string                            `json:"created_at"`
-	UpdatedAt                string                            `json:"updated_at"`
+	ProviderStatsPricingRules []providerStatsPricingRuleResponse `json:"provider_stats_pricing_rules"`
+	CreatedAt                 string                             `json:"created_at"`
+	UpdatedAt                 string                             `json:"updated_at"`
 }
 
 type modelPricingResponse struct {
@@ -177,12 +177,12 @@ type pricingIntervalResponse struct {
 	SortOrder            int      `json:"sort_order"`
 }
 
-type accountStatsPricingRuleResponse struct {
-	ID         int64                  `json:"id"`
-	Name       string                 `json:"name"`
-	GroupIDs   []int64                `json:"group_ids"`
-	AccountIDs []int64                `json:"account_ids"`
-	Pricing    []modelPricingResponse `json:"pricing"`
+type providerStatsPricingRuleResponse struct {
+	ID          int64                  `json:"id"`
+	Name        string                 `json:"name"`
+	GroupIDs    []int64                `json:"group_ids"`
+	ProviderIDs []int64                `json:"provider_ids"`
+	Pricing     []modelPricingResponse `json:"pricing"`
 }
 
 // firstNonNilFloat 兼容旧版 fast_mode_multiplier 与新版 fast_multiplier。
@@ -222,25 +222,25 @@ func pricingConfigToResponse(ch *routing.PricingConfig) *pricingConfigResponse {
 		resp.ModelPricing = append(resp.ModelPricing, pricingToResponse(&p))
 	}
 
-	resp.AccountStatsPricingRules = make([]accountStatsPricingRuleResponse, 0, len(ch.AccountStatsPricingRules))
-	for _, rule := range ch.AccountStatsPricingRules {
-		ruleResp := accountStatsPricingRuleResponse{
-			ID:         rule.ID,
-			Name:       rule.Name,
-			GroupIDs:   rule.GroupIDs,
-			AccountIDs: rule.AccountIDs,
-			Pricing:    make([]modelPricingResponse, 0, len(rule.Pricing)),
+	resp.ProviderStatsPricingRules = make([]providerStatsPricingRuleResponse, 0, len(ch.ProviderStatsPricingRules))
+	for _, rule := range ch.ProviderStatsPricingRules {
+		ruleResp := providerStatsPricingRuleResponse{
+			ID:          rule.ID,
+			Name:        rule.Name,
+			GroupIDs:    rule.GroupIDs,
+			ProviderIDs: rule.ProviderIDs,
+			Pricing:     make([]modelPricingResponse, 0, len(rule.Pricing)),
 		}
 		if ruleResp.GroupIDs == nil {
 			ruleResp.GroupIDs = []int64{}
 		}
-		if ruleResp.AccountIDs == nil {
-			ruleResp.AccountIDs = []int64{}
+		if ruleResp.ProviderIDs == nil {
+			ruleResp.ProviderIDs = []int64{}
 		}
 		for i := range rule.Pricing {
 			ruleResp.Pricing = append(ruleResp.Pricing, pricingToResponse(&rule.Pricing[i]))
 		}
-		resp.AccountStatsPricingRules = append(resp.AccountStatsPricingRules, ruleResp)
+		resp.ProviderStatsPricingRules = append(resp.ProviderStatsPricingRules, ruleResp)
 	}
 
 	return resp
@@ -389,12 +389,12 @@ func timePricingRequestToService(value *timePricingRequest) *routing.TimePricing
 	}
 }
 
-func accountStatsPricingRuleRequestToService(r accountStatsPricingRuleRequest) routing.AccountStatsPricingRule {
-	return routing.AccountStatsPricingRule{
-		Name:       r.Name,
-		GroupIDs:   r.GroupIDs,
-		AccountIDs: r.AccountIDs,
-		Pricing:    pricingRequestToService(r.Pricing),
+func providerStatsPricingRuleRequestToService(r providerStatsPricingRuleRequest) routing.ProviderStatsPricingRule {
+	return routing.ProviderStatsPricingRule{
+		Name:        r.Name,
+		GroupIDs:    r.GroupIDs,
+		ProviderIDs: r.ProviderIDs,
+		Pricing:     pricingRequestToService(r.Pricing),
 	}
 }
 
@@ -455,11 +455,11 @@ func (h *PricingHandler) Create(c *gin.Context) {
 
 	pricing := pricingRequestToService(req.ModelPricing)
 
-	var statsRules []routing.AccountStatsPricingRule
-	for i, r := range req.AccountStatsPricingRules {
-		if len(r.GroupIDs) == 0 && len(r.AccountIDs) == 0 {
+	var statsRules []routing.ProviderStatsPricingRule
+	for i, r := range req.ProviderStatsPricingRules {
+		if len(r.GroupIDs) == 0 && len(r.ProviderIDs) == 0 {
 			response.ErrorFrom(c, infraerrors.BadRequest("PRICING_RULE_EMPTY_SCOPE",
-				fmt.Sprintf("pricing rule #%d must have at least one group or account", i+1)))
+				fmt.Sprintf("pricing rule #%d must have at least one group or provider", i+1)))
 			return
 		}
 		if len(r.Pricing) == 0 {
@@ -467,7 +467,7 @@ func (h *PricingHandler) Create(c *gin.Context) {
 				fmt.Sprintf("pricing rule #%d must have at least one pricing entry", i+1)))
 			return
 		}
-		rule := accountStatsPricingRuleRequestToService(r)
+		rule := providerStatsPricingRuleRequestToService(r)
 		rule.SortOrder = i
 		statsRules = append(statsRules, rule)
 	}
@@ -481,7 +481,7 @@ func (h *PricingHandler) Create(c *gin.Context) {
 
 		BillingModelSource: req.BillingModelSource,
 
-		AccountStatsPricingRules: statsRules,
+		ProviderStatsPricingRules: statsRules,
 	})
 	if err != nil {
 		response.ErrorFrom(c, err)
@@ -519,12 +519,12 @@ func (h *PricingHandler) Update(c *gin.Context) {
 		pricing := pricingRequestToService(*req.ModelPricing)
 		input.ModelPricing = &pricing
 	}
-	if req.AccountStatsPricingRules != nil {
-		statsRules := make([]routing.AccountStatsPricingRule, 0, len(*req.AccountStatsPricingRules))
-		for i, r := range *req.AccountStatsPricingRules {
-			if len(r.GroupIDs) == 0 && len(r.AccountIDs) == 0 {
+	if req.ProviderStatsPricingRules != nil {
+		statsRules := make([]routing.ProviderStatsPricingRule, 0, len(*req.ProviderStatsPricingRules))
+		for i, r := range *req.ProviderStatsPricingRules {
+			if len(r.GroupIDs) == 0 && len(r.ProviderIDs) == 0 {
 				response.ErrorFrom(c, infraerrors.BadRequest("PRICING_RULE_EMPTY_SCOPE",
-					fmt.Sprintf("pricing rule #%d must have at least one group or account", i+1)))
+					fmt.Sprintf("pricing rule #%d must have at least one group or provider", i+1)))
 				return
 			}
 			if len(r.Pricing) == 0 {
@@ -532,11 +532,11 @@ func (h *PricingHandler) Update(c *gin.Context) {
 					fmt.Sprintf("pricing rule #%d must have at least one pricing entry", i+1)))
 				return
 			}
-			rule := accountStatsPricingRuleRequestToService(r)
+			rule := providerStatsPricingRuleRequestToService(r)
 			rule.SortOrder = i
 			statsRules = append(statsRules, rule)
 		}
-		input.AccountStatsPricingRules = &statsRules
+		input.ProviderStatsPricingRules = &statsRules
 	}
 
 	pricingConfig, err := h.pricingConfigs.Update(c.Request.Context(), id, input)

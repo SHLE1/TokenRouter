@@ -5,12 +5,12 @@ import (
 	"context"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/failover"
 	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
-// GenerationResult 是 HTTP 完成之前的明确观测；不携带账号或请求上下文。
+// GenerationResult 是 HTTP 完成之前的明确观测；不携带提供商或请求上下文。
 type GenerationResult struct {
 	RequestID, ResponseID, Model, BillingModel, UpstreamModel                    string
 	Headers, ResponseHeaders                                                     map[string][]string
@@ -24,7 +24,7 @@ type GenerationResult struct {
 	ImageSizeBreakdown                                                           map[string]int
 }
 type GenerationSelection struct {
-	Account    account.AccountSnapshot
+	Provider   provider.ProviderSnapshot
 	RetryLimit int
 }
 type GenerationOutcome struct {
@@ -43,7 +43,7 @@ type GenerationRequest struct {
 	MaxSwitches             int
 	RoutingStarted          time.Time
 	Generation, VideoLookup bool
-	BoundAccountID          int64
+	BoundProviderID         int64
 }
 type GenerationEvent struct {
 	Kind                                                    string
@@ -149,11 +149,11 @@ func RunImages(ctx context.Context, request GenerationRequest, p GenerationPorts
 				p.ObserveGeneration(GenerationEvent{Kind: "forward_canceled", Selection: selected, Outcome: result})
 				return
 			}
-			retryLimit := failover.EffectiveSameAccountRetryLimit(result.Failure, selected.RetryLimit)
-			if result.Failure.RetryableOnSameAccount && failover.SameAccountRetryAllowed(result.Failure, retries[selected.Account.ID], retryLimit) {
-				retries[selected.Account.ID]++
-				delay := failover.SameAccountRetryDelayFor(result.Failure, retries[selected.Account.ID])
-				p.ObserveGeneration(GenerationEvent{Kind: "retry", Selection: selected, Outcome: result, RetryCount: retries[selected.Account.ID], RetryLimit: retryLimit, Delay: delay})
+			retryLimit := failover.EffectiveSameProviderRetryLimit(result.Failure, selected.RetryLimit)
+			if result.Failure.RetryableOnSameProvider && failover.SameProviderRetryAllowed(result.Failure, retries[selected.Provider.ID], retryLimit) {
+				retries[selected.Provider.ID]++
+				delay := failover.SameProviderRetryDelayFor(result.Failure, retries[selected.Provider.ID])
+				p.ObserveGeneration(GenerationEvent{Kind: "retry", Selection: selected, Outcome: result, RetryCount: retries[selected.Provider.ID], RetryLimit: retryLimit, Delay: delay})
 				select {
 				case <-ctx.Done():
 					return
@@ -162,7 +162,7 @@ func RunImages(ctx context.Context, request GenerationRequest, p GenerationPorts
 				continue
 			}
 			p.SwitchGeneration(selected)
-			excluded[selected.Account.ID] = struct{}{}
+			excluded[selected.Provider.ID] = struct{}{}
 			last = result
 			if switches >= request.MaxSwitches {
 				p.EndGeneration(GenerationFailure{Stage: "exhausted", Outcome: result})
@@ -185,7 +185,7 @@ func RunImages(ctx context.Context, request GenerationRequest, p GenerationPorts
 	}
 }
 
-// RunGrokMedia 在原归属账号上查询旧任务；查询不会因生成资格或 failover 改投其它账号。
+// RunGrokMedia 在原归属提供商上查询旧任务；查询不会因生成资格或 failover 改投其它提供商。
 func RunGrokMedia(ctx context.Context, request GenerationRequest, p GenerationPorts) {
 	if request.MaxSwitches <= 0 {
 		request.MaxSwitches = 3
@@ -213,8 +213,8 @@ func RunGrokMedia(ctx context.Context, request GenerationRequest, p GenerationPo
 			p.EndGeneration(GenerationFailure{Stage: "empty_selection"})
 			return
 		}
-		if request.BoundAccountID > 0 && selected.Account.ID != request.BoundAccountID {
-			p.EndGeneration(GenerationFailure{Stage: "bound_unavailable", SelectedID: selected.Account.ID})
+		if request.BoundProviderID > 0 && selected.Provider.ID != request.BoundProviderID {
+			p.EndGeneration(GenerationFailure{Stage: "bound_unavailable", SelectedID: selected.Provider.ID})
 			return
 		}
 		p.ObserveGeneration(GenerationEvent{Kind: "schedule", Selection: selected})
@@ -222,7 +222,7 @@ func RunGrokMedia(ctx context.Context, request GenerationRequest, p GenerationPo
 			eligible, reason, err := p.GenerationEligible(ctx, selected)
 			if !eligible {
 				rejected = true
-				excluded[selected.Account.ID] = struct{}{}
+				excluded[selected.Provider.ID] = struct{}{}
 				p.ObserveGeneration(GenerationEvent{Kind: "ineligible", Selection: selected, Reason: reason, ProbeFailed: err != nil})
 				if switches >= request.MaxSwitches {
 					p.EndGeneration(GenerationFailure{Stage: "ineligible"})
@@ -263,11 +263,11 @@ func RunGrokMedia(ctx context.Context, request GenerationRequest, p GenerationPo
 				p.EndGeneration(GenerationFailure{Stage: "exhausted", Outcome: result})
 				return
 			}
-			retryLimit := failover.EffectiveSameAccountRetryLimit(result.Failure, selected.RetryLimit)
-			if result.Failure.RetryableOnSameAccount && failover.SameAccountRetryAllowed(result.Failure, retries[selected.Account.ID], retryLimit) {
-				retries[selected.Account.ID]++
-				delay := failover.SameAccountRetryDelayFor(result.Failure, retries[selected.Account.ID])
-				p.ObserveGeneration(GenerationEvent{Kind: "retry", Selection: selected, Outcome: result, RetryCount: retries[selected.Account.ID], RetryLimit: retryLimit, Delay: delay})
+			retryLimit := failover.EffectiveSameProviderRetryLimit(result.Failure, selected.RetryLimit)
+			if result.Failure.RetryableOnSameProvider && failover.SameProviderRetryAllowed(result.Failure, retries[selected.Provider.ID], retryLimit) {
+				retries[selected.Provider.ID]++
+				delay := failover.SameProviderRetryDelayFor(result.Failure, retries[selected.Provider.ID])
+				p.ObserveGeneration(GenerationEvent{Kind: "retry", Selection: selected, Outcome: result, RetryCount: retries[selected.Provider.ID], RetryLimit: retryLimit, Delay: delay})
 				select {
 				case <-ctx.Done():
 					return
@@ -276,7 +276,7 @@ func RunGrokMedia(ctx context.Context, request GenerationRequest, p GenerationPo
 				continue
 			}
 			p.SwitchGeneration(selected)
-			excluded[selected.Account.ID] = struct{}{}
+			excluded[selected.Provider.ID] = struct{}{}
 			last = result
 			if switches >= request.MaxSwitches {
 				p.EndGeneration(GenerationFailure{Stage: "exhausted", Outcome: result})
@@ -321,6 +321,7 @@ func CloneGenerationResult(input *GenerationResult) *GenerationResult {
 	output.ResponseHeaders = cloneGenerationHeaders(input.ResponseHeaders)
 	return &output
 }
+
 func cloneGenerationHeaders(input map[string][]string) map[string][]string {
 	if input == nil {
 		return nil

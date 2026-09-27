@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 	"github.com/stretchr/testify/require"
 )
@@ -26,12 +26,14 @@ func (r *fixedExecutionRuntime) Prepare(_ context.Context, request Request) (Req
 	r.prepares.Add(1)
 	return request, nil
 }
+
 func (r *fixedExecutionRuntime) Check(context.Context, Request, bool) error {
 	r.checks.Add(1)
 	return nil
 }
+
 func (r *fixedExecutionRuntime) Select(_ context.Context, request Request, _ map[int64]struct{}) (*Selection, error) {
-	return &Selection{Acquired: true, Snapshot: account.AccountSnapshot{ID: request.UserID}, Input: upstream.AttemptInput{Body: request.Body, ResponseModel: request.Model}, Executor: fixedExecutionFunc(r.execute), Release: func() { r.released.Add(1) }, Complete: func(context.Context, upstream.AttemptResult) { r.completed.Add(1) }}, nil
+	return &Selection{Acquired: true, Snapshot: provider.ProviderSnapshot{ID: request.UserID}, Input: upstream.AttemptInput{Body: request.Body, ResponseModel: request.Model}, Executor: fixedExecutionFunc(r.execute), Release: func() { r.released.Add(1) }, Complete: func(context.Context, upstream.AttemptResult) { r.completed.Add(1) }}, nil
 }
 func (*fixedExecutionRuntime) CanRefresh(error) bool      { return false }
 func (*fixedExecutionRuntime) CanFailover(error) bool     { return false }
@@ -59,7 +61,7 @@ func TestExecuteRetainsPartialFailureAndCompletesOnce(t *testing.T) {
 	result, err := core.Execute(context.Background(), Request{UserID: 7, Model: "model", Stream: true}, discardExecutionOutput{})
 	require.ErrorIs(t, err, upstreamErr)
 	require.Equal(t, 1, result.Attempts)
-	require.Equal(t, int64(7), result.Account.ID)
+	require.Equal(t, int64(7), result.Provider.ID)
 	require.Equal(t, 3, result.Attempt.Usage.OutputTokens)
 	require.Equal(t, int64(1), runtime.completed.Load())
 	require.Equal(t, int64(1), runtime.released.Load())

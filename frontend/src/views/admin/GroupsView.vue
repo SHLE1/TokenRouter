@@ -168,45 +168,45 @@
             </span>
           </template>
 
-          <template #cell-account_count="{ row }">
+          <template #cell-provider_count="{ row }">
             <div class="space-y-0.5 text-xs">
               <div>
                 <span class="text-gray-500 dark:text-gray-400">{{
-                  t("admin.groups.accountsAvailable")
+                  t("admin.groups.providersAvailable")
                 }}</span>
                 <span
                   class="ml-1 font-medium text-emerald-600 dark:text-emerald-400"
-                  >{{ row.active_account_count || 0 }}</span
+                  >{{ row.active_provider_count || 0 }}</span
                 >
                 <span
                   class="ml-1 inline-flex items-center rounded-compact bg-gray-100 px-1.5 py-0.5 font-medium text-gray-800 dark:bg-dark-600 dark:text-gray-300"
-                  >{{ t("admin.groups.accountsUnit") }}</span
+                  >{{ t("admin.groups.providersUnit") }}</span
                 >
               </div>
-              <div v-if="row.rate_limited_account_count">
+              <div v-if="row.rate_limited_provider_count">
                 <span class="text-gray-500 dark:text-gray-400">{{
-                  t("admin.groups.accountsRateLimited")
+                  t("admin.groups.providersRateLimited")
                 }}</span>
                 <span
                   class="ml-1 font-medium text-amber-600 dark:text-amber-400"
-                  >{{ row.rate_limited_account_count }}</span
+                  >{{ row.rate_limited_provider_count }}</span
                 >
                 <span
                   class="ml-1 inline-flex items-center rounded-compact bg-gray-100 px-1.5 py-0.5 font-medium text-gray-800 dark:bg-dark-600 dark:text-gray-300"
-                  >{{ t("admin.groups.accountsUnit") }}</span
+                  >{{ t("admin.groups.providersUnit") }}</span
                 >
               </div>
               <div>
                 <span class="text-gray-500 dark:text-gray-400">{{
-                  t("admin.groups.accountsTotal")
+                  t("admin.groups.providersTotal")
                 }}</span>
                 <span
                   class="ml-1 font-medium text-gray-700 dark:text-gray-300"
-                  >{{ row.account_count || 0 }}</span
+                  >{{ row.provider_count || 0 }}</span
                 >
                 <span
                   class="ml-1 inline-flex items-center rounded-compact bg-gray-100 px-1.5 py-0.5 font-medium text-gray-800 dark:bg-dark-600 dark:text-gray-300"
-                  >{{ t("admin.groups.accountsUnit") }}</span
+                  >{{ t("admin.groups.providersUnit") }}</span
                 >
               </div>
             </div>
@@ -268,7 +268,7 @@
                 value === 'active' ? 'badge-success' : 'badge-danger',
               ]"
             >
-              {{ t("admin.accounts.status." + value) }}
+              {{ t("admin.providers.status." + value) }}
             </span>
           </template>
 
@@ -353,7 +353,7 @@
           mode="create"
           :model-value="createForm"
           :options="{
-            copyAccounts: copyAccountsGroupOptions,
+            copyProviders: copyProvidersGroupOptions,
             unavailableFallback: unavailableFallbackGroupOptions,
             invalidRequestFallback: invalidRequestFallbackOptions,
             clientFallback: fallbackGroupOptions,
@@ -362,17 +362,17 @@
           :routing-rules="createModelRoutingRules"
           :models-list="createModelsListState"
           :models-list-loading="createModelsListLoading"
-          :account-search="{ keywords: accountSearchKeyword, results: accountSearchResults, open: showAccountDropdown }"
+          :provider-search="{ keywords: providerSearchKeyword, results: providerSearchResults, open: showProviderDropdown }"
           :get-rule-key="getCreateRuleSearchKey"
           @patch="Object.assign(createForm, $event)"
           @configure-scheduler="openAdvancedSchedulerOverrides('create')"
           @add-rule="addCreateRoutingRule"
           @remove-rule="removeCreateRoutingRule"
           @rule-pattern="(rule, value) => rule.pattern = value"
-          @search-accounts="(rule, keyword) => updateAccountSearch(rule, keyword)"
-          @focus-accounts="rule => onAccountSearchFocus(rule)"
-          @select-account="(rule, account) => selectAccount(rule, account)"
-          @remove-account="(rule, id) => removeSelectedAccount(rule, id)"
+          @search-providers="(rule, keyword) => updateProviderSearch(rule, keyword)"
+          @focus-providers="rule => onProviderSearchFocus(rule)"
+          @select-provider="(rule, provider) => selectProvider(rule, provider)"
+          @remove-provider="(rule, id) => removeSelectedProvider(rule, id)"
           @models-enabled="createModelsListState.enabled = $event"
           @select-model="(id, value) => setModelSelection(createModelsListState, id, value)"
           @select-all-models="selectAllModelsListItems(createModelsListState)"
@@ -444,7 +444,7 @@
           mode="edit"
           :model-value="editForm"
           :options="{
-            copyAccounts: copyAccountsGroupOptionsForEdit,
+            copyProviders: copyProvidersGroupOptionsForEdit,
             unavailableFallback: unavailableFallbackGroupOptionsForEdit,
             invalidRequestFallback: invalidRequestFallbackOptionsForEdit,
             clientFallback: fallbackGroupOptionsForEdit,
@@ -453,17 +453,17 @@
           :routing-rules="editModelRoutingRules"
           :models-list="editModelsListState"
           :models-list-loading="editModelsListLoading"
-          :account-search="{ keywords: accountSearchKeyword, results: accountSearchResults, open: showAccountDropdown }"
+          :provider-search="{ keywords: providerSearchKeyword, results: providerSearchResults, open: showProviderDropdown }"
           :get-rule-key="getEditRuleSearchKey"
           @patch="Object.assign(editForm, $event)"
           @configure-scheduler="openAdvancedSchedulerOverrides('edit')"
           @add-rule="addEditRoutingRule"
           @remove-rule="removeEditRoutingRule"
           @rule-pattern="(rule, value) => rule.pattern = value"
-          @search-accounts="(rule, keyword) => updateAccountSearch(rule, keyword, true)"
-          @focus-accounts="rule => onAccountSearchFocus(rule, true)"
-          @select-account="(rule, account) => selectAccount(rule, account, true)"
-          @remove-account="(rule, id) => removeSelectedAccount(rule, id, true)"
+          @search-providers="(rule, keyword) => updateProviderSearch(rule, keyword, true)"
+          @focus-providers="rule => onProviderSearchFocus(rule, true)"
+          @select-provider="(rule, provider) => selectProvider(rule, provider, true)"
+          @remove-provider="(rule, id) => removeSelectedProvider(rule, id, true)"
           @models-enabled="editModelsListState.enabled = $event"
           @select-model="(id, value) => setModelSelection(editModelsListState, id, value)"
           @select-all-models="selectAllModelsListItems(editModelsListState)"
@@ -673,7 +673,7 @@ import { loadProtocolCatalog, protocolCatalog } from '@/api/admin/protocolCapabi
 import GroupAdvancedSchedulerOverridesModal from "@/components/admin/group/GroupAdvancedSchedulerOverridesModal.vue";
 import { defaultRoutingPolicy, cloneRoutingPolicy } from '@/components/admin/group/routingPolicy';
 import GroupSettingsForm from "@/components/admin/group/GroupSettingsForm.vue";
-import type { GroupModelRoutingRule as ModelRoutingRule, GroupRoutingAccount as SimpleAccount } from "@/components/admin/group/groupSettingsTypes";
+import type { GroupModelRoutingRule as ModelRoutingRule, GroupRoutingProvider as SimpleProvider } from "@/components/admin/group/groupSettingsTypes";
 import { VueDraggable } from "vue-draggable-plus";
 import { createStableObjectKeyResolver } from "@/utils/stableObjectKey";
 import { getFloatingPanelPosition } from "@/utils/floatingPanel";
@@ -750,8 +750,8 @@ const allColumns = computed<Column[]>(() => [
     sortable: true,
   },
   {
-    key: "account_count",
-    label: t("admin.groups.columns.accounts"),
+    key: "provider_count",
+    label: t("admin.groups.columns.providers"),
     sortable: true,
   },
   {
@@ -891,8 +891,8 @@ if (typeof window !== "undefined") {
 // Filter options
 const statusOptions = computed(() => [
   { value: "", label: t("admin.groups.allStatus") },
-  { value: "active", label: t("admin.accounts.status.active") },
-  { value: "inactive", label: t("admin.accounts.status.inactive") },
+  { value: "active", label: t("admin.providers.status.active") },
+  { value: "inactive", label: t("admin.providers.status.inactive") },
 ]);
 
 const cloneAdvancedSchedulerOverrides = (
@@ -1022,28 +1022,28 @@ const invalidRequestFallbackOptionsForEdit = computed(() => {
   return options;
 });
 
-// 复制账号的源分组选项（创建时）- 仅包含有账号的分组
-const copyAccountsGroupOptions = computed(() => {
+// 复制提供商的源分组选项（创建时）- 仅包含有提供商的分组
+const copyProvidersGroupOptions = computed(() => {
   const eligibleGroups = unavailableFallbackGroups.value.filter(
-    (g) => (g.account_count || 0) > 0,
+    (g) => (g.provider_count || 0) > 0,
   );
   return eligibleGroups.map((g) => ({
     value: g.id,
-    label: t("admin.groups.settings.groupAccounts", { name: g.name, count: g.account_count || 0 }),
+    label: t("admin.groups.settings.groupProviders", { name: g.name, count: g.provider_count || 0 }),
   }));
 });
 
-// 复制账号的源分组选项（编辑时）- 仅包含有账号的分组，排除自身
-const copyAccountsGroupOptionsForEdit = computed(() => {
+// 复制提供商的源分组选项（编辑时）- 仅包含有提供商的分组，排除自身
+const copyProvidersGroupOptionsForEdit = computed(() => {
   const currentId = editingGroup.value?.id;
   const eligibleGroups = unavailableFallbackGroups.value.filter(
     (g) =>
-      (g.account_count || 0) > 0 &&
+      (g.provider_count || 0) > 0 &&
       g.id !== currentId,
   );
   return eligibleGroups.map((g) => ({
     value: g.id,
-    label: t("admin.groups.settings.groupAccounts", { name: g.name, count: g.account_count || 0 }),
+    label: t("admin.groups.settings.groupProviders", { name: g.name, count: g.provider_count || 0 }),
   }));
 });
 
@@ -1184,13 +1184,13 @@ const createForm = reactive({
   // OpenAI 分组级 Fast 强制策略
   openai_fast_policy: "follow_request",
 
-  // 账号过滤控制（OpenAI/Antigravity 平台）
+  // 提供商过滤控制（OpenAI/Antigravity 平台）
   require_oauth_only: false,
   require_privacy_set: false,
   // 模型路由开关
   model_routing_enabled: false,
-  // 从分组复制账号
-  copy_accounts_from_group_ids: [] as number[],
+  // 从分组复制提供商
+  copy_providers_from_group_ids: [] as number[],
   // 分组级 RPM 限制（每用户每分钟最大请求数；0 = 不限制）
   rpm_limit: 0 as number,
   max_reasoning_effort: "",
@@ -1227,27 +1227,27 @@ const getRuleSearchKey = (rule: ModelRoutingRule, isEdit: boolean = false) => {
   return isEdit ? getEditRuleSearchKey(rule) : getCreateRuleSearchKey(rule);
 };
 
-// 账号搜索相关状态
-const accountSearchKeyword = ref<Record<string, string>>({});
-const accountSearchResults = ref<Record<string, SimpleAccount[]>>({});
-const showAccountDropdown = ref<Record<string, boolean>>({});
+// 提供商搜索相关状态
+const providerSearchKeyword = ref<Record<string, string>>({});
+const providerSearchResults = ref<Record<string, SimpleProvider[]>>({});
+const showProviderDropdown = ref<Record<string, boolean>>({});
 
-const clearAccountSearchStateByKey = (key: string) => {
-  delete accountSearchKeyword.value[key];
-  delete accountSearchResults.value[key];
-  delete showAccountDropdown.value[key];
+const clearProviderSearchStateByKey = (key: string) => {
+  delete providerSearchKeyword.value[key];
+  delete providerSearchResults.value[key];
+  delete showProviderDropdown.value[key];
 };
 
-const clearAllAccountSearchState = () => {
-  accountSearchKeyword.value = {};
-  accountSearchResults.value = {};
-  showAccountDropdown.value = {};
+const clearAllProviderSearchState = () => {
+  providerSearchKeyword.value = {};
+  providerSearchResults.value = {};
+  showProviderDropdown.value = {};
 };
 
-const accountSearchRunner = useKeyedDebouncedSearch<SimpleAccount[]>({
+const providerSearchRunner = useKeyedDebouncedSearch<SimpleProvider[]>({
   delay: SEARCH_DEBOUNCE_MS,
   search: async (keyword, { signal }) => {
-    const res = await adminAPI.accounts.list(
+    const res = await adminAPI.providers.list(
       1,
       20,
       {
@@ -1255,77 +1255,77 @@ const accountSearchRunner = useKeyedDebouncedSearch<SimpleAccount[]>({
       },
       { signal },
     );
-    return res.items.map((account) => ({ id: account.id, name: account.name }));
+    return res.items.map((provider) => ({ id: provider.id, name: provider.name }));
   },
   onSuccess: (key, result) => {
-    accountSearchResults.value[key] = result;
+    providerSearchResults.value[key] = result;
   },
   onError: (key) => {
-    accountSearchResults.value[key] = [];
+    providerSearchResults.value[key] = [];
   },
 });
 
-// 模型路由可指向分组内任意平台的账号。
-const searchAccounts = (key: string) => {
-  accountSearchRunner.trigger(key, accountSearchKeyword.value[key] || "");
+// 模型路由可指向分组内任意平台的提供商。
+const searchProviders = (key: string) => {
+  providerSearchRunner.trigger(key, providerSearchKeyword.value[key] || "");
 };
 
-const updateAccountSearch = (
+const updateProviderSearch = (
   rule: ModelRoutingRule,
   keyword: string,
   isEdit: boolean = false,
 ) => {
   const key = getRuleSearchKey(rule, isEdit);
-  accountSearchKeyword.value[key] = keyword;
-  searchAccounts(key);
+  providerSearchKeyword.value[key] = keyword;
+  searchProviders(key);
 };
 
-// 选择账号
-const selectAccount = (
+// 选择提供商
+const selectProvider = (
   rule: ModelRoutingRule,
-  account: SimpleAccount,
+  provider: SimpleProvider,
   isEdit: boolean = false,
 ) => {
   if (!rule) return;
 
   // 检查是否已选择
-  if (!rule.accounts.some((a) => a.id === account.id)) {
-    rule.accounts.push(account);
+  if (!rule.providers.some((a) => a.id === provider.id)) {
+    rule.providers.push(provider);
   }
 
   // 清空搜索
   const key = getRuleSearchKey(rule, isEdit);
-  accountSearchKeyword.value[key] = "";
-  showAccountDropdown.value[key] = false;
+  providerSearchKeyword.value[key] = "";
+  showProviderDropdown.value[key] = false;
 };
 
-// 移除已选账号
-const removeSelectedAccount = (
+// 移除已选提供商
+const removeSelectedProvider = (
   rule: ModelRoutingRule,
-  accountId: number,
+  providerId: number,
   _isEdit: boolean = false,
 ) => {
   if (!rule) return;
 
-  rule.accounts = rule.accounts.filter((a) => a.id !== accountId);
+  rule.providers = rule.providers.filter((a) => a.id !== providerId);
 };
 
-// 处理账号搜索输入框聚焦
-const onAccountSearchFocus = (
+// 处理提供商搜索输入框聚焦
+const onProviderSearchFocus = (
   rule: ModelRoutingRule,
   isEdit: boolean = false,
 ) => {
   const key = getRuleSearchKey(rule, isEdit);
-  showAccountDropdown.value[key] = true;
+  showProviderDropdown.value[key] = true;
   // 如果没有搜索结果，触发一次搜索
-  if (!accountSearchResults.value[key]?.length) {
-    searchAccounts(key);
+  if (!providerSearchResults.value[key]?.length) {
+    searchProviders(key);
   }
 };
 
 // 添加创建表单的路由规则
 const addCreateRoutingRule = () => {
-  createModelRoutingRules.value.push({ pattern: "", accounts: [] });
+  createModelRoutingRules.value.push({ pattern: "", providers: [] });
 };
 
 // 删除创建表单的路由规则
@@ -1334,14 +1334,14 @@ const removeCreateRoutingRule = (rule: ModelRoutingRule) => {
   if (index === -1) return;
 
   const key = getCreateRuleSearchKey(rule);
-  accountSearchRunner.clearKey(key);
-  clearAccountSearchStateByKey(key);
+  providerSearchRunner.clearKey(key);
+  clearProviderSearchStateByKey(key);
   createModelRoutingRules.value.splice(index, 1);
 };
 
 // 添加编辑表单的路由规则
 const addEditRoutingRule = () => {
-  editModelRoutingRules.value.push({ pattern: "", accounts: [] });
+  editModelRoutingRules.value.push({ pattern: "", providers: [] });
 };
 
 // 删除编辑表单的路由规则
@@ -1350,8 +1350,8 @@ const removeEditRoutingRule = (rule: ModelRoutingRule) => {
   if (index === -1) return;
 
   const key = getEditRuleSearchKey(rule);
-  accountSearchRunner.clearKey(key);
-  clearAccountSearchStateByKey(key);
+  providerSearchRunner.clearKey(key);
+  clearProviderSearchStateByKey(key);
   editModelRoutingRules.value.splice(index, 1);
 };
 
@@ -1473,10 +1473,10 @@ const convertRoutingRulesToApiFormat = (
     const pattern = rule.pattern.trim();
     if (!pattern) continue;
 
-    const accountIds = rule.accounts.map((a) => a.id).filter((id) => id > 0);
+    const providerIds = rule.providers.map((a) => a.id).filter((id) => id > 0);
 
-    if (accountIds.length > 0) {
-      result[pattern] = accountIds;
+    if (providerIds.length > 0) {
+      result[pattern] = providerIds;
       hasValidRules = true;
     }
   }
@@ -1484,26 +1484,26 @@ const convertRoutingRulesToApiFormat = (
   return hasValidRules ? result : null;
 };
 
-// 将 API 格式的路由规则转换为 UI 格式（需要加载账号名称）
+// 将 API 格式的路由规则转换为 UI 格式（需要加载提供商名称）
 const convertApiFormatToRoutingRules = async (
   apiFormat: Record<string, number[]> | null,
 ): Promise<ModelRoutingRule[]> => {
   if (!apiFormat) return [];
 
   const rules: ModelRoutingRule[] = [];
-  for (const [pattern, accountIds] of Object.entries(apiFormat)) {
-    // 加载账号信息
-    const accounts: SimpleAccount[] = [];
-    for (const id of accountIds) {
+  for (const [pattern, providerIds] of Object.entries(apiFormat)) {
+    // 加载提供商信息
+    const providers: SimpleProvider[] = [];
+    for (const id of providerIds) {
       try {
-        const account = await adminAPI.accounts.getById(id);
-        accounts.push({ id: account.id, name: account.name });
+        const provider = await adminAPI.providers.getById(id);
+        providers.push({ id: provider.id, name: provider.name });
       } catch {
-        // 如果账号不存在，仍然显示 ID
-        accounts.push({ id, name: `#${id}` });
+        // 如果提供商不存在，仍然显示 ID
+        providers.push({ id, name: `#${id}` });
       }
     }
-    rules.push({ pattern, accounts });
+    rules.push({ pattern, providers });
   }
   return rules;
 };
@@ -1540,13 +1540,13 @@ const editForm = reactive({
   openai_fast_policy: "follow_request",
 
   default_mapped_model: '',
-  // 账号过滤控制（OpenAI/Antigravity 平台）
+  // 提供商过滤控制（OpenAI/Antigravity 平台）
   require_oauth_only: false,
   require_privacy_set: false,
   // 模型路由开关
   model_routing_enabled: false,
-  // 从分组复制账号
-  copy_accounts_from_group_ids: [] as number[],
+  // 从分组复制提供商
+  copy_providers_from_group_ids: [] as number[],
   // 分组级 RPM 限制（每用户每分钟最大请求数；0 = 不限制）
   rpm_limit: 0 as number,
   max_reasoning_effort: "",
@@ -1780,9 +1780,9 @@ const openCreateModal = () => {
 const closeCreateModal = () => {
   showCreateModal.value = false;
   createModelRoutingRules.value.forEach((rule) => {
-    accountSearchRunner.clearKey(getCreateRuleSearchKey(rule));
+    providerSearchRunner.clearKey(getCreateRuleSearchKey(rule));
   });
-  clearAllAccountSearchState();
+  clearAllProviderSearchState();
   createForm.name = "";
   createForm.description = "";
   createForm.display_brand = "";
@@ -1807,7 +1807,7 @@ const closeCreateModal = () => {
 
   createForm.require_oauth_only = false;
   createForm.require_privacy_set = false;
-  createForm.copy_accounts_from_group_ids = [];
+  createForm.copy_providers_from_group_ids = [];
   createForm.rpm_limit = 0;
   createForm.max_reasoning_effort = "";
   createForm.max_reasoning_effort_over_limit = reasoningEffortOverLimitDowngrade;
@@ -1948,7 +1948,7 @@ const handleEdit = async (group: AdminGroup) => {
   editForm.require_oauth_only = group.require_oauth_only ?? false;
   editForm.require_privacy_set = group.require_privacy_set ?? false;
   editForm.model_routing_enabled = group.model_routing_enabled || false;
-  editForm.copy_accounts_from_group_ids = []; // 复制账号字段每次编辑时重置为空
+  editForm.copy_providers_from_group_ids = []; // 复制提供商字段每次编辑时重置为空
   editForm.rpm_limit = group.rpm_limit ?? 0;
   editForm.max_reasoning_effort = normalizeReasoningEffortForPlatform(
     group.max_reasoning_effort,
@@ -1961,7 +1961,7 @@ const handleEdit = async (group: AdminGroup) => {
   );
   resetAvailabilityProbeFormState(editForm, group.availability_probe_config);
   resetModelsListState(editModelsListState, group.models_list_config);
-  // 加载模型路由规则（异步加载账号名称）
+  // 加载模型路由规则（异步加载提供商名称）
   editModelRoutingRules.value = await convertApiFormatToRoutingRules(
     group.model_routing,
   );
@@ -1971,9 +1971,9 @@ const handleEdit = async (group: AdminGroup) => {
 
 const closeEditModal = () => {
   editModelRoutingRules.value.forEach((rule) => {
-    accountSearchRunner.clearKey(getEditRuleSearchKey(rule));
+    providerSearchRunner.clearKey(getEditRuleSearchKey(rule));
   });
-  clearAllAccountSearchState();
+  clearAllProviderSearchState();
   showEditModal.value = false;
   editingGroup.value = null;
   editForm.max_reasoning_effort = "";
@@ -1985,7 +1985,7 @@ const closeEditModal = () => {
   editForm.advanced_scheduler_overrides = {};
   editForm.session_isolation_enabled = false;
   editForm.unavailable_fallback_group_id = null;
-  editForm.copy_accounts_from_group_ids = [];
+  editForm.copy_providers_from_group_ids = [];
   resetAvailabilityProbeFormState(editForm);
 
   editForm.routing_policy = defaultRoutingPolicy();
@@ -2149,13 +2149,13 @@ watch(editAvailabilityProbeModelOptions, (options) => {
   }
 });
 
-// 点击外部关闭账号搜索下拉框
+// 点击外部关闭提供商搜索下拉框
 const handleClickOutside = (event: MouseEvent) => {
   const target = event.target as HTMLElement;
   // 检查是否点击在下拉框或输入框内
-  if (!target.closest(".account-search-container")) {
-    Object.keys(showAccountDropdown.value).forEach((key) => {
-      showAccountDropdown.value[key] = false;
+  if (!target.closest(".provider-search-container")) {
+    Object.keys(showProviderDropdown.value).forEach((key) => {
+      showProviderDropdown.value[key] = false;
     });
   }
   if (columnDropdownRef.value && !columnDropdownRef.value.contains(target)) {
@@ -2222,7 +2222,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   document.removeEventListener("click", handleClickOutside);
-  accountSearchRunner.clearAll();
-  clearAllAccountSearchState();
+  providerSearchRunner.clearAll();
+  clearAllProviderSearchState();
 });
 </script>

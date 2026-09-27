@@ -5,30 +5,30 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
 // RequestCredentials 只组合测试提供的原生端口，不复制刷新、互斥或故障分类实现。
-func RequestCredentials(store provider.ExecutionAccountStore, source *account.OpenAIExecutionCredentials, tokens *account.GrokTokenSource, blocks *account.RuntimeBlockState) *provider.RequestCredentials {
+func RequestCredentials(store gatewayadapter.ExecutionProviderStore, source *provider.OpenAIExecutionCredentials, tokens *provider.GrokTokenSource, blocks *provider.RuntimeBlockState) *gatewayadapter.RequestCredentials {
 	if blocks == nil {
-		blocks = account.NewRuntimeBlockState(time.Now)
+		blocks = provider.NewRuntimeBlockState(time.Now)
 	}
 	if source == nil {
-		source = &account.OpenAIExecutionCredentials{}
+		source = &provider.OpenAIExecutionCredentials{}
 	}
-	recovery := &account.GrokCredentialRecovery{Runtime: blocks, Warn: slog.Warn}
+	recovery := &provider.GrokCredentialRecovery{Runtime: blocks, Warn: slog.Warn}
 	if store != nil {
-		source.Parent = func(ctx context.Context, id int64) (*account.Record, error) {
+		source.Parent = func(ctx context.Context, id int64) (*provider.Record, error) {
 			value, err := store.GetByID(ctx, id)
-			return provider.ExecutionRecord(value), err
+			return gatewayadapter.ExecutionRecord(value), err
 		}
 		recovery.Read = source.Parent
-		recovery.State, _ = store.(account.GrokCredentialStateWriter)
+		recovery.State, _ = store.(provider.GrokCredentialStateWriter)
 	}
 	if tokens != nil {
 		source.Grok = tokens.GetAccessToken
 		recovery.Invalidate = tokens.InvalidateToken
 	}
-	return &provider.RequestCredentials{Source: source, HasGrokTokenSource: tokens != nil, Recovery: recovery, Runtime: blocks}
+	return &gatewayadapter.RequestCredentials{Source: source, HasGrokTokenSource: tokens != nil, Recovery: recovery, Runtime: blocks}
 }

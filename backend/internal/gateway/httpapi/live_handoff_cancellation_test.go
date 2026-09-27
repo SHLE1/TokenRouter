@@ -11,7 +11,7 @@ import (
 	coderws "github.com/coder/websocket"
 )
 
-// 把取消固定在已经取得控制权、尚未查询账号的交接点。
+// 把取消固定在已经取得控制权、尚未查询提供商的交接点。
 type s11PlanningLiveStore struct {
 	liveTestStore
 	cancel context.CancelFunc
@@ -23,23 +23,24 @@ func (s *s11PlanningLiveStore) ClaimLiveController(ctx context.Context, hash, co
 	return ok, err
 }
 
-type s11PlanningLiveAccounts struct {
-	gatewayprovider.ExecutionAccountStore
+type s11PlanningLiveProviders struct {
+	gatewayprovider.ExecutionProviderStore
 
 	reads atomic.Int32
 }
 
-func (r *s11PlanningLiveAccounts) GetByID(ctx context.Context, id int64) (*gatewayprovider.ExecutionAccount, error) {
+func (r *s11PlanningLiveProviders) GetByID(ctx context.Context, id int64) (*gatewayprovider.ExecutionProvider, error) {
 	r.reads.Add(1)
 	return nil, ctx.Err()
 }
-func TestLiveHandoffCancellationStopsBeforeAccountLookup(t *testing.T) {
+
+func TestLiveHandoffCancellationStopsBeforeProviderLookup(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	record := &session.LiveCallRecord{CallHash: "planning", Controller: session.LiveControllerPending, AccountID: 7, ExpiresAt: time.Now().Add(time.Minute)}
+	record := &session.LiveCallRecord{CallHash: "planning", Controller: session.LiveControllerPending, ProviderID: 7, ExpiresAt: time.Now().Add(time.Minute)}
 	store := &s11PlanningLiveStore{liveTestStore: liveTestStore{record: record}, cancel: cancel}
-	accounts := &s11PlanningLiveAccounts{}
-	s := newLiveFixture(liveFixtureInputs{store: store, accounts: accounts})
+	providers := &s11PlanningLiveProviders{}
+	s := newLiveFixture(liveFixtureInputs{store: store, providers: providers})
 	s.liveObserverStopped = true
 	start := time.Now()
 	err := s.Proxy(ctx, record, &coderws.Conn{})
@@ -49,7 +50,7 @@ func TestLiveHandoffCancellationStopsBeforeAccountLookup(t *testing.T) {
 	if time.Since(start) >= 100*time.Millisecond {
 		t.Error("cancelled Live handoff still slept for the observer interval")
 	}
-	if accounts.reads.Load() != 0 {
-		t.Errorf("cancelled Live handoff still queried execution account: %d", accounts.reads.Load())
+	if providers.reads.Load() != 0 {
+		t.Errorf("cancelled Live handoff still queried execution provider: %d", providers.reads.Load())
 	}
 }

@@ -8,14 +8,14 @@ import (
 // AdvancedSchedulerScoreDiagnosticRequest 描述管理员希望模拟的安全请求上下文。
 // 不接受 session hash、响应正文或任何凭据相关字段。
 type AdvancedSchedulerScoreDiagnosticRequest struct {
-	GroupID                   int64  `json:"group_id"`
-	RequestedModel            string `json:"requested_model,omitempty"`
-	StickyAccountID           int64  `json:"sticky_account_id,omitempty"`
-	PreviousResponseAccountID int64  `json:"previous_response_account_id,omitempty"`
+	GroupID                    int64  `json:"group_id"`
+	RequestedModel             string `json:"requested_model,omitempty"`
+	StickyProviderID           int64  `json:"sticky_provider_id,omitempty"`
+	PreviousResponseProviderID int64  `json:"previous_response_provider_id,omitempty"`
 }
 
-// AdvancedSchedulerScoreDiagnosticAccount 是诊断接口返回的安全账号摘要。
-type AdvancedSchedulerScoreDiagnosticAccount struct {
+// AdvancedSchedulerScoreDiagnosticProvider 是诊断接口返回的安全提供商摘要。
+type AdvancedSchedulerScoreDiagnosticProvider struct {
 	ID       int64  `json:"id"`
 	Name     string `json:"name"`
 	Platform string `json:"platform"`
@@ -39,7 +39,7 @@ type AdvancedSchedulerScoreDiagnosticGroupSummary struct {
 
 // AdvancedSchedulerScoreDiagnosticResponse 是管理员评分诊断接口的统一响应。
 type AdvancedSchedulerScoreDiagnosticResponse struct {
-	Account            AdvancedSchedulerScoreDiagnosticAccount        `json:"account"`
+	Provider           AdvancedSchedulerScoreDiagnosticProvider       `json:"provider"`
 	GeneratedAt        time.Time                                      `json:"generated_at"`
 	CalculationVersion string                                         `json:"calculation_version"`
 	Groups             []AdvancedSchedulerScoreDiagnosticGroupSummary `json:"groups"`
@@ -48,10 +48,10 @@ type AdvancedSchedulerScoreDiagnosticResponse struct {
 
 // AdvancedSchedulerScoreDiagnosticContext 表示本次评分使用的非敏感场景上下文。
 type AdvancedSchedulerScoreDiagnosticContext struct {
-	RequestedModel            string `json:"requested_model,omitempty"`
-	StickyAccountID           int64  `json:"sticky_account_id,omitempty"`
-	PreviousResponseAccountID int64  `json:"previous_response_account_id,omitempty"`
-	Baseline                  bool   `json:"baseline"`
+	RequestedModel             string `json:"requested_model,omitempty"`
+	StickyProviderID           int64  `json:"sticky_provider_id,omitempty"`
+	PreviousResponseProviderID int64  `json:"previous_response_provider_id,omitempty"`
+	Baseline                   bool   `json:"baseline"`
 }
 
 // AdvancedSchedulerScoreDiagnosticDetail 是单个分组的完整评分解释。
@@ -91,7 +91,7 @@ type AdvancedSchedulerScoreDiagnosticRanges struct {
 	ResetMaxSeconds *float64 `json:"reset_max_seconds,omitempty"`
 }
 
-// AdvancedSchedulerScoreDiagnosticCandidate 是安全的候选账号摘要，供排名展示和场景选择使用。
+// AdvancedSchedulerScoreDiagnosticCandidate 是安全的候选提供商摘要，供排名展示和场景选择使用。
 type AdvancedSchedulerScoreDiagnosticCandidate struct {
 	ID                   int64    `json:"id"`
 	Name                 string   `json:"name"`
@@ -104,7 +104,7 @@ type AdvancedSchedulerScoreDiagnosticCandidate struct {
 	SelectionProbability *float64 `json:"selection_probability,omitempty"`
 }
 
-// AdvancedSchedulerScoreDiagnosticScore 是目标账号的最终分数与加权选择解释。
+// AdvancedSchedulerScoreDiagnosticScore 是目标提供商的最终分数与加权选择解释。
 type AdvancedSchedulerScoreDiagnosticScore struct {
 	BaseScore            float64  `json:"base_score"`
 	StickyBonus          float64  `json:"sticky_bonus"`

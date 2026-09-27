@@ -7,18 +7,18 @@ import (
 
 // ShouldFlattenOpenAIResponsesNamespaces 判定原生 Responses 转发前是否摊平
 // Codex namespace 工具。OAuth 普通 Responses 默认保留 namespace，避免破坏模型按
-// functions.<namespace>.<tool> 寻址的约定；compact 端点及账号兼容开关保持旧行为。
+// functions.<namespace>.<tool> 寻址的约定；compact 端点及提供商兼容开关保持旧行为。
 // WSv2 出口不经过 HTTP 回程还原，因此始终保持 namespace 原样。
 func ShouldFlattenOpenAIResponsesNamespaces(
-	account *ExecutionAccount,
+	provider *ExecutionProvider,
 	transport egress.OpenAIUpstreamTransport,
 	passthroughEnabled bool,
 	compactPath bool,
 ) bool {
-	if account == nil || !account.View().IsOpenAIOAuthLike() {
+	if provider == nil || !provider.View().IsOpenAIOAuthLike() {
 		return false
 	}
-	if !compactPath && !account.View().IsOpenAIResponsesFlattenNamespacesEnabled() {
+	if !compactPath && !provider.View().IsOpenAIResponsesFlattenNamespacesEnabled() {
 		return false
 	}
 	if transport == egress.OpenAIUpstreamTransportResponsesWebsocketV2 && !passthroughEnabled {
@@ -29,8 +29,8 @@ func ShouldFlattenOpenAIResponsesNamespaces(
 
 // ShouldStripOpenAIResponsesInputNamespaces 判定 HTTP 转发是否清理历史项的 namespace。
 // 原生 WSv2 保留该字段，并沿用不做 HTTP 回程恢复的规则。
-func ShouldStripOpenAIResponsesInputNamespaces(account *ExecutionAccount, transport egress.OpenAIUpstreamTransport, passthroughEnabled bool) bool {
-	if account == nil || (!account.View().IsOpenAIOAuthLike() && !account.View().IsOpenAIApiKey()) {
+func ShouldStripOpenAIResponsesInputNamespaces(provider *ExecutionProvider, transport egress.OpenAIUpstreamTransport, passthroughEnabled bool) bool {
+	if provider == nil || (!provider.View().IsOpenAIOAuthLike() && !provider.View().IsOpenAIApiKey()) {
 		return false
 	}
 	if transport == egress.OpenAIUpstreamTransportResponsesWebsocketV2 && !passthroughEnabled {
@@ -54,23 +54,23 @@ func ShouldStripOpenAIResponsesInputNamespaces(account *ExecutionAccount, transp
 //     namespace，否则声明与历史调用会失配并触发 Missing namespace。
 //   - 摊平模式下调用项已被改写成平名，残留 namespace 指向的声明已不存在，一律清理。
 func ShouldKeepOpenAIResponsesToolCallNamespaces(
-	account *ExecutionAccount,
+	provider *ExecutionProvider,
 	transport egress.OpenAIUpstreamTransport,
 	passthroughEnabled bool,
 	compactPath bool,
 	body []byte,
 ) bool {
-	if account == nil {
+	if provider == nil {
 		return false
 	}
 	if compactPath {
 		return false
 	}
-	if account.View().IsOpenAIApiKey() {
+	if provider.View().IsOpenAIApiKey() {
 		return protocolbridge.HasOpenAIResponsesNamespaceToolDeclaration(body)
 	}
-	if !account.View().IsOpenAIOAuthLike() {
+	if !provider.View().IsOpenAIOAuthLike() {
 		return false
 	}
-	return !ShouldFlattenOpenAIResponsesNamespaces(account, transport, passthroughEnabled, compactPath)
+	return !ShouldFlattenOpenAIResponsesNamespaces(provider, transport, passthroughEnabled, compactPath)
 }

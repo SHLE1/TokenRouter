@@ -4,8 +4,8 @@ import "context"
 
 // UserRPMCache 用户/分组级 RPM 计数器接口。
 //
-// 与账号级 RPMCache 的区别：
-//   - RPMCache    —— 按外部 AI provider 账号聚合（key: rpm:{accountID}:{min}）。
+// 与提供商级 RPMCache 的区别：
+//   - RPMCache    —— 按外部 AI provider 提供商聚合（key: rpm:{providerID}:{min}）。
 //   - UserRPMCache —— 按用户或 (用户, 分组) 聚合，杜绝"同一用户创建多个 API Key 绕过 RPM"的路径。
 //     key 形如 rpm:ug:{userID}:{groupID}:{min} 或 rpm:u:{userID}:{min}。
 type UserRPMCache interface {

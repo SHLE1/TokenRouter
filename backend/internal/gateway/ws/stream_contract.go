@@ -17,7 +17,7 @@ type StreamLease interface {
 	Headers() map[string][]string
 }
 
-// ErrorPolicy 保存账号错误规则给出的动作，不携带账号实体。
+// ErrorPolicy 保存提供商错误规则给出的动作，不携带提供商实体。
 type ErrorPolicy struct {
 	Generic   bool
 	Failover  bool
@@ -29,7 +29,7 @@ type TerminalPolicy struct {
 	Decision      ErrorPolicy
 }
 type StreamOptions struct {
-	AccountID        int64
+	ProviderID       int64
 	WriteTimeout     time.Duration
 	ReadTimeout      time.Duration
 	PreviousRecovery bool
@@ -48,7 +48,7 @@ type ReplayCollector interface {
 	Items() []json.RawMessage
 }
 
-// StreamPort 只提供单次 wire/账号规则投影和输出；帧循环与重试窗口由 RelayTurn 控制。
+// StreamPort 只提供单次 wire/提供商规则投影和输出；帧循环与重试窗口由 RelayTurn 控制。
 type StreamPort interface {
 	BeginObservation()
 	ObserveModel([]byte, string)

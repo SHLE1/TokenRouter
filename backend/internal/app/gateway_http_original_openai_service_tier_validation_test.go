@@ -28,11 +28,11 @@ import (
 
 // 非法 service_tier 必须在两个 OpenAI 端点（/v1/responses、/v1/chat/completions）
 // 上以 OpenAI 兼容错误结构返回 HTTP 400。这些用例在 handler 的 service_tier
-// 校验处短路，不会进入账号选择/重试。
+// 校验处短路，不会进入提供商选择/重试。
 //
 // 合法值（fast/priority/flex/auto/default/scale/ultrafast）与省略/null 的接受语义由
 // service 层纯校验函数 TestValidateOpenAIServiceTierField 覆盖，避免 handler
-// 测试走入真实账号选择/重试路径。
+// 测试走入真实提供商选择/重试路径。
 
 func newServiceTierHandlerTest(t *testing.T) *gatewayHTTPEndpointsFixture {
 	t.Helper()

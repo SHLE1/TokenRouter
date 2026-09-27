@@ -24,7 +24,7 @@ type CompactExecutor struct {
 type compactRetryEffects struct {
 	options  *CompactExecutor
 	c        *gin.Context
-	account  *gatewayprovider.ExecutionAccount
+	provider *gatewayprovider.ExecutionProvider
 	response *http.Response
 }
 
@@ -34,11 +34,11 @@ func (p *compactRetryEffects) ObserveRetry(payload []byte, message string) {
 
 func (p *compactRetryEffects) observe(payload []byte, message string, passthrough bool) {
 	in := compact.RetryObservation{Status: http.StatusBadRequest, Passthrough: passthrough}
-	if p.account != nil {
-		in.AccountPresent = true
-		in.AccountID = p.account.Record.ID
-		in.AccountName = p.account.Record.Name
-		in.Platform = p.account.Record.Platform
+	if p.provider != nil {
+		in.ProviderPresent = true
+		in.ProviderID = p.provider.Record.ID
+		in.ProviderName = p.provider.Record.Name
+		in.Platform = p.provider.Record.Platform
 	}
 	if p.response != nil {
 		in.Status = p.response.StatusCode
@@ -53,7 +53,7 @@ func (p *compactRetryEffects) observe(payload []byte, message string, passthroug
 		return
 	}
 	AppendOpsUpstreamError(p.c, ops.OpsUpstreamErrorEvent{
-		Platform: notice.Platform, AccountID: notice.AccountID, AccountName: notice.AccountName,
+		Platform: notice.Platform, ProviderID: notice.ProviderID, ProviderName: notice.ProviderName,
 		UpstreamStatusCode: notice.Status, UpstreamRequestID: notice.RequestID, Passthrough: notice.Passthrough,
 		Kind: notice.Kind, Reason: notice.Reason, Message: notice.Message, Detail: notice.Detail, UpstreamResponseBody: notice.Detail,
 	})
@@ -69,17 +69,20 @@ func (p *compactRetryEffects) SetModel(model string) { SetOpsUpstreamModel(p.c, 
 
 func (p *compactRetryEffects) LogRetry(from, model, code string) {
 	name := ""
-	if p.account != nil {
-		name = p.account.Record.Name
+	if p.provider != nil {
+		name = p.provider.Record.Name
 	}
-	logging.LegacyPrintf("service.openai_gateway", "[OpenAI passthrough] Retrying explicit compact request once with fallback model (account: %s, from: %s, to: %s, upstream_code: %s)", name, from, model, code)
+	logging.LegacyPrintf("service.openai_gateway", "[OpenAI passthrough] Retrying explicit compact request once with fallback model (provider: %s, from: %s, to: %s, upstream_code: %s)", name, from, model, code)
 }
+
 func IsExplicitOpenAICompactContext(c *gin.Context) bool {
 	return IsOpenAIResponsesCompactPath(c) || IsOpenAINativeCompactionV2(c)
 }
+
 func IsExplicitOpenAICompactRequest(c *gin.Context, body []byte) bool {
 	return IsOpenAIResponsesCompactPath(c) || openaiprotocol.HasCompactionTriggerInInput(body)
 }
+
 func NewOpenAICompactFailure(c *gin.Context, payload []byte, message string) error {
 	signal := (gatewayprovider.CompactModels{}).Recovery(nil).NewFailure(IsExplicitOpenAICompactContext(c), payload, message)
 	if signal == nil {
@@ -87,20 +90,24 @@ func NewOpenAICompactFailure(c *gin.Context, payload []byte, message string) err
 	}
 	return signal
 }
-func (p *CompactExecutor) ResolveModel(target *gatewayprovider.ExecutionAccount, model string) string {
+
+func (p *CompactExecutor) ResolveModel(target *gatewayprovider.ExecutionProvider, model string) string {
 	return p.Models.Recovery(target).ResolveModel(model)
 }
-func (p *CompactExecutor) Prepare(c *gin.Context, target *gatewayprovider.ExecutionAccount, requested string, body []byte, status int, message string, payload []byte, tried bool) ([]byte, string, bool) {
+
+func (p *CompactExecutor) Prepare(c *gin.Context, target *gatewayprovider.ExecutionProvider, requested string, body []byte, status int, message string, payload []byte, tried bool) ([]byte, string, bool) {
 	return p.Models.Recovery(target).Prepare(compact.Request{Explicit: IsExplicitOpenAICompactRequest(c, body), AlreadyRetried: tried, RequestedModel: requested, Body: body}, status, message, payload)
 }
-func (p *CompactExecutor) Observe(c *gin.Context, target *gatewayprovider.ExecutionAccount, response *http.Response, payload []byte, message string, passthrough bool) {
-	effects := compactRetryEffects{options: p, c: c, account: target, response: response}
+
+func (p *CompactExecutor) Observe(c *gin.Context, target *gatewayprovider.ExecutionProvider, response *http.Response, payload []byte, message string, passthrough bool) {
+	effects := compactRetryEffects{options: p, c: c, provider: target, response: response}
 	effects.observe(payload, message, passthrough)
 }
-func (p *CompactExecutor) ApplySignal(c *gin.Context, target *gatewayprovider.ExecutionAccount, requested string, body []byte, err error, tried bool, response *http.Response) ([]byte, string, bool) {
+
+func (p *CompactExecutor) ApplySignal(c *gin.Context, target *gatewayprovider.ExecutionProvider, requested string, body []byte, err error, tried bool, response *http.Response) ([]byte, string, bool) {
 	signal, ok := compact.AsFailure(err)
 	if !ok {
 		return body, "", false
 	}
-	return p.Models.Recovery(target).ApplySignal(compact.Request{Explicit: IsExplicitOpenAICompactRequest(c, body), AlreadyRetried: tried, RequestedModel: requested, Body: body}, signal, &compactRetryEffects{options: p, c: c, account: target, response: response})
+	return p.Models.Recovery(target).ApplySignal(compact.Request{Explicit: IsExplicitOpenAICompactRequest(c, body), AlreadyRetried: tried, RequestedModel: requested, Body: body}, signal, &compactRetryEffects{options: p, c: c, provider: target, response: response})
 }

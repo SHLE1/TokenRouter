@@ -282,7 +282,7 @@ func TestBuildUsageAnalyticsQueryRejectsUnsupportedFilters(t *testing.T) {
 		name    string
 		filters UsageLogFilters
 	}{
-		{name: "账号维度", filters: UsageLogFilters{AccountID: 1}},
+		{name: "提供商维度", filters: UsageLogFilters{ProviderID: 1}},
 		{name: "请求编号", filters: UsageLogFilters{RequestID: "request-1"}},
 		{name: "默认模型语义", filters: UsageLogFilters{Model: "mapped-model"}},
 		{name: "上游模型", filters: UsageLogFilters{Model: "upstream-model", ModelFilterSource: usage.ModelSourceUpstream}},

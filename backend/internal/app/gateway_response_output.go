@@ -1,24 +1,24 @@
 package app
 
 import (
-	"github.com/TokenFlux/TokenRouter/internal/account"
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
 	"github.com/TokenFlux/TokenRouter/internal/config"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/selection"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
-// provideOpenAIResponseHealth 复用账号健康、选号状态和延迟写入的生产实例。
-func provideOpenAIResponseHealth(observer *accountprovider.UpstreamHealth, blocks *account.RuntimeBlockState, models *account.ModelTransientState, deferred *account.DeferredService) *accountprovider.OpenAIResponseHealth {
-	return &accountprovider.OpenAIResponseHealth{Health: observer, Runtime: blocks, ModelTransient: models, Deferred: deferred}
+// provideOpenAIResponseHealth 复用提供商健康、选号状态和延迟写入的生产实例。
+func provideOpenAIResponseHealth(observer *provideradapter.UpstreamHealth, blocks *provider.RuntimeBlockState, models *provider.ModelTransientState, deferred *provider.DeferredService) *provideradapter.OpenAIResponseHealth {
+	return &provideradapter.OpenAIResponseHealth{Health: observer, Runtime: blocks, ModelTransient: models, Deferred: deferred}
 }
 
 // provideOpenAIResponseOutput 只投影静态参数并绑定输出所需的固定端口。
-func provideOpenAIResponseOutput(cfg *config.Config, health *accountprovider.OpenAIResponseHealth, grok *accountprovider.GrokHealth, observer *accountprovider.UpstreamHealth, headers *egress.CompiledHeaderFilter, turns *gatewayhttp.CodexTurnStateHeaders, circuit *egress.ProxyStreamCircuit, readers *provider.RuntimeReaders, responses session.OpenAIWSStateStore, choices *selection.Compatible, history *session.ReasoningHistory, identity *provider.ExecutionAgentIdentity) *gatewayhttp.OpenAIResponseOutput {
+func provideOpenAIResponseOutput(cfg *config.Config, health *provideradapter.OpenAIResponseHealth, grok *provideradapter.GrokHealth, observer *provideradapter.UpstreamHealth, headers *egress.CompiledHeaderFilter, turns *gatewayhttp.CodexTurnStateHeaders, circuit *egress.ProxyStreamCircuit, readers *gatewayadapter.RuntimeReaders, responses session.OpenAIWSStateStore, choices *selection.Compatible, history *session.ReasoningHistory, identity *gatewayadapter.ExecutionAgentIdentity) *gatewayhttp.OpenAIResponseOutput {
 	output := &gatewayhttp.OpenAIResponseOutput{
 		Reasoning: history, Redact: identity.Redact, Health: health, GrokHealth: grok, Observer: observer, Headers: headers, Turns: turns,
 		Corrector: openai.NewCodexToolCorrector(), ProxyCircuit: circuit, Responses: responses,
@@ -51,5 +51,5 @@ func provideOpenAIResponseOutput(cfg *config.Config, health *accountprovider.Ope
 // provideReasoningHistory 只投影已有缓存的可选能力，不新建缓存或连接。
 func provideReasoningHistory(cache session.GatewayCache) *session.ReasoningHistory {
 	store, _ := cache.(session.ReasoningContentCache)
-	return &session.ReasoningHistory{Cache: store, Warn: provider.WarnReasoningCacheFailure}
+	return &session.ReasoningHistory{Cache: store, Warn: gatewayadapter.WarnReasoningCacheFailure}
 }

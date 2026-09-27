@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// ModelsPorts 只取得目录与已选模型资源，不暴露完整执行器或账号凭据。
+// ModelsPorts 只取得目录与已选模型资源，不暴露完整执行器或提供商凭据。
 type ModelsPorts struct {
 	Catalogue interface {
 		ResolveRequestableModels(context.Context, *int64, string) routing.RequestableModelsResult

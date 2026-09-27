@@ -11,9 +11,9 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
 	"github.com/gin-gonic/gin"
@@ -35,15 +35,18 @@ func openCodeSessionTestService() *OpenAIResponsesExecutor {
 	return newResponsesFixture(responsesFixtureInputs{options: &responsesFixtureOptions{Request: OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{Enabled: false}}}})
 }
 
-func openCodeSessionTestAccount(baseURL string) *gatewayprovider.ExecutionAccount {
-	return &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-		Platform: capability.PlatformOpenAI,
-		Type:     capability.AccountTypeAPIKey,
-		Credentials: map[string]any{
-			"base_url":                baseURL,
-			"header_override_enabled": true,
-			"header_overrides":        map[string]any{"x-opencode-session": "fixed-account-value"},
-		}},
+func openCodeSessionTestProvider(baseURL string) *gatewayprovider.ExecutionProvider {
+	return &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1,
+			Platform: capability.PlatformOpenAI,
+			Type:     capability.ProviderTypeAPIKey,
+			Credentials: map[string]any{
+				"base_url":                baseURL,
+				"header_override_enabled": true,
+				"header_overrides":        map[string]any{"x-opencode-session": "fixed-provider-value"},
+			},
+		},
 	}
 }
 
@@ -62,44 +65,44 @@ func requireSingleOpenCodeSessionHeader(t *testing.T, headers http.Header, want 
 func TestApplyOpenCodeSessionHeaderTrustBoundary(t *testing.T) {
 	tests := []struct {
 		name      string
-		account   *gatewayprovider.ExecutionAccount
+		provider  *gatewayprovider.ExecutionProvider
 		targetURL string
 		incoming  string
 		want      string
 	}{
 		{
 			name:      "official origin",
-			account:   openCodeSessionTestAccount("https://opencode.ai/zen/v1"),
+			provider:  openCodeSessionTestProvider("https://opencode.ai/zen/v1"),
 			targetURL: "https://opencode.ai/zen/v1/chat/completions",
 			incoming:  " conversation-123 ",
 			want:      "conversation-123",
 		},
 		{
 			name:      "lookalike origin",
-			account:   openCodeSessionTestAccount("https://opencode.ai.evil.example/v1"),
+			provider:  openCodeSessionTestProvider("https://opencode.ai.evil.example/v1"),
 			targetURL: "https://opencode.ai.evil.example/v1/responses",
 			incoming:  "conversation-123",
 		},
 		{
 			name:      "subdomain is not implicitly trusted",
-			account:   openCodeSessionTestAccount("https://api.opencode.ai/v1"),
+			provider:  openCodeSessionTestProvider("https://api.opencode.ai/v1"),
 			targetURL: "https://api.opencode.ai/v1/responses",
 			incoming:  "conversation-123",
 		},
 		{
 			name:      "insecure official origin",
-			account:   openCodeSessionTestAccount("http://opencode.ai/zen/v1"),
+			provider:  openCodeSessionTestProvider("http://opencode.ai/zen/v1"),
 			targetURL: "http://opencode.ai/zen/v1/responses",
 			incoming:  "conversation-123",
 		},
 		{
 			name:      "missing caller value",
-			account:   openCodeSessionTestAccount("https://opencode.ai/zen/v1"),
+			provider:  openCodeSessionTestProvider("https://opencode.ai/zen/v1"),
 			targetURL: "https://opencode.ai/zen/v1/responses",
 		},
 		{
-			name:      "oauth account",
-			account:   &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth}},
+			name:      "oauth provider",
+			provider:  &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}},
 			targetURL: "https://opencode.ai/zen/v1/responses",
 			incoming:  "conversation-123",
 		},
@@ -108,16 +111,15 @@ func TestApplyOpenCodeSessionHeaderTrustBoundary(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			headers := make(http.Header)
-			ApplyOpenCodeSessionHeader(newOpenCodeSessionTestContext(t, tt.incoming), tt.account, tt.targetURL, headers)
+			ApplyOpenCodeSessionHeader(newOpenCodeSessionTestContext(t, tt.incoming), tt.provider, tt.targetURL, headers)
 			require.Equal(t, tt.want, headers.Get("X-OpenCode-Session"))
 		})
 	}
 }
 
-func TestOpenCodeSessionForwardedByResponsesBuildersAfterAccountOverride(t *testing.T) {
-
+func TestOpenCodeSessionForwardedByResponsesBuildersAfterProviderOverride(t *testing.T) {
 	svc := openCodeSessionTestService()
-	account := openCodeSessionTestAccount("https://opencode.ai/zen/v1")
+	provider := openCodeSessionTestProvider("https://opencode.ai/zen/v1")
 	body := []byte(`{"model":"gpt-5","input":"hello"}`)
 
 	tests := []struct {
@@ -127,13 +129,13 @@ func TestOpenCodeSessionForwardedByResponsesBuildersAfterAccountOverride(t *test
 		{
 			name: "normal responses",
 			build: func(c *gin.Context) (*http.Request, error) {
-				return svc.Requests.Build(context.Background(), c, account, body, "token", false, "", false)
+				return svc.Requests.Build(context.Background(), c, provider, body, "token", false, "", false)
 			},
 		},
 		{
 			name: "passthrough responses",
 			build: func(c *gin.Context) (*http.Request, error) {
-				return svc.Requests.BuildPassthrough(context.Background(), c, account, body, "token")
+				return svc.Requests.BuildPassthrough(context.Background(), c, provider, body, "token")
 			},
 		},
 	}
@@ -149,17 +151,16 @@ func TestOpenCodeSessionForwardedByResponsesBuildersAfterAccountOverride(t *test
 }
 
 func TestOpenCodeSessionMissingCallerValueKeepsExistingOverrideBehavior(t *testing.T) {
-
 	svc := openCodeSessionTestService()
-	account := openCodeSessionTestAccount("https://opencode.ai/zen/v1")
+	provider := openCodeSessionTestProvider("https://opencode.ai/zen/v1")
 	c := newOpenCodeSessionTestContext(t, "")
 
 	req, err := svc.Requests.Build(
-		context.Background(), c, account,
+		context.Background(), c, provider,
 		[]byte(`{"model":"gpt-5","input":"hello"}`), "token", false, "", false,
 	)
 	require.NoError(t, err)
-	require.Equal(t, "fixed-account-value", anthropic.GetHeaderRaw(req.Header, "x-opencode-session"))
+	require.Equal(t, "fixed-provider-value", anthropic.GetHeaderRaw(req.Header, "x-opencode-session"))
 }
 
 type openCodeSessionHTTPUpstream struct {
@@ -175,23 +176,22 @@ func (u *openCodeSessionHTTPUpstream) Do(req *http.Request, _ string, _ int64, _
 	}, nil
 }
 
-func (u *openCodeSessionHTTPUpstream) DoWithTLS(req *http.Request, proxyURL string, accountID int64, concurrency int, _ *tlsfingerprint.Profile) (*http.Response, error) {
-	return u.Do(req, proxyURL, accountID, concurrency)
+func (u *openCodeSessionHTTPUpstream) DoWithTLS(req *http.Request, proxyURL string, providerID int64, concurrency int, _ *tlsfingerprint.Profile) (*http.Response, error) {
+	return u.Do(req, proxyURL, providerID, concurrency)
 }
 
-func TestOpenCodeSessionForwardedByRawChatCompletionsAfterAccountOverride(t *testing.T) {
-
+func TestOpenCodeSessionForwardedByRawChatCompletionsAfterProviderOverride(t *testing.T) {
 	upstream := &openCodeSessionHTTPUpstream{}
 	svc := openCodeSessionTestService()
 	svc.Requests.Transport = upstream
 	if svc.Grok != nil {
 		svc.Grok.Transport = svc.Requests.Transport
 	}
-	account := openCodeSessionTestAccount("https://opencode.ai/zen/v1")
+	provider := openCodeSessionTestProvider("https://opencode.ai/zen/v1")
 	c := newOpenCodeSessionTestContext(t, "conversation-789")
 
 	resp, err := svc.Requests.SendChat(
-		context.Background(), c, account,
+		context.Background(), c, provider,
 		"https://opencode.ai/zen/v1/chat/completions", []byte(`{"model":"gpt-5"}`),
 		false, "token", "", "",
 	)
@@ -202,7 +202,6 @@ func TestOpenCodeSessionForwardedByRawChatCompletionsAfterAccountOverride(t *tes
 }
 
 func TestOpenCodeSessionIsNotForwardedToOtherUpstreams(t *testing.T) {
-
 	svc := openCodeSessionTestService()
 	body := []byte(`{"model":"gpt-5","input":"hello"}`)
 
@@ -212,13 +211,16 @@ func TestOpenCodeSessionIsNotForwardedToOtherUpstreams(t *testing.T) {
 		"https://api.opencode.ai/v1",
 	} {
 		t.Run(baseURL, func(t *testing.T) {
-			account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-				Platform:    capability.PlatformOpenAI,
-				Type:        capability.AccountTypeAPIKey,
-				Credentials: map[string]any{"base_url": baseURL}},
+			provider := &gatewayprovider.ExecutionProvider{
+				Record: providercore.Record{
+					LoadLocation: time.LoadLocation, ID: 1,
+					Platform:    capability.PlatformOpenAI,
+					Type:        capability.ProviderTypeAPIKey,
+					Credentials: map[string]any{"base_url": baseURL},
+				},
 			}
 			c := newOpenCodeSessionTestContext(t, "private-conversation")
-			req, err := svc.Requests.Build(context.Background(), c, account, body, "token", false, "", false)
+			req, err := svc.Requests.Build(context.Background(), c, provider, body, "token", false, "", false)
 			require.NoError(t, err)
 			require.Empty(t, req.Header.Get("X-OpenCode-Session"))
 		})

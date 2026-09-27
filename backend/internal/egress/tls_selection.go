@@ -5,7 +5,7 @@ import (
 	"strconv"
 )
 
-// TLSSelection 只投影账号资格与本次 Router 命中，不接收账号或平台服务。
+// TLSSelection 只投影提供商资格与本次 Router 命中，不接收提供商或平台服务。
 type TLSSelection struct {
 	Enabled                   bool
 	DirectProfileID           int64
@@ -13,7 +13,7 @@ type TLSSelection struct {
 	RouterID, RouterProfileID int64
 }
 
-// ResolveRequestPolicy 保留 Router -> 账号绑定 -> 内置默认的选择顺序。
+// ResolveRequestPolicy 保留 Router -> 提供商绑定 -> 内置默认的选择顺序。
 func (s *TLSFingerprintProfileService) ResolveRequestPolicy(input TLSSelection) EgressPolicy {
 	if input.RouterMatched {
 		if p, ok := s.ResolveRoutableTLSProfileByID(input.Enabled, input.RouterProfileID); ok {

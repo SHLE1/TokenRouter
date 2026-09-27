@@ -3,14 +3,14 @@
 package openaiforward_test
 
 import (
-	forward "github.com/TokenFlux/TokenRouter/internal/gateway/provider/openaiforward"
-
 	"testing"
+
+	forward "github.com/TokenFlux/TokenRouter/internal/gateway/provider/openaiforward"
 
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
@@ -31,45 +31,45 @@ func TestBuildOpenAIResponsesURLForPlatform(t *testing.T) {
 func TestNormalizeDeepSeekResponsesRequestBody(t *testing.T) {
 	t.Parallel()
 
-	deepseekResponses := &accountcore.Record{
-		Platform: capability.PlatformDeepseek, Type: capability.AccountTypeAPIKey,
-		Credentials: map[string]any{"api_protocol": accountcore.APIProtocolResponses},
+	deepseekResponses := &providercore.Record{
+		Platform: capability.PlatformDeepseek, Type: capability.ProviderTypeAPIKey,
+		Credentials: map[string]any{"api_protocol": providercore.APIProtocolResponses},
 	}
 	body := []byte(`{"model":"deepseek-v4-pro","store":true,"previous_response_id":"resp_123","input":"hi"}`)
-	normalized := forward.NormalizeCNResponsesBody((accountcore.ProtocolTarget{Record: deepseekResponses}).UsesNativeCNResponses(), body)
+	normalized := forward.NormalizeCNResponsesBody((providercore.ProtocolTarget{Record: deepseekResponses}).UsesNativeCNResponses(), body)
 	require.False(t, gjson.GetBytes(normalized, "store").Bool())
 	require.False(t, gjson.GetBytes(normalized, "previous_response_id").Exists())
 	require.Equal(t, "deepseek-v4-pro", gjson.GetBytes(normalized, "model").String())
 
-	deepseekAdaptive := &accountcore.Record{
-		Platform: capability.PlatformDeepseek, Type: capability.AccountTypeAPIKey,
-		Credentials: map[string]any{"api_protocol": accountcore.APIProtocolAdaptive},
+	deepseekAdaptive := &providercore.Record{
+		Platform: capability.PlatformDeepseek, Type: capability.ProviderTypeAPIKey,
+		Credentials: map[string]any{"api_protocol": providercore.APIProtocolAdaptive},
 	}
-	adaptiveNormalized := forward.NormalizeCNResponsesBody((accountcore.ProtocolTarget{Record: deepseekAdaptive}).UsesNativeCNResponses(), body)
+	adaptiveNormalized := forward.NormalizeCNResponsesBody((providercore.ProtocolTarget{Record: deepseekAdaptive}).UsesNativeCNResponses(), body)
 	require.False(t, gjson.GetBytes(adaptiveNormalized, "store").Bool())
 	require.False(t, gjson.GetBytes(adaptiveNormalized, "previous_response_id").Exists())
 
-	// 非 responses 协议（deepseek CC 账号）原样返回
-	deepseekCC := &accountcore.Record{Platform: capability.PlatformDeepseek, Type: capability.AccountTypeAPIKey}
-	require.Equal(t, string(body), string(forward.NormalizeCNResponsesBody((accountcore.ProtocolTarget{Record: deepseekCC}).UsesNativeCNResponses(), body)))
+	// 非 responses 协议（deepseek CC 提供商）原样返回
+	deepseekCC := &providercore.Record{Platform: capability.PlatformDeepseek, Type: capability.ProviderTypeAPIKey}
+	require.Equal(t, string(body), string(forward.NormalizeCNResponsesBody((providercore.ProtocolTarget{Record: deepseekCC}).UsesNativeCNResponses(), body)))
 
-	kimiResponses := &accountcore.Record{
-		Platform: capability.PlatformKimi, Type: capability.AccountTypeAPIKey,
-		Credentials: map[string]any{"api_protocol": accountcore.APIProtocolResponses},
+	kimiResponses := &providercore.Record{
+		Platform: capability.PlatformKimi, Type: capability.ProviderTypeAPIKey,
+		Credentials: map[string]any{"api_protocol": providercore.APIProtocolResponses},
 	}
-	kimiNormalized := forward.NormalizeCNResponsesBody((accountcore.ProtocolTarget{Record: kimiResponses}).UsesNativeCNResponses(), body)
+	kimiNormalized := forward.NormalizeCNResponsesBody((providercore.ProtocolTarget{Record: kimiResponses}).UsesNativeCNResponses(), body)
 	require.False(t, gjson.GetBytes(kimiNormalized, "store").Bool())
 	require.False(t, gjson.GetBytes(kimiNormalized, "previous_response_id").Exists())
 
-	kimiCodingAdaptive := &accountcore.Record{
-		Platform: capability.PlatformKimi, Type: capability.AccountTypeAPIKey,
-		Credentials: map[string]any{"api_protocol": accountcore.APIProtocolAdaptive, "account_mode": accountcore.AccountModeCoding},
+	kimiCodingAdaptive := &providercore.Record{
+		Platform: capability.PlatformKimi, Type: capability.ProviderTypeAPIKey,
+		Credentials: map[string]any{"api_protocol": providercore.APIProtocolAdaptive, "provider_mode": providercore.ProviderModeCoding},
 	}
-	kimiCodingNormalized := forward.NormalizeCNResponsesBody((accountcore.ProtocolTarget{Record: kimiCodingAdaptive}).UsesNativeCNResponses(), body)
+	kimiCodingNormalized := forward.NormalizeCNResponsesBody((providercore.ProtocolTarget{Record: kimiCodingAdaptive}).UsesNativeCNResponses(), body)
 	require.False(t, gjson.GetBytes(kimiCodingNormalized, "store").Bool())
 	require.False(t, gjson.GetBytes(kimiCodingNormalized, "previous_response_id").Exists())
 
-	// openai 账号原样返回
-	openai := &accountcore.Record{Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}
-	require.Equal(t, string(body), string(forward.NormalizeCNResponsesBody((accountcore.ProtocolTarget{Record: openai}).UsesNativeCNResponses(), body)))
+	// openai 提供商原样返回
+	openai := &providercore.Record{Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}
+	require.Equal(t, string(body), string(forward.NormalizeCNResponsesBody((providercore.ProtocolTarget{Record: openai}).UsesNativeCNResponses(), body)))
 }

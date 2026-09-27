@@ -5,10 +5,9 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing"
-
-	"time"
 
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
@@ -44,33 +43,33 @@ var (
 	ErrBatchImageItemExists  = infraerrors.New(infraerrors.CategoryConflict, "BATCH_IMAGE_ITEM_EXISTS", "batch image item already exists")
 
 	ErrBatchImageInvalidTransition = infraerrors.New(infraerrors.CategoryBadRequest, "BATCH_IMAGE_INVALID_TRANSITION", "invalid batch image job status transition")
-	ErrBatchImageInvalidProvider   = infraerrors.New(infraerrors.CategoryBadRequest, "BATCH_IMAGE_INVALID_PROVIDER", "invalid batch image provider")
+	ErrBatchImageInvalidProvider   = infraerrors.New(infraerrors.CategoryBadRequest, "BATCH_IMAGE_INVALID_PROVIDER", "invalid batch image platform")
 
-	ErrBatchImageMissingProviderJobName = infraerrors.New(infraerrors.CategoryBadRequest, "BATCH_IMAGE_MISSING_PROVIDER_JOB_NAME", "batch image provider job name is missing")
-	ErrBatchImageMissingAccountID       = infraerrors.New(infraerrors.CategoryBadRequest, "BATCH_IMAGE_MISSING_ACCOUNT_ID", "batch image account id is missing")
-	ErrBatchImageUnsupportedProvider    = infraerrors.New(infraerrors.CategoryBadRequest, "BATCH_IMAGE_UNSUPPORTED_PROVIDER", "unsupported batch image provider")
-	ErrBatchImageIndexOutputMissing     = infraerrors.New(infraerrors.CategoryBadGateway, "BATCH_IMAGE_INDEX_OUTPUT_MISSING", "batch image provider output is missing")
-	ErrBatchImageIndexParseFailed       = infraerrors.New(infraerrors.CategoryBadGateway, "BATCH_IMAGE_INDEX_PARSE_FAILED", "batch image provider output parse failed")
-	ErrBatchImageIndexNoResultLines     = infraerrors.New(infraerrors.CategoryBadGateway, "BATCH_IMAGE_INDEX_NO_RESULT_LINES", "batch image provider output has no result lines")
-	ErrBatchImageDuplicateCustomID      = infraerrors.New(infraerrors.CategoryBadGateway, "DUPLICATE_CUSTOM_ID_IN_OUTPUT", "batch image provider output contains duplicate custom id")
+	ErrBatchImageMissingProviderJobName = infraerrors.New(infraerrors.CategoryBadRequest, "BATCH_IMAGE_MISSING_PROVIDER_JOB_NAME", "batch image platform job name is missing")
+	ErrBatchImageMissingProviderID      = infraerrors.New(infraerrors.CategoryBadRequest, "BATCH_IMAGE_MISSING_PROVIDER_ID", "batch image provider id is missing")
+	ErrBatchImageUnsupportedProvider    = infraerrors.New(infraerrors.CategoryBadRequest, "BATCH_IMAGE_UNSUPPORTED_PROVIDER", "unsupported batch image platform")
+	ErrBatchImageIndexOutputMissing     = infraerrors.New(infraerrors.CategoryBadGateway, "BATCH_IMAGE_INDEX_OUTPUT_MISSING", "batch image platform output is missing")
+	ErrBatchImageIndexParseFailed       = infraerrors.New(infraerrors.CategoryBadGateway, "BATCH_IMAGE_INDEX_PARSE_FAILED", "batch image platform output parse failed")
+	ErrBatchImageIndexNoResultLines     = infraerrors.New(infraerrors.CategoryBadGateway, "BATCH_IMAGE_INDEX_NO_RESULT_LINES", "batch image platform output has no result lines")
+	ErrBatchImageDuplicateCustomID      = infraerrors.New(infraerrors.CategoryBadGateway, "DUPLICATE_CUSTOM_ID_IN_OUTPUT", "batch image platform output contains duplicate custom id")
 	ErrBatchImageIndexStateConflict     = infraerrors.New(infraerrors.CategoryConflict, "BATCH_IMAGE_INDEX_STATE_CONFLICT", "batch image job is no longer in indexing state")
 
-	ErrBatchImageSettlementInvalidStatus    = infraerrors.New(infraerrors.CategoryBadRequest, "BATCH_IMAGE_SETTLEMENT_INVALID_STATUS", "batch image job is not ready for settlement")
-	ErrBatchImageSettlementManifestConflict = infraerrors.New(infraerrors.CategoryConflict, "BATCH_IMAGE_SETTLEMENT_MANIFEST_CONFLICT", "batch image settlement manifest hash conflict")
-	ErrBatchImageSettlementPricingMissing   = billing.ErrImageTaskPricingMissing
-	ErrBatchImageSettlementBillingFailed    = infraerrors.New(infraerrors.CategoryBadGateway, "BATCH_IMAGE_SETTLEMENT_BILLING_FAILED", "batch image settlement billing failed")
-	ErrBatchImageAlreadySettled             = infraerrors.New(infraerrors.CategoryConflict, "BATCH_IMAGE_ALREADY_SETTLED", "batch image job is already settled")
-	ErrBatchImageSettlementMissingAPIKeyID  = infraerrors.New(infraerrors.CategoryBadRequest, "BATCH_IMAGE_SETTLEMENT_MISSING_API_KEY_ID", "batch image settlement api key id is missing")
-	ErrBatchImageSettlementMissingAccountID = infraerrors.New(infraerrors.CategoryBadRequest, "BATCH_IMAGE_SETTLEMENT_MISSING_ACCOUNT_ID", "batch image settlement account id is missing")
-	ErrBatchImageSettlementInvalidCounts    = infraerrors.New(infraerrors.CategoryBadRequest, "BATCH_IMAGE_SETTLEMENT_INVALID_COUNTS", "batch image settlement counts are invalid")
-	ErrBatchImageSettlementCostExceedsHold  = billing.ErrTaskSettlementCostExceedsHold
-	ErrBatchImageBillingHoldFailed          = infraerrors.New(infraerrors.CategoryBadGateway, "BATCH_IMAGE_BILLING_HOLD_FAILED", "batch image balance hold failed")
-	ErrBatchImageInsufficientBalance        = billing.ErrTaskInsufficientBalance
+	ErrBatchImageSettlementInvalidStatus     = infraerrors.New(infraerrors.CategoryBadRequest, "BATCH_IMAGE_SETTLEMENT_INVALID_STATUS", "batch image job is not ready for settlement")
+	ErrBatchImageSettlementManifestConflict  = infraerrors.New(infraerrors.CategoryConflict, "BATCH_IMAGE_SETTLEMENT_MANIFEST_CONFLICT", "batch image settlement manifest hash conflict")
+	ErrBatchImageSettlementPricingMissing    = billing.ErrImageTaskPricingMissing
+	ErrBatchImageSettlementBillingFailed     = infraerrors.New(infraerrors.CategoryBadGateway, "BATCH_IMAGE_SETTLEMENT_BILLING_FAILED", "batch image settlement billing failed")
+	ErrBatchImageAlreadySettled              = infraerrors.New(infraerrors.CategoryConflict, "BATCH_IMAGE_ALREADY_SETTLED", "batch image job is already settled")
+	ErrBatchImageSettlementMissingAPIKeyID   = infraerrors.New(infraerrors.CategoryBadRequest, "BATCH_IMAGE_SETTLEMENT_MISSING_API_KEY_ID", "batch image settlement api key id is missing")
+	ErrBatchImageSettlementMissingProviderID = infraerrors.New(infraerrors.CategoryBadRequest, "BATCH_IMAGE_SETTLEMENT_MISSING_PROVIDER_ID", "batch image settlement provider id is missing")
+	ErrBatchImageSettlementInvalidCounts     = infraerrors.New(infraerrors.CategoryBadRequest, "BATCH_IMAGE_SETTLEMENT_INVALID_COUNTS", "batch image settlement counts are invalid")
+	ErrBatchImageSettlementCostExceedsHold   = billing.ErrTaskSettlementCostExceedsHold
+	ErrBatchImageBillingHoldFailed           = infraerrors.New(infraerrors.CategoryBadGateway, "BATCH_IMAGE_BILLING_HOLD_FAILED", "batch image balance hold failed")
+	ErrBatchImageInsufficientBalance         = billing.ErrTaskInsufficientBalance
 
 	ErrBatchImageDisabled                   = infraerrors.New(infraerrors.CategoryNotFound, "BATCH_IMAGE_DISABLED", "batch image API is disabled")
 	ErrBatchImageGroupDisabled              = infraerrors.New(infraerrors.CategoryForbidden, "BATCH_IMAGE_GROUP_DISABLED", "batch image API is disabled for this group")
 	ErrBatchImageInvalidModel               = infraerrors.New(infraerrors.CategoryBadRequest, "BATCH_IMAGE_INVALID_MODEL", "batch image model is required")
-	ErrBatchImageNoAccountAvailable         = infraerrors.New(infraerrors.CategoryBadGateway, "BATCH_IMAGE_NO_ACCOUNT_AVAILABLE", "no compatible batch image account is available")
+	ErrBatchImageNoProviderAvailable        = infraerrors.New(infraerrors.CategoryBadGateway, "BATCH_IMAGE_NO_PROVIDER_AVAILABLE", "no compatible batch image provider is available")
 	ErrBatchImageInvalidItems               = infraerrors.New(infraerrors.CategoryBadRequest, "BATCH_IMAGE_INVALID_ITEMS", "batch image items are invalid")
 	ErrBatchImageDuplicateCustomIDInRequest = infraerrors.New(infraerrors.CategoryBadRequest, "BATCH_IMAGE_DUPLICATE_CUSTOM_ID", "batch image custom ids must be unique")
 	ErrBatchImagePromptTooLong              = infraerrors.New(infraerrors.CategoryBadRequest, "BATCH_IMAGE_PROMPT_TOO_LONG", "batch image prompt is too long")
@@ -78,7 +77,7 @@ var (
 	ErrBatchImageTooManyReferenceImages     = infraerrors.New(infraerrors.CategoryBadRequest, "BATCH_IMAGE_TOO_MANY_REFERENCE_IMAGES", "too many batch image reference images for this model")
 	ErrBatchImageReferenceImagesTooLarge    = infraerrors.New(infraerrors.CategoryBadRequest, "BATCH_IMAGE_REFERENCE_IMAGES_TOO_LARGE", "batch image reference images are too large")
 	ErrBatchImageTooManyOutputImages        = infraerrors.New(infraerrors.CategoryBadRequest, "BATCH_IMAGE_TOO_MANY_OUTPUT_IMAGES", "too many batch image output images")
-	ErrBatchImageProviderSubmitFailed       = infraerrors.New(infraerrors.CategoryBadGateway, "BATCH_IMAGE_PROVIDER_SUBMIT_FAILED", "batch image provider submit failed")
+	ErrBatchImageProviderSubmitFailed       = infraerrors.New(infraerrors.CategoryBadGateway, "BATCH_IMAGE_PROVIDER_SUBMIT_FAILED", "batch image platform submit failed")
 	ErrBatchImageQueueFailed                = infraerrors.New(infraerrors.CategoryBadGateway, "BATCH_IMAGE_QUEUE_FAILED", "batch image queue failed")
 	ErrBatchImageIdempotencyConflict        = infraerrors.New(infraerrors.CategoryConflict, "BATCH_IMAGE_IDEMPOTENCY_CONFLICT", "idempotency key reused with different batch image request")
 	ErrBatchImageCancelFailed               = infraerrors.New(infraerrors.CategoryBadGateway, "BATCH_IMAGE_CANCEL_FAILED", "batch image cancel failed")
@@ -98,7 +97,7 @@ var (
 	ErrBatchImageRecordDeleteNotReady     = infraerrors.New(infraerrors.CategoryConflict, "BATCH_IMAGE_RECORD_DELETE_NOT_READY", "batch image record can only be deleted after the job finishes")
 	ErrBatchImageCleanupFailed            = infraerrors.New(infraerrors.CategoryBadGateway, "BATCH_IMAGE_CLEANUP_FAILED", "batch image cleanup failed")
 	ErrBatchImageCleanupUnsafePath        = infraerrors.New(infraerrors.CategoryBadRequest, "BATCH_IMAGE_CLEANUP_UNSAFE_PATH", "batch image cleanup path is unsafe")
-	ErrBatchImageProviderCleanupFailed    = infraerrors.New(infraerrors.CategoryBadGateway, "BATCH_IMAGE_PROVIDER_CLEANUP_FAILED", "batch image provider cleanup failed")
+	ErrBatchImageProviderCleanupFailed    = infraerrors.New(infraerrors.CategoryBadGateway, "BATCH_IMAGE_PROVIDER_CLEANUP_FAILED", "batch image platform cleanup failed")
 )
 
 type BatchImageJob struct {
@@ -108,12 +107,12 @@ type BatchImageJob struct {
 	BillingUserID int64
 	TeamID        *int64
 	APIKeyID      *int64
-	AccountID     *int64
+	ProviderID    *int64
 	GroupID       *int64
 	// BillingMode 与 PreferredSubscriptionID 冻结任务提交时的 API Key 资金来源。
 	BillingMode             string
 	PreferredSubscriptionID *int64
-	Provider                string
+	Platform                string
 	// Model、RequestedModel 和 InternalModel 分别记录上游模型、客户端模型和内部路由模型。
 	Model             string
 	RequestedModel    string
@@ -145,7 +144,7 @@ type BatchImageJob struct {
 	AllowanceReserved       bool
 	BaseUnitPrice           float64
 	GroupRateMultiplier     float64
-	AccountRateMultiplier   float64
+	ProviderRateMultiplier  float64
 	BatchDiscountMultiplier float64
 	HoldMultiplier          float64
 	BillableUnitPrice       float64
@@ -185,11 +184,11 @@ type CreateBatchImageJobParams struct {
 	BillingUserID           int64
 	TeamID                  *int64
 	APIKeyID                *int64
-	AccountID               *int64
+	ProviderID              *int64
 	GroupID                 *int64
 	BillingMode             string
 	PreferredSubscriptionID *int64
-	Provider                string
+	Platform                string
 	// Model、RequestedModel 和 InternalModel 分别记录上游模型、客户端模型和内部路由模型。
 	Model             string
 	RequestedModel    string
@@ -218,7 +217,7 @@ type CreateBatchImageJobParams struct {
 	PlanGroupRateEnabled        bool
 	BaseUnitPrice               float64
 	GroupRateMultiplier         float64
-	AccountRateMultiplier       float64
+	ProviderRateMultiplier      float64
 	BatchDiscountMultiplier     float64
 	HoldMultiplier              float64
 	BillableUnitPrice           float64
@@ -383,8 +382,8 @@ func NewBatchImageID() (string, error) {
 	return "imgbatch_" + hex.EncodeToString(b[:]), nil
 }
 
-func IsSupportedBatchImageProvider(provider string) bool {
-	switch provider {
+func IsSupportedBatchImageProvider(platform string) bool {
+	switch platform {
 	case BatchImageProviderGeminiAPI, BatchImageProviderVertex:
 		return true
 	default:

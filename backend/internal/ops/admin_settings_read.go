@@ -9,7 +9,7 @@ import (
 
 // AdminReadSettings 只包含本模块在综合管理页的展示投影。
 type AdminReadSettings struct {
-	OpenAIQuotaAutoPauseSettings OpsOpenAIAccountQuotaAutoPauseSettings
+	OpenAIQuotaAutoPauseSettings OpsOpenAIProviderQuotaAutoPauseSettings
 	OpsMetricsIntervalSeconds    int
 	OpsMonitoringEnabled         bool
 	OpsRealtimeMonitoringEnabled bool
@@ -17,7 +17,6 @@ type AdminReadSettings struct {
 
 // ReadAdminSettings 解释同一批已读持久值，不新增查询或改变缺省语义。
 func ReadAdminSettings(settings map[string]string) *AdminReadSettings {
-
 	result := &AdminReadSettings{}
 
 	result.OpsMonitoringEnabled = !settingvalues.IsExplicitFalse(settings[SettingKeyOpsMonitoringEnabled])

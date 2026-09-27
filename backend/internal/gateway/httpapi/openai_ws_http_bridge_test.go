@@ -14,13 +14,13 @@ import (
 
 	sessiontestkit "github.com/TokenFlux/TokenRouter/internal/gateway/session/testkit"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/media"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/ws"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	xai "github.com/TokenFlux/TokenRouter/internal/upstream/grok"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
@@ -57,7 +57,7 @@ func TestPrepareOpenAIWSHTTPBridgeBodyStripsWSFields(t *testing.T) {
 
 func TestPrepareOpenAIWSHTTPBridgeBodyStripsNoneReasoningForCompatibleEndpoint(t *testing.T) {
 	payload := []byte(`{"type":"response.create","model":"company-coding-model","reasoning":{"effort":"none"},"input":"hi"}`)
-	compatible := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey, Credentials: map[string]any{
+	compatible := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey, Credentials: map[string]any{
 		"base_url": "https://compat.example/v1",
 	}}}
 
@@ -66,13 +66,12 @@ func TestPrepareOpenAIWSHTTPBridgeBodyStripsNoneReasoningForCompatibleEndpoint(t
 	require.False(t, gjson.GetBytes(body, "reasoning.effort").Exists())
 	require.False(t, gjson.GetBytes(body, "reasoning").Exists())
 
-	officialBody, err := prepareOpenAIWSHTTPBridgeBody(&gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}}, payload)
+	officialBody, err := prepareOpenAIWSHTTPBridgeBody(&gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}, payload)
 	require.NoError(t, err)
 	require.Equal(t, "none", gjson.GetBytes(officialBody, "reasoning.effort").String())
 }
 
 func TestProxyOpenAIWSHTTPBridgeTurn_KeepsOutboundAndObservedServiceTiersSeparate(t *testing.T) {
-
 	// proxyOpenAIWSHTTPBridgeTurn 是 client WS→HTTP bridge，本身不 canonicalize
 	// fast→priority；生产入口的归一化在 openai_ws_forwarder_ingress.go 的 fast
 	// policy. This test covers the local observer while preserving the canonical
@@ -87,14 +86,14 @@ func TestProxyOpenAIWSHTTPBridgeTurn_KeepsOutboundAndObservedServiceTiersSeparat
 		Body:       io.NopCloser(strings.NewReader(sse)),
 	}}
 	svc := newWSFixture(wsFixtureInputs{options: &wsFixtureOptions{Output: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}, transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 5881, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey, Concurrency: 1}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 5881, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey, Concurrency: 1}}
 	payload := []byte(`{"type":"response.create","model":"gpt-5.5","stream":true,"service_tier":"priority","input":"hi"}`)
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodGet, "/v1/responses", nil)
 
 	result, err := svc.proxyOpenAIWSHTTPBridgeTurn(
-		context.Background(), c, account, "test-token", payload, len(payload),
+		context.Background(), c, provider, "test-token", payload, len(payload),
 		"gpt-5.5", "", "", "", "", 1,
 		func([]byte) error { return nil },
 	)
@@ -108,7 +107,6 @@ func TestProxyOpenAIWSHTTPBridgeTurn_KeepsOutboundAndObservedServiceTiersSeparat
 }
 
 func TestProxyOpenAIWSHTTPBridgeTurn_NormalizesFastWithoutLosingObservedDefault(t *testing.T) {
-
 	// The client alias fast is canonicalized to priority while the local observer
 	// independently captures the upstream default declaration.
 	sse := strings.Join([]string{
@@ -121,14 +119,14 @@ func TestProxyOpenAIWSHTTPBridgeTurn_NormalizesFastWithoutLosingObservedDefault(
 		Body:       io.NopCloser(strings.NewReader(sse)),
 	}}
 	svc := newWSFixture(wsFixtureInputs{options: &wsFixtureOptions{Output: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}, transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 5882, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey, Concurrency: 1}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 5882, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey, Concurrency: 1}}
 	payload := []byte(`{"type":"response.create","model":"gpt-5.5","stream":true,"service_tier":"fast","input":"hi"}`)
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodGet, "/v1/responses", nil)
 
 	result, err := svc.proxyOpenAIWSHTTPBridgeTurn(
-		context.Background(), c, account, "test-token", payload, len(payload),
+		context.Background(), c, provider, "test-token", payload, len(payload),
 		"gpt-5.5", "", "", "", "", 1,
 		func([]byte) error { return nil },
 	)
@@ -141,7 +139,6 @@ func TestProxyOpenAIWSHTTPBridgeTurn_NormalizesFastWithoutLosingObservedDefault(
 }
 
 func TestProxyOpenAIWSHTTPBridgeTurnAPIKeyAdaptsClientTools(t *testing.T) {
-
 	sse := strings.Join([]string{
 		`data: {"type":"response.output_item.added","sequence_number":0,"output_index":0,"item":{"type":"function_call","id":"item_exec","call_id":"call_exec","name":"exec","status":"in_progress"}}`,
 		``,
@@ -158,7 +155,7 @@ func TestProxyOpenAIWSHTTPBridgeTurnAPIKeyAdaptsClientTools(t *testing.T) {
 		Body:       io.NopCloser(strings.NewReader(sse)),
 	}}
 	svc := newWSFixture(wsFixtureInputs{options: &wsFixtureOptions{Output: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}, transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 5659, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey, Concurrency: 1}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 5659, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey, Concurrency: 1}}
 	payload := []byte(`{
 		"type":"response.create","model":"gpt-5","stream":true,
 		"tools":[{"type":"custom","name":"exec","description":"Run a command"}],
@@ -173,7 +170,7 @@ func TestProxyOpenAIWSHTTPBridgeTurnAPIKeyAdaptsClientTools(t *testing.T) {
 	var events [][]byte
 
 	result, err := svc.proxyOpenAIWSHTTPBridgeTurn(
-		context.Background(), c, account, "test-token", payload, len(payload),
+		context.Background(), c, provider, "test-token", payload, len(payload),
 		"gpt-5", "", "", "", "", "", 1,
 		func(message []byte) error {
 			events = append(events, append([]byte(nil), message...))
@@ -213,7 +210,6 @@ func TestProxyOpenAIWSHTTPBridgeTurnAPIKeyAdaptsClientTools(t *testing.T) {
 }
 
 func TestProxyOpenAIWSHTTPBridgeTurnAPIKeyRestoresClientToolsInResponseDone(t *testing.T) {
-
 	sse := strings.Join([]string{
 		`data: {"type":"response.output_item.added","sequence_number":0,"output_index":0,"item":{"type":"function_call","id":"item_exec","call_id":"call_exec","name":"exec","status":"in_progress"}}`,
 		``,
@@ -228,7 +224,7 @@ func TestProxyOpenAIWSHTTPBridgeTurnAPIKeyRestoresClientToolsInResponseDone(t *t
 		Body:       io.NopCloser(strings.NewReader(sse)),
 	}}
 	svc := newWSFixture(wsFixtureInputs{options: &wsFixtureOptions{Output: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}, transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 5764, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey, Concurrency: 1}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 5764, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey, Concurrency: 1}}
 	payload := []byte(`{
 		"type":"response.create","model":"gpt-5","stream":true,
 		"tools":[{"type":"custom","name":"exec","description":"Run a command"}],
@@ -240,7 +236,7 @@ func TestProxyOpenAIWSHTTPBridgeTurnAPIKeyRestoresClientToolsInResponseDone(t *t
 	var events [][]byte
 
 	result, err := svc.proxyOpenAIWSHTTPBridgeTurn(
-		context.Background(), c, account, "test-token", payload, len(payload),
+		context.Background(), c, provider, "test-token", payload, len(payload),
 		"gpt-5", "", "", "", "", "", 1,
 		func(message []byte) error {
 			events = append(events, append([]byte(nil), message...))
@@ -264,7 +260,6 @@ func TestProxyOpenAIWSHTTPBridgeTurnAPIKeyRestoresClientToolsInResponseDone(t *t
 }
 
 func TestProxyOpenAIWSHTTPBridgeTurnGrokPromotesDiscoveryAndRestoresNamespaceSSE(t *testing.T) {
-
 	sse := strings.Join([]string{
 		`data: {"type":"response.output_item.added","sequence_number":0,"output_index":0,"item":{"type":"function_call","id":"item_spawn","call_id":"call_spawn","name":"multi_agent_v1__spawn_agent","status":"in_progress"}}`,
 		"",
@@ -281,8 +276,11 @@ func TestProxyOpenAIWSHTTPBridgeTurnGrokPromotesDiscoveryAndRestoresNamespaceSSE
 		Body:       io.NopCloser(strings.NewReader(sse)),
 	}}
 	svc := newWSFixture(wsFixtureInputs{options: &wsFixtureOptions{Output: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}, transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 5765, Platform: capability.PlatformGrok, Type: capability.AccountTypeOAuth, Concurrency: 1,
-		Credentials: map[string]any{"base_url": xai.DefaultCLIBaseURL}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 5765, Platform: capability.PlatformGrok, Type: capability.ProviderTypeOAuth, Concurrency: 1,
+			Credentials: map[string]any{"base_url": xai.DefaultCLIBaseURL},
+		},
 	}
 	payload := []byte(`{
 		"type":"response.create","model":"grok-4.5","stream":true,
@@ -300,7 +298,7 @@ func TestProxyOpenAIWSHTTPBridgeTurnGrokPromotesDiscoveryAndRestoresNamespaceSSE
 	var events [][]byte
 
 	result, err := svc.proxyOpenAIWSHTTPBridgeTurn(
-		context.Background(), c, account, "access-token", payload, len(payload),
+		context.Background(), c, provider, "access-token", payload, len(payload),
 		"grok-4.5", "", "", "", "", "", 1,
 		func(message []byte) error {
 			events = append(events, append([]byte(nil), message...))
@@ -328,7 +326,6 @@ func TestProxyOpenAIWSHTTPBridgeTurnGrokPromotesDiscoveryAndRestoresNamespaceSSE
 }
 
 func TestProxyOpenAIWSHTTPBridgeTurnGrokInheritsToolSearchAndPromotesFollowupDiscovery(t *testing.T) {
-
 	firstSSE := "data: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp_first\",\"output\":[],\"usage\":{\"input_tokens\":1,\"output_tokens\":1}}}\n\n"
 	secondSSE := "data: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp_second\",\"output\":[{\"type\":\"function_call\",\"id\":\"item_spawn\",\"call_id\":\"call_spawn\",\"name\":\"multi_agent_v1__spawn_agent\",\"arguments\":\"{}\"}],\"usage\":{\"input_tokens\":1,\"output_tokens\":1}}}\n\n"
 	upstream := &auxiliaryHTTPRecorder{responses: []*http.Response{
@@ -336,8 +333,11 @@ func TestProxyOpenAIWSHTTPBridgeTurnGrokInheritsToolSearchAndPromotesFollowupDis
 		{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{"text/event-stream"}}, Body: io.NopCloser(strings.NewReader(secondSSE))},
 	}}
 	svc := newWSFixture(wsFixtureInputs{options: &wsFixtureOptions{Output: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}, transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 5766, Platform: capability.PlatformGrok, Type: capability.AccountTypeOAuth, Concurrency: 1,
-		Credentials: map[string]any{"base_url": xai.DefaultCLIBaseURL, "subscription_tier": "free"}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 5766, Platform: capability.PlatformGrok, Type: capability.ProviderTypeOAuth, Concurrency: 1,
+			Credentials: map[string]any{"base_url": xai.DefaultCLIBaseURL, "subscription_tier": "free"},
+		},
 	}
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
@@ -345,7 +345,7 @@ func TestProxyOpenAIWSHTTPBridgeTurnGrokInheritsToolSearchAndPromotesFollowupDis
 
 	first := []byte(`{"type":"response.create","model":"grok-4.5","stream":true,"tools":[{"type":"tool_search"}],"input":"discover tools"}`)
 	_, err := svc.proxyOpenAIWSHTTPBridgeTurn(
-		context.Background(), c, account, "access-token", first, len(first),
+		context.Background(), c, provider, "access-token", first, len(first),
 		"grok-4.5", "", "", "", "", "grok-ws-cache", 1, func([]byte) error { return nil },
 	)
 	require.NoError(t, err)
@@ -358,7 +358,7 @@ func TestProxyOpenAIWSHTTPBridgeTurnGrokInheritsToolSearchAndPromotesFollowupDis
 	}`)
 	var events [][]byte
 	_, err = svc.proxyOpenAIWSHTTPBridgeTurn(
-		context.Background(), c, account, "access-token", second, len(second),
+		context.Background(), c, provider, "access-token", second, len(second),
 		"grok-4.5", "", "", "", "", "grok-ws-cache", 2,
 		func(message []byte) error {
 			events = append(events, append([]byte(nil), message...))
@@ -379,7 +379,6 @@ func TestProxyOpenAIWSHTTPBridgeTurnGrokInheritsToolSearchAndPromotesFollowupDis
 }
 
 func TestOpenAIWSHTTPBridgeAPIKeyReusesClientToolMappingWhenFollowupOmitsTools(t *testing.T) {
-
 	response := func(id string) *http.Response {
 		body := `data: {"type":"response.completed","response":{"id":"` + id + `","status":"completed","output":[],"usage":{"input_tokens":1,"output_tokens":1}}}` + "\n\n"
 		return &http.Response{
@@ -393,7 +392,7 @@ func TestOpenAIWSHTTPBridgeAPIKeyReusesClientToolMappingWhenFollowupOmitsTools(t
 		response("resp_custom_second"),
 	}}
 	svc := newWSFixture(wsFixtureInputs{options: &wsFixtureOptions{Output: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}, transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 5822, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey, Concurrency: 1}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 5822, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey, Concurrency: 1}}
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodGet, "/v1/responses", nil)
@@ -401,14 +400,14 @@ func TestOpenAIWSHTTPBridgeAPIKeyReusesClientToolMappingWhenFollowupOmitsTools(t
 
 	firstPayload := []byte(`{"type":"response.create","model":"gpt-5.6","stream":true,"tools":[{"type":"custom","name":"exec"}],"input":"run pwd"}`)
 	_, err := svc.proxyOpenAIWSHTTPBridgeTurn(
-		context.Background(), c, account, "test-token", firstPayload, len(firstPayload),
+		context.Background(), c, provider, "test-token", firstPayload, len(firstPayload),
 		"gpt-5.6", "", "", "", "", "", 1, write,
 	)
 	require.NoError(t, err)
 
 	secondPayload := []byte(`{"type":"response.create","model":"gpt-5.6","stream":true,"previous_response_id":"resp_custom_first","input":[{"type":"custom_tool_call_output","id":"ctco_client_output_1","call_id":"call_custom_1","output":"ok"}]}`)
 	_, err = svc.proxyOpenAIWSHTTPBridgeTurn(
-		context.Background(), c, account, "test-token", secondPayload, len(secondPayload),
+		context.Background(), c, provider, "test-token", secondPayload, len(secondPayload),
 		"gpt-5.6", "", "", "", "", "", 2, write,
 	)
 	require.NoError(t, err)
@@ -423,7 +422,6 @@ func TestOpenAIWSHTTPBridgeAPIKeyReusesClientToolMappingWhenFollowupOmitsTools(t
 }
 
 func TestOpenAIWSHTTPBridgeFullCustomToolHistoryWithoutPreviousResponseIDDoesNotReplay(t *testing.T) {
-
 	completed := func(responseID string, output string) string {
 		return "data: {\"type\":\"response.completed\",\"response\":{\"id\":\"" + responseID + "\",\"model\":\"gpt-5.1\",\"output\":" + output + ",\"usage\":{\"input_tokens\":1,\"output_tokens\":1}}}\n\n"
 	}
@@ -445,9 +443,12 @@ func TestOpenAIWSHTTPBridgeFullCustomToolHistoryWithoutPreviousResponseIDDoesNot
 	options.WS.WriteTimeoutSeconds = 3
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: upstream, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector()})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 9002, Name: "oauth-full-context", Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth,
-		Credentials: map[string]any{"access_token": "test-token"}, Extra: map[string]any{"responses_websockets_v2_enabled": true},
-		Concurrency: 1, Status: billing.StatusActive, Schedulable: true},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 9002, Name: "oauth-full-context", Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth,
+			Credentials: map[string]any{"access_token": "test-token"}, Extra: map[string]any{"responses_websockets_v2_enabled": true},
+			Concurrency: 1, Status: billing.StatusActive, Schedulable: true,
+		},
 	}
 
 	errCh := make(chan error, 1)
@@ -468,7 +469,7 @@ func TestOpenAIWSHTTPBridgeFullCustomToolHistoryWithoutPreviousResponseIDDoesNot
 		rec := httptest.NewRecorder()
 		ginCtx, _ := gin.CreateTestContext(rec)
 		ginCtx.Request = r.Clone(r.Context())
-		errCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, account, "test-token", firstMessage, nil)
+		errCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, provider, "test-token", firstMessage, nil)
 	}))
 	defer wsServer.Close()
 
@@ -519,7 +520,6 @@ func TestOpenAIWSHTTPBridgeFullCustomToolHistoryWithoutPreviousResponseIDDoesNot
 }
 
 func TestOpenAIWSHTTPBridgeObjectToolOutputWithoutPreviousResponseIDReplaysMatchingCall(t *testing.T) {
-
 	completed := func(responseID string, output string) string {
 		return "data: {\"type\":\"response.completed\",\"response\":{\"id\":\"" + responseID + "\",\"model\":\"gpt-5.1\",\"output\":" + output + ",\"usage\":{\"input_tokens\":1,\"output_tokens\":1}}}\n\n"
 	}
@@ -539,9 +539,12 @@ func TestOpenAIWSHTTPBridgeObjectToolOutputWithoutPreviousResponseIDReplaysMatch
 	options.WS.WriteTimeoutSeconds = 3
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: upstream, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector()})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 9003, Name: "oauth-output-only", Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth,
-		Credentials: map[string]any{"access_token": "test-token"}, Extra: map[string]any{"responses_websockets_v2_enabled": true},
-		Concurrency: 1, Status: billing.StatusActive, Schedulable: true},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 9003, Name: "oauth-output-only", Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth,
+			Credentials: map[string]any{"access_token": "test-token"}, Extra: map[string]any{"responses_websockets_v2_enabled": true},
+			Concurrency: 1, Status: billing.StatusActive, Schedulable: true,
+		},
 	}
 
 	errCh := make(chan error, 1)
@@ -562,7 +565,7 @@ func TestOpenAIWSHTTPBridgeObjectToolOutputWithoutPreviousResponseIDReplaysMatch
 		rec := httptest.NewRecorder()
 		ginCtx, _ := gin.CreateTestContext(rec)
 		ginCtx.Request = r.Clone(r.Context())
-		errCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, account, "test-token", firstMessage, nil)
+		errCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, provider, "test-token", firstMessage, nil)
 	}))
 	defer wsServer.Close()
 
@@ -612,7 +615,7 @@ func TestOpenAIWSHTTPBridgeDecisionKeepsSmallFramesOnWS(t *testing.T) {
 
 	svc.options.WS.HTTPBridgeEnabled = false
 	require.False(t, svc.shouldBridgeOpenAIWSHTTP(nil, 1000, ""))
-	require.True(t, svc.shouldBridgeOpenAIWSHTTP(&gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformGrok}}, 1, "resp_existing"))
+	require.True(t, svc.shouldBridgeOpenAIWSHTTP(&gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformGrok}}, 1, "resp_existing"))
 }
 
 func TestOpenAIWSPassthroughFirstMessageBridgeDecision(t *testing.T) {
@@ -648,7 +651,6 @@ func TestOpenAIWSPassthroughFirstMessageBridgeDecision(t *testing.T) {
 }
 
 func TestProxyOpenAIWSHTTPBridgeTurnTransportErrorFailoverSafety(t *testing.T) {
-
 	tests := []struct {
 		name         string
 		turn         int
@@ -662,11 +664,14 @@ func TestProxyOpenAIWSHTTPBridgeTurnTransportErrorFailoverSafety(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			upstream := &auxiliaryHTTPRecorder{err: io.EOF}
 			svc := newWSFixture(wsFixtureInputs{options: &wsFixtureOptions{}, transport: upstream})
-			account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 8,
-				Name:        "api-key",
-				Platform:    capability.PlatformOpenAI,
-				Type:        capability.AccountTypeAPIKey,
-				Concurrency: 1},
+			provider := &gatewayprovider.ExecutionProvider{
+				Record: providercore.Record{
+					LoadLocation: time.LoadLocation, ID: 8,
+					Name:        "api-key",
+					Platform:    capability.PlatformOpenAI,
+					Type:        capability.ProviderTypeAPIKey,
+					Concurrency: 1,
+				},
 			}
 			recorder := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(recorder)
@@ -675,7 +680,7 @@ func TestProxyOpenAIWSHTTPBridgeTurnTransportErrorFailoverSafety(t *testing.T) {
 			var writes [][]byte
 
 			result, err := svc.proxyOpenAIWSHTTPBridgeTurn(
-				context.Background(), c, account, "sk-test", payload, len(payload),
+				context.Background(), c, provider, "sk-test", payload, len(payload),
 				"gpt-5", "gpt-5", "", "", "", "", tt.turn,
 				func(message []byte) error {
 					writes = append(writes, append([]byte(nil), message...))
@@ -703,7 +708,6 @@ func TestProxyOpenAIWSHTTPBridgeTurnTransportErrorFailoverSafety(t *testing.T) {
 }
 
 func TestProxyOpenAIWSHTTPBridgeTurnHTTPStatusFailoverSafety(t *testing.T) {
-
 	tests := []struct {
 		name         string
 		turn         int
@@ -724,7 +728,7 @@ func TestProxyOpenAIWSHTTPBridgeTurnHTTPStatusFailoverSafety(t *testing.T) {
 				Body:       io.NopCloser(strings.NewReader(`{"error":{"type":"server_error","message":"temporary upstream failure"}}`)),
 			}}
 			svc := newWSFixture(wsFixtureInputs{options: &wsFixtureOptions{}, transport: upstream})
-			account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 9, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey, Concurrency: 1}}
+			provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 9, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey, Concurrency: 1}}
 			recorder := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(recorder)
 			c.Request = httptest.NewRequest(http.MethodGet, "/v1/responses", nil)
@@ -732,7 +736,7 @@ func TestProxyOpenAIWSHTTPBridgeTurnHTTPStatusFailoverSafety(t *testing.T) {
 			var writes [][]byte
 
 			result, err := svc.proxyOpenAIWSHTTPBridgeTurn(
-				context.Background(), c, account, "sk-test", payload, len(payload),
+				context.Background(), c, provider, "sk-test", payload, len(payload),
 				"gpt-5", "gpt-5", "", "", "", "", tt.turn,
 				func(message []byte) error {
 					writes = append(writes, append([]byte(nil), message...))
@@ -755,7 +759,6 @@ func TestProxyOpenAIWSHTTPBridgeTurnHTTPStatusFailoverSafety(t *testing.T) {
 }
 
 func TestProxyOpenAIWSHTTPBridgeTurnRetriesRejectedFieldBeforeClientOutput(t *testing.T) {
-
 	upstream := &httpUpstreamSequenceRecorder{responses: []*http.Response{
 		{
 			StatusCode: http.StatusBadRequest,
@@ -773,7 +776,7 @@ func TestProxyOpenAIWSHTTPBridgeTurnRetriesRejectedFieldBeforeClientOutput(t *te
 		},
 	}}
 	svc := newWSFixture(wsFixtureInputs{options: &wsFixtureOptions{}, transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 91, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey, Concurrency: 1}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 91, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey, Concurrency: 1}}
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodGet, "/v1/responses", nil)
@@ -781,7 +784,7 @@ func TestProxyOpenAIWSHTTPBridgeTurnRetriesRejectedFieldBeforeClientOutput(t *te
 	var writes [][]byte
 
 	result, err := svc.proxyOpenAIWSHTTPBridgeTurn(
-		context.Background(), c, account, "sk-test", payload, len(payload),
+		context.Background(), c, provider, "sk-test", payload, len(payload),
 		"gpt-5", "", "", "", "", 1,
 		func(message []byte) error {
 			writes = append(writes, append([]byte(nil), message...))
@@ -800,7 +803,6 @@ func TestProxyOpenAIWSHTTPBridgeTurnRetriesRejectedFieldBeforeClientOutput(t *te
 }
 
 func TestProxyOpenAIWSHTTPBridgeTurnSSEErrorFailoverSafety(t *testing.T) {
-
 	for _, turn := range []int{1, 2} {
 		t.Run(fmt.Sprintf("turn_%d", turn), func(t *testing.T) {
 			upstream := &auxiliaryHTTPRecorder{resp: &http.Response{
@@ -811,7 +813,7 @@ func TestProxyOpenAIWSHTTPBridgeTurnSSEErrorFailoverSafety(t *testing.T) {
 				)),
 			}}
 			svc := newWSFixture(wsFixtureInputs{options: &wsFixtureOptions{}, transport: upstream})
-			account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 10, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey, Concurrency: 1}}
+			provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 10, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey, Concurrency: 1}}
 			recorder := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(recorder)
 			c.Request = httptest.NewRequest(http.MethodGet, "/v1/responses", nil)
@@ -819,7 +821,7 @@ func TestProxyOpenAIWSHTTPBridgeTurnSSEErrorFailoverSafety(t *testing.T) {
 			var writes [][]byte
 
 			result, err := svc.proxyOpenAIWSHTTPBridgeTurn(
-				context.Background(), c, account, "sk-test", payload, len(payload),
+				context.Background(), c, provider, "sk-test", payload, len(payload),
 				"gpt-5", "gpt-5", "", "", "", "", turn,
 				func(message []byte) error {
 					writes = append(writes, append([]byte(nil), message...))
@@ -866,14 +868,13 @@ func TestBuildOpenAIWSCurrentTurnRetryPayloadRebuildsChainWithoutPreviousRespons
 }
 
 func TestProxyOpenAIWSHTTPBridgeTurnLaterTurn429FailsOverBeforeClientWrite(t *testing.T) {
-
 	upstream := &auxiliaryHTTPRecorder{resp: &http.Response{
 		StatusCode: http.StatusTooManyRequests,
 		Header:     http.Header{"Retry-After": []string{"60"}},
 		Body:       io.NopCloser(strings.NewReader(`{"error":{"type":"usage_limit_reached","message":"The usage limit has been reached"}}`)),
 	}}
 	svc := newWSFixture(wsFixtureInputs{options: &wsFixtureOptions{}, transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 5845, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth, Concurrency: 1}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 5845, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth, Concurrency: 1}}
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodGet, "/v1/responses", nil)
@@ -881,7 +882,7 @@ func TestProxyOpenAIWSHTTPBridgeTurnLaterTurn429FailsOverBeforeClientWrite(t *te
 	writes := 0
 
 	result, err := svc.proxyOpenAIWSHTTPBridgeTurn(
-		context.Background(), c, account, "access-token", payload, len(payload),
+		context.Background(), c, provider, "access-token", payload, len(payload),
 		"gpt-5.6-sol", "", "", "", "", "", 281,
 		func([]byte) error {
 			writes++
@@ -897,7 +898,6 @@ func TestProxyOpenAIWSHTTPBridgeTurnLaterTurn429FailsOverBeforeClientWrite(t *te
 }
 
 func TestOpenAIWSHTTPBridgeLaterTurn429CarriesCurrentTurnReplayPayload(t *testing.T) {
-
 	options := &wsFixtureOptions{}
 	options.Request.URLPolicy.Enabled = false
 	options.Request.URLPolicy.AllowInsecureHTTP = true
@@ -913,7 +913,7 @@ func TestOpenAIWSHTTPBridgeLaterTurn429CarriesCurrentTurnReplayPayload(t *testin
 			StatusCode: http.StatusOK,
 			Header: http.Header{
 				"Content-Type":          []string{"text/event-stream"},
-				openAIWSTurnStateHeader: []string{"old-account-state"},
+				openAIWSTurnStateHeader: []string{"old-provider-state"},
 			},
 			Body: io.NopCloser(strings.NewReader(
 				"data: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp_first\",\"output\":[{\"id\":\"msg_1\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"first-ok\"}]},{\"id\":\"fc_1\",\"type\":\"function_call\",\"call_id\":\"call_1\",\"name\":\"inspect\",\"arguments\":\"{}\"}],\"usage\":{\"input_tokens\":1,\"output_tokens\":1}}}\n\n",
@@ -933,13 +933,16 @@ func TestOpenAIWSHTTPBridgeLaterTurn429CarriesCurrentTurnReplayPayload(t *testin
 		},
 	}}
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: upstream, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector()})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 5845, Name: "limited", Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth,
-		Status: billing.StatusActive, Schedulable: true, Concurrency: 1,
-		Extra: map[string]any{"openai_oauth_responses_websockets_v2_mode": accountcore.OpenAIWSIngressModeHTTPBridge}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 5845, Name: "limited", Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth,
+			Status: billing.StatusActive, Schedulable: true, Concurrency: 1,
+			Extra: map[string]any{"openai_oauth_responses_websockets_v2_mode": providercore.OpenAIWSIngressModeHTTPBridge},
+		},
 	}
-	nextAccount := *account
-	nextAccount.Record.ID = 5846
-	nextAccount.Record.Name = "replacement"
+	nextProvider := *provider
+	nextProvider.Record.ID = 5846
+	nextProvider.Record.Name = "replacement"
 
 	serverErrCh := make(chan error, 1)
 	retryPayloadCh := make(chan []byte, 1)
@@ -961,7 +964,7 @@ func TestOpenAIWSHTTPBridgeLaterTurn429CarriesCurrentTurnReplayPayload(t *testin
 			serverErrCh <- readErr
 			return
 		}
-		proxyErr := svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, account, "access-token-a", firstMessage, nil)
+		proxyErr := svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, provider, "access-token-a", firstMessage, nil)
 		var failoverErr *forwardcore.UpstreamFailoverError
 		if !errors.As(proxyErr, &failoverErr) {
 			serverErrCh <- proxyErr
@@ -974,7 +977,7 @@ func TestOpenAIWSHTTPBridgeLaterTurn429CarriesCurrentTurnReplayPayload(t *testin
 		}
 		retryPayloadCh <- retryPayload
 		serverErrCh <- svc.ProxyResponsesWebSocketFromClient(
-			r.Context(), ginCtx, conn, &nextAccount, "access-token-b", retryPayload, nil,
+			r.Context(), ginCtx, conn, &nextProvider, "access-token-b", retryPayload, nil,
 		)
 	}))
 	defer wsServer.Close()
@@ -1029,7 +1032,7 @@ func TestOpenAIWSHTTPBridgeLaterTurn429CarriesCurrentTurnReplayPayload(t *testin
 	case proxyErr := <-serverErrCh:
 		require.NoError(t, proxyErr)
 	case <-time.After(5 * time.Second):
-		t.Fatal("timed out waiting for replacement-account completion")
+		t.Fatal("timed out waiting for replacement-provider completion")
 	}
 	require.Len(t, upstream.bodies, 3)
 	require.Contains(t, string(upstream.bodies[0]), "first")
@@ -1039,9 +1042,8 @@ func TestOpenAIWSHTTPBridgeLaterTurn429CarriesCurrentTurnReplayPayload(t *testin
 
 // 桥接转发 error / response.failed 给 WS 客户端前必须把容量降载码改写为可重试
 // 的 server_error：Codex 对 server_is_overloaded/slow_down 判致命并终止会话。
-// 账号状态判定使用改写前的原始事件，不受影响。
+// 提供商状态判定使用改写前的原始事件，不受影响。
 func TestProxyOpenAIWSHTTPBridgeTurnRewritesCapacityShedCodeForClient(t *testing.T) {
-
 	tests := []struct {
 		name    string
 		turn    int
@@ -1069,7 +1071,7 @@ func TestProxyOpenAIWSHTTPBridgeTurnRewritesCapacityShedCodeForClient(t *testing
 				Body:       io.NopCloser(strings.NewReader(tt.body)),
 			}}
 			svc := newWSFixture(wsFixtureInputs{options: &wsFixtureOptions{}, transport: upstream})
-			account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 11, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth, Concurrency: 1}}
+			provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 11, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth, Concurrency: 1}}
 			recorder := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(recorder)
 			c.Request = httptest.NewRequest(http.MethodGet, "/v1/responses", nil)
@@ -1077,7 +1079,7 @@ func TestProxyOpenAIWSHTTPBridgeTurnRewritesCapacityShedCodeForClient(t *testing
 			var writes [][]byte
 
 			_, err := svc.proxyOpenAIWSHTTPBridgeTurn(
-				context.Background(), c, account, "sk-test", payload, len(payload),
+				context.Background(), c, provider, "sk-test", payload, len(payload),
 				"gpt-5", "", "", "", "", "", tt.turn,
 				func(message []byte) error {
 					writes = append(writes, append([]byte(nil), message...))
@@ -1099,7 +1101,6 @@ func TestProxyOpenAIWSHTTPBridgeTurnRewritesCapacityShedCodeForClient(t *testing
 }
 
 func TestProxyOpenAIWSHTTPBridgeTurnBareErrorUsesAuthoritativeFailed(t *testing.T) {
-
 	body := strings.Join([]string{
 		`data: {"type":"response.output_text.delta","response_id":"resp_failed","delta":"partial"}`,
 		``,
@@ -1109,16 +1110,16 @@ func TestProxyOpenAIWSHTTPBridgeTurnBareErrorUsesAuthoritativeFailed(t *testing.
 		``,
 	}, "\n")
 	upstream := &auxiliaryHTTPRecorder{resp: &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}}
-	repo := &openAIStream403AccountRepo{}
-	svc := newWSFixture(wsFixtureInputs{options: &wsFixtureOptions{}, transport: upstream, health: newUpstreamHealthForTest(repo, nil, nil, accountcore.HealthOptions{}, nil)})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 111, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey, Concurrency: 1}}
+	repo := &openAIStream403ProviderRepo{}
+	svc := newWSFixture(wsFixtureInputs{options: &wsFixtureOptions{}, transport: upstream, health: newUpstreamHealthForTest(repo, nil, nil, providercore.HealthOptions{}, nil)})
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 111, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey, Concurrency: 1}}
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodGet, "/v1/responses", nil)
 	payload := []byte(`{"type":"response.create","model":"gpt-5","input":"hi"}`)
 	var writes [][]byte
 
-	result, err := svc.proxyOpenAIWSHTTPBridgeTurn(context.Background(), c, account, "sk-test", payload, len(payload), "gpt-5", "", "", "", "", 2, func(message []byte) error {
+	result, err := svc.proxyOpenAIWSHTTPBridgeTurn(context.Background(), c, provider, "sk-test", payload, len(payload), "gpt-5", "", "", "", "", 2, func(message []byte) error {
 		writes = append(writes, append([]byte(nil), message...))
 		return nil
 	})
@@ -1134,19 +1135,18 @@ func TestProxyOpenAIWSHTTPBridgeTurnBareErrorUsesAuthoritativeFailed(t *testing.
 }
 
 func TestProxyOpenAIWSHTTPBridgeTurnBareErrorEOFSynthesizesFailed(t *testing.T) {
-
 	body := "data: {\"type\":\"response.created\",\"response\":{\"id\":\"resp_eof\",\"status\":\"in_progress\"}}\n\n" +
 		"data: {\"type\":\"error\",\"error\":{\"code\":\"invalid_request\",\"message\":\"bad request\"}}\n\n"
 	upstream := &auxiliaryHTTPRecorder{resp: &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}}
 	svc := newWSFixture(wsFixtureInputs{options: &wsFixtureOptions{}, transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 112, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey, Concurrency: 1}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 112, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey, Concurrency: 1}}
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodGet, "/v1/responses", nil)
 	payload := []byte(`{"type":"response.create","model":"gpt-5","input":"hi"}`)
 	var writes [][]byte
 
-	result, err := svc.proxyOpenAIWSHTTPBridgeTurn(context.Background(), c, account, "sk-test", payload, len(payload), "gpt-5", "", "", "", "", 2, func(message []byte) error {
+	result, err := svc.proxyOpenAIWSHTTPBridgeTurn(context.Background(), c, provider, "sk-test", payload, len(payload), "gpt-5", "", "", "", "", 2, func(message []byte) error {
 		writes = append(writes, append([]byte(nil), message...))
 		return nil
 	})
@@ -1161,7 +1161,6 @@ func TestProxyOpenAIWSHTTPBridgeTurnBareErrorEOFSynthesizesFailed(t *testing.T) 
 }
 
 func TestProxyOpenAIWSHTTPBridgeTurnBareErrorFollowedByCompletedUsesCompleted(t *testing.T) {
-
 	body := strings.Join([]string{
 		`data: {"type":"response.created","response":{"id":"resp_recovered","status":"in_progress"}}`,
 		``,
@@ -1172,14 +1171,14 @@ func TestProxyOpenAIWSHTTPBridgeTurnBareErrorFollowedByCompletedUsesCompleted(t 
 	}, "\n")
 	upstream := &auxiliaryHTTPRecorder{resp: &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}}
 	svc := newWSFixture(wsFixtureInputs{options: &wsFixtureOptions{}, transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 113, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth, Concurrency: 1}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 113, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth, Concurrency: 1}}
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodGet, "/v1/responses", nil)
 	payload := []byte(`{"type":"response.create","model":"gpt-5","input":"hi"}`)
 	var writes [][]byte
 
-	result, err := svc.proxyOpenAIWSHTTPBridgeTurn(context.Background(), c, account, "sk-test", payload, len(payload), "gpt-5", "", "", "", "", 2, func(message []byte) error {
+	result, err := svc.proxyOpenAIWSHTTPBridgeTurn(context.Background(), c, provider, "sk-test", payload, len(payload), "gpt-5", "", "", "", "", 2, func(message []byte) error {
 		writes = append(writes, append([]byte(nil), message...))
 		return nil
 	})
@@ -1195,7 +1194,6 @@ func TestProxyOpenAIWSHTTPBridgeTurnBareErrorFollowedByCompletedUsesCompleted(t 
 }
 
 func TestProxyOpenAIWSHTTPBridgeTurnStagesMetadataBeforeCapacityFailover(t *testing.T) {
-
 	body := strings.Join([]string{
 		`data: {"type":"response.created","response":{"id":"resp_shed"}}`,
 		"",
@@ -1210,7 +1208,7 @@ func TestProxyOpenAIWSHTTPBridgeTurnStagesMetadataBeforeCapacityFailover(t *test
 		Body:       io.NopCloser(strings.NewReader(body)),
 	}}
 	svc := newWSFixture(wsFixtureInputs{options: &wsFixtureOptions{}, transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 12, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth, Concurrency: 1}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 12, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth, Concurrency: 1}}
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodGet, "/v1/responses", nil)
@@ -1218,7 +1216,7 @@ func TestProxyOpenAIWSHTTPBridgeTurnStagesMetadataBeforeCapacityFailover(t *test
 	var writes [][]byte
 
 	result, err := svc.proxyOpenAIWSHTTPBridgeTurn(
-		context.Background(), c, account, "sk-test", payload, len(payload),
+		context.Background(), c, provider, "sk-test", payload, len(payload),
 		"gpt-5", "", "", "", "", "", 1,
 		func(message []byte) error {
 			writes = append(writes, append([]byte(nil), message...))
@@ -1229,13 +1227,12 @@ func TestProxyOpenAIWSHTTPBridgeTurnStagesMetadataBeforeCapacityFailover(t *test
 	require.Nil(t, result)
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)
-	require.True(t, failoverErr.RetryableOnSameAccount)
+	require.True(t, failoverErr.RetryableOnSameProvider)
 	require.True(t, failoverErr.RequestScopedTransient)
 	require.Empty(t, writes)
 }
 
 func TestProxyOpenAIWSHTTPBridgeTurnDoesNotReplayCapacityAfterSemanticOutput(t *testing.T) {
-
 	logSink, restore := captureHandlerStructuredLog(t)
 	defer restore()
 	body := strings.Join([]string{
@@ -1252,7 +1249,7 @@ func TestProxyOpenAIWSHTTPBridgeTurnDoesNotReplayCapacityAfterSemanticOutput(t *
 		Body:       io.NopCloser(strings.NewReader(body)),
 	}}
 	svc := newWSFixture(wsFixtureInputs{options: &wsFixtureOptions{}, transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 13, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth, Concurrency: 1}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 13, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth, Concurrency: 1}}
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodGet, "/v1/responses", nil)
@@ -1260,7 +1257,7 @@ func TestProxyOpenAIWSHTTPBridgeTurnDoesNotReplayCapacityAfterSemanticOutput(t *
 	var writes [][]byte
 
 	result, err := svc.proxyOpenAIWSHTTPBridgeTurn(
-		context.Background(), c, account, "sk-test", payload, len(payload),
+		context.Background(), c, provider, "sk-test", payload, len(payload),
 		"gpt-5", "", "", "", "", "", 1,
 		func(message []byte) error {
 			writes = append(writes, append([]byte(nil), message...))
@@ -1280,7 +1277,6 @@ func TestProxyOpenAIWSHTTPBridgeTurnDoesNotReplayCapacityAfterSemanticOutput(t *
 }
 
 func TestProxyOpenAIWSHTTPBridgeTurnRequiresTerminalEvent(t *testing.T) {
-
 	tests := []struct {
 		name         string
 		body         string
@@ -1303,7 +1299,7 @@ func TestProxyOpenAIWSHTTPBridgeTurnRequiresTerminalEvent(t *testing.T) {
 				Body:       io.NopCloser(strings.NewReader(tt.body)),
 			}}
 			svc := newWSFixture(wsFixtureInputs{options: &wsFixtureOptions{}, transport: upstream})
-			account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 11, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey, Concurrency: 1}}
+			provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 11, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey, Concurrency: 1}}
 			recorder := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(recorder)
 			c.Request = httptest.NewRequest(http.MethodGet, "/v1/responses", nil)
@@ -1311,7 +1307,7 @@ func TestProxyOpenAIWSHTTPBridgeTurnRequiresTerminalEvent(t *testing.T) {
 			var writes [][]byte
 
 			result, err := svc.proxyOpenAIWSHTTPBridgeTurn(
-				context.Background(), c, account, "sk-test", payload, len(payload),
+				context.Background(), c, provider, "sk-test", payload, len(payload),
 				"gpt-5", "gpt-5", "", "", "", "", 1,
 				func(message []byte) error {
 					writes = append(writes, append([]byte(nil), message...))
@@ -1334,7 +1330,6 @@ func TestProxyOpenAIWSHTTPBridgeTurnRequiresTerminalEvent(t *testing.T) {
 }
 
 func TestOpenAIWSHTTPBridgeRelaysSSEFramesAsWebSocketMessages(t *testing.T) {
-
 	sseBody := strings.Join([]string{
 		`data: {"type":"response.created","response":{"id":"resp_bridge","model":"gpt-5"}}`,
 		"",
@@ -1352,12 +1347,15 @@ func TestOpenAIWSHTTPBridgeRelaysSSEFramesAsWebSocketMessages(t *testing.T) {
 		Body: io.NopCloser(strings.NewReader(sseBody)),
 	}}
 	svc := newWSFixture(wsFixtureInputs{options: &wsFixtureOptions{WS: OpenAIWSOptions{HTTPBridgeEnabled: true, HTTPBridgeThresholdBytes: 1}, Output: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}, transport: upstream, corrector: openai.NewCodexToolCorrector()})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 7,
-		Name:        "api-key",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Status:      billing.StatusActive},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 7,
+			Name:        "api-key",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Status:      billing.StatusActive,
+		},
 	}
 	payload := []byte(`{"type":"response.create","generate":true,"model":"gpt-5","stream":true,"parallel_tool_calls":true,"client_metadata":{"ws_request_header_x_openai_internal_codex_responses_lite":"true"},"input":"hi"}`)
 
@@ -1388,7 +1386,7 @@ func TestOpenAIWSHTTPBridgeRelaysSSEFramesAsWebSocketMessages(t *testing.T) {
 		result, bridgeErr := svc.proxyOpenAIWSHTTPBridgeTurn(
 			r.Context(),
 			ginCtx,
-			account,
+			provider,
 			"sk-test",
 			payload,
 			len(payload),
@@ -1451,7 +1449,6 @@ func TestOpenAIWSHTTPBridgeRelaysSSEFramesAsWebSocketMessages(t *testing.T) {
 }
 
 func TestProxyOpenAIWSHTTPBridgeTurnForGrokDefaultsEmptyModelTo45(t *testing.T) {
-
 	upstream := &auxiliaryHTTPRecorder{resp: &http.Response{
 		StatusCode: http.StatusOK,
 		Header:     http.Header{"Content-Type": []string{"text/event-stream"}},
@@ -1463,11 +1460,14 @@ func TestProxyOpenAIWSHTTPBridgeTurnForGrokDefaultsEmptyModelTo45(t *testing.T) 
 		}, "\n"))),
 	}}
 	svc := newWSFixture(wsFixtureInputs{options: &wsFixtureOptions{Output: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}, transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 72,
-		Platform:    capability.PlatformGrok,
-		Type:        capability.AccountTypeOAuth,
-		Concurrency: 1,
-		Credentials: map[string]any{"base_url": xai.DefaultCLIBaseURL}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 72,
+			Platform:    capability.PlatformGrok,
+			Type:        capability.ProviderTypeOAuth,
+			Concurrency: 1,
+			Credentials: map[string]any{"base_url": xai.DefaultCLIBaseURL},
+		},
 	}
 	payload := []byte(`{"type":"response.create","generate":true,"stream":true,"input":"hi"}`)
 	recorder := httptest.NewRecorder()
@@ -1476,7 +1476,7 @@ func TestProxyOpenAIWSHTTPBridgeTurnForGrokDefaultsEmptyModelTo45(t *testing.T) 
 	var events [][]byte
 
 	result, err := svc.proxyOpenAIWSHTTPBridgeTurn(
-		context.Background(), c, account, "access-token", payload, len(payload),
+		context.Background(), c, provider, "access-token", payload, len(payload),
 		"", "", "", "", "", "", 1,
 		func(message []byte) error {
 			events = append(events, append([]byte(nil), message...))
@@ -1495,19 +1495,21 @@ func TestProxyOpenAIWSHTTPBridgeTurnForGrokDefaultsEmptyModelTo45(t *testing.T) 
 // TestProxyOpenAIWSHTTPBridgeTurnForGrokDefaultModelErrorUsesCanonicalKey 验证 WS 空模型旁路
 // 在错误策略中复用实际发送给 xAI 的默认模型。
 func TestProxyOpenAIWSHTTPBridgeTurnForGrokDefaultModelErrorUsesCanonicalKey(t *testing.T) {
-
 	upstream := &auxiliaryHTTPRecorder{resp: &http.Response{
 		StatusCode: http.StatusNotFound,
 		Header:     http.Header{"Content-Type": []string{"application/json"}},
 		Body:       io.NopCloser(strings.NewReader(`{"error":{"code":"model_not_found","message":"model not found"}}`)),
 	}}
-	repo := &grokModelStateAccountRepo{}
-	svc := newWSFixture(wsFixtureInputs{accounts: repo, health: newUpstreamHealthForTest(repo, nil, nil, accountcore.HealthOptions{}, nil), options: &wsFixtureOptions{Output: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}, transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 73,
-		Platform:    capability.PlatformGrok,
-		Type:        capability.AccountTypeOAuth,
-		Concurrency: 1,
-		Credentials: map[string]any{"base_url": xai.DefaultCLIBaseURL}},
+	repo := &grokModelStateProviderRepo{}
+	svc := newWSFixture(wsFixtureInputs{providers: repo, health: newUpstreamHealthForTest(repo, nil, nil, providercore.HealthOptions{}, nil), options: &wsFixtureOptions{Output: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}, transport: upstream})
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 73,
+			Platform:    capability.PlatformGrok,
+			Type:        capability.ProviderTypeOAuth,
+			Concurrency: 1,
+			Credentials: map[string]any{"base_url": xai.DefaultCLIBaseURL},
+		},
 	}
 	payload := []byte(`{"type":"response.create","generate":true,"stream":true,"input":"hi"}`)
 	recorder := httptest.NewRecorder()
@@ -1515,7 +1517,7 @@ func TestProxyOpenAIWSHTTPBridgeTurnForGrokDefaultModelErrorUsesCanonicalKey(t *
 	c.Request = httptest.NewRequest(http.MethodGet, "/v1/responses", nil)
 
 	result, err := svc.proxyOpenAIWSHTTPBridgeTurn(
-		context.Background(), c, account, "access-token", payload, len(payload),
+		context.Background(), c, provider, "access-token", payload, len(payload),
 		"", "", "", "", "", "", 1,
 		func([]byte) error { return nil },
 	)
@@ -1530,7 +1532,6 @@ func TestProxyOpenAIWSHTTPBridgeTurnForGrokDefaultModelErrorUsesCanonicalKey(t *
 // TestProxyOpenAIWSHTTPBridgeTurnForGrokFreeFunctionToolsUsesMixedRoute 验证 Grok WS HTTP bridge
 // 与原生 Responses 使用相同的 Free 函数工具缓存路由。
 func TestProxyOpenAIWSHTTPBridgeTurnForGrokFreeFunctionToolsUsesMixedRoute(t *testing.T) {
-
 	upstream := &auxiliaryHTTPRecorder{resp: &http.Response{
 		StatusCode: http.StatusOK,
 		Header:     http.Header{"Content-Type": []string{"text/event-stream"}},
@@ -1542,14 +1543,17 @@ func TestProxyOpenAIWSHTTPBridgeTurnForGrokFreeFunctionToolsUsesMixedRoute(t *te
 		}, "\n"))),
 	}}
 	svc := newWSFixture(wsFixtureInputs{options: &wsFixtureOptions{Output: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}, transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 73,
-		Platform:    capability.PlatformGrok,
-		Type:        capability.AccountTypeOAuth,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"base_url":          xai.DefaultCLIBaseURL,
-			"subscription_tier": "free",
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 73,
+			Platform:    capability.PlatformGrok,
+			Type:        capability.ProviderTypeOAuth,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"base_url":          xai.DefaultCLIBaseURL,
+				"subscription_tier": "free",
+			},
+		},
 	}
 	payload := []byte(`{
 		"type":"response.create","generate":true,"stream":true,"input":"look up alpha",
@@ -1564,7 +1568,7 @@ func TestProxyOpenAIWSHTTPBridgeTurnForGrokFreeFunctionToolsUsesMixedRoute(t *te
 	c.Request = httptest.NewRequest(http.MethodGet, "/v1/responses", nil)
 
 	result, err := svc.proxyOpenAIWSHTTPBridgeTurn(
-		context.Background(), c, account, "access-token", payload, len(payload),
+		context.Background(), c, provider, "access-token", payload, len(payload),
 		"", "", "", "", "", "cache-id", 1,
 		func([]byte) error { return nil },
 	)
@@ -1581,7 +1585,6 @@ func TestProxyOpenAIWSHTTPBridgeTurnForGrokFreeFunctionToolsUsesMixedRoute(t *te
 }
 
 func TestProxyOpenAIWSHTTPBridgeTurnPromotesCodexAdditionalToolsForMixedCache(t *testing.T) {
-
 	upstream := &auxiliaryHTTPRecorder{resp: &http.Response{
 		StatusCode: http.StatusOK,
 		Header:     http.Header{"Content-Type": []string{"text/event-stream"}},
@@ -1593,14 +1596,17 @@ func TestProxyOpenAIWSHTTPBridgeTurnPromotesCodexAdditionalToolsForMixedCache(t 
 		}, "\n"))),
 	}}
 	svc := newWSFixture(wsFixtureInputs{options: &wsFixtureOptions{Output: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}, transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 73,
-		Platform:    capability.PlatformGrok,
-		Type:        capability.AccountTypeOAuth,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"base_url":          xai.DefaultCLIBaseURL,
-			"subscription_tier": "free",
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 73,
+			Platform:    capability.PlatformGrok,
+			Type:        capability.ProviderTypeOAuth,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"base_url":          xai.DefaultCLIBaseURL,
+				"subscription_tier": "free",
+			},
+		},
 	}
 	payload := []byte(`{
 		"type":"response.create","generate":true,"model":"grok","stream":true,
@@ -1621,7 +1627,7 @@ func TestProxyOpenAIWSHTTPBridgeTurnPromotesCodexAdditionalToolsForMixedCache(t 
 	var events [][]byte
 
 	result, err := svc.proxyOpenAIWSHTTPBridgeTurn(
-		context.Background(), c, account, "access-token", payload, len(payload),
+		context.Background(), c, provider, "access-token", payload, len(payload),
 		"grok", "grok", "", "", "", "isolated-ws-cache-id", 1,
 		func(message []byte) error {
 			events = append(events, append([]byte(nil), message...))
@@ -1650,7 +1656,6 @@ func TestProxyOpenAIWSHTTPBridgeTurnPromotesCodexAdditionalToolsForMixedCache(t 
 }
 
 func TestProxyResponsesWebSocketFromClientForGrokUsesXAIHTTPBridge(t *testing.T) {
-
 	bridgeResponse := func(responseID, requestID string, cachedTokens int) *http.Response {
 		sseBody := strings.Join([]string{
 			`data: {"type":"response.created","response":{"id":"` + responseID + `","model":"grok-4.3"}}`,
@@ -1675,15 +1680,18 @@ func TestProxyResponsesWebSocketFromClientForGrokUsesXAIHTTPBridge(t *testing.T)
 		bridgeResponse("resp_grok_ws_3", "xai-ws-req-3", 0),
 	}}
 	svc := newWSFixture(wsFixtureInputs{options: &wsFixtureOptions{Output: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}, transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 71,
-		Name:        "grok",
-		Platform:    capability.PlatformGrok,
-		Type:        capability.AccountTypeOAuth,
-		Concurrency: 1,
-		Status:      billing.StatusActive,
-		Credentials: map[string]any{
-			"base_url": xai.DefaultCLIBaseURL,
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 71,
+			Name:        "grok",
+			Platform:    capability.PlatformGrok,
+			Type:        capability.ProviderTypeOAuth,
+			Concurrency: 1,
+			Status:      billing.StatusActive,
+			Credentials: map[string]any{
+				"base_url": xai.DefaultCLIBaseURL,
+			},
+		},
 	}
 
 	errCh := make(chan error, 1)
@@ -1714,7 +1722,7 @@ func TestProxyResponsesWebSocketFromClientForGrokUsesXAIHTTPBridge(t *testing.T)
 		ginCtx.Request = req
 		ginCtx.Set("api_key", &apikey.APIKey{ID: 7101})
 
-		errCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, account, "access-token", firstMessage, nil)
+		errCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, provider, "access-token", firstMessage, nil)
 	}))
 	defer wsServer.Close()
 
@@ -1809,7 +1817,6 @@ func TestProxyResponsesWebSocketFromClientForGrokUsesXAIHTTPBridge(t *testing.T)
 }
 
 func TestOpenAIWSHTTPBridgeAcceptsFirstFrameAboveLegacy16MiB(t *testing.T) {
-
 	sseBody := strings.Join([]string{
 		`data: {"type":"response.created","response":{"id":"resp_large_bridge","model":"gpt-5"}}`,
 		"",
@@ -1824,23 +1831,26 @@ func TestOpenAIWSHTTPBridgeAcceptsFirstFrameAboveLegacy16MiB(t *testing.T) {
 		},
 		Body: io.NopCloser(strings.NewReader(sseBody)),
 	}}
-	options := &wsFixtureOptions{WS: OpenAIWSOptions{Enabled: true, APIKeyEnabled: true, ResponsesWebsocketsV2: true, ModeRouterV2Enabled: true, IngressModeDefault: accountcore.OpenAIWSIngressModeCtxPool, ClientReadLimitBytes: 64 * 1024 * 1024, HTTPBridgeEnabled: true, HTTPBridgeThresholdBytes: 17*1024*1024 + 512}, Output: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}
+	options := &wsFixtureOptions{WS: OpenAIWSOptions{Enabled: true, APIKeyEnabled: true, ResponsesWebsocketsV2: true, ModeRouterV2Enabled: true, IngressModeDefault: providercore.OpenAIWSIngressModeCtxPool, ClientReadLimitBytes: 64 * 1024 * 1024, HTTPBridgeEnabled: true, HTTPBridgeThresholdBytes: 17*1024*1024 + 512}, Output: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: upstream, corrector: openai.NewCodexToolCorrector()})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 9,
-		Name:     "api-key",
-		Platform: capability.PlatformOpenAI,
-		Type:     capability.AccountTypeAPIKey,
-		Credentials: map[string]any{
-			"api_key":        "sk-upstream",
-			"base_url":       "https://env-openai.example/v1",
-			"model_provider": "env-openai",
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 9,
+			Name:     "api-key",
+			Platform: capability.PlatformOpenAI,
+			Type:     capability.ProviderTypeAPIKey,
+			Credentials: map[string]any{
+				"api_key":        "sk-upstream",
+				"base_url":       "https://env-openai.example/v1",
+				"model_provider": "env-openai",
+			},
+			Extra: map[string]any{
+				"openai_apikey_responses_websockets_v2_enabled": true,
+				"openai_apikey_responses_websockets_v2_mode":    providercore.OpenAIWSIngressModePassthrough,
+			},
+			Concurrency: 1,
+			Status:      billing.StatusActive,
 		},
-		Extra: map[string]any{
-			"openai_apikey_responses_websockets_v2_enabled": true,
-			"openai_apikey_responses_websockets_v2_mode":    accountcore.OpenAIWSIngressModePassthrough,
-		},
-		Concurrency: 1,
-		Status:      billing.StatusActive},
 	}
 
 	payload := []byte(strings.Repeat(" ", 1024) + `{"type":"response.create","generate":true,"model":"gpt-5","stream":true,"input":"` + strings.Repeat("x", 17*1024*1024) + `"}`)
@@ -1891,7 +1901,7 @@ func TestOpenAIWSHTTPBridgeAcceptsFirstFrameAboveLegacy16MiB(t *testing.T) {
 
 		proxyCtx, cancelProxy := context.WithTimeout(r.Context(), 20*time.Second)
 		defer cancelProxy()
-		errCh <- svc.ProxyResponsesWebSocketFromClient(proxyCtx, ginCtx, conn, account, "sk-test", firstMessage, hooks)
+		errCh <- svc.ProxyResponsesWebSocketFromClient(proxyCtx, ginCtx, conn, provider, "sk-test", firstMessage, hooks)
 	}))
 	defer wsServer.Close()
 
@@ -1946,7 +1956,7 @@ func TestOpenAIWSHTTPBridgeAcceptsFirstFrameAboveLegacy16MiB(t *testing.T) {
 	require.NotNil(t, upstream.lastReq)
 	require.Equal(t, http.MethodPost, upstream.lastReq.Method)
 	require.Equal(t, "https://env-openai.example/v1/responses", upstream.lastReq.URL.String())
-	require.Equal(t, "env-openai", account.View().GetCredential("model_provider"))
+	require.Equal(t, "env-openai", provider.View().GetCredential("model_provider"))
 	require.Less(t, int64(len(upstream.lastBody)), options.WS.HTTPBridgeThresholdBytes)
 	require.Greater(t, len(upstream.lastBody), 16*1024*1024)
 	require.False(t, gjson.GetBytes(upstream.lastBody, "type").Exists())
@@ -1956,7 +1966,6 @@ func TestOpenAIWSHTTPBridgeAcceptsFirstFrameAboveLegacy16MiB(t *testing.T) {
 }
 
 func TestOpenAIWSHTTPBridgeKeepsContinuationFramesOnHTTPWithoutPreviousResponseID(t *testing.T) {
-
 	firstSSEBody := strings.Join([]string{
 		`data: {"type":"response.completed","response":{"id":"resp_bridge_first","model":"gpt-5.1","output":[{"type":"function_call","id":"fc_bridge_1","call_id":"call_bridge_1","name":"shell","arguments":"{}"}],"usage":{"input_tokens":9,"output_tokens":1}}}`,
 		"",
@@ -1990,9 +1999,9 @@ func TestOpenAIWSHTTPBridgeKeepsContinuationFramesOnHTTPWithoutPreviousResponseI
 	options.WS.ResponsesWebsocketsV2 = true
 	options.WS.HTTPBridgeEnabled = true
 	options.WS.HTTPBridgeThresholdBytes = 1
-	options.Pool.MaxConnsPerAccount = 1
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 1
+	options.Pool.MaxConnsPerProvider = 1
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 1
 	options.Pool.QueueLimitPerConn = 8
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 3
@@ -2004,17 +2013,20 @@ func TestOpenAIWSHTTPBridgeKeepsContinuationFramesOnHTTPWithoutPreviousResponseI
 	pool.SetClientDialerForTest(captureDialer)
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: upstream, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 19,
-		Name:        "api-key-bridge-handoff",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Credentials: map[string]any{"api_key": "sk-upstream"},
-		Extra: map[string]any{
-			"responses_websockets_v2_enabled": true,
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 19,
+			Name:        "api-key-bridge-handoff",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Credentials: map[string]any{"api_key": "sk-upstream"},
+			Extra: map[string]any{
+				"responses_websockets_v2_enabled": true,
+			},
+			Concurrency: 1,
+			Status:      billing.StatusActive,
+			Schedulable: true,
 		},
-		Concurrency: 1,
-		Status:      billing.StatusActive,
-		Schedulable: true},
 	}
 
 	errCh := make(chan error, 1)
@@ -2045,7 +2057,7 @@ func TestOpenAIWSHTTPBridgeKeepsContinuationFramesOnHTTPWithoutPreviousResponseI
 		req.Header.Set("User-Agent", "codex_cli_rs/0.135.0")
 		ginCtx.Request = req
 
-		errCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, account, "sk-test", firstMessage, nil)
+		errCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, provider, "sk-test", firstMessage, nil)
 	}))
 	defer wsServer.Close()
 
@@ -2102,7 +2114,6 @@ func TestOpenAIWSHTTPBridgeKeepsContinuationFramesOnHTTPWithoutPreviousResponseI
 }
 
 func TestOpenAIWSHTTPBridge_IdleTimeoutClosesClientSession(t *testing.T) {
-
 	sseBody := strings.Join([]string{
 		`data: {"type":"response.completed","response":{"id":"resp_bridge_idle","model":"gpt-5.1","usage":{"input_tokens":1,"output_tokens":1}}}`,
 		"",
@@ -2121,21 +2132,24 @@ func TestOpenAIWSHTTPBridge_IdleTimeoutClosesClientSession(t *testing.T) {
 	options.WS.HTTPBridgeEnabled = true
 	options.WS.HTTPBridgeThresholdBytes = 1
 	options.WS.IngressInterTurnIdleTimeoutSeconds = 1
-	options.Pool.MaxConnsPerAccount = 1
-	options.Pool.MinIdlePerAccount = 0
-	options.Pool.MaxIdlePerAccount = 1
+	options.Pool.MaxConnsPerProvider = 1
+	options.Pool.MinIdlePerProvider = 0
+	options.Pool.MaxIdlePerProvider = 1
 	options.Pool.QueueLimitPerConn = 8
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: upstream, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector()})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 20,
-		Name:        "api-key-bridge-idle-timeout",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Credentials: map[string]any{"api_key": "sk-upstream"},
-		Extra:       map[string]any{"responses_websockets_v2_enabled": true},
-		Concurrency: 1,
-		Status:      billing.StatusActive,
-		Schedulable: true},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 20,
+			Name:        "api-key-bridge-idle-timeout",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Credentials: map[string]any{"api_key": "sk-upstream"},
+			Extra:       map[string]any{"responses_websockets_v2_enabled": true},
+			Concurrency: 1,
+			Status:      billing.StatusActive,
+			Schedulable: true,
+		},
 	}
 
 	errCh := make(chan error, 1)
@@ -2157,7 +2171,7 @@ func TestOpenAIWSHTTPBridge_IdleTimeoutClosesClientSession(t *testing.T) {
 		rec := httptest.NewRecorder()
 		ginCtx, _ := gin.CreateTestContext(rec)
 		ginCtx.Request = r.Clone(r.Context())
-		errCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, account, "sk-test", firstMessage, nil)
+		errCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, provider, "sk-test", firstMessage, nil)
 	}))
 	defer wsServer.Close()
 

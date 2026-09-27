@@ -11,7 +11,7 @@ func RegisterOpsRoutes(admin *gin.RouterGroup, endpoint *OpsHandler) {
 		// 实时运维信号
 		ops.GET("/concurrency", endpoint.GetConcurrencyStats)
 		ops.GET("/user-concurrency", endpoint.GetUserConcurrencyStats)
-		ops.GET("/account-availability", endpoint.GetAccountAvailability)
+		ops.GET("/provider-availability", endpoint.GetProviderAvailability)
 		ops.GET("/realtime-traffic", endpoint.GetRealtimeTrafficSummary)
 
 		// 告警规则和事件

@@ -21,7 +21,6 @@ func TestParseAuthorizationInput(t *testing.T) {
 		wantRequiresState bool
 	}{
 		{
-
 			name: "full callback url",
 
 			raw: "http://127.0.0.1:56121/callback?code=abc123&state=state456",
@@ -33,7 +32,6 @@ func TestParseAuthorizationInput(t *testing.T) {
 			wantRequiresState: true,
 		},
 		{
-
 			name: "query string",
 
 			raw: "?code=abc123&state=state456",
@@ -45,7 +43,6 @@ func TestParseAuthorizationInput(t *testing.T) {
 			wantRequiresState: true,
 		},
 		{
-
 			name: "full callback url missing state",
 
 			raw: "http://127.0.0.1:56121/callback?code=abc123",
@@ -55,7 +52,6 @@ func TestParseAuthorizationInput(t *testing.T) {
 			wantRequiresState: true,
 		},
 		{
-
 			name: "query string missing state",
 
 			raw: "code=abc123",
@@ -346,7 +342,7 @@ func TestRuntimeSanityReportsSafeDefaults(t *testing.T) {
 	require.False(t, report.UnsafeURLOverrides)
 	require.False(t, report.UnsafeHighConcurrency)
 	require.Equal(t, "responses_only", report.PublicGatewayScope)
-	require.Contains(t, report.ProxyPolicy, "account_proxy_optional")
+	require.Contains(t, report.ProxyPolicy, "provider_proxy_optional")
 	require.Contains(t, report.ProxyPolicy, "API-key base URLs require public HTTPS")
 }
 
@@ -373,7 +369,6 @@ func TestNormalizeModelID(t *testing.T) {
 	t.Parallel()
 
 	tests := map[string]string{
-
 		"": DefaultResponsesModel,
 
 		"   ": DefaultResponsesModel,

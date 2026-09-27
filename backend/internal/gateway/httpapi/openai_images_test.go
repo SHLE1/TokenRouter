@@ -14,9 +14,8 @@ import (
 	"testing"
 	"time"
 
-	accountimages "github.com/TokenFlux/TokenRouter/internal/account"
+	providerimages "github.com/TokenFlux/TokenRouter/internal/provider"
 
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/media"
@@ -25,6 +24,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/moderation"
 	"github.com/TokenFlux/TokenRouter/internal/ops"
 	"github.com/TokenFlux/TokenRouter/internal/protocol/openai"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	upstreamcore "github.com/TokenFlux/TokenRouter/internal/upstream"
 	upstreamopenai "github.com/TokenFlux/TokenRouter/internal/upstream/openai"
@@ -74,7 +74,7 @@ func TestOpenAIGatewayServiceParseOpenAIImagesRequest_JSON(t *testing.T) {
 	require.True(t, parsed.Stream)
 	require.Equal(t, "1024x1024", parsed.Size)
 	require.Equal(t, "1K", parsed.SizeTier)
-	require.Equal(t, accountimages.OpenAIImagesCapabilityNative, parsed.RequiredCapability)
+	require.Equal(t, providerimages.OpenAIImagesCapabilityNative, parsed.RequiredCapability)
 	require.False(t, parsed.Multipart)
 }
 
@@ -106,7 +106,7 @@ func TestOpenAIGatewayServiceParseOpenAIImagesRequest_MultipartEdit(t *testing.T
 	require.Equal(t, "1536x1024", parsed.Size)
 	require.Equal(t, "2K", parsed.SizeTier)
 	require.Len(t, parsed.Uploads, 1)
-	require.Equal(t, accountimages.OpenAIImagesCapabilityNative, parsed.RequiredCapability)
+	require.Equal(t, providerimages.OpenAIImagesCapabilityNative, parsed.RequiredCapability)
 }
 
 func TestOpenAIImagesRequestModerationBody_JSONEditIncludesInputImageURLs(t *testing.T) {
@@ -255,7 +255,7 @@ func TestOpenAIGatewayServiceParseOpenAIImagesRequest_MultipartEditWithMaskAndNa
 	require.Equal(t, 80, *parsed.OutputCompression)
 	require.NotNil(t, parsed.PartialImages)
 	require.Equal(t, 2, *parsed.PartialImages)
-	require.Equal(t, accountimages.OpenAIImagesCapabilityNative, parsed.RequiredCapability)
+	require.Equal(t, providerimages.OpenAIImagesCapabilityNative, parsed.RequiredCapability)
 }
 
 func TestOpenAIGatewayServiceParseOpenAIImagesRequest_PromptOnlyDefaultsRemainBasic(t *testing.T) {
@@ -271,7 +271,7 @@ func TestOpenAIGatewayServiceParseOpenAIImagesRequest_PromptOnlyDefaultsRemainBa
 	require.NoError(t, err)
 	require.NotNil(t, parsed)
 	require.Equal(t, "gpt-image-2", parsed.Model)
-	require.Equal(t, accountimages.OpenAIImagesCapabilityBasic, parsed.RequiredCapability)
+	require.Equal(t, providerimages.OpenAIImagesCapabilityBasic, parsed.RequiredCapability)
 }
 
 func TestOpenAIGatewayServiceParseOpenAIImagesRequest_ExplicitSizeRequiresNativeCapability(t *testing.T) {
@@ -286,7 +286,7 @@ func TestOpenAIGatewayServiceParseOpenAIImagesRequest_ExplicitSizeRequiresNative
 	parsed, err := media.ParseImageRequest(c.Request.URL.Path, c.GetHeader("Content-Type"), body, true)
 	require.NoError(t, err)
 	require.NotNil(t, parsed)
-	require.Equal(t, accountimages.OpenAIImagesCapabilityNative, parsed.RequiredCapability)
+	require.Equal(t, providerimages.OpenAIImagesCapabilityNative, parsed.RequiredCapability)
 }
 
 func TestOpenAIGatewayServiceParseOpenAIImagesRequest_RejectsNonImageModel(t *testing.T) {
@@ -317,7 +317,7 @@ func TestOpenAIGatewayServiceParseOpenAIImagesRequestForRouting(t *testing.T) {
 	require.NotNil(t, parsed)
 	require.Equal(t, "draw-alias", parsed.Model)
 	require.NoError(t, parsed.ValidateRoutingModel("gpt-image-1"))
-	require.Equal(t, accountimages.OpenAIImagesCapabilityNative, parsed.RequiredCapability)
+	require.Equal(t, providerimages.OpenAIImagesCapabilityNative, parsed.RequiredCapability)
 	require.ErrorContains(t, parsed.ValidateRoutingModel("gpt-5.4"), `images endpoint requires an image model, got "gpt-5.4"`)
 }
 
@@ -335,7 +335,7 @@ func TestOpenAIGatewayServiceParseOpenAIImagesRequest_AllowsGrokImageModels(t *t
 			require.NoError(t, err)
 			require.NotNil(t, parsed)
 			require.Equal(t, model, parsed.Model)
-			require.Equal(t, accountimages.OpenAIImagesCapabilityNative, parsed.RequiredCapability)
+			require.Equal(t, providerimages.OpenAIImagesCapabilityNative, parsed.RequiredCapability)
 		})
 	}
 }
@@ -369,7 +369,7 @@ func TestOpenAIGatewayServiceParseOpenAIImagesRequest_JSONEditURLs(t *testing.T)
 	require.NotNil(t, parsed.PartialImages)
 	require.Equal(t, 2, *parsed.PartialImages)
 	require.True(t, parsed.HasMask)
-	require.Equal(t, accountimages.OpenAIImagesCapabilityNative, parsed.RequiredCapability)
+	require.Equal(t, providerimages.OpenAIImagesCapabilityNative, parsed.RequiredCapability)
 }
 
 func TestCollectOpenAIImagePointers_RecognizesDirectAssets(t *testing.T) {
@@ -427,41 +427,41 @@ func TestNewOpenAIImageStatusError_UsesProvidedReadLimit(t *testing.T) {
 	require.Len(t, statusErr.ResponseBody, len(body))
 }
 
-func TestAccountSupportsOpenAIImageCapability_OAuthSupportsNative(t *testing.T) {
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountimages.Record{
+func TestProviderSupportsOpenAIImageCapability_OAuthSupportsNative(t *testing.T) {
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providerimages.Record{
 			LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI,
-			Type: capability.AccountTypeOAuth,
+			Type: capability.ProviderTypeOAuth,
 		},
 	}
 
-	require.True(t, account.View().SupportsOpenAIImageCapability(accountimages.OpenAIImagesCapabilityBasic))
-	require.True(t, account.View().SupportsOpenAIImageCapability(accountimages.OpenAIImagesCapabilityNative))
+	require.True(t, provider.View().SupportsOpenAIImageCapability(providerimages.OpenAIImagesCapabilityBasic))
+	require.True(t, provider.View().SupportsOpenAIImageCapability(providerimages.OpenAIImagesCapabilityNative))
 }
 
-func TestAccountSupportsOpenAIImageCapability_SetupTokenSupportsNative(t *testing.T) {
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountimages.Record{
+func TestProviderSupportsOpenAIImageCapability_SetupTokenSupportsNative(t *testing.T) {
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providerimages.Record{
 			LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI,
-			Type: capability.AccountTypeSetupToken,
+			Type: capability.ProviderTypeSetupToken,
 		},
 	}
 
-	require.True(t, account.View().SupportsOpenAIImageCapability(accountimages.OpenAIImagesCapabilityBasic))
-	require.True(t, account.View().SupportsOpenAIImageCapability(accountimages.OpenAIImagesCapabilityNative))
-	require.False(t, accountprovider.SupportsOpenAIEndpoint(gatewayprovider.ExecutionProtocolRecord(account), accountimages.OpenAIEndpointCapabilityEmbeddings))
+	require.True(t, provider.View().SupportsOpenAIImageCapability(providerimages.OpenAIImagesCapabilityBasic))
+	require.True(t, provider.View().SupportsOpenAIImageCapability(providerimages.OpenAIImagesCapabilityNative))
+	require.False(t, provideradapter.SupportsOpenAIEndpoint(gatewayprovider.ExecutionProtocolRecord(provider), providerimages.OpenAIEndpointCapabilityEmbeddings))
 }
 
-func TestAccountSupportsOpenAIImageCapability_EmptyRequirementDoesNotRejectGrok(t *testing.T) {
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountimages.Record{
+func TestProviderSupportsOpenAIImageCapability_EmptyRequirementDoesNotRejectGrok(t *testing.T) {
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providerimages.Record{
 			LoadLocation: time.LoadLocation, Platform: capability.PlatformGrok,
-			Type: capability.AccountTypeOAuth,
+			Type: capability.ProviderTypeOAuth,
 		},
 	}
 
-	require.True(t, account.View().SupportsOpenAIImageCapability(""))
-	require.False(t, account.View().SupportsOpenAIImageCapability(accountimages.OpenAIImagesCapabilityBasic))
+	require.True(t, provider.View().SupportsOpenAIImageCapability(""))
+	require.False(t, provider.View().SupportsOpenAIImageCapability(providerimages.OpenAIImagesCapabilityBasic))
 }
 
 func TestBuildOpenAIImagesURL_HandlesVersionedBaseURL(t *testing.T) {
@@ -525,7 +525,7 @@ func findOpenAIImageTestSSEEvent(events []openAIImageTestSSEEvent, name string) 
 	return openAIImageTestSSEEvent{}, false
 }
 
-func TestOpenAIGatewayServiceForwardImages_OAuthAppliesAccountMappingAndReturnsAllImages(t *testing.T) {
+func TestOpenAIGatewayServiceForwardImages_OAuthAppliesProviderMappingAndReturnsAllImages(t *testing.T) {
 	body := []byte(`{"model":"gpt-image-1","prompt":"draw a cat","size":"1024x1024","quality":"high","n":3}`)
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/images/generations", bytes.NewReader(body))
@@ -554,12 +554,12 @@ func TestOpenAIGatewayServiceForwardImages_OAuthAppliesAccountMappingAndReturnsA
 	}
 	svc.Requests.Transport = upstream
 
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountimages.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providerimages.Record{
 			LoadLocation: time.LoadLocation, ID: 1,
 			Name:     "openai-oauth",
 			Platform: capability.PlatformOpenAI,
-			Type:     capability.AccountTypeOAuth,
+			Type:     capability.ProviderTypeOAuth,
 			Credentials: map[string]any{
 				"access_token":       "token-123",
 				"chatgpt_account_id": "acct-123",
@@ -568,7 +568,7 @@ func TestOpenAIGatewayServiceForwardImages_OAuthAppliesAccountMappingAndReturnsA
 		},
 	}
 
-	result, err := svc.ForwardImages(context.Background(), c, account, body, parsed, "")
+	result, err := svc.ForwardImages(context.Background(), c, provider, body, parsed, "")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, "gpt-image-1", result.Model)
@@ -713,19 +713,19 @@ func TestOpenAIGatewayServiceForwardImages_OAuthUpstreamHTTPErrorSurfacesRealErr
 		},
 	}
 
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountimages.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providerimages.Record{
 			LoadLocation: time.LoadLocation, ID: 1,
 			Name:     "openai-oauth",
 			Platform: capability.PlatformOpenAI,
-			Type:     capability.AccountTypeOAuth,
+			Type:     capability.ProviderTypeOAuth,
 			Credentials: map[string]any{
 				"access_token": "token-123",
 			},
 		},
 	}
 
-	result, err := svc.ForwardImages(context.Background(), c, account, body, parsed, "")
+	result, err := svc.ForwardImages(context.Background(), c, provider, body, parsed, "")
 	require.Nil(t, result)
 
 	var upstreamErr *upstreamopenai.OpenAIImagesUpstreamError
@@ -770,19 +770,19 @@ func TestOpenAIGatewayServiceForwardImages_OAuthNonStreamModerationBlockedReturn
 		},
 	}
 
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountimages.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providerimages.Record{
 			LoadLocation: time.LoadLocation, ID: 1,
 			Name:     "openai-oauth",
 			Platform: capability.PlatformOpenAI,
-			Type:     capability.AccountTypeOAuth,
+			Type:     capability.ProviderTypeOAuth,
 			Credentials: map[string]any{
 				"access_token": "token-123",
 			},
 		},
 	}
 
-	result, err := svc.ForwardImages(context.Background(), c, account, body, parsed, "")
+	result, err := svc.ForwardImages(context.Background(), c, provider, body, parsed, "")
 	require.Nil(t, result)
 	var upstreamErr *upstreamopenai.OpenAIImagesUpstreamError
 	require.ErrorAs(t, err, &upstreamErr)
@@ -819,19 +819,19 @@ func TestOpenAIGatewayServiceForwardImages_OAuthNonStreamServerErrorReturnsFailo
 	}})
 	parsed, err := media.ParseImageRequest(c.Request.URL.Path, c.GetHeader("Content-Type"), body, true)
 	require.NoError(t, err)
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountimages.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providerimages.Record{
 			LoadLocation: time.LoadLocation, ID: 21,
 			Name:     "openai-oauth-server-error",
 			Platform: capability.PlatformOpenAI,
-			Type:     capability.AccountTypeOAuth,
+			Type:     capability.ProviderTypeOAuth,
 			Credentials: map[string]any{
 				"access_token": "token-123",
 			},
 		},
 	}
 
-	result, err := svc.ForwardImages(context.Background(), c, account, body, parsed, "")
+	result, err := svc.ForwardImages(context.Background(), c, provider, body, parsed, "")
 
 	require.Nil(t, result)
 	var failoverErr *forwardcore.UpstreamFailoverError
@@ -847,11 +847,11 @@ func TestOpenAIGatewayServiceForwardImages_OAuthNonStreamServerErrorReturnsFailo
 	require.True(t, ok)
 	require.Len(t, events, 1)
 	require.Equal(t, "failover", events[0].Kind)
-	require.Equal(t, account.Record.ID, events[0].AccountID)
+	require.Equal(t, provider.Record.ID, events[0].ProviderID)
 	require.Equal(t, http.StatusBadGateway, events[0].UpstreamStatusCode)
 }
 
-func TestOpenAIGatewayServiceForwardImages_OAuth429CarriesSameAccountRetryWindow(t *testing.T) {
+func TestOpenAIGatewayServiceForwardImages_OAuth429CarriesSameProviderRetryWindow(t *testing.T) {
 	body := []byte(`{"model":"gpt-image-2","prompt":"draw a cat","response_format":"b64_json"}`)
 	req := httptest.NewRequest(http.MethodPost, "/v1/images/generations", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -865,17 +865,17 @@ func TestOpenAIGatewayServiceForwardImages_OAuth429CarriesSameAccountRetryWindow
 	}}})
 	parsed, err := media.ParseImageRequest(c.Request.URL.Path, c.GetHeader("Content-Type"), body, true)
 	require.NoError(t, err)
-	account := &gatewayprovider.ExecutionAccount{Record: accountimages.Record{LoadLocation: time.LoadLocation, ID: 22, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth, Credentials: map[string]any{"access_token": "token-123"}}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providerimages.Record{LoadLocation: time.LoadLocation, ID: 22, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth, Credentials: map[string]any{"access_token": "token-123"}}}
 	startedAt := time.Now()
 
-	result, err := svc.ForwardImages(context.Background(), c, account, body, parsed, "")
+	result, err := svc.ForwardImages(context.Background(), c, provider, body, parsed, "")
 
 	require.Nil(t, result)
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)
-	require.True(t, failoverErr.RetryableOnSameAccount)
-	require.Equal(t, time.Second, failoverErr.SameAccountRetryDelay)
-	require.WithinDuration(t, startedAt.Add(accountimages.RuntimeRetryWindow), failoverErr.SameAccountRetryDeadline, time.Second)
+	require.True(t, failoverErr.RetryableOnSameProvider)
+	require.Equal(t, time.Second, failoverErr.SameProviderRetryDelay)
+	require.WithinDuration(t, startedAt.Add(providerimages.RuntimeRetryWindow), failoverErr.SameProviderRetryDeadline, time.Second)
 }
 
 func TestOpenAIImagesOAuthBodyReadTransportErrorFailover(t *testing.T) {
@@ -890,12 +890,12 @@ func TestOpenAIImagesOAuthBodyReadTransportErrorFailover(t *testing.T) {
 		},
 		Body: &openAIImagesReadErrorBody{err: errors.New("stream error: stream ID 11; INTERNAL_ERROR; received from peer")},
 	}
-	account := &gatewayprovider.ExecutionAccount{Record: accountimages.Record{LoadLocation: time.LoadLocation, ID: 5400, Name: "openai-oauth", Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providerimages.Record{LoadLocation: time.LoadLocation, ID: 5400, Name: "openai-oauth", Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}}
 	svc := newImagesFixture(imagesFixtureInputs{})
 
 	_, _, _, readErr := svc.handleOpenAIImagesOAuthNonStreamingResponse(resp, c, "b64_json", "gpt-image-2")
 	require.Error(t, readErr)
-	err := svc.handleOpenAIImagesOAuthResponseError(context.Background(), c, account, "gpt-image-2", "https://api.openai.com/v1/responses", resp, OpenAIImagesJSONKeepaliveAdjustedWrittenSize(c), readErr)
+	err := svc.handleOpenAIImagesOAuthResponseError(context.Background(), c, provider, "gpt-image-2", "https://api.openai.com/v1/responses", resp, OpenAIImagesJSONKeepaliveAdjustedWrittenSize(c), readErr)
 
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)
@@ -938,7 +938,7 @@ func TestOpenAIImagesOAuthBodyReadErrorsNotMisclassified(t *testing.T) {
 				err = upstreamopenai.NewUpstreamStreamReadError(err)
 			}
 
-			got := newImagesFixture(imagesFixtureInputs{}).handleOpenAIImagesOAuthResponseError(context.Background(), c, &gatewayprovider.ExecutionAccount{Record: accountimages.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI}}, "gpt-image-2", "", resp, OpenAIImagesJSONKeepaliveAdjustedWrittenSize(c), err)
+			got := newImagesFixture(imagesFixtureInputs{}).handleOpenAIImagesOAuthResponseError(context.Background(), c, &gatewayprovider.ExecutionProvider{Record: providerimages.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI}}, "gpt-image-2", "", resp, OpenAIImagesJSONKeepaliveAdjustedWrittenSize(c), err)
 			var failoverErr *forwardcore.UpstreamFailoverError
 			require.False(t, errors.As(got, &failoverErr))
 			require.ErrorIs(t, got, tt.err)
@@ -955,10 +955,10 @@ func TestOpenAIImagesOAuthTransportErrorAfterDownstreamWriteDoesNotFailover(t *t
 	_, writeErr := c.Writer.Write([]byte("downstream image bytes"))
 	require.NoError(t, writeErr)
 	classifiedErr := upstreamopenai.NewUpstreamStreamReadError(errors.New("unexpected EOF"))
-	account := &gatewayprovider.ExecutionAccount{Record: accountimages.Record{LoadLocation: time.LoadLocation, ID: 5401, Name: "openai-oauth", Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providerimages.Record{LoadLocation: time.LoadLocation, ID: 5401, Name: "openai-oauth", Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}}
 	resp := &http.Response{Header: http.Header{"X-Request-Id": []string{"req_after_write"}}}
 
-	err := newImagesFixture(imagesFixtureInputs{}).handleOpenAIImagesOAuthResponseError(context.Background(), c, account, "gpt-image-2", "", resp, before, classifiedErr)
+	err := newImagesFixture(imagesFixtureInputs{}).handleOpenAIImagesOAuthResponseError(context.Background(), c, provider, "gpt-image-2", "", resp, before, classifiedErr)
 
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.False(t, errors.As(err, &failoverErr))
@@ -1006,12 +1006,12 @@ func TestOpenAIGatewayServiceForwardImages_APIKeyGenerationUsesConfiguredV1BaseU
 	parsed, err := media.ParseImageRequest(c.Request.URL.Path, c.GetHeader("Content-Type"), body, true)
 	require.NoError(t, err)
 
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountimages.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providerimages.Record{
 			LoadLocation: time.LoadLocation, ID: 6,
 			Name:     "openai-apikey",
 			Platform: capability.PlatformOpenAI,
-			Type:     capability.AccountTypeAPIKey,
+			Type:     capability.ProviderTypeAPIKey,
 			Credentials: map[string]any{
 				"api_key":  "test-api-key",
 				"base_url": "https://image-upstream.example/v1",
@@ -1019,7 +1019,7 @@ func TestOpenAIGatewayServiceForwardImages_APIKeyGenerationUsesConfiguredV1BaseU
 		},
 	}
 
-	result, err := svc.ForwardImages(context.Background(), c, account, body, parsed, "")
+	result, err := svc.ForwardImages(context.Background(), c, provider, body, parsed, "")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, 1, result.ImageCount)
@@ -1056,30 +1056,30 @@ func TestOpenAIGatewayServiceForwardImages_APIKeyAccessStateUsesTypedFailover(t 
 	svc := newImagesFixture(imagesFixtureInputs{transport: upstream})
 	parsed, err := media.ParseImageRequest(c.Request.URL.Path, c.GetHeader("Content-Type"), body, true)
 	require.NoError(t, err)
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountimages.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providerimages.Record{
 			LoadLocation: time.LoadLocation, ID: 51,
 			Platform: capability.PlatformOpenAI,
-			Type:     capability.AccountTypeAPIKey,
+			Type:     capability.ProviderTypeAPIKey,
 			Credentials: map[string]any{
 				"api_key": "sk-test",
 			},
 		},
 	}
 
-	result, err := svc.ForwardImages(context.Background(), c, account, body, parsed, "")
+	result, err := svc.ForwardImages(context.Background(), c, provider, body, parsed, "")
 
 	require.Nil(t, result)
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)
 	require.Equal(t, http.StatusForbidden, failoverErr.StatusCode)
-	require.Equal(t, forwardcore.GatewayFailureStageAccountAuth, failoverErr.Stage)
-	require.Equal(t, forwardcore.GatewayFailureScopeAccount, failoverErr.Scope)
+	require.Equal(t, forwardcore.GatewayFailureStageProviderAuth, failoverErr.Stage)
+	require.Equal(t, forwardcore.GatewayFailureScopeProvider, failoverErr.Scope)
 	require.Equal(t, forwardcore.OpenAIUpstreamAccessStateReason, failoverErr.Reason)
-	require.Equal(t, forwardcore.NextAccountRetry, failoverErr.NextAccountAction)
+	require.Equal(t, forwardcore.NextProviderRetry, failoverErr.NextProviderAction)
 	require.Equal(t, http.StatusBadGateway, failoverErr.ClientStatusCode)
 	require.Equal(t, "Upstream access is temporarily unavailable, please retry later", failoverErr.ClientMessage)
-	require.False(t, failoverErr.RetryableOnSameAccount)
+	require.False(t, failoverErr.RetryableOnSameProvider)
 	require.Equal(t, "req_images_access_state", http.Header(failoverErr.ResponseHeaders).Get("x-request-id"))
 	require.False(t, c.Writer.Written())
 }
@@ -1106,12 +1106,12 @@ func TestOpenAIGatewayServiceForwardImages_APIKeyStreamJSONResponseBillsImage(t 
 	parsed, err := media.ParseImageRequest(c.Request.URL.Path, c.GetHeader("Content-Type"), body, true)
 	require.NoError(t, err)
 
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountimages.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providerimages.Record{
 			LoadLocation: time.LoadLocation, ID: 7,
 			Name:     "openai-apikey",
 			Platform: capability.PlatformOpenAI,
-			Type:     capability.AccountTypeAPIKey,
+			Type:     capability.ProviderTypeAPIKey,
 			Credentials: map[string]any{
 				"api_key":  "test-api-key",
 				"base_url": "https://image-upstream.example/v1",
@@ -1119,7 +1119,7 @@ func TestOpenAIGatewayServiceForwardImages_APIKeyStreamJSONResponseBillsImage(t 
 		},
 	}
 
-	result, err := svc.ForwardImages(context.Background(), c, account, body, parsed, "")
+	result, err := svc.ForwardImages(context.Background(), c, provider, body, parsed, "")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.True(t, result.Stream)
@@ -1153,12 +1153,12 @@ func TestOpenAIGatewayServiceForwardImages_APIKeyStreamRawJSONEventStreamFallbac
 	parsed, err := media.ParseImageRequest(c.Request.URL.Path, c.GetHeader("Content-Type"), body, true)
 	require.NoError(t, err)
 
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountimages.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providerimages.Record{
 			LoadLocation: time.LoadLocation, ID: 8,
 			Name:     "openai-apikey",
 			Platform: capability.PlatformOpenAI,
-			Type:     capability.AccountTypeAPIKey,
+			Type:     capability.ProviderTypeAPIKey,
 			Credentials: map[string]any{
 				"api_key":  "test-api-key",
 				"base_url": "https://image-upstream.example/v1",
@@ -1166,7 +1166,7 @@ func TestOpenAIGatewayServiceForwardImages_APIKeyStreamRawJSONEventStreamFallbac
 		},
 	}
 
-	result, err := svc.ForwardImages(context.Background(), c, account, body, parsed, "")
+	result, err := svc.ForwardImages(context.Background(), c, provider, body, parsed, "")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.True(t, result.Stream)
@@ -1204,19 +1204,19 @@ func TestOpenAIGatewayServiceForwardImages_APIKeyStreamMultilineSSEDataBillsImag
 	parsed, err := media.ParseImageRequest(c.Request.URL.Path, c.GetHeader("Content-Type"), body, true)
 	require.NoError(t, err)
 
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountimages.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providerimages.Record{
 			LoadLocation: time.LoadLocation, ID: 8,
 			Name:     "openai-apikey",
 			Platform: capability.PlatformOpenAI,
-			Type:     capability.AccountTypeAPIKey,
+			Type:     capability.ProviderTypeAPIKey,
 			Credentials: map[string]any{
 				"api_key": "test-api-key",
 			},
 		},
 	}
 
-	result, err := svc.ForwardImages(context.Background(), c, account, body, parsed, "")
+	result, err := svc.ForwardImages(context.Background(), c, provider, body, parsed, "")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.True(t, result.Stream)
@@ -1264,12 +1264,12 @@ func TestOpenAIGatewayServiceForwardImages_APIKeyEditUsesConfiguredV1BaseURL(t *
 	parsed, err := media.ParseImageRequest(c.Request.URL.Path, c.GetHeader("Content-Type"), body.Bytes(), true)
 	require.NoError(t, err)
 
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountimages.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providerimages.Record{
 			LoadLocation: time.LoadLocation, ID: 7,
 			Name:     "openai-apikey",
 			Platform: capability.PlatformOpenAI,
-			Type:     capability.AccountTypeAPIKey,
+			Type:     capability.ProviderTypeAPIKey,
 			Credentials: map[string]any{
 				"api_key":  "test-api-key",
 				"base_url": "https://image-upstream.example/v1/",
@@ -1277,7 +1277,7 @@ func TestOpenAIGatewayServiceForwardImages_APIKeyEditUsesConfiguredV1BaseURL(t *
 		},
 	}
 
-	result, err := svc.ForwardImages(context.Background(), c, account, body.Bytes(), parsed, "")
+	result, err := svc.ForwardImages(context.Background(), c, provider, body.Bytes(), parsed, "")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, 1, result.ImageCount)
@@ -1324,19 +1324,19 @@ func TestOpenAIGatewayServiceForwardImages_OAuthStreamingTransformsEvents(t *tes
 	}
 	svc.Requests.Transport = upstream
 
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountimages.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providerimages.Record{
 			LoadLocation: time.LoadLocation, ID: 2,
 			Name:     "openai-oauth",
 			Platform: capability.PlatformOpenAI,
-			Type:     capability.AccountTypeOAuth,
+			Type:     capability.ProviderTypeOAuth,
 			Credentials: map[string]any{
 				"access_token": "token-123",
 			},
 		},
 	}
 
-	result, err := svc.ForwardImages(context.Background(), c, account, body, parsed, "")
+	result, err := svc.ForwardImages(context.Background(), c, provider, body, parsed, "")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.True(t, result.Stream)
@@ -1396,19 +1396,19 @@ func TestOpenAIGatewayServiceForwardImages_OAuthStreamingModerationBlockedEmitsE
 		},
 	}
 
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountimages.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providerimages.Record{
 			LoadLocation: time.LoadLocation, ID: 2,
 			Name:     "openai-oauth",
 			Platform: capability.PlatformOpenAI,
-			Type:     capability.AccountTypeOAuth,
+			Type:     capability.ProviderTypeOAuth,
 			Credentials: map[string]any{
 				"access_token": "token-123",
 			},
 		},
 	}
 
-	result, err := svc.ForwardImages(context.Background(), c, account, body, parsed, "")
+	result, err := svc.ForwardImages(context.Background(), c, provider, body, parsed, "")
 	require.Nil(t, result)
 	var upstreamErr *upstreamopenai.OpenAIImagesUpstreamError
 	require.ErrorAs(t, err, &upstreamErr)
@@ -1447,19 +1447,19 @@ func TestOpenAIGatewayServiceForwardImages_OAuthStreamingServerErrorBeforeFlushR
 	}})
 	parsed, err := media.ParseImageRequest(c.Request.URL.Path, c.GetHeader("Content-Type"), body, true)
 	require.NoError(t, err)
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountimages.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providerimages.Record{
 			LoadLocation: time.LoadLocation, ID: 23,
 			Name:     "openai-oauth-stream-server-error",
 			Platform: capability.PlatformOpenAI,
-			Type:     capability.AccountTypeOAuth,
+			Type:     capability.ProviderTypeOAuth,
 			Credentials: map[string]any{
 				"access_token": "token-123",
 			},
 		},
 	}
 
-	result, err := svc.ForwardImages(context.Background(), c, account, body, parsed, "")
+	result, err := svc.ForwardImages(context.Background(), c, provider, body, parsed, "")
 
 	require.Nil(t, result)
 	var failoverErr *forwardcore.UpstreamFailoverError
@@ -1494,19 +1494,19 @@ func TestOpenAIGatewayServiceForwardImages_OAuthStreamingServerErrorAfterFlushDo
 	}})
 	parsed, err := media.ParseImageRequest(c.Request.URL.Path, c.GetHeader("Content-Type"), body, true)
 	require.NoError(t, err)
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountimages.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providerimages.Record{
 			LoadLocation: time.LoadLocation, ID: 22,
 			Name:     "openai-oauth-partial-server-error",
 			Platform: capability.PlatformOpenAI,
-			Type:     capability.AccountTypeOAuth,
+			Type:     capability.ProviderTypeOAuth,
 			Credentials: map[string]any{
 				"access_token": "token-123",
 			},
 		},
 	}
 
-	result, err := svc.ForwardImages(context.Background(), c, account, body, parsed, "")
+	result, err := svc.ForwardImages(context.Background(), c, provider, body, parsed, "")
 
 	require.Nil(t, result)
 	var failoverErr *forwardcore.UpstreamFailoverError
@@ -1576,19 +1576,19 @@ func TestOpenAIGatewayServiceForwardImages_APIKeyStreamingDrainsAfterClientDisco
 	parsed, err := media.ParseImageRequest(c.Request.URL.Path, c.GetHeader("Content-Type"), body, true)
 	require.NoError(t, err)
 
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountimages.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providerimages.Record{
 			LoadLocation: time.LoadLocation, ID: 8,
 			Name:     "openai-apikey",
 			Platform: capability.PlatformOpenAI,
-			Type:     capability.AccountTypeAPIKey,
+			Type:     capability.ProviderTypeAPIKey,
 			Credentials: map[string]any{
 				"api_key": "test-api-key",
 			},
 		},
 	}
 
-	result, err := svc.ForwardImages(context.Background(), c, account, body, parsed, "")
+	result, err := svc.ForwardImages(context.Background(), c, provider, body, parsed, "")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, 1, result.ImageCount)
@@ -1650,19 +1650,19 @@ func TestOpenAIGatewayServiceForwardImages_OAuthEditsMultipartUsesResponsesAPI(t
 	}
 	svc.Requests.Transport = upstream
 
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountimages.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providerimages.Record{
 			LoadLocation: time.LoadLocation, ID: 3,
 			Name:     "openai-oauth",
 			Platform: capability.PlatformOpenAI,
-			Type:     capability.AccountTypeOAuth,
+			Type:     capability.ProviderTypeOAuth,
 			Credentials: map[string]any{
 				"access_token": "token-123",
 			},
 		},
 	}
 
-	result, err := svc.ForwardImages(context.Background(), c, account, body.Bytes(), parsed, "")
+	result, err := svc.ForwardImages(context.Background(), c, provider, body.Bytes(), parsed, "")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, 1, result.ImageCount)
@@ -1713,19 +1713,19 @@ func TestOpenAIGatewayServiceForwardImages_OAuthEditsStreamingTransformsEvents(t
 	}
 	svc.Requests.Transport = upstream
 
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountimages.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providerimages.Record{
 			LoadLocation: time.LoadLocation, ID: 4,
 			Name:     "openai-oauth",
 			Platform: capability.PlatformOpenAI,
-			Type:     capability.AccountTypeOAuth,
+			Type:     capability.ProviderTypeOAuth,
 			Credentials: map[string]any{
 				"access_token": "token-123",
 			},
 		},
 	}
 
-	result, err := svc.ForwardImages(context.Background(), c, account, body, parsed, "")
+	result, err := svc.ForwardImages(context.Background(), c, provider, body, parsed, "")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, 1, result.ImageCount)
@@ -1904,19 +1904,19 @@ func TestOpenAIGatewayServiceForwardImages_OAuthStreamingHandlesOutputItemDoneFa
 	}
 	svc.Requests.Transport = upstream
 
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountimages.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providerimages.Record{
 			LoadLocation: time.LoadLocation, ID: 5,
 			Name:     "openai-oauth",
 			Platform: capability.PlatformOpenAI,
-			Type:     capability.AccountTypeOAuth,
+			Type:     capability.ProviderTypeOAuth,
 			Credentials: map[string]any{
 				"access_token": "token-123",
 			},
 		},
 	}
 
-	result, err := svc.ForwardImages(context.Background(), c, account, body, parsed, "")
+	result, err := svc.ForwardImages(context.Background(), c, provider, body, parsed, "")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.True(t, result.Stream)
@@ -1961,19 +1961,19 @@ func TestOpenAIGatewayServiceForwardImages_OAuthStreamingHandlesMultilineSSE(t *
 		},
 	}
 
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountimages.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providerimages.Record{
 			LoadLocation: time.LoadLocation, ID: 11,
 			Name:     "openai-oauth",
 			Platform: capability.PlatformOpenAI,
-			Type:     capability.AccountTypeOAuth,
+			Type:     capability.ProviderTypeOAuth,
 			Credentials: map[string]any{
 				"access_token": "token-123",
 			},
 		},
 	}
 
-	result, err := svc.ForwardImages(context.Background(), c, account, body, parsed, "")
+	result, err := svc.ForwardImages(context.Background(), c, provider, body, parsed, "")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.True(t, result.Stream)
@@ -2019,19 +2019,19 @@ func TestOpenAIGatewayServiceForwardImages_OAuthStreamingDrainsAfterClientDiscon
 	}
 	svc.Requests.Transport = upstream
 
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountimages.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providerimages.Record{
 			LoadLocation: time.LoadLocation, ID: 9,
 			Name:     "openai-oauth",
 			Platform: capability.PlatformOpenAI,
-			Type:     capability.AccountTypeOAuth,
+			Type:     capability.ProviderTypeOAuth,
 			Credentials: map[string]any{
 				"access_token": "token-123",
 			},
 		},
 	}
 
-	result, err := svc.ForwardImages(context.Background(), c, account, body, parsed, "")
+	result, err := svc.ForwardImages(context.Background(), c, provider, body, parsed, "")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.True(t, result.Stream)

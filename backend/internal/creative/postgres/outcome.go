@@ -9,7 +9,7 @@ import (
 )
 
 // RecordProviderOutcome 原子记录成功事实与 settle 恢复动作，不持久化图片字节。
-func (r *creativeRunRepository) RecordProviderOutcome(ctx context.Context, id string, accountID int64, outputs []creative.CreativeRunOutput, now time.Time) error {
+func (r *creativeRunRepository) RecordProviderOutcome(ctx context.Context, id string, providerID int64, outputs []creative.CreativeRunOutput, now time.Time) error {
 	tx, err := r.client.Tx(ctx)
 	if err != nil {
 		return err
@@ -26,8 +26,8 @@ func (r *creativeRunRepository) RecordProviderOutcome(ctx context.Context, id st
 		return creative.ErrCreativeInvalidTransition
 	}
 	change := tx.CreativeRun.Update().Where(creativerun.IDEQ(current.ID), creativerun.VersionEQ(current.Version)).SetProviderResultRecordedAt(now).SetUpdatedAt(now).AddVersion(1)
-	if accountID > 0 {
-		change.SetAccountID(accountID)
+	if providerID > 0 {
+		change.SetProviderID(providerID)
 	}
 	if current.Status != creative.CreativeRunStatusCancelled {
 		change.SetStatus(creative.CreativeRunStatusProviderSucceeded)

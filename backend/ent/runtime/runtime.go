@@ -5,8 +5,6 @@ package runtime
 import (
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/ent/account"
-	"github.com/TokenFlux/TokenRouter/ent/accountgroup"
 	"github.com/TokenFlux/TokenRouter/ent/announcement"
 	"github.com/TokenFlux/TokenRouter/ent/announcementread"
 	"github.com/TokenFlux/TokenRouter/ent/apikey"
@@ -29,6 +27,8 @@ import (
 	"github.com/TokenFlux/TokenRouter/ent/pendingauthsession"
 	"github.com/TokenFlux/TokenRouter/ent/promocode"
 	"github.com/TokenFlux/TokenRouter/ent/promocodeusage"
+	"github.com/TokenFlux/TokenRouter/ent/provider"
+	"github.com/TokenFlux/TokenRouter/ent/providergroup"
 	"github.com/TokenFlux/TokenRouter/ent/proxy"
 	"github.com/TokenFlux/TokenRouter/ent/redeemcode"
 	"github.com/TokenFlux/TokenRouter/ent/redeemcodeusage"
@@ -240,123 +240,6 @@ func init() {
 	apikeycompositegroupDescSortOrder := apikeycompositegroupFields[4].Descriptor()
 	// apikeycompositegroup.DefaultSortOrder holds the default value on creation for the sort_order field.
 	apikeycompositegroup.DefaultSortOrder = apikeycompositegroupDescSortOrder.Default.(int)
-	accountMixin := schema.Account{}.Mixin()
-	accountMixinHooks1 := accountMixin[1].Hooks()
-	account.Hooks[0] = accountMixinHooks1[0]
-	accountMixinInters1 := accountMixin[1].Interceptors()
-	account.Interceptors[0] = accountMixinInters1[0]
-	accountMixinFields0 := accountMixin[0].Fields()
-	_ = accountMixinFields0
-	accountFields := schema.Account{}.Fields()
-	_ = accountFields
-	// accountDescCreatedAt is the schema descriptor for created_at field.
-	accountDescCreatedAt := accountMixinFields0[0].Descriptor()
-	// account.DefaultCreatedAt holds the default value on creation for the created_at field.
-	account.DefaultCreatedAt = accountDescCreatedAt.Default.(func() time.Time)
-	// accountDescUpdatedAt is the schema descriptor for updated_at field.
-	accountDescUpdatedAt := accountMixinFields0[1].Descriptor()
-	// account.DefaultUpdatedAt holds the default value on creation for the updated_at field.
-	account.DefaultUpdatedAt = accountDescUpdatedAt.Default.(func() time.Time)
-	// account.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
-	account.UpdateDefaultUpdatedAt = accountDescUpdatedAt.UpdateDefault.(func() time.Time)
-	// accountDescName is the schema descriptor for name field.
-	accountDescName := accountFields[0].Descriptor()
-	// account.NameValidator is a validator for the "name" field. It is called by the builders before save.
-	account.NameValidator = func() func(string) error {
-		validators := accountDescName.Validators
-		fns := [...]func(string) error{
-			validators[0].(func(string) error),
-			validators[1].(func(string) error),
-		}
-		return func(name string) error {
-			for _, fn := range fns {
-				if err := fn(name); err != nil {
-					return err
-				}
-			}
-			return nil
-		}
-	}()
-	// accountDescPlatform is the schema descriptor for platform field.
-	accountDescPlatform := accountFields[2].Descriptor()
-	// account.PlatformValidator is a validator for the "platform" field. It is called by the builders before save.
-	account.PlatformValidator = func() func(string) error {
-		validators := accountDescPlatform.Validators
-		fns := [...]func(string) error{
-			validators[0].(func(string) error),
-			validators[1].(func(string) error),
-		}
-		return func(platform string) error {
-			for _, fn := range fns {
-				if err := fn(platform); err != nil {
-					return err
-				}
-			}
-			return nil
-		}
-	}()
-	// accountDescType is the schema descriptor for type field.
-	accountDescType := accountFields[3].Descriptor()
-	// account.TypeValidator is a validator for the "type" field. It is called by the builders before save.
-	account.TypeValidator = func() func(string) error {
-		validators := accountDescType.Validators
-		fns := [...]func(string) error{
-			validators[0].(func(string) error),
-			validators[1].(func(string) error),
-		}
-		return func(_type string) error {
-			for _, fn := range fns {
-				if err := fn(_type); err != nil {
-					return err
-				}
-			}
-			return nil
-		}
-	}()
-	// accountDescCredentials is the schema descriptor for credentials field.
-	accountDescCredentials := accountFields[4].Descriptor()
-	// account.DefaultCredentials holds the default value on creation for the credentials field.
-	account.DefaultCredentials = accountDescCredentials.Default.(func() map[string]interface{})
-	// accountDescExtra is the schema descriptor for extra field.
-	accountDescExtra := accountFields[5].Descriptor()
-	// account.DefaultExtra holds the default value on creation for the extra field.
-	account.DefaultExtra = accountDescExtra.Default.(func() map[string]interface{})
-	// accountDescConcurrency is the schema descriptor for concurrency field.
-	accountDescConcurrency := accountFields[8].Descriptor()
-	// account.DefaultConcurrency holds the default value on creation for the concurrency field.
-	account.DefaultConcurrency = accountDescConcurrency.Default.(int)
-	// accountDescPriority is the schema descriptor for priority field.
-	accountDescPriority := accountFields[10].Descriptor()
-	// account.DefaultPriority holds the default value on creation for the priority field.
-	account.DefaultPriority = accountDescPriority.Default.(int)
-	// accountDescRateMultiplier is the schema descriptor for rate_multiplier field.
-	accountDescRateMultiplier := accountFields[11].Descriptor()
-	// account.DefaultRateMultiplier holds the default value on creation for the rate_multiplier field.
-	account.DefaultRateMultiplier = accountDescRateMultiplier.Default.(float64)
-	// accountDescStatus is the schema descriptor for status field.
-	accountDescStatus := accountFields[12].Descriptor()
-	// account.DefaultStatus holds the default value on creation for the status field.
-	account.DefaultStatus = accountDescStatus.Default.(string)
-	// account.StatusValidator is a validator for the "status" field. It is called by the builders before save.
-	account.StatusValidator = accountDescStatus.Validators[0].(func(string) error)
-	// accountDescAutoPauseOnExpired is the schema descriptor for auto_pause_on_expired field.
-	accountDescAutoPauseOnExpired := accountFields[16].Descriptor()
-	// account.DefaultAutoPauseOnExpired holds the default value on creation for the auto_pause_on_expired field.
-	account.DefaultAutoPauseOnExpired = accountDescAutoPauseOnExpired.Default.(bool)
-	// accountDescSchedulable is the schema descriptor for schedulable field.
-	accountDescSchedulable := accountFields[17].Descriptor()
-	// account.DefaultSchedulable holds the default value on creation for the schedulable field.
-	account.DefaultSchedulable = accountDescSchedulable.Default.(bool)
-	// accountDescSessionWindowStatus is the schema descriptor for session_window_status field.
-	accountDescSessionWindowStatus := accountFields[25].Descriptor()
-	// account.SessionWindowStatusValidator is a validator for the "session_window_status" field. It is called by the builders before save.
-	account.SessionWindowStatusValidator = accountDescSessionWindowStatus.Validators[0].(func(string) error)
-	accountgroupFields := schema.AccountGroup{}.Fields()
-	_ = accountgroupFields
-	// accountgroupDescCreatedAt is the schema descriptor for created_at field.
-	accountgroupDescCreatedAt := accountgroupFields[2].Descriptor()
-	// accountgroup.DefaultCreatedAt holds the default value on creation for the created_at field.
-	accountgroup.DefaultCreatedAt = accountgroupDescCreatedAt.Default.(func() time.Time)
 	announcementFields := schema.Announcement{}.Fields()
 	_ = announcementFields
 	// announcementDescTitle is the schema descriptor for title field.
@@ -599,10 +482,10 @@ func init() {
 	batchimagejob.DefaultBillingMode = batchimagejobDescBillingMode.Default.(string)
 	// batchimagejob.BillingModeValidator is a validator for the "billing_mode" field. It is called by the builders before save.
 	batchimagejob.BillingModeValidator = batchimagejobDescBillingMode.Validators[0].(func(string) error)
-	// batchimagejobDescProvider is the schema descriptor for provider field.
-	batchimagejobDescProvider := batchimagejobFields[8].Descriptor()
-	// batchimagejob.ProviderValidator is a validator for the "provider" field. It is called by the builders before save.
-	batchimagejob.ProviderValidator = batchimagejobDescProvider.Validators[0].(func(string) error)
+	// batchimagejobDescPlatform is the schema descriptor for platform field.
+	batchimagejobDescPlatform := batchimagejobFields[8].Descriptor()
+	// batchimagejob.PlatformValidator is a validator for the "platform" field. It is called by the builders before save.
+	batchimagejob.PlatformValidator = batchimagejobDescPlatform.Validators[0].(func(string) error)
 	// batchimagejobDescModel is the schema descriptor for model field.
 	batchimagejobDescModel := batchimagejobFields[9].Descriptor()
 	// batchimagejob.ModelValidator is a validator for the "model" field. It is called by the builders before save.
@@ -746,12 +629,12 @@ func init() {
 	creativerunDescWorkspaceID := creativerunFields[2].Descriptor()
 	// creativerun.WorkspaceIDValidator is a validator for the "workspace_id" field. It is called by the builders before save.
 	creativerun.WorkspaceIDValidator = creativerunDescWorkspaceID.Validators[0].(func(string) error)
-	// creativerunDescProvider is the schema descriptor for provider field.
-	creativerunDescProvider := creativerunFields[6].Descriptor()
-	// creativerun.DefaultProvider holds the default value on creation for the provider field.
-	creativerun.DefaultProvider = creativerunDescProvider.Default.(string)
-	// creativerun.ProviderValidator is a validator for the "provider" field. It is called by the builders before save.
-	creativerun.ProviderValidator = creativerunDescProvider.Validators[0].(func(string) error)
+	// creativerunDescPlatform is the schema descriptor for platform field.
+	creativerunDescPlatform := creativerunFields[6].Descriptor()
+	// creativerun.DefaultPlatform holds the default value on creation for the platform field.
+	creativerun.DefaultPlatform = creativerunDescPlatform.Default.(string)
+	// creativerun.PlatformValidator is a validator for the "platform" field. It is called by the builders before save.
+	creativerun.PlatformValidator = creativerunDescPlatform.Validators[0].(func(string) error)
 	// creativerunDescModel is the schema descriptor for model field.
 	creativerunDescModel := creativerunFields[7].Descriptor()
 	// creativerun.ModelValidator is a validator for the "model" field. It is called by the builders before save.
@@ -1594,6 +1477,123 @@ func init() {
 	promocodeusageDescUsedAt := promocodeusageFields[3].Descriptor()
 	// promocodeusage.DefaultUsedAt holds the default value on creation for the used_at field.
 	promocodeusage.DefaultUsedAt = promocodeusageDescUsedAt.Default.(func() time.Time)
+	providerMixin := schema.Provider{}.Mixin()
+	providerMixinHooks1 := providerMixin[1].Hooks()
+	provider.Hooks[0] = providerMixinHooks1[0]
+	providerMixinInters1 := providerMixin[1].Interceptors()
+	provider.Interceptors[0] = providerMixinInters1[0]
+	providerMixinFields0 := providerMixin[0].Fields()
+	_ = providerMixinFields0
+	providerFields := schema.Provider{}.Fields()
+	_ = providerFields
+	// providerDescCreatedAt is the schema descriptor for created_at field.
+	providerDescCreatedAt := providerMixinFields0[0].Descriptor()
+	// provider.DefaultCreatedAt holds the default value on creation for the created_at field.
+	provider.DefaultCreatedAt = providerDescCreatedAt.Default.(func() time.Time)
+	// providerDescUpdatedAt is the schema descriptor for updated_at field.
+	providerDescUpdatedAt := providerMixinFields0[1].Descriptor()
+	// provider.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	provider.DefaultUpdatedAt = providerDescUpdatedAt.Default.(func() time.Time)
+	// provider.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	provider.UpdateDefaultUpdatedAt = providerDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// providerDescName is the schema descriptor for name field.
+	providerDescName := providerFields[0].Descriptor()
+	// provider.NameValidator is a validator for the "name" field. It is called by the builders before save.
+	provider.NameValidator = func() func(string) error {
+		validators := providerDescName.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(name string) error {
+			for _, fn := range fns {
+				if err := fn(name); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// providerDescPlatform is the schema descriptor for platform field.
+	providerDescPlatform := providerFields[2].Descriptor()
+	// provider.PlatformValidator is a validator for the "platform" field. It is called by the builders before save.
+	provider.PlatformValidator = func() func(string) error {
+		validators := providerDescPlatform.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(platform string) error {
+			for _, fn := range fns {
+				if err := fn(platform); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// providerDescType is the schema descriptor for type field.
+	providerDescType := providerFields[3].Descriptor()
+	// provider.TypeValidator is a validator for the "type" field. It is called by the builders before save.
+	provider.TypeValidator = func() func(string) error {
+		validators := providerDescType.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(_type string) error {
+			for _, fn := range fns {
+				if err := fn(_type); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// providerDescCredentials is the schema descriptor for credentials field.
+	providerDescCredentials := providerFields[4].Descriptor()
+	// provider.DefaultCredentials holds the default value on creation for the credentials field.
+	provider.DefaultCredentials = providerDescCredentials.Default.(func() map[string]interface{})
+	// providerDescExtra is the schema descriptor for extra field.
+	providerDescExtra := providerFields[5].Descriptor()
+	// provider.DefaultExtra holds the default value on creation for the extra field.
+	provider.DefaultExtra = providerDescExtra.Default.(func() map[string]interface{})
+	// providerDescConcurrency is the schema descriptor for concurrency field.
+	providerDescConcurrency := providerFields[8].Descriptor()
+	// provider.DefaultConcurrency holds the default value on creation for the concurrency field.
+	provider.DefaultConcurrency = providerDescConcurrency.Default.(int)
+	// providerDescPriority is the schema descriptor for priority field.
+	providerDescPriority := providerFields[10].Descriptor()
+	// provider.DefaultPriority holds the default value on creation for the priority field.
+	provider.DefaultPriority = providerDescPriority.Default.(int)
+	// providerDescRateMultiplier is the schema descriptor for rate_multiplier field.
+	providerDescRateMultiplier := providerFields[11].Descriptor()
+	// provider.DefaultRateMultiplier holds the default value on creation for the rate_multiplier field.
+	provider.DefaultRateMultiplier = providerDescRateMultiplier.Default.(float64)
+	// providerDescStatus is the schema descriptor for status field.
+	providerDescStatus := providerFields[12].Descriptor()
+	// provider.DefaultStatus holds the default value on creation for the status field.
+	provider.DefaultStatus = providerDescStatus.Default.(string)
+	// provider.StatusValidator is a validator for the "status" field. It is called by the builders before save.
+	provider.StatusValidator = providerDescStatus.Validators[0].(func(string) error)
+	// providerDescAutoPauseOnExpired is the schema descriptor for auto_pause_on_expired field.
+	providerDescAutoPauseOnExpired := providerFields[16].Descriptor()
+	// provider.DefaultAutoPauseOnExpired holds the default value on creation for the auto_pause_on_expired field.
+	provider.DefaultAutoPauseOnExpired = providerDescAutoPauseOnExpired.Default.(bool)
+	// providerDescSchedulable is the schema descriptor for schedulable field.
+	providerDescSchedulable := providerFields[17].Descriptor()
+	// provider.DefaultSchedulable holds the default value on creation for the schedulable field.
+	provider.DefaultSchedulable = providerDescSchedulable.Default.(bool)
+	// providerDescSessionWindowStatus is the schema descriptor for session_window_status field.
+	providerDescSessionWindowStatus := providerFields[25].Descriptor()
+	// provider.SessionWindowStatusValidator is a validator for the "session_window_status" field. It is called by the builders before save.
+	provider.SessionWindowStatusValidator = providerDescSessionWindowStatus.Validators[0].(func(string) error)
+	providergroupFields := schema.ProviderGroup{}.Fields()
+	_ = providergroupFields
+	// providergroupDescCreatedAt is the schema descriptor for created_at field.
+	providergroupDescCreatedAt := providergroupFields[2].Descriptor()
+	// providergroup.DefaultCreatedAt holds the default value on creation for the created_at field.
+	providergroup.DefaultCreatedAt = providergroupDescCreatedAt.Default.(func() time.Time)
 	proxyMixin := schema.Proxy{}.Mixin()
 	proxyMixinHooks1 := proxyMixin[1].Hooks()
 	proxy.Hooks[0] = proxyMixinHooks1[0]

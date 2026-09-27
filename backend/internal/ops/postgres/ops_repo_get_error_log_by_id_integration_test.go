@@ -43,7 +43,7 @@ func TestGetErrorLogByID_APIKeyPrefixAndUpstreamStatus(t *testing.T) {
 	require.Equal(t, "sk-valid", valid.APIKeyPrefix)
 	zero := 0
 	credentialFailureID, err := repo.InsertErrorLog(ctx, &ops.OpsInsertErrorLogInput{
-		ErrorPhase:         "account_auth",
+		ErrorPhase:         "provider_auth",
 		ErrorType:          "upstream_error",
 		Severity:           "error",
 		StatusCode:         503,

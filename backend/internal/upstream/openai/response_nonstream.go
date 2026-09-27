@@ -24,7 +24,7 @@ type NonStreamingResult struct {
 	SearchCount      int
 }
 type NonStreamOptions struct {
-	OAuthAccount, GrokCompact, PreserveContentType           bool
+	OAuthProvider, GrokCompact, PreserveContentType          bool
 	ReadBody                                                 func(io.Reader) ([]byte, error)
 	ObserveTier                                              func([]byte)
 	ObserveSSE                                               func(string)
@@ -46,6 +46,7 @@ type NonStreamOptions struct {
 func IsEventStreamResponse(header http.Header) bool {
 	return strings.Contains(strings.ToLower(header.Get("Content-Type")), "text/event-stream")
 }
+
 func ReadNonStreamingResponse(ctx context.Context, resp *http.Response, c *upstream.OutputContext, options NonStreamOptions, originalModel, mappedModel string) (*NonStreamingResult, error) {
 	body, err := options.ReadBody(resp.Body)
 	if err != nil {
@@ -53,7 +54,7 @@ func ReadNonStreamingResponse(ctx context.Context, resp *http.Response, c *upstr
 	}
 	options.ObserveTier(body)
 
-	// Detect SSE responses for ALL account types via Content-Type header.
+	// Detect SSE responses for ALL provider types via Content-Type header.
 	// Some OpenAI-compatible upstreams (including other sub2api instances)
 	// may return SSE even when stream=false was requested.
 	if IsEventStreamResponse(resp.Header) {
@@ -64,12 +65,12 @@ func ReadNonStreamingResponse(ctx context.Context, resp *http.Response, c *upstr
 	// JSON 字符串里的普通文本，导致 Compact JSON 错走 SSE 转换并丢失用量。
 	bodyLooksLikeSSE := wire.BodyHasSSEFraming(body)
 
-	// For OAuth accounts, also fall back to a body-content heuristic because
+	// For OAuth providers, also fall back to a body-content heuristic because
 	// the upstream may omit the Content-Type header while still sending SSE.
-	// This heuristic is NOT applied to API-key accounts to avoid false
+	// This heuristic is NOT applied to API-key providers to avoid false
 	// positives on JSON responses that coincidentally contain "data:" or
 	// "event:" in their text content.
-	if options.OAuthAccount && bodyLooksLikeSSE {
+	if options.OAuthProvider && bodyLooksLikeSSE {
 		options.ObserveSSE(string(body))
 		return ReadSSEAsJSON(ctx, resp, c, options, body, originalModel, mappedModel)
 	}

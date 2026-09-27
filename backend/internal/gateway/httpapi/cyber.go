@@ -49,7 +49,7 @@ func NewCyberHandler(b CyberBackend, m ModerationPort, e ModerationEndpoints, r 
 // CyberPolicyCall 的资金数据已在入口转为 completion 的独立快照。
 type CyberPolicyCall struct {
 	Key            *apikey.APIKey
-	Account        *moderationflow.Account
+	Provider       *moderationflow.Provider
 	Usage          *completion.Input
 	Model          string
 	ForwardErrored bool
@@ -69,6 +69,7 @@ func (h *CyberHandler) GroupInScope(c *gin.Context, key *apikey.APIKey) bool {
 	}
 	return scope
 }
+
 func (h *CyberHandler) RejectSession(c *gin.Context, key *apikey.APIKey, body []byte, model string, format CyberBlockFormat) bool {
 	if h == nil || !h.backend.Available() || key == nil || c == nil {
 		return false
@@ -97,6 +98,7 @@ func (h *CyberHandler) RejectSession(c *gin.Context, key *apikey.APIKey, body []
 	h.EnqueueBlocked(c, key, model, blockKey)
 	return true
 }
+
 func (h *CyberHandler) EnqueueBlocked(c *gin.Context, key *apikey.APIKey, model, blockKey string) {
 	if h == nil || h.runtime.Ops == nil || c == nil {
 		return
@@ -104,6 +106,7 @@ func (h *CyberHandler) EnqueueBlocked(c *gin.Context, key *apikey.APIKey, model,
 	c.Set("ops_dedicated_error_recorded", true)
 	h.runtime.Ops.Enqueue(moderationflow.BuildSessionBlockedOpsEntry(h.Meta(c, key, nil, model, "openai", false, blockKey)))
 }
+
 func (h *CyberHandler) RecordPolicy(c *gin.Context, in CyberPolicyCall) bool {
 	mark := h.backend.Mark(c)
 	if mark == nil || c == nil {
@@ -118,12 +121,12 @@ func (h *CyberHandler) RecordPolicy(c *gin.Context, in CyberPolicyCall) bool {
 		return true
 	}
 	platform := "openai"
-	if in.Account != nil && strings.TrimSpace(in.Account.Platform) != "" {
-		platform = in.Account.Platform
+	if in.Provider != nil && strings.TrimSpace(in.Provider.Platform) != "" {
+		platform = in.Provider.Platform
 	}
-	meta := h.Meta(c, in.Key, in.Account, in.Model, platform, c.GetBool("ops_stream"), blockKey)
+	meta := h.Meta(c, in.Key, in.Provider, in.Model, platform, c.GetBool("ops_stream"), blockKey)
 	excerpt := CurrentOpenAICyberWarningPromptExcerpt(c)
-	warning := BuildOpenAICyberWarningInput(h.endpoints, c, in.Key, in.Account, in.Model, mark.UpstreamStatus, []byte(mark.Body), mark.Message, excerpt)
+	warning := BuildOpenAICyberWarningInput(h.endpoints, c, in.Key, in.Provider, in.Model, mark.UpstreamStatus, []byte(mark.Body), mark.Message, excerpt)
 	if h.moderator != nil {
 		scope, err := h.moderator.CyberWarningInScope(c.Request.Context(), warning)
 		if err != nil {
@@ -135,12 +138,13 @@ func (h *CyberHandler) RecordPolicy(c *gin.Context, in CyberPolicyCall) bool {
 		}
 	}
 	c.Set(CyberPolicyRecordedKey, true)
-	RecordOpenAICyberWarningWithSnapshot(h.endpoints, h.moderator, c, RequestLogger(c, "handler.openai_gateway.cyber_policy"), in.Key, in.Account, in.Model, mark.UpstreamStatus, []byte(mark.Body), mark.Message, excerpt, CurrentOpenAICyberWarningSnapshot(c))
+	RecordOpenAICyberWarningWithSnapshot(h.endpoints, h.moderator, c, RequestLogger(c, "handler.openai_gateway.cyber_policy"), in.Key, in.Provider, in.Model, mark.UpstreamStatus, []byte(mark.Body), mark.Message, excerpt, CurrentOpenAICyberWarningSnapshot(c))
 	// 派发再次冻结资金、metadata 和模型链，队列不捕获 HTTP 状态。
 	h.runtime.Dispatch(c.Request.Context(), moderationflow.PolicyCompletion{Usage: in.Usage, Meta: meta, Mark: *mark, ForwardErrored: in.ForwardErrored, BlockKey: blockKey})
 	return true
 }
-func (h *CyberHandler) Meta(c *gin.Context, key *apikey.APIKey, account *moderationflow.Account, model, platform string, stream bool, blockKey string) moderationflow.OpsMeta {
+
+func (h *CyberHandler) Meta(c *gin.Context, key *apikey.APIKey, provider *moderationflow.Provider, model, platform string, stream bool, blockKey string) moderationflow.OpsMeta {
 	meta := moderationflow.OpsMeta{RequestID: c.Writer.Header().Get("X-Request-Id"), ClientRequestID: c.GetHeader("X-Request-Id"), Platform: platform, Model: strings.TrimSpace(model), Stream: stream, InboundEndpoint: h.endpoints.Inbound(c), UpstreamEndpoint: h.backend.UpstreamEndpoint(c, platform), UserAgent: c.GetHeader("User-Agent"), ClientIP: clientip.GetClientIP(c), CreatedAt: time.Now(), SessionBlockKey: blockKey}
 	if c.Request != nil && c.Request.URL != nil {
 		meta.RequestPath = c.Request.URL.Path
@@ -154,8 +158,8 @@ func (h *CyberHandler) Meta(c *gin.Context, key *apikey.APIKey, account *moderat
 		meta.UserID = key.UserID
 		meta.GroupID = CloneContentModerationID(key.GroupID)
 	}
-	if account != nil {
-		meta.AccountID = account.ID
+	if provider != nil {
+		meta.ProviderID = provider.ID
 	}
 	return meta
 }

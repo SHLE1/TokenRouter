@@ -1,4 +1,4 @@
-// Qoder 请求转换只处理显式报文与站点选项，HTTP 和账号读取由调用方拥有。
+// Qoder 请求转换只处理显式报文与站点选项，HTTP 和提供商读取由调用方拥有。
 package qoder
 
 import (
@@ -55,7 +55,7 @@ func BuildQoderPayloadFromChatCompletions(body []byte, userType string) (map[str
 	return BuildQoderPayloadFromChatCompletionsForSite(body, userType, SiteGlobal)
 }
 
-// BuildQoderPayloadFromChatCompletionsForSite 按账号站点解析默认模型 alias。
+// BuildQoderPayloadFromChatCompletionsForSite 按提供商站点解析默认模型 alias。
 func BuildQoderPayloadFromChatCompletionsForSite(body []byte, userType string, site Site) (map[string]any, string, error) {
 	request, err := ParseQoderChatCompletionsPayload(body)
 	if err != nil {

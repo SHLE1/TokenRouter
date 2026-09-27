@@ -42,7 +42,7 @@ func DefaultModelIDs() []string {
 	return ids
 }
 
-// DefaultTestModel 是测试 OpenAI 账号时使用的默认模型。
+// DefaultTestModel 是测试 OpenAI 提供商时使用的默认模型。
 const DefaultTestModel = "gpt-5.4"
 
 // CodexUsageProbeModel 是 OAuth Codex 额度探针使用的兼容模型。

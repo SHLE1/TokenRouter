@@ -14,7 +14,7 @@ import (
 
 	responseupstream "github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
@@ -39,15 +39,15 @@ func TestGrokNativeObservationRetainsPartialResultWithoutChangingLegacyFailure(t
 			recorder := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(recorder)
 			c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
-			account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 470, Platform: capability.PlatformGrok, Type: capability.AccountTypeAPIKey}}
+			provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 470, Platform: capability.PlatformGrok, Type: capability.ProviderTypeAPIKey}}
 			response := &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": []string{"text/event-stream"}}, Body: io.NopCloser(io.MultiReader(strings.NewReader(payload), grokObservationErrorReader{failure}))}
 			service := newResponseOutputForTest(OpenAIResponseOptions{})
 			var result *responseupstream.StreamingResult
 			var err error
 			if native {
-				result, err = service.ReadStreamObservation(context.Background(), response, c, account, time.Now(), "grok-fixture", "grok-fixture", "")
+				result, err = service.ReadStreamObservation(context.Background(), response, c, provider, time.Now(), "grok-fixture", "grok-fixture", "")
 			} else {
-				result, err = service.Stream(context.Background(), response, c, account, time.Now(), "grok-fixture", "grok-fixture", "")
+				result, err = service.Stream(context.Background(), response, c, provider, time.Now(), "grok-fixture", "grok-fixture", "")
 			}
 			require.Error(t, err)
 			require.Contains(t, recorder.Body.String(), "visible")

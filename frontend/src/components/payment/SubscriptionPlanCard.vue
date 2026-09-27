@@ -149,7 +149,7 @@ const MODEL_SCOPE_LABELS: Record<string, string> = {
 }
 
 const modelScopeLabels = computed(() => {
-  // 模型系列限制由分组策略提供，作用于相关账号。
+  // 模型系列限制由分组策略提供，作用于相关提供商。
   const scopes = props.plan.supported_model_scopes
   if (!scopes || scopes.length === 0) return []
   return scopes.map(s => MODEL_SCOPE_LABELS[s] || s)

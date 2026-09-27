@@ -10,9 +10,11 @@ func BatchImageDerefString(v *string) string {
 	}
 	return strings.TrimSpace(*v)
 }
+
 func BatchImageStringPtr(v string) *string {
 	return &v
 }
+
 func BatchImageOptionalStringPtr(v string) *string {
 	v = strings.TrimSpace(v)
 	if v == "" {
@@ -20,6 +22,7 @@ func BatchImageOptionalStringPtr(v string) *string {
 	}
 	return &v
 }
+
 func TruncateBatchImageMessage(message string, limit int) string {
 	message = strings.TrimSpace(message)
 	if limit <= 0 || len(message) <= limit {
@@ -63,8 +66,8 @@ func NormalizeBatchImageReferenceMimeType(v string) string {
 	}
 }
 
-func BatchImageGCSRef(provider, ref string) string {
-	if provider == BatchImageProviderVertex && strings.HasPrefix(strings.TrimSpace(ref), "gs://") {
+func BatchImageGCSRef(platform, ref string) string {
+	if platform == BatchImageProviderVertex && strings.HasPrefix(strings.TrimSpace(ref), "gs://") {
 		return strings.TrimSpace(ref)
 	}
 	return ""

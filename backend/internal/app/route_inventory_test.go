@@ -123,6 +123,12 @@ func TestS15NativeRouteInventory(t *testing.T) {
 	sort.Strings(expected)
 	sort.Strings(actual)
 	require.Equal(t, expected, actual)
+	// 停机升级后不保留旧管理路由，避免脚本继续依赖旧接口。
+	for _, legacy := range []string{"/api/v1/admin/accounts", "/api/v1/admin/accounts/1", "/api/v1/admin/openai/accounts/1/quota"} {
+		rec := httptest.NewRecorder()
+		r.ServeHTTP(rec, httptest.NewRequest("GET", legacy, nil))
+		require.Equal(t, 404, rec.Code, legacy)
+	}
 }
 
 // 以下具名中间件仅标记 app 注入的安全边界；捕获链后提前中止，不执行用例。

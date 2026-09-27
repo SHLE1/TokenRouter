@@ -6,10 +6,10 @@ import (
 )
 
 // NormalizeNativeProtocols 在显式候选投影上校验并按目录排序，空集合保持为空。
-func NormalizeNativeProtocols(account AccountProtocols) ([]ProtocolID, error) {
-	options := NativeProtocolOptions(account.Platform, account.Type, account.AuthMode)
+func NormalizeNativeProtocols(provider ProviderProtocols) ([]ProtocolID, error) {
+	options := NativeProtocolOptions(provider.Platform, provider.Type, provider.AuthMode)
 	seen := make(map[ProtocolID]bool)
-	for _, protocol := range account.Enabled {
+	for _, protocol := range provider.Enabled {
 		if !slices.Contains(options, protocol) || seen[protocol] {
 			return nil, fmt.Errorf("unsupported or duplicated native protocol %q", protocol)
 		}

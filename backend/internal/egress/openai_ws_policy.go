@@ -18,8 +18,8 @@ type OpenAIWSProtocolDecision struct {
 	Reason    string
 }
 
-// OpenAIWSAccount 不含凭据，只提供协议资格与选定模式。
-type OpenAIWSAccount struct {
+// OpenAIWSProvider 不含凭据，只提供协议资格与选定模式。
+type OpenAIWSProvider struct {
 	Present, OpenAI, ForceHTTP, OAuthLike, APIKey, WSEnabled bool
 	Mode                                                     string
 	Concurrency                                              int
@@ -32,15 +32,15 @@ type OpenAIWSOptions struct {
 }
 
 // ResolveOpenAIWSTransport 按原优先级选择出站协议，只消费认证与运行参数投影。
-func ResolveOpenAIWSTransport(account OpenAIWSAccount, wsCfg *OpenAIWSOptions) OpenAIWSProtocolDecision {
-	if !account.Present {
-		return OpenAIWSHTTPDecision("account_missing")
+func ResolveOpenAIWSTransport(provider OpenAIWSProvider, wsCfg *OpenAIWSOptions) OpenAIWSProtocolDecision {
+	if !provider.Present {
+		return OpenAIWSHTTPDecision("provider_missing")
 	}
-	if !account.OpenAI {
+	if !provider.OpenAI {
 		return OpenAIWSHTTPDecision("platform_not_openai")
 	}
-	if account.ForceHTTP {
-		return OpenAIWSHTTPDecision("account_force_http")
+	if provider.ForceHTTP {
+		return OpenAIWSHTTPDecision("provider_force_http")
 	}
 	if wsCfg == nil {
 		return OpenAIWSHTTPDecision("config_missing")
@@ -52,11 +52,11 @@ func ResolveOpenAIWSTransport(account OpenAIWSAccount, wsCfg *OpenAIWSOptions) O
 	if !wsCfg.Enabled {
 		return OpenAIWSHTTPDecision("global_disabled")
 	}
-	if account.OAuthLike {
+	if provider.OAuthLike {
 		if !wsCfg.OAuthEnabled {
 			return OpenAIWSHTTPDecision("oauth_disabled")
 		}
-	} else if account.APIKey {
+	} else if provider.APIKey {
 		if !wsCfg.APIKeyEnabled {
 			return OpenAIWSHTTPDecision("apikey_disabled")
 		}
@@ -64,10 +64,10 @@ func ResolveOpenAIWSTransport(account OpenAIWSAccount, wsCfg *OpenAIWSOptions) O
 		return OpenAIWSHTTPDecision("unknown_auth_type")
 	}
 	if wsCfg.ModeRouterV2Enabled {
-		mode := account.Mode
+		mode := provider.Mode
 		switch mode {
 		case "off":
-			return OpenAIWSHTTPDecision("account_mode_off")
+			return OpenAIWSHTTPDecision("provider_mode_off")
 		case "ctx_pool", "passthrough":
 			// continue
 		case "http_bridge":
@@ -76,10 +76,10 @@ func ResolveOpenAIWSTransport(account OpenAIWSAccount, wsCfg *OpenAIWSOptions) O
 			// 历史值兼容：按 ctx_pool 处理。
 			mode = "ctx_pool"
 		default:
-			return OpenAIWSHTTPDecision("account_mode_off")
+			return OpenAIWSHTTPDecision("provider_mode_off")
 		}
-		if account.Concurrency <= 0 {
-			return OpenAIWSHTTPDecision("account_concurrency_invalid")
+		if provider.Concurrency <= 0 {
+			return OpenAIWSHTTPDecision("provider_concurrency_invalid")
 		}
 		if wsCfg.ResponsesWebsocketsV2 {
 			return OpenAIWSProtocolDecision{
@@ -95,7 +95,7 @@ func ResolveOpenAIWSTransport(account OpenAIWSAccount, wsCfg *OpenAIWSOptions) O
 		}
 		return OpenAIWSHTTPDecision("feature_disabled")
 	}
-	if !account.WSEnabled {
+	if !provider.WSEnabled {
 		return OpenAIWSHTTPDecision("account_disabled")
 	}
 	if wsCfg.ResponsesWebsocketsV2 {

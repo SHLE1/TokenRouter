@@ -9,24 +9,24 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 同时设置两跳陷阱，确保实际出站模型只经过一次分组和账号映射。
+// 同时设置两跳陷阱，确保实际出站模型只经过一次分组和提供商映射。
 func TestCreativeExecutorGroupPolicyUsesFinalModel(t *testing.T) {
 	for _, platform := range []string{PlatformOpenAI, PlatformGemini, PlatformGrok} {
 		t.Run(platform, func(t *testing.T) {
 			final := map[string]string{PlatformOpenAI: "gpt-image-2", PlatformGemini: "gemini-3-pro-image", PlatformGrok: "grok-imagine-image-2.0"}[platform]
 			group := &ExecutionGroup{RoutingPolicy: routing.GroupRoutingPolicy{
 				Enabled: true, RestrictModels: true, RestrictionModelSource: routing.BillingModelSourceUpstream,
-				ModelMapping:  map[string]string{"draw": "account-alias", "account-alias": "forbidden-group-hop"},
+				ModelMapping:  map[string]string{"draw": "provider-alias", "provider-alias": "forbidden-group-hop"},
 				AllowedModels: []string{final},
 			}}
-			mapping := map[string]string{"account-alias": final, final: "forbidden-account-hop"}
+			mapping := map[string]string{"provider-alias": final, final: "forbidden-provider-hop"}
 			calls := 0
-			selectAccount := func(_ context.Context, run CreativeRun) (*Selection, error) {
+			selectProvider := func(_ context.Context, run CreativeRun) (*Selection, error) {
 				require.Equal(t, "draw", run.Model, "调度器仍从原始请求模型解析分组规则")
 				return &Selection{
-					AccountID: 55, Platform: platform, Acquired: true,
+					ProviderID: 55, Platform: platform, Acquired: true,
 					ResolveModel: func(_ context.Context, model string) string {
-						require.Equal(t, "account-alias", model)
+						require.Equal(t, "provider-alias", model)
 						calls++
 						return mapping[model]
 					},
@@ -38,15 +38,15 @@ func TestCreativeExecutorGroupPolicyUsesFinalModel(t *testing.T) {
 			}
 			executor := &Executor{
 				Group:  func(context.Context, int64) (*ExecutionGroup, error) { return group, nil },
-				OpenAI: selectAccount, Gemini: selectAccount, Grok: selectAccount,
+				OpenAI: selectProvider, Gemini: selectProvider, Grok: selectProvider,
 			}
-			run := CreativeRun{Provider: platform, GroupID: 12, Model: "draw", Operation: CreativeOperationGenerate}
+			run := CreativeRun{Platform: platform, GroupID: 12, Model: "draw", Operation: CreativeOperationGenerate}
 			prepared, err := executor.Prepare(context.Background(), run)
 			require.NoError(t, err)
 			require.Equal(t, final, prepared.UpstreamModel)
-			require.Equal(t, platform, prepared.Provider)
+			require.Equal(t, platform, prepared.Platform)
 			// 准备后固定执行模型，不因其他请求修改共享规则而重新映射。
-			mapping["account-alias"] = "changed-after-prepare"
+			mapping["provider-alias"] = "changed-after-prepare"
 			_, err = prepared.Target.Execute(context.Background(), run, CreativeRunPayload{})
 			require.NoError(t, err)
 			require.Equal(t, 1, calls)
@@ -121,7 +121,7 @@ func TestCreativeExecutorPolicyReadFailureStopsSelection(t *testing.T) {
 	executor := &Executor{Group: func(context.Context, int64) (*ExecutionGroup, error) {
 		return nil, errors.New("group store unavailable")
 	}, OpenAI: func(context.Context, CreativeRun) (*Selection, error) {
-		t.Fatal("无法取得分组策略时不能继续选账号")
+		t.Fatal("无法取得分组策略时不能继续选提供商")
 		return nil, nil
 	}}
 	_, err := executor.Prepare(context.Background(), CreativeRun{GroupID: 12, Model: "gpt-image-1"})

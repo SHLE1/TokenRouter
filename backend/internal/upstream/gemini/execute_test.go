@@ -50,7 +50,7 @@ type executeBody struct {
 
 func (b *executeBody) Close() error { b.closes.Add(1); return b.ReadCloser.Close() }
 func localTarget(server *httptest.Server, mode ResponseMode, stream bool, closes *atomic.Int32) *Target {
-	return &Target{AccountID: 41, Model: "gemini-fixture", Mode: mode, Exchange: ExchangeOptions{MaxRetries: 1, RequestIDHeader: "x-request-id", Build: func(ctx context.Context) (*http.Request, string, error) {
+	return &Target{ProviderID: 41, Model: "gemini-fixture", Mode: mode, Exchange: ExchangeOptions{MaxRetries: 1, RequestIDHeader: "x-request-id", Build: func(ctx context.Context) (*http.Request, string, error) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, server.URL, strings.NewReader(`{"contents":[]}`))
 		return req, "x-request-id", err
 	}, Do: func(req *http.Request) (*http.Response, error) {
@@ -65,6 +65,7 @@ func localTarget(server *httptest.Server, mode ResponseMode, stream bool, closes
 		}
 	}, ObserveImages: func([]byte) {}, ReverseTools: func(b []byte) []byte { return b }, ClaudeError: func(_ int, _ string, m string) error { return errors.New(m) }, ChatError: func(_ int, _ string, m string) error { return errors.New(m) }, GoogleError: func(_ int, m string) error { return errors.New(m) }, CompatError: func(_ OpenAICompatProtocol, _ int, _ string, m string) error { return errors.New(m) }}}
 }
+
 func nativeInput(target *Target, stream bool) upstream.AttemptInput {
 	id := protocol.ProtocolAnthropicMessages
 	if target.Mode == NativeResponse {
@@ -78,6 +79,7 @@ func nativeInput(target *Target, stream bool) upstream.AttemptInput {
 	}
 	return upstream.AttemptInput{Target: target, Protocol: id, Stream: stream, ResponseModel: "gemini-fixture", Body: []byte(`{"contents":[]}`)}
 }
+
 func TestExecuteGeminiNonStreamObservedZero(t *testing.T) {
 	for _, kind := range []string{"messages", "native", "chat", "responses"} {
 		t.Run(kind, func(t *testing.T) {
@@ -119,6 +121,7 @@ func TestExecuteGeminiNonStreamObservedZero(t *testing.T) {
 		})
 	}
 }
+
 func TestExecuteGeminiStreamingProgressAndPartial(t *testing.T) {
 	for _, variant := range []int{0, 1, 2, 3} {
 		mode := ResponseMode(variant)
@@ -214,6 +217,7 @@ func TestExecuteGeminiCountFallbackIsNotUsage(t *testing.T) {
 	require.Contains(t, sink.body.String(), `"totalTokens":17`)
 	require.EqualValues(t, 1, closes.Load())
 }
+
 func TestExecuteGeminiCancelledRequestDoesNotReachServer(t *testing.T) {
 	var calls, closes, releases atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { calls.Add(1) }))

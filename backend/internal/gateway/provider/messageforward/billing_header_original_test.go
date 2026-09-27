@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
@@ -21,7 +21,6 @@ import (
 )
 
 func TestBuildOAuthRequest_BillingMatchesWireUserAgent(t *testing.T) {
-
 	for _, endpoint := range []string{"messages", "count_tokens"} {
 		for _, tc := range []struct {
 			name      string
@@ -55,18 +54,18 @@ func TestBuildOAuthRequest_BillingMatchesWireUserAgent(t *testing.T) {
 						gateway.SettingKeyEnableFingerprintUnification: "false",
 					})
 				}
-				account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Type: capability.AccountTypeOAuth}}
+				provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Type: capability.ProviderTypeOAuth}}
 				var req *http.Request
 				var wireBody []byte
 				if endpoint == "messages" {
 					req, wireBody, err = svc.buildRequest(context.Background(), c, &AttemptState{},
 
-						account,
+						provider,
 						body, "test-token", "oauth", "claude-haiku-4-5", false, tc.mimic)
 				} else {
 					req, wireBody, err = svc.buildCountRequest(context.Background(), c, &AttemptState{},
 
-						account,
+						provider,
 						body, "test-token", "oauth", "claude-haiku-4-5", tc.mimic, false)
 				}
 				require.NoError(t, err)

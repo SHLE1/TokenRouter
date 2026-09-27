@@ -167,7 +167,7 @@ var cnContextCapabilities = map[string]ContextCapability{
 	"mmodel":        {MaxInputTokens: 200000, RuntimeSelectable: true},
 }
 
-// DefaultModels 是无账号上下文使用的两站稳定并集，国际站模型排在前面。
+// DefaultModels 是无提供商上下文使用的两站稳定并集，国际站模型排在前面。
 var DefaultModels = unionModels(globalModels, cnModels)
 
 // DefaultModelsForSite 返回指定站点的模型快照副本。
@@ -204,7 +204,7 @@ func AliasForSite(site Site, model string) (string, bool) {
 
 // ThinkingCapabilityForSite 按站点和最终路由查询可调思考能力。
 // 公开 alias 会先解析为 route key；未知路由以及不可调模型均不主动透传。
-// 空站点沿用旧账号兼容语义，按国际站能力查询。
+// 空站点沿用旧提供商兼容语义，按国际站能力查询。
 func ThinkingCapabilityForSite(site Site, model string) ThinkingCapability {
 	var capabilities map[string]ThinkingCapability
 	switch site {
@@ -308,7 +308,7 @@ func DefaultRequestModelIDsForSite(site Site) []string {
 	return ids
 }
 
-// DefaultRequestModelIDs 返回无账号上下文使用的两站模型并集。
+// DefaultRequestModelIDs 返回无提供商上下文使用的两站模型并集。
 func DefaultRequestModelIDs() []string {
 	ids := make([]string, 0, len(DefaultModels))
 	for _, model := range DefaultModels {

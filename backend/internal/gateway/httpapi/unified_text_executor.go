@@ -6,33 +6,33 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/forward"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
 	openaiwire "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/qoder"
 	"github.com/gin-gonic/gin"
 )
 
-// UnifiedTextExecutor 根据当次选中的账号执行一次交换，选号和切号只由外层循环拥有。
+// UnifiedTextExecutor 根据当次选中的提供商执行一次交换，选号和切号只由外层循环拥有。
 type UnifiedTextExecutor struct {
 	OpenAI           *OpenAIResponsesExecutor
 	Anthropic        *MessagesExecutor
 	Gemini           *GeminiExecutor
 	Antigravity      *AntigravityExecutor
-	Qoder            *provider.QoderRuntime
-	QoderRefresh     *accountprovider.QoderRequestRefresh
+	Qoder            *gatewayadapter.QoderRuntime
+	QoderRefresh     *provideradapter.QoderRequestRefresh
 	MessageQueue     NativeMessageQueue
 	MessageQueueMode string
 	MessageQueueWait time.Duration
 }
 
-// EnforceClient 只对原有兼容账号执行 OpenAI 客户端策略，其它适配器自行验证各自入口。
-func (e *UnifiedTextExecutor) EnforceClient(ctx context.Context, c *gin.Context, target *provider.ExecutionAccount, body []byte, match egress.TLSFingerprintRouterMatchResult) error {
+// EnforceClient 只对原有兼容提供商执行 OpenAI 客户端策略，其它适配器自行验证各自入口。
+func (e *UnifiedTextExecutor) EnforceClient(ctx context.Context, c *gin.Context, target *gatewayadapter.ExecutionProvider, body []byte, match egress.TLSFingerprintRouterMatchResult) error {
 	c.Request = c.Request.WithContext(ctx)
 	if target.View().IsOpenAICompatible() {
 		return e.OpenAI.Requests.EnforceClient(ctx, c, target, body, match)
@@ -40,7 +40,7 @@ func (e *UnifiedTextExecutor) EnforceClient(ctx context.Context, c *gin.Context,
 	return nil
 }
 
-func (e *UnifiedTextExecutor) Responses(ctx context.Context, c *gin.Context, target *provider.ExecutionAccount, body []byte) (*forward.OpenAIResult, error) {
+func (e *UnifiedTextExecutor) Responses(ctx context.Context, c *gin.Context, target *gatewayadapter.ExecutionProvider, body []byte) (*forward.OpenAIResult, error) {
 	c.Request = c.Request.WithContext(ctx)
 	var err error
 	body, err = e.prepare(c, target, body, protocol.ProtocolOpenAIResponses)
@@ -54,7 +54,7 @@ func (e *UnifiedTextExecutor) Responses(ctx context.Context, c *gin.Context, tar
 	return e.native(ctx, c, target, body, protocol.ProtocolOpenAIResponses)
 }
 
-func (e *UnifiedTextExecutor) Messages(ctx context.Context, c *gin.Context, target *provider.ExecutionAccount, body []byte, cacheKey, model string, tls ...egress.TLSFingerprintRouterMatchResult) (*forward.OpenAIResult, error) {
+func (e *UnifiedTextExecutor) Messages(ctx context.Context, c *gin.Context, target *gatewayadapter.ExecutionProvider, body []byte, cacheKey, model string, tls ...egress.TLSFingerprintRouterMatchResult) (*forward.OpenAIResult, error) {
 	c.Request = c.Request.WithContext(ctx)
 	c.Set(nativeMessageInterceptedKey, false)
 	var err error
@@ -69,7 +69,7 @@ func (e *UnifiedTextExecutor) Messages(ctx context.Context, c *gin.Context, targ
 	return e.native(ctx, c, target, body, protocol.ProtocolAnthropicMessages)
 }
 
-func (e *UnifiedTextExecutor) Chat(ctx context.Context, c *gin.Context, target *provider.ExecutionAccount, body []byte, cacheKey, model string, tls ...egress.TLSFingerprintRouterMatchResult) (*forward.OpenAIResult, error) {
+func (e *UnifiedTextExecutor) Chat(ctx context.Context, c *gin.Context, target *gatewayadapter.ExecutionProvider, body []byte, cacheKey, model string, tls ...egress.TLSFingerprintRouterMatchResult) (*forward.OpenAIResult, error) {
 	c.Request = c.Request.WithContext(ctx)
 	var err error
 	body, err = e.prepare(c, target, body, protocol.ProtocolOpenAIChatCompletions)
@@ -83,16 +83,16 @@ func (e *UnifiedTextExecutor) Chat(ctx context.Context, c *gin.Context, target *
 	return e.native(ctx, c, target, body, protocol.ProtocolOpenAIChatCompletions)
 }
 
-// prepare 在账号确定后裁决其能表达的推理策略，每次切号均从该次输入重新计算。
-func (e *UnifiedTextExecutor) prepare(c *gin.Context, target *provider.ExecutionAccount, body []byte, source protocol.ProtocolID) ([]byte, error) {
-	SetOpsSelectedAccount(c, target.Record.ID, target.Record.Platform)
+// prepare 在提供商确定后裁决其能表达的推理策略，每次切号均从该次输入重新计算。
+func (e *UnifiedTextExecutor) prepare(c *gin.Context, target *gatewayadapter.ExecutionProvider, body []byte, source protocol.ProtocolID) ([]byte, error) {
+	SetOpsSelectedProvider(c, target.Record.ID, target.Record.Platform)
 	key, _ := EffectiveAPIKey(c)
 	var result []byte
 	var err error
 	switch target.Record.Platform {
-	case account.PlatformAnthropic:
+	case provider.PlatformAnthropic:
 		result, _, err = ApplyAnthropicReasoningEffortPolicyForRequest(c, key, body)
-	case account.PlatformOpenAI:
+	case provider.PlatformOpenAI:
 		result, _, err = ApplyOpenAIReasoningEffortPolicyForRequest(c, key, body)
 	default:
 		return body, nil
@@ -109,7 +109,7 @@ func (e *UnifiedTextExecutor) prepare(c *gin.Context, target *provider.Execution
 }
 
 // native 保留各供应商的独立报文和凭据实现，不把完整 HTTP handler 嵌入另一个 handler。
-func (e *UnifiedTextExecutor) native(ctx context.Context, c *gin.Context, target *provider.ExecutionAccount, body []byte, source protocol.ProtocolID) (*forward.OpenAIResult, error) {
+func (e *UnifiedTextExecutor) native(ctx context.Context, c *gin.Context, target *gatewayadapter.ExecutionProvider, body []byte, source protocol.ProtocolID) (*forward.OpenAIResult, error) {
 	var result *forward.MessagesResult
 	var err error
 	SetActualUpstreamEndpoint(c, "")
@@ -128,7 +128,7 @@ func (e *UnifiedTextExecutor) native(ctx context.Context, c *gin.Context, target
 		ctx = c.Request.Context()
 	}
 	switch target.Record.Platform {
-	case account.PlatformAnthropic:
+	case provider.PlatformAnthropic:
 		switch source {
 		case protocol.ProtocolAnthropicMessages:
 			result, err = e.Anthropic.Forward(ctx, c, target, parsed)
@@ -137,7 +137,7 @@ func (e *UnifiedTextExecutor) native(ctx context.Context, c *gin.Context, target
 		default:
 			result, err = e.Anthropic.ForwardAsChatCompletions(ctx, c, target, body, nil)
 		}
-	case account.PlatformGemini:
+	case provider.PlatformGemini:
 		SetActualUpstreamEndpoint(c, EndpointGeminiModels)
 		switch source {
 		case protocol.ProtocolAnthropicMessages:
@@ -147,30 +147,30 @@ func (e *UnifiedTextExecutor) native(ctx context.Context, c *gin.Context, target
 		default:
 			result, err = e.Gemini.ForwardAsChatCompletions(ctx, c, target, body)
 		}
-	case account.PlatformAntigravity:
+	case provider.PlatformAntigravity:
 		SetActualUpstreamEndpoint(c, EndpointAntigravityGenerateContent)
 		switch source {
 		case protocol.ProtocolAnthropicMessages:
-			sticky, ok := requeststate.PrefetchedStickyAccountIDFromContext(ctx)
+			sticky, ok := requeststate.PrefetchedStickyProviderIDFromContext(ctx)
 			result, err = e.Antigravity.Forward(ctx, c, target, body, ok && sticky == target.Record.ID)
 		case protocol.ProtocolOpenAIResponses:
 			result, err = e.Antigravity.ForwardAsResponses(ctx, c, target, body, nil)
 		default:
 			result, err = e.Antigravity.ForwardAsChatCompletions(ctx, c, target, body, nil)
 		}
-	case account.PlatformQoder:
+	case provider.PlatformQoder:
 		before := c.Writer.Size()
 		result, err = ForwardQoderAttempt(ctx, c, e.Qoder, &target.Record, body, source)
-		// 凭据恢复属于同一账号的一次受限恢复，不能在已输出后重放。
+		// 凭据恢复属于同一提供商的一次受限恢复，不能在已输出后重放。
 		if err != nil && result == nil && c.Writer.Size() == before && qoder.MayRefreshAttempt(err) && e.QoderRefresh != nil {
-			fresh, refreshErr := e.QoderRefresh.RefreshAccountSession(ctx, &target.Record)
+			fresh, refreshErr := e.QoderRefresh.RefreshProviderSession(ctx, &target.Record)
 			if refreshErr == nil && fresh != nil {
 				target.Record = *fresh
 				result, err = ForwardQoderAttempt(ctx, c, e.Qoder, &target.Record, body, source)
 			}
 		}
 	default:
-		return nil, fmt.Errorf("unsupported account platform %q", target.Record.Platform)
+		return nil, fmt.Errorf("unsupported provider platform %q", target.Record.Platform)
 	}
 	return nativeTextResult(result, GetUpstreamEndpoint(c, target.Record.Platform)), err
 }

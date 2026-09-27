@@ -7,7 +7,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 	egressprovider "github.com/TokenFlux/TokenRouter/internal/egress/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/completion"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/selection"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/telemetry"
@@ -22,7 +22,7 @@ import (
 // liveFixtureInputs 仅组合Live合同所需的存储、帧连接及身份端口。
 type liveFixtureInputs struct {
 	transport   httpclient.UpstreamTransport
-	accounts    provider.ExecutionAccountStore
+	providers   gatewayadapter.ExecutionProviderStore
 	store       session.LiveCallStore
 	concurrency *scheduler.ConcurrencyService
 	logs        usage.UsageLogRepository
@@ -35,10 +35,10 @@ type liveFixtureInputs struct {
 }
 
 func newLiveFixture(v liveFixtureInputs) *OpenAILiveExecutor {
-	aux := newAuxiliaryFixture(auxiliaryFixtureInputs{transport: v.transport, store: v.accounts, profiles: v.profiles})
+	aux := newAuxiliaryFixture(auxiliaryFixtureInputs{transport: v.transport, store: v.providers, profiles: v.profiles})
 	aux.Requests.Routers = v.routers
 	aux.Requests.ClientPolicy.Routers = v.routers
-	out := &OpenAILiveExecutor{Options: OpenAILiveOptions{MaxSessionDuration: v.duration, ObserverRetryInterval: time.Second}, Requests: aux.Requests, Store: v.store, Dialer: v.dialer, Attestation: v.attestation, AttestationCipher: v.cipher, Selection: selection.NewCompatible(selection.CompatibleDependencies{}, selection.Options{}), Routes: provider.NewRoutePlanner(nil), Background: func(_ string, fn func()) bool { go fn(); return true }}
+	out := &OpenAILiveExecutor{Options: OpenAILiveOptions{MaxSessionDuration: v.duration, ObserverRetryInterval: time.Second}, Requests: aux.Requests, Store: v.store, Dialer: v.dialer, Attestation: v.attestation, AttestationCipher: v.cipher, Selection: selection.NewCompatible(selection.CompatibleDependencies{}, selection.Options{}), Routes: gatewayadapter.NewRoutePlanner(nil), Background: func(_ string, fn func()) bool { go fn(); return true }}
 	if v.concurrency != nil {
 		out.Leases = v.concurrency.LiveLeases()
 	}

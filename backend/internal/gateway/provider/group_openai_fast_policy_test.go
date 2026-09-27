@@ -5,12 +5,12 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/tierpolicy"
 	gatewayws "github.com/TokenFlux/TokenRouter/internal/gateway/ws"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/stretchr/testify/require"
@@ -49,9 +49,9 @@ func TestGroupOpenAIFastPolicyHTTPAndWS(t *testing.T) {
 				payload["service_tier"] = tt.tier
 			}
 			body, _ := json.Marshal(payload)
-			account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}}
-			httpBody, httpErr := tierpolicy.ApplyBody(body, svc.Input(ctx, account, "gpt-5.5"))
-			wsBody, blocked, err := gatewayws.ApplyServiceTierFrame(body, "gpt-5.5", svc.Input(ctx, account, "gpt-5.5"))
+			provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
+			httpBody, httpErr := tierpolicy.ApplyBody(body, svc.Input(ctx, provider, "gpt-5.5"))
+			wsBody, blocked, err := gatewayws.ApplyServiceTierFrame(body, "gpt-5.5", svc.Input(ctx, provider, "gpt-5.5"))
 			require.NoError(t, err)
 			if tt.blocked {
 				require.Error(t, httpErr)

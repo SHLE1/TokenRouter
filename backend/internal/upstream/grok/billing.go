@@ -65,10 +65,10 @@ type BillingPayload struct {
 	Config *BillingConfig `json:"config,omitempty"`
 }
 
-// BillingProductSummary 复用账号展示叶子值；供应商解析仍由本包拥有。
+// BillingProductSummary 复用提供商展示叶子值；供应商解析仍由本包拥有。
 type BillingProductSummary = usageview.BillingProductSummary
 
-// BillingSummary 复用账号展示叶子值；供应商解析仍由本包拥有。
+// BillingSummary 复用提供商展示叶子值；供应商解析仍由本包拥有。
 type BillingSummary = usageview.BillingSummary
 
 // BuildBillingURL 构造 CLI chat proxy 的周度或月度 billing URL。
@@ -81,7 +81,7 @@ func BuildBillingURL(formatCredits bool) string {
 }
 
 // BuildBillingURLWithValidator 按调用方解析的基础地址构造周度或月度 billing URL，
-// 并先应用调用方的出站 URL 信任策略。使用自定义上游转发的账号会在同一上游执行额度探测。
+// 并先应用调用方的出站 URL 信任策略。使用自定义上游转发的提供商会在同一上游执行额度探测。
 func BuildBillingURLWithValidator(baseURL string, formatCredits bool, validator BaseURLValidator) (string, error) {
 	validatedBaseURL, err := validatedBaseURLWithValidator(baseURL, validator)
 	if err != nil {
@@ -131,7 +131,7 @@ func BuildBillingSummary(config *BillingConfig) *BillingSummary {
 	periodType := resolvePeriodType(period)
 	creditUsage := cloneFloat(config.CreditUsagePercent)
 
-	// 周度周期不能回退使用月度账单边界，否则周用量较高时会按月度截止时间停调账号。
+	// 周度周期不能回退使用月度账单边界，否则周用量较高时会按月度截止时间停调提供商。
 	periodStart := ""
 	periodEnd := ""
 	if period != nil {

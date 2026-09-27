@@ -5,8 +5,8 @@ import (
 	"net/url"
 	"strings"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/modelidentity"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 )
@@ -18,27 +18,27 @@ func isOfficialOpenAIModelsBaseURL(raw string) bool {
 }
 
 // ShouldPreserveOpenAIResponsesNoneReasoningEffort 判断请求是否仍需保留官方目录的 none 占位值。
-func ShouldPreserveOpenAIResponsesNoneReasoningEffort(account *accountcore.Record) bool {
-	if account == nil {
+func ShouldPreserveOpenAIResponsesNoneReasoningEffort(provider *providercore.Record) bool {
+	if provider == nil {
 		return false
 	}
-	if account.IsOpenAIPassthroughEnabled() {
+	if provider.IsOpenAIPassthroughEnabled() {
 		return true
 	}
-	if account.IsOpenAIOAuthLike() {
+	if provider.IsOpenAIOAuthLike() {
 		return true
 	}
-	if !account.IsOpenAIApiKey() {
+	if !provider.IsOpenAIApiKey() {
 		return false
 	}
-	baseURL := strings.TrimSpace(account.GetCredential("base_url"))
+	baseURL := strings.TrimSpace(provider.GetCredential("base_url"))
 	return baseURL == "" || isOfficialOpenAIModelsBaseURL(baseURL)
 }
 
-// FilterOpenAIResponsesNoneReasoningEffortForAccount 删除兼容上游不应接收的目录占位值。
+// FilterOpenAIResponsesNoneReasoningEffortForProvider 删除兼容上游不应接收的目录占位值。
 // 官方 OpenAI 请求保留 none，避免改变其原生请求语义。
-func FilterOpenAIResponsesNoneReasoningEffortForAccount(account *accountcore.Record, body []byte) ([]byte, error) {
-	if len(body) == 0 || ShouldPreserveOpenAIResponsesNoneReasoningEffort(account) {
+func FilterOpenAIResponsesNoneReasoningEffortForProvider(provider *providercore.Record, body []byte) ([]byte, error) {
+	if len(body) == 0 || ShouldPreserveOpenAIResponsesNoneReasoningEffort(provider) {
 		return body, nil
 	}
 
@@ -65,8 +65,8 @@ func FilterOpenAIResponsesNoneReasoningEffortForAccount(account *accountcore.Rec
 }
 
 // DeleteOpenAIResponsesNoneReasoningEffortFromObject 删除 WS bridge 中的 none 占位字段。
-func DeleteOpenAIResponsesNoneReasoningEffortFromObject(account *accountcore.Record, body map[string]any) {
-	if body == nil || ShouldPreserveOpenAIResponsesNoneReasoningEffort(account) {
+func DeleteOpenAIResponsesNoneReasoningEffortFromObject(provider *providercore.Record, body map[string]any) {
+	if body == nil || ShouldPreserveOpenAIResponsesNoneReasoningEffort(provider) {
 		return
 	}
 	if effort, ok := body["reasoning_effort"].(string); ok && strings.EqualFold(strings.TrimSpace(effort), "none") {

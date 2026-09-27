@@ -4,11 +4,11 @@ import (
 	"log/slog"
 	"reflect"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 	"github.com/TokenFlux/TokenRouter/internal/identity/contact"
 	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/settings/composite"
 	"github.com/TokenFlux/TokenRouter/internal/site"
 
@@ -666,9 +666,9 @@ func DiffSettings(before *composite.Snapshot, after *composite.Snapshot, beforeA
 	// OpenAI 配额自动暂停阈值迁移到系统设置后，变更也需要进入审计日志。
 	if before.OpenAIQuotaAutoPauseSettings.DefaultThreshold5h != after.OpenAIQuotaAutoPauseSettings.DefaultThreshold5h ||
 		before.OpenAIQuotaAutoPauseSettings.DefaultThreshold7d != after.OpenAIQuotaAutoPauseSettings.DefaultThreshold7d {
-		changed = append(changed, "openai_account_quota_auto_pause")
+		changed = append(changed, "openai_provider_quota_auto_pause")
 	}
-	// 余额、订阅到期与账号限额通知
+	// 余额、订阅到期与提供商限额通知
 	if before.BalanceLowNotifyEnabled != after.BalanceLowNotifyEnabled {
 		changed = append(changed, "balance_low_notify_enabled")
 	}
@@ -681,15 +681,15 @@ func DiffSettings(before *composite.Snapshot, after *composite.Snapshot, beforeA
 	if before.SubscriptionExpiryNotifyEnabled != after.SubscriptionExpiryNotifyEnabled {
 		changed = append(changed, "subscription_expiry_notify_enabled")
 	}
-	if before.AccountQuotaNotifyEnabled != after.AccountQuotaNotifyEnabled {
-		changed = append(changed, "account_quota_notify_enabled")
+	if before.ProviderQuotaNotifyEnabled != after.ProviderQuotaNotifyEnabled {
+		changed = append(changed, "provider_quota_notify_enabled")
 	}
-	if !equalNotifyEmailEntries(before.AccountQuotaNotifyEmails, after.AccountQuotaNotifyEmails) {
-		changed = append(changed, "account_quota_notify_emails")
+	if !equalNotifyEmailEntries(before.ProviderQuotaNotifyEmails, after.ProviderQuotaNotifyEmails) {
+		changed = append(changed, "provider_quota_notify_emails")
 	}
 	// 默认平台限额（JSON map，整体比较）
-	if !equalAccountSchedulingThresholds(before.AccountSchedulingThresholds, after.AccountSchedulingThresholds) {
-		changed = append(changed, account.SettingKeyAccountSchedulingThresholds)
+	if !equalProviderSchedulingThresholds(before.ProviderSchedulingThresholds, after.ProviderSchedulingThresholds) {
+		changed = append(changed, provider.SettingKeyProviderSchedulingThresholds)
 	}
 	changed = AppendAuthSourceDefaultChanges(changed, beforeAuthSourceDefaults, afterAuthSourceDefaults)
 	return changed
@@ -857,8 +857,8 @@ func equalNotifyEmailEntries(a, b []contact.Entry) bool {
 	return true
 }
 
-func equalAccountSchedulingThresholds(before, after map[string]int) bool {
-	for _, platform := range account.AllowedSchedulingThresholdPlatforms {
+func equalProviderSchedulingThresholds(before, after map[string]int) bool {
+	for _, platform := range provider.AllowedSchedulingThresholdPlatforms {
 		beforeValue := 100
 		if before != nil {
 			if value, ok := before[platform]; ok {

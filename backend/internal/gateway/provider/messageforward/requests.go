@@ -7,18 +7,18 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/vertex"
 	"github.com/tidwall/gjson"
 )
 
-// buildRequest 只按已选账号类型选择原生构造器，不提前交换凭据或改变重试时点。
-func (r *Runtime) buildRequest(ctx context.Context, output HTTPBoundary, state *AttemptState, target *provider.ExecutionAccount, body []byte, token, tokenType, model string, stream, mimic bool) (*http.Request, []byte, error) {
-	if target.Record.Platform == capability.PlatformAnthropic && target.Record.Type == capability.AccountTypeServiceAccount {
+// buildRequest 只按已选提供商类型选择原生构造器，不提前交换凭据或改变重试时点。
+func (r *Runtime) buildRequest(ctx context.Context, output HTTPBoundary, state *AttemptState, target *gatewayadapter.ExecutionProvider, body []byte, token, tokenType, model string, stream, mimic bool) (*http.Request, []byte, error) {
+	if target.Record.Platform == capability.PlatformAnthropic && target.Record.Type == capability.ProviderTypeServiceAccount {
 		body = anthropic.StripDeferredToolCacheControl(body)
 		request, err := r.buildVertexRequest(ctx, output, target, body, token, model, stream)
 		return request, body, err
@@ -26,7 +26,7 @@ func (r *Runtime) buildRequest(ctx context.Context, output HTTPBoundary, state *
 	return anthropic.BuildRequest(ctx, body, token, tokenType, model, stream, mimic, r.requestOptions(ctx, output, state, target, model, tokenType, mimic))
 }
 
-func (r *Runtime) buildVertexRequest(ctx context.Context, output HTTPBoundary, target *provider.ExecutionAccount, body []byte, token, model string, stream bool) (*http.Request, error) {
+func (r *Runtime) buildVertexRequest(ctx context.Context, output HTTPBoundary, target *gatewayadapter.ExecutionProvider, body []byte, token, model string, stream bool) (*http.Request, error) {
 	var headers http.Header
 	var beta string
 	if output.RequestPresent() {
@@ -36,10 +36,10 @@ func (r *Runtime) buildVertexRequest(ctx context.Context, output HTTPBoundary, t
 	return vertex.BuildAnthropicRequest(ctx, body, token, model, stream, vertex.AnthropicRequestOptions{
 		ClientBeta: beta, ClientHeaders: headers, AllowedHeaders: anthropic.AllowedHeaders,
 		Project: func() string {
-			return provider.ExecutionProtocolRecord(target).VertexProjectID(vertex.ServiceAccountProjectID)
+			return gatewayadapter.ExecutionProtocolRecord(target).VertexProjectID(vertex.ServiceAccountProjectID)
 		},
 		Location: func(model string) string {
-			return provider.ExecutionProtocolRecord(target).VertexLocation(model)
+			return gatewayadapter.ExecutionProtocolRecord(target).VertexLocation(model)
 		},
 		Policy: func(ctx context.Context, header string) (map[string]struct{}, error) {
 			policy := r.evaluateBeta(ctx, target, header, model)
@@ -61,7 +61,7 @@ func (r *Runtime) buildVertexRequest(ctx context.Context, output HTTPBoundary, t
 	})
 }
 
-func (r *Runtime) buildPassthroughRequest(ctx context.Context, output HTTPBoundary, state *AttemptState, target *provider.ExecutionAccount, body []byte, token string) (*http.Request, []byte, error) {
+func (r *Runtime) buildPassthroughRequest(ctx context.Context, output HTTPBoundary, state *AttemptState, target *gatewayadapter.ExecutionProvider, body []byte, token string) (*http.Request, []byte, error) {
 	model := strings.TrimSpace(gjson.GetBytes(body, "model").String())
 	options := r.requestOptions(ctx, output, state, target, model, "apikey", false)
 	options.URL = func() (string, error) {
@@ -84,7 +84,7 @@ func (r *Runtime) buildPassthroughRequest(ctx context.Context, output HTTPBounda
 	return anthropic.BuildRequestPassthrough(ctx, body, token, options)
 }
 
-func (r *Runtime) buildCountRequest(ctx context.Context, output HTTPBoundary, state *AttemptState, target *provider.ExecutionAccount, body []byte, token, tokenType, model string, mimic, passthrough bool) (*http.Request, []byte, error) {
+func (r *Runtime) buildCountRequest(ctx context.Context, output HTTPBoundary, state *AttemptState, target *gatewayadapter.ExecutionProvider, body []byte, token, tokenType, model string, mimic, passthrough bool) (*http.Request, []byte, error) {
 	if passthrough {
 		options := r.countOptions(ctx, output, state, target, "", "apikey", false, true)
 		request, err := anthropic.BuildCountTokensRequestPassthrough(ctx, body, token, options)
@@ -95,17 +95,17 @@ func (r *Runtime) buildCountRequest(ctx context.Context, output HTTPBoundary, st
 }
 
 // requestOptions 固定本次目标与准备状态，动态设置仍由平台构造器在原时点调用。
-func (r *Runtime) requestOptions(ctx context.Context, output HTTPBoundary, state *AttemptState, target *provider.ExecutionAccount, model, tokenType string, mimic bool) anthropic.RequestOptions {
+func (r *Runtime) requestOptions(ctx context.Context, output HTTPBoundary, state *AttemptState, target *gatewayadapter.ExecutionProvider, model, tokenType string, mimic bool) anthropic.RequestOptions {
 	options := anthropic.RequestOptions{
 		InjectAPIKeyBeta: r.options.InjectAPIKeyBeta,
-		AccountID:        target.Record.ID,
+		ProviderID:       target.Record.ID,
 		OAuth:            target.View().IsOAuth(),
 		AccountUUID:      target.View().GetExtraString("account_uuid"),
 		MaskSession:      target.View().IsSessionIDMaskingEnabled(),
-		APIKeyBearer:     provider.ExecutionProtocolRecord(target).GetAnthropicAPIKeyAuthScheme() == account.AnthropicAPIKeyAuthSchemeAuthorizationBearer,
+		APIKeyBearer:     gatewayadapter.ExecutionProtocolRecord(target).GetAnthropicAPIKeyAuthScheme() == provider.AnthropicAPIKeyAuthSchemeAuthorizationBearer,
 		ClientHeaders:    output.RequestHeaders(),
 		ApplyOverrides: func(headers http.Header) {
-			accountprovider.ApplyAccountHeaderOverrides(provider.ExecutionProtocolRecord(target), headers)
+			provideradapter.ApplyProviderHeaderOverrides(gatewayadapter.ExecutionProtocolRecord(target), headers)
 		},
 	}
 	if r.dependencies.Fingerprint != nil {
@@ -115,7 +115,7 @@ func (r *Runtime) requestOptions(ctx context.Context, output HTTPBoundary, state
 		return r.requestURL(target, false, false)
 	}
 	options.FastMode = func(ctx context.Context, body []byte, headers http.Header) ([]byte, http.Header, error) {
-		return provider.ApplyAnthropicFastMode(ctx, r.dependencies.Prices, target, model, body, headers)
+		return gatewayadapter.ApplyAnthropicFastMode(ctx, r.dependencies.Prices, target, model, body, headers)
 	}
 	options.Forwarding = func(ctx context.Context) (bool, bool) {
 		if r.dependencies.Settings == nil {
@@ -128,7 +128,7 @@ func (r *Runtime) requestOptions(ctx context.Context, output HTTPBoundary, state
 		return r.betaFilters(ctx, state, target, model)
 	}
 	options.BetaOverride = func() (string, bool) {
-		return accountprovider.HeaderOverrideValue(provider.ExecutionProtocolRecord(target), "anthropic-beta")
+		return provideradapter.HeaderOverrideValue(gatewayadapter.ExecutionProtocolRecord(target), "anthropic-beta")
 	}
 	options.CheckFastBeta = func(ctx context.Context) error {
 		if err := r.checkBetaTokens(ctx, []string{anthropic.BetaFastMode}, target, model); err != nil {
@@ -155,12 +155,12 @@ func (r *Runtime) requestOptions(ctx context.Context, output HTTPBoundary, state
 }
 
 // requestURL 保留普通、计数和透传端点的原差异，代理查询参数只用于自定义 relay。
-func (r *Runtime) requestURL(target *provider.ExecutionAccount, count, passthrough bool) (string, error) {
+func (r *Runtime) requestURL(target *gatewayadapter.ExecutionProvider, count, passthrough bool) (string, error) {
 	endpoint, path := anthropic.ClaudeAPIURL, "/v1/messages"
 	if count {
 		endpoint, path = anthropic.ClaudeAPICountTokensURL, "/v1/messages/count_tokens"
 	}
-	if target.Record.Type == capability.AccountTypeAPIKey || (count && passthrough) {
+	if target.Record.Type == capability.ProviderTypeAPIKey || (count && passthrough) {
 		if base := target.View().GetBaseURL(); base != "" {
 			validated, err := r.validateBaseURL(base)
 			if err != nil {
@@ -171,7 +171,7 @@ func (r *Runtime) requestURL(target *provider.ExecutionAccount, count, passthrou
 	} else if target.View().IsCustomBaseURLEnabled() {
 		custom := target.View().GetCustomBaseURL()
 		if custom == "" {
-			return "", fmt.Errorf("custom_base_url is enabled but not configured for account %d", target.Record.ID)
+			return "", fmt.Errorf("custom_base_url is enabled but not configured for provider %d", target.Record.ID)
 		}
 		validated, err := r.validateBaseURL(custom)
 		if err != nil {
@@ -187,13 +187,13 @@ func (r *Runtime) requestURL(target *provider.ExecutionAccount, count, passthrou
 	return endpoint, nil
 }
 
-func (r *Runtime) countOptions(ctx context.Context, output HTTPBoundary, state *AttemptState, target *provider.ExecutionAccount, model, tokenType string, mimic, passthrough bool) anthropic.RequestOptions {
+func (r *Runtime) countOptions(ctx context.Context, output HTTPBoundary, state *AttemptState, target *gatewayadapter.ExecutionProvider, model, tokenType string, mimic, passthrough bool) anthropic.RequestOptions {
 	options := r.requestOptions(ctx, output, state, target, model, tokenType, mimic)
 	options.URL = func() (string, error) { return r.requestURL(target, true, passthrough) }
 	return options
 }
 
-func (r *Runtime) checkBetaTokens(ctx context.Context, tokens []string, target *provider.ExecutionAccount, model string) *anthropic.BetaBlockedError {
+func (r *Runtime) checkBetaTokens(ctx context.Context, tokens []string, target *gatewayadapter.ExecutionProvider, model string) *anthropic.BetaBlockedError {
 	if r.dependencies.Settings == nil || len(tokens) == 0 {
 		return nil
 	}
@@ -201,5 +201,5 @@ func (r *Runtime) checkBetaTokens(ctx context.Context, tokens []string, target *
 	if err != nil || settings == nil {
 		return nil
 	}
-	return anthropic.CheckBetaPolicyBlockForTokens(provider.AnthropicBetaPolicy(settings), tokens, target.View().IsOAuth(), target.View().IsBedrock(), model)
+	return anthropic.CheckBetaPolicyBlockForTokens(gatewayadapter.AnthropicBetaPolicy(settings), tokens, target.View().IsOAuth(), target.View().IsBedrock(), model)
 }

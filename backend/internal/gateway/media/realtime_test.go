@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 	"github.com/stretchr/testify/require"
 )
@@ -19,8 +19,10 @@ type mediaFrameStub struct {
 func (f *mediaFrameStub) ReadFrame(context.Context) (upstream.FrameKind, []byte, error) {
 	return upstream.FrameText, nil, context.Canceled
 }
+
 func (f *mediaFrameStub) WriteFrame(context.Context, upstream.FrameKind, []byte) error { return nil }
-func (f *mediaFrameStub) Close() error                                                 { f.closed++; *f.order = append(*f.order, "close"); return nil }
+
+func (f *mediaFrameStub) Close() error { f.closed++; *f.order = append(*f.order, "close"); return nil }
 
 type realtimePortsStub struct {
 	selected, released, opened, failed int
@@ -32,23 +34,26 @@ type realtimePortsStub struct {
 	deadline                           time.Duration
 }
 
-func (p *realtimePortsStub) SelectRealtime(_ context.Context, _ map[int64]struct{}) (account.AccountSnapshot, bool, error) {
+func (p *realtimePortsStub) SelectRealtime(_ context.Context, _ map[int64]struct{}) (provider.ProviderSnapshot, bool, error) {
 	p.selected++
-	return account.AccountSnapshot{ID: int64(p.selected)}, true, nil
+	return provider.ProviderSnapshot{ID: int64(p.selected)}, true, nil
 }
-func (p *realtimePortsStub) AcquireRealtime(context.Context, account.AccountSnapshot) (func(), bool) {
+
+func (p *realtimePortsStub) AcquireRealtime(context.Context, provider.ProviderSnapshot) (func(), bool) {
 	if p.denyWait {
 		return nil, false
 	}
 	return func() { p.released++; p.order = append(p.order, "release") }, true
 }
-func (p *realtimePortsStub) RealtimeCredential(context.Context, account.AccountSnapshot) (string, error) {
+
+func (p *realtimePortsStub) RealtimeCredential(context.Context, provider.ProviderSnapshot) (string, error) {
 	if p.credentialFailure {
 		return "", errors.New("credential")
 	}
 	return "secret", nil
 }
-func (p *realtimePortsStub) OpenRealtime(ctx context.Context, _ account.AccountSnapshot, _, _ string) (upstream.FrameConn, error) {
+
+func (p *realtimePortsStub) OpenRealtime(ctx context.Context, _ provider.ProviderSnapshot, _, _ string) (upstream.FrameConn, error) {
 	p.opened++
 	deadline, _ := ctx.Deadline()
 	p.deadline = time.Until(deadline)
@@ -58,7 +63,8 @@ func (p *realtimePortsStub) OpenRealtime(ctx context.Context, _ account.AccountS
 	p.conn = &mediaFrameStub{order: &p.order}
 	return p.conn, nil
 }
-func (p *realtimePortsStub) RealtimeOpenFailed(context.Context, account.AccountSnapshot, error) {
+
+func (p *realtimePortsStub) RealtimeOpenFailed(context.Context, provider.ProviderSnapshot, error) {
 	p.failed++
 }
 
@@ -77,6 +83,7 @@ func TestRealtimeAdmissionKeepsUpstreamBeforeAcceptAndReleaseOrder(t *testing.T)
 	require.Equal(t, 2, ports.released)
 	require.Equal(t, []string{"release", "close", "release"}, ports.order)
 }
+
 func TestRealtimeAdmissionCredentialFailureAndWaiting(t *testing.T) {
 	ports := &realtimePortsStub{credentialFailure: true}
 	result := OpenRealtime(context.Background(), "voice", time.Second, ports)
@@ -97,19 +104,23 @@ type voicePortsStub struct {
 	outcomes                      []VoiceOutcome
 }
 
-func (p *voicePortsStub) SelectVoice(context.Context, map[int64]struct{}) (account.AccountSnapshot, bool, error) {
+func (p *voicePortsStub) SelectVoice(context.Context, map[int64]struct{}) (provider.ProviderSnapshot, bool, error) {
 	p.selected++
-	return account.AccountSnapshot{ID: int64(p.selected)}, true, nil
+	return provider.ProviderSnapshot{ID: int64(p.selected)}, true, nil
 }
-func (p *voicePortsStub) AcquireVoice(context.Context, account.AccountSnapshot) (func(), bool) {
+
+func (p *voicePortsStub) AcquireVoice(context.Context, provider.ProviderSnapshot) (func(), bool) {
 	return func() { p.released++ }, true
 }
-func (p *voicePortsStub) ForwardVoice(context.Context, account.AccountSnapshot, VoiceRequest) VoiceOutcome {
+
+func (p *voicePortsStub) ForwardVoice(context.Context, provider.ProviderSnapshot, VoiceRequest) VoiceOutcome {
 	return p.outcomes[p.selected-1]
 }
-func (p *voicePortsStub) CompleteVoice(context.Context, account.AccountSnapshot, VoiceRequest, *VoiceResult) {
+
+func (p *voicePortsStub) CompleteVoice(context.Context, provider.ProviderSnapshot, VoiceRequest, *VoiceResult) {
 	p.completed++
 }
+
 func TestVoiceRetryUsesOriginalFourAttemptBudget(t *testing.T) {
 	failure := VoiceOutcome{Err: errors.New("upstream"), RetryNext: true}
 	ports := &voicePortsStub{outcomes: []VoiceOutcome{failure, failure, failure, failure}}

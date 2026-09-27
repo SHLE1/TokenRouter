@@ -9,12 +9,12 @@ import (
 
 // ErrorInput 是当前错误响应的事实与配置投影，不包含连接或旧实体。
 type ErrorInput struct {
-	AccountID                                     int64
-	AccountName, AccountType, Platform, RequestID string
-	Status                                        int
-	LogBody                                       bool
-	LogBodyMaxBytes                               int
-	RequestedModels                               []string
+	ProviderID                                      int64
+	ProviderName, ProviderType, Platform, RequestID string
+	Status                                          int
+	LogBody                                         bool
+	LogBodyMaxBytes                                 int
+	RequestedModels                                 []string
 }
 
 // ErrorPorts 把健康命令、规则查找和 HTTP 输出分开，核心决定调用顺序。

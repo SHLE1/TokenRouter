@@ -3,20 +3,20 @@ package scheduler
 import (
 	"context"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
 // SelectionCandidate 只携带候选快照和当次观测；关联号由外层当前选择调用独立管理。
 type SelectionCandidate struct {
-	Snapshot     *account.AccountSnapshot
+	Snapshot     *provider.ProviderSnapshot
 	ProjectionID uint64
-	Load         *AccountLoadInfo
+	Load         *ProviderLoadInfo
 	LoadKnown    bool
 	Plan         *routing.CandidatePlan
 }
 
-// SelectionInput 固化最终分组与请求能力，不提前确定账号或保存到共享缓存。
+// SelectionInput 固化最终分组与请求能力，不提前确定提供商或保存到共享缓存。
 type SelectionInput struct {
 	GroupID               *int64
 	RequestedModel        string
@@ -29,7 +29,7 @@ type SelectionInput struct {
 }
 
 // ResolveCandidate 在每次候选、fresh/DB 复核点执行单步协议解析，不保存共享状态。
-func (in SelectionInput) ResolveCandidate(candidate account.AccountSnapshot) (routing.CandidatePlan, bool) {
+func (in SelectionInput) ResolveCandidate(candidate provider.ProviderSnapshot) (routing.CandidatePlan, bool) {
 	return in.RoutePlan.ResolveCandidate(candidate)
 }
 

@@ -2,12 +2,12 @@
 package scheduler
 
 const (
-	SchedulerOutboxEventAccountChanged       = "account_changed"
-	SchedulerOutboxEventAccountGroupsChanged = "account_groups_changed"
-	SchedulerOutboxEventAccountBulkChanged   = "account_bulk_changed"
-	SchedulerOutboxEventAccountLastUsed      = "account_last_used"
-	SchedulerOutboxEventGroupChanged         = "group_changed"
-	SchedulerOutboxEventFullRebuild          = "full_rebuild"
+	SchedulerOutboxEventProviderChanged       = "provider_changed"
+	SchedulerOutboxEventProviderGroupsChanged = "provider_groups_changed"
+	SchedulerOutboxEventProviderBulkChanged   = "provider_bulk_changed"
+	SchedulerOutboxEventProviderLastUsed      = "provider_last_used"
+	SchedulerOutboxEventGroupChanged          = "group_changed"
+	SchedulerOutboxEventFullRebuild           = "full_rebuild"
 )
 
 // GroupPayload 保留空分组的 untyped nil，避免改变持久化去重指纹。

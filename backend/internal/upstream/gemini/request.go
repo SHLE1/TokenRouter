@@ -14,7 +14,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/gemini/codeassist"
 )
 
-// CredentialMode 描述传输认证形式，不引入业务账号实体。
+// CredentialMode 描述传输认证形式，不引入业务提供商实体。
 type CredentialMode string
 
 const (
@@ -23,17 +23,19 @@ const (
 	ServiceAccountCredential CredentialMode = "service_account"
 )
 
-type TokenSnapshot struct{ AccessToken, ProjectID string }
-type RequestPlan struct {
-	Mode                                                CredentialMode
-	Model, Action                                       string
-	Native, ForceAIStudio, ClientStream, UpstreamStream bool
-	APIKey                                              func() string
-	Token                                               func(context.Context) (TokenSnapshot, error)
-	BaseURL                                             func() string
-	ValidateURL                                         func(string) (string, error)
-	VertexURL                                           func(string, bool) (string, error)
-}
+type (
+	TokenSnapshot struct{ AccessToken, ProjectID string }
+	RequestPlan   struct {
+		Mode                                                CredentialMode
+		Model, Action                                       string
+		Native, ForceAIStudio, ClientStream, UpstreamStream bool
+		APIKey                                              func() string
+		Token                                               func(context.Context) (TokenSnapshot, error)
+		BaseURL                                             func() string
+		ValidateURL                                         func(string) (string, error)
+		VertexURL                                           func(string, bool) (string, error)
+	}
+)
 
 // BuildRequest 保留取 token 后读取 project 的次序，并区分原生 body 与兼容 REST 净化。
 func BuildRequest(ctx context.Context, body []byte, plan RequestPlan) (*http.Request, string, error) {
@@ -66,7 +68,7 @@ func BuildRequest(ctx context.Context, body []byte, plan RequestPlan) (*http.Req
 			return nil, "", err
 		}
 	default:
-		return nil, "", fmt.Errorf("unsupported account type: %s", plan.Mode)
+		return nil, "", fmt.Errorf("unsupported provider type: %s", plan.Mode)
 	}
 	var target string
 	wire := body

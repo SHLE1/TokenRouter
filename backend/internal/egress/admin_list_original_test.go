@@ -24,14 +24,14 @@ type proxyRepoStubForAdminList struct {
 	listWithFiltersResult   *pagination.PaginationResult
 	listWithFiltersErr      error
 
-	listWithFiltersAndAccountCountCalls    int
-	listWithFiltersAndAccountCountParams   pagination.PaginationParams
-	listWithFiltersAndAccountCountProtocol string
-	listWithFiltersAndAccountCountStatus   string
-	listWithFiltersAndAccountCountSearch   string
-	listWithFiltersAndAccountCountProxies  []egress.ProxyWithAccountCount
-	listWithFiltersAndAccountCountResult   *pagination.PaginationResult
-	listWithFiltersAndAccountCountErr      error
+	listWithFiltersAndProviderCountCalls    int
+	listWithFiltersAndProviderCountParams   pagination.PaginationParams
+	listWithFiltersAndProviderCountProtocol string
+	listWithFiltersAndProviderCountStatus   string
+	listWithFiltersAndProviderCountSearch   string
+	listWithFiltersAndProviderCountProxies  []egress.ProxyWithProviderCount
+	listWithFiltersAndProviderCountResult   *pagination.PaginationResult
+	listWithFiltersAndProviderCountErr      error
 }
 
 func (s *proxyRepoStubForAdminList) ListWithFilters(_ context.Context, params pagination.PaginationParams, protocol, status, search string) ([]egress.Proxy, *pagination.PaginationResult, error) {
@@ -57,27 +57,27 @@ func (s *proxyRepoStubForAdminList) ListWithFilters(_ context.Context, params pa
 	return s.listWithFiltersProxies, result, nil
 }
 
-func (s *proxyRepoStubForAdminList) ListWithFiltersAndAccountCount(_ context.Context, params pagination.PaginationParams, protocol, status, search string) ([]egress.ProxyWithAccountCount, *pagination.PaginationResult, error) {
-	s.listWithFiltersAndAccountCountCalls++
-	s.listWithFiltersAndAccountCountParams = params
-	s.listWithFiltersAndAccountCountProtocol = protocol
-	s.listWithFiltersAndAccountCountStatus = status
-	s.listWithFiltersAndAccountCountSearch = search
+func (s *proxyRepoStubForAdminList) ListWithFiltersAndProviderCount(_ context.Context, params pagination.PaginationParams, protocol, status, search string) ([]egress.ProxyWithProviderCount, *pagination.PaginationResult, error) {
+	s.listWithFiltersAndProviderCountCalls++
+	s.listWithFiltersAndProviderCountParams = params
+	s.listWithFiltersAndProviderCountProtocol = protocol
+	s.listWithFiltersAndProviderCountStatus = status
+	s.listWithFiltersAndProviderCountSearch = search
 
-	if s.listWithFiltersAndAccountCountErr != nil {
-		return nil, nil, s.listWithFiltersAndAccountCountErr
+	if s.listWithFiltersAndProviderCountErr != nil {
+		return nil, nil, s.listWithFiltersAndProviderCountErr
 	}
 
-	result := s.listWithFiltersAndAccountCountResult
+	result := s.listWithFiltersAndProviderCountResult
 	if result == nil {
 		result = &pagination.PaginationResult{
-			Total:    int64(len(s.listWithFiltersAndAccountCountProxies)),
+			Total:    int64(len(s.listWithFiltersAndProviderCountProxies)),
 			Page:     params.Page,
 			PageSize: params.PageSize,
 		}
 	}
 
-	return s.listWithFiltersAndAccountCountProxies, result, nil
+	return s.listWithFiltersAndProviderCountProxies, result, nil
 }
 
 func TestAdminService_ListProxies_WithSearch(t *testing.T) {
@@ -101,23 +101,23 @@ func TestAdminService_ListProxies_WithSearch(t *testing.T) {
 	})
 }
 
-func TestAdminService_ListProxiesWithAccountCount_WithSearch(t *testing.T) {
+func TestAdminService_ListProxiesWithProviderCount_WithSearch(t *testing.T) {
 	t.Run("search 参数正常传递到 repository 层", func(t *testing.T) {
 		repo := &proxyRepoStubForAdminList{
-			listWithFiltersAndAccountCountProxies: []egress.ProxyWithAccountCount{{Proxy: egress.Proxy{ID: 3, Name: "p2"}, AccountCount: 5}},
-			listWithFiltersAndAccountCountResult:  &pagination.PaginationResult{Total: 9},
+			listWithFiltersAndProviderCountProxies: []egress.ProxyWithProviderCount{{Proxy: egress.Proxy{ID: 3, Name: "p2"}, ProviderCount: 5}},
+			listWithFiltersAndProviderCountResult:  &pagination.PaginationResult{Total: 9},
 		}
 		svc := egress.NewProxyAdmin(repo, nil, nil, nil, egress.ProxyAdminOptions{})
 
-		proxies, total, err := svc.ListProxiesWithAccountCount(context.Background(), 2, 10, "socks5", billing.StatusDisabled, "p2", "account_count", "DESC")
+		proxies, total, err := svc.ListProxiesWithProviderCount(context.Background(), 2, 10, "socks5", billing.StatusDisabled, "p2", "provider_count", "DESC")
 		require.NoError(t, err)
 		require.Equal(t, int64(9), total)
-		require.Equal(t, []egress.ProxyWithAccountCount{{Proxy: egress.Proxy{ID: 3, Name: "p2"}, AccountCount: 5}}, proxies)
+		require.Equal(t, []egress.ProxyWithProviderCount{{Proxy: egress.Proxy{ID: 3, Name: "p2"}, ProviderCount: 5}}, proxies)
 
-		require.Equal(t, 1, repo.listWithFiltersAndAccountCountCalls)
-		require.Equal(t, pagination.PaginationParams{Page: 2, PageSize: 10, SortBy: "account_count", SortOrder: "DESC"}, repo.listWithFiltersAndAccountCountParams)
-		require.Equal(t, "socks5", repo.listWithFiltersAndAccountCountProtocol)
-		require.Equal(t, billing.StatusDisabled, repo.listWithFiltersAndAccountCountStatus)
-		require.Equal(t, "p2", repo.listWithFiltersAndAccountCountSearch)
+		require.Equal(t, 1, repo.listWithFiltersAndProviderCountCalls)
+		require.Equal(t, pagination.PaginationParams{Page: 2, PageSize: 10, SortBy: "provider_count", SortOrder: "DESC"}, repo.listWithFiltersAndProviderCountParams)
+		require.Equal(t, "socks5", repo.listWithFiltersAndProviderCountProtocol)
+		require.Equal(t, billing.StatusDisabled, repo.listWithFiltersAndProviderCountStatus)
+		require.Equal(t, "p2", repo.listWithFiltersAndProviderCountSearch)
 	})
 }

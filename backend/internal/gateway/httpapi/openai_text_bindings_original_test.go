@@ -147,7 +147,7 @@ func (p *openAITextEntryProbe) MappedBodyCache(body []byte) func(bool, string) [
 	return func(bool, string) []byte { return body }
 }
 
-func (p *openAITextEntryProbe) MessageAccountModel(_ context.Context, _ *apikey.APIKey, model string) string {
+func (p *openAITextEntryProbe) MessageProviderModel(_ context.Context, _ *apikey.APIKey, model string) string {
 	return model
 }
 
@@ -157,7 +157,7 @@ func (p *openAITextEntryProbe) Execution(_ *gin.Context, call OpenAITextCall) te
 	return openAITextNoAttempt{}
 }
 
-// 不选择账号的终点证明前置组合已进入统一循环，未额外发起供应商请求。
+// 不选择提供商的终点证明前置组合已进入统一循环，未额外发起供应商请求。
 type openAITextNoAttempt struct{ textflow.ResponsePorts }
 
 func (openAITextNoAttempt) CanAttempt() bool { return false }
@@ -301,6 +301,6 @@ func (p *openAITextEntryProbe) Execute(_ context.Context, in execution.Request, 
 	case execution.TextOpenAIMessages:
 		proto = protocol.ProtocolAnthropicMessages
 	}
-	p.call = &OpenAITextCall{Protocol: proto, Key: in.Funding.Key, Subscription: in.Funding.Subscription, Body: in.Body, ForwardBody: in.AttemptBody, SessionHashBody: in.Text.SessionHashBody, Model: in.Model, ForwardModel: in.Text.ForwardModel, Stream: in.Stream, Mapping: in.Text.Mapping, SessionHash: in.SessionHash, SelectionContext: in.Text.SelectionContext, PreviousResponseID: in.Text.PreviousResponseID, AccountLayerModel: in.Text.AccountLayerModel, PromptCacheKey: in.Text.PromptCacheKey, NativeCompactionV2: in.Text.NativeCompactionV2, LegacyCompact: in.Text.LegacyCompact}
+	p.call = &OpenAITextCall{Protocol: proto, Key: in.Funding.Key, Subscription: in.Funding.Subscription, Body: in.Body, ForwardBody: in.AttemptBody, SessionHashBody: in.Text.SessionHashBody, Model: in.Model, ForwardModel: in.Text.ForwardModel, Stream: in.Stream, Mapping: in.Text.Mapping, SessionHash: in.SessionHash, SelectionContext: in.Text.SelectionContext, PreviousResponseID: in.Text.PreviousResponseID, ProviderLayerModel: in.Text.ProviderLayerModel, PromptCacheKey: in.Text.PromptCacheKey, NativeCompactionV2: in.Text.NativeCompactionV2, LegacyCompact: in.Text.LegacyCompact}
 	return execution.ExecutionResult{}, nil
 }

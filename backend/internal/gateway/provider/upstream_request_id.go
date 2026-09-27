@@ -5,7 +5,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	acctcore "github.com/TokenFlux/TokenRouter/internal/account"
+	acctcore "github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
 const (
@@ -14,12 +14,12 @@ const (
 )
 
 // UpstreamRequestIDFromHeaders 从直接上游的响应头解析请求标识。
-// 只读账户指定的头；账户未指定头名时恒为空串。
-func UpstreamRequestIDFromHeaders(account *acctcore.Record, h http.Header) string {
+// 只读提供商指定的头；提供商未指定头名时恒为空串。
+func UpstreamRequestIDFromHeaders(provider *acctcore.Record, h http.Header) string {
 	if len(h) == 0 {
 		return ""
 	}
-	name := acctcore.UpstreamRequestIDHeaderName(account)
+	name := acctcore.UpstreamRequestIDHeaderName(provider)
 	if name == "" {
 		return ""
 	}
@@ -28,11 +28,11 @@ func UpstreamRequestIDFromHeaders(account *acctcore.Record, h http.Header) strin
 
 // usageUpstreamRequestIDPtr 生成落库到 usage_logs.upstream_request_id 的值。
 // WS 轮次没有 HTTP 响应头，保持 nil；超长时截断到列宽而不是让整条用量行失败。
-func usageUpstreamRequestIDPtr(account *acctcore.Record, h http.Header, wsMode bool) *string {
+func usageUpstreamRequestIDPtr(provider *acctcore.Record, h http.Header, wsMode bool) *string {
 	if wsMode {
 		return nil
 	}
-	id := UpstreamRequestIDFromHeaders(account, h)
+	id := UpstreamRequestIDFromHeaders(provider, h)
 	if id == "" {
 		return nil
 	}

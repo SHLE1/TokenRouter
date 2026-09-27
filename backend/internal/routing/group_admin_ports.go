@@ -6,17 +6,17 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
 )
 
-// GroupAccount 仅提供管理分组需要的账号资格与已配置模型，不携带凭据。
-type GroupAccount struct {
+// GroupProvider 仅提供管理分组需要的提供商资格与已配置模型，不携带凭据。
+type GroupProvider struct {
 	ID       int64
 	Platform string
 	Type     string
 	Models   []string
 }
 
-type GroupAccounts interface {
-	GetByIDs(context.Context, []int64) ([]GroupAccount, error)
-	ListSchedulableByGroupID(context.Context, int64) ([]GroupAccount, error)
+type GroupProviders interface {
+	GetByIDs(context.Context, []int64) ([]GroupProvider, error)
+	ListSchedulableByGroupID(context.Context, int64) ([]GroupProvider, error)
 }
 
 type GroupKeyReader interface {
@@ -40,15 +40,15 @@ type GroupAdmin struct {
 	groupRepo                     GroupRepository
 	groupDuplicateRepo            GroupDuplicateRepository
 	groupSortOrderRepo            GroupSortOrderRepository
-	accountRepo                   GroupAccounts
+	providerRepo                  GroupProviders
 	apiKeyRepo                    GroupKeyReader
 	authCacheInvalidator          GroupAdminInvalidator
 	pricingConfigCacheInvalidator GroupPricingInvalidator
 	options                       GroupAdminOptions
 }
 
-func NewGroupAdmin(repo GroupRepository, duplicate GroupDuplicateRepository, sortOrder GroupSortOrderRepository, accounts GroupAccounts, keys GroupKeyReader, invalidator GroupAdminInvalidator, pricingConfigs GroupPricingInvalidator, options GroupAdminOptions) *GroupAdmin {
-	return &GroupAdmin{groupRepo: repo, groupDuplicateRepo: duplicate, groupSortOrderRepo: sortOrder, accountRepo: accounts, apiKeyRepo: keys, authCacheInvalidator: invalidator, pricingConfigCacheInvalidator: pricingConfigs, options: options}
+func NewGroupAdmin(repo GroupRepository, duplicate GroupDuplicateRepository, sortOrder GroupSortOrderRepository, providers GroupProviders, keys GroupKeyReader, invalidator GroupAdminInvalidator, pricingConfigs GroupPricingInvalidator, options GroupAdminOptions) *GroupAdmin {
+	return &GroupAdmin{groupRepo: repo, groupDuplicateRepo: duplicate, groupSortOrderRepo: sortOrder, providerRepo: providers, apiKeyRepo: keys, authCacheInvalidator: invalidator, pricingConfigCacheInvalidator: pricingConfigs, options: options}
 }
 
 // ValidateAdvancedOverrides 按旧次序先验证局部字段，确有权重覆盖才读取动态全局值。

@@ -21,22 +21,22 @@ import (
 type SettlementStore struct {
 	db              *sql.DB
 	calendar        timezone.Calendar
-	accountOutbox   AccountQuotaOutbox
+	providerOutbox  ProviderQuotaOutbox
 	taskProjections TaskProjectionFactories
 }
 
-// AccountQuotaOutbox 在账号额度跨阈值时参与同一 SQL 事务，写入调度事件。
-type AccountQuotaOutbox func(context.Context, *sql.Tx, int64) error
+// ProviderQuotaOutbox 在提供商额度跨阈值时参与同一 SQL 事务，写入调度事件。
+type ProviderQuotaOutbox func(context.Context, *sql.Tx, int64) error
 
 // NewSettlementStore 构造唯一闭合资金存储，不启动后台任务。
-func NewSettlementStore(sqlDB *sql.DB, calendar timezone.Calendar, outbox AccountQuotaOutbox, factories ...TaskProjectionFactories) *SettlementStore {
+func NewSettlementStore(sqlDB *sql.DB, calendar timezone.Calendar, outbox ProviderQuotaOutbox, factories ...TaskProjectionFactories) *SettlementStore {
 	projections := make(TaskProjectionFactories)
 	for _, set := range factories {
 		for scope, factory := range set {
 			projections[scope] = factory
 		}
 	}
-	return &SettlementStore{db: sqlDB, calendar: calendar, accountOutbox: outbox, taskProjections: projections}
+	return &SettlementStore{db: sqlDB, calendar: calendar, providerOutbox: outbox, taskProjections: projections}
 }
 
 func (r *SettlementStore) Apply(ctx context.Context, cmd *billing.UsageBillingCommand) (_ *billing.UsageBillingApplyResult, err error) {
@@ -94,7 +94,7 @@ func (r *SettlementStore) applyOnce(ctx context.Context, cmd *billing.UsageBilli
 
 // lockUsageBillingUser 先串行化付款用户写入，再访问订阅；NO KEY UPDATE 与日志外键的 KEY SHARE 兼容。
 func lockUsageBillingUser(ctx context.Context, tx *sql.Tx, userID int64) error {
-	// 账户额度维护测试和内部任务允许只携带 AccountID；没有付款用户时不存在本次锁环。
+	// 提供商额度维护测试和内部任务允许只携带 ProviderID；没有付款用户时不存在本次锁环。
 	if userID <= 0 {
 		return nil
 	}
@@ -753,8 +753,8 @@ func (r *SettlementStore) applyUsageBillingEffects(ctx context.Context, tx *sql.
 		}
 	}
 
-	if cmd.AccountQuotaCost > 0 && (strings.EqualFold(cmd.AccountType, capability.AccountTypeAPIKey) || strings.EqualFold(cmd.AccountType, capability.AccountTypeBedrock)) {
-		quotaState, err := incrementUsageBillingAccountQuota(ctx, tx, cmd.AccountID, cmd.AccountQuotaCost, r.accountOutbox)
+	if cmd.ProviderQuotaCost > 0 && (strings.EqualFold(cmd.ProviderType, capability.ProviderTypeAPIKey) || strings.EqualFold(cmd.ProviderType, capability.ProviderTypeBedrock)) {
+		quotaState, err := incrementUsageBillingProviderQuota(ctx, tx, cmd.ProviderID, cmd.ProviderQuotaCost, r.providerOutbox)
 		if err != nil {
 			return err
 		}
@@ -1555,9 +1555,9 @@ func incrementUsageBillingAPIKeyRateLimit(ctx context.Context, tx *sql.Tx, apiKe
 	return nil
 }
 
-func incrementUsageBillingAccountQuota(ctx context.Context, tx *sql.Tx, accountID int64, amount float64, outbox AccountQuotaOutbox) (*billing.AccountQuotaState, error) {
+func incrementUsageBillingProviderQuota(ctx context.Context, tx *sql.Tx, providerID int64, amount float64, outbox ProviderQuotaOutbox) (*billing.ProviderQuotaState, error) {
 	rows, err := tx.QueryContext(ctx,
-		`UPDATE accounts SET extra = (
+		`UPDATE providers SET extra = (
 			COALESCE(extra, '{}'::jsonb)
 			|| jsonb_build_object('quota_used', COALESCE((extra->>'quota_used')::numeric, 0) + $1)
 			|| CASE WHEN COALESCE((extra->>'quota_daily_limit')::numeric, 0) > 0 THEN
@@ -1599,12 +1599,12 @@ func incrementUsageBillingAccountQuota(ctx context.Context, tx *sql.Tx, accountI
 			COALESCE((extra->>'quota_daily_limit')::numeric, 0),
 			COALESCE((extra->>'quota_weekly_used')::numeric, 0),
 			COALESCE((extra->>'quota_weekly_limit')::numeric, 0)`,
-		amount, accountID)
+		amount, providerID)
 	if err != nil {
 		return nil, err
 	}
 
-	var state billing.AccountQuotaState
+	var state billing.ProviderQuotaState
 	if rows.Next() {
 		if err := rows.Scan(
 			&state.TotalUsed, &state.TotalLimit,
@@ -1620,7 +1620,7 @@ func incrementUsageBillingAccountQuota(ctx context.Context, tx *sql.Tx, accountI
 			return nil, err
 		}
 		_ = rows.Close()
-		return nil, billing.ErrAccountNotFound
+		return nil, billing.ErrProviderNotFound
 	}
 	if err := rows.Err(); err != nil {
 		_ = rows.Close()
@@ -1633,7 +1633,7 @@ func incrementUsageBillingAccountQuota(ctx context.Context, tx *sql.Tx, accountI
 		return nil, err
 	}
 	// 任意维度额度在本次递增中从"未超"跨越到"已超"时，必须刷新调度快照，
-	// 否则 Redis 中缓存的 Account 仍显示旧的 used 值，后续请求会继续选中本账号，
+	// 否则 Redis 中缓存的 Provider 仍显示旧的 used 值，后续请求会继续选中本提供商，
 	// 最终观察到 daily_used / weekly_used 大幅超过配置的 limit。
 	// 对于日/周额度，即使本次触发了周期重置（pre=0、post=amount），
 	// 判定式 (post-amount) < limit 同样成立，逻辑与总额度保持一致。
@@ -1642,10 +1642,10 @@ func incrementUsageBillingAccountQuota(ctx context.Context, tx *sql.Tx, accountI
 	crossedWeekly := state.WeeklyLimit > 0 && state.WeeklyUsed >= state.WeeklyLimit && (state.WeeklyUsed-amount) < state.WeeklyLimit
 	if crossedTotal || crossedDaily || crossedWeekly {
 		if outbox == nil {
-			return nil, errors.New("account quota outbox is not configured")
+			return nil, errors.New("provider quota outbox is not configured")
 		}
-		if err := outbox(ctx, tx, accountID); err != nil {
-			logger.LegacyPrintf("repository.usage_billing", "[SchedulerOutbox] enqueue quota exceeded failed: account=%d err=%v", accountID, err)
+		if err := outbox(ctx, tx, providerID); err != nil {
+			logger.LegacyPrintf("repository.usage_billing", "[SchedulerOutbox] enqueue quota exceeded failed: provider=%d err=%v", providerID, err)
 			return nil, err
 		}
 	}

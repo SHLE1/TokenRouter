@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/config"
 	"github.com/TokenFlux/TokenRouter/internal/creative"
@@ -12,6 +11,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/promptpolicy"
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 	"github.com/TokenFlux/TokenRouter/internal/ops"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 	"github.com/TokenFlux/TokenRouter/internal/server/runtimeconfig"
 	"github.com/TokenFlux/TokenRouter/internal/settings"
@@ -30,7 +30,7 @@ func provideCompositeReadOptions(cfg *config.Config, oauth *identity.OAuthSettin
 }
 
 // provideCompositeRuntime 固定原运行实例和发布顺序，完整配置仅在 app 投影。
-func provideCompositeRuntime(store *settings.Store, cfg *config.Config, read *composite.ReadOptions, grants *identity.GrantSettings, gatewayRuntime *gateway.RuntimeSettings, gatewayRules *gateway.AdminSettingsRules, defaults *scheduler.AdminDefaults, plans *billing.Plans, backendMode *admission.BackendMode, accountRuntime *account.RuntimeSettings, quota *account.QuotaSettingsCache, forwarded *runtimeconfig.ForwardedSettings, shared *schedulerSharedState, worker *creative.CreativeWorkerRuntime, monitor *ops.OpsService) *composite.Runtime {
+func provideCompositeRuntime(store *settings.Store, cfg *config.Config, read *composite.ReadOptions, grants *identity.GrantSettings, gatewayRuntime *gateway.RuntimeSettings, gatewayRules *gateway.AdminSettingsRules, defaults *scheduler.AdminDefaults, plans *billing.Plans, backendMode *admission.BackendMode, providerRuntime *provider.RuntimeSettings, quota *provider.QuotaSettingsCache, forwarded *runtimeconfig.ForwardedSettings, shared *schedulerSharedState, worker *creative.CreativeWorkerRuntime, monitor *ops.OpsService) *composite.Runtime {
 	prepare := composite.PrepareOptions{ReadValues: store.GetAll, Gateway: *gatewayRules, Scheduler: *defaults, ValidatePlans: func(ctx context.Context, value []billing.DefaultSubscriptionSetting) error {
 		return billing.ValidateDefaultSubscriptionPlans(ctx, value, plans.GetPlan)
 	}}
@@ -46,9 +46,9 @@ func provideCompositeRuntime(store *settings.Store, cfg *config.Config, read *co
 			shared.Settings.Store(scheduler.RuntimeSettingsFromAdmin(s.SchedulerAdminSettings(), *defaults))
 			return nil
 		}},
-		{Module: "account", Apply: func(_ context.Context, s *composite.Snapshot) error {
+		{Module: "provider", Apply: func(_ context.Context, s *composite.Snapshot) error {
 			quota.Apply(s.OpenAIQuotaAutoPauseSettings, s.OpenAIQuotaAutoPauseSettingsSet)
-			accountRuntime.ApplySchedulingThresholds(s.AccountSchedulingThresholds)
+			providerRuntime.ApplySchedulingThresholds(s.ProviderSchedulingThresholds)
 			return nil
 		}},
 		{Module: "server", Apply: func(_ context.Context, s *composite.Snapshot) error {

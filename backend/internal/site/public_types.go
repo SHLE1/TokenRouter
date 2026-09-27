@@ -86,8 +86,8 @@ type PublicSettings struct {
 	BalanceUnitSymbol     string
 	BalanceIconSVG        string
 
-	BalanceLowNotifyEnabled   bool
-	AccountQuotaNotifyEnabled bool
+	BalanceLowNotifyEnabled    bool
+	ProviderQuotaNotifyEnabled bool
 	// RiskControlEnabled 暴露给前端用于控制风控中心入口显示。
 	RiskControlEnabled          bool
 	AffiliateEnabled            bool

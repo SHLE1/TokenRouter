@@ -1,7 +1,6 @@
 package app
 
 import (
-	routeaccount "github.com/TokenFlux/TokenRouter/internal/account/httpapi"
 	routeapikey "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/apikey/httpapi/dto"
 	routeaudit "github.com/TokenFlux/TokenRouter/internal/audit/httpapi"
@@ -15,11 +14,13 @@ import (
 	routenotification "github.com/TokenFlux/TokenRouter/internal/notification/httpapi"
 	routeops "github.com/TokenFlux/TokenRouter/internal/ops/httpapi"
 	routepromotion "github.com/TokenFlux/TokenRouter/internal/promotion/httpapi"
+	routeprovider "github.com/TokenFlux/TokenRouter/internal/provider/httpapi"
 	routerouting "github.com/TokenFlux/TokenRouter/internal/routing/httpapi"
 	routingdto "github.com/TokenFlux/TokenRouter/internal/routing/httpapi/dto"
 	routescheduler "github.com/TokenFlux/TokenRouter/internal/scheduler/httpapi"
 	routesearch "github.com/TokenFlux/TokenRouter/internal/search/httpapi"
 	serverhttp "github.com/TokenFlux/TokenRouter/internal/server/httpapi"
+	"github.com/TokenFlux/TokenRouter/internal/server/middleware"
 	routesettings "github.com/TokenFlux/TokenRouter/internal/settings/httpapi"
 	routesite "github.com/TokenFlux/TokenRouter/internal/site/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/team/httpapi"
@@ -31,29 +32,29 @@ import (
 func provideAdminRouteMount(eAdminTLSFingerprintProfile *routeegress.TLSFingerprintProfileHandler,
 	eAdminSchedulerDiagnostics *routescheduler.DiagnosticsHandler,
 	eAdminTLSFingerprintRouter *routeegress.TLSFingerprintRouterHandler,
-	eAdminAccountCodexImport *routeaccount.CodexImportHandler,
-	eAdminAccountOAuthUsage *routeaccount.OAuthUsageHandler,
-	eAdminAccountManagement *routeaccount.ManagementHandler,
+	eAdminProviderCodexImport *routeprovider.CodexImportHandler,
+	eAdminProviderOAuthUsage *routeprovider.OAuthUsageHandler,
+	eAdminProviderManagement *routeprovider.ManagementHandler,
 	eAdminContentModeration *routemoderation.ContentModerationHandler,
-	eAdminAntigravityOAuth *routeaccount.AntigravityOAuthHandler,
+	eAdminAntigravityOAuth *routeprovider.AntigravityOAuthHandler,
 	eAdminErrorPassthrough *routegateway.ErrorPassthroughHandler,
-	eAdminCodexInviteReset *routeaccount.CodexInviteResetHandler,
+	eAdminCodexInviteReset *routeprovider.CodexInviteResetHandler,
 	eAdminDataManagement *routebackup.DataManagementHandler,
-	eAdminAccountArchive *routeaccount.ArchiveHandler,
+	eAdminProviderArchive *routeprovider.ArchiveHandler,
 	eAdminUserAttribute *routeidentity.UserAttributeHandler,
-	eAdminUpstreamUsage *routeaccount.UpstreamUsageHandler,
-	eAdminScheduledTest *routeaccount.ScheduledTestHandler,
-	eAdminAccountOllama *routeaccount.OllamaUsageHandler,
+	eAdminUpstreamUsage *routeprovider.UpstreamUsageHandler,
+	eAdminScheduledTest *routeprovider.ScheduledTestHandler,
+	eAdminProviderOllama *routeprovider.OllamaUsageHandler,
 	eAdminSubscription *routebilling.AdminSubscriptionHandler,
 	eAdminAnnouncement *routesite.AdminAnnouncementHandler,
-	eAdminAccountTests *routeaccount.TestHandler,
-	eAdminOpenAIOAuth *routeaccount.OpenAIOAuthHandler,
-	eAdminGeminiOAuth *routeaccount.GeminiOAuthHandler,
-	eAdminAccountCRS *routeaccount.CRSHandler,
-	eAdminQoderOAuth *routeaccount.QoderOAuthHandler,
+	eAdminProviderTests *routeprovider.TestHandler,
+	eAdminOpenAIOAuth *routeprovider.OpenAIOAuthHandler,
+	eAdminGeminiOAuth *routeprovider.GeminiOAuthHandler,
+	eAdminProviderCRS *routeprovider.CRSHandler,
+	eAdminQoderOAuth *routeprovider.QoderOAuthHandler,
 	eAdminDashboard *routeusageadmin.DashboardHandler,
 	eAdminAffiliate *routepromotion.AffiliateHandler,
-	eAdminGrokOAuth *routeaccount.GrokOAuthHandler,
+	eAdminGrokOAuth *routeprovider.GrokOAuthHandler,
 	eAdminAuditLog *routeaudit.AuditLogHandler,
 	eAdminPricing *routerouting.PricingHandler,
 	eAdminSetting *routesettings.Handler,
@@ -61,7 +62,7 @@ func provideAdminRouteMount(eAdminTLSFingerprintProfile *routeegress.TLSFingerpr
 	eCreativeSettings *routecreative.SettingsHandler,
 	eGatewaySettings *routegateway.RuntimeSettingsHandler,
 	eIdentitySettings *routeidentity.AdminKeySettingsHandler,
-	eAccountSettings *routeaccount.RuntimeSettingsHandler,
+	eProviderSettings *routeprovider.RuntimeSettingsHandler,
 	ePanelSettings *serverhttp.PanelSettingsHandler,
 	eAdminSystem *routeops.SystemHandler,
 	eAdminRedeem *routebilling.AdminRedeemHandler,
@@ -70,7 +71,7 @@ func provideAdminRouteMount(eAdminTLSFingerprintProfile *routeegress.TLSFingerpr
 	eAdminAPIKey *routeapikey.AdminAPIKeyHandler[routingdto.Group],
 	eAdminProxy *routeegress.ProxyHandler,
 	eAdminGroup *routerouting.GroupHandler,
-	eAdminOAuth *routeaccount.ClaudeOAuthHandler,
+	eAdminOAuth *routeprovider.ClaudeOAuthHandler,
 	eAdminUsage *routeusageadmin.UsageHandler,
 	eAdminPromo *routepromotion.PromoHandler,
 	eAdminTeam *httpapi.AdminHandler,
@@ -85,8 +86,9 @@ func provideAdminRouteMount(eAdminTLSFingerprintProfile *routeegress.TLSFingerpr
 		admin.Use(security.Panel.Global())
 		// 审计中间件挂在认证之后：所有管理面变更类操作 + 敏感读取入审计日志
 		admin.Use(security.Audit)
+		admin.Use(middleware.ProviderTerminology())
 		{
-			// 只读能力目录：账号与分组表单共用后端定义。
+			// 只读能力目录：提供商与分组表单共用后端定义。
 			admin.GET("/protocol-capabilities", protocolCatalog)
 			// 仪表盘
 			{
@@ -103,22 +105,22 @@ func provideAdminRouteMount(eAdminTLSFingerprintProfile *routeegress.TLSFingerpr
 				routerouting.RegisterGroupRoutes(admin, eAdminGroup)
 			}
 
-			// 账号管理
+			// 提供商管理
 			{
-				routeaccount.RegisterAccountRoutes(admin, routeaccount.AccountRouteEndpoints{
-					AccountArchive:     eAdminAccountArchive,
-					AccountCRS:         eAdminAccountCRS,
-					AccountCodexImport: eAdminAccountCodexImport,
-					AccountManagement:  eAdminAccountManagement,
-					AccountOAuthUsage:  eAdminAccountOAuthUsage,
-					AccountOllama:      eAdminAccountOllama,
-					AccountTests:       eAdminAccountTests,
-					CodexInviteReset:   eAdminCodexInviteReset,
-					OAuth:              eAdminOAuth,
-					OpenAIOAuth:        eAdminOpenAIOAuth,
-					UpstreamUsage:      eAdminUpstreamUsage,
-				}, security.StepUp, func(accounts *gin.RouterGroup) {
-					routescheduler.RegisterAccountDiagnostics(accounts, eAdminSchedulerDiagnostics)
+				routeprovider.RegisterProviderRoutes(admin, routeprovider.ProviderRouteEndpoints{
+					ProviderArchive:     eAdminProviderArchive,
+					ProviderCRS:         eAdminProviderCRS,
+					ProviderCodexImport: eAdminProviderCodexImport,
+					ProviderManagement:  eAdminProviderManagement,
+					ProviderOAuthUsage:  eAdminProviderOAuthUsage,
+					ProviderOllama:      eAdminProviderOllama,
+					ProviderTests:       eAdminProviderTests,
+					CodexInviteReset:    eAdminCodexInviteReset,
+					OAuth:               eAdminOAuth,
+					OpenAIOAuth:         eAdminOpenAIOAuth,
+					UpstreamUsage:       eAdminUpstreamUsage,
+				}, security.StepUp, func(providers *gin.RouterGroup) {
+					routescheduler.RegisterProviderDiagnostics(providers, eAdminSchedulerDiagnostics)
 				})
 			}
 
@@ -129,27 +131,27 @@ func provideAdminRouteMount(eAdminTLSFingerprintProfile *routeegress.TLSFingerpr
 
 			// OpenAI OAuth 管理
 			{
-				routeaccount.RegisterOpenAIOAuthRoutes(admin, eAdminOpenAIOAuth)
+				routeprovider.RegisterOpenAIOAuthRoutes(admin, eAdminOpenAIOAuth)
 			}
 
 			// Gemini OAuth 管理
 			{
-				routeaccount.RegisterGeminiOAuthRoutes(admin, eAdminGeminiOAuth)
+				routeprovider.RegisterGeminiOAuthRoutes(admin, eAdminGeminiOAuth)
 			}
 
 			// Antigravity OAuth 管理
 			{
-				routeaccount.RegisterAntigravityOAuthRoutes(admin, eAdminAntigravityOAuth)
+				routeprovider.RegisterAntigravityOAuthRoutes(admin, eAdminAntigravityOAuth)
 			}
 
 			// Qoder OAuth 管理
 			{
-				routeaccount.RegisterQoderOAuthRoutes(admin, eAdminQoderOAuth)
+				routeprovider.RegisterQoderOAuthRoutes(admin, eAdminQoderOAuth)
 			}
 
 			// Grok OAuth 管理
 			{
-				routeaccount.RegisterGrokOAuthRoutes(admin, eAdminGrokOAuth)
+				routeprovider.RegisterGrokOAuthRoutes(admin, eAdminGrokOAuth)
 			}
 
 			// 代理管理
@@ -173,7 +175,7 @@ func provideAdminRouteMount(eAdminTLSFingerprintProfile *routeegress.TLSFingerpr
 				routesettings.RegisterSettingsSettingsRoutes(adminSettings, eAdminSetting, ePreAggregation)
 				routecreative.RegisterCreativeSettingsRoutes(adminSettings, eCreativeSettings)
 				routeidentity.RegisterIdentitySettingsRoutes(adminSettings, eIdentitySettings)
-				routeaccount.RegisterAccountSettingsRoutes(adminSettings, eAccountSettings)
+				routeprovider.RegisterProviderSettingsRoutes(adminSettings, eProviderSettings)
 				serverhttp.RegisterPanelSettingsRoutes(adminSettings, ePanelSettings)
 				routegateway.RegisterGatewaySettingsRoutes(adminSettings, eGatewaySettings)
 				routenotification.RegisterSettingsRoutes(adminSettings, eNotification)
@@ -237,7 +239,7 @@ func provideAdminRouteMount(eAdminTLSFingerprintProfile *routeegress.TLSFingerpr
 
 			// 定时测试计划
 			{
-				routeaccount.RegisterScheduledTestRoutes(admin, eAdminScheduledTest)
+				routeprovider.RegisterScheduledTestRoutes(admin, eAdminScheduledTest)
 			}
 
 			// 价格管理

@@ -56,12 +56,12 @@ func TestEvaluateOpenAIFastPolicy_ScopeFiltersOAuth(t *testing.T) {
 		}},
 	}
 
-	// OAuth account → rule matches
+	// OAuth provider → rule matches
 
 	action, _ := Evaluate(settings, 0, true, false, "gpt-4", OpenAIFastTierPriority)
 	require.Equal(t, "filter", action)
 
-	// API Key account → rule skipped → pass
+	// API Key provider → rule skipped → pass
 
 	action, _ = Evaluate(settings, 0, false, false, "gpt-4", OpenAIFastTierPriority)
 	require.Equal(t, "pass", action)

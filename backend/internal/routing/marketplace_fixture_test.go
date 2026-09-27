@@ -6,7 +6,7 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
-	"github.com/TokenFlux/TokenRouter/internal/billing/provider"
+	billingadapter "github.com/TokenFlux/TokenRouter/internal/billing/provider"
 	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/modelidentity"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
@@ -22,7 +22,7 @@ func newMarketplaceFixture(groups routing.MarketplaceGroups, settings routing.Ma
 	return routing.NewMarketplace(groups, settings, nil, routing.RequestableResolver{}, prices, nil, nil, routing.MarketplaceOptions{Now: time.Now, Warn: slog.Warn, DefaultModels: routingprovider.MarketplaceModelDefs, DisplayNames: routingprovider.MarketplaceDisplayNames})
 }
 
-func newMarketplaceCalculator(catalog *provider.PricingService, prices map[string]*pricing.ModelPricing) *billing.Calculator {
+func newMarketplaceCalculator(catalog *billingadapter.PricingService, prices map[string]*pricing.ModelPricing) *billing.Calculator {
 	return billingtestkit.Calculator(0, catalog, prices)
 }
 

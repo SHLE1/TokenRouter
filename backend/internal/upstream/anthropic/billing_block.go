@@ -1,4 +1,4 @@
-// 本文件拥有 Anthropic 请求字节规范化；账号、设置与请求上下文由外层投影。
+// 本文件拥有 Anthropic 请求字节规范化；提供商、设置与请求上下文由外层投影。
 package anthropic
 
 import (

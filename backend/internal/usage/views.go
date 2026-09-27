@@ -9,8 +9,8 @@ import (
 )
 
 type (
-	GroupView   = accessview.GroupConfig
-	AccountView struct {
+	GroupView    = accessview.GroupConfig
+	ProviderView struct {
 		ID   int64
 		Name string
 	}

@@ -81,7 +81,16 @@ func TestPlatformIndependentGroupsMigration(t *testing.T) {
 	require.NoError(t, db.QueryRowContext(ctx, `SELECT to_regclass('platform_independent_group_archive')::text`).Scan(&archive))
 	require.False(t, archive.Valid)
 
-	require.NoError(t, infra.ApplyMigrations(ctx, db, migrations.FS))
+	through280 := fstest.MapFS{}
+	for _, entry := range entries {
+		if entry.Name() >= "281_" {
+			continue
+		}
+		data, readErr := migrations.FS.ReadFile(entry.Name())
+		require.NoError(t, readErr)
+		through280[entry.Name()] = &fstest.MapFile{Data: data}
+	}
+	require.NoError(t, infra.ApplyMigrations(ctx, db, through280))
 	var platform, policy, fallbacks, allowed, whitelist string
 	var cost float64
 	require.NoError(t, db.QueryRowContext(ctx, `SELECT platform, actual_cost FROM usage_logs WHERE request_id='legacy-platform'`).Scan(&platform, &cost))

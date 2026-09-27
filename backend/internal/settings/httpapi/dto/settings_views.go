@@ -196,7 +196,7 @@ type SystemSettings struct {
 	FallbackModelGemini      string `json:"fallback_model_gemini"`
 	FallbackModelAntigravity string `json:"fallback_model_antigravity"`
 
-	// Grok 模型映射策略；账号映射为空时使用这里的默认值。
+	// Grok 模型映射策略；提供商映射为空时使用这里的默认值。
 	GrokDefaultTextModel           string `json:"grok_default_text_model"`
 	GrokCrossClientModelMapEnabled bool   `json:"grok_cross_client_model_map_enabled"`
 	GrokDefaultBaseURLMode         string `json:"grok_default_base_url_mode"`
@@ -276,8 +276,8 @@ type SystemSettings struct {
 	AdvancedSchedulerEffectiveStickyEscapeEnabled    bool   `json:"advanced_scheduler_effective_sticky_escape_enabled"`
 	AdvancedSchedulerEffectiveStickyEscapeTTFTMs     string `json:"advanced_scheduler_effective_sticky_escape_ttft_ms"`
 	AdvancedSchedulerEffectiveStickyEscapeErrorRate  string `json:"advanced_scheduler_effective_sticky_escape_error_rate"`
-	// OpenAI 账号配额自动暂停全局默认阈值。后端按 0~1 存储，0 表示不启用全局默认阈值。
-	OpenAIQuotaAutoPauseSettings ops.OpsOpenAIAccountQuotaAutoPauseSettings `json:"openai_account_quota_auto_pause"`
+	// OpenAI 提供商配额自动暂停全局默认阈值。后端按 0~1 存储，0 表示不启用全局默认阈值。
+	OpenAIQuotaAutoPauseSettings ops.OpsOpenAIProviderQuotaAutoPauseSettings `json:"openai_provider_quota_auto_pause"`
 
 	// Payment configuration
 	PaymentEnabled                   bool                      `json:"payment_enabled"`
@@ -310,19 +310,19 @@ type SystemSettings struct {
 	// 移动端使用支付宝当面付预下单，并通过深链接唤起支付宝客户端。
 	PaymentAlipayMobilePrecreateDeepLink bool `json:"payment_alipay_mobile_precreate_deep_link"`
 
-	// 余额、订阅到期与账号限额通知
+	// 余额、订阅到期与提供商限额通知
 	BalanceLowNotifyEnabled         bool                           `json:"balance_low_notify_enabled"`
 	BalanceLowNotifyThreshold       float64                        `json:"balance_low_notify_threshold"`
 	BalanceLowNotifyRechargeURL     string                         `json:"balance_low_notify_recharge_url"`
 	SubscriptionExpiryNotifyEnabled bool                           `json:"subscription_expiry_notify_enabled"`
-	AccountQuotaNotifyEnabled       bool                           `json:"account_quota_notify_enabled"`
-	AccountQuotaNotifyEmails        []identitydto.NotifyEmailEntry `json:"account_quota_notify_emails"`
+	ProviderQuotaNotifyEnabled      bool                           `json:"provider_quota_notify_enabled"`
+	ProviderQuotaNotifyEmails       []identitydto.NotifyEmailEntry `json:"provider_quota_notify_emails"`
 
 	// OpenAI fast/flex 策略
 	OpenAIFastPolicySettings *gatewaydto.OpenAIFastPolicySettings `json:"openai_fast_policy_settings,omitempty"`
 
-	// 系统全局账号自动停调阈值（key = platform，100 = disabled）
-	AccountSchedulingThresholds map[string]int `json:"account_scheduling_thresholds,omitempty"`
+	// 系统全局提供商自动停调阈值（key = platform，100 = disabled）
+	ProviderSchedulingThresholds map[string]int `json:"provider_scheduling_thresholds,omitempty"`
 
 	// 允许终端用户在用量页查看自己的失败请求
 	AllowUserViewErrorRequests bool `json:"allow_user_view_error_requests"`

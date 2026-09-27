@@ -1,4 +1,4 @@
-// Claude 的平台恢复只操作当前 attempt 的报文；开关和账号副作用由端口提供。
+// Claude 的平台恢复只操作当前 attempt 的报文；开关和提供商副作用由端口提供。
 package antigravity
 
 import (
@@ -15,10 +15,10 @@ import (
 )
 
 type ClaudeRecoveryInput struct {
-	AccountID                             int64
-	AccountName, Prefix, ProjectID, Model string
-	Request                               protocolanthropic.ClaudeRequest
-	InitialOptions                        TransformOptions
+	ProviderID                             int64
+	ProviderName, Prefix, ProjectID, Model string
+	Request                                protocolanthropic.ClaudeRequest
+	InitialOptions                         TransformOptions
 }
 type ClaudeRecoveryOptions struct {
 	Retry                                 func([]byte) (*http.Response, error)
@@ -49,8 +49,8 @@ func RecoverClaude(ctx context.Context, input ClaudeRecoveryInput, resp *http.Re
 		logBody, maxBytes := options.LogConfig()
 		upstreamDetail := options.ErrorDetail(respBody)
 		options.Observe(RetryObservation{
-			AccountID:          input.AccountID,
-			AccountName:        input.AccountName,
+			ProviderID:         input.ProviderID,
+			ProviderName:       input.ProviderName,
 			UpstreamStatusCode: resp.StatusCode,
 			UpstreamRequestID:  resp.Header.Get("x-request-id"),
 			Kind:               "signature_error",
@@ -79,7 +79,7 @@ func RecoverClaude(ctx context.Context, input ClaudeRecoveryInput, resp *http.Re
 				continue
 			}
 
-			logger.LegacyPrintf("service.antigravity_gateway", "Antigravity account %d: detected signature-related 400, retrying once (%s)", input.AccountID, stage.name)
+			logger.LegacyPrintf("service.antigravity_gateway", "Antigravity provider %d: detected signature-related 400, retrying once (%s)", input.ProviderID, stage.name)
 
 			retryGeminiBody, txErr := TransformClaudeToGeminiWithOptions(&retryClaudeReq, projectID, mappedModel, options.TransformOptions(ctx))
 			if txErr != nil {
@@ -88,13 +88,13 @@ func RecoverClaude(ctx context.Context, input ClaudeRecoveryInput, resp *http.Re
 			retryResult, retryErr := options.Retry(retryGeminiBody)
 			if retryErr != nil {
 				options.Observe(RetryObservation{
-					AccountID:          input.AccountID,
-					AccountName:        input.AccountName,
+					ProviderID:         input.ProviderID,
+					ProviderName:       input.ProviderName,
 					UpstreamStatusCode: 0,
 					Kind:               "signature_retry_request_error",
 					Message:            logredact.SanitizeUpstreamQueries(retryErr.Error()),
 				})
-				logger.LegacyPrintf("service.antigravity_gateway", "Antigravity account %d: signature retry request failed (%s): %v", input.AccountID, stage.name, retryErr)
+				logger.LegacyPrintf("service.antigravity_gateway", "Antigravity provider %d: signature retry request failed (%s): %v", input.ProviderID, stage.name, retryErr)
 				continue
 			}
 
@@ -126,8 +126,8 @@ func RecoverClaude(ctx context.Context, input ClaudeRecoveryInput, resp *http.Re
 				retryUpstreamDetail = options.TruncateString(string(retryBody), maxBytes)
 			}
 			options.Observe(RetryObservation{
-				AccountID:          input.AccountID,
-				AccountName:        input.AccountName,
+				ProviderID:         input.ProviderID,
+				ProviderName:       input.ProviderName,
 				UpstreamStatusCode: retryResp.StatusCode,
 				UpstreamRequestID:  retryResp.Header.Get("x-request-id"),
 				Kind:               kind,
@@ -161,8 +161,8 @@ func RecoverClaude(ctx context.Context, input ClaudeRecoveryInput, resp *http.Re
 		errMsg := strings.TrimSpace(googlewire.ExtractPlatformMessage(respBody))
 		if options.IsBudgetConstraint(errMsg) && options.BudgetEnabled(ctx) {
 			options.Observe(RetryObservation{
-				AccountID:          input.AccountID,
-				AccountName:        input.AccountName,
+				ProviderID:         input.ProviderID,
+				ProviderName:       input.ProviderName,
 				UpstreamStatusCode: resp.StatusCode,
 				UpstreamRequestID:  resp.Header.Get("x-request-id"),
 				Kind:               "budget_constraint_error",
@@ -183,7 +183,7 @@ func RecoverClaude(ctx context.Context, input ClaudeRecoveryInput, resp *http.Re
 					retryClaudeReq.MaxTokens = options.MaxTokens
 				}
 
-				logger.LegacyPrintf("service.antigravity_gateway", "Antigravity account %d: detected budget_tokens constraint error, retrying with rectified budget (budget_tokens=%d, max_tokens=%d)", input.AccountID, options.BudgetTokens, options.MaxTokens)
+				logger.LegacyPrintf("service.antigravity_gateway", "Antigravity provider %d: detected budget_tokens constraint error, retrying with rectified budget (budget_tokens=%d, max_tokens=%d)", input.ProviderID, options.BudgetTokens, options.MaxTokens)
 
 				retryGeminiBody, txErr := TransformClaudeToGeminiWithOptions(&retryClaudeReq, projectID, mappedModel, transformOpts)
 				if txErr == nil {
@@ -205,7 +205,7 @@ func RecoverClaude(ctx context.Context, input ClaudeRecoveryInput, resp *http.Re
 							}
 						}
 					} else {
-						logger.LegacyPrintf("service.antigravity_gateway", "Antigravity account %d: budget rectifier retry failed: %v", input.AccountID, retryErr)
+						logger.LegacyPrintf("service.antigravity_gateway", "Antigravity provider %d: budget rectifier retry failed: %v", input.ProviderID, retryErr)
 					}
 				}
 			}

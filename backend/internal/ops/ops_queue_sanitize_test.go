@@ -10,7 +10,7 @@ func TestSanitizeOpsUpstreamErrorsForQueueBoundsAndRedacts(t *testing.T) {
 	for i := 0; i < 20; i++ {
 		entry.UpstreamErrors = append(entry.UpstreamErrors, &OpsUpstreamErrorEvent{
 			Platform:             strings.Repeat("p", 100),
-			AccountName:          strings.Repeat("a", 300),
+			ProviderName:         strings.Repeat("a", 300),
 			UpstreamStatusCode:   500,
 			UpstreamURL:          strings.Repeat("u", 3000),
 			UpstreamResponseBody: `{"authorization":"Bearer secret","message":"` + strings.Repeat("x", 10_000) + `"}`,
@@ -36,7 +36,7 @@ func TestSanitizeOpsUpstreamErrorsForQueueBoundsAndRedacts(t *testing.T) {
 		t.Fatalf("event count = %d, want 16", len(events))
 	}
 	for _, event := range events {
-		if len(event.Platform) > 32 || len(event.AccountName) > 128 || len(event.UpstreamURL) > 2048 || len(event.Message) > 2048 {
+		if len(event.Platform) > 32 || len(event.ProviderName) > 128 || len(event.UpstreamURL) > 2048 || len(event.Message) > 2048 {
 			t.Fatalf("event fields were not bounded: %+v", event)
 		}
 		if len(event.UpstreamResponseBody) > OpsErrorLogQueueBodyMaxBytes || len(event.Detail) > OpsErrorLogQueueBodyMaxBytes {

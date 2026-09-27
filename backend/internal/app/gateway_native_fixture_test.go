@@ -3,7 +3,7 @@ package app
 import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/completion"
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 )
 
@@ -18,6 +18,6 @@ type gatewayExecutionFixture struct {
 	Recorder   *completion.Recorder
 	Blocks     *session.CyberBlocks
 	Cache      session.GatewayCache
-	Planner    *provider.RoutePlanner
+	Planner    *gatewayadapter.RoutePlanner
 	Background func(string, func()) bool
 }

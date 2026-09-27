@@ -11,9 +11,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	xai "github.com/TokenFlux/TokenRouter/internal/upstream/grok"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
@@ -28,25 +28,26 @@ type GrokSearchExecutor struct {
 	DefaultBaseURL func() string
 }
 
-func (s *GrokSearchExecutor) responsesURL(value *account.Record) (string, error) {
-	validator, err := accountprovider.GrokBaseURLValidator(value, xai.ValidateBaseURL)
+func (s *GrokSearchExecutor) responsesURL(value *provider.Record) (string, error) {
+	validator, err := provideradapter.GrokBaseURLValidator(value, xai.ValidateBaseURL)
 	if err != nil {
 		return "", err
 	}
-	base := accountprovider.GrokAccountBaseURL(value)
+	base := provideradapter.GrokProviderBaseURL(value)
 	if s.DefaultBaseURL != nil {
-		base = accountprovider.GrokAccountBaseURLOr(value, s.DefaultBaseURL())
+		base = provideradapter.GrokProviderBaseURLOr(value, s.DefaultBaseURL())
 	}
 	return xai.BuildResponsesURLWithValidator(base, validator)
 }
-func (s *GrokSearchExecutor) Execute(ctx context.Context, value *account.Record, body []byte) ([]byte, error) {
+
+func (s *GrokSearchExecutor) Execute(ctx context.Context, value *provider.Record, body []byte) ([]byte, error) {
 	if s == nil || s.Transport == nil {
 		return nil, errors.New("http upstream not configured")
 	}
 	if value == nil || !value.IsGrok() {
-		return nil, errors.New("grok account required")
+		return nil, errors.New("grok provider required")
 	}
-	token, err := account.GrokStoredAccessToken(value)
+	token, err := provider.GrokStoredAccessToken(value)
 	if err != nil {
 		return nil, &forwardcore.UpstreamFailoverError{
 			StatusCode: http.StatusUnauthorized,
@@ -71,7 +72,7 @@ func (s *GrokSearchExecutor) Execute(ctx context.Context, value *account.Record,
 	upstreamReq.Header.Set("Accept", "application/json")
 	upstreamReq.Header.Set("User-Agent", xai.DefaultGrokUpstreamUserAgent())
 	xai.ApplyCLIHeaders(upstreamReq.Header)
-	accountprovider.ApplyAccountHeaderOverrides(value, upstreamReq.Header)
+	provideradapter.ApplyProviderHeaderOverrides(value, upstreamReq.Header)
 	proxyURL := ""
 	if value.ProxyID != nil && value.Proxy != nil {
 		proxyURL = value.Proxy.URL()

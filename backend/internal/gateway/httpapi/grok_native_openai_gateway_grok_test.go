@@ -14,7 +14,7 @@ import (
 
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 
@@ -26,14 +26,17 @@ import (
 func TestBuildGrokResponsesRequestPinsOAuthBaseURLAndUsesBearerToken(t *testing.T) {
 	t.Setenv(xai.EnvAllowUnsafeURLOverrides, "true")
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformGrok,
-		Type: capability.AccountTypeOAuth,
-		Credentials: map[string]any{
-			"base_url": "https://xai.test/v1/",
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, Platform: capability.PlatformGrok,
+			Type: capability.ProviderTypeOAuth,
+			Credentials: map[string]any{
+				"base_url": "https://xai.test/v1/",
+			},
+		},
 	}
 
-	req, err := (&GrokExecutor{Routes: gatewayprovider.GrokRoutes{Validate: xai.ValidateBaseURL}}).BuildResponsesRequest(context.Background(), nil, account, []byte(`{"model":"grok-4.3"}`), "access-token", "isolated-cache-id", false)
+	req, err := (&GrokExecutor{Routes: gatewayprovider.GrokRoutes{Validate: xai.ValidateBaseURL}}).BuildResponsesRequest(context.Background(), nil, provider, []byte(`{"model":"grok-4.3"}`), "access-token", "isolated-cache-id", false)
 	require.NoError(t, err)
 	require.Equal(t, http.MethodPost, req.Method)
 	require.Equal(t, "https://xai.test/v1/responses", req.URL.String())
@@ -47,52 +50,64 @@ func TestBuildGrokResponsesRequestPinsOAuthBaseURLAndUsesBearerToken(t *testing.
 	require.NoError(t, err)
 	require.Equal(t, `{"model":"grok-4.3"}`, strings.TrimSpace(string(data)))
 }
+
 func TestBuildGrokResponsesRequestAllowsPublicAPIKeyBaseURLByDefault(t *testing.T) {
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformGrok,
-		Type: capability.AccountTypeAPIKey,
-		Credentials: map[string]any{
-			"base_url": "https://grok.example.test/v1/",
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, Platform: capability.PlatformGrok,
+			Type: capability.ProviderTypeAPIKey,
+			Credentials: map[string]any{
+				"base_url": "https://grok.example.test/v1/",
+			},
+		},
 	}
 
-	req, err := (&GrokExecutor{Routes: gatewayprovider.GrokRoutes{Validate: xai.ValidateBaseURL}}).BuildResponsesRequest(context.Background(), nil, account, []byte(`{"model":"grok-4.3"}`), "api-key", "", false)
+	req, err := (&GrokExecutor{Routes: gatewayprovider.GrokRoutes{Validate: xai.ValidateBaseURL}}).BuildResponsesRequest(context.Background(), nil, provider, []byte(`{"model":"grok-4.3"}`), "api-key", "", false)
 	require.NoError(t, err)
 	require.Equal(t, "https://grok.example.test/v1/responses", req.URL.String())
 	require.Equal(t, "Bearer api-key", req.Header.Get("Authorization"))
 	require.Empty(t, req.Header.Get("X-Grok-Client-Version"))
 	require.NotEqual(t, xai.DefaultGrokUpstreamUserAgent(), req.Header.Get("User-Agent"))
 }
+
 func TestBuildGrokResponsesRequestHonorsOAuthOfficialEndpointSwitch(t *testing.T) {
 	t.Parallel()
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformGrok,
-		Type: capability.AccountTypeOAuth,
-		Credentials: map[string]any{
-			"base_url": xai.DefaultBaseURL,
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, Platform: capability.PlatformGrok,
+			Type: capability.ProviderTypeOAuth,
+			Credentials: map[string]any{
+				"base_url": xai.DefaultBaseURL,
+			},
+		},
 	}
 
-	req, err := (&GrokExecutor{Routes: gatewayprovider.GrokRoutes{Validate: xai.ValidateBaseURL}}).BuildResponsesRequest(context.Background(), nil, account, []byte(`{"model":"grok-4.3"}`), "access-token", "", false)
+	req, err := (&GrokExecutor{Routes: gatewayprovider.GrokRoutes{Validate: xai.ValidateBaseURL}}).BuildResponsesRequest(context.Background(), nil, provider, []byte(`{"model":"grok-4.3"}`), "access-token", "", false)
 	require.NoError(t, err)
 	require.Equal(t, xai.DefaultBaseURL+"/responses", req.URL.String())
 }
+
 func TestBuildGrokResponsesRequestAppliesHeaderOverridesLast(t *testing.T) {
 	t.Parallel()
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformGrok,
-		Type: capability.AccountTypeOAuth,
-		Credentials: map[string]any{
-			"base_url":                "https://relay.example.test/v1",
-			"header_override_enabled": true,
-			"header_overrides": map[string]any{
-				"User-Agent":            "relay-client/2.0",
-				"X-Grok-Client-Version": "9.9.9",
-				"X-Relay-Token":         "relay-secret",
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, Platform: capability.PlatformGrok,
+			Type: capability.ProviderTypeOAuth,
+			Credentials: map[string]any{
+				"base_url":                "https://relay.example.test/v1",
+				"header_override_enabled": true,
+				"header_overrides": map[string]any{
+					"User-Agent":            "relay-client/2.0",
+					"X-Grok-Client-Version": "9.9.9",
+					"X-Relay-Token":         "relay-secret",
+				},
 			},
-		}},
+		},
 	}
 
-	req, err := (&GrokExecutor{Routes: gatewayprovider.GrokRoutes{Validate: xai.ValidateBaseURL}}).BuildResponsesRequest(context.Background(), nil, account, []byte(`{"model":"grok-4.3"}`), "access-token", "conv-1", false)
+	req, err := (&GrokExecutor{Routes: gatewayprovider.GrokRoutes{Validate: xai.ValidateBaseURL}}).BuildResponsesRequest(context.Background(), nil, provider, []byte(`{"model":"grok-4.3"}`), "access-token", "conv-1", false)
 	require.NoError(t, err)
 	require.Equal(t, "https://relay.example.test/v1/responses", req.URL.String())
 	// 覆写值优先于内置 CLI 身份头。名字不在 wire casing 映射中的覆写头
@@ -105,25 +120,30 @@ func TestBuildGrokResponsesRequestAppliesHeaderOverridesLast(t *testing.T) {
 	require.Equal(t, "conv-1", req.Header.Get(GrokConversationIDHeader))
 	require.Equal(t, "Bearer access-token", req.Header.Get("Authorization"))
 }
+
 func TestBuildGrokResponsesRequestIgnoresBlockedHeaderOverrides(t *testing.T) {
 	t.Parallel()
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformGrok,
-		Type: capability.AccountTypeAPIKey,
-		Credentials: map[string]any{
-			"header_override_enabled": true,
-			"header_overrides": map[string]any{
-				"Authorization":  "Bearer stolen",
-				"x-grok-conv-id": "pinned-conversation",
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, Platform: capability.PlatformGrok,
+			Type: capability.ProviderTypeAPIKey,
+			Credentials: map[string]any{
+				"header_override_enabled": true,
+				"header_overrides": map[string]any{
+					"Authorization":  "Bearer stolen",
+					"x-grok-conv-id": "pinned-conversation",
+				},
 			},
-		}},
+		},
 	}
 
-	req, err := (&GrokExecutor{Routes: gatewayprovider.GrokRoutes{Validate: xai.ValidateBaseURL}}).BuildResponsesRequest(context.Background(), nil, account, []byte(`{"model":"grok-4.3"}`), "api-key", "conv-2", false)
+	req, err := (&GrokExecutor{Routes: gatewayprovider.GrokRoutes{Validate: xai.ValidateBaseURL}}).BuildResponsesRequest(context.Background(), nil, provider, []byte(`{"model":"grok-4.3"}`), "api-key", "conv-2", false)
 	require.NoError(t, err)
 	require.Equal(t, "Bearer api-key", req.Header.Get("Authorization"))
 	require.Equal(t, "conv-2", req.Header.Get(GrokConversationIDHeader))
 }
+
 func TestExtractGrokMediaModelSupportsJSONAndMultipart(t *testing.T) {
 	require.Equal(t, "grok-imagine", gatewayprovider.GrokMediaCodec().ExtractGrokMediaModel("application/json", []byte(`{"model":"grok-imagine"}`)))
 

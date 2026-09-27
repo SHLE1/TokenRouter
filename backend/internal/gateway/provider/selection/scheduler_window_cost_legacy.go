@@ -5,7 +5,7 @@ import (
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 )
 
-func costWindowInput(a *gatewayprovider.ExecutionAccount) billing.CostWindowInput {
+func costWindowInput(a *gatewayprovider.ExecutionProvider) billing.CostWindowInput {
 	if a == nil {
 		return billing.CostWindowInput{}
 	}

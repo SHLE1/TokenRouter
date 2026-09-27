@@ -20,17 +20,17 @@ import (
 // ConcurrencyCache 定义并发控制的缓存接口
 // 使用有序集合存储槽位，按时间戳清理过期条目
 type ConcurrencyCache interface {
-	// 账号槽位管理
-	// 键格式: concurrency:account:{accountID}（有序集合，成员为 requestID）
-	AcquireAccountSlot(ctx context.Context, accountID int64, maxConcurrency int, requestID string) (bool, error)
-	ReleaseAccountSlot(ctx context.Context, accountID int64, requestID string) error
-	GetAccountConcurrency(ctx context.Context, accountID int64) (int, error)
-	GetAccountConcurrencyBatch(ctx context.Context, accountIDs []int64) (map[int64]int, error)
+	// 提供商槽位管理
+	// 键格式: concurrency:provider:{providerID}（有序集合，成员为 requestID）
+	AcquireProviderSlot(ctx context.Context, providerID int64, maxConcurrency int, requestID string) (bool, error)
+	ReleaseProviderSlot(ctx context.Context, providerID int64, requestID string) error
+	GetProviderConcurrency(ctx context.Context, providerID int64) (int, error)
+	GetProviderConcurrencyBatch(ctx context.Context, providerIDs []int64) (map[int64]int, error)
 
-	// 账号等待队列（账号级）
-	IncrementAccountWaitCount(ctx context.Context, accountID int64, maxWait int) (bool, error)
-	DecrementAccountWaitCount(ctx context.Context, accountID int64) error
-	GetAccountWaitingCount(ctx context.Context, accountID int64) (int, error)
+	// 提供商等待队列（提供商级）
+	IncrementProviderWaitCount(ctx context.Context, providerID int64, maxWait int) (bool, error)
+	DecrementProviderWaitCount(ctx context.Context, providerID int64) error
+	GetProviderWaitingCount(ctx context.Context, providerID int64) (int, error)
 
 	// 用户槽位管理
 	// 键格式: concurrency:user:{userID}（有序集合，成员为 requestID）
@@ -43,12 +43,12 @@ type ConcurrencyCache interface {
 	DecrementWaitCount(ctx context.Context, userID int64) error
 
 	// 批量负载查询（只读）
-	GetAccountsLoadBatch(ctx context.Context, accounts []AccountWithConcurrency) (map[int64]*AccountLoadInfo, error)
+	GetProvidersLoadBatch(ctx context.Context, providers []ProviderWithConcurrency) (map[int64]*ProviderLoadInfo, error)
 	GetUsersLoadBatch(ctx context.Context, users []UserWithConcurrency) (map[int64]*UserLoadInfo, error)
 
 	// 清理过期槽位（后台任务）
-	CleanupExpiredAccountSlots(ctx context.Context, accountID int64) error
-	CleanupExpiredAccountSlotKeys(ctx context.Context) error
+	CleanupExpiredProviderSlots(ctx context.Context, providerID int64) error
+	CleanupExpiredProviderSlotKeys(ctx context.Context) error
 
 	// 启动时清理旧进程遗留槽位与等待计数
 	CleanupStaleProcessSlots(ctx context.Context, activeRequestPrefix string) error
@@ -222,28 +222,28 @@ const (
 	// 默认等待队列额外槽位
 	defaultExtraWaitSlots = 20
 
-	defaultAccountLoadBatchCacheTTL = 200 * time.Millisecond
-	accountLoadBatchFetchTimeout    = 3 * time.Second
-	maxAccountLoadBatchCacheEntries = 256
-	apiKeyConcurrencyFetchTimeout   = 3 * time.Second
-	apiKeySlotTrackTimeout          = 2 * time.Second
+	defaultProviderLoadBatchCacheTTL = 200 * time.Millisecond
+	providerLoadBatchFetchTimeout    = 3 * time.Second
+	maxProviderLoadBatchCacheEntries = 256
+	apiKeyConcurrencyFetchTimeout    = 3 * time.Second
+	apiKeySlotTrackTimeout           = 2 * time.Second
 )
 
-// ConcurrencyService 管理账号和用户的并发限制。
+// ConcurrencyService 管理提供商和用户的并发限制。
 type ConcurrencyService struct {
 	diagnostics Diagnostics
 	runtime     WorkerRuntime
 
 	cache ConcurrencyCache
 
-	accountLoadCacheTTL atomic.Int64
-	accountLoadCacheMu  sync.RWMutex
-	accountLoadCache    map[string]cachedAccountLoadBatch
-	accountLoadGroup    singleflight.Group
+	providerLoadCacheTTL atomic.Int64
+	providerLoadCacheMu  sync.RWMutex
+	providerLoadCache    map[string]cachedProviderLoadBatch
+	providerLoadGroup    singleflight.Group
 }
 
-type cachedAccountLoadBatch struct {
-	loadMap   map[int64]*AccountLoadInfo
+type cachedProviderLoadBatch struct {
+	loadMap   map[int64]*ProviderLoadInfo
 	expiresAt time.Time
 }
 
@@ -255,11 +255,11 @@ func NewConcurrencyService(cache ConcurrencyCache, options ...Diagnostics) *Conc
 	}
 
 	svc := &ConcurrencyService{
-		cache:            cache,
-		diagnostics:      diagnostics,
-		accountLoadCache: make(map[string]cachedAccountLoadBatch),
+		cache:             cache,
+		diagnostics:       diagnostics,
+		providerLoadCache: make(map[string]cachedProviderLoadBatch),
 	}
-	svc.SetAccountLoadBatchCacheTTL(defaultAccountLoadBatchCacheTTL)
+	svc.SetProviderLoadBatchCacheTTL(defaultProviderLoadBatchCacheTTL)
 	return svc
 }
 
@@ -307,16 +307,16 @@ func (s *ConcurrencyService) AcquireOpenAIWSIngressLease(ctx context.Context, ap
 	return lease, true, nil
 }
 
-// SetAccountLoadBatchCacheTTL 设置账号负载批量读取的极短 TTL 缓存；非正数表示禁用缓存。
-func (s *ConcurrencyService) SetAccountLoadBatchCacheTTL(ttl time.Duration) {
+// SetProviderLoadBatchCacheTTL 设置提供商负载批量读取的极短 TTL 缓存；非正数表示禁用缓存。
+func (s *ConcurrencyService) SetProviderLoadBatchCacheTTL(ttl time.Duration) {
 	if s == nil {
 		return
 	}
-	s.accountLoadCacheTTL.Store(int64(ttl))
+	s.providerLoadCacheTTL.Store(int64(ttl))
 	if ttl <= 0 {
-		s.accountLoadCacheMu.Lock()
-		s.accountLoadCache = make(map[string]cachedAccountLoadBatch)
-		s.accountLoadCacheMu.Unlock()
+		s.providerLoadCacheMu.Lock()
+		s.providerLoadCache = make(map[string]cachedProviderLoadBatch)
+		s.providerLoadCacheMu.Unlock()
 	}
 }
 
@@ -326,7 +326,7 @@ type AcquireResult struct {
 	ReleaseFunc func() // Must be called when done (typically via defer)
 }
 
-type AccountWithConcurrency struct {
+type ProviderWithConcurrency struct {
 	ID             int64
 	MaxConcurrency int
 }
@@ -336,8 +336,8 @@ type UserWithConcurrency struct {
 	MaxConcurrency int
 }
 
-type AccountLoadInfo struct {
-	AccountID          int64
+type ProviderLoadInfo struct {
+	ProviderID         int64
 	CurrentConcurrency int
 	WaitingCount       int
 	LoadRate           int // 0-100+ (percent)
@@ -350,10 +350,10 @@ type UserLoadInfo struct {
 	LoadRate           int // 0-100+ (percent)
 }
 
-// AcquireAccountSlot attempts to acquire a concurrency slot for an account.
-// If the account is at max concurrency, it waits until a slot is available or timeout.
+// AcquireProviderSlot attempts to acquire a concurrency slot for an provider.
+// If the provider is at max concurrency, it waits until a slot is available or timeout.
 // Returns a release function that MUST be called when the request completes.
-func (s *ConcurrencyService) acquireAccountSlot(ctx context.Context, accountID int64, maxConcurrency int) (*AcquireResult, error) {
+func (s *ConcurrencyService) acquireProviderSlot(ctx context.Context, providerID int64, maxConcurrency int) (*AcquireResult, error) {
 	// If maxConcurrency is 0 or negative, no limit
 	if maxConcurrency <= 0 {
 		return &AcquireResult{
@@ -365,7 +365,7 @@ func (s *ConcurrencyService) acquireAccountSlot(ctx context.Context, accountID i
 	// Generate unique request ID for this slot
 	requestID := GenerateRequestID()
 
-	acquired, err := s.cache.AcquireAccountSlot(ctx, accountID, maxConcurrency, requestID)
+	acquired, err := s.cache.AcquireProviderSlot(ctx, providerID, maxConcurrency, requestID)
 	if err != nil {
 		return nil, err
 	}
@@ -376,8 +376,8 @@ func (s *ConcurrencyService) acquireAccountSlot(ctx context.Context, accountID i
 			ReleaseFunc: func() {
 				bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 				defer cancel()
-				if err := s.cache.ReleaseAccountSlot(bgCtx, accountID, requestID); err != nil {
-					s.diagnostics.printf("service.concurrency", "Warning: failed to release account slot for %d (req=%s): %v", accountID, requestID, err)
+				if err := s.cache.ReleaseProviderSlot(bgCtx, providerID, requestID); err != nil {
+					s.diagnostics.printf("service.concurrency", "Warning: failed to release provider slot for %d (req=%s): %v", providerID, requestID, err)
 				}
 			},
 		}, nil
@@ -507,12 +507,12 @@ func zeroAPIKeyConcurrencyMap(apiKeyIDs []int64) map[int64]int {
 // Wait Queue Count Methods
 // ============================================
 
-// GetAccountWaitingCount gets current wait queue count for an account.
-func (s *ConcurrencyService) GetAccountWaitingCount(ctx context.Context, accountID int64) (int, error) {
+// GetProviderWaitingCount gets current wait queue count for an provider.
+func (s *ConcurrencyService) GetProviderWaitingCount(ctx context.Context, providerID int64) (int, error) {
 	if s.cache == nil {
 		return 0, nil
 	}
-	return s.cache.GetAccountWaitingCount(ctx, accountID)
+	return s.cache.GetProviderWaitingCount(ctx, providerID)
 }
 
 // CalculateMaxWait calculates the maximum wait queue size for a user
@@ -524,139 +524,139 @@ func CalculateMaxWait(userConcurrency int) int {
 	return userConcurrency + defaultExtraWaitSlots
 }
 
-// GetAccountsLoadBatch 批量获取账号负载信息。
-func (s *ConcurrencyService) GetAccountsLoadBatch(ctx context.Context, accounts []AccountWithConcurrency) (map[int64]*AccountLoadInfo, error) {
-	return s.getAccountsLoadBatch(ctx, accounts, true)
+// GetProvidersLoadBatch 批量获取提供商负载信息。
+func (s *ConcurrencyService) GetProvidersLoadBatch(ctx context.Context, providers []ProviderWithConcurrency) (map[int64]*ProviderLoadInfo, error) {
+	return s.getProvidersLoadBatch(ctx, providers, true)
 }
 
-// GetAccountsLoadBatchFresh 绕过极短 TTL 缓存，用于抢槽失败后的实时刷新兜底。
-func (s *ConcurrencyService) GetAccountsLoadBatchFresh(ctx context.Context, accounts []AccountWithConcurrency) (map[int64]*AccountLoadInfo, error) {
-	return s.getAccountsLoadBatch(ctx, accounts, false)
+// GetProvidersLoadBatchFresh 绕过极短 TTL 缓存，用于抢槽失败后的实时刷新兜底。
+func (s *ConcurrencyService) GetProvidersLoadBatchFresh(ctx context.Context, providers []ProviderWithConcurrency) (map[int64]*ProviderLoadInfo, error) {
+	return s.getProvidersLoadBatch(ctx, providers, false)
 }
 
-func (s *ConcurrencyService) getAccountsLoadBatch(ctx context.Context, accounts []AccountWithConcurrency, allowCache bool) (map[int64]*AccountLoadInfo, error) {
-	if len(accounts) == 0 {
-		return map[int64]*AccountLoadInfo{}, nil
+func (s *ConcurrencyService) getProvidersLoadBatch(ctx context.Context, providers []ProviderWithConcurrency, allowCache bool) (map[int64]*ProviderLoadInfo, error) {
+	if len(providers) == 0 {
+		return map[int64]*ProviderLoadInfo{}, nil
 	}
 	if s.cache == nil {
-		return map[int64]*AccountLoadInfo{}, nil
+		return map[int64]*ProviderLoadInfo{}, nil
 	}
 
-	ttl := time.Duration(s.accountLoadCacheTTL.Load())
+	ttl := time.Duration(s.providerLoadCacheTTL.Load())
 	if !allowCache || ttl <= 0 {
-		return s.fetchAccountsLoadBatch(ctx, accounts)
+		return s.fetchProvidersLoadBatch(ctx, providers)
 	}
 
-	key := accountLoadBatchCacheKey(accounts)
-	if cached, ok := s.getCachedAccountLoadBatch(key, time.Now()); ok {
+	key := providerLoadBatchCacheKey(providers)
+	if cached, ok := s.getCachedProviderLoadBatch(key, time.Now()); ok {
 		return cached, nil
 	}
 
-	value, err, _ := s.accountLoadGroup.Do(key, func() (any, error) {
+	value, err, _ := s.providerLoadGroup.Do(key, func() (any, error) {
 		now := time.Now()
-		if cached, ok := s.getCachedAccountLoadBatch(key, now); ok {
+		if cached, ok := s.getCachedProviderLoadBatch(key, now); ok {
 			return cached, nil
 		}
-		loadMap, fetchErr := s.fetchAccountsLoadBatch(ctx, accounts)
+		loadMap, fetchErr := s.fetchProvidersLoadBatch(ctx, providers)
 		if fetchErr != nil {
 			return nil, fetchErr
 		}
-		cached := cloneAccountLoadMap(loadMap)
-		s.storeCachedAccountLoadBatch(key, cached, now.Add(ttl))
+		cached := cloneProviderLoadMap(loadMap)
+		s.storeCachedProviderLoadBatch(key, cached, now.Add(ttl))
 		return cached, nil
 	})
 	if err != nil {
 		return nil, err
 	}
-	loadMap, _ := value.(map[int64]*AccountLoadInfo)
+	loadMap, _ := value.(map[int64]*ProviderLoadInfo)
 	if loadMap == nil {
-		return map[int64]*AccountLoadInfo{}, nil
+		return map[int64]*ProviderLoadInfo{}, nil
 	}
 	return loadMap, nil
 }
 
-func (s *ConcurrencyService) fetchAccountsLoadBatch(ctx context.Context, accounts []AccountWithConcurrency) (map[int64]*AccountLoadInfo, error) {
+func (s *ConcurrencyService) fetchProvidersLoadBatch(ctx context.Context, providers []ProviderWithConcurrency) (map[int64]*ProviderLoadInfo, error) {
 	if s.cache == nil {
-		return map[int64]*AccountLoadInfo{}, nil
+		return map[int64]*ProviderLoadInfo{}, nil
 	}
-	operation, done, err := s.runtime.Enter(context.WithoutCancel(nonNilContext(ctx)), "fetchAccountsLoadBatch")
+	operation, done, err := s.runtime.Enter(context.WithoutCancel(nonNilContext(ctx)), "fetchProvidersLoadBatch")
 	if err != nil {
 		return nil, err
 	}
 	defer done()
-	redisCtx, cancel := context.WithTimeout(operation, accountLoadBatchFetchTimeout)
+	redisCtx, cancel := context.WithTimeout(operation, providerLoadBatchFetchTimeout)
 	defer cancel()
-	return s.cache.GetAccountsLoadBatch(redisCtx, accounts)
+	return s.cache.GetProvidersLoadBatch(redisCtx, providers)
 }
 
-func (s *ConcurrencyService) getCachedAccountLoadBatch(key string, now time.Time) (map[int64]*AccountLoadInfo, bool) {
-	s.accountLoadCacheMu.RLock()
-	cached, ok := s.accountLoadCache[key]
-	s.accountLoadCacheMu.RUnlock()
+func (s *ConcurrencyService) getCachedProviderLoadBatch(key string, now time.Time) (map[int64]*ProviderLoadInfo, bool) {
+	s.providerLoadCacheMu.RLock()
+	cached, ok := s.providerLoadCache[key]
+	s.providerLoadCacheMu.RUnlock()
 	if !ok {
 		return nil, false
 	}
 	if !now.Before(cached.expiresAt) {
-		s.accountLoadCacheMu.Lock()
-		if current, exists := s.accountLoadCache[key]; exists && !now.Before(current.expiresAt) {
-			delete(s.accountLoadCache, key)
+		s.providerLoadCacheMu.Lock()
+		if current, exists := s.providerLoadCache[key]; exists && !now.Before(current.expiresAt) {
+			delete(s.providerLoadCache, key)
 		}
-		s.accountLoadCacheMu.Unlock()
+		s.providerLoadCacheMu.Unlock()
 		return nil, false
 	}
 	return cached.loadMap, true
 }
 
-func (s *ConcurrencyService) storeCachedAccountLoadBatch(key string, loadMap map[int64]*AccountLoadInfo, expiresAt time.Time) {
-	s.accountLoadCacheMu.Lock()
-	if s.accountLoadCache == nil {
-		s.accountLoadCache = make(map[string]cachedAccountLoadBatch)
+func (s *ConcurrencyService) storeCachedProviderLoadBatch(key string, loadMap map[int64]*ProviderLoadInfo, expiresAt time.Time) {
+	s.providerLoadCacheMu.Lock()
+	if s.providerLoadCache == nil {
+		s.providerLoadCache = make(map[string]cachedProviderLoadBatch)
 	}
-	if len(s.accountLoadCache) >= maxAccountLoadBatchCacheEntries {
+	if len(s.providerLoadCache) >= maxProviderLoadBatchCacheEntries {
 		now := time.Now()
-		for cacheKey, cached := range s.accountLoadCache {
+		for cacheKey, cached := range s.providerLoadCache {
 			if !now.Before(cached.expiresAt) {
-				delete(s.accountLoadCache, cacheKey)
+				delete(s.providerLoadCache, cacheKey)
 			}
 		}
-		for len(s.accountLoadCache) >= maxAccountLoadBatchCacheEntries {
-			for cacheKey := range s.accountLoadCache {
-				delete(s.accountLoadCache, cacheKey)
+		for len(s.providerLoadCache) >= maxProviderLoadBatchCacheEntries {
+			for cacheKey := range s.providerLoadCache {
+				delete(s.providerLoadCache, cacheKey)
 				break
 			}
 		}
 	}
-	s.accountLoadCache[key] = cachedAccountLoadBatch{
+	s.providerLoadCache[key] = cachedProviderLoadBatch{
 		loadMap:   loadMap,
 		expiresAt: expiresAt,
 	}
-	s.accountLoadCacheMu.Unlock()
+	s.providerLoadCacheMu.Unlock()
 }
 
-func accountLoadBatchCacheKey(accounts []AccountWithConcurrency) string {
+func providerLoadBatchCacheKey(providers []ProviderWithConcurrency) string {
 	hash := sha256.New()
 	var buf [16]byte
-	for _, account := range accounts {
-		binary.LittleEndian.PutUint64(buf[:8], uint64(account.ID))
-		binary.LittleEndian.PutUint64(buf[8:], uint64(int64(account.MaxConcurrency)))
+	for _, provider := range providers {
+		binary.LittleEndian.PutUint64(buf[:8], uint64(provider.ID))
+		binary.LittleEndian.PutUint64(buf[8:], uint64(int64(provider.MaxConcurrency)))
 		_, _ = hash.Write(buf[:])
 	}
 	sum := hash.Sum(nil)
-	return strconv.Itoa(len(accounts)) + ":" + hex.EncodeToString(sum)
+	return strconv.Itoa(len(providers)) + ":" + hex.EncodeToString(sum)
 }
 
-func cloneAccountLoadMap(loadMap map[int64]*AccountLoadInfo) map[int64]*AccountLoadInfo {
+func cloneProviderLoadMap(loadMap map[int64]*ProviderLoadInfo) map[int64]*ProviderLoadInfo {
 	if len(loadMap) == 0 {
-		return map[int64]*AccountLoadInfo{}
+		return map[int64]*ProviderLoadInfo{}
 	}
-	clone := make(map[int64]*AccountLoadInfo, len(loadMap))
-	for accountID, loadInfo := range loadMap {
+	clone := make(map[int64]*ProviderLoadInfo, len(loadMap))
+	for providerID, loadInfo := range loadMap {
 		if loadInfo == nil {
-			clone[accountID] = nil
+			clone[providerID] = nil
 			continue
 		}
 		copied := *loadInfo
-		clone[accountID] = &copied
+		clone[providerID] = &copied
 	}
 	return clone
 }
@@ -669,12 +669,12 @@ func (s *ConcurrencyService) GetUsersLoadBatch(ctx context.Context, users []User
 	return s.cache.GetUsersLoadBatch(ctx, users)
 }
 
-// CleanupExpiredAccountSlots removes expired slots for one account (background task).
-func (s *ConcurrencyService) CleanupExpiredAccountSlots(ctx context.Context, accountID int64) error {
+// CleanupExpiredProviderSlots removes expired slots for one provider (background task).
+func (s *ConcurrencyService) CleanupExpiredProviderSlots(ctx context.Context, providerID int64) error {
 	if s.cache == nil {
 		return nil
 	}
-	return s.cache.CleanupExpiredAccountSlots(ctx, accountID)
+	return s.cache.CleanupExpiredProviderSlots(ctx, providerID)
 }
 
 // StartSlotCleanupWorker 保持立即首轮和原周期，实际清理受运行取消约束。
@@ -685,8 +685,8 @@ func (s *ConcurrencyService) StartSlotCleanupWorker(interval time.Duration) {
 	s.runtime.Start(RuntimeTask{Name: "slot-cleanup", Interval: interval, Immediate: true, Run: func(ctx context.Context) {
 		cleanup, cancel := context.WithTimeout(ctx, 5*time.Second)
 		defer cancel()
-		if err := s.cache.CleanupExpiredAccountSlotKeys(cleanup); err != nil {
-			s.diagnostics.printf("service.concurrency", "Warning: cleanup expired account slots failed: %v", err)
+		if err := s.cache.CleanupExpiredProviderSlotKeys(cleanup); err != nil {
+			s.diagnostics.printf("service.concurrency", "Warning: cleanup expired provider slots failed: %v", err)
 		}
 	}})
 }
@@ -697,6 +697,7 @@ func (s *ConcurrencyService) Stop() {
 	defer cancel()
 	_ = s.StopContext(ctx)
 }
+
 func (s *ConcurrencyService) StopContext(ctx context.Context) error {
 	if s == nil {
 		return nil
@@ -704,24 +705,24 @@ func (s *ConcurrencyService) StopContext(ctx context.Context) error {
 	return s.runtime.StopContext(ctx)
 }
 
-// GetAccountConcurrencyBatch gets current concurrency counts for multiple accounts.
+// GetProviderConcurrencyBatch gets current concurrency counts for multiple providers.
 // Uses a detached context with timeout to prevent HTTP request cancellation from
 // causing the entire batch to fail (which would show all concurrency as 0).
-func (s *ConcurrencyService) GetAccountConcurrencyBatch(ctx context.Context, accountIDs []int64) (map[int64]int, error) {
-	if len(accountIDs) == 0 {
+func (s *ConcurrencyService) GetProviderConcurrencyBatch(ctx context.Context, providerIDs []int64) (map[int64]int, error) {
+	if len(providerIDs) == 0 {
 		return map[int64]int{}, nil
 	}
 	if s.cache == nil {
-		result := make(map[int64]int, len(accountIDs))
-		for _, accountID := range accountIDs {
-			result[accountID] = 0
+		result := make(map[int64]int, len(providerIDs))
+		for _, providerID := range providerIDs {
+			result[providerID] = 0
 		}
 		return result, nil
 	}
 
 	// Use a detached context so that a cancelled HTTP request doesn't cause
 	// the Redis pipeline to fail and return all-zero concurrency counts.
-	operation, done, err := s.runtime.Enter(context.Background(), "GetAccountConcurrencyBatch")
+	operation, done, err := s.runtime.Enter(context.Background(), "GetProviderConcurrencyBatch")
 	if err != nil {
 		return nil, err
 	}
@@ -729,10 +730,10 @@ func (s *ConcurrencyService) GetAccountConcurrencyBatch(ctx context.Context, acc
 	redisCtx, cancel := context.WithTimeout(operation, 3*time.Second)
 	defer cancel()
 
-	return s.cache.GetAccountConcurrencyBatch(redisCtx, accountIDs)
+	return s.cache.GetProviderConcurrencyBatch(redisCtx, providerIDs)
 }
 
-// EnterUserWait 与 EnterAccountWait 将等待计数的释放责任交给 scheduler。
+// EnterUserWait 与 EnterProviderWait 将等待计数的释放责任交给 scheduler。
 func (s *ConcurrencyService) EnterUserWait(ctx context.Context, id int64, limit int) (WaitResult, error) {
 	operation, done, err := s.runtime.Enter(ctx, "EnterUserWait")
 	if err != nil {
@@ -751,12 +752,13 @@ func (s *ConcurrencyService) EnterUserWait(ctx context.Context, id int64, limit 
 	result.resource = NewLease(context.Background(), ReleaseOnCompletion, done, release)
 	return result, nil
 }
-func (s *ConcurrencyService) EnterAccountWait(ctx context.Context, id int64, limit int) (WaitResult, error) {
-	operation, done, err := s.runtime.Enter(ctx, "EnterAccountWait")
+
+func (s *ConcurrencyService) EnterProviderWait(ctx context.Context, id int64, limit int) (WaitResult, error) {
+	operation, done, err := s.runtime.Enter(ctx, "EnterProviderWait")
 	if err != nil {
 		return WaitResult{}, err
 	}
-	result, err := EnterAccountWait(operation, s.cache, id, limit, s.diagnostics)
+	result, err := EnterProviderWait(operation, s.cache, id, limit, s.diagnostics)
 	if err != nil || !result.Allowed {
 		done()
 		return result, err
@@ -779,13 +781,13 @@ func (s *ConcurrencyService) LiveLeases() LiveConcurrencyCache {
 	return cache
 }
 
-// AcquireAccountSlot 在 I/O 前登记，返回时将停止等待责任转交给实际槽位租约。
-func (s *ConcurrencyService) AcquireAccountSlot(ctx context.Context, accountID int64, limit int) (*AcquireResult, error) {
-	operation, done, err := s.runtime.Enter(ctx, fmt.Sprintf("account-slot:%d", accountID))
+// AcquireProviderSlot 在 I/O 前登记，返回时将停止等待责任转交给实际槽位租约。
+func (s *ConcurrencyService) AcquireProviderSlot(ctx context.Context, providerID int64, limit int) (*AcquireResult, error) {
+	operation, done, err := s.runtime.Enter(ctx, fmt.Sprintf("provider-slot:%d", providerID))
 	if err != nil {
 		return nil, err
 	}
-	result, err := s.acquireAccountSlot(operation, accountID, limit)
+	result, err := s.acquireProviderSlot(operation, providerID, limit)
 	if err != nil || result == nil || !result.Acquired {
 		done()
 		return result, err
@@ -834,6 +836,7 @@ func (s *ConcurrencyService) TrackAPIKeySlot(ctx context.Context, id int64) func
 	release := s.trackAPIKeySlot(operation, id)
 	return NewLease(context.Background(), ReleaseOnCompletion, done, release).Release
 }
+
 func nonNilContext(ctx context.Context) context.Context {
 	if ctx == nil {
 		return context.Background()

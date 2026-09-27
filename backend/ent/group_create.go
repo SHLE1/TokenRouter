@@ -12,10 +12,10 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/TokenFlux/TokenRouter/ent/account"
 	"github.com/TokenFlux/TokenRouter/ent/apikey"
 	"github.com/TokenFlux/TokenRouter/ent/apikeycompositegroup"
 	"github.com/TokenFlux/TokenRouter/ent/group"
+	"github.com/TokenFlux/TokenRouter/ent/provider"
 	"github.com/TokenFlux/TokenRouter/ent/usagelog"
 	"github.com/TokenFlux/TokenRouter/ent/user"
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
@@ -594,19 +594,19 @@ func (_c *GroupCreate) AddUsageLogs(v ...*UsageLog) *GroupCreate {
 	return _c.AddUsageLogIDs(ids...)
 }
 
-// AddAccountIDs adds the "accounts" edge to the Account entity by IDs.
-func (_c *GroupCreate) AddAccountIDs(ids ...int64) *GroupCreate {
-	_c.mutation.AddAccountIDs(ids...)
+// AddProviderIDs adds the "providers" edge to the Provider entity by IDs.
+func (_c *GroupCreate) AddProviderIDs(ids ...int64) *GroupCreate {
+	_c.mutation.AddProviderIDs(ids...)
 	return _c
 }
 
-// AddAccounts adds the "accounts" edges to the Account entity.
-func (_c *GroupCreate) AddAccounts(v ...*Account) *GroupCreate {
+// AddProviders adds the "providers" edges to the Provider entity.
+func (_c *GroupCreate) AddProviders(v ...*Provider) *GroupCreate {
 	ids := make([]int64, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
 	}
-	return _c.AddAccountIDs(ids...)
+	return _c.AddProviderIDs(ids...)
 }
 
 // AddAllowedUserIDs adds the "allowed_users" edge to the User entity by IDs.
@@ -1193,21 +1193,21 @@ func (_c *GroupCreate) createSpec() (*Group, *sqlgraph.CreateSpec) {
 		}
 		_spec.Edges = append(_spec.Edges, edge)
 	}
-	if nodes := _c.mutation.AccountsIDs(); len(nodes) > 0 {
+	if nodes := _c.mutation.ProvidersIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
 			Inverse: true,
-			Table:   group.AccountsTable,
-			Columns: group.AccountsPrimaryKey,
+			Table:   group.ProvidersTable,
+			Columns: group.ProvidersPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(account.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(provider.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		createE := &AccountGroupCreate{config: _c.config, mutation: newAccountGroupMutation(_c.config, OpCreate)}
+		createE := &ProviderGroupCreate{config: _c.config, mutation: newProviderGroupMutation(_c.config, OpCreate)}
 		createE.defaults()
 		_, specE := createE.createSpec()
 		edge.Target.Fields = specE.Fields

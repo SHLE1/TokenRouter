@@ -44,14 +44,14 @@ const DefaultCSPPolicy = httpconfig.DefaultCSPPolicy
 // 用于控制上游 HTTP 连接池的隔离粒度，影响连接复用和资源消耗
 const (
 	// ConnectionPoolIsolationProxy: 按代理隔离
-	// 同一代理地址共享连接池，适合代理数量少、账户数量多的场景
+	// 同一代理地址共享连接池，适合代理数量少、提供商数量多的场景
 	ConnectionPoolIsolationProxy = "proxy"
-	// ConnectionPoolIsolationAccount: 按账户隔离
-	// 每个账户独立连接池，适合账户数量少、需要严格隔离的场景
-	ConnectionPoolIsolationAccount = "account"
-	// ConnectionPoolIsolationAccountProxy: 按账户+代理组合隔离（默认）
-	// 同一账户+代理组合共享连接池，提供最细粒度的隔离
-	ConnectionPoolIsolationAccountProxy = "account_proxy"
+	// ConnectionPoolIsolationProvider: 按提供商隔离
+	// 每个提供商独立连接池，适合提供商数量少、需要严格隔离的场景
+	ConnectionPoolIsolationProvider = "provider"
+	// ConnectionPoolIsolationProviderProxy: 按提供商+代理组合隔离（默认）
+	// 同一提供商+代理组合共享连接池，提供最细粒度的隔离
+	ConnectionPoolIsolationProviderProxy = "provider_proxy"
 )
 
 // DefaultUpstreamResponseReadMaxBytes 上游非流式响应体的默认读取上限。
@@ -519,7 +519,7 @@ type TokenRefreshConfig struct {
 	MaxRetries int `mapstructure:"max_retries"`
 	// 重试退避基础时间（秒）
 	RetryBackoffSeconds int `mapstructure:"retry_backoff_seconds"`
-	// 每次从数据库读取的候选账号上限
+	// 每次从数据库读取的候选提供商上限
 	CandidatePageSize int `mapstructure:"candidate_page_size"`
 	// 每个平台允许的并发刷新数
 	ProviderConcurrency int `mapstructure:"provider_concurrency"`
@@ -698,10 +698,10 @@ type CSPConfig = httpconfig.CSPConfig
 
 type ProxyFallbackConfig struct {
 	// AllowDirectOnError 当辅助服务的代理初始化失败时是否允许回退直连。
-	// 仅影响以下非 AI 账号连接的辅助服务：
+	// 仅影响以下非 AI 提供商连接的辅助服务：
 	//   - GitHub Release 更新检查
 	//   - 定价数据拉取
-	// 不影响 AI 账号网关连接（Claude/OpenAI/Gemini/Antigravity），
+	// 不影响 AI 提供商网关连接（Claude/OpenAI/Gemini/Antigravity），
 	// 这些关键路径的代理失败始终返回错误，不会回退直连。
 	// 默认 false：避免因代理配置错误导致服务器真实 IP 泄露。
 	AllowDirectOnError bool `mapstructure:"allow_direct_on_error"`
@@ -817,7 +817,7 @@ type GatewayConfig struct {
 	ProxyProbeResponseReadMaxBytes int64 `mapstructure:"proxy_probe_response_read_max_bytes"`
 	// Gemini 上游响应头调试日志开关（默认关闭，避免高频日志开销）
 	GeminiDebugResponseHeaders bool `mapstructure:"gemini_debug_response_headers"`
-	// ConnectionPoolIsolation: 上游连接池隔离策略（proxy/account/account_proxy）
+	// ConnectionPoolIsolation: 上游连接池隔离策略（proxy/provider/provider_proxy）
 	ConnectionPoolIsolation string `mapstructure:"connection_pool_isolation"`
 	// ForceCodexCLI: 强制将 OpenAI `/v1/responses` 请求按 Codex CLI 处理。
 	// 用于网关未透传/改写 User-Agent 时的兼容兜底（默认关闭，避免影响其他客户端）。
@@ -831,7 +831,7 @@ type GatewayConfig struct {
 	// ForcedCodexInstructionsTemplate: 启动时从模板文件读取并缓存的模板内容。
 	// 该字段不直接参与配置反序列化，仅用于请求热路径避免重复读盘。
 	ForcedCodexInstructionsTemplate string `mapstructure:"-"`
-	// OpenAICompactModel 是显式 compact 请求在账号映射未命中时使用的全局回退模型。
+	// OpenAICompactModel 是显式 compact 请求在提供商映射未命中时使用的全局回退模型。
 	OpenAICompactModel string `mapstructure:"openai_compact_model"`
 	// OpenAIPassthroughAllowTimeoutHeaders: OpenAI 透传模式是否放行客户端超时头
 	// 关闭（默认）可避免 x-stainless-timeout 等头导致上游提前断流。
@@ -859,9 +859,9 @@ type GatewayConfig struct {
 	// IdleConnTimeoutSeconds: 空闲连接超时时间（秒）
 	IdleConnTimeoutSeconds int `mapstructure:"idle_conn_timeout_seconds"`
 	// MaxUpstreamClients: 上游连接池客户端最大缓存数量
-	// 当使用连接池隔离策略时，系统会为不同的账户/代理组合创建独立的 HTTP 客户端
+	// 当使用连接池隔离策略时，系统会为不同的提供商/代理组合创建独立的 HTTP 客户端
 	// 此参数限制缓存的客户端数量，超出后会淘汰最久未使用的客户端
-	// 建议值：预估的活跃账户数 * 1.2（留有余量）
+	// 建议值：预估的活跃提供商数 * 1.2（留有余量）
 	MaxUpstreamClients int `mapstructure:"max_upstream_clients"`
 	// ClientIdleTTLSeconds: 上游连接池客户端空闲回收阈值（秒）
 	// 超过此时间未使用的客户端会被标记为可回收
@@ -871,7 +871,7 @@ type GatewayConfig struct {
 	// 应大于最长 LLM 请求时间，防止请求完成前槽位过期
 	ConcurrencySlotTTLMinutes int `mapstructure:"concurrency_slot_ttl_minutes"`
 	// SessionIdleTimeoutMinutes: 会话空闲超时时间（分钟），默认 5 分钟
-	// 用于 Anthropic OAuth/SetupToken 账号的会话数量限制功能
+	// 用于 Anthropic OAuth/SetupToken 提供商的会话数量限制功能
 	// 空闲超过此时间的会话将被自动释放
 	SessionIdleTimeoutMinutes int `mapstructure:"session_idle_timeout_minutes"`
 
@@ -893,21 +893,21 @@ type GatewayConfig struct {
 	// 上游错误响应体记录最大字节数（超过会截断）
 	LogUpstreamErrorBodyMaxBytes int `mapstructure:"log_upstream_error_body_max_bytes"`
 
-	// API-key 账号在客户端未提供 anthropic-beta 时，是否按需自动补齐（默认关闭以保持兼容）
+	// API-key 提供商在客户端未提供 anthropic-beta 时，是否按需自动补齐（默认关闭以保持兼容）
 	InjectBetaForAPIKey bool `mapstructure:"inject_beta_for_apikey"`
 
 	// 是否允许对部分 400 错误触发 failover（默认关闭以避免改变语义）
 	FailoverOn400 bool `mapstructure:"failover_on_400"`
 
-	// 账户切换最大次数（遇到上游错误时切换到其他账户的次数上限）
-	MaxAccountSwitches int `mapstructure:"max_account_switches"`
-	// Gemini 账户切换最大次数（Gemini 平台单独配置，因 API 限制更严格）
-	MaxAccountSwitchesGemini int `mapstructure:"max_account_switches_gemini"`
+	// 提供商切换最大次数（遇到上游错误时切换到其他提供商的次数上限）
+	MaxProviderSwitches int `mapstructure:"max_provider_switches"`
+	// Gemini 提供商切换最大次数（Gemini 平台单独配置，因 API 限制更严格）
+	MaxProviderSwitchesGemini int `mapstructure:"max_provider_switches_gemini"`
 
 	// Antigravity 429 fallback 限流时间（分钟），解析重置时间失败时使用
 	AntigravityFallbackCooldownMinutes int `mapstructure:"antigravity_fallback_cooldown_minutes"`
 
-	// Scheduling: 账号调度相关配置
+	// Scheduling: 提供商调度相关配置
 	Scheduling GatewaySchedulingConfig `mapstructure:"scheduling"`
 
 	// TLSFingerprint: TLS指纹伪装配置
@@ -922,7 +922,7 @@ type GatewayConfig struct {
 	ModelsListCacheTTLSeconds int `mapstructure:"models_list_cache_ttl_seconds"`
 
 	// UserMessageQueue: 用户消息串行队列配置
-	// 对 role:"user" 的真实用户消息实施账号级串行化 + RPM 自适应延迟
+	// 对 role:"user" 的真实用户消息实施提供商级串行化 + RPM 自适应延迟
 	UserMessageQueue UserMessageQueueConfig `mapstructure:"user_message_queue"`
 
 	// Grok 保存 Grok/xAI 网关调度与免费层软门禁配置。
@@ -935,7 +935,7 @@ type GatewayConfig struct {
 // GatewayGrokConfig 保存 Grok 专用的网关调度参数。
 //
 // 免费额度软门禁键位均位于 gateway.grok：
-//   - free_quota_soft_gate_enabled：为明确标记为 free 的 OAuth 账号启用本地滚动窗口调度门禁；
+//   - free_quota_soft_gate_enabled：为明确标记为 free 的 OAuth 提供商启用本地滚动窗口调度门禁；
 //   - free_quota_token_limit：滚动窗口名义 token 额度；
 //   - free_quota_soft_gate_percent：达到名义额度前停止新调度的百分比，范围 1-100；
 //   - free_quota_window_hours：本地用量滚动窗口小时数；
@@ -945,7 +945,7 @@ type GatewayGrokConfig struct {
 	// PasswordAuthEnabled 控制可选的密码转 SSO OAuth 流程，默认关闭，必须由运维显式启用。
 	// 启用后 POST /admin/grok/oauth/password 才执行实际授权。
 	PasswordAuthEnabled bool `mapstructure:"password_auth_enabled"`
-	// FreeQuotaSoftGateEnabled 仅为明确标记为 free 的 Grok OAuth 账号启用本地滚动窗口门禁。
+	// FreeQuotaSoftGateEnabled 仅为明确标记为 free 的 Grok OAuth 提供商启用本地滚动窗口门禁。
 	FreeQuotaSoftGateEnabled bool `mapstructure:"free_quota_soft_gate_enabled"`
 	// FreeQuotaTokenLimit 是滚动窗口的名义 token 额度。
 	FreeQuotaTokenLimit int64 `mapstructure:"free_quota_token_limit"`
@@ -959,7 +959,7 @@ type GatewayGrokConfig struct {
 }
 
 // GatewayCNProvidersConfig 配置国产供应商的周期性余额/额度探测。
-// 该任务默认关闭；开启后只处理活动的 API Key 账号，不改变管理员手动查询语义。
+// 该任务默认关闭；开启后只处理活动的 API Key 提供商，不改变管理员手动查询语义。
 type GatewayCNProvidersConfig struct {
 	// MonitorEnabled 显式开启后才运行后台周期探测；手动查询不受此开关影响。
 	MonitorEnabled      bool    `mapstructure:"monitor_enabled"`
@@ -1004,10 +1004,10 @@ type GatewayOpenAIProxyStreamCircuitConfig struct {
 }
 
 // UserMessageQueueConfig 用户消息串行队列配置
-// 用于 Anthropic OAuth/SetupToken 账号的用户消息串行化发送
+// 用于 Anthropic OAuth/SetupToken 提供商的用户消息串行化发送
 type UserMessageQueueConfig struct {
 	// Mode: 模式选择
-	// "serialize" = 账号级串行锁 + RPM 自适应延迟
+	// "serialize" = 提供商级串行锁 + RPM 自适应延迟
 	// "throttle" = 仅 RPM 自适应前置延迟，不阻塞并发
 	// "" = 禁用（默认）
 	Mode string `mapstructure:"mode"`
@@ -1064,9 +1064,9 @@ type GatewayOpenAIWSConfig struct {
 	MaxIngressConnectionsPerAPIKey int `mapstructure:"max_ingress_connections_per_api_key"`
 	// Enabled: 全局总开关（默认 true）
 	Enabled bool `mapstructure:"enabled"`
-	// OAuthEnabled: 是否允许 OpenAI OAuth 账号使用 WS
+	// OAuthEnabled: 是否允许 OpenAI OAuth 提供商使用 WS
 	OAuthEnabled bool `mapstructure:"oauth_enabled"`
-	// APIKeyEnabled: 是否允许 OpenAI API Key 账号使用 WS
+	// APIKeyEnabled: 是否允许 OpenAI API Key 提供商使用 WS
 	APIKeyEnabled bool `mapstructure:"apikey_enabled"`
 	// ForceHTTP: 全局强制 HTTP（用于紧急回滚）
 	ForceHTTP bool `mapstructure:"force_http"`
@@ -1096,14 +1096,14 @@ type GatewayOpenAIWSConfig struct {
 	ResponsesWebsocketsV2 bool `mapstructure:"responses_websockets_v2"`
 
 	// 连接池参数
-	MaxConnsPerAccount int `mapstructure:"max_conns_per_account"`
-	MinIdlePerAccount  int `mapstructure:"min_idle_per_account"`
-	MaxIdlePerAccount  int `mapstructure:"max_idle_per_account"`
-	// DynamicMaxConnsByAccountConcurrencyEnabled: 是否按账号并发动态计算连接池上限
-	DynamicMaxConnsByAccountConcurrencyEnabled bool `mapstructure:"dynamic_max_conns_by_account_concurrency_enabled"`
-	// OAuthMaxConnsFactor: OAuth 账号连接池系数（effective=ceil(concurrency*factor)）
+	MaxConnsPerProvider int `mapstructure:"max_conns_per_provider"`
+	MinIdlePerProvider  int `mapstructure:"min_idle_per_provider"`
+	MaxIdlePerProvider  int `mapstructure:"max_idle_per_provider"`
+	// DynamicMaxConnsByProviderConcurrencyEnabled: 是否按提供商并发动态计算连接池上限
+	DynamicMaxConnsByProviderConcurrencyEnabled bool `mapstructure:"dynamic_max_conns_by_provider_concurrency_enabled"`
+	// OAuthMaxConnsFactor: OAuth 提供商连接池系数（effective=ceil(concurrency*factor)）
 	OAuthMaxConnsFactor float64 `mapstructure:"oauth_max_conns_factor"`
-	// APIKeyMaxConnsFactor: API Key 账号连接池系数（effective=ceil(concurrency*factor)）
+	// APIKeyMaxConnsFactor: API Key 提供商连接池系数（effective=ceil(concurrency*factor)）
 	APIKeyMaxConnsFactor  float64 `mapstructure:"apikey_max_conns_factor"`
 	DialTimeoutSeconds    int     `mapstructure:"dial_timeout_seconds"`
 	ReadTimeoutSeconds    int     `mapstructure:"read_timeout_seconds"`
@@ -1129,8 +1129,8 @@ type GatewayOpenAIWSConfig struct {
 	// PayloadLogSampleRate: payload_schema 日志采样率（0-1）
 	PayloadLogSampleRate float64 `mapstructure:"payload_log_sample_rate"`
 
-	// 账号调度与粘连参数
-	// StickySessionTTLSeconds: session_hash -> account_id 粘连 TTL
+	// 提供商调度与粘连参数
+	// StickySessionTTLSeconds: session_hash -> provider_id 粘连 TTL
 	StickySessionTTLSeconds int `mapstructure:"sticky_session_ttl_seconds"`
 	// SessionHashReadOldFallback: 会话哈希迁移期是否允许“新 key 未命中时回退读旧 SHA-256 key”
 	SessionHashReadOldFallback bool `mapstructure:"session_hash_read_old_fallback"`
@@ -1138,13 +1138,13 @@ type GatewayOpenAIWSConfig struct {
 	SessionHashDualWriteOld bool `mapstructure:"session_hash_dual_write_old"`
 	// MetadataBridgeEnabled 保留旧配置的读取兼容；执行参数已统一为原生快照，不再双写旧 key。
 	MetadataBridgeEnabled bool `mapstructure:"metadata_bridge_enabled"`
-	// StickyResponseIDTTLSeconds: response_id -> account_id 粘连 TTL
+	// StickyResponseIDTTLSeconds: response_id -> provider_id 粘连 TTL
 	StickyResponseIDTTLSeconds int `mapstructure:"sticky_response_id_ttl_seconds"`
 	// StickyPreviousResponseTTLSeconds: 兼容旧键（当新键未设置时回退）
 	StickyPreviousResponseTTLSeconds int `mapstructure:"sticky_previous_response_ttl_seconds"`
 }
 
-// GatewayAdvancedSchedulerScoreWeights 高级调度器账号打分权重。
+// GatewayAdvancedSchedulerScoreWeights 高级调度器提供商打分权重。
 type GatewayAdvancedSchedulerScoreWeights = schedulerpolicy.ConfigScoreWeights
 
 // GatewayAdvancedSchedulerConfig 跨平台高级调度器配置。
@@ -1157,7 +1157,7 @@ type GatewayAdvancedSchedulerConfig struct {
 	EWMAErrorRateAlpha float64 `mapstructure:"ewma_error_rate_alpha"`
 	// EWMATTFTAlpha 是首 token 延迟反馈的 EWMA 平滑系数，取值越大越重视最新样本。
 	EWMATTFTAlpha float64 `mapstructure:"ewma_ttft_alpha"`
-	// StickyEscapeEnabled: 是否允许 session_hash sticky 在账号健康度劣化时临时逃逸
+	// StickyEscapeEnabled: 是否允许 session_hash sticky 在提供商健康度劣化时临时逃逸
 	StickyEscapeEnabled bool `mapstructure:"sticky_escape_enabled"`
 	// StickyEscapeTTFTMs: TTFT EWMA 超过该阈值时跳过 sticky
 	StickyEscapeTTFTMs int `mapstructure:"sticky_escape_ttft_ms"`
@@ -1238,7 +1238,7 @@ type TLSProfileConfig struct {
 	Extensions []uint16 `mapstructure:"extensions"`
 }
 
-// GatewaySchedulingConfig accounts scheduling configuration.
+// GatewaySchedulingConfig providers scheduling configuration.
 type GatewaySchedulingConfig struct {
 	// 粘性会话排队配置
 	StickySessionMaxWaiting  int           `mapstructure:"sticky_session_max_waiting"`
@@ -1248,11 +1248,11 @@ type GatewaySchedulingConfig struct {
 	FallbackWaitTimeout time.Duration `mapstructure:"fallback_wait_timeout"`
 	FallbackMaxWaiting  int           `mapstructure:"fallback_max_waiting"`
 
-	// 兜底层账户选择策略: "last_used"(按最后使用时间排序，默认) 或 "random"(随机)
+	// 兜底层提供商选择策略: "last_used"(按最后使用时间排序，默认) 或 "random"(随机)
 	FallbackSelectionMode string `mapstructure:"fallback_selection_mode"`
 
-	// PreferSoonestReset 开启后，负载感知选择会优先选用「会话窗口最早重置」的账号
-	// 先用尽即将重置的账号，保留重置时间还很久的账号。
+	// PreferSoonestReset 开启后，负载感知选择会优先选用「会话窗口最早重置」的提供商
+	// 先用尽即将重置的提供商，保留重置时间还很久的提供商。
 	// 默认 false，保持原有「优先级 → 负载率 → LRU」行为不变。
 	PreferSoonestReset bool `mapstructure:"prefer_soonest_reset"`
 
@@ -1591,6 +1591,9 @@ func load(allowMissingJWTSecret bool) (*Config, error) {
 			return nil, fmt.Errorf("read config error: %w", err)
 		}
 		// 配置文件不存在时使用默认值
+	}
+	if err := rejectLegacyProviderConfig(); err != nil {
+		return nil, err
 	}
 	if err := rejectLegacyAdvancedSchedulerConfig(); err != nil {
 		return nil, err
@@ -2187,8 +2190,8 @@ func setDefaults() {
 	viper.SetDefault("gateway.log_upstream_error_body_max_bytes", 2048)
 	viper.SetDefault("gateway.inject_beta_for_apikey", false)
 	viper.SetDefault("gateway.failover_on_400", false)
-	viper.SetDefault("gateway.max_account_switches", 10)
-	viper.SetDefault("gateway.max_account_switches_gemini", 3)
+	viper.SetDefault("gateway.max_provider_switches", 10)
+	viper.SetDefault("gateway.max_provider_switches_gemini", 3)
 	viper.SetDefault("gateway.force_codex_cli", false)
 	viper.SetDefault("gateway.codex_image_generation_bridge_enabled", false)
 	viper.SetDefault("gateway.openai_passthrough_allow_timeout_headers", false)
@@ -2213,10 +2216,10 @@ func setDefaults() {
 	viper.SetDefault("gateway.openai_ws.http_bridge_threshold_bytes", 15*1024*1024)
 	viper.SetDefault("gateway.openai_ws.responses_websockets", false)
 	viper.SetDefault("gateway.openai_ws.responses_websockets_v2", true)
-	viper.SetDefault("gateway.openai_ws.max_conns_per_account", 128)
-	viper.SetDefault("gateway.openai_ws.min_idle_per_account", 4)
-	viper.SetDefault("gateway.openai_ws.max_idle_per_account", 12)
-	viper.SetDefault("gateway.openai_ws.dynamic_max_conns_by_account_concurrency_enabled", true)
+	viper.SetDefault("gateway.openai_ws.max_conns_per_provider", 128)
+	viper.SetDefault("gateway.openai_ws.min_idle_per_provider", 4)
+	viper.SetDefault("gateway.openai_ws.max_idle_per_provider", 12)
+	viper.SetDefault("gateway.openai_ws.dynamic_max_conns_by_provider_concurrency_enabled", true)
 	viper.SetDefault("gateway.openai_ws.oauth_max_conns_factor", 1.0)
 	viper.SetDefault("gateway.openai_ws.apikey_max_conns_factor", 1.0)
 	viper.SetDefault("gateway.openai_ws.dial_timeout_seconds", 10)
@@ -2262,7 +2265,7 @@ func setDefaults() {
 	viper.SetDefault("gateway.openai_proxy_stream_circuit.window_seconds", 60)
 	viper.SetDefault("gateway.openai_proxy_stream_circuit.ttl_seconds", 600)
 	// Grok 免费层本地软门禁仅用于调度，管理端 QueryQuota 不经过该门禁。
-	// 免费层识别要求显式标记，因此默认启用不会误拦未知或付费账号。
+	// 免费层识别要求显式标记，因此默认启用不会误拦未知或付费提供商。
 	viper.SetDefault("gateway.grok.free_quota_soft_gate_enabled", true)
 	viper.SetDefault("gateway.grok.password_auth_enabled", false)
 	// 运维默认策略：滚动 24 小时名义额度为 50 万 token。
@@ -2290,7 +2293,7 @@ func setDefaults() {
 	viper.SetDefault("gateway.models_list_read_max_bytes", DefaultModelsListReadMaxBytes)
 	viper.SetDefault("gateway.proxy_probe_response_read_max_bytes", int64(1024*1024))
 	viper.SetDefault("gateway.gemini_debug_response_headers", false)
-	viper.SetDefault("gateway.connection_pool_isolation", ConnectionPoolIsolationAccountProxy)
+	viper.SetDefault("gateway.connection_pool_isolation", ConnectionPoolIsolationProviderProxy)
 	// HTTP 上游连接池配置（针对 5000+ 并发用户优化）
 	viper.SetDefault("gateway.max_idle_conns", 2560)          // 最大空闲连接总数（高并发场景可调大）
 	viper.SetDefault("gateway.max_idle_conns_per_host", 120)  // 每主机最大空闲连接（HTTP/2 场景默认）
@@ -2344,7 +2347,7 @@ func setDefaults() {
 	viper.SetDefault("gateway.usage_record.auto_scale_cooldown_seconds", 10)
 	viper.SetDefault("gateway.user_group_rate_cache_ttl_seconds", 30)
 	viper.SetDefault("gateway.models_list_cache_ttl_seconds", 15)
-	// TLS指纹伪装配置（默认关闭，需要账号级别单独启用）
+	// TLS指纹伪装配置（默认关闭，需要提供商级别单独启用）
 	// 用户消息串行队列默认值
 	viper.SetDefault("gateway.user_message_queue.enabled", false)
 	viper.SetDefault("gateway.user_message_queue.lock_ttl_ms", 120000)
@@ -3160,10 +3163,10 @@ func (c *Config) Validate() error {
 	}
 	if strings.TrimSpace(c.Gateway.ConnectionPoolIsolation) != "" {
 		switch c.Gateway.ConnectionPoolIsolation {
-		case ConnectionPoolIsolationProxy, ConnectionPoolIsolationAccount, ConnectionPoolIsolationAccountProxy:
+		case ConnectionPoolIsolationProxy, ConnectionPoolIsolationProvider, ConnectionPoolIsolationProviderProxy:
 		default:
 			return fmt.Errorf("gateway.connection_pool_isolation must be one of: %s/%s/%s",
-				ConnectionPoolIsolationProxy, ConnectionPoolIsolationAccount, ConnectionPoolIsolationAccountProxy)
+				ConnectionPoolIsolationProxy, ConnectionPoolIsolationProvider, ConnectionPoolIsolationProviderProxy)
 		}
 	}
 	if c.Gateway.ImageConcurrency.MaxConcurrentRequests < 0 {
@@ -3244,8 +3247,8 @@ func (c *Config) Validate() error {
 	if c.Gateway.OpenAIWS.StickyResponseIDTTLSeconds <= 0 && c.Gateway.OpenAIWS.StickyPreviousResponseTTLSeconds > 0 {
 		c.Gateway.OpenAIWS.StickyResponseIDTTLSeconds = c.Gateway.OpenAIWS.StickyPreviousResponseTTLSeconds
 	}
-	if c.Gateway.OpenAIWS.MaxConnsPerAccount <= 0 {
-		return fmt.Errorf("gateway.openai_ws.max_conns_per_account must be positive")
+	if c.Gateway.OpenAIWS.MaxConnsPerProvider <= 0 {
+		return fmt.Errorf("gateway.openai_ws.max_conns_per_provider must be positive")
 	}
 	if c.Gateway.OpenAIWS.ClientFirstMessageTimeoutSeconds <= 0 {
 		return fmt.Errorf("gateway.openai_ws.client_first_message_timeout_seconds must be positive")
@@ -3256,17 +3259,17 @@ func (c *Config) Validate() error {
 	if c.Gateway.OpenAIWS.MaxIngressConnectionsPerAPIKey < 0 {
 		return fmt.Errorf("gateway.openai_ws.max_ingress_connections_per_api_key must be non-negative")
 	}
-	if c.Gateway.OpenAIWS.MinIdlePerAccount < 0 {
-		return fmt.Errorf("gateway.openai_ws.min_idle_per_account must be non-negative")
+	if c.Gateway.OpenAIWS.MinIdlePerProvider < 0 {
+		return fmt.Errorf("gateway.openai_ws.min_idle_per_provider must be non-negative")
 	}
-	if c.Gateway.OpenAIWS.MaxIdlePerAccount < 0 {
-		return fmt.Errorf("gateway.openai_ws.max_idle_per_account must be non-negative")
+	if c.Gateway.OpenAIWS.MaxIdlePerProvider < 0 {
+		return fmt.Errorf("gateway.openai_ws.max_idle_per_provider must be non-negative")
 	}
-	if c.Gateway.OpenAIWS.MinIdlePerAccount > c.Gateway.OpenAIWS.MaxIdlePerAccount {
-		return fmt.Errorf("gateway.openai_ws.min_idle_per_account must be <= max_idle_per_account")
+	if c.Gateway.OpenAIWS.MinIdlePerProvider > c.Gateway.OpenAIWS.MaxIdlePerProvider {
+		return fmt.Errorf("gateway.openai_ws.min_idle_per_provider must be <= max_idle_per_provider")
 	}
-	if c.Gateway.OpenAIWS.MaxIdlePerAccount > c.Gateway.OpenAIWS.MaxConnsPerAccount {
-		return fmt.Errorf("gateway.openai_ws.max_idle_per_account must be <= max_conns_per_account")
+	if c.Gateway.OpenAIWS.MaxIdlePerProvider > c.Gateway.OpenAIWS.MaxConnsPerProvider {
+		return fmt.Errorf("gateway.openai_ws.max_idle_per_provider must be <= max_conns_per_provider")
 	}
 	if c.Gateway.OpenAIWS.OAuthMaxConnsFactor <= 0 {
 		return fmt.Errorf("gateway.openai_ws.oauth_max_conns_factor must be positive")

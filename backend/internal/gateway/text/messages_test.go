@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/failover"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/stretchr/testify/require"
 )
 
@@ -23,10 +23,10 @@ func (p *messageFixture) Finish(served bool)     { p.finished = true; p.served =
 func (p *messageFixture) PrepareAttempt() bool   { p.prepares++; return true }
 func (p *messageFixture) Select(map[int64]struct{}) (Selection, error) {
 	p.selected++
-	return Selection{Account: account.AccountSnapshot{ID: int64(p.selected), Platform: "anthropic"}}, nil
+	return Selection{Provider: provider.ProviderSnapshot{ID: int64(p.selected), Platform: "anthropic"}}, nil
 }
 func (*messageFixture) FirstSelectionFailure(error, bool) {}
-func (*messageFixture) SingleAccountRetry()               {}
+func (*messageFixture) SingleProviderRetry()              {}
 func (*messageFixture) Canceled()                         {}
 func (p *messageFixture) Exhausted(_ *AttemptFailure, _ string, stream bool) {
 	p.exhausted = true
@@ -65,6 +65,7 @@ func TestMessagesKeepPartialCompletionPerEntry(t *testing.T) {
 		require.Equal(t, want, p.completed)
 	}
 }
+
 func TestMessagesRetryRebuildsAndCompletesOnlyFinalAttempt(t *testing.T) {
 	err := errors.New("temporary failure")
 	p := &messageFixture{outcomes: []Outcome{{Err: err, Failure: &AttemptFailure{Cause: err, Policy: &failover.FailureInfo{StatusCode: 503, RetryNext: true}}}, {HasResult: true}}}
@@ -75,6 +76,7 @@ func TestMessagesRetryRebuildsAndCompletesOnlyFinalAttempt(t *testing.T) {
 	require.Equal(t, 1, p.switches)
 	require.True(t, p.served)
 }
+
 func TestMessagesWrittenFailureCannotSwitchOrComplete(t *testing.T) {
 	err := errors.New("failure after output")
 	p := &messageFixture{outcomes: []Outcome{{Err: err, HasResult: true, OutputChanged: true, Failure: &AttemptFailure{Cause: err, Policy: &failover.FailureInfo{StatusCode: 503, RetryNext: true}}}}}

@@ -18,7 +18,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// MessageForwardBoundary 独占当前 HTTP 写入和观察，不持有账号、设置或重试规则。
+// MessageForwardBoundary 独占当前 HTTP 写入和观察，不持有提供商、设置或重试规则。
 type MessageForwardBoundary struct {
 	context *gin.Context
 	filter  *egress.CompiledHeaderFilter
@@ -130,7 +130,7 @@ func (b *MessageForwardBoundary) SetError(status int, message, detail string) {
 func (b *MessageForwardBoundary) Observe(notice forward.Notice) {
 	AppendOpsUpstreamError(b.context, ops.OpsUpstreamErrorEvent{
 		UpstreamURL: notice.UpstreamURL, Passthrough: notice.Passthrough,
-		Platform: notice.Platform, AccountID: notice.AccountID, AccountName: notice.AccountName,
+		Platform: notice.Platform, ProviderID: notice.ProviderID, ProviderName: notice.ProviderName,
 		UpstreamStatusCode: notice.UpstreamStatusCode, UpstreamRequestID: notice.UpstreamRequestID,
 		Kind: notice.Kind, Message: notice.Message, Detail: notice.Detail,
 	})

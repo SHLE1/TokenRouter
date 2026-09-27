@@ -207,7 +207,7 @@
 
           </div>
 
-          <!-- 统一模型价格与账号成本规则。 -->
+          <!-- 统一模型价格与提供商成本规则。 -->
 
           <div
             v-for="(section, sIdx) in form.sections"
@@ -301,31 +301,31 @@
               </div>
             </div>
 
-            <!-- 账号成本规则 -->
+            <!-- 提供商成本规则 -->
             <div class="mt-4 border-t border-gray-200 pt-4 dark:border-dark-700 space-y-3">
               <div class="flex items-center justify-between">
                 <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {{ t('admin.pricing.form.accountStatsPricingRules') }}
+                  {{ t('admin.pricing.form.providerStatsPricingRules') }}
                 </h4>
                 <button
                   type="button"
-                  @click="addAccountStatsRule(sIdx)"
+                  @click="addProviderStatsRule(sIdx)"
                   class="rounded-control border border-primary-300 px-3 py-1 text-xs font-medium text-primary-600 hover:bg-primary-50 dark:border-primary-600 dark:text-primary-400 dark:hover:bg-primary-900/20"
                 >
                   + {{ t('admin.pricing.form.addRule') }}
                 </button>
               </div>
 
-              <!-- 规则按指定分组和账号匹配 -->
+              <!-- 规则按指定分组和提供商匹配 -->
               <p
-                v-if="section.account_stats_pricing_rules.length === 0"
+                v-if="section.provider_stats_pricing_rules.length === 0"
                 class="text-xs italic text-gray-400 dark:text-gray-500"
               >
                 {{ t('admin.pricing.form.noRulesConfigured') }}
               </p>
 
               <div
-                v-for="(rule, ruleIndex) in section.account_stats_pricing_rules"
+                v-for="(rule, ruleIndex) in section.provider_stats_pricing_rules"
                 :key="ruleIndex"
                 class="space-y-3 rounded-control border border-gray-200 p-4 dark:border-dark-600"
               >
@@ -335,7 +335,7 @@
                     :placeholder="t('admin.pricing.form.ruleName')"
                     class="bg-transparent text-sm font-medium text-gray-700 placeholder-gray-400 outline-none dark:text-gray-300"
                   />
-                  <button type="button" @click="removeAccountStatsRule(sIdx, ruleIndex)" class="text-xs text-red-500 hover:text-red-700">
+                  <button type="button" @click="removeProviderStatsRule(sIdx, ruleIndex)" class="text-xs text-red-500 hover:text-red-700">
                     {{ t('common.delete') }}
                   </button>
                 </div>
@@ -361,51 +361,51 @@
                 </div>
 
                 <div>
-                  <label class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.pricing.form.ruleAccounts') }}</label>
-                  <!-- Selected account chips -->
+                  <label class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.pricing.form.ruleProviders') }}</label>
+                  <!-- Selected provider chips -->
                   <div class="mt-1 flex flex-wrap gap-1">
                     <span
-                      v-for="accountId in rule.account_ids"
-                      :key="accountId"
+                      v-for="providerId in rule.provider_ids"
+                      :key="providerId"
                       class="inline-flex items-center gap-1 rounded-compact border border-primary-300 bg-primary-50 px-2 py-0.5 text-xs dark:border-primary-700 dark:bg-primary-900/20"
                     >
-                      <span :class="['font-medium', 'text-gray-900 dark:text-gray-100']">{{ getRuleAccountLabel(accountId) }}</span>
-                      <button type="button" @click="removeRuleAccount(rule, accountId)" class="text-gray-400 hover:text-red-500">
+                      <span :class="['font-medium', 'text-gray-900 dark:text-gray-100']">{{ getRuleProviderLabel(providerId) }}</span>
+                      <button type="button" @click="removeRuleProvider(rule, providerId)" class="text-gray-400 hover:text-red-500">
                         <Icon name="x" size="xs" />
                       </button>
                     </span>
                   </div>
-                  <!-- Account search input -->
-                  <div class="relative mt-1 rule-account-search-container">
+                  <!-- Provider search input -->
+                  <div class="relative mt-1 rule-provider-search-container">
                     <input
-                      v-model="ruleAccountSearchKeyword[`${'pricing'}-${ruleIndex}`]"
+                      v-model="ruleProviderSearchKeyword[`${'pricing'}-${ruleIndex}`]"
                       type="text"
                       class="input text-sm"
-                      :placeholder="t('admin.pricing.form.searchAccountPlaceholder')"
-                      @input="onRuleAccountSearchInput('pricing', ruleIndex)"
-                      @focus="onRuleAccountSearchFocus('pricing', ruleIndex)"
+                      :placeholder="t('admin.pricing.form.searchProviderPlaceholder')"
+                      @input="onRuleProviderSearchInput('pricing', ruleIndex)"
+                      @focus="onRuleProviderSearchFocus('pricing', ruleIndex)"
                     />
                     <!-- Search results dropdown -->
                     <div
-                      v-if="showRuleAccountDropdown[`${'pricing'}-${ruleIndex}`] && (ruleAccountSearchResults[`${'pricing'}-${ruleIndex}`]?.length ?? 0) > 0"
+                      v-if="showRuleProviderDropdown[`${'pricing'}-${ruleIndex}`] && (ruleProviderSearchResults[`${'pricing'}-${ruleIndex}`]?.length ?? 0) > 0"
                       class="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-control border bg-white shadow-lg dark:border-dark-600 dark:bg-dark-800"
                     >
                       <button
-                        v-for="account in ruleAccountSearchResults[`${'pricing'}-${ruleIndex}`]"
-                        :key="account.id"
+                        v-for="provider in ruleProviderSearchResults[`${'pricing'}-${ruleIndex}`]"
+                        :key="provider.id"
                         type="button"
-                        @click="selectRuleAccount(rule, account, 'pricing', ruleIndex)"
+                        @click="selectRuleProvider(rule, provider, 'pricing', ruleIndex)"
                         class="dropdown-item-sm"
-                        :class="{ 'opacity-50': rule.account_ids.includes(account.id) }"
-                        :disabled="rule.account_ids.includes(account.id)"
+                        :class="{ 'opacity-50': rule.provider_ids.includes(provider.id) }"
+                        :disabled="rule.provider_ids.includes(provider.id)"
                       >
-                        <span :class="platformTextClass(account.platform)">{{ account.name }}</span>
-                        <span class="text-xs text-gray-400">#{{ account.id }}</span>
+                        <span :class="platformTextClass(provider.platform)">{{ provider.name }}</span>
+                        <span class="text-xs text-gray-400">#{{ provider.id }}</span>
                       </button>
                     </div>
                   </div>
                   <p class="mt-1 text-xs text-gray-400">
-                    {{ t('admin.pricing.form.ruleAccountsHint') }}
+                    {{ t('admin.pricing.form.ruleProvidersHint') }}
                   </p>
                 </div>
 
@@ -479,7 +479,7 @@ import { useAppStore } from '@/stores/app'
 import { extractApiErrorMessage } from '@/utils/apiError'
 import { SEARCH_DEBOUNCE_MS } from '@/constants/ui'
 import { adminAPI } from '@/api/admin'
-import type { PricingConfig, ModelPricingEntry, CreatePricingConfigRequest, UpdatePricingConfigRequest, AccountStatsPricingRule } from '@/api/admin/pricing'
+import type { PricingConfig, ModelPricingEntry, CreatePricingConfigRequest, UpdatePricingConfigRequest, ProviderStatsPricingRule } from '@/api/admin/pricing'
 import type { PricingFormEntry } from '@/components/admin/pricing/types'
 import { pricingEntryFromAPI, pricingEntryToAPI, validatePricingForm } from '@/components/admin/pricing/pricingForm'
 import { createDefaultTimePricingForm, hasExplicitPricing, toNullableNumber } from '@/components/admin/pricing/types'
@@ -510,11 +510,11 @@ const appStore = useAppStore()
 
 // Web Search global enabled state (loaded once on mount)
 
-// ── 表单内账号成本规则 ──
+// ── 表单内提供商成本规则 ──
 interface FormPricingRule {
   name: string
   group_ids: number[]
-  account_ids: number[]
+  provider_ids: number[]
   pricing: PricingFormEntry[]
 }
 
@@ -524,7 +524,7 @@ interface PricingSection {
 
   model_pricing: PricingFormEntry[]
 
-  account_stats_pricing_rules: FormPricingRule[]
+  provider_stats_pricing_rules: FormPricingRule[]
 }
 
 // ── Table columns ──
@@ -552,7 +552,7 @@ const statusEditOptions = computed(() => [
 const billingModelSourceOptions = computed(() => [
   { value: 'group_mapped', label: t('admin.pricing.form.billingModelSourceGroupMapped', 'Group-mapped model (default)') },
   { value: 'requested', label: t('admin.pricing.form.billingModelSourceRequested', 'Client request model') },
-  { value: 'upstream', label: t('admin.pricing.form.billingModelSourceUpstream', 'Account final upstream model') }
+  { value: 'upstream', label: t('admin.pricing.form.billingModelSourceUpstream', 'Provider final upstream model') }
 ])
 
 // ── State ──
@@ -636,9 +636,9 @@ function formatDate(value: string): string {
   return new Date(value).toLocaleDateString()
 }
 
-// 每个配置保存一份模型价表，账号成本规则保持原有次序。
+// 每个配置保存一份模型价表，提供商成本规则保持原有次序。
 function emptyPricingSection(): PricingSection {
-  return { group_ids: [], model_pricing: [], account_stats_pricing_rules: [] }
+  return { group_ids: [], model_pricing: [], provider_stats_pricing_rules: [] }
 }
 
 // ── Group helpers ──
@@ -771,18 +771,18 @@ function removePricingEntry(sectionIdx: number, idx: number) {
   form.sections[sectionIdx].model_pricing.splice(idx, 1)
 }
 
-// ── Account Stats Pricing helpers ──
-function addAccountStatsRule(sectionIdx: number) {
-  form.sections[sectionIdx].account_stats_pricing_rules.push({
+// ── Provider Stats Pricing helpers ──
+function addProviderStatsRule(sectionIdx: number) {
+  form.sections[sectionIdx].provider_stats_pricing_rules.push({
     name: '',
     group_ids: [],
-    account_ids: [],
+    provider_ids: [],
     pricing: []
   })
 }
 
 function addRulePricingEntry(sectionIdx: number, ruleIndex: number) {
-  form.sections[sectionIdx].account_stats_pricing_rules[ruleIndex].pricing.push({
+  form.sections[sectionIdx].provider_stats_pricing_rules[ruleIndex].pricing.push({
     models: [],
     billing_mode: 'token',
     price_multiplier: null,
@@ -803,15 +803,15 @@ function addRulePricingEntry(sectionIdx: number, ruleIndex: number) {
   })
 }
 
-function removeAccountStatsRule(sectionIdx: number, ruleIndex: number) {
-  form.sections[sectionIdx].account_stats_pricing_rules.splice(ruleIndex, 1)
+function removeProviderStatsRule(sectionIdx: number, ruleIndex: number) {
+  form.sections[sectionIdx].provider_stats_pricing_rules.splice(ruleIndex, 1)
   // Clear all search state since indices shift after removal
-  ruleAccountSearchRunner.clearAll()
-  clearAllRuleAccountSearchState()
+  ruleProviderSearchRunner.clearAll()
+  clearAllRuleProviderSearchState()
 }
 
 function removeRulePricingEntry(sectionIdx: number, ruleIndex: number, pricingIndex: number) {
-  form.sections[sectionIdx].account_stats_pricing_rules[ruleIndex].pricing.splice(pricingIndex, 1)
+  form.sections[sectionIdx].provider_stats_pricing_rules[ruleIndex].pricing.splice(pricingIndex, 1)
 }
 
 function getGroupNameById(groupId: number): string {
@@ -819,84 +819,84 @@ function getGroupNameById(groupId: number): string {
   return group ? group.name : `#${groupId}`
 }
 
-// ── Account search for pricing rules ──
-interface SimpleAccount { id: number; name: string; platform: string }
+// ── Provider search for pricing rules ──
+interface SimpleProvider { id: number; name: string; platform: string }
 
-const ruleAccountSearchKeyword = ref<Record<string, string>>({})
-const ruleAccountSearchResults = ref<Record<string, SimpleAccount[]>>({})
-const showRuleAccountDropdown = ref<Record<string, boolean>>({})
-// Cache: account ID → name, populated when search results are selected
-const ruleAccountNameCache = ref<Record<number, string>>({})
+const ruleProviderSearchKeyword = ref<Record<string, string>>({})
+const ruleProviderSearchResults = ref<Record<string, SimpleProvider[]>>({})
+const showRuleProviderDropdown = ref<Record<string, boolean>>({})
+// Cache: provider ID → name, populated when search results are selected
+const ruleProviderNameCache = ref<Record<number, string>>({})
 
-const ruleAccountSearchRunner = useKeyedDebouncedSearch<SimpleAccount[]>({
+const ruleProviderSearchRunner = useKeyedDebouncedSearch<SimpleProvider[]>({
   delay: SEARCH_DEBOUNCE_MS,
   search: async (keyword, { signal }) => {
-    const res = await adminAPI.accounts.list(1, 20, { search: keyword }, { signal })
+    const res = await adminAPI.providers.list(1, 20, { search: keyword }, { signal })
     return res.items.map(a => ({ id: a.id, name: a.name, platform: a.platform }))
   },
-  onSuccess: (key, result) => { ruleAccountSearchResults.value[key] = result },
-  onError: (key) => { ruleAccountSearchResults.value[key] = [] },
+  onSuccess: (key, result) => { ruleProviderSearchResults.value[key] = result },
+  onError: (key) => { ruleProviderSearchResults.value[key] = [] },
 })
 
-function onRuleAccountSearchInput(scope: string, ruleIndex: number) {
+function onRuleProviderSearchInput(scope: string, ruleIndex: number) {
   const key = `${scope}-${ruleIndex}`
-  showRuleAccountDropdown.value[key] = true
-  ruleAccountSearchRunner.trigger(key, ruleAccountSearchKeyword.value[key] || '')
+  showRuleProviderDropdown.value[key] = true
+  ruleProviderSearchRunner.trigger(key, ruleProviderSearchKeyword.value[key] || '')
 }
 
-function onRuleAccountSearchFocus(scope: string, ruleIndex: number) {
+function onRuleProviderSearchFocus(scope: string, ruleIndex: number) {
   const key = `${scope}-${ruleIndex}`
-  showRuleAccountDropdown.value[key] = true
-  if (!ruleAccountSearchResults.value[key]?.length) {
-    ruleAccountSearchRunner.trigger(key, ruleAccountSearchKeyword.value[key] || '')
+  showRuleProviderDropdown.value[key] = true
+  if (!ruleProviderSearchResults.value[key]?.length) {
+    ruleProviderSearchRunner.trigger(key, ruleProviderSearchKeyword.value[key] || '')
   }
 }
 
-function selectRuleAccount(
-  rule: { account_ids: number[] },
-  account: SimpleAccount,
+function selectRuleProvider(
+  rule: { provider_ids: number[] },
+  provider: SimpleProvider,
   scope: string,
   ruleIndex: number,
 ) {
-  if (!rule.account_ids.includes(account.id)) {
-    rule.account_ids.push(account.id)
-    ruleAccountNameCache.value[account.id] = account.name
+  if (!rule.provider_ids.includes(provider.id)) {
+    rule.provider_ids.push(provider.id)
+    ruleProviderNameCache.value[provider.id] = provider.name
   }
   const key = `${scope}-${ruleIndex}`
-  ruleAccountSearchKeyword.value[key] = ''
-  showRuleAccountDropdown.value[key] = false
+  ruleProviderSearchKeyword.value[key] = ''
+  showRuleProviderDropdown.value[key] = false
 }
 
-function removeRuleAccount(rule: { account_ids: number[] }, accountId: number) {
-  const idx = rule.account_ids.indexOf(accountId)
-  if (idx !== -1) rule.account_ids.splice(idx, 1)
+function removeRuleProvider(rule: { provider_ids: number[] }, providerId: number) {
+  const idx = rule.provider_ids.indexOf(providerId)
+  if (idx !== -1) rule.provider_ids.splice(idx, 1)
 }
 
-function getRuleAccountLabel(accountId: number): string {
-  const name = ruleAccountNameCache.value[accountId]
-  return name ? `${name} #${accountId}` : `#${accountId}`
+function getRuleProviderLabel(providerId: number): string {
+  const name = ruleProviderNameCache.value[providerId]
+  return name ? `${name} #${providerId}` : `#${providerId}`
 }
 
-function handleRuleAccountClickOutside(event: MouseEvent) {
+function handleRuleProviderClickOutside(event: MouseEvent) {
   const target = event.target as HTMLElement
-  if (!target.closest('.rule-account-search-container')) {
-    Object.keys(showRuleAccountDropdown.value).forEach(key => {
-      showRuleAccountDropdown.value[key] = false
+  if (!target.closest('.rule-provider-search-container')) {
+    Object.keys(showRuleProviderDropdown.value).forEach(key => {
+      showRuleProviderDropdown.value[key] = false
     })
   }
 }
 
-function clearAllRuleAccountSearchState() {
-  ruleAccountSearchKeyword.value = {}
-  ruleAccountSearchResults.value = {}
-  showRuleAccountDropdown.value = {}
+function clearAllRuleProviderSearchState() {
+  ruleProviderSearchKeyword.value = {}
+  ruleProviderSearchResults.value = {}
+  showRuleProviderDropdown.value = {}
 }
 
-function accountStatsRulesToAPI(): AccountStatsPricingRule[] {
-  return form.sections.flatMap(section => section.account_stats_pricing_rules.map(rule => ({
+function providerStatsRulesToAPI(): ProviderStatsPricingRule[] {
+  return form.sections.flatMap(section => section.provider_stats_pricing_rules.map(rule => ({
     name: rule.name,
     group_ids: [...rule.group_ids],
-    account_ids: [...rule.account_ids],
+    provider_ids: [...rule.provider_ids],
     pricing: rule.pricing.filter(entry => entry.models.length > 0).map(pricingEntryToAPI),
   })))
 }
@@ -918,10 +918,10 @@ function apiToForm(pricingConfig: PricingConfig): PricingSection[] {
   return [{
     group_ids: [...(pricingConfig.group_ids ?? [])],
     model_pricing: (pricingConfig.model_pricing ?? []).map(pricingEntryFromAPI),
-    account_stats_pricing_rules: (pricingConfig.account_stats_pricing_rules ?? []).map(rule => ({
+    provider_stats_pricing_rules: (pricingConfig.provider_stats_pricing_rules ?? []).map(rule => ({
       name: rule.name,
       group_ids: [...rule.group_ids],
-      account_ids: [...rule.account_ids],
+      provider_ids: [...rule.provider_ids],
       pricing: rule.pricing.map(pricingEntryFromAPI),
     })),
   }]
@@ -1015,9 +1015,9 @@ function resetForm() {
   form.billing_model_source = 'group_mapped'
   form.sections = [emptyPricingSection()]
   activeTab.value = 'basic'
-  ruleAccountSearchRunner.clearAll()
-  clearAllRuleAccountSearchState()
-  ruleAccountNameCache.value = {}
+  ruleProviderSearchRunner.clearAll()
+  clearAllRuleProviderSearchState()
+  ruleProviderNameCache.value = {}
 }
 
 async function openCreateDialog() {
@@ -1038,33 +1038,33 @@ async function openEditDialog(pricingConfig: PricingConfig) {
   await Promise.all([loadGroups(), loadAllPricingConfigsForConflict()])
   form.sections = apiToForm(pricingConfig)
 
-  // Populate ruleAccountNameCache for existing rule accounts
-  await populateRuleAccountNameCache()
+  // Populate ruleProviderNameCache for existing rule providers
+  await populateRuleProviderNameCache()
 
   showDialog.value = true
 }
 
-/** Populate ruleAccountNameCache by fetching account details for all account_ids in rules */
-async function populateRuleAccountNameCache() {
-  const allAccountIds = new Set<number>()
+/** Populate ruleProviderNameCache by fetching provider details for all provider_ids in rules */
+async function populateRuleProviderNameCache() {
+  const allProviderIds = new Set<number>()
   for (const section of form.sections) {
-    for (const rule of section.account_stats_pricing_rules) {
-      for (const id of rule.account_ids) {
-        allAccountIds.add(id)
+    for (const rule of section.provider_stats_pricing_rules) {
+      for (const id of rule.provider_ids) {
+        allProviderIds.add(id)
       }
     }
   }
-  if (allAccountIds.size === 0) return
+  if (allProviderIds.size === 0) return
 
-  // Fetch account details in parallel (batch of individual getById calls)
-  const ids = [...allAccountIds]
+  // Fetch provider details in parallel (batch of individual getById calls)
+  const ids = [...allProviderIds]
   const results = await Promise.allSettled(
-    ids.map(id => adminAPI.accounts.getById(id))
+    ids.map(id => adminAPI.providers.getById(id))
   )
   for (let i = 0; i < ids.length; i++) {
     const result = results[i]
     if (result.status === 'fulfilled') {
-      ruleAccountNameCache.value[ids[i]] = result.value.name
+      ruleProviderNameCache.value[ids[i]] = result.value.name
     }
     // If rejected, the cache won't have the name, so it'll show "#ID" which is acceptable
   }
@@ -1129,7 +1129,7 @@ async function handleSubmit() {
   // 倍率只能调整已配置的定价，不能单独继承系统默认价。
   for (const section of form.sections) {
     const entries = [
-      ...section.account_stats_pricing_rules.flatMap(rule => rule.pricing),
+      ...section.provider_stats_pricing_rules.flatMap(rule => rule.pricing),
     ]
     for (const entry of entries) {
       if (entry.models.length === 0 || toNullableNumber(entry.price_multiplier) === null) continue
@@ -1161,7 +1161,7 @@ async function handleSubmit() {
         billing_model_source: form.billing_model_source,
         ...billingSettingsToAPI(form.billing_settings),
 
-        account_stats_pricing_rules: accountStatsRulesToAPI()
+        provider_stats_pricing_rules: providerStatsRulesToAPI()
       }
       await adminAPI.pricing.update(editingPricingConfig.value.id, req)
       appStore.showSuccess(t('admin.pricing.updateSuccess', 'PricingConfig updated'))
@@ -1175,7 +1175,7 @@ async function handleSubmit() {
         billing_model_source: form.billing_model_source,
         ...billingSettingsToAPI(form.billing_settings),
 
-        account_stats_pricing_rules: accountStatsRulesToAPI()
+        provider_stats_pricing_rules: providerStatsRulesToAPI()
       }
       await adminAPI.pricing.create(req)
       appStore.showSuccess(t('admin.pricing.createSuccess', 'PricingConfig created'))
@@ -1233,15 +1233,15 @@ onMounted(() => {
   loadPricingConfigs()
   loadGroups()
 
-  document.addEventListener('click', handleRuleAccountClickOutside)
+  document.addEventListener('click', handleRuleProviderClickOutside)
 })
 
 onUnmounted(() => {
   clearTimeout(searchTimeout)
   abortController?.abort()
-  document.removeEventListener('click', handleRuleAccountClickOutside)
-  ruleAccountSearchRunner.clearAll()
-  clearAllRuleAccountSearchState()
+  document.removeEventListener('click', handleRuleProviderClickOutside)
+  ruleProviderSearchRunner.clearAll()
+  clearAllRuleProviderSearchState()
 })
 </script>
 

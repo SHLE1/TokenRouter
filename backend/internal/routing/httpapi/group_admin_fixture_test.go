@@ -12,7 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// groupAdminFixture 仅提供路由管理 HTTP 所需的数据，不聚合用户与账号管理。
+// groupAdminFixture 仅提供路由管理 HTTP 所需的数据，不聚合用户与提供商管理。
 type groupAdminFixture struct {
 	GroupAdministration
 	groups        []routing.Group

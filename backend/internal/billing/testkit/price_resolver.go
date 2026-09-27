@@ -72,10 +72,10 @@ func GroupID() *int64 { v := int64(100); return &v }
 // PriceResolver 仅组合测试输入，测试直接使用原生解析器。
 func PriceResolver(pricingConfigs *routing.PricingConfigService, calculator *billing.Calculator) *billing.PriceResolver {
 	var source billing.ConfigPrices
-	var stats billing.AccountStatsSource
+	var stats billing.ProviderStatsSource
 	if pricingConfigs != nil {
 		source = pricingConfigs
-		stats = gatewayprovider.AccountStatsSource{Service: pricingConfigs}
+		stats = gatewayprovider.ProviderStatsSource{Service: pricingConfigs}
 	}
 	return billing.NewPriceResolver(source, calculator, modelidentity.Identity, func(model string, err error) {
 		slog.Debug("failed to get model pricing from LiteLLM, using fallback", "model", model, "error", err)

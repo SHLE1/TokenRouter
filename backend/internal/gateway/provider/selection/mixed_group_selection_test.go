@@ -7,36 +7,36 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 	"github.com/stretchr/testify/require"
 )
 
-type mixedGroupAccounts struct {
-	Accounts
-	values       []provider.ExecutionAccount
+type mixedGroupProviders struct {
+	Providers
+	values       []gatewayadapter.ExecutionProvider
 	groupQueries []int64
 }
 
-func (s *mixedGroupAccounts) GetByID(_ context.Context, id int64) (*provider.ExecutionAccount, error) {
+func (s *mixedGroupProviders) GetByID(_ context.Context, id int64) (*gatewayadapter.ExecutionProvider, error) {
 	for i := range s.values {
 		if s.values[i].Record.ID == id {
 			value := s.values[i]
 			return &value, nil
 		}
 	}
-	return nil, fmt.Errorf("account %d missing", id)
+	return nil, fmt.Errorf("provider %d missing", id)
 }
 
-func (s *mixedGroupAccounts) ListSchedulableByGroupIDAndPlatforms(_ context.Context, group int64, platforms []string) ([]provider.ExecutionAccount, error) {
+func (s *mixedGroupProviders) ListSchedulableByGroupIDAndPlatforms(_ context.Context, group int64, platforms []string) ([]gatewayadapter.ExecutionProvider, error) {
 	s.groupQueries = append(s.groupQueries, group)
-	var out []provider.ExecutionAccount
+	var out []gatewayadapter.ExecutionProvider
 	for _, value := range s.values {
 		if slices.Contains(platforms, value.Record.Platform) && slices.Contains(value.Record.GroupIDs, group) {
 			out = append(out, value)
@@ -45,37 +45,37 @@ func (s *mixedGroupAccounts) ListSchedulableByGroupIDAndPlatforms(_ context.Cont
 	return out, nil
 }
 
-func (s *mixedGroupAccounts) ListSchedulableByGroupIDAndPlatform(ctx context.Context, group int64, platform string) ([]provider.ExecutionAccount, error) {
+func (s *mixedGroupProviders) ListSchedulableByGroupIDAndPlatform(ctx context.Context, group int64, platform string) ([]gatewayadapter.ExecutionProvider, error) {
 	return s.ListSchedulableByGroupIDAndPlatforms(ctx, group, []string{platform})
 }
 
-func mixedGroupAccount(id int64, platform, model string, groupID int64) provider.ExecutionAccount {
-	value := account.Record{ID: id, Platform: platform, Type: capability.AccountTypeAPIKey, Status: account.StatusActive, Schedulable: true, Concurrency: 2, GroupIDs: []int64{groupID}, Credentials: map[string]any{"api_key": "test-key", "model_whitelist": []string{model}}}
-	return *provider.NewExecutionAccount(&value)
+func mixedGroupProvider(id int64, platform, model string, groupID int64) gatewayadapter.ExecutionProvider {
+	value := provider.Record{ID: id, Platform: platform, Type: capability.ProviderTypeAPIKey, Status: provider.StatusActive, Schedulable: true, Concurrency: 2, GroupIDs: []int64{groupID}, Credentials: map[string]any{"api_key": "test-key", "model_whitelist": []string{model}}}
+	return *gatewayadapter.NewExecutionProvider(&value)
 }
 
 // 每个入口先验证模型与协议，再在同组跨平台选择；simple 同样保留成员边界。
-func TestMixedGroupSelectsModelOnActualAccountPlatform(t *testing.T) {
+func TestMixedGroupSelectsModelOnActualProviderPlatform(t *testing.T) {
 	for _, mode := range []routing.GroupSchedulerType{routing.GroupSchedulerTypeBasic, routing.GroupSchedulerTypeAdvanced} {
 		for _, simple := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/simple=%v", mode, simple), func(t *testing.T) {
 				group := &routing.Group{ID: 91, Hydrated: true, Status: routing.StatusActive, SchedulerType: mode}
-				repo := &mixedGroupAccounts{values: []provider.ExecutionAccount{
-					mixedGroupAccount(1, capability.PlatformAnthropic, "claude-test", group.ID),
-					mixedGroupAccount(2, capability.PlatformOpenAI, "gpt-test", group.ID),
-					mixedGroupAccount(3, capability.PlatformGemini, "gemini-test", group.ID),
-					mixedGroupAccount(4, capability.PlatformOpenAI, "gpt-test", 92),
+				repo := &mixedGroupProviders{values: []gatewayadapter.ExecutionProvider{
+					mixedGroupProvider(1, capability.PlatformAnthropic, "claude-test", group.ID),
+					mixedGroupProvider(2, capability.PlatformOpenAI, "gpt-test", group.ID),
+					mixedGroupProvider(3, capability.PlatformGemini, "gemini-test", group.ID),
+					mixedGroupProvider(4, capability.PlatformOpenAI, "gpt-test", 92),
 				}}
 				options := DefaultOptions()
 				options.Simple = simple
-				selector := NewCompatible(CompatibleDependencies{Reads: Reads{Accounts: repo}}, options)
+				selector := NewCompatible(CompatibleDependencies{Reads: Reads{Providers: repo}}, options)
 				for _, source := range []protocol.ProtocolID{protocol.ProtocolAnthropicMessages, protocol.ProtocolOpenAIResponses, protocol.ProtocolOpenAIChatCompletions} {
 					ctx := requeststate.WithClientProtocol(requeststate.WithGroup(context.Background(), group), source)
 					for i, model := range []string{"claude-test", "gpt-test", "gemini-test"} {
-						selected, _, err := selector.SelectAccountWithSchedulerForCapability(ctx, &group.ID, "", "", model, nil, egress.OpenAIUpstreamTransportHTTPSSE, account.OpenAIEndpointCapabilityTextGeneration, false, false)
+						selected, _, err := selector.SelectProviderWithSchedulerForCapability(ctx, &group.ID, "", "", model, nil, egress.OpenAIUpstreamTransportHTTPSSE, provider.OpenAIEndpointCapabilityTextGeneration, false, false)
 						require.NoError(t, err, "%s %s", source, model)
 						require.NotNil(t, selected)
-						require.Equal(t, int64(i+1), selected.Account.Record.ID)
+						require.Equal(t, int64(i+1), selected.Provider.Record.ID)
 						if selected.ReleaseFunc != nil {
 							selected.ReleaseFunc()
 						}
@@ -91,15 +91,15 @@ func TestMixedGroupSelectsModelOnActualAccountPlatform(t *testing.T) {
 
 func TestMixedGroupRequiresExplicitGroupAndHonorsForcedPlatform(t *testing.T) {
 	group := &routing.Group{ID: 91, Hydrated: true, Status: routing.StatusActive}
-	repo := &mixedGroupAccounts{values: []provider.ExecutionAccount{mixedGroupAccount(1, capability.PlatformAnthropic, "shared", group.ID), mixedGroupAccount(2, capability.PlatformOpenAI, "shared", group.ID)}}
-	selector := NewCompatible(CompatibleDependencies{Reads: Reads{Accounts: repo}}, DefaultOptions())
+	repo := &mixedGroupProviders{values: []gatewayadapter.ExecutionProvider{mixedGroupProvider(1, capability.PlatformAnthropic, "shared", group.ID), mixedGroupProvider(2, capability.PlatformOpenAI, "shared", group.ID)}}
+	selector := NewCompatible(CompatibleDependencies{Reads: Reads{Providers: repo}}, DefaultOptions())
 	ctx := requeststate.WithClientProtocol(requeststate.WithGroup(context.Background(), group), protocol.ProtocolAnthropicMessages)
-	_, _, err := selector.SelectAccountWithSchedulerForCapability(ctx, nil, "", "", "shared", nil, egress.OpenAIUpstreamTransportHTTPSSE, account.OpenAIEndpointCapabilityTextGeneration, false, false)
+	_, _, err := selector.SelectProviderWithSchedulerForCapability(ctx, nil, "", "", "shared", nil, egress.OpenAIUpstreamTransportHTTPSSE, provider.OpenAIEndpointCapabilityTextGeneration, false, false)
 	require.Error(t, err)
 	require.Empty(t, repo.groupQueries)
-	selected, _, err := selector.SelectAccountWithSchedulerForCapability(ctx, &group.ID, "", "", "shared", nil, egress.OpenAIUpstreamTransportHTTPSSE, account.OpenAIEndpointCapabilityTextGeneration, false, false, capability.PlatformOpenAI)
+	selected, _, err := selector.SelectProviderWithSchedulerForCapability(ctx, &group.ID, "", "", "shared", nil, egress.OpenAIUpstreamTransportHTTPSSE, provider.OpenAIEndpointCapabilityTextGeneration, false, false, capability.PlatformOpenAI)
 	require.NoError(t, err)
-	require.Equal(t, int64(2), selected.Account.Record.ID)
+	require.Equal(t, int64(2), selected.Provider.Record.ID)
 	if selected.ReleaseFunc != nil {
 		selected.ReleaseFunc()
 	}
@@ -108,7 +108,7 @@ func TestMixedGroupRequiresExplicitGroupAndHonorsForcedPlatform(t *testing.T) {
 // 图片别名必须映射到图片模型，通配白名单不能把文本模型变成图片模型。
 func TestMixedGroupImageCandidateUsesFinalMappedModel(t *testing.T) {
 	selector := NewCompatible(CompatibleDependencies{}, DefaultOptions())
-	value := mixedGroupAccount(1, capability.PlatformOpenAI, "*", 91)
+	value := mixedGroupProvider(1, capability.PlatformOpenAI, "*", 91)
 	value.Record.Credentials["model_mapping"] = map[string]any{"image-alias": "gpt-test"}
 	ctx := context.WithValue(context.Background(), imageModelRequiredKey{}, true)
 	require.Equal(t, "image_model_required", selector.candidateEligibilityReason(ctx, &value, "", "image-alias", false, ""))
@@ -130,24 +130,24 @@ func (s *mixedSessionLimits) RegisterSession(_ context.Context, id int64, hash s
 	return id != s.blocked, nil
 }
 
-// Anthropic 的会话限制在通用选号循环中仍然生效，并继续尝试组内其它账号。
+// Anthropic 的会话限制在通用选号循环中仍然生效，并继续尝试组内其它提供商。
 func TestMixedGroupRespectsAnthropicSessionLimit(t *testing.T) {
 	group := &routing.Group{ID: 91, Hydrated: true, Status: routing.StatusActive}
-	first := mixedGroupAccount(1, capability.PlatformAnthropic, "*", 91)
-	first.Record.Type = capability.AccountTypeOAuth
+	first := mixedGroupProvider(1, capability.PlatformAnthropic, "*", 91)
+	first.Record.Type = capability.ProviderTypeOAuth
 	first.Record.Extra = map[string]any{"max_sessions": 1}
-	second := mixedGroupAccount(2, capability.PlatformAnthropic, "*", 91)
-	second.Record.Type = capability.AccountTypeOAuth
+	second := mixedGroupProvider(2, capability.PlatformAnthropic, "*", 91)
+	second.Record.Type = capability.ProviderTypeOAuth
 	second.Record.Priority = 1
 	second.Record.Extra = map[string]any{"max_sessions": 1}
 	limits := &mixedSessionLimits{blocked: 1}
 	generic := NewGeneric(GenericDependencies{Sessions: limits}, DefaultOptions())
-	repo := &mixedGroupAccounts{values: []provider.ExecutionAccount{first, second}}
-	selector := NewCompatible(CompatibleDependencies{Reads: Reads{Accounts: repo}, Generic: generic}, DefaultOptions())
+	repo := &mixedGroupProviders{values: []gatewayadapter.ExecutionProvider{first, second}}
+	selector := NewCompatible(CompatibleDependencies{Reads: Reads{Providers: repo}, Generic: generic}, DefaultOptions())
 	ctx := requeststate.WithClientProtocol(requeststate.WithGroup(context.Background(), group), protocol.ProtocolAnthropicMessages)
-	selected, _, err := selector.SelectAccountWithSchedulerForCapability(ctx, &group.ID, "", "same-session", "claude-test", nil, egress.OpenAIUpstreamTransportHTTPSSE, account.OpenAIEndpointCapabilityTextGeneration, false, false)
+	selected, _, err := selector.SelectProviderWithSchedulerForCapability(ctx, &group.ID, "", "same-session", "claude-test", nil, egress.OpenAIUpstreamTransportHTTPSSE, provider.OpenAIEndpointCapabilityTextGeneration, false, false)
 	require.NoError(t, err)
-	require.Equal(t, int64(2), selected.Account.Record.ID)
+	require.Equal(t, int64(2), selected.Provider.Record.ID)
 	require.Equal(t, []string{"same-session"}, limits.calls[1])
 	require.Equal(t, []string{"same-session"}, limits.calls[2])
 	if selected.ReleaseFunc != nil {
@@ -155,37 +155,39 @@ func TestMixedGroupRespectsAnthropicSessionLimit(t *testing.T) {
 	}
 }
 
-type mixedSnapshot struct{ values []provider.ExecutionAccount }
-
-func (s mixedSnapshot) ListAccounts(_ context.Context, _ *int64, _ string, _ bool) ([]account.Record, bool, error) {
-	return provider.ExecutionRecords(s.values), false, nil
+type mixedSnapshot struct {
+	values []gatewayadapter.ExecutionProvider
 }
 
-func (s mixedSnapshot) GetAccount(_ context.Context, id int64) (*account.Record, error) {
+func (s mixedSnapshot) ListProviders(_ context.Context, _ *int64, _ string, _ bool) ([]provider.Record, bool, error) {
+	return gatewayadapter.ExecutionRecords(s.values), false, nil
+}
+
+func (s mixedSnapshot) GetProvider(_ context.Context, id int64) (*provider.Record, error) {
 	for _, v := range s.values {
 		if v.Record.ID == id {
-			return provider.ExecutionRecord(&v), nil
+			return gatewayadapter.ExecutionRecord(&v), nil
 		}
 	}
 	return nil, nil
 }
 
-// 快照中的旧成员关系不能让已移出分组的账号通过数据库复核。
+// 快照中的旧成员关系不能让已移出分组的提供商通过数据库复核。
 func TestMixedGroupRechecksMembershipAfterSnapshot(t *testing.T) {
 	for _, mode := range []routing.GroupSchedulerType{routing.GroupSchedulerTypeBasic, routing.GroupSchedulerTypeAdvanced} {
 		t.Run(string(mode), func(t *testing.T) {
 			group := &routing.Group{ID: 91, Hydrated: true, Status: routing.StatusActive, SchedulerType: mode}
-			moved := mixedGroupAccount(1, capability.PlatformAnthropic, "*", 91)
-			ready := mixedGroupAccount(2, capability.PlatformOpenAI, "*", 91)
+			moved := mixedGroupProvider(1, capability.PlatformAnthropic, "*", 91)
+			ready := mixedGroupProvider(2, capability.PlatformOpenAI, "*", 91)
 			ready.Record.Priority = 1
-			snapshot := mixedSnapshot{values: []provider.ExecutionAccount{moved, ready}}
+			snapshot := mixedSnapshot{values: []gatewayadapter.ExecutionProvider{moved, ready}}
 			moved.Record.GroupIDs = []int64{92}
-			repo := &mixedGroupAccounts{values: []provider.ExecutionAccount{moved, ready}}
-			selector := NewCompatible(CompatibleDependencies{Reads: Reads{Accounts: repo, Snapshot: snapshot}}, DefaultOptions())
+			repo := &mixedGroupProviders{values: []gatewayadapter.ExecutionProvider{moved, ready}}
+			selector := NewCompatible(CompatibleDependencies{Reads: Reads{Providers: repo, Snapshot: snapshot}}, DefaultOptions())
 			ctx := requeststate.WithClientProtocol(requeststate.WithGroup(context.Background(), group), protocol.ProtocolAnthropicMessages)
-			selected, _, err := selector.SelectAccountWithSchedulerForCapability(ctx, &group.ID, "", "", "shared", nil, egress.OpenAIUpstreamTransportHTTPSSE, account.OpenAIEndpointCapabilityTextGeneration, false, false)
+			selected, _, err := selector.SelectProviderWithSchedulerForCapability(ctx, &group.ID, "", "", "shared", nil, egress.OpenAIUpstreamTransportHTTPSSE, provider.OpenAIEndpointCapabilityTextGeneration, false, false)
 			require.NoError(t, err)
-			require.Equal(t, int64(2), selected.Account.Record.ID)
+			require.Equal(t, int64(2), selected.Provider.Record.ID)
 			if selected.ReleaseFunc != nil {
 				selected.ReleaseFunc()
 			}

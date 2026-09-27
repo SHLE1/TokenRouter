@@ -404,21 +404,27 @@ type failingIdempotencyRepo struct{}
 func (failingIdempotencyRepo) CreateProcessing(context.Context, *IdempotencyRecord) (bool, error) {
 	return false, errors.New("store unavailable")
 }
+
 func (failingIdempotencyRepo) GetByScopeAndKeyHash(context.Context, string, string) (*IdempotencyRecord, error) {
 	return nil, errors.New("store unavailable")
 }
+
 func (failingIdempotencyRepo) TryReclaim(context.Context, int64, string, time.Time, time.Time, time.Time) (bool, error) {
 	return false, errors.New("store unavailable")
 }
+
 func (failingIdempotencyRepo) ExtendProcessingLock(context.Context, int64, string, time.Time, time.Time) (bool, error) {
 	return false, errors.New("store unavailable")
 }
+
 func (failingIdempotencyRepo) MarkSucceeded(context.Context, int64, int, string, time.Time) error {
 	return errors.New("store unavailable")
 }
+
 func (failingIdempotencyRepo) MarkFailedRetryable(context.Context, int64, string, time.Time, time.Time) error {
 	return errors.New("store unavailable")
 }
+
 func (failingIdempotencyRepo) DeleteExpired(context.Context, time.Time, int) (int64, error) {
 	return 0, errors.New("store unavailable")
 }
@@ -467,7 +473,7 @@ func TestIdempotencyCoordinator_TruncatedStoredResponseRemainsUTF8(t *testing.T)
 	opts := IdempotencyExecuteOptions{
 		Scope:          "test.scope.truncate_utf8",
 		Method:         "POST",
-		Route:          "/api/v1/accounts/import/codex-session",
+		Route:          "/api/v1/providers/import/codex-session",
 		ActorScope:     "admin:1",
 		RequireKey:     true,
 		IdempotencyKey: "truncate-utf8",
@@ -572,16 +578,21 @@ type noIDOwnerRepo struct{}
 func (noIDOwnerRepo) CreateProcessing(context.Context, *IdempotencyRecord) (bool, error) {
 	return true, nil
 }
+
 func (noIDOwnerRepo) GetByScopeAndKeyHash(context.Context, string, string) (*IdempotencyRecord, error) {
 	return nil, nil
 }
+
 func (noIDOwnerRepo) TryReclaim(context.Context, int64, string, time.Time, time.Time, time.Time) (bool, error) {
 	return false, nil
 }
+
 func (noIDOwnerRepo) ExtendProcessingLock(context.Context, int64, string, time.Time, time.Time) (bool, error) {
 	return false, nil
 }
+
 func (noIDOwnerRepo) MarkSucceeded(context.Context, int64, int, string, time.Time) error { return nil }
+
 func (noIDOwnerRepo) MarkFailedRetryable(context.Context, int64, string, time.Time, time.Time) error {
 	return nil
 }
@@ -632,24 +643,30 @@ type conflictBranchRepo struct {
 func (r *conflictBranchRepo) CreateProcessing(context.Context, *IdempotencyRecord) (bool, error) {
 	return false, nil
 }
+
 func (r *conflictBranchRepo) GetByScopeAndKeyHash(context.Context, string, string) (*IdempotencyRecord, error) {
 	return cloneRecord(r.existing), nil
 }
+
 func (r *conflictBranchRepo) TryReclaim(context.Context, int64, string, time.Time, time.Time, time.Time) (bool, error) {
 	if r.tryReclaimErr != nil {
 		return false, r.tryReclaimErr
 	}
 	return r.tryReclaimOK, nil
 }
+
 func (r *conflictBranchRepo) ExtendProcessingLock(context.Context, int64, string, time.Time, time.Time) (bool, error) {
 	return false, nil
 }
+
 func (r *conflictBranchRepo) MarkSucceeded(context.Context, int64, int, string, time.Time) error {
 	return nil
 }
+
 func (r *conflictBranchRepo) MarkFailedRetryable(context.Context, int64, string, time.Time, time.Time) error {
 	return nil
 }
+
 func (r *conflictBranchRepo) DeleteExpired(context.Context, time.Time, int) (int64, error) {
 	return 0, nil
 }

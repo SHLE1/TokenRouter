@@ -7,58 +7,64 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	xai "github.com/TokenFlux/TokenRouter/internal/upstream/grok"
 	"github.com/stretchr/testify/require"
 )
 
 func TestBuildGrokVoiceURL_UsesAPIDefaultForCLIProxyBase(t *testing.T) {
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformGrok,
-		Type: capability.AccountTypeOAuth,
-		Credentials: map[string]any{
-			"base_url": xai.DefaultCLIBaseURL,
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, Platform: capability.PlatformGrok,
+			Type: capability.ProviderTypeOAuth,
+			Credentials: map[string]any{
+				"base_url": xai.DefaultCLIBaseURL,
+			},
+		},
 	}
-	url, err := (gatewayprovider.GrokRoutes{Validate: xai.ValidateBaseURL}).Voice(account, "tts")
+	url, err := (gatewayprovider.GrokRoutes{Validate: xai.ValidateBaseURL}).Voice(provider, "tts")
 	require.NoError(t, err)
 	require.Equal(t, xai.DefaultBaseURL+"/tts", url)
 
-	url, err = (gatewayprovider.GrokRoutes{Validate: xai.ValidateBaseURL}).Voice(account, "realtime")
+	url, err = (gatewayprovider.GrokRoutes{Validate: xai.ValidateBaseURL}).Voice(provider, "realtime")
 	require.NoError(t, err)
 	require.Equal(t, xai.DefaultBaseURL+"/realtime", url)
 }
 
 func TestBuildGrokVoiceURL_EmptyBaseFallsBackToAPI(t *testing.T) {
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformGrok,
-		Type:        capability.AccountTypeOAuth,
-		Credentials: map[string]any{}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, Platform: capability.PlatformGrok,
+			Type:        capability.ProviderTypeOAuth,
+			Credentials: map[string]any{},
+		},
 	}
-	url, err := (gatewayprovider.GrokRoutes{Validate: xai.ValidateBaseURL}).Voice(account, "stt")
+	url, err := (gatewayprovider.GrokRoutes{Validate: xai.ValidateBaseURL}).Voice(provider, "stt")
 	require.NoError(t, err)
 	require.Equal(t, xai.DefaultBaseURL+"/stt", url)
 }
 
 func TestBuildGrokVoiceURL_RequiresEndpoint(t *testing.T) {
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformGrok, Type: capability.AccountTypeOAuth}}
-	_, err := (gatewayprovider.GrokRoutes{Validate: xai.ValidateBaseURL}).Voice(account, "  ")
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformGrok, Type: capability.ProviderTypeOAuth}}
+	_, err := (gatewayprovider.GrokRoutes{Validate: xai.ValidateBaseURL}).Voice(provider, "  ")
 	require.Error(t, err)
 }
 
 func TestBuildGrokVoiceURL_EncodesCustomVoicePathSegments(t *testing.T) {
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformGrok, Type: capability.AccountTypeOAuth}}
-	got, err := (gatewayprovider.GrokRoutes{Validate: xai.ValidateBaseURL}).Voice(account, "custom-voices/nlbqfwie/audio")
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformGrok, Type: capability.ProviderTypeOAuth}}
+	got, err := (gatewayprovider.GrokRoutes{Validate: xai.ValidateBaseURL}).Voice(provider, "custom-voices/nlbqfwie/audio")
 	require.NoError(t, err)
 	require.Equal(t, xai.DefaultBaseURL+"/custom-voices/nlbqfwie/audio", got)
 
-	_, err = (gatewayprovider.GrokRoutes{Validate: xai.ValidateBaseURL}).Voice(account, "custom-voices/../audio")
+	_, err = (gatewayprovider.GrokRoutes{Validate: xai.ValidateBaseURL}).Voice(provider, "custom-voices/../audio")
 	require.Error(t, err)
 }
 
 func TestForwardGrokVoice_RejectsNonGrok(t *testing.T) {
 	svc := &GrokExecutor{}
-	_, err := svc.ForwardGrokVoice(context.Background(), nil, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI}}, "tts", []byte(`{}`), "application/json")
+	_, err := svc.ForwardGrokVoice(context.Background(), nil, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI}}, "tts", []byte(`{}`), "application/json")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "not supported")
 }
@@ -85,7 +91,7 @@ func TestGrokRealtimeEventHasAudio(t *testing.T) {
 
 func TestForwardGrokVoice_RejectsUnknownEndpoint(t *testing.T) {
 	svc := &GrokExecutor{}
-	_, err := svc.ForwardGrokVoice(context.Background(), nil, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformGrok}}, "unknown", []byte(`{}`), "application/json")
+	_, err := svc.ForwardGrokVoice(context.Background(), nil, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformGrok}}, "unknown", []byte(`{}`), "application/json")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "unsupported")
 }

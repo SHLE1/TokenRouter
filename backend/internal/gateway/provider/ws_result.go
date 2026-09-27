@@ -48,7 +48,7 @@ func ProjectWSResult(r *forwardcore.OpenAIResult) *gatewayws.ForwardResult {
 		WebSearchCalls:              r.WebSearchCalls,
 		SearchCount:                 r.SearchCount,
 		AudioUsage:                  r.AudioUsage,
-		WSReplayInput:               replay, WSReplayInputExists: replayExists, WSAccountFailoverReplayInput: r.WSAccountFailoverReplayInput(),
+		WSReplayInput:               replay, WSReplayInputExists: replayExists, WSProviderFailoverReplayInput: r.WSProviderFailoverReplayInput(),
 		ResponseTurnState: http.Header(r.ResponseHeaders).Get(openai.WSTurnStateHeader),
 	}
 	if r.UpstreamWarning != nil {
@@ -97,7 +97,7 @@ func ForwardResultFromWS(r *gatewayws.ForwardResult) *forwardcore.OpenAIResult {
 		AudioUsage:                  r.AudioUsage,
 	}
 	out.SetWSReplayInput(r.WSReplayInput, r.WSReplayInputExists)
-	out.SetWSAccountFailoverReplayInput(r.WSAccountFailoverReplayInput)
+	out.SetWSProviderFailoverReplayInput(r.WSProviderFailoverReplayInput)
 	if r.UpstreamWarning != nil {
 		out.UpstreamWarning = &forwardcore.UpstreamWarning{StatusCode: r.UpstreamWarning.StatusCode, ResponseBody: r.UpstreamWarning.ResponseBody, Message: r.UpstreamWarning.Message}
 	}

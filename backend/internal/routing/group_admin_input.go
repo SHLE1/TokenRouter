@@ -63,8 +63,8 @@ type CreateGroupInput struct {
 	MaxReasoningEffortOverLimit string
 	// ReasoningEffortMappings OpenAI/Codex 推理强度精确映射。
 	ReasoningEffortMappings []ReasoningEffortMapping
-	// 从指定分组复制账号（创建分组后在同一事务内绑定）
-	CopyAccountsFromGroupIDs []int64
+	// 从指定分组复制提供商（创建分组后在同一事务内绑定）
+	CopyProvidersFromGroupIDs []int64
 }
 
 type UpdateGroupInput struct {
@@ -126,6 +126,6 @@ type UpdateGroupInput struct {
 	MaxReasoningEffortOverLimit *string
 	// ReasoningEffortMappings nil 表示不修改，空数组表示清空，非空数组表示替换。
 	ReasoningEffortMappings *[]ReasoningEffortMapping
-	// 从指定分组复制账号（同步操作：先清空当前分组的账号绑定，再绑定源分组的账号）
-	CopyAccountsFromGroupIDs []int64
+	// 从指定分组复制提供商（同步操作：先清空当前分组的提供商绑定，再绑定源分组的提供商）
+	CopyProvidersFromGroupIDs []int64
 }

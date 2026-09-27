@@ -5,10 +5,10 @@ package app
 import (
 	"context"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/app/lifecycle"
 	"github.com/TokenFlux/TokenRouter/internal/batchimage"
 	"github.com/TokenFlux/TokenRouter/internal/creative"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
 type jobsRuntimeReady struct{}
@@ -17,7 +17,7 @@ func provideJobsRuntime(
 	batchImageCleanup *batchCleanupRuntime,
 	batchImageWorker *batchimage.Runtime,
 	creativeWorker *creative.CreativeWorkerRuntime,
-	cnUsageMonitor *account.CNUsageMonitor,
+	cnUsageMonitor *provider.CNUsageMonitor,
 	manager *lifecycle.Manager,
 ) *jobsRuntimeReady {
 	manager.Register(lifecycle.Hook{Name: "BatchImageCleanupService", StartOrder: 980, StopOrder: 20, Start: func(ctx context.Context) error {

@@ -1,4 +1,4 @@
-// 预检只投影当前账号与单次上游调用，不持有额外重试或资金状态。
+// 预检只投影当前提供商与单次上游调用，不持有额外重试或资金状态。
 package httpapi
 
 import (
@@ -43,13 +43,14 @@ func (p *inputTokensAttemptBridge) Select(excluded map[int64]struct{}) (textflow
 		return textflow.Selection{}, false, nil
 	}
 	p.selection = selected
-	account := selected.Target.Snapshot()
-	SetOpsSelectedAccount(p.c, account.ID, account.Platform)
-	return textflow.Selection{Account: account, RetryLimit: selected.Target.RetryLimit()}, true, nil
+	provider := selected.Target.Snapshot()
+	SetOpsSelectedProvider(p.c, provider.ID, provider.Platform)
+	return textflow.Selection{Provider: provider, RetryLimit: selected.Target.RetryLimit()}, true, nil
 }
+
 func (p *inputTokensAttemptBridge) SelectionFailed(err error, last *textflow.AttemptFailure, _ bool) {
 	if err != nil {
-		p.call.Log.Warn("openai_responses_input_tokens.account_select_failed", zap.Error(err))
+		p.call.Log.Warn("openai_responses_input_tokens.provider_select_failed", zap.Error(err))
 	}
 	if last != nil {
 		p.Exhausted(last)
@@ -57,7 +58,7 @@ func (p *inputTokensAttemptBridge) SelectionFailed(err error, last *textflow.Att
 	}
 	if err == nil {
 		MarkOpsRoutingCapacityLimited(p.c)
-		writeOpenAITokenError(p.c, http.StatusServiceUnavailable, "api_error", "No available accounts")
+		writeOpenAITokenError(p.c, http.StatusServiceUnavailable, "api_error", "No available providers")
 		return
 	}
 	if WriteGroupSelectionBusinessError(p.c, err, false, keyhttp.GetAPIKeyFromContext, gatewayprovider.ModelDisplayCatalogue{}, func(status int, kind, message string, _ bool) { writeOpenAITokenError(p.c, status, kind, message) }) {
@@ -69,6 +70,7 @@ func (p *inputTokensAttemptBridge) SelectionFailed(err error, last *textflow.Att
 	}
 	writeOpenAITokenError(p.c, cls.Status, cls.ErrType, cls.Message)
 }
+
 func (p *inputTokensAttemptBridge) Forward(_ textflow.Selection) *textflow.AttemptFailure {
 	start := time.Now()
 	err := func() error {
@@ -87,9 +89,11 @@ func (p *inputTokensAttemptBridge) Forward(_ textflow.Selection) *textflow.Attem
 	}
 	return &textflow.AttemptFailure{Cause: err}
 }
+
 func (p *inputTokensAttemptBridge) ForwardFailed(selected textflow.Selection, err error) {
-	p.call.Log.Error("openai_responses_input_tokens.forward_failed", zap.Int64("account_id", selected.Account.ID), zap.Error(err))
+	p.call.Log.Error("openai_responses_input_tokens.forward_failed", zap.Int64("provider_id", selected.Provider.ID), zap.Error(err))
 }
+
 func (p *inputTokensAttemptBridge) Exhausted(failure *textflow.AttemptFailure) {
 	var original *forwardcore.UpstreamFailoverError
 	errors.As(failure.Cause, &original)

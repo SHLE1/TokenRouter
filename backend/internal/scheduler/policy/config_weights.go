@@ -9,10 +9,10 @@ type ConfigScoreWeights struct {
 	Queue     float64 `mapstructure:"queue"`
 	ErrorRate float64 `mapstructure:"error_rate"`
 	TTFT      float64 `mapstructure:"ttft"`
-	// Reset 倾向「会话窗口最早重置」的账号。
-	// >0 时，剩余重置时间越短的账号得分越高，从而被优先用尽。默认 0（关闭，不改变原有行为）。
+	// Reset 倾向「会话窗口最早重置」的提供商。
+	// >0 时，剩余重置时间越短的提供商得分越高，从而被优先用尽。默认 0（关闭，不改变原有行为）。
 	Reset float64 `mapstructure:"reset"`
-	// QuotaHeadroom 倾向 Codex 7d 剩余额度更健康的账号。
+	// QuotaHeadroom 倾向 Codex 7d 剩余额度更健康的提供商。
 	// 默认 0（关闭，不改变原有行为）。
 	QuotaHeadroom float64 `mapstructure:"quota_headroom"`
 	// PreviousResponse/SessionSticky 仅在高级调度启用粘性加权时生效。

@@ -1,4 +1,4 @@
-// BalanceNotifyService 保留阈值判断、配置读取时点和账号回源顺序。
+// BalanceNotifyService 保留阈值判断、配置读取时点和提供商回源顺序。
 package billing
 
 import (
@@ -18,23 +18,23 @@ type AlertSender interface {
 	SendBalanceLowEmails([]string, int64, string, string, float64, float64, string, string)
 	SendQuotaAlertEmails([]string, int64, string, string, contract.QuotaDimension, float64, string)
 }
-type QuotaNotifyAccount struct {
+type QuotaNotifyProvider struct {
 	ID             int64
 	Name, Platform string
 	Dimensions     []QuotaNotifyDimension
 }
 type QuotaNotifyReader interface {
-	GetByID(context.Context, int64) (*QuotaNotifyAccount, error)
+	GetByID(context.Context, int64) (*QuotaNotifyProvider, error)
 }
 type BalanceNotifyService struct {
 	emailService AlertSender
 	settingRepo  NotifySettings
-	accountRepo  QuotaNotifyReader
+	providerRepo QuotaNotifyReader
 	background   func(string, func())
 }
 
-func NewBalanceNotifyService(sender AlertSender, settings NotifySettings, accounts QuotaNotifyReader, background func(string, func())) *BalanceNotifyService {
-	return &BalanceNotifyService{emailService: sender, settingRepo: settings, accountRepo: accounts, background: background}
+func NewBalanceNotifyService(sender AlertSender, settings NotifySettings, providers QuotaNotifyReader, background func(string, func())) *BalanceNotifyService {
+	return &BalanceNotifyService{emailService: sender, settingRepo: settings, providerRepo: providers, background: background}
 }
 
 const defaultSiteName = "Sub2API"
@@ -90,17 +90,17 @@ func (s *BalanceNotifyService) DispatchBalanceLowEmail(ctx context.Context, user
 	})
 }
 
-// CheckAccountQuotaAfterIncrement checks if any quota dimension crossed above its notify threshold.
+// CheckProviderQuotaAfterIncrement checks if any quota dimension crossed above its notify threshold.
 // When quotaState is non-nil (from DB transaction RETURNING), it is used directly for threshold
-// checking, avoiding a separate DB read. Otherwise it falls back to fetching fresh account data.
-func (s *BalanceNotifyService) CheckAccountQuotaAfterIncrement(ctx context.Context, account *QuotaNotifyAccount, cost float64, quotaState *AccountQuotaState) {
-	if account == nil || s.emailService == nil || s.settingRepo == nil || cost <= 0 {
+// checking, avoiding a separate DB read. Otherwise it falls back to fetching fresh provider data.
+func (s *BalanceNotifyService) CheckProviderQuotaAfterIncrement(ctx context.Context, provider *QuotaNotifyProvider, cost float64, quotaState *ProviderQuotaState) {
+	if provider == nil || s.emailService == nil || s.settingRepo == nil || cost <= 0 {
 		return
 	}
-	if !s.IsAccountQuotaNotifyEnabled(ctx) {
+	if !s.IsProviderQuotaNotifyEnabled(ctx) {
 		return
 	}
-	adminEmails := s.GetAccountQuotaNotifyEmails(ctx)
+	adminEmails := s.GetProviderQuotaNotifyEmails(ctx)
 	if len(adminEmails) == 0 {
 		return
 	}
@@ -108,47 +108,47 @@ func (s *BalanceNotifyService) CheckAccountQuotaAfterIncrement(ctx context.Conte
 	siteName := s.GetSiteName(ctx)
 	var dims []QuotaNotifyDimension
 	if quotaState != nil {
-		dims = quotaDimsFromCommitted(account, quotaState)
+		dims = quotaDimsFromCommitted(provider, quotaState)
 	} else {
-		freshAccount := s.FetchFreshAccount(ctx, account)
-		dims = append([]QuotaNotifyDimension(nil), freshAccount.Dimensions...)
-		account = freshAccount // use fresh data for alert metadata
+		freshProvider := s.FetchFreshProvider(ctx, provider)
+		dims = append([]QuotaNotifyDimension(nil), freshProvider.Dimensions...)
+		provider = freshProvider // use fresh data for alert metadata
 	}
-	s.CheckQuotaDimCrossings(account, dims, cost, adminEmails, siteName)
+	s.CheckQuotaDimCrossings(provider, dims, cost, adminEmails, siteName)
 }
 
-// fetchFreshAccount loads the latest account from DB; falls back to the snapshot on error.
-func (s *BalanceNotifyService) FetchFreshAccount(ctx context.Context, snapshot *QuotaNotifyAccount) *QuotaNotifyAccount {
-	if s.accountRepo == nil {
+// fetchFreshProvider loads the latest provider from DB; falls back to the snapshot on error.
+func (s *BalanceNotifyService) FetchFreshProvider(ctx context.Context, snapshot *QuotaNotifyProvider) *QuotaNotifyProvider {
+	if s.providerRepo == nil {
 		return snapshot
 	}
-	fresh, err := s.accountRepo.GetByID(ctx, snapshot.ID)
+	fresh, err := s.providerRepo.GetByID(ctx, snapshot.ID)
 	if err != nil {
-		slog.Warn("failed to fetch fresh account for quota notify, using snapshot",
-			"account_id", snapshot.ID, "error", err)
+		slog.Warn("failed to fetch fresh provider for quota notify, using snapshot",
+			"provider_id", snapshot.ID, "error", err)
 		return snapshot
 	}
 	return fresh
 }
 
 // checkQuotaDimCrossings 委托 billing 的唯一阈值规则。
-func (s *BalanceNotifyService) CheckQuotaDimCrossings(account *QuotaNotifyAccount, dims []QuotaNotifyDimension, cost float64, adminEmails []string, siteName string) {
+func (s *BalanceNotifyService) CheckQuotaDimCrossings(provider *QuotaNotifyProvider, dims []QuotaNotifyDimension, cost float64, adminEmails []string, siteName string) {
 	for _, dim := range dims {
 		if threshold, ok := dim.Crossing(cost); ok {
-			s.AsyncSendQuotaAlert(adminEmails, account.ID, account.Name, account.Platform, dim, dim.CurrentUsed, threshold, siteName)
+			s.AsyncSendQuotaAlert(adminEmails, provider.ID, provider.Name, provider.Platform, dim, dim.CurrentUsed, threshold, siteName)
 		}
 	}
 }
 
 // asyncSendQuotaAlert sends quota alert email in a goroutine with panic recovery.
-func (s *BalanceNotifyService) AsyncSendQuotaAlert(adminEmails []string, accountID int64, accountName, platform string, dim QuotaNotifyDimension, newUsed, effectiveThreshold float64, siteName string) {
+func (s *BalanceNotifyService) AsyncSendQuotaAlert(adminEmails []string, providerID int64, providerName, platform string, dim QuotaNotifyDimension, newUsed, effectiveThreshold float64, siteName string) {
 	s.background("service/balance_notify_service.go:asyncSendQuotaAlert", func() {
 		defer func() {
 			if r := recover(); r != nil {
 				slog.Error("panic in quota notification", "recover", r)
 			}
 		}()
-		s.emailService.SendQuotaAlertEmails(adminEmails, accountID, accountName, platform, contract.QuotaDimension(dim), newUsed, siteName)
+		s.emailService.SendQuotaAlertEmails(adminEmails, providerID, providerName, platform, contract.QuotaDimension(dim), newUsed, siteName)
 	})
 }
 
@@ -169,19 +169,19 @@ func (s *BalanceNotifyService) GetBalanceNotifyConfig(ctx context.Context) (enab
 	return
 }
 
-// isAccountQuotaNotifyEnabled checks the global account quota notification toggle.
-func (s *BalanceNotifyService) IsAccountQuotaNotifyEnabled(ctx context.Context) bool {
-	val, err := s.settingRepo.GetValue(ctx, SettingKeyAccountQuotaNotifyEnabled)
+// isProviderQuotaNotifyEnabled checks the global provider quota notification toggle.
+func (s *BalanceNotifyService) IsProviderQuotaNotifyEnabled(ctx context.Context) bool {
+	val, err := s.settingRepo.GetValue(ctx, SettingKeyProviderQuotaNotifyEnabled)
 	if err != nil {
 		return false
 	}
 	return val == "true"
 }
 
-// getAccountQuotaNotifyEmails reads admin notification emails from settings,
+// getProviderQuotaNotifyEmails reads admin notification emails from settings,
 // filtering out disabled and unverified entries.
-func (s *BalanceNotifyService) GetAccountQuotaNotifyEmails(ctx context.Context) []string {
-	raw, err := s.settingRepo.GetValue(ctx, SettingKeyAccountQuotaNotifyEmails)
+func (s *BalanceNotifyService) GetProviderQuotaNotifyEmails(ctx context.Context) []string {
+	raw, err := s.settingRepo.GetValue(ctx, SettingKeyProviderQuotaNotifyEmails)
 	if err != nil || strings.TrimSpace(raw) == "" || raw == "[]" {
 		return nil
 	}
@@ -231,8 +231,8 @@ func (s *BalanceNotifyService) CollectBalanceNotifyRecipients(user *UserSummary)
 	return FilterVerifiedEmails(user.BalanceNotifyExtraEmails)
 }
 
-func quotaDimsFromCommitted(account *QuotaNotifyAccount, state *AccountQuotaState) []QuotaNotifyDimension {
-	dims := append([]QuotaNotifyDimension(nil), account.Dimensions...)
+func quotaDimsFromCommitted(provider *QuotaNotifyProvider, state *ProviderQuotaState) []QuotaNotifyDimension {
+	dims := append([]QuotaNotifyDimension(nil), provider.Dimensions...)
 	for i := range dims {
 		switch dims[i].Name {
 		case "daily":
@@ -246,9 +246,11 @@ func quotaDimsFromCommitted(account *QuotaNotifyAccount, state *AccountQuotaStat
 	return dims
 }
 
-const SettingKeyAccountQuotaNotifyEmails = "account_quota_notify_emails"
-const SettingKeyAccountQuotaNotifyEnabled = "account_quota_notify_enabled"
-const SettingKeyBalanceLowNotifyEnabled = "balance_low_notify_enabled"
-const SettingKeyBalanceLowNotifyRechargeURL = "balance_low_notify_recharge_url"
-const SettingKeyBalanceLowNotifyThreshold = "balance_low_notify_threshold"
-const SettingKeySiteName = "site_name"
+const (
+	SettingKeyProviderQuotaNotifyEmails   = "provider_quota_notify_emails"
+	SettingKeyProviderQuotaNotifyEnabled  = "provider_quota_notify_enabled"
+	SettingKeyBalanceLowNotifyEnabled     = "balance_low_notify_enabled"
+	SettingKeyBalanceLowNotifyRechargeURL = "balance_low_notify_recharge_url"
+	SettingKeyBalanceLowNotifyThreshold   = "balance_low_notify_threshold"
+	SettingKeySiteName                    = "site_name"
+)

@@ -5,19 +5,19 @@ import (
 	"os"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
 	"github.com/TokenFlux/TokenRouter/internal/app/lifecycle"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/config"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 	egressprovider "github.com/TokenFlux/TokenRouter/internal/egress/provider"
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/messageforward"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/requestdebug"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/searchtools"
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
 )
@@ -31,8 +31,8 @@ func provideGatewayRequestDebug(manager *lifecycle.Manager) *requestdebug.Trace 
 
 // provideMessagesExecution 固定绑定 Messages、兼容转换和计数的原生依赖。
 // @project-doc docs/architecture/system_architecture.md#dependency_layers
-func provideMessagesExecution(credentials *account.MessageCredentialSource, fingerprint *anthropic.RequestFingerprint, transport httpclient.UpstreamTransport, health *accountprovider.UpstreamHealth, tls *egressprovider.TLSProfiles, readers *provider.RuntimeReaders, prices *billing.PriceResolver, search *searchtools.Emulator, activity *gatewayRequestActivity, debug *requestdebug.Trace, accounts provider.ExecutionAccountStore, deferred *account.DeferredService, cfg *config.Config, filter *egress.CompiledHeaderFilter, modelConfigs *routing.PricingConfigService) *gatewayhttp.MessagesExecutor {
-	deps := messageforward.Dependencies{Credentials: credentials, Fingerprint: fingerprint, Transport: transport, Health: health, TLS: tls, Prices: prices, Search: search, AccountState: accounts, Deferred: deferred}
+func provideMessagesExecution(credentials *provider.MessageCredentialSource, fingerprint *anthropic.RequestFingerprint, transport httpclient.UpstreamTransport, health *provideradapter.UpstreamHealth, tls *egressprovider.TLSProfiles, readers *gatewayadapter.RuntimeReaders, prices *billing.PriceResolver, search *searchtools.Emulator, activity *gatewayRequestActivity, debug *requestdebug.Trace, providers gatewayadapter.ExecutionProviderStore, deferred *provider.DeferredService, cfg *config.Config, filter *egress.CompiledHeaderFilter, modelConfigs *routing.PricingConfigService) *gatewayhttp.MessagesExecutor {
+	deps := messageforward.Dependencies{Credentials: credentials, Fingerprint: fingerprint, Transport: transport, Health: health, TLS: tls, Prices: prices, Search: search, ProviderState: providers, Deferred: deferred}
 	if modelConfigs != nil {
 		deps.GroupPolicies = modelConfigs
 	}

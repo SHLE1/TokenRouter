@@ -9,7 +9,7 @@ import (
 	dbent "github.com/TokenFlux/TokenRouter/ent"
 	"github.com/TokenFlux/TokenRouter/internal/payment"
 	paymentpostgres "github.com/TokenFlux/TokenRouter/internal/payment/postgres"
-	"github.com/TokenFlux/TokenRouter/internal/payment/provider"
+	paymentadapter "github.com/TokenFlux/TokenRouter/internal/payment/provider"
 	"github.com/stretchr/testify/require"
 )
 
@@ -41,7 +41,7 @@ func (f *refundBalanceFixture) CompensateBalance(ctx context.Context, id int64, 
 
 func newRefundWorkflowFixture(client *dbent.Client, balances *refundBalanceFixture, balancer payment.LoadBalancer, factory func(string, string, map[string]string) (payment.Provider, error)) *payment.RefundWorkflow {
 	if factory == nil {
-		factory = provider.CreateProvider
+		factory = paymentadapter.CreateProvider
 	}
 	bindings := payment.NewProviderBindings(paymentpostgres.NewInstanceStore(client), nil, balancer, payment.BindingRuntime{Factory: factory}, false)
 	store := paymentpostgres.NewRefundStore(client, func(*dbent.Tx) payment.RefundRights { return balances })

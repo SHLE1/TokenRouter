@@ -44,7 +44,7 @@ type MessagesCall struct {
 	Body, GeminiBody                         []byte
 	Model, GeminiModel, Platform, SessionKey string
 	Stream, ClaudeCode, HasBoundSession      bool
-	BoundAccountID                           int64
+	BoundProviderID                          int64
 	StreamStarted                            *bool
 	Log                                      *zap.Logger
 	Route                                    routing.RoutePlan
@@ -263,7 +263,7 @@ func (h *MessagesHandler) Messages(c *gin.Context) {
 		zap.String("metadata_user_id_raw", parsedReq.MetadataUserID),
 	)
 
-	// 专用入口读取强制平台过滤，普通入口不预设账号平台
+	// 专用入口读取强制平台过滤，普通入口不预设提供商平台
 	platform := ""
 	if forcePlatform, ok := h.backend.ForcedPlatform(c); ok {
 		platform = forcePlatform
@@ -280,29 +280,29 @@ func (h *MessagesHandler) Messages(c *gin.Context) {
 		}
 	}
 
-	// 查询粘性会话绑定的账号 ID
-	var sessionBoundAccountID int64
+	// 查询粘性会话绑定的提供商 ID
+	var sessionBoundProviderID int64
 	if sessionKey != "" {
-		sessionBoundAccountID, _ = h.backend.CachedSession(c.Request.Context(), apiKey.GroupID, sessionKey)
+		sessionBoundProviderID, _ = h.backend.CachedSession(c.Request.Context(), apiKey.GroupID, sessionKey)
 		// [DEBUG-STICKY] 打印粘性会话查询结果
 		reqLog.Info("sticky.cache_lookup",
 			zap.String("session_key", sessionKey),
-			zap.Int64("bound_account_id", sessionBoundAccountID),
+			zap.Int64("bound_provider_id", sessionBoundProviderID),
 		)
-		if sessionBoundAccountID > 0 {
+		if sessionBoundProviderID > 0 {
 			prefetchedGroupID := int64(0)
 			if apiKey.GroupID != nil {
 				prefetchedGroupID = *apiKey.GroupID
 			}
-			h.backend.Prefetch(c, sessionBoundAccountID, prefetchedGroupID)
+			h.backend.Prefetch(c, sessionBoundProviderID, prefetchedGroupID)
 		}
 	} else {
 		reqLog.Info("sticky.no_session_key", zap.String("session_hash", sessionHash))
 	}
-	// 判断是否真的绑定了粘性会话：有 sessionKey 且已经绑定到某个账号
-	hasBoundSession := sessionKey != "" && sessionBoundAccountID > 0
+	// 判断是否真的绑定了粘性会话：有 sessionKey 且已经绑定到某个提供商
+	hasBoundSession := sessionKey != "" && sessionBoundProviderID > 0
 
-	call := MessagesCall{Key: apiKey, Subject: subject, Subscription: subscription, Parsed: parsedReq, Body: body, Model: reqModel, Stream: reqStream, ClaudeCode: isClaudeCodeClient, Platform: platform, SessionKey: sessionKey, BoundAccountID: sessionBoundAccountID, HasBoundSession: hasBoundSession, StreamStarted: &streamStarted, Log: reqLog, Route: groupMappingRoutePlan, Mapping: groupMapping}
+	call := MessagesCall{Key: apiKey, Subject: subject, Subscription: subscription, Parsed: parsedReq, Body: body, Model: reqModel, Stream: reqStream, ClaudeCode: isClaudeCodeClient, Platform: platform, SessionKey: sessionKey, BoundProviderID: sessionBoundProviderID, HasBoundSession: hasBoundSession, StreamStarted: &streamStarted, Log: reqLog, Route: groupMappingRoutePlan, Mapping: groupMapping}
 	kind := execution.TextMessages
 	if platform == capability.PlatformGemini {
 		attempt, err := h.backend.PrepareGemini(c.Request.Context(), call)
@@ -321,7 +321,7 @@ func (h *MessagesHandler) Messages(c *gin.Context) {
 		Route:   call.Route, UserID: subject.UserID, Concurrency: subject.Concurrency, Stream: reqStream, Body: body, Model: reqModel,
 		Funding: execution.FundingState{Key: apiKey, Subscription: subscription}, SessionHash: sessionKey,
 		Metadata: execution.RequestMetadata{ClaudeCode: isClaudeCodeClient},
-		Text:     execution.TextState{Kind: kind, Parsed: parsedReq, Platform: platform, BoundAccountID: sessionBoundAccountID, HasBoundSession: hasBoundSession, GeminiBody: call.GeminiBody, GeminiModel: call.GeminiModel},
+		Text:     execution.TextState{Kind: kind, Parsed: parsedReq, Platform: platform, BoundProviderID: sessionBoundProviderID, HasBoundSession: hasBoundSession, GeminiBody: call.GeminiBody, GeminiModel: call.GeminiModel},
 	}
 	output := &MessagesOutput{ResponseSink: ResponseSink{Writer: c.Writer}, HTTP: c, Log: reqLog, StreamStarted: &streamStarted}
 	_, _ = h.executor.Execute(c.Request.Context(), request, output)

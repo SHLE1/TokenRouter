@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 )
 
-// AnthropicError 保留账号策略、提交标记、规则匹配和安全消息的原有顺序。
+// AnthropicError 保留提供商策略、提交标记、规则匹配和安全消息的原有顺序。
 func AnthropicError(ctx context.Context, p ErrorPorts, in ErrorInput) (*Result, error) {
 	// 上游返回非成功 HTTP 状态，仍应计入 Ollama Cloud 活动。
 	p.ScheduleActivity()
@@ -16,13 +16,13 @@ func AnthropicError(ctx context.Context, p ErrorPorts, in ErrorInput) (*Result, 
 	if readErr != nil {
 		// 读取失败时 body 可能被截断，错误分类会基于不完整数据；记录日志以便排查，
 		// 避免静默吞掉导致误判。
-		p.Log(fmt.Sprintf("[Forward] Failed to fully read upstream error body: Account=%d(%s) Status=%d err=%v",
-			in.AccountID, in.AccountName, in.Status, readErr))
+		p.Log(fmt.Sprintf("[Forward] Failed to fully read upstream error body: Provider=%d(%s) Status=%d err=%v",
+			in.ProviderID, in.ProviderName, in.Status, readErr))
 	}
 
 	// 调试日志：打印上游错误响应
-	p.Log(fmt.Sprintf("[Forward] Upstream error (non-retryable): Account=%d(%s) Status=%d RequestID=%s Body=%s",
-		in.AccountID, in.AccountName, in.Status, in.RequestID, p.Truncate(string(body), 1000)))
+	p.Log(fmt.Sprintf("[Forward] Upstream error (non-retryable): Provider=%d(%s) Status=%d RequestID=%s Body=%s",
+		in.ProviderID, in.ProviderName, in.Status, in.RequestID, p.Truncate(string(body), 1000)))
 
 	upstreamMsg := strings.TrimSpace(upstream.ExtractErrorMessage(body))
 	upstreamMsg = p.Sanitize(upstreamMsg)
@@ -40,7 +40,7 @@ func AnthropicError(ctx context.Context, p ErrorPorts, in ErrorInput) (*Result, 
 	p.SetError(in.Status, upstreamMsg, upstreamDetail)
 	p.Observe(Notice{
 		Platform:           in.Platform,
-		AccountID:          in.AccountID,
+		ProviderID:         in.ProviderID,
 		UpstreamStatusCode: in.Status,
 		UpstreamRequestID:  in.RequestID,
 		Kind:               "http_error",
@@ -56,7 +56,7 @@ func AnthropicError(ctx context.Context, p ErrorPorts, in ErrorInput) (*Result, 
 		return nil, fmt.Errorf("upstream error: %d (not in custom error codes)", in.Status)
 	}
 	if decision.Failover {
-		return nil, p.Failover(in.Status, body, decision.RetrySameAccount)
+		return nil, p.Failover(in.Status, body, decision.RetrySameProvider)
 	}
 
 	p.Commit()
@@ -64,11 +64,11 @@ func AnthropicError(ctx context.Context, p ErrorPorts, in ErrorInput) (*Result, 
 	// 记录上游错误响应体摘要便于排障（可选：由配置控制；不回显到客户端）
 	if in.LogBody {
 		p.Log(fmt.Sprintf(
-			"Upstream error %d (account=%d platform=%s type=%s): %s",
+			"Upstream error %d (provider=%d platform=%s type=%s): %s",
 			in.Status,
-			in.AccountID,
+			in.ProviderID,
 			in.Platform,
-			in.AccountType,
+			in.ProviderType,
 			p.TruncateBytes(body, in.LogBodyMaxBytes),
 		))
 	}
@@ -145,7 +145,7 @@ func AnthropicError(ctx context.Context, p ErrorPorts, in ErrorInput) (*Result, 
 	return nil, fmt.Errorf("upstream error: %d message=%s", in.Status, upstreamMsg)
 }
 
-// AnthropicRetryError 保留账号策略、提交标记、规则匹配和安全消息的原有顺序。
+// AnthropicRetryError 保留提供商策略、提交标记、规则匹配和安全消息的原有顺序。
 func AnthropicRetryError(ctx context.Context, p ErrorPorts, in ErrorInput) (*Result, error) {
 	respBody, _ := p.ReadBody()
 	p.ResetBody(respBody)
@@ -155,7 +155,7 @@ func AnthropicRetryError(ctx context.Context, p ErrorPorts, in ErrorInput) (*Res
 		return AnthropicError(ctx, p, in)
 	}
 	if decision.Failover {
-		return nil, p.Failover(in.Status, respBody, decision.RetrySameAccount)
+		return nil, p.Failover(in.Status, respBody, decision.RetrySameProvider)
 	}
 	p.Commit()
 
@@ -175,7 +175,7 @@ func AnthropicRetryError(ctx context.Context, p ErrorPorts, in ErrorInput) (*Res
 	p.SetError(in.Status, upstreamMsg, upstreamDetail)
 	p.Observe(Notice{
 		Platform:           in.Platform,
-		AccountID:          in.AccountID,
+		ProviderID:         in.ProviderID,
 		UpstreamStatusCode: in.Status,
 		UpstreamRequestID:  in.RequestID,
 		Kind:               "retry_exhausted",
@@ -185,11 +185,11 @@ func AnthropicRetryError(ctx context.Context, p ErrorPorts, in ErrorInput) (*Res
 
 	if in.LogBody {
 		p.Log(fmt.Sprintf(
-			"Upstream error %d retries_exhausted (account=%d platform=%s type=%s): %s",
+			"Upstream error %d retries_exhausted (provider=%d platform=%s type=%s): %s",
 			in.Status,
-			in.AccountID,
+			in.ProviderID,
 			in.Platform,
-			in.AccountType,
+			in.ProviderType,
 			p.TruncateBytes(respBody, in.LogBodyMaxBytes),
 		))
 	}

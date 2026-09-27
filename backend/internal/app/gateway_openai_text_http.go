@@ -14,7 +14,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/errorpolicy"
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/promptpolicy"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 	"github.com/TokenFlux/TokenRouter/internal/moderation"
 	openaiwire "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
@@ -34,7 +34,7 @@ func provideOpenAITextHTTP(
 	cfg *config.Config,
 	runtime *openaiattempt.Runtime,
 	activity *gatewayRequestActivity,
-	planner *provider.RoutePlanner, cache session.GatewayCache,
+	planner *gatewayadapter.RoutePlanner, cache session.GatewayCache,
 	messages *messageHTTPBindings,
 	subscriptions *billing.SubscriptionService,
 ) *gatewayhttp.OpenAITextHandler {
@@ -54,8 +54,8 @@ func openAITextOptions(cfg *config.Config) gatewayhttp.OpenAITextOptions {
 	if cfg != nil {
 		options.ForceCodexCLI = cfg.Gateway.ForceCodexCLI
 		options.MaxBodyBytes = cfg.Gateway.MaxBodySize
-		if cfg.Gateway.MaxAccountSwitches > 0 {
-			options.MaxSwitches = cfg.Gateway.MaxAccountSwitches
+		if cfg.Gateway.MaxProviderSwitches > 0 {
+			options.MaxSwitches = cfg.Gateway.MaxProviderSwitches
 		}
 		if cfg.Gateway.StreamKeepaliveInterval > 0 {
 			options.CompactKeepaliveInterval = time.Duration(cfg.Gateway.StreamKeepaliveInterval) * time.Second
@@ -65,7 +65,7 @@ func openAITextOptions(cfg *config.Config) gatewayhttp.OpenAITextOptions {
 }
 
 // openAITextBindings 固定原生能力，运行时只创建请求数据。
-func openAITextBindings(source *gatewayhttp.OpenAIResponsesExecutor, funding *admission.FundingAdmission, keys *apikey.APIKeyService, resources *gatewayhttp.OpenAIHTTPResources, cyber *gatewayhttp.CyberHandler, rules *errorpolicy.ErrorPassthroughService, moderator *moderation.ContentModerationService, planner *provider.RoutePlanner, cache session.GatewayCache, subscriptions *billing.SubscriptionService) gatewayhttp.OpenAITextBindings {
+func openAITextBindings(source *gatewayhttp.OpenAIResponsesExecutor, funding *admission.FundingAdmission, keys *apikey.APIKeyService, resources *gatewayhttp.OpenAIHTTPResources, cyber *gatewayhttp.CyberHandler, rules *errorpolicy.ErrorPassthroughService, moderator *moderation.ContentModerationService, planner *gatewayadapter.RoutePlanner, cache session.GatewayCache, subscriptions *billing.SubscriptionService) gatewayhttp.OpenAITextBindings {
 	var moderationPort gatewayhttp.ModerationPort
 	if moderator != nil {
 		moderationPort = moderator

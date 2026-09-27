@@ -64,8 +64,8 @@
           <span class="text-sm text-gray-900 dark:text-white">{{ row.api_key?.name || '-' }}</span>
         </template>
 
-        <template #cell-account="{ row }">
-          <span class="text-sm text-gray-900 dark:text-white">{{ row.account?.name || '-' }}</span>
+        <template #cell-provider="{ row }">
+          <span class="text-sm text-gray-900 dark:text-white">{{ row.provider?.name || '-' }}</span>
         </template>
 
         <template #cell-model="{ row }">
@@ -220,8 +220,8 @@
                 </div>
               </div>
             </div>
-            <div v-if="showAccountBilling && row.account_rate_multiplier != null" class="mt-0.5 text-xs text-orange-500 dark:text-orange-400">
-              A {{ formatDetailedUsdAmount(accountBilled(row)) }}
+            <div v-if="showProviderBilling && row.provider_rate_multiplier != null" class="mt-0.5 text-xs text-orange-500 dark:text-orange-400">
+              A {{ formatDetailedUsdAmount(providerBilled(row)) }}
             </div>
           </div>
         </template>
@@ -431,7 +431,7 @@
           <span class="text-gray-400">{{ t('usage.timingRequestSize') }}</span>
           <span class="font-medium tabular-nums text-right">{{ formatRequestSize(timingTooltipData.detailed_timing?.request_content_length) }}</span>
           <span class="text-gray-400">{{ t('usage.timingSlot') }}</span>
-          <span class="font-medium tabular-nums text-right">{{ formatTimingMs(timingTooltipData.detailed_timing?.account_slot_acquired_ms) }}</span>
+          <span class="font-medium tabular-nums text-right">{{ formatTimingMs(timingTooltipData.detailed_timing?.provider_slot_acquired_ms) }}</span>
           <span class="text-gray-400">{{ t('usage.timingGetConn') }}</span>
           <span class="font-medium tabular-nums text-right">{{ formatTimingMs(timingTooltipData.detailed_timing?.upstream_get_conn_ms) }}</span>
           <span class="text-gray-400">{{ t('usage.timingGotConn') }}</span>
@@ -598,19 +598,19 @@
             <span class="text-gray-400">{{ t('usage.userBilled') }}</span>
             <span class="font-semibold text-green-400">{{ formatDetailedBalance(tooltipData?.actual_cost) }}</span>
           </div>
-          <!-- Account billing (separated from user billing) -->
-          <template v-if="showAccountBilling">
+          <!-- Provider billing (separated from user billing) -->
+          <template v-if="showProviderBilling">
             <div class="flex items-center justify-between gap-6 border-t border-gray-700 pt-1.5">
-              <span class="text-gray-400">{{ t('usage.accountMultiplier') }}</span>
-              <span class="font-semibold text-blue-400">{{ formatMultiplier(tooltipData?.account_rate_multiplier ?? 1) }}x</span>
+              <span class="text-gray-400">{{ t('usage.providerMultiplier') }}</span>
+              <span class="font-semibold text-blue-400">{{ formatMultiplier(tooltipData?.provider_rate_multiplier ?? 1) }}x</span>
             </div>
             <div class="flex items-center justify-between gap-6">
-              <span class="text-gray-400">{{ t('usage.accountBilled') }}</span>
+              <span class="text-gray-400">{{ t('usage.providerBilled') }}</span>
               <span class="font-semibold text-green-400">
-                {{ formatDetailedUsdAmount(accountBilled({
+                {{ formatDetailedUsdAmount(providerBilled({
                   total_cost: tooltipData?.total_cost,
-                  account_stats_cost: tooltipData?.account_stats_cost,
-                  account_rate_multiplier: tooltipData?.account_rate_multiplier,
+                  provider_stats_cost: tooltipData?.provider_stats_cost,
+                  provider_rate_multiplier: tooltipData?.provider_rate_multiplier,
                 })) }}
               </span>
             </div>
@@ -673,10 +673,10 @@ import {
   hasImageInputCost,
 } from '@/utils/imageUsage'
 
-/** 计算账号口径展示费用：(account_stats_cost ?? total_cost) * rate_multiplier */
-function accountBilled(row: { total_cost?: number | null; account_stats_cost?: number | null; account_rate_multiplier?: number | null }): number {
-  const base = row.account_stats_cost != null ? row.account_stats_cost : (row.total_cost ?? 0)
-  const result = base * (row.account_rate_multiplier ?? 1)
+/** 计算提供商口径展示费用：(provider_stats_cost ?? total_cost) * rate_multiplier */
+function providerBilled(row: { total_cost?: number | null; provider_stats_cost?: number | null; provider_rate_multiplier?: number | null }): number {
+  const base = row.provider_stats_cost != null ? row.provider_stats_cost : (row.total_cost ?? 0)
+  const result = base * (row.provider_rate_multiplier ?? 1)
   return Number.isNaN(result) ? 0 : result
 }
 
@@ -695,7 +695,7 @@ interface Props {
   serverSideSort?: boolean
   defaultSortKey?: string
   defaultSortOrder?: 'asc' | 'desc'
-  showAccountBilling?: boolean
+  showProviderBilling?: boolean
   /** 用户端只展示实际扣费时隐藏标准费用明细。 */
   showStandardCost?: boolean
   showUpstreamEndpoint?: boolean
@@ -714,7 +714,7 @@ const props = withDefaults(defineProps<Props>(), {
   serverSideSort: false,
   defaultSortKey: '',
   defaultSortOrder: 'asc',
-  showAccountBilling: true,
+  showProviderBilling: true,
   showStandardCost: true,
   showUpstreamEndpoint: true,
   userClickable: true,
@@ -731,7 +731,7 @@ const { t } = useI18n()
 const { balanceUnitSymbol, usdUnitSymbol, formatBalanceAmount, formatUsdAmount } = useBalanceDisplay()
 const { copyToClipboard } = useClipboard()
 const copiedRequestId = ref<string | null>(null)
-const showAccountBilling = props.showAccountBilling
+const showProviderBilling = props.showProviderBilling
 const showStandardCost = props.showStandardCost
 const showUpstreamEndpoint = props.showUpstreamEndpoint
 const userClickable = props.userClickable

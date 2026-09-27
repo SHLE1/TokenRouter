@@ -192,7 +192,7 @@ WITH usage_totals AS (
          COALESCE(SUM(input_tokens + output_tokens + cache_creation_tokens + cache_read_tokens), 0) AS token_consumed
   FROM usage_logs ul
   LEFT JOIN groups g ON g.id = ul.group_id
-  LEFT JOIN accounts a ON a.id = ul.account_id
+  LEFT JOIN providers a ON a.id = ul.provider_id
   WHERE ul.created_at >= $1 AND ul.created_at < $2
   GROUP BY 1
 ),

@@ -16,23 +16,23 @@ type UsageLogRepository interface {
 
 	ListByUser(ctx context.Context, userID int64, params pagination.PaginationParams) ([]UsageLog, *pagination.PaginationResult, error)
 	ListByAPIKey(ctx context.Context, apiKeyID int64, params pagination.PaginationParams) ([]UsageLog, *pagination.PaginationResult, error)
-	ListByAccount(ctx context.Context, accountID int64, params pagination.PaginationParams) ([]UsageLog, *pagination.PaginationResult, error)
+	ListByProvider(ctx context.Context, providerID int64, params pagination.PaginationParams) ([]UsageLog, *pagination.PaginationResult, error)
 
 	ListByUserAndTimeRange(ctx context.Context, userID int64, startTime, endTime time.Time) ([]UsageLog, *pagination.PaginationResult, error)
 	ListByAPIKeyAndTimeRange(ctx context.Context, apiKeyID int64, startTime, endTime time.Time) ([]UsageLog, *pagination.PaginationResult, error)
-	ListByAccountAndTimeRange(ctx context.Context, accountID int64, startTime, endTime time.Time) ([]UsageLog, *pagination.PaginationResult, error)
+	ListByProviderAndTimeRange(ctx context.Context, providerID int64, startTime, endTime time.Time) ([]UsageLog, *pagination.PaginationResult, error)
 	ListByModelAndTimeRange(ctx context.Context, modelName string, startTime, endTime time.Time) ([]UsageLog, *pagination.PaginationResult, error)
 
-	GetAccountWindowStats(ctx context.Context, accountID int64, startTime time.Time) (*AccountStats, error)
-	GetAccountTodayStats(ctx context.Context, accountID int64) (*AccountStats, error)
+	GetProviderWindowStats(ctx context.Context, providerID int64, startTime time.Time) (*ProviderStats, error)
+	GetProviderTodayStats(ctx context.Context, providerID int64) (*ProviderStats, error)
 
 	// Admin dashboard stats
 	GetDashboardStats(ctx context.Context) (*DashboardStats, error)
-	GetUsageTrendWithFilters(ctx context.Context, startTime, endTime time.Time, granularity string, userID, apiKeyID, accountID, groupID int64, model string, requestType *int16, stream *bool, billingType *int8) ([]TrendDataPoint, error)
-	GetModelStatsWithFilters(ctx context.Context, startTime, endTime time.Time, userID, apiKeyID, accountID, groupID int64, requestType *int16, stream *bool, billingType *int8) ([]ModelStat, error)
-	GetEndpointStatsWithFilters(ctx context.Context, startTime, endTime time.Time, userID, apiKeyID, accountID, groupID int64, model string, requestType *int16, stream *bool, billingType *int8) ([]EndpointStat, error)
-	GetUpstreamEndpointStatsWithFilters(ctx context.Context, startTime, endTime time.Time, userID, apiKeyID, accountID, groupID int64, model string, requestType *int16, stream *bool, billingType *int8) ([]EndpointStat, error)
-	GetGroupStatsWithFilters(ctx context.Context, startTime, endTime time.Time, userID, apiKeyID, accountID, groupID int64, requestType *int16, stream *bool, billingType *int8) ([]GroupStat, error)
+	GetUsageTrendWithFilters(ctx context.Context, startTime, endTime time.Time, granularity string, userID, apiKeyID, providerID, groupID int64, model string, requestType *int16, stream *bool, billingType *int8) ([]TrendDataPoint, error)
+	GetModelStatsWithFilters(ctx context.Context, startTime, endTime time.Time, userID, apiKeyID, providerID, groupID int64, requestType *int16, stream *bool, billingType *int8) ([]ModelStat, error)
+	GetEndpointStatsWithFilters(ctx context.Context, startTime, endTime time.Time, userID, apiKeyID, providerID, groupID int64, model string, requestType *int16, stream *bool, billingType *int8) ([]EndpointStat, error)
+	GetUpstreamEndpointStatsWithFilters(ctx context.Context, startTime, endTime time.Time, userID, apiKeyID, providerID, groupID int64, model string, requestType *int16, stream *bool, billingType *int8) ([]EndpointStat, error)
+	GetGroupStatsWithFilters(ctx context.Context, startTime, endTime time.Time, userID, apiKeyID, providerID, groupID int64, requestType *int16, stream *bool, billingType *int8) ([]GroupStat, error)
 	GetUserBreakdownStats(ctx context.Context, startTime, endTime time.Time, dim UserBreakdownDimension, limit int) ([]UserBreakdownItem, error)
 	GetAllGroupUsageSummary(ctx context.Context, todayStart time.Time) ([]GroupUsageSummary, error)
 	GetAPIKeyUsageTrend(ctx context.Context, startTime, endTime time.Time, granularity string, limit int) ([]APIKeyUsageTrendPoint, error)
@@ -53,13 +53,13 @@ type UsageLogRepository interface {
 	GetGlobalStats(ctx context.Context, startTime, endTime time.Time) (*UsageStats, error)
 	GetStatsWithFilters(ctx context.Context, filters UsageLogFilters) (*UsageStats, error)
 
-	// Account stats
-	GetAccountUsageStats(ctx context.Context, accountID int64, startTime, endTime time.Time) (*AccountUsageStatsResponse, error)
+	// Provider stats
+	GetProviderUsageStats(ctx context.Context, providerID int64, startTime, endTime time.Time) (*ProviderUsageStatsResponse, error)
 
 	// Aggregated stats (optimized)
 	GetUserStatsAggregated(ctx context.Context, userID int64, startTime, endTime time.Time) (*UsageStats, error)
 	GetAPIKeyStatsAggregated(ctx context.Context, apiKeyID int64, startTime, endTime time.Time) (*UsageStats, error)
-	GetAccountStatsAggregated(ctx context.Context, accountID int64, startTime, endTime time.Time) (*UsageStats, error)
+	GetProviderStatsAggregated(ctx context.Context, providerID int64, startTime, endTime time.Time) (*UsageStats, error)
 	GetModelStatsAggregated(ctx context.Context, modelName string, startTime, endTime time.Time) (*UsageStats, error)
 	GetDailyStatsAggregated(ctx context.Context, userID int64, startTime, endTime time.Time) ([]map[string]any, error)
 }

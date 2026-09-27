@@ -8,7 +8,7 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway/execution"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
@@ -23,7 +23,7 @@ const (
 	FailureBilling        FailureStage = "billing"
 	FailureUserQueue      FailureStage = "user_queue"
 	FailureUserSlot       FailureStage = "user_slot"
-	FailureAccountSlot    FailureStage = "account_slot"
+	FailureProviderSlot   FailureStage = "provider_slot"
 	FailureSelection      FailureStage = "selection"
 	FailureExhausted      FailureStage = "exhausted"
 	FailureRefreshPending FailureStage = "refresh_pending"
@@ -48,11 +48,11 @@ func (e *Failure) Unwrap() error { return e.Cause }
 // Selection 的回调提供当前执行目标，不拥有重试循环或共享状态。
 type Selection struct {
 	WaitWithoutCounter bool
-	Snapshot           account.AccountSnapshot
+	Snapshot           provider.ProviderSnapshot
 	Plan               routing.CandidatePlan
 	Acquired           bool
 	Release            func()
-	WaitPlan           *scheduler.AccountWaitPlan
+	WaitPlan           *scheduler.ProviderWaitPlan
 	Input              upstream.AttemptInput
 	Executor           upstream.Executor
 	Refresh            func(context.Context) (*Selection, error)
@@ -76,18 +76,18 @@ type RequestPorts struct {
 
 // QoderUseCase 只保存静态尝试上限和等待预算，所有请求状态位于 Run 栈上。
 type QoderUseCase struct {
-	MaxAccounts int
-	WaitTimeout time.Duration
-	Enter       func() (func(), error)
-	concurrency *scheduler.ConcurrencyService
-	runtime     QoderRuntime
+	MaxProviders int
+	WaitTimeout  time.Duration
+	Enter        func() (func(), error)
+	concurrency  *scheduler.ConcurrencyService
+	runtime      QoderRuntime
 }
 
-func NewQoderUseCase(maxAccounts int, waitTimeout time.Duration) *QoderUseCase {
-	return &QoderUseCase{MaxAccounts: maxAccounts, WaitTimeout: waitTimeout}
+func NewQoderUseCase(maxProviders int, waitTimeout time.Duration) *QoderUseCase {
+	return &QoderUseCase{MaxProviders: maxProviders, WaitTimeout: waitTimeout}
 }
 
-// Run 贯通已有准入、Lease、平台执行与完成处理，只有这里拥有本请求的账号尝试循环。
+// Run 贯通已有准入、Lease、平台执行与完成处理，只有这里拥有本请求的提供商尝试循环。
 // @project-doc docs/architecture/gateway_request_lifecycle.md#qoder_gateway_execution
 func (u *QoderUseCase) Run(ctx context.Context, request Request, ports RequestPorts, output *OutputTracker) error {
 	return u.run(ctx, request, ports, output, nil)
@@ -229,7 +229,7 @@ func (u *QoderUseCase) run(ctx context.Context, request Request, ports RequestPo
 			} else if ports.RefreshPending != nil && ports.RefreshPending(refreshErr) {
 				if !output.AttemptCommitted {
 					excluded[selected.Snapshot.ID] = struct{}{}
-					if len(excluded) < u.MaxAccounts {
+					if len(excluded) < u.MaxProviders {
 						refreshPending = true
 						if selected.Switched != nil {
 							selected.Switched()
@@ -251,7 +251,7 @@ func (u *QoderUseCase) run(ctx context.Context, request Request, ports RequestPo
 		}
 		if !output.AttemptCommitted && ports.CanFailover != nil && ports.CanFailover(attemptErr) {
 			excluded[selected.Snapshot.ID] = struct{}{}
-			if len(excluded) < u.MaxAccounts {
+			if len(excluded) < u.MaxProviders {
 				lastErr = attemptErr
 				if selected.Switched != nil {
 					selected.Switched()
@@ -272,31 +272,31 @@ func (u *QoderUseCase) attempt(ctx context.Context, request Request, ports Reque
 	defer attempt.Release()
 	if !selected.Acquired {
 		if ports.Concurrency == nil || selected.WaitPlan == nil {
-			return upstream.AttemptResult{}, &Failure{Stage: FailureAccountSlot, Cause: errors.New("no available accounts")}
+			return upstream.AttemptResult{}, &Failure{Stage: FailureProviderSlot, Cause: errors.New("no available providers")}
 		}
 		plan := selected.WaitPlan
 		var waiting scheduler.WaitResult
 		var err error
 		if !selected.WaitWithoutCounter {
-			waiting, err = ports.Concurrency.EnterAccountWait(ctx, selected.Snapshot.ID, plan.MaxWaiting)
+			waiting, err = ports.Concurrency.EnterProviderWait(ctx, selected.Snapshot.ID, plan.MaxWaiting)
 		} else {
 			waiting.Allowed = true
 		}
 		defer waiting.Release()
 		if err != nil {
 			if ports.QueueFailure != nil {
-				ports.QueueFailure("account", err)
+				ports.QueueFailure("provider", err)
 			}
 		} else if !waiting.Allowed {
-			return upstream.AttemptResult{}, &Failure{Stage: FailureAccountSlot, Cause: &scheduler.WaitQueueFullError{SlotType: "account"}}
+			return upstream.AttemptResult{}, &Failure{Stage: FailureProviderSlot, Cause: &scheduler.WaitQueueFullError{SlotType: "provider"}}
 		}
 		observer := scheduler.WaitObserver{}
 		if ports.WaitObserver != nil {
-			observer = ports.WaitObserver("account")
+			observer = ports.WaitObserver("provider")
 		}
-		release, err := ports.Concurrency.WaitForSlot(ctx, "account", selected.Snapshot.ID, plan.MaxConcurrency, plan.Timeout, true, observer)
+		release, err := ports.Concurrency.WaitForSlot(ctx, "provider", selected.Snapshot.ID, plan.MaxConcurrency, plan.Timeout, true, observer)
 		if err != nil {
-			return upstream.AttemptResult{}, &Failure{Stage: FailureAccountSlot, Cause: err}
+			return upstream.AttemptResult{}, &Failure{Stage: FailureProviderSlot, Cause: err}
 		}
 		waiting.Release()
 		attempt = scheduler.NewAttemptLease(parent, nil, release)
@@ -309,9 +309,9 @@ func (u *QoderUseCase) attempt(ctx context.Context, request Request, ports Reque
 	if execution != nil {
 		execution.Attempts++
 		execution.Attempt = result
-		execution.Account = selected.Snapshot
+		execution.Provider = selected.Snapshot
 		execution.Plan = selected.Plan
-		execution.PlanProvided = selected.Plan.AccountID != 0
+		execution.PlanProvided = selected.Plan.ProviderID != 0
 	}
 	attempt.Finish(scheduler.AttemptOutcome{Served: result.Served})
 	return result, err

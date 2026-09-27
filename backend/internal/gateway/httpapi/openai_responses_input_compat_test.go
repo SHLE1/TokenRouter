@@ -19,7 +19,7 @@ func TestOpenAIGatewayService_OAuthDropsOrphanAfterDroppingPreviousResponse(t *t
 	result, err := newOpenAIRejectedFieldTestService(upstream).Forward(
 		context.Background(),
 		newOpenAIRejectedFieldTestContext(body),
-		newOpenAIOAuthNamespaceTestAccount(),
+		newOpenAIOAuthNamespaceTestProvider(),
 		body,
 	)
 
@@ -40,7 +40,7 @@ func TestOpenAIGatewayService_PreservesOversizedToolOutputForUpstream(t *testing
 	result, err := newOpenAIRejectedFieldTestService(upstream).Forward(
 		context.Background(),
 		newOpenAIRejectedFieldTestContext(body),
-		newOpenAIRejectedFieldTestAccount(),
+		newOpenAIRejectedFieldTestProvider(),
 		body,
 	)
 

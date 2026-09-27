@@ -6,7 +6,7 @@
 import dashboardAPI from './dashboard'
 import usersAPI from './users'
 import groupsAPI from './groups'
-import accountsAPI from './accounts'
+import providersAPI from './providers'
 import proxiesAPI from './proxies'
 import redeemAPI from './redeem'
 import promoAPI from './promo'
@@ -41,7 +41,7 @@ export const adminAPI = {
   dashboard: dashboardAPI,
   users: usersAPI,
   groups: groupsAPI,
-  accounts: accountsAPI,
+  providers: providersAPI,
   proxies: proxiesAPI,
   redeem: redeemAPI,
   promo: promoAPI,
@@ -74,7 +74,7 @@ export {
   dashboardAPI,
   usersAPI,
   groupsAPI,
-  accountsAPI,
+  providersAPI,
   proxiesAPI,
   redeemAPI,
   promoAPI,

@@ -52,7 +52,7 @@ func SkipAudit(c *gin.Context) {
 
 // auditSensitiveReads 需要审计的敏感 GET 读取（method+FullPath → 动作名）。
 var auditSensitiveReads = map[string]string{
-	"GET /api/v1/admin/accounts/data":             "admin.accounts.export",
+	"GET /api/v1/admin/providers/data":            "admin.providers.export",
 	"GET /api/v1/admin/proxies/data":              "admin.proxies.export",
 	"GET /api/v1/admin/redeem-codes/export":       "admin.redeem_codes.export",
 	"GET /api/v1/admin/backups/:id/download-url":  "admin.backups.download",
@@ -67,31 +67,31 @@ var auditSensitiveReads = map[string]string{
 
 // auditActionOverrides 变更类请求的动作名精确映射（未命中时自动推导）。
 var auditActionOverrides = map[string]string{
-	"POST /api/v1/auth/login":                                service.AuditActionLogin,
-	"POST /api/v1/auth/login/2fa":                            service.AuditActionLogin2FA,
-	"POST /api/v1/auth/register":                             service.AuditActionRegister,
-	"POST /api/v1/auth/refresh":                              service.AuditActionTokenRefresh,
-	"POST /api/v1/user/totp/step-up":                         service.AuditActionStepUpVerify,
-	"POST /api/v1/admin/audit-logs/clear":                    service.AuditActionAuditLogClear,
-	"POST /api/v1/admin/accounts/data":                       "admin.accounts.import",
-	"POST /api/v1/admin/accounts/:id/upstream-usage/query":   "admin.accounts.upstream_usage.query",
-	"POST /api/v1/admin/accounts/upstream-usage/query/batch": "admin.accounts.upstream_usage.query_batch",
-	"POST /api/v1/admin/backups":                             "admin.backups.create",
-	"POST /api/v1/admin/backups/:id/restore":                 "admin.backups.restore",
-	"DELETE /api/v1/admin/backups/:id":                       "admin.backups.delete",
-	"PUT /api/v1/admin/backups/s3-config":                    "admin.backups.s3_config.update",
-	"POST /api/v1/admin/settings/admin-api-key/regenerate":   "admin.admin_api_key.regenerate",
-	"DELETE /api/v1/admin/settings/admin-api-key":            "admin.admin_api_key.delete",
-	"POST /api/v1/subscriptions/:id/revoke":                  service.AuditActionUserSubscriptionRevoke,
+	"POST /api/v1/auth/login":                                 service.AuditActionLogin,
+	"POST /api/v1/auth/login/2fa":                             service.AuditActionLogin2FA,
+	"POST /api/v1/auth/register":                              service.AuditActionRegister,
+	"POST /api/v1/auth/refresh":                               service.AuditActionTokenRefresh,
+	"POST /api/v1/user/totp/step-up":                          service.AuditActionStepUpVerify,
+	"POST /api/v1/admin/audit-logs/clear":                     service.AuditActionAuditLogClear,
+	"POST /api/v1/admin/providers/data":                       "admin.providers.import",
+	"POST /api/v1/admin/providers/:id/upstream-usage/query":   "admin.providers.upstream_usage.query",
+	"POST /api/v1/admin/providers/upstream-usage/query/batch": "admin.providers.upstream_usage.query_batch",
+	"POST /api/v1/admin/backups":                              "admin.backups.create",
+	"POST /api/v1/admin/backups/:id/restore":                  "admin.backups.restore",
+	"DELETE /api/v1/admin/backups/:id":                        "admin.backups.delete",
+	"PUT /api/v1/admin/backups/s3-config":                     "admin.backups.s3_config.update",
+	"POST /api/v1/admin/settings/admin-api-key/regenerate":    "admin.admin_api_key.regenerate",
+	"DELETE /api/v1/admin/settings/admin-api-key":             "admin.admin_api_key.delete",
+	"POST /api/v1/subscriptions/:id/revoke":                   service.AuditActionUserSubscriptionRevoke,
 }
 
 // auditBodyOmittedRoutes 请求体几乎整体由凭证构成的路由（如整块粘贴 auth JSON 的导入接口）。
 // 这类 body 的凭证内嵌在普通字符串值里，键级脱敏无法覆盖，整体不入库。
 var auditBodyOmittedRoutes = map[string]struct{}{
-	"POST /api/v1/auth/passkey/login/finish":                    {},
-	"POST /api/v1/user/passkeys/register/finish":                {},
-	"POST /api/v1/admin/accounts/import/codex-session":          {},
-	"PUT /api/v1/admin/accounts/:id/ollama-cloud-usage/session": {},
+	"POST /api/v1/auth/passkey/login/finish":                     {},
+	"POST /api/v1/user/passkeys/register/finish":                 {},
+	"POST /api/v1/admin/providers/import/codex-session":          {},
+	"PUT /api/v1/admin/providers/:id/ollama-cloud-usage/session": {},
 }
 
 // NewAuditLogMiddleware 创建审计中间件。
@@ -250,7 +250,7 @@ func MaskedRequestCredential(c *gin.Context) string {
 }
 
 // deriveAuditAction 由 method + 路由模板自动推导动作名，
-// 例：PUT /api/v1/admin/accounts/:id → admin.accounts.update
+// 例：PUT /api/v1/admin/providers/:id → admin.providers.update
 func deriveAuditAction(method, fullPath string) string {
 	path := strings.TrimPrefix(fullPath, "/api/v1/")
 	path = strings.Trim(path, "/")

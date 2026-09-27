@@ -10,7 +10,7 @@ import (
 )
 
 // GetBetaHeader 处理anthropic-beta header
-// 对于OAuth账号，需要确保包含oauth-2025-04-20
+// 对于OAuth提供商，需要确保包含oauth-2025-04-20
 func GetBetaHeader(modelID string, clientBetaHeader string) string {
 	// 如果客户端传了anthropic-beta
 	if clientBetaHeader != "" {
@@ -55,6 +55,7 @@ func GetBetaHeader(modelID string, clientBetaHeader string) string {
 
 	return DefaultBetaHeader
 }
+
 func RequestNeedsBetaFeatures(body []byte) bool {
 	tools := gjson.GetBytes(body, "tools")
 	if tools.Exists() && tools.IsArray() && len(tools.Array()) > 0 {
@@ -66,6 +67,7 @@ func RequestNeedsBetaFeatures(body []byte) bool {
 	}
 	return false
 }
+
 func DefaultAPIKeyBetaHeader(body []byte) string {
 	modelID := gjson.GetBytes(body, "model").String()
 	if strings.Contains(strings.ToLower(modelID), "haiku") {
@@ -73,6 +75,7 @@ func DefaultAPIKeyBetaHeader(body []byte) string {
 	}
 	return APIKeyBetaHeader
 }
+
 func ApplyClaudeOAuthHeaderDefaults(req *http.Request) {
 	if req == nil {
 		return
@@ -89,6 +92,7 @@ func ApplyClaudeOAuthHeaderDefaults(req *http.Request) {
 		}
 	}
 }
+
 func MergeAnthropicBeta(required []string, incoming string) string {
 	seen := make(map[string]struct{}, len(required)+8)
 	out := make([]string, 0, len(required)+8)
@@ -113,6 +117,7 @@ func MergeAnthropicBeta(required []string, incoming string) string {
 	}
 	return strings.Join(out, ",")
 }
+
 func MergeAnthropicBetaDropping(required []string, incoming string, drop map[string]struct{}) string {
 	merged := MergeAnthropicBeta(required, incoming)
 	if merged == "" || len(drop) == 0 {
@@ -138,7 +143,7 @@ func MergeAnthropicBetaDropping(required []string, incoming string, drop map[str
 // Claude Code CLI 已取消 cch 签名字段，本路径不对 body 做 CCH 签名。
 //
 // 返回 (value, shouldSet)：
-//   - shouldSet=false 表示不主动设置 anthropic-beta header。例如 API-key 账号的客户端
+//   - shouldSet=false 表示不主动设置 anthropic-beta header。例如 API-key 提供商的客户端
 //     未传该 Header，且 InjectBetaForAPIKey 未开启或 RequestNeedsBetaFeatures=false。
 //   - shouldSet=true 时 value 可能为空字符串（例如客户端透传的 beta 被 dropSet
 //     全部过滤掉），调用方仍应设置该 Header。
@@ -170,7 +175,7 @@ func ComputeFinalAnthropicBeta(
 		return StripBetaTokensWithSet(GetBetaHeader(modelID, clientBeta), effectiveDropSet), true
 	}
 
-	// API-key 账号
+	// API-key 提供商
 	if clientBeta != "" {
 		return StripBetaTokensWithSet(clientBeta, effectiveDropSet), true
 	}
@@ -225,7 +230,7 @@ func ComputeFinalCountTokensAnthropicBeta(
 		return StripBetaTokensWithSet(beta, effectiveDropSet), true
 	}
 
-	// API-key 账号
+	// API-key 提供商
 	if clientBeta != "" {
 		return StripBetaTokensWithSet(clientBeta, effectiveDropSet), true
 	}
@@ -246,6 +251,7 @@ func StripBetaTokens(header string, tokens []string) string {
 	}
 	return StripBetaTokensWithSet(header, BuildBetaTokenSet(tokens))
 }
+
 func StripBetaTokensWithSet(header string, drop map[string]struct{}) string {
 	if header == "" || len(drop) == 0 {
 		return header
@@ -311,6 +317,7 @@ func ContainsBetaToken(header, token string) bool {
 	}
 	return false
 }
+
 func FilterBetaTokens(tokens []string, filterSet map[string]struct{}) []string {
 	if len(tokens) == 0 || len(filterSet) == 0 {
 		return tokens
@@ -323,6 +330,7 @@ func FilterBetaTokens(tokens []string, filterSet map[string]struct{}) []string {
 	}
 	return kept
 }
+
 func BuildBetaTokenSet(tokens []string) map[string]struct{} {
 	m := make(map[string]struct{}, len(tokens))
 	for _, t := range tokens {

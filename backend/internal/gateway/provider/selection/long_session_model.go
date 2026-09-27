@@ -6,18 +6,18 @@ import (
 	"fmt"
 	"strings"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
-// ResolveOpenAIWSRoutingModelForAccount 为已选定的 WebSocket 账号逐轮解析并校验分组映射模型。
-// 长连接不能在后续 turn 重新调度账号，因此模型不再适配当前账号时直接拒绝该帧。
-func (s *Compatible) ResolveOpenAIWSRoutingModelForAccount(
+// ResolveOpenAIWSRoutingModelForProvider 为已选定的 WebSocket 提供商逐轮解析并校验分组映射模型。
+// 长连接不能在后续 turn 重新调度提供商，因此模型不再适配当前提供商时直接拒绝该帧。
+func (s *Compatible) ResolveOpenAIWSRoutingModelForProvider(
 	ctx context.Context,
 	groupID *int64,
-	account *gatewayprovider.ExecutionAccount,
+	provider *gatewayprovider.ExecutionProvider,
 	requestedModel string,
-	requiredCapability accountcore.OpenAIEndpointCapability,
+	requiredCapability providercore.OpenAIEndpointCapability,
 ) (string, error) {
 	requestedModel = strings.TrimSpace(requestedModel)
 	if requestedModel == "" {
@@ -31,23 +31,23 @@ func (s *Compatible) ResolveOpenAIWSRoutingModelForAccount(
 	if routingModel == "" {
 		routingModel = requestedModel
 	}
-	if account == nil || !gatewayprovider.
-		CompatibleAccountEligible(
+	if provider == nil || !gatewayprovider.
+		CompatibleProviderEligible(
 			ctx,
-			account,
-			account.Record.Platform,
+			provider,
+			provider.Record.Platform,
 			routingModel,
 			false,
 			requiredCapability,
 		) {
-		return "", fmt.Errorf("model %s is not supported by the selected websocket account", requestedModel)
+		return "", fmt.Errorf("model %s is not supported by the selected websocket provider", requestedModel)
 	}
-	if s.isOpenAIAccountRequestRuntimeBlocked(account, routingModel) {
-		return "", fmt.Errorf("model %s is temporarily unavailable on the selected websocket account", requestedModel)
+	if s.isOpenAIProviderRequestRuntimeBlocked(provider, routingModel) {
+		return "", fmt.Errorf("model %s is temporarily unavailable on the selected websocket provider", requestedModel)
 	}
 	if groupID != nil && s.NeedsUpstreamGroupRestriction(ctx, groupID) &&
-		s.UpstreamRoutingModelRestricted(ctx, *groupID, account, routingModel, false) {
-		return "", fmt.Errorf("model %s is restricted after account mapping", requestedModel)
+		s.UpstreamRoutingModelRestricted(ctx, *groupID, provider, routingModel, false) {
+		return "", fmt.Errorf("model %s is restricted after provider mapping", requestedModel)
 	}
 	return routingModel, nil
 }

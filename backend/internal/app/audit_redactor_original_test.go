@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/payment"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
 func TestRedactAuditBody_JSONRedactsSecrets(t *testing.T) {
@@ -35,7 +35,7 @@ func TestRedactAuditBody_JSONRedactsSecrets(t *testing.T) {
 	}
 	// 非敏感字段（base_url、name）保留以便追责。
 	if !strings.Contains(out, "evil.example.com") {
-		t.Fatalf("base_url should be preserved for accountability: %s", out)
+		t.Fatalf("base_url should be preserved for providerability: %s", out)
 	}
 	if !strings.Contains(out, "acc1") {
 		t.Fatalf("name should be preserved: %s", out)
@@ -53,12 +53,12 @@ func TestRedactAuditBody_BareSessionKeyRedacted(t *testing.T) {
 		t.Fatalf("redacted body still contains the session cookie: %s", out)
 	}
 	if !strings.Contains(out, "sid-visible") {
-		t.Fatalf("session_id should be preserved for accountability: %s", out)
+		t.Fatalf("session_id should be preserved for providerability: %s", out)
 	}
 }
 
 // TestRedactAuditBody_AuthoritativeTablesSynced 覆盖曾经漏网的凭证字段：
-// 账号 credentials 敏感子键、支付渠道无分隔符密钥、字符串值内嵌凭证的 proxy_key / custom_key，
+// 提供商 credentials 敏感子键、支付渠道无分隔符密钥、字符串值内嵌凭证的 proxy_key / custom_key，
 // 以及 camelCase 等命名变体（归一化比对）。
 func TestRedactAuditBody_AuthoritativeTablesSynced(t *testing.T) {
 	redactor := provideAuditRedactor()
@@ -94,7 +94,7 @@ func TestRedactAuditBody_AuthoritativeTablesSynced(t *testing.T) {
 	}
 	// provider_key 是渠道标识而非密钥，必须保留以便追责。
 	if !strings.Contains(out, `"provider_key":"stripe"`) {
-		t.Fatalf("provider_key should be preserved for accountability: %s", out)
+		t.Fatalf("provider_key should be preserved for providerability: %s", out)
 	}
 	if !strings.Contains(out, "instance-1") {
 		t.Fatalf("name should be preserved: %s", out)
@@ -104,7 +104,7 @@ func TestRedactAuditBody_AuthoritativeTablesSynced(t *testing.T) {
 // SensitiveCredentialKeys 中的每个键都必须被审计脱敏判定命中（防两表漂移的守卫）。
 func TestAuditSensitiveKeys_CoverCredentialTable(t *testing.T) {
 	redactor := provideAuditRedactor()
-	for _, k := range accountcore.SensitiveCredentialKeys {
+	for _, k := range providercore.SensitiveCredentialKeys {
 		if !redactor.IsSensitiveKey(k) {
 			t.Fatalf("credential key %q is not covered by audit redaction", k)
 		}

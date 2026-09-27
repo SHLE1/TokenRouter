@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/completion"
@@ -15,6 +14,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry"
 	"github.com/TokenFlux/TokenRouter/internal/protocol/openai"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
@@ -24,7 +24,7 @@ type MessagesCapture struct {
 	Result             *forwardcore.MessagesResult
 	APIKey             *apikey.APIKey
 	User               *identity.User
-	Account            *account.Record
+	Provider           *provider.Record
 	Subscription       *billing.UserSubscription // 可选：订阅信息
 	InboundEndpoint    string                    // 入站端点（客户端请求路径）
 	UpstreamEndpoint   string                    // 上游端点（标准化后的上游路径）
@@ -68,7 +68,7 @@ type OpenAICapture struct {
 	Result             *forwardcore.OpenAIResult
 	APIKey             *apikey.APIKey
 	User               *identity.User
-	Account            *account.Record
+	Provider           *provider.Record
 	Subscription       *billing.UserSubscription
 	InboundEndpoint    string
 	UpstreamEndpoint   string
@@ -89,7 +89,7 @@ type OpenAICapture struct {
 // CyberCapture 是 forward 错误路径中 cyber_policy 命中的补记用量入参。
 type CyberCapture struct {
 	APIKey             *apikey.APIKey
-	Account            *account.Record
+	Provider           *provider.Record
 	Subscription       *billing.UserSubscription
 	RequestID          string
 	Model              string
@@ -115,10 +115,10 @@ func CaptureMessages(ctx context.Context, in *MessagesCapture) *completion.Input
 		return nil
 	}
 	out := &completion.Input{
-		Result:             ProjectMessagesCompletionResult(in.Result, in.Account),
+		Result:             ProjectMessagesCompletionResult(in.Result, in.Provider),
 		APIKey:             ProjectCompletionKey(in.APIKey),
 		User:               ProjectCompletionPayer(in.User),
-		Account:            ProjectCompletionAccount(in.Account),
+		Provider:           ProjectCompletionProvider(in.Provider),
 		Subscription:       in.Subscription,
 		InboundEndpoint:    in.InboundEndpoint,
 		UpstreamEndpoint:   in.UpstreamEndpoint,
@@ -145,10 +145,10 @@ func CaptureOpenAI(ctx context.Context, in *OpenAICapture) *completion.Input {
 	}
 	out := &completion.Input{
 		ForceCacheBilling:  in.Result != nil && in.Result.NativeUsage != nil && requeststate.IsForceCacheBilling(ctx),
-		Result:             ProjectOpenAICompletionResult(in.Result, in.Account),
+		Result:             ProjectOpenAICompletionResult(in.Result, in.Provider),
 		APIKey:             ProjectCompletionKey(in.APIKey),
 		User:               ProjectCompletionPayer(in.User),
-		Account:            ProjectCompletionAccount(in.Account),
+		Provider:           ProjectCompletionProvider(in.Provider),
 		Subscription:       in.Subscription,
 		InboundEndpoint:    in.InboundEndpoint,
 		UpstreamEndpoint:   in.UpstreamEndpoint,
@@ -181,7 +181,7 @@ func RequestIdentity(ctx context.Context, upstream, payload string) completion.R
 
 // CaptureCyber 在请求提交时投影并冻结，异步任务不再持有旧实体。
 func CaptureCyber(ctx context.Context, in CyberCapture) *completion.Input {
-	if in.APIKey == nil || in.APIKey.User == nil || in.Account == nil || strings.TrimSpace(in.Model) == "" {
+	if in.APIKey == nil || in.APIKey.User == nil || in.Provider == nil || strings.TrimSpace(in.Model) == "" {
 		return nil
 	}
 	result := &forwardcore.OpenAIResult{
@@ -198,7 +198,7 @@ func CaptureCyber(ctx context.Context, in CyberCapture) *completion.Input {
 		Result:             result,
 		APIKey:             in.APIKey,
 		User:               in.APIKey.User,
-		Account:            in.Account,
+		Provider:           in.Provider,
 		Subscription:       in.Subscription,
 		InboundEndpoint:    in.InboundEndpoint,
 		UpstreamEndpoint:   in.UpstreamEndpoint,

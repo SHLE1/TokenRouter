@@ -25,7 +25,7 @@ type OpenAIIngressHooks struct {
 	MaxReasoningEffortOverLimit string
 	// ReasoningEffortMappings 在当前 WS 会话中改写显式指定的推理强度。
 	ReasoningEffortMappings []routing.ReasoningEffortMapping
-	// ResolveRoutingModel 在账号映射前逐轮把客户端模型 R 解析为分组映射模型 G。
+	// ResolveRoutingModel 在提供商映射前逐轮把客户端模型 R 解析为分组映射模型 G。
 	// payload 用于按分组映射后的完整请求判断该轮能力；返回错误时当前帧不得发送上游。
 	ResolveRoutingModel func(turn int, requestedModel string, payload []byte) (string, error)
 	// ResolveFastModePolicy 逐轮刷新 API Key Fast 策略，避免长连接永久沿用握手快照。

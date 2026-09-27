@@ -7,13 +7,13 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/config"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
@@ -23,7 +23,7 @@ import (
 
 // 编译期接口断言
 
-// tempUnschedulableOpenAIAccountRepo 记录临时不可调度规则写入的模型范围。
+// tempUnschedulableOpenAIProviderRepo 记录临时不可调度规则写入的模型范围。
 
 // 复现 #4386：gpt-image-2 /v1/images/edits 的 usage 携带 input_tokens_details.image_tokens，
 // 提取器须将图片输入 token 单独填入 ImageInputTokens（此前被丢弃并入 InputTokens 按文本价计费）。
@@ -32,16 +32,16 @@ import (
 
 // 纯文本请求：无 image_tokens 时 ImageInputTokens 为 0，行为不变。
 
-func TestOpenAISelectAccountWithLoadAwareness_FiltersUnschedulable(t *testing.T) {
+func TestOpenAISelectProviderWithLoadAwareness_FiltersUnschedulable(t *testing.T) {
 	now := time.Now()
 	resetAt := now.Add(10 * time.Minute)
 	groupID := int64(1)
 
-	rateLimited := gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	rateLimited := gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1,
 			Platform:         capability.PlatformOpenAI,
-			Type:             capability.AccountTypeAPIKey,
+			Type:             capability.ProviderTypeAPIKey,
 			Status:           billing.StatusActive,
 			Schedulable:      true,
 			Concurrency:      1,
@@ -49,11 +49,11 @@ func TestOpenAISelectAccountWithLoadAwareness_FiltersUnschedulable(t *testing.T)
 			RateLimitResetAt: &resetAt,
 		},
 	}
-	available := gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	available := gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2,
 			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeAPIKey,
+			Type:        capability.ProviderTypeAPIKey,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Concurrency: 1,
@@ -63,7 +63,7 @@ func TestOpenAISelectAccountWithLoadAwareness_FiltersUnschedulable(t *testing.T)
 
 	svc := newCompatibleSelectionForTest(CompatibleDependencies{
 		Reads: Reads{
-			Accounts: selectionAccountFixture{accounts: []gatewayprovider.ExecutionAccount{
+			Providers: selectionProviderFixture{providers: []gatewayprovider.ExecutionProvider{
 				rateLimited,
 				available,
 			}},
@@ -71,48 +71,48 @@ func TestOpenAISelectAccountWithLoadAwareness_FiltersUnschedulable(t *testing.T)
 		Shared: Shared{Concurrency: schedulercore.NewConcurrencyService(selectionConcurrencyFixture{}, schedulercore.Diagnostics{Logf: logging.LegacyPrintf, Event: logging.Event})},
 	}, nil)
 
-	selection, err := svc.SelectAccountWithLoadAwareness(context.Background(), &groupID, "", "gpt-5.2", nil)
+	selection, err := svc.SelectProviderWithLoadAwareness(context.Background(), &groupID, "", "gpt-5.2", nil)
 	if err != nil {
-		t.Fatalf("SelectAccountWithLoadAwareness error: %v", err)
+		t.Fatalf("SelectProviderWithLoadAwareness error: %v", err)
 	}
-	if selection == nil || selection.Account == nil {
-		t.Fatalf("expected selection with account")
+	if selection == nil || selection.Provider == nil {
+		t.Fatalf("expected selection with provider")
 	}
-	if selection.Account.Record.ID != available.Record.ID {
-		t.Fatalf("expected account %d, got %d", available.Record.ID, selection.Account.Record.ID)
+	if selection.Provider.Record.ID != available.Record.ID {
+		t.Fatalf("expected provider %d, got %d", available.Record.ID, selection.Provider.Record.ID)
 	}
 	if selection.ReleaseFunc != nil {
 		selection.ReleaseFunc()
 	}
 }
 
-func TestOpenAISelectAccountWithLoadAwareness_ImageRateLimitSkipsOnlyImageRequests(t *testing.T) {
+func TestOpenAISelectProviderWithLoadAwareness_ImageRateLimitSkipsOnlyImageRequests(t *testing.T) {
 	future := time.Now().Add(10 * time.Minute).Format(time.RFC3339)
 	groupID := int64(1)
 
-	imageLimited := gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	imageLimited := gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1,
 			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeAPIKey,
+			Type:        capability.ProviderTypeAPIKey,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Concurrency: 1,
 			Priority:    0,
 			Extra: map[string]any{
 				"model_rate_limits": map[string]any{
-					accountcore.OpenAIImageGenerationRateLimitKey: map[string]any{
+					providercore.OpenAIImageGenerationRateLimitKey: map[string]any{
 						"rate_limit_reset_at": future,
 					},
 				},
 			},
 		},
 	}
-	available := gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	available := gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2,
 			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeAPIKey,
+			Type:        capability.ProviderTypeAPIKey,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Concurrency: 1,
@@ -121,7 +121,7 @@ func TestOpenAISelectAccountWithLoadAwareness_ImageRateLimitSkipsOnlyImageReques
 	}
 	svc := newCompatibleSelectionForTest(CompatibleDependencies{
 		Reads: Reads{
-			Accounts: selectionAccountFixture{accounts: []gatewayprovider.ExecutionAccount{
+			Providers: selectionProviderFixture{providers: []gatewayprovider.ExecutionProvider{
 				imageLimited,
 				available,
 			}},
@@ -129,33 +129,33 @@ func TestOpenAISelectAccountWithLoadAwareness_ImageRateLimitSkipsOnlyImageReques
 		Shared: Shared{Concurrency: schedulercore.NewConcurrencyService(selectionConcurrencyFixture{}, schedulercore.Diagnostics{Logf: logging.LegacyPrintf, Event: logging.Event})},
 	}, nil)
 
-	imageSelection, err := svc.SelectAccountWithLoadAwareness(requeststate.WithOpenAIImageGenerationIntent(context.Background()), &groupID, "", "gpt-5.4", nil)
+	imageSelection, err := svc.SelectProviderWithLoadAwareness(requeststate.WithOpenAIImageGenerationIntent(context.Background()), &groupID, "", "gpt-5.4", nil)
 	require.NoError(t, err)
 	require.NotNil(t, imageSelection)
-	require.Equal(t, available.Record.ID, imageSelection.Account.Record.ID)
+	require.Equal(t, available.Record.ID, imageSelection.Provider.Record.ID)
 	if imageSelection.ReleaseFunc != nil {
 		imageSelection.ReleaseFunc()
 	}
 
-	textSelection, err := svc.SelectAccountWithLoadAwareness(context.Background(), &groupID, "", "gpt-5.4", nil)
+	textSelection, err := svc.SelectProviderWithLoadAwareness(context.Background(), &groupID, "", "gpt-5.4", nil)
 	require.NoError(t, err)
 	require.NotNil(t, textSelection)
-	require.Equal(t, imageLimited.Record.ID, textSelection.Account.Record.ID)
+	require.Equal(t, imageLimited.Record.ID, textSelection.Provider.Record.ID)
 	if textSelection.ReleaseFunc != nil {
 		textSelection.ReleaseFunc()
 	}
 }
 
-func TestOpenAISelectAccountWithLoadAwareness_FiltersUnschedulableWhenNoConcurrencyService(t *testing.T) {
+func TestOpenAISelectProviderWithLoadAwareness_FiltersUnschedulableWhenNoConcurrencyService(t *testing.T) {
 	now := time.Now()
 	resetAt := now.Add(10 * time.Minute)
 	groupID := int64(1)
 
-	rateLimited := gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	rateLimited := gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1,
 			Platform:         capability.PlatformOpenAI,
-			Type:             capability.AccountTypeAPIKey,
+			Type:             capability.ProviderTypeAPIKey,
 			Status:           billing.StatusActive,
 			Schedulable:      true,
 			Concurrency:      1,
@@ -163,11 +163,11 @@ func TestOpenAISelectAccountWithLoadAwareness_FiltersUnschedulableWhenNoConcurre
 			RateLimitResetAt: &resetAt,
 		},
 	}
-	available := gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	available := gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2,
 			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeAPIKey,
+			Type:        capability.ProviderTypeAPIKey,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Concurrency: 1,
@@ -177,7 +177,7 @@ func TestOpenAISelectAccountWithLoadAwareness_FiltersUnschedulableWhenNoConcurre
 
 	svc := newCompatibleSelectionForTest(CompatibleDependencies{
 		Reads: Reads{
-			Accounts: selectionAccountFixture{accounts: []gatewayprovider.ExecutionAccount{
+			Providers: selectionProviderFixture{providers: []gatewayprovider.ExecutionProvider{
 				rateLimited,
 				available,
 			}},
@@ -187,27 +187,27 @@ func TestOpenAISelectAccountWithLoadAwareness_FiltersUnschedulableWhenNoConcurre
 
 	// concurrencyService is nil, forcing the non-load-batch selection path.
 
-	selection, err := svc.SelectAccountWithLoadAwareness(context.Background(), &groupID, "", "gpt-5.2", nil)
+	selection, err := svc.SelectProviderWithLoadAwareness(context.Background(), &groupID, "", "gpt-5.2", nil)
 	if err != nil {
-		t.Fatalf("SelectAccountWithLoadAwareness error: %v", err)
+		t.Fatalf("SelectProviderWithLoadAwareness error: %v", err)
 	}
-	if selection == nil || selection.Account == nil {
-		t.Fatalf("expected selection with account")
+	if selection == nil || selection.Provider == nil {
+		t.Fatalf("expected selection with provider")
 	}
-	if selection.Account.Record.ID != available.Record.ID {
-		t.Fatalf("expected account %d, got %d", available.Record.ID, selection.Account.Record.ID)
+	if selection.Provider.Record.ID != available.Record.ID {
+		t.Fatalf("expected provider %d, got %d", available.Record.ID, selection.Provider.Record.ID)
 	}
 	if selection.ReleaseFunc != nil {
 		selection.ReleaseFunc()
 	}
 }
 
-func TestOpenAISelectAccountForModelWithExclusions_StickyUnschedulableClearsSession(t *testing.T) {
+func TestOpenAISelectProviderForModelWithExclusions_StickyUnschedulableClearsSession(t *testing.T) {
 	sessionHash := "session-1"
-	repo := selectionAccountFixture{
-		accounts: []gatewayprovider.ExecutionAccount{
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Status: billing.StatusDisabled, Schedulable: true, Concurrency: 1}},
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 1}},
+	repo := selectionProviderFixture{
+		providers: []gatewayprovider.ExecutionProvider{
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Status: billing.StatusDisabled, Schedulable: true, Concurrency: 1}},
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 1}},
 		},
 	}
 	cache := &schedulerTestGatewayCache{
@@ -215,33 +215,33 @@ func TestOpenAISelectAccountForModelWithExclusions_StickyUnschedulableClearsSess
 	}
 
 	svc := newCompatibleSelectionForTest(CompatibleDependencies{Reads: Reads{
-		Accounts: repo,
+		Providers: repo,
 	}, Shared: Shared{Cache: cache}}, nil,
 	)
 
-	acc, err := svc.SelectAccountForModelWithExclusions(context.Background(), selectionFixtureGroupID(context.Background()), sessionHash, "gpt-4", nil)
+	acc, err := svc.SelectProviderForModelWithExclusions(context.Background(), selectionFixtureGroupID(context.Background()), sessionHash, "gpt-4", nil)
 	if err != nil {
-		t.Fatalf("SelectAccountForModelWithExclusions error: %v", err)
+		t.Fatalf("SelectProviderForModelWithExclusions error: %v", err)
 	}
 	if acc == nil || acc.Record.ID != 2 {
-		t.Fatalf("expected account 2, got %+v", acc)
+		t.Fatalf("expected provider 2, got %+v", acc)
 	}
 	if cache.deletedSessions["openai:"+sessionHash] != 1 {
 		t.Fatalf("expected sticky session to be deleted")
 	}
 	if cache.sessionBindings["openai:"+sessionHash] != 2 {
-		t.Fatalf("expected sticky session to bind to account 2")
+		t.Fatalf("expected sticky session to bind to provider 2")
 	}
 }
 
-func TestOpenAISelectAccountForModelWithExclusions_StickyOutsideGroupClearsSession(t *testing.T) {
+func TestOpenAISelectProviderForModelWithExclusions_StickyOutsideGroupClearsSession(t *testing.T) {
 	sessionHash := "session-outside-group"
 	groupID := int64(1001)
-	repo := groupAwareStubOpenAIAccountRepo{
-		selectionAccountFixture{
-			accounts: []gatewayprovider.ExecutionAccount{
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 1}},
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, AccountGroups: []accountcore.GroupMembership{{GroupID: groupID}}}},
+	repo := groupAwareStubOpenAIProviderRepo{
+		selectionProviderFixture{
+			providers: []gatewayprovider.ExecutionProvider{
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 1}},
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, ProviderGroups: []providercore.GroupMembership{{GroupID: groupID}}}},
 			},
 		},
 	}
@@ -250,32 +250,32 @@ func TestOpenAISelectAccountForModelWithExclusions_StickyOutsideGroupClearsSessi
 	}
 
 	svc := newCompatibleSelectionForTest(CompatibleDependencies{Reads: Reads{
-		Accounts: repo,
+		Providers: repo,
 	}, Shared: Shared{Cache: cache}}, nil,
 	)
 
-	acc, err := svc.SelectAccountForModelWithExclusions(context.Background(), &groupID, sessionHash, "gpt-4", nil)
+	acc, err := svc.SelectProviderForModelWithExclusions(context.Background(), &groupID, sessionHash, "gpt-4", nil)
 	if err != nil {
-		t.Fatalf("SelectAccountForModelWithExclusions error: %v", err)
+		t.Fatalf("SelectProviderForModelWithExclusions error: %v", err)
 	}
 	if acc == nil || acc.Record.ID != 2 {
-		t.Fatalf("expected account 2, got %+v", acc)
+		t.Fatalf("expected provider 2, got %+v", acc)
 	}
 	if cache.deletedSessions["openai:"+sessionHash] != 1 {
 		t.Fatalf("expected sticky session to be deleted")
 	}
 	if cache.sessionBindings["openai:"+sessionHash] != 2 {
-		t.Fatalf("expected sticky session to bind to account 2")
+		t.Fatalf("expected sticky session to bind to provider 2")
 	}
 }
 
-func TestOpenAISelectAccountWithLoadAwareness_StickyUnschedulableClearsSession(t *testing.T) {
+func TestOpenAISelectProviderWithLoadAwareness_StickyUnschedulableClearsSession(t *testing.T) {
 	sessionHash := "session-2"
 	groupID := int64(1)
-	repo := selectionAccountFixture{
-		accounts: []gatewayprovider.ExecutionAccount{
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Status: billing.StatusDisabled, Schedulable: true, Concurrency: 1}},
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 1}},
+	repo := selectionProviderFixture{
+		providers: []gatewayprovider.ExecutionProvider{
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Status: billing.StatusDisabled, Schedulable: true, Concurrency: 1}},
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 1}},
 		},
 	}
 	cache := &schedulerTestGatewayCache{
@@ -284,7 +284,7 @@ func TestOpenAISelectAccountWithLoadAwareness_StickyUnschedulableClearsSession(t
 
 	svc := newCompatibleSelectionForTest(CompatibleDependencies{
 		Reads: Reads{
-			Accounts: repo,
+			Providers: repo,
 		},
 		Shared: Shared{
 			Concurrency: schedulercore.NewConcurrencyService(
@@ -297,32 +297,32 @@ func TestOpenAISelectAccountWithLoadAwareness_StickyUnschedulableClearsSession(t
 	}, nil,
 	)
 
-	selection, err := svc.SelectAccountWithLoadAwareness(context.Background(), &groupID, sessionHash, "gpt-4", nil)
+	selection, err := svc.SelectProviderWithLoadAwareness(context.Background(), &groupID, sessionHash, "gpt-4", nil)
 	if err != nil {
-		t.Fatalf("SelectAccountWithLoadAwareness error: %v", err)
+		t.Fatalf("SelectProviderWithLoadAwareness error: %v", err)
 	}
-	if selection == nil || selection.Account == nil || selection.Account.Record.ID != 2 {
-		t.Fatalf("expected account 2, got %+v", selection)
+	if selection == nil || selection.Provider == nil || selection.Provider.Record.ID != 2 {
+		t.Fatalf("expected provider 2, got %+v", selection)
 	}
 	if cache.deletedSessions["openai:"+sessionHash] != 1 {
 		t.Fatalf("expected sticky session to be deleted")
 	}
 	if cache.sessionBindings["openai:"+sessionHash] != 2 {
-		t.Fatalf("expected sticky session to bind to account 2")
+		t.Fatalf("expected sticky session to bind to provider 2")
 	}
 	if selection.ReleaseFunc != nil {
 		selection.ReleaseFunc()
 	}
 }
 
-func TestOpenAISelectAccountWithLoadAwareness_StickyOutsideGroupClearsSession(t *testing.T) {
+func TestOpenAISelectProviderWithLoadAwareness_StickyOutsideGroupClearsSession(t *testing.T) {
 	sessionHash := "session-load-outside-group"
 	groupID := int64(1002)
-	repo := groupAwareStubOpenAIAccountRepo{
-		selectionAccountFixture{
-			accounts: []gatewayprovider.ExecutionAccount{
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 1}},
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, AccountGroups: []accountcore.GroupMembership{{GroupID: groupID}}}},
+	repo := groupAwareStubOpenAIProviderRepo{
+		selectionProviderFixture{
+			providers: []gatewayprovider.ExecutionProvider{
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 1}},
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, ProviderGroups: []providercore.GroupMembership{{GroupID: groupID}}}},
 			},
 		},
 	}
@@ -332,7 +332,7 @@ func TestOpenAISelectAccountWithLoadAwareness_StickyOutsideGroupClearsSession(t 
 
 	svc := newCompatibleSelectionForTest(CompatibleDependencies{
 		Reads: Reads{
-			Accounts: repo,
+			Providers: repo,
 		},
 		Shared: Shared{
 			Cache:       cache,
@@ -341,29 +341,29 @@ func TestOpenAISelectAccountWithLoadAwareness_StickyOutsideGroupClearsSession(t 
 	}, nil,
 	)
 
-	selection, err := svc.SelectAccountWithLoadAwareness(context.Background(), &groupID, sessionHash, "gpt-4", nil)
+	selection, err := svc.SelectProviderWithLoadAwareness(context.Background(), &groupID, sessionHash, "gpt-4", nil)
 	if err != nil {
-		t.Fatalf("SelectAccountWithLoadAwareness error: %v", err)
+		t.Fatalf("SelectProviderWithLoadAwareness error: %v", err)
 	}
-	if selection == nil || selection.Account == nil || selection.Account.Record.ID != 2 {
-		t.Fatalf("expected account 2, got %+v", selection)
+	if selection == nil || selection.Provider == nil || selection.Provider.Record.ID != 2 {
+		t.Fatalf("expected provider 2, got %+v", selection)
 	}
 	if cache.deletedSessions["openai:"+sessionHash] != 1 {
 		t.Fatalf("expected sticky session to be deleted")
 	}
 	if cache.sessionBindings["openai:"+sessionHash] != 2 {
-		t.Fatalf("expected sticky session to bind to account 2")
+		t.Fatalf("expected sticky session to bind to provider 2")
 	}
 	if selection.ReleaseFunc != nil {
 		selection.ReleaseFunc()
 	}
 }
 
-func TestOpenAISelectAccountForModelWithExclusions_NoModelSupport(t *testing.T) {
-	repo := selectionAccountFixture{
-		accounts: []gatewayprovider.ExecutionAccount{
+func TestOpenAISelectProviderForModelWithExclusions_NoModelSupport(t *testing.T) {
+	repo := selectionProviderFixture{
+		providers: []gatewayprovider.ExecutionProvider{
 			{
-				Record: accountcore.Record{
+				Record: providercore.Record{
 					LoadLocation: time.LoadLocation, ID: 1,
 					Platform:    capability.PlatformOpenAI,
 					Status:      billing.StatusActive,
@@ -376,28 +376,28 @@ func TestOpenAISelectAccountForModelWithExclusions_NoModelSupport(t *testing.T) 
 	cache := &schedulerTestGatewayCache{}
 
 	svc := newCompatibleSelectionForTest(CompatibleDependencies{Reads: Reads{
-		Accounts: repo,
+		Providers: repo,
 	}, Shared: Shared{Cache: cache}}, nil,
 	)
 
-	acc, err := svc.SelectAccountForModelWithExclusions(context.Background(), selectionFixtureGroupID(context.Background()), "", "gpt-4", nil)
+	acc, err := svc.SelectProviderForModelWithExclusions(context.Background(), selectionFixtureGroupID(context.Background()), "", "gpt-4", nil)
 	if err == nil {
 		t.Fatalf("expected error for unsupported model")
 	}
 	if acc != nil {
-		t.Fatalf("expected nil account for unsupported model")
+		t.Fatalf("expected nil provider for unsupported model")
 	}
 	if !strings.Contains(err.Error(), "does not support the requested model") {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
-func TestOpenAISelectAccountWithScheduler_GroupModelUnsupportedError(t *testing.T) {
+func TestOpenAISelectProviderWithScheduler_GroupModelUnsupportedError(t *testing.T) {
 	groupID := int64(1)
-	repo := selectionAccountFixture{
-		accounts: []gatewayprovider.ExecutionAccount{
+	repo := selectionProviderFixture{
+		providers: []gatewayprovider.ExecutionProvider{
 			{
-				Record: accountcore.Record{
+				Record: providercore.Record{
 					LoadLocation: time.LoadLocation, ID: 1,
 					Platform:    capability.PlatformOpenAI,
 					Status:      billing.StatusActive,
@@ -410,16 +410,16 @@ func TestOpenAISelectAccountWithScheduler_GroupModelUnsupportedError(t *testing.
 		},
 	}
 	svc := newCompatibleSelectionForTest(CompatibleDependencies{Reads: Reads{
-		Accounts: repo,
+		Providers: repo,
 	}, Shared: Shared{}}, nil)
 
-	selection, _, err := svc.SelectAccountWithSchedulerForCapability(
+	selection, _, err := svc.SelectProviderWithSchedulerForCapability(
 		context.Background(),
 		&groupID,
 		"",
 		"",
 		"o1-preview",
-		nil, egress.OpenAIUpstreamTransportAny, accountcore.OpenAIEndpointCapabilityTextGeneration,
+		nil, egress.OpenAIUpstreamTransportAny, providercore.OpenAIEndpointCapabilityTextGeneration,
 		false,
 		false,
 	)
@@ -439,12 +439,12 @@ func TestOpenAISelectAccountWithScheduler_GroupModelUnsupportedError(t *testing.
 	require.Contains(t, err.Error(), "Available models: gpt-5.4, gpt-5.4-mini")
 }
 
-func TestOpenAISelectAccountWithLoadAwareness_LoadBatchErrorFallback(t *testing.T) {
+func TestOpenAISelectProviderWithLoadAwareness_LoadBatchErrorFallback(t *testing.T) {
 	groupID := int64(1)
-	repo := selectionAccountFixture{
-		accounts: []gatewayprovider.ExecutionAccount{
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 2}},
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 1}},
+	repo := selectionProviderFixture{
+		providers: []gatewayprovider.ExecutionProvider{
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 2}},
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 1}},
 		},
 	}
 	cache := &schedulerTestGatewayCache{}
@@ -454,7 +454,7 @@ func TestOpenAISelectAccountWithLoadAwareness_LoadBatchErrorFallback(t *testing.
 
 	svc := newCompatibleSelectionForTest(CompatibleDependencies{
 		Reads: Reads{
-			Accounts: repo,
+			Providers: repo,
 		},
 		Shared: Shared{
 			Concurrency: schedulercore.NewConcurrencyService(
@@ -466,15 +466,15 @@ func TestOpenAISelectAccountWithLoadAwareness_LoadBatchErrorFallback(t *testing.
 		},
 	}, nil)
 
-	selection, err := svc.SelectAccountWithLoadAwareness(context.Background(), &groupID, "fallback", "gpt-4", nil)
+	selection, err := svc.SelectProviderWithLoadAwareness(context.Background(), &groupID, "fallback", "gpt-4", nil)
 	if err != nil {
-		t.Fatalf("SelectAccountWithLoadAwareness error: %v", err)
+		t.Fatalf("SelectProviderWithLoadAwareness error: %v", err)
 	}
-	if selection == nil || selection.Account == nil {
+	if selection == nil || selection.Provider == nil {
 		t.Fatalf("expected selection")
 	}
-	if selection.Account.Record.ID != 2 {
-		t.Fatalf("expected account 2, got %d", selection.Account.Record.ID)
+	if selection.Provider.Record.ID != 2 {
+		t.Fatalf("expected provider 2, got %d", selection.Provider.Record.ID)
 	}
 	if cache.sessionBindings["openai:fallback"] != 2 {
 		t.Fatalf("expected sticky session updated")
@@ -484,24 +484,24 @@ func TestOpenAISelectAccountWithLoadAwareness_LoadBatchErrorFallback(t *testing.
 	}
 }
 
-func TestOpenAISelectAccountWithLoadAwareness_NoSlotFallbackWait(t *testing.T) {
+func TestOpenAISelectProviderWithLoadAwareness_NoSlotFallbackWait(t *testing.T) {
 	groupID := int64(1)
-	repo := selectionAccountFixture{
-		accounts: []gatewayprovider.ExecutionAccount{
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 1}},
+	repo := selectionProviderFixture{
+		providers: []gatewayprovider.ExecutionProvider{
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 1}},
 		},
 	}
 	cache := &schedulerTestGatewayCache{}
 	concurrencyCache := selectionConcurrencyFixture{
 		acquireResults: map[int64]bool{1: false},
-		loadMap: map[int64]*schedulercore.AccountLoadInfo{
-			1: {AccountID: 1, LoadRate: 10},
+		loadMap: map[int64]*schedulercore.ProviderLoadInfo{
+			1: {ProviderID: 1, LoadRate: 10},
 		},
 	}
 
 	svc := newCompatibleSelectionForTest(CompatibleDependencies{
 		Reads: Reads{
-			Accounts: repo,
+			Providers: repo,
 		},
 		Shared: Shared{
 			Cache:       cache,
@@ -509,50 +509,50 @@ func TestOpenAISelectAccountWithLoadAwareness_NoSlotFallbackWait(t *testing.T) {
 		},
 	}, nil)
 
-	selection, err := svc.SelectAccountWithLoadAwareness(context.Background(), &groupID, "", "gpt-4", nil)
+	selection, err := svc.SelectProviderWithLoadAwareness(context.Background(), &groupID, "", "gpt-4", nil)
 	if err != nil {
-		t.Fatalf("SelectAccountWithLoadAwareness error: %v", err)
+		t.Fatalf("SelectProviderWithLoadAwareness error: %v", err)
 	}
 	if selection == nil || selection.WaitPlan == nil {
 		t.Fatalf("expected wait plan fallback")
 	}
-	if selection.Account == nil || selection.Account.Record.ID != 1 {
-		t.Fatalf("expected account 1")
+	if selection.Provider == nil || selection.Provider.Record.ID != 1 {
+		t.Fatalf("expected provider 1")
 	}
 }
 
-func TestOpenAISelectAccountForModelWithExclusions_SetsStickyBinding(t *testing.T) {
+func TestOpenAISelectProviderForModelWithExclusions_SetsStickyBinding(t *testing.T) {
 	sessionHash := "bind"
-	repo := selectionAccountFixture{
-		accounts: []gatewayprovider.ExecutionAccount{
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 1}},
+	repo := selectionProviderFixture{
+		providers: []gatewayprovider.ExecutionProvider{
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 1}},
 		},
 	}
 	cache := &schedulerTestGatewayCache{}
 
 	svc := newCompatibleSelectionForTest(CompatibleDependencies{Reads: Reads{
-		Accounts: repo,
+		Providers: repo,
 	}, Shared: Shared{Cache: cache}}, nil,
 	)
 
-	acc, err := svc.SelectAccountForModelWithExclusions(context.Background(), selectionFixtureGroupID(context.Background()), sessionHash, "gpt-4", nil)
+	acc, err := svc.SelectProviderForModelWithExclusions(context.Background(), selectionFixtureGroupID(context.Background()), sessionHash, "gpt-4", nil)
 	if err != nil {
-		t.Fatalf("SelectAccountForModelWithExclusions error: %v", err)
+		t.Fatalf("SelectProviderForModelWithExclusions error: %v", err)
 	}
 	if acc == nil || acc.Record.ID != 1 {
-		t.Fatalf("expected account 1")
+		t.Fatalf("expected provider 1")
 	}
 	if cache.sessionBindings["openai:"+sessionHash] != 1 {
 		t.Fatalf("expected sticky session binding")
 	}
 }
 
-func TestOpenAISelectAccountWithLoadAwareness_StickyWaitPlan(t *testing.T) {
+func TestOpenAISelectProviderWithLoadAwareness_StickyWaitPlan(t *testing.T) {
 	sessionHash := "sticky-wait"
 	groupID := int64(1)
-	repo := selectionAccountFixture{
-		accounts: []gatewayprovider.ExecutionAccount{
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 1}},
+	repo := selectionProviderFixture{
+		providers: []gatewayprovider.ExecutionProvider{
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 1}},
 		},
 	}
 	cache := &schedulerTestGatewayCache{
@@ -565,7 +565,7 @@ func TestOpenAISelectAccountWithLoadAwareness_StickyWaitPlan(t *testing.T) {
 
 	svc := newCompatibleSelectionForTest(CompatibleDependencies{
 		Reads: Reads{
-			Accounts: repo,
+			Providers: repo,
 		},
 		Shared: Shared{
 			Cache:       cache,
@@ -573,25 +573,25 @@ func TestOpenAISelectAccountWithLoadAwareness_StickyWaitPlan(t *testing.T) {
 		},
 	}, nil)
 
-	selection, err := svc.SelectAccountWithLoadAwareness(context.Background(), &groupID, sessionHash, "gpt-4", nil)
+	selection, err := svc.SelectProviderWithLoadAwareness(context.Background(), &groupID, sessionHash, "gpt-4", nil)
 	if err != nil {
-		t.Fatalf("SelectAccountWithLoadAwareness error: %v", err)
+		t.Fatalf("SelectProviderWithLoadAwareness error: %v", err)
 	}
 	if selection == nil || selection.WaitPlan == nil {
 		t.Fatalf("expected sticky wait plan")
 	}
-	if selection.Account == nil || selection.Account.Record.ID != 1 {
-		t.Fatalf("expected account 1")
+	if selection.Provider == nil || selection.Provider.Record.ID != 1 {
+		t.Fatalf("expected provider 1")
 	}
 }
 
-func TestOpenAISelectAccountWithLoadAwareness_StickyCapacitySpilloverKeepsBinding(t *testing.T) {
+func TestOpenAISelectProviderWithLoadAwareness_StickyCapacitySpilloverKeepsBinding(t *testing.T) {
 	sessionHash := "sticky-spillover"
 	groupID := int64(1)
-	repo := selectionAccountFixture{
-		accounts: []gatewayprovider.ExecutionAccount{
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 6, Priority: 1, GroupIDs: []int64{groupID}}},
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 6, Priority: 1, GroupIDs: []int64{groupID}}},
+	repo := selectionProviderFixture{
+		providers: []gatewayprovider.ExecutionProvider{
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 6, Priority: 1, GroupIDs: []int64{groupID}}},
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 6, Priority: 1, GroupIDs: []int64{groupID}}},
 		},
 	}
 	cache := &schedulerTestGatewayCache{
@@ -600,9 +600,9 @@ func TestOpenAISelectAccountWithLoadAwareness_StickyCapacitySpilloverKeepsBindin
 	concurrencyCache := selectionConcurrencyFixture{
 		acquireResults: map[int64]bool{1: false, 2: true},
 		waitCounts:     map[int64]int{1: 1},
-		loadMap: map[int64]*schedulercore.AccountLoadInfo{
-			1: {AccountID: 1, LoadRate: 100},
-			2: {AccountID: 2, LoadRate: 10},
+		loadMap: map[int64]*schedulercore.ProviderLoadInfo{
+			1: {ProviderID: 1, LoadRate: 100},
+			2: {ProviderID: 2, LoadRate: 10},
 		},
 	}
 	cfg := &config.Config{RunMode: config.RunModeStandard}
@@ -611,7 +611,7 @@ func TestOpenAISelectAccountWithLoadAwareness_StickyCapacitySpilloverKeepsBindin
 
 	svc := newCompatibleSelectionForTest(CompatibleDependencies{
 		Reads: Reads{
-			Accounts: repo,
+			Providers: repo,
 		},
 		Shared: Shared{
 			Cache:       cache,
@@ -619,11 +619,11 @@ func TestOpenAISelectAccountWithLoadAwareness_StickyCapacitySpilloverKeepsBindin
 		},
 	}, cfg)
 
-	selection, err := svc.SelectAccountWithLoadAwareness(context.Background(), &groupID, sessionHash, "gpt-4", nil)
+	selection, err := svc.SelectProviderWithLoadAwareness(context.Background(), &groupID, sessionHash, "gpt-4", nil)
 	require.NoError(t, err)
 	require.NotNil(t, selection)
-	require.NotNil(t, selection.Account)
-	require.Equal(t, int64(2), selection.Account.Record.ID, "capacity spillover should use the other account for this request")
+	require.NotNil(t, selection.Provider)
+	require.Equal(t, int64(2), selection.Provider.Record.ID, "capacity spillover should use the other provider for this request")
 	require.True(t, selection.Acquired)
 	require.Equal(t, int64(1), cache.sessionBindings["openai:"+sessionHash], "capacity spillover must not migrate the durable sticky binding")
 	if selection.ReleaseFunc != nil {
@@ -631,25 +631,25 @@ func TestOpenAISelectAccountWithLoadAwareness_StickyCapacitySpilloverKeepsBindin
 	}
 }
 
-func TestOpenAISelectAccountWithLoadAwareness_PrefersLowerLoad(t *testing.T) {
+func TestOpenAISelectProviderWithLoadAwareness_PrefersLowerLoad(t *testing.T) {
 	groupID := int64(1)
-	repo := selectionAccountFixture{
-		accounts: []gatewayprovider.ExecutionAccount{
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 1}},
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 1}},
+	repo := selectionProviderFixture{
+		providers: []gatewayprovider.ExecutionProvider{
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 1}},
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 1}},
 		},
 	}
 	cache := &schedulerTestGatewayCache{}
 	concurrencyCache := selectionConcurrencyFixture{
-		loadMap: map[int64]*schedulercore.AccountLoadInfo{
-			1: {AccountID: 1, LoadRate: 80},
-			2: {AccountID: 2, LoadRate: 10},
+		loadMap: map[int64]*schedulercore.ProviderLoadInfo{
+			1: {ProviderID: 1, LoadRate: 80},
+			2: {ProviderID: 2, LoadRate: 10},
 		},
 	}
 
 	svc := newCompatibleSelectionForTest(CompatibleDependencies{
 		Reads: Reads{
-			Accounts: repo,
+			Providers: repo,
 		},
 		Shared: Shared{
 			Cache:       cache,
@@ -657,24 +657,24 @@ func TestOpenAISelectAccountWithLoadAwareness_PrefersLowerLoad(t *testing.T) {
 		},
 	}, nil)
 
-	selection, err := svc.SelectAccountWithLoadAwareness(context.Background(), &groupID, "load", "gpt-4", nil)
+	selection, err := svc.SelectProviderWithLoadAwareness(context.Background(), &groupID, "load", "gpt-4", nil)
 	if err != nil {
-		t.Fatalf("SelectAccountWithLoadAwareness error: %v", err)
+		t.Fatalf("SelectProviderWithLoadAwareness error: %v", err)
 	}
-	if selection == nil || selection.Account == nil || selection.Account.Record.ID != 2 {
-		t.Fatalf("expected account 2")
+	if selection == nil || selection.Provider == nil || selection.Provider.Record.ID != 2 {
+		t.Fatalf("expected provider 2")
 	}
 	if cache.sessionBindings["openai:load"] != 2 {
 		t.Fatalf("expected sticky session updated")
 	}
 }
 
-func TestOpenAISelectAccountForModelWithExclusions_StickyExcludedFallback(t *testing.T) {
+func TestOpenAISelectProviderForModelWithExclusions_StickyExcludedFallback(t *testing.T) {
 	sessionHash := "excluded"
-	repo := selectionAccountFixture{
-		accounts: []gatewayprovider.ExecutionAccount{
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 1}},
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 2}},
+	repo := selectionProviderFixture{
+		providers: []gatewayprovider.ExecutionProvider{
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 1}},
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 2}},
 		},
 	}
 	cache := &schedulerTestGatewayCache{
@@ -682,26 +682,26 @@ func TestOpenAISelectAccountForModelWithExclusions_StickyExcludedFallback(t *tes
 	}
 
 	svc := newCompatibleSelectionForTest(CompatibleDependencies{Reads: Reads{
-		Accounts: repo,
+		Providers: repo,
 	}, Shared: Shared{Cache: cache}}, nil,
 	)
 
 	excluded := map[int64]struct{}{1: {}}
-	acc, err := svc.SelectAccountForModelWithExclusions(context.Background(), selectionFixtureGroupID(context.Background()), sessionHash, "gpt-4", excluded)
+	acc, err := svc.SelectProviderForModelWithExclusions(context.Background(), selectionFixtureGroupID(context.Background()), sessionHash, "gpt-4", excluded)
 	if err != nil {
-		t.Fatalf("SelectAccountForModelWithExclusions error: %v", err)
+		t.Fatalf("SelectProviderForModelWithExclusions error: %v", err)
 	}
 	if acc == nil || acc.Record.ID != 2 {
-		t.Fatalf("expected account 2")
+		t.Fatalf("expected provider 2")
 	}
 }
 
-func TestOpenAISelectAccountForModelWithExclusions_KeepsCompatibleCrossPlatformSticky(t *testing.T) {
+func TestOpenAISelectProviderForModelWithExclusions_KeepsCompatibleCrossPlatformSticky(t *testing.T) {
 	sessionHash := "non-openai"
-	repo := selectionAccountFixture{
-		accounts: []gatewayprovider.ExecutionAccount{
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 1}},
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 2}},
+	repo := selectionProviderFixture{
+		providers: []gatewayprovider.ExecutionProvider{
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 1}},
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 2}},
 		},
 	}
 	cache := &schedulerTestGatewayCache{
@@ -709,46 +709,46 @@ func TestOpenAISelectAccountForModelWithExclusions_KeepsCompatibleCrossPlatformS
 	}
 
 	svc := newCompatibleSelectionForTest(CompatibleDependencies{Reads: Reads{
-		Accounts: repo,
+		Providers: repo,
 	}, Shared: Shared{Cache: cache}}, nil,
 	)
 
-	acc, err := svc.SelectAccountForModelWithExclusions(context.Background(), selectionFixtureGroupID(context.Background()), sessionHash, "gpt-4", nil)
+	acc, err := svc.SelectProviderForModelWithExclusions(context.Background(), selectionFixtureGroupID(context.Background()), sessionHash, "gpt-4", nil)
 	if err != nil {
-		t.Fatalf("SelectAccountForModelWithExclusions error: %v", err)
+		t.Fatalf("SelectProviderForModelWithExclusions error: %v", err)
 	}
 	if acc == nil || acc.Record.ID != 1 {
-		t.Fatalf("expected cross-platform sticky account 1")
+		t.Fatalf("expected cross-platform sticky provider 1")
 	}
 }
 
-func TestOpenAISelectAccountForModelWithExclusions_NoAccounts(t *testing.T) {
-	repo := selectionAccountFixture{accounts: []gatewayprovider.ExecutionAccount{}}
+func TestOpenAISelectProviderForModelWithExclusions_NoProviders(t *testing.T) {
+	repo := selectionProviderFixture{providers: []gatewayprovider.ExecutionProvider{}}
 	cache := &schedulerTestGatewayCache{}
 
 	svc := newCompatibleSelectionForTest(CompatibleDependencies{Reads: Reads{
-		Accounts: repo,
+		Providers: repo,
 	}, Shared: Shared{Cache: cache}}, nil,
 	)
 
-	acc, err := svc.SelectAccountForModelWithExclusions(context.Background(), selectionFixtureGroupID(context.Background()), "", "", nil)
+	acc, err := svc.SelectProviderForModelWithExclusions(context.Background(), selectionFixtureGroupID(context.Background()), "", "", nil)
 	if err == nil {
-		t.Fatalf("expected error for no accounts")
+		t.Fatalf("expected error for no providers")
 	}
 	if acc != nil {
-		t.Fatalf("expected nil account")
+		t.Fatalf("expected nil provider")
 	}
-	if !strings.Contains(err.Error(), "no available OpenAI accounts") {
+	if !strings.Contains(err.Error(), "no available OpenAI providers") {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
-func TestOpenAISelectAccountWithLoadAwareness_NoCandidates(t *testing.T) {
+func TestOpenAISelectProviderWithLoadAwareness_NoCandidates(t *testing.T) {
 	groupID := int64(1)
 	resetAt := time.Now().Add(1 * time.Hour)
-	repo := selectionAccountFixture{
-		accounts: []gatewayprovider.ExecutionAccount{
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 1, RateLimitResetAt: &resetAt}},
+	repo := selectionProviderFixture{
+		providers: []gatewayprovider.ExecutionProvider{
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 1, RateLimitResetAt: &resetAt}},
 		},
 	}
 	cache := &schedulerTestGatewayCache{}
@@ -756,7 +756,7 @@ func TestOpenAISelectAccountWithLoadAwareness_NoCandidates(t *testing.T) {
 
 	svc := newCompatibleSelectionForTest(CompatibleDependencies{
 		Reads: Reads{
-			Accounts: repo,
+			Providers: repo,
 		},
 		Shared: Shared{
 			Cache:       cache,
@@ -764,7 +764,7 @@ func TestOpenAISelectAccountWithLoadAwareness_NoCandidates(t *testing.T) {
 		},
 	}, nil)
 
-	selection, err := svc.SelectAccountWithLoadAwareness(context.Background(), &groupID, "", "gpt-4", nil)
+	selection, err := svc.SelectProviderWithLoadAwareness(context.Background(), &groupID, "", "gpt-4", nil)
 	if err == nil {
 		t.Fatalf("expected error for no candidates")
 	}
@@ -773,23 +773,23 @@ func TestOpenAISelectAccountWithLoadAwareness_NoCandidates(t *testing.T) {
 	}
 }
 
-func TestOpenAISelectAccountWithLoadAwareness_AllFullWaitPlan(t *testing.T) {
+func TestOpenAISelectProviderWithLoadAwareness_AllFullWaitPlan(t *testing.T) {
 	groupID := int64(1)
-	repo := selectionAccountFixture{
-		accounts: []gatewayprovider.ExecutionAccount{
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 1}},
+	repo := selectionProviderFixture{
+		providers: []gatewayprovider.ExecutionProvider{
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 1}},
 		},
 	}
 	cache := &schedulerTestGatewayCache{}
 	concurrencyCache := selectionConcurrencyFixture{
-		loadMap: map[int64]*schedulercore.AccountLoadInfo{
-			1: {AccountID: 1, LoadRate: 100},
+		loadMap: map[int64]*schedulercore.ProviderLoadInfo{
+			1: {ProviderID: 1, LoadRate: 100},
 		},
 	}
 
 	svc := newCompatibleSelectionForTest(CompatibleDependencies{
 		Reads: Reads{
-			Accounts: repo,
+			Providers: repo,
 		},
 		Shared: Shared{
 			Concurrency: schedulercore.NewConcurrencyService(
@@ -801,20 +801,20 @@ func TestOpenAISelectAccountWithLoadAwareness_AllFullWaitPlan(t *testing.T) {
 		},
 	}, nil)
 
-	selection, err := svc.SelectAccountWithLoadAwareness(context.Background(), &groupID, "", "gpt-4", nil)
+	selection, err := svc.SelectProviderWithLoadAwareness(context.Background(), &groupID, "", "gpt-4", nil)
 	if err != nil {
-		t.Fatalf("SelectAccountWithLoadAwareness error: %v", err)
+		t.Fatalf("SelectProviderWithLoadAwareness error: %v", err)
 	}
 	if selection == nil || selection.WaitPlan == nil {
 		t.Fatalf("expected wait plan")
 	}
 }
 
-func TestOpenAISelectAccountWithLoadAwareness_LoadBatchErrorNoAcquire(t *testing.T) {
+func TestOpenAISelectProviderWithLoadAwareness_LoadBatchErrorNoAcquire(t *testing.T) {
 	groupID := int64(1)
-	repo := selectionAccountFixture{
-		accounts: []gatewayprovider.ExecutionAccount{
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 1}},
+	repo := selectionProviderFixture{
+		providers: []gatewayprovider.ExecutionProvider{
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 1}},
 		},
 	}
 	cache := &schedulerTestGatewayCache{}
@@ -825,7 +825,7 @@ func TestOpenAISelectAccountWithLoadAwareness_LoadBatchErrorNoAcquire(t *testing
 
 	svc := newCompatibleSelectionForTest(CompatibleDependencies{
 		Reads: Reads{
-			Accounts: repo,
+			Providers: repo,
 		},
 		Shared: Shared{
 			Cache:       cache,
@@ -833,34 +833,34 @@ func TestOpenAISelectAccountWithLoadAwareness_LoadBatchErrorNoAcquire(t *testing
 		},
 	}, nil)
 
-	selection, err := svc.SelectAccountWithLoadAwareness(context.Background(), &groupID, "", "gpt-4", nil)
+	selection, err := svc.SelectProviderWithLoadAwareness(context.Background(), &groupID, "", "gpt-4", nil)
 	if err != nil {
-		t.Fatalf("SelectAccountWithLoadAwareness error: %v", err)
+		t.Fatalf("SelectProviderWithLoadAwareness error: %v", err)
 	}
 	if selection == nil || selection.WaitPlan == nil {
 		t.Fatalf("expected wait plan")
 	}
 }
 
-func TestOpenAISelectAccountWithLoadAwareness_MissingLoadInfo(t *testing.T) {
+func TestOpenAISelectProviderWithLoadAwareness_MissingLoadInfo(t *testing.T) {
 	groupID := int64(1)
-	repo := selectionAccountFixture{
-		accounts: []gatewayprovider.ExecutionAccount{
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 1}},
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 1}},
+	repo := selectionProviderFixture{
+		providers: []gatewayprovider.ExecutionProvider{
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 1}},
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 1}},
 		},
 	}
 	cache := &schedulerTestGatewayCache{}
 	concurrencyCache := selectionConcurrencyFixture{
-		loadMap: map[int64]*schedulercore.AccountLoadInfo{
-			1: {AccountID: 1, LoadRate: 50},
+		loadMap: map[int64]*schedulercore.ProviderLoadInfo{
+			1: {ProviderID: 1, LoadRate: 50},
 		},
 		skipDefaultLoad: true,
 	}
 
 	svc := newCompatibleSelectionForTest(CompatibleDependencies{
 		Reads: Reads{
-			Accounts: repo,
+			Providers: repo,
 		},
 		Shared: Shared{
 			Cache:       cache,
@@ -868,60 +868,60 @@ func TestOpenAISelectAccountWithLoadAwareness_MissingLoadInfo(t *testing.T) {
 		},
 	}, nil)
 
-	selection, err := svc.SelectAccountWithLoadAwareness(context.Background(), &groupID, "", "gpt-4", nil)
+	selection, err := svc.SelectProviderWithLoadAwareness(context.Background(), &groupID, "", "gpt-4", nil)
 	if err != nil {
-		t.Fatalf("SelectAccountWithLoadAwareness error: %v", err)
+		t.Fatalf("SelectProviderWithLoadAwareness error: %v", err)
 	}
-	if selection == nil || selection.Account == nil || selection.Account.Record.ID != 2 {
-		t.Fatalf("expected account 2")
+	if selection == nil || selection.Provider == nil || selection.Provider.Record.ID != 2 {
+		t.Fatalf("expected provider 2")
 	}
 }
 
-func TestOpenAISelectAccountForModelWithExclusions_LeastRecentlyUsed(t *testing.T) {
+func TestOpenAISelectProviderForModelWithExclusions_LeastRecentlyUsed(t *testing.T) {
 	oldTime := time.Now().Add(-2 * time.Hour)
 	newTime := time.Now().Add(-1 * time.Hour)
-	repo := selectionAccountFixture{
-		accounts: []gatewayprovider.ExecutionAccount{
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Priority: 1, LastUsedAt: &newTime}},
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Priority: 1, LastUsedAt: &oldTime}},
+	repo := selectionProviderFixture{
+		providers: []gatewayprovider.ExecutionProvider{
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Priority: 1, LastUsedAt: &newTime}},
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Priority: 1, LastUsedAt: &oldTime}},
 		},
 	}
 	cache := &schedulerTestGatewayCache{}
 
 	svc := newCompatibleSelectionForTest(CompatibleDependencies{Reads: Reads{
-		Accounts: repo,
+		Providers: repo,
 	}, Shared: Shared{Cache: cache}}, nil,
 	)
 
-	acc, err := svc.SelectAccountForModelWithExclusions(context.Background(), selectionFixtureGroupID(context.Background()), "", "gpt-4", nil)
+	acc, err := svc.SelectProviderForModelWithExclusions(context.Background(), selectionFixtureGroupID(context.Background()), "", "gpt-4", nil)
 	if err != nil {
-		t.Fatalf("SelectAccountForModelWithExclusions error: %v", err)
+		t.Fatalf("SelectProviderForModelWithExclusions error: %v", err)
 	}
 	if acc == nil || acc.Record.ID != 2 {
-		t.Fatalf("expected account 2")
+		t.Fatalf("expected provider 2")
 	}
 }
 
-func TestOpenAISelectAccountWithLoadAwareness_PreferNeverUsed(t *testing.T) {
+func TestOpenAISelectProviderWithLoadAwareness_PreferNeverUsed(t *testing.T) {
 	groupID := int64(1)
 	lastUsed := time.Now().Add(-1 * time.Hour)
-	repo := selectionAccountFixture{
-		accounts: []gatewayprovider.ExecutionAccount{
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 1, LastUsedAt: &lastUsed}},
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 1}},
+	repo := selectionProviderFixture{
+		providers: []gatewayprovider.ExecutionProvider{
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 1, LastUsedAt: &lastUsed}},
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 1}},
 		},
 	}
 	cache := &schedulerTestGatewayCache{}
 	concurrencyCache := selectionConcurrencyFixture{
-		loadMap: map[int64]*schedulercore.AccountLoadInfo{
-			1: {AccountID: 1, LoadRate: 10},
-			2: {AccountID: 2, LoadRate: 10},
+		loadMap: map[int64]*schedulercore.ProviderLoadInfo{
+			1: {ProviderID: 1, LoadRate: 10},
+			2: {ProviderID: 2, LoadRate: 10},
 		},
 	}
 
 	svc := newCompatibleSelectionForTest(CompatibleDependencies{
 		Reads: Reads{
-			Accounts: repo,
+			Providers: repo,
 		},
 		Shared: Shared{
 			Cache:       cache,
@@ -929,21 +929,21 @@ func TestOpenAISelectAccountWithLoadAwareness_PreferNeverUsed(t *testing.T) {
 		},
 	}, nil)
 
-	selection, err := svc.SelectAccountWithLoadAwareness(context.Background(), &groupID, "", "gpt-4", nil)
+	selection, err := svc.SelectProviderWithLoadAwareness(context.Background(), &groupID, "", "gpt-4", nil)
 	if err != nil {
-		t.Fatalf("SelectAccountWithLoadAwareness error: %v", err)
+		t.Fatalf("SelectProviderWithLoadAwareness error: %v", err)
 	}
-	if selection == nil || selection.Account == nil || selection.Account.Record.ID != 2 {
-		t.Fatalf("expected account 2")
+	if selection == nil || selection.Provider == nil || selection.Provider.Record.ID != 2 {
+		t.Fatalf("expected provider 2")
 	}
 }
 
 // 本用例需要把两次循环视为独立故障，关闭生产环境的并发断流折叠窗口。
 
-// 池模式的瞬态容量错误即使未显式配置 502，也应在同一账号上受限重试。
+// 池模式的瞬态容量错误即使未显式配置 502，也应在同一提供商上受限重试。
 
-// 流内 rate limit 进入 OAuth 同账号重试窗口，但不立即写账号级限流/封禁状态：
-// HTTP 200 流的 x-codex-* 头不能让窗口内的账号提前失去调度资格。
+// 流内 rate limit 进入 OAuth 同提供商重试窗口，但不立即写提供商级限流/封禁状态：
+// HTTP 200 流的 x-codex-* 头不能让窗口内的提供商提前失去调度资格。
 
 // 命中透传规则也应记录 ops 上游错误事件（对齐 CC/Messages 与 antigravity 先例）。
 

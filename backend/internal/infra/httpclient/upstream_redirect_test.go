@@ -44,7 +44,7 @@ func TestUpstreamPoolRedirectPolicyIsPerRequest(t *testing.T) {
 		{name: "block_again", block: true},
 	} {
 		t.Run(step.name, func(t *testing.T) {
-			opts := UpstreamRequestOptions{Isolation: "account", AccountID: 1, MaxClients: 1}
+			opts := UpstreamRequestOptions{Isolation: "provider", ProviderID: 1, MaxClients: 1}
 			if step.block {
 				opts.CheckRedirect = func(*http.Request, []*http.Request) error {
 					return blocked
@@ -78,10 +78,10 @@ func TestUpstreamPoolRedirectPolicyIsPerRequest(t *testing.T) {
 		})
 	}
 
-	// 最后一次重定向失败必须释放在途计数，单条目池才能接纳另一个账号。
+	// 最后一次重定向失败必须释放在途计数，单条目池才能接纳另一个提供商。
 	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, target, nil)
 	require.NoError(t, err)
-	resp, err := pool.Do(req, UpstreamRequestOptions{Isolation: "account", AccountID: 2, MaxClients: 1})
+	resp, err := pool.Do(req, UpstreamRequestOptions{Isolation: "provider", ProviderID: 2, MaxClients: 1})
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
 }

@@ -1,4 +1,4 @@
-// Target 是一次任务尝试的受控执行目标，不保存共享缓存、账号仓储或网关服务。
+// Target 是一次任务尝试的受控执行目标，不保存共享缓存、提供商仓储或网关服务。
 package provider
 
 import (
@@ -33,7 +33,7 @@ type Target struct {
 	Gemini func(string) gemininative.ImageOptions
 }
 
-// ExecutePlatform 保留任务实际账号平台分派，不改变各平台独立协议与错误语义。
+// ExecutePlatform 保留任务实际提供商平台分派，不改变各平台独立协议与错误语义。
 func (t *Target) ExecutePlatform(ctx context.Context, platform string, run creative.CreativeRun, payload creative.CreativeRunPayload, model string) ([]creative.CreativeOutput, error) {
 	switch platform {
 	case creative.PlatformOpenAI:
@@ -43,6 +43,6 @@ func (t *Target) ExecutePlatform(ctx context.Context, platform string, run creat
 	case creative.PlatformGemini:
 		return t.ExecuteGemini(ctx, run, payload, model)
 	default:
-		return nil, creative.CreativeNonRetryableError("creative executor unsupported account platform %s", platform)
+		return nil, creative.CreativeNonRetryableError("creative executor unsupported provider platform %s", platform)
 	}
 }

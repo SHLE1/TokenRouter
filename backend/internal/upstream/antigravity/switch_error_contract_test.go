@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestIsAntigravityAccountSwitchError(t *testing.T) {
+func TestIsAntigravityProviderSwitchError(t *testing.T) {
 	tests := []struct {
 		name          string
 		err           error
@@ -28,22 +28,22 @@ func TestIsAntigravityAccountSwitchError(t *testing.T) {
 			expectedOK: false,
 		},
 		{
-			name: "account switch error",
-			err: &AntigravityAccountSwitchError{
-				OriginalAccountID: 123,
-				RateLimitedModel:  "claude-sonnet-4-5",
-				IsStickySession:   true,
+			name: "provider switch error",
+			err: &AntigravityProviderSwitchError{
+				OriginalProviderID: 123,
+				RateLimitedModel:   "claude-sonnet-4-5",
+				IsStickySession:    true,
 			},
 			expectedOK:    true,
 			expectedID:    123,
 			expectedModel: "claude-sonnet-4-5",
 		},
 		{
-			name: "wrapped account switch error",
-			err: fmt.Errorf("wrapped: %w", &AntigravityAccountSwitchError{
-				OriginalAccountID: 456,
-				RateLimitedModel:  "gemini-3-flash",
-				IsStickySession:   false,
+			name: "wrapped provider switch error",
+			err: fmt.Errorf("wrapped: %w", &AntigravityProviderSwitchError{
+				OriginalProviderID: 456,
+				RateLimitedModel:   "gemini-3-flash",
+				IsStickySession:    false,
 			}),
 			expectedOK:    true,
 			expectedID:    456,
@@ -53,11 +53,11 @@ func TestIsAntigravityAccountSwitchError(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			switchErr, ok := IsAntigravityAccountSwitchError(tt.err)
+			switchErr, ok := IsAntigravityProviderSwitchError(tt.err)
 			require.Equal(t, tt.expectedOK, ok)
 			if tt.expectedOK {
 				require.NotNil(t, switchErr)
-				require.Equal(t, tt.expectedID, switchErr.OriginalAccountID)
+				require.Equal(t, tt.expectedID, switchErr.OriginalProviderID)
 				require.Equal(t, tt.expectedModel, switchErr.RateLimitedModel)
 			} else {
 				require.Nil(t, switchErr)
@@ -66,11 +66,11 @@ func TestIsAntigravityAccountSwitchError(t *testing.T) {
 	}
 }
 
-func TestAntigravityAccountSwitchError_Error(t *testing.T) {
-	err := &AntigravityAccountSwitchError{
-		OriginalAccountID: 789,
-		RateLimitedModel:  "claude-opus-4-5",
-		IsStickySession:   true,
+func TestAntigravityProviderSwitchError_Error(t *testing.T) {
+	err := &AntigravityProviderSwitchError{
+		OriginalProviderID: 789,
+		RateLimitedModel:   "claude-opus-4-5",
+		IsStickySession:    true,
 	}
 	msg := err.Error()
 	require.Contains(t, msg, "789")

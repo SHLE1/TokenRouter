@@ -1,4 +1,4 @@
-// 固定供应商余额/周期协议保持原请求顺序和归一化，不写账号或调度。
+// 固定供应商余额/周期协议保持原请求顺序和归一化，不写提供商或调度。
 package usageclient
 
 import (
@@ -77,6 +77,7 @@ func CnMillisToRFC3339(n int64) string {
 	}
 	return time.UnixMilli(ms).UTC().Format(time.RFC3339)
 }
+
 func CnUsageLimits(provider string, tiers []usageview.CNQuotaTier) (*usageview.UpstreamUsageInfo, error) {
 	if len(tiers) == 0 {
 		return nil, usageview.ErrUpstreamUsageInvalidResponse
@@ -102,6 +103,7 @@ func CnUsageLimits(provider string, tiers []usageview.CNQuotaTier) (*usageview.U
 	}
 	return &usageview.UpstreamUsageInfo{Provider: provider, Mode: "limits", Unit: "PERCENT", Limits: limits}, nil
 }
+
 func ValidateCNUsageStatus(status int) error {
 	switch {
 	case status >= 200 && status < 300:
@@ -117,7 +119,7 @@ func ValidateCNUsageStatus(status int) error {
 	}
 }
 
-// CnUsageEndpoint 从已通过策略校验的账号 Base URL 派生固定路径。主机始终来自账号配置，
+// CnUsageEndpoint 从已通过策略校验的提供商 Base URL 派生固定路径。主机始终来自提供商配置，
 // 不从响应或任意用户输入推断，也不会把凭据发往其它主机。
 func CnUsageEndpoint(base, path string, preserveCodingPrefix bool) (string, error) {
 	parsed, err := url.Parse(strings.TrimSpace(base))

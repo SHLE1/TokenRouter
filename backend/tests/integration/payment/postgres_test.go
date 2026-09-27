@@ -19,15 +19,17 @@ import (
 	postgresinfra "github.com/TokenFlux/TokenRouter/internal/infra/postgres"
 	"github.com/TokenFlux/TokenRouter/internal/payment"
 	paymentpostgres "github.com/TokenFlux/TokenRouter/internal/payment/postgres"
-	"github.com/TokenFlux/TokenRouter/internal/payment/provider"
+	paymentadapter "github.com/TokenFlux/TokenRouter/internal/payment/provider"
 	"github.com/TokenFlux/TokenRouter/migrations"
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/require"
 	tcpostgres "github.com/testcontainers/testcontainers-go/modules/postgres"
 )
 
-var integrationDB *sql.DB
-var integrationEntClient *dbent.Client
+var (
+	integrationDB        *sql.DB
+	integrationEntClient *dbent.Client
+)
 
 // 支付资金契约使用隔离 PostgreSQL 和真实迁移；退出前关闭连接及容器。
 func runPostgresTests(m *testing.M) int {
@@ -97,7 +99,7 @@ func (p refundBalanceParticipant) CompensateBalance(ctx context.Context, id int6
 // 订单事务直接绑定 billing 的同连接参与能力，测试不经过旧身份资金写入入口。
 func newPostgresRefundWorkflow(client *dbent.Client) *payment.RefundWorkflow {
 	instances := paymentpostgres.NewInstanceStore(client)
-	bindings := payment.NewProviderBindings(instances, payment.NewRegistry(), payment.NewDefaultLoadBalancer(instances, nil), payment.BindingRuntime{Factory: provider.CreateProvider, RegistryFactory: provider.CreateProvider}, false)
+	bindings := payment.NewProviderBindings(instances, payment.NewRegistry(), payment.NewDefaultLoadBalancer(instances, nil), payment.BindingRuntime{Factory: paymentadapter.CreateProvider, RegistryFactory: paymentadapter.CreateProvider}, false)
 	store := paymentpostgres.NewRefundStore(client, func(tx *dbent.Tx) payment.RefundRights {
 		return refundBalanceParticipant{balances: billingpostgres.BalanceInTx(tx)}
 	})

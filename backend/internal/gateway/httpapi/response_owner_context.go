@@ -4,7 +4,7 @@ import "github.com/gin-gonic/gin"
 
 const responseOwnerContextKey = "openai_http_response_owner"
 
-// HTTPResponseOwner 只记录成功续接应绑定的下游主体，不含上游账号凭据。
+// HTTPResponseOwner 只记录成功续接应绑定的下游主体，不含上游提供商凭据。
 type HTTPResponseOwner struct{ UserID, APIKeyID int64 }
 
 // SetHTTPResponseOwner 只接受已通过认证入口提供的有效标识，保留原上下文字段。

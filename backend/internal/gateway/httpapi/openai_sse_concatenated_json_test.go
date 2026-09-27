@@ -13,12 +13,12 @@ import (
 
 	sessiontestkit "github.com/TokenFlux/TokenRouter/internal/gateway/session/testkit"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/ws"
 	"github.com/TokenFlux/TokenRouter/internal/protocol/openai"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	openaicore "github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 	"github.com/gin-gonic/gin"
@@ -38,7 +38,6 @@ func TestOpenAIStreamingPassthroughRepairsConcatenatedJSONDocumentsInSingleDataL
 }
 
 func TestOpenAIWSv2StreamingRepairsConcatenatedJSONDocumentsInSingleMessage(t *testing.T) {
-
 	largeInProgress, outputItemAdded, completed := openAIConcatenatedJSONTestEvents(t)
 	captureConn := &openAIWSCaptureConn{events: [][]byte{
 		[]byte(largeInProgress + outputItemAdded),
@@ -50,8 +49,8 @@ func TestOpenAIWSv2StreamingRepairsConcatenatedJSONDocumentsInSingleMessage(t *t
 	options.WS.Enabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerAccount = 1
-	options.Pool.MaxIdlePerAccount = 1
+	options.Pool.MaxConnsPerProvider = 1
+	options.Pool.MaxIdlePerProvider = 1
 	options.Pool.QueueLimitPerConn = 8
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 5
@@ -60,15 +59,18 @@ func TestOpenAIWSv2StreamingRepairsConcatenatedJSONDocumentsInSingleMessage(t *t
 	pool := newOpenAIWSConnPool(options)
 	pool.SetClientDialerForTest(&openAIWSCaptureDialer{conn: captureConn})
 	svc := newWSFixture(wsFixtureInputs{options: options, cache: &sessiontestkit.StickyCache{}, transport: &auxiliaryHTTPRecorder{}, pool: pool, corrector: openaicore.NewCodexToolCorrector()})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 2,
-		Name:        "ws-test",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Status:      billing.StatusActive,
-		Schedulable: true,
-		Concurrency: 1,
-		Credentials: map[string]any{"api_key": "sk-test"},
-		Extra:       map[string]any{"responses_websockets_v2_enabled": true}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 2,
+			Name:        "ws-test",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Status:      billing.StatusActive,
+			Schedulable: true,
+			Concurrency: 1,
+			Credentials: map[string]any{"api_key": "sk-test"},
+			Extra:       map[string]any{"responses_websockets_v2_enabled": true},
+		},
 	}
 
 	recorder := httptest.NewRecorder()
@@ -77,7 +79,7 @@ func TestOpenAIWSv2StreamingRepairsConcatenatedJSONDocumentsInSingleMessage(t *t
 	groupID := int64(1)
 	c.Set("api_key", &apikey.APIKey{GroupID: &groupID})
 
-	result, err := svc.Responses.Forward(context.Background(), c, account, []byte(`{"model":"gpt-5.6-sol","stream":true,"input":"hello"}`))
+	result, err := svc.Responses.Forward(context.Background(), c, provider, []byte(`{"model":"gpt-5.6-sol","stream":true,"input":"hello"}`))
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, 7, result.Usage.InputTokens)
@@ -101,7 +103,6 @@ func TestOpenAIWSv2RejectsMalformedUntypedMessageBeforeWritingDownstream(t *test
 }
 
 func TestOpenAIWSv2RejectsMalformedEventAfterWritingDownstream(t *testing.T) {
-
 	outputTextDelta := `{"type":"response.output_text.delta","delta":"ok","sequence_number":1}`
 	malformedMessage := `{"type":"response.in_progress"}unexpected-tail`
 	captureConn := &openAIWSCaptureConn{events: [][]byte{
@@ -114,8 +115,8 @@ func TestOpenAIWSv2RejectsMalformedEventAfterWritingDownstream(t *testing.T) {
 	options.WS.Enabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerAccount = 1
-	options.Pool.MaxIdlePerAccount = 1
+	options.Pool.MaxConnsPerProvider = 1
+	options.Pool.MaxIdlePerProvider = 1
 	options.Pool.QueueLimitPerConn = 8
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 5
@@ -124,15 +125,18 @@ func TestOpenAIWSv2RejectsMalformedEventAfterWritingDownstream(t *testing.T) {
 	pool := newOpenAIWSConnPool(options)
 	pool.SetClientDialerForTest(&openAIWSCaptureDialer{conn: captureConn})
 	svc := newWSFixture(wsFixtureInputs{options: options, cache: &sessiontestkit.StickyCache{}, transport: &auxiliaryHTTPRecorder{}, pool: pool, corrector: openaicore.NewCodexToolCorrector()})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 5,
-		Name:        "ws-malformed-event-after-output",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Status:      billing.StatusActive,
-		Schedulable: true,
-		Concurrency: 1,
-		Credentials: map[string]any{"api_key": "sk-test"},
-		Extra:       map[string]any{"responses_websockets_v2_enabled": true}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 5,
+			Name:        "ws-malformed-event-after-output",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Status:      billing.StatusActive,
+			Schedulable: true,
+			Concurrency: 1,
+			Credentials: map[string]any{"api_key": "sk-test"},
+			Extra:       map[string]any{"responses_websockets_v2_enabled": true},
+		},
 	}
 
 	recorder := httptest.NewRecorder()
@@ -141,7 +145,7 @@ func TestOpenAIWSv2RejectsMalformedEventAfterWritingDownstream(t *testing.T) {
 	groupID := int64(1)
 	c.Set("api_key", &apikey.APIKey{GroupID: &groupID})
 
-	result, err := svc.Responses.Forward(context.Background(), c, account, []byte(`{"model":"gpt-5.6-sol","stream":true,"input":"hello"}`))
+	result, err := svc.Responses.Forward(context.Background(), c, provider, []byte(`{"model":"gpt-5.6-sol","stream":true,"input":"hello"}`))
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "after downstream output")
 	require.Nil(t, result)
@@ -168,8 +172,8 @@ func testOpenAIWSv2RejectsMalformedEventBeforeWritingDownstream(t *testing.T, ma
 	options.WS.Enabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerAccount = 1
-	options.Pool.MaxIdlePerAccount = 1
+	options.Pool.MaxConnsPerProvider = 1
+	options.Pool.MaxIdlePerProvider = 1
 	options.Pool.QueueLimitPerConn = 8
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 5
@@ -178,15 +182,18 @@ func testOpenAIWSv2RejectsMalformedEventBeforeWritingDownstream(t *testing.T, ma
 	pool := newOpenAIWSConnPool(options)
 	pool.SetClientDialerForTest(&openAIWSCaptureDialer{conn: captureConn})
 	svc := newWSFixture(wsFixtureInputs{options: options, cache: &sessiontestkit.StickyCache{}, transport: &auxiliaryHTTPRecorder{}, pool: pool, corrector: openaicore.NewCodexToolCorrector()})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 4,
-		Name:        "ws-malformed-event",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Status:      billing.StatusActive,
-		Schedulable: true,
-		Concurrency: 1,
-		Credentials: map[string]any{"api_key": "sk-test"},
-		Extra:       map[string]any{"responses_websockets_v2_enabled": true}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 4,
+			Name:        "ws-malformed-event",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Status:      billing.StatusActive,
+			Schedulable: true,
+			Concurrency: 1,
+			Credentials: map[string]any{"api_key": "sk-test"},
+			Extra:       map[string]any{"responses_websockets_v2_enabled": true},
+		},
 	}
 
 	recorder := httptest.NewRecorder()
@@ -195,7 +202,7 @@ func testOpenAIWSv2RejectsMalformedEventBeforeWritingDownstream(t *testing.T, ma
 	groupID := int64(1)
 	c.Set("api_key", &apikey.APIKey{GroupID: &groupID})
 
-	result, err := svc.Responses.Forward(context.Background(), c, account, []byte(`{"model":"gpt-5.6-sol","stream":true,"input":"hello"}`))
+	result, err := svc.Responses.Forward(context.Background(), c, provider, []byte(`{"model":"gpt-5.6-sol","stream":true,"input":"hello"}`))
 	require.Error(t, err)
 	var fallbackErr *ws.FallbackError
 	require.ErrorAs(t, err, &fallbackErr)
@@ -225,7 +232,6 @@ func TestSplitOpenAIConcatenatedJSONDocumentsRejectsPayloadOverRepairLimit(t *te
 }
 
 func TestOpenAIWSv2StreamingBreaksConnectionWhenTerminalHasTrailingDocument(t *testing.T) {
-
 	completed := `{"type":"response.completed","response":{"id":"resp_terminal_tail","usage":{"input_tokens":2,"output_tokens":1}}}`
 	tail := `{"type":"error","error":{"type":"upstream_error","message":"tail"}}`
 	captureConn := &openAIWSCaptureConn{events: [][]byte{[]byte(completed + tail)}}
@@ -235,8 +241,8 @@ func TestOpenAIWSv2StreamingBreaksConnectionWhenTerminalHasTrailingDocument(t *t
 	options.WS.Enabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerAccount = 1
-	options.Pool.MaxIdlePerAccount = 1
+	options.Pool.MaxConnsPerProvider = 1
+	options.Pool.MaxIdlePerProvider = 1
 	options.Pool.QueueLimitPerConn = 8
 	options.WS.DialTimeoutSeconds = 3
 	options.WS.ReadTimeoutSeconds = 5
@@ -245,15 +251,18 @@ func TestOpenAIWSv2StreamingBreaksConnectionWhenTerminalHasTrailingDocument(t *t
 	pool := newOpenAIWSConnPool(options)
 	pool.SetClientDialerForTest(&openAIWSCaptureDialer{conn: captureConn})
 	svc := newWSFixture(wsFixtureInputs{options: options, cache: &sessiontestkit.StickyCache{}, transport: &auxiliaryHTTPRecorder{}, pool: pool, corrector: openaicore.NewCodexToolCorrector()})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 3,
-		Name:        "ws-terminal-tail",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Status:      billing.StatusActive,
-		Schedulable: true,
-		Concurrency: 1,
-		Credentials: map[string]any{"api_key": "sk-test"},
-		Extra:       map[string]any{"responses_websockets_v2_enabled": true}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 3,
+			Name:        "ws-terminal-tail",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Status:      billing.StatusActive,
+			Schedulable: true,
+			Concurrency: 1,
+			Credentials: map[string]any{"api_key": "sk-test"},
+			Extra:       map[string]any{"responses_websockets_v2_enabled": true},
+		},
 	}
 
 	recorder := httptest.NewRecorder()
@@ -262,7 +271,7 @@ func TestOpenAIWSv2StreamingBreaksConnectionWhenTerminalHasTrailingDocument(t *t
 	groupID := int64(1)
 	c.Set("api_key", &apikey.APIKey{GroupID: &groupID})
 
-	result, err := svc.Responses.Forward(context.Background(), c, account, []byte(`{"model":"gpt-5.6-sol","stream":true,"input":"hello"}`))
+	result, err := svc.Responses.Forward(context.Background(), c, provider, []byte(`{"model":"gpt-5.6-sol","stream":true,"input":"hello"}`))
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.True(t, captureConn.closed, "a WS message with data after a terminal event must not return to the pool")
@@ -292,18 +301,18 @@ func testOpenAIStreamingRepairsConcatenatedJSONDocuments(t *testing.T, passthrou
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
 	svc := newWSFixture(wsFixtureInputs{options: &wsFixtureOptions{Output: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize, StreamDataIntervalTimeout: streamDataIntervalTimeout}}, corrector: openaicore.NewCodexToolCorrector()})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Name: "test", Platform: capability.PlatformOpenAI}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Name: "test", Platform: capability.PlatformOpenAI}}
 
 	var usage *openai.ForwardUsage
 	var err error
 	if passthrough {
-		result, forwardErr := svc.Output.PassthroughStream(c.Request.Context(), resp, c, account, time.Now(), "gpt-5.6-sol", "gpt-5.6-sol")
+		result, forwardErr := svc.Output.PassthroughStream(c.Request.Context(), resp, c, provider, time.Now(), "gpt-5.6-sol", "gpt-5.6-sol")
 		err = forwardErr
 		if result != nil {
 			usage = result.Usage
 		}
 	} else {
-		result, forwardErr := svc.Output.Stream(c.Request.Context(), resp, c, account, time.Now(), "gpt-5.6-sol", "gpt-5.6-sol", "")
+		result, forwardErr := svc.Output.Stream(c.Request.Context(), resp, c, provider, time.Now(), "gpt-5.6-sol", "gpt-5.6-sol", "")
 		err = forwardErr
 		if result != nil {
 			usage = result.Usage

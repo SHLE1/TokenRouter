@@ -79,30 +79,30 @@ func TestCheckBalanceAfterDeduction_NoCrossingNotFired(t *testing.T) {
 	s.CheckBalanceAfterDeduction(context.Background(), u, 5, 2)
 }
 
-// ---------- nil-service guards on CheckAccountQuotaAfterIncrement ----------
+// ---------- nil-service guards on CheckProviderQuotaAfterIncrement ----------
 
-func TestCheckAccountQuotaAfterIncrement_NilAccount(t *testing.T) {
+func TestCheckProviderQuotaAfterIncrement_NilProvider(t *testing.T) {
 	s, _ := newBalanceNotifyServiceForTest()
 	// Should not panic.
-	s.CheckAccountQuotaAfterIncrement(context.Background(), nil, 10, nil)
+	s.CheckProviderQuotaAfterIncrement(context.Background(), nil, 10, nil)
 }
 
-func TestCheckAccountQuotaAfterIncrement_ZeroCost(t *testing.T) {
+func TestCheckProviderQuotaAfterIncrement_ZeroCost(t *testing.T) {
 	s, _ := newBalanceNotifyServiceForTest()
-	a := &QuotaNotifyAccount{ID: 1, Platform: capability.PlatformAnthropic}
-	s.CheckAccountQuotaAfterIncrement(context.Background(), a, 0, nil)
+	a := &QuotaNotifyProvider{ID: 1, Platform: capability.PlatformAnthropic}
+	s.CheckProviderQuotaAfterIncrement(context.Background(), a, 0, nil)
 }
 
-func TestCheckAccountQuotaAfterIncrement_NegativeCost(t *testing.T) {
+func TestCheckProviderQuotaAfterIncrement_NegativeCost(t *testing.T) {
 	s, _ := newBalanceNotifyServiceForTest()
-	a := &QuotaNotifyAccount{ID: 1, Platform: capability.PlatformAnthropic}
-	s.CheckAccountQuotaAfterIncrement(context.Background(), a, -5, nil)
+	a := &QuotaNotifyProvider{ID: 1, Platform: capability.PlatformAnthropic}
+	s.CheckProviderQuotaAfterIncrement(context.Background(), a, -5, nil)
 }
 
-func TestCheckAccountQuotaAfterIncrement_GlobalDisabled(t *testing.T) {
+func TestCheckProviderQuotaAfterIncrement_GlobalDisabled(t *testing.T) {
 	s, repo := newBalanceNotifyServiceForTest()
-	repo.data[SettingKeyAccountQuotaNotifyEnabled] = "false"
-	a := &QuotaNotifyAccount{
+	repo.data[SettingKeyProviderQuotaNotifyEnabled] = "false"
+	a := &QuotaNotifyProvider{
 		ID:       1,
 		Platform: capability.PlatformAnthropic,
 		Dimensions: []QuotaNotifyDimension{
@@ -110,7 +110,7 @@ func TestCheckAccountQuotaAfterIncrement_GlobalDisabled(t *testing.T) {
 		},
 	}
 	// Global disabled → no processing even if a dim would cross.
-	s.CheckAccountQuotaAfterIncrement(context.Background(), a, 100, nil)
+	s.CheckProviderQuotaAfterIncrement(context.Background(), a, 100, nil)
 }
 
 // ---------- sanity: internal helpers still work ----------
@@ -145,19 +145,19 @@ func TestGetBalanceNotifyConfig_InvalidThreshold(t *testing.T) {
 	require.Equal(t, 0.0, threshold)
 }
 
-func TestIsAccountQuotaNotifyEnabled(t *testing.T) {
+func TestIsProviderQuotaNotifyEnabled(t *testing.T) {
 	s, repo := newBalanceNotifyServiceForTest()
 
 	// Missing key → false
-	require.False(t, s.IsAccountQuotaNotifyEnabled(context.Background()))
+	require.False(t, s.IsProviderQuotaNotifyEnabled(context.Background()))
 
 	// Explicit "false"
-	repo.data[SettingKeyAccountQuotaNotifyEnabled] = "false"
-	require.False(t, s.IsAccountQuotaNotifyEnabled(context.Background()))
+	repo.data[SettingKeyProviderQuotaNotifyEnabled] = "false"
+	require.False(t, s.IsProviderQuotaNotifyEnabled(context.Background()))
 
 	// Explicit "true"
-	repo.data[SettingKeyAccountQuotaNotifyEnabled] = "true"
-	require.True(t, s.IsAccountQuotaNotifyEnabled(context.Background()))
+	repo.data[SettingKeyProviderQuotaNotifyEnabled] = "true"
+	require.True(t, s.IsProviderQuotaNotifyEnabled(context.Background()))
 }
 
 func TestGetSiteName_FallsBackToDefault(t *testing.T) {
@@ -231,15 +231,15 @@ func TestCrossedDownward_SmallDecrement_NoCrossing(t *testing.T) {
 
 func TestCheckQuotaDimCrossings_NoDimensions(t *testing.T) {
 	s, _ := newBalanceNotifyServiceForTest()
-	account := &QuotaNotifyAccount{ID: 1, Name: "test", Platform: capability.PlatformAnthropic}
+	provider := &QuotaNotifyProvider{ID: 1, Name: "test", Platform: capability.PlatformAnthropic}
 	// Empty dims → no crossing, no panic.
-	s.CheckQuotaDimCrossings(account, nil, 10, []string{"admin@example.com"}, "TestSite")
-	s.CheckQuotaDimCrossings(account, []QuotaNotifyDimension{}, 10, []string{"admin@example.com"}, "TestSite")
+	s.CheckQuotaDimCrossings(provider, nil, 10, []string{"admin@example.com"}, "TestSite")
+	s.CheckQuotaDimCrossings(provider, []QuotaNotifyDimension{}, 10, []string{"admin@example.com"}, "TestSite")
 }
 
 func TestCheckQuotaDimCrossings_DisabledDimension(t *testing.T) {
 	s, _ := newBalanceNotifyServiceForTest()
-	account := &QuotaNotifyAccount{ID: 1, Name: "test", Platform: capability.PlatformAnthropic}
+	provider := &QuotaNotifyProvider{ID: 1, Name: "test", Platform: capability.PlatformAnthropic}
 	dims := []QuotaNotifyDimension{
 		{
 			Name:          quotaDimDaily,
@@ -251,12 +251,12 @@ func TestCheckQuotaDimCrossings_DisabledDimension(t *testing.T) {
 		},
 	}
 	// Disabled dimension should be skipped even if crossing would occur.
-	s.CheckQuotaDimCrossings(account, dims, 50, []string{"admin@example.com"}, "TestSite")
+	s.CheckQuotaDimCrossings(provider, dims, 50, []string{"admin@example.com"}, "TestSite")
 }
 
 func TestCheckQuotaDimCrossings_ZeroThresholdSkipped(t *testing.T) {
 	s, _ := newBalanceNotifyServiceForTest()
-	account := &QuotaNotifyAccount{ID: 1, Name: "test", Platform: capability.PlatformAnthropic}
+	provider := &QuotaNotifyProvider{ID: 1, Name: "test", Platform: capability.PlatformAnthropic}
 	dims := []QuotaNotifyDimension{
 		{
 			Name:          quotaDimDaily,
@@ -268,12 +268,12 @@ func TestCheckQuotaDimCrossings_ZeroThresholdSkipped(t *testing.T) {
 		},
 	}
 	// Zero threshold → skipped.
-	s.CheckQuotaDimCrossings(account, dims, 50, []string{"admin@example.com"}, "TestSite")
+	s.CheckQuotaDimCrossings(provider, dims, 50, []string{"admin@example.com"}, "TestSite")
 }
 
 func TestCheckQuotaDimCrossings_NoCrossing_BothBelowThreshold(t *testing.T) {
 	s, _ := newBalanceNotifyServiceForTest()
-	account := &QuotaNotifyAccount{ID: 1, Name: "test", Platform: capability.PlatformAnthropic}
+	provider := &QuotaNotifyProvider{ID: 1, Name: "test", Platform: capability.PlatformAnthropic}
 	// threshold=400 remaining, limit=1000 → effectiveThreshold = 600 (usage trigger)
 	// currentUsed=300 (after), oldUsed=300-50=250 (before). Both < 600, no crossing.
 	dims := []QuotaNotifyDimension{
@@ -286,12 +286,12 @@ func TestCheckQuotaDimCrossings_NoCrossing_BothBelowThreshold(t *testing.T) {
 			Limit:         1000,
 		},
 	}
-	s.CheckQuotaDimCrossings(account, dims, 50, []string{"admin@example.com"}, "TestSite")
+	s.CheckQuotaDimCrossings(provider, dims, 50, []string{"admin@example.com"}, "TestSite")
 }
 
 func TestCheckQuotaDimCrossings_NoCrossing_BothAboveThreshold(t *testing.T) {
 	s, _ := newBalanceNotifyServiceForTest()
-	account := &QuotaNotifyAccount{ID: 1, Name: "test", Platform: capability.PlatformAnthropic}
+	provider := &QuotaNotifyProvider{ID: 1, Name: "test", Platform: capability.PlatformAnthropic}
 	// threshold=400 remaining, limit=1000 → effectiveThreshold = 600 (usage trigger)
 	// currentUsed=800 (after), oldUsed=800-50=750 (before). Both >= 600, no crossing.
 	dims := []QuotaNotifyDimension{
@@ -304,12 +304,12 @@ func TestCheckQuotaDimCrossings_NoCrossing_BothAboveThreshold(t *testing.T) {
 			Limit:         1000,
 		},
 	}
-	s.CheckQuotaDimCrossings(account, dims, 50, []string{"admin@example.com"}, "TestSite")
+	s.CheckQuotaDimCrossings(provider, dims, 50, []string{"admin@example.com"}, "TestSite")
 }
 
 func TestCheckQuotaDimCrossings_NegativeResolvedThreshold_Skipped(t *testing.T) {
 	s, _ := newBalanceNotifyServiceForTest()
-	account := &QuotaNotifyAccount{ID: 1, Name: "test", Platform: capability.PlatformAnthropic}
+	provider := &QuotaNotifyProvider{ID: 1, Name: "test", Platform: capability.PlatformAnthropic}
 	// threshold=1200 remaining, limit=1000 → effectiveThreshold = 1000-1200 = -200
 	// Negative resolved threshold → skipped.
 	dims := []QuotaNotifyDimension{
@@ -322,12 +322,12 @@ func TestCheckQuotaDimCrossings_NegativeResolvedThreshold_Skipped(t *testing.T) 
 			Limit:         1000,
 		},
 	}
-	s.CheckQuotaDimCrossings(account, dims, 50, []string{"admin@example.com"}, "TestSite")
+	s.CheckQuotaDimCrossings(provider, dims, 50, []string{"admin@example.com"}, "TestSite")
 }
 
 func TestCheckQuotaDimCrossings_PercentageThreshold_NoCrossing(t *testing.T) {
 	s, _ := newBalanceNotifyServiceForTest()
-	account := &QuotaNotifyAccount{ID: 1, Name: "test", Platform: capability.PlatformAnthropic}
+	provider := &QuotaNotifyProvider{ID: 1, Name: "test", Platform: capability.PlatformAnthropic}
 	// threshold=30%, limit=1000 → effectiveThreshold = 1000 * (1 - 0.30) = 700
 	// currentUsed=500, oldUsed=500-50=450. Both < 700, no crossing.
 	dims := []QuotaNotifyDimension{
@@ -340,12 +340,12 @@ func TestCheckQuotaDimCrossings_PercentageThreshold_NoCrossing(t *testing.T) {
 			Limit:         1000,
 		},
 	}
-	s.CheckQuotaDimCrossings(account, dims, 50, []string{"admin@example.com"}, "TestSite")
+	s.CheckQuotaDimCrossings(provider, dims, 50, []string{"admin@example.com"}, "TestSite")
 }
 
 func TestCheckQuotaDimCrossings_ZeroLimit_Skipped(t *testing.T) {
 	s, _ := newBalanceNotifyServiceForTest()
-	account := &QuotaNotifyAccount{ID: 1, Name: "test", Platform: capability.PlatformAnthropic}
+	provider := &QuotaNotifyProvider{ID: 1, Name: "test", Platform: capability.PlatformAnthropic}
 	// limit=0 → resolvedThreshold returns 0 → skipped.
 	dims := []QuotaNotifyDimension{
 		{
@@ -357,12 +357,12 @@ func TestCheckQuotaDimCrossings_ZeroLimit_Skipped(t *testing.T) {
 			Limit:         0,
 		},
 	}
-	s.CheckQuotaDimCrossings(account, dims, 50, []string{"admin@example.com"}, "TestSite")
+	s.CheckQuotaDimCrossings(provider, dims, 50, []string{"admin@example.com"}, "TestSite")
 }
 
 func TestCheckQuotaDimCrossings_MultipleDims_MixedResults(t *testing.T) {
 	s, _ := newBalanceNotifyServiceForTest()
-	account := &QuotaNotifyAccount{ID: 1, Name: "test", Platform: capability.PlatformAnthropic}
+	provider := &QuotaNotifyProvider{ID: 1, Name: "test", Platform: capability.PlatformAnthropic}
 	// dim1: no crossing (both below effective threshold)
 	// dim2: disabled (skipped)
 	// dim3: zero threshold (skipped)
@@ -393,5 +393,5 @@ func TestCheckQuotaDimCrossings_MultipleDims_MixedResults(t *testing.T) {
 		},
 	}
 	// None should trigger. No panic expected.
-	s.CheckQuotaDimCrossings(account, dims, 50, []string{"admin@example.com"}, "TestSite")
+	s.CheckQuotaDimCrossings(provider, dims, 50, []string{"admin@example.com"}, "TestSite")
 }

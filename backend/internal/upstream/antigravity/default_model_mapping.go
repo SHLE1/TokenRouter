@@ -4,7 +4,7 @@ package antigravity
 const AntigravityGemini31ProAgentModel = "gemini-pro-agent"
 
 // DefaultAntigravityModelMapping 是 Antigravity 平台的默认模型映射
-// 当账号未配置 model_mapping 时使用此默认值
+// 当提供商未配置 model_mapping 时使用此默认值
 // 与前端 useModelWhitelist.ts 中的 antigravityDefaultMappings 保持一致
 var DefaultAntigravityModelMapping = map[string]string{
 	// Claude 白名单

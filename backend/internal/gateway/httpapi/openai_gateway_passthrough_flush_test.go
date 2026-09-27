@@ -12,7 +12,7 @@ import (
 
 	responseupstream "github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 
@@ -102,7 +102,7 @@ func runPassthroughFlushTest(
 		context.Background(),
 		resp,
 		c,
-		&gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "flush-test"}},
+		&gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "flush-test"}},
 		time.Now(),
 		"",
 		"",

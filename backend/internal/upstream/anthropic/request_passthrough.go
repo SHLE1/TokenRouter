@@ -27,7 +27,7 @@ func BuildRequestPassthrough(ctx context.Context, body []byte, token string, opt
 		return nil, nil, err
 	}
 	clientBeta := StripBetaTokensWithSet(GetHeaderRaw(clientHeaders, "anthropic-beta"), filterSet)
-	// 账号覆写了 anthropic-beta 时，覆写值即最终上游值：净化以覆写值为准
+	// 提供商覆写了 anthropic-beta 时，覆写值即最终上游值：净化以覆写值为准
 	if beta, ok := options.BetaOverride(); ok {
 		clientBeta = beta
 	}
@@ -75,7 +75,7 @@ func BuildRequestPassthrough(ctx context.Context, body []byte, token string, opt
 		SetHeaderRaw(req.Header, "anthropic-version", "2023-06-01")
 	}
 
-	// 账号级请求头覆写（最终生效，覆盖上面所有来源的同名头）
+	// 提供商级请求头覆写（最终生效，覆盖上面所有来源的同名头）
 	options.ApplyOverrides(req.Header)
 
 	return req, body, nil

@@ -10,7 +10,7 @@ func RegisterProxyRoutes(admin *gin.RouterGroup, endpoint *ProxyHandler, stepUpA
 	{
 		proxies.GET("", endpoint.List)
 		proxies.GET("/all", endpoint.GetAll)
-		// 代理导出泄露账号密码原文——要求 step-up 2FA
+		// 代理导出泄露提供商密码原文——要求 step-up 2FA
 		proxies.GET("/data", stepUpAuth, endpoint.ExportData)
 		proxies.POST("/data", endpoint.ImportData)
 		proxies.GET("/:id", endpoint.GetByID)
@@ -20,7 +20,7 @@ func RegisterProxyRoutes(admin *gin.RouterGroup, endpoint *ProxyHandler, stepUpA
 		proxies.POST("/:id/test", endpoint.Test)
 		proxies.POST("/:id/quality-check", endpoint.CheckQuality)
 		proxies.GET("/:id/stats", endpoint.GetStats)
-		proxies.GET("/:id/accounts", endpoint.GetProxyAccounts)
+		proxies.GET("/:id/providers", endpoint.GetProxyProviders)
 		proxies.POST("/batch-delete", endpoint.BatchDelete)
 		proxies.POST("/batch", endpoint.BatchCreate)
 	}

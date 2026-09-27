@@ -34,7 +34,7 @@ func (r *Runtime) Open(ctx context.Context, in execution.Request, sink upstream.
 		apiKey: apikey.CopyAPIKey(in.Funding.Key), subject: authctx.AuthSubject{UserID: in.UserID, Concurrency: in.Concurrency},
 		subscription: in.Funding.Subscription, parsedReq: in.Text.Parsed, body: in.Body, reqModel: in.Model, reqStream: in.Stream,
 		isClaudeCodeClient: in.Metadata.ClaudeCode, platform: in.Text.Platform, hasBoundSession: in.Text.HasBoundSession,
-		sessionKey: in.SessionHash, sessionBoundAccountID: in.Text.BoundAccountID, streamStarted: output.StreamStarted, reqLog: output.Log,
+		sessionKey: in.SessionHash, sessionBoundProviderID: in.Text.BoundProviderID, streamStarted: output.StreamStarted, reqLog: output.Log,
 	}
 	// Messages 入口的隔离标识来自 metadata，不把调度用的内容摘要当成显式会话。
 	if in.Text.Kind == execution.TextMessages && in.Text.Parsed != nil && requeststate.ExecutionHintsFromContext(ctx).SessionIsolationHash == "" {

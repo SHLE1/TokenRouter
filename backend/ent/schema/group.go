@@ -108,7 +108,7 @@ func (Group) Fields() []ent.Field {
 		field.JSON("model_routing", map[string][]int64{}).
 			Optional().
 			SchemaType(map[string]string{dialect.Postgres: "jsonb"}).
-			Comment("模型路由配置：模型模式 -> 优先账号ID列表"),
+			Comment("模型路由配置：模型模式 -> 优先提供商ID列表"),
 
 		// 模型路由开关 (added by migration 041)
 		field.Bool("model_routing_enabled").
@@ -155,14 +155,14 @@ func (Group) Fields() []ent.Field {
 			Comment("是否强制此 OpenAI 分组请求使用 service_tier=priority"),
 		field.Bool("require_oauth_only").
 			Default(false).
-			Comment("仅允许非 apikey 类型账号关联到此分组"),
+			Comment("仅允许非 apikey 类型提供商关联到此分组"),
 		field.Bool("require_privacy_set").
 			Default(false).
-			Comment("调度时仅允许 privacy 已成功设置的账号"),
+			Comment("调度时仅允许 privacy 已成功设置的提供商"),
 		field.String("default_mapped_model").
 			MaxLen(100).
 			Default("").
-			Comment("默认映射模型 ID，当账号级映射找不到时使用此值"),
+			Comment("默认映射模型 ID，当提供商级映射找不到时使用此值"),
 		field.JSON("models_list_config", accessview.GroupModelsListConfig{}).
 			Default(accessview.GroupModelsListConfig{}).
 			SchemaType(map[string]string{dialect.Postgres: "jsonb"}).
@@ -204,9 +204,9 @@ func (Group) Edges() []ent.Edge {
 		edge.To("api_key_composite_groups", APIKeyCompositeGroup.Type).
 			Annotations(entsql.OnDelete(entsql.Cascade)),
 		edge.To("usage_logs", UsageLog.Type),
-		edge.From("accounts", Account.Type).
+		edge.From("providers", Provider.Type).
 			Ref("groups").
-			Through("account_groups", AccountGroup.Type),
+			Through("provider_groups", ProviderGroup.Type),
 		edge.From("allowed_users", User.Type).
 			Ref("allowed_groups").
 			Through("user_allowed_groups", UserAllowedGroup.Type),

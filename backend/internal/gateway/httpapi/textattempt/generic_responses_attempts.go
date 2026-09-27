@@ -32,25 +32,25 @@ type genericResponsesAttemptBridge struct {
 // Select 保留通用 Responses 适配；循环复用 gateway/text。
 func (b *genericResponsesAttemptBridge) Select(excluded map[int64]struct{}) (textflow.Selection, error) {
 	var err error
-	b.selection, err = b.binding().selectAccount(b.requestCtx, b.apiKey.GroupID, b.sessionKey, b.reqModel, excluded, "", int64(0))
+	b.selection, err = b.binding().selectProvider(b.requestCtx, b.apiKey.GroupID, b.sessionKey, b.reqModel, excluded, "", int64(0))
 	if err != nil {
 		return textflow.Selection{}, err
 	}
-	b.account = b.selection.Account
-	gatewayhttp.SetOpsSelectedAccount(b.c, b.account.Record.ID, b.account.Record.Platform)
-	return gatewaycapture.CaptureTextSelection(b.account), nil
+	b.provider = b.selection.Provider
+	gatewayhttp.SetOpsSelectedProvider(b.c, b.provider.Record.ID, b.provider.Record.Platform)
+	return gatewaycapture.CaptureTextSelection(b.provider), nil
 }
 
 // FirstSelectionFailure 保留通用 Responses 适配；循环复用 gateway/text。
 func (b *genericResponsesAttemptBridge) FirstSelectionFailure(err error, _ bool) {
-	cls := classifyNoAccountErrorFromGin(b.c, b.binding().diagnoser, b.apiKey, b.reqModel, b.reqModel, gatewayhttp.EffectiveAPIKeyPlatform(b.c, b.apiKey))
+	cls := classifyNoProviderErrorFromGin(b.c, b.binding().diagnoser, b.apiKey, b.reqModel, b.reqModel, gatewayhttp.EffectiveAPIKeyPlatform(b.c, b.apiKey))
 	cls = gatewayhttp.RefineSelectionError(err, cls)
 	if !cls.ModelNotFound {
 		gatewayhttp.MarkOpsRoutingCapacityLimitedIfNoAvailable(b.c, err)
 	}
 	message := cls.Message
 	if !cls.ModelNotFound {
-		message = "No available accounts: " + err.Error()
+		message = "No available providers: " + err.Error()
 	}
 	b.binding().responsesErrorResponse(b.c, cls.Status, cls.ErrType, message)
 }
@@ -58,29 +58,29 @@ func (b *genericResponsesAttemptBridge) FirstSelectionFailure(err error, _ bool)
 // Acquire 保留通用 Responses 适配；循环复用 gateway/text。
 func (b *genericResponsesAttemptBridge) Acquire() bool {
 	var err error
-	// 4. Acquire account concurrency slot
-	b.accountReleaseFunc = b.selection.ReleaseFunc
+	// 4. Acquire provider concurrency slot
+	b.providerReleaseFunc = b.selection.ReleaseFunc
 	if !b.selection.Acquired {
 		if b.selection.WaitPlan == nil {
 			gatewayhttp.MarkOpsRoutingCapacityLimited(b.c)
-			b.binding().responsesErrorResponse(b.c, http.StatusServiceUnavailable, "api_error", "No available accounts")
+			b.binding().responsesErrorResponse(b.c, http.StatusServiceUnavailable, "api_error", "No available providers")
 			return false
 		}
-		b.accountReleaseFunc, err = b.binding().concurrencyHelper.AcquireAccountSlotWithWaitTimeout(
+		b.providerReleaseFunc, err = b.binding().concurrencyHelper.AcquireProviderSlotWithWaitTimeout(
 			b.c,
-			b.account.Record.ID,
+			b.provider.Record.ID,
 			b.selection.WaitPlan.MaxConcurrency,
 			b.selection.WaitPlan.Timeout,
 			b.reqStream,
 			b.streamStarted,
 		)
 		if err != nil {
-			b.reqLog.Warn("gateway.responses.account_slot_acquire_failed", zap.Int64("account_id", b.account.Record.ID), zap.Error(err))
-			b.binding().handleConcurrencyError(b.c, err, "account", *b.streamStarted)
+			b.reqLog.Warn("gateway.responses.provider_slot_acquire_failed", zap.Int64("provider_id", b.provider.Record.ID), zap.Error(err))
+			b.binding().handleConcurrencyError(b.c, err, "provider", *b.streamStarted)
 			return false
 		}
 	}
-	b.accountReleaseFunc = scheduler.WrapRelease(b.c.Request.Context(), scheduler.ReleaseOnCancel, b.accountReleaseFunc)
+	b.providerReleaseFunc = scheduler.WrapRelease(b.c.Request.Context(), scheduler.ReleaseOnCancel, b.providerReleaseFunc)
 
 	return true
 }
@@ -91,34 +91,34 @@ func (b *genericResponsesAttemptBridge) Forward(_ textflow.AttemptState) textflo
 	// 5. Forward request
 	b.writerSizeBeforeForward = b.c.Writer.Size()
 	gatewayhttp.SetActualUpstreamEndpoint(b.c, "")
-	if b.account.Record.Platform == capability.PlatformGemini {
+	if b.provider.Record.Platform == capability.PlatformGemini {
 		if !b.binding().geminiAvailable {
 			b.binding().responsesErrorResponse(b.c, http.StatusBadGateway, "upstream_error", "Gemini compatibility service is not configured")
-			if b.accountReleaseFunc != nil {
-				b.accountReleaseFunc()
+			if b.providerReleaseFunc != nil {
+				b.providerReleaseFunc()
 			}
 			return textflow.Outcome{Stop: true}
 		}
 		gatewayhttp.SetActualUpstreamEndpoint(b.c, gatewayhttp.EndpointGeminiModels)
-		b.result, err = b.binding().forwardGeminiResponses(b.requestCtx, b.c, b.account, b.forwardBody, b.parsedReq)
-	} else if shouldUseAntigravityCompat(b.account) {
+		b.result, err = b.binding().forwardGeminiResponses(b.requestCtx, b.c, b.provider, b.forwardBody, b.parsedReq)
+	} else if shouldUseAntigravityCompat(b.provider) {
 		if !b.binding().antigravityAvailable {
 			b.binding().responsesErrorResponse(b.c, http.StatusBadGateway, "upstream_error", "Antigravity compatibility service is not configured")
-			if b.accountReleaseFunc != nil {
-				b.accountReleaseFunc()
+			if b.providerReleaseFunc != nil {
+				b.providerReleaseFunc()
 			}
 			return textflow.Outcome{Stop: true}
 		}
 		gatewayhttp.SetActualUpstreamEndpoint(b.c, gatewayhttp.EndpointAntigravityGenerateContent)
-		b.result, err = b.binding().forwardAntigravityResponses(b.requestCtx, b.c, b.account, b.forwardBody, b.parsedReq)
+		b.result, err = b.binding().forwardAntigravityResponses(b.requestCtx, b.c, b.provider, b.forwardBody, b.parsedReq)
 	} else {
-		b.result, err = b.binding().forwardResponses(b.requestCtx, b.c, b.account, b.forwardBody, b.parsedReq)
+		b.result, err = b.binding().forwardResponses(b.requestCtx, b.c, b.provider, b.forwardBody, b.parsedReq)
 	}
 
-	if b.accountReleaseFunc != nil {
-		b.accountReleaseFunc()
+	if b.providerReleaseFunc != nil {
+		b.providerReleaseFunc()
 	}
-	b.binding().reportSchedule(b.selection, b.account.Record.ID, err == nil, b.result)
+	b.binding().reportSchedule(b.selection, b.provider.Record.ID, err == nil, b.result)
 
 	out := textflow.Outcome{Attempt: messageObservedAttempt(b.result, err), Err: err, HasResult: b.result != nil, OutputChanged: b.c.Writer.Size() != b.writerSizeBeforeForward}
 	out.Attempt.HTTPCommitted = b.c.Writer.Written()
@@ -142,7 +142,7 @@ func (b *genericResponsesAttemptBridge) OtherFailure(err error) {
 		wroteFallback = b.binding().ensureForwardErrorResponse(b.c, *b.streamStarted)
 	}
 	b.reqLog.Error("gateway.responses.forward_failed",
-		zap.Int64("account_id", b.account.Record.ID),
+		zap.Int64("provider_id", b.provider.Record.ID),
 		zap.Bool("fallback_error_response_written", wroteFallback),
 		zap.Bool("upstream_error_response_already_written", upstreamErrorAlreadyCommunicated),
 		zap.Error(err),
@@ -156,7 +156,7 @@ func (b *genericResponsesAttemptBridge) Complete(_ textflow.AttemptState) {
 	clientIP := clientip.GetClientIP(b.c)
 	requestPayloadHash := billing.HashUsageRequestPayload(b.body)
 	inboundEndpoint := gatewayhttp.GetInboundEndpoint(b.c)
-	upstreamEndpoint := gatewayhttp.GetUpstreamEndpoint(b.c, b.account.Record.Platform)
+	upstreamEndpoint := gatewayhttp.GetUpstreamEndpoint(b.c, b.provider.Record.Platform)
 
 	clientSessionID := gatewayhttp.ExtractClientSessionID(b.c)
 	gatewayhttp.StampForwardRequestedReasoningEffort(b.result, b.c)
@@ -166,7 +166,7 @@ func (b *genericResponsesAttemptBridge) Complete(_ textflow.AttemptState) {
 
 		APIKey:             b.apiKey,
 		User:               b.apiKey.User,
-		Account:            gatewaycapture.ExecutionCompletionRecord(b.account),
+		Provider:           gatewaycapture.ExecutionCompletionRecord(b.provider),
 		Subscription:       b.subscription,
 		InboundEndpoint:    inboundEndpoint,
 		UpstreamEndpoint:   upstreamEndpoint,
@@ -183,7 +183,7 @@ func (b *genericResponsesAttemptBridge) Complete(_ textflow.AttemptState) {
 	b.binding().submitUsageRecordTask(b.c, func(ctx context.Context) {
 		if err := completionRuntime.Record(ctx, completionInput, false); err != nil {
 			completionLog.Error("gateway.responses.record_usage_failed",
-				zap.Int64("account_id", completionInput.Account.ID),
+				zap.Int64("provider_id", completionInput.Provider.ID),
 				zap.Error(err),
 			)
 		}
@@ -194,7 +194,7 @@ func (b *genericResponsesAttemptBridge) Context() context.Context { return b.req
 func (b *genericResponsesAttemptBridge) Begin()                   {}
 func (b *genericResponsesAttemptBridge) PrepareAttempt() bool     { return true }
 func (b *genericResponsesAttemptBridge) Intercept() bool          { return false }
-func (b *genericResponsesAttemptBridge) SingleAccountRetry()      {}
+func (b *genericResponsesAttemptBridge) SingleProviderRetry()     {}
 func (b *genericResponsesAttemptBridge) Abandon(int64)            {}
 func (b *genericResponsesAttemptBridge) Success()                 {}
 func (b *genericResponsesAttemptBridge) Exhausted(err *textflow.AttemptFailure, _ string, stream bool) {
@@ -202,7 +202,7 @@ func (b *genericResponsesAttemptBridge) Exhausted(err *textflow.AttemptFailure, 
 	if err != nil && errors.As(err.Cause, &original) {
 		b.binding().handleResponsesFailoverExhausted(b.c, original, stream || *b.streamStarted)
 	} else {
-		b.binding().responsesErrorResponse(b.c, http.StatusBadGateway, "server_error", "All available accounts exhausted")
+		b.binding().responsesErrorResponse(b.c, http.StatusBadGateway, "server_error", "All available providers exhausted")
 	}
 }
 

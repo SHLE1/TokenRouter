@@ -4,14 +4,14 @@ import (
 	"context"
 	"strings"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 	"github.com/TokenFlux/TokenRouter/internal/gateway"
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/messageforward"
 	gatewaytestkit "github.com/TokenFlux/TokenRouter/internal/gateway/testkit"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/settings"
 	claude "github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
 )
@@ -24,12 +24,12 @@ func newHTTPRuntimeFixture(options *messageforward.Options, deps messageforward.
 	if options != nil {
 		value = *options
 	}
-	deps.Search = provider.NewSearchTools(nil, nil)
+	deps.Search = gatewayadapter.NewSearchTools(nil, nil)
 	return gatewayhttp.NewMessagesExecutor(messageforward.NewRuntime(deps, value), filter)
 }
 
-func newPartialHealthFixture() *accountprovider.UpstreamHealth {
-	return gatewaytestkit.NewHealthObserver(gatewaytestkit.HealthInput{Options: account.HealthOptions{}})
+func newPartialHealthFixture() *provideradapter.UpstreamHealth {
+	return gatewaytestkit.NewHealthObserver(gatewaytestkit.HealthInput{Options: provider.HealthOptions{}})
 }
 
 func compileResponseHeaderFilter(options *messageforward.Options) *egress.CompiledHeaderFilter {
@@ -51,6 +51,7 @@ func (r *gatewayTTLSettingRepo) GetValue(_ context.Context, key string) (string,
 	}
 	return "", settings.ErrSettingNotFound
 }
+
 func (r *gatewayTTLSettingRepo) GetMultiple(_ context.Context, keys []string) (map[string]string, error) {
 	out := make(map[string]string)
 	for _, key := range keys {
@@ -60,9 +61,10 @@ func (r *gatewayTTLSettingRepo) GetMultiple(_ context.Context, keys []string) (m
 	}
 	return out, nil
 }
+
 func newRuntimeSettingsFixture(repo settings.Repository) *gateway.RuntimeSettings {
 	return gateway.NewRuntimeSettings(settings.New(repo), settings.ErrSettingNotFound, func() *gateway.BetaPolicySettings {
-		return provider.GatewayBetaPolicy(claude.DefaultBetaPolicySettings())
+		return gatewayadapter.GatewayBetaPolicy(claude.DefaultBetaPolicySettings())
 	})
 }
 

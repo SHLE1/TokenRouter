@@ -20,36 +20,38 @@ import (
 // to OpenAI Responses API format, forwards to the OpenAI upstream, and converts
 // the response back to Chat Completions format.
 //
-// 历史背景：该函数原本对所有 OpenAI 账号无差别走 CC→Responses 转换 + /v1/responses
-// 端点——这在 OAuth（ChatGPT 内部 API 仅支持 Responses）和官方 APIKey 账号上是
+// 历史背景：该函数原本对所有 OpenAI 提供商无差别走 CC→Responses 转换 + /v1/responses
+// 端点——这在 OAuth（ChatGPT 内部 API 仅支持 Responses）和官方 APIKey 提供商上是
 // 正确的，但 sub2api 接入 DeepSeek/Kimi/GLM 等第三方 OpenAI 兼容上游后假设破裂：
 // 这些上游普遍只支持 /v1/chat/completions，无 /v1/responses 端点。
 //
-// 当前路由策略由客户端首选协议、账号协议配置和 Responses 探测状态共同决定。
+// 当前路由策略由客户端首选协议、提供商协议配置和 Responses 探测状态共同决定。
 func (s *OpenAITextExecutor) Chat(
 	ctx context.Context,
 	c *gin.Context,
-	account *gatewayprovider.ExecutionAccount,
+	provider *gatewayprovider.ExecutionProvider,
 	body []byte,
 	promptCacheKey string,
 	defaultMappedModel string,
 	tlsRouterMatch ...egress.TLSFingerprintRouterMatchResult,
 ) (*forwardcore.OpenAIResult, error) {
-	return s.ChatWithCacheIsolation(ctx, c, account, body, promptCacheKey, defaultMappedModel, false, tlsRouterMatch...)
+	return s.ChatWithCacheIsolation(ctx, c, provider, body, promptCacheKey, defaultMappedModel, false, tlsRouterMatch...)
 }
 
 // 旧调用面只投影固定实例和本次参数，Chat 转换与恢复只由目标执行器推进。
-func (s *OpenAITextExecutor) ChatWithCacheIsolation(ctx context.Context, c *gin.Context, account *gatewayprovider.ExecutionAccount, body []byte, promptCacheKey, defaultMappedModel string, compatPromptCacheTenantIsolated bool, tlsRouterMatch ...egress.TLSFingerprintRouterMatchResult) (*forwardcore.OpenAIResult, error) {
-	p := &openAIChatExecutionAdapter{openAIMessagesExecutionAdapter: &openAIMessagesExecutionAdapter{s: s, c: c, account: account, tls: tlsRouterMatch}}
+func (s *OpenAITextExecutor) ChatWithCacheIsolation(ctx context.Context, c *gin.Context, provider *gatewayprovider.ExecutionProvider, body []byte, promptCacheKey, defaultMappedModel string, compatPromptCacheTenantIsolated bool, tlsRouterMatch ...egress.TLSFingerprintRouterMatchResult) (*forwardcore.OpenAIResult, error) {
+	p := &openAIChatExecutionAdapter{openAIMessagesExecutionAdapter: &openAIMessagesExecutionAdapter{s: s, c: c, provider: provider, tls: tlsRouterMatch}}
 	result, err := openaiexecution.RunChat(ctx, body, promptCacheKey, defaultMappedModel, compatPromptCacheTenantIsolated, p)
 	return openaiexecution.ToForwardResult(result), err
 }
+
 func normalizeResponsesRequestServiceTier(req *protocolopenai.ResponsesRequest) {
 	if req == nil {
 		return
 	}
 	req.ServiceTier = protocolopenai.ServiceTierValue(req.ServiceTier)
 }
+
 func normalizeResponsesBodyServiceTier(body []byte) ([]byte, string, error) {
 	if len(body) == 0 {
 		return body, "", nil
@@ -75,8 +77,8 @@ func normalizeResponsesBodyServiceTier(body []byte) ([]byte, string, error) {
 func (s *OpenAITextExecutor) chatError(
 	resp *http.Response,
 	c *gin.Context,
-	account *gatewayprovider.ExecutionAccount,
+	provider *gatewayprovider.ExecutionProvider,
 	requestedModel ...string,
 ) (*forwardcore.OpenAIResult, error) {
-	return s.Output.CompatError(resp, c, account, WriteForwardChatError, WriteForwardChatErrorBody, requestedModel...)
+	return s.Output.CompatError(resp, c, provider, WriteForwardChatError, WriteForwardChatErrorBody, requestedModel...)
 }

@@ -37,12 +37,12 @@ describe('PROVIDER_CONFIG_FIELDS.airwallex', () => {
     expect(currency?.options).toBe(PAYMENT_CURRENCY_OPTIONS)
   })
 
-  it('marks accountId as optional and explains when it can be left blank', () => {
-    const accountId = findField('airwallex', 'accountId')
+  it('marks providerId as optional and explains when it can be left blank', () => {
+    const providerId = findField('airwallex', 'providerId')
 
-    expect(accountId?.optional).toBe(true)
-    expect(accountId?.clearable).toBe(true)
-    expect(accountId?.hintKey).toBe('admin.settings.payment.field_accountIdHint')
+    expect(providerId?.optional).toBe(true)
+    expect(providerId?.clearable).toBe(true)
+    expect(providerId?.hintKey).toBe('admin.settings.payment.field_providerIdHint')
   })
 
   it('explains that apiBase must match the Airwallex key environment', () => {

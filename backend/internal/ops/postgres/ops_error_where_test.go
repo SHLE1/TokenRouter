@@ -97,17 +97,17 @@ func TestBuildOpsErrorLogsWhere_CyberPolicyStatusExemption(t *testing.T) {
 		t.Fatalf("upstream phase with IncludeRecoveredUpstream must not add the client-visible status guard\nfull: %s", whereRecovered)
 	}
 
-	// account_auth 使用相同的提供方健康显式开关，但仍与推理上游错误保持独立阶段。
-	whereAccountAuth, _ := buildOpsErrorLogsWhere(&ops.OpsErrorLogFilter{Phase: "account_auth", IncludeRecoveredUpstream: true})
-	if strings.Contains(whereAccountAuth, "COALESCE(e.status_code, 0) >= 400") {
-		t.Fatalf("account_auth phase with IncludeRecoveredUpstream must expose recovered rows\nfull: %s", whereAccountAuth)
+	// provider_auth 使用相同的提供方健康显式开关，但仍与推理上游错误保持独立阶段。
+	whereProviderAuth, _ := buildOpsErrorLogsWhere(&ops.OpsErrorLogFilter{Phase: "provider_auth", IncludeRecoveredUpstream: true})
+	if strings.Contains(whereProviderAuth, "COALESCE(e.status_code, 0) >= 400") {
+		t.Fatalf("provider_auth phase with IncludeRecoveredUpstream must expose recovered rows\nfull: %s", whereProviderAuth)
 	}
-	if !strings.Contains(whereAccountAuth, "e.error_phase = $") {
-		t.Fatalf("account_auth recovered filter must retain its explicit phase\nfull: %s", whereAccountAuth)
+	if !strings.Contains(whereProviderAuth, "e.error_phase = $") {
+		t.Fatalf("provider_auth recovered filter must retain its explicit phase\nfull: %s", whereProviderAuth)
 	}
 
 	whereProviderHealth, _ := buildOpsErrorLogsWhere(&ops.OpsErrorLogFilter{
-		ErrorPhasesAny:           []string{"upstream", "account_auth"},
+		ErrorPhasesAny:           []string{"upstream", "provider_auth"},
 		IncludeRecoveredUpstream: true,
 	})
 	if strings.Contains(whereProviderHealth, "COALESCE(e.status_code, 0) >= 400") {
@@ -117,13 +117,13 @@ func TestBuildOpsErrorLogsWhere_CyberPolicyStatusExemption(t *testing.T) {
 		t.Fatalf("provider-health filter must preserve distinct phase values\nfull: %s", whereProviderHealth)
 	}
 
-	whereUserAccountAuth, _ := buildOpsErrorLogsWhere(&ops.OpsErrorLogFilter{ErrorPhasesAny: []string{"account_auth"}})
-	if !strings.Contains(whereUserAccountAuth, "COALESCE(e.status_code, 0) >= 400") {
-		t.Fatalf("request-error account_auth filters must exclude recovered successes\nfull: %s", whereUserAccountAuth)
+	whereUserProviderAuth, _ := buildOpsErrorLogsWhere(&ops.OpsErrorLogFilter{ErrorPhasesAny: []string{"provider_auth"}})
+	if !strings.Contains(whereUserProviderAuth, "COALESCE(e.status_code, 0) >= 400") {
+		t.Fatalf("request-error provider_auth filters must exclude recovered successes\nfull: %s", whereUserProviderAuth)
 	}
 
 	whereMixed, _ := buildOpsErrorLogsWhere(&ops.OpsErrorLogFilter{
-		ErrorPhasesAny:           []string{"account_auth", "request"},
+		ErrorPhasesAny:           []string{"provider_auth", "request"},
 		IncludeRecoveredUpstream: true,
 	})
 	if !strings.Contains(whereMixed, "COALESCE(e.status_code, 0) >= 400") {
@@ -143,5 +143,22 @@ func TestBuildOpsErrorLogsWhere_UserOwnershipIsDirectOnly(t *testing.T) {
 	}
 	if strings.Contains(where, "deleted_key_owner_user_id") {
 		t.Fatalf("user ownership must not depend on deleted-key attribution: %s", where)
+	}
+}
+
+// 旧日志阶段保留在数据库中，新筛选须同时覆盖旧值。
+func TestProviderAuthFilterIncludesLegacyRows(t *testing.T) {
+	where, args := buildOpsErrorLogsWhere(&ops.OpsErrorLogFilter{Phase: "provider_auth"})
+	if !strings.Contains(where, " OR e.error_phase = $") {
+		t.Fatalf("missing legacy phase condition: %s", where)
+	}
+	found := false
+	for _, arg := range args {
+		if value, ok := arg.(string); ok && value == "account_auth" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("legacy phase missing from query arguments")
 	}
 }

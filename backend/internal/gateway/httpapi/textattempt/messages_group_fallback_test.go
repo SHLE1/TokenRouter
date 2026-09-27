@@ -7,7 +7,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
@@ -20,6 +19,7 @@ import (
 	textflow "github.com/TokenFlux/TokenRouter/internal/gateway/text"
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/antigravity"
@@ -45,7 +45,7 @@ func newFallbackMessageBridge(t *testing.T, bindings Bindings) (*messageAttemptB
 	c.Request = httptest.NewRequest(http.MethodPost, "/antigravity/v1/messages", nil)
 	started := false
 	bindings.Selection.NewSessionAttempts = func() *scheduler.SessionAttempts { return scheduler.NewSessionAttempts(nil, scheduler.Diagnostics{}) }
-	bindings.Selection.SingleAccountGroup = func(context.Context, *int64) bool {
+	bindings.Selection.SingleProviderGroup = func(context.Context, *int64) bool {
 		return false
 	}
 	if bindings.PlanRoute == nil {
@@ -56,7 +56,7 @@ func newFallbackMessageBridge(t *testing.T, bindings Bindings) (*messageAttemptB
 	sink := &gatewayhttp.MessagesOutput{ResponseSink: gatewayhttp.ResponseSink{Writer: c.Writer}, HTTP: c, Log: zap.NewNop(), StreamStarted: &started}
 	ports, err := New(bindings).Open(ctx, execution.Request{
 		Model: "client-model", SessionHash: "sticky-hash", UserID: 40, Funding: execution.FundingState{Key: key},
-		Text: execution.TextState{Kind: execution.TextMessages, HasBoundSession: true, BoundAccountID: 100, Parsed: &requeststate.ParsedRequest{MetadataUserID: `{"device_id":"d61f76d0aabbccdd00112233445566778899aabbccddeeff0011223344556677","session_id":"c72554f2-1234-5678-abcd-123456789abc"}`}},
+		Text: execution.TextState{Kind: execution.TextMessages, HasBoundSession: true, BoundProviderID: 100, Parsed: &requeststate.ParsedRequest{MetadataUserID: `{"device_id":"d61f76d0aabbccdd00112233445566778899aabbccddeeff0011223344556677","session_id":"c72554f2-1234-5678-abcd-123456789abc"}`}},
 	}, sink)
 	require.NoError(t, err)
 	bridge, ok := ports.(*messageAttemptBridge)
@@ -94,7 +94,7 @@ func TestMessageGroupFallbackPreservesBoundaryAndRefreshesSnapshots(t *testing.T
 			stickyCalls++
 			require.Equal(t, int64(20), *groupID)
 			require.Equal(t, "sticky-hash", hash)
-			require.Zero(t, requeststate.ExecutionHintsFromContext(ctx).PrefetchedStickyAccountID.Value)
+			require.Zero(t, requeststate.ExecutionHintsFromContext(ctx).PrefetchedStickyProviderID.Value)
 			return 200, nil
 		}},
 	})
@@ -110,11 +110,11 @@ func TestMessageGroupFallbackPreservesBoundaryAndRefreshesSnapshots(t *testing.T
 	require.Equal(t, "antigravity", platform)
 	require.True(t, requeststate.IsForceCacheBilling(bridge.Context()))
 	require.Equal(t, "sticky-hash", bridge.sessionKey)
-	require.Equal(t, int64(200), bridge.sessionBoundAccountID)
+	require.Equal(t, int64(200), bridge.sessionBoundProviderID)
 	require.True(t, bridge.hasBoundSession)
 	hints := requeststate.ExecutionHintsFromContext(bridge.Context())
 	require.Equal(t, int64(20), hints.PrefetchedStickyGroupID.Value)
-	require.Equal(t, int64(200), hints.PrefetchedStickyAccountID.Value)
+	require.Equal(t, int64(200), hints.PrefetchedStickyProviderID.Value)
 	plan, ok := requeststate.RoutePlanFromContext(bridge.Context())
 	require.True(t, ok)
 	require.Equal(t, int64(20), plan.GroupID())
@@ -184,7 +184,7 @@ func TestMessageGroupFallbackRejectsAuthorizationAndFundingErrors(t *testing.T) 
 
 func TestMessageGroupFallbackRequiresAuthorizedResolverAndTargetProtocol(t *testing.T) {
 	mapped := 0
-	bridge, _, _ := newFallbackMessageBridge(t, Bindings{Forward: ForwardPorts{WriteMappedClaudeError: func(*gin.Context, *gatewaycapture.ExecutionAccount, int, string, []byte) error {
+	bridge, _, _ := newFallbackMessageBridge(t, Bindings{Forward: ForwardPorts{WriteMappedClaudeError: func(*gin.Context, *gatewaycapture.ExecutionProvider, int, string, []byte) error {
 		mapped++
 		return nil
 	}}})
@@ -200,7 +200,7 @@ func TestMessageGroupFallbackRequiresAuthorizedResolverAndTargetProtocol(t *test
 	require.Equal(t, int64(10), *bridge.currentAPIKey.GroupID)
 }
 
-// 先前账号切换触发的缓存计费，在目标分组的首个新尝试中仍然有效。
+// 先前提供商切换触发的缓存计费，在目标分组的首个新尝试中仍然有效。
 func TestMessageGroupFallbackKeepsCacheBillingAcrossAttemptReset(t *testing.T) {
 	forwards := 0
 	bridge, _, _ := newFallbackMessageBridge(t, Bindings{
@@ -208,10 +208,10 @@ func TestMessageGroupFallbackKeepsCacheBillingAcrossAttemptReset(t *testing.T) {
 			return authorizedMessageFallback(key, id), nil, nil
 		},
 		Forward: ForwardPorts{
-			BedrockCompat: func(_ *gin.Context, body []byte, _ string, _ *gatewaycapture.ExecutionAccount, _ *int64) []byte {
+			BedrockCompat: func(_ *gin.Context, body []byte, _ string, _ *gatewaycapture.ExecutionProvider, _ *int64) []byte {
 				return body
 			},
-			ForwardAntigravity: func(ctx context.Context, _ *gin.Context, _ *gatewaycapture.ExecutionAccount, _ []byte, _ bool) (*forwardcore.MessagesResult, error) {
+			ForwardAntigravity: func(ctx context.Context, _ *gin.Context, _ *gatewaycapture.ExecutionProvider, _ []byte, _ bool) (*forwardcore.MessagesResult, error) {
 				forwards++
 				require.True(t, requeststate.IsForceCacheBilling(ctx))
 				if forwards == 1 {
@@ -222,7 +222,7 @@ func TestMessageGroupFallbackKeepsCacheBillingAcrossAttemptReset(t *testing.T) {
 		},
 		Selection: SelectionPorts{ReportSchedule: func(*gatewaycapture.SelectionResult, int64, bool, *forwardcore.MessagesResult) {}},
 	})
-	bridge.account = gatewaycapture.NewExecutionAccount(&account.Record{ID: 100, Platform: "antigravity", Type: "oauth"})
+	bridge.provider = gatewaycapture.NewExecutionProvider(&provider.Record{ID: 100, Platform: "antigravity", Type: "oauth"})
 	bridge.attemptParsedReq = &requeststate.ParsedRequest{Model: "client-model", Body: requeststate.NewRequestBodyRef([]byte(`{"model":"client-model"}`))}
 	require.False(t, requeststate.IsForceCacheBilling(bridge.Context()))
 	first := bridge.Forward(textflow.AttemptState{SwitchCount: 1, ForceCacheBilling: true})
@@ -245,6 +245,6 @@ func TestMessageGroupFallbackClearsStickyWhenTargetHasNoBinding(t *testing.T) {
 	})
 	require.True(t, bridge.Fallback(&antigravity.PromptTooLongError{StatusCode: 400}, false))
 	require.False(t, bridge.hasBoundSession)
-	require.Zero(t, bridge.sessionBoundAccountID)
-	require.Zero(t, requeststate.ExecutionHintsFromContext(bridge.Context()).PrefetchedStickyAccountID.Value)
+	require.Zero(t, bridge.sessionBoundProviderID)
+	require.Zero(t, requeststate.ExecutionHintsFromContext(bridge.Context()).PrefetchedStickyProviderID.Value)
 }

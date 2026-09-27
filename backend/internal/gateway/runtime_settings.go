@@ -98,10 +98,10 @@ const (
 	BetaPolicyActionFilter = "filter" // 过滤，从 beta header 中移除该 token
 	BetaPolicyActionBlock  = "block"  // 拦截，直接返回错误
 
-	BetaPolicyScopeAll     = "all"     // 所有账号类型
-	BetaPolicyScopeOAuth   = "oauth"   // 仅 OAuth 账号
-	BetaPolicyScopeAPIKey  = "apikey"  // 仅 API Key 账号
-	BetaPolicyScopeBedrock = "bedrock" // 仅 AWS Bedrock 账号
+	BetaPolicyScopeAll     = "all"     // 所有提供商类型
+	BetaPolicyScopeOAuth   = "oauth"   // 仅 OAuth 提供商
+	BetaPolicyScopeAPIKey  = "apikey"  // 仅 API Key 提供商
+	BetaPolicyScopeBedrock = "bedrock" // 仅 AWS Bedrock 提供商
 )
 
 // GetRectifierSettings 保留原网关策略设置的缺省、校验及持久化行为。

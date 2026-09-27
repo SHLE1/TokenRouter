@@ -34,11 +34,11 @@ func TestOpenAIForwardResultSucceededForScheduling_TerminalEvents(t *testing.T) 
 func TestOpenAIResultReplayStaysOutsideJSON(t *testing.T) {
 	result := &OpenAIResult{Model: "model-visible"}
 	result.SetWSReplayInput([]json.RawMessage{json.RawMessage(`{"prompt":"replay-private"}`)}, true)
-	result.SetWSAccountFailoverReplayInput([]json.RawMessage{json.RawMessage(`{"prompt":"failover-private"}`)})
+	result.SetWSProviderFailoverReplayInput([]json.RawMessage{json.RawMessage(`{"prompt":"failover-private"}`)})
 	input, present := result.WSReplayInput()
 	require.True(t, present)
 	require.Len(t, input, 1)
-	require.Len(t, result.WSAccountFailoverReplayInput(), 1)
+	require.Len(t, result.WSProviderFailoverReplayInput(), 1)
 	raw, err := json.Marshal(result)
 	require.NoError(t, err)
 	require.Contains(t, string(raw), "model-visible")

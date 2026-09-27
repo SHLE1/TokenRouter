@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	billingcore "github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
@@ -183,14 +183,14 @@ func TestCreativeSucceedRunIdempotentSettlement(t *testing.T) {
 	billing := testassert.MustType[*creativeFakeBillingRepo](creativeFixtureBilling(svc))
 
 	runID := "crun_settleidempotent1"
-	accountID := int64(55)
+	providerID := int64(55)
 	repo.runs[runID] = &creative.CreativeRun{
 		RunID:                runID,
 		UserID:               7,
 		WorkspaceID:          creativeStringValuePtr(testCreativeWorkspaceID),
 		GroupID:              12,
 		APIKeyID:             900,
-		AccountID:            &accountID,
+		ProviderID:           &providerID,
 		Model:                "gemini-3.1-flash-image",
 		Operation:            creative.CreativeOperationGenerate,
 		RequestedOutputCount: 1,
@@ -203,11 +203,11 @@ func TestCreativeSucceedRunIdempotentSettlement(t *testing.T) {
 	}
 	results := []creative.ProviderOutput{{Index: 0, Success: true, Bytes: []byte("img"), Mime: "image/png"}}
 
-	first, err := svc.Results.SucceedRun(ctx, runID, accountID, results)
+	first, err := svc.Results.SucceedRun(ctx, runID, providerID, results)
 	require.NoError(t, err)
 	require.Equal(t, creative.CreativeRunStatusSucceeded, first.Status)
 
-	second, err := svc.Results.SucceedRun(ctx, runID, accountID, results)
+	second, err := svc.Results.SucceedRun(ctx, runID, providerID, results)
 	require.NoError(t, err)
 	require.Equal(t, creative.CreativeRunStatusSucceeded, second.Status)
 
@@ -256,7 +256,7 @@ func TestCreativeSucceedRunRequiresTransientOutput(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			svc := newCreativeTestService()
 			repo := testassert.MustType[*creativeFakeRunRepo](svc.Repo)
-			accountID := int64(55)
+			providerID := int64(55)
 			runID := "crun_transientrequired"
 			repo.runs[runID] = &creative.CreativeRun{
 				RunID:                runID,
@@ -264,7 +264,7 @@ func TestCreativeSucceedRunRequiresTransientOutput(t *testing.T) {
 				WorkspaceID:          creativeStringValuePtr(testCreativeWorkspaceID),
 				GroupID:              12,
 				APIKeyID:             900,
-				AccountID:            &accountID,
+				ProviderID:           &providerID,
 				Model:                "gemini-3.1-flash-image",
 				Operation:            creative.CreativeOperationGenerate,
 				RequestedOutputCount: 1,
@@ -281,7 +281,7 @@ func TestCreativeSucceedRunRequiresTransientOutput(t *testing.T) {
 			if outputBytes == nil {
 				outputBytes = []byte("image")
 			}
-			_, err := svc.Results.SucceedRun(context.Background(), runID, accountID, []creative.ProviderOutput{{
+			_, err := svc.Results.SucceedRun(context.Background(), runID, providerID, []creative.ProviderOutput{{
 				Index: 0, Success: true, Bytes: outputBytes, Mime: "image/png",
 			}})
 
@@ -363,7 +363,7 @@ func TestCreativeListModelsFiltersAndContent(t *testing.T) {
 	groupRepo.byID[13] = noImage
 	groupRepo.active = append(groupRepo.active, *noImage)
 
-	// 没有图片候选账号的分组不出现。
+	// 没有图片候选提供商的分组不出现。
 	unsupported := newCreativeTestGroup()
 	unsupported.ID = 14
 	unsupported.Name = "Claude"
@@ -384,21 +384,21 @@ func TestCreativeListModelsFiltersAndContent(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// ListModels 回退：账号无映射 / 分组无显式图片价
+// ListModels 回退：提供商无映射 / 分组无显式图片价
 // ---------------------------------------------------------------------------
 
 // TestCreativeListModelsFallbacks 覆盖两类真实部署形态：
-// 1) 账号未配置 model_mapping（网关全量透传语义）时应回退平台图片模型候选；
+// 1) 提供商未配置 model_mapping（网关全量透传语义）时应回退平台图片模型候选；
 // 2) 分组未显式配置 image_price_* 时应回退平台默认尺寸档位（按默认价计费）。
 func TestCreativeListModelsFallbacks(t *testing.T) {
 	svc := newCreativeTestService()
 	svc.ImageUnitPrice = creativePriceFixture(billingtestkit.Calculator(0, nil, map[string]*pricing.ModelPricing{}), nil)
 	ctx := context.Background()
 	groupRepo := testassert.MustType[*creativeFakeGroupRepo](testassert.MustType[creativeGroupReader](svc.GroupRepo).source)
-	accountRepo := testassert.MustType[*creativeFakeAccountRepo](testassert.MustType[
+	providerRepo := testassert.MustType[*creativeFakeProviderRepo](testassert.MustType[
 
-	// openai 分组：无显式图片价、账号无映射 → 候选回退 + GPT Image 2 支持三档尺寸。
-	creativeAccountReader](svc.AccountRepo).source)
+	// openai 分组：无显式图片价、提供商无映射 → 候选回退 + GPT Image 2 支持三档尺寸。
+	creativeProviderReader](svc.ProviderRepo).source)
 
 	openaiGroup := newCreativeTestGroup()
 	openaiGroup.ID = 21
@@ -406,7 +406,7 @@ func TestCreativeListModelsFallbacks(t *testing.T) {
 
 	groupRepo.byID[21] = openaiGroup
 	groupRepo.active = append(groupRepo.active, *openaiGroup)
-	accountRepo.byGroup[21] = []accountcore.Record{{
+	providerRepo.byGroup[21] = []providercore.Record{{
 		ID:          61,
 		Platform:    capability.PlatformOpenAI,
 		Status:      billingcore.StatusActive,
@@ -416,13 +416,13 @@ func TestCreativeListModelsFallbacks(t *testing.T) {
 		},
 	}}
 
-	// gemini 分组：无显式图片价、账号无映射 → 默认候选 + 尺寸回退 ["1K","2K","4K"]。
+	// gemini 分组：无显式图片价、提供商无映射 → 默认候选 + 尺寸回退 ["1K","2K","4K"]。
 	geminiGroup := newCreativeTestGroup()
 	geminiGroup.ID = 22
 
 	groupRepo.byID[22] = geminiGroup
 	groupRepo.active = append(groupRepo.active, *geminiGroup)
-	accountRepo.byGroup[22] = []accountcore.Record{{
+	providerRepo.byGroup[22] = []providercore.Record{{
 		ID:          62,
 		Platform:    capability.PlatformGemini,
 		Status:      billingcore.StatusActive,
@@ -439,7 +439,7 @@ func TestCreativeListModelsFallbacks(t *testing.T) {
 
 	groupRepo.byID[23] = grokGroup
 	groupRepo.active = append(groupRepo.active, *grokGroup)
-	accountRepo.byGroup[23] = []accountcore.Record{{
+	providerRepo.byGroup[23] = []providercore.Record{{
 		ID:          63,
 		Platform:    capability.PlatformGrok,
 		Status:      billingcore.StatusActive,
@@ -458,7 +458,7 @@ func TestCreativeListModelsFallbacks(t *testing.T) {
 	setCreativeConfigPricing(svc, pricedGroup.ID, testImageModelPricing(map[string]*float64{"1K": &price1k}))
 	groupRepo.byID[24] = pricedGroup
 	groupRepo.active = append(groupRepo.active, *pricedGroup)
-	accountRepo.byGroup[24] = []accountcore.Record{{
+	providerRepo.byGroup[24] = []providercore.Record{{
 		ID:          64,
 		Platform:    capability.PlatformOpenAI,
 		Status:      billingcore.StatusActive,

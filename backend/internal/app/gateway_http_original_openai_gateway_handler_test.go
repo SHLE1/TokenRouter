@@ -45,9 +45,9 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/config"
 	"github.com/TokenFlux/TokenRouter/internal/moderation"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 
@@ -77,7 +77,7 @@ func TestHandleGroupSelectionBusinessError(t *testing.T) {
 	var message string
 	handled := gatewayhttp.WriteGroupSelectionBusinessError(
 		c,
-		fmt.Errorf("select account: %w", routing.ErrClaudeCodeOnly),
+		fmt.Errorf("select provider: %w", routing.ErrClaudeCodeOnly),
 		false,
 		keyhttp.GetAPIKeyFromContext, gatewayprovider.ModelDisplayCatalogue{},
 		func(gotStatus int, gotErrType string, gotMessage string, _ bool) {
@@ -98,24 +98,24 @@ func TestOpenAIResponsesRequiredCapability(t *testing.T) {
 		name        string
 		imageIntent bool
 		platform    string
-		want        accountcore.OpenAIEndpointCapability
+		want        providercore.OpenAIEndpointCapability
 	}{
 		{
 			name:        "OpenAI explicit image intent requires Responses",
 			imageIntent: true,
 			platform:    capability.PlatformOpenAI,
-			want:        accountcore.OpenAIEndpointCapabilityResponses,
+			want:        providercore.OpenAIEndpointCapabilityResponses,
 		},
 		{
 			name:        "Grok explicit image intent keeps chat capability",
 			imageIntent: true,
 			platform:    capability.PlatformGrok,
-			want:        accountcore.OpenAIEndpointCapabilityTextGeneration,
+			want:        providercore.OpenAIEndpointCapabilityTextGeneration,
 		},
 		{
 			name:     "non-image intent keeps chat capability",
 			platform: capability.PlatformOpenAI,
-			want:     accountcore.OpenAIEndpointCapabilityTextGeneration,
+			want:     providercore.OpenAIEndpointCapabilityTextGeneration,
 		},
 	}
 
@@ -206,7 +206,7 @@ func TestOpenAIHandleFailoverExhausted_CyberWarningPassesThroughMessage(t *testi
 
 	require.Equal(t, http.StatusForbidden, w.Code)
 	assert.Contains(t, w.Body.String(), message)
-	assert.NotContains(t, w.Body.String(), "All available accounts exhausted")
+	assert.NotContains(t, w.Body.String(), "All available providers exhausted")
 }
 
 func TestShouldLogOpenAIForwardFailureAsWarn(t *testing.T) {
@@ -758,11 +758,11 @@ type cyberSessionBlockHandlerCacheStub struct {
 	readCalls int
 }
 
-func (s *cyberSessionBlockHandlerCacheStub) GetSessionAccountID(context.Context, int64, string) (int64, error) {
+func (s *cyberSessionBlockHandlerCacheStub) GetSessionProviderID(context.Context, int64, string) (int64, error) {
 	return 0, errors.New("not found")
 }
 
-func (s *cyberSessionBlockHandlerCacheStub) SetSessionAccountID(context.Context, int64, string, int64, time.Duration) error {
+func (s *cyberSessionBlockHandlerCacheStub) SetSessionProviderID(context.Context, int64, string, int64, time.Duration) error {
 	return nil
 }
 
@@ -770,7 +770,7 @@ func (s *cyberSessionBlockHandlerCacheStub) RefreshSessionTTL(context.Context, i
 	return nil
 }
 
-func (s *cyberSessionBlockHandlerCacheStub) DeleteSessionAccountID(context.Context, int64, string) error {
+func (s *cyberSessionBlockHandlerCacheStub) DeleteSessionProviderID(context.Context, int64, string) error {
 	return nil
 }
 
@@ -996,8 +996,8 @@ func TestOpenAIRecordCyberWarning_RecordsStructuredResponseBody(t *testing.T) {
 		UserID: 1001,
 		User:   &identity.User{ID: 1001, Email: "user@example.com"},
 	}
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 2001,
 			Name: "openai-1",
 		},
@@ -1007,7 +1007,7 @@ func TestOpenAIRecordCyberWarning_RecordsStructuredResponseBody(t *testing.T) {
 		c,
 		nil,
 		apiKey,
-		account,
+		provider,
 		"gpt-5.4",
 		400,
 		[]byte(`{"error":{"message":"This request may pose a cybersecurity risk."}}`),
@@ -1017,7 +1017,7 @@ func TestOpenAIRecordCyberWarning_RecordsStructuredResponseBody(t *testing.T) {
 	require.Len(t, repo.cyberWarnings, 1)
 	warning := repo.cyberWarnings[0]
 	require.Equal(t, "user@example.com", warning.UserEmail)
-	require.Equal(t, int64(2001), *warning.AccountID)
+	require.Equal(t, int64(2001), *warning.ProviderID)
 	require.Equal(t, "/v1/responses", warning.Endpoint)
 	require.Equal(t, "bad cyber prompt", warning.PromptExcerpt)
 	require.Contains(t, warning.WarningText, "cybersecurity risk")
@@ -1046,13 +1046,13 @@ func TestOpenAIRecordCyberWarning_UsesExplicitPromptExcerpt(t *testing.T) {
 	gatewayhttp.SetOpenAICyberWarningPromptExcerpt(c, "second turn prompt")
 
 	apiKey := &apikey.APIKey{ID: 101, Name: "test-key", UserID: 1001, User: &identity.User{ID: 1001, Email: "user@example.com"}}
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 2001, Name: "openai-1"}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 2001, Name: "openai-1"}}
 
 	h.openAIAttemptSupport().RecordOpenAICyberWarningWithPromptExcerpt(
 		c,
 		nil,
 		apiKey,
-		account,
+		provider,
 		"gpt-5.4",
 		400,
 		[]byte(`{"error":{"message":"This request may pose a cybersecurity risk."}}`),
@@ -1094,13 +1094,13 @@ func TestOpenAIRecordCyberWarning_RequestSnapshotUsesCurrentToolOutput(t *testin
 	}`))
 
 	apiKey := &apikey.APIKey{ID: 101, Name: "test-key", UserID: 1001, User: &identity.User{ID: 1001, Email: "user@example.com"}}
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 2001, Name: "openai-1"}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 2001, Name: "openai-1"}}
 
 	h.openAIAttemptSupport().RecordOpenAICyberWarning(
 		c,
 		nil,
 		apiKey,
-		account,
+		provider,
 		"gpt-5.4",
 		http.StatusOK,
 		[]byte(`{"type":"response.failed","error":{"message":"This request has been flagged for potentially high-risk cyber activity."}}`),
@@ -1142,8 +1142,8 @@ func TestOpenAIRecordForwardResultCyberWarning_RecordsWSV2TerminalWarning(t *tes
 		UserID: 1001,
 		User:   &identity.User{ID: 1001, Email: "user@example.com"},
 	}
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 2001,
 			Name: "openai-1",
 		},
@@ -1156,13 +1156,13 @@ func TestOpenAIRecordForwardResultCyberWarning_RecordsWSV2TerminalWarning(t *tes
 		},
 	}
 
-	h.openAIAttemptSupport().RecordOpenAICyberWarning(c, nil, apiKey, account, result.Model, result.UpstreamWarning.StatusCode, result.UpstreamWarning.ResponseBody, result.UpstreamWarning.Message)
+	h.openAIAttemptSupport().RecordOpenAICyberWarning(c, nil, apiKey, provider, result.Model, result.UpstreamWarning.StatusCode, result.UpstreamWarning.ResponseBody, result.UpstreamWarning.Message)
 
 	require.Len(t, repo.cyberWarnings, 1)
 	warning := repo.cyberWarnings[0]
 	require.Equal(t, "gpt-5.4", warning.Model)
 	require.Equal(t, "user@example.com", warning.UserEmail)
-	require.Equal(t, int64(2001), *warning.AccountID)
+	require.Equal(t, int64(2001), *warning.ProviderID)
 	require.Contains(t, warning.WarningText, "cybersecurity risk")
 }
 
@@ -1218,8 +1218,8 @@ func TestOpenAIRecordForwardErrorCyberWarning_RecordsWSV2TerminalWarning(t *test
 		UserID: 1001,
 		User:   &identity.User{ID: 1001, Email: "user@example.com"},
 	}
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 2001,
 			Name: "openai-1",
 		},
@@ -1232,14 +1232,14 @@ func TestOpenAIRecordForwardErrorCyberWarning_RecordsWSV2TerminalWarning(t *test
 		err: errors.New("no terminal response payload"),
 	})
 
-	recorded := h.openAIAttemptSupport().RecordOpenAIForwardErrorCyberWarning(c, nil, apiKey, account, "gpt-5.4", 502, err)
+	recorded := h.openAIAttemptSupport().RecordOpenAIForwardErrorCyberWarning(c, nil, apiKey, provider, "gpt-5.4", 502, err)
 
 	require.True(t, recorded)
 	require.Len(t, repo.cyberWarnings, 1)
 	warning := repo.cyberWarnings[0]
 	require.Equal(t, "gpt-5.4", warning.Model)
 	require.Equal(t, "user@example.com", warning.UserEmail)
-	require.Equal(t, int64(2001), *warning.AccountID)
+	require.Equal(t, int64(2001), *warning.ProviderID)
 	require.Equal(t, 502, warning.UpstreamStatus)
 	require.Contains(t, warning.WarningText, "high-risk cyber")
 }
@@ -1279,9 +1279,9 @@ func TestOpenAIRecordCyberPolicyIfMarked_SkipsSideEffectsOutOfScope(t *testing.T
 		User:    &identity.User{ID: 1001, Email: "user@example.com"},
 		Group:   &routing.Group{ID: outOfScopeGroupID, Name: "out-of-scope"},
 	}
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 2001, Name: "openai-1"}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 2001, Name: "openai-1"}}
 
-	handled := h.openAIAttemptSupport().RecordCyberPolicyIfMarked(c, apiKey, account, nil, "gpt-5.4", true, "cyber-session-key", routing.PricingUsageFields{}, "payload-hash")
+	handled := h.openAIAttemptSupport().RecordCyberPolicyIfMarked(c, apiKey, provider, nil, "gpt-5.4", true, "cyber-session-key", routing.PricingUsageFields{}, "payload-hash")
 
 	require.False(t, handled)
 	require.Empty(t, repo.cyberWarnings)
@@ -1420,7 +1420,7 @@ func newOpenAIHandlerForPreviousResponseIDValidation(t *testing.T, cache *httpte
 			AcquireUserSlotFn: func(ctx context.Context, userID int64, maxConcurrency int, requestID string) (bool, error) {
 				return true, nil
 			},
-			AcquireAccountSlotFn: func(ctx context.Context, accountID int64, maxConcurrency int, requestID string) (bool, error) {
+			AcquireProviderSlotFn: func(ctx context.Context, providerID int64, maxConcurrency int, requestID string) (bool, error) {
 				return true, nil
 			},
 		}
@@ -1467,63 +1467,63 @@ type openAIResponsesWSUsageLogResult struct {
 	upstreamFirstPayload []byte
 }
 
-type openAIWSUsageHandlerAccountRepoStub struct {
-	gatewayprovider.ExecutionAccountStore
+type openAIWSUsageHandlerProviderRepoStub struct {
+	gatewayprovider.ExecutionProviderStore
 
-	account gatewayprovider.ExecutionAccount
+	provider gatewayprovider.ExecutionProvider
 }
 
-func (s *openAIWSUsageHandlerAccountRepoStub) ListSchedulableByPlatform(ctx context.Context, platform string) ([]gatewayprovider.ExecutionAccount, error) {
-	if platform != "" && s.account.Record.Platform != platform {
+func (s *openAIWSUsageHandlerProviderRepoStub) ListSchedulableByPlatform(ctx context.Context, platform string) ([]gatewayprovider.ExecutionProvider, error) {
+	if platform != "" && s.provider.Record.Platform != platform {
 		return nil, nil
 	}
-	return []gatewayprovider.ExecutionAccount{s.account}, nil
+	return []gatewayprovider.ExecutionProvider{s.provider}, nil
 }
 
-func (s *openAIWSUsageHandlerAccountRepoStub) ListSchedulableByGroupIDAndPlatform(ctx context.Context, groupID int64, platform string) ([]gatewayprovider.ExecutionAccount, error) {
+func (s *openAIWSUsageHandlerProviderRepoStub) ListSchedulableByGroupIDAndPlatform(ctx context.Context, groupID int64, platform string) ([]gatewayprovider.ExecutionProvider, error) {
 	return s.ListSchedulableByPlatform(ctx, platform)
 }
 
-func (s *openAIWSUsageHandlerAccountRepoStub) GetByID(ctx context.Context, id int64) (*gatewayprovider.ExecutionAccount, error) {
-	if s.account.Record.ID != id {
+func (s *openAIWSUsageHandlerProviderRepoStub) GetByID(ctx context.Context, id int64) (*gatewayprovider.ExecutionProvider, error) {
+	if s.provider.Record.ID != id {
 		return nil, nil
 	}
-	account := s.account
-	return &account, nil
+	provider := s.provider
+	return &provider, nil
 }
 
-type openAIWSFailoverHandlerAccountRepoStub struct {
-	gatewayprovider.ExecutionAccountStore
+type openAIWSFailoverHandlerProviderRepoStub struct {
+	gatewayprovider.ExecutionProviderStore
 
-	accounts       []gatewayprovider.ExecutionAccount
+	providers      []gatewayprovider.ExecutionProvider
 	rateLimitedIDs []int64
 }
 
 type openAIHTTPPassthroughFailoverUpstream struct {
 	httpclient.
 		UpstreamTransport
-	mu         sync.Mutex
-	accountIDs []int64
+	mu          sync.Mutex
+	providerIDs []int64
 }
 
 type openAIHTTPPassthroughAuthFailoverUpstream struct {
 	httpclient.
 		UpstreamTransport
-	mu         sync.Mutex
-	accountIDs []int64
-	statusCode int
+	mu          sync.Mutex
+	providerIDs []int64
+	statusCode  int
 }
 
 type openAIHTTPPassthroughSSERateLimitUpstream struct {
 	httpclient.
 		UpstreamTransport
-	mu         sync.Mutex
-	accountIDs []int64
+	mu          sync.Mutex
+	providerIDs []int64
 }
 
-func (u *openAIHTTPPassthroughFailoverUpstream) Do(_ *http.Request, _ string, accountID int64, _ int) (*http.Response, error) {
+func (u *openAIHTTPPassthroughFailoverUpstream) Do(_ *http.Request, _ string, providerID int64, _ int) (*http.Response, error) {
 	u.mu.Lock()
-	u.accountIDs = append(u.accountIDs, accountID)
+	u.providerIDs = append(u.providerIDs, providerID)
 	u.mu.Unlock()
 	return &http.Response{
 		StatusCode: http.StatusBadGateway,
@@ -1533,21 +1533,21 @@ func (u *openAIHTTPPassthroughFailoverUpstream) Do(_ *http.Request, _ string, ac
 }
 
 // DoWithTLS 使故障转移测试桩兼容 fork 的 TLS 指纹上游接口。
-func (u *openAIHTTPPassthroughFailoverUpstream) DoWithTLS(req *http.Request, proxyURL string, accountID int64, accountConcurrency int, _ *tlsfingerprint.Profile) (*http.Response, error) {
-	return u.Do(req, proxyURL, accountID, accountConcurrency)
+func (u *openAIHTTPPassthroughFailoverUpstream) DoWithTLS(req *http.Request, proxyURL string, providerID int64, providerConcurrency int, _ *tlsfingerprint.Profile) (*http.Response, error) {
+	return u.Do(req, proxyURL, providerID, providerConcurrency)
 }
 
 func (u *openAIHTTPPassthroughFailoverUpstream) calls() []int64 {
 	u.mu.Lock()
 	defer u.mu.Unlock()
-	return append([]int64(nil), u.accountIDs...)
+	return append([]int64(nil), u.providerIDs...)
 }
 
-func (u *openAIHTTPPassthroughAuthFailoverUpstream) Do(_ *http.Request, _ string, accountID int64, _ int) (*http.Response, error) {
+func (u *openAIHTTPPassthroughAuthFailoverUpstream) Do(_ *http.Request, _ string, providerID int64, _ int) (*http.Response, error) {
 	u.mu.Lock()
-	u.accountIDs = append(u.accountIDs, accountID)
+	u.providerIDs = append(u.providerIDs, providerID)
 	u.mu.Unlock()
-	if accountID == 9911 {
+	if providerID == 9911 {
 		return &http.Response{
 			StatusCode: http.StatusOK,
 			Header:     http.Header{"Content-Type": []string{"application/json"}},
@@ -1562,26 +1562,26 @@ func (u *openAIHTTPPassthroughAuthFailoverUpstream) Do(_ *http.Request, _ string
 }
 
 // DoWithTLS 使认证故障转移测试桩兼容 fork 的 TLS 指纹上游接口。
-func (u *openAIHTTPPassthroughAuthFailoverUpstream) DoWithTLS(req *http.Request, proxyURL string, accountID int64, accountConcurrency int, _ *tlsfingerprint.Profile) (*http.Response, error) {
-	return u.Do(req, proxyURL, accountID, accountConcurrency)
+func (u *openAIHTTPPassthroughAuthFailoverUpstream) DoWithTLS(req *http.Request, proxyURL string, providerID int64, providerConcurrency int, _ *tlsfingerprint.Profile) (*http.Response, error) {
+	return u.Do(req, proxyURL, providerID, providerConcurrency)
 }
 
 func (u *openAIHTTPPassthroughAuthFailoverUpstream) calls() []int64 {
 	u.mu.Lock()
 	defer u.mu.Unlock()
-	return append([]int64(nil), u.accountIDs...)
+	return append([]int64(nil), u.providerIDs...)
 }
 
-func (u *openAIHTTPPassthroughSSERateLimitUpstream) Do(_ *http.Request, _ string, accountID int64, _ int) (*http.Response, error) {
+func (u *openAIHTTPPassthroughSSERateLimitUpstream) Do(_ *http.Request, _ string, providerID int64, _ int) (*http.Response, error) {
 	u.mu.Lock()
-	u.accountIDs = append(u.accountIDs, accountID)
+	u.providerIDs = append(u.providerIDs, providerID)
 	u.mu.Unlock()
 	body := strings.Join([]string{
 		"event: response.created",
 		`data: {"type":"response.created","response":{"id":"resp_rate_limited"}}`,
 		"",
 		"event: response.failed",
-		`data: {"type":"response.failed","response":{"id":"resp_rate_limited","status":"failed","error":{"type":"invalid_request_error","code":"rate_limit_exceeded","message":"Concurrency limit exceeded for account, please retry later"}}}`,
+		`data: {"type":"response.failed","response":{"id":"resp_rate_limited","status":"failed","error":{"type":"invalid_request_error","code":"rate_limit_exceeded","message":"Concurrency limit exceeded for provider, please retry later"}}}`,
 		"",
 	}, "\n")
 	return &http.Response{
@@ -1595,50 +1595,50 @@ func (u *openAIHTTPPassthroughSSERateLimitUpstream) Do(_ *http.Request, _ string
 }
 
 // DoWithTLS 使 SSE 限流测试桩兼容 fork 的 TLS 指纹上游接口。
-func (u *openAIHTTPPassthroughSSERateLimitUpstream) DoWithTLS(req *http.Request, proxyURL string, accountID int64, accountConcurrency int, _ *tlsfingerprint.Profile) (*http.Response, error) {
-	return u.Do(req, proxyURL, accountID, accountConcurrency)
+func (u *openAIHTTPPassthroughSSERateLimitUpstream) DoWithTLS(req *http.Request, proxyURL string, providerID int64, providerConcurrency int, _ *tlsfingerprint.Profile) (*http.Response, error) {
+	return u.Do(req, proxyURL, providerID, providerConcurrency)
 }
 
 func (u *openAIHTTPPassthroughSSERateLimitUpstream) calls() []int64 {
 	u.mu.Lock()
 	defer u.mu.Unlock()
-	return append([]int64(nil), u.accountIDs...)
+	return append([]int64(nil), u.providerIDs...)
 }
 
-func (s *openAIWSFailoverHandlerAccountRepoStub) ListSchedulableByPlatform(ctx context.Context, platform string) ([]gatewayprovider.ExecutionAccount, error) {
-	out := make([]gatewayprovider.ExecutionAccount, 0, len(s.accounts))
-	for _, account := range s.accounts {
-		if (platform == "" || account.Record.Platform == platform) && account.View().IsSchedulable() {
-			out = append(out, account)
+func (s *openAIWSFailoverHandlerProviderRepoStub) ListSchedulableByPlatform(ctx context.Context, platform string) ([]gatewayprovider.ExecutionProvider, error) {
+	out := make([]gatewayprovider.ExecutionProvider, 0, len(s.providers))
+	for _, provider := range s.providers {
+		if (platform == "" || provider.Record.Platform == platform) && provider.View().IsSchedulable() {
+			out = append(out, provider)
 		}
 	}
 	return out, nil
 }
 
-func (s *openAIWSFailoverHandlerAccountRepoStub) ListSchedulableByGroupIDAndPlatform(ctx context.Context, groupID int64, platform string) ([]gatewayprovider.ExecutionAccount, error) {
+func (s *openAIWSFailoverHandlerProviderRepoStub) ListSchedulableByGroupIDAndPlatform(ctx context.Context, groupID int64, platform string) ([]gatewayprovider.ExecutionProvider, error) {
 	return s.ListSchedulableByPlatform(ctx, platform)
 }
 
-func (s *openAIWSFailoverHandlerAccountRepoStub) ListSchedulableUngroupedByPlatform(ctx context.Context, platform string) ([]gatewayprovider.ExecutionAccount, error) {
+func (s *openAIWSFailoverHandlerProviderRepoStub) ListSchedulableUngroupedByPlatform(ctx context.Context, platform string) ([]gatewayprovider.ExecutionProvider, error) {
 	return s.ListSchedulableByPlatform(ctx, platform)
 }
 
-func (s *openAIWSFailoverHandlerAccountRepoStub) GetByID(ctx context.Context, id int64) (*gatewayprovider.ExecutionAccount, error) {
-	for _, account := range s.accounts {
-		if account.Record.ID == id {
-			acc := account
+func (s *openAIWSFailoverHandlerProviderRepoStub) GetByID(ctx context.Context, id int64) (*gatewayprovider.ExecutionProvider, error) {
+	for _, provider := range s.providers {
+		if provider.Record.ID == id {
+			acc := provider
 			return &acc, nil
 		}
 	}
 	return nil, nil
 }
 
-func (s *openAIWSFailoverHandlerAccountRepoStub) SetRateLimited(ctx context.Context, id int64, resetAt time.Time) error {
+func (s *openAIWSFailoverHandlerProviderRepoStub) SetRateLimited(ctx context.Context, id int64, resetAt time.Time) error {
 	s.rateLimitedIDs = append(s.rateLimitedIDs, id)
-	for i := range s.accounts {
-		if s.accounts[i].Record.ID == id {
+	for i := range s.providers {
+		if s.providers[i].Record.ID == id {
 			reset := resetAt
-			s.accounts[i].Record.RateLimitResetAt = &reset
+			s.providers[i].Record.RateLimitResetAt = &reset
 			break
 		}
 	}
@@ -1679,11 +1679,11 @@ func (s *openAIWSUsageHandlerPricingConfigRepoStub) GetGroupPlatforms(ctx contex
 
 func TestOpenAIResponses_APIKeyPassthroughPool5xxRetriesThenExhaustsMaxSwitches(t *testing.T) {
 	groupID := int64(4203)
-	accounts := []gatewayprovider.ExecutionAccount{
+	providers := []gatewayprovider.ExecutionProvider{
 		{
-			Record: accountcore.Record{
+			Record: providercore.Record{
 				LoadLocation: time.LoadLocation, ID: 9910, Name: "pool-api-key", Platform: capability.PlatformOpenAI,
-				Type: capability.AccountTypeAPIKey, Status: billing.StatusActive, Schedulable: true, Priority: 1,
+				Type: capability.ProviderTypeAPIKey, Status: billing.StatusActive, Schedulable: true, Priority: 1,
 				Credentials: map[string]any{
 					"api_key":                      "sk-pool",
 					"base_url":                     "https://api.example.test",
@@ -1695,9 +1695,9 @@ func TestOpenAIResponses_APIKeyPassthroughPool5xxRetriesThenExhaustsMaxSwitches(
 			},
 		},
 		{
-			Record: accountcore.Record{
+			Record: providercore.Record{
 				LoadLocation: time.LoadLocation, ID: 9911, Name: "fallback-api-key", Platform: capability.PlatformOpenAI,
-				Type: capability.AccountTypeAPIKey, Status: billing.StatusActive, Schedulable: true, Priority: 2,
+				Type: capability.ProviderTypeAPIKey, Status: billing.StatusActive, Schedulable: true, Priority: 2,
 				Credentials: map[string]any{
 					"api_key":  "sk-fallback",
 					"base_url": "https://api.example.test",
@@ -1709,24 +1709,24 @@ func TestOpenAIResponses_APIKeyPassthroughPool5xxRetriesThenExhaustsMaxSwitches(
 	cfg := &config.Config{RunMode: config.RunModeSimple}
 	cfg.Default.RateMultiplier = 1
 	cfg.Security.URLAllowlist.Enabled = false
-	cfg.Gateway.MaxAccountSwitches = 1
+	cfg.Gateway.MaxProviderSwitches = 1
 
-	accountRepo := &openAIWSFailoverHandlerAccountRepoStub{accounts: accounts}
+	providerRepo := &openAIWSFailoverHandlerProviderRepoStub{providers: providers}
 	upstream := &openAIHTTPPassthroughFailoverUpstream{}
 	billingCacheSvc := newBillingEligibilityFixture(cfg)
 	billingCacheSvc.Start()
 	t.Cleanup(billingCacheSvc.Stop)
 	completionInput4 := billingtestkit.Calculator(cfg.Default.RateMultiplier, nil, nil)
-	completionInput5 := &accountcore.DeferredService{}
+	completionInput5 := &providercore.DeferredService{}
 	gatewaySvc, gatewaySvcChoices, gatewaySvcCredentialPort := newOpenAIExecutionAndSelectionFixture(
-		accountRepo,
+		providerRepo,
 		nil,
 		cfg,
 		nil,
 		nil, nil,
 
 		upstream,
-		nil, completionInput5, newOpenAIExecutionCredentialsForTest(accountRepo,
+		nil, completionInput5, newOpenAIExecutionCredentialsForTest(providerRepo,
 
 			nil), nil,
 		nil,
@@ -1748,7 +1748,7 @@ func TestOpenAIResponses_APIKeyPassthroughPool5xxRetriesThenExhaustsMaxSwitches(
 		nil,
 		nil,
 		nil,
-		cfg, nil, newExecutionAvailabilityForTest(accountRepo,
+		cfg, nil, newExecutionAvailabilityForTest(providerRepo,
 
 			nil, cfg), gatewaySvcChoices,
 	)
@@ -1772,8 +1772,8 @@ func TestOpenAIResponses_APIKeyPassthroughPool5xxRetriesThenExhaustsMaxSwitches(
 	require.Equal(t, "Upstream service temporarily unavailable", gjson.GetBytes(rec.Body.Bytes(), "error.message").String())
 }
 
-// TestOpenAIResponses_APIKeyPassthroughPoolAuthFailureRetriesThenSwitchesToHealthyAccount 验证认证错误耗尽同号预算后切换账号。
-func TestOpenAIResponses_APIKeyPassthroughPoolAuthFailureRetriesThenSwitchesToHealthyAccount(t *testing.T) {
+// TestOpenAIResponses_APIKeyPassthroughPoolAuthFailureRetriesThenSwitchesToHealthyProvider 验证认证错误耗尽同号预算后切换提供商。
+func TestOpenAIResponses_APIKeyPassthroughPoolAuthFailureRetriesThenSwitchesToHealthyProvider(t *testing.T) {
 	tests := []struct {
 		name       string
 		statusCode int
@@ -1785,11 +1785,11 @@ func TestOpenAIResponses_APIKeyPassthroughPoolAuthFailureRetriesThenSwitchesToHe
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			groupID := int64(4203)
-			accounts := []gatewayprovider.ExecutionAccount{
+			providers := []gatewayprovider.ExecutionProvider{
 				{
-					Record: accountcore.Record{
+					Record: providercore.Record{
 						LoadLocation: time.LoadLocation, ID: 9910, Name: "pool-api-key", Platform: capability.PlatformOpenAI,
-						Type: capability.AccountTypeAPIKey, Status: billing.StatusActive, Schedulable: true, Priority: 1,
+						Type: capability.ProviderTypeAPIKey, Status: billing.StatusActive, Schedulable: true, Priority: 1,
 						Credentials: map[string]any{
 							"api_key":                      "sk-pool",
 							"base_url":                     "https://api.example.test",
@@ -1801,9 +1801,9 @@ func TestOpenAIResponses_APIKeyPassthroughPoolAuthFailureRetriesThenSwitchesToHe
 					},
 				},
 				{
-					Record: accountcore.Record{
+					Record: providercore.Record{
 						LoadLocation: time.LoadLocation, ID: 9911, Name: "fallback-api-key", Platform: capability.PlatformOpenAI,
-						Type: capability.AccountTypeAPIKey, Status: billing.StatusActive, Schedulable: true, Priority: 2,
+						Type: capability.ProviderTypeAPIKey, Status: billing.StatusActive, Schedulable: true, Priority: 2,
 						Credentials: map[string]any{
 							"api_key":  "sk-fallback",
 							"base_url": "https://api.example.test",
@@ -1815,25 +1815,25 @@ func TestOpenAIResponses_APIKeyPassthroughPoolAuthFailureRetriesThenSwitchesToHe
 			cfg := &config.Config{RunMode: config.RunModeSimple}
 			cfg.Default.RateMultiplier = 1
 			cfg.Security.URLAllowlist.Enabled = false
-			cfg.Gateway.MaxAccountSwitches = 1
+			cfg.Gateway.MaxProviderSwitches = 1
 
-			accountRepo := &openAIWSFailoverHandlerAccountRepoStub{accounts: accounts}
+			providerRepo := &openAIWSFailoverHandlerProviderRepoStub{providers: providers}
 			upstream := &openAIHTTPPassthroughAuthFailoverUpstream{statusCode: tt.statusCode}
-			rateLimitSvc := newAppHealthObserverFixture(accountRepo, cfg)
+			rateLimitSvc := newAppHealthObserverFixture(providerRepo, cfg)
 			billingCacheSvc := newBillingEligibilityFixture(cfg)
 			billingCacheSvc.Start()
 			t.Cleanup(billingCacheSvc.Stop)
 			completionInput6 := billingtestkit.Calculator(cfg.Default.RateMultiplier, nil, nil)
-			completionInput7 := &accountcore.DeferredService{}
+			completionInput7 := &providercore.DeferredService{}
 			gatewaySvc, gatewaySvcChoices, gatewaySvcCredentialPort := newOpenAIExecutionAndSelectionFixture(
-				accountRepo,
+				providerRepo,
 				nil,
 				cfg,
 				nil,
 				nil, rateLimitSvc,
 
 				upstream,
-				nil, completionInput7, newOpenAIExecutionCredentialsForTest(accountRepo,
+				nil, completionInput7, newOpenAIExecutionCredentialsForTest(providerRepo,
 
 					nil), nil,
 				nil,
@@ -1855,7 +1855,7 @@ func TestOpenAIResponses_APIKeyPassthroughPoolAuthFailureRetriesThenSwitchesToHe
 				nil,
 				nil,
 				nil,
-				cfg, nil, newExecutionAvailabilityForTest(accountRepo,
+				cfg, nil, newExecutionAvailabilityForTest(providerRepo,
 
 					nil, cfg), gatewaySvcChoices,
 			)
@@ -1882,11 +1882,11 @@ func TestOpenAIResponses_APIKeyPassthroughPoolAuthFailureRetriesThenSwitchesToHe
 
 func TestOpenAIResponses_APIKeyPassthroughSSERateLimitUsesConfiguredPoolRetry(t *testing.T) {
 	groupID := int64(4204)
-	accounts := []gatewayprovider.ExecutionAccount{
+	providers := []gatewayprovider.ExecutionProvider{
 		{
-			Record: accountcore.Record{
+			Record: providercore.Record{
 				LoadLocation: time.LoadLocation, ID: 9912, Name: "pool-sse-rate-limit", Platform: capability.PlatformOpenAI,
-				Type: capability.AccountTypeAPIKey, Status: billing.StatusActive, Schedulable: true, Priority: 1,
+				Type: capability.ProviderTypeAPIKey, Status: billing.StatusActive, Schedulable: true, Priority: 1,
 				Credentials: map[string]any{
 					"api_key":                      "sk-pool",
 					"base_url":                     "https://api.example.test",
@@ -1901,24 +1901,24 @@ func TestOpenAIResponses_APIKeyPassthroughSSERateLimitUsesConfiguredPoolRetry(t 
 	cfg := &config.Config{RunMode: config.RunModeSimple}
 	cfg.Default.RateMultiplier = 1
 	cfg.Security.URLAllowlist.Enabled = false
-	cfg.Gateway.MaxAccountSwitches = 1
+	cfg.Gateway.MaxProviderSwitches = 1
 
-	accountRepo := &openAIWSFailoverHandlerAccountRepoStub{accounts: accounts}
+	providerRepo := &openAIWSFailoverHandlerProviderRepoStub{providers: providers}
 	upstream := &openAIHTTPPassthroughSSERateLimitUpstream{}
 	billingCacheSvc := newBillingEligibilityFixture(cfg)
 	billingCacheSvc.Start()
 	t.Cleanup(billingCacheSvc.Stop)
 	completionInput8 := billingtestkit.Calculator(cfg.Default.RateMultiplier, nil, nil)
-	completionInput9 := &accountcore.DeferredService{}
+	completionInput9 := &providercore.DeferredService{}
 	gatewaySvc, gatewaySvcChoices, gatewaySvcCredentialPort := newOpenAIExecutionAndSelectionFixture(
-		accountRepo,
+		providerRepo,
 		nil,
 		cfg,
 		nil,
 		nil, nil,
 
 		upstream,
-		nil, completionInput9, newOpenAIExecutionCredentialsForTest(accountRepo,
+		nil, completionInput9, newOpenAIExecutionCredentialsForTest(providerRepo,
 
 			nil), nil,
 		nil,
@@ -1940,7 +1940,7 @@ func TestOpenAIResponses_APIKeyPassthroughSSERateLimitUsesConfiguredPoolRetry(t 
 		nil,
 		nil,
 		nil,
-		cfg, nil, newExecutionAvailabilityForTest(accountRepo,
+		cfg, nil, newExecutionAvailabilityForTest(providerRepo,
 
 			nil, cfg), gatewaySvcChoices,
 	)
@@ -1959,7 +1959,7 @@ func TestOpenAIResponses_APIKeyPassthroughSSERateLimitUsesConfiguredPoolRetry(t 
 	h.Responses(c)
 
 	require.Equal(t, []int64{9912, 9912}, upstream.calls())
-	require.Empty(t, accountRepo.rateLimitedIDs)
+	require.Empty(t, providerRepo.rateLimitedIDs)
 	require.Equal(t, http.StatusTooManyRequests, rec.Code)
 	require.Equal(t, "1", rec.Header().Get("Retry-After"))
 	require.Equal(t, "rate_limit_error", gjson.GetBytes(rec.Body.Bytes(), "error.type").String())
@@ -2012,13 +2012,13 @@ func TestOpenAIResponsesWebSocket_FailoverOnUpstreamUsageLimitEvent(t *testing.T
 	defer secondUpstream.Close()
 
 	groupID := int64(4202)
-	accounts := []gatewayprovider.ExecutionAccount{
+	providers := []gatewayprovider.ExecutionProvider{
 		{
-			Record: accountcore.Record{
+			Record: providercore.Record{
 				LoadLocation: time.LoadLocation, ID: 9902,
 				Name:        "openai-ws-rate-limited",
 				Platform:    capability.PlatformOpenAI,
-				Type:        capability.AccountTypeAPIKey,
+				Type:        capability.ProviderTypeAPIKey,
 				Status:      billing.StatusActive,
 				Schedulable: true,
 				Concurrency: 1,
@@ -2029,16 +2029,16 @@ func TestOpenAIResponsesWebSocket_FailoverOnUpstreamUsageLimitEvent(t *testing.T
 				},
 				Extra: map[string]any{
 					"openai_apikey_responses_websockets_v2_enabled": true,
-					"openai_apikey_responses_websockets_v2_mode":    accountcore.OpenAIWSIngressModePassthrough,
+					"openai_apikey_responses_websockets_v2_mode":    providercore.OpenAIWSIngressModePassthrough,
 				},
 			},
 		},
 		{
-			Record: accountcore.Record{
+			Record: providercore.Record{
 				LoadLocation: time.LoadLocation, ID: 9903,
 				Name:        "openai-ws-healthy",
 				Platform:    capability.PlatformOpenAI,
-				Type:        capability.AccountTypeAPIKey,
+				Type:        capability.ProviderTypeAPIKey,
 				Status:      billing.StatusActive,
 				Schedulable: true,
 				Concurrency: 1,
@@ -2049,7 +2049,7 @@ func TestOpenAIResponsesWebSocket_FailoverOnUpstreamUsageLimitEvent(t *testing.T
 				},
 				Extra: map[string]any{
 					"openai_apikey_responses_websockets_v2_enabled": true,
-					"openai_apikey_responses_websockets_v2_mode":    accountcore.OpenAIWSIngressModePassthrough,
+					"openai_apikey_responses_websockets_v2_mode":    providercore.OpenAIWSIngressModePassthrough,
 				},
 			},
 		},
@@ -2067,23 +2067,23 @@ func TestOpenAIResponsesWebSocket_FailoverOnUpstreamUsageLimitEvent(t *testing.T
 	cfg.Gateway.OpenAIWS.DialTimeoutSeconds = 3
 	cfg.Gateway.OpenAIWS.ReadTimeoutSeconds = 3
 	cfg.Gateway.OpenAIWS.WriteTimeoutSeconds = 3
-	cfg.Gateway.MaxAccountSwitches = 3
+	cfg.Gateway.MaxProviderSwitches = 3
 
-	accountRepo := &openAIWSFailoverHandlerAccountRepoStub{accounts: accounts}
-	rateLimitSvc := newAppHealthObserverFixture(accountRepo, cfg)
+	providerRepo := &openAIWSFailoverHandlerProviderRepoStub{providers: providers}
+	rateLimitSvc := newAppHealthObserverFixture(providerRepo, cfg)
 	billingCacheSvc := newBillingEligibilityFixture(cfg)
 	billingCacheSvc.Start()
 	completionInput10 := billingtestkit.Calculator(cfg.Default.RateMultiplier, nil, nil)
-	completionInput11 := &accountcore.DeferredService{}
+	completionInput11 := &providercore.DeferredService{}
 	gatewaySvc, gatewaySvcChoices, gatewaySvcCredentialPort := newOpenAIExecutionAndSelectionFixture(
-		accountRepo,
+		providerRepo,
 		nil,
 		cfg,
 		nil,
 		nil, rateLimitSvc,
 
 		nil,
-		nil, completionInput11, newOpenAIExecutionCredentialsForTest(accountRepo,
+		nil, completionInput11, newOpenAIExecutionCredentialsForTest(providerRepo,
 
 			nil), nil,
 		nil,
@@ -2098,7 +2098,7 @@ func TestOpenAIResponsesWebSocket_FailoverOnUpstreamUsageLimitEvent(t *testing.T
 		AcquireUserSlotFn: func(ctx context.Context, userID int64, maxConcurrency int, requestID string) (bool, error) {
 			return true, nil
 		},
-		AcquireAccountSlotFn: func(ctx context.Context, accountID int64, maxConcurrency int, requestID string) (bool, error) {
+		AcquireProviderSlotFn: func(ctx context.Context, providerID int64, maxConcurrency int, requestID string) (bool, error) {
 			return true, nil
 		},
 	}
@@ -2112,7 +2112,7 @@ func TestOpenAIResponsesWebSocket_FailoverOnUpstreamUsageLimitEvent(t *testing.T
 			Event: logging.Event,
 		},
 		), gatewayhttp.SSEPingFormatNone, time.Second),
-		MaxSwitches: 3, Availability: newExecutionAvailabilityForTest(accountRepo,
+		MaxSwitches: 3, Availability: newExecutionAvailabilityForTest(providerRepo,
 
 			nil, cfg), Choices: gatewaySvcChoices,
 	})
@@ -2165,7 +2165,7 @@ func TestOpenAIResponsesWebSocket_FailoverOnUpstreamUsageLimitEvent(t *testing.T
 	case <-time.After(3 * time.Second):
 		t.Fatal("等待第二个上游收到重放首帧超时")
 	}
-	require.Equal(t, []int64{int64(9902)}, accountRepo.rateLimitedIDs)
+	require.Equal(t, []int64{int64(9902)}, providerRepo.rateLimitedIDs)
 }
 
 func TestOpenAIResponsesWebSocket_FirstOutputTimeoutWithoutDownstreamReusesClientForOneFailover(t *testing.T) {
@@ -2230,13 +2230,13 @@ func TestOpenAIResponsesWebSocket_FirstOutputTimeoutWithoutDownstreamReusesClien
 	defer secondUpstream.Close()
 
 	groupID := int64(4212)
-	accounts := []gatewayprovider.ExecutionAccount{
+	providers := []gatewayprovider.ExecutionProvider{
 		{
-			Record: accountcore.Record{
+			Record: providercore.Record{
 				LoadLocation: time.LoadLocation, ID: 9912,
 				Name:        "openai-ws-first-semantic-timeout",
 				Platform:    capability.PlatformOpenAI,
-				Type:        capability.AccountTypeAPIKey,
+				Type:        capability.ProviderTypeAPIKey,
 				Status:      billing.StatusActive,
 				Schedulable: true,
 				Concurrency: 1,
@@ -2244,16 +2244,16 @@ func TestOpenAIResponsesWebSocket_FirstOutputTimeoutWithoutDownstreamReusesClien
 				Credentials: map[string]any{"api_key": "sk-first", "base_url": firstUpstream.URL},
 				Extra: map[string]any{
 					"openai_apikey_responses_websockets_v2_enabled": true,
-					"openai_apikey_responses_websockets_v2_mode":    accountcore.OpenAIWSIngressModePassthrough,
+					"openai_apikey_responses_websockets_v2_mode":    providercore.OpenAIWSIngressModePassthrough,
 				},
 			},
 		},
 		{
-			Record: accountcore.Record{
+			Record: providercore.Record{
 				LoadLocation: time.LoadLocation, ID: 9913,
 				Name:        "openai-ws-failover-healthy",
 				Platform:    capability.PlatformOpenAI,
-				Type:        capability.AccountTypeAPIKey,
+				Type:        capability.ProviderTypeAPIKey,
 				Status:      billing.StatusActive,
 				Schedulable: true,
 				Concurrency: 1,
@@ -2261,7 +2261,7 @@ func TestOpenAIResponsesWebSocket_FirstOutputTimeoutWithoutDownstreamReusesClien
 				Credentials: map[string]any{"api_key": "sk-second", "base_url": secondUpstream.URL},
 				Extra: map[string]any{
 					"openai_apikey_responses_websockets_v2_enabled": true,
-					"openai_apikey_responses_websockets_v2_mode":    accountcore.OpenAIWSIngressModePassthrough,
+					"openai_apikey_responses_websockets_v2_mode":    providercore.OpenAIWSIngressModePassthrough,
 				},
 			},
 		},
@@ -2281,24 +2281,24 @@ func TestOpenAIResponsesWebSocket_FirstOutputTimeoutWithoutDownstreamReusesClien
 	cfg.Gateway.OpenAIWS.ReadTimeoutSeconds = 3
 	cfg.Gateway.OpenAIWS.WriteTimeoutSeconds = 3
 	cfg.Gateway.OpenAIWS.IngressInterTurnIdleTimeoutSeconds = 3
-	cfg.Gateway.MaxAccountSwitches = 3
+	cfg.Gateway.MaxProviderSwitches = 3
 
-	accountRepo := &openAIWSFailoverHandlerAccountRepoStub{accounts: accounts}
-	rateLimitSvc := newAppHealthObserverFixture(accountRepo, cfg)
+	providerRepo := &openAIWSFailoverHandlerProviderRepoStub{providers: providers}
+	rateLimitSvc := newAppHealthObserverFixture(providerRepo, cfg)
 	billingCacheSvc := newBillingEligibilityFixture(cfg)
 	billingCacheSvc.Start()
 	completionInput12 := billingtestkit.Calculator(cfg.Default.RateMultiplier, nil, nil)
-	completionInput13 := &accountcore.DeferredService{}
+	completionInput13 := &providercore.DeferredService{}
 	gatewaySvc, gatewaySvcChoices, gatewaySvcCredentialPort := newOpenAIExecutionAndSelectionFixture(
-		accountRepo, nil, cfg, nil, nil, rateLimitSvc,
-		nil, nil, completionInput13, newOpenAIExecutionCredentialsForTest(accountRepo,
+		providerRepo, nil, cfg, nil, nil, rateLimitSvc,
+		nil, nil, completionInput13, newOpenAIExecutionCredentialsForTest(providerRepo,
 			nil), nil, nil, nil, nil, nil, responseHeaderFilterForTest(cfg), nil, nil, nil,
 	)
 	gatewaySvc.Recorder = newHTTPCompletionFixture(cfg, nil, completionInput12, billingCacheSvc, completionInput13, nil, completionHealth{rateLimitSvc.Core}, true)
 
 	cache := &httptestkit.ConcurrencyHooks{
 		AcquireUserSlotFn: func(context.Context, int64, int, string) (bool, error) { return true, nil },
-		AcquireAccountSlotFn: func(context.Context, int64, int, string) (bool, error) {
+		AcquireProviderSlotFn: func(context.Context, int64, int, string) (bool, error) {
 			return true, nil
 		},
 	}
@@ -2312,7 +2312,7 @@ func TestOpenAIResponsesWebSocket_FirstOutputTimeoutWithoutDownstreamReusesClien
 			Event: logging.Event,
 		},
 		), gatewayhttp.SSEPingFormatNone, time.Second),
-		MaxSwitches: 3, Availability: newExecutionAvailabilityForTest(accountRepo,
+		MaxSwitches: 3, Availability: newExecutionAvailabilityForTest(providerRepo,
 
 			nil, cfg), Choices: gatewaySvcChoices,
 	})
@@ -2385,7 +2385,7 @@ func TestOpenAIResponsesWebSocket_FirstOutputTimeoutWithoutDownstreamReusesClien
 	}
 	require.Equal(t, int32(1), firstConnections.Load())
 	require.Equal(t, int32(1), secondConnections.Load())
-	require.NotContains(t, accountRepo.rateLimitedIDs, int64(9913), "healthy failover account must not be penalized")
+	require.NotContains(t, providerRepo.rateLimitedIDs, int64(9913), "healthy failover provider must not be penalized")
 }
 
 func runOpenAIResponsesWebSocketUsageLogCase(t *testing.T, tc openAIResponsesWSUsageLogCase) openAIResponsesWSUsageLogResult {
@@ -2433,12 +2433,12 @@ func runOpenAIResponsesWebSocketUsageLogCase(t *testing.T, tc openAIResponsesWSU
 	defer upstreamServer.Close()
 
 	groupID := int64(4201)
-	account := gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 9901,
 			Name:        "openai-ws-passthrough-usage-e2e",
 			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeAPIKey,
+			Type:        capability.ProviderTypeAPIKey,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Concurrency: 1,
@@ -2448,7 +2448,7 @@ func runOpenAIResponsesWebSocketUsageLogCase(t *testing.T, tc openAIResponsesWSU
 			},
 			Extra: map[string]any{
 				"openai_apikey_responses_websockets_v2_enabled": true,
-				"openai_apikey_responses_websockets_v2_mode":    accountcore.OpenAIWSIngressModePassthrough,
+				"openai_apikey_responses_websockets_v2_mode":    providercore.OpenAIWSIngressModePassthrough,
 			},
 		},
 	}
@@ -2466,7 +2466,7 @@ func runOpenAIResponsesWebSocketUsageLogCase(t *testing.T, tc openAIResponsesWSU
 	cfg.Gateway.OpenAIWS.ReadTimeoutSeconds = 3
 	cfg.Gateway.OpenAIWS.WriteTimeoutSeconds = 3
 
-	accountRepo := &openAIWSUsageHandlerAccountRepoStub{account: account}
+	providerRepo := &openAIWSUsageHandlerProviderRepoStub{provider: provider}
 	usageRepo := &openAIWSUsageHandlerUsageLogRepoStub{created: make(chan *usage.UsageLog, 1)}
 
 	var pricingConfigSvc *routing.PricingConfigService
@@ -2487,16 +2487,16 @@ func runOpenAIResponsesWebSocketUsageLogCase(t *testing.T, tc openAIResponsesWSU
 	billingCacheSvc := newBillingEligibilityFixture(cfg)
 	billingCacheSvc.Start()
 	completionInput14 := billingtestkit.Calculator(cfg.Default.RateMultiplier, nil, nil)
-	completionInput15 := &accountcore.DeferredService{}
+	completionInput15 := &providercore.DeferredService{}
 	gatewaySvc, gatewaySvcChoices, gatewaySvcCredentialPort := newOpenAIExecutionAndSelectionFixture(
-		accountRepo,
+		providerRepo,
 		nil,
 		cfg,
 		nil,
 		nil, nil,
 
 		nil,
-		nil, completionInput15, newOpenAIExecutionCredentialsForTest(accountRepo,
+		nil, completionInput15, newOpenAIExecutionCredentialsForTest(providerRepo,
 
 			nil), nil,
 		nil,
@@ -2513,7 +2513,7 @@ func runOpenAIResponsesWebSocketUsageLogCase(t *testing.T, tc openAIResponsesWSU
 		AcquireUserSlotFn: func(ctx context.Context, userID int64, maxConcurrency int, requestID string) (bool, error) {
 			return true, nil
 		},
-		AcquireAccountSlotFn: func(ctx context.Context, accountID int64, maxConcurrency int, requestID string) (bool, error) {
+		AcquireProviderSlotFn: func(ctx context.Context, providerID int64, maxConcurrency int, requestID string) (bool, error) {
 			return true, nil
 		},
 	}
@@ -2526,7 +2526,7 @@ func runOpenAIResponsesWebSocketUsageLogCase(t *testing.T, tc openAIResponsesWSU
 
 			Event: logging.Event,
 		},
-		), gatewayhttp.SSEPingFormatNone, time.Second), Availability: newExecutionAvailabilityForTest(accountRepo,
+		), gatewayhttp.SSEPingFormatNone, time.Second), Availability: newExecutionAvailabilityForTest(providerRepo,
 
 			pricingConfigSvc, cfg), Choices: gatewaySvcChoices,
 	})

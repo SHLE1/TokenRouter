@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
@@ -18,11 +18,14 @@ const kiroReasoningCanonicalBody = `{"model":"gpt-5.1","stream":false,"input":[`
 	`{"type":"message","role":"assistant","content":"hi"}` +
 	`]}`
 
-func newOpenAIPassthroughAccount(id int64, passthrough bool) *gatewayprovider.ExecutionAccount {
-	return &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: id,
-		Platform: capability.PlatformOpenAI,
-		Type:     capability.AccountTypeAPIKey,
-		Extra:    map[string]any{"openai_passthrough": passthrough}},
+func newOpenAIPassthroughProvider(id int64, passthrough bool) *gatewayprovider.ExecutionProvider {
+	return &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: id,
+			Platform: capability.PlatformOpenAI,
+			Type:     capability.ProviderTypeAPIKey,
+			Extra:    map[string]any{"openai_passthrough": passthrough},
+		},
 	}
 }
 
@@ -38,12 +41,12 @@ func reasoningItemCount(t *testing.T, body []byte) int {
 	return count
 }
 
-// TestDeriveOpenAIForwardAttemptBody_CrossModeStripsKiroReasoning 验证透传账号切换到
-// 非透传账号时会移除整个加密 reasoning 项，同时保持 canonical 请求体不变。
+// TestDeriveOpenAIForwardAttemptBody_CrossModeStripsKiroReasoning 验证透传提供商切换到
+// 非透传提供商时会移除整个加密 reasoning 项，同时保持 canonical 请求体不变。
 func TestDeriveOpenAIForwardAttemptBody_CrossModeStripsKiroReasoning(t *testing.T) {
 	canonical := []byte(kiroReasoningCanonicalBody)
-	kiro := newOpenAIPassthroughAccount(1, true)
-	bedrock := newOpenAIPassthroughAccount(2, false)
+	kiro := newOpenAIPassthroughProvider(1, true)
+	bedrock := newOpenAIPassthroughProvider(2, false)
 	state := &openAIPassthroughFailoverState{}
 
 	firstBody := deriveOpenAIForwardAttemptBody(nil, canonical, kiro, state)
@@ -64,14 +67,14 @@ func TestDeriveOpenAIForwardAttemptBody_CrossModeStripsKiroReasoning(t *testing.
 }
 
 // TestDeriveOpenAIForwardAttemptBody_SameModePreservesReasoning 验证同模式重试和切换到
-// 透传账号时都继续使用完整的 canonical reasoning。
+// 透传提供商时都继续使用完整的 canonical reasoning。
 func TestDeriveOpenAIForwardAttemptBody_SameModePreservesReasoning(t *testing.T) {
 	canonical := []byte(kiroReasoningCanonicalBody)
 
 	t.Run("non_passthrough_to_non_passthrough", func(t *testing.T) {
 		state := &openAIPassthroughFailoverState{}
-		first := deriveOpenAIForwardAttemptBody(nil, canonical, newOpenAIPassthroughAccount(10, false), state)
-		second := deriveOpenAIForwardAttemptBody(nil, canonical, newOpenAIPassthroughAccount(11, false), state)
+		first := deriveOpenAIForwardAttemptBody(nil, canonical, newOpenAIPassthroughProvider(10, false), state)
+		second := deriveOpenAIForwardAttemptBody(nil, canonical, newOpenAIPassthroughProvider(11, false), state)
 		require.Equal(t, 1, reasoningItemCount(t, first))
 		require.Equal(t, 1, reasoningItemCount(t, second))
 		require.JSONEq(t, kiroReasoningCanonicalBody, string(second))
@@ -79,22 +82,22 @@ func TestDeriveOpenAIForwardAttemptBody_SameModePreservesReasoning(t *testing.T)
 
 	t.Run("passthrough_to_passthrough", func(t *testing.T) {
 		state := &openAIPassthroughFailoverState{}
-		first := deriveOpenAIForwardAttemptBody(nil, canonical, newOpenAIPassthroughAccount(20, true), state)
-		second := deriveOpenAIForwardAttemptBody(nil, canonical, newOpenAIPassthroughAccount(21, true), state)
+		first := deriveOpenAIForwardAttemptBody(nil, canonical, newOpenAIPassthroughProvider(20, true), state)
+		second := deriveOpenAIForwardAttemptBody(nil, canonical, newOpenAIPassthroughProvider(21, true), state)
 		require.Equal(t, 1, reasoningItemCount(t, first))
 		require.Equal(t, 1, reasoningItemCount(t, second))
 	})
 
 	t.Run("non_passthrough_to_passthrough", func(t *testing.T) {
 		state := &openAIPassthroughFailoverState{}
-		_ = deriveOpenAIForwardAttemptBody(nil, canonical, newOpenAIPassthroughAccount(30, false), state)
-		second := deriveOpenAIForwardAttemptBody(nil, canonical, newOpenAIPassthroughAccount(31, true), state)
+		_ = deriveOpenAIForwardAttemptBody(nil, canonical, newOpenAIPassthroughProvider(30, false), state)
+		second := deriveOpenAIForwardAttemptBody(nil, canonical, newOpenAIPassthroughProvider(31, true), state)
 		require.Equal(t, 1, reasoningItemCount(t, second))
 	})
 
-	t.Run("same_account_pool_retry", func(t *testing.T) {
+	t.Run("same_provider_pool_retry", func(t *testing.T) {
 		state := &openAIPassthroughFailoverState{}
-		kiro := newOpenAIPassthroughAccount(40, true)
+		kiro := newOpenAIPassthroughProvider(40, true)
 		_ = deriveOpenAIForwardAttemptBody(nil, canonical, kiro, state)
 		retry := deriveOpenAIForwardAttemptBody(nil, canonical, kiro, state)
 		require.Equal(t, 1, reasoningItemCount(t, retry))
@@ -102,19 +105,19 @@ func TestDeriveOpenAIForwardAttemptBody_SameModePreservesReasoning(t *testing.T)
 }
 
 // TestDeriveOpenAIForwardAttemptBody_SanitizationSticksAcrossBedrockRetries 验证跨模式后
-// 所有后续非透传账号重试都会继续使用清理后的请求体。
+// 所有后续非透传提供商重试都会继续使用清理后的请求体。
 func TestDeriveOpenAIForwardAttemptBody_SanitizationSticksAcrossBedrockRetries(t *testing.T) {
 	canonical := []byte(kiroReasoningCanonicalBody)
 	state := &openAIPassthroughFailoverState{}
 
-	first := deriveOpenAIForwardAttemptBody(nil, canonical, newOpenAIPassthroughAccount(50, true), state)
-	second := deriveOpenAIForwardAttemptBody(nil, canonical, newOpenAIPassthroughAccount(51, false), state)
-	retry := deriveOpenAIForwardAttemptBody(nil, canonical, newOpenAIPassthroughAccount(51, false), state)
-	nextAccount := deriveOpenAIForwardAttemptBody(nil, canonical, newOpenAIPassthroughAccount(52, false), state)
+	first := deriveOpenAIForwardAttemptBody(nil, canonical, newOpenAIPassthroughProvider(50, true), state)
+	second := deriveOpenAIForwardAttemptBody(nil, canonical, newOpenAIPassthroughProvider(51, false), state)
+	retry := deriveOpenAIForwardAttemptBody(nil, canonical, newOpenAIPassthroughProvider(51, false), state)
+	nextProvider := deriveOpenAIForwardAttemptBody(nil, canonical, newOpenAIPassthroughProvider(52, false), state)
 
 	require.Equal(t, 1, reasoningItemCount(t, first))
 	require.Equal(t, 0, reasoningItemCount(t, second))
 	require.Equal(t, 0, reasoningItemCount(t, retry))
-	require.Equal(t, 0, reasoningItemCount(t, nextAccount))
+	require.Equal(t, 0, reasoningItemCount(t, nextProvider))
 	require.JSONEq(t, kiroReasoningCanonicalBody, string(canonical))
 }

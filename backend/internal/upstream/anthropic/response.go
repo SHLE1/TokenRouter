@@ -68,7 +68,7 @@ func NonStreamResponse(ctx context.Context, resp *http.Response, c *upstream.Out
 	}
 
 	// Cache TTL Override: 重写 non-streaming 响应中的 cache_creation 分类。
-	// 账号级设置优先；全局 1h 请求注入开启时，默认把 usage 计费归回 5m。
+	// 提供商级设置优先；全局 1h 请求注入开启时，默认把 usage 计费归回 5m。
 	if overrideTarget, ok := options.override(ctx); ok {
 		if ApplyCacheTTLOverride(&response.Usage, overrideTarget) {
 			// 同步更新 body JSON 中的嵌套 cache_creation 对象
@@ -106,6 +106,7 @@ func NonStreamResponse(ctx context.Context, resp *http.Response, c *upstream.Out
 
 	return &response.Usage, nil
 }
+
 func NonStreamResponsePassthrough(
 	ctx context.Context,
 	resp *http.Response,

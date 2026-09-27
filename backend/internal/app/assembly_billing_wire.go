@@ -20,7 +20,7 @@ var billingAssemblyProviders = wire.NewSet(
 	wire.Bind(new(identity.DefaultSubscriptionAssigner), new(*billing.SubscriptionService)),
 	wire.Bind(new(completion.Store), new(*billingpostgres.SettlementStore)),
 	provideBalanceNotifications,
-	provideAccountUsage,
+	provideProviderUsage,
 	provideGroupRateAdmin,
 	provideBillingCalculator,
 	provideBillingPriceResolver,

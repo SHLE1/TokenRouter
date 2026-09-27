@@ -11,7 +11,7 @@ import (
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/media"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
@@ -159,36 +159,36 @@ func (p mediaHTTPAdapter) NewGenerationPorts(c *gin.Context, in gatewayhttp.Gene
 	key, _ := keyhttp.GetAPIKeyFromContext(c)
 	subject, _ := authctx.GetAuthSubjectFromContext(c)
 	subscription, _ := gatewayhttp.SubscriptionFromContext(c)
-	return &generationRequestAdapter{grok: in.Grok, h: p.h, c: c, apiKey: key, subject: subject, subscription: subscription, reqLog: log, streamStarted: stream, parsed: in.Parsed, body: in.Body, requestModel: in.RequestModel, routingModel: in.RoutingModel, sessionHash: in.SessionHash, groupMapping: routing.GroupMappingResult(in.Mapping), endpoint: grok.GrokMediaEndpoint(in.Endpoint), requestID: in.RequestID, contentType: in.ContentType, boundAccountID: in.BoundAccountID, videoCreated: in.VideoCreated}
+	return &generationRequestAdapter{grok: in.Grok, h: p.h, c: c, apiKey: key, subject: subject, subscription: subscription, reqLog: log, streamStarted: stream, parsed: in.Parsed, body: in.Body, requestModel: in.RequestModel, routingModel: in.RoutingModel, sessionHash: in.SessionHash, groupMapping: routing.GroupMappingResult(in.Mapping), endpoint: grok.GrokMediaEndpoint(in.Endpoint), requestID: in.RequestID, contentType: in.ContentType, boundProviderID: in.BoundProviderID, videoCreated: in.VideoCreated}
 }
 func (p mediaHTTPAdapter) MaxSwitches() int { return p.h.bindings.Options.MaxSwitches }
 func (p mediaHTTPAdapter) ParseGrok(contentType string, body []byte) gatewayhttp.GrokMediaInput {
-	value := provider.GrokMediaCodec().ParseGrokMediaRequest(contentType, body)
+	value := gatewayadapter.GrokMediaCodec().ParseGrokMediaRequest(contentType, body)
 	return gatewayhttp.GrokMediaInput{Model: value.Model, HasInputImage: value.HasInputImage(), ModerationBody: value.ModerationBody()}
 }
 
 func (p mediaHTTPAdapter) NormalizeGrok(endpoint, model string, hasImage bool) string {
-	return provider.GrokMediaCodec().NormalizeGrokMediaModelForEndpoint(grok.GrokMediaEndpoint(endpoint), model, hasImage)
+	return gatewayadapter.GrokMediaCodec().NormalizeGrokMediaModelForEndpoint(grok.GrokMediaEndpoint(endpoint), model, hasImage)
 }
 
 func (p mediaHTTPAdapter) ResolveCompositeVideo(c *gin.Context, requestID string, userID int64) (*gatewayhttp.MediaAccess, int64, error) {
 	key, _ := keyhttp.GetAPIKeyFromContext(c)
-	key, account, err := p.h.resolveCompositeGrokVideoAPIKey(c.Request.Context(), key, requestID, userID)
-	if err != nil || key == nil || account <= 0 {
-		return mediaAccessView(key), account, err
+	key, provider, err := p.h.resolveCompositeGrokVideoAPIKey(c.Request.Context(), key, requestID, userID)
+	if err != nil || key == nil || provider <= 0 {
+		return mediaAccessView(key), provider, err
 	}
 	c.Set(string(keyhttp.ContextKeyAPIKey), key)
 	keyhttp.SetOpsFallbackAPIKey(c, key)
 	c.Request = c.Request.WithContext(requeststate.WithGroup(c.Request.Context(), key.Group))
-	return mediaAccessView(key), account, nil
+	return mediaAccessView(key), provider, nil
 }
 
-func (p mediaHTTPAdapter) ResolveVideoAccount(ctx context.Context, groupID *int64, id string, userID, keyID int64) (int64, error) {
-	return p.h.bindings.VideoTasks().ResolveGrokMediaVideoRequestAccount(ctx, groupID, id, userID, keyID)
+func (p mediaHTTPAdapter) ResolveVideoProvider(ctx context.Context, groupID *int64, id string, userID, keyID int64) (int64, error) {
+	return p.h.bindings.VideoTasks().ResolveGrokMediaVideoRequestProvider(ctx, groupID, id, userID, keyID)
 }
 
 func (p mediaHTTPAdapter) RewriteGrok(body []byte, contentType, model string) ([]byte, string, error) {
-	return provider.GrokMediaCodec().RewriteGrokMediaRequestModel(body, contentType, model)
+	return gatewayadapter.GrokMediaCodec().RewriteGrokMediaRequestModel(body, contentType, model)
 }
 
 // AuxiliaryHTTPHandler 可直接用于父侧辅助路由绑定。
@@ -250,8 +250,8 @@ func (p mediaHTTPAdapter) EndVoice(c *gin.Context, f *media.VoiceFailure) {
 	var last *forwardcore.UpstreamFailoverError
 	if errors.As(f.Last, &last) {
 		p.h.bindings.Common.Support.HandleFailoverExhausted(c, last, false)
-	} else if f.NoAccounts {
-		gatewayhttp.DefaultOpenAIErrorOutput().WriteError(c, 503, "api_error", "No available Grok accounts")
+	} else if f.NoProviders {
+		gatewayhttp.DefaultOpenAIErrorOutput().WriteError(c, 503, "api_error", "No available Grok providers")
 	}
 }
 

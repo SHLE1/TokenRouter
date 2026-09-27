@@ -18,11 +18,11 @@ import (
 
 	gatewaytestkit "github.com/TokenFlux/TokenRouter/internal/gateway/testkit"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/tokenestimate"
 	"github.com/TokenFlux/TokenRouter/internal/protocol/wirejson"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 
 	"github.com/gin-gonic/gin"
@@ -31,7 +31,7 @@ import (
 )
 
 type countTokensRuntimeStateRepo struct {
-	gatewayprovider.ExecutionAccountStore
+	gatewayprovider.ExecutionProviderStore
 
 	tempUnschedCalls int
 	setErrorCalls    int
@@ -48,7 +48,6 @@ func (r *countTokensRuntimeStateRepo) SetError(_ context.Context, _ int64, _ str
 }
 
 func TestOpenAIGatewayService_ForwardCountTokensAsAnthropic_APIKeyUsesResponsesInputTokens(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	body := []byte(`{"model":"claude-sonnet-4-5","system":"You are helpful.","messages":[{"role":"user","content":"hello"}],"tools":[{"name":"lookup","input_schema":{"type":"object"}}]}`)
@@ -65,20 +64,23 @@ func TestOpenAIGatewayService_ForwardCountTokensAsAnthropic_APIKeyUsesResponsesI
 		allowHTTP: true,
 		transport: upstream,
 	})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 101,
-		Name:        "openai-apikey",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":  "sk-test",
-			"base_url": "http://upstream.example",
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 101,
+			Name:        "openai-apikey",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":  "sk-test",
+				"base_url": "http://upstream.example",
+			},
+			Status:      billing.StatusActive,
+			Schedulable: true,
 		},
-		Status:      billing.StatusActive,
-		Schedulable: true},
 	}
 
-	err := svc.ForwardCountTokensAsAnthropic(context.Background(), c, account, body, "gpt-5.3-codex")
+	err := svc.ForwardCountTokensAsAnthropic(context.Background(), c, provider, body, "gpt-5.3-codex")
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, rec.Code)
 	require.JSONEq(t, `{"input_tokens":42}`, rec.Body.String())
@@ -91,7 +93,6 @@ func TestOpenAIGatewayService_ForwardCountTokensAsAnthropic_APIKeyUsesResponsesI
 }
 
 func TestOpenAIGatewayServiceForwardCountTokensCNProvidersAlwaysEstimateLocally(t *testing.T) {
-
 	body := []byte(`{"model":"claude-sonnet-4-5","messages":[{"role":"user","content":"hello"}]}`)
 	tests := []struct {
 		name     string
@@ -99,11 +100,11 @@ func TestOpenAIGatewayServiceForwardCountTokensCNProvidersAlwaysEstimateLocally(
 		mode     string
 		protocol string
 	}{
-		{name: "kimi_payg_chat", platform: capability.PlatformKimi, mode: accountcore.AccountModePayG, protocol: accountcore.APIProtocolChatCompletions},
-		{name: "kimi_coding_anthropic", platform: capability.PlatformKimi, mode: accountcore.AccountModeCoding, protocol: accountcore.APIProtocolAnthropic},
-		{name: "zhipu_payg_anthropic", platform: capability.PlatformZhipu, mode: accountcore.AccountModePayG, protocol: accountcore.APIProtocolAnthropic},
-		{name: "zhipu_coding_chat", platform: capability.PlatformZhipu, mode: accountcore.AccountModeCoding, protocol: accountcore.APIProtocolChatCompletions},
-		{name: "deepseek_responses", platform: capability.PlatformDeepseek, mode: accountcore.AccountModePayG, protocol: accountcore.APIProtocolResponses},
+		{name: "kimi_payg_chat", platform: capability.PlatformKimi, mode: providercore.ProviderModePayG, protocol: providercore.APIProtocolChatCompletions},
+		{name: "kimi_coding_anthropic", platform: capability.PlatformKimi, mode: providercore.ProviderModeCoding, protocol: providercore.APIProtocolAnthropic},
+		{name: "zhipu_payg_anthropic", platform: capability.PlatformZhipu, mode: providercore.ProviderModePayG, protocol: providercore.APIProtocolAnthropic},
+		{name: "zhipu_coding_chat", platform: capability.PlatformZhipu, mode: providercore.ProviderModeCoding, protocol: providercore.APIProtocolChatCompletions},
+		{name: "deepseek_responses", platform: capability.PlatformDeepseek, mode: providercore.ProviderModePayG, protocol: providercore.APIProtocolResponses},
 	}
 
 	for _, tt := range tests {
@@ -118,17 +119,20 @@ func TestOpenAIGatewayServiceForwardCountTokensCNProvidersAlwaysEstimateLocally(
 				transport: upstream,
 				observer:  gatewaytestkit.NewHealthObserver(gatewaytestkit.HealthInput{Store: repo}),
 			})
-			account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 301,
-				Platform: tt.platform,
-				Type:     capability.AccountTypeAPIKey,
-				Credentials: map[string]any{
-					"api_key":      "sk-test",
-					"account_mode": tt.mode,
-					"api_protocol": tt.protocol,
-				}},
+			provider := &gatewayprovider.ExecutionProvider{
+				Record: providercore.Record{
+					LoadLocation: time.LoadLocation, ID: 301,
+					Platform: tt.platform,
+					Type:     capability.ProviderTypeAPIKey,
+					Credentials: map[string]any{
+						"api_key":       "sk-test",
+						"provider_mode": tt.mode,
+						"api_protocol":  tt.protocol,
+					},
+				},
 			}
 
-			err := svc.ForwardCountTokensAsAnthropic(context.Background(), c, account, body, "")
+			err := svc.ForwardCountTokensAsAnthropic(context.Background(), c, provider, body, "")
 			require.NoError(t, err)
 			require.Equal(t, http.StatusOK, rec.Code)
 			require.Positive(t, gjson.GetBytes(rec.Body.Bytes(), "input_tokens").Int())
@@ -140,22 +144,24 @@ func TestOpenAIGatewayServiceForwardCountTokensCNProvidersAlwaysEstimateLocally(
 }
 
 func TestOpenAIGatewayService_ForwardCountTokensAsAnthropic_OAuthFallsBackWhenPlatformEndpointUnsupported(t *testing.T) {
-
 	body := []byte(`{"model":"claude-opus-4-1","messages":[{"role":"user","content":"hello"}]}`)
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 202,
-		Name:        "openai-oauth",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeOAuth,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"access_token":  "oauth-token",
-			"refresh_token": "oauth-refresh-token",
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 202,
+			Name:        "openai-oauth",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeOAuth,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"access_token":  "oauth-token",
+				"refresh_token": "oauth-refresh-token",
+			},
+			Status:      billing.StatusActive,
+			Schedulable: true,
 		},
-		Status:      billing.StatusActive,
-		Schedulable: true},
 	}
 
-	prepared, err := gatewayprovider.PrepareAnthropicInputTokens(body, account, "gpt-5.4")
+	prepared, err := gatewayprovider.PrepareAnthropicInputTokens(body, provider, "gpt-5.4")
 	require.NoError(t, err)
 	expectedEstimate, err := tokenestimate.Responses(prepared.Request)
 	require.NoError(t, err)
@@ -206,7 +212,7 @@ func TestOpenAIGatewayService_ForwardCountTokensAsAnthropic_OAuthFallsBackWhenPl
 				observer:  gatewaytestkit.NewHealthObserver(gatewaytestkit.HealthInput{Store: repo}),
 			})
 
-			err := svc.ForwardCountTokensAsAnthropic(context.Background(), c, account, body, "gpt-5.4")
+			err := svc.ForwardCountTokensAsAnthropic(context.Background(), c, provider, body, "gpt-5.4")
 			require.NoError(t, err)
 			require.Equal(t, http.StatusOK, rec.Code)
 			require.JSONEq(t, `{"input_tokens":`+strconv.Itoa(expectedEstimate)+`}`, rec.Body.String())
@@ -214,14 +220,13 @@ func TestOpenAIGatewayService_ForwardCountTokensAsAnthropic_OAuthFallsBackWhenPl
 			require.Equal(t, "https://api.openai.com/v1/responses/input_tokens", upstream.lastReq.URL.String())
 			require.Equal(t, "Bearer oauth-token", upstream.lastReq.Header.Get("authorization"))
 			require.Empty(t, upstream.lastReq.Header.Get("Chatgpt-Account-Id"))
-			require.Zero(t, repo.tempUnschedCalls, "OAuth input_tokens unsupported errors must not temp-unschedule the account")
-			require.Zero(t, repo.setErrorCalls, "OAuth input_tokens unsupported errors must not mark the account error")
+			require.Zero(t, repo.tempUnschedCalls, "OAuth input_tokens unsupported errors must not temp-unschedule the provider")
+			require.Zero(t, repo.setErrorCalls, "OAuth input_tokens unsupported errors must not mark the provider error")
 		})
 	}
 }
 
 func TestOpenAIGatewayService_OpenAIOAuthInputTokensFallbackUsesMinimumWhenEstimateFails(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	prepared := &gatewayprovider.InputTokensPrepared{
@@ -232,7 +237,7 @@ func TestOpenAIGatewayService_OpenAIOAuthInputTokensFallbackUsesMinimumWhenEstim
 		UpstreamModel: "gpt-5",
 	}
 
-	writeOpenAIOAuthInputTokensFallback(c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 303}}, prepared, http.StatusUnauthorized)
+	writeOpenAIOAuthInputTokensFallback(c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 303}}, prepared, http.StatusUnauthorized)
 
 	require.Equal(t, http.StatusOK, rec.Code)
 	require.JSONEq(t, `{"input_tokens":1}`, rec.Body.String())
@@ -271,10 +276,10 @@ func TestEstimateOpenAIInputTokens_CompareWithOpenAIAPI(t *testing.T) {
 		},
 	}
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			prepared, err := gatewayprovider.PrepareAnthropicInputTokens(tc.anthropicBody, account, tc.defaultOpenAIModel)
+			prepared, err := gatewayprovider.PrepareAnthropicInputTokens(tc.anthropicBody, provider, tc.defaultOpenAIModel)
 			require.NoError(t, err)
 
 			estimated, err := tokenestimate.Responses(prepared.Request)

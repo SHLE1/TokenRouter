@@ -7,12 +7,12 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/stretchr/testify/require"
 )
 
 func TestOpenAI429RetryDelayHonorsBoundedRetryAfter(t *testing.T) {
-	deadline := time.Now().Add(accountcore.RuntimeRetryWindow)
+	deadline := time.Now().Add(providercore.RuntimeRetryWindow)
 	require.Equal(t, openAIOAuth429RetryDelay, OpenAI429RetryDelay(nil, deadline))
 	require.Equal(t, openAIOAuth429MaxRetryDelay, OpenAI429RetryDelay(http.Header{"Retry-After": []string{"90"}}, deadline))
 }

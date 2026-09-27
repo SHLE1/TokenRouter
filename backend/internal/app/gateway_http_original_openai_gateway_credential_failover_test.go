@@ -24,22 +24,21 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-func TestGatewayChatCredentialStopDoesNotSelectAnotherAccountAndReturnsSafe503(t *testing.T) {
-
+func TestGatewayChatCredentialStopDoesNotSelectAnotherProviderAndReturnsSafe503(t *testing.T) {
 	stopErr := &forwardcore.UpstreamFailoverError{
-		Stage:             forwardcore.GatewayFailureStageAccountAuth,
-		Scope:             forwardcore.GatewayFailureScopeProvider,
-		Reason:            forwardcore.GrokCredentialReasonProviderConfig,
-		NextAccountAction: forwardcore.NextAccountStop,
-		ClientStatusCode:  http.StatusTeapot,
-		ClientMessage:     "invalid_client client_secret=must-not-leak",
+		Stage:              forwardcore.GatewayFailureStageProviderAuth,
+		Scope:              forwardcore.GatewayFailureScopeShared,
+		Reason:             forwardcore.GrokCredentialReasonProviderConfig,
+		NextProviderAction: forwardcore.NextProviderStop,
+		ClientStatusCode:   http.StatusTeapot,
+		ClientMessage:      "invalid_client client_secret=must-not-leak",
 	}
 	state := failover.NewFailoverState[*forwardcore.UpstreamFailoverError](3, false, gatewaytelemetry.Failover)
 	action := state.HandleFailoverError(context.Background(), &mockTempUnscheduler{}, 71, capability.PlatformGrok, 0, stopErr)
 
 	require.Equal(t, failover.FailoverExhausted, action)
 	require.Zero(t, state.SwitchCount)
-	require.Empty(t, state.FailedAccountIDs)
+	require.Empty(t, state.FailedProviderIDs)
 
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
@@ -52,19 +51,18 @@ func TestGatewayChatCredentialStopDoesNotSelectAnotherAccountAndReturnsSafe503(t
 }
 
 func TestGatewayChatAntigravityCredentialFailureReturnsActionableMessage(t *testing.T) {
-
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 
 	(gatewayhttp.MessagesErrorOutput{}).ChatExhausted(c, &forwardcore.UpstreamFailoverError{
-		StatusCode:        http.StatusUnauthorized,
-		Stage:             forwardcore.GatewayFailureStageAccountAuth,
-		Scope:             forwardcore.GatewayFailureScopeAccount,
-		Reason:            forwardcore.AntigravityCredentialRejectedReason,
-		NextAccountAction: forwardcore.NextAccountRetry,
-		ClientStatusCode:  http.StatusBadGateway,
-		ClientMessage:     forwardcore.AntigravityCredentialRejectedClientMessage,
-		ResponseBody:      []byte(`{"error":{"message":"Invalid bearer token","refresh_token":"must-not-leak"}}`),
+		StatusCode:         http.StatusUnauthorized,
+		Stage:              forwardcore.GatewayFailureStageProviderAuth,
+		Scope:              forwardcore.GatewayFailureScopeProvider,
+		Reason:             forwardcore.AntigravityCredentialRejectedReason,
+		NextProviderAction: forwardcore.NextProviderRetry,
+		ClientStatusCode:   http.StatusBadGateway,
+		ClientMessage:      forwardcore.AntigravityCredentialRejectedClientMessage,
+		ResponseBody:       []byte(`{"error":{"message":"Invalid bearer token","refresh_token":"must-not-leak"}}`),
 	}, false)
 
 	require.Equal(t, http.StatusBadGateway, recorder.Code)
@@ -74,19 +72,18 @@ func TestGatewayChatAntigravityCredentialFailureReturnsActionableMessage(t *test
 }
 
 func TestOpenAIAccessStateCredentialFailureUsesTypedSafeResponse(t *testing.T) {
-
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 
-	(newGatewayHTTPEndpoints(gatewayHTTPFixtureInput{})).openAIAttemptSupport().HandleFailoverExhausted(c, &forwardcore.UpstreamFailoverError{
-		StatusCode:        http.StatusForbidden,
-		Stage:             forwardcore.GatewayFailureStageAccountAuth,
-		Scope:             forwardcore.GatewayFailureScopeAccount,
-		Reason:            forwardcore.OpenAIUpstreamAccessStateReason,
-		NextAccountAction: forwardcore.NextAccountRetry,
-		ClientStatusCode:  http.StatusBadGateway,
-		ClientMessage:     "Upstream access is temporarily unavailable, please retry later",
-		ResponseBody:      []byte(`{"error":{"message":"Your workspace is deactivated","token":"must-not-leak"}}`),
+	newGatewayHTTPEndpoints(gatewayHTTPFixtureInput{}).openAIAttemptSupport().HandleFailoverExhausted(c, &forwardcore.UpstreamFailoverError{
+		StatusCode:         http.StatusForbidden,
+		Stage:              forwardcore.GatewayFailureStageProviderAuth,
+		Scope:              forwardcore.GatewayFailureScopeProvider,
+		Reason:             forwardcore.OpenAIUpstreamAccessStateReason,
+		NextProviderAction: forwardcore.NextProviderRetry,
+		ClientStatusCode:   http.StatusBadGateway,
+		ClientMessage:      "Upstream access is temporarily unavailable, please retry later",
+		ResponseBody:       []byte(`{"error":{"message":"Your workspace is deactivated","token":"must-not-leak"}}`),
 	}, false)
 
 	require.Equal(t, http.StatusBadGateway, recorder.Code)
@@ -96,21 +93,20 @@ func TestOpenAIAccessStateCredentialFailureUsesTypedSafeResponse(t *testing.T) {
 }
 
 func TestOpenAICapacityFailoverExhaustionPreservesMessageAsServerError(t *testing.T) {
-
 	message := "Our servers are currently overloaded. Please try again later."
 	failoverErr := &forwardcore.UpstreamFailoverError{
-		StatusCode:             http.StatusBadRequest,
-		ResponseBody:           []byte(`{"error":{"code":"server_is_overloaded","message":"` + message + `"}}`),
-		RetryableOnSameAccount: true,
-		RequestScopedTransient: true,
-		ClientStatusCode:       http.StatusServiceUnavailable,
-		ClientMessage:          message,
+		StatusCode:              http.StatusBadRequest,
+		ResponseBody:            []byte(`{"error":{"code":"server_is_overloaded","message":"` + message + `"}}`),
+		RetryableOnSameProvider: true,
+		RequestScopedTransient:  true,
+		ClientStatusCode:        http.StatusServiceUnavailable,
+		ClientMessage:           message,
 	}
 
 	t.Run("native_openai", func(t *testing.T) {
 		recorder := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(recorder)
-		(newGatewayHTTPEndpoints(gatewayHTTPFixtureInput{})).openAIAttemptSupport().HandleFailoverExhausted(c, failoverErr, false)
+		newGatewayHTTPEndpoints(gatewayHTTPFixtureInput{}).openAIAttemptSupport().HandleFailoverExhausted(c, failoverErr, false)
 		require.Equal(t, http.StatusServiceUnavailable, recorder.Code)
 		require.Equal(t, "server_error", gjson.Get(recorder.Body.String(), "error.type").String())
 		require.Equal(t, message, gjson.Get(recorder.Body.String(), "error.message").String())
@@ -129,7 +125,7 @@ func TestOpenAICapacityFailoverExhaustionPreservesMessageAsServerError(t *testin
 	t.Run("anthropic_compat", func(t *testing.T) {
 		recorder := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(recorder)
-		(newGatewayHTTPEndpoints(gatewayHTTPFixtureInput{})).openAIAttemptSupport().HandleAnthropicFailoverExhausted(c, failoverErr, false)
+		newGatewayHTTPEndpoints(gatewayHTTPFixtureInput{}).openAIAttemptSupport().HandleAnthropicFailoverExhausted(c, failoverErr, false)
 		require.Equal(t, http.StatusServiceUnavailable, recorder.Code)
 		require.Equal(t, "api_error", gjson.Get(recorder.Body.String(), "error.type").String())
 		require.Equal(t, message, gjson.Get(recorder.Body.String(), "error.message").String())
@@ -137,7 +133,6 @@ func TestOpenAICapacityFailoverExhaustionPreservesMessageAsServerError(t *testin
 }
 
 func TestResponsesFailoverExhaustedAfterForwardedTerminalMarksOpsWithoutDuplicateFrame(t *testing.T) {
-
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	official := "event: response.failed\ndata: {\"type\":\"response.failed\",\"response\":{\"status\":\"failed\",\"error\":{\"code\":\"server_error\",\"message\":\"official failure\"}}}\n\n"
@@ -181,7 +176,6 @@ func TestResponsesFailoverExhaustedAfterForwardedTerminalMarksOpsWithoutDuplicat
 }
 
 func TestGatewayChatInferenceExhaustionRestoresRetryAfter(t *testing.T) {
-
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 
@@ -195,18 +189,17 @@ func TestGatewayChatInferenceExhaustionRestoresRetryAfter(t *testing.T) {
 }
 
 func TestCredentialFailoverExhaustionReturnsFixedSafe503(t *testing.T) {
-
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	h := newGatewayHTTPEndpoints(gatewayHTTPFixtureInput{})
 
 	h.openAIAttemptSupport().HandleFailoverExhausted(c, &forwardcore.UpstreamFailoverError{
-		Stage:             forwardcore.GatewayFailureStageAccountAuth,
-		Scope:             forwardcore.GatewayFailureScopeAccount,
-		Reason:            forwardcore.GrokCredentialReasonRevoked,
-		NextAccountAction: forwardcore.NextAccountRetry,
-		ClientStatusCode:  http.StatusTeapot,
-		ClientMessage:     "invalid_grant refresh_token=must-not-leak",
+		Stage:              forwardcore.GatewayFailureStageProviderAuth,
+		Scope:              forwardcore.GatewayFailureScopeProvider,
+		Reason:             forwardcore.GrokCredentialReasonRevoked,
+		NextProviderAction: forwardcore.NextProviderRetry,
+		ClientStatusCode:   http.StatusTeapot,
+		ClientMessage:      "invalid_grant refresh_token=must-not-leak",
 	}, false)
 
 	require.Equal(t, http.StatusServiceUnavailable, recorder.Code)
@@ -217,7 +210,6 @@ func TestCredentialFailoverExhaustionReturnsFixedSafe503(t *testing.T) {
 }
 
 func TestInferenceFailoverExhaustionRestoresRetryAfter(t *testing.T) {
-
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	h := newGatewayHTTPEndpoints(gatewayHTTPFixtureInput{})
@@ -232,7 +224,6 @@ func TestInferenceFailoverExhaustionRestoresRetryAfter(t *testing.T) {
 }
 
 func TestFailoverExhaustionRejectsSecretBearingRetryAfter(t *testing.T) {
-
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	h := newGatewayHTTPEndpoints(gatewayHTTPFixtureInput{})
@@ -248,7 +239,6 @@ func TestFailoverExhaustionRejectsSecretBearingRetryAfter(t *testing.T) {
 }
 
 func TestFailoverExhaustionRejectsFarFutureRetryAfterDate(t *testing.T) {
-
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	h := newGatewayHTTPEndpoints(gatewayHTTPFixtureInput{})
@@ -265,7 +255,6 @@ func TestFailoverExhaustionRejectsFarFutureRetryAfterDate(t *testing.T) {
 }
 
 func TestFailoverExhaustionAllowsBoundedRetryAfterDate(t *testing.T) {
-
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	h := newGatewayHTTPEndpoints(gatewayHTTPFixtureInput{})
@@ -290,8 +279,8 @@ func TestOpsRecoveredCredentialFailoverDoesNotCreateRequestError(t *testing.T) {
 		c.Set(gatewayhttp.OpsUpstreamErrorsKey, []*opscore.OpsUpstreamErrorEvent{
 			{Stage: string(forwardcore.GatewayFailureStageInference), UpstreamStatusCode: http.StatusForbidden, Message: "earlier inference failure"},
 			{
-				Stage: string(forwardcore.GatewayFailureStageAccountAuth), Scope: string(forwardcore.GatewayFailureScopeAccount),
-				Reason: string(forwardcore.GrokCredentialReasonRevoked), Message: "Grok OAuth credentials require account action",
+				Stage: string(forwardcore.GatewayFailureStageProviderAuth), Scope: string(forwardcore.GatewayFailureScopeProvider),
+				Reason: string(forwardcore.GrokCredentialReasonRevoked), Message: "Grok OAuth credentials require provider action",
 			},
 		})
 		c.JSON(http.StatusOK, gin.H{"ok": true})
@@ -304,12 +293,12 @@ func TestOpsRecoveredCredentialFailoverDoesNotCreateRequestError(t *testing.T) {
 	require.Equal(t, int64(1), queue.health.Length)
 	job := <-queue.jobs
 	require.Equal(t, http.StatusOK, job.entry.StatusCode)
-	require.Equal(t, string(forwardcore.GatewayFailureStageAccountAuth), job.entry.ErrorPhase)
+	require.Equal(t, string(forwardcore.GatewayFailureStageProviderAuth), job.entry.ErrorPhase)
 	require.NotNil(t, job.entry.UpstreamErrorsJSON)
 	events, err := opscore.ParseOpsUpstreamErrors(*job.entry.UpstreamErrorsJSON)
 	require.NoError(t, err)
 	require.Len(t, events, 2)
-	require.Equal(t, string(forwardcore.GatewayFailureStageAccountAuth), events[1].Stage)
+	require.Equal(t, string(forwardcore.GatewayFailureStageProviderAuth), events[1].Stage)
 }
 
 func TestOpsWebSocketCredentialFailoverSuccessDoesNotCreateRequestError(t *testing.T) {
@@ -320,8 +309,8 @@ func TestOpsWebSocketCredentialFailoverSuccessDoesNotCreateRequestError(t *testi
 	router.Use(gatewayhttp.OpsErrorLoggerMiddleware(ops, queue, gatewayhttp.OpsObservationAccess{}))
 	router.GET("/openai/v1/responses", func(c *gin.Context) {
 		c.Set(gatewayhttp.OpsUpstreamErrorsKey, []*opscore.OpsUpstreamErrorEvent{{
-			Stage: string(forwardcore.GatewayFailureStageAccountAuth), Scope: string(forwardcore.GatewayFailureScopeAccount),
-			Reason: string(forwardcore.GrokCredentialReasonRevoked), Message: "Grok OAuth credentials require account action",
+			Stage: string(forwardcore.GatewayFailureStageProviderAuth), Scope: string(forwardcore.GatewayFailureScopeProvider),
+			Reason: string(forwardcore.GrokCredentialReasonRevoked), Message: "Grok OAuth credentials require provider action",
 		}})
 	})
 
@@ -335,12 +324,12 @@ func TestOpsWebSocketCredentialFailoverSuccessDoesNotCreateRequestError(t *testi
 	require.Equal(t, int64(1), queue.health.Length)
 	job := <-queue.jobs
 	require.Equal(t, http.StatusOK, job.entry.StatusCode)
-	require.Equal(t, string(forwardcore.GatewayFailureStageAccountAuth), job.entry.ErrorPhase)
+	require.Equal(t, string(forwardcore.GatewayFailureStageProviderAuth), job.entry.ErrorPhase)
 	require.NotNil(t, job.entry.UpstreamErrorsJSON)
 	events, err := opscore.ParseOpsUpstreamErrors(*job.entry.UpstreamErrorsJSON)
 	require.NoError(t, err)
 	require.Len(t, events, 1)
-	require.Equal(t, string(forwardcore.GatewayFailureStageAccountAuth), events[0].Stage)
+	require.Equal(t, string(forwardcore.GatewayFailureStageProviderAuth), events[0].Stage)
 }
 
 func TestOpsWebSocketCredentialFailoverExhaustedIsRecorded(t *testing.T) {
@@ -351,14 +340,14 @@ func TestOpsWebSocketCredentialFailoverExhaustedIsRecorded(t *testing.T) {
 	router.Use(gatewayhttp.OpsErrorLoggerMiddleware(ops, queue, gatewayhttp.OpsObservationAccess{}))
 	router.GET("/openai/v1/responses", func(c *gin.Context) {
 		c.Set(gatewayhttp.OpsUpstreamErrorsKey, []*opscore.OpsUpstreamErrorEvent{{
-			Stage: string(forwardcore.GatewayFailureStageAccountAuth), Scope: string(forwardcore.GatewayFailureScopeAccount),
-			Reason: string(forwardcore.GrokCredentialReasonRevoked), Message: "Grok OAuth credentials require account action",
+			Stage: string(forwardcore.GatewayFailureStageProviderAuth), Scope: string(forwardcore.GatewayFailureScopeProvider),
+			Reason: string(forwardcore.GrokCredentialReasonRevoked), Message: "Grok OAuth credentials require provider action",
 		}})
 		closeOpenAIWSFailoverExhausted(c, nil, &forwardcore.UpstreamFailoverError{
-			Stage:             forwardcore.GatewayFailureStageAccountAuth,
-			Scope:             forwardcore.GatewayFailureScopeAccount,
-			Reason:            forwardcore.GrokCredentialReasonRevoked,
-			NextAccountAction: forwardcore.NextAccountStop,
+			Stage:              forwardcore.GatewayFailureStageProviderAuth,
+			Scope:              forwardcore.GatewayFailureScopeProvider,
+			Reason:             forwardcore.GrokCredentialReasonRevoked,
+			NextProviderAction: forwardcore.NextProviderStop,
 		})
 	})
 
@@ -371,7 +360,7 @@ func TestOpsWebSocketCredentialFailoverExhaustedIsRecorded(t *testing.T) {
 	require.Equal(t, http.StatusOK, recorder.Code)
 	require.Equal(t, int64(1), queue.health.Length)
 	job := <-queue.jobs
-	require.Equal(t, "account_auth", job.entry.ErrorPhase)
+	require.Equal(t, "provider_auth", job.entry.ErrorPhase)
 	require.Equal(t, http.StatusServiceUnavailable, job.entry.StatusCode)
 	require.Equal(t, forwardcore.GrokCredentialUnavailableClientMessage, job.entry.ErrorMessage)
 }

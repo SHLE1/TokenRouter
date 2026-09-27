@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"strings"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	upstreamcore "github.com/TokenFlux/TokenRouter/internal/upstream"
 )
 
-type ImageCapability = accountcore.OpenAIImagesCapability
+type ImageCapability = providercore.OpenAIImagesCapability
 
 const (
 	ImageCapabilityBasic  ImageCapability = "images-basic"
@@ -37,15 +37,15 @@ func ParseImageRequest(endpoint, contentType string, body []byte, validateModel 
 	return req, nil
 }
 
-// ImageExecutionPath 保留 API Key 与 OAuth 的执行分支，不放宽账号类型。
-func ImageExecutionPath(accountType string) (bool, error) {
-	switch accountType {
+// ImageExecutionPath 保留 API Key 与 OAuth 的执行分支，不放宽提供商类型。
+func ImageExecutionPath(providerType string) (bool, error) {
+	switch providerType {
 	case "apikey":
 		return false, nil
 	case "oauth", "setup-token":
 		return true, nil
 	default:
-		return false, fmt.Errorf("unsupported account type: %s", accountType)
+		return false, fmt.Errorf("unsupported provider type: %s", providerType)
 	}
 }
 
@@ -91,7 +91,7 @@ func (r *ImageRequest) StickySessionSeed() string {
 	return NativeImageRequest(r).StickySessionSeed()
 }
 
-// ValidateRoutingModel 使用分组映射后的模型 C 校验 Images 端点，并同步账号选择所需的图片能力。
+// ValidateRoutingModel 使用分组映射后的模型 C 校验 Images 端点，并同步提供商选择所需的图片能力。
 func (r *ImageRequest) ValidateRoutingModel(routingModel string) error {
 	if err := ValidateImageModel(routingModel); err != nil {
 		return err
@@ -231,7 +231,7 @@ func ApplyNativeImageRequest(target *ImageRequest, value *upstreamcore.ImageRequ
 	target.BodyHash = value.BodyHash
 }
 
-// ResolveImageModels 在已选账号上按原顺序校验分组映射模型、账号映射及上游模型。
+// ResolveImageModels 在已选提供商上按原顺序校验分组映射模型、提供商映射及上游模型。
 func ResolveImageModels(requested, groupMapped, fallback string, resolve func(string) string) (string, string, error) {
 	model := strings.TrimSpace(requested)
 	if mapped := strings.TrimSpace(groupMapped); mapped != "" {

@@ -4,8 +4,8 @@ import (
 	"strings"
 )
 
-// ErrorPhaseAccountAuth 保留供应商账号认证失败的观测阶段值。
-const ErrorPhaseAccountAuth = "account_auth"
+// ErrorPhaseProviderAuth 保留供应商提供商认证失败的观测阶段值。
+const ErrorPhaseProviderAuth = "provider_auth"
 
 // isKnownOpsErrorType returns true if t is a recognized error type used by the
 // ops classification pipeline.  Upstream proxies sometimes return garbage values
@@ -60,7 +60,7 @@ func NormalizeErrorType(errType string, code string, message ...string) string {
 
 func classifyOpsPhase(errType, message, code string) string {
 	msg := strings.ToLower(message)
-	// 标准阶段：request|auth|account_auth|routing|upstream|network|internal。
+	// 标准阶段：request|auth|provider_auth|routing|upstream|network|internal。
 	// Map billing/concurrency/response => request; scheduling => routing.
 	if isOpsClientAuthError(code, msg) {
 		return "auth"
@@ -84,7 +84,7 @@ func classifyOpsPhase(errType, message, code string) string {
 	case "upstream_error", "overloaded_error":
 		return "upstream"
 	case "api_error":
-		if IsNoAvailableAccountMessage(msg) {
+		if IsNoAvailableProviderMessage(msg) {
 			return "routing"
 		}
 		return "internal"
@@ -120,11 +120,11 @@ func ClassifyRequestError(input ErrorClassificationInput) (phase string, isBusin
 	localModelConfiguration := clientBusinessLimited && input.LocalModelConfiguration
 	upstreamError := input.UpstreamError
 	upstreamClientInvalidRequest := input.UpstreamClientInvalidRequest
-	accountAuthFailure := input.AccountAuthFailure
+	providerAuthFailure := input.ProviderAuthFailure
 	if localModelConfiguration {
 		phase = "routing"
-	} else if accountAuthFailure && !routingCapacityLimited {
-		phase = "account_auth"
+	} else if providerAuthFailure && !routingCapacityLimited {
+		phase = "provider_auth"
 	} else if upstreamClientInvalidRequest && !routingCapacityLimited {
 		phase = "request"
 	} else if upstreamError && !routingCapacityLimited {
@@ -182,7 +182,7 @@ func isOpsClientAuthError(code string, msg string) bool {
 		strings.Contains(msg, "api key is required") ||
 		strings.Contains(msg, "api key is disabled") ||
 		strings.Contains(msg, "user associated with api key not found") ||
-		strings.Contains(msg, "user account is not active") ||
+		strings.Contains(msg, "user provider is not active") ||
 		strings.Contains(msg, "api key 所属分组已删除") ||
 		strings.Contains(msg, "api key 所属分组已停用") ||
 		strings.Contains(msg, "api key is not assigned to any group")
@@ -203,7 +203,7 @@ func isOpsLocalBusinessLimitError(code string, msg string) bool {
 		strings.Contains(msg, "no active subscription found for this group") ||
 		strings.Contains(msg, "subscription is invalid or expired") ||
 		strings.Contains(msg, opsErrInsufficientBalance) ||
-		strings.Contains(msg, "insufficient account balance") ||
+		strings.Contains(msg, "insufficient provider balance") ||
 		strings.Contains(msg, "api key group platform is not gemini") ||
 		strings.Contains(msg, "api key 额度已用完") ||
 		strings.Contains(msg, "api key 5小时限额已用完") ||
@@ -228,22 +228,22 @@ func isOpsLocalBusinessLimitError(code string, msg string) bool {
 		(strings.Contains(msg, "beta feature ") && strings.Contains(msg, " is not allowed")) ||
 		(strings.Contains(msg, "openai service_tier=") && strings.Contains(msg, " is not allowed for model")) ||
 		// 本地客户端策略与会话隔离拒绝属于用户配置限制，不计入 SLA。
-		strings.Contains(msg, "this account only allows codex official clients") ||
-		strings.Contains(msg, "this account only allows clients matched by the configured tls router") ||
-		strings.Contains(msg, "this account only allows configured openai oauth clients") ||
+		strings.Contains(msg, "this provider only allows codex official clients") ||
+		strings.Contains(msg, "this provider only allows clients matched by the configured tls router") ||
+		strings.Contains(msg, "this provider only allows configured openai oauth clients") ||
 		strings.Contains(msg, "this session already belongs to another group and cannot switch to the current session-isolated group") ||
 		strings.Contains(msg, "openai wsv1 is temporarily unsupported") ||
 		strings.Contains(msg, "openai codex passthrough requires a non-empty instructions field")
 }
 
-// IsNoAvailableAccountMessage 识别原路由容量提示，供 HTTP 观测标记复用。
-func IsNoAvailableAccountMessage(message string) bool {
+// IsNoAvailableProviderMessage 识别原路由容量提示，供 HTTP 观测标记复用。
+func IsNoAvailableProviderMessage(message string) bool {
 	msg := strings.ToLower(message)
-	return strings.Contains(msg, opsErrNoAvailableAccounts) ||
-		strings.Contains(msg, "no available account") ||
-		strings.Contains(msg, "no available gemini accounts") ||
-		strings.Contains(msg, "no available openai accounts") ||
-		strings.Contains(msg, "no available compatible accounts")
+	return strings.Contains(msg, opsErrNoAvailableProviders) ||
+		strings.Contains(msg, "no available provider") ||
+		strings.Contains(msg, "no available gemini providers") ||
+		strings.Contains(msg, "no available openai providers") ||
+		strings.Contains(msg, "no available compatible providers")
 }
 
 func classifyOpsErrorOwner(phase string, message string) string {
@@ -251,7 +251,7 @@ func classifyOpsErrorOwner(phase string, message string) string {
 	switch phase {
 	case "upstream", "network":
 		return "provider"
-	case "account_auth":
+	case "provider_auth":
 		return "provider"
 	case "request", "auth":
 		return "client"
@@ -270,7 +270,7 @@ func classifyOpsErrorSource(phase string, message string) string {
 	switch phase {
 	case "upstream":
 		return "upstream_http"
-	case "account_auth":
+	case "provider_auth":
 		return "gateway"
 	case "network":
 		return "gateway"
@@ -287,7 +287,7 @@ func classifyOpsErrorSource(phase string, message string) string {
 }
 
 const (
-	opsErrNoAvailableAccounts    = "no available accounts"
+	opsErrNoAvailableProviders   = "no available providers"
 	opsErrInsufficientBalance    = "insufficient balance"
 	opsCodeInsufficientBalance   = "INSUFFICIENT_BALANCE"
 	opsCodeUsageLimitExceeded    = "USAGE_LIMIT_EXCEEDED"
@@ -310,5 +310,5 @@ type ErrorClassificationInput struct {
 	Type, Message, Code                                                    string
 	Status                                                                 int
 	RoutingCapacityLimited, ClientBusinessLimited, LocalModelConfiguration bool
-	UpstreamError, UpstreamClientInvalidRequest, AccountAuthFailure        bool
+	UpstreamError, UpstreamClientInvalidRequest, ProviderAuthFailure       bool
 }

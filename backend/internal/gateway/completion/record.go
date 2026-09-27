@@ -17,21 +17,21 @@ func (s *Recorder) RecordAnthropic(ctx context.Context, input *Input, opts *Pric
 	result := input.Result
 	apiKey := s.keyWithBillingSettings(ctx, input.APIKey)
 	user := input.User
-	account := input.Account
+	provider := input.Provider
 	subscription := input.Subscription
-	s.normalizeResult(result, account, false, account)
+	s.normalizeResult(result, provider, false, provider)
 
 	// 强制缓存计费：将 input_tokens 转为 cache_read_input_tokens
 	// 用于粘性会话切换时的特殊计费处理
 	if input.ForceCacheBilling && result.Usage.InputTokens > 0 {
-		s.printf("service.gateway", "force_cache_billing: %d input_tokens → cache_read_input_tokens (account=%d)",
-			result.Usage.InputTokens, account.ID)
+		s.printf("service.gateway", "force_cache_billing: %d input_tokens → cache_read_input_tokens (provider=%d)",
+			result.Usage.InputTokens, provider.ID)
 		result.Usage.CacheReadInputTokens += result.Usage.InputTokens
 		result.Usage.InputTokens = 0
 	}
 
-	// Cache TTL Override: 确保计费时 token 分类与账号设置一致。
-	// 账号级设置优先；全局 1h 请求注入开启时，默认把 usage 计费归回 5m。
+	// Cache TTL Override: 确保计费时 token 分类与提供商设置一致。
+	// 提供商级设置优先；全局 1h 请求注入开启时，默认把 usage 计费归回 5m。
 	cacheTTLOverridden := false
 	if overrideTarget := s.cacheOverrideTarget(ctx, input); overrideTarget != "" {
 		applyCacheOverride(&result.Usage, overrideTarget)
@@ -81,7 +81,7 @@ func (s *Recorder) RecordAnthropic(ctx context.Context, input *Input, opts *Pric
 	}
 
 	// 计算费用
-	cost := s.CalculateRecordUsageCost(ctx, result, apiKey, account, billingModel, requestedModel, input.BillingModelSource, input.GroupMappedModel, multiplier, imageMultiplier, opts)
+	cost := s.CalculateRecordUsageCost(ctx, result, apiKey, provider, billingModel, requestedModel, input.BillingModelSource, input.GroupMappedModel, multiplier, imageMultiplier, opts)
 
 	// 预填 billing_type 仅用于 simple mode / 持久化前对象，真实扣费结果会在统一扣费后回填。
 	isSubscriptionBilling := subscription != nil
@@ -91,14 +91,14 @@ func (s *Recorder) RecordAnthropic(ctx context.Context, input *Input, opts *Pric
 	}
 
 	// 创建使用日志
-	accountRateMultiplier := account.RateMultiplier
-	usageLog := s.BuildRecordUsageLog(ctx, input, result, apiKey, user, account, subscription,
-		requestedModel, multiplier, imageMultiplier, accountRateMultiplier, billingType, cacheTTLOverridden, cost, opts)
+	providerRateMultiplier := provider.RateMultiplier
+	usageLog := s.BuildRecordUsageLog(ctx, input, result, apiKey, user, provider, subscription,
+		requestedModel, multiplier, imageMultiplier, providerRateMultiplier, billingType, cacheTTLOverridden, cost, opts)
 
-	// 计算账号统计定价费用（Qoder 会先按原始请求 alias、再按分组映射模型 / 最终 upstream 匹配自定义规则）
+	// 计算提供商统计定价费用（Qoder 会先按原始请求 alias、再按分组映射模型 / 最终 upstream 匹配自定义规则）
 	if apiKey.GroupID != nil {
-		s.applyAccountStatsCost(ctx, usageLog,
-			account.ID, *apiKey.GroupID, result.UpstreamModel, requestedModel, input.GroupMappedModel,
+		s.applyProviderStatsCost(ctx, usageLog,
+			provider.ID, *apiKey.GroupID, result.UpstreamModel, requestedModel, input.GroupMappedModel,
 			// Anthropic's input_tokens excludes cache_read and cache_creation (billed separately);
 			// OpenAI gateway uses actualInputTokens which also excludes cache_read for the same reason.
 			UsageTokens{
@@ -114,7 +114,7 @@ func (s *Recorder) RecordAnthropic(ctx context.Context, input *Input, opts *Pric
 	if s.simple {
 		s.WriteUsage(ctx, usageLog, "service.gateway")
 		s.printf("service.gateway", "[SIMPLE MODE] Usage recorded (not billed): user=%d, tokens=%d", usageLog.UserID, usageLog.TotalTokens())
-		s.effects.AccountUsed(account.ID)
+		s.effects.ProviderUsed(provider.ID)
 		return nil
 	}
 
@@ -124,10 +124,10 @@ func (s *Recorder) RecordAnthropic(ctx context.Context, input *Input, opts *Pric
 		Cost:                            cost,
 		User:                            user,
 		APIKey:                          apiKey,
-		Account:                         account,
+		Provider:                        provider,
 		Subscription:                    subscription,
 		RequestPayloadHash:              input.RequestPayloadHash,
-		AccountRateMultiplier:           accountRateMultiplier,
+		ProviderRateMultiplier:          providerRateMultiplier,
 		SubscriptionRateMultiplier:      subscriptionMultiplier,
 		SubscriptionRateMultiplierScale: subscriptionMultiplierScale,
 		BalanceRateMultiplier:           balanceMultiplier,
@@ -150,12 +150,12 @@ func (s *Recorder) BuildRecordUsageLog(
 	result *Result,
 	apiKey *KeySnapshot,
 	user *PayerSnapshot,
-	account *AccountSnapshot,
+	provider *ProviderSnapshot,
 	subscription *billing.UserSubscription,
 	requestedModel string,
 	multiplier float64,
 	imageMultiplier float64,
-	accountRateMultiplier float64,
+	providerRateMultiplier float64,
 	billingType int8,
 	cacheTTLOverridden bool,
 	cost *CostBreakdown,
@@ -168,8 +168,8 @@ func (s *Recorder) BuildRecordUsageLog(
 		BillingUserID:     user.ID,
 		TeamID:            apiKey.TeamID,
 		APIKeyID:          apiKey.ID,
-		AccountID:         account.ID,
-		Platform:          account.Platform,
+		ProviderID:        provider.ID,
+		Platform:          provider.Platform,
 		RequestID:         requestID,
 		UpstreamRequestID: result.UpstreamRequestID,
 		Model:             result.Model,
@@ -180,38 +180,38 @@ func (s *Recorder) BuildRecordUsageLog(
 			result.RequestedReasoningEffort,
 			input.RequestedReasoningEffort,
 		),
-		ServiceTier:           OptionalTrimmedStringPtr(ForwardServiceTier(result)),
-		InboundEndpoint:       OptionalTrimmedStringPtr(input.InboundEndpoint),
-		UpstreamEndpoint:      OptionalTrimmedStringPtr(input.UpstreamEndpoint),
-		InputTokens:           result.Usage.InputTokens,
-		OutputTokens:          result.Usage.OutputTokens,
-		CacheCreationTokens:   result.Usage.CacheCreationInputTokens,
-		CacheReadTokens:       result.Usage.CacheReadInputTokens,
-		CacheCreation5mTokens: result.Usage.CacheCreation5mTokens,
-		CacheCreation1hTokens: result.Usage.CacheCreation1hTokens,
-		ImageOutputTokens:     result.Usage.ImageOutputTokens,
-		RateMultiplier:        multiplier,
-		AccountRateMultiplier: &accountRateMultiplier,
-		BillingType:           billingType,
-		BillingMode:           ResolveBillingMode(result, cost),
-		Stream:                result.Stream,
-		DurationMs:            &durationMs,
-		FirstTokenMs:          result.FirstTokenMs,
-		ImageCount:            result.ImageCount,
-		ImageSize:             OptionalTrimmedStringPtr(result.ImageSize),
-		ImageInputSize:        OptionalTrimmedStringPtr(result.ImageInputSize),
-		ImageOutputSize:       OptionalTrimmedStringPtr(result.ImageOutputSize),
-		ImageSizeSource:       OptionalTrimmedStringPtr(result.ImageSizeSource),
-		ImageSizeBreakdown:    result.ImageSizeBreakdown,
-		CacheTTLOverridden:    cacheTTLOverridden,
-		PricingConfigID:       OptionalInt64Ptr(input.PricingConfigID),
-		ModelMappingChain:     OptionalTrimmedStringPtr(input.ModelMappingChain),
-		UserAgent:             OptionalTrimmedStringPtr(input.UserAgent),
-		IPAddress:             OptionalTrimmedStringPtr(input.IPAddress),
-		SessionID:             OptionalTrimmedStringPtr(input.ClientSessionID),
-		GroupID:               apiKey.GroupID,
-		SubscriptionID:        optionalSubscriptionID(subscription),
-		CreatedAt:             time.Now(),
+		ServiceTier:            OptionalTrimmedStringPtr(ForwardServiceTier(result)),
+		InboundEndpoint:        OptionalTrimmedStringPtr(input.InboundEndpoint),
+		UpstreamEndpoint:       OptionalTrimmedStringPtr(input.UpstreamEndpoint),
+		InputTokens:            result.Usage.InputTokens,
+		OutputTokens:           result.Usage.OutputTokens,
+		CacheCreationTokens:    result.Usage.CacheCreationInputTokens,
+		CacheReadTokens:        result.Usage.CacheReadInputTokens,
+		CacheCreation5mTokens:  result.Usage.CacheCreation5mTokens,
+		CacheCreation1hTokens:  result.Usage.CacheCreation1hTokens,
+		ImageOutputTokens:      result.Usage.ImageOutputTokens,
+		RateMultiplier:         multiplier,
+		ProviderRateMultiplier: &providerRateMultiplier,
+		BillingType:            billingType,
+		BillingMode:            ResolveBillingMode(result, cost),
+		Stream:                 result.Stream,
+		DurationMs:             &durationMs,
+		FirstTokenMs:           result.FirstTokenMs,
+		ImageCount:             result.ImageCount,
+		ImageSize:              OptionalTrimmedStringPtr(result.ImageSize),
+		ImageInputSize:         OptionalTrimmedStringPtr(result.ImageInputSize),
+		ImageOutputSize:        OptionalTrimmedStringPtr(result.ImageOutputSize),
+		ImageSizeSource:        OptionalTrimmedStringPtr(result.ImageSizeSource),
+		ImageSizeBreakdown:     result.ImageSizeBreakdown,
+		CacheTTLOverridden:     cacheTTLOverridden,
+		PricingConfigID:        OptionalInt64Ptr(input.PricingConfigID),
+		ModelMappingChain:      OptionalTrimmedStringPtr(input.ModelMappingChain),
+		UserAgent:              OptionalTrimmedStringPtr(input.UserAgent),
+		IPAddress:              OptionalTrimmedStringPtr(input.IPAddress),
+		SessionID:              OptionalTrimmedStringPtr(input.ClientSessionID),
+		GroupID:                apiKey.GroupID,
+		SubscriptionID:         optionalSubscriptionID(subscription),
+		CreatedAt:              time.Now(),
 	}
 	if result.ImageCount > 0 && (cost == nil || cost.BillingMode != string(BillingModeToken)) {
 		usageLog.RateMultiplier = imageMultiplier
@@ -238,22 +238,22 @@ func (s *Recorder) RecordOpenAI(ctx context.Context, input *Input) error {
 	if result == nil {
 		return errors.New("openai usage result is nil")
 	}
-	if s.health != nil && input.Account != nil && (input.Account.OpenAI || input.Account.CNProvider) {
-		s.health.ResetOpenAI403Counter(ctx, input.Account.ID)
+	if s.health != nil && input.Provider != nil && (input.Provider.OpenAI || input.Provider.CNProvider) {
+		s.health.ResetOpenAI403Counter(ctx, input.Provider.ID)
 	}
-	apiKey, user, account, subscription := s.keyWithBillingSettings(ctx, input.APIKey), input.User, input.Account, input.Subscription
-	if apiKey == nil || user == nil || account == nil {
-		return errors.New("openai usage input requires api key, user, and account")
+	apiKey, user, provider, subscription := s.keyWithBillingSettings(ctx, input.APIKey), input.User, input.Provider, input.Subscription
+	if apiKey == nil || user == nil || provider == nil {
+		return errors.New("openai usage input requires api key, user, and provider")
 	}
-	billingAccount := account
-	if s.accounts != nil {
+	billingProvider := provider
+	if s.providers != nil {
 		var err error
-		billingAccount, err = s.accounts.CredentialAccount(ctx, *account)
+		billingProvider, err = s.providers.CredentialProvider(ctx, *provider)
 		if err != nil {
 			return err
 		}
 	}
-	s.normalizeResult(result, billingAccount, true, account)
+	s.normalizeResult(result, billingProvider, true, provider)
 
 	// OpenAI input_tokens 是总输入，包含缓存读取和缓存写入明细。
 	// 将三类 token 拆成互斥桶，避免缓存写入同时按普通输入和 cache_write 重复计费。
@@ -303,7 +303,7 @@ func (s *Recorder) RecordOpenAI(ctx context.Context, input *Input) error {
 	var err error
 	billingModel := OpenAIUsageBillingModel(result, input.PricingUsageFields)
 	billingModels := s.models.Candidates(billingModel, result.BillingModel, input.GroupMappedModel, input.OriginalModel, result.UpstreamModel, result.Model)
-	billingModels = s.FilterCNProviderBillingModelCandidates(ctx, account, apiKey, billingModels)
+	billingModels = s.FilterCNProviderBillingModelCandidates(ctx, provider, apiKey, billingModels)
 	serviceTier := ""
 	if result.ServiceTier != nil {
 		serviceTier = strings.TrimSpace(*result.ServiceTier)
@@ -325,14 +325,14 @@ func (s *Recorder) RecordOpenAI(ctx context.Context, input *Input) error {
 		if !IsUsagePricingUnavailableError(err) {
 			return err
 		}
-		s.observeEvent(BillingEvent{Kind: "pricing_missing", Component: "service.openai_gateway", Models: billingModels, RequestedModel: input.OriginalModel, MappedModel: input.GroupMappedModel, UpstreamModel: result.UpstreamModel, KeyID: apiKey.ID, AccountID: account.ID, Err: err})
+		s.observeEvent(BillingEvent{Kind: "pricing_missing", Component: "service.openai_gateway", Models: billingModels, RequestedModel: input.OriginalModel, MappedModel: input.GroupMappedModel, UpstreamModel: result.UpstreamModel, KeyID: apiKey.ID, ProviderID: provider.ID, Err: err})
 		cost = &CostBreakdown{BillingMode: string(BillingModeToken)}
 	}
 
-	// 免费 Fast 只减免用户侧费用。保留 Fast 的 TotalCost 供账号统计和审计，
+	// 免费 Fast 只减免用户侧费用。保留 Fast 的 TotalCost 供提供商统计和审计，
 	// 并记录 Standard 基础金额供统一订阅/余额分配使用。
 	var billingBaseAmountUSD *float64
-	if GroupBillsOpenAIFastAtStandard(apiKey, billingAccount, serviceTier) && cost != nil {
+	if GroupBillsOpenAIFastAtStandard(apiKey, billingProvider, serviceTier) && cost != nil {
 		standardCost, standardErr := s.CalculateOpenAIRecordUsageCostAt(
 			ctx,
 			result,
@@ -351,7 +351,7 @@ func (s *Recorder) RecordOpenAI(ctx context.Context, input *Input) error {
 				return standardErr
 			}
 			// 标准价不可用时沿用既有缺价行为：不向用户扣费，但保留 Fast
-			// 成本用于账号统计，避免一次新策略把成功请求变成计费错误。
+			// 成本用于提供商统计，避免一次新策略把成功请求变成计费错误。
 			s.observeEvent(BillingEvent{Kind: "standard_pricing_missing", Component: "service.openai_gateway", RequestID: result.RequestID, Err: standardErr})
 			standardCost = &CostBreakdown{}
 		}
@@ -369,7 +369,7 @@ func (s *Recorder) RecordOpenAI(ctx context.Context, input *Input) error {
 
 	// Create usage log
 	durationMs := int(result.Duration.Milliseconds())
-	accountRateMultiplier := account.RateMultiplier
+	providerRateMultiplier := provider.RateMultiplier
 	requestID := input.RequestID
 	if result.OpenAIWSMode {
 		if upstreamRequestID := strings.TrimSpace(result.RequestID); upstreamRequestID != "" {
@@ -399,8 +399,8 @@ func (s *Recorder) RecordOpenAI(ctx context.Context, input *Input) error {
 		BillingUserID:     user.ID,
 		TeamID:            apiKey.TeamID,
 		APIKeyID:          apiKey.ID,
-		AccountID:         account.ID,
-		Platform:          account.Platform,
+		ProviderID:        provider.ID,
+		Platform:          provider.Platform,
 		RequestID:         requestID,
 		UpstreamRequestID: result.UpstreamRequestID,
 		Model:             result.Model,
@@ -452,7 +452,7 @@ func (s *Recorder) RecordOpenAI(ctx context.Context, input *Input) error {
 	} else {
 		usageLog.RateMultiplier = multiplier
 	}
-	usageLog.AccountRateMultiplier = &accountRateMultiplier
+	usageLog.ProviderRateMultiplier = &providerRateMultiplier
 	usageLog.BillingType = billingType
 	usageLog.Stream = result.Stream
 	usageLog.NativeCompactionV2 = input.NativeCompactionV2
@@ -500,17 +500,17 @@ func (s *Recorder) RecordOpenAI(ctx context.Context, input *Input) error {
 		usageLog.SubscriptionID = &subscription.ID
 	}
 
-	// 计算账号统计定价费用（Qoder 会先按原始请求 alias、再按分组映射模型 / 最终 upstream 匹配自定义规则）
+	// 计算提供商统计定价费用（Qoder 会先按原始请求 alias、再按分组映射模型 / 最终 upstream 匹配自定义规则）
 	if apiKey.GroupID != nil {
-		s.applyAccountStatsCost(ctx, usageLog,
-			account.ID, *apiKey.GroupID, result.UpstreamModel, requestedModel, input.GroupMappedModel,
+		s.applyProviderStatsCost(ctx, usageLog,
+			provider.ID, *apiKey.GroupID, result.UpstreamModel, requestedModel, input.GroupMappedModel,
 			tokens)
 	}
 
 	if s.simple {
 		s.WriteUsage(ctx, usageLog, "service.openai_gateway")
 		s.printf("service.openai_gateway", "[SIMPLE MODE] Usage recorded (not billed): user=%d, tokens=%d", usageLog.UserID, usageLog.TotalTokens())
-		s.effects.AccountUsed(account.ID)
+		s.effects.ProviderUsed(provider.ID)
 		return nil
 	}
 
@@ -520,10 +520,10 @@ func (s *Recorder) RecordOpenAI(ctx context.Context, input *Input) error {
 			Cost:                            cost,
 			User:                            user,
 			APIKey:                          apiKey,
-			Account:                         account,
+			Provider:                        provider,
 			Subscription:                    subscription,
 			RequestPayloadHash:              input.RequestPayloadHash,
-			AccountRateMultiplier:           accountRateMultiplier,
+			ProviderRateMultiplier:          providerRateMultiplier,
 			SubscriptionRateMultiplier:      subscriptionMultiplier,
 			SubscriptionRateMultiplierScale: subscriptionMultiplierScale,
 			BalanceRateMultiplier:           balanceMultiplier,

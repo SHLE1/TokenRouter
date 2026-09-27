@@ -97,7 +97,7 @@ services:
       - REDIS_ENABLE_TLS=${REDIS_ENABLE_TLS:-false}
 
       # =======================================================================
-      # Admin Account (auto-created on first run)
+      # Admin Provider (auto-created on first run)
       # =======================================================================
       - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@sub2api.local}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
@@ -139,7 +139,7 @@ services:
       - TZ=${TZ:-Asia/Shanghai}
 
       # =======================================================================
-      # Gemini OAuth Configuration (for Gemini accounts)
+      # Gemini OAuth Configuration (for Gemini providers)
       # =======================================================================
       - GEMINI_OAUTH_CLIENT_ID=${GEMINI_OAUTH_CLIENT_ID:-}
       - GEMINI_OAUTH_CLIENT_SECRET=${GEMINI_OAUTH_CLIENT_SECRET:-}

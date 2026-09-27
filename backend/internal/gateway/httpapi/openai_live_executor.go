@@ -5,11 +5,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway/completion"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
@@ -23,18 +23,18 @@ type OpenAILiveOptions struct {
 	ObserverRetryInterval time.Duration
 }
 
-// LiveAccountSelection 只提供创建时选择和长连接逐轮资格复核。
-type LiveAccountSelection interface {
-	SelectAccountWithSchedulerForCapability(context.Context, *int64, string, string, string, map[int64]struct{}, egress.OpenAIUpstreamTransport, account.OpenAIEndpointCapability, bool, bool, ...string) (*provider.SelectionResult, scheduler.PlatformDecision, error)
-	ResolveOpenAIWSRoutingModelForAccount(context.Context, *int64, *provider.ExecutionAccount, string, account.OpenAIEndpointCapability) (string, error)
+// LiveProviderSelection 只提供创建时选择和长连接逐轮资格复核。
+type LiveProviderSelection interface {
+	SelectProviderWithSchedulerForCapability(context.Context, *int64, string, string, string, map[int64]struct{}, egress.OpenAIUpstreamTransport, provider.OpenAIEndpointCapability, bool, bool, ...string) (*gatewayadapter.SelectionResult, scheduler.PlatformDecision, error)
+	ResolveOpenAIWSRoutingModelForProvider(context.Context, *int64, *gatewayadapter.ExecutionProvider, string, provider.OpenAIEndpointCapability) (string, error)
 }
 
 // OpenAILiveExecutor 只持有Live技术依赖与观察者登记，共用既有会话、租约和传输。
 type OpenAILiveExecutor struct {
 	Options             OpenAILiveOptions
 	Requests            *OpenAIRequests
-	Selection           LiveAccountSelection
-	Routes              *provider.RoutePlanner
+	Selection           LiveProviderSelection
+	Routes              *gatewayadapter.RoutePlanner
 	Store               session.LiveCallStore
 	Leases              scheduler.LiveConcurrencyCache
 	Usage               *completion.Recorder

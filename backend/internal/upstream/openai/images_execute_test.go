@@ -91,7 +91,7 @@ func TestImagesExecuteTLSResponseOwnership(t *testing.T) {
 			options := imagesTestResponseOptions()
 			marker := errors.New("original HTTP policy")
 			target := &ImagesTarget{
-				AccountID:      9,
+				ProviderID:     9,
 				OAuth:          tc.oauth,
 				Model:          "gpt-image-2",
 				ResponseFormat: "b64_json",
@@ -201,7 +201,6 @@ func TestImagesExecuteOAuthProgressBeforeFailure(t *testing.T) {
 // 只提供测试所需的 I/O 与观察端口，不复制任何图片解析或业务算法。
 func imagesTestResponseOptions() ImageResponseOptions {
 	return ImageResponseOptions{
-
 		ReadBody:          io.ReadAll,
 		ClassifyReadError: func(err error) error { return err },
 

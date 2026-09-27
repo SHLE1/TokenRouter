@@ -25,8 +25,8 @@
           <td class="py-1 text-right text-green-600 dark:text-green-400">
             {{ balanceUnitSymbol }}{{ formatCost(user.actual_cost) }}
           </td>
-          <td v-if="showAccountCost" class="py-1 text-right text-orange-500 dark:text-orange-400">
-            {{ usdUnitSymbol }}{{ formatCost(user.account_cost) }}
+          <td v-if="showProviderCost" class="py-1 text-right text-orange-500 dark:text-orange-400">
+            {{ usdUnitSymbol }}{{ formatCost(user.provider_cost) }}
           </td>
           <td v-if="showStandardCost" class="py-1 pr-1 text-right text-gray-400 dark:text-gray-500">
             {{ usdUnitSymbol }}{{ formatCost(user.cost) }}
@@ -51,15 +51,15 @@ const { balanceUnitSymbol, usdUnitSymbol } = useBalanceDisplay()
 const props = withDefaults(defineProps<{
   items: UserBreakdownItem[]
   loading?: boolean
-  showAccountCost?: boolean
+  showProviderCost?: boolean
   showStandardCost?: boolean
 }>(), {
   loading: false,
-  showAccountCost: true,
+  showProviderCost: true,
   showStandardCost: true,
 })
 
-const showAccountCost = computed(() => props.showAccountCost)
+const showProviderCost = computed(() => props.showProviderCost)
 const showStandardCost = computed(() => props.showStandardCost)
 
 const formatCost = (value: number | undefined | null): string => {

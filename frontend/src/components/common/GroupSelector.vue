@@ -28,7 +28,7 @@
         v-for="group in filteredGroups"
         :key="group.id"
         class="flex cursor-pointer items-center gap-2 rounded-compact px-2 py-1.5 transition-colors hover:bg-white dark:hover:bg-dark-700"
-        :title="t('admin.groups.rateAndAccounts', { rate: group.rate_multiplier, count: group.account_count || 0 })"
+        :title="t('admin.groups.rateAndProviders', { rate: group.rate_multiplier, count: group.provider_count || 0 })"
       >
         <input
           type="checkbox"
@@ -49,7 +49,7 @@
         >
           {{ t('common.inactive') }}
         </span>
-        <span class="shrink-0 text-xs text-gray-400">{{ group.account_count || 0 }}</span>
+        <span class="shrink-0 text-xs text-gray-400">{{ group.provider_count || 0 }}</span>
       </label>
       <div
         v-if="filteredGroups.length === 0"
@@ -90,7 +90,7 @@ const isSearchable = computed(() => {
   return props.searchable
 })
 
-// 账号可以关联任意分组，搜索仅按名称和描述过滤。
+// 提供商可以关联任意分组，搜索仅按名称和描述过滤。
 const filteredGroups = computed(() => {
   let result: AdminGroup[] = props.groups
   if (isSearchable.value && searchText.value) {

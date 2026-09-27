@@ -8,7 +8,7 @@ import (
 func TestOpsRequestTimingFromExtra(t *testing.T) {
 	timing := OpsRequestTimingFromExtra(map[string]any{
 		"request_content_length":          float64(8360000),
-		"account_slot_acquired_ms":        float64(0),
+		"provider_slot_acquired_ms":       float64(0),
 		"upstream_first_response_byte_ms": json.Number("119810"),
 		"upstream_first_sse_data_ms":      "119900",
 		"upstream_attempt_count":          float64(2),
@@ -22,8 +22,8 @@ func TestOpsRequestTimingFromExtra(t *testing.T) {
 	if timing.RequestContentLength == nil || *timing.RequestContentLength != 8360000 {
 		t.Fatalf("request content length = %+v", timing.RequestContentLength)
 	}
-	if timing.AccountSlotAcquiredMs == nil || *timing.AccountSlotAcquiredMs != 0 {
-		t.Fatalf("zero stage should be preserved: %+v", timing.AccountSlotAcquiredMs)
+	if timing.ProviderSlotAcquiredMs == nil || *timing.ProviderSlotAcquiredMs != 0 {
+		t.Fatalf("zero stage should be preserved: %+v", timing.ProviderSlotAcquiredMs)
 	}
 	if timing.UpstreamFirstResponseByteMs == nil || *timing.UpstreamFirstResponseByteMs != 119810 {
 		t.Fatalf("first response byte = %+v", timing.UpstreamFirstResponseByteMs)

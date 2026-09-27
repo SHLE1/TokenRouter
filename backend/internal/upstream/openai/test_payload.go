@@ -4,7 +4,7 @@ import (
 	"strings"
 )
 
-// TestResponsesPayload 保留账号测试与用量探针共用的 Responses 报文。
+// TestResponsesPayload 保留提供商测试与用量探针共用的 Responses 报文。
 func TestResponsesPayload(modelID string, prompt string, isOAuth bool) map[string]any {
 	testPrompt := strings.TrimSpace(prompt)
 	if testPrompt == "" {
@@ -31,7 +31,7 @@ func TestResponsesPayload(modelID string, prompt string, isOAuth bool) map[strin
 		payload["store"] = false
 	}
 
-	// 两类账号的 Responses 测试均保留原指令。
+	// 两类提供商的 Responses 测试均保留原指令。
 	payload["instructions"] = DefaultInstructions
 
 	return payload

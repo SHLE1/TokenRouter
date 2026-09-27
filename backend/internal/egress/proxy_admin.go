@@ -10,10 +10,13 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
 )
 
-type ProxyTasks interface{ Go(string, func()) bool }
-type ProxyQualityProbe interface {
-	ProbeTargets(context.Context, string, []ProxyQualityTarget) ([]ProxyQualityCheckItem, error)
-}
+type (
+	ProxyTasks        interface{ Go(string, func()) bool }
+	ProxyQualityProbe interface {
+		ProbeTargets(context.Context, string, []ProxyQualityTarget) ([]ProxyQualityCheckItem, error)
+	}
+)
+
 type ProxyAdminOptions struct {
 	Now         func() time.Time
 	Tasks       ProxyTasks
@@ -47,9 +50,9 @@ func (s *ProxyAdmin) ListProxies(ctx context.Context, page, pageSize int, protoc
 	return proxies, result.Total, nil
 }
 
-func (s *ProxyAdmin) ListProxiesWithAccountCount(ctx context.Context, page, pageSize int, protocol, status, search string, sortBy, sortOrder string) ([]ProxyWithAccountCount, int64, error) {
+func (s *ProxyAdmin) ListProxiesWithProviderCount(ctx context.Context, page, pageSize int, protocol, status, search string, sortBy, sortOrder string) ([]ProxyWithProviderCount, int64, error) {
 	params := pagination.PaginationParams{Page: page, PageSize: pageSize, SortBy: sortBy, SortOrder: sortOrder}
-	proxies, result, err := s.proxyRepo.ListWithFiltersAndAccountCount(ctx, params, protocol, status, search)
+	proxies, result, err := s.proxyRepo.ListWithFiltersAndProviderCount(ctx, params, protocol, status, search)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -61,8 +64,8 @@ func (s *ProxyAdmin) GetAllProxies(ctx context.Context) ([]Proxy, error) {
 	return s.proxyRepo.ListActive(ctx)
 }
 
-func (s *ProxyAdmin) GetAllProxiesWithAccountCount(ctx context.Context) ([]ProxyWithAccountCount, error) {
-	proxies, err := s.proxyRepo.ListActiveWithAccountCount(ctx)
+func (s *ProxyAdmin) GetAllProxiesWithProviderCount(ctx context.Context) ([]ProxyWithProviderCount, error) {
+	proxies, err := s.proxyRepo.ListActiveWithProviderCount(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -171,7 +174,7 @@ func (s *ProxyAdmin) UpdateProxy(ctx context.Context, id int64, input *UpdatePro
 }
 
 func (s *ProxyAdmin) DeleteProxy(ctx context.Context, id int64) error {
-	count, err := s.proxyRepo.CountAccountsByProxyID(ctx, id)
+	count, err := s.proxyRepo.CountProvidersByProxyID(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -188,7 +191,7 @@ func (s *ProxyAdmin) BatchDeleteProxies(ctx context.Context, ids []int64) (*Prox
 	}
 
 	for _, id := range ids {
-		count, err := s.proxyRepo.CountAccountsByProxyID(ctx, id)
+		count, err := s.proxyRepo.CountProvidersByProxyID(ctx, id)
 		if err != nil {
 			result.Skipped = append(result.Skipped, ProxyBatchDeleteSkipped{
 				ID:     id,
@@ -216,8 +219,8 @@ func (s *ProxyAdmin) BatchDeleteProxies(ctx context.Context, ids []int64) (*Prox
 	return result, nil
 }
 
-func (s *ProxyAdmin) GetProxyAccounts(ctx context.Context, proxyID int64) ([]ProxyAccountSummary, error) {
-	return s.proxyRepo.ListAccountSummariesByProxyID(ctx, proxyID)
+func (s *ProxyAdmin) GetProxyProviders(ctx context.Context, proxyID int64) ([]ProxyProviderSummary, error) {
+	return s.proxyRepo.ListProviderSummariesByProxyID(ctx, proxyID)
 }
 
 func (s *ProxyAdmin) CheckProxyExists(ctx context.Context, host string, port int, username, password string) (bool, error) {
@@ -489,7 +492,7 @@ func (s *ProxyAdmin) probeProxyLatency(ctx context.Context, proxy *Proxy) {
 	})
 }
 
-func (s *ProxyAdmin) attachProxyLatency(ctx context.Context, proxies []ProxyWithAccountCount) {
+func (s *ProxyAdmin) attachProxyLatency(ctx context.Context, proxies []ProxyWithProviderCount) {
 	if s.proxyLatencyCache == nil || len(proxies) == 0 {
 		return
 	}

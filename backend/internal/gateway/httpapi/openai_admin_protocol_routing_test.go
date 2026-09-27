@@ -16,9 +16,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 故意将旧探测状态直接注入账号对象，验证实际转发不依赖迁移或写入清理。
+// 故意将旧探测状态直接注入提供商对象，验证实际转发不依赖迁移或写入清理。
 func TestOpenAIAdministratorProtocolOverridesAllLegacyProbeState(t *testing.T) {
-
 	for _, mode := range []string{"preserve_client_protocol", "force_responses", "force_chat_completions"} {
 		for _, legacy := range []any{false, true, "invalid"} {
 			for _, inbound := range []string{"responses", "chat/completions", "messages"} {
@@ -31,20 +30,22 @@ func TestOpenAIAdministratorProtocolOverridesAllLegacyProbeState(t *testing.T) {
 					c.Request = httptest.NewRequest(http.MethodPost, "/v1/"+inbound, bytes.NewReader(body))
 					c.Request.Header.Set("Content-Type", "application/json")
 					// 在上游接收请求后返回可控错误，断言真实目标和载荷而不耦合响应适配器。
-					upstream := &auxiliaryHTTPRecorder{resp: &http.Response{StatusCode: http.StatusBadRequest,
-						Header: http.Header{"Content-Type": []string{"application/json"}},
-						Body:   io.NopCloser(strings.NewReader(`{"error":{"type":"invalid_request_error","message":"test endpoint reached"}}`))}}
+					upstream := &auxiliaryHTTPRecorder{resp: &http.Response{
+						StatusCode: http.StatusBadRequest,
+						Header:     http.Header{"Content-Type": []string{"application/json"}},
+						Body:       io.NopCloser(strings.NewReader(`{"error":{"type":"invalid_request_error","message":"test endpoint reached"}}`)),
+					}}
 					svc := newResponsesFixture(responsesFixtureInputs{options: protocolHTTPOptions(), transport: upstream})
-					account := rawChatCompletionsTestAccount()
-					account.Record.Extra = map[string]any{"openai_text_route_mode": mode, "openai_responses_supported": legacy, "openai_responses_probe_status": "unsupported"}
+					provider := rawChatCompletionsTestProvider()
+					provider.Record.Extra = map[string]any{"openai_text_route_mode": mode, "openai_responses_supported": legacy, "openai_responses_probe_status": "unsupported"}
 					var err error
 					switch inbound {
 					case "responses":
-						_, err = svc.Forward(context.Background(), c, account, body)
+						_, err = svc.Forward(context.Background(), c, provider, body)
 					case "chat/completions":
-						_, err = svc.Text.Chat(context.Background(), c, account, body, "", "")
+						_, err = svc.Text.Chat(context.Background(), c, provider, body, "", "")
 					case "messages":
-						_, err = svc.Text.Messages(context.Background(), c, account, body, "", "")
+						_, err = svc.Text.Messages(context.Background(), c, provider, body, "", "")
 					}
 					require.Error(t, err)
 					require.NotNil(t, upstream.lastReq)

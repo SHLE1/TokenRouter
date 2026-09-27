@@ -17,7 +17,7 @@ type APIKeyInput struct {
 	StartTime                   time.Time
 }
 
-// PassthroughPorts 只装配单账号原生交换，不包含账号切换或新的平台算法。
+// PassthroughPorts 只装配单提供商原生交换，不包含提供商切换或新的平台算法。
 type PassthroughPorts interface {
 	Begin() (func(), error)
 	Credential(context.Context) error

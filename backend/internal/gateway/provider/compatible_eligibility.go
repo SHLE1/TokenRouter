@@ -6,48 +6,48 @@ import (
 	"strings"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 	protocolcore "github.com/TokenFlux/TokenRouter/internal/protocol"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 )
 
 // AllowsCompatibleCompact 保留 Grok 与 OpenAI 的 Compact 资格差异。
-func AllowsCompatibleCompact(account *ExecutionAccount) bool {
-	return account != nil && (account.View().IsGrok() || account.View().AllowsOpenAICompact())
+func AllowsCompatibleCompact(provider *ExecutionProvider) bool {
+	return provider != nil && (provider.View().IsGrok() || provider.View().AllowsOpenAICompact())
 }
 
-// CompatibleAccountEligible 判断 OpenAI 兼容账号是否满足本次请求的调度条件。
-// 检查内容包括：平台匹配、账号可用性、quota 自动暂停、spark 路由限制、模型支持及端点能力。
+// CompatibleProviderEligible 判断 OpenAI 兼容提供商是否满足本次请求的调度条件。
+// 检查内容包括：平台匹配、提供商可用性、quota 自动暂停、spark 路由限制、模型支持及端点能力。
 //
-// 注意：对 spark 影子账号，调用方还须额外调用 parentHealthyForShadow(account, lookup)
-// 检查母账号凭据可用性；该检查未内置于本函数，以避免注入 DB 依赖。
-func CompatibleAccountEligible(ctx context.Context, account *ExecutionAccount, platform string, requestedModel string, requireCompact bool, requiredCapability accountcore.OpenAIEndpointCapability) bool {
-	return CompatibleEligibilityReason(ctx, account, platform, requestedModel, requireCompact, requiredCapability) == ""
+// 注意：对 spark 影子提供商，调用方还须额外调用 parentHealthyForShadow(provider, lookup)
+// 检查母提供商凭据可用性；该检查未内置于本函数，以避免注入 DB 依赖。
+func CompatibleProviderEligible(ctx context.Context, provider *ExecutionProvider, platform string, requestedModel string, requireCompact bool, requiredCapability providercore.OpenAIEndpointCapability) bool {
+	return CompatibleEligibilityReason(ctx, provider, platform, requestedModel, requireCompact, requiredCapability) == ""
 }
 
 // CompatibleEligibilityReason 在保留旧布尔判定的同时返回首个拦截原因。
-// 负载批处理只使用该原因生成服务端无账号诊断，不改变实际准入行为。
-// @project-doc docs/architecture/account_scheduling_and_cache.md#advanced_scheduler_selection
-func CompatibleEligibilityReason(ctx context.Context, account *ExecutionAccount, platform string, requestedModel string, requireCompact bool, requiredCapability accountcore.OpenAIEndpointCapability) string {
+// 负载批处理只使用该原因生成服务端无提供商诊断，不改变实际准入行为。
+// @project-doc docs/architecture/provider_scheduling_and_cache.md#advanced_scheduler_selection
+func CompatibleEligibilityReason(ctx context.Context, provider *ExecutionProvider, platform string, requestedModel string, requireCompact bool, requiredCapability providercore.OpenAIEndpointCapability) string {
 	platform = strings.TrimSpace(platform)
-	if account == nil {
-		return "account_nil"
+	if provider == nil {
+		return "provider_nil"
 	}
-	if platform != "" && account.Record.Platform != platform {
+	if platform != "" && provider.Record.Platform != platform {
 		return "platform_mismatch"
 	}
-	if !ExecutionModelPolicy(account).Schedulable(ctx, requestedModel) {
-		if account.View().IsSchedulable() {
+	if !ExecutionModelPolicy(provider).Schedulable(ctx, requestedModel) {
+		if provider.View().IsSchedulable() {
 			return "model_rate_limited"
 		}
 		return "not_schedulable"
 	}
-	if account.View().IsOpenAI() {
-		if paused, reason := OpenAIQuotaPause(ctx, account); paused {
+	if provider.View().IsOpenAI() {
+		if paused, reason := OpenAIQuotaPause(ctx, provider); paused {
 
-			slog.Debug("account_auto_paused_by_quota",
-				"account_id", account.Record.ID,
+			slog.Debug("provider_auto_paused_by_quota",
+				"provider_id", provider.Record.ID,
 				"window", reason.Window,
 				"threshold", reason.Threshold,
 				"utilization", reason.Utilization,
@@ -58,10 +58,10 @@ func CompatibleEligibilityReason(ctx context.Context, account *ExecutionAccount,
 			return "quota_auto_pause"
 		}
 	}
-	if account.View().IsGrok() {
-		if paused, reason := GrokQuotaPause(account); paused {
-			slog.Debug("grok_account_auto_paused_by_quota",
-				"account_id", account.Record.ID,
+	if provider.View().IsGrok() {
+		if paused, reason := GrokQuotaPause(provider); paused {
+			slog.Debug("grok_provider_auto_paused_by_quota",
+				"provider_id", provider.Record.ID,
 				"window", reason.Window,
 				"threshold", reason.Threshold,
 				"utilization", reason.Utilization,
@@ -72,41 +72,41 @@ func CompatibleEligibilityReason(ctx context.Context, account *ExecutionAccount,
 			return "quota_auto_pause"
 		}
 	}
-	if !ExecutionModelPolicy(account).SupportsCompatibleRouting(ctx, requestedModel) {
+	if !ExecutionModelPolicy(provider).SupportsCompatibleRouting(ctx, requestedModel) {
 		return "model_not_supported"
 	}
-	if !account.View().IsSchedulable() || account.View().IsQuotaExceeded() {
-		return "account_quota_exhausted"
+	if !provider.View().IsSchedulable() || provider.View().IsQuotaExceeded() {
+		return "provider_quota_exhausted"
 	}
-	if !SupportsRequestCapability(ctx, account, requiredCapability) {
-		if account.View().IsGrok() && requiredCapability == accountcore.OpenAIEndpointCapabilityGrokMediaGeneration {
-			_, reason := accountcore.GrokMediaGenerationEligibility(ExecutionRecord(account), accountprovider.GrokTierRules())
-			slog.Debug("grok_media_account_ineligible", "account_id", account.Record.ID, "reason", reason)
+	if !SupportsRequestCapability(ctx, provider, requiredCapability) {
+		if provider.View().IsGrok() && requiredCapability == providercore.OpenAIEndpointCapabilityGrokMediaGeneration {
+			_, reason := providercore.GrokMediaGenerationEligibility(ExecutionRecord(provider), provideradapter.GrokTierRules())
+			slog.Debug("grok_media_provider_ineligible", "provider_id", provider.Record.ID, "reason", reason)
 		}
 		return "capability_mismatch"
 	}
-	if requireCompact && !AllowsCompatibleCompact(account) {
+	if requireCompact && !AllowsCompatibleCompact(provider) {
 		return "compact_unsupported"
 	}
 	return ""
 }
 
-// OpenAIQuotaPause 使用当前时刻和本次请求阈值读取账号派生状态。
-func OpenAIQuotaPause(ctx context.Context, account *ExecutionAccount) (bool, accountcore.QuotaAutoPauseDecision) {
-	return evaluateOpenAIQuotaPause(ctx, account, time.Now())
+// OpenAIQuotaPause 使用当前时刻和本次请求阈值读取提供商派生状态。
+func OpenAIQuotaPause(ctx context.Context, provider *ExecutionProvider) (bool, providercore.QuotaAutoPauseDecision) {
+	return evaluateOpenAIQuotaPause(ctx, provider, time.Now())
 }
 
-// evaluateOpenAIQuotaPause 只投影执行目标与请求阈值，复用账号模块的唯一裁决。
-func evaluateOpenAIQuotaPause(ctx context.Context, v *ExecutionAccount, now time.Time) (bool, accountcore.QuotaAutoPauseDecision) {
+// evaluateOpenAIQuotaPause 只投影执行目标与请求阈值，复用提供商模块的唯一裁决。
+func evaluateOpenAIQuotaPause(ctx context.Context, v *ExecutionProvider, now time.Time) (bool, providercore.QuotaAutoPauseDecision) {
 	if v == nil {
-		return false, accountcore.QuotaAutoPauseDecision{}
+		return false, providercore.QuotaAutoPauseDecision{}
 	}
-	return accountcore.EvaluateQuotaAutoPause(v.Record.Platform, v.Record.Extra, QuotaAutoPauseSettings(ctx), now)
+	return providercore.EvaluateQuotaAutoPause(v.Record.Platform, v.Record.Extra, QuotaAutoPauseSettings(ctx), now)
 }
 
 // WithQuotaAutoPauseSettings 把 OpenAI 配额自动暂停全局设置放进 context，
 // 让调度、展示和容量统计复用完全一致的阈值解析逻辑。
-func WithQuotaAutoPauseSettings(ctx context.Context, settings accountcore.QuotaAutoPauseSettings) context.Context {
+func WithQuotaAutoPauseSettings(ctx context.Context, settings providercore.QuotaAutoPauseSettings) context.Context {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -116,25 +116,25 @@ func WithQuotaAutoPauseSettings(ctx context.Context, settings accountcore.QuotaA
 	return requeststate.WithExecutionHints(ctx, hints)
 }
 
-// QuotaAutoPauseSettings 读取选择和固定账号复核共享的请求快照。
-func QuotaAutoPauseSettings(ctx context.Context) accountcore.QuotaAutoPauseSettings {
+// QuotaAutoPauseSettings 读取选择和固定提供商复核共享的请求快照。
+func QuotaAutoPauseSettings(ctx context.Context) providercore.QuotaAutoPauseSettings {
 	hints := requeststate.ExecutionHintsFromContext(ctx)
-	return accountcore.QuotaAutoPauseSettings{DefaultThreshold5h: hints.QuotaAutoPauseThreshold5h, DefaultThreshold7d: hints.QuotaAutoPauseThreshold7d}
+	return providercore.QuotaAutoPauseSettings{DefaultThreshold5h: hints.QuotaAutoPauseThreshold5h, DefaultThreshold7d: hints.QuotaAutoPauseThreshold7d}
 }
 
-// GrokQuotaPause 只投影执行目标，窗口规则由 account 唯一拥有。
-func GrokQuotaPause(value *ExecutionAccount) (bool, accountcore.QuotaAutoPauseDecision) {
-	return accountcore.EvaluateGrokQuotaAutoPause(ExecutionRecord(value), time.Now)
+// GrokQuotaPause 只投影执行目标，窗口规则由 provider 唯一拥有。
+func GrokQuotaPause(value *ExecutionProvider) (bool, providercore.QuotaAutoPauseDecision) {
+	return providercore.EvaluateGrokQuotaAutoPause(ExecutionRecord(value), time.Now)
 }
 
 // SupportsRequestCapability 保留 WS、Compact 和普通 HTTP 的原协议资格顺序。
-func SupportsRequestCapability(ctx context.Context, account *ExecutionAccount, capability accountcore.OpenAIEndpointCapability) bool {
-	if account == nil {
+func SupportsRequestCapability(ctx context.Context, provider *ExecutionProvider, capability providercore.OpenAIEndpointCapability) bool {
+	if provider == nil {
 		return false
 	}
 	source, _ := requeststate.ClientProtocolFromContext(ctx)
-	if !account.View().IsOpenAICompatible() && (capability == "" || capability == accountcore.OpenAIEndpointCapabilityTextGeneration || capability == accountcore.OpenAIEndpointCapabilityResponses) {
-		policy := ExecutionModelPolicy(account)
+	if !provider.View().IsOpenAICompatible() && (capability == "" || capability == providercore.OpenAIEndpointCapabilityTextGeneration || capability == providercore.OpenAIEndpointCapabilityResponses) {
+		policy := ExecutionModelPolicy(provider)
 		if source != "" {
 			return policy.AllowsProtocol(ctx)
 		}
@@ -147,12 +147,12 @@ func SupportsRequestCapability(ctx context.Context, account *ExecutionAccount, c
 		return false
 	}
 	if source == protocolcore.ProtocolResponsesWebSocket || source == protocolcore.ProtocolResponsesCompact {
-		if capability == accountcore.OpenAIEndpointCapabilityTextGeneration || capability == accountcore.OpenAIEndpointCapabilityResponses {
-			return ExecutionModelPolicy(account).AllowsProtocol(ctx)
+		if capability == providercore.OpenAIEndpointCapabilityTextGeneration || capability == providercore.OpenAIEndpointCapabilityResponses {
+			return ExecutionModelPolicy(provider).AllowsProtocol(ctx)
 		}
-		if capability == accountcore.OpenAIEndpointCapabilityRemoteCompactionV2 {
-			return ExecutionModelPolicy(account).AllowsProtocol(ctx) && account.View().AllowsOpenAINativeCompactionV2()
+		if capability == providercore.OpenAIEndpointCapabilityRemoteCompactionV2 {
+			return ExecutionModelPolicy(provider).AllowsProtocol(ctx) && provider.View().AllowsOpenAINativeCompactionV2()
 		}
 	}
-	return accountprovider.SupportsOpenAIEndpoint(ExecutionProtocolRecord(account), capability)
+	return provideradapter.SupportsOpenAIEndpoint(ExecutionProtocolRecord(provider), capability)
 }

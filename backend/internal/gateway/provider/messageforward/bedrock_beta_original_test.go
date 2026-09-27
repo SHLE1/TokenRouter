@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/gateway"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
 )
@@ -30,11 +30,11 @@ func TestResolveBedrockBetaTokensForRequest_BlocksOnOriginalAnthropicToken(t *te
 	}
 
 	svc := NewRuntime(Dependencies{Settings: newBetaRuntime(map[string]string{gateway.SettingKeyBetaPolicySettings: string(raw)})}, Options{})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAnthropic, Type: capability.AccountTypeBedrock}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAnthropic, Type: capability.ProviderTypeBedrock}}
 
 	_, err = svc.bedrockBetaTokens(
 		context.Background(),
-		account,
+		provider,
 		"advanced-tool-use-2025-11-20",
 		[]byte(`{"messages":[{"role":"user","content":"hi"}]}`),
 		"us.anthropic.claude-opus-4-6-v1",
@@ -63,11 +63,11 @@ func TestResolveBedrockBetaTokensForRequest_FiltersAfterBedrockTransform(t *test
 	}
 
 	svc := NewRuntime(Dependencies{Settings: newBetaRuntime(map[string]string{gateway.SettingKeyBetaPolicySettings: string(raw)})}, Options{})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAnthropic, Type: capability.AccountTypeBedrock}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAnthropic, Type: capability.ProviderTypeBedrock}}
 
 	betaTokens, err := svc.bedrockBetaTokens(
 		context.Background(),
-		account,
+		provider,
 		"advanced-tool-use-2025-11-20",
 		[]byte(`{"messages":[{"role":"user","content":"hi"}]}`),
 		"us.anthropic.claude-opus-4-6-v1",
@@ -102,12 +102,12 @@ func TestResolveBedrockBetaTokensForRequest_BlocksBodyAutoInjectedComputerUse(t 
 	}
 
 	svc := NewRuntime(Dependencies{Settings: newBetaRuntime(map[string]string{gateway.SettingKeyBetaPolicySettings: string(raw)})}, Options{})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAnthropic, Type: capability.AccountTypeBedrock}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAnthropic, Type: capability.ProviderTypeBedrock}}
 
 	// header 中不带 beta token，但 body 中有 computer_use 工具
 	_, err = svc.bedrockBetaTokens(
 		context.Background(),
-		account,
+		provider,
 		"", // 空 header
 		[]byte(`{"tools":[{"type":"computer_20250124","name":"computer"}],"messages":[{"role":"user","content":"hi"}]}`),
 		"us.anthropic.claude-opus-4-6-v1",
@@ -140,12 +140,12 @@ func TestResolveBedrockBetaTokensForRequest_BlocksBodyAutoInjectedToolSearch(t *
 	}
 
 	svc := NewRuntime(Dependencies{Settings: newBetaRuntime(map[string]string{gateway.SettingKeyBetaPolicySettings: string(raw)})}, Options{})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAnthropic, Type: capability.AccountTypeBedrock}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAnthropic, Type: capability.ProviderTypeBedrock}}
 
 	// header 中不带 beta token，但 body 中有 tool_search_tool 工具
 	_, err = svc.bedrockBetaTokens(
 		context.Background(),
-		account,
+		provider,
 		"",
 		[]byte(`{"tools":[{"type":"tool_search_tool_regex_20251119","name":"search"}],"messages":[{"role":"user","content":"hi"}]}`),
 		"us.anthropic.claude-sonnet-4-6",
@@ -177,12 +177,12 @@ func TestResolveBedrockBetaTokensForRequest_PassesWhenNoBlockRuleMatches(t *test
 	}
 
 	svc := NewRuntime(Dependencies{Settings: newBetaRuntime(map[string]string{gateway.SettingKeyBetaPolicySettings: string(raw)})}, Options{})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAnthropic, Type: capability.AccountTypeBedrock}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAnthropic, Type: capability.ProviderTypeBedrock}}
 
 	// body 中有 computer_use 工具（会注入 computer-use token），但 block 规则只针对 context-1m
 	tokens, err := svc.bedrockBetaTokens(
 		context.Background(),
-		account,
+		provider,
 		"",
 		[]byte(`{"tools":[{"type":"computer_20250124","name":"computer"}],"messages":[{"role":"user","content":"hi"}]}`),
 		"us.anthropic.claude-opus-4-6-v1",

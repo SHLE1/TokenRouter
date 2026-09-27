@@ -35,6 +35,7 @@ func TestNotificationEmailPreviewEscapesHTMLAndSanitizesSubject(t *testing.T) {
 	require.NotContains(t, preview.HTML, `javascript:alert(1)`)
 	require.Contains(t, preview.HTML, `href=""`)
 }
+
 func TestNotificationEmailTemplateOverrideAndRestore(t *testing.T) {
 	ctx := context.Background()
 	repo := mailtest.NewMemorySettings()
@@ -64,6 +65,7 @@ func TestNotificationEmailTemplateOverrideAndRestore(t *testing.T) {
 	_, err = repo.GetValue(ctx, notificationEmailTemplateKey(NotificationEmailEventBalanceRechargeSuccess, "zh"))
 	require.ErrorIs(t, err, ErrSettingNotFound)
 }
+
 func TestNotificationEmailTemplateRejectsUnsupportedPlaceholder(t *testing.T) {
 	ctx := context.Background()
 	svc := NewNotificationEmailService(mailtest.NewMemorySettings(), nil)
@@ -78,6 +80,7 @@ func TestNotificationEmailTemplateRejectsUnsupportedPlaceholder(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "unsupported placeholder")
 }
+
 func TestNotificationEmailAuthTemplatesAreListedAndPreviewable(t *testing.T) {
 	ctx := context.Background()
 	svc := NewNotificationEmailService(mailtest.NewMemorySettings(), nil)
@@ -118,6 +121,7 @@ func TestNotificationEmailAuthTemplatesAreListedAndPreviewable(t *testing.T) {
 	require.Contains(t, resetPreview.Subject, "Password reset")
 	require.Contains(t, resetPreview.HTML, "https://example.com/reset?token=abc")
 }
+
 func TestNotificationEmailAdditionalEventsAreListedAndPreviewable(t *testing.T) {
 	ctx := context.Background()
 	svc := NewNotificationEmailService(mailtest.NewMemorySettings(), nil)
@@ -134,7 +138,7 @@ func TestNotificationEmailAdditionalEventsAreListedAndPreviewable(t *testing.T) 
 	}{
 		{NotificationEmailEventNotificationEmailVerifyCode, "verification_code"},
 		{NotificationEmailEventTeamInvitation, "invitation_url"},
-		{NotificationEmailEventAccountQuotaAlert, "account_name"},
+		{NotificationEmailEventProviderQuotaAlert, "provider_name"},
 		{NotificationEmailEventContentModerationViolation, "moderation_category"},
 		{NotificationEmailEventContentModerationDisabled, "violation_count"},
 		{NotificationEmailEventOpsAlert, "rule_name"},
@@ -153,6 +157,7 @@ func TestNotificationEmailAdditionalEventsAreListedAndPreviewable(t *testing.T) 
 		require.NotEmpty(t, preview.HTML)
 	}
 }
+
 func TestNotificationEmailTeamInvitationTemplates(t *testing.T) {
 	ctx := context.Background()
 	svc := NewNotificationEmailService(mailtest.NewMemorySettings(), nil)
@@ -181,6 +186,7 @@ func TestNotificationEmailTeamInvitationTemplates(t *testing.T) {
 		require.NotContains(t, preview.HTML, "{{invitation_url}}")
 	}
 }
+
 func TestOpsScheduledReportTemplateExposesEditableSummaryMetrics(t *testing.T) {
 	ctx := context.Background()
 	svc := NewNotificationEmailService(mailtest.NewMemorySettings(), nil)
@@ -231,6 +237,7 @@ func TestOpsScheduledReportTemplateExposesEditableSummaryMetrics(t *testing.T) {
 		require.NotContains(t, preview.HTML, "{{report_total_requests}}")
 	}
 }
+
 func TestOpsScheduledReportRuntimeVariablesDoNotLeakPreviewSamples(t *testing.T) {
 	ctx := context.Background()
 	svc := NewNotificationEmailService(mailtest.NewMemorySettings(), nil)
@@ -256,6 +263,7 @@ func TestOpsScheduledReportRuntimeVariablesDoNotLeakPreviewSamples(t *testing.T)
 	require.NoError(t, err)
 	require.NotContains(t, rendered.HTML, "<h2>Daily summary</h2>")
 }
+
 func TestNotificationEmailRawHTMLVariablesAreTrustedOnlyForHTMLPlaceholders(t *testing.T) {
 	require.True(t, notificationEmailRawHTMLAllowed(NotificationEmailEventOpsScheduledReport, "report_html"))
 	require.False(t, notificationEmailRawHTMLAllowed(NotificationEmailEventOpsScheduledReport, "recipient_name"))
@@ -290,6 +298,7 @@ func TestNotificationEmailRawHTMLVariablesAreTrustedOnlyForHTMLPlaceholders(t *t
 	require.Contains(t, preview.HTML, `&lt;em&gt;escaped&lt;/em&gt;`)
 	require.NotContains(t, preview.HTML, `<strong>raw</strong>`)
 }
+
 func TestNotificationEmailFallbackClassification(t *testing.T) {
 	templateErr := NotificationEmailTemplateErr(errors.New("bad template"))
 	configErr := NotificationEmailConfigErr(errors.New("missing email service"))
@@ -302,6 +311,7 @@ func TestNotificationEmailFallbackClassification(t *testing.T) {
 	require.False(t, IsNotificationEmailDeliveryError(templateErr))
 	require.False(t, ShouldFallbackNotificationEmail(nil))
 }
+
 func TestNotificationEmailUnsubscribeOnlyAllowsOptionalEvents(t *testing.T) {
 	ctx := context.Background()
 	svc := NewNotificationEmailService(mailtest.NewMemorySettings(), nil)
@@ -328,6 +338,7 @@ func TestNotificationEmailUnsubscribeOnlyAllowsOptionalEvents(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "transactional")
 }
+
 func TestNotificationEmailLocaleMemoryNormalizesAcceptLanguage(t *testing.T) {
 	ctx := context.Background()
 	svc := NewNotificationEmailService(mailtest.NewMemorySettings(), nil)
@@ -336,6 +347,7 @@ func TestNotificationEmailLocaleMemoryNormalizesAcceptLanguage(t *testing.T) {
 	require.Equal(t, "zh", svc.ResolveRecipientLocale(ctx, 42, "user@example.com"))
 	require.Equal(t, "zh", svc.ResolveRecipientLocale(ctx, 0, "user@example.com"))
 }
+
 func TestNotificationEmailDeliveryKeyUsesShortStableHash(t *testing.T) {
 	key := notificationEmailDeliveryKey(
 		NotificationEmailEventSubscriptionExpiryReminder,
@@ -371,6 +383,7 @@ func TestNotificationEmailDeliveryKeyUsesShortStableHash(t *testing.T) {
 	)
 	require.Greater(t, len(legacyKey), 100)
 }
+
 func TestNotificationEmailPreferenceKeyUsesShortStableHashAndReadsLegacyKey(t *testing.T) {
 	ctx := context.Background()
 	repo := mailtest.NewMemorySettings()
@@ -390,6 +403,7 @@ func TestNotificationEmailPreferenceKeyUsesShortStableHashAndReadsLegacyKey(t *t
 	require.NoError(t, err)
 	require.True(t, unsubscribed)
 }
+
 func TestNotificationEmailSendDeduplicatesSubscriptionExpiryReminder(t *testing.T) {
 	ctx := context.Background()
 	repo := mailtest.NewMemorySettings()
@@ -424,6 +438,7 @@ func TestNotificationEmailSendDeduplicatesSubscriptionExpiryReminder(t *testing.
 	require.NoError(t, svc.Send(ctx, input))
 	require.Equal(t, int64(1), smtpServer.MessageCount())
 }
+
 func TestNotificationEmailSendRespectsLegacyDeliveryKey(t *testing.T) {
 	ctx := context.Background()
 	repo := mailtest.NewMemorySettings()

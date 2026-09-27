@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
@@ -24,7 +24,6 @@ import (
 )
 
 func TestOpenAIGatewayService_Forward_APIKeyMissingInstructionsKeepsLargeInputRaw(t *testing.T) {
-
 	upstream := &auxiliaryHTTPRecorder{
 		resp: &http.Response{
 			StatusCode: http.StatusOK,
@@ -37,16 +36,19 @@ func TestOpenAIGatewayService_Forward_APIKeyMissingInstructionsKeepsLargeInputRa
 	cfg := &responsesFixtureOptions{}
 	cfg.Request.URLPolicy.Enabled = false
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg, transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-		Name:        "openai-apikey",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":  "sk-test",
-			"base_url": "https://example.com",
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1,
+			Name:        "openai-apikey",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":  "sk-test",
+				"base_url": "https://example.com",
+			},
+			Extra: map[string]any{"use_responses_api": true},
 		},
-		Extra: map[string]any{"use_responses_api": true}},
 	}
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -54,7 +56,7 @@ func TestOpenAIGatewayService_Forward_APIKeyMissingInstructionsKeepsLargeInputRa
 	SetOpenAIClientTransport(c, OpenAIClientTransportHTTP)
 
 	body := []byte(`{"model":"gpt-5","stream":false,"reasoning":{"effort":"minimal"},"input":[{"type":"message","content":[{"type":"input_text","text":"hi","nonce":9007199254740993}]}]}`)
-	result, err := svc.Forward(context.Background(), c, account, body)
+	result, err := svc.Forward(context.Background(), c, provider, body)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.NotNil(t, upstream.lastReq)
@@ -65,7 +67,6 @@ func TestOpenAIGatewayService_Forward_APIKeyMissingInstructionsKeepsLargeInputRa
 }
 
 func TestOpenAIGatewayService_Forward_AstraReasoningEffortUsesGroupMapping(t *testing.T) {
-
 	for _, effort := range []string{"minimal", "none"} {
 		t.Run(effort, func(t *testing.T) {
 			upstream := &auxiliaryHTTPRecorder{
@@ -78,19 +79,22 @@ func TestOpenAIGatewayService_Forward_AstraReasoningEffortUsesGroupMapping(t *te
 			cfg := &responsesFixtureOptions{}
 			cfg.Request.URLPolicy.Enabled = false
 			svc := newResponsesFixture(responsesFixtureInputs{options: cfg, transport: upstream})
-			account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 3,
-				Name:        "openai-apikey",
-				Platform:    capability.PlatformOpenAI,
-				Type:        capability.AccountTypeAPIKey,
-				Concurrency: 1,
-				Credentials: map[string]any{
-					"api_key":  "sk-test",
-					"base_url": "https://api.openai.com",
-					"model_mapping": map[string]any{
-						"client-model": "gpt-6-astra",
+			provider := &gatewayprovider.ExecutionProvider{
+				Record: providercore.Record{
+					LoadLocation: time.LoadLocation, ID: 3,
+					Name:        "openai-apikey",
+					Platform:    capability.PlatformOpenAI,
+					Type:        capability.ProviderTypeAPIKey,
+					Concurrency: 1,
+					Credentials: map[string]any{
+						"api_key":  "sk-test",
+						"base_url": "https://api.openai.com",
+						"model_mapping": map[string]any{
+							"client-model": "gpt-6-astra",
+						},
 					},
+					Extra: map[string]any{"use_responses_api": true},
 				},
-				Extra: map[string]any{"use_responses_api": true}},
 			}
 			rec := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(rec)
@@ -107,7 +111,7 @@ func TestOpenAIGatewayService_Forward_AstraReasoningEffortUsesGroupMapping(t *te
 			require.NoError(t, err)
 			require.True(t, changed)
 
-			result, err := svc.Forward(context.Background(), c, account, mappedBody)
+			result, err := svc.Forward(context.Background(), c, provider, mappedBody)
 			require.NoError(t, err)
 			require.NotNil(t, result)
 			require.NotNil(t, upstream.lastReq)
@@ -118,7 +122,6 @@ func TestOpenAIGatewayService_Forward_AstraReasoningEffortUsesGroupMapping(t *te
 }
 
 func TestOpenAIGatewayService_Forward_PassthroughPreservesAstraInputWithoutGroupMapping(t *testing.T) {
-
 	for _, tt := range []struct {
 		effort string
 		want   string
@@ -137,23 +140,26 @@ func TestOpenAIGatewayService_Forward_PassthroughPreservesAstraInputWithoutGroup
 			cfg := &responsesFixtureOptions{}
 			cfg.Request.URLPolicy.Enabled = false
 			svc := newResponsesFixture(responsesFixtureInputs{options: cfg, transport: upstream})
-			account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 4,
-				Name:        "openai-passthrough",
-				Platform:    capability.PlatformOpenAI,
-				Type:        capability.AccountTypeAPIKey,
-				Concurrency: 1,
-				Credentials: map[string]any{
-					"api_key":  "sk-test",
-					"base_url": "https://api.openai.com",
+			provider := &gatewayprovider.ExecutionProvider{
+				Record: providercore.Record{
+					LoadLocation: time.LoadLocation, ID: 4,
+					Name:        "openai-passthrough",
+					Platform:    capability.PlatformOpenAI,
+					Type:        capability.ProviderTypeAPIKey,
+					Concurrency: 1,
+					Credentials: map[string]any{
+						"api_key":  "sk-test",
+						"base_url": "https://api.openai.com",
+					},
+					Extra: map[string]any{"openai_passthrough": true},
 				},
-				Extra: map[string]any{"openai_passthrough": true}},
 			}
 			rec := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(rec)
 			c.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/responses", nil)
 			SetOpenAIClientTransport(c, OpenAIClientTransportHTTP)
 
-			result, err := svc.Forward(context.Background(), c, account, []byte(`{"model":"gpt-6-astra","reasoning":{"effort":"`+tt.effort+`"},"input":"hi"}`))
+			result, err := svc.Forward(context.Background(), c, provider, []byte(`{"model":"gpt-6-astra","reasoning":{"effort":"`+tt.effort+`"},"input":"hi"}`))
 			require.NoError(t, err)
 			require.NotNil(t, result)
 			require.NotNil(t, upstream.lastReq)
@@ -164,7 +170,6 @@ func TestOpenAIGatewayService_Forward_PassthroughPreservesAstraInputWithoutGroup
 }
 
 func TestOpenAIGatewayService_Forward_DecodedMutationKeepsLaterFieldDeletes(t *testing.T) {
-
 	upstream := &auxiliaryHTTPRecorder{
 		resp: &http.Response{
 			StatusCode: http.StatusOK,
@@ -175,16 +180,19 @@ func TestOpenAIGatewayService_Forward_DecodedMutationKeepsLaterFieldDeletes(t *t
 	cfg := &responsesFixtureOptions{}
 	cfg.Request.URLPolicy.Enabled = false
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg, transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 2,
-		Name:        "openai-apikey",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":  "sk-test",
-			"base_url": "https://example.com",
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 2,
+			Name:        "openai-apikey",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":  "sk-test",
+				"base_url": "https://example.com",
+			},
+			Extra: map[string]any{"use_responses_api": true},
 		},
-		Extra: map[string]any{"use_responses_api": true}},
 	}
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -192,7 +200,7 @@ func TestOpenAIGatewayService_Forward_DecodedMutationKeepsLaterFieldDeletes(t *t
 	SetOpenAIClientTransport(c, OpenAIClientTransportHTTP)
 
 	body := []byte(`{"model":"gpt-5.4","stream":false,"max_completion_tokens":12,"tools":[{"type":"image_generation","format":"png"}],"input":[{"type":"message","content":"draw"}]}`)
-	result, err := svc.Forward(context.Background(), c, account, body)
+	result, err := svc.Forward(context.Background(), c, provider, body)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.False(t, gjson.GetBytes(upstream.lastBody, "max_completion_tokens").Exists())
@@ -203,7 +211,6 @@ func TestOpenAIGatewayService_Forward_DecodedMutationKeepsLaterFieldDeletes(t *t
 // #4417：/v1/responses 原生转发路径需将 Chat-Completions 风格的 max_tokens 归一化为
 // max_output_tokens，并移除兼容上游不接受的 prompt_cache_options。
 func TestOpenAIGatewayService_Forward_NormalizesMaxTokensAndStripsPromptCacheOptions(t *testing.T) {
-
 	runForward := func(t *testing.T, body []byte) []byte {
 		t.Helper()
 		upstream := &auxiliaryHTTPRecorder{
@@ -216,23 +223,26 @@ func TestOpenAIGatewayService_Forward_NormalizesMaxTokensAndStripsPromptCacheOpt
 		cfg := &responsesFixtureOptions{}
 		cfg.Request.URLPolicy.Enabled = false
 		svc := newResponsesFixture(responsesFixtureInputs{options: cfg, transport: upstream})
-		account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 4,
-			Name:        "openai-apikey",
-			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeAPIKey,
-			Concurrency: 1,
-			Credentials: map[string]any{
-				"api_key":  "sk-test",
-				"base_url": "https://example.com",
+		provider := &gatewayprovider.ExecutionProvider{
+			Record: providercore.Record{
+				LoadLocation: time.LoadLocation, ID: 4,
+				Name:        "openai-apikey",
+				Platform:    capability.PlatformOpenAI,
+				Type:        capability.ProviderTypeAPIKey,
+				Concurrency: 1,
+				Credentials: map[string]any{
+					"api_key":  "sk-test",
+					"base_url": "https://example.com",
+				},
+				Extra: map[string]any{},
 			},
-			Extra: map[string]any{}},
 		}
 		rec := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(rec)
 		c.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/responses", nil)
 		SetOpenAIClientTransport(c, OpenAIClientTransportHTTP)
 
-		result, err := svc.Forward(context.Background(), c, account, body)
+		result, err := svc.Forward(context.Background(), c, provider, body)
 		require.NoError(t, err)
 		require.NotNil(t, result)
 		return upstream.lastBody
@@ -253,7 +263,6 @@ func TestOpenAIGatewayService_Forward_NormalizesMaxTokensAndStripsPromptCacheOpt
 }
 
 func TestOpenAIGatewayService_Forward_MappedImageModelUsesImageGate(t *testing.T) {
-
 	upstream := &auxiliaryHTTPRecorder{
 		resp: &http.Response{
 			StatusCode: http.StatusOK,
@@ -264,17 +273,20 @@ func TestOpenAIGatewayService_Forward_MappedImageModelUsesImageGate(t *testing.T
 	cfg := &responsesFixtureOptions{}
 	cfg.Request.URLPolicy.Enabled = false
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg, transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 3,
-		Name:        "openai-apikey",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":       "sk-test",
-			"base_url":      "https://example.com",
-			"model_mapping": map[string]any{"draw-alias": "gpt-image-2"},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 3,
+			Name:        "openai-apikey",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":       "sk-test",
+				"base_url":      "https://example.com",
+				"model_mapping": map[string]any{"draw-alias": "gpt-image-2"},
+			},
+			Extra: map[string]any{"use_responses_api": true},
 		},
-		Extra: map[string]any{"use_responses_api": true}},
 	}
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -283,7 +295,7 @@ func TestOpenAIGatewayService_Forward_MappedImageModelUsesImageGate(t *testing.T
 	SetOpenAIClientTransport(c, OpenAIClientTransportHTTP)
 
 	body := []byte(`{"model":"draw-alias","stream":false,"input":"draw"}`)
-	result, err := svc.Forward(context.Background(), c, account, body)
+	result, err := svc.Forward(context.Background(), c, provider, body)
 	require.Error(t, err)
 	require.Nil(t, result)
 	require.Nil(t, upstream.lastReq)
@@ -292,13 +304,13 @@ func TestOpenAIGatewayService_Forward_MappedImageModelUsesImageGate(t *testing.T
 	require.True(t, known)
 	require.False(t, cached)
 
-	textAccount := *account
-	textAccount.Record.ID = 4
-	textAccount.Record.Credentials = map[string]any{
+	textProvider := *provider
+	textProvider.Record.ID = 4
+	textProvider.Record.Credentials = map[string]any{
 		"api_key":  "sk-test",
 		"base_url": "https://example.com",
 	}
-	result, err = svc.Forward(context.Background(), c, &textAccount, body)
+	result, err = svc.Forward(context.Background(), c, &textProvider, body)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.NotNil(t, upstream.lastReq)
@@ -309,7 +321,6 @@ func TestOpenAIGatewayService_Forward_MappedImageModelUsesImageGate(t *testing.T
 }
 
 func TestOpenAIGatewayService_Forward_TextResponsesSetsBillingModelToMappedModel(t *testing.T) {
-
 	upstream := &auxiliaryHTTPRecorder{
 		resp: &http.Response{
 			StatusCode: http.StatusOK,
@@ -322,17 +333,20 @@ func TestOpenAIGatewayService_Forward_TextResponsesSetsBillingModelToMappedModel
 	cfg := &responsesFixtureOptions{}
 	cfg.Request.URLPolicy.Enabled = false
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg, transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 4,
-		Name:        "openai-apikey",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":       "sk-test",
-			"base_url":      "https://example.com",
-			"model_mapping": map[string]any{"gpt-5.4": "gpt-5.5"},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 4,
+			Name:        "openai-apikey",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":       "sk-test",
+				"base_url":      "https://example.com",
+				"model_mapping": map[string]any{"gpt-5.4": "gpt-5.5"},
+			},
+			Extra: map[string]any{"use_responses_api": true},
 		},
-		Extra: map[string]any{"use_responses_api": true}},
 	}
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -340,7 +354,7 @@ func TestOpenAIGatewayService_Forward_TextResponsesSetsBillingModelToMappedModel
 	SetOpenAIClientTransport(c, OpenAIClientTransportHTTP)
 
 	body := []byte(`{"model":"gpt-5.4","stream":false,"input":"hello"}`)
-	result, err := svc.Forward(context.Background(), c, account, body)
+	result, err := svc.Forward(context.Background(), c, provider, body)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, "gpt-5.4", result.Model)
@@ -351,7 +365,6 @@ func TestOpenAIGatewayService_Forward_TextResponsesSetsBillingModelToMappedModel
 }
 
 func TestOpenAIGatewayService_Forward_TextResponsesWithoutMappingKeepsRequestedBillingModel(t *testing.T) {
-
 	upstream := &auxiliaryHTTPRecorder{
 		resp: &http.Response{
 			StatusCode: http.StatusOK,
@@ -362,23 +375,26 @@ func TestOpenAIGatewayService_Forward_TextResponsesWithoutMappingKeepsRequestedB
 	cfg := &responsesFixtureOptions{}
 	cfg.Request.URLPolicy.Enabled = false
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg, transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 4,
-		Name:        "openai-apikey",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":  "sk-test",
-			"base_url": "https://example.com",
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 4,
+			Name:        "openai-apikey",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":  "sk-test",
+				"base_url": "https://example.com",
+			},
+			Extra: map[string]any{"use_responses_api": true},
 		},
-		Extra: map[string]any{"use_responses_api": true}},
 	}
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/responses", nil)
 	SetOpenAIClientTransport(c, OpenAIClientTransportHTTP)
 
-	result, err := svc.Forward(context.Background(), c, account, []byte(`{"model":"gpt-5.4","stream":false,"input":"hello"}`))
+	result, err := svc.Forward(context.Background(), c, provider, []byte(`{"model":"gpt-5.4","stream":false,"input":"hello"}`))
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, "gpt-5.4", result.Model)
@@ -387,20 +403,22 @@ func TestOpenAIGatewayService_Forward_TextResponsesWithoutMappingKeepsRequestedB
 }
 
 func TestOpenAIGatewayService_Forward_TextResponsesBillingModelMatchesChatCompletions(t *testing.T) {
-
 	cfg := &responsesFixtureOptions{}
 	cfg.Request.URLPolicy.Enabled = false
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 5,
-		Name:        "openai-apikey",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":       "sk-test",
-			"base_url":      "https://example.com",
-			"model_mapping": map[string]any{"gpt-5.4": "gpt-5.5"},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 5,
+			Name:        "openai-apikey",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":       "sk-test",
+				"base_url":      "https://example.com",
+				"model_mapping": map[string]any{"gpt-5.4": "gpt-5.5"},
+			},
+			Extra: map[string]any{"use_responses_api": true},
 		},
-		Extra: map[string]any{"use_responses_api": true}},
 	}
 
 	responsesUpstream := &auxiliaryHTTPRecorder{
@@ -417,7 +435,7 @@ func TestOpenAIGatewayService_Forward_TextResponsesBillingModelMatchesChatComple
 	responsesCtx, _ := gin.CreateTestContext(responsesRecorder)
 	responsesCtx.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/responses", nil)
 	SetOpenAIClientTransport(responsesCtx, OpenAIClientTransportHTTP)
-	responsesResult, err := responsesSvc.Forward(context.Background(), responsesCtx, account, []byte(`{"model":"gpt-5.4","stream":false,"input":"hello"}`))
+	responsesResult, err := responsesSvc.Forward(context.Background(), responsesCtx, provider, []byte(`{"model":"gpt-5.4","stream":false,"input":"hello"}`))
 	require.NoError(t, err)
 	require.NotNil(t, responsesResult)
 
@@ -434,7 +452,7 @@ func TestOpenAIGatewayService_Forward_TextResponsesBillingModelMatchesChatComple
 	chatRecorder := httptest.NewRecorder()
 	chatCtx, _ := gin.CreateTestContext(chatRecorder)
 	chatCtx.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/chat/completions", nil)
-	chatResult, err := chatSvc.Text.Chat(context.Background(), chatCtx, account, []byte(`{"model":"gpt-5.4","stream":false,"messages":[{"role":"user","content":"hello"}]}`), "", "")
+	chatResult, err := chatSvc.Text.Chat(context.Background(), chatCtx, provider, []byte(`{"model":"gpt-5.4","stream":false,"messages":[{"role":"user","content":"hello"}]}`), "", "")
 	require.NoError(t, err)
 	require.NotNil(t, chatResult)
 
@@ -444,7 +462,6 @@ func TestOpenAIGatewayService_Forward_TextResponsesBillingModelMatchesChatComple
 }
 
 func TestOpenAIGatewayService_Forward_TextDataImageDoesNotForceMapMarshal(t *testing.T) {
-
 	upstream := &auxiliaryHTTPRecorder{
 		resp: &http.Response{
 			StatusCode: http.StatusOK,
@@ -455,16 +472,19 @@ func TestOpenAIGatewayService_Forward_TextDataImageDoesNotForceMapMarshal(t *tes
 	cfg := &responsesFixtureOptions{}
 	cfg.Request.URLPolicy.Enabled = false
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg, transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 4,
-		Name:        "openai-apikey",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":  "sk-test",
-			"base_url": "https://example.com",
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 4,
+			Name:        "openai-apikey",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":  "sk-test",
+				"base_url": "https://example.com",
+			},
+			Extra: map[string]any{"use_responses_api": true},
 		},
-		Extra: map[string]any{"use_responses_api": true}},
 	}
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -472,14 +492,13 @@ func TestOpenAIGatewayService_Forward_TextDataImageDoesNotForceMapMarshal(t *tes
 	SetOpenAIClientTransport(c, OpenAIClientTransportHTTP)
 
 	body := []byte(`{"model":"gpt-5","stream":false,"input":[{"type":"message","content":[{"type":"input_text","text":"literal data:image/png;base64, only","nonce":1e1000000}]}]}`)
-	result, err := svc.Forward(context.Background(), c, account, body)
+	result, err := svc.Forward(context.Background(), c, provider, body)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, "1e1000000", gjson.GetBytes(upstream.lastBody, "input.0.content.0.nonce").Raw)
 }
 
 func TestOpenAIGatewayService_Forward_ImageToolBillingDoesNotForceFullDecode(t *testing.T) {
-
 	upstream := &auxiliaryHTTPRecorder{
 		resp: &http.Response{
 			StatusCode: http.StatusOK,
@@ -492,16 +511,19 @@ func TestOpenAIGatewayService_Forward_ImageToolBillingDoesNotForceFullDecode(t *
 	cfg := &responsesFixtureOptions{}
 	cfg.Request.URLPolicy.Enabled = false
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg, transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 9,
-		Name:        "openai-apikey",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":  "sk-test",
-			"base_url": "https://example.com",
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 9,
+			Name:        "openai-apikey",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":  "sk-test",
+				"base_url": "https://example.com",
+			},
+			Extra: map[string]any{"use_responses_api": true},
 		},
-		Extra: map[string]any{"use_responses_api": true}},
 	}
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -509,7 +531,7 @@ func TestOpenAIGatewayService_Forward_ImageToolBillingDoesNotForceFullDecode(t *
 	SetOpenAIClientTransport(c, OpenAIClientTransportHTTP)
 
 	body := []byte(`{"model":"gpt-5","stream":false,"tools":[{"type":"image_generation","model":"gpt-image-2","size":"2048x1152"}],"input":[{"type":"message","content":[{"type":"input_text","text":"draw","nonce":1e1000000}]}]}`)
-	result, err := svc.Forward(context.Background(), c, account, body)
+	result, err := svc.Forward(context.Background(), c, provider, body)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, "1e1000000", gjson.GetBytes(upstream.lastBody, "input.0.content.0.nonce").Raw)
@@ -519,7 +541,6 @@ func TestOpenAIGatewayService_Forward_ImageToolBillingDoesNotForceFullDecode(t *
 }
 
 func TestOpenAIGatewayService_Forward_ImageToolWithImageOnlyModelIsNormalized(t *testing.T) {
-
 	upstream := &auxiliaryHTTPRecorder{
 		resp: &http.Response{
 			StatusCode: http.StatusOK,
@@ -530,16 +551,19 @@ func TestOpenAIGatewayService_Forward_ImageToolWithImageOnlyModelIsNormalized(t 
 	cfg := &responsesFixtureOptions{}
 	cfg.Request.URLPolicy.Enabled = false
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg, transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 11,
-		Name:        "openai-apikey",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":  "sk-test",
-			"base_url": "https://example.com",
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 11,
+			Name:        "openai-apikey",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":  "sk-test",
+				"base_url": "https://example.com",
+			},
+			Extra: map[string]any{"use_responses_api": true},
 		},
-		Extra: map[string]any{"use_responses_api": true}},
 	}
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -547,14 +571,13 @@ func TestOpenAIGatewayService_Forward_ImageToolWithImageOnlyModelIsNormalized(t 
 	SetOpenAIClientTransport(c, OpenAIClientTransportHTTP)
 
 	body := []byte(`{"model":"gpt-image-2","stream":false,"tools":[{"type":"image_generation","model":"gpt-image-2"}],"input":"draw"}`)
-	result, err := svc.Forward(context.Background(), c, account, body)
+	result, err := svc.Forward(context.Background(), c, provider, body)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, openai.ImagesResponsesMainModel, gjson.GetBytes(upstream.lastBody, "model").String())
 }
 
 func TestOpenAIGatewayService_Forward_HTTPRetryRecoveryDoesNotDecodeBeforeError(t *testing.T) {
-
 	upstream := &auxiliaryHTTPRecorder{
 		responses: []*http.Response{
 			{
@@ -572,16 +595,19 @@ func TestOpenAIGatewayService_Forward_HTTPRetryRecoveryDoesNotDecodeBeforeError(
 	cfg := &responsesFixtureOptions{}
 	cfg.Request.URLPolicy.Enabled = false
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg, transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 10,
-		Name:        "openai-apikey",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":  "sk-test",
-			"base_url": "https://example.com",
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 10,
+			Name:        "openai-apikey",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":  "sk-test",
+				"base_url": "https://example.com",
+			},
+			Extra: map[string]any{"use_responses_api": true},
 		},
-		Extra: map[string]any{"use_responses_api": true}},
 	}
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -589,7 +615,7 @@ func TestOpenAIGatewayService_Forward_HTTPRetryRecoveryDoesNotDecodeBeforeError(
 	SetOpenAIClientTransport(c, OpenAIClientTransportHTTP)
 
 	body := []byte(`{"model":"gpt-5","stream":false,"input":[{"type":"reasoning","encrypted_content":"gAAA","summary":[{"type":"summary_text","text":"keep me"}]},{"type":"message","content":[{"type":"input_text","text":"hi","nonce":9007199254740993}]}]}`)
-	result, err := svc.Forward(context.Background(), c, account, body)
+	result, err := svc.Forward(context.Background(), c, provider, body)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Len(t, upstream.bodies, 2)
@@ -600,7 +626,6 @@ func TestOpenAIGatewayService_Forward_HTTPRetryRecoveryDoesNotDecodeBeforeError(
 }
 
 func TestOpenAIGatewayService_Forward_HTTPRetryRecoveryDropsCompaction(t *testing.T) {
-
 	upstream := &auxiliaryHTTPRecorder{
 		responses: []*http.Response{
 			{
@@ -618,16 +643,19 @@ func TestOpenAIGatewayService_Forward_HTTPRetryRecoveryDropsCompaction(t *testin
 	cfg := &responsesFixtureOptions{}
 	cfg.Request.URLPolicy.Enabled = false
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg, transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 10,
-		Name:        "openai-apikey",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":  "sk-test",
-			"base_url": "https://example.com",
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 10,
+			Name:        "openai-apikey",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":  "sk-test",
+				"base_url": "https://example.com",
+			},
+			Extra: map[string]any{"use_responses_api": true},
 		},
-		Extra: map[string]any{"use_responses_api": true}},
 	}
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -635,7 +663,7 @@ func TestOpenAIGatewayService_Forward_HTTPRetryRecoveryDropsCompaction(t *testin
 	SetOpenAIClientTransport(c, OpenAIClientTransportHTTP)
 
 	body := []byte(`{"model":"gpt-5.6-sol","stream":false,"input":[{"id":"cmp_stale","type":"compaction","encrypted_content":"gAAA"},{"type":"message","content":[{"type":"input_text","text":"hi"}]}]}`)
-	result, err := svc.Forward(context.Background(), c, account, body)
+	result, err := svc.Forward(context.Background(), c, provider, body)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Len(t, upstream.bodies, 2)
@@ -645,7 +673,6 @@ func TestOpenAIGatewayService_Forward_HTTPRetryRecoveryDropsCompaction(t *testin
 }
 
 func TestOpenAIGatewayService_Forward_CodexSparkRejectsEscapedInputImage(t *testing.T) {
-
 	upstream := &auxiliaryHTTPRecorder{
 		resp: &http.Response{
 			StatusCode: http.StatusOK,
@@ -656,16 +683,19 @@ func TestOpenAIGatewayService_Forward_CodexSparkRejectsEscapedInputImage(t *test
 	cfg := &responsesFixtureOptions{}
 	cfg.Request.URLPolicy.Enabled = false
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg, transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 5,
-		Name:        "openai-apikey",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":  "sk-test",
-			"base_url": "https://example.com",
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 5,
+			Name:        "openai-apikey",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":  "sk-test",
+				"base_url": "https://example.com",
+			},
+			Extra: map[string]any{"use_responses_api": true},
 		},
-		Extra: map[string]any{"use_responses_api": true}},
 	}
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -673,7 +703,7 @@ func TestOpenAIGatewayService_Forward_CodexSparkRejectsEscapedInputImage(t *test
 	SetOpenAIClientTransport(c, OpenAIClientTransportHTTP)
 
 	body := []byte(`{"model":"gpt-5.3-codex-spark","stream":false,"input":[{"type":"input_` + "\\u0069" + `mage","file_id":"file_1"}]}`)
-	result, err := svc.Forward(context.Background(), c, account, body)
+	result, err := svc.Forward(context.Background(), c, provider, body)
 	require.Error(t, err)
 	require.Nil(t, result)
 	require.Nil(t, upstream.lastReq)
@@ -681,7 +711,6 @@ func TestOpenAIGatewayService_Forward_CodexSparkRejectsEscapedInputImage(t *test
 }
 
 func TestOpenAIGatewayService_Forward_CodexBridgeInjectionSetsImageBilling(t *testing.T) {
-
 	upstream := &auxiliaryHTTPRecorder{
 		resp: &http.Response{
 			StatusCode: http.StatusOK,
@@ -696,16 +725,19 @@ func TestOpenAIGatewayService_Forward_CodexBridgeInjectionSetsImageBilling(t *te
 	cfg.Request.ForceCLI = true
 	cfg.ImageBridge = true
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg, transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 7,
-		Name:        "openai-apikey",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":  "sk-test",
-			"base_url": "https://example.com",
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 7,
+			Name:        "openai-apikey",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":  "sk-test",
+				"base_url": "https://example.com",
+			},
+			Extra: map[string]any{"use_responses_api": true},
 		},
-		Extra: map[string]any{"use_responses_api": true}},
 	}
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -714,7 +746,7 @@ func TestOpenAIGatewayService_Forward_CodexBridgeInjectionSetsImageBilling(t *te
 	SetOpenAIClientTransport(c, OpenAIClientTransportHTTP)
 
 	body := []byte(`{"model":"gpt-5","stream":false,"input":"draw if needed"}`)
-	result, err := svc.Forward(context.Background(), c, account, body)
+	result, err := svc.Forward(context.Background(), c, provider, body)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, 1, result.ImageCount)
@@ -723,19 +755,21 @@ func TestOpenAIGatewayService_Forward_CodexBridgeInjectionSetsImageBilling(t *te
 }
 
 func TestOpenAIGatewayService_Forward_HTTPPreservesPreviousResponseIDForAPIKey(t *testing.T) {
-
 	cfg := &responsesFixtureOptions{}
 	cfg.Request.URLPolicy.Enabled = false
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 8,
-		Name:        "openai-apikey",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":  "sk-test",
-			"base_url": "https://example.com",
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 8,
+			Name:        "openai-apikey",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":  "sk-test",
+				"base_url": "https://example.com",
+			},
+			Extra: map[string]any{"use_responses_api": true},
 		},
-		Extra: map[string]any{"use_responses_api": true}},
 	}
 
 	for _, body := range [][]byte{
@@ -755,7 +789,7 @@ func TestOpenAIGatewayService_Forward_HTTPPreservesPreviousResponseIDForAPIKey(t
 		c.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/responses", nil)
 		SetOpenAIClientTransport(c, OpenAIClientTransportHTTP)
 
-		result, err := svc.Forward(context.Background(), c, account, body)
+		result, err := svc.Forward(context.Background(), c, provider, body)
 		require.NoError(t, err)
 		require.NotNil(t, result)
 		require.True(t, gjson.GetBytes(upstream.lastBody, "previous_response_id").Exists())
@@ -763,7 +797,6 @@ func TestOpenAIGatewayService_Forward_HTTPPreservesPreviousResponseIDForAPIKey(t
 }
 
 func TestOpenAIGatewayService_Forward_StripsImageGenerationToolForSparkAPIKey(t *testing.T) {
-
 	upstream := &auxiliaryHTTPRecorder{
 		resp: &http.Response{
 			StatusCode: http.StatusOK,
@@ -774,16 +807,19 @@ func TestOpenAIGatewayService_Forward_StripsImageGenerationToolForSparkAPIKey(t 
 	cfg := &responsesFixtureOptions{}
 	cfg.Request.URLPolicy.Enabled = false
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg, transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 11,
-		Name:        "openai-apikey",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":  "sk-test",
-			"base_url": "https://example.com",
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 11,
+			Name:        "openai-apikey",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":  "sk-test",
+				"base_url": "https://example.com",
+			},
+			Extra: map[string]any{"use_responses_api": true},
 		},
-		Extra: map[string]any{"use_responses_api": true}},
 	}
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -793,7 +829,7 @@ func TestOpenAIGatewayService_Forward_StripsImageGenerationToolForSparkAPIKey(t 
 	SetOpenAIClientTransport(c, OpenAIClientTransportHTTP)
 
 	body := []byte(`{"model":"gpt-5.3-codex-spark","stream":false,"input":"hi","tools":[{"type":"function","name":"shell"},{"type":"image_generation","output_format":"png"}]}`)
-	result, err := svc.Forward(context.Background(), c, account, body)
+	result, err := svc.Forward(context.Background(), c, provider, body)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.NotNil(t, upstream.lastReq)
@@ -820,7 +856,6 @@ func TestOpenAIRequestBodyMayContainEmptyBase64InputImageSeesEscapedInputPrefix(
 }
 
 func TestOpenAIGatewayService_Forward_ImageOnlyModelKeepsSupportedVerbosity(t *testing.T) {
-
 	upstream := &auxiliaryHTTPRecorder{
 		resp: &http.Response{
 			StatusCode: http.StatusOK,
@@ -831,16 +866,19 @@ func TestOpenAIGatewayService_Forward_ImageOnlyModelKeepsSupportedVerbosity(t *t
 	cfg := &responsesFixtureOptions{}
 	cfg.Request.URLPolicy.Enabled = false
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg, transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 6,
-		Name:        "openai-apikey",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":  "sk-test",
-			"base_url": "https://example.com",
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 6,
+			Name:        "openai-apikey",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":  "sk-test",
+				"base_url": "https://example.com",
+			},
+			Extra: map[string]any{"use_responses_api": true},
 		},
-		Extra: map[string]any{"use_responses_api": true}},
 	}
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -848,7 +886,7 @@ func TestOpenAIGatewayService_Forward_ImageOnlyModelKeepsSupportedVerbosity(t *t
 	SetOpenAIClientTransport(c, OpenAIClientTransportHTTP)
 
 	body := []byte(`{"model":"gpt-image-2","stream":false,"text":{"verbosity":"low"},"input":"draw"}`)
-	result, err := svc.Forward(context.Background(), c, account, body)
+	result, err := svc.Forward(context.Background(), c, provider, body)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, "low", gjson.GetBytes(upstream.lastBody, "text.verbosity").String())
@@ -856,11 +894,13 @@ func TestOpenAIGatewayService_Forward_ImageOnlyModelKeepsSupportedVerbosity(t *t
 }
 
 func TestOpenAIGatewayEntrypointsRejectUltraBeforeUpstream(t *testing.T) {
-
 	svc := newResponsesFixture(responsesFixtureInputs{})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI,
-		Type:  capability.AccountTypeAPIKey,
-		Extra: map[string]any{"openai_text_route_mode": "force_chat_completions"}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI,
+			Type:  capability.ProviderTypeAPIKey,
+			Extra: map[string]any{"openai_text_route_mode": "force_chat_completions"},
+		},
 	}
 
 	t.Run("Responses", func(t *testing.T) {
@@ -869,7 +909,7 @@ func TestOpenAIGatewayEntrypointsRejectUltraBeforeUpstream(t *testing.T) {
 		c, _ := gin.CreateTestContext(rec)
 		c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", strings.NewReader(string(body)))
 
-		result, err := svc.Forward(context.Background(), c, account, body)
+		result, err := svc.Forward(context.Background(), c, provider, body)
 		require.ErrorContains(t, err, "not supported")
 		require.Nil(t, result)
 		require.Equal(t, http.StatusBadRequest, rec.Code)
@@ -881,7 +921,7 @@ func TestOpenAIGatewayEntrypointsRejectUltraBeforeUpstream(t *testing.T) {
 		c, _ := gin.CreateTestContext(rec)
 		c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", strings.NewReader(string(body)))
 
-		result, err := svc.Text.Chat(context.Background(), c, account, body, "", "")
+		result, err := svc.Text.Chat(context.Background(), c, provider, body, "", "")
 		require.ErrorContains(t, err, "not supported")
 		require.Nil(t, result)
 		require.Equal(t, http.StatusBadRequest, rec.Code)
@@ -893,7 +933,7 @@ func TestOpenAIGatewayEntrypointsRejectUltraBeforeUpstream(t *testing.T) {
 		c, _ := gin.CreateTestContext(rec)
 		c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", strings.NewReader(string(body)))
 
-		result, err := svc.Text.Messages(context.Background(), c, account, body, "", "")
+		result, err := svc.Text.Messages(context.Background(), c, provider, body, "", "")
 		require.ErrorContains(t, err, "not supported")
 		require.Nil(t, result)
 		require.Equal(t, http.StatusBadRequest, rec.Code)
@@ -901,7 +941,6 @@ func TestOpenAIGatewayEntrypointsRejectUltraBeforeUpstream(t *testing.T) {
 }
 
 func TestGetOpenAIRequestBodyMap_DoesNotWriteContextCache(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 

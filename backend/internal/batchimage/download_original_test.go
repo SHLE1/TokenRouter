@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/batchimage"
 	batchimageprovider "github.com/TokenFlux/TokenRouter/internal/batchimage/provider"
@@ -107,7 +107,7 @@ func TestBatchImageDownloadService_StreamZip(t *testing.T) {
 		require.NotContains(t, zipText, "provider_job_name")
 		require.NotContains(t, zipText, "provider_input_ref")
 		require.NotContains(t, zipText, "gcs_output_uri")
-		require.NotContains(t, zipText, "account_id")
+		require.NotContains(t, zipText, "provider_id")
 		require.NotContains(t, zipText, "providers/")
 		require.NotContains(t, zipText, "gs://")
 
@@ -198,13 +198,13 @@ func TestBatchImageDownloadFilenames(t *testing.T) {
 func newTestBatchImageDownloadService() (*batchimage.Download, *fakeBatchImageRepository, *fakeBatchImageDownloadLimiter) {
 	repo := newFakeBatchImageRepository()
 	apiKeyID := int64(22)
-	accountID := int64(101)
+	providerID := int64(101)
 	repo.jobs["imgbatch_download"] = &batchimage.BatchImageJob{
 		BatchID:           "imgbatch_download",
 		UserID:            11,
 		APIKeyID:          &apiKeyID,
-		AccountID:         &accountID,
-		Provider:          batchimage.BatchImageProviderGeminiAPI,
+		ProviderID:        &providerID,
+		Platform:          batchimage.BatchImageProviderGeminiAPI,
 		Model:             "gemini-2.5-flash-image",
 		Status:            batchimage.BatchImageJobStatusCompleted,
 		ProviderJobName:   batchimage.BatchImageStringPtr("providers/internal/job"),
@@ -225,9 +225,9 @@ func newTestBatchImageDownloadService() (*batchimage.Download, *fakeBatchImageRe
 		{JobID: "imgbatch_download", CustomID: "bad", Status: batchimage.BatchImageItemStatusFailed, ErrorCode: &code, ErrorMessage: &msg},
 		{JobID: "imgbatch_download", CustomID: "ok_2", Status: batchimage.BatchImageItemStatusSuccess, MimeType: &webp, FileExtension: &webpExt, ImageCount: 1},
 	}
-	provider := &publicBatchImageProvider{name: batchimage.BatchImageProviderGeminiAPI, result: batchImageDownloadResultJSONL()}
+	platform := &publicBatchImageProvider{name: batchimage.BatchImageProviderGeminiAPI, result: batchImageDownloadResultJSONL()}
 	limiter := &fakeBatchImageDownloadLimiter{}
-	svc := newBatchDownloadFixture(repo, batchimage.NewRegistry[batchimageprovider.BatchImageProvider](provider), &resultAccountFixture{account: &account.Record{ID: accountID, Platform: capability.PlatformGemini, Type: capability.AccountTypeAPIKey, Status: billing.StatusActive, Schedulable: true}}, limiter, &config.Config{BatchImage: config.BatchImageConfig{MaxDownloadItemsZip: 10, MaxDownloadDurationSeconds: 60}})
+	svc := newBatchDownloadFixture(repo, batchimage.NewRegistry[batchimageprovider.BatchImageProvider](platform), &resultProviderFixture{provider: &provider.Record{ID: providerID, Platform: capability.PlatformGemini, Type: capability.ProviderTypeAPIKey, Status: billing.StatusActive, Schedulable: true}}, limiter, &config.Config{BatchImage: config.BatchImageConfig{MaxDownloadItemsZip: 10, MaxDownloadDurationSeconds: 60}})
 	return svc, repo, limiter
 }
 
@@ -295,5 +295,7 @@ func (p *fakeBatchImageDownloadPermit) Release(context.Context) error {
 	return nil
 }
 
-var _ batchimage.BatchImageDownloadLimiter = (*fakeBatchImageDownloadLimiter)(nil)
-var _ batchimage.BatchImageDownloadPermit = (*fakeBatchImageDownloadPermit)(nil)
+var (
+	_ batchimage.BatchImageDownloadLimiter = (*fakeBatchImageDownloadLimiter)(nil)
+	_ batchimage.BatchImageDownloadPermit  = (*fakeBatchImageDownloadPermit)(nil)
+)

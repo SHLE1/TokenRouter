@@ -11,7 +11,7 @@ import (
 
 const (
 	groupAvailabilityProbeDefaultMaxWorkers = 5
-	// 最长运行时间覆盖合法配置下的全部尝试，并为账号选择和结果保存预留一分钟。
+	// 最长运行时间覆盖合法配置下的全部尝试，并为提供商选择和结果保存预留一分钟。
 	groupAvailabilityProbeMaxRunDuration     = time.Duration(MaxGroupAvailabilityProbeMaxRetries+1)*time.Duration(MaxGroupAvailabilityProbeTimeoutSeconds)*time.Second + time.Minute
 	groupAvailabilityProbeMaintenanceTimeout = time.Minute
 	groupAvailabilityProbeClaimTimeout       = time.Minute
@@ -152,10 +152,10 @@ func runGroupAvailabilityProbeAttempts(
 	return lastResult
 }
 
-// runProbeAttempt 完成一次账号选择和真实请求，并转换为统一的分组探测结果。
+// runProbeAttempt 完成一次提供商选择和真实请求，并转换为统一的分组探测结果。
 func (s *GroupAvailabilityProbeRunnerService) runProbeAttempt(ctx context.Context, due GroupAvailabilityProbeDueGroup, probeConfig GroupAvailabilityProbeConfig) *GroupAvailabilityProbeResult {
 	startedAt := s.now()
-	accountID, err := s.executor.Select(ctx, due, probeConfig.ModelID)
+	providerID, err := s.executor.Select(ctx, due, probeConfig.ModelID)
 	if err != nil {
 		finishedAt := s.now()
 		return &GroupAvailabilityProbeResult{
@@ -170,11 +170,11 @@ func (s *GroupAvailabilityProbeRunnerService) runProbeAttempt(ctx context.Contex
 		}
 	}
 
-	result, err := s.executor.Test(ctx, accountID, probeConfig.ModelID, probeConfig.Prompt, probeConfig.UserAgent)
+	result, err := s.executor.Test(ctx, providerID, probeConfig.ModelID, probeConfig.Prompt, probeConfig.UserAgent)
 	finishedAt := s.now()
 	probeResult := &GroupAvailabilityProbeResult{
 		GroupID:    due.GroupID,
-		AccountID:  &accountID,
+		ProviderID: &providerID,
 		ModelID:    probeConfig.ModelID,
 		Status:     GroupAvailabilityProbeStatusSuccess,
 		Success:    true,
@@ -206,7 +206,7 @@ func (s *GroupAvailabilityProbeRunnerService) runProbeAttempt(ctx context.Contex
 	return probeResult
 }
 
-func (s *GroupAvailabilityProbeRunnerService) saveFailure(ctx context.Context, due GroupAvailabilityProbeDueGroup, cfg GroupAvailabilityProbeConfig, message string, accountID *int64) {
+func (s *GroupAvailabilityProbeRunnerService) saveFailure(ctx context.Context, due GroupAvailabilityProbeDueGroup, cfg GroupAvailabilityProbeConfig, message string, providerID *int64) {
 	now := s.now()
 	modelID := strings.TrimSpace(cfg.ModelID)
 	if modelID == "" {
@@ -214,7 +214,7 @@ func (s *GroupAvailabilityProbeRunnerService) saveFailure(ctx context.Context, d
 	}
 	s.saveResult(ctx, due, cfg, &GroupAvailabilityProbeResult{
 		GroupID:      due.GroupID,
-		AccountID:    accountID,
+		ProviderID:   providerID,
 		ModelID:      modelID,
 		Status:       GroupAvailabilityProbeStatusFailed,
 		Success:      false,

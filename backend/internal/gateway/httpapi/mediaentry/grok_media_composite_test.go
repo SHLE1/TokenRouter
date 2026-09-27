@@ -14,21 +14,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// compositeGrokVideoCacheStub 仅在指定分组返回任务绑定账号。
+// compositeGrokVideoCacheStub 仅在指定分组返回任务绑定提供商。
 type compositeGrokVideoCacheStub struct {
-	groupID   int64
-	accountID int64
-	ownerID   int64
+	groupID    int64
+	providerID int64
+	ownerID    int64
 }
 
-func (s *compositeGrokVideoCacheStub) GetSessionAccountID(_ context.Context, groupID int64, _ string) (int64, error) {
+func (s *compositeGrokVideoCacheStub) GetSessionProviderID(_ context.Context, groupID int64, _ string) (int64, error) {
 	if groupID == s.groupID {
-		return s.accountID, nil
+		return s.providerID, nil
 	}
 	return 0, errors.New("not found")
 }
 
-func (s *compositeGrokVideoCacheStub) SetSessionAccountID(context.Context, int64, string, int64, time.Duration) error {
+func (s *compositeGrokVideoCacheStub) SetSessionProviderID(context.Context, int64, string, int64, time.Duration) error {
 	return nil
 }
 
@@ -36,7 +36,7 @@ func (s *compositeGrokVideoCacheStub) RefreshSessionTTL(context.Context, int64, 
 	return nil
 }
 
-func (s *compositeGrokVideoCacheStub) DeleteSessionAccountID(context.Context, int64, string) error {
+func (s *compositeGrokVideoCacheStub) DeleteSessionProviderID(context.Context, int64, string) error {
 	return nil
 }
 
@@ -52,17 +52,17 @@ func (s *compositeGrokVideoCacheStub) GetSessionOwnerGroupID(context.Context, in
 }
 
 func TestResolveCompositeGrokVideoAPIKeyUsesPersistedOwnerAfterMappingRemoval(t *testing.T) {
-	cache := &compositeGrokVideoCacheStub{groupID: 20, accountID: 88, ownerID: 20}
+	cache := &compositeGrokVideoCacheStub{groupID: 20, providerID: 88, ownerID: 20}
 	// 存储替身只接入实际视频任务拥有者，不构造无关网关图。
 	tasks := gatewaymedia.NewVideoTasks(cache, nil, gatewaymedia.VideoOptions{})
 	handler := New(Bindings{Dependencies: gatewayhttp.OpenAIDependencies{Gateway: true}, VideoTasks: func() *gatewaymedia.VideoTasks { return tasks }})
 
 	apiKey := &apikey.APIKey{ID: 33, UserID: 44, IsComposite: true}
 
-	selected, accountID, err := handler.resolveCompositeGrokVideoAPIKey(context.Background(), apiKey, "video-123", apiKey.UserID)
+	selected, providerID, err := handler.resolveCompositeGrokVideoAPIKey(context.Background(), apiKey, "video-123", apiKey.UserID)
 
 	require.NoError(t, err)
-	require.Equal(t, int64(88), accountID)
+	require.Equal(t, int64(88), providerID)
 	require.Equal(t, int64(20), *selected.GroupID)
 	require.True(t, selected.Group.Hydrated)
 }
@@ -74,7 +74,7 @@ func (s *compositeGrokVideoCacheStub) RefreshSessionOwnerTTL(context.Context, in
 func TestResolveCompositeGrokVideoAPIKeyRestoresBoundGroup(t *testing.T) {
 	openAIGroup := &routing.Group{ID: 10, Status: billing.StatusActive}
 	grokGroup := &routing.Group{ID: 20, Status: billing.StatusActive}
-	cache := &compositeGrokVideoCacheStub{groupID: grokGroup.ID, accountID: 88}
+	cache := &compositeGrokVideoCacheStub{groupID: grokGroup.ID, providerID: 88}
 	// 存储替身只接入实际视频任务拥有者，不构造无关网关图。
 	tasks := gatewaymedia.NewVideoTasks(cache, nil, gatewaymedia.VideoOptions{})
 	handler := New(Bindings{Dependencies: gatewayhttp.OpenAIDependencies{Gateway: true}, VideoTasks: func() *gatewaymedia.VideoTasks { return tasks }})
@@ -87,10 +87,10 @@ func TestResolveCompositeGrokVideoAPIKeyRestoresBoundGroup(t *testing.T) {
 		},
 	}
 
-	selected, accountID, err := handler.resolveCompositeGrokVideoAPIKey(context.Background(), apiKey, "video-123", apiKey.UserID)
+	selected, providerID, err := handler.resolveCompositeGrokVideoAPIKey(context.Background(), apiKey, "video-123", apiKey.UserID)
 
 	require.NoError(t, err)
-	require.Equal(t, int64(88), accountID)
+	require.Equal(t, int64(88), providerID)
 	require.NotNil(t, selected.GroupID)
 	require.Equal(t, grokGroup.ID, *selected.GroupID)
 	require.Same(t, grokGroup, selected.Group)

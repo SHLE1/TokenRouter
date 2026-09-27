@@ -18,8 +18,8 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
@@ -104,8 +104,8 @@ func recordUsageWithConfigPricing(t *testing.T, requestedModel string, pricings 
 			GroupID: new(int64(groupID)),
 			Group:   group,
 		},
-		User:    &identity.User{ID: 1},
-		Account: gatewaycapture.ExecutionCompletionRecord(&gatewaycapture.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI}}),
+		User:     &identity.User{ID: 1},
+		Provider: gatewaycapture.ExecutionCompletionRecord(&gatewaycapture.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI}}),
 	})
 	require.NoError(t, err)
 	require.NotNil(t, usageRepo.LastLog)

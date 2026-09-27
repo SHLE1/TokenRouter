@@ -29,7 +29,7 @@ type StreamResult struct {
 type StreamOptions struct {
 	Observe             func(wire.Observation)
 	ObserveState        func(*upstream.TokenUsage, *int)
-	AccountID           int64
+	ProviderID          int64
 	MaxLineSize         int
 	Interval, Keepalive time.Duration
 	UserAgent           string
@@ -47,6 +47,7 @@ func (o StreamOptions) override(ctx context.Context) (string, bool) {
 	}
 	return o.OverrideCache(ctx)
 }
+
 func (o StreamOptions) failover(body []byte) error {
 	if o.Failover != nil {
 		return o.Failover(body)
@@ -307,7 +308,7 @@ func StreamResponse(ctx context.Context, resp *http.Response, c *upstream.Output
 		}
 
 		// Cache TTL Override: 重写 SSE 事件中的 cache_creation 分类。
-		// 账号级设置优先；全局 1h 请求注入开启时，默认把 usage 计费归回 5m。
+		// 提供商级设置优先；全局 1h 请求注入开启时，默认把 usage 计费归回 5m。
 		if overrideTarget, ok := options.override(ctx); ok {
 			if eventType == "message_start" {
 				if msg, ok := event["message"].(map[string]any); ok {
@@ -388,7 +389,7 @@ func StreamResponse(ctx context.Context, resp *http.Response, c *upstream.Output
 				}
 				// 客户端未断开，正常的错误处理
 				if errors.Is(ev.err, bufio.ErrTooLong) {
-					logger.LegacyPrintf("service.gateway", "SSE line too long: account=%d max_size=%d error=%v", options.AccountID, maxLineSize, ev.err)
+					logger.LegacyPrintf("service.gateway", "SSE line too long: provider=%d max_size=%d error=%v", options.ProviderID, maxLineSize, ev.err)
 					sendErrorEvent("response_too_large", fmt.Sprintf("upstream SSE line exceeded %d bytes", maxLineSize))
 					return &StreamResult{Usage: usage, FirstTokenMs: firstTokenMs}, ev.err
 				}
@@ -400,7 +401,7 @@ func StreamResponse(ctx context.Context, resp *http.Response, c *upstream.Output
 				// 仅在下方 LegacyPrintf 内部日志中保留供运维诊断。
 				disconnectMsg := "upstream stream disconnected: " + upstream.SanitizeStreamError(ev.err)
 				if !c.Writer.Written() {
-					logger.LegacyPrintf("service.gateway", "Upstream stream read error before any client output (account=%d), failing over: %v", options.AccountID, ev.err)
+					logger.LegacyPrintf("service.gateway", "Upstream stream read error before any client output (provider=%d), failing over: %v", options.ProviderID, ev.err)
 					body, _ := json.Marshal(map[string]any{
 						"type": "error",
 						"error": map[string]string{
@@ -472,8 +473,8 @@ func StreamResponse(ctx context.Context, resp *http.Response, c *upstream.Output
 			if clientDisconnected {
 				return &StreamResult{Usage: usage, FirstTokenMs: firstTokenMs, ClientDisconnect: true}, fmt.Errorf("stream usage incomplete after timeout")
 			}
-			logger.LegacyPrintf("service.gateway", "Stream data interval timeout: account=%d model=%s interval=%s", options.AccountID, originalModel, streamInterval)
-			// 处理流超时，可能标记账户为临时不可调度或错误状态
+			logger.LegacyPrintf("service.gateway", "Stream data interval timeout: provider=%d model=%s interval=%s", options.ProviderID, originalModel, streamInterval)
+			// 处理流超时，可能标记提供商为临时不可调度或错误状态
 			if options.OnTimeout != nil {
 				options.OnTimeout(ctx, originalModel)
 			}
@@ -504,5 +505,4 @@ func StreamResponse(ctx context.Context, resp *http.Response, c *upstream.Output
 			resetKeepaliveTimer()
 		}
 	}
-
 }

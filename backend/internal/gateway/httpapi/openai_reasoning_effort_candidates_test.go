@@ -9,20 +9,19 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
 )
 
-// 回归：OAuth 账号请求后缀式模型（无显式 reasoning 字段）时，上游模型被
+// 回归：OAuth 提供商请求后缀式模型（无显式 reasoning 字段）时，上游模型被
 // normalizeCodexModel 剥掉 effort 后缀，用量元数据的 effort 必须仍能从
 // 原始模型名后缀推导出来。
 func TestOpenAIGatewayServiceForwardOAuthDerivesEffortFromSuffixModel(t *testing.T) {
-
 	upstream := &auxiliaryHTTPRecorder{
 		resp: &http.Response{
 			StatusCode: http.StatusOK,
@@ -33,17 +32,20 @@ func TestOpenAIGatewayServiceForwardOAuthDerivesEffortFromSuffixModel(t *testing
 	cfg := &responsesFixtureOptions{}
 	cfg.Request.URLPolicy.Enabled = false
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg, transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 11,
-		Name:        "openai-oauth-suffix",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeOAuth,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"access_token":       "oauth-token",
-			"chatgpt_account_id": "chatgpt-acc",
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 11,
+			Name:        "openai-oauth-suffix",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeOAuth,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"access_token":       "oauth-token",
+				"chatgpt_account_id": "chatgpt-acc",
+			},
+			Status:      billing.StatusActive,
+			Schedulable: true,
 		},
-		Status:      billing.StatusActive,
-		Schedulable: true},
 	}
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -51,7 +53,7 @@ func TestOpenAIGatewayServiceForwardOAuthDerivesEffortFromSuffixModel(t *testing
 	SetOpenAIClientTransport(c, OpenAIClientTransportHTTP)
 
 	body := []byte(`{"model":"gpt-5.3-codex-xhigh","instructions":"suffix-test","input":"hello","stream":false}`)
-	result, err := svc.Forward(context.Background(), c, account, body)
+	result, err := svc.Forward(context.Background(), c, provider, body)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)

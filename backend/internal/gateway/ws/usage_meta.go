@@ -7,7 +7,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// UsageDecoder 复用协议与网关策略的唯一档位解析，不读取账号或配置。
+// UsageDecoder 复用协议与网关策略的唯一档位解析，不读取提供商或配置。
 type UsageDecoder interface {
 	ServiceTier([]byte) *string
 	ReasoningEffort([]byte, ...string) *string

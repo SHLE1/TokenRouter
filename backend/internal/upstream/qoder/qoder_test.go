@@ -139,7 +139,6 @@ func TestExchangePATContextUsesProvidedDoerAndContext(t *testing.T) {
 		MachineToken: "machine-token",
 		MachineType:  "5",
 	}, "https://center.example", doer)
-
 	if err != nil {
 		t.Fatalf("ExchangePATContext: %v", err)
 	}
@@ -802,7 +801,7 @@ func TestParseSSELineUpstreamErrorWrapperUsesStatusCodeNameFallback(t *testing.T
 }
 
 func TestParseAPIErrorBodyRedactsSensitiveFields(t *testing.T) {
-	body := `{"code":"101","message":"Authorization: Bearer secret-token securityOauthToken=dt-secret refreshToken=drt-secret cookie=session=abc uid=user-secret aid=account-secret","data":{"securityOauthToken":"nested-secret","refreshToken":"nested-refresh","uid":"nested-user","aid":"nested-account"}}`
+	body := `{"code":"101","message":"Authorization: Bearer secret-token securityOauthToken=dt-secret refreshToken=drt-secret cookie=session=abc uid=user-secret aid=provider-secret","data":{"securityOauthToken":"nested-secret","refreshToken":"nested-refresh","uid":"nested-user","aid":"nested-account"}}`
 	apiErr := ParseAPIErrorBody(http.StatusForbidden, body)
 
 	if strings.Contains(apiErr.Body, "secret-token") ||

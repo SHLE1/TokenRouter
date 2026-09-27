@@ -72,7 +72,7 @@
             @click="selectOption(null)"
             :class="['select-option', modelValue === null && 'select-option-selected']"
           >
-            <span class="select-option-label">{{ t('admin.accounts.noProxy') }}</span>
+            <span class="select-option-label">{{ t('admin.providers.noProxy') }}</span>
             <Icon v-if="modelValue === null" name="check" size="sm" class="text-primary-500" />
           </div>
 
@@ -86,12 +86,12 @@
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-2">
                 <span class="truncate font-medium">{{ proxy.name }}</span>
-                <!-- Account count badge -->
+                <!-- Provider count badge -->
                 <span
-                  v-if="proxy.account_count !== undefined"
+                  v-if="proxy.provider_count !== undefined"
                   class="inline-flex flex-shrink-0 items-center rounded-compact bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600 dark:bg-dark-600 dark:text-gray-400"
                 >
-                  {{ proxy.account_count }}
+                  {{ proxy.provider_count }}
                 </span>
                 <!-- Test result badges -->
                 <template v-if="testResults[proxy.id]">
@@ -218,7 +218,7 @@ const selectedProxy = computed(() => {
 
 const selectedLabel = computed(() => {
   if (!selectedProxy.value) {
-    return t('admin.accounts.noProxy')
+    return t('admin.providers.noProxy')
   }
   const proxy = selectedProxy.value
   return `${proxy.name} (${proxy.protocol}://${proxy.host}:${proxy.port})`

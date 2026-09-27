@@ -29,22 +29,25 @@ func (p *plannedResponseSession) Select(excluded map[int64]struct{}) (ResponseSe
 	}
 	return s, e
 }
+
 func (p *plannedResponseSession) Forward() ResponseOutcome {
 	if p.plan != nil {
 		p.plan.GroupID = 999
 	}
 	return p.responseFixture.Forward()
 }
+
 func (r *fixedResponseRuntime) Open(context.Context, execution.Request, upstream.OutputSink) (ResponsePorts, error) {
 	p := &plannedResponseSession{responseFixture: &responseFixture{outcomes: []ResponseOutcome{r.outcome}}, plan: r.plan}
 	r.sessions = append(r.sessions, p)
 	return p, nil
 }
+
 func TestFixedResponsesCapturesOnlyProvidedCandidate(t *testing.T) {
 	for _, provided := range []bool{false, true} {
 		runtime := &fixedResponseRuntime{outcome: ResponseOutcome{Outcome: Outcome{HasResult: true, Attempt: upstream.AttemptResult{Model: "observed"}}}}
 		if provided {
-			runtime.plan = &routing.CandidatePlan{AccountID: 1, GroupID: 7}
+			runtime.plan = &routing.CandidatePlan{ProviderID: 1, GroupID: 7}
 		}
 		executor := NewResponsesExecutor(runtime, ResponseOptions{}, ResponseOptions{})
 		result, err := executor.Execute(context.Background(), execution.Request{}, nil)
@@ -60,6 +63,7 @@ func TestFixedResponsesCapturesOnlyProvidedCandidate(t *testing.T) {
 		require.Equal(t, 1, runtime.sessions[0].completed)
 	}
 }
+
 func TestFixedResponsesRetainsPartialFailureAcrossIndependentRequests(t *testing.T) {
 	cause := errors.New("partial image")
 	runtime := &fixedResponseRuntime{outcome: ResponseOutcome{Images: true, Outcome: Outcome{Err: cause, HasResult: true, Attempt: upstream.AttemptResult{ObservedImages: 1}}}}

@@ -1,4 +1,4 @@
-// 本文件保留 Anthropic 单账号的签名/预算恢复与有界重试，不执行账号切换或资金操作。
+// 本文件保留 Anthropic 单提供商的签名/预算恢复与有界重试，不执行提供商切换或资金操作。
 package anthropic
 
 import (
@@ -15,15 +15,15 @@ import (
 
 type ExchangeNotice struct {
 	Passthrough                                           bool
-	Platform, AccountName                                 string
-	AccountID                                             int64
+	Platform, ProviderName                                string
+	ProviderID                                            int64
 	UpstreamStatusCode                                    int
 	UpstreamRequestID, UpstreamURL, Kind, Message, Detail string
 }
 type ExchangeOptions struct {
 	SynchronizeBody                            bool
-	AccountID                                  int64
-	Platform, AccountName                      string
+	ProviderID                                 int64
+	Platform, ProviderName                     string
 	Stream, DebugHeaders                       bool
 	MaxAttempts, BudgetTokens, BudgetMaxTokens int
 	MaxElapsed                                 time.Duration
@@ -76,8 +76,8 @@ func Exchange(ctx context.Context, body []byte, options ExchangeOptions) (*http.
 				if options.ShouldRectify(ctx, respBody) {
 					options.Observe(ExchangeNotice{
 						Platform:           options.Platform,
-						AccountID:          options.AccountID,
-						AccountName:        options.AccountName,
+						ProviderID:         options.ProviderID,
+						ProviderName:       options.ProviderName,
 						UpstreamStatusCode: resp.StatusCode,
 						UpstreamRequestID:  resp.Header.Get("x-request-id"),
 						UpstreamURL:        options.SafeURL(upstreamReq.URL.String()),
@@ -100,7 +100,7 @@ func Exchange(ctx context.Context, body []byte, options ExchangeOptions) (*http.
 						resp.Body = io.NopCloser(bytes.NewReader(respBody))
 						break
 					}
-					logger.LegacyPrintf("service.gateway", "[warn] Account %d: thinking blocks have invalid signature, retrying with filtered blocks", options.AccountID)
+					logger.LegacyPrintf("service.gateway", "[warn] Provider %d: thinking blocks have invalid signature, retrying with filtered blocks", options.ProviderID)
 
 					filteredBody := options.FilterThinking(body)
 					retryCtx, releaseRetryCtx := options.Context(ctx, options.Stream)
@@ -116,7 +116,7 @@ func Exchange(ctx context.Context, body []byte, options ExchangeOptions) (*http.
 									_ = retryResp.Body.Close()
 									return nil, lastWireBody, err
 								}
-								logger.LegacyPrintf("service.gateway", "Account %d: thinking block retry succeeded (blocks downgraded)", options.AccountID)
+								logger.LegacyPrintf("service.gateway", "Provider %d: thinking block retry succeeded (blocks downgraded)", options.ProviderID)
 								resp = retryResp
 								break
 							}
@@ -126,8 +126,8 @@ func Exchange(ctx context.Context, body []byte, options ExchangeOptions) (*http.
 							if retryReadErr == nil && retryResp.StatusCode == 400 && options.IsSignatureError(ctx, retryRespBody) {
 								options.Observe(ExchangeNotice{
 									Platform:           options.Platform,
-									AccountID:          options.AccountID,
-									AccountName:        options.AccountName,
+									ProviderID:         options.ProviderID,
+									ProviderName:       options.ProviderName,
 									UpstreamStatusCode: retryResp.StatusCode,
 									UpstreamRequestID:  retryResp.Header.Get("x-request-id"),
 									UpstreamURL:        options.SafeURL(retryReq.URL.String()),
@@ -137,7 +137,7 @@ func Exchange(ctx context.Context, body []byte, options ExchangeOptions) (*http.
 								})
 								msg2 := options.ErrorMessage(retryRespBody)
 								if looksLikeToolSignatureError(msg2) && time.Since(retryStart) < options.MaxElapsed {
-									logger.LegacyPrintf("service.gateway", "Account %d: signature retry still failing and looks tool-related, retrying with tool blocks downgraded", options.AccountID)
+									logger.LegacyPrintf("service.gateway", "Provider %d: signature retry still failing and looks tool-related, retrying with tool blocks downgraded", options.ProviderID)
 									filteredBody2 := options.FilterTools(body)
 									retryCtx2, releaseRetryCtx2 := options.Context(ctx, options.Stream)
 									retryReq2, retryWireBody2, buildErr2 := options.Build(retryCtx2, filteredBody2)
@@ -161,16 +161,16 @@ func Exchange(ctx context.Context, body []byte, options ExchangeOptions) (*http.
 										}
 										options.Observe(ExchangeNotice{
 											Platform:           options.Platform,
-											AccountID:          options.AccountID,
-											AccountName:        options.AccountName,
+											ProviderID:         options.ProviderID,
+											ProviderName:       options.ProviderName,
 											UpstreamStatusCode: 0,
 											UpstreamURL:        options.SafeURL(retryReq2.URL.String()),
 											Kind:               "signature_retry_tools_request_error",
 											Message:            options.Sanitize(retryErr2.Error()),
 										})
-										logger.LegacyPrintf("service.gateway", "Account %d: tool-downgrade signature retry failed: %v", options.AccountID, retryErr2)
+										logger.LegacyPrintf("service.gateway", "Provider %d: tool-downgrade signature retry failed: %v", options.ProviderID, retryErr2)
 									} else {
-										logger.LegacyPrintf("service.gateway", "Account %d: tool-downgrade signature retry build failed: %v", options.AccountID, buildErr2)
+										logger.LegacyPrintf("service.gateway", "Provider %d: tool-downgrade signature retry build failed: %v", options.ProviderID, buildErr2)
 									}
 								}
 							}
@@ -185,9 +185,9 @@ func Exchange(ctx context.Context, body []byte, options ExchangeOptions) (*http.
 						if retryResp != nil && retryResp.Body != nil {
 							_ = retryResp.Body.Close()
 						}
-						logger.LegacyPrintf("service.gateway", "Account %d: signature error retry failed: %v", options.AccountID, retryErr)
+						logger.LegacyPrintf("service.gateway", "Provider %d: signature error retry failed: %v", options.ProviderID, retryErr)
 					} else {
-						logger.LegacyPrintf("service.gateway", "Account %d: signature error retry build request failed: %v", options.AccountID, buildErr)
+						logger.LegacyPrintf("service.gateway", "Provider %d: signature error retry build request failed: %v", options.ProviderID, buildErr)
 					}
 
 					resp.Body = io.NopCloser(bytes.NewReader(respBody))
@@ -198,8 +198,8 @@ func Exchange(ctx context.Context, body []byte, options ExchangeOptions) (*http.
 				if options.IsBudgetError(errMsg) && options.BudgetEnabled(ctx) {
 					options.Observe(ExchangeNotice{
 						Platform:           options.Platform,
-						AccountID:          options.AccountID,
-						AccountName:        options.AccountName,
+						ProviderID:         options.ProviderID,
+						ProviderName:       options.ProviderName,
 						UpstreamStatusCode: resp.StatusCode,
 						UpstreamRequestID:  resp.Header.Get("x-request-id"),
 						UpstreamURL:        options.SafeURL(upstreamReq.URL.String()),
@@ -210,7 +210,7 @@ func Exchange(ctx context.Context, body []byte, options ExchangeOptions) (*http.
 
 					rectifiedBody, applied := options.RectifyBudget(body)
 					if applied && time.Since(retryStart) < options.MaxElapsed {
-						logger.LegacyPrintf("service.gateway", "Account %d: detected budget_tokens constraint error, retrying with rectified budget (budget_tokens=%d, max_tokens=%d)", options.AccountID, options.BudgetTokens, options.BudgetMaxTokens)
+						logger.LegacyPrintf("service.gateway", "Provider %d: detected budget_tokens constraint error, retrying with rectified budget (budget_tokens=%d, max_tokens=%d)", options.ProviderID, options.BudgetTokens, options.BudgetMaxTokens)
 						budgetRetryCtx, releaseBudgetRetryCtx := options.Context(ctx, options.Stream)
 						budgetRetryReq, budgetWireBody, buildErr := options.Build(budgetRetryCtx, rectifiedBody)
 						releaseBudgetRetryCtx()
@@ -231,9 +231,9 @@ func Exchange(ctx context.Context, body []byte, options ExchangeOptions) (*http.
 							if budgetRetryResp != nil && budgetRetryResp.Body != nil {
 								_ = budgetRetryResp.Body.Close()
 							}
-							logger.LegacyPrintf("service.gateway", "Account %d: budget rectifier retry failed: %v", options.AccountID, retryErr)
+							logger.LegacyPrintf("service.gateway", "Provider %d: budget rectifier retry failed: %v", options.ProviderID, retryErr)
 						} else {
-							logger.LegacyPrintf("service.gateway", "Account %d: budget rectifier retry build failed: %v", options.AccountID, buildErr)
+							logger.LegacyPrintf("service.gateway", "Provider %d: budget rectifier retry build failed: %v", options.ProviderID, buildErr)
 						}
 					}
 				}
@@ -262,8 +262,8 @@ func Exchange(ctx context.Context, body []byte, options ExchangeOptions) (*http.
 				_ = resp.Body.Close()
 				options.Observe(ExchangeNotice{
 					Platform:           options.Platform,
-					AccountID:          options.AccountID,
-					AccountName:        options.AccountName,
+					ProviderID:         options.ProviderID,
+					ProviderName:       options.ProviderName,
 					UpstreamStatusCode: resp.StatusCode,
 					UpstreamRequestID:  resp.Header.Get("x-request-id"),
 					UpstreamURL:        options.SafeURL(upstreamReq.URL.String()),
@@ -271,8 +271,8 @@ func Exchange(ctx context.Context, body []byte, options ExchangeOptions) (*http.
 					Message:            options.ErrorMessage(respBody),
 					Detail:             options.Detail(respBody),
 				})
-				logger.LegacyPrintf("service.gateway", "Account %d: upstream error %d, retry %d/%d after %v (elapsed=%v/%v)",
-					options.AccountID, resp.StatusCode, attempt, options.MaxAttempts, delay, elapsed, options.MaxElapsed)
+				logger.LegacyPrintf("service.gateway", "Provider %d: upstream error %d, retry %d/%d after %v (elapsed=%v/%v)",
+					options.ProviderID, resp.StatusCode, attempt, options.MaxAttempts, delay, elapsed, options.MaxElapsed)
 				if err := upstream.WaitContext(ctx, delay); err != nil {
 					return nil, lastWireBody, err
 				}
@@ -283,7 +283,7 @@ func Exchange(ctx context.Context, body []byte, options ExchangeOptions) (*http.
 		}
 
 		if resp.StatusCode < 400 && options.DebugHeaders {
-			logger.LegacyPrintf("service.gateway", "[DEBUG] Gemini API Response Headers for account %d:", options.AccountID)
+			logger.LegacyPrintf("service.gateway", "[DEBUG] Gemini API Response Headers for provider %d:", options.ProviderID)
 			for k, v := range resp.Header {
 				logger.LegacyPrintf("service.gateway", "[DEBUG]   %s: %v", k, v)
 			}

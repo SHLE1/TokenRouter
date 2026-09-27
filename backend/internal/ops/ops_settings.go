@@ -87,9 +87,9 @@ func (s *OpsService) UpdateEmailNotificationConfig(ctx context.Context, req *Ops
 		cfg.Report.ErrorDigestEnabled = req.Report.ErrorDigestEnabled
 		cfg.Report.ErrorDigestSchedule = strings.TrimSpace(req.Report.ErrorDigestSchedule)
 		cfg.Report.ErrorDigestMinCount = req.Report.ErrorDigestMinCount
-		cfg.Report.AccountHealthEnabled = req.Report.AccountHealthEnabled
-		cfg.Report.AccountHealthSchedule = strings.TrimSpace(req.Report.AccountHealthSchedule)
-		cfg.Report.AccountHealthErrorRateThreshold = req.Report.AccountHealthErrorRateThreshold
+		cfg.Report.ProviderHealthEnabled = req.Report.ProviderHealthEnabled
+		cfg.Report.ProviderHealthSchedule = strings.TrimSpace(req.Report.ProviderHealthSchedule)
+		cfg.Report.ProviderHealthErrorRateThreshold = req.Report.ProviderHealthErrorRateThreshold
 	}
 
 	if err := validateOpsEmailNotificationConfig(cfg); err != nil {
@@ -118,18 +118,18 @@ func defaultOpsEmailNotificationConfig() *OpsEmailNotificationConfig {
 			IncludeResolvedAlerts: false,
 		},
 		Report: OpsEmailReportConfig{
-			Enabled:                         false,
-			Recipients:                      []string{},
-			DailySummaryEnabled:             false,
-			DailySummarySchedule:            "0 9 * * *",
-			WeeklySummaryEnabled:            false,
-			WeeklySummarySchedule:           "0 9 * * 1",
-			ErrorDigestEnabled:              false,
-			ErrorDigestSchedule:             "0 9 * * *",
-			ErrorDigestMinCount:             10,
-			AccountHealthEnabled:            false,
-			AccountHealthSchedule:           "0 9 * * *",
-			AccountHealthErrorRateThreshold: 10.0,
+			Enabled:                          false,
+			Recipients:                       []string{},
+			DailySummaryEnabled:              false,
+			DailySummarySchedule:             "0 9 * * *",
+			WeeklySummaryEnabled:             false,
+			WeeklySummarySchedule:            "0 9 * * 1",
+			ErrorDigestEnabled:               false,
+			ErrorDigestSchedule:              "0 9 * * *",
+			ErrorDigestMinCount:              10,
+			ProviderHealthEnabled:            false,
+			ProviderHealthSchedule:           "0 9 * * *",
+			ProviderHealthErrorRateThreshold: 10.0,
 		},
 	}
 }
@@ -149,7 +149,7 @@ func normalizeOpsEmailNotificationConfig(cfg *OpsEmailNotificationConfig) {
 	cfg.Report.DailySummarySchedule = strings.TrimSpace(cfg.Report.DailySummarySchedule)
 	cfg.Report.WeeklySummarySchedule = strings.TrimSpace(cfg.Report.WeeklySummarySchedule)
 	cfg.Report.ErrorDigestSchedule = strings.TrimSpace(cfg.Report.ErrorDigestSchedule)
-	cfg.Report.AccountHealthSchedule = strings.TrimSpace(cfg.Report.AccountHealthSchedule)
+	cfg.Report.ProviderHealthSchedule = strings.TrimSpace(cfg.Report.ProviderHealthSchedule)
 
 	// Fill missing schedules with defaults to avoid breaking cron logic if clients send empty strings.
 	if cfg.Report.DailySummarySchedule == "" {
@@ -161,8 +161,8 @@ func normalizeOpsEmailNotificationConfig(cfg *OpsEmailNotificationConfig) {
 	if cfg.Report.ErrorDigestSchedule == "" {
 		cfg.Report.ErrorDigestSchedule = "0 9 * * *"
 	}
-	if cfg.Report.AccountHealthSchedule == "" {
-		cfg.Report.AccountHealthSchedule = "0 9 * * *"
+	if cfg.Report.ProviderHealthSchedule == "" {
+		cfg.Report.ProviderHealthSchedule = "0 9 * * *"
 	}
 }
 
@@ -186,8 +186,8 @@ func validateOpsEmailNotificationConfig(cfg *OpsEmailNotificationConfig) error {
 	if cfg.Report.ErrorDigestMinCount < 0 {
 		return errors.New("report.error_digest_min_count must be >= 0")
 	}
-	if cfg.Report.AccountHealthErrorRateThreshold < 0 || cfg.Report.AccountHealthErrorRateThreshold > 100 {
-		return errors.New("report.account_health_error_rate_threshold must be between 0 and 100")
+	if cfg.Report.ProviderHealthErrorRateThreshold < 0 || cfg.Report.ProviderHealthErrorRateThreshold > 100 {
+		return errors.New("report.provider_health_error_rate_threshold must be between 0 and 100")
 	}
 	return nil
 }
@@ -368,10 +368,10 @@ func defaultOpsAdvancedSettings() *OpsAdvancedSettings {
 			MinuteMetricsRetentionDays: 30,
 			HourlyMetricsRetentionDays: 30,
 		},
-		OpenAIAccountQuotaAutoPause:     OpsOpenAIAccountQuotaAutoPauseSettings{},
+		OpenAIProviderQuotaAutoPause:    OpsOpenAIProviderQuotaAutoPauseSettings{},
 		IgnoreCountTokensErrors:         true,  // count_tokens 404 是预期行为，默认忽略
 		IgnoreContextCanceled:           true,  // Default to true - client disconnects are not errors
-		IgnoreNoAvailableAccounts:       false, // Default to false - this is a real routing issue
+		IgnoreNoAvailableProviders:      false, // Default to false - this is a real routing issue
 		IgnoreInvalidApiKeyErrors:       true,  // Legacy compatibility field; admission rejects are always excluded.
 		IgnoreInsufficientBalanceErrors: false, // 默认不忽略，余额不足可能需要关注
 		IgnoredStatusCodes:              DefaultOpsIgnoredStatusCodes(),
@@ -389,8 +389,8 @@ func normalizeOpsAdvancedSettings(cfg *OpsAdvancedSettings) {
 	// 准入拒绝属于安全和流量问题，不属于运维请求错误类别。
 	// 为旧客户端保留值为 true 的历史字段，但不允许该字段重新启用这些记录。
 	cfg.IgnoreInvalidApiKeyErrors = true
-	cfg.OpenAIAccountQuotaAutoPause.DefaultThreshold5h = clampOpsQuotaAutoPauseThreshold(cfg.OpenAIAccountQuotaAutoPause.DefaultThreshold5h)
-	cfg.OpenAIAccountQuotaAutoPause.DefaultThreshold7d = clampOpsQuotaAutoPauseThreshold(cfg.OpenAIAccountQuotaAutoPause.DefaultThreshold7d)
+	cfg.OpenAIProviderQuotaAutoPause.DefaultThreshold5h = clampOpsQuotaAutoPauseThreshold(cfg.OpenAIProviderQuotaAutoPause.DefaultThreshold5h)
+	cfg.OpenAIProviderQuotaAutoPause.DefaultThreshold7d = clampOpsQuotaAutoPauseThreshold(cfg.OpenAIProviderQuotaAutoPause.DefaultThreshold7d)
 	cfg.DataRetention.CleanupSchedule = strings.TrimSpace(cfg.DataRetention.CleanupSchedule)
 	if cfg.DataRetention.CleanupSchedule == "" {
 		cfg.DataRetention.CleanupSchedule = opsCleanupDefaultSchedule
@@ -535,7 +535,7 @@ func (s *OpsService) UpdateOpsAdvancedSettings(ctx context.Context, cfg *OpsAdva
 	// 将新的配额自动暂停设置直接写入 OpenAI 调度热路径读取的内存缓存，
 	// 让下一次请求立刻看到新值，不必等待后台刷新器的 TTL。
 	if s.quotaAutoPauseSink != nil {
-		s.quotaAutoPauseSink(cfg.OpenAIAccountQuotaAutoPause)
+		s.quotaAutoPauseSink(cfg.OpenAIProviderQuotaAutoPause)
 	}
 
 	// notify cleanup service to reload schedule/enabled.

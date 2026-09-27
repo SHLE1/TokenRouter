@@ -2051,7 +2051,7 @@
               </div>
 
               <template v-else>
-                <!-- 计数维度说明：按账号计数，反代部署无误伤 -->
+                <!-- 计数维度说明：按提供商计数，反代部署无误伤 -->
                 <div
                   class="rounded-control border border-sky-200 bg-sky-50 p-4 dark:border-sky-800 dark:bg-sky-900/20"
                 >
@@ -3051,7 +3051,7 @@
                           {{
                             localText(
                               "桌面浏览器通过微信开放平台扫码登录。可与公众号或移动应用同时存在。",
-                              "Desktop browsers sign in through WeChat Open Platform QR login. This can coexist with Official Account or Mobile App.",
+                              "Desktop browsers sign in through WeChat Open Platform QR login. This can coexist with Official Provider or Mobile App.",
                             )
                           }}
                         </p>
@@ -3118,7 +3118,7 @@
                     <div class="flex items-start justify-between gap-4">
                       <div>
                         <h3 class="font-medium text-gray-900 dark:text-white">
-                          {{ localText("公众号", "Official Account") }}
+                          {{ localText("公众号", "Official Provider") }}
                         </h3>
                         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
                           {{
@@ -3143,7 +3143,7 @@
                         <label
                           class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
                         >
-                          {{ localText("公众号 AppID", "Official Account App ID") }}
+                          {{ localText("公众号 AppID", "Official Provider App ID") }}
                         </label>
                         <input
                           v-model="form.wechat_connect_mp_app_id"
@@ -3153,7 +3153,7 @@
                           :placeholder="
                             localText(
                               '公众号 AppID',
-                              'Official Account App ID',
+                              'Official Provider App ID',
                             )
                           "
                         />
@@ -3165,7 +3165,7 @@
                           {{
                             localText(
                               "公众号 AppSecret",
-                              "Official Account App Secret",
+                              "Official Provider App Secret",
                             )
                           }}
                         </label>
@@ -3182,7 +3182,7 @@
                                 )
                               : localText(
                                   '公众号 AppSecret',
-                                  'Official Account App Secret',
+                                  'Official Provider App Secret',
                                 )
                           "
                         />
@@ -3274,8 +3274,8 @@
                 >
                   {{
                     localText(
-                      "如果同时启用 PC 应用和公众号/移动应用，这些应用需要挂在同一个微信开放平台主体下，否则 UnionID 无法稳定归并账号。",
-                      "When PC App is enabled together with Official Account or Mobile App, they should belong to the same WeChat Open Platform account so UnionID can merge identities reliably.",
+                      "如果同时启用 PC 应用和公众号/移动应用，这些应用需要挂在同一个微信开放平台主体下，否则 UnionID 无法稳定归并提供商。",
+                      "When PC App is enabled together with Official Provider or Mobile App, they should belong to the same WeChat Open Platform provider so UnionID can merge identities reliably.",
                     )
                   }}
                 </div>
@@ -3303,7 +3303,7 @@
                       {{
                         localText(
                           "用于 PC 应用和公众号的网页回调。移动应用走原生 SDK 时不直接使用这个浏览器回调。",
-                          "Used by PC App and Official Account browser callbacks. Native mobile SDK flows do not start from this browser callback directly.",
+                          "Used by PC App and Official Provider browser callbacks. Native mobile SDK flows do not start from this browser callback directly.",
                         )
                       }}
                     </p>
@@ -4584,28 +4584,28 @@
                     <label class="font-medium text-gray-900 dark:text-white">
                       {{
                         t(
-                          "admin.settings.scheduling.accountSchedulingThresholdsTitle",
+                          "admin.settings.scheduling.providerSchedulingThresholdsTitle",
                         )
                       }}
                     </label>
                     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
                       {{
                         t(
-                          "admin.settings.scheduling.accountSchedulingThresholdsDescription",
+                          "admin.settings.scheduling.providerSchedulingThresholdsDescription",
                         )
                       }}
                     </p>
                     <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
                       {{
                         t(
-                          "admin.settings.scheduling.accountSchedulingThresholdsGlobalHint",
+                          "admin.settings.scheduling.providerSchedulingThresholdsGlobalHint",
                         )
                       }}
                     </p>
                     <p class="mt-0.5 text-xs text-amber-600 dark:text-amber-400">
                       {{
                         t(
-                          "admin.settings.scheduling.accountSchedulingThresholdsDisabledHint",
+                          "admin.settings.scheduling.providerSchedulingThresholdsDisabledHint",
                         )
                       }}
                     </p>
@@ -4626,7 +4626,7 @@
                           <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
                             {{
                               t(
-                                "admin.settings.scheduling.accountSchedulingThresholdsRangeHint",
+                                "admin.settings.scheduling.providerSchedulingThresholdsRangeHint",
                               )
                             }}
                           </p>
@@ -4638,13 +4638,13 @@
                         </span>
                       </div>
                       <input
-                        v-model.number="form.account_scheduling_thresholds[platform]"
+                        v-model.number="form.provider_scheduling_thresholds[platform]"
                         type="number"
                         min="1"
                         max="100"
                         step="1"
                         class="input mt-3"
-                        :data-testid="`account-scheduling-threshold-${platform}`"
+                        :data-testid="`provider-scheduling-threshold-${platform}`"
                         placeholder="100"
                       />
                     </div>
@@ -8610,7 +8610,7 @@
             </div>
           </div>
 
-          <!-- Account Quota Notification -->
+          <!-- Provider Quota Notification -->
           <div class="card">
             <div
               class="border-b border-gray-100 px-6 py-4 dark:border-dark-700"
@@ -8628,16 +8628,16 @@
                   class="mb-0 block text-sm font-medium text-gray-700 dark:text-gray-300"
                   >{{ t("admin.settings.quotaNotify.enabled") }}</label
                 >
-                <Toggle v-model="form.account_quota_notify_enabled" />
+                <Toggle v-model="form.provider_quota_notify_enabled" />
               </div>
-              <div v-if="form.account_quota_notify_enabled">
+              <div v-if="form.provider_quota_notify_enabled">
                 <label
                   class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
                   >{{ t("admin.settings.quotaNotify.emails") }}</label
                 >
                 <div class="space-y-2">
                   <div
-                    v-for="(entry, index) in form.account_quota_notify_emails ||
+                    v-for="(entry, index) in form.provider_quota_notify_emails ||
                     []"
                     :key="index"
                     class="flex items-center gap-2"
@@ -8661,7 +8661,7 @@
                       "
                     />
                     <button
-                      @click="form.account_quota_notify_emails.splice(index, 1)"
+                      @click="form.provider_quota_notify_emails.splice(index, 1)"
                       class="btn btn-secondary px-2"
                       type="button"
                     >
@@ -8764,8 +8764,8 @@ import { adminAPI } from "@/api";
 import {
   appendAuthSourceDefaultsToUpdateRequest,
   buildAuthSourceDefaultsState,
-  normalizeAccountSchedulingThresholdsMap,
-  sanitizeAccountSchedulingThresholdsMap,
+  normalizeProviderSchedulingThresholdsMap,
+  sanitizeProviderSchedulingThresholdsMap,
   SCHEDULING_THRESHOLD_PLATFORMS,
   defaultWeChatConnectScopesForMode,
   deriveWeChatConnectStoredMode,
@@ -8809,7 +8809,7 @@ import Toggle from "@/components/common/Toggle.vue";
 import ProxySelector from "@/components/common/ProxySelector.vue";
 import ImageUpload from "@/components/common/ImageUpload.vue";
 import BalanceIcon from "@/components/common/BalanceIcon.vue";
-import OpenAIOAuthImportDefaultsSettings from "@/components/admin/account/OpenAIOAuthImportDefaultsSettings.vue";
+import OpenAIOAuthImportDefaultsSettings from "@/components/admin/provider/OpenAIOAuthImportDefaultsSettings.vue";
 import BackupSettings from "@/views/admin/BackupView.vue";
 import { useBalanceDisplay } from "@/composables/useBalanceDisplay";
 import EmailTemplateEditor from "@/views/admin/settings/EmailTemplateEditor.vue";
@@ -9431,9 +9431,9 @@ type SettingsForm = Omit<
   advanced_scheduler_weight_quota_headroom: string;
   advanced_scheduler_weight_previous_response: string;
   advanced_scheduler_weight_session_sticky: string;
-  openai_account_quota_auto_pause: OpenAIQuotaAutoPauseSettings;
+  openai_provider_quota_auto_pause: OpenAIQuotaAutoPauseSettings;
   // 系统全局平台限额 map；form 内始终归一化为全平台对象（模板非空绑定依赖此不变量）
-  account_scheduling_thresholds: ReturnType<typeof normalizeAccountSchedulingThresholdsMap>;
+  provider_scheduling_thresholds: ReturnType<typeof normalizeProviderSchedulingThresholdsMap>;
 };
 
 const schedulingThresholdPlatforms = SCHEDULING_THRESHOLD_PLATFORMS;
@@ -9459,7 +9459,7 @@ const form = reactive<SettingsForm>({
   login_agreement_documents: defaultLoginAgreementDocuments(),
   default_balance: 0,
   affiliate_enabled: false,
-  account_scheduling_thresholds: normalizeAccountSchedulingThresholdsMap(),
+  provider_scheduling_thresholds: normalizeProviderSchedulingThresholdsMap(),
   affiliate_rebate_rate: 20,
   affiliate_rebate_freeze_hours: 0,
   affiliate_rebate_duration_days: 0,
@@ -9696,7 +9696,7 @@ const form = reactive<SettingsForm>({
   advanced_scheduler_weight_quota_headroom: "",
   advanced_scheduler_weight_previous_response: "",
   advanced_scheduler_weight_session_sticky: "",
-  openai_account_quota_auto_pause: {
+  openai_provider_quota_auto_pause: {
     default_threshold_5h: 0,
     default_threshold_7d: 0,
   },
@@ -9723,13 +9723,13 @@ const form = reactive<SettingsForm>({
   openai_codex_user_agent: "",
   openai_allow_claude_code_codex_plugin: false,
   user_prompt_replacement_config: defaultUserPromptReplacementConfig(),
-  // 余额、订阅到期与账号限额通知
+  // 余额、订阅到期与提供商限额通知
   balance_low_notify_enabled: false,
   balance_low_notify_threshold: 0,
   balance_low_notify_recharge_url: "",
   subscription_expiry_notify_enabled: true,
-  account_quota_notify_enabled: false,
-  account_quota_notify_emails: [] as NotifyEmailEntry[],
+  provider_quota_notify_enabled: false,
+  provider_quota_notify_emails: [] as NotifyEmailEntry[],
   allow_user_view_error_requests: false,
 });
 
@@ -10000,19 +10000,19 @@ function percentToQuotaThreshold(value: number | null): number {
 // OpenAI 配额自动暂停在后端以 0~1 存储，系统设置页按百分比展示。
 const openAIQuotaAutoPause5hPercent = computed<number | null>({
   get() {
-    return quotaThresholdToPercent(form.openai_account_quota_auto_pause?.default_threshold_5h);
+    return quotaThresholdToPercent(form.openai_provider_quota_auto_pause?.default_threshold_5h);
   },
   set(value) {
-    form.openai_account_quota_auto_pause.default_threshold_5h = percentToQuotaThreshold(value);
+    form.openai_provider_quota_auto_pause.default_threshold_5h = percentToQuotaThreshold(value);
   },
 });
 
 const openAIQuotaAutoPause7dPercent = computed<number | null>({
   get() {
-    return quotaThresholdToPercent(form.openai_account_quota_auto_pause?.default_threshold_7d);
+    return quotaThresholdToPercent(form.openai_provider_quota_auto_pause?.default_threshold_7d);
   },
   set(value) {
-    form.openai_account_quota_auto_pause.default_threshold_7d = percentToQuotaThreshold(value);
+    form.openai_provider_quota_auto_pause.default_threshold_7d = percentToQuotaThreshold(value);
   },
 });
 
@@ -10159,7 +10159,7 @@ function selectCaptchaProvider(provider: CaptchaProviderSelection): void {
   applyCaptchaSelection(provider);
 }
 
-// 天御中国站与国际站是两套独立账号体系，控制台与文档入口不通用，
+// 天御中国站与国际站是两套独立提供商体系，控制台与文档入口不通用，
 // 按当前选择的站点给出对应链接，避免管理员在错误的控制台里找不到 CaptchaAppId。
 const tencentCaptchaLinks = computed(() =>
   form.tencent_captcha_region === "intl"
@@ -10738,10 +10738,10 @@ function handleForwardedClientIpHeaderPaste(event: ClipboardEvent) {
 
 // Quota notify email helpers
 const addQuotaNotifyEmail = () => {
-  if (!form.account_quota_notify_emails) {
-    form.account_quota_notify_emails = [];
+  if (!form.provider_quota_notify_emails) {
+    form.provider_quota_notify_emails = [];
   }
-  form.account_quota_notify_emails.push({
+  form.provider_quota_notify_emails.push({
     email: "",
     disabled: false,
     verified: true,
@@ -11175,11 +11175,11 @@ async function loadSettings() {
       normalizeUserPromptReplacementConfig(
         settings.user_prompt_replacement_config,
       );
-    form.openai_account_quota_auto_pause = {
+    form.openai_provider_quota_auto_pause = {
       default_threshold_5h:
-        settings.openai_account_quota_auto_pause?.default_threshold_5h ?? 0,
+        settings.openai_provider_quota_auto_pause?.default_threshold_5h ?? 0,
       default_threshold_7d:
-        settings.openai_account_quota_auto_pause?.default_threshold_7d ?? 0,
+        settings.openai_provider_quota_auto_pause?.default_threshold_7d ?? 0,
     };
     form.backend_mode_enabled = settings.backend_mode_enabled;
     form.default_subscriptions = normalizeDefaultSubscriptionSettings(
@@ -11478,10 +11478,10 @@ async function saveSettings() {
       return;
     }
     if (
-      form.openai_account_quota_auto_pause.default_threshold_5h < 0 ||
-      form.openai_account_quota_auto_pause.default_threshold_5h > 1 ||
-      form.openai_account_quota_auto_pause.default_threshold_7d < 0 ||
-      form.openai_account_quota_auto_pause.default_threshold_7d > 1
+      form.openai_provider_quota_auto_pause.default_threshold_5h < 0 ||
+      form.openai_provider_quota_auto_pause.default_threshold_5h > 1 ||
+      form.openai_provider_quota_auto_pause.default_threshold_7d < 0 ||
+      form.openai_provider_quota_auto_pause.default_threshold_7d > 1
     ) {
       appStore.showError(t("admin.settings.openaiQuotaAutoPause.rangeError"));
       return;
@@ -11568,7 +11568,7 @@ async function saveSettings() {
       appStore.showError(
         localText(
           "公众号和移动应用不能同时启用。",
-          "Official Account and Mobile App cannot be enabled at the same time.",
+          "Official Provider and Mobile App cannot be enabled at the same time.",
         ),
       );
       return;
@@ -11913,13 +11913,13 @@ async function saveSettings() {
         form.advanced_scheduler_weight_previous_response.trim(),
       advanced_scheduler_weight_session_sticky:
         form.advanced_scheduler_weight_session_sticky.trim(),
-      openai_account_quota_auto_pause: {
+      openai_provider_quota_auto_pause: {
         default_threshold_5h:
-          form.openai_account_quota_auto_pause.default_threshold_5h,
+          form.openai_provider_quota_auto_pause.default_threshold_5h,
         default_threshold_7d:
-          form.openai_account_quota_auto_pause.default_threshold_7d,
+          form.openai_provider_quota_auto_pause.default_threshold_7d,
       },
-      // 余额、订阅到期与账号限额通知
+      // 余额、订阅到期与提供商限额通知
       balance_low_notify_enabled: form.balance_low_notify_enabled,
       balance_low_notify_threshold:
         Number(form.balance_low_notify_threshold) || 0,
@@ -11927,9 +11927,9 @@ async function saveSettings() {
         form.balance_low_notify_recharge_url || currentOrigin),
       subscription_expiry_notify_enabled:
         form.subscription_expiry_notify_enabled,
-      account_quota_notify_enabled: form.account_quota_notify_enabled,
-      account_quota_notify_emails: (
-        form.account_quota_notify_emails || []
+      provider_quota_notify_enabled: form.provider_quota_notify_enabled,
+      provider_quota_notify_emails: (
+        form.provider_quota_notify_emails || []
       ).filter((e) => e.email.trim() !== ""),
       allow_user_view_error_requests: form.allow_user_view_error_requests,
     };
@@ -11966,8 +11966,8 @@ async function saveSettings() {
       };
     }
 
-    payload.account_scheduling_thresholds = sanitizeAccountSchedulingThresholdsMap(
-      form.account_scheduling_thresholds,
+    payload.provider_scheduling_thresholds = sanitizeProviderSchedulingThresholdsMap(
+      form.provider_scheduling_thresholds,
     );
     appendAuthSourceDefaultsToUpdateRequest(payload, authSourceDefaults);
 
@@ -11981,11 +11981,11 @@ async function saveSettings() {
       }
     }
     Object.assign(authSourceDefaults, buildAuthSourceDefaultsState(updated));
-    form.openai_account_quota_auto_pause = {
+    form.openai_provider_quota_auto_pause = {
       default_threshold_5h:
-        updated.openai_account_quota_auto_pause?.default_threshold_5h ?? 0,
+        updated.openai_provider_quota_auto_pause?.default_threshold_5h ?? 0,
       default_threshold_7d:
-        updated.openai_account_quota_auto_pause?.default_threshold_7d ?? 0,
+        updated.openai_provider_quota_auto_pause?.default_threshold_7d ?? 0,
     };
     registrationEmailSuffixWhitelistTags.value =
       normalizeRegistrationEmailSuffixDomains(
@@ -12209,7 +12209,7 @@ async function loadOllamaCloudUsageSettings() {
   try {
     Object.assign(
       ollamaCloudUsageForm,
-      await adminAPI.accounts.getOllamaCloudUsageSettings(),
+      await adminAPI.providers.getOllamaCloudUsageSettings(),
     );
   } catch (_error: unknown) {
     // 可选设置加载失败时保留默认关闭的安全配置。
@@ -12221,7 +12221,7 @@ async function loadOllamaCloudUsageSettings() {
 async function saveOllamaCloudUsageSettings() {
   ollamaCloudUsageSaving.value = true;
   try {
-    const updated = await adminAPI.accounts.updateOllamaCloudUsageSettings({
+    const updated = await adminAPI.providers.updateOllamaCloudUsageSettings({
       ...ollamaCloudUsageForm,
     });
     Object.assign(ollamaCloudUsageForm, updated);

@@ -7,10 +7,10 @@ import (
 
 type Proxy = proxydto.Proxy
 
-type ProxyWithAccountCount = proxydto.ProxyWithAccountCount
+type ProxyWithProviderCount = proxydto.ProxyWithProviderCount
 
 type AdminProxy = proxydto.AdminProxy
 
-type AdminProxyWithAccountCount = proxydto.AdminProxyWithAccountCount
+type AdminProxyWithProviderCount = proxydto.AdminProxyWithProviderCount
 
-type ProxyAccountSummary = proxydto.ProxyAccountSummary
+type ProxyProviderSummary = proxydto.ProxyProviderSummary

@@ -19,7 +19,7 @@ func newOriginalGroupAdmin(repo routing.GroupRepository, duplicate routing.Group
 }
 
 // newOriginalGroupAdminPorts 只装配原测试需要的窄端口，不复制管理规则。
-func newOriginalGroupAdminPorts(repo routing.GroupRepository, duplicate routing.GroupDuplicateRepository, pricingConfigs routing.GroupPricingInvalidator, sortOrder routing.GroupSortOrderRepository, accounts routing.GroupAccounts, invalidator routing.GroupAdminInvalidator, weights *policy.ConfigScoreWeights, keyReaders ...routing.GroupKeyReader) *routing.GroupAdmin {
+func newOriginalGroupAdminPorts(repo routing.GroupRepository, duplicate routing.GroupDuplicateRepository, pricingConfigs routing.GroupPricingInvalidator, sortOrder routing.GroupSortOrderRepository, providers routing.GroupProviders, invalidator routing.GroupAdminInvalidator, weights *policy.ConfigScoreWeights, keyReaders ...routing.GroupKeyReader) *routing.GroupAdmin {
 	var keys routing.GroupKeyReader
 	if len(keyReaders) > 0 {
 		keys = keyReaders[0]
@@ -28,7 +28,7 @@ func newOriginalGroupAdminPorts(repo routing.GroupRepository, duplicate routing.
 	if duplicate != nil {
 		duplicates = originalGroupDuplicatePort{duplicate}
 	}
-	return routing.NewGroupAdmin(originalGroupPort{repo}, duplicates, sortOrder, accounts, keys, invalidator, pricingConfigs, routing.GroupAdminOptions{
+	return routing.NewGroupAdmin(originalGroupPort{repo}, duplicates, sortOrder, providers, keys, invalidator, pricingConfigs, routing.GroupAdminOptions{
 		DefaultModels: routingprovider.DefaultGroupModelCandidates,
 		GlobalWeights: func(ctx context.Context) (policy.ScoreWeights, error) {
 			defaults := scheduler.DefaultAdminSettingsDefaults()

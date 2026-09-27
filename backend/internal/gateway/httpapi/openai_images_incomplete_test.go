@@ -106,8 +106,8 @@ func TestSummarizeNoOutputBody_RespectsLogBodyConfig(t *testing.T) {
 }
 
 // 软失败（上游 completed 但无图，如偶发路由到 mini 模型）应返回可重试的
-// UpstreamFailoverError 且优先同账号重试，而非一次性失败。
-func TestImagesOAuthNonStreaming_CompletedNoImageTriggersSameAccountRetry(t *testing.T) {
+// UpstreamFailoverError 且优先同提供商重试，而非一次性失败。
+func TestImagesOAuthNonStreaming_CompletedNoImageTriggersSameProviderRetry(t *testing.T) {
 	// 上游 SSE：response.completed 但 output 为空（实测的真实失败形态）。
 	upstreamSSE := "event: response.created\n" +
 		"data: {\"type\":\"response.created\",\"response\":{\"id\":\"resp_x\",\"status\":\"in_progress\",\"model\":\"gpt-5.4-mini-2026-03-17\",\"output\":[]}}\n\n" +
@@ -137,8 +137,8 @@ func TestImagesOAuthNonStreaming_CompletedNoImageTriggersSameAccountRetry(t *tes
 	if failoverErr.StatusCode != http.StatusBadGateway {
 		t.Fatalf("expected 502, got %d", failoverErr.StatusCode)
 	}
-	if !failoverErr.RetryableOnSameAccount {
-		t.Fatal("soft-failure should prefer same-account retry (probabilistic upstream failure)")
+	if !failoverErr.RetryableOnSameProvider {
+		t.Fatal("soft-failure should prefer same-provider retry (probabilistic upstream failure)")
 	}
 }
 

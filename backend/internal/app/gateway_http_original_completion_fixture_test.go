@@ -10,7 +10,7 @@ import (
 )
 
 // newHTTPCompletionFixture 显式绑定原HTTP测试的完成依赖，不再从旧网关回取隐式装配。
-func newHTTPCompletionFixture(cfg *config.Config, logs usage.UsageLogRepository, calculator *billing.Calculator, eligibility *billing.Eligibility, activity completion.AccountActivity, modelConfigs *routing.PricingConfigService, health completion.HealthObserver, openAI bool) *completion.Recorder {
+func newHTTPCompletionFixture(cfg *config.Config, logs usage.UsageLogRepository, calculator *billing.Calculator, eligibility *billing.Eligibility, activity completion.ProviderActivity, modelConfigs *routing.PricingConfigService, health completion.HealthObserver, openAI bool) *completion.Recorder {
 	f := gatewaytestkit.NewRecording(logs, nil, nil, false)
 	f.Dependencies.Calculator = calculator
 	f.Dependencies.Health = health

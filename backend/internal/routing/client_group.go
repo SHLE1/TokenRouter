@@ -15,7 +15,7 @@ type ClientGroupPolicy struct {
 	RejectNonPositiveFallback bool
 }
 
-// ResolveClientGroup 按原顺序读取并跟随客户端限制回退，不新增账号或资金查询。
+// ResolveClientGroup 按原顺序读取并跟随客户端限制回退，不新增提供商或资金查询。
 // 通用入口的读取端口必须返回有效分组或错误；快照入口可明确保留未解析分组。
 // @project-doc docs/domains/gateway_policy_controls.md#gateway_policy_layers
 func ResolveClientGroup(ctx context.Context, groupID *int64, read func(context.Context, int64) (*Group, error), isClient func(context.Context) bool, policy ClientGroupPolicy) (*Group, *int64, error) {

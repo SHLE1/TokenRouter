@@ -37,9 +37,9 @@ type CyberObservation struct {
 	UpstreamOutTok int
 }
 
-// StreamOptions 只投影当前尝试的技术参数及外层观察端口，不持有账号、配置或 HTTP 上下文。
+// StreamOptions 只投影当前尝试的技术参数及外层观察端口，不持有提供商、配置或 HTTP 上下文。
 type StreamOptions struct {
-	AccountID                                                            int64
+	ProviderID                                                           int64
 	NativeOpenAI, StageFirstOutput, CodexFailureTerminal, GrokIdlePolicy bool
 	FirstOutputTimeout, StreamInterval, KeepaliveInterval                time.Duration
 	MaxLineSize                                                          int
@@ -94,7 +94,6 @@ type StreamingResult struct {
 }
 
 func ReadStreamingResponse(ctx context.Context, resp *http.Response, c *upstream.OutputContext, options StreamOptions, startTime time.Time, originalModel, mappedModel, reasoningEffort string) (observed *StreamingResult, failure error) {
-
 	firstOutputTimeout := options.FirstOutputTimeout
 	guardFirstOutput := firstOutputTimeout > 0
 	stageFirstOutput := options.StageFirstOutput
@@ -121,7 +120,7 @@ func ReadStreamingResponse(ctx context.Context, resp *http.Response, c *upstream
 			}
 		}
 		options.StagedHeadersCommitted(attemptResponseHeaders)
-		// 这些 header 描述网关自己的 SSE 流，跨账号尝试保持稳定，优先级高于上游值。
+		// 这些 header 描述网关自己的 SSE 流，跨提供商尝试保持稳定，优先级高于上游值。
 		c.Header("Content-Type", "text/event-stream")
 		c.Header("Cache-Control", "no-cache")
 		c.Header("Connection", "keep-alive")
@@ -143,7 +142,7 @@ func ReadStreamingResponse(ctx context.Context, resp *http.Response, c *upstream
 		firstOutputStage = NewDefaultOpenAIFirstOutputStage()
 		defer func() {
 			if err := firstOutputStage.Close(); err != nil {
-				options.Logf("OpenAI first-output staging cleanup failed: account=%d model=%s error=%v", options.AccountID, originalModel, err)
+				options.Logf("OpenAI first-output staging cleanup failed: provider=%d model=%s error=%v", options.ProviderID, originalModel, err)
 			}
 		}()
 	}
@@ -267,7 +266,7 @@ func ReadStreamingResponse(ctx context.Context, resp *http.Response, c *upstream
 	failureDelivered := false
 	suppressCurrentEvent := false
 	var bareErrorPayload []byte
-	bareErrorAccountSideEffectsPending := false
+	bareErrorProviderSideEffectsPending := false
 	pendingSSEEventType := ""
 	eventInProgress := false
 	eventStartsClientOutput := false
@@ -280,7 +279,7 @@ func ReadStreamingResponse(ctx context.Context, resp *http.Response, c *upstream
 			if errors.Is(err, ErrOpenAIFirstOutputStageLimit) {
 				message = "OpenAI first-output staging limit exceeded"
 			}
-			options.Logf("%s: account=%d model=%s error=%v", message, options.AccountID, originalModel, err)
+			options.Logf("%s: provider=%d model=%s error=%v", message, options.ProviderID, originalModel, err)
 			failoverErr := options.Failover(upstreamRequestID, nil, message)
 			options.MarkSafeFailover(failoverErr)
 			streamEarlyErr = failoverErr
@@ -403,9 +402,9 @@ func ReadStreamingResponse(ctx context.Context, resp *http.Response, c *upstream
 		if !codexFailureTerminal || !sawBareError || sawResponseFailed || clientDisconnected {
 			return false
 		}
-		if bareErrorAccountSideEffectsPending {
+		if bareErrorProviderSideEffectsPending {
 			options.TerminalSideEffects(bareErrorPayload, failedMessage, resp.Header, mappedModel)
-			bareErrorAccountSideEffectsPending = false
+			bareErrorProviderSideEffectsPending = false
 		}
 		applyAttemptResponseHeaders()
 		if _, err := writePendingString(options.BuildOpenAIResponseFailedSSE(responseID, originalModel, bareErrorPayload, failedMessage)); err != nil {
@@ -453,7 +452,7 @@ func ReadStreamingResponse(ctx context.Context, resp *http.Response, c *upstream
 			return nil, nil, false
 		}
 		if errors.Is(scanErr, ErrOpenAIFirstOutputScannerLimit) && !firstOutputProgressObserved {
-			options.Logf("SSE token exceeded guarded first-output limit: account=%d limit=%d error=%v", options.AccountID, OpenAIFirstOutputStageMaxBytes+OpenAIFirstOutputScannerFramingAllowance, scanErr)
+			options.Logf("SSE token exceeded guarded first-output limit: provider=%d limit=%d error=%v", options.ProviderID, OpenAIFirstOutputStageMaxBytes+OpenAIFirstOutputScannerFramingAllowance, scanErr)
 			failoverErr := options.Failover(upstreamRequestID, nil,
 				"OpenAI SSE line exceeds guarded first-output limit",
 			)
@@ -461,7 +460,7 @@ func ReadStreamingResponse(ctx context.Context, resp *http.Response, c *upstream
 			return resultWithUsage(), failoverErr, true
 		}
 		if errors.Is(scanErr, bufio.ErrTooLong) && stageFirstOutput && !firstOutputProgressObserved {
-			options.Logf("SSE line too long before first output: account=%d max_size=%d error=%v", options.AccountID, maxLineSize, scanErr)
+			options.Logf("SSE line too long before first output: provider=%d max_size=%d error=%v", options.ProviderID, maxLineSize, scanErr)
 			failoverErr := options.Failover(upstreamRequestID, nil,
 				"OpenAI SSE line exceeds guarded first-output limit",
 			)
@@ -485,7 +484,7 @@ func ReadStreamingResponse(ctx context.Context, resp *http.Response, c *upstream
 			return resultWithUsage(), fmt.Errorf("stream usage incomplete: %w", scanErr), true
 		}
 		if errors.Is(scanErr, bufio.ErrTooLong) {
-			options.Logf("SSE line too long: account=%d max_size=%d error=%v", options.AccountID, maxLineSize, scanErr)
+			options.Logf("SSE line too long: provider=%d max_size=%d error=%v", options.ProviderID, maxLineSize, scanErr)
 			sendErrorEvent("response_too_large")
 			return resultWithUsage(), scanErr, true
 		}
@@ -527,7 +526,7 @@ func ReadStreamingResponse(ctx context.Context, resp *http.Response, c *upstream
 				terminalFailurePending = false
 				suppressCurrentEvent = false
 				bareErrorPayload = nil
-				bareErrorAccountSideEffectsPending = false
+				bareErrorProviderSideEffectsPending = false
 				failedMessage = ""
 			}
 			if codexFailureTerminal && sawBareError && !sawResponseFailed && eventType != "response.failed" {
@@ -569,7 +568,6 @@ func ReadStreamingResponse(ctx context.Context, resp *http.Response, c *upstream
 				if hit, code, msg := DetectOpenAICyberPolicy(dataBytes); hit {
 					cyberHit = true
 					options.MarkCyber(CyberObservation{
-
 						Code: code,
 
 						Message: msg,
@@ -594,11 +592,11 @@ func ReadStreamingResponse(ctx context.Context, resp *http.Response, c *upstream
 				if outputStarted && !cyberHit {
 					if codexFailureTerminal && eventType == "error" {
 						// OpenAI commonly follows a bare error with response.failed.
-						// Defer account health updates so the pair is applied once.
-						bareErrorAccountSideEffectsPending = true
+						// Defer provider health updates so the pair is applied once.
+						bareErrorProviderSideEffectsPending = true
 					} else {
 						options.TerminalSideEffects(dataBytes, failedMessage, resp.Header, mappedModel)
-						bareErrorAccountSideEffectsPending = false
+						bareErrorProviderSideEffectsPending = false
 					}
 				}
 				if !outputStarted {
@@ -940,10 +938,10 @@ func ReadStreamingResponse(ctx context.Context, resp *http.Response, c *upstream
 			if clientDisconnected {
 				return resultWithUsage(), fmt.Errorf("stream usage incomplete after timeout")
 			}
-			options.Logf("Stream data interval timeout: account=%d model=%s interval=%s", options.AccountID, originalModel, streamInterval)
-			// 处理流超时，可能标记账户为临时不可调度或错误状态
+			options.Logf("Stream data interval timeout: provider=%d model=%s interval=%s", options.ProviderID, originalModel, streamInterval)
+			// 处理流超时，可能标记提供商为临时不可调度或错误状态
 			options.StreamTimeout(originalModel)
-			// Grok 在尚未向客户端提交可见字节时执行短期冷却与账号故障转移。
+			// Grok 在尚未向客户端提交可见字节时执行短期冷却与提供商故障转移。
 			// 输出开始后保留旧版 stream_timeout 路径，避免部分 SSE 被重复写入。
 			if options.GrokIdlePolicy {
 				options.IdleCooldown()
@@ -992,7 +990,7 @@ func ReadStreamingResponse(ctx context.Context, resp *http.Response, c *upstream
 			}
 			if stageFirstOutput {
 				// 绕过当前尝试的本地缓冲帧；稳定 SSE 注释可以提交，
-				// 但账号相关 header 在出现语义输出前仍保持私有。
+				// 但提供商相关 header 在出现语义输出前仍保持私有。
 				n, err := w.Write([]byte(":\n\n"))
 				options.KeepaliveBytes(n)
 				if err != nil {
@@ -1017,5 +1015,4 @@ func ReadStreamingResponse(ctx context.Context, resp *http.Response, c *upstream
 			}
 		}
 	}
-
 }

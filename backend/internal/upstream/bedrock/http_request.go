@@ -1,4 +1,4 @@
-// 本文件构造一次 Bedrock 签名请求，不选择账号或读取配置。
+// 本文件构造一次 Bedrock 签名请求，不选择提供商或读取配置。
 package bedrock
 
 import (

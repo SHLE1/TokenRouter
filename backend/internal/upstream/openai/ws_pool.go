@@ -65,9 +65,9 @@ func (e *WSDialError) Unwrap() error {
 }
 
 type WSAcquireRequest struct {
-	Account *WSPoolAccount
-	WSURL   string
-	Headers http.Header
+	Provider *WSPoolProvider
+	WSURL    string
+	Headers  http.Header
 	// HeadersFactory 在实际拨号前生成认证头，避免缓存或预热复用 Agent Assertion。
 	HeadersFactory  func(context.Context, http.Header) (http.Header, error)
 	ProxyURL        string
@@ -91,13 +91,13 @@ type openAIWSHandshakeCompatibilityKey struct {
 }
 
 type WSConnLease struct {
-	pool      *WSConnPool
-	AccountID int64
-	Conn      *WSConn
-	queueWait time.Duration
-	connPick  time.Duration
-	reused    bool
-	released  atomic.Bool
+	pool       *WSConnPool
+	ProviderID int64
+	Conn       *WSConn
+	queueWait  time.Duration
+	connPick   time.Duration
+	reused     bool
+	released   atomic.Bool
 }
 
 func (l *WSConnLease) activeConn() (*WSConn, error) {
@@ -234,7 +234,7 @@ func (l *WSConnLease) MarkBroken() {
 	if l == nil || l.pool == nil || l.Conn == nil || l.released.Load() {
 		return
 	}
-	l.pool.evictConn(l.AccountID, l.Conn.id)
+	l.pool.evictConn(l.ProviderID, l.Conn.id)
 }
 
 func (l *WSConnLease) Release() {
@@ -250,10 +250,10 @@ func (l *WSConnLease) Release() {
 		closed := l.pool.closed
 		l.pool.runtimeMu.Unlock()
 		if closed {
-			l.pool.evictConn(l.AccountID, l.Conn.id)
+			l.pool.evictConn(l.ProviderID, l.Conn.id)
 			return
 		}
-		l.pool.notifyAccountPoolChanged(l.AccountID)
+		l.pool.notifyProviderPoolChanged(l.ProviderID)
 	}
 }
 
@@ -282,7 +282,6 @@ type WSConn struct {
 func NewWSConn(id string, _ int64, ws WSClientConn, handshakeHeaders http.Header, profile *tlsfingerprint.Profile, profileKey string) *WSConn {
 	now := time.Now()
 	conn := &WSConn{
-
 		id: id,
 
 		ws: ws,
@@ -597,7 +596,7 @@ func openAIWSTLSProfileKey(profile *tlsfingerprint.Profile, profileKey string) s
 	return tlsfingerprint.CacheKey(profile)
 }
 
-type openAIWSAccountPool struct {
+type openAIWSProviderPool struct {
 	mu            sync.Mutex
 	conns         map[string]*WSConn
 	pinnedConns   map[string]int
@@ -613,7 +612,7 @@ type openAIWSAccountPool struct {
 }
 
 // changeChannelLocked 返回连接池状态变化时会关闭的通知通道，调用方必须持锁。
-func (ap *openAIWSAccountPool) changeChannelLocked() chan struct{} {
+func (ap *openAIWSProviderPool) changeChannelLocked() chan struct{} {
 	if ap.changedCh == nil {
 		ap.changedCh = make(chan struct{})
 	}
@@ -621,7 +620,7 @@ func (ap *openAIWSAccountPool) changeChannelLocked() chan struct{} {
 }
 
 // signalChangedLocked 唤醒等待不兼容连接释放的请求，调用方必须持锁。
-func (ap *openAIWSAccountPool) signalChangedLocked() {
+func (ap *openAIWSProviderPool) signalChangedLocked() {
 	if ap == nil {
 		return
 	}
@@ -667,8 +666,8 @@ type WSConnPool struct {
 	// 通过接口解耦底层 WS 客户端实现，默认使用 coder/websocket。
 	clientDialer WSClientDialer
 
-	accounts sync.Map // key: int64(accountID), value: *openAIWSAccountPool
-	seq      atomic.Uint64
+	providers sync.Map // key: int64(providerID), value: *openAIWSProviderPool
+	seq       atomic.Uint64
 
 	metrics openAIWSPoolMetrics
 
@@ -692,7 +691,6 @@ func (p *WSConnPool) SnapshotMetrics() WSPoolMetricsSnapshot {
 		return WSPoolMetricsSnapshot{}
 	}
 	return WSPoolMetricsSnapshot{
-
 		AcquireTotal: p.metrics.acquireTotal.Load(),
 
 		AcquireReuseTotal: p.metrics.acquireReuseTotal.Load(),
@@ -747,8 +745,8 @@ func (p *WSConnPool) Close() {
 		}
 		p.runtimeMu.Unlock()
 		closeConnections := func() {
-			p.accounts.Range(func(_, value any) bool {
-				ap, ok := value.(*openAIWSAccountPool)
+			p.providers.Range(func(_, value any) bool {
+				ap, ok := value.(*openAIWSProviderPool)
 				if !ok || ap == nil {
 					return true
 				}
@@ -788,8 +786,8 @@ func (p *WSConnPool) startBackgroundWorkers() {
 }
 
 type openAIWSIdlePingCandidate struct {
-	accountID int64
-	conn      *WSConn
+	providerID int64
+	conn       *WSConn
 }
 
 func (p *WSConnPool) runBackgroundPingWorker() {
@@ -822,7 +820,7 @@ func (p *WSConnPool) runBackgroundPingSweep() {
 		}
 		g.Go(func() error {
 			if err := item.conn.pingWithTimeout(openAIWSConnHealthCheckTO); err != nil {
-				p.evictConn(item.accountID, item.conn.id)
+				p.evictConn(item.providerID, item.conn.id)
 			}
 			return nil
 		})
@@ -835,12 +833,12 @@ func (p *WSConnPool) snapshotIdleConnsForPing() []openAIWSIdlePingCandidate {
 		return nil
 	}
 	candidates := make([]openAIWSIdlePingCandidate, 0)
-	p.accounts.Range(func(key, value any) bool {
-		accountID, ok := key.(int64)
-		if !ok || accountID <= 0 {
+	p.providers.Range(func(key, value any) bool {
+		providerID, ok := key.(int64)
+		if !ok || providerID <= 0 {
 			return true
 		}
-		ap, ok := value.(*openAIWSAccountPool)
+		ap, ok := value.(*openAIWSProviderPool)
 		if !ok || ap == nil {
 			return true
 		}
@@ -850,8 +848,8 @@ func (p *WSConnPool) snapshotIdleConnsForPing() []openAIWSIdlePingCandidate {
 				continue
 			}
 			candidates = append(candidates, openAIWSIdlePingCandidate{
-				accountID: accountID,
-				conn:      conn,
+				providerID: providerID,
+				conn:       conn,
 			})
 		}
 		ap.mu.Unlock()
@@ -884,17 +882,17 @@ func (p *WSConnPool) runBackgroundCleanupSweep(now time.Time) {
 		evicted []*WSConn
 	}
 	results := make([]cleanupResult, 0)
-	p.accounts.Range(func(_ any, value any) bool {
-		ap, ok := value.(*openAIWSAccountPool)
+	p.providers.Range(func(_ any, value any) bool {
+		ap, ok := value.(*openAIWSProviderPool)
 		if !ok || ap == nil {
 			return true
 		}
 		maxConns := p.maxConnsHardCap()
 		ap.mu.Lock()
-		if ap.lastAcquire != nil && ap.lastAcquire.Account != nil {
-			maxConns = p.effectiveMaxConnsByAccount(ap.lastAcquire.Account)
+		if ap.lastAcquire != nil && ap.lastAcquire.Provider != nil {
+			maxConns = p.effectiveMaxConnsByProvider(ap.lastAcquire.Provider)
 		}
-		evicted := p.cleanupAccountLocked(ap, now, maxConns)
+		evicted := p.cleanupProviderLocked(ap, now, maxConns)
 		ap.lastCleanupAt = now
 		ap.mu.Unlock()
 		if len(evicted) > 0 {
@@ -925,7 +923,7 @@ func (p *WSConnPool) Acquire(ctx context.Context, req WSAcquireRequest) (*WSConn
 }
 
 func (p *WSConnPool) acquire(ctx context.Context, req WSAcquireRequest, retry int) (*WSConnLease, error) {
-	if p == nil || req.Account == nil || req.Account.ID <= 0 {
+	if p == nil || req.Provider == nil || req.Provider.ID <= 0 {
 		return nil, errors.New("invalid ws acquire request")
 	}
 	if stringsTrim(req.WSURL) == "" {
@@ -939,20 +937,20 @@ retryAcquire:
 	if closed {
 		return nil, errOpenAIWSConnClosed
 	}
-	accountID := req.Account.ID
-	compatibility := normalizeOpenAIWSHandshakeCompatibility(req.Account, req.Headers)
+	providerID := req.Provider.ID
+	compatibility := normalizeOpenAIWSHandshakeCompatibility(req.Provider, req.Headers)
 	routingAffinity := normalizeOpenAIWSRoutingAffinity(req.Headers)
-	effectiveMaxConns := p.effectiveMaxConnsByAccount(req.Account)
+	effectiveMaxConns := p.effectiveMaxConnsByProvider(req.Provider)
 	if effectiveMaxConns <= 0 {
 		return nil, ErrOpenAIWSConnQueueFull
 	}
 	var evicted []*WSConn
-	ap := p.getOrCreateAccountPool(accountID)
+	ap := p.getOrCreateProviderPool(providerID)
 	ap.mu.Lock()
 	acquireGeneration := ap.generation
 	now := time.Now()
 	if ap.lastCleanupAt.IsZero() || now.Sub(ap.lastCleanupAt) >= openAIWSAcquireCleanupInterval {
-		evicted = p.cleanupAccountLocked(ap, now, effectiveMaxConns)
+		evicted = p.cleanupProviderLocked(ap, now, effectiveMaxConns)
 		ap.lastCleanupAt = now
 	}
 	pickStartedAt := time.Now()
@@ -989,7 +987,7 @@ retryAcquire:
 				if p.shouldHealthCheckConn(preferredConn) {
 					if err := preferredConn.pingWithTimeout(openAIWSConnHealthCheckTO); err != nil {
 						preferredConn.close()
-						p.evictConn(accountID, preferredConn.id)
+						p.evictConn(providerID, preferredConn.id)
 						if retry < 1 {
 							return p.acquire(ctx, req, retry+1)
 						}
@@ -997,15 +995,15 @@ retryAcquire:
 					}
 				}
 				lease := &WSConnLease{
-					pool:      p,
-					AccountID: accountID,
-					Conn:      preferredConn,
-					connPick:  connPick,
-					reused:    true,
+					pool:       p,
+					ProviderID: providerID,
+					Conn:       preferredConn,
+					connPick:   connPick,
+					reused:     true,
 				}
 				p.metrics.acquireReuseTotal.Add(1)
-				p.recordLastSuccessfulAcquire(accountID, acquireGeneration, req)
-				p.ensureTargetIdleAsync(accountID)
+				p.recordLastSuccessfulAcquire(providerID, acquireGeneration, req)
+				p.ensureTargetIdleAsync(providerID)
 				return lease, nil
 			}
 
@@ -1033,7 +1031,7 @@ retryAcquire:
 				if err := preferredConn.pingWithTimeout(openAIWSConnHealthCheckTO); err != nil {
 					preferredConn.release()
 					preferredConn.close()
-					p.evictConn(accountID, preferredConn.id)
+					p.evictConn(providerID, preferredConn.id)
 					if retry < 1 {
 						return p.acquire(ctx, req, retry+1)
 					}
@@ -1044,10 +1042,9 @@ retryAcquire:
 			queueWait := time.Since(waitStart)
 			p.metrics.acquireQueueWaitMs.Add(queueWait.Milliseconds())
 			lease := &WSConnLease{
-
 				pool: p,
 
-				AccountID: accountID,
+				ProviderID: providerID,
 
 				Conn: preferredConn,
 
@@ -1058,8 +1055,8 @@ retryAcquire:
 				reused: true,
 			}
 			p.metrics.acquireReuseTotal.Add(1)
-			p.recordLastSuccessfulAcquire(accountID, acquireGeneration, req)
-			p.ensureTargetIdleAsync(accountID)
+			p.recordLastSuccessfulAcquire(providerID, acquireGeneration, req)
+			p.ensureTargetIdleAsync(providerID)
 			return lease, nil
 		}
 
@@ -1075,17 +1072,17 @@ retryAcquire:
 				if p.shouldHealthCheckConn(conn) {
 					if err := conn.pingWithTimeout(openAIWSConnHealthCheckTO); err != nil {
 						conn.close()
-						p.evictConn(accountID, conn.id)
+						p.evictConn(providerID, conn.id)
 						if retry < 1 {
 							return p.acquire(ctx, req, retry+1)
 						}
 						return nil, err
 					}
 				}
-				lease := &WSConnLease{pool: p, AccountID: accountID, Conn: conn, connPick: connPick, reused: true}
+				lease := &WSConnLease{pool: p, ProviderID: providerID, Conn: conn, connPick: connPick, reused: true}
 				p.metrics.acquireReuseTotal.Add(1)
-				p.recordLastSuccessfulAcquire(accountID, acquireGeneration, req)
-				p.ensureTargetIdleAsync(accountID)
+				p.recordLastSuccessfulAcquire(providerID, acquireGeneration, req)
+				p.ensureTargetIdleAsync(providerID)
 				return lease, nil
 			}
 		}
@@ -1103,17 +1100,17 @@ retryAcquire:
 			if p.shouldHealthCheckConn(best) {
 				if err := best.pingWithTimeout(openAIWSConnHealthCheckTO); err != nil {
 					best.close()
-					p.evictConn(accountID, best.id)
+					p.evictConn(providerID, best.id)
 					if retry < 1 {
 						return p.acquire(ctx, req, retry+1)
 					}
 					return nil, err
 				}
 			}
-			lease := &WSConnLease{pool: p, AccountID: accountID, Conn: best, connPick: connPick, reused: true}
+			lease := &WSConnLease{pool: p, ProviderID: providerID, Conn: best, connPick: connPick, reused: true}
 			p.metrics.acquireReuseTotal.Add(1)
-			p.recordLastSuccessfulAcquire(accountID, acquireGeneration, req)
-			p.ensureTargetIdleAsync(accountID)
+			p.recordLastSuccessfulAcquire(providerID, acquireGeneration, req)
+			p.ensureTargetIdleAsync(providerID)
 			return lease, nil
 		}
 		if routingAffinity == "" || len(ap.conns)+ap.creating >= effectiveMaxConns {
@@ -1132,17 +1129,17 @@ retryAcquire:
 					if p.shouldHealthCheckConn(conn) {
 						if err := conn.pingWithTimeout(openAIWSConnHealthCheckTO); err != nil {
 							conn.close()
-							p.evictConn(accountID, conn.id)
+							p.evictConn(providerID, conn.id)
 							if retry < 1 {
 								return p.acquire(ctx, req, retry+1)
 							}
 							return nil, err
 						}
 					}
-					lease := &WSConnLease{pool: p, AccountID: accountID, Conn: conn, connPick: connPick, reused: true}
+					lease := &WSConnLease{pool: p, ProviderID: providerID, Conn: conn, connPick: connPick, reused: true}
 					p.metrics.acquireReuseTotal.Add(1)
-					p.recordLastSuccessfulAcquire(accountID, acquireGeneration, req)
-					p.ensureTargetIdleAsync(accountID)
+					p.recordLastSuccessfulAcquire(providerID, acquireGeneration, req)
+					p.ensureTargetIdleAsync(providerID)
 					return lease, nil
 				}
 			}
@@ -1215,7 +1212,7 @@ retryAcquire:
 
 		conn, dialErr := p.dialConn(ctx, req)
 
-		ap = p.getOrCreateAccountPool(accountID)
+		ap = p.getOrCreateProviderPool(providerID)
 		ap.mu.Lock()
 		ap.creating--
 		if ap.generation != acquireGeneration {
@@ -1252,9 +1249,9 @@ retryAcquire:
 		ap.signalChangedLocked()
 		ap.mu.Unlock()
 		p.metrics.acquireCreateTotal.Add(1)
-		lease := &WSConnLease{pool: p, AccountID: accountID, Conn: conn, connPick: connPick}
-		p.recordLastSuccessfulAcquire(accountID, acquireGeneration, req)
-		p.ensureTargetIdleAsync(accountID)
+		lease := &WSConnLease{pool: p, ProviderID: providerID, Conn: conn, connPick: connPick}
+		p.recordLastSuccessfulAcquire(providerID, acquireGeneration, req)
+		p.ensureTargetIdleAsync(providerID)
 		return lease, nil
 	}
 
@@ -1298,7 +1295,7 @@ acquireAtCapacity:
 		if err := target.pingWithTimeout(openAIWSConnHealthCheckTO); err != nil {
 			target.release()
 			target.close()
-			p.evictConn(accountID, target.id)
+			p.evictConn(providerID, target.id)
 			if retry < 1 {
 				return p.acquire(ctx, req, retry+1)
 			}
@@ -1308,10 +1305,10 @@ acquireAtCapacity:
 
 	queueWait := time.Since(waitStart)
 	p.metrics.acquireQueueWaitMs.Add(queueWait.Milliseconds())
-	lease := &WSConnLease{pool: p, AccountID: accountID, Conn: target, queueWait: queueWait, connPick: connPick, reused: true}
+	lease := &WSConnLease{pool: p, ProviderID: providerID, Conn: target, queueWait: queueWait, connPick: connPick, reused: true}
 	p.metrics.acquireReuseTotal.Add(1)
-	p.recordLastSuccessfulAcquire(accountID, acquireGeneration, req)
-	p.ensureTargetIdleAsync(accountID)
+	p.recordLastSuccessfulAcquire(providerID, acquireGeneration, req)
+	p.ensureTargetIdleAsync(providerID)
 	return lease, nil
 }
 
@@ -1326,11 +1323,11 @@ func (p *WSConnPool) recordConnPickDuration(duration time.Duration) {
 	p.metrics.connPickMs.Add(duration.Milliseconds())
 }
 
-func (p *WSConnPool) recordLastSuccessfulAcquire(accountID int64, generation uint64, req WSAcquireRequest) {
-	if p == nil || accountID <= 0 {
+func (p *WSConnPool) recordLastSuccessfulAcquire(providerID int64, generation uint64, req WSAcquireRequest) {
+	if p == nil || providerID <= 0 {
 		return
 	}
-	ap, ok := p.getAccountPool(accountID)
+	ap, ok := p.getProviderPool(providerID)
 	if !ok || ap == nil {
 		return
 	}
@@ -1343,7 +1340,7 @@ func (p *WSConnPool) recordLastSuccessfulAcquire(accountID int64, generation uin
 	ap.mu.Unlock()
 }
 
-func (p *WSConnPool) pickOldestIdleConnLocked(ap *openAIWSAccountPool) *WSConn {
+func (p *WSConnPool) pickOldestIdleConnLocked(ap *openAIWSProviderPool) *WSConn {
 	if ap == nil || len(ap.conns) == 0 {
 		return nil
 	}
@@ -1360,7 +1357,7 @@ func (p *WSConnPool) pickOldestIdleConnLocked(ap *openAIWSAccountPool) *WSConn {
 }
 
 // pickOldestIdleMismatchedTLSConnLocked 选取可淘汰的 TLS 配置不兼容空闲连接。
-func (p *WSConnPool) pickOldestIdleMismatchedTLSConnLocked(ap *openAIWSAccountPool, profile *tlsfingerprint.Profile, profileKey string) *WSConn {
+func (p *WSConnPool) pickOldestIdleMismatchedTLSConnLocked(ap *openAIWSProviderPool, profile *tlsfingerprint.Profile, profileKey string) *WSConn {
 	if ap == nil || len(ap.conns) == 0 {
 		return nil
 	}
@@ -1379,7 +1376,7 @@ func (p *WSConnPool) pickOldestIdleMismatchedTLSConnLocked(ap *openAIWSAccountPo
 // pickOldestIdleConnWithoutHandshakeCompatibilityLocked 选取握手或 TLS 不兼容的空闲连接，
 // routing hint 属于软亲和，不应阻止池在容量受限时回收连接。
 func (p *WSConnPool) pickOldestIdleConnWithoutHandshakeCompatibilityLocked(
-	ap *openAIWSAccountPool,
+	ap *openAIWSProviderPool,
 	profile *tlsfingerprint.Profile,
 	profileKey string,
 	compatibility openAIWSHandshakeCompatibilityKey,
@@ -1402,47 +1399,47 @@ func (p *WSConnPool) pickOldestIdleConnWithoutHandshakeCompatibilityLocked(
 	return oldest
 }
 
-func (p *WSConnPool) getOrCreateAccountPool(accountID int64) *openAIWSAccountPool {
-	if p == nil || accountID <= 0 {
+func (p *WSConnPool) getOrCreateProviderPool(providerID int64) *openAIWSProviderPool {
+	if p == nil || providerID <= 0 {
 		return nil
 	}
-	if existing, ok := p.accounts.Load(accountID); ok {
-		if ap, typed := existing.(*openAIWSAccountPool); typed && ap != nil {
+	if existing, ok := p.providers.Load(providerID); ok {
+		if ap, typed := existing.(*openAIWSProviderPool); typed && ap != nil {
 			return ap
 		}
 	}
-	ap := &openAIWSAccountPool{
+	ap := &openAIWSProviderPool{
 		conns:       make(map[string]*WSConn),
 		pinnedConns: make(map[string]int),
 		changedCh:   make(chan struct{}),
 	}
-	actual, _ := p.accounts.LoadOrStore(accountID, ap)
-	if typed, ok := actual.(*openAIWSAccountPool); ok && typed != nil {
+	actual, _ := p.providers.LoadOrStore(providerID, ap)
+	if typed, ok := actual.(*openAIWSProviderPool); ok && typed != nil {
 		return typed
 	}
 	return ap
 }
 
-// ensureAccountPoolLocked 兼容旧调用。
-func (p *WSConnPool) ensureAccountPoolLocked(accountID int64) *openAIWSAccountPool {
-	return p.getOrCreateAccountPool(accountID)
+// ensureProviderPoolLocked 兼容旧调用。
+func (p *WSConnPool) ensureProviderPoolLocked(providerID int64) *openAIWSProviderPool {
+	return p.getOrCreateProviderPool(providerID)
 }
 
-func (p *WSConnPool) getAccountPool(accountID int64) (*openAIWSAccountPool, bool) {
-	if p == nil || accountID <= 0 {
+func (p *WSConnPool) getProviderPool(providerID int64) (*openAIWSProviderPool, bool) {
+	if p == nil || providerID <= 0 {
 		return nil, false
 	}
-	value, ok := p.accounts.Load(accountID)
+	value, ok := p.providers.Load(providerID)
 	if !ok || value == nil {
 		return nil, false
 	}
-	ap, typed := value.(*openAIWSAccountPool)
+	ap, typed := value.(*openAIWSProviderPool)
 	return ap, typed && ap != nil
 }
 
-// notifyAccountPoolChanged 唤醒等待该账号连接池出现兼容空闲连接的请求。
-func (p *WSConnPool) notifyAccountPoolChanged(accountID int64) {
-	ap, ok := p.getAccountPool(accountID)
+// notifyProviderPoolChanged 唤醒等待该提供商连接池出现兼容空闲连接的请求。
+func (p *WSConnPool) notifyProviderPoolChanged(providerID int64) {
+	ap, ok := p.getProviderPool(providerID)
 	if !ok || ap == nil {
 		return
 	}
@@ -1451,14 +1448,14 @@ func (p *WSConnPool) notifyAccountPoolChanged(accountID int64) {
 	ap.mu.Unlock()
 }
 
-func (p *WSConnPool) isConnPinnedLocked(ap *openAIWSAccountPool, connID string) bool {
+func (p *WSConnPool) isConnPinnedLocked(ap *openAIWSProviderPool, connID string) bool {
 	if ap == nil || connID == "" || len(ap.pinnedConns) == 0 {
 		return false
 	}
 	return ap.pinnedConns[connID] > 0
 }
 
-func (p *WSConnPool) cleanupAccountLocked(ap *openAIWSAccountPool, now time.Time, maxConns int) []*WSConn {
+func (p *WSConnPool) cleanupProviderLocked(ap *openAIWSProviderPool, now time.Time, maxConns int) []*WSConn {
 	if ap == nil {
 		return nil
 	}
@@ -1509,7 +1506,7 @@ func (p *WSConnPool) cleanupAccountLocked(ap *openAIWSAccountPool, now time.Time
 	if maxConns <= 0 {
 		maxConns = p.maxConnsHardCap()
 	}
-	maxIdle := p.maxIdlePerAccount()
+	maxIdle := p.maxIdlePerProvider()
 	if maxIdle < 0 || maxIdle > maxConns {
 		maxIdle = maxConns
 	}
@@ -1556,7 +1553,7 @@ func (p *WSConnPool) cleanupAccountLocked(ap *openAIWSAccountPool, now time.Time
 }
 
 func (p *WSConnPool) pickLeastBusyConnLocked(
-	ap *openAIWSAccountPool,
+	ap *openAIWSProviderPool,
 	preferredConnID string,
 	profile *tlsfingerprint.Profile,
 	profileKey string,
@@ -1598,7 +1595,7 @@ func (p *WSConnPool) pickLeastBusyConnLocked(
 }
 
 func (p *WSConnPool) pickLeastBusyConnWithRoutingAffinityLocked(
-	ap *openAIWSAccountPool,
+	ap *openAIWSProviderPool,
 	profile *tlsfingerprint.Profile,
 	profileKey string,
 	compatibility openAIWSHandshakeCompatibilityKey,
@@ -1630,7 +1627,7 @@ func (p *WSConnPool) pickLeastBusyConnWithRoutingAffinityLocked(
 	return best
 }
 
-func accountPoolLoadLocked(ap *openAIWSAccountPool) (inflight int, waiters int) {
+func providerPoolLoadLocked(ap *openAIWSProviderPool) (inflight int, waiters int) {
 	if ap == nil {
 		return 0, 0
 	}
@@ -1646,23 +1643,23 @@ func accountPoolLoadLocked(ap *openAIWSAccountPool) (inflight int, waiters int) 
 	return inflight, waiters
 }
 
-// AccountPoolLoad 返回指定账号连接池的并发与排队快照。
-func (p *WSConnPool) AccountPoolLoad(accountID int64) (inflight int, waiters int, conns int) {
-	if p == nil || accountID <= 0 {
+// ProviderPoolLoad 返回指定提供商连接池的并发与排队快照。
+func (p *WSConnPool) ProviderPoolLoad(providerID int64) (inflight int, waiters int, conns int) {
+	if p == nil || providerID <= 0 {
 		return 0, 0, 0
 	}
-	ap, ok := p.getAccountPool(accountID)
+	ap, ok := p.getProviderPool(providerID)
 	if !ok || ap == nil {
 		return 0, 0, 0
 	}
 	ap.mu.Lock()
 	defer ap.mu.Unlock()
-	inflight, waiters = accountPoolLoadLocked(ap)
+	inflight, waiters = providerPoolLoadLocked(ap)
 	return inflight, waiters, len(ap.conns)
 }
 
-func (p *WSConnPool) ensureTargetIdleAsync(accountID int64) {
-	if p == nil || accountID <= 0 {
+func (p *WSConnPool) ensureTargetIdleAsync(providerID int64) {
+	if p == nil || providerID <= 0 {
 		return
 	}
 
@@ -1675,7 +1672,7 @@ func (p *WSConnPool) ensureTargetIdleAsync(accountID int64) {
 	var req WSAcquireRequest
 	generation := uint64(0)
 	need := 0
-	ap, ok := p.getAccountPool(accountID)
+	ap, ok := p.getProviderPool(providerID)
 	if !ok || ap == nil {
 		return
 	}
@@ -1695,8 +1692,8 @@ func (p *WSConnPool) ensureTargetIdleAsync(accountID int64) {
 		return
 	}
 	effectiveMaxConns := p.maxConnsHardCap()
-	if ap.lastAcquire != nil && ap.lastAcquire.Account != nil {
-		effectiveMaxConns = p.effectiveMaxConnsByAccount(ap.lastAcquire.Account)
+	if ap.lastAcquire != nil && ap.lastAcquire.Provider != nil {
+		effectiveMaxConns = p.effectiveMaxConnsByProvider(ap.lastAcquire.Provider)
 	}
 	target := p.targetConnCountLocked(ap, effectiveMaxConns)
 	current := len(ap.conns) + ap.creating
@@ -1717,10 +1714,10 @@ func (p *WSConnPool) ensureTargetIdleAsync(accountID int64) {
 	p.metrics.scaleUpTotal.Add(int64(need))
 
 	p.prewarmWG.Add(1)
-	go func() { defer p.prewarmWG.Done(); p.prewarmConns(accountID, req, need, generation) }()
+	go func() { defer p.prewarmWG.Done(); p.prewarmConns(providerID, req, need, generation) }()
 }
 
-func (p *WSConnPool) targetConnCountLocked(ap *openAIWSAccountPool, maxConns int) int {
+func (p *WSConnPool) targetConnCountLocked(ap *openAIWSProviderPool, maxConns int) int {
 	if ap == nil {
 		return 0
 	}
@@ -1729,7 +1726,7 @@ func (p *WSConnPool) targetConnCountLocked(ap *openAIWSAccountPool, maxConns int
 		return 0
 	}
 
-	minIdle := p.minIdlePerAccount()
+	minIdle := p.minIdlePerProvider()
 	if minIdle < 0 {
 		minIdle = 0
 	}
@@ -1737,7 +1734,7 @@ func (p *WSConnPool) targetConnCountLocked(ap *openAIWSAccountPool, maxConns int
 		minIdle = maxConns
 	}
 
-	inflight, waiters := accountPoolLoadLocked(ap)
+	inflight, waiters := providerPoolLoadLocked(ap)
 	utilization := p.targetUtilization()
 	demand := inflight + waiters
 	if demand <= 0 {
@@ -1760,14 +1757,14 @@ func (p *WSConnPool) targetConnCountLocked(ap *openAIWSAccountPool, maxConns int
 	return target
 }
 
-func (p *WSConnPool) prewarmConns(accountID int64, req WSAcquireRequest, total int, generations ...uint64) {
+func (p *WSConnPool) prewarmConns(providerID int64, req WSAcquireRequest, total int, generations ...uint64) {
 	generation := uint64(0)
 	if len(generations) > 0 {
 		generation = generations[0]
 	}
 	staleTarget := false
 	defer func() {
-		if ap, ok := p.getAccountPool(accountID); ok && ap != nil {
+		if ap, ok := p.getProviderPool(providerID); ok && ap != nil {
 			ap.mu.Lock()
 			ap.prewarmActive = false
 			ap.signalChangedLocked()
@@ -1776,7 +1773,7 @@ func (p *WSConnPool) prewarmConns(accountID int64, req WSAcquireRequest, total i
 		if staleTarget {
 			// 旧拨号尚未结束时出现了更新的获取请求；先清除 prewarmActive，
 			// 再按最新 beta/hint 目标重新计算空闲连接需求。
-			p.ensureTargetIdleAsync(accountID)
+			p.ensureTargetIdleAsync(providerID)
 		}
 	}()
 
@@ -1789,7 +1786,7 @@ func (p *WSConnPool) prewarmConns(accountID int64, req WSAcquireRequest, total i
 		conn, err := p.dialConn(ctx, req)
 		cancel()
 
-		ap, ok := p.getAccountPool(accountID)
+		ap, ok := p.getProviderPool(providerID)
 		if !ok || ap == nil {
 			if conn != nil {
 				conn.close()
@@ -1819,7 +1816,7 @@ func (p *WSConnPool) prewarmConns(accountID int64, req WSAcquireRequest, total i
 			conn.close()
 			continue
 		}
-		if len(ap.conns) >= p.effectiveMaxConnsByAccount(req.Account) {
+		if len(ap.conns) >= p.effectiveMaxConnsByProvider(req.Provider) {
 			ap.signalChangedLocked()
 			ap.mu.Unlock()
 			conn.close()
@@ -1833,12 +1830,12 @@ func (p *WSConnPool) prewarmConns(accountID int64, req WSAcquireRequest, total i
 	}
 }
 
-// ClearAccount 关闭账号的全部池化连接并丢弃延迟预热状态；代次检查阻止恢复前启动的预热连接重新入池。
-func (p *WSConnPool) ClearAccount(accountID int64) {
-	if p == nil || accountID <= 0 {
+// ClearProvider 关闭提供商的全部池化连接并丢弃延迟预热状态；代次检查阻止恢复前启动的预热连接重新入池。
+func (p *WSConnPool) ClearProvider(providerID int64) {
+	if p == nil || providerID <= 0 {
 		return
 	}
-	ap, ok := p.getAccountPool(accountID)
+	ap, ok := p.getProviderPool(providerID)
 	if !ok || ap == nil {
 		return
 	}
@@ -1861,12 +1858,12 @@ func (p *WSConnPool) ClearAccount(accountID int64) {
 	closeOpenAIWSConns(conns)
 }
 
-func (p *WSConnPool) evictConn(accountID int64, connID string) {
-	if p == nil || accountID <= 0 || stringsTrim(connID) == "" {
+func (p *WSConnPool) evictConn(providerID int64, connID string) {
+	if p == nil || providerID <= 0 || stringsTrim(connID) == "" {
 		return
 	}
 	var conn *WSConn
-	ap, ok := p.getAccountPool(accountID)
+	ap, ok := p.getProviderPool(providerID)
 	if ok && ap != nil {
 		ap.mu.Lock()
 		if c, exists := ap.conns[connID]; exists {
@@ -1884,15 +1881,15 @@ func (p *WSConnPool) evictConn(accountID int64, connID string) {
 	}
 }
 
-func (p *WSConnPool) PinConn(accountID int64, connID string) bool {
-	if p == nil || accountID <= 0 {
+func (p *WSConnPool) PinConn(providerID int64, connID string) bool {
+	if p == nil || providerID <= 0 {
 		return false
 	}
 	connID = stringsTrim(connID)
 	if connID == "" {
 		return false
 	}
-	ap, ok := p.getAccountPool(accountID)
+	ap, ok := p.getProviderPool(providerID)
 	if !ok || ap == nil {
 		return false
 	}
@@ -1908,15 +1905,15 @@ func (p *WSConnPool) PinConn(accountID int64, connID string) bool {
 	return true
 }
 
-func (p *WSConnPool) UnpinConn(accountID int64, connID string) {
-	if p == nil || accountID <= 0 {
+func (p *WSConnPool) UnpinConn(providerID int64, connID string) {
+	if p == nil || providerID <= 0 {
 		return
 	}
 	connID = stringsTrim(connID)
 	if connID == "" {
 		return
 	}
-	ap, ok := p.getAccountPool(accountID)
+	ap, ok := p.getProviderPool(providerID)
 	if !ok || ap == nil {
 		return
 	}
@@ -1955,7 +1952,6 @@ func (p *WSConnPool) dialConn(ctx context.Context, req WSAcquireRequest) (*WSCon
 			responseBody = append([]byte(nil), handshakeErr.Body...)
 		}
 		return nil, &WSDialError{
-
 			StatusCode: status,
 
 			ResponseHeaders: cloneHeader(handshakeHeaders),
@@ -1967,7 +1963,6 @@ func (p *WSConnPool) dialConn(ctx context.Context, req WSAcquireRequest) (*WSCon
 	}
 	if conn == nil {
 		return nil, &WSDialError{
-
 			StatusCode: status,
 
 			ResponseHeaders: cloneHeader(handshakeHeaders),
@@ -1975,18 +1970,18 @@ func (p *WSConnPool) dialConn(ctx context.Context, req WSAcquireRequest) (*WSCon
 			Err: errors.New("openai ws dialer returned nil connection"),
 		}
 	}
-	id := p.nextConnID(req.Account.ID)
-	pooledConn := NewWSConn(id, req.Account.ID, conn, handshakeHeaders, req.TLSProfile, req.TLSProfileKey)
-	pooledConn.handshakeCompatibility = normalizeOpenAIWSHandshakeCompatibility(req.Account, req.Headers)
+	id := p.nextConnID(req.Provider.ID)
+	pooledConn := NewWSConn(id, req.Provider.ID, conn, handshakeHeaders, req.TLSProfile, req.TLSProfileKey)
+	pooledConn.handshakeCompatibility = normalizeOpenAIWSHandshakeCompatibility(req.Provider, req.Headers)
 	pooledConn.routingAffinity = normalizeOpenAIWSRoutingAffinity(req.Headers)
 	return pooledConn, nil
 }
 
-func (p *WSConnPool) nextConnID(accountID int64) string {
+func (p *WSConnPool) nextConnID(providerID int64) string {
 	seq := p.seq.Add(1)
 	buf := make([]byte, 0, 32)
 	buf = append(buf, "oa_ws_"...)
-	buf = strconv.AppendInt(buf, accountID, 10)
+	buf = strconv.AppendInt(buf, providerID, 10)
 	buf = append(buf, '_')
 	buf = strconv.AppendUint(buf, seq, 10)
 	return string(buf)
@@ -2005,17 +2000,17 @@ func (p *WSConnPool) dynamicMaxConnsEnabled() bool {
 	return p.nativeOptions().DynamicMaxConnsEnabled()
 }
 
-func (p *WSConnPool) maxConnsFactorByAccount(account *WSPoolAccount) float64 {
-	return p.nativeOptions().MaxConnsFactorByAccount(account)
+func (p *WSConnPool) maxConnsFactorByProvider(provider *WSPoolProvider) float64 {
+	return p.nativeOptions().MaxConnsFactorByProvider(provider)
 }
 
-func (p *WSConnPool) effectiveMaxConnsByAccount(account *WSPoolAccount) int {
-	return p.nativeOptions().EffectiveMaxConnsByAccount(account)
+func (p *WSConnPool) effectiveMaxConnsByProvider(provider *WSPoolProvider) int {
+	return p.nativeOptions().EffectiveMaxConnsByProvider(provider)
 }
 
-func (p *WSConnPool) minIdlePerAccount() int { return p.nativeOptions().MinIdle() }
+func (p *WSConnPool) minIdlePerProvider() int { return p.nativeOptions().MinIdle() }
 
-func (p *WSConnPool) maxIdlePerAccount() int { return p.nativeOptions().MaxIdle() }
+func (p *WSConnPool) maxIdlePerProvider() int { return p.nativeOptions().MaxIdle() }
 
 func (p *WSConnPool) maxConnAge() time.Duration { return p.nativeOptions().MaxConnAge() }
 
@@ -2027,7 +2022,7 @@ func (p *WSConnPool) prewarmCooldown() time.Duration {
 	return p.nativeOptions().PrewarmCooldown()
 }
 
-func (p *WSConnPool) shouldSuppressPrewarmLocked(ap *openAIWSAccountPool, now time.Time) bool {
+func (p *WSConnPool) shouldSuppressPrewarmLocked(ap *openAIWSProviderPool, now time.Time) bool {
 	if ap == nil {
 		return true
 	}
@@ -2070,7 +2065,7 @@ func CloneWSAcquireRequestPtr(req *WSAcquireRequest) *WSAcquireRequest {
 func sameOpenAIWSPrewarmTarget(a, b WSAcquireRequest) bool {
 	return stringsTrim(a.WSURL) == stringsTrim(b.WSURL) &&
 		stringsTrim(a.ProxyURL) == stringsTrim(b.ProxyURL) &&
-		normalizeOpenAIWSHandshakeCompatibility(a.Account, a.Headers) == normalizeOpenAIWSHandshakeCompatibility(b.Account, b.Headers) &&
+		normalizeOpenAIWSHandshakeCompatibility(a.Provider, a.Headers) == normalizeOpenAIWSHandshakeCompatibility(b.Provider, b.Headers) &&
 		openAIWSTLSProfileKey(a.TLSProfile, a.TLSProfileKey) == openAIWSTLSProfileKey(b.TLSProfile, b.TLSProfileKey)
 }
 
@@ -2100,11 +2095,11 @@ func normalizeOpenAIWSBetaFeatures(headers http.Header) string {
 	return strings.Join(normalized, ",")
 }
 
-func normalizeOpenAIWSHandshakeCompatibility(account *WSPoolAccount, headers http.Header) openAIWSHandshakeCompatibilityKey {
+func normalizeOpenAIWSHandshakeCompatibility(provider *WSPoolProvider, headers http.Header) openAIWSHandshakeCompatibilityKey {
 	key := openAIWSHandshakeCompatibilityKey{
 		betaFeatures: normalizeOpenAIWSBetaFeatures(headers),
 	}
-	mode := activeCodexFingerprintMode(account)
+	mode := activeCodexFingerprintMode(provider)
 	if mode == codexFingerprintOff {
 		return key
 	}
@@ -2185,6 +2180,7 @@ func (p *WSConnPool) Start() {
 	p.started = true
 	p.startBackgroundWorkers()
 }
+
 func (p *WSConnPool) nativeOptions() *WSPoolOptions {
 	if p == nil {
 		return nil
@@ -2200,25 +2196,25 @@ const (
 	openAICodexRoutingHintHeader = "x-codex-routing-hint"
 )
 
-func activeCodexFingerprintMode(account *WSPoolAccount) codexFingerprintMode {
-	if account == nil || account.FingerprintMode == "" {
+func activeCodexFingerprintMode(provider *WSPoolProvider) codexFingerprintMode {
+	if provider == nil || provider.FingerprintMode == "" {
 		return codexFingerprintOff
 	}
-	return account.FingerprintMode
+	return provider.FingerprintMode
 }
 
-// SnapshotAccountState 只投影连接和租约数量，不暴露连接或认证头。
-type WSPoolAccountState struct{ Connections, LeasedConnections, PinnedConnections int }
+// SnapshotProviderState 只投影连接和租约数量，不暴露连接或认证头。
+type WSPoolProviderState struct{ Connections, LeasedConnections, PinnedConnections int }
 
-func (p *WSConnPool) SnapshotAccountState(id int64) (WSPoolAccountState, bool) {
-	account, ok := p.getAccountPool(id)
+func (p *WSConnPool) SnapshotProviderState(id int64) (WSPoolProviderState, bool) {
+	provider, ok := p.getProviderPool(id)
 	if !ok {
-		return WSPoolAccountState{}, false
+		return WSPoolProviderState{}, false
 	}
-	account.mu.Lock()
-	defer account.mu.Unlock()
-	state := WSPoolAccountState{Connections: len(account.conns), PinnedConnections: len(account.pinnedConns)}
-	for _, connection := range account.conns {
+	provider.mu.Lock()
+	defer provider.mu.Unlock()
+	state := WSPoolProviderState{Connections: len(provider.conns), PinnedConnections: len(provider.pinnedConns)}
+	for _, connection := range provider.conns {
 		if connection != nil && connection.isLeased() {
 			state.LeasedConnections++
 		}

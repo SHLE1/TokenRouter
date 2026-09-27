@@ -7,7 +7,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/billing/provider"
+	billingadapter "github.com/TokenFlux/TokenRouter/internal/billing/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
@@ -147,7 +147,7 @@ func ModelConfigFromData(fixture *ModelConfigData) *routing.PricingConfigService
 			pricingConfigs = append(pricingConfigs, *ch)
 		}
 	}
-	return NewPricingConfigService(ConfigRows{Values: pricingConfigs, Platforms: fixture.Platforms}, nil, routing.PricingConfigOptions{Now: time.Now, LoadLocation: provider.LoadPricingLocation, ReadGroup: func(_ context.Context, id int64) (*routing.Group, error) {
+	return NewPricingConfigService(ConfigRows{Values: pricingConfigs, Platforms: fixture.Platforms}, nil, routing.PricingConfigOptions{Now: time.Now, LoadLocation: billingadapter.LoadPricingLocation, ReadGroup: func(_ context.Context, id int64) (*routing.Group, error) {
 		policy, exists := fixture.GroupPolicies[id]
 		if !exists {
 			for _, row := range pricingConfigs {

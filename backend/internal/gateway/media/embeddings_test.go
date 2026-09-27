@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/stretchr/testify/require"
 )
 
@@ -19,7 +19,7 @@ type embeddingPortsStub struct {
 	selectErr                                                   error
 }
 
-func (p *embeddingPortsStub) SelectEmbedding(_ context.Context, excluded map[int64]struct{}) (account.AccountSnapshot, bool, error) {
+func (p *embeddingPortsStub) SelectEmbedding(_ context.Context, excluded map[int64]struct{}) (provider.ProviderSnapshot, bool, error) {
 	p.selected++
 	copySet := make(map[int64]struct{}, len(excluded))
 	for id := range excluded {
@@ -27,33 +27,37 @@ func (p *embeddingPortsStub) SelectEmbedding(_ context.Context, excluded map[int
 	}
 	p.exclusions = append(p.exclusions, copySet)
 	if p.selectErr != nil {
-		return account.AccountSnapshot{}, false, p.selectErr
+		return provider.ProviderSnapshot{}, false, p.selectErr
 	}
-	return account.AccountSnapshot{ID: int64(p.selected)}, true, nil
+	return provider.ProviderSnapshot{ID: int64(p.selected)}, true, nil
 }
-func (p *embeddingPortsStub) AcquireEmbedding(context.Context, account.AccountSnapshot) (func(), bool) {
+
+func (p *embeddingPortsStub) AcquireEmbedding(context.Context, provider.ProviderSnapshot) (func(), bool) {
 	if p.denyAcquire {
 		return nil, false
 	}
 	p.acquired++
 	return func() { p.released++; p.events = append(p.events, "release") }, true
 }
-func (p *embeddingPortsStub) ForwardEmbedding(_ context.Context, _ account.AccountSnapshot, body []byte) EmbeddingOutcome {
+
+func (p *embeddingPortsStub) ForwardEmbedding(_ context.Context, _ provider.ProviderSnapshot, body []byte) EmbeddingOutcome {
 	p.bodies = append(p.bodies, append([]byte(nil), body...))
 	p.events = append(p.events, "forward")
 	return p.outcomes[p.selected-1]
 }
-func (p *embeddingPortsStub) ReportEmbedding(context.Context, account.AccountSnapshot, *EmbeddingResult, bool, error) {
+
+func (p *embeddingPortsStub) ReportEmbedding(context.Context, provider.ProviderSnapshot, *EmbeddingResult, bool, error) {
 	p.reported++
 	p.events = append(p.events, "report")
 }
-func (p *embeddingPortsStub) CompleteEmbedding(context.Context, account.AccountSnapshot, *EmbeddingResult) {
+
+func (p *embeddingPortsStub) CompleteEmbedding(context.Context, provider.ProviderSnapshot, *EmbeddingResult) {
 	p.completed++
 	p.events = append(p.events, "complete")
 }
-func (p *embeddingPortsStub) SwitchEmbedding(account.AccountSnapshot) { p.switches++ }
-func (p *embeddingPortsStub) ObserveEmbedding(EmbeddingEvent)         {}
-func (p *embeddingPortsStub) ClientGone() bool                        { return p.gone }
+func (p *embeddingPortsStub) SwitchEmbedding(provider.ProviderSnapshot) { p.switches++ }
+func (p *embeddingPortsStub) ObserveEmbedding(EmbeddingEvent)           {}
+func (p *embeddingPortsStub) ClientGone() bool                          { return p.gone }
 
 func TestEmbeddingsRetryReleasesBeforeFeedbackAndCompletesOnce(t *testing.T) {
 	failure := errors.New("switch")

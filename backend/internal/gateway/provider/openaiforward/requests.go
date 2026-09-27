@@ -9,7 +9,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
-// RequestTargetOptions 只含本次凭据类别和按需目标读取，不持有账号或配置。
+// RequestTargetOptions 只含本次凭据类别和按需目标读取，不持有提供商或配置。
 type RequestTargetOptions struct {
 	OAuthTarget, APIKey  bool
 	DefaultURL, CodexURL string

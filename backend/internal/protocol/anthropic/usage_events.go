@@ -1,4 +1,4 @@
-// 本文件按已有 wire 字段提取计量，既不识别账号也不执行资金动作。
+// 本文件按已有 wire 字段提取计量，既不识别提供商也不执行资金动作。
 package anthropic
 
 import (
@@ -151,6 +151,7 @@ func NormalizeAnthropicCompatiblePromptUsage(usageNode gjson.Result, usage *prot
 	usage.CacheCreationInputTokens = cacheCreationTokens
 	return true
 }
+
 func ParseClaudeUsageFromResponseBody(body []byte) *protocol.TokenUsage {
 	usage := &protocol.TokenUsage{}
 	if len(body) == 0 {

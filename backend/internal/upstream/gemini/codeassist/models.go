@@ -9,7 +9,7 @@ type Model struct {
 	CreatedAt   string `json:"created_at"`
 }
 
-// DefaultModels is the curated Gemini model list used by the admin UI "test account" flow.
+// DefaultModels is the curated Gemini model list used by the admin UI "test provider" flow.
 var DefaultModels = []Model{
 	{ID: "gemini-2.0-flash", Type: "model", DisplayName: "Gemini 2.0 Flash", CreatedAt: ""},
 	{ID: "gemini-2.5-flash", Type: "model", DisplayName: "Gemini 2.5 Flash", CreatedAt: ""},
@@ -30,7 +30,7 @@ var GoogleOneModels = []Model{
 	{ID: "gemini-2.0-flash", Type: "model", DisplayName: "Gemini 2.0 Flash", CreatedAt: ""},
 }
 
-// GoogleOneModelMapping 为每个账号返回新的白名单映射，避免调用方修改包级目录。
+// GoogleOneModelMapping 为每个提供商返回新的白名单映射，避免调用方修改包级目录。
 func GoogleOneModelMapping() map[string]string {
 	mapping := make(map[string]string, len(GoogleOneModels))
 	for _, model := range GoogleOneModels {

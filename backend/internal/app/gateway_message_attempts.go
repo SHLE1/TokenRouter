@@ -3,7 +3,6 @@ package app
 import (
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/config"
@@ -15,12 +14,13 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/selection"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 	openaiwire "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
 
 // provideMessageAttemptRuntime 固定生产调用端口，HTTP 输出与每次尝试状态归 textattempt。
 func messageAttemptBindings(
-	cooldown *account.RetryCooldown,
+	cooldown *provider.RetryCooldown,
 	digest *session.DigestSessionStore,
 	messages *gatewayhttp.MessagesExecutor,
 	antigravity *gatewayhttp.AntigravityExecutor,
@@ -65,15 +65,15 @@ func messageAttemptBindings(
 	}
 	b.Recorder = recorders.Forward
 	if choices != nil {
-		b.Selection.SelectAccount = choices.SelectAccountWithLoadAwareness
+		b.Selection.SelectProvider = choices.SelectProviderWithLoadAwareness
 		b.Selection.TrackSession = choices.TrackSessionAttempt
 		b.Selection.NewSessionAttempts = choices.NewSessionAttempts
-		b.Selection.SingleAccountGroup = choices.IsSingleAntigravityAccountGroup
-		b.Selection.ReportSchedule = choices.ReportAdvancedAccountScheduleResult
-		b.Selection.IncrementRPM = choices.IncrementAccountRPM
+		b.Selection.SingleProviderGroup = choices.IsSingleAntigravityProviderGroup
+		b.Selection.ReportSchedule = choices.ReportAdvancedProviderScheduleResult
+		b.Selection.IncrementRPM = choices.IncrementProviderRPM
 		b.Selection.BindSticky = choices.BindStickySession
-		b.Selection.CachedSession = choices.GetCachedSessionAccountID
-		b.Selection.AccountSwitched = choices.RecordAdvancedAccountSwitch
+		b.Selection.CachedSession = choices.GetCachedSessionProviderID
+		b.Selection.ProviderSwitched = choices.RecordAdvancedProviderSwitch
 	}
 	b.Selection.TempUnschedule = messageRetryCooldown(cooldown)
 
@@ -110,7 +110,7 @@ func messageAttemptBindings(
 
 // 固定依赖投影只构造一次；Wire 入口直接创建原生执行器。
 func provideMessageAttemptRuntime(
-	cooldown *account.RetryCooldown,
+	cooldown *provider.RetryCooldown,
 	digest *session.DigestSessionStore,
 	messages *gatewayhttp.MessagesExecutor,
 	antigravity *gatewayhttp.AntigravityExecutor,

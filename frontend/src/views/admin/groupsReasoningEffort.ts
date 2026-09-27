@@ -12,7 +12,7 @@ const openAIReasoningEffortValues = [
   "max",
 ] as const;
 
-// 映射候选覆盖全部文本执行器；各账号仍校验实际支持的强度。
+// 映射候选覆盖全部文本执行器；各提供商仍校验实际支持的强度。
 const openAIReasoningEffortMappingValues = ["none", ...openAIReasoningEffortValues] as const;
 
 export const reasoningEffortOverLimitDowngrade = "downgrade";

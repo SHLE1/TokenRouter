@@ -2,11 +2,7 @@ package messageforward_test
 
 import (
 	"bufio"
-
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/messageforward"
-
 	"context"
-
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -14,7 +10,9 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/messageforward"
+
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 
@@ -23,7 +21,6 @@ import (
 )
 
 func TestGatewayService_AnthropicAPIKeyPassthrough_StreamingStillCollectsUsageAfterClientDisconnect(t *testing.T) {
-
 	// Use a canceled context recorder to simulate client disconnect behavior.
 	req := httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
 	ctx, cancel := context.WithCancel(req.Context())
@@ -51,7 +48,7 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_StreamingStillCollectsUsageAf
 		}, "\n"))),
 	}
 
-	result, err := passthroughStreamFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "claude-3-7-sonnet-20250219")
+	result, err := passthroughStreamFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "claude-3-7-sonnet-20250219")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.NotNil(t, result.Usage)
@@ -60,7 +57,6 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_StreamingStillCollectsUsageAf
 }
 
 func TestGatewayService_AnthropicAPIKeyPassthrough_MissingTerminalEventReturnsError(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
@@ -80,14 +76,13 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_MissingTerminalEventReturnsEr
 		}, "\n"))),
 	}
 
-	result, err := passthroughStreamFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "claude-3-7-sonnet-20250219")
+	result, err := passthroughStreamFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "claude-3-7-sonnet-20250219")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "missing terminal event")
 	require.NotNil(t, result)
 }
 
 func TestGatewayService_AnthropicAPIKeyPassthrough_StreamingErrTooLong(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
@@ -106,14 +101,13 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_StreamingErrTooLong(t *testin
 		Body:       io.NopCloser(strings.NewReader(longLine)),
 	}
 
-	result, err := passthroughStreamFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 2}}, time.Now(), "claude-3-7-sonnet-20250219")
+	result, err := passthroughStreamFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 2}}, time.Now(), "claude-3-7-sonnet-20250219")
 	require.Error(t, err)
 	require.ErrorIs(t, err, bufio.ErrTooLong)
 	require.NotNil(t, result)
 }
 
 func TestGatewayService_AnthropicAPIKeyPassthrough_StreamingDataIntervalTimeout(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
@@ -129,7 +123,7 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_StreamingDataIntervalTimeout(
 		Body:       pr,
 	}
 
-	result, err := passthroughStreamFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 5}}, time.Now(), "claude-3-7-sonnet-20250219")
+	result, err := passthroughStreamFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 5}}, time.Now(), "claude-3-7-sonnet-20250219")
 	_ = pw.Close()
 	_ = pr.Close()
 
@@ -140,7 +134,6 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_StreamingDataIntervalTimeout(
 }
 
 func TestGatewayService_AnthropicAPIKeyPassthrough_StreamingSendsKeepaliveDuringIdle(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
@@ -172,7 +165,7 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_StreamingSendsKeepaliveDuring
 		_ = pw.Close()
 	}()
 
-	result, err := passthroughStreamFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 8}}, time.Now(), "claude-3-7-sonnet-20250219")
+	result, err := passthroughStreamFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 8}}, time.Now(), "claude-3-7-sonnet-20250219")
 	_ = pr.Close()
 	<-done
 
@@ -183,7 +176,6 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_StreamingSendsKeepaliveDuring
 }
 
 func TestGatewayService_AnthropicAPIKeyPassthrough_StreamingKeepaliveDoesNotInterleavePartialEvent(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
@@ -210,7 +202,7 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_StreamingKeepaliveDoesNotInte
 		_ = pw.Close()
 	}()
 
-	result, err := passthroughStreamFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 9}}, time.Now(), "claude-3-7-sonnet-20250219")
+	result, err := passthroughStreamFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 9}}, time.Now(), "claude-3-7-sonnet-20250219")
 	_ = pr.Close()
 	<-done
 
@@ -223,7 +215,6 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_StreamingKeepaliveDoesNotInte
 }
 
 func TestGatewayService_AnthropicAPIKeyPassthrough_StreamingReadError(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
@@ -240,7 +231,7 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_StreamingReadError(t *testing
 		},
 	}
 
-	result, err := passthroughStreamFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 6}}, time.Now(), "claude-3-7-sonnet-20250219")
+	result, err := passthroughStreamFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 6}}, time.Now(), "claude-3-7-sonnet-20250219")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "stream read error")
 	require.NotNil(t, result)
@@ -248,7 +239,6 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_StreamingReadError(t *testing
 }
 
 func TestGatewayService_AnthropicAPIKeyPassthrough_StreamingTimeoutAfterClientDisconnect(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
@@ -274,7 +264,7 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_StreamingTimeoutAfterClientDi
 		_ = pw.Close()
 	}()
 
-	result, err := passthroughStreamFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 7}}, time.Now(), "claude-3-7-sonnet-20250219")
+	result, err := passthroughStreamFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 7}}, time.Now(), "claude-3-7-sonnet-20250219")
 	_ = pr.Close()
 	<-done
 
@@ -286,7 +276,6 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_StreamingTimeoutAfterClientDi
 }
 
 func TestGatewayService_AnthropicAPIKeyPassthrough_StreamingContextCanceled(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
@@ -303,7 +292,7 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_StreamingContextCanceled(t *t
 		},
 	}
 
-	result, err := passthroughStreamFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 3}}, time.Now(), "claude-3-7-sonnet-20250219")
+	result, err := passthroughStreamFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 3}}, time.Now(), "claude-3-7-sonnet-20250219")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "stream usage incomplete")
 	require.NotNil(t, result)
@@ -311,7 +300,6 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_StreamingContextCanceled(t *t
 }
 
 func TestGatewayService_AnthropicAPIKeyPassthrough_StreamingUpstreamReadErrorAfterClientDisconnect(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
@@ -330,7 +318,7 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_StreamingUpstreamReadErrorAft
 		},
 	}
 
-	result, err := passthroughStreamFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 4}}, time.Now(), "claude-3-7-sonnet-20250219")
+	result, err := passthroughStreamFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 4}}, time.Now(), "claude-3-7-sonnet-20250219")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "stream usage incomplete after disconnect")
 	require.NotNil(t, result)

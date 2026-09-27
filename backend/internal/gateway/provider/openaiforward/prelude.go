@@ -1,4 +1,4 @@
-// 请求准备按原时点推进，技术兼容转换与账号策略通过明确端口组合。
+// 请求准备按原时点推进，技术兼容转换与提供商策略通过明确端口组合。
 package openaiforward
 
 import (
@@ -24,7 +24,7 @@ const (
 
 type TransportDecision struct{ Transport, Reason string }
 
-// Profile 只保存当前账号已经确认的协议资格；不携带凭据或可变账号实体。
+// Profile 只保存当前提供商已经确认的协议资格；不携带凭据或可变提供商实体。
 type Profile struct {
 	Platform, Name, Type                                                    string
 	UsesCodex                                                               bool
@@ -235,7 +235,7 @@ func PreparePrelude(ctx context.Context, body []byte, profile Profile, p Prelude
 				value.Body = body
 				value.OriginalBody = body
 				value.ImageIntentInvalidated = true
-				p.Log("[OpenAI] Stripped /responses image_generation tool for Codex client by account policy")
+				p.Log("[OpenAI] Stripped /responses image_generation tool for Codex client by provider policy")
 			}
 		}
 		value.ReasoningEffort = p.PassthroughEffort(body, p.MappedModel(value.View.Model))

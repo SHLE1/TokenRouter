@@ -15,7 +15,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/antigravity"
 )
 
-// GroupFallbackPorts 在组切换前重新授权、解析资金及校验显式会话，账号循环不直接访问存储。
+// GroupFallbackPorts 在组切换前重新授权、解析资金及校验显式会话，提供商循环不直接访问存储。
 type GroupFallbackPorts struct {
 	Resolve func(context.Context, *apikey.APIKey, int64, protocol.ProtocolID) (*apikey.APIKey, *billing.UserSubscription, error)
 	Plan    func(context.Context, *apikey.APIKey, string) routing.RoutePlan
@@ -51,11 +51,11 @@ func (b *responsesAttemptBridge) TryGroupFallback(cause error) (handled, retry b
 	}
 	ctx := requeststate.WithGroup(b.Context(), key.Group)
 	ctx = apikey.WithRuntimeAPIKey(ctx, key)
-	// 粘性预取只属于原分组，目标分组必须重新查询，不能沿用旧账号。
+	// 粘性预取只属于原分组，目标分组必须重新查询，不能沿用旧提供商。
 	ctx = requeststate.WithPrefetchedStickySession(ctx, 0, 0)
 	b.hasBoundSession = false
-	if b.binding().sessions.StickyAccountID != nil {
-		id := b.binding().sessions.StickyAccountID(ctx, key.GroupID, b.sessionHash)
+	if b.binding().sessions.StickyProviderID != nil {
+		id := b.binding().sessions.StickyProviderID(ctx, key.GroupID, b.sessionHash)
 		b.hasBoundSession = id > 0
 		ctx = requeststate.WithPrefetchedStickySession(ctx, id, key.Group.ID)
 	}
@@ -78,7 +78,7 @@ func (b *openAIMessageAttemptBridge) TryGroupFallback(cause error) (bool, bool) 
 	handled, retry := b.responsesAttemptBridge.TryGroupFallback(cause)
 	if retry {
 		b.groupMappingMsg = b.groupMapping
-		b.accountLayerModel = b.forwardModel
+		b.providerLayerModel = b.forwardModel
 		b.currentRoutingModel = b.forwardModel
 	}
 	return handled, retry

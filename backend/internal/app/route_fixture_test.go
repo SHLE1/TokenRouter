@@ -1,7 +1,6 @@
 package app
 
 import (
-	"github.com/TokenFlux/TokenRouter/internal/account/httpapi"
 	apikeyhttpapi "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/apikey/httpapi/dto"
 	audithttpapi "github.com/TokenFlux/TokenRouter/internal/audit/httpapi"
@@ -17,6 +16,7 @@ import (
 	opshttpapi "github.com/TokenFlux/TokenRouter/internal/ops/httpapi"
 	paymenthttpapi "github.com/TokenFlux/TokenRouter/internal/payment/httpapi"
 	promotionhttpapi "github.com/TokenFlux/TokenRouter/internal/promotion/httpapi"
+	"github.com/TokenFlux/TokenRouter/internal/provider/httpapi"
 	routinghttpapi "github.com/TokenFlux/TokenRouter/internal/routing/httpapi"
 	routingdto "github.com/TokenFlux/TokenRouter/internal/routing/httpapi/dto"
 	schedulerhttpapi "github.com/TokenFlux/TokenRouter/internal/scheduler/httpapi"
@@ -30,13 +30,13 @@ import (
 // 路由夹具提供测试构造参数；生产不存在这些聚合。
 type routeTestAdminHandlers struct {
 	APIKey                *apikeyhttpapi.AdminAPIKeyHandler[routingdto.Group]
-	AccountArchive        *httpapi.ArchiveHandler
-	AccountCRS            *httpapi.CRSHandler
-	AccountCodexImport    *httpapi.CodexImportHandler
-	AccountManagement     *httpapi.ManagementHandler
-	AccountOAuthUsage     *httpapi.OAuthUsageHandler
-	AccountOllama         *httpapi.OllamaUsageHandler
-	AccountTests          *httpapi.TestHandler
+	ProviderArchive       *httpapi.ArchiveHandler
+	ProviderCRS           *httpapi.CRSHandler
+	ProviderCodexImport   *httpapi.CodexImportHandler
+	ProviderManagement    *httpapi.ManagementHandler
+	ProviderOAuthUsage    *httpapi.OAuthUsageHandler
+	ProviderOllama        *httpapi.OllamaUsageHandler
+	ProviderTests         *httpapi.TestHandler
 	Affiliate             *promotionhttpapi.AffiliateHandler
 	Announcement          *sitehttpapi.AdminAnnouncementHandler
 	AntigravityOAuth      *httpapi.AntigravityOAuthHandler

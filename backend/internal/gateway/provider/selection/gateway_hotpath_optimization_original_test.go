@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
@@ -28,22 +28,22 @@ import (
 type usageLogWindowBatchRepoStub struct {
 	usage.UsageLogRepository
 
-	batchResult map[int64]*usage.AccountStats
+	batchResult map[int64]*usage.ProviderStats
 	batchErr    error
 	batchCalls  atomic.Int64
 
-	singleResult map[int64]*usage.AccountStats
+	singleResult map[int64]*usage.ProviderStats
 	singleErr    error
 	singleCalls  atomic.Int64
 }
 
-func (s *usageLogWindowBatchRepoStub) GetAccountWindowStatsBatch(ctx context.Context, accountIDs []int64, startTime time.Time) (map[int64]*usage.AccountStats, error) {
+func (s *usageLogWindowBatchRepoStub) GetProviderWindowStatsBatch(ctx context.Context, providerIDs []int64, startTime time.Time) (map[int64]*usage.ProviderStats, error) {
 	s.batchCalls.Add(1)
 	if s.batchErr != nil {
 		return nil, s.batchErr
 	}
-	out := make(map[int64]*usage.AccountStats, len(accountIDs))
-	for _, id := range accountIDs {
+	out := make(map[int64]*usage.ProviderStats, len(providerIDs))
+	for _, id := range providerIDs {
 		if stats, ok := s.batchResult[id]; ok {
 			out[id] = stats
 		}
@@ -51,15 +51,15 @@ func (s *usageLogWindowBatchRepoStub) GetAccountWindowStatsBatch(ctx context.Con
 	return out, nil
 }
 
-func (s *usageLogWindowBatchRepoStub) GetAccountWindowStats(ctx context.Context, accountID int64, startTime time.Time) (*usage.AccountStats, error) {
+func (s *usageLogWindowBatchRepoStub) GetProviderWindowStats(ctx context.Context, providerID int64, startTime time.Time) (*usage.ProviderStats, error) {
 	s.singleCalls.Add(1)
 	if s.singleErr != nil {
 		return nil, s.singleErr
 	}
-	if stats, ok := s.singleResult[accountID]; ok {
+	if stats, ok := s.singleResult[providerID]; ok {
 		return stats, nil
 	}
-	return &usage.AccountStats{}, nil
+	return &usage.ProviderStats{}, nil
 }
 
 type sessionLimitCacheHotpathStub struct {
@@ -72,12 +72,12 @@ type sessionLimitCacheHotpathStub struct {
 	setErr  error
 }
 
-func (s *sessionLimitCacheHotpathStub) GetWindowCostBatch(ctx context.Context, accountIDs []int64) (map[int64]float64, error) {
+func (s *sessionLimitCacheHotpathStub) GetWindowCostBatch(ctx context.Context, providerIDs []int64) (map[int64]float64, error) {
 	if s.batchErr != nil {
 		return nil, s.batchErr
 	}
-	out := make(map[int64]float64, len(accountIDs))
-	for _, id := range accountIDs {
+	out := make(map[int64]float64, len(providerIDs))
+	for _, id := range providerIDs {
 		if v, ok := s.batchData[id]; ok {
 			out[id] = v
 		}
@@ -85,14 +85,14 @@ func (s *sessionLimitCacheHotpathStub) GetWindowCostBatch(ctx context.Context, a
 	return out, nil
 }
 
-func (s *sessionLimitCacheHotpathStub) SetWindowCost(ctx context.Context, accountID int64, cost float64) error {
+func (s *sessionLimitCacheHotpathStub) SetWindowCost(ctx context.Context, providerID int64, cost float64) error {
 	if s.setErr != nil {
 		return s.setErr
 	}
 	if s.setData == nil {
 		s.setData = make(map[int64]float64)
 	}
-	s.setData[accountID] = cost
+	s.setData[providerID] = cost
 	return nil
 }
 
@@ -103,7 +103,7 @@ type stickyGatewayCacheHotpathStub struct {
 	getCalls atomic.Int64
 }
 
-func (s *stickyGatewayCacheHotpathStub) GetSessionAccountID(ctx context.Context, groupID int64, sessionHash string) (int64, error) {
+func (s *stickyGatewayCacheHotpathStub) GetSessionProviderID(ctx context.Context, groupID int64, sessionHash string) (int64, error) {
 	s.getCalls.Add(1)
 	if s.stickyID > 0 {
 		return s.stickyID, nil
@@ -111,7 +111,7 @@ func (s *stickyGatewayCacheHotpathStub) GetSessionAccountID(ctx context.Context,
 	return 0, errors.New("not found")
 }
 
-func (s *stickyGatewayCacheHotpathStub) SetSessionAccountID(ctx context.Context, groupID int64, sessionHash string, accountID int64, ttl time.Duration) error {
+func (s *stickyGatewayCacheHotpathStub) SetSessionProviderID(ctx context.Context, groupID int64, sessionHash string, providerID int64, ttl time.Duration) error {
 	return nil
 }
 
@@ -119,7 +119,7 @@ func (s *stickyGatewayCacheHotpathStub) RefreshSessionTTL(ctx context.Context, g
 	return nil
 }
 
-func (s *stickyGatewayCacheHotpathStub) DeleteSessionAccountID(ctx context.Context, groupID int64, sessionHash string) error {
+func (s *stickyGatewayCacheHotpathStub) DeleteSessionProviderID(ctx context.Context, groupID int64, sessionHash string) error {
 	return nil
 }
 
@@ -158,32 +158,32 @@ func TestWithWindowCostPrefetch_BatchReadAndContextReuse(t *testing.T) {
 
 	windowStart := time.Now().Add(-30 * time.Minute).Truncate(time.Hour)
 	windowEnd := windowStart.Add(5 * time.Hour)
-	accounts := []gatewayprovider.ExecutionAccount{
+	providers := []gatewayprovider.ExecutionProvider{
 		{
-			Record: accountcore.Record{
+			Record: providercore.Record{
 				Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1,
 				Platform:           capability.PlatformAnthropic,
-				Type:               capability.AccountTypeOAuth,
+				Type:               capability.ProviderTypeOAuth,
 				Extra:              map[string]any{"window_cost_limit": 100.0},
 				SessionWindowStart: &windowStart,
 				SessionWindowEnd:   &windowEnd,
 			},
 		},
 		{
-			Record: accountcore.Record{
+			Record: providercore.Record{
 				Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2,
 				Platform:           capability.PlatformAnthropic,
-				Type:               capability.AccountTypeSetupToken,
+				Type:               capability.ProviderTypeSetupToken,
 				Extra:              map[string]any{"window_cost_limit": 100.0},
 				SessionWindowStart: &windowStart,
 				SessionWindowEnd:   &windowEnd,
 			},
 		},
 		{
-			Record: accountcore.Record{
+			Record: providercore.Record{
 				Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 3,
 				Platform: capability.PlatformAnthropic,
-				Type:     capability.AccountTypeAPIKey,
+				Type:     capability.ProviderTypeAPIKey,
 				Extra:    map[string]any{"window_cost_limit": 100.0},
 			},
 		},
@@ -195,7 +195,7 @@ func TestWithWindowCostPrefetch_BatchReadAndContextReuse(t *testing.T) {
 		},
 	}
 	repo := &usageLogWindowBatchRepoStub{
-		batchResult: map[int64]*usage.AccountStats{
+		batchResult: map[int64]*usage.ProviderStats{
 			2: {StandardCost: 22.0},
 		},
 	}
@@ -206,9 +206,9 @@ func TestWithWindowCostPrefetch_BatchReadAndContextReuse(t *testing.T) {
 		WindowPrefetchAvailable: true,
 	}, nil)
 
-	// 原无效账号值不产生预取命中；原生状态以缺失账号表达同一回源边界。
+	// 原无效提供商值不产生预取命中；原生状态以缺失提供商表达同一回源边界。
 
-	outCtx := svc.withWindowCostPrefetch(context.Background(), accounts)
+	outCtx := svc.withWindowCostPrefetch(context.Background(), providers)
 	require.NotNil(t, outCtx)
 
 	cost1, ok1 := billing.PrefetchedWindowCost(outCtx, 1)
@@ -238,22 +238,22 @@ func TestWithWindowCostPrefetch_AllHitNoSQL(t *testing.T) {
 
 	windowStart := time.Now().Add(-30 * time.Minute).Truncate(time.Hour)
 	windowEnd := windowStart.Add(5 * time.Hour)
-	accounts := []gatewayprovider.ExecutionAccount{
+	providers := []gatewayprovider.ExecutionProvider{
 		{
-			Record: accountcore.Record{
+			Record: providercore.Record{
 				Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1,
 				Platform:           capability.PlatformAnthropic,
-				Type:               capability.AccountTypeOAuth,
+				Type:               capability.ProviderTypeOAuth,
 				Extra:              map[string]any{"window_cost_limit": 100.0},
 				SessionWindowStart: &windowStart,
 				SessionWindowEnd:   &windowEnd,
 			},
 		},
 		{
-			Record: accountcore.Record{
+			Record: providercore.Record{
 				Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2,
 				Platform:           capability.PlatformAnthropic,
-				Type:               capability.AccountTypeSetupToken,
+				Type:               capability.ProviderTypeSetupToken,
 				Extra:              map[string]any{"window_cost_limit": 100.0},
 				SessionWindowStart: &windowStart,
 				SessionWindowEnd:   &windowEnd,
@@ -275,7 +275,7 @@ func TestWithWindowCostPrefetch_AllHitNoSQL(t *testing.T) {
 		WindowPrefetchAvailable: true,
 	}, nil)
 
-	outCtx := svc.withWindowCostPrefetch(context.Background(), accounts)
+	outCtx := svc.withWindowCostPrefetch(context.Background(), providers)
 	cost1, ok1 := billing.PrefetchedWindowCost(outCtx, 1)
 	cost2, ok2 := billing.PrefetchedWindowCost(outCtx, 2)
 	require.True(t, ok1)
@@ -298,12 +298,12 @@ func TestWithWindowCostPrefetch_BatchErrorFallbackSingleQuery(t *testing.T) {
 
 	windowStart := time.Now().Add(-30 * time.Minute).Truncate(time.Hour)
 	windowEnd := windowStart.Add(5 * time.Hour)
-	accounts := []gatewayprovider.ExecutionAccount{
+	providers := []gatewayprovider.ExecutionProvider{
 		{
-			Record: accountcore.Record{
+			Record: providercore.Record{
 				Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2,
 				Platform:           capability.PlatformAnthropic,
-				Type:               capability.AccountTypeSetupToken,
+				Type:               capability.ProviderTypeSetupToken,
 				Extra:              map[string]any{"window_cost_limit": 100.0},
 				SessionWindowStart: &windowStart,
 				SessionWindowEnd:   &windowEnd,
@@ -314,7 +314,7 @@ func TestWithWindowCostPrefetch_BatchErrorFallbackSingleQuery(t *testing.T) {
 	cache := &sessionLimitCacheHotpathStub{}
 	repo := &usageLogWindowBatchRepoStub{
 		batchErr: errors.New("batch failed"),
-		singleResult: map[int64]*usage.AccountStats{
+		singleResult: map[int64]*usage.ProviderStats{
 			2: {StandardCost: 33.0},
 		},
 	}
@@ -325,7 +325,7 @@ func TestWithWindowCostPrefetch_BatchErrorFallbackSingleQuery(t *testing.T) {
 		WindowPrefetchAvailable: true,
 	}, nil)
 
-	outCtx := svc.withWindowCostPrefetch(context.Background(), accounts)
+	outCtx := svc.withWindowCostPrefetch(context.Background(), providers)
 	cost, ok := billing.PrefetchedWindowCost(outCtx, 2)
 	require.True(t, ok)
 	require.Equal(t, 33.0, cost)
@@ -338,24 +338,24 @@ func TestWithWindowCostPrefetch_BatchErrorFallbackSingleQuery(t *testing.T) {
 }
 
 func TestGatewayHotpathHelpers_CacheTTLAndStickyContext(t *testing.T) {
-	t.Run("prefetched_sticky_account_id_from_context", func(t *testing.T) {
-		require.Equal(t, int64(0), prefetchedStickyAccountIDFromContext(context.TODO(), nil))
-		require.Equal(t, int64(0), prefetchedStickyAccountIDFromContext(context.Background(), nil))
+	t.Run("prefetched_sticky_provider_id_from_context", func(t *testing.T) {
+		require.Equal(t, int64(0), prefetchedStickyProviderIDFromContext(context.TODO(), nil))
+		require.Equal(t, int64(0), prefetchedStickyProviderIDFromContext(context.Background(), nil))
 
 		ctx := requeststate.WithPrefetchedStickySession(context.Background(), 123, 0)
-		require.Equal(t, int64(123), prefetchedStickyAccountIDFromContext(ctx, nil))
+		require.Equal(t, int64(123), prefetchedStickyProviderIDFromContext(ctx, nil))
 
 		groupID := int64(9)
 		ctx2 := requeststate.WithPrefetchedStickySession(context.Background(), 456, groupID)
-		require.Equal(t, int64(456), prefetchedStickyAccountIDFromContext(ctx2, &groupID))
+		require.Equal(t, int64(456), prefetchedStickyProviderIDFromContext(ctx2, &groupID))
 
 		ctx3 := requeststate.WithExecutionHints(context.Background(), requeststate.ExecutionHints{
 			PrefetchedStickyGroupID: requeststate.Hint[int64]{Value: groupID, Set: true},
 		})
-		require.Equal(t, int64(0), prefetchedStickyAccountIDFromContext(ctx3, &groupID))
+		require.Equal(t, int64(0), prefetchedStickyProviderIDFromContext(ctx3, &groupID))
 
 		ctx4 := requeststate.WithPrefetchedStickySession(context.Background(), 789, 10)
-		require.Equal(t, int64(0), prefetchedStickyAccountIDFromContext(ctx4, &groupID))
+		require.Equal(t, int64(0), prefetchedStickyProviderIDFromContext(ctx4, &groupID))
 	})
 
 	t.Run("window_cost_from_prefetch_context", func(t *testing.T) {
@@ -377,13 +377,13 @@ func TestGatewayHotpathHelpers_CacheTTLAndStickyContext(t *testing.T) {
 	})
 }
 
-func TestSelectAccountWithLoadAwareness_StickyReadReuse(t *testing.T) {
+func TestSelectProviderWithLoadAwareness_StickyReadReuse(t *testing.T) {
 	now := time.Now().Add(-time.Minute)
-	account := gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 88,
 			Platform:    capability.PlatformAnthropic,
-			Type:        capability.AccountTypeAPIKey,
+			Type:        capability.ProviderTypeAPIKey,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Concurrency: 4,
@@ -392,7 +392,7 @@ func TestSelectAccountWithLoadAwareness_StickyReadReuse(t *testing.T) {
 		},
 	}
 
-	repo := selectionAccountFixture{accounts: []gatewayprovider.ExecutionAccount{account}}
+	repo := selectionProviderFixture{providers: []gatewayprovider.ExecutionProvider{provider}}
 	concurrency := scheduler.NewConcurrencyService(selectionConcurrencyFixture{}, scheduler.Diagnostics{
 		Logf: logging.LegacyPrintf,
 
@@ -416,52 +416,52 @@ func TestSelectAccountWithLoadAwareness_StickyReadReuse(t *testing.T) {
 	baseCtx := apikey.WithForcePlatform(context.Background(), capability.PlatformAnthropic)
 
 	t.Run("without_prefetch_reads_cache_once", func(t *testing.T) {
-		cache := &stickyGatewayCacheHotpathStub{stickyID: account.Record.ID}
+		cache := &stickyGatewayCacheHotpathStub{stickyID: provider.Record.ID}
 		svc := newGenericSelectionForTest(GenericDependencies{
-			Reads: Reads{Accounts: repo},
+			Reads: Reads{Providers: repo},
 
 			Shared: Shared{Cache: cache, Concurrency: concurrency},
 		}, cfg)
 
-		result, err := svc.SelectAccountWithLoadAwareness(baseCtx, selectionFixtureGroupID(baseCtx), "sess-hash", "", nil, "", int64(0))
+		result, err := svc.SelectProviderWithLoadAwareness(baseCtx, selectionFixtureGroupID(baseCtx), "sess-hash", "", nil, "", int64(0))
 		require.NoError(t, err)
 		require.NotNil(t, result)
-		require.NotNil(t, result.Account)
-		require.Equal(t, account.Record.ID, result.Account.Record.ID)
+		require.NotNil(t, result.Provider)
+		require.Equal(t, provider.Record.ID, result.Provider.Record.ID)
 		require.Equal(t, int64(1), cache.getCalls.Load())
 	})
 
 	t.Run("with_prefetch_skips_cache_read", func(t *testing.T) {
-		cache := &stickyGatewayCacheHotpathStub{stickyID: account.Record.ID}
+		cache := &stickyGatewayCacheHotpathStub{stickyID: provider.Record.ID}
 		svc := newGenericSelectionForTest(GenericDependencies{
-			Reads: Reads{Accounts: repo},
+			Reads: Reads{Providers: repo},
 
 			Shared: Shared{Cache: cache, Concurrency: concurrency},
 		}, cfg)
 
-		ctx := requeststate.WithPrefetchedStickySession(baseCtx, account.Record.ID, *selectionFixtureGroupID(baseCtx))
-		result, err := svc.SelectAccountWithLoadAwareness(ctx, selectionFixtureGroupID(ctx), "sess-hash", "", nil, "", int64(0))
+		ctx := requeststate.WithPrefetchedStickySession(baseCtx, provider.Record.ID, *selectionFixtureGroupID(baseCtx))
+		result, err := svc.SelectProviderWithLoadAwareness(ctx, selectionFixtureGroupID(ctx), "sess-hash", "", nil, "", int64(0))
 		require.NoError(t, err)
 		require.NotNil(t, result)
-		require.NotNil(t, result.Account)
-		require.Equal(t, account.Record.ID, result.Account.Record.ID)
+		require.NotNil(t, result.Provider)
+		require.Equal(t, provider.Record.ID, result.Provider.Record.ID)
 		require.Equal(t, int64(0), cache.getCalls.Load())
 	})
 
 	t.Run("with_prefetch_group_mismatch_reads_cache", func(t *testing.T) {
-		cache := &stickyGatewayCacheHotpathStub{stickyID: account.Record.ID}
+		cache := &stickyGatewayCacheHotpathStub{stickyID: provider.Record.ID}
 		svc := newGenericSelectionForTest(GenericDependencies{
-			Reads: Reads{Accounts: repo},
+			Reads: Reads{Providers: repo},
 
 			Shared: Shared{Cache: cache, Concurrency: concurrency},
 		}, cfg)
 
 		ctx := requeststate.WithPrefetchedStickySession(baseCtx, 999, 77)
-		result, err := svc.SelectAccountWithLoadAwareness(ctx, selectionFixtureGroupID(ctx), "sess-hash", "", nil, "", int64(0))
+		result, err := svc.SelectProviderWithLoadAwareness(ctx, selectionFixtureGroupID(ctx), "sess-hash", "", nil, "", int64(0))
 		require.NoError(t, err)
 		require.NotNil(t, result)
-		require.NotNil(t, result.Account)
-		require.Equal(t, account.Record.ID, result.Account.Record.ID)
+		require.NotNil(t, result.Provider)
+		require.Equal(t, provider.Record.ID, result.Provider.Record.ID)
 		require.Equal(t, int64(1), cache.getCalls.Load())
 	})
 }

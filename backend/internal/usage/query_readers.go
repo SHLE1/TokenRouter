@@ -13,7 +13,7 @@ type ModelStatsWithUsageFiltersRepo interface {
 	GetModelStatsWithUsageFiltersBySource(ctx context.Context, startTime, endTime time.Time, filters UsageLogFilters, source string) ([]ModelStat, error)
 }
 type ModelStatsBySourceRepo interface {
-	GetModelStatsWithFiltersBySource(ctx context.Context, startTime, endTime time.Time, userID, apiKeyID, accountID, groupID int64, requestType *int16, stream *bool, billingType *int8, source string) ([]ModelStat, error)
+	GetModelStatsWithFiltersBySource(ctx context.Context, startTime, endTime time.Time, userID, apiKeyID, providerID, groupID int64, requestType *int16, stream *bool, billingType *int8, source string) ([]ModelStat, error)
 }
 type GroupStatsWithUsageFiltersRepo interface {
 	GetGroupStatsWithUsageFilters(ctx context.Context, startTime, endTime time.Time, filters UsageLogFilters) ([]GroupStat, error)

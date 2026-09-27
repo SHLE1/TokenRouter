@@ -29,19 +29,19 @@ func TestDecrementWaitCount_CacheError(t *testing.T) {
 	wait.Release()
 }
 
-// TestDecrementAccountWaitCount_NilCache 确保 nil cache 不会 panic
-func TestDecrementAccountWaitCount_NilCache(t *testing.T) {
+// TestDecrementProviderWaitCount_NilCache 确保 nil cache 不会 panic
+func TestDecrementProviderWaitCount_NilCache(t *testing.T) {
 	svc := &ConcurrencyService{cache: nil}
-	wait, err := svc.EnterAccountWait(context.Background(), 1, 25)
+	wait, err := svc.EnterProviderWait(context.Background(), 1, 25)
 	require.NoError(t, err)
 	wait.Release()
 }
 
-// TestDecrementAccountWaitCount_CacheError 确保 cache 错误不会传播
-func TestDecrementAccountWaitCount_CacheError(t *testing.T) {
+// TestDecrementProviderWaitCount_CacheError 确保 cache 错误不会传播
+func TestDecrementProviderWaitCount_CacheError(t *testing.T) {
 	cache := &stubConcurrencyCacheForTest{waitAllowed: true}
 	svc := NewConcurrencyService(cache)
-	wait, err := svc.EnterAccountWait(context.Background(), 1, 25)
+	wait, err := svc.EnterProviderWait(context.Background(), 1, 25)
 	require.NoError(t, err)
 	wait.Release()
 }
@@ -60,17 +60,17 @@ func TestWaitingQueueFlow_IncrementThenDecrement(t *testing.T) {
 	allowed.Release()
 }
 
-// TestWaitingQueueFlow_AccountLevel 测试账号级等待队列流程
-func TestWaitingQueueFlow_AccountLevel(t *testing.T) {
+// TestWaitingQueueFlow_ProviderLevel 测试提供商级等待队列流程
+func TestWaitingQueueFlow_ProviderLevel(t *testing.T) {
 	cache := &stubConcurrencyCacheForTest{waitAllowed: true}
 	svc := NewConcurrencyService(cache)
 
-	// 进入账号等待队列
-	allowed, err := svc.EnterAccountWait(context.Background(), 42, 10)
+	// 进入提供商等待队列
+	allowed, err := svc.EnterProviderWait(context.Background(), 42, 10)
 	require.NoError(t, err)
 	require.True(t, allowed.Allowed)
 
-	// 离开账号等待队列
+	// 离开提供商等待队列
 	allowed.Release()
 }
 
@@ -85,10 +85,10 @@ func TestWaitingQueueFull_Returns429Signal(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, allowed.Allowed, "等待队列满时应返回 false（调用方根据此返回 429）")
 
-	// 账号级等待队列满
-	allowed, err = svc.EnterAccountWait(context.Background(), 1, 10)
+	// 提供商级等待队列满
+	allowed, err = svc.EnterProviderWait(context.Background(), 1, 10)
 	require.NoError(t, err)
-	require.False(t, allowed.Allowed, "账号等待队列满时应返回 false")
+	require.False(t, allowed.Allowed, "提供商等待队列满时应返回 false")
 }
 
 // TestWaitingQueue_FailOpen_OnCacheError 测试 Redis 故障时 fail-open
@@ -101,8 +101,8 @@ func TestWaitingQueue_FailOpen_OnCacheError(t *testing.T) {
 	require.NoError(t, err, "Redis 错误不应向调用方传播")
 	require.True(t, allowed.Allowed, "Redis 故障时应 fail-open 放行")
 
-	// 账号级：同样 fail-open
-	allowed, err = svc.EnterAccountWait(context.Background(), 1, 10)
+	// 提供商级：同样 fail-open
+	allowed, err = svc.EnterProviderWait(context.Background(), 1, 10)
 	require.NoError(t, err, "Redis 错误不应向调用方传播")
 	require.True(t, allowed.Allowed, "Redis 故障时应 fail-open 放行")
 }

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	accountpolicy "github.com/TokenFlux/TokenRouter/internal/account"
+	providerpolicy "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
@@ -15,10 +15,9 @@ import (
 )
 
 func TestOpenAIGatewayService_GetCodexClientRestrictionDetector(t *testing.T) {
-
 	t.Run("使用注入的 detector", func(t *testing.T) {
 		expected := &requestClientDetectorFixture{
-			result: accountpolicy.CodexClientRestrictionDetectionResult{Enabled: true, Matched: true, Reason: "stub"},
+			result: providerpolicy.CodexClientRestrictionDetectionResult{Enabled: true, Matched: true, Reason: "stub"},
 		}
 		svc := &OpenAIRequests{Detector: expected}
 
@@ -41,19 +40,19 @@ func TestOpenAIGatewayService_GetCodexClientRestrictionDetector(t *testing.T) {
 		c, _ := gin.CreateTestContext(rec)
 		c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
 		c.Request.Header.Set("User-Agent", "curl/8.0")
-		account := &gatewayprovider.ExecutionAccount{Record: accountpolicy.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth, Extra: map[string]any{"codex_cli_only": true}}}
+		provider := &gatewayprovider.ExecutionProvider{Record: providerpolicy.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth, Extra: map[string]any{"codex_cli_only": true}}}
 
-		result := got.DetectClient(func() (string, string) { return c.GetHeader("User-Agent"), c.GetHeader("originator") }, gatewayprovider.ExecutionRecord(account), nil, false)
+		result := got.DetectClient(func() (string, string) { return c.GetHeader("User-Agent"), c.GetHeader("originator") }, gatewayprovider.ExecutionRecord(provider), nil, false)
 		require.True(t, result.Enabled)
 		require.True(t, result.Matched)
-		require.Equal(t, accountpolicy.CodexClientRestrictionReasonForceCodexCLI, result.Reason)
+		require.Equal(t, providerpolicy.CodexClientRestrictionReasonForceCodexCLI, result.Reason)
 	})
 }
 
 type requestClientDetectorFixture struct {
-	result accountpolicy.CodexClientRestrictionDetectionResult
+	result providerpolicy.CodexClientRestrictionDetectionResult
 }
 
-func (s *requestClientDetectorFixture) DetectClient(read func() (string, string), record *accountpolicy.Record, allowed []string, matched bool) accountpolicy.CodexClientRestrictionDetectionResult {
+func (s *requestClientDetectorFixture) DetectClient(read func() (string, string), record *providerpolicy.Record, allowed []string, matched bool) providerpolicy.CodexClientRestrictionDetectionResult {
 	return s.result
 }

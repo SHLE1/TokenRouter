@@ -1,4 +1,4 @@
-// 固定供应商余额/周期协议保持原请求顺序和归一化，不写账号或调度。
+// 固定供应商余额/周期协议保持原请求顺序和归一化，不写提供商或调度。
 package deepseek
 
 import (
@@ -16,6 +16,7 @@ type DeepseekBalanceUsageAdapter struct{}
 func (*DeepseekBalanceUsageAdapter) Name() string {
 	return usageview.UpstreamUsageAdapterDeepseekBalance
 }
+
 func (*DeepseekBalanceUsageAdapter) Query(ctx context.Context, input *usagecontract.Request) (*usageview.UpstreamUsageInfo, error) {
 	client := usageclient.New(input)
 	endpoint, err := usageclient.CnUsageEndpoint(client.BaseURL, "/user/balance", false)

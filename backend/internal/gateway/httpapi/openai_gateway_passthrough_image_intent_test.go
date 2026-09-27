@@ -12,17 +12,16 @@ import (
 )
 
 func TestOpenAIGatewayService_APIKeyPassthrough_ImageIntentPreservesGateAndBilling(t *testing.T) {
-
 	body := []byte(`{"model":"gpt-5.4","stream":false,"tools":[{"type":"image_generation","model":"gpt-image-2","size":"2048x1152"}],"input":"draw"}`)
 
 	t.Run("disabled group rejects before upstream", func(t *testing.T) {
 		upstream := &auxiliaryHTTPRecorder{}
 		svc := newOpenAIImageGenerationControlTestService(upstream)
 		c, recorder := newOpenAIImageGenerationControlTestContext(false, "curl/8.0")
-		account := newOpenAIImageGenerationControlTestAccount()
-		account.Record.Extra = map[string]any{"openai_passthrough": true}
+		provider := newOpenAIImageGenerationControlTestProvider()
+		provider.Record.Extra = map[string]any{"openai_passthrough": true}
 
-		result, err := svc.Forward(context.Background(), c, account, body)
+		result, err := svc.Forward(context.Background(), c, provider, body)
 
 		require.Error(t, err)
 		require.Nil(t, result)
@@ -41,10 +40,10 @@ func TestOpenAIGatewayService_APIKeyPassthrough_ImageIntentPreservesGateAndBilli
 		}}
 		svc := newOpenAIImageGenerationControlTestService(upstream)
 		c, _ := newOpenAIImageGenerationControlTestContext(true, "curl/8.0")
-		account := newOpenAIImageGenerationControlTestAccount()
-		account.Record.Extra = map[string]any{"openai_passthrough": true}
+		provider := newOpenAIImageGenerationControlTestProvider()
+		provider.Record.Extra = map[string]any{"openai_passthrough": true}
 
-		result, err := svc.Forward(context.Background(), c, account, body)
+		result, err := svc.Forward(context.Background(), c, provider, body)
 
 		require.NoError(t, err)
 		require.NotNil(t, result)

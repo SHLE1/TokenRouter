@@ -10,53 +10,53 @@ import (
 )
 
 const (
-	opsAccountsPageSize          = 100
+	opsProvidersPageSize         = 100
 	opsConcurrencyBatchChunkSize = 200
 )
 
-// opsAccountStatsRepository 为真实仓储提供实时统计专用的轻量查询能力。
-type opsAccountStatsRepository interface {
-	ListOpsAccountsForStats(ctx context.Context, platformFilter string, groupIDFilter *int64) ([]AccountObservation, error)
+// opsProviderStatsRepository 为真实仓储提供实时统计专用的轻量查询能力。
+type opsProviderStatsRepository interface {
+	ListOpsProvidersForStats(ctx context.Context, platformFilter string, groupIDFilter *int64) ([]ProviderObservation, error)
 }
 
-// listAllAccountsForOps 优先使用轻量查询，测试桩等旧实现则回退到分页接口。
-func (s *OpsService) listAllAccountsForOps(ctx context.Context, platformFilter string, groupIDFilter *int64) ([]AccountObservation, error) {
-	if s == nil || s.accountRepo == nil {
-		return []AccountObservation{}, nil
+// listAllProvidersForOps 优先使用轻量查询，测试桩等旧实现则回退到分页接口。
+func (s *OpsService) listAllProvidersForOps(ctx context.Context, platformFilter string, groupIDFilter *int64) ([]ProviderObservation, error) {
+	if s == nil || s.providerRepo == nil {
+		return []ProviderObservation{}, nil
 	}
-	if repo, ok := s.accountRepo.(opsAccountStatsRepository); ok {
-		return repo.ListOpsAccountsForStats(ctx, platformFilter, groupIDFilter)
+	if repo, ok := s.providerRepo.(opsProviderStatsRepository); ok {
+		return repo.ListOpsProvidersForStats(ctx, platformFilter, groupIDFilter)
 	}
 
-	out := make([]AccountObservation, 0, 128)
+	out := make([]ProviderObservation, 0, 128)
 	page := 1
 	groupID := int64(0)
 	if groupIDFilter != nil {
 		groupID = *groupIDFilter
 	}
 	for {
-		accounts, pageInfo, err := s.accountRepo.ListPage(ctx, pagination.PaginationParams{
+		providers, pageInfo, err := s.providerRepo.ListPage(ctx, pagination.PaginationParams{
 			Page:     page,
-			PageSize: opsAccountsPageSize,
+			PageSize: opsProvidersPageSize,
 		}, platformFilter, groupID)
 		if err != nil {
 			return nil, err
 		}
-		if len(accounts) == 0 {
+		if len(providers) == 0 {
 			break
 		}
 
-		out = append(out, accounts...)
+		out = append(out, providers...)
 		if pageInfo != nil && int64(len(out)) >= pageInfo.Total {
 			break
 		}
-		if len(accounts) < opsAccountsPageSize {
+		if len(providers) < opsProvidersPageSize {
 			break
 		}
 
 		page++
 		if page > 10_000 {
-			log.Printf("[Ops] listAllAccountsForOps: aborting after too many pages (platform=%q)", platformFilter)
+			log.Printf("[Ops] listAllProvidersForOps: aborting after too many pages (platform=%q)", platformFilter)
 			break
 		}
 	}
@@ -64,17 +64,17 @@ func (s *OpsService) listAllAccountsForOps(ctx context.Context, platformFilter s
 	return out, nil
 }
 
-func (s *OpsService) getAccountsLoadMapBestEffort(ctx context.Context, accounts []AccountObservation) map[int64]*AccountLoadInfo {
+func (s *OpsService) getProvidersLoadMapBestEffort(ctx context.Context, providers []ProviderObservation) map[int64]*ProviderLoadInfo {
 	if s == nil || s.concurrencyService == nil {
-		return map[int64]*AccountLoadInfo{}
+		return map[int64]*ProviderLoadInfo{}
 	}
-	if len(accounts) == 0 {
-		return map[int64]*AccountLoadInfo{}
+	if len(providers) == 0 {
+		return map[int64]*ProviderLoadInfo{}
 	}
 
 	// De-duplicate IDs (and keep the max concurrency to avoid under-reporting).
-	unique := make(map[int64]int, len(accounts))
-	for _, acc := range accounts {
+	unique := make(map[int64]int, len(providers))
+	for _, acc := range providers {
 		if acc.ID <= 0 {
 			continue
 		}
@@ -84,24 +84,24 @@ func (s *OpsService) getAccountsLoadMapBestEffort(ctx context.Context, accounts 
 		}
 	}
 
-	batch := make([]AccountWithConcurrency, 0, len(unique))
+	batch := make([]ProviderWithConcurrency, 0, len(unique))
 	for id, maxConc := range unique {
-		batch = append(batch, AccountWithConcurrency{
+		batch = append(batch, ProviderWithConcurrency{
 			ID:             id,
 			MaxConcurrency: maxConc,
 		})
 	}
 
-	out := make(map[int64]*AccountLoadInfo, len(batch))
+	out := make(map[int64]*ProviderLoadInfo, len(batch))
 	for i := 0; i < len(batch); i += opsConcurrencyBatchChunkSize {
 		end := i + opsConcurrencyBatchChunkSize
 		if end > len(batch) {
 			end = len(batch)
 		}
-		part, err := s.concurrencyService.GetAccountsLoadBatch(ctx, batch[i:end])
+		part, err := s.concurrencyService.GetProvidersLoadBatch(ctx, batch[i:end])
 		if err != nil {
 			// Best-effort: return zeros rather than failing the ops UI.
-			log.Printf("[Ops] GetAccountsLoadBatch failed: %v", err)
+			log.Printf("[Ops] GetProvidersLoadBatch failed: %v", err)
 			continue
 		}
 		for k, v := range part {
@@ -112,33 +112,33 @@ func (s *OpsService) getAccountsLoadMapBestEffort(ctx context.Context, accounts 
 	return out
 }
 
-// GetConcurrencyStats returns real-time concurrency usage aggregated by platform/group/account.
+// GetConcurrencyStats returns real-time concurrency usage aggregated by platform/group/provider.
 //
 // Optional filters:
-// - platformFilter: only include accounts in that platform (best-effort reduces DB load)
-// - groupIDFilter: only include accounts that belong to that group
+// - platformFilter: only include providers in that platform (best-effort reduces DB load)
+// - groupIDFilter: only include providers that belong to that group
 func (s *OpsService) GetConcurrencyStats(
 	ctx context.Context,
 	platformFilter string,
 	groupIDFilter *int64,
-) (map[string]*PlatformConcurrencyInfo, map[int64]*GroupConcurrencyInfo, map[int64]*AccountConcurrencyInfo, *time.Time, error) {
+) (map[string]*PlatformConcurrencyInfo, map[int64]*GroupConcurrencyInfo, map[int64]*ProviderConcurrencyInfo, *time.Time, error) {
 	if err := s.RequireMonitoringEnabled(ctx); err != nil {
 		return nil, nil, nil, nil, err
 	}
 
-	accounts, err := s.listAllAccountsForOps(ctx, platformFilter, groupIDFilter)
+	providers, err := s.listAllProvidersForOps(ctx, platformFilter, groupIDFilter)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
 
 	collectedAt := time.Now()
-	loadMap := s.getAccountsLoadMapBestEffort(ctx, accounts)
+	loadMap := s.getProvidersLoadMapBestEffort(ctx, providers)
 
 	platform := make(map[string]*PlatformConcurrencyInfo)
 	group := make(map[int64]*GroupConcurrencyInfo)
-	account := make(map[int64]*AccountConcurrencyInfo)
+	provider := make(map[int64]*ProviderConcurrencyInfo)
 
-	for _, acc := range accounts {
+	for _, acc := range providers {
 		if acc.ID <= 0 {
 			continue
 		}
@@ -154,7 +154,7 @@ func (s *OpsService) GetConcurrencyStats(
 					break
 				}
 			}
-			// GroupObservation filter provided: skip accounts not in that group.
+			// GroupObservation filter provided: skip providers not in that group.
 			if matchedGroup == nil {
 				continue
 			}
@@ -168,7 +168,7 @@ func (s *OpsService) GetConcurrencyStats(
 			waiting = int64(load.WaitingCount)
 		}
 
-		// AccountObservation-level view picks one display group (the first group).
+		// ProviderObservation-level view picks one display group (the first group).
 		displayGroupID := int64(0)
 		displayGroupName := ""
 		if matchedGroup != nil {
@@ -179,10 +179,10 @@ func (s *OpsService) GetConcurrencyStats(
 			displayGroupName = acc.Groups[0].Name
 		}
 
-		if _, ok := account[acc.ID]; !ok {
-			info := &AccountConcurrencyInfo{
-				AccountID:      acc.ID,
-				AccountName:    acc.Name,
+		if _, ok := provider[acc.ID]; !ok {
+			info := &ProviderConcurrencyInfo{
+				ProviderID:     acc.ID,
+				ProviderName:   acc.Name,
 				Platform:       acc.Platform,
 				GroupID:        displayGroupID,
 				GroupName:      displayGroupName,
@@ -193,7 +193,7 @@ func (s *OpsService) GetConcurrencyStats(
 			if info.MaxCapacity > 0 {
 				info.LoadPercentage = float64(info.CurrentInUse) / float64(info.MaxCapacity) * 100
 			}
-			account[acc.ID] = info
+			provider[acc.ID] = info
 		}
 
 		// Platform aggregation.
@@ -209,7 +209,7 @@ func (s *OpsService) GetConcurrencyStats(
 			p.WaitingInQueue += waiting
 		}
 
-		// GroupObservation aggregation (one account may contribute to multiple groups).
+		// GroupObservation aggregation (one provider may contribute to multiple groups).
 		if matchedGroup != nil {
 			grp := matchedGroup
 			if _, ok := group[grp.ID]; !ok {
@@ -258,7 +258,7 @@ func (s *OpsService) GetConcurrencyStats(
 		}
 	}
 
-	return platform, group, account, &collectedAt, nil
+	return platform, group, provider, &collectedAt, nil
 }
 
 // listAllActiveUsersForOps returns all active users with their concurrency settings.
@@ -272,7 +272,7 @@ func (s *OpsService) listAllActiveUsersForOps(ctx context.Context) ([]UserObserv
 	for {
 		users, pageInfo, err := s.userRepo.ListActivePage(ctx, pagination.PaginationParams{
 			Page:     page,
-			PageSize: opsAccountsPageSize,
+			PageSize: opsProvidersPageSize,
 		})
 		if err != nil {
 			return nil, err
@@ -285,7 +285,7 @@ func (s *OpsService) listAllActiveUsersForOps(ctx context.Context) ([]UserObserv
 		if pageInfo != nil && int64(len(out)) >= pageInfo.Total {
 			break
 		}
-		if len(users) < opsAccountsPageSize {
+		if len(users) < opsProvidersPageSize {
 			break
 		}
 

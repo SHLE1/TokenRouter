@@ -25,31 +25,31 @@ import (
 )
 
 // nativeForwardHTTPOptions 不预热读取器，保留响应到达后才读取运行设置及绑定输出观察。
-func (s *OpenAIResponsesExecutor) nativeForwardHTTPOptions(ctx context.Context, c *gin.Context, account *gatewayprovider.ExecutionAccount, input forward.HTTPInput, exchange openai.HTTPExchangeOptions, retryEncrypted func([]byte) ([]byte, bool, error), markLineage func([]byte)) forward.HTTPOptions {
+func (s *OpenAIResponsesExecutor) nativeForwardHTTPOptions(ctx context.Context, c *gin.Context, provider *gatewayprovider.ExecutionProvider, input forward.HTTPInput, exchange openai.HTTPExchangeOptions, retryEncrypted func([]byte) ([]byte, bool, error), markLineage func([]byte)) forward.HTTPOptions {
 	return forward.HTTPOptions{
 		Exchange: exchange, Sink: ResponseSink{Writer: c.Writer},
 		StreamOptions: func() openai.StreamOptions {
-			return s.Output.StreamOptions(ctx, c, account, input.ReasoningEffortValue)
+			return s.Output.StreamOptions(ctx, c, provider, input.ReasoningEffortValue)
 		},
-		NonStreamOptions: func() openai.NonStreamOptions { return s.Output.NonStreamOptions(ctx, c, account) },
+		NonStreamOptions: func() openai.NonStreamOptions { return s.Output.NonStreamOptions(ctx, c, provider) },
 		ReadErrorBody:    s.Output.ReadErrorBody,
-		IsAgentIdentity:  func(ctx context.Context) bool { return s.Requests.Identity.UsesAgentIdentity(ctx, account) },
+		IsAgentIdentity:  func(ctx context.Context) bool { return s.Requests.Identity.UsesAgentIdentity(ctx, provider) },
 		InvalidAgentTask: openai.IsAgentTaskInvalidHTTPResponse,
 		RecoverAgentTask: func(ctx context.Context) error {
-			return s.Requests.Identity.Recover(ctx, account, account.View().GetCredential("task_id"))
+			return s.Requests.Identity.Recover(ctx, provider, provider.View().GetCredential("task_id"))
 		},
 		RedactErrorBody: func(ctx context.Context, body []byte) []byte {
-			return s.Requests.Identity.Redact(ctx, account, body)
+			return s.Requests.Identity.Redact(ctx, provider, body)
 		},
 		ErrorDetails: func(body []byte) (string, string) {
 			return logredact.SanitizeUpstreamQueries(strings.TrimSpace(upstream.ExtractErrorMessage(body))), upstream.ExtractErrorCode(body)
 		},
 		RetryEncrypted: retryEncrypted, MarkInvalidLineage: markLineage,
 		CompactRetry: func(body []byte, status int, message string, payload []byte, tried bool) ([]byte, string, bool) {
-			return s.Text.Compact.Prepare(c, account, input.RequestedModel, body, status, message, payload, tried)
+			return s.Text.Compact.Prepare(c, provider, input.RequestedModel, body, status, message, payload, tried)
 		},
 		CompactRetryObserved: func(resp *http.Response, payload []byte, message string) {
-			s.Text.Compact.Observe(c, account, resp, payload, message, false)
+			s.Text.Compact.Observe(c, provider, resp, payload, message, false)
 		},
 		CompactSignal: func(err error) (forward.CompactFailure, bool) {
 			signal, ok := compact.AsFailure(err)
@@ -71,20 +71,20 @@ func (s *OpenAIResponsesExecutor) nativeForwardHTTPOptions(ctx context.Context, 
 				}
 				detail = logredact.TruncateUTF8(string(payload), limit)
 			}
-			AppendOpsUpstreamError(c, ops.OpsUpstreamErrorEvent{Platform: account.Record.Platform, AccountID: account.Record.ID, AccountName: account.Record.Name, UpstreamStatusCode: resp.StatusCode, UpstreamRequestID: resp.Header.Get("x-request-id"), Kind: "failover", Message: message, Detail: detail})
-			decision := s.Output.ApplyHTTPFailure(ctx, resp, account, payload, model)
+			AppendOpsUpstreamError(c, ops.OpsUpstreamErrorEvent{Platform: provider.Record.Platform, ProviderID: provider.Record.ID, ProviderName: provider.Record.Name, UpstreamStatusCode: resp.StatusCode, UpstreamRequestID: resp.Header.Get("x-request-id"), Kind: "failover", Message: message, Detail: detail})
+			decision := s.Output.ApplyHTTPFailure(ctx, resp, provider, payload, model)
 			if decision.ShouldReturnGenericError() {
 				return nil
 			}
-			return gatewayprovider.NewOpenAIUpstreamFailure(resp.StatusCode, resp.Header, payload, message, decision.RetryableOnSameAccount(gatewayprovider.ExecutionErrorPolicy(account), resp.StatusCode))
+			return gatewayprovider.NewOpenAIUpstreamFailure(resp.StatusCode, resp.Header, payload, message, decision.RetryableOnSameProvider(gatewayprovider.ExecutionErrorPolicy(provider), resp.StatusCode))
 		},
 		CompactFailover: func(resp *http.Response, payload []byte, message, model string) error {
-			AppendOpsUpstreamError(c, ops.OpsUpstreamErrorEvent{Platform: account.Record.Platform, AccountID: account.Record.ID, AccountName: account.Record.Name, UpstreamStatusCode: resp.StatusCode, UpstreamRequestID: resp.Header.Get("x-request-id"), Kind: "failover", Message: message})
-			disabled := s.Output.ApplyHTTPFailure(ctx, resp, account, payload, model).StopScheduling
-			return (gatewayprovider.OpenAIFailoverPolicy{Health: s.Output.Health}).NewAccountFailure(account, resp.StatusCode, resp.Header, payload, message, disabled, !disabled && account.View().IsPoolMode() && (account.View().IsPoolModeRetryableStatus(resp.StatusCode) || openai.IsOpenAITransientProcessingError(resp.StatusCode, message, payload)))
+			AppendOpsUpstreamError(c, ops.OpsUpstreamErrorEvent{Platform: provider.Record.Platform, ProviderID: provider.Record.ID, ProviderName: provider.Record.Name, UpstreamStatusCode: resp.StatusCode, UpstreamRequestID: resp.Header.Get("x-request-id"), Kind: "failover", Message: message})
+			disabled := s.Output.ApplyHTTPFailure(ctx, resp, provider, payload, model).StopScheduling
+			return (gatewayprovider.OpenAIFailoverPolicy{Health: s.Output.Health}).NewProviderFailure(provider, resp.StatusCode, resp.Header, payload, message, disabled, !disabled && provider.View().IsPoolMode() && (provider.View().IsPoolModeRetryableStatus(resp.StatusCode) || openai.IsOpenAITransientProcessingError(resp.StatusCode, message, payload)))
 		},
 		ErrorResponse: func(resp *http.Response, body []byte, model string) error {
-			_, err := s.Output.ResponseError(ctx, resp, c, account, body, model)
+			_, err := s.Output.ResponseError(ctx, resp, c, provider, body, model)
 			return err
 		},
 		ErrorSchedulingModel: gatewayprovider.ErrorSchedulingModel,
@@ -97,10 +97,10 @@ func (s *OpenAIResponsesExecutor) nativeForwardHTTPOptions(ctx context.Context, 
 				resp.Body = upstream.NewResponsesClientToolStreamBody(resp.Body, mapping, limit)
 			}
 		},
-		BindResponseOwner: func(ctx context.Context, id string) { s.Output.BindResponseAccount(ctx, c, account, id) },
+		BindResponseOwner: func(ctx context.Context, id string) { s.Output.BindResponseProvider(ctx, c, provider, id) },
 		UpdateUsageSnapshot: func(ctx context.Context, headers http.Header) {
 			if snapshot := openai.ParseCodexRateLimitHeaders(headers); snapshot != nil {
-				s.Text.CodexUsage.Observe(ctx, account.Record.ID, snapshot)
+				s.Text.CodexUsage.Observe(ctx, provider.Record.ID, snapshot)
 			}
 		},
 		ObserveUpstreamModel: func(model string) { SetOpsUpstreamModel(c, model) },

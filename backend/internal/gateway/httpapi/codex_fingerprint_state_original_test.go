@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -16,20 +16,21 @@ import (
 
 const testCodexFingerprintSeed = "11111111-1111-4111-8111-111111111111"
 
-func newTestOAuthAccount(id int64, extra map[string]any) *accountcore.Record {
-	if accountcore.CodexFingerprintModeRequiresSeed(accountcore.CodexFingerprintModeFromExtra(extra)) {
+func newTestOAuthProvider(id int64, extra map[string]any) *providercore.Record {
+	if providercore.CodexFingerprintModeRequiresSeed(providercore.CodexFingerprintModeFromExtra(extra)) {
 		if extra == nil {
 			extra = make(map[string]any)
 		}
-		if _, exists := extra[accountcore.CodexFingerprintSeedExtraKey]; !exists {
-			extra[accountcore.CodexFingerprintSeedExtraKey] = testCodexFingerprintSeed
+		if _, exists := extra[providercore.CodexFingerprintSeedExtraKey]; !exists {
+			extra[providercore.CodexFingerprintSeedExtraKey] = testCodexFingerprintSeed
 		}
 	}
-	return &accountcore.Record{LoadLocation: time.LoadLocation, ID: id,
+	return &providercore.Record{
+		LoadLocation: time.LoadLocation, ID: id,
 		Platform: capability.PlatformOpenAI,
-		Type:     capability.AccountTypeOAuth,
-		Extra:    extra}
-
+		Type:     capability.ProviderTypeOAuth,
+		Extra:    extra,
+	}
 }
 
 // --- deriveStableUUIDv4 ---
@@ -70,52 +71,52 @@ func newFingerprintStageTestContext(t *testing.T) *gin.Context {
 	return c
 }
 
-func TestStageCodexFingerprintIDs_NilOverwritesPreviousAccount(t *testing.T) {
+func TestStageCodexFingerprintIDs_NilOverwritesPreviousProvider(t *testing.T) {
 	c := newFingerprintStageTestContext(t)
-	accountA := newTestOAuthAccount(1001, map[string]any{accountcore.CodexFingerprintModeExtraKey: "session"})
-	idsA := accountprovider.CodexFingerprintIDs(accountA, "sess-x", accountcore.CodexFingerprintSession)
+	providerA := newTestOAuthProvider(1001, map[string]any{providercore.CodexFingerprintModeExtraKey: "session"})
+	idsA := provideradapter.CodexFingerprintIDs(providerA, "sess-x", providercore.CodexFingerprintSession)
 	require.NotNil(t, idsA)
 	StageCodexFingerprintIDs(c, idsA)
-	StageCodexFingerprintIDs( // failover 切到 off 模式账号：无条件覆写为 nil，上一账号 IDs 不得残留
+	StageCodexFingerprintIDs( // failover 切到 off 模式提供商：无条件覆写为 nil，上一提供商 IDs 不得残留
 		c, nil)
 
 	h := http.Header{}
 	h.Set("session_id", "isolated-session")
-	accountB := newTestOAuthAccount(1002, map[string]any{"codex_fingerprint_mode": "off"})
-	ApplyStagedCodexFingerprintHeaders(c, accountB, h)
-	assert.Equal(t, "isolated-session", h.Get("session_id"), "off 账号不得应用上一账号的收敛 ID")
+	providerB := newTestOAuthProvider(1002, map[string]any{"codex_fingerprint_mode": "off"})
+	ApplyStagedCodexFingerprintHeaders(c, providerB, h)
+	assert.Equal(t, "isolated-session", h.Get("session_id"), "off 提供商不得应用上一提供商的收敛 ID")
 	assert.Empty(t, h.Get("x-codex-installation-id"))
 }
 
-func TestApplyStagedCodexFingerprintRejectsDifferentOAuthAccount(t *testing.T) {
+func TestApplyStagedCodexFingerprintRejectsDifferentOAuthProvider(t *testing.T) {
 	c := newFingerprintStageTestContext(t)
-	accountA := newTestOAuthAccount(1003, map[string]any{accountcore.CodexFingerprintModeExtraKey: "session"})
-	idsA := accountprovider.CodexFingerprintIDs(accountA, "sess-a", accountcore.CodexFingerprintSession)
+	providerA := newTestOAuthProvider(1003, map[string]any{providercore.CodexFingerprintModeExtraKey: "session"})
+	idsA := provideradapter.CodexFingerprintIDs(providerA, "sess-a", providercore.CodexFingerprintSession)
 	require.NotNil(t, idsA)
 	StageCodexFingerprintIDs(c, idsA)
 
-	accountB := newTestOAuthAccount(1004, map[string]any{accountcore.CodexFingerprintModeExtraKey: "session"})
+	providerB := newTestOAuthProvider(1004, map[string]any{providercore.CodexFingerprintModeExtraKey: "session"})
 	h := make(http.Header)
-	h.Set("session-id", "account-b-session")
-	ApplyStagedCodexFingerprintHeaders(c, accountB, h)
-	assert.Equal(t, "account-b-session", h.Get("session-id"))
+	h.Set("session-id", "provider-b-session")
+	ApplyStagedCodexFingerprintHeaders(c, providerB, h)
+	assert.Equal(t, "provider-b-session", h.Get("session-id"))
 	assert.Empty(t, h.Get("x-codex-installation-id"))
 
-	body := map[string]any{"client_metadata": map[string]any{"session_id": "account-b-session"}}
-	assert.False(t, ApplyStagedCodexFingerprintClientMetadata(c, accountB, body))
+	body := map[string]any{"client_metadata": map[string]any{"session_id": "provider-b-session"}}
+	assert.False(t, ApplyStagedCodexFingerprintClientMetadata(c, providerB, body))
 	clientMetadata, ok := body["client_metadata"].(map[string]any)
 	require.True(t, ok)
-	assert.Equal(t, "account-b-session", clientMetadata["session_id"])
+	assert.Equal(t, "provider-b-session", clientMetadata["session_id"])
 }
 
-func TestApplyStagedCodexFingerprintHeaders_SkipsNonOAuthAccount(t *testing.T) {
+func TestApplyStagedCodexFingerprintHeaders_SkipsNonOAuthProvider(t *testing.T) {
 	c := newFingerprintStageTestContext(t)
-	oauthIDs := accountprovider.CodexFingerprintIDs(newTestOAuthAccount(1003, map[string]any{accountcore.CodexFingerprintModeExtraKey: "session"}), "sess-y", accountcore.CodexFingerprintSession)
+	oauthIDs := provideradapter.CodexFingerprintIDs(newTestOAuthProvider(1003, map[string]any{providercore.CodexFingerprintModeExtraKey: "session"}), "sess-y", providercore.CodexFingerprintSession)
 	require.NotNil(t, oauthIDs)
 	StageCodexFingerprintIDs(c, oauthIDs)
 
 	h := http.Header{}
-	apiKeyAccount := &accountcore.Record{LoadLocation: time.LoadLocation, ID: 1004, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}
-	ApplyStagedCodexFingerprintHeaders(c, apiKeyAccount, h)
-	assert.Empty(t, h.Get("x-codex-installation-id"), "stale 收敛 ID 不得应用到非 OAuth 账号")
+	apiKeyProvider := &providercore.Record{LoadLocation: time.LoadLocation, ID: 1004, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}
+	ApplyStagedCodexFingerprintHeaders(c, apiKeyProvider, h)
+	assert.Empty(t, h.Get("x-codex-installation-id"), "stale 收敛 ID 不得应用到非 OAuth 提供商")
 }

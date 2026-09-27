@@ -12,10 +12,10 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/batchimage"
 	batchimageprovider "github.com/TokenFlux/TokenRouter/internal/batchimage/provider"
 	"github.com/TokenFlux/TokenRouter/internal/config"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/stretchr/testify/require"
 )
@@ -24,7 +24,7 @@ func TestBatchImageMVPFlow(t *testing.T) {
 	ctx := context.Background()
 	repo := newFakeBatchImageRepository()
 	queue := &publicBatchImageQueue{}
-	provider := &batchImageSmokeProvider{
+	platform := &batchImageSmokeProvider{
 		name: batchimage.BatchImageProviderGeminiAPI,
 		states: []batchimage.BatchProviderInternalState{
 			batchimage.BatchProviderStateRunning,
@@ -32,8 +32,8 @@ func TestBatchImageMVPFlow(t *testing.T) {
 		},
 		result: batchImageSmokeResultJSONL(),
 	}
-	accountID := int64(101)
-	accountRepo := &publicBatchImageAccountRepo{accounts: []accountcore.Record{testBatchImageAccount(accountID, capability.AccountTypeAPIKey)}}
+	providerID := int64(101)
+	providerRepo := &publicBatchImageProviderRepo{providers: []providercore.Record{testBatchImageProvider(providerID, capability.ProviderTypeAPIKey)}}
 	cfg := &config.Config{BatchImage: config.BatchImageConfig{
 		Enabled:                           true,
 		MaxItemsPerJobDefault:             10,
@@ -44,13 +44,13 @@ func TestBatchImageMVPFlow(t *testing.T) {
 		MaxDownloadDurationSeconds:        60,
 		OutputRetentionAfterTerminalHours: 72,
 	}}
-	registry := batchimage.NewRegistry[batchimageprovider.BatchImageProvider](provider)
+	registry := batchimage.NewRegistry[batchimageprovider.BatchImageProvider](platform)
 	billing := &fakeBatchImageBillingRepo{}
 	pricing := &fakeBatchImagePricingResolver{unitPrice: 0.25}
 	owner := testBatchImageOwner()
 
 	publicSvc := newBatchPublicFixture(repo,
-		accountRepo, nil, nil, nil, queue,
+		providerRepo, nil, nil, nil, queue,
 		registry,
 		pricing,
 		billing, nil, cfg)
@@ -58,13 +58,13 @@ func TestBatchImageMVPFlow(t *testing.T) {
 	processor := &batchimage.PipelineProcessor{
 		ProviderProcessor: newBatchProcessorFixture(repo,
 			registry,
-			&fakeBatchImageAccountResolver{account: &accountRepo.accounts[0]}, nil, billing, nil, 0),
+			&fakeBatchImageProviderResolver{provider: &providerRepo.providers[0]}, nil, billing, nil, 0),
 
 		SettlementService: newBatchSettlementFixture(repo,
 			billing, nil, pricing, nil, cfg),
 	}
-	downloadSvc := newBatchDownloadFixture(repo, registry, &fakeBatchImageAccountResolver{account: &accountRepo.accounts[0]}, &fakeBatchImageDownloadLimiter{}, cfg)
-	cleanupSvc := newBatchCleanupFixture(repo, registry, &fakeBatchImageAccountResolver{account: &accountRepo.accounts[0]}, cfg)
+	downloadSvc := newBatchDownloadFixture(repo, registry, &fakeBatchImageProviderResolver{provider: &providerRepo.providers[0]}, &fakeBatchImageDownloadLimiter{}, cfg)
+	cleanupSvc := newBatchCleanupFixture(repo, registry, &fakeBatchImageProviderResolver{provider: &providerRepo.providers[0]}, cfg)
 
 	submitted, err := publicSvc.Submit(ctx, owner, validBatchImageSubmitRequest(), "")
 	require.NoError(t, err)
@@ -73,7 +73,7 @@ func TestBatchImageMVPFlow(t *testing.T) {
 	require.Equal(t, "queued", submitted.Status)
 	require.Equal(t, 2, submitted.ItemCount)
 	require.Equal(t, []string{submitted.ID}, queue.enqueued)
-	require.Len(t, provider.submits, 1)
+	require.Len(t, platform.submits, 1)
 	require.Len(t, billing.reserves, 1)
 	require.Equal(t, batchimage.BatchImageHoldRequestID(submitted.ID), billing.reserves[0].RequestID)
 	require.InDelta(t, 0.3, billing.reserves[0].HoldAmount, 1e-12)
@@ -156,13 +156,13 @@ func TestBatchImageMVPFlow(t *testing.T) {
 	deleted, err := cleanupSvc.DeleteOutputsForOwner(ctx, owner, submitted.ID)
 	require.NoError(t, err)
 	require.Equal(t, "output_deleted", deleted.Status)
-	require.Equal(t, []batchimage.CleanupTarget{batchimage.CleanupTargetOutput}, provider.cleanupTargets)
+	require.Equal(t, []batchimage.CleanupTarget{batchimage.CleanupTargetOutput}, platform.cleanupTargets)
 	requireBatchImagePublicJSONHasNoInternals(t, mustMarshalBatchImageSmokeJSON(t, deleted))
 
 	deletedAgain, err := cleanupSvc.DeleteOutputsForOwner(ctx, owner, submitted.ID)
 	require.NoError(t, err)
 	require.Equal(t, "output_deleted", deletedAgain.Status)
-	require.Equal(t, []batchimage.CleanupTarget{batchimage.CleanupTargetOutput}, provider.cleanupTargets)
+	require.Equal(t, []batchimage.CleanupTarget{batchimage.CleanupTargetOutput}, platform.cleanupTargets)
 
 	stream, err = downloadSvc.OpenItemContent(ctx, owner, submitted.ID, "cover_001", 0)
 	require.Nil(t, stream)
@@ -206,20 +206,20 @@ type batchImageSmokeProvider struct {
 
 func (p *batchImageSmokeProvider) Name() string { return p.name }
 
-func (p *batchImageSmokeProvider) SupportsAccount(account *accountcore.Record) bool {
-	return account != nil && account.IsSchedulable()
+func (p *batchImageSmokeProvider) SupportsProvider(provider *providercore.Record) bool {
+	return provider != nil && provider.IsSchedulable()
 }
 
-func (p *batchImageSmokeProvider) Submit(_ context.Context, _ *batchimage.BatchImageJob, _ *accountcore.Record, input batchimage.BatchImageInput) (*batchimage.BatchProviderJob, error) {
+func (p *batchImageSmokeProvider) Submit(_ context.Context, _ *batchimage.BatchImageJob, _ *providercore.Record, input batchimage.BatchImageInput) (*batchimage.BatchProviderJob, error) {
 	p.submits = append(p.submits, input)
 	return &batchimage.BatchProviderJob{
-		ProviderJobName:   "providers/fake-provider-job/raw-id",
-		ProviderInputRef:  "files/fake-provider-job/input.jsonl",
-		ProviderOutputRef: "files/fake-provider-job/output.jsonl",
+		ProviderJobName:   "providers/fake-platform-job/raw-id",
+		ProviderInputRef:  "files/fake-platform-job/input.jsonl",
+		ProviderOutputRef: "files/fake-platform-job/output.jsonl",
 	}, nil
 }
 
-func (p *batchImageSmokeProvider) Get(context.Context, *batchimage.BatchImageJob, *accountcore.Record) (*batchimage.BatchProviderStatus, error) {
+func (p *batchImageSmokeProvider) Get(context.Context, *batchimage.BatchImageJob, *providercore.Record) (*batchimage.BatchProviderStatus, error) {
 	state := batchimage.BatchProviderStateSucceeded
 	if len(p.states) > 0 {
 		state = p.states[0]
@@ -229,19 +229,19 @@ func (p *batchImageSmokeProvider) Get(context.Context, *batchimage.BatchImageJob
 		RawState:          strings.ToUpper(string(state)),
 		InternalState:     state,
 		Done:              state == batchimage.BatchProviderStateSucceeded,
-		ProviderOutputRef: "files/fake-provider-job/output.jsonl",
+		ProviderOutputRef: "files/fake-platform-job/output.jsonl",
 	}, nil
 }
 
-func (p *batchImageSmokeProvider) Cancel(context.Context, *batchimage.BatchImageJob, *accountcore.Record) error {
+func (p *batchImageSmokeProvider) Cancel(context.Context, *batchimage.BatchImageJob, *providercore.Record) error {
 	return nil
 }
 
-func (p *batchImageSmokeProvider) OpenResult(context.Context, *batchimage.BatchImageJob, *accountcore.Record) (io.ReadCloser, string, error) {
+func (p *batchImageSmokeProvider) OpenResult(context.Context, *batchimage.BatchImageJob, *providercore.Record) (io.ReadCloser, string, error) {
 	return io.NopCloser(strings.NewReader(p.result)), "application/jsonl", nil
 }
 
-func (p *batchImageSmokeProvider) Cleanup(_ context.Context, _ *batchimage.BatchImageJob, _ *accountcore.Record, target batchimage.CleanupTarget) error {
+func (p *batchImageSmokeProvider) Cleanup(_ context.Context, _ *batchimage.BatchImageJob, _ *providercore.Record, target batchimage.CleanupTarget) error {
 	p.cleanupTargets = append(p.cleanupTargets, target)
 	return nil
 }

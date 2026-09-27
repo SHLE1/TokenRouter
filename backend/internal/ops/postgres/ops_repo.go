@@ -22,7 +22,7 @@ INSERT INTO ops_error_logs (
   client_request_id,
   user_id,
   api_key_id,
-  account_id,
+  provider_id,
   group_id,
   client_ip,
   platform,
@@ -128,7 +128,7 @@ func (r *Store) BatchInsertErrorLogs(ctx context.Context, inputs []*ops.OpsInser
 }
 
 func opsInsertErrorLogArgs(input *ops.OpsInsertErrorLogInput) []any {
-	// 尚未选定账号的错误也保存明确平台，查询不再反查可变配置。
+	// 尚未选定提供商的错误也保存明确平台，查询不再反查可变配置。
 	platform := strings.TrimSpace(input.Platform)
 	if platform == "" {
 		platform = "unknown"
@@ -138,7 +138,7 @@ func opsInsertErrorLogArgs(input *ops.OpsInsertErrorLogInput) []any {
 		opsNullString(input.ClientRequestID),
 		opsNullInt64(input.UserID),
 		opsNullInt64(input.APIKeyID),
-		opsNullInt64(input.AccountID),
+		opsNullInt64(input.ProviderID),
 		opsNullInt64(input.GroupID),
 		opsNullString(input.ClientIP),
 		opsNullString(platform),
@@ -257,7 +257,7 @@ SELECT
   e.user_id,
   COALESCE(u.email, ''),
   e.api_key_id,
-  e.account_id,
+  e.provider_id,
   COALESCE(a.name, ''),
   e.group_id,
   COALESCE(g.name, ''),
@@ -273,7 +273,7 @@ SELECT
   COALESCE(ak.name, ''),
   ak.deleted_at
 FROM ops_error_logs e
-LEFT JOIN accounts a ON e.account_id = a.id
+LEFT JOIN providers a ON e.provider_id = a.id
 LEFT JOIN groups g ON e.group_id = g.id
 LEFT JOIN users u ON e.user_id = u.id
 LEFT JOIN users u2 ON e.resolved_by_user_id = u2.id
@@ -295,8 +295,8 @@ LIMIT $` + itoa(len(args)+1) + ` OFFSET $` + itoa(len(args)+2)
 		var clientIP sql.NullString
 		var userID sql.NullInt64
 		var apiKeyID sql.NullInt64
-		var accountID sql.NullInt64
-		var accountName string
+		var providerID sql.NullInt64
+		var providerName string
 		var groupID sql.NullInt64
 		var groupName string
 		var userEmail string
@@ -327,8 +327,8 @@ LIMIT $` + itoa(len(args)+1) + ` OFFSET $` + itoa(len(args)+2)
 			&userID,
 			&userEmail,
 			&apiKeyID,
-			&accountID,
-			&accountName,
+			&providerID,
+			&providerName,
 			&groupID,
 			&groupName,
 			&clientIP,
@@ -368,11 +368,11 @@ LIMIT $` + itoa(len(args)+1) + ` OFFSET $` + itoa(len(args)+2)
 			v := apiKeyID.Int64
 			item.APIKeyID = &v
 		}
-		if accountID.Valid {
-			v := accountID.Int64
-			item.AccountID = &v
+		if providerID.Valid {
+			v := providerID.Int64
+			item.ProviderID = &v
 		}
-		item.AccountName = accountName
+		item.ProviderName = providerName
 		if groupID.Valid {
 			v := groupID.Int64
 			item.GroupID = &v
@@ -384,6 +384,9 @@ LIMIT $` + itoa(len(args)+1) + ` OFFSET $` + itoa(len(args)+2)
 		}
 		item.APIKeyName = apiKeyName
 		item.APIKeyDeleted = apiKeyDeletedAt.Valid
+		if item.Phase == "account_auth" {
+			item.Phase = "provider_auth"
+		}
 		out = append(out, &item)
 	}
 	if err := rows.Err(); err != nil {
@@ -433,7 +436,7 @@ SELECT
   e.user_id,
   COALESCE(u.email, ''),
   e.api_key_id,
-  e.account_id,
+  e.provider_id,
   COALESCE(a.name, ''),
   e.group_id,
   COALESCE(g.name, ''),
@@ -456,7 +459,7 @@ SELECT
   ak.deleted_at
 FROM ops_error_logs e
 LEFT JOIN users u ON e.user_id = u.id
-LEFT JOIN accounts a ON e.account_id = a.id
+LEFT JOIN providers a ON e.provider_id = a.id
 LEFT JOIN groups g ON e.group_id = g.id
 LEFT JOIN api_keys ak ON ak.id = e.api_key_id
 WHERE e.id = $1
@@ -470,7 +473,7 @@ LIMIT 1`
 	var clientIP sql.NullString
 	var userID sql.NullInt64
 	var apiKeyID sql.NullInt64
-	var accountID sql.NullInt64
+	var providerID sql.NullInt64
 	var groupID sql.NullInt64
 	var authLatency sql.NullInt64
 	var routingLatency sql.NullInt64
@@ -507,8 +510,8 @@ LIMIT 1`
 		&userID,
 		&out.UserEmail,
 		&apiKeyID,
-		&accountID,
-		&out.AccountName,
+		&providerID,
+		&out.ProviderName,
 		&groupID,
 		&out.GroupName,
 		&clientIP,
@@ -558,9 +561,9 @@ LIMIT 1`
 		v := apiKeyID.Int64
 		out.APIKeyID = &v
 	}
-	if accountID.Valid {
-		v := accountID.Int64
-		out.AccountID = &v
+	if providerID.Valid {
+		v := providerID.Int64
+		out.ProviderID = &v
 	}
 	if groupID.Valid {
 		v := groupID.Int64
@@ -594,6 +597,9 @@ LIMIT 1`
 	out.APIKeyDeleted = detailAPIKeyDeletedAt.Valid
 
 	// Normalize upstream_errors to empty string when stored as JSON null.
+	if out.Phase == "account_auth" {
+		out.Phase = "provider_auth"
+	}
 	out.UpstreamErrors = strings.TrimSpace(out.UpstreamErrors)
 	if out.UpstreamErrors == "null" {
 		out.UpstreamErrors = ""
@@ -660,7 +666,7 @@ func (r *Store) BatchInsertSystemLogs(ctx context.Context, inputs []*ops.OpsInse
 		"client_request_id",
 		"user_id",
 		"api_key_id",
-		"account_id",
+		"provider_id",
 		"platform",
 		"model",
 		"extra",
@@ -703,7 +709,7 @@ func (r *Store) BatchInsertSystemLogs(ctx context.Context, inputs []*ops.OpsInse
 			opsNullString(input.ClientRequestID),
 			opsNullInt64(input.UserID),
 			opsNullInt64(input.APIKeyID),
-			opsNullInt64(input.AccountID),
+			opsNullInt64(input.ProviderID),
 			opsNullString(input.Platform),
 			opsNullString(input.Model),
 			extra,
@@ -771,7 +777,7 @@ SELECT
   COALESCE(l.client_request_id, ''),
   l.user_id,
   l.api_key_id,
-  l.account_id,
+  l.provider_id,
   COALESCE(l.platform, ''),
   COALESCE(l.model, ''),
   COALESCE(l.extra::text, '{}')
@@ -791,7 +797,7 @@ LIMIT $` + itoa(len(args)+1) + ` OFFSET $` + itoa(len(args)+2)
 		item := &ops.OpsSystemLog{}
 		var userID sql.NullInt64
 		var apiKeyID sql.NullInt64
-		var accountID sql.NullInt64
+		var providerID sql.NullInt64
 		var extraRaw string
 		if err := rows.Scan(
 			&item.ID,
@@ -804,7 +810,7 @@ LIMIT $` + itoa(len(args)+1) + ` OFFSET $` + itoa(len(args)+2)
 			&item.ClientRequestID,
 			&userID,
 			&apiKeyID,
-			&accountID,
+			&providerID,
 			&item.Platform,
 			&item.Model,
 			&extraRaw,
@@ -819,9 +825,9 @@ LIMIT $` + itoa(len(args)+1) + ` OFFSET $` + itoa(len(args)+2)
 			v := apiKeyID.Int64
 			item.APIKeyID = &v
 		}
-		if accountID.Valid {
-			v := accountID.Int64
-			item.AccountID = &v
+		if providerID.Valid {
+			v := providerID.Int64
+			item.ProviderID = &v
 		}
 		extraRaw = strings.TrimSpace(extraRaw)
 		if extraRaw != "" && extraRaw != "null" && extraRaw != "{}" {
@@ -911,7 +917,7 @@ func buildOpsErrorLogsWhere(filter *ops.OpsErrorLogFilter) (string, []any) {
 	if filter != nil {
 		resolvedFilter = filter.Resolved
 	}
-	// 默认只展示客户端可见错误；Ops 上游健康列表可显式包含 upstream/account_auth 恢复记录。
+	// 默认只展示客户端可见错误；Ops 上游健康列表可显式包含 upstream/provider_auth 恢复记录。
 	// cyber_policy 流式命中可能是 200，但仍是对用户可见的拒绝，因此始终豁免。
 	if !opsFilterIncludesRecoveredProviderRows(filter, phaseFilter) {
 		clauses = append(clauses, "(COALESCE(e.status_code, 0) >= 400 OR e.error_type = 'cyber_policy')")
@@ -934,13 +940,19 @@ func buildOpsErrorLogsWhere(filter *ops.OpsErrorLogFilter) (string, []any) {
 		args = append(args, *filter.GroupID)
 		clauses = append(clauses, "e.group_id = $"+itoa(len(args)))
 	}
-	if filter.AccountID != nil && *filter.AccountID > 0 {
-		args = append(args, *filter.AccountID)
-		clauses = append(clauses, "e.account_id = $"+itoa(len(args)))
+	if filter.ProviderID != nil && *filter.ProviderID > 0 {
+		args = append(args, *filter.ProviderID)
+		clauses = append(clauses, "e.provider_id = $"+itoa(len(args)))
 	}
 	if phase := phaseFilter; phase != "" {
 		args = append(args, phase)
-		clauses = append(clauses, "e.error_phase = $"+itoa(len(args)))
+		condition := "e.error_phase = $" + itoa(len(args))
+		// 历史阶段值不回填大表，筛选时兼容旧值并继续使用现有索引。
+		if phase == "provider_auth" {
+			args = append(args, "account_auth")
+			condition = "(" + condition + " OR e.error_phase = $" + itoa(len(args)) + ")"
+		}
+		clauses = append(clauses, condition)
 	}
 	if filter != nil {
 		if owner := strings.TrimSpace(strings.ToLower(filter.Owner)); owner != "" {
@@ -1036,7 +1048,14 @@ func buildOpsErrorLogsWhere(filter *ops.OpsErrorLogFilter) (string, []any) {
 		clauses = append(clauses, "COALESCE(e.is_count_tokens, false) = false")
 	}
 	if len(filter.ErrorPhasesAny) > 0 {
-		args = append(args, pq.Array(filter.ErrorPhasesAny))
+		phases := append([]string(nil), filter.ErrorPhasesAny...)
+		for _, phase := range filter.ErrorPhasesAny {
+			if phase == "provider_auth" {
+				phases = append(phases, "account_auth")
+				break
+			}
+		}
+		args = append(args, pq.Array(phases))
 		clauses = append(clauses, "e.error_phase = ANY($"+itoa(len(args))+")")
 	}
 	if len(filter.ErrorTypesAny) > 0 {
@@ -1052,7 +1071,7 @@ func opsFilterIncludesRecoveredProviderRows(filter *ops.OpsErrorLogFilter, phase
 		return false
 	}
 	if phaseFilter != "" {
-		return phaseFilter == "upstream" || phaseFilter == "account_auth"
+		return phaseFilter == "upstream" || phaseFilter == "provider_auth"
 	}
 	if len(filter.ErrorPhasesAny) == 0 {
 		return false
@@ -1060,7 +1079,7 @@ func opsFilterIncludesRecoveredProviderRows(filter *ops.OpsErrorLogFilter, phase
 	sawProviderPhase := false
 	for _, rawPhase := range filter.ErrorPhasesAny {
 		switch strings.TrimSpace(strings.ToLower(rawPhase)) {
-		case "upstream", "account_auth":
+		case "upstream", "provider_auth":
 			sawProviderPhase = true
 		default:
 			return false
@@ -1121,9 +1140,9 @@ func buildOpsSystemLogsWhere(filter *ops.OpsSystemLogFilter) (string, []any, boo
 			clauses = append(clauses, "l.api_key_id = $"+itoa(len(args)))
 			hasConstraint = true
 		}
-		if filter.AccountID != nil && *filter.AccountID > 0 {
-			args = append(args, *filter.AccountID)
-			clauses = append(clauses, "l.account_id = $"+itoa(len(args)))
+		if filter.ProviderID != nil && *filter.ProviderID > 0 {
+			args = append(args, *filter.ProviderID)
+			clauses = append(clauses, "l.provider_id = $"+itoa(len(args)))
 			hasConstraint = true
 		}
 		if v := strings.TrimSpace(filter.Platform); v != "" {
@@ -1162,7 +1181,7 @@ func buildOpsSystemLogsCleanupWhere(filter *ops.OpsSystemLogCleanupFilter) (stri
 		ClientRequestID: filter.ClientRequestID,
 		UserID:          filter.UserID,
 		APIKeyID:        filter.APIKeyID,
-		AccountID:       filter.AccountID,
+		ProviderID:      filter.ProviderID,
 		Platform:        filter.Platform,
 		Model:           filter.Model,
 		Query:           filter.Query,

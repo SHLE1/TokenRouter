@@ -52,6 +52,7 @@ func NewPublicService(source PublicSource, calendar timezone.Calendar, timezoneN
 func (s *PublicService) ServerTimezone() (string, string) {
 	return s.timezoneName, s.calendar.UTCOffset(s.calendar.Now())
 }
+
 func (s *PublicService) GetPublicSettings(ctx context.Context) (*PublicSettings, error) {
 	input, err := s.source.LoadSitePublicInputs(ctx)
 	if err != nil {
@@ -165,7 +166,7 @@ func (s *PublicService) GetPublicSettings(ctx context.Context) (*PublicSettings,
 		BalanceUnitSymbol:                   balanceUnitSymbol,
 		BalanceIconSVG:                      strings.TrimSpace(settings[SettingKeyBalanceIconSVG]),
 		BalanceLowNotifyEnabled:             settings[SettingKeyBalanceLowNotifyEnabled] == "true",
-		AccountQuotaNotifyEnabled:           settings[SettingKeyAccountQuotaNotifyEnabled] == "true",
+		ProviderQuotaNotifyEnabled:          settings[SettingKeyProviderQuotaNotifyEnabled] == "true",
 		RiskControlEnabled:                  settings[SettingKeyRiskControlEnabled] == "true",
 		BalanceLowNotifyThreshold:           balanceLowNotifyThreshold,
 		BalanceLowNotifyRechargeURL:         settings[SettingKeyBalanceLowNotifyRechargeURL],
@@ -181,8 +182,10 @@ func (s *PublicService) getStringOrDefault(settings map[string]string, key, defa
 	return defaultValue
 }
 
-const defaultLoginAgreementMode = "modal"
-const defaultLoginAgreementDate = "2026-03-31"
+const (
+	defaultLoginAgreementMode = "modal"
+	defaultLoginAgreementDate = "2026-03-31"
+)
 
 func NormalizeLoginAgreementMode(raw string) string {
 	switch strings.ToLower(strings.TrimSpace(raw)) {
@@ -192,6 +195,7 @@ func NormalizeLoginAgreementMode(raw string) string {
 		return defaultLoginAgreementMode
 	}
 }
+
 func DefaultLoginAgreementDocuments() []LoginAgreementDocument {
 	return []LoginAgreementDocument{
 		{
@@ -216,6 +220,7 @@ func DefaultLoginAgreementDocuments() []LoginAgreementDocument {
 		},
 	}
 }
+
 func NormalizeLoginAgreementDocumentID(raw string) string {
 	raw = strings.ToLower(strings.TrimSpace(raw))
 	var b strings.Builder
@@ -239,6 +244,7 @@ func NormalizeLoginAgreementDocumentID(raw string) string {
 	}
 	return strings.Trim(b.String(), "-_")
 }
+
 func NormalizeLoginAgreementDocuments(docs []LoginAgreementDocument) []LoginAgreementDocument {
 	normalized := make([]LoginAgreementDocument, 0, len(docs))
 	seen := make(map[string]int, len(docs))
@@ -266,6 +272,7 @@ func NormalizeLoginAgreementDocuments(docs []LoginAgreementDocument) []LoginAgre
 	}
 	return normalized
 }
+
 func ParseLoginAgreementDocuments(raw string) []LoginAgreementDocument {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
@@ -281,6 +288,7 @@ func ParseLoginAgreementDocuments(raw string) []LoginAgreementDocument {
 	}
 	return docs
 }
+
 func MarshalLoginAgreementDocuments(docs []LoginAgreementDocument) (string, error) {
 	normalized := NormalizeLoginAgreementDocuments(docs)
 	if len(normalized) == 0 {
@@ -292,6 +300,7 @@ func MarshalLoginAgreementDocuments(docs []LoginAgreementDocument) (string, erro
 	}
 	return string(b), nil
 }
+
 func BuildLoginAgreementRevision(updatedAt string, docs []LoginAgreementDocument) string {
 	normalized := NormalizeLoginAgreementDocuments(docs)
 	payload, err := json.Marshal(struct {
@@ -397,7 +406,7 @@ func (s *PublicService) GetPublicSettingsForInjection(ctx context.Context) (any,
 		BalanceUnitSymbol           string  `json:"balance_unit_symbol"`
 		BalanceIconSVG              string  `json:"balance_icon_svg"`
 		BalanceLowNotifyEnabled     bool    `json:"balance_low_notify_enabled"`
-		AccountQuotaNotifyEnabled   bool    `json:"account_quota_notify_enabled"`
+		ProviderQuotaNotifyEnabled  bool    `json:"provider_quota_notify_enabled"`
 		RiskControlEnabled          bool    `json:"risk_control_enabled"`
 		AffiliateEnabled            bool    `json:"affiliate_enabled"`
 		BalanceLowNotifyThreshold   float64 `json:"balance_low_notify_threshold"`
@@ -482,7 +491,7 @@ func (s *PublicService) GetPublicSettingsForInjection(ctx context.Context) (any,
 		BalanceUnitSymbol:                   settings.BalanceUnitSymbol,
 		BalanceIconSVG:                      settings.BalanceIconSVG,
 		BalanceLowNotifyEnabled:             settings.BalanceLowNotifyEnabled,
-		AccountQuotaNotifyEnabled:           settings.AccountQuotaNotifyEnabled,
+		ProviderQuotaNotifyEnabled:          settings.ProviderQuotaNotifyEnabled,
 		RiskControlEnabled:                  settings.RiskControlEnabled,
 		AffiliateEnabled:                    settings.AffiliateEnabled,
 		BalanceLowNotifyThreshold:           settings.BalanceLowNotifyThreshold,
@@ -612,6 +621,7 @@ func ParseCustomMenuItemURLs(raw string) []string {
 	}
 	return urls
 }
+
 func NormalizeTablePreferences(defaultPageSize int, options []int) (int, []int) {
 	const minPageSize = 5
 	const maxPageSize = 1000
@@ -641,6 +651,7 @@ func NormalizeTablePreferences(defaultPageSize int, options []int) (int, []int) 
 
 	return defaultPageSize, normalizedOptions
 }
+
 func ParseTablePreferences(defaultPageSizeRaw, optionsRaw string) (int, []int) {
 	defaultPageSize := 20
 	if v, err := strconv.Atoi(strings.TrimSpace(defaultPageSizeRaw)); err == nil {
@@ -655,63 +666,65 @@ func ParseTablePreferences(defaultPageSizeRaw, optionsRaw string) (int, []int) {
 	return NormalizeTablePreferences(defaultPageSize, options)
 }
 
-const SettingKeyAPIBaseURL = "api_base_url"
-const SettingKeyAccountQuotaNotifyEnabled = "account_quota_notify_enabled"
-const SettingKeyAffiliateEnabled = "affiliate_enabled"
-const SettingKeyAliyunCaptchaEnabled = "aliyun_captcha_enabled"
-const SettingKeyAliyunCaptchaPrefix = "aliyun_captcha_prefix"
-const SettingKeyAliyunCaptchaSceneID = "aliyun_captcha_scene_id"
-const SettingKeyAllowUserViewErrorRequests = "allow_user_view_error_requests"
-const SettingKeyBackendModeEnabled = "backend_mode_enabled"
-const SettingKeyBalanceIconSVG = "balance_icon_svg"
-const SettingKeyBalanceLowNotifyEnabled = "balance_low_notify_enabled"
-const SettingKeyBalanceLowNotifyRechargeURL = "balance_low_notify_recharge_url"
-const SettingKeyBalanceLowNotifyThreshold = "balance_low_notify_threshold"
-const SettingKeyBalanceUnitName = "balance_unit_name"
-const SettingKeyBalanceUnitSymbol = "balance_unit_symbol"
-const SettingKeyContactInfo = "contact_info"
-const SettingKeyCreativeEnabled = "creative_enabled"
-const SettingKeyCustomEndpoints = "custom_endpoints"
-const SettingKeyCustomMenuItems = "custom_menu_items"
-const SettingKeyDocURL = "doc_url"
-const SettingKeyEmailVerifyEnabled = "email_verify_enabled"
-const SettingKeyFooterLinks = "footer_links"
-const SettingKeyFooterText = "footer_text"
-const SettingKeyForceEmailOnThirdPartySignup = "force_email_on_third_party_signup"
-const SettingKeyHideCcsImportButton = "hide_ccs_import_button"
-const SettingKeyHomeContent = "home_content"
-const SettingKeyHomeFeaturedModels = "home_featured_models"
-const SettingKeyInvitationCodeEnabled = "invitation_code_enabled"
-const SettingKeyLoginAgreementDocuments = "login_agreement_documents"
-const SettingKeyLoginAgreementEnabled = "login_agreement_enabled"
-const SettingKeyLoginAgreementMode = "login_agreement_mode"
-const SettingKeyLoginAgreementUpdatedAt = "login_agreement_updated_at"
-const SettingKeyPasswordResetEnabled = "password_reset_enabled"
-const SettingKeyPromoCodeEnabled = "promo_code_enabled"
-const SettingKeyPurchaseSubscriptionEnabled = "purchase_subscription_enabled"
-const SettingKeyPurchaseSubscriptionURL = "purchase_subscription_url"
-const SettingKeyRegistrationEmailDomainQuotaEnabled = "registration_email_domain_quota_enabled"
-const SettingKeyRegistrationEnabled = "registration_enabled"
-const SettingKeyRiskControlEnabled = "risk_control_enabled"
-const SettingKeySiteLogo = "site_logo"
-const SettingKeySiteName = "site_name"
-const SettingKeySiteNameEn = "site_name_en"
-const SettingKeySiteNameZh = "site_name_zh"
-const SettingKeySiteSubtitle = "site_subtitle"
-const SettingKeySiteSubtitleEn = "site_subtitle_en"
-const SettingKeySiteSubtitleZh = "site_subtitle_zh"
-const SettingKeySiteTitleEn = "site_title_en"
-const SettingKeySiteTitleZh = "site_title_zh"
-const SettingKeyTableDefaultPageSize = "table_default_page_size"
-const SettingKeyTablePageSizeOptions = "table_page_size_options"
-const SettingKeyTencentCaptchaAppID = "tencent_captcha_app_id"
-const SettingKeyTencentCaptchaEnabled = "tencent_captcha_enabled"
-const SettingKeyTotpEnabled = "totp_enabled"
-const SettingKeyTurnstileEnabled = "turnstile_enabled"
-const SettingKeyTurnstileSiteKey = "turnstile_site_key"
-const SettingKeyUserEmailChangeEnabled = "user_email_change_enabled"
-const SettingPaymentEnabled = "payment_enabled"
+const (
+	SettingKeyAPIBaseURL                          = "api_base_url"
+	SettingKeyProviderQuotaNotifyEnabled          = "provider_quota_notify_enabled"
+	SettingKeyAffiliateEnabled                    = "affiliate_enabled"
+	SettingKeyAliyunCaptchaEnabled                = "aliyun_captcha_enabled"
+	SettingKeyAliyunCaptchaPrefix                 = "aliyun_captcha_prefix"
+	SettingKeyAliyunCaptchaSceneID                = "aliyun_captcha_scene_id"
+	SettingKeyAllowUserViewErrorRequests          = "allow_user_view_error_requests"
+	SettingKeyBackendModeEnabled                  = "backend_mode_enabled"
+	SettingKeyBalanceIconSVG                      = "balance_icon_svg"
+	SettingKeyBalanceLowNotifyEnabled             = "balance_low_notify_enabled"
+	SettingKeyBalanceLowNotifyRechargeURL         = "balance_low_notify_recharge_url"
+	SettingKeyBalanceLowNotifyThreshold           = "balance_low_notify_threshold"
+	SettingKeyBalanceUnitName                     = "balance_unit_name"
+	SettingKeyBalanceUnitSymbol                   = "balance_unit_symbol"
+	SettingKeyContactInfo                         = "contact_info"
+	SettingKeyCreativeEnabled                     = "creative_enabled"
+	SettingKeyCustomEndpoints                     = "custom_endpoints"
+	SettingKeyCustomMenuItems                     = "custom_menu_items"
+	SettingKeyDocURL                              = "doc_url"
+	SettingKeyEmailVerifyEnabled                  = "email_verify_enabled"
+	SettingKeyFooterLinks                         = "footer_links"
+	SettingKeyFooterText                          = "footer_text"
+	SettingKeyForceEmailOnThirdPartySignup        = "force_email_on_third_party_signup"
+	SettingKeyHideCcsImportButton                 = "hide_ccs_import_button"
+	SettingKeyHomeContent                         = "home_content"
+	SettingKeyHomeFeaturedModels                  = "home_featured_models"
+	SettingKeyInvitationCodeEnabled               = "invitation_code_enabled"
+	SettingKeyLoginAgreementDocuments             = "login_agreement_documents"
+	SettingKeyLoginAgreementEnabled               = "login_agreement_enabled"
+	SettingKeyLoginAgreementMode                  = "login_agreement_mode"
+	SettingKeyLoginAgreementUpdatedAt             = "login_agreement_updated_at"
+	SettingKeyPasswordResetEnabled                = "password_reset_enabled"
+	SettingKeyPromoCodeEnabled                    = "promo_code_enabled"
+	SettingKeyPurchaseSubscriptionEnabled         = "purchase_subscription_enabled"
+	SettingKeyPurchaseSubscriptionURL             = "purchase_subscription_url"
+	SettingKeyRegistrationEmailDomainQuotaEnabled = "registration_email_domain_quota_enabled"
+	SettingKeyRegistrationEnabled                 = "registration_enabled"
+	SettingKeyRiskControlEnabled                  = "risk_control_enabled"
+	SettingKeySiteLogo                            = "site_logo"
+	SettingKeySiteName                            = "site_name"
+	SettingKeySiteNameEn                          = "site_name_en"
+	SettingKeySiteNameZh                          = "site_name_zh"
+	SettingKeySiteSubtitle                        = "site_subtitle"
+	SettingKeySiteSubtitleEn                      = "site_subtitle_en"
+	SettingKeySiteSubtitleZh                      = "site_subtitle_zh"
+	SettingKeySiteTitleEn                         = "site_title_en"
+	SettingKeySiteTitleZh                         = "site_title_zh"
+	SettingKeyTableDefaultPageSize                = "table_default_page_size"
+	SettingKeyTablePageSizeOptions                = "table_page_size_options"
+	SettingKeyTencentCaptchaAppID                 = "tencent_captcha_app_id"
+	SettingKeyTencentCaptchaEnabled               = "tencent_captcha_enabled"
+	SettingKeyTotpEnabled                         = "totp_enabled"
+	SettingKeyTurnstileEnabled                    = "turnstile_enabled"
+	SettingKeyTurnstileSiteKey                    = "turnstile_site_key"
+	SettingKeyUserEmailChangeEnabled              = "user_email_change_enabled"
+	SettingPaymentEnabled                         = "payment_enabled"
+)
 
 func PublicValueKeys() []string {
-	return []string{SettingKeyAPIBaseURL, SettingKeyAccountQuotaNotifyEnabled, SettingKeyAffiliateEnabled, SettingKeyAliyunCaptchaEnabled, SettingKeyAliyunCaptchaPrefix, SettingKeyAliyunCaptchaSceneID, SettingKeyAllowUserViewErrorRequests, SettingKeyBackendModeEnabled, SettingKeyBalanceIconSVG, SettingKeyBalanceLowNotifyEnabled, SettingKeyBalanceLowNotifyRechargeURL, SettingKeyBalanceLowNotifyThreshold, SettingKeyBalanceUnitName, SettingKeyBalanceUnitSymbol, SettingKeyContactInfo, SettingKeyCreativeEnabled, SettingKeyCustomEndpoints, SettingKeyCustomMenuItems, SettingKeyDocURL, SettingKeyEmailVerifyEnabled, SettingKeyFooterLinks, SettingKeyFooterText, SettingKeyForceEmailOnThirdPartySignup, SettingKeyHideCcsImportButton, SettingKeyHomeContent, SettingKeyHomeFeaturedModels, SettingKeyInvitationCodeEnabled, SettingKeyLoginAgreementDocuments, SettingKeyLoginAgreementEnabled, SettingKeyLoginAgreementMode, SettingKeyLoginAgreementUpdatedAt, SettingKeyPasswordResetEnabled, SettingKeyPromoCodeEnabled, SettingKeyPurchaseSubscriptionEnabled, SettingKeyPurchaseSubscriptionURL, SettingKeyRegistrationEmailDomainQuotaEnabled, SettingKeyRegistrationEnabled, SettingKeyRiskControlEnabled, SettingKeySiteLogo, SettingKeySiteName, SettingKeySiteNameEn, SettingKeySiteNameZh, SettingKeySiteSubtitle, SettingKeySiteSubtitleEn, SettingKeySiteSubtitleZh, SettingKeySiteTitleEn, SettingKeySiteTitleZh, SettingKeyTableDefaultPageSize, SettingKeyTablePageSizeOptions, SettingKeyTencentCaptchaAppID, SettingKeyTencentCaptchaEnabled, SettingKeyTotpEnabled, SettingKeyTurnstileEnabled, SettingKeyTurnstileSiteKey, SettingKeyUserEmailChangeEnabled, SettingPaymentEnabled}
+	return []string{SettingKeyAPIBaseURL, SettingKeyProviderQuotaNotifyEnabled, SettingKeyAffiliateEnabled, SettingKeyAliyunCaptchaEnabled, SettingKeyAliyunCaptchaPrefix, SettingKeyAliyunCaptchaSceneID, SettingKeyAllowUserViewErrorRequests, SettingKeyBackendModeEnabled, SettingKeyBalanceIconSVG, SettingKeyBalanceLowNotifyEnabled, SettingKeyBalanceLowNotifyRechargeURL, SettingKeyBalanceLowNotifyThreshold, SettingKeyBalanceUnitName, SettingKeyBalanceUnitSymbol, SettingKeyContactInfo, SettingKeyCreativeEnabled, SettingKeyCustomEndpoints, SettingKeyCustomMenuItems, SettingKeyDocURL, SettingKeyEmailVerifyEnabled, SettingKeyFooterLinks, SettingKeyFooterText, SettingKeyForceEmailOnThirdPartySignup, SettingKeyHideCcsImportButton, SettingKeyHomeContent, SettingKeyHomeFeaturedModels, SettingKeyInvitationCodeEnabled, SettingKeyLoginAgreementDocuments, SettingKeyLoginAgreementEnabled, SettingKeyLoginAgreementMode, SettingKeyLoginAgreementUpdatedAt, SettingKeyPasswordResetEnabled, SettingKeyPromoCodeEnabled, SettingKeyPurchaseSubscriptionEnabled, SettingKeyPurchaseSubscriptionURL, SettingKeyRegistrationEmailDomainQuotaEnabled, SettingKeyRegistrationEnabled, SettingKeyRiskControlEnabled, SettingKeySiteLogo, SettingKeySiteName, SettingKeySiteNameEn, SettingKeySiteNameZh, SettingKeySiteSubtitle, SettingKeySiteSubtitleEn, SettingKeySiteSubtitleZh, SettingKeySiteTitleEn, SettingKeySiteTitleZh, SettingKeyTableDefaultPageSize, SettingKeyTablePageSizeOptions, SettingKeyTencentCaptchaAppID, SettingKeyTencentCaptchaEnabled, SettingKeyTotpEnabled, SettingKeyTurnstileEnabled, SettingKeyTurnstileSiteKey, SettingKeyUserEmailChangeEnabled, SettingPaymentEnabled}
 }

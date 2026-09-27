@@ -28,12 +28,12 @@ type GroupRepository interface {
 	ListActive(ctx context.Context) ([]Group, error)
 
 	ExistsByName(ctx context.Context, name string) (bool, error)
-	GetAccountCount(ctx context.Context, groupID int64) (total int64, active int64, err error)
-	DeleteAccountGroupsByGroupID(ctx context.Context, groupID int64) (int64, error)
-	// GetAccountIDsByGroupIDs 获取多个分组的所有账号 ID（去重）
-	GetAccountIDsByGroupIDs(ctx context.Context, groupIDs []int64) ([]int64, error)
-	// BindAccountsToGroup 将多个账号绑定到指定分组
-	BindAccountsToGroup(ctx context.Context, groupID int64, accountIDs []int64) error
+	GetProviderCount(ctx context.Context, groupID int64) (total int64, active int64, err error)
+	DeleteProviderGroupsByGroupID(ctx context.Context, groupID int64) (int64, error)
+	// GetProviderIDsByGroupIDs 获取多个分组的所有提供商 ID（去重）
+	GetProviderIDsByGroupIDs(ctx context.Context, groupIDs []int64) ([]int64, error)
+	// BindProvidersToGroup 将多个提供商绑定到指定分组
+	BindProvidersToGroup(ctx context.Context, groupID int64, providerIDs []int64) error
 	// UpdateSortOrders 批量更新分组排序
 	UpdateSortOrders(ctx context.Context, updates []GroupSortOrderUpdate) error
 }
@@ -41,7 +41,7 @@ type GroupRepository interface {
 type GroupDuplicateRepository interface {
 	// FindByDuplicateOperationID 在幂等存储结果不明确时执行只读恢复查询。
 	FindByDuplicateOperationID(ctx context.Context, operationID string) (*Group, error)
-	// CreateFromSource 原子保存分组、源分组账号优先级和调度 outbox 事件。
+	// CreateFromSource 原子保存分组、源分组提供商优先级和调度 outbox 事件。
 	CreateFromSource(ctx context.Context, group *Group, sourceGroupID int64) error
 }
 
@@ -230,10 +230,10 @@ func (s *GroupService) GetStats(ctx context.Context, id int64) (map[string]any, 
 		return nil, fmt.Errorf("get group: %w", err)
 	}
 
-	// 获取账号数量
-	accountCount, _, err := s.groupRepo.GetAccountCount(ctx, id)
+	// 获取提供商数量
+	providerCount, _, err := s.groupRepo.GetProviderCount(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("get account count: %w", err)
+		return nil, fmt.Errorf("get provider count: %w", err)
 	}
 
 	stats := map[string]any{
@@ -242,7 +242,7 @@ func (s *GroupService) GetStats(ctx context.Context, id int64) (map[string]any, 
 		"rate_multiplier": group.RateMultiplier,
 		"is_exclusive":    group.IsExclusive,
 		"status":          group.Status,
-		"account_count":   accountCount,
+		"provider_count":  providerCount,
 	}
 
 	return stats, nil

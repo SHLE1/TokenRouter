@@ -10,39 +10,39 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
 )
 
 const (
-	openAIAccountScheduleLayerPreviousResponse = "previous_response_id"
-	openAIAccountScheduleLayerGuardianParent   = "guardian_parent"
-	openAIAccountScheduleLayerSessionSticky    = "session_hash"
-	openAIAccountScheduleLayerLoadBalance      = "load_balance"
-	openAIAccountSelectionProbeLimit           = 64
+	openAIProviderScheduleLayerPreviousResponse = "previous_response_id"
+	openAIProviderScheduleLayerGuardianParent   = "guardian_parent"
+	openAIProviderScheduleLayerSessionSticky    = "session_hash"
+	openAIProviderScheduleLayerLoadBalance      = "load_balance"
+	openAIProviderSelectionProbeLimit           = 64
 )
 
 type PlatformSelectionInput struct {
-	GroupID                 *int64
-	Platform                string
-	SessionHash             string
-	StickyAccountID         int64
-	GuardianParentAccountID int64
-	StickyPreviousAccountID int64
-	StickyWeighted          bool
-	SubscriptionPriority    bool
-	PreserveStickyBinding   bool
-	RequirePrivacySet       bool
-	PreviousResponseID      string
-	PreviousResponseCanMove bool
-	RequestedModel          string // 客户端请求模型 R，用于限制、错误和会话语义。
-	RoutingModel            string // 账号层模型：普通请求为 C，Messages 为分组映射后的 D。
-	RequiredTransport       string
-	RequiredCapability      account.OpenAIEndpointCapability
-	RequiredImageCapability account.OpenAIImagesCapability
-	RequireCompact          bool
-	ExcludedIDs             map[int64]struct{}
+	GroupID                  *int64
+	Platform                 string
+	SessionHash              string
+	StickyProviderID         int64
+	GuardianParentProviderID int64
+	StickyPreviousProviderID int64
+	StickyWeighted           bool
+	SubscriptionPriority     bool
+	PreserveStickyBinding    bool
+	RequirePrivacySet        bool
+	PreviousResponseID       string
+	PreviousResponseCanMove  bool
+	RequestedModel           string // 客户端请求模型 R，用于限制、错误和会话语义。
+	RoutingModel             string // 提供商层模型：普通请求为 C，Messages 为分组映射后的 D。
+	RequiredTransport        string
+	RequiredCapability       provider.OpenAIEndpointCapability
+	RequiredImageCapability  provider.OpenAIImagesCapability
+	RequireCompact           bool
+	ExcludedIDs              map[int64]struct{}
 	// AdvancedSchedulerFeedbackConfig 与 StickyEscapeConfig 固定本次请求使用的有效策略。
 	AdvancedSchedulerFeedbackConfig policy.FeedbackConfig
 	StickyEscapeConfig              policy.StickyEscapeConfig
@@ -56,35 +56,35 @@ func (r PlatformSelectionInput) routingModel() string {
 }
 
 type PlatformDecision struct {
-	Layer               string
-	StickyPreviousHit   bool
-	StickySessionHit    bool
-	CandidateCount      int
-	TopK                int
-	LatencyMs           int64
-	LoadSkew            float64
-	SelectedAccountID   int64
-	SelectedAccountType string
+	Layer                string
+	StickyPreviousHit    bool
+	StickySessionHit     bool
+	CandidateCount       int
+	TopK                 int
+	LatencyMs            int64
+	LoadSkew             float64
+	SelectedProviderID   int64
+	SelectedProviderType string
 }
 type PlatformMetricsSnapshot struct {
-	SelectTotal              int64
-	StickyPreviousHitTotal   int64
-	StickySessionHitTotal    int64
-	LoadBalanceSelectTotal   int64
-	AccountSwitchTotal       int64
-	SchedulerLatencyMsTotal  int64
-	SchedulerLatencyMsAvg    float64
-	StickyHitRatio           float64
-	AccountSwitchRate        float64
-	LoadSkewAvg              float64
-	RuntimeStatsAccountCount int
+	SelectTotal               int64
+	StickyPreviousHitTotal    int64
+	StickySessionHitTotal     int64
+	LoadBalanceSelectTotal    int64
+	ProviderSwitchTotal       int64
+	SchedulerLatencyMsTotal   int64
+	SchedulerLatencyMsAvg     float64
+	StickyHitRatio            float64
+	ProviderSwitchRate        float64
+	LoadSkewAvg               float64
+	RuntimeStatsProviderCount int
 }
 type PlatformMetrics struct {
 	selectTotal            atomic.Int64
 	stickyPreviousHitTotal atomic.Int64
 	stickySessionHitTotal  atomic.Int64
 	loadBalanceSelectTotal atomic.Int64
-	accountSwitchTotal     atomic.Int64
+	providerSwitchTotal    atomic.Int64
 	latencyMsTotal         atomic.Int64
 	loadSkewMilliTotal     atomic.Int64
 }
@@ -102,7 +102,7 @@ func (m *PlatformMetrics) RecordSelect(decision PlatformDecision) {
 	if decision.StickySessionHit {
 		m.stickySessionHitTotal.Add(1)
 	}
-	if decision.Layer == openAIAccountScheduleLayerLoadBalance {
+	if decision.Layer == openAIProviderScheduleLayerLoadBalance {
 		m.loadBalanceSelectTotal.Add(1)
 	}
 }
@@ -111,10 +111,10 @@ func (m *PlatformMetrics) RecordSwitch() {
 	if m == nil {
 		return
 	}
-	m.accountSwitchTotal.Add(1)
+	m.providerSwitchTotal.Add(1)
 }
 
-func (m *PlatformMetrics) Snapshot(accountCount int) PlatformMetricsSnapshot {
+func (m *PlatformMetrics) Snapshot(providerCount int) PlatformMetricsSnapshot {
 	if m == nil {
 		return PlatformMetricsSnapshot{}
 	}
@@ -122,23 +122,23 @@ func (m *PlatformMetrics) Snapshot(accountCount int) PlatformMetricsSnapshot {
 	selectTotal := m.selectTotal.Load()
 	prevHit := m.stickyPreviousHitTotal.Load()
 	sessionHit := m.stickySessionHitTotal.Load()
-	switchTotal := m.accountSwitchTotal.Load()
+	switchTotal := m.providerSwitchTotal.Load()
 	latencyTotal := m.latencyMsTotal.Load()
 	loadSkewTotal := m.loadSkewMilliTotal.Load()
 
 	snapshot := PlatformMetricsSnapshot{
-		SelectTotal:              selectTotal,
-		StickyPreviousHitTotal:   prevHit,
-		StickySessionHitTotal:    sessionHit,
-		LoadBalanceSelectTotal:   m.loadBalanceSelectTotal.Load(),
-		AccountSwitchTotal:       switchTotal,
-		SchedulerLatencyMsTotal:  latencyTotal,
-		RuntimeStatsAccountCount: accountCount,
+		SelectTotal:               selectTotal,
+		StickyPreviousHitTotal:    prevHit,
+		StickySessionHitTotal:     sessionHit,
+		LoadBalanceSelectTotal:    m.loadBalanceSelectTotal.Load(),
+		ProviderSwitchTotal:       switchTotal,
+		SchedulerLatencyMsTotal:   latencyTotal,
+		RuntimeStatsProviderCount: providerCount,
 	}
 	if selectTotal > 0 {
 		snapshot.SchedulerLatencyMsAvg = float64(latencyTotal) / float64(selectTotal)
 		snapshot.StickyHitRatio = float64(prevHit+sessionHit) / float64(selectTotal)
-		snapshot.AccountSwitchRate = float64(switchTotal) / float64(selectTotal)
+		snapshot.ProviderSwitchRate = float64(switchTotal) / float64(selectTotal)
 		snapshot.LoadSkewAvg = float64(loadSkewTotal) / 1000 / float64(selectTotal)
 	}
 	return snapshot
@@ -161,21 +161,21 @@ func (b *ProbeBudget) enableLimit() {
 	}
 }
 
-func (b *ProbeBudget) recordAcquire(accountID int64) bool {
+func (b *ProbeBudget) recordAcquire(providerID int64) bool {
 	if b == nil {
 		return false
 	}
 	if !b.limited {
 		return true
 	}
-	if b.acquires >= openAIAccountSelectionProbeLimit {
+	if b.acquires >= openAIProviderSelectionProbeLimit {
 		return false
 	}
 	if b.attempted == nil {
 		b.attempted = make(map[int64]struct{})
 	}
 	b.acquires++
-	b.attempted[accountID] = struct{}{}
+	b.attempted[providerID] = struct{}{}
 	return true
 }
 
@@ -186,7 +186,7 @@ func (b *ProbeBudget) recordRecheck() bool {
 	if !b.limited {
 		return true
 	}
-	if b.rechecks >= openAIAccountSelectionProbeLimit {
+	if b.rechecks >= openAIProviderSelectionProbeLimit {
 		return false
 	}
 	b.rechecks++
@@ -194,21 +194,21 @@ func (b *ProbeBudget) recordRecheck() bool {
 }
 
 func (b *ProbeBudget) acquireExhausted() bool {
-	return b != nil && b.limited && b.acquires >= openAIAccountSelectionProbeLimit
+	return b != nil && b.limited && b.acquires >= openAIProviderSelectionProbeLimit
 }
 
-func (b *ProbeBudget) wasAttempted(accountID int64) bool {
+func (b *ProbeBudget) wasAttempted(providerID int64) bool {
 	if b == nil {
 		return false
 	}
-	_, ok := b.attempted[accountID]
+	_, ok := b.attempted[providerID]
 	return ok
 }
 
 // PlatformCandidateScore 使用同一评分结果，仅保留本次候选的无凭据关联。
 type PlatformCandidateScore struct {
-	Account                                                          *FlowAccount
-	LoadInfo                                                         *AccountLoadInfo
+	Provider                                                         *FlowProvider
+	LoadInfo                                                         *ProviderLoadInfo
 	LoadKnown                                                        bool
 	Score, BaseScore, StickyBonus, PreviousBonus, SessionStickyBonus float64
 	Priority                                                         int
@@ -222,53 +222,53 @@ type PlatformCandidateScore struct {
 type PlatformSelectionPorts struct {
 	BasicStickyTTL       time.Duration
 	CheckPricing         func(context.Context, *int64, string) bool
-	Hydrate              func(context.Context, *FlowAccount) (*FlowAccount, error)
+	Hydrate              func(context.Context, *FlowProvider) (*FlowProvider, error)
 	SetSticky            func(context.Context, *int64, string, int64, time.Duration) error
-	PrivacyAllowed       func(context.Context, *int64, *FlowAccount) bool
-	ShadowAllowed        func(context.Context, *FlowAccount) bool
-	ParentHealthy        func(*FlowAccount, func(int64) *FlowAccount) bool
-	ParentLookup         func(context.Context) func(int64) *FlowAccount
-	ReadAccountDB        func(context.Context, int64) (*FlowAccount, error)
+	PrivacyAllowed       func(context.Context, *int64, *FlowProvider) bool
+	ShadowAllowed        func(context.Context, *FlowProvider) bool
+	ParentHealthy        func(*FlowProvider, func(int64) *FlowProvider) bool
+	ParentLookup         func(context.Context) func(int64) *FlowProvider
+	ReadProviderDB       func(context.Context, int64) (*FlowProvider, error)
 	NeedsGroupCheck      func(context.Context, *int64) bool
-	GroupModelRestricted func(context.Context, int64, *FlowAccount, string, bool) bool
-	BasicEligible        func(context.Context, *FlowAccount, string, string, bool, account.OpenAIEndpointCapability) bool
-	BasicFailureReason   func(context.Context, *FlowAccount, string, string, bool, account.OpenAIEndpointCapability) string
-	CompleteAcquired     func(context.Context, *FlowAccount, func()) (*FlowSelection, error)
-	Complete             func(context.Context, *FlowAccount, bool, func(), *AccountWaitPlan) (*FlowSelection, error)
+	GroupModelRestricted func(context.Context, int64, *FlowProvider, string, bool) bool
+	BasicEligible        func(context.Context, *FlowProvider, string, string, bool, provider.OpenAIEndpointCapability) bool
+	BasicFailureReason   func(context.Context, *FlowProvider, string, string, bool, provider.OpenAIEndpointCapability) string
+	CompleteAcquired     func(context.Context, *FlowProvider, func()) (*FlowSelection, error)
+	Complete             func(context.Context, *FlowProvider, bool, func(), *ProviderWaitPlan) (*FlowSelection, error)
 
 	Available, CacheAvailable, SnapshotAvailable, RecheckAvailable bool
 	Effective                                                      func(context.Context, *int64) policy.EffectiveSettings
 	GroupRequiresPrivacy                                           func(context.Context, *int64) bool
-	PreviousResponse                                               func(context.Context, *int64, string, string, map[int64]struct{}, account.OpenAIEndpointCapability, bool) (*FlowSelection, error)
-	RequestCompatible                                              func(context.Context, *FlowAccount, PlatformSelectionInput) (bool, string)
-	TransportCompatible                                            func(*FlowAccount, string) bool
-	HasGroupMetadata                                               func(*FlowAccount) bool
-	MatchesGroup                                                   func(*FlowAccount, *int64) bool
+	PreviousResponse                                               func(context.Context, *int64, string, string, map[int64]struct{}, provider.OpenAIEndpointCapability, bool) (*FlowSelection, error)
+	RequestCompatible                                              func(context.Context, *FlowProvider, PlatformSelectionInput) (bool, string)
+	TransportCompatible                                            func(*FlowProvider, string) bool
+	HasGroupMetadata                                               func(*FlowProvider) bool
+	MatchesGroup                                                   func(*FlowProvider, *int64) bool
 	BindSticky                                                     func(context.Context, *int64, string, int64) error
 	DeleteSticky                                                   func(context.Context, *int64, string) error
 	GetSticky                                                      func(context.Context, *int64, string) (int64, error)
 	RefreshSticky                                                  func(context.Context, *int64, string, time.Duration) error
 	StickyTTL                                                      func() time.Duration
 	Options                                                        func() FlowOptions
-	GetSchedulable                                                 func(context.Context, int64) (*FlowAccount, error)
-	ClearSticky                                                    func(*FlowAccount, string) bool
-	IsCompatible                                                   func(*FlowAccount) bool
-	IsSchedulable                                                  func(*FlowAccount) bool
-	Recheck                                                        func(context.Context, *FlowAccount, *int64, string, string, bool, account.OpenAIEndpointCapability) *FlowAccount
-	Fresh                                                          func(context.Context, *FlowAccount, string, string, bool, account.OpenAIEndpointCapability) *FlowAccount
-	FreeQuota                                                      func(context.Context, []FlowAccount) []FlowAccount
-	CanonicalModel                                                 func(*FlowAccount, string) string
-	TeamLimited                                                    func(*FlowAccount, string, time.Time) bool
+	GetSchedulable                                                 func(context.Context, int64) (*FlowProvider, error)
+	ClearSticky                                                    func(*FlowProvider, string) bool
+	IsCompatible                                                   func(*FlowProvider) bool
+	IsSchedulable                                                  func(*FlowProvider) bool
+	Recheck                                                        func(context.Context, *FlowProvider, *int64, string, string, bool, provider.OpenAIEndpointCapability) *FlowProvider
+	Fresh                                                          func(context.Context, *FlowProvider, string, string, bool, provider.OpenAIEndpointCapability) *FlowProvider
+	FreeQuota                                                      func(context.Context, []FlowProvider) []FlowProvider
+	CanonicalModel                                                 func(*FlowProvider, string) string
+	TeamLimited                                                    func(*FlowProvider, string, time.Time) bool
 	ModelQuotaBlocked                                              func(int64, string, time.Time) bool
 	Acquire                                                        func(context.Context, int64, int) (*AcquireResult, error)
-	ListCandidates                                                 func(context.Context, *int64, string) ([]FlowAccount, error)
-	RuntimeBlocked                                                 func(*FlowAccount, string) bool
-	FilterTeamLimited                                              func([]FlowAccount, string, time.Time) []FlowAccount
-	FilterModelQuota                                               func([]FlowAccount, string, time.Time) []FlowAccount
-	CompactAllowed                                                 func(*FlowAccount) bool
-	IsSubscription                                                 func(*FlowAccount) bool
-	QuotaHeadroom                                                  func(*ScoreAccount, time.Time) float64
-	Unavailable                                                    func(context.Context, string, string, bool, string, ...[]FlowAccount) error
+	ListCandidates                                                 func(context.Context, *int64, string) ([]FlowProvider, error)
+	RuntimeBlocked                                                 func(*FlowProvider, string) bool
+	FilterTeamLimited                                              func([]FlowProvider, string, time.Time) []FlowProvider
+	FilterModelQuota                                               func([]FlowProvider, string, time.Time) []FlowProvider
+	CompactAllowed                                                 func(*FlowProvider) bool
+	IsSubscription                                                 func(*FlowProvider) bool
+	QuotaHeadroom                                                  func(*ScoreProvider, time.Time) float64
+	Unavailable                                                    func(context.Context, string, string, bool, string, ...[]FlowProvider) error
 }
 
 // PlatformSelector 复用同一个反馈与计数实例，按次创建的端口只持有请求内投影。
@@ -285,9 +285,9 @@ func NewPlatformSelector(ports PlatformSelectionPorts, concurrency *ConcurrencyS
 	return &PlatformSelector{ports: ports, concurrency: concurrency, stats: stats, metrics: metrics, diagnostics: diagnostics, now: now}
 }
 
-var ErrNoAvailableCompactAccounts = errors.New("no available accounts support /responses/compact")
+var ErrNoAvailableCompactProviders = errors.New("no available providers support /responses/compact")
 
-func (s *PlatformSelector) requestCompatible(ctx context.Context, a *FlowAccount, input PlatformSelectionInput) bool {
+func (s *PlatformSelector) requestCompatible(ctx context.Context, a *FlowProvider, input PlatformSelectionInput) bool {
 	ok, _ := s.ports.RequestCompatible(ctx, a, input)
 	return ok
 }
@@ -396,41 +396,41 @@ func (s *PlatformSelector) Select(
 		if err != nil {
 			return nil, decision, err
 		}
-		if selection != nil && selection.Account != nil {
-			compatible, _ := s.ports.RequestCompatible(ctx, selection.Account, req)
-			groupCompatible := s.ports.MatchesGroup(selection.Account, req.GroupID)
-			if !groupCompatible || !compatible || !s.ports.TransportCompatible(selection.Account, req.RequiredTransport) {
+		if selection != nil && selection.Provider != nil {
+			compatible, _ := s.ports.RequestCompatible(ctx, selection.Provider, req)
+			groupCompatible := s.ports.MatchesGroup(selection.Provider, req.GroupID)
+			if !groupCompatible || !compatible || !s.ports.TransportCompatible(selection.Provider, req.RequiredTransport) {
 				if selection.ReleaseFunc != nil {
 					selection.ReleaseFunc()
 				}
 				selection = nil
 			}
 		}
-		if selection != nil && selection.Account != nil {
-			decision.Layer = openAIAccountScheduleLayerPreviousResponse
+		if selection != nil && selection.Provider != nil {
+			decision.Layer = openAIProviderScheduleLayerPreviousResponse
 			decision.StickyPreviousHit = true
-			decision.SelectedAccountID = selection.Account.ID
-			decision.SelectedAccountType = selection.Account.Type
+			decision.SelectedProviderID = selection.Provider.ID
+			decision.SelectedProviderType = selection.Provider.Type
 			if req.SessionHash != "" {
-				_ = s.ports.BindSticky(ctx, req.GroupID, req.SessionHash, selection.Account.ID)
+				_ = s.ports.BindSticky(ctx, req.GroupID, req.SessionHash, selection.Provider.ID)
 			}
 			return selection, decision, nil
 		}
 	}
 
-	if req.GuardianParentAccountID > 0 {
+	if req.GuardianParentProviderID > 0 {
 		parentReq := req
-		parentReq.StickyAccountID = req.GuardianParentAccountID
+		parentReq.StickyProviderID = req.GuardianParentProviderID
 		parentReq.PreserveStickyBinding = true
 		selection, _, err := s.SelectBySessionHash(ctx, parentReq)
 		if err != nil {
 			return nil, decision, err
 		}
-		if selection != nil && selection.Account != nil {
-			decision.Layer = openAIAccountScheduleLayerGuardianParent
+		if selection != nil && selection.Provider != nil {
+			decision.Layer = openAIProviderScheduleLayerGuardianParent
 			decision.StickySessionHit = true
-			decision.SelectedAccountID = selection.Account.ID
-			decision.SelectedAccountType = selection.Account.Type
+			decision.SelectedProviderID = selection.Provider.ID
+			decision.SelectedProviderType = selection.Provider.Type
 			return selection, decision, nil
 		}
 	}
@@ -440,11 +440,11 @@ func (s *PlatformSelector) Select(
 		if err != nil {
 			return nil, decision, err
 		}
-		if selection != nil && selection.Account != nil {
-			decision.Layer = openAIAccountScheduleLayerSessionSticky
+		if selection != nil && selection.Provider != nil {
+			decision.Layer = openAIProviderScheduleLayerSessionSticky
 			decision.StickySessionHit = true
-			decision.SelectedAccountID = selection.Account.ID
-			decision.SelectedAccountType = selection.Account.Type
+			decision.SelectedProviderID = selection.Provider.ID
+			decision.SelectedProviderType = selection.Provider.Type
 			return selection, decision, nil
 		}
 		if escapedSticky {
@@ -453,21 +453,21 @@ func (s *PlatformSelector) Select(
 	}
 
 	selection, candidateCount, topK, loadSkew, err := s.SelectByLoadBalance(ctx, req)
-	decision.Layer = openAIAccountScheduleLayerLoadBalance
+	decision.Layer = openAIProviderScheduleLayerLoadBalance
 	decision.CandidateCount = candidateCount
 	decision.TopK = topK
 	decision.LoadSkew = loadSkew
 	if err != nil {
 		return nil, decision, err
 	}
-	if selection != nil && selection.Account != nil {
-		decision.SelectedAccountID = selection.Account.ID
-		decision.SelectedAccountType = selection.Account.Type
+	if selection != nil && selection.Provider != nil {
+		decision.SelectedProviderID = selection.Provider.ID
+		decision.SelectedProviderType = selection.Provider.Type
 		if req.StickyWeighted {
-			if req.StickyPreviousAccountID > 0 && selection.Account.ID == req.StickyPreviousAccountID {
+			if req.StickyPreviousProviderID > 0 && selection.Provider.ID == req.StickyPreviousProviderID {
 				decision.StickyPreviousHit = true
 			}
-			if req.StickyAccountID > 0 && selection.Account.ID == req.StickyAccountID {
+			if req.StickyProviderID > 0 && selection.Provider.ID == req.StickyProviderID {
 				decision.StickySessionHit = true
 			}
 		}
@@ -489,78 +489,78 @@ func (s *PlatformSelector) SelectBySessionHash(
 			_ = s.ports.DeleteSticky(ctx, req.GroupID, sessionHash)
 		}
 	}
-	accountID := req.StickyAccountID
-	if accountID <= 0 {
+	providerID := req.StickyProviderID
+	if providerID <= 0 {
 		var err error
-		accountID, err = s.ports.GetSticky(ctx, req.GroupID, sessionHash)
-		if err != nil || accountID <= 0 {
+		providerID, err = s.ports.GetSticky(ctx, req.GroupID, sessionHash)
+		if err != nil || providerID <= 0 {
 			return nil, false, nil
 		}
 	}
-	if accountID <= 0 {
+	if providerID <= 0 {
 		return nil, false, nil
 	}
 	if req.ExcludedIDs != nil {
-		if _, excluded := req.ExcludedIDs[accountID]; excluded {
+		if _, excluded := req.ExcludedIDs[providerID]; excluded {
 			return nil, false, nil
 		}
 	}
 
-	account, err := s.ports.GetSchedulable(ctx, accountID)
-	if err != nil || account == nil {
+	provider, err := s.ports.GetSchedulable(ctx, providerID)
+	if err != nil || provider == nil {
 		clearBinding()
 		return nil, false, nil
 	}
-	if !s.ports.MatchesGroup(account, req.GroupID) || s.ports.ClearSticky(account, req.routingModel()) || req.Platform != "" && account.Platform != strings.TrimSpace(req.Platform) || !s.ports.IsCompatible(account) || !s.ports.IsSchedulable(account) {
+	if !s.ports.MatchesGroup(provider, req.GroupID) || s.ports.ClearSticky(provider, req.routingModel()) || req.Platform != "" && provider.Platform != strings.TrimSpace(req.Platform) || !s.ports.IsCompatible(provider) || !s.ports.IsSchedulable(provider) {
 		clearBinding()
 		return nil, false, nil
 	}
-	if !s.requestCompatible(ctx, account, req) {
+	if !s.requestCompatible(ctx, provider, req) {
 		return nil, false, nil
 	}
-	if !s.ports.TransportCompatible(account, req.RequiredTransport) {
+	if !s.ports.TransportCompatible(provider, req.RequiredTransport) {
 		clearBinding()
 		return nil, false, nil
 	}
-	account = s.ports.Recheck(ctx, account, req.GroupID, req.Platform, req.routingModel(), req.RequireCompact, req.RequiredCapability)
-	if account == nil || !s.ports.MatchesGroup(account, req.GroupID) || !s.ports.TransportCompatible(account, req.RequiredTransport) {
+	provider = s.ports.Recheck(ctx, provider, req.GroupID, req.Platform, req.routingModel(), req.RequireCompact, req.RequiredCapability)
+	if provider == nil || !s.ports.MatchesGroup(provider, req.GroupID) || !s.ports.TransportCompatible(provider, req.RequiredTransport) {
 		clearBinding()
 		return nil, false, nil
 	}
-	// 免费层软性门禁：粘性会话不得固定到已超额的免费 OAuth 账号。
+	// 免费层软性门禁：粘性会话不得固定到已超额的免费 OAuth 提供商。
 	// 管理端额度查询与导入探测不经过此路径。
-	if account != nil && len(s.ports.FreeQuota(ctx, []FlowAccount{*account})) == 0 {
+	if provider != nil && len(s.ports.FreeQuota(ctx, []FlowProvider{*provider})) == 0 {
 		clearBinding()
 		return nil, false, nil
 	}
-	// 团队与模型冷却：粘性会话不得固定到同团队中仍处于 429 窗口的关联账号。
+	// 团队与模型冷却：粘性会话不得固定到同团队中仍处于 429 窗口的关联提供商。
 	now := s.now()
-	upstreamModel := s.ports.CanonicalModel(account, req.RequestedModel)
-	if account != nil && s.ports.TeamLimited(account, upstreamModel, now) {
+	upstreamModel := s.ports.CanonicalModel(provider, req.RequestedModel)
+	if provider != nil && s.ports.TeamLimited(provider, upstreamModel, now) {
 		clearBinding()
 		return nil, false, nil
 	}
-	if account != nil && s.ports.ModelQuotaBlocked(account.ID, upstreamModel, now) {
+	if provider != nil && s.ports.ModelQuotaBlocked(provider.ID, upstreamModel, now) {
 		clearBinding()
 		return nil, false, nil
 	}
 	escapeCfg := policy.NormalizeStickyEscape(req.StickyEscapeConfig)
-	if reason, errorRate, ttft, shouldEscape := ShouldEscapeSticky(s.stats, accountID, escapeCfg); shouldEscape {
+	if reason, errorRate, ttft, shouldEscape := ShouldEscapeSticky(s.stats, providerID, escapeCfg); shouldEscape {
 		s.diagnostics.event("info", "sticky_escape_triggered",
-			"account_id", accountID,
+			"provider_id", providerID,
 			"reason", reason,
 			"error_rate", errorRate,
 			"ttft", ttft,
 		)
 		return nil, true, nil
 	}
-	result, acquireErr := s.ports.Acquire(ctx, accountID, account.Concurrency)
+	result, acquireErr := s.ports.Acquire(ctx, providerID, provider.Concurrency)
 	if acquireErr == nil && result != nil && result.Acquired {
 		if !req.PreserveStickyBinding {
 			_ = s.ports.RefreshSticky(ctx, req.GroupID, sessionHash, s.ports.StickyTTL())
 		}
 		return &FlowSelection{
-			Account:     account,
+			Provider:    provider,
 			Acquired:    true,
 			ReleaseFunc: result.ReleaseFunc,
 			AdvancedSchedulerFeedback: func() *policy.FeedbackConfig {
@@ -574,9 +574,9 @@ func (s *PlatformSelector) SelectBySessionHash(
 	// WaitPlan.MaxConcurrency 使用 Concurrency（非 EffectiveLoadFactor），因为 WaitPlan 控制的是 Redis 实际并发槽位等待。
 	if s.concurrency != nil {
 		if escapeCfg.Enabled && acquireErr == nil && result != nil && !result.Acquired {
-			errorRate, ttft, _ := s.stats.Snapshot(accountID)
+			errorRate, ttft, _ := s.stats.Snapshot(providerID)
 			s.diagnostics.event("info", "sticky_escape_triggered",
-				"account_id", accountID,
+				"provider_id", providerID,
 				"reason", "concurrency_full",
 				"error_rate", errorRate,
 				"ttft", ttft,
@@ -584,10 +584,10 @@ func (s *PlatformSelector) SelectBySessionHash(
 			return nil, true, nil
 		}
 		return &FlowSelection{
-			Account: account,
-			WaitPlan: &AccountWaitPlan{
-				AccountID:      accountID,
-				MaxConcurrency: account.Concurrency,
+			Provider: provider,
+			WaitPlan: &ProviderWaitPlan{
+				ProviderID:     providerID,
+				MaxConcurrency: provider.Concurrency,
 				Timeout:        cfg.StickySessionWaitTimeout,
 				MaxWaiting:     cfg.StickySessionMaxWaiting,
 			},
@@ -603,22 +603,22 @@ func (s *PlatformSelector) SelectBySessionHash(
 func (s *PlatformSelector) BuildPlan(
 	ctx context.Context,
 	req PlatformSelectionInput,
-	filtered []*FlowAccount,
-	loadMap map[int64]*AccountLoadInfo,
+	filtered []*FlowProvider,
+	loadMap map[int64]*ProviderLoadInfo,
 ) PlatformLoadPlan {
 	allCandidates := make([]PlatformCandidateScore, 0, len(filtered))
-	for _, account := range filtered {
-		loadInfo, loadKnown := loadMap[account.ID]
+	for _, provider := range filtered {
+		loadInfo, loadKnown := loadMap[provider.ID]
 		if !loadKnown || loadInfo == nil {
-			loadInfo = &AccountLoadInfo{AccountID: account.ID}
+			loadInfo = &ProviderLoadInfo{ProviderID: provider.ID}
 			loadKnown = false
 		}
 		errorRate, ttft, hasTTFT := 0.0, 0.0, false
 		if s.stats != nil {
-			errorRate, ttft, hasTTFT = s.stats.Snapshot(account.ID)
+			errorRate, ttft, hasTTFT = s.stats.Snapshot(provider.ID)
 		}
 		allCandidates = append(allCandidates, PlatformCandidateScore{
-			Account:   account,
+			Provider:  provider,
 			LoadInfo:  loadInfo,
 			LoadKnown: loadKnown,
 			ErrorRate: errorRate,
@@ -632,7 +632,7 @@ func (s *PlatformSelector) BuildPlan(
 	if req.RequireCompact {
 		candidates = make([]PlatformCandidateScore, 0, len(allCandidates))
 		for _, candidate := range allCandidates {
-			if !s.ports.CompactAllowed(candidate.Account) {
+			if !s.ports.CompactAllowed(candidate.Provider) {
 				staleSnapshotCompactRetry = append(staleSnapshotCompactRetry, candidate)
 				continue
 			}
@@ -651,31 +651,31 @@ func (s *PlatformSelector) BuildPlan(
 		return plan
 	}
 
-	accounts := make([]*FlowAccount, 0, len(candidates))
+	providers := make([]*FlowProvider, 0, len(candidates))
 	for _, candidate := range candidates {
-		if candidate.Account != nil {
-			accounts = append(accounts, candidate.Account)
+		if candidate.Provider != nil {
+			providers = append(providers, candidate.Provider)
 		}
 	}
-	previousStickyAccountID := req.StickyPreviousAccountID
+	previousStickyProviderID := req.StickyPreviousProviderID
 	if !req.PreviousResponseCanMove {
-		previousStickyAccountID = 0
+		previousStickyProviderID = 0
 	}
 	effectiveSettings := s.ports.Effective(ctx, req.GroupID)
 	plan.candidates, plan.loadSkew = s.scoreCandidates(
-		accounts,
+		providers,
 		loadMap,
 		s.stats,
 		effectiveSettings.Weights,
 		ScoreInput{
-			GroupID:                 req.GroupID,
-			SessionHash:             req.SessionHash,
-			PreviousResponseID:      req.PreviousResponseID,
-			RequestedModel:          req.RequestedModel,
-			StickyAccountID:         req.StickyAccountID,
-			StickyPreviousAccountID: previousStickyAccountID,
-			StickyWeighted:          req.StickyWeighted,
-			QuotaHeadroomFactor:     s.ports.QuotaHeadroom,
+			GroupID:                  req.GroupID,
+			SessionHash:              req.SessionHash,
+			PreviousResponseID:       req.PreviousResponseID,
+			RequestedModel:           req.RequestedModel,
+			StickyProviderID:         req.StickyProviderID,
+			StickyPreviousProviderID: previousStickyProviderID,
+			StickyWeighted:           req.StickyWeighted,
+			QuotaHeadroomFactor:      s.ports.QuotaHeadroom,
 		},
 		s.now(),
 	)
@@ -725,105 +725,105 @@ func (s *PlatformSelector) SelectByLoadBalance(
 	req PlatformSelectionInput,
 ) (*FlowSelection, int, int, float64, error) {
 	budget := NewProbeBudget()
-	accounts, err := s.ports.ListCandidates(ctx, req.GroupID, req.Platform)
+	providers, err := s.ports.ListCandidates(ctx, req.GroupID, req.Platform)
 	if err != nil {
 		return nil, 0, 0, 0, err
 	}
-	if len(accounts) == 0 {
-		return nil, 0, 0, 0, s.ports.Unavailable(ctx, req.RequestedModel, req.routingModel(), false, PlatformFilterStats{}.Summary(""), accounts)
+	if len(providers) == 0 {
+		return nil, 0, 0, 0, s.ports.Unavailable(ctx, req.RequestedModel, req.routingModel(), false, PlatformFilterStats{}.Summary(""), providers)
 	}
 	// 本地免费层软性门禁仅应用于 Grok 调度路径，不影响管理端探测。
-	accounts = s.ports.FreeQuota(ctx, accounts)
-	if len(accounts) == 0 {
+	providers = s.ports.FreeQuota(ctx, providers)
+	if len(providers) == 0 {
 		return nil, 0, 0, 0, s.ports.Unavailable(ctx, req.RequestedModel, req.routingModel(), false, PlatformFilterStats{}.Summary("grok_free_quota_soft_gate"))
 	}
-	// 团队与模型限流冷却：发生 429 的团队关联账号跳过热点模型。
+	// 团队与模型限流冷却：发生 429 的团队关联提供商跳过热点模型。
 	if req.Platform == "" || req.Platform == capability.PlatformGrok {
 		now := s.now()
-		filtered := s.ports.FilterTeamLimited(accounts, req.RequestedModel, now)
-		if len(filtered) == 0 && len(accounts) > 0 {
+		filtered := s.ports.FilterTeamLimited(providers, req.RequestedModel, now)
+		if len(filtered) == 0 && len(providers) > 0 {
 			return nil, 0, 0, 0, s.ports.Unavailable(ctx, req.RequestedModel, req.routingModel(), false, PlatformFilterStats{}.Summary("grok_team_model_rate_limit"))
 		}
 		if filtered != nil {
-			accounts = filtered
+			providers = filtered
 		}
-		// 按账号和模型执行免费额度软性阻断，其他模型仍可参与调度。
-		modelFiltered := s.ports.FilterModelQuota(accounts, req.RequestedModel, now)
-		if len(modelFiltered) == 0 && len(accounts) > 0 {
+		// 按提供商和模型执行免费额度软性阻断，其他模型仍可参与调度。
+		modelFiltered := s.ports.FilterModelQuota(providers, req.RequestedModel, now)
+		if len(modelFiltered) == 0 && len(providers) > 0 {
 			return nil, 0, 0, 0, s.ports.Unavailable(ctx, req.RequestedModel, req.routingModel(), false, PlatformFilterStats{}.Summary("grok_model_quota_block"))
 		}
-		accounts = modelFiltered
+		providers = modelFiltered
 	}
 
-	filterStats := PlatformFilterStats{Pool: len(accounts)}
-	filtered := make([]*FlowAccount, 0, len(accounts))
-	loadReq := make([]AccountWithConcurrency, 0, len(accounts))
-	for i := range accounts {
-		account := &accounts[i]
+	filterStats := PlatformFilterStats{Pool: len(providers)}
+	filtered := make([]*FlowProvider, 0, len(providers))
+	loadReq := make([]ProviderWithConcurrency, 0, len(providers))
+	for i := range providers {
+		provider := &providers[i]
 		if req.ExcludedIDs != nil {
-			if _, excluded := req.ExcludedIDs[account.ID]; excluded {
+			if _, excluded := req.ExcludedIDs[provider.ID]; excluded {
 				filterStats.Exclude("excluded")
 				continue
 			}
 		}
-		if !s.ports.MatchesGroup(account, req.GroupID) {
+		if !s.ports.MatchesGroup(provider, req.GroupID) {
 			filterStats.Exclude("group_mismatch")
 			continue
 		}
-		if !s.ports.IsSchedulable(account) {
+		if !s.ports.IsSchedulable(provider) {
 			filterStats.Exclude("not_schedulable")
 			continue
 		}
-		if req.Platform != "" && account.Platform != strings.TrimSpace(req.Platform) || !s.ports.IsCompatible(account) {
+		if req.Platform != "" && provider.Platform != strings.TrimSpace(req.Platform) || !s.ports.IsCompatible(provider) {
 			filterStats.Exclude("platform_mismatch")
 			continue
 		}
-		if s.ports.RuntimeBlocked(account, req.routingModel()) {
+		if s.ports.RuntimeBlocked(provider, req.routingModel()) {
 			filterStats.Exclude("runtime_blocked")
 			continue
 		}
-		// 隐私要求是当前分组的资格门，不修改共享账号状态，避免影响其它分组。
-		if req.RequirePrivacySet && !account.IsPrivacySet() {
+		// 隐私要求是当前分组的资格门，不修改共享提供商状态，避免影响其它分组。
+		if req.RequirePrivacySet && !provider.IsPrivacySet() {
 			filterStats.Exclude("privacy_not_set")
 			continue
 		}
-		if compatible, reason := s.ports.RequestCompatible(ctx, account, req); !compatible {
+		if compatible, reason := s.ports.RequestCompatible(ctx, provider, req); !compatible {
 			filterStats.Exclude(reason)
 			continue
 		}
-		if !s.ports.TransportCompatible(account, req.RequiredTransport) {
+		if !s.ports.TransportCompatible(provider, req.RequiredTransport) {
 			filterStats.Exclude("transport_incompatible")
 			continue
 		}
-		filtered = append(filtered, account)
-		loadReq = append(loadReq, AccountWithConcurrency{
-			ID:             account.ID,
-			MaxConcurrency: account.EffectiveLoadFactor(),
+		filtered = append(filtered, provider)
+		loadReq = append(loadReq, ProviderWithConcurrency{
+			ID:             provider.ID,
+			MaxConcurrency: provider.EffectiveLoadFactor(),
 		})
 	}
 	if len(filtered) == 0 {
-		return nil, 0, 0, 0, s.ports.Unavailable(ctx, req.RequestedModel, req.routingModel(), false, filterStats.Summary(""), accounts)
+		return nil, 0, 0, 0, s.ports.Unavailable(ctx, req.RequestedModel, req.routingModel(), false, filterStats.Summary(""), providers)
 	}
 
-	loadMap := map[int64]*AccountLoadInfo{}
+	loadMap := map[int64]*ProviderLoadInfo{}
 	if s.concurrency != nil {
-		if batchLoad, loadErr := s.concurrency.GetAccountsLoadBatch(ctx, loadReq); loadErr == nil {
+		if batchLoad, loadErr := s.concurrency.GetProvidersLoadBatch(ctx, loadReq); loadErr == nil {
 			loadMap = batchLoad
 		}
 	}
 
 	if req.SubscriptionPriority {
-		subscriptionAccounts, regularAccounts := s.partitionSubscription(filtered)
-		if len(subscriptionAccounts) > 0 {
-			attempt := s.trySelectByLoadBalancePool(ctx, req, subscriptionAccounts, loadMap, budget)
-			if attempt.err != nil && (!attempt.noCompactCandidates || len(regularAccounts) <= 0) {
+		subscriptionProviders, regularProviders := s.partitionSubscription(filtered)
+		if len(subscriptionProviders) > 0 {
+			attempt := s.trySelectByLoadBalancePool(ctx, req, subscriptionProviders, loadMap, budget)
+			if attempt.err != nil && (!attempt.noCompactCandidates || len(regularProviders) <= 0) {
 				return nil, attempt.candidateCount, attempt.topK, attempt.loadSkew, attempt.err
 			}
 			if attempt.result != nil {
 				return attempt.result, attempt.candidateCount, attempt.topK, attempt.loadSkew, nil
 			}
-			if len(regularAccounts) > 0 {
-				regularAttempt := s.trySelectByLoadBalancePool(ctx, req, regularAccounts, loadMap, budget)
+			if len(regularProviders) > 0 {
+				regularAttempt := s.trySelectByLoadBalancePool(ctx, req, regularProviders, loadMap, budget)
 				if regularAttempt.err != nil && !regularAttempt.noCompactCandidates {
 					return nil, regularAttempt.candidateCount, regularAttempt.topK, regularAttempt.loadSkew, regularAttempt.err
 				}
@@ -840,7 +840,7 @@ func (s *PlatformSelector) SelectByLoadBalance(
 					}
 				}
 				// 常规池既无法获取也无法排队（含仅剩不支持 compact 的候选）时，
-				// 回退到订阅池的等待计划：busy-but-waitable 的订阅账号不应因常规池存在
+				// 回退到订阅池的等待计划：busy-but-waitable 的订阅提供商不应因常规池存在
 				// 而被丢弃，否则开启订阅优先反而让本可排队成功的请求硬失败。
 				subResult, subCandidateCount, subTopK, subLoadSkew, subErr := s.finishLoadBalanceSelectionFallback(ctx, req, attempt, budget, filterStats)
 				if subErr == nil && subResult != nil {
@@ -865,8 +865,8 @@ func (s *PlatformSelector) SelectByLoadBalance(
 func (s *PlatformSelector) trySelectByLoadBalancePool(
 	ctx context.Context,
 	req PlatformSelectionInput,
-	filtered []*FlowAccount,
-	loadMap map[int64]*AccountLoadInfo,
+	filtered []*FlowProvider,
+	loadMap map[int64]*ProviderLoadInfo,
 	budget *ProbeBudget,
 ) platformPoolAttempt {
 	plan := s.BuildPlan(ctx, req, filtered, loadMap)
@@ -878,12 +878,12 @@ func (s *PlatformSelector) trySelectByLoadBalancePool(
 	}
 	if req.RequireCompact && len(plan.candidates) == 0 && len(plan.staleSnapshotCompactRetry) == 0 {
 		attempt.noCompactCandidates = true
-		attempt.err = ErrNoAvailableCompactAccounts
+		attempt.err = ErrNoAvailableCompactProviders
 		return attempt
 	}
 	if req.RequireCompact && len(attempt.selectionOrder) == 0 && !s.ports.SnapshotAvailable {
 		attempt.noCompactCandidates = true
-		attempt.err = ErrNoAvailableCompactAccounts
+		attempt.err = ErrNoAvailableCompactProviders
 		return attempt
 	}
 	if len(attempt.selectionOrder) == 0 {
@@ -903,8 +903,8 @@ func (s *PlatformSelector) trySelectByLoadBalancePool(
 	}
 
 	if s.concurrency != nil && !budget.acquireExhausted() {
-		loadReq := buildOpenAIAccountLoadRequest(filtered)
-		if freshLoadMap, loadErr := s.concurrency.GetAccountsLoadBatchFresh(ctx, loadReq); loadErr == nil {
+		loadReq := buildOpenAIProviderLoadRequest(filtered)
+		if freshLoadMap, loadErr := s.concurrency.GetProvidersLoadBatchFresh(ctx, loadReq); loadErr == nil {
 			freshPlan := s.BuildPlan(ctx, req, filtered, freshLoadMap)
 			if len(freshPlan.selectionOrder) > 0 {
 				freshResult, freshCompactBlocked, freshAcquireErr := s.TryOrder(ctx, req, freshPlan.selectionOrder, budget)
@@ -958,17 +958,17 @@ func (s *PlatformSelector) finishLoadBalanceSelectionFallback(
 		wantAttempted := pass == 1 || pass == 3
 		wantKnownFull := pass >= 2
 		for _, candidate := range attempt.selectionOrder {
-			if candidate.Account == nil {
+			if candidate.Provider == nil {
 				continue
 			}
 			if budget != nil && budget.limited {
-				knownFull := candidate.LoadKnown && candidate.Account.Concurrency > 0 &&
-					candidate.LoadInfo.CurrentConcurrency >= candidate.Account.Concurrency
-				if budget.wasAttempted(candidate.Account.ID) != wantAttempted || knownFull != wantKnownFull {
+				knownFull := candidate.LoadKnown && candidate.Provider.Concurrency > 0 &&
+					candidate.LoadInfo.CurrentConcurrency >= candidate.Provider.Concurrency
+				if budget.wasAttempted(candidate.Provider.ID) != wantAttempted || knownFull != wantKnownFull {
 					continue
 				}
 			}
-			fresh := s.ports.Fresh(ctx, candidate.Account, req.Platform, req.routingModel(), false, req.RequiredCapability)
+			fresh := s.ports.Fresh(ctx, candidate.Provider, req.Platform, req.routingModel(), false, req.RequiredCapability)
 			if fresh == nil || !s.ports.TransportCompatible(fresh, req.RequiredTransport) || !s.requestCompatible(ctx, fresh, req) {
 				continue
 			}
@@ -984,9 +984,9 @@ func (s *PlatformSelector) finishLoadBalanceSelectionFallback(
 				continue
 			}
 			return &FlowSelection{
-				Account: fresh,
-				WaitPlan: &AccountWaitPlan{
-					AccountID:      fresh.ID,
+				Provider: fresh,
+				WaitPlan: &ProviderWaitPlan{
+					ProviderID:     fresh.ID,
 					MaxConcurrency: fresh.Concurrency,
 					Timeout:        cfg.FallbackWaitTimeout,
 					MaxWaiting:     cfg.FallbackMaxWaiting,
@@ -1005,8 +1005,8 @@ func sortOpenAICompactRetryCandidates(pool []PlatformCandidateScore) []PlatformC
 	ordered := append([]PlatformCandidateScore(nil), pool...)
 	sort.SliceStable(ordered, func(i, j int) bool {
 		a, b := ordered[i], ordered[j]
-		if a.Account.Priority != b.Account.Priority {
-			return a.Account.Priority < b.Account.Priority
+		if a.Provider.Priority != b.Provider.Priority {
+			return a.Provider.Priority < b.Provider.Priority
 		}
 		if a.LoadInfo.LoadRate != b.LoadInfo.LoadRate {
 			return a.LoadInfo.LoadRate < b.LoadInfo.LoadRate
@@ -1015,28 +1015,28 @@ func sortOpenAICompactRetryCandidates(pool []PlatformCandidateScore) []PlatformC
 			return a.LoadInfo.WaitingCount < b.LoadInfo.WaitingCount
 		}
 		switch {
-		case a.Account.LastUsedAt == nil && b.Account.LastUsedAt != nil:
+		case a.Provider.LastUsedAt == nil && b.Provider.LastUsedAt != nil:
 			return true
-		case a.Account.LastUsedAt != nil && b.Account.LastUsedAt == nil:
+		case a.Provider.LastUsedAt != nil && b.Provider.LastUsedAt == nil:
 			return false
-		case a.Account.LastUsedAt == nil && b.Account.LastUsedAt == nil:
+		case a.Provider.LastUsedAt == nil && b.Provider.LastUsedAt == nil:
 			return false
 		default:
-			return a.Account.LastUsedAt.Before(*b.Account.LastUsedAt)
+			return a.Provider.LastUsedAt.Before(*b.Provider.LastUsedAt)
 		}
 	})
 	return ordered
 }
 
-func buildOpenAIAccountLoadRequest(accounts []*FlowAccount) []AccountWithConcurrency {
-	loadReq := make([]AccountWithConcurrency, 0, len(accounts))
-	for _, account := range accounts {
-		if account == nil {
+func buildOpenAIProviderLoadRequest(providers []*FlowProvider) []ProviderWithConcurrency {
+	loadReq := make([]ProviderWithConcurrency, 0, len(providers))
+	for _, provider := range providers {
+		if provider == nil {
 			continue
 		}
-		loadReq = append(loadReq, AccountWithConcurrency{
-			ID:             account.ID,
-			MaxConcurrency: account.EffectiveLoadFactor(),
+		loadReq = append(loadReq, ProviderWithConcurrency{
+			ID:             provider.ID,
+			MaxConcurrency: provider.EffectiveLoadFactor(),
 		})
 	}
 	return loadReq

@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/config"
 	"github.com/TokenFlux/TokenRouter/internal/gateway"
@@ -17,6 +16,7 @@ import (
 	identityprovider "github.com/TokenFlux/TokenRouter/internal/identity/provider"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/timezone"
 	"github.com/TokenFlux/TokenRouter/internal/promotion"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
 	"github.com/TokenFlux/TokenRouter/internal/server/runtimeconfig"
@@ -43,8 +43,8 @@ type Composite struct {
 	Read          composite.ReadOptions
 	Prepare       composite.PrepareOptions
 	Gateway       *gateway.RuntimeSettings
-	Account       *account.RuntimeSettings
-	Quota         *account.QuotaSettingsCache
+	Provider      *provider.RuntimeSettings
+	Quota         *provider.QuotaSettingsCache
 	Identity      *identity.RuntimeSettings
 	Promotion     *promotion.RuntimeSettings
 	Backend       *admission.BackendMode
@@ -70,7 +70,7 @@ func NewComposite(repo settings.Repository, cfg *config.Config) *Composite {
 	defaults.Process.EwmaErrorRateAlpha = source.EWMAErrorRateAlpha
 	defaults.Process.EwmaTTFTAlpha = source.EWMATTFTAlpha
 	defaults.Process.StickyEscape = policy.NormalizeStickyEscape(policy.StickyEscapeConfig{Enabled: source.StickyEscapeEnabled, TtftMs: float64(source.StickyEscapeTTFTMs), ErrorRate: source.StickyEscapeErrorRate})
-	result := &Composite{Store: store, Gateway: readers.Gateway, Account: readers.Account, Quota: readers.Quota, Identity: identity.NewRuntimeSettings(store, settings.ErrSettingNotFound), Promotion: promotion.NewRuntimeSettings(store), Backend: admission.NewBackendMode(store, slog.Warn), Defaults: defaults, Scheduler: scheduler.NewSettingsRuntime(scheduler.Diagnostics{})}
+	result := &Composite{Store: store, Gateway: readers.Gateway, Provider: readers.Provider, Quota: readers.Quota, Identity: identity.NewRuntimeSettings(store, settings.ErrSettingNotFound), Promotion: promotion.NewRuntimeSettings(store), Backend: admission.NewBackendMode(store, slog.Warn), Defaults: defaults, Scheduler: scheduler.NewSettingsRuntime(scheduler.Diagnostics{})}
 	oauth := identity.NewOAuthSettings(store, &identity.OAuthSettingsDefaults{LinuxDo: cfg.LinuxDo, DingTalk: cfg.DingTalk, OIDC: cfg.OIDC, WeChat: cfg.WeChat, GitHubOAuth: cfg.GitHubOAuth, GoogleOAuth: cfg.GoogleOAuth}, identityprovider.ResolveSettingsOIDCMetadata)
 	validate := func(ctx context.Context, items []billing.DefaultSubscriptionSetting) error {
 		if result.Plans == nil {
@@ -100,9 +100,9 @@ func NewComposite(repo settings.Repository, cfg *config.Config) *Composite {
 			result.Scheduler.Store(scheduler.RuntimeSettingsFromAdmin(s.SchedulerAdminSettings(), defaults))
 			return nil
 		}},
-		{Module: "account", Apply: func(_ context.Context, s *composite.Snapshot) error {
+		{Module: "provider", Apply: func(_ context.Context, s *composite.Snapshot) error {
 			result.Quota.Apply(s.OpenAIQuotaAutoPauseSettings, s.OpenAIQuotaAutoPauseSettingsSet)
-			result.Account.ApplySchedulingThresholds(s.AccountSchedulingThresholds)
+			result.Provider.ApplySchedulingThresholds(s.ProviderSchedulingThresholds)
 			return nil
 		}},
 		{Module: "server", Apply: func(_ context.Context, s *composite.Snapshot) error {

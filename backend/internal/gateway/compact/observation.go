@@ -6,12 +6,12 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/logredact"
 )
 
-// RetryObservation 是单次重试的账号/响应事实与日志配置快照。
+// RetryObservation 是单次重试的提供商/响应事实与日志配置快照。
 type RetryObservation struct {
-	AccountPresent       bool
+	ProviderPresent      bool
 	Platform             string
-	AccountID            int64
-	AccountName          string
+	ProviderID           int64
+	ProviderName         string
 	Status               int
 	RequestID            string
 	Passthrough, LogBody bool
@@ -27,7 +27,7 @@ type RetryNotice struct {
 
 // Notice 只规范化已确定的恢复事件，不暴露未启用的上游正文。
 func Notice(in RetryObservation, payload []byte, message string, truncate func(string, int) string) *RetryNotice {
-	if !in.AccountPresent {
+	if !in.ProviderPresent {
 		return nil
 	}
 	detail := ""

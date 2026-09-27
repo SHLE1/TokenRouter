@@ -194,7 +194,7 @@ func TestHTTPUpstreamDoAppliesGrokCLIIdentityBeforeOAuthRoundTrip(t *testing.T) 
 			upstream := New(nil)
 			svc := upstream
 
-			const accountID int64 = 4084
+			const providerID int64 = 4084
 
 			var capturedHeaders http.Header
 			svc.pool = testUpstreamPool{transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
@@ -215,7 +215,7 @@ func TestHTTPUpstreamDoAppliesGrokCLIIdentityBeforeOAuthRoundTrip(t *testing.T) 
 			require.NoError(t, err)
 			req.Header.Set("User-Agent", "tokenrouter-grok/1.0")
 
-			resp, err := svc.Do(req, "", accountID, 1)
+			resp, err := svc.Do(req, "", providerID, 1)
 			require.NoError(t, err)
 			require.Equal(t, http.StatusOK, resp.StatusCode)
 			require.NoError(t, resp.Body.Close())
@@ -231,7 +231,7 @@ func TestHTTPUpstreamDoFallsBackToOfficialGrokAPIOnCLIAccessDenied(t *testing.T)
 	upstream := New(nil)
 	svc := upstream
 
-	const accountID int64 = 4421
+	const providerID int64 = 4421
 
 	payload := []byte(`{"model":"grok-4.5","input":"hello"}`)
 	var calls int
@@ -268,7 +268,7 @@ func TestHTTPUpstreamDoFallsBackToOfficialGrokAPIOnCLIAccessDenied(t *testing.T)
 	require.NoError(t, err)
 	req.Header.Set("Authorization", "Bearer oauth-token")
 
-	resp, err := svc.Do(req, "", accountID, 1)
+	resp, err := svc.Do(req, "", providerID, 1)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	responseBody, err := io.ReadAll(resp.Body)
@@ -874,45 +874,45 @@ func (s *HTTPUpstreamSuite) TestDo_EmptyProxy_UsesDirect() {
 	require.Equal(s.T(), "direct-empty", string(b))
 }
 
-// TestAccountIsolation_DifferentAccounts 测试账户隔离模式
-// 验证不同账户使用独立的连接池
-func (s *HTTPUpstreamSuite) TestAccountIsolation_DifferentAccounts() {
-	*s.cfg = Options{ConnectionPoolIsolation: "account"}
+// TestProviderIsolation_DifferentProviders 测试提供商隔离模式
+// 验证不同提供商使用独立的连接池
+func (s *HTTPUpstreamSuite) TestProviderIsolation_DifferentProviders() {
+	*s.cfg = Options{ConnectionPoolIsolation: "provider"}
 	svc := s.newService()
-	// 同一代理，不同账户
+	// 同一代理，不同提供商
 	entry1 := mustGetOrCreateClient(s.T(), svc, "http://proxy.local:8080", 1, 3)
 	entry2 := mustGetOrCreateClient(s.T(), svc, "http://proxy.local:8080", 2, 3)
-	require.NotSame(s.T(), entry1.client.Transport, entry2.client.Transport, "不同账号不应共享连接池")
+	require.NotSame(s.T(), entry1.client.Transport, entry2.client.Transport, "不同提供商不应共享连接池")
 }
 
-// TestAccountProxyIsolation_DifferentProxy 测试账户+代理组合隔离模式
-// 验证同一账户使用不同代理时创建独立连接池
-func (s *HTTPUpstreamSuite) TestAccountProxyIsolation_DifferentProxy() {
-	*s.cfg = Options{ConnectionPoolIsolation: "account_proxy"}
+// TestProviderProxyIsolation_DifferentProxy 测试提供商+代理组合隔离模式
+// 验证同一提供商使用不同代理时创建独立连接池
+func (s *HTTPUpstreamSuite) TestProviderProxyIsolation_DifferentProxy() {
+	*s.cfg = Options{ConnectionPoolIsolation: "provider_proxy"}
 	svc := s.newService()
-	// 同一账户，不同代理
+	// 同一提供商，不同代理
 	entry1 := mustGetOrCreateClient(s.T(), svc, "http://proxy-a:8080", 1, 3)
 	entry2 := mustGetOrCreateClient(s.T(), svc, "http://proxy-b:8080", 1, 3)
-	require.NotSame(s.T(), entry1.client.Transport, entry2.client.Transport, "账号+代理隔离应区分不同代理")
+	require.NotSame(s.T(), entry1.client.Transport, entry2.client.Transport, "提供商+代理隔离应区分不同代理")
 }
 
-// TestAccountModeProxyChangeClearsPool 测试账户模式下代理变更
-// 验证账户切换代理时清理旧连接池，避免复用错误代理
-func (s *HTTPUpstreamSuite) TestAccountModeProxyChangeClearsPool() {
-	*s.cfg = Options{ConnectionPoolIsolation: "account"}
+// TestProviderModeProxyChangeClearsPool 测试提供商模式下代理变更
+// 验证提供商切换代理时清理旧连接池，避免复用错误代理
+func (s *HTTPUpstreamSuite) TestProviderModeProxyChangeClearsPool() {
+	*s.cfg = Options{ConnectionPoolIsolation: "provider"}
 	svc := s.newService()
-	// 同一账户，先后使用不同代理
+	// 同一提供商，先后使用不同代理
 	entry1 := mustGetOrCreateClient(s.T(), svc, "http://proxy-a:8080", 1, 3)
 	entry2 := mustGetOrCreateClient(s.T(), svc, "http://proxy-b:8080", 1, 3)
-	require.NotSame(s.T(), entry1.client.Transport, entry2.client.Transport, "账号切换代理应创建新连接池")
+	require.NotSame(s.T(), entry1.client.Transport, entry2.client.Transport, "提供商切换代理应创建新连接池")
 }
 
-// TestAccountConcurrencyOverridesPoolSettings 测试账户并发数覆盖连接池配置
-// 验证账户隔离模式下，连接池大小与账户并发数对应
-func (s *HTTPUpstreamSuite) TestAccountConcurrencyOverridesPoolSettings() {
-	*s.cfg = Options{ConnectionPoolIsolation: "account"}
+// TestProviderConcurrencyOverridesPoolSettings 测试提供商并发数覆盖连接池配置
+// 验证提供商隔离模式下，连接池大小与提供商并发数对应
+func (s *HTTPUpstreamSuite) TestProviderConcurrencyOverridesPoolSettings() {
+	*s.cfg = Options{ConnectionPoolIsolation: "provider"}
 	svc := s.newService()
-	// 账户并发数为 12
+	// 提供商并发数为 12
 	entry := mustGetOrCreateClient(s.T(), svc, "", 1, 12)
 	transport, ok := entry.client.Transport.(*http.Transport)
 	require.True(s.T(), ok, "expected *http.Transport")
@@ -922,17 +922,17 @@ func (s *HTTPUpstreamSuite) TestAccountConcurrencyOverridesPoolSettings() {
 	require.Equal(s.T(), 12, transport.MaxIdleConnsPerHost, "MaxIdleConnsPerHost mismatch")
 }
 
-// TestAccountConcurrencyFallbackToDefault 测试账户并发数为 0 时回退到默认配置
+// TestProviderConcurrencyFallbackToDefault 测试提供商并发数为 0 时回退到默认配置
 // 验证未指定并发数时使用全局配置值
-func (s *HTTPUpstreamSuite) TestAccountConcurrencyFallbackToDefault() {
+func (s *HTTPUpstreamSuite) TestProviderConcurrencyFallbackToDefault() {
 	*s.cfg = Options{
-		ConnectionPoolIsolation: "account",
+		ConnectionPoolIsolation: "provider",
 		MaxIdleConns:            77,
 		MaxIdleConnsPerHost:     55,
 		MaxConnsPerHost:         66,
 	}
 	svc := s.newService()
-	// 账户并发数为 0，应使用全局配置
+	// 提供商并发数为 0，应使用全局配置
 	entry := mustGetOrCreateClient(s.T(), svc, "", 1, 0)
 	transport, ok := entry.client.Transport.(*http.Transport)
 	require.True(s.T(), ok, "expected *http.Transport")

@@ -63,9 +63,9 @@
             {{ formatBalanceAmount(stats?.total_actual_cost || 0, { fractionDigits: 4 }) }}
           </p>
           <!-- 成本明细分段 nowrap，只能在分段处换行 -->
-          <div v-if="showStandardCost || (showAccountCost && totalAccountCost != null)" class="mt-0.5 flex flex-wrap items-center gap-x-1 text-xs text-gray-400">
-            <span v-if="showAccountCost && totalAccountCost != null" class="whitespace-nowrap text-orange-500">{{ t('usage.accountCost') }} {{ formatUsdAmount(totalAccountCost, { fractionDigits: 4 }) }}</span>
-            <span v-if="showAccountCost && totalAccountCost != null && showStandardCost">·</span>
+          <div v-if="showStandardCost || (showProviderCost && totalProviderCost != null)" class="mt-0.5 flex flex-wrap items-center gap-x-1 text-xs text-gray-400">
+            <span v-if="showProviderCost && totalProviderCost != null" class="whitespace-nowrap text-orange-500">{{ t('usage.providerCost') }} {{ formatUsdAmount(totalProviderCost, { fractionDigits: 4 }) }}</span>
+            <span v-if="showProviderCost && totalProviderCost != null && showStandardCost">·</span>
             <span v-if="showStandardCost" class="whitespace-nowrap">
               {{ t('usage.standardCost') }}
               <span :class="{ 'line-through': strikeStandardCost }">{{ formatUsdAmount(stats?.total_cost || 0, { fractionDigits: 4 }) }}</span>
@@ -100,11 +100,11 @@ import { formatTokens } from '@/utils/format'
 
 const props = withDefaults(defineProps<{
   stats: (AdminUsageStatsResponse | UsageStatsResponse) | null
-  showAccountCost?: boolean
+  showProviderCost?: boolean
   strikeStandardCost?: boolean
   showStandardCost?: boolean
 }>(), {
-  showAccountCost: true,
+  showProviderCost: true,
   strikeStandardCost: false,
   showStandardCost: true,
 })
@@ -112,11 +112,11 @@ const props = withDefaults(defineProps<{
 const { t } = useI18n()
 const { formatBalanceAmount, formatUsdAmount } = useBalanceDisplay()
 
-const totalAccountCost = computed(() => {
-  const stats = props.stats as (AdminUsageStatsResponse & { total_account_cost?: number }) | null
-  return stats?.total_account_cost ?? null
+const totalProviderCost = computed(() => {
+  const stats = props.stats as (AdminUsageStatsResponse & { total_provider_cost?: number }) | null
+  return stats?.total_provider_cost ?? null
 })
-const showAccountCost = computed(() => props.showAccountCost)
+const showProviderCost = computed(() => props.showProviderCost)
 const strikeStandardCost = computed(() => props.strikeStandardCost)
 const showStandardCost = computed(() => props.showStandardCost)
 

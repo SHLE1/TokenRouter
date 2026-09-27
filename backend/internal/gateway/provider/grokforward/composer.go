@@ -13,7 +13,6 @@ import (
 
 // DescribeImage 保留单张辅助请求、错误资格和描述用量，不绑定主会话缓存身份。
 func DescribeImage(ctx context.Context, p Ports, o Options, in Input, imageURL string, index int) (string, protocolopenai.ForwardUsage, error) {
-
 	body, err := o.Codec.BuildGrokComposerImageDescriptionBody(imageURL, index)
 	if err != nil {
 		return "", protocolopenai.ForwardUsage{}, err
@@ -29,7 +28,7 @@ func DescribeImage(ctx context.Context, p Ports, o Options, in Input, imageURL s
 	var description string
 	var usage protocolopenai.ForwardUsage
 	target := &grok.ResponsesTarget{
-		AccountID:     in.AccountID,
+		ProviderID:    in.ProviderID,
 		Model:         ComposerVisionModel,
 		Enter:         o.Enter,
 		PassRawStream: true,
@@ -61,8 +60,8 @@ func DescribeImage(ctx context.Context, p Ports, o Options, in Input, imageURL s
 				}
 				p.Observe(Notice{
 					Platform:           in.Platform,
-					AccountID:          in.AccountID,
-					AccountName:        in.AccountName,
+					ProviderID:         in.ProviderID,
+					ProviderName:       in.ProviderName,
 					UpstreamStatusCode: resp.StatusCode,
 					UpstreamRequestID:  firstNonEmpty(resp.Header.Get("x-request-id"), resp.Header.Get("xai-request-id")),
 					Kind:               kind,
@@ -74,14 +73,14 @@ func DescribeImage(ctx context.Context, p Ports, o Options, in Input, imageURL s
 				if kind == "failover" {
 					retry := p.RetryMetadata(resp.StatusCode, respBody)
 					return true, p.Failure(Failure{
-						StatusCode:               resp.StatusCode,
-						ResponseBody:             respBody,
-						ResponseHeaders:          resp.Header.Clone(),
-						RetryableOnSameAccount:   retry.Retryable || decision.RetrySameAccount,
-						RequestScopedTransient:   retry.Retryable && resp.StatusCode == http.StatusTooManyRequests,
-						SameAccountRetryDelay:    retry.Delay,
-						SameAccountRetryDeadline: retry.Deadline,
-						SameAccountRetryMax:      retry.Max,
+						StatusCode:                resp.StatusCode,
+						ResponseBody:              respBody,
+						ResponseHeaders:           resp.Header.Clone(),
+						RetryableOnSameProvider:   retry.Retryable || decision.RetrySameProvider,
+						RequestScopedTransient:    retry.Retryable && resp.StatusCode == http.StatusTooManyRequests,
+						SameProviderRetryDelay:    retry.Delay,
+						SameProviderRetryDeadline: retry.Deadline,
+						SameProviderRetryMax:      retry.Max,
 					})
 				}
 				return true, fmt.Errorf("grok composer image bridge upstream error: %s", upstreamMsg)
@@ -105,5 +104,4 @@ func DescribeImage(ctx context.Context, p Ports, o Options, in Input, imageURL s
 		Target:   target,
 	}, nil)
 	return description, usage, err
-
 }

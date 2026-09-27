@@ -5,25 +5,25 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/app/lifecycle"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/selection"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/stretchr/testify/require"
 )
 
 // 原生恢复与执行端必须观察同一停调代次，不能各自创建状态副本。
-func TestAccountRuntimeBlockBindingSharesRecoveryFence(t *testing.T) {
-	state := account.NewRuntimeBlockState(time.Now)
+func TestProviderRuntimeBlockBindingSharesRecoveryFence(t *testing.T) {
+	state := provider.NewRuntimeBlockState(time.Now)
 	gateway := provideOpenAIResponseHealth(nil, state, nil, nil).Runtime
 	tokens := provideOpenAITokens(nil, nil, nil, nil, state)
-	value := &gatewayprovider.ExecutionAccount{Record: account.Record{LoadLocation: time.LoadLocation, ID: 71, Platform: account.PlatformOpenAI}}
+	value := &gatewayprovider.ExecutionProvider{Record: provider.Record{LoadLocation: time.LoadLocation, ID: 71, Platform: provider.PlatformOpenAI}}
 	tokens.Block(gatewayprovider.ExecutionRecord(value), time.Now().Add(time.Minute), "装配合同")
 	fence := state.ManagedRecoveryFence(value.Record.ID)
 	require.NotZero(t, fence)
 	require.Equal(t, fence, gateway.ManagedRecoveryFence(value.Record.ID))
 	require.True(t, state.Blocked(value.Record.ID, func() string { return "" }))
-	require.True(t, gateway.ClearAccountSchedulingBlockIfFence(value.Record.ID, fence))
+	require.True(t, gateway.ClearProviderSchedulingBlockIfFence(value.Record.ID, fence))
 	require.False(t, state.Blocked(value.Record.ID, func() string { return "" }))
 	require.Greater(t, state.ManagedRecoveryFence(value.Record.ID), fence)
 }
@@ -37,7 +37,7 @@ func TestSchedulerSharedStateBindsLegacyConsumers(t *testing.T) {
 	require.NotSame(t, state.Settings, other.Settings)
 	require.NotSame(t, state.Sticky, other.Sticky)
 	// 从已绑定的真实执行入口上报，第二份装配不能改变原反馈作用域。
-	selection.NewGeneric(selection.GenericDependencies{Shared: provideSelectionShared(nil, nil, nil, nil, state)}, selection.DefaultOptions()).ReportAdvancedAccountScheduleResult(&gatewayprovider.SelectionResult{AdvancedScheduler: true}, 51, false, nil)
+	selection.NewGeneric(selection.GenericDependencies{Shared: provideSelectionShared(nil, nil, nil, nil, state)}, selection.DefaultOptions()).ReportAdvancedProviderScheduleResult(&gatewayprovider.SelectionResult{AdvancedScheduler: true}, 51, false, nil)
 	observed, _, _ := state.Feedback.Snapshot(51)
 	require.Greater(t, observed, 0.0)
 	untouched, _, _ := other.Feedback.Snapshot(51)

@@ -24,6 +24,7 @@ func (r *fixedMessageRuntimeTest) Open(_ context.Context, in execution.Request, 
 	r.sessions = append(r.sessions, p)
 	return p, nil
 }
+
 func TestFixedMessagesExecutorReturnsLastAttemptAndOwnsOnlyLoop(t *testing.T) {
 	err := errors.New("temporary")
 	r := &fixedMessageRuntimeTest{outcomes: []Outcome{{Err: err, Failure: &AttemptFailure{Cause: err, Policy: &failover.FailureInfo{StatusCode: 503, RetryNext: true}}}, {HasResult: true, Attempt: upstream.AttemptResult{Model: "final", HasUsage: true, Usage: upstream.TokenUsage{OutputTokens: 7}}}}}
@@ -32,7 +33,7 @@ func TestFixedMessagesExecutorReturnsLastAttemptAndOwnsOnlyLoop(t *testing.T) {
 		result, err := executor.Execute(context.Background(), execution.Request{Model: model}, nil)
 		require.NoError(t, err)
 		require.Equal(t, 2, result.Attempts)
-		require.Equal(t, int64(2), result.Account.ID)
+		require.Equal(t, int64(2), result.Provider.ID)
 		require.Equal(t, "final", result.Attempt.Model)
 		require.Equal(t, 7, result.Attempt.Usage.OutputTokens)
 	}
@@ -47,6 +48,7 @@ func TestFixedMessagesExecutorReturnsLastAttemptAndOwnsOnlyLoop(t *testing.T) {
 		require.True(t, s.finished)
 	}
 }
+
 func TestFixedMessagesExecutorKeepsGeminiPartialCompletionDifference(t *testing.T) {
 	err := errors.New("partial output")
 	for _, kind := range []execution.TextKind{execution.TextMessages, execution.TextGeminiMessages} {

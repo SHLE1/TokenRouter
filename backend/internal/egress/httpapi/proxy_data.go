@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/TokenFlux/TokenRouter/internal/account/transfer"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
+	"github.com/TokenFlux/TokenRouter/internal/provider/transfer"
 	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
 	"github.com/gin-gonic/gin"
 )
@@ -27,8 +27,9 @@ func (h *ProxyHandler) ExportData(c *gin.Context) {
 		response.ErrorFrom(c, err)
 		return
 	}
-	response.Success(c, transfer.DataPayload{ExportedAt: exported, Proxies: proxies, Accounts: []transfer.DataAccount{}})
+	response.Success(c, transfer.DataPayload{Type: transfer.DataType, Version: transfer.DataVersion, ExportedAt: exported, Proxies: proxies, Providers: []transfer.DataProvider{}})
 }
+
 func (h *ProxyHandler) ImportData(c *gin.Context) {
 	var req struct {
 		Data transfer.DataPayload `json:"data"`
@@ -48,6 +49,7 @@ func (h *ProxyHandler) ImportData(c *gin.Context) {
 	}
 	response.Success(c, transfer.DataImportResult{ProxyCreated: result.ProxyCreated, ProxyReused: result.ProxyReused, ProxyFailed: result.ProxyFailed, Errors: result.Errors})
 }
+
 func parseProxyIDs(c *gin.Context) ([]int64, error) {
 	values := c.QueryArray("ids")
 	if len(values) == 0 {

@@ -13,18 +13,17 @@ import (
 
 	gatewaytestkit "github.com/TokenFlux/TokenRouter/internal/gateway/testkit"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
 )
 
-func TestOpenAIRequestBodyLimitFailover_HTTP413SwitchesAccountsBeforeWrite(t *testing.T) {
-
+func TestOpenAIRequestBodyLimitFailover_HTTP413SwitchesProvidersBeforeWrite(t *testing.T) {
 	requestBody := []byte(`{"model":"gpt-5.2","stream":false,"input":"hello"}`)
 
 	for _, passthrough := range []bool{false, true} {
@@ -37,7 +36,7 @@ func TestOpenAIRequestBodyLimitFailover_HTTP413SwitchesAccountsBeforeWrite(t *te
 			c, _ := gin.CreateTestContext(rec)
 			c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", bytes.NewReader(nil))
 
-			const upstreamBody = `{"error":{"message":"request body exceeds this account's 16MB proxy limit; secret=must-not-leak","type":"invalid_request_error"}}`
+			const upstreamBody = `{"error":{"message":"request body exceeds this provider's 16MB proxy limit; secret=must-not-leak","type":"invalid_request_error"}}`
 			body := &gatewaytestkit.CloseTrackingReader{Reader: strings.NewReader(upstreamBody)}
 			upstream := &auxiliaryHTTPRecorder{resp: &http.Response{
 				StatusCode: http.StatusRequestEntityTooLarge,
@@ -48,39 +47,42 @@ func TestOpenAIRequestBodyLimitFailover_HTTP413SwitchesAccountsBeforeWrite(t *te
 				Body: body,
 			}}
 			svc := newResponsesFixture(responsesFixtureInputs{options: &responsesFixtureOptions{Request: OpenAIRequestOptions{ForceCLI: false}}, transport: upstream})
-			account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 161,
-				Name:        name,
-				Platform:    capability.PlatformOpenAI,
-				Type:        capability.AccountTypeAPIKey,
-				Concurrency: 1,
-				Credentials: map[string]any{
-					"api_key":   "sk-test",
-					"base_url":  "https://api.example.test",
-					"pool_mode": true,
-					"pool_mode_retry_status_codes": []any{
-						float64(http.StatusRequestEntityTooLarge),
+			provider := &gatewayprovider.ExecutionProvider{
+				Record: providercore.Record{
+					LoadLocation: time.LoadLocation, ID: 161,
+					Name:        name,
+					Platform:    capability.PlatformOpenAI,
+					Type:        capability.ProviderTypeAPIKey,
+					Concurrency: 1,
+					Credentials: map[string]any{
+						"api_key":   "sk-test",
+						"base_url":  "https://api.example.test",
+						"pool_mode": true,
+						"pool_mode_retry_status_codes": []any{
+							float64(http.StatusRequestEntityTooLarge),
+						},
 					},
+					Extra: map[string]any{
+						"openai_passthrough": passthrough,
+					},
+					Status:      billing.StatusActive,
+					Schedulable: true,
 				},
-				Extra: map[string]any{
-					"openai_passthrough": passthrough,
-				},
-				Status:      billing.StatusActive,
-				Schedulable: true},
 			}
 
-			result, err := svc.Forward(context.Background(), c, account, requestBody)
+			result, err := svc.Forward(context.Background(), c, provider, requestBody)
 
 			require.Nil(t, result)
 			var failoverErr *forwardcore.UpstreamFailoverError
 			require.ErrorAs(t, err, &failoverErr)
 			require.Equal(t, http.StatusRequestEntityTooLarge, failoverErr.StatusCode)
-			require.Equal(t, forwardcore.GatewayFailureScopeAccount, failoverErr.Scope)
+			require.Equal(t, forwardcore.GatewayFailureScopeProvider, failoverErr.Scope)
 			require.Equal(t, forwardcore.GatewayFailureReason("openai_request_body_too_large"), failoverErr.Reason)
-			require.Equal(t, forwardcore.NextAccountRetry, failoverErr.NextAccountAction)
+			require.Equal(t, forwardcore.NextProviderRetry, failoverErr.NextProviderAction)
 			require.Equal(t, http.StatusRequestEntityTooLarge, failoverErr.ClientStatusCode)
 			require.Equal(t, "Request payload is too large", failoverErr.ClientMessage)
-			require.False(t, failoverErr.RetryableOnSameAccount, "a body limit requires another account, not another attempt on the same account")
-			require.False(t, c.Writer.Written(), "account failover must happen before downstream output is committed")
+			require.False(t, failoverErr.RetryableOnSameProvider, "a body limit requires another provider, not another attempt on the same provider")
+			require.False(t, c.Writer.Written(), "provider failover must happen before downstream output is committed")
 			require.Empty(t, rec.Body.String())
 			require.True(t, body.Closed)
 			if passthrough {
@@ -93,8 +95,7 @@ func TestOpenAIRequestBodyLimitFailover_HTTP413SwitchesAccountsBeforeWrite(t *te
 	}
 }
 
-func TestOpenAIRequestBodyLimitFailover_ContextWindow413DoesNotSwitchAccounts(t *testing.T) {
-
+func TestOpenAIRequestBodyLimitFailover_ContextWindow413DoesNotSwitchProviders(t *testing.T) {
 	requestBody := []byte(`{"model":"gpt-5.2","stream":false,"input":"hello"}`)
 
 	for _, passthrough := range []bool{false, true} {
@@ -110,15 +111,18 @@ func TestOpenAIRequestBodyLimitFailover_ContextWindow413DoesNotSwitchAccounts(t 
 				Header:     http.Header{"Content-Type": []string{"application/json"}},
 				Body:       body,
 			}}})
-			account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 162, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey, Concurrency: 1,
-				Credentials: map[string]any{"api_key": "sk-test", "base_url": "https://api.example.test"},
-				Extra: map[string]any{
-					"openai_passthrough": passthrough,
+			provider := &gatewayprovider.ExecutionProvider{
+				Record: providercore.Record{
+					LoadLocation: time.LoadLocation, ID: 162, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey, Concurrency: 1,
+					Credentials: map[string]any{"api_key": "sk-test", "base_url": "https://api.example.test"},
+					Extra: map[string]any{
+						"openai_passthrough": passthrough,
+					},
+					Status: billing.StatusActive, Schedulable: true,
 				},
-				Status: billing.StatusActive, Schedulable: true},
 			}
 
-			result, err := svc.Forward(context.Background(), c, account, requestBody)
+			result, err := svc.Forward(context.Background(), c, provider, requestBody)
 
 			require.Nil(t, result)
 			require.Error(t, err)

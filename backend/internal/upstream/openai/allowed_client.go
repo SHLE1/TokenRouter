@@ -2,7 +2,7 @@ package openai
 
 import "strings"
 
-// 命名预设 ID。账号侧 codex_cli_only_allowed_clients 只能引用这些预设键，
+// 命名预设 ID。提供商侧 codex_cli_only_allowed_clients 只能引用这些预设键，
 // 具体匹配规则固化在下方 registry 中，配置只能「选择启用哪些预设」、不能自定义规则，
 // 以防该白名单退化为可任意放宽的后门。
 const (

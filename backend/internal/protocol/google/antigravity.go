@@ -35,7 +35,7 @@ type AntigravityLoadCodeAssistRequest struct {
 	} `json:"metadata"`
 }
 
-// AntigravityTierInfo 账户类型信息
+// AntigravityTierInfo 提供商类型信息
 type AntigravityTierInfo struct {
 	ID          string `json:"id"`          // free-tier, g1-pro-tier, g1-ultra-tier
 	Name        string `json:"name"`        // 显示名称
@@ -68,7 +68,7 @@ func (t *AntigravityTierInfo) UnmarshalJSON(data []byte) error {
 // AntigravityIneligibleTier 不符合条件的层级信息
 type AntigravityIneligibleTier struct {
 	Tier *AntigravityTierInfo `json:"tier,omitempty"`
-	// ReasonCode 不符合条件的原因代码，如 INELIGIBLE_ACCOUNT
+	// ReasonCode 不符合条件的原因代码，如 INELIGIBLE_PROVIDER
 	ReasonCode    string `json:"reasonCode,omitempty"`
 	ReasonMessage string `json:"reasonMessage,omitempty"`
 }
@@ -156,7 +156,7 @@ type AntigravityOnboardUserResponse struct {
 	Response map[string]any `json:"response,omitempty"`
 }
 
-// GetTier 获取账户类型
+// GetTier 获取提供商类型
 // 优先返回 paidTier（付费订阅级别），否则返回 currentTier
 func (r *AntigravityLoadCodeAssistResponse) GetTier() string {
 	if r.PaidTier != nil && r.PaidTier.ID != "" {

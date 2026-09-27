@@ -14,8 +14,8 @@ import (
 
 	dbent "github.com/TokenFlux/TokenRouter/ent"
 
-	accountpostgres "github.com/TokenFlux/TokenRouter/internal/account/postgres"
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
+	providerpostgres "github.com/TokenFlux/TokenRouter/internal/provider/postgres"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 
 	apikeypostgres "github.com/TokenFlux/TokenRouter/internal/apikey/postgres"
 
@@ -33,8 +33,8 @@ import (
 // provideRoutingGroupStore 为新旧读取入口持有唯一存储及同连接参与工厂。
 func provideRoutingGroupStore(client *dbent.Client, db *sql.DB) *routingpostgres.GroupStore {
 	return routingpostgres.NewGroupStore(client, db, routingpostgres.GroupStoreOptions{
-		Accounts: func(exec postgresinfra.Executor) routingpostgres.GroupLinkParticipant {
-			return accountpostgres.GroupLinksInTx(exec)
+		Providers: func(exec postgresinfra.Executor) routingpostgres.GroupLinkParticipant {
+			return providerpostgres.GroupLinksInTx(exec)
 		},
 		Users: func(exec postgresinfra.Executor) routingpostgres.GroupAccessParticipant {
 			return identitypostgres.GroupAccessDeletionInTx(exec)
@@ -49,8 +49,8 @@ func provideGroupReader(store *routingpostgres.GroupStore) routing.GroupReposito
 	return store
 }
 
-func provideRoutingGroupAdmin(store *routingpostgres.GroupStore, accounts *accountpostgres.AccountStore, keys *apikeypostgres.KeyStore, invalidator apikey.APIKeyAuthCacheInvalidator, modelConfigs *routing.PricingConfigService, settings *settingscore.Store, defaults *scheduler.AdminDefaults) *routing.GroupAdmin {
-	return routing.NewGroupAdmin(store, store, store, routingGroupAccounts{Store: accounts, Defaults: accountprovider.ModelDefaults()}, keys, invalidator, modelConfigs, routing.GroupAdminOptions{
+func provideRoutingGroupAdmin(store *routingpostgres.GroupStore, providers *providerpostgres.ProviderStore, keys *apikeypostgres.KeyStore, invalidator apikey.APIKeyAuthCacheInvalidator, modelConfigs *routing.PricingConfigService, settings *settingscore.Store, defaults *scheduler.AdminDefaults) *routing.GroupAdmin {
+	return routing.NewGroupAdmin(store, store, store, routingGroupProviders{Store: providers, Defaults: provideradapter.ModelDefaults()}, keys, invalidator, modelConfigs, routing.GroupAdminOptions{
 		DefaultModels: routingprovider.DefaultGroupModelCandidates,
 		GlobalWeights: func(ctx context.Context) (policy.ScoreWeights, error) {
 			return scheduler.LoadValidationWeights(ctx, settings, *defaults)

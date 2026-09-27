@@ -15,17 +15,17 @@ const NewMetadataFormatMinVersion = "2.1.78"
 // FormatMetadataUserID builds a metadata.user_id string in the format
 // appropriate for the given CLI version. Components are the rewritten values
 // (not necessarily the originals).
-func FormatMetadataUserID(deviceID, accountUUID, sessionID, uaVersion string) string {
+func FormatMetadataUserID(deviceID, providerUUID, sessionID, uaVersion string) string {
 	if IsNewMetadataFormatVersion(uaVersion) {
 		b, _ := json.Marshal(jsonUserID{
 			DeviceID:    deviceID,
-			AccountUUID: accountUUID,
+			AccountUUID: providerUUID,
 			SessionID:   sessionID,
 		})
 		return string(b)
 	}
 	// Legacy format
-	return "user_" + deviceID + "_account_" + accountUUID + "_session_" + sessionID
+	return "user_" + deviceID + "_account_" + providerUUID + "_session_" + sessionID
 }
 
 // IsNewMetadataFormatVersion returns true if the given CLI version uses the
@@ -42,7 +42,9 @@ func IsNewMetadataFormatVersion(version string) bool {
 func ExtractCLIVersion(ua string) string { return clientmeta.ExtractClaudeCLIVersion(ua) }
 
 // 旧入口只转交协议值，不持有第二份解析规则。
-type ParsedUserID = wire.ParsedMetadataUserID
-type jsonUserID = wire.MetadataUserID
+type (
+	ParsedUserID = wire.ParsedMetadataUserID
+	jsonUserID   = wire.MetadataUserID
+)
 
 func ParseMetadataUserID(raw string) *ParsedUserID { return wire.ParseMetadataUserID(raw) }

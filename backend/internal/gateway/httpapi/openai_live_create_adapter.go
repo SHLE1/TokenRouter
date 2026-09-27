@@ -6,9 +6,9 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 
 	gatewaylive "github.com/TokenFlux/TokenRouter/internal/gateway/live"
@@ -29,15 +29,15 @@ func (p *liveCreatePorts) PrepareAttestation(ctx context.Context) (string, strin
 }
 
 func (p *liveCreatePorts) Select(ctx context.Context, groupID *int64, model string, excluded map[int64]struct{}) (*gatewaylive.Candidate, error) {
-	selection, _, err := p.service.Selection.SelectAccountWithSchedulerForCapability(ctx, groupID, "", uuid.NewString(), model, excluded, egress.OpenAIUpstreamTransportHTTPSSE, accountcore.OpenAIEndpointCapabilityLive, false, false)
+	selection, _, err := p.service.Selection.SelectProviderWithSchedulerForCapability(ctx, groupID, "", uuid.NewString(), model, excluded, egress.OpenAIUpstreamTransportHTTPSSE, providercore.OpenAIEndpointCapabilityLive, false, false)
 	if err != nil || selection == nil {
 		return nil, err
 	}
 	result := &gatewaylive.Candidate{Acquired: selection.Acquired, ReleaseFunc: selection.ReleaseFunc}
-	if selection.Account != nil {
-		result.ID = selection.Account.Record.ID
-		result.Concurrency = selection.Account.Record.Concurrency
-		result.Target = &liveCreateTarget{service: p.service, account: selection.Account, groupID: groupID}
+	if selection.Provider != nil {
+		result.ID = selection.Provider.Record.ID
+		result.Concurrency = selection.Provider.Record.Concurrency
+		result.Target = &liveCreateTarget{service: p.service, provider: selection.Provider, groupID: groupID}
 	}
 	return result, nil
 }
@@ -67,34 +67,34 @@ func (p *liveCreatePorts) Observe(record *session.LiveCallRecord) {
 	})
 }
 
-// liveCreateTarget 保存本次选择取得的凭据视图，后续执行不再查询账号。
+// liveCreateTarget 保存本次选择取得的凭据视图，后续执行不再查询提供商。
 type liveCreateTarget struct {
-	service *OpenAILiveExecutor
-	account *gatewayprovider.ExecutionAccount
-	groupID *int64
-	router  egress.TLSFingerprintRouterMatchResult
+	service  *OpenAILiveExecutor
+	provider *gatewayprovider.ExecutionProvider
+	groupID  *int64
+	router   egress.TLSFingerprintRouterMatchResult
 }
 
 func (t *liveCreateTarget) ResolveModel(ctx context.Context, model string) (string, string, error) {
-	routing, err := t.service.Selection.ResolveOpenAIWSRoutingModelForAccount(ctx, t.groupID, t.account, model, accountcore.OpenAIEndpointCapabilityLive)
+	routing, err := t.service.Selection.ResolveOpenAIWSRoutingModelForProvider(ctx, t.groupID, t.provider, model, providercore.OpenAIEndpointCapabilityLive)
 	if err != nil {
 		return "", "", err
 	}
-	return routing, gatewayprovider.ExecutionModelPolicy(t.account).OpenAIUpstream(routing, false, false), nil
+	return routing, gatewayprovider.ExecutionModelPolicy(t.provider).OpenAIUpstream(routing, false, false), nil
 }
 
 func (t *liveCreateTarget) AllowsClient(ctx context.Context, identity session.LiveCallIdentity) bool {
-	t.router = t.service.matchLiveTLSFingerprintRouter(t.account, identity.UserAgent)
-	result := t.service.liveClientPolicyResult(ctx, t.account, identity, t.router)
+	t.router = t.service.matchLiveTLSFingerprintRouter(t.provider, identity.UserAgent)
+	result := t.service.liveClientPolicyResult(ctx, t.provider, identity, t.router)
 	if result.Enabled && !result.Matched {
-		logging.FromContext(ctx).Warn("OpenAI Live 客户端策略拒绝候选账号", zap.Int64("account_id", t.account.Record.ID), zap.String("policy", result.Policy), zap.String("reason", result.Reason))
+		logging.FromContext(ctx).Warn("OpenAI Live 客户端策略拒绝候选提供商", zap.Int64("provider_id", t.provider.Record.ID), zap.String("policy", result.Policy), zap.String("reason", result.Reason))
 		return false
 	}
 	return true
 }
 
 func (t *liveCreateTarget) Create(ctx context.Context, request *session.LiveCallRequest, attestation string) (*gatewaylive.Created, error) {
-	created, err := t.service.createUpstreamLiveCall(ctx, t.account, request, attestation, t.router)
+	created, err := t.service.createUpstreamLiveCall(ctx, t.provider, request, attestation, t.router)
 	if err != nil {
 		return nil, err
 	}

@@ -14,17 +14,19 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 )
 
-const CodexInviteDefaultUserAgent = "Codex Desktop/0.0.0 (Linux; x86_64)"
-const codexBackendAPIBaseURL = "https://chatgpt.com/backend-api"
-const codexInviteResetUnavailable = "CODEX_INVITE_RESET_REFERRAL_UNAVAILABLE"
-const codexInviteResetUnavailableMessage = "当前 Codex 推荐邀请入口暂不可用，但已有重置次数仍可使用"
+const (
+	CodexInviteDefaultUserAgent        = "Codex Desktop/0.0.0 (Linux; x86_64)"
+	codexBackendAPIBaseURL             = "https://chatgpt.com/backend-api"
+	codexInviteResetUnavailable        = "CODEX_INVITE_RESET_REFERRAL_UNAVAILABLE"
+	codexInviteResetUnavailableMessage = "当前 Codex 推荐邀请入口暂不可用，但已有重置次数仍可使用"
+)
 
 // CodexInviteClient 只拥有一次邀请请求的传输参数与响应体。
 type CodexInviteClient struct {
-	Token          string
-	UserAgent      string
-	AccountHeaders func(http.Header)
-	Do             func(*http.Request) (*http.Response, error)
+	Token           string
+	UserAgent       string
+	ProviderHeaders func(http.Header)
+	Do              func(*http.Request) (*http.Response, error)
 }
 
 func (s *CodexInviteClient) GetJSON(ctx context.Context, path string, query map[string]string) (map[string]any, error) {
@@ -73,7 +75,7 @@ func (s *CodexInviteClient) applyHeaders(req *http.Request) {
 	req.Header.Set("sec-fetch-mode", "no-cors")
 	req.Header.Set("sec-fetch-dest", "empty")
 	req.Header.Set("priority", "u=4, i")
-	s.AccountHeaders(req.Header)
+	s.ProviderHeaders(req.Header)
 }
 
 func (s *CodexInviteClient) doJSON(req *http.Request) (map[string]any, error) {
@@ -118,7 +120,7 @@ func codexInviteResetUpstreamBusinessError(statusCode int, body string) error {
 	if statusCode != http.StatusForbidden || !strings.Contains(detail, "推荐邀请不可用") {
 		return nil
 	}
-	// 上游在活动关闭或账号不具备推荐资格时会返回 403，仍可能保留可用重置次数。
+	// 上游在活动关闭或提供商不具备推荐资格时会返回 403，仍可能保留可用重置次数。
 	return apperror.Forbidden(codexInviteResetUnavailable, codexInviteResetUnavailableMessage).WithMetadata(map[string]string{
 		"upstream_status": fmt.Sprint(statusCode),
 		"upstream_detail": detail,

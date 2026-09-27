@@ -1,4 +1,4 @@
-// 媒体单次执行持有 HTTP 响应，账号和任务/资金规则通过调用方组合。
+// 媒体单次执行持有 HTTP 响应，提供商和任务/资金规则通过调用方组合。
 package grok
 
 import (
@@ -15,7 +15,7 @@ import (
 )
 
 type MediaTarget struct {
-	AccountID      int64
+	ProviderID     int64
 	Endpoint       GrokMediaEndpoint
 	Request        *http.Request `json:"-"`
 	StartedAt      time.Time
@@ -29,7 +29,7 @@ type MediaTarget struct {
 	CopyHeaders    func(http.Header, http.Header)
 }
 
-func (t *MediaTarget) TargetID() int64  { return t.AccountID }
+func (t *MediaTarget) TargetID() int64  { return t.ProviderID }
 func (*MediaTarget) String() string     { return "grok media target" }
 func (t *MediaTarget) GoString() string { return t.String() }
 
@@ -109,7 +109,7 @@ func (MediaExecutor) Execute(ctx context.Context, input upstream.AttemptInput, s
 	return result, nil
 }
 
-// BuildMediaRequest 保持 CLI 头先于 Content-Type、账号覆写最后应用的原顺序。
+// BuildMediaRequest 保持 CLI 头先于 Content-Type、提供商覆写最后应用的原顺序。
 func BuildMediaRequest(ctx context.Context, endpoint GrokMediaEndpoint, targetURL, token, contentType string, body []byte, cliHeaders, overrides func(http.Header)) (*http.Request, error) {
 	var reader io.Reader
 	if endpoint.RequiresRequestBody() {

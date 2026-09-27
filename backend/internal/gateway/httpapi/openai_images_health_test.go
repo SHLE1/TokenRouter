@@ -14,10 +14,10 @@ import (
 
 	media "github.com/TokenFlux/TokenRouter/internal/gateway/media"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	gatewaytestkit "github.com/TokenFlux/TokenRouter/internal/gateway/testkit"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	settingscore "github.com/TokenFlux/TokenRouter/internal/settings"
 	settingstestkit "github.com/TokenFlux/TokenRouter/internal/settings/testkit"
@@ -26,18 +26,20 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestOpenAIGatewayService_HandleOpenAIAccountUpstreamError_ImageRateLimitDoesNotBlockWholeAccount(t *testing.T) {
+func TestOpenAIGatewayService_HandleOpenAIProviderUpstreamError_ImageRateLimitDoesNotBlockWholeProvider(t *testing.T) {
 	repo := &gatewaytestkit.ModelHealthStore{}
-	svc := newImagesFixture(imagesFixtureInputs{observer: gatewaytestkit.NewHealthObserver(gatewaytestkit.HealthInput{Store: repo, Options: accountcore.HealthOptions{}})})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 203, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth}}
+	svc := newImagesFixture(imagesFixtureInputs{observer: gatewaytestkit.NewHealthObserver(gatewaytestkit.HealthInput{Store: repo, Options: providercore.HealthOptions{}})})
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 203, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}}
 	body := []byte(`{"error":{"type":"rate_limit_exceeded","message":"Rate limit reached for gpt-image-2-codex (for limit gpt-image) on input-images per min. Please try again in 1s."}}`)
 
-	disabled := gatewayprovider.ApplyOpenAIResponseHealth(context.Background(), svc.Output.Health, account, http.StatusTooManyRequests, http.Header{}, body, false, "gpt-image-2").StopScheduling
+	disabled := gatewayprovider.ApplyOpenAIResponseHealth(context.Background(), svc.Output.Health, provider, http.StatusTooManyRequests, http.Header{}, body, false, "gpt-image-2").StopScheduling
 
 	require.False(t, disabled)
 	require.Len(t, repo.ModelRateLimitCalls, 1)
-	require.Equal(t, accountcore.OpenAIImageGenerationRateLimitKey, repo.ModelRateLimitCalls[0].Scope)
-	require.False(t, svc.Output.Health.Runtime.Blocked(account.Record.ID, func() string { return accountcore.RefreshCredentialIdentity(gatewayprovider.ExecutionRecord(account)) }))
+	require.Equal(t, providercore.OpenAIImageGenerationRateLimitKey, repo.ModelRateLimitCalls[0].Scope)
+	require.False(t, svc.Output.Health.Runtime.Blocked(provider.Record.ID, func() string {
+		return providercore.RefreshCredentialIdentity(gatewayprovider.ExecutionRecord(provider))
+	}))
 }
 
 func TestOpenAIGatewayServiceForwardImages_ImageRateLimitReturnsFailoverAndCoolsCapability(t *testing.T) {
@@ -51,7 +53,7 @@ func TestOpenAIGatewayServiceForwardImages_ImageRateLimitReturnsFailoverAndCools
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = req
 
-	svc := newImagesFixture(imagesFixtureInputs{observer: gatewaytestkit.NewHealthObserver(gatewaytestkit.HealthInput{Store: repo, Options: accountcore.HealthOptions{}}), transport: &auxiliaryHTTPRecorder{
+	svc := newImagesFixture(imagesFixtureInputs{observer: gatewaytestkit.NewHealthObserver(gatewaytestkit.HealthInput{Store: repo, Options: providercore.HealthOptions{}}), transport: &auxiliaryHTTPRecorder{
 		resp: &http.Response{
 			StatusCode: http.StatusTooManyRequests,
 			Header:     http.Header{"X-Request-Id": []string{"req_img_rate_limited"}},
@@ -60,19 +62,19 @@ func TestOpenAIGatewayServiceForwardImages_ImageRateLimitReturnsFailoverAndCools
 	}})
 	parsed, err := media.ParseImageRequest(c.Request.URL.Path, c.GetHeader("Content-Type"), body, true)
 	require.NoError(t, err)
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 204,
 			Name:     "openai-oauth",
 			Platform: capability.PlatformOpenAI,
-			Type:     capability.AccountTypeOAuth,
+			Type:     capability.ProviderTypeOAuth,
 			Credentials: map[string]any{
 				"access_token": "token-123",
 			},
 		},
 	}
 
-	result, err := svc.ForwardImages(context.Background(), c, account, body, parsed, "")
+	result, err := svc.ForwardImages(context.Background(), c, provider, body, parsed, "")
 
 	require.Nil(t, result)
 	var failoverErr *forwardcore.UpstreamFailoverError
@@ -80,12 +82,12 @@ func TestOpenAIGatewayServiceForwardImages_ImageRateLimitReturnsFailoverAndCools
 	require.Equal(t, http.StatusTooManyRequests, failoverErr.StatusCode)
 	require.Contains(t, string(failoverErr.ResponseBody), "input-images per min")
 	require.Len(t, repo.ModelRateLimitCalls, 1)
-	require.Equal(t, accountcore.OpenAIImageGenerationRateLimitKey, repo.ModelRateLimitCalls[0].Scope)
+	require.Equal(t, providercore.OpenAIImageGenerationRateLimitKey, repo.ModelRateLimitCalls[0].Scope)
 }
 
-// issue #6171：上游"回文字没回图"是**这一轮**的结果（模型选择了说话），不是账号能力
-// 失效。它同时被判为可重试（502）并驱动 failover，若还写 30 分钟账号级冷却，一次闲聊
-// 回复就会沿号池把每个被重试到的账号依次冷却掉。冷却仍保留给结构化上游证据，见
+// issue #6171：上游"回文字没回图"是**这一轮**的结果（模型选择了说话），不是提供商能力
+// 失效。它同时被判为可重试（502）并驱动 failover，若还写 30 分钟提供商级冷却，一次闲聊
+// 回复就会沿号池把每个被重试到的提供商依次冷却掉。冷却仍保留给结构化上游证据，见
 // TestOpenAIGatewayServiceForwardImages_TextFallbackDoesNotCoolImageCapability。
 func TestOpenAIGatewayServiceForwardImages_TextFallbackDoesNotCoolImageCapability(t *testing.T) {
 	repo := &gatewaytestkit.ModelHealthStore{}
@@ -107,30 +109,30 @@ func TestOpenAIGatewayServiceForwardImages_TextFallbackDoesNotCoolImageCapabilit
 	}})
 	parsed, err := media.ParseImageRequest(c.Request.URL.Path, c.GetHeader("Content-Type"), body, true)
 	require.NoError(t, err)
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 205,
 			Name:     "openai-oauth",
 			Platform: capability.PlatformOpenAI,
-			Type:     capability.AccountTypeOAuth,
+			Type:     capability.ProviderTypeOAuth,
 			Credentials: map[string]any{
 				"access_token": "token-123",
 			},
 		},
 	}
 
-	result, err := svc.ForwardImages(context.Background(), c, account, body, parsed, "")
+	result, err := svc.ForwardImages(context.Background(), c, provider, body, parsed, "")
 
 	require.Nil(t, result)
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)
-	require.False(t, failoverErr.RetryableOnSameAccount)
-	// 换号行为不变：该判据仍足以放弃本账号重试这一次请求……
+	require.False(t, failoverErr.RetryableOnSameProvider)
+	// 换号行为不变：该判据仍足以放弃本提供商重试这一次请求……
 	require.Equal(t, http.StatusBadGateway, failoverErr.StatusCode)
-	// ……但不再写任何账号级状态，否则重试会把冷却一路刷到整个号池。
+	// ……但不再写任何提供商级状态，否则重试会把冷却一路刷到整个号池。
 	require.Empty(t, repo.ModelRateLimitCalls,
-		"模型回文字只说明这一轮没出图，不构成账号 30 分钟不可用的证据")
+		"模型回文字只说明这一轮没出图，不构成提供商 30 分钟不可用的证据")
 }
 
 // 对照不变式：上游 error 帧点名 image_generation_unavailable 时仍写冷却，
@@ -140,7 +142,7 @@ func TestOpenAIGatewayServiceForwardImages_StructuredUnavailableCoolsImageCapabi
 	body := []byte(`{"model":"gpt-image-2","prompt":"draw a cat"}`)
 	upstreamSSE := "data: {\"type\":\"response.failed\",\"response\":{\"id\":\"r\",\"error\":" +
 		"{\"type\":\"upstream_error\",\"code\":\"image_generation_unavailable\"," +
-		"\"message\":\"image generation tool is not available for this account\"}}}\n\n"
+		"\"message\":\"image generation tool is not available for this provider\"}}}\n\n"
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/images/generations", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -157,12 +159,12 @@ func TestOpenAIGatewayServiceForwardImages_StructuredUnavailableCoolsImageCapabi
 	}})
 	parsed, err := media.ParseImageRequest(c.Request.URL.Path, c.GetHeader("Content-Type"), body, true)
 	require.NoError(t, err)
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 206,
 			Name:     "openai-oauth",
 			Platform: capability.PlatformOpenAI,
-			Type:     capability.AccountTypeOAuth,
+			Type:     capability.ProviderTypeOAuth,
 			Credentials: map[string]any{
 				"access_token": "token-123",
 			},
@@ -170,30 +172,30 @@ func TestOpenAIGatewayServiceForwardImages_StructuredUnavailableCoolsImageCapabi
 	}
 
 	before := time.Now()
-	result, err := svc.ForwardImages(context.Background(), c, account, body, parsed, "")
+	result, err := svc.ForwardImages(context.Background(), c, provider, body, parsed, "")
 
 	require.Nil(t, result)
 	require.Error(t, err)
 	require.Len(t, repo.ModelRateLimitCalls, 1)
 	call := repo.ModelRateLimitCalls[0]
-	require.Equal(t, account.Record.ID, call.AccountID)
-	require.Equal(t, accountcore.OpenAIImageGenerationRateLimitKey, call.Scope)
+	require.Equal(t, provider.Record.ID, call.ProviderID)
+	require.Equal(t, providercore.OpenAIImageGenerationRateLimitKey, call.Scope)
 	require.Equal(t, openai.OpenAIImagesOAuthUnavailableReason, call.Reason)
 	require.WithinDuration(t, before.Add(openai.OpenAIImagesOAuthUnavailableDefaultCooldown), call.ResetAt, time.Second)
 }
 
 func TestOpenAIGatewayService_CoolOpenAIImagesOAuthToolUsesConfiguredCooldown(t *testing.T) {
-	accountRepo := &gatewaytestkit.ModelHealthStore{}
+	providerRepo := &gatewaytestkit.ModelHealthStore{}
 	settingRepo := settingstestkit.NewMemory()
-	settingRepo.Data[accountcore.SettingKeyOpenAIImagesOAuthUnavailableCooldownSettings] = `{"cooldown_minutes":7}`
-	svc := newImagesFixture(imagesFixtureInputs{store: accountRepo})
-	svc.Cooldown.Settings = accountcore.NewRuntimeSettings(settingRepo, settingscore.ErrSettingNotFound).GetOpenAIImagesOAuthUnavailableCooldownSettings
+	settingRepo.Data[providercore.SettingKeyOpenAIImagesOAuthUnavailableCooldownSettings] = `{"cooldown_minutes":7}`
+	svc := newImagesFixture(imagesFixtureInputs{store: providerRepo})
+	svc.Cooldown.Settings = providercore.NewRuntimeSettings(settingRepo, settingscore.ErrSettingNotFound).GetOpenAIImagesOAuthUnavailableCooldownSettings
 
 	before := time.Now()
-	svc.Cooldown.Apply(context.Background(), &accountcore.Record{LoadLocation: time.LoadLocation, ID: 206, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth})
+	svc.Cooldown.Apply(context.Background(), &providercore.Record{LoadLocation: time.LoadLocation, ID: 206, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth})
 
-	require.Len(t, accountRepo.ModelRateLimitCalls, 1)
-	require.WithinDuration(t, before.Add(7*time.Minute), accountRepo.ModelRateLimitCalls[0].ResetAt, time.Second)
+	require.Len(t, providerRepo.ModelRateLimitCalls, 1)
+	require.WithinDuration(t, before.Add(7*time.Minute), providerRepo.ModelRateLimitCalls[0].ResetAt, time.Second)
 }
 
 func TestOpenAIGatewayServiceForwardImages_CapabilityLossCoolsImageScope(t *testing.T) {
@@ -207,7 +209,7 @@ func TestOpenAIGatewayServiceForwardImages_CapabilityLossCoolsImageScope(t *test
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = req
 
-	svc := newImagesFixture(imagesFixtureInputs{observer: gatewaytestkit.NewHealthObserver(gatewaytestkit.HealthInput{Store: repo, Options: accountcore.HealthOptions{}}), transport: &auxiliaryHTTPRecorder{
+	svc := newImagesFixture(imagesFixtureInputs{observer: gatewaytestkit.NewHealthObserver(gatewaytestkit.HealthInput{Store: repo, Options: providercore.HealthOptions{}}), transport: &auxiliaryHTTPRecorder{
 		resp: &http.Response{
 			StatusCode: http.StatusBadRequest,
 			Header:     http.Header{"X-Request-Id": []string{"req_img_capability_lost"}},
@@ -216,12 +218,12 @@ func TestOpenAIGatewayServiceForwardImages_CapabilityLossCoolsImageScope(t *test
 	}})
 	parsed, err := media.ParseImageRequest(c.Request.URL.Path, c.GetHeader("Content-Type"), body, true)
 	require.NoError(t, err)
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 205,
 			Name:     "openai-oauth",
 			Platform: capability.PlatformOpenAI,
-			Type:     capability.AccountTypeOAuth,
+			Type:     capability.ProviderTypeOAuth,
 			Credentials: map[string]any{
 				"access_token": "token-123",
 			},
@@ -229,27 +231,29 @@ func TestOpenAIGatewayServiceForwardImages_CapabilityLossCoolsImageScope(t *test
 	}
 
 	before := time.Now()
-	result, err := svc.ForwardImages(context.Background(), c, account, body, parsed, "")
+	result, err := svc.ForwardImages(context.Background(), c, provider, body, parsed, "")
 
 	require.Nil(t, result)
 	require.Error(t, err)
 	require.Len(t, repo.ModelRateLimitCalls, 1)
 	call := repo.ModelRateLimitCalls[0]
-	require.Equal(t, account.Record.ID, call.AccountID)
-	require.Equal(t, accountcore.OpenAIImageGenerationRateLimitKey, call.Scope)
-	require.Equal(t, accountcore.OpenAIImageCapabilityLossReason, call.Reason)
-	require.WithinDuration(t, before.Add(accountcore.OpenAIImageCapabilityLossCooldown), call.ResetAt, time.Second)
+	require.Equal(t, provider.Record.ID, call.ProviderID)
+	require.Equal(t, providercore.OpenAIImageGenerationRateLimitKey, call.Scope)
+	require.Equal(t, providercore.OpenAIImageCapabilityLossReason, call.Reason)
+	require.WithinDuration(t, before.Add(providercore.OpenAIImageCapabilityLossCooldown), call.ResetAt, time.Second)
 }
 
 func TestOpenAIGatewayServiceHandleUpstreamError_PassthroughCapabilityLossDoesNotCool(t *testing.T) {
 	repo := &gatewaytestkit.ModelHealthStore{}
-	svc := newImagesFixture(imagesFixtureInputs{observer: gatewaytestkit.NewHealthObserver(gatewaytestkit.HealthInput{Store: repo, Options: accountcore.HealthOptions{}})})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 206, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth}}
+	svc := newImagesFixture(imagesFixtureInputs{observer: gatewaytestkit.NewHealthObserver(gatewaytestkit.HealthInput{Store: repo, Options: providercore.HealthOptions{}})})
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 206, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}}
 	body := []byte(`{"error":{"message":"Tool choice 'image_generation' not found in 'tools' parameter.","param":"tool_choice","type":"invalid_request_error"}}`)
 
-	disabled := gatewayprovider.ApplyOpenAIResponseHealth(context.Background(), svc.Output.Health, account, http.StatusBadRequest, http.Header{}, body, false, "gpt-5.5").StopScheduling
+	disabled := gatewayprovider.ApplyOpenAIResponseHealth(context.Background(), svc.Output.Health, provider, http.StatusBadRequest, http.Header{}, body, false, "gpt-5.5").StopScheduling
 
 	require.False(t, disabled)
 	require.Empty(t, repo.ModelRateLimitCalls)
-	require.False(t, svc.Output.Health.Runtime.Blocked(account.Record.ID, func() string { return accountcore.RefreshCredentialIdentity(gatewayprovider.ExecutionRecord(account)) }))
+	require.False(t, svc.Output.Health.Runtime.Blocked(provider.Record.ID, func() string {
+		return providercore.RefreshCredentialIdentity(gatewayprovider.ExecutionRecord(provider))
+	}))
 }

@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/payment/provider"
+	paymentadapter "github.com/TokenFlux/TokenRouter/internal/payment/provider"
 	paymenttestkit "github.com/TokenFlux/TokenRouter/internal/payment/testkit"
 	sqlitetest "github.com/TokenFlux/TokenRouter/internal/testutil/sqlite"
 
@@ -30,12 +30,15 @@ func (p webhookProviderTestDouble) SupportedTypes() []payment.PaymentType { retu
 func (p webhookProviderTestDouble) CreatePayment(context.Context, payment.CreatePaymentRequest) (*payment.CreatePaymentResponse, error) {
 	panic("unexpected call")
 }
+
 func (p webhookProviderTestDouble) QueryOrder(context.Context, string) (*payment.QueryOrderResponse, error) {
 	panic("unexpected call")
 }
+
 func (p webhookProviderTestDouble) VerifyNotification(context.Context, string, map[string]string) (*payment.PaymentNotification, error) {
 	panic("unexpected call")
 }
+
 func (p webhookProviderTestDouble) Refund(context.Context, payment.RefundRequest) (*payment.RefundResponse, error) {
 	panic("unexpected call")
 }
@@ -58,7 +61,7 @@ func TestGetOrderProviderInstanceResolvesUniqueLegacyProviderKey(t *testing.T) {
 		ProviderKey: &providerKey,
 	}
 
-	svc := payment.NewProviderBindings(paymentpostgres.NewInstanceStore(client), nil, paymenttestkit.LegacyLoadBalancer(client), payment.BindingRuntime{Factory: provider.CreateProvider, RegistryFactory: provider.CreateProvider}, false)
+	svc := payment.NewProviderBindings(paymentpostgres.NewInstanceStore(client), nil, paymenttestkit.LegacyLoadBalancer(client), payment.BindingRuntime{Factory: paymentadapter.CreateProvider, RegistryFactory: paymentadapter.CreateProvider}, false)
 
 	got, err := svc.GetOrderProviderInstance(ctx, order)
 	require.NoError(t, err)
@@ -82,7 +85,7 @@ func TestGetOrderProviderInstanceResolvesUniqueLegacyPaymentType(t *testing.T) {
 		PaymentType: payment.TypeWxpayDirect,
 	}
 
-	svc := payment.NewProviderBindings(paymentpostgres.NewInstanceStore(client), nil, paymenttestkit.LegacyLoadBalancer(client), payment.BindingRuntime{Factory: provider.CreateProvider, RegistryFactory: provider.CreateProvider}, false)
+	svc := payment.NewProviderBindings(paymentpostgres.NewInstanceStore(client), nil, paymenttestkit.LegacyLoadBalancer(client), payment.BindingRuntime{Factory: paymentadapter.CreateProvider, RegistryFactory: paymentadapter.CreateProvider}, false)
 
 	got, err := svc.GetOrderProviderInstance(ctx, order)
 	require.NoError(t, err)
@@ -114,7 +117,7 @@ func TestGetOrderProviderInstanceLeavesAmbiguousLegacyOrderUnresolved(t *testing
 		PaymentType: payment.TypeWxpay,
 	}
 
-	svc := payment.NewProviderBindings(paymentpostgres.NewInstanceStore(client), nil, paymenttestkit.LegacyLoadBalancer(client), payment.BindingRuntime{Factory: provider.CreateProvider, RegistryFactory: provider.CreateProvider}, false)
+	svc := payment.NewProviderBindings(paymentpostgres.NewInstanceStore(client), nil, paymenttestkit.LegacyLoadBalancer(client), payment.BindingRuntime{Factory: paymentadapter.CreateProvider, RegistryFactory: paymentadapter.CreateProvider}, false)
 
 	got, err := svc.GetOrderProviderInstance(ctx, order)
 	require.NoError(t, err)
@@ -147,7 +150,7 @@ func TestGetOrderProviderInstanceLeavesLegacyProviderKeyUnresolvedWhenHistorical
 		ProviderKey: &providerKey,
 	}
 
-	svc := payment.NewProviderBindings(paymentpostgres.NewInstanceStore(client), nil, paymenttestkit.LegacyLoadBalancer(client), payment.BindingRuntime{Factory: provider.CreateProvider, RegistryFactory: provider.CreateProvider}, false)
+	svc := payment.NewProviderBindings(paymentpostgres.NewInstanceStore(client), nil, paymenttestkit.LegacyLoadBalancer(client), payment.BindingRuntime{Factory: paymentadapter.CreateProvider, RegistryFactory: paymentadapter.CreateProvider}, false)
 
 	got, err := svc.GetOrderProviderInstance(ctx, order)
 	require.NoError(t, err)
@@ -172,7 +175,7 @@ func TestGetOrderProviderInstanceLeavesProviderKeyMatchUnresolvedWhenTypeNotSupp
 		ProviderKey: &providerKey,
 	}
 
-	svc := payment.NewProviderBindings(paymentpostgres.NewInstanceStore(client), nil, paymenttestkit.LegacyLoadBalancer(client), payment.BindingRuntime{Factory: provider.CreateProvider, RegistryFactory: provider.CreateProvider}, false)
+	svc := payment.NewProviderBindings(paymentpostgres.NewInstanceStore(client), nil, paymenttestkit.LegacyLoadBalancer(client), payment.BindingRuntime{Factory: paymentadapter.CreateProvider, RegistryFactory: paymentadapter.CreateProvider}, false)
 
 	got, err := svc.GetOrderProviderInstance(ctx, order)
 	require.NoError(t, err)
@@ -201,7 +204,7 @@ func TestGetOrderProviderInstanceUsesProviderSnapshotWhenPinnedColumnMissing(t *
 		},
 	}
 
-	svc := payment.NewProviderBindings(paymentpostgres.NewInstanceStore(client), nil, paymenttestkit.LegacyLoadBalancer(client), payment.BindingRuntime{Factory: provider.CreateProvider, RegistryFactory: provider.CreateProvider}, false)
+	svc := payment.NewProviderBindings(paymentpostgres.NewInstanceStore(client), nil, paymenttestkit.LegacyLoadBalancer(client), payment.BindingRuntime{Factory: paymentadapter.CreateProvider, RegistryFactory: paymentadapter.CreateProvider}, false)
 
 	got, err := svc.GetOrderProviderInstance(ctx, order)
 	require.NoError(t, err)
@@ -231,7 +234,7 @@ func TestGetOrderProviderInstanceRejectsMissingSnapshotInstanceWithoutLegacyFall
 		},
 	}
 
-	svc := payment.NewProviderBindings(paymentpostgres.NewInstanceStore(client), nil, paymenttestkit.LegacyLoadBalancer(client), payment.BindingRuntime{Factory: provider.CreateProvider, RegistryFactory: provider.CreateProvider}, false)
+	svc := payment.NewProviderBindings(paymentpostgres.NewInstanceStore(client), nil, paymenttestkit.LegacyLoadBalancer(client), payment.BindingRuntime{Factory: paymentadapter.CreateProvider, RegistryFactory: paymentadapter.CreateProvider}, false)
 
 	got, err := svc.GetOrderProviderInstance(ctx, order)
 	require.Nil(t, got)
@@ -261,7 +264,7 @@ func TestGetWebhookProviderRejectsAmbiguousRegistryFallback(t *testing.T) {
 		Save(ctx)
 	require.NoError(t, err)
 
-	svc := payment.NewProviderBindings(paymentpostgres.NewInstanceStore(client), payment.NewRegistry(), paymenttestkit.LegacyLoadBalancer(client), payment.BindingRuntime{Factory: provider.CreateProvider, RegistryFactory: provider.CreateProvider}, true)
+	svc := payment.NewProviderBindings(paymentpostgres.NewInstanceStore(client), payment.NewRegistry(), paymenttestkit.LegacyLoadBalancer(client), payment.BindingRuntime{Factory: paymentadapter.CreateProvider, RegistryFactory: paymentadapter.CreateProvider}, true)
 
 	providers, err := svc.GetWebhookProviders(ctx, payment.TypeWxpay, "")
 	require.NoError(t, err)
@@ -288,7 +291,7 @@ func TestGetWebhookProvidersRejectAmbiguousFallbackForNonWxpay(t *testing.T) {
 		Save(ctx)
 	require.NoError(t, err)
 
-	svc := payment.NewProviderBindings(paymentpostgres.NewInstanceStore(client), payment.NewRegistry(), nil, payment.BindingRuntime{Factory: provider.CreateProvider, RegistryFactory: provider.CreateProvider}, true)
+	svc := payment.NewProviderBindings(paymentpostgres.NewInstanceStore(client), payment.NewRegistry(), nil, payment.BindingRuntime{Factory: paymentadapter.CreateProvider, RegistryFactory: paymentadapter.CreateProvider}, true)
 
 	_, err = svc.GetWebhookProviders(ctx, payment.TypeAlipay, "")
 	require.Error(t, err)
@@ -313,7 +316,7 @@ func TestGetWebhookProviderAllowsSingleInstanceRegistryFallback(t *testing.T) {
 		types: []payment.PaymentType{payment.TypeStripe},
 	})
 
-	svc := payment.NewProviderBindings(paymentpostgres.NewInstanceStore(client), registry, nil, payment.BindingRuntime{Factory: provider.CreateProvider, RegistryFactory: provider.CreateProvider}, true)
+	svc := payment.NewProviderBindings(paymentpostgres.NewInstanceStore(client), registry, nil, payment.BindingRuntime{Factory: paymentadapter.CreateProvider, RegistryFactory: paymentadapter.CreateProvider}, true)
 
 	providers, err := svc.GetWebhookProviders(ctx, payment.TypeStripe, "")
 	require.NoError(t, err)
@@ -359,7 +362,7 @@ func TestGetWebhookProviderRejectsRegistryFallbackForPinnedOrder(t *testing.T) {
 		types: []payment.PaymentType{payment.TypeWxpay},
 	})
 
-	svc := payment.NewProviderBindings(paymentpostgres.NewInstanceStore(client), registry, nil, payment.BindingRuntime{Factory: provider.CreateProvider, RegistryFactory: provider.CreateProvider}, true)
+	svc := payment.NewProviderBindings(paymentpostgres.NewInstanceStore(client), registry, nil, payment.BindingRuntime{Factory: paymentadapter.CreateProvider, RegistryFactory: paymentadapter.CreateProvider}, true)
 
 	_, err = svc.GetWebhookProviders(ctx, payment.TypeWxpay, "sub2_test_pinned_order")
 	require.Error(t, err)
@@ -420,7 +423,7 @@ func TestGetWebhookProviderUsesProviderSnapshotBeforeWxpayFallback(t *testing.T)
 		Save(ctx)
 	require.NoError(t, err)
 
-	svc := payment.NewProviderBindings(paymentpostgres.NewInstanceStore(client), payment.NewRegistry(), paymenttestkit.LegacyLoadBalancer(client), payment.BindingRuntime{Factory: provider.CreateProvider, RegistryFactory: provider.CreateProvider}, true)
+	svc := payment.NewProviderBindings(paymentpostgres.NewInstanceStore(client), payment.NewRegistry(), paymenttestkit.LegacyLoadBalancer(client), payment.BindingRuntime{Factory: paymentadapter.CreateProvider, RegistryFactory: paymentadapter.CreateProvider}, true)
 
 	providers, err := svc.GetWebhookProviders(ctx, payment.TypeWxpay, "sub2_test_snapshot_webhook_order")
 	require.NoError(t, err)

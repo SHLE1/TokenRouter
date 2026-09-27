@@ -7,15 +7,15 @@ import (
 	"slices"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 	egressprovider "github.com/TokenFlux/TokenRouter/internal/egress/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/searchtools"
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
 )
@@ -23,18 +23,18 @@ import (
 // Dependencies 固定连接原生拥有者，不接受旧网关、配置聚合或 HTTP Context。
 // Prepare 与执行共用这些实例，构造不启动任务或提前读取动态设置。
 type Dependencies struct {
-	Credentials   *account.MessageCredentialSource
+	Credentials   *provider.MessageCredentialSource
 	Fingerprint   *anthropic.RequestFingerprint
 	Transport     httpclient.UpstreamTransport
-	Health        *accountprovider.UpstreamHealth
+	Health        *provideradapter.UpstreamHealth
 	TLS           *egressprovider.TLSProfiles
 	Settings      *gateway.RuntimeSettings
 	Prices        *billing.PriceResolver
 	Search        *searchtools.Emulator
 	Enter         func() (func(), error)
 	Debug         DebugObserver
-	AccountState  AccountState
-	Deferred      *account.DeferredService
+	ProviderState ProviderState
+	Deferred      *provider.DeferredService
 	GroupPolicies BedrockGroupPolicies
 }
 
@@ -43,15 +43,15 @@ type BedrockGroupPolicies interface {
 	GetGroupPolicy(context.Context, int64) (*routing.GroupPolicyView, error)
 }
 
-// AccountState 只提供本条执行链原有的持久停调动作，不开放账号配置或资金写入。
-type AccountState interface {
+// ProviderState 只提供本条执行链原有的持久停调动作，不开放提供商配置或资金写入。
+type ProviderState interface {
 	SetTempUnschedulable(context.Context, int64, time.Time, string) error
 }
 
 // DebugObserver 只接收本次请求的调试快照；文件及日志资源由观察实现持有。
 type DebugObserver interface {
 	Snapshot(string, http.Header, []byte, map[string]string)
-	Capture(*http.Request, []byte, *provider.ExecutionAccount, string, bool, bool) string
+	Capture(*http.Request, []byte, *gatewayadapter.ExecutionProvider, string, bool, bool) string
 }
 
 // Runtime 只持有 Messages 单次执行的固定依赖；状态、凭据及响应属于各次尝试。
@@ -66,7 +66,7 @@ func NewRuntime(dependencies Dependencies, options Options) *Runtime {
 }
 
 // checkBeta 在普通 Messages 的既有准备位置读取并保存结果，空集也代表已查询。
-func (r *Runtime) checkBeta(ctx context.Context, state *AttemptState, target *provider.ExecutionAccount, header, model string) error {
+func (r *Runtime) checkBeta(ctx context.Context, state *AttemptState, target *gatewayadapter.ExecutionProvider, header, model string) error {
 	result := r.evaluateBeta(ctx, target, header, model)
 	if result.BlockErr != nil {
 		return result.BlockErr
@@ -80,14 +80,14 @@ func (r *Runtime) checkBeta(ctx context.Context, state *AttemptState, target *pr
 }
 
 // betaFilters 保留计数入口按需读取的行为，不把一次未缓存查询变成请求级缓存。
-func (r *Runtime) betaFilters(ctx context.Context, state *AttemptState, target *provider.ExecutionAccount, model string) map[string]struct{} {
+func (r *Runtime) betaFilters(ctx context.Context, state *AttemptState, target *gatewayadapter.ExecutionProvider, model string) map[string]struct{} {
 	if state.BetaEvaluated {
 		return state.BetaFilters
 	}
 	return r.evaluateBeta(ctx, target, "", model).FilterSet
 }
 
-func (r *Runtime) evaluateBeta(ctx context.Context, target *provider.ExecutionAccount, header, model string) anthropic.BetaPolicyResult {
+func (r *Runtime) evaluateBeta(ctx context.Context, target *gatewayadapter.ExecutionProvider, header, model string) anthropic.BetaPolicyResult {
 	if r.dependencies.Settings == nil {
 		return anthropic.BetaPolicyResult{}
 	}
@@ -95,7 +95,7 @@ func (r *Runtime) evaluateBeta(ctx context.Context, target *provider.ExecutionAc
 	if err != nil || settings == nil {
 		return anthropic.BetaPolicyResult{}
 	}
-	return anthropic.EvaluateBetaPolicy(provider.AnthropicBetaPolicy(settings), header, target.View().IsOAuth(), target.View().IsBedrock(), model)
+	return anthropic.EvaluateBetaPolicy(gatewayadapter.AnthropicBetaPolicy(settings), header, target.View().IsOAuth(), target.View().IsBedrock(), model)
 }
 
 // validateBaseURL 保留格式检查与受允许列表约束两条路径及原错误前缀。

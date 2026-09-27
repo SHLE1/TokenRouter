@@ -38,8 +38,7 @@ func TestGrokResponsesExecuteReplayAndResourceOwnership(t *testing.T) {
 	}))
 	defer server.Close()
 	target := &ResponsesTarget{
-
-		AccountID: 19,
+		ProviderID: 19,
 
 		Model: "grok-fixture",
 
@@ -49,7 +48,6 @@ func TestGrokResponsesExecuteReplayAndResourceOwnership(t *testing.T) {
 		},
 
 		Exchange: ResponsesExchange{
-
 			Build: func(body []byte) (*http.Request, error) {
 				return BuildResponsesRequest(context.Background(), body, ResponsesRequestOptions{URL: server.URL, Token: "fixture"})
 			},
@@ -99,7 +97,6 @@ func TestGrokResponsesExecutePreservesPartialObservation(t *testing.T) {
 	var closed atomic.Int64
 	target := &ResponsesTarget{
 		Exchange: ResponsesExchange{
-
 			Build: func(body []byte) (*http.Request, error) {
 				return http.NewRequest(http.MethodPost, "https://fixture.invalid", strings.NewReader(string(body)))
 			},
@@ -112,7 +109,6 @@ func TestGrokResponsesExecutePreservesPartialObservation(t *testing.T) {
 		},
 		ReadResponse: func(*http.Response, upstream.AttemptInput, upstream.OutputSink) (upstream.ResponsesObservation, error) {
 			return upstream.ResponsesObservation{
-
 				Usage: &wire.ForwardUsage{InputTokens: 11, OutputTokens: 3},
 
 				HasUsage: true,

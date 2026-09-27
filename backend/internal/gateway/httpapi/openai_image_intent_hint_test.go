@@ -13,7 +13,6 @@ import (
 )
 
 func TestOpenAIGatewayServicePassthroughCompactImageIntentIsAttemptLocal(t *testing.T) {
-
 	tests := []struct {
 		name           string
 		canonicalModel string
@@ -46,9 +45,9 @@ func TestOpenAIGatewayServicePassthroughCompactImageIntentIsAttemptLocal(t *test
 			c, recorder := newOpenAIImageGenerationControlTestContext(false, "unit-test-agent/1.0")
 			c.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/responses/compact", nil)
 			SetOpenAIClientTransport(c, OpenAIClientTransportHTTP)
-			account := newOpenAIImageGenerationControlTestAccount()
-			account.Record.Extra = map[string]any{"openai_passthrough": true}
-			account.Record.Credentials = map[string]any{
+			provider := newOpenAIImageGenerationControlTestProvider()
+			provider.Record.Extra = map[string]any{"openai_passthrough": true}
+			provider.Record.Credentials = map[string]any{
 				"api_key": "sk-test",
 				"compact_model_mapping": map[string]any{
 					tt.canonicalModel: tt.compactModel,
@@ -56,7 +55,7 @@ func TestOpenAIGatewayServicePassthroughCompactImageIntentIsAttemptLocal(t *test
 			}
 			body := []byte(`{"model":"` + tt.canonicalModel + `","stream":false,"input":"draw"}`)
 
-			result, err := svc.Forward(context.Background(), c, account, body)
+			result, err := svc.Forward(context.Background(), c, provider, body)
 
 			cached, known := GetOpenAIImageIntentHint(c)
 			require.True(t, known)

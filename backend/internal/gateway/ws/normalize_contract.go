@@ -2,7 +2,7 @@ package ws
 
 import "context"
 
-// ImagePolicy 是当前报文适用的图片资格投影，不持有账号/分组实体。
+// ImagePolicy 是当前报文适用的图片资格投影，不持有提供商/分组实体。
 type ImagePolicy struct {
 	Allowed  bool
 	Explicit string
@@ -44,7 +44,7 @@ type RequestPort interface {
 	Log(string)
 }
 type NormalizeOptions struct {
-	AccountID       int64
+	ProviderID      int64
 	OAuth           bool
 	ForceHTTPBridge bool
 }

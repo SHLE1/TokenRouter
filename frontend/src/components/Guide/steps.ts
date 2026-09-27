@@ -88,82 +88,82 @@ export const getAdminSteps = (t: (key: string) => string, isSimpleMode = false):
     }
   },
 
-  // ========== 第二部分：创建账号授权 ==========
+  // ========== 第二部分：创建提供商授权 ==========
   {
     element: '#sidebar-channel-manage',
     popover: {
-      title: t('onboarding.admin.accountManage.title'),
-      description: t('onboarding.admin.accountManage.description'),
+      title: t('onboarding.admin.providerManage.title'),
+      description: t('onboarding.admin.providerManage.description'),
       side: 'right',
       align: 'center',
       showButtons: ['close']
     }
   },
   {
-    element: '[data-tour="accounts-create-btn"]',
+    element: '[data-tour="providers-create-btn"]',
     popover: {
-      title: t('onboarding.admin.createAccount.title'),
-      description: t('onboarding.admin.createAccount.description'),
+      title: t('onboarding.admin.createProvider.title'),
+      description: t('onboarding.admin.createProvider.description'),
       side: 'bottom',
       align: 'end',
       showButtons: ['close']
     }
   },
   {
-    element: '[data-tour="account-form-name"]',
+    element: '[data-tour="provider-form-name"]',
     popover: {
-      title: t('onboarding.admin.accountName.title'),
-      description: t('onboarding.admin.accountName.description'),
+      title: t('onboarding.admin.providerName.title'),
+      description: t('onboarding.admin.providerName.description'),
       side: 'right',
       align: 'start',
       showButtons: ['next', 'previous']
     }
   },
   {
-    element: '[data-tour="account-form-platform"]',
+    element: '[data-tour="provider-form-platform"]',
     popover: {
-      title: t('onboarding.admin.accountPlatform.title'),
-      description: t('onboarding.admin.accountPlatform.description'),
+      title: t('onboarding.admin.providerPlatform.title'),
+      description: t('onboarding.admin.providerPlatform.description'),
       side: 'right',
       align: 'start',
       showButtons: ['next', 'previous']
     }
   },
   {
-    element: '[data-tour="account-form-type"]',
+    element: '[data-tour="provider-form-type"]',
     popover: {
-      title: t('onboarding.admin.accountType.title'),
-      description: t('onboarding.admin.accountType.description'),
+      title: t('onboarding.admin.providerType.title'),
+      description: t('onboarding.admin.providerType.description'),
       side: 'right',
       align: 'start',
       showButtons: ['next', 'previous']
     }
   },
   {
-    element: '[data-tour="account-form-priority"]',
+    element: '[data-tour="provider-form-priority"]',
     popover: {
-      title: t('onboarding.admin.accountPriority.title'),
-      description: t('onboarding.admin.accountPriority.description'),
+      title: t('onboarding.admin.providerPriority.title'),
+      description: t('onboarding.admin.providerPriority.description'),
       side: 'top',
       align: 'start',
       showButtons: ['next', 'previous']
     }
   },
   {
-    element: '[data-tour="account-form-groups"]',
+    element: '[data-tour="provider-form-groups"]',
     popover: {
-      title: t('onboarding.admin.accountGroups.title'),
-      description: t('onboarding.admin.accountGroups.description'),
+      title: t('onboarding.admin.providerGroups.title'),
+      description: t('onboarding.admin.providerGroups.description'),
       side: 'top',
       align: 'center',
       showButtons: ['next', 'previous']
     }
   },
   {
-    element: '[data-tour="account-form-submit"]',
+    element: '[data-tour="provider-form-submit"]',
     popover: {
-      title: t('onboarding.admin.accountSubmit.title'),
-      description: t('onboarding.admin.accountSubmit.description'),
+      title: t('onboarding.admin.providerSubmit.title'),
+      description: t('onboarding.admin.providerSubmit.description'),
       side: 'left',
       align: 'center',
       showButtons: ['close']
@@ -227,12 +227,12 @@ export const getAdminSteps = (t: (key: string) => string, isSimpleMode = false):
   if (isSimpleMode) {
     return allSteps.filter(step => {
       const element = step.element as string | undefined
-      // 过滤掉分组管理和账号分组选择相关步骤
+      // 过滤掉分组管理和提供商分组选择相关步骤
       return !element || (
         !element.includes('sidebar-group-manage') &&
         !element.includes('groups-create-btn') &&
         !element.includes('group-form-') &&
-        !element.includes('account-form-groups')
+        !element.includes('provider-form-groups')
       )
     })
   }

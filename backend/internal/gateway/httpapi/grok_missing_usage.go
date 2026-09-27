@@ -19,18 +19,18 @@ const (
 )
 
 // NewGrokMissingUsageFailure 构造稳定的缺失用量故障转移错误并写入 Grok Ops 诊断。
-func NewGrokMissingUsageFailure(c *gin.Context, account *gatewayprovider.ExecutionAccount, upstreamRequestID string) *forwardcore.UpstreamFailoverError {
-	accountID := int64(0)
-	accountName := ""
-	if account != nil {
-		accountID = account.Record.ID
-		accountName = account.Record.Name
+func NewGrokMissingUsageFailure(c *gin.Context, provider *gatewayprovider.ExecutionProvider, upstreamRequestID string) *forwardcore.UpstreamFailoverError {
+	providerID := int64(0)
+	providerName := ""
+	if provider != nil {
+		providerID = provider.Record.ID
+		providerName = provider.Record.Name
 	}
 	SetOpsUpstreamError(c, http.StatusBadGateway, grokMissingUsageMessage, "")
 	AppendOpsUpstreamError(c, ops.OpsUpstreamErrorEvent{
 		Platform:           capability.PlatformGrok,
-		AccountID:          accountID,
-		AccountName:        accountName,
+		ProviderID:         providerID,
+		ProviderName:       providerName,
 		UpstreamStatusCode: http.StatusBadGateway,
 		UpstreamRequestID:  strings.TrimSpace(upstreamRequestID),
 		Kind:               "failover",

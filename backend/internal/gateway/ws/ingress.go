@@ -46,9 +46,9 @@ func (s *IngressSession) Run(ctx context.Context, firstMessage []byte) error {
 	}
 	if p.ShouldBridge(firstPayload) {
 		p.Log(fmt.Sprintf(
-			"ingress_ws_http_bridge_start account_id=%d account_type=%s payload_bytes=%d threshold_bytes=%d has_session_hash=%v store_disabled=%v",
-			o.AccountID,
-			o.AccountType,
+			"ingress_ws_http_bridge_start provider_id=%d provider_type=%s payload_bytes=%d threshold_bytes=%d has_session_hash=%v store_disabled=%v",
+			o.ProviderID,
+			o.ProviderType,
 			firstPayload.PayloadBytes,
 			o.BridgeThreshold,
 			state.SessionHash != "",
@@ -60,8 +60,8 @@ func (s *IngressSession) Run(ctx context.Context, firstMessage []byte) error {
 		grokCacheSeedPayload := firstPayload.PayloadRaw
 		var bridgeReplayInput []json.RawMessage
 		bridgeReplayInputExists := false
-		var bridgeAccountFailoverInput []json.RawMessage
-		bridgeAccountFailoverInputExists := false
+		var bridgeProviderFailoverInput []json.RawMessage
+		bridgeProviderFailoverInputExists := false
 		for turn := 1; ; turn++ {
 			turnStartedAt := time.Now()
 			if hooks != nil && hooks.TurnStarted != nil {
@@ -88,7 +88,7 @@ func (s *IngressSession) Run(ctx context.Context, firstMessage []byte) error {
 			// 历史序列须同步剥离，否则与已剥离的当前 input 项错位，prefix 复用失配。
 			if invalidDigests := p.InvalidDigests(groupID, state.SessionHash); len(invalidDigests) > 0 {
 				strippedPayload, strippedCount := p.StripInvalid(
-					currentBridgePayload.PayloadRaw, invalidDigests, "ingress_ws_http_bridge_invalid_encrypted_lineage_strip", o.AccountID, turn,
+					currentBridgePayload.PayloadRaw, invalidDigests, "ingress_ws_http_bridge_invalid_encrypted_lineage_strip", o.ProviderID, turn,
 				)
 				if strippedCount > 0 {
 					currentBridgePayload.PayloadRaw = strippedPayload
@@ -97,8 +97,8 @@ func (s *IngressSession) Run(ctx context.Context, firstMessage []byte) error {
 				if bridgeReplayInputExists {
 					bridgeReplayInput, _ = codec.StripItems(bridgeReplayInput, invalidDigests)
 				}
-				if bridgeAccountFailoverInputExists {
-					bridgeAccountFailoverInput, _ = codec.StripItems(bridgeAccountFailoverInput, invalidDigests)
+				if bridgeProviderFailoverInputExists {
+					bridgeProviderFailoverInput, _ = codec.StripItems(bridgeProviderFailoverInput, invalidDigests)
 				}
 			}
 			bridgePayloadRaw := currentBridgePayload.PayloadRaw
@@ -106,7 +106,7 @@ func (s *IngressSession) Run(ctx context.Context, firstMessage []byte) error {
 			toolOutputCoverage := wire.AnalyzeToolCallOutputContextCoverageBytes(currentBridgePayload.PayloadRaw)
 			needsBridgeReplay := currentBridgePayload.PreviousResponseID != "" ||
 				(toolOutputCoverage.HasFunctionCallOutput && !toolOutputCoverage.ContextCoversAllCallIDs)
-			// 一次解析当前 input，正常 replay 与 account-failover 两份序列共享同一批正文。
+			// 一次解析当前 input，正常 replay 与 provider-failover 两份序列共享同一批正文。
 			bridgeCurrentItems, bridgeCurrentItemsExist, extractErr := codec.Extract(
 				currentBridgePayload.PayloadRaw,
 			)
@@ -120,9 +120,9 @@ func (s *IngressSession) Run(ctx context.Context, firstMessage []byte) error {
 				bridgeCurrentItemsExist,
 				needsBridgeReplay,
 			)
-			turnAccountFailoverInput, turnAccountFailoverInputExists := codec.BuildFromItems(
-				bridgeAccountFailoverInput,
-				bridgeAccountFailoverInputExists,
+			turnProviderFailoverInput, turnProviderFailoverInputExists := codec.BuildFromItems(
+				bridgeProviderFailoverInput,
+				bridgeProviderFailoverInputExists,
 				bridgeCurrentItems,
 				bridgeCurrentItemsExist,
 				needsBridgeReplay,
@@ -139,8 +139,8 @@ func (s *IngressSession) Run(ctx context.Context, firstMessage []byte) error {
 				bridgePayloadRaw = updatedPayload
 
 				p.Log(fmt.Sprintf(
-					"ingress_ws_http_bridge_replay_input account_id=%d turn=%d input_items=%d previous_response_id_present=%v has_tool_output=%v",
-					o.AccountID,
+					"ingress_ws_http_bridge_replay_input provider_id=%d turn=%d input_items=%d previous_response_id_present=%v has_tool_output=%v",
+					o.ProviderID,
 					turn,
 					len(turnReplayInput),
 					currentBridgePayload.PreviousResponseID != "",
@@ -174,9 +174,9 @@ func (s *IngressSession) Run(ctx context.Context, firstMessage []byte) error {
 			if bridgeErr != nil {
 				if turn > 1 && p.IsFailover(bridgeErr) {
 					retryPayload, retrySafe, retryPayloadErr := codec.RetryPayload(
-						currentBridgePayload.AccountIdentitySourceRaw,
-						turnAccountFailoverInput,
-						turnAccountFailoverInputExists,
+						currentBridgePayload.ProviderIdentitySourceRaw,
+						turnProviderFailoverInput,
+						turnProviderFailoverInputExists,
 						currentBridgePayload.OriginalModel,
 					)
 					if retryPayloadErr != nil {
@@ -192,7 +192,7 @@ func (s *IngressSession) Run(ctx context.Context, firstMessage []byte) error {
 			if result == nil {
 				return errors.New("websocket http bridge turn result is nil")
 			}
-			// turnReplayInput/turnAccountFailoverInput 可能共享同一头数组（转移自
+			// turnReplayInput/turnProviderFailoverInput 可能共享同一头数组（转移自
 			// bridgeCurrentItems），保存历史必须经 combine 新建头，禁止就地 append。
 			bridgeReplayInput = turnReplayInput
 			bridgeReplayInputExists = turnReplayInputExists
@@ -200,14 +200,14 @@ func (s *IngressSession) Run(ctx context.Context, firstMessage []byte) error {
 				bridgeReplayInput = codec.Combine(bridgeReplayInput, result.WSReplayInput)
 				bridgeReplayInputExists = true
 			}
-			bridgeAccountFailoverInput = turnAccountFailoverInput
-			bridgeAccountFailoverInputExists = turnAccountFailoverInputExists
-			if len(result.WSAccountFailoverReplayInput) > 0 {
-				bridgeAccountFailoverInput = codec.Combine(
-					bridgeAccountFailoverInput,
-					result.WSAccountFailoverReplayInput,
+			bridgeProviderFailoverInput = turnProviderFailoverInput
+			bridgeProviderFailoverInputExists = turnProviderFailoverInputExists
+			if len(result.WSProviderFailoverReplayInput) > 0 {
+				bridgeProviderFailoverInput = codec.Combine(
+					bridgeProviderFailoverInput,
+					result.WSProviderFailoverReplayInput,
 				)
-				bridgeAccountFailoverInputExists = true
+				bridgeProviderFailoverInputExists = true
 			}
 			if bridgeTurnState := strings.TrimSpace(result.ResponseTurnState); bridgeTurnState != "" {
 				state.TurnState = bridgeTurnState
@@ -218,15 +218,15 @@ func (s *IngressSession) Run(ctx context.Context, firstMessage []byte) error {
 			responseID := strings.TrimSpace(result.RequestID)
 			if responseID != "" && stateStore != nil {
 				ttl := o.ResponseStickyTTL
-				p.BindWarning(groupID, o.AccountID, responseID, stateStore.BindResponseAccount(ctx, groupID, responseID, o.AccountID, ttl))
+				p.BindWarning(groupID, o.ProviderID, responseID, stateStore.BindResponseProvider(ctx, groupID, responseID, o.ProviderID, ttl))
 			}
 			nextClientMessage, readErr := p.ReadClient()
 			if readErr != nil {
 				if p.IsDisconnect(readErr) {
 					closeStatus, closeReason := p.SummarizeClose(readErr)
 					p.Log(fmt.Sprintf(
-						"ingress_ws_http_bridge_client_closed account_id=%d close_status=%s close_reason=%s",
-						o.AccountID,
+						"ingress_ws_http_bridge_client_closed provider_id=%d close_status=%s close_reason=%s",
+						o.ProviderID,
 						closeStatus,
 						p.TruncateLog(closeReason, 120),
 					))
@@ -281,7 +281,7 @@ func (s *IngressSession) Run(ctx context.Context, firstMessage []byte) error {
 		if connID == "" || pinnedSessionConnID != connID {
 			return
 		}
-		p.UnpinConn(o.AccountID, connID)
+		p.UnpinConn(o.ProviderID, connID)
 		pinnedSessionConnID = ""
 	}
 	pinSessionConn := func(connID string) {
@@ -293,10 +293,10 @@ func (s *IngressSession) Run(ctx context.Context, firstMessage []byte) error {
 			return
 		}
 		if pinnedSessionConnID != "" {
-			p.UnpinConn(o.AccountID, pinnedSessionConnID)
+			p.UnpinConn(o.ProviderID, pinnedSessionConnID)
 			pinnedSessionConnID = ""
 		}
-		if p.PinConn(o.AccountID, connID) {
+		if p.PinConn(o.ProviderID, connID) {
 			pinnedSessionConnID = connID
 		}
 	}
@@ -315,8 +315,8 @@ func (s *IngressSession) Run(ctx context.Context, firstMessage []byte) error {
 		sessionLease.Release()
 		if debugEnabled {
 			p.Debug(fmt.Sprintf(
-				"ingress_ws_upstream_released account_id=%d conn_id=%s",
-				o.AccountID,
+				"ingress_ws_upstream_released provider_id=%d conn_id=%s",
+				o.ProviderID,
 				p.TruncateLog(sessionConnID, 64),
 			))
 		}
@@ -370,8 +370,8 @@ func (s *IngressSession) Run(ctx context.Context, firstMessage []byte) error {
 			// Layer 2：严格亲和链路命中 previous_response_not_found 时，降级为“去掉 previous_response_id 后重放一次”。
 			// 该错误说明续链锚点已失效，继续 strict fail-close 只会直接中断本轮请求。
 			p.Log(fmt.Sprintf(
-				"ingress_ws_prev_response_recovery_layer2 account_id=%d turn=%d conn_id=%s store_disabled_conn_mode=%s action=drop_previous_response_id_retry",
-				o.AccountID,
+				"ingress_ws_prev_response_recovery_layer2 provider_id=%d turn=%d conn_id=%s store_disabled_conn_mode=%s action=drop_previous_response_id_retry",
+				o.ProviderID,
 				turn,
 				p.TruncateLog(connID, 64),
 				p.NormalizeLog(storeDisabledConnMode),
@@ -385,8 +385,8 @@ func (s *IngressSession) Run(ctx context.Context, firstMessage []byte) error {
 				reason = "drop_error"
 			}
 			p.Log(fmt.Sprintf(
-				"ingress_ws_prev_response_recovery_skip account_id=%d turn=%d conn_id=%s reason=%s",
-				o.AccountID,
+				"ingress_ws_prev_response_recovery_skip provider_id=%d turn=%d conn_id=%s reason=%s",
+				o.ProviderID,
 				turn,
 				p.TruncateLog(connID, 64),
 				p.NormalizeLog(reason),
@@ -400,8 +400,8 @@ func (s *IngressSession) Run(ctx context.Context, firstMessage []byte) error {
 		)
 		if setInputErr != nil {
 			p.Log(fmt.Sprintf(
-				"ingress_ws_prev_response_recovery_skip account_id=%d turn=%d conn_id=%s reason=set_full_input_error cause=%s",
-				o.AccountID,
+				"ingress_ws_prev_response_recovery_skip provider_id=%d turn=%d conn_id=%s reason=set_full_input_error cause=%s",
+				o.ProviderID,
 				turn,
 				p.TruncateLog(connID, 64),
 				p.TruncateLog(setInputErr.Error(), 160),
@@ -409,8 +409,8 @@ func (s *IngressSession) Run(ctx context.Context, firstMessage []byte) error {
 			return false
 		}
 		p.Log(fmt.Sprintf(
-			"ingress_ws_prev_response_recovery account_id=%d turn=%d conn_id=%s action=drop_previous_response_id retry=1",
-			o.AccountID,
+			"ingress_ws_prev_response_recovery provider_id=%d turn=%d conn_id=%s action=drop_previous_response_id retry=1",
+			o.ProviderID,
 			turn,
 			p.TruncateLog(connID, 64),
 		))
@@ -426,8 +426,8 @@ func (s *IngressSession) Run(ctx context.Context, firstMessage []byte) error {
 		}
 		if isStrictAffinityTurn(currentPayload) {
 			p.Log(fmt.Sprintf(
-				"ingress_ws_turn_retry_skip account_id=%d turn=%d conn_id=%s reason=strict_affinity",
-				o.AccountID,
+				"ingress_ws_turn_retry_skip provider_id=%d turn=%d conn_id=%s reason=strict_affinity",
+				o.ProviderID,
 				turn,
 				p.TruncateLog(connID, 64),
 			))
@@ -435,8 +435,8 @@ func (s *IngressSession) Run(ctx context.Context, firstMessage []byte) error {
 		}
 		turnRetry++
 		p.Log(fmt.Sprintf(
-			"ingress_ws_turn_retry account_id=%d turn=%d retry=%d reason=%s conn_id=%s",
-			o.AccountID,
+			"ingress_ws_turn_retry provider_id=%d turn=%d retry=%d reason=%s conn_id=%s",
+			o.ProviderID,
 			turn,
 			turnRetry,
 			p.TruncateLog(IngressTurnRetryReason(relayErr), 160),
@@ -472,7 +472,7 @@ func (s *IngressSession) Run(ctx context.Context, firstMessage []byte) error {
 		// 历史序列须同步剥离，否则与已剥离的当前 input 项错位，prefix 复用失配。
 		if invalidDigests := p.InvalidDigests(groupID, state.SessionHash); len(invalidDigests) > 0 {
 			strippedPayload, strippedCount := p.StripInvalid(
-				currentPayload, invalidDigests, "ingress_ws_invalid_encrypted_lineage_strip", o.AccountID, turn,
+				currentPayload, invalidDigests, "ingress_ws_invalid_encrypted_lineage_strip", o.ProviderID, turn,
 			)
 			if strippedCount > 0 {
 				currentPayload = strippedPayload
@@ -506,8 +506,8 @@ func (s *IngressSession) Run(ctx context.Context, firstMessage []byte) error {
 			updatedPayload, setPrevErr := codec.SetPrevious(currentPayload, expectedPrev)
 			if setPrevErr != nil {
 				p.Log(fmt.Sprintf(
-					"ingress_ws_function_call_output_prev_infer_skip account_id=%d turn=%d conn_id=%s reason=set_previous_response_id_error cause=%s expected_previous_response_id=%s",
-					o.AccountID,
+					"ingress_ws_function_call_output_prev_infer_skip provider_id=%d turn=%d conn_id=%s reason=set_previous_response_id_error cause=%s expected_previous_response_id=%s",
+					o.ProviderID,
 					turn,
 					p.TruncateLog(sessionConnID, 64),
 					p.TruncateLog(setPrevErr.Error(), 160),
@@ -518,8 +518,8 @@ func (s *IngressSession) Run(ctx context.Context, firstMessage []byte) error {
 				currentPayloadBytes = len(updatedPayload)
 				currentPreviousResponseID = expectedPrev
 				p.Log(fmt.Sprintf(
-					"ingress_ws_function_call_output_prev_infer account_id=%d turn=%d conn_id=%s action=set_previous_response_id previous_response_id=%s",
-					o.AccountID,
+					"ingress_ws_function_call_output_prev_infer provider_id=%d turn=%d conn_id=%s action=set_previous_response_id previous_response_id=%s",
+					o.ProviderID,
 					turn,
 					p.TruncateLog(sessionConnID, 64),
 					p.TruncateLog(expectedPrev, 64),
@@ -534,8 +534,8 @@ func (s *IngressSession) Run(ctx context.Context, firstMessage []byte) error {
 		)
 		if replayInputErr != nil {
 			p.Log(fmt.Sprintf(
-				"ingress_ws_replay_input_skip account_id=%d turn=%d conn_id=%s reason=build_error cause=%s",
-				o.AccountID,
+				"ingress_ws_replay_input_skip provider_id=%d turn=%d conn_id=%s reason=build_error cause=%s",
+				o.ProviderID,
 				turn,
 				p.TruncateLog(sessionConnID, 64),
 				p.TruncateLog(replayInputErr.Error(), 160),
@@ -569,8 +569,8 @@ func (s *IngressSession) Run(ctx context.Context, firstMessage []byte) error {
 			}
 			if strictErr != nil {
 				p.Log(fmt.Sprintf(
-					"ingress_ws_prev_response_strict_eval account_id=%d turn=%d conn_id=%s action=keep_previous_response_id reason=%s cause=%s previous_response_id=%s expected_previous_response_id=%s has_function_call_output=%v",
-					o.AccountID,
+					"ingress_ws_prev_response_strict_eval provider_id=%d turn=%d conn_id=%s action=keep_previous_response_id reason=%s cause=%s previous_response_id=%s expected_previous_response_id=%s has_function_call_output=%v",
+					o.ProviderID,
 					turn,
 					p.TruncateLog(sessionConnID, 64),
 					p.NormalizeLog(strictReason),
@@ -587,8 +587,8 @@ func (s *IngressSession) Run(ctx context.Context, firstMessage []byte) error {
 						dropReason = "drop_error"
 					}
 					p.Log(fmt.Sprintf(
-						"ingress_ws_prev_response_strict_eval account_id=%d turn=%d conn_id=%s action=keep_previous_response_id reason=%s drop_reason=%s previous_response_id=%s expected_previous_response_id=%s has_function_call_output=%v",
-						o.AccountID,
+						"ingress_ws_prev_response_strict_eval provider_id=%d turn=%d conn_id=%s action=keep_previous_response_id reason=%s drop_reason=%s previous_response_id=%s expected_previous_response_id=%s has_function_call_output=%v",
+						o.ProviderID,
 						turn,
 						p.TruncateLog(sessionConnID, 64),
 						p.NormalizeLog(strictReason),
@@ -605,8 +605,8 @@ func (s *IngressSession) Run(ctx context.Context, firstMessage []byte) error {
 					)
 					if setInputErr != nil {
 						p.Log(fmt.Sprintf(
-							"ingress_ws_prev_response_strict_eval account_id=%d turn=%d conn_id=%s action=keep_previous_response_id reason=%s drop_reason=set_full_input_error previous_response_id=%s expected_previous_response_id=%s cause=%s has_function_call_output=%v",
-							o.AccountID,
+							"ingress_ws_prev_response_strict_eval provider_id=%d turn=%d conn_id=%s action=keep_previous_response_id reason=%s drop_reason=set_full_input_error previous_response_id=%s expected_previous_response_id=%s cause=%s has_function_call_output=%v",
+							o.ProviderID,
 							turn,
 							p.TruncateLog(sessionConnID, 64),
 							p.NormalizeLog(strictReason),
@@ -619,8 +619,8 @@ func (s *IngressSession) Run(ctx context.Context, firstMessage []byte) error {
 						currentPayload = updatedWithInput
 						currentPayloadBytes = len(updatedWithInput)
 						p.Log(fmt.Sprintf(
-							"ingress_ws_prev_response_strict_eval account_id=%d turn=%d conn_id=%s action=drop_previous_response_id_full_create reason=%s previous_response_id=%s expected_previous_response_id=%s has_function_call_output=%v",
-							o.AccountID,
+							"ingress_ws_prev_response_strict_eval provider_id=%d turn=%d conn_id=%s action=drop_previous_response_id_full_create reason=%s previous_response_id=%s expected_previous_response_id=%s has_function_call_output=%v",
+							o.ProviderID,
 							turn,
 							p.TruncateLog(sessionConnID, 64),
 							p.NormalizeLog(strictReason),
@@ -656,8 +656,8 @@ func (s *IngressSession) Run(ctx context.Context, firstMessage []byte) error {
 		if shouldPreflightPing {
 			if pingErr := sessionLease.PingWithTimeout(o.HealthCheckTimeout); pingErr != nil {
 				p.Log(fmt.Sprintf(
-					"ingress_ws_upstream_preflight_ping_fail account_id=%d turn=%d conn_id=%s cause=%s",
-					o.AccountID,
+					"ingress_ws_upstream_preflight_ping_fail provider_id=%d turn=%d conn_id=%s cause=%s",
+					o.ProviderID,
 					turn,
 					p.TruncateLog(sessionConnID, 64),
 					p.TruncateLog(pingErr.Error(), 160),
@@ -678,8 +678,8 @@ func (s *IngressSession) Run(ctx context.Context, firstMessage []byte) error {
 								reason = "drop_error"
 							}
 							p.Log(fmt.Sprintf(
-								"ingress_ws_preflight_ping_recovery_skip account_id=%d turn=%d conn_id=%s reason=%s previous_response_id=%s",
-								o.AccountID,
+								"ingress_ws_preflight_ping_recovery_skip provider_id=%d turn=%d conn_id=%s reason=%s previous_response_id=%s",
+								o.ProviderID,
 								turn,
 								p.TruncateLog(sessionConnID, 64),
 								p.NormalizeLog(reason),
@@ -693,8 +693,8 @@ func (s *IngressSession) Run(ctx context.Context, firstMessage []byte) error {
 							)
 							if setInputErr != nil {
 								p.Log(fmt.Sprintf(
-									"ingress_ws_preflight_ping_recovery_skip account_id=%d turn=%d conn_id=%s reason=set_full_input_error previous_response_id=%s cause=%s",
-									o.AccountID,
+									"ingress_ws_preflight_ping_recovery_skip provider_id=%d turn=%d conn_id=%s reason=set_full_input_error previous_response_id=%s cause=%s",
+									o.ProviderID,
 									turn,
 									p.TruncateLog(sessionConnID, 64),
 									p.TruncateLog(currentPreviousResponseID, 64),
@@ -702,8 +702,8 @@ func (s *IngressSession) Run(ctx context.Context, firstMessage []byte) error {
 								))
 							} else {
 								p.Log(fmt.Sprintf(
-									"ingress_ws_preflight_ping_recovery account_id=%d turn=%d conn_id=%s action=drop_previous_response_id_retry previous_response_id=%s has_function_call_output=%v has_replay_tool_context=%v",
-									o.AccountID,
+									"ingress_ws_preflight_ping_recovery provider_id=%d turn=%d conn_id=%s action=drop_previous_response_id_retry previous_response_id=%s has_function_call_output=%v has_replay_tool_context=%v",
+									o.ProviderID,
 									turn,
 									p.TruncateLog(sessionConnID, 64),
 									p.TruncateLog(currentPreviousResponseID, 64),
@@ -725,8 +725,8 @@ func (s *IngressSession) Run(ctx context.Context, firstMessage []byte) error {
 							reason = "function_call_output_replay_not_applied"
 						}
 						p.Log(fmt.Sprintf(
-							"ingress_ws_preflight_ping_recovery_skip account_id=%d turn=%d conn_id=%s reason=%s action=fail_close previous_response_id=%s has_replay_tool_context=%v",
-							o.AccountID,
+							"ingress_ws_preflight_ping_recovery_skip provider_id=%d turn=%d conn_id=%s reason=%s action=fail_close previous_response_id=%s has_replay_tool_context=%v",
+							o.ProviderID,
 							turn,
 							p.TruncateLog(sessionConnID, 64),
 							reason,
@@ -759,8 +759,8 @@ func (s *IngressSession) Run(ctx context.Context, firstMessage []byte) error {
 			chainedFromLast := expectedPrev != "" && currentPreviousResponseID == expectedPrev
 			currentPreviousResponseIDKind := codec.ClassifyPrevious(currentPreviousResponseID)
 			p.Log(fmt.Sprintf(
-				"ingress_ws_turn_chain account_id=%d turn=%d conn_id=%s previous_response_id=%s previous_response_id_kind=%s last_turn_response_id=%s chained_from_last=%v preferred_conn_id=%s header_session_id=%s header_conversation_id=%s has_turn_state=%v turn_state_len=%d has_prompt_cache_key=%v store_disabled=%v",
-				o.AccountID,
+				"ingress_ws_turn_chain provider_id=%d turn=%d conn_id=%s previous_response_id=%s previous_response_id_kind=%s last_turn_response_id=%s chained_from_last=%v preferred_conn_id=%s header_session_id=%s header_conversation_id=%s has_turn_state=%v turn_state_len=%d has_prompt_cache_key=%v store_disabled=%v",
+				o.ProviderID,
 				turn,
 				p.TruncateLog(connID, 64),
 				p.TruncateLog(currentPreviousResponseID, 64),
@@ -838,8 +838,8 @@ func (s *IngressSession) Run(ctx context.Context, firstMessage []byte) error {
 			// strict 状态不可用时保留整份上一轮 payload 供慢路径比较。
 			lastTurnPayload = currentPayload
 			p.Log(fmt.Sprintf(
-				"ingress_ws_prev_response_strict_state_skip account_id=%d turn=%d conn_id=%s reason=build_error cause=%s",
-				o.AccountID,
+				"ingress_ws_prev_response_strict_state_skip provider_id=%d turn=%d conn_id=%s reason=build_error cause=%s",
+				o.ProviderID,
 				turn,
 				p.TruncateLog(connID, 64),
 				p.TruncateLog(strictStateErr.Error(), 160),
@@ -851,7 +851,7 @@ func (s *IngressSession) Run(ctx context.Context, firstMessage []byte) error {
 
 		if responseID != "" && stateStore != nil {
 			ttl := o.ResponseStickyTTL
-			p.BindWarning(groupID, o.AccountID, responseID, stateStore.BindResponseAccount(ctx, groupID, responseID, o.AccountID, ttl))
+			p.BindWarning(groupID, o.ProviderID, responseID, stateStore.BindResponseProvider(ctx, groupID, responseID, o.ProviderID, ttl))
 			stateStore.BindResponseConn(responseID, connID, ttl)
 			p.BindOwner(ctx, responseID)
 		}
@@ -867,8 +867,8 @@ func (s *IngressSession) Run(ctx context.Context, firstMessage []byte) error {
 			if p.IsDisconnect(readErr) {
 				closeStatus, closeReason := p.SummarizeClose(readErr)
 				p.Log(fmt.Sprintf(
-					"ingress_ws_client_closed account_id=%d conn_id=%s close_status=%s close_reason=%s",
-					o.AccountID,
+					"ingress_ws_client_closed provider_id=%d conn_id=%s close_status=%s close_reason=%s",
+					o.ProviderID,
 					p.TruncateLog(connID, 64),
 					closeStatus,
 					p.TruncateLog(closeReason, 120),
@@ -889,8 +889,8 @@ func (s *IngressSession) Run(ctx context.Context, firstMessage []byte) error {
 			chainedFromLast := expectedPrev != "" && nextPayload.PreviousResponseID == expectedPrev
 			nextPreviousResponseIDKind := codec.ClassifyPrevious(nextPayload.PreviousResponseID)
 			p.Log(fmt.Sprintf(
-				"ingress_ws_next_turn_chain account_id=%d turn=%d next_turn=%d conn_id=%s previous_response_id=%s previous_response_id_kind=%s last_turn_response_id=%s chained_from_last=%v has_prompt_cache_key=%v store_disabled=%v",
-				o.AccountID,
+				"ingress_ws_next_turn_chain provider_id=%d turn=%d next_turn=%d conn_id=%s previous_response_id=%s previous_response_id_kind=%s last_turn_response_id=%s chained_from_last=%v has_prompt_cache_key=%v store_disabled=%v",
+				o.ProviderID,
 				turn,
 				turn+1,
 				p.TruncateLog(connID, 64),
@@ -906,8 +906,8 @@ func (s *IngressSession) Run(ctx context.Context, firstMessage []byte) error {
 			if stickyConnID, ok := stateStore.GetResponseConn(nextPayload.PreviousResponseID); ok {
 				if sessionConnID != "" && stickyConnID != "" && stickyConnID != sessionConnID {
 					p.Log(fmt.Sprintf(
-						"ingress_ws_keep_session_conn account_id=%d turn=%d conn_id=%s sticky_conn_id=%s previous_response_id=%s",
-						o.AccountID,
+						"ingress_ws_keep_session_conn provider_id=%d turn=%d conn_id=%s sticky_conn_id=%s previous_response_id=%s",
+						o.ProviderID,
 						turn,
 						p.TruncateLog(sessionConnID, 64),
 						p.TruncateLog(stickyConnID, 64),

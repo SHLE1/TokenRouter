@@ -30,16 +30,19 @@ type AuthenticationOptions struct {
 func AbortWithError(c *gin.Context, status int, code, message string) {
 	httpx.AbortWithError(c, status, code, message)
 }
+
 func (o AuthenticationOptions) reject(c *gin.Context, reason string) {
 	if o.Rejected != nil {
 		o.Rejected(c, reason)
 	}
 }
+
 func (o AuthenticationOptions) business(c *gin.Context, reason string) {
 	if o.BusinessLimited != nil {
 		o.BusinessLimited(c, reason)
 	}
 }
+
 func (o AuthenticationOptions) abort(c *gin.Context, status int, code, message string) {
 	if o.Google {
 		AbortGoogleError(c, status, message)
@@ -182,10 +185,11 @@ func Authenticate(c *gin.Context, auth *apikey.APIKeyService, o AuthenticationOp
 		o.abort(c, 401, "USER_NOT_FOUND", "User associated with API key not found")
 	case apikey.AuthenticationUserInactive:
 		o.reject(c, "user_inactive")
-		o.abort(c, 401, "USER_INACTIVE", "User account is not active")
+		o.abort(c, 401, "USER_INACTIVE", "User provider is not active")
 	}
 	return nil, false
 }
+
 func (o AuthenticationOptions) abortTeam(c *gin.Context, err error) bool {
 	if !o.Google {
 		return AbortTeamError(c, err)

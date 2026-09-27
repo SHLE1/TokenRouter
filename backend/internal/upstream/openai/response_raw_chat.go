@@ -23,7 +23,7 @@ import (
 // RawResponseOptions 只传递当前端点的技术参数与原请求观察端口。
 type RawResponseOptions struct {
 	Runtime              bridge.Runtime
-	AccountID            int64
+	ProviderID           int64
 	Scanner              func(io.Reader) *bufio.Scanner
 	CC                   func() CCResponseOptions
 	ReadBody             func(io.Reader) ([]byte, error)
@@ -165,7 +165,7 @@ func ReadRawChatStreaming(c *upstream.OutputContext, resp *http.Response, option
 		logger.L().Warn("openai chat_completions raw: upstream stream truncated before terminal chunk",
 			zap.Error(cause),
 			zap.String("request_id", requestID),
-			zap.Int64("account_id", options.AccountID),
+			zap.Int64("provider_id", options.ProviderID),
 			zap.String("upstream_model", upstreamModel),
 			zap.Bool("saw_sse_data", terminal.SawDataLine()),
 			zap.Bool("client_output_started", clientOutputStarted),

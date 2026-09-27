@@ -11,19 +11,19 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/google/uuid"
 )
 
 func (s *UsageLogRepoSuite) TestListWithFilters_SortByModelAsc() {
 	user := mustCreateUser(s.T(), s.client, &identity.User{Email: "usage-sort@example.com"})
 	apiKey := mustCreateApiKey(s.T(), s.client, &apikey.APIKey{UserID: user.ID, Key: "sk-usage-sort", Name: "k"})
-	account := mustCreateAccount(s.T(), s.client, &accountcore.Record{Name: "usage-sort-account"})
+	provider := mustCreateProvider(s.T(), s.client, &providercore.Record{Name: "usage-sort-provider"})
 
 	first := &usage.UsageLog{
 		UserID:         user.ID,
 		APIKeyID:       apiKey.ID,
-		AccountID:      account.ID,
+		ProviderID:     provider.ID,
 		RequestID:      uuid.New().String(),
 		Model:          "z-model",
 		RequestedModel: "z-model",
@@ -39,7 +39,7 @@ func (s *UsageLogRepoSuite) TestListWithFilters_SortByModelAsc() {
 	second := &usage.UsageLog{
 		UserID:         user.ID,
 		APIKeyID:       apiKey.ID,
-		AccountID:      account.ID,
+		ProviderID:     provider.ID,
 		RequestID:      uuid.New().String(),
 		Model:          "a-model",
 		RequestedModel: "a-model",

@@ -10,7 +10,7 @@ import (
 // 实现仍负责闭合执行和响应体关闭后的连接池释放，不接收业务实体。
 type UpstreamTransport interface {
 	// Do 执行 HTTP 请求（不启用 TLS 指纹）
-	Do(req *http.Request, proxyURL string, accountID int64, accountConcurrency int) (*http.Response, error)
+	Do(req *http.Request, proxyURL string, providerID int64, providerConcurrency int) (*http.Response, error)
 
 	// DoWithTLS 执行带 TLS 指纹伪装的 HTTP 请求
 	//
@@ -19,6 +19,6 @@ type UpstreamTransport interface {
 	//   - non-nil: 使用指定的 Profile 进行 TLS 指纹伪装
 	//
 	// Profile 由调用方通过 TLSFingerprintProfileService 解析后传入，
-	// 支持按账号绑定的数据库 profile 或内置默认 profile。
-	DoWithTLS(req *http.Request, proxyURL string, accountID int64, accountConcurrency int, profile *tlsfingerprint.Profile) (*http.Response, error)
+	// 支持按提供商绑定的数据库 profile 或内置默认 profile。
+	DoWithTLS(req *http.Request, proxyURL string, providerID int64, providerConcurrency int, profile *tlsfingerprint.Profile) (*http.Response, error)
 }

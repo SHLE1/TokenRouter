@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 
 	core "github.com/TokenFlux/TokenRouter/internal/batchimage"
 
@@ -85,19 +85,19 @@ func (p *VertexBatchImageProvider) Name() string {
 	return core.BatchImageProviderVertex
 }
 
-func (p *VertexBatchImageProvider) SupportsAccount(account *Account) bool {
-	if account == nil || account.Platform != PlatformGemini || account.Type != AccountTypeServiceAccount {
+func (p *VertexBatchImageProvider) SupportsProvider(provider *Provider) bool {
+	if provider == nil || provider.Platform != PlatformGemini || provider.Type != ProviderTypeServiceAccount {
 		return false
 	}
-	_, err := accountprovider.ParseVertexServiceAccountKey(account)
+	_, err := provideradapter.ParseVertexServiceAccountKey(provider)
 	return err == nil
 }
 
-func (p *VertexBatchImageProvider) Submit(ctx context.Context, job *core.BatchImageJob, account *Account, input core.BatchImageInput) (*core.BatchProviderJob, error) {
-	if _, enabled := resolveBatchProtocol(account); !enabled {
-		return nil, core.ErrBatchImageProviderUnsupportedAccount
+func (p *VertexBatchImageProvider) Submit(ctx context.Context, job *core.BatchImageJob, provider *Provider, input core.BatchImageInput) (*core.BatchProviderJob, error) {
+	if _, enabled := resolveBatchProtocol(provider); !enabled {
+		return nil, core.ErrBatchImageProviderUnsupportedProvider
 	}
-	if err := p.ValidateAccount(account); err != nil {
+	if err := p.ValidateProvider(provider); err != nil {
 		return nil, err
 	}
 	if strings.TrimSpace(p.opts.ManagedGCSBucket) == "" {
@@ -119,7 +119,7 @@ func (p *VertexBatchImageProvider) Submit(ctx context.Context, job *core.BatchIm
 		return nil, err
 	}
 
-	AccessToken, err := p.AccessToken(ctx, account)
+	AccessToken, err := p.AccessToken(ctx, provider)
 	if err != nil {
 		return nil, MapVertexClientError(err)
 	}
@@ -129,14 +129,14 @@ func (p *VertexBatchImageProvider) Submit(ctx context.Context, job *core.BatchIm
 
 	projectID := strings.TrimSpace(p.opts.ProjectID)
 	if projectID == "" {
-		projectID = account.VertexProjectID(vertex.ServiceAccountProjectID)
+		projectID = provider.VertexProjectID(vertex.ServiceAccountProjectID)
 	}
 	if projectID == "" {
 		return nil, VertexProviderError("VERTEX_PROJECT_ID_MISSING", "Vertex project id is not configured", nil)
 	}
 	location := strings.TrimSpace(p.opts.Location)
 	if location == "" {
-		location = account.VertexLocation(input.Model)
+		location = provider.VertexLocation(input.Model)
 	}
 
 	req := VertexCreateBatchPredictionJobRequest{
@@ -163,15 +163,15 @@ func (p *VertexBatchImageProvider) Submit(ctx context.Context, job *core.BatchIm
 	}, nil
 }
 
-func (p *VertexBatchImageProvider) Get(ctx context.Context, job *core.BatchImageJob, account *Account) (*core.BatchProviderStatus, error) {
-	if err := p.ValidateAccount(account); err != nil {
+func (p *VertexBatchImageProvider) Get(ctx context.Context, job *core.BatchImageJob, provider *Provider) (*core.BatchProviderStatus, error) {
+	if err := p.ValidateProvider(provider); err != nil {
 		return nil, err
 	}
 	jobName := core.BatchImageProviderJobName(job)
 	if jobName == "" {
 		return nil, core.ErrBatchImageProviderMissingJobName
 	}
-	AccessToken, err := p.AccessToken(ctx, account)
+	AccessToken, err := p.AccessToken(ctx, provider)
 	if err != nil {
 		return nil, MapVertexClientError(err)
 	}
@@ -194,23 +194,23 @@ func (p *VertexBatchImageProvider) Get(ctx context.Context, job *core.BatchImage
 	return status, nil
 }
 
-func (p *VertexBatchImageProvider) Cancel(ctx context.Context, job *core.BatchImageJob, account *Account) error {
-	if err := p.ValidateAccount(account); err != nil {
+func (p *VertexBatchImageProvider) Cancel(ctx context.Context, job *core.BatchImageJob, provider *Provider) error {
+	if err := p.ValidateProvider(provider); err != nil {
 		return err
 	}
 	jobName := core.BatchImageProviderJobName(job)
 	if jobName == "" {
 		return core.ErrBatchImageProviderMissingJobName
 	}
-	AccessToken, err := p.AccessToken(ctx, account)
+	AccessToken, err := p.AccessToken(ctx, provider)
 	if err != nil {
 		return MapVertexClientError(err)
 	}
 	return MapVertexClientError(p.client.CancelBatchPredictionJob(ctx, AccessToken, jobName))
 }
 
-func (p *VertexBatchImageProvider) OpenResult(ctx context.Context, job *core.BatchImageJob, account *Account) (io.ReadCloser, string, error) {
-	if err := p.ValidateAccount(account); err != nil {
+func (p *VertexBatchImageProvider) OpenResult(ctx context.Context, job *core.BatchImageJob, provider *Provider) (io.ReadCloser, string, error) {
+	if err := p.ValidateProvider(provider); err != nil {
 		return nil, "", err
 	}
 	outputRef := core.BatchImageProviderOutputRef(job)
@@ -220,7 +220,7 @@ func (p *VertexBatchImageProvider) OpenResult(ctx context.Context, job *core.Bat
 	if outputRef == "" {
 		return nil, "", core.ErrBatchImageProviderMissingResultRef
 	}
-	AccessToken, err := p.AccessToken(ctx, account)
+	AccessToken, err := p.AccessToken(ctx, provider)
 	if err != nil {
 		return nil, "", MapVertexClientError(err)
 	}
@@ -235,11 +235,11 @@ func (p *VertexBatchImageProvider) OpenResult(ctx context.Context, job *core.Bat
 	return vertex.NewCombinedJSONLReadCloser(ctx, AccessToken, objects, p.objectStore), "application/jsonl", nil
 }
 
-func (p *VertexBatchImageProvider) Cleanup(ctx context.Context, job *core.BatchImageJob, account *Account, target core.CleanupTarget) error {
-	if err := p.ValidateAccount(account); err != nil {
+func (p *VertexBatchImageProvider) Cleanup(ctx context.Context, job *core.BatchImageJob, provider *Provider, target core.CleanupTarget) error {
+	if err := p.ValidateProvider(provider); err != nil {
 		return err
 	}
-	AccessToken, err := p.AccessToken(ctx, account)
+	AccessToken, err := p.AccessToken(ctx, provider)
 	if err != nil {
 		return MapVertexClientError(err)
 	}
@@ -269,18 +269,18 @@ func (p *VertexBatchImageProvider) Cleanup(ctx context.Context, job *core.BatchI
 	}
 }
 
-func (p *VertexBatchImageProvider) ValidateAccount(account *Account) error {
-	if account == nil || account.Platform != PlatformGemini || account.Type != AccountTypeServiceAccount {
-		return core.ErrBatchImageProviderUnsupportedAccount
+func (p *VertexBatchImageProvider) ValidateProvider(provider *Provider) error {
+	if provider == nil || provider.Platform != PlatformGemini || provider.Type != ProviderTypeServiceAccount {
+		return core.ErrBatchImageProviderUnsupportedProvider
 	}
-	if _, err := accountprovider.ParseVertexServiceAccountKey(account); err != nil {
+	if _, err := provideradapter.ParseVertexServiceAccountKey(provider); err != nil {
 		return core.ErrBatchImageProviderMissingServiceAccount
 	}
 	return nil
 }
 
-func (p *VertexBatchImageProvider) AccessToken(ctx context.Context, account *Account) (string, error) {
-	return accountprovider.VertexServiceAccountAccessToken(ctx, p.tokenCache, account)
+func (p *VertexBatchImageProvider) AccessToken(ctx context.Context, provider *Provider) (string, error) {
+	return provideradapter.VertexServiceAccountAccessToken(ctx, p.tokenCache, provider)
 }
 
 func (p *VertexBatchImageProvider) DeleteManagedInput(ctx context.Context, AccessToken string, job *core.BatchImageJob, uri string) error {
@@ -472,9 +472,11 @@ func MapVertexClientError(err error) error {
 	return VertexProviderError("VERTEX_INVALID_RESPONSE", "Vertex API request failed", err)
 }
 
-var _ BatchImageProvider = (*VertexBatchImageProvider)(nil)
-var _ VertexBatchClient = (*VertexBatchHTTPClient)(nil)
-var _ VertexBatchObjectStore = (*VertexGCSObjectStore)(nil)
+var (
+	_ BatchImageProvider     = (*VertexBatchImageProvider)(nil)
+	_ VertexBatchClient      = (*VertexBatchHTTPClient)(nil)
+	_ VertexBatchObjectStore = (*VertexGCSObjectStore)(nil)
+)
 
 type VertexBatchClient = vertex.VertexBatchClient
 
@@ -513,6 +515,7 @@ type VertexAPIError = vertex.VertexAPIError
 func NewVertexBatchHTTPClient(baseURL string, client *http.Client) *VertexBatchHTTPClient {
 	return vertex.NewVertexBatchHTTPClient(baseURL, client)
 }
+
 func NewVertexGCSObjectStore(baseURL string, client *http.Client) *VertexGCSObjectStore {
 	return vertex.NewVertexGCSObjectStore(baseURL, client)
 }

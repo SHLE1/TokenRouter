@@ -1,4 +1,4 @@
-// 每种入口的账号内重试保留独立分支，账号切换仍由调用方拥有。
+// 每种入口的提供商内重试保留独立分支，提供商切换仍由调用方拥有。
 package gemini
 
 import (
@@ -14,31 +14,31 @@ import (
 )
 
 type ExchangeNotice struct {
-	Platform, AccountName                    string
-	AccountID                                int64
+	Platform, ProviderName                   string
+	ProviderID                               int64
 	UpstreamStatusCode                       int
 	UpstreamRequestID, Kind, Message, Detail string
 }
 type ExchangeOptions struct {
-	AccountID                              int64
-	AccountName, Platform, RequestIDHeader string
-	MaxRetries                             int
-	CountFallback                          bool
-	Build                                  func(context.Context) (*http.Request, string, error)
-	Do                                     func(*http.Request) (*http.Response, error)
-	BuildError                             func(error) error
-	FinalError                             func(string) error
-	EstimateCount                          func() int
-	ReadError                              func(*http.Response) []byte
-	CheckPolicy                            func(context.Context, *http.Response) (bool, *http.Response)
-	ShouldRetry                            func(int) bool
-	OnStatus                               func(context.Context, int, http.Header, []byte)
-	Observe                                func(ExchangeNotice)
-	SetError                               func(int, string, string)
-	Message, Detail                        func([]byte) string
-	Sanitize                               func(string) string
-	FilterThinking, FilterTools            func() []byte
-	ReplaceBody                            func([]byte)
+	ProviderID                              int64
+	ProviderName, Platform, RequestIDHeader string
+	MaxRetries                              int
+	CountFallback                           bool
+	Build                                   func(context.Context) (*http.Request, string, error)
+	Do                                      func(*http.Request) (*http.Response, error)
+	BuildError                              func(error) error
+	FinalError                              func(string) error
+	EstimateCount                           func() int
+	ReadError                               func(*http.Response) []byte
+	CheckPolicy                             func(context.Context, *http.Response) (bool, *http.Response)
+	ShouldRetry                             func(int) bool
+	OnStatus                                func(context.Context, int, http.Header, []byte)
+	Observe                                 func(ExchangeNotice)
+	SetError                                func(int, string, string)
+	Message, Detail                         func([]byte) string
+	Sanitize                                func(string) string
+	FilterThinking, FilterTools             func() []byte
+	ReplaceBody                             func([]byte)
 }
 type ExchangeResult struct {
 	Response        *http.Response
@@ -65,14 +65,14 @@ func ExchangeMessages(ctx context.Context, options ExchangeOptions) (ExchangeRes
 			safeErr := options.Sanitize(err.Error())
 			options.Observe(ExchangeNotice{
 				Platform:           options.Platform,
-				AccountID:          options.AccountID,
-				AccountName:        options.AccountName,
+				ProviderID:         options.ProviderID,
+				ProviderName:       options.ProviderName,
 				UpstreamStatusCode: 0,
 				Kind:               "request_error",
 				Message:            safeErr,
 			})
 			if attempt < options.MaxRetries {
-				logger.LegacyPrintf("service.gemini_messages_compat", "Gemini account %d: upstream request failed, retry %d/%d: %v", options.AccountID, attempt, options.MaxRetries, err)
+				logger.LegacyPrintf("service.gemini_messages_compat", "Gemini provider %d: upstream request failed, retry %d/%d: %v", options.ProviderID, attempt, options.MaxRetries, err)
 				SleepGeminiBackoff(attempt)
 				continue
 			}
@@ -96,8 +96,8 @@ func ExchangeMessages(ctx context.Context, options ExchangeOptions) (ExchangeRes
 				upstreamDetail := options.Detail(respBody)
 				options.Observe(ExchangeNotice{
 					Platform:           options.Platform,
-					AccountID:          options.AccountID,
-					AccountName:        options.AccountName,
+					ProviderID:         options.ProviderID,
+					ProviderName:       options.ProviderName,
 					UpstreamStatusCode: resp.StatusCode,
 					UpstreamRequestID:  upstreamReqID,
 					Kind:               "signature_error",
@@ -121,7 +121,7 @@ func ExchangeMessages(ctx context.Context, options ExchangeOptions) (ExchangeRes
 				}
 				retryGeminiReq, txErr := bridge.NativeConvertClaudeMessagesToGeminiGenerateContent(bridge.NativeGeminiOptions{DummyThoughtSignature: "skip_thought_signature_validator"}, strippedClaudeBody)
 				if txErr == nil {
-					logger.LegacyPrintf("service.gemini_messages_compat", "Gemini account %d: detected signature-related 400, retrying with downgraded Claude blocks (%s)", options.AccountID, stageName)
+					logger.LegacyPrintf("service.gemini_messages_compat", "Gemini provider %d: detected signature-related 400, retrying with downgraded Claude blocks (%s)", options.ProviderID, stageName)
 					options.ReplaceBody(retryGeminiReq)
 					// Consume one retry budget attempt and continue with the updated request payload.
 					SleepGeminiBackoff(1)
@@ -159,7 +159,7 @@ func ExchangeMessages(ctx context.Context, options ExchangeOptions) (ExchangeRes
 				break
 			}
 			if resp.StatusCode == 429 {
-				// Mark as rate-limited early so concurrent requests avoid this account.
+				// Mark as rate-limited early so concurrent requests avoid this provider.
 				options.OnStatus(ctx, resp.StatusCode, resp.Header, respBody)
 			}
 			if attempt < options.MaxRetries {
@@ -172,8 +172,8 @@ func ExchangeMessages(ctx context.Context, options ExchangeOptions) (ExchangeRes
 				upstreamDetail := options.Detail(respBody)
 				options.Observe(ExchangeNotice{
 					Platform:           options.Platform,
-					AccountID:          options.AccountID,
-					AccountName:        options.AccountName,
+					ProviderID:         options.ProviderID,
+					ProviderName:       options.ProviderName,
 					UpstreamStatusCode: resp.StatusCode,
 					UpstreamRequestID:  upstreamReqID,
 					Kind:               "retry",
@@ -181,7 +181,7 @@ func ExchangeMessages(ctx context.Context, options ExchangeOptions) (ExchangeRes
 					Detail:             upstreamDetail,
 				})
 
-				logger.LegacyPrintf("service.gemini_messages_compat", "Gemini account %d: upstream status %d, retry %d/%d", options.AccountID, resp.StatusCode, attempt, options.MaxRetries)
+				logger.LegacyPrintf("service.gemini_messages_compat", "Gemini provider %d: upstream status %d, retry %d/%d", options.ProviderID, resp.StatusCode, attempt, options.MaxRetries)
 				SleepGeminiBackoff(attempt)
 				continue
 			}

@@ -17,8 +17,10 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-const openAIResponsesSessionWindowPrefix = "openai_responses_session_window:"
-const liveCallPrefix = "live:call:"
+const (
+	openAIResponsesSessionWindowPrefix = "openai_responses_session_window:"
+	liveCallPrefix                     = "live:call:"
+)
 
 type gatewayCache struct {
 	*schedulerredis.StickyCache
@@ -39,13 +41,13 @@ func buildOpenAIResponsesSessionWindowKey(groupID int64, sessionHash string) str
 	return fmt.Sprintf("%s%d:%s", openAIResponsesSessionWindowPrefix, groupID, sessionHash)
 }
 
-// DeleteSessionAccountID 删除粘性会话与账号的绑定关系。
-// 当检测到绑定的账号不可用（如状态错误、禁用、不可调度等）时调用，
-// 以便下次请求能够重新选择可用账号。
+// DeleteSessionProviderID 删除粘性会话与提供商的绑定关系。
+// 当检测到绑定的提供商不可用（如状态错误、禁用、不可调度等）时调用，
+// 以便下次请求能够重新选择可用提供商。
 //
-// DeleteSessionAccountID removes the sticky session binding for the given session.
-// Called when the bound account becomes unavailable (e.g., error status, disabled,
-// or unschedulable), allowing subsequent requests to select a new available account.
+// DeleteSessionProviderID removes the sticky session binding for the given session.
+// Called when the bound provider becomes unavailable (e.g., error status, disabled,
+// or unschedulable), allowing subsequent requests to select a new available provider.
 
 // SetSessionOwnerGroupID 仅在首次写入时绑定显式会话的分组归属。
 
@@ -145,8 +147,10 @@ const (
 	grokVideoBilledPrefix         = "grok_video_billed:"
 )
 
-var _ session.GrokVideoBillingCache = (*gatewayCache)(nil)
-var _ session.ReasoningContentCache = (*gatewayCache)(nil)
+var (
+	_ session.GrokVideoBillingCache = (*gatewayCache)(nil)
+	_ session.ReasoningContentCache = (*gatewayCache)(nil)
+)
 
 // SetGrokVideoPendingBilling 保存视频创建成功时的计费快照，供后续状态轮询使用。
 func (c *gatewayCache) SetGrokVideoPendingBilling(ctx context.Context, key string, payload []byte, ttl time.Duration) error {
@@ -206,8 +210,10 @@ func (c *gatewayCache) ReleaseGrokVideoBilled(ctx context.Context, key string) e
 	return c.rdb.Del(ctx, grokVideoBilledPrefix+key).Err()
 }
 
-var _ session.CyberSessionBlockStore = (*gatewayCache)(nil)
-var _ session.LiveCallStore = (*gatewayCache)(nil)
+var (
+	_ session.CyberSessionBlockStore = (*gatewayCache)(nil)
+	_ session.LiveCallStore          = (*gatewayCache)(nil)
+)
 
 const reasoningContentPrefix = "reasoning_content:"
 
@@ -393,7 +399,7 @@ func (c *gatewayCache) SaveLiveCall(ctx context.Context, record *session.LiveCal
 	}
 	values := map[string]any{
 		"call_id":          record.CallID,
-		"account_id":       record.AccountID,
+		"provider_id":      record.ProviderID,
 		"api_key_id":       record.APIKeyID,
 		"user_id":          record.UserID,
 		"group_id":         record.GroupID,
@@ -444,7 +450,7 @@ func (c *gatewayCache) GetLiveCall(ctx context.Context, callHash string) (*sessi
 	return &session.LiveCallRecord{
 		CallID:                values["call_id"],
 		CallHash:              callHash,
-		AccountID:             parseInt("account_id"),
+		ProviderID:            parseInt("provider_id"),
 		APIKeyID:              parseInt("api_key_id"),
 		UserID:                parseInt("user_id"),
 		GroupID:               parseInt("group_id"),

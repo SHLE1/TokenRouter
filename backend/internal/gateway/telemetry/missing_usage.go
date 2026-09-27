@@ -40,11 +40,13 @@ func (s *openAIMissingUsageLogSampler) sample(now time.Time) (logNow bool, total
 	return false, s.total, 0
 }
 
-var openAIMissingUsageLogSamplerState openAIMissingUsageLogSampler
-var openAIMissingUsageTotal atomic.Uint64
+var (
+	openAIMissingUsageLogSamplerState openAIMissingUsageLogSampler
+	openAIMissingUsageTotal           atomic.Uint64
+)
 
 // SuccessMissingUsage 记录成功响应缺失 usage 的低频诊断，避免影响请求路径。
-func SuccessMissingUsage(ctx context.Context, accountID int64, status int, usage *s09openai.ForwardUsage, terminalEvent string, clientDisconnected bool) {
+func SuccessMissingUsage(ctx context.Context, providerID int64, status int, usage *s09openai.ForwardUsage, terminalEvent string, clientDisconnected bool) {
 	if status < 200 || status >= 300 || usage != nil && (usage.InputTokens > 0 || usage.OutputTokens > 0 || usage.ImageOutputTokens > 0) {
 		return
 	}
@@ -58,7 +60,7 @@ func SuccessMissingUsage(ctx context.Context, accountID int64, status int, usage
 		return
 	}
 	logging.FromContext(ctx).With(
-		zap.Int64("account_id", accountID),
+		zap.Int64("provider_id", providerID),
 		zap.String("terminal_event", terminalEvent),
 		zap.Bool("client_disconnected", clientDisconnected),
 		zap.Uint64("missing_usage_total", count),

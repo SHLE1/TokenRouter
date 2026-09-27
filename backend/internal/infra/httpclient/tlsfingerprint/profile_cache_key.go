@@ -7,7 +7,7 @@ import (
 )
 
 // CacheKey 返回 TLS 指纹模板的稳定缓存键。
-// Transport 缓存必须包含完整指纹参数，避免账号切换模板后复用旧握手配置。
+// Transport 缓存必须包含完整指纹参数，避免提供商切换模板后复用旧握手配置。
 func CacheKey(profile *Profile) string {
 	if profile == nil {
 		return "none"

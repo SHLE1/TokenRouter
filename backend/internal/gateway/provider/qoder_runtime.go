@@ -6,26 +6,26 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
 	egressprovider "github.com/TokenFlux/TokenRouter/internal/egress/provider"
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
 	openaiwire "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/qoder"
 )
 
-// QoderRuntimeOptions 只绑定账号令牌、技术传输及已有平台会话，不持有旧实体或完整配置。
+// QoderRuntimeOptions 只绑定提供商令牌、技术传输及已有平台会话，不持有旧实体或完整配置。
 type QoderRuntimeOptions struct {
-	Tokens        *accountprovider.QoderTokenProvider
+	Tokens        *provideradapter.QoderTokenProvider
 	Client        qoder.StreamClient
-	Transport     accountprovider.QoderTransport
+	Transport     provideradapter.QoderTransport
 	Profiles      *egressprovider.TLSProfiles
-	Health        accountprovider.QoderHealthStore
+	Health        provideradapter.QoderHealthStore
 	Conversations *qoder.QoderConversationStore
 }
 
-// QoderRuntime 持有唯一平台执行器和会话状态；账号选择、资金与全局重试在调用方。
+// QoderRuntime 持有唯一平台执行器和会话状态；提供商选择、资金与全局重试在调用方。
 type QoderRuntime struct {
 	options       QoderRuntimeOptions
 	mu            sync.Mutex
@@ -50,7 +50,7 @@ func (r *QoderRuntime) BindAttemptActivity(enter func() (func(), error)) {
 	r.enter = enter
 }
 
-// Executor 只创建一次平台执行器，不创建第二套账号尝试循环。
+// Executor 只创建一次平台执行器，不创建第二套提供商尝试循环。
 func (r *QoderRuntime) Executor() *qoder.Executor {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -60,13 +60,13 @@ func (r *QoderRuntime) Executor() *qoder.Executor {
 	return r.executor
 }
 
-// PrepareQoderTarget 将本次账号记录投影为受控目标，凭据不进入公开结果。
-func (r *QoderRuntime) PrepareQoderTarget(metadata qoder.RequestMetadata, value *account.Record, body []byte, wire protocol.ProtocolID, responseModel string) (upstream.Executor, upstream.AttemptInput) {
+// PrepareQoderTarget 将本次提供商记录投影为受控目标，凭据不进入公开结果。
+func (r *QoderRuntime) PrepareQoderTarget(metadata qoder.RequestMetadata, value *provider.Record, body []byte, wire protocol.ProtocolID, responseModel string) (upstream.Executor, upstream.AttemptInput) {
 	return r.Executor(), upstream.AttemptInput{Protocol: wire, Body: mapQoderRequestModel(value, body), ResponseModel: responseModel, Stream: qoder.GjsonBool(body, "stream"), Target: r.Target(metadata, value)}
 }
 
 // Target 保留会话与客户端的按需取得时点，未在准备阶段发起网络请求。
-func (r *QoderRuntime) Target(metadata qoder.RequestMetadata, value *account.Record) *qoder.Target {
+func (r *QoderRuntime) Target(metadata qoder.RequestMetadata, value *provider.Record) *qoder.Target {
 	site, err := qoderRuntimeSite(value)
 	if err != nil {
 		site = qoder.SiteGlobal
@@ -77,7 +77,8 @@ func (r *QoderRuntime) Target(metadata qoder.RequestMetadata, value *account.Rec
 		id = value.ID
 		userType = qoder.FirstNonEmptyQoder(value.GetCredential("user_type"), userType)
 	}
-	return &qoder.Target{AccountID: id, Site: site, UserType: userType, Metadata: metadata,
+	return &qoder.Target{
+		ProviderID: id, Site: site, UserType: userType, Metadata: metadata,
 		Session: func(ctx context.Context) (*qoder.SessionContext, error) {
 			return r.options.Tokens.GetSession(ctx, value)
 		},
@@ -97,26 +98,26 @@ func (r *QoderRuntime) Target(metadata qoder.RequestMetadata, value *account.Rec
 			}
 			return qoder.NewClientForProfile(profile), nil
 		},
-		Doer: accountprovider.QoderRequestDoer(value, r.options.Transport, r.options.Profiles),
+		Doer: provideradapter.QoderRequestDoer(value, r.options.Transport, r.options.Profiles),
 	}
 }
 
-// ObserveQoderFailure 只转交原账号健康观察，不提交用量或决定重试。
-func (r *QoderRuntime) ObserveQoderFailure(ctx context.Context, value *account.Record, err error) {
+// ObserveQoderFailure 只转交原提供商健康观察，不提交用量或决定重试。
+func (r *QoderRuntime) ObserveQoderFailure(ctx context.Context, value *provider.Record, err error) {
 	if r == nil || value == nil {
 		return
 	}
-	accountprovider.ObserveQoderUpstreamError(ctx, value.ID, r.options.Health, err)
+	provideradapter.ObserveQoderUpstreamError(ctx, value.ID, r.options.Health, err)
 }
 
-func qoderRuntimeSite(value *account.Record) (qoder.Site, error) {
+func qoderRuntimeSite(value *provider.Record) (qoder.Site, error) {
 	if value == nil {
-		return qoder.SiteGlobal, fmt.Errorf("qoder: account is nil")
+		return qoder.SiteGlobal, fmt.Errorf("qoder: provider is nil")
 	}
 	return qoder.ParseSite(value.GetCredential("site"))
 }
 
-func mapQoderRequestModel(value *account.Record, body []byte) []byte {
+func mapQoderRequestModel(value *provider.Record, body []byte) []byte {
 	if value == nil || !value.IsQoder() || len(body) == 0 {
 		return body
 	}
@@ -124,7 +125,7 @@ func mapQoderRequestModel(value *account.Record, body []byte) []byte {
 	if model == "" {
 		return body
 	}
-	mapped, matched := account.ResolveMappedModel(value.Platform, account.ResolveModelMapping(value, accountprovider.ModelDefaults()), model)
+	mapped, matched := provider.ResolveMappedModel(value.Platform, provider.ResolveModelMapping(value, provideradapter.ModelDefaults()), model)
 	if !matched || mapped == "" || mapped == model {
 		return body
 	}

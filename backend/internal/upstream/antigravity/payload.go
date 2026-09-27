@@ -18,7 +18,7 @@ import (
 var AntigravityPassthroughErrorMessages = []string{
 	"prompt is too long",
 }
-var ErrProjectIDRequired = errors.New("该 standard-tier Antigravity 账号需配置 project_id")
+var ErrProjectIDRequired = errors.New("该 standard-tier Antigravity 提供商需配置 project_id")
 
 // PromptTooLongError 表示上游明确返回 prompt too long
 type PromptTooLongError struct {
@@ -112,6 +112,7 @@ func WrapV1InternalRequest(projectID, model string, originalBody []byte) ([]byte
 
 	return json.Marshal(wrapped)
 }
+
 func IsSignatureRelatedError(respBody []byte) bool {
 	msg := strings.ToLower(strings.TrimSpace(googlewire.ExtractPlatformMessage(respBody)))
 	if msg == "" {
@@ -215,6 +216,7 @@ func CleanGeminiRequest(body []byte) ([]byte, error) {
 
 	return json.Marshal(payload)
 }
+
 func PreserveChatCompletionTokenLimit(request *protocolopenai.ChatCompletionsRequest, claudeRequest *protocolanthropic.AnthropicRequest) {
 	if request == nil || claudeRequest == nil {
 		return
@@ -227,6 +229,7 @@ func PreserveChatCompletionTokenLimit(request *protocolopenai.ChatCompletionsReq
 		claudeRequest.MaxTokens = min(*limit, 64000)
 	}
 }
+
 func EnableMixedGeminiToolInvocations(body []byte) ([]byte, error) {
 	var request map[string]any
 	if err := json.Unmarshal(body, &request); err != nil {

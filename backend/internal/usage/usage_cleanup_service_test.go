@@ -834,20 +834,20 @@ func TestUsageCleanupServiceDefaultsAndLifecycle(t *testing.T) {
 func TestSanitizeUsageCleanupFiltersModelEmpty(t *testing.T) {
 	model := "   "
 	apiKeyID := int64(-5)
-	accountID := int64(-1)
+	providerID := int64(-1)
 	groupID := int64(-2)
 	filters := UsageCleanupFilters{
-		UserID:    &apiKeyID,
-		APIKeyID:  &apiKeyID,
-		AccountID: &accountID,
-		GroupID:   &groupID,
-		Model:     &model,
+		UserID:     &apiKeyID,
+		APIKeyID:   &apiKeyID,
+		ProviderID: &providerID,
+		GroupID:    &groupID,
+		Model:      &model,
 	}
 
 	sanitizeUsageCleanupFilters(&filters)
 	require.Nil(t, filters.UserID)
 	require.Nil(t, filters.APIKeyID)
-	require.Nil(t, filters.AccountID)
+	require.Nil(t, filters.ProviderID)
 	require.Nil(t, filters.GroupID)
 	require.Nil(t, filters.Model)
 }
@@ -857,7 +857,7 @@ func TestDescribeUsageCleanupFiltersAllFields(t *testing.T) {
 	end := start.Add(2 * time.Hour)
 	userID := int64(1)
 	apiKeyID := int64(2)
-	accountID := int64(3)
+	providerID := int64(3)
 	groupID := int64(4)
 	model := " gpt-4 "
 	stream := true
@@ -867,7 +867,7 @@ func TestDescribeUsageCleanupFiltersAllFields(t *testing.T) {
 		EndTime:     end,
 		UserID:      &userID,
 		APIKeyID:    &apiKeyID,
-		AccountID:   &accountID,
+		ProviderID:  &providerID,
 		GroupID:     &groupID,
 		Model:       &model,
 		Stream:      &stream,
@@ -875,7 +875,7 @@ func TestDescribeUsageCleanupFiltersAllFields(t *testing.T) {
 	}
 
 	desc := describeUsageCleanupFilters(filters)
-	require.Equal(t, "start=2024-02-01T10:00:00Z end=2024-02-01T12:00:00Z user_id=1 api_key_id=2 account_id=3 group_id=4 model=gpt-4 stream=true billing_type=2", desc)
+	require.Equal(t, "start=2024-02-01T10:00:00Z end=2024-02-01T12:00:00Z user_id=1 api_key_id=2 provider_id=3 group_id=4 model=gpt-4 stream=true billing_type=2", desc)
 }
 
 func TestUsageCleanupServiceIsTaskCanceledNotFound(t *testing.T) {
@@ -909,6 +909,7 @@ func (r *blockingCleanupClaimRepo) ClaimNextPendingTask(ctx context.Context, _ i
 	<-r.release
 	return nil, ctx.Err()
 }
+
 func TestUsageCleanupStopWaitsForManualDispatch(t *testing.T) {
 	repo := &blockingCleanupClaimRepo{entered: make(chan struct{}), canceled: make(chan struct{}), release: make(chan struct{})}
 	svc := NewUsageCleanupService(repo, nil, nil, nil)

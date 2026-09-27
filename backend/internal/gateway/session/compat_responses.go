@@ -20,13 +20,13 @@ func (s *CompatResponses) ttl() time.Duration {
 	return time.Hour
 }
 
-// CompatResponseKey 保留原账号、Key 与提示缓存的隔离编码。
-func CompatResponseKey(accountID, apiKeyID int64, prompt string) string {
+// CompatResponseKey 保留原提供商、Key 与提示缓存的隔离编码。
+func CompatResponseKey(providerID, apiKeyID int64, prompt string) string {
 	key := strings.TrimSpace(prompt)
 	if key == "" {
 		return ""
 	}
-	return strings.Join([]string{strconv.FormatInt(accountID, 10), strconv.FormatInt(apiKeyID, 10), key}, "\x00")
+	return strings.Join([]string{strconv.FormatInt(providerID, 10), strconv.FormatInt(apiKeyID, 10), key}, "\x00")
 }
 
 type compatResponseBinding struct {
@@ -65,6 +65,7 @@ func (s *CompatResponses) Response(key string) string {
 	}
 	return strings.TrimSpace(binding.ResponseID)
 }
+
 func (s *CompatResponses) BindResponse(key, responseID string) {
 	if s == nil {
 		return
@@ -90,6 +91,7 @@ func (s *CompatResponses) BindResponse(key, responseID string) {
 	}
 	s.bindings.Store(key, binding)
 }
+
 func (s *CompatResponses) DeleteResponse(key string) {
 	if s == nil {
 		return
@@ -114,6 +116,7 @@ func (s *CompatResponses) DeleteResponse(key string) {
 	binding.ExpiresAt = time.Now().Add(s.ttl())
 	s.bindings.Store(key, binding)
 }
+
 func (s *CompatResponses) Disable(key string) {
 	if s == nil {
 		return
@@ -132,6 +135,7 @@ func (s *CompatResponses) Disable(key string) {
 	}
 	s.bindings.Store(key, binding)
 }
+
 func (s *CompatResponses) Disabled(key string) bool {
 	if s == nil {
 		return false
@@ -154,6 +158,7 @@ func (s *CompatResponses) Disabled(key string) bool {
 	}
 	return binding.ContinuationDisabled
 }
+
 func (s *CompatResponses) TurnState(key string) string {
 	if s == nil {
 		return ""
@@ -175,6 +180,7 @@ func (s *CompatResponses) TurnState(key string) string {
 	}
 	return strings.TrimSpace(binding.TurnState)
 }
+
 func (s *CompatResponses) BindTurnState(key, turnState string) {
 	if s == nil {
 		return

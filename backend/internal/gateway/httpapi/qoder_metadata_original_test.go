@@ -14,7 +14,6 @@ import (
 )
 
 func TestQoderConversationKeyPrefersExplicitSessionOverClaudeCodeStableSeed(t *testing.T) {
-
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
 	c.Request.Header.Set("User-Agent", "claude-cli/2.1.177 (external, cli)")
@@ -28,12 +27,11 @@ func TestQoderConversationKeyPrefersExplicitSessionOverClaudeCodeStableSeed(t *t
 	key, source := qoder.QoderConversationKey(QoderRequestMetadata(c), 7, "anthropic_messages", request)
 
 	require.Equal(t, "header", source)
-	require.Equal(t, qoder.QoderAccountScopedConversationKey(7, "header:"+upstreamcore.IsolateSessionID(0, "header-session")), key)
+	require.Equal(t, qoder.QoderProviderScopedConversationKey(7, "header:"+upstreamcore.IsolateSessionID(0, "header-session")), key)
 	require.NotContains(t, key, "stable_seed")
 }
 
 func TestQoderConversationKeyPrefersMetadataOverClaudeCodeStableSeed(t *testing.T) {
-
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
 	c.Request.Header.Set("User-Agent", "claude-cli/2.1.177 (external, cli)")
@@ -47,6 +45,6 @@ func TestQoderConversationKeyPrefersMetadataOverClaudeCodeStableSeed(t *testing.
 	key, source := qoder.QoderConversationKey(QoderRequestMetadata(c), 7, "anthropic_messages", request)
 
 	require.Equal(t, "metadata_user_id", source)
-	require.Equal(t, qoder.QoderAccountScopedConversationKey(7, "metadata_user_id:"+upstreamcore.IsolateSessionID(0, "session-123")), key)
+	require.Equal(t, qoder.QoderProviderScopedConversationKey(7, "metadata_user_id:"+upstreamcore.IsolateSessionID(0, "session-123")), key)
 	require.NotContains(t, key, "stable_seed")
 }

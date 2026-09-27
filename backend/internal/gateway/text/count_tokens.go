@@ -24,7 +24,7 @@ type CountPorts interface {
 func RunCountTokens(p CountPorts, maxSwitches int, observe failover.Observe) {
 	state := failover.NewFailoverState[*AttemptFailure](maxSwitches, false, observe)
 	for {
-		selected, err := p.Select(state.FailedAccountIDs)
+		selected, err := p.Select(state.FailedProviderIDs)
 		if err != nil {
 			p.SelectionFailed(err, state.LastFailoverErr)
 			return
@@ -41,7 +41,7 @@ func RunCountTokens(p CountPorts, maxSwitches int, observe failover.Observe) {
 			p.ReleaseSession(selected)
 			return
 		}
-		action := state.HandleFailoverError(p.Context(), p, selected.Account.ID, selected.Account.Platform, selected.RetryLimit, failure)
+		action := state.HandleFailoverError(p.Context(), p, selected.Provider.ID, selected.Provider.Platform, selected.RetryLimit, failure)
 		p.ReleaseSession(selected)
 		switch action {
 		case failover.FailoverContinue:

@@ -31,8 +31,8 @@ func RelayTurn(ctx context.Context, p StreamPort, lease StreamLease, input Clien
 	}
 	if o.Debug {
 		p.Debug(fmt.Sprintf(
-			"ingress_ws_turn_request_sent account_id=%d turn=%d conn_id=%s payload_bytes=%d",
-			o.AccountID,
+			"ingress_ws_turn_request_sent provider_id=%d turn=%d conn_id=%s payload_bytes=%d",
+			o.ProviderID,
 			turn,
 			p.Truncate(lease.ConnID(), 64),
 			payloadBytes,
@@ -111,8 +111,8 @@ func RelayTurn(ctx context.Context, p StreamPort, lease StreamLease, input Clien
 				if digests := p.EncryptedDigests(payload); len(digests) > 0 {
 					p.MarkEncrypted(digests)
 					p.Log(fmt.Sprintf(
-						"ingress_ws_invalid_encrypted_lineage_mark account_id=%d turn=%d digests=%d",
-						o.AccountID,
+						"ingress_ws_invalid_encrypted_lineage_mark provider_id=%d turn=%d digests=%d",
+						o.ProviderID,
 						turn,
 						len(digests),
 					))
@@ -127,8 +127,8 @@ func RelayTurn(ctx context.Context, p StreamPort, lease StreamLease, input Clien
 			if recoverablePrevNotFound {
 				// 可恢复场景使用非 error 关键字日志，避免被 LegacyPrintf 误判为 ERROR 级别。
 				p.Log(fmt.Sprintf(
-					"ingress_ws_prev_response_recoverable account_id=%d turn=%d conn_id=%s idx=%d reason=%s code=%s type=%s message=%s previous_response_id=%s previous_response_id_kind=%s response_id=%s store_disabled=%v has_prompt_cache_key=%v",
-					o.AccountID,
+					"ingress_ws_prev_response_recoverable provider_id=%d turn=%d conn_id=%s idx=%d reason=%s code=%s type=%s message=%s previous_response_id=%s previous_response_id_kind=%s response_id=%s store_disabled=%v has_prompt_cache_key=%v",
+					o.ProviderID,
 					turn,
 					p.Truncate(lease.ConnID(), 64),
 					eventCount,
@@ -144,8 +144,8 @@ func RelayTurn(ctx context.Context, p StreamPort, lease StreamLease, input Clien
 				))
 			} else {
 				p.Log(fmt.Sprintf(
-					"ingress_ws_error_event account_id=%d turn=%d conn_id=%s idx=%d fallback_reason=%s err_code=%s err_type=%s err_message=%s previous_response_id=%s previous_response_id_kind=%s response_id=%s store_disabled=%v has_prompt_cache_key=%v",
-					o.AccountID,
+					"ingress_ws_error_event provider_id=%d turn=%d conn_id=%s idx=%d fallback_reason=%s err_code=%s err_type=%s err_message=%s previous_response_id=%s previous_response_id_kind=%s response_id=%s store_disabled=%v has_prompt_cache_key=%v",
+					o.ProviderID,
 					turn,
 					p.Truncate(lease.ConnID(), 64),
 					eventCount,
@@ -247,7 +247,7 @@ func RelayTurn(ctx context.Context, p StreamPort, lease StreamLease, input Clien
 			//
 			// 必须写进独立变量而不是原地改 upstreamMessage：下面的
 			// markOpenAIWSClientVisibleFailure 与 handleOpenAIWSTerminalTransientFailure
-			// 仍要按未改写的原始 payload 判定账号状态，这正是
+			// 仍要按未改写的原始 payload 判定提供商状态，这正是
 			// p.CapacityShed 注释里写明的前提。
 			clientMessage := upstreamMessage
 			if eventType == "error" || eventType == "response.failed" {
@@ -260,8 +260,8 @@ func RelayTurn(ctx context.Context, p StreamPort, lease StreamLease, input Clien
 					clientDisconnected = true
 					closeStatus, closeReason := p.SummarizeClose(err)
 					p.Log(fmt.Sprintf(
-						"ingress_ws_client_disconnected_drain account_id=%d turn=%d conn_id=%s close_status=%s close_reason=%s",
-						o.AccountID,
+						"ingress_ws_client_disconnected_drain provider_id=%d turn=%d conn_id=%s close_status=%s close_reason=%s",
+						o.ProviderID,
 						turn,
 						p.Truncate(lease.ConnID(), 64),
 						closeStatus,
@@ -289,8 +289,8 @@ func RelayTurn(ctx context.Context, p StreamPort, lease StreamLease, input Clien
 			}
 			if o.Debug {
 				p.Debug(fmt.Sprintf(
-					"ingress_ws_turn_completed account_id=%d turn=%d conn_id=%s response_id=%s duration_ms=%d events=%d token_events=%d terminal_events=%d first_event=%s last_event=%s first_token_ms=%d client_disconnected=%v",
-					o.AccountID,
+					"ingress_ws_turn_completed provider_id=%d turn=%d conn_id=%s response_id=%s duration_ms=%d events=%d token_events=%d terminal_events=%d first_event=%s last_event=%s first_token_ms=%d client_disconnected=%v",
+					o.ProviderID,
 					turn,
 					p.Truncate(lease.ConnID(), 64),
 					p.Truncate(responseID, 64),

@@ -41,7 +41,7 @@ func (s *GroupAdmin) GetGroup(ctx context.Context, id int64) (*Group, error) {
 	return s.groupRepo.GetByID(ctx, id)
 }
 
-// GetGroupModelsListCandidates 新组展示默认目录建议，已有组只展示实际账号能力的并集。
+// GetGroupModelsListCandidates 新组展示默认目录建议，已有组只展示实际提供商能力的并集。
 func (s *GroupAdmin) GetGroupModelsListCandidates(ctx context.Context, id int64, _ string) ([]string, error) {
 	if id <= 0 {
 		return s.options.DefaultModels(""), nil
@@ -50,21 +50,21 @@ func (s *GroupAdmin) GetGroupModelsListCandidates(ctx context.Context, id int64,
 	if err != nil {
 		return nil, err
 	}
-	if s.accountRepo == nil {
+	if s.providerRepo == nil {
 		return []string{}, nil
 	}
-	accounts, err := s.accountRepo.ListSchedulableByGroupID(ctx, id)
+	providers, err := s.providerRepo.ListSchedulableByGroupID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	candidates := ConfiguredModelsListCandidateIDs(accounts, "")
+	candidates := ConfiguredModelsListCandidateIDs(providers, "")
 	if group.CustomModelsListEnabled() {
 		candidates = FilterModelsListCandidates(candidates, group.ModelsListConfig.Models)
 	}
 	return candidates, nil
 }
 
-// SanitizeGroupOpenAIFast 规范化功能配置，实际应用范围由执行账号决定。
+// SanitizeGroupOpenAIFast 规范化功能配置，实际应用范围由执行提供商决定。
 func SanitizeGroupOpenAIFast(group *Group) {
 	if group == nil {
 		return
@@ -146,13 +146,13 @@ func (s *GroupAdmin) CreateGroup(ctx context.Context, input *CreateGroupInput) (
 	allowImageGeneration := input.AllowImageGeneration
 	allowBatchImageGeneration := input.AllowBatchImageGeneration && allowImageGeneration
 
-	// 如果指定了复制账号的源分组，先获取账号 ID 列表
-	var accountIDsToCopy []int64
-	if len(input.CopyAccountsFromGroupIDs) > 0 {
+	// 如果指定了复制提供商的源分组，先获取提供商 ID 列表
+	var providerIDsToCopy []int64
+	if len(input.CopyProvidersFromGroupIDs) > 0 {
 		// 去重源分组 IDs
 		seen := make(map[int64]struct{})
-		uniqueSourceGroupIDs := make([]int64, 0, len(input.CopyAccountsFromGroupIDs))
-		for _, srcGroupID := range input.CopyAccountsFromGroupIDs {
+		uniqueSourceGroupIDs := make([]int64, 0, len(input.CopyProvidersFromGroupIDs))
+		for _, srcGroupID := range input.CopyProvidersFromGroupIDs {
 			if _, exists := seen[srcGroupID]; !exists {
 				seen[srcGroupID] = struct{}{}
 				uniqueSourceGroupIDs = append(uniqueSourceGroupIDs, srcGroupID)
@@ -167,11 +167,11 @@ func (s *GroupAdmin) CreateGroup(ctx context.Context, input *CreateGroupInput) (
 			}
 		}
 
-		// 获取所有源分组的账号（去重）
+		// 获取所有源分组的提供商（去重）
 		var err error
-		accountIDsToCopy, err = s.groupRepo.GetAccountIDsByGroupIDs(ctx, uniqueSourceGroupIDs)
+		providerIDsToCopy, err = s.groupRepo.GetProviderIDsByGroupIDs(ctx, uniqueSourceGroupIDs)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get accounts from source groups: %w", err)
+			return nil, fmt.Errorf("failed to get providers from source groups: %w", err)
 		}
 	}
 	availabilityProbeConfig, err := NormalizeGroupAvailabilityProbeConfigForAdminWrite(input.AvailabilityProbeConfig)
@@ -235,25 +235,25 @@ func (s *GroupAdmin) CreateGroup(ctx context.Context, input *CreateGroupInput) (
 		return nil, err
 	}
 
-	// require_oauth_only: 过滤掉 apikey 类型账号
-	if group.RequireOAuthOnly && len(accountIDsToCopy) > 0 {
-		accounts, err := s.accountRepo.GetByIDs(ctx, accountIDsToCopy)
+	// require_oauth_only: 过滤掉 apikey 类型提供商
+	if group.RequireOAuthOnly && len(providerIDsToCopy) > 0 {
+		providers, err := s.providerRepo.GetByIDs(ctx, providerIDsToCopy)
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch accounts for oauth filter: %w", err)
+			return nil, fmt.Errorf("failed to fetch providers for oauth filter: %w", err)
 		}
-		oauthIDs := make(map[int64]struct{}, len(accounts))
-		for _, acc := range accounts {
-			if acc.Type != capability.AccountTypeAPIKey {
+		oauthIDs := make(map[int64]struct{}, len(providers))
+		for _, acc := range providers {
+			if acc.Type != capability.ProviderTypeAPIKey {
 				oauthIDs[acc.ID] = struct{}{}
 			}
 		}
 		var filtered []int64
-		for _, aid := range accountIDsToCopy {
+		for _, aid := range providerIDsToCopy {
 			if _, ok := oauthIDs[aid]; ok {
 				filtered = append(filtered, aid)
 			}
 		}
-		accountIDsToCopy = filtered
+		providerIDsToCopy = filtered
 	}
 
 	if err := s.options.Mutate(ctx, func(opCtx context.Context) error {
@@ -267,10 +267,10 @@ func (s *GroupAdmin) CreateGroup(ctx context.Context, input *CreateGroupInput) (
 		if err := s.groupRepo.Create(opCtx, group); err != nil {
 			return err
 		}
-		// 账号复制与分组创建放在同一事务中，避免出现部分提交。
-		if len(accountIDsToCopy) > 0 {
-			if err := s.groupRepo.BindAccountsToGroup(opCtx, group.ID, accountIDsToCopy); err != nil {
-				return fmt.Errorf("failed to bind accounts to new group: %w", err)
+		// 提供商复制与分组创建放在同一事务中，避免出现部分提交。
+		if len(providerIDsToCopy) > 0 {
+			if err := s.groupRepo.BindProvidersToGroup(opCtx, group.ID, providerIDsToCopy); err != nil {
+				return fmt.Errorf("failed to bind providers to new group: %w", err)
 			}
 		}
 		return nil
@@ -278,8 +278,8 @@ func (s *GroupAdmin) CreateGroup(ctx context.Context, input *CreateGroupInput) (
 		return nil, err
 	}
 
-	if len(accountIDsToCopy) > 0 {
-		group.AccountCount = int64(len(accountIDsToCopy))
+	if len(providerIDsToCopy) > 0 {
+		group.ProviderCount = int64(len(providerIDsToCopy))
 	}
 
 	return group, nil
@@ -592,16 +592,16 @@ func (s *GroupAdmin) UpdateGroup(ctx context.Context, id int64, input *UpdateGro
 		return nil, err
 	}
 
-	// 如果指定了复制账号的源分组，同步绑定（替换当前分组的账号）
-	var accountIDsToCopy []int64
-	if len(input.CopyAccountsFromGroupIDs) > 0 {
+	// 如果指定了复制提供商的源分组，同步绑定（替换当前分组的提供商）
+	var providerIDsToCopy []int64
+	if len(input.CopyProvidersFromGroupIDs) > 0 {
 		// 去重源分组 IDs
 		seen := make(map[int64]struct{})
-		uniqueSourceGroupIDs := make([]int64, 0, len(input.CopyAccountsFromGroupIDs))
-		for _, srcGroupID := range input.CopyAccountsFromGroupIDs {
+		uniqueSourceGroupIDs := make([]int64, 0, len(input.CopyProvidersFromGroupIDs))
+		for _, srcGroupID := range input.CopyProvidersFromGroupIDs {
 			// 校验：源分组不能是自身
 			if srcGroupID == id {
-				return nil, fmt.Errorf("cannot copy accounts from self")
+				return nil, fmt.Errorf("cannot copy providers from self")
 			}
 			// 去重
 			if _, exists := seen[srcGroupID]; !exists {
@@ -610,7 +610,7 @@ func (s *GroupAdmin) UpdateGroup(ctx context.Context, id int64, input *UpdateGro
 			}
 		}
 
-		// 校验源分组存在后复制账号关联
+		// 校验源分组存在后复制提供商关联
 		for _, srcGroupID := range uniqueSourceGroupIDs {
 			_, err := s.groupRepo.GetByIDLite(ctx, srcGroupID)
 			if err != nil {
@@ -618,31 +618,31 @@ func (s *GroupAdmin) UpdateGroup(ctx context.Context, id int64, input *UpdateGro
 			}
 		}
 
-		// 获取所有源分组的账号（去重）
-		accountIDsToCopy, err = s.groupRepo.GetAccountIDsByGroupIDs(ctx, uniqueSourceGroupIDs)
+		// 获取所有源分组的提供商（去重）
+		providerIDsToCopy, err = s.groupRepo.GetProviderIDsByGroupIDs(ctx, uniqueSourceGroupIDs)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get accounts from source groups: %w", err)
+			return nil, fmt.Errorf("failed to get providers from source groups: %w", err)
 		}
 
-		// require_oauth_only: 过滤掉 apikey 类型账号
-		if group.RequireOAuthOnly && len(accountIDsToCopy) > 0 {
-			accounts, err := s.accountRepo.GetByIDs(ctx, accountIDsToCopy)
+		// require_oauth_only: 过滤掉 apikey 类型提供商
+		if group.RequireOAuthOnly && len(providerIDsToCopy) > 0 {
+			providers, err := s.providerRepo.GetByIDs(ctx, providerIDsToCopy)
 			if err != nil {
-				return nil, fmt.Errorf("failed to fetch accounts for oauth filter: %w", err)
+				return nil, fmt.Errorf("failed to fetch providers for oauth filter: %w", err)
 			}
-			oauthIDs := make(map[int64]struct{}, len(accounts))
-			for _, acc := range accounts {
-				if acc.Type != capability.AccountTypeAPIKey {
+			oauthIDs := make(map[int64]struct{}, len(providers))
+			for _, acc := range providers {
+				if acc.Type != capability.ProviderTypeAPIKey {
 					oauthIDs[acc.ID] = struct{}{}
 				}
 			}
 			var filtered []int64
-			for _, aid := range accountIDsToCopy {
+			for _, aid := range providerIDsToCopy {
 				if _, ok := oauthIDs[aid]; ok {
 					filtered = append(filtered, aid)
 				}
 			}
-			accountIDsToCopy = filtered
+			providerIDsToCopy = filtered
 		}
 	}
 
@@ -650,14 +650,14 @@ func (s *GroupAdmin) UpdateGroup(ctx context.Context, id int64, input *UpdateGro
 		if err := s.groupRepo.Update(opCtx, group); err != nil {
 			return err
 		}
-		// 分组属性更新和账号替换必须同事务提交，避免删绑成功一半。
-		if len(input.CopyAccountsFromGroupIDs) > 0 {
-			if _, err := s.groupRepo.DeleteAccountGroupsByGroupID(opCtx, id); err != nil {
-				return fmt.Errorf("failed to clear existing account bindings: %w", err)
+		// 分组属性更新和提供商替换必须同事务提交，避免删绑成功一半。
+		if len(input.CopyProvidersFromGroupIDs) > 0 {
+			if _, err := s.groupRepo.DeleteProviderGroupsByGroupID(opCtx, id); err != nil {
+				return fmt.Errorf("failed to clear existing provider bindings: %w", err)
 			}
-			if len(accountIDsToCopy) > 0 {
-				if err := s.groupRepo.BindAccountsToGroup(opCtx, id, accountIDsToCopy); err != nil {
-					return fmt.Errorf("failed to bind accounts to group: %w", err)
+			if len(providerIDsToCopy) > 0 {
+				if err := s.groupRepo.BindProvidersToGroup(opCtx, id, providerIDsToCopy); err != nil {
+					return fmt.Errorf("failed to bind providers to group: %w", err)
 				}
 			}
 		}

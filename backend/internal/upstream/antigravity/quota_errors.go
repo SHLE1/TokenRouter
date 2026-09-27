@@ -1,4 +1,4 @@
-// 只解释供应商拒绝信息，不改变账号健康或管理权限。
+// 只解释供应商拒绝信息，不改变提供商健康或管理权限。
 package antigravity
 
 import (
@@ -12,7 +12,7 @@ func ClassifyForbiddenType(body string) string {
 	lower := strings.ToLower(body)
 	switch {
 	case strings.Contains(lower, "validation_required") ||
-		strings.Contains(lower, "verify your account") ||
+		strings.Contains(lower, "verify your provider") ||
 		strings.Contains(lower, "validation_url"):
 		return "validation"
 	case strings.Contains(lower, "terms of service") ||

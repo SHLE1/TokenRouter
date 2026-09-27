@@ -10,9 +10,9 @@ type OpsUpstreamErrorEvent struct {
 	Passthrough bool `json:"passthrough,omitempty"`
 
 	// Context
-	Platform    string `json:"platform,omitempty"`
-	AccountID   int64  `json:"account_id,omitempty"`
-	AccountName string `json:"account_name,omitempty"`
+	Platform     string `json:"platform,omitempty"`
+	ProviderID   int64  `json:"provider_id,omitempty"`
+	ProviderName string `json:"provider_name,omitempty"`
 
 	// Outcome
 	UpstreamStatusCode int    `json:"upstream_status_code,omitempty"`

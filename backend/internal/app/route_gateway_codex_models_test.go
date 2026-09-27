@@ -7,8 +7,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 
 	"github.com/TokenFlux/TokenRouter/internal/config"
@@ -16,24 +16,24 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// codexModelsRemovalAccountRepo 提供仅含 API Key 账号的分组模型数据。
-type codexModelsRemovalAccountRepo struct {
-	modelHTTPAccountRows
-	accounts []account.Record
+// codexModelsRemovalProviderRepo 提供仅含 API Key 提供商的分组模型数据。
+type codexModelsRemovalProviderRepo struct {
+	modelHTTPProviderRows
+	providers []provider.Record
 }
 
-func (r *codexModelsRemovalAccountRepo) ListSchedulableByGroupID(context.Context, int64) ([]account.Record, error) {
-	return append([]account.Record(nil), r.accounts...), nil
+func (r *codexModelsRemovalProviderRepo) ListSchedulableByGroupID(context.Context, int64) ([]provider.Record, error) {
+	return append([]provider.Record(nil), r.providers...), nil
 }
 
 // 带 client_version 的模型请求应继续返回纯 API Key 分组的本地模型列表。
 func TestGatewayRoutesModelsWithClientVersionUsesLocalList(t *testing.T) {
-	repo := &codexModelsRemovalAccountRepo{
-		accounts: []account.Record{
+	repo := &codexModelsRemovalProviderRepo{
+		providers: []provider.Record{
 			{
 				ID:       1,
 				Platform: capability.PlatformOpenAI,
-				Type:     capability.AccountTypeAPIKey,
+				Type:     capability.ProviderTypeAPIKey,
 				Credentials: map[string]any{
 					"api_key":         "sk-test",
 					"model_whitelist": []string{"local-api-key-model"},
@@ -59,7 +59,7 @@ func TestGatewayRoutesModelsWithClientVersionUsesLocalList(t *testing.T) {
 			router.ServeHTTP(recorder, req)
 
 			require.Equal(t, http.StatusOK, recorder.Code)
-			require.NotContains(t, recorder.Body.String(), "No available OpenAI OAuth accounts")
+			require.NotContains(t, recorder.Body.String(), "No available OpenAI OAuth providers")
 			var response struct {
 				Object string `json:"object"`
 				Data   []struct {

@@ -33,18 +33,18 @@ var ErrReasoningContentNotFound = errors.New("reasoning content not found")
 // GatewayCache defines cache operations for gateway service.
 // Provides sticky session storage, retrieval, refresh and deletion capabilities.
 type GatewayCache interface {
-	// GetSessionAccountID 获取粘性会话绑定的账号 ID
-	// Get the account ID bound to a sticky session
-	GetSessionAccountID(ctx context.Context, groupID int64, sessionHash string) (int64, error)
-	// SetSessionAccountID 设置粘性会话与账号的绑定关系
-	// Set the binding between sticky session and account
-	SetSessionAccountID(ctx context.Context, groupID int64, sessionHash string, accountID int64, ttl time.Duration) error
+	// GetSessionProviderID 获取粘性会话绑定的提供商 ID
+	// Get the provider ID bound to a sticky session
+	GetSessionProviderID(ctx context.Context, groupID int64, sessionHash string) (int64, error)
+	// SetSessionProviderID 设置粘性会话与提供商的绑定关系
+	// Set the binding between sticky session and provider
+	SetSessionProviderID(ctx context.Context, groupID int64, sessionHash string, providerID int64, ttl time.Duration) error
 	// RefreshSessionTTL 刷新粘性会话的过期时间
 	// Refresh the expiration time of a sticky session
 	RefreshSessionTTL(ctx context.Context, groupID int64, sessionHash string, ttl time.Duration) error
-	// DeleteSessionAccountID 删除粘性会话绑定，用于账号不可用时主动清理
-	// Delete sticky session binding, used to proactively clean up when account becomes unavailable
-	DeleteSessionAccountID(ctx context.Context, groupID int64, sessionHash string) error
+	// DeleteSessionProviderID 删除粘性会话绑定，用于提供商不可用时主动清理
+	// Delete sticky session binding, used to proactively clean up when provider becomes unavailable
+	DeleteSessionProviderID(ctx context.Context, groupID int64, sessionHash string) error
 	// SetSessionOwnerGroupID 首次记录显式会话所属分组；返回 true 表示本次写入成功。
 	SetSessionOwnerGroupID(ctx context.Context, userID int64, source, sessionHash string, groupID int64, ttl time.Duration) (bool, error)
 	// GetSessionOwnerGroupID 读取显式会话首次归属分组。

@@ -5,7 +5,7 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/forward"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/messageforward"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 	"github.com/gin-gonic/gin"
@@ -21,22 +21,22 @@ func NewMessagesExecutor(runtime *messageforward.Runtime, filter *egress.Compile
 	return &MessagesExecutor{runtime: runtime, filter: filter}
 }
 
-func (e *MessagesExecutor) ApplyBedrockCCCompat(c *gin.Context, body []byte, model string, target *provider.ExecutionAccount, groupID *int64) []byte {
+func (e *MessagesExecutor) ApplyBedrockCCCompat(c *gin.Context, body []byte, model string, target *gatewayadapter.ExecutionProvider, groupID *int64) []byte {
 	return e.runtime.PrepareBedrockCompatibility(c.Request.Context(), c.Request.Header, body, model, target, groupID)
 }
 
-func (e *MessagesExecutor) Forward(ctx context.Context, c *gin.Context, target *provider.ExecutionAccount, parsed *requeststate.ParsedRequest) (*forward.MessagesResult, error) {
+func (e *MessagesExecutor) Forward(ctx context.Context, c *gin.Context, target *gatewayadapter.ExecutionProvider, parsed *requeststate.ParsedRequest) (*forward.MessagesResult, error) {
 	return e.runtime.Execute(ctx, NewMessageForwardBoundary(c, e.filter), target, parsed)
 }
 
-func (e *MessagesExecutor) ForwardCountTokens(ctx context.Context, c *gin.Context, target *provider.ExecutionAccount, parsed *requeststate.ParsedRequest) error {
+func (e *MessagesExecutor) ForwardCountTokens(ctx context.Context, c *gin.Context, target *gatewayadapter.ExecutionProvider, parsed *requeststate.ParsedRequest) error {
 	return e.runtime.Count(ctx, NewMessageForwardBoundary(c, e.filter), target, parsed)
 }
 
-func (e *MessagesExecutor) ForwardAsChatCompletions(ctx context.Context, c *gin.Context, target *provider.ExecutionAccount, body []byte, _ *requeststate.ParsedRequest) (*forward.MessagesResult, error) {
+func (e *MessagesExecutor) ForwardAsChatCompletions(ctx context.Context, c *gin.Context, target *gatewayadapter.ExecutionProvider, body []byte, _ *requeststate.ParsedRequest) (*forward.MessagesResult, error) {
 	return e.runtime.Chat(ctx, NewMessageForwardBoundary(c, e.filter), target, body)
 }
 
-func (e *MessagesExecutor) ForwardAsResponses(ctx context.Context, c *gin.Context, target *provider.ExecutionAccount, body []byte, _ *requeststate.ParsedRequest) (*forward.MessagesResult, error) {
+func (e *MessagesExecutor) ForwardAsResponses(ctx context.Context, c *gin.Context, target *gatewayadapter.ExecutionProvider, body []byte, _ *requeststate.ParsedRequest) (*forward.MessagesResult, error) {
 	return e.runtime.Responses(ctx, NewMessageForwardBoundary(c, e.filter), target, body)
 }

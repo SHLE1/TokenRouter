@@ -15,7 +15,7 @@ import (
 // http.Transport.DialContext 为 nil 时 Go 使用零值 net.Dialer（Timeout=0），
 // DNS 解析与 TCP 握手没有任何上限，只能等内核重传耗尽（Linux 约 130 秒）。
 // ResponseHeaderTimeout 只覆盖连接建立之后的阶段，管不到建连。
-// 上游域名被解析到不可达 IP 时，串行的多账号故障转移会把一次请求拖到数分钟。
+// 上游域名被解析到不可达 IP 时，串行的多提供商故障转移会把一次请求拖到数分钟。
 func TestBuildUpstreamTransportSetsDialTimeout(t *testing.T) {
 	settings := upstreamTestSettings()
 

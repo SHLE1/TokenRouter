@@ -1,4 +1,4 @@
-// Live 原生客户端只拥有创建请求和 sideband 连接；账号选择、租约与结算由调用方负责。
+// Live 原生客户端只拥有创建请求和 sideband 连接；提供商选择、租约与结算由调用方负责。
 package openai
 
 import (
@@ -20,8 +20,10 @@ import (
 	"github.com/google/uuid"
 )
 
-const liveUpstreamBodyLimit = 2 << 20
-const LiveAttestationHeader = "x-oai-attestation"
+const (
+	liveUpstreamBodyLimit = 2 << 20
+	LiveAttestationHeader = "x-oai-attestation"
+)
 
 type LiveCreated struct {
 	SDP      []byte
@@ -29,15 +31,15 @@ type LiveCreated struct {
 	Location string
 }
 type LiveCreateOptions struct {
-	URL            string
-	Attestation    string `json:"-"`
-	Token          func(context.Context) (string, error)
-	Authentication func(context.Context, string) (http.Header, error)
-	AccountHeaders func(context.Context, http.Header) error
-	Routing        func(context.Context, http.Header)
-	Do             func(*http.Request) (*http.Response, error)
-	StageFailure   func(string, error)
-	HTTPFailure    func(int, http.Header, []byte) error
+	URL             string
+	Attestation     string `json:"-"`
+	Token           func(context.Context) (string, error)
+	Authentication  func(context.Context, string) (http.Header, error)
+	ProviderHeaders func(context.Context, http.Header) error
+	Routing         func(context.Context, http.Header)
+	Do              func(*http.Request) (*http.Response, error)
+	StageFailure    func(string, error)
+	HTTPFailure     func(int, http.Header, []byte) error
 }
 
 func (LiveCreateOptions) String() string { return "openai live create options" }
@@ -80,7 +82,7 @@ func CreateLiveCall(ctx context.Context, request *wire.LiveCallRequest, options 
 		}
 	}
 	upstreamReq.Host = "chatgpt.com"
-	if err := options.AccountHeaders(ctx, upstreamReq.Header); err != nil {
+	if err := options.ProviderHeaders(ctx, upstreamReq.Header); err != nil {
 		options.StageFailure("account_headers", err)
 		return nil, err
 	}
@@ -115,6 +117,7 @@ func CreateLiveCall(ctx context.Context, request *wire.LiveCallRequest, options 
 		Location: resp.Header.Get("Location"),
 	}, nil
 }
+
 func LiveCallIDFromLocation(location string) (string, error) {
 	location = strings.TrimSpace(location)
 	if location == "" {
@@ -130,6 +133,7 @@ func LiveCallIDFromLocation(location string) (string, error) {
 	}
 	return callID, nil
 }
+
 func ApplyLiveUpstreamIdentityHeaders(headers http.Header) {
 	headers.Set("OpenAI-Alpha", "quicksilver=v2")
 	EnsureCodexIdentityHeaders(headers)

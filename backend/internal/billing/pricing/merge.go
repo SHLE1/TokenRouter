@@ -18,7 +18,7 @@ type MergeConflict struct {
 }
 
 // MergePriceCards 合并同一作用域的历史价卡；不能比较的配置返回完整冲突清单。
-// 单价逐桶取高，空值保留继承含义；不同作用域的账号成本规则必须分别调用。
+// 单价逐桶取高，空值保留继承含义；不同作用域的提供商成本规则必须分别调用。
 func MergePriceCards(entries []ModelPricingEntry) ([]ModelPricingEntry, []MergeConflict) {
 	type mergedEntry struct {
 		card ModelPricingEntry

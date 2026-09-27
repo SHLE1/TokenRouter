@@ -13,7 +13,7 @@ func TestBuildOpsSystemLogsWhere_WithClientRequestIDAndUserID(t *testing.T) {
 	end := time.Date(2026, 2, 2, 0, 0, 0, 0, time.UTC)
 	userID := int64(12)
 	apiKeyID := int64(56)
-	accountID := int64(34)
+	providerID := int64(34)
 
 	filter := &ops.OpsSystemLogFilter{
 		StartTime:       &start,
@@ -25,7 +25,7 @@ func TestBuildOpsSystemLogsWhere_WithClientRequestIDAndUserID(t *testing.T) {
 		ClientRequestID: "creq-1",
 		UserID:          &userID,
 		APIKeyID:        &apiKeyID,
-		AccountID:       &accountID,
+		ProviderID:      &providerID,
 		Platform:        "openai",
 		Model:           "gpt-5",
 		Query:           "timeout",

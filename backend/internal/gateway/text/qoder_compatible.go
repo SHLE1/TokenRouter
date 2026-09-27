@@ -27,8 +27,8 @@ type QoderCompatiblePorts interface {
 	Switched()
 }
 
-// RunQoderCompatible 只拥有当前请求的账号循环，不执行第二层全局 failover。
-func RunQoderCompatible(p QoderCompatiblePorts, maxAccounts int) {
+// RunQoderCompatible 只拥有当前请求的提供商循环，不执行第二层全局 failover。
+func RunQoderCompatible(p QoderCompatiblePorts, maxProviders int) {
 	excluded := make(map[int64]struct{})
 	pending := false
 	var last error
@@ -68,8 +68,8 @@ func RunQoderCompatible(p QoderCompatiblePorts, maxAccounts int) {
 				}
 			} else if refresh.Pending {
 				if !result.OutputChanged {
-					excluded[selected.Account.ID] = struct{}{}
-					if len(excluded) < maxAccounts {
+					excluded[selected.Provider.ID] = struct{}{}
+					if len(excluded) < maxProviders {
 						pending = true
 						p.Switched()
 						continue
@@ -84,8 +84,8 @@ func RunQoderCompatible(p QoderCompatiblePorts, maxAccounts int) {
 			return
 		}
 		if !result.OutputChanged && result.CanFailover {
-			excluded[selected.Account.ID] = struct{}{}
-			if len(excluded) < maxAccounts {
+			excluded[selected.Provider.ID] = struct{}{}
+			if len(excluded) < maxProviders {
 				last = result.Err
 				p.Switched()
 				continue
@@ -95,8 +95,8 @@ func RunQoderCompatible(p QoderCompatiblePorts, maxAccounts int) {
 		if p.Failure(result) {
 			return
 		}
-		excluded[selected.Account.ID] = struct{}{}
-		if len(excluded) < maxAccounts {
+		excluded[selected.Provider.ID] = struct{}{}
+		if len(excluded) < maxProviders {
 			last = result.Err
 			p.Switched()
 			continue

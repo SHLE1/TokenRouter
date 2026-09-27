@@ -12,7 +12,7 @@ func TestGeminiSessionContinuousConversation(t *testing.T) {
 	groupID := int64(1)
 	prefixHash := "test_prefix_hash"
 	sessionUUID := "session-uuid-12345"
-	accountID := int64(100)
+	providerID := int64(100)
 
 	// 模拟第一轮对话
 	req1 := &protocolgemini.GeminiRequest{
@@ -33,7 +33,7 @@ func TestGeminiSessionContinuousConversation(t *testing.T) {
 	}
 
 	// 保存第一轮会话（首轮无旧 chain）
-	store.Save(groupID, prefixHash, chain1, sessionUUID, accountID, "")
+	store.Save(groupID, prefixHash, chain1, sessionUUID, providerID, "")
 
 	// 模拟第二轮对话（用户继续对话）
 	req2 := &protocolgemini.GeminiRequest{
@@ -57,12 +57,12 @@ func TestGeminiSessionContinuousConversation(t *testing.T) {
 	if foundUUID != sessionUUID {
 		t.Errorf("Round 2: expected UUID %s, got %s", sessionUUID, foundUUID)
 	}
-	if foundAccID != accountID {
-		t.Errorf("Round 2: expected accountID %d, got %d", accountID, foundAccID)
+	if foundAccID != providerID {
+		t.Errorf("Round 2: expected providerID %d, got %d", providerID, foundAccID)
 	}
 
 	// 保存第二轮会话，传入 Find 返回的 matchedChain 以删旧 key
-	store.Save(groupID, prefixHash, chain2, sessionUUID, accountID, matchedChain)
+	store.Save(groupID, prefixHash, chain2, sessionUUID, providerID, matchedChain)
 
 	// 模拟第三轮对话
 	req3 := &protocolgemini.GeminiRequest{
@@ -88,8 +88,8 @@ func TestGeminiSessionContinuousConversation(t *testing.T) {
 	if foundUUID != sessionUUID {
 		t.Errorf("Round 3: expected UUID %s, got %s", sessionUUID, foundUUID)
 	}
-	if foundAccID != accountID {
-		t.Errorf("Round 3: expected accountID %d, got %d", accountID, foundAccID)
+	if foundAccID != providerID {
+		t.Errorf("Round 3: expected providerID %d, got %d", providerID, foundAccID)
 	}
 }
 
@@ -129,17 +129,17 @@ func TestGeminiSessionPrefixMatchingOrder(t *testing.T) {
 	groupID := int64(1)
 	prefixHash := "test_prefix_hash"
 
-	// 保存不同轮次的会话到不同账号
+	// 保存不同轮次的会话到不同提供商
 	store.Save(groupID, prefixHash, "s:sys-u:q1", "session-round1", 1, "")
 	store.Save(groupID, prefixHash, "s:sys-u:q1-m:a1", "session-round2", 2, "")
 	store.Save(groupID, prefixHash, "s:sys-u:q1-m:a1-u:q2", "session-round3", 3, "")
 
-	// 查找更长的链，应该返回最长匹配（账号 3）
+	// 查找更长的链，应该返回最长匹配（提供商 3）
 	_, accID, _, found := store.Find(groupID, prefixHash, "s:sys-u:q1-m:a1-u:q2-m:a2")
 	if !found {
 		t.Error("Should find session")
 	}
 	if accID != 3 {
-		t.Errorf("Should match longest prefix (account 3), got account %d", accID)
+		t.Errorf("Should match longest prefix (provider 3), got provider %d", accID)
 	}
 }

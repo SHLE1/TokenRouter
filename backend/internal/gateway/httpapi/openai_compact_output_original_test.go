@@ -13,7 +13,7 @@ import (
 
 	responseprotocol "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/protocol/bridge"
@@ -182,7 +182,7 @@ func TestHandleNonStreamingResponse_CompactClientStreamBridgesToSSE(t *testing.T
 		}`)),
 	}
 
-	result, err := svc.NonStream(context.Background(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Type: capability.AccountTypeOAuth}}, "gpt-5.5", "gpt-5.5")
+	result, err := svc.NonStream(context.Background(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Type: capability.ProviderTypeOAuth}}, "gpt-5.5", "gpt-5.5")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -216,7 +216,7 @@ func TestHandleNonStreamingResponse_PathBasedCompactStaysJSON(t *testing.T) {
 		}`)),
 	}
 
-	result, err := svc.NonStream(context.Background(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Type: capability.AccountTypeOAuth}}, "gpt-5.5", "gpt-5.5")
+	result, err := svc.NonStream(context.Background(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Type: capability.ProviderTypeOAuth}}, "gpt-5.5", "gpt-5.5")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -241,7 +241,7 @@ func TestHandleSSEToJSON_CompactClientStreamBridgesToSSE(t *testing.T) {
 		Body:       io.NopCloser(strings.NewReader(upstreamSSE)),
 	}
 
-	result, err := svc.NonStream(context.Background(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Type: capability.AccountTypeOAuth}}, "gpt-5.5", "gpt-5.5")
+	result, err := svc.NonStream(context.Background(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Type: capability.ProviderTypeOAuth}}, "gpt-5.5", "gpt-5.5")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -274,7 +274,7 @@ func TestHandleSSEToJSON_CompactRawOutputItemDoneRepairsEmptyTerminalOutput(t *t
 		Body:       io.NopCloser(strings.NewReader(upstreamSSE)),
 	}
 
-	result, err := svc.NonStream(context.Background(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Type: capability.AccountTypeOAuth}}, "gpt-5.5", "gpt-5.5")
+	result, err := svc.NonStream(context.Background(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Type: capability.ProviderTypeOAuth}}, "gpt-5.5", "gpt-5.5")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -343,7 +343,7 @@ func TestHandleSSEToJSON_PathBasedCompactRawOutputItemDoneRepairsJSON(t *testing
 		Body:       io.NopCloser(strings.NewReader(upstreamSSE)),
 	}
 
-	result, err := svc.NonStream(context.Background(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Type: capability.AccountTypeOAuth}}, "gpt-5.5", "gpt-5.5")
+	result, err := svc.NonStream(context.Background(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Type: capability.ProviderTypeOAuth}}, "gpt-5.5", "gpt-5.5")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -436,7 +436,7 @@ func TestHandleSSEToJSON_CompactSupplementsMissingCompactionIntoNonEmptyOutput(t
 		Body:       io.NopCloser(strings.NewReader(upstreamSSE)),
 	}
 
-	result, err := svc.NonStream(context.Background(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Type: capability.AccountTypeOAuth}}, "gpt-5.5", "gpt-5.5")
+	result, err := svc.NonStream(context.Background(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Type: capability.ProviderTypeOAuth}}, "gpt-5.5", "gpt-5.5")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 

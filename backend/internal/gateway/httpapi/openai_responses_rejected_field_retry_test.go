@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 	"github.com/gin-gonic/gin"
@@ -298,7 +298,7 @@ func TestOpenAIGatewayService_APIKeyRetriesExplicitlyRejectedTopLevelTruncation(
 	}}
 
 	result, err := newOpenAIRejectedFieldTestService(upstream).Forward(
-		context.Background(), newOpenAIRejectedFieldTestContext(body), newOpenAIRejectedFieldTestAccount(), body,
+		context.Background(), newOpenAIRejectedFieldTestContext(body), newOpenAIRejectedFieldTestProvider(), body,
 	)
 
 	require.NoError(t, err)
@@ -360,7 +360,7 @@ func TestOpenAIGatewayService_OAuthRetriesExactRejectedStatus(t *testing.T) {
 	upstream.responses[1].Header.Set("Content-Type", "text/event-stream")
 
 	result, err := newOpenAIRejectedFieldTestService(upstream).Forward(
-		context.Background(), newOpenAIRejectedFieldTestContext(body), newOpenAIOAuthNamespaceTestAccount(), body,
+		context.Background(), newOpenAIRejectedFieldTestContext(body), newOpenAIOAuthNamespaceTestProvider(), body,
 	)
 
 	require.NoError(t, err)
@@ -378,7 +378,7 @@ func TestOpenAIGatewayService_APIKeyRetriesExactRejectedNullMessageContent(t *te
 	}}
 
 	result, err := newOpenAIRejectedFieldTestService(upstream).Forward(
-		context.Background(), newOpenAIRejectedFieldTestContext(body), newOpenAIRejectedFieldTestAccount(), body,
+		context.Background(), newOpenAIRejectedFieldTestContext(body), newOpenAIRejectedFieldTestProvider(), body,
 	)
 
 	require.NoError(t, err)
@@ -504,7 +504,7 @@ func TestOpenAIGatewayService_APIKeyStripsAllIndexedNamespacesBeforeFirstForward
 	result, err := newOpenAIRejectedFieldTestService(upstream).Forward(
 		context.Background(),
 		newOpenAIRejectedFieldTestContext(body),
-		newOpenAIRejectedFieldTestAccount(),
+		newOpenAIRejectedFieldTestProvider(),
 		body,
 	)
 
@@ -531,7 +531,7 @@ func TestOpenAIGatewayServiceProactivelyStripsCrossProviderReasoningContent(t *t
 	result, err := newOpenAIRejectedFieldTestService(upstream).Forward(
 		context.Background(),
 		newOpenAIRejectedFieldTestContext(body),
-		newOpenAIRejectedFieldTestAccount(),
+		newOpenAIRejectedFieldTestProvider(),
 		body,
 	)
 
@@ -544,14 +544,14 @@ func TestOpenAIGatewayServiceProactivelyStripsCrossProviderReasoningContent(t *t
 }
 
 func TestOpenAIGatewayService_OpenAIHTTPStripsInputNamespacesBeforeFirstForward(t *testing.T) {
-	accounts := []struct {
-		name    string
-		account *gatewayprovider.ExecutionAccount
+	providers := []struct {
+		name     string
+		provider *gatewayprovider.ExecutionProvider
 	}{
-		{name: "oauth", account: newOpenAIOAuthNamespaceTestAccount()},
-		{name: "apikey", account: newOpenAIRejectedFieldTestAccount()},
+		{name: "oauth", provider: newOpenAIOAuthNamespaceTestProvider()},
+		{name: "apikey", provider: newOpenAIRejectedFieldTestProvider()},
 	}
-	for _, tt := range accounts {
+	for _, tt := range providers {
 		for _, path := range []string{"/v1/responses", "/v1/responses/compact"} {
 			t.Run(tt.name+path, func(t *testing.T) {
 				body := []byte(`{"model":"gpt-5.5","stream":false,"instructions":"test","input":[{"type":"message","role":"user","namespace":"remove","content":[{"type":"input_text","text":"hello","namespace":"nested-keep"}]}]}`)
@@ -564,7 +564,7 @@ func TestOpenAIGatewayService_OpenAIHTTPStripsInputNamespacesBeforeFirstForward(
 				result, err := newOpenAIRejectedFieldTestService(upstream).Forward(
 					context.Background(),
 					c,
-					tt.account,
+					tt.provider,
 					body,
 				)
 
@@ -588,7 +588,7 @@ func TestOpenAIGatewayService_RetriesExplicitMaxOutputTokensRejection(t *testing
 	result, err := newOpenAIRejectedFieldTestService(upstream).Forward(
 		context.Background(),
 		newOpenAIRejectedFieldTestContext(body),
-		newOpenAIRejectedFieldTestAccount(),
+		newOpenAIRejectedFieldTestProvider(),
 		body,
 	)
 
@@ -610,7 +610,7 @@ func TestOpenAIGatewayService_ComposesProactiveNamespaceStripWithRejectedFieldRe
 	result, err := newOpenAIRejectedFieldTestService(upstream).Forward(
 		context.Background(),
 		newOpenAIRejectedFieldTestContext(body),
-		newOpenAIRejectedFieldTestAccount(),
+		newOpenAIRejectedFieldTestProvider(),
 		body,
 	)
 
@@ -630,7 +630,6 @@ func newOpenAIRejectedFieldTestService(upstream *auxiliaryHTTPRecorder) *OpenAIR
 }
 
 func newOpenAIRejectedFieldTestContext(body []byte) *gin.Context {
-
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", bytes.NewReader(body))
@@ -639,36 +638,42 @@ func newOpenAIRejectedFieldTestContext(body []byte) *gin.Context {
 	return c
 }
 
-func newOpenAIRejectedFieldTestAccount() *gatewayprovider.ExecutionAccount {
-	return &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 5107,
-		Name:        "responses-compatible",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":  "sk-test",
-			"base_url": "https://compat.example",
+func newOpenAIRejectedFieldTestProvider() *gatewayprovider.ExecutionProvider {
+	return &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 5107,
+			Name:        "responses-compatible",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":  "sk-test",
+				"base_url": "https://compat.example",
+			},
+			Extra: map[string]any{
+				providercore.ExtraKeyTextRouteMode: string(providercore.TextRouteModePreserveClientProtocol),
+			},
+			Status:      billing.StatusActive,
+			Schedulable: true,
 		},
-		Extra: map[string]any{
-			accountcore.ExtraKeyTextRouteMode: string(accountcore.TextRouteModePreserveClientProtocol),
-		},
-		Status:      billing.StatusActive,
-		Schedulable: true},
 	}
 }
 
-func newOpenAIOAuthNamespaceTestAccount() *gatewayprovider.ExecutionAccount {
-	return &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 5108,
-		Name:        "openai-oauth-namespace",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeOAuth,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"access_token":       "oauth-token",
-			"chatgpt_account_id": "chatgpt-account",
+func newOpenAIOAuthNamespaceTestProvider() *gatewayprovider.ExecutionProvider {
+	return &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 5108,
+			Name:        "openai-oauth-namespace",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeOAuth,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"access_token":       "oauth-token",
+				"chatgpt_account_id": "chatgpt-provider",
+			},
+			Status:      billing.StatusActive,
+			Schedulable: true,
 		},
-		Status:      billing.StatusActive,
-		Schedulable: true},
 	}
 }
 

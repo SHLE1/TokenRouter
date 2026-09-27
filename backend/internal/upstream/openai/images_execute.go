@@ -1,4 +1,4 @@
-// 图片单次执行管理实际传输与响应释放，账号恢复和资金规则由原调用方决定。
+// 图片单次执行管理实际传输与响应释放，提供商恢复和资金规则由原调用方决定。
 package openai
 
 import (
@@ -17,7 +17,7 @@ import (
 
 // ImagesTarget 是已准备的单次技术目标，不能序列化请求中的凭据。
 type ImagesTarget struct {
-	AccountID                           int64
+	ProviderID                          int64
 	OAuth                               bool
 	Model, ResponseFormat, StreamPrefix string
 	StartedAt                           time.Time
@@ -36,14 +36,15 @@ func (t *ImagesTarget) TargetID() int64 {
 	if t == nil {
 		return 0
 	}
-	return t.AccountID
+	return t.ProviderID
 }
+
 func (t *ImagesTarget) String() string {
-	return fmt.Sprintf("openai images target account=%d", t.TargetID())
+	return fmt.Sprintf("openai images target provider=%d", t.TargetID())
 }
 func (t *ImagesTarget) GoString() string { return t.String() }
 
-// ImagesExecutor 只执行一次已选账号请求，不包含账号切换循环。
+// ImagesExecutor 只执行一次已选提供商请求，不包含提供商切换循环。
 type ImagesExecutor struct{}
 
 func (ImagesExecutor) Execute(ctx context.Context, input upstream.AttemptInput, sink upstream.OutputSink) (result upstream.AttemptResult, failure error) {
@@ -133,7 +134,7 @@ func (ImagesExecutor) Execute(ctx context.Context, input upstream.AttemptInput, 
 	if output != nil {
 		result.HTTPCommitted = output.Writer.Written()
 	}
-	// 只把原先不能交付图片的 OAuth 错误交回旧账号/重试策略，部分结果保留。
+	// 只把原先不能交付图片的 OAuth 错误交回旧提供商/重试策略，部分结果保留。
 	if err != nil && t.OAuth && (!input.Stream || result.ObservedImages <= 0) {
 		err = t.ResponseError(resp, before, err)
 	}
@@ -154,6 +155,7 @@ func (s *imagesObservedSink) InitialOutput() upstream.OutputHead {
 	}
 	return upstream.OutputHead{}
 }
+
 func (s *imagesObservedSink) Begin(head upstream.OutputHead) error {
 	err := s.OutputSink.Begin(head)
 	if err == nil {
@@ -163,6 +165,7 @@ func (s *imagesObservedSink) Begin(head upstream.OutputHead) error {
 	}
 	return err
 }
+
 func (s *imagesObservedSink) Emit(event upstream.OutputEvent) error {
 	s.retryCommitted = s.retryCommitted || event.CommitForRetry
 	s.semantic = s.semantic || event.Semantic

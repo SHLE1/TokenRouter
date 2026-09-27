@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/errorpolicy"
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/gin-gonic/gin"
@@ -19,15 +19,14 @@ import (
 )
 
 func TestGeminiWriteGeminiMappedError_NoRuleKeepsDefault(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 
 	svc := newGeminiFixture(geminiDependencies{})
 	respBody := []byte(`{"error":{"code":422,"message":"Invalid schema for field messages","status":"INVALID_ARGUMENT"}}`)
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 13, Platform: capability.PlatformGemini, Type: capability.AccountTypeAPIKey}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 13, Platform: capability.PlatformGemini, Type: capability.ProviderTypeAPIKey}}
 
-	err := gatewayhttp.NewGoogleBoundary(c, svc.Options, false).GeminiMappedError(account, http.StatusUnprocessableEntity, "req-2", respBody)
+	err := gatewayhttp.NewGoogleBoundary(c, svc.Options, false).GeminiMappedError(provider, http.StatusUnprocessableEntity, "req-2", respBody)
 	require.Error(t, err)
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 
@@ -40,7 +39,6 @@ func TestGeminiWriteGeminiMappedError_NoRuleKeepsDefault(t *testing.T) {
 }
 
 func TestGeminiWriteGeminiMappedError_AppliesRuleFor422(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 
@@ -49,9 +47,9 @@ func TestGeminiWriteGeminiMappedError_AppliesRuleFor422(t *testing.T) {
 
 	svc := newGeminiFixture(geminiDependencies{})
 	respBody := []byte(`{"error":{"code":422,"message":"Invalid schema for field messages","status":"INVALID_ARGUMENT"}}`)
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 3, Platform: capability.PlatformGemini, Type: capability.AccountTypeAPIKey}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 3, Platform: capability.PlatformGemini, Type: capability.ProviderTypeAPIKey}}
 
-	err := gatewayhttp.NewGoogleBoundary(c, svc.Options, false).GeminiMappedError(account, http.StatusUnprocessableEntity, "req-1", respBody)
+	err := gatewayhttp.NewGoogleBoundary(c, svc.Options, false).GeminiMappedError(provider, http.StatusUnprocessableEntity, "req-1", respBody)
 	require.Error(t, err)
 	assert.Equal(t, http.StatusTeapot, rec.Code)
 
@@ -65,7 +63,6 @@ func TestGeminiWriteGeminiMappedError_AppliesRuleFor422(t *testing.T) {
 
 func newNonFailoverPassthroughRule(statusCode int, keyword string, respCode int, customMessage string) *errorpolicy.ErrorPassthroughRule {
 	return &errorpolicy.ErrorPassthroughRule{
-
 		ID: 1,
 
 		Name: "non-failover-rule",
@@ -91,15 +88,14 @@ func newNonFailoverPassthroughRule(statusCode int, keyword string, respCode int,
 }
 
 func TestGeminiWriteGeminiMappedError_SetsResponseCommitted(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 
 	svc := newGeminiFixture(geminiDependencies{})
 	body := []byte(`{"error":{"message":"invalid field"}}`)
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 102, Platform: capability.PlatformGemini, Type: capability.AccountTypeAPIKey}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 102, Platform: capability.PlatformGemini, Type: capability.ProviderTypeAPIKey}}
 
-	err := gatewayhttp.NewGoogleBoundary(c, svc.Options, false).GeminiMappedError(account, http.StatusBadRequest, "req-99", body)
+	err := gatewayhttp.NewGoogleBoundary(c, svc.Options, false).GeminiMappedError(provider, http.StatusBadRequest, "req-99", body)
 	require.Error(t, err)
 	assert.True(t, gatewayhttp.IsResponseCommitted(c), "Gemini path must mark response committed")
 }

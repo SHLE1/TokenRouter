@@ -392,7 +392,7 @@ func TestLogOpsStreamError_RecordsInBandConcurrencyLimit(t *testing.T) {
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
 	c.Set(OpsModelKey, "test-model")
 	MarkOpsStreamError(c, "rate_limit_error",
-		"Concurrency limit exceeded for account, please retry later", http.StatusTooManyRequests)
+		"Concurrency limit exceeded for provider, please retry later", http.StatusTooManyRequests)
 
 	ops := newOpsServiceFixture(nil, nil)
 	logOpsStreamError(c, ops, http.StatusOK, testOpsCaptureQueue, opsAccessFixture())
@@ -409,7 +409,7 @@ func TestLogOpsStreamError_RecordsInBandConcurrencyLimit(t *testing.T) {
 	require.Equal(t, http.StatusOK, job.entry.StatusCode) // 实际状态码保持 200
 	require.Equal(t, "P1", job.entry.Severity)            // 用 IntendedStatus 429 分级
 	require.Equal(t, "test-model", job.entry.Model)
-	require.Equal(t, "Concurrency limit exceeded for account, please retry later", job.entry.ErrorMessage)
+	require.Equal(t, "Concurrency limit exceeded for provider, please retry later", job.entry.ErrorMessage)
 }
 
 func TestLogOpsStreamError_UpstreamFailureCountsTowardsSLA(t *testing.T) {
@@ -490,13 +490,13 @@ func TestShouldSkipFinalOpsFailureUsesOnlyFinalAttemptRule(t *testing.T) {
 func TestMarkOpsStreamError_FirstWins(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
-	MarkOpsStreamError(c, "rate_limit_error", "Concurrency limit exceeded for account", http.StatusTooManyRequests)
+	MarkOpsStreamError(c, "rate_limit_error", "Concurrency limit exceeded for provider", http.StatusTooManyRequests)
 	MarkOpsStreamError(c, "upstream_error", "Upstream request failed", http.StatusBadGateway)
 
 	se, ok := GetOpsStreamError(c)
 	require.True(t, ok)
 	require.Equal(t, "rate_limit_error", se.ErrType)
-	require.Equal(t, "Concurrency limit exceeded for account", se.Message)
+	require.Equal(t, "Concurrency limit exceeded for provider", se.Message)
 	require.Equal(t, http.StatusTooManyRequests, se.IntendedStatus)
 }
 
@@ -528,8 +528,8 @@ func TestLogOpsStreamError_RecordsOneFailurePerWebSocketTurn(t *testing.T) {
 	require.Equal(t, http.StatusForbidden, second.entry.StatusCode)
 }
 
-func TestClassifyOpsNoAvailableAccountsExcludedFromSLA(t *testing.T) {
-	const message = "No available accounts"
+func TestClassifyOpsNoAvailableProvidersExcludedFromSLA(t *testing.T) {
+	const message = "No available providers"
 
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -572,7 +572,7 @@ func TestClassifyOpsLocalModelConfigurationRejection(t *testing.T) {
 	phase, isBusinessLimited, errorOwner, errorSource := classifyOpsErrorLog(
 		c,
 		"model_not_found",
-		"Model \"gpt-missing\" is not supported by any configured account in this group",
+		"Model \"gpt-missing\" is not supported by any configured provider in this group",
 		"",
 		http.StatusNotFound,
 	)
@@ -588,7 +588,7 @@ func TestClassifyOpsLocalModelConfigurationOverridesStaleUpstreamMarkers(t *test
 	MarkOpsClientBusinessLimited(c, OpsClientBusinessLimitedReasonLocalModelConfiguration)
 	c.Set(OpsUpstreamStatusCodeKey, http.StatusUnauthorized)
 	c.Set(OpsUpstreamErrorsKey, []*opscore.OpsUpstreamErrorEvent{{
-		Stage:              opscore.ErrorPhaseAccountAuth,
+		Stage:              opscore.ErrorPhaseProviderAuth,
 		UpstreamStatusCode: http.StatusUnauthorized,
 	}})
 
@@ -621,21 +621,21 @@ func TestOpsErrorLoggerMiddleware_LocalModelConfigurationFields(t *testing.T) {
 	router.Use(opsLoggerFixture(ops))
 	router.POST("/v1/chat/completions", func(c *gin.Context) {
 		MarkOpsClientBusinessLimited(c, OpsClientBusinessLimitedReasonLocalModelConfiguration)
-		c.Set(OpsAccountIDKey, int64(99))
+		c.Set(OpsProviderIDKey, int64(99))
 		c.Set(opsUpstreamModelKey, "stale-upstream-model")
 		SetActualUpstreamEndpoint(c, "/v1/chat/completions")
 		c.Set(OpsUpstreamStatusCodeKey, http.StatusUnauthorized)
 		c.Set(OpsUpstreamErrorMessageKey, "stale upstream error")
 		c.Set(OpsUpstreamErrorDetailKey, "stale upstream detail")
 		c.Set(OpsUpstreamErrorsKey, []*opscore.OpsUpstreamErrorEvent{{
-			Stage:              opscore.ErrorPhaseAccountAuth,
+			Stage:              opscore.ErrorPhaseProviderAuth,
 			UpstreamStatusCode: http.StatusUnauthorized,
 			Message:            "stale auth failure",
 		}})
 		c.JSON(http.StatusNotFound, gin.H{
 			"error": gin.H{
 				"type":    "model_not_found",
-				"message": "Model \"gpt-missing\" is not supported by any configured account in this group",
+				"message": "Model \"gpt-missing\" is not supported by any configured provider in this group",
 			},
 		})
 	})
@@ -645,14 +645,14 @@ func TestOpsErrorLoggerMiddleware_LocalModelConfigurationFields(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	require.Equal(t, http.StatusNotFound, w.Code)
-	require.JSONEq(t, `{"error":{"type":"model_not_found","message":"Model \"gpt-missing\" is not supported by any configured account in this group"}}`, w.Body.String())
+	require.JSONEq(t, `{"error":{"type":"model_not_found","message":"Model \"gpt-missing\" is not supported by any configured provider in this group"}}`, w.Body.String())
 	job := <-opsErrorLogQueue
 	require.Equal(t, http.StatusNotFound, job.entry.StatusCode)
 	require.Equal(t, "routing", job.entry.ErrorPhase)
 	require.True(t, job.entry.IsBusinessLimited)
 	require.Equal(t, "platform", job.entry.ErrorOwner)
 	require.Equal(t, "gateway", job.entry.ErrorSource)
-	require.Nil(t, job.entry.AccountID)
+	require.Nil(t, job.entry.ProviderID)
 	require.Nil(t, job.entry.UpstreamStatusCode)
 	require.Nil(t, job.entry.UpstreamErrors)
 	require.Nil(t, job.entry.UpstreamErrorMessage)
@@ -707,7 +707,7 @@ func TestClassifyOpsAuthClientErrorsExcludedFromSLA(t *testing.T) {
 		{
 			name:    "inactive local API key user",
 			errType: "api_error",
-			message: "User account is not active",
+			message: "User provider is not active",
 			code:    "USER_INACTIVE",
 			status:  http.StatusUnauthorized,
 		},
@@ -770,7 +770,7 @@ func TestClassifyOpsAuthClientErrorsExcludedFromSLA(t *testing.T) {
 		{
 			name:    "google inactive local API key user",
 			errType: "api_error",
-			message: "User account is not active",
+			message: "User provider is not active",
 			code:    "401",
 			status:  http.StatusUnauthorized,
 		},
@@ -892,9 +892,9 @@ func TestClassifyOpsLocalBusinessLimitErrorsExcludedFromSLA(t *testing.T) {
 			wantPhase:   "request",
 		},
 		{
-			name:        "google insufficient account balance",
+			name:        "google insufficient provider balance",
 			errType:     "api_error",
-			message:     "Insufficient account balance",
+			message:     "Insufficient provider balance",
 			code:        "403",
 			status:      http.StatusForbidden,
 			wantErrType: "api_error",
@@ -1065,7 +1065,7 @@ func TestClassifyOpsLocalBusinessLimitErrorsExcludedFromSLA(t *testing.T) {
 		{
 			name:        "codex official client policy block",
 			errType:     "forbidden_error",
-			message:     "This account only allows Codex official clients",
+			message:     "This provider only allows Codex official clients",
 			code:        "",
 			status:      http.StatusForbidden,
 			wantErrType: "forbidden_error",
@@ -1074,7 +1074,7 @@ func TestClassifyOpsLocalBusinessLimitErrorsExcludedFromSLA(t *testing.T) {
 		{
 			name:        "tls router matched-only policy block",
 			errType:     "forbidden_error",
-			message:     "This account only allows clients matched by the configured TLS router",
+			message:     "This provider only allows clients matched by the configured TLS router",
 			code:        "",
 			status:      http.StatusForbidden,
 			wantErrType: "forbidden_error",
@@ -1230,10 +1230,10 @@ func TestClassifyOpsOtherErrorsStillCountForSLA(t *testing.T) {
 
 func TestClassifyOpsUnsupportedModelExcludedFromSLA(t *testing.T) {
 	tests := []string{
-		"No available accounts: no available accounts supporting model: made-up-model",
-		"No available accounts: no available OpenAI accounts supporting model: made-up-model",
-		"No available Gemini accounts: no available Gemini accounts supporting model: made-up-model",
-		"No available accounts: no available accounts supporting model: made-up-model (group model restriction)",
+		"No available providers: no available providers supporting model: made-up-model",
+		"No available providers: no available OpenAI providers supporting model: made-up-model",
+		"No available Gemini providers: no available Gemini providers supporting model: made-up-model",
+		"No available providers: no available providers supporting model: made-up-model (group model restriction)",
 	}
 
 	for _, message := range tests {
@@ -1261,7 +1261,7 @@ func TestClassifyOpsUnmarkedNoAvailableTextStillCountsForSLA(t *testing.T) {
 	phase, isBusinessLimited, errorOwner, errorSource := classifyOpsErrorLog(
 		c,
 		"api_error",
-		"No available accounts",
+		"No available providers",
 		"",
 		http.StatusServiceUnavailable,
 	)
@@ -1311,7 +1311,7 @@ func TestClassifyOpsUpstreamAuthTextStillCountsForSLA(t *testing.T) {
 		},
 		{
 			name:    "provider balance error",
-			message: "Insufficient account balance",
+			message: "Insufficient provider balance",
 			code:    "INSUFFICIENT_BALANCE",
 			status:  http.StatusForbidden,
 		},
@@ -1395,13 +1395,13 @@ func TestClassifyOpsUpstreamAuthTextStillCountsForSLA(t *testing.T) {
 		},
 		{
 			name:    "provider codex client policy shaped error",
-			message: "This account only allows Codex official clients",
+			message: "This provider only allows Codex official clients",
 			code:    "403",
 			status:  http.StatusForbidden,
 		},
 		{
 			name:    "provider tls router policy shaped error",
-			message: "This account only allows clients matched by the configured TLS router",
+			message: "This provider only allows clients matched by the configured TLS router",
 			code:    "403",
 			status:  http.StatusForbidden,
 		},
@@ -1450,12 +1450,12 @@ func TestClassifyOpsUpstreamAuthTextStillCountsForSLA(t *testing.T) {
 func TestClassifyOpsUpstreamNoAvailableTextStillCountsForSLA(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
-	SetOpsUpstreamError(c, http.StatusServiceUnavailable, "No available accounts", "")
+	SetOpsUpstreamError(c, http.StatusServiceUnavailable, "No available providers", "")
 
 	phase, isBusinessLimited, errorOwner, errorSource := classifyOpsErrorLog(
 		c,
 		"api_error",
-		"No available accounts",
+		"No available providers",
 		"",
 		http.StatusServiceUnavailable,
 	)

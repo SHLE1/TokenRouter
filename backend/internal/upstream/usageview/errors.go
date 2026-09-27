@@ -8,7 +8,7 @@ var (
 		"UPSTREAM_USAGE_ADAPTER_UNSUPPORTED", "upstream usage adapter is unsupported",
 	)
 	ErrUpstreamUsageAuthFailed = infraerrors.New(infraerrors.CategoryBadGateway,
-		"UPSTREAM_USAGE_AUTH_FAILED", "upstream rejected the account API key",
+		"UPSTREAM_USAGE_AUTH_FAILED", "upstream rejected the provider API key",
 	)
 	ErrUpstreamUsageWalletUnavailable = infraerrors.New(infraerrors.CategoryBadGateway,
 		"UPSTREAM_USAGE_WALLET_UNAVAILABLE", "upstream wallet balance is unavailable",

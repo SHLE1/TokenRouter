@@ -102,7 +102,7 @@ func RegisterGatewayRoutes(r *gin.Engine, endpoints RouteEndpoints, options Rout
 	gateway.Use(options.APIKeyAuth)
 	gateway.Use(requireGroupAnthropic, requireExtendedProtocol)
 	{
-		// 文本入口只固定客户端协议，平台执行在账号选择后确定。
+		// 文本入口只固定客户端协议，平台执行在提供商选择后确定。
 		gateway.POST("/messages", messagesProtocolGate, func(c *gin.Context) { openAITextHTTP.Messages(c) })
 		// /v1/messages/count_tokens：OpenAI 桥接上游，Grok 本地估算，其余 Anthropic
 		// 兼容平台保留原处理路径。
@@ -111,7 +111,7 @@ func RegisterGatewayRoutes(r *gin.Engine, endpoints RouteEndpoints, options Rout
 		gateway.GET("/usage", endpoints.PublicUsage)
 		gateway.POST("/live", liveHTTP.Live)
 		gateway.GET("/live/:call_id", liveHTTP.LiveSideband)
-		// OpenAI Responses API: 账号选定后按实际能力执行
+		// OpenAI Responses API: 提供商选定后按实际能力执行
 		gateway.POST("/responses", responsesProtocolGate, func(c *gin.Context) {
 			if IsOpenAIResponsesInputTokensRequestPath(c) {
 				responsesInputTokensHandler(c)
@@ -128,7 +128,7 @@ func RegisterGatewayRoutes(r *gin.Engine, endpoints RouteEndpoints, options Rout
 		})))
 		gateway.POST("/alpha/search", textBodyLimit, auxiliaryHTTP.AlphaSearch)
 		gateway.GET("/responses", responsesWebSocketHandler)
-		// OpenAI Chat Completions API: 账号选定后按实际能力执行
+		// OpenAI Chat Completions API: 提供商选定后按实际能力执行
 		gateway.POST("/chat/completions", chatCompletionsProtocolGate, func(c *gin.Context) { openAITextHTTP.ChatCompletions(c) })
 		gateway.POST("/embeddings", textBodyLimit, func(c *gin.Context) { auxiliaryHTTP.Embeddings(c) })
 		gateway.POST("/images/generations", imagesHandler)
@@ -194,7 +194,7 @@ func RegisterGatewayRoutes(r *gin.Engine, endpoints RouteEndpoints, options Rout
 		gemini.POST("/models/*modelAction", requireGeminiGenerateContentProtocol, geminiNativeHTTP.GeminiV1BetaModels)
 	}
 
-	// OpenAI Responses API（不带v1前缀的别名）— 账号选定后按实际能力执行
+	// OpenAI Responses API（不带v1前缀的别名）— 提供商选定后按实际能力执行
 	responsesHandler := func(c *gin.Context) {
 		if IsOpenAIResponsesInputTokensRequestPath(c) {
 			responsesInputTokensHandler(c)
@@ -229,7 +229,7 @@ func RegisterGatewayRoutes(r *gin.Engine, endpoints RouteEndpoints, options Rout
 		codexDirect.POST("/alpha/search", textBodyLimit, auxiliaryHTTP.AlphaSearch)
 		codexDirect.GET("/responses", responsesWebSocketHandler)
 	}
-	// OpenAI Chat Completions API（不带v1前缀的别名）— 账号选定后按实际能力执行
+	// OpenAI Chat Completions API（不带v1前缀的别名）— 提供商选定后按实际能力执行
 	r.POST("/chat/completions", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, options.APIKeyAuth, requireGroupAnthropic, requireExtendedProtocol, chatCompletionsProtocolGate, func(c *gin.Context) { openAITextHTTP.ChatCompletions(c) })
 	r.POST("/embeddings", textBodyLimit, clientRequestID, opsErrorLogger, endpointNorm, options.APIKeyAuth, requireGroupAnthropic, requireExtendedProtocol, func(c *gin.Context) { auxiliaryHTTP.Embeddings(c) })
 	r.POST("/images/generations", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, options.APIKeyAuth, requireGroupAnthropic, requireExtendedProtocol, imagesHandler)
@@ -277,7 +277,7 @@ func RegisterGatewayRoutes(r *gin.Engine, endpoints RouteEndpoints, options Rout
 	// Antigravity 模型列表
 	r.GET("/antigravity/models", options.ForceAntigravity, options.APIKeyAuth, requireGroupAnthropic, requireExtendedProtocol, modelsHTTP.AntigravityModels)
 
-	// Antigravity 专用路由（仅使用 antigravity 账户，不混合调度）
+	// Antigravity 专用路由（仅使用 antigravity 提供商，不混合调度）
 	antigravityV1 := r.Group("/antigravity/v1")
 	antigravityV1.Use(bodyLimit)
 	antigravityV1.Use(clientRequestID)

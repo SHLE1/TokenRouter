@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway/forward"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 	"github.com/TokenFlux/TokenRouter/internal/ops"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
@@ -34,19 +34,21 @@ type CredentialObserver struct{ Context *gin.Context }
 
 func (o CredentialObserver) ObserveCredentialFailure(id int64, class forward.GrokCredentialFailure) {
 	AppendOpsUpstreamError(o.Context, ops.OpsUpstreamErrorEvent{
-		Platform:  capability.PlatformGrok,
-		AccountID: id,
-		Stage:     string(forward.GatewayFailureStageAccountAuth),
-		Scope:     string(class.Scope),
-		Reason:    string(class.Reason),
-		Kind:      "credential_failover",
-		Message:   class.Message,
+		Platform:   capability.PlatformGrok,
+		ProviderID: id,
+		Stage:      string(forward.GatewayFailureStageProviderAuth),
+		Scope:      string(class.Scope),
+		Reason:     string(class.Reason),
+		Kind:       "credential_failover",
+		Message:    class.Message,
 	})
 }
 
 // RequestCredentialExecutor 将同一凭据用例绑定到媒体、WS 和文本 HTTP 入口。
-type RequestCredentialExecutor struct{ Runtime *provider.RequestCredentials }
+type RequestCredentialExecutor struct {
+	Runtime *gatewayadapter.RequestCredentials
+}
 
-func (s *RequestCredentialExecutor) Resolve(ctx context.Context, c *gin.Context, target *provider.ExecutionAccount) (string, string, error) {
+func (s *RequestCredentialExecutor) Resolve(ctx context.Context, c *gin.Context, target *gatewayadapter.ExecutionProvider) (string, string, error) {
 	return s.Runtime.Resolve(ctx, RequestCredentialBudget(c), CredentialObserver{Context: c}, target)
 }

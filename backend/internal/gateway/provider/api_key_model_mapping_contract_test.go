@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/modeltrace"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/stretchr/testify/require"
@@ -35,22 +35,22 @@ func TestGroupMappingChainIncludesAPIKeyRedirectAndDeduplicatesStages(t *testing
 	require.Equal(t, []string{"gpt-5.6-luna", "gpt-5.6-luna-channel"}, mustAPIKeyResponseModels(t, ctx))
 }
 
-func TestResolveAccountUpstreamModelRegistersFinalRedirectStage(t *testing.T) {
+func TestResolveProviderUpstreamModelRegistersFinalRedirectStage(t *testing.T) {
 	ctx := modeltrace.WithContext(
 		context.Background(),
 		modeltrace.NewAPIKeyModelRedirectTrace("model-alias", "model-alias", "key-target"),
 	)
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, Platform: capability.PlatformAnthropic,
-			Type: capability.AccountTypeAPIKey,
+			Type: capability.ProviderTypeAPIKey,
 			Credentials: map[string]any{
 				"model_mapping": map[string]any{"key-target": "upstream-target"},
 			},
 		},
 	}
 
-	require.Equal(t, "upstream-target", gatewayprovider.ExecutionModelPolicy(account).UpstreamModel(ctx, "key-target"))
+	require.Equal(t, "upstream-target", gatewayprovider.ExecutionModelPolicy(provider).UpstreamModel(ctx, "key-target"))
 	require.Equal(t, []string{"key-target", "upstream-target"}, mustAPIKeyResponseModels(t, ctx))
 }
 

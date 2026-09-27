@@ -1,7 +1,7 @@
 // 本文件维护 egress 的所属能力；兼容入口复用唯一实现。
 package egress
 
-// RequestPolicyInput 只提供当前层已决定的出站值，不查询账号、配置、DNS 或存储。
+// RequestPolicyInput 只提供当前层已决定的出站值，不查询提供商、配置、DNS 或存储。
 // Header 在原构建时机应用，TLS 和重定向在获取客户端前投影，不能把这些时机合并。
 type RequestPolicyInput struct {
 	ProxyURL                                              string

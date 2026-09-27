@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	accounthttp "github.com/TokenFlux/TokenRouter/internal/account/httpapi"
+	providerhttp "github.com/TokenFlux/TokenRouter/internal/provider/httpapi"
 	schedulerhttp "github.com/TokenFlux/TokenRouter/internal/scheduler/httpapi"
 
 	backuphttp "github.com/TokenFlux/TokenRouter/internal/backup/httpapi"
@@ -15,7 +15,6 @@ import (
 
 // TestAdminImageStorageRoutesAreRemoved 验证异步图片存储配置下线且备份配置仍可用。
 func TestAdminImageStorageRoutesAreRemoved(t *testing.T) {
-
 	router := gin.New()
 	admin := router.Group("/api/v1/admin")
 	h := &routeTestHandlers{
@@ -66,17 +65,16 @@ func TestAdminImageStorageRoutesAreRemoved(t *testing.T) {
 
 // TestAdminUpstreamBillingProbeRoutesAreRemoved 锁定声明倍率探测管理接口全部返回普通 404。
 func TestAdminUpstreamBillingProbeRoutesAreRemoved(t *testing.T) {
-
 	router := gin.New()
 	admin := router.Group("/api/v1/admin")
 	h := &routeTestHandlers{Admin: &routeTestAdminHandlers{
-		AccountManagement:    &accounthttp.ManagementHandler{},
+		ProviderManagement:   &providerhttp.ManagementHandler{},
 		SchedulerDiagnostics: &schedulerhttp.DiagnosticsHandler{},
-		OAuth:                &accounthttp.ClaudeOAuthHandler{},
-		OpenAIOAuth:          &accounthttp.OpenAIOAuthHandler{},
-		CodexInviteReset:     &accounthttp.CodexInviteResetHandler{},
+		OAuth:                &providerhttp.ClaudeOAuthHandler{},
+		OpenAIOAuth:          &providerhttp.OpenAIOAuthHandler{},
+		CodexInviteReset:     &providerhttp.CodexInviteResetHandler{},
 	}}
-	registerAccountRoutes(admin, h, func(c *gin.Context) { c.Next() })
+	registerProviderRoutes(admin, h, func(c *gin.Context) { c.Next() })
 
 	registered := make(map[string]bool)
 	for _, route := range router.Routes() {
@@ -87,11 +85,11 @@ func TestAdminUpstreamBillingProbeRoutesAreRemoved(t *testing.T) {
 		routePath   string
 		requestPath string
 	}{
-		{method: http.MethodGet, routePath: "/api/v1/admin/accounts/upstream-billing-probe/settings", requestPath: "/api/v1/admin/accounts/upstream-billing-probe/settings"},
-		{method: http.MethodPut, routePath: "/api/v1/admin/accounts/upstream-billing-probe/settings", requestPath: "/api/v1/admin/accounts/upstream-billing-probe/settings"},
-		{method: http.MethodPost, routePath: "/api/v1/admin/accounts/upstream-billing-probe/batch", requestPath: "/api/v1/admin/accounts/upstream-billing-probe/batch"},
-		{method: http.MethodPut, routePath: "/api/v1/admin/accounts/:id/upstream-billing-probe", requestPath: "/api/v1/admin/accounts/42/upstream-billing-probe"},
-		{method: http.MethodPost, routePath: "/api/v1/admin/accounts/:id/upstream-billing-probe", requestPath: "/api/v1/admin/accounts/42/upstream-billing-probe"},
+		{method: http.MethodGet, routePath: "/api/v1/admin/providers/upstream-billing-probe/settings", requestPath: "/api/v1/admin/providers/upstream-billing-probe/settings"},
+		{method: http.MethodPut, routePath: "/api/v1/admin/providers/upstream-billing-probe/settings", requestPath: "/api/v1/admin/providers/upstream-billing-probe/settings"},
+		{method: http.MethodPost, routePath: "/api/v1/admin/providers/upstream-billing-probe/batch", requestPath: "/api/v1/admin/providers/upstream-billing-probe/batch"},
+		{method: http.MethodPut, routePath: "/api/v1/admin/providers/:id/upstream-billing-probe", requestPath: "/api/v1/admin/providers/42/upstream-billing-probe"},
+		{method: http.MethodPost, routePath: "/api/v1/admin/providers/:id/upstream-billing-probe", requestPath: "/api/v1/admin/providers/42/upstream-billing-probe"},
 	}
 	for _, route := range removed {
 		require.False(t, registered[route.method+" "+route.routePath])
@@ -103,29 +101,27 @@ func TestAdminUpstreamBillingProbeRoutesAreRemoved(t *testing.T) {
 }
 
 func TestAdminAdvancedSchedulerScoreRoutesAreRegistered(t *testing.T) {
-
 	router := gin.New()
 	admin := router.Group("/api/v1/admin")
 	h := &routeTestHandlers{Admin: &routeTestAdminHandlers{
-		AccountManagement:    &accounthttp.ManagementHandler{},
+		ProviderManagement:   &providerhttp.ManagementHandler{},
 		SchedulerDiagnostics: &schedulerhttp.DiagnosticsHandler{},
-		OAuth:                &accounthttp.ClaudeOAuthHandler{},
-		OpenAIOAuth:          &accounthttp.OpenAIOAuthHandler{},
-		CodexInviteReset:     &accounthttp.CodexInviteResetHandler{},
+		OAuth:                &providerhttp.ClaudeOAuthHandler{},
+		OpenAIOAuth:          &providerhttp.OpenAIOAuthHandler{},
+		CodexInviteReset:     &providerhttp.CodexInviteResetHandler{},
 	}}
-	registerAccountRoutes(admin, h, func(c *gin.Context) { c.Next() })
+	registerProviderRoutes(admin, h, func(c *gin.Context) { c.Next() })
 
 	registered := make(map[string]bool)
 	for _, route := range router.Routes() {
 		registered[route.Method+" "+route.Path] = true
 	}
-	require.True(t, registered["GET /api/v1/admin/accounts/:id/advanced-scheduler-score"])
-	require.True(t, registered["POST /api/v1/admin/accounts/:id/advanced-scheduler-score/preview"])
+	require.True(t, registered["GET /api/v1/admin/providers/:id/advanced-scheduler-score"])
+	require.True(t, registered["POST /api/v1/admin/providers/:id/advanced-scheduler-score/preview"])
 }
 
 // TestCanonicalBackupIDRouteGuard 验证备份通配路由只接受服务实际生成的 ID 格式。
 func TestCanonicalBackupIDRouteGuard(t *testing.T) {
-
 	router := gin.New()
 	router.GET("/backups/:id", requireCanonicalBackupID, func(c *gin.Context) {
 		c.Status(http.StatusNoContent)

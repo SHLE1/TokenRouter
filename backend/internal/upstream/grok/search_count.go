@@ -1,4 +1,4 @@
-// 供应商报文分类与用量观测不改变账号资格、错误重写或资金处理。
+// 供应商报文分类与用量观测不改变提供商资格、错误重写或资金处理。
 package grok
 
 import (
@@ -21,6 +21,7 @@ func CountGrokNativeSearchCallsFromJSONBytes(body []byte) int {
 	}
 	return CountGrokNativeSearchCallsInOutputArray(gjson.GetBytes(body, "output"))
 }
+
 func CountGrokNativeSearchCallsFromSSEBody(body string) int {
 	if strings.TrimSpace(body) == "" {
 		return 0
@@ -93,6 +94,7 @@ func CountGrokNativeSearchCallsInSSEDataDedup(data []byte, seen map[string]struc
 	}
 	return added
 }
+
 func CollectGrokNativeSearchCallKeys(data []byte) []string {
 	if len(data) == 0 || !gjson.ValidBytes(data) {
 		return nil
@@ -140,6 +142,7 @@ func CollectGrokNativeSearchCallKeys(data []byte) []string {
 	}
 	return keys
 }
+
 func CountGrokNativeSearchCallsInSSEDataWithKeys(data []byte) (int, []string) {
 	if len(data) == 0 || !gjson.ValidBytes(data) {
 		return 0, nil
@@ -184,6 +187,7 @@ func CountGrokNativeSearchCallsInSSEDataWithKeys(data []byte) (int, []string) {
 	}
 	return n, keys
 }
+
 func CountGrokNativeSearchCallsInOutputArray(output gjson.Result) int {
 	if !output.IsArray() {
 		return 0
@@ -197,6 +201,7 @@ func CountGrokNativeSearchCallsInOutputArray(output gjson.Result) int {
 	})
 	return count
 }
+
 func IsGrokNativeSearchOutputItem(item gjson.Result) bool {
 	if !item.Exists() {
 		return false

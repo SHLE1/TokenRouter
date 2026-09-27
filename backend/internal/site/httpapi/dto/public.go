@@ -86,7 +86,7 @@ type PublicSettings struct {
 	BalanceUnitSymbol           string  `json:"balance_unit_symbol"`
 	BalanceIconSVG              string  `json:"balance_icon_svg"`
 	BalanceLowNotifyEnabled     bool    `json:"balance_low_notify_enabled"`
-	AccountQuotaNotifyEnabled   bool    `json:"account_quota_notify_enabled"`
+	ProviderQuotaNotifyEnabled  bool    `json:"provider_quota_notify_enabled"`
 	RiskControlEnabled          bool    `json:"risk_control_enabled"` // 风控中心入口开关
 	CyberSessionBlockEnabled    bool    `json:"cyber_session_block_enabled"`
 	CyberSessionBlockTTLSeconds int     `json:"cyber_session_block_ttl_seconds"`

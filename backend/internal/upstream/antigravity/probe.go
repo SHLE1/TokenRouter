@@ -1,4 +1,4 @@
-// 指定账号的探测使用原生客户端及同一重试规则，账号资格由调用者先确认。
+// 指定提供商的探测使用原生客户端及同一重试规则，提供商资格由调用者先确认。
 package antigravity
 
 import (
@@ -138,7 +138,7 @@ func ExtractTextFromSSEResponse(respBody []byte) string {
 	return strings.Join(texts, "")
 }
 
-// Probe 复用平台账号内重试；不取得调度槽或注册计费会话。
+// Probe 复用平台提供商内重试；不取得调度槽或注册计费会话。
 func Probe(ctx context.Context, input RetryInput, options RetryOptions, model string, limit func() int64, enter func() (func(), error)) (*TestConnectionResult, error) {
 	if enter != nil {
 		done, err := enter()
@@ -150,9 +150,9 @@ func Probe(ctx context.Context, input RetryInput, options RetryOptions, model st
 	input.Ctx = ctx
 	result, err := (&RetryAdapter{Options: options}).AntigravityRetryLoop(input)
 	if err != nil {
-		var switchErr *AntigravityAccountSwitchError
+		var switchErr *AntigravityProviderSwitchError
 		if errors.As(err, &switchErr) {
-			return nil, fmt.Errorf("该账号模型 %s 当前限流中，请稍后重试", switchErr.RateLimitedModel)
+			return nil, fmt.Errorf("该提供商模型 %s 当前限流中，请稍后重试", switchErr.RateLimitedModel)
 		}
 		return nil, err
 	}

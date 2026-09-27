@@ -49,17 +49,17 @@ func (s *Marketplace) ListPublic(ctx context.Context) ([]ModelMarketplaceGroup, 
 	discountConfig, showDiscount := s.getOfficialPriceRatioConfig(ctx)
 	capacityMap := s.getPublicCapacityMap(ctx, groups)
 	availabilityMap := s.getPublicAvailabilityMap(ctx, groups)
-	accountsByGroup, accountsPrefetched := s.PrefetchAccounts(ctx)
+	providersByGroup, providersPrefetched := s.PrefetchProviders(ctx)
 	out := make([]ModelMarketplaceGroup, 0, len(groups))
 	for i := range groups {
 		group := &groups[i]
-		if group.IsExclusive || group.ActiveAccountCount <= 0 {
+		if group.IsExclusive || group.ActiveProviderCount <= 0 {
 			continue
 		}
 
 		var models []ModelMarketplaceModel
-		if accountsPrefetched {
-			models = s.listPublicModelsForGroupWithAccounts(ctx, group, accountsByGroup[group.ID])
+		if providersPrefetched {
+			models = s.listPublicModelsForGroupWithProviders(ctx, group, providersByGroup[group.ID])
 		} else {
 			models = s.ModelsForGroup(ctx, group)
 		}
@@ -93,53 +93,53 @@ func (s *Marketplace) ListPublic(ctx context.Context) ([]ModelMarketplaceGroup, 
 	return out, nil
 }
 
-// PrefetchAccounts 一次读取全部可调度账号，并按账号全局优先级恢复分组查询顺序。
-func (s *Marketplace) PrefetchAccounts(ctx context.Context) (map[int64][]CatalogueAccount, bool) {
+// PrefetchProviders 一次读取全部可调度提供商，并按提供商全局优先级恢复分组查询顺序。
+func (s *Marketplace) PrefetchProviders(ctx context.Context) (map[int64][]CatalogueProvider, bool) {
 	if s == nil || s.models == nil {
 		return nil, false
 	}
-	accounts, available, err := s.models.Prefetch(ctx)
+	providers, available, err := s.models.Prefetch(ctx)
 	if !available && err == nil {
 		return nil, false
 	}
 	if err != nil {
-		s.options.Warn("failed to prefetch marketplace accounts", "error", err)
+		s.options.Warn("failed to prefetch marketplace providers", "error", err)
 		return nil, false
 	}
 
-	accountsByGroup := make(map[int64][]CatalogueAccount)
-	for i := range accounts {
-		account := accounts[i]
-		seenGroups := make(map[int64]struct{}, len(account.GroupIDs)+len(account.AccountGroupIDs))
-		for _, accountGroup := range account.AccountGroupIDs {
-			if accountGroup <= 0 {
+	providersByGroup := make(map[int64][]CatalogueProvider)
+	for i := range providers {
+		provider := providers[i]
+		seenGroups := make(map[int64]struct{}, len(provider.GroupIDs)+len(provider.ProviderGroupIDs))
+		for _, providerGroup := range provider.ProviderGroupIDs {
+			if providerGroup <= 0 {
 				continue
 			}
-			seenGroups[accountGroup] = struct{}{}
-			accountsByGroup[accountGroup] = append(accountsByGroup[accountGroup], account)
+			seenGroups[providerGroup] = struct{}{}
+			providersByGroup[providerGroup] = append(providersByGroup[providerGroup], provider)
 		}
-		for _, groupID := range account.GroupIDs {
+		for _, groupID := range provider.GroupIDs {
 			if groupID <= 0 {
 				continue
 			}
 			if _, exists := seenGroups[groupID]; exists {
 				continue
 			}
-			accountsByGroup[groupID] = append(accountsByGroup[groupID], account)
+			providersByGroup[groupID] = append(providersByGroup[groupID], provider)
 		}
 	}
 
-	for groupID := range accountsByGroup {
-		groupAccounts := accountsByGroup[groupID]
-		sort.SliceStable(groupAccounts, func(i, j int) bool {
-			if groupAccounts[i].Priority != groupAccounts[j].Priority {
-				return groupAccounts[i].Priority < groupAccounts[j].Priority
+	for groupID := range providersByGroup {
+		groupProviders := providersByGroup[groupID]
+		sort.SliceStable(groupProviders, func(i, j int) bool {
+			if groupProviders[i].Priority != groupProviders[j].Priority {
+				return groupProviders[i].Priority < groupProviders[j].Priority
 			}
-			return groupAccounts[i].ID < groupAccounts[j].ID
+			return groupProviders[i].ID < groupProviders[j].ID
 		})
-		accountsByGroup[groupID] = groupAccounts
+		providersByGroup[groupID] = groupProviders
 	}
-	return accountsByGroup, true
+	return providersByGroup, true
 }
 
 func (s *Marketplace) getPublicCapacityMap(ctx context.Context, groups []Group) map[int64]GroupCapacitySummary {
@@ -150,7 +150,7 @@ func (s *Marketplace) getPublicCapacityMap(ctx context.Context, groups []Group) 
 	groupIDs := make([]int64, 0, len(groups))
 	for i := range groups {
 		group := &groups[i]
-		if group.IsExclusive || group.ActiveAccountCount <= 0 {
+		if group.IsExclusive || group.ActiveProviderCount <= 0 {
 			continue
 		}
 		groupIDs = append(groupIDs, group.ID)
@@ -186,7 +186,7 @@ func (s *Marketplace) getPublicAvailabilityMap(ctx context.Context, groups []Gro
 	groupIDs := make([]int64, 0, len(groups))
 	for i := range groups {
 		group := &groups[i]
-		if group.IsExclusive || group.ActiveAccountCount <= 0 {
+		if group.IsExclusive || group.ActiveProviderCount <= 0 {
 			continue
 		}
 		if !group.AvailabilityProbeConfig.Enabled {
@@ -310,9 +310,9 @@ func (s *Marketplace) ModelsForGroup(ctx context.Context, group *Group) []ModelM
 	return s.BuildPublicModels(ctx, group, s.resolveGroupModels(ctx, group))
 }
 
-// listPublicModelsForGroupWithAccounts 使用本次模型广场请求预取的分组账号。
-func (s *Marketplace) listPublicModelsForGroupWithAccounts(ctx context.Context, group *Group, accounts []CatalogueAccount) []ModelMarketplaceModel {
-	return s.BuildPublicModels(ctx, group, s.resolveGroupModelsWithAccounts(ctx, group, accounts))
+// listPublicModelsForGroupWithProviders 使用本次模型广场请求预取的分组提供商。
+func (s *Marketplace) listPublicModelsForGroupWithProviders(ctx context.Context, group *Group, providers []CatalogueProvider) []ModelMarketplaceModel {
+	return s.BuildPublicModels(ctx, group, s.resolveGroupModelsWithProviders(ctx, group, providers))
 }
 
 func (s *Marketplace) BuildPublicModels(ctx context.Context, group *Group, modelDefs []MarketplaceModelDef) []ModelMarketplaceModel {
@@ -376,7 +376,7 @@ func (s *Marketplace) resolveGroupModels(ctx context.Context, group *Group) []Ma
 		if len(resolution.Models) > 0 {
 			return buildMarketplaceModelDefsFromRequestable(resolution.Models, s.options.DisplayNames(""))
 		}
-		// 已完成账号和分组策略解析后，空结果必须保持为空，不能再次回退平台默认模型。
+		// 已完成提供商和分组策略解析后，空结果必须保持为空，不能再次回退平台默认模型。
 		return nil
 	}
 
@@ -386,14 +386,14 @@ func (s *Marketplace) resolveGroupModels(ctx context.Context, group *Group) []Ma
 	return s.options.DefaultModels("")
 }
 
-// resolveGroupModelsWithAccounts 直接使用预取账号生成候选和执行 R -> G -> U 校验。
-func (s *Marketplace) resolveGroupModelsWithAccounts(ctx context.Context, group *Group, accounts []CatalogueAccount) []MarketplaceModelDef {
+// resolveGroupModelsWithProviders 直接使用预取提供商生成候选和执行 R -> G -> U 校验。
+func (s *Marketplace) resolveGroupModelsWithProviders(ctx context.Context, group *Group, providers []CatalogueProvider) []MarketplaceModelDef {
 	if s == nil || s.models == nil || group == nil {
 		return nil
 	}
 	groupID := group.ID
-	baseModels := ConfiguredRequestModelsFromAccounts(accounts, "")
-	resolution := s.requestable.ResolveWithAccounts(ctx, &groupID, "", baseModels, accounts)
+	baseModels := ConfiguredRequestModelsFromProviders(providers, "")
+	resolution := s.requestable.ResolveWithProviders(ctx, &groupID, "", baseModels, providers)
 	if len(resolution.Models) == 0 {
 		return nil
 	}
@@ -483,7 +483,7 @@ type MarketplaceSettings interface {
 	GetMultiple(context.Context, []string) (map[string]string, error)
 }
 type MarketplaceModels interface {
-	Prefetch(context.Context) ([]CatalogueAccount, bool, error)
+	Prefetch(context.Context) ([]CatalogueProvider, bool, error)
 	ResolveRequestableModels(context.Context, *int64, string) RequestableModelsResult
 }
 type MarketplaceCapacity interface {

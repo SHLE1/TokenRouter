@@ -7,7 +7,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// Codex 审查线索沿用原字段；这里只解释声明，不授予权限或解析账号。
+// Codex 审查线索沿用原字段；这里只解释声明，不授予权限或解析提供商。
 const (
 	CodexAutoReviewModel      = "codex-auto-review"
 	OpenAISubagentHeader      = "x-openai-subagent"
@@ -55,6 +55,7 @@ func CodexReviewParent(input CodexReviewInput) string {
 
 	return parentID
 }
+
 func codexParentThreadIDFromMetadata(raw string) string {
 	raw = strings.TrimSpace(raw)
 	if raw == "" || !gjson.Valid(raw) {

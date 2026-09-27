@@ -30,8 +30,8 @@ func (e *creativeFakeExecutor) Prepare(ctx context.Context, run creative.Creativ
 		return nil, e.execPrepareErr
 	}
 	return &creative.CreativeExecution{
-		AccountID: 55,
-		Provider:  creative.PlatformGemini,
+		ProviderID: 55,
+		Platform:   creative.PlatformGemini,
 		Target: creativeFixtureTarget(func(ctx context.Context, run creative.CreativeRun, payload creative.CreativeRunPayload) (*creative.CreativeExecuteResult, error) {
 			return e.Execute(ctx, run, payload, nil)
 		}),
@@ -123,12 +123,12 @@ func TestCreativeWorkerSuccessPath(t *testing.T) {
 	runID := "crun_workersuccess01"
 	seedCreativeRun(f, runID, true)
 	f.exec.onExecute = func(id string) {
-		require.Equal(t, creative.PlatformGemini, f.repo.runs[id].Provider)
-		require.Equal(t, int64(55), *f.repo.runs[id].AccountID)
+		require.Equal(t, creative.PlatformGemini, f.repo.runs[id].Platform)
+		require.Equal(t, int64(55), *f.repo.runs[id].ProviderID)
 	}
 	f.exec.result = &creative.CreativeExecuteResult{
-		Outputs:   []creative.CreativeOutput{{Index: 0, Bytes: []byte("img"), Mime: "image/png"}},
-		AccountID: 55,
+		Outputs:    []creative.CreativeOutput{{Index: 0, Bytes: []byte("img"), Mime: "image/png"}},
+		ProviderID: 55,
 	}
 
 	result, err := f.worker.Process(context.Background(), runID)
@@ -137,9 +137,9 @@ func TestCreativeWorkerSuccessPath(t *testing.T) {
 
 	run := f.repo.runs[runID]
 	require.Equal(t, creative.CreativeRunStatusSucceeded, run.Status)
-	require.NotNil(t, run.AccountID)
-	require.Equal(t, int64(55), *run.AccountID)
-	require.Equal(t, 1, f.repo.setAccountN)
+	require.NotNil(t, run.ProviderID)
+	require.Equal(t, int64(55), *run.ProviderID)
+	require.Equal(t, 1, f.repo.setProviderN)
 	require.NotNil(t, run.ActualCost)
 	// 输出行进入 succeeded，临时输出已保存。
 	output := f.repo.outputs[runID][0]
@@ -154,15 +154,15 @@ func TestCreativeWorkerSuccessPath(t *testing.T) {
 	require.Equal(t, 0, f.billing.releaseN)
 }
 
-// TestCreativeWorkerRecoversPersistedProviderOutput 验证输出元数据已落库但状态写入失败时不重复调用 provider。
+// TestCreativeWorkerRecoversPersistedProviderOutput 验证输出元数据已落库但状态写入失败时不重复调用 platform。
 func TestCreativeWorkerRecoversPersistedProviderOutput(t *testing.T) {
 	f := newCreativeWorkerFixture()
 	runID := "crun_workerrecover01"
 	seedCreativeRun(f, runID, false)
 	run := f.repo.runs[runID]
 	run.Status = creative.CreativeRunStatusRunning
-	accountID := int64(55)
-	run.AccountID = &accountID
+	providerID := int64(55)
+	run.ProviderID = &providerID
 	f.repo.outputs[runID][0].Status = creative.CreativeRunOutputStatusSucceeded
 	f.store.outputs[runID+":0"] = []byte("img")
 
@@ -195,17 +195,17 @@ func TestCreativeWorkerUserConcurrencyPending(t *testing.T) {
 	require.Equal(t, 0, f.exec.calls)
 }
 
-// TestCreativeWorkerAccountConcurrencyPending 验证执行器报告账号槽位不足时不推进任务状态。
-func TestCreativeWorkerAccountConcurrencyPending(t *testing.T) {
+// TestCreativeWorkerProviderConcurrencyPending 验证执行器报告提供商槽位不足时不推进任务状态。
+func TestCreativeWorkerProviderConcurrencyPending(t *testing.T) {
 	f := newCreativeWorkerFixture()
-	seedCreativeRun(f, "crun_worker_account_pending", true)
+	seedCreativeRun(f, "crun_worker_provider_pending", true)
 	f.exec.execPrepareErr = creative.ErrCreativeExecutionPending
 
-	result, err := f.worker.Process(context.Background(), "crun_worker_account_pending")
+	result, err := f.worker.Process(context.Background(), "crun_worker_provider_pending")
 	require.NoError(t, err)
 	require.False(t, result.Terminal)
 	require.Equal(t, creative.DefaultCreativeConcurrencyRequeueDelay, result.RequeueAfter)
-	require.Equal(t, creative.CreativeRunStatusQueued, f.repo.runs["crun_worker_account_pending"].Status)
+	require.Equal(t, creative.CreativeRunStatusQueued, f.repo.runs["crun_worker_provider_pending"].Status)
 }
 
 // 保存失败后保持成功事实和一次费用，不再次调用供应商。
@@ -214,7 +214,7 @@ func TestCreativeWorkerRetriesTransientOutputFailure(t *testing.T) {
 	id := "crun_workeroutputretry1"
 	seedCreativeRun(f, id, true)
 	f.store.saveOutputErr = errors.New("redis unavailable")
-	f.exec.result = &creative.CreativeExecuteResult{Outputs: []creative.CreativeOutput{{Index: 0, Bytes: []byte("img"), Mime: "image/png"}}, AccountID: 55}
+	f.exec.result = &creative.CreativeExecuteResult{Outputs: []creative.CreativeOutput{{Index: 0, Bytes: []byte("img"), Mime: "image/png"}}, ProviderID: 55}
 	result, err := f.worker.Process(context.Background(), id)
 	require.NoError(t, err)
 	require.True(t, result.Terminal)
@@ -280,8 +280,8 @@ func TestCreativeWorkerCancelRace(t *testing.T) {
 	runID := "crun_workercancel001"
 	seedCreativeRun(f, runID, true)
 	f.exec.result = &creative.CreativeExecuteResult{
-		Outputs:   []creative.CreativeOutput{{Index: 0, Bytes: []byte("img"), Mime: "image/png"}},
-		AccountID: 55,
+		Outputs:    []creative.CreativeOutput{{Index: 0, Bytes: []byte("img"), Mime: "image/png"}},
+		ProviderID: 55,
 	}
 	// 模拟执行期间进入 cancelled：execute 返回前把任务置为 cancelled。
 	f.exec.onExecute = func(runID string) {
@@ -295,7 +295,7 @@ func TestCreativeWorkerCancelRace(t *testing.T) {
 
 	run := f.repo.runs[runID]
 	require.Equal(t, creative.CreativeRunStatusCancelled, run.Status)
-	// provider 已确认成功：仍完成捕获与用量记录，不回写 succeeded。
+	// platform 已确认成功：仍完成捕获与用量记录，不回写 succeeded。
 	require.Equal(t, 1, f.billing.captureN)
 	require.Equal(t, 0, f.billing.releaseN)
 	require.NotNil(t, run.ActualCost)
@@ -316,7 +316,7 @@ func TestCreativeWorkerPayloadLost(t *testing.T) {
 
 	run := f.repo.runs[runID]
 	require.Equal(t, creative.CreativeRunStatusResultLost, run.Status)
-	// provider 未执行：释放预占。
+	// platform 未执行：释放预占。
 	require.Equal(t, 1, f.billing.releaseN)
 	require.Equal(t, 0, f.billing.captureN)
 }
@@ -343,8 +343,8 @@ func TestCreativeWorkerRunOnceAck(t *testing.T) {
 	seedCreativeRun(f, runID, true)
 	f.queue.reserveBatch = []string{runID}
 	f.exec.result = &creative.CreativeExecuteResult{
-		Outputs:   []creative.CreativeOutput{{Index: 0, Bytes: []byte("img"), Mime: "image/png"}},
-		AccountID: 55,
+		Outputs:    []creative.CreativeOutput{{Index: 0, Bytes: []byte("img"), Mime: "image/png"}},
+		ProviderID: 55,
 	}
 
 	require.NoError(t, f.worker.RunOnce(context.Background()))

@@ -92,7 +92,7 @@ type AttemptOutcome struct {
 	Served bool
 }
 
-// AttemptLease 独立管理本次账号尝试，父请求仍可在其结束后按旧规则尝试其他账号。
+// AttemptLease 独立管理本次提供商尝试，父请求仍可在其结束后按旧规则尝试其他提供商。
 type AttemptLease struct {
 	resources *Lease
 	finish    func(AttemptOutcome)

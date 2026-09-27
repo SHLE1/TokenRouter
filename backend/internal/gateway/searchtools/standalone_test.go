@@ -26,11 +26,12 @@ func (s *standaloneStub) Select(_ context.Context, _ string, excluded map[int64]
 	}
 	if s.selected > 1 {
 		if _, ok := excluded[int64(s.selected-1)]; !ok {
-			panic("previous account not excluded")
+			panic("previous provider not excluded")
 		}
 	}
-	return Selection{AccountID: int64(s.selected)}, true, nil
+	return Selection{ProviderID: int64(s.selected)}, true, nil
 }
+
 func (s *standaloneStub) Acquire(context.Context, Selection) (func(), bool, error) {
 	if s.acquireError {
 		return nil, false, errors.New("slot failed")
@@ -38,6 +39,7 @@ func (s *standaloneStub) Acquire(context.Context, Selection) (func(), bool, erro
 	s.events = append(s.events, "acquire")
 	return func() { s.events = append(s.events, "release") }, true, nil
 }
+
 func (s *standaloneStub) Execute(context.Context, int64, StandaloneRequest, string, int) (*contract.SearchResponse, string, error) {
 	s.events = append(s.events, "execute")
 	if s.selected <= s.failures {
@@ -51,13 +53,14 @@ func TestStandaloneLeaseSpansResponseAndReleasesBeforeSwitch(t *testing.T) {
 	lease := scheduler.NewLease(context.Background(), scheduler.ReleaseOnCompletion)
 	result, err := RunStandalone(context.Background(), StandaloneRequest{Query: "q"}, "model", 5, ports, lease)
 	require.NoError(t, err)
-	require.Equal(t, int64(2), result.AccountID)
+	require.Equal(t, int64(2), result.ProviderID)
 	require.Equal(t, []string{"select", "acquire", "execute", "release", "select", "acquire", "execute"}, ports.events)
 	lease.Release()
 	lease.Release()
 	require.Equal(t, "release", ports.events[len(ports.events)-1])
 	require.Len(t, ports.events, 8)
 }
+
 func TestStandaloneFourAttemptsAndFirstFailureKinds(t *testing.T) {
 	t.Run("four attempts", func(t *testing.T) {
 		p := &standaloneStub{failures: 4}

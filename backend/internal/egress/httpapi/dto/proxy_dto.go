@@ -23,9 +23,9 @@ type Proxy struct {
 	ExpiryWarnDays int        `json:"expiry_warn_days"`
 }
 
-type ProxyWithAccountCount struct {
+type ProxyWithProviderCount struct {
 	Proxy
-	AccountCount   int64  `json:"account_count"`
+	ProviderCount  int64  `json:"provider_count"`
 	LatencyMs      *int64 `json:"latency_ms,omitempty"`
 	LatencyStatus  string `json:"latency_status,omitempty"`
 	LatencyMessage string `json:"latency_message,omitempty"`
@@ -48,10 +48,10 @@ type AdminProxy struct {
 	Password string `json:"password,omitempty"`
 }
 
-// AdminProxyWithAccountCount 是管理员接口使用的带账号统计的 proxy DTO。
-type AdminProxyWithAccountCount struct {
+// AdminProxyWithProviderCount 是管理员接口使用的带提供商统计的 proxy DTO。
+type AdminProxyWithProviderCount struct {
 	AdminProxy
-	AccountCount   int64  `json:"account_count"`
+	ProviderCount  int64  `json:"provider_count"`
 	LatencyMs      *int64 `json:"latency_ms,omitempty"`
 	LatencyStatus  string `json:"latency_status,omitempty"`
 	LatencyMessage string `json:"latency_message,omitempty"`
@@ -67,7 +67,7 @@ type AdminProxyWithAccountCount struct {
 	QualityChecked *int64 `json:"quality_checked,omitempty"`
 }
 
-type ProxyAccountSummary struct {
+type ProxyProviderSummary struct {
 	ID       int64   `json:"id"`
 	Name     string  `json:"name"`
 	Platform string  `json:"platform"`

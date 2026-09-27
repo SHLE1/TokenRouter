@@ -11,12 +11,14 @@ func buildOpenAISchedulerBenchmarkCandidates(size int) []CandidateScore {
 	}
 	candidates := make([]CandidateScore, 0, size)
 	for i := 0; i < size; i++ {
-		accountID := int64(10_000 + i)
+		providerID := int64(10_000 + i)
 		candidates = append(candidates, CandidateScore{
-			Account: &ScoreAccount{ID: accountID,
-				Priority: i % 7},
-			LoadInfo: &AccountLoadInfo{
-				AccountID:    accountID,
+			Provider: &ScoreProvider{
+				ID:       providerID,
+				Priority: i % 7,
+			},
+			LoadInfo: &ProviderLoadInfo{
+				ProviderID:   providerID,
 				LoadRate:     (i * 17) % 100,
 				WaitingCount: (i * 11) % 13,
 			},
@@ -46,7 +48,7 @@ func selectTopKOpenAICandidatesBySortBenchmark(candidates []CandidateScore, topK
 	return ranked[:topK]
 }
 
-func BenchmarkOpenAIAccountSchedulerSelectTopK(b *testing.B) {
+func BenchmarkOpenAIProviderSchedulerSelectTopK(b *testing.B) {
 	cases := []struct {
 		name string
 		size int

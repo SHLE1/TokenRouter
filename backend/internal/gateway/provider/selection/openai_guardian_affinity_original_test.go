@@ -10,11 +10,11 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/clientmeta"
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 	"github.com/gin-gonic/gin"
@@ -37,17 +37,17 @@ func guardianAffinityTestContext(t *testing.T, model, subagent, parentHeader, me
 	return gatewayhttp.WithOpenAIGuardianParentAffinity(context.Background(), c, nil, model)
 }
 
-func TestOpenAIAccountSchedulerGuardianAffinitySelectsParent(t *testing.T) {
+func TestOpenAIProviderSchedulerGuardianAffinitySelectsParent(t *testing.T) {
 	parentID := "22222222-2222-4222-8222-222222222222"
 	parentHash, _ := scheduler.DeriveSessionHashes(parentID)
 	groupID := int64(102001)
-	accounts := []gatewayprovider.ExecutionAccount{
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 39001, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 10, GroupIDs: []int64{groupID}, Credentials: map[string]any{"model_whitelist": []string{"*"}, "access_token": "parent", "plan_type": "team"}}},
-		{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 39002, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 0, GroupIDs: []int64{groupID}, Credentials: map[string]any{"model_whitelist": []string{"*"}, "access_token": "fallback", "plan_type": "team"}}},
+	providers := []gatewayprovider.ExecutionProvider{
+		{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 39001, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 10, GroupIDs: []int64{groupID}, Credentials: map[string]any{"model_whitelist": []string{"*"}, "access_token": "parent", "plan_type": "team"}}},
+		{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 39002, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 0, GroupIDs: []int64{groupID}, Credentials: map[string]any{"model_whitelist": []string{"*"}, "access_token": "fallback", "plan_type": "team"}}},
 	}
 	cache := &schedulerTestGatewayCache{sessionBindings: map[string]int64{"openai:" + parentHash: 39001}, deletedSessions: map[string]int{}}
 	svc := newCompatibleSelectionForTest(CompatibleDependencies{
-		Reads: Reads{Accounts: schedulerGroupAwareOpenAIAccountRepo{schedulerTestOpenAIAccountRepo{accounts: accounts}}},
+		Reads: Reads{Providers: schedulerGroupAwareOpenAIProviderRepo{schedulerTestOpenAIProviderRepo{providers: providers}}},
 		Shared: Shared{
 			Cache: cache,
 			Concurrency: scheduler.NewConcurrencyService(schedulerTestConcurrencyCache{acquireResults: map[int64]bool{39001: true, 39002: true}}, scheduler.Diagnostics{
@@ -60,11 +60,11 @@ func TestOpenAIAccountSchedulerGuardianAffinitySelectsParent(t *testing.T) {
 	ctx := guardianAffinityTestContext(t, clientmeta.CodexAutoReviewModel, "guardian", parentID, "")
 	ctx = withAdvancedSchedulerTestGroup(ctx, groupID)
 
-	selection, decision, err := svc.SelectAccountWithScheduler(ctx, &groupID, "", "child-session", clientmeta.CodexAutoReviewModel, nil, egress.OpenAIUpstreamTransportAny, false)
+	selection, decision, err := svc.SelectProviderWithScheduler(ctx, &groupID, "", "child-session", clientmeta.CodexAutoReviewModel, nil, egress.OpenAIUpstreamTransportAny, false)
 	require.NoError(t, err)
 	require.NotNil(t, selection)
-	require.Equal(t, int64(39001), selection.Account.Record.ID)
-	require.Equal(t, openAIAccountScheduleLayerGuardianParent, decision.Layer)
+	require.Equal(t, int64(39001), selection.Provider.Record.ID)
+	require.Equal(t, openAIProviderScheduleLayerGuardianParent, decision.Layer)
 	require.Zero(t, cache.deletedSessions["openai:"+parentHash])
 	if selection.ReleaseFunc != nil {
 		selection.ReleaseFunc()

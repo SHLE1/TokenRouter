@@ -17,14 +17,14 @@ import (
 	"go.uber.org/zap"
 )
 
-// OpenAICountCall 不携带账号凭据、Gin 或资金写入能力。
+// OpenAICountCall 不携带提供商凭据、Gin 或资金写入能力。
 type OpenAICountCall struct {
-	Key                                             *apikey.APIKey
-	Model, AccountLayerModel, SessionHash, Platform string
-	Mapping                                         routing.GroupMappingResult
-	MappedBody                                      func(bool, string) []byte
-	Log                                             *zap.Logger
-	StartedAt                                       time.Time
+	Key                                              *apikey.APIKey
+	Model, ProviderLayerModel, SessionHash, Platform string
+	Mapping                                          routing.GroupMappingResult
+	MappedBody                                       func(bool, string) []byte
+	Log                                              *zap.Logger
+	StartedAt                                        time.Time
 }
 
 func (h *OpenAITokensHandler) GrokCountTokens(c *gin.Context) {
@@ -155,7 +155,7 @@ func (h *OpenAITokensHandler) CountTokens(c *gin.Context) {
 	if groupMappedModel == "" {
 		groupMappedModel = reqModel
 	}
-	accountLayerModel := h.backend.MessageAccountModel(c.Request.Context(), apiKey, groupMappedModel)
+	providerLayerModel := h.backend.MessageProviderModel(c.Request.Context(), apiKey, groupMappedModel)
 	mappedBodyForMessages := h.backend.MappedBodyCache(body)
 
 	subscription, _ := SubscriptionFromContext(c)
@@ -173,7 +173,7 @@ func (h *OpenAITokensHandler) CountTokens(c *gin.Context) {
 	sessionHash := h.backend.SessionHash(c, OpenAISelectionSession, body)
 	// 无槽、利润门豁免仍由专用选择能力执行；此链只尝试一次且不提交用量。
 	textflow.RunSingleCountTokens(h.backend.CountExecution(c, OpenAICountCall{
-		Key: apiKey, Model: reqModel, AccountLayerModel: accountLayerModel, SessionHash: sessionHash,
+		Key: apiKey, Model: reqModel, ProviderLayerModel: providerLayerModel, SessionHash: sessionHash,
 		Platform: requestPlatform, Mapping: groupMapping, MappedBody: mappedBodyForMessages, Log: reqLog, StartedAt: requestStart,
 	}))
 }

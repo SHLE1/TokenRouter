@@ -1,4 +1,4 @@
-// 通用 Responses/Chat 的 HTTP 前置组合，账号循环由 gateway/text 唯一实现。
+// 通用 Responses/Chat 的 HTTP 前置组合，提供商循环由 gateway/text 唯一实现。
 package httpapi
 
 import (

@@ -55,7 +55,7 @@ func (e *Target) ExecuteOpenAI(ctx context.Context, run creative.CreativeRun, pa
 	if strings.TrimSpace(contentType) != "" {
 		req.Header.Set("Content-Type", contentType)
 	}
-	// 账号级请求头覆写最后应用，配置值优先于内置默认头。
+	// 提供商级请求头覆写最后应用，配置值优先于内置默认头。
 	e.OpenAI.ApplyHeaders(req.Header)
 
 	resp, err := e.OpenAI.Do(req)
@@ -72,6 +72,7 @@ func (e *Target) ExecuteOpenAI(ctx context.Context, run creative.CreativeRun, pa
 	}
 	return ParseCreativeOpenAIImageOutputs(respBody)
 }
+
 func (e *Target) CreativeOpenAIURL(endpoint string) (string, error) { return e.OpenAI.URL(endpoint) }
 
 // BuildCreativeOpenAIRequestBody 构造 OpenAI images 请求体：

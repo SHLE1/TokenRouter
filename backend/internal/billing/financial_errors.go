@@ -14,7 +14,7 @@ var ErrAPIKeyRateLimit5hExceeded = apperror.TooManyRequests("API_KEY_RATE_5H_EXC
 
 var ErrAPIKeyRateLimit7dExceeded = apperror.TooManyRequests("API_KEY_RATE_7D_EXCEEDED", "api key 7天限额已用完")
 
-var ErrAccountNotFound = apperror.NotFound("ACCOUNT_NOT_FOUND", "account not found")
+var ErrProviderNotFound = apperror.NotFound("PROVIDER_NOT_FOUND", "provider not found")
 
 var ErrTaskInsufficientBalance = apperror.New(apperror.Category(402), "BATCH_IMAGE_INSUFFICIENT_BALANCE", "insufficient balance for batch image hold")
 

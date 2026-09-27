@@ -15,8 +15,8 @@ FRONTEND_CRITICAL_VITEST := \
 	src/views/admin/__tests__/SettingsView.spec.ts \
 	src/components/admin/usage/__tests__/UsageStatsCards.spec.ts \
 	src/composables/__tests__/useQoderOAuth.spec.ts \
-	src/components/account/__tests__/CreateAccountModal.qoder.spec.ts \
-	src/views/admin/__tests__/AccountsView.qoderCreate.spec.ts
+	src/components/provider/__tests__/CreateProviderModal.qoder.spec.ts \
+	src/views/admin/__tests__/ProvidersView.qoderCreate.spec.ts
 
 # 一键编译前后端
 build: build-backend build-frontend

@@ -148,14 +148,14 @@ func TestSchedulerOutboxRepositoryTryAcquireCleanupLockUnavailable(t *testing.T)
 // buildSchedulerGroupPayload 在 groupIDs 为空时必须返回 untyped nil（any），
 // 否则 enqueueSchedulerOutbox 的 "payload != nil" 接口判空会被 typed-nil 欺骗，
 // 把 payload marshal 成 "null" 写入 dedup_key 哈希，破坏与其他 nil-payload
-// 调用的去重一致性。本测试用 ungrouped 账号场景验证两条路径的 dedup_key 一致。
-func TestEnqueueSchedulerOutbox_UngroupedAccountDedupesWithLiteralNilPayload(t *testing.T) {
-	accountID := int64(42)
+// 调用的去重一致性。本测试用 ungrouped 提供商场景验证两条路径的 dedup_key 一致。
+func TestEnqueueSchedulerOutbox_UngroupedProviderDedupesWithLiteralNilPayload(t *testing.T) {
+	providerID := int64(42)
 
 	// Path A: 显式 nil payload（如 SetError、SetStatus 等调用模式）
-	keyLiteralNil := schedulerOutboxDedupKey("account_changed", &accountID, nil, nil)
+	keyLiteralNil := schedulerOutboxDedupKey("provider_changed", &providerID, nil, nil)
 
-	// Path B: scheduler.GroupPayload(account.GroupIDs) 当账号没有任何分组
+	// Path B: scheduler.GroupPayload(provider.GroupIDs) 当提供商没有任何分组
 	emptyGroupsPayload := scheduler.GroupPayload(nil)
 	require.Nil(t, emptyGroupsPayload,
 		"scheduler.GroupPayload(empty) must return untyped-nil any to avoid typed-nil marshal")
@@ -165,8 +165,8 @@ func TestEnqueueSchedulerOutbox_UngroupedAccountDedupesWithLiteralNilPayload(t *
 	if emptyGroupsPayload != nil {
 		t.Fatalf("typed-nil regression: scheduler.GroupPayload(empty) interface should be nil")
 	}
-	keyEmptyGroups := schedulerOutboxDedupKey("account_changed", &accountID, nil, payloadJSON)
+	keyEmptyGroups := schedulerOutboxDedupKey("provider_changed", &providerID, nil, payloadJSON)
 
 	require.Equal(t, keyLiteralNil, keyEmptyGroups,
-		"ungrouped-account account_changed must share dedup_key with other nil-payload variants")
+		"ungrouped-provider provider_changed must share dedup_key with other nil-payload variants")
 }

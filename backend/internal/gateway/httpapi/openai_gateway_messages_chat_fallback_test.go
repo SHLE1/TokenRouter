@@ -12,8 +12,8 @@ import (
 	"strings"
 	"testing"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/ops"
@@ -23,12 +23,12 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-func forceChatMessagesFallbackAccount() *gatewayprovider.ExecutionAccount {
-	account := rawChatCompletionsTestAccount()
-	account.Record.Extra = map[string]any{
-		accountcore.ExtraKeyTextRouteMode: string(accountcore.TextRouteModeForceChatCompletions),
+func forceChatMessagesFallbackProvider() *gatewayprovider.ExecutionProvider {
+	provider := rawChatCompletionsTestProvider()
+	provider.Record.Extra = map[string]any{
+		providercore.ExtraKeyTextRouteMode: string(providercore.TextRouteModeForceChatCompletions),
 	}
-	return account
+	return provider
 }
 
 // errTailReader 先返回指定数据，再以 err 代替 io.EOF，模拟上游连接在流中断开。
@@ -50,7 +50,6 @@ func (r *errTailReader) Read(p []byte) (int, error) {
 func (r *errTailReader) Close() error { return nil }
 
 func TestForwardAsAnthropic_ForceChatCompletionsPreservesFinalModelReasoningEffort(t *testing.T) {
-
 	tests := []struct {
 		name       string
 		model      string
@@ -109,11 +108,11 @@ func TestForwardAsAnthropic_ForceChatCompletionsPreservesFinalModelReasoningEffo
 					`{"id":"chatcmpl_effort","object":"chat.completion","model":"` + tt.mapped + `","choices":[{"index":0,"message":{"role":"assistant","content":"ok"},"finish_reason":"stop"}],"usage":{"prompt_tokens":3,"completion_tokens":2,"total_tokens":5}}`,
 				)),
 			}}
-			account := forceChatMessagesFallbackAccount()
-			account.Record.Credentials["model_mapping"] = map[string]any{tt.model: tt.mapped}
+			provider := forceChatMessagesFallbackProvider()
+			provider.Record.Credentials["model_mapping"] = map[string]any{tt.model: tt.mapped}
 
 			svc := newResponsesFixture(responsesFixtureInputs{options: protocolHTTPOptions(), transport: upstream})
-			result, err := svc.Text.Messages(context.Background(), c, account, []byte(body), "", "")
+			result, err := svc.Text.Messages(context.Background(), c, provider, []byte(body), "", "")
 			require.NoError(t, err)
 			require.NotNil(t, result)
 			require.Equal(t, tt.mapped, gjson.GetBytes(upstream.lastBody, "model").String())
@@ -125,7 +124,6 @@ func TestForwardAsAnthropic_ForceChatCompletionsPreservesFinalModelReasoningEffo
 }
 
 func TestForwardAsAnthropic_ForceChatCompletionsNonStreaming(t *testing.T) {
-
 	body := []byte(`{"model":"gpt-5.4","max_tokens":32,"messages":[{"role":"user","content":"hello"}],"stream":false}`)
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -144,7 +142,7 @@ func TestForwardAsAnthropic_ForceChatCompletionsNonStreaming(t *testing.T) {
 	svc := newResponsesFixture(responsesFixtureInputs{options: protocolHTTPOptions(), transport: upstream})
 
 	tlsMatch := egress.TLSFingerprintRouterMatchResult{Matched: true, UpstreamUserAgent: "router-agent"}
-	result, err := svc.Text.Messages(context.Background(), c, forceChatMessagesFallbackAccount(), body, "", "", tlsMatch)
+	result, err := svc.Text.Messages(context.Background(), c, forceChatMessagesFallbackProvider(), body, "", "", tlsMatch)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, "http://upstream.example/v1/chat/completions", upstream.lastReq.URL.String())
@@ -169,7 +167,6 @@ func TestForwardAsAnthropic_ForceChatCompletionsNonStreaming(t *testing.T) {
 // 覆盖流式组合：收到 [DONE] 时文本块仍开启，收尾必须先发
 // content_block_stop，再发 message_delta / message_stop。
 func TestForwardAsAnthropic_ForceChatCompletionsStreamingClosesOpenBlockOnDone(t *testing.T) {
-
 	body := []byte(`{"model":"gpt-5.4","max_tokens":32,"messages":[{"role":"user","content":"hello"}],"stream":true}`)
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -197,7 +194,7 @@ func TestForwardAsAnthropic_ForceChatCompletionsStreamingClosesOpenBlockOnDone(t
 	}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: protocolHTTPOptions(), transport: upstream})
 
-	result, err := svc.Text.Messages(context.Background(), c, forceChatMessagesFallbackAccount(), body, "", "")
+	result, err := svc.Text.Messages(context.Background(), c, forceChatMessagesFallbackProvider(), body, "", "")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.True(t, gjson.GetBytes(upstream.lastBody, "stream_options.include_usage").Bool())
@@ -226,7 +223,6 @@ func TestForwardAsAnthropic_ForceChatCompletionsStreamingClosesOpenBlockOnDone(t
 // 覆盖按索引聚合多分片 tool_call，并收尾为 stop_reason=tool_use 的
 // Anthropic tool_use 块。
 func TestForwardAsAnthropic_ForceChatCompletionsStreamingToolCallAggregation(t *testing.T) {
-
 	body := []byte(`{"model":"gpt-5.4","max_tokens":32,"messages":[{"role":"user","content":"weather in sf?"}],"tools":[{"name":"get_weather","input_schema":{"type":"object","properties":{"city":{"type":"string"}}}}],"tool_choice":{"type":"auto","disable_parallel_tool_use":true},"stream":true}`)
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -254,7 +250,7 @@ func TestForwardAsAnthropic_ForceChatCompletionsStreamingToolCallAggregation(t *
 	}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: protocolHTTPOptions(), transport: upstream})
 
-	result, err := svc.Text.Messages(context.Background(), c, forceChatMessagesFallbackAccount(), body, "", "")
+	result, err := svc.Text.Messages(context.Background(), c, forceChatMessagesFallbackProvider(), body, "", "")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	parallelToolCalls := gjson.GetBytes(upstream.lastBody, "parallel_tool_calls")
@@ -277,7 +273,6 @@ func TestForwardAsAnthropic_ForceChatCompletionsStreamingToolCallAggregation(t *
 // 覆盖真实交错的并行工具参数分片：上游声明顺序可以与工具 index 不同，
 // 下游仍必须按 index 输出互不交错且严格闭合的 Anthropic tool_use 块。
 func TestForwardAsAnthropic_ForceChatCompletionsStreamingInterleavedParallelToolCalls(t *testing.T) {
-
 	body := []byte(`{"model":"gpt-5.4","max_tokens":64,"messages":[{"role":"user","content":"read the file and print the directory"}],"tools":[{"name":"Read","input_schema":{"type":"object","properties":{"file_path":{"type":"string"}}}},{"name":"Bash","input_schema":{"type":"object","properties":{"command":{"type":"string"}}}}],"stream":true}`)
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -307,7 +302,7 @@ func TestForwardAsAnthropic_ForceChatCompletionsStreamingInterleavedParallelTool
 	}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: protocolHTTPOptions(), transport: upstream})
 
-	result, err := svc.Text.Messages(context.Background(), c, forceChatMessagesFallbackAccount(), body, "", "")
+	result, err := svc.Text.Messages(context.Background(), c, forceChatMessagesFallbackProvider(), body, "", "")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	parallelToolCalls := gjson.GetBytes(upstream.lastBody, "parallel_tool_calls")
@@ -374,7 +369,6 @@ func TestForwardAsAnthropic_ForceChatCompletionsStreamingInterleavedParallelTool
 // finish_reason=length 经 CC → Responses → Anthropic 双重转换后，
 // 必须保留为 stop_reason=max_tokens。
 func TestForwardAsAnthropic_ForceChatCompletionsStreamingLengthMapsToMaxTokens(t *testing.T) {
-
 	body := []byte(`{"model":"gpt-5.4","max_tokens":8,"messages":[{"role":"user","content":"hello"}],"stream":true}`)
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -396,7 +390,7 @@ func TestForwardAsAnthropic_ForceChatCompletionsStreamingLengthMapsToMaxTokens(t
 	}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: protocolHTTPOptions(), transport: upstream})
 
-	result, err := svc.Text.Messages(context.Background(), c, forceChatMessagesFallbackAccount(), body, "", "")
+	result, err := svc.Text.Messages(context.Background(), c, forceChatMessagesFallbackProvider(), body, "", "")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -408,7 +402,6 @@ func TestForwardAsAnthropic_ForceChatCompletionsStreamingLengthMapsToMaxTokens(t
 // 上游立即以 [DONE] 结束时，仍须生成包含 message_start、message_delta 和
 // message_stop 的完整 Anthropic 流。
 func TestForwardAsAnthropic_ForceChatCompletionsEmptyStreamStillFramesMessage(t *testing.T) {
-
 	body := []byte(`{"model":"gpt-5.4","max_tokens":8,"messages":[{"role":"user","content":"hello"}],"stream":true}`)
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -422,7 +415,7 @@ func TestForwardAsAnthropic_ForceChatCompletionsEmptyStreamStillFramesMessage(t 
 	}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: protocolHTTPOptions(), transport: upstream})
 
-	result, err := svc.Text.Messages(context.Background(), c, forceChatMessagesFallbackAccount(), body, "", "")
+	result, err := svc.Text.Messages(context.Background(), c, forceChatMessagesFallbackProvider(), body, "", "")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -435,7 +428,6 @@ func TestForwardAsAnthropic_ForceChatCompletionsEmptyStreamStillFramesMessage(t 
 // 非 failover 的 4xx 响应必须经过共享兼容错误处理器：按状态返回 Anthropic
 // 错误类型、保留上游消息并记录 ops 上游错误事件。
 func TestForwardAsAnthropic_ForceChatCompletionsNonFailover400UsesSharedErrorHandler(t *testing.T) {
-
 	body := []byte(`{"model":"gpt-5.4","max_tokens":8,"messages":[{"role":"user","content":"hello"}],"stream":false}`)
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -449,7 +441,7 @@ func TestForwardAsAnthropic_ForceChatCompletionsNonFailover400UsesSharedErrorHan
 	}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: protocolHTTPOptions(), transport: upstream})
 
-	result, err := svc.Text.Messages(context.Background(), c, forceChatMessagesFallbackAccount(), body, "", "")
+	result, err := svc.Text.Messages(context.Background(), c, forceChatMessagesFallbackProvider(), body, "", "")
 	require.Error(t, err)
 	require.Nil(t, result)
 
@@ -474,7 +466,6 @@ func TestForwardAsAnthropic_ForceChatCompletionsNonFailover400UsesSharedErrorHan
 
 // 上游读取在流中断开时必须返回错误，且不得合成 message_stop 掩盖截断。
 func TestForwardAsAnthropic_ForceChatCompletionsStreamReadErrorSkipsFinalize(t *testing.T) {
-
 	body := []byte(`{"model":"gpt-5.4","max_tokens":8,"messages":[{"role":"user","content":"hello"}],"stream":true}`)
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -495,7 +486,7 @@ func TestForwardAsAnthropic_ForceChatCompletionsStreamReadErrorSkipsFinalize(t *
 	}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: protocolHTTPOptions(), transport: upstream})
 
-	result, err := svc.Text.Messages(context.Background(), c, forceChatMessagesFallbackAccount(), body, "", "")
+	result, err := svc.Text.Messages(context.Background(), c, forceChatMessagesFallbackProvider(), body, "", "")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "stream usage incomplete")
 	require.NotNil(t, result)
@@ -506,10 +497,9 @@ func TestForwardAsAnthropic_ForceChatCompletionsStreamReadErrorSkipsFinalize(t *
 	require.NotContains(t, out, "event: message_stop", "no synthetic completion after a broken read")
 }
 
-// 门控回归：已确认上游支持 Responses API 的 API Key 账号必须继续使用
+// 门控回归：已确认上游支持 Responses API 的 API Key 提供商必须继续使用
 // /v1/responses，不得进入 Chat Completions fallback。
-func TestForwardAsAnthropic_ResponsesSupportedAccountStillUsesResponsesEndpoint(t *testing.T) {
-
+func TestForwardAsAnthropic_ResponsesSupportedProviderStillUsesResponsesEndpoint(t *testing.T) {
 	body := []byte(`{"model":"gpt-5.4","max_tokens":16,"messages":[{"role":"user","content":"hello"}],"stream":false}`)
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -531,16 +521,16 @@ func TestForwardAsAnthropic_ResponsesSupportedAccountStillUsesResponsesEndpoint(
 		Body:       io.NopCloser(strings.NewReader(upstreamBody)),
 	}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: protocolHTTPOptions(), transport: upstream})
-	account := rawChatCompletionsTestAccount()
-	account.Record.Extra = map[string]any{
-		accountcore.ExtraKeyTextRouteMode: string(accountcore.TextRouteModePreserveClientProtocol),
+	provider := rawChatCompletionsTestProvider()
+	provider.Record.Extra = map[string]any{
+		providercore.ExtraKeyTextRouteMode: string(providercore.TextRouteModePreserveClientProtocol),
 	}
 
-	result, err := svc.Text.Messages(context.Background(), c, account, body, "", "")
+	result, err := svc.Text.Messages(context.Background(), c, provider, body, "", "")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.True(t, strings.HasSuffix(upstream.lastReq.URL.Path, "/responses"),
-		"responses-capable account must stay on /v1/responses, got %s", upstream.lastReq.URL.String())
+		"responses-capable provider must stay on /v1/responses, got %s", upstream.lastReq.URL.String())
 	require.Equal(t, "/v1/responses", GetActualOpenAIUpstreamEndpoint(c))
 	require.True(t, gjson.GetBytes(upstream.lastBody, "input").Exists())
 	require.False(t, gjson.GetBytes(upstream.lastBody, "messages").Exists())

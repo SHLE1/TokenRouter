@@ -91,6 +91,7 @@ func (w *BatchImageDownloadLimitWriter) Write(p []byte) (int, error) {
 	w.written += int64(n)
 	return n, err
 }
+
 func (s *Download) OpenItemContent(ctx context.Context, owner BatchImageOwner, batchID string, customID string, imageIndex int) (*BatchImageContentStream, error) {
 	if imageIndex < 0 {
 		return nil, ErrBatchImageItemImageIndexOutOfRange
@@ -121,11 +122,11 @@ func (s *Download) OpenItemContent(ctx context.Context, owner BatchImageOwner, b
 		}
 	}()
 
-	provider, err := s.ResolveProvider(ctx, job)
+	platform, err := s.ResolveProvider(ctx, job)
 	if err != nil {
 		return nil, err
 	}
-	r, _, err := provider.OpenResult(ctx, job)
+	r, _, err := platform.OpenResult(ctx, job)
 	if err != nil {
 		return nil, ErrBatchImageResultMissing.WithCause(err)
 	}
@@ -162,6 +163,7 @@ func (s *Download) OpenItemContent(ctx context.Context, owner BatchImageOwner, b
 		Filename:    BatchImageSafeDownloadFilename(item.CustomID, extension),
 	}, nil
 }
+
 func (s *Download) StreamZip(ctx context.Context, owner BatchImageOwner, batchID string, opts BatchImageZipOptions, w io.Writer) (*BatchImageZipResult, error) {
 	job, err := s.GetCompletedJob(ctx, owner, batchID)
 	if err != nil {
@@ -195,11 +197,11 @@ func (s *Download) StreamZip(ctx context.Context, owner BatchImageOwner, batchID
 		defer func() { _ = permit.Release(ctx) }()
 	}
 
-	provider, err := s.ResolveProvider(ctx, job)
+	platform, err := s.ResolveProvider(ctx, job)
 	if err != nil {
 		return nil, err
 	}
-	r, _, err := provider.OpenResult(ctx, job)
+	r, _, err := platform.OpenResult(ctx, job)
 	if err != nil {
 		return nil, ErrBatchImageResultMissing.WithCause(err)
 	}
@@ -253,6 +255,7 @@ func (s *Download) StreamZip(ctx context.Context, owner BatchImageOwner, batchID
 	}
 	return result, nil
 }
+
 func (s *Download) WriteZipImages(ctx context.Context, zipWriter *zip.Writer, resultReader io.Reader, successItems []*BatchImageItem) (*BatchImageZipResult, []BatchImageZipManifestFile, []BatchImageZipError, error) {
 	successByID := make(map[string]*BatchImageItem, len(successItems))
 	missing := make(map[string]struct{}, len(successItems))
@@ -287,7 +290,7 @@ func (s *Download) WriteZipImages(ctx context.Context, zipWriter *zip.Writer, re
 		}
 		delete(missing, images.CustomID)
 		if len(images.Images) == 0 {
-			zipErrors = append(zipErrors, BatchImageZipError{CustomID: images.CustomID, Code: "EMPTY_IMAGE_OUTPUT", Message: "provider response contained no image output"})
+			zipErrors = append(zipErrors, BatchImageZipError{CustomID: images.CustomID, Code: "EMPTY_IMAGE_OUTPUT", Message: "platform response contained no image output"})
 			continue
 		}
 		for idx, image := range images.Images {
@@ -323,10 +326,11 @@ func (s *Download) WriteZipImages(ctx context.Context, zipWriter *zip.Writer, re
 	}
 	sort.Strings(missingIDs)
 	for _, customID := range missingIDs {
-		zipErrors = append(zipErrors, BatchImageZipError{CustomID: customID, Code: "RESULT_MISSING", Message: "provider result was not found for item"})
+		zipErrors = append(zipErrors, BatchImageZipError{CustomID: customID, Code: "RESULT_MISSING", Message: "platform result was not found for item"})
 	}
 	return result, manifestFiles, zipErrors, nil
 }
+
 func (s *Download) GetCompletedJob(ctx context.Context, owner BatchImageOwner, batchID string) (*BatchImageJob, error) {
 	if s == nil || s.Repo == nil {
 		return nil, ErrBatchImageDownloadFailed
@@ -344,6 +348,7 @@ func (s *Download) GetCompletedJob(ctx context.Context, owner BatchImageOwner, b
 		return nil, ErrBatchImageNotReady
 	}
 }
+
 func (s *Download) AcquirePermit(ctx context.Context, userID int64, kind string) (BatchImageDownloadPermit, error) {
 	if s == nil || s.Limiter == nil {
 		return nil, nil
@@ -357,24 +362,28 @@ func (s *Download) AcquirePermit(ctx context.Context, userID int64, kind string)
 	}
 	return permit, nil
 }
+
 func (s *Download) MaxZipItems() int {
 	if s != nil && s.Options.MaxItems > 0 {
 		return s.Options.MaxItems
 	}
 	return DefaultBatchImageZipMaxItems
 }
+
 func (s *Download) MaxDownloadBytes() int64 {
 	if s != nil && s.Options.MaxBytes > 0 {
 		return s.Options.MaxBytes
 	}
 	return DefaultBatchImageZipMaxBytes
 }
+
 func (s *Download) MaxDownloadDuration() time.Duration {
 	if s != nil && s.Options.Duration > 0 {
 		return s.Options.Duration
 	}
 	return DefaultBatchImageDownloadDuration
 }
+
 func ExtractBatchImagePartsFromResultLine(line []byte) (*BatchImageLineImages, error) {
 	var obj map[string]any
 	if err := json.Unmarshal(line, &obj); err != nil {
@@ -402,13 +411,14 @@ func ExtractBatchImagePartsFromResultLine(line []byte) (*BatchImageLineImages, e
 	}
 	if _, hasResponse := obj["response"]; hasResponse || BatchImageHasCandidates(obj) {
 		out.ErrorCode = "EMPTY_IMAGE_OUTPUT"
-		out.ErrorMessage = "provider response contained no image output"
+		out.ErrorMessage = "platform response contained no image output"
 		return out, nil
 	}
 	out.ErrorCode = "PROVIDER_ITEM_FAILED"
-	out.ErrorMessage = "provider result line contained no image output"
+	out.ErrorMessage = "platform result line contained no image output"
 	return out, nil
 }
+
 func ExtractBatchImageInlineImages(raw any) []BatchImageInlineImage {
 	candidates, ok := raw.([]any)
 	if !ok {
@@ -447,6 +457,7 @@ func ExtractBatchImageInlineImages(raw any) []BatchImageInlineImage {
 	}
 	return images
 }
+
 func FindBatchImageLineImages(r io.Reader, customID string) (*BatchImageLineImages, error) {
 	scanner := bufio.NewScanner(r)
 	scanner.Buffer(make([]byte, 0, 64*1024), BatchImageDownloadScannerMaxLineBytes)
@@ -475,6 +486,7 @@ func FindBatchImageLineImages(r io.Reader, customID string) (*BatchImageLineImag
 	}
 	return nil, ErrBatchImageResultMissing
 }
+
 func BatchImageSafeDownloadFilename(customID, extension string) string {
 	base := SanitizeBatchImageFilenameBase(customID)
 	extension = SanitizeBatchImageFilenameExtension(extension)
@@ -483,12 +495,14 @@ func BatchImageSafeDownloadFilename(customID, extension string) string {
 	}
 	return base + "." + extension
 }
+
 func BatchImageContentDispositionAttachment(filename string) string {
 	filename = strings.ReplaceAll(filename, "\\", "_")
 	filename = strings.ReplaceAll(filename, `"`, "_")
 	filename = SanitizeBatchImageFilenameBase(strings.TrimSuffix(filename, filepath.Ext(filename))) + filepath.Ext(filename)
 	return `attachment; filename="` + filename + `"`
 }
+
 func SanitizeBatchImageFilenameBase(value string) string {
 	value = strings.TrimSpace(value)
 	if value == "" {
@@ -523,6 +537,7 @@ func SanitizeBatchImageFilenameBase(value string) string {
 	}
 	return out
 }
+
 func SanitizeBatchImageFilenameExtension(extension string) string {
 	extension = strings.TrimPrefix(strings.TrimSpace(strings.ToLower(extension)), ".")
 	var b strings.Builder
@@ -537,6 +552,7 @@ func SanitizeBatchImageFilenameExtension(extension string) string {
 	}
 	return out
 }
+
 func BatchImageZipImageFilename(customID string, imageIndex int, extension string) string {
 	base := SanitizeBatchImageFilenameBase(customID)
 	if imageIndex > 0 {
@@ -544,6 +560,7 @@ func BatchImageZipImageFilename(customID string, imageIndex int, extension strin
 	}
 	return "images/" + BatchImageSafeDownloadFilename(base, extension)
 }
+
 func WriteBatchImageZipJSON(zipWriter *zip.Writer, name string, value any) error {
 	entry, err := zipWriter.CreateHeader(&zip.FileHeader{Name: name, Method: zip.Deflate})
 	if err != nil {

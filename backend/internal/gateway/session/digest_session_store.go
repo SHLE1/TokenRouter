@@ -13,8 +13,8 @@ const digestSessionTTL = 5 * time.Minute
 
 // sessionEntry flat cache 条目
 type sessionEntry struct {
-	uuid      string
-	accountID int64
+	uuid       string
+	providerID int64
 }
 
 // DigestSessionStore 内存摘要会话存储（flat cache 实现）
@@ -31,19 +31,19 @@ func NewDigestSessionStore() *DigestSessionStore {
 }
 
 // Save 保存摘要会话。oldDigestChain 为 Find 返回的 matchedChain，用于删旧 key。
-func (s *DigestSessionStore) Save(groupID int64, prefixHash, digestChain, uuid string, accountID int64, oldDigestChain string) {
+func (s *DigestSessionStore) Save(groupID int64, prefixHash, digestChain, uuid string, providerID int64, oldDigestChain string) {
 	if s == nil || digestChain == "" {
 		return
 	}
 	ns := buildNS(groupID, prefixHash)
-	s.cache.Set(ns+digestChain, &sessionEntry{uuid: uuid, accountID: accountID}, gocache.DefaultExpiration)
+	s.cache.Set(ns+digestChain, &sessionEntry{uuid: uuid, providerID: providerID}, gocache.DefaultExpiration)
 	if oldDigestChain != "" && oldDigestChain != digestChain {
 		s.cache.Delete(ns + oldDigestChain)
 	}
 }
 
 // Find 查找摘要会话，从完整 chain 逐段截断，返回最长匹配及对应 matchedChain。
-func (s *DigestSessionStore) Find(groupID int64, prefixHash, digestChain string) (uuid string, accountID int64, matchedChain string, found bool) {
+func (s *DigestSessionStore) Find(groupID int64, prefixHash, digestChain string) (uuid string, providerID int64, matchedChain string, found bool) {
 	if s == nil || digestChain == "" {
 		return "", 0, "", false
 	}
@@ -52,7 +52,7 @@ func (s *DigestSessionStore) Find(groupID int64, prefixHash, digestChain string)
 	for {
 		if val, ok := s.cache.Get(ns + chain); ok {
 			if e, ok := val.(*sessionEntry); ok {
-				return e.uuid, e.accountID, chain, true
+				return e.uuid, e.providerID, chain, true
 			}
 		}
 		i := strings.LastIndex(chain, "-")

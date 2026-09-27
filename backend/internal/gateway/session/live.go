@@ -23,7 +23,7 @@ var (
 	ErrLiveCallNotFound       = errors.New("live call not found")
 	ErrLiveIdentityMismatch   = errors.New("live call identity mismatch")
 	ErrLiveControllerChanged  = errors.New("live controller changed")
-	ErrLiveClientPolicyDenied = errors.New("live client is denied by account policy")
+	ErrLiveClientPolicyDenied = errors.New("live client is denied by provider policy")
 )
 
 // LiveAttestationUnavailableError 保留无法生成或复用设备证明的具体原因。
@@ -59,7 +59,7 @@ type LiveCallIdentity struct {
 type LiveCallRecord struct {
 	CallID             string
 	CallHash           string
-	AccountID          int64
+	ProviderID         int64
 	APIKeyID           int64
 	ActorUserID        int64
 	UserID             int64

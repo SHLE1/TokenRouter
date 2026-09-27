@@ -119,43 +119,43 @@ func (_u *CreativeRunUpdate) AddAPIKeyID(v int64) *CreativeRunUpdate {
 	return _u
 }
 
-// SetAccountID sets the "account_id" field.
-func (_u *CreativeRunUpdate) SetAccountID(v int64) *CreativeRunUpdate {
-	_u.mutation.ResetAccountID()
-	_u.mutation.SetAccountID(v)
+// SetProviderID sets the "provider_id" field.
+func (_u *CreativeRunUpdate) SetProviderID(v int64) *CreativeRunUpdate {
+	_u.mutation.ResetProviderID()
+	_u.mutation.SetProviderID(v)
 	return _u
 }
 
-// SetNillableAccountID sets the "account_id" field if the given value is not nil.
-func (_u *CreativeRunUpdate) SetNillableAccountID(v *int64) *CreativeRunUpdate {
+// SetNillableProviderID sets the "provider_id" field if the given value is not nil.
+func (_u *CreativeRunUpdate) SetNillableProviderID(v *int64) *CreativeRunUpdate {
 	if v != nil {
-		_u.SetAccountID(*v)
+		_u.SetProviderID(*v)
 	}
 	return _u
 }
 
-// AddAccountID adds value to the "account_id" field.
-func (_u *CreativeRunUpdate) AddAccountID(v int64) *CreativeRunUpdate {
-	_u.mutation.AddAccountID(v)
+// AddProviderID adds value to the "provider_id" field.
+func (_u *CreativeRunUpdate) AddProviderID(v int64) *CreativeRunUpdate {
+	_u.mutation.AddProviderID(v)
 	return _u
 }
 
-// ClearAccountID clears the value of the "account_id" field.
-func (_u *CreativeRunUpdate) ClearAccountID() *CreativeRunUpdate {
-	_u.mutation.ClearAccountID()
+// ClearProviderID clears the value of the "provider_id" field.
+func (_u *CreativeRunUpdate) ClearProviderID() *CreativeRunUpdate {
+	_u.mutation.ClearProviderID()
 	return _u
 }
 
-// SetProvider sets the "provider" field.
-func (_u *CreativeRunUpdate) SetProvider(v string) *CreativeRunUpdate {
-	_u.mutation.SetProvider(v)
+// SetPlatform sets the "platform" field.
+func (_u *CreativeRunUpdate) SetPlatform(v string) *CreativeRunUpdate {
+	_u.mutation.SetPlatform(v)
 	return _u
 }
 
-// SetNillableProvider sets the "provider" field if the given value is not nil.
-func (_u *CreativeRunUpdate) SetNillableProvider(v *string) *CreativeRunUpdate {
+// SetNillablePlatform sets the "platform" field if the given value is not nil.
+func (_u *CreativeRunUpdate) SetNillablePlatform(v *string) *CreativeRunUpdate {
 	if v != nil {
-		_u.SetProvider(*v)
+		_u.SetPlatform(*v)
 	}
 	return _u
 }
@@ -846,9 +846,9 @@ func (_u *CreativeRunUpdate) check() error {
 			return &ValidationError{Name: "workspace_id", err: fmt.Errorf(`ent: validator failed for field "CreativeRun.workspace_id": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.Provider(); ok {
-		if err := creativerun.ProviderValidator(v); err != nil {
-			return &ValidationError{Name: "provider", err: fmt.Errorf(`ent: validator failed for field "CreativeRun.provider": %w`, err)}
+	if v, ok := _u.mutation.Platform(); ok {
+		if err := creativerun.PlatformValidator(v); err != nil {
+			return &ValidationError{Name: "platform", err: fmt.Errorf(`ent: validator failed for field "CreativeRun.platform": %w`, err)}
 		}
 	}
 	if v, ok := _u.mutation.Model(); ok {
@@ -958,17 +958,17 @@ func (_u *CreativeRunUpdate) sqlSave(ctx context.Context) (_node int, err error)
 	if value, ok := _u.mutation.AddedAPIKeyID(); ok {
 		_spec.AddField(creativerun.FieldAPIKeyID, field.TypeInt64, value)
 	}
-	if value, ok := _u.mutation.AccountID(); ok {
-		_spec.SetField(creativerun.FieldAccountID, field.TypeInt64, value)
+	if value, ok := _u.mutation.ProviderID(); ok {
+		_spec.SetField(creativerun.FieldProviderID, field.TypeInt64, value)
 	}
-	if value, ok := _u.mutation.AddedAccountID(); ok {
-		_spec.AddField(creativerun.FieldAccountID, field.TypeInt64, value)
+	if value, ok := _u.mutation.AddedProviderID(); ok {
+		_spec.AddField(creativerun.FieldProviderID, field.TypeInt64, value)
 	}
-	if _u.mutation.AccountIDCleared() {
-		_spec.ClearField(creativerun.FieldAccountID, field.TypeInt64)
+	if _u.mutation.ProviderIDCleared() {
+		_spec.ClearField(creativerun.FieldProviderID, field.TypeInt64)
 	}
-	if value, ok := _u.mutation.Provider(); ok {
-		_spec.SetField(creativerun.FieldProvider, field.TypeString, value)
+	if value, ok := _u.mutation.Platform(); ok {
+		_spec.SetField(creativerun.FieldPlatform, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.Model(); ok {
 		_spec.SetField(creativerun.FieldModel, field.TypeString, value)
@@ -1258,43 +1258,43 @@ func (_u *CreativeRunUpdateOne) AddAPIKeyID(v int64) *CreativeRunUpdateOne {
 	return _u
 }
 
-// SetAccountID sets the "account_id" field.
-func (_u *CreativeRunUpdateOne) SetAccountID(v int64) *CreativeRunUpdateOne {
-	_u.mutation.ResetAccountID()
-	_u.mutation.SetAccountID(v)
+// SetProviderID sets the "provider_id" field.
+func (_u *CreativeRunUpdateOne) SetProviderID(v int64) *CreativeRunUpdateOne {
+	_u.mutation.ResetProviderID()
+	_u.mutation.SetProviderID(v)
 	return _u
 }
 
-// SetNillableAccountID sets the "account_id" field if the given value is not nil.
-func (_u *CreativeRunUpdateOne) SetNillableAccountID(v *int64) *CreativeRunUpdateOne {
+// SetNillableProviderID sets the "provider_id" field if the given value is not nil.
+func (_u *CreativeRunUpdateOne) SetNillableProviderID(v *int64) *CreativeRunUpdateOne {
 	if v != nil {
-		_u.SetAccountID(*v)
+		_u.SetProviderID(*v)
 	}
 	return _u
 }
 
-// AddAccountID adds value to the "account_id" field.
-func (_u *CreativeRunUpdateOne) AddAccountID(v int64) *CreativeRunUpdateOne {
-	_u.mutation.AddAccountID(v)
+// AddProviderID adds value to the "provider_id" field.
+func (_u *CreativeRunUpdateOne) AddProviderID(v int64) *CreativeRunUpdateOne {
+	_u.mutation.AddProviderID(v)
 	return _u
 }
 
-// ClearAccountID clears the value of the "account_id" field.
-func (_u *CreativeRunUpdateOne) ClearAccountID() *CreativeRunUpdateOne {
-	_u.mutation.ClearAccountID()
+// ClearProviderID clears the value of the "provider_id" field.
+func (_u *CreativeRunUpdateOne) ClearProviderID() *CreativeRunUpdateOne {
+	_u.mutation.ClearProviderID()
 	return _u
 }
 
-// SetProvider sets the "provider" field.
-func (_u *CreativeRunUpdateOne) SetProvider(v string) *CreativeRunUpdateOne {
-	_u.mutation.SetProvider(v)
+// SetPlatform sets the "platform" field.
+func (_u *CreativeRunUpdateOne) SetPlatform(v string) *CreativeRunUpdateOne {
+	_u.mutation.SetPlatform(v)
 	return _u
 }
 
-// SetNillableProvider sets the "provider" field if the given value is not nil.
-func (_u *CreativeRunUpdateOne) SetNillableProvider(v *string) *CreativeRunUpdateOne {
+// SetNillablePlatform sets the "platform" field if the given value is not nil.
+func (_u *CreativeRunUpdateOne) SetNillablePlatform(v *string) *CreativeRunUpdateOne {
 	if v != nil {
-		_u.SetProvider(*v)
+		_u.SetPlatform(*v)
 	}
 	return _u
 }
@@ -1998,9 +1998,9 @@ func (_u *CreativeRunUpdateOne) check() error {
 			return &ValidationError{Name: "workspace_id", err: fmt.Errorf(`ent: validator failed for field "CreativeRun.workspace_id": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.Provider(); ok {
-		if err := creativerun.ProviderValidator(v); err != nil {
-			return &ValidationError{Name: "provider", err: fmt.Errorf(`ent: validator failed for field "CreativeRun.provider": %w`, err)}
+	if v, ok := _u.mutation.Platform(); ok {
+		if err := creativerun.PlatformValidator(v); err != nil {
+			return &ValidationError{Name: "platform", err: fmt.Errorf(`ent: validator failed for field "CreativeRun.platform": %w`, err)}
 		}
 	}
 	if v, ok := _u.mutation.Model(); ok {
@@ -2127,17 +2127,17 @@ func (_u *CreativeRunUpdateOne) sqlSave(ctx context.Context) (_node *CreativeRun
 	if value, ok := _u.mutation.AddedAPIKeyID(); ok {
 		_spec.AddField(creativerun.FieldAPIKeyID, field.TypeInt64, value)
 	}
-	if value, ok := _u.mutation.AccountID(); ok {
-		_spec.SetField(creativerun.FieldAccountID, field.TypeInt64, value)
+	if value, ok := _u.mutation.ProviderID(); ok {
+		_spec.SetField(creativerun.FieldProviderID, field.TypeInt64, value)
 	}
-	if value, ok := _u.mutation.AddedAccountID(); ok {
-		_spec.AddField(creativerun.FieldAccountID, field.TypeInt64, value)
+	if value, ok := _u.mutation.AddedProviderID(); ok {
+		_spec.AddField(creativerun.FieldProviderID, field.TypeInt64, value)
 	}
-	if _u.mutation.AccountIDCleared() {
-		_spec.ClearField(creativerun.FieldAccountID, field.TypeInt64)
+	if _u.mutation.ProviderIDCleared() {
+		_spec.ClearField(creativerun.FieldProviderID, field.TypeInt64)
 	}
-	if value, ok := _u.mutation.Provider(); ok {
-		_spec.SetField(creativerun.FieldProvider, field.TypeString, value)
+	if value, ok := _u.mutation.Platform(); ok {
+		_spec.SetField(creativerun.FieldPlatform, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.Model(); ok {
 		_spec.SetField(creativerun.FieldModel, field.TypeString, value)

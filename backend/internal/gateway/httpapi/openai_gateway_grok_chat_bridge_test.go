@@ -16,11 +16,11 @@ import (
 
 	grok "github.com/TokenFlux/TokenRouter/internal/upstream/grok"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 
 	"github.com/gin-gonic/gin"
@@ -29,21 +29,20 @@ import (
 )
 
 func TestForwardGrokChatViaResponsesNonStreamingCachesAndReturnsChat(t *testing.T) {
-
 	body := []byte(`{"model":"grok","messages":[{"role":"system","content":"be concise"},{"role":"user","content":"hi"}],"stream":false,"prompt_cache_key":"stable-session","tools":[],"functions":null,"tool_choice":"none"}`)
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodPost, grok.GrokChatRawEndpoint, bytes.NewReader(body))
 	c.Set("api_key", &apikey.APIKey{ID: 7101})
 
-	account := grokChatBridgeTestAccount(71)
-	repo := &grokQuotaAccountRepo{grokFixtureAccounts: &grokFixtureAccounts{
-		accountsByID: map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: account},
+	provider := grokChatBridgeTestProvider(71)
+	repo := &grokQuotaProviderRepo{grokFixtureProviders: &grokFixtureProviders{
+		providersByID: map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider},
 	}}
 	upstream := &auxiliaryHTTPRecorder{resp: grokChatBridgeCompletedResponse("resp_grok_chat_cache", 9856)}
-	svc := newResponsesFixture(responsesFixtureInputs{grokTokens: newHTTPGrokTokenFixture(repo, nil), transport: upstream, accounts: repo})
+	svc := newResponsesFixture(responsesFixtureInputs{grokTokens: newHTTPGrokTokenFixture(repo, nil), transport: upstream, providers: repo})
 
-	result, err := svc.Text.Chat(context.Background(), c, account, body, "", "")
+	result, err := svc.Text.Chat(context.Background(), c, provider, body, "", "")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, grok.DefaultCLIBaseURL+"/responses", upstream.lastReq.URL.String())
@@ -71,20 +70,19 @@ func TestForwardGrokChatViaResponsesNonStreamingCachesAndReturnsChat(t *testing.
 	require.Equal(t, http.StatusOK, recorder.Code)
 	require.Equal(t, "cached ok", gjson.Get(recorder.Body.String(), "choices.0.message.content").String())
 	require.Equal(t, int64(9856), gjson.Get(recorder.Body.String(), "usage.prompt_tokens_details.cached_tokens").Int())
-	require.NotNil(t, repo.updates[account.Record.ID]["grok_usage_snapshot"])
+	require.NotNil(t, repo.updates[provider.Record.ID]["grok_usage_snapshot"])
 }
 
 func TestForwardGrokChatViaResponsesNonStreamingRejectsCompletedResponseWithoutUsage(t *testing.T) {
-
 	body := []byte(`{"model":"grok","messages":[{"role":"user","content":"hi"}],"stream":false,"prompt_cache_key":"stable-session"}`)
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodPost, grok.GrokChatRawEndpoint, bytes.NewReader(body))
 	c.Set("api_key", &apikey.APIKey{ID: 7102})
 
-	account := grokChatBridgeTestAccount(72)
-	repo := &grokQuotaAccountRepo{grokFixtureAccounts: &grokFixtureAccounts{
-		accountsByID: map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: account},
+	provider := grokChatBridgeTestProvider(72)
+	repo := &grokQuotaProviderRepo{grokFixtureProviders: &grokFixtureProviders{
+		providersByID: map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider},
 	}}
 	upstreamBody := strings.Join([]string{
 		`data: {"type":"response.output_text.delta","sequence_number":0,"delta":"ok"}`,
@@ -97,9 +95,9 @@ func TestForwardGrokChatViaResponsesNonStreamingRejectsCompletedResponseWithoutU
 		Header:     http.Header{"Content-Type": []string{"text/event-stream"}, "Xai-Request-Id": []string{"rid-responses-missing-usage"}},
 		Body:       io.NopCloser(strings.NewReader(upstreamBody)),
 	}}
-	service := newResponsesFixture(responsesFixtureInputs{grokTokens: newHTTPGrokTokenFixture(repo, nil), transport: upstream, accounts: repo})
+	service := newResponsesFixture(responsesFixtureInputs{grokTokens: newHTTPGrokTokenFixture(repo, nil), transport: upstream, providers: repo})
 
-	result, err := service.Text.Chat(context.Background(), c, account, body, "", "")
+	result, err := service.Text.Chat(context.Background(), c, provider, body, "", "")
 
 	require.Nil(t, result)
 	var failoverErr *forwardcore.UpstreamFailoverError
@@ -112,20 +110,19 @@ func TestForwardGrokChatViaResponsesNonStreamingRejectsCompletedResponseWithoutU
 }
 
 func TestForwardGrokChatImageWithoutCacheIdentityUsesResponses(t *testing.T) {
-
 	body := []byte(`{"model":"grok","messages":[{"role":"user","content":[{"type":"text","text":"what is this"},{"type":"image_url","image_url":{"url":"data:image/png;base64,QQ=="}}]}],"stream":false}`)
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodPost, grok.GrokChatRawEndpoint, bytes.NewReader(body))
 
-	account := grokChatBridgeTestAccount(711)
-	repo := &grokQuotaAccountRepo{grokFixtureAccounts: &grokFixtureAccounts{
-		accountsByID: map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: account},
+	provider := grokChatBridgeTestProvider(711)
+	repo := &grokQuotaProviderRepo{grokFixtureProviders: &grokFixtureProviders{
+		providersByID: map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider},
 	}}
 	upstream := &auxiliaryHTTPRecorder{resp: grokChatBridgeCompletedResponse("resp_grok_chat_image", 0)}
-	svc := newResponsesFixture(responsesFixtureInputs{grokTokens: newHTTPGrokTokenFixture(repo, nil), transport: upstream, accounts: repo})
+	svc := newResponsesFixture(responsesFixtureInputs{grokTokens: newHTTPGrokTokenFixture(repo, nil), transport: upstream, providers: repo})
 
-	result, err := svc.Text.Chat(context.Background(), c, account, body, "", "")
+	result, err := svc.Text.Chat(context.Background(), c, provider, body, "", "")
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -140,7 +137,6 @@ func TestForwardGrokChatImageWithoutCacheIdentityUsesResponses(t *testing.T) {
 }
 
 func TestForwardGrokChatViaResponsesCodeBuddyUsesStableConversationHeader(t *testing.T) {
-
 	const conversationID = "codebuddy-session-42"
 	tests := []struct {
 		name      string
@@ -183,14 +179,14 @@ func TestForwardGrokChatViaResponsesCodeBuddyUsesStableConversationHeader(t *tes
 			}
 			require.NotContains(t, identity, conversationID)
 
-			account := grokChatBridgeTestAccount(int64(711 + index))
-			repo := &grokQuotaAccountRepo{grokFixtureAccounts: &grokFixtureAccounts{
-				accountsByID: map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: account},
+			provider := grokChatBridgeTestProvider(int64(711 + index))
+			repo := &grokQuotaProviderRepo{grokFixtureProviders: &grokFixtureProviders{
+				providersByID: map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider},
 			}}
 			upstream := &auxiliaryHTTPRecorder{resp: grokChatBridgeCompletedResponse("resp_codebuddy_"+strconv.Itoa(index), 4096)}
-			svc := newResponsesFixture(responsesFixtureInputs{grokTokens: newHTTPGrokTokenFixture(repo, nil), transport: upstream, accounts: repo})
+			svc := newResponsesFixture(responsesFixtureInputs{grokTokens: newHTTPGrokTokenFixture(repo, nil), transport: upstream, providers: repo})
 
-			result, err := svc.Text.Chat(context.Background(), c, account, tt.body, "", "")
+			result, err := svc.Text.Chat(context.Background(), c, provider, tt.body, "", "")
 			require.NoError(t, err)
 			require.NotNil(t, result)
 			require.Equal(t, grok.DefaultCLIBaseURL+"/responses", upstream.lastReq.URL.String())
@@ -202,7 +198,6 @@ func TestForwardGrokChatViaResponsesCodeBuddyUsesStableConversationHeader(t *tes
 }
 
 func TestForwardGrokChatViaResponsesTraeToolHistoryKeepsCacheRoute(t *testing.T) {
-
 	firstTurnBody := []byte(`{"model":"grok","messages":[{"role":"system","content":"Be concise"},{"role":"user","content":"Find alpha"}],"stream":false,"prompt_cache_key":"trae-session","tools":[{"type":"function","function":{"name":"lookup","description":"Lookup a value","parameters":{"type":"object","properties":{"key":{"type":"string"}},"required":["key"]},"strict":false}}],"tool_choice":"auto","parallel_tool_calls":true}`)
 	body := []byte(`{"model":"grok","messages":[{"role":"system","content":"Be concise"},{"role":"user","content":"Find alpha"},{"role":"assistant","content":null,"tool_calls":[{"id":"call_lookup","type":"function","function":{"name":"lookup","arguments":"{\"key\":\"alpha\"}"}}]},{"role":"tool","tool_call_id":"call_lookup","content":"{\"value\":\"ok\"}"},{"role":"user","content":"Summarize"}],"stream":false,"prompt_cache_key":"trae-session","tools":[{"type":"function","function":{"name":"lookup","description":"Lookup a value","parameters":{"type":"object","properties":{"key":{"type":"string"}},"required":["key"]},"strict":false}}],"tool_choice":"auto","parallel_tool_calls":true}`)
 	recorder := httptest.NewRecorder()
@@ -211,20 +206,20 @@ func TestForwardGrokChatViaResponsesTraeToolHistoryKeepsCacheRoute(t *testing.T)
 	c.Request.Header.Set("X-Sub2API-Grok-Client-Tool-Cache", "prefer-cache")
 	c.Set("api_key", &apikey.APIKey{ID: 7151})
 
-	account := grokChatBridgeTestAccount(715)
-	account.Record.Credentials["subscription_tier"] = "free"
-	repo := &grokQuotaAccountRepo{grokFixtureAccounts: &grokFixtureAccounts{
-		accountsByID: map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: account},
+	provider := grokChatBridgeTestProvider(715)
+	provider.Record.Credentials["subscription_tier"] = "free"
+	repo := &grokQuotaProviderRepo{grokFixtureProviders: &grokFixtureProviders{
+		providersByID: map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider},
 	}}
 	upstream := &auxiliaryHTTPRecorder{resp: grokChatBridgeCompletedResponse("resp_grok_chat_trae", 8192)}
-	svc := newResponsesFixture(responsesFixtureInputs{grokTokens: newHTTPGrokTokenFixture(repo, nil), transport: upstream, accounts: repo})
+	svc := newResponsesFixture(responsesFixtureInputs{grokTokens: newHTTPGrokTokenFixture(repo, nil), transport: upstream, providers: repo})
 
 	firstTurnIdentity := ResolveGrokCacheIdentity(c, firstTurnBody, "", "grok-4.5")
 	extendedTurnIdentity := ResolveGrokCacheIdentity(c, body, "", "grok-4.5")
 	require.NotEmpty(t, firstTurnIdentity)
 	require.Equal(t, firstTurnIdentity, extendedTurnIdentity)
 
-	result, err := svc.Text.Chat(context.Background(), c, account, body, "", "")
+	result, err := svc.Text.Chat(context.Background(), c, provider, body, "", "")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, grok.DefaultCLIBaseURL+"/responses", upstream.lastReq.URL.String())
@@ -255,7 +250,6 @@ func TestForwardGrokChatViaResponsesTraeToolHistoryKeepsCacheRoute(t *testing.T)
 }
 
 func TestForwardGrokChatViaResponsesTraeCompatibilityFieldsKeepCacheRoute(t *testing.T) {
-
 	firstTurnBody := []byte(`{"model":"grok","messages":[{"role":"user","content":"Find alpha"}],"instructions":"Return concise JSON","stream":false,"response_format":{"type":"json_object"},"service_tier":"fast","stop":null,"reasoning_effort":null,"tools":[{"type":"function","function":{"name":"lookup","description":"Lookup a value","parameters":{"type":"object","properties":{"key":{"type":"string"}},"required":["key"]}}}],"tool_choice":"auto","parallel_tool_calls":true}`)
 	body := []byte(`{"model":"grok","messages":[{"role":"user","content":"Find alpha"},{"role":"assistant","content":null,"reasoning_content":"I should use lookup","tool_calls":[{"index":0,"id":"call_lookup","type":"function","function":{"name":"lookup","arguments":"{\"key\":\"alpha\"}"}}]},{"role":"tool","tool_call_id":"call_lookup","content":"{\"value\":\"ok\"}"},{"role":"user","content":"Summarize"}],"instructions":"Return concise JSON","stream":false,"response_format":{"type":"json_object"},"service_tier":"fast","stop":null,"reasoning_effort":null,"tools":[{"type":"function","function":{"name":"lookup","description":"Lookup a value","parameters":{"type":"object","properties":{"key":{"type":"string"}},"required":["key"]}}}],"tool_choice":"auto","parallel_tool_calls":true}`)
 	recorder := httptest.NewRecorder()
@@ -263,20 +257,20 @@ func TestForwardGrokChatViaResponsesTraeCompatibilityFieldsKeepCacheRoute(t *tes
 	c.Request = httptest.NewRequest(http.MethodPost, grok.GrokChatRawEndpoint, bytes.NewReader(body))
 	c.Set("api_key", &apikey.APIKey{ID: 7161})
 
-	account := grokChatBridgeTestAccount(716)
-	account.Record.Credentials["subscription_tier"] = "free"
-	repo := &grokQuotaAccountRepo{grokFixtureAccounts: &grokFixtureAccounts{
-		accountsByID: map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: account},
+	provider := grokChatBridgeTestProvider(716)
+	provider.Record.Credentials["subscription_tier"] = "free"
+	repo := &grokQuotaProviderRepo{grokFixtureProviders: &grokFixtureProviders{
+		providersByID: map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider},
 	}}
 	upstream := &auxiliaryHTTPRecorder{resp: grokChatBridgeCompletedResponse("resp_grok_chat_trae_compat", 12288)}
-	svc := newResponsesFixture(responsesFixtureInputs{grokTokens: newHTTPGrokTokenFixture(repo, nil), transport: upstream, accounts: repo})
+	svc := newResponsesFixture(responsesFixtureInputs{grokTokens: newHTTPGrokTokenFixture(repo, nil), transport: upstream, providers: repo})
 
 	firstTurnIdentity := ResolveGrokCacheIdentity(c, firstTurnBody, "", "grok-4.5")
 	extendedTurnIdentity := ResolveGrokCacheIdentity(c, body, "", "grok-4.5")
 	require.NotEmpty(t, firstTurnIdentity)
 	require.Equal(t, firstTurnIdentity, extendedTurnIdentity)
 
-	result, err := svc.Text.Chat(context.Background(), c, account, body, "", "")
+	result, err := svc.Text.Chat(context.Background(), c, provider, body, "", "")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, grok.DefaultCLIBaseURL+"/responses", upstream.lastReq.URL.String())
@@ -302,21 +296,20 @@ func TestForwardGrokChatViaResponsesTraeCompatibilityFieldsKeepCacheRoute(t *tes
 }
 
 func TestForwardGrokChatViaResponsesStreamingPropagatesCachedUsage(t *testing.T) {
-
 	body := []byte(`{"model":"grok","messages":[{"role":"user","content":"hi"}],"stream":true}`)
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodPost, grok.GrokChatRawEndpoint, bytes.NewReader(body))
 	c.Set("api_key", &apikey.APIKey{ID: 7201})
 
-	account := grokChatBridgeTestAccount(72)
-	repo := &grokQuotaAccountRepo{grokFixtureAccounts: &grokFixtureAccounts{
-		accountsByID: map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: account},
+	provider := grokChatBridgeTestProvider(72)
+	repo := &grokQuotaProviderRepo{grokFixtureProviders: &grokFixtureProviders{
+		providersByID: map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider},
 	}}
 	upstream := &auxiliaryHTTPRecorder{resp: grokChatBridgeCompletedResponse("resp_grok_chat_stream", 4096)}
-	svc := newResponsesFixture(responsesFixtureInputs{grokTokens: newHTTPGrokTokenFixture(repo, nil), transport: upstream, accounts: repo})
+	svc := newResponsesFixture(responsesFixtureInputs{grokTokens: newHTTPGrokTokenFixture(repo, nil), transport: upstream, providers: repo})
 
-	result, err := svc.Text.Chat(context.Background(), c, account, body, "", "")
+	result, err := svc.Text.Chat(context.Background(), c, provider, body, "", "")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.True(t, result.Stream)
@@ -329,7 +322,6 @@ func TestForwardGrokChatViaResponsesStreamingPropagatesCachedUsage(t *testing.T)
 }
 
 func TestForwardGrokChatRuntimeGateFallsBackToRaw(t *testing.T) {
-
 	tests := []struct {
 		name         string
 		setAPIKey    bool
@@ -350,12 +342,12 @@ func TestForwardGrokChatRuntimeGateFallsBackToRaw(t *testing.T) {
 				c.Set("api_key", &apikey.APIKey{ID: int64(7301 + index)})
 			}
 
-			account := grokChatBridgeTestAccount(int64(73 + index))
+			provider := grokChatBridgeTestProvider(int64(73 + index))
 			if tt.mappedModel != "" {
-				account.Record.Credentials["model_mapping"] = map[string]any{"grok": tt.mappedModel}
+				provider.Record.Credentials["model_mapping"] = map[string]any{"grok": tt.mappedModel}
 			}
-			repo := &grokQuotaAccountRepo{grokFixtureAccounts: &grokFixtureAccounts{
-				accountsByID: map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: account},
+			repo := &grokQuotaProviderRepo{grokFixtureProviders: &grokFixtureProviders{
+				providersByID: map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider},
 			}}
 			upstream := &auxiliaryHTTPRecorder{resp: &http.Response{
 				StatusCode: http.StatusOK,
@@ -364,9 +356,9 @@ func TestForwardGrokChatRuntimeGateFallsBackToRaw(t *testing.T) {
 					`{"id":"chat_raw","object":"chat.completion","model":"` + tt.wantUpstream + `","choices":[{"index":0,"message":{"role":"assistant","content":"raw ok"},"finish_reason":"stop"}],"usage":{"prompt_tokens":2,"completion_tokens":1,"total_tokens":3}}`,
 				)),
 			}}
-			svc := newResponsesFixture(responsesFixtureInputs{grokTokens: newHTTPGrokTokenFixture(repo, nil), transport: upstream, accounts: repo})
+			svc := newResponsesFixture(responsesFixtureInputs{grokTokens: newHTTPGrokTokenFixture(repo, nil), transport: upstream, providers: repo})
 
-			result, err := svc.Text.Chat(context.Background(), c, account, body, "", "")
+			result, err := svc.Text.Chat(context.Background(), c, provider, body, "", "")
 			require.NoError(t, err)
 			require.NotNil(t, result)
 			require.Equal(t, grok.DefaultCLIBaseURL+"/chat/completions", upstream.lastReq.URL.String())
@@ -379,16 +371,15 @@ func TestForwardGrokChatRuntimeGateFallsBackToRaw(t *testing.T) {
 }
 
 func TestForwardGrokChatViaResponses429UsesGrokRateLimitPolicy(t *testing.T) {
-
 	body := []byte(`{"model":"grok","messages":[{"role":"user","content":"hi"}],"stream":false}`)
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodPost, grok.GrokChatRawEndpoint, bytes.NewReader(body))
 	c.Set("api_key", &apikey.APIKey{ID: 7501})
 
-	account := grokChatBridgeTestAccount(75)
-	repo := &grokQuotaAccountRepo{grokFixtureAccounts: &grokFixtureAccounts{
-		accountsByID: map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: account},
+	provider := grokChatBridgeTestProvider(75)
+	repo := &grokQuotaProviderRepo{grokFixtureProviders: &grokFixtureProviders{
+		providersByID: map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider},
 	}}
 	upstream := &auxiliaryHTTPRecorder{resp: &http.Response{
 		StatusCode: http.StatusTooManyRequests,
@@ -398,10 +389,10 @@ func TestForwardGrokChatViaResponses429UsesGrokRateLimitPolicy(t *testing.T) {
 		},
 		Body: io.NopCloser(strings.NewReader(`{"error":{"message":"rate limited"}}`)),
 	}}
-	svc := newResponsesFixture(responsesFixtureInputs{grokTokens: newHTTPGrokTokenFixture(repo, nil), transport: upstream, accounts: repo})
+	svc := newResponsesFixture(responsesFixtureInputs{grokTokens: newHTTPGrokTokenFixture(repo, nil), transport: upstream, providers: repo})
 	before := time.Now()
 
-	result, err := svc.Text.Chat(context.Background(), c, account, body, "", "")
+	result, err := svc.Text.Chat(context.Background(), c, provider, body, "", "")
 	require.Error(t, err)
 	require.Nil(t, result)
 	var failoverErr *forwardcore.UpstreamFailoverError
@@ -413,21 +404,20 @@ func TestForwardGrokChatViaResponses429UsesGrokRateLimitPolicy(t *testing.T) {
 	require.Equal(t, 1, repo.rateLimitedCalls)
 	require.Zero(t, repo.tempUnschedCalls)
 	require.WithinDuration(t, before.Add(45*time.Second), repo.lastRateLimitResetAt, time.Second)
-	require.True(t, httpFixtureRuntimeBlocked(svc, account))
+	require.True(t, httpFixtureRuntimeBlocked(svc, provider))
 }
 
 func TestForwardGrokRawChat429PreservesRetryAfter(t *testing.T) {
-
 	body := []byte(`{"model":"grok","messages":[{"role":"user","content":"hi"}],"stream":false,"stop":"done"}`)
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodPost, grok.GrokChatRawEndpoint, bytes.NewReader(body))
 	c.Set("api_key", &apikey.APIKey{ID: 7551})
 
-	account := grokChatBridgeTestAccount(755)
-	account.Record.Credentials["expires_at"] = time.Now().Add(2 * time.Hour).UTC().Format(time.RFC3339)
-	repo := &grokQuotaAccountRepo{grokFixtureAccounts: &grokFixtureAccounts{
-		accountsByID: map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: account},
+	provider := grokChatBridgeTestProvider(755)
+	provider.Record.Credentials["expires_at"] = time.Now().Add(2 * time.Hour).UTC().Format(time.RFC3339)
+	repo := &grokQuotaProviderRepo{grokFixtureProviders: &grokFixtureProviders{
+		providersByID: map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider},
 	}}
 	upstream := &auxiliaryHTTPRecorder{resp: &http.Response{
 		StatusCode: http.StatusTooManyRequests,
@@ -437,9 +427,9 @@ func TestForwardGrokRawChat429PreservesRetryAfter(t *testing.T) {
 		},
 		Body: io.NopCloser(strings.NewReader(`{"error":{"message":"rate limited"}}`)),
 	}}
-	svc := newResponsesFixture(responsesFixtureInputs{grokTokens: newHTTPGrokTokenFixture(repo, nil), transport: upstream, accounts: repo})
+	svc := newResponsesFixture(responsesFixtureInputs{grokTokens: newHTTPGrokTokenFixture(repo, nil), transport: upstream, providers: repo})
 
-	result, err := svc.Text.Chat(context.Background(), c, account, body, "", "")
+	result, err := svc.Text.Chat(context.Background(), c, provider, body, "", "")
 
 	require.Error(t, err)
 	require.Nil(t, result)
@@ -451,45 +441,47 @@ func TestForwardGrokRawChat429PreservesRetryAfter(t *testing.T) {
 }
 
 func TestForwardGrokRawChatErrorRecordsActualEndpoint(t *testing.T) {
-
 	body := []byte(`{"model":"grok","messages":[{"role":"user","content":"hi"}],"stream":false,"stop":"done"}`)
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodPost, grok.GrokChatRawEndpoint, bytes.NewReader(body))
 	c.Set("api_key", &apikey.APIKey{ID: 7601})
 
-	account := grokChatBridgeTestAccount(76)
-	repo := &grokQuotaAccountRepo{grokFixtureAccounts: &grokFixtureAccounts{
-		accountsByID: map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: account},
+	provider := grokChatBridgeTestProvider(76)
+	repo := &grokQuotaProviderRepo{grokFixtureProviders: &grokFixtureProviders{
+		providersByID: map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider},
 	}}
 	upstream := &auxiliaryHTTPRecorder{resp: &http.Response{
 		StatusCode: http.StatusBadRequest,
 		Header:     http.Header{"Content-Type": []string{"application/json"}},
 		Body:       io.NopCloser(strings.NewReader(`{"error":{"message":"bad request"}}`)),
 	}}
-	svc := newResponsesFixture(responsesFixtureInputs{grokTokens: newHTTPGrokTokenFixture(repo, nil), transport: upstream, accounts: repo})
+	svc := newResponsesFixture(responsesFixtureInputs{grokTokens: newHTTPGrokTokenFixture(repo, nil), transport: upstream, providers: repo})
 
-	result, err := svc.Text.Chat(context.Background(), c, account, body, "", "")
+	result, err := svc.Text.Chat(context.Background(), c, provider, body, "", "")
 	require.Error(t, err)
 	require.Nil(t, result)
 	require.Equal(t, grok.DefaultCLIBaseURL+"/chat/completions", upstream.lastReq.URL.String())
 	require.Equal(t, grok.GrokChatRawEndpoint, GetActualOpenAIUpstreamEndpoint(c))
 }
 
-func grokChatBridgeTestAccount(id int64) *gatewayprovider.ExecutionAccount {
-	return &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: id,
-		Name:        "grok-cache-bridge",
-		Platform:    capability.PlatformGrok,
-		Type:        capability.AccountTypeOAuth,
-		Status:      billing.StatusActive,
-		Schedulable: true,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"access_token":  "access-token",
-			"refresh_token": "refresh-token",
-			"expires_at":    time.Now().Add(2 * time.Hour).UTC().Format(time.RFC3339),
-			"base_url":      grok.DefaultCLIBaseURL,
-		}},
+func grokChatBridgeTestProvider(id int64) *gatewayprovider.ExecutionProvider {
+	return &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: id,
+			Name:        "grok-cache-bridge",
+			Platform:    capability.PlatformGrok,
+			Type:        capability.ProviderTypeOAuth,
+			Status:      billing.StatusActive,
+			Schedulable: true,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"access_token":  "access-token",
+				"refresh_token": "refresh-token",
+				"expires_at":    time.Now().Add(2 * time.Hour).UTC().Format(time.RFC3339),
+				"base_url":      grok.DefaultCLIBaseURL,
+			},
+		},
 	}
 }
 

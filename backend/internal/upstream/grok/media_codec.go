@@ -28,8 +28,10 @@ type MediaNormalization struct {
 	ClassifyImageBillingTier                                                     func(string) (string, bool)
 	ParseImageDimensions                                                         func(string) (int, int, bool)
 }
-type MediaCodec struct{ Options MediaNormalization }
-type GrokMediaEndpoint string
+type (
+	MediaCodec        struct{ Options MediaNormalization }
+	GrokMediaEndpoint string
+)
 
 const (
 	GrokMediaEndpointImagesGenerations GrokMediaEndpoint = "images_generations"
@@ -47,9 +49,11 @@ const (
 func (e GrokMediaEndpoint) RequiresRequestBody() bool {
 	return !e.IsVideoLookupRequest()
 }
+
 func (e GrokMediaEndpoint) IsVideoLookupRequest() bool {
 	return e == GrokMediaEndpointVideoStatus || e == GrokMediaEndpointVideoContent
 }
+
 func (e GrokMediaEndpoint) IsGenerationRequest() bool {
 	switch e {
 	case GrokMediaEndpointImagesGenerations, GrokMediaEndpointImagesEdits, GrokMediaEndpointVideosGenerations, GrokMediaEndpointVideosEdits, GrokMediaEndpointVideosExtensions:
@@ -112,15 +116,18 @@ func (r GrokMediaRequestInfo) ModerationBody() []byte {
 	}
 	return body
 }
+
 func (e GrokMediaEndpoint) HTTPMethod() string {
 	if e.IsVideoLookupRequest() {
 		return http.MethodGet
 	}
 	return http.MethodPost
 }
+
 func (m MediaCodec) ExtractGrokMediaModel(contentType string, body []byte) string {
 	return m.ParseGrokMediaRequest(contentType, body).Model
 }
+
 func (m MediaCodec) ParseGrokMediaRequest(contentType string, body []byte) GrokMediaRequestInfo {
 	info := GrokMediaRequestInfo{N: 1}
 	if gjson.ValidBytes(body) {
@@ -141,6 +148,7 @@ func (m MediaCodec) ParseGrokMediaRequest(contentType string, body []byte) GrokM
 	}
 	return info
 }
+
 func (m MediaCodec) ParseGrokMediaJSONRequest(body []byte, info *GrokMediaRequestInfo) {
 	if info == nil {
 		return
@@ -205,9 +213,11 @@ func (m MediaCodec) GrokMediaJSONImageURL(value gjson.Result) string {
 	}
 	return strings.TrimSpace(value.Get("image_url").String())
 }
+
 func (m MediaCodec) GrokMediaImageObject(imageURL string) map[string]string {
 	return map[string]string{"url": imageURL, "type": "image_url"}
 }
+
 func (m MediaCodec) ParseGrokMediaMultipartRequest(contentType string, body []byte, info *GrokMediaRequestInfo) {
 	if info == nil {
 		return
@@ -287,6 +297,7 @@ func (m MediaCodec) ParseGrokMediaMultipartRequest(contentType string, body []by
 		}
 	}
 }
+
 func (m MediaCodec) IsOfficialGrokVideoStatusDone(statusBody []byte) bool {
 	// 官方枚举值包括 pending、done、expired 与 failed。
 	return strings.EqualFold(strings.TrimSpace(gjson.GetBytes(statusBody, "status").String()), "done")
@@ -296,13 +307,14 @@ func (m MediaCodec) IsOfficialGrokVideoStatusDone(statusBody []byte) bool {
 func (m MediaCodec) RewriteGrokMediaRequestModel(body []byte, contentType, model string) ([]byte, string, error) {
 	return upstream.RewriteImageModel(body, contentType, model)
 }
+
 func (m MediaCodec) GrokMediaSignedVideoContentURL(body []byte, requestID string) (string, error) {
 	rawURL := strings.TrimSpace(gjson.GetBytes(body, "video.url").String())
 	if rawURL == "" {
 		return "", nil
 	}
 	// 上游 TokenRouter 可能把受保护内容 URL 改写为自身代理端点。此类 URL 应视为
-	// 需要认证的 relay 路径，而不是签名 URL；调用方会基于账号 base URL 重建地址，
+	// 需要认证的 relay 路径，而不是签名 URL；调用方会基于提供商 base URL 重建地址，
 	// 并附加上游 API Key。
 	if m.IsGrokMediaVideoContentURL(rawURL, requestID) {
 		return "", nil
@@ -321,6 +333,7 @@ func (m MediaCodec) IsGrokCLIProxyTarget(rawURL string) bool {
 	parsed, err := url.Parse(strings.TrimSpace(rawURL))
 	return err == nil && strings.EqualFold(parsed.Hostname(), "cli-chat-proxy.grok.com")
 }
+
 func (m MediaCodec) PrepareGrokMediaForwardBody(endpoint GrokMediaEndpoint, body []byte, contentType string) ([]byte, string, error) {
 	if endpoint != GrokMediaEndpointImagesEdits {
 		return body, contentType, nil
@@ -396,6 +409,7 @@ func (m MediaCodec) PrepareGrokMediaForwardBody(endpoint GrokMediaEndpoint, body
 	}
 	return out, "application/json", nil
 }
+
 func (m MediaCodec) NormalizeGrokMediaJSONImageRefs(body []byte) ([]byte, error) {
 	info := m.ParseGrokMediaRequest("application/json", body)
 	if len(info.InputImageURLs) > GrokMediaMaxEditSourceImages {
@@ -411,6 +425,7 @@ func (m MediaCodec) NormalizeGrokMediaJSONImageRefs(body []byte) ([]byte, error)
 	}
 	return out, nil
 }
+
 func (m MediaCodec) RewriteGrokMediaJSONImageField(body []byte, path string) ([]byte, error) {
 	value := gjson.GetBytes(body, path)
 	if !value.Exists() {
@@ -441,6 +456,7 @@ func (m MediaCodec) RewriteGrokMediaJSONImageField(body []byte, path string) ([]
 	}
 	return out, nil
 }
+
 func (m MediaCodec) NormalizeGrokMediaForwardBody(endpoint GrokMediaEndpoint, body []byte, contentType string) ([]byte, string, error) {
 	if !endpoint.RequiresRequestBody() || !gjson.ValidBytes(body) {
 		return body, contentType, nil
@@ -518,6 +534,7 @@ func (m MediaCodec) CanonicalizeGrokMediaImageURLObject(body []byte, path string
 	}
 	return out, nil
 }
+
 func (m MediaCodec) SanitizeGrokMediaForwardBody(endpoint GrokMediaEndpoint, body []byte, contentType string) ([]byte, string, error) {
 	if !endpoint.RequiresRequestBody() || !gjson.ValidBytes(body) {
 		return body, contentType, nil
@@ -533,11 +550,12 @@ func (m MediaCodec) SanitizeGrokMediaForwardBody(endpoint GrokMediaEndpoint, bod
 		return body, contentType, nil
 	}
 }
+
 func (r GrokMediaRequestInfo) HasInputImage() bool {
 	return len(r.InputImageURLs) > 0 || len(r.Uploads) > 0
 }
 
-// NormalizeGrokMediaModelForEndpoint 在账号级模型映射和调度前，
+// NormalizeGrokMediaModelForEndpoint 在提供商级模型映射和调度前，
 // 根据媒体端点解析内置的上游模型别名。
 func (m MediaCodec) NormalizeGrokMediaModelForEndpoint(endpoint GrokMediaEndpoint, model string, hasInputImage bool) string {
 	model = strings.TrimSpace(model)
@@ -553,6 +571,7 @@ func (m MediaCodec) NormalizeGrokMediaModelForEndpoint(endpoint GrokMediaEndpoin
 	}
 	return model
 }
+
 func (m MediaCodec) ExtractGrokMediaVideoRequestID(body []byte) string {
 	if len(body) == 0 || !gjson.ValidBytes(body) {
 		return ""
@@ -565,6 +584,7 @@ func (m MediaCodec) ExtractGrokMediaVideoRequestID(body []byte) string {
 	}
 	return ""
 }
+
 func (m MediaCodec) IsGrokMediaVideoContentURL(rawURL, requestID string) bool {
 	parsed, err := url.Parse(strings.TrimSpace(rawURL))
 	if err != nil || parsed.Path == "" {
@@ -644,6 +664,7 @@ func (m MediaCodec) ApplyGrokImagineImageGeometry(body []byte) ([]byte, error) {
 	}
 	return sjson.DeleteBytes(out, "size")
 }
+
 func (m MediaCodec) AssignGrokMediaResolution(value string, info *GrokMediaRequestInfo) {
 	if info == nil {
 		return
@@ -658,6 +679,7 @@ func (m MediaCodec) AssignGrokMediaResolution(value string, info *GrokMediaReque
 	}
 	info.Resolution = value
 }
+
 func (m MediaCodec) GrokImagineImageResolution(value string) string {
 	switch strings.ToLower(strings.TrimSpace(value)) {
 	case "1k":
@@ -668,6 +690,7 @@ func (m MediaCodec) GrokImagineImageResolution(value string) string {
 		return ""
 	}
 }
+
 func (m MediaCodec) GrokImagineImageResolutionFromSize(size string) string {
 	if explicit := m.GrokImagineImageResolution(size); explicit != "" {
 		return explicit
@@ -681,6 +704,7 @@ func (m MediaCodec) GrokImagineImageResolutionFromSize(size string) string {
 	}
 	return "2k"
 }
+
 func (m MediaCodec) GrokImagineAspectRatioFromSize(size string) string {
 	width, height, ok := m.Options.ParseImageDimensions(strings.TrimSpace(size))
 	if !ok || width <= 0 || height <= 0 {
@@ -705,6 +729,7 @@ func (m MediaCodec) GrokImagineAspectRatioFromSize(size string) string {
 	}
 	return bestLabel
 }
+
 func (m MediaCodec) GrokImagineGCD(a, b int) int {
 	if a < 0 {
 		a = -a

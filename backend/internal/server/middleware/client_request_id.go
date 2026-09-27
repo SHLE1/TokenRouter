@@ -26,7 +26,7 @@ func ClientRequestID() gin.HandlerFunc {
 			return
 		}
 
-		// 入口时间必须在读取请求体和账号调度之前记录，便于拆分请求体上传与应用内耗时。
+		// 入口时间必须在读取请求体和提供商调度之前记录，便于拆分请求体上传与应用内耗时。
 		ctx := c.Request.Context()
 		if _, ok := ctx.Value(telemetry.RequestStartedAt).(time.Time); !ok {
 			ctx = context.WithValue(ctx, telemetry.RequestStartedAt, time.Now())

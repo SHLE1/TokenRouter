@@ -6,25 +6,25 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	apikey "github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
 func (s *UserRepoSuite) mustInsertUsageLog(userID int64, createdAt time.Time) {
 	s.T().Helper()
 
-	account := mustCreateAccount(s.T(), s.client, &account.Record{Name: "usage-log-account"})
+	provider := mustCreateProvider(s.T(), s.client, &provider.Record{Name: "usage-log-provider"})
 	apiKey := mustCreateApiKey(s.T(), s.client, &apikey.APIKey{UserID: userID})
 
 	_, err := s.db.ExecContext(
 		s.ctx,
-		`INSERT INTO usage_logs (user_id, api_key_id, account_id, model, input_tokens, output_tokens, total_cost, actual_cost, created_at)
+		`INSERT INTO usage_logs (user_id, api_key_id, provider_id, model, input_tokens, output_tokens, total_cost, actual_cost, created_at)
 		 VALUES ($1, $2, $3, 'gpt-test', 1, 1, 0.01, 0.01, $4)`,
 		userID,
 		apiKey.ID,
-		account.ID,
+		provider.ID,
 		createdAt.UTC(),
 	)
 	s.Require().NoError(err)

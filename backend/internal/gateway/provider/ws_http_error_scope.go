@@ -8,8 +8,8 @@ import (
 )
 
 // OpenAIWSHTTPBridgeRequestScopedError 识别只与当前请求有关的错误。
-// 这类错误既不修改账号状态，也不能因为池模式配置而回放当前 turn。
-func OpenAIWSHTTPBridgeRequestScopedError(account *ExecutionAccount, statusCode int, message string, body []byte) bool {
+// 这类错误既不修改提供商状态，也不能因为池模式配置而回放当前 turn。
+func OpenAIWSHTTPBridgeRequestScopedError(provider *ExecutionProvider, statusCode int, message string, body []byte) bool {
 	if hit, _, _ := upstreamopenai.DetectOpenAICyberPolicy(body); hit {
 		return true
 	}
@@ -18,5 +18,5 @@ func OpenAIWSHTTPBridgeRequestScopedError(account *ExecutionAccount, statusCode 
 		upstreamopenai.IsOpenAIContextWindowError(message, body) {
 		return true
 	}
-	return account != nil && account.Record.Platform == capability.PlatformGrok && grok.IsGrokContentPolicyRejection(statusCode, body)
+	return provider != nil && provider.Record.Platform == capability.PlatformGrok && grok.IsGrokContentPolicyRejection(statusCode, body)
 }

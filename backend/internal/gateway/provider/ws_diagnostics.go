@@ -301,14 +301,14 @@ func LogOpenAIWSModeDebug(format string, args ...any) {
 	logging.LegacyPrintf("service.openai_gateway", "[debug] [OpenAI WS Mode][openai_ws_mode=true] "+format, args...)
 }
 
-func LogOpenAIWSBindResponseAccountWarn(groupID, accountID int64, responseID string, err error) {
+func LogOpenAIWSBindResponseProviderWarn(groupID, providerID int64, responseID string, err error) {
 	if err == nil {
 		return
 	}
 	logging.L().Warn(
-		"openai.ws_bind_response_account_failed",
+		"openai.ws_bind_response_provider_failed",
 		zap.Int64("group_id", groupID),
-		zap.Int64("account_id", accountID),
+		zap.Int64("provider_id", providerID),
 		zap.String("response_id", TruncateOpenAIWSLogValue(responseID, OpenAIWSIDValueMaxLen)),
 		zap.Error(err),
 	)

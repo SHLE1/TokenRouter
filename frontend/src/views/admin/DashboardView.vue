@@ -50,17 +50,17 @@
               </div>
               <div class="min-w-0">
                 <p class="text-xs font-medium text-gray-500 dark:text-gray-400">
-                  {{ t('admin.dashboard.accounts') }}
+                  {{ t('admin.dashboard.providers') }}
                 </p>
                 <p class="mt-0.5 whitespace-nowrap text-lg font-bold tabular-nums text-gray-900 dark:text-white lg:text-xl">
-                  {{ stats.total_accounts }}
+                  {{ stats.total_providers }}
                 </p>
                 <p class="mt-0.5 text-xs">
                   <span class="whitespace-nowrap text-green-600 dark:text-green-400"
-                    >{{ stats.normal_accounts }} {{ t('common.active') }}</span
+                    >{{ stats.normal_providers }} {{ t('common.active') }}</span
                   >
-                  <span v-if="stats.error_accounts > 0" class="ml-1 whitespace-nowrap text-red-500"
-                    >{{ stats.error_accounts }} {{ t('common.error') }}</span
+                  <span v-if="stats.error_providers > 0" class="ml-1 whitespace-nowrap text-red-500"
+                    >{{ stats.error_providers }} {{ t('common.error') }}</span
                   >
                 </p>
               </div>
@@ -133,8 +133,8 @@
                   <span class="text-gray-400 dark:text-gray-500"> / </span>
                   <span
                     class="whitespace-nowrap text-orange-500 dark:text-orange-400"
-                    :title="t('admin.dashboard.accountCostDescription')"
-                    >{{ formatUsdAmount(stats.today_account_cost, { withSymbol: true, fractionDigits: costDigits(stats.today_account_cost) }) }}</span
+                    :title="t('admin.dashboard.providerCostDescription')"
+                    >{{ formatUsdAmount(stats.today_provider_cost, { withSymbol: true, fractionDigits: costDigits(stats.today_provider_cost) }) }}</span
                   >
                   <span class="text-gray-400 dark:text-gray-500"> / </span>
                   <span
@@ -170,8 +170,8 @@
                   <span class="text-gray-400 dark:text-gray-500"> / </span>
                   <span
                     class="whitespace-nowrap text-orange-500 dark:text-orange-400"
-                    :title="t('admin.dashboard.accountCostDescription')"
-                    >{{ formatUsdAmount(stats.total_account_cost, { withSymbol: true, fractionDigits: costDigits(stats.total_account_cost) }) }}</span
+                    :title="t('admin.dashboard.providerCostDescription')"
+                    >{{ formatUsdAmount(stats.total_provider_cost, { withSymbol: true, fractionDigits: costDigits(stats.total_provider_cost) }) }}</span
                   >
                   <span class="text-gray-400 dark:text-gray-500"> / </span>
                   <span

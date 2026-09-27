@@ -204,8 +204,8 @@ type opsScheduledReport struct {
 
 	Recipients []string
 
-	ErrorDigestMinCount             int
-	AccountHealthErrorRateThreshold float64
+	ErrorDigestMinCount              int
+	ProviderHealthErrorRateThreshold float64
 
 	LastRunAt *time.Time
 	NextRunAt time.Time
@@ -247,7 +247,7 @@ func (s *OpsScheduledReportService) listScheduledReports(ctx context.Context, no
 		{enabled: emailCfg.Report.DailySummaryEnabled, name: "日报", kind: "daily_summary", timeRange: 24 * time.Hour, schedule: emailCfg.Report.DailySummarySchedule},
 		{enabled: emailCfg.Report.WeeklySummaryEnabled, name: "周报", kind: "weekly_summary", timeRange: 7 * 24 * time.Hour, schedule: emailCfg.Report.WeeklySummarySchedule},
 		{enabled: emailCfg.Report.ErrorDigestEnabled, name: "错误摘要", kind: "error_digest", timeRange: 24 * time.Hour, schedule: emailCfg.Report.ErrorDigestSchedule},
-		{enabled: emailCfg.Report.AccountHealthEnabled, name: "账号健康", kind: "account_health", timeRange: 24 * time.Hour, schedule: emailCfg.Report.AccountHealthSchedule},
+		{enabled: emailCfg.Report.ProviderHealthEnabled, name: "提供商健康", kind: "provider_health", timeRange: 24 * time.Hour, schedule: emailCfg.Report.ProviderHealthSchedule},
 	}
 
 	out := make([]*opsScheduledReport, 0, len(defs))
@@ -292,8 +292,8 @@ func (s *OpsScheduledReportService) listScheduledReports(ctx context.Context, no
 
 			Recipients: recipients,
 
-			ErrorDigestMinCount:             emailCfg.Report.ErrorDigestMinCount,
-			AccountHealthErrorRateThreshold: emailCfg.Report.AccountHealthErrorRateThreshold,
+			ErrorDigestMinCount:              emailCfg.Report.ErrorDigestMinCount,
+			ProviderHealthErrorRateThreshold: emailCfg.Report.ProviderHealthErrorRateThreshold,
 
 			LastRunAt: lastRunPtr,
 			NextRunAt: next,
@@ -459,11 +459,11 @@ func opsScheduledReportLocalizedName(report *opsScheduledReport, locale string) 
 			return "错误摘要"
 		}
 		return "Error digest"
-	case "account_health":
+	case "provider_health":
 		if chinese {
-			return "账号健康"
+			return "提供商健康"
 		}
-		return "Account health"
+		return "Provider health"
 	default:
 		return strings.TrimSpace(report.Name)
 	}
@@ -612,14 +612,14 @@ func (s *OpsScheduledReportService) generateReportContent(ctx context.Context, r
 			return opsScheduledReportContent{}, nil
 		}
 		return opsScheduledReportContent{html: buildOpsErrorDigestEmailHTML(report.Name, start, end, out)}, nil
-	case "account_health":
-		// Best-effort: use account availability (not error rate yet).
-		avail, err := s.opsService.GetAccountAvailability(ctx, "", nil)
+	case "provider_health":
+		// Best-effort: use provider availability (not error rate yet).
+		avail, err := s.opsService.GetProviderAvailability(ctx, "", nil)
 		if err != nil {
 			return opsScheduledReportContent{}, err
 		}
-		_ = report.AccountHealthErrorRateThreshold // reserved for future per-account error rate report
-		return opsScheduledReportContent{html: buildOpsAccountHealthEmailHTML(report.Name, start, end, avail)}, nil
+		_ = report.ProviderHealthErrorRateThreshold // reserved for future per-provider error rate report
+		return opsScheduledReportContent{html: buildOpsProviderHealthEmailHTML(report.Name, start, end, avail)}, nil
 	default:
 		return opsScheduledReportContent{}, fmt.Errorf("unknown report type: %s", report.ReportType)
 	}
@@ -740,14 +740,14 @@ func buildOpsErrorDigestEmailHTML(title string, start, end time.Time, list *OpsE
 	)
 }
 
-func buildOpsAccountHealthEmailHTML(title string, start, end time.Time, avail *OpsAccountAvailability) string {
+func buildOpsProviderHealthEmailHTML(title string, start, end time.Time, avail *OpsProviderAvailability) string {
 	total := 0
 	available := 0
 	rateLimited := 0
 	hasError := 0
 
-	if avail != nil && avail.Accounts != nil {
-		for _, a := range avail.Accounts {
+	if avail != nil && avail.Providers != nil {
+		for _, a := range avail.Providers {
 			if a == nil {
 				continue
 			}
@@ -768,12 +768,12 @@ func buildOpsAccountHealthEmailHTML(title string, start, end time.Time, avail *O
 <h2>%s</h2>
 <p><b>Period</b>: %s ~ %s (UTC)</p>
 <ul>
-  <li><b>Total Accounts</b>: %d</li>
+  <li><b>Total Providers</b>: %d</li>
   <li><b>Available</b>: %d</li>
   <li><b>Rate Limited</b>: %d</li>
   <li><b>Error</b>: %d</li>
 </ul>
-<p>Note: This report currently reflects account availability status only.</p>
+<p>Note: This report currently reflects provider availability status only.</p>
 `,
 		htmlEscape(strings.TrimSpace(title)),
 		htmlEscape(start.UTC().Format(time.RFC3339)),

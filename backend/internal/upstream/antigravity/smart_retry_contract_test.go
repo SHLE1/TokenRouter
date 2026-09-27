@@ -198,14 +198,14 @@ func TestParseAntigravitySmartRetryInfo(t *testing.T) {
 }
 
 func TestShouldTriggerAntigravitySmartRetry(t *testing.T) {
-	oauthAccount := true
-	setupTokenAccount := true
-	upstreamAccount := true
-	apiKeyAccount := false
+	oauthProvider := true
+	setupTokenProvider := true
+	upstreamProvider := true
+	apiKeyProvider := false
 
 	tests := []struct {
 		name                             string
-		account                          bool
+		provider                         bool
 		body                             string
 		expectedShouldRetry              bool
 		expectedShouldRateLimit          bool
@@ -214,8 +214,8 @@ func TestShouldTriggerAntigravitySmartRetry(t *testing.T) {
 		modelName                        string
 	}{
 		{
-			name:    "OAuth account with short delay (< 7s) - smart retry",
-			account: oauthAccount,
+			name:     "OAuth provider with short delay (< 7s) - smart retry",
+			provider: oauthProvider,
 			body: `{
 				"error": {
 					"status": "RESOURCE_EXHAUSTED",
@@ -231,8 +231,8 @@ func TestShouldTriggerAntigravitySmartRetry(t *testing.T) {
 			modelName:               "claude-opus-4",
 		},
 		{
-			name:    "SetupToken account with short delay - smart retry",
-			account: setupTokenAccount,
+			name:     "SetupToken provider with short delay - smart retry",
+			provider: setupTokenProvider,
 			body: `{
 				"error": {
 					"status": "RESOURCE_EXHAUSTED",
@@ -248,8 +248,8 @@ func TestShouldTriggerAntigravitySmartRetry(t *testing.T) {
 			modelName:               "gemini-3-flash",
 		},
 		{
-			name:    "OAuth account with long delay (>= 7s) - direct rate limit",
-			account: oauthAccount,
+			name:     "OAuth provider with long delay (>= 7s) - direct rate limit",
+			provider: oauthProvider,
 			body: `{
 				"error": {
 					"status": "RESOURCE_EXHAUSTED",
@@ -264,8 +264,8 @@ func TestShouldTriggerAntigravitySmartRetry(t *testing.T) {
 			modelName:               "claude-sonnet-4-5",
 		},
 		{
-			name:    "Upstream account with short delay - smart retry",
-			account: upstreamAccount,
+			name:     "Upstream provider with short delay - smart retry",
+			provider: upstreamProvider,
 			body: `{
 				"error": {
 					"status": "RESOURCE_EXHAUSTED",
@@ -281,8 +281,8 @@ func TestShouldTriggerAntigravitySmartRetry(t *testing.T) {
 			modelName:               "claude-sonnet-4-5",
 		},
 		{
-			name:    "API Key account - should not trigger",
-			account: apiKeyAccount,
+			name:     "API Key provider - should not trigger",
+			provider: apiKeyProvider,
 			body: `{
 				"error": {
 					"status": "RESOURCE_EXHAUSTED",
@@ -296,8 +296,8 @@ func TestShouldTriggerAntigravitySmartRetry(t *testing.T) {
 			expectedShouldRateLimit: false,
 		},
 		{
-			name:    "OAuth account with exactly 7s delay - direct rate limit",
-			account: oauthAccount,
+			name:     "OAuth provider with exactly 7s delay - direct rate limit",
+			provider: oauthProvider,
 			body: `{
 				"error": {
 					"status": "RESOURCE_EXHAUSTED",
@@ -313,8 +313,8 @@ func TestShouldTriggerAntigravitySmartRetry(t *testing.T) {
 			modelName:               "gemini-pro",
 		},
 		{
-			name:    "503 UNAVAILABLE with MODEL_CAPACITY_EXHAUSTED - long delay",
-			account: oauthAccount,
+			name:     "503 UNAVAILABLE with MODEL_CAPACITY_EXHAUSTED - long delay",
+			provider: oauthProvider,
 			body: `{
 				"error": {
 					"code": 503,
@@ -332,8 +332,8 @@ func TestShouldTriggerAntigravitySmartRetry(t *testing.T) {
 			modelName:                        "gemini-3-pro-high",
 		},
 		{
-			name:    "503 UNAVAILABLE with MODEL_CAPACITY_EXHAUSTED - no retryDelay - use fixed wait",
-			account: oauthAccount,
+			name:     "503 UNAVAILABLE with MODEL_CAPACITY_EXHAUSTED - no retryDelay - use fixed wait",
+			provider: oauthProvider,
 			body: `{
 				"error": {
 					"code": 503,
@@ -351,8 +351,8 @@ func TestShouldTriggerAntigravitySmartRetry(t *testing.T) {
 			modelName:                        "gemini-2.5-flash",
 		},
 		{
-			name:    "429 RESOURCE_EXHAUSTED with RATE_LIMIT_EXCEEDED - no retryDelay - use default rate limit",
-			account: oauthAccount,
+			name:     "429 RESOURCE_EXHAUSTED with RATE_LIMIT_EXCEEDED - no retryDelay - use default rate limit",
+			provider: oauthProvider,
 			body: `{
 				"error": {
 					"code": 429,
@@ -372,7 +372,7 @@ func TestShouldTriggerAntigravitySmartRetry(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			shouldRetry, shouldRateLimit, wait, model, isModelCapacityExhausted := ShouldTriggerAntigravitySmartRetry(tt.account, []byte(tt.body))
+			shouldRetry, shouldRateLimit, wait, model, isModelCapacityExhausted := ShouldTriggerAntigravitySmartRetry(tt.provider, []byte(tt.body))
 			if shouldRetry != tt.expectedShouldRetry {
 				t.Errorf("shouldRetry = %v, want %v", shouldRetry, tt.expectedShouldRetry)
 			}

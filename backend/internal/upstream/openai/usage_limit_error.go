@@ -30,7 +30,7 @@ func ParseUsageLimitResetTime(body []byte, now func() time.Time) *int64 {
 		return nil
 	}
 
-	// 检查是否为已知的账号用量限制类型。
+	// 检查是否为已知的提供商用量限制类型。
 	errType, _ := errObj["type"].(string)
 	if errType != "usage_limit_reached" && errType != "rate_limit_exceeded" && errType != "GoUsageLimitError" {
 		return nil
@@ -150,5 +150,7 @@ func ParseUsageLimitPlanType(body []byte) string {
 	return strings.ToLower(strings.TrimSpace(planType))
 }
 
-var openCodeGoUsageLimitResetPattern = regexp.MustCompile(`(?i)\bresets\s+in\s+`)
-var openCodeGoUsageLimitDurationPartPattern = regexp.MustCompile(`(?i)^([0-9]+(?:\.[0-9]+)?)\s*(s|sec|secs|second|seconds|m|min|mins|minute|minutes|h|hr|hrs|hour|hours|d|day|days|w|week|weeks)\b`)
+var (
+	openCodeGoUsageLimitResetPattern        = regexp.MustCompile(`(?i)\bresets\s+in\s+`)
+	openCodeGoUsageLimitDurationPartPattern = regexp.MustCompile(`(?i)^([0-9]+(?:\.[0-9]+)?)\s*(s|sec|secs|second|seconds|m|min|mins|minute|minutes|h|hr|hrs|hour|hours|d|day|days|w|week|weeks)\b`)
+)

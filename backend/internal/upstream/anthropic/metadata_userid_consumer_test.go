@@ -100,11 +100,11 @@ func TestFormatMetadataUserID_EmptyVersion_Legacy(t *testing.T) {
 }
 
 func TestFormatMetadataUserID_EmptyAccountUUID(t *testing.T) {
-	// Legacy format with empty account UUID → double underscore
+	// Legacy format with empty provider UUID → double underscore
 	result := anthropic.FormatMetadataUserID("deadbeef"+"00112233445566778899aabbccddeeff0011223344556677", "", "sess-uuid", "2.1.22")
 	require.Contains(t, result, "_account__session_")
 
-	// New format with empty account UUID → empty string in JSON
+	// New format with empty provider UUID → empty string in JSON
 	result = anthropic.FormatMetadataUserID("deadbeef"+"00112233445566778899aabbccddeeff0011223344556677", "", "sess-uuid", "2.1.78")
 	require.Contains(t, result, `"account_uuid":""`)
 }
@@ -136,28 +136,28 @@ func TestIsNewMetadataFormatVersion(t *testing.T) {
 
 func TestParseFormat_RoundTrip_Legacy(t *testing.T) {
 	deviceID := "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2"
-	accountUUID := "550e8400-e29b-41d4-a716-446655440000"
+	providerUUID := "550e8400-e29b-41d4-a716-446655440000"
 	sessionID := "123e4567-e89b-12d3-a456-426614174000"
 
-	formatted := anthropic.FormatMetadataUserID(deviceID, accountUUID, sessionID, "2.1.22")
+	formatted := anthropic.FormatMetadataUserID(deviceID, providerUUID, sessionID, "2.1.22")
 	parsed := anthropic.ParseMetadataUserID(formatted)
 	require.NotNil(t, parsed)
 	require.Equal(t, deviceID, parsed.DeviceID)
-	require.Equal(t, accountUUID, parsed.AccountUUID)
+	require.Equal(t, providerUUID, parsed.AccountUUID)
 	require.Equal(t, sessionID, parsed.SessionID)
 	require.False(t, parsed.IsNewFormat)
 }
 
 func TestParseFormat_RoundTrip_JSON(t *testing.T) {
 	deviceID := "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2"
-	accountUUID := "550e8400-e29b-41d4-a716-446655440000"
+	providerUUID := "550e8400-e29b-41d4-a716-446655440000"
 	sessionID := "123e4567-e89b-12d3-a456-426614174000"
 
-	formatted := anthropic.FormatMetadataUserID(deviceID, accountUUID, sessionID, "2.1.78")
+	formatted := anthropic.FormatMetadataUserID(deviceID, providerUUID, sessionID, "2.1.78")
 	parsed := anthropic.ParseMetadataUserID(formatted)
 	require.NotNil(t, parsed)
 	require.Equal(t, deviceID, parsed.DeviceID)
-	require.Equal(t, accountUUID, parsed.AccountUUID)
+	require.Equal(t, providerUUID, parsed.AccountUUID)
 	require.Equal(t, sessionID, parsed.SessionID)
 	require.True(t, parsed.IsNewFormat)
 }
@@ -166,7 +166,7 @@ func TestParseFormat_RoundTrip_EmptyAccountUUID(t *testing.T) {
 	deviceID := "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2"
 	sessionID := "123e4567-e89b-12d3-a456-426614174000"
 
-	// Legacy round-trip with empty account UUID
+	// Legacy round-trip with empty provider UUID
 	formatted := anthropic.FormatMetadataUserID(deviceID, "", sessionID, "2.1.22")
 	parsed := anthropic.ParseMetadataUserID(formatted)
 	require.NotNil(t, parsed)
@@ -174,7 +174,7 @@ func TestParseFormat_RoundTrip_EmptyAccountUUID(t *testing.T) {
 	require.Equal(t, "", parsed.AccountUUID)
 	require.Equal(t, sessionID, parsed.SessionID)
 
-	// JSON round-trip with empty account UUID
+	// JSON round-trip with empty provider UUID
 	formatted = anthropic.FormatMetadataUserID(deviceID, "", sessionID, "2.1.78")
 	parsed = anthropic.ParseMetadataUserID(formatted)
 	require.NotNil(t, parsed)

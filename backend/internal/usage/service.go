@@ -11,9 +11,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
 )
 
-var (
-	ErrUsageLogNotFound = infraerrors.NotFound("USAGE_LOG_NOT_FOUND", "usage log not found")
-)
+var ErrUsageLogNotFound = infraerrors.NotFound("USAGE_LOG_NOT_FOUND", "usage log not found")
 
 // UsageSummary 使用统计
 type UsageSummary struct {
@@ -42,9 +40,10 @@ func NewUsageService(usageRepo UsageLogRepository, optional ...QueryReaders) *Us
 	if len(optional) > 0 {
 		readers = optional[0]
 	}
-	return &UsageService{statsQueryCache: querycache.NewCache(30 * time.Second),
-		usageRepo: usageRepo,
-		readers:   readers,
+	return &UsageService{
+		statsQueryCache: querycache.NewCache(30 * time.Second),
+		usageRepo:       usageRepo,
+		readers:         readers,
 	}
 }
 
@@ -75,9 +74,9 @@ func (s *UsageService) ListByAPIKey(ctx context.Context, apiKeyID int64, params 
 	return logs, pagination, nil
 }
 
-// ListByAccount 获取账号的使用日志列表
-func (s *UsageService) ListByAccount(ctx context.Context, accountID int64, params pagination.PaginationParams) ([]UsageLog, *pagination.PaginationResult, error) {
-	logs, pagination, err := s.usageRepo.ListByAccount(ctx, accountID, params)
+// ListByProvider 获取提供商的使用日志列表
+func (s *UsageService) ListByProvider(ctx context.Context, providerID int64, params pagination.PaginationParams) ([]UsageLog, *pagination.PaginationResult, error) {
+	logs, pagination, err := s.usageRepo.ListByProvider(ctx, providerID, params)
 	if err != nil {
 		return nil, nil, fmt.Errorf("list usage logs: %w", err)
 	}
@@ -126,11 +125,11 @@ func (s *UsageService) GetStatsByAPIKey(ctx context.Context, apiKeyID int64, sta
 	}, nil
 }
 
-// GetStatsByAccount 获取账号的使用统计
-func (s *UsageService) GetStatsByAccount(ctx context.Context, accountID int64, startTime, endTime time.Time) (*UsageSummary, error) {
-	stats, err := s.usageRepo.GetAccountStatsAggregated(ctx, accountID, startTime, endTime)
+// GetStatsByProvider 获取提供商的使用统计
+func (s *UsageService) GetStatsByProvider(ctx context.Context, providerID int64, startTime, endTime time.Time) (*UsageSummary, error) {
+	stats, err := s.usageRepo.GetProviderStatsAggregated(ctx, providerID, startTime, endTime)
 	if err != nil {
-		return nil, fmt.Errorf("get account stats: %w", err)
+		return nil, fmt.Errorf("get provider stats: %w", err)
 	}
 
 	return &UsageSummary{
@@ -227,7 +226,6 @@ func (s *UsageService) GetUserUsageTrendByUserID(ctx context.Context, userID int
 
 // GetUsageTrendWithFilters 使用统一过滤条件获取用量趋势。
 func (s *UsageService) GetUsageTrendWithFilters(ctx context.Context, startTime, endTime time.Time, granularity string, filters UsageLogFilters) ([]TrendDataPoint, error) {
-
 	if filterRepo := s.readers.UsageTrendWithFiltersRepo; filterRepo != nil {
 		trend, err := filterRepo.GetUsageTrendWithUsageFilters(ctx, startTime, endTime, granularity, filters)
 		if err != nil {
@@ -235,7 +233,7 @@ func (s *UsageService) GetUsageTrendWithFilters(ctx context.Context, startTime, 
 		}
 		return trend, nil
 	}
-	trend, err := s.usageRepo.GetUsageTrendWithFilters(ctx, startTime, endTime, granularity, filters.UserID, filters.APIKeyID, filters.AccountID, filters.GroupID, filters.Model, filters.RequestType, filters.Stream, filters.BillingType)
+	trend, err := s.usageRepo.GetUsageTrendWithFilters(ctx, startTime, endTime, granularity, filters.UserID, filters.APIKeyID, filters.ProviderID, filters.GroupID, filters.Model, filters.RequestType, filters.Stream, filters.BillingType)
 	if err != nil {
 		return nil, fmt.Errorf("get usage trend with filters: %w", err)
 	}
@@ -264,13 +262,13 @@ func (s *UsageService) GetModelStatsWithFiltersBySource(ctx context.Context, sta
 	}
 
 	if sourceRepo := s.readers.ModelStatsBySourceRepo; sourceRepo != nil {
-		stats, err := sourceRepo.GetModelStatsWithFiltersBySource(ctx, startTime, endTime, filters.UserID, filters.APIKeyID, filters.AccountID, filters.GroupID, filters.RequestType, filters.Stream, filters.BillingType, normalizedSource)
+		stats, err := sourceRepo.GetModelStatsWithFiltersBySource(ctx, startTime, endTime, filters.UserID, filters.APIKeyID, filters.ProviderID, filters.GroupID, filters.RequestType, filters.Stream, filters.BillingType, normalizedSource)
 		if err != nil {
 			return nil, fmt.Errorf("get model stats with filters by source: %w", err)
 		}
 		return stats, nil
 	}
-	stats, err := s.usageRepo.GetModelStatsWithFilters(ctx, startTime, endTime, filters.UserID, filters.APIKeyID, filters.AccountID, filters.GroupID, filters.RequestType, filters.Stream, filters.BillingType)
+	stats, err := s.usageRepo.GetModelStatsWithFilters(ctx, startTime, endTime, filters.UserID, filters.APIKeyID, filters.ProviderID, filters.GroupID, filters.RequestType, filters.Stream, filters.BillingType)
 	if err != nil {
 		return nil, fmt.Errorf("get model stats with filters: %w", err)
 	}
@@ -279,7 +277,6 @@ func (s *UsageService) GetModelStatsWithFiltersBySource(ctx context.Context, sta
 
 // GetGroupStatsWithFilters 使用统一过滤条件获取分组统计。
 func (s *UsageService) GetGroupStatsWithFilters(ctx context.Context, startTime, endTime time.Time, filters UsageLogFilters) ([]GroupStat, error) {
-
 	if filterRepo := s.readers.GroupStatsWithUsageFiltersRepo; filterRepo != nil {
 		stats, err := filterRepo.GetGroupStatsWithUsageFilters(ctx, startTime, endTime, filters)
 		if err != nil {
@@ -287,7 +284,7 @@ func (s *UsageService) GetGroupStatsWithFilters(ctx context.Context, startTime, 
 		}
 		return stats, nil
 	}
-	stats, err := s.usageRepo.GetGroupStatsWithFilters(ctx, startTime, endTime, filters.UserID, filters.APIKeyID, filters.AccountID, filters.GroupID, filters.RequestType, filters.Stream, filters.BillingType)
+	stats, err := s.usageRepo.GetGroupStatsWithFilters(ctx, startTime, endTime, filters.UserID, filters.APIKeyID, filters.ProviderID, filters.GroupID, filters.RequestType, filters.Stream, filters.BillingType)
 	if err != nil {
 		return nil, fmt.Errorf("get group stats with filters: %w", err)
 	}

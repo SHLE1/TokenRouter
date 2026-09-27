@@ -18,7 +18,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// RequestMetadata 是解析完成的入站投影，不保存 Gin 或完整账号。
+// RequestMetadata 是解析完成的入站投影，不保存 Gin 或完整提供商。
 type RequestMetadata struct {
 	APIKeyID   int64
 	ClaudeCode bool
@@ -482,7 +482,7 @@ func (p *QoderConversationPlan) PreviousUsageSnapshot() (bool, int, int) {
 	return hasUsage, lastUsageInput, lastUsageOutput
 }
 
-func (p *QoderConversationPlan) Log(metadata RequestMetadata, accountID int64, protocol, model, keySource string, request QoderPayloadRequest, payload map[string]any) {
+func (p *QoderConversationPlan) Log(metadata RequestMetadata, providerID int64, protocol, model, keySource string, request QoderPayloadRequest, payload map[string]any) {
 	if p == nil {
 		return
 	}
@@ -516,7 +516,7 @@ func (p *QoderConversationPlan) Log(metadata RequestMetadata, accountID int64, p
 		zap.String("key_source", keySource),
 		zap.String("key_hash", upstream.HashSensitiveValueForLog(p.Key)),
 		zap.String("match_status", p.MatchStatus),
-		zap.Int64("account_id", accountID),
+		zap.Int64("provider_id", providerID),
 		zap.Int64("api_key_id", metadata.APIKeyID),
 		zap.String("request_id", p.Diagnostics.RequestID),
 		zap.Bool("reused", p.Reused),
@@ -583,7 +583,7 @@ func (p *QoderConversationPlan) ShouldTreatUsageAsCumulative(usage upstream.Toke
 	return diag.SentMessages < diag.OriginalMessages || diag.SentToolsBytes < diag.OriginalToolsBytes || diag.SentSystemBytes < diag.SystemBytes
 }
 
-func (p *QoderConversationPlan) LogUsage(metadata RequestMetadata, accountID int64, upstreamUsage upstream.TokenUsage, recordUsage upstream.TokenUsage) {
+func (p *QoderConversationPlan) LogUsage(metadata RequestMetadata, providerID int64, upstreamUsage upstream.TokenUsage, recordUsage upstream.TokenUsage) {
 	if p == nil {
 		return
 	}
@@ -595,7 +595,7 @@ func (p *QoderConversationPlan) LogUsage(metadata RequestMetadata, accountID int
 		zap.String("protocol", diag.Protocol),
 		zap.String("model", diag.Model),
 		zap.String("key_source", diag.KeySource),
-		zap.Int64("account_id", accountID),
+		zap.Int64("provider_id", providerID),
 		zap.Int64("api_key_id", metadata.APIKeyID),
 		zap.String("request_id", diag.RequestID),
 		zap.Bool("reused", p.Reused),
@@ -620,36 +620,36 @@ func (p *QoderConversationPlan) LogUsage(metadata RequestMetadata, accountID int
 	)
 }
 
-func QoderConversationKey(metadata RequestMetadata, accountID int64, protocol string, request QoderPayloadRequest) (string, string) {
+func QoderConversationKey(metadata RequestMetadata, providerID int64, protocol string, request QoderPayloadRequest) (string, string) {
 	if value := strings.TrimSpace(request.ExplicitSession); value != "" && !request.AutoResponseSession {
-		return QoderAccountScopedConversationKey(accountID, QoderConversationExplicitSessionKey(metadata, value)), "body_session"
+		return QoderProviderScopedConversationKey(providerID, QoderConversationExplicitSessionKey(metadata, value)), "body_session"
 	}
 	if value := strings.TrimSpace(request.PromptCacheKey); value != "" {
-		return QoderAccountScopedConversationKey(accountID, "prompt_cache_key:"+upstream.IsolateSessionID(metadata.APIKeyID, value)), "prompt_cache_key"
+		return QoderProviderScopedConversationKey(providerID, "prompt_cache_key:"+upstream.IsolateSessionID(metadata.APIKeyID, value)), "prompt_cache_key"
 	}
 	if parsed := protocolanthropic.ParseMetadataUserID(request.MetadataUserID); parsed != nil && strings.TrimSpace(parsed.SessionID) != "" {
-		return QoderAccountScopedConversationKey(accountID, "metadata_user_id:"+upstream.IsolateSessionID(metadata.APIKeyID, parsed.SessionID)), "metadata_user_id"
+		return QoderProviderScopedConversationKey(providerID, "metadata_user_id:"+upstream.IsolateSessionID(metadata.APIKeyID, parsed.SessionID)), "metadata_user_id"
 	}
 	if value := QoderHeaderSessionID(metadata.Headers); value != "" {
-		return QoderAccountScopedConversationKey(accountID, "header:"+upstream.IsolateSessionID(metadata.APIKeyID, value)), "header"
+		return QoderProviderScopedConversationKey(providerID, "header:"+upstream.IsolateSessionID(metadata.APIKeyID, value)), "header"
 	}
 	if metadata.ClaudeCode {
 		if value := QoderClaudeCodeStablePrefixKey(request); value != "" {
-			return QoderAccountScopedConversationKey(accountID, "claude_code_prefix:"+upstream.IsolateSessionID(metadata.APIKeyID, value)), "claude_code_prefix"
+			return QoderProviderScopedConversationKey(providerID, "claude_code_prefix:"+upstream.IsolateSessionID(metadata.APIKeyID, value)), "claude_code_prefix"
 		}
 	}
 	if value := strings.TrimSpace(request.ExplicitSession); value != "" {
-		return QoderAccountScopedConversationKey(accountID, QoderConversationExplicitSessionKey(metadata, value)), "body_session"
+		return QoderProviderScopedConversationKey(providerID, QoderConversationExplicitSessionKey(metadata, value)), "body_session"
 	}
-	return QoderAccountScopedConversationKey(accountID, "request:"+uuid.NewString()), "request"
+	return QoderProviderScopedConversationKey(providerID, "request:"+uuid.NewString()), "request"
 }
 
-func QoderAccountScopedConversationKey(accountID int64, key string) string {
+func QoderProviderScopedConversationKey(providerID int64, key string) string {
 	key = strings.TrimSpace(key)
-	if key == "" || accountID <= 0 {
+	if key == "" || providerID <= 0 {
 		return key
 	}
-	return fmt.Sprintf("account:%d:%s", accountID, key)
+	return fmt.Sprintf("account:%d:%s", providerID, key)
 }
 
 func QoderConversationExplicitSessionKey(metadata RequestMetadata, value string) string {

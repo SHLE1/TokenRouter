@@ -7,7 +7,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/modelmap"
 )
 
-// Evaluate 只评估已取得的策略与显式账号投影，保持用户优先及组内首条命中。
+// Evaluate 只评估已取得的策略与显式提供商投影，保持用户优先及组内首条命中。
 func Evaluate(settings *OpenAIFastPolicySettings, userID int64, isOAuth, isBedrock bool, model, tier string) (action, errMsg string) {
 	if settings == nil {
 		return "pass", ""

@@ -13,7 +13,7 @@ import (
 )
 
 type GrokMediaOptions struct {
-	AccountID      int64
+	ProviderID     int64
 	Endpoint       grok.GrokMediaEndpoint
 	Request        *http.Request `json:"-"`
 	StartedAt      time.Time
@@ -29,7 +29,7 @@ type GrokMediaOptions struct {
 
 // String 防止技术参数中的令牌或请求被默认日志展开。
 func (o GrokMediaOptions) String() string {
-	return fmt.Sprintf("media GrokMedia account=%d", o.AccountID)
+	return fmt.Sprintf("media GrokMedia provider=%d", o.ProviderID)
 }
 func (o GrokMediaOptions) GoString() string { return o.String() }
 
@@ -38,7 +38,7 @@ type GrokMedia struct{ Options GrokMediaOptions }
 func (e GrokMedia) Execute(ctx context.Context, input upstream.AttemptInput, sink upstream.OutputSink) (upstream.AttemptResult, error) {
 	o := e.Options
 	target := &grok.MediaTarget{
-		AccountID:      o.AccountID,
+		ProviderID:     o.ProviderID,
 		Endpoint:       o.Endpoint,
 		Request:        o.Request,
 		StartedAt:      o.StartedAt,

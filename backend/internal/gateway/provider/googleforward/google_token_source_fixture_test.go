@@ -4,25 +4,24 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
-	"github.com/TokenFlux/TokenRouter/internal/account/provider"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 )
 
 // 旧执行链夹具直接使用原生源，技术依赖按原零配置构造注入。
-func newGeminiTokenSourceForTest() *account.GeminiTokenSource {
-	return &account.GeminiTokenSource{Options: account.GeminiTokenOptions{
-
+func newGeminiTokenSourceForTest() *provider.GeminiTokenSource {
+	return &provider.GeminiTokenSource{Options: provider.GeminiTokenOptions{
 		Debug: slog.Debug,
 		Warn:  slog.Warn,
 
-		Vertex: func(ctx context.Context, value *account.Record) (string, error) {
-			return provider.VertexServiceAccountAccessToken(ctx, nil, value)
+		Vertex: func(ctx context.Context, value *provider.Record) (string, error) {
+			return provideradapter.VertexServiceAccountAccessToken(ctx, nil, value)
 		},
 	}}
 }
 
-func newAntigravityTokenSourceForTest(cache account.AccessTokenCache) *account.AntigravityTokenSource {
-	return &account.AntigravityTokenSource{Options: account.AntigravityTokenOptions{
+func newAntigravityTokenSourceForTest(cache provider.AccessTokenCache) *provider.AntigravityTokenSource {
+	return &provider.AntigravityTokenSource{Options: provider.AntigravityTokenOptions{
 		Cache: cache, Debug: slog.Debug, Warn: slog.Warn,
 	}}
 }

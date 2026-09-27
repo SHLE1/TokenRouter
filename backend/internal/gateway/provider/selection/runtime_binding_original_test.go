@@ -18,7 +18,7 @@ func TestSchedulerRuntimeBindingKeepsSharedState(t *testing.T) {
 	gemini := NewGemini(GeminiDependencies{Shared: shared}, DefaultOptions())
 	diagnostics := NewDiagnostics(nil, shared, messages, openai)
 	require.Same(t, feedback, messages.advancedSchedulerStats())
-	require.Same(t, feedback, openai.openaiAccountStats)
+	require.Same(t, feedback, openai.openaiProviderStats)
 	require.Same(t, feedback, gemini.advancedSchedulerStats())
 	require.Same(t, feedback, diagnostics.feedback)
 	require.Same(t, settings, messages.schedulerParameters)

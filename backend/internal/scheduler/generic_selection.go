@@ -10,10 +10,10 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
-	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy" // FlowAccount 是一次选择使用的无凭据投影；关联号仅供外部当前调用的形状转接。
+	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy" // FlowProvider 是一次选择使用的无凭据投影；关联号仅供外部当前调用的形状转接。
 )
 
-type FlowAccount struct {
+type FlowProvider struct {
 	Plan                                       *routing.CandidatePlan
 	ProjectionID                               uint64
 	ID                                         int64
@@ -23,31 +23,31 @@ type FlowAccount struct {
 	LastUsedAt, SessionWindowEnd               *time.Time
 }
 
-func (a *FlowAccount) IsPrivacySet() bool       { return a.PrivacySet }
-func (a *FlowAccount) EffectiveLoadFactor() int { return a.LoadFactor }
-func (a *FlowAccount) GetBaseRPM() int          { return a.BaseRPM }
+func (a *FlowProvider) IsPrivacySet() bool       { return a.PrivacySet }
+func (a *FlowProvider) EffectiveLoadFactor() int { return a.LoadFactor }
+func (a *FlowProvider) GetBaseRPM() int          { return a.BaseRPM }
 
 type FlowGroup struct {
 	routing.Group
 	ProjectionID uint64
 }
-type AccountWaitPlan struct {
-	AccountID      int64
+type ProviderWaitPlan struct {
+	ProviderID     int64
 	MaxConcurrency int
 	Timeout        time.Duration
 	MaxWaiting     int
 }
 type FlowSelection struct {
-	Account                   *FlowAccount
+	Provider                  *FlowProvider
 	Acquired                  bool
 	ReleaseFunc               func()
-	WaitPlan                  *AccountWaitPlan
+	WaitPlan                  *ProviderWaitPlan
 	AdvancedScheduler         bool
 	AdvancedSchedulerFeedback *policy.FeedbackConfig
 }
 type FlowLoad struct {
-	Account  *FlowAccount
-	LoadInfo *AccountLoadInfo
+	Provider *FlowProvider
+	LoadInfo *ProviderLoadInfo
 }
 type FlowOptions struct {
 	LoadBatchEnabled, PreferSoonestReset          bool
@@ -56,46 +56,46 @@ type FlowOptions struct {
 	FallbackWaitTimeout, StickySessionWaitTimeout time.Duration
 }
 
-// GenericSelectionPorts 仅提供现存平台资格、路由投影和明确的账号读写入口；选择规则归核心。
+// GenericSelectionPorts 仅提供现存平台资格、路由投影和明确的提供商读写入口；选择规则归核心。
 type GenericSelectionPorts struct {
-	ReadGroup                   func(context.Context, int64) (*FlowGroup, error)
-	ForcePlatform               func(context.Context) (string, bool)
-	ResolveGroupByID            func(context.Context, int64) (*FlowGroup, error)
-	ResolveGatewayGroup         func(context.Context, *int64) (*FlowGroup, *int64, error)
-	HydrateSelectedAccount      func(context.Context, *FlowAccount) (*FlowAccount, error)
-	RoutingAccountIDsForRequest func(context.Context, *int64, string, string) []int64
-	GetSchedulableAccount       func(context.Context, int64) (*FlowAccount, error)
-	IsAccountInGroup            func(*FlowAccount, *int64) bool
-	LogDetailedSelectionFailure func(context.Context, *int64, string, string, string, []FlowAccount, map[int64]struct{}, bool) string
+	ReadGroup                    func(context.Context, int64) (*FlowGroup, error)
+	ForcePlatform                func(context.Context) (string, bool)
+	ResolveGroupByID             func(context.Context, int64) (*FlowGroup, error)
+	ResolveGatewayGroup          func(context.Context, *int64) (*FlowGroup, *int64, error)
+	HydrateSelectedProvider      func(context.Context, *FlowProvider) (*FlowProvider, error)
+	RoutingProviderIDsForRequest func(context.Context, *int64, string, string) []int64
+	GetSchedulableProvider       func(context.Context, int64) (*FlowProvider, error)
+	IsProviderInGroup            func(*FlowProvider, *int64) bool
+	LogDetailedSelectionFailure  func(context.Context, *int64, string, string, string, []FlowProvider, map[int64]struct{}, bool) string
 
-	SelectAccountForModelWithExclusions          func(ctx context.Context, groupID *int64, sessionHash string, requestedModel string, excludedIDs map[int64]struct{}) (*FlowAccount, error)
+	SelectProviderForModelWithExclusions         func(ctx context.Context, groupID *int64, sessionHash string, requestedModel string, excludedIDs map[int64]struct{}) (*FlowProvider, error)
 	AdvancedSchedulerEffectiveSettingsForRequest func(ctx context.Context, groupID *int64) policy.EffectiveSettings
 	AdvancedSchedulerStats                       func() *RuntimeStats
-	GroupMappedModelForAccountLayer              func(ctx context.Context, requestedModel string) string
-	CheckAndRegisterSession                      func(ctx context.Context, account *FlowAccount, session string) bool
+	GroupMappedModelForProviderLayer             func(ctx context.Context, requestedModel string) string
+	CheckAndRegisterSession                      func(ctx context.Context, provider *FlowProvider, session string) bool
 	CheckGroupModelRestriction                   func(ctx context.Context, groupID *int64, requestedModel string) bool
 	CheckClaudeCodeRestriction                   func(ctx context.Context, groupID *int64) (*FlowGroup, *int64, error)
 	DebugModelRoutingEnabled                     func() bool
-	GroupModelUnsupportedErrorIfApplicable       func(ctx context.Context, accounts []FlowAccount, requestedModel string, platform string, excludedIDs map[int64]struct{}, useMixed bool, groupID *int64, schedGroup *FlowGroup) error
-	IsAccountAllowedForPlatform                  func(account *FlowAccount, platform string, useMixed bool) bool
-	IsAccountSchedulableForModelSelection        func(ctx context.Context, account *FlowAccount, requestedModel string) bool
-	IsAccountSchedulableForQuota                 func(account *FlowAccount) bool
-	IsAccountSchedulableForRPM                   func(ctx context.Context, account *FlowAccount, sticky bool) bool
-	IsAccountSchedulableForSelection             func(account *FlowAccount) bool
-	IsAccountSchedulableForWindowCost            func(ctx context.Context, account *FlowAccount, sticky bool) bool
-	IsModelSupportedByAccountWithContext         func(ctx context.Context, account *FlowAccount, requestedModel string) bool
-	IsUpstreamModelRestrictedByGroup             func(ctx context.Context, groupID int64, account *FlowAccount, requestedModel string) bool
-	ListSchedulableAccounts                      func(ctx context.Context, groupID *int64, platform string, hasForcePlatform bool) ([]FlowAccount, bool, error)
+	GroupModelUnsupportedErrorIfApplicable       func(ctx context.Context, providers []FlowProvider, requestedModel string, platform string, excludedIDs map[int64]struct{}, useMixed bool, groupID *int64, schedGroup *FlowGroup) error
+	IsProviderAllowedForPlatform                 func(provider *FlowProvider, platform string, useMixed bool) bool
+	IsProviderSchedulableForModelSelection       func(ctx context.Context, provider *FlowProvider, requestedModel string) bool
+	IsProviderSchedulableForQuota                func(provider *FlowProvider) bool
+	IsProviderSchedulableForRPM                  func(ctx context.Context, provider *FlowProvider, sticky bool) bool
+	IsProviderSchedulableForSelection            func(provider *FlowProvider) bool
+	IsProviderSchedulableForWindowCost           func(ctx context.Context, provider *FlowProvider, sticky bool) bool
+	IsModelSupportedByProviderWithContext        func(ctx context.Context, provider *FlowProvider, requestedModel string) bool
+	IsUpstreamModelRestrictedByGroup             func(ctx context.Context, groupID int64, provider *FlowProvider, requestedModel string) bool
+	ListSchedulableProviders                     func(ctx context.Context, groupID *int64, platform string, hasForcePlatform bool) ([]FlowProvider, bool, error)
 	NeedsUpstreamGroupRestrictionCheck           func(ctx context.Context, groupID *int64) bool
-	NewSelectionResult                           func(ctx context.Context, account *FlowAccount, acquired bool, release func(), waitPlan *AccountWaitPlan) (*FlowSelection, error)
+	NewSelectionResult                           func(ctx context.Context, provider *FlowProvider, acquired bool, release func(), waitPlan *ProviderWaitPlan) (*FlowSelection, error)
 	ResolvePlatform                              func(ctx context.Context, groupID *int64, group *FlowGroup) (string, bool, error)
 	SchedulingConfig                             func() FlowOptions
-	ShouldClearStickySessionForAccountLayer      func(ctx context.Context, account *FlowAccount, requestedModel string) bool
-	TryAcquireAccountSlot                        func(ctx context.Context, accountID int64, maxConcurrency int) (*AcquireResult, error)
+	ShouldClearStickySessionForProviderLayer     func(ctx context.Context, provider *FlowProvider, requestedModel string) bool
+	TryAcquireProviderSlot                       func(ctx context.Context, providerID int64, maxConcurrency int) (*AcquireResult, error)
 	WithGroupContext                             func(ctx context.Context, group *FlowGroup) context.Context
-	WithRPMPrefetch                              func(ctx context.Context, accounts []FlowAccount) context.Context
-	WithWindowCostPrefetch                       func(ctx context.Context, accounts []FlowAccount) context.Context
-	SetAccountError                              func(context.Context, int64, string) error
+	WithRPMPrefetch                              func(ctx context.Context, providers []FlowProvider) context.Context
+	WithWindowCostPrefetch                       func(ctx context.Context, providers []FlowProvider) context.Context
+	SetProviderError                             func(context.Context, int64, string) error
 	PrefetchedSticky                             func(context.Context, *int64) int64
 }
 
@@ -112,7 +112,7 @@ func NewGenericSelector(ports GenericSelectionPorts, cache StickyCache, concurre
 	return &GenericSelector{ports: ports, cache: cache, concurrencyService: concurrency, diagnostics: diagnostics, now: now}
 }
 
-var ErrNoAvailableAccounts = errors.New("no available accounts")
+var ErrNoAvailableProviders = errors.New("no available providers")
 
 const stickySessionTTL = time.Hour
 
@@ -130,7 +130,7 @@ func (s *GenericSelector) Select(ctx context.Context, input SelectionInput) (*Fl
 	for id := range excludedIDs {
 		excludedIDsList = append(excludedIDsList, id)
 	}
-	s.diagnostics.event("debug", "account_scheduling_starting",
+	s.diagnostics.event("debug", "provider_scheduling_starting",
 		"group_id", derefGroupID(groupID),
 		"model", requestedModel,
 		"session", shortFlowSessionHash(sessionHash),
@@ -152,28 +152,28 @@ func (s *GenericSelector) Select(ctx context.Context, input SelectionInput) (*Fl
 		s.diagnostics.event("warn", "group model restriction blocked request",
 			"group_id", derefGroupID(groupID),
 			"model", requestedModel)
-		return nil, fmt.Errorf("%w supporting model: %s (group model restriction)", ErrNoAvailableAccounts, requestedModel)
+		return nil, fmt.Errorf("%w supporting model: %s (group model restriction)", ErrNoAvailableProviders, requestedModel)
 	}
 
-	var stickyAccountID int64
+	var stickyProviderID int64
 	var stickySource string
 	if prefetch := s.ports.PrefetchedSticky(ctx, groupID); prefetch > 0 {
-		stickyAccountID = prefetch
+		stickyProviderID = prefetch
 		stickySource = "prefetch"
 	} else if sessionHash != "" && s.cache != nil {
-		if accountID, err := s.cache.GetSessionAccountID(ctx, derefGroupID(groupID), sessionHash); err == nil {
-			stickyAccountID = accountID
+		if providerID, err := s.cache.GetSessionProviderID(ctx, derefGroupID(groupID), sessionHash); err == nil {
+			stickyProviderID = providerID
 			stickySource = "cache"
 		}
 	}
 	stickyEscaped := false
-	if usesAdvancedScheduler && !advancedStickyWeighted && stickyAccountID > 0 {
+	if usesAdvancedScheduler && !advancedStickyWeighted && stickyProviderID > 0 {
 		escapeCfg := s.ports.AdvancedSchedulerEffectiveSettingsForRequest(ctx, groupID).StickyEscape
-		if reason, errorRate, ttft, shouldEscape := ShouldEscapeSticky(s.ports.AdvancedSchedulerStats(), stickyAccountID, escapeCfg); shouldEscape {
+		if reason, errorRate, ttft, shouldEscape := ShouldEscapeSticky(s.ports.AdvancedSchedulerStats(), stickyProviderID, escapeCfg); shouldEscape {
 			stickyEscaped = true
 			ctx = WithPreservedSticky(ctx)
 			s.diagnostics.event("info", "sticky_escape_triggered",
-				"account_id", stickyAccountID,
+				"provider_id", stickyProviderID,
 				"reason", reason,
 				"error_rate", errorRate,
 				"ttft", ttft,
@@ -184,7 +184,7 @@ func (s *GenericSelector) Select(ctx context.Context, input SelectionInput) (*Fl
 	s.diagnostics.event("info", "sticky.scheduler_entry",
 		"group_id", derefGroupID(groupID),
 		"session_hash", shortFlowSessionHash(sessionHash),
-		"sticky_account_id", stickyAccountID,
+		"sticky_provider_id", stickyProviderID,
 		"sticky_source", stickySource,
 		"model", requestedModel,
 		"load_batch", cfg.LoadBatchEnabled,
@@ -197,8 +197,8 @@ func (s *GenericSelector) Select(ctx context.Context, input SelectionInput) (*Fl
 		if group != nil {
 			groupPlatform = ""
 		}
-		s.diagnostics.printf("service.gateway", "[ModelRoutingDebug] select entry: group_id=%v forced_platform=%s model=%s session=%s sticky_account=%d load_batch=%v concurrency=%v",
-			derefGroupID(groupID), groupPlatform, requestedModel, shortFlowSessionHash(sessionHash), stickyAccountID, cfg.LoadBatchEnabled, s.concurrencyService != nil)
+		s.diagnostics.printf("service.gateway", "[ModelRoutingDebug] select entry: group_id=%v forced_platform=%s model=%s session=%s sticky_provider=%d load_batch=%v concurrency=%v",
+			derefGroupID(groupID), groupPlatform, requestedModel, shortFlowSessionHash(sessionHash), stickyProviderID, cfg.LoadBatchEnabled, s.concurrencyService != nil)
 	}
 
 	// 基础调度器保留原有无负载批路径。高级分组即使没有负载批服务，
@@ -211,41 +211,41 @@ func (s *GenericSelector) Select(ctx context.Context, input SelectionInput) (*Fl
 		}
 
 		for {
-			account, err := s.selectRoutes(ctx, groupID, sessionHash, requestedModel, localExcluded)
+			provider, err := s.selectRoutes(ctx, groupID, sessionHash, requestedModel, localExcluded)
 			if err != nil {
 				return nil, err
 			}
 
-			result, err := s.ports.TryAcquireAccountSlot(ctx, account.ID, account.Concurrency)
+			result, err := s.ports.TryAcquireProviderSlot(ctx, provider.ID, provider.Concurrency)
 			if err == nil && result.Acquired {
 
-				if !s.ports.CheckAndRegisterSession(ctx, account, sessionHash) {
+				if !s.ports.CheckAndRegisterSession(ctx, provider, sessionHash) {
 					result.ReleaseFunc()
-					localExcluded[account.ID] = struct{}{}
+					localExcluded[provider.ID] = struct{}{}
 					continue
 				}
-				return s.ports.NewSelectionResult(ctx, account, true, result.ReleaseFunc, nil)
+				return s.ports.NewSelectionResult(ctx, provider, true, result.ReleaseFunc, nil)
 			}
 
-			if !s.ports.CheckAndRegisterSession(ctx, account, sessionHash) {
-				localExcluded[account.ID] = struct{}{}
+			if !s.ports.CheckAndRegisterSession(ctx, provider, sessionHash) {
+				localExcluded[provider.ID] = struct{}{}
 				continue
 			}
 
-			if stickyAccountID > 0 && stickyAccountID == account.ID && s.concurrencyService != nil {
-				waitingCount, _ := s.concurrencyService.GetAccountWaitingCount(ctx, account.ID)
+			if stickyProviderID > 0 && stickyProviderID == provider.ID && s.concurrencyService != nil {
+				waitingCount, _ := s.concurrencyService.GetProviderWaitingCount(ctx, provider.ID)
 				if waitingCount < cfg.StickySessionMaxWaiting {
-					return s.ports.NewSelectionResult(ctx, account, false, nil, &AccountWaitPlan{
-						AccountID:      account.ID,
-						MaxConcurrency: account.Concurrency,
+					return s.ports.NewSelectionResult(ctx, provider, false, nil, &ProviderWaitPlan{
+						ProviderID:     provider.ID,
+						MaxConcurrency: provider.Concurrency,
 						Timeout:        cfg.StickySessionWaitTimeout,
 						MaxWaiting:     cfg.StickySessionMaxWaiting,
 					})
 				}
 			}
-			return s.ports.NewSelectionResult(ctx, account, false, nil, &AccountWaitPlan{
-				AccountID:      account.ID,
-				MaxConcurrency: account.Concurrency,
+			return s.ports.NewSelectionResult(ctx, provider, false, nil, &ProviderWaitPlan{
+				ProviderID:     provider.ID,
+				MaxConcurrency: provider.Concurrency,
 				Timeout:        cfg.FallbackWaitTimeout,
 				MaxWaiting:     cfg.FallbackMaxWaiting,
 			})
@@ -261,41 +261,41 @@ func (s *GenericSelector) Select(ctx context.Context, input SelectionInput) (*Fl
 		s.diagnostics.printf("service.gateway", "[ModelRoutingDebug] load-aware enabled: group_id=%v model=%s session=%s platform=%s", derefGroupID(groupID), requestedModel, shortFlowSessionHash(sessionHash), platform)
 	}
 
-	accounts, useMixed, err := s.ports.ListSchedulableAccounts(ctx, groupID, platform, hasForcePlatform)
+	providers, useMixed, err := s.ports.ListSchedulableProviders(ctx, groupID, platform, hasForcePlatform)
 	if err != nil {
 		return nil, err
 	}
-	if len(accounts) == 0 {
-		return nil, ErrNoAvailableAccounts
+	if len(providers) == 0 {
+		return nil, ErrNoAvailableProviders
 	}
-	ctx = s.ports.WithWindowCostPrefetch(ctx, accounts)
-	ctx = s.ports.WithRPMPrefetch(ctx, accounts)
+	ctx = s.ports.WithWindowCostPrefetch(ctx, providers)
+	ctx = s.ports.WithRPMPrefetch(ctx, providers)
 
-	accountByID := make(map[int64]*FlowAccount, len(accounts))
-	for i := range accounts {
-		accountByID[accounts[i].ID] = &accounts[i]
+	providerByID := make(map[int64]*FlowProvider, len(providers))
+	for i := range providers {
+		providerByID[providers[i].ID] = &providers[i]
 	}
-	isExcluded := func(accountID int64) bool {
+	isExcluded := func(providerID int64) bool {
 		if excludedIDs == nil {
 			return false
 		}
-		_, excluded := excludedIDs[accountID]
+		_, excluded := excludedIDs[providerID]
 		return excluded
 	}
-	// upstream 依据必须逐账号计算最终模型，所有负载感知选择入口共用同一过滤规则。
+	// upstream 依据必须逐提供商计算最终模型，所有负载感知选择入口共用同一过滤规则。
 	needsUpstreamCheck := s.ports.NeedsUpstreamGroupRestrictionCheck(ctx, groupID)
-	isUpstreamAllowed := func(account *FlowAccount) bool {
-		return !needsUpstreamCheck || !s.ports.IsUpstreamModelRestrictedByGroup(ctx, *groupID, account, requestedModel)
+	isUpstreamAllowed := func(provider *FlowProvider) bool {
+		return !needsUpstreamCheck || !s.ports.IsUpstreamModelRestrictedByGroup(ctx, *groupID, provider, requestedModel)
 	}
 
-	var routingAccountIDs []int64
+	var routingProviderIDs []int64
 	if group != nil && requestedModel != "" {
-		routingModel := s.ports.GroupMappedModelForAccountLayer(ctx, requestedModel)
-		routingAccountIDs = group.GetRoutingAccountIDs(routingModel)
+		routingModel := s.ports.GroupMappedModelForProviderLayer(ctx, requestedModel)
+		routingProviderIDs = group.GetRoutingProviderIDs(routingModel)
 		if s.ports.DebugModelRoutingEnabled() {
-			s.diagnostics.printf("service.gateway", "[ModelRoutingDebug] context group routing: group_id=%d model=%s enabled=%v rules=%d matched_ids=%v session=%s sticky_account=%d",
-				group.ID, requestedModel, group.ModelRoutingEnabled, len(group.ModelRouting), routingAccountIDs, shortFlowSessionHash(sessionHash), stickyAccountID)
-			if len(routingAccountIDs) == 0 && group.ModelRoutingEnabled && len(group.ModelRouting) > 0 {
+			s.diagnostics.printf("service.gateway", "[ModelRoutingDebug] context group routing: group_id=%d model=%s enabled=%v rules=%d matched_ids=%v session=%s sticky_provider=%d",
+				group.ID, requestedModel, group.ModelRoutingEnabled, len(group.ModelRouting), routingProviderIDs, shortFlowSessionHash(sessionHash), stickyProviderID)
+			if len(routingProviderIDs) == 0 && group.ModelRoutingEnabled && len(group.ModelRouting) > 0 {
 				keys := make([]string, 0, len(group.ModelRouting))
 				for k := range group.ModelRouting {
 					keys = append(keys, k)
@@ -310,18 +310,18 @@ func (s *GenericSelector) Select(ctx context.Context, input SelectionInput) (*Fl
 		}
 	}
 
-	if len(routingAccountIDs) > 0 && (s.concurrencyService != nil || usesAdvancedScheduler) {
+	if len(routingProviderIDs) > 0 && (s.concurrencyService != nil || usesAdvancedScheduler) {
 
-		var routingCandidates []*FlowAccount
+		var routingCandidates []*FlowProvider
 		var filteredExcluded, filteredMissing, filteredUnsched, filteredPlatform, filteredModelScope, filteredModelMapping, filteredWindowCost int
 		var modelScopeSkippedIDs []int64
-		for _, routingAccountID := range routingAccountIDs {
-			if isExcluded(routingAccountID) {
+		for _, routingProviderID := range routingProviderIDs {
+			if isExcluded(routingProviderID) {
 				filteredExcluded++
 				continue
 			}
-			account, ok := accountByID[routingAccountID]
-			if !ok || !s.ports.IsAccountSchedulableForSelection(account) {
+			provider, ok := providerByID[routingProviderID]
+			if !ok || !s.ports.IsProviderSchedulableForSelection(provider) {
 				if !ok {
 					filteredMissing++
 				} else {
@@ -329,109 +329,109 @@ func (s *GenericSelector) Select(ctx context.Context, input SelectionInput) (*Fl
 				}
 				continue
 			}
-			if group != nil && group.RequirePrivacySet && !account.IsPrivacySet() {
-				_ = s.ports.SetAccountError(ctx, account.ID,
+			if group != nil && group.RequirePrivacySet && !provider.IsPrivacySet() {
+				_ = s.ports.SetProviderError(ctx, provider.ID,
 					fmt.Sprintf("Privacy not set, required by group [%s]", group.Name))
 				continue
 			}
-			if !s.ports.IsAccountAllowedForPlatform(account, platform, useMixed) {
+			if !s.ports.IsProviderAllowedForPlatform(provider, platform, useMixed) {
 				filteredPlatform++
 				continue
 			}
-			if requestedModel != "" && !s.ports.IsModelSupportedByAccountWithContext(ctx, account, requestedModel) {
+			if requestedModel != "" && !s.ports.IsModelSupportedByProviderWithContext(ctx, provider, requestedModel) {
 				filteredModelMapping++
 				continue
 			}
-			if !isUpstreamAllowed(account) {
+			if !isUpstreamAllowed(provider) {
 				continue
 			}
-			if !s.ports.IsAccountSchedulableForModelSelection(ctx, account, requestedModel) {
+			if !s.ports.IsProviderSchedulableForModelSelection(ctx, provider, requestedModel) {
 				filteredModelScope++
-				modelScopeSkippedIDs = append(modelScopeSkippedIDs, account.ID)
+				modelScopeSkippedIDs = append(modelScopeSkippedIDs, provider.ID)
 				continue
 			}
 
-			if !s.ports.IsAccountSchedulableForQuota(account) {
+			if !s.ports.IsProviderSchedulableForQuota(provider) {
 				continue
 			}
 
-			weightedSticky := advancedStickyWeighted && account.ID == stickyAccountID
-			if !s.ports.IsAccountSchedulableForWindowCost(ctx, account, weightedSticky) {
+			weightedSticky := advancedStickyWeighted && provider.ID == stickyProviderID
+			if !s.ports.IsProviderSchedulableForWindowCost(ctx, provider, weightedSticky) {
 				filteredWindowCost++
 				continue
 			}
 
-			if !s.ports.IsAccountSchedulableForRPM(ctx, account, weightedSticky) {
+			if !s.ports.IsProviderSchedulableForRPM(ctx, provider, weightedSticky) {
 				continue
 			}
-			routingCandidates = append(routingCandidates, account)
+			routingCandidates = append(routingCandidates, provider)
 		}
 
 		if s.ports.DebugModelRoutingEnabled() {
 			s.diagnostics.printf("service.gateway", "[ModelRoutingDebug] routed candidates: group_id=%v model=%s routed=%d candidates=%d filtered(excluded=%d missing=%d unsched=%d platform=%d model_scope=%d model_mapping=%d window_cost=%d)",
-				derefGroupID(groupID), requestedModel, len(routingAccountIDs), len(routingCandidates),
+				derefGroupID(groupID), requestedModel, len(routingProviderIDs), len(routingCandidates),
 				filteredExcluded, filteredMissing, filteredUnsched, filteredPlatform, filteredModelScope, filteredModelMapping, filteredWindowCost)
 			if len(modelScopeSkippedIDs) > 0 {
-				s.diagnostics.printf("service.gateway", "[ModelRoutingDebug] model_rate_limited accounts skipped: group_id=%v model=%s account_ids=%v",
+				s.diagnostics.printf("service.gateway", "[ModelRoutingDebug] model_rate_limited providers skipped: group_id=%v model=%s provider_ids=%v",
 					derefGroupID(groupID), requestedModel, modelScopeSkippedIDs)
 			}
 		}
 
 		if len(routingCandidates) > 0 {
-			if !stickyEscaped && (!usesAdvancedScheduler || !advancedStickyWeighted) && sessionHash != "" && stickyAccountID > 0 {
+			if !stickyEscaped && (!usesAdvancedScheduler || !advancedStickyWeighted) && sessionHash != "" && stickyProviderID > 0 {
 				s.diagnostics.event("debug", "sticky.layer1_5_checking",
-					"sticky_account_id", stickyAccountID,
-					"in_routing_list", slices.Contains(routingAccountIDs, stickyAccountID),
-					"is_excluded", isExcluded(stickyAccountID),
-					"in_account_map", func() bool { _, ok := accountByID[stickyAccountID]; return ok }(),
+					"sticky_provider_id", stickyProviderID,
+					"in_routing_list", slices.Contains(routingProviderIDs, stickyProviderID),
+					"is_excluded", isExcluded(stickyProviderID),
+					"in_provider_map", func() bool { _, ok := providerByID[stickyProviderID]; return ok }(),
 					"session", shortFlowSessionHash(sessionHash),
 				)
-				if slices.Contains(routingAccountIDs, stickyAccountID) && !isExcluded(stickyAccountID) {
-					if stickyAccount, ok := accountByID[stickyAccountID]; ok {
+				if slices.Contains(routingProviderIDs, stickyProviderID) && !isExcluded(stickyProviderID) {
+					if stickyProvider, ok := providerByID[stickyProviderID]; ok {
 						var stickyCacheMissReason string
 
-						gatePass := s.ports.IsAccountSchedulableForSelection(stickyAccount) &&
-							s.ports.IsAccountAllowedForPlatform(stickyAccount, platform, useMixed) &&
-							(requestedModel == "" || s.ports.IsModelSupportedByAccountWithContext(ctx, stickyAccount, requestedModel)) &&
-							isUpstreamAllowed(stickyAccount) &&
-							s.ports.IsAccountSchedulableForModelSelection(ctx, stickyAccount, requestedModel) &&
-							s.ports.IsAccountSchedulableForQuota(stickyAccount) &&
-							s.ports.IsAccountSchedulableForWindowCost(ctx, stickyAccount, true)
+						gatePass := s.ports.IsProviderSchedulableForSelection(stickyProvider) &&
+							s.ports.IsProviderAllowedForPlatform(stickyProvider, platform, useMixed) &&
+							(requestedModel == "" || s.ports.IsModelSupportedByProviderWithContext(ctx, stickyProvider, requestedModel)) &&
+							isUpstreamAllowed(stickyProvider) &&
+							s.ports.IsProviderSchedulableForModelSelection(ctx, stickyProvider, requestedModel) &&
+							s.ports.IsProviderSchedulableForQuota(stickyProvider) &&
+							s.ports.IsProviderSchedulableForWindowCost(ctx, stickyProvider, true)
 
-						rpmPass := gatePass && s.ports.IsAccountSchedulableForRPM(ctx, stickyAccount, true)
+						rpmPass := gatePass && s.ports.IsProviderSchedulableForRPM(ctx, stickyProvider, true)
 
 						if rpmPass {
-							result, err := s.ports.TryAcquireAccountSlot(ctx, stickyAccountID, stickyAccount.Concurrency)
+							result, err := s.ports.TryAcquireProviderSlot(ctx, stickyProviderID, stickyProvider.Concurrency)
 							if err == nil && result.Acquired {
-								if !s.ports.CheckAndRegisterSession(ctx, stickyAccount, sessionHash) {
+								if !s.ports.CheckAndRegisterSession(ctx, stickyProvider, sessionHash) {
 									result.ReleaseFunc()
 									stickyCacheMissReason = "session_limit"
 
 								} else {
 									s.diagnostics.event("debug", "sticky.layer1_5_hit",
-										"account_id", stickyAccountID,
+										"provider_id", stickyProviderID,
 										"session", shortFlowSessionHash(sessionHash),
 										"result", "slot_acquired",
 									)
 									if s.ports.DebugModelRoutingEnabled() {
-										s.diagnostics.printf("service.gateway", "[ModelRoutingDebug] routed sticky hit: group_id=%v model=%s session=%s account=%d", derefGroupID(groupID), requestedModel, shortFlowSessionHash(sessionHash), stickyAccountID)
+										s.diagnostics.printf("service.gateway", "[ModelRoutingDebug] routed sticky hit: group_id=%v model=%s session=%s provider=%d", derefGroupID(groupID), requestedModel, shortFlowSessionHash(sessionHash), stickyProviderID)
 									}
-									return s.ports.NewSelectionResult(ctx, stickyAccount, true, result.ReleaseFunc, nil)
+									return s.ports.NewSelectionResult(ctx, stickyProvider, true, result.ReleaseFunc, nil)
 								}
 							}
 
 							if stickyCacheMissReason == "" {
-								waitingCount, _ := s.concurrencyService.GetAccountWaitingCount(ctx, stickyAccountID)
+								waitingCount, _ := s.concurrencyService.GetProviderWaitingCount(ctx, stickyProviderID)
 								if waitingCount < cfg.StickySessionMaxWaiting {
-									if !s.ports.CheckAndRegisterSession(ctx, stickyAccount, sessionHash) {
+									if !s.ports.CheckAndRegisterSession(ctx, stickyProvider, sessionHash) {
 										stickyCacheMissReason = "session_limit"
 									} else {
-										// 必须走 newSelectionResult 以 hydrate 账号凭证：
-										// 调度快照中的账号是精简版（OAuth token 等被剥离），
+										// 必须走 newSelectionResult 以 hydrate 提供商凭证：
+										// 调度快照中的提供商是精简版（OAuth token 等被剥离），
 										// 直接返回会导致后续转发缺少凭证而鉴权失败。
-										return s.ports.NewSelectionResult(ctx, stickyAccount, false, nil, &AccountWaitPlan{
-											AccountID:      stickyAccountID,
-											MaxConcurrency: stickyAccount.Concurrency,
+										return s.ports.NewSelectionResult(ctx, stickyProvider, false, nil, &ProviderWaitPlan{
+											ProviderID:     stickyProviderID,
+											MaxConcurrency: stickyProvider.Concurrency,
 											Timeout:        cfg.StickySessionWaitTimeout,
 											MaxWaiting:     cfg.StickySessionMaxWaiting,
 										})
@@ -448,18 +448,18 @@ func (s *GenericSelector) Select(ctx context.Context, input SelectionInput) (*Fl
 						}
 
 						if stickyCacheMissReason != "" {
-							baseRPM := stickyAccount.GetBaseRPM()
+							baseRPM := stickyProvider.GetBaseRPM()
 							var currentRPM int
-							if count, ok := PrefetchedRPM(ctx, stickyAccount.ID); ok {
+							if count, ok := PrefetchedRPM(ctx, stickyProvider.ID); ok {
 								currentRPM = count
 							}
-							s.diagnostics.printf("service.gateway", "[StickyCacheMiss] reason=%s account_id=%d session=%s current_rpm=%d base_rpm=%d",
-								stickyCacheMissReason, stickyAccountID, shortFlowSessionHash(sessionHash), currentRPM, baseRPM)
+							s.diagnostics.printf("service.gateway", "[StickyCacheMiss] reason=%s provider_id=%d session=%s current_rpm=%d base_rpm=%d",
+								stickyCacheMissReason, stickyProviderID, shortFlowSessionHash(sessionHash), currentRPM, baseRPM)
 						}
 					} else {
-						_ = s.cache.DeleteSessionAccountID(ctx, derefGroupID(groupID), sessionHash)
-						s.diagnostics.printf("service.gateway", "[StickyCacheMiss] reason=account_cleared account_id=%d session=%s current_rpm=0 base_rpm=0",
-							stickyAccountID, shortFlowSessionHash(sessionHash))
+						_ = s.cache.DeleteSessionProviderID(ctx, derefGroupID(groupID), sessionHash)
+						s.diagnostics.printf("service.gateway", "[StickyCacheMiss] reason=provider_cleared provider_id=%d session=%s current_rpm=0 base_rpm=0",
+							stickyProviderID, shortFlowSessionHash(sessionHash))
 					}
 				}
 			}
@@ -470,26 +470,26 @@ func (s *GenericSelector) Select(ctx context.Context, input SelectionInput) (*Fl
 				} else if ok {
 					return selection, nil
 				}
-				return nil, ErrNoAvailableAccounts
+				return nil, ErrNoAvailableProviders
 			}
 
-			routingLoads := make([]AccountWithConcurrency, 0, len(routingCandidates))
+			routingLoads := make([]ProviderWithConcurrency, 0, len(routingCandidates))
 			for _, acc := range routingCandidates {
-				routingLoads = append(routingLoads, AccountWithConcurrency{
+				routingLoads = append(routingLoads, ProviderWithConcurrency{
 					ID:             acc.ID,
 					MaxConcurrency: acc.EffectiveLoadFactor(),
 				})
 			}
-			routingLoadMap, _ := s.concurrencyService.GetAccountsLoadBatch(ctx, routingLoads)
+			routingLoadMap, _ := s.concurrencyService.GetProvidersLoadBatch(ctx, routingLoads)
 
 			var routingAvailable []FlowLoad
 			for _, acc := range routingCandidates {
 				loadInfo := routingLoadMap[acc.ID]
 				if loadInfo == nil && !usesAdvancedScheduler {
-					loadInfo = &AccountLoadInfo{AccountID: acc.ID}
+					loadInfo = &ProviderLoadInfo{ProviderID: acc.ID}
 				}
 				if usesAdvancedScheduler || loadInfo == nil || loadInfo.LoadRate < 100 {
-					routingAvailable = append(routingAvailable, FlowLoad{Account: acc, LoadInfo: loadInfo})
+					routingAvailable = append(routingAvailable, FlowLoad{Provider: acc, LoadInfo: loadInfo})
 				}
 			}
 
@@ -502,58 +502,58 @@ func (s *GenericSelector) Select(ctx context.Context, input SelectionInput) (*Fl
 					} else if ok {
 						return selection, nil
 					}
-					return nil, ErrNoAvailableAccounts
+					return nil, ErrNoAvailableProviders
 				}
 
 				sort.SliceStable(routingAvailable, func(i, j int) bool {
 					a, b := routingAvailable[i], routingAvailable[j]
-					if a.Account.Priority != b.Account.Priority {
-						return a.Account.Priority < b.Account.Priority
+					if a.Provider.Priority != b.Provider.Priority {
+						return a.Provider.Priority < b.Provider.Priority
 					}
 					if a.LoadInfo.LoadRate != b.LoadInfo.LoadRate {
 						return a.LoadInfo.LoadRate < b.LoadInfo.LoadRate
 					}
 					switch {
-					case a.Account.LastUsedAt == nil && b.Account.LastUsedAt != nil:
+					case a.Provider.LastUsedAt == nil && b.Provider.LastUsedAt != nil:
 						return true
-					case a.Account.LastUsedAt != nil && b.Account.LastUsedAt == nil:
+					case a.Provider.LastUsedAt != nil && b.Provider.LastUsedAt == nil:
 						return false
-					case a.Account.LastUsedAt == nil && b.Account.LastUsedAt == nil:
+					case a.Provider.LastUsedAt == nil && b.Provider.LastUsedAt == nil:
 						return false
 					default:
-						return a.Account.LastUsedAt.Before(*b.Account.LastUsedAt)
+						return a.Provider.LastUsedAt.Before(*b.Provider.LastUsedAt)
 					}
 				})
 				flowShuffleWithinSortGroups(routingAvailable)
 
 				for _, item := range routingAvailable {
-					result, err := s.ports.TryAcquireAccountSlot(ctx, item.Account.ID, item.Account.Concurrency)
+					result, err := s.ports.TryAcquireProviderSlot(ctx, item.Provider.ID, item.Provider.Concurrency)
 					if err == nil && result.Acquired {
 
-						if !s.ports.CheckAndRegisterSession(ctx, item.Account, sessionHash) {
+						if !s.ports.CheckAndRegisterSession(ctx, item.Provider, sessionHash) {
 							result.ReleaseFunc()
 							continue
 						}
 						if sessionHash != "" && s.cache != nil {
-							_ = s.cache.SetSessionAccountID(ctx, derefGroupID(groupID), sessionHash, item.Account.ID, stickySessionTTL)
+							_ = s.cache.SetSessionProviderID(ctx, derefGroupID(groupID), sessionHash, item.Provider.ID, stickySessionTTL)
 						}
 						if s.ports.DebugModelRoutingEnabled() {
-							s.diagnostics.printf("service.gateway", "[ModelRoutingDebug] routed select: group_id=%v model=%s session=%s account=%d", derefGroupID(groupID), requestedModel, shortFlowSessionHash(sessionHash), item.Account.ID)
+							s.diagnostics.printf("service.gateway", "[ModelRoutingDebug] routed select: group_id=%v model=%s session=%s provider=%d", derefGroupID(groupID), requestedModel, shortFlowSessionHash(sessionHash), item.Provider.ID)
 						}
-						return s.ports.NewSelectionResult(ctx, item.Account, true, result.ReleaseFunc, nil)
+						return s.ports.NewSelectionResult(ctx, item.Provider, true, result.ReleaseFunc, nil)
 					}
 				}
 
 				for _, item := range routingAvailable {
-					if !s.ports.CheckAndRegisterSession(ctx, item.Account, sessionHash) {
+					if !s.ports.CheckAndRegisterSession(ctx, item.Provider, sessionHash) {
 						continue
 					}
 					if s.ports.DebugModelRoutingEnabled() {
-						s.diagnostics.printf("service.gateway", "[ModelRoutingDebug] routed wait: group_id=%v model=%s session=%s account=%d", derefGroupID(groupID), requestedModel, shortFlowSessionHash(sessionHash), item.Account.ID)
+						s.diagnostics.printf("service.gateway", "[ModelRoutingDebug] routed wait: group_id=%v model=%s session=%s provider=%d", derefGroupID(groupID), requestedModel, shortFlowSessionHash(sessionHash), item.Provider.ID)
 					}
-					return s.ports.NewSelectionResult(ctx, item.Account, false, nil, &AccountWaitPlan{
-						AccountID:      item.Account.ID,
-						MaxConcurrency: item.Account.Concurrency,
+					return s.ports.NewSelectionResult(ctx, item.Provider, false, nil, &ProviderWaitPlan{
+						ProviderID:     item.Provider.ID,
+						MaxConcurrency: item.Provider.Concurrency,
 						Timeout:        cfg.StickySessionWaitTimeout,
 						MaxWaiting:     cfg.StickySessionMaxWaiting,
 					})
@@ -561,37 +561,37 @@ func (s *GenericSelector) Select(ctx context.Context, input SelectionInput) (*Fl
 
 			}
 
-			s.diagnostics.printf("service.gateway", "[ModelRouting] All routed accounts unavailable for model=%s, falling back to normal selection", requestedModel)
+			s.diagnostics.printf("service.gateway", "[ModelRouting] All routed providers unavailable for model=%s, falling back to normal selection", requestedModel)
 		}
 	}
 
-	if !stickyEscaped && len(routingAccountIDs) == 0 && (!usesAdvancedScheduler || !advancedStickyWeighted) && sessionHash != "" && stickyAccountID > 0 && !isExcluded(stickyAccountID) {
-		accountID := stickyAccountID
-		if accountID > 0 && !isExcluded(accountID) {
-			account, ok := accountByID[accountID]
+	if !stickyEscaped && len(routingProviderIDs) == 0 && (!usesAdvancedScheduler || !advancedStickyWeighted) && sessionHash != "" && stickyProviderID > 0 && !isExcluded(stickyProviderID) {
+		providerID := stickyProviderID
+		if providerID > 0 && !isExcluded(providerID) {
+			provider, ok := providerByID[providerID]
 			if ok {
 
-				clearSticky := s.ports.ShouldClearStickySessionForAccountLayer(ctx, account, requestedModel)
+				clearSticky := s.ports.ShouldClearStickySessionForProviderLayer(ctx, provider, requestedModel)
 				if clearSticky {
 					s.diagnostics.event("debug", "sticky.layer1_5_no_routing_clear",
-						"account_id", accountID,
+						"provider_id", providerID,
 						"reason", "should_clear_sticky_session",
 						"session", shortFlowSessionHash(sessionHash),
 					)
-					_ = s.cache.DeleteSessionAccountID(ctx, derefGroupID(groupID), sessionHash)
+					_ = s.cache.DeleteSessionProviderID(ctx, derefGroupID(groupID), sessionHash)
 				}
 
-				platformOK := s.ports.IsAccountAllowedForPlatform(account, platform, useMixed)
-				modelSupported := requestedModel == "" || s.ports.IsModelSupportedByAccountWithContext(ctx, account, requestedModel)
-				upstreamAllowed := isUpstreamAllowed(account)
-				modelSchedulable := s.ports.IsAccountSchedulableForModelSelection(ctx, account, requestedModel)
-				quotaOK := s.ports.IsAccountSchedulableForQuota(account)
-				windowCostOK := s.ports.IsAccountSchedulableForWindowCost(ctx, account, true)
-				rpmOK := s.ports.IsAccountSchedulableForRPM(ctx, account, true)
-				schedulable := s.ports.IsAccountSchedulableForSelection(account)
+				platformOK := s.ports.IsProviderAllowedForPlatform(provider, platform, useMixed)
+				modelSupported := requestedModel == "" || s.ports.IsModelSupportedByProviderWithContext(ctx, provider, requestedModel)
+				upstreamAllowed := isUpstreamAllowed(provider)
+				modelSchedulable := s.ports.IsProviderSchedulableForModelSelection(ctx, provider, requestedModel)
+				quotaOK := s.ports.IsProviderSchedulableForQuota(provider)
+				windowCostOK := s.ports.IsProviderSchedulableForWindowCost(ctx, provider, true)
+				rpmOK := s.ports.IsProviderSchedulableForRPM(ctx, provider, true)
+				schedulable := s.ports.IsProviderSchedulableForSelection(provider)
 
 				s.diagnostics.event("debug", "sticky.layer1_5_no_routing_checks",
-					"account_id", accountID,
+					"provider_id", providerID,
 					"session", shortFlowSessionHash(sessionHash),
 					"clear_sticky", clearSticky,
 					"schedulable", schedulable,
@@ -605,45 +605,45 @@ func (s *GenericSelector) Select(ctx context.Context, input SelectionInput) (*Fl
 				)
 
 				if !clearSticky && platformOK && modelSupported && upstreamAllowed && modelSchedulable && quotaOK && windowCostOK && rpmOK && schedulable {
-					result, err := s.ports.TryAcquireAccountSlot(ctx, accountID, account.Concurrency)
+					result, err := s.ports.TryAcquireProviderSlot(ctx, providerID, provider.Concurrency)
 					if err == nil && result.Acquired {
-						if !s.ports.CheckAndRegisterSession(ctx, account, sessionHash) {
+						if !s.ports.CheckAndRegisterSession(ctx, provider, sessionHash) {
 							result.ReleaseFunc()
 							s.diagnostics.event("debug", "sticky.layer1_5_no_routing_miss",
-								"account_id", accountID,
+								"provider_id", providerID,
 								"reason", "session_limit",
 								"session", shortFlowSessionHash(sessionHash),
 							)
 						} else {
 							s.diagnostics.event("debug", "sticky.layer1_5_no_routing_hit",
-								"account_id", accountID,
+								"provider_id", providerID,
 								"session", shortFlowSessionHash(sessionHash),
 								"result", "slot_acquired",
 							)
 							if s.cache != nil {
 								_ = s.cache.RefreshSessionTTL(ctx, derefGroupID(groupID), sessionHash, stickySessionTTL)
 							}
-							return s.ports.NewSelectionResult(ctx, account, true, result.ReleaseFunc, nil)
+							return s.ports.NewSelectionResult(ctx, provider, true, result.ReleaseFunc, nil)
 						}
 					} else {
 						s.diagnostics.event("debug", "sticky.layer1_5_no_routing_slot_busy",
-							"account_id", accountID,
+							"provider_id", providerID,
 							"session", shortFlowSessionHash(sessionHash),
 						)
 					}
 
-					waitingCount, _ := s.concurrencyService.GetAccountWaitingCount(ctx, accountID)
+					waitingCount, _ := s.concurrencyService.GetProviderWaitingCount(ctx, providerID)
 					if waitingCount < cfg.StickySessionMaxWaiting {
-						if !s.ports.CheckAndRegisterSession(ctx, account, sessionHash) {
+						if !s.ports.CheckAndRegisterSession(ctx, provider, sessionHash) {
 						} else {
 							s.diagnostics.event("debug", "sticky.layer1_5_no_routing_hit",
-								"account_id", accountID,
+								"provider_id", providerID,
 								"session", shortFlowSessionHash(sessionHash),
 								"result", "wait_plan",
 							)
-							return s.ports.NewSelectionResult(ctx, account, false, nil, &AccountWaitPlan{
-								AccountID:      accountID,
-								MaxConcurrency: account.Concurrency,
+							return s.ports.NewSelectionResult(ctx, provider, false, nil, &ProviderWaitPlan{
+								ProviderID:     providerID,
+								MaxConcurrency: provider.Concurrency,
 								Timeout:        cfg.StickySessionWaitTimeout,
 								MaxWaiting:     cfg.StickySessionMaxWaiting,
 							})
@@ -651,87 +651,87 @@ func (s *GenericSelector) Select(ctx context.Context, input SelectionInput) (*Fl
 					}
 				} else if !clearSticky {
 					s.diagnostics.event("debug", "sticky.layer1_5_no_routing_miss",
-						"account_id", accountID,
+						"provider_id", providerID,
 						"reason", "gate_check_failed",
 						"session", shortFlowSessionHash(sessionHash),
 					)
 				}
 			} else {
 				s.diagnostics.event("debug", "sticky.layer1_5_no_routing_miss",
-					"account_id", accountID,
-					"reason", "account_not_in_map",
+					"provider_id", providerID,
+					"reason", "provider_not_in_map",
 					"session", shortFlowSessionHash(sessionHash),
 				)
 			}
 		}
-	} else if len(routingAccountIDs) == 0 && sessionHash != "" {
+	} else if len(routingProviderIDs) == 0 && sessionHash != "" {
 		s.diagnostics.event("debug", "sticky.layer1_5_no_routing_skip",
-			"sticky_account_id", stickyAccountID,
-			"is_excluded", func() bool { return stickyAccountID > 0 && isExcluded(stickyAccountID) }(),
+			"sticky_provider_id", stickyProviderID,
+			"is_excluded", func() bool { return stickyProviderID > 0 && isExcluded(stickyProviderID) }(),
 			"session", shortFlowSessionHash(sessionHash),
 			"reason", func() string {
-				if stickyAccountID == 0 {
+				if stickyProviderID == 0 {
 					return "no_sticky_binding"
 				}
-				return "sticky_account_excluded"
+				return "sticky_provider_excluded"
 			}(),
 		)
 	}
 
 	s.diagnostics.event("debug", "sticky.layer2_fallback",
 		"session", shortFlowSessionHash(sessionHash),
-		"sticky_account_id", stickyAccountID,
+		"sticky_provider_id", stickyProviderID,
 		"reason", "sticky_not_used_falling_back_to_load_balance",
-		"total_accounts", len(accounts),
+		"total_providers", len(providers),
 	)
-	candidates := make([]*FlowAccount, 0, len(accounts))
-	for i := range accounts {
-		acc := &accounts[i]
+	candidates := make([]*FlowProvider, 0, len(providers))
+	for i := range providers {
+		acc := &providers[i]
 		if isExcluded(acc.ID) {
 			continue
 		}
 
-		if !s.ports.IsAccountSchedulableForSelection(acc) {
+		if !s.ports.IsProviderSchedulableForSelection(acc) {
 			continue
 		}
 		if group != nil && group.RequirePrivacySet && !acc.IsPrivacySet() {
-			_ = s.ports.SetAccountError(ctx, acc.ID,
+			_ = s.ports.SetProviderError(ctx, acc.ID,
 				fmt.Sprintf("Privacy not set, required by group [%s]", group.Name))
 			continue
 		}
-		if !s.ports.IsAccountAllowedForPlatform(acc, platform, useMixed) {
+		if !s.ports.IsProviderAllowedForPlatform(acc, platform, useMixed) {
 			continue
 		}
-		if requestedModel != "" && !s.ports.IsModelSupportedByAccountWithContext(ctx, acc, requestedModel) {
+		if requestedModel != "" && !s.ports.IsModelSupportedByProviderWithContext(ctx, acc, requestedModel) {
 			continue
 		}
 		if !isUpstreamAllowed(acc) {
 			continue
 		}
-		if !s.ports.IsAccountSchedulableForModelSelection(ctx, acc, requestedModel) {
+		if !s.ports.IsProviderSchedulableForModelSelection(ctx, acc, requestedModel) {
 			continue
 		}
 
-		if !s.ports.IsAccountSchedulableForQuota(acc) {
+		if !s.ports.IsProviderSchedulableForQuota(acc) {
 			continue
 		}
 
-		weightedSticky := advancedStickyWeighted && acc.ID == stickyAccountID
-		if !s.ports.IsAccountSchedulableForWindowCost(ctx, acc, weightedSticky) {
+		weightedSticky := advancedStickyWeighted && acc.ID == stickyProviderID
+		if !s.ports.IsProviderSchedulableForWindowCost(ctx, acc, weightedSticky) {
 			continue
 		}
 
-		if !s.ports.IsAccountSchedulableForRPM(ctx, acc, weightedSticky) {
+		if !s.ports.IsProviderSchedulableForRPM(ctx, acc, weightedSticky) {
 			continue
 		}
 		candidates = append(candidates, acc)
 	}
 
 	if len(candidates) == 0 {
-		if err := s.ports.GroupModelUnsupportedErrorIfApplicable(ctx, accounts, requestedModel, platform, excludedIDs, useMixed, groupID, group); err != nil {
+		if err := s.ports.GroupModelUnsupportedErrorIfApplicable(ctx, providers, requestedModel, platform, excludedIDs, useMixed, groupID, group); err != nil {
 			return nil, err
 		}
-		return nil, ErrNoAvailableAccounts
+		return nil, ErrNoAvailableProviders
 	}
 
 	if usesAdvancedScheduler && (s.concurrencyService == nil || !cfg.LoadBatchEnabled) {
@@ -740,18 +740,18 @@ func (s *GenericSelector) Select(ctx context.Context, input SelectionInput) (*Fl
 		} else if ok {
 			return selection, nil
 		}
-		return nil, ErrNoAvailableAccounts
+		return nil, ErrNoAvailableProviders
 	}
 
-	accountLoads := make([]AccountWithConcurrency, 0, len(candidates))
+	providerLoads := make([]ProviderWithConcurrency, 0, len(candidates))
 	for _, acc := range candidates {
-		accountLoads = append(accountLoads, AccountWithConcurrency{
+		providerLoads = append(providerLoads, ProviderWithConcurrency{
 			ID:             acc.ID,
 			MaxConcurrency: acc.EffectiveLoadFactor(),
 		})
 	}
 
-	loadMap, err := s.concurrencyService.GetAccountsLoadBatch(ctx, accountLoads)
+	loadMap, err := s.concurrencyService.GetProvidersLoadBatch(ctx, providerLoads)
 	if err != nil {
 		if group != nil && group.UsesAdvancedScheduler() {
 			if result, ok, advancedErr := s.TryAdvancedWithoutLoad(ctx, groupID, sessionHash, candidates); advancedErr != nil {
@@ -759,7 +759,7 @@ func (s *GenericSelector) Select(ctx context.Context, input SelectionInput) (*Fl
 			} else if ok {
 				return result, nil
 			}
-			return nil, ErrNoAvailableAccounts
+			return nil, ErrNoAvailableProviders
 		}
 		if result, ok, legacyErr := s.TryLegacyOrder(ctx, candidates, groupID, sessionHash, preferOAuth); legacyErr != nil {
 			return nil, legacyErr
@@ -771,11 +771,11 @@ func (s *GenericSelector) Select(ctx context.Context, input SelectionInput) (*Fl
 		for _, acc := range candidates {
 			loadInfo := loadMap[acc.ID]
 			if loadInfo == nil && !usesAdvancedScheduler {
-				loadInfo = &AccountLoadInfo{AccountID: acc.ID}
+				loadInfo = &ProviderLoadInfo{ProviderID: acc.ID}
 			}
 			if usesAdvancedScheduler || loadInfo == nil || loadInfo.LoadRate < 100 {
 				available = append(available, FlowLoad{
-					Account:  acc,
+					Provider: acc,
 					LoadInfo: loadInfo,
 				})
 			}
@@ -789,7 +789,7 @@ func (s *GenericSelector) Select(ctx context.Context, input SelectionInput) (*Fl
 			}
 			// 高级分组已完成自己的可用候选与等待计划选择；不可回退到基础排序，
 			// 否则会破坏分组明确选择高级调度器的语义。
-			return nil, ErrNoAvailableAccounts
+			return nil, ErrNoAvailableProviders
 		}
 
 		for len(available) > 0 {
@@ -807,22 +807,22 @@ func (s *GenericSelector) Select(ctx context.Context, input SelectionInput) (*Fl
 				break
 			}
 
-			result, err := s.ports.TryAcquireAccountSlot(ctx, selected.Account.ID, selected.Account.Concurrency)
+			result, err := s.ports.TryAcquireProviderSlot(ctx, selected.Provider.ID, selected.Provider.Concurrency)
 			if err == nil && result.Acquired {
-				if !s.ports.CheckAndRegisterSession(ctx, selected.Account, sessionHash) {
+				if !s.ports.CheckAndRegisterSession(ctx, selected.Provider, sessionHash) {
 					result.ReleaseFunc()
 				} else {
 					if sessionHash != "" && s.cache != nil {
-						_ = s.cache.SetSessionAccountID(ctx, derefGroupID(groupID), sessionHash, selected.Account.ID, stickySessionTTL)
+						_ = s.cache.SetSessionProviderID(ctx, derefGroupID(groupID), sessionHash, selected.Provider.ID, stickySessionTTL)
 					}
-					return s.ports.NewSelectionResult(ctx, selected.Account, true, result.ReleaseFunc, nil)
+					return s.ports.NewSelectionResult(ctx, selected.Provider, true, result.ReleaseFunc, nil)
 				}
 			}
 
-			selectedID := selected.Account.ID
+			selectedID := selected.Provider.ID
 			newAvailable := make([]FlowLoad, 0, len(available)-1)
 			for _, acc := range available {
-				if acc.Account.ID != selectedID {
+				if acc.Provider.ID != selectedID {
 					newAvailable = append(newAvailable, acc)
 				}
 			}
@@ -836,29 +836,29 @@ func (s *GenericSelector) Select(ctx context.Context, input SelectionInput) (*Fl
 		if !s.ports.CheckAndRegisterSession(ctx, acc, sessionHash) {
 			continue
 		}
-		return s.ports.NewSelectionResult(ctx, acc, false, nil, &AccountWaitPlan{
-			AccountID:      acc.ID,
+		return s.ports.NewSelectionResult(ctx, acc, false, nil, &ProviderWaitPlan{
+			ProviderID:     acc.ID,
 			MaxConcurrency: acc.Concurrency,
 			Timeout:        cfg.FallbackWaitTimeout,
 			MaxWaiting:     cfg.FallbackMaxWaiting,
 		})
 	}
-	return nil, ErrNoAvailableAccounts
+	return nil, ErrNoAvailableProviders
 }
 
 func (s *GenericSelector) TryAdvancedWithoutLoad(
 	ctx context.Context,
 	groupID *int64,
 	sessionHash string,
-	accounts []*FlowAccount,
+	providers []*FlowProvider,
 ) (*FlowSelection, bool, error) {
-	available := make([]FlowLoad, 0, len(accounts))
-	for _, account := range accounts {
-		if account == nil {
+	available := make([]FlowLoad, 0, len(providers))
+	for _, provider := range providers {
+		if provider == nil {
 			continue
 		}
 		available = append(available, FlowLoad{
-			Account: account,
+			Provider: provider,
 			// 负载批查询失败时不伪造零负载，评分核心会使用中性因子。
 			LoadInfo: nil,
 		})
@@ -875,61 +875,61 @@ func (s *GenericSelector) TryAdvanced(
 	if s == nil || len(available) == 0 {
 		return nil, false, nil
 	}
-	accounts := make([]*FlowAccount, 0, len(available))
-	loadMap := make(map[int64]*AccountLoadInfo, len(available))
+	providers := make([]*FlowProvider, 0, len(available))
+	loadMap := make(map[int64]*ProviderLoadInfo, len(available))
 	for _, item := range available {
-		if item.Account == nil {
+		if item.Provider == nil {
 			continue
 		}
-		accounts = append(accounts, item.Account)
-		loadMap[item.Account.ID] = item.LoadInfo
+		providers = append(providers, item.Provider)
+		loadMap[item.Provider.ID] = item.LoadInfo
 	}
-	if len(accounts) == 0 {
+	if len(providers) == 0 {
 		return nil, false, nil
 	}
 
-	stickyAccountID := int64(0)
+	stickyProviderID := int64(0)
 	if sessionHash != "" && s.cache != nil {
-		stickyAccountID, _ = s.cache.GetSessionAccountID(ctx, derefGroupID(groupID), sessionHash)
+		stickyProviderID, _ = s.cache.GetSessionProviderID(ctx, derefGroupID(groupID), sessionHash)
 	}
 	effectiveSettings := s.ports.AdvancedSchedulerEffectiveSettingsForRequest(ctx, groupID)
 	candidates, _ := flowScoreCandidates(
-		accounts,
+		providers,
 		loadMap,
 		s.ports.AdvancedSchedulerStats(),
 		effectiveSettings.Weights,
 		ScoreInput{
-			GroupID:         groupID,
-			SessionHash:     sessionHash,
-			StickyAccountID: stickyAccountID,
-			StickyWeighted:  effectiveSettings.StickyWeightedEnabled,
-			TopK:            effectiveSettings.TopK,
+			GroupID:          groupID,
+			SessionHash:      sessionHash,
+			StickyProviderID: stickyProviderID,
+			StickyWeighted:   effectiveSettings.StickyWeightedEnabled,
+			TopK:             effectiveSettings.TopK,
 		},
 		s.now(),
 	)
 	selectionOrder := flowBuildSelectionOrder(candidates, ScoreInput{
-		GroupID:         groupID,
-		SessionHash:     sessionHash,
-		StickyAccountID: stickyAccountID,
-		StickyWeighted:  effectiveSettings.StickyWeightedEnabled,
-		TopK:            effectiveSettings.TopK,
+		GroupID:          groupID,
+		SessionHash:      sessionHash,
+		StickyProviderID: stickyProviderID,
+		StickyWeighted:   effectiveSettings.StickyWeightedEnabled,
+		TopK:             effectiveSettings.TopK,
 	})
 	for _, candidate := range selectionOrder {
-		if candidate.Account == nil {
+		if candidate.Provider == nil {
 			continue
 		}
-		result, err := s.ports.TryAcquireAccountSlot(ctx, candidate.Account.ID, candidate.Account.Concurrency)
+		result, err := s.ports.TryAcquireProviderSlot(ctx, candidate.Provider.ID, candidate.Provider.Concurrency)
 		if err != nil || result == nil || !result.Acquired {
 			continue
 		}
-		if !s.ports.CheckAndRegisterSession(ctx, candidate.Account, sessionHash) {
+		if !s.ports.CheckAndRegisterSession(ctx, candidate.Provider, sessionHash) {
 			result.ReleaseFunc()
 			continue
 		}
 		if sessionHash != "" && s.cache != nil && !PreserveStickyFromContext(ctx) {
-			_ = s.cache.SetSessionAccountID(ctx, derefGroupID(groupID), sessionHash, candidate.Account.ID, stickySessionTTL)
+			_ = s.cache.SetSessionProviderID(ctx, derefGroupID(groupID), sessionHash, candidate.Provider.ID, stickySessionTTL)
 		}
-		selection, selectErr := s.ports.NewSelectionResult(ctx, candidate.Account, true, result.ReleaseFunc, nil)
+		selection, selectErr := s.ports.NewSelectionResult(ctx, candidate.Provider, true, result.ReleaseFunc, nil)
 		if selectErr != nil {
 			result.ReleaseFunc()
 			return nil, true, selectErr
@@ -940,12 +940,12 @@ func (s *GenericSelector) TryAdvanced(
 		return selection, true, nil
 	}
 	for _, candidate := range selectionOrder {
-		if candidate.Account == nil || !s.ports.CheckAndRegisterSession(ctx, candidate.Account, sessionHash) {
+		if candidate.Provider == nil || !s.ports.CheckAndRegisterSession(ctx, candidate.Provider, sessionHash) {
 			continue
 		}
-		selection, selectErr := s.ports.NewSelectionResult(ctx, candidate.Account, false, nil, &AccountWaitPlan{
-			AccountID:      candidate.Account.ID,
-			MaxConcurrency: candidate.Account.Concurrency,
+		selection, selectErr := s.ports.NewSelectionResult(ctx, candidate.Provider, false, nil, &ProviderWaitPlan{
+			ProviderID:     candidate.Provider.ID,
+			MaxConcurrency: candidate.Provider.Concurrency,
 			Timeout:        s.ports.SchedulingConfig().FallbackWaitTimeout,
 			MaxWaiting:     s.ports.SchedulingConfig().FallbackMaxWaiting,
 		})
@@ -960,20 +960,20 @@ func (s *GenericSelector) TryAdvanced(
 	return nil, false, nil
 }
 
-func (s *GenericSelector) TryLegacyOrder(ctx context.Context, candidates []*FlowAccount, groupID *int64, sessionHash string, preferOAuth bool) (*FlowSelection, bool, error) {
-	ordered := append([]*FlowAccount(nil), candidates...)
-	flowSortAccountsByPriorityAndLastUsed(ordered, preferOAuth)
+func (s *GenericSelector) TryLegacyOrder(ctx context.Context, candidates []*FlowProvider, groupID *int64, sessionHash string, preferOAuth bool) (*FlowSelection, bool, error) {
+	ordered := append([]*FlowProvider(nil), candidates...)
+	flowSortProvidersByPriorityAndLastUsed(ordered, preferOAuth)
 
 	for _, acc := range ordered {
-		result, err := s.ports.TryAcquireAccountSlot(ctx, acc.ID, acc.Concurrency)
+		result, err := s.ports.TryAcquireProviderSlot(ctx, acc.ID, acc.Concurrency)
 		if err == nil && result.Acquired {
 			// 会话数量限制检查
 			if !s.ports.CheckAndRegisterSession(ctx, acc, sessionHash) {
-				result.ReleaseFunc() // 释放槽位，继续尝试下一个账号
+				result.ReleaseFunc() // 释放槽位，继续尝试下一个提供商
 				continue
 			}
 			if sessionHash != "" && s.cache != nil {
-				_ = s.cache.SetSessionAccountID(ctx, derefGroupID(groupID), sessionHash, acc.ID, stickySessionTTL)
+				_ = s.cache.SetSessionProviderID(ctx, derefGroupID(groupID), sessionHash, acc.ID, stickySessionTTL)
 			}
 			selection, err := s.ports.NewSelectionResult(ctx, acc, true, result.ReleaseFunc, nil)
 			if err != nil {
@@ -986,14 +986,14 @@ func (s *GenericSelector) TryLegacyOrder(ctx context.Context, candidates []*Flow
 	return nil, false, nil
 }
 
-func (s *GenericSelector) SortCandidatesForFallback(accounts []*FlowAccount, preferOAuth bool, mode string) {
+func (s *GenericSelector) SortCandidatesForFallback(providers []*FlowProvider, preferOAuth bool, mode string) {
 	if mode == "random" {
 		// 先按优先级排序，然后在同优先级内随机打乱
-		flowSortAccountsByPriorityOnly(accounts, preferOAuth)
-		flowShuffleWithinPriority(accounts, s.now)
+		flowSortProvidersByPriorityOnly(providers, preferOAuth)
+		flowShuffleWithinPriority(providers, s.now)
 	} else {
 		// 默认按最后使用时间排序
-		flowSortAccountsByPriorityAndLastUsed(accounts, preferOAuth)
+		flowSortProvidersByPriorityAndLastUsed(providers, preferOAuth)
 	}
 }
 
@@ -1007,7 +1007,7 @@ func shortFlowSessionHash(sessionHash string) string {
 	return sessionHash[:8]
 }
 
-// SelectOnly 供辅助入口选择账号，不创建请求槽或会话注册；原路由和资格查询顺序不变。
-func (s *GenericSelector) SelectOnly(ctx context.Context, input SelectionInput) (*FlowAccount, error) {
+// SelectOnly 供辅助入口选择提供商，不创建请求槽或会话注册；原路由和资格查询顺序不变。
+func (s *GenericSelector) SelectOnly(ctx context.Context, input SelectionInput) (*FlowProvider, error) {
 	return s.selectRoutes(WithSelectOnly(ctx), input.GroupID, input.SessionHash, input.RequestedModel, input.ExcludedIDs)
 }

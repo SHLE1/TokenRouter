@@ -48,7 +48,7 @@ func TestBuildUsageLogBatchInsertQuery_UsesConflictDoNothing(t *testing.T) {
 	log := &usage.UsageLog{
 		UserID:       1,
 		APIKeyID:     2,
-		AccountID:    3,
+		ProviderID:   3,
 		RequestID:    "req-batch-no-update",
 		Model:        "gpt-5",
 		InputTokens:  10,

@@ -4,52 +4,52 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
 func TestResolveOpenAIForwardModel(t *testing.T) {
 	tests := []struct {
 		name                        string
-		account                     *accountcore.Record
+		provider                    *providercore.Record
 		requestedModel              string
 		messagesDispatchMappedModel string
 		expectedModel               string
 	}{
 		{
 			name:                        "uses messages dispatch model for known claude family",
-			account:                     &accountcore.Record{LoadLocation: time.LoadLocation, Credentials: map[string]any{}},
+			provider:                    &providercore.Record{LoadLocation: time.LoadLocation, Credentials: map[string]any{}},
 			requestedModel:              "claude-opus-4-6",
 			messagesDispatchMappedModel: "gpt-4o-mini",
 			expectedModel:               "gpt-4o-mini",
 		},
 		{
 			name:                        "uses exact messages dispatch model for unknown claude family",
-			account:                     &accountcore.Record{LoadLocation: time.LoadLocation, Credentials: map[string]any{}},
+			provider:                    &providercore.Record{LoadLocation: time.LoadLocation, Credentials: map[string]any{}},
 			requestedModel:              "claude-fable-5",
 			messagesDispatchMappedModel: " gpt-5.6-sol ",
 			expectedModel:               "gpt-5.6-sol",
 		},
 		{
-			name:                        "nil account uses messages dispatch model",
+			name:                        "nil provider uses messages dispatch model",
 			requestedModel:              "claude-fable-5",
 			messagesDispatchMappedModel: "gpt-5.6-sol",
 			expectedModel:               "gpt-5.6-sol",
 		},
 		{
-			name:           "nil account without messages dispatch keeps requested model",
+			name:           "nil provider without messages dispatch keeps requested model",
 			requestedModel: "claude-fable-5",
 			expectedModel:  "claude-fable-5",
 		},
 		{
 			name:           "ordinary unknown gpt model has no messages dispatch fallback",
-			account:        &accountcore.Record{LoadLocation: time.LoadLocation, Credentials: map[string]any{}},
+			provider:       &providercore.Record{LoadLocation: time.LoadLocation, Credentials: map[string]any{}},
 			requestedModel: "gpt6",
 			expectedModel:  "gpt6",
 		},
 		{
-			name: "account exact mapping runs after messages dispatch model",
-			account: &accountcore.Record{LoadLocation: time.LoadLocation, Credentials: map[string]any{
+			name: "provider exact mapping runs after messages dispatch model",
+			provider: &providercore.Record{LoadLocation: time.LoadLocation, Credentials: map[string]any{
 				"model_mapping": map[string]any{
 					"gpt-5.6-sol": "gpt-5.5",
 				},
@@ -60,8 +60,8 @@ func TestResolveOpenAIForwardModel(t *testing.T) {
 			expectedModel:               "gpt-5.5",
 		},
 		{
-			name: "account wildcard mapping runs after messages dispatch model",
-			account: &accountcore.Record{LoadLocation: time.LoadLocation, Credentials: map[string]any{
+			name: "provider wildcard mapping runs after messages dispatch model",
+			provider: &providercore.Record{LoadLocation: time.LoadLocation, Credentials: map[string]any{
 				"model_mapping": map[string]any{
 					"gpt-*": "gpt-5.4",
 				},
@@ -72,8 +72,8 @@ func TestResolveOpenAIForwardModel(t *testing.T) {
 			expectedModel:               "gpt-5.4",
 		},
 		{
-			name: "account passthrough mapping runs after messages dispatch model",
-			account: &accountcore.Record{LoadLocation: time.LoadLocation, Credentials: map[string]any{
+			name: "provider passthrough mapping runs after messages dispatch model",
+			provider: &providercore.Record{LoadLocation: time.LoadLocation, Credentials: map[string]any{
 				"model_mapping": map[string]any{
 					"gpt-5.6-sol": "gpt-5.6-sol",
 				},
@@ -85,43 +85,43 @@ func TestResolveOpenAIForwardModel(t *testing.T) {
 		},
 		{
 			name:           "ordinary codex spark request keeps requested model",
-			account:        &accountcore.Record{LoadLocation: time.LoadLocation, Credentials: map[string]any{}},
+			provider:       &providercore.Record{LoadLocation: time.LoadLocation, Credentials: map[string]any{}},
 			requestedModel: "gpt-5.3-codex-spark",
 			expectedModel:  "gpt-5.3-codex-spark",
 		},
 		{
 			name:           "ordinary gpt-5.5 request keeps requested model",
-			account:        &accountcore.Record{LoadLocation: time.LoadLocation, Credentials: map[string]any{}},
+			provider:       &providercore.Record{LoadLocation: time.LoadLocation, Credentials: map[string]any{}},
 			requestedModel: "gpt-5.5",
 			expectedModel:  "gpt-5.5",
 		},
 		{
 			name:           "ordinary gpt-5.5-pro request keeps requested model",
-			account:        &accountcore.Record{LoadLocation: time.LoadLocation, Credentials: map[string]any{}},
+			provider:       &providercore.Record{LoadLocation: time.LoadLocation, Credentials: map[string]any{}},
 			requestedModel: "gpt-5.5-pro",
 			expectedModel:  "gpt-5.5-pro",
 		},
 		{
 			name:           "ordinary compact-spelled gpt5.5 request keeps requested model",
-			account:        &accountcore.Record{LoadLocation: time.LoadLocation, Credentials: map[string]any{}},
+			provider:       &providercore.Record{LoadLocation: time.LoadLocation, Credentials: map[string]any{}},
 			requestedModel: "gpt5.5",
 			expectedModel:  "gpt5.5",
 		},
 		{
 			name:           "ordinary namespaced gpt-5.5 request keeps requested model",
-			account:        &accountcore.Record{LoadLocation: time.LoadLocation, Credentials: map[string]any{}},
+			provider:       &providercore.Record{LoadLocation: time.LoadLocation, Credentials: map[string]any{}},
 			requestedModel: "openai/gpt-5.5",
 			expectedModel:  "openai/gpt-5.5",
 		},
 		{
 			name:           "ordinary compact gpt-5.5 request keeps requested model",
-			account:        &accountcore.Record{LoadLocation: time.LoadLocation, Credentials: map[string]any{}},
+			provider:       &providercore.Record{LoadLocation: time.LoadLocation, Credentials: map[string]any{}},
 			requestedModel: "gpt-5.5-openai-compact",
 			expectedModel:  "gpt-5.5-openai-compact",
 		},
 		{
 			name:                        "whitespace-only messages dispatch model is ignored",
-			account:                     &accountcore.Record{LoadLocation: time.LoadLocation, Credentials: map[string]any{}},
+			provider:                    &providercore.Record{LoadLocation: time.LoadLocation, Credentials: map[string]any{}},
 			requestedModel:              "gpt-5.5",
 			messagesDispatchMappedModel: "  ",
 			expectedModel:               "gpt-5.5",
@@ -130,7 +130,7 @@ func TestResolveOpenAIForwardModel(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := (ModelPolicy{Record: tt.account}).ForwardModel(tt.requestedModel, tt.messagesDispatchMappedModel); got != tt.expectedModel {
+			if got := (ModelPolicy{Record: tt.provider}).ForwardModel(tt.requestedModel, tt.messagesDispatchMappedModel); got != tt.expectedModel {
 				t.Fatalf("resolveOpenAIForwardModel(...) = %q, want %q", got, tt.expectedModel)
 			}
 		})
@@ -140,25 +140,25 @@ func TestResolveOpenAIForwardModel(t *testing.T) {
 func TestResolveOpenAICompactForwardModel(t *testing.T) {
 	tests := []struct {
 		name          string
-		account       *accountcore.Record
+		provider      *providercore.Record
 		model         string
 		expectedModel string
 	}{
 		{
-			name:          "nil account keeps original model",
-			account:       nil,
+			name:          "nil provider keeps original model",
+			provider:      nil,
 			model:         "gpt-5.4",
 			expectedModel: "gpt-5.4",
 		},
 		{
 			name:          "missing compact mapping keeps original model",
-			account:       &accountcore.Record{LoadLocation: time.LoadLocation, Credentials: map[string]any{}},
+			provider:      &providercore.Record{LoadLocation: time.LoadLocation, Credentials: map[string]any{}},
 			model:         "gpt-5.4",
 			expectedModel: "gpt-5.4",
 		},
 		{
 			name: "exact compact mapping overrides model",
-			account: &accountcore.Record{LoadLocation: time.LoadLocation, Credentials: map[string]any{
+			provider: &providercore.Record{LoadLocation: time.LoadLocation, Credentials: map[string]any{
 				"compact_model_mapping": map[string]any{
 					"gpt-5.4": "gpt-5.4-openai-compact",
 				},
@@ -169,7 +169,7 @@ func TestResolveOpenAICompactForwardModel(t *testing.T) {
 		},
 		{
 			name: "wildcard compact mapping overrides model",
-			account: &accountcore.Record{LoadLocation: time.LoadLocation, Credentials: map[string]any{
+			provider: &providercore.Record{LoadLocation: time.LoadLocation, Credentials: map[string]any{
 				"compact_model_mapping": map[string]any{
 					"gpt-5.*": "gpt-5-openai-compact",
 				},
@@ -180,7 +180,7 @@ func TestResolveOpenAICompactForwardModel(t *testing.T) {
 		},
 		{
 			name: "passthrough compact mapping remains unchanged",
-			account: &accountcore.Record{LoadLocation: time.LoadLocation, Credentials: map[string]any{
+			provider: &providercore.Record{LoadLocation: time.LoadLocation, Credentials: map[string]any{
 				"compact_model_mapping": map[string]any{
 					"gpt-5.4": "gpt-5.4",
 				},
@@ -193,7 +193,7 @@ func TestResolveOpenAICompactForwardModel(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := accountcore.ResolveCompactForwardModel(tt.account, tt.model); got != tt.expectedModel {
+			if got := providercore.ResolveCompactForwardModel(tt.provider, tt.model); got != tt.expectedModel {
 				t.Fatalf("resolveOpenAICompactForwardModel(...) = %q, want %q", got, tt.expectedModel)
 			}
 		})
@@ -211,15 +211,15 @@ func TestResolveOpenAIForwardMappedModels_CompactMappingPrecedence(t *testing.T)
 	}
 	tests := []struct {
 		name           string
-		account        *accountcore.Record
+		provider       *providercore.Record
 		requireCompact bool
 		wantBilling    string
 		wantUpstream   string
 	}{
 		{
 			name: "compact uses client-visible model before ordinary mapping",
-			account: &accountcore.Record{
-				LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth,
+			provider: &providercore.Record{
+				LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth,
 				Credentials: conflictingMappings,
 			},
 			requireCompact: true,
@@ -228,8 +228,8 @@ func TestResolveOpenAIForwardMappedModels_CompactMappingPrecedence(t *testing.T)
 		},
 		{
 			name: "non-compact uses ordinary mapping",
-			account: &accountcore.Record{
-				LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth,
+			provider: &providercore.Record{
+				LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth,
 				Credentials: conflictingMappings,
 			},
 			wantBilling:  "gpt-5.4",
@@ -237,8 +237,8 @@ func TestResolveOpenAIForwardMappedModels_CompactMappingPrecedence(t *testing.T)
 		},
 		{
 			name: "compact falls back to ordinary mapped model",
-			account: &accountcore.Record{
-				LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth,
+			provider: &providercore.Record{
+				LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth,
 				Credentials: mappedOnlyCompact,
 			},
 			requireCompact: true,
@@ -247,8 +247,8 @@ func TestResolveOpenAIForwardMappedModels_CompactMappingPrecedence(t *testing.T)
 		},
 		{
 			name: "passthrough preserves explicit ordinary mapping",
-			account: &accountcore.Record{
-				LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth,
+			provider: &providercore.Record{
+				LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth,
 				Credentials: conflictingMappings, Extra: map[string]any{"openai_passthrough": true},
 			},
 			requireCompact: true,
@@ -257,8 +257,8 @@ func TestResolveOpenAIForwardMappedModels_CompactMappingPrecedence(t *testing.T)
 		},
 		{
 			name: "raw chat fallback never applies compact mapping",
-			account: &accountcore.Record{
-				LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey,
+			provider: &providercore.Record{
+				LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey,
 				Credentials: conflictingMappings, Extra: map[string]any{"openai_text_route_mode": "force_chat_completions"},
 			},
 			requireCompact: true,
@@ -269,37 +269,37 @@ func TestResolveOpenAIForwardMappedModels_CompactMappingPrecedence(t *testing.T)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			billing, upstream := (ModelPolicy{Record: tt.account}).ForwardMappedModels("gpt-5.5", tt.requireCompact)
+			billing, upstream := (ModelPolicy{Record: tt.provider}).ForwardMappedModels("gpt-5.5", tt.requireCompact)
 			if billing != tt.wantBilling {
 				t.Fatalf("billing model = %q, want %q", billing, tt.wantBilling)
 			}
 			if upstream != tt.wantUpstream {
 				t.Fatalf("upstream model = %q, want %q", upstream, tt.wantUpstream)
 			}
-			if scheduler := (ModelPolicy{Record: tt.account}).OpenAIUpstream("gpt-5.5", tt.requireCompact, false); scheduler != upstream {
+			if scheduler := (ModelPolicy{Record: tt.provider}).OpenAIUpstream("gpt-5.5", tt.requireCompact, false); scheduler != upstream {
 				t.Fatalf("scheduler model %q disagrees with Forward model %q", scheduler, upstream)
 			}
 		})
 	}
 }
 
-func TestCanonicalOpenAIAccountSchedulingModelMatchesForwardSemantics(t *testing.T) {
+func TestCanonicalOpenAIProviderSchedulingModelMatchesForwardSemantics(t *testing.T) {
 	tests := []struct {
-		name    string
-		account *accountcore.Record
-		model   string
-		want    string
+		name     string
+		provider *providercore.Record
+		model    string
+		want     string
 	}{
 		{
-			name:    "OpenAI OAuth preserves bare GPT-5.6 identity",
-			account: &accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth},
-			model:   "gpt-5.6",
-			want:    "gpt-5.6",
+			name:     "OpenAI OAuth preserves bare GPT-5.6 identity",
+			provider: &providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth},
+			model:    "gpt-5.6",
+			want:     "gpt-5.6",
 		},
 		{
-			name: "OpenAI passthrough preserves explicit ordinary account mapping",
-			account: &accountcore.Record{
-				LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth,
+			name: "OpenAI passthrough preserves explicit ordinary provider mapping",
+			provider: &providercore.Record{
+				LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth,
 				Credentials: map[string]any{"model_mapping": map[string]any{"public": "private", "private": "must-not-map-again"}},
 				Extra:       map[string]any{"openai_passthrough": true},
 			},
@@ -307,16 +307,16 @@ func TestCanonicalOpenAIAccountSchedulingModelMatchesForwardSemantics(t *testing
 			want:  "private",
 		},
 		{
-			name:    "Grok OAuth does not inherit OpenAI Codex aliases",
-			account: &accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformGrok, Type: capability.AccountTypeOAuth},
-			model:   "gpt-5.6",
-			want:    "gpt-5.6",
+			name:     "Grok OAuth does not inherit OpenAI Codex aliases",
+			provider: &providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformGrok, Type: capability.ProviderTypeOAuth},
+			model:    "gpt-5.6",
+			want:     "gpt-5.6",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := (ModelPolicy{Record: tt.account}).CanonicalSchedulingModel(tt.model); got != tt.want {
+			if got := (ModelPolicy{Record: tt.provider}).CanonicalSchedulingModel(tt.model); got != tt.want {
 				t.Fatalf("canonical scheduling model = %q, want %q", got, tt.want)
 			}
 		})
@@ -354,82 +354,82 @@ func TestNormalizeCodexModel(t *testing.T) {
 
 func TestNormalizeOpenAIModelForUpstream(t *testing.T) {
 	tests := []struct {
-		name    string
-		account *accountcore.Record
-		model   string
-		want    string
+		name     string
+		provider *providercore.Record
+		model    string
+		want     string
 	}{
 		{
-			name:    "nil account only trims whitespace",
-			account: nil,
-			model:   " gpt-5.6 ",
-			want:    "gpt-5.6",
+			name:     "nil provider only trims whitespace",
+			provider: nil,
+			model:    " gpt-5.6 ",
+			want:     "gpt-5.6",
 		},
 		{
-			name:    "oauth preserves bare GPT-5.6",
-			account: &accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth},
-			model:   "gpt-5.6",
-			want:    "gpt-5.6",
+			name:     "oauth preserves bare GPT-5.6",
+			provider: &providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth},
+			model:    "gpt-5.6",
+			want:     "gpt-5.6",
 		},
 		{
-			name:    "oauth preserves unregistered provider-prefixed GPT-5.6",
-			account: &accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth},
-			model:   "openai/gpt-5.6",
-			want:    "openai/gpt-5.6",
+			name:     "oauth preserves unregistered provider-prefixed GPT-5.6",
+			provider: &providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth},
+			model:    "openai/gpt-5.6",
+			want:     "openai/gpt-5.6",
 		},
 		{
-			name:    "oauth preserves unknown non codex model",
-			account: &accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth},
-			model:   "gemini-3-flash-preview",
-			want:    "gemini-3-flash-preview",
+			name:     "oauth preserves unknown non codex model",
+			provider: &providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth},
+			model:    "gemini-3-flash-preview",
+			want:     "gemini-3-flash-preview",
 		},
 		{
-			name:    "oauth preserves invalid gpt model",
-			account: &accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth},
-			model:   "gpt6",
-			want:    "gpt6",
+			name:     "oauth preserves invalid gpt model",
+			provider: &providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth},
+			model:    "gpt6",
+			want:     "gpt6",
 		},
 		{
-			name:    "oauth normalizes known codex alias",
-			account: &accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth},
-			model:   "gpt-5.4-high",
-			want:    "gpt-5.4",
+			name:     "oauth normalizes known codex alias",
+			provider: &providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth},
+			model:    "gpt-5.4-high",
+			want:     "gpt-5.4",
 		},
 		{
-			name:    "oauth preserves GPT-5.5 Pro model",
-			account: &accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth},
-			model:   "openai/gpt-5.5-pro",
-			want:    "gpt-5.5-pro",
+			name:     "oauth preserves GPT-5.5 Pro model",
+			provider: &providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth},
+			model:    "openai/gpt-5.5-pro",
+			want:     "gpt-5.5-pro",
 		},
 		{
-			name:    "oauth preserves codex auto review model",
-			account: &accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth},
-			model:   "codex-auto-review",
-			want:    "codex-auto-review",
+			name:     "oauth preserves codex auto review model",
+			provider: &providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth},
+			model:    "codex-auto-review",
+			want:     "codex-auto-review",
 		},
 		{
-			name:    "apikey preserves official bare GPT-5.6 alias",
-			account: &accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey},
-			model:   "gpt-5.6",
-			want:    "gpt-5.6",
+			name:     "apikey preserves official bare GPT-5.6 alias",
+			provider: &providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey},
+			model:    "gpt-5.6",
+			want:     "gpt-5.6",
 		},
 		{
-			name:    "apikey preserves custom compatible model",
-			account: &accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey},
-			model:   "gemini-3-flash-preview",
-			want:    "gemini-3-flash-preview",
+			name:     "apikey preserves custom compatible model",
+			provider: &providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey},
+			model:    "gemini-3-flash-preview",
+			want:     "gemini-3-flash-preview",
 		},
 		{
-			name:    "apikey preserves official non codex model",
-			account: &accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey},
-			model:   "gpt-4.1",
-			want:    "gpt-4.1",
+			name:     "apikey preserves official non codex model",
+			provider: &providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey},
+			model:    "gpt-4.1",
+			want:     "gpt-4.1",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := (ModelPolicy{Record: tt.account}).NormalizeOpenAI(tt.model); got != tt.want {
+			if got := (ModelPolicy{Record: tt.provider}).NormalizeOpenAI(tt.model); got != tt.want {
 				t.Fatalf("normalizeOpenAIModelForUpstream(...) = %q, want %q", got, tt.want)
 			}
 		})

@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/infra/timingwheel"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/stretchr/testify/require"
 )
 
@@ -23,11 +23,12 @@ func (r *deferredActivityRepository) BatchUpdateLastUsed(_ context.Context, upda
 	}
 	return nil
 }
-func DeferredActivityRecorder(t *testing.T) (*account.DeferredService, *sync.Map) {
+
+func DeferredActivityRecorder(t *testing.T) (*provider.DeferredService, *sync.Map) {
 	t.Helper()
 	wheel := timingwheel.New()
 	repo := &deferredActivityRepository{}
-	svc := account.NewDeferredService(repo, wheel, account.DeferredOptions{Interval: time.Second, Now: time.Now, Observe: log.Printf})
+	svc := provider.NewDeferredService(repo, wheel, provider.DeferredOptions{Interval: time.Second, Now: time.Now, Observe: log.Printf})
 	t.Cleanup(func() { require.NoError(t, svc.Stop()) })
 	return svc, &repo.updates
 }

@@ -36,11 +36,11 @@ func groupEntityToService(m *ent.Group) *usage.GroupView {
 	return (*accessview.GroupConfig)(groupPG.GroupFromEnt(m))
 }
 
-func accountEntityToService(m *ent.Account) *usage.AccountView {
+func providerEntityToService(m *ent.Provider) *usage.ProviderView {
 	if m == nil {
 		return nil
 	}
-	return &usage.AccountView{ID: m.ID, Name: m.Name}
+	return &usage.ProviderView{ID: m.ID, Name: m.Name}
 }
 
 func userSubscriptionEntityToService(m *ent.UserSubscription) *billing.UserSubscription {

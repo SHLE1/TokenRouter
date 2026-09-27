@@ -8,21 +8,21 @@ import (
 	"testing"
 	time "time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/stretchr/testify/require"
 )
 
-func TestGatewayService_isModelSupportedByAccount_AntigravityModelMapping(t *testing.T) {
+func TestGatewayService_isModelSupportedByProvider_AntigravityModelMapping(t *testing.T) {
 	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{}, Shared: Shared{}},
 
 		nil)
 
 	// 使用 model_mapping 作为白名单（通配符匹配）
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, Platform: capability.PlatformAntigravity,
 			Credentials: map[string]any{
 				"model_whitelist": []string{"claude-sonnet-4-5", "gemini-3-flash"},
@@ -35,56 +35,56 @@ func TestGatewayService_isModelSupportedByAccount_AntigravityModelMapping(t *tes
 	}
 
 	// claude-* 通配符匹配
-	require.True(t, svc.isModelSupportedByAccount(account, "claude-sonnet-4-5"))
-	require.True(t, svc.isModelSupportedByAccount(account, "claude-haiku-4-5"))
-	require.True(t, svc.isModelSupportedByAccount(account, "claude-opus-4-6"))
+	require.True(t, svc.isModelSupportedByProvider(provider, "claude-sonnet-4-5"))
+	require.True(t, svc.isModelSupportedByProvider(provider, "claude-haiku-4-5"))
+	require.True(t, svc.isModelSupportedByProvider(provider, "claude-opus-4-6"))
 
 	// gemini-3-* 通配符匹配
-	require.True(t, svc.isModelSupportedByAccount(account, "gemini-3-flash"))
-	require.True(t, svc.isModelSupportedByAccount(account, "gemini-3-pro-high"))
+	require.True(t, svc.isModelSupportedByProvider(provider, "gemini-3-flash"))
+	require.True(t, svc.isModelSupportedByProvider(provider, "gemini-3-pro-high"))
 
 	// gemini-2.5-* 不匹配（不在 model_mapping 中）
-	require.False(t, svc.isModelSupportedByAccount(account, "gemini-2.5-flash"))
-	require.False(t, svc.isModelSupportedByAccount(account, "gemini-2.5-pro"))
+	require.False(t, svc.isModelSupportedByProvider(provider, "gemini-2.5-flash"))
+	require.False(t, svc.isModelSupportedByProvider(provider, "gemini-2.5-pro"))
 
 	// 其他平台模型不支持
-	require.False(t, svc.isModelSupportedByAccount(account, "gpt-4"))
+	require.False(t, svc.isModelSupportedByProvider(provider, "gpt-4"))
 
 	// 空模型允许
-	require.True(t, svc.isModelSupportedByAccount(account, ""))
+	require.True(t, svc.isModelSupportedByProvider(provider, ""))
 }
 
-func TestGatewayService_isModelSupportedByAccount_AntigravityNoMapping(t *testing.T) {
+func TestGatewayService_isModelSupportedByProvider_AntigravityNoMapping(t *testing.T) {
 	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{}, Shared: Shared{}},
 
 		nil)
 
 	// 未配置 model_mapping 时，使用默认映射（domain.DefaultAntigravityModelMapping）
 	// 只有默认映射中的模型才被支持
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, Platform: capability.PlatformAntigravity,
 			Credentials: map[string]any{},
 		},
 	}
 
 	// 默认映射中的模型应该被支持
-	require.True(t, svc.isModelSupportedByAccount(account, "claude-sonnet-4-5"))
-	require.True(t, svc.isModelSupportedByAccount(account, "gemini-3-flash"))
-	require.True(t, svc.isModelSupportedByAccount(account, "gemini-2.5-pro"))
-	require.True(t, svc.isModelSupportedByAccount(account, "claude-haiku-4-5"))
+	require.True(t, svc.isModelSupportedByProvider(provider, "claude-sonnet-4-5"))
+	require.True(t, svc.isModelSupportedByProvider(provider, "gemini-3-flash"))
+	require.True(t, svc.isModelSupportedByProvider(provider, "gemini-2.5-pro"))
+	require.True(t, svc.isModelSupportedByProvider(provider, "claude-haiku-4-5"))
 
 	// 不在默认映射中的模型不被支持
-	require.False(t, svc.isModelSupportedByAccount(account, "claude-3-5-sonnet-20241022"))
-	require.False(t, svc.isModelSupportedByAccount(account, "claude-unknown-model"))
+	require.False(t, svc.isModelSupportedByProvider(provider, "claude-3-5-sonnet-20241022"))
+	require.False(t, svc.isModelSupportedByProvider(provider, "claude-unknown-model"))
 
 	// 非 claude-/gemini- 前缀仍然不支持
-	require.False(t, svc.isModelSupportedByAccount(account, "gpt-4"))
+	require.False(t, svc.isModelSupportedByProvider(provider, "gpt-4"))
 }
 
-// TestGatewayService_isModelSupportedByAccountWithContext_ThinkingMode 测试 thinking 模式下的模型支持检查
+// TestGatewayService_isModelSupportedByProviderWithContext_ThinkingMode 测试 thinking 模式下的模型支持检查
 // 验证调度时使用映射后的最终模型名（包括 thinking 后缀）来检查 model_mapping 支持
-func TestGatewayService_isModelSupportedByAccountWithContext_ThinkingMode(t *testing.T) {
+func TestGatewayService_isModelSupportedByProviderWithContext_ThinkingMode(t *testing.T) {
 	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{}, Shared: Shared{}},
 
 		nil)
@@ -176,8 +176,8 @@ func TestGatewayService_isModelSupportedByAccountWithContext_ThinkingMode(t *tes
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			account := &gatewayprovider.ExecutionAccount{
-				Record: accountcore.Record{
+			provider := &gatewayprovider.ExecutionProvider{
+				Record: providercore.Record{
 					LoadLocation: time.LoadLocation, Platform: capability.PlatformAntigravity,
 					Credentials: map[string]any{
 						"model_whitelist": func() []string {
@@ -199,25 +199,25 @@ func TestGatewayService_isModelSupportedByAccountWithContext_ThinkingMode(t *tes
 			}
 
 			ctx := requeststate.WithThinkingEnabled(context.Background(), tt.thinkingEnabled)
-			result := svc.isModelSupportedByAccountWithContext(ctx, account, tt.requestedModel)
+			result := svc.isModelSupportedByProviderWithContext(ctx, provider, tt.requestedModel)
 
 			require.Equal(t, tt.expected, result,
-				"isModelSupportedByAccountWithContext(ctx[thinking=%v], account, %q) = %v, want %v",
+				"isModelSupportedByProviderWithContext(ctx[thinking=%v], provider, %q) = %v, want %v",
 				tt.thinkingEnabled, tt.requestedModel, result, tt.expected)
 		})
 	}
 }
 
-// TestGatewayService_isModelSupportedByAccount_CustomMappingNotInDefault 测试自定义模型映射中
+// TestGatewayService_isModelSupportedByProvider_CustomMappingNotInDefault 测试自定义模型映射中
 // 不在 DefaultAntigravityModelMapping 中的模型能通过调度
-func TestGatewayService_isModelSupportedByAccount_CustomMappingNotInDefault(t *testing.T) {
+func TestGatewayService_isModelSupportedByProvider_CustomMappingNotInDefault(t *testing.T) {
 	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{}, Shared: Shared{}},
 
 		nil)
 
 	// 自定义映射中包含不在默认映射中的模型
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, Platform: capability.PlatformAntigravity,
 			Credentials: map[string]any{
 				"model_mapping": map[string]any{
@@ -231,29 +231,29 @@ func TestGatewayService_isModelSupportedByAccount_CustomMappingNotInDefault(t *t
 	}
 
 	// 自定义模型应该通过（不在 DefaultAntigravityModelMapping 中也可以）
-	require.True(t, svc.isModelSupportedByAccount(account, "my-custom-model"))
-	require.True(t, svc.isModelSupportedByAccount(account, "gpt-4o"))
-	require.True(t, svc.isModelSupportedByAccount(account, "llama-3-70b"))
-	require.True(t, svc.isModelSupportedByAccount(account, "claude-sonnet-4-5"))
+	require.True(t, svc.isModelSupportedByProvider(provider, "my-custom-model"))
+	require.True(t, svc.isModelSupportedByProvider(provider, "gpt-4o"))
+	require.True(t, svc.isModelSupportedByProvider(provider, "llama-3-70b"))
+	require.True(t, svc.isModelSupportedByProvider(provider, "claude-sonnet-4-5"))
 
 	// 不在自定义映射中的模型不通过
-	require.False(t, svc.isModelSupportedByAccount(account, "gpt-3.5-turbo"))
-	require.False(t, svc.isModelSupportedByAccount(account, "unknown-model"))
+	require.False(t, svc.isModelSupportedByProvider(provider, "gpt-3.5-turbo"))
+	require.False(t, svc.isModelSupportedByProvider(provider, "unknown-model"))
 
 	// 空模型允许
-	require.True(t, svc.isModelSupportedByAccount(account, ""))
+	require.True(t, svc.isModelSupportedByProvider(provider, ""))
 }
 
-// TestGatewayService_isModelSupportedByAccountWithContext_CustomMappingThinking
+// TestGatewayService_isModelSupportedByProviderWithContext_CustomMappingThinking
 // 测试自定义映射 + thinking 模式的交互
-func TestGatewayService_isModelSupportedByAccountWithContext_CustomMappingThinking(t *testing.T) {
+func TestGatewayService_isModelSupportedByProviderWithContext_CustomMappingThinking(t *testing.T) {
 	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{}, Shared: Shared{}},
 
 		nil)
 
 	// 自定义映射同时配置基础模型和 thinking 变体
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, Platform: capability.PlatformAntigravity,
 			Credentials: map[string]any{
 				"model_mapping": map[string]any{
@@ -267,13 +267,13 @@ func TestGatewayService_isModelSupportedByAccountWithContext_CustomMappingThinki
 
 	// thinking=true: claude-sonnet-4-5 → mapped=claude-sonnet-4-5 → +thinking → check IsModelSupported(claude-sonnet-4-5-thinking)=true
 	ctx := requeststate.WithThinkingEnabled(context.Background(), true)
-	require.True(t, svc.isModelSupportedByAccountWithContext(ctx, account, "claude-sonnet-4-5"))
+	require.True(t, svc.isModelSupportedByProviderWithContext(ctx, provider, "claude-sonnet-4-5"))
 
 	// thinking=false: claude-sonnet-4-5 → mapped=claude-sonnet-4-5 → check IsModelSupported(claude-sonnet-4-5)=true
 	ctx = requeststate.WithThinkingEnabled(context.Background(), false)
-	require.True(t, svc.isModelSupportedByAccountWithContext(ctx, account, "claude-sonnet-4-5"))
+	require.True(t, svc.isModelSupportedByProviderWithContext(ctx, provider, "claude-sonnet-4-5"))
 
 	// 自定义模型（非 claude）不受 thinking 后缀影响，mapped 成功即通过
 	ctx = requeststate.WithThinkingEnabled(context.Background(), true)
-	require.True(t, svc.isModelSupportedByAccountWithContext(ctx, account, "my-custom-model"))
+	require.True(t, svc.isModelSupportedByProviderWithContext(ctx, provider, "my-custom-model"))
 }

@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
 	authctx "github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
@@ -34,20 +34,20 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 目标：严格验证“antigravity 账号通过 /v1/messages 提供 Claude 服务时”，
-// 当账号 credentials.intercept_warmup_requests=true 且请求为 Warmup 时，
+// 目标：严格验证“antigravity 提供商通过 /v1/messages 提供 Claude 服务时”，
+// 当提供商 credentials.intercept_warmup_requests=true 且请求为 Warmup 时，
 // 后端会在转发上游前直接拦截并返回 mock 响应（不依赖上游）。
 
 type fakeSchedulerCache struct {
-	accounts []*gatewayprovider.ExecutionAccount
+	providers []*gatewayprovider.ExecutionProvider
 }
 
-func (f *fakeSchedulerCache) GetSnapshot(_ context.Context, _ scheduler.SchedulerBucket) ([]scheduler.SnapshotAccount, bool, error) {
-	if f.accounts == nil {
+func (f *fakeSchedulerCache) GetSnapshot(_ context.Context, _ scheduler.SchedulerBucket) ([]scheduler.SnapshotProvider, bool, error) {
+	if f.providers == nil {
 		return nil, true, nil
 	}
-	values := make([]scheduler.SnapshotAccount, len(f.accounts))
-	for i, value := range f.accounts {
+	values := make([]scheduler.SnapshotProvider, len(f.providers))
+	for i, value := range f.providers {
 		values[i] = codec.WrapRecord(gatewayprovider.ExecutionRecord(value))
 	}
 	return values, true, nil
@@ -57,7 +57,7 @@ func (f *fakeSchedulerCache) CaptureBucketWriteToken(_ context.Context, bucket s
 	return scheduler.SchedulerBucketWriteToken{Bucket: bucket, Epoch: 1}, nil
 }
 
-func (f *fakeSchedulerCache) SetSnapshot(_ context.Context, _ scheduler.SchedulerBucket, _ scheduler.SchedulerBucketWriteToken, _ []scheduler.SnapshotAccount) error {
+func (f *fakeSchedulerCache) SetSnapshot(_ context.Context, _ scheduler.SchedulerBucket, _ scheduler.SchedulerBucketWriteToken, _ []scheduler.SnapshotProvider) error {
 	return nil
 }
 
@@ -77,19 +77,19 @@ func (f *fakeSchedulerCache) ReleaseGroupLifecycleLease(_ context.Context, _ sch
 	return nil
 }
 
-func (f *fakeSchedulerCache) GetAccount(_ context.Context, id int64) (scheduler.SnapshotAccount, error) {
-	for _, account := range f.accounts {
-		if account != nil && account.Record.ID == id {
-			return codec.WrapRecord(gatewayprovider.ExecutionRecord(account)), nil
+func (f *fakeSchedulerCache) GetProvider(_ context.Context, id int64) (scheduler.SnapshotProvider, error) {
+	for _, provider := range f.providers {
+		if provider != nil && provider.Record.ID == id {
+			return codec.WrapRecord(gatewayprovider.ExecutionRecord(provider)), nil
 		}
 	}
 	return nil, nil
 }
 
-func (f *fakeSchedulerCache) SetAccount(_ context.Context, _ scheduler.SnapshotAccount) error {
+func (f *fakeSchedulerCache) SetProvider(_ context.Context, _ scheduler.SnapshotProvider) error {
 	return nil
 }
-func (f *fakeSchedulerCache) DeleteAccount(_ context.Context, _ int64) error { return nil }
+func (f *fakeSchedulerCache) DeleteProvider(_ context.Context, _ int64) error { return nil }
 func (f *fakeSchedulerCache) UpdateLastUsed(_ context.Context, _ map[int64]time.Time) error {
 	return nil
 }
@@ -139,41 +139,41 @@ func (f *fakeGroupRepo) ListActiveByPlatformLite(ctx context.Context, platform s
 	return f.ListActiveByPlatform(ctx, platform)
 }
 func (f *fakeGroupRepo) ExistsByName(context.Context, string) (bool, error) { return false, nil }
-func (f *fakeGroupRepo) GetAccountCount(context.Context, int64) (int64, int64, error) {
+func (f *fakeGroupRepo) GetProviderCount(context.Context, int64) (int64, int64, error) {
 	return 0, 0, nil
 }
 
-func (f *fakeGroupRepo) DeleteAccountGroupsByGroupID(context.Context, int64) (int64, error) {
+func (f *fakeGroupRepo) DeleteProviderGroupsByGroupID(context.Context, int64) (int64, error) {
 	return 0, nil
 }
 
-func (f *fakeGroupRepo) GetAccountIDsByGroupIDs(context.Context, []int64) ([]int64, error) {
+func (f *fakeGroupRepo) GetProviderIDsByGroupIDs(context.Context, []int64) ([]int64, error) {
 	return nil, nil
 }
-func (f *fakeGroupRepo) BindAccountsToGroup(context.Context, int64, []int64) error { return nil }
+func (f *fakeGroupRepo) BindProvidersToGroup(context.Context, int64, []int64) error { return nil }
 func (f *fakeGroupRepo) UpdateSortOrders(context.Context, []routing.GroupSortOrderUpdate) error {
 	return nil
 }
 
 type fakeConcurrencyCache struct{}
 
-func (f *fakeConcurrencyCache) AcquireAccountSlot(context.Context, int64, int, string) (bool, error) {
+func (f *fakeConcurrencyCache) AcquireProviderSlot(context.Context, int64, int, string) (bool, error) {
 	return true, nil
 }
 
-func (f *fakeConcurrencyCache) ReleaseAccountSlot(context.Context, int64, string) error { return nil }
+func (f *fakeConcurrencyCache) ReleaseProviderSlot(context.Context, int64, string) error { return nil }
 
-func (f *fakeConcurrencyCache) GetAccountConcurrency(context.Context, int64) (int, error) {
+func (f *fakeConcurrencyCache) GetProviderConcurrency(context.Context, int64) (int, error) {
 	return 0, nil
 }
 
-func (f *fakeConcurrencyCache) IncrementAccountWaitCount(context.Context, int64, int) (bool, error) {
+func (f *fakeConcurrencyCache) IncrementProviderWaitCount(context.Context, int64, int) (bool, error) {
 	return true, nil
 }
 
-func (f *fakeConcurrencyCache) DecrementAccountWaitCount(context.Context, int64) error { return nil }
+func (f *fakeConcurrencyCache) DecrementProviderWaitCount(context.Context, int64) error { return nil }
 
-func (f *fakeConcurrencyCache) GetAccountWaitingCount(context.Context, int64) (int, error) {
+func (f *fakeConcurrencyCache) GetProviderWaitingCount(context.Context, int64) (int, error) {
 	return 0, nil
 }
 
@@ -189,36 +189,36 @@ func (f *fakeConcurrencyCache) IncrementWaitCount(context.Context, int64, int) (
 	return true, nil
 }
 func (f *fakeConcurrencyCache) DecrementWaitCount(context.Context, int64) error { return nil }
-func (f *fakeConcurrencyCache) GetAccountsLoadBatch(context.Context, []scheduler.AccountWithConcurrency) (map[int64]*scheduler.AccountLoadInfo, error) {
-	return map[int64]*scheduler.AccountLoadInfo{}, nil
+func (f *fakeConcurrencyCache) GetProvidersLoadBatch(context.Context, []scheduler.ProviderWithConcurrency) (map[int64]*scheduler.ProviderLoadInfo, error) {
+	return map[int64]*scheduler.ProviderLoadInfo{}, nil
 }
 
 func (f *fakeConcurrencyCache) GetUsersLoadBatch(context.Context, []scheduler.UserWithConcurrency) (map[int64]*scheduler.UserLoadInfo, error) {
 	return map[int64]*scheduler.UserLoadInfo{}, nil
 }
 
-func (f *fakeConcurrencyCache) GetAccountConcurrencyBatch(_ context.Context, accountIDs []int64) (map[int64]int, error) {
-	result := make(map[int64]int, len(accountIDs))
-	for _, id := range accountIDs {
+func (f *fakeConcurrencyCache) GetProviderConcurrencyBatch(_ context.Context, providerIDs []int64) (map[int64]int, error) {
+	result := make(map[int64]int, len(providerIDs))
+	for _, id := range providerIDs {
 		result[id] = 0
 	}
 	return result, nil
 }
 
-func (f *fakeConcurrencyCache) CleanupExpiredAccountSlots(context.Context, int64) error { return nil }
+func (f *fakeConcurrencyCache) CleanupExpiredProviderSlots(context.Context, int64) error { return nil }
 
-func (f *fakeConcurrencyCache) CleanupExpiredAccountSlotKeys(context.Context) error { return nil }
+func (f *fakeConcurrencyCache) CleanupExpiredProviderSlotKeys(context.Context) error { return nil }
 
 func (f *fakeConcurrencyCache) CleanupStaleProcessSlots(context.Context, string) error { return nil }
 
-func newTestGatewayHandler(t *testing.T, group *routing.Group, accounts []*gatewayprovider.ExecutionAccount) (*messageEndpointsFixture, func()) {
+func newTestGatewayHandler(t *testing.T, group *routing.Group, providers []*gatewayprovider.ExecutionProvider) (*messageEndpointsFixture, func()) {
 	t.Helper()
 
-	schedulerCache := &fakeSchedulerCache{accounts: accounts}
+	schedulerCache := &fakeSchedulerCache{providers: providers}
 	schedulerSnapshot := scheduler.NewSnapshotService(schedulerCache, nil, nil, nil, nil, scheduler.SnapshotBindings{})
 
 	gwSvc, gwSvcChoices, messages := newGenericExecutionAndSelectionFixture(
-		nil,                               // accountRepo (not used: scheduler snapshot hit)
+		nil,                               // providerRepo (not used: scheduler snapshot hit)
 		&fakeGroupRepo{group: group}, nil, // usageLogRepo
 		// usageBillingRepo
 		// userRepo
@@ -270,9 +270,9 @@ func newTestGatewayHandler(t *testing.T, group *routing.Group, accounts []*gatew
 	return h, cleanup
 }
 
-func TestGatewayHandlerMessages_InterceptWarmup_AntigravityAccount_MixedSchedulingV1(t *testing.T) {
+func TestGatewayHandlerMessages_InterceptWarmup_AntigravityProvider_MixedSchedulingV1(t *testing.T) {
 	groupID := int64(2001)
-	accountID := int64(1001)
+	providerID := int64(1001)
 
 	group := &routing.Group{
 		ID:       groupID,
@@ -281,12 +281,12 @@ func TestGatewayHandlerMessages_InterceptWarmup_AntigravityAccount_MixedScheduli
 		Status: billing.StatusActive,
 	}
 
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
-			LoadLocation: time.LoadLocation, ID: accountID,
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: providerID,
 			Name:     "ag-1",
 			Platform: capability.PlatformAntigravity,
-			Type:     capability.AccountTypeOAuth,
+			Type:     capability.ProviderTypeOAuth,
 			Credentials: map[string]any{
 				"access_token":              "tok_xxx",
 				"intercept_warmup_requests": true,
@@ -294,15 +294,15 @@ func TestGatewayHandlerMessages_InterceptWarmup_AntigravityAccount_MixedScheduli
 			Extra: map[string]any{
 				"mixed_scheduling": true, // 关键：允许被 anthropic 分组混合调度选中
 			},
-			Concurrency:   1,
-			Priority:      1,
-			Status:        billing.StatusActive,
-			Schedulable:   true,
-			AccountGroups: []accountcore.GroupMembership{{AccountID: accountID, GroupID: groupID}},
+			Concurrency:    1,
+			Priority:       1,
+			Status:         billing.StatusActive,
+			Schedulable:    true,
+			ProviderGroups: []providercore.GroupMembership{{ProviderID: providerID, GroupID: groupID}},
 		},
 	}
 
-	h, cleanup := newTestGatewayHandler(t, group, []*gatewayprovider.ExecutionAccount{account})
+	h, cleanup := newTestGatewayHandler(t, group, []*gatewayprovider.ExecutionProvider{provider})
 	defer cleanup()
 
 	rec := httptest.NewRecorder()
@@ -338,10 +338,10 @@ func TestGatewayHandlerMessages_InterceptWarmup_AntigravityAccount_MixedScheduli
 
 	require.Equal(t, 200, rec.Code)
 
-	// 断言：确实选中了 antigravity 账号（不是纯函数测试，而是从 Handler 里验证调度结果）
-	selected, ok := c.Get(gatewayhttp.OpsAccountIDKey)
+	// 断言：确实选中了 antigravity 提供商（不是纯函数测试，而是从 Handler 里验证调度结果）
+	selected, ok := c.Get(gatewayhttp.OpsProviderIDKey)
 	require.True(t, ok)
-	require.Equal(t, accountID, selected)
+	require.Equal(t, providerID, selected)
 
 	var resp map[string]any
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
@@ -356,9 +356,9 @@ func TestGatewayHandlerMessages_InterceptWarmup_AntigravityAccount_MixedScheduli
 	require.Equal(t, "New Conversation", first["text"])
 }
 
-func TestGatewayHandlerMessages_InterceptWarmup_AntigravityAccount_ForcePlatform(t *testing.T) {
+func TestGatewayHandlerMessages_InterceptWarmup_AntigravityProvider_ForcePlatform(t *testing.T) {
 	groupID := int64(2002)
-	accountID := int64(1002)
+	providerID := int64(1002)
 
 	group := &routing.Group{
 		ID:       groupID,
@@ -366,25 +366,25 @@ func TestGatewayHandlerMessages_InterceptWarmup_AntigravityAccount_ForcePlatform
 		Status:   billing.StatusActive,
 	}
 
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
-			LoadLocation: time.LoadLocation, ID: accountID,
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: providerID,
 			Name:     "ag-2",
 			Platform: capability.PlatformAntigravity,
-			Type:     capability.AccountTypeOAuth,
+			Type:     capability.ProviderTypeOAuth,
 			Credentials: map[string]any{
 				"access_token":              "tok_xxx",
 				"intercept_warmup_requests": true,
 			},
-			Concurrency:   1,
-			Priority:      1,
-			Status:        billing.StatusActive,
-			Schedulable:   true,
-			AccountGroups: []accountcore.GroupMembership{{AccountID: accountID, GroupID: groupID}},
+			Concurrency:    1,
+			Priority:       1,
+			Status:         billing.StatusActive,
+			Schedulable:    true,
+			ProviderGroups: []providercore.GroupMembership{{ProviderID: providerID, GroupID: groupID}},
 		},
 	}
 
-	h, cleanup := newTestGatewayHandler(t, group, []*gatewayprovider.ExecutionAccount{account})
+	h, cleanup := newTestGatewayHandler(t, group, []*gatewayprovider.ExecutionProvider{provider})
 	defer cleanup()
 
 	rec := httptest.NewRecorder()
@@ -427,9 +427,9 @@ func TestGatewayHandlerMessages_InterceptWarmup_AntigravityAccount_ForcePlatform
 
 	require.Equal(t, 200, rec.Code)
 
-	selected, ok := c.Get(gatewayhttp.OpsAccountIDKey)
+	selected, ok := c.Get(gatewayhttp.OpsProviderIDKey)
 	require.True(t, ok)
-	require.Equal(t, accountID, selected)
+	require.Equal(t, providerID, selected)
 
 	var resp map[string]any
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))

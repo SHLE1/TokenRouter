@@ -8,19 +8,19 @@ import (
 
 func BenchmarkOpenAIWSPoolAcquire(b *testing.B) {
 	cfg := &WSPoolOptions{}
-	cfg.MaxConnsPerAccount = 8
-	cfg.MinIdlePerAccount = 1
-	cfg.MaxIdlePerAccount = 4
+	cfg.MaxConnsPerProvider = 8
+	cfg.MinIdlePerProvider = 1
+	cfg.MaxIdlePerProvider = 4
 	cfg.QueueLimitPerConn = 256
 	cfg.DialTimeoutSeconds = 1
 
 	pool := newStartedWSConnPoolForTest(cfg)
 	pool.SetClientDialerForTest(&openAIWSCountingDialer{})
 
-	account := &WSPoolAccount{ID: 1001, Type: "apikey"}
+	provider := &WSPoolProvider{ID: 1001, Type: "apikey"}
 	req := WSAcquireRequest{
-		Account: account,
-		WSURL:   "wss://example.com/v1/responses",
+		Provider: provider,
+		WSURL:    "wss://example.com/v1/responses",
 	}
 	ctx := context.Background()
 

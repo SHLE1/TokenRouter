@@ -1,6 +1,6 @@
 import overview from './overview'
 import pricing from './pricing'
-import accounts from './accounts'
+import providers from './providers'
 import resources from './resources'
 import ops from './ops'
 import settings from './settings'
@@ -9,9 +9,9 @@ import audit from './audit'
 export default {
     protocols: {
       nativeTitle: '原生支持协议',
-      nativeHint: '仅列出此账号类型原生支持的协议。全部关闭后不承接新调用。',
+      nativeHint: '仅列出此提供商类型原生支持的协议。全部关闭后不承接新调用。',
       loadError: '协议目录加载失败，请重新打开表单。',
-      fallback: '账号不支持时转换为',
+      fallback: '提供商不支持时转换为',
       fallbackWhen: '不支持时',
       auto: '自动匹配转换',
       restricted: '限制转换目标（按顺序）',
@@ -20,8 +20,8 @@ export default {
       imagePolicyHint: '控制对话请求中的生图工具，不影响独立的图片生成、编辑接口。',
       imagePolicyOptions: {
         inherit: {
-          label: '跟随账号和全局设置',
-          description: '本分组不单独指定，先使用账号设置；账号未配置时，使用全局设置。',
+          label: '跟随提供商和全局设置',
+          description: '本分组不单独指定，先使用提供商设置；提供商未配置时，使用全局设置。',
         },
         enabled: {
           label: '自动添加生图工具',
@@ -37,11 +37,11 @@ export default {
         },
       },
       groupTitle: '协议控制',
-      groupHint: '先尝试账号原生协议，再按允许的转换目标顺序尝试。自动模式使用服务端支持的转换路线。',
+      groupHint: '先尝试提供商原生协议，再按允许的转换目标顺序尝试。自动模式使用服务端支持的转换路线。',
     },
   ...overview,
   ...pricing,
-  ...accounts,
+  ...providers,
   ...resources,
   ...ops,
   ...settings,

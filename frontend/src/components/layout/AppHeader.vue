@@ -32,7 +32,7 @@
         </div>
       </div>
 
-      <!-- 右侧状态项保持紧凑，作为全局账户工具区。 -->
+      <!-- 右侧状态项保持紧凑，作为全局提供商工具区。 -->
       <div class="header-status-actions">
         <div class="header-status-icon-group">
           <div v-if="user" class="hidden sm:block">

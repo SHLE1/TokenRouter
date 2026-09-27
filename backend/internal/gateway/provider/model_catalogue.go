@@ -5,9 +5,9 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
@@ -59,7 +59,7 @@ func CatalogueDefaults() routing.CatalogueDefaults {
 type catalogueRules struct{ policy ModelPolicy }
 
 // SupportsClientProtocol 不把专用 Embeddings、Images 模型展示为普通对话候选。
-// 账号模型别名先按同一规则展开，再判断已有适配器支持的调用形状。
+// 提供商模型别名先按同一规则展开，再判断已有适配器支持的调用形状。
 func (v catalogueRules) SupportsClientProtocol(model string, source capability.ProtocolID) bool {
 	model = v.policy.Mapped(model)
 	embedding := strings.HasPrefix(strings.ToLower(model), "text-embedding-")
@@ -80,15 +80,15 @@ func (v catalogueRules) SupportsClientProtocol(model string, source capability.P
 }
 
 func (v catalogueRules) ConfiguredModels() []string {
-	return v.policy.Record.GetConfiguredRequestModels(accountprovider.ModelDefaults())
+	return v.policy.Record.GetConfiguredRequestModels(provideradapter.ModelDefaults())
 }
 
 func (v catalogueRules) Mapping() map[string]string {
-	return account.ResolveModelMapping(v.policy.Record, accountprovider.ModelDefaults())
+	return provider.ResolveModelMapping(v.policy.Record, provideradapter.ModelDefaults())
 }
 
 func (v catalogueRules) Unrestricted() bool {
-	return v.policy.Record.HasUnrestrictedModelScope(accountprovider.ModelDefaults())
+	return v.policy.Record.HasUnrestrictedModelScope(provideradapter.ModelDefaults())
 }
 
 func (v catalogueRules) QoderCN() bool {
@@ -104,23 +104,23 @@ func (v catalogueRules) UpstreamModels(ctx context.Context, model string) []stri
 	return v.policy.ListingModels(ctx, model)
 }
 
-// CatalogueAccount 只公开原目录投影，凭据仅留在内部模型规则端口。
-func CatalogueAccount(value *account.Record, route requeststate.AttemptRoute) routing.CatalogueAccount {
+// CatalogueProvider 只公开原目录投影，凭据仅留在内部模型规则端口。
+func CatalogueProvider(value *provider.Record, route requeststate.AttemptRoute) routing.CatalogueProvider {
 	snapshot := (ModelPolicy{Record: value, Route: route}).CandidateSnapshot()
-	groups := make([]int64, len(value.AccountGroups))
-	for i, g := range value.AccountGroups {
+	groups := make([]int64, len(value.ProviderGroups))
+	for i, g := range value.ProviderGroups {
 		groups[i] = g.GroupID
 	}
-	return routing.CatalogueAccount{AccountSnapshot: snapshot, GroupIDs: slices.Clone(value.GroupIDs), AccountGroupIDs: groups, Passthrough: value.IsOpenAIPassthroughEnabled(), Rules: catalogueRules{ModelPolicy{Record: value, Route: route}}}
+	return routing.CatalogueProvider{ProviderSnapshot: snapshot, GroupIDs: slices.Clone(value.GroupIDs), ProviderGroupIDs: groups, Passthrough: value.IsOpenAIPassthroughEnabled(), Rules: catalogueRules{ModelPolicy{Record: value, Route: route}}}
 }
 
-func CatalogueAccounts(values []account.Record) []routing.CatalogueAccount {
+func CatalogueProviders(values []provider.Record) []routing.CatalogueProvider {
 	if values == nil {
 		return nil
 	}
-	out := make([]routing.CatalogueAccount, len(values))
+	out := make([]routing.CatalogueProvider, len(values))
 	for i := range values {
-		out[i] = CatalogueAccount(&values[i], requeststate.AttemptRoute{})
+		out[i] = CatalogueProvider(&values[i], requeststate.AttemptRoute{})
 	}
 	return out
 }

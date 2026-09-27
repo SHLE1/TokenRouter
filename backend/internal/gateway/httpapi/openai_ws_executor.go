@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/promptpolicy"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 )
 
@@ -30,9 +30,9 @@ type OpenAIWSOptions struct {
 	StickyResponseIDTTLSeconds                                                            int
 }
 
-// OpenAIWSSelection 只提供已经选中账号的传输选择与会话预算。
+// OpenAIWSSelection 只提供已经选中提供商的传输选择与会话预算。
 type OpenAIWSSelection interface {
-	ResolveTransport(*provider.ExecutionAccount) egress.OpenAIWSProtocolDecision
+	ResolveTransport(*gatewayadapter.ExecutionProvider) egress.OpenAIWSProtocolDecision
 	SessionStickyTTL() time.Duration
 }
 
@@ -43,12 +43,12 @@ type OpenAIWSDependencies struct {
 	Requests    *OpenAIRequests
 	Output      *OpenAIResponseOutput
 	Grok        *GrokExecutor
-	FastPolicy  *provider.ExecutionFastPolicy
+	FastPolicy  *gatewayadapter.ExecutionFastPolicy
 	Prompts     *promptpolicy.Service
 	Selection   OpenAIWSSelection
 	State       session.OpenAIWSStateStore
 	Lineage     *OpenAIEncryptedLineage
-	ImageBridge *provider.ResponseImagePolicy
+	ImageBridge *gatewayadapter.ResponseImagePolicy
 	Cache       session.GatewayCache
 }
 

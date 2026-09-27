@@ -19,8 +19,8 @@ type FrameConn interface {
 	Close() error
 }
 
-// Target 只提供已校验执行账号的供应商连接和路由投影能力。
-// 账号凭据始终留在适配层，不进入会话记录或公共输出。
+// Target 只提供已校验执行提供商的供应商连接和路由投影能力。
+// 提供商凭据始终留在适配层，不进入会话记录或公共输出。
 type Target interface {
 	Dial(context.Context) (FrameConn, error)
 	Rewrite(context.Context, []byte) ([]byte, string, []string, error)

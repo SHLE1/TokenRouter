@@ -1,3 +1,5 @@
+//go:build unit
+
 package billing_test
 
 import (

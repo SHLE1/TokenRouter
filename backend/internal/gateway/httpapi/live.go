@@ -163,7 +163,7 @@ func (h *LiveHandler) WriteLiveCreateError(c *gin.Context, err error) {
 		h.ports.Error(c, http.StatusTooManyRequests, "rate_limit_error", "Live concurrency limit reached")
 	case errors.Is(err, session.ErrLiveClientPolicyDenied):
 		h.ports.PolicyDenied(c)
-		h.ports.Error(c, http.StatusForbidden, "permission_error", "Live client is not allowed by the available account policy")
+		h.ports.Error(c, http.StatusForbidden, "permission_error", "Live client is not allowed by the available provider policy")
 	case errors.Is(err, session.ErrLiveUnavailable):
 		h.ports.Error(c, http.StatusServiceUnavailable, "api_error", "Live is unavailable")
 	default:

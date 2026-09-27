@@ -31,12 +31,13 @@ func (c *Client) Get(ctx context.Context, path string, authenticated bool) ([]by
 	}
 	return c.GetURLWithBearer(ctx, endpoint, token, "")
 }
+
 func UpstreamUsageEndpoint(base, path string, build func(string, string) string) (string, error) {
 	parsed, err := url.Parse(base)
 	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
 		return "", errors.New("invalid base URL")
 	}
-	// 账号 Base URL 沿用 OpenAI 兼容端点约定：/v1、/v4、/v1beta
+	// 提供商 Base URL 沿用 OpenAI 兼容端点约定：/v1、/v4、/v1beta
 	// 等版本段作为根路径，不能再重复拼接一个 /v1。复用现有端点
 	// 构造器，确保用量查询和转发对同一类 Base URL 的解释一致。
 	endpoint := build(base, path)
@@ -52,6 +53,7 @@ func UpstreamUsageEndpoint(base, path string, build func(string, string) string)
 	parsedEndpoint.Fragment = ""
 	return strings.TrimRight(parsedEndpoint.String(), "/"), nil
 }
+
 func UpstreamUsageStatusEndpoint(base string) (string, error) {
 	return UpstreamUsageRootEndpoint(base, "/api/status")
 }
@@ -78,7 +80,7 @@ func UpstreamUsageUserSelfEndpoint(base string) (string, error) {
 	return UpstreamUsageRootEndpoint(base, "/api/user/self")
 }
 
-// UpstreamUsageRootEndpoint 从账号 Base URL 去掉末尾的 OpenAI 版本段，
+// UpstreamUsageRootEndpoint 从提供商 Base URL 去掉末尾的 OpenAI 版本段，
 // 用于 New API 这类挂在站点根路径下的管理接口。
 func UpstreamUsageRootEndpoint(base, path string) (string, error) {
 	parsed, err := url.Parse(base)
@@ -100,6 +102,7 @@ func UpstreamUsageRootEndpoint(base, path string) (string, error) {
 	parsed.User = nil
 	return strings.TrimRight(parsed.String(), "/"), nil
 }
+
 func UpstreamUsageHTTPError(status int, unsupported bool) error {
 	if status >= http.StatusOK && status < http.StatusMultipleChoices {
 		return nil
@@ -116,12 +119,14 @@ func UpstreamUsageHTTPError(status int, unsupported bool) error {
 	}
 	return usageview.ErrUpstreamUsageInvalidResponse
 }
+
 func UpstreamUsageOperationError(ctx context.Context, err error) error {
 	if errors.Is(err, context.DeadlineExceeded) || errors.Is(ctx.Err(), context.DeadlineExceeded) {
 		return usageview.ErrUpstreamUsageTimeout
 	}
 	return usageview.ErrUpstreamUsageRequestFailed
 }
+
 func (c *Client) GetURL(ctx context.Context, endpoint string, authenticated bool) ([]byte, int, error) {
 	token := ""
 	if authenticated {
@@ -131,7 +136,7 @@ func (c *Client) GetURL(ctx context.Context, endpoint string, authenticated bool
 }
 
 // GetURLWithHeaders 请求内置适配器声明的固定请求头。
-// 账号级覆写先应用、再被固定头覆盖，避免探测请求改变认证或团队身份。
+// 提供商级覆写先应用、再被固定头覆盖，避免探测请求改变认证或团队身份。
 func (c *Client) GetURLWithHeaders(ctx context.Context, endpoint string, fixedHeaders map[string]string) ([]byte, int, error) {
 	parsed, err := url.Parse(endpoint)
 	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
@@ -144,7 +149,7 @@ func (c *Client) GetURLWithHeaders(ctx context.Context, endpoint string, fixedHe
 	req = req.WithContext(c.Context(req.Context()))
 	req.Header.Set("Accept", "application/json")
 	c.ApplyHeaders(req.Header)
-	// 账号级覆写不得改变内置适配器的认证身份。
+	// 提供商级覆写不得改变内置适配器的认证身份。
 	req.Header.Del("Authorization")
 	req.Header.Del("api-key")
 	for headerName, headerValue := range fixedHeaders {
@@ -156,7 +161,7 @@ func (c *Client) GetURLWithHeaders(ctx context.Context, endpoint string, fixedHe
 		if strings.ContainsAny(name, "\r\n") || strings.ContainsAny(value, "\r\n") {
 			return nil, 0, usageview.ErrUpstreamUsageConfigInvalid
 		}
-		// 固定头不允许被账号覆写；先删除所有大小写变体，再写入规范值。
+		// 固定头不允许被提供商覆写；先删除所有大小写变体，再写入规范值。
 		for existing := range req.Header {
 			if strings.EqualFold(existing, name) {
 				delete(req.Header, existing)

@@ -28,7 +28,7 @@ vi.mock('@/api/admin', () => ({
     settings: {
       getWebSearchEmulationConfig
     },
-    accounts: {
+    providers: {
       list: vi.fn().mockResolvedValue({ items: [], total: 0 }),
       getById: vi.fn()
     }
@@ -131,7 +131,7 @@ describe('PricingView model routing copy', () => {
     await createButton!.trigger('click')
     await flushPromises()
 
-    expect(wrapper.text()).not.toContain('admin.pricing.form.applyPricingToAccountStats')
+    expect(wrapper.text()).not.toContain('admin.pricing.form.applyPricingToProviderStats')
     expect(wrapper.get('[data-testid="billing-model-source-hint"]').text()).toBe('admin.pricing.form.billingModelSourceHintGroupMapped')
 
     await wrapper.get('[data-option="requested"]').trigger('click')
@@ -192,7 +192,7 @@ describe('PricingView billing settings', () => {
     await vm.openEditDialog({
       ...defaultBillingSettings(), id: 9, name: 'Shared', status: 'active',
       billing_model_source: 'group_mapped', group_ids: [7], model_pricing: [],
-      account_stats_pricing_rules: [], web_search_price_per_call: 0.2, free_openai_fast: true,
+      provider_stats_pricing_rules: [], web_search_price_per_call: 0.2, free_openai_fast: true,
     })
     await wrapper.get('#pricing-tab-billing').trigger('click')
     expect((wrapper.get('#pricing-web_search_price_per_call').element as HTMLInputElement).value).toBe('0.2')

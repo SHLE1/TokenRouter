@@ -24,7 +24,6 @@ func buildResponsesFailedSSEStream(errType, errorMessage string) string {
 }
 
 func TestForwardAsAnthropic_BufferedResponseFailed_ReturnsError(t *testing.T) {
-
 	body := []byte(`{"model":"gpt-5.4","max_tokens":32,"messages":[{"role":"user","content":"hello"}],"stream":false}`)
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -39,8 +38,8 @@ func TestForwardAsAnthropic_BufferedResponseFailed_ReturnsError(t *testing.T) {
 	}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: protocolHTTPOptions(), transport: upstream})
 
-	account := rawChatCompletionsTestAccount()
-	_, err := svc.Text.Messages(context.Background(), c, account, body, "", "")
+	provider := rawChatCompletionsTestProvider()
+	_, err := svc.Text.Messages(context.Background(), c, provider, body, "", "")
 
 	require.Error(t, err, "non-cyber response.failed must return an error, not swallow as 200")
 	require.Contains(t, err.Error(), "upstream response failed")
@@ -48,7 +47,6 @@ func TestForwardAsAnthropic_BufferedResponseFailed_ReturnsError(t *testing.T) {
 }
 
 func TestForwardAsAnthropic_StreamingResponseFailed_ReturnsError(t *testing.T) {
-
 	body := []byte(`{"model":"gpt-5.4","max_tokens":32,"messages":[{"role":"user","content":"hello"}],"stream":true}`)
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -63,15 +61,14 @@ func TestForwardAsAnthropic_StreamingResponseFailed_ReturnsError(t *testing.T) {
 	}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: protocolHTTPOptions(), transport: upstream})
 
-	account := rawChatCompletionsTestAccount()
-	_, err := svc.Text.Messages(context.Background(), c, account, body, "", "")
+	provider := rawChatCompletionsTestProvider()
+	_, err := svc.Text.Messages(context.Background(), c, provider, body, "", "")
 
 	require.Error(t, err, "streaming response.failed must return an error")
 	require.Contains(t, err.Error(), "upstream response failed")
 }
 
 func TestForwardAsAnthropic_StreamingBareErrorAfterOutputIsVisible(t *testing.T) {
-
 	body := []byte(`{"model":"gpt-5.4","max_tokens":32,"messages":[{"role":"user","content":"hello"}],"stream":true}`)
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -96,8 +93,8 @@ func TestForwardAsAnthropic_StreamingBareErrorAfterOutputIsVisible(t *testing.T)
 	}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: protocolHTTPOptions(), transport: upstream})
 
-	account := rawChatCompletionsTestAccount()
-	_, err := svc.Text.Messages(context.Background(), c, account, body, "", "")
+	provider := rawChatCompletionsTestProvider()
+	_, err := svc.Text.Messages(context.Background(), c, provider, body, "", "")
 
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "upstream response failed: mixed tools failed")
@@ -110,7 +107,6 @@ func TestForwardAsAnthropic_StreamingBareErrorAfterOutputIsVisible(t *testing.T)
 }
 
 func TestForwardAsAnthropic_StreamingBareErrorBeforeOutputFailsOver(t *testing.T) {
-
 	body := []byte(`{"model":"gpt-5.4","max_tokens":32,"messages":[{"role":"user","content":"hello"}],"stream":true}`)
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -131,8 +127,8 @@ func TestForwardAsAnthropic_StreamingBareErrorBeforeOutputFailsOver(t *testing.T
 	}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: protocolHTTPOptions(), transport: upstream})
 
-	account := rawChatCompletionsTestAccount()
-	_, err := svc.Text.Messages(context.Background(), c, account, body, "", "")
+	provider := rawChatCompletionsTestProvider()
+	_, err := svc.Text.Messages(context.Background(), c, provider, body, "", "")
 
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError
@@ -141,7 +137,6 @@ func TestForwardAsAnthropic_StreamingBareErrorBeforeOutputFailsOver(t *testing.T
 }
 
 func TestForwardAsAnthropic_StreamingGenericBareErrorBeforeOutputIsNotHiddenByFailover(t *testing.T) {
-
 	body := []byte(`{"model":"gpt-5.4","max_tokens":32,"messages":[{"role":"user","content":"hello"}],"stream":true}`)
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -157,7 +152,7 @@ func TestForwardAsAnthropic_StreamingGenericBareErrorBeforeOutputIsNotHiddenByFa
 		Body:       io.NopCloser(strings.NewReader(ssePayload)),
 	}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: protocolHTTPOptions(), transport: upstream})
-	_, err := svc.Text.Messages(context.Background(), c, rawChatCompletionsTestAccount(), body, "", "")
+	_, err := svc.Text.Messages(context.Background(), c, rawChatCompletionsTestProvider(), body, "", "")
 
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError
@@ -166,7 +161,6 @@ func TestForwardAsAnthropic_StreamingGenericBareErrorBeforeOutputIsNotHiddenByFa
 }
 
 func TestForwardAsAnthropic_BufferedResponseFailed_Failover(t *testing.T) {
-
 	body := []byte(`{"model":"gpt-5.4","max_tokens":32,"messages":[{"role":"user","content":"hello"}],"stream":false}`)
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -182,8 +176,8 @@ func TestForwardAsAnthropic_BufferedResponseFailed_Failover(t *testing.T) {
 	}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: protocolHTTPOptions(), transport: upstream})
 
-	account := rawChatCompletionsTestAccount()
-	_, err := svc.Text.Messages(context.Background(), c, account, body, "", "")
+	provider := rawChatCompletionsTestProvider()
+	_, err := svc.Text.Messages(context.Background(), c, provider, body, "", "")
 
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError
@@ -191,7 +185,6 @@ func TestForwardAsAnthropic_BufferedResponseFailed_Failover(t *testing.T) {
 }
 
 func TestForwardAsAnthropic_StreamingResponseFailed_FailoverBeforeOutput(t *testing.T) {
-
 	body := []byte(`{"model":"gpt-5.4","max_tokens":32,"messages":[{"role":"user","content":"hello"}],"stream":true}`)
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -206,8 +199,8 @@ func TestForwardAsAnthropic_StreamingResponseFailed_FailoverBeforeOutput(t *test
 	}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: protocolHTTPOptions(), transport: upstream})
 
-	account := rawChatCompletionsTestAccount()
-	_, err := svc.Text.Messages(context.Background(), c, account, body, "", "")
+	provider := rawChatCompletionsTestProvider()
+	_, err := svc.Text.Messages(context.Background(), c, provider, body, "", "")
 
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError

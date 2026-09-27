@@ -5,12 +5,12 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/bedrock"
 )
 
 // PrepareBedrockCompatibility 保留分组映射后的清理位置和 Header 原地更新行为。
-func (r *Runtime) PrepareBedrockCompatibility(ctx context.Context, headers http.Header, body []byte, model string, target *provider.ExecutionAccount, groupID *int64) []byte {
+func (r *Runtime) PrepareBedrockCompatibility(ctx context.Context, headers http.Header, body []byte, model string, target *gatewayadapter.ExecutionProvider, groupID *int64) []byte {
 	if groupID == nil || r.dependencies.GroupPolicies == nil {
 		return body
 	}

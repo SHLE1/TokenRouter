@@ -24,14 +24,14 @@ backend/
 │   ├── jwtgen/                                          JWT 辅助命令
 │   └── server/                                          服务器参数、版本信息与 app 启动
 ├── internal/                                            应用内部包；受 Go 导入范围约束
-│   ├── account/                                         上游账号、凭据、授权、健康和维护
+│   ├── provider/                                         上游提供商、凭据、授权、健康和维护
 │   │   ├── httpapi/                                     HTTP 路由、鉴权接入与输入输出适配
 │   │   │   └── dto/                                     HTTP 展示值、请求值及脱敏映射
 │   │   ├── postgres/                                    PostgreSQL 持久化及事务适配
 │   │   ├── provider/                                    外部服务与技术能力适配
 │   │   ├── rediscache/                                  Redis 缓存、计数或会话适配
-│   │   ├── transfer/                                    账号导入、导出与 CRS 同步的传输值
-│   │   └── usageview/                                   账号用量展示及 Grok 快照副本
+│   │   ├── transfer/                                    提供商导入、导出与 CRS 同步的传输值
+│   │   └── usageview/                                   提供商用量展示及 Grok 快照副本
 │   ├── apikey/                                          网关 Key、认证快照、访问策略和失效传播
 │   │   ├── httpapi/                                     HTTP 路由、鉴权接入与输入输出适配
 │   │   │   └── dto/                                     HTTP 展示值、请求值及脱敏映射
@@ -97,7 +97,7 @@ backend/
 │   │   ├── moderationflow/                              网关审核主体、Cyber 标记与完成输入
 │   │   ├── postgres/                                    PostgreSQL 持久化及事务适配
 │   │   ├── promptpolicy/                                用户提示词替换及运行规则缓存
-│   │   ├── provider/                                    组合账号、路由、传输与平台执行的具体适配
+│   │   ├── provider/                                    组合提供商、路由、传输与平台执行的具体适配
 │   │   │   ├── googleforward/                           Gemini 与 Antigravity 请求准备和协议执行适配
 │   │   │   ├── grokforward/                             Grok 请求组合及 Responses 转换适配
 │   │   │   ├── messageforward/                          Anthropic Messages、计数和兼容协议执行适配
@@ -113,7 +113,7 @@ backend/
 │   │   │   └── testkit/                                 该模块测试所需的替身与夹具
 │   │   ├── telemetry/                                   完成观测、诊断与缺失用量采样
 │   │   ├── testkit/                                     该模块测试所需的替身与夹具
-│   │   ├── text/                                        文本账号循环、计数和输入 token 预检
+│   │   ├── text/                                        文本提供商循环、计数和输入 token 预检
 │   │   ├── tierpolicy/                                  Fast/Flex 服务档位准入、设置与价格规则
 │   │   ├── tokenestimate/                               本地 token 数估算
 │   │   └── ws/                                          入站 WebSocket、turn、帧与恢复编排
@@ -182,13 +182,13 @@ backend/
 │   │   ├── anthropic/                                   Messages 报文、beta、签名和用量事件
 │   │   ├── bridge/                                      协议间转换、工具修复与流转换状态
 │   │   ├── gemini/                                      Gemini/Code Assist 报文、图片及签名处理
-│   │   ├── google/                                      Google 错误、OAuth、服务账号和共享报文
+│   │   ├── google/                                      Google 错误、OAuth、服务提供商和共享报文
 │   │   ├── grok/                                        Grok token 估算的协议常量
 │   │   ├── openai/                                      Responses、Chat、媒体、WS、Codex 与用量报文
 │   │   └── wirejson/                                    保持报文结构的 JSON 读取与修改
 │   ├── routing/                                         分组、价格配置、模型目录和请求路线
 │   │   ├── accessview/                                  分组访问、能力、模型与调度配置的只读投影
-│   │   ├── capability/                                  平台、账号、协议准入与单步转换纯规则
+│   │   ├── capability/                                  平台、提供商、协议准入与单步转换纯规则
 │   │   ├── httpapi/                                     HTTP 路由、鉴权接入与输入输出适配
 │   │   │   └── dto/                                     HTTP 展示值、请求值及脱敏映射
 │   │   ├── modelmap/                                    模型匹配和映射动作
@@ -200,7 +200,7 @@ backend/
 │   │   ├── policy/                                      评分、覆盖参数、RPM、串行队列与诊断值
 │   │   ├── postgres/                                    PostgreSQL 持久化及事务适配
 │   │   └── rediscache/                                  Redis 缓存、计数或会话适配
-│   │       └── codec/                                   完整账号与无凭据候选快照的存储编码
+│   │       └── codec/                                   完整提供商与无凭据候选快照的存储编码
 │   ├── search/                                          外部搜索配置、供应商选择与额度
 │   │   ├── contract/                                    搜索供应商配置、请求和结果值
 │   │   ├── httpapi/                                     HTTP 路由、鉴权接入与输入输出适配
@@ -261,7 +261,7 @@ backend/
 │   │   ├── usagecontract/                               供应商用量查询的请求契约
 │   │   ├── usageprovider/                               Sub2API、New API、Zivv 等用量适配
 │   │   ├── usageview/                                   用量、额度、订阅档位和归一化校验
-│   │   ├── vertex/                                      Vertex 服务账号、区域请求与批处理客户端
+│   │   ├── vertex/                                      Vertex 服务提供商、区域请求与批处理客户端
 │   │   └── zhipu/                                       智谱模型及用量查询
 │   ├── usage/                                           用量记录、统计、仪表盘、聚合与清理
 │   │   ├── httpapi/                                     HTTP 路由、鉴权接入与输入输出适配
@@ -278,7 +278,7 @@ backend/
 ├── migrations/                                          前向 SQL 迁移、嵌入和迁移契约测试
 ├── tests/                                               跨模块测试
 │   └── integration/                                     跨模块及进程集成测试
-│       ├── account/                                     上游账号、凭据、授权、健康和维护集成契约
+│       ├── provider/                                     上游提供商、凭据、授权、健康和维护集成契约
 │       ├── apikey/                                      网关 Key、认证快照、访问策略和失效传播集成契约
 │       ├── billing/                                     价格计算、资金、订阅、配额和事务命令集成契约
 │       ├── catalogue/                                   模型目录集成契约
@@ -301,7 +301,7 @@ backend/
 
 业务根包定义用例、状态和所需端口。`httpapi` 处理请求与响应；`postgres`、`rediscache` 实现持久化和运行状态；`provider` 适配供应商或其他模块提供的能力。模块只创建实际需要的适配包，测试替身放在 `testkit`。
 
-`provider` 的具体用途随模块而异：账号 provider 负责授权、凭据、健康及导入协作；billing provider 加载价格目录；payment provider 对接支付机构；backup provider 执行归档与存储；gateway provider 组合路由、选号、传输与平台调用。这些适配不接管所属核心的业务规则。
+`provider` 的具体用途随模块而异：提供商 provider 负责授权、凭据、健康及导入协作；billing provider 加载价格目录；payment provider 对接支付机构；backup provider 执行归档与存储；gateway provider 组合路由、选号、传输与平台调用。这些适配不接管所属核心的业务规则。
 
 `app` 注入生产实例、配置投影和跨模块端口，登记资源启停。模块通过端口接收能力，不反向导入 app。跨模块资金事务由存储参与者共用连接；HTTP 层不直接访问数据库。`billing/pricing`、`routing/capability`、`scheduler/policy` 等纯规则子包可被多个模块直接使用，避免复制规则。
 
@@ -314,9 +314,9 @@ backend/
 flowchart TB
     cmd["cmd/server"] --> app["app"]
     app --> server["server"]
-    app --> http["account/httpapi"]
-    app --> store["account/postgres"]
-    app --> core["account"]
+    app --> http["provider/httpapi"]
+    app --> store["provider/postgres"]
+    app --> core["provider"]
     http --> core
     http --> httpx["server/httpx"]
     store --> core
@@ -333,7 +333,7 @@ flowchart TB
     net --> util["pkg 工具"]
 ```
 
-核心与适配的依赖方向由代码角色决定，不能只按顶层目录判断。例如 account 核心使用 billing 的资金契约，routing 核心使用 billing/pricing 和 scheduler/policy 的纯规则；这不意味着 billing 或 scheduler 可以反向导入 routing 的具体存储。protocol 不承担账号资格、配置读取或资金操作。供应商包共享的 Google 认证和用量客户端位于 upstream/internal。
+核心与适配的依赖方向由代码角色决定，不能只按顶层目录判断。例如 provider 核心使用 billing 的资金契约，routing 核心使用 billing/pricing 和 scheduler/policy 的纯规则；这不意味着 billing 或 scheduler 可以反向导入 routing 的具体存储。protocol 不承担提供商资格、配置读取或资金操作。供应商包共享的 Google 认证和用量客户端位于 upstream/internal。
 
 <a id="gateway_collaboration"></a>
 ## 网关协作
@@ -350,13 +350,13 @@ flowchart LR
     gateway -. "审核裁决" .-> moderation["moderation"]
     gateway -. "工具模拟" .-> search["search"]
     gateway -. "单次执行" .-> adapter["gateway/provider"]
-    adapter -. "凭据与健康" .-> account["account"]
+    adapter -. "凭据与健康" .-> provider["provider"]
     adapter -. "代理与 TLS 策略" .-> egress["egress"]
     adapter -. "供应商交换" .-> upstream["upstream"]
     gateway -. "完成记录" .-> usage["usage"]
 ```
 
-HTTP 负责客户端输出，gateway 负责账号循环与完成资格，upstream 负责单次供应商调用。完成器在入队前冻结账号、Key、付款主体和用量，后台工作不持有 Gin Context。输出后的重试限制、不同协议的取消与部分结果结算见[请求生命周期](gateway_request_lifecycle.md)。
+HTTP 负责客户端输出，gateway 负责提供商循环与完成资格，upstream 负责单次供应商调用。完成器在入队前冻结提供商、Key、付款主体和用量，后台工作不持有 Gin Context。输出后的重试限制、不同协议的取消与部分结果结算见[请求生命周期](gateway_request_lifecycle.md)。
 
 <a id="funding_collaboration"></a>
 ## 资金与任务协作
@@ -406,8 +406,8 @@ app/lifecycle 管理这些组件的启动和关闭。audit 独立记录操作审
 | identity、team | [身份与租户](../domains/identity_and_tenancy.md) |
 | apikey | [身份与租户](../domains/identity_and_tenancy.md)、[复合 Key](../domains/composite_api_keys.md)、[模型重定向](../domains/api_key_model_redirects.md) |
 | routing | [路由与结算](../domains/routing_and_billing.md)、[模型目录](../interfaces/model_catalog_and_marketplace.md)、[协议能力](../interfaces/protocol_capabilities.md) |
-| account | [账号能力矩阵](../interfaces/upstream_account_matrix.md)、[账号维护](../operations/account_maintenance.md)、[上游用量](../interfaces/upstream_usage.md) |
-| scheduler | [账号调度与缓存](account_scheduling_and_cache.md) |
+| provider | [提供商能力矩阵](../interfaces/upstream_provider_matrix.md)、[提供商维护](../operations/provider_maintenance.md)、[上游用量](../interfaces/upstream_usage.md) |
+| scheduler | [提供商调度与缓存](provider_scheduling_and_cache.md) |
 | gateway | [请求生命周期](gateway_request_lifecycle.md)、[网关策略](../domains/gateway_policy_controls.md)、[错误策略](../interfaces/gateway_error_policy.md) |
 | protocol、upstream | [协议能力](../interfaces/protocol_capabilities.md)、[接口目录中的平台专题](../interfaces/index.md) |
 | egress | [传输安全](../operations/upstream_transport_security.md) |

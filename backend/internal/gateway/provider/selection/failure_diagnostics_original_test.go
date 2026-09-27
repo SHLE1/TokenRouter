@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
@@ -17,11 +17,11 @@ func TestCollectSelectionFailureStats(t *testing.T) {
 	model := "gpt-5.4"
 	resetAt := time.Now().Add(2 * time.Minute).Format(time.RFC3339)
 
-	accounts := []gatewayprovider.
+	providers := []gatewayprovider.
 		// excluded
-		ExecutionAccount{
+		ExecutionProvider{
 		{
-			Record: accountcore.Record{
+			Record: providercore.Record{
 				Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1,
 				Platform:    capability.PlatformOpenAI,
 				Status:      billing.StatusActive,
@@ -30,7 +30,7 @@ func TestCollectSelectionFailureStats(t *testing.T) {
 		},
 		// unschedulable
 		{
-			Record: accountcore.Record{
+			Record: providercore.Record{
 				Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2,
 				Platform:    capability.PlatformOpenAI,
 				Status:      billing.StatusActive,
@@ -39,7 +39,7 @@ func TestCollectSelectionFailureStats(t *testing.T) {
 		},
 		// platform filtered
 		{
-			Record: accountcore.Record{
+			Record: providercore.Record{
 				Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 3,
 				Platform:    capability.PlatformAntigravity,
 				Status:      billing.StatusActive,
@@ -48,7 +48,7 @@ func TestCollectSelectionFailureStats(t *testing.T) {
 		},
 		// model unsupported
 		{
-			Record: accountcore.Record{
+			Record: providercore.Record{
 				LoadLocation: time.LoadLocation, ID: 4,
 				Platform:    capability.PlatformOpenAI,
 				Status:      billing.StatusActive,
@@ -63,7 +63,7 @@ func TestCollectSelectionFailureStats(t *testing.T) {
 		},
 		// model rate limited
 		{
-			Record: accountcore.Record{
+			Record: providercore.Record{
 				Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 5,
 				Platform:    capability.PlatformOpenAI,
 				Status:      billing.StatusActive,
@@ -79,7 +79,7 @@ func TestCollectSelectionFailureStats(t *testing.T) {
 		},
 		// eligible
 		{
-			Record: accountcore.Record{
+			Record: providercore.Record{
 				Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 6,
 				Platform:    capability.PlatformOpenAI,
 				Status:      billing.StatusActive,
@@ -89,7 +89,7 @@ func TestCollectSelectionFailureStats(t *testing.T) {
 	}
 
 	excluded := map[int64]struct{}{1: {}}
-	stats := svc.collectSelectionFailureStats(context.Background(), accounts, model, capability.PlatformOpenAI, excluded, false)
+	stats := svc.collectSelectionFailureStats(context.Background(), providers, model, capability.PlatformOpenAI, excluded, false)
 
 	if stats.Total != 6 {
 		t.Fatalf("total=%d want=6", stats.Total)
@@ -116,8 +116,8 @@ func TestCollectSelectionFailureStats(t *testing.T) {
 
 func TestDiagnoseSelectionFailure_UnschedulableDetail(t *testing.T) {
 	svc := NewGeneric(GenericDependencies{}, DefaultOptions())
-	acc := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	acc := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 7,
 			Platform:    capability.PlatformOpenAI,
 			Status:      billing.StatusActive,
@@ -138,8 +138,8 @@ func TestDiagnoseSelectionFailure_ModelRateLimitedDetail(t *testing.T) {
 	svc := NewGeneric(GenericDependencies{}, DefaultOptions())
 	model := "gpt-5.4"
 	resetAt := time.Now().Add(2 * time.Minute).UTC().Format(time.RFC3339)
-	acc := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	acc := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 8,
 			Platform:    capability.PlatformOpenAI,
 			Status:      billing.StatusActive,

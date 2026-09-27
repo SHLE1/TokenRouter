@@ -19,11 +19,11 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway/media"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 	"github.com/gin-gonic/gin"
@@ -110,16 +110,19 @@ func runOpenAIOAuthImageActualSizeTest(t *testing.T, stream bool) openAIOAuthIma
 	parsed, err := media.ParseImageRequest(c.Request.URL.Path, c.GetHeader("Content-Type"), body, true)
 	require.NoError(t, err)
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-		Name:     "openai-oauth",
-		Platform: capability.PlatformOpenAI,
-		Type:     capability.AccountTypeOAuth,
-		Credentials: map[string]any{
-			"access_token":       "token-123",
-			"chatgpt_account_id": "acct-123",
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1,
+			Name:     "openai-oauth",
+			Platform: capability.PlatformOpenAI,
+			Type:     capability.ProviderTypeOAuth,
+			Credentials: map[string]any{
+				"access_token":       "token-123",
+				"chatgpt_account_id": "acct-123",
+			},
+		},
 	}
-	result, err := svc.ForwardImages(context.Background(), c, account, body, parsed, "")
+	result, err := svc.ForwardImages(context.Background(), c, provider, body, parsed, "")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	return openAIOAuthImageActualSizeTestRun{result: result, recorder: rec, upstream: upstream}

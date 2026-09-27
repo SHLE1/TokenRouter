@@ -5,36 +5,36 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 	"github.com/stretchr/testify/require"
 )
 
-type groupCapacityAccountRepoStub struct {
-	accounts  []account.Record
-	rows      []account.GroupAccountCapacityRow
+type groupCapacityProviderRepoStub struct {
+	providers []provider.Record
+	rows      []provider.GroupProviderCapacityRow
 	requested []int64
 }
 
-func (s *groupCapacityAccountRepoStub) ListSchedulableByGroupID(ctx context.Context, groupID int64) ([]account.Record, error) {
-	out := make([]account.Record, len(s.accounts))
-	copy(out, s.accounts)
+func (s *groupCapacityProviderRepoStub) ListSchedulableByGroupID(ctx context.Context, groupID int64) ([]provider.Record, error) {
+	out := make([]provider.Record, len(s.providers))
+	copy(out, s.providers)
 	return out, nil
 }
 
-func (s *groupCapacityAccountRepoStub) ListSchedulableCapacityByGroupIDs(_ context.Context, groupIDs []int64) ([]account.GroupAccountCapacityRow, error) {
+func (s *groupCapacityProviderRepoStub) ListSchedulableCapacityByGroupIDs(_ context.Context, groupIDs []int64) ([]provider.GroupProviderCapacityRow, error) {
 	s.requested = append([]int64(nil), groupIDs...)
-	return append([]account.GroupAccountCapacityRow(nil), s.rows...), nil
+	return append([]provider.GroupProviderCapacityRow(nil), s.rows...), nil
 }
 
 type groupCapacitySettingsStub struct {
-	settings account.QuotaAutoPauseSettings
+	settings provider.QuotaAutoPauseSettings
 }
 
-func (s groupCapacitySettingsStub) GetOpenAIQuotaAutoPauseSettings(ctx context.Context) account.QuotaAutoPauseSettings {
+func (s groupCapacitySettingsStub) GetOpenAIQuotaAutoPauseSettings(ctx context.Context) provider.QuotaAutoPauseSettings {
 	return s.settings
 }
 
@@ -56,21 +56,21 @@ type groupCapacityConcurrencyCacheStub struct {
 	requested []int64
 }
 
-func (s *groupCapacityConcurrencyCacheStub) GetAccountConcurrencyBatch(_ context.Context, accountIDs []int64) (map[int64]int, error) {
-	s.requested = append([]int64(nil), accountIDs...)
-	out := make(map[int64]int, len(accountIDs))
-	for _, id := range accountIDs {
+func (s *groupCapacityConcurrencyCacheStub) GetProviderConcurrencyBatch(_ context.Context, providerIDs []int64) (map[int64]int, error) {
+	s.requested = append([]int64(nil), providerIDs...)
+	out := make(map[int64]int, len(providerIDs))
+	for _, id := range providerIDs {
 		out[id] = s.counts[id]
 	}
 	return out, nil
 }
 
-func TestGroupCapacityService_ExcludesOpenAIQuotaAutoPausedAccounts(t *testing.T) {
-	accounts := []account.Record{
+func TestGroupCapacityService_ExcludesOpenAIQuotaAutoPausedProviders(t *testing.T) {
+	providers := []provider.Record{
 		{
 			ID:          1,
 			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeOAuth,
+			Type:        capability.ProviderTypeOAuth,
 			Concurrency: 7,
 			Extra: map[string]any{
 				"codex_5h_used_percent": 96.0,
@@ -79,7 +79,7 @@ func TestGroupCapacityService_ExcludesOpenAIQuotaAutoPausedAccounts(t *testing.T
 		{
 			ID:          2,
 			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeOAuth,
+			Type:        capability.ProviderTypeOAuth,
 			Concurrency: 3,
 			Extra: map[string]any{
 				"codex_5h_used_percent": 30.0,
@@ -88,14 +88,16 @@ func TestGroupCapacityService_ExcludesOpenAIQuotaAutoPausedAccounts(t *testing.T
 	}
 	concurrencyCache := &groupCapacityConcurrencyCacheStub{counts: map[int64]int{1: 5, 2: 2}}
 	svc := newTestGroupCapacityService(
-		&groupCapacityAccountRepoStub{accounts: accounts},
-		nil, scheduler.NewConcurrencyService(concurrencyCache, scheduler.Diagnostics{Logf: logging.LegacyPrintf,
+		&groupCapacityProviderRepoStub{providers: providers},
+		nil, scheduler.NewConcurrencyService(concurrencyCache, scheduler.Diagnostics{
+			Logf: logging.LegacyPrintf,
 
-			Event: logging.Event},
+			Event: logging.Event,
+		},
 		),
 		nil,
 		nil,
-		groupCapacitySettingsStub{settings: account.QuotaAutoPauseSettings{DefaultThreshold5h: 0.95}},
+		groupCapacitySettingsStub{settings: provider.QuotaAutoPauseSettings{DefaultThreshold5h: 0.95}},
 	)
 
 	capacity, err := svc.GetGroupCapacity(context.Background(), 10)
@@ -105,18 +107,18 @@ func TestGroupCapacityService_ExcludesOpenAIQuotaAutoPausedAccounts(t *testing.T
 	require.Equal(t, []int64{2}, concurrencyCache.requested)
 }
 
-func TestGetAllGroupCapacityBatchExcludesOpenAIQuotaAutoPausedAccounts(t *testing.T) {
-	accountRepo := &groupCapacityAccountRepoStub{rows: []account.GroupAccountCapacityRow{
+func TestGetAllGroupCapacityBatchExcludesOpenAIQuotaAutoPausedProviders(t *testing.T) {
+	providerRepo := &groupCapacityProviderRepoStub{rows: []provider.GroupProviderCapacityRow{
 		{
 			GroupID:     10,
-			AccountID:   1,
+			ProviderID:  1,
 			Platform:    capability.PlatformOpenAI,
 			Concurrency: 7,
 			Extra:       map[string]any{"codex_5h_used_percent": 96.0},
 		},
 		{
 			GroupID:     10,
-			AccountID:   2,
+			ProviderID:  2,
 			Platform:    capability.PlatformOpenAI,
 			Concurrency: 3,
 			Extra:       map[string]any{"codex_5h_used_percent": 30.0},
@@ -125,14 +127,16 @@ func TestGetAllGroupCapacityBatchExcludesOpenAIQuotaAutoPausedAccounts(t *testin
 	groupRepo := &groupCapacityGroupRepoStub{groupIDs: []int64{10}}
 	concurrencyCache := &groupCapacityConcurrencyCacheStub{counts: map[int64]int{1: 5, 2: 2}}
 	svc := newTestGroupCapacityService(
-		accountRepo,
-		groupRepo, scheduler.NewConcurrencyService(concurrencyCache, scheduler.Diagnostics{Logf: logging.LegacyPrintf,
+		providerRepo,
+		groupRepo, scheduler.NewConcurrencyService(concurrencyCache, scheduler.Diagnostics{
+			Logf: logging.LegacyPrintf,
 
-			Event: logging.Event},
+			Event: logging.Event,
+		},
 		),
 		nil,
 		nil,
-		groupCapacitySettingsStub{settings: account.QuotaAutoPauseSettings{DefaultThreshold5h: 0.95}},
+		groupCapacitySettingsStub{settings: provider.QuotaAutoPauseSettings{DefaultThreshold5h: 0.95}},
 	)
 
 	results, err := svc.GetAllGroupCapacity(context.Background())
@@ -152,14 +156,14 @@ type groupCapacitySessionCacheStub struct {
 	idleTimeouts map[int64]time.Duration
 }
 
-func (s *groupCapacitySessionCacheStub) GetActiveSessionCountBatch(_ context.Context, accountIDs []int64, idleTimeouts map[int64]time.Duration) (map[int64]int, error) {
-	s.requested = append([]int64(nil), accountIDs...)
+func (s *groupCapacitySessionCacheStub) GetActiveSessionCountBatch(_ context.Context, providerIDs []int64, idleTimeouts map[int64]time.Duration) (map[int64]int, error) {
+	s.requested = append([]int64(nil), providerIDs...)
 	s.idleTimeouts = make(map[int64]time.Duration, len(idleTimeouts))
 	for id, timeout := range idleTimeouts {
 		s.idleTimeouts[id] = timeout
 	}
-	out := make(map[int64]int, len(accountIDs))
-	for _, id := range accountIDs {
+	out := make(map[int64]int, len(providerIDs))
+	for _, id := range providerIDs {
 		out[id] = s.counts[id]
 	}
 	return out, nil
@@ -171,21 +175,21 @@ type groupCapacityRPMCacheStub struct {
 	requested []int64
 }
 
-func (s *groupCapacityRPMCacheStub) GetRPMBatch(_ context.Context, accountIDs []int64) (map[int64]int, error) {
-	s.requested = append([]int64(nil), accountIDs...)
-	out := make(map[int64]int, len(accountIDs))
-	for _, id := range accountIDs {
+func (s *groupCapacityRPMCacheStub) GetRPMBatch(_ context.Context, providerIDs []int64) (map[int64]int, error) {
+	s.requested = append([]int64(nil), providerIDs...)
+	out := make(map[int64]int, len(providerIDs))
+	for _, id := range providerIDs {
 		out[id] = s.counts[id]
 	}
 	return out, nil
 }
 
 func TestGetAllGroupCapacityBatchAggregatesRuntimeAndLimits(t *testing.T) {
-	accountRepo := &groupCapacityAccountRepoStub{
-		rows: []account.GroupAccountCapacityRow{
+	providerRepo := &groupCapacityProviderRepoStub{
+		rows: []provider.GroupProviderCapacityRow{
 			{
 				GroupID:     10,
-				AccountID:   1,
+				ProviderID:  1,
 				Concurrency: 2,
 				Extra: map[string]any{
 					"max_sessions":                 3,
@@ -195,7 +199,7 @@ func TestGetAllGroupCapacityBatchAggregatesRuntimeAndLimits(t *testing.T) {
 			},
 			{
 				GroupID:     20,
-				AccountID:   1,
+				ProviderID:  1,
 				Concurrency: 2,
 				Extra: map[string]any{
 					"max_sessions":                 3,
@@ -205,7 +209,7 @@ func TestGetAllGroupCapacityBatchAggregatesRuntimeAndLimits(t *testing.T) {
 			},
 			{
 				GroupID:     20,
-				AccountID:   2,
+				ProviderID:  2,
 				Concurrency: 4,
 				Extra: map[string]any{
 					"max_sessions":                 1,
@@ -220,10 +224,12 @@ func TestGetAllGroupCapacityBatchAggregatesRuntimeAndLimits(t *testing.T) {
 	sessionCache := &groupCapacitySessionCacheStub{counts: map[int64]int{1: 2, 2: 1}}
 	rpmCache := &groupCapacityRPMCacheStub{counts: map[int64]int{1: 5, 2: 7}}
 	svc := newTestGroupCapacityService(
-		accountRepo,
-		groupRepo, scheduler.NewConcurrencyService(concurrencyCache, scheduler.Diagnostics{Logf: logging.LegacyPrintf,
+		providerRepo,
+		groupRepo, scheduler.NewConcurrencyService(concurrencyCache, scheduler.Diagnostics{
+			Logf: logging.LegacyPrintf,
 
-			Event: logging.Event},
+			Event: logging.Event,
+		},
 		),
 		sessionCache,
 		rpmCache,
@@ -234,7 +240,7 @@ func TestGetAllGroupCapacityBatchAggregatesRuntimeAndLimits(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, 1, groupRepo.listCalls)
-	require.Equal(t, []int64{10, 20}, accountRepo.requested)
+	require.Equal(t, []int64{10, 20}, providerRepo.requested)
 	require.Equal(t, []int64{1, 2}, concurrencyCache.requested)
 	require.ElementsMatch(t, []int64{1, 2}, sessionCache.requested)
 	require.ElementsMatch(t, []int64{1, 2}, rpmCache.requested)
@@ -264,13 +270,13 @@ func TestGetAllGroupCapacityBatchAggregatesRuntimeAndLimits(t *testing.T) {
 }
 
 func TestGetAllGroupCapacityBatchKeepsEmptyGroupRows(t *testing.T) {
-	accountRepo := &groupCapacityAccountRepoStub{
-		rows: []account.GroupAccountCapacityRow{
-			{GroupID: 20, AccountID: 2, Concurrency: 4},
+	providerRepo := &groupCapacityProviderRepoStub{
+		rows: []provider.GroupProviderCapacityRow{
+			{GroupID: 20, ProviderID: 2, Concurrency: 4},
 		},
 	}
 	groupRepo := &groupCapacityGroupRepoStub{groupIDs: []int64{10, 20}}
-	svc := newTestGroupCapacityService(accountRepo, groupRepo, nil, nil, nil, nil)
+	svc := newTestGroupCapacityService(providerRepo, groupRepo, nil, nil, nil, nil)
 
 	results, err := svc.GetAllGroupCapacity(context.Background())
 	require.NoError(t, err)
@@ -282,14 +288,14 @@ func TestGetAllGroupCapacityBatchKeepsEmptyGroupRows(t *testing.T) {
 }
 
 func TestGetGroupCapacityByIDsUsesBatchPathAndDeduplicatesIDs(t *testing.T) {
-	accountRepo := &groupCapacityAccountRepoStub{rows: []account.GroupAccountCapacityRow{
-		{GroupID: 20, AccountID: 2, Concurrency: 4},
+	providerRepo := &groupCapacityProviderRepoStub{rows: []provider.GroupProviderCapacityRow{
+		{GroupID: 20, ProviderID: 2, Concurrency: 4},
 	}}
-	svc := newTestGroupCapacityService(accountRepo, nil, nil, nil, nil, nil)
+	svc := newTestGroupCapacityService(providerRepo, nil, nil, nil, nil, nil)
 
 	results, err := svc.GetGroupCapacityByIDs(context.Background(), []int64{20, 10, 20, 0, -1})
 	require.NoError(t, err)
-	require.Equal(t, []int64{20, 10}, accountRepo.requested)
+	require.Equal(t, []int64{20, 10}, providerRepo.requested)
 	require.Equal(t, map[int64]routing.GroupCapacitySummary{
 		10: {GroupID: 10},
 		20: {GroupID: 20, ConcurrencyMax: 4},

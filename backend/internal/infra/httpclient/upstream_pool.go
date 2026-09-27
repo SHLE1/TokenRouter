@@ -49,7 +49,7 @@ type TransportProtocol struct {
 // UpstreamRequestOptions 是一次执行使用的技术参数快照，不持有全局配置或业务实体。
 type UpstreamRequestOptions struct {
 	ProxyURL   string
-	AccountID  int64
+	ProviderID int64
 	Isolation  string
 	MaxClients int
 	IdleTTL    time.Duration
@@ -139,7 +139,7 @@ func (s *UpstreamPool) acquire(opts UpstreamRequestOptions) (*upstreamClientEntr
 	}
 	settings := opts.Settings
 	protocolMode := opts.Protocol.CacheVariant
-	cacheKey := buildCacheKey(isolation, proxyKey, opts.AccountID, protocolMode)
+	cacheKey := buildCacheKey(isolation, proxyKey, opts.ProviderID, protocolMode)
 	poolKey := buildPoolKey(settings, protocolMode)
 	if opts.TLSProfile != nil {
 		profileKey := tlsfingerprint.CacheKey(opts.TLSProfile)
@@ -226,7 +226,7 @@ func (s *UpstreamPool) shouldReuseEntry(entry *upstreamClientEntry, isolation, p
 	if entry == nil {
 		return false
 	}
-	if isolation == "account" && entry.proxyKey != proxyKey {
+	if isolation == "provider" && entry.proxyKey != proxyKey {
 		return false
 	}
 	if entry.poolKey != poolKey {
@@ -345,22 +345,22 @@ func buildPoolKey(settings UpstreamSettings, protocolMode string) string {
 // 参数:
 //   - isolation: 隔离模式
 //   - proxyKey: 代理标识
-//   - accountID: 账户 ID
+//   - providerID: 提供商 ID
 //
 // 返回:
 //   - string: 缓存键
 //
 // 缓存键格式:
 //   - proxy 模式: "proxy:{proxyKey}"
-//   - account 模式: "account:{accountID}"
-//   - account_proxy 模式: "account:{accountID}|proxy:{proxyKey}"
-func buildCacheKey(isolation, proxyKey string, accountID int64, protocolMode string) string {
+//   - provider 模式: "provider:{providerID}"
+//   - provider_proxy 模式: "provider:{providerID}|proxy:{proxyKey}"
+func buildCacheKey(isolation, proxyKey string, providerID int64, protocolMode string) string {
 	var base string
 	switch isolation {
-	case "account":
-		base = fmt.Sprintf("account:%d", accountID)
-	case "account_proxy":
-		base = fmt.Sprintf("account:%d|proxy:%s", accountID, proxyKey)
+	case "provider":
+		base = fmt.Sprintf("provider:%d", providerID)
+	case "provider_proxy":
+		base = fmt.Sprintf("provider:%d|proxy:%s", providerID, proxyKey)
 	default:
 		base = fmt.Sprintf("proxy:%s", proxyKey)
 	}

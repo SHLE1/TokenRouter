@@ -1,4 +1,4 @@
-// Messages 的请求转换、会话恢复和流/非流消费保持独立，账号切换由外层拥有。
+// Messages 的请求转换、会话恢复和流/非流消费保持独立，提供商切换由外层拥有。
 package openaiforward
 
 import (
@@ -123,7 +123,7 @@ func RunMessages(ctx context.Context, body []byte, promptCacheKey, defaultMapped
 	}
 
 	logFields := []zap.Field{
-		zap.Int64("account_id", profile.ID),
+		zap.Int64("provider_id", profile.ID),
 		zap.String("original_model", originalModel),
 		zap.String("normalized_model", normalizedModel),
 		zap.String("billing_model", billingModel),
@@ -202,7 +202,7 @@ func RunMessages(ctx context.Context, body []byte, promptCacheKey, defaultMapped
 		if codexResult.PromptCacheKey != "" {
 			promptCacheKey = codexResult.PromptCacheKey
 		}
-		p.AccountIdentity(reqBody, apiKeyID)
+		p.ProviderIdentity(reqBody, apiKeyID)
 		delete(reqBody, "prompt_cache_key")
 		if p.AutoCacheKey(upstreamModel) {
 			compatTurnState = p.TurnState(ctx, promptCacheKey)
@@ -215,7 +215,7 @@ func RunMessages(ctx context.Context, body []byte, promptCacheKey, defaultMapped
 		}
 	}
 
-	// API Key 账号也通过请求体传递 prompt_cache_key，供兼容 Responses 的上游
+	// API Key 提供商也通过请求体传递 prompt_cache_key，供兼容 Responses 的上游
 	// 推导稳定会话标识，保持 Messages 桥与原生 Responses 客户端的缓存契约。
 	if profile.Type == "apikey" {
 		if trimmedKey := strings.TrimSpace(promptCacheKey); trimmedKey != "" {
@@ -238,7 +238,6 @@ func RunMessages(ctx context.Context, body []byte, promptCacheKey, defaultMapped
 	if profile.Platform == "openai" {
 		policyBody, changed, policyErr := p.ApplyEffort(ctx, responsesBody)
 		if policyErr != nil {
-
 			return nil, policyErr
 		}
 		if changed {
@@ -253,7 +252,6 @@ func RunMessages(ctx context.Context, body []byte, promptCacheKey, defaultMapped
 	// 按请求体 service_tier 应用与 Claude fast-mode beta 对应的过滤语义。
 	updatedBody, policyErr := p.ApplyFast(ctx, upstreamModel, responsesBody)
 	if policyErr != nil {
-
 		return nil, policyErr
 	}
 	responsesBody = updatedBody
@@ -314,7 +312,7 @@ func RunMessages(ctx context.Context, body []byte, promptCacheKey, defaultMapped
 		// originator/OpenAI-Beta 返回 404（issue #3901）。
 		p.RestoreIdentity(upstreamReq.Header)
 		p.Debug("openai messages: upstream identity restored",
-			zap.Int64("account_id", profile.ID),
+			zap.Int64("provider_id", profile.ID),
 			zap.String("upstream_model", upstreamModel),
 			zap.Bool("compat_identity_restored", true),
 		)
@@ -328,7 +326,7 @@ func RunMessages(ctx context.Context, body []byte, promptCacheKey, defaultMapped
 
 	// 发送前固定本次代理投影，保留重试复用的范围。
 	p.PrepareTransport()
-	// Grok 可能拒绝在不同 OAuth 账号或缓存身份下回放的加密推理。与
+	// Grok 可能拒绝在不同 OAuth 提供商或缓存身份下回放的加密推理。与
 	// forwardGrokResponses 保持一致：先剥离密文并重试一次，再将 400 作为硬失败
 	// 或故障转移触发条件处理。
 	var resp *http.Response
@@ -356,7 +354,7 @@ func RunMessages(ctx context.Context, body []byte, promptCacheKey, defaultMapped
 			_ = resp.Body.Close()
 		}
 		// 优先识别明确的解密错误；若出站请求仍带有 reasoning.encrypted_content，
-		// 任意 400 也允许剥离一次（账号切换经常只返回不透明的 "Upstream error: 400"）。
+		// 任意 400 也允许剥离一次（提供商切换经常只返回不透明的 "Upstream error: 400"）。
 		shouldStrip := p.GrokInvalidEncrypted(resp.StatusCode, respBody) ||
 			p.GrokHasEncrypted(responsesBody)
 		if !shouldStrip {
@@ -373,7 +371,7 @@ func RunMessages(ctx context.Context, body []byte, promptCacheKey, defaultMapped
 		}
 		responsesBody = retryBody
 		p.Info("openai messages: retrying after stripping invalid Grok encrypted_content",
-			zap.Int64("account_id", profile.ID),
+			zap.Int64("provider_id", profile.ID),
 			zap.Bool("cache_identity_present", strings.TrimSpace(grokCacheIdentity) != ""),
 			zap.String("upstream_error_preview", p.Truncate(string(respBody), 240)),
 		)
@@ -399,21 +397,21 @@ func RunMessages(ctx context.Context, body []byte, promptCacheKey, defaultMapped
 				p.DeleteResponseID(ctx, promptCacheKey)
 			}
 			p.Info("openai messages: previous_response_id unavailable, retrying without continuation",
-				zap.Int64("account_id", profile.ID),
+				zap.Int64("provider_id", profile.ID),
 				zap.String("previous_response_id", p.Truncate(previousResponseID, p.LogIDLimit())),
 				zap.String("upstream_model", upstreamModel),
 				zap.Bool("compat_continuation_supported", profile.ContinuationSupported),
 			)
 			return RunMessages(ctx, body, promptCacheKey, defaultMappedModel, p)
 		}
-		// Grok 切换账号后的历史记录经常解密失败；在客户端请求体层剥离一次加密推理，
-		// 让故障转移账号可以接收多轮工具续接，避免连续返回 400。
+		// Grok 切换提供商后的历史记录经常解密失败；在客户端请求体层剥离一次加密推理，
+		// 让故障转移提供商可以接收多轮工具续接，避免连续返回 400。
 		if profile.Platform == "grok" &&
 			p.GrokInvalidEncrypted(resp.StatusCode, respBody) &&
 			!p.GrokStripRetried(ctx) {
 			if strippedBody, ok := p.StripThinkingSignatures(body); ok {
 				p.Info("openai messages: stripping thinking signatures for Grok failover retry",
-					zap.Int64("account_id", profile.ID),
+					zap.Int64("provider_id", profile.ID),
 				)
 				return RunMessages(p.MarkGrokStrip(ctx), strippedBody, promptCacheKey, defaultMappedModel, p)
 			}
@@ -473,7 +471,7 @@ func RunMessages(ctx context.Context, body []byte, promptCacheKey, defaultMapped
 		}
 	}
 
-	// OAuth 账号从响应头提取并保存 Codex 用量快照。
+	// OAuth 提供商从响应头提取并保存 Codex 用量快照。
 	// 排除 spark 影子:其 codex_* 仅由 QueryUsage(/wham/usage bengalfox)更新(外审第7轮 P1)。
 	if handleErr == nil && profile.Type == "oauth" && !profile.Shadow && profile.Platform != "grok" {
 		p.UpdateCodexUsage(ctx, resp.Header)

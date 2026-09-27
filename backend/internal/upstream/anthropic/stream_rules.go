@@ -1,4 +1,4 @@
-// 平台流策略只接受已投影参数，不读取配置或账号。
+// 平台流策略只接受已投影参数，不读取配置或提供商。
 package anthropic
 
 import (
@@ -19,6 +19,7 @@ func ShouldUseClaudeCodeNoopDeltaKeepalive(userAgent string) bool {
 	}
 	return clientmeta.CompareVersions(version, ClaudeCodeNoopDeltaKeepaliveMinVersion) >= 0
 }
+
 func ClaudeCodeKeepaliveDeltaTypeForContentBlock(blockType string) string {
 	switch blockType {
 	case "text":
@@ -31,6 +32,7 @@ func ClaudeCodeKeepaliveDeltaTypeForContentBlock(blockType string) string {
 		return ""
 	}
 }
+
 func ClaudeCodeKeepaliveFieldForDeltaType(deltaType string) string {
 	switch deltaType {
 	case "text_delta":
@@ -43,6 +45,7 @@ func ClaudeCodeKeepaliveFieldForDeltaType(deltaType string) string {
 		return ""
 	}
 }
+
 func BuildClaudeCodeNoopDeltaKeepalive(index int, deltaType string) (string, bool) {
 	fieldName := ClaudeCodeKeepaliveFieldForDeltaType(deltaType)
 	if fieldName == "" {
@@ -50,6 +53,7 @@ func BuildClaudeCodeNoopDeltaKeepalive(index int, deltaType string) (string, boo
 	}
 	return fmt.Sprintf("event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":%d,\"delta\":{\"type\":\"%s\",\"%s\":\"\"}}\n\n", index, deltaType, fieldName), true
 }
+
 func SseEventIndex(event map[string]any) (int, bool) {
 	switch v := event["index"].(type) {
 	case float64:

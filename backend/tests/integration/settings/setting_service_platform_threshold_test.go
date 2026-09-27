@@ -8,8 +8,8 @@ import (
 
 	settingskit "github.com/TokenFlux/TokenRouter/internal/settings/testkit"
 
-	account "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/config"
+	provider "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/settings/composite"
 	"github.com/stretchr/testify/require"
@@ -19,8 +19,8 @@ func newSettingServiceForPlatformThresholdTest(seed map[string]string) *settings
 	svc, _ := newSettingServiceAndRepoForPlatformThresholdTest(seed)
 	return svc
 }
-func newSettingServiceAndRepoForPlatformThresholdTest(seed map[string]string) (*settingskit.Composite, *mockSettingRepo) {
 
+func newSettingServiceAndRepoForPlatformThresholdTest(seed map[string]string) (*settingskit.Composite, *mockSettingRepo) {
 	repo := newMockSettingRepo()
 	for k, v := range seed {
 		repo.data[k] = v
@@ -36,32 +36,32 @@ func TestPlatformSchedulingThresholds_RoundTrip_DefaultsAndStoredValues(t *testi
 		capability.PlatformOpenAI:    100,
 		capability.PlatformAnthropic: 100,
 		capability.PlatformGrok:      100,
-	}, got.AccountSchedulingThresholds)
+	}, got.ProviderSchedulingThresholds)
 
-	got = composite.Parse(map[string]string{account.SettingKeyAccountSchedulingThresholds: `{"openai":91,"grok":77,"gemini":85,"kiro":99}`}, svc.Read)
-	require.Equal(t, 91, got.AccountSchedulingThresholds[capability.PlatformOpenAI])
-	require.Equal(t, 100, got.AccountSchedulingThresholds[capability.PlatformAnthropic])
-	require.Equal(t, 77, got.AccountSchedulingThresholds[capability.PlatformGrok])
-	require.NotContains(t, got.AccountSchedulingThresholds, capability.PlatformGemini)
-	require.NotContains(t, got.AccountSchedulingThresholds, "kiro")
+	got = composite.Parse(map[string]string{provider.SettingKeyProviderSchedulingThresholds: `{"openai":91,"grok":77,"gemini":85,"kiro":99}`}, svc.Read)
+	require.Equal(t, 91, got.ProviderSchedulingThresholds[capability.PlatformOpenAI])
+	require.Equal(t, 100, got.ProviderSchedulingThresholds[capability.PlatformAnthropic])
+	require.Equal(t, 77, got.ProviderSchedulingThresholds[capability.PlatformGrok])
+	require.NotContains(t, got.ProviderSchedulingThresholds, capability.PlatformGemini)
+	require.NotContains(t, got.ProviderSchedulingThresholds, "kiro")
 }
 
-func TestBuildSystemSettingsUpdates_PersistsAccountSchedulingThresholds(t *testing.T) {
+func TestBuildSystemSettingsUpdates_PersistsProviderSchedulingThresholds(t *testing.T) {
 	svc := newSettingServiceForPlatformThresholdTest(nil)
 
 	updates, err := composite.Prepare(context.Background(), &composite.Snapshot{
-		AccountSchedulingThresholds: map[string]int{
+		ProviderSchedulingThresholds: map[string]int{
 			capability.PlatformOpenAI:    91,
 			capability.PlatformAnthropic: 88,
 			capability.PlatformGrok:      77,
 		},
 	}, svc.Prepare)
 	require.NoError(t, err)
-	require.JSONEq(t, `{"openai":91,"anthropic":88,"grok":77}`, updates[account.SettingKeyAccountSchedulingThresholds])
+	require.JSONEq(t, `{"openai":91,"anthropic":88,"grok":77}`, updates[provider.SettingKeyProviderSchedulingThresholds])
 }
 
-func TestValidateAndNormalizeAccountSchedulingThresholds_FillsMissingPlatforms(t *testing.T) {
-	normalized, err := account.ValidateAndNormalizeAccountSchedulingThresholds(map[string]int{
+func TestValidateAndNormalizeProviderSchedulingThresholds_FillsMissingPlatforms(t *testing.T) {
+	normalized, err := provider.ValidateAndNormalizeProviderSchedulingThresholds(map[string]int{
 		capability.PlatformOpenAI: 91,
 	})
 	require.NoError(t, err)
@@ -73,18 +73,18 @@ func TestValidateAndNormalizeAccountSchedulingThresholds_FillsMissingPlatforms(t
 	require.NotContains(t, normalized, capability.PlatformAntigravity)
 }
 
-func TestValidateAndNormalizeAccountSchedulingThresholds_RejectsUnsupportedPlatforms(t *testing.T) {
-	_, err := account.ValidateAndNormalizeAccountSchedulingThresholds(map[string]int{
+func TestValidateAndNormalizeProviderSchedulingThresholds_RejectsUnsupportedPlatforms(t *testing.T) {
+	_, err := provider.ValidateAndNormalizeProviderSchedulingThresholds(map[string]int{
 		capability.PlatformGemini: 85,
 	})
 	require.Error(t, err)
 }
 
-func TestUpdateSettings_StoresAccountSchedulingThresholds(t *testing.T) {
+func TestUpdateSettings_StoresProviderSchedulingThresholds(t *testing.T) {
 	svc := newSettingServiceForPlatformThresholdTest(nil)
 
 	err := svc.Save(context.Background(), &composite.Snapshot{
-		AccountSchedulingThresholds: map[string]int{
+		ProviderSchedulingThresholds: map[string]int{
 			capability.PlatformOpenAI:    92,
 			capability.PlatformAnthropic: 89,
 			capability.PlatformGrok:      76,
@@ -92,19 +92,19 @@ func TestUpdateSettings_StoresAccountSchedulingThresholds(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	stored, err := svc.Store.GetValue(context.Background(), account.SettingKeyAccountSchedulingThresholds)
+	stored, err := svc.Store.GetValue(context.Background(), provider.SettingKeyProviderSchedulingThresholds)
 	require.NoError(t, err)
-	got := composite.Parse(map[string]string{account.SettingKeyAccountSchedulingThresholds: stored}, svc.Read)
-	require.Equal(t, 92, got.AccountSchedulingThresholds[capability.PlatformOpenAI])
-	require.Equal(t, 89, got.AccountSchedulingThresholds[capability.PlatformAnthropic])
-	require.Equal(t, 76, got.AccountSchedulingThresholds[capability.PlatformGrok])
-	require.NotContains(t, got.AccountSchedulingThresholds, "kiro")
+	got := composite.Parse(map[string]string{provider.SettingKeyProviderSchedulingThresholds: stored}, svc.Read)
+	require.Equal(t, 92, got.ProviderSchedulingThresholds[capability.PlatformOpenAI])
+	require.Equal(t, 89, got.ProviderSchedulingThresholds[capability.PlatformAnthropic])
+	require.Equal(t, 76, got.ProviderSchedulingThresholds[capability.PlatformGrok])
+	require.NotContains(t, got.ProviderSchedulingThresholds, "kiro")
 }
 
-func TestGetAccountSchedulingThresholds_ReadsStoredValue(t *testing.T) {
-	svc := newSettingServiceForPlatformThresholdTest(map[string]string{account.SettingKeyAccountSchedulingThresholds: `{"openai":93,"grok":88,"kiro":87}`})
+func TestGetProviderSchedulingThresholds_ReadsStoredValue(t *testing.T) {
+	svc := newSettingServiceForPlatformThresholdTest(map[string]string{provider.SettingKeyProviderSchedulingThresholds: `{"openai":93,"grok":88,"kiro":87}`})
 
-	got := svc.Account.GetAccountSchedulingThresholds(context.Background())
+	got := svc.Provider.GetProviderSchedulingThresholds(context.Background())
 
 	require.Equal(t, 93, got[capability.PlatformOpenAI])
 	require.Equal(t, 100, got[capability.PlatformAnthropic])
@@ -112,35 +112,35 @@ func TestGetAccountSchedulingThresholds_ReadsStoredValue(t *testing.T) {
 	require.NotContains(t, got, "kiro")
 }
 
-func TestUpdateSettings_OmittedAccountSchedulingThresholdsDoesNotCacheDefaults(t *testing.T) {
-	svc := newSettingServiceForPlatformThresholdTest(map[string]string{account.SettingKeyAccountSchedulingThresholds: `{"openai":85,"grok":88,"kiro":87}`})
+func TestUpdateSettings_OmittedProviderSchedulingThresholdsDoesNotCacheDefaults(t *testing.T) {
+	svc := newSettingServiceForPlatformThresholdTest(map[string]string{provider.SettingKeyProviderSchedulingThresholds: `{"openai":85,"grok":88,"kiro":87}`})
 
 	err := svc.Save(context.Background(), &composite.Snapshot{
 		FrontendURL: "https://example.test",
 	})
 	require.NoError(t, err)
 
-	got := svc.Account.GetAccountSchedulingThresholds(context.Background())
+	got := svc.Provider.GetProviderSchedulingThresholds(context.Background())
 	require.Equal(t, 85, got[capability.PlatformOpenAI])
 	require.Equal(t, 88, got[capability.PlatformGrok])
 	require.NotContains(t, got, "kiro")
 }
 
-func TestAccountSchedulingThresholds_InvalidStoredValueUsesSameDefaultsInSettingsAndCache(t *testing.T) {
-	svc := newSettingServiceForPlatformThresholdTest(map[string]string{account.SettingKeyAccountSchedulingThresholds: `{"openai":0,"grok":88,"kiro":87}`})
+func TestProviderSchedulingThresholds_InvalidStoredValueUsesSameDefaultsInSettingsAndCache(t *testing.T) {
+	svc := newSettingServiceForPlatformThresholdTest(map[string]string{provider.SettingKeyProviderSchedulingThresholds: `{"openai":0,"grok":88,"kiro":87}`})
 
-	settings := composite.Parse(map[string]string{account.SettingKeyAccountSchedulingThresholds: `{"openai":0,"grok":88,"kiro":87}`}, svc.Read)
-	cached := svc.Account.GetAccountSchedulingThresholds(context.Background())
+	settings := composite.Parse(map[string]string{provider.SettingKeyProviderSchedulingThresholds: `{"openai":0,"grok":88,"kiro":87}`}, svc.Read)
+	cached := svc.Provider.GetProviderSchedulingThresholds(context.Background())
 
-	require.Equal(t, settings.AccountSchedulingThresholds, cached)
+	require.Equal(t, settings.ProviderSchedulingThresholds, cached)
 	require.Equal(t, 100, cached[capability.PlatformOpenAI])
 	require.Equal(t, 88, cached[capability.PlatformGrok])
 	require.NotContains(t, cached, "kiro")
 }
 
-func TestGetAccountSchedulingThresholds_NilRepoReturnsDefaults(t *testing.T) {
-	svc := account.NewRuntimeSettings(nil, nil)
-	got := svc.GetAccountSchedulingThresholds(context.Background())
+func TestGetProviderSchedulingThresholds_NilRepoReturnsDefaults(t *testing.T) {
+	svc := provider.NewRuntimeSettings(nil, nil)
+	got := svc.GetProviderSchedulingThresholds(context.Background())
 	require.Equal(t, map[string]int{
 		capability.PlatformOpenAI:    100,
 		capability.PlatformAnthropic: 100,

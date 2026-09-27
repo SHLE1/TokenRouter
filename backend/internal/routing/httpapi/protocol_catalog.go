@@ -10,8 +10,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// ProtocolAccountProfile 描述可展示的原生选项，不包含令牌或账号标识。
-type ProtocolAccountProfile struct {
+// ProtocolProviderProfile 描述可展示的原生选项，不包含令牌或提供商标识。
+type ProtocolProviderProfile struct {
 	Platform  string                `json:"platform"`
 	Type      string                `json:"type"`
 	AuthMode  string                `json:"auth_mode"`
@@ -27,24 +27,24 @@ type ProtocolGroupProfile struct {
 
 // ProtocolCatalogResponse 显式描述目录响应，便于调用方和契约测试检查完整结构。
 type ProtocolCatalogResponse struct {
-	Protocols           []Protocol               `json:"protocols"`
-	Accounts            []ProtocolAccountProfile `json:"accounts"`
-	Groups              []ProtocolGroupProfile   `json:"groups"`
-	AuxiliaryOperations []AuxiliaryOperation     `json:"auxiliary_operations"`
+	Protocols           []Protocol                `json:"protocols"`
+	Providers           []ProtocolProviderProfile `json:"providers"`
+	Groups              []ProtocolGroupProfile    `json:"groups"`
+	AuxiliaryOperations []AuxiliaryOperation      `json:"auxiliary_operations"`
 }
 
 // AdminProtocolCatalog 是前后端共用的唯一目录投影。
 func AdminProtocolCatalog(endpoints map[protocol.ProtocolID]string) ProtocolCatalogResponse {
-	accounts := []ProtocolAccountProfile{}
+	providers := []ProtocolProviderProfile{}
 	groups := []ProtocolGroupProfile{}
 	for _, platform := range []string{capability.PlatformAnthropic, capability.PlatformOpenAI, capability.PlatformGemini, capability.PlatformAntigravity, capability.PlatformGrok, capability.PlatformQoder, capability.PlatformKimi, capability.PlatformZhipu, capability.PlatformDeepseek} {
-		for _, accountType := range []string{capability.AccountTypeOAuth, capability.AccountTypeSetupToken, capability.AccountTypeAPIKey, capability.AccountTypeUpstream, capability.AccountTypeBedrock, capability.AccountTypeServiceAccount, capability.AccountTypeCosy} {
+		for _, providerType := range []string{capability.ProviderTypeOAuth, capability.ProviderTypeSetupToken, capability.ProviderTypeAPIKey, capability.ProviderTypeUpstream, capability.ProviderTypeBedrock, capability.ProviderTypeServiceAccount, capability.ProviderTypeCosy} {
 			modes := []string{""}
-			if platform == capability.PlatformOpenAI && accountType == capability.AccountTypeOAuth {
+			if platform == capability.PlatformOpenAI && providerType == capability.ProviderTypeOAuth {
 				modes = append(modes, capability.OpenAIAuthModePersonalAccessToken, capability.OpenAIAuthModeAgentIdentity)
 			}
 			for _, mode := range modes {
-				accounts = append(accounts, ProtocolAccountProfile{platform, accountType, mode, capability.NativeProtocolOptions(platform, accountType, mode)})
+				providers = append(providers, ProtocolProviderProfile{platform, providerType, mode, capability.NativeProtocolOptions(platform, providerType, mode)})
 			}
 		}
 	}
@@ -56,7 +56,7 @@ func AdminProtocolCatalog(endpoints map[protocol.ProtocolID]string) ProtocolCata
 	groups = append(groups, ProtocolGroupProfile{Protocols: supported, Defaults: capability.DefaultGroupClientProtocols(""), FallbackTargets: targets, DefaultFallbacks: capability.DefaultProtocolFallbacks("")})
 
 	return ProtocolCatalogResponse{
-		Protocols: publicProtocols(endpoints), Accounts: accounts, Groups: groups,
+		Protocols: publicProtocols(endpoints), Providers: providers, Groups: groups,
 		AuxiliaryOperations: AuxiliaryOperations(),
 	}
 }

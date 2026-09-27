@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/protocol/openai"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
@@ -63,7 +63,6 @@ func TestExtractOpenAIEmbeddingsUsage_ParsesImageInputTokens(t *testing.T) {
 }
 
 func TestForwardEmbeddings_APIKeyPassthroughRecordsUsageAndBatchInput(t *testing.T) {
-
 	reqBody := []byte(`{
 		"model":"nowledge-embedding",
 		"input":["hello","world"],
@@ -94,19 +93,22 @@ func TestForwardEmbeddings_APIKeyPassthroughRecordsUsageAndBatchInput(t *testing
 	svc := newAuxiliaryFixture(auxiliaryFixtureInputs{
 		transport: upstream,
 	})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 42,
-		Platform: capability.PlatformOpenAI,
-		Type:     capability.AccountTypeAPIKey,
-		Credentials: map[string]any{
-			"api_key":  "sk-test",
-			"base_url": "https://api.jina.ai",
-			"model_mapping": map[string]any{
-				"nowledge-embedding": "jina-embeddings-v5-text-small",
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 42,
+			Platform: capability.PlatformOpenAI,
+			Type:     capability.ProviderTypeAPIKey,
+			Credentials: map[string]any{
+				"api_key":  "sk-test",
+				"base_url": "https://api.jina.ai",
+				"model_mapping": map[string]any{
+					"nowledge-embedding": "jina-embeddings-v5-text-small",
+				},
 			},
-		}},
+		},
 	}
 
-	result, err := svc.ForwardEmbeddings(context.Background(), c, account, reqBody, "")
+	result, err := svc.ForwardEmbeddings(context.Background(), c, provider, reqBody, "")
 
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, rec.Code)
@@ -128,7 +130,6 @@ func TestForwardEmbeddings_APIKeyPassthroughRecordsUsageAndBatchInput(t *testing
 }
 
 func TestForwardEmbeddings_AccessStateUsesTypedFailover(t *testing.T) {
-
 	reqBody := []byte(`{"model":"text-embedding-3-small","input":"hello"}`)
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -144,33 +145,35 @@ func TestForwardEmbeddings_AccessStateUsesTypedFailover(t *testing.T) {
 		Body: io.NopCloser(bytes.NewReader(upstreamBody)),
 	}}
 	svc := newAuxiliaryFixture(auxiliaryFixtureInputs{transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 43,
-		Platform: capability.PlatformOpenAI,
-		Type:     capability.AccountTypeAPIKey,
-		Credentials: map[string]any{
-			"api_key": "sk-test",
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 43,
+			Platform: capability.PlatformOpenAI,
+			Type:     capability.ProviderTypeAPIKey,
+			Credentials: map[string]any{
+				"api_key": "sk-test",
+			},
+		},
 	}
 
-	result, err := svc.ForwardEmbeddings(context.Background(), c, account, reqBody, "")
+	result, err := svc.ForwardEmbeddings(context.Background(), c, provider, reqBody, "")
 
 	require.Nil(t, result)
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)
 	require.Equal(t, http.StatusForbidden, failoverErr.StatusCode)
-	require.Equal(t, forwardcore.GatewayFailureStageAccountAuth, failoverErr.Stage)
-	require.Equal(t, forwardcore.GatewayFailureScopeAccount, failoverErr.Scope)
+	require.Equal(t, forwardcore.GatewayFailureStageProviderAuth, failoverErr.Stage)
+	require.Equal(t, forwardcore.GatewayFailureScopeProvider, failoverErr.Scope)
 	require.Equal(t, forwardcore.OpenAIUpstreamAccessStateReason, failoverErr.Reason)
-	require.Equal(t, forwardcore.NextAccountRetry, failoverErr.NextAccountAction)
+	require.Equal(t, forwardcore.NextProviderRetry, failoverErr.NextProviderAction)
 	require.Equal(t, http.StatusBadGateway, failoverErr.ClientStatusCode)
 	require.Equal(t, "Upstream access is temporarily unavailable, please retry later", failoverErr.ClientMessage)
-	require.False(t, failoverErr.RetryableOnSameAccount)
+	require.False(t, failoverErr.RetryableOnSameProvider)
 	require.Equal(t, "req_embeddings_access_state", http.Header(failoverErr.ResponseHeaders).Get("x-request-id"))
 	require.False(t, c.Writer.Written())
 }
 
 func TestForwardEmbeddings_NonAccessFailoverKeepsLegacyShape(t *testing.T) {
-
 	reqBody := []byte(`{"model":"text-embedding-3-small","input":"hello"}`)
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -182,15 +185,18 @@ func TestForwardEmbeddings_NonAccessFailoverKeepsLegacyShape(t *testing.T) {
 		Body:       io.NopCloser(strings.NewReader(`{"error":{"message":"rate limited"}}`)),
 	}}
 	svc := newAuxiliaryFixture(auxiliaryFixtureInputs{transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 44,
-		Platform: capability.PlatformOpenAI,
-		Type:     capability.AccountTypeAPIKey,
-		Credentials: map[string]any{
-			"api_key": "sk-test",
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 44,
+			Platform: capability.PlatformOpenAI,
+			Type:     capability.ProviderTypeAPIKey,
+			Credentials: map[string]any{
+				"api_key": "sk-test",
+			},
+		},
 	}
 
-	result, err := svc.ForwardEmbeddings(context.Background(), c, account, reqBody, "")
+	result, err := svc.ForwardEmbeddings(context.Background(), c, provider, reqBody, "")
 
 	require.Nil(t, result)
 	var failoverErr *forwardcore.UpstreamFailoverError

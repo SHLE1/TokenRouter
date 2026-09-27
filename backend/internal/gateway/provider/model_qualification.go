@@ -5,17 +5,17 @@ import (
 	"slices"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
-// CandidateSnapshot 只返回原候选字段，当次协议覆盖不写回账号记录。
-func (p ModelPolicy) CandidateSnapshot() account.AccountSnapshot {
+// CandidateSnapshot 只返回原候选字段，当次协议覆盖不写回提供商记录。
+func (p ModelPolicy) CandidateSnapshot() provider.ProviderSnapshot {
 	if p.Record == nil {
-		return account.AccountSnapshot{}
+		return provider.ProviderSnapshot{}
 	}
 	snapshot := p.Record.RoutingSnapshot()
 	snapshot.EnabledProtocols = slices.Clone(p.Record.UpstreamProtocolsForLegacy(p.protocolTarget().GetAPIProtocol()))
@@ -50,7 +50,7 @@ func (p ModelPolicy) AllowsProtocol(ctx context.Context) bool {
 	return ok
 }
 
-// Schedulable 保留协议、账号状态、模型窗口的原检查顺序。
+// Schedulable 保留协议、提供商状态、模型窗口的原检查顺序。
 func (p ModelPolicy) Schedulable(ctx context.Context, model string) bool {
 	if p.Record == nil {
 		return false
@@ -82,7 +82,7 @@ func (p ModelPolicy) LimitRemaining(ctx context.Context, model string) time.Dura
 	return remaining
 }
 
-// FinalAntigravityModel 只提供显式模型和本次 thinking，规则复用账号平台适配。
+// FinalAntigravityModel 只提供显式模型和本次 thinking，规则复用提供商平台适配。
 func (p ModelPolicy) FinalAntigravityModel(ctx context.Context, model string) string {
-	return accountprovider.FinalAntigravityModel(p.Record, model, modelThinking(ctx))
+	return provideradapter.FinalAntigravityModel(p.Record, model, modelThinking(ctx))
 }

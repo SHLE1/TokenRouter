@@ -161,7 +161,7 @@ func (c *Client) SignatureJSONRequestContextWithDoer(
 	return c.jsonRequestContextWithDoer(ctx, method, session, logicalPath, bodyJSON, extraHeaders, doer, out, qoderJSONAuthSignature)
 }
 
-// BearerJSONRequestContextWithDoer 使用账号 security OAuth token 发送 Gateway JSON 请求。
+// BearerJSONRequestContextWithDoer 使用提供商 security OAuth token 发送 Gateway JSON 请求。
 func (c *Client) BearerJSONRequestContextWithDoer(
 	ctx context.Context,
 	method string,
@@ -369,7 +369,7 @@ func (e *APIError) IsAgentLimit() bool {
 	return e != nil && (e.Code == "115" || e.AgentLimitResetTime > 0)
 }
 
-// IsEntitlementDenied 判断错误是否为 Qoder 模型或账号权限拒绝。
+// IsEntitlementDenied 判断错误是否为 Qoder 模型或提供商权限拒绝。
 // 这类错误不是认证 token 失效，不应消耗 refresh token。
 func (e *APIError) IsEntitlementDenied() bool {
 	return e != nil && e.Code == "112"

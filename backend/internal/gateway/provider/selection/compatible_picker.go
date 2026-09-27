@@ -17,28 +17,28 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
 )
 
 const (
-	openAIAccountScheduleLayerLoadBalance    = "load_balance"
-	openAIAccountScheduleLayerGuardianParent = "guardian_parent"
+	openAIProviderScheduleLayerLoadBalance    = "load_balance"
+	openAIProviderScheduleLayerGuardianParent = "guardian_parent"
 )
 
-type openAIAccountSchedulerMetrics struct {
+type openAIProviderSchedulerMetrics struct {
 	schedulercore.PlatformMetrics
 }
 
-func (m *openAIAccountSchedulerMetrics) recordSelect(v schedulercore.PlatformDecision) {
+func (m *openAIProviderSchedulerMetrics) recordSelect(v schedulercore.PlatformDecision) {
 	if m != nil {
 		m.RecordSelect(v)
 	}
 }
 
-func (m *openAIAccountSchedulerMetrics) recordSwitch() {
+func (m *openAIProviderSchedulerMetrics) recordSwitch() {
 	if m != nil {
 		m.RecordSwitch()
 	}
@@ -46,12 +46,12 @@ func (m *openAIAccountSchedulerMetrics) recordSwitch() {
 
 type compatiblePicker struct {
 	service       *Compatible
-	metrics       openAIAccountSchedulerMetrics
+	metrics       openAIProviderSchedulerMetrics
 	stats         *schedulercore.RuntimeStats
-	freeQuotaGate atomic.Pointer[accountcore.FreeQuotaGate]
+	freeQuotaGate atomic.Pointer[providercore.FreeQuotaGate]
 }
 
-func newDefaultOpenAIAccountScheduler(service *Compatible, stats *schedulercore.RuntimeStats) pickerEngine {
+func newDefaultOpenAIProviderScheduler(service *Compatible, stats *schedulercore.RuntimeStats) pickerEngine {
 	if stats == nil {
 		stats = schedulercore.NewRuntimeStats(time.Now)
 	}
@@ -67,99 +67,99 @@ func (s *compatiblePicker) Select(ctx context.Context, req schedulercore.Platfor
 	return scope.restore(v), decision, err
 }
 
-// hasOpenAIAccountGroupMetadata 判断账号是否声明了分组归属信息。
-func hasOpenAIAccountGroupMetadata(account *gatewayprovider.ExecutionAccount) bool {
-	return account != nil && (len(account.Record.GroupIDs) > 0 || len(account.Record.AccountGroups) > 0)
+// hasOpenAIProviderGroupMetadata 判断提供商是否声明了分组归属信息。
+func hasOpenAIProviderGroupMetadata(provider *gatewayprovider.ExecutionProvider) bool {
+	return provider != nil && (len(provider.Record.GroupIDs) > 0 || len(provider.Record.ProviderGroups) > 0)
 }
 
-// openAIStickyAccountMatchesGroup 校验粘性会话账号是否仍属于当前请求分组。
-func openAIStickyAccountMatchesGroup(account *gatewayprovider.ExecutionAccount, groupID *int64) bool {
-	if account == nil {
+// openAIStickyProviderMatchesGroup 校验粘性会话提供商是否仍属于当前请求分组。
+func openAIStickyProviderMatchesGroup(provider *gatewayprovider.ExecutionProvider, groupID *int64) bool {
+	if provider == nil {
 		return false
 	}
 	if groupID == nil || *groupID <= 0 {
 		return false
 	}
-	for _, accountGroupID := range account.Record.GroupIDs {
-		if accountGroupID == *groupID {
+	for _, providerGroupID := range provider.Record.GroupIDs {
+		if providerGroupID == *groupID {
 			return true
 		}
 	}
-	for _, accountGroup := range account.Record.AccountGroups {
-		if accountGroup.GroupID == *groupID {
+	for _, providerGroup := range provider.Record.ProviderGroups {
+		if providerGroup.GroupID == *groupID {
 			return true
 		}
 	}
 	return false
 }
 
-func shouldEscapeAdvancedStickyAccount(stats *schedulercore.RuntimeStats, id int64, cfg policy.StickyEscapeConfig) (string, float64, float64, bool) {
+func shouldEscapeAdvancedStickyProvider(stats *schedulercore.RuntimeStats, id int64, cfg policy.StickyEscapeConfig) (string, float64, float64, bool) {
 	return schedulercore.ShouldEscapeSticky(stats, id, policy.StickyEscapeConfig{Enabled: cfg.Enabled, TtftMs: cfg.TtftMs, ErrorRate: cfg.ErrorRate})
 }
 
-func (s *compatiblePicker) shouldEscapeStickyAccount(accountID int64, cfg policy.StickyEscapeConfig) (reason string, errorRate float64, ttft float64, shouldEscape bool) {
+func (s *compatiblePicker) shouldEscapeStickyProvider(providerID int64, cfg policy.StickyEscapeConfig) (reason string, errorRate float64, ttft float64, shouldEscape bool) {
 	if s == nil {
 		return "", 0, 0, false
 	}
-	return shouldEscapeAdvancedStickyAccount(s.stats, accountID, cfg)
+	return shouldEscapeAdvancedStickyProvider(s.stats, providerID, cfg)
 }
 
-func (s *compatiblePicker) isAccountTransportCompatible(account *gatewayprovider.ExecutionAccount, requiredTransport egress.OpenAIUpstreamTransport) bool {
+func (s *compatiblePicker) isProviderTransportCompatible(provider *gatewayprovider.ExecutionProvider, requiredTransport egress.OpenAIUpstreamTransport) bool {
 	if requiredTransport == egress.OpenAIUpstreamTransportAny || requiredTransport == egress.OpenAIUpstreamTransportHTTPSSE {
 		return true
 	}
 	if s == nil || s.service == nil {
 		return false
 	}
-	return s.service.isOpenAIAccountTransportCompatible(account, requiredTransport)
+	return s.service.isOpenAIProviderTransportCompatible(provider, requiredTransport)
 }
 
-func (s *compatiblePicker) lookupShadowParentAccount(ctx context.Context, id int64) *gatewayprovider.ExecutionAccount {
+func (s *compatiblePicker) lookupShadowParentProvider(ctx context.Context, id int64) *gatewayprovider.ExecutionProvider {
 	if s == nil || s.service == nil {
 		return nil
 	}
 	if s.service.schedulerSnapshot != nil {
-		if account, err := readSnapshotAccount(ctx, s.service.schedulerSnapshot, id); err == nil && account != nil {
-			return account
+		if provider, err := readSnapshotProvider(ctx, s.service.schedulerSnapshot, id); err == nil && provider != nil {
+			return provider
 		}
 	}
-	if s.service.accountRepo == nil {
+	if s.service.providerRepo == nil {
 		return nil
 	}
-	account, _ := s.service.accountRepo.GetByID(ctx, id)
-	return account
+	provider, _ := s.service.providerRepo.GetByID(ctx, id)
+	return provider
 }
 
-func (s *compatiblePicker) isAccountRequestCompatible(ctx context.Context, account *gatewayprovider.ExecutionAccount, req schedulercore.PlatformSelectionInput) bool {
-	compatible, _ := s.isAccountRequestCompatibleReason(ctx, account, req)
+func (s *compatiblePicker) isProviderRequestCompatible(ctx context.Context, provider *gatewayprovider.ExecutionProvider, req schedulercore.PlatformSelectionInput) bool {
+	compatible, _ := s.isProviderRequestCompatibleReason(ctx, provider, req)
 	return compatible
 }
 
-// isAccountRequestCompatibleReason 返回账号是否兼容，并在拒绝时标明具体门禁原因。
-func (s *compatiblePicker) isAccountRequestCompatibleReason(ctx context.Context, account *gatewayprovider.ExecutionAccount, req schedulercore.PlatformSelectionInput) (bool, string) {
-	if s != nil && s.service != nil && !s.service.shadowProtocolsAllowed(ctx, account) {
+// isProviderRequestCompatibleReason 返回提供商是否兼容，并在拒绝时标明具体门禁原因。
+func (s *compatiblePicker) isProviderRequestCompatibleReason(ctx context.Context, provider *gatewayprovider.ExecutionProvider, req schedulercore.PlatformSelectionInput) (bool, string) {
+	if s != nil && s.service != nil && !s.service.shadowProtocolsAllowed(ctx, provider) {
 		return false, "parent_protocol_unavailable"
 	}
-	if !gatewayprovider.ExecutionModelPolicy(account).AllowsProtocol(ctx) {
+	if !gatewayprovider.ExecutionModelPolicy(provider).AllowsProtocol(ctx) {
 		return false, "protocol_unavailable"
 	}
-	if account == nil {
-		return false, "account_nil"
+	if provider == nil {
+		return false, "provider_nil"
 	}
-	if reason := s.service.candidateEligibilityReason(ctx, account, req.Platform, requestRoutingModel(req), req.RequireCompact, req.RequiredCapability); reason != "" {
+	if reason := s.service.candidateEligibilityReason(ctx, provider, req.Platform, requestRoutingModel(req), req.RequireCompact, req.RequiredCapability); reason != "" {
 		return false, reason
 	}
-	if req.RequirePrivacySet && !account.View().IsPrivacySet() {
+	if req.RequirePrivacySet && !provider.View().IsPrivacySet() {
 		return false, "privacy_not_set"
 	}
-	if s != nil && s.service != nil && s.service.isOpenAIAccountRequestRuntimeBlocked(account, requestRoutingModel(req)) {
+	if s != nil && s.service != nil && s.service.isOpenAIProviderRequestRuntimeBlocked(provider, requestRoutingModel(req)) {
 		return false, "runtime_blocked"
 	}
-	if s != nil && s.service != nil && s.service.isOpenAIProxyStreamQuarantined(ctx, account) {
+	if s != nil && s.service != nil && s.service.isOpenAIProxyStreamQuarantined(ctx, provider) {
 		return false, "proxy_stream_quarantined"
 	}
 
-	if paused, decision := gatewayprovider.OpenAIQuotaPause(ctx, account); paused {
+	if paused, decision := gatewayprovider.OpenAIQuotaPause(ctx, provider); paused {
 		reason := "quota_auto_pause"
 		if decision.Window != "" {
 			reason += "_" + decision.Window
@@ -167,30 +167,30 @@ func (s *compatiblePicker) isAccountRequestCompatibleReason(ctx context.Context,
 		return false, reason
 	}
 
-	if !accountcore.ParentHealthyForShadow(gatewayprovider.ExecutionRecord(account), func(id int64) *accountcore.Record {
-		return gatewayprovider.ExecutionRecord(s.lookupShadowParentAccount(ctx, id))
+	if !providercore.ParentHealthyForShadow(gatewayprovider.ExecutionRecord(provider), func(id int64) *providercore.Record {
+		return gatewayprovider.ExecutionRecord(s.lookupShadowParentProvider(ctx, id))
 	}) {
 		return false, "shadow_parent_unhealthy"
 	}
-	if !gatewayprovider.ExecutionModelPolicy(account).SupportsCompatibleRouting(ctx, requestRoutingModel(req)) {
+	if !gatewayprovider.ExecutionModelPolicy(provider).SupportsCompatibleRouting(ctx, requestRoutingModel(req)) {
 		return false, "model_not_supported"
 	}
 	if req.GroupID != nil && s != nil && s.service != nil &&
 		s.service.NeedsUpstreamGroupRestriction(ctx, req.GroupID) &&
-		s.service.UpstreamRoutingModelRestricted(ctx, *req.GroupID, account, requestRoutingModel(req), req.RequireCompact) {
+		s.service.UpstreamRoutingModelRestricted(ctx, *req.GroupID, provider, requestRoutingModel(req), req.RequireCompact) {
 		return false, "group_upstream_restricted"
 	}
-	if !accountSupportsOpenAICapabilities(ctx, account, req.RequiredCapability, req.RequiredImageCapability) {
+	if !providerSupportsOpenAICapabilities(ctx, provider, req.RequiredCapability, req.RequiredImageCapability) {
 		return false, "capability_mismatch"
 	}
 	return true, ""
 }
 
-func (s *compatiblePicker) ReportResult(accountID int64, success bool, firstTokenMs *int, feedback ...policy.FeedbackConfig) {
+func (s *compatiblePicker) ReportResult(providerID int64, success bool, firstTokenMs *int, feedback ...policy.FeedbackConfig) {
 	if s == nil || s.stats == nil {
 		return
 	}
-	s.stats.Report(accountID, success, firstTokenMs, feedback...)
+	s.stats.Report(providerID, success, firstTokenMs, feedback...)
 }
 
 func (s *compatiblePicker) ReportSwitch() {
@@ -222,7 +222,7 @@ func (s *Compatible) groupUsesAdvancedScheduler(ctx context.Context, groupID *in
 	return err == nil && group != nil && group.UsesAdvancedScheduler()
 }
 
-func (s *Compatible) getOpenAIAccountScheduler(ctx context.Context, groupID *int64) pickerEngine {
+func (s *Compatible) getOpenAIProviderScheduler(ctx context.Context, groupID *int64) pickerEngine {
 	if s == nil {
 		return nil
 	}
@@ -230,34 +230,34 @@ func (s *Compatible) getOpenAIAccountScheduler(ctx context.Context, groupID *int
 		return nil
 	}
 	s.pickerOnce.Do(func() {
-		if s.openaiAccountStats == nil {
-			s.openaiAccountStats = schedulercore.NewRuntimeStats(time.Now)
+		if s.openaiProviderStats == nil {
+			s.openaiProviderStats = schedulercore.NewRuntimeStats(time.Now)
 		}
 		if s.picker == nil {
-			s.picker = newDefaultOpenAIAccountScheduler(s, s.openaiAccountStats)
+			s.picker = newDefaultOpenAIProviderScheduler(s, s.openaiProviderStats)
 		}
 	})
 	return s.picker
 }
 
-// ensureOpenAIAccountScheduler 仅供结果统计和诊断初始化调度器实例。
-// 实际账号选择仍必须经 getOpenAIAccountScheduler 按分组模式门控。
-func (s *Compatible) ensureOpenAIAccountScheduler() pickerEngine {
+// ensureOpenAIProviderScheduler 仅供结果统计和诊断初始化调度器实例。
+// 实际提供商选择仍必须经 getOpenAIProviderScheduler 按分组模式门控。
+func (s *Compatible) ensureOpenAIProviderScheduler() pickerEngine {
 	if s == nil {
 		return nil
 	}
 	s.pickerOnce.Do(func() {
-		if s.openaiAccountStats == nil {
-			s.openaiAccountStats = schedulercore.NewRuntimeStats(time.Now)
+		if s.openaiProviderStats == nil {
+			s.openaiProviderStats = schedulercore.NewRuntimeStats(time.Now)
 		}
 		if s.picker == nil {
-			s.picker = newDefaultOpenAIAccountScheduler(s, s.openaiAccountStats)
+			s.picker = newDefaultOpenAIProviderScheduler(s, s.openaiProviderStats)
 		}
 	})
 	return s.picker
 }
 
-func (s *Compatible) SelectAccountWithScheduler(
+func (s *Compatible) SelectProviderWithScheduler(
 	ctx context.Context,
 	groupID *int64,
 	previousResponseID string,
@@ -267,13 +267,13 @@ func (s *Compatible) SelectAccountWithScheduler(
 	requiredTransport egress.OpenAIUpstreamTransport,
 	requireCompact bool,
 ) (*gatewayprovider.SelectionResult, schedulercore.PlatformDecision, error) {
-	return s.selectAccountWithScheduler(ctx, groupID, previousResponseID, sessionHash, requestedModel, excludedIDs, requiredTransport, "", "", requireCompact, "", false)
+	return s.selectProviderWithScheduler(ctx, groupID, previousResponseID, sessionHash, requestedModel, excludedIDs, requiredTransport, "", "", requireCompact, "", false)
 }
 
-// SelectAccountWithSchedulerForCapability 按能力要求调度账号。
-// previousResponseCanMove 表示首包 input 可自行重建工具续链，previous_response_id 允许跨账号迁移
+// SelectProviderWithSchedulerForCapability 按能力要求调度提供商。
+// previousResponseCanMove 表示首包 input 可自行重建工具续链，previous_response_id 允许跨提供商迁移
 // （粘性加权模式下改为加权偏好而非硬粘连）。
-func (s *Compatible) SelectAccountWithSchedulerForCapability(
+func (s *Compatible) SelectProviderWithSchedulerForCapability(
 	ctx context.Context,
 	groupID *int64,
 	previousResponseID string,
@@ -281,7 +281,7 @@ func (s *Compatible) SelectAccountWithSchedulerForCapability(
 	requestedModel string,
 	excludedIDs map[int64]struct{},
 	requiredTransport egress.OpenAIUpstreamTransport,
-	requiredCapability accountcore.OpenAIEndpointCapability,
+	requiredCapability providercore.OpenAIEndpointCapability,
 	requireCompact bool,
 	previousResponseCanMove bool,
 	platformOverride ...string,
@@ -290,12 +290,12 @@ func (s *Compatible) SelectAccountWithSchedulerForCapability(
 	if len(platformOverride) > 0 {
 		platform = platformOverride[0]
 	}
-	return s.selectAccountWithScheduler(ctx, groupID, previousResponseID, sessionHash, requestedModel, excludedIDs, requiredTransport, requiredCapability, "", requireCompact, platform, previousResponseCanMove)
+	return s.selectProviderWithScheduler(ctx, groupID, previousResponseID, sessionHash, requestedModel, excludedIDs, requiredTransport, requiredCapability, "", requireCompact, platform, previousResponseCanMove)
 }
 
-// SelectAccountWithSchedulerForCapabilityAndRoutingModel 同时保留客户端模型 R 与已解析的账号层模型。
-// 该入口供 /v1/messages 使用，使分组白名单按 R/C 检查，账号能力与账号映射按 D 检查。
-func (s *Compatible) SelectAccountWithSchedulerForCapabilityAndRoutingModel(
+// SelectProviderWithSchedulerForCapabilityAndRoutingModel 同时保留客户端模型 R 与已解析的提供商层模型。
+// 该入口供 /v1/messages 使用，使分组白名单按 R/C 检查，提供商能力与提供商映射按 D 检查。
+func (s *Compatible) SelectProviderWithSchedulerForCapabilityAndRoutingModel(
 	ctx context.Context,
 	groupID *int64,
 	previousResponseID string,
@@ -304,7 +304,7 @@ func (s *Compatible) SelectAccountWithSchedulerForCapabilityAndRoutingModel(
 	routingModel string,
 	excludedIDs map[int64]struct{},
 	requiredTransport egress.OpenAIUpstreamTransport,
-	requiredCapability accountcore.OpenAIEndpointCapability,
+	requiredCapability providercore.OpenAIEndpointCapability,
 	requireCompact bool,
 	previousResponseCanMove bool,
 	platformOverride ...string,
@@ -317,30 +317,30 @@ func (s *Compatible) SelectAccountWithSchedulerForCapabilityAndRoutingModel(
 	if routingModel == "" {
 		routingModel = s.resolveGroupRoutingModel(ctx, groupID, requestedModel)
 	}
-	return s.selectAccountWithSchedulerForRouting(ctx, groupID, previousResponseID, sessionHash, requestedModel, routingModel, excludedIDs, requiredTransport, requiredCapability, "", requireCompact, platform, previousResponseCanMove)
+	return s.selectProviderWithSchedulerForRouting(ctx, groupID, previousResponseID, sessionHash, requestedModel, routingModel, excludedIDs, requiredTransport, requiredCapability, "", requireCompact, platform, previousResponseCanMove)
 }
 
-func (s *Compatible) SelectAccountWithSchedulerForImages(
+func (s *Compatible) SelectProviderWithSchedulerForImages(
 	ctx context.Context,
 	groupID *int64,
 	sessionHash string,
 	requestedModel string,
 	excludedIDs map[int64]struct{},
-	requiredCapability accountcore.OpenAIImagesCapability,
+	requiredCapability providercore.OpenAIImagesCapability,
 ) (*gatewayprovider.SelectionResult, schedulercore.PlatformDecision, error) {
 	ctx = context.WithValue(ctx, imageModelRequiredKey{}, true)
-	selection, decision, err := s.selectAccountWithScheduler(ctx, groupID, "", sessionHash, requestedModel, excludedIDs, egress.OpenAIUpstreamTransportHTTPSSE, "", requiredCapability, false, "", false)
-	if err == nil && selection != nil && selection.Account != nil {
+	selection, decision, err := s.selectProviderWithScheduler(ctx, groupID, "", sessionHash, requestedModel, excludedIDs, egress.OpenAIUpstreamTransportHTTPSSE, "", requiredCapability, false, "", false)
+	if err == nil && selection != nil && selection.Provider != nil {
 		return selection, decision, nil
 	}
 
-	if requiredCapability == accountcore.OpenAIImagesCapabilityNative {
-		return s.selectAccountWithScheduler(ctx, groupID, "", sessionHash, requestedModel, excludedIDs, egress.OpenAIUpstreamTransportHTTPSSE, "", accountcore.OpenAIImagesCapabilityBasic, false, "", false)
+	if requiredCapability == providercore.OpenAIImagesCapabilityNative {
+		return s.selectProviderWithScheduler(ctx, groupID, "", sessionHash, requestedModel, excludedIDs, egress.OpenAIUpstreamTransportHTTPSSE, "", providercore.OpenAIImagesCapabilityBasic, false, "", false)
 	}
 	return selection, decision, err
 }
 
-func (s *Compatible) selectAccountWithScheduler(
+func (s *Compatible) selectProviderWithScheduler(
 	ctx context.Context,
 	groupID *int64,
 	previousResponseID string,
@@ -348,20 +348,20 @@ func (s *Compatible) selectAccountWithScheduler(
 	requestedModel string,
 	excludedIDs map[int64]struct{},
 	requiredTransport egress.OpenAIUpstreamTransport,
-	requiredCapability accountcore.OpenAIEndpointCapability,
-	requiredImageCapability accountcore.OpenAIImagesCapability,
+	requiredCapability providercore.OpenAIEndpointCapability,
+	requiredImageCapability providercore.OpenAIImagesCapability,
 	requireCompact bool,
 	platform string,
 	previousResponseCanMove bool,
 ) (*gatewayprovider.SelectionResult, schedulercore.PlatformDecision, error) {
 	routingModel := s.resolveGroupRoutingModel(ctx, groupID, requestedModel)
-	return s.selectAccountWithSchedulerForRouting(ctx, groupID, previousResponseID, sessionHash, requestedModel, routingModel, excludedIDs, requiredTransport, requiredCapability, requiredImageCapability, requireCompact, platform, previousResponseCanMove)
+	return s.selectProviderWithSchedulerForRouting(ctx, groupID, previousResponseID, sessionHash, requestedModel, routingModel, excludedIDs, requiredTransport, requiredCapability, requiredImageCapability, requireCompact, platform, previousResponseCanMove)
 }
 
-// selectAccountWithSchedulerForRouting 首次调度仍把隔离代理当作不可用；只有因容量耗尽
-// 失败且熔断器确实在隔离代理时，才用同一账号层模型重跑一次并忽略隔离。这样健康代理
+// selectProviderWithSchedulerForRouting 首次调度仍把隔离代理当作不可用；只有因容量耗尽
+// 失败且熔断器确实在隔离代理时，才用同一提供商层模型重跑一次并忽略隔离。这样健康代理
 // 始终优先，同时避免共享代理场景被熔断器清空全部容量。
-func (s *Compatible) selectAccountWithSchedulerForRouting(
+func (s *Compatible) selectProviderWithSchedulerForRouting(
 	ctx context.Context,
 	groupID *int64,
 	previousResponseID string,
@@ -370,8 +370,8 @@ func (s *Compatible) selectAccountWithSchedulerForRouting(
 	routingModel string,
 	excludedIDs map[int64]struct{},
 	requiredTransport egress.OpenAIUpstreamTransport,
-	requiredCapability accountcore.OpenAIEndpointCapability,
-	requiredImageCapability accountcore.OpenAIImagesCapability,
+	requiredCapability providercore.OpenAIEndpointCapability,
+	requiredImageCapability providercore.OpenAIImagesCapability,
 	requireCompact bool,
 	platform string,
 	previousResponseCanMove bool,
@@ -389,28 +389,28 @@ func (s *Compatible) selectAccountWithSchedulerForRouting(
 	if derefGroupID(groupID) != originalGroupID {
 		routingModel = s.resolveGroupRoutingModel(ctx, groupID, requestedModel)
 	}
-	// 模型优先账号在当前组内先尝试；没有可用候选时再使用完整池。
-	if _, configured := ctx.Value(preferredAccountsKey{}).(map[int64]struct{}); !configured && previousResponseID == "" {
+	// 模型优先提供商在当前组内先尝试；没有可用候选时再使用完整池。
+	if _, configured := ctx.Value(preferredProvidersKey{}).(map[int64]struct{}); !configured && previousResponseID == "" {
 		if group, ok := requeststate.GroupFromContext(ctx); ok && group != nil {
-			ids := group.GetRoutingAccountIDs(routingModel)
+			ids := group.GetRoutingProviderIDs(routingModel)
 			if len(ids) > 0 {
 				preferred := make(map[int64]struct{}, len(ids))
 				for _, id := range ids {
 					preferred[id] = struct{}{}
 				}
-				result, decision, preferredErr := s.selectAccountWithSchedulerForRouting(context.WithValue(ctx, preferredAccountsKey{}, preferred), groupID, previousResponseID, sessionHash, requestedModel, routingModel, excludedIDs, requiredTransport, requiredCapability, requiredImageCapability, requireCompact, platform, previousResponseCanMove)
+				result, decision, preferredErr := s.selectProviderWithSchedulerForRouting(context.WithValue(ctx, preferredProvidersKey{}, preferred), groupID, previousResponseID, sessionHash, requestedModel, routingModel, excludedIDs, requiredTransport, requiredCapability, requiredImageCapability, requireCompact, platform, previousResponseCanMove)
 				if preferredErr == nil {
 					return result, decision, preferredErr
 				}
 			}
 		}
 	}
-	excludedIDs = cloneExcludedAccountIDs(excludedIDs)
+	excludedIDs = cloneExcludedProviderIDs(excludedIDs)
 	var selection *gatewayprovider.SelectionResult
 	var decision schedulercore.PlatformDecision
 	for {
-		selection, decision, err = s.selectAccountWithSchedulerForRoutingOnce(ctx, groupID, previousResponseID, sessionHash, requestedModel, routingModel, excludedIDs, requiredTransport, requiredCapability, requiredImageCapability, requireCompact, platform, previousResponseCanMove)
-		if err != nil || selection == nil || selection.Account == nil || s.generic == nil || s.generic.checkAndRegisterSession(ctx, selection.Account, sessionHash) {
+		selection, decision, err = s.selectProviderWithSchedulerForRoutingOnce(ctx, groupID, previousResponseID, sessionHash, requestedModel, routingModel, excludedIDs, requiredTransport, requiredCapability, requiredImageCapability, requireCompact, platform, previousResponseCanMove)
+		if err != nil || selection == nil || selection.Provider == nil || s.generic == nil || s.generic.checkAndRegisterSession(ctx, selection.Provider, sessionHash) {
 			break
 		}
 		if selection.ReleaseFunc != nil {
@@ -419,13 +419,13 @@ func (s *Compatible) selectAccountWithSchedulerForRouting(
 		if excludedIDs == nil {
 			excludedIDs = map[int64]struct{}{}
 		}
-		excludedIDs[selection.Account.Record.ID] = struct{}{}
+		excludedIDs[selection.Provider.Record.ID] = struct{}{}
 	}
 
 	if err == nil || openAIProxyStreamQuarantineBypassed(ctx) {
 		return selection, decision, err
 	}
-	if !errors.Is(err, schedulercore.ErrNoAvailableAccounts) && !errors.Is(err, schedulercore.ErrNoAvailableCompactAccounts) {
+	if !errors.Is(err, schedulercore.ErrNoAvailableProviders) && !errors.Is(err, schedulercore.ErrNoAvailableCompactProviders) {
 		return selection, decision, err
 	}
 
@@ -437,10 +437,10 @@ func (s *Compatible) selectAccountWithSchedulerForRouting(
 		return selection, decision, err
 	}
 	s.logOpenAIProxyStreamQuarantineFailOpen(requestedModel, blocked)
-	return s.selectAccountWithSchedulerForRouting(withOpenAIProxyStreamQuarantineBypass(ctx), groupID, previousResponseID, sessionHash, requestedModel, routingModel, excludedIDs, requiredTransport, requiredCapability, requiredImageCapability, requireCompact, platform, previousResponseCanMove)
+	return s.selectProviderWithSchedulerForRouting(withOpenAIProxyStreamQuarantineBypass(ctx), groupID, previousResponseID, sessionHash, requestedModel, routingModel, excludedIDs, requiredTransport, requiredCapability, requiredImageCapability, requireCompact, platform, previousResponseCanMove)
 }
 
-// resolveOpenAISchedulerGroup 复核入口已经授权的分组，保持计划与账号池一致。
+// resolveOpenAISchedulerGroup 复核入口已经授权的分组，保持计划与提供商池一致。
 func (s *Compatible) resolveOpenAISchedulerGroup(ctx context.Context, groupID *int64) (context.Context, *int64, error) {
 	var read func(context.Context, int64) (*routing.Group, error)
 	if s != nil && s.schedulingGroups != nil {
@@ -491,7 +491,7 @@ func (s *Compatible) loadOpenAIGroupRequiresPrivacySet(ctx context.Context, grou
 	return group != nil && group.RequirePrivacySet
 }
 
-func (s *Compatible) selectAccountWithSchedulerForRoutingOnce(
+func (s *Compatible) selectProviderWithSchedulerForRoutingOnce(
 	ctx context.Context,
 	groupID *int64,
 	previousResponseID string,
@@ -500,8 +500,8 @@ func (s *Compatible) selectAccountWithSchedulerForRoutingOnce(
 	routingModel string,
 	excludedIDs map[int64]struct{},
 	requiredTransport egress.OpenAIUpstreamTransport,
-	requiredCapability accountcore.OpenAIEndpointCapability,
-	requiredImageCapability accountcore.OpenAIImagesCapability,
+	requiredCapability providercore.OpenAIEndpointCapability,
+	requiredImageCapability providercore.OpenAIImagesCapability,
 	requireCompact bool,
 	platform string,
 	previousResponseCanMove bool,
@@ -512,20 +512,20 @@ func (s *Compatible) selectAccountWithSchedulerForRoutingOnce(
 	platform = strings.TrimSpace(platform)
 	decision := schedulercore.PlatformDecision{}
 	preserveGuardianParentBinding := requeststate.PreserveGuardianParentBinding(ctx, sessionHash)
-	guardianParentAccountID := int64(0)
+	guardianParentProviderID := int64(0)
 	if strings.TrimSpace(previousResponseID) == "" {
-		guardianParentAccountID = s.resolveOpenAIGuardianParentAccountID(ctx, groupID)
+		guardianParentProviderID = s.resolveOpenAIGuardianParentProviderID(ctx, groupID)
 	}
-	scheduler := s.getOpenAIAccountScheduler(ctx, groupID)
+	scheduler := s.getOpenAIProviderScheduler(ctx, groupID)
 	if scheduler == nil {
-		decision.Layer = openAIAccountScheduleLayerLoadBalance
-		if guardianParentAccountID > 0 {
+		decision.Layer = openAIProviderScheduleLayerLoadBalance
+		if guardianParentProviderID > 0 {
 			fallbackScheduler := &compatiblePicker{service: s, stats: schedulercore.NewRuntimeStats(time.Now)}
 			selection, _, err := fallbackScheduler.selectBySessionHash(ctx, schedulercore.PlatformSelectionInput{
 				GroupID:                 groupID,
 				Platform:                platform,
 				SessionHash:             sessionHash,
-				StickyAccountID:         guardianParentAccountID,
+				StickyProviderID:        guardianParentProviderID,
 				PreserveStickyBinding:   true,
 				RequestedModel:          requestedModel,
 				RoutingModel:            routingModel,
@@ -539,11 +539,11 @@ func (s *Compatible) selectAccountWithSchedulerForRoutingOnce(
 			if err != nil {
 				return nil, decision, err
 			}
-			if selection != nil && selection.Account != nil {
-				decision.Layer = openAIAccountScheduleLayerGuardianParent
+			if selection != nil && selection.Provider != nil {
+				decision.Layer = openAIProviderScheduleLayerGuardianParent
 				decision.StickySessionHit = true
-				decision.SelectedAccountID = selection.Account.Record.ID
-				decision.SelectedAccountType = selection.Account.Record.Type
+				decision.SelectedProviderID = selection.Provider.Record.ID
+				decision.SelectedProviderType = selection.Provider.Record.Type
 				return selection, decision, nil
 			}
 		}
@@ -552,16 +552,16 @@ func (s *Compatible) selectAccountWithSchedulerForRoutingOnce(
 			legacySessionHash = ""
 		}
 		if requiredTransport == egress.OpenAIUpstreamTransportAny || requiredTransport == egress.OpenAIUpstreamTransportHTTPSSE {
-			effectiveExcludedIDs := cloneExcludedAccountIDs(excludedIDs)
+			effectiveExcludedIDs := cloneExcludedProviderIDs(excludedIDs)
 			for {
-				selection, err := s.selectAccountWithLoadAwarenessForRouting(ctx, groupID, platform, legacySessionHash, requestedModel, routingModel, effectiveExcludedIDs, requireCompact, requiredCapability)
+				selection, err := s.selectProviderWithLoadAwarenessForRouting(ctx, groupID, platform, legacySessionHash, requestedModel, routingModel, effectiveExcludedIDs, requireCompact, requiredCapability)
 				if err != nil {
 					return nil, decision, err
 				}
-				if selection == nil || selection.Account == nil {
+				if selection == nil || selection.Provider == nil {
 					return selection, decision, nil
 				}
-				if accountSupportsOpenAICapabilities(ctx, selection.Account, requiredCapability, requiredImageCapability) {
+				if providerSupportsOpenAICapabilities(ctx, selection.Provider, requiredCapability, requiredImageCapability) {
 					return selection, decision, nil
 				}
 				if selection.ReleaseFunc != nil {
@@ -570,24 +570,24 @@ func (s *Compatible) selectAccountWithSchedulerForRoutingOnce(
 				if effectiveExcludedIDs == nil {
 					effectiveExcludedIDs = make(map[int64]struct{})
 				}
-				if _, exists := effectiveExcludedIDs[selection.Account.Record.ID]; exists {
-					return nil, decision, schedulercore.ErrNoAvailableAccounts
+				if _, exists := effectiveExcludedIDs[selection.Provider.Record.ID]; exists {
+					return nil, decision, schedulercore.ErrNoAvailableProviders
 				}
-				effectiveExcludedIDs[selection.Account.Record.ID] = struct{}{}
+				effectiveExcludedIDs[selection.Provider.Record.ID] = struct{}{}
 			}
 		}
 
-		effectiveExcludedIDs := cloneExcludedAccountIDs(excludedIDs)
+		effectiveExcludedIDs := cloneExcludedProviderIDs(excludedIDs)
 		for {
-			selection, err := s.selectAccountWithLoadAwarenessForRouting(ctx, groupID, platform, legacySessionHash, requestedModel, routingModel, effectiveExcludedIDs, requireCompact, requiredCapability)
+			selection, err := s.selectProviderWithLoadAwarenessForRouting(ctx, groupID, platform, legacySessionHash, requestedModel, routingModel, effectiveExcludedIDs, requireCompact, requiredCapability)
 			if err != nil {
 				return nil, decision, err
 			}
-			if selection == nil || selection.Account == nil {
+			if selection == nil || selection.Provider == nil {
 				return selection, decision, nil
 			}
-			if s.isOpenAIAccountTransportCompatible(selection.Account, requiredTransport) &&
-				accountSupportsOpenAICapabilities(ctx, selection.Account, requiredCapability, requiredImageCapability) {
+			if s.isOpenAIProviderTransportCompatible(selection.Provider, requiredTransport) &&
+				providerSupportsOpenAICapabilities(ctx, selection.Provider, requiredCapability, requiredImageCapability) {
 				return selection, decision, nil
 			}
 			if selection.ReleaseFunc != nil {
@@ -596,10 +596,10 @@ func (s *Compatible) selectAccountWithSchedulerForRoutingOnce(
 			if effectiveExcludedIDs == nil {
 				effectiveExcludedIDs = make(map[int64]struct{})
 			}
-			if _, exists := effectiveExcludedIDs[selection.Account.Record.ID]; exists {
-				return nil, decision, schedulercore.ErrNoAvailableAccounts
+			if _, exists := effectiveExcludedIDs[selection.Provider.Record.ID]; exists {
+				return nil, decision, schedulercore.ErrNoAvailableProviders
 			}
-			effectiveExcludedIDs[selection.Account.Record.ID] = struct{}{}
+			effectiveExcludedIDs[selection.Provider.Record.ID] = struct{}{}
 		}
 	}
 
@@ -607,43 +607,43 @@ func (s *Compatible) selectAccountWithSchedulerForRoutingOnce(
 		slog.Warn("group model restriction blocked request",
 			"group_id", derefGroupID(groupID),
 			"model", requestedModel)
-		return nil, decision, fmt.Errorf("%w supporting model: %s (group model restriction)", schedulercore.ErrNoAvailableAccounts, requestedModel)
+		return nil, decision, fmt.Errorf("%w supporting model: %s (group model restriction)", schedulercore.ErrNoAvailableProviders, requestedModel)
 	}
 
-	var stickyAccountID int64
+	var stickyProviderID int64
 	if sessionHash != "" && s.cache != nil {
-		if accountID, err := s.getStickySessionAccountID(ctx, groupID, sessionHash); err == nil && accountID > 0 {
-			stickyAccountID = accountID
+		if providerID, err := s.getStickySessionProviderID(ctx, groupID, sessionHash); err == nil && providerID > 0 {
+			stickyProviderID = providerID
 		}
 	}
 	effectiveSettings := s.advancedSchedulerEffectiveSettingsForRequest(ctx, groupID)
 	stickyWeighted := effectiveSettings.StickyWeightedEnabled
 	subscriptionPriority := effectiveSettings.SubscriptionPriorityEnabled
-	stickyPreviousAccountID := int64(0)
+	stickyPreviousProviderID := int64(0)
 	if stickyWeighted && previousResponseCanMove && strings.TrimSpace(previousResponseID) != "" && (platform == "" || platform == capability.PlatformOpenAI) {
-		stickyPreviousAccountID = s.ResolveAccountIDByPreviousResponseIDForScheduler(ctx, groupID, previousResponseID, routingModel, excludedIDs, requiredCapability, requireCompact)
+		stickyPreviousProviderID = s.ResolveProviderIDByPreviousResponseIDForScheduler(ctx, groupID, previousResponseID, routingModel, excludedIDs, requiredCapability, requireCompact)
 	}
 
 	selection, decision, selectErr := scheduler.Select(ctx, schedulercore.PlatformSelectionInput{
-		GroupID:                 groupID,
-		Platform:                platform,
-		SessionHash:             sessionHash,
-		StickyAccountID:         stickyAccountID,
-		GuardianParentAccountID: guardianParentAccountID,
-		StickyPreviousAccountID: stickyPreviousAccountID,
-		StickyWeighted:          stickyWeighted,
-		SubscriptionPriority:    subscriptionPriority,
-		PreserveStickyBinding:   preserveGuardianParentBinding,
-		RequirePrivacySet:       s.openAIGroupRequiresPrivacySet(ctx, groupID),
-		PreviousResponseID:      previousResponseID,
-		PreviousResponseCanMove: previousResponseCanMove,
-		RequestedModel:          requestedModel,
-		RoutingModel:            routingModel,
-		RequiredTransport:       string(requiredTransport),
-		RequiredCapability:      requiredCapability,
-		RequiredImageCapability: requiredImageCapability,
-		RequireCompact:          requireCompact,
-		ExcludedIDs:             excludedIDs,
+		GroupID:                  groupID,
+		Platform:                 platform,
+		SessionHash:              sessionHash,
+		StickyProviderID:         stickyProviderID,
+		GuardianParentProviderID: guardianParentProviderID,
+		StickyPreviousProviderID: stickyPreviousProviderID,
+		StickyWeighted:           stickyWeighted,
+		SubscriptionPriority:     subscriptionPriority,
+		PreserveStickyBinding:    preserveGuardianParentBinding,
+		RequirePrivacySet:        s.openAIGroupRequiresPrivacySet(ctx, groupID),
+		PreviousResponseID:       previousResponseID,
+		PreviousResponseCanMove:  previousResponseCanMove,
+		RequestedModel:           requestedModel,
+		RoutingModel:             routingModel,
+		RequiredTransport:        string(requiredTransport),
+		RequiredCapability:       requiredCapability,
+		RequiredImageCapability:  requiredImageCapability,
+		RequireCompact:           requireCompact,
+		ExcludedIDs:              excludedIDs,
 	})
 	if selection != nil {
 
@@ -654,20 +654,20 @@ func (s *Compatible) selectAccountWithSchedulerForRoutingOnce(
 	return selection, decision, selectErr
 }
 
-func accountSupportsOpenAICapabilities(ctx context.Context, account *gatewayprovider.ExecutionAccount, requiredCapability accountcore.OpenAIEndpointCapability, requiredImageCapability accountcore.OpenAIImagesCapability) bool {
-	if account == nil {
+func providerSupportsOpenAICapabilities(ctx context.Context, provider *gatewayprovider.ExecutionProvider, requiredCapability providercore.OpenAIEndpointCapability, requiredImageCapability providercore.OpenAIImagesCapability) bool {
+	if provider == nil {
 		return false
 	}
-	if !gatewayprovider.SupportsRequestCapability(ctx, account, requiredCapability) {
+	if !gatewayprovider.SupportsRequestCapability(ctx, provider, requiredCapability) {
 		return false
 	}
-	if requiredImageCapability != "" && account.View().IsGrok() {
-		return gatewayprovider.SupportsRequestCapability(ctx, account, accountcore.OpenAIEndpointCapabilityGrokMediaGeneration)
+	if requiredImageCapability != "" && provider.View().IsGrok() {
+		return gatewayprovider.SupportsRequestCapability(ctx, provider, providercore.OpenAIEndpointCapabilityGrokMediaGeneration)
 	}
-	return account.View().SupportsOpenAIImageCapability(requiredImageCapability)
+	return provider.View().SupportsOpenAIImageCapability(requiredImageCapability)
 }
 
-func cloneExcludedAccountIDs(excludedIDs map[int64]struct{}) map[int64]struct{} {
+func cloneExcludedProviderIDs(excludedIDs map[int64]struct{}) map[int64]struct{} {
 	if len(excludedIDs) == 0 {
 		return nil
 	}
@@ -678,151 +678,151 @@ func cloneExcludedAccountIDs(excludedIDs map[int64]struct{}) map[int64]struct{} 
 	return cloned
 }
 
-func (s *Compatible) isOpenAIAccountTransportCompatible(account *gatewayprovider.ExecutionAccount, requiredTransport egress.OpenAIUpstreamTransport) bool {
+func (s *Compatible) isOpenAIProviderTransportCompatible(provider *gatewayprovider.ExecutionProvider, requiredTransport egress.OpenAIUpstreamTransport) bool {
 	if requiredTransport == egress.OpenAIUpstreamTransportAny || requiredTransport == egress.OpenAIUpstreamTransportHTTPSSE {
 		return true
 	}
-	if s == nil || account == nil {
+	if s == nil || provider == nil {
 		return false
 	}
 	if requiredTransport == egress.OpenAIUpstreamTransportResponsesWebsocketV2Ingress {
 
-		if account.View().IsGrok() {
+		if provider.View().IsGrok() {
 			return true
 		}
 		if s.options.WS == nil || !s.options.WS.ModeRouterV2Enabled {
-			return s.ResolveTransport(account).Transport == egress.OpenAIUpstreamTransportResponsesWebsocketV2
+			return s.ResolveTransport(provider).Transport == egress.OpenAIUpstreamTransportResponsesWebsocketV2
 		}
-		switch account.View().ResolveOpenAIResponsesWebSocketV2Mode(s.options.WSIngressMode) {
-		case accountcore.OpenAIWSIngressModeCtxPool, accountcore.OpenAIWSIngressModePassthrough, accountcore.OpenAIWSIngressModeHTTPBridge, accountcore.OpenAIWSIngressModeShared, accountcore.OpenAIWSIngressModeDedicated:
+		switch provider.View().ResolveOpenAIResponsesWebSocketV2Mode(s.options.WSIngressMode) {
+		case providercore.OpenAIWSIngressModeCtxPool, providercore.OpenAIWSIngressModePassthrough, providercore.OpenAIWSIngressModeHTTPBridge, providercore.OpenAIWSIngressModeShared, providercore.OpenAIWSIngressModeDedicated:
 			return true
 		default:
 			return false
 		}
 	}
-	return s.ResolveTransport(account).Transport == requiredTransport
+	return s.ResolveTransport(provider).Transport == requiredTransport
 }
 
-func (s *Compatible) ReportOpenAIAccountScheduleResult(accountOrID any, model string, success bool, firstTokenMs *int, observedErr ...error) bool {
-	var account *gatewayprovider.ExecutionAccount
-	var accountID int64
-	switch value := accountOrID.(type) {
-	case *gatewayprovider.ExecutionAccount:
-		account = value
-		if account != nil {
-			accountID = account.Record.ID
+func (s *Compatible) ReportOpenAIProviderScheduleResult(providerOrID any, model string, success bool, firstTokenMs *int, observedErr ...error) bool {
+	var provider *gatewayprovider.ExecutionProvider
+	var providerID int64
+	switch value := providerOrID.(type) {
+	case *gatewayprovider.ExecutionProvider:
+		provider = value
+		if provider != nil {
+			providerID = provider.Record.ID
 		}
 	case int64:
-		accountID = value
+		providerID = value
 	case int:
-		accountID = int64(value)
+		providerID = int64(value)
 	}
-	if account == nil && accountID == 0 {
+	if provider == nil && providerID == 0 {
 		return false
 	}
 
 	healthTripped := false
-	if account != nil && s != nil && s.healthObserver != nil {
+	if provider != nil && s != nil && s.healthObserver != nil {
 		if !success && len(observedErr) > 0 && observedErr[0] != nil {
-			healthTripped = s.ObserveOpenAIAccountHealthFailure(context.Background(), account, observedErr[0])
+			healthTripped = s.ObserveOpenAIProviderHealthFailure(context.Background(), provider, observedErr[0])
 		}
 	}
 	if success {
-		s.runtimeBlockState().ResetRetry(accountID)
-		s.clearOpenAIAccountModelTransientState(accountID, accountcore.NormalizeTransientModel(model))
+		s.runtimeBlockState().ResetRetry(providerID)
+		s.clearOpenAIProviderModelTransientState(providerID, providercore.NormalizeTransientModel(model))
 	}
-	if account == nil {
+	if provider == nil {
 
-		s.reportOpenAIAccountScheduleResult(false, accountID, model, success, firstTokenMs)
+		s.reportOpenAIProviderScheduleResult(false, providerID, model, success, firstTokenMs)
 		return healthTripped
 	}
 	if s == nil || s.healthObserver == nil {
 		return healthTripped
 	}
-	scheduler := s.ensureOpenAIAccountScheduler()
+	scheduler := s.ensureOpenAIProviderScheduler()
 	if scheduler == nil {
 		return healthTripped
 	}
-	scheduler.ReportResult(accountID, success, firstTokenMs)
+	scheduler.ReportResult(providerID, success, firstTokenMs)
 	return healthTripped
 }
 
-// ObserveOpenAIAccountHealthFailure 记录已经写出响应后无法进入调度反馈的失败。
-func (s *Compatible) ObserveOpenAIAccountHealthFailure(ctx context.Context, account *gatewayprovider.ExecutionAccount, observedErr error) bool {
-	if s == nil || s.healthObserver == nil || account == nil || observedErr == nil {
+// ObserveOpenAIProviderHealthFailure 记录已经写出响应后无法进入调度反馈的失败。
+func (s *Compatible) ObserveOpenAIProviderHealthFailure(ctx context.Context, provider *gatewayprovider.ExecutionProvider, observedErr error) bool {
+	if s == nil || s.healthObserver == nil || provider == nil || observedErr == nil {
 		return false
 	}
 	status, body, eligible := gatewayprovider.ClassifyOpenAIAPIKeyHealthFailure(observedErr)
-	record := gatewayprovider.ExecutionRecord(account)
+	record := gatewayprovider.ExecutionRecord(provider)
 	handled := s.healthObserver.Core.ApplyAPIKeyHealthFailure(ctx, record, status, body, eligible)
-	account.Record.TempUnschedulableUntil = record.TempUnschedulableUntil
-	account.Record.TempUnschedulableReason = record.TempUnschedulableReason
+	provider.Record.TempUnschedulableUntil = record.TempUnschedulableUntil
+	provider.Record.TempUnschedulableReason = record.TempUnschedulableReason
 	return handled
 }
 
-// ReportOpenAIAccountScheduleResultForSelection 按本次实际选择模式写入反馈。
+// ReportOpenAIProviderScheduleResultForSelection 按本次实际选择模式写入反馈。
 // 基础分组仍清理请求临时状态，但不会污染高级调度统计。
-func (s *Compatible) ReportOpenAIAccountScheduleResultForSelection(selection *gatewayprovider.SelectionResult, accountID int64, model string, success bool, firstTokenMs *int) {
+func (s *Compatible) ReportOpenAIProviderScheduleResultForSelection(selection *gatewayprovider.SelectionResult, providerID int64, model string, success bool, firstTokenMs *int) {
 	if selection != nil && selection.AdvancedScheduler && selection.AdvancedSchedulerFeedback != nil {
-		s.reportOpenAIAccountScheduleResultWithFeedback(accountID, model, success, firstTokenMs, *selection.AdvancedSchedulerFeedback)
+		s.reportOpenAIProviderScheduleResultWithFeedback(providerID, model, success, firstTokenMs, *selection.AdvancedSchedulerFeedback)
 		return
 	}
-	s.reportOpenAIAccountScheduleResult(selection != nil && selection.AdvancedScheduler, accountID, model, success, firstTokenMs)
+	s.reportOpenAIProviderScheduleResult(selection != nil && selection.AdvancedScheduler, providerID, model, success, firstTokenMs)
 }
 
-func (s *Compatible) reportOpenAIAccountScheduleResult(advanced bool, accountID int64, model string, success bool, firstTokenMs *int) {
+func (s *Compatible) reportOpenAIProviderScheduleResult(advanced bool, providerID int64, model string, success bool, firstTokenMs *int) {
 	if success {
-		s.clearOpenAIAccountModelTransientState(accountID, accountcore.NormalizeTransientModel(model))
+		s.clearOpenAIProviderModelTransientState(providerID, providercore.NormalizeTransientModel(model))
 	}
 	if !advanced {
 		return
 	}
-	scheduler := s.ensureOpenAIAccountScheduler()
+	scheduler := s.ensureOpenAIProviderScheduler()
 	if scheduler == nil {
 		return
 	}
-	scheduler.ReportResult(accountID, success, firstTokenMs)
+	scheduler.ReportResult(providerID, success, firstTokenMs)
 }
 
-func (s *Compatible) reportOpenAIAccountScheduleResultWithFeedback(accountID int64, model string, success bool, firstTokenMs *int, feedback policy.FeedbackConfig) {
+func (s *Compatible) reportOpenAIProviderScheduleResultWithFeedback(providerID int64, model string, success bool, firstTokenMs *int, feedback policy.FeedbackConfig) {
 	if success {
-		s.clearOpenAIAccountModelTransientState(accountID, accountcore.NormalizeTransientModel(model))
+		s.clearOpenAIProviderModelTransientState(providerID, providercore.NormalizeTransientModel(model))
 	}
-	scheduler := s.ensureOpenAIAccountScheduler()
+	scheduler := s.ensureOpenAIProviderScheduler()
 	if scheduler == nil {
 		return
 	}
-	scheduler.ReportResult(accountID, success, firstTokenMs, feedback)
+	scheduler.ReportResult(providerID, success, firstTokenMs, feedback)
 }
 
-func (s *Compatible) RecordOpenAIAccountSwitch() {
+func (s *Compatible) RecordOpenAIProviderSwitch() {
 	if s == nil || s.healthObserver == nil {
 		return
 	}
-	scheduler := s.ensureOpenAIAccountScheduler()
+	scheduler := s.ensureOpenAIProviderScheduler()
 	if scheduler != nil {
 		scheduler.ReportSwitch()
 	}
 }
 
-// RecordOpenAIAccountSwitchForSelection 只记录高级调度请求的账号切换。
-func (s *Compatible) RecordOpenAIAccountSwitchForSelection(selection *gatewayprovider.SelectionResult) {
-	s.recordOpenAIAccountSwitch(selection != nil && selection.AdvancedScheduler)
+// RecordOpenAIProviderSwitchForSelection 只记录高级调度请求的提供商切换。
+func (s *Compatible) RecordOpenAIProviderSwitchForSelection(selection *gatewayprovider.SelectionResult) {
+	s.recordOpenAIProviderSwitch(selection != nil && selection.AdvancedScheduler)
 }
 
-func (s *Compatible) recordOpenAIAccountSwitch(advanced bool) {
+func (s *Compatible) recordOpenAIProviderSwitch(advanced bool) {
 	if !advanced {
 		return
 	}
-	scheduler := s.ensureOpenAIAccountScheduler()
+	scheduler := s.ensureOpenAIProviderScheduler()
 	if scheduler == nil {
 		return
 	}
 	scheduler.ReportSwitch()
 }
 
-func (s *Compatible) SnapshotOpenAIAccountSchedulerMetrics() schedulercore.PlatformMetricsSnapshot {
-	scheduler := s.ensureOpenAIAccountScheduler()
+func (s *Compatible) SnapshotOpenAIProviderSchedulerMetrics() schedulercore.PlatformMetricsSnapshot {
+	scheduler := s.ensureOpenAIProviderScheduler()
 	if scheduler == nil {
 		return schedulercore.PlatformMetricsSnapshot{}
 	}
@@ -845,7 +845,7 @@ func (s *compatiblePicker) selectBySessionHash(ctx context.Context, req schedule
 	return scope.restore(value), escaped, err
 }
 
-// 旧候选只转换额度观测；评分信号使用账号模块唯一实现。
-func openAIQuotaHeadroomFactor(value *gatewayprovider.ExecutionAccount, now time.Time) float64 {
-	return accountcore.OpenAIQuotaHeadroomFactor(gatewayprovider.ExecutionRecord(value), now)
+// 旧候选只转换额度观测；评分信号使用提供商模块唯一实现。
+func openAIQuotaHeadroomFactor(value *gatewayprovider.ExecutionProvider, now time.Time) float64 {
+	return providercore.OpenAIQuotaHeadroomFactor(gatewayprovider.ExecutionRecord(value), now)
 }

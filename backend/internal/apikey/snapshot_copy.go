@@ -13,7 +13,7 @@ func clonePointer[T any](v *T) *T {
 	return &out
 }
 
-// cloneModelRouting 同时复制映射和候选账号切片，不折叠 nil/空集合。
+// cloneModelRouting 同时复制映射和候选提供商切片，不折叠 nil/空集合。
 func cloneModelRouting(v map[string][]int64) map[string][]int64 {
 	if v == nil {
 		return nil

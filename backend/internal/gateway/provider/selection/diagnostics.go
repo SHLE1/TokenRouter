@@ -5,9 +5,9 @@ import (
 	"strings"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	schedulercore "github.com/TokenFlux/TokenRouter/internal/scheduler"
 
@@ -33,14 +33,14 @@ func (s *Diagnostics) effectiveSettings(ctx context.Context, group *routing.Grou
 	return parameters.Effective(ctx, schedulerGroupOverrides(group)), runtime
 }
 
-func (s *Diagnostics) prepareEligibilityContext(ctx context.Context, group *routing.Group, accounts []gatewayprovider.ExecutionAccount) context.Context {
+func (s *Diagnostics) prepareEligibilityContext(ctx context.Context, group *routing.Group, providers []gatewayprovider.ExecutionProvider) context.Context {
 	if s == nil {
 		return ctx
 	}
 	if s.gatewayService != nil {
 		ctx = s.gatewayService.withGroupContext(ctx, group)
-		ctx = s.gatewayService.withWindowCostPrefetch(ctx, accounts)
-		ctx = s.gatewayService.withRPMPrefetch(ctx, accounts)
+		ctx = s.gatewayService.withWindowCostPrefetch(ctx, providers)
+		ctx = s.gatewayService.withRPMPrefetch(ctx, providers)
 	}
 	if s.openAIGateway != nil && group != nil {
 		ctx = s.openAIGateway.withOpenAIQuotaAutoPauseContext(ctx)
@@ -50,45 +50,45 @@ func (s *Diagnostics) prepareEligibilityContext(ctx context.Context, group *rout
 
 func (s *Diagnostics) diagnosticPlatformFilterReason(
 	ctx context.Context,
-	account *gatewayprovider.ExecutionAccount,
+	provider *gatewayprovider.ExecutionProvider,
 	group *routing.Group,
 	request policy.AdvancedSchedulerScoreDiagnosticRequest,
 	now time.Time,
 ) string {
 	model := strings.TrimSpace(request.RequestedModel)
-	if account != nil && account.View().IsOpenAICompatible() {
-		if !gatewayprovider.ExecutionModelPolicy(account).Schedulable(ctx, model) {
+	if provider != nil && provider.View().IsOpenAICompatible() {
+		if !gatewayprovider.ExecutionModelPolicy(provider).Schedulable(ctx, model) {
 			return "model_runtime_blocked"
 		}
-		if account.View().IsOpenAI() {
-			if paused, _ := gatewayprovider.OpenAIQuotaPause(ctx, account); paused {
+		if provider.View().IsOpenAI() {
+			if paused, _ := gatewayprovider.OpenAIQuotaPause(ctx, provider); paused {
 				return "quota_auto_pause"
 			}
 		}
-		if account.View().IsGrok() {
-			if paused, _ := gatewayprovider.GrokQuotaPause(account); paused {
+		if provider.View().IsGrok() {
+			if paused, _ := gatewayprovider.GrokQuotaPause(provider); paused {
 				return "quota_auto_pause"
 			}
 		}
-		if !gatewayprovider.ExecutionModelPolicy(account).SupportsCompatibleRouting(ctx, model) {
+		if !gatewayprovider.ExecutionModelPolicy(provider).SupportsCompatibleRouting(ctx, model) {
 			return "model_unsupported"
 		}
 		if s != nil && s.openAIGateway != nil {
-			if s.openAIGateway.isOpenAIAccountRequestRuntimeBlocked(account, model) {
+			if s.openAIGateway.isOpenAIProviderRequestRuntimeBlocked(provider, model) {
 				return "runtime_blocked"
 			}
-			if s.openAIGateway.isOpenAIProxyStreamQuarantined(ctx, account) {
+			if s.openAIGateway.isOpenAIProxyStreamQuarantined(ctx, provider) {
 				return "proxy_stream_quarantined"
 			}
 			scheduler := &compatiblePicker{service: s.openAIGateway}
-			if !accountcore.ParentHealthyForShadow(gatewayprovider.ExecutionRecord(account), func(id int64) *accountcore.Record {
-				return gatewayprovider.ExecutionRecord(scheduler.lookupShadowParentAccount(ctx, id))
+			if !providercore.ParentHealthyForShadow(gatewayprovider.ExecutionRecord(provider), func(id int64) *providercore.Record {
+				return gatewayprovider.ExecutionRecord(scheduler.lookupShadowParentProvider(ctx, id))
 			}) {
 				return "shadow_parent_unhealthy"
 			}
 			groupID := group.ID
 			if s.openAIGateway.NeedsUpstreamGroupRestriction(ctx, &groupID) &&
-				s.openAIGateway.UpstreamRoutingModelRestricted(ctx, groupID, account, model, false) {
+				s.openAIGateway.UpstreamRoutingModelRestricted(ctx, groupID, provider, model, false) {
 				return "group_upstream_restricted"
 			}
 		}
@@ -96,34 +96,34 @@ func (s *Diagnostics) diagnosticPlatformFilterReason(
 	}
 
 	if s != nil && s.gatewayService != nil {
-		if model != "" && !s.gatewayService.isModelSupportedByAccountWithContext(ctx, account, model) {
+		if model != "" && !s.gatewayService.isModelSupportedByProviderWithContext(ctx, provider, model) {
 			return "model_unsupported"
 		}
-		if !s.gatewayService.isAccountSchedulableForModelSelection(ctx, account, model) {
+		if !s.gatewayService.isProviderSchedulableForModelSelection(ctx, provider, model) {
 			return "model_runtime_blocked"
 		}
-		if !s.gatewayService.isAccountSchedulableForQuota(account) {
+		if !s.gatewayService.isProviderSchedulableForQuota(provider) {
 			return "quota_exceeded"
 		}
-		isSticky := account.Record.ID == request.StickyAccountID
-		if !s.gatewayService.isAccountSchedulableForWindowCost(ctx, account, isSticky) {
+		isSticky := provider.Record.ID == request.StickyProviderID
+		if !s.gatewayService.isProviderSchedulableForWindowCost(ctx, provider, isSticky) {
 			return "window_cost_exceeded"
 		}
-		if !s.gatewayService.isAccountSchedulableForRPM(ctx, account, isSticky) {
+		if !s.gatewayService.isProviderSchedulableForRPM(ctx, provider, isSticky) {
 			return "rpm_exceeded"
 		}
 		groupID := group.ID
 		if s.gatewayService.needsUpstreamGroupRestrictionCheck(ctx, &groupID) &&
-			s.gatewayService.isUpstreamModelRestrictedByGroup(ctx, groupID, account, model) {
+			s.gatewayService.isUpstreamModelRestrictedByGroup(ctx, groupID, provider, model) {
 			return "group_upstream_restricted"
 		}
 		return ""
 	}
 
-	if model != "" && !gatewayprovider.ExecutionProtocolRecord(account).IsModelSupported(model, accountprovider.ModelDefaults(), accountprovider.ModelRules(gatewayprovider.ExecutionProtocolRecord(account))) {
+	if model != "" && !gatewayprovider.ExecutionProtocolRecord(provider).IsModelSupported(model, provideradapter.ModelDefaults(), provideradapter.ModelRules(gatewayprovider.ExecutionProtocolRecord(provider))) {
 		return "model_unsupported"
 	}
-	if !gatewayprovider.ExecutionModelPolicy(account).Schedulable(ctx, model) {
+	if !gatewayprovider.ExecutionModelPolicy(provider).Schedulable(ctx, model) {
 		return "model_runtime_blocked"
 	}
 	return ""

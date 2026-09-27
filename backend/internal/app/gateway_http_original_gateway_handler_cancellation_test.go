@@ -11,9 +11,9 @@ import (
 	"testing"
 	time "time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
 	authctx "github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	apikey "github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
@@ -38,22 +38,22 @@ type countingGatewaySchedulerCache struct {
 	snapshotCalls atomic.Int64
 }
 
-func (c *countingGatewaySchedulerCache) GetSnapshot(ctx context.Context, bucket scheduler.SchedulerBucket) ([]scheduler.SnapshotAccount, bool, error) {
+func (c *countingGatewaySchedulerCache) GetSnapshot(ctx context.Context, bucket scheduler.SchedulerBucket) ([]scheduler.SnapshotProvider, bool, error) {
 	c.snapshotCalls.Add(1)
 	return c.fakeSchedulerCache.GetSnapshot(ctx, bucket)
 }
 
-func TestGatewayHandlerPreCancelledCompatibleRequestsDoNotSelectAccount(t *testing.T) {
+func TestGatewayHandlerPreCancelledCompatibleRequestsDoNotSelectProvider(t *testing.T) {
 	groupID := int64(9100)
 	group := &routing.Group{ID: groupID, Hydrated: true, Status: billing.StatusActive}
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
-			LoadLocation: time.LoadLocation, ID: 9101, Platform: capability.PlatformAnthropic, Type: capability.AccountTypeAPIKey,
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 9101, Platform: capability.PlatformAnthropic, Type: capability.ProviderTypeAPIKey,
 			Status: billing.StatusActive, Schedulable: true, Concurrency: 1,
-			AccountGroups: []accountcore.GroupMembership{{AccountID: 9101, GroupID: groupID}},
+			ProviderGroups: []providercore.GroupMembership{{ProviderID: 9101, GroupID: groupID}},
 		},
 	}
-	schedulerCache := &countingGatewaySchedulerCache{fakeSchedulerCache: &fakeSchedulerCache{accounts: []*gatewayprovider.ExecutionAccount{account}}}
+	schedulerCache := &countingGatewaySchedulerCache{fakeSchedulerCache: &fakeSchedulerCache{providers: []*gatewayprovider.ExecutionProvider{provider}}}
 	schedulerSnapshot := scheduler.NewSnapshotService(schedulerCache, nil, nil, nil, nil, scheduler.SnapshotBindings{})
 	gatewayService, gatewayServiceChoices, messages := newGenericExecutionAndSelectionFixture(
 		nil, &fakeGroupRepo{group: group}, nil, nil, nil,
@@ -110,8 +110,8 @@ func TestGatewayHandlerPreCancelledCompatibleRequestsDoNotSelectAccount(t *testi
 
 			tt.call(c)
 
-			require.Zero(t, schedulerCache.snapshotCalls.Load(), "a cancelled request must stop before the account selector")
-			_, selected := c.Get(gatewayhttp.OpsAccountIDKey)
+			require.Zero(t, schedulerCache.snapshotCalls.Load(), "a cancelled request must stop before the provider selector")
+			_, selected := c.Get(gatewayhttp.OpsProviderIDKey)
 			require.False(t, selected)
 		})
 	}

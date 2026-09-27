@@ -15,15 +15,15 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
 	"github.com/stretchr/testify/require"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/promptpolicy"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/selection"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 	gatewaytestkit "github.com/TokenFlux/TokenRouter/internal/gateway/testkit"
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/settings"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/grok"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
@@ -40,15 +40,15 @@ type wsFixtureOptions struct {
 // wsFixtureInputs 使用实际拥有者与I/O替身，不构造旧网关应用图。
 type wsFixtureInputs struct {
 	options   *wsFixtureOptions
-	accounts  provider.ExecutionAccountStore
+	providers gatewayadapter.ExecutionProviderStore
 	cache     session.GatewayCache
-	health    *accountprovider.UpstreamHealth
+	health    *provideradapter.UpstreamHealth
 	transport httpclient.UpstreamTransport
 	dialer    openai.WSClientDialer
 	pool      *openai.WSConnPool
 	state     session.OpenAIWSStateStore
 	prompts   *promptpolicy.Service
-	readers   *provider.RuntimeReaders
+	readers   *gatewayadapter.RuntimeReaders
 	corrector *openai.CodexToolCorrector
 }
 
@@ -71,12 +71,13 @@ func wsFixturePoolOptions(options *wsFixtureOptions) *openai.WSPoolOptions {
 	out.PrewarmCooldownMS = options.WS.PrewarmCooldownMS
 	return &out
 }
+
 func newOpenAIWSConnPool(options *wsFixtureOptions) *openai.WSConnPool {
 	return openai.NewWSConnPool(wsFixturePoolOptions(options))
 }
 
 func newWSFixture(v wsFixtureInputs) *wsExecutionFixture {
-	aux := newAuxiliaryFixture(auxiliaryFixtureInputs{transport: v.transport, store: v.accounts, observer: v.health})
+	aux := newAuxiliaryFixture(auxiliaryFixtureInputs{transport: v.transport, store: v.providers, observer: v.health})
 	requests, output := aux.Requests, aux.Output
 	requests.Readers = v.readers
 	output.Observer = v.health
@@ -93,12 +94,12 @@ func newWSFixture(v wsFixtureInputs) *wsExecutionFixture {
 	}
 	state := v.state
 	if state == nil {
-		state = session.NewOpenAIWSStateStore(v.cache, provider.LogOpenAIWSModeInfo)
+		state = session.NewOpenAIWSStateStore(v.cache, gatewayadapter.LogOpenAIWSModeInfo)
 	}
 	output.Responses = state
 	output.ProxyCircuit = egress.NewProxyStreamCircuit(egress.DefaultProxyStreamCircuitSettings())
 	history, _ := v.cache.(session.ReasoningContentCache)
-	output.Reasoning = &session.ReasoningHistory{Cache: history, Warn: provider.WarnReasoningCacheFailure}
+	output.Reasoning = &session.ReasoningHistory{Cache: history, Warn: gatewayadapter.WarnReasoningCacheFailure}
 	output.Redact = requests.Identity.Redact
 	choicesOptions := selection.DefaultOptions()
 	if v.options != nil {
@@ -109,15 +110,15 @@ func newWSFixture(v wsFixtureInputs) *wsExecutionFixture {
 			choicesOptions.ResponseTTL = time.Duration(ws.StickyResponseIDTTLSeconds) * time.Second
 		}
 	}
-	choices := selection.NewCompatible(selection.CompatibleDependencies{Reads: selection.Reads{Accounts: v.accounts}, Shared: selection.Shared{Cache: v.cache, Health: v.health}, Responses: state, RuntimeBlocks: output.Health.Runtime, ModelTransient: output.Health.ModelTransient, ProxyCircuit: output.ProxyCircuit}, choicesOptions)
+	choices := selection.NewCompatible(selection.CompatibleDependencies{Reads: selection.Reads{Providers: v.providers}, Shared: selection.Shared{Cache: v.cache, Health: v.health}, Responses: state, RuntimeBlocks: output.Health.Runtime, ModelTransient: output.Health.ModelTransient, ProxyCircuit: output.ProxyCircuit}, choicesOptions)
 	output.ResponseTTL = choices.OpenAIHTTPResponseStickyTTL
 	requests.Turns.TTL = choices.SessionStickyTTL
 	output.Turns = requests.Turns
 	if v.readers != nil {
 		output.TTFT = v.readers.Gateway.GetOpenAITTFTMode
 	}
-	credentials := gatewaytestkit.RequestCredentials(v.accounts, requests.Credentials, nil, output.Health.Runtime)
-	routes := provider.GrokRoutes{Validate: grok.ValidateBaseURL}
+	credentials := gatewaytestkit.RequestCredentials(v.providers, requests.Credentials, nil, output.Health.Runtime)
+	routes := gatewayadapter.GrokRoutes{Validate: grok.ValidateBaseURL}
 	if v.options != nil {
 		routes.Validate = v.options.Request.URLPolicy.Validate
 	}
@@ -125,13 +126,13 @@ func newWSFixture(v wsFixtureInputs) *wsExecutionFixture {
 		routes.DefaultMode = v.readers.Gateway.GetGrokDefaultBaseURLMode
 	}
 	requests.GrokRoutes = routes
-	fast := &provider.ExecutionFastPolicy{Readers: v.readers}
+	fast := &gatewayadapter.ExecutionFastPolicy{Readers: v.readers}
 	connections := NewOpenAIWSConnections(wsFixturePoolOptions(v.options), v.dialer)
 	connections.pool = v.pool
 	grokExecutor := &GrokExecutor{Credentials: credentials, Transport: v.transport, Output: output, Health: output.GrokHealth, Routes: routes, Dialer: connections.Dialer(), FastPolicy: fast, Failure: requests.Failure}
 	text := &OpenAITextExecutor{Requests: requests, Output: output, Grok: grokExecutor, Credentials: credentials, FastPolicy: fast, Continuation: &session.CompatResponses{TTL: choices.OpenAIHTTPResponseStickyTTL}, PromptCache: session.NewAnthropicPromptCache(time.Now), CodexUsage: aux.CodexUsage, ResponseTTL: choices.OpenAIHTTPResponseStickyTTL, Compact: &CompactExecutor{}}
 	lineage := &OpenAIEncryptedLineage{Store: state, TTL: choices.SessionStickyTTL}
-	imagePolicy := &provider.ResponseImagePolicy{}
+	imagePolicy := &gatewayadapter.ResponseImagePolicy{}
 	var wsOptions *OpenAIWSOptions
 	if v.options != nil {
 		wsOptions = &v.options.WS
@@ -142,25 +143,26 @@ func newWSFixture(v wsFixtureInputs) *wsExecutionFixture {
 }
 
 // 新拥有者直接使用同一设置存储，保留原测试读取器的构造边界。
-func newExecutionReadersFixture(repo settings.Repository, _ *wsFixtureOptions) *provider.RuntimeReaders {
+func newExecutionReadersFixture(repo settings.Repository, _ *wsFixtureOptions) *gatewayadapter.RuntimeReaders {
 	if repo != nil {
 		repo = settings.New(repo)
 	}
 	return gatewaytestkit.RuntimeReaders(repo)
 }
-func newUpstreamHealthForTest(store provider.ExecutionAccountStore, _ *wsFixtureOptions, cache account.TempUnschedCache, options account.HealthOptions, readers *provider.RuntimeReaders) *accountprovider.UpstreamHealth {
+
+func newUpstreamHealthForTest(store gatewayadapter.ExecutionProviderStore, _ *wsFixtureOptions, cache provider.TempUnschedCache, options provider.HealthOptions, readers *gatewayadapter.RuntimeReaders) *provideradapter.UpstreamHealth {
 	return gatewaytestkit.NewHealthObserver(gatewaytestkit.HealthInput{Store: store, Cache: cache, Options: options, Readers: readers})
 }
 
 // setWSFixtureHealth 只改绑原测试替换的观察端口，不重建连接池或会话。
-func setWSFixtureHealth(s *wsExecutionFixture, observer *accountprovider.UpstreamHealth) {
+func setWSFixtureHealth(s *wsExecutionFixture, observer *provideradapter.UpstreamHealth) {
 	s.Output.Health.Health = observer
 	s.Output.GrokHealth.Health = observer
 	s.Output.Observer = observer
 }
 
 // newWSFastPolicy 只构造策略实际依赖的设置读取器。
-func newWSFastPolicy(t *testing.T, values *tierpolicy.OpenAIFastPolicySettings) *provider.ExecutionFastPolicy {
+func newWSFastPolicy(t *testing.T, values *tierpolicy.OpenAIFastPolicySettings) *gatewayadapter.ExecutionFastPolicy {
 	t.Helper()
 	repo := &gatewaytestkit.FastPolicySettingsRepo{Values: map[string]string{}}
 	if values != nil {
@@ -168,39 +170,41 @@ func newWSFastPolicy(t *testing.T, values *tierpolicy.OpenAIFastPolicySettings) 
 		require.NoError(t, err)
 		repo.Values[gateway.SettingKeyOpenAIFastPolicySettings] = string(raw)
 	}
-	return &provider.ExecutionFastPolicy{Readers: newExecutionReadersFixture(repo, nil)}
+	return &gatewayadapter.ExecutionFastPolicy{Readers: newExecutionReadersFixture(repo, nil)}
 }
+
 func openAIFastFilterPriorityPolicy() *tierpolicy.OpenAIFastPolicySettings {
 	return &tierpolicy.OpenAIFastPolicySettings{Rules: []tierpolicy.OpenAIFastPolicyRule{{ServiceTier: tierpolicy.OpenAIFastTierPriority, Action: anthropic.BetaPolicyActionFilter, Scope: anthropic.BetaPolicyScopeAll, ModelWhitelist: []string{}, FallbackAction: anthropic.BetaPolicyActionPass}}}
 }
 
-type wsFixtureAccountStore struct {
-	provider.ExecutionAccountStore
-	accounts []provider.ExecutionAccount
+type wsFixtureProviderStore struct {
+	gatewayadapter.ExecutionProviderStore
+	providers []gatewayadapter.ExecutionProvider
 }
 
-func (r wsFixtureAccountStore) GetByID(_ context.Context, id int64) (*provider.ExecutionAccount, error) {
-	for i := range r.accounts {
-		if r.accounts[i].Record.ID == id {
-			return &r.accounts[i], nil
+func (r wsFixtureProviderStore) GetByID(_ context.Context, id int64) (*gatewayadapter.ExecutionProvider, error) {
+	for i := range r.providers {
+		if r.providers[i].Record.ID == id {
+			return &r.providers[i], nil
 		}
 	}
-	return nil, errors.New("account not found")
+	return nil, errors.New("provider not found")
 }
 
-// 阻断断言读取原生状态，字段投影与生产账号健康端口相同。
-func wsFixtureModelBlocked(s *wsExecutionFixture, value *provider.ExecutionAccount, model string) bool {
+// 阻断断言读取原生状态，字段投影与生产提供商健康端口相同。
+func wsFixtureModelBlocked(s *wsExecutionFixture, value *gatewayadapter.ExecutionProvider, model string) bool {
 	if value == nil {
 		return false
 	}
-	key := account.NormalizeTransientModel(provider.ExecutionModelPolicy(value).CanonicalSchedulingModel(model))
+	key := provider.NormalizeTransientModel(gatewayadapter.ExecutionModelPolicy(value).CanonicalSchedulingModel(model))
 	return s.Output.Health.ModelTransient.IsBlocked(value.Record.ID, key, time.Now())
 }
-func wsFixtureAccountBlocked(s *wsExecutionFixture, value *provider.ExecutionAccount) bool {
+
+func wsFixtureProviderBlocked(s *wsExecutionFixture, value *gatewayadapter.ExecutionProvider) bool {
 	if value == nil || (value.Record.Platform != capability.PlatformOpenAI && value.Record.Platform != capability.PlatformGrok) {
 		return false
 	}
-	return s.Output.Health.Runtime.Blocked(value.Record.ID, func() string { return account.RefreshCredentialIdentity(provider.ExecutionRecord(value)) })
+	return s.Output.Health.Runtime.Blocked(value.Record.ID, func() string { return provider.RefreshCredentialIdentity(gatewayadapter.ExecutionRecord(value)) })
 }
 
 func wsFixtureRuntimeOptions(options *wsFixtureOptions) *OpenAIWSOptions {
@@ -210,15 +214,17 @@ func wsFixtureRuntimeOptions(options *wsFixtureOptions) *OpenAIWSOptions {
 	return &options.WS
 }
 
-func wsFixtureBlockAccount(s *wsExecutionFixture, value *provider.ExecutionAccount, until time.Time, reason string) {
+func wsFixtureBlockProvider(s *wsExecutionFixture, value *gatewayadapter.ExecutionProvider, until time.Time, reason string) {
 	if value == nil || (value.Record.Platform != capability.PlatformOpenAI && value.Record.Platform != capability.PlatformGrok) {
 		return
 	}
 	s.Output.Health.Runtime.Block(value.Record.ID, until, reason)
 }
-func wsFixtureRetry429(s *wsExecutionFixture, value *provider.ExecutionAccount, headers http.Header, body []byte) bool {
-	return accountprovider.CanRetryOpenAI429(s.Output.Health.Runtime, provider.ExecutionRecord(value), headers, body)
+
+func wsFixtureRetry429(s *wsExecutionFixture, value *gatewayadapter.ExecutionProvider, headers http.Header, body []byte) bool {
+	return provideradapter.CanRetryOpenAI429(s.Output.Health.Runtime, gatewayadapter.ExecutionRecord(value), headers, body)
 }
-func wsFixtureRequestBlocked(s *wsExecutionFixture, value *provider.ExecutionAccount, model string) bool {
-	return wsFixtureAccountBlocked(s, value) || wsFixtureModelBlocked(s, value, model)
+
+func wsFixtureRequestBlocked(s *wsExecutionFixture, value *gatewayadapter.ExecutionProvider, model string) bool {
+	return wsFixtureProviderBlocked(s, value) || wsFixtureModelBlocked(s, value, model)
 }

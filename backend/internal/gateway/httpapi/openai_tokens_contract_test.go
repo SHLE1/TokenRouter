@@ -7,13 +7,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
@@ -79,8 +79,8 @@ type tokenContractTarget struct {
 	id int64
 }
 
-func (t tokenContractTarget) Snapshot() account.AccountSnapshot {
-	return account.AccountSnapshot{ID: t.id, Platform: "openai"}
+func (t tokenContractTarget) Snapshot() provider.ProviderSnapshot {
+	return provider.ProviderSnapshot{ID: t.id, Platform: "openai"}
 }
 
 func (tokenContractTarget) RetryLimit() int { return 0 }

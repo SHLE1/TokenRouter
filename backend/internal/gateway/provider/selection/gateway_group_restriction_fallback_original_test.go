@@ -7,17 +7,17 @@ import (
 	"testing"
 	time "time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	routingtestkit "github.com/TokenFlux/TokenRouter/internal/routing/testkit"
 	"github.com/stretchr/testify/require"
 )
 
-func TestSelectAccountForModelWithExclusions_UsesAdmittedFallbackGroupForGroupRestriction(t *testing.T) {
+func TestSelectProviderForModelWithExclusions_UsesAdmittedFallbackGroupForGroupRestriction(t *testing.T) {
 	t.Parallel()
 
 	groupID := int64(10)
@@ -34,14 +34,14 @@ func TestSelectAccountForModelWithExclusions_UsesAdmittedFallbackGroupForGroupRe
 	pricingConfigSvc := routingtestkit.NewConfigServiceFixture(routingtestkit.StandardPricingConfigRepository(ch, map[int64]string{
 		fallbackID: capability.PlatformAnthropic,
 	}))
-	accountRepo := &mockAccountRepoForPlatform{
-		accounts: []gatewayprovider.ExecutionAccount{
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true}},
+	providerRepo := &mockProviderRepoForPlatform{
+		providers: []gatewayprovider.ExecutionProvider{
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true}},
 		},
-		accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+		providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 	}
-	for i := range accountRepo.accounts {
-		accountRepo.accountsByID[accountRepo.accounts[i].Record.ID] = &accountRepo.accounts[i]
+	for i := range providerRepo.providers {
+		providerRepo.providersByID[providerRepo.providers[i].Record.ID] = &providerRepo.providers[i]
 	}
 	groupRepo := &mockGroupRepoForGateway{
 		groups: map[int64]*routing.Group{
@@ -64,7 +64,7 @@ func TestSelectAccountForModelWithExclusions_UsesAdmittedFallbackGroupForGroupRe
 
 	svc := newGenericSelectionForTest(GenericDependencies{
 		Reads: Reads{
-			Accounts: accountRepo,
+			Providers: providerRepo,
 
 			Groups: groupRepo,
 		},
@@ -74,13 +74,13 @@ func TestSelectAccountForModelWithExclusions_UsesAdmittedFallbackGroupForGroupRe
 	// 入口已完成回退授权，选择器只使用最终分组及其模型限制。
 	ctx := requeststate.WithGroup(context.Background(), groupRepo.groups[fallbackID])
 	ctx = requeststate.WithRoutePlan(ctx, routing.Plan(routing.PlanInput{Group: groupRepo.groups[fallbackID]}))
-	account, err := svc.SelectAccountForModelWithExclusions(ctx, &fallbackID, "", "claude-sonnet-4-6", nil)
+	provider, err := svc.SelectProviderForModelWithExclusions(ctx, &fallbackID, "", "claude-sonnet-4-6", nil)
 	require.NoError(t, err)
-	require.NotNil(t, account)
-	require.Equal(t, int64(1), account.Record.ID)
+	require.NotNil(t, provider)
+	require.Equal(t, int64(1), provider.Record.ID)
 }
 
-func TestSelectAccountWithLoadAwareness_UsesAdmittedFallbackGroupForGroupRestriction(t *testing.T) {
+func TestSelectProviderWithLoadAwareness_UsesAdmittedFallbackGroupForGroupRestriction(t *testing.T) {
 	t.Parallel()
 
 	groupID := int64(10)
@@ -97,14 +97,14 @@ func TestSelectAccountWithLoadAwareness_UsesAdmittedFallbackGroupForGroupRestric
 	pricingConfigSvc := routingtestkit.NewConfigServiceFixture(routingtestkit.StandardPricingConfigRepository(ch, map[int64]string{
 		fallbackID: capability.PlatformAnthropic,
 	}))
-	accountRepo := &mockAccountRepoForPlatform{
-		accounts: []gatewayprovider.ExecutionAccount{
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true}},
+	providerRepo := &mockProviderRepoForPlatform{
+		providers: []gatewayprovider.ExecutionProvider{
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true}},
 		},
-		accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+		providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 	}
-	for i := range accountRepo.accounts {
-		accountRepo.accountsByID[accountRepo.accounts[i].Record.ID] = &accountRepo.accounts[i]
+	for i := range providerRepo.providers {
+		providerRepo.providersByID[providerRepo.providers[i].Record.ID] = &providerRepo.providers[i]
 	}
 	groupRepo := &mockGroupRepoForGateway{
 		groups: map[int64]*routing.Group{
@@ -127,7 +127,7 @@ func TestSelectAccountWithLoadAwareness_UsesAdmittedFallbackGroupForGroupRestric
 
 	svc := newGenericSelectionForTest(GenericDependencies{
 		Reads: Reads{
-			Accounts: accountRepo,
+			Providers: providerRepo,
 
 			Groups: groupRepo,
 		},
@@ -137,9 +137,9 @@ func TestSelectAccountWithLoadAwareness_UsesAdmittedFallbackGroupForGroupRestric
 	// 入口已完成回退授权，选择器只使用最终分组及其模型限制。
 	ctx := requeststate.WithGroup(context.Background(), groupRepo.groups[fallbackID])
 	ctx = requeststate.WithRoutePlan(ctx, routing.Plan(routing.PlanInput{Group: groupRepo.groups[fallbackID]}))
-	result, err := svc.SelectAccountWithLoadAwareness(ctx, &fallbackID, "", "claude-sonnet-4-6", nil, "", 0)
+	result, err := svc.SelectProviderWithLoadAwareness(ctx, &fallbackID, "", "claude-sonnet-4-6", nil, "", 0)
 	require.NoError(t, err)
 	require.NotNil(t, result)
-	require.NotNil(t, result.Account)
-	require.Equal(t, int64(1), result.Account.Record.ID)
+	require.NotNil(t, result.Provider)
+	require.Equal(t, int64(1), result.Provider.Record.ID)
 }

@@ -29,11 +29,11 @@ type PolicyInput struct {
 	GroupID        *int64
 }
 type Request struct {
-	Body                         []byte
-	AccountID                    int64
-	AccountName, ProxyURL, Model string
-	Stream                       bool
-	OnAccepted                   func()
+	Body                          []byte
+	ProviderID                    int64
+	ProviderName, ProxyURL, Model string
+	Stream                        bool
+	OnAccepted                    func()
 }
 
 // Result 的账单 usage 保持零值；合成正文中展示的估算数不能变成供应商计量。
@@ -43,10 +43,10 @@ type Result struct {
 	Usage    protocol.TokenUsage
 }
 type Event struct {
-	Kind, Query, Provider, AccountName string
-	AccountID                          int64
-	Results                            int
-	Err                                error
+	Kind, Query, Provider, ProviderName string
+	ProviderID                          int64
+	Results                             int
+	Err                                 error
 }
 type Output interface {
 	StartStream()
@@ -82,7 +82,7 @@ func (s *Emulator) observe(e Event) {
 	}
 }
 
-// ShouldEmulate 按 Manager、工具形状、全局、账号和分组策略的顺序短路判断。
+// ShouldEmulate 按 Manager、工具形状、全局、提供商和分组策略的顺序短路判断。
 func (s *Emulator) ShouldEmulate(ctx context.Context, in PolicyInput) bool {
 	if s.source.Current() == nil {
 		return false
@@ -130,7 +130,7 @@ func (s *Emulator) Execute(ctx context.Context, in Request, out Output) (*Result
 	if query == "" {
 		return nil, fmt.Errorf("web search emulation: no query found in messages")
 	}
-	s.observe(Event{Kind: "executing", AccountID: in.AccountID, AccountName: in.AccountName, Query: query})
+	s.observe(Event{Kind: "executing", ProviderID: in.ProviderID, ProviderName: in.ProviderName, Query: query})
 	response, provider, err := s.Search(ctx, in.ProxyURL, query)
 	if err != nil {
 		if errors.Is(err, search.ErrProxyUnavailable) {

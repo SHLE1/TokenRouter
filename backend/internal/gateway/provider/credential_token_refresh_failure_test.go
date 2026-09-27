@@ -5,12 +5,12 @@ package provider_test
 import (
 	"reflect"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
 // 竞争替身显式比较与生产 writer 相同的身份字段；nil 凭据沿用旧快照的空对象语义。
-func refreshFailureMatchesFixture(value *gatewayprovider.ExecutionAccount, version account.RefreshFailureVersion) bool {
+func refreshFailureMatchesFixture(value *gatewayprovider.ExecutionProvider, version provider.RefreshFailureVersion) bool {
 	if value == nil {
 		return false
 	}

@@ -784,7 +784,7 @@ func NativeConvertClaudeGenerationConfig(req map[string]any) map[string]any {
 // NativeGeminiUsage 是协议解析的用量投影，不携带结算或旧网关状态。
 type NativeGeminiUsage struct{ InputTokens, OutputTokens, CacheReadInputTokens, ImageOutputTokens int }
 
-// NativeGeminiOptions 由旧平台确定签名策略，转换器不识别账号或认证方式。
+// NativeGeminiOptions 由旧平台确定签名策略，转换器不识别提供商或认证方式。
 type NativeGeminiOptions struct{ DummyThoughtSignature string }
 
 // NativeGeminiRuntime 保留调用方原有消息和工具 ID 的生成来源。

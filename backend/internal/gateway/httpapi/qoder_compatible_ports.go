@@ -3,21 +3,21 @@ package httpapi
 import (
 	"context"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/completion"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/errorpolicy"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 	"github.com/gin-gonic/gin"
 )
 
-// QoderCompatibleTarget 只允许执行、刷新和完成投影，不向 HTTP 暴露账号凭据。
+// QoderCompatibleTarget 只允许执行、刷新和完成投影，不向 HTTP 暴露提供商凭据。
 type QoderCompatibleTarget interface {
-	Snapshot() account.AccountSnapshot
+	Snapshot() provider.ProviderSnapshot
 	Forward(context.Context, *gin.Context, []byte, protocol.ProtocolID, string) (*forward.MessagesResult, error)
 	Refresh(context.Context) (QoderCompatibleTarget, error)
 	Completion(context.Context, QoderCompletionCapture) *completion.Input
@@ -28,7 +28,7 @@ type QoderCompatibleSelection interface {
 	Target() QoderCompatibleTarget
 	Acquired() bool
 	ReleaseFunc() func()
-	WaitPlan() *scheduler.AccountWaitPlan
+	WaitPlan() *scheduler.ProviderWaitPlan
 	Report(int64, bool, *forward.MessagesResult)
 	Switched()
 }

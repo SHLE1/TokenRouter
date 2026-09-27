@@ -16,18 +16,20 @@ type anthropicPassthroughAdapter struct{ *attempt }
 
 func (a *anthropicPassthroughAdapter) TokenKind() string { return a.tokenType }
 func (a *anthropicPassthroughAdapter) ResolveProxy() {
-	if a.account.Record.ProxyID != nil && a.account.Record.Proxy != nil {
-		a.proxyURL = a.account.Record.Proxy.URL()
+	if a.provider.Record.ProxyID != nil && a.provider.Record.Proxy != nil {
+		a.proxyURL = a.provider.Record.Proxy.URL()
 	}
 }
+
 func (a *anthropicPassthroughAdapter) MarkPassthrough() {
 	a.c.MarkPassthrough()
 }
+
 func (a *anthropicPassthroughAdapter) ExecutePassthrough(ctx context.Context, in *forwardcore.APIKeyInput, h forwardcore.MessageHooks) (upstream.AttemptResult, error) {
-	options := a.s.passthroughExchange(a.c, a.state, a.account, a.token, a.proxyURL, in)
+	options := a.s.passthroughExchange(a.c, a.state, a.provider, a.token, a.proxyURL, in)
 	target := &claude.Target{
-		AccountID: a.account.Record.ID, Model: in.RequestModel, Passthrough: true, Exchange: options,
-		Response: a.s.responseOptions(ctx, a.c, a.state, a.account, in.RequestModel, true), StartedAt: in.StartTime,
+		ProviderID: a.provider.Record.ID, Model: in.RequestModel, Passthrough: true, Exchange: options,
+		Response: a.s.responseOptions(ctx, a.c, a.state, a.provider, in.RequestModel, true), StartedAt: in.StartTime,
 		BeforeResponse: func(ctx context.Context, resp *http.Response, wire []byte) (bool, error) {
 			a.response = resp
 			return h.Before(ctx, &forwardcore.ExchangeResponse{StatusCode: resp.StatusCode, Headers: resp.Header, RequestID: resp.Header.Get("x-request-id")}, wire)
@@ -39,15 +41,17 @@ func (a *anthropicPassthroughAdapter) ExecutePassthrough(ctx context.Context, in
 			}
 		},
 	}
-	return (claude.Executor{}).Execute(ctx, upstream.AttemptInput{Protocol: protocolcore.ProtocolAnthropicMessages,
+	return (claude.Executor{}).Execute(ctx, upstream.AttemptInput{
+		Protocol:      protocolcore.ProtocolAnthropicMessages,
 		Body:          in.Body,
 		ResponseModel: in.OriginalModel,
 		Stream:        in.RequestStream,
-		Target:        target}, a.c.Sink())
+		Target:        target,
+	}, a.c.Sink())
 }
 
 // passthrough 使用独立 attempt，保持直通分支自己的请求准备时点。
-func (r *Runtime) passthrough(ctx context.Context, output HTTPBoundary, target *gatewayprovider.ExecutionAccount, input forwardcore.APIKeyInput) (*forwardcore.Result, error) {
+func (r *Runtime) passthrough(ctx context.Context, output HTTPBoundary, target *gatewayprovider.ExecutionProvider, input forwardcore.APIKeyInput) (*forwardcore.Result, error) {
 	adapter := &anthropicPassthroughAdapter{attempt: newAttempt(r, output, target)}
 	return forwardcore.APIKeyPassthrough(ctx, adapter, adapter.input(), input)
 }

@@ -1,4 +1,4 @@
-// Embeddings 单次执行拥有请求、响应体与输出；账号切换和计费由网关决定。
+// Embeddings 单次执行拥有请求、响应体与输出；提供商切换和计费由网关决定。
 package openai
 
 import (
@@ -17,7 +17,7 @@ import (
 )
 
 type EmbeddingsTarget struct {
-	AccountID             int64
+	ProviderID            int64
 	Model, URL, UserAgent string
 	Token                 string      `json:"-"`
 	ForwardHeaders        http.Header `json:"-"`
@@ -38,10 +38,11 @@ func (t *EmbeddingsTarget) TargetID() int64 {
 	if t == nil {
 		return 0
 	}
-	return t.AccountID
+	return t.ProviderID
 }
+
 func (t *EmbeddingsTarget) String() string {
-	return fmt.Sprintf("openai embeddings target account=%d", t.TargetID())
+	return fmt.Sprintf("openai embeddings target provider=%d", t.TargetID())
 }
 func (t *EmbeddingsTarget) GoString() string { return t.String() }
 

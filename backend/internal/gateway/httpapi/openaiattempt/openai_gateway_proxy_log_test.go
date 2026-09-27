@@ -6,31 +6,34 @@ import (
 	"testing"
 	time "time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
 )
 
-// TestAppendOpenAIAccountProxyLogFields 验证代理定位字段完整且不会泄露凭据。
-func TestAppendOpenAIAccountProxyLogFields(t *testing.T) {
+// TestAppendOpenAIProviderProxyLogFields 验证代理定位字段完整且不会泄露凭据。
+func TestAppendOpenAIProviderProxyLogFields(t *testing.T) {
 	proxyID := int64(17)
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ProxyID: &proxyID,
-		Proxy: &egress.Proxy{
-			ID:       proxyID,
-			Name:     "openai-egress",
-			Host:     "proxy.example.com",
-			Port:     8443,
-			Username: "proxy-user-secret",
-			Password: "proxy-password-secret",
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ProxyID: &proxyID,
+			Proxy: &egress.Proxy{
+				ID:       proxyID,
+				Name:     "openai-egress",
+				Host:     "proxy.example.com",
+				Port:     8443,
+				Username: "proxy-user-secret",
+				Password: "proxy-password-secret",
+			},
+		},
 	}
 	core, logs := observer.New(zap.WarnLevel)
 	log := zap.New(core)
 
-	log.Warn("openai.websocket_proxy_failed", AppendOpenAIAccountProxyLogFields(nil, account)...)
+	log.Warn("openai.websocket_proxy_failed", AppendOpenAIProviderProxyLogFields(nil, provider)...)
 
 	entries := logs.All()
 	require.Len(t, entries, 1)
@@ -44,13 +47,13 @@ func TestAppendOpenAIAccountProxyLogFields(t *testing.T) {
 	require.NotContains(t, fields, "proxy_url")
 }
 
-// TestAppendOpenAIAccountProxyLogFields_FallsBackToProxyID 验证代理未预加载时仍保留可查询的 ID。
-func TestAppendOpenAIAccountProxyLogFields_FallsBackToProxyID(t *testing.T) {
+// TestAppendOpenAIProviderProxyLogFields_FallsBackToProxyID 验证代理未预加载时仍保留可查询的 ID。
+func TestAppendOpenAIProviderProxyLogFields_FallsBackToProxyID(t *testing.T) {
 	proxyID := int64(23)
 	core, logs := observer.New(zap.WarnLevel)
 	log := zap.New(core)
 
-	log.Warn("openai.websocket_proxy_failed", AppendOpenAIAccountProxyLogFields(nil, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ProxyID: &proxyID}})...)
+	log.Warn("openai.websocket_proxy_failed", AppendOpenAIProviderProxyLogFields(nil, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ProxyID: &proxyID}})...)
 
 	entries := logs.All()
 	require.Len(t, entries, 1)

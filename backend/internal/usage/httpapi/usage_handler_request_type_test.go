@@ -49,11 +49,11 @@ func (s *userUsageRepoCapture) GetStatsWithFilters(ctx context.Context, filters 
 	return &usage.UsageStats{}, nil
 }
 
-func (s *userUsageRepoCapture) GetUsageTrendWithFilters(ctx context.Context, startTime, endTime time.Time, granularity string, userID, apiKeyID, accountID, groupID int64, model string, requestType *int16, stream *bool, billingType *int8) ([]usage.TrendDataPoint, error) {
+func (s *userUsageRepoCapture) GetUsageTrendWithFilters(ctx context.Context, startTime, endTime time.Time, granularity string, userID, apiKeyID, providerID, groupID int64, model string, requestType *int16, stream *bool, billingType *int8) ([]usage.TrendDataPoint, error) {
 	s.trendFilters = usage.UsageLogFilters{
 		UserID:      userID,
 		APIKeyID:    apiKeyID,
-		AccountID:   accountID,
+		ProviderID:  providerID,
 		GroupID:     groupID,
 		Model:       model,
 		RequestType: requestType,
@@ -68,15 +68,15 @@ func (s *userUsageRepoCapture) GetUsageTrendWithUsageFilters(_ context.Context, 
 	return []usage.TrendDataPoint{}, nil
 }
 
-func (s *userUsageRepoCapture) GetModelStatsWithFilters(ctx context.Context, startTime, endTime time.Time, userID, apiKeyID, accountID, groupID int64, requestType *int16, stream *bool, billingType *int8) ([]usage.ModelStat, error) {
+func (s *userUsageRepoCapture) GetModelStatsWithFilters(ctx context.Context, startTime, endTime time.Time, userID, apiKeyID, providerID, groupID int64, requestType *int16, stream *bool, billingType *int8) ([]usage.ModelStat, error) {
 	return s.modelStats, nil
 }
 
-func (s *userUsageRepoCapture) GetGroupStatsWithFilters(ctx context.Context, startTime, endTime time.Time, userID, apiKeyID, accountID, groupID int64, requestType *int16, stream *bool, billingType *int8) ([]usage.GroupStat, error) {
+func (s *userUsageRepoCapture) GetGroupStatsWithFilters(ctx context.Context, startTime, endTime time.Time, userID, apiKeyID, providerID, groupID int64, requestType *int16, stream *bool, billingType *int8) ([]usage.GroupStat, error) {
 	s.groupFilters = usage.UsageLogFilters{
 		UserID:      userID,
 		APIKeyID:    apiKeyID,
-		AccountID:   accountID,
+		ProviderID:  providerID,
 		GroupID:     groupID,
 		RequestType: requestType,
 		Stream:      stream,
@@ -227,29 +227,29 @@ func TestUserUsageListKeepsUserBillingAndIPWithoutAdminCostFields(t *testing.T) 
 	upstreamModel := "upstream-private-model"
 	billingTier := "internal-tier"
 	pricingConfigID := int64(99)
-	accountRateMultiplier := 1.7
-	accountStatsCost := 0.12
+	providerRateMultiplier := 1.7
+	providerStatsCost := 0.12
 	repo := &userUsageRepoCapture{
 		listRows: []usage.UsageLog{{
-			ID:                    1,
-			UserID:                42,
-			APIKeyID:              7,
-			AccountID:             5,
-			RequestID:             "req_user_billing",
-			Model:                 "gpt-5",
-			InputCost:             0.01,
-			OutputCost:            0.02,
-			CacheCreationCost:     0.03,
-			CacheReadCost:         0.04,
-			TotalCost:             0.10,
-			ActualCost:            0.08,
-			RateMultiplier:        0.8,
-			IPAddress:             &ipAddress,
-			UpstreamModel:         &upstreamModel,
-			BillingTier:           &billingTier,
-			PricingConfigID:       &pricingConfigID,
-			AccountRateMultiplier: &accountRateMultiplier,
-			AccountStatsCost:      &accountStatsCost,
+			ID:                     1,
+			UserID:                 42,
+			APIKeyID:               7,
+			ProviderID:             5,
+			RequestID:              "req_user_billing",
+			Model:                  "gpt-5",
+			InputCost:              0.01,
+			OutputCost:             0.02,
+			CacheCreationCost:      0.03,
+			CacheReadCost:          0.04,
+			TotalCost:              0.10,
+			ActualCost:             0.08,
+			RateMultiplier:         0.8,
+			IPAddress:              &ipAddress,
+			UpstreamModel:          &upstreamModel,
+			BillingTier:            &billingTier,
+			PricingConfigID:        &pricingConfigID,
+			ProviderRateMultiplier: &providerRateMultiplier,
+			ProviderStatsCost:      &providerStatsCost,
 		}},
 	}
 	router := newUserUsageRequestTypeTestRouter(repo)
@@ -269,21 +269,21 @@ func TestUserUsageListKeepsUserBillingAndIPWithoutAdminCostFields(t *testing.T) 
 	require.Contains(t, body, `"rate_multiplier":0.8`)
 	require.Contains(t, body, `"ip_address":"203.0.113.10"`)
 	require.NotContains(t, body, "upstream_endpoint")
-	require.NotContains(t, body, "account_rate_multiplier")
-	require.NotContains(t, body, "account_stats_cost")
+	require.NotContains(t, body, "provider_rate_multiplier")
+	require.NotContains(t, body, "provider_stats_cost")
 	require.NotContains(t, body, "upstream_model")
 	require.NotContains(t, body, "billing_tier")
 	require.NotContains(t, body, "pricing_config_id")
-	require.NotContains(t, body, `"account":`)
+	require.NotContains(t, body, `"provider":`)
 }
 
 func TestUserUsageStatsUsesScopedFilters(t *testing.T) {
-	accountCost := 0.12
+	providerCost := 0.12
 	repo := &userUsageRepoCapture{
 		stats: &usage.UsageStats{
-			TotalCost:        0.10,
-			TotalActualCost:  0.08,
-			TotalAccountCost: &accountCost,
+			TotalCost:         0.10,
+			TotalActualCost:   0.08,
+			TotalProviderCost: &providerCost,
 			UpstreamEndpoints: []usage.EndpointStat{{
 				Endpoint: "/v1/responses",
 			}},
@@ -309,20 +309,20 @@ func TestUserUsageStatsUsesScopedFilters(t *testing.T) {
 	require.Equal(t, "token", repo.statsFilters.BillingMode)
 	require.Contains(t, rec.Body.String(), `"total_cost":0.1`)
 	require.Contains(t, rec.Body.String(), `"total_actual_cost":0.08`)
-	require.NotContains(t, rec.Body.String(), "total_account_cost")
+	require.NotContains(t, rec.Body.String(), "total_provider_cost")
 	require.NotContains(t, rec.Body.String(), "upstream_endpoints")
 	require.NotContains(t, rec.Body.String(), "endpoint_paths")
 }
 
-func TestUserUsageDashboardModelsOmitsAccountCost(t *testing.T) {
+func TestUserUsageDashboardModelsOmitsProviderCost(t *testing.T) {
 	repo := &userUsageRepoCapture{
 		modelStats: []usage.ModelStat{{
-			Model:       "gpt-5",
-			Requests:    2,
-			TotalTokens: 30,
-			Cost:        0.10,
-			ActualCost:  0.08,
-			AccountCost: 0.07,
+			Model:        "gpt-5",
+			Requests:     2,
+			TotalTokens:  30,
+			Cost:         0.10,
+			ActualCost:   0.08,
+			ProviderCost: 0.07,
 		}},
 	}
 	router := newUserUsageRequestTypeTestRouter(repo)
@@ -335,7 +335,7 @@ func TestUserUsageDashboardModelsOmitsAccountCost(t *testing.T) {
 	body := rec.Body.String()
 	require.Contains(t, body, `"cost":0.1`)
 	require.Contains(t, body, `"actual_cost":0.08`)
-	require.NotContains(t, body, "account_cost")
+	require.NotContains(t, body, "provider_cost")
 }
 
 func TestUserUsageDashboardModelsRejectsAdminModelSources(t *testing.T) {
@@ -351,8 +351,8 @@ func TestUserUsageDashboardModelsRejectsAdminModelSources(t *testing.T) {
 
 func TestUserUsageSnapshotUsesScopedFilters(t *testing.T) {
 	repo := &userUsageRepoCapture{
-		modelStats: []usage.ModelStat{{Model: "gpt-5", AccountCost: 0.07}},
-		groupStats: []usage.GroupStat{{GroupID: 1, GroupName: "default", AccountCost: 0.06}},
+		modelStats: []usage.ModelStat{{Model: "gpt-5", ProviderCost: 0.07}},
+		groupStats: []usage.GroupStat{{GroupID: 1, GroupName: "default", ProviderCost: 0.06}},
 	}
 	router := newUserUsageRequestTypeTestRouter(repo)
 
@@ -371,7 +371,7 @@ func TestUserUsageSnapshotUsesScopedFilters(t *testing.T) {
 	require.True(t, repo.groupFilters.IncludeOwnedTeam)
 	require.False(t, repo.groupFilters.PersonalOnly)
 	require.Equal(t, int64(11), repo.groupFilters.GroupID)
-	require.NotContains(t, rec.Body.String(), "account_cost")
+	require.NotContains(t, rec.Body.String(), "provider_cost")
 }
 
 func TestUserUsageSnapshotRejectsInvalidIncludeFlags(t *testing.T) {

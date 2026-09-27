@@ -23,7 +23,7 @@ func BuildCountTokensRequestPassthrough(ctx context.Context, body []byte, token 
 	if options.ClientHeaders != nil {
 		clientBeta = GetHeaderRaw(options.ClientHeaders, "anthropic-beta")
 	}
-	// 账号覆写了 anthropic-beta 时，覆写值即最终上游值：净化以覆写值为准
+	// 提供商覆写了 anthropic-beta 时，覆写值即最终上游值：净化以覆写值为准
 	if beta, ok := options.BetaOverride(); ok {
 		clientBeta = beta
 	}
@@ -62,7 +62,7 @@ func BuildCountTokensRequestPassthrough(ctx context.Context, body []byte, token 
 		req.Header.Set("anthropic-version", "2023-06-01")
 	}
 
-	// 账号级请求头覆写（最终生效，覆盖上面所有来源的同名头）
+	// 提供商级请求头覆写（最终生效，覆盖上面所有来源的同名头）
 	options.ApplyOverrides(req.Header)
 
 	return req, nil
@@ -76,7 +76,7 @@ func BuildCountTokensRequest(ctx context.Context, body []byte, token, tokenType,
 		return nil, nil, err
 	}
 	clientHeaders := options.ClientHeaders
-	// OAuth 账号：应用统一指纹和重写 userID（受设置开关控制）
+	// OAuth 提供商：应用统一指纹和重写 userID（受设置开关控制）
 	// 如果启用了会话ID伪装，会在重写后替换 session 部分为固定值
 	ctEnableFP, ctEnableMPT := true, false
 	if options.Forwarding != nil {
@@ -84,13 +84,13 @@ func BuildCountTokensRequest(ctx context.Context, body []byte, token, tokenType,
 	}
 	var ctFingerprint *Fingerprint
 	if options.OAuth && options.Fingerprint != nil {
-		fp, err := options.Fingerprint.GetOrCreateFingerprint(ctx, options.AccountID, clientHeaders)
+		fp, err := options.Fingerprint.GetOrCreateFingerprint(ctx, options.ProviderID, clientHeaders)
 		if err == nil {
 			ctFingerprint = fp
 			if !ctEnableMPT {
-				accountUUID := options.AccountUUID
-				if accountUUID != "" && fp.ClientID != "" {
-					if newBody, err := options.Fingerprint.RewriteUserIDWithMasking(ctx, body, options.AccountID, options.MaskSession, accountUUID, fp.ClientID, fp.UserAgent); err == nil && len(newBody) > 0 {
+				providerUUID := options.AccountUUID
+				if providerUUID != "" && fp.ClientID != "" {
+					if newBody, err := options.Fingerprint.RewriteUserIDWithMasking(ctx, body, options.ProviderID, options.MaskSession, providerUUID, fp.ClientID, fp.UserAgent); err == nil && len(newBody) > 0 {
 						body = newBody
 					}
 				}
@@ -114,7 +114,7 @@ func BuildCountTokensRequest(ctx context.Context, body []byte, token, tokenType,
 		tokenType, mimicClaudeCode, modelID, clientHeaders, body, ctEffectiveDropSet, options.InjectAPIKeyBeta,
 	)
 
-	// 账号覆写了 anthropic-beta 时，覆写值即最终上游值：净化以覆写值为准
+	// 提供商覆写了 anthropic-beta 时，覆写值即最终上游值：净化以覆写值为准
 	if beta, ok := options.BetaOverride(); ok {
 		finalBetaHeader, finalBetaShouldSet = beta, true
 	}
@@ -148,7 +148,7 @@ func BuildCountTokensRequest(ctx context.Context, body []byte, token, tokenType,
 		}
 	}
 
-	// OAuth 账号：应用指纹到请求头（受设置开关控制）
+	// OAuth 提供商：应用指纹到请求头（受设置开关控制）
 	if ctEnableFP && ctFingerprint != nil {
 		options.Fingerprint.ApplyFingerprint(req, ctFingerprint)
 	}
@@ -184,7 +184,7 @@ func BuildCountTokensRequest(ctx context.Context, body []byte, token, tokenType,
 		}
 	}
 
-	// 账号级请求头覆写（仅 anthropic/openai api_key 账号启用时生效；OAuth 路径 no-op）
+	// 提供商级请求头覆写（仅 anthropic/openai api_key 提供商启用时生效；OAuth 路径 no-op）
 	options.ApplyOverrides(req.Header)
 
 	if options.Capture != nil {
@@ -193,6 +193,7 @@ func BuildCountTokensRequest(ctx context.Context, body []byte, token, tokenType,
 
 	return req, body, nil
 }
+
 func SanitizeCountTokensRequestBody(body []byte) []byte {
 	out := body
 	for _, path := range []string{

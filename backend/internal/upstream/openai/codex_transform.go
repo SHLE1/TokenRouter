@@ -1,4 +1,4 @@
-// Codex 原生转换只接收 wire 输入与显式选项；平台选择和账号元数据由外层投影。
+// Codex 原生转换只接收 wire 输入与显式选项；平台选择和提供商元数据由外层投影。
 package openai
 
 import (
@@ -1471,9 +1471,9 @@ func EnsureCodexReasoningInclude(reqBody map[string]any) bool {
 }
 
 // ApplyCodexClientMetadata 在请求体补齐 client_metadata["x-codex-installation-id"]，
-// 取值为账号真实的 openai_device_id（最新 Codex 在请求体携带的安装标识）。
+// 取值为提供商真实的 openai_device_id（最新 Codex 在请求体携带的安装标识）。
 //
-// 加法式、幂等：仅在账号存在 device_id 且该键缺失时注入，绝不覆盖既有 client_metadata
+// 加法式、幂等：仅在提供商存在 device_id 且该键缺失时注入，绝不覆盖既有 client_metadata
 // （如 turn metadata），也不伪造——无 device_id 时不写入。
 func ApplyCodexClientMetadata(reqBody map[string]any, deviceID string) bool {
 	deviceID = strings.TrimSpace(deviceID)
@@ -1879,7 +1879,7 @@ func NormalizeCodexTools(reqBody map[string]any) bool {
 	return modified
 }
 
-// CodexModelRules 在原模型决策时点读取纯规则，不建立别名缓存或引用账号类型。
+// CodexModelRules 在原模型决策时点读取纯规则，不建立别名缓存或引用提供商类型。
 type CodexModelRules struct {
 	ImageOnly      func(string) bool
 	LastSegment    func(string) string
@@ -1892,6 +1892,7 @@ type CodexModelRules struct {
 func IsOpenAIImageGenerationType(value string) bool {
 	return strings.TrimSpace(value) == "image_generation"
 }
+
 func OpenAIResponsesInputItemIDPrefix(itemType string) (string, bool) {
 	switch strings.TrimSpace(itemType) {
 	case "message":
@@ -1929,6 +1930,7 @@ func ShouldStripOpenAIResponsesInputItemID(itemType, id string) bool {
 func IsOpenAIImageGenNamespaceName(value string) bool {
 	return strings.TrimSpace(value) == "image_gen"
 }
+
 func OpenAIAnyToolChoiceSelectsImageGeneration(choice any) bool {
 	switch v := choice.(type) {
 	case string:

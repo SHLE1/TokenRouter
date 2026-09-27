@@ -135,7 +135,7 @@ func NormalizeCreativeRunScope(scope CreativeRunScope) (CreativeRunScope, error)
 }
 
 // CreativeRun 是创作台异步任务的元数据。
-// 隐私红线：结构体中禁止出现 prompt 明文、图片字节、mask 或 provider 响应本体。
+// 隐私红线：结构体中禁止出现 prompt 明文、图片字节、mask 或 platform 响应本体。
 type CreativeRun struct {
 	ID     int64
 	RunID  string
@@ -144,8 +144,8 @@ type CreativeRun struct {
 	WorkspaceID          *string
 	GroupID              int64
 	APIKeyID             int64
-	AccountID            *int64
-	Provider             string
+	ProviderID           *int64
+	Platform             string
 	Model                string
 	RequestedModel       string
 	Operation            string
@@ -211,7 +211,7 @@ type CreativeRunOutput struct {
 
 // CreateCreativeRunParams 创建创作台任务及其输出行。
 type CreateCreativeRunParams struct {
-	Provider                   string
+	Platform                   string
 	RunID                      string
 	UserID                     int64
 	WorkspaceID                string
@@ -312,10 +312,10 @@ type CreativeRunRepository interface {
 	ListCreativeRunsForOwner(ctx context.Context, scope CreativeRunScope, filter CreativeRunFilter) ([]*CreativeRun, error)
 	// TransitionCreativeRunStatus 带 version 乐观锁与 CanTransitionCreativeRun 校验。
 	TransitionCreativeRunStatus(ctx context.Context, runID, toStatus string, opts CreativeRunTransitionOptions) error
-	// MarkCreativeRunRunning 幂等地把任务标记为执行中并回填账号，重复调用不产生副作用。
-	MarkCreativeRunRunning(ctx context.Context, runID string, accountID int64, now time.Time) error
-	// SetCreativeRunExecution 在执行结果确定后补写真实上游账号，避免 worker 先推进状态时丢失账号信息。
-	SetCreativeRunExecution(ctx context.Context, runID string, accountID int64, provider string, now time.Time) error
+	// MarkCreativeRunRunning 幂等地把任务标记为执行中并回填提供商，重复调用不产生副作用。
+	MarkCreativeRunRunning(ctx context.Context, runID string, providerID int64, now time.Time) error
+	// SetCreativeRunExecution 在执行结果确定后补写真实上游提供商，避免 worker 先推进状态时丢失提供商信息。
+	SetCreativeRunExecution(ctx context.Context, runID string, providerID int64, platform string, now time.Time) error
 	// MarkCreativeRunSucceeded 记录实际成本并进入终态，仅在 running 时生效。
 	MarkCreativeRunSucceeded(ctx context.Context, runID string, actualCost float64, now time.Time) error
 	// UpdateCreativeRunOutput 幂等更新输出行；已 acked 的行不允许被覆盖。
@@ -334,8 +334,8 @@ type CreativeRunRepository interface {
 	IncrementCreativeRunReleaseAttempt(ctx context.Context, runID string) (int, error)
 	// SetCreativeRunProvisioningPhase 持久化创建 saga 的最后完成阶段。
 	SetCreativeRunProvisioningPhase(ctx context.Context, runID, phase string) error
-	// MarkCreativeRunProviderSucceeded 记录 provider 已成功且输出已写入临时存储。
-	MarkCreativeRunProviderSucceeded(ctx context.Context, runID string, accountID int64, now time.Time) error
+	// MarkCreativeRunProviderSucceeded 记录 platform 已成功且输出已写入临时存储。
+	MarkCreativeRunProviderSucceeded(ctx context.Context, runID string, providerID int64, now time.Time) error
 	// SetCreativeRunReconcileError 记录最近一次后台补偿错误。
 	SetCreativeRunReconcileError(ctx context.Context, runID, message string, next time.Time) error
 }
@@ -504,7 +504,7 @@ func IsCreativeRunSettlementPending(status string) bool {
 		status == CreativeRunStatusReleasePending
 }
 
-// CanTransitionCreativeRun 校验创作台任务状态机；provider 成功与结算/释放阶段均可恢复，
+// CanTransitionCreativeRun 校验创作台任务状态机；platform 成功与结算/释放阶段均可恢复，
 // 只有 succeeded 在临时输出过期时允许降级为 result_lost，其余终态不可逆。
 func CanTransitionCreativeRun(from, to string) bool {
 	if from == "" || to == "" {

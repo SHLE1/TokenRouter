@@ -8,11 +8,11 @@ import (
 	"testing"
 	time "time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
 	"github.com/TokenFlux/TokenRouter/internal/config"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	gatewaytestkit "github.com/TokenFlux/TokenRouter/internal/gateway/testkit"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/stretchr/testify/require"
 )
@@ -24,47 +24,47 @@ type countingOpenAI403CounterCache struct {
 	increments int
 }
 
-func (s *countingOpenAI403CounterCache) IncrementOpenAI403Count(ctx context.Context, accountID int64, window int) (int64, error) {
+func (s *countingOpenAI403CounterCache) IncrementOpenAI403Count(ctx context.Context, providerID int64, window int) (int64, error) {
 	s.increments++
-	return s.ForbiddenCounter.IncrementOpenAI403Count(ctx, accountID, window)
+	return s.ForbiddenCounter.IncrementOpenAI403Count(ctx, providerID, window)
 }
 
 type openAI403TestHarness struct {
-	svc *accountprovider.UpstreamHealth
+	svc *provideradapter.UpstreamHealth
 
-	repo    *gatewaytestkit.HealthStoreRecorder
-	counter *countingOpenAI403CounterCache
-	blocker *gatewaytestkit.RuntimeBlockRecorder
-	account *gatewayprovider.ExecutionAccount
+	repo     *gatewaytestkit.HealthStoreRecorder
+	counter  *countingOpenAI403CounterCache
+	blocker  *gatewaytestkit.RuntimeBlockRecorder
+	provider *gatewayprovider.ExecutionProvider
 }
 
-func newOpenAI403TestHarness(t *testing.T, accountID int64, counts ...int64) *openAI403TestHarness {
+func newOpenAI403TestHarness(t *testing.T, providerID int64, counts ...int64) *openAI403TestHarness {
 	t.Helper()
 	repo := &gatewaytestkit.HealthStoreRecorder{}
 	counter := &countingOpenAI403CounterCache{ForbiddenCounter: gatewaytestkit.ForbiddenCounter{Counts: counts}}
 	blocker := &gatewaytestkit.RuntimeBlockRecorder{}
-	svc := newUpstreamHealthForTest(repo, &config.Config{}, nil, accountcore.HealthOptions{ForbiddenCounter: counter, Block: func(v *accountcore.Record, until time.Time, reason string) {
-		blocker.BlockAccountScheduling(gatewayprovider.NewExecutionAccount(v), until, reason)
+	svc := newUpstreamHealthForTest(repo, &config.Config{}, nil, providercore.HealthOptions{ForbiddenCounter: counter, Block: func(v *providercore.Record, until time.Time, reason string) {
+		blocker.BlockProviderScheduling(gatewayprovider.NewExecutionProvider(v), until, reason)
 	}}, nil)
 
 	return &openAI403TestHarness{
-		svc:     svc,
-		repo:    repo,
-		counter: counter,
-		blocker: blocker,
-		account: &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: accountID, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth}},
+		svc:      svc,
+		repo:     repo,
+		counter:  counter,
+		blocker:  blocker,
+		provider: &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: providerID, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}},
 	}
 }
 
 func (h *openAI403TestHarness) handle(body string) bool {
-	return gatewayprovider.ApplyExecutionHealth(context.Background(), h.svc, h.account, gatewayprovider.HealthObservationFromContext(context.Background(), http.StatusForbidden, http.Header{}, []byte(body), nil)).StopScheduling
+	return gatewayprovider.ApplyExecutionHealth(context.Background(), h.svc, h.provider, gatewayprovider.HealthObservationFromContext(context.Background(), http.StatusForbidden, http.Header{}, []byte(body), nil)).StopScheduling
 }
 
-func (h *openAI403TestHarness) requireNoAccountPenalty(t *testing.T) {
+func (h *openAI403TestHarness) requireNoProviderPenalty(t *testing.T) {
 	t.Helper()
-	require.Equal(t, 0, h.repo.SetErrorCalls, "端点级 403 不得永久禁用账号")
-	require.Equal(t, 0, h.repo.TempCalls, "端点级 403 不得把账号设为临时不可调度")
-	require.Empty(t, h.blocker.Accounts, "端点级 403 不得触发调度阻断通知")
+	require.Equal(t, 0, h.repo.SetErrorCalls, "端点级 403 不得永久禁用提供商")
+	require.Equal(t, 0, h.repo.TempCalls, "端点级 403 不得把提供商设为临时不可调度")
+	require.Empty(t, h.blocker.Providers, "端点级 403 不得触发调度阻断通知")
 	require.Equal(t, 0, h.counter.increments, "端点级 403 不得递增连续 403 计数")
 }
 
@@ -72,8 +72,8 @@ func (h *openAI403TestHarness) requireNoAccountPenalty(t *testing.T) {
 const openAI403HTMLBody = "<!DOCTYPE html>\n<html><head><title>403 Forbidden</title></head>" +
 	"<body><h1>403 Forbidden</h1></body></html>"
 
-// TestHandleUpstreamError_OpenAIHTML403DoesNotPenalizeAccount 验证常见 HTML 外形均不处罚账号。
-func TestHandleUpstreamError_OpenAIHTML403DoesNotPenalizeAccount(t *testing.T) {
+// TestHandleUpstreamError_OpenAIHTML403DoesNotPenalizeProvider 验证常见 HTML 外形均不处罚提供商。
+func TestHandleUpstreamError_OpenAIHTML403DoesNotPenalizeProvider(t *testing.T) {
 	cases := []struct {
 		name string
 		body string
@@ -89,21 +89,21 @@ func TestHandleUpstreamError_OpenAIHTML403DoesNotPenalizeAccount(t *testing.T) {
 
 			shouldDisable := h.handle(tc.body)
 
-			require.False(t, shouldDisable, "HTML 403 不得判定账号应下线")
-			h.requireNoAccountPenalty(t)
+			require.False(t, shouldDisable, "HTML 403 不得判定提供商应下线")
+			h.requireNoProviderPenalty(t)
 		})
 	}
 }
 
-func TestHandleUpstreamErrorCNProviderHTML403DoesNotPenalizeAccount(t *testing.T) {
+func TestHandleUpstreamErrorCNProviderHTML403DoesNotPenalizeProvider(t *testing.T) {
 	for _, platform := range []string{capability.PlatformKimi, capability.PlatformZhipu, capability.PlatformDeepseek} {
 		t.Run(platform, func(t *testing.T) {
 			h := newOpenAI403TestHarness(t, 507, 1)
-			h.account.Record.Platform = platform
-			h.account.Record.Type = capability.AccountTypeAPIKey
+			h.provider.Record.Platform = platform
+			h.provider.Record.Type = capability.ProviderTypeAPIKey
 
 			require.False(t, h.handle(openAI403HTMLBody))
-			h.requireNoAccountPenalty(t)
+			h.requireNoProviderPenalty(t)
 		})
 	}
 }
@@ -112,8 +112,8 @@ func TestHandleUpstreamErrorCNProviderStructured403UsesCumulativeCooldown(t *tes
 	for _, platform := range []string{capability.PlatformKimi, capability.PlatformZhipu, capability.PlatformDeepseek} {
 		t.Run(platform, func(t *testing.T) {
 			h := newOpenAI403TestHarness(t, 508, 1)
-			h.account.Record.Platform = platform
-			h.account.Record.Type = capability.AccountTypeAPIKey
+			h.provider.Record.Platform = platform
+			h.provider.Record.Type = capability.ProviderTypeAPIKey
 
 			require.True(t, h.handle(`{"error":{"message":"forbidden"}}`))
 			require.Equal(t, 1, h.counter.increments)
@@ -128,28 +128,28 @@ func TestHandleUpstreamErrorCNProviderStructured403UsesCumulativeCooldown(t *tes
 func TestHandleUpstreamError_OpenAIHTML403RepeatedNeverEscalates(t *testing.T) {
 	h := newOpenAI403TestHarness(t, 502, 1, 2, 3, 4, 5)
 
-	for i := 0; i < accountcore.OpenAI403DisableThresholdDefault+2; i++ {
-		require.False(t, h.handle(openAI403HTMLBody), "第 %d 次 HTML 403 仍不得判定账号应下线", i+1)
+	for i := 0; i < providercore.OpenAI403DisableThresholdDefault+2; i++ {
+		require.False(t, h.handle(openAI403HTMLBody), "第 %d 次 HTML 403 仍不得判定提供商应下线", i+1)
 	}
 
-	h.requireNoAccountPenalty(t)
+	h.requireNoProviderPenalty(t)
 }
 
-// TestHandleUpstreamError_OpenAIStructured403StillPenalizes 保护真实账号级 403 的既有处罚链路。
+// TestHandleUpstreamError_OpenAIStructured403StillPenalizes 保护真实提供商级 403 的既有处罚链路。
 func TestHandleUpstreamError_OpenAIStructured403StillPenalizes(t *testing.T) {
 	t.Run("first_hit_temp_unschedulable", func(t *testing.T) {
 		h := newOpenAI403TestHarness(t, 503, 1)
 
-		require.True(t, h.handle(`{"error":{"message":"Your account is not authorized"}}`))
+		require.True(t, h.handle(`{"error":{"message":"Your provider is not authorized"}}`))
 		require.Equal(t, 1, h.counter.increments)
 		require.Equal(t, 1, h.repo.TempCalls)
 		require.Equal(t, 0, h.repo.SetErrorCalls)
-		require.Contains(t, h.repo.LastTempReason, "Your account is not authorized")
-		require.Len(t, h.blocker.Accounts, 1)
+		require.Contains(t, h.repo.LastTempReason, "Your provider is not authorized")
+		require.Len(t, h.blocker.Providers, 1)
 	})
 
 	t.Run("threshold_disables", func(t *testing.T) {
-		h := newOpenAI403TestHarness(t, 504, int64(accountcore.OpenAI403DisableThresholdDefault))
+		h := newOpenAI403TestHarness(t, 504, int64(providercore.OpenAI403DisableThresholdDefault))
 
 		require.True(t, h.handle(`{"error":{"message":"workspace forbidden by policy"}}`))
 		require.Equal(t, 1, h.repo.SetErrorCalls)
@@ -169,11 +169,11 @@ func TestHandleUpstreamError_HTML403OnOtherPlatformsUnchanged(t *testing.T) {
 	for _, platform := range []string{capability.PlatformAnthropic, capability.PlatformGemini} {
 		t.Run(platform, func(t *testing.T) {
 			repo := &gatewaytestkit.HealthStoreRecorder{}
-			svc := newUpstreamHealthForTest(repo, &config.Config{}, nil, accountcore.HealthOptions{}, nil)
+			svc := newUpstreamHealthForTest(repo, &config.Config{}, nil, providercore.HealthOptions{}, nil)
 
-			account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 506, Platform: platform, Type: capability.AccountTypeAPIKey}}
+			provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 506, Platform: platform, Type: capability.ProviderTypeAPIKey}}
 
-			shouldDisable := gatewayprovider.ApplyExecutionHealth(context.Background(), svc, account, gatewayprovider.HealthObservationFromContext(context.Background(), http.StatusForbidden, http.Header{}, []byte(openAI403HTMLBody), nil)).StopScheduling
+			shouldDisable := gatewayprovider.ApplyExecutionHealth(context.Background(), svc, provider, gatewayprovider.HealthObservationFromContext(context.Background(), http.StatusForbidden, http.Header{}, []byte(openAI403HTMLBody), nil)).StopScheduling
 
 			require.True(t, shouldDisable)
 			require.Equal(t, 1, repo.SetErrorCalls, "其他平台保持原有 SetError 行为")

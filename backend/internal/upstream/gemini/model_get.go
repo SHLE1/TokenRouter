@@ -73,7 +73,7 @@ func ReadAIStudioModel(ctx context.Context, path string, options ModelGetOptions
 		}
 		req.Header.Set("Authorization", "Bearer "+accessToken)
 	default:
-		return nil, fmt.Errorf("unsupported account type: %s", options.Mode)
+		return nil, fmt.Errorf("unsupported provider type: %s", options.Mode)
 	}
 
 	resp, err := options.Do(req)

@@ -1,4 +1,4 @@
-// 本文件拥有 Qoder 授权协议交换；授权会话的认领、缓存与清理由 account 负责。
+// 本文件拥有 Qoder 授权协议交换；授权会话的认领、缓存与清理由 provider 负责。
 package qoder
 
 import (
@@ -23,24 +23,27 @@ type CN20OAuthCompleter interface {
 		machine *MachineIdentity,
 	) (*AuthIdentity, time.Time, error)
 }
-type OAuthClientFactory func(profile Profile, proxyURL string) (OAuthClientPort, error)
-type AuthorizationTokenInfo struct {
-	SecurityOauthToken string         `json:"security_oauth_token"`
-	RefreshToken       string         `json:"refresh_token,omitempty"`
-	MachineID          string         `json:"machine_id"`
-	MachineToken       string         `json:"machine_token,omitempty"`
-	MachineType        string         `json:"machine_type,omitempty"`
-	UID                string         `json:"uid,omitempty"`
-	AID                string         `json:"aid,omitempty"`
-	OrganizationID     string         `json:"organization_id,omitempty"`
-	OrganizationName   string         `json:"organization_name,omitempty"`
-	Name               string         `json:"name,omitempty"`
-	UserType           string         `json:"user_type,omitempty"`
-	Site               string         `json:"site"`
-	RefreshMode        string         `json:"refresh_mode"`
-	ExpiresAt          string         `json:"expires_at,omitempty"`
-	Extra              map[string]any `json:"extra,omitempty"`
-}
+type (
+	OAuthClientFactory     func(profile Profile, proxyURL string) (OAuthClientPort, error)
+	AuthorizationTokenInfo struct {
+		SecurityOauthToken string         `json:"security_oauth_token"`
+		RefreshToken       string         `json:"refresh_token,omitempty"`
+		MachineID          string         `json:"machine_id"`
+		MachineToken       string         `json:"machine_token,omitempty"`
+		MachineType        string         `json:"machine_type,omitempty"`
+		UID                string         `json:"uid,omitempty"`
+		AID                string         `json:"aid,omitempty"`
+		OrganizationID     string         `json:"organization_id,omitempty"`
+		OrganizationName   string         `json:"organization_name,omitempty"`
+		Name               string         `json:"name,omitempty"`
+		UserType           string         `json:"user_type,omitempty"`
+		Site               string         `json:"site"`
+		RefreshMode        string         `json:"refresh_mode"`
+		ExpiresAt          string         `json:"expires_at,omitempty"`
+		Extra              map[string]any `json:"extra,omitempty"`
+	}
+)
+
 type AuthorizationFlow struct {
 	Nonce, CodeVerifier, AuthURL, ProxyURL string
 	Machine                                *MachineIdentity
@@ -100,9 +103,11 @@ func CompleteAuthorization(ctx context.Context, session *AuthorizationFlow, fact
 	expiresAt := tokenResp.ExpiryTime(time.Now())
 	return BuildAuthorizationTokenInfoForSite(identity, session.Machine, SiteGlobal, RefreshModeCosy, expiresAt, userErr, orgErr), false, nil
 }
+
 func populateQoderOrganization(ctx context.Context, client OAuthClientPort, token string, identity *AuthIdentity) error {
 	return populateQoderOrganizationForUID(ctx, client, token, "", identity)
 }
+
 func populateQoderOrganizationForUID(ctx context.Context, client OAuthClientPort, token, lookupUID string, identity *AuthIdentity) error {
 	if client == nil || identity == nil {
 		return nil
@@ -131,9 +136,11 @@ func populateQoderOrganizationForUID(ctx context.Context, client OAuthClientPort
 	identity.OrganizationName = strings.TrimSpace(tags.OrganizationName)
 	return nil
 }
+
 func BuildAuthorizationTokenInfo(identity *AuthIdentity, machine *MachineIdentity, userErr error, orgErr error) *AuthorizationTokenInfo {
 	return BuildAuthorizationTokenInfoForSite(identity, machine, SiteGlobal, RefreshModeCosy, time.Time{}, userErr, orgErr)
 }
+
 func BuildAuthorizationTokenInfoForSite(
 	identity *AuthIdentity,
 	machine *MachineIdentity,
@@ -180,12 +187,14 @@ func BuildAuthorizationTokenInfoForSite(
 	}
 	return tokenInfo
 }
+
 func sanitizedQoderOAuthWarning(code, message string) map[string]string {
 	return map[string]string{
 		"code":    code,
 		"message": message,
 	}
 }
+
 func DefaultOAuthClientFactory(profile Profile, proxyURL string) (OAuthClientPort, error) {
 	client, err := httpclient.GetClient(httpclient.Options{
 		ProxyURL: strings.TrimSpace(proxyURL),

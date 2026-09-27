@@ -219,10 +219,10 @@
           </div>
           <div class="p-5">
             <h2 class="text-base font-semibold text-gray-900 dark:text-white">
-              {{ t('home.features.multiAccount') }}
+              {{ t('home.features.multiProvider') }}
             </h2>
             <p class="mt-2 text-sm leading-6 text-gray-600 dark:text-dark-300">
-              {{ t('home.features.multiAccountDesc') }}
+              {{ t('home.features.multiProviderDesc') }}
             </p>
             <router-link :to="isAuthenticated ? dashboardPath : '/login'" class="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-300">
               {{ t('home.features.learnMore') }}

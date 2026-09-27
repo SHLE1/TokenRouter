@@ -7,14 +7,14 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/media"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/config"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/admission"
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/httpapi/mediaentry"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/httpapi/openaiattempt"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 )
@@ -26,8 +26,8 @@ func provideMediaRuntime(
 	funding *admission.FundingAdmission,
 	common openaiattempt.Bindings,
 	resources *gatewayhttp.OpenAIHTTPResources,
-	prober *account.GrokQuotaService,
-	cfg *config.Config, grok *gatewayhttp.GrokExecutor, video *media.VideoTasks, auxiliary *gatewayhttp.OpenAIAuxiliary, images *gatewayhttp.OpenAIImagesExecutor, planner *provider.RoutePlanner, cache session.GatewayCache,
+	prober *provider.GrokQuotaService,
+	cfg *config.Config, grok *gatewayhttp.GrokExecutor, video *media.VideoTasks, auxiliary *gatewayhttp.OpenAIAuxiliary, images *gatewayhttp.OpenAIImagesExecutor, planner *gatewayadapter.RoutePlanner, cache session.GatewayCache,
 ) *mediaentry.Runtime {
 	return mediaentry.New(mediaBindings(source, credentials, keys, funding, common, resources, prober, cfg, grok, video, auxiliary, images, planner, cache))
 }
@@ -37,6 +37,7 @@ func provideMediaHTTP(runtime *mediaentry.Runtime, activity *gatewayRequestActiv
 	result.BindRequestActivity(activity.Enter)
 	return result
 }
+
 func provideAuxiliaryHTTP(runtime *mediaentry.Runtime, activity *gatewayRequestActivity) *gatewayhttp.AuxiliaryHandler {
 	result := runtime.AuxiliaryHTTPHandler()
 	result.BindRequestActivity(activity.Enter)
@@ -50,10 +51,9 @@ func mediaBindings(
 	funding *admission.FundingAdmission,
 	common openaiattempt.Bindings,
 	resources *gatewayhttp.OpenAIHTTPResources,
-	prober *account.GrokQuotaService,
-	cfg *config.Config, grok *gatewayhttp.GrokExecutor, video *media.VideoTasks, auxiliary *gatewayhttp.OpenAIAuxiliary, images *gatewayhttp.OpenAIImagesExecutor, planner *provider.RoutePlanner, cache session.GatewayCache,
+	prober *provider.GrokQuotaService,
+	cfg *config.Config, grok *gatewayhttp.GrokExecutor, video *media.VideoTasks, auxiliary *gatewayhttp.OpenAIAuxiliary, images *gatewayhttp.OpenAIImagesExecutor, planner *gatewayadapter.RoutePlanner, cache session.GatewayCache,
 ) mediaentry.Bindings {
-
 	b := mediaentry.Bindings{
 		Common:    common,
 		Resources: resources,
@@ -69,8 +69,8 @@ func mediaBindings(
 	}
 
 	if cfg != nil {
-		if cfg.Gateway.MaxAccountSwitches > 0 {
-			b.Options.MaxSwitches = cfg.Gateway.MaxAccountSwitches
+		if cfg.Gateway.MaxProviderSwitches > 0 {
+			b.Options.MaxSwitches = cfg.Gateway.MaxProviderSwitches
 		}
 		if cfg.Gateway.ImageNonstreamKeepaliveInterval > 0 {
 			b.Options.ImageKeepalive = time.Duration(cfg.Gateway.ImageNonstreamKeepaliveInterval) * time.Second
@@ -94,7 +94,7 @@ func mediaBindings(
 		b.Platform.Embeddings = auxiliary.ForwardEmbeddings
 		b.Platform.AlphaSearch = auxiliary.ForwardAlphaSearch
 		b.Platform.Voice = grok.ForwardGrokVoice
-		b.Platform.OpenRealtime = func(ctx context.Context, a *provider.ExecutionAccount, token, model string) (upstream.FrameConn, error) {
+		b.Platform.OpenRealtime = func(ctx context.Context, a *gatewayadapter.ExecutionProvider, token, model string) (upstream.FrameConn, error) {
 			return grok.OpenGrokRealtime(ctx, a, token, model)
 		}
 		b.Platform.RealtimeError = grok.HandleGrokRealtimeUpstreamError

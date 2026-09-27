@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
@@ -14,15 +13,16 @@ import (
 	textflow "github.com/TokenFlux/TokenRouter/internal/gateway/text"
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
 	openaiprotocol "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
-// CountTarget 持有本次受控执行目标；HTTP 只读取无凭据快照，不反查账号记录。
+// CountTarget 持有本次受控执行目标；HTTP 只读取无凭据快照，不反查提供商记录。
 type CountTarget interface {
-	Snapshot() account.AccountSnapshot
+	Snapshot() provider.ProviderSnapshot
 	RetryLimit() int
 	ForwardCountTokens(context.Context, *gin.Context, *requeststate.ParsedRequest) error
 	ReleaseSession(context.Context, string)
@@ -134,12 +134,12 @@ func (b *countAttempt) Select(excluded map[int64]struct{}) (textflow.Selection, 
 	}
 	b.target = target
 	value := target.Snapshot()
-	SetOpsSelectedAccount(b.c, value.ID, value.Platform)
-	return textflow.Selection{Account: value, RetryLimit: target.RetryLimit()}, nil
+	SetOpsSelectedProvider(b.c, value.ID, value.Platform)
+	return textflow.Selection{Provider: value, RetryLimit: target.RetryLimit()}, nil
 }
 
 func (b *countAttempt) SelectionFailed(err error, last *textflow.AttemptFailure) {
-	b.log.Warn("gateway.count_tokens_select_account_failed", zap.Error(err))
+	b.log.Warn("gateway.count_tokens_select_provider_failed", zap.Error(err))
 	if last != nil {
 		b.exhausted(last, "")
 		return
@@ -179,7 +179,7 @@ func (b *countAttempt) Forward(_ textflow.Selection) *textflow.AttemptFailure {
 }
 
 func (b *countAttempt) ForwardFailed(selected textflow.Selection, err error) {
-	b.log.Error("gateway.count_tokens_forward_failed", zap.Int64("account_id", selected.Account.ID), zap.Error(err))
+	b.log.Error("gateway.count_tokens_forward_failed", zap.Int64("provider_id", selected.Provider.ID), zap.Error(err))
 }
 
 func (b *countAttempt) ReleaseSession(_ textflow.Selection) {
@@ -187,7 +187,7 @@ func (b *countAttempt) ReleaseSession(_ textflow.Selection) {
 }
 func (b *countAttempt) Canceled() { FailoverClientGone(b.c) }
 func (b *countAttempt) Exhausted(selected textflow.Selection, last *textflow.AttemptFailure) {
-	b.exhausted(last, selected.Account.Platform)
+	b.exhausted(last, selected.Provider.Platform)
 }
 
 func (b *countAttempt) exhausted(last *textflow.AttemptFailure, platform string) {

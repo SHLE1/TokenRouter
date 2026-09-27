@@ -1,4 +1,4 @@
-// Ollama 的脱敏数据与 HTTP 观测是只读契约，缓存和浏览器会话仍归账号。
+// Ollama 的脱敏数据与 HTTP 观测是只读契约，缓存和浏览器会话仍归提供商。
 package usageview
 
 import "time"
@@ -34,7 +34,7 @@ type OllamaCloudUsageData struct {
 	Models   []OllamaCloudUsageModel `json:"models,omitempty"`
 }
 
-// OllamaUsageObservation 分离实际 HTTP 观测和账号的失败计数、重试与存储规则。
+// OllamaUsageObservation 分离实际 HTTP 观测和提供商的失败计数、重试与存储规则。
 type OllamaUsageObservation struct {
 	Data         *OllamaCloudUsageData
 	HTTPStatus   int

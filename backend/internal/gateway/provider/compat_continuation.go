@@ -4,21 +4,22 @@ import (
 	"net/http"
 	"strings"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 
 	"github.com/tidwall/gjson"
 )
 
-func CompatContinuationEnabled(account *ExecutionAccount, model string) bool {
-	if account == nil || account.Record.Type != capability.AccountTypeAPIKey {
+func CompatContinuationEnabled(provider *ExecutionProvider, model string) bool {
+	if provider == nil || provider.Record.Type != capability.ProviderTypeAPIKey {
 		return false
 	}
-	if !accountcore.ResolveResponsesContinuationSupported(account.Record.Extra) {
+	if !providercore.ResolveResponsesContinuationSupported(provider.Record.Extra) {
 		return false
 	}
 	return ShouldAutoInjectPromptCacheKeyForCompat(model)
 }
+
 func CompatPreviousResponseNotFound(statusCode int, upstreamMsg string, upstreamBody []byte) bool {
 	if statusCode != http.StatusBadRequest && statusCode != http.StatusNotFound {
 		return false
@@ -36,6 +37,7 @@ func CompatPreviousResponseNotFound(statusCode int, upstreamMsg string, upstream
 	return check(gjson.GetBytes(upstreamBody, "error.code").String()) ||
 		check(gjson.GetBytes(upstreamBody, "error.message").String())
 }
+
 func CompatPreviousResponseUnsupported(statusCode int, upstreamMsg string, upstreamBody []byte) bool {
 	if statusCode != http.StatusBadRequest {
 		return false
@@ -48,7 +50,7 @@ func CompatPreviousResponseUnsupported(statusCode int, upstreamMsg string, upstr
 		return strings.Contains(lower, "unsupported parameter") ||
 			strings.Contains(lower, "only supported on responses websocket") ||
 			strings.Contains(lower, "not supported") ||
-			strings.Contains(lower, "requires an openai api-key account for http requests")
+			strings.Contains(lower, "requires an openai api-key provider for http requests")
 	}
 	if check(upstreamMsg) || check(string(upstreamBody)) {
 		return true

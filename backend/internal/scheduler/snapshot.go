@@ -44,37 +44,37 @@ type schedulerBucketWriteTask struct {
 	token  SchedulerBucketWriteToken
 }
 
-type schedulerAccountQueryKey struct {
+type schedulerProviderQueryKey struct {
 	groupID  int64
 	platform string
 }
 
 // 查询结果只在一次 rebuild batch 内，按原始 groupID+platform 复用成功的 single/forced 查询；
 // mixed 与历史模式保持独立。每个 task 都用 defer 消费 remaining，最后一个消费者会立即释放结果，
-// 避免把账号切片的生命周期扩大到整轮 full rebuild。
-type schedulerAccountQueryCache struct {
-	remaining          map[schedulerAccountQueryKey]int
-	accounts           map[schedulerAccountQueryKey][]SnapshotAccount
-	snapshotAccountIDs map[schedulerAccountQueryKey][]int64
+// 避免把提供商切片的生命周期扩大到整轮 full rebuild。
+type schedulerProviderQueryCache struct {
+	remaining           map[schedulerProviderQueryKey]int
+	providers           map[schedulerProviderQueryKey][]SnapshotProvider
+	snapshotProviderIDs map[schedulerProviderQueryKey][]int64
 }
 
-// schedulerSnapshotAccountIDWriter 是 SnapshotCache 的可选批次优化能力。
-// 首次完整发布成功后返回实际可编码账号 ID；同一查询结果的后续桶只需发布这些 ID，
-// 避免重复序列化并覆盖全局账号缓存。未实现该接口的缓存继续走原 SetSnapshot 路径。
-type schedulerSnapshotAccountIDWriter interface {
-	SetSnapshotAndReturnAccountIDs(ctx context.Context, bucket SchedulerBucket, token SchedulerBucketWriteToken, accounts []SnapshotAccount) ([]int64, error)
-	SetSnapshotByAccountIDs(ctx context.Context, bucket SchedulerBucket, token SchedulerBucketWriteToken, accountIDs []int64) error
+// schedulerSnapshotProviderIDWriter 是 SnapshotCache 的可选批次优化能力。
+// 首次完整发布成功后返回实际可编码提供商 ID；同一查询结果的后续桶只需发布这些 ID，
+// 避免重复序列化并覆盖全局提供商缓存。未实现该接口的缓存继续走原 SetSnapshot 路径。
+type schedulerSnapshotProviderIDWriter interface {
+	SetSnapshotAndReturnProviderIDs(ctx context.Context, bucket SchedulerBucket, token SchedulerBucketWriteToken, providers []SnapshotProvider) ([]int64, error)
+	SetSnapshotByProviderIDs(ctx context.Context, bucket SchedulerBucket, token SchedulerBucketWriteToken, providerIDs []int64) error
 }
 
-func newSchedulerAccountQueryCache(taskSets ...[]schedulerBucketWriteTask) *schedulerAccountQueryCache {
-	queries := &schedulerAccountQueryCache{
-		remaining:          make(map[schedulerAccountQueryKey]int),
-		accounts:           make(map[schedulerAccountQueryKey][]SnapshotAccount),
-		snapshotAccountIDs: make(map[schedulerAccountQueryKey][]int64),
+func newSchedulerProviderQueryCache(taskSets ...[]schedulerBucketWriteTask) *schedulerProviderQueryCache {
+	queries := &schedulerProviderQueryCache{
+		remaining:           make(map[schedulerProviderQueryKey]int),
+		providers:           make(map[schedulerProviderQueryKey][]SnapshotProvider),
+		snapshotProviderIDs: make(map[schedulerProviderQueryKey][]int64),
 	}
 	for _, tasks := range taskSets {
 		for _, task := range tasks {
-			if key, ok := schedulerAccountQueryKeyForBucket(task.bucket); ok {
+			if key, ok := schedulerProviderQueryKeyForBucket(task.bucket); ok {
 				queries.remaining[key]++
 			}
 		}
@@ -82,26 +82,26 @@ func newSchedulerAccountQueryCache(taskSets ...[]schedulerBucketWriteTask) *sche
 	return queries
 }
 
-func schedulerAccountQueryKeyForBucket(bucket SchedulerBucket) (schedulerAccountQueryKey, bool) {
+func schedulerProviderQueryKeyForBucket(bucket SchedulerBucket) (schedulerProviderQueryKey, bool) {
 	if bucket.Mode != SchedulerModeSingle && bucket.Mode != SchedulerModeForced {
-		return schedulerAccountQueryKey{}, false
+		return schedulerProviderQueryKey{}, false
 	}
-	return schedulerAccountQueryKey{groupID: bucket.GroupID, platform: bucket.Platform}, true
+	return schedulerProviderQueryKey{groupID: bucket.GroupID, platform: bucket.Platform}, true
 }
 
-func (c *schedulerAccountQueryCache) release(bucket SchedulerBucket) {
+func (c *schedulerProviderQueryCache) release(bucket SchedulerBucket) {
 	if c == nil {
 		return
 	}
-	key, ok := schedulerAccountQueryKeyForBucket(bucket)
+	key, ok := schedulerProviderQueryKeyForBucket(bucket)
 	if !ok {
 		return
 	}
 	remaining := c.remaining[key] - 1
 	if remaining <= 0 {
 		delete(c.remaining, key)
-		delete(c.accounts, key)
-		delete(c.snapshotAccountIDs, key)
+		delete(c.providers, key)
+		delete(c.snapshotProviderIDs, key)
 		return
 	}
 	c.remaining[key] = remaining
@@ -120,7 +120,7 @@ type SnapshotService struct {
 	bindings                     SnapshotBindings
 	cache                        SnapshotCache
 	outboxRepo                   SchedulerOutboxRepository
-	accountRepo                  SnapshotAccountSource
+	providerRepo                 SnapshotProviderSource
 	groupRepo                    SnapshotGroupSource
 	cfg                          *SnapshotOptions
 	runtime                      WorkerRuntime
@@ -146,7 +146,7 @@ type SnapshotService struct {
 func NewSnapshotService(
 	cache SnapshotCache,
 	outboxRepo SchedulerOutboxRepository,
-	accountRepo SnapshotAccountSource,
+	providerRepo SnapshotProviderSource,
 	groupRepo SnapshotGroupSource,
 	cfg *SnapshotOptions,
 	bindings ...SnapshotBindings,
@@ -163,7 +163,7 @@ func NewSnapshotService(
 		bindings:      binding,
 		cache:         cache,
 		outboxRepo:    outboxRepo,
-		accountRepo:   accountRepo,
+		providerRepo:  providerRepo,
 		groupRepo:     groupRepo,
 		cfg:           cfg,
 		fallbackLimit: newFallbackLimiter(maxQPS),
@@ -203,8 +203,8 @@ func (s *SnapshotService) StopContext(ctx context.Context) error {
 	return s.runtime.StopContext(ctx)
 }
 
-// @project-doc docs/architecture/account_scheduling_and_cache.md#scheduler_snapshot_consistency
-func (s *SnapshotService) ListSchedulableAccounts(ctx context.Context, groupID *int64, platform string, hasForcePlatform bool) ([]SnapshotAccount, bool, error) {
+// @project-doc docs/architecture/provider_scheduling_and_cache.md#scheduler_snapshot_consistency
+func (s *SnapshotService) ListSchedulableProviders(ctx context.Context, groupID *int64, platform string, hasForcePlatform bool) ([]SnapshotProvider, bool, error) {
 	useMixed := false
 	if err := ctx.Err(); err != nil {
 		return nil, false, err
@@ -225,7 +225,7 @@ func (s *SnapshotService) ListSchedulableAccounts(ctx context.Context, groupID *
 			}
 			s.diagnostics().printf("service.scheduler_snapshot", "[Scheduler] cache read failed: bucket=%s err=%v", bucket.String(), err)
 		} else if hit {
-			return derefAccounts(cached), useMixed, nil
+			return derefProviders(cached), useMixed, nil
 		}
 		token, err := s.cache.CaptureBucketWriteToken(ctx, bucket)
 		if err != nil {
@@ -247,13 +247,13 @@ func (s *SnapshotService) ListSchedulableAccounts(ctx context.Context, groupID *
 	fallbackCtx, cancel := s.withFallbackTimeout(ctx)
 	defer cancel()
 
-	accounts, err := s.loadAccountsFromDB(fallbackCtx, bucket, useMixed)
+	providers, err := s.loadProvidersFromDB(fallbackCtx, bucket, useMixed)
 	if err != nil {
 		return nil, useMixed, err
 	}
 
 	if s.cache != nil && canPublish {
-		if err := s.cache.SetSnapshot(fallbackCtx, bucket, writeToken, accounts); err != nil {
+		if err := s.cache.SetSnapshot(fallbackCtx, bucket, writeToken, providers); err != nil {
 			if errors.Is(err, ErrSchedulerBucketRetired) || errors.Is(err, ErrSchedulerBucketWriteFenced) {
 				s.diagnostics().event("debug", "[Scheduler] cache publish fenced", "bucket", bucket.String())
 			} else {
@@ -262,22 +262,22 @@ func (s *SnapshotService) ListSchedulableAccounts(ctx context.Context, groupID *
 		}
 	}
 
-	return accounts, useMixed, nil
+	return providers, useMixed, nil
 }
 
-func (s *SnapshotService) GetAccount(ctx context.Context, accountID int64) (SnapshotAccount, error) {
-	if accountID <= 0 {
+func (s *SnapshotService) GetProvider(ctx context.Context, providerID int64) (SnapshotProvider, error) {
+	if providerID <= 0 {
 		return nil, nil
 	}
 	if s.cache != nil {
-		account, err := s.cache.GetAccount(ctx, accountID)
+		provider, err := s.cache.GetProvider(ctx, providerID)
 		if err != nil {
 			if isContextDoneError(ctx, err) {
 				return nil, contextDoneError(ctx, err)
 			}
-			s.diagnostics().printf("service.scheduler_snapshot", "[Scheduler] account cache read failed: id=%d err=%v", accountID, err)
-		} else if account != nil {
-			return account, nil
+			s.diagnostics().printf("service.scheduler_snapshot", "[Scheduler] provider cache read failed: id=%d err=%v", providerID, err)
+		} else if provider != nil {
+			return provider, nil
 		}
 	}
 
@@ -286,7 +286,7 @@ func (s *SnapshotService) GetAccount(ctx context.Context, accountID int64) (Snap
 	}
 	fallbackCtx, cancel := s.withFallbackTimeout(ctx)
 	defer cancel()
-	return s.accountRepo.GetByID(fallbackCtx, accountID)
+	return s.providerRepo.GetByID(fallbackCtx, providerID)
 }
 
 // GetGroupByID 获取分组信息（供调度器使用）
@@ -297,12 +297,12 @@ func (s *SnapshotService) GetGroupByID(ctx context.Context, groupID int64) (*Sna
 	return s.groupRepo.GetByID(ctx, groupID)
 }
 
-// UpdateAccountInCache 立即更新 Redis 中单个账号的数据（用于模型限流后立即生效）
-func (s *SnapshotService) UpdateAccountInCache(ctx context.Context, account SnapshotAccount) error {
-	if s.cache == nil || account == nil {
+// UpdateProviderInCache 立即更新 Redis 中单个提供商的数据（用于模型限流后立即生效）
+func (s *SnapshotService) UpdateProviderInCache(ctx context.Context, provider SnapshotProvider) error {
+	if s.cache == nil || provider == nil {
 		return nil
 	}
-	return s.cache.SetAccount(ctx, account)
+	return s.cache.SetProvider(ctx, provider)
 }
 
 func (s *SnapshotService) runInitialRebuild() {
@@ -420,14 +420,14 @@ func (s *SnapshotService) cleanupConsumedOutbox(watermark int64) {
 
 func (s *SnapshotService) handleOutboxEvent(ctx context.Context, event SchedulerOutboxEvent, seen map[batchSeenKey]struct{}) error {
 	switch event.EventType {
-	case SchedulerOutboxEventAccountLastUsed:
+	case SchedulerOutboxEventProviderLastUsed:
 		return s.handleLastUsedEvent(ctx, event.Payload)
-	case SchedulerOutboxEventAccountBulkChanged:
-		return s.handleBulkAccountEvent(ctx, event.Payload, seen)
-	case SchedulerOutboxEventAccountGroupsChanged:
-		return s.handleAccountEvent(ctx, event.AccountID, event.Payload, seen)
-	case SchedulerOutboxEventAccountChanged:
-		return s.handleAccountEvent(ctx, event.AccountID, event.Payload, seen)
+	case SchedulerOutboxEventProviderBulkChanged:
+		return s.handleBulkProviderEvent(ctx, event.Payload, seen)
+	case SchedulerOutboxEventProviderGroupsChanged:
+		return s.handleProviderEvent(ctx, event.ProviderID, event.Payload, seen)
+	case SchedulerOutboxEventProviderChanged:
+		return s.handleProviderEvent(ctx, event.ProviderID, event.Payload, seen)
 	case SchedulerOutboxEventGroupChanged:
 		return s.handleGroupEvent(ctx, event.GroupID, seen)
 	case SchedulerOutboxEventFullRebuild:
@@ -463,15 +463,15 @@ func (s *SnapshotService) handleLastUsedEvent(ctx context.Context, payload map[s
 	return s.cache.UpdateLastUsed(ctx, updates)
 }
 
-func (s *SnapshotService) handleBulkAccountEvent(ctx context.Context, payload map[string]any, seen map[batchSeenKey]struct{}) error {
+func (s *SnapshotService) handleBulkProviderEvent(ctx context.Context, payload map[string]any, seen map[batchSeenKey]struct{}) error {
 	if payload == nil {
 		return nil
 	}
-	if s.accountRepo == nil {
+	if s.providerRepo == nil {
 		return nil
 	}
 
-	rawIDs := parseInt64Slice(payload["account_ids"])
+	rawIDs := parseInt64Slice(payload["provider_ids"])
 	if len(rawIDs) == 0 {
 		return nil
 	}
@@ -493,12 +493,12 @@ func (s *SnapshotService) handleBulkAccountEvent(ctx context.Context, payload ma
 	}
 
 	preloadGroupIDs := parseInt64Slice(payload["group_ids"])
-	accounts, err := s.accountRepo.GetByIDs(ctx, ids)
+	providers, err := s.providerRepo.GetByIDs(ctx, ids)
 	if err != nil {
 		return err
 	}
 
-	found := make(map[int64]struct{}, len(accounts))
+	found := make(map[int64]struct{}, len(providers))
 	rebuildGroupSet := make(map[int64]struct{}, len(preloadGroupIDs))
 	for _, gid := range preloadGroupIDs {
 		if gid > 0 {
@@ -506,31 +506,31 @@ func (s *SnapshotService) handleBulkAccountEvent(ctx context.Context, payload ma
 		}
 	}
 
-	for _, account := range accounts {
-		if account == nil || account.SnapshotMetadata().ID <= 0 {
+	for _, provider := range providers {
+		if provider == nil || provider.SnapshotMetadata().ID <= 0 {
 			continue
 		}
-		found[account.SnapshotMetadata().ID] = struct{}{}
+		found[provider.SnapshotMetadata().ID] = struct{}{}
 		if s.cache != nil {
-			if err := s.cache.SetAccount(ctx, account); err != nil {
+			if err := s.cache.SetProvider(ctx, provider); err != nil {
 				return err
 			}
 		}
-		for _, gid := range account.SnapshotMetadata().GroupIDs {
+		for _, gid := range provider.SnapshotMetadata().GroupIDs {
 			if gid > 0 {
 				rebuildGroupSet[gid] = struct{}{}
 			}
 		}
 	}
 
-	allAccountsFound := true
+	allProvidersFound := true
 	for _, id := range ids {
 		if _, ok := found[id]; ok {
 			continue
 		}
-		allAccountsFound = false
+		allProvidersFound = false
 		if s.cache != nil {
-			if err := s.cache.DeleteAccount(ctx, id); err != nil {
+			if err := s.cache.DeleteProvider(ctx, id); err != nil {
 				return err
 			}
 		}
@@ -541,12 +541,12 @@ func (s *SnapshotService) handleBulkAccountEvent(ctx context.Context, payload ma
 		rebuildGroupIDs = append(rebuildGroupIDs, gid)
 	}
 
-	// 缺失账户无法确定原平台，保留全平台重建以避免遗留旧快照。
-	if !allAccountsFound {
-		return s.rebuildByGroupIDs(ctx, rebuildGroupIDs, "account_bulk_change", seen)
+	// 缺失提供商无法确定原平台，保留全平台重建以避免遗留旧快照。
+	if !allProvidersFound {
+		return s.rebuildByGroupIDs(ctx, rebuildGroupIDs, "provider_bulk_change", seen)
 	}
 
-	platformGroupSets := make(map[string]map[int64]struct{}, len(accounts))
+	platformGroupSets := make(map[string]map[int64]struct{}, len(providers))
 	addPlatformGroups := func(platform string, groupIDs []int64) {
 		groupSet := platformGroupSets[platform]
 		if groupSet == nil {
@@ -557,16 +557,16 @@ func (s *SnapshotService) handleBulkAccountEvent(ctx context.Context, payload ma
 			groupSet[groupID] = struct{}{}
 		}
 	}
-	for _, account := range accounts {
-		if account == nil || account.SnapshotMetadata().ID <= 0 {
+	for _, provider := range providers {
+		if provider == nil || provider.SnapshotMetadata().ID <= 0 {
 			continue
 		}
-		if !slices.Contains(capability.AccountPlatforms(), account.SnapshotMetadata().Platform) {
-			return s.rebuildByGroupIDs(ctx, rebuildGroupIDs, "account_bulk_change", seen)
+		if !slices.Contains(capability.ProviderPlatforms(), provider.SnapshotMetadata().Platform) {
+			return s.rebuildByGroupIDs(ctx, rebuildGroupIDs, "provider_bulk_change", seen)
 		}
-		accountGroupIDs := s.normalizeGroupIDs(account.SnapshotMetadata().GroupIDs)
-		addPlatformGroups("", accountGroupIDs)
-		addPlatformGroups(account.SnapshotMetadata().Platform, accountGroupIDs)
+		providerGroupIDs := s.normalizeGroupIDs(provider.SnapshotMetadata().GroupIDs)
+		addPlatformGroups("", providerGroupIDs)
+		addPlatformGroups(provider.SnapshotMetadata().Platform, providerGroupIDs)
 
 	}
 
@@ -595,14 +595,14 @@ func (s *SnapshotService) handleBulkAccountEvent(ctx context.Context, payload ma
 		sort.Slice(platformGroupIDs, func(i, j int) bool { return platformGroupIDs[i] < platformGroupIDs[j] })
 		buckets = append(buckets, s.bucketsForPlatform(platform, platformGroupIDs, seen)...)
 	}
-	return s.rebuildBuckets(ctx, buckets, "account_bulk_change")
+	return s.rebuildBuckets(ctx, buckets, "provider_bulk_change")
 }
 
-func (s *SnapshotService) handleAccountEvent(ctx context.Context, accountID *int64, payload map[string]any, seen map[batchSeenKey]struct{}) error {
-	if accountID == nil || *accountID <= 0 {
+func (s *SnapshotService) handleProviderEvent(ctx context.Context, providerID *int64, payload map[string]any, seen map[batchSeenKey]struct{}) error {
+	if providerID == nil || *providerID <= 0 {
 		return nil
 	}
-	if s.accountRepo == nil {
+	if s.providerRepo == nil {
 		return nil
 	}
 
@@ -611,27 +611,27 @@ func (s *SnapshotService) handleAccountEvent(ctx context.Context, accountID *int
 		groupIDs = parseInt64Slice(payload["group_ids"])
 	}
 
-	account, err := s.accountRepo.GetByID(ctx, *accountID)
+	provider, err := s.providerRepo.GetByID(ctx, *providerID)
 	if err != nil {
-		if errors.Is(err, s.accountNotFound()) {
+		if errors.Is(err, s.providerNotFound()) {
 			if s.cache != nil {
-				if err := s.cache.DeleteAccount(ctx, *accountID); err != nil {
+				if err := s.cache.DeleteProvider(ctx, *providerID); err != nil {
 					return err
 				}
 			}
-			return s.rebuildByGroupIDs(ctx, groupIDs, "account_miss", seen)
+			return s.rebuildByGroupIDs(ctx, groupIDs, "provider_miss", seen)
 		}
 		return err
 	}
 	if s.cache != nil {
-		if err := s.cache.SetAccount(ctx, account); err != nil {
+		if err := s.cache.SetProvider(ctx, provider); err != nil {
 			return err
 		}
 	}
 	if len(groupIDs) == 0 {
-		groupIDs = account.SnapshotMetadata().GroupIDs
+		groupIDs = provider.SnapshotMetadata().GroupIDs
 	}
-	return s.rebuildByAccount(ctx, account, groupIDs, "account_change", seen)
+	return s.rebuildByProvider(ctx, provider, groupIDs, "provider_change", seen)
 }
 
 func (s *SnapshotService) handleGroupEvent(ctx context.Context, groupID *int64, seen map[batchSeenKey]struct{}) error {
@@ -652,7 +652,7 @@ func (s *SnapshotService) reconcileGroupLifecycle(ctx context.Context, groupID i
 		return err
 	}
 	if plan.active {
-		queries := newSchedulerAccountQueryCache(plan.tasks)
+		queries := newSchedulerProviderQueryCache(plan.tasks)
 		for _, task := range plan.tasks {
 			if err := s.rebuildBucketWithTokenPolicyAndQueryCache(ctx, task, "group_change", true, queries); err != nil {
 				return err
@@ -756,15 +756,15 @@ func markGroupLifecycleSeen(seen map[batchSeenKey]struct{}, groupID int64) {
 	}
 }
 
-func (s *SnapshotService) rebuildByAccount(ctx context.Context, account SnapshotAccount, groupIDs []int64, reason string, seen map[batchSeenKey]struct{}) error {
-	if account == nil {
+func (s *SnapshotService) rebuildByProvider(ctx context.Context, provider SnapshotProvider, groupIDs []int64, reason string, seen map[batchSeenKey]struct{}) error {
+	if provider == nil {
 		return nil
 	}
 	return s.rebuildByGroupIDs(ctx, groupIDs, reason, seen)
 }
 
 func schedulerSnapshotPlatforms() []string {
-	return append([]string{""}, capability.AccountPlatforms()...)
+	return append([]string{""}, capability.ProviderPlatforms()...)
 }
 
 // 生命周期辅助函数有意排除 group0；full rebuild 构造 group0 canonical 集时必须显式调用 canonical helper。
@@ -802,7 +802,7 @@ func (s *SnapshotService) bucketsForPlatform(platform string, groupIDs []int64, 
 	buckets := make([]SchedulerBucket, 0, len(groupIDs)*3)
 	for _, gid := range groupIDs {
 		// 同一轮轮询中跳过已经重建过的（分组、平台）组合。首次重建会从数据库
-		// 加载该分组的全部账号，因此同批次后续相同组合的重建没有必要。
+		// 加载该分组的全部提供商，因此同批次后续相同组合的重建没有必要。
 		if seen != nil {
 			key := batchSeenKey{groupID: gid, platform: platform}
 			if _, exists := seen[key]; exists {
@@ -818,7 +818,7 @@ func (s *SnapshotService) bucketsForPlatform(platform string, groupIDs []int64, 
 
 func (s *SnapshotService) rebuildBuckets(ctx context.Context, buckets []SchedulerBucket, reason string) error {
 	tasks, firstErr := s.prepareBucketWriteTasks(ctx, buckets)
-	queries := newSchedulerAccountQueryCache(tasks)
+	queries := newSchedulerProviderQueryCache(tasks)
 	if err := s.rebuildPreparedBucketTasks(ctx, tasks, reason, false, queries); err != nil && firstErr == nil {
 		firstErr = err
 	}
@@ -852,7 +852,7 @@ func (s *SnapshotService) rebuildPreparedBucketTasks(
 	tasks []schedulerBucketWriteTask,
 	reason string,
 	strict bool,
-	queries *schedulerAccountQueryCache,
+	queries *schedulerProviderQueryCache,
 ) error {
 	var firstErr error
 	for _, task := range tasks {
@@ -868,7 +868,7 @@ func (s *SnapshotService) rebuildBucketWithTokenPolicyAndQueryCache(
 	task schedulerBucketWriteTask,
 	reason string,
 	strict bool,
-	queries *schedulerAccountQueryCache,
+	queries *schedulerProviderQueryCache,
 ) error {
 	if queries != nil {
 		defer queries.release(task.bucket)
@@ -896,12 +896,12 @@ func (s *SnapshotService) rebuildBucketWithTokenPolicyAndQueryCache(
 	rebuildCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	accounts, err := s.loadAccountsForRebuild(rebuildCtx, bucket, queries)
+	providers, err := s.loadProvidersForRebuild(rebuildCtx, bucket, queries)
 	if err != nil {
 		s.diagnostics().printf("service.scheduler_snapshot", "[Scheduler] rebuild failed: bucket=%s reason=%s err=%v", bucket.String(), reason, err)
 		return err
 	}
-	if err := s.setRebuildSnapshot(rebuildCtx, task, accounts, queries); err != nil {
+	if err := s.setRebuildSnapshot(rebuildCtx, task, providers, queries); err != nil {
 		if errors.Is(err, ErrSchedulerBucketRetired) || errors.Is(err, ErrSchedulerBucketWriteFenced) {
 			s.diagnostics().event("debug", "[Scheduler] rebuild fenced", "bucket", bucket.String(), "reason", reason)
 			if strict {
@@ -912,38 +912,38 @@ func (s *SnapshotService) rebuildBucketWithTokenPolicyAndQueryCache(
 		s.diagnostics().printf("service.scheduler_snapshot", "[Scheduler] rebuild cache failed: bucket=%s reason=%s err=%v", bucket.String(), reason, err)
 		return err
 	}
-	s.diagnostics().event("debug", "[Scheduler] rebuild ok", "bucket", bucket.String(), "reason", reason, "size", len(accounts))
+	s.diagnostics().event("debug", "[Scheduler] rebuild ok", "bucket", bucket.String(), "reason", reason, "size", len(providers))
 	return nil
 }
 
 func (s *SnapshotService) setRebuildSnapshot(
 	ctx context.Context,
 	task schedulerBucketWriteTask,
-	accounts []SnapshotAccount,
-	queries *schedulerAccountQueryCache,
+	providers []SnapshotProvider,
+	queries *schedulerProviderQueryCache,
 ) error {
-	writer, ok := s.cache.(schedulerSnapshotAccountIDWriter)
-	key, reusable := schedulerAccountQueryKeyForBucket(task.bucket)
+	writer, ok := s.cache.(schedulerSnapshotProviderIDWriter)
+	key, reusable := schedulerProviderQueryKeyForBucket(task.bucket)
 	if !ok || queries == nil || !reusable {
-		return s.cache.SetSnapshot(ctx, task.bucket, task.token, accounts)
+		return s.cache.SetSnapshot(ctx, task.bucket, task.token, providers)
 	}
 
-	if accountIDs, exists := queries.snapshotAccountIDs[key]; exists {
-		return writer.SetSnapshotByAccountIDs(ctx, task.bucket, task.token, accountIDs)
+	if providerIDs, exists := queries.snapshotProviderIDs[key]; exists {
+		return writer.SetSnapshotByProviderIDs(ctx, task.bucket, task.token, providerIDs)
 	}
 	if queries.remaining[key] <= 1 {
-		return s.cache.SetSnapshot(ctx, task.bucket, task.token, accounts)
+		return s.cache.SetSnapshot(ctx, task.bucket, task.token, providers)
 	}
 
-	accountIDs, err := writer.SetSnapshotAndReturnAccountIDs(ctx, task.bucket, task.token, accounts)
+	providerIDs, err := writer.SetSnapshotAndReturnProviderIDs(ctx, task.bucket, task.token, providers)
 	if err != nil {
 		return err
 	}
 	if queries.remaining[key] > 1 {
-		// 必须保存实际成功编码并写入的有序 ID，不能从原账号切片重新推导；
-		// 否则不可编码账号会只出现在后续桶中，破坏两个快照的成员一致性。
-		// 返回切片由当前批次独占，直接接管可避免 10k 账号场景再次复制。
-		queries.snapshotAccountIDs[key] = accountIDs
+		// 必须保存实际成功编码并写入的有序 ID，不能从原提供商切片重新推导；
+		// 否则不可编码提供商会只出现在后续桶中，破坏两个快照的成员一致性。
+		// 返回切片由当前批次独占，直接接管可避免 10k 提供商场景再次复制。
+		queries.snapshotProviderIDs[key] = providerIDs
 	}
 	return nil
 }
@@ -1122,7 +1122,7 @@ func (s *SnapshotService) prepareAndRebuildFullSnapshot(
 		return firstErr
 	}
 	captured = append(captured, ordinary...)
-	queries := newSchedulerAccountQueryCache(reopened, captured)
+	queries := newSchedulerProviderQueryCache(reopened, captured)
 	if err := s.rebuildPreparedBucketTasks(ctx, reopened, reason, true, queries); err != nil {
 		firstErr = err
 	}
@@ -1380,41 +1380,41 @@ func (s *SnapshotService) shouldLogOutboxLagWarning(active bool) bool {
 	return shouldLog
 }
 
-func (s *SnapshotService) loadAccountsFromDB(ctx context.Context, bucket SchedulerBucket, useMixed bool) ([]SnapshotAccount, error) {
-	if s.accountRepo == nil {
+func (s *SnapshotService) loadProvidersFromDB(ctx context.Context, bucket SchedulerBucket, useMixed bool) ([]SnapshotProvider, error) {
+	if s.providerRepo == nil {
 		return nil, ErrSchedulerCacheNotReady
 	}
 	if bucket.GroupID <= 0 {
 		return nil, nil
 	}
 	if bucket.Platform == "" {
-		return s.accountRepo.ListSchedulableByGroupIDAndPlatforms(ctx, bucket.GroupID, capability.AccountPlatforms())
+		return s.providerRepo.ListSchedulableByGroupIDAndPlatforms(ctx, bucket.GroupID, capability.ProviderPlatforms())
 	}
-	return s.accountRepo.ListSchedulableByGroupIDAndPlatform(ctx, bucket.GroupID, bucket.Platform)
+	return s.providerRepo.ListSchedulableByGroupIDAndPlatform(ctx, bucket.GroupID, bucket.Platform)
 }
 
-func (s *SnapshotService) loadAccountsForRebuild(
+func (s *SnapshotService) loadProvidersForRebuild(
 	ctx context.Context,
 	bucket SchedulerBucket,
-	queries *schedulerAccountQueryCache,
-) ([]SnapshotAccount, error) {
-	key, cacheable := schedulerAccountQueryKeyForBucket(bucket)
+	queries *schedulerProviderQueryCache,
+) ([]SnapshotProvider, error) {
+	key, cacheable := schedulerProviderQueryKeyForBucket(bucket)
 	if queries == nil || !cacheable {
-		return s.loadAccountsFromDB(ctx, bucket, bucket.Mode == SchedulerModeMixed)
+		return s.loadProvidersFromDB(ctx, bucket, bucket.Mode == SchedulerModeMixed)
 	}
 
-	if accounts, ok := queries.accounts[key]; ok {
-		return accounts, nil
+	if providers, ok := queries.providers[key]; ok {
+		return providers, nil
 	}
 	if queries.remaining[key] <= 1 {
-		return s.loadAccountsFromDB(ctx, bucket, false)
+		return s.loadProvidersFromDB(ctx, bucket, false)
 	}
-	accounts, err := s.loadAccountsFromDB(ctx, bucket, false)
+	providers, err := s.loadProvidersFromDB(ctx, bucket, false)
 	if err != nil {
 		return nil, err
 	}
-	queries.accounts[key] = accounts
-	return accounts, nil
+	queries.providers[key] = providers
+	return providers, nil
 }
 
 func (s *SnapshotService) bucketFor(groupID *int64, platform string, mode string) SchedulerBucket {
@@ -1524,16 +1524,16 @@ func dedupeBuckets(in []SchedulerBucket) []SchedulerBucket {
 	return out
 }
 
-func derefAccounts(accounts []SnapshotAccount) []SnapshotAccount {
-	if len(accounts) == 0 {
-		return []SnapshotAccount{}
+func derefProviders(providers []SnapshotProvider) []SnapshotProvider {
+	if len(providers) == 0 {
+		return []SnapshotProvider{}
 	}
-	out := make([]SnapshotAccount, 0, len(accounts))
-	for _, account := range accounts {
-		if account == nil {
+	out := make([]SnapshotProvider, 0, len(providers))
+	for _, provider := range providers {
+		if provider == nil {
 			continue
 		}
-		out = append(out, account)
+		out = append(out, provider)
 	}
 	return out
 }
@@ -1605,16 +1605,16 @@ func (l *fallbackLimiter) Allow() bool {
 }
 
 var (
-	ErrSnapshotAccountNotFound = errors.New("scheduler account not found")
-	ErrSnapshotGroupNotFound   = errors.New("scheduler group not found")
+	ErrSnapshotProviderNotFound = errors.New("scheduler provider not found")
+	ErrSnapshotGroupNotFound    = errors.New("scheduler group not found")
 )
 
 func (s *SnapshotService) diagnostics() Diagnostics { return s.bindings.Diagnostics }
-func (s *SnapshotService) accountNotFound() error {
-	if s.bindings.AccountNotFound != nil {
-		return s.bindings.AccountNotFound
+func (s *SnapshotService) providerNotFound() error {
+	if s.bindings.ProviderNotFound != nil {
+		return s.bindings.ProviderNotFound
 	}
-	return ErrSnapshotAccountNotFound
+	return ErrSnapshotProviderNotFound
 }
 
 func (s *SnapshotService) groupNotFound() error {

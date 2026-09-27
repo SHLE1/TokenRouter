@@ -11,15 +11,15 @@ import (
 
 	routingtestkit "github.com/TokenFlux/TokenRouter/internal/routing/testkit"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/stretchr/testify/require"
 )
 
-// TestResolveOpenAIWSRoutingModelForAccountStrictlyFollowsBillingBasis 验证长连接每轮都严格按所选依据检查 R、C 或 U。
-func TestResolveOpenAIWSRoutingModelForAccountStrictlyFollowsBillingBasis(t *testing.T) {
+// TestResolveOpenAIWSRoutingModelForProviderStrictlyFollowsBillingBasis 验证长连接每轮都严格按所选依据检查 R、C 或 U。
+func TestResolveOpenAIWSRoutingModelForProviderStrictlyFollowsBillingBasis(t *testing.T) {
 	price := 0.01
 	tests := []struct {
 		name           string
@@ -48,11 +48,11 @@ func TestResolveOpenAIWSRoutingModelForAccountStrictlyFollowsBillingBasis(t *tes
 				}},
 			}
 			svc := selection.NewCompatible(selection.CompatibleDependencies{Shared: selection.Shared{GroupPolicies: routingtestkit.PricingConfig(groupID, capability.PlatformOpenAI, pricingConfig)}}, selection.DefaultOptions())
-			account := &gatewayprovider.ExecutionAccount{
-				Record: accountcore.Record{
+			provider := &gatewayprovider.ExecutionProvider{
+				Record: providercore.Record{
 					LoadLocation: time.LoadLocation, ID: 90,
 					Platform:    capability.PlatformOpenAI,
-					Type:        capability.AccountTypeAPIKey,
+					Type:        capability.ProviderTypeAPIKey,
 					Status:      billing.StatusActive,
 					Schedulable: true,
 					Credentials: map[string]any{
@@ -62,8 +62,8 @@ func TestResolveOpenAIWSRoutingModelForAccountStrictlyFollowsBillingBasis(t *tes
 				},
 			}
 
-			routingModel, err := svc.ResolveOpenAIWSRoutingModelForAccount(
-				context.Background(), &groupID, account, "client-alias", accountcore.OpenAIEndpointCapabilityTextGeneration,
+			routingModel, err := svc.ResolveOpenAIWSRoutingModelForProvider(
+				context.Background(), &groupID, provider, "client-alias", providercore.OpenAIEndpointCapabilityTextGeneration,
 			)
 			if tt.expectRejected {
 				require.Error(t, err)
@@ -76,13 +76,13 @@ func TestResolveOpenAIWSRoutingModelForAccountStrictlyFollowsBillingBasis(t *tes
 	}
 }
 
-// TestResolveOpenAIWSRoutingModelForAccountRejectsUnsupportedMappedModel 验证后续 turn 不能绕过固定账号的最终白名单。
-func TestResolveOpenAIWSRoutingModelForAccountRejectsUnsupportedMappedModel(t *testing.T) {
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+// TestResolveOpenAIWSRoutingModelForProviderRejectsUnsupportedMappedModel 验证后续 turn 不能绕过固定提供商的最终白名单。
+func TestResolveOpenAIWSRoutingModelForProviderRejectsUnsupportedMappedModel(t *testing.T) {
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 91,
 			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeAPIKey,
+			Type:        capability.ProviderTypeAPIKey,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Credentials: map[string]any{
@@ -93,8 +93,8 @@ func TestResolveOpenAIWSRoutingModelForAccountRejectsUnsupportedMappedModel(t *t
 	}
 	svc := selection.NewCompatible(selection.CompatibleDependencies{}, selection.DefaultOptions())
 
-	routingModel, err := svc.ResolveOpenAIWSRoutingModelForAccount(
-		context.Background(), nil, account, "group-model", accountcore.OpenAIEndpointCapabilityTextGeneration,
+	routingModel, err := svc.ResolveOpenAIWSRoutingModelForProvider(
+		context.Background(), nil, provider, "group-model", providercore.OpenAIEndpointCapabilityTextGeneration,
 	)
 	require.Error(t, err)
 	require.Empty(t, routingModel)

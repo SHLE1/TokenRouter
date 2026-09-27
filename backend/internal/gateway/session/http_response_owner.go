@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// HTTPResponseOwnerReader 只读取既有续接归属，不参与账号选择或复制会话缓存。
+// HTTPResponseOwnerReader 只读取既有续接归属，不参与提供商选择或复制会话缓存。
 type HTTPResponseOwnerReader interface {
 	GetHTTPResponseOwner(context.Context, int64, string) (int64, int64, bool, error)
 }

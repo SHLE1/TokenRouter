@@ -113,7 +113,7 @@ func (h MessagesErrorOutput) ResponsesExhausted(c *gin.Context, lastErr *forward
 	if lastErr != nil && lastErr.StatusCode > 0 {
 		statusCode = lastErr.StatusCode
 	}
-	status, code, message := statusCode, "server_error", "All available accounts exhausted"
+	status, code, message := statusCode, "server_error", "All available providers exhausted"
 	if lastErr != nil && lastErr.IsCredentialFailure() {
 		status, message = CredentialFailoverClientResponse(lastErr)
 	} else if lastErr != nil && gatewayprovider.IsOpenAICapacityShed(lastErr) && strings.TrimSpace(lastErr.ClientMessage) != "" {
@@ -126,7 +126,7 @@ func (h MessagesErrorOutput) ResponsesExhausted(c *gin.Context, lastErr *forward
 		SetOpsUpstreamError(c, statusCode, forwardcore.OpenAISilentRefusalClientMessage(), "")
 		status, code, message = http.StatusBadGateway, "upstream_error", forwardcore.OpenAISilentRefusalClientMessage()
 	} else if lastErr != nil && statusCode == http.StatusTooManyRequests {
-		status, code, message = http.StatusTooManyRequests, "rate_limit_error", "All available accounts are currently rate-limited. Please retry later."
+		status, code, message = http.StatusTooManyRequests, "rate_limit_error", "All available providers are currently rate-limited. Please retry later."
 	}
 	if streamStarted {
 		// A slot-wait heartbeat commits HTTP 200 before any upstream response.
@@ -177,7 +177,7 @@ func (h MessagesErrorOutput) ChatExhausted(c *gin.Context, lastErr *forwardcore.
 		h.ChatError(c, http.StatusBadGateway, "upstream_error", forwardcore.OpenAISilentRefusalClientMessage())
 		return
 	}
-	h.ChatError(c, statusCode, "server_error", "All available accounts exhausted")
+	h.ChatError(c, statusCode, "server_error", "All available providers exhausted")
 }
 
 func (h MessagesErrorOutput) GeminiExhausted(c *gin.Context, failoverErr *forwardcore.UpstreamFailoverError) {

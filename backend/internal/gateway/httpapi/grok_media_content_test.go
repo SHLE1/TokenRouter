@@ -11,9 +11,9 @@ import (
 	"testing"
 	time "time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	upstreamcore "github.com/TokenFlux/TokenRouter/internal/upstream"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/grok"
@@ -40,23 +40,25 @@ func (s *grokMediaContentUpstreamStub) Do(req *http.Request, _ string, _ int64, 
 	return s.response, nil
 }
 
-func (s *grokMediaContentUpstreamStub) DoWithTLS(req *http.Request, proxyURL string, accountID int64, accountConcurrency int, _ *tlsfingerprint.Profile) (*http.Response, error) {
-	return s.Do(req, proxyURL, accountID, accountConcurrency)
+func (s *grokMediaContentUpstreamStub) DoWithTLS(req *http.Request, proxyURL string, providerID int64, providerConcurrency int, _ *tlsfingerprint.Profile) (*http.Response, error) {
+	return s.Do(req, proxyURL, providerID, providerConcurrency)
 }
 
-func grokMediaContentTestAccount() *gatewayprovider.ExecutionAccount {
-	return &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 9,
-		Platform: capability.PlatformGrok,
-		Type:     capability.AccountTypeAPIKey,
-		Credentials: map[string]any{
-			"api_key":  "upstream-key",
-			"base_url": "https://relay.example/v1",
-		}},
+func grokMediaContentTestProvider() *gatewayprovider.ExecutionProvider {
+	return &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 9,
+			Platform: capability.PlatformGrok,
+			Type:     capability.ProviderTypeAPIKey,
+			Credentials: map[string]any{
+				"api_key":  "upstream-key",
+				"base_url": "https://relay.example/v1",
+			},
+		},
 	}
 }
 
 func grokMediaContentTestContext(method, target string, headers map[string]string) (*gin.Context, *httptest.ResponseRecorder) {
-
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(method, target, nil)
@@ -96,7 +98,7 @@ func TestForwardGrokMediaContentUsesUpstreamCredentialAndStreamsRange(t *testing
 	})
 
 	result, err := svc.ForwardGrokMedia(
-		context.Background(), c, grokMediaContentTestAccount(),
+		context.Background(), c, grokMediaContentTestProvider(),
 		grok.GrokMediaEndpointVideoContent, "task-1", nil, "",
 	)
 
@@ -132,7 +134,7 @@ func TestForwardGrokMediaContentStreamsFullResponseWithSafeDefaults(t *testing.T
 	c, recorder := grokMediaContentTestContext(http.MethodGet, "https://api.example/v1/videos/task-1/content", nil)
 
 	_, err := svc.ForwardGrokMedia(
-		context.Background(), c, grokMediaContentTestAccount(),
+		context.Background(), c, grokMediaContentTestProvider(),
 		grok.GrokMediaEndpointVideoContent, "task-1", nil, "",
 	)
 
@@ -167,7 +169,7 @@ func TestForwardGrokMediaContentPreservesRangeNotSatisfiable(t *testing.T) {
 	})
 
 	_, err := svc.ForwardGrokMedia(
-		context.Background(), c, grokMediaContentTestAccount(),
+		context.Background(), c, grokMediaContentTestProvider(),
 		grok.GrokMediaEndpointVideoContent, "task-1", nil, "",
 	)
 
@@ -196,16 +198,16 @@ func TestForwardGrokMediaContentFetchesValidatedSignedURLWithoutCredentials(t *t
 			},
 		},
 	}
-	account := grokMediaContentTestAccount()
-	account.Record.Credentials["header_override_enabled"] = true
-	account.Record.Credentials["header_overrides"] = map[string]any{"user-agent": "private-agent"}
+	provider := grokMediaContentTestProvider()
+	provider.Record.Credentials["header_override_enabled"] = true
+	provider.Record.Credentials["header_overrides"] = map[string]any{"user-agent": "private-agent"}
 	svc := grokMediaFixture(upstream)
 	c, recorder := grokMediaContentTestContext(http.MethodGet, "https://api.example/v1/videos/task-1/content", map[string]string{
 		"Range": "bytes=0-12",
 	})
 
 	_, err := svc.ForwardGrokMedia(
-		context.Background(), c, account,
+		context.Background(), c, provider,
 		grok.GrokMediaEndpointVideoContent, "task-1", nil, "",
 	)
 
@@ -244,7 +246,7 @@ func TestForwardGrokMediaContentFollowsAuthenticatedSub2APIRelay(t *testing.T) {
 			c, recorder := grokMediaContentTestContext(http.MethodGet, "https://api.example/v1/videos/task-1/content", nil)
 
 			_, err := svc.ForwardGrokMedia(
-				context.Background(), c, grokMediaContentTestAccount(),
+				context.Background(), c, grokMediaContentTestProvider(),
 				grok.GrokMediaEndpointVideoContent, "task-1", nil, "",
 			)
 
@@ -268,7 +270,7 @@ func TestForwardGrokMediaContentRejectsUntrustedSignedURL(t *testing.T) {
 	c, _ := grokMediaContentTestContext(http.MethodGet, "https://api.example/v1/videos/task-1/content", nil)
 
 	_, err := svc.ForwardGrokMedia(
-		context.Background(), c, grokMediaContentTestAccount(),
+		context.Background(), c, grokMediaContentTestProvider(),
 		grok.GrokMediaEndpointVideoContent, "task-1", nil, "",
 	)
 
@@ -315,7 +317,7 @@ func TestForwardGrokVideoStatusRewritesOnlyProtectedContentURL(t *testing.T) {
 	})
 
 	_, err := svc.ForwardGrokMedia(
-		context.Background(), c, grokMediaContentTestAccount(),
+		context.Background(), c, grokMediaContentTestProvider(),
 		grok.GrokMediaEndpointVideoStatus, "task-1", nil, "",
 	)
 

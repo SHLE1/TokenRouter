@@ -6,7 +6,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/accessview"
 )
 
@@ -19,7 +19,7 @@ func (s *CapacityService) GetAllGroupCapacity(ctx context.Context) ([]GroupCapac
 		return nil, err
 	}
 
-	if lister, ok := s.accountRepo.(CapacityBatchAccounts); ok {
+	if lister, ok := s.providerRepo.(CapacityBatchProviders); ok {
 		return s.getGroupCapacitiesBatch(ctx, groupIDs, lister)
 	}
 
@@ -40,12 +40,12 @@ func (s *CapacityService) getGroupCapacitiesSequential(ctx context.Context, grou
 	return results
 }
 
-type groupCapacityAccountRef struct {
-	groupID   int64
-	accountID int64
+type groupCapacityProviderRef struct {
+	groupID    int64
+	providerID int64
 }
 
-func (s *CapacityService) getGroupCapacitiesBatch(ctx context.Context, groupIDs []int64, lister CapacityBatchAccounts) ([]GroupCapacitySummary, error) {
+func (s *CapacityService) getGroupCapacitiesBatch(ctx context.Context, groupIDs []int64, lister CapacityBatchProviders) ([]GroupCapacitySummary, error) {
 	results := make([]GroupCapacitySummary, len(groupIDs))
 	groupIndex := make(map[int64]int, len(groupIDs))
 	for i, groupID := range groupIDs {
@@ -64,33 +64,33 @@ func (s *CapacityService) getGroupCapacitiesBatch(ctx context.Context, groupIDs 
 		return results, nil
 	}
 
-	refs := make([]groupCapacityAccountRef, 0, len(rows))
-	seenGroupAccount := make(map[groupCapacityAccountRef]struct{}, len(rows))
-	accountIDSet := make(map[int64]struct{}, len(rows))
-	accountIDs := make([]int64, 0, len(rows))
+	refs := make([]groupCapacityProviderRef, 0, len(rows))
+	seenGroupProvider := make(map[groupCapacityProviderRef]struct{}, len(rows))
+	providerIDSet := make(map[int64]struct{}, len(rows))
+	providerIDs := make([]int64, 0, len(rows))
 	sessionTimeouts := make(map[int64]time.Duration)
 
 	for _, row := range rows {
 		idx, ok := groupIndex[row.GroupID]
-		if !ok || row.Account.ID <= 0 {
+		if !ok || row.Provider.ID <= 0 {
 			continue
 		}
 
-		acc := row.Account
+		acc := row.Provider
 		if acc.QuotaAutoPaused {
 			continue
 		}
 
-		ref := groupCapacityAccountRef{groupID: row.GroupID, accountID: row.Account.ID}
-		if _, ok := seenGroupAccount[ref]; ok {
+		ref := groupCapacityProviderRef{groupID: row.GroupID, providerID: row.Provider.ID}
+		if _, ok := seenGroupProvider[ref]; ok {
 			continue
 		}
-		seenGroupAccount[ref] = struct{}{}
+		seenGroupProvider[ref] = struct{}{}
 		refs = append(refs, ref)
 
-		if _, ok := accountIDSet[row.Account.ID]; !ok {
-			accountIDSet[row.Account.ID] = struct{}{}
-			accountIDs = append(accountIDs, row.Account.ID)
+		if _, ok := providerIDSet[row.Provider.ID]; !ok {
+			providerIDSet[row.Provider.ID] = struct{}{}
+			providerIDs = append(providerIDs, row.Provider.ID)
 		}
 
 		results[idx].ConcurrencyMax += acc.Concurrency
@@ -109,39 +109,39 @@ func (s *CapacityService) getGroupCapacitiesBatch(ctx context.Context, groupIDs 
 		}
 	}
 
-	if len(accountIDs) == 0 {
+	if len(providerIDs) == 0 {
 		return results, nil
 	}
 
 	concurrencyMap := map[int64]int{}
 	if s.concurrencyService != nil {
-		concurrencyMap, _ = s.concurrencyService.GetAccountConcurrencyBatch(ctx, accountIDs)
+		concurrencyMap, _ = s.concurrencyService.GetProviderConcurrencyBatch(ctx, providerIDs)
 	}
 
-	sessionAccountIDs := accountIDsForGroupsWithLimit(refs, groupIndex, results, func(summary GroupCapacitySummary) bool {
+	sessionProviderIDs := providerIDsForGroupsWithLimit(refs, groupIndex, results, func(summary GroupCapacitySummary) bool {
 		return summary.SessionsMax > 0
 	})
 	var sessionsMap map[int64]int
-	if len(sessionAccountIDs) > 0 && s.sessionLimitCache != nil {
-		sessionsMap, _ = s.sessionLimitCache.GetActiveSessionCountBatch(ctx, sessionAccountIDs, sessionTimeouts)
+	if len(sessionProviderIDs) > 0 && s.sessionLimitCache != nil {
+		sessionsMap, _ = s.sessionLimitCache.GetActiveSessionCountBatch(ctx, sessionProviderIDs, sessionTimeouts)
 	}
 
-	rpmAccountIDs := accountIDsForGroupsWithLimit(refs, groupIndex, results, func(summary GroupCapacitySummary) bool {
+	rpmProviderIDs := providerIDsForGroupsWithLimit(refs, groupIndex, results, func(summary GroupCapacitySummary) bool {
 		return summary.RPMMax > 0
 	})
 	var rpmMap map[int64]int
-	if len(rpmAccountIDs) > 0 && s.rpmCache != nil {
-		rpmMap, _ = s.rpmCache.GetRPMBatch(ctx, rpmAccountIDs)
+	if len(rpmProviderIDs) > 0 && s.rpmCache != nil {
+		rpmMap, _ = s.rpmCache.GetRPMBatch(ctx, rpmProviderIDs)
 	}
 
 	for _, ref := range refs {
 		idx := groupIndex[ref.groupID]
-		results[idx].ConcurrencyUsed += concurrencyMap[ref.accountID]
+		results[idx].ConcurrencyUsed += concurrencyMap[ref.providerID]
 		if sessionsMap != nil && results[idx].SessionsMax > 0 {
-			results[idx].SessionsUsed += sessionsMap[ref.accountID]
+			results[idx].SessionsUsed += sessionsMap[ref.providerID]
 		}
 		if rpmMap != nil && results[idx].RPMMax > 0 {
-			results[idx].RPMUsed += rpmMap[ref.accountID]
+			results[idx].RPMUsed += rpmMap[ref.providerID]
 		}
 	}
 	return results, nil
@@ -171,7 +171,7 @@ func (s *CapacityService) GetGroupCapacityByIDs(ctx context.Context, groupIDs []
 		normalized = append(normalized, groupID)
 	}
 
-	if lister, ok := s.accountRepo.(CapacityBatchAccounts); ok {
+	if lister, ok := s.providerRepo.(CapacityBatchProviders); ok {
 		summaries, err := s.getGroupCapacitiesBatch(ctx, normalized, lister)
 		if err != nil {
 			return results, err
@@ -194,44 +194,44 @@ func (s *CapacityService) GetGroupCapacityByIDs(ctx context.Context, groupIDs []
 	return results, nil
 }
 
-func accountIDsForGroupsWithLimit(refs []groupCapacityAccountRef, groupIndex map[int64]int, summaries []GroupCapacitySummary, include func(GroupCapacitySummary) bool) []int64 {
+func providerIDsForGroupsWithLimit(refs []groupCapacityProviderRef, groupIndex map[int64]int, summaries []GroupCapacitySummary, include func(GroupCapacitySummary) bool) []int64 {
 	seen := make(map[int64]struct{})
-	accountIDs := make([]int64, 0)
+	providerIDs := make([]int64, 0)
 	for _, ref := range refs {
 		idx, ok := groupIndex[ref.groupID]
 		if !ok || !include(summaries[idx]) {
 			continue
 		}
-		if _, ok := seen[ref.accountID]; ok {
+		if _, ok := seen[ref.providerID]; ok {
 			continue
 		}
-		seen[ref.accountID] = struct{}{}
-		accountIDs = append(accountIDs, ref.accountID)
+		seen[ref.providerID] = struct{}{}
+		providerIDs = append(providerIDs, ref.providerID)
 	}
-	return accountIDs
+	return providerIDs
 }
 
 func (s *CapacityService) GetGroupCapacity(ctx context.Context, groupID int64) (GroupCapacitySummary, error) {
-	accounts, err := s.accountRepo.ListSchedulableByGroupID(ctx, groupID)
+	providers, err := s.providerRepo.ListSchedulableByGroupID(ctx, groupID)
 	if err != nil {
 		return GroupCapacitySummary{}, err
 	}
-	if len(accounts) == 0 {
+	if len(providers) == 0 {
 		return GroupCapacitySummary{}, nil
 	}
-	accounts = slices.DeleteFunc(accounts, func(a account.CapacitySnapshot) bool { return a.QuotaAutoPaused })
-	if len(accounts) == 0 {
+	providers = slices.DeleteFunc(providers, func(a provider.CapacitySnapshot) bool { return a.QuotaAutoPaused })
+	if len(providers) == 0 {
 		return GroupCapacitySummary{}, nil
 	}
 
-	// 收集账号 ID 和容量配置。
-	accountIDs := make([]int64, 0, len(accounts))
+	// 收集提供商 ID 和容量配置。
+	providerIDs := make([]int64, 0, len(providers))
 	sessionTimeouts := make(map[int64]time.Duration)
 	var concurrencyMax, sessionsMax, rpmMax int
 
-	for i := range accounts {
-		acc := &accounts[i]
-		accountIDs = append(accountIDs, acc.ID)
+	for i := range providers {
+		acc := &providers[i]
+		providerIDs = append(providerIDs, acc.ID)
 		concurrencyMax += acc.Concurrency
 
 		if ms := acc.MaxSessions; ms > 0 {
@@ -251,22 +251,22 @@ func (s *CapacityService) GetGroupCapacity(ctx context.Context, groupID int64) (
 	// 批量查询运行时容量数据；缓存异常只影响当前指标，不阻断容量展示。
 	concurrencyMap := map[int64]int{}
 	if s.concurrencyService != nil {
-		concurrencyMap, _ = s.concurrencyService.GetAccountConcurrencyBatch(ctx, accountIDs)
+		concurrencyMap, _ = s.concurrencyService.GetProviderConcurrencyBatch(ctx, providerIDs)
 	}
 
 	var sessionsMap map[int64]int
 	if sessionsMax > 0 && s.sessionLimitCache != nil {
-		sessionsMap, _ = s.sessionLimitCache.GetActiveSessionCountBatch(ctx, accountIDs, sessionTimeouts)
+		sessionsMap, _ = s.sessionLimitCache.GetActiveSessionCountBatch(ctx, providerIDs, sessionTimeouts)
 	}
 
 	var rpmMap map[int64]int
 	if rpmMax > 0 && s.rpmCache != nil {
-		rpmMap, _ = s.rpmCache.GetRPMBatch(ctx, accountIDs)
+		rpmMap, _ = s.rpmCache.GetRPMBatch(ctx, providerIDs)
 	}
 
-	// 聚合账号级容量为分组级容量。
+	// 聚合提供商级容量为分组级容量。
 	var concurrencyUsed, sessionsUsed, rpmUsed int
-	for _, id := range accountIDs {
+	for _, id := range providerIDs {
 		concurrencyUsed += concurrencyMap[id]
 		if sessionsMap != nil {
 			sessionsUsed += sessionsMap[id]
@@ -286,21 +286,21 @@ func (s *CapacityService) GetGroupCapacity(ctx context.Context, groupID int64) (
 	}, nil
 }
 
-type CapacityAccountRow struct {
-	GroupID int64
-	Account account.CapacitySnapshot
+type CapacityProviderRow struct {
+	GroupID  int64
+	Provider provider.CapacitySnapshot
 }
-type CapacityAccounts interface {
-	ListSchedulableByGroupID(context.Context, int64) ([]account.CapacitySnapshot, error)
+type CapacityProviders interface {
+	ListSchedulableByGroupID(context.Context, int64) ([]provider.CapacitySnapshot, error)
 }
-type CapacityBatchAccounts interface {
-	ListSchedulableCapacityByGroupIDs(context.Context, []int64) ([]CapacityAccountRow, error)
+type CapacityBatchProviders interface {
+	ListSchedulableCapacityByGroupIDs(context.Context, []int64) ([]CapacityProviderRow, error)
 }
 type CapacityGroups interface {
 	ListActiveIDs(context.Context) ([]int64, error)
 }
 type CapacityConcurrency interface {
-	GetAccountConcurrencyBatch(context.Context, []int64) (map[int64]int, error)
+	GetProviderConcurrencyBatch(context.Context, []int64) (map[int64]int, error)
 }
 type CapacitySessions interface {
 	GetActiveSessionCountBatch(context.Context, []int64, map[int64]time.Duration) (map[int64]int, error)
@@ -309,15 +309,15 @@ type CapacityRPM interface {
 	GetRPMBatch(context.Context, []int64) (map[int64]int, error)
 }
 
-// CapacityService 只聚合已投影的账号配置及运行计数，不持有账号或计数缓存。
+// CapacityService 只聚合已投影的提供商配置及运行计数，不持有提供商或计数缓存。
 type CapacityService struct {
-	accountRepo        CapacityAccounts
+	providerRepo       CapacityProviders
 	groupRepo          CapacityGroups
 	concurrencyService CapacityConcurrency
 	sessionLimitCache  CapacitySessions
 	rpmCache           CapacityRPM
 }
 
-func NewCapacityService(accounts CapacityAccounts, groups CapacityGroups, concurrency CapacityConcurrency, sessions CapacitySessions, rpm CapacityRPM) *CapacityService {
-	return &CapacityService{accountRepo: accounts, groupRepo: groups, concurrencyService: concurrency, sessionLimitCache: sessions, rpmCache: rpm}
+func NewCapacityService(providers CapacityProviders, groups CapacityGroups, concurrency CapacityConcurrency, sessions CapacitySessions, rpm CapacityRPM) *CapacityService {
+	return &CapacityService{providerRepo: providers, groupRepo: groups, concurrencyService: concurrency, sessionLimitCache: sessions, rpmCache: rpm}
 }

@@ -12,30 +12,33 @@ import (
 )
 
 type openAICountAttempt struct {
-	ports   OpenAITokenPorts
-	c       *gin.Context
-	call    OpenAICountCall
-	key     *apikey.APIKey
-	account OpenAICountTarget
+	ports    OpenAITokenPorts
+	c        *gin.Context
+	call     OpenAICountCall
+	key      *apikey.APIKey
+	provider OpenAICountTarget
 }
 
 func (p OpenAITokenPorts) CountExecution(c *gin.Context, call OpenAICountCall) textflow.SingleCountPorts {
 	return &openAICountAttempt{ports: p, c: c, call: call, key: apikey.CopyAPIKey(call.Key)}
 }
+
 func (p *openAICountAttempt) Select() (bool, error) {
 	// 专用入口显式豁免利润门，不能替换为普通带槽选择。
-	account, err := p.ports.Execution.SelectCount(p.c.Request.Context(), p.key.GroupID, p.call.SessionHash, p.call.AccountLayerModel, p.call.Platform)
-	p.account = account
-	return account != nil, err
+	provider, err := p.ports.Execution.SelectCount(p.c.Request.Context(), p.key.GroupID, p.call.SessionHash, p.call.ProviderLayerModel, p.call.Platform)
+	p.provider = provider
+	return provider != nil, err
 }
+
 func (p *openAICountAttempt) Selected() {
 	SetOpsLatencyMs(p.c, OpsAuthLatencyMsKey, time.Since(p.call.StartedAt).Milliseconds())
 }
+
 func (p *openAICountAttempt) SelectionFailed(err error) {
 	if err != nil {
-		p.call.Log.Warn("openai_count_tokens.account_select_failed", zap.Error(OpenAICompatibleSelectionErrorForLog(err, p.call.Platform)))
+		p.call.Log.Warn("openai_count_tokens.provider_select_failed", zap.Error(OpenAICompatibleSelectionErrorForLog(err, p.call.Platform)))
 	}
-	cls := tokenSelectionError(p.c, p.ports.Diagnoser, p.key, p.call.AccountLayerModel, p.call.Model)
+	cls := tokenSelectionError(p.c, p.ports.Diagnoser, p.key, p.call.ProviderLayerModel, p.call.Model)
 	if !cls.ModelNotFound {
 		if err != nil {
 			MarkOpsRoutingCapacityLimitedIfNoAvailable(p.c, err)
@@ -45,12 +48,14 @@ func (p *openAICountAttempt) SelectionFailed(err error) {
 	}
 	WriteAnthropicError(p.c, cls.Status, cls.ErrType, "", cls.Message)
 }
+
 func (p *openAICountAttempt) Forward() error {
-	selected := p.account.Snapshot()
-	SetOpsSelectedAccount(p.c, selected.ID, selected.Platform)
+	selected := p.provider.Snapshot()
+	SetOpsSelectedProvider(p.c, selected.ID, selected.Platform)
 	body := p.call.MappedBody(p.call.Mapping.Mapped, p.call.Mapping.MappedModel)
-	return p.account.ForwardCount(p.c.Request.Context(), p.c, body, p.call.AccountLayerModel)
+	return p.provider.ForwardCount(p.c.Request.Context(), p.c, body, p.call.ProviderLayerModel)
 }
+
 func (p *openAICountAttempt) ForwardFailed(err error) {
-	p.call.Log.Error("openai_count_tokens.forward_failed", zap.Int64("account_id", p.account.Snapshot().ID), zap.Error(err))
+	p.call.Log.Error("openai_count_tokens.forward_failed", zap.Int64("provider_id", p.provider.Snapshot().ID), zap.Error(err))
 }

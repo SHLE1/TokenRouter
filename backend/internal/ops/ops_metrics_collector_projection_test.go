@@ -9,78 +9,78 @@ import (
 )
 
 type opsMetricsProjectionRepo struct {
-	AccountLoadSource
-	accounts        []AccountObservation
-	accountLoads    []AccountWithConcurrency
+	ProviderLoadSource
+	providers       []ProviderObservation
+	providerLoads   []ProviderWithConcurrency
 	listCalls       int
 	projectionCalls int
 }
 
-func (r *opsMetricsProjectionRepo) ListSchedulable(context.Context) ([]AccountObservation, error) {
+func (r *opsMetricsProjectionRepo) ListSchedulable(context.Context) ([]ProviderObservation, error) {
 	r.listCalls++
-	return r.accounts, nil
+	return r.providers, nil
 }
 
-func (r *opsMetricsProjectionRepo) ListSchedulableAccountLoads(context.Context) ([]AccountWithConcurrency, error) {
+func (r *opsMetricsProjectionRepo) ListSchedulableProviderLoads(context.Context) ([]ProviderWithConcurrency, error) {
 	r.projectionCalls++
-	return r.accountLoads, nil
+	return r.providerLoads, nil
 }
 
 type opsMetricsFallbackRepo struct {
-	AccountLoadSource
-	accounts  []AccountObservation
+	ProviderLoadSource
+	providers []ProviderObservation
 	listCalls int
 }
 
-func (r *opsMetricsFallbackRepo) ListSchedulable(context.Context) ([]AccountObservation, error) {
+func (r *opsMetricsFallbackRepo) ListSchedulable(context.Context) ([]ProviderObservation, error) {
 	r.listCalls++
-	return r.accounts, nil
+	return r.providers, nil
 }
 
 type opsMetricsLoadCache struct {
 	scheduler.ConcurrencyCache
-	loads map[int64]*AccountLoadInfo
-	got   []AccountWithConcurrency
+	loads map[int64]*ProviderLoadInfo
+	got   []ProviderWithConcurrency
 }
 
-func (c *opsMetricsLoadCache) GetAccountsLoadBatch(_ context.Context, accounts []AccountWithConcurrency) (map[int64]*AccountLoadInfo, error) {
-	c.got = accounts
+func (c *opsMetricsLoadCache) GetProvidersLoadBatch(_ context.Context, providers []ProviderWithConcurrency) (map[int64]*ProviderLoadInfo, error) {
+	c.got = providers
 	return c.loads, nil
 }
 
 func TestCollectConcurrencyQueueDepthUsesProjectionAndPreservesFallbackResult(t *testing.T) {
 	loadFactor := 7
-	accounts := []AccountObservation{
+	providers := []ProviderObservation{
 		{ID: 11, Concurrency: 2, LoadFactor: loadFactor},
 		{ID: 12, Concurrency: 3, LoadFactor: 3},
 		{ID: 13, LoadFactor: 1},
 	}
-	accountLoads := []AccountWithConcurrency{
+	providerLoads := []ProviderWithConcurrency{
 		{ID: 11, MaxConcurrency: 7},
 		{ID: 12, MaxConcurrency: 3},
 		{ID: 13, MaxConcurrency: 1},
 	}
-	loads := map[int64]*AccountLoadInfo{
-		11: {AccountID: 11, WaitingCount: 2},
-		12: {AccountID: 12, WaitingCount: 3},
-		13: {AccountID: 13, WaitingCount: 0},
+	loads := map[int64]*ProviderLoadInfo{
+		11: {ProviderID: 11, WaitingCount: 2},
+		12: {ProviderID: 12, WaitingCount: 3},
+		13: {ProviderID: 13, WaitingCount: 0},
 	}
 
-	projectionRepo := &opsMetricsProjectionRepo{accounts: accounts, accountLoads: accountLoads}
+	projectionRepo := &opsMetricsProjectionRepo{providers: providers, providerLoads: providerLoads}
 	projectionCache := &opsMetricsLoadCache{loads: loads}
 	projectionConcurrency := scheduler.NewConcurrencyService(projectionCache)
-	projectionConcurrency.SetAccountLoadBatchCacheTTL(0)
+	projectionConcurrency.SetProviderLoadBatchCacheTTL(0)
 	projectionCollector := &OpsMetricsCollector{
-		accountRepo:        projectionRepo,
+		providerRepo:       projectionRepo,
 		concurrencyService: projectionConcurrency,
 	}
 
-	fallbackRepo := &opsMetricsFallbackRepo{accounts: accounts}
+	fallbackRepo := &opsMetricsFallbackRepo{providers: providers}
 	fallbackCache := &opsMetricsLoadCache{loads: loads}
 	fallbackConcurrency := scheduler.NewConcurrencyService(fallbackCache)
-	fallbackConcurrency.SetAccountLoadBatchCacheTTL(0)
+	fallbackConcurrency.SetProviderLoadBatchCacheTTL(0)
 	fallbackCollector := &OpsMetricsCollector{
-		accountRepo:        fallbackRepo,
+		providerRepo:       fallbackRepo,
 		concurrencyService: fallbackConcurrency,
 	}
 
@@ -94,30 +94,30 @@ func TestCollectConcurrencyQueueDepthUsesProjectionAndPreservesFallbackResult(t 
 	require.Equal(t, 1, projectionRepo.projectionCalls)
 	require.Zero(t, projectionRepo.listCalls)
 	require.Equal(t, 1, fallbackRepo.listCalls)
-	require.Equal(t, accountLoads, projectionCache.got)
+	require.Equal(t, providerLoads, projectionCache.got)
 	require.Equal(t, fallbackCache.got, projectionCache.got)
 }
 
 func BenchmarkOpsMetricsCollectorCollectConcurrencyQueueDepth(b *testing.B) {
-	const accountCount = 1000
+	const providerCount = 1000
 	loadFactor := 8
-	accounts := make([]AccountObservation, accountCount)
-	accountLoads := make([]AccountWithConcurrency, accountCount)
-	for i := range accountCount {
+	providers := make([]ProviderObservation, providerCount)
+	providerLoads := make([]ProviderWithConcurrency, providerCount)
+	for i := range providerCount {
 		id := int64(i + 1)
-		accounts[i] = AccountObservation{
+		providers[i] = ProviderObservation{
 			ID:          id,
 			Concurrency: 4,
 			LoadFactor:  loadFactor,
 		}
-		accountLoads[i] = AccountWithConcurrency{ID: id, MaxConcurrency: loadFactor}
+		providerLoads[i] = ProviderWithConcurrency{ID: id, MaxConcurrency: loadFactor}
 	}
 
-	repo := &opsMetricsProjectionRepo{accounts: accounts, accountLoads: accountLoads}
-	cache := &opsMetricsLoadCache{loads: map[int64]*AccountLoadInfo{}}
+	repo := &opsMetricsProjectionRepo{providers: providers, providerLoads: providerLoads}
+	cache := &opsMetricsLoadCache{loads: map[int64]*ProviderLoadInfo{}}
 	concurrency := scheduler.NewConcurrencyService(cache)
-	concurrency.SetAccountLoadBatchCacheTTL(0)
-	collector := &OpsMetricsCollector{accountRepo: repo, concurrencyService: concurrency}
+	concurrency.SetProviderLoadBatchCacheTTL(0)
+	collector := &OpsMetricsCollector{providerRepo: repo, concurrencyService: concurrency}
 
 	b.ReportAllocs()
 	b.ResetTimer()

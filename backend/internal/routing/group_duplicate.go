@@ -65,8 +65,8 @@ func CloneGroupModelRouting(value map[string][]int64) map[string][]int64 {
 		return nil
 	}
 	cloned := make(map[string][]int64, len(value))
-	for model, accountIDs := range value {
-		cloned[model] = append([]int64(nil), accountIDs...)
+	for model, providerIDs := range value {
+		cloned[model] = append([]int64(nil), providerIDs...)
 	}
 	return cloned
 }
@@ -146,7 +146,7 @@ func (s *GroupAdmin) RecoverDuplicateGroup(ctx context.Context, id int64, actorS
 	return hydrated, nil
 }
 
-// DuplicateGroup 创建停用状态的配置副本并保留账号优先级。
+// DuplicateGroup 创建停用状态的配置副本并保留提供商优先级。
 // 仓储会原子提交分组、绑定和 outbox 事件，绑定失败时不会留下孤立分组。
 func (s *GroupAdmin) DuplicateGroup(ctx context.Context, id int64, actorScope, operationKey string) (*Group, error) {
 	existing, err := s.RecoverDuplicateGroup(ctx, id, actorScope, operationKey)

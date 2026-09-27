@@ -136,7 +136,7 @@ func PublicInputKeys() []string {
 		"balance_low_notify_enabled",
 		"balance_low_notify_threshold",
 		"balance_low_notify_recharge_url",
-		"account_quota_notify_enabled",
+		"provider_quota_notify_enabled",
 		"team_enabled",
 		"creative_enabled",
 		"risk_control_enabled",

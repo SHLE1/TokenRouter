@@ -1,4 +1,4 @@
-// 通用上游用量的只读值契约，不接收账号、HTTP 或资金服务。
+// 通用上游用量的只读值契约，不接收提供商、HTTP 或资金服务。
 package usageview
 
 import "time"

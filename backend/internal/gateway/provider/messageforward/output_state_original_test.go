@@ -12,15 +12,14 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 )
 
 func TestS09AnthropicPriorHeartbeatPreservesReadFailureBoundary(t *testing.T) {
-
 	svc := newStreamingRuntimeFixture(0)
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -30,7 +29,7 @@ func TestS09AnthropicPriorHeartbeatPreservesReadFailureBoundary(t *testing.T) {
 	require.NoError(t, err)
 	c.Writer.Flush()
 	resp := &http.Response{StatusCode: 200, Header: http.Header{}, Body: &streamReadCloser{err: io.ErrUnexpectedEOF}}
-	result, err := streamResponseFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", false)
+	result, err := streamResponseFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", false)
 	require.Error(t, err)
 	require.NotNil(t, result)
 	var failover *forwardcore.UpstreamFailoverError

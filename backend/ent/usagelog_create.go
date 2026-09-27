@@ -11,9 +11,9 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/TokenFlux/TokenRouter/ent/account"
 	"github.com/TokenFlux/TokenRouter/ent/apikey"
 	"github.com/TokenFlux/TokenRouter/ent/group"
+	"github.com/TokenFlux/TokenRouter/ent/provider"
 	"github.com/TokenFlux/TokenRouter/ent/team"
 	"github.com/TokenFlux/TokenRouter/ent/usagelog"
 	"github.com/TokenFlux/TokenRouter/ent/user"
@@ -69,9 +69,9 @@ func (_c *UsageLogCreate) SetAPIKeyID(v int64) *UsageLogCreate {
 	return _c
 }
 
-// SetAccountID sets the "account_id" field.
-func (_c *UsageLogCreate) SetAccountID(v int64) *UsageLogCreate {
-	_c.mutation.SetAccountID(v)
+// SetProviderID sets the "provider_id" field.
+func (_c *UsageLogCreate) SetProviderID(v int64) *UsageLogCreate {
+	_c.mutation.SetProviderID(v)
 	return _c
 }
 
@@ -443,16 +443,16 @@ func (_c *UsageLogCreate) SetNillableLongContextBillingApplied(v *bool) *UsageLo
 	return _c
 }
 
-// SetAccountRateMultiplier sets the "account_rate_multiplier" field.
-func (_c *UsageLogCreate) SetAccountRateMultiplier(v float64) *UsageLogCreate {
-	_c.mutation.SetAccountRateMultiplier(v)
+// SetProviderRateMultiplier sets the "provider_rate_multiplier" field.
+func (_c *UsageLogCreate) SetProviderRateMultiplier(v float64) *UsageLogCreate {
+	_c.mutation.SetProviderRateMultiplier(v)
 	return _c
 }
 
-// SetNillableAccountRateMultiplier sets the "account_rate_multiplier" field if the given value is not nil.
-func (_c *UsageLogCreate) SetNillableAccountRateMultiplier(v *float64) *UsageLogCreate {
+// SetNillableProviderRateMultiplier sets the "provider_rate_multiplier" field if the given value is not nil.
+func (_c *UsageLogCreate) SetNillableProviderRateMultiplier(v *float64) *UsageLogCreate {
 	if v != nil {
-		_c.SetAccountRateMultiplier(*v)
+		_c.SetProviderRateMultiplier(*v)
 	}
 	return _c
 }
@@ -697,9 +697,9 @@ func (_c *UsageLogCreate) SetAPIKey(v *APIKey) *UsageLogCreate {
 	return _c.SetAPIKeyID(v.ID)
 }
 
-// SetAccount sets the "account" edge to the Account entity.
-func (_c *UsageLogCreate) SetAccount(v *Account) *UsageLogCreate {
-	return _c.SetAccountID(v.ID)
+// SetProvider sets the "provider" edge to the Provider entity.
+func (_c *UsageLogCreate) SetProvider(v *Provider) *UsageLogCreate {
+	return _c.SetProviderID(v.ID)
 }
 
 // SetGroup sets the "group" edge to the Group entity.
@@ -854,8 +854,8 @@ func (_c *UsageLogCreate) check() error {
 	if _, ok := _c.mutation.APIKeyID(); !ok {
 		return &ValidationError{Name: "api_key_id", err: errors.New(`ent: missing required field "UsageLog.api_key_id"`)}
 	}
-	if _, ok := _c.mutation.AccountID(); !ok {
-		return &ValidationError{Name: "account_id", err: errors.New(`ent: missing required field "UsageLog.account_id"`)}
+	if _, ok := _c.mutation.ProviderID(); !ok {
+		return &ValidationError{Name: "provider_id", err: errors.New(`ent: missing required field "UsageLog.provider_id"`)}
 	}
 	if _, ok := _c.mutation.Platform(); !ok {
 		return &ValidationError{Name: "platform", err: errors.New(`ent: missing required field "UsageLog.platform"`)}
@@ -1013,8 +1013,8 @@ func (_c *UsageLogCreate) check() error {
 	if len(_c.mutation.APIKeyIDs()) == 0 {
 		return &ValidationError{Name: "api_key", err: errors.New(`ent: missing required edge "UsageLog.api_key"`)}
 	}
-	if len(_c.mutation.AccountIDs()) == 0 {
-		return &ValidationError{Name: "account", err: errors.New(`ent: missing required edge "UsageLog.account"`)}
+	if len(_c.mutation.ProviderIDs()) == 0 {
+		return &ValidationError{Name: "provider", err: errors.New(`ent: missing required edge "UsageLog.provider"`)}
 	}
 	return nil
 }
@@ -1151,9 +1151,9 @@ func (_c *UsageLogCreate) createSpec() (*UsageLog, *sqlgraph.CreateSpec) {
 		_spec.SetField(usagelog.FieldLongContextBillingApplied, field.TypeBool, value)
 		_node.LongContextBillingApplied = value
 	}
-	if value, ok := _c.mutation.AccountRateMultiplier(); ok {
-		_spec.SetField(usagelog.FieldAccountRateMultiplier, field.TypeFloat64, value)
-		_node.AccountRateMultiplier = &value
+	if value, ok := _c.mutation.ProviderRateMultiplier(); ok {
+		_spec.SetField(usagelog.FieldProviderRateMultiplier, field.TypeFloat64, value)
+		_node.ProviderRateMultiplier = &value
 	}
 	if value, ok := _c.mutation.BillingType(); ok {
 		_spec.SetField(usagelog.FieldBillingType, field.TypeInt8, value)
@@ -1257,21 +1257,21 @@ func (_c *UsageLogCreate) createSpec() (*UsageLog, *sqlgraph.CreateSpec) {
 		_node.APIKeyID = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
-	if nodes := _c.mutation.AccountIDs(); len(nodes) > 0 {
+	if nodes := _c.mutation.ProviderIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
-			Table:   usagelog.AccountTable,
-			Columns: []string{usagelog.AccountColumn},
+			Table:   usagelog.ProviderTable,
+			Columns: []string{usagelog.ProviderColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(account.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(provider.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		_node.AccountID = nodes[0]
+		_node.ProviderID = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	if nodes := _c.mutation.GroupIDs(); len(nodes) > 0 {
@@ -1443,15 +1443,15 @@ func (u *UsageLogUpsert) UpdateAPIKeyID() *UsageLogUpsert {
 	return u
 }
 
-// SetAccountID sets the "account_id" field.
-func (u *UsageLogUpsert) SetAccountID(v int64) *UsageLogUpsert {
-	u.Set(usagelog.FieldAccountID, v)
+// SetProviderID sets the "provider_id" field.
+func (u *UsageLogUpsert) SetProviderID(v int64) *UsageLogUpsert {
+	u.Set(usagelog.FieldProviderID, v)
 	return u
 }
 
-// UpdateAccountID sets the "account_id" field to the value that was provided on create.
-func (u *UsageLogUpsert) UpdateAccountID() *UsageLogUpsert {
-	u.SetExcluded(usagelog.FieldAccountID)
+// UpdateProviderID sets the "provider_id" field to the value that was provided on create.
+func (u *UsageLogUpsert) UpdateProviderID() *UsageLogUpsert {
+	u.SetExcluded(usagelog.FieldProviderID)
 	return u
 }
 
@@ -1941,27 +1941,27 @@ func (u *UsageLogUpsert) UpdateLongContextBillingApplied() *UsageLogUpsert {
 	return u
 }
 
-// SetAccountRateMultiplier sets the "account_rate_multiplier" field.
-func (u *UsageLogUpsert) SetAccountRateMultiplier(v float64) *UsageLogUpsert {
-	u.Set(usagelog.FieldAccountRateMultiplier, v)
+// SetProviderRateMultiplier sets the "provider_rate_multiplier" field.
+func (u *UsageLogUpsert) SetProviderRateMultiplier(v float64) *UsageLogUpsert {
+	u.Set(usagelog.FieldProviderRateMultiplier, v)
 	return u
 }
 
-// UpdateAccountRateMultiplier sets the "account_rate_multiplier" field to the value that was provided on create.
-func (u *UsageLogUpsert) UpdateAccountRateMultiplier() *UsageLogUpsert {
-	u.SetExcluded(usagelog.FieldAccountRateMultiplier)
+// UpdateProviderRateMultiplier sets the "provider_rate_multiplier" field to the value that was provided on create.
+func (u *UsageLogUpsert) UpdateProviderRateMultiplier() *UsageLogUpsert {
+	u.SetExcluded(usagelog.FieldProviderRateMultiplier)
 	return u
 }
 
-// AddAccountRateMultiplier adds v to the "account_rate_multiplier" field.
-func (u *UsageLogUpsert) AddAccountRateMultiplier(v float64) *UsageLogUpsert {
-	u.Add(usagelog.FieldAccountRateMultiplier, v)
+// AddProviderRateMultiplier adds v to the "provider_rate_multiplier" field.
+func (u *UsageLogUpsert) AddProviderRateMultiplier(v float64) *UsageLogUpsert {
+	u.Add(usagelog.FieldProviderRateMultiplier, v)
 	return u
 }
 
-// ClearAccountRateMultiplier clears the value of the "account_rate_multiplier" field.
-func (u *UsageLogUpsert) ClearAccountRateMultiplier() *UsageLogUpsert {
-	u.SetNull(usagelog.FieldAccountRateMultiplier)
+// ClearProviderRateMultiplier clears the value of the "provider_rate_multiplier" field.
+func (u *UsageLogUpsert) ClearProviderRateMultiplier() *UsageLogUpsert {
+	u.SetNull(usagelog.FieldProviderRateMultiplier)
 	return u
 }
 
@@ -2381,17 +2381,17 @@ func (u *UsageLogUpsertOne) UpdateAPIKeyID() *UsageLogUpsertOne {
 	})
 }
 
-// SetAccountID sets the "account_id" field.
-func (u *UsageLogUpsertOne) SetAccountID(v int64) *UsageLogUpsertOne {
+// SetProviderID sets the "provider_id" field.
+func (u *UsageLogUpsertOne) SetProviderID(v int64) *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
-		s.SetAccountID(v)
+		s.SetProviderID(v)
 	})
 }
 
-// UpdateAccountID sets the "account_id" field to the value that was provided on create.
-func (u *UsageLogUpsertOne) UpdateAccountID() *UsageLogUpsertOne {
+// UpdateProviderID sets the "provider_id" field to the value that was provided on create.
+func (u *UsageLogUpsertOne) UpdateProviderID() *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
-		s.UpdateAccountID()
+		s.UpdateProviderID()
 	})
 }
 
@@ -2962,31 +2962,31 @@ func (u *UsageLogUpsertOne) UpdateLongContextBillingApplied() *UsageLogUpsertOne
 	})
 }
 
-// SetAccountRateMultiplier sets the "account_rate_multiplier" field.
-func (u *UsageLogUpsertOne) SetAccountRateMultiplier(v float64) *UsageLogUpsertOne {
+// SetProviderRateMultiplier sets the "provider_rate_multiplier" field.
+func (u *UsageLogUpsertOne) SetProviderRateMultiplier(v float64) *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
-		s.SetAccountRateMultiplier(v)
+		s.SetProviderRateMultiplier(v)
 	})
 }
 
-// AddAccountRateMultiplier adds v to the "account_rate_multiplier" field.
-func (u *UsageLogUpsertOne) AddAccountRateMultiplier(v float64) *UsageLogUpsertOne {
+// AddProviderRateMultiplier adds v to the "provider_rate_multiplier" field.
+func (u *UsageLogUpsertOne) AddProviderRateMultiplier(v float64) *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
-		s.AddAccountRateMultiplier(v)
+		s.AddProviderRateMultiplier(v)
 	})
 }
 
-// UpdateAccountRateMultiplier sets the "account_rate_multiplier" field to the value that was provided on create.
-func (u *UsageLogUpsertOne) UpdateAccountRateMultiplier() *UsageLogUpsertOne {
+// UpdateProviderRateMultiplier sets the "provider_rate_multiplier" field to the value that was provided on create.
+func (u *UsageLogUpsertOne) UpdateProviderRateMultiplier() *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
-		s.UpdateAccountRateMultiplier()
+		s.UpdateProviderRateMultiplier()
 	})
 }
 
-// ClearAccountRateMultiplier clears the value of the "account_rate_multiplier" field.
-func (u *UsageLogUpsertOne) ClearAccountRateMultiplier() *UsageLogUpsertOne {
+// ClearProviderRateMultiplier clears the value of the "provider_rate_multiplier" field.
+func (u *UsageLogUpsertOne) ClearProviderRateMultiplier() *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
-		s.ClearAccountRateMultiplier()
+		s.ClearProviderRateMultiplier()
 	})
 }
 
@@ -3621,17 +3621,17 @@ func (u *UsageLogUpsertBulk) UpdateAPIKeyID() *UsageLogUpsertBulk {
 	})
 }
 
-// SetAccountID sets the "account_id" field.
-func (u *UsageLogUpsertBulk) SetAccountID(v int64) *UsageLogUpsertBulk {
+// SetProviderID sets the "provider_id" field.
+func (u *UsageLogUpsertBulk) SetProviderID(v int64) *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
-		s.SetAccountID(v)
+		s.SetProviderID(v)
 	})
 }
 
-// UpdateAccountID sets the "account_id" field to the value that was provided on create.
-func (u *UsageLogUpsertBulk) UpdateAccountID() *UsageLogUpsertBulk {
+// UpdateProviderID sets the "provider_id" field to the value that was provided on create.
+func (u *UsageLogUpsertBulk) UpdateProviderID() *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
-		s.UpdateAccountID()
+		s.UpdateProviderID()
 	})
 }
 
@@ -4202,31 +4202,31 @@ func (u *UsageLogUpsertBulk) UpdateLongContextBillingApplied() *UsageLogUpsertBu
 	})
 }
 
-// SetAccountRateMultiplier sets the "account_rate_multiplier" field.
-func (u *UsageLogUpsertBulk) SetAccountRateMultiplier(v float64) *UsageLogUpsertBulk {
+// SetProviderRateMultiplier sets the "provider_rate_multiplier" field.
+func (u *UsageLogUpsertBulk) SetProviderRateMultiplier(v float64) *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
-		s.SetAccountRateMultiplier(v)
+		s.SetProviderRateMultiplier(v)
 	})
 }
 
-// AddAccountRateMultiplier adds v to the "account_rate_multiplier" field.
-func (u *UsageLogUpsertBulk) AddAccountRateMultiplier(v float64) *UsageLogUpsertBulk {
+// AddProviderRateMultiplier adds v to the "provider_rate_multiplier" field.
+func (u *UsageLogUpsertBulk) AddProviderRateMultiplier(v float64) *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
-		s.AddAccountRateMultiplier(v)
+		s.AddProviderRateMultiplier(v)
 	})
 }
 
-// UpdateAccountRateMultiplier sets the "account_rate_multiplier" field to the value that was provided on create.
-func (u *UsageLogUpsertBulk) UpdateAccountRateMultiplier() *UsageLogUpsertBulk {
+// UpdateProviderRateMultiplier sets the "provider_rate_multiplier" field to the value that was provided on create.
+func (u *UsageLogUpsertBulk) UpdateProviderRateMultiplier() *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
-		s.UpdateAccountRateMultiplier()
+		s.UpdateProviderRateMultiplier()
 	})
 }
 
-// ClearAccountRateMultiplier clears the value of the "account_rate_multiplier" field.
-func (u *UsageLogUpsertBulk) ClearAccountRateMultiplier() *UsageLogUpsertBulk {
+// ClearProviderRateMultiplier clears the value of the "provider_rate_multiplier" field.
+func (u *UsageLogUpsertBulk) ClearProviderRateMultiplier() *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
-		s.ClearAccountRateMultiplier()
+		s.ClearProviderRateMultiplier()
 	})
 }
 

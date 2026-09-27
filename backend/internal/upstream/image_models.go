@@ -1,4 +1,4 @@
-// 图片模型族识别供平台与任务调用，共享纯实现而不携带账号或传输状态。
+// 图片模型族识别供平台与任务调用，共享纯实现而不携带提供商或传输状态。
 package upstream
 
 import "strings"
@@ -27,6 +27,7 @@ func IsGPTImageGenerationModel(model string) bool {
 	model = strings.ToLower(strings.TrimSpace(model))
 	return strings.HasPrefix(model, "gpt-image-")
 }
+
 func IsGrokImageGenerationModel(model string) bool {
 	model = strings.ToLower(strings.TrimSpace(model))
 	return model == "grok-imagine" ||

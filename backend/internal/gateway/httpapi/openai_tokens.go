@@ -27,7 +27,7 @@ type OpenAITokenBackend interface {
 	ObserveEndpoint(*gin.Context, bool)
 	Plan(context.Context, *apikey.APIKey, string) routing.RoutePlan
 	BindPlan(*gin.Context, routing.RoutePlan)
-	MessageAccountModel(context.Context, *apikey.APIKey, string) string
+	MessageProviderModel(context.Context, *apikey.APIKey, string) string
 	MappedBodyCache([]byte) func(bool, string) []byte
 	Eligibility(context.Context, *apikey.APIKey, *billing.UserSubscription) error
 	Platform(*apikey.APIKey) string
@@ -51,6 +51,7 @@ func NewOpenAITokensHandler(options OpenAITokenOptions, backend OpenAITokenBacke
 func (h *OpenAITokensHandler) errorResponse(c *gin.Context, status int, kind, message string) {
 	writeOpenAITokenError(c, status, kind, message)
 }
+
 func (h *OpenAITokensHandler) anthropicErrorResponse(c *gin.Context, status int, kind, message string) {
 	WriteAnthropicError(c, status, kind, "", message)
 }

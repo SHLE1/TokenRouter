@@ -94,7 +94,7 @@ func (p *prefaceBackend) Execution(c *gin.Context, call CompatibleTextCall, _ Co
 }
 func (p *prefaceBackend) FailoverObservation(context.Context, string, map[string]any) {}
 
-// 前置测试在循环接管后结束，平台转发由既有账号循环测试覆盖。
+// 前置测试在循环接管后结束，平台转发由既有提供商循环测试覆盖。
 type prefaceLoop struct {
 	textflow.MessagePorts
 	ctx context.Context
@@ -299,8 +299,8 @@ func TestGeminiNativePrefaceCarriesSignatureAndDigestState(t *testing.T) {
 				require.Equal(t, "session-id", p.call.SessionUUID)
 				require.Contains(t, base.events, "sticky")
 			}
-			require.Equal(t, want, p.call.SignatureState.BoundAccountID)
-			require.Equal(t, want, p.call.BoundAccountID)
+			require.Equal(t, want, p.call.SignatureState.BoundProviderID)
+			require.Equal(t, want, p.call.BoundProviderID)
 			require.Equal(t, bound == 0, p.call.UseDigestFallback)
 		})
 	}
@@ -313,6 +313,6 @@ func (p *prefaceBackend) Execute(_ context.Context, in execution.Request, _ upst
 }
 
 func (p *geminiPrefaceBackend) Execute(_ context.Context, in execution.Request, _ upstream.OutputSink) (execution.ExecutionResult, error) {
-	p.call = GeminiNativeCall{MessagesCall: MessagesCall{Key: in.Funding.Key, Model: in.Model, Stream: in.Stream, HasBoundSession: in.Text.HasBoundSession, BoundAccountID: in.Text.BoundAccountID}, ModelName: in.Text.GeminiModel, SignatureState: in.Text.SignatureState, MatchedDigestChain: in.Text.MatchedDigestChain, SessionUUID: in.Text.SessionUUID, UseDigestFallback: in.Text.UseDigestFallback}
+	p.call = GeminiNativeCall{MessagesCall: MessagesCall{Key: in.Funding.Key, Model: in.Model, Stream: in.Stream, HasBoundSession: in.Text.HasBoundSession, BoundProviderID: in.Text.BoundProviderID}, ModelName: in.Text.GeminiModel, SignatureState: in.Text.SignatureState, MatchedDigestChain: in.Text.MatchedDigestChain, SessionUUID: in.Text.SessionUUID, UseDigestFallback: in.Text.UseDigestFallback}
 	return execution.ExecutionResult{}, nil
 }

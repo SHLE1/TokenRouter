@@ -10,7 +10,7 @@ import (
 )
 
 // MessageRuntime 是构造时绑定的单步依赖集合；Open 仅建立本次状态，不组装业务回调。
-// 适配会话继续实现原 MessagePorts，唯一账号循环仍由 RunMessages 拥有。
+// 适配会话继续实现原 MessagePorts，唯一提供商循环仍由 RunMessages 拥有。
 type MessageRuntime interface {
 	Open(context.Context, execution.Request, upstream.OutputSink) (MessagePorts, error)
 }
@@ -58,6 +58,7 @@ func (o *messageExecutionObservation) PrepareAttempt() bool {
 	}
 	return ok
 }
+
 func (o *messageExecutionObservation) Select(excluded map[int64]struct{}) (Selection, error) {
 	s, err := o.MessagePorts.Select(excluded)
 	if err != nil {
@@ -68,6 +69,7 @@ func (o *messageExecutionObservation) Select(excluded map[int64]struct{}) (Selec
 	}
 	return s, err
 }
+
 func (o *messageExecutionObservation) Acquire() bool {
 	ok := o.MessagePorts.Acquire()
 	if !ok {
@@ -75,9 +77,10 @@ func (o *messageExecutionObservation) Acquire() bool {
 	}
 	return ok
 }
+
 func (o *messageExecutionObservation) Forward(state AttemptState) Outcome {
 	out := o.MessagePorts.Forward(state)
-	o.result.Account = o.selected.Account
+	o.result.Provider = o.selected.Provider
 	o.result.Plan = o.selected.Plan
 	o.result.PlanProvided = o.selected.PlanProvided
 	o.result.Attempts++
@@ -88,6 +91,7 @@ func (o *messageExecutionObservation) Forward(state AttemptState) Outcome {
 	}
 	return out
 }
+
 func (o *messageExecutionObservation) Canceled() {
 	o.err = o.Context().Err()
 	o.MessagePorts.Canceled()

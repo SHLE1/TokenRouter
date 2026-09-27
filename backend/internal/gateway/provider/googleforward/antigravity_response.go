@@ -17,7 +17,7 @@ func (s *Antigravity) antigravityResponseAdapter(c *attempt) *antigravity.Respon
 		},
 		MapCollectionError: func(err error) error { return c.MapAntigravityCollectionError(err) },
 		Failover: func(body []byte) error {
-			return &forwardcore.UpstreamFailoverError{StatusCode: http.StatusBadGateway, ResponseBody: body, RetryableOnSameAccount: true}
+			return &forwardcore.UpstreamFailoverError{StatusCode: http.StatusBadGateway, ResponseBody: body, RetryableOnSameProvider: true}
 		},
 		IsFailover:    func(err error) bool { var value *forwardcore.UpstreamFailoverError; return errors.As(err, &value) },
 		MarkCommitted: func() { c.Commit() },

@@ -3,7 +3,7 @@ package app
 import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/failover"
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
@@ -21,6 +21,6 @@ func gatewayCompatibilitySnapshot(shared *schedulerSharedState) gatewayhttp.Comp
 }
 
 // stopOpenAI429 仅把凭据资格投影给唯一重试预算规则。
-func stopOpenAI429(value *provider.ExecutionAccount, status, switches int, state *failover.OAuth429State) bool {
-	return failover.StopOAuth429(failover.OAuth429Account{OpenAI: value != nil && value.View().IsOpenAIOAuthLike(), Grok: value != nil && value.Record.Platform == capability.PlatformGrok && value.Record.Type == capability.AccountTypeOAuth}, status, switches, state)
+func stopOpenAI429(value *gatewayadapter.ExecutionProvider, status, switches int, state *failover.OAuth429State) bool {
+	return failover.StopOAuth429(failover.OAuth429Provider{OpenAI: value != nil && value.View().IsOpenAIOAuthLike(), Grok: value != nil && value.Record.Platform == capability.PlatformGrok && value.Record.Type == capability.ProviderTypeOAuth}, status, switches, state)
 }

@@ -76,29 +76,29 @@ func GrokMediaVideoRequestSessionHash(requestID string, userID, apiKeyID int64) 
 	return "grok-video:" + videoSessionHash(ownerSeed)
 }
 
-func (s *VideoTasks) BindGrokMediaVideoRequestAccount(
+func (s *VideoTasks) BindGrokMediaVideoRequestProvider(
 	ctx context.Context,
 	groupID *int64,
 	requestID string,
-	userID, apiKeyID, accountID int64,
+	userID, apiKeyID, providerID int64,
 ) error {
 	if s == nil || s.owners == nil {
 		return fmt.Errorf("grok video request binding cache is unavailable")
 	}
 	sessionHash := GrokMediaVideoRequestSessionHash(requestID, userID, apiKeyID)
 	cacheKey := videoSessionCacheKey(sessionHash)
-	if cacheKey == "" || accountID <= 0 {
+	if cacheKey == "" || providerID <= 0 {
 		return fmt.Errorf("grok video request binding is invalid")
 	}
 	// 视频任务可能在 WebSocket 粘性 TTL（默认一小时）之后才完成。
-	// 绑定时间至少覆盖待计费快照，确保较晚的状态或内容轮询仍可解析账号。
+	// 绑定时间至少覆盖待计费快照，确保较晚的状态或内容轮询仍可解析提供商。
 	ttl := VideoPendingTTL
 	if s.options.StickyTTL > 0 {
 		if sticky := s.options.StickyTTL; sticky > ttl {
 			ttl = sticky
 		}
 	}
-	if err := s.owners.SetSessionAccountID(ctx, derefGroupID(groupID), cacheKey, accountID, ttl); err != nil {
+	if err := s.owners.SetSessionProviderID(ctx, derefGroupID(groupID), cacheKey, providerID, ttl); err != nil {
 		return err
 	}
 	if groupID == nil || *groupID <= 0 {
@@ -137,7 +137,7 @@ func (s *VideoTasks) ResolveGrokMediaVideoRequestGroup(
 	return s.owners.GetSessionOwnerGroupID(ctx, userID, grokMediaVideoRequestOwnerSource, sessionHash)
 }
 
-func (s *VideoTasks) ResolveGrokMediaVideoRequestAccount(
+func (s *VideoTasks) ResolveGrokMediaVideoRequestProvider(
 	ctx context.Context,
 	groupID *int64,
 	requestID string,
@@ -150,7 +150,7 @@ func (s *VideoTasks) ResolveGrokMediaVideoRequestAccount(
 	if cacheKey == "" {
 		return 0, fmt.Errorf("grok video request binding is invalid")
 	}
-	return s.owners.GetSessionAccountID(ctx, derefGroupID(groupID), cacheKey)
+	return s.owners.GetSessionProviderID(ctx, derefGroupID(groupID), cacheKey)
 }
 
 // GrokVideoPendingCreatedAtNow 为待计费记录生成任务受理时间戳。
@@ -318,14 +318,14 @@ func StableGrokVideoBillingRequestID(taskRequestID string) string {
 }
 
 // TrackCreated 保留创建后的尽力绑定与一次快照重试；失败不能把已提交响应改成失败。
-func (s *VideoTasks) TrackCreated(ctx context.Context, groupID *int64, taskID string, userID, keyID, accountID int64, pending GrokVideoPendingBilling, observer VideoObserver) {
-	if err := s.BindGrokMediaVideoRequestAccount(ctx, groupID, taskID, userID, keyID, accountID); err != nil {
-		videoNotice(observer, VideoNotice{Kind: "bind_failed", TaskID: taskID, AccountID: accountID, Err: err})
+func (s *VideoTasks) TrackCreated(ctx context.Context, groupID *int64, taskID string, userID, keyID, providerID int64, pending GrokVideoPendingBilling, observer VideoObserver) {
+	if err := s.BindGrokMediaVideoRequestProvider(ctx, groupID, taskID, userID, keyID, providerID); err != nil {
+		videoNotice(observer, VideoNotice{Kind: "bind_failed", TaskID: taskID, ProviderID: providerID, Err: err})
 	}
 	if err := s.StoreGrokVideoPendingBilling(ctx, taskID, userID, keyID, pending); err != nil {
-		videoNotice(observer, VideoNotice{Kind: "store_retry", TaskID: taskID, AccountID: accountID, Err: err})
+		videoNotice(observer, VideoNotice{Kind: "store_retry", TaskID: taskID, ProviderID: providerID, Err: err})
 		if retryErr := s.StoreGrokVideoPendingBilling(ctx, taskID, userID, keyID, pending); retryErr != nil {
-			videoNotice(observer, VideoNotice{Kind: "store_failed", TaskID: taskID, AccountID: accountID, Err: retryErr})
+			videoNotice(observer, VideoNotice{Kind: "store_failed", TaskID: taskID, ProviderID: providerID, Err: retryErr})
 		}
 	}
 }
@@ -336,8 +336,8 @@ type VideoBinding struct {
 	Present bool
 }
 type VideoOwner struct {
-	GroupID, AccountID int64
-	BindingIndex       int
+	GroupID, ProviderID int64
+	BindingIndex        int
 }
 
 // ResolveCompositeVideo 先读取创建时归属，再兼容历史任务的当前映射扫描顺序。
@@ -345,8 +345,8 @@ func (s *VideoTasks) ResolveCompositeVideo(ctx context.Context, taskID string, u
 	var lookupErr error
 	ownerID, err := s.ResolveGrokMediaVideoRequestGroup(ctx, taskID, userID, keyID)
 	if err == nil && ownerID > 0 {
-		accountID, accountErr := s.ResolveGrokMediaVideoRequestAccount(ctx, &ownerID, taskID, userID, keyID)
-		if accountErr == nil && accountID > 0 {
+		providerID, providerErr := s.ResolveGrokMediaVideoRequestProvider(ctx, &ownerID, taskID, userID, keyID)
+		if providerErr == nil && providerID > 0 {
 			index := -1
 			for i, binding := range bindings {
 				if binding.GroupID == ownerID && binding.Present {
@@ -354,9 +354,9 @@ func (s *VideoTasks) ResolveCompositeVideo(ctx context.Context, taskID string, u
 					break
 				}
 			}
-			return VideoOwner{GroupID: ownerID, AccountID: accountID, BindingIndex: index}, nil
+			return VideoOwner{GroupID: ownerID, ProviderID: providerID, BindingIndex: index}, nil
 		}
-		lookupErr = accountErr
+		lookupErr = providerErr
 	} else if err != nil {
 		lookupErr = err
 	}
@@ -365,15 +365,15 @@ func (s *VideoTasks) ResolveCompositeVideo(ctx context.Context, taskID string, u
 			continue
 		}
 		id := binding.GroupID
-		accountID, err := s.ResolveGrokMediaVideoRequestAccount(ctx, &id, taskID, userID, keyID)
+		providerID, err := s.ResolveGrokMediaVideoRequestProvider(ctx, &id, taskID, userID, keyID)
 		if err != nil {
 			lookupErr = err
 			continue
 		}
-		if accountID <= 0 {
+		if providerID <= 0 {
 			continue
 		}
-		return VideoOwner{GroupID: id, AccountID: accountID, BindingIndex: i}, nil
+		return VideoOwner{GroupID: id, ProviderID: providerID, BindingIndex: i}, nil
 	}
 	if lookupErr == nil {
 		lookupErr = fmt.Errorf("grok video request binding not found")

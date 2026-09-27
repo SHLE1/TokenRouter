@@ -1,4 +1,4 @@
-// 平台账号内重试只使用技术输入和观测端口，不持有业务实体、数据库或 Gin。
+// 平台提供商内重试只使用技术输入和观测端口，不持有业务实体、数据库或 Gin。
 package antigravity
 
 import (
@@ -110,13 +110,13 @@ func (s *RetryAdapter) AttemptCreditsOveragesRetry(
 		return &CreditsOveragesRetryResult{Handled: false}
 	}
 	modelKey := s.Options.CreditsModel(modelName)
-	logger.LegacyPrintf("service.antigravity_gateway", "%s status=429 credit_overages_retry model=%s account=%d (injecting enabledCreditTypes)",
-		p.Prefix, modelKey, p.AccountID)
+	logger.LegacyPrintf("service.antigravity_gateway", "%s status=429 credit_overages_retry model=%s provider=%d (injecting enabledCreditTypes)",
+		p.Prefix, modelKey, p.ProviderID)
 
 	creditsReq, err := NewAPIRequestWithURL(p.Ctx, baseURL, p.Action, p.AccessToken, creditsBody)
 	if err != nil {
-		logger.LegacyPrintf("service.antigravity_gateway", "%s credit_overages_failed model=%s account=%d build_request_err=%v",
-			p.Prefix, modelKey, p.AccountID, err)
+		logger.LegacyPrintf("service.antigravity_gateway", "%s credit_overages_failed model=%s provider=%d build_request_err=%v",
+			p.Prefix, modelKey, p.ProviderID, err)
 		return &CreditsOveragesRetryResult{Handled: true}
 	}
 	s.Options.ApplyHeaders(creditsReq)
@@ -124,8 +124,8 @@ func (s *RetryAdapter) AttemptCreditsOveragesRetry(
 	creditsResp, err := s.Options.Do(creditsReq)
 	if err == nil && creditsResp != nil && creditsResp.StatusCode < 400 {
 		s.Options.ClearCredits()
-		logger.LegacyPrintf("service.antigravity_gateway", "%s status=%d credit_overages_success model=%s account=%d",
-			p.Prefix, creditsResp.StatusCode, modelKey, p.AccountID)
+		logger.LegacyPrintf("service.antigravity_gateway", "%s status=%d credit_overages_success model=%s provider=%d",
+			p.Prefix, creditsResp.StatusCode, modelKey, p.ProviderID)
 		return &CreditsOveragesRetryResult{Handled: true, Resp: creditsResp}
 	}
 

@@ -1,7 +1,6 @@
 package app
 
 import (
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/audit"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/creative"
@@ -12,6 +11,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/ops"
 	"github.com/TokenFlux/TokenRouter/internal/payment"
 	"github.com/TokenFlux/TokenRouter/internal/promotion"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 	"github.com/TokenFlux/TokenRouter/internal/server/runtimeconfig"
@@ -28,5 +28,5 @@ func provideSettingsParticipants(runtime *payment.Runtime, grants *identity.Gran
 
 // staticSettingsParticipants 固定字段与键的所有权，供装配契约逐项核对。
 func staticSettingsParticipants(runtime *payment.Runtime, grants *identity.GrantSettings, schedulerDefaults *scheduler.AdminDefaults, gatewayRules *gateway.AdminSettingsRules) []settings.Participant {
-	return []settings.Participant{identity.SettingsParticipant(grants), team.SettingsParticipant(), moderation.SettingsParticipant(), creative.SettingsParticipant(), runtimeconfig.SettingsParticipant(), billing.SettingsParticipant(), scheduler.SettingsParticipant(*schedulerDefaults), routing.SettingsParticipant(), site.SettingsParticipant(), account.SettingsParticipant(), ops.SettingsParticipant(), payment.VisibleSettingsParticipant(), notification.SMTPSettingsParticipant(), promotion.SettingsParticipant(), usage.SettingsParticipant(), audit.SettingsParticipant(), gateway.FastSettingsParticipant(), gateway.AdminSettingsParticipant(*gatewayRules), payment.SettingsParticipant(runtime.RefreshProvidersChecked)}
+	return []settings.Participant{identity.SettingsParticipant(grants), team.SettingsParticipant(), moderation.SettingsParticipant(), creative.SettingsParticipant(), runtimeconfig.SettingsParticipant(), billing.SettingsParticipant(), scheduler.SettingsParticipant(*schedulerDefaults), routing.SettingsParticipant(), site.SettingsParticipant(), provider.SettingsParticipant(), ops.SettingsParticipant(), payment.VisibleSettingsParticipant(), notification.SMTPSettingsParticipant(), promotion.SettingsParticipant(), usage.SettingsParticipant(), audit.SettingsParticipant(), gateway.FastSettingsParticipant(), gateway.AdminSettingsParticipant(*gatewayRules), payment.SettingsParticipant(runtime.RefreshProvidersChecked)}
 }

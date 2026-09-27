@@ -18,7 +18,8 @@ func TestConcurrencyHelper_TryAcquireUserSlot(t *testing.T) {
 			return true, nil
 		},
 	}
-	helper := NewConcurrencyHelper(scheduler.NewConcurrencyService(cache, scheduler.Diagnostics{Logf: logging.LegacyPrintf,
+	helper := NewConcurrencyHelper(scheduler.NewConcurrencyService(cache, scheduler.Diagnostics{
+		Logf:  logging.LegacyPrintf,
 		Event: logging.Event,
 	},
 	), SSEPingFormatNone, time.Second)
@@ -32,20 +33,21 @@ func TestConcurrencyHelper_TryAcquireUserSlot(t *testing.T) {
 	require.Equal(t, int32(1), atomic.LoadInt32(&cache.ReleaseUserCalled))
 }
 
-func TestConcurrencyHelper_TryAcquireAccountSlot_NotAcquired(t *testing.T) {
+func TestConcurrencyHelper_TryAcquireProviderSlot_NotAcquired(t *testing.T) {
 	cache := &httptestkit.ConcurrencyHooks{
-		AcquireAccountSlotFn: func(ctx context.Context, accountID int64, maxConcurrency int, requestID string) (bool, error) {
+		AcquireProviderSlotFn: func(ctx context.Context, providerID int64, maxConcurrency int, requestID string) (bool, error) {
 			return false, nil
 		},
 	}
-	helper := NewConcurrencyHelper(scheduler.NewConcurrencyService(cache, scheduler.Diagnostics{Logf: logging.LegacyPrintf,
+	helper := NewConcurrencyHelper(scheduler.NewConcurrencyService(cache, scheduler.Diagnostics{
+		Logf:  logging.LegacyPrintf,
 		Event: logging.Event,
 	},
 	), SSEPingFormatNone, time.Second)
 
-	release, acquired, err := helper.TryAcquireAccountSlot(context.Background(), 201, 1)
+	release, acquired, err := helper.TryAcquireProviderSlot(context.Background(), 201, 1)
 	require.NoError(t, err)
 	require.False(t, acquired)
 	require.Nil(t, release)
-	require.Equal(t, int32(0), atomic.LoadInt32(&cache.ReleaseAccountCalled))
+	require.Equal(t, int32(0), atomic.LoadInt32(&cache.ReleaseProviderCalled))
 }

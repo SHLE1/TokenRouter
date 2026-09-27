@@ -1,6 +1,6 @@
 package capability
 
-// PolicyScopeMatches 根据显式账号认证类型判断规则作用域。
+// PolicyScopeMatches 根据显式提供商认证类型判断规则作用域。
 func PolicyScopeMatches(scope string, isOAuth bool, isBedrock bool) bool {
 	switch scope {
 	case "all":

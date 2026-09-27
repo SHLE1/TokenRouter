@@ -4,17 +4,17 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/stretchr/testify/require"
 )
 
 // 以下合同直接验证所属模块，保留原输入与断言。
-// gatewayprovider.ApplyCodexClientMetadata：用账号真实 device_id 注入 installation 标识，幂等、不覆盖既有项、不伪造。
+// gatewayprovider.ApplyCodexClientMetadata：用提供商真实 device_id 注入 installation 标识，幂等、不覆盖既有项、不伪造。
 func TestApplyCodexClientMetadata(t *testing.T) {
-	// 仅 OpenAI OAuth 账号才有 device_id（GetOpenAIDeviceID 的门控）。
-	acc := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth, Extra: map[string]any{"openai_device_id": "dev-xyz"}}}
+	// 仅 OpenAI OAuth 提供商才有 device_id（GetOpenAIDeviceID 的门控）。
+	acc := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth, Extra: map[string]any{"openai_device_id": "dev-xyz"}}}
 
 	body := map[string]any{}
 	require.True(t, gatewayprovider.ApplyCodexClientMetadata(body, acc))
@@ -24,9 +24,9 @@ func TestApplyCodexClientMetadata(t *testing.T) {
 	// 幂等
 	require.False(t, gatewayprovider.ApplyCodexClientMetadata(body, acc))
 
-	// OAuth 账号但无 device_id → 不写入（不伪造）
+	// OAuth 提供商但无 device_id → 不写入（不伪造）
 	body2 := map[string]any{}
-	require.False(t, gatewayprovider.ApplyCodexClientMetadata(body2, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth}}))
+	require.False(t, gatewayprovider.ApplyCodexClientMetadata(body2, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}}))
 	_, ok = body2["client_metadata"]
 	require.False(t, ok)
 

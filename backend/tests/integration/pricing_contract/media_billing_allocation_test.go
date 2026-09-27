@@ -9,8 +9,8 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
@@ -52,7 +52,7 @@ func TestMediaAllocationRatesPreserveBalanceMultiplier(t *testing.T) {
 					settings := pricing.DefaultBillingSettings()
 					settings.PeakRateEnabled, settings.PeakStart, settings.PeakEnd, settings.PeakRateMultiplier = peak, "11:00", "13:00", 3
 					key := &apikey.APIKey{ID: 100, GroupID: &group.ID, Group: group}
-					user, account := &identity.User{ID: 200}, &gatewaycapture.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 300, Platform: platform}}
+					user, provider := &identity.User{ID: 200}, &gatewaycapture.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 300, Platform: platform}}
 					subscription := &billing.UserSubscription{ID: 99, Plan: &billing.SubscriptionPlan{ID: 199, GroupIDs: []int64{88}, GroupRateMultipliers: map[int64]float64{88: 0.5}}}
 					now := time.Date(2026, 9, 9, 12, 0, 0, 0, time.Local)
 					if gatewayKind == "openai" {
@@ -70,7 +70,7 @@ func TestMediaAllocationRatesPreserveBalanceMultiplier(t *testing.T) {
 							result.VideoDurationSeconds = 2
 							result.VideoResolution = "480p"
 						}
-						require.NoError(t, svc.RecordOpenAI(context.Background(), &gatewaycapture.OpenAICapture{Result: result, APIKey: key, User: user, Account: gatewaycapture.ExecutionCompletionRecord(account), Subscription: subscription}))
+						require.NoError(t, svc.RecordOpenAI(context.Background(), &gatewaycapture.OpenAICapture{Result: result, APIKey: key, User: user, Provider: gatewaycapture.ExecutionCompletionRecord(provider), Subscription: subscription}))
 					} else {
 						svc := newGatewayRecordUsageServiceWithBillingRepoForTest(logs, billingRepo, &gatewaytestkit.UserStore{}, &gatewaytestkit.SubscriptionStore{})
 						svc.Dependencies.Prices = billingtestkit.SharedPriceResolver(svc.Dependencies.Calculator, group.ID, settings, []routing.ModelPricingEntry{card})
@@ -80,7 +80,7 @@ func TestMediaAllocationRatesPreserveBalanceMultiplier(t *testing.T) {
 							result.ImageCount = 0
 							result.Usage.InputTokens = 10
 						}
-						require.NoError(t, svc.RecordMessages(context.Background(), &gatewaycapture.MessagesCapture{Result: result, APIKey: key, User: user, Account: gatewaycapture.ExecutionCompletionRecord(account), Subscription: subscription}))
+						require.NoError(t, svc.RecordMessages(context.Background(), &gatewaycapture.MessagesCapture{Result: result, APIKey: key, User: user, Provider: gatewaycapture.ExecutionCompletionRecord(provider), Subscription: subscription}))
 					}
 					scale := 1.0
 					if mode == routing.BillingModeToken && peak {

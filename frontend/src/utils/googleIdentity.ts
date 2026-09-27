@@ -1,5 +1,5 @@
 const GOOGLE_IDENTITY_SCRIPT_ID = 'google-identity-services'
-const GOOGLE_IDENTITY_SCRIPT_SRC = 'https://accounts.google.com/gsi/client'
+const GOOGLE_IDENTITY_SCRIPT_SRC = 'https://providers.google.com/gsi/client'
 
 export interface GoogleCredentialResponse {
   credential: string
@@ -36,7 +36,7 @@ interface GoogleIdentityClient {
 declare global {
   interface Window {
     google?: {
-      accounts?: {
+      providers?: {
         id?: GoogleIdentityClient
       }
     }
@@ -48,7 +48,7 @@ let initializedClientID = ''
 let activeCallback: ((response: GoogleCredentialResponse) => void) | null = null
 
 function currentGoogleIdentityClient(): GoogleIdentityClient | null {
-  return window.google?.accounts?.id ?? null
+  return window.google?.providers?.id ?? null
 }
 
 // GIS 必须从 Google 官方地址加载；失败后允许后续页面重新尝试。

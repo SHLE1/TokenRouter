@@ -15,6 +15,7 @@ type HistoricalIngressCleanup struct{ db *sql.DB }
 func NewHistoricalIngressCleanup(db *sql.DB) *HistoricalIngressCleanup {
 	return &HistoricalIngressCleanup{db}
 }
+
 func (s *HistoricalIngressCleanup) ListCandidates(ctx context.Context, cursor int64, before time.Time, batchSize int) ([]ops.HistoricalIngressCandidate, error) {
 	rows, err := s.db.QueryContext(ctx, `
 			SELECT id, COALESCE(status_code, 0), COALESCE(error_message, ''), COALESCE(error_body, '')
@@ -22,7 +23,7 @@ func (s *HistoricalIngressCleanup) ListCandidates(ctx context.Context, cursor in
 			WHERE id > $1
 			  AND created_at < $2
 			  AND error_phase = 'auth'
-			  AND account_id IS NULL
+			  AND provider_id IS NULL
 			  AND upstream_status_code IS NULL
 			  AND COALESCE(upstream_error_message, '') = ''
 			  AND COALESCE(upstream_error_detail, '') = ''
@@ -42,6 +43,7 @@ func (s *HistoricalIngressCleanup) ListCandidates(ctx context.Context, cursor in
 	}
 	return batch, rows.Err()
 }
+
 func (s *HistoricalIngressCleanup) DeleteCandidates(ctx context.Context, ids []int64, before time.Time) (int64, error) {
 	result, err := s.db.ExecContext(ctx, `DELETE FROM ops_error_logs WHERE id = ANY($1) AND created_at < $2`, pq.Array(ids), before)
 	if err != nil {

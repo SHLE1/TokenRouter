@@ -14,11 +14,11 @@ func TestClassifyOpenAIAPIKeyHealthFailureExclusions(t *testing.T) {
 		err      error
 		eligible bool
 	}{
-		{name: "account attributed 502", err: &forwardcore.UpstreamFailoverError{StatusCode: http.StatusBadGateway}, eligible: true},
+		{name: "provider attributed 502", err: &forwardcore.UpstreamFailoverError{StatusCode: http.StatusBadGateway}, eligible: true},
 		{name: "request scoped capacity", err: &forwardcore.UpstreamFailoverError{StatusCode: 529, RequestScopedTransient: true}},
-		{name: "provider scoped overload", err: &forwardcore.UpstreamFailoverError{StatusCode: 529, Scope: forwardcore.GatewayFailureScopeProvider}},
-		{name: "dedicated same account retry", err: &forwardcore.UpstreamFailoverError{StatusCode: http.StatusTooManyRequests, RetryableOnSameAccount: true}},
-		{name: "credential disable path", err: &forwardcore.UpstreamFailoverError{StatusCode: http.StatusUnauthorized, Stage: forwardcore.GatewayFailureStageAccountAuth, Scope: forwardcore.GatewayFailureScopeAccount}},
+		{name: "provider scoped overload", err: &forwardcore.UpstreamFailoverError{StatusCode: 529, Scope: forwardcore.GatewayFailureScopeShared}},
+		{name: "dedicated same provider retry", err: &forwardcore.UpstreamFailoverError{StatusCode: http.StatusTooManyRequests, RetryableOnSameProvider: true}},
+		{name: "credential disable path", err: &forwardcore.UpstreamFailoverError{StatusCode: http.StatusUnauthorized, Stage: forwardcore.GatewayFailureStageProviderAuth, Scope: forwardcore.GatewayFailureScopeProvider}},
 		{name: "client request", err: &forwardcore.UpstreamFailoverError{StatusCode: http.StatusBadRequest}},
 	}
 	for _, tt := range tests {

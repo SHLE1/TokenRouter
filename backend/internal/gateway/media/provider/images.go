@@ -13,7 +13,7 @@ import (
 
 // ImagesTarget 是已准备的单次技术目标，不能序列化请求中的凭据。
 type ImagesOptions struct {
-	AccountID                           int64
+	ProviderID                          int64
 	OAuth                               bool
 	Model, ResponseFormat, StreamPrefix string
 	StartedAt                           time.Time
@@ -29,7 +29,7 @@ type ImagesOptions struct {
 }
 
 // String 防止技术参数中的令牌或请求被默认日志展开。
-func (o ImagesOptions) String() string   { return fmt.Sprintf("media Images account=%d", o.AccountID) }
+func (o ImagesOptions) String() string   { return fmt.Sprintf("media Images provider=%d", o.ProviderID) }
 func (o ImagesOptions) GoString() string { return o.String() }
 
 type Images struct{ Options ImagesOptions }
@@ -37,7 +37,7 @@ type Images struct{ Options ImagesOptions }
 func (e Images) Execute(ctx context.Context, input upstream.AttemptInput, sink upstream.OutputSink) (upstream.AttemptResult, error) {
 	o := e.Options
 	target := &openai.ImagesTarget{
-		AccountID:       o.AccountID,
+		ProviderID:      o.ProviderID,
 		OAuth:           o.OAuth,
 		Model:           o.Model,
 		ResponseFormat:  o.ResponseFormat,

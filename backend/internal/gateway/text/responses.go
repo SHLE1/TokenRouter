@@ -7,12 +7,12 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/failover"
 )
 
-// ResponseSelection 保留 HTTP continuation 的逐候选跳过，不把它计为账号切换。
+// ResponseSelection 保留 HTTP continuation 的逐候选跳过，不把它计为提供商切换。
 type ResponseSelection struct {
 	Selection
 	Available bool
 	Skip      *AttemptFailure
-	OAuth     failover.OAuth429Account
+	OAuth     failover.OAuth429Provider
 }
 
 // ResponseOutcome 将图片部分成功和首输出恢复资格与普通错误明确分开。
@@ -49,7 +49,7 @@ type ResponsePorts interface {
 	Completed(int)
 }
 
-// RunResponses 保留同账号恢复、一次请求的账号预算和首输出后的禁止重放边界。
+// RunResponses 保留同提供商恢复、一次请求的提供商预算和首输出后的禁止重放边界。
 func RunResponses(options ResponseOptions, p ResponsePorts) {
 	served := false
 	if lifecycle, ok := p.(interface {
@@ -61,7 +61,7 @@ func RunResponses(options ResponseOptions, p ResponsePorts) {
 	}
 
 	excluded := make(map[int64]struct{})
-	sameAccount := make(map[int64]int)
+	sameProvider := make(map[int64]int)
 	switches, firstOutputSwitches := 0, 0
 	var last *AttemptFailure
 	var oauth failover.OAuth429State
@@ -78,7 +78,7 @@ func RunResponses(options ResponseOptions, p ResponsePorts) {
 			return
 		}
 		if selected.Skip != nil {
-			excluded[selected.Account.ID] = struct{}{}
+			excluded[selected.Provider.ID] = struct{}{}
 			last = selected.Skip
 			continue
 		}
@@ -97,7 +97,7 @@ func RunResponses(options ResponseOptions, p ResponsePorts) {
 						return
 					}
 					excluded = make(map[int64]struct{})
-					sameAccount = make(map[int64]int)
+					sameProvider = make(map[int64]int)
 					last = nil
 					continue
 				}
@@ -125,14 +125,14 @@ func RunResponses(options ResponseOptions, p ResponsePorts) {
 						p.Exhausted(failure)
 						return
 					}
-					retryLimit := failover.EffectiveSameAccountRetryLimit(failure.Policy, selected.RetryLimit)
-					if failure.Policy.RetryableOnSameAccount && failover.SameAccountRetryAllowed(failure.Policy, sameAccount[selected.Account.ID], retryLimit) {
+					retryLimit := failover.EffectiveSameProviderRetryLimit(failure.Policy, selected.RetryLimit)
+					if failure.Policy.RetryableOnSameProvider && failover.SameProviderRetryAllowed(failure.Policy, sameProvider[selected.Provider.ID], retryLimit) {
 						if observer, ok := p.(interface{ PrepareRetry(*AttemptFailure, bool) }); ok {
 							observer.PrepareRetry(failure, true)
 						}
-						sameAccount[selected.Account.ID]++
-						delay := failover.SameAccountRetryDelayFor(failure.Policy, sameAccount[selected.Account.ID])
-						p.RetryWait(failure, retryLimit, sameAccount[selected.Account.ID], delay)
+						sameProvider[selected.Provider.ID]++
+						delay := failover.SameProviderRetryDelayFor(failure.Policy, sameProvider[selected.Provider.ID])
+						p.RetryWait(failure, retryLimit, sameProvider[selected.Provider.ID], delay)
 						if !failover.SleepWithContext(p.Context(), delay) {
 							return
 						}
@@ -142,7 +142,7 @@ func RunResponses(options ResponseOptions, p ResponsePorts) {
 						observer.PrepareRetry(failure, false)
 					}
 					p.Switched()
-					excluded[selected.Account.ID] = struct{}{}
+					excluded[selected.Provider.ID] = struct{}{}
 					last = failure
 					if switches >= options.MaxSwitches {
 						p.Exhausted(failure)

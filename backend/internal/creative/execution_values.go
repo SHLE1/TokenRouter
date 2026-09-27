@@ -22,7 +22,7 @@ func CreativePlatformImageModel(platform, model string) bool {
 // 单张大小上限、固定取一张、sha256 去重。
 func NormalizeCreativeOutputs(outputs []CreativeOutput) ([]CreativeOutput, error) {
 	if len(outputs) == 0 {
-		return nil, CreativeNonRetryableError("provider returned no image output")
+		return nil, CreativeNonRetryableError("platform returned no image output")
 	}
 	seen := make(map[string]struct{}, len(outputs))
 	out := make([]CreativeOutput, 0, len(outputs))
@@ -41,7 +41,7 @@ func NormalizeCreativeOutputs(outputs []CreativeOutput) ([]CreativeOutput, error
 		out = append(out, output)
 	}
 	if len(out) == 0 {
-		return nil, CreativeNonRetryableError("provider returned no usable image output")
+		return nil, CreativeNonRetryableError("platform returned no usable image output")
 	}
 	if len(out) > 1 {
 		out = out[:1]

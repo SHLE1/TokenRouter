@@ -12,9 +12,9 @@ import (
 
 	purepricing "github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	completion "github.com/TokenFlux/TokenRouter/internal/gateway/completion"
 	gatewaycapture "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
@@ -32,7 +32,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 共享价卡的免费 Fast 保留账号成本，并按 Standard 金额向用户收费。
+// 共享价卡的免费 Fast 保留提供商成本，并按 Standard 金额向用户收费。
 
 func TestGroupPricingFreeFastWithIntervalsAndTurnTime(t *testing.T) {
 	for _, free := range []bool{false, true} {
@@ -68,7 +68,7 @@ func TestGroupPricingFreeFastWithIntervalsAndTurnTime(t *testing.T) {
 					Usage: openai.ForwardUsage{InputTokens: 100}, Duration: time.Second,
 				},
 				APIKey: &apikey.APIKey{ID: 1020, GroupID: &groupID, Group: group}, User: &identity.User{ID: 2020},
-				Account:   gatewaycapture.ExecutionCompletionRecord(&gatewaycapture.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 3020, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth}}),
+				Provider:  gatewaycapture.ExecutionCompletionRecord(&gatewaycapture.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 3020, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}}),
 				PricingAt: time.Date(2026, 9, 9, 1, 30, 0, 0, time.UTC),
 			})
 			require.NoError(t, err)
@@ -364,7 +364,7 @@ func TestQoderPricingMatchesOtherPlatforms(t *testing.T) {
 					if purepricing.LooksLikeImageModel(model) {
 						result.ImageCount = 1
 					}
-					costs = append(costs, gateway.CalculateRecordUsageCost(context.Background(), gatewaycapture.ProjectMessagesCompletionResult(result, gatewaycapture.ExecutionCompletionRecord(&gatewaycapture.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: platform}})), gatewaycapture.ProjectCompletionKey(&apikey.APIKey{Group: group}), gatewaycapture.ProjectCompletionAccount(gatewaycapture.ExecutionCompletionRecord(&gatewaycapture.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: platform}})), model, model, routing.BillingModelSourceRequested, model, 1, 1, &completion.PricingOptions{PricingAt: time.Date(2026, 9, 9, 9, 0, 0, 0, time.UTC)}))
+					costs = append(costs, gateway.CalculateRecordUsageCost(context.Background(), gatewaycapture.ProjectMessagesCompletionResult(result, gatewaycapture.ExecutionCompletionRecord(&gatewaycapture.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: platform}})), gatewaycapture.ProjectCompletionKey(&apikey.APIKey{Group: group}), gatewaycapture.ProjectCompletionProvider(gatewaycapture.ExecutionCompletionRecord(&gatewaycapture.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: platform}})), model, model, routing.BillingModelSourceRequested, model, 1, 1, &completion.PricingOptions{PricingAt: time.Date(2026, 9, 9, 9, 0, 0, 0, time.UTC)}))
 				}
 				require.Equal(t, prices[0], prices[1])
 

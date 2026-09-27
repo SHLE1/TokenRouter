@@ -44,7 +44,6 @@ func (r *opsSystemLogCaptureRepo) InsertSystemLogCleanupAudit(_ context.Context,
 }
 
 func newOpsSystemLogTestRouter(handler *OpsHandler, withUser bool) *gin.Engine {
-
 	r := gin.New()
 	if withUser {
 		r.Use(func(c *gin.Context) {
@@ -83,13 +82,13 @@ func TestOpsSystemLogHandler_ListInvalidUserID(t *testing.T) {
 	}
 }
 
-func TestOpsSystemLogHandler_ListInvalidAccountID(t *testing.T) {
+func TestOpsSystemLogHandler_ListInvalidProviderID(t *testing.T) {
 	svc := ops.NewOpsService(nil, nil, nil, nil, nil, nil, nil, opsprovider.LogControl{})
 	h := NewOpsHandler(svc)
 	r := newOpsSystemLogTestRouter(h, false)
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/logs?account_id=-1", nil)
+	req := httptest.NewRequest(http.MethodGet, "/logs?provider_id=-1", nil)
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("status=%d, want 400", w.Code)

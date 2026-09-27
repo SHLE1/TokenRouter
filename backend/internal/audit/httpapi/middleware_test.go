@@ -82,8 +82,8 @@ func TestDeriveAuditAction(t *testing.T) {
 		path   string
 		want   string
 	}{
-		{"PUT", "/api/v1/admin/accounts/:id", "admin.accounts.update"},
-		{"POST", "/api/v1/admin/accounts", "admin.accounts.create"},
+		{"PUT", "/api/v1/admin/providers/:id", "admin.providers.update"},
+		{"POST", "/api/v1/admin/providers", "admin.providers.create"},
 		{"DELETE", "/api/v1/admin/backups/:id", "admin.backups.delete"},
 		{"GET", "/api/v1/admin/users/:id/api-keys", "admin.users.api_keys.read"},
 		{"POST", "/api/v1/admin/redeem-codes/batch", "admin.redeem_codes.batch.create"},
@@ -111,7 +111,6 @@ func TestAuditSensitiveReadsIncludesForkBackupRoutes(t *testing.T) {
 }
 
 func TestAuditMiddlewareRestoresPartialBodyAfterReadError(t *testing.T) {
-
 	want := []byte(`{"name":"完整请求"}`)
 	var got []byte
 
@@ -143,8 +142,7 @@ func TestAuditMiddlewareRestoresPartialBodyAfterReadError(t *testing.T) {
 // Ollama 会话保存的请求体整体就是浏览器 Cookie 明文，键级脱敏清单曾漏掉裸键
 // "session"，必须走整体不入库路径，防止会话凭证长期留存在 audit_logs。
 func TestOllamaCloudUsageSessionRouteOmitsAuditBody(t *testing.T) {
-
-	require.Contains(t, auditBodyOmittedRoutes, "PUT /api/v1/admin/accounts/:id/ollama-cloud-usage/session")
+	require.Contains(t, auditBodyOmittedRoutes, "PUT /api/v1/admin/providers/:id/ollama-cloud-usage/session")
 
 	repository := &auditCaptureRepository{}
 	auditService := service.NewAuditLogService(repository, nil)
@@ -157,11 +155,11 @@ func TestOllamaCloudUsageSessionRouteOmitsAuditBody(t *testing.T) {
 		c.Next()
 	})
 	router.Use(gin.HandlerFunc(NewAuditLogMiddleware(auditService, service.NewRedactor(nil))))
-	router.PUT("/api/v1/admin/accounts/:id/ollama-cloud-usage/session", func(c *gin.Context) {
+	router.PUT("/api/v1/admin/providers/:id/ollama-cloud-usage/session", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"ok": true})
 	})
 
-	request := httptest.NewRequest(http.MethodPut, "/api/v1/admin/accounts/7/ollama-cloud-usage/session",
+	request := httptest.NewRequest(http.MethodPut, "/api/v1/admin/providers/7/ollama-cloud-usage/session",
 		bytes.NewBufferString(`{"session":"wos-session=audit-canary-cookie; __Secure-authjs.session-token.0=audit-canary-shard"}`))
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()

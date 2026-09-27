@@ -11,16 +11,16 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// Redis Key 模式（使用 hash tag 确保 Redis Cluster 下同一 accountID 的 key 落入同一 slot）
-// 格式: umq:{accountID}:lock / umq:{accountID}:last
+// Redis Key 模式（使用 hash tag 确保 Redis Cluster 下同一 providerID 的 key 落入同一 slot）
+// 格式: umq:{providerID}:lock / umq:{providerID}:last
 const (
 	umqKeyPrefix  = "umq:"
 	umqLockSuffix = ":lock" // STRING (requestID), PX lockTtlMs
 	umqLastSuffix = ":last" // STRING (毫秒时间戳), EX 60s
 
 	// 锁索引用来替代后台清理对 umq:*:lock 的全量 SCAN。
-	// member 是 accountID，score 是锁预计过期的 Redis Unix 毫秒时间戳。
-	umqLockIndexKey              = "umq:lock:index" // ZSET：member 为账号 ID，score 为锁预计过期的 Unix 毫秒
+	// member 是 providerID，score 是锁预计过期的 Redis Unix 毫秒时间戳。
+	umqLockIndexKey              = "umq:lock:index" // ZSET：member 为提供商 ID，score 为锁预计过期的 Unix 毫秒
 	umqLockIndexCleanupBatchSize = 1000
 )
 
@@ -93,21 +93,21 @@ func NewUserMsgQueueCache(rdb *redis.Client) scheduler.UserMsgQueueCache {
 	return &userMsgQueueCache{rdb: rdb}
 }
 
-func umqLockKey(accountID int64) string {
+func umqLockKey(providerID int64) string {
 	// 格式: umq:{123}:lock — 花括号确保 Redis Cluster hash tag 生效
-	return umqKeyPrefix + "{" + strconv.FormatInt(accountID, 10) + "}" + umqLockSuffix
+	return umqKeyPrefix + "{" + strconv.FormatInt(providerID, 10) + "}" + umqLockSuffix
 }
 
-func umqLastKey(accountID int64) string {
+func umqLastKey(providerID int64) string {
 	// 格式: umq:{123}:last — 与 lockKey 同一 hash slot
-	return umqKeyPrefix + "{" + strconv.FormatInt(accountID, 10) + "}" + umqLastSuffix
+	return umqKeyPrefix + "{" + strconv.FormatInt(providerID, 10) + "}" + umqLastSuffix
 }
 
-// AcquireLock 尝试获取账号级串行锁
+// AcquireLock 尝试获取提供商级串行锁
 // 无论成功与否都尽力写入锁索引：成功时登记自己的锁，失败时回填观测到的持有者锁，
 // 保证任何被争用的锁都能被后台 reconcile 发现，无需扫描所有锁 key。
-func (c *userMsgQueueCache) AcquireLock(ctx context.Context, accountID int64, requestID string, lockTtlMs int) (bool, error) {
-	key := umqLockKey(accountID)
+func (c *userMsgQueueCache) AcquireLock(ctx context.Context, providerID int64, requestID string, lockTtlMs int) (bool, error) {
+	key := umqLockKey(providerID)
 	result, err := acquireLockScript.Run(ctx, c.rdb, []string{key}, requestID, lockTtlMs).Result()
 	if err != nil {
 		return false, fmt.Errorf("umq acquire lock: %w", err)
@@ -123,9 +123,9 @@ func (c *userMsgQueueCache) AcquireLock(ctx context.Context, accountID int64, re
 	if expireAtMs > 0 {
 		if err := c.rdb.ZAdd(ctx, umqLockIndexKey, redis.Z{
 			Score:  float64(expireAtMs),
-			Member: strconv.FormatInt(accountID, 10),
+			Member: strconv.FormatInt(providerID, 10),
 		}).Err(); err != nil {
-			logger.LegacyPrintf("repository.umq", "Warning: update lock index for account %d failed: %v", accountID, err)
+			logger.LegacyPrintf("repository.umq", "Warning: update lock index for provider %d failed: %v", providerID, err)
 		}
 	}
 	return acquired == 1, nil
@@ -133,9 +133,9 @@ func (c *userMsgQueueCache) AcquireLock(ctx context.Context, accountID int64, re
 
 // ReleaseLock 释放锁并记录完成时间
 // 只有 requestID 匹配时才删除锁索引，避免误删其他请求重入后写入的新锁。
-func (c *userMsgQueueCache) ReleaseLock(ctx context.Context, accountID int64, requestID string) (bool, error) {
-	lockKey := umqLockKey(accountID)
-	lastKey := umqLastKey(accountID)
+func (c *userMsgQueueCache) ReleaseLock(ctx context.Context, providerID int64, requestID string) (bool, error) {
+	lockKey := umqLockKey(providerID)
+	lastKey := umqLastKey(providerID)
 	result, err := releaseLockScript.Run(ctx, c.rdb, []string{lockKey, lastKey}, requestID).Int()
 	if err != nil {
 		return false, fmt.Errorf("umq release lock: %w", err)
@@ -143,16 +143,16 @@ func (c *userMsgQueueCache) ReleaseLock(ctx context.Context, accountID int64, re
 	if result == 1 {
 		// 与下一个 AcquireLock 的 ZAdd 存在竞态：可能误删新持有者刚写入的索引项。
 		// 该锁下次被争用时 AcquireLock 的回填路径会重新登记，无需在此加锁。
-		if err := c.rdb.ZRem(ctx, umqLockIndexKey, strconv.FormatInt(accountID, 10)).Err(); err != nil {
-			logger.LegacyPrintf("repository.umq", "Warning: remove lock index for account %d failed: %v", accountID, err)
+		if err := c.rdb.ZRem(ctx, umqLockIndexKey, strconv.FormatInt(providerID, 10)).Err(); err != nil {
+			logger.LegacyPrintf("repository.umq", "Warning: remove lock index for provider %d failed: %v", providerID, err)
 		}
 	}
 	return result == 1, nil
 }
 
 // GetLastCompletedMs 获取上次完成时间（毫秒时间戳）
-func (c *userMsgQueueCache) GetLastCompletedMs(ctx context.Context, accountID int64) (int64, error) {
-	key := umqLastKey(accountID)
+func (c *userMsgQueueCache) GetLastCompletedMs(ctx context.Context, providerID int64) (int64, error) {
+	key := umqLastKey(providerID)
 	val, err := c.rdb.Get(ctx, key).Result()
 	if errors.Is(err, redis.Nil) {
 		return 0, nil
@@ -197,13 +197,13 @@ func (c *userMsgQueueCache) ReconcileExpiredLockCandidates(ctx context.Context, 
 
 	cleaned := 0
 	for _, member := range members {
-		accountID, err := strconv.ParseInt(member, 10, 64)
-		if err != nil || accountID <= 0 {
+		providerID, err := strconv.ParseInt(member, 10, 64)
+		if err != nil || providerID <= 0 {
 			c.removeLockIndexMember(ctx, member)
 			continue
 		}
 
-		result, err := reconcileLockScript.Run(ctx, c.rdb, []string{umqLockKey(accountID)}).Result()
+		result, err := reconcileLockScript.Run(ctx, c.rdb, []string{umqLockKey(providerID)}).Result()
 		if err != nil && !errors.Is(err, redis.Nil) {
 			return cleaned, fmt.Errorf("umq reconcile lock: %w", err)
 		}

@@ -6,28 +6,28 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
 	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
-// OpenAICountTarget 只允许读取选择快照和执行计数，不交付账号凭据。
+// OpenAICountTarget 只允许读取选择快照和执行计数，不交付提供商凭据。
 type OpenAICountTarget interface {
-	Snapshot() account.AccountSnapshot
+	Snapshot() provider.ProviderSnapshot
 	ForwardCount(context.Context, *gin.Context, []byte, string) error
 }
 
 // InputTokensTarget 保留单次尝试的原生预检与重试预算。
 type InputTokensTarget interface {
-	Snapshot() account.AccountSnapshot
+	Snapshot() provider.ProviderSnapshot
 	RetryLimit() int
 	ForwardInputTokens(context.Context, *gin.Context, []byte) error
 }
@@ -106,8 +106,8 @@ func (OpenAITokenPorts) BindPlan(c *gin.Context, plan routing.RoutePlan) {
 	c.Request = c.Request.WithContext(requeststate.WithRoutePlan(c.Request.Context(), plan))
 }
 
-func (OpenAITokenPorts) MessageAccountModel(ctx context.Context, key *apikey.APIKey, model string) string {
-	return ResolveOpenAIMessagesAccountLayerModelForRequest(ctx, model)
+func (OpenAITokenPorts) MessageProviderModel(ctx context.Context, key *apikey.APIKey, model string) string {
+	return ResolveOpenAIMessagesProviderLayerModelForRequest(ctx, model)
 }
 
 func (OpenAITokenPorts) MappedBodyCache(body []byte) func(bool, string) []byte {
@@ -149,7 +149,7 @@ func OpenAICompatibleSelectionErrorForLog(err error, platform string) error {
 	if err == nil || platform != "grok" {
 		return err
 	}
-	message := strings.ReplaceAll(err.Error(), "OpenAI accounts", "Grok accounts")
+	message := strings.ReplaceAll(err.Error(), "OpenAI providers", "Grok providers")
 	if message == err.Error() {
 		return err
 	}

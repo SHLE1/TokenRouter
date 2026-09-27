@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// RateLimitReset 表达供应商限流头的重置观测，不执行账号状态写入。
+// RateLimitReset 表达供应商限流头的重置观测，不执行提供商状态写入。
 type RateLimitReset struct {
 	ResetAt       time.Time  // 限流重置时间
 	FiveHourReset *time.Time // 五小时窗口重置时间，缺失时为 nil
@@ -87,7 +87,7 @@ func parseResetTimestamp(raw string, now time.Time, maxAge time.Duration) (time.
 }
 
 // SelectFableWindowLimit 解析 Anthropic 7d_oi 模型窗口响应头。
-// 该窗口只约束 Fable 家族，不能让账号对其它模型失去调度资格。
+// 该窗口只约束 Fable 家族，不能让提供商对其它模型失去调度资格。
 // surpassed-threshold 使用浮点数而非布尔值，因此 status=rejected 或
 // utilization >= 1.0 都视为超限；缺少专用 reset 时回退到聚合 reset。
 func SelectFableWindowLimit(headers http.Header, now time.Time) *WindowLimit {
@@ -142,7 +142,6 @@ func CalculateRateLimitReset(headers http.Header, info func(string, ...any)) *Ra
 			"reset_5h", reset5hStr,
 			"reset_7d", reset7dStr,
 		)
-
 	}
 	// 按实际耗尽窗口选择重置时间。
 	var chosen *time.Time

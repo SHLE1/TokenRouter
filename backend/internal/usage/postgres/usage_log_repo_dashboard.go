@@ -6,8 +6,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/identity"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 	"golang.org/x/sync/errgroup"
@@ -177,14 +177,14 @@ func (r *Store) fillDashboardEntityStats(ctx context.Context, stats *DashboardSt
 		FROM api_keys
 		WHERE deleted_at IS NULL
 	`
-	accountStatsQuery := `
+	providerStatsQuery := `
 		SELECT
-			COUNT(*) as total_accounts,
-			COUNT(CASE WHEN status = $1 AND schedulable = true THEN 1 END) as normal_accounts,
-			COUNT(CASE WHEN status = $2 THEN 1 END) as error_accounts,
-			COUNT(CASE WHEN rate_limited_at IS NOT NULL AND rate_limit_reset_at > $3 THEN 1 END) as ratelimit_accounts,
-			COUNT(CASE WHEN overload_until IS NOT NULL AND overload_until > $4 THEN 1 END) as overload_accounts
-		FROM accounts
+			COUNT(*) as total_providers,
+			COUNT(CASE WHEN status = $1 AND schedulable = true THEN 1 END) as normal_providers,
+			COUNT(CASE WHEN status = $2 THEN 1 END) as error_providers,
+			COUNT(CASE WHEN rate_limited_at IS NOT NULL AND rate_limit_reset_at > $3 THEN 1 END) as ratelimit_providers,
+			COUNT(CASE WHEN overload_until IS NOT NULL AND overload_until > $4 THEN 1 END) as overload_providers
+		FROM providers
 		WHERE deleted_at IS NULL
 	`
 	return r.runDashboardQueries(
@@ -197,10 +197,10 @@ func (r *Store) fillDashboardEntityStats(ctx context.Context, stats *DashboardSt
 		},
 		func(queryCtx context.Context) error {
 			return scanSingleRow(
-				queryCtx, r.sql, accountStatsQuery,
-				[]any{identity.StatusActive, account.StatusError, now, now},
-				&stats.TotalAccounts, &stats.NormalAccounts, &stats.ErrorAccounts,
-				&stats.RateLimitAccounts, &stats.OverloadAccounts,
+				queryCtx, r.sql, providerStatsQuery,
+				[]any{identity.StatusActive, provider.StatusError, now, now},
+				&stats.TotalProviders, &stats.NormalProviders, &stats.ErrorProviders,
+				&stats.RateLimitProviders, &stats.OverloadProviders,
 			)
 		},
 	)
@@ -212,7 +212,7 @@ func (r *Store) fillDashboardUsageStatsAggregated(ctx context.Context, stats *Da
 			COALESCE(SUM(total_requests), 0), COALESCE(SUM(input_tokens), 0),
 			COALESCE(SUM(output_tokens), 0), COALESCE(SUM(cache_creation_tokens), 0),
 			COALESCE(SUM(cache_read_tokens), 0), COALESCE(SUM(total_cost), 0),
-			COALESCE(SUM(actual_cost), 0), COALESCE(SUM(account_cost), 0),
+			COALESCE(SUM(actual_cost), 0), COALESCE(SUM(provider_cost), 0),
 			COALESCE(SUM(total_duration_ms), 0),
 			COALESCE(SUM(total_requests) FILTER (WHERE bucket_date = $1::date), 0),
 			COALESCE(SUM(input_tokens) FILTER (WHERE bucket_date = $1::date), 0),
@@ -221,7 +221,7 @@ func (r *Store) fillDashboardUsageStatsAggregated(ctx context.Context, stats *Da
 			COALESCE(SUM(cache_read_tokens) FILTER (WHERE bucket_date = $1::date), 0),
 			COALESCE(SUM(total_cost) FILTER (WHERE bucket_date = $1::date), 0),
 			COALESCE(SUM(actual_cost) FILTER (WHERE bucket_date = $1::date), 0),
-			COALESCE(SUM(account_cost) FILTER (WHERE bucket_date = $1::date), 0),
+			COALESCE(SUM(provider_cost) FILTER (WHERE bucket_date = $1::date), 0),
 			COALESCE(MAX(active_users) FILTER (WHERE bucket_date = $1::date), 0)
 		FROM usage_dashboard_daily
 	`
@@ -236,7 +236,7 @@ func (r *Store) fillDashboardUsageStatsAggregated(ctx context.Context, stats *Da
 			&stats.TotalCacheReadTokens,
 			&stats.TotalCost,
 			&stats.TotalActualCost,
-			&stats.TotalAccountCost,
+			&stats.TotalProviderCost,
 			&totalDurationMs,
 			&stats.TodayRequests,
 			&stats.TodayInputTokens,
@@ -245,7 +245,7 @@ func (r *Store) fillDashboardUsageStatsAggregated(ctx context.Context, stats *Da
 			&stats.TodayCacheReadTokens,
 			&stats.TodayCost,
 			&stats.TodayActualCost,
-			&stats.TodayAccountCost,
+			&stats.TodayProviderCost,
 			&stats.ActiveUsers,
 		)
 	}
@@ -288,7 +288,7 @@ func (r *Store) fillDashboardUsageStatsFromUsageLogs(ctx context.Context, stats 
 				cache_read_tokens,
 				total_cost,
 				actual_cost,
-				COALESCE(account_stats_cost, total_cost) * COALESCE(account_rate_multiplier, 1) AS account_cost,
+				COALESCE(provider_stats_cost, total_cost) * COALESCE(provider_rate_multiplier, 1) AS provider_cost,
 				COALESCE(duration_ms, 0) AS duration_ms
 			FROM usage_logs
 			WHERE created_at >= LEAST($1::timestamptz, $3::timestamptz)
@@ -302,7 +302,7 @@ func (r *Store) fillDashboardUsageStatsFromUsageLogs(ctx context.Context, stats 
 			COALESCE(SUM(cache_read_tokens) FILTER (WHERE created_at >= $1::timestamptz AND created_at < $2::timestamptz), 0) AS total_cache_read_tokens,
 			COALESCE(SUM(total_cost) FILTER (WHERE created_at >= $1::timestamptz AND created_at < $2::timestamptz), 0) AS total_cost,
 			COALESCE(SUM(actual_cost) FILTER (WHERE created_at >= $1::timestamptz AND created_at < $2::timestamptz), 0) AS total_actual_cost,
-			COALESCE(SUM(account_cost) FILTER (WHERE created_at >= $1::timestamptz AND created_at < $2::timestamptz), 0) AS total_account_cost,
+			COALESCE(SUM(provider_cost) FILTER (WHERE created_at >= $1::timestamptz AND created_at < $2::timestamptz), 0) AS total_provider_cost,
 			COALESCE(SUM(duration_ms) FILTER (WHERE created_at >= $1::timestamptz AND created_at < $2::timestamptz), 0) AS total_duration_ms,
 			COUNT(*) FILTER (WHERE created_at >= $3::timestamptz AND created_at < $4::timestamptz) AS today_requests,
 			COALESCE(SUM(input_tokens) FILTER (WHERE created_at >= $3::timestamptz AND created_at < $4::timestamptz), 0) AS today_input_tokens,
@@ -311,7 +311,7 @@ func (r *Store) fillDashboardUsageStatsFromUsageLogs(ctx context.Context, stats 
 			COALESCE(SUM(cache_read_tokens) FILTER (WHERE created_at >= $3::timestamptz AND created_at < $4::timestamptz), 0) AS today_cache_read_tokens,
 			COALESCE(SUM(total_cost) FILTER (WHERE created_at >= $3::timestamptz AND created_at < $4::timestamptz), 0) AS today_cost,
 			COALESCE(SUM(actual_cost) FILTER (WHERE created_at >= $3::timestamptz AND created_at < $4::timestamptz), 0) AS today_actual_cost,
-			COALESCE(SUM(account_cost) FILTER (WHERE created_at >= $3::timestamptz AND created_at < $4::timestamptz), 0) AS today_account_cost
+			COALESCE(SUM(provider_cost) FILTER (WHERE created_at >= $3::timestamptz AND created_at < $4::timestamptz), 0) AS today_provider_cost
 		FROM scoped
 	`
 	var totalDurationMs int64
@@ -327,7 +327,7 @@ func (r *Store) fillDashboardUsageStatsFromUsageLogs(ctx context.Context, stats 
 		&stats.TotalCacheReadTokens,
 		&stats.TotalCost,
 		&stats.TotalActualCost,
-		&stats.TotalAccountCost,
+		&stats.TotalProviderCost,
 		&totalDurationMs,
 		&stats.TodayRequests,
 		&stats.TodayInputTokens,
@@ -336,7 +336,7 @@ func (r *Store) fillDashboardUsageStatsFromUsageLogs(ctx context.Context, stats 
 		&stats.TodayCacheReadTokens,
 		&stats.TodayCost,
 		&stats.TodayActualCost,
-		&stats.TodayAccountCost,
+		&stats.TodayProviderCost,
 	); err != nil {
 		return err
 	}

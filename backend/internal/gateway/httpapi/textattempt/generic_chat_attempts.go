@@ -33,13 +33,13 @@ type genericChatAttemptBridge struct {
 // Select 保留通用 ChatCompletions 适配；循环复用 gateway/text。
 func (b *genericChatAttemptBridge) Select(excluded map[int64]struct{}) (textflow.Selection, error) {
 	var err error
-	b.selection, err = b.binding().selectAccount(b.c.Request.Context(), b.apiKey.GroupID, b.selectionSessionHash, b.reqModel, excluded, "", int64(0))
+	b.selection, err = b.binding().selectProvider(b.c.Request.Context(), b.apiKey.GroupID, b.selectionSessionHash, b.reqModel, excluded, "", int64(0))
 	if err != nil {
 		return textflow.Selection{}, err
 	}
-	b.account = b.selection.Account
-	gatewayhttp.SetOpsSelectedAccount(b.c, b.account.Record.ID, b.account.Record.Platform)
-	return gatewaycapture.CaptureTextSelection(b.account), nil
+	b.provider = b.selection.Provider
+	gatewayhttp.SetOpsSelectedProvider(b.c, b.provider.Record.ID, b.provider.Record.Platform)
+	return gatewaycapture.CaptureTextSelection(b.provider), nil
 }
 
 // FirstSelectionFailure 保留通用 ChatCompletions 适配；循环复用 gateway/text。
@@ -49,14 +49,14 @@ func (b *genericChatAttemptBridge) FirstSelectionFailure(err error, _ bool) {
 	}) {
 		return
 	}
-	cls := classifyNoAccountErrorFromGin(b.c, b.binding().diagnoser, b.apiKey, b.reqModel, b.reqModel, b.groupPlatform)
+	cls := classifyNoProviderErrorFromGin(b.c, b.binding().diagnoser, b.apiKey, b.reqModel, b.reqModel, b.groupPlatform)
 	cls = gatewayhttp.RefineSelectionError(err, cls)
 	if !cls.ModelNotFound {
 		gatewayhttp.MarkOpsRoutingCapacityLimitedIfNoAvailable(b.c, err)
 	}
 	message := cls.Message
 	if !cls.ModelNotFound {
-		message = "No available accounts: " + err.Error()
+		message = "No available providers: " + err.Error()
 	}
 	b.binding().chatCompletionsErrorResponse(b.c, cls.Status, cls.ErrType, message)
 }
@@ -64,29 +64,29 @@ func (b *genericChatAttemptBridge) FirstSelectionFailure(err error, _ bool) {
 // Acquire 保留通用 ChatCompletions 适配；循环复用 gateway/text。
 func (b *genericChatAttemptBridge) Acquire() bool {
 	var err error
-	// 4. Acquire account concurrency slot
-	b.accountReleaseFunc = b.selection.ReleaseFunc
+	// 4. Acquire provider concurrency slot
+	b.providerReleaseFunc = b.selection.ReleaseFunc
 	if !b.selection.Acquired {
 		if b.selection.WaitPlan == nil {
 			gatewayhttp.MarkOpsRoutingCapacityLimited(b.c)
-			b.binding().chatCompletionsErrorResponse(b.c, http.StatusServiceUnavailable, "api_error", "No available accounts")
+			b.binding().chatCompletionsErrorResponse(b.c, http.StatusServiceUnavailable, "api_error", "No available providers")
 			return false
 		}
-		b.accountReleaseFunc, err = b.binding().concurrencyHelper.AcquireAccountSlotWithWaitTimeout(
+		b.providerReleaseFunc, err = b.binding().concurrencyHelper.AcquireProviderSlotWithWaitTimeout(
 			b.c,
-			b.account.Record.ID,
+			b.provider.Record.ID,
 			b.selection.WaitPlan.MaxConcurrency,
 			b.selection.WaitPlan.Timeout,
 			b.reqStream,
 			b.streamStarted,
 		)
 		if err != nil {
-			b.reqLog.Warn("gateway.cc.account_slot_acquire_failed", zap.Int64("account_id", b.account.Record.ID), zap.Error(err))
-			b.binding().handleConcurrencyError(b.c, err, "account", *b.streamStarted)
+			b.reqLog.Warn("gateway.cc.provider_slot_acquire_failed", zap.Int64("provider_id", b.provider.Record.ID), zap.Error(err))
+			b.binding().handleConcurrencyError(b.c, err, "provider", *b.streamStarted)
 			return false
 		}
 	}
-	b.accountReleaseFunc = scheduler.WrapRelease(b.c.Request.Context(), scheduler.ReleaseOnCancel, b.accountReleaseFunc)
+	b.providerReleaseFunc = scheduler.WrapRelease(b.c.Request.Context(), scheduler.ReleaseOnCancel, b.providerReleaseFunc)
 
 	return true
 }
@@ -95,9 +95,9 @@ func (b *genericChatAttemptBridge) Acquire() bool {
 func (b *genericChatAttemptBridge) Forward(_ textflow.AttemptState) textflow.Outcome {
 	var err error
 
-	if b.groupPlatform == capability.PlatformGemini && b.account.Record.Platform != capability.PlatformGemini {
-		if b.accountReleaseFunc != nil {
-			b.accountReleaseFunc()
+	if b.groupPlatform == capability.PlatformGemini && b.provider.Record.Platform != capability.PlatformGemini {
+		if b.providerReleaseFunc != nil {
+			b.providerReleaseFunc()
 		}
 
 		return textflow.Outcome{Skip: true}
@@ -109,33 +109,33 @@ func (b *genericChatAttemptBridge) Forward(_ textflow.AttemptState) textflow.Out
 		b.forwardBody = b.binding().replaceModel(b.body, b.groupMapping.MappedModel)
 	}
 	gatewayhttp.SetActualUpstreamEndpoint(b.c, "")
-	if b.account.Record.Platform == capability.PlatformGemini {
+	if b.provider.Record.Platform == capability.PlatformGemini {
 		if !b.binding().geminiAvailable {
 			b.binding().chatCompletionsErrorResponse(b.c, http.StatusBadGateway, "upstream_error", "Gemini compatibility service is not configured")
-			if b.accountReleaseFunc != nil {
-				b.accountReleaseFunc()
+			if b.providerReleaseFunc != nil {
+				b.providerReleaseFunc()
 			}
 			return textflow.Outcome{Stop: true}
 		}
-		b.result, err = b.binding().forwardGeminiChat(b.c.Request.Context(), b.c, b.account, b.forwardBody)
-	} else if shouldUseAntigravityCompat(b.account) {
+		b.result, err = b.binding().forwardGeminiChat(b.c.Request.Context(), b.c, b.provider, b.forwardBody)
+	} else if shouldUseAntigravityCompat(b.provider) {
 		if !b.binding().antigravityAvailable {
 			b.binding().chatCompletionsErrorResponse(b.c, http.StatusBadGateway, "upstream_error", "Antigravity compatibility service is not configured")
-			if b.accountReleaseFunc != nil {
-				b.accountReleaseFunc()
+			if b.providerReleaseFunc != nil {
+				b.providerReleaseFunc()
 			}
 			return textflow.Outcome{Stop: true}
 		}
 		gatewayhttp.SetActualUpstreamEndpoint(b.c, gatewayhttp.EndpointAntigravityGenerateContent)
-		b.result, err = b.binding().forwardAntigravityChat(b.c.Request.Context(), b.c, b.account, b.forwardBody, b.parsedReq)
+		b.result, err = b.binding().forwardAntigravityChat(b.c.Request.Context(), b.c, b.provider, b.forwardBody, b.parsedReq)
 	} else {
-		b.result, err = b.binding().forwardChat(b.c.Request.Context(), b.c, b.account, b.forwardBody, b.parsedReq)
+		b.result, err = b.binding().forwardChat(b.c.Request.Context(), b.c, b.provider, b.forwardBody, b.parsedReq)
 	}
 
-	if b.accountReleaseFunc != nil {
-		b.accountReleaseFunc()
+	if b.providerReleaseFunc != nil {
+		b.providerReleaseFunc()
 	}
-	b.binding().reportSchedule(b.selection, b.account.Record.ID, err == nil, b.result)
+	b.binding().reportSchedule(b.selection, b.provider.Record.ID, err == nil, b.result)
 
 	out := textflow.Outcome{Attempt: messageObservedAttempt(b.result, err), Err: err, HasResult: b.result != nil, OutputChanged: b.c.Writer.Size() != b.writerSizeBeforeForward}
 	out.Attempt.HTTPCommitted = b.c.Writer.Written()
@@ -159,7 +159,7 @@ func (b *genericChatAttemptBridge) OtherFailure(err error) {
 		wroteFallback = b.binding().ensureForwardErrorResponse(b.c, *b.streamStarted)
 	}
 	b.reqLog.Error("gateway.cc.forward_failed",
-		zap.Int64("account_id", b.account.Record.ID),
+		zap.Int64("provider_id", b.provider.Record.ID),
 		zap.Bool("fallback_error_response_written", wroteFallback),
 		zap.Bool("upstream_error_response_already_written", upstreamErrorAlreadyCommunicated),
 		zap.Error(err),
@@ -173,7 +173,7 @@ func (b *genericChatAttemptBridge) Complete(_ textflow.AttemptState) {
 	clientIP := clientip.GetClientIP(b.c)
 	requestPayloadHash := billing.HashUsageRequestPayload(b.body)
 	inboundEndpoint := gatewayhttp.GetInboundEndpoint(b.c)
-	upstreamEndpoint := gatewayhttp.GetUpstreamEndpoint(b.c, b.account.Record.Platform)
+	upstreamEndpoint := gatewayhttp.GetUpstreamEndpoint(b.c, b.provider.Record.Platform)
 
 	clientSessionID := gatewayhttp.ExtractClientSessionID(b.c)
 	gatewayhttp.StampForwardRequestedReasoningEffort(b.result, b.c)
@@ -183,7 +183,7 @@ func (b *genericChatAttemptBridge) Complete(_ textflow.AttemptState) {
 
 		APIKey:             b.apiKey,
 		User:               b.apiKey.User,
-		Account:            gatewaycapture.ExecutionCompletionRecord(b.account),
+		Provider:           gatewaycapture.ExecutionCompletionRecord(b.provider),
 		Subscription:       b.subscription,
 		InboundEndpoint:    inboundEndpoint,
 		UpstreamEndpoint:   upstreamEndpoint,
@@ -200,7 +200,7 @@ func (b *genericChatAttemptBridge) Complete(_ textflow.AttemptState) {
 	b.binding().submitUsageRecordTask(b.c, func(ctx context.Context) {
 		if err := completionRuntime.Record(ctx, completionInput, false); err != nil {
 			completionLog.Error("gateway.cc.record_usage_failed",
-				zap.Int64("account_id", completionInput.Account.ID),
+				zap.Int64("provider_id", completionInput.Provider.ID),
 				zap.Error(err),
 			)
 		}
@@ -211,7 +211,7 @@ func (b *genericChatAttemptBridge) Context() context.Context { return b.requestC
 func (b *genericChatAttemptBridge) Begin()                   {}
 func (b *genericChatAttemptBridge) PrepareAttempt() bool     { return true }
 func (b *genericChatAttemptBridge) Intercept() bool          { return false }
-func (b *genericChatAttemptBridge) SingleAccountRetry()      {}
+func (b *genericChatAttemptBridge) SingleProviderRetry()     {}
 func (b *genericChatAttemptBridge) Abandon(int64)            {}
 func (b *genericChatAttemptBridge) Success()                 {}
 func (b *genericChatAttemptBridge) Exhausted(err *textflow.AttemptFailure, _ string, stream bool) {
@@ -219,7 +219,7 @@ func (b *genericChatAttemptBridge) Exhausted(err *textflow.AttemptFailure, _ str
 	if err != nil && errors.As(err.Cause, &original) {
 		b.binding().handleCCFailoverExhausted(b.c, original, stream || *b.streamStarted)
 	} else {
-		b.binding().chatCompletionsErrorResponse(b.c, http.StatusBadGateway, "server_error", "All available accounts exhausted")
+		b.binding().chatCompletionsErrorResponse(b.c, http.StatusBadGateway, "server_error", "All available providers exhausted")
 	}
 }
 

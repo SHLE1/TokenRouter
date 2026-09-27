@@ -28,16 +28,16 @@ func CreativeNonRetryableError(format string, args ...any) *CreativeUpstreamErro
 func CreativeHTTPStatusError(statusCode int, message string) *CreativeUpstreamError {
 	retryable := statusCode == 0 || statusCode == 429 || statusCode >= 500
 	// 上游 body 可能回显 prompt、内部 URL 或认证信息；对外只保留稳定的状态类消息。
-	publicMessage := "creative provider request failed"
+	publicMessage := "creative platform request failed"
 	switch {
 	case statusCode == 0:
-		publicMessage = "creative provider connection failed"
+		publicMessage = "creative platform connection failed"
 	case statusCode == 429:
-		publicMessage = "creative provider rate limited"
+		publicMessage = "creative platform rate limited"
 	case statusCode >= 500:
-		publicMessage = "creative provider unavailable"
+		publicMessage = "creative platform unavailable"
 	case statusCode >= 400:
-		publicMessage = "creative provider rejected request"
+		publicMessage = "creative platform rejected request"
 	}
 	return &CreativeUpstreamError{StatusCode: statusCode, Message: publicMessage, Retryable: retryable}
 }

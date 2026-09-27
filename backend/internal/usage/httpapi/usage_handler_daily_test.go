@@ -36,7 +36,7 @@ func (s *dailyUsageRepoStub) GetUsageTrendWithFilters(
 	ctx context.Context,
 	startTime, endTime time.Time,
 	granularity string,
-	userID, apiKeyID, accountID, groupID int64,
+	userID, apiKeyID, providerID, groupID int64,
 	model string,
 	requestType *int16,
 	stream *bool,
@@ -66,7 +66,6 @@ func (s *dailyUsageAPIKeyRepoStub) GetByID(ctx context.Context, id int64) (*port
 }
 
 func newDailyUsageTestRouter(usageRepo *dailyUsageRepoStub, apiKeyRepo *dailyUsageAPIKeyRepoStub, userID int64) *gin.Engine {
-
 	usageSvc := usage.NewUsageService(usageRepo)
 	// 本契约只查询归属投影；认证缓存和生命周期由 apikey 自身测试覆盖。
 	handler := NewUsageHandler(usageSvc, apiKeyRepo, nil, nil, timezone.NewCalendar(time.Local))

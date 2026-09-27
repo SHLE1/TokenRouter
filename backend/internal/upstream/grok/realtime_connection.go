@@ -47,7 +47,7 @@ func (s *RealtimeSession) Close() error {
 	return s.closeErr
 }
 
-// DialRealtime 仅交换 URL/Header 和技术连接，账号权限及价格仍在调用方。
+// DialRealtime 仅交换 URL/Header 和技术连接，提供商权限及价格仍在调用方。
 func DialRealtime(ctx context.Context, options RealtimeDialOptions) (*RealtimeSession, error) {
 	u, err := url.Parse(options.BaseURL)
 	if err != nil {

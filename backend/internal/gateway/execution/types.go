@@ -5,10 +5,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 )
@@ -32,24 +32,24 @@ const (
 
 // TextState 只包含前置步骤已确定的请求值，不接收 HTTP 对象或业务回调。
 type TextState struct {
-	AlternateBudget                                                     bool
-	SelectionContext                                                    context.Context
-	SelectionSessionHash                                                string
-	Action                                                              string
-	UseDigestFallback                                                   bool
-	DigestChain, PrefixHash, SessionUUID, MatchedDigestChain            string
-	SignatureState                                                      requeststate.GeminiSignatureState
-	SessionHashBody                                                     []byte
-	ForwardModel, PreviousResponseID, AccountLayerModel, PromptCacheKey string
-	NativeCompactionV2, LegacyCompact, RequireCompact                   bool
-	RequiredCapability                                                  account.OpenAIEndpointCapability
-	RoutingStart                                                        time.Time
-	Mapping                                                             routing.GroupMappingResult
+	AlternateBudget                                                      bool
+	SelectionContext                                                     context.Context
+	SelectionSessionHash                                                 string
+	Action                                                               string
+	UseDigestFallback                                                    bool
+	DigestChain, PrefixHash, SessionUUID, MatchedDigestChain             string
+	SignatureState                                                       requeststate.GeminiSignatureState
+	SessionHashBody                                                      []byte
+	ForwardModel, PreviousResponseID, ProviderLayerModel, PromptCacheKey string
+	NativeCompactionV2, LegacyCompact, RequireCompact                    bool
+	RequiredCapability                                                   provider.OpenAIEndpointCapability
+	RoutingStart                                                         time.Time
+	Mapping                                                              routing.GroupMappingResult
 
 	Kind            TextKind
 	Parsed          *requeststate.ParsedRequest
 	Platform        string
-	BoundAccountID  int64
+	BoundProviderID int64
 	HasBoundSession bool
 	GeminiBody      []byte
 	GeminiModel     string
@@ -90,7 +90,7 @@ type ExecutionResult struct {
 	PlanProvided bool
 
 	Attempt  upstream.AttemptResult
-	Account  account.AccountSnapshot
+	Provider provider.ProviderSnapshot
 	Plan     routing.CandidatePlan
 	Attempts int
 }

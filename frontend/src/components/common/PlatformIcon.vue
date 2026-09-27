@@ -59,10 +59,10 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { AccountPlatform } from '@/types'
+import type { ProviderPlatform } from '@/types'
 
 interface Props {
-  platform?: AccountPlatform
+  platform?: ProviderPlatform
   size?: 'xs' | 'sm' | 'md' | 'lg'
 }
 

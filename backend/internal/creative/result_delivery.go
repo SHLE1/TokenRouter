@@ -6,8 +6,10 @@ import (
 	"time"
 )
 
-const OutputDeliveryPending = "DELIVERY_PENDING"
-const OutputDeliveryLost = "DELIVERY_LOST"
+const (
+	OutputDeliveryPending = "DELIVERY_PENDING"
+	OutputDeliveryLost    = "DELIVERY_LOST"
+)
 
 // ProviderOutput 是本次调用已确认的图片，字节只在当前 worker 与临时存储之间流转。
 type ProviderOutput struct {
@@ -35,9 +37,9 @@ type ResultDelivery struct {
 }
 
 // Record 先确认成功事实，再有界保存输出；暂存失败不会丢弃已发生的服务事实。
-func (d ResultDelivery) Record(ctx context.Context, id string, accountID int64, outputs []ProviderOutput) error {
+func (d ResultDelivery) Record(ctx context.Context, id string, providerID int64, outputs []ProviderOutput) error {
 	if d.Outcomes == nil {
-		return errors.New("creative provider outcome store is not configured")
+		return errors.New("creative platform outcome store is not configured")
 	}
 	now := d.now()
 	expires := now.Add(d.TTL)
@@ -57,7 +59,7 @@ func (d ResultDelivery) Record(ctx context.Context, id string, accountID int64, 
 		size := int64(len(output.Bytes))
 		metadata = append(metadata, CreativeRunOutput{RunID: id, OutputIndex: output.Index, Status: status, MimeType: &mime, ByteSize: &size, TransientExpiresAt: &expires, ErrorCode: &code, ErrorMessage: &message})
 	}
-	if err := d.Outcomes.RecordProviderOutcome(ctx, id, accountID, metadata, now); err != nil {
+	if err := d.Outcomes.RecordProviderOutcome(ctx, id, providerID, metadata, now); err != nil {
 		return err
 	}
 	saveCtx, cancel := context.WithTimeout(ctx, 5*time.Second)

@@ -14,7 +14,7 @@ import (
 // proxyAdminFixture 只记录代理管理端口的输入和探测，不持有其他管理领域。
 type proxyAdminFixture struct {
 	proxies                         []egress.Proxy
-	proxyCounts                     []egress.ProxyWithAccountCount
+	proxyCounts                     []egress.ProxyWithProviderCount
 	createdProxies                  []*egress.CreateProxyInput
 	updatedProxies                  []*egress.UpdateProxyInput
 	updatedProxyIDs, testedProxyIDs []int64
@@ -28,7 +28,7 @@ type proxyAdminFixture struct {
 func newProxyAdminFixture() *proxyAdminFixture {
 	now := time.Now().UTC()
 	p := egress.Proxy{ID: 4, Name: "proxy", Protocol: "http", Host: "127.0.0.1", Port: 8080, Status: billing.StatusActive, CreatedAt: now, UpdatedAt: now}
-	return &proxyAdminFixture{proxies: []egress.Proxy{p}, proxyCounts: []egress.ProxyWithAccountCount{{Proxy: p, AccountCount: 1}}}
+	return &proxyAdminFixture{proxies: []egress.Proxy{p}, proxyCounts: []egress.ProxyWithProviderCount{{Proxy: p, ProviderCount: 1}}}
 }
 
 // proxyTaskFixture 保留导入探测异步执行，测试退出前等待原回调结束。
@@ -54,9 +54,10 @@ func setupProxyAdminContractRouter() (*gin.Engine, *proxyAdminFixture) {
 	router.POST("/api/v1/admin/proxies/:id/test", handler.Test)
 	router.POST("/api/v1/admin/proxies/:id/quality-check", handler.CheckQuality)
 	router.GET("/api/v1/admin/proxies/:id/stats", handler.GetStats)
-	router.GET("/api/v1/admin/proxies/:id/accounts", handler.GetProxyAccounts)
+	router.GET("/api/v1/admin/proxies/:id/providers", handler.GetProxyProviders)
 	return router, source
 }
+
 func (s *proxyAdminFixture) ListProxies(ctx context.Context, page, pageSize int, protocol, status, search string, sortBy, sortOrder string) ([]egress.Proxy, int64, error) {
 	s.lastListProxies.protocol = protocol
 	s.lastListProxies.status = status
@@ -85,7 +86,7 @@ func (s *proxyAdminFixture) ListProxies(ctx context.Context, page, pageSize int,
 	return filtered, int64(len(filtered)), nil
 }
 
-func (s *proxyAdminFixture) ListProxiesWithAccountCount(ctx context.Context, page, pageSize int, protocol, status, search string, sortBy, sortOrder string) ([]egress.ProxyWithAccountCount, int64, error) {
+func (s *proxyAdminFixture) ListProxiesWithProviderCount(ctx context.Context, page, pageSize int, protocol, status, search string, sortBy, sortOrder string) ([]egress.ProxyWithProviderCount, int64, error) {
 	return s.proxyCounts, int64(len(s.proxyCounts)), nil
 }
 
@@ -93,7 +94,7 @@ func (s *proxyAdminFixture) GetAllProxies(ctx context.Context) ([]egress.Proxy, 
 	return s.proxies, nil
 }
 
-func (s *proxyAdminFixture) GetAllProxiesWithAccountCount(ctx context.Context) ([]egress.ProxyWithAccountCount, error) {
+func (s *proxyAdminFixture) GetAllProxiesWithProviderCount(ctx context.Context) ([]egress.ProxyWithProviderCount, error) {
 	return s.proxyCounts, nil
 }
 
@@ -151,8 +152,8 @@ func (s *proxyAdminFixture) BatchDeleteProxies(ctx context.Context, ids []int64)
 	return &egress.ProxyBatchDeleteResult{DeletedIDs: ids}, nil
 }
 
-func (s *proxyAdminFixture) GetProxyAccounts(ctx context.Context, proxyID int64) ([]egress.ProxyAccountSummary, error) {
-	return []egress.ProxyAccountSummary{{ID: 1, Name: "account"}}, nil
+func (s *proxyAdminFixture) GetProxyProviders(ctx context.Context, proxyID int64) ([]egress.ProxyProviderSummary, error) {
+	return []egress.ProxyProviderSummary{{ID: 1, Name: "provider"}}, nil
 }
 
 func (s *proxyAdminFixture) CheckProxyExists(ctx context.Context, host string, port int, username, password string) (bool, error) {

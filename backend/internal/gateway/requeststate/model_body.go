@@ -27,7 +27,7 @@ func ModelMappedBody(body []byte, mapped bool, mappedModel string, replace Model
 	return replace(body, mappedModel)
 }
 
-// NewModelMappedBodyCache 缓存同一入口请求体的模型替换结果，避免账号切换重试时重复解析 JSON。
+// NewModelMappedBodyCache 缓存同一入口请求体的模型替换结果，避免提供商切换重试时重复解析 JSON。
 func NewModelMappedBodyCache(body []byte, replace ModelBodyReplacer) func(bool, string) []byte {
 	replacedBodies := make(map[string][]byte)
 	return func(mapped bool, mappedModel string) []byte {

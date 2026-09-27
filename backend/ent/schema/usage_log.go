@@ -38,8 +38,8 @@ func (UsageLog) Fields() []ent.Field {
 		field.Int64("billing_user_id").Optional(),
 		field.Int64("team_id").Optional().Nillable(),
 		field.Int64("api_key_id"),
-		field.Int64("account_id"),
-		// 平台随使用事实保存，账号或分组变动不会改变历史统计。
+		field.Int64("provider_id"),
+		// 平台随使用事实保存，提供商或分组变动不会改变历史统计。
 		field.String("platform").MaxLen(64).Default("unknown"),
 		field.String("request_id").
 			MaxLen(64).
@@ -119,8 +119,8 @@ func (UsageLog) Fields() []ent.Field {
 			Default(false).
 			Comment("该请求是否因长上下文规则实际增加费用"),
 
-		// account_rate_multiplier: 账号计费倍率快照（NULL 表示按 1.0 处理）
-		field.Float("account_rate_multiplier").
+		// provider_rate_multiplier: 提供商计费倍率快照（NULL 表示按 1.0 处理）
+		field.Float("provider_rate_multiplier").
 			Optional().
 			Nillable().
 			SchemaType(map[string]string{dialect.Postgres: "decimal(10,4)"}),
@@ -206,9 +206,9 @@ func (UsageLog) Edges() []ent.Edge {
 			Field("api_key_id").
 			Required().
 			Unique(),
-		edge.From("account", Account.Type).
+		edge.From("provider", Provider.Type).
 			Ref("usage_logs").
-			Field("account_id").
+			Field("provider_id").
 			Required().
 			Unique(),
 		edge.From("group", Group.Type).
@@ -233,7 +233,7 @@ func (UsageLog) Indexes() []ent.Index {
 		index.Fields("billing_user_id"),
 		index.Fields("team_id"),
 		index.Fields("api_key_id"),
-		index.Fields("account_id"),
+		index.Fields("provider_id"),
 		index.Fields("group_id"),
 		index.Fields("subscription_id"),
 		index.Fields("created_at"),

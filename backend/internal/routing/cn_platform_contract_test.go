@@ -12,7 +12,7 @@ import (
 
 // TestNormalizeOpenAICompatiblePlatform_SchedulerExactMatch 回归保护：
 // grok 与国产供应商原样保留，其余归一为 openai —— 保证 kimi/zhipu/deepseek 分组请求
-// 精确匹配同名账号（与 openai/grok 当前行为一致），不会错误并入 openai 池。
+// 精确匹配同名提供商（与 openai/grok 当前行为一致），不会错误并入 openai 池。
 func TestNormalizeOpenAICompatiblePlatform_SchedulerExactMatch(t *testing.T) {
 	t.Parallel()
 	require.Equal(t, capability.PlatformGrok, NormalizeOpenAICompatiblePlatform(capability.PlatformGrok))

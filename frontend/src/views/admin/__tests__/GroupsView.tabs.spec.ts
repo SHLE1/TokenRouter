@@ -12,16 +12,16 @@ import GroupClientProtocolSelector from '@/components/admin/group/GroupClientPro
 import { defaultRoutingPolicy } from '@/components/admin/group/routingPolicy'
 import type { AdminGroup } from '@/types'
 
-const { groups, accounts, showError } = vi.hoisted(() => ({
+const { groups, providers, showError } = vi.hoisted(() => ({
   groups: {
     list: vi.fn(), getAll: vi.fn(), getModelsListCandidates: vi.fn(),
     getUsageSummary: vi.fn(), getCapacitySummary: vi.fn(), getLiveCapability: vi.fn(),
     create: vi.fn(), update: vi.fn(),
   },
-  accounts: { list: vi.fn(), getById: vi.fn() },
+  providers: { list: vi.fn(), getById: vi.fn() },
   showError: vi.fn(),
 }))
-vi.mock('@/api/admin', () => ({ adminAPI: { groups, accounts } }))
+vi.mock('@/api/admin', () => ({ adminAPI: { groups, providers } }))
 vi.mock('@/stores/app', () => ({ useAppStore: () => ({ showError, showSuccess: vi.fn() }) }))
 vi.mock('@/stores/onboarding', () => ({
   useOnboardingStore: () => ({ isCurrentStep: vi.fn(() => false), nextStep: vi.fn() }),
@@ -49,7 +49,7 @@ function group(): AdminGroup {
   } as AdminGroup
 }
 
-async function open(mode: 'create' | 'edit', _accountType: string, overrides: Partial<AdminGroup> = {}) {
+async function open(mode: 'create' | 'edit', _providerType: string, overrides: Partial<AdminGroup> = {}) {
   groups.list.mockResolvedValue({ items: [{ ...group(), ...overrides }], total: 1, pages: 1 })
   const wrapper = mount(GroupsView, {
     attachTo: document.body,
@@ -82,7 +82,7 @@ async function tab(wrapper: VueWrapper, name: string) {
 beforeEach(() => {
   vi.clearAllMocks()
   localStorage.clear()
-  accounts.list.mockResolvedValue({ items: [] })
+  providers.list.mockResolvedValue({ items: [] })
   groups.getAll.mockResolvedValue([])
   groups.getModelsListCandidates.mockResolvedValue(['gpt-test'])
   groups.getUsageSummary.mockResolvedValue([])
@@ -195,10 +195,10 @@ describe.each(['create', 'edit'] as const)('GroupsView %s tabs', mode => {
     const routing = wrapper.getComponent(GroupModelRoutingFields)
     const rule = routing.props('rules')[0]
     routing.vm.$emit('pattern', rule, 'gpt-*')
-    routing.vm.$emit('selectAccount', rule, { id: 19, name: 'Selected account' })
+    routing.vm.$emit('selectProvider', rule, { id: 19, name: 'Selected provider' })
     await tab(wrapper, 'general')
     await tab(wrapper, 'models')
-    expect(wrapper.getComponent(GroupModelRoutingFields).props('rules')[0]).toEqual({ pattern: 'gpt-*', accounts: [{ id: 19, name: 'Selected account' }] })
+    expect(wrapper.getComponent(GroupModelRoutingFields).props('rules')[0]).toEqual({ pattern: 'gpt-*', providers: [{ id: 19, name: 'Selected provider' }] })
     await wrapper.get(`#${mode}-group-form`).trigger('submit')
     await flushPromises()
     const payload = mode === 'create' ? groups.create.mock.calls[0][0] : groups.update.mock.calls[0][1]
@@ -207,7 +207,7 @@ describe.each(['create', 'edit'] as const)('GroupsView %s tabs', mode => {
     expect(payload.model_routing).toEqual({ 'gpt-*': [19] })
   })
 
-  it('删除规则后丢弃迟到搜索结果，其他规则仍保留自己的账号', async () => {
+  it('删除规则后丢弃迟到搜索结果，其他规则仍保留自己的提供商', async () => {
     const wrapper = await open(mode, 'mixed')
     await tab(wrapper, 'models')
     await wrapper.get('[data-group-setting="model_routing_enabled"]').trigger('click')
@@ -217,8 +217,8 @@ describe.each(['create', 'edit'] as const)('GroupsView %s tabs', mode => {
     await flushPromises()
     const [removed, retained] = routing.props('rules')
     let resolveOld!: (value: { items: { id: number; name: string }[] }) => void
-    accounts.list.mockReturnValueOnce(new Promise(resolve => { resolveOld = resolve }))
-    accounts.list.mockResolvedValueOnce({ items: [{ id: 24, name: 'Current result' }] })
+    providers.list.mockReturnValueOnce(new Promise(resolve => { resolveOld = resolve }))
+    providers.list.mockResolvedValueOnce({ items: [{ id: 24, name: 'Current result' }] })
     vi.useFakeTimers()
     routing.vm.$emit('search', removed, 'old')
     await vi.advanceTimersByTimeAsync(500)
@@ -231,11 +231,11 @@ describe.each(['create', 'edit'] as const)('GroupsView %s tabs', mode => {
     const retainedKey = routing.props('getKey')(retained)
     expect(routing.props('search').results[removedKey]).toBeUndefined()
     expect(routing.props('search').results[retainedKey]).toEqual([{ id: 24, name: 'Current result' }])
-    routing.vm.$emit('selectAccount', retained, { id: 24, name: 'Current result' })
+    routing.vm.$emit('selectProvider', retained, { id: 24, name: 'Current result' })
     await tab(wrapper, 'general')
     await tab(wrapper, 'models')
     expect(routing.props('rules')).toHaveLength(1)
-    expect(routing.props('rules')[0].accounts).toEqual([{ id: 24, name: 'Current result' }])
+    expect(routing.props('rules')[0].providers).toEqual([{ id: 24, name: 'Current result' }])
   })
 
   it('跨页草稿一次提交，基础倍率与 Fast 路由策略保存，重新打开回到基本信息', async () => {

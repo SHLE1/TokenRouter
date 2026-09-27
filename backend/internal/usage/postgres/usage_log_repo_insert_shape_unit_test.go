@@ -74,7 +74,7 @@ func TestUsageLogStaticInsertShape_PlaceholdersMatchArgTypes(t *testing.T) {
 	log := &usage.UsageLog{
 		UserID:            1,
 		APIKeyID:          2,
-		AccountID:         3,
+		ProviderID:        3,
 		RequestID:         "client:insert-shape",
 		UpstreamRequestID: &upstreamRequestID,
 		Model:             "claude-3",

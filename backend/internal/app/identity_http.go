@@ -2,18 +2,16 @@
 package app
 
 import (
+	"context"
+	"log/slog"
+	"strings"
+	"time"
+
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/admission"
 	"github.com/TokenFlux/TokenRouter/internal/promotion"
 	"github.com/TokenFlux/TokenRouter/internal/settings/composite"
 	"github.com/TokenFlux/TokenRouter/internal/site"
-
-	"context"
-
-	"log/slog"
-
-	"strings"
-	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/payment"
 
@@ -29,7 +27,7 @@ import (
 
 	identitypostgres "github.com/TokenFlux/TokenRouter/internal/identity/postgres"
 
-	"github.com/TokenFlux/TokenRouter/internal/identity/provider"
+	identityadapter "github.com/TokenFlux/TokenRouter/internal/identity/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/server/middleware"
 
@@ -132,28 +130,30 @@ func provideIdentityHTTP(g *identityAuthGraph, users *identity.UserService, cfg 
 		PreviewPromotion: identityPromotionPreview(promo),
 	})
 	bind := identityhttp.NewOAuthBindHandler(session, identity.NewOAuthBindingSigner(strings.TrimSpace(cfg.JWT.Secret)))
-	clients := &provider.DingTalkClients{}
+	clients := &identityadapter.DingTalkClients{}
 	syncer := &identity.DingTalkSyncRuntime{LoadConfig: runtime.DingTalk, Client: func(v identity.DingTalkOAuthOptions) identity.DingTalkOAuthClient {
-		return clients.ForConfig(provider.DingTalkClientConfig{ClientID: v.ClientID, ClientSecret: v.ClientSecret, TokenURL: v.TokenURL, UserInfoURL: v.UserInfoURL})
+		return clients.ForConfig(identityadapter.DingTalkClientConfig{ClientID: v.ClientID, ClientSecret: v.ClientSecret, TokenURL: v.TokenURL, UserInfoURL: v.UserInfoURL})
 	}, Profiles: &identity.DingTalkProfileSync{Users: users, Attributes: attributes, Observe: identityProfileObserve}, Run: tasks.Go, Observe: identityProfileObserve}
 	pending = identityhttp.NewPendingHandler(session, flow, identityhttp.PendingHTTPOptions{ForceEmailOnSignup: runtime.ForceEmail, AfterLogin: func(ctx context.Context, p *identity.PendingAuthSession, id int64) { syncer.Pending(ctx, p, id, false) }, AfterRegistration: func(ctx context.Context, p *identity.PendingAuthSession, id int64) { syncer.Pending(ctx, p, id, true) }})
-	wechat := identityhttp.NewWeChatHandler(pending, bind, provider.WeChatClient{TokenURL: provider.DefaultWeChatTokenURL, UserInfoURL: provider.DefaultWeChatUserInfoURL}, identityhttp.WeChatHTTPOptions{LoadConfig: runtime.WeChat, FrontendCallback: runtime.WeChatFrontend})
-	auth := &identityhttp.AuthenticationHandler{Session: session, Pending: pending, Bind: bind,
-		LinuxDo: identityhttp.NewLinuxDoHandler(pending, bind, provider.LinuxDoClient{}, runtime.LinuxDo),
-		OIDC:    identityhttp.NewOIDCHandler(pending, bind, provider.OIDCClient{}, runtime.OIDC),
-		Email:   identityhttp.NewEmailOAuthHandler(pending, provider.EmailOAuthClientAdapter{}, runtime.Email),
-		Google:  identityhttp.NewGoogleOneTapHandler(pending, provider.GoogleAPIIDTokenVerifier{}, identityhttp.GoogleOneTapHTTPOptions{LoadConfig: runtime.GoogleOneTap, RegistrationEnabled: settings.IsRegistrationEnabled}),
+	wechat := identityhttp.NewWeChatHandler(pending, bind, identityadapter.WeChatClient{TokenURL: identityadapter.DefaultWeChatTokenURL, UserInfoURL: identityadapter.DefaultWeChatUserInfoURL}, identityhttp.WeChatHTTPOptions{LoadConfig: runtime.WeChat, FrontendCallback: runtime.WeChatFrontend})
+	auth := &identityhttp.AuthenticationHandler{
+		Session: session, Pending: pending, Bind: bind,
+		LinuxDo: identityhttp.NewLinuxDoHandler(pending, bind, identityadapter.LinuxDoClient{}, runtime.LinuxDo),
+		OIDC:    identityhttp.NewOIDCHandler(pending, bind, identityadapter.OIDCClient{}, runtime.OIDC),
+		Email:   identityhttp.NewEmailOAuthHandler(pending, identityadapter.EmailOAuthClientAdapter{}, runtime.Email),
+		Google:  identityhttp.NewGoogleOneTapHandler(pending, identityadapter.GoogleAPIIDTokenVerifier{}, identityhttp.GoogleOneTapHTTPOptions{LoadConfig: runtime.GoogleOneTap, RegistrationEnabled: settings.IsRegistrationEnabled}),
 		WeChat:  wechat, DingTalk: identityhttp.NewDingTalkHandler(pending, bind, syncer, identityhttp.DingTalkHTTPOptions{LoadConfig: runtime.DingTalk, RegistrationEnabled: settings.IsRegistrationEnabled}),
 	}
-	pay := paymenthttp.NewWeChatPaymentHandler(paymenthttp.WeChatPaymentHTTPOptions{Config: wechat.GetConfig, CallbackURL: func(ctx context.Context, c *gin.Context) string {
-		return identityhttp.ResolveWeChatOAuthAbsoluteURL(runtime.APIBaseURL(ctx), c, "/api/v1/auth/oauth/wechat/payment/callback")
-	}, Exchange: func(ctx context.Context, cfg identity.WeChatOAuthOptions, code string) (paymenthttp.WeChatPaymentToken, error) {
-		token, err := provider.ExchangeWeChatOAuthCode(ctx, provider.WeChatOptions{AppID: cfg.AppID, AppSecret: cfg.AppSecret, TokenURL: provider.DefaultWeChatTokenURL}, code)
-		if err != nil {
-			return paymenthttp.WeChatPaymentToken{}, err
-		}
-		return paymenthttp.WeChatPaymentToken{OpenID: token.OpenID, Scope: token.Scope}, nil
-	}, Resume: func() *payment.PaymentResumeService { return payments.ResumeService() },
+	pay := paymenthttp.NewWeChatPaymentHandler(paymenthttp.WeChatPaymentHTTPOptions{
+		Config: wechat.GetConfig, CallbackURL: func(ctx context.Context, c *gin.Context) string {
+			return identityhttp.ResolveWeChatOAuthAbsoluteURL(runtime.APIBaseURL(ctx), c, "/api/v1/auth/oauth/wechat/payment/callback")
+		}, Exchange: func(ctx context.Context, cfg identity.WeChatOAuthOptions, code string) (paymenthttp.WeChatPaymentToken, error) {
+			token, err := identityadapter.ExchangeWeChatOAuthCode(ctx, identityadapter.WeChatOptions{AppID: cfg.AppID, AppSecret: cfg.AppSecret, TokenURL: identityadapter.DefaultWeChatTokenURL}, code)
+			if err != nil {
+				return paymenthttp.WeChatPaymentToken{}, err
+			}
+			return paymenthttp.WeChatPaymentToken{OpenID: token.OpenID, Scope: token.Scope}, nil
+		}, Resume: func() *payment.PaymentResumeService { return payments.ResumeService() },
 	})
 	return &identityHTTP{auth, pay}
 }

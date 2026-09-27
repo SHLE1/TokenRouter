@@ -1,4 +1,4 @@
-// Grok 报文规则保留旧平台差异；所有方法只处理本次输入，不持有账号或请求全局状态。
+// Grok 报文规则保留旧平台差异；所有方法只处理本次输入，不持有提供商或请求全局状态。
 package grok
 
 import (
@@ -50,6 +50,7 @@ func (m BodyCodec) IsGrokInvalidEncryptedContentResponse(statusCode int, body []
 	}
 	return false
 }
+
 func (m BodyCodec) IsGrokCompactionReplayDecodeError(statusCode int, body []byte) bool {
 	if statusCode != http.StatusBadRequest || len(body) == 0 {
 		return false
@@ -69,6 +70,7 @@ func (m BodyCodec) IsGrokCompactionReplayDecodeError(statusCode int, body []byte
 	}
 	return false
 }
+
 func (m BodyCodec) SanitizeGrokCompactionReplayBody(body []byte) ([]byte, bool, error) {
 	converted, err := m.ConvertOpenAICompactInputsForGrok(body)
 	if err != nil {
@@ -104,6 +106,7 @@ func (m BodyCodec) SanitizeGrokCompactionReplayBody(body []byte) ([]byte, bool, 
 	}
 	return retryBody, true, nil
 }
+
 func (m BodyCodec) DropEmptyGrokReplayReasoning(requestBody map[string]any) bool {
 	items, ok := requestBody["input"].([]any)
 	if !ok {
@@ -160,10 +163,12 @@ type GrokEncryptedContentStripRetriedKey struct{}
 func (m BodyCodec) MarkGrokEncryptedContentStripRetried(ctx context.Context) context.Context {
 	return context.WithValue(ctx, GrokEncryptedContentStripRetriedKey{}, true)
 }
+
 func (m BodyCodec) GrokEncryptedContentStripRetried(ctx context.Context) bool {
 	v, _ := ctx.Value(GrokEncryptedContentStripRetriedKey{}).(bool)
 	return v
 }
+
 func (m BodyCodec) TrimGrokInvalidEncryptedContentRetryBody(body []byte) ([]byte, bool, error) {
 	input := gjson.GetBytes(body, "input")
 	items := input.Array()
@@ -199,9 +204,11 @@ func (m BodyCodec) TrimGrokInvalidEncryptedContentRetryBody(body []byte) ([]byte
 	}
 	return retryBody, true, nil
 }
+
 func (m BodyCodec) PatchGrokResponsesBody(body []byte, upstreamModel string) ([]byte, error) {
 	return m.PatchGrokResponsesBodyBase(body, upstreamModel)
 }
+
 func (m BodyCodec) PatchGrokResponsesBodyWithClientTools(body []byte, upstreamModel string) ([]byte, protocolbridge.ResponsesClientToolMapping, error) {
 	if !json.Valid(body) {
 		return nil, protocolbridge.ResponsesClientToolMapping{}, fmt.Errorf("invalid json request body")
@@ -220,6 +227,7 @@ func (m BodyCodec) PatchGrokResponsesBodyWithClientTools(body []byte, upstreamMo
 	}
 	return patched, mapping, nil
 }
+
 func (m BodyCodec) PatchGrokResponsesBodyBase(body []byte, upstreamModel string) ([]byte, error) {
 	if !json.Valid(body) {
 		return nil, fmt.Errorf("invalid json request body")
@@ -339,6 +347,7 @@ func (m BodyCodec) GrokModelRejectsReasoningEffort(model string) bool {
 		return false
 	}
 }
+
 func (m BodyCodec) NormalizeGrokResponsesReasoningEffort(body []byte, upstreamModel string) ([]byte, error) {
 	supportsEffort := m.GrokSupportsReasoningEffort(upstreamModel)
 	out := body
@@ -379,6 +388,7 @@ func (m BodyCodec) NormalizeGrokResponsesReasoningEffort(body []byte, upstreamMo
 	}
 	return out, nil
 }
+
 func (m BodyCodec) NormalizeGrokChatReasoningEffort(body []byte, upstreamModel string) ([]byte, error) {
 	raw := strings.TrimSpace(gjson.GetBytes(body, "reasoning_effort").String())
 	if raw == "" {
@@ -403,6 +413,7 @@ func (m BodyCodec) NormalizeGrokChatReasoningEffort(body []byte, upstreamModel s
 	out, err = sjson.SetBytes(out, "reasoning_effort", normalized)
 	return out, err
 }
+
 func (m BodyCodec) NormalizeGrokReasoningEffortValue(raw, model string) (string, bool) {
 	value := strings.NewReplacer("-", "", "_", "", " ", "").Replace(strings.ToLower(strings.TrimSpace(raw)))
 	switch value {
@@ -428,6 +439,7 @@ func (m BodyCodec) GrokSupportsXHighReasoningEffort(model string) bool {
 	model = strings.ToLower(StripGrokProviderPrefix(strings.TrimSpace(model)))
 	return model == "grok-4.6" || model == "grok-4.6-latest"
 }
+
 func (m BodyCodec) GrokSupportsReasoningEffort(model string) bool {
 	model = strings.ToLower(StripGrokProviderPrefix(strings.TrimSpace(model)))
 	switch model {
@@ -459,6 +471,7 @@ func (m BodyCodec) SanitizeGrokResponsesUnsupportedFields(body []byte) ([]byte, 
 	}
 	return wirejson.Marshal(payload)
 }
+
 func (m BodyCodec) DeleteJSONFields(value any, fields map[string]struct{}) bool {
 	switch typed := value.(type) {
 	case map[string]any:
@@ -616,6 +629,7 @@ func (m BodyCodec) StripRedundantGrokViewImageTool(body []byte) ([]byte, error) 
 	}
 	return sjson.SetRawBytes(body, "tools", encoded)
 }
+
 func (m BodyCodec) GrokResponsesToolDedupKey(tool gjson.Result) string {
 	toolType := strings.TrimSpace(tool.Get("type").String())
 	if toolType != "" {
@@ -655,6 +669,7 @@ func (m BodyCodec) SanitizeGrokReasoningNullContent(body []byte) ([]byte, error)
 	decoded["input"] = cleaned
 	return wirejson.Marshal(decoded)
 }
+
 func (m BodyCodec) StripExplicitNullsFromGrokInput(value any) (any, bool) {
 	switch node := value.(type) {
 	case []any:
@@ -688,6 +703,7 @@ func (m BodyCodec) StripExplicitNullsFromGrokInput(value any) (any, bool) {
 		return value, false
 	}
 }
+
 func (m BodyCodec) StripExplicitNullsFromGrokObject(node map[string]any) (map[string]any, bool) {
 	if node == nil {
 		return node, false
@@ -718,7 +734,6 @@ func (m BodyCodec) StripExplicitNullsFromGrokObject(node map[string]any) (map[st
 }
 
 var grokResponsesSupportedToolTypes = map[string]struct{}{
-
 	"code_execution": {},
 
 	"code_interpreter": {},
@@ -831,6 +846,7 @@ func (m BodyCodec) SanitizeGrokResponsesTools(body []byte) ([]byte, error) {
 	}
 	return body, nil
 }
+
 func (m BodyCodec) GrokFunctionParametersHaveInvalidUnionRoot(parameters gjson.Result) bool {
 	if !parameters.Exists() || !parameters.IsObject() {
 		return false
@@ -852,6 +868,7 @@ func (m BodyCodec) GrokFunctionParametersHaveInvalidUnionRoot(parameters gjson.R
 	}
 	return false
 }
+
 func (m BodyCodec) GrokRawToolsContainType(tools []json.RawMessage, want string) bool {
 	for _, tool := range tools {
 		if strings.TrimSpace(gjson.GetBytes(tool, "type").String()) == want {
@@ -860,6 +877,7 @@ func (m BodyCodec) GrokRawToolsContainType(tools []json.RawMessage, want string)
 	}
 	return false
 }
+
 func (m BodyCodec) DeleteGrokOrphanToolControls(body []byte) ([]byte, error) {
 	var err error
 	for _, field := range []string{"tool_choice", "parallel_tool_calls"} {
@@ -873,6 +891,7 @@ func (m BodyCodec) DeleteGrokOrphanToolControls(body []byte) ([]byte, error) {
 	}
 	return body, nil
 }
+
 func (m BodyCodec) ShouldDropGrokToolChoice(toolChoice gjson.Result, tools []json.RawMessage) bool {
 	if len(tools) == 0 {
 		return true
@@ -918,6 +937,7 @@ func (m BodyCodec) ShouldDropGrokToolChoice(toolChoice gjson.Result, tools []jso
 	}
 	return false
 }
+
 func (m BodyCodec) ShouldBridgeGrokComposerImageInputs(body []byte) bool {
 	if len(body) == 0 || !m.IsGrokComposerModel(gjson.GetBytes(body, "model").String()) {
 		return false
@@ -928,6 +948,7 @@ func (m BodyCodec) ShouldBridgeGrokComposerImageInputs(body []byte) bool {
 	}
 	return protocolopenai.JSONValueMayContainImageInput(messages)
 }
+
 func (m BodyCodec) IsGrokComposerModel(model string) bool {
 	model = strings.TrimSpace(strings.ToLower(model))
 	if model == "" {
@@ -939,6 +960,7 @@ func (m BodyCodec) IsGrokComposerModel(model string) bool {
 	}
 	return strings.Contains(model, "composer")
 }
+
 func (m BodyCodec) CollectGrokComposerImageURLs(reqBody map[string]any) []string {
 	messages, ok := reqBody["messages"].([]any)
 	if !ok {
@@ -963,6 +985,7 @@ func (m BodyCodec) CollectGrokComposerImageURLs(reqBody map[string]any) []string
 	}
 	return imageURLs
 }
+
 func (m BodyCodec) GrokComposerImageURLFromPart(part any) string {
 	partMap, ok := part.(map[string]any)
 	if !ok {
@@ -981,6 +1004,7 @@ func (m BodyCodec) GrokComposerImageURLFromPart(part any) string {
 		return ""
 	}
 }
+
 func (m BodyCodec) NormalizeGrokComposerImageURL(raw string) string {
 	trimmed := strings.TrimSpace(raw)
 	if trimmed == "" || protocolopenai.IsEmptyBase64DataURI(trimmed) {
@@ -988,10 +1012,10 @@ func (m BodyCodec) NormalizeGrokComposerImageURL(raw string) string {
 	}
 	return trimmed
 }
+
 func (m BodyCodec) BuildGrokComposerImageDescriptionBody(imageURL string, index int) ([]byte, error) {
 	prompt := fmt.Sprintf("Describe image %d in concise, factual text for a downstream coding/composer model. Include visible text, UI elements, diagrams, errors, and spatial relationships. Do not mention that you are an image analysis bridge.", index)
 	req := map[string]any{
-
 		"model": ComposerImageBridgeVisionModel,
 
 		"stream": false,
@@ -1002,7 +1026,6 @@ func (m BodyCodec) BuildGrokComposerImageDescriptionBody(imageURL string, index 
 
 		"input": []any{
 			map[string]any{
-
 				"type": "message",
 
 				"role": "user",
@@ -1016,6 +1039,7 @@ func (m BodyCodec) BuildGrokComposerImageDescriptionBody(imageURL string, index 
 	}
 	return wirejson.Marshal(req)
 }
+
 func (m BodyCodec) GrokResponsesOutputText(resp *protocolopenai.ResponsesResponse) string {
 	if resp == nil {
 		return ""
@@ -1073,6 +1097,7 @@ func (m BodyCodec) RewriteGrokComposerImagesAsText(reqBody map[string]any, descr
 	}
 	return changed
 }
+
 func (m BodyCodec) GrokComposerTextFromPart(part any) string {
 	partMap, ok := part.(map[string]any)
 	if !ok {

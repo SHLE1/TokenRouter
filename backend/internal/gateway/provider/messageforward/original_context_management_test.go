@@ -7,12 +7,12 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-
 	"testing"
+
 	time "time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
@@ -23,14 +23,14 @@ import (
 )
 
 func TestApplyClaudeCodeOAuthMimicryToBody_HaikuRewritesSystem(t *testing.T) {
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 405, Platform: capability.PlatformAnthropic, Type: capability.AccountTypeOAuth}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 405, Platform: capability.PlatformAnthropic, Type: capability.ProviderTypeOAuth}}
 	body := []byte(`{"model":"claude-haiku-4-5","system":"Pi project instructions","messages":[{"role":"user","content":"hello"}]}`)
 	svc := NewRuntime(Dependencies{}, Options{Configured: true})
 
 	out := svc.mimic(
 		context.Background(), (*requestBoundaryFixture)(nil), &AttemptState{},
 
-		account, body, "Pi project instructions", "claude-haiku-4-5",
+		provider, body, "Pi project instructions", "claude-haiku-4-5",
 	)
 
 	system := gjson.GetBytes(out, "system").Array()
@@ -42,14 +42,14 @@ func TestApplyClaudeCodeOAuthMimicryToBody_HaikuRewritesSystem(t *testing.T) {
 }
 
 func TestApplyClaudeCodeOAuthMimicryToBody_FableOmitsRefusedExpansion(t *testing.T) {
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 406, Platform: capability.PlatformAnthropic, Type: capability.AccountTypeOAuth}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 406, Platform: capability.PlatformAnthropic, Type: capability.ProviderTypeOAuth}}
 	body := []byte(`{"model":"claude-fable-5","system":"Project instructions","messages":[{"role":"user","content":"hello"}]}`)
 	svc := NewRuntime(Dependencies{}, Options{Configured: true})
 
 	out := svc.mimic(
 		context.Background(), (*requestBoundaryFixture)(nil), &AttemptState{},
 
-		account, body, "Project instructions", "claude-fable-5",
+		provider, body, "Project instructions", "claude-fable-5",
 	)
 
 	system := gjson.GetBytes(out, "system").Array()
@@ -71,17 +71,20 @@ func TestApplyClaudeCodeOAuthMimicryToBody_FableOmitsRefusedExpansion(t *testing
 // passthrough 集成测试不设 base_url，避开 validateUpstreamBaseURL 对 cfg.Security 的依赖。
 // targetURL 会走默认 claudeAPIURL，sanitize 逻辑与 baseURL 是否存在无关。
 
-func newAnthropicAPIKeyPassthroughAccountForBetaTest() *gatewayprovider.ExecutionAccount {
-	return &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 501,
-		Name:     "anthropic-apikey-passthrough-ctxmgmt-test",
-		Platform: capability.PlatformAnthropic,
-		Type:     capability.AccountTypeAPIKey,
-		Credentials: map[string]any{
-			"api_key": "upstream-key",
+func newAnthropicAPIKeyPassthroughProviderForBetaTest() *gatewayprovider.ExecutionProvider {
+	return &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 501,
+			Name:     "anthropic-apikey-passthrough-ctxmgmt-test",
+			Platform: capability.PlatformAnthropic,
+			Type:     capability.ProviderTypeAPIKey,
+			Credentials: map[string]any{
+				"api_key": "upstream-key",
+			},
+			Extra:       map[string]any{"anthropic_passthrough": true},
+			Status:      billing.StatusActive,
+			Schedulable: true,
 		},
-		Extra:       map[string]any{"anthropic_passthrough": true},
-		Status:      billing.StatusActive,
-		Schedulable: true},
 	}
 }
 
@@ -94,7 +97,6 @@ func readUpstreamBodyForTest(t *testing.T, req *http.Request) []byte {
 }
 
 func TestBuildUpstreamRequestAnthropicAPIKeyPassthrough_StripsContextManagementWhenClientHeaderMissingBeta(t *testing.T) {
-
 	c := &requestBoundaryFixture{}
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
 	// 客户端仅带 oauth beta，不带 context-management-2025-06-27
@@ -105,7 +107,7 @@ func TestBuildUpstreamRequestAnthropicAPIKeyPassthrough_StripsContextManagementW
 	req, _, err := svc.buildPassthroughRequest(
 		context.Background(), c, &AttemptState{},
 
-		newAnthropicAPIKeyPassthroughAccountForBetaTest(), body, "token",
+		newAnthropicAPIKeyPassthroughProviderForBetaTest(), body, "token",
 	)
 	require.NoError(t, err)
 	require.False(t, gjson.GetBytes(readUpstreamBodyForTest(t, req), "context_management").Exists(),
@@ -113,7 +115,6 @@ func TestBuildUpstreamRequestAnthropicAPIKeyPassthrough_StripsContextManagementW
 }
 
 func TestBuildUpstreamRequestAnthropicAPIKeyPassthrough_PreservesContextManagementWhenClientHeaderHasBeta(t *testing.T) {
-
 	c := &requestBoundaryFixture{}
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
 	c.Request.Header.Set("Anthropic-Beta", "oauth-2025-04-20,context-management-2025-06-27")
@@ -123,7 +124,7 @@ func TestBuildUpstreamRequestAnthropicAPIKeyPassthrough_PreservesContextManageme
 	req, _, err := svc.buildPassthroughRequest(
 		context.Background(), c, &AttemptState{},
 
-		newAnthropicAPIKeyPassthroughAccountForBetaTest(), body, "token",
+		newAnthropicAPIKeyPassthroughProviderForBetaTest(), body, "token",
 	)
 	require.NoError(t, err)
 	require.True(t, gjson.GetBytes(readUpstreamBodyForTest(t, req), "context_management").Exists(),
@@ -131,7 +132,6 @@ func TestBuildUpstreamRequestAnthropicAPIKeyPassthrough_PreservesContextManageme
 }
 
 func TestBuildCountTokensRequestAnthropicAPIKeyPassthrough_StripsContextManagementWhenClientHeaderMissingBeta(t *testing.T) {
-
 	c := &requestBoundaryFixture{}
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages/count_tokens", nil)
 	c.Request.Header.Set("Anthropic-Beta", "oauth-2025-04-20,token-counting-2024-11-01")
@@ -141,7 +141,7 @@ func TestBuildCountTokensRequestAnthropicAPIKeyPassthrough_StripsContextManageme
 	req, _, err := svc.buildCountRequest(
 		context.Background(), c, &AttemptState{},
 
-		newAnthropicAPIKeyPassthroughAccountForBetaTest(), body, "token", "apikey", "", false, true,
+		newAnthropicAPIKeyPassthroughProviderForBetaTest(), body, "token", "apikey", "", false, true,
 	)
 	require.NoError(t, err)
 	require.False(t, gjson.GetBytes(readUpstreamBodyForTest(t, req), "context_management").Exists(),
@@ -155,14 +155,16 @@ func TestBuildCountTokensRequestAnthropicAPIKeyPassthrough_StripsContextManageme
 // ============================================================================
 
 func TestBuildUpstreamRequest_OAuthMimicHaiku_PreservesContextManagementEndToEnd(t *testing.T) {
-
 	c := &requestBoundaryFixture{}
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 401, Platform: capability.PlatformAnthropic, Type: capability.AccountTypeOAuth,
-		Credentials: map[string]any{"access_token": "oauth-tok"},
-		Status:      billing.StatusActive,
-		Schedulable: true},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 401, Platform: capability.PlatformAnthropic, Type: capability.ProviderTypeOAuth,
+			Credentials: map[string]any{"access_token": "oauth-tok"},
+			Status:      billing.StatusActive,
+			Schedulable: true,
+		},
 	}
 	// Haiku + mimic CC 使用完整 beta，其中包含 context-management；body 必须对称保留。
 	body := []byte(`{"model":"claude-haiku-4-5","context_management":{"edits":[{"type":"clear_thinking_20251015"}]},"messages":[]}`)
@@ -170,7 +172,7 @@ func TestBuildUpstreamRequest_OAuthMimicHaiku_PreservesContextManagementEndToEnd
 	req, _, err := svc.buildRequest(
 		context.Background(), c, &AttemptState{},
 
-		account, body,
+		provider, body,
 		"oauth-tok", "oauth", "claude-haiku-4-5", false, true, // mimicClaudeCode=true
 	)
 	require.NoError(t, err)
@@ -187,20 +189,22 @@ func TestBuildUpstreamRequest_OAuthMimicHaiku_PreservesContextManagementEndToEnd
 }
 
 func TestBuildUpstreamRequest_APIKeyHaiku_RemainsUnmimicked(t *testing.T) {
-
 	c := &requestBoundaryFixture{}
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 404, Platform: capability.PlatformAnthropic, Type: capability.AccountTypeAPIKey,
-		Credentials: map[string]any{"api_key": "sk-ant-xxx"},
-		Status:      billing.StatusActive, Schedulable: true},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 404, Platform: capability.PlatformAnthropic, Type: capability.ProviderTypeAPIKey,
+			Credentials: map[string]any{"api_key": "sk-ant-xxx"},
+			Status:      billing.StatusActive, Schedulable: true,
+		},
 	}
 	body := []byte(`{"model":"claude-haiku-4-5","system":"API-key client system","thinking":{"type":"enabled"},"messages":[]}`)
 	svc := NewRuntime(Dependencies{}, Options{Configured: true, InjectAPIKeyBeta: true})
 	req, _, err := svc.buildRequest(
 		context.Background(), c, &AttemptState{},
 
-		account, body,
+		provider, body,
 		"sk-ant-xxx", "apikey", "claude-haiku-4-5", false, false,
 	)
 	require.NoError(t, err)
@@ -213,14 +217,16 @@ func TestBuildUpstreamRequest_APIKeyHaiku_RemainsUnmimicked(t *testing.T) {
 }
 
 func TestBuildUpstreamRequest_OAuthMimicNonHaiku_PreservesContextManagementEndToEnd(t *testing.T) {
-
 	c := &requestBoundaryFixture{}
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 402, Platform: capability.PlatformAnthropic, Type: capability.AccountTypeOAuth,
-		Credentials: map[string]any{"access_token": "oauth-tok"},
-		Status:      billing.StatusActive,
-		Schedulable: true},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 402, Platform: capability.PlatformAnthropic, Type: capability.ProviderTypeOAuth,
+			Credentials: map[string]any{"access_token": "oauth-tok"},
+			Status:      billing.StatusActive,
+			Schedulable: true,
+		},
 	}
 	// sonnet + mimic CC → final beta = FullClaudeCodeMimicryBetas（含 context-management）→
 	// body 保留。
@@ -229,7 +235,7 @@ func TestBuildUpstreamRequest_OAuthMimicNonHaiku_PreservesContextManagementEndTo
 	req, _, err := svc.buildRequest(
 		context.Background(), c, &AttemptState{},
 
-		account, body,
+		provider, body,
 		"oauth-tok", "oauth", "claude-sonnet-4-6", false, true,
 	)
 	require.NoError(t, err)
@@ -252,16 +258,19 @@ func TestBuildUpstreamRequest_OAuthTransparentHaikuWithRealCCBeta_PreservesField
 	c.Request.Header.Set("Anthropic-Beta",
 		"claude-code-20250219,oauth-2025-04-20,interleaved-thinking-2025-05-14,context-management-2025-06-27")
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 403, Platform: capability.PlatformAnthropic, Type: capability.AccountTypeOAuth,
-		Credentials: map[string]any{"access_token": "oauth-tok"},
-		Status:      billing.StatusActive, Schedulable: true},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 403, Platform: capability.PlatformAnthropic, Type: capability.ProviderTypeOAuth,
+			Credentials: map[string]any{"access_token": "oauth-tok"},
+			Status:      billing.StatusActive, Schedulable: true,
+		},
 	}
 	body := []byte(`{"model":"claude-haiku-4-5","context_management":{"edits":[{"type":"clear_thinking_20251015","keep":"all"}]},"messages":[]}`)
 	svc := NewRuntime(Dependencies{}, Options{Configured: true})
 	req, _, err := svc.buildRequest(
 		context.Background(), c, &AttemptState{},
 
-		account, body,
+		provider, body,
 		"oauth-tok", "oauth", "claude-haiku-4-5", false, false, // mimicClaudeCode=false（真 CC）
 	)
 	require.NoError(t, err)
@@ -284,16 +293,19 @@ func TestBuildCountTokensRequest_OAuthMimicHaiku_PreservesContextManagementEndTo
 	c := &requestBoundaryFixture{}
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages/count_tokens", nil)
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 411, Platform: capability.PlatformAnthropic, Type: capability.AccountTypeOAuth,
-		Credentials: map[string]any{"access_token": "oauth-tok"},
-		Status:      billing.StatusActive, Schedulable: true},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 411, Platform: capability.PlatformAnthropic, Type: capability.ProviderTypeOAuth,
+			Credentials: map[string]any{"access_token": "oauth-tok"},
+			Status:      billing.StatusActive, Schedulable: true,
+		},
 	}
 	body := []byte(`{"model":"claude-haiku-4-5","context_management":{"edits":[{"type":"clear_thinking_20251015"}]},"messages":[]}`)
 	svc := NewRuntime(Dependencies{}, Options{Configured: true})
 	req, _, err := svc.buildCountRequest(
 		context.Background(), c, &AttemptState{},
 
-		account, body,
+		provider, body,
 		"oauth-tok", "oauth", "claude-haiku-4-5", true, false, // mimicClaudeCode=true
 	)
 	require.NoError(t, err)
@@ -315,9 +327,12 @@ func TestBuildCountTokensRequest_OAuthMimic_DropsInjectedMaxTokens(t *testing.T)
 	c := &requestBoundaryFixture{}
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages/count_tokens", nil)
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 413, Platform: capability.PlatformAnthropic, Type: capability.AccountTypeOAuth,
-		Credentials: map[string]any{"access_token": "oauth-tok"},
-		Status:      billing.StatusActive, Schedulable: true},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 413, Platform: capability.PlatformAnthropic, Type: capability.ProviderTypeOAuth,
+			Credentials: map[string]any{"access_token": "oauth-tok"},
+			Status:      billing.StatusActive, Schedulable: true,
+		},
 	}
 	normalized, _ := claude.NormalizeClaudeOAuthRequestBody(
 		[]byte(`{"model":"claude-sonnet-4-5","messages":[]}`),
@@ -330,7 +345,7 @@ func TestBuildCountTokensRequest_OAuthMimic_DropsInjectedMaxTokens(t *testing.T)
 	req, _, err := svc.buildCountRequest(
 		context.Background(), c, &AttemptState{},
 
-		account, normalized,
+		provider, normalized,
 		"oauth-tok", "oauth", "claude-sonnet-4-5", true, false,
 	)
 	require.NoError(t, err)
@@ -345,16 +360,19 @@ func TestBuildCountTokensRequest_APIKeyHaiku_StripsContextManagementEndToEnd(t *
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages/count_tokens", nil)
 	c.Request.Header.Set("Anthropic-Beta", "interleaved-thinking-2025-05-14")
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 412, Platform: capability.PlatformAnthropic, Type: capability.AccountTypeAPIKey,
-		Credentials: map[string]any{"api_key": "sk-ant-xxx"},
-		Status:      billing.StatusActive, Schedulable: true},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 412, Platform: capability.PlatformAnthropic, Type: capability.ProviderTypeAPIKey,
+			Credentials: map[string]any{"api_key": "sk-ant-xxx"},
+			Status:      billing.StatusActive, Schedulable: true,
+		},
 	}
 	body := []byte(`{"model":"claude-haiku-4-5","context_management":{"edits":[]},"messages":[]}`)
 	svc := NewRuntime(Dependencies{}, Options{Configured: true})
 	req, _, err := svc.buildCountRequest(
 		context.Background(), c, &AttemptState{},
 
-		account, body,
+		provider, body,
 		"sk-ant-xxx", "apikey", "claude-haiku-4-5", false, false,
 	)
 	require.NoError(t, err)
@@ -367,7 +385,6 @@ func TestBuildCountTokensRequest_APIKeyHaiku_StripsContextManagementEndToEnd(t *
 // count_tokens passthrough preserve 测试
 
 func TestBuildCountTokensRequestAnthropicAPIKeyPassthrough_PreservesContextManagementWhenClientHeaderHasBeta(t *testing.T) {
-
 	c := &requestBoundaryFixture{}
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages/count_tokens", nil)
 	c.Request.Header.Set("Anthropic-Beta", "oauth-2025-04-20,context-management-2025-06-27,token-counting-2024-11-01")
@@ -377,7 +394,7 @@ func TestBuildCountTokensRequestAnthropicAPIKeyPassthrough_PreservesContextManag
 	req, _, err := svc.buildCountRequest(
 		context.Background(), c, &AttemptState{},
 
-		newAnthropicAPIKeyPassthroughAccountForBetaTest(), body, "token", "apikey", "", false, true,
+		newAnthropicAPIKeyPassthroughProviderForBetaTest(), body, "token", "apikey", "", false, true,
 	)
 	require.NoError(t, err)
 	require.True(t, gjson.GetBytes(readUpstreamBodyForTest(t, req), "context_management").Exists(),
@@ -392,16 +409,19 @@ func TestBuildUpstreamRequest_APIKeyHaikuWithContextManagement_StripsField(t *te
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
 	c.Request.Header.Set("Anthropic-Beta", "interleaved-thinking-2025-05-14")
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 404, Platform: capability.PlatformAnthropic, Type: capability.AccountTypeAPIKey,
-		Credentials: map[string]any{"api_key": "sk-ant-xxx"},
-		Status:      billing.StatusActive, Schedulable: true},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 404, Platform: capability.PlatformAnthropic, Type: capability.ProviderTypeAPIKey,
+			Credentials: map[string]any{"api_key": "sk-ant-xxx"},
+			Status:      billing.StatusActive, Schedulable: true,
+		},
 	}
 	body := []byte(`{"model":"claude-haiku-4-5","context_management":{"edits":[]},"messages":[]}`)
 	svc := NewRuntime(Dependencies{}, Options{Configured: true})
 	req, _, err := svc.buildRequest(
 		context.Background(), c, &AttemptState{},
 
-		account, body,
+		provider, body,
 		"sk-ant-xxx", "apikey", "claude-haiku-4-5", false, false,
 	)
 	require.NoError(t, err)

@@ -14,18 +14,18 @@ import (
 )
 
 const (
-	schedulerBucketSetKey          = "sched:v3:buckets"
-	schedulerOutboxWatermarkKey    = "sched:v3:outbox:watermark"
-	schedulerAccountPrefix         = "sched:v3:acc:"
-	schedulerAccountMetaPrefix     = "sched:v3:meta:"
-	schedulerAccountLastUsedPrefix = "sched:v3:acc:last_used:"
-	schedulerActivePrefix          = "sched:v3:active:"
-	schedulerReadyPrefix           = "sched:v3:ready:"
-	schedulerVersionPrefix         = "sched:v3:ver:"
-	schedulerEpochPrefix           = "sched:v3:epoch:"
-	schedulerRetiredPrefix         = "sched:v3:retired:"
-	schedulerSnapshotPrefix        = "sched:v3:"
-	schedulerLockPrefix            = "sched:v3:lock:"
+	schedulerBucketSetKey           = "sched:v4:buckets"
+	schedulerOutboxWatermarkKey     = "sched:v4:outbox:watermark"
+	schedulerProviderPrefix         = "sched:v4:provider:"
+	schedulerProviderMetaPrefix     = "sched:v4:meta:"
+	schedulerProviderLastUsedPrefix = "sched:v4:provider:last_used:"
+	schedulerActivePrefix           = "sched:v4:active:"
+	schedulerReadyPrefix            = "sched:v4:ready:"
+	schedulerVersionPrefix          = "sched:v4:ver:"
+	schedulerEpochPrefix            = "sched:v4:epoch:"
+	schedulerRetiredPrefix          = "sched:v4:retired:"
+	schedulerSnapshotPrefix         = "sched:v4:"
+	schedulerLockPrefix             = "sched:v4:lock:"
 
 	defaultSchedulerSnapshotMGetChunkSize  = 128
 	defaultSchedulerSnapshotWriteChunkSize = 256
@@ -37,7 +37,7 @@ const (
 )
 
 const (
-	schedulerGroupLifecycleLockPrefix      = "sched:v3:group:lifecycle-lock:"
+	schedulerGroupLifecycleLockPrefix      = "sched:v4:group:lifecycle-lock:"
 	schedulerGroupLifecycleOwnerTokenBytes = 16
 )
 
@@ -244,7 +244,7 @@ func NewSnapshotCache(rdb *redis.Client, codec SnapshotCodec, options ...Snapsho
 	return &SnapshotCache{rdb: rdb, codec: codec, mgetChunkSize: opts.MGetChunkSize, writeChunkSize: opts.WriteChunkSize}
 }
 
-func (c *SnapshotCache) GetSnapshot(ctx context.Context, bucket scheduler.SchedulerBucket) ([]scheduler.SnapshotAccount, bool, error) {
+func (c *SnapshotCache) GetSnapshot(ctx context.Context, bucket scheduler.SchedulerBucket) ([]scheduler.SnapshotProvider, bool, error) {
 	readyKey := schedulerBucketKey(schedulerReadyPrefix, bucket)
 	readyVal, err := c.rdb.Get(ctx, readyKey).Result()
 	if err == redis.Nil {
@@ -273,14 +273,14 @@ func (c *SnapshotCache) GetSnapshot(ctx context.Context, bucket scheduler.Schedu
 	}
 	if len(ids) == 0 {
 		// 空快照视为缓存未命中，触发数据库回退查询
-		// 这解决了新分组创建后立即绑定账号时的竞态条件问题
+		// 这解决了新分组创建后立即绑定提供商时的竞态条件问题
 		return nil, false, nil
 	}
 
 	keys := make([]string, 0, len(ids))
 	lastUsedKeys := make([]string, 0, len(ids))
 	for _, id := range ids {
-		keys = append(keys, schedulerAccountMetaKey(id))
+		keys = append(keys, schedulerProviderMetaKey(id))
 		lastUsedKeys = append(lastUsedKeys, schedulerLastUsedKey(id))
 	}
 	values, err := c.mgetChunked(ctx, keys)
@@ -292,22 +292,22 @@ func (c *SnapshotCache) GetSnapshot(ctx context.Context, bucket scheduler.Schedu
 		return nil, false, err
 	}
 
-	accounts := make([]scheduler.SnapshotAccount, 0, len(values))
+	providers := make([]scheduler.SnapshotProvider, 0, len(values))
 	for i, val := range values {
 		if val == nil {
 			return nil, false, nil
 		}
-		account, err := c.codec.Decode(val)
+		provider, err := c.codec.Decode(val)
 		if err != nil {
 			return nil, false, err
 		}
-		if err := c.applySchedulerLastUsed(account, lastUsedValues[i]); err != nil {
+		if err := c.applySchedulerLastUsed(provider, lastUsedValues[i]); err != nil {
 			return nil, false, err
 		}
-		accounts = append(accounts, account)
+		providers = append(providers, provider)
 	}
 
-	return accounts, true, nil
+	return providers, true, nil
 }
 
 func (c *SnapshotCache) CaptureBucketWriteToken(ctx context.Context, bucket scheduler.SchedulerBucket) (scheduler.SchedulerBucketWriteToken, error) {
@@ -411,7 +411,7 @@ func newSchedulerGroupLifecycleOwnerToken() (string, error) {
 	return hex.EncodeToString(raw), nil
 }
 
-func (c *SnapshotCache) SetSnapshot(ctx context.Context, bucket scheduler.SchedulerBucket, token scheduler.SchedulerBucketWriteToken, accounts []scheduler.SnapshotAccount) error {
+func (c *SnapshotCache) SetSnapshot(ctx context.Context, bucket scheduler.SchedulerBucket, token scheduler.SchedulerBucketWriteToken, providers []scheduler.SnapshotProvider) error {
 	if !token.ValidFor(bucket) {
 		return fmt.Errorf("%w: bucket=%s", scheduler.ErrSchedulerBucketWriteFenced, bucket.String())
 	}
@@ -420,17 +420,17 @@ func (c *SnapshotCache) SetSnapshot(ctx context.Context, bucket scheduler.Schedu
 	if err != nil {
 		return err
 	}
-	// 快照成员最终只依赖可编码账号的有序 ID；直接复用 ID 路径，避免为
-	// 随后立即丢弃的完整 Account 再分配一份临时切片。
-	if _, err := c.writeSnapshotVersionAndReturnAccountIDs(ctx, bucket, version, accounts); err != nil {
+	// 快照成员最终只依赖可编码提供商的有序 ID；直接复用 ID 路径，避免为
+	// 随后立即丢弃的完整 Provider 再分配一份临时切片。
+	if _, err := c.writeSnapshotVersionAndReturnProviderIDs(ctx, bucket, version, providers); err != nil {
 		return err
 	}
 	return c.activateSnapshotVersion(ctx, bucket, token, version)
 }
 
-// SetSnapshotAndReturnAccountIDs 完整发布快照，并返回实际成功编码并写入的有序账号 ID。
+// SetSnapshotAndReturnProviderIDs 完整发布快照，并返回实际成功编码并写入的有序提供商 ID。
 // 该可选能力只供同一重建批次复用，返回前仍会完成版本激活与 fencing 校验。
-func (c *SnapshotCache) SetSnapshotAndReturnAccountIDs(ctx context.Context, bucket scheduler.SchedulerBucket, token scheduler.SchedulerBucketWriteToken, accounts []scheduler.SnapshotAccount) ([]int64, error) {
+func (c *SnapshotCache) SetSnapshotAndReturnProviderIDs(ctx context.Context, bucket scheduler.SchedulerBucket, token scheduler.SchedulerBucketWriteToken, providers []scheduler.SnapshotProvider) ([]int64, error) {
 	if !token.ValidFor(bucket) {
 		return nil, fmt.Errorf("%w: bucket=%s", scheduler.ErrSchedulerBucketWriteFenced, bucket.String())
 	}
@@ -439,19 +439,19 @@ func (c *SnapshotCache) SetSnapshotAndReturnAccountIDs(ctx context.Context, buck
 	if err != nil {
 		return nil, err
 	}
-	accountIDs, err := c.writeSnapshotVersionAndReturnAccountIDs(ctx, bucket, version, accounts)
+	providerIDs, err := c.writeSnapshotVersionAndReturnProviderIDs(ctx, bucket, version, providers)
 	if err != nil {
 		return nil, err
 	}
 	if err := c.activateSnapshotVersion(ctx, bucket, token, version); err != nil {
 		return nil, err
 	}
-	return accountIDs, nil
+	return providerIDs, nil
 }
 
-// SetSnapshotByAccountIDs 复用同批次首次完整写入后得到的账号成员。
-// 每个桶仍独立分配版本、写入有序集合并执行激活 fencing，只省略重复的账号 JSON 与全局键写入。
-func (c *SnapshotCache) SetSnapshotByAccountIDs(ctx context.Context, bucket scheduler.SchedulerBucket, token scheduler.SchedulerBucketWriteToken, accountIDs []int64) error {
+// SetSnapshotByProviderIDs 复用同批次首次完整写入后得到的提供商成员。
+// 每个桶仍独立分配版本、写入有序集合并执行激活 fencing，只省略重复的提供商 JSON 与全局键写入。
+func (c *SnapshotCache) SetSnapshotByProviderIDs(ctx context.Context, bucket scheduler.SchedulerBucket, token scheduler.SchedulerBucketWriteToken, providerIDs []int64) error {
 	if !token.ValidFor(bucket) {
 		return fmt.Errorf("%w: bucket=%s", scheduler.ErrSchedulerBucketWriteFenced, bucket.String())
 	}
@@ -459,7 +459,7 @@ func (c *SnapshotCache) SetSnapshotByAccountIDs(ctx context.Context, bucket sche
 	if err != nil {
 		return err
 	}
-	if err := c.writeSnapshotAccountIDs(ctx, bucket, version, accountIDs); err != nil {
+	if err := c.writeSnapshotProviderIDs(ctx, bucket, version, providerIDs); err != nil {
 		return err
 	}
 	return c.activateSnapshotVersion(ctx, bucket, token, version)
@@ -480,33 +480,33 @@ func (c *SnapshotCache) allocateSnapshotVersion(ctx context.Context, bucket sche
 	return strconv.FormatInt(result, 10), nil
 }
 
-func (c *SnapshotCache) writeSnapshotVersionAndReturnAccountIDs(ctx context.Context, bucket scheduler.SchedulerBucket, version string, accounts []scheduler.SnapshotAccount) ([]int64, error) {
-	accountIDs, err := c.writeAccountIDs(ctx, accounts)
+func (c *SnapshotCache) writeSnapshotVersionAndReturnProviderIDs(ctx context.Context, bucket scheduler.SchedulerBucket, version string, providers []scheduler.SnapshotProvider) ([]int64, error) {
+	providerIDs, err := c.writeProviderIDs(ctx, providers)
 	if err != nil {
 		return nil, err
 	}
-	if err := c.writeSnapshotAccountIDs(ctx, bucket, version, accountIDs); err != nil {
+	if err := c.writeSnapshotProviderIDs(ctx, bucket, version, providerIDs); err != nil {
 		return nil, err
 	}
-	return accountIDs, nil
+	return providerIDs, nil
 }
 
-func (c *SnapshotCache) writeSnapshotAccountIDs(ctx context.Context, bucket scheduler.SchedulerBucket, version string, accountIDs []int64) error {
-	members := schedulerSnapshotMembers(accountIDs)
+func (c *SnapshotCache) writeSnapshotProviderIDs(ctx context.Context, bucket scheduler.SchedulerBucket, version string, providerIDs []int64) error {
+	members := schedulerSnapshotMembers(providerIDs)
 	return c.writeSnapshotMembers(ctx, bucket, version, members)
 }
 
-func schedulerSnapshotMembers(accountIDs []int64) []redis.Z {
-	if len(accountIDs) == 0 {
+func schedulerSnapshotMembers(providerIDs []int64) []redis.Z {
+	if len(providerIDs) == 0 {
 		return nil
 	}
 	// 使用序号作为 score，保持数据库返回的排序语义；重复 ID 继续交由 Redis ZADD
-	// 按最后一个 score 覆盖，与直接从账号切片构造成员时的行为一致。
-	members := make([]redis.Z, 0, len(accountIDs))
-	for idx, accountID := range accountIDs {
+	// 按最后一个 score 覆盖，与直接从提供商切片构造成员时的行为一致。
+	members := make([]redis.Z, 0, len(providerIDs))
+	for idx, providerID := range providerIDs {
 		members = append(members, redis.Z{
 			Score:  float64(idx),
-			Member: strconv.FormatInt(accountID, 10),
+			Member: strconv.FormatInt(providerID, 10),
 		})
 	}
 	return members
@@ -567,45 +567,45 @@ func schedulerBucketWriteResultError(result int64, bucket scheduler.SchedulerBuc
 	}
 }
 
-func (c *SnapshotCache) GetAccount(ctx context.Context, accountID int64) (scheduler.SnapshotAccount, error) {
-	id := strconv.FormatInt(accountID, 10)
-	values, err := c.rdb.MGet(ctx, schedulerAccountKey(id), schedulerLastUsedKey(id)).Result()
+func (c *SnapshotCache) GetProvider(ctx context.Context, providerID int64) (scheduler.SnapshotProvider, error) {
+	id := strconv.FormatInt(providerID, 10)
+	values, err := c.rdb.MGet(ctx, schedulerProviderKey(id), schedulerLastUsedKey(id)).Result()
 	if err != nil {
 		return nil, err
 	}
 	if len(values) != 2 || values[0] == nil {
 		return nil, nil
 	}
-	account, err := c.codec.Decode(values[0])
+	provider, err := c.codec.Decode(values[0])
 	if err != nil {
 		return nil, err
 	}
-	if err := c.applySchedulerLastUsed(account, values[1]); err != nil {
+	if err := c.applySchedulerLastUsed(provider, values[1]); err != nil {
 		return nil, err
 	}
-	return account, nil
+	return provider, nil
 }
 
-func (c *SnapshotCache) SetAccount(ctx context.Context, account scheduler.SnapshotAccount) error {
-	if account == nil || account.SnapshotMetadata().ID <= 0 {
+func (c *SnapshotCache) SetProvider(ctx context.Context, provider scheduler.SnapshotProvider) error {
+	if provider == nil || provider.SnapshotMetadata().ID <= 0 {
 		return nil
 	}
-	accountIDs, err := c.writeAccountIDs(ctx, []scheduler.SnapshotAccount{account})
+	providerIDs, err := c.writeProviderIDs(ctx, []scheduler.SnapshotProvider{provider})
 	if err != nil {
 		return err
 	}
-	if len(accountIDs) == 0 {
-		return c.DeleteAccount(ctx, account.SnapshotMetadata().ID)
+	if len(providerIDs) == 0 {
+		return c.DeleteProvider(ctx, provider.SnapshotMetadata().ID)
 	}
 	return nil
 }
 
-func (c *SnapshotCache) DeleteAccount(ctx context.Context, accountID int64) error {
-	if accountID <= 0 {
+func (c *SnapshotCache) DeleteProvider(ctx context.Context, providerID int64) error {
+	if providerID <= 0 {
 		return nil
 	}
-	id := strconv.FormatInt(accountID, 10)
-	return c.rdb.Del(ctx, schedulerAccountKey(id), schedulerAccountMetaKey(id), schedulerLastUsedKey(id)).Err()
+	id := strconv.FormatInt(providerID, 10)
+	return c.rdb.Del(ctx, schedulerProviderKey(id), schedulerProviderMetaKey(id), schedulerLastUsedKey(id)).Err()
 }
 
 func (c *SnapshotCache) UpdateLastUsed(ctx context.Context, updates map[int64]time.Time) error {
@@ -632,17 +632,17 @@ func (c *SnapshotCache) UpdateLastUsed(ctx context.Context, updates map[int64]ti
 		}
 		millis, err := schedulerLastUsedMillis(usedAt)
 		if err != nil {
-			slog.Warn("scheduler cache removes account with unencodable payload",
-				"account_id", id,
+			slog.Warn("scheduler cache removes provider with unencodable payload",
+				"provider_id", id,
 				"error", err,
 			)
 			idText := strconv.FormatInt(id, 10)
-			pipe.Del(ctx, schedulerAccountKey(idText), schedulerAccountMetaKey(idText), schedulerLastUsedKey(idText))
+			pipe.Del(ctx, schedulerProviderKey(idText), schedulerProviderMetaKey(idText), schedulerLastUsedKey(idText))
 			queued++
 			continue
 		}
 		idText := strconv.FormatInt(id, 10)
-		keys = append(keys, schedulerAccountKey(idText), schedulerLastUsedKey(idText))
+		keys = append(keys, schedulerProviderKey(idText), schedulerLastUsedKey(idText))
 		args = append(args, millis)
 		if len(args) >= schedulerLastUsedUpdateChunkSize {
 			queueBatch()
@@ -703,16 +703,16 @@ func schedulerSnapshotKey(bucket scheduler.SchedulerBucket, version string) stri
 	return fmt.Sprintf("%s%d:%s:%s:v%s", schedulerSnapshotPrefix, bucket.GroupID, bucket.Platform, bucket.Mode, version)
 }
 
-func schedulerAccountKey(id string) string {
-	return schedulerAccountPrefix + id
+func schedulerProviderKey(id string) string {
+	return schedulerProviderPrefix + id
 }
 
-func schedulerAccountMetaKey(id string) string {
-	return schedulerAccountMetaPrefix + id
+func schedulerProviderMetaKey(id string) string {
+	return schedulerProviderMetaPrefix + id
 }
 
 func schedulerLastUsedKey(id string) string {
-	return schedulerAccountLastUsedPrefix + id
+	return schedulerProviderLastUsedPrefix + id
 }
 
 func ptrTime(t time.Time) *time.Time {
@@ -726,8 +726,8 @@ func schedulerLastUsedMillis(value time.Time) (int64, error) {
 	return value.UTC().UnixMilli(), nil
 }
 
-func (c *SnapshotCache) applySchedulerLastUsed(account scheduler.SnapshotAccount, value any) error {
-	if account == nil || value == nil {
+func (c *SnapshotCache) applySchedulerLastUsed(provider scheduler.SnapshotProvider, value any) error {
+	if provider == nil || value == nil {
 		return nil
 	}
 	var raw string
@@ -744,23 +744,23 @@ func (c *SnapshotCache) applySchedulerLastUsed(account scheduler.SnapshotAccount
 		return fmt.Errorf("invalid last_used cache value %q: %w", raw, err)
 	}
 	lastUsedAt := time.UnixMilli(millis).UTC()
-	current, err := c.codec.LastUsedAt(account)
+	current, err := c.codec.LastUsedAt(provider)
 	if err != nil {
 		return err
 	}
 	if current == nil || lastUsedAt.After(*current) {
-		return c.codec.SetLastUsedAt(account, ptrTime(lastUsedAt))
+		return c.codec.SetLastUsedAt(provider, ptrTime(lastUsedAt))
 	}
 	return nil
 }
 
-func (c *SnapshotCache) writeAccountIDs(ctx context.Context, accounts []scheduler.SnapshotAccount) ([]int64, error) {
-	if len(accounts) == 0 {
+func (c *SnapshotCache) writeProviderIDs(ctx context.Context, providers []scheduler.SnapshotProvider) ([]int64, error) {
+	if len(providers) == 0 {
 		return nil, nil
 	}
 
 	pipe := c.rdb.Pipeline()
-	accountIDs := make([]int64, 0, len(accounts))
+	providerIDs := make([]int64, 0, len(providers))
 	pending := 0
 	flush := func() error {
 		if pending == 0 {
@@ -774,21 +774,21 @@ func (c *SnapshotCache) writeAccountIDs(ctx context.Context, accounts []schedule
 		return nil
 	}
 
-	for _, account := range accounts {
-		fullPayload, metaPayload, err := c.codec.Encode(account)
+	for _, provider := range providers {
+		fullPayload, metaPayload, err := c.codec.Encode(provider)
 		if err != nil {
-			slog.Warn("scheduler cache skips account with unencodable payload",
-				"account_id", account.SnapshotMetadata().ID,
+			slog.Warn("scheduler cache skips provider with unencodable payload",
+				"provider_id", provider.SnapshotMetadata().ID,
 				"error", err,
 			)
 			continue
 		}
 
-		id := strconv.FormatInt(account.SnapshotMetadata().ID, 10)
-		pipe.Set(ctx, schedulerAccountKey(id), fullPayload, 0)
-		pipe.Set(ctx, schedulerAccountMetaKey(id), metaPayload, 0)
+		id := strconv.FormatInt(provider.SnapshotMetadata().ID, 10)
+		pipe.Set(ctx, schedulerProviderKey(id), fullPayload, 0)
+		pipe.Set(ctx, schedulerProviderMetaKey(id), metaPayload, 0)
 		// 保持高频 LastUsedAt 旁路键不变，防止滞后的快照重建覆盖更新的调度时间。
-		accountIDs = append(accountIDs, account.SnapshotMetadata().ID)
+		providerIDs = append(providerIDs, provider.SnapshotMetadata().ID)
 		pending++
 		if pending >= c.writeChunkSize {
 			if err := flush(); err != nil {
@@ -800,7 +800,7 @@ func (c *SnapshotCache) writeAccountIDs(ctx context.Context, accounts []schedule
 	if err := flush(); err != nil {
 		return nil, err
 	}
-	return accountIDs, nil
+	return providerIDs, nil
 }
 
 func (c *SnapshotCache) mgetChunked(ctx context.Context, keys []string) ([]any, error) {

@@ -7,14 +7,14 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 )
 
-// GeminiInput 只带当前请求与账号显示/资格投影，不带凭据。
+// GeminiInput 只带当前请求与提供商显示/资格投影，不带凭据。
 type GeminiInput struct {
-	StartedAt                                  time.Time
-	Model, Action                              string
-	Stream, Sticky, TokenAvailable             bool
-	Body                                       []byte
-	GroupID, AccountID                         int64
-	SessionHash, AccountName, Platform, Prefix string
+	StartedAt                                   time.Time
+	Model, Action                               string
+	Stream, Sticky, TokenAvailable              bool
+	Body                                        []byte
+	GroupID, ProviderID                         int64
+	SessionHash, ProviderName, Platform, Prefix string
 }
 type GeminiRecovery struct {
 	ErrorBody   []byte

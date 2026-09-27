@@ -8,11 +8,11 @@ import (
 	"fmt"
 	"testing"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/batchimage"
 	batchimageprovider "github.com/TokenFlux/TokenRouter/internal/batchimage/provider"
 	billingcore "github.com/TokenFlux/TokenRouter/internal/billing"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 	"github.com/stretchr/testify/require"
 )
@@ -197,7 +197,7 @@ func TestBatchImageSettlementService_ValidationErrors(t *testing.T) {
 		{name: "negative_fail_count", mutate: func(j *batchimage.BatchImageJob) { j.FailCount = -1 }, want: batchimage.ErrBatchImageSettlementInvalidCounts},
 		{name: "counts_exceed_item_count", mutate: func(j *batchimage.BatchImageJob) { j.SuccessCount = 2; j.FailCount = 2; j.ItemCount = 3 }, want: batchimage.ErrBatchImageSettlementInvalidCounts},
 		{name: "missing_api_key", mutate: func(j *batchimage.BatchImageJob) { j.APIKeyID = nil }, want: batchimage.ErrBatchImageSettlementMissingAPIKeyID},
-		{name: "missing_account", mutate: func(j *batchimage.BatchImageJob) { j.AccountID = nil }, want: batchimage.ErrBatchImageSettlementMissingAccountID},
+		{name: "missing_provider", mutate: func(j *batchimage.BatchImageJob) { j.ProviderID = nil }, want: batchimage.ErrBatchImageSettlementMissingProviderID},
 		{name: "pricing_missing", pricing: &fakeBatchImagePricingResolver{err: batchimage.ErrBatchImageSettlementPricingMissing}, want: batchimage.ErrBatchImageSettlementPricingMissing},
 		{name: "manifest_conflict", mutate: func(j *batchimage.BatchImageJob) { v := "different"; j.ManifestHash = &v }, want: batchimage.ErrBatchImageSettlementManifestConflict},
 	}
@@ -254,7 +254,7 @@ func TestBatchImageSettlementService_UsesSubmittedPricingSnapshot(t *testing.T) 
 	job.PricingSnapshotVersion = 1
 	job.BaseUnitPrice = 0.25
 	job.GroupRateMultiplier = 1
-	job.AccountRateMultiplier = 1
+	job.ProviderRateMultiplier = 1
 	job.BatchDiscountMultiplier = 1
 	job.HoldMultiplier = 1.1
 	job.BillableUnitPrice = 0.25
@@ -296,7 +296,7 @@ func TestBatchImagePipelineProcessor_SettlesQueuedSettlingJob(t *testing.T) {
 	billing := &fakeBatchImageBillingRepo{}
 	settlement := newBatchSettlementFixture(repo, billing, nil, &fakeBatchImagePricingResolver{unitPrice: 0.25}, nil, nil)
 	processor := &batchimage.PipelineProcessor{
-		ProviderProcessor: newBatchProcessorFixture(repo, batchimage.NewRegistry[batchimageprovider.BatchImageProvider](&fakeProcessorProvider{}), &fakeBatchImageAccountResolver{account: &accountcore.Record{}}, nil, nil, nil, 0),
+		ProviderProcessor: newBatchProcessorFixture(repo, batchimage.NewRegistry[batchimageprovider.BatchImageProvider](&fakeProcessorProvider{}), &fakeBatchImageProviderResolver{provider: &providercore.Record{}}, nil, nil, nil, 0),
 		SettlementService: settlement,
 	}
 
@@ -313,7 +313,7 @@ func TestBatchImagePipelineProcessor_RequeuesTransientSettlementFailure(t *testi
 	repo.jobs[job.BatchID] = job
 	settlement := newBatchSettlementFixture(repo, &fakeBatchImageBillingRepo{err: errors.New("temporary")}, nil, &fakeBatchImagePricingResolver{unitPrice: 0.25}, nil, nil)
 	processor := &batchimage.PipelineProcessor{
-		ProviderProcessor: newBatchProcessorFixture(repo, batchimage.NewRegistry[batchimageprovider.BatchImageProvider](&fakeProcessorProvider{}), &fakeBatchImageAccountResolver{account: &accountcore.Record{}}, nil, nil, nil, 0),
+		ProviderProcessor: newBatchProcessorFixture(repo, batchimage.NewRegistry[batchimageprovider.BatchImageProvider](&fakeProcessorProvider{}), &fakeBatchImageProviderResolver{provider: &providercore.Record{}}, nil, nil, nil, 0),
 		SettlementService: settlement,
 	}
 
@@ -332,7 +332,7 @@ func TestBatchImagePipelineProcessor_FailsAndReleasesAfterSettlementRetryLimit(t
 	billing := &fakeBatchImageBillingRepo{captureErr: errors.New("temporary billing timeout")}
 	settlement := newBatchSettlementFixture(repo, billing, nil, &fakeBatchImagePricingResolver{unitPrice: 0.25}, nil, nil)
 	processor := &batchimage.PipelineProcessor{
-		ProviderProcessor: newBatchProcessorFixture(repo, batchimage.NewRegistry[batchimageprovider.BatchImageProvider](&fakeProcessorProvider{}), &fakeBatchImageAccountResolver{account: &accountcore.Record{}}, nil, nil, nil, 0),
+		ProviderProcessor: newBatchProcessorFixture(repo, batchimage.NewRegistry[batchimageprovider.BatchImageProvider](&fakeProcessorProvider{}), &fakeBatchImageProviderResolver{provider: &providercore.Record{}}, nil, nil, nil, 0),
 		SettlementService: settlement,
 	}
 
@@ -480,7 +480,7 @@ func TestBatchImageSettlementBillingRequestIDs(t *testing.T) {
 
 func testSettlingBatchImageJob(batchID string) *batchimage.BatchImageJob {
 	apiKeyID := int64(321)
-	accountID := int64(654)
+	providerID := int64(654)
 	providerJobName := "providers/job"
 	outputRef := "files/output"
 	holdAmount := 1.25
@@ -489,8 +489,8 @@ func testSettlingBatchImageJob(batchID string) *batchimage.BatchImageJob {
 		BatchID:           batchID,
 		UserID:            123,
 		APIKeyID:          &apiKeyID,
-		AccountID:         &accountID,
-		Provider:          batchimage.BatchImageProviderGeminiAPI,
+		ProviderID:        &providerID,
+		Platform:          batchimage.BatchImageProviderGeminiAPI,
 		Model:             "gemini-image",
 		Status:            batchimage.BatchImageJobStatusSettling,
 		ProviderJobName:   &providerJobName,
@@ -608,8 +608,10 @@ func (r *fakeBatchImageBillingRepo) applyHold(cmd *billingcore.TaskFundsCommand,
 	return &billingcore.TaskFundsResult{Applied: true}, nil
 }
 
-var _ batchimage.FundingStore = (*fakeBatchImageBillingRepo)(nil)
-var _ batchimage.ImagePricer = (*fakeBatchImagePricingResolver)(nil)
+var (
+	_ batchimage.FundingStore = (*fakeBatchImageBillingRepo)(nil)
+	_ batchimage.ImagePricer  = (*fakeBatchImagePricingResolver)(nil)
+)
 
 func (r *fakeBatchImageBillingRepo) ResolveUsableSubscriptionForGroup(context.Context, int64, int64) (*billingcore.UserSubscription, error) {
 	return r.usableSubscription, r.subscriptionErr

@@ -24,7 +24,7 @@ const (
 )
 
 // ErrProxyUnavailable indicates the search failed due to a proxy connectivity issue.
-// Callers may use this to trigger account switching instead of direct fallback.
+// Callers may use this to trigger provider switching instead of direct fallback.
 var ErrProxyUnavailable = errors.New("websearch: proxy unavailable")
 
 // SearchWithBestProvider selects a provider using quota-weighted load balancing,
@@ -70,9 +70,9 @@ func (m *Manager) SearchWithBestProvider(ctx context.Context, req SearchRequest)
 			if m.executor.IsProxyError(err) {
 				m.markProxyUnavailable(ctx, cfg, req.ProxyURL)
 				if req.ProxyURL != "" {
-					// Account-level proxy is shared by all providers — no point
-					// trying others with the same broken proxy; signal account switch.
-					slog.Warn("websearch: account proxy error, aborting failover",
+					// Provider-level proxy is shared by all providers — no point
+					// trying others with the same broken proxy; signal provider switch.
+					slog.Warn("websearch: provider proxy error, aborting failover",
 						"provider", cfg.Type, "error", err)
 					return nil, "", fmt.Errorf("%w: %s", ErrProxyUnavailable, err.Error())
 				}
@@ -93,13 +93,13 @@ func (m *Manager) SearchWithBestProvider(ctx context.Context, req SearchRequest)
 
 // filterAvailableProviders returns providers that have API keys, are not expired,
 // and whose proxies are not marked unavailable.
-func (m *Manager) filterAvailableProviders(ctx context.Context, accountProxyURL string) []ProviderConfig {
+func (m *Manager) filterAvailableProviders(ctx context.Context, providerProxyURL string) []ProviderConfig {
 	var out []ProviderConfig
 	for _, cfg := range m.configs {
 		if !m.isProviderAvailable(cfg) {
 			continue
 		}
-		proxyID := resolveProxyID(cfg, accountProxyURL)
+		proxyID := resolveProxyID(cfg, providerProxyURL)
 		if proxyID > 0 && !m.isProxyAvailable(ctx, proxyID) {
 			slog.Debug("websearch: proxy marked unavailable, skipping",
 				"provider", cfg.Type, "proxy_id", proxyID)
@@ -200,8 +200,8 @@ func (m *Manager) isProviderAvailable(cfg ProviderConfig) bool {
 // --- Proxy availability tracking ---
 
 // markProxyUnavailable marks the effective proxy as unavailable for proxyUnavailableTTL.
-func (m *Manager) markProxyUnavailable(ctx context.Context, cfg ProviderConfig, accountProxyURL string) {
-	proxyID := resolveProxyID(cfg, accountProxyURL)
+func (m *Manager) markProxyUnavailable(ctx context.Context, cfg ProviderConfig, providerProxyURL string) {
+	proxyID := resolveProxyID(cfg, providerProxyURL)
 	if proxyID <= 0 || m.state == nil {
 		return
 	}
@@ -219,10 +219,10 @@ func (m *Manager) isProxyAvailable(ctx context.Context, proxyID int64) bool {
 	return m.state.ProxyAvailable(ctx, proxyID)
 }
 
-// resolveProxyID determines the effective proxy ID for a provider+account combination.
-func resolveProxyID(cfg ProviderConfig, accountProxyURL string) int64 {
-	if accountProxyURL != "" {
-		return 0 // account proxy has no ID in provider config
+// resolveProxyID determines the effective proxy ID for a provider+provider combination.
+func resolveProxyID(cfg ProviderConfig, providerProxyURL string) int64 {
+	if providerProxyURL != "" {
+		return 0 // provider proxy has no ID in provider config
 	}
 	return cfg.ProxyID
 }
@@ -402,6 +402,7 @@ func NewManager(configs []ProviderConfig, state QuotaState, executor Executor, w
 }
 func (m *Manager) ProviderConfigs() []ProviderConfig { return CloneProviderConfigs(m.configs) }
 func (m *Manager) Retire()                           { m.retired.Store(true); m.executor.CloseIdle() }
+
 func (m *Manager) closeIfRetired() {
 	if m.retired.Load() {
 		m.executor.CloseIdle()

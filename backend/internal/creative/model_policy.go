@@ -21,7 +21,7 @@ func newGroupModelPolicy(policy routing.GroupRoutingPolicy) groupModelPolicy {
 	}}
 }
 
-// resolve 只执行一次分组映射；上游阶段留给具体账号解析完成后检查。
+// resolve 只执行一次分组映射；上游阶段留给具体提供商解析完成后检查。
 func (p groupModelPolicy) resolve(requested string) (string, bool) {
 	mapped := p.view.ResolveModel(requested)
 	if p.view.RestrictionSource() != routing.BillingModelSourceUpstream {
@@ -38,7 +38,7 @@ func (p groupModelPolicy) allowsUpstream(model string) bool {
 }
 
 // candidates 合并可枚举的请求名称；通配符只用于匹配，不作为可选模型返回。
-func (p groupModelPolicy) candidates(platform string, configured []string, accounts []CatalogAccount) []string {
+func (p groupModelPolicy) candidates(platform string, configured []string, providers []CatalogProvider) []string {
 	models := make(map[string]struct{})
 	add := func(values ...string) {
 		for _, model := range values {
@@ -63,12 +63,12 @@ func (p groupModelPolicy) candidates(platform string, configured []string, accou
 			add(model)
 		}
 	}
-	for _, account := range accounts {
-		if account == nil || !account.IsSchedulable() {
+	for _, provider := range providers {
+		if provider == nil || !provider.IsSchedulable() {
 			continue
 		}
-		add(account.GetConfiguredRequestModels()...)
-		for model := range account.GetModelMapping() {
+		add(provider.GetConfiguredRequestModels()...)
+		for model := range provider.GetModelMapping() {
 			add(model)
 		}
 	}

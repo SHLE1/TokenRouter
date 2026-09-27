@@ -71,19 +71,19 @@ protocol 和其他纯角色共用明确的标准库白名单，允许内存解�
 
 保留路径的旧依赖按准确源文件和 import 登记，许可不覆盖同目录新文件，也不覆盖允许包的其他子包。每次添加路径或修改规则，要分别用普通、unit、integration 集合验证合法依赖与违规夹具；已有失败不能自动转成白名单。角色检查不能识别“通过接口绕过业务用例”或“借现有 import 增加耦合”，这两项仍需代码审查。
 
-billing 的缓存与提醒设置读取按核心角色和模块关系许可；app 负责动态设置、渠道、通知、推广、账号 outbox 和支付能力的组合。公告和 billing 的用户读取直接投影 identity，不再经旧身份仓储桥接。PostgreSQL 与 Redis Adapter 不互相继承存储客户端许可；同连接资金参与、跨存储投影等窄权限仍限定文件和目标包。资金测试必须确认真实 PostgreSQL 事务回滚、持久去重、8/10 位精度及 Redis 用户锁交错；SQLite 和 mock 不能替代这些行为证据。
+billing 的缓存与提醒设置读取按核心角色和模块关系许可；app 负责动态设置、渠道、通知、推广、提供商 outbox 和支付能力的组合。公告和 billing 的用户读取直接投影 identity，不再经旧身份仓储桥接。PostgreSQL 与 Redis Adapter 不互相继承存储客户端许可；同连接资金参与、跨存储投影等窄权限仍限定文件和目标包。资金测试必须确认真实 PostgreSQL 事务回滚、持久去重、8/10 位精度及 Redis 用户锁交错；SQLite 和 mock 不能替代这些行为证据。
 
 identity、team、apikey 的生产实例和同连接事务参与工厂由 app 绑定。身份 SDK 验证、令牌消费和认证缓存需要分别覆盖普通/unit 构建选择及真实 PostgreSQL/Redis；只剩测试消费者的私有转接放入对应标签的 `_test.go`，不保留生产算法副本。
 
 usage、audit、ops 已使用各自核心和 Adapter；用户/Key/团队的用量 SQL 参与函数复用调用方连接，不能改成逐条查询或分页后排序。新核心不导入旧实体、Gin 或具体存储；纯 `querycache`、`logevent` 与已迁统计值拥有独立职责规则。历史构造、HTTP 上下文和测试适配许可继续精确到文件/import，普通新文件不会继承许可；验收需要真实队列/事务/取消事件和查询次数证据，不能用仅编译或跳过替代。
 
-upstream 的具体平台不能相互导入，也不接收旧 Account、Gin 或完整 config。共享 Google 认证原语位于 upstream/internal/googleauth，纯 wire/转换继续由 protocol 提供；账号授权会话及凭据持久化归 account。app 投影参数，gateway 决定重试时机；测试需要分别验证 HTTP 提交、语义输出、可重试边界和已观测用量。平台验证使用本地 HTTP/TLS/WS 及隔离存储夹具，不能把这些结果当作真实供应商账号验证。
+upstream 的具体平台不能相互导入，也不接收旧 Provider、Gin 或完整 config。共享 Google 认证原语位于 upstream/internal/googleauth，纯 wire/转换继续由 protocol 提供；提供商授权会话及凭据持久化归 provider。app 投影参数，gateway 决定重试时机；测试需要分别验证 HTTP 提交、语义输出、可重试边界和已观测用量。平台验证使用本地 HTTP/TLS/WS 及隔离存储夹具，不能把这些结果当作真实供应商提供商验证。
 
 notification、site、moderation、search 的核心、纯契约和 Adapter 按职责匹配架构规则。邮件凭据留 identity，阈值留 billing，通知接受已确定事件；审核跨身份事务沿用同一 SQL 连接；文件读取归 site/filesystem；搜索的 HTTP 与 Redis 分开。适配不得复制核心状态或算法，文件移动时同步清理专用许可及排除项。角色夹具需覆盖新文件、精确历史 import、非法子包和迁出后的同名文件。
 
 这些模块的行为验证包括真实 SMTP/TLS 夹具、页面文件边界、PostgreSQL 审核回滚、Redis 预占释放、配置交错及有界关闭。全量普通、unit、integration 命令串行执行；`make -C backend test-integration` 固定使用 `-p=4`，本地与 CI 共用该入口，保留测试内部并发和断言。测试事件、跳过、原失败及后续通过分别保存，不能用数量相同代替诊断逐项比较。
 
-gateway 的请求值与固定 `Execute` 契约位于 `gateway/execution`；该叶子不能反向导入根执行器、text 或 Adapter。HTTP 构造时由 app 先绑定唯一完成 Recorder，再构造执行器；请求调用只传显式状态和同步输出。内部账号循环、平台同账号恢复和协议转换仍各有一个实现，不能通过新增回调再包装整个旧 handler。执行 Adapter 只提供单步调用与投影。
+gateway 的请求值与固定 `Execute` 契约位于 `gateway/execution`；该叶子不能反向导入根执行器、text 或 Adapter。HTTP 构造时由 app 先绑定唯一完成 Recorder，再构造执行器；请求调用只传显式状态和同步输出。内部提供商循环、平台同提供商恢复和协议转换仍各有一个实现，不能通过新增回调再包装整个旧 handler。执行 Adapter 只提供单步调用与投影。
 
 网关验证分别核对真实输出、HTTP 提交和重试窗口，不能只比最终字符串；失败可以伴随已观测用量，但完成资格按入口保留。对完成队列、模型快照、WS/Live 和规则发布运行定向 race，真实资金与 Redis 协议使用隔离存储。不同顶层测试若共享第三方全局测试设置，可分别执行并保留内部并发与断言，失败与补验日志必须同时保留。
 
@@ -104,7 +104,7 @@ app 按组合根角色连接具体实现，bootstrap 和 lifecycle 继续使用�
 
 协议哈希和 Gemini 迭代器使用纯角色的 `crypto/sha256`、`iter` 许可；clientmeta 的版本库按纯角色许可，app 定价装配及目录 HTTP 契约测试按对应角色和模块关系检查。pricing、capability、clientmeta 使用明确标准库集合，不能增加文件/网络读取。纯规则测试直接传入值；平台选择、HTTP 失败/取消和目录热更新还要验证实际调用方。管理员目录的完整 JSON、24 项顺序及 TypeScript 类型由 app 组合测试对照前端 fixture，不能通过修改夹具掩盖输出差异。
 
-scheduler 的核心、HTTP、Redis、PostgreSQL 分别使用角色门禁。评分、排序、会话和等待不接收旧实体、Gin 或存储客户端；必要的 AccountSnapshot/RoutePlan、singleflight 和散列依赖由核心角色及模块关系许可。`scheduler/rediscache/codec` 维护 `sched:v2` 完整账号与轻量投影，测试使用兼容报文验证存储格式。确认取得/故障放行、重复释放、锁过期继任及运行时取消必须验证实际资源数量，不能只检查返回码。
+scheduler 的核心、HTTP、Redis、PostgreSQL 分别使用角色门禁。评分、排序、会话和等待不接收旧实体、Gin 或存储客户端；必要的 ProviderSnapshot/RoutePlan、singleflight 和散列依赖由核心角色及模块关系许可。`scheduler/rediscache/codec` 维护 `sched:v4` 完整提供商与轻量投影，测试使用兼容报文验证存储格式。确认取得/故障放行、重复释放、锁过期继任及运行时取消必须验证实际资源数量，不能只检查返回码。
 
 ## 生成代码与迁移
 
@@ -126,7 +126,7 @@ Ent schema 不是生产迁移器。数据库权威变更仍须新增 `backend/mi
 
 ```bash
 # 受影响包
-(cd backend && GOTOOLCHAIN=go1.27.0 go test ./internal/account/... ./internal/routing/... ./internal/egress/...)
+(cd backend && GOTOOLCHAIN=go1.27.0 go test ./internal/provider/... ./internal/routing/... ./internal/egress/...)
 
 # 架构检查覆盖全部标签，不需要重复按标签执行
 make -C backend test-architecture
@@ -141,7 +141,7 @@ make -C backend test
 
 外部 E2E 测试位于 `backend/tests/integration`；`make -C backend test-e2e` 与 `test-e2e-local` 使用同一 Go 测试入口，继续读取原服务地址和测试凭据环境变量。未配置服务和供应商凭据时，只能报告测试入选或编译结果，不能据此声称行为通过。
 
-该目录也承接跨模块装配契约，具体执行集合由文件的构建标签决定。`tests/integration/pricing_contract` 保存渠道/市场价卡、Key 快照、完成处理和资金分配的跨模块合同，继续使用 unit 标签；纯账号统计匹配与计算测试位于 billing/pricing。测试直接调用原生模块与既有存储替身，目录名称不表示已运行真实数据库。身份注册/邮箱绑定使用原生 identity 与 PostgreSQL Adapter 在 SQLite 夹具下验证既有规则，批量任务运行时使用原生 batchimage 与 miniredis；这些 `unit` 测试不能代替真实 PostgreSQL/Redis 的事务和竞争证据。
+该目录也承接跨模块装配契约，具体执行集合由文件的构建标签决定。`tests/integration/pricing_contract` 保存渠道/市场价卡、Key 快照、完成处理和资金分配的跨模块合同，继续使用 unit 标签；纯提供商统计匹配与计算测试位于 billing/pricing。测试直接调用原生模块与既有存储替身，目录名称不表示已运行真实数据库。身份注册/邮箱绑定使用原生 identity 与 PostgreSQL Adapter 在 SQLite 夹具下验证既有规则，批量任务运行时使用原生 batchimage 与 miniredis；这些 `unit` 测试不能代替真实 PostgreSQL/Redis 的事务和竞争证据。
 
 Messages、Chat、Responses 与 Raw Chat 的协议合同直接构造 gateway/httpapi 的单次执行器，共用实际请求、响应和会话组件；纯流终态和用量 JSON 断言位于 protocol/openai。阻塞读取、响应关闭等 I/O 替身由 gateway/testkit 共用，测试不重建旧网关应用图。
 

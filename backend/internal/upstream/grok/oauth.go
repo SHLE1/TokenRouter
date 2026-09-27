@@ -89,7 +89,7 @@ func ValidatedBaseURL(override string) (string, error) {
 }
 
 // BaseURLValidator 在拼接 xAI 端点路径前应用调用方的上游 URL 安全策略。
-// API-key 账号由服务层注入全局 security.url_allowlist 策略，OAuth 账号仍使用可信主机校验。
+// API-key 提供商由服务层注入全局 security.url_allowlist 策略，OAuth 提供商仍使用可信主机校验。
 type BaseURLValidator func(string) (string, error)
 
 func validatedBaseURLWithValidator(override string, validator BaseURLValidator) (string, error) {
@@ -124,7 +124,6 @@ type RuntimeSanityReport struct {
 
 func RuntimeSanity() RuntimeSanityReport {
 	return RuntimeSanityReport{
-
 		BaseURL: runtimeSanityCheck(EffectiveBaseURL(""), EnvBaseURL, ValidatedBaseURL),
 
 		OAuthAuthorizeURL: runtimeSanityCheck(EffectiveAuthorizeURL(), EnvAuthorizeURL, func(string) (string, error) {
@@ -143,7 +142,7 @@ func RuntimeSanity() RuntimeSanityReport {
 
 		PublicGatewayScope: "responses_only",
 
-		ProxyPolicy: "account_proxy_optional; OAuth URLs use trusted-host allowlists; API-key base URLs require public HTTPS unless unsafe overrides are enabled",
+		ProxyPolicy: "provider_proxy_optional; OAuth URLs use trusted-host allowlists; API-key base URLs require public HTTPS unless unsafe overrides are enabled",
 	}
 }
 

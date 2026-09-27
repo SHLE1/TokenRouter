@@ -24,11 +24,11 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/config"
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 	"github.com/TokenFlux/TokenRouter/internal/moderation"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/testutil"
 
 	coderws "github.com/coder/websocket"
@@ -67,19 +67,19 @@ func newOpenAIWSPassthroughHandlerHarness(t *testing.T, upstreamURL string) *ope
 	settingSvc := gatewaytestkit.RuntimeReaders(settingRepo)
 
 	groupID := int64(4301)
-	account := gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 9951,
 			Name:        "openai-ws-passthrough-cyber",
 			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeAPIKey,
+			Type:        capability.ProviderTypeAPIKey,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Concurrency: 1,
 			Credentials: map[string]any{"api_key": "sk-test", "base_url": upstreamURL},
 			Extra: map[string]any{
 				"openai_apikey_responses_websockets_v2_enabled": true,
-				"openai_apikey_responses_websockets_v2_mode":    accountcore.OpenAIWSIngressModePassthrough,
+				"openai_apikey_responses_websockets_v2_mode":    providercore.OpenAIWSIngressModePassthrough,
 			},
 		},
 	}
@@ -97,27 +97,27 @@ func newOpenAIWSPassthroughHandlerHarness(t *testing.T, upstreamURL string) *ope
 	cfg.Gateway.OpenAIWS.WriteTimeoutSeconds = 3
 	cfg.Gateway.OpenAIWS.IngressInterTurnIdleTimeoutSeconds = 3
 
-	accountRepo := &openAIWSUsageHandlerAccountRepoStub{account: account}
+	providerRepo := &openAIWSUsageHandlerProviderRepoStub{provider: provider}
 	usageRepo := &openAIWSUsageHandlerUsageLogRepoStub{created: make(chan *usage.UsageLog, 2)}
 	billingCacheSvc := newBillingEligibilityFixture(cfg)
 	billingCacheSvc.Start()
 	completionInput16 := billingtestkit.Calculator(cfg.Default.RateMultiplier, nil, nil)
-	completionInput17 := &accountcore.DeferredService{}
+	completionInput17 := &providercore.DeferredService{}
 	gatewaySvc, gatewaySvcChoices, gatewaySvcCredentialPort := newOpenAIExecutionAndSelectionFixture(
-		accountRepo, gatewayCache, cfg, nil, nil, nil, nil, nil, completionInput17, newOpenAIExecutionCredentialsForTest(accountRepo, nil), nil, nil, nil, settingSvc, nil, responseHeaderFilterForTest(cfg), nil, nil, nil,
+		providerRepo, gatewayCache, cfg, nil, nil, nil, nil, nil, completionInput17, newOpenAIExecutionCredentialsForTest(providerRepo, nil), nil, nil, nil, settingSvc, nil, responseHeaderFilterForTest(cfg), nil, nil, nil,
 	)
 	gatewaySvc.Recorder = newHTTPCompletionFixture(cfg, usageRepo, completionInput16, billingCacheSvc, completionInput17, nil, nil, true)
 
 	concurrencyCache := &httptestkit.ConcurrencyHooks{
-		AcquireUserSlotFn:    func(context.Context, int64, int, string) (bool, error) { return true, nil },
-		AcquireAccountSlotFn: func(context.Context, int64, int, string) (bool, error) { return true, nil },
+		AcquireUserSlotFn:     func(context.Context, int64, int, string) (bool, error) { return true, nil },
+		AcquireProviderSlotFn: func(context.Context, int64, int, string) (bool, error) { return true, nil },
 	}
 	h := newGatewayHTTPEndpoints(gatewayHTTPFixtureInput{
 		Source: gatewaySvc, Credentials: gatewaySvcCredentialPort,
 		Funding:     newFundingAdmissionFixture(billingCacheSvc, cfg),
 		Keys:        &apikey.APIKeyService{},
 		Moderator:   moderationSvc,
-		Concurrency: gatewayhttp.NewConcurrencyHelper(scheduler.NewConcurrencyService(concurrencyCache, scheduler.Diagnostics{Logf: logging.LegacyPrintf, Event: logging.Event}), gatewayhttp.SSEPingFormatNone, time.Second), Availability: newExecutionAvailabilityForTest(accountRepo, nil, cfg), Choices: gatewaySvcChoices,
+		Concurrency: gatewayhttp.NewConcurrencyHelper(scheduler.NewConcurrencyService(concurrencyCache, scheduler.Diagnostics{Logf: logging.LegacyPrintf, Event: logging.Event}), gatewayhttp.SSEPingFormatNone, time.Second), Availability: newExecutionAvailabilityForTest(providerRepo, nil, cfg), Choices: gatewaySvcChoices,
 	})
 
 	apiKey := &apikey.APIKey{

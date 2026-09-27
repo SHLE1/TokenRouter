@@ -6,16 +6,16 @@ import (
 	"time"
 )
 
-// CodexTurnOrigins 只记录不透明回合状态的签发账号，不保存状态值或凭据。
-// HTTP 暂存头真正提交后才登记，账号切换时据此判断是否移除回带值。
+// CodexTurnOrigins 只记录不透明回合状态的签发提供商，不保存状态值或凭据。
+// HTTP 暂存头真正提交后才登记，提供商切换时据此判断是否移除回带值。
 type CodexTurnOrigins struct {
 	origins sync.Map
 	writes  atomic.Uint64
 	now     func() time.Time
 }
 type codexTurnOrigin struct {
-	accountID int64
-	expiresAt time.Time
+	providerID int64
+	expiresAt  time.Time
 }
 
 func NewCodexTurnOrigins(now func() time.Time) *CodexTurnOrigins {
@@ -30,7 +30,7 @@ func (s *CodexTurnOrigins) Record(seed string, id int64, ttl time.Duration) {
 	if s == nil || seed == "" || id <= 0 {
 		return
 	}
-	s.origins.Store(seed, codexTurnOrigin{accountID: id, expiresAt: s.now().Add(ttl)})
+	s.origins.Store(seed, codexTurnOrigin{providerID: id, expiresAt: s.now().Add(ttl)})
 	if s.writes.Add(1)%256 != 0 {
 		return
 	}
@@ -44,7 +44,7 @@ func (s *CodexTurnOrigins) Record(seed string, id int64, ttl time.Duration) {
 	})
 }
 
-// Owner 仅返回仍有效的签发账号；未知或已过期的来源保持原透传资格。
+// Owner 仅返回仍有效的签发提供商；未知或已过期的来源保持原透传资格。
 func (s *CodexTurnOrigins) Owner(seed string) (int64, bool) {
 	if s == nil || seed == "" {
 		return 0, false
@@ -58,5 +58,5 @@ func (s *CodexTurnOrigins) Owner(seed string) (int64, bool) {
 		s.origins.Delete(seed)
 		return 0, false
 	}
-	return origin.accountID, true
+	return origin.providerID, true
 }

@@ -7,11 +7,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/selection"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/routing/testkit"
 
@@ -115,15 +115,15 @@ func TestOpenAIGatewayHandlerImagesValidatesGroupMappedModel(t *testing.T) {
 	}
 }
 
-// 最终模型校验在候选阶段执行，避免入口把账号别名误当成非图片模型。
+// 最终模型校验在候选阶段执行，避免入口把提供商别名误当成非图片模型。
 func TestImagesGroupMappedTextModelIsRejectedByActualCandidate(t *testing.T) {
 	groupID := int64(112)
 	policies := newGatewayExecutionPricingConfigServiceForTest(groupID, "openai", testkit.Configuration{ID: 112, Status: billing.StatusActive, ModelMapping: map[string]string{"gpt-image-2": "gpt-5.4"}})
-	account := provider.NewExecutionAccount(&account.Record{ID: 1, Platform: "openai", Type: "apikey", Status: "active", Schedulable: true, GroupIDs: []int64{groupID}, Credentials: map[string]any{"model_whitelist": []string{"gpt-5.4"}}})
-	store := &mixedHTTPAccounts{values: []provider.ExecutionAccount{*account}}
-	choices := selection.NewCompatible(selection.CompatibleDependencies{Reads: selection.Reads{Accounts: store}, Shared: selection.Shared{GroupPolicies: policies}}, selection.DefaultOptions())
+	provider := gatewayadapter.NewExecutionProvider(&provider.Record{ID: 1, Platform: "openai", Type: "apikey", Status: "active", Schedulable: true, GroupIDs: []int64{groupID}, Credentials: map[string]any{"model_whitelist": []string{"gpt-5.4"}}})
+	store := &mixedHTTPProviders{values: []gatewayadapter.ExecutionProvider{*provider}}
+	choices := selection.NewCompatible(selection.CompatibleDependencies{Reads: selection.Reads{Providers: store}, Shared: selection.Shared{GroupPolicies: policies}}, selection.DefaultOptions())
 	ctx := requeststate.WithClientProtocol(requeststate.WithGroup(context.Background(), &routing.Group{ID: groupID, Hydrated: true, Status: "active", AllowedProtocols: []protocol.ProtocolID{protocol.ProtocolImagesGenerations}}), protocol.ProtocolImagesGenerations)
-	selected, _, err := choices.SelectAccountWithSchedulerForImages(ctx, &groupID, "", "gpt-image-2", nil, gatewaymedia.ImageCapabilityNative)
+	selected, _, err := choices.SelectProviderWithSchedulerForImages(ctx, &groupID, "", "gpt-image-2", nil, gatewaymedia.ImageCapabilityNative)
 	require.Error(t, err)
 	require.Nil(t, selected)
 }

@@ -10,7 +10,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// Normalize 逐轮保持客户端模型、账号身份、图片与 Fast 策略的原执行顺序。
+// Normalize 逐轮保持客户端模型、提供商身份、图片与 Fast 策略的原执行顺序。
 func (s *RequestNormalizer) Normalize(ctx context.Context, raw []byte, applyUserPromptReplacement bool, turn int) (ClientPayload, error) {
 	p, o := s.Port, s.Options
 	trimmed := bytes.TrimSpace(raw)
@@ -80,7 +80,7 @@ func (s *RequestNormalizer) Normalize(ctx context.Context, raw []byte, applyUser
 		// 入站 WS 长会话里，部分客户端只在第一轮 response.create 上声明
 		// model，后续 turn 复用同一 session-level model。为避免因省略
 		// model 直接断开用户连接，这里回落到上一轮已通过校验的客户端模型，
-		// 并在下方写回上游 payload，保证账号模型映射/fast policy/图片权限
+		// 并在下方写回上游 payload，保证提供商模型映射/fast policy/图片权限
 		// 仍按同一模型执行。
 		originalModel = s.State.OriginalModel
 		if originalModel == "" {
@@ -91,7 +91,7 @@ func (s *RequestNormalizer) Normalize(ctx context.Context, raw []byte, applyUser
 			)
 		}
 	}
-	// 分组映射模型必须在账号映射之前逐轮解析；originalModel 继续保留客户端请求语义。
+	// 分组映射模型必须在提供商映射之前逐轮解析；originalModel 继续保留客户端请求语义。
 	routingModel, upstreamModel, resolveModelErr := p.Models(turn, originalModel, normalized)
 	if resolveModelErr != nil {
 		return ClientPayload{}, resolveModelErr
@@ -113,13 +113,13 @@ func (s *RequestNormalizer) Normalize(ctx context.Context, raw []byte, applyUser
 		}
 		normalized = next
 	}
-	accountIdentitySourceRaw := append([]byte(nil), normalized...)
-	accountScopedPayload, accountScoped, scopeErr := p.ScopeIdentity(normalized)
+	providerIdentitySourceRaw := append([]byte(nil), normalized...)
+	providerScopedPayload, providerScoped, scopeErr := p.ScopeIdentity(normalized)
 	if scopeErr != nil {
 		return ClientPayload{}, p.CloseError(1008, "invalid websocket identity metadata", scopeErr)
 	}
-	if accountScoped {
-		normalized = accountScopedPayload
+	if providerScoped {
+		normalized = providerScopedPayload
 	}
 	if p.IsLite(normalized) {
 		litePayload, liteErr := p.NormalizeLite(normalized)
@@ -156,16 +156,16 @@ func (s *RequestNormalizer) Normalize(ctx context.Context, raw []byte, applyUser
 			return ClientPayload{}, p.CloseError(1008, "invalid websocket request payload", stripErr)
 		} else if changed {
 			normalized = stripped
-			p.Log(fmt.Sprintf("ingress_ws_codex_image_tool_stripped_by_policy account_id=%d", o.AccountID))
+			p.Log(fmt.Sprintf("ingress_ws_codex_image_tool_stripped_by_policy provider_id=%d", o.ProviderID))
 		}
 	}
 	if stripped, changed, stripErr := p.StripSparkImages(normalized, upstreamModel); stripErr != nil {
 		return ClientPayload{}, p.CloseError(1008, "invalid websocket request payload", stripErr)
 	} else if changed {
 		normalized = stripped
-		p.Log(fmt.Sprintf("ingress_ws_codex_spark_image_tool_stripped account_id=%d", o.AccountID))
+		p.Log(fmt.Sprintf("ingress_ws_codex_spark_image_tool_stripped provider_id=%d", o.ProviderID))
 	}
-	// 生图能力必须按分组映射模型 G 判断；账号最终模型 U 只用于真正的上游请求。
+	// 生图能力必须按分组映射模型 G 判断；提供商最终模型 U 只用于真正的上游请求。
 	imageIntentBody, imageIntent, explicitImageIntent := p.ImageIntent(routingModel, upstreamModel, normalized)
 	if explicitImageIntent && !imageGenerationAllowed {
 		p.FeatureDenied()
@@ -223,17 +223,17 @@ func (s *RequestNormalizer) Normalize(ctx context.Context, raw []byte, applyUser
 	s.State.OriginalModel = originalModel
 
 	return ClientPayload{
-		PayloadRaw:               normalized,
-		AccountIdentitySourceRaw: accountIdentitySourceRaw,
-		RawForHash:               trimmed,
-		PromptCacheKey:           promptCacheKey,
-		PreviousResponseID:       previousResponseID,
-		OriginalModel:            originalModel,
-		RoutingModel:             routingModel,
-		ImageBillingModel:        imageBillingModel,
-		ImageSizeTier:            imageSizeTier,
-		ImageInputSize:           imageInputSize,
-		PayloadBytes:             len(normalized),
-		RequestedReasoningEffort: requestedReasoningEffort,
+		PayloadRaw:                normalized,
+		ProviderIdentitySourceRaw: providerIdentitySourceRaw,
+		RawForHash:                trimmed,
+		PromptCacheKey:            promptCacheKey,
+		PreviousResponseID:        previousResponseID,
+		OriginalModel:             originalModel,
+		RoutingModel:              routingModel,
+		ImageBillingModel:         imageBillingModel,
+		ImageSizeTier:             imageSizeTier,
+		ImageInputSize:            imageInputSize,
+		PayloadBytes:              len(normalized),
+		RequestedReasoningEffort:  requestedReasoningEffort,
 	}, nil
 }

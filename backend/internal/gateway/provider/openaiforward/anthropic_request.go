@@ -1,4 +1,4 @@
-// 原生 Anthropic 请求构造保留 beta 清洗、鉴权覆盖及最终账号 Header 的顺序。
+// 原生 Anthropic 请求构造保留 beta 清洗、鉴权覆盖及最终提供商 Header 的顺序。
 package openaiforward
 
 import (
@@ -23,10 +23,10 @@ type NativeAnthropicRequestOptions struct {
 	ApplyOverrides func(http.Header)
 }
 
-func NativeAnthropicTargetURL(accountID int64, baseURL string, validate func(string) (string, error)) (string, error) {
+func NativeAnthropicTargetURL(providerID int64, baseURL string, validate func(string) (string, error)) (string, error) {
 	baseURL = strings.TrimSpace(baseURL)
 	if baseURL == "" {
-		return "", fmt.Errorf("account %d has no anthropic protocol base url", accountID)
+		return "", fmt.Errorf("provider %d has no anthropic protocol base url", providerID)
 	}
 	validatedURL, err := validate(baseURL)
 	if err != nil {
@@ -34,6 +34,7 @@ func NativeAnthropicTargetURL(accountID int64, baseURL string, validate func(str
 	}
 	return strings.TrimRight(validatedURL, "/") + "/v1/messages", nil
 }
+
 func BuildNativeAnthropicRequest(ctx context.Context, body []byte, apiKey, targetURL string, o NativeAnthropicRequestOptions) (*http.Request, []byte, error) {
 	// 能力维度 body sanitize：与 Anthropic 平台 passthrough 相同，按 beta
 	// header 决定是否保留 body 中的 beta 能力字段，避免客户端"body 带字段但
@@ -82,7 +83,7 @@ func BuildNativeAnthropicRequest(ctx context.Context, body []byte, apiKey, targe
 		o.SetHeader(req.Header, "anthropic-version", "2023-06-01")
 	}
 
-	// 账号级请求头覆写（最终生效，覆盖上面所有来源的同名头）
+	// 提供商级请求头覆写（最终生效，覆盖上面所有来源的同名头）
 	o.ApplyOverrides(req.Header)
 
 	return req, body, nil

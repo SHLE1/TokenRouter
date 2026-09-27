@@ -3,7 +3,7 @@ package bedrock
 
 // DefaultBedrockModelMapping 是 AWS Bedrock 平台的默认模型映射
 // 将 Anthropic 标准模型名映射到 Bedrock 模型 ID
-// 注意：此处的 "us." 前缀仅为默认值，ResolveBedrockModelID 会根据账号配置的
+// 注意：此处的 "us." 前缀仅为默认值，ResolveBedrockModelID 会根据提供商配置的
 // aws_region 自动调整为匹配的区域前缀（如 eu.、apac.、jp. 等）
 var DefaultBedrockModelMapping = map[string]string{
 	// Claude Fable

@@ -13,15 +13,15 @@ import (
 	"go.uber.org/zap"
 )
 
-func openAIProxyStreamCircuitProxyID(account *ExecutionAccount) (int64, bool) {
-	if account == nil || account.Record.Platform != capability.PlatformOpenAI || account.Record.ProxyID == nil || *account.Record.ProxyID <= 0 {
+func openAIProxyStreamCircuitProxyID(provider *ExecutionProvider) (int64, bool) {
+	if provider == nil || provider.Record.Platform != capability.PlatformOpenAI || provider.Record.ProxyID == nil || *provider.Record.ProxyID <= 0 {
 		return 0, false
 	}
-	return *account.Record.ProxyID, true
+	return *provider.Record.ProxyID, true
 }
 
-func RecordProxyStreamDisconnect(circuit *egress.ProxyStreamCircuit, account *ExecutionAccount, streamErr error, upstreamRequestID string) {
-	proxyID, ok := openAIProxyStreamCircuitProxyID(account)
+func RecordProxyStreamDisconnect(circuit *egress.ProxyStreamCircuit, provider *ExecutionProvider, streamErr error, upstreamRequestID string) {
+	proxyID, ok := openAIProxyStreamCircuitProxyID(provider)
 	if !ok || streamErr == nil || errors.Is(streamErr, context.Canceled) || errors.Is(streamErr, context.DeadlineExceeded) {
 		return
 	}
@@ -33,15 +33,15 @@ func RecordProxyStreamDisconnect(circuit *egress.ProxyStreamCircuit, account *Ex
 	logging.L().With(zap.String("component", "service.openai_gateway")).Warn(
 		"openai.proxy_quarantined_stream_disconnect",
 		zap.Int64("proxy_id", proxyID),
-		zap.Int64("account_id", account.Record.ID),
+		zap.Int64("provider_id", provider.Record.ID),
 		zap.Time("until", until),
 		zap.String("upstream_request_id", upstreamRequestID),
 		zap.String("error", logredact.SanitizeUpstreamQueries(streamErr.Error())),
 	)
 }
 
-func ClearProxyStreamDisconnect(circuit *egress.ProxyStreamCircuit, account *ExecutionAccount) {
-	proxyID, ok := openAIProxyStreamCircuitProxyID(account)
+func ClearProxyStreamDisconnect(circuit *egress.ProxyStreamCircuit, provider *ExecutionProvider) {
+	proxyID, ok := openAIProxyStreamCircuitProxyID(provider)
 	if !ok {
 		return
 	}

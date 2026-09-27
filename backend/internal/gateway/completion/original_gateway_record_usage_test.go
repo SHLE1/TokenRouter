@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
 
@@ -68,7 +68,7 @@ func TestGatewayServiceRecordUsage_BillingUsesDetachedContext(t *testing.T) {
 			Quota: 100,
 		},
 		User:          &identity.User{ID: 601},
-		Account:       &accountcore.Record{ID: 701},
+		Provider:      &providercore.Record{ID: 701},
 		APIKeyService: quotaSvc,
 	})
 
@@ -99,7 +99,7 @@ func TestGatewayServiceRecordUsage_BillingFingerprintIncludesRequestPayloadHash(
 		},
 		APIKey:             &apikey.APIKey{ID: 501, Quota: 100},
 		User:               &identity.User{ID: 601},
-		Account:            &accountcore.Record{ID: 701},
+		Provider:           &providercore.Record{ID: 701},
 		RequestPayloadHash: payloadHash,
 	})
 	require.NoError(t, err)
@@ -123,9 +123,9 @@ func TestGatewayServiceRecordUsage_BillingFingerprintFallsBackToContextRequestID
 			Model:    "claude-sonnet-4",
 			Duration: time.Second,
 		},
-		APIKey:  &apikey.APIKey{ID: 501, Quota: 100},
-		User:    &identity.User{ID: 601},
-		Account: &accountcore.Record{ID: 701},
+		APIKey:   &apikey.APIKey{ID: 501, Quota: 100},
+		User:     &identity.User{ID: 601},
+		Provider: &providercore.Record{ID: 701},
 	})
 	require.NoError(t, err)
 	require.NotNil(t, billingRepo.LastCmd)
@@ -145,9 +145,9 @@ func TestGatewayServiceRecordUsage_PreservesRequestedAndUpstreamModels(t *testin
 			UpstreamModel: mappedModel,
 			Duration:      time.Second,
 		},
-		APIKey:  &apikey.APIKey{ID: 501, Quota: 100},
-		User:    &identity.User{ID: 601},
-		Account: &accountcore.Record{ID: 701},
+		APIKey:   &apikey.APIKey{ID: 501, Quota: 100},
+		User:     &identity.User{ID: 601},
+		Provider: &providercore.Record{ID: 701},
 	})
 
 	require.NoError(t, err)
@@ -170,9 +170,9 @@ func TestGatewayServiceRecordUsage_PreservesGroupMappedUpstreamModel(t *testing.
 			UpstreamModel: "gpt-5.6-terra",
 			Duration:      time.Second,
 		},
-		APIKey:  &apikey.APIKey{ID: 501, Quota: 100},
-		User:    &identity.User{ID: 601},
-		Account: &accountcore.Record{ID: 701},
+		APIKey:   &apikey.APIKey{ID: 501, Quota: 100},
+		User:     &identity.User{ID: 601},
+		Provider: &providercore.Record{ID: 701},
 		PricingUsageFields: routing.PricingUsageFields{
 			OriginalModel:    "gpt-5.6-sol",
 			GroupMappedModel: "gpt-5.6-terra",
@@ -187,7 +187,7 @@ func TestGatewayServiceRecordUsage_PreservesGroupMappedUpstreamModel(t *testing.
 	require.Equal(t, "gpt-5.6-terra", *usageRepo.LastLog.UpstreamModel)
 }
 
-func TestGatewayServiceRecordUsage_PreservesLoopedPricingConfigAndAccountUpstreamModel(t *testing.T) {
+func TestGatewayServiceRecordUsage_PreservesLoopedPricingConfigAndProviderUpstreamModel(t *testing.T) {
 	usageRepo := &completiontestkit.UsageLogStore{Inserted: true}
 	svc := newGatewayRecordUsageServiceForTest(usageRepo, &completiontestkit.UserStore{}, &completiontestkit.SubscriptionStore{})
 
@@ -199,9 +199,9 @@ func TestGatewayServiceRecordUsage_PreservesLoopedPricingConfigAndAccountUpstrea
 			UpstreamModel: "gpt-5.6-sol",
 			Duration:      time.Second,
 		},
-		APIKey:  &apikey.APIKey{ID: 501, Quota: 100},
-		User:    &identity.User{ID: 601},
-		Account: &accountcore.Record{ID: 701},
+		APIKey:   &apikey.APIKey{ID: 501, Quota: 100},
+		User:     &identity.User{ID: 601},
+		Provider: &providercore.Record{ID: 701},
 		PricingUsageFields: routing.PricingUsageFields{
 			OriginalModel:    "gpt-5.6-sol",
 			GroupMappedModel: "gpt-5.6-terra",
@@ -241,8 +241,8 @@ func TestGatewayServiceRecordUsage_QoderUsesStandardRequestedModelPricing(t *tes
 			Quota: 100,
 			Group: &routing.Group{RateMultiplier: 1},
 		},
-		User:    &identity.User{ID: 602},
-		Account: &accountcore.Record{ID: 702, Platform: capability.PlatformQoder},
+		User:     &identity.User{ID: 602},
+		Provider: &providercore.Record{ID: 702, Platform: capability.PlatformQoder},
 	})
 
 	require.NoError(t, err)
@@ -260,7 +260,7 @@ func TestGatewayServiceRecordUsage_QoderUsesStandardRequestedModelPricing(t *tes
 	require.InDelta(t, expectedCost.ActualCost, billingRepo.LastCmd.BillableAmountUSD, 1e-12)
 	require.Zero(t, billingRepo.LastCmd.APIKeyQuotaCost)
 	require.Zero(t, billingRepo.LastCmd.APIKeyRateLimitCost)
-	require.Zero(t, billingRepo.LastCmd.AccountQuotaCost)
+	require.Zero(t, billingRepo.LastCmd.ProviderQuotaCost)
 }
 
 func TestGatewayServiceRecordUsage_QoderGroupMappedBasisDoesNotUseRequestedStandardPricing(t *testing.T) {
@@ -284,8 +284,8 @@ func TestGatewayServiceRecordUsage_QoderGroupMappedBasisDoesNotUseRequestedStand
 			GroupID: &groupID,
 			Group:   &routing.Group{ID: groupID, RateMultiplier: 1},
 		},
-		User:    &identity.User{ID: 602},
-		Account: &accountcore.Record{ID: 702, Platform: capability.PlatformQoder},
+		User:     &identity.User{ID: 602},
+		Provider: &providercore.Record{ID: 702, Platform: capability.PlatformQoder},
 		PricingUsageFields: routing.PricingUsageFields{
 			OriginalModel:      "gpt-5.4",
 			GroupMappedModel:   "ultimate",
@@ -324,8 +324,8 @@ func TestGatewayServiceRecordUsage_QoderGroupMappedImageBasisUsesGlobalFallback(
 			GroupID: &groupID,
 			Group:   &routing.Group{ID: groupID, RateMultiplier: 1},
 		},
-		User:    &identity.User{ID: 603},
-		Account: &accountcore.Record{ID: 703, Platform: capability.PlatformQoder},
+		User:     &identity.User{ID: 603},
+		Provider: &providercore.Record{ID: 703, Platform: capability.PlatformQoder},
 		PricingUsageFields: routing.PricingUsageFields{
 			OriginalModel:      "gpt-image-1",
 			GroupMappedModel:   "ultimate",
@@ -368,8 +368,8 @@ func TestGatewayServiceRecordUsage_QoderGroupMappedImageUsesGlobalFallback(t *te
 			GroupID: &groupID,
 			Group:   &routing.Group{ID: groupID, RateMultiplier: 1},
 		},
-		User:    &identity.User{ID: 604},
-		Account: &accountcore.Record{ID: 704, Platform: capability.PlatformQoder},
+		User:     &identity.User{ID: 604},
+		Provider: &providercore.Record{ID: 704, Platform: capability.PlatformQoder},
 		PricingUsageFields: routing.PricingUsageFields{
 			OriginalModel:      "my-qoder-image",
 			GroupMappedModel:   "qmodel",
@@ -427,8 +427,8 @@ func TestGatewayServiceRecordUsage_QoderRequestedBasisDoesNotFallBackToGroupMapp
 			GroupID: &groupID,
 			Group:   &routing.Group{ID: groupID, RateMultiplier: 1},
 		},
-		User:    &identity.User{ID: 605},
-		Account: &accountcore.Record{ID: 705, Platform: capability.PlatformQoder},
+		User:     &identity.User{ID: 605},
+		Provider: &providercore.Record{ID: 705, Platform: capability.PlatformQoder},
 		PricingUsageFields: routing.PricingUsageFields{
 			OriginalModel:      "qwen3.7-plus",
 			GroupMappedModel:   "qmodel",
@@ -467,8 +467,8 @@ func TestGatewayServiceRecordUsage_QoderRequestedImageUsesGlobalFallback(t *test
 			GroupID: &groupID,
 			Group:   &routing.Group{ID: groupID, RateMultiplier: 1},
 		},
-		User:    &identity.User{ID: 606},
-		Account: &accountcore.Record{ID: 706, Platform: capability.PlatformQoder},
+		User:     &identity.User{ID: 606},
+		Provider: &providercore.Record{ID: 706, Platform: capability.PlatformQoder},
 		PricingUsageFields: routing.PricingUsageFields{
 			OriginalModel:      "custom-image-alias",
 			GroupMappedModel:   "qmodel",
@@ -519,8 +519,8 @@ func TestGatewayServiceRecordUsage_QoderAliasesInheritAvailableBuiltinPrices(t *
 					Quota: 100,
 					Group: &routing.Group{RateMultiplier: 1},
 				},
-				User:    &identity.User{ID: 602},
-				Account: &accountcore.Record{ID: 702, Platform: capability.PlatformQoder},
+				User:     &identity.User{ID: 602},
+				Provider: &providercore.Record{ID: 702, Platform: capability.PlatformQoder},
 			})
 
 			require.NoError(t, err)
@@ -563,8 +563,8 @@ func TestGatewayServiceRecordUsage_QoderGroupMappedRouteKeyWithoutManualPricingU
 			GroupID: &groupID,
 			Group:   &routing.Group{ID: groupID, RateMultiplier: 1},
 		},
-		User:    &identity.User{ID: 602},
-		Account: &accountcore.Record{ID: 702, Platform: capability.PlatformQoder},
+		User:     &identity.User{ID: 602},
+		Provider: &providercore.Record{ID: 702, Platform: capability.PlatformQoder},
 		PricingUsageFields: routing.PricingUsageFields{
 			OriginalModel:      "qwen3.7-plus",
 			GroupMappedModel:   "qmodel",
@@ -618,8 +618,8 @@ func TestGatewayServiceRecordUsage_QoderGroupMappedBasisDoesNotUseOriginalAliasP
 			GroupID: &groupID,
 			Group:   &routing.Group{ID: groupID, RateMultiplier: 1},
 		},
-		User:    &identity.User{ID: 602},
-		Account: &accountcore.Record{ID: 702, Platform: capability.PlatformQoder},
+		User:     &identity.User{ID: 602},
+		Provider: &providercore.Record{ID: 702, Platform: capability.PlatformQoder},
 		PricingUsageFields: routing.PricingUsageFields{
 			OriginalModel:      "qwen3.7-plus",
 			GroupMappedModel:   "qmodel",
@@ -681,8 +681,8 @@ func TestGatewayServiceRecordUsage_QoderGroupMappedBasisUsesRouteKeyPricing(t *t
 			GroupID: &groupID,
 			Group:   &routing.Group{ID: groupID, RateMultiplier: 1},
 		},
-		User:    &identity.User{ID: 602},
-		Account: &accountcore.Record{ID: 702, Platform: capability.PlatformQoder},
+		User:     &identity.User{ID: 602},
+		Provider: &providercore.Record{ID: 702, Platform: capability.PlatformQoder},
 		PricingUsageFields: routing.PricingUsageFields{
 			OriginalModel:      "qwen3.7-plus",
 			GroupMappedModel:   "qmodel",
@@ -736,8 +736,8 @@ func TestGatewayServiceRecordUsage_QoderImplicitRequestedBasisDoesNotInferRouteK
 			GroupID: &groupID,
 			Group:   &routing.Group{ID: groupID, RateMultiplier: 1},
 		},
-		User:    &identity.User{ID: 602},
-		Account: &accountcore.Record{ID: 702, Platform: capability.PlatformQoder},
+		User:     &identity.User{ID: 602},
+		Provider: &providercore.Record{ID: 702, Platform: capability.PlatformQoder},
 	})
 
 	require.NoError(t, err)
@@ -791,8 +791,8 @@ func TestGatewayServiceRecordUsage_QoderGroupMappedBlankRouteKeyDoesNotUseOrigin
 			GroupID: &groupID,
 			Group:   &routing.Group{ID: groupID, RateMultiplier: 1},
 		},
-		User:    &identity.User{ID: 602},
-		Account: &accountcore.Record{ID: 702, Platform: capability.PlatformQoder},
+		User:     &identity.User{ID: 602},
+		Provider: &providercore.Record{ID: 702, Platform: capability.PlatformQoder},
 		PricingUsageFields: routing.PricingUsageFields{
 			OriginalModel:      "qwen3.7-plus",
 			GroupMappedModel:   "qmodel",
@@ -845,8 +845,8 @@ func TestGatewayServiceRecordUsage_QoderGroupMappedBasisIgnoresRequestedCustomPa
 			GroupID: &groupID,
 			Group:   &routing.Group{ID: groupID, RateMultiplier: 1},
 		},
-		User:    &identity.User{ID: 602},
-		Account: &accountcore.Record{ID: 702, Platform: capability.PlatformQoder},
+		User:     &identity.User{ID: 602},
+		Provider: &providercore.Record{ID: 702, Platform: capability.PlatformQoder},
 		PricingUsageFields: routing.PricingUsageFields{
 			OriginalModel:      "custom-qoder",
 			GroupMappedModel:   "qmodel",
@@ -898,8 +898,8 @@ func TestGatewayServiceRecordUsage_QoderGroupMappedBasisIgnoresRequestedStandard
 			GroupID: &groupID,
 			Group:   &routing.Group{ID: groupID, RateMultiplier: 1},
 		},
-		User:    &identity.User{ID: 602},
-		Account: &accountcore.Record{ID: 702, Platform: capability.PlatformQoder},
+		User:     &identity.User{ID: 602},
+		Provider: &providercore.Record{ID: 702, Platform: capability.PlatformQoder},
 		PricingUsageFields: routing.PricingUsageFields{
 			OriginalModel:      "gpt-5.4",
 			GroupMappedModel:   "qmodel",
@@ -917,7 +917,7 @@ func TestGatewayServiceRecordUsage_QoderGroupMappedBasisIgnoresRequestedStandard
 	require.Zero(t, billingRepo.LastCmd.BillableAmountUSD)
 }
 
-func TestGatewayServiceRecordUsage_QoderAccountMappedCustomAliasPartialManualPricingZerosMissingFields(t *testing.T) {
+func TestGatewayServiceRecordUsage_QoderProviderMappedCustomAliasPartialManualPricingZerosMissingFields(t *testing.T) {
 	groupID := int64(902)
 	inputPrice := 0.01
 	cache := routingtestkit.NewModelConfigData()
@@ -941,7 +941,7 @@ func TestGatewayServiceRecordUsage_QoderAccountMappedCustomAliasPartialManualPri
 
 	err := svc.RecordMessages(context.Background(), &gatewaycapture.MessagesCapture{
 		Result: &forwardcore.MessagesResult{
-			RequestID:     "qoder_account_mapped_custom_alias_partial_pricing",
+			RequestID:     "qoder_provider_mapped_custom_alias_partial_pricing",
 			Usage:         usage,
 			Model:         "custom-qoder",
 			UpstreamModel: "qmodel",
@@ -953,8 +953,8 @@ func TestGatewayServiceRecordUsage_QoderAccountMappedCustomAliasPartialManualPri
 			GroupID: &groupID,
 			Group:   &routing.Group{ID: groupID, RateMultiplier: 1},
 		},
-		User:    &identity.User{ID: 602},
-		Account: &accountcore.Record{ID: 702, Platform: capability.PlatformQoder},
+		User:     &identity.User{ID: 602},
+		Provider: &providercore.Record{ID: 702, Platform: capability.PlatformQoder},
 		PricingUsageFields: routing.PricingUsageFields{
 			OriginalModel:      "custom-qoder",
 			GroupMappedModel:   "custom-qoder",
@@ -991,8 +991,8 @@ func TestGatewayServiceRecordUsage_QoderCustomMappedRouteKeyWithoutManualPricing
 			Quota: 100,
 			Group: &routing.Group{RateMultiplier: 1},
 		},
-		User:    &identity.User{ID: 602},
-		Account: &accountcore.Record{ID: 702, Platform: capability.PlatformQoder},
+		User:     &identity.User{ID: 602},
+		Provider: &providercore.Record{ID: 702, Platform: capability.PlatformQoder},
 	})
 
 	require.NoError(t, err)
@@ -1006,7 +1006,7 @@ func TestGatewayServiceRecordUsage_QoderCustomMappedRouteKeyWithoutManualPricing
 	require.Zero(t, billingRepo.LastCmd.BillableAmountUSD)
 }
 
-func TestGatewayServiceRecordUsage_QoderAccountMappedImageUsesGlobalFallback(t *testing.T) {
+func TestGatewayServiceRecordUsage_QoderProviderMappedImageUsesGlobalFallback(t *testing.T) {
 	usageRepo := &completiontestkit.UsageLogStore{Inserted: true}
 	billingRepo := &completiontestkit.SettlementStore{}
 	svc := newGatewayRecordUsageServiceWithBillingRepoForTest(usageRepo, billingRepo, &completiontestkit.UserStore{}, &completiontestkit.SubscriptionStore{})
@@ -1026,8 +1026,8 @@ func TestGatewayServiceRecordUsage_QoderAccountMappedImageUsesGlobalFallback(t *
 			Quota: 100,
 			Group: &routing.Group{RateMultiplier: 1},
 		},
-		User:    &identity.User{ID: 602},
-		Account: &accountcore.Record{ID: 702, Platform: capability.PlatformQoder},
+		User:     &identity.User{ID: 602},
+		Provider: &providercore.Record{ID: 702, Platform: capability.PlatformQoder},
 		PricingUsageFields: routing.PricingUsageFields{
 			OriginalModel:      "custom-qoder-image",
 			GroupMappedModel:   "custom-qoder-image",
@@ -1071,8 +1071,8 @@ func TestGatewayServiceRecordUsage_QoderUpstreamBasisDoesNotUseRequestedStandard
 			GroupID: &groupID,
 			Group:   &routing.Group{ID: groupID, RateMultiplier: 1},
 		},
-		User:    &identity.User{ID: 602},
-		Account: &accountcore.Record{ID: 702, Platform: capability.PlatformQoder},
+		User:     &identity.User{ID: 602},
+		Provider: &providercore.Record{ID: 702, Platform: capability.PlatformQoder},
 		PricingUsageFields: routing.PricingUsageFields{
 			OriginalModel:      "gpt-5.4-mini",
 			GroupMappedModel:   "gpt-5.4-mini",
@@ -1117,8 +1117,8 @@ func TestGatewayServiceRecordUsage_QoderUpstreamBasisUsesStandardUpstreamPricing
 			GroupID: &groupID,
 			Group:   &routing.Group{ID: groupID, RateMultiplier: 1},
 		},
-		User:    &identity.User{ID: 602},
-		Account: &accountcore.Record{ID: 702, Platform: capability.PlatformQoder},
+		User:     &identity.User{ID: 602},
+		Provider: &providercore.Record{ID: 702, Platform: capability.PlatformQoder},
 		PricingUsageFields: routing.PricingUsageFields{
 			OriginalModel:      "qwen3.7-plus",
 			GroupMappedModel:   "qwen3.7-plus",
@@ -1136,7 +1136,7 @@ func TestGatewayServiceRecordUsage_QoderUpstreamBasisUsesStandardUpstreamPricing
 	require.InDelta(t, expectedCost.ActualCost, billingRepo.LastCmd.BillableAmountUSD, 1e-12)
 }
 
-func TestGatewayServiceRecordUsage_QoderGroupMappedAccountStatsUsesOriginalAliasRule(t *testing.T) {
+func TestGatewayServiceRecordUsage_QoderGroupMappedProviderStatsUsesOriginalAliasRule(t *testing.T) {
 	groupID := int64(902)
 	inputPrice := 0.01
 	outputPrice := 0.02
@@ -1144,7 +1144,7 @@ func TestGatewayServiceRecordUsage_QoderGroupMappedAccountStatsUsesOriginalAlias
 	cache.ByGroup[groupID] = &routingtestkit.Configuration{
 		ID:     groupID,
 		Status: billing.StatusActive,
-		AccountStatsPricingRules: []routing.AccountStatsPricingRule{
+		ProviderStatsPricingRules: []routing.ProviderStatsPricingRule{
 			{
 				GroupIDs: []int64{groupID},
 				Pricing: []routing.ModelPricingEntry{
@@ -1170,7 +1170,7 @@ func TestGatewayServiceRecordUsage_QoderGroupMappedAccountStatsUsesOriginalAlias
 	usage := upstream.TokenUsage{InputTokens: 100, OutputTokens: 50}
 	err := svc.RecordMessages(context.Background(), &gatewaycapture.MessagesCapture{
 		Result: &forwardcore.MessagesResult{
-			RequestID:     "qoder_group_mapped_account_stats_alias",
+			RequestID:     "qoder_group_mapped_provider_stats_alias",
 			Usage:         usage,
 			Model:         "qmodel",
 			UpstreamModel: "qmodel",
@@ -1182,8 +1182,8 @@ func TestGatewayServiceRecordUsage_QoderGroupMappedAccountStatsUsesOriginalAlias
 			GroupID: &groupID,
 			Group:   &routing.Group{ID: groupID, RateMultiplier: 1},
 		},
-		User:    &identity.User{ID: 602},
-		Account: &accountcore.Record{ID: 702, Platform: capability.PlatformQoder},
+		User:     &identity.User{ID: 602},
+		Provider: &providercore.Record{ID: 702, Platform: capability.PlatformQoder},
 		PricingUsageFields: routing.PricingUsageFields{
 			OriginalModel:      "qwen3.7-plus",
 			GroupMappedModel:   "qmodel",
@@ -1194,8 +1194,8 @@ func TestGatewayServiceRecordUsage_QoderGroupMappedAccountStatsUsesOriginalAlias
 	require.NoError(t, err)
 	require.Equal(t, 1, usageRepo.Calls)
 	require.NotNil(t, usageRepo.LastLog)
-	require.NotNil(t, usageRepo.LastLog.AccountStatsCost)
-	require.InDelta(t, 2.0, *usageRepo.LastLog.AccountStatsCost, 1e-12)
+	require.NotNil(t, usageRepo.LastLog.ProviderStatsCost)
+	require.InDelta(t, 2.0, *usageRepo.LastLog.ProviderStatsCost, 1e-12)
 }
 
 func TestGatewayServiceRecordUsage_QoderBlankConfigPricingUsesZeroCost(t *testing.T) {
@@ -1230,8 +1230,8 @@ func TestGatewayServiceRecordUsage_QoderBlankConfigPricingUsesZeroCost(t *testin
 			GroupID: &groupID,
 			Group:   &routing.Group{ID: groupID, RateMultiplier: 1},
 		},
-		User:    &identity.User{ID: 602},
-		Account: &accountcore.Record{ID: 702, Platform: capability.PlatformQoder},
+		User:     &identity.User{ID: 602},
+		Provider: &providercore.Record{ID: 702, Platform: capability.PlatformQoder},
 	})
 
 	require.NoError(t, err)
@@ -1280,8 +1280,8 @@ func TestGatewayServiceRecordUsage_QoderManualConfigPricingOverridesDefaultAlias
 			GroupID: &groupID,
 			Group:   &routing.Group{ID: groupID, RateMultiplier: 1},
 		},
-		User:    &identity.User{ID: 602},
-		Account: &accountcore.Record{ID: 702, Platform: capability.PlatformQoder},
+		User:     &identity.User{ID: 602},
+		Provider: &providercore.Record{ID: 702, Platform: capability.PlatformQoder},
 	})
 
 	require.NoError(t, err)
@@ -1333,8 +1333,8 @@ func TestGatewayServiceRecordUsage_EmptyImageSizeDefaultsBeforeBillingAndPersist
 				BatchImageHoldMultiplier:     0.6,
 			}, testImageModelPricing(map[string]*float64{"2K": &imagePrice2K})),
 		},
-		User:    &identity.User{ID: 601},
-		Account: &accountcore.Record{ID: 701},
+		User:     &identity.User{ID: 601},
+		Provider: &providercore.Record{ID: 701},
 	})
 
 	require.NoError(t, err)
@@ -1389,8 +1389,8 @@ func TestGatewayServiceRecordUsage_PeakRateAffectsTokenModeImageOutputTokens(t *
 				BatchImageHoldMultiplier:     0.6,
 			}, nil),
 		},
-		User:    &identity.User{ID: 602},
-		Account: &accountcore.Record{ID: 702},
+		User:     &identity.User{ID: 602},
+		Provider: &providercore.Record{ID: 702},
 	})
 
 	require.NoError(t, err)
@@ -1435,7 +1435,7 @@ func TestGatewayServiceRecordUsage_UsageLogWriteErrorDoesNotSkipBilling(t *testi
 			Quota: 100,
 		},
 		User:          &identity.User{ID: 603},
-		Account:       &accountcore.Record{ID: 703},
+		Provider:      &providercore.Record{ID: 703},
 		APIKeyService: quotaSvc,
 	})
 
@@ -1472,7 +1472,7 @@ func TestGatewayServiceRecordUsageWithLongContext_BillingUsesDetachedContext(t *
 			Quota: 100,
 		},
 		User:          &identity.User{ID: 602},
-		Account:       &accountcore.Record{ID: 702},
+		Provider:      &providercore.Record{ID: 702},
 		APIKeyService: quotaSvc,
 	})
 
@@ -1502,9 +1502,9 @@ func TestGatewayServiceRecordUsage_UsesFallbackRequestIDForUsageLog(t *testing.T
 			Model:    "claude-sonnet-4",
 			Duration: time.Second,
 		},
-		APIKey:  &apikey.APIKey{ID: 504},
-		User:    &identity.User{ID: 604},
-		Account: &accountcore.Record{ID: 704},
+		APIKey:   &apikey.APIKey{ID: 504},
+		User:     &identity.User{ID: 604},
+		Provider: &providercore.Record{ID: 704},
 	})
 
 	require.NoError(t, err)
@@ -1529,9 +1529,9 @@ func TestGatewayServiceRecordUsage_PrefersClientRequestIDOverUpstreamRequestID(t
 			Model:    "claude-sonnet-4",
 			Duration: time.Second,
 		},
-		APIKey:  &apikey.APIKey{ID: 506},
-		User:    &identity.User{ID: 606},
-		Account: &accountcore.Record{ID: 706},
+		APIKey:   &apikey.APIKey{ID: 506},
+		User:     &identity.User{ID: 606},
+		Provider: &providercore.Record{ID: 706},
 	})
 
 	require.NoError(t, err)
@@ -1556,9 +1556,9 @@ func TestGatewayServiceRecordUsage_GeneratesRequestIDWhenAllSourcesMissing(t *te
 			Model:    "claude-sonnet-4",
 			Duration: time.Second,
 		},
-		APIKey:  &apikey.APIKey{ID: 507},
-		User:    &identity.User{ID: 607},
-		Account: &accountcore.Record{ID: 707},
+		APIKey:   &apikey.APIKey{ID: 507},
+		User:     &identity.User{ID: 607},
+		Provider: &providercore.Record{ID: 707},
 	})
 
 	require.NoError(t, err)
@@ -1587,9 +1587,9 @@ func TestGatewayServiceRecordUsage_DroppedUsageLogFallsBackToSyncCreate(t *testi
 			Model:    "claude-sonnet-4",
 			Duration: time.Second,
 		},
-		APIKey:  &apikey.APIKey{ID: 508},
-		User:    &identity.User{ID: 608},
-		Account: &accountcore.Record{ID: 708},
+		APIKey:   &apikey.APIKey{ID: 508},
+		User:     &identity.User{ID: 608},
+		Provider: &providercore.Record{ID: 708},
 	})
 
 	require.NoError(t, err)
@@ -1617,9 +1617,9 @@ func TestGatewayServiceRecordUsage_BillingErrorWritesUnsettledUsageLog(t *testin
 			Model:    "claude-sonnet-4",
 			Duration: time.Second,
 		},
-		APIKey:  &apikey.APIKey{ID: 505},
-		User:    &identity.User{ID: 605},
-		Account: &accountcore.Record{ID: 705},
+		APIKey:   &apikey.APIKey{ID: 505},
+		User:     &identity.User{ID: 605},
+		Provider: &providercore.Record{ID: 705},
 	})
 
 	require.ErrorIs(t, err, billingErr)
@@ -1650,9 +1650,9 @@ func TestGatewayServiceRecordUsage_ReasoningEffortPersisted(t *testing.T) {
 			Duration:        time.Second,
 			ReasoningEffort: &effort,
 		},
-		APIKey:  &apikey.APIKey{ID: 1},
-		User:    &identity.User{ID: 1},
-		Account: &accountcore.Record{ID: 1},
+		APIKey:   &apikey.APIKey{ID: 1},
+		User:     &identity.User{ID: 1},
+		Provider: &providercore.Record{ID: 1},
 	})
 
 	require.NoError(t, err)
@@ -1675,9 +1675,9 @@ func TestGatewayServiceRecordUsage_ReasoningEffortNil(t *testing.T) {
 			Model:    "claude-sonnet-4",
 			Duration: time.Second,
 		},
-		APIKey:  &apikey.APIKey{ID: 1},
-		User:    &identity.User{ID: 1},
-		Account: &accountcore.Record{ID: 1},
+		APIKey:   &apikey.APIKey{ID: 1},
+		User:     &identity.User{ID: 1},
+		Provider: &providercore.Record{ID: 1},
 	})
 
 	require.NoError(t, err)
@@ -1708,9 +1708,9 @@ func TestGatewayServiceRecordUsage_FastSpeedDowngradedByUpstreamResponse(t *test
 			ServiceTier:                 &tier,
 			UpstreamResponseServiceTier: "standard",
 		},
-		APIKey:  apiKey,
-		User:    &identity.User{ID: 1},
-		Account: &accountcore.Record{ID: 1, Platform: capability.PlatformAnthropic},
+		APIKey:   apiKey,
+		User:     &identity.User{ID: 1},
+		Provider: &providercore.Record{ID: 1, Platform: capability.PlatformAnthropic},
 	})
 
 	require.NoError(t, err)
@@ -1741,9 +1741,9 @@ func TestGatewayServiceRecordUsage_FastSpeedHonouredKeepsPremium(t *testing.T) {
 			ServiceTier:                 &tier,
 			UpstreamResponseServiceTier: "fast",
 		},
-		APIKey:  apiKey,
-		User:    &identity.User{ID: 1},
-		Account: &accountcore.Record{ID: 1, Platform: capability.PlatformAnthropic},
+		APIKey:   apiKey,
+		User:     &identity.User{ID: 1},
+		Provider: &providercore.Record{ID: 1, Platform: capability.PlatformAnthropic},
 	})
 
 	require.NoError(t, err)

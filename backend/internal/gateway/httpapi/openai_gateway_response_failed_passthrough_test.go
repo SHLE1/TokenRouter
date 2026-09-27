@@ -16,10 +16,10 @@ import (
 
 	gatewaytestkit "github.com/TokenFlux/TokenRouter/internal/gateway/testkit"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/errorpolicy"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 	"github.com/gin-gonic/gin"
@@ -41,15 +41,14 @@ func bindPassthroughRule(c *gin.Context, platform string, keywords []string, res
 	BindErrorPassthroughService(c, gatewaytestkit.ErrorRules(rules))
 }
 
-// forcedResponsesChatTestAccount 让 Chat 入站进入 Responses 错误转换测试路径。
-func forcedResponsesChatTestAccount() *gatewayprovider.ExecutionAccount {
-	account := rawChatCompletionsTestAccount()
-	account.Record.Extra = map[string]any{"openai_text_route_mode": "force_responses"}
-	return account
+// forcedResponsesChatTestProvider 让 Chat 入站进入 Responses 错误转换测试路径。
+func forcedResponsesChatTestProvider() *gatewayprovider.ExecutionProvider {
+	provider := rawChatCompletionsTestProvider()
+	provider.Record.Extra = map[string]any{"openai_text_route_mode": "force_responses"}
+	return provider
 }
 
 func TestForwardAsChatCompletions_ResponseFailed_PassthroughRule(t *testing.T) {
-
 	body := []byte(`{"model":"gpt-5.4","messages":[{"role":"user","content":"hello"}],"stream":false}`)
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -65,8 +64,8 @@ func TestForwardAsChatCompletions_ResponseFailed_PassthroughRule(t *testing.T) {
 	}}
 	svc := newWSFixture(wsFixtureInputs{options: rawChatCompletionsTestConfig(), transport: upstream})
 
-	account := forcedResponsesChatTestAccount()
-	_, err := svc.Text.Chat(context.Background(), c, account, body, "", "")
+	provider := forcedResponsesChatTestProvider()
+	_, err := svc.Text.Chat(context.Background(), c, provider, body, "", "")
 
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "passthrough")
@@ -81,24 +80,23 @@ func TestForwardAsChatCompletions_ResponseFailed_PassthroughRule(t *testing.T) {
 }
 
 func TestResponsesStreamAccessStateFailoverPrecedesPassthroughRule(t *testing.T) {
-
 	stream := "event: response.failed\n" +
-		`data: {"type":"response.failed","response":{"status":"failed","error":{"code":"account_disabled","message":"Your account is disabled"}}}` + "\n\n"
+		`data: {"type":"response.failed","response":{"status":"failed","error":{"code":"account_disabled","message":"Your provider is disabled"}}}` + "\n\n"
 	tests := []struct {
 		name string
-		run  func(*wsExecutionFixture, *gin.Context, *http.Response, *gatewayprovider.ExecutionAccount) error
+		run  func(*wsExecutionFixture, *gin.Context, *http.Response, *gatewayprovider.ExecutionProvider) error
 	}{
 		{
 			name: "native",
-			run: func(svc *wsExecutionFixture, c *gin.Context, resp *http.Response, account *gatewayprovider.ExecutionAccount) error {
-				_, err := svc.Output.Stream(c.Request.Context(), resp, c, account, time.Now(), "gpt-5", "gpt-5", "")
+			run: func(svc *wsExecutionFixture, c *gin.Context, resp *http.Response, provider *gatewayprovider.ExecutionProvider) error {
+				_, err := svc.Output.Stream(c.Request.Context(), resp, c, provider, time.Now(), "gpt-5", "gpt-5", "")
 				return err
 			},
 		},
 		{
 			name: "passthrough",
-			run: func(svc *wsExecutionFixture, c *gin.Context, resp *http.Response, account *gatewayprovider.ExecutionAccount) error {
-				_, err := svc.Output.PassthroughStream(c.Request.Context(), resp, c, account, time.Now(), "gpt-5", "gpt-5")
+			run: func(svc *wsExecutionFixture, c *gin.Context, resp *http.Response, provider *gatewayprovider.ExecutionProvider) error {
+				_, err := svc.Output.PassthroughStream(c.Request.Context(), resp, c, provider, time.Now(), "gpt-5", "gpt-5")
 				return err
 			},
 		},
@@ -108,45 +106,44 @@ func TestResponsesStreamAccessStateFailoverPrecedesPassthroughRule(t *testing.T)
 			rec := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(rec)
 			c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
-			bindPassthroughRule(c, capability.PlatformOpenAI, []string{"account is disabled"}, http.StatusTeapot)
+			bindPassthroughRule(c, capability.PlatformOpenAI, []string{"provider is disabled"}, http.StatusTeapot)
 			resp := &http.Response{
 				StatusCode: http.StatusOK,
 				Header:     http.Header{"Content-Type": []string{"text/event-stream"}},
 				Body:       io.NopCloser(strings.NewReader(stream)),
 			}
 			svc := newWSFixture(wsFixtureInputs{options: &wsFixtureOptions{Output: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}})
-			err := tt.run(svc, c, resp, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 11, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth}})
+			err := tt.run(svc, c, resp, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 11, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}})
 
 			var failoverErr *forwardcore.UpstreamFailoverError
 			require.ErrorAs(t, err, &failoverErr)
 			require.True(t, failoverErr.IsCredentialFailure())
 			require.Equal(t, forwardcore.OpenAIUpstreamAccessStateReason, failoverErr.Reason)
-			require.False(t, failoverErr.RetryableOnSameAccount)
+			require.False(t, failoverErr.RetryableOnSameProvider)
 			require.Equal(t, http.StatusBadGateway, failoverErr.ClientStatusCode)
-			require.False(t, c.Writer.Written(), "passthrough rule must not commit a response before account failover")
+			require.False(t, c.Writer.Written(), "passthrough rule must not commit a response before provider failover")
 		})
 	}
 }
 
 func TestResponsesStreamCyberPolicyPrecedesPassthroughRule(t *testing.T) {
-
 	stream := "event: error\n" +
 		`data: {"type":"error","error":{"code":"cyber_policy","message":"blocked by cyber policy"}}` + "\n\n"
 	tests := []struct {
 		name string
-		run  func(*wsExecutionFixture, *gin.Context, *http.Response, *gatewayprovider.ExecutionAccount) error
+		run  func(*wsExecutionFixture, *gin.Context, *http.Response, *gatewayprovider.ExecutionProvider) error
 	}{
 		{
 			name: "native",
-			run: func(svc *wsExecutionFixture, c *gin.Context, resp *http.Response, account *gatewayprovider.ExecutionAccount) error {
-				_, err := svc.Output.Stream(c.Request.Context(), resp, c, account, time.Now(), "gpt-5", "gpt-5", "")
+			run: func(svc *wsExecutionFixture, c *gin.Context, resp *http.Response, provider *gatewayprovider.ExecutionProvider) error {
+				_, err := svc.Output.Stream(c.Request.Context(), resp, c, provider, time.Now(), "gpt-5", "gpt-5", "")
 				return err
 			},
 		},
 		{
 			name: "passthrough",
-			run: func(svc *wsExecutionFixture, c *gin.Context, resp *http.Response, account *gatewayprovider.ExecutionAccount) error {
-				_, err := svc.Output.PassthroughStream(c.Request.Context(), resp, c, account, time.Now(), "gpt-5", "gpt-5")
+			run: func(svc *wsExecutionFixture, c *gin.Context, resp *http.Response, provider *gatewayprovider.ExecutionProvider) error {
+				_, err := svc.Output.PassthroughStream(c.Request.Context(), resp, c, provider, time.Now(), "gpt-5", "gpt-5")
 				return err
 			},
 		},
@@ -163,7 +160,7 @@ func TestResponsesStreamCyberPolicyPrecedesPassthroughRule(t *testing.T) {
 				Body:       io.NopCloser(strings.NewReader(stream)),
 			}
 			svc := newWSFixture(wsFixtureInputs{options: &wsFixtureOptions{Output: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}})
-			err := tt.run(svc, c, resp, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 12, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth}})
+			err := tt.run(svc, c, resp, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 12, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}})
 
 			require.Error(t, err)
 			var failoverErr *forwardcore.UpstreamFailoverError
@@ -176,7 +173,6 @@ func TestResponsesStreamCyberPolicyPrecedesPassthroughRule(t *testing.T) {
 }
 
 func TestForwardAsAnthropic_ResponseFailed_PassthroughRule(t *testing.T) {
-
 	body := []byte(`{"model":"gpt-5.4","max_tokens":32,"messages":[{"role":"user","content":"hello"}],"stream":false}`)
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -192,8 +188,8 @@ func TestForwardAsAnthropic_ResponseFailed_PassthroughRule(t *testing.T) {
 	}}
 	svc := newWSFixture(wsFixtureInputs{options: rawChatCompletionsTestConfig(), transport: upstream})
 
-	account := rawChatCompletionsTestAccount()
-	_, err := svc.Text.Messages(context.Background(), c, account, body, "", "")
+	provider := rawChatCompletionsTestProvider()
+	_, err := svc.Text.Messages(context.Background(), c, provider, body, "", "")
 
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "passthrough")
@@ -204,7 +200,6 @@ func TestForwardAsAnthropic_ResponseFailed_PassthroughRule(t *testing.T) {
 }
 
 func TestForwardAsAnthropic_StreamingResponseFailed_PassthroughRule(t *testing.T) {
-
 	body := []byte(`{"model":"gpt-5.4","max_tokens":32,"messages":[{"role":"user","content":"hello"}],"stream":true}`)
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -220,7 +215,7 @@ func TestForwardAsAnthropic_StreamingResponseFailed_PassthroughRule(t *testing.T
 	}}
 	svc := newWSFixture(wsFixtureInputs{options: rawChatCompletionsTestConfig(), transport: upstream})
 
-	_, err := svc.Text.Messages(context.Background(), c, rawChatCompletionsTestAccount(), body, "", "")
+	_, err := svc.Text.Messages(context.Background(), c, rawChatCompletionsTestProvider(), body, "", "")
 
 	require.Error(t, err)
 	require.Equal(t, http.StatusBadRequest, rec.Code)
@@ -228,7 +223,6 @@ func TestForwardAsAnthropic_StreamingResponseFailed_PassthroughRule(t *testing.T
 }
 
 func TestForwardAsChatCompletions_ResponseFailed_NoRule_Still502(t *testing.T) {
-
 	body := []byte(`{"model":"gpt-5.4","messages":[{"role":"user","content":"hello"}],"stream":false}`)
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -242,8 +236,8 @@ func TestForwardAsChatCompletions_ResponseFailed_NoRule_Still502(t *testing.T) {
 	}}
 	svc := newWSFixture(wsFixtureInputs{options: rawChatCompletionsTestConfig(), transport: upstream})
 
-	account := forcedResponsesChatTestAccount()
-	_, err := svc.Text.Chat(context.Background(), c, account, body, "", "")
+	provider := forcedResponsesChatTestProvider()
+	_, err := svc.Text.Chat(context.Background(), c, provider, body, "", "")
 
 	require.Error(t, err)
 	require.Equal(t, http.StatusBadGateway, rec.Code, "without passthrough rule should still be 502")
@@ -252,7 +246,6 @@ func TestForwardAsChatCompletions_ResponseFailed_NoRule_Still502(t *testing.T) {
 // TestForwardAsChatCompletions_ResponseFailedCustomErrorMissReturnsGeneric500
 // 验证 HTTP 200 流内失败也遵守自定义错误码未命中的通用错误契约。
 func TestForwardAsChatCompletions_ResponseFailedCustomErrorMissReturnsGeneric500(t *testing.T) {
-
 	body := []byte(`{"model":"gpt-5.4","messages":[{"role":"user","content":"hello"}],"stream":false}`)
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -266,13 +259,13 @@ func TestForwardAsChatCompletions_ResponseFailedCustomErrorMissReturnsGeneric500
 		Header:     http.Header{"Content-Type": []string{"text/event-stream"}},
 		Body:       io.NopCloser(strings.NewReader("data: " + failed + "\n\n")),
 	}}})
-	setWSFixtureHealth(svc, newUpstreamHealthForTest(repo, svc.options, nil, accountcore.HealthOptions{}, nil))
+	setWSFixtureHealth(svc, newUpstreamHealthForTest(repo, svc.options, nil, providercore.HealthOptions{}, nil))
 
-	account := forcedResponsesChatTestAccount()
-	account.Record.Credentials["custom_error_codes_enabled"] = true
-	account.Record.Credentials["custom_error_codes"] = []any{float64(http.StatusUnprocessableEntity)}
+	provider := forcedResponsesChatTestProvider()
+	provider.Record.Credentials["custom_error_codes_enabled"] = true
+	provider.Record.Credentials["custom_error_codes"] = []any{float64(http.StatusUnprocessableEntity)}
 
-	_, err := svc.Text.Chat(context.Background(), c, account, body, "", "")
+	_, err := svc.Text.Chat(context.Background(), c, provider, body, "", "")
 
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError
@@ -283,9 +276,8 @@ func TestForwardAsChatCompletions_ResponseFailedCustomErrorMissReturnsGeneric500
 }
 
 // TestForwardAsChatCompletions_ResponseFailedCustomNonDefaultStatusFailsOver
-// 验证 response.failed 显式携带的非默认状态码可以命中账号策略并切号。
+// 验证 response.failed 显式携带的非默认状态码可以命中提供商策略并切号。
 func TestForwardAsChatCompletions_ResponseFailedCustomNonDefaultStatusFailsOver(t *testing.T) {
-
 	body := []byte(`{"model":"gpt-5.4","messages":[{"role":"user","content":"hello"}],"stream":false}`)
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -299,26 +291,25 @@ func TestForwardAsChatCompletions_ResponseFailedCustomNonDefaultStatusFailsOver(
 		Header:     http.Header{"Content-Type": []string{"text/event-stream"}},
 		Body:       io.NopCloser(strings.NewReader("data: " + failed + "\n\n")),
 	}}})
-	setWSFixtureHealth(svc, newUpstreamHealthForTest(repo, svc.options, nil, accountcore.HealthOptions{}, nil))
+	setWSFixtureHealth(svc, newUpstreamHealthForTest(repo, svc.options, nil, providercore.HealthOptions{}, nil))
 
-	account := forcedResponsesChatTestAccount()
-	account.Record.Credentials["custom_error_codes_enabled"] = true
-	account.Record.Credentials["custom_error_codes"] = []any{float64(http.StatusUnprocessableEntity)}
+	provider := forcedResponsesChatTestProvider()
+	provider.Record.Credentials["custom_error_codes_enabled"] = true
+	provider.Record.Credentials["custom_error_codes"] = []any{float64(http.StatusUnprocessableEntity)}
 
-	_, err := svc.Text.Chat(context.Background(), c, account, body, "", "")
+	_, err := svc.Text.Chat(context.Background(), c, provider, body, "", "")
 
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)
 	require.Equal(t, http.StatusUnprocessableEntity, failoverErr.StatusCode)
-	require.False(t, failoverErr.RetryableOnSameAccount)
+	require.False(t, failoverErr.RetryableOnSameProvider)
 	require.False(t, c.Writer.Written())
 	require.Equal(t, 1, repo.setErrorCalls)
 }
 
 // TestOpenAIResponsesStreaming_ResponseFailedCustomStatusFailsOver 验证原生
-// Responses 流处理不会绕过 HTTP 200 终止失败事件中的账号显式策略。
+// Responses 流处理不会绕过 HTTP 200 终止失败事件中的提供商显式策略。
 func TestOpenAIResponsesStreaming_ResponseFailedCustomStatusFailsOver(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
@@ -331,16 +322,16 @@ func TestOpenAIResponsesStreaming_ResponseFailedCustomStatusFailsOver(t *testing
 	}
 	repo := &openAIWSPolicyRepo{}
 	options := rawChatCompletionsTestConfig()
-	svc := newWSFixture(wsFixtureInputs{options: options, health: newUpstreamHealthForTest(repo, options, nil, accountcore.HealthOptions{}, nil), corrector: openai.NewCodexToolCorrector()})
-	account := rawChatCompletionsTestAccount()
-	account.Record.Credentials["custom_error_codes_enabled"] = true
-	account.Record.Credentials["custom_error_codes"] = []any{float64(http.StatusUnprocessableEntity)}
-	_, err := svc.Output.Stream(context.Background(), resp, c, account, time.Now(), "gpt-5.4", "gpt-5.4", "")
+	svc := newWSFixture(wsFixtureInputs{options: options, health: newUpstreamHealthForTest(repo, options, nil, providercore.HealthOptions{}, nil), corrector: openai.NewCodexToolCorrector()})
+	provider := rawChatCompletionsTestProvider()
+	provider.Record.Credentials["custom_error_codes_enabled"] = true
+	provider.Record.Credentials["custom_error_codes"] = []any{float64(http.StatusUnprocessableEntity)}
+	_, err := svc.Output.Stream(context.Background(), resp, c, provider, time.Now(), "gpt-5.4", "gpt-5.4", "")
 
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)
 	require.Equal(t, http.StatusUnprocessableEntity, failoverErr.StatusCode)
-	require.False(t, failoverErr.RetryableOnSameAccount)
+	require.False(t, failoverErr.RetryableOnSameProvider)
 	require.False(t, c.Writer.Written())
 	require.Equal(t, 1, repo.setErrorCalls)
 }
@@ -365,7 +356,6 @@ func bindStatusCodePassthroughRule(c *gin.Context, platform string, statusCode i
 }
 
 func TestApplyOpenAIStreamFailedErrorPassthroughRule_UsesProvidedPlatform(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	bindStatusCodePassthroughRule(c, capability.PlatformGrok, http.StatusBadRequest, "context_length_exceeded", http.StatusBadRequest)
@@ -383,7 +373,6 @@ func TestApplyOpenAIStreamFailedErrorPassthroughRule_UsesProvidedPlatform(t *tes
 }
 
 func TestForwardAsChatCompletions_ResponseFailed_ErrorCodeRuleMatchesViaSemanticStatus(t *testing.T) {
-
 	body := []byte(`{"model":"gpt-5.4","messages":[{"role":"user","content":"hello"}],"stream":false}`)
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -399,8 +388,8 @@ func TestForwardAsChatCompletions_ResponseFailed_ErrorCodeRuleMatchesViaSemantic
 	}}
 	svc := newWSFixture(wsFixtureInputs{options: rawChatCompletionsTestConfig(), transport: upstream})
 
-	account := forcedResponsesChatTestAccount()
-	_, err := svc.Text.Chat(context.Background(), c, account, body, "", "")
+	provider := forcedResponsesChatTestProvider()
+	_, err := svc.Text.Chat(context.Background(), c, provider, body, "", "")
 
 	require.Error(t, err)
 	require.Equal(t, http.StatusBadRequest, rec.Code, "error-code-conditioned rule should match via semantic status inference")
@@ -410,7 +399,6 @@ func TestForwardAsChatCompletions_ResponseFailed_ErrorCodeRuleMatchesViaSemantic
 }
 
 func TestForwardAsAnthropic_ResponseFailed_ErrorCodeRuleMatchesViaSemanticStatus(t *testing.T) {
-
 	body := []byte(`{"model":"gpt-5.4","max_tokens":32,"messages":[{"role":"user","content":"hello"}],"stream":false}`)
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -426,8 +414,8 @@ func TestForwardAsAnthropic_ResponseFailed_ErrorCodeRuleMatchesViaSemanticStatus
 	}}
 	svc := newWSFixture(wsFixtureInputs{options: rawChatCompletionsTestConfig(), transport: upstream})
 
-	account := rawChatCompletionsTestAccount()
-	_, err := svc.Text.Messages(context.Background(), c, account, body, "", "")
+	provider := rawChatCompletionsTestProvider()
+	_, err := svc.Text.Messages(context.Background(), c, provider, body, "", "")
 
 	require.Error(t, err)
 	require.Equal(t, http.StatusBadRequest, rec.Code, "error-code-conditioned rule should match via semantic status inference")

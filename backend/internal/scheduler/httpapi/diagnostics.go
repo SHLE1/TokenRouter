@@ -13,23 +13,23 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// AccountSchedulerDiagnostics 使用无凭据的只读诊断投影，评分由 scheduler 执行。
-type AccountSchedulerDiagnostics interface {
+// ProviderSchedulerDiagnostics 使用无凭据的只读诊断投影，评分由 scheduler 执行。
+type ProviderSchedulerDiagnostics interface {
 	GetOverview(context.Context, int64) (*policy.AdvancedSchedulerScoreDiagnosticResponse, error)
 	GetDetail(context.Context, int64, policy.AdvancedSchedulerScoreDiagnosticRequest) (*policy.AdvancedSchedulerScoreDiagnosticResponse, error)
 }
 
-// DiagnosticsHandler 只接收评分用例，不依赖账号管理聚合或存储。
-type DiagnosticsHandler struct{ diagnostics AccountSchedulerDiagnostics }
+// DiagnosticsHandler 只接收评分用例，不依赖提供商管理聚合或存储。
+type DiagnosticsHandler struct{ diagnostics ProviderSchedulerDiagnostics }
 
-func NewDiagnosticsHandler(source AccountSchedulerDiagnostics) *DiagnosticsHandler {
+func NewDiagnosticsHandler(source ProviderSchedulerDiagnostics) *DiagnosticsHandler {
 	return &DiagnosticsHandler{diagnostics: source}
 }
 
-// GetAdvancedSchedulerScore 返回账号所属高级调度分组的摘要，或指定分组的完整评分解释。
-// GET /api/v1/admin/accounts/:id/advanced-scheduler-score?group_id=:groupID
+// GetAdvancedSchedulerScore 返回提供商所属高级调度分组的摘要，或指定分组的完整评分解释。
+// GET /api/v1/admin/providers/:id/advanced-scheduler-score?group_id=:groupID
 func (h *DiagnosticsHandler) GetAdvancedSchedulerScore(c *gin.Context) {
-	accountID, ok := parseAdvancedSchedulerScoreAccountID(c)
+	providerID, ok := parseAdvancedSchedulerScoreProviderID(c)
 	if !ok {
 		return
 	}
@@ -40,7 +40,7 @@ func (h *DiagnosticsHandler) GetAdvancedSchedulerScore(c *gin.Context) {
 
 	groupIDRaw := strings.TrimSpace(c.Query("group_id"))
 	if groupIDRaw == "" {
-		result, err := h.diagnostics.GetOverview(c.Request.Context(), accountID)
+		result, err := h.diagnostics.GetOverview(c.Request.Context(), providerID)
 		if err != nil {
 			response.ErrorFrom(c, err)
 			return
@@ -53,7 +53,7 @@ func (h *DiagnosticsHandler) GetAdvancedSchedulerScore(c *gin.Context) {
 		response.BadRequest(c, "Invalid group ID")
 		return
 	}
-	result, err := h.diagnostics.GetDetail(c.Request.Context(), accountID, policy.AdvancedSchedulerScoreDiagnosticRequest{GroupID: groupID})
+	result, err := h.diagnostics.GetDetail(c.Request.Context(), providerID, policy.AdvancedSchedulerScoreDiagnosticRequest{GroupID: groupID})
 	if err != nil {
 		if strings.Contains(err.Error(), "advanced scheduler group") || strings.Contains(err.Error(), "group_id") {
 			response.BadRequest(c, err.Error())
@@ -66,9 +66,9 @@ func (h *DiagnosticsHandler) GetAdvancedSchedulerScore(c *gin.Context) {
 }
 
 // PreviewAdvancedSchedulerScore 使用安全、无状态的场景字段模拟高级调度评分。
-// POST /api/v1/admin/accounts/:id/advanced-scheduler-score/preview
+// POST /api/v1/admin/providers/:id/advanced-scheduler-score/preview
 func (h *DiagnosticsHandler) PreviewAdvancedSchedulerScore(c *gin.Context) {
-	accountID, ok := parseAdvancedSchedulerScoreAccountID(c)
+	providerID, ok := parseAdvancedSchedulerScoreProviderID(c)
 	if !ok {
 		return
 	}
@@ -93,9 +93,9 @@ func (h *DiagnosticsHandler) PreviewAdvancedSchedulerScore(c *gin.Context) {
 		return
 	}
 
-	result, err := h.diagnostics.GetDetail(c.Request.Context(), accountID, request)
+	result, err := h.diagnostics.GetDetail(c.Request.Context(), providerID, request)
 	if err != nil {
-		if strings.Contains(err.Error(), "advanced scheduler group") || strings.Contains(err.Error(), "group_id") || strings.Contains(err.Error(), "sticky account") || strings.Contains(err.Error(), "requested_model") {
+		if strings.Contains(err.Error(), "advanced scheduler group") || strings.Contains(err.Error(), "group_id") || strings.Contains(err.Error(), "sticky provider") || strings.Contains(err.Error(), "requested_model") {
 			response.BadRequest(c, err.Error())
 			return
 		}
@@ -105,13 +105,13 @@ func (h *DiagnosticsHandler) PreviewAdvancedSchedulerScore(c *gin.Context) {
 	response.Success(c, result)
 }
 
-func parseAdvancedSchedulerScoreAccountID(c *gin.Context) (int64, bool) {
-	accountID, err := strconv.ParseInt(c.Param("id"), 10, 64)
-	if err != nil || accountID <= 0 {
-		response.BadRequest(c, "Invalid account ID")
+func parseAdvancedSchedulerScoreProviderID(c *gin.Context) (int64, bool) {
+	providerID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || providerID <= 0 {
+		response.BadRequest(c, "Invalid provider ID")
 		return 0, false
 	}
-	return accountID, true
+	return providerID, true
 }
 
 func ensureAdvancedSchedulerScorePreviewEOF(decoder *json.Decoder) error {

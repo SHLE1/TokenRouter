@@ -13,14 +13,14 @@ import (
 
 	routingtestkit "github.com/TokenFlux/TokenRouter/internal/routing/testkit"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/stretchr/testify/require"
 )
 
-func TestOpenAIUpstreamRestrictionAppliesPricingConfigThenAccountMapping(t *testing.T) {
+func TestOpenAIUpstreamRestrictionAppliesPricingConfigThenProviderMapping(t *testing.T) {
 	groupID := int64(4202)
 	price := 0.01
 	pricingConfig := routingtestkit.Configuration{
@@ -40,8 +40,8 @@ func TestOpenAIUpstreamRestrictionAppliesPricingConfigThenAccountMapping(t *test
 			pricingConfig)},
 	}, nil)
 
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI,
 			Credentials: map[string]any{
 				"model_mapping": map[string]any{"group-model": "upstream-model"},
@@ -49,7 +49,7 @@ func TestOpenAIUpstreamRestrictionAppliesPricingConfigThenAccountMapping(t *test
 		},
 	}
 
-	require.False(t, upstreamRestrictedForTest(svc, context.Background(), groupID, account, "client-alias", false))
+	require.False(t, upstreamRestrictedForTest(svc, context.Background(), groupID, provider, "client-alias", false))
 }
 
 // TestOpenAIUpstreamRestrictionUsesActuallyForwardedOAuthModel 验证 OAuth 归一化和自动透传都按真实上游模型限制。
@@ -60,7 +60,7 @@ func TestOpenAIUpstreamRestrictionUsesActuallyForwardedOAuthModel(t *testing.T) 
 		groupID            int64
 		pricingConfigModel string
 		pricingModel       string
-		account            *gatewayprovider.ExecutionAccount
+		provider           *gatewayprovider.ExecutionProvider
 		restricted         bool
 		httpPassthrough    bool
 	}{
@@ -69,14 +69,14 @@ func TestOpenAIUpstreamRestrictionUsesActuallyForwardedOAuthModel(t *testing.T) 
 			groupID:            4204,
 			pricingConfigModel: "gpt-5.6-sol-high",
 			pricingModel:       "gpt-5.6-sol",
-			account:            &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth}},
+			provider:           &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}},
 		},
 		{
 			name:               "OAuth 归一化前的模型不能冒充最终模型",
 			groupID:            4205,
 			pricingConfigModel: "gpt-5.6-sol-high",
 			pricingModel:       "gpt-5.6-sol-high",
-			account:            &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth}},
+			provider:           &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}},
 			restricted:         true,
 		},
 		{
@@ -84,18 +84,18 @@ func TestOpenAIUpstreamRestrictionUsesActuallyForwardedOAuthModel(t *testing.T) 
 			groupID:            4207,
 			pricingConfigModel: "gpt-5.6",
 			pricingModel:       "gpt-5.6-sol",
-			account:            &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth}},
+			provider:           &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}},
 			restricted:         true,
 		},
 		{
-			name:               "自动透传仍按账号映射后的模型检查",
+			name:               "自动透传仍按提供商映射后的模型检查",
 			groupID:            4206,
 			pricingConfigModel: "passthrough-model",
 			pricingModel:       "mapped-model",
-			account: &gatewayprovider.ExecutionAccount{
-				Record: accountcore.Record{
+			provider: &gatewayprovider.ExecutionProvider{
+				Record: providercore.Record{
 					LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI,
-					Type:  capability.AccountTypeOAuth,
+					Type:  capability.ProviderTypeOAuth,
 					Extra: map[string]any{"openai_passthrough": true},
 					Credentials: map[string]any{
 						"model_mapping": map[string]any{"passthrough-model": "mapped-model"},
@@ -128,7 +128,7 @@ func TestOpenAIUpstreamRestrictionUsesActuallyForwardedOAuthModel(t *testing.T) 
 			if tt.httpPassthrough {
 				ctx = requeststate.WithOpenAIHTTPPassthroughRouting(ctx)
 			}
-			restricted := upstreamRestrictedForTest(svc, ctx, tt.groupID, tt.account, "client-alias", false)
+			restricted := upstreamRestrictedForTest(svc, ctx, tt.groupID, tt.provider, "client-alias", false)
 			require.Equal(t, tt.restricted, restricted)
 		})
 	}
@@ -141,8 +141,8 @@ func TestModelAvailabilityDiagnosisAcceptsPricingConfigAlias(t *testing.T) {
 		Status:       billing.StatusActive,
 		ModelMapping: map[string]string{"client-alias": "group-model"},
 	}
-	account := gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 75,
 			Platform:    capability.PlatformOpenAI,
 			Status:      billing.StatusActive,
@@ -154,22 +154,22 @@ func TestModelAvailabilityDiagnosisAcceptsPricingConfigAlias(t *testing.T) {
 			},
 		},
 	}
-	repo := schedulerTestOpenAIAccountRepo{accounts: []gatewayprovider.ExecutionAccount{account}}
+	repo := schedulerTestOpenAIProviderRepo{providers: []gatewayprovider.ExecutionProvider{provider}}
 	svc := newCompatibleSelectionForTest(CompatibleDependencies{
-		Reads:  Reads{Accounts: repo},
+		Reads:  Reads{Providers: repo},
 		Shared: Shared{GroupPolicies: routingtestkit.PricingConfig(groupID, capability.PlatformOpenAI, pricingConfig)},
 	}, nil)
 
 	diagnosis := gatewayprovider.NewModelAvailability(gatewaytestkit.AvailabilityStore{Source: repo}, svc.groupPolicies, false, true).DiagnoseCompatible(context.Background(), &groupID, "client-alias", capability.PlatformOpenAI)
-	require.True(t, diagnosis.HasAccountsInPool)
+	require.True(t, diagnosis.HasProvidersInPool)
 	require.True(t, diagnosis.HasModelSupport)
 }
 
-// TestResolveOpenAIWSRoutingModelForAccountStrictlyFollowsBillingBasis 验证长连接每轮都严格按所选依据检查 R、C 或 U。
+// TestResolveOpenAIWSRoutingModelForProviderStrictlyFollowsBillingBasis 验证长连接每轮都严格按所选依据检查 R、C 或 U。
 
-// TestResolveOpenAIWSRoutingModelForAccountRejectsUnsupportedMappedModel 验证后续 turn 不能绕过固定账号的最终白名单。
+// TestResolveOpenAIWSRoutingModelForProviderRejectsUnsupportedMappedModel 验证后续 turn 不能绕过固定提供商的最终白名单。
 
-// upstreamRestrictedForTest 保留分组映射先于账号层限制的原组合顺序。
-func upstreamRestrictedForTest(s *Compatible, ctx context.Context, group int64, value *gatewayprovider.ExecutionAccount, model string, compact bool) bool {
+// upstreamRestrictedForTest 保留分组映射先于提供商层限制的原组合顺序。
+func upstreamRestrictedForTest(s *Compatible, ctx context.Context, group int64, value *gatewayprovider.ExecutionProvider, model string, compact bool) bool {
 	return s.UpstreamRoutingModelRestricted(ctx, group, value, s.resolveGroupRoutingModel(ctx, &group, model), compact)
 }

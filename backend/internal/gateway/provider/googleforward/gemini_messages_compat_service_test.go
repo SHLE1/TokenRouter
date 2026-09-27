@@ -12,12 +12,12 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/googleforward"
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
 	"github.com/TokenFlux/TokenRouter/internal/protocol/bridge"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/gemini"
@@ -33,7 +33,7 @@ type geminiCompatHTTPUpstreamStub struct {
 	lastReq  *http.Request
 }
 
-func (s *geminiCompatHTTPUpstreamStub) Do(req *http.Request, proxyURL string, accountID int64, accountConcurrency int) (*http.Response, error) {
+func (s *geminiCompatHTTPUpstreamStub) Do(req *http.Request, proxyURL string, providerID int64, providerConcurrency int) (*http.Response, error) {
 	s.calls++
 	s.lastReq = req
 	if s.err != nil {
@@ -46,8 +46,8 @@ func (s *geminiCompatHTTPUpstreamStub) Do(req *http.Request, proxyURL string, ac
 	return &resp, nil
 }
 
-func (s *geminiCompatHTTPUpstreamStub) DoWithTLS(req *http.Request, proxyURL string, accountID int64, accountConcurrency int, profile *tlsfingerprint.Profile) (*http.Response, error) {
-	return s.Do(req, proxyURL, accountID, accountConcurrency)
+func (s *geminiCompatHTTPUpstreamStub) DoWithTLS(req *http.Request, proxyURL string, providerID int64, providerConcurrency int, profile *tlsfingerprint.Profile) (*http.Response, error) {
+	return s.Do(req, proxyURL, providerID, providerConcurrency)
 }
 
 func TestGeminiForwardAsChatCompletions_OAuthRoutesToGeminiAndReturnsChatFormat(t *testing.T) {
@@ -69,14 +69,14 @@ func TestGeminiForwardAsChatCompletions_OAuthRoutesToGeminiAndReturnsChatFormat(
 
 		cfg: &googleforward.Options{},
 	})
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation,
 			ID:           101,
 
 			Platform: capability.PlatformGemini,
 
-			Type: capability.AccountTypeOAuth,
+			Type: capability.ProviderTypeOAuth,
 
 			Credentials: map[string]any{
 				"access_token": "ya29.test-token",
@@ -97,7 +97,7 @@ func TestGeminiForwardAsChatCompletions_OAuthRoutesToGeminiAndReturnsChatFormat(
 	body := []byte(`{"model":"gemini-2.5-flash","messages":[{"role":"user","content":"hi"}]}`)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewReader(body))
 
-	result, err := svc.ForwardAsChatCompletions(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, false), account, body)
+	result, err := svc.ForwardAsChatCompletions(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, false), provider, body)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, http.StatusOK, rec.Code)
@@ -141,8 +141,8 @@ func TestGeminiForwardAsChatCompletions_OAuthRoutesToGeminiAndReturnsChatFormat(
 	require.Equal(t, float64(10), usage["total_tokens"])
 }
 
-// TestGeminiMessagesCompatServiceForward_OAuthAppliesAccountModelMapping 验证 Messages 兼容入口的 OAuth 账号也执行 C -> U。
-func TestGeminiMessagesCompatServiceForward_OAuthAppliesAccountModelMapping(t *testing.T) {
+// TestGeminiMessagesCompatServiceForward_OAuthAppliesProviderModelMapping 验证 Messages 兼容入口的 OAuth 提供商也执行 C -> U。
+func TestGeminiMessagesCompatServiceForward_OAuthAppliesProviderModelMapping(t *testing.T) {
 	upstreamBody := `data: {"response":{"candidates":[{"content":{"parts":[{"text":"hello"}]} ,"finishReason":"STOP"}],"usageMetadata":{"promptTokenCount":4,"candidatesTokenCount":2}}}` + "\n\n" +
 		"data: [DONE]\n\n"
 	httpStub := &geminiCompatHTTPUpstreamStub{response: &http.Response{
@@ -159,14 +159,14 @@ func TestGeminiMessagesCompatServiceForward_OAuthAppliesAccountModelMapping(t *t
 
 		cfg: &googleforward.Options{},
 	})
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation,
 			ID:           103,
 
 			Platform: capability.PlatformGemini,
 
-			Type: capability.AccountTypeOAuth,
+			Type: capability.ProviderTypeOAuth,
 
 			Credentials: map[string]any{
 				"access_token": "ya29.test-token",
@@ -187,7 +187,7 @@ func TestGeminiMessagesCompatServiceForward_OAuthAppliesAccountModelMapping(t *t
 	body := []byte(`{"model":"group-model","max_tokens":16,"messages":[{"role":"user","content":"hello"}]}`)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", bytes.NewReader(body))
 
-	result, err := svc.Forward(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, false), account, body)
+	result, err := svc.Forward(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, false), provider, body)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, "group-model", result.Model)
@@ -198,8 +198,8 @@ func TestGeminiMessagesCompatServiceForward_OAuthAppliesAccountModelMapping(t *t
 	require.Equal(t, "oauth-upstream-model", gjson.GetBytes(sentBody, "model").String())
 }
 
-// TestGeminiMessagesCompatServiceForwardNative_OAuthAppliesAccountModelMapping 验证原生 Gemini 入口的 OAuth 账号执行 C -> U。
-func TestGeminiMessagesCompatServiceForwardNative_OAuthAppliesAccountModelMapping(t *testing.T) {
+// TestGeminiMessagesCompatServiceForwardNative_OAuthAppliesProviderModelMapping 验证原生 Gemini 入口的 OAuth 提供商执行 C -> U。
+func TestGeminiMessagesCompatServiceForwardNative_OAuthAppliesProviderModelMapping(t *testing.T) {
 	upstreamBody := `data: {"response":{"candidates":[{"content":{"parts":[{"text":"hello"}]},"finishReason":"STOP"}],"usageMetadata":{"promptTokenCount":4,"candidatesTokenCount":2}}}` + "\n\n" +
 		"data: [DONE]\n\n"
 	httpStub := &geminiCompatHTTPUpstreamStub{response: &http.Response{
@@ -216,14 +216,14 @@ func TestGeminiMessagesCompatServiceForwardNative_OAuthAppliesAccountModelMappin
 
 		cfg: &googleforward.Options{},
 	})
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation,
 			ID:           104,
 
 			Platform: capability.PlatformGemini,
 
-			Type: capability.AccountTypeOAuth,
+			Type: capability.ProviderTypeOAuth,
 
 			Credentials: map[string]any{
 				"access_token": "ya29.test-token",
@@ -244,7 +244,7 @@ func TestGeminiMessagesCompatServiceForwardNative_OAuthAppliesAccountModelMappin
 	body := []byte(`{"contents":[{"role":"user","parts":[{"text":"hello"}]}]}`)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1beta/models/group-model:generateContent", bytes.NewReader(body))
 
-	result, err := svc.ForwardNative(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, false), account, "group-model", "generateContent", false, body)
+	result, err := svc.ForwardNative(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, false), provider, "group-model", "generateContent", false, body)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, "group-model", result.Model)
@@ -272,14 +272,14 @@ func TestGeminiForwardAsChatCompletions_StreamsOpenAIChunksFromGeminiSSE(t *test
 		httpUpstream: httpStub,
 		cfg:          &googleforward.Options{},
 	})
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation,
 			ID:           102,
 
 			Platform: capability.PlatformGemini,
 
-			Type: capability.AccountTypeAPIKey,
+			Type: capability.ProviderTypeAPIKey,
 
 			Credentials: map[string]any{
 				"api_key": "gemini-api-key",
@@ -294,7 +294,7 @@ func TestGeminiForwardAsChatCompletions_StreamsOpenAIChunksFromGeminiSSE(t *test
 	body := []byte(`{"model":"gemini-2.5-flash","stream":true,"stream_options":{"include_usage":true},"messages":[{"role":"user","content":"hi"}]}`)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewReader(body))
 
-	result, err := svc.ForwardAsChatCompletions(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, false), account, body)
+	result, err := svc.ForwardAsChatCompletions(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, false), provider, body)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, http.StatusOK, rec.Code)
@@ -332,14 +332,14 @@ func TestGeminiMessagesCompatServiceForward_StreamingClosesToolUseBeforeText(t *
 		httpUpstream: httpStub,
 		cfg:          &googleforward.Options{},
 	})
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation,
 			ID:           103,
 
 			Platform: capability.PlatformGemini,
 
-			Type: capability.AccountTypeAPIKey,
+			Type: capability.ProviderTypeAPIKey,
 
 			Credentials: map[string]any{
 				"api_key": "gemini-api-key",
@@ -354,7 +354,7 @@ func TestGeminiMessagesCompatServiceForward_StreamingClosesToolUseBeforeText(t *
 	body := []byte(`{"model":"gemini-2.5-flash","stream":true,"messages":[{"role":"user","content":"hi"}]}`)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", bytes.NewReader(body))
 
-	result, err := svc.Forward(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, false), account, body)
+	result, err := svc.Forward(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, false), provider, body)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -432,14 +432,14 @@ func TestGeminiForwardAsChatCompletions_FunctionNamedWebSearchStaysClientSide(t 
 		httpUpstream: httpStub,
 		cfg:          &googleforward.Options{},
 	})
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation,
 			ID:           103,
 
 			Platform: capability.PlatformGemini,
 
-			Type: capability.AccountTypeAPIKey,
+			Type: capability.ProviderTypeAPIKey,
 
 			Credentials: map[string]any{
 				"api_key": "gemini-api-key",
@@ -461,7 +461,7 @@ func TestGeminiForwardAsChatCompletions_FunctionNamedWebSearchStaysClientSide(t 
 	}`)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewReader(body))
 
-	result, err := svc.ForwardAsChatCompletions(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, false), account, body)
+	result, err := svc.ForwardAsChatCompletions(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, false), provider, body)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, http.StatusOK, rec.Code)
@@ -876,12 +876,12 @@ func TestGeminiMessagesCompatServiceForward_PreservesRequestedModelAndMappedUpst
 		},
 	}
 	svc := newGeminiFixture(geminiDependencies{httpUpstream: httpStub, cfg: &googleforward.Options{}})
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation,
 			ID:           1,
 
-			Type: capability.AccountTypeAPIKey,
+			Type: capability.ProviderTypeAPIKey,
 
 			Credentials: map[string]any{
 				"api_key": "test-key",
@@ -893,7 +893,7 @@ func TestGeminiMessagesCompatServiceForward_PreservesRequestedModelAndMappedUpst
 	}
 	body := []byte(`{"model":"claude-sonnet-4","max_tokens":16,"messages":[{"role":"user","content":"hello"}]}`)
 
-	result, err := svc.Forward(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, false), account, body)
+	result, err := svc.Forward(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, false), provider, body)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, "claude-sonnet-4", result.Model)
@@ -919,12 +919,12 @@ func TestGeminiMessagesCompatServiceForward_NormalizesWebSearchToolForAIStudio(t
 		},
 	}
 	svc := newGeminiFixture(geminiDependencies{httpUpstream: httpStub, cfg: &googleforward.Options{}})
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation,
 			ID:           1,
 
-			Type: capability.AccountTypeAPIKey,
+			Type: capability.ProviderTypeAPIKey,
 
 			Credentials: map[string]any{
 				"api_key": "test-key",
@@ -933,7 +933,7 @@ func TestGeminiMessagesCompatServiceForward_NormalizesWebSearchToolForAIStudio(t
 	}
 	body := []byte(`{"model":"claude-sonnet-4","max_tokens":16,"messages":[{"role":"user","content":"hello"}],"tools":[{"name":"get_weather","description":"Get weather info","input_schema":{"type":"object"}},{"type":"web_search_20250305","name":"web_search"}]}`)
 
-	result, err := svc.Forward(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, false), account, body)
+	result, err := svc.Forward(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, false), provider, body)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.NotNil(t, httpStub.lastReq)

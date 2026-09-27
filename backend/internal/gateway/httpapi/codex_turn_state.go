@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 	"github.com/gin-gonic/gin"
@@ -31,6 +31,7 @@ func codexTurnStateSeed(c *gin.Context) string {
 	}
 	return strconv.FormatInt(APIKeyIDFromContext(c), 10) + "\x00" + id
 }
+
 func ExtractCodexTurnState(headers http.Header) string {
 	if headers == nil {
 		return ""
@@ -56,7 +57,8 @@ func StageCodexTurnState(dst *http.Header, headers http.Header) {
 	}
 	dst.Set(canonical, value)
 }
-func (s *CodexTurnStateHeaders) note(c *gin.Context, target *provider.ExecutionAccount) {
+
+func (s *CodexTurnStateHeaders) note(c *gin.Context, target *gatewayadapter.ExecutionProvider) {
 	if s == nil || target == nil || target.Record.ID <= 0 {
 		return
 	}
@@ -70,7 +72,8 @@ func (s *CodexTurnStateHeaders) note(c *gin.Context, target *provider.ExecutionA
 	}
 	s.Origins.Record(seed, target.Record.ID, ttl)
 }
-func (s *CodexTurnStateHeaders) Relay(c *gin.Context, target *provider.ExecutionAccount, headers http.Header) {
+
+func (s *CodexTurnStateHeaders) Relay(c *gin.Context, target *gatewayadapter.ExecutionProvider, headers http.Header) {
 	if c == nil || c.Writer == nil {
 		return
 	}
@@ -83,15 +86,16 @@ func (s *CodexTurnStateHeaders) Relay(c *gin.Context, target *provider.Execution
 	c.Writer.Header().Set(canonical, value)
 	s.note(c, target)
 }
-func (s *CodexTurnStateHeaders) Commit(c *gin.Context, target *provider.ExecutionAccount, headers http.Header) {
+
+func (s *CodexTurnStateHeaders) Commit(c *gin.Context, target *gatewayadapter.ExecutionProvider, headers http.Header) {
 	if headers == nil || strings.TrimSpace(headers.Get(CodexTurnStateHeader)) == "" {
 		return
 	}
 	s.note(c, target)
 }
 
-// Guard 只删除已知来自另一账号的状态，未知、同账号与过期记录不阻止回放。
-func (s *CodexTurnStateHeaders) Guard(c *gin.Context, target *provider.ExecutionAccount, headers http.Header) {
+// Guard 只删除已知来自另一提供商的状态，未知、同提供商与过期记录不阻止回放。
+func (s *CodexTurnStateHeaders) Guard(c *gin.Context, target *gatewayadapter.ExecutionProvider, headers http.Header) {
 	if s == nil || headers == nil || target == nil || strings.TrimSpace(headers.Get(CodexTurnStateHeader)) == "" {
 		return
 	}

@@ -15,7 +15,7 @@ import (
 // RawChat 直转客户端的 Chat Completions 请求到上游
 // `{base_url}/v1/chat/completions`，**不**做 CC↔Responses 协议转换。
 //
-// 适用场景：account.platform=openai && account.type=apikey && 上游已被探测确认
+// 适用场景：provider.platform=openai && provider.type=apikey && 上游已被探测确认
 // 不支持 /v1/responses 端点（如 GLM/Qwen 等第三方 OpenAI 兼容上游）；CN 供应商
 // 固定 chat_completions 协议也走此路径。
 //
@@ -33,12 +33,12 @@ import (
 func (s *OpenAITextExecutor) RawChat(
 	ctx context.Context,
 	c *gin.Context,
-	account *gatewayprovider.ExecutionAccount,
+	provider *gatewayprovider.ExecutionProvider,
 	body []byte,
 	defaultMappedModel string,
 	tlsRouterMatch ...egress.TLSFingerprintRouterMatchResult,
 ) (*forwardcore.OpenAIResult, error) {
-	adapter := &openAIRawChatAdapter{openAIRawFallbackAdapter: &openAIRawFallbackAdapter{openAIMessagesExecutionAdapter: &openAIMessagesExecutionAdapter{s: s, c: c, account: account, tls: tlsRouterMatch}, kind: openaiexecution.NativeChat}}
+	adapter := &openAIRawChatAdapter{openAIRawFallbackAdapter: &openAIRawFallbackAdapter{openAIMessagesExecutionAdapter: &openAIMessagesExecutionAdapter{s: s, c: c, provider: provider, tls: tlsRouterMatch}, kind: openaiexecution.NativeChat}}
 	result, err := openaiexecution.RunRawChat(ctx, body, defaultMappedModel, adapter)
 	return openaiexecution.ToForwardResult(result), err
 }
@@ -56,12 +56,12 @@ func (s *OpenAITextExecutor) RawChat(
 func (s *OpenAITextExecutor) MessagesViaRawChat(
 	ctx context.Context,
 	c *gin.Context,
-	account *gatewayprovider.ExecutionAccount,
+	provider *gatewayprovider.ExecutionProvider,
 	body []byte,
 	defaultMappedModel string,
 	tlsRouterMatch ...egress.TLSFingerprintRouterMatchResult,
 ) (*forwardcore.OpenAIResult, error) {
-	adapter := &openAIRawFallbackAdapter{openAIMessagesExecutionAdapter: &openAIMessagesExecutionAdapter{s: s, c: c, account: account, tls: tlsRouterMatch}, kind: openaiexecution.NativeMessages}
+	adapter := &openAIRawFallbackAdapter{openAIMessagesExecutionAdapter: &openAIMessagesExecutionAdapter{s: s, c: c, provider: provider, tls: tlsRouterMatch}, kind: openaiexecution.NativeMessages}
 	result, err := openaiexecution.MessagesViaRawChat(ctx, body, defaultMappedModel, adapter)
 	return openaiexecution.ToForwardResult(result), err
 }
@@ -71,11 +71,11 @@ func (s *OpenAITextExecutor) MessagesViaRawChat(
 func (s *OpenAITextExecutor) ResponsesViaRawChat(
 	ctx context.Context,
 	c *gin.Context,
-	account *gatewayprovider.ExecutionAccount,
+	provider *gatewayprovider.ExecutionProvider,
 	body []byte,
 	tlsRouterMatch ...egress.TLSFingerprintRouterMatchResult,
 ) (*forwardcore.OpenAIResult, error) {
-	adapter := &openAIRawFallbackAdapter{openAIMessagesExecutionAdapter: &openAIMessagesExecutionAdapter{s: s, c: c, account: account, tls: tlsRouterMatch}, kind: openaiexecution.NativeResponses}
+	adapter := &openAIRawFallbackAdapter{openAIMessagesExecutionAdapter: &openAIMessagesExecutionAdapter{s: s, c: c, provider: provider, tls: tlsRouterMatch}, kind: openaiexecution.NativeResponses}
 	result, err := openaiexecution.ResponsesViaRawChat(ctx, body, adapter)
 	return openaiexecution.ToForwardResult(result), err
 }

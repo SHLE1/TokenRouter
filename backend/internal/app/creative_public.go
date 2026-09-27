@@ -6,7 +6,6 @@ import (
 
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 
-	accountpostgres "github.com/TokenFlux/TokenRouter/internal/account/postgres"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	keypostgres "github.com/TokenFlux/TokenRouter/internal/apikey/postgres"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
@@ -20,6 +19,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 	"github.com/TokenFlux/TokenRouter/internal/moderation"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/querycache"
+	providerpostgres "github.com/TokenFlux/TokenRouter/internal/provider/postgres"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	routingpostgres "github.com/TokenFlux/TokenRouter/internal/routing/postgres"
 	"github.com/TokenFlux/TokenRouter/internal/usage"
@@ -27,7 +27,7 @@ import (
 )
 
 // provideS13CreativePublic 直接组合原生任务、资金及只读投影，所有存储使用已有实例。
-func provideS13CreativePublic(repo creative.CreativeRunRepository, keys *keypostgres.KeyStore, users *identitypostgres.UserStore, accounts *accountpostgres.AccountStore, groups *routingpostgres.GroupStore, rates billing.UserGroupRateRepository, queue creative.CreativeRunQueue, transient creative.CreativeTransientStore, funds *billing.Funds, subscriptions *billingpostgres.SettlementStore, logs usage.UsageLogRepository, pricing *billing.PriceResolver, modelConfigs *routing.PricingConfigService, moderation *moderation.ContentModerationService, auth apikey.APIKeyAuthCacheInvalidator, settings *creative.RuntimeSettings, cfg *config.Config, outbox creative.CreativeRunOutboxRepository) *creative.Public {
+func provideS13CreativePublic(repo creative.CreativeRunRepository, keys *keypostgres.KeyStore, users *identitypostgres.UserStore, providers *providerpostgres.ProviderStore, groups *routingpostgres.GroupStore, rates billing.UserGroupRateRepository, queue creative.CreativeRunQueue, transient creative.CreativeTransientStore, funds *billing.Funds, subscriptions *billingpostgres.SettlementStore, logs usage.UsageLogRepository, pricing *billing.PriceResolver, modelConfigs *routing.PricingConfigService, moderation *moderation.ContentModerationService, auth apikey.APIKeyAuthCacheInvalidator, settings *creative.RuntimeSettings, cfg *config.Config, outbox creative.CreativeRunOutboxRepository) *creative.Public {
 	ttl := 30 * time.Minute
 	if cfg.Creative.TransientTTLSeconds > 0 {
 		ttl = time.Duration(cfg.Creative.TransientTTLSeconds) * time.Second
@@ -63,7 +63,7 @@ func provideS13CreativePublic(repo creative.CreativeRunRepository, keys *keypost
 		Now:               time.Now,
 		Repo:              repo,
 		UserRepo:          creativeUsers{users},
-		AccountRepo:       creativeAccounts{accounts},
+		ProviderRepo:      creativeProviders{providers},
 		GroupRepo:         creativeGroups{groups},
 		UserGroupRateRepo: rates,
 		Queue:             queue,
@@ -120,16 +120,18 @@ func (r creativeUsers) GetByID(ctx context.Context, id int64) (creative.UserAcce
 	return v, err
 }
 
-type creativeAccounts struct{ store *accountpostgres.AccountStore }
+type creativeProviders struct {
+	store *providerpostgres.ProviderStore
+}
 
-func (r creativeAccounts) ListSchedulableByGroupIDAndPlatform(ctx context.Context, id int64, platform string) ([]creative.CatalogAccount, error) {
+func (r creativeProviders) ListSchedulableByGroupIDAndPlatform(ctx context.Context, id int64, platform string) ([]creative.CatalogProvider, error) {
 	v, err := r.store.ListSchedulableByGroupIDAndPlatform(ctx, id, platform)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]creative.CatalogAccount, len(v))
+	out := make([]creative.CatalogProvider, len(v))
 	for i := range v {
-		out[i] = gatewayprovider.CreativeCatalogAccount(&v[i])
+		out[i] = gatewayprovider.CreativeCatalogProvider(&v[i])
 	}
 	return out, nil
 }
@@ -182,7 +184,7 @@ func (m creativeModeration) Check(ctx context.Context, v creative.ModerationInpu
 		GroupID:          v.GroupID,
 		GroupName:        v.GroupName,
 		Endpoint:         v.Endpoint,
-		Provider:         v.Provider,
+		Provider:         v.Platform,
 		Model:            v.Model,
 		Protocol:         v.Protocol,
 		Body:             v.Body,

@@ -1,4 +1,4 @@
-// 每种入口的账号内重试保留独立分支，账号切换仍由调用方拥有。
+// 每种入口的提供商内重试保留独立分支，提供商切换仍由调用方拥有。
 package gemini
 
 import (
@@ -30,14 +30,14 @@ func ExchangeOpenAI(ctx context.Context, options ExchangeOptions) (ExchangeResul
 			safeErr := options.Sanitize(err.Error())
 			options.Observe(ExchangeNotice{
 				Platform:           options.Platform,
-				AccountID:          options.AccountID,
-				AccountName:        options.AccountName,
+				ProviderID:         options.ProviderID,
+				ProviderName:       options.ProviderName,
 				UpstreamStatusCode: 0,
 				Kind:               "request_error",
 				Message:            safeErr,
 			})
 			if attempt < options.MaxRetries {
-				logger.LegacyPrintf("service.gemini_chat_completions", "Gemini account %d: upstream request failed, retry %d/%d: %v", options.AccountID, attempt, options.MaxRetries, err)
+				logger.LegacyPrintf("service.gemini_chat_completions", "Gemini provider %d: upstream request failed, retry %d/%d: %v", options.ProviderID, attempt, options.MaxRetries, err)
 				SleepGeminiBackoff(attempt)
 				continue
 			}
@@ -75,14 +75,14 @@ func ExchangeOpenAI(ctx context.Context, options ExchangeOptions) (ExchangeResul
 				upstreamMsg = options.Sanitize(upstreamMsg)
 				options.Observe(ExchangeNotice{
 					Platform:           options.Platform,
-					AccountID:          options.AccountID,
-					AccountName:        options.AccountName,
+					ProviderID:         options.ProviderID,
+					ProviderName:       options.ProviderName,
 					UpstreamStatusCode: resp.StatusCode,
 					UpstreamRequestID:  upstreamReqID,
 					Kind:               "retry",
 					Message:            upstreamMsg,
 				})
-				logger.LegacyPrintf("service.gemini_chat_completions", "Gemini account %d: upstream status %d, retry %d/%d", options.AccountID, resp.StatusCode, attempt, options.MaxRetries)
+				logger.LegacyPrintf("service.gemini_chat_completions", "Gemini provider %d: upstream status %d, retry %d/%d", options.ProviderID, resp.StatusCode, attempt, options.MaxRetries)
 				SleepGeminiBackoff(attempt)
 				continue
 			}

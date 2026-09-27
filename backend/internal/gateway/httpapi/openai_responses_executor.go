@@ -6,11 +6,11 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/forward"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/gin-gonic/gin"
 )
 
-// OpenAIHTTPWSAttempt 固化 HTTP 请求转入 WS 执行时的参数，不重做请求转换或选账号。
+// OpenAIHTTPWSAttempt 固化 HTTP 请求转入 WS 执行时的参数，不重做请求转换或选提供商。
 type OpenAIHTTPWSAttempt struct {
 	ClientPromptCacheKey, Token                      string
 	Decision                                         egress.OpenAIWSProtocolDecision
@@ -31,7 +31,7 @@ type OpenAIResponsesExecutor struct {
 	Text             *OpenAITextExecutor
 	Grok             *GrokExecutor
 	Lineage          *OpenAIEncryptedLineage
-	ImageBridge      *provider.ResponseImagePolicy
-	ResolveTransport func(*provider.ExecutionAccount) egress.OpenAIWSProtocolDecision
-	WebSocket        func(context.Context, *gin.Context, *provider.ExecutionAccount, map[string]any, OpenAIHTTPWSAttempt) (*forward.OpenAIResult, error)
+	ImageBridge      *gatewayadapter.ResponseImagePolicy
+	ResolveTransport func(*gatewayadapter.ExecutionProvider) egress.OpenAIWSProtocolDecision
+	WebSocket        func(context.Context, *gin.Context, *gatewayadapter.ExecutionProvider, map[string]any, OpenAIHTTPWSAttempt) (*forward.OpenAIResult, error)
 }

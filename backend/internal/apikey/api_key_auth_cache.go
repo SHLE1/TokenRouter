@@ -64,7 +64,7 @@ type APIKeyAuthCompositeGroupSnapshot struct {
 	Group                *APIKeyAuthGroupSnapshot `json:"group,omitempty"`
 }
 
-// APIKeyAuthActorSnapshot 只缓存验证成员账号状态所需的字段。
+// APIKeyAuthActorSnapshot 只缓存验证成员提供商状态所需的字段。
 type APIKeyAuthActorSnapshot struct {
 	ID       int64  `json:"id"`
 	Status   string `json:"status"`
@@ -130,7 +130,7 @@ type APIKeyAuthGroupSnapshot struct {
 	FallbackGroupIDOnInvalidRequest *int64 `json:"fallback_group_id_on_invalid_request,omitempty"`
 	UnavailableFallbackGroupID      *int64 `json:"unavailable_fallback_group_id,omitempty"`
 
-	// Model routing is used by gateway account selection, so it must be part of auth cache snapshot.
+	// Model routing is used by gateway provider selection, so it must be part of auth cache snapshot.
 	// Only anthropic groups use these fields; others may leave them empty.
 	ModelRouting        map[string][]int64 `json:"model_routing,omitempty"`
 	ModelRoutingEnabled bool               `json:"model_routing_enabled"`

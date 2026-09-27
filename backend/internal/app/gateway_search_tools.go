@@ -8,7 +8,6 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/transport"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/config"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
@@ -18,6 +17,7 @@ import (
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/searchtools"
 	"github.com/TokenFlux/TokenRouter/internal/moderation"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
@@ -37,29 +37,29 @@ type standaloneSearchExecution struct {
 }
 
 func (p standaloneSearchExecution) Select(ctx context.Context, group int64, model string, excluded map[int64]struct{}) (gatewayhttp.StandaloneSearchTarget, searchtools.Selection, bool, error) {
-	selected, _, err := p.selector.SelectAccountWithSchedulerForCapability(ctx, &group, "", "", model, excluded, egress.OpenAIUpstreamTransportHTTPSSE, account.OpenAIEndpointCapabilityTextGeneration, false, false, capability.PlatformGrok)
+	selected, _, err := p.selector.SelectProviderWithSchedulerForCapability(ctx, &group, "", "", model, excluded, egress.OpenAIUpstreamTransportHTTPSSE, provider.OpenAIEndpointCapabilityTextGeneration, false, false, capability.PlatformGrok)
 	if err != nil {
 		return nil, searchtools.Selection{}, false, err
 	}
-	if selected == nil || selected.Account == nil {
+	if selected == nil || selected.Provider == nil {
 		return nil, searchtools.Selection{}, false, nil
 	}
-	target := standaloneSearchTarget{source: p.executor, account: gatewayprovider.ExecutionRecord(selected.Account)}
-	return target, searchtools.Selection{AccountID: selected.Account.Record.ID, Acquired: selected.Acquired, Release: selected.ReleaseFunc, WaitPlan: selected.WaitPlan}, true, nil
+	target := standaloneSearchTarget{source: p.executor, provider: gatewayprovider.ExecutionRecord(selected.Provider)}
+	return target, searchtools.Selection{ProviderID: selected.Provider.Record.ID, Acquired: selected.Acquired, Release: selected.ReleaseFunc, WaitPlan: selected.WaitPlan}, true, nil
 }
 
 // 目标只在该请求内保存已选实例，完成入队时才投影独立快照。
 type standaloneSearchTarget struct {
-	source  *gatewayprovider.GrokSearchExecutor
-	account *account.Record
+	source   *gatewayprovider.GrokSearchExecutor
+	provider *provider.Record
 }
 
-func (t standaloneSearchTarget) CompletionRecord() *account.Record {
-	return t.account
+func (t standaloneSearchTarget) CompletionRecord() *provider.Record {
+	return t.provider
 }
 
 func (t standaloneSearchTarget) Execute(ctx context.Context, body []byte) ([]byte, error) {
-	return t.source.Execute(ctx, t.account, body)
+	return t.source.Execute(ctx, t.provider, body)
 }
 
 // ProvideGatewaySearchHTTP 直接构造原生入口，沿用唯一选号、资金、审核和完成运行时。

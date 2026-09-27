@@ -12,11 +12,11 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/messageforward"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/errorpolicy"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
@@ -45,14 +45,14 @@ func TestAnthropicErrorEntryRuleAndMonitoring(t *testing.T) {
 				Header:     http.Header{},
 				Body:       io.NopCloser(bytes.NewReader([]byte(`{"error":{"message":"Invalid schema in upstream request"}}`))),
 			}
-			account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Type: capability.AccountTypeAPIKey}}
+			provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Type: capability.ProviderTypeAPIKey}}
 			svc := messageforward.NewRuntime(messageforward.Dependencies{}, messageforward.Options{})
 			var result *forwardcore.Result
 			var err error
 			if tc.retry {
-				result, err = messageforward.ErrorForTest(svc, context.Background(), gatewayhttp.NewMessageForwardBoundary(c, nil), account, resp, true)
+				result, err = messageforward.ErrorForTest(svc, context.Background(), gatewayhttp.NewMessageForwardBoundary(c, nil), provider, resp, true)
 			} else {
-				result, err = messageforward.ErrorForTest(svc, context.Background(), gatewayhttp.NewMessageForwardBoundary(c, nil), account, resp, false)
+				result, err = messageforward.ErrorForTest(svc, context.Background(), gatewayhttp.NewMessageForwardBoundary(c, nil), provider, resp, false)
 			}
 			require.Nil(t, result)
 			require.ErrorContains(t, err, "passthrough rule matched")

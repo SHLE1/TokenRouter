@@ -11,12 +11,12 @@ import (
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/querycache"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
-type tokenRefreshAccountRepo struct {
+type tokenRefreshProviderRepo struct {
 	credentialReadStore
 	updateCalls                  int
 	fullUpdateCalls              int
@@ -28,7 +28,7 @@ type tokenRefreshAccountRepo struct {
 	lastErrorMessage             string
 	lastTempUnschedReason        string
 	lastExtraUpdates             map[string]any
-	lastAccount                  *gatewayprovider.ExecutionAccount
+	lastProvider                 *gatewayprovider.ExecutionProvider
 	updateErr                    error
 	cancelOnUpdate               context.CancelFunc
 	conditionalErrorCalls        int
@@ -51,38 +51,38 @@ type tokenRefreshAccountRepo struct {
 	beforeConditionalState       func()
 }
 
-func (r *tokenRefreshAccountRepo) Update(ctx context.Context, account *gatewayprovider.ExecutionAccount) error {
+func (r *tokenRefreshProviderRepo) Update(ctx context.Context, provider *gatewayprovider.ExecutionProvider) error {
 	r.updateCalls++
 	r.fullUpdateCalls++
-	r.lastAccount = account
+	r.lastProvider = provider
 	return r.updateErr
 }
 
-func (r *tokenRefreshAccountRepo) UpdateCredentials(ctx context.Context, id int64, credentials map[string]any) error {
+func (r *tokenRefreshProviderRepo) UpdateCredentials(ctx context.Context, id int64, credentials map[string]any) error {
 	r.updateCalls++
 	r.updateCredentialsCalls++
 	if r.updateErr != nil {
 		return r.updateErr
 	}
 	cloned := querycache.ShallowMap(credentials)
-	if r.accountsByID != nil {
-		if acc, ok := r.accountsByID[id]; ok && acc != nil {
+	if r.providersByID != nil {
+		if acc, ok := r.providersByID[id]; ok && acc != nil {
 			acc.Record.Credentials = cloned
-			r.lastAccount = acc
+			r.lastProvider = acc
 			if r.cancelOnUpdate != nil {
 				r.cancelOnUpdate()
 			}
 			return nil
 		}
 	}
-	r.lastAccount = &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: id, Credentials: cloned}}
+	r.lastProvider = &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: id, Credentials: cloned}}
 	if r.cancelOnUpdate != nil {
 		r.cancelOnUpdate()
 	}
 	return nil
 }
 
-func (r *tokenRefreshAccountRepo) GetByID(ctx context.Context, id int64) (*gatewayprovider.ExecutionAccount, error) {
+func (r *tokenRefreshProviderRepo) GetByID(ctx context.Context, id int64) (*gatewayprovider.ExecutionProvider, error) {
 	if r.respectReadContext && ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
@@ -96,34 +96,34 @@ func (r *tokenRefreshAccountRepo) GetByID(ctx context.Context, id int64) (*gatew
 		case <-timer.C:
 		}
 	}
-	account, err := r.credentialReadStore.GetByID(ctx, id)
+	provider, err := r.credentialReadStore.GetByID(ctx, id)
 	if err != nil || !r.snapshotReads {
-		return account, err
+		return provider, err
 	}
-	return grokCredentialStoredSnapshot(account), nil
+	return grokCredentialStoredSnapshot(provider), nil
 }
 
-func (r *tokenRefreshAccountRepo) SetError(ctx context.Context, id int64, errorMsg string) error {
+func (r *tokenRefreshProviderRepo) SetError(ctx context.Context, id int64, errorMsg string) error {
 	r.setErrorCalls++
 	r.lastErrorMessage = errorMsg
 	return r.setErrorErr
 }
 
-func (r *tokenRefreshAccountRepo) ClearTempUnschedulable(ctx context.Context, id int64) error {
+func (r *tokenRefreshProviderRepo) ClearTempUnschedulable(ctx context.Context, id int64) error {
 	r.clearTempCalls++
 	return nil
 }
 
-func (r *tokenRefreshAccountRepo) SetTempUnschedulable(ctx context.Context, id int64, until time.Time, reason string) error {
+func (r *tokenRefreshProviderRepo) SetTempUnschedulable(ctx context.Context, id int64, until time.Time, reason string) error {
 	r.setTempUnschedCalls++
 	r.lastTempUnschedReason = reason
 	return r.setTempUnschedErr
 }
 
-func (r *tokenRefreshAccountRepo) SetGrokCredentialErrorIfMatch(
+func (r *tokenRefreshProviderRepo) SetGrokCredentialErrorIfMatch(
 	_ context.Context,
 	id int64,
-	snapshot accountcore.CredentialMutationSnapshot,
+	snapshot providercore.CredentialMutationSnapshot,
 	errorMsg string,
 ) (bool, error) {
 	if r.beforeConditionalState != nil {
@@ -131,9 +131,9 @@ func (r *tokenRefreshAccountRepo) SetGrokCredentialErrorIfMatch(
 		r.beforeConditionalState = nil
 		hook()
 	}
-	account := r.accountsByID[id]
-	if !grokCredentialSnapshotMatchesAccount(account, snapshot) ||
-		(errorMsg == string(forwardcore.GrokCredentialReasonProxyInvalid) && account.Record.Proxy != nil) {
+	provider := r.providersByID[id]
+	if !grokCredentialSnapshotMatchesProvider(provider, snapshot) ||
+		(errorMsg == string(forwardcore.GrokCredentialReasonProxyInvalid) && provider.Record.Proxy != nil) {
 		return false, nil
 	}
 	r.setErrorCalls++
@@ -141,16 +141,16 @@ func (r *tokenRefreshAccountRepo) SetGrokCredentialErrorIfMatch(
 	if r.setErrorErr != nil {
 		return false, r.setErrorErr
 	}
-	account.Record.Status = accountcore.StatusError
-	account.Record.Schedulable = false
-	account.Record.ErrorMessage = errorMsg
+	provider.Record.Status = providercore.StatusError
+	provider.Record.Schedulable = false
+	provider.Record.ErrorMessage = errorMsg
 	return true, nil
 }
 
-func (r *tokenRefreshAccountRepo) SetGrokCredentialTempUnschedulableIfMatch(
+func (r *tokenRefreshProviderRepo) SetGrokCredentialTempUnschedulableIfMatch(
 	_ context.Context,
 	id int64,
-	snapshot accountcore.CredentialMutationSnapshot,
+	snapshot providercore.CredentialMutationSnapshot,
 	until time.Time,
 	reason string,
 ) (bool, error) {
@@ -159,8 +159,8 @@ func (r *tokenRefreshAccountRepo) SetGrokCredentialTempUnschedulableIfMatch(
 		r.beforeConditionalState = nil
 		hook()
 	}
-	account := r.accountsByID[id]
-	if !grokCredentialSnapshotMatchesAccount(account, snapshot) {
+	provider := r.providersByID[id]
+	if !grokCredentialSnapshotMatchesProvider(provider, snapshot) {
 		return false, nil
 	}
 	r.setTempUnschedCalls++
@@ -169,17 +169,17 @@ func (r *tokenRefreshAccountRepo) SetGrokCredentialTempUnschedulableIfMatch(
 		return false, r.setTempUnschedErr
 	}
 	value := until
-	account.Record.TempUnschedulableUntil = &value
+	provider.Record.TempUnschedulableUntil = &value
 	return true, nil
 }
 
-func grokCredentialSnapshotMatchesAccount(account *gatewayprovider.ExecutionAccount, snapshot accountcore.CredentialMutationSnapshot) bool {
-	return account != nil && account.View().IsGrokOAuth() && account.View().IsSchedulable() &&
-		grokCredentialMutationSnapshot(account).CredentialsJSON == snapshot.CredentialsJSON &&
-		accountcore.GrokCredentialProxyIDsEqual(account.Record.ProxyID, snapshot.ProxyID)
+func grokCredentialSnapshotMatchesProvider(provider *gatewayprovider.ExecutionProvider, snapshot providercore.CredentialMutationSnapshot) bool {
+	return provider != nil && provider.View().IsGrokOAuth() && provider.View().IsSchedulable() &&
+		grokCredentialMutationSnapshot(provider).CredentialsJSON == snapshot.CredentialsJSON &&
+		providercore.GrokCredentialProxyIDsEqual(provider.Record.ProxyID, snapshot.ProxyID)
 }
 
-func (r *tokenRefreshAccountRepo) SetGrokOAuthRefreshErrorIfCredentialsUnchanged(
+func (r *tokenRefreshProviderRepo) SetGrokOAuthRefreshErrorIfCredentialsUnchanged(
 	_ context.Context,
 	id int64,
 	expectedCredentials map[string]any,
@@ -190,38 +190,38 @@ func (r *tokenRefreshAccountRepo) SetGrokOAuthRefreshErrorIfCredentialsUnchanged
 	if r.conditionalErrorErr != nil {
 		return false, r.conditionalErrorErr
 	}
-	account := r.accountsByID[id]
-	if account == nil {
+	provider := r.providersByID[id]
+	if provider == nil {
 		return false, nil
 	}
 	if r.reauthorizeOnErrorCAS {
 		r.reauthorizeOnErrorCAS = false
-		account.Record.Credentials = map[string]any{
+		provider.Record.Credentials = map[string]any{
 			"access_token":   "fresh-access",
 			"refresh_token":  "fresh-refresh",
 			"_token_version": int64(2),
 		}
-		account.Record.Status = billing.StatusActive
-		account.Record.Schedulable = true
+		provider.Record.Status = billing.StatusActive
+		provider.Record.Schedulable = true
 	}
 	if r.repairProxyOnErrorCAS {
 		r.repairProxyOnErrorCAS = false
 		proxyID := int64(902)
-		account.Record.ProxyID = &proxyID
+		provider.Record.ProxyID = &proxyID
 	}
-	if account.Record.Status != billing.StatusActive || account.Record.Platform != capability.PlatformGrok || account.Record.Type != capability.AccountTypeOAuth ||
-		!reflect.DeepEqual(account.Record.Credentials, expectedCredentials) || !reflect.DeepEqual(account.Record.ProxyID, expectedProxyID) {
+	if provider.Record.Status != billing.StatusActive || provider.Record.Platform != capability.PlatformGrok || provider.Record.Type != capability.ProviderTypeOAuth ||
+		!reflect.DeepEqual(provider.Record.Credentials, expectedCredentials) || !reflect.DeepEqual(provider.Record.ProxyID, expectedProxyID) {
 		return false, nil
 	}
 	r.setErrorCalls++
 	r.lastErrorMessage = errorMsg
-	account.Record.Status = accountcore.StatusError
-	account.Record.Schedulable = false
-	account.Record.ErrorMessage = errorMsg
+	provider.Record.Status = providercore.StatusError
+	provider.Record.Schedulable = false
+	provider.Record.ErrorMessage = errorMsg
 	return true, nil
 }
 
-func (r *tokenRefreshAccountRepo) UpdateGrokOAuthCredentialsIfUnchanged(
+func (r *tokenRefreshProviderRepo) UpdateGrokOAuthCredentialsIfUnchanged(
 	_ context.Context,
 	id int64,
 	expectedCredentials map[string]any,
@@ -232,30 +232,30 @@ func (r *tokenRefreshAccountRepo) UpdateGrokOAuthCredentialsIfUnchanged(
 	if r.conditionalSuccessErr != nil {
 		return false, r.conditionalSuccessErr
 	}
-	account := r.accountsByID[id]
-	if account != nil && r.mutateSchedulingOnSuccessCAS {
+	provider := r.providersByID[id]
+	if provider != nil && r.mutateSchedulingOnSuccessCAS {
 		r.mutateSchedulingOnSuccessCAS = false
-		account.Record.Status = billing.StatusDisabled
-		account.Record.Schedulable = false
+		provider.Record.Status = billing.StatusDisabled
+		provider.Record.Schedulable = false
 		resetAt := time.Now().Add(30 * time.Minute)
-		account.Record.RateLimitResetAt = &resetAt
+		provider.Record.RateLimitResetAt = &resetAt
 	}
-	if account == nil || account.Record.Platform != capability.PlatformGrok ||
-		account.Record.Type != capability.AccountTypeOAuth || !reflect.DeepEqual(account.Record.Credentials, expectedCredentials) ||
-		!reflect.DeepEqual(account.Record.ProxyID, expectedProxyID) {
+	if provider == nil || provider.Record.Platform != capability.PlatformGrok ||
+		provider.Record.Type != capability.ProviderTypeOAuth || !reflect.DeepEqual(provider.Record.Credentials, expectedCredentials) ||
+		!reflect.DeepEqual(provider.Record.ProxyID, expectedProxyID) {
 		return false, nil
 	}
 	r.updateCalls++
 	r.updateCredentialsCalls++
-	account.Record.Credentials = querycache.ShallowMap(credentials)
-	r.lastAccount = account
+	provider.Record.Credentials = querycache.ShallowMap(credentials)
+	r.lastProvider = provider
 	if r.cancelOnUpdate != nil {
 		r.cancelOnUpdate()
 	}
 	return true, nil
 }
 
-func (r *tokenRefreshAccountRepo) SetGrokOAuthRefreshTempUnschedulableIfCredentialsUnchanged(
+func (r *tokenRefreshProviderRepo) SetGrokOAuthRefreshTempUnschedulableIfCredentialsUnchanged(
 	_ context.Context,
 	id int64,
 	expectedCredentials map[string]any,
@@ -267,41 +267,41 @@ func (r *tokenRefreshAccountRepo) SetGrokOAuthRefreshTempUnschedulableIfCredenti
 	if r.conditionalTempErr != nil {
 		return false, r.conditionalTempErr
 	}
-	account := r.accountsByID[id]
-	if account == nil {
+	provider := r.providersByID[id]
+	if provider == nil {
 		return false, nil
 	}
 	if r.reauthorizeOnTempCAS {
 		r.reauthorizeOnTempCAS = false
-		account.Record.Credentials = map[string]any{
+		provider.Record.Credentials = map[string]any{
 			"access_token":   "fresh-access",
 			"refresh_token":  "fresh-refresh",
 			"_token_version": int64(2),
 		}
-		account.Record.Status = billing.StatusActive
-		account.Record.Schedulable = true
+		provider.Record.Status = billing.StatusActive
+		provider.Record.Schedulable = true
 	}
 	if r.repairProxyOnTempCAS {
 		r.repairProxyOnTempCAS = false
 		proxyID := int64(902)
-		account.Record.ProxyID = &proxyID
+		provider.Record.ProxyID = &proxyID
 	}
-	if account.Record.Status != billing.StatusActive || account.Record.Platform != capability.PlatformGrok || account.Record.Type != capability.AccountTypeOAuth ||
-		!reflect.DeepEqual(account.Record.Credentials, expectedCredentials) || !reflect.DeepEqual(account.Record.ProxyID, expectedProxyID) {
+	if provider.Record.Status != billing.StatusActive || provider.Record.Platform != capability.PlatformGrok || provider.Record.Type != capability.ProviderTypeOAuth ||
+		!reflect.DeepEqual(provider.Record.Credentials, expectedCredentials) || !reflect.DeepEqual(provider.Record.ProxyID, expectedProxyID) {
 		return false, nil
 	}
 	r.setTempUnschedCalls++
 	r.lastTempUnschedReason = reason
-	account.Record.TempUnschedulableUntil = &until
-	account.Record.TempUnschedulableReason = reason
+	provider.Record.TempUnschedulableUntil = &until
+	provider.Record.TempUnschedulableReason = reason
 	return true, nil
 }
 
-func (r *tokenRefreshAccountRepo) UpdateExtra(ctx context.Context, id int64, updates map[string]any) error {
+func (r *tokenRefreshProviderRepo) UpdateExtra(ctx context.Context, id int64, updates map[string]any) error {
 	r.updateExtraCalls++
 	r.lastExtraUpdates = querycache.ShallowMap(updates)
-	if r.accountsByID != nil {
-		if acc, ok := r.accountsByID[id]; ok && acc != nil {
+	if r.providersByID != nil {
+		if acc, ok := r.providersByID[id]; ok && acc != nil {
 			if acc.Record.Extra == nil {
 				acc.Record.Extra = make(map[string]any, len(updates))
 			}
@@ -319,15 +319,15 @@ type tokenRefresherStub struct {
 	calls       int
 }
 
-func (r *tokenRefresherStub) CanRefresh(account *accountcore.Record) bool {
+func (r *tokenRefresherStub) CanRefresh(provider *providercore.Record) bool {
 	return true
 }
 
-func (r *tokenRefresherStub) NeedsRefresh(account *accountcore.Record, refreshWindowDuration time.Duration) bool {
+func (r *tokenRefresherStub) NeedsRefresh(provider *providercore.Record, refreshWindowDuration time.Duration) bool {
 	return true
 }
 
-func (r *tokenRefresherStub) Refresh(ctx context.Context, account *accountcore.Record) (map[string]any, error) {
+func (r *tokenRefresherStub) Refresh(ctx context.Context, provider *providercore.Record) (map[string]any, error) {
 	r.calls++
 	if r.err != nil {
 		return nil, r.err
@@ -335,15 +335,15 @@ func (r *tokenRefresherStub) Refresh(ctx context.Context, account *accountcore.R
 	return r.credentials, nil
 }
 
-func (r *tokenRefresherStub) CacheKey(account *accountcore.Record) string {
-	return "test:stub:" + account.Platform
+func (r *tokenRefresherStub) CacheKey(provider *providercore.Record) string {
+	return "test:stub:" + provider.Platform
 }
 
 // ========== Path A (refreshAPI) 测试用例 ==========
 
-// grokCredentialStoredSnapshot 只为旧消费者测试生成独立夹具，运行实现归 account。
-func grokCredentialStoredSnapshot(value *gatewayprovider.ExecutionAccount) *gatewayprovider.ExecutionAccount {
-	copy := gatewayprovider.NewExecutionAccount(gatewayprovider.ExecutionRecord(value))
+// grokCredentialStoredSnapshot 只为旧消费者测试生成独立夹具，运行实现归 provider。
+func grokCredentialStoredSnapshot(value *gatewayprovider.ExecutionProvider) *gatewayprovider.ExecutionProvider {
+	copy := gatewayprovider.NewExecutionProvider(gatewayprovider.ExecutionRecord(value))
 	if copy != nil && copy.Record.Credentials == nil {
 		copy.Record.Credentials = map[string]any{}
 	}

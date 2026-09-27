@@ -10,8 +10,8 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/modelidentity"
 	upstreamopenai "github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry"
 
@@ -59,7 +59,7 @@ func fastModeTestResolver() *billingcore.PriceResolver {
 func TestOpenAIWSFastModePolicyContextRefreshesEachTurn(t *testing.T) {
 	svc := newWSFastPolicy(t, tierpolicy.Default())
 	svc.Prices = fastModeTestResolver()
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
 	baseCtx := fastModeTestContext(apikey.APIKeyFastModePolicyForceOn, "gpt-5.5")
 	policies := map[int]string{
 		1: apikey.APIKeyFastModePolicyForceOn,
@@ -72,13 +72,13 @@ func TestOpenAIWSFastModePolicyContextRefreshesEachTurn(t *testing.T) {
 	}
 
 	turnOneCtx := openAIWSFastModePolicyContext(baseCtx, hooks, 1)
-	updated, blocked, err := gatewayws.ApplyServiceTierFrame([]byte(`{"type":"response.create","model":"gpt-5.5"}`), "gpt-5.5", svc.Input(turnOneCtx, account, "gpt-5.5"))
+	updated, blocked, err := gatewayws.ApplyServiceTierFrame([]byte(`{"type":"response.create","model":"gpt-5.5"}`), "gpt-5.5", svc.Input(turnOneCtx, provider, "gpt-5.5"))
 	require.NoError(t, err)
 	require.Nil(t, blocked)
 	require.Equal(t, tierpolicy.OpenAIFastTierPriority, gjson.GetBytes(updated, "service_tier").String())
 
 	turnTwoCtx := openAIWSFastModePolicyContext(baseCtx, hooks, 2)
-	updated, blocked, err = gatewayws.ApplyServiceTierFrame([]byte(`{"type":"response.create","model":"gpt-5.5","service_tier":"priority"}`), "gpt-5.5", svc.Input(turnTwoCtx, account, "gpt-5.5"))
+	updated, blocked, err = gatewayws.ApplyServiceTierFrame([]byte(`{"type":"response.create","model":"gpt-5.5","service_tier":"priority"}`), "gpt-5.5", svc.Input(turnTwoCtx, provider, "gpt-5.5"))
 	require.NoError(t, err)
 	require.Nil(t, blocked)
 	require.False(t, gjson.GetBytes(updated, "service_tier").Exists())

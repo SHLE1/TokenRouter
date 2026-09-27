@@ -1,4 +1,4 @@
-// Grok 报文规则保留旧平台差异；所有方法只处理本次输入，不持有账号或请求全局状态。
+// Grok 报文规则保留旧平台差异；所有方法只处理本次输入，不持有提供商或请求全局状态。
 package grok
 
 import (
@@ -45,7 +45,6 @@ func (m BodyCodec) BuildGrokCompactRequestBody(body []byte) ([]byte, error) {
 		return nil, err
 	}
 	input = append(input, map[string]any{
-
 		"type": "message",
 
 		"role": "user",
@@ -122,7 +121,6 @@ func (m BodyCodec) ConvertOpenAICompactInputsForGrok(body []byte) ([]byte, error
 		}
 		if summary := m.CompactSummaryText(item["summary"]); summary != "" {
 			converted = append(converted, map[string]any{
-
 				"type": "message",
 
 				"role": "user",
@@ -187,7 +185,6 @@ func (m BodyCodec) ConvertGrokResponseToOpenAICompact(body []byte) ([]byte, erro
 	}
 
 	compactItem := map[string]any{
-
 		"id": "cmp_" + strings.ReplaceAll(m.NewID(), "-", ""),
 
 		"type": "compaction",
@@ -212,6 +209,7 @@ func (m BodyCodec) ConvertGrokResponseToOpenAICompact(body []byte) ([]byte, erro
 	}
 	return encoded, nil
 }
+
 func (m BodyCodec) CompactSummaryText(value any) string {
 	parts, ok := value.([]any)
 	if !ok {
@@ -229,6 +227,7 @@ func (m BodyCodec) CompactSummaryText(value any) string {
 	}
 	return strings.Join(texts, "\n")
 }
+
 func (m BodyCodec) GrokCompactStringValue(value any) string {
 	text, _ := value.(string)
 	return text

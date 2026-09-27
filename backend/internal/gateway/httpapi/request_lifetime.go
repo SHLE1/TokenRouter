@@ -12,7 +12,7 @@ type requestLifetime struct{ enter func() (func(), error) }
 // BindRequestActivity 只在构造图完成、开放 HTTP 之前调用。
 func (r *requestLifetime) BindRequestActivity(enter func() (func(), error)) { r.enter = enter }
 
-// beginRequest 保留正常请求顺序；停止后的入口不再进入账号尝试或提交完成任务。
+// beginRequest 保留正常请求顺序；停止后的入口不再进入提供商尝试或提交完成任务。
 func (r *requestLifetime) beginRequest(c *gin.Context, format string) (func(), bool) {
 	if r.enter == nil {
 		return func() {}, true

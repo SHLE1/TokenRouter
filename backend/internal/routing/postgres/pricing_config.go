@@ -75,9 +75,9 @@ func (r *PricingConfigStore) Create(ctx context.Context, pricingConfig *routing.
 			}
 		}
 
-		// 设置账号统计定价规则
-		if len(pricingConfig.AccountStatsPricingRules) > 0 {
-			if err := replaceAccountStatsPricingRulesTx(ctx, tx, pricingConfig.ID, pricingConfig.AccountStatsPricingRules); err != nil {
+		// 设置提供商统计定价规则
+		if len(pricingConfig.ProviderStatsPricingRules) > 0 {
+			if err := replaceProviderStatsPricingRulesTx(ctx, tx, pricingConfig.ID, pricingConfig.ProviderStatsPricingRules); err != nil {
 				return err
 			}
 		}
@@ -124,11 +124,11 @@ func (r *PricingConfigStore) GetByID(ctx context.Context, id int64) (*routing.Pr
 	}
 	ch.ModelPricing = pricing
 
-	statsPricingRules, err := r.loadAccountStatsPricingRules(ctx, id)
+	statsPricingRules, err := r.loadProviderStatsPricingRules(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	ch.AccountStatsPricingRules = statsPricingRules
+	ch.ProviderStatsPricingRules = statsPricingRules
 
 	return ch, nil
 }
@@ -175,9 +175,9 @@ func (r *PricingConfigStore) Update(ctx context.Context, pricingConfig *routing.
 			}
 		}
 
-		// 更新账号统计定价规则
-		if pricingConfig.AccountStatsPricingRules != nil {
-			if err := replaceAccountStatsPricingRulesTx(ctx, tx, pricingConfig.ID, pricingConfig.AccountStatsPricingRules); err != nil {
+		// 更新提供商统计定价规则
+		if pricingConfig.ProviderStatsPricingRules != nil {
+			if err := replaceProviderStatsPricingRulesTx(ctx, tx, pricingConfig.ID, pricingConfig.ProviderStatsPricingRules); err != nil {
 				return err
 			}
 		}
@@ -282,14 +282,14 @@ func (r *PricingConfigStore) List(ctx context.Context, params pagination.Paginat
 		if err != nil {
 			return nil, nil, err
 		}
-		statsRulesMap, err := r.batchLoadAccountStatsPricingRules(ctx, pricingConfigIDs)
+		statsRulesMap, err := r.batchLoadProviderStatsPricingRules(ctx, pricingConfigIDs)
 		if err != nil {
 			return nil, nil, err
 		}
 		for i := range pricingConfigs {
 			pricingConfigs[i].GroupIDs = groupMap[pricingConfigs[i].ID]
 			pricingConfigs[i].ModelPricing = pricingMap[pricingConfigs[i].ID]
-			pricingConfigs[i].AccountStatsPricingRules = statsRulesMap[pricingConfigs[i].ID]
+			pricingConfigs[i].ProviderStatsPricingRules = statsRulesMap[pricingConfigs[i].ID]
 		}
 	}
 
@@ -386,8 +386,8 @@ func (r *PricingConfigStore) ListAll(ctx context.Context) ([]routing.PricingConf
 		return nil, err
 	}
 
-	// 批量加载账号统计定价规则
-	statsRulesMap, err := r.batchLoadAccountStatsPricingRules(ctx, pricingConfigIDs)
+	// 批量加载提供商统计定价规则
+	statsRulesMap, err := r.batchLoadProviderStatsPricingRules(ctx, pricingConfigIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -395,7 +395,7 @@ func (r *PricingConfigStore) ListAll(ctx context.Context) ([]routing.PricingConf
 	for i := range pricingConfigs {
 		pricingConfigs[i].GroupIDs = groupMap[pricingConfigs[i].ID]
 		pricingConfigs[i].ModelPricing = pricingMap[pricingConfigs[i].ID]
-		pricingConfigs[i].AccountStatsPricingRules = statsRulesMap[pricingConfigs[i].ID]
+		pricingConfigs[i].ProviderStatsPricingRules = statsRulesMap[pricingConfigs[i].ID]
 	}
 
 	return pricingConfigs, nil

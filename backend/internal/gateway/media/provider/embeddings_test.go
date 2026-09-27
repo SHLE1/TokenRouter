@@ -21,6 +21,7 @@ type providerOutput struct {
 }
 
 func (s *providerOutput) Begin(head upstream.OutputHead) error { s.status = head.Status; return nil }
+
 func (s *providerOutput) Emit(event upstream.OutputEvent) error {
 	s.data = append(s.data, event.Data...)
 	return nil
@@ -48,7 +49,7 @@ func TestEmbeddingsAdapterOwnsNativeTargetAndResponse(t *testing.T) {
 	defer server.Close()
 	var closed atomic.Bool
 	var ended atomic.Bool
-	options := EmbeddingsOptions{AccountID: 3, Model: "upstream", URL: server.URL, Token: "sensitive-fixture", ForwardHeaders: http.Header{"X-Forwarded-Test": []string{"forwarded"}}, RequestContext: func(ctx context.Context) (context.Context, context.CancelFunc) { return ctx, func() {} }, ApplyHeaders: func(headers http.Header) { headers.Set("X-Override", "custom") }, Enter: func() (func(), error) { return func() { require.True(t, closed.Load()); ended.Store(true) }, nil }, Do: func(r *http.Request) (*http.Response, error) {
+	options := EmbeddingsOptions{ProviderID: 3, Model: "upstream", URL: server.URL, Token: "sensitive-fixture", ForwardHeaders: http.Header{"X-Forwarded-Test": []string{"forwarded"}}, RequestContext: func(ctx context.Context) (context.Context, context.CancelFunc) { return ctx, func() {} }, ApplyHeaders: func(headers http.Header) { headers.Set("X-Override", "custom") }, Enter: func() (func(), error) { return func() { require.True(t, closed.Load()); ended.Store(true) }, nil }, Do: func(r *http.Request) (*http.Response, error) {
 		resp, err := server.Client().Do(r)
 		if resp != nil {
 			resp.Body = trackedMediaBody{resp.Body, &closed}

@@ -1,4 +1,4 @@
-// UsageLog 是独立的用量事实与展示投影，不持有旧身份或账号实体。
+// UsageLog 是独立的用量事实与展示投影，不持有旧身份或提供商实体。
 package usage
 
 import (
@@ -13,8 +13,8 @@ type UsageLog struct {
 	BillingUserID int64
 	TeamID        *int64
 	APIKeyID      int64
-	AccountID     int64
-	// Platform 固化本次执行账号的平台，历史记录由迁移保存原统计口径。
+	ProviderID    int64
+	// Platform 固化本次执行提供商的平台，历史记录由迁移保存原统计口径。
 	Platform  string
 	RequestID string
 	Model     string
@@ -73,10 +73,10 @@ type UsageLog struct {
 	BillingAllocations        []billing.BillingAllocation
 	RateMultiplier            float64
 	LongContextBillingApplied bool // 长上下文规则是否实际增加费用
-	// AccountRateMultiplier 账号计费倍率快照（nil 表示历史数据，按 1.0 处理）
-	AccountRateMultiplier *float64
-	// AccountStatsCost 账号统计定价预计算基数（nil 时回退 total_cost，之后再乘账号倍率）
-	AccountStatsCost *float64
+	// ProviderRateMultiplier 提供商计费倍率快照（nil 表示历史数据，按 1.0 处理）
+	ProviderRateMultiplier *float64
+	// ProviderStatsCost 提供商统计定价预计算基数（nil 时回退 total_cost，之后再乘提供商倍率）
+	ProviderStatsCost *float64
 
 	BillingType  int8
 	RequestType  RequestType
@@ -91,8 +91,8 @@ type UsageLog struct {
 	// SessionID 是客户端显式提供的请求关联标识，例如 session_id 或 X-Session-Id
 	// 请求头；客户端未提供有效值时为 nil，且绝不从 prompt_cache_key 或内容派生。
 	SessionID *string
-	// UpstreamRequestID 是直接上游在响应头中声明的请求标识，只读账户
-	// extra.upstream_request_id_header 指定的头；账户未指定头名、WS 轮次
+	// UpstreamRequestID 是直接上游在响应头中声明的请求标识，只读提供商
+	// extra.upstream_request_id_header 指定的头；提供商未指定头名、WS 轮次
 	// 与上游没有该头的路径为 nil。
 	UpstreamRequestID *string
 
@@ -117,7 +117,7 @@ type UsageLog struct {
 
 	User         *UserView
 	APIKey       *KeyView
-	Account      *AccountView
+	Provider     *ProviderView
 	Group        *GroupView
 	Subscription *billing.UserSubscription
 }

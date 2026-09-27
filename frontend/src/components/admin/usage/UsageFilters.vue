@@ -105,35 +105,35 @@
           <Select v-model="filters.model" :options="modelOptions" searchable @change="emitChange" />
         </div>
 
-        <!-- Account Filter -->
-        <div ref="accountSearchRef" class="usage-filter-dropdown relative w-full sm:w-auto sm:min-w-[220px]">
-          <label class="input-label">{{ t('admin.usage.account') }}</label>
+        <!-- Provider Filter -->
+        <div ref="providerSearchRef" class="usage-filter-dropdown relative w-full sm:w-auto sm:min-w-[220px]">
+          <label class="input-label">{{ t('admin.usage.provider') }}</label>
           <input
-            v-model="accountKeyword"
+            v-model="providerKeyword"
             type="text"
             class="input pr-8"
-            :placeholder="t('admin.usage.searchAccountPlaceholder')"
-            @input="debounceAccountSearch"
-            @focus="showAccountDropdown = true"
+            :placeholder="t('admin.usage.searchProviderPlaceholder')"
+            @input="debounceProviderSearch"
+            @focus="showProviderDropdown = true"
           />
           <button
-            v-if="filters.account_id"
+            v-if="filters.provider_id"
             type="button"
-            @click="clearAccount"
+            @click="clearProvider"
             class="absolute right-2 top-9 text-gray-400"
-            aria-label="Clear account filter"
+            aria-label="Clear provider filter"
           >
             ✕
           </button>
           <div
-            v-if="showAccountDropdown && (accountResults.length > 0 || accountKeyword)"
+            v-if="showProviderDropdown && (providerResults.length > 0 || providerKeyword)"
             class="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-control border bg-white shadow-lg dark:bg-gray-800"
           >
             <button
-              v-for="a in accountResults"
+              v-for="a in providerResults"
               :key="a.id"
               type="button"
-              @click="selectAccount(a)"
+              @click="selectProvider(a)"
               class="dropdown-item"
             >
               <span class="truncate">{{ a.name }}</span>
@@ -259,7 +259,7 @@ const filters = toRef(props, 'modelValue')
 
 const userSearchRef = ref<HTMLElement | null>(null)
 const apiKeySearchRef = ref<HTMLElement | null>(null)
-const accountSearchRef = ref<HTMLElement | null>(null)
+const providerSearchRef = ref<HTMLElement | null>(null)
 const filterPanelRef = ref<HTMLElement | null>(null)
 const showFilterDropdown = ref(false)
 
@@ -274,14 +274,14 @@ const apiKeyResults = ref<SimpleApiKey[]>([])
 const showApiKeyDropdown = ref(false)
 let apiKeySearchTimeout: ReturnType<typeof setTimeout> | null = null
 
-interface SimpleAccount {
+interface SimpleProvider {
   id: number
   name: string
 }
-const accountKeyword = ref('')
-const accountResults = ref<SimpleAccount[]>([])
-const showAccountDropdown = ref(false)
-let accountSearchTimeout: ReturnType<typeof setTimeout> | null = null
+const providerKeyword = ref('')
+const providerResults = ref<SimpleProvider[]>([])
+const showProviderDropdown = ref(false)
+let providerSearchTimeout: ReturnType<typeof setTimeout> | null = null
 
 const modelOptions = computed<SelectOption[]>(() => [
   { value: null, label: t('admin.usage.allModels') },
@@ -310,7 +310,7 @@ const billingTypeOptions = ref<SelectOption[]>([
 const errorPhaseOptions = computed<SelectOption[]>(() => [
   { value: null, label: t('admin.usage.allTypes') },
   { value: 'upstream', label: t('admin.ops.errorLog.typeUpstream') },
-  { value: 'account_auth', label: t('admin.ops.errorLog.typeAccountAuth') },
+  { value: 'provider_auth', label: t('admin.ops.errorLog.typeProviderAuth') },
   { value: 'request', label: t('admin.ops.errorLog.typeRequest') },
   { value: 'auth', label: t('admin.ops.errorLog.typeAuth') },
   { value: 'routing', label: t('admin.ops.errorLog.typeRouting') },
@@ -438,34 +438,34 @@ const onClearApiKey = () => {
   emitChange()
 }
 
-const debounceAccountSearch = () => {
-  if (accountSearchTimeout) clearTimeout(accountSearchTimeout)
-  accountSearchTimeout = setTimeout(async () => {
-    if (!accountKeyword.value) {
-      accountResults.value = []
+const debounceProviderSearch = () => {
+  if (providerSearchTimeout) clearTimeout(providerSearchTimeout)
+  providerSearchTimeout = setTimeout(async () => {
+    if (!providerKeyword.value) {
+      providerResults.value = []
       return
     }
     try {
-      const res = await adminAPI.accounts.list(1, 20, { search: accountKeyword.value })
-      accountResults.value = res.items.map((a) => ({ id: a.id, name: a.name }))
+      const res = await adminAPI.providers.list(1, 20, { search: providerKeyword.value })
+      providerResults.value = res.items.map((a) => ({ id: a.id, name: a.name }))
     } catch {
-      accountResults.value = []
+      providerResults.value = []
     }
   }, SEARCH_DEBOUNCE_MS)
 }
 
-const selectAccount = (a: SimpleAccount) => {
-  accountKeyword.value = a.name
-  showAccountDropdown.value = false
-  filters.value.account_id = a.id
+const selectProvider = (a: SimpleProvider) => {
+  providerKeyword.value = a.name
+  showProviderDropdown.value = false
+  filters.value.provider_id = a.id
   emitChange()
 }
 
-const clearAccount = () => {
-  accountKeyword.value = ''
-  accountResults.value = []
-  showAccountDropdown.value = false
-  filters.value.account_id = undefined
+const clearProvider = () => {
+  providerKeyword.value = ''
+  providerResults.value = []
+  showProviderDropdown.value = false
+  filters.value.provider_id = undefined
   emitChange()
 }
 
@@ -484,12 +484,12 @@ const onDocumentClick = (e: MouseEvent) => {
 
   const clickedInsideUser = userSearchRef.value?.contains(target) ?? false
   const clickedInsideApiKey = apiKeySearchRef.value?.contains(target) ?? false
-  const clickedInsideAccount = accountSearchRef.value?.contains(target) ?? false
+  const clickedInsideProvider = providerSearchRef.value?.contains(target) ?? false
   const clickedInsideFilters = filterPanelRef.value?.contains(target) ?? false
 
   if (!clickedInsideUser) showUserDropdown.value = false
   if (!clickedInsideApiKey) showApiKeyDropdown.value = false
-  if (!clickedInsideAccount) showAccountDropdown.value = false
+  if (!clickedInsideProvider) showProviderDropdown.value = false
   if (!clickedInsideFilters) showFilterDropdown.value = false
 }
 
@@ -531,11 +531,11 @@ watch(
 )
 
 watch(
-  () => filters.value.account_id,
-  (accountId) => {
-    if (!accountId) {
-      accountKeyword.value = ''
-      accountResults.value = []
+  () => filters.value.provider_id,
+  (providerId) => {
+    if (!providerId) {
+      providerKeyword.value = ''
+      providerResults.value = []
     }
   }
 )

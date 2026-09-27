@@ -17,7 +17,7 @@ type OpsSystemLog struct {
 	ClientRequestID string         `json:"client_request_id"`
 	UserID          *int64         `json:"user_id"`
 	APIKeyID        *int64         `json:"api_key_id"`
-	AccountID       *int64         `json:"account_id"`
+	ProviderID      *int64         `json:"provider_id"`
 	Platform        string         `json:"platform"`
 	Model           string         `json:"model"`
 	Extra           map[string]any `json:"extra,omitempty"`
@@ -27,7 +27,7 @@ type OpsSystemLog struct {
 // 所有数值均为相对于 Sub2API 入口的毫秒数；缺失阶段保持 nil。
 type OpsRequestTiming struct {
 	RequestContentLength           *int64 `json:"request_content_length,omitempty"`
-	AccountSlotAcquiredMs          *int64 `json:"account_slot_acquired_ms,omitempty"`
+	ProviderSlotAcquiredMs         *int64 `json:"provider_slot_acquired_ms,omitempty"`
 	UpstreamGetConnMs              *int64 `json:"upstream_get_conn_ms,omitempty"`
 	UpstreamGotConnMs              *int64 `json:"upstream_got_conn_ms,omitempty"`
 	UpstreamWroteRequestMs         *int64 `json:"upstream_wrote_request_ms,omitempty"`
@@ -50,7 +50,7 @@ func OpsRequestTimingFromExtra(extra map[string]any) *OpsRequestTiming {
 	}
 	timing := &OpsRequestTiming{
 		RequestContentLength:           timingInt64Ptr(extra["request_content_length"]),
-		AccountSlotAcquiredMs:          timingInt64Ptr(extra["account_slot_acquired_ms"]),
+		ProviderSlotAcquiredMs:         timingInt64Ptr(extra["provider_slot_acquired_ms"]),
 		UpstreamGetConnMs:              timingInt64Ptr(extra["upstream_get_conn_ms"]),
 		UpstreamGotConnMs:              timingInt64Ptr(extra["upstream_got_conn_ms"]),
 		UpstreamWroteRequestMs:         timingInt64Ptr(extra["upstream_wrote_request_ms"]),
@@ -69,7 +69,7 @@ func OpsRequestTimingFromExtra(extra map[string]any) *OpsRequestTiming {
 	if value, ok := extra["upstream_wrote_request_error"].(bool); ok {
 		timing.UpstreamWroteRequestError = value
 	}
-	if timing.RequestContentLength == nil && timing.AccountSlotAcquiredMs == nil && timing.UpstreamGetConnMs == nil &&
+	if timing.RequestContentLength == nil && timing.ProviderSlotAcquiredMs == nil && timing.UpstreamGetConnMs == nil &&
 		timing.UpstreamGotConnMs == nil && timing.UpstreamWroteRequestMs == nil && timing.UpstreamFirstResponseByteMs == nil &&
 		timing.UpstreamFirstSSEDataMs == nil && timing.FirstVisibleOutputMs == nil && timing.FirstDownstreamFlushMs == nil &&
 		timing.UpstreamGetConnCount == nil && timing.UpstreamGotConnCount == nil && timing.UpstreamAttemptCount == nil &&
@@ -115,7 +115,7 @@ type OpsErrorLog struct {
 	CreatedAt time.Time `json:"created_at"`
 
 	// Standardized classification
-	// - 阶段：request|auth|account_auth|routing|upstream|network|internal
+	// - 阶段：request|auth|provider_auth|routing|upstream|network|internal
 	// - owner: client|provider|platform
 	// - source: client_request|upstream_http|gateway
 	Phase string `json:"phase"`
@@ -140,13 +140,13 @@ type OpsErrorLog struct {
 	RequestID       string `json:"request_id"`
 	Message         string `json:"message"`
 
-	UserID      *int64 `json:"user_id"`
-	UserEmail   string `json:"user_email"`
-	APIKeyID    *int64 `json:"api_key_id"`
-	AccountID   *int64 `json:"account_id"`
-	AccountName string `json:"account_name"`
-	GroupID     *int64 `json:"group_id"`
-	GroupName   string `json:"group_name"`
+	UserID       *int64 `json:"user_id"`
+	UserEmail    string `json:"user_email"`
+	APIKeyID     *int64 `json:"api_key_id"`
+	ProviderID   *int64 `json:"provider_id"`
+	ProviderName string `json:"provider_name"`
+	GroupID      *int64 `json:"group_id"`
+	GroupName    string `json:"group_name"`
 
 	ClientIP    *string `json:"client_ip"`
 	RequestPath string  `json:"request_path"`
@@ -193,9 +193,9 @@ type OpsErrorLogFilter struct {
 	StartTime *time.Time
 	EndTime   *time.Time
 
-	Platform  string
-	GroupID   *int64
-	AccountID *int64
+	Platform   string
+	GroupID    *int64
+	ProviderID *int64
 
 	StatusCodes      []int
 	StatusCodesOther bool
@@ -224,12 +224,12 @@ type OpsErrorLogFilter struct {
 	ExcludeCountTokens bool
 
 	// IncludeRecoveredUpstream 允许提供方健康视图绕过 status>=400 守卫，
-	// 从而展示 upstream/account_auth 阶段中 status<400 的恢复记录。
+	// 从而展示 upstream/provider_auth 阶段中 status<400 的恢复记录。
 	// 普通请求错误接口不设置该开关，继续保持客户端错误语义。
 	IncludeRecoveredUpstream bool
 
 	// ErrorPhasesAny 和 ErrorTypesAny 增加普通 ANY() 条件，不改变单值 Phase 的匹配语义。
-	// 开启 IncludeRecoveredUpstream 且阶段列表仅含 upstream/account_auth 时也会绕过守卫；
+	// 开启 IncludeRecoveredUpstream 且阶段列表仅含 upstream/provider_auth 时也会绕过守卫；
 	// 其它 ANY 条件不会自行放宽 status>=400。字段用于映射前端的粗粒度错误分类。
 	ErrorPhasesAny []string
 	ErrorTypesAny  []string

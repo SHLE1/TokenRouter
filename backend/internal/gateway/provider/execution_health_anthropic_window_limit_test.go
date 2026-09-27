@@ -11,8 +11,8 @@ import (
 
 	gatewaytestkit "github.com/TokenFlux/TokenRouter/internal/gateway/testkit"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/stretchr/testify/require"
 )
@@ -70,24 +70,27 @@ func TestHandleUpstreamError_AnthropicWindowLimitPreemptsTempUnschedRule(t *test
 	headers.Set("anthropic-ratelimit-unified-5h-reset", strconv.FormatInt(resetAt.Unix(), 10))
 
 	repo := &anthropicWindowLimitRepo{}
-	svc := newUpstreamHealthForTest(repo, nil, nil, accountcore.HealthOptions{}, nil)
+	svc := newUpstreamHealthForTest(repo, nil, nil, providercore.HealthOptions{}, nil)
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 42,
-		Type:     capability.AccountTypeOAuth,
-		Platform: capability.PlatformAnthropic,
-		Credentials: map[string]any{
-			"temp_unschedulable_enabled": true,
-			"temp_unschedulable_rules": []any{
-				map[string]any{
-					"error_code":       float64(http.StatusTooManyRequests),
-					"keywords":         []any{"rate limit"},
-					"duration_minutes": float64(10),
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 42,
+			Type:     capability.ProviderTypeOAuth,
+			Platform: capability.PlatformAnthropic,
+			Credentials: map[string]any{
+				"temp_unschedulable_enabled": true,
+				"temp_unschedulable_rules": []any{
+					map[string]any{
+						"error_code":       float64(http.StatusTooManyRequests),
+						"keywords":         []any{"rate limit"},
+						"duration_minutes": float64(10),
+					},
 				},
 			},
-		}},
+		},
 	}
 
-	gatewayprovider.ApplyExecutionHealth(context.Background(), svc, account, gatewayprovider.HealthObservationFromContext(context.Background(), http.StatusTooManyRequests, headers, []byte(`{"type":"error","error":{"type":"rate_limit_error","message":"This request would exceed your account's rate limit. Please try again later."}}`), nil))
+	gatewayprovider.ApplyExecutionHealth(context.Background(), svc, provider, gatewayprovider.HealthObservationFromContext(context.Background(), http.StatusTooManyRequests, headers, []byte(`{"type":"error","error":{"type":"rate_limit_error","message":"This request would exceed your provider's rate limit. Please try again later."}}`), nil))
 
 	require.Zero(t, repo.tempUnschedCalls, "官方 Anthropic 窗口限流不应被本地临时不可调度规则缩短")
 	require.Equal(t, 1, repo.rateLimitCalls)
@@ -130,31 +133,34 @@ func TestHandleUpstreamError_Anthropic7dOiOnlyMarksModelRateLimit(t *testing.T) 
 	headers := fable429Headers(reset5h, resetOI)
 
 	repo := &anthropicWindowLimitRepo{}
-	svc := newUpstreamHealthForTest(repo, nil, nil, accountcore.HealthOptions{}, nil)
+	svc := newUpstreamHealthForTest(repo, nil, nil, providercore.HealthOptions{}, nil)
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 42,
-		Type:     capability.AccountTypeOAuth,
-		Platform: capability.PlatformAnthropic,
-		Credentials: map[string]any{
-			"temp_unschedulable_enabled": true,
-			"temp_unschedulable_rules": []any{
-				map[string]any{
-					"error_code":       float64(http.StatusTooManyRequests),
-					"keywords":         []any{"rate limit"},
-					"duration_minutes": float64(10),
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 42,
+			Type:     capability.ProviderTypeOAuth,
+			Platform: capability.PlatformAnthropic,
+			Credentials: map[string]any{
+				"temp_unschedulable_enabled": true,
+				"temp_unschedulable_rules": []any{
+					map[string]any{
+						"error_code":       float64(http.StatusTooManyRequests),
+						"keywords":         []any{"rate limit"},
+						"duration_minutes": float64(10),
+					},
 				},
 			},
-		}},
+		},
 	}
 
-	shouldDisable := gatewayprovider.ApplyExecutionHealth(context.Background(), svc, account, gatewayprovider.HealthObservationFromContext(context.Background(), http.StatusTooManyRequests, headers, []byte(`{"type":"error","error":{"type":"rate_limit_error","message":"This request would exceed your account's rate limit. Please try again later."}}`), []string{"claude-fable-5"})).StopScheduling
+	shouldDisable := gatewayprovider.ApplyExecutionHealth(context.Background(), svc, provider, gatewayprovider.HealthObservationFromContext(context.Background(), http.StatusTooManyRequests, headers, []byte(`{"type":"error","error":{"type":"rate_limit_error","message":"This request would exceed your provider's rate limit. Please try again later."}}`), []string{"claude-fable-5"})).StopScheduling
 
 	require.False(t, shouldDisable)
-	require.Zero(t, repo.rateLimitCalls, "7d_oi (Fable-only) window must not mark the whole account rate limited")
+	require.Zero(t, repo.rateLimitCalls, "7d_oi (Fable-only) window must not mark the whole provider rate limited")
 	require.Zero(t, repo.tempUnschedCalls, "7d_oi window must not trigger local temp-unsched rules")
 	require.Zero(t, repo.sessionWindowCalls, "7d_oi window must not rewrite the 5h session window as rejected")
 	require.Equal(t, 1, repo.modelRateLimitCalls)
-	require.Equal(t, accountcore.AnthropicFableRateLimitKey, repo.lastModelRateLimitScope)
+	require.Equal(t, providercore.AnthropicFableRateLimitKey, repo.lastModelRateLimitScope)
 	require.Equal(t, resetOI, repo.lastModelRateLimitReset)
 
 	// 429 响应头也要被动采样，避免 7d F 进度条在限流期内冻结在旧值
@@ -165,7 +171,7 @@ func TestHandleUpstreamError_Anthropic7dOiOnlyMarksModelRateLimit(t *testing.T) 
 }
 
 func TestHandleUpstreamError_Anthropic5hWindowStillWinsOver7dOi(t *testing.T) {
-	// 5h 窗口 rejected 时必须仍按账号级限流处理（用 5h reset），同时记录 Fable 模型限流。
+	// 5h 窗口 rejected 时必须仍按提供商级限流处理（用 5h reset），同时记录 Fable 模型限流。
 	now := time.Now()
 	reset5h := now.Add(2 * time.Hour).Truncate(time.Second)
 	resetOI := now.Add(80 * time.Hour).Truncate(time.Second)
@@ -174,20 +180,20 @@ func TestHandleUpstreamError_Anthropic5hWindowStillWinsOver7dOi(t *testing.T) {
 	headers.Set("anthropic-ratelimit-unified-5h-utilization", "1.0")
 
 	repo := &anthropicWindowLimitRepo{}
-	svc := newUpstreamHealthForTest(repo, nil, nil, accountcore.HealthOptions{}, nil)
+	svc := newUpstreamHealthForTest(repo, nil, nil, providercore.HealthOptions{}, nil)
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 42, Type: capability.AccountTypeOAuth, Platform: capability.PlatformAnthropic}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 42, Type: capability.ProviderTypeOAuth, Platform: capability.PlatformAnthropic}}
 
-	gatewayprovider.ApplyExecutionHealth(context.Background(), svc, account, gatewayprovider.HealthObservationFromContext(context.Background(), http.StatusTooManyRequests, headers, nil, []string{"claude-fable-5"}))
+	gatewayprovider.ApplyExecutionHealth(context.Background(), svc, provider, gatewayprovider.HealthObservationFromContext(context.Background(), http.StatusTooManyRequests, headers, nil, []string{"claude-fable-5"}))
 
-	require.Equal(t, 1, repo.rateLimitCalls, "exhausted 5h window must still rate limit the account")
+	require.Equal(t, 1, repo.rateLimitCalls, "exhausted 5h window must still rate limit the provider")
 	require.Equal(t, reset5h, repo.lastRateLimitReset)
 	require.Equal(t, 1, repo.modelRateLimitCalls)
-	require.Equal(t, accountcore.AnthropicFableRateLimitKey, repo.lastModelRateLimitScope)
+	require.Equal(t, providercore.AnthropicFableRateLimitKey, repo.lastModelRateLimitScope)
 }
 
-func TestHandleUpstreamError_AnthropicAccountWindowStillWinsOver7dOi(t *testing.T) {
-	// 7d 窗口真超限时必须仍按账号级限流处理，同时记录 Fable 模型限流。
+func TestHandleUpstreamError_AnthropicProviderWindowStillWinsOver7dOi(t *testing.T) {
+	// 7d 窗口真超限时必须仍按提供商级限流处理，同时记录 Fable 模型限流。
 	now := time.Now()
 	reset5h := now.Add(2 * time.Hour).Truncate(time.Second)
 	resetOI := now.Add(80 * time.Hour).Truncate(time.Second)
@@ -196,20 +202,20 @@ func TestHandleUpstreamError_AnthropicAccountWindowStillWinsOver7dOi(t *testing.
 	headers.Set("anthropic-ratelimit-unified-7d-utilization", "1.02")
 
 	repo := &anthropicWindowLimitRepo{}
-	svc := newUpstreamHealthForTest(repo, nil, nil, accountcore.HealthOptions{}, nil)
+	svc := newUpstreamHealthForTest(repo, nil, nil, providercore.HealthOptions{}, nil)
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 42, Type: capability.AccountTypeOAuth, Platform: capability.PlatformAnthropic}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 42, Type: capability.ProviderTypeOAuth, Platform: capability.PlatformAnthropic}}
 
-	gatewayprovider.ApplyExecutionHealth(context.Background(), svc, account, gatewayprovider.HealthObservationFromContext(context.Background(), http.StatusTooManyRequests, headers, nil, []string{"claude-fable-5"}))
+	gatewayprovider.ApplyExecutionHealth(context.Background(), svc, provider, gatewayprovider.HealthObservationFromContext(context.Background(), http.StatusTooManyRequests, headers, nil, []string{"claude-fable-5"}))
 
-	require.Equal(t, 1, repo.rateLimitCalls, "exhausted 7d window must still rate limit the account")
+	require.Equal(t, 1, repo.rateLimitCalls, "exhausted 7d window must still rate limit the provider")
 	require.Equal(t, resetOI, repo.lastRateLimitReset)
 	require.Equal(t, 1, repo.modelRateLimitCalls, "Fable model rate limit should also be recorded")
-	require.Equal(t, accountcore.AnthropicFableRateLimitKey, repo.lastModelRateLimitScope)
+	require.Equal(t, providercore.AnthropicFableRateLimitKey, repo.lastModelRateLimitScope)
 }
 
 func TestHandleUpstreamError_Anthropic429Without7dOiKeepsLegacyBehavior(t *testing.T) {
-	// 无 7d_oi 头、5h/7d 均未超限的 429：保持旧行为（按较早 reset 标记账号限流）。
+	// 无 7d_oi 头、5h/7d 均未超限的 429：保持旧行为（按较早 reset 标记提供商限流）。
 	now := time.Now()
 	reset5h := now.Add(2 * time.Hour).Truncate(time.Second)
 	reset7d := now.Add(80 * time.Hour).Truncate(time.Second)
@@ -223,11 +229,11 @@ func TestHandleUpstreamError_Anthropic429Without7dOiKeepsLegacyBehavior(t *testi
 	headers.Set("anthropic-ratelimit-unified-7d-utilization", "0.56")
 
 	repo := &anthropicWindowLimitRepo{}
-	svc := newUpstreamHealthForTest(repo, nil, nil, accountcore.HealthOptions{}, nil)
+	svc := newUpstreamHealthForTest(repo, nil, nil, providercore.HealthOptions{}, nil)
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 42, Type: capability.AccountTypeOAuth, Platform: capability.PlatformAnthropic}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 42, Type: capability.ProviderTypeOAuth, Platform: capability.PlatformAnthropic}}
 
-	gatewayprovider.ApplyExecutionHealth(context.Background(), svc, account, gatewayprovider.HealthObservationFromContext(context.Background(), http.StatusTooManyRequests, headers, nil, []string{"claude-fable-5"}))
+	gatewayprovider.ApplyExecutionHealth(context.Background(), svc, provider, gatewayprovider.HealthObservationFromContext(context.Background(), http.StatusTooManyRequests, headers, nil, []string{"claude-fable-5"}))
 
 	require.Zero(t, repo.modelRateLimitCalls, "no 7d_oi signal → no model rate limit")
 	require.Equal(t, 1, repo.rateLimitCalls)

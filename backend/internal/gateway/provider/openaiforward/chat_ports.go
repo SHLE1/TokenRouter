@@ -21,7 +21,7 @@ type ChatPorts interface {
 	PrepareChat(context.Context) (ChatProfile, error)
 	DispatchChat(context.Context, Dispatch, []byte, string, string) (*Result, error)
 	APIKeyID() int64
-	AccountIdentity(body map[string]any, key int64)
+	ProviderIdentity(body map[string]any, key int64)
 	AgentRecoveryTried(ctx context.Context) bool
 	AutoCacheKey(model string) bool
 	BillingModel(model, fallback string) string

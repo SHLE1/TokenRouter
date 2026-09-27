@@ -61,7 +61,7 @@ func (e *Target) ExecuteGrok(ctx context.Context, run creative.CreativeRun, payl
 	if e.Grok.OAuth && (grok.MediaCodec{}).IsGrokCLIProxyTarget(targetURL) {
 		grok.ApplyCLIHeaders(req.Header)
 	}
-	// 账号级请求头覆写最后应用，配置值优先于内置默认头。
+	// 提供商级请求头覆写最后应用，配置值优先于内置默认头。
 	e.Grok.ApplyHeaders(req.Header)
 
 	resp, err := e.Grok.Do(req)

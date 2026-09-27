@@ -80,7 +80,7 @@ func RefreshQoderCN20SessionContext(
 	return CompleteQoderCN20IdentityContext(ctx, normalized, token, user, machine, doer)
 }
 
-// AuthStatusAuthInfo 是 Gateway 身份请求内嵌的可选账号信息。
+// AuthStatusAuthInfo 是 Gateway 身份请求内嵌的可选提供商信息。
 type AuthStatusAuthInfo struct {
 	UserName       string `json:"userName,omitempty"`
 	OrganizationID string `json:"orgId,omitempty"`
@@ -112,7 +112,7 @@ type gatewayHTTPPayload struct {
 type AuthStatusResult struct {
 	Name                      string         `json:"name"`
 	ID                        string         `json:"id"`
-	AccountID                 string         `json:"accountId"`
+	ProviderID                string         `json:"accountId"`
 	StaffID                   string         `json:"staffId"`
 	Token                     string         `json:"token"`
 	Quota                     any            `json:"quota"`
@@ -124,7 +124,7 @@ type AuthStatusResult struct {
 	SecurityOauthToken        string         `json:"securityOauthToken"`
 	RefreshToken              string         `json:"refreshToken"`
 	ExpireTime                FlexibleInt64  `json:"expireTime"`
-	IsSubAccount              bool           `json:"isSubAccount"`
+	IsSubProvider             bool           `json:"isSubAccount"`
 	Email                     string         `json:"email"`
 	UserType                  string         `json:"userType"`
 	IsPrivacyPolicyModifiable bool           `json:"isPrivacyPolicyModifiable"`
@@ -193,7 +193,7 @@ func CompleteQoderCN20IdentityContext(
 	if err != nil {
 		return nil, time.Time{}, err
 	}
-	// 国内标准登录保留本次 OpenAPI 的 effective access/refresh token，status 只补充账号状态。
+	// 国内标准登录保留本次 OpenAPI 的 effective access/refresh token，status 只补充提供商状态。
 	identity.SecurityOauthToken = provisional.SecurityOauthToken
 	identity.RefreshToken = strings.TrimSpace(token.RefreshToken)
 	return identity, expiresAt, nil
@@ -281,13 +281,13 @@ func identityFromAuthStatus(status *AuthStatusResult, fallback *AuthIdentity) (*
 	}
 	identity := &AuthIdentity{
 		Name:             firstNonEmpty(status.Name, fallbackIdentityValue(fallback, func(v *AuthIdentity) string { return v.Name })),
-		AID:              firstNonEmpty(status.AccountID, status.ID, fallbackIdentityValue(fallback, func(v *AuthIdentity) string { return v.AID })),
-		UID:              firstNonEmpty(status.ID, status.AccountID, fallbackIdentityValue(fallback, func(v *AuthIdentity) string { return v.UID })),
+		AID:              firstNonEmpty(status.ProviderID, status.ID, fallbackIdentityValue(fallback, func(v *AuthIdentity) string { return v.AID })),
+		UID:              firstNonEmpty(status.ID, status.ProviderID, fallbackIdentityValue(fallback, func(v *AuthIdentity) string { return v.UID })),
 		YxUID:            status.YxUID,
 		OrganizationID:   firstNonEmpty(status.OrganizationID, fallbackIdentityValue(fallback, func(v *AuthIdentity) string { return v.OrganizationID })),
 		OrganizationName: firstNonEmpty(status.OrganizationName, fallbackIdentityValue(fallback, func(v *AuthIdentity) string { return v.OrganizationName })),
 		UserType:         firstNonEmpty(status.UserType, fallbackIdentityValue(fallback, func(v *AuthIdentity) string { return v.UserType }), "personal_standard"),
-		// QoderCN20 status 只负责校验并返回账号状态，成功响应可能不重复回传请求中的 token。
+		// QoderCN20 status 只负责校验并返回提供商状态，成功响应可能不重复回传请求中的 token。
 		SecurityOauthToken: firstNonEmpty(status.SecurityOauthToken, fallbackIdentityValue(fallback, func(v *AuthIdentity) string { return v.SecurityOauthToken })),
 		RefreshToken:       firstNonEmpty(status.RefreshToken, fallbackIdentityValue(fallback, func(v *AuthIdentity) string { return v.RefreshToken })),
 	}

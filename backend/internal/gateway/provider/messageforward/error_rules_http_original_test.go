@@ -4,17 +4,16 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/messageforward"
-
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/messageforward"
+
 	"github.com/TokenFlux/TokenRouter/internal/gateway/errorpolicy"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
@@ -26,7 +25,6 @@ import (
 )
 
 func TestGatewayHandleErrorResponse_NoRuleKeepsDefault(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 
@@ -37,9 +35,9 @@ func TestGatewayHandleErrorResponse_NoRuleKeepsDefault(t *testing.T) {
 		Body:       io.NopCloser(bytes.NewReader(respBody)),
 		Header:     http.Header{},
 	}
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 11, Platform: capability.PlatformAnthropic, Type: capability.AccountTypeAPIKey}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 11, Platform: capability.PlatformAnthropic, Type: capability.ProviderTypeAPIKey}}
 
-	_, err := messageforward.ErrorForTest(svc, context.Background(), httpapi.NewMessageForwardBoundary(c, nil), account, resp, false)
+	_, err := messageforward.ErrorForTest(svc, context.Background(), httpapi.NewMessageForwardBoundary(c, nil), provider, resp, false)
 	require.Error(t, err)
 	assert.Equal(t, http.StatusBadGateway, rec.Code)
 
@@ -52,7 +50,6 @@ func TestGatewayHandleErrorResponse_NoRuleKeepsDefault(t *testing.T) {
 }
 
 func TestGatewayHandleErrorResponse_AppliesRuleFor422(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 
@@ -66,9 +63,9 @@ func TestGatewayHandleErrorResponse_AppliesRuleFor422(t *testing.T) {
 		Body:       io.NopCloser(bytes.NewReader(respBody)),
 		Header:     http.Header{},
 	}
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Type: capability.AccountTypeAPIKey}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Type: capability.ProviderTypeAPIKey}}
 
-	_, err := messageforward.ErrorForTest(svc, context.Background(), httpapi.NewMessageForwardBoundary(c, nil), account, resp, false)
+	_, err := messageforward.ErrorForTest(svc, context.Background(), httpapi.NewMessageForwardBoundary(c, nil), provider, resp, false)
 	require.Error(t, err)
 	assert.Equal(t, http.StatusTeapot, rec.Code)
 
@@ -81,7 +78,6 @@ func TestGatewayHandleErrorResponse_AppliesRuleFor422(t *testing.T) {
 }
 
 func TestHandleErrorResponse_SetsResponseCommitted(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 
@@ -91,9 +87,9 @@ func TestHandleErrorResponse_SetsResponseCommitted(t *testing.T) {
 		Body:       io.NopCloser(bytes.NewReader([]byte(`{"error":{"message":"temperature: range: 0..1"}}`))),
 		Header:     http.Header{},
 	}
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 100, Platform: capability.PlatformAnthropic, Type: capability.AccountTypeAPIKey}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 100, Platform: capability.PlatformAnthropic, Type: capability.ProviderTypeAPIKey}}
 
-	_, err := messageforward.ErrorForTest(svc, context.Background(), httpapi.NewMessageForwardBoundary(c, nil), account, resp, false)
+	_, err := messageforward.ErrorForTest(svc, context.Background(), httpapi.NewMessageForwardBoundary(c, nil), provider, resp, false)
 	require.Error(t, err)
 	assert.True(t, httpapi.IsResponseCommitted(c), "non-failover error path must mark response committed")
 	var payload map[string]any
@@ -101,7 +97,6 @@ func TestHandleErrorResponse_SetsResponseCommitted(t *testing.T) {
 }
 
 func TestHandleErrorResponse_PassthroughRuleSetsCommitted(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 
@@ -116,9 +111,9 @@ func TestHandleErrorResponse_PassthroughRuleSetsCommitted(t *testing.T) {
 		Body:       io.NopCloser(bytes.NewReader([]byte(`{"error":{"message":"temperature: range: 0..1"}}`))),
 		Header:     http.Header{},
 	}
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 200, Platform: capability.PlatformAnthropic, Type: capability.AccountTypeAPIKey}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 200, Platform: capability.PlatformAnthropic, Type: capability.ProviderTypeAPIKey}}
 
-	_, err := messageforward.ErrorForTest(svc, context.Background(), httpapi.NewMessageForwardBoundary(c, nil), account, resp, false)
+	_, err := messageforward.ErrorForTest(svc, context.Background(), httpapi.NewMessageForwardBoundary(c, nil), provider, resp, false)
 	require.Error(t, err)
 	assert.True(t, httpapi.IsResponseCommitted(c), "passthrough rule path must mark response committed")
 	assert.Equal(t, http.StatusBadRequest, rec.Code)

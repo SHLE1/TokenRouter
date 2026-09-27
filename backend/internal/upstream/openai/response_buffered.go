@@ -1,4 +1,4 @@
-// 兼容读取器保留原逐行缓冲、超时和 usage 优先级，不决定是否切换账号。
+// 兼容读取器保留原逐行缓冲、超时和 usage 优先级，不决定是否切换提供商。
 package openai
 
 import (
@@ -31,6 +31,7 @@ func NewCompatSSEScanner(r io.Reader, maxLineSize int) *bufio.Scanner {
 	scanner.Buffer(make([]byte, 0, 64*1024), maxLineSize)
 	return scanner
 }
+
 func IsCompatResponsesTerminalEvent(eventType string) bool {
 	switch strings.TrimSpace(eventType) {
 	case "response.completed", "response.done", "response.incomplete", "response.failed", "response.cancelled", "response.canceled", "error":

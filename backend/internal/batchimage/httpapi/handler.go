@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"errors"
 	"io"
 	"net/http"
@@ -8,8 +9,6 @@ import (
 	"strings"
 
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
-
-	"context"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/server/httpx"
@@ -47,7 +46,7 @@ func (h *BatchImageHandler) Submit(c *gin.Context) {
 	}
 
 	var req service.BatchImageSubmitRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := infraerrors.BindJSONStrict(c, &req); err != nil {
 		BatchImageError(c, service.ErrBatchImageInvalidItems)
 		return
 	}

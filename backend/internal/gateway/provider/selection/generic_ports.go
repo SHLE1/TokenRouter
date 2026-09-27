@@ -16,23 +16,23 @@ import (
 
 // genericSelectionScope 用临时关联号保留同 ID 的多份读取快照，选择结束后即释放。
 type projectionScope struct {
-	next     uint64
-	accounts map[uint64]*gatewayprovider.ExecutionAccount
-	groups   map[uint64]*routing.Group
+	next      uint64
+	providers map[uint64]*gatewayprovider.ExecutionProvider
+	groups    map[uint64]*routing.Group
 }
 
-func (g *projectionScope) account(value *gatewayprovider.ExecutionAccount) *schedulercore.FlowAccount {
+func (g *projectionScope) provider(value *gatewayprovider.ExecutionProvider) *schedulercore.FlowProvider {
 	if value == nil {
 		return nil
 	}
 	g.next++
 	id := g.next
-	g.accounts[id] = value
+	g.providers[id] = value
 	var plan *routing.CandidatePlan
 	if captured, ok := value.Route.Candidate(); ok {
 		plan = &captured
 	}
-	return &schedulercore.FlowAccount{Plan: plan, ProjectionID: id, ID: value.Record.ID, Name: value.Record.Name, Platform: value.Record.Platform, Type: value.Record.Type, Concurrency: value.Record.Concurrency, Priority: value.Record.Priority, LastUsedAt: cloneFlowTime(value.Record.LastUsedAt), SessionWindowEnd: cloneFlowTime(value.Record.SessionWindowEnd), LoadFactor: value.View().EffectiveLoadFactor(), BaseRPM: gatewayprovider.ExecutionRuntimeConfig(value).GetBaseRPM(), PrivacySet: value.View().IsPrivacySet()}
+	return &schedulercore.FlowProvider{Plan: plan, ProjectionID: id, ID: value.Record.ID, Name: value.Record.Name, Platform: value.Record.Platform, Type: value.Record.Type, Concurrency: value.Record.Concurrency, Priority: value.Record.Priority, LastUsedAt: cloneFlowTime(value.Record.LastUsedAt), SessionWindowEnd: cloneFlowTime(value.Record.SessionWindowEnd), LoadFactor: value.View().EffectiveLoadFactor(), BaseRPM: gatewayprovider.ExecutionRuntimeConfig(value).GetBaseRPM(), PrivacySet: value.View().IsPrivacySet()}
 }
 
 func (g *projectionScope) group(value *routing.Group) *schedulercore.FlowGroup {
@@ -45,11 +45,11 @@ func (g *projectionScope) group(value *routing.Group) *schedulercore.FlowGroup {
 	return &schedulercore.FlowGroup{ProjectionID: id, Group: *routing.CloneGroup(value)}
 }
 
-func (g *projectionScope) oldAccount(v *schedulercore.FlowAccount) *gatewayprovider.ExecutionAccount {
+func (g *projectionScope) oldProvider(v *schedulercore.FlowProvider) *gatewayprovider.ExecutionProvider {
 	if v == nil {
 		return nil
 	}
-	return g.accounts[v.ProjectionID]
+	return g.providers[v.ProjectionID]
 }
 
 func (g *projectionScope) oldGroup(v *schedulercore.FlowGroup) *routing.Group {
@@ -59,46 +59,46 @@ func (g *projectionScope) oldGroup(v *schedulercore.FlowGroup) *routing.Group {
 	return g.groups[v.ProjectionID]
 }
 
-func (g *projectionScope) values(values []gatewayprovider.ExecutionAccount) []schedulercore.FlowAccount {
+func (g *projectionScope) values(values []gatewayprovider.ExecutionProvider) []schedulercore.FlowProvider {
 	if values == nil {
 		return nil
 	}
-	out := make([]schedulercore.FlowAccount, len(values))
+	out := make([]schedulercore.FlowProvider, len(values))
 	for i := range values {
-		out[i] = *g.account(&values[i])
+		out[i] = *g.provider(&values[i])
 	}
 	return out
 }
 
-func (g *projectionScope) oldValues(values []schedulercore.FlowAccount) []gatewayprovider.ExecutionAccount {
+func (g *projectionScope) oldValues(values []schedulercore.FlowProvider) []gatewayprovider.ExecutionProvider {
 	if values == nil {
 		return nil
 	}
-	out := make([]gatewayprovider.ExecutionAccount, len(values))
+	out := make([]gatewayprovider.ExecutionProvider, len(values))
 	for i := range values {
-		out[i] = *g.oldAccount(&values[i])
+		out[i] = *g.oldProvider(&values[i])
 	}
 	return out
 }
 
-func (g *projectionScope) pointers(values []*gatewayprovider.ExecutionAccount) []*schedulercore.FlowAccount {
+func (g *projectionScope) pointers(values []*gatewayprovider.ExecutionProvider) []*schedulercore.FlowProvider {
 	if values == nil {
 		return nil
 	}
-	out := make([]*schedulercore.FlowAccount, len(values))
+	out := make([]*schedulercore.FlowProvider, len(values))
 	for i, a := range values {
-		out[i] = g.account(a)
+		out[i] = g.provider(a)
 	}
 	return out
 }
 
-func (g *projectionScope) loads(values []accountWithLoad) []schedulercore.FlowLoad {
+func (g *projectionScope) loads(values []providerWithLoad) []schedulercore.FlowLoad {
 	if values == nil {
 		return nil
 	}
 	out := make([]schedulercore.FlowLoad, len(values))
 	for i, a := range values {
-		out[i] = schedulercore.FlowLoad{Account: g.account(a.account), LoadInfo: a.loadInfo}
+		out[i] = schedulercore.FlowLoad{Provider: g.provider(a.provider), LoadInfo: a.loadInfo}
 	}
 	return out
 }
@@ -107,7 +107,7 @@ func (g *projectionScope) selection(value *gatewayprovider.SelectionResult) *sch
 	if value == nil {
 		return nil
 	}
-	out := &schedulercore.FlowSelection{Account: g.account(value.Account), Acquired: value.Acquired, ReleaseFunc: value.ReleaseFunc, WaitPlan: value.WaitPlan, AdvancedScheduler: value.AdvancedScheduler}
+	out := &schedulercore.FlowSelection{Provider: g.provider(value.Provider), Acquired: value.Acquired, ReleaseFunc: value.ReleaseFunc, WaitPlan: value.WaitPlan, AdvancedScheduler: value.AdvancedScheduler}
 	if v := value.AdvancedSchedulerFeedback; v != nil {
 		out.AdvancedSchedulerFeedback = &policy.FeedbackConfig{ErrorRateAlpha: v.ErrorRateAlpha, TtftAlpha: v.TtftAlpha}
 	}
@@ -118,7 +118,7 @@ func (g *projectionScope) restore(value *schedulercore.FlowSelection) *gatewaypr
 	if value == nil {
 		return nil
 	}
-	out := &gatewayprovider.SelectionResult{Account: g.oldAccount(value.Account), Acquired: value.Acquired, ReleaseFunc: value.ReleaseFunc, WaitPlan: value.WaitPlan, AdvancedScheduler: value.AdvancedScheduler}
+	out := &gatewayprovider.SelectionResult{Provider: g.oldProvider(value.Provider), Acquired: value.Acquired, ReleaseFunc: value.ReleaseFunc, WaitPlan: value.WaitPlan, AdvancedScheduler: value.AdvancedScheduler}
 	if v := value.AdvancedSchedulerFeedback; v != nil {
 		out.AdvancedSchedulerFeedback = &policy.FeedbackConfig{ErrorRateAlpha: v.ErrorRateAlpha, TtftAlpha: v.TtftAlpha}
 	}
@@ -126,7 +126,7 @@ func (g *projectionScope) restore(value *schedulercore.FlowSelection) *gatewaypr
 }
 
 func (s *Generic) genericSelector() (*schedulercore.GenericSelector, *projectionScope) {
-	scope := &projectionScope{accounts: map[uint64]*gatewayprovider.ExecutionAccount{}, groups: map[uint64]*routing.Group{}}
+	scope := &projectionScope{providers: map[uint64]*gatewayprovider.ExecutionProvider{}, groups: map[uint64]*routing.Group{}}
 	diagnostics := schedulercore.Diagnostics{Logf: logging.LegacyPrintf, Event: logging.Event}
 
 	diagnostics.Event = func(level, event string, args ...any) {
@@ -154,17 +154,19 @@ func (s *Generic) genericSelector() (*schedulercore.GenericSelector, *projection
 			v, finalID, err := s.resolveGatewayGroup(ctx, id)
 			return scope.group(v), finalID, err
 		},
-		HydrateSelectedAccount: func(ctx context.Context, a *schedulercore.FlowAccount) (*schedulercore.FlowAccount, error) {
-			v, err := s.hydrateSelectedAccount(ctx, scope.oldAccount(a))
-			return scope.account(v), err
+		HydrateSelectedProvider: func(ctx context.Context, a *schedulercore.FlowProvider) (*schedulercore.FlowProvider, error) {
+			v, err := s.hydrateSelectedProvider(ctx, scope.oldProvider(a))
+			return scope.provider(v), err
 		},
-		RoutingAccountIDsForRequest: s.routingAccountIDsForRequest,
-		GetSchedulableAccount: func(ctx context.Context, id int64) (*schedulercore.FlowAccount, error) {
-			v, err := s.getSchedulableAccount(ctx, id)
-			return scope.account(v), err
+		RoutingProviderIDsForRequest: s.routingProviderIDsForRequest,
+		GetSchedulableProvider: func(ctx context.Context, id int64) (*schedulercore.FlowProvider, error) {
+			v, err := s.getSchedulableProvider(ctx, id)
+			return scope.provider(v), err
 		},
-		IsAccountInGroup: func(a *schedulercore.FlowAccount, id *int64) bool { return s.isAccountInGroup(scope.oldAccount(a), id) },
-		LogDetailedSelectionFailure: func(ctx context.Context, id *int64, hash, model, platform string, values []schedulercore.FlowAccount, excluded map[int64]struct{}, mixed bool) string {
+		IsProviderInGroup: func(a *schedulercore.FlowProvider, id *int64) bool {
+			return s.isProviderInGroup(scope.oldProvider(a), id)
+		},
+		LogDetailedSelectionFailure: func(ctx context.Context, id *int64, hash, model, platform string, values []schedulercore.FlowProvider, excluded map[int64]struct{}, mixed bool) string {
 			return summarizeSelectionFailureStats(s.logDetailedSelectionFailure(ctx, id, hash, model, platform, scope.oldValues(values), excluded, mixed))
 		},
 		AdvancedSchedulerStats: func() *schedulercore.RuntimeStats { return s.advancedSchedulerStats() },
@@ -172,13 +174,13 @@ func (s *Generic) genericSelector() (*schedulercore.GenericSelector, *projection
 			return s.advancedSchedulerEffectiveSettingsForRequest(ctx, id)
 		},
 		CheckGroupModelRestriction:         s.checkGroupModelRestriction,
-		GroupMappedModelForAccountLayer:    s.groupMappedModelForAccountLayer,
+		GroupMappedModelForProviderLayer:   s.groupMappedModelForProviderLayer,
 		DebugModelRoutingEnabled:           s.debugModelRoutingEnabled,
 		NeedsUpstreamGroupRestrictionCheck: s.needsUpstreamGroupRestrictionCheck,
-		TryAcquireAccountSlot:              s.tryAcquireAccountSlot,
-		PrefetchedSticky:                   prefetchedStickyAccountIDFromContext,
-		SetAccountError: func(ctx context.Context, id int64, message string) error {
-			return s.setAccountError(ctx, id, message)
+		TryAcquireProviderSlot:             s.tryAcquireProviderSlot,
+		PrefetchedSticky:                   prefetchedStickyProviderIDFromContext,
+		SetProviderError: func(ctx context.Context, id int64, message string) error {
+			return s.setProviderError(ctx, id, message)
 		},
 		SchedulingConfig: func() schedulercore.FlowOptions {
 			v := s.schedulingConfig()
@@ -195,49 +197,49 @@ func (s *Generic) genericSelector() (*schedulercore.GenericSelector, *projection
 		ResolvePlatform: func(ctx context.Context, id *int64, g *schedulercore.FlowGroup) (string, bool, error) {
 			return s.resolvePlatform(ctx, id, scope.oldGroup(g))
 		},
-		ListSchedulableAccounts: func(ctx context.Context, id *int64, platform string, forced bool) ([]schedulercore.FlowAccount, bool, error) {
-			v, mixed, err := s.listSchedulableAccounts(ctx, id, platform, forced)
+		ListSchedulableProviders: func(ctx context.Context, id *int64, platform string, forced bool) ([]schedulercore.FlowProvider, bool, error) {
+			v, mixed, err := s.listSchedulableProviders(ctx, id, platform, forced)
 			return scope.values(v), mixed, err
 		},
-		WithRPMPrefetch: func(ctx context.Context, v []schedulercore.FlowAccount) context.Context {
+		WithRPMPrefetch: func(ctx context.Context, v []schedulercore.FlowProvider) context.Context {
 			return s.withRPMPrefetch(ctx, scope.oldValues(v))
 		},
-		WithWindowCostPrefetch: func(ctx context.Context, v []schedulercore.FlowAccount) context.Context {
+		WithWindowCostPrefetch: func(ctx context.Context, v []schedulercore.FlowProvider) context.Context {
 			return s.withWindowCostPrefetch(ctx, scope.oldValues(v))
 		},
-		IsAccountAllowedForPlatform: func(a *schedulercore.FlowAccount, platform string, mixed bool) bool {
-			return s.isAccountAllowedForPlatform(scope.oldAccount(a), platform, mixed)
+		IsProviderAllowedForPlatform: func(a *schedulercore.FlowProvider, platform string, mixed bool) bool {
+			return s.isProviderAllowedForPlatform(scope.oldProvider(a), platform, mixed)
 		},
-		IsAccountSchedulableForSelection: func(a *schedulercore.FlowAccount) bool {
-			return s.isAccountSchedulableForSelection(scope.oldAccount(a))
+		IsProviderSchedulableForSelection: func(a *schedulercore.FlowProvider) bool {
+			return s.isProviderSchedulableForSelection(scope.oldProvider(a))
 		},
-		IsAccountSchedulableForQuota: func(a *schedulercore.FlowAccount) bool { return s.isAccountSchedulableForQuota(scope.oldAccount(a)) },
-		IsAccountSchedulableForModelSelection: func(ctx context.Context, a *schedulercore.FlowAccount, model string) bool {
-			return s.isAccountSchedulableForModelSelection(ctx, scope.oldAccount(a), model)
+		IsProviderSchedulableForQuota: func(a *schedulercore.FlowProvider) bool { return s.isProviderSchedulableForQuota(scope.oldProvider(a)) },
+		IsProviderSchedulableForModelSelection: func(ctx context.Context, a *schedulercore.FlowProvider, model string) bool {
+			return s.isProviderSchedulableForModelSelection(ctx, scope.oldProvider(a), model)
 		},
-		IsAccountSchedulableForRPM: func(ctx context.Context, a *schedulercore.FlowAccount, sticky bool) bool {
-			return s.isAccountSchedulableForRPM(ctx, scope.oldAccount(a), sticky)
+		IsProviderSchedulableForRPM: func(ctx context.Context, a *schedulercore.FlowProvider, sticky bool) bool {
+			return s.isProviderSchedulableForRPM(ctx, scope.oldProvider(a), sticky)
 		},
-		IsAccountSchedulableForWindowCost: func(ctx context.Context, a *schedulercore.FlowAccount, sticky bool) bool {
-			return s.isAccountSchedulableForWindowCost(ctx, scope.oldAccount(a), sticky)
+		IsProviderSchedulableForWindowCost: func(ctx context.Context, a *schedulercore.FlowProvider, sticky bool) bool {
+			return s.isProviderSchedulableForWindowCost(ctx, scope.oldProvider(a), sticky)
 		},
-		IsModelSupportedByAccountWithContext: func(ctx context.Context, a *schedulercore.FlowAccount, model string) bool {
-			return s.isModelSupportedByAccountWithContext(ctx, scope.oldAccount(a), model)
+		IsModelSupportedByProviderWithContext: func(ctx context.Context, a *schedulercore.FlowProvider, model string) bool {
+			return s.isModelSupportedByProviderWithContext(ctx, scope.oldProvider(a), model)
 		},
-		IsUpstreamModelRestrictedByGroup: func(ctx context.Context, id int64, a *schedulercore.FlowAccount, model string) bool {
-			return s.isUpstreamModelRestrictedByGroup(ctx, id, scope.oldAccount(a), model)
+		IsUpstreamModelRestrictedByGroup: func(ctx context.Context, id int64, a *schedulercore.FlowProvider, model string) bool {
+			return s.isUpstreamModelRestrictedByGroup(ctx, id, scope.oldProvider(a), model)
 		},
-		ShouldClearStickySessionForAccountLayer: func(ctx context.Context, a *schedulercore.FlowAccount, model string) bool {
-			return s.shouldClearStickySessionForAccountLayer(ctx, scope.oldAccount(a), model)
+		ShouldClearStickySessionForProviderLayer: func(ctx context.Context, a *schedulercore.FlowProvider, model string) bool {
+			return s.shouldClearStickySessionForProviderLayer(ctx, scope.oldProvider(a), model)
 		},
-		CheckAndRegisterSession: func(ctx context.Context, a *schedulercore.FlowAccount, session string) bool {
-			return s.checkAndRegisterSession(ctx, scope.oldAccount(a), session)
+		CheckAndRegisterSession: func(ctx context.Context, a *schedulercore.FlowProvider, session string) bool {
+			return s.checkAndRegisterSession(ctx, scope.oldProvider(a), session)
 		},
-		GroupModelUnsupportedErrorIfApplicable: func(ctx context.Context, accounts []schedulercore.FlowAccount, model, platform string, excluded map[int64]struct{}, mixed bool, id *int64, g *schedulercore.FlowGroup) error {
-			return s.groupModelUnsupportedErrorIfApplicable(ctx, scope.oldValues(accounts), model, platform, excluded, mixed, id, scope.oldGroup(g))
+		GroupModelUnsupportedErrorIfApplicable: func(ctx context.Context, providers []schedulercore.FlowProvider, model, platform string, excluded map[int64]struct{}, mixed bool, id *int64, g *schedulercore.FlowGroup) error {
+			return s.groupModelUnsupportedErrorIfApplicable(ctx, scope.oldValues(providers), model, platform, excluded, mixed, id, scope.oldGroup(g))
 		},
-		NewSelectionResult: func(ctx context.Context, a *schedulercore.FlowAccount, acquired bool, release func(), wait *schedulercore.AccountWaitPlan) (*schedulercore.FlowSelection, error) {
-			v, err := s.newSelectionResult(ctx, scope.oldAccount(a), acquired, release, wait)
+		NewSelectionResult: func(ctx context.Context, a *schedulercore.FlowProvider, acquired bool, release func(), wait *schedulercore.ProviderWaitPlan) (*schedulercore.FlowSelection, error) {
+			v, err := s.newSelectionResult(ctx, scope.oldProvider(a), acquired, release, wait)
 			return scope.selection(v), err
 		},
 	}

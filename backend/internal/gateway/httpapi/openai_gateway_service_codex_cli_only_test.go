@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	accountpolicy "github.com/TokenFlux/TokenRouter/internal/account"
+	providerpolicy "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
@@ -25,7 +25,6 @@ import (
 )
 
 func TestGetAPIKeyIDFromContext(t *testing.T) {
-
 	t.Run("context 为 nil", func(t *testing.T) {
 		require.Equal(t, int64(0), APIKeyIDFromContext(nil))
 	})
@@ -62,8 +61,8 @@ func TestGetAPIKeyIDFromContext(t *testing.T) {
 func TestLogCodexCLIOnlyDetection_NilSafety(t *testing.T) {
 	// 不校验日志内容，仅保证在 nil 入参下不会 panic。
 	require.NotPanics(t, func() {
-		LogCodexCLIOnlyDetection(context.TODO(), nil, nil, 0, accountpolicy.CodexClientRestrictionDetectionResult{Enabled: true, Matched: false, Reason: "test"}, nil)
-		LogCodexCLIOnlyDetection(context.Background(), nil, nil, 0, accountpolicy.CodexClientRestrictionDetectionResult{Enabled: false, Matched: false, Reason: "disabled"}, nil)
+		LogCodexCLIOnlyDetection(context.TODO(), nil, nil, 0, providerpolicy.CodexClientRestrictionDetectionResult{Enabled: true, Matched: false, Reason: "test"}, nil)
+		LogCodexCLIOnlyDetection(context.Background(), nil, nil, 0, providerpolicy.CodexClientRestrictionDetectionResult{Enabled: false, Matched: false, Reason: "disabled"}, nil)
 	})
 }
 
@@ -71,16 +70,16 @@ func TestLogCodexCLIOnlyDetection_OnlyLogsRejected(t *testing.T) {
 	logSink, restore := captureHandlerStructuredLog(t)
 	defer restore()
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountpolicy.Record{LoadLocation: time.LoadLocation, ID: 1001}}
-	LogCodexCLIOnlyDetection(context.Background(), nil, account, 2002, accountpolicy.CodexClientRestrictionDetectionResult{
+	provider := &gatewayprovider.ExecutionProvider{Record: providerpolicy.Record{LoadLocation: time.LoadLocation, ID: 1001}}
+	LogCodexCLIOnlyDetection(context.Background(), nil, provider, 2002, providerpolicy.CodexClientRestrictionDetectionResult{
 		Enabled: true,
 		Matched: true,
-		Reason:  accountpolicy.CodexClientRestrictionReasonMatchedUA,
+		Reason:  providerpolicy.CodexClientRestrictionReasonMatchedUA,
 	}, nil)
-	LogCodexCLIOnlyDetection(context.Background(), nil, account, 2002, accountpolicy.CodexClientRestrictionDetectionResult{
+	LogCodexCLIOnlyDetection(context.Background(), nil, provider, 2002, providerpolicy.CodexClientRestrictionDetectionResult{
 		Enabled: true,
 		Matched: false,
-		Reason:  accountpolicy.CodexClientRestrictionReasonNotMatchedUA,
+		Reason:  providerpolicy.CodexClientRestrictionReasonNotMatchedUA,
 	}, nil)
 
 	require.False(t, logSink.ContainsMessage("OpenAI codex_cli_only 允许官方客户端请求"))
@@ -88,7 +87,6 @@ func TestLogCodexCLIOnlyDetection_OnlyLogsRejected(t *testing.T) {
 }
 
 func TestLogCodexCLIOnlyDetection_RejectedIncludesRequestDetails(t *testing.T) {
-
 	logSink, restore := captureHandlerStructuredLog(t)
 	defer restore()
 
@@ -102,11 +100,11 @@ func TestLogCodexCLIOnlyDetection_RejectedIncludesRequestDetails(t *testing.T) {
 	c.Request.Header.Set("OpenAI-Beta", "assistants=v2")
 
 	body := []byte(`{"model":"gpt-5.2","stream":false,"prompt_cache_key":"pc-123","access_token":"secret-token","input":[{"type":"text","text":"hello"}]}`)
-	account := &gatewayprovider.ExecutionAccount{Record: accountpolicy.Record{LoadLocation: time.LoadLocation, ID: 1001}}
-	LogCodexCLIOnlyDetection(context.Background(), c, account, 2002, accountpolicy.CodexClientRestrictionDetectionResult{
+	provider := &gatewayprovider.ExecutionProvider{Record: providerpolicy.Record{LoadLocation: time.LoadLocation, ID: 1001}}
+	LogCodexCLIOnlyDetection(context.Background(), c, provider, 2002, providerpolicy.CodexClientRestrictionDetectionResult{
 		Enabled: true,
 		Matched: false,
-		Reason:  accountpolicy.CodexClientRestrictionReasonNotMatchedUA,
+		Reason:  providerpolicy.CodexClientRestrictionReasonNotMatchedUA,
 	}, body)
 
 	require.True(t, logSink.ContainsFieldValue("request_user_agent", "codex_cli_rs/0.98.0 (Windows 10.0.19045; x86_64) unknown"))
@@ -121,7 +119,6 @@ func TestLogCodexCLIOnlyDetection_RejectedIncludesRequestDetails(t *testing.T) {
 }
 
 func TestLogOpenAIInstructionsRequiredDebug_LogsRequestDetails(t *testing.T) {
-
 	logSink, restore := captureHandlerStructuredLog(t)
 	defer restore()
 
@@ -133,12 +130,12 @@ func TestLogOpenAIInstructionsRequiredDebug_LogsRequestDetails(t *testing.T) {
 	c.Request.Header.Set("OpenAI-Beta", "assistants=v2")
 
 	body := []byte(`{"model":"gpt-5.1-codex","stream":false,"prompt_cache_key":"pc-abc","access_token":"secret-token","input":[{"type":"text","text":"hello"}]}`)
-	account := &gatewayprovider.ExecutionAccount{Record: accountpolicy.Record{LoadLocation: time.LoadLocation, ID: 1001, Name: "codex max套餐"}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providerpolicy.Record{LoadLocation: time.LoadLocation, ID: 1001, Name: "codex max套餐"}}
 
 	LogOpenAIInstructionsRequiredDebug(
 		context.Background(),
 		c,
-		account,
+		provider,
 		http.StatusBadRequest,
 		"Instructions are required",
 		body,
@@ -149,14 +146,13 @@ func TestLogOpenAIInstructionsRequiredDebug_LogsRequestDetails(t *testing.T) {
 	require.True(t, logSink.ContainsFieldValue("request_user_agent", "curl/8.0"))
 	require.True(t, logSink.ContainsFieldValue("request_model", "gpt-5.1-codex"))
 	require.True(t, logSink.ContainsFieldValue("request_query", "trace=1"))
-	require.True(t, logSink.ContainsFieldValue("account_name", "codex max套餐"))
+	require.True(t, logSink.ContainsFieldValue("provider_name", "codex max套餐"))
 	require.True(t, logSink.ContainsFieldValue("request_headers", "openai-beta"))
 	require.True(t, logSink.ContainsFieldValue("request_body_size", ""))
 	require.False(t, logSink.ContainsFieldValue("request_body_preview", ""))
 }
 
 func TestLogOpenAIInstructionsRequiredDebug_NonTargetErrorSkipped(t *testing.T) {
-
 	logSink, restore := captureHandlerStructuredLog(t)
 	defer restore()
 
@@ -169,7 +165,7 @@ func TestLogOpenAIInstructionsRequiredDebug_NonTargetErrorSkipped(t *testing.T) 
 	LogOpenAIInstructionsRequiredDebug(
 		context.Background(),
 		c,
-		&gatewayprovider.ExecutionAccount{Record: accountpolicy.Record{LoadLocation: time.LoadLocation, ID: 1001}},
+		&gatewayprovider.ExecutionProvider{Record: providerpolicy.Record{LoadLocation: time.LoadLocation, ID: 1001}},
 		http.StatusForbidden,
 		"forbidden",
 		body,
@@ -276,7 +272,6 @@ func TestOpenAITransientAndCapacityClassificationIgnoresEchoedJSON(t *testing.T)
 }
 
 func TestShouldFailoverOpenAIUpstreamResponseContextWindow502(t *testing.T) {
-
 	body := []byte(`{"error":{"message":"Your input exceeds the context window of this model. Please adjust your input and try again.","type":"upstream_error","code":null}}`)
 
 	require.False(t, gatewayprovider.ShouldFailoverOpenAIResponse(http.StatusBadGateway, "", body))
@@ -289,7 +284,6 @@ func TestShouldFailoverOpenAIUpstreamResponseContextWindow502(t *testing.T) {
 }
 
 func TestOpenAIGatewayService_Forward_LogsInstructionsRequiredDetails(t *testing.T) {
-
 	logSink, restore := captureHandlerStructuredLog(t)
 	defer restore()
 
@@ -311,19 +305,22 @@ func TestOpenAIGatewayService_Forward_LogsInstructionsRequiredDetails(t *testing
 		},
 	}
 	svc := newResponsesFixture(responsesFixtureInputs{options: &responsesFixtureOptions{Request: OpenAIRequestOptions{ForceCLI: false}}, transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountpolicy.Record{LoadLocation: time.LoadLocation, ID: 1001,
-		Name:           "codex max套餐",
-		Platform:       capability.PlatformOpenAI,
-		Type:           capability.AccountTypeAPIKey,
-		Concurrency:    1,
-		Credentials:    map[string]any{"api_key": "sk-test"},
-		Status:         billing.StatusActive,
-		Schedulable:    true,
-		RateMultiplier: new(float64(1))},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providerpolicy.Record{
+			LoadLocation: time.LoadLocation, ID: 1001,
+			Name:           "codex max套餐",
+			Platform:       capability.PlatformOpenAI,
+			Type:           capability.ProviderTypeAPIKey,
+			Concurrency:    1,
+			Credentials:    map[string]any{"api_key": "sk-test"},
+			Status:         billing.StatusActive,
+			Schedulable:    true,
+			RateMultiplier: new(float64(1)),
+		},
 	}
 	body := []byte(`{"model":"gpt-5.1-codex","stream":false,"input":[{"type":"text","text":"hello"}],"prompt_cache_key":"pc-forward","access_token":"secret-token"}`)
 
-	_, err := svc.Forward(context.Background(), c, account, body)
+	_, err := svc.Forward(context.Background(), c, provider, body)
 	require.Error(t, err)
 	require.Equal(t, http.StatusBadRequest, rec.Code)
 	require.Equal(t, "invalid_request_error", gjson.Get(rec.Body.String(), "error.type").String())
@@ -340,7 +337,6 @@ func TestOpenAIGatewayService_Forward_LogsInstructionsRequiredDetails(t *testing
 }
 
 func TestOpenAIGatewayService_Forward_TransientProcessingErrorTriggersFailover(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", bytes.NewReader(nil))
@@ -358,19 +354,22 @@ func TestOpenAIGatewayService_Forward_TransientProcessingErrorTriggersFailover(t
 		},
 	}
 	svc := newResponsesFixture(responsesFixtureInputs{options: &responsesFixtureOptions{Request: OpenAIRequestOptions{ForceCLI: false}}, transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountpolicy.Record{LoadLocation: time.LoadLocation, ID: 1001,
-		Name:           "codex max套餐",
-		Platform:       capability.PlatformOpenAI,
-		Type:           capability.AccountTypeAPIKey,
-		Concurrency:    1,
-		Credentials:    map[string]any{"api_key": "sk-test"},
-		Status:         billing.StatusActive,
-		Schedulable:    true,
-		RateMultiplier: new(float64(1))},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providerpolicy.Record{
+			LoadLocation: time.LoadLocation, ID: 1001,
+			Name:           "codex max套餐",
+			Platform:       capability.PlatformOpenAI,
+			Type:           capability.ProviderTypeAPIKey,
+			Concurrency:    1,
+			Credentials:    map[string]any{"api_key": "sk-test"},
+			Status:         billing.StatusActive,
+			Schedulable:    true,
+			RateMultiplier: new(float64(1)),
+		},
 	}
 	body := []byte(`{"model":"gpt-5.1-codex","stream":false,"input":[{"type":"text","text":"hello"}]}`)
 
-	_, err := svc.Forward(context.Background(), c, account, body)
+	_, err := svc.Forward(context.Background(), c, provider, body)
 	require.Error(t, err)
 
 	var failoverErr *forwardcore.UpstreamFailoverError

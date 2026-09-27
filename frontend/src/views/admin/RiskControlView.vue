@@ -297,8 +297,8 @@
                 <p class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">{{ formatNumber(cyberSummary?.users ?? 0) }}</p>
               </div>
               <div class="rounded-control border border-gray-100 bg-gray-50 px-3 py-2 dark:border-dark-700 dark:bg-dark-900/30">
-                <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.riskControl.cyberAccounts') }}</p>
-                <p class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">{{ formatNumber(cyberSummary?.accounts ?? 0) }}</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.riskControl.cyberProviders') }}</p>
+                <p class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">{{ formatNumber(cyberSummary?.providers ?? 0) }}</p>
               </div>
             </div>
           </div>
@@ -402,7 +402,7 @@
                   <th class="px-5 py-3 text-left text-xs font-medium tracking-wider text-gray-500 dark:text-gray-400">{{ t('admin.riskControl.table.time') }}</th>
                   <th class="px-5 py-3 text-left text-xs font-medium tracking-wider text-gray-500 dark:text-gray-400">{{ t('admin.riskControl.table.user') }}</th>
                   <th class="px-5 py-3 text-left text-xs font-medium tracking-wider text-gray-500 dark:text-gray-400">{{ t('admin.riskControl.table.apiKey') }}</th>
-                  <th class="px-5 py-3 text-left text-xs font-medium tracking-wider text-gray-500 dark:text-gray-400">{{ t('admin.riskControl.cyberAccount') }}</th>
+                  <th class="px-5 py-3 text-left text-xs font-medium tracking-wider text-gray-500 dark:text-gray-400">{{ t('admin.riskControl.cyberProvider') }}</th>
                   <th class="px-5 py-3 text-left text-xs font-medium tracking-wider text-gray-500 dark:text-gray-400">{{ t('admin.riskControl.table.endpoint') }}</th>
                   <th class="px-5 py-3 text-left text-xs font-medium tracking-wider text-gray-500 dark:text-gray-400">{{ t('admin.riskControl.cyberStatus') }}</th>
                   <th class="px-5 py-3 text-left text-xs font-medium tracking-wider text-gray-500 dark:text-gray-400">{{ t('admin.riskControl.table.actionMeta') }}</th>
@@ -428,8 +428,8 @@
                     </td>
                     <td class="whitespace-nowrap px-5 py-4 text-sm text-gray-700 dark:text-gray-300">{{ row.api_key_name || '-' }}</td>
                     <td class="whitespace-nowrap px-5 py-4 text-sm text-gray-700 dark:text-gray-300">
-                      <div>{{ row.account_name || '-' }}</div>
-                      <div v-if="row.account_id" class="text-xs text-gray-400">AID {{ row.account_id }}</div>
+                      <div>{{ row.provider_name || '-' }}</div>
+                      <div v-if="row.provider_id" class="text-xs text-gray-400">AID {{ row.provider_id }}</div>
                     </td>
                     <td class="whitespace-nowrap px-5 py-4 text-sm text-gray-700 dark:text-gray-300">
                       <div>{{ row.endpoint || '-' }}</div>
@@ -1368,8 +1368,8 @@
               </p>
             </div>
             <div class="rounded-surface border border-gray-100 bg-gray-50 p-4 dark:border-dark-700 dark:bg-dark-800/70">
-              <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('admin.riskControl.cyberAccount') }}</p>
-              <p class="mt-1 truncate text-sm font-semibold text-gray-900 dark:text-white">{{ cyberDetailRow.account_name || '-' }}</p>
+              <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('admin.riskControl.cyberProvider') }}</p>
+              <p class="mt-1 truncate text-sm font-semibold text-gray-900 dark:text-white">{{ cyberDetailRow.provider_name || '-' }}</p>
             </div>
             <div class="rounded-surface border border-gray-100 bg-gray-50 p-4 dark:border-dark-700 dark:bg-dark-800/70">
               <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('admin.riskControl.cyberStatus') }}</p>
@@ -1456,7 +1456,7 @@ import Icon from '@/components/icons/Icon.vue'
 import Select from '@/components/common/Select.vue'
 import Toggle from '@/components/common/Toggle.vue'
 import Pagination from '@/components/common/Pagination.vue'
-import ModelWhitelistSelector from '@/components/account/ModelWhitelistSelector.vue'
+import ModelWhitelistSelector from '@/components/provider/ModelWhitelistSelector.vue'
 import ProxySelector from '@/components/common/ProxySelector.vue'
 import { adminAPI } from '@/api/admin'
 import type {
@@ -1920,7 +1920,7 @@ const overviewItems = computed<OverviewItem[]>(() => [
       ? t('admin.riskControl.cyberSummaryMeta', {
         requests: formatNumber(cyberSummary.value?.requests ?? 0),
         users: formatNumber(cyberSummary.value?.users ?? 0),
-        accounts: formatNumber(cyberSummary.value?.accounts ?? 0),
+        providers: formatNumber(cyberSummary.value?.providers ?? 0),
       })
       : t('admin.riskControl.overview.currentFilter'),
     icon: 'document',

@@ -18,7 +18,7 @@ func CountTokens(ctx context.Context, p CountPorts, in MessageInput, parsed *req
 		return fmt.Errorf("parse request: empty request")
 	}
 
-	if in.AccountPresent && in.Passthrough {
+	if in.ProviderPresent && in.Passthrough {
 		passthroughBody := parsed.Body.Bytes()
 		mappedModel := parsed.Model
 		if reqModel := parsed.Model; reqModel != "" {
@@ -27,19 +27,19 @@ func CountTokens(ctx context.Context, p CountPorts, in MessageInput, parsed *req
 			}
 			if mappedModel != reqModel {
 				passthroughBody = p.ReplaceModel(passthroughBody, mappedModel)
-				p.Log(fmt.Sprintf("CountTokens passthrough model mapping: %s -> %s (account: %s)", reqModel, mappedModel, in.AccountName))
+				p.Log(fmt.Sprintf("CountTokens passthrough model mapping: %s -> %s (provider: %s)", reqModel, mappedModel, in.ProviderName))
 			}
 		}
 		return CountPassthrough(ctx, p, in, passthroughBody, mappedModel)
 	}
 
 	// Bedrock 不支持 count_tokens 端点
-	if in.AccountPresent && in.Bedrock {
+	if in.ProviderPresent && in.Bedrock {
 		p.CountError(404, "not_found_error", "count_tokens endpoint is not supported for Bedrock")
 		return nil
 	}
 
-	// Antigravity/Qoder 账户不支持 count_tokens，返回 404 让客户端 fallback 到本地估算。
+	// Antigravity/Qoder 提供商不支持 count_tokens，返回 404 让客户端 fallback 到本地估算。
 	// 返回 nil 避免 handler 层记录为错误，也不设置 ops 上游错误上下文。
 	if in.Platform == "antigravity" || in.Platform == "qoder" {
 		p.CountError(404, "not_found_error", "count_tokens endpoint is not supported for this platform")
@@ -56,7 +56,7 @@ func CountTokens(ctx context.Context, p CountPorts, in MessageInput, parsed *req
 	}
 	reqModel := parsed.Model
 
-	// count_tokens 与 messages 主路径共用账号映射和平台规范化顺序，确保真正发送的模型与调度结果一致。
+	// count_tokens 与 messages 主路径共用提供商映射和平台规范化顺序，确保真正发送的模型与调度结果一致。
 	if reqModel != "" {
 		upstreamModel := p.ResolveModel(ctx, reqModel)
 		if upstreamModel != "" && upstreamModel != reqModel {
@@ -66,7 +66,7 @@ func CountTokens(ctx context.Context, p CountPorts, in MessageInput, parsed *req
 			}
 			reqModel = upstreamModel
 			parsed.Model = upstreamModel
-			p.Log(fmt.Sprintf("CountTokens final model applied: %s -> %s (account: %s)", originalReqModel, upstreamModel, in.AccountName))
+			p.Log(fmt.Sprintf("CountTokens final model applied: %s -> %s (provider: %s)", originalReqModel, upstreamModel, in.ProviderName))
 		}
 	}
 
@@ -133,7 +133,7 @@ func CountTokens(ctx context.Context, p CountPorts, in MessageInput, parsed *req
 
 	// 检测 thinking block 签名错误（400）并重试一次（过滤 thinking blocks）
 	if resp.StatusCode == 400 && p.RectifyCount(ctx, respBody, reqModel) {
-		p.Log(fmt.Sprintf("Account %d: detected thinking block signature error on count_tokens, retrying with filtered thinking blocks", in.AccountID))
+		p.Log(fmt.Sprintf("Provider %d: detected thinking block signature error on count_tokens, retrying with filtered thinking blocks", in.ProviderID))
 
 		filteredBody := p.FilterCountRetry(body, reqModel)
 		retryWireBody, buildErr := p.BuildCount(ctx, filteredBody, reqModel, shouldMimicClaudeCode, false)
@@ -177,7 +177,7 @@ func CountTokens(ctx context.Context, p CountPorts, in MessageInput, parsed *req
 			return fmt.Errorf("upstream error: %d (not in custom error codes)", resp.StatusCode)
 		}
 		if decision.Failover {
-			return p.CountFailover(resp.StatusCode, resp.Headers, respBody, decision.RetrySameAccount)
+			return p.CountFailover(resp.StatusCode, resp.Headers, respBody, decision.RetrySameProvider)
 		}
 		upstreamDetail := ""
 		if in.LogErrorBody {
@@ -192,11 +192,11 @@ func CountTokens(ctx context.Context, p CountPorts, in MessageInput, parsed *req
 		// 记录上游错误摘要便于排障（不回显请求内容）
 		if in.LogErrorBody {
 			p.Log(fmt.Sprintf(
-				"count_tokens upstream error %d (account=%d platform=%s type=%s): %s",
+				"count_tokens upstream error %d (provider=%d platform=%s type=%s): %s",
 				resp.StatusCode,
-				in.AccountID,
+				in.ProviderID,
 				in.Platform,
-				in.AccountType,
+				in.ProviderType,
 				p.TruncateBytes(respBody, in.LogErrorBodyMaxBytes),
 			))
 		}
@@ -229,7 +229,7 @@ func CountPassthrough(ctx context.Context, p CountPorts, in MessageInput, body [
 		return err
 	}
 	if tokenType := p.TokenKind(); tokenType != "apikey" {
-		p.CountError(502, "upstream_error", "Invalid account token type")
+		p.CountError(502, "upstream_error", "Invalid provider token type")
 		return fmt.Errorf("anthropic api key passthrough requires apikey token, got: %s", tokenType)
 	}
 
@@ -244,8 +244,8 @@ func CountPassthrough(ctx context.Context, p CountPorts, in MessageInput, body [
 		p.SetError(0, p.Sanitize(err.Error()), "")
 		p.Observe(Notice{
 			Platform:           in.Platform,
-			AccountID:          in.AccountID,
-			AccountName:        in.AccountName,
+			ProviderID:         in.ProviderID,
+			ProviderName:       in.ProviderName,
 			UpstreamStatusCode: 0,
 			UpstreamURL:        p.CountURL(),
 			Passthrough:        true,
@@ -273,8 +273,8 @@ func CountPassthrough(ctx context.Context, p CountPorts, in MessageInput, body [
 		// 返回 nil 避免 handler 层记录为错误，也不设置 ops 上游错误上下文。
 		if p.UnsupportedCount(resp.StatusCode, respBody) {
 			p.Log(fmt.Sprintf(
-				"[count_tokens] Upstream does not support count_tokens (404), returning 404: account=%d name=%s msg=%s",
-				in.AccountID, in.AccountName, p.Truncate(upstreamMsg, 512)))
+				"[count_tokens] Upstream does not support count_tokens (404), returning 404: provider=%d name=%s msg=%s",
+				in.ProviderID, in.ProviderName, p.Truncate(upstreamMsg, 512)))
 			p.CountError(404, "not_found_error", "count_tokens endpoint is not supported by upstream")
 			return nil
 		}
@@ -284,7 +284,7 @@ func CountPassthrough(ctx context.Context, p CountPorts, in MessageInput, body [
 			return fmt.Errorf("upstream error: %d (not in custom error codes)", resp.StatusCode)
 		}
 		if decision.Failover {
-			return p.CountFailover(resp.StatusCode, resp.Headers, respBody, decision.RetrySameAccount)
+			return p.CountFailover(resp.StatusCode, resp.Headers, respBody, decision.RetrySameProvider)
 		}
 
 		upstreamDetail := ""
@@ -298,8 +298,8 @@ func CountPassthrough(ctx context.Context, p CountPorts, in MessageInput, body [
 		p.SetError(resp.StatusCode, upstreamMsg, upstreamDetail)
 		p.Observe(Notice{
 			Platform:           in.Platform,
-			AccountID:          in.AccountID,
-			AccountName:        in.AccountName,
+			ProviderID:         in.ProviderID,
+			ProviderName:       in.ProviderName,
 			UpstreamStatusCode: resp.StatusCode,
 			UpstreamRequestID:  resp.RequestID,
 			UpstreamURL:        p.CountURL(),

@@ -5,33 +5,34 @@ import (
 	"log"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
-	accountpostgres "github.com/TokenFlux/TokenRouter/internal/account/postgres"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
+	providerpostgres "github.com/TokenFlux/TokenRouter/internal/provider/postgres"
 )
 
-// 配置和日志在装配时固定，是否冷却由 account 判断。
-func provideRetryCooldown(store *accountpostgres.AccountStore) *account.RetryCooldown {
-	var source account.RetryCooldownStore
+// 配置和日志在装配时固定，是否冷却由 provider 判断。
+func provideRetryCooldown(store *providerpostgres.ProviderStore) *provider.RetryCooldown {
+	var source provider.RetryCooldownStore
 	if store != nil {
 		source = store
 	}
-	return account.NewRetryCooldown(source, account.RetryCooldownOptions{
+	return provider.NewRetryCooldown(source, provider.RetryCooldownOptions{
 		Logf: log.Printf,
 		LookupError: func(id int64, err error) {
-			logging.LegacyPrintf("service.gateway", "查询重试耗尽账号失败: account=%d error=%v", id, err)
+			logging.LegacyPrintf("service.gateway", "查询重试耗尽提供商失败: provider=%d error=%v", id, err)
 		},
 	})
 }
-func messageRetryCooldown(command *account.RetryCooldown) func(context.Context, int64, *forward.UpstreamFailoverError) {
+
+func messageRetryCooldown(command *provider.RetryCooldown) func(context.Context, int64, *forward.UpstreamFailoverError) {
 	return func(ctx context.Context, id int64, failure *forward.UpstreamFailoverError) {
-		input := account.RetryCooldownInput{AccountID: id}
+		input := provider.RetryCooldownInput{ProviderID: id}
 		if failure != nil {
 			input.Status = failure.StatusCode
-			input.Retryable = failure.RetryableOnSameAccount
+			input.Retryable = failure.RetryableOnSameProvider
 			input.RequestScopedTransient = failure.RequestScopedTransient
 		}
 		command.Apply(ctx, input)
@@ -58,9 +59,10 @@ func messageDigestFind(store *session.DigestSessionStore) func(context.Context, 
 		return store.Find(id, prefix, chain)
 	}
 }
+
 func messageDigestSave(store *session.DigestSessionStore) func(context.Context, int64, string, string, string, int64, string) error {
-	return func(_ context.Context, id int64, prefix, chain, uuid string, accountID int64, old string) error {
-		store.Save(id, prefix, chain, uuid, accountID, old)
+	return func(_ context.Context, id int64, prefix, chain, uuid string, providerID int64, old string) error {
+		store.Save(id, prefix, chain, uuid, providerID, old)
 		return nil
 	}
 }

@@ -10,7 +10,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/vertex"
 )
 
-func (s *Gemini) geminiRequestPlan(value *gatewayprovider.ExecutionAccount, model, action string, native, clientStream, upstreamStream, forceAIStudio bool) gemininative.RequestPlan {
+func (s *Gemini) geminiRequestPlan(value *gatewayprovider.ExecutionProvider, model, action string, native, clientStream, upstreamStream, forceAIStudio bool) gemininative.RequestPlan {
 	plan := gemininative.RequestPlan{
 		Mode:           gemininative.CredentialMode(value.Record.Type),
 		Model:          model,

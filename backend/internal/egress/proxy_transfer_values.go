@@ -16,7 +16,7 @@ type TransferProxy struct {
 	Username        string `json:"username,omitempty"`
 	Password        string `json:"password,omitempty"`
 	Status          string `json:"status"`
-	ExpiresAt       *int64 `json:"expires_at,omitempty"`        // unix 秒，与 DataAccount.ExpiresAt 风格一致
+	ExpiresAt       *int64 `json:"expires_at,omitempty"`        // unix 秒，与 DataProvider.ExpiresAt 风格一致
 	FallbackMode    string `json:"fallback_mode,omitempty"`     // none/direct/proxy
 	BackupProxyName string `json:"backup_proxy_name,omitempty"` // 备用代理 name（跨实例按 name 反查）
 	ExpiryWarnDays  int    `json:"expiry_warn_days,omitempty"`
@@ -31,6 +31,7 @@ type TransferError struct {
 func BuildTransferProxyKey(protocol, host string, port int, username, password string) string {
 	return fmt.Sprintf("%s|%s|%d|%s|%s", strings.TrimSpace(protocol), strings.TrimSpace(host), port, strings.TrimSpace(username), strings.TrimSpace(password))
 }
+
 func ValidateTransferProxy(item TransferProxy) error {
 	if strings.TrimSpace(item.Protocol) == "" {
 		return errors.New("proxy protocol is required")
@@ -54,12 +55,14 @@ func ValidateTransferProxy(item TransferProxy) error {
 	}
 	return nil
 }
+
 func DefaultTransferProxyName(name string) string {
 	if strings.TrimSpace(name) == "" {
 		return "imported-proxy"
 	}
 	return name
 }
+
 func NormalizeTransferProxyStatus(status string) string {
 	normalized := strings.TrimSpace(strings.ToLower(status))
 	switch normalized {

@@ -86,7 +86,7 @@ func BuildInputTokensRequest(ctx context.Context, body []byte, options Responses
 		req.Header.Set("user-agent", customUA)
 	}
 
-	// 账号级请求头覆写（仅 openai api_key 账号启用时生效；OAuth 路径 no-op）
+	// 提供商级请求头覆写（仅 openai api_key 提供商启用时生效；OAuth 路径 no-op）
 	options.OverrideHeaders(req.Header)
 
 	return req, nil

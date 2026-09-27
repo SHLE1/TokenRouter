@@ -218,9 +218,9 @@ type ScoreWeights struct {
 	Queue     float64
 	ErrorRate float64
 	TTFT      float64
-	// Reset 倾向「会话窗口最早重置」的账号；0 表示关闭（默认）。
+	// Reset 倾向「会话窗口最早重置」的提供商；0 表示关闭（默认）。
 	Reset float64
-	// QuotaHeadroom 倾向 Codex 7d 剩余额度更健康的账号；0 表示关闭（默认）。
+	// QuotaHeadroom 倾向 Codex 7d 剩余额度更健康的提供商；0 表示关闭（默认）。
 	QuotaHeadroom float64
 	Previous      float64
 	SessionSticky float64
@@ -299,7 +299,7 @@ func ApplyGlobalWeightOverrides(
 }
 
 // FeedbackConfig 保存一次请求回写运行时反馈时使用的 EWMA 系数。
-// 统计仍按账号共享，但系数由请求最终命中的分组决定。
+// 统计仍按提供商共享，但系数由请求最终命中的分组决定。
 type FeedbackConfig struct {
 	ErrorRateAlpha float64
 	TtftAlpha      float64
@@ -324,6 +324,7 @@ func NormalizeFeedback(value FeedbackConfig) FeedbackConfig {
 func (w ScoreWeights) BaseWeightSum() float64 {
 	return w.Priority + w.Load + w.Queue + w.ErrorRate + w.TTFT + w.Reset + w.QuotaHeadroom
 }
+
 func (w ScoreWeights) TotalWeightSum() float64 {
 	return w.BaseWeightSum() + w.Previous + w.SessionSticky
 }

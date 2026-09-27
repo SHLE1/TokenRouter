@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
@@ -17,6 +16,7 @@ import (
 	gatewaycapture "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/server/clientip"
@@ -38,13 +38,13 @@ func grokRealtimeBillingResult(model string, elapsed time.Duration, audioObserve
 func (h *Runtime) recordGrokVoiceUsage(
 	c *gin.Context,
 	apiKey *apikey.APIKey,
-	account *gatewaycapture.ExecutionAccount,
+	provider *gatewaycapture.ExecutionProvider,
 	subscription *billing.UserSubscription,
 	endpoint string,
 	body []byte,
 	result *forwardcore.OpenAIResult,
 ) {
-	if h == nil || c == nil || apiKey == nil || account == nil || result == nil {
+	if h == nil || c == nil || apiKey == nil || provider == nil || result == nil {
 		return
 	}
 	if result.AudioUsage == nil {
@@ -64,7 +64,7 @@ func (h *Runtime) recordGrokVoiceUsage(
 		requestPayloadHash = billing.HashUsageRequestPayload([]byte(endpoint))
 	}
 	inboundEndpoint := gatewayhttp.GetInboundEndpoint(c)
-	upstreamEndpoint := gatewayhttp.GetUpstreamEndpoint(c, account.Record.Platform)
+	upstreamEndpoint := gatewayhttp.GetUpstreamEndpoint(c, provider.Record.Platform)
 
 	model := strings.TrimSpace(result.Model)
 	if model == "" {
@@ -76,7 +76,7 @@ func (h *Runtime) recordGrokVoiceUsage(
 		Result:             result,
 		APIKey:             apiKey,
 		User:               apiKey.User,
-		Account:            gatewaycapture.ExecutionCompletionRecord(account),
+		Provider:           gatewaycapture.ExecutionCompletionRecord(provider),
 		Subscription:       subscription,
 		InboundEndpoint:    inboundEndpoint,
 		UpstreamEndpoint:   upstreamEndpoint,
@@ -95,7 +95,7 @@ func (h *Runtime) recordGrokVoiceUsage(
 		zap.Int64("api_key_id", apiKey.ID),
 		zap.Any("group_id", apiKey.GroupID),
 		zap.String("endpoint", endpoint),
-		zap.Int64("account_id", account.Record.ID),
+		zap.Int64("provider_id", provider.Record.ID),
 	)
 	h.bindings.Common.Support.Submission.SubmitMandatory(c, func(ctx context.Context) {
 		if err := completionRecorder.Record(ctx, completionInput, true); err != nil {
@@ -104,7 +104,7 @@ func (h *Runtime) recordGrokVoiceUsage(
 	})
 }
 
-// grokRealtimeAdapter 只转换已选账号与技术连接，不保留第二套候选循环。
+// grokRealtimeAdapter 只转换已选提供商与技术连接，不保留第二套候选循环。
 type grokRealtimeAdapter struct {
 	h         *Runtime
 	c         *gin.Context
@@ -113,41 +113,41 @@ type grokRealtimeAdapter struct {
 	selection *gatewaycapture.SelectionResult
 }
 
-func (p *grokRealtimeAdapter) SelectRealtime(ctx context.Context, excluded map[int64]struct{}) (accountcore.AccountSnapshot, bool, error) {
-	selected, _, err := p.h.bindings.Common.Selection.SelectAccountWithSchedulerForCapability(ctx, p.apiKey.GroupID, "", "", "", excluded, egress.OpenAIUpstreamTransportHTTPSSE, accountcore.OpenAIEndpointCapabilityTextGeneration, false, false, capability.PlatformGrok)
+func (p *grokRealtimeAdapter) SelectRealtime(ctx context.Context, excluded map[int64]struct{}) (providercore.ProviderSnapshot, bool, error) {
+	selected, _, err := p.h.bindings.Common.Selection.SelectProviderWithSchedulerForCapability(ctx, p.apiKey.GroupID, "", "", "", excluded, egress.OpenAIUpstreamTransportHTTPSSE, providercore.OpenAIEndpointCapabilityTextGeneration, false, false, capability.PlatformGrok)
 	p.selection = selected
-	if selected == nil || selected.Account == nil {
-		return accountcore.AccountSnapshot{}, false, err
+	if selected == nil || selected.Provider == nil {
+		return providercore.ProviderSnapshot{}, false, err
 	}
-	return gatewaycapture.ExecutionSnapshot(selected.Account), true, err
+	return gatewaycapture.ExecutionSnapshot(selected.Provider), true, err
 }
 
-func (p *grokRealtimeAdapter) AcquireRealtime(_ context.Context, _ accountcore.AccountSnapshot) (func(), bool) {
+func (p *grokRealtimeAdapter) AcquireRealtime(_ context.Context, _ providercore.ProviderSnapshot) (func(), bool) {
 	var started bool
-	return p.h.bindings.Common.Support.AcquireResponsesAccountSlot(p.c, p.apiKey.GroupID, "", p.selection, false, &started, p.reqLog)
+	return p.h.bindings.Common.Support.AcquireResponsesProviderSlot(p.c, p.apiKey.GroupID, "", p.selection, false, &started, p.reqLog)
 }
 
-func (p *grokRealtimeAdapter) RealtimeCredential(ctx context.Context, _ accountcore.AccountSnapshot) (string, error) {
-	token, _, err := p.h.bindings.Platform.Credential(ctx, p.c, p.selection.Account)
+func (p *grokRealtimeAdapter) RealtimeCredential(ctx context.Context, _ providercore.ProviderSnapshot) (string, error) {
+	token, _, err := p.h.bindings.Platform.Credential(ctx, p.c, p.selection.Provider)
 	return token, err
 }
 
-func (p *grokRealtimeAdapter) OpenRealtime(ctx context.Context, _ accountcore.AccountSnapshot, token, model string) (upstream.FrameConn, error) {
-	conn, err := p.h.bindings.Platform.OpenRealtime(ctx, p.selection.Account, token, model)
+func (p *grokRealtimeAdapter) OpenRealtime(ctx context.Context, _ providercore.ProviderSnapshot, token, model string) (upstream.FrameConn, error) {
+	conn, err := p.h.bindings.Platform.OpenRealtime(ctx, p.selection.Provider, token, model)
 	if err != nil {
 		return nil, err
 	}
 	return conn, nil
 }
 
-func (p *grokRealtimeAdapter) RealtimeOpenFailed(ctx context.Context, selected accountcore.AccountSnapshot, err error) {
-	p.reqLog.Warn("grok_realtime.pre_accept_failed", zap.Int64("account_id", selected.ID), zap.Error(err))
+func (p *grokRealtimeAdapter) RealtimeOpenFailed(ctx context.Context, selected providercore.ProviderSnapshot, err error) {
+	p.reqLog.Warn("grok_realtime.pre_accept_failed", zap.Int64("provider_id", selected.ID), zap.Error(err))
 	status := http.StatusBadGateway
 	var dialErr *grok.RealtimeDialError
 	if errors.As(err, &dialErr) && dialErr.StatusCode > 0 {
 		status = dialErr.StatusCode
 	}
-	p.h.bindings.Platform.RealtimeError(ctx, p.selection.Account, status, []byte(err.Error()))
+	p.h.bindings.Platform.RealtimeError(ctx, p.selection.Provider, status, []byte(err.Error()))
 }
 
 // grokVoiceAdapter 只桥接单次选择、HTTP 原生执行及完成投影。
@@ -160,39 +160,39 @@ type grokVoiceAdapter struct {
 	selection    *gatewaycapture.SelectionResult
 }
 
-func (p *grokVoiceAdapter) SelectVoice(ctx context.Context, excluded map[int64]struct{}) (accountcore.AccountSnapshot, bool, error) {
-	selected, _, err := p.h.bindings.Common.Selection.SelectAccountWithSchedulerForCapability(ctx, p.apiKey.GroupID, "", "", "grok-4.5", excluded, egress.OpenAIUpstreamTransportHTTPSSE, accountcore.OpenAIEndpointCapabilityTextGeneration, false, false, capability.PlatformGrok)
+func (p *grokVoiceAdapter) SelectVoice(ctx context.Context, excluded map[int64]struct{}) (providercore.ProviderSnapshot, bool, error) {
+	selected, _, err := p.h.bindings.Common.Selection.SelectProviderWithSchedulerForCapability(ctx, p.apiKey.GroupID, "", "", "grok-4.5", excluded, egress.OpenAIUpstreamTransportHTTPSSE, providercore.OpenAIEndpointCapabilityTextGeneration, false, false, capability.PlatformGrok)
 	p.selection = selected
-	if selected == nil || selected.Account == nil {
-		return accountcore.AccountSnapshot{}, false, err
+	if selected == nil || selected.Provider == nil {
+		return providercore.ProviderSnapshot{}, false, err
 	}
-	return gatewaycapture.ExecutionSnapshot(selected.Account), true, err
+	return gatewaycapture.ExecutionSnapshot(selected.Provider), true, err
 }
 
-func (p *grokVoiceAdapter) AcquireVoice(_ context.Context, _ accountcore.AccountSnapshot) (func(), bool) {
+func (p *grokVoiceAdapter) AcquireVoice(_ context.Context, _ providercore.ProviderSnapshot) (func(), bool) {
 	var started bool
-	return p.h.bindings.Common.Support.AcquireResponsesAccountSlot(p.c, p.apiKey.GroupID, "", p.selection, false, &started, p.reqLog)
+	return p.h.bindings.Common.Support.AcquireResponsesProviderSlot(p.c, p.apiKey.GroupID, "", p.selection, false, &started, p.reqLog)
 }
 
-func (p *grokVoiceAdapter) ForwardVoice(ctx context.Context, _ accountcore.AccountSnapshot, request gatewaymedia.VoiceRequest) gatewaymedia.VoiceOutcome {
-	result, err := p.h.bindings.Platform.Voice(ctx, p.c, p.selection.Account, request.Endpoint, request.Body, request.ContentType)
+func (p *grokVoiceAdapter) ForwardVoice(ctx context.Context, _ providercore.ProviderSnapshot, request gatewaymedia.VoiceRequest) gatewaymedia.VoiceOutcome {
+	result, err := p.h.bindings.Platform.Voice(ctx, p.c, p.selection.Provider, request.Endpoint, request.Body, request.ContentType)
 	outcome := gatewaymedia.VoiceOutcome{Err: err}
 	if result != nil {
 		outcome.Result = &gatewaymedia.VoiceResult{RequestID: result.RequestID, Headers: http.Header(result.UpstreamHeaders).Clone(), Model: result.Model, UpstreamModel: result.UpstreamModel, Duration: result.Duration, AudioUsage: cloneGrokAudioUsage(result.AudioUsage)}
 	}
 	var failure *forwardcore.UpstreamFailoverError
 	if errors.As(err, &failure) {
-		outcome.RetryNext = failure.ShouldRetryNextAccount()
+		outcome.RetryNext = failure.ShouldRetryNextProvider()
 	}
 	return outcome
 }
 
-func (p *grokVoiceAdapter) CompleteVoice(_ context.Context, _ accountcore.AccountSnapshot, request gatewaymedia.VoiceRequest, result *gatewaymedia.VoiceResult) {
+func (p *grokVoiceAdapter) CompleteVoice(_ context.Context, _ providercore.ProviderSnapshot, request gatewaymedia.VoiceRequest, result *gatewaymedia.VoiceResult) {
 	if result == nil {
 		return
 	}
 	value := &forwardcore.OpenAIResult{RequestID: result.RequestID, UpstreamHeaders: http.Header(result.Headers).Clone(), Model: result.Model, UpstreamModel: result.UpstreamModel, Duration: result.Duration, AudioUsage: cloneGrokAudioUsage(result.AudioUsage)}
-	p.h.recordGrokVoiceUsage(p.c, p.apiKey, p.selection.Account, p.subscription, request.Endpoint, request.Body, value)
+	p.h.recordGrokVoiceUsage(p.c, p.apiKey, p.selection.Provider, p.subscription, request.Endpoint, request.Body, value)
 }
 
 // cloneGrokAudioUsage 在同步执行与完成输入之间保留独立计量快照。
@@ -208,10 +208,10 @@ func (p *grokRealtimeAdapter) Relay(ctx context.Context, client, server upstream
 	return p.h.bindings.Platform.RelayRealtime(ctx, client, server)
 }
 
-func (p *grokRealtimeAdapter) CompleteRealtime(_ context.Context, _ accountcore.AccountSnapshot, model string, elapsed time.Duration) {
+func (p *grokRealtimeAdapter) CompleteRealtime(_ context.Context, _ providercore.ProviderSnapshot, model string, elapsed time.Duration) {
 	subscription, _ := gatewayhttp.SubscriptionFromContext(p.c)
 	result := grokRealtimeBillingResult(model, elapsed, true)
 	if result != nil {
-		p.h.recordGrokVoiceUsage(p.c, p.apiKey, p.selection.Account, subscription, "realtime", nil, result)
+		p.h.recordGrokVoiceUsage(p.c, p.apiKey, p.selection.Provider, subscription, "realtime", nil, result)
 	}
 }

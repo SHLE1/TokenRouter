@@ -189,7 +189,6 @@ func (f *ssoDeviceFlow) pollToken(ctx context.Context, deviceCode string, interv
 			return nil, err
 		}
 		status, _, body, err := f.do(ctx, http.MethodPost, SSOTokenURL, url.Values{
-
 			"grant_type": {"urn:ietf:params:oauth:grant-type:device_code"},
 
 			"client_id": {DefaultClientID},
@@ -220,7 +219,6 @@ func (f *ssoDeviceFlow) pollToken(ctx context.Context, deviceCode string, interv
 				payload.TokenType = "Bearer"
 			}
 			return &TokenResponse{
-
 				AccessToken: payload.AccessToken,
 
 				RefreshToken: payload.RefreshToken,

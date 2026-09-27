@@ -19,7 +19,7 @@ type usageAnalyticsQuery struct {
 // buildUsageAnalyticsQuery 生成“日表主体、小时边界、原始首尾”的无重叠查询源。
 func (r *Store) buildUsageAnalyticsQuery(ctx context.Context, filters UsageLogFilters, start, end time.Time, useDaily bool) (usageAnalyticsQuery, bool, error) {
 	// 聚合表尚未保存原生 compaction 维度，带该过滤时必须回退原始表。
-	if filters.AccountID > 0 || strings.TrimSpace(filters.RequestID) != "" || filters.NativeCompactionV2 != nil {
+	if filters.ProviderID > 0 || strings.TrimSpace(filters.RequestID) != "" || filters.NativeCompactionV2 != nil {
 		return usageAnalyticsQuery{}, false, nil
 	}
 	modelSource := strings.TrimSpace(filters.ModelFilterSource)
@@ -105,7 +105,7 @@ func (r *Store) buildUsageAnalyticsQuery(ctx context.Context, filters UsageLogFi
 		user_id, billing_user_id, team_id, api_key_id, group_id, requested_model,
 		request_type, stream, billing_type, billing_mode, platform, inbound_endpoint,
 		total_requests, input_tokens, output_tokens, cache_creation_tokens,
-		cache_read_tokens, total_cost, actual_cost, account_cost,
+		cache_read_tokens, total_cost, actual_cost, provider_cost,
 		total_duration_ms, duration_count`
 	parts := make([]string, 0, 4)
 	if useDaily {
@@ -149,11 +149,11 @@ func (r *Store) buildUsageAnalyticsQuery(ctx context.Context, filters UsageLogFi
 			COALESCE(ul.inbound_endpoint, ''),
 			1, ul.input_tokens, ul.output_tokens, ul.cache_creation_tokens,
 			ul.cache_read_tokens, ul.total_cost, ul.actual_cost,
-			COALESCE(ul.account_stats_cost, ul.total_cost) * COALESCE(ul.account_rate_multiplier, 1),
+			COALESCE(ul.provider_stats_cost, ul.total_cost) * COALESCE(ul.provider_rate_multiplier, 1),
 			COALESCE(ul.duration_ms, 0), CASE WHEN ul.duration_ms IS NULL THEN 0 ELSE 1 END
 		FROM `+rawUsageSource+`
 		LEFT JOIN groups g ON g.id = ul.group_id
-		LEFT JOIN accounts a ON a.id = ul.account_id
+		LEFT JOIN providers a ON a.id = ul.provider_id
 		WHERE (ul.created_at >= $1 AND ul.created_at < $3)
 		   OR (ul.created_at >= $5 AND ul.created_at < $2)`)
 
@@ -175,7 +175,7 @@ func (r *Store) getUsageStatsFromAnalytics(ctx context.Context, filters UsageLog
 	}
 	stats := &UsageStats{}
 	var totalDuration, durationCount int64
-	var totalAccountCost float64
+	var totalProviderCost float64
 	err = scanSingleRow(ctx, r.sql, query.cte+`
 		SELECT
 			COALESCE(SUM(total_requests), 0), COALESCE(SUM(input_tokens), 0),
@@ -183,19 +183,19 @@ func (r *Store) getUsageStatsFromAnalytics(ctx context.Context, filters UsageLog
 			COALESCE(SUM(cache_creation_tokens + cache_read_tokens), 0),
 			COALESCE(SUM(cache_creation_tokens), 0), COALESCE(SUM(cache_read_tokens), 0),
 			COALESCE(SUM(total_cost), 0), COALESCE(SUM(actual_cost), 0),
-			COALESCE(SUM(account_cost), 0), COALESCE(SUM(total_duration_ms), 0),
+			COALESCE(SUM(provider_cost), 0), COALESCE(SUM(total_duration_ms), 0),
 			COALESCE(SUM(duration_count), 0)
 		FROM combined `+query.where, query.args,
 		&stats.TotalRequests, &stats.TotalInputTokens, &stats.TotalOutputTokens,
 		&stats.TotalCacheTokens, &stats.TotalCacheCreationTokens, &stats.TotalCacheReadTokens,
-		&stats.TotalCost, &stats.TotalActualCost, &totalAccountCost,
+		&stats.TotalCost, &stats.TotalActualCost, &totalProviderCost,
 		&totalDuration, &durationCount,
 	)
 	if err != nil {
 		return nil, false, err
 	}
 	stats.TotalTokens = stats.TotalInputTokens + stats.TotalOutputTokens + stats.TotalCacheTokens
-	stats.TotalAccountCost = &totalAccountCost
+	stats.TotalProviderCost = &totalProviderCost
 	if durationCount > 0 {
 		stats.AverageDurationMs = float64(totalDuration) / float64(durationCount)
 	}
@@ -243,7 +243,7 @@ func (r *Store) getModelStatsFromAnalytics(ctx context.Context, start, end time.
 		       COALESCE(SUM(cache_creation_tokens), 0), COALESCE(SUM(cache_read_tokens), 0),
 		       COALESCE(SUM(input_tokens + output_tokens + cache_creation_tokens + cache_read_tokens), 0),
 		       COALESCE(SUM(total_cost), 0), COALESCE(SUM(actual_cost), 0),
-		       COALESCE(SUM(account_cost), 0)
+		       COALESCE(SUM(provider_cost), 0)
 		FROM combined `+query.where+`
 		GROUP BY requested_model ORDER BY 7 DESC`, query.args...)
 	if err != nil {
@@ -263,7 +263,7 @@ func (r *Store) getGroupStatsFromAnalytics(ctx context.Context, start, end time.
 		SELECT c.group_id, COALESCE(g.name, ''), COALESCE(SUM(c.total_requests), 0),
 		       COALESCE(SUM(c.input_tokens + c.output_tokens + c.cache_creation_tokens + c.cache_read_tokens), 0),
 		       COALESCE(SUM(c.total_cost), 0), COALESCE(SUM(c.actual_cost), 0),
-		       COALESCE(SUM(c.account_cost), 0)
+		       COALESCE(SUM(c.provider_cost), 0)
 		FROM combined c
 		LEFT JOIN groups g ON g.id = NULLIF(c.group_id, 0) `+query.where+`
 		GROUP BY c.group_id, g.name ORDER BY 4 DESC`, query.args...)
@@ -274,7 +274,7 @@ func (r *Store) getGroupStatsFromAnalytics(ctx context.Context, start, end time.
 	results := make([]usage.GroupStat, 0)
 	for rows.Next() {
 		var row usage.GroupStat
-		if err := rows.Scan(&row.GroupID, &row.GroupName, &row.Requests, &row.TotalTokens, &row.Cost, &row.ActualCost, &row.AccountCost); err != nil {
+		if err := rows.Scan(&row.GroupID, &row.GroupName, &row.Requests, &row.TotalTokens, &row.Cost, &row.ActualCost, &row.ProviderCost); err != nil {
 			return nil, false, err
 		}
 		results = append(results, row)
@@ -554,7 +554,7 @@ func (r *Store) getUsageRankingFromAnalytics(ctx context.Context, start, end tim
 // getUserBreakdownStatsFromAnalytics 从组合聚合源计算可支持维度下的用户明细。
 func (r *Store) getUserBreakdownStatsFromAnalytics(ctx context.Context, start, end time.Time, dim usage.UserBreakdownDimension, limit int) ([]usage.UserBreakdownItem, bool, error) {
 	modelSource := usage.NormalizeModelSource(dim.ModelType)
-	if dim.AccountID > 0 || dim.NativeCompactionV2 != nil || (dim.Model != "" && modelSource != usage.ModelSourceRequested) {
+	if dim.ProviderID > 0 || dim.NativeCompactionV2 != nil || (dim.Model != "" && modelSource != usage.ModelSourceRequested) {
 		return nil, false, nil
 	}
 	if dim.Endpoint != "" && dim.EndpointType != "" && dim.EndpointType != "inbound" {
@@ -594,7 +594,7 @@ func (r *Store) getUserBreakdownStatsFromAnalytics(ctx context.Context, start, e
 		       COALESCE(SUM(c.input_tokens + c.output_tokens + c.cache_creation_tokens + c.cache_read_tokens), 0) AS total_tokens,
 		       COALESCE(SUM(c.total_cost), 0) AS cost,
 		       COALESCE(SUM(c.actual_cost), 0) AS actual_cost,
-		       COALESCE(SUM(c.account_cost), 0) AS account_cost
+		       COALESCE(SUM(c.provider_cost), 0) AS provider_cost
 		FROM combined c
 		LEFT JOIN users u ON u.id = c.billing_user_id `+query.where+`
 		-- 管理员排行按付款主体归属，团队成员用团队 Key 的用量归到 Owner。
@@ -610,7 +610,7 @@ func (r *Store) getUserBreakdownStatsFromAnalytics(ctx context.Context, start, e
 		if err := rows.Scan(
 			&row.UserID, &row.Email, &row.Requests, &row.InputTokens,
 			&row.OutputTokens, &row.CacheTokens, &row.TotalTokens,
-			&row.Cost, &row.ActualCost, &row.AccountCost,
+			&row.Cost, &row.ActualCost, &row.ProviderCost,
 		); err != nil {
 			return nil, false, err
 		}

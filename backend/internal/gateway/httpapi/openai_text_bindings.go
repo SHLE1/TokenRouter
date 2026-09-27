@@ -238,8 +238,8 @@ func (p openAITextHTTPBackend) AllowsMessages(key *apikey.APIKey) bool {
 	return projected == nil || projected.Group == nil || projected.Group.AllowsClientProtocol(protocol.ProtocolAnthropicMessages)
 }
 
-func (p openAITextHTTPBackend) MessageAccountModel(ctx context.Context, key *apikey.APIKey, model string) string {
-	return ResolveOpenAIMessagesAccountLayerModelForRequest(ctx, model)
+func (p openAITextHTTPBackend) MessageProviderModel(ctx context.Context, key *apikey.APIKey, model string) string {
+	return ResolveOpenAIMessagesProviderLayerModelForRequest(ctx, model)
 }
 
 func (p openAITextHTTPBackend) MetadataSession(c *gin.Context, hash, key, model string, body []byte) (string, string) {

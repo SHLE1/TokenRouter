@@ -2,7 +2,7 @@ package completion_test
 
 import (
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
-	"github.com/TokenFlux/TokenRouter/internal/billing/provider"
+	billingadapter "github.com/TokenFlux/TokenRouter/internal/billing/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/media"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/modelidentity"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
@@ -13,10 +13,10 @@ type pricingServiceFixture struct {
 	pricingData map[string]*pricing.LiteLLMModelPricing
 }
 
-func newPricingServiceFixture(fixture pricingServiceFixture) *provider.PricingService {
-	return provider.NewPricingServiceFromSnapshot(provider.Options{
+func newPricingServiceFixture(fixture pricingServiceFixture) *billingadapter.PricingService {
+	return billingadapter.NewPricingServiceFromSnapshot(billingadapter.Options{
 		DefaultOpenAIModel:    openai.DefaultTestModel,
 		IsImageModel:          media.IsImageGenerationModel,
 		ModelLookupCandidates: modelidentity.CandidatesFactory,
-	}, nil, provider.Snapshot{Data: fixture.pricingData})
+	}, nil, billingadapter.Snapshot{Data: fixture.pricingData})
 }

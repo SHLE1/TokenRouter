@@ -10,8 +10,8 @@ import (
 
 	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
@@ -36,8 +36,8 @@ type creativeFixtureGroups interface {
 	GetByIDLite(context.Context, int64) (*routing.Group, error)
 	ListActive(context.Context) ([]routing.Group, error)
 }
-type creativeFixtureAccounts interface {
-	ListSchedulableByGroupIDAndPlatform(context.Context, int64, string) ([]accountcore.Record, error)
+type creativeFixtureProviders interface {
+	ListSchedulableByGroupIDAndPlatform(context.Context, int64, string) ([]providercore.Record, error)
 }
 type creativeFixtureKeys interface {
 	GetManagedKeyByUserAndGroup(context.Context, int64, int64, string) (*apikey.APIKey, error)
@@ -73,23 +73,23 @@ func (r creativeGroupReader) ListActive(ctx context.Context) ([]creative.GroupVi
 	return out, nil
 }
 
-type creativeAccountReader struct{ source creativeFixtureAccounts }
+type creativeProviderReader struct{ source creativeFixtureProviders }
 
-func (r creativeAccountReader) ListSchedulableByGroupIDAndPlatform(ctx context.Context, id int64, platform string) ([]creative.CatalogAccount, error) {
+func (r creativeProviderReader) ListSchedulableByGroupIDAndPlatform(ctx context.Context, id int64, platform string) ([]creative.CatalogProvider, error) {
 	values, err := r.source.ListSchedulableByGroupIDAndPlatform(ctx, id, platform)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]creative.CatalogAccount, len(values))
+	out := make([]creative.CatalogProvider, len(values))
 	for i := range values {
-		value := accountcore.CloneRecord(&values[i])
+		value := providercore.CloneRecord(&values[i])
 		if value.Platform == "" {
 			value.Platform = creative.PlatformGemini
 		}
 		if value.Type == "" {
 			value.Type = "apikey"
 		}
-		out[i] = creativeprovider.CatalogAccount(value)
+		out[i] = creativeprovider.CatalogProvider(value)
 	}
 	return out, nil
 }
@@ -137,7 +137,7 @@ type creativeModerationFixture struct {
 }
 
 func (m creativeModerationFixture) Check(ctx context.Context, v creative.ModerationInput) (*creative.ModerationDecision, error) {
-	result, err := m.source.Check(ctx, moderation.ContentModerationCheckInput{RequestID: v.RequestID, UserID: v.UserID, BillingUserID: v.BillingUserID, GroupID: v.GroupID, GroupName: v.GroupName, Endpoint: v.Endpoint, Provider: v.Provider, Model: v.Model, Protocol: v.Protocol, Body: v.Body, NoMediaRetention: v.NoMediaRetention})
+	result, err := m.source.Check(ctx, moderation.ContentModerationCheckInput{RequestID: v.RequestID, UserID: v.UserID, BillingUserID: v.BillingUserID, GroupID: v.GroupID, GroupName: v.GroupName, Endpoint: v.Endpoint, Provider: v.Platform, Model: v.Model, Protocol: v.Protocol, Body: v.Body, NoMediaRetention: v.NoMediaRetention})
 	if result == nil {
 		return nil, err
 	}
@@ -145,7 +145,7 @@ func (m creativeModerationFixture) Check(ctx context.Context, v creative.Moderat
 }
 
 // newCreativePublicFixture 固定同一 Public/Results 图，不保留旧服务的方法或状态副本。
-func newCreativePublicFixture(repo creative.CreativeRunRepository, keys creativeFixtureKeys, users creativeFixtureUsers, accounts creativeFixtureAccounts, groups creativeFixtureGroups, rates creative.UserRateReader, queue creative.CreativeRunQueue, outbox creative.CreativeRunOutboxRepository, transient creative.CreativeTransientStore, funds creative.FundingStore, logs usage.UsageLogRepository, calculator *billing.Calculator, resolver *billing.PriceResolver, pricingConfigs *routing.PricingConfigService, moderator *moderation.ContentModerationService, auth apikey.APIKeyAuthCacheInvalidator, settings creative.SettingReader, cfg *config.Config) *creative.Public {
+func newCreativePublicFixture(repo creative.CreativeRunRepository, keys creativeFixtureKeys, users creativeFixtureUsers, providers creativeFixtureProviders, groups creativeFixtureGroups, rates creative.UserRateReader, queue creative.CreativeRunQueue, outbox creative.CreativeRunOutboxRepository, transient creative.CreativeTransientStore, funds creative.FundingStore, logs usage.UsageLogRepository, calculator *billing.Calculator, resolver *billing.PriceResolver, pricingConfigs *routing.PricingConfigService, moderator *moderation.ContentModerationService, auth apikey.APIKeyAuthCacheInvalidator, settings creative.SettingReader, cfg *config.Config) *creative.Public {
 	ttl := 30 * time.Minute
 	prefix := ""
 	if cfg != nil {
@@ -166,8 +166,8 @@ func newCreativePublicFixture(repo creative.CreativeRunRepository, keys creative
 	if groups != nil {
 		core.GroupRepo = creativeGroupReader{groups}
 	}
-	if accounts != nil {
-		core.AccountRepo = creativeAccountReader{accounts}
+	if providers != nil {
+		core.ProviderRepo = creativeProviderReader{providers}
 	}
 	if cfg != nil {
 		c := cfg.Creative

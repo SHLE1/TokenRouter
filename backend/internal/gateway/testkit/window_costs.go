@@ -23,7 +23,7 @@ func WindowCosts(source usage.UsageLogRepository) billing.WindowCostSource {
 type windowCosts struct{ source usage.UsageLogRepository }
 
 func (s windowCosts) GetWindow(ctx context.Context, id int64, start time.Time) (*billing.WindowCostStats, error) {
-	value, err := s.source.GetAccountWindowStats(ctx, id, start)
+	value, err := s.source.GetProviderWindowStats(ctx, id, start)
 	if value == nil {
 		return nil, err
 	}
@@ -31,7 +31,7 @@ func (s windowCosts) GetWindow(ctx context.Context, id int64, start time.Time) (
 }
 
 type windowCostBatch interface {
-	GetAccountWindowStatsBatch(context.Context, []int64, time.Time) (map[int64]*usage.AccountStats, error)
+	GetProviderWindowStatsBatch(context.Context, []int64, time.Time) (map[int64]*usage.ProviderStats, error)
 }
 type windowCostsBatch struct {
 	windowCosts
@@ -39,7 +39,7 @@ type windowCostsBatch struct {
 }
 
 func (s windowCostsBatch) GetWindows(ctx context.Context, ids []int64, start time.Time) (map[int64]*billing.WindowCostStats, error) {
-	values, err := s.batch.GetAccountWindowStatsBatch(ctx, ids, start)
+	values, err := s.batch.GetProviderWindowStatsBatch(ctx, ids, start)
 	if values == nil {
 		return nil, err
 	}

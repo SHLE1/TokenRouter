@@ -12,12 +12,12 @@ type slotCleanupCache struct {
 	calls atomic.Int64
 }
 
-func (c *slotCleanupCache) CleanupExpiredAccountSlotKeys(context.Context) error {
+func (c *slotCleanupCache) CleanupExpiredProviderSlotKeys(context.Context) error {
 	c.calls.Add(1)
 	return nil
 }
 
-func TestStartSlotCleanupWorker_UsesCacheWideCleanupWithoutAccountRepo(t *testing.T) {
+func TestStartSlotCleanupWorker_UsesCacheWideCleanupWithoutProviderRepo(t *testing.T) {
 	cache := &slotCleanupCache{}
 	svc := NewConcurrencyService(cache)
 	t.Cleanup(svc.Stop)
@@ -33,7 +33,7 @@ func TestStartSlotCleanupWorker_UsesCacheWideCleanupWithoutAccountRepo(t *testin
 		}
 		select {
 		case <-deadline:
-			t.Fatal("cleanup worker did not call cache-wide account slot cleanup")
+			t.Fatal("cleanup worker did not call cache-wide provider slot cleanup")
 		case <-ticker.C:
 		}
 	}

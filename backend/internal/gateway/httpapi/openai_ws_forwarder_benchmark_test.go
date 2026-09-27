@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
@@ -22,14 +22,14 @@ var (
 func BenchmarkOpenAIWSForwarderHotPath(b *testing.B) {
 	options := &wsFixtureOptions{}
 	svc := newWSFixture(wsFixtureInputs{options: options})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}}
 	reqBody := benchmarkOpenAIWSHotPathRequest()
 
 	b.ReportAllocs()
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		payload := svc.buildOpenAIWSCreatePayload(reqBody, account)
+		payload := svc.buildOpenAIWSCreatePayload(reqBody, provider)
 		_, _ = openai.ApplyWSRetryPayloadStrategy(payload, 2)
 		openai.SetOpenAIWSTurnMetadata(payload, `{"trace":"bench","turn":"1"}`)
 

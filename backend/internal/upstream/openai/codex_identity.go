@@ -24,7 +24,7 @@ var (
 )
 
 // SetCodexCanonicalUserAgentResolver 注入后台设置提供的规范 Codex UA 解析器。
-// 无法注入或解析失败时，所有无账号出站路径回退到编译期默认身份。
+// 无法注入或解析失败时，所有无提供商出站路径回退到编译期默认身份。
 func SetCodexCanonicalUserAgentResolver(resolver func() string) {
 	codexCanonicalUAMu.Lock()
 	defer codexCanonicalUAMu.Unlock()
@@ -174,7 +174,7 @@ func EnforceCodexIdentityHeaders(h http.Header) {
 }
 
 // EnforceCodexIdentityHeadersWithUA 保留官方 UA 的客户端名与设备指纹，
-// 仅在无法配对或版本过旧时回退到 canonical 身份；overrideUA 供账号级配置调用方使用。
+// 仅在无法配对或版本过旧时回退到 canonical 身份；overrideUA 供提供商级配置调用方使用。
 func EnforceCodexIdentityHeadersWithUA(h http.Header, overrideUA string) {
 	if h == nil || h.Get("originator") == "" {
 		return
@@ -195,5 +195,7 @@ func EnforceCodexIdentityHeadersWithUA(h http.Header, overrideUA string) {
 	}
 }
 
-const CodexCLIVersion = "0.144.1"
-const CodexCLIUserAgent = CodexDefaultOriginator + "/" + CodexCLIVersion + " (Ubuntu 22.4.0; x86_64) xterm-256color"
+const (
+	CodexCLIVersion   = "0.144.1"
+	CodexCLIUserAgent = CodexDefaultOriginator + "/" + CodexCLIVersion + " (Ubuntu 22.4.0; x86_64) xterm-256color"
+)

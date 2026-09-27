@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
@@ -39,15 +39,15 @@ func (s *OpenAIWebSocketExecutor) performOpenAIWSGeneratePrewarm(
 	previousResponseID string,
 	reqBody map[string]any,
 	canonicalModel string,
-	account *gatewayprovider.ExecutionAccount,
+	provider *gatewayprovider.ExecutionProvider,
 	stateStore session.OpenAIWSStateStore,
 	groupID int64,
 ) error {
 	if s == nil {
 		return nil
 	}
-	if lease == nil || account == nil {
-		gatewayprovider.LogOpenAIWSModeInfo("prewarm_skip reason=invalid_state has_lease=%v has_account=%v", lease != nil, account != nil)
+	if lease == nil || provider == nil {
+		gatewayprovider.LogOpenAIWSModeInfo("prewarm_skip reason=invalid_state has_lease=%v has_provider=%v", lease != nil, provider != nil)
 		return nil
 	}
 	connID := strings.TrimSpace(lease.ConnID())
@@ -56,30 +56,30 @@ func (s *OpenAIWebSocketExecutor) performOpenAIWSGeneratePrewarm(
 	}
 	if decision.Transport != egress.OpenAIUpstreamTransportResponsesWebsocketV2 {
 		gatewayprovider.LogOpenAIWSModeInfo(
-			"prewarm_skip account_id=%d conn_id=%s reason=transport_not_v2 transport=%s",
-			account.Record.ID,
+			"prewarm_skip provider_id=%d conn_id=%s reason=transport_not_v2 transport=%s",
+			provider.Record.ID,
 			connID, gatewayprovider.NormalizeOpenAIWSLogValue(string(decision.Transport)),
 		)
 		return nil
 	}
 	if strings.TrimSpace(previousResponseID) != "" {
 		gatewayprovider.LogOpenAIWSModeInfo(
-			"prewarm_skip account_id=%d conn_id=%s reason=has_previous_response_id previous_response_id=%s",
-			account.Record.ID,
+			"prewarm_skip provider_id=%d conn_id=%s reason=has_previous_response_id previous_response_id=%s",
+			provider.Record.ID,
 			connID, gatewayprovider.TruncateOpenAIWSLogValue(previousResponseID, gatewayprovider.OpenAIWSIDValueMaxLen),
 		)
 		return nil
 	}
 	if lease.IsPrewarmed() {
-		gatewayprovider.LogOpenAIWSModeInfo("prewarm_skip account_id=%d conn_id=%s reason=already_prewarmed", account.Record.ID, connID)
+		gatewayprovider.LogOpenAIWSModeInfo("prewarm_skip provider_id=%d conn_id=%s reason=already_prewarmed", provider.Record.ID, connID)
 		return nil
 	}
 	if openai.NeedsToolContinuation(reqBody) {
-		gatewayprovider.LogOpenAIWSModeInfo("prewarm_skip account_id=%d conn_id=%s reason=tool_continuation", account.Record.ID, connID)
+		gatewayprovider.LogOpenAIWSModeInfo("prewarm_skip provider_id=%d conn_id=%s reason=tool_continuation", provider.Record.ID, connID)
 		return nil
 	}
 	prewarmStart := time.Now()
-	gatewayprovider.LogOpenAIWSModeInfo("prewarm_start account_id=%d conn_id=%s", account.Record.ID, connID)
+	gatewayprovider.LogOpenAIWSModeInfo("prewarm_start provider_id=%d conn_id=%s", provider.Record.ID, connID)
 
 	prewarmPayload := make(map[string]any, len(payload)+1)
 	for k, v := range payload {
@@ -91,13 +91,13 @@ func (s *OpenAIWebSocketExecutor) performOpenAIWSGeneratePrewarm(
 	if err := lease.WriteJSONWithContextTimeout(ctx, prewarmPayload, s.openAIWSWriteTimeout()); err != nil {
 		lease.MarkBroken()
 		gatewayprovider.LogOpenAIWSModeInfo(
-			"prewarm_write_fail account_id=%d conn_id=%s cause=%s",
-			account.Record.ID,
+			"prewarm_write_fail provider_id=%d conn_id=%s cause=%s",
+			provider.Record.ID,
 			connID, gatewayprovider.TruncateOpenAIWSLogValue(err.Error(), gatewayprovider.OpenAIWSLogValueMaxLen),
 		)
 		return ws.WrapFallback("prewarm_write", err)
 	}
-	gatewayprovider.LogOpenAIWSModeInfo("prewarm_write_sent account_id=%d conn_id=%s payload_bytes=%d", account.Record.ID, connID, len(prewarmPayloadJSON))
+	gatewayprovider.LogOpenAIWSModeInfo("prewarm_write_sent provider_id=%d conn_id=%s payload_bytes=%d", provider.Record.ID, connID, len(prewarmPayloadJSON))
 
 	prewarmResponseID := ""
 	prewarmEventCount := 0
@@ -108,8 +108,8 @@ func (s *OpenAIWebSocketExecutor) performOpenAIWSGeneratePrewarm(
 			lease.MarkBroken()
 			closeStatus, closeReason := gatewayprovider.SummarizeOpenAIWSReadCloseError(readErr)
 			gatewayprovider.LogOpenAIWSModeInfo(
-				"prewarm_read_fail account_id=%d conn_id=%s close_status=%s close_reason=%s cause=%s events=%d",
-				account.Record.ID,
+				"prewarm_read_fail provider_id=%d conn_id=%s close_status=%s close_reason=%s cause=%s events=%d",
+				provider.Record.ID,
 				connID,
 				closeStatus,
 				closeReason, gatewayprovider.TruncateOpenAIWSLogValue(readErr.Error(), gatewayprovider.OpenAIWSLogValueMaxLen), prewarmEventCount,
@@ -127,8 +127,8 @@ func (s *OpenAIWebSocketExecutor) performOpenAIWSGeneratePrewarm(
 		}
 		if prewarmEventCount <= openAIWSPrewarmEventLogHead || eventType == "error" || openai.IsWSTerminalEvent(eventType) {
 			gatewayprovider.LogOpenAIWSModeInfo(
-				"prewarm_event account_id=%d conn_id=%s idx=%d type=%s bytes=%d",
-				account.Record.ID,
+				"prewarm_event provider_id=%d conn_id=%s idx=%d type=%s bytes=%d",
+				provider.Record.ID,
 				connID,
 				prewarmEventCount, gatewayprovider.TruncateOpenAIWSLogValue(eventType, gatewayprovider.OpenAIWSLogValueMaxLen), len(message),
 			)
@@ -143,8 +143,8 @@ func (s *OpenAIWebSocketExecutor) performOpenAIWSGeneratePrewarm(
 			fallbackReason, canFallback := upstreamopenai.ClassifyWSErrorEventFromRaw(errCodeRaw, errTypeRaw, errMsgRaw)
 			errCode, errType, errMessage := gatewayprovider.SummarizeOpenAIWSErrorEventFieldsFromRaw(errCodeRaw, errTypeRaw, errMsgRaw)
 			gatewayprovider.LogOpenAIWSModeInfo(
-				"prewarm_error_event account_id=%d conn_id=%s idx=%d fallback_reason=%s can_fallback=%v err_code=%s err_type=%s err_message=%s",
-				account.Record.ID,
+				"prewarm_error_event provider_id=%d conn_id=%s idx=%d fallback_reason=%s can_fallback=%v err_code=%s err_type=%s err_message=%s",
+				provider.Record.ID,
 				connID,
 				prewarmEventCount, gatewayprovider.TruncateOpenAIWSLogValue(fallbackReason, gatewayprovider.OpenAIWSLogValueMaxLen), canFallback,
 				errCode,
@@ -154,18 +154,18 @@ func (s *OpenAIWebSocketExecutor) performOpenAIWSGeneratePrewarm(
 			lease.MarkBroken()
 			statusCode := openAIWSErrorPolicyStatus(message)
 			errorDecision := s.handleOpenAIWSErrorEventTransientFailure(
-				ctx, account, canonicalModel, lease.HandshakeHeaders(), message,
+				ctx, provider, canonicalModel, lease.HandshakeHeaders(), message,
 			)
 			if errorDecision.ShouldReturnGenericError() {
 				return ws.NewGenericPolicyError(statusCode)
 			}
-			if errorDecision.ShouldFailoverWithDefaults(gatewayprovider.ExecutionErrorPolicy(account), statusCode, false, s.shouldFailoverOpenAIWSError(account, statusCode, message)) {
+			if errorDecision.ShouldFailoverWithDefaults(gatewayprovider.ExecutionErrorPolicy(provider), statusCode, false, s.shouldFailoverOpenAIWSError(provider, statusCode, message)) {
 				return gatewayprovider.NewOpenAIUpstreamFailure(
 					statusCode,
 					lease.HandshakeHeaders(),
 					message,
 					errMsg,
-					errorDecision.RetryableOnSameAccount(gatewayprovider.ExecutionErrorPolicy(account), statusCode),
+					errorDecision.RetryableOnSameProvider(gatewayprovider.ExecutionErrorPolicy(provider), statusCode),
 				)
 			}
 			if canFallback {
@@ -183,12 +183,12 @@ func (s *OpenAIWebSocketExecutor) performOpenAIWSGeneratePrewarm(
 	lease.MarkPrewarmed()
 	if prewarmResponseID != "" && stateStore != nil {
 		ttl := s.OpenAIHTTPResponseStickyTTL()
-		gatewayprovider.LogOpenAIWSBindResponseAccountWarn(groupID, account.Record.ID, prewarmResponseID, stateStore.BindResponseAccount(ctx, groupID, prewarmResponseID, account.Record.ID, ttl))
+		gatewayprovider.LogOpenAIWSBindResponseProviderWarn(groupID, provider.Record.ID, prewarmResponseID, stateStore.BindResponseProvider(ctx, groupID, prewarmResponseID, provider.Record.ID, ttl))
 		stateStore.BindResponseConn(prewarmResponseID, lease.ConnID(), ttl)
 	}
 	gatewayprovider.LogOpenAIWSModeInfo(
-		"prewarm_done account_id=%d conn_id=%s response_id=%s events=%d terminal_events=%d duration_ms=%d",
-		account.Record.ID,
+		"prewarm_done provider_id=%d conn_id=%s response_id=%s events=%d terminal_events=%d duration_ms=%d",
+		provider.Record.ID,
 		connID, gatewayprovider.TruncateOpenAIWSLogValue(prewarmResponseID, gatewayprovider.OpenAIWSIDValueMaxLen), prewarmEventCount,
 		prewarmTerminalCount,
 		time.Since(prewarmStart).Milliseconds(),
@@ -242,7 +242,7 @@ func openAIWSPayloadTransientStatus(payload []byte) int {
 	if status == 0 {
 		status = int(gjson.GetBytes(payload, "error.status").Int())
 	}
-	if gatewayprovider.IsTransientAccountFailure(status, payload) {
+	if gatewayprovider.IsTransientProviderFailure(status, payload) {
 		return status
 	}
 	if status != 0 {
@@ -271,7 +271,7 @@ func openAIWSPayloadTransientStatus(payload []byte) int {
 	}
 }
 
-// openAIWSErrorPolicyStatus 解析 WS 错误事件用于账号策略的状态码。
+// openAIWSErrorPolicyStatus 解析 WS 错误事件用于提供商策略的状态码。
 // 事件显式携带状态码时必须原样保留，否则按既有 WS 错误类型映射，避免瞬态推断改变自定义规则的匹配值。
 func openAIWSErrorPolicyStatus(payload []byte) int {
 	if len(payload) == 0 {
@@ -298,19 +298,19 @@ func openAIWSErrorPolicyStatus(payload []byte) int {
 	return upstreamopenai.WSErrorHTTPStatusFromRaw(codeRaw, errTypeRaw)
 }
 
-// openAIWSTerminalPolicyDecision 保留终止事件类型及其账号策略结果，
+// openAIWSTerminalPolicyDecision 保留终止事件类型及其提供商策略结果，
 // 调用方必须在写给客户端前判断通用错误和故障转移。
 type openAIWSTerminalPolicyDecision struct {
 	TerminalEvent string
 	StatusCode    int
-	Decision      accountcore.UpstreamErrorDecision
+	Decision      providercore.UpstreamErrorDecision
 }
 
-func (s *OpenAIWebSocketExecutor) handleOpenAIWSTerminalTransientFailure(ctx context.Context, account *gatewayprovider.ExecutionAccount, canonicalModel string, headers http.Header, payload []byte) openAIWSTerminalPolicyDecision {
+func (s *OpenAIWebSocketExecutor) handleOpenAIWSTerminalTransientFailure(ctx context.Context, provider *gatewayprovider.ExecutionProvider, canonicalModel string, headers http.Header, payload []byte) openAIWSTerminalPolicyDecision {
 	eventType, _, _ := openai.ParseWSEventEnvelope(payload)
 	result := openAIWSTerminalPolicyDecision{
 		TerminalEvent: normalizeOpenAIWSTerminalEvent(eventType),
-		Decision:      accountcore.UpstreamErrorDecision{Policy: accountcore.ErrorPolicyNone},
+		Decision:      providercore.UpstreamErrorDecision{Policy: providercore.ErrorPolicyNone},
 	}
 	if result.TerminalEvent != "response.failed" {
 		return result
@@ -318,23 +318,23 @@ func (s *OpenAIWebSocketExecutor) handleOpenAIWSTerminalTransientFailure(ctx con
 	result.StatusCode = openAIWSErrorPolicyStatus(payload)
 	if result.StatusCode != 0 {
 		if result.StatusCode == http.StatusTooManyRequests {
-			headers = gatewayprovider.OpenAISemantic429Headers(account, canonicalModel, headers)
+			headers = gatewayprovider.OpenAISemantic429Headers(provider, canonicalModel, headers)
 		}
-		result.Decision = s.applyOpenAIWSEventErrorPolicy(ctx, account, canonicalModel, result.StatusCode, headers, payload)
+		result.Decision = s.applyOpenAIWSEventErrorPolicy(ctx, provider, canonicalModel, result.StatusCode, headers, payload)
 	}
 	return result
 }
 
-func (s *OpenAIWebSocketExecutor) handleOpenAIWSErrorEventTransientFailure(ctx context.Context, account *gatewayprovider.ExecutionAccount, canonicalModel string, headers http.Header, payload []byte) accountcore.UpstreamErrorDecision {
+func (s *OpenAIWebSocketExecutor) handleOpenAIWSErrorEventTransientFailure(ctx context.Context, provider *gatewayprovider.ExecutionProvider, canonicalModel string, headers http.Header, payload []byte) providercore.UpstreamErrorDecision {
 	eventType, _, _ := openai.ParseWSEventEnvelope(payload)
 	if eventType != "error" {
-		return accountcore.UpstreamErrorDecision{Policy: accountcore.ErrorPolicyNone}
+		return providercore.UpstreamErrorDecision{Policy: providercore.ErrorPolicyNone}
 	}
 	status := openAIWSErrorPolicyStatus(payload)
 	if status == http.StatusTooManyRequests {
-		headers = gatewayprovider.OpenAISemantic429Headers(account, canonicalModel, headers)
+		headers = gatewayprovider.OpenAISemantic429Headers(provider, canonicalModel, headers)
 	}
-	return s.applyOpenAIWSEventErrorPolicy(ctx, account, canonicalModel, status, headers, payload)
+	return s.applyOpenAIWSEventErrorPolicy(ctx, provider, canonicalModel, status, headers, payload)
 }
 
 // markOpenAIWSClientVisibleFailure 记录已经写给客户端的 WS 错误事件，避免把
@@ -379,63 +379,63 @@ func markOpenAIWSClientVisibleFailure(c *gin.Context, eventType string, payload 
 	MarkOpsStreamFailure(c, errType, code, message, status)
 }
 
-// handleOpenAIWSFailureAccountSideEffects 将 WS 错误事件映射到账号健康策略，
+// handleOpenAIWSFailureProviderSideEffects 将 WS 错误事件映射到提供商健康策略，
 // 返回值用于成对的 error/response.failed 事件去重。
-func (s *OpenAIWebSocketExecutor) handleOpenAIWSFailureAccountSideEffects(ctx context.Context, account *gatewayprovider.ExecutionAccount, canonicalModel string, headers http.Header, payload []byte) bool {
+func (s *OpenAIWebSocketExecutor) handleOpenAIWSFailureProviderSideEffects(ctx context.Context, provider *gatewayprovider.ExecutionProvider, canonicalModel string, headers http.Header, payload []byte) bool {
 	message := upstreamopenai.ExtractOpenAISSEErrorMessage(payload)
 	status := upstreamopenai.OpenAIStreamFailureStatus(payload, message)
 	switch status {
 	case http.StatusUnauthorized, http.StatusTooManyRequests, 529:
-		s.Output.TerminalAccountEffects(nil, account, payload, message, headers, canonicalModel)
+		s.Output.TerminalProviderEffects(nil, provider, payload, message, headers, canonicalModel)
 		return true
 	case http.StatusForbidden:
-		if !upstreamopenai.OpenAIStream403AccountFailure(payload, message) {
+		if !upstreamopenai.OpenAIStream403ProviderFailure(payload, message) {
 			return false
 		}
-		s.Output.TerminalAccountEffects(nil, account, payload, message, headers, canonicalModel)
+		s.Output.TerminalProviderEffects(nil, provider, payload, message, headers, canonicalModel)
 		return true
 	}
 	status = openAIWSPayloadTransientStatus(payload)
 	if status == 0 {
 		return false
 	}
-	gatewayprovider.ApplyOpenAIResponseHealth(ctx, s.Output.Health, account, status, headers, payload, false, canonicalModel)
+	gatewayprovider.ApplyOpenAIResponseHealth(ctx, s.Output.Health, provider, status, headers, payload, false, canonicalModel)
 	return true
 }
 
-func (s *OpenAIWebSocketExecutor) handleOpenAIWSDialTransientFailure(ctx context.Context, account *gatewayprovider.ExecutionAccount, canonicalModel string, err error) accountcore.UpstreamErrorDecision {
+func (s *OpenAIWebSocketExecutor) handleOpenAIWSDialTransientFailure(ctx context.Context, provider *gatewayprovider.ExecutionProvider, canonicalModel string, err error) providercore.UpstreamErrorDecision {
 	var dialErr *upstreamopenai.WSDialError
 	if !errors.As(err, &dialErr) || dialErr == nil {
-		return accountcore.UpstreamErrorDecision{Policy: accountcore.ErrorPolicyNone}
+		return providercore.UpstreamErrorDecision{Policy: providercore.ErrorPolicyNone}
 	}
-	return s.applyOpenAIWSEventErrorPolicy(ctx, account, canonicalModel, dialErr.StatusCode, dialErr.ResponseHeaders, dialErr.ResponseBody)
+	return s.applyOpenAIWSEventErrorPolicy(ctx, provider, canonicalModel, dialErr.StatusCode, dialErr.ResponseHeaders, dialErr.ResponseBody)
 }
 
-// applyOpenAIWSEventErrorPolicy 将握手和事件错误接入统一账号策略。
+// applyOpenAIWSEventErrorPolicy 将握手和事件错误接入统一提供商策略。
 // 请求级错误保持原样，响应尚未输出时由调用方依据返回决策决定是否故障转移。
 func (s *OpenAIWebSocketExecutor) applyOpenAIWSEventErrorPolicy(
 	ctx context.Context,
-	account *gatewayprovider.ExecutionAccount,
+	provider *gatewayprovider.ExecutionProvider,
 	canonicalModel string,
 	statusCode int,
 	headers http.Header,
 	payload []byte,
-) accountcore.UpstreamErrorDecision {
-	if statusCode == 0 || gatewayprovider.OpenAIWSHTTPBridgeRequestScopedError(account, statusCode, upstream.ExtractErrorMessage(payload), payload) {
-		return accountcore.UpstreamErrorDecision{Policy: accountcore.ErrorPolicyNone}
+) providercore.UpstreamErrorDecision {
+	if statusCode == 0 || gatewayprovider.OpenAIWSHTTPBridgeRequestScopedError(provider, statusCode, upstream.ExtractErrorMessage(payload), payload) {
+		return providercore.UpstreamErrorDecision{Policy: providercore.ErrorPolicyNone}
 	}
-	if account != nil && account.Record.Platform == capability.PlatformGrok {
-		return gatewayprovider.ApplyGrokExecutionHealth(ctx, s.Output.GrokHealth, account, statusCode, headers, payload, "", canonicalModel)
+	if provider != nil && provider.Record.Platform == capability.PlatformGrok {
+		return gatewayprovider.ApplyGrokExecutionHealth(ctx, s.Output.GrokHealth, provider, statusCode, headers, payload, "", canonicalModel)
 	}
-	return gatewayprovider.ApplyOpenAIResponseHealth(ctx, s.Output.Health, account, statusCode, headers, payload, false, canonicalModel)
+	return gatewayprovider.ApplyOpenAIResponseHealth(ctx, s.Output.Health, provider, statusCode, headers, payload, false, canonicalModel)
 }
 
 // shouldFailoverOpenAIWSError 使用对应平台的 HTTP 错误分类作为 WS 握手和事件错误的默认切号规则。
-func (s *OpenAIWebSocketExecutor) shouldFailoverOpenAIWSError(account *gatewayprovider.ExecutionAccount, statusCode int, payload []byte) bool {
+func (s *OpenAIWebSocketExecutor) shouldFailoverOpenAIWSError(provider *gatewayprovider.ExecutionProvider, statusCode int, payload []byte) bool {
 	if statusCode == 0 {
 		return false
 	}
-	if account != nil && account.Record.Platform == capability.PlatformGrok {
+	if provider != nil && provider.Record.Platform == capability.PlatformGrok {
 		return gatewayprovider.ShouldFailoverGrokResponse(statusCode, payload)
 	}
 	upstreamMsg := logredact.SanitizeUpstreamQueries(strings.TrimSpace(upstream.ExtractErrorMessage(payload)))
@@ -450,10 +450,10 @@ func openAIWSGenericPolicyCloseError(statusCode int) error {
 	)
 }
 
-// newOpenAIWSRateLimitFailoverError 保留 WS 限流响应头并允许 OAuth 账号短暂原地重试。
-func (s *OpenAIWebSocketExecutor) newOpenAIWSRateLimitFailoverError(account *gatewayprovider.ExecutionAccount, headers http.Header, responseBody []byte, message string) *forwardcore.UpstreamFailoverError {
-	return (gatewayprovider.OpenAIFailoverPolicy{Health: s.Output.Health}).NewAccountFailure(
-		account,
+// newOpenAIWSRateLimitFailoverError 保留 WS 限流响应头并允许 OAuth 提供商短暂原地重试。
+func (s *OpenAIWebSocketExecutor) newOpenAIWSRateLimitFailoverError(provider *gatewayprovider.ExecutionProvider, headers http.Header, responseBody []byte, message string) *forwardcore.UpstreamFailoverError {
+	return (gatewayprovider.OpenAIFailoverPolicy{Health: s.Output.Health}).NewProviderFailure(
+		provider,
 		http.StatusTooManyRequests,
 		headers,
 		responseBody,
@@ -474,44 +474,44 @@ func (s *OpenAIWebSocketExecutor) openAIWSFallbackCooldown() time.Duration {
 	return time.Duration(seconds) * time.Second
 }
 
-func (s *OpenAIWebSocketExecutor) isOpenAIWSFallbackCooling(accountID int64) bool {
-	if s == nil || accountID <= 0 {
+func (s *OpenAIWebSocketExecutor) isOpenAIWSFallbackCooling(providerID int64) bool {
+	if s == nil || providerID <= 0 {
 		return false
 	}
 	cooldown := s.openAIWSFallbackCooldown()
 	if cooldown <= 0 {
 		return false
 	}
-	rawUntil, ok := s.openaiWSFallbackUntil.Load(accountID)
+	rawUntil, ok := s.openaiWSFallbackUntil.Load(providerID)
 	if !ok || rawUntil == nil {
 		return false
 	}
 	until, ok := rawUntil.(time.Time)
 	if !ok || until.IsZero() {
-		s.openaiWSFallbackUntil.Delete(accountID)
+		s.openaiWSFallbackUntil.Delete(providerID)
 		return false
 	}
 	if time.Now().Before(until) {
 		return true
 	}
-	s.openaiWSFallbackUntil.Delete(accountID)
+	s.openaiWSFallbackUntil.Delete(providerID)
 	return false
 }
 
-func (s *OpenAIWebSocketExecutor) markOpenAIWSFallbackCooling(accountID int64, _ string) {
-	if s == nil || accountID <= 0 {
+func (s *OpenAIWebSocketExecutor) markOpenAIWSFallbackCooling(providerID int64, _ string) {
+	if s == nil || providerID <= 0 {
 		return
 	}
 	cooldown := s.openAIWSFallbackCooldown()
 	if cooldown <= 0 {
 		return
 	}
-	s.openaiWSFallbackUntil.Store(accountID, time.Now().Add(cooldown))
+	s.openaiWSFallbackUntil.Store(providerID, time.Now().Add(cooldown))
 }
 
-func (s *OpenAIWebSocketExecutor) clearOpenAIWSFallbackCooling(accountID int64) {
-	if s == nil || accountID <= 0 {
+func (s *OpenAIWebSocketExecutor) clearOpenAIWSFallbackCooling(providerID int64) {
+	if s == nil || providerID <= 0 {
 		return
 	}
-	s.openaiWSFallbackUntil.Delete(accountID)
+	s.openaiWSFallbackUntil.Delete(providerID)
 }

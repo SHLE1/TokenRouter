@@ -16,15 +16,14 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 )
 
-// TestOpenAIGatewayService_APIKeyPassthrough_PoolModeAuthErrorsTriggerFailover 验证池模式认证错误先按账号配置同号重试。
+// TestOpenAIGatewayService_APIKeyPassthrough_PoolModeAuthErrorsTriggerFailover 验证池模式认证错误先按提供商配置同号重试。
 func TestOpenAIGatewayService_APIKeyPassthrough_PoolModeAuthErrorsTriggerFailover(t *testing.T) {
-
 	tests := []struct {
 		name        string
 		statusCode  int
@@ -51,7 +50,7 @@ func TestOpenAIGatewayService_APIKeyPassthrough_PoolModeAuthErrorsTriggerFailove
 			c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", bytes.NewReader(nil))
 
 			upstreamBody := `{"error":{"message":"upstream credential rejected"}}`
-			svc := newWSFixture(wsFixtureInputs{options: &wsFixtureOptions{Request: OpenAIRequestOptions{ForceCLI: false}}, health: newUpstreamHealthForTest(transientCooldownAccountRepo{}, &wsFixtureOptions{}, nil, accountcore.HealthOptions{}, nil), transport: &auxiliaryHTTPRecorder{resp: &http.Response{
+			svc := newWSFixture(wsFixtureInputs{options: &wsFixtureOptions{Request: OpenAIRequestOptions{ForceCLI: false}}, health: newUpstreamHealthForTest(transientCooldownProviderRepo{}, &wsFixtureOptions{}, nil, providercore.HealthOptions{}, nil), transport: &auxiliaryHTTPRecorder{resp: &http.Response{
 				StatusCode: tt.statusCode,
 				Header:     http.Header{"Content-Type": []string{"application/json"}},
 				Body:       io.NopCloser(strings.NewReader(upstreamBody)),
@@ -64,17 +63,20 @@ func TestOpenAIGatewayService_APIKeyPassthrough_PoolModeAuthErrorsTriggerFailove
 			for key, value := range tt.credentials {
 				credentials[key] = value
 			}
-			account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 129, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey, Concurrency: 1,
-				Credentials: credentials,
-				Extra:       map[string]any{"openai_passthrough": true}, Status: billing.StatusActive, Schedulable: true},
+			provider := &gatewayprovider.ExecutionProvider{
+				Record: providercore.Record{
+					LoadLocation: time.LoadLocation, ID: 129, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey, Concurrency: 1,
+					Credentials: credentials,
+					Extra:       map[string]any{"openai_passthrough": true}, Status: billing.StatusActive, Schedulable: true,
+				},
 			}
 
-			_, err := svc.Responses.Forward(context.Background(), c, account, []byte(`{"model":"gpt-5.2","input":"hello"}`))
+			_, err := svc.Responses.Forward(context.Background(), c, provider, []byte(`{"model":"gpt-5.2","input":"hello"}`))
 
 			var failoverErr *forwardcore.UpstreamFailoverError
 			require.ErrorAs(t, err, &failoverErr)
 			require.Equal(t, tt.statusCode, failoverErr.StatusCode)
-			require.True(t, failoverErr.RetryableOnSameAccount)
+			require.True(t, failoverErr.RetryableOnSameProvider)
 			require.False(t, c.Writer.Written(), "池模式认证失败必须在提交响应前进入故障转移")
 			require.False(t, IsResponseCommitted(c))
 		})

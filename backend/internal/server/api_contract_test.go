@@ -29,7 +29,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/timezone"
 	usagehttp "github.com/TokenFlux/TokenRouter/internal/usage/httpapi"
 
-	accounthttp "github.com/TokenFlux/TokenRouter/internal/account/httpapi"
+	providerhttp "github.com/TokenFlux/TokenRouter/internal/provider/httpapi"
 
 	billinghttp "github.com/TokenFlux/TokenRouter/internal/billing/httpapi"
 
@@ -42,8 +42,8 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 	"github.com/TokenFlux/TokenRouter/internal/site"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
@@ -421,9 +421,9 @@ func TestAPIContracts(t *testing.T) {
 						ModelRouting: map[string][]int64{
 							"claude-3-*": {101, 102},
 						},
-						AccountCount: 2,
-						CreatedAt:    deps.now,
-						UpdatedAt:    deps.now,
+						ProviderCount: 2,
+						CreatedAt:     deps.now,
+						UpdatedAt:     deps.now,
 					},
 				})
 				deps.userSubRepo.SetActiveByUserID(1, nil)
@@ -442,20 +442,8 @@ func TestAPIContracts(t *testing.T) {
 						"description": "desc",
 						"display_brand": "",
 						"rate_multiplier": 1.5,
-						"peak_rate_enabled": false,
-						"peak_start": "",
-						"peak_end": "",
-						"peak_rate_multiplier": 1,
 						"is_exclusive": false,
 						"status": "active",
-						"long_context_pricing_enabled": false,
-						"web_search_price_per_call": null,
-						"search_price_per_1k": null,
-						"audio_tts_price_per_million_chars": null,
-						"audio_stt_price_per_hour": null,
-						"audio_realtime_price_per_min": null,
-						"batch_image_discount_multiplier": 0,
-						"batch_image_hold_multiplier": 0,
 						"claude_code_only": false,
 						"protocol_fallbacks": null, "responses_image_policy": "", "allowed_protocols": [
 							"anthropic_messages",
@@ -769,7 +757,7 @@ func TestAPIContracts(t *testing.T) {
 						ID:                  1,
 						UserID:              1,
 						APIKeyID:            100,
-						AccountID:           200,
+						ProviderID:          200,
 						Model:               "claude-3",
 						InputTokens:         10,
 						OutputTokens:        20,
@@ -784,7 +772,7 @@ func TestAPIContracts(t *testing.T) {
 						ID:           2,
 						UserID:       1,
 						APIKeyID:     100,
-						AccountID:    200,
+						ProviderID:   200,
 						Model:        "claude-3",
 						InputTokens:  5,
 						OutputTokens: 15,
@@ -821,25 +809,25 @@ func TestAPIContracts(t *testing.T) {
 				t.Helper()
 				deps.usageRepo.SetUserLogs(1, []usagecore.UsageLog{
 					{
-						ID:                    1,
-						UserID:                1,
-						APIKeyID:              100,
-						AccountID:             200,
-						AccountRateMultiplier: ptr(0.5),
-						RequestID:             "req_123",
-						Model:                 "claude-3",
-						InputTokens:           10,
-						OutputTokens:          20,
-						CacheCreationTokens:   1,
-						CacheReadTokens:       2,
-						TotalCost:             0.5,
-						ActualCost:            0.5,
-						RateMultiplier:        1,
-						BillingType:           usagecore.BillingTypeBalance,
-						Stream:                true,
-						DurationMs:            ptr(100),
-						FirstTokenMs:          ptr(50),
-						CreatedAt:             deps.now,
+						ID:                     1,
+						UserID:                 1,
+						APIKeyID:               100,
+						ProviderID:             200,
+						ProviderRateMultiplier: ptr(0.5),
+						RequestID:              "req_123",
+						Model:                  "claude-3",
+						InputTokens:            10,
+						OutputTokens:           20,
+						CacheCreationTokens:    1,
+						CacheReadTokens:        2,
+						TotalCost:              0.5,
+						ActualCost:             0.5,
+						RateMultiplier:         1,
+						BillingType:            usagecore.BillingTypeBalance,
+						Stream:                 true,
+						DurationMs:             ptr(100),
+						FirstTokenMs:           ptr(50),
+						CreatedAt:              deps.now,
 					},
 				})
 			},
@@ -855,7 +843,7 @@ func TestAPIContracts(t *testing.T) {
 							"id": 1,
 							"user_id": 1,
 							"api_key_id": 100,
-							"account_id": 200,
+							"provider_id": 200,
 								"request_id": "req_123",
 							"platform": "",
 								"model": "claude-3",
@@ -1218,7 +1206,7 @@ func TestAPIContracts(t *testing.T) {
 							"advanced_scheduler_effective_sticky_escape_enabled": true,
 							"advanced_scheduler_effective_sticky_escape_ttft_ms": "15000",
 							"advanced_scheduler_effective_sticky_escape_error_rate": "0.5",
-							"openai_account_quota_auto_pause": {
+							"openai_provider_quota_auto_pause": {
 								"default_threshold_5h": 0,
 								"default_threshold_7d": 0
 							},
@@ -1282,8 +1270,8 @@ func TestAPIContracts(t *testing.T) {
 					"payment_alipay_force_qrcode": false,
 					"payment_alipay_mobile_precreate_deep_link": false,
 					"balance_low_notify_enabled": false,
-					"account_quota_notify_enabled": false,
-					"account_scheduling_thresholds": {"anthropic":100,"grok":100,"openai":100},
+					"provider_quota_notify_enabled": false,
+					"provider_scheduling_thresholds": {"anthropic":100,"grok":100,"openai":100},
 					"subscription_expiry_notify_enabled": true,
 					"team_enabled": true,
 					"risk_control_enabled": false,
@@ -1292,7 +1280,7 @@ func TestAPIContracts(t *testing.T) {
 					"balance_icon_svg": "",
 					"balance_low_notify_threshold": 0,
 					"balance_low_notify_recharge_url": "",
-					"account_quota_notify_emails": [],
+					"provider_quota_notify_emails": [],
 					"wechat_connect_enabled": false,
 					"wechat_connect_app_id": "",
 					"wechat_connect_app_secret_configured": false,
@@ -1568,7 +1556,7 @@ func TestAPIContracts(t *testing.T) {
 							"advanced_scheduler_effective_sticky_escape_enabled": true,
 							"advanced_scheduler_effective_sticky_escape_ttft_ms": "15000",
 							"advanced_scheduler_effective_sticky_escape_error_rate": "0.5",
-							"openai_account_quota_auto_pause": {
+							"openai_provider_quota_auto_pause": {
 								"default_threshold_5h": 0,
 								"default_threshold_7d": 0
 							},
@@ -1628,8 +1616,8 @@ func TestAPIContracts(t *testing.T) {
 					"payment_alipay_force_qrcode": false,
 					"payment_alipay_mobile_precreate_deep_link": false,
 					"balance_low_notify_enabled": false,
-					"account_quota_notify_enabled": false,
-					"account_scheduling_thresholds": {"anthropic":100,"grok":100,"openai":100},
+					"provider_quota_notify_enabled": false,
+					"provider_scheduling_thresholds": {"anthropic":100,"grok":100,"openai":100},
 					"subscription_expiry_notify_enabled": true,
 					"team_enabled": true,
 					"risk_control_enabled": false,
@@ -1638,7 +1626,7 @@ func TestAPIContracts(t *testing.T) {
 					"balance_icon_svg": "",
 					"balance_low_notify_threshold": 0,
 					"balance_low_notify_recharge_url": "",
-					"account_quota_notify_emails": [],
+					"provider_quota_notify_emails": [],
 					"wechat_connect_enabled": true,
 					"wechat_connect_app_id": "wx-open-config",
 					"wechat_connect_app_secret_configured": true,
@@ -1696,10 +1684,10 @@ func TestAPIContracts(t *testing.T) {
 			}`,
 		},
 		{
-			name:   "POST /api/v1/admin/accounts/bulk-update",
+			name:   "POST /api/v1/admin/providers/bulk-update",
 			method: http.MethodPost,
-			path:   "/api/v1/admin/accounts/bulk-update",
-			body:   `{"account_ids":[101,102],"schedulable":false}`,
+			path:   "/api/v1/admin/providers/bulk-update",
+			body:   `{"provider_ids":[101,102],"schedulable":false}`,
 			headers: map[string]string{
 				"Content-Type": "application/json",
 			},
@@ -1713,8 +1701,8 @@ func TestAPIContracts(t *testing.T) {
 					"success_ids": [101, 102],
 					"failed_ids": [],
 					"results": [
-						{"account_id": 101, "success": true},
-						{"account_id": 102, "success": true}
+						{"provider_id": 101, "success": true},
+						{"provider_id": 102, "success": true}
 					]
 				}
 			}`,
@@ -1772,7 +1760,7 @@ func newContractDeps(t *testing.T, setup func(*testing.T, *contractDeps)) *contr
 	apiKeyCache := stubApiKeyCache{}
 	groupRepo := &stubGroupRepo{}
 	userSubRepo := &stubUserSubscriptionRepo{}
-	accountRepo := stubAccountRepo{}
+	providerRepo := stubProviderRepo{}
 	redeemRepo := &stubRedeemCodeRepo{}
 
 	cfg := &config.Config{
@@ -1826,7 +1814,7 @@ func newContractDeps(t *testing.T, setup func(*testing.T, *contractDeps)) *contr
 	})
 	usageHandler := usagehttp.NewUsageHandler(usageService, contractUsageKeys(apiKeyService), nil, usagecore.NewRuntimeSettings(settingRepo), timezone.NewCalendar(time.Local))
 	adminSettingHandler := settingshttp.NewHandler(settingshttp.HandlerOptions{Settings: settingService})
-	adminAccountHandler := accounthttp.NewManagementHandler(accountcore.NewAdmin(contractAccountBulkStore{source: &accountRepo}, accountcore.AdminOptions{}), accounthttp.ManagementOptions{})
+	adminProviderHandler := providerhttp.NewManagementHandler(providercore.NewAdmin(contractProviderBulkStore{source: &providerRepo}, providercore.AdminOptions{}), providerhttp.ManagementOptions{})
 
 	jwtAuth := func(c *gin.Context) {
 		c.Set(string(authctx.ContextKeyUser), authctx.AuthSubject{
@@ -1876,7 +1864,7 @@ func newContractDeps(t *testing.T, setup func(*testing.T, *contractDeps)) *contr
 	v1Admin := v1.Group("/admin")
 	v1Admin.Use(adminAuth)
 	v1Admin.GET("/settings", adminSettingHandler.GetSettings)
-	v1Admin.POST("/accounts/bulk-update", adminAccountHandler.BulkUpdate)
+	v1Admin.POST("/providers/bulk-update", adminProviderHandler.BulkUpdate)
 	v1Admin.POST("/subscriptions/:id/restore", adminSubscriptionHandler.Restore)
 
 	deps.router = r
@@ -2167,19 +2155,19 @@ func (stubGroupRepo) ExistsByName(ctx context.Context, name string) (bool, error
 	return false, errors.New("not implemented")
 }
 
-func (stubGroupRepo) GetAccountCount(ctx context.Context, groupID int64) (int64, int64, error) {
+func (stubGroupRepo) GetProviderCount(ctx context.Context, groupID int64) (int64, int64, error) {
 	return 0, 0, errors.New("not implemented")
 }
 
-func (stubGroupRepo) DeleteAccountGroupsByGroupID(ctx context.Context, groupID int64) (int64, error) {
+func (stubGroupRepo) DeleteProviderGroupsByGroupID(ctx context.Context, groupID int64) (int64, error) {
 	return 0, errors.New("not implemented")
 }
 
-func (stubGroupRepo) BindAccountsToGroup(ctx context.Context, groupID int64, accountIDs []int64) error {
+func (stubGroupRepo) BindProvidersToGroup(ctx context.Context, groupID int64, providerIDs []int64) error {
 	return errors.New("not implemented")
 }
 
-func (stubGroupRepo) GetAccountIDsByGroupIDs(ctx context.Context, groupIDs []int64) ([]int64, error) {
+func (stubGroupRepo) GetProviderIDsByGroupIDs(ctx context.Context, groupIDs []int64) ([]int64, error) {
 	return nil, errors.New("not implemented")
 }
 
@@ -2200,204 +2188,204 @@ func (stubGroupRepo) CreateFromSource(ctx context.Context, group *routing.Group,
 	return errors.New("not implemented")
 }
 
-type stubAccountRepo struct {
+type stubProviderRepo struct {
 	bulkUpdateIDs []int64
 }
 
-func (s *stubAccountRepo) Create(ctx context.Context, account *gatewayprovider.ExecutionAccount) error {
+func (s *stubProviderRepo) Create(ctx context.Context, provider *gatewayprovider.ExecutionProvider) error {
 	return errors.New("not implemented")
 }
 
-func (s *stubAccountRepo) CreateWithAccountGroups(ctx context.Context, account *gatewayprovider.ExecutionAccount, groups []accountcore.GroupMembership) error {
+func (s *stubProviderRepo) CreateWithProviderGroups(ctx context.Context, provider *gatewayprovider.ExecutionProvider, groups []providercore.GroupMembership) error {
 	return errors.New("not implemented")
 }
 
-func (s *stubAccountRepo) GetByID(ctx context.Context, id int64) (*gatewayprovider.ExecutionAccount, error) {
-	return nil, accountcore.ErrAccountNotFound
+func (s *stubProviderRepo) GetByID(ctx context.Context, id int64) (*gatewayprovider.ExecutionProvider, error) {
+	return nil, providercore.ErrProviderNotFound
 }
 
-func (s *stubAccountRepo) GetByIDs(ctx context.Context, ids []int64) ([]*gatewayprovider.ExecutionAccount, error) {
+func (s *stubProviderRepo) GetByIDs(ctx context.Context, ids []int64) ([]*gatewayprovider.ExecutionProvider, error) {
 	return nil, errors.New("not implemented")
 }
 
-func (s *stubAccountRepo) ExistsByID(ctx context.Context, id int64) (bool, error) {
+func (s *stubProviderRepo) ExistsByID(ctx context.Context, id int64) (bool, error) {
 	return false, errors.New("not implemented")
 }
 
-func (s *stubAccountRepo) GetByCRSAccountID(ctx context.Context, crsAccountID string) (*gatewayprovider.ExecutionAccount, error) {
+func (s *stubProviderRepo) GetByCRSAccountID(ctx context.Context, crsProviderID string) (*gatewayprovider.ExecutionProvider, error) {
 	return nil, errors.New("not implemented")
 }
 
-func (s *stubAccountRepo) FindByExtraField(ctx context.Context, key string, value any) ([]gatewayprovider.ExecutionAccount, error) {
+func (s *stubProviderRepo) FindByExtraField(ctx context.Context, key string, value any) ([]gatewayprovider.ExecutionProvider, error) {
 	return nil, errors.New("not implemented")
 }
 
-func (s *stubAccountRepo) Update(ctx context.Context, account *gatewayprovider.ExecutionAccount) error {
+func (s *stubProviderRepo) Update(ctx context.Context, provider *gatewayprovider.ExecutionProvider) error {
 	return errors.New("not implemented")
 }
 
-func (s *stubAccountRepo) Delete(ctx context.Context, id int64) error {
+func (s *stubProviderRepo) Delete(ctx context.Context, id int64) error {
 	return errors.New("not implemented")
 }
 
-func (s *stubAccountRepo) List(ctx context.Context, params pagination.PaginationParams) ([]gatewayprovider.ExecutionAccount, *pagination.PaginationResult, error) {
+func (s *stubProviderRepo) List(ctx context.Context, params pagination.PaginationParams) ([]gatewayprovider.ExecutionProvider, *pagination.PaginationResult, error) {
 	return nil, nil, errors.New("not implemented")
 }
 
-func (s *stubAccountRepo) ListAllWithFilters(context.Context, string, string, string, string, int64, string) ([]gatewayprovider.ExecutionAccount, error) {
+func (s *stubProviderRepo) ListAllWithFilters(context.Context, string, string, string, string, int64, string) ([]gatewayprovider.ExecutionProvider, error) {
 	return nil, nil
 }
 
-func (s *stubAccountRepo) ListWithFilters(ctx context.Context, params pagination.PaginationParams, platform, accountType, status, search string, groupID int64, privacyMode string) ([]gatewayprovider.ExecutionAccount, *pagination.PaginationResult, error) {
+func (s *stubProviderRepo) ListWithFilters(ctx context.Context, params pagination.PaginationParams, platform, providerType, status, search string, groupID int64, privacyMode string) ([]gatewayprovider.ExecutionProvider, *pagination.PaginationResult, error) {
 	return nil, nil, errors.New("not implemented")
 }
 
-func (s *stubAccountRepo) ListByGroup(ctx context.Context, groupID int64) ([]gatewayprovider.ExecutionAccount, error) {
+func (s *stubProviderRepo) ListByGroup(ctx context.Context, groupID int64) ([]gatewayprovider.ExecutionProvider, error) {
 	return nil, errors.New("not implemented")
 }
 
-func (s *stubAccountRepo) ListActive(ctx context.Context) ([]gatewayprovider.ExecutionAccount, error) {
+func (s *stubProviderRepo) ListActive(ctx context.Context) ([]gatewayprovider.ExecutionProvider, error) {
 	return nil, errors.New("not implemented")
 }
 
-func (s *stubAccountRepo) ListOAuthRefreshCandidates(ctx context.Context) ([]gatewayprovider.ExecutionAccount, error) {
+func (s *stubProviderRepo) ListOAuthRefreshCandidates(ctx context.Context) ([]gatewayprovider.ExecutionProvider, error) {
 	return nil, errors.New("not implemented")
 }
 
-func (s *stubAccountRepo) ListByPlatform(ctx context.Context, platform string) ([]gatewayprovider.ExecutionAccount, error) {
+func (s *stubProviderRepo) ListByPlatform(ctx context.Context, platform string) ([]gatewayprovider.ExecutionProvider, error) {
 	return nil, errors.New("not implemented")
 }
 
-func (s *stubAccountRepo) UpdateLastUsed(ctx context.Context, id int64) error {
+func (s *stubProviderRepo) UpdateLastUsed(ctx context.Context, id int64) error {
 	return errors.New("not implemented")
 }
 
-func (s *stubAccountRepo) BatchUpdateLastUsed(ctx context.Context, updates map[int64]time.Time) error {
+func (s *stubProviderRepo) BatchUpdateLastUsed(ctx context.Context, updates map[int64]time.Time) error {
 	return errors.New("not implemented")
 }
 
-func (s *stubAccountRepo) SetError(ctx context.Context, id int64, errorMsg string) error {
+func (s *stubProviderRepo) SetError(ctx context.Context, id int64, errorMsg string) error {
 	return errors.New("not implemented")
 }
 
-func (s *stubAccountRepo) ClearError(ctx context.Context, id int64) error {
+func (s *stubProviderRepo) ClearError(ctx context.Context, id int64) error {
 	return errors.New("not implemented")
 }
 
-func (s *stubAccountRepo) SetSchedulable(ctx context.Context, id int64, schedulable bool) error {
+func (s *stubProviderRepo) SetSchedulable(ctx context.Context, id int64, schedulable bool) error {
 	return errors.New("not implemented")
 }
 
-func (s *stubAccountRepo) AutoPauseExpiredAccounts(ctx context.Context, now time.Time) (int64, error) {
+func (s *stubProviderRepo) AutoPauseExpiredProviders(ctx context.Context, now time.Time) (int64, error) {
 	return 0, errors.New("not implemented")
 }
 
-func (s *stubAccountRepo) BindGroups(ctx context.Context, accountID int64, groupIDs []int64) error {
+func (s *stubProviderRepo) BindGroups(ctx context.Context, providerID int64, groupIDs []int64) error {
 	return errors.New("not implemented")
 }
 
-func (s *stubAccountRepo) ListShadowsByParent(ctx context.Context, parentID int64) ([]*gatewayprovider.ExecutionAccount, error) {
+func (s *stubProviderRepo) ListShadowsByParent(ctx context.Context, parentID int64) ([]*gatewayprovider.ExecutionProvider, error) {
 	return nil, errors.New("not implemented")
 }
 
-func (s *stubAccountRepo) ListSchedulable(ctx context.Context) ([]gatewayprovider.ExecutionAccount, error) {
+func (s *stubProviderRepo) ListSchedulable(ctx context.Context) ([]gatewayprovider.ExecutionProvider, error) {
 	return nil, errors.New("not implemented")
 }
 
-func (s *stubAccountRepo) ListSchedulableByGroupID(ctx context.Context, groupID int64) ([]gatewayprovider.ExecutionAccount, error) {
+func (s *stubProviderRepo) ListSchedulableByGroupID(ctx context.Context, groupID int64) ([]gatewayprovider.ExecutionProvider, error) {
 	return nil, errors.New("not implemented")
 }
 
-func (s *stubAccountRepo) ListSchedulableByPlatform(ctx context.Context, platform string) ([]gatewayprovider.ExecutionAccount, error) {
+func (s *stubProviderRepo) ListSchedulableByPlatform(ctx context.Context, platform string) ([]gatewayprovider.ExecutionProvider, error) {
 	return nil, errors.New("not implemented")
 }
 
-func (s *stubAccountRepo) ListSchedulableByGroupIDAndPlatform(ctx context.Context, groupID int64, platform string) ([]gatewayprovider.ExecutionAccount, error) {
+func (s *stubProviderRepo) ListSchedulableByGroupIDAndPlatform(ctx context.Context, groupID int64, platform string) ([]gatewayprovider.ExecutionProvider, error) {
 	return nil, errors.New("not implemented")
 }
 
-func (s *stubAccountRepo) ListSchedulableByPlatforms(ctx context.Context, platforms []string) ([]gatewayprovider.ExecutionAccount, error) {
+func (s *stubProviderRepo) ListSchedulableByPlatforms(ctx context.Context, platforms []string) ([]gatewayprovider.ExecutionProvider, error) {
 	return nil, errors.New("not implemented")
 }
 
-func (s *stubAccountRepo) ListSchedulableByGroupIDAndPlatforms(ctx context.Context, groupID int64, platforms []string) ([]gatewayprovider.ExecutionAccount, error) {
+func (s *stubProviderRepo) ListSchedulableByGroupIDAndPlatforms(ctx context.Context, groupID int64, platforms []string) ([]gatewayprovider.ExecutionProvider, error) {
 	return nil, errors.New("not implemented")
 }
 
-func (s *stubAccountRepo) ListSchedulableUngroupedByPlatform(ctx context.Context, platform string) ([]gatewayprovider.ExecutionAccount, error) {
+func (s *stubProviderRepo) ListSchedulableUngroupedByPlatform(ctx context.Context, platform string) ([]gatewayprovider.ExecutionProvider, error) {
 	return nil, errors.New("not implemented")
 }
 
-func (s *stubAccountRepo) ListSchedulableUngroupedByPlatforms(ctx context.Context, platforms []string) ([]gatewayprovider.ExecutionAccount, error) {
+func (s *stubProviderRepo) ListSchedulableUngroupedByPlatforms(ctx context.Context, platforms []string) ([]gatewayprovider.ExecutionProvider, error) {
 	return nil, errors.New("not implemented")
 }
 
-func (s *stubAccountRepo) ListModelAvailabilityCandidates(ctx context.Context, groupID *int64, platforms []string, includeGrouped bool) ([]gatewayprovider.ExecutionAccount, error) {
+func (s *stubProviderRepo) ListModelAvailabilityCandidates(ctx context.Context, groupID *int64, platforms []string, includeGrouped bool) ([]gatewayprovider.ExecutionProvider, error) {
 	return nil, errors.New("not implemented")
 }
 
-func (s *stubAccountRepo) SetRateLimited(ctx context.Context, id int64, resetAt time.Time) error {
+func (s *stubProviderRepo) SetRateLimited(ctx context.Context, id int64, resetAt time.Time) error {
 	return errors.New("not implemented")
 }
 
-func (s *stubAccountRepo) SetModelRateLimit(ctx context.Context, id int64, scope string, resetAt time.Time, reason ...string) error {
+func (s *stubProviderRepo) SetModelRateLimit(ctx context.Context, id int64, scope string, resetAt time.Time, reason ...string) error {
 	return errors.New("not implemented")
 }
 
-func (s *stubAccountRepo) SetOverloaded(ctx context.Context, id int64, until time.Time) error {
+func (s *stubProviderRepo) SetOverloaded(ctx context.Context, id int64, until time.Time) error {
 	return errors.New("not implemented")
 }
 
-func (s *stubAccountRepo) SetTempUnschedulable(ctx context.Context, id int64, until time.Time, reason string) error {
+func (s *stubProviderRepo) SetTempUnschedulable(ctx context.Context, id int64, until time.Time, reason string) error {
 	return errors.New("not implemented")
 }
 
-func (s *stubAccountRepo) ClearTempUnschedulable(ctx context.Context, id int64) error {
+func (s *stubProviderRepo) ClearTempUnschedulable(ctx context.Context, id int64) error {
 	return errors.New("not implemented")
 }
 
-func (s *stubAccountRepo) ClearRateLimit(ctx context.Context, id int64) error {
+func (s *stubProviderRepo) ClearRateLimit(ctx context.Context, id int64) error {
 	return errors.New("not implemented")
 }
 
-func (s *stubAccountRepo) ClearAntigravityQuotaScopes(ctx context.Context, id int64) error {
+func (s *stubProviderRepo) ClearAntigravityQuotaScopes(ctx context.Context, id int64) error {
 	return errors.New("not implemented")
 }
 
-func (s *stubAccountRepo) ClearModelRateLimits(ctx context.Context, id int64) error {
+func (s *stubProviderRepo) ClearModelRateLimits(ctx context.Context, id int64) error {
 	return errors.New("not implemented")
 }
 
-func (s *stubAccountRepo) UpdateSessionWindow(ctx context.Context, id int64, start, end *time.Time, status string) error {
+func (s *stubProviderRepo) UpdateSessionWindow(ctx context.Context, id int64, start, end *time.Time, status string) error {
 	return errors.New("not implemented")
 }
 
-func (s *stubAccountRepo) UpdateSessionWindowEnd(ctx context.Context, id int64, end time.Time) error {
+func (s *stubProviderRepo) UpdateSessionWindowEnd(ctx context.Context, id int64, end time.Time) error {
 	return errors.New("not implemented")
 }
 
-func (s *stubAccountRepo) UpdateExtra(ctx context.Context, id int64, updates map[string]any) error {
+func (s *stubProviderRepo) UpdateExtra(ctx context.Context, id int64, updates map[string]any) error {
 	return errors.New("not implemented")
 }
 
-func (s *stubAccountRepo) IncrementQuotaUsed(ctx context.Context, id int64, amount float64) error {
+func (s *stubProviderRepo) IncrementQuotaUsed(ctx context.Context, id int64, amount float64) error {
 	return errors.New("not implemented")
 }
 
-func (s *stubAccountRepo) ResetQuotaUsedAndClearRateLimitCooldown(ctx context.Context, id int64) error {
+func (s *stubProviderRepo) ResetQuotaUsedAndClearRateLimitCooldown(ctx context.Context, id int64) error {
 	return errors.New("not implemented")
 }
 
-func (s *stubAccountRepo) BulkUpdate(ctx context.Context, ids []int64, updates accountcore.AccountBulkUpdate) (int64, error) {
+func (s *stubProviderRepo) BulkUpdate(ctx context.Context, ids []int64, updates providercore.ProviderBulkUpdate) (int64, error) {
 	s.bulkUpdateIDs = append([]int64{}, ids...)
 	return int64(len(ids)), nil
 }
 
-func (s *stubAccountRepo) ListCRSAccountIDs(ctx context.Context) (map[string]int64, error) {
+func (s *stubProviderRepo) ListCRSAccountIDs(ctx context.Context) (map[string]int64, error) {
 	return nil, errors.New("not implemented")
 }
 
-func (s *stubAccountRepo) RevertProxyFallback(ctx context.Context, accountID int64) error {
+func (s *stubProviderRepo) RevertProxyFallback(ctx context.Context, providerID int64) error {
 	return nil
 }
 
@@ -2960,7 +2948,7 @@ func (r *stubUsageLogRepo) ListByAPIKey(ctx context.Context, apiKeyID int64, par
 	return nil, nil, errors.New("not implemented")
 }
 
-func (r *stubUsageLogRepo) ListByAccount(ctx context.Context, accountID int64, params pagination.PaginationParams) ([]usagecore.UsageLog, *pagination.PaginationResult, error) {
+func (r *stubUsageLogRepo) ListByProvider(ctx context.Context, providerID int64, params pagination.PaginationParams) ([]usagecore.UsageLog, *pagination.PaginationResult, error) {
 	return nil, nil, errors.New("not implemented")
 }
 
@@ -2973,7 +2961,7 @@ func (r *stubUsageLogRepo) ListByAPIKeyAndTimeRange(ctx context.Context, apiKeyI
 	return nil, nil, errors.New("not implemented")
 }
 
-func (r *stubUsageLogRepo) ListByAccountAndTimeRange(ctx context.Context, accountID int64, startTime, endTime time.Time) ([]usagecore.UsageLog, *pagination.PaginationResult, error) {
+func (r *stubUsageLogRepo) ListByProviderAndTimeRange(ctx context.Context, providerID int64, startTime, endTime time.Time) ([]usagecore.UsageLog, *pagination.PaginationResult, error) {
 	return nil, nil, errors.New("not implemented")
 }
 
@@ -2981,11 +2969,11 @@ func (r *stubUsageLogRepo) ListByModelAndTimeRange(ctx context.Context, modelNam
 	return nil, nil, errors.New("not implemented")
 }
 
-func (r *stubUsageLogRepo) GetAccountWindowStats(ctx context.Context, accountID int64, startTime time.Time) (*usagecore.AccountStats, error) {
+func (r *stubUsageLogRepo) GetProviderWindowStats(ctx context.Context, providerID int64, startTime time.Time) (*usagecore.ProviderStats, error) {
 	return nil, errors.New("not implemented")
 }
 
-func (r *stubUsageLogRepo) GetAccountTodayStats(ctx context.Context, accountID int64) (*usagecore.AccountStats, error) {
+func (r *stubUsageLogRepo) GetProviderTodayStats(ctx context.Context, providerID int64) (*usagecore.ProviderStats, error) {
 	return nil, errors.New("not implemented")
 }
 
@@ -2993,23 +2981,23 @@ func (r *stubUsageLogRepo) GetDashboardStats(ctx context.Context) (*usagecore.Da
 	return nil, errors.New("not implemented")
 }
 
-func (r *stubUsageLogRepo) GetUsageTrendWithFilters(ctx context.Context, startTime, endTime time.Time, granularity string, userID, apiKeyID, accountID, groupID int64, model string, requestType *int16, stream *bool, billingType *int8) ([]usagecore.TrendDataPoint, error) {
+func (r *stubUsageLogRepo) GetUsageTrendWithFilters(ctx context.Context, startTime, endTime time.Time, granularity string, userID, apiKeyID, providerID, groupID int64, model string, requestType *int16, stream *bool, billingType *int8) ([]usagecore.TrendDataPoint, error) {
 	return nil, errors.New("not implemented")
 }
 
-func (r *stubUsageLogRepo) GetModelStatsWithFilters(ctx context.Context, startTime, endTime time.Time, userID, apiKeyID, accountID, groupID int64, requestType *int16, stream *bool, billingType *int8) ([]usagecore.ModelStat, error) {
+func (r *stubUsageLogRepo) GetModelStatsWithFilters(ctx context.Context, startTime, endTime time.Time, userID, apiKeyID, providerID, groupID int64, requestType *int16, stream *bool, billingType *int8) ([]usagecore.ModelStat, error) {
 	return nil, errors.New("not implemented")
 }
 
-func (r *stubUsageLogRepo) GetEndpointStatsWithFilters(ctx context.Context, startTime, endTime time.Time, userID, apiKeyID, accountID, groupID int64, model string, requestType *int16, stream *bool, billingType *int8) ([]usagecore.EndpointStat, error) {
+func (r *stubUsageLogRepo) GetEndpointStatsWithFilters(ctx context.Context, startTime, endTime time.Time, userID, apiKeyID, providerID, groupID int64, model string, requestType *int16, stream *bool, billingType *int8) ([]usagecore.EndpointStat, error) {
 	return nil, errors.New("not implemented")
 }
 
-func (r *stubUsageLogRepo) GetUpstreamEndpointStatsWithFilters(ctx context.Context, startTime, endTime time.Time, userID, apiKeyID, accountID, groupID int64, model string, requestType *int16, stream *bool, billingType *int8) ([]usagecore.EndpointStat, error) {
+func (r *stubUsageLogRepo) GetUpstreamEndpointStatsWithFilters(ctx context.Context, startTime, endTime time.Time, userID, apiKeyID, providerID, groupID int64, model string, requestType *int16, stream *bool, billingType *int8) ([]usagecore.EndpointStat, error) {
 	return nil, errors.New("not implemented")
 }
 
-func (r *stubUsageLogRepo) GetGroupStatsWithFilters(ctx context.Context, startTime, endTime time.Time, userID, apiKeyID, accountID, groupID int64, requestType *int16, stream *bool, billingType *int8) ([]usagecore.GroupStat, error) {
+func (r *stubUsageLogRepo) GetGroupStatsWithFilters(ctx context.Context, startTime, endTime time.Time, userID, apiKeyID, providerID, groupID int64, requestType *int16, stream *bool, billingType *int8) ([]usagecore.GroupStat, error) {
 	return nil, errors.New("not implemented")
 }
 
@@ -3088,7 +3076,7 @@ func (r *stubUsageLogRepo) GetAPIKeyStatsAggregated(ctx context.Context, apiKeyI
 	return nil, errors.New("not implemented")
 }
 
-func (r *stubUsageLogRepo) GetAccountStatsAggregated(ctx context.Context, accountID int64, startTime, endTime time.Time) (*usagecore.UsageStats, error) {
+func (r *stubUsageLogRepo) GetProviderStatsAggregated(ctx context.Context, providerID int64, startTime, endTime time.Time) (*usagecore.UsageStats, error) {
 	return nil, errors.New("not implemented")
 }
 
@@ -3172,7 +3160,7 @@ func (r *stubUsageLogRepo) GetGlobalStats(ctx context.Context, startTime, endTim
 	return nil, errors.New("not implemented")
 }
 
-func (r *stubUsageLogRepo) GetAccountUsageStats(ctx context.Context, accountID int64, startTime, endTime time.Time) (*usagecore.AccountUsageStatsResponse, error) {
+func (r *stubUsageLogRepo) GetProviderUsageStats(ctx context.Context, providerID int64, startTime, endTime time.Time) (*usagecore.ProviderUsageStatsResponse, error) {
 	return nil, errors.New("not implemented")
 }
 
@@ -3335,12 +3323,12 @@ var (
 	_ settingscore.Repository            = (*stubSettingRepo)(nil)
 )
 
-// contractAccountBulkStore 只桥接原契约的批量写入观察，账号规则仍由真实 Admin 执行。
-type contractAccountBulkStore struct {
-	accountcore.AdminStore
-	source *stubAccountRepo
+// contractProviderBulkStore 只桥接原契约的批量写入观察，提供商规则仍由真实 Admin 执行。
+type contractProviderBulkStore struct {
+	providercore.AdminStore
+	source *stubProviderRepo
 }
 
-func (s contractAccountBulkStore) BulkUpdate(ctx context.Context, ids []int64, updates accountcore.AccountBulkUpdate) (int64, error) {
+func (s contractProviderBulkStore) BulkUpdate(ctx context.Context, ids []int64, updates providercore.ProviderBulkUpdate) (int64, error) {
 	return s.source.BulkUpdate(ctx, ids, updates)
 }

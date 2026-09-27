@@ -29,7 +29,7 @@ import (
 const (
 	OpsModelKey                  = "ops_model"
 	OpsStreamKey                 = "ops_stream"
-	OpsAccountIDKey              = "ops_account_id"
+	OpsProviderIDKey             = "ops_provider_id"
 	opsRoutingCapacityLimitedKey = "ops_routing_capacity_limited"
 	opsDedicatedErrorRecordedKey = "ops_dedicated_error_recorded"
 
@@ -37,13 +37,13 @@ const (
 	opsRequestTypeKey   = "ops_request_type"
 
 	// 错误过滤匹配常量 — shouldSkipOpsErrorLog 和错误分类共用
-	opsErrContextCanceled            = "context canceled"
-	opsErrNoAvailableAccounts        = "no available accounts"
-	opsErrInvalidAPIKey              = "invalid_api_key"
-	opsErrAPIKeyRequired             = "api_key_required"
-	opsErrInsufficientBalance        = "insufficient balance"
-	opsErrInsufficientAccountBalance = "insufficient account balance"
-	opsErrInsufficientQuota          = "insufficient_quota"
+	opsErrContextCanceled             = "context canceled"
+	opsErrNoAvailableProviders        = "no available providers"
+	opsErrInvalidAPIKey               = "invalid_api_key"
+	opsErrAPIKeyRequired              = "api_key_required"
+	opsErrInsufficientBalance         = "insufficient balance"
+	opsErrInsufficientProviderBalance = "insufficient provider balance"
+	opsErrInsufficientQuota           = "insufficient_quota"
 )
 
 // keyPrefix 返回脱敏前缀(前 n 个字符);不足 n 则原样返回。
@@ -89,14 +89,14 @@ func SetOpsEndpointContext(c *gin.Context, upstreamModel string, requestType int
 	c.Set(opsRequestTypeKey, requestType)
 }
 
-func SetOpsSelectedAccount(c *gin.Context, accountID int64, platform ...string) {
-	if c == nil || accountID <= 0 {
+func SetOpsSelectedProvider(c *gin.Context, providerID int64, platform ...string) {
+	if c == nil || providerID <= 0 {
 		return
 	}
 	ClearOpsUpstreamModel(c)
-	c.Set(OpsAccountIDKey, accountID)
+	c.Set(OpsProviderIDKey, providerID)
 	if c.Request != nil {
-		ctx := context.WithValue(c.Request.Context(), telemetry.AccountID, accountID)
+		ctx := context.WithValue(c.Request.Context(), telemetry.ProviderID, providerID)
 		if len(platform) > 0 {
 			p := strings.TrimSpace(platform[0])
 			if p != "" {
@@ -115,9 +115,9 @@ func MarkOpsRoutingCapacityLimited(c *gin.Context) {
 	c.Set(opsRoutingCapacityLimitedKey, true)
 }
 
-// MarkOpsRoutingCapacityLimitedIfNoAvailable 只把无可用账号类错误归为本地容量限制。
+// MarkOpsRoutingCapacityLimitedIfNoAvailable 只把无可用提供商类错误归为本地容量限制。
 func MarkOpsRoutingCapacityLimitedIfNoAvailable(c *gin.Context, err error) {
-	if !IsOpsNoAvailableAccountError(err) {
+	if !IsOpsNoAvailableProviderError(err) {
 		return
 	}
 	MarkOpsRoutingCapacityLimited(c)
@@ -135,14 +135,14 @@ func isOpsRoutingCapacityLimited(c *gin.Context) bool {
 	return marked
 }
 
-func IsOpsNoAvailableAccountError(err error) bool {
+func IsOpsNoAvailableProviderError(err error) bool {
 	if err == nil {
 		return false
 	}
-	if errors.Is(err, scheduler.ErrNoAvailableAccounts) || errors.Is(err, scheduler.ErrNoAvailableCompactAccounts) {
+	if errors.Is(err, scheduler.ErrNoAvailableProviders) || errors.Is(err, scheduler.ErrNoAvailableCompactProviders) {
 		return true
 	}
-	return opscore.IsNoAvailableAccountMessage(err.Error())
+	return opscore.IsNoAvailableProviderMessage(err.Error())
 }
 
 type opsCaptureWriter struct {
@@ -785,7 +785,7 @@ func OpsErrorLoggerMiddleware(ops *opscore.OpsService, queue OpsErrorLogQueue, a
 
 		model, _ := c.Get(OpsModelKey)
 		streamV, _ := c.Get(OpsStreamKey)
-		accountIDV, _ := c.Get(OpsAccountIDKey)
+		providerIDV, _ := c.Get(OpsProviderIDKey)
 
 		var modelName string
 		if s, ok := model.(string); ok {
@@ -795,9 +795,9 @@ func OpsErrorLoggerMiddleware(ops *opscore.OpsService, queue OpsErrorLogQueue, a
 		if b, ok := streamV.(bool); ok {
 			stream = b
 		}
-		var accountID *int64
-		if v, ok := accountIDV.(int64); ok && v > 0 {
-			accountID = &v
+		var providerID *int64
+		if v, ok := providerIDV.(int64); ok && v > 0 {
+			providerID = &v
 		}
 
 		fallbackPlatform := selectedOpsPlatform(c)
@@ -820,9 +820,9 @@ func OpsErrorLoggerMiddleware(ops *opscore.OpsService, queue OpsErrorLogQueue, a
 			RequestID:       requestID,
 			ClientRequestID: clientRequestID,
 
-			AccountID: accountID,
-			Platform:  platform,
-			Model:     modelName,
+			ProviderID: providerID,
+			Platform:   platform,
+			Model:      modelName,
 			RequestPath: func() string {
 				if c.Request != nil && c.Request.URL != nil {
 					return c.Request.URL.Path
@@ -937,17 +937,17 @@ func logOpsRecoveredUpstream(c *gin.Context, ops *opscore.OpsService, finalStatu
 	for i := len(entry.UpstreamErrors) - 1; i >= 0; i-- {
 		if event := entry.UpstreamErrors[i]; event != nil {
 			lastStage = event.Stage
-			if event.AccountID > 0 {
-				accountID := event.AccountID
-				entry.AccountID = &accountID
+			if event.ProviderID > 0 {
+				providerID := event.ProviderID
+				entry.ProviderID = &providerID
 			}
 			break
 		}
 	}
-	if entry.AccountID == nil {
-		if accountID, ok := c.Get(OpsAccountIDKey); ok {
-			if value, ok := accountID.(int64); ok && value > 0 {
-				entry.AccountID = &value
+	if entry.ProviderID == nil {
+		if providerID, ok := c.Get(OpsProviderIDKey); ok {
+			if value, ok := providerID.(int64); ok && value > 0 {
+				entry.ProviderID = &value
 			}
 		}
 	}
@@ -960,9 +960,9 @@ func logOpsRecoveredUpstream(c *gin.Context, ops *opscore.OpsService, finalStatu
 	entry.IsCountTokens = isCountTokensRequest(c)
 	entry.CreatedAt = time.Now()
 	entry.ErrorMessage = "Recovered upstream error"
-	if lastStage == opscore.ErrorPhaseAccountAuth {
-		entry.ErrorPhase = opscore.ErrorPhaseAccountAuth
-		entry.ErrorMessage = "Recovered account authentication failure"
+	if lastStage == opscore.ErrorPhaseProviderAuth {
+		entry.ErrorPhase = opscore.ErrorPhaseProviderAuth
+		entry.ErrorMessage = "Recovered provider authentication failure"
 	} else if lastStatus > 0 {
 		entry.ErrorMessage += " " + strconv.Itoa(lastStatus)
 	}
@@ -1049,7 +1049,7 @@ func logOpsStreamErrorValue(c *gin.Context, ops *opscore.OpsService, wireStatus 
 		return
 	}
 
-	// 复用与 status>=400 分支相同的设置过滤（context canceled / 无可用账号等）。
+	// 复用与 status>=400 分支相同的设置过滤（context canceled / 无可用提供商等）。
 	if shouldSkipOpsErrorLog(c.Request.Context(), ops, streamErr.Message, streamErr.Message, c.Request.URL.Path) {
 		return
 	}
@@ -1082,10 +1082,10 @@ func logOpsStreamErrorValue(c *gin.Context, ops *opscore.OpsService, wireStatus 
 	if s, ok := model.(string); ok {
 		modelName = s
 	}
-	accountIDV, _ := c.Get(OpsAccountIDKey)
-	var accountID *int64
-	if v, ok := accountIDV.(int64); ok && v > 0 {
-		accountID = &v
+	providerIDV, _ := c.Get(OpsProviderIDKey)
+	var providerID *int64
+	if v, ok := providerIDV.(int64); ok && v > 0 {
+		providerID = &v
 	}
 
 	fallbackPlatform := selectedOpsPlatform(c)
@@ -1104,9 +1104,9 @@ func logOpsStreamErrorValue(c *gin.Context, ops *opscore.OpsService, wireStatus 
 		RequestID:       requestID,
 		ClientRequestID: clientRequestID,
 
-		AccountID: accountID,
-		Platform:  platform,
-		Model:     modelName,
+		ProviderID: providerID,
+		Platform:   platform,
+		Model:      modelName,
 		RequestPath: func() string {
 			if c.Request != nil && c.Request.URL != nil {
 				return c.Request.URL.Path
@@ -1182,9 +1182,9 @@ func applyOpsStreamErrorSnapshot(entry *opscore.OpsInsertErrorLogInput, streamEr
 	if entry == nil {
 		return
 	}
-	if streamErr.AccountID > 0 {
-		accountID := streamErr.AccountID
-		entry.AccountID = &accountID
+	if streamErr.ProviderID > 0 {
+		providerID := streamErr.ProviderID
+		entry.ProviderID = &providerID
 	}
 	entry.UpstreamModel = strings.TrimSpace(streamErr.UpstreamModel)
 	entry.UpstreamStatusCode = nil
@@ -1208,8 +1208,8 @@ func applyOpsStreamErrorSnapshot(entry *opscore.OpsInsertErrorLogInput, streamEr
 			break
 		}
 	}
-	if lastStage == opscore.ErrorPhaseAccountAuth {
-		entry.ErrorPhase = opscore.ErrorPhaseAccountAuth
+	if lastStage == opscore.ErrorPhaseProviderAuth {
+		entry.ErrorPhase = opscore.ErrorPhaseProviderAuth
 		entry.ErrorOwner = "provider"
 		entry.ErrorSource = "gateway"
 		entry.IsBusinessLimited = false
@@ -1263,7 +1263,7 @@ func applyOpsLatencyFieldsFromContext(c *gin.Context, entry *opscore.OpsInsertEr
 }
 
 // applyOpsUpstreamFieldsFromContext 捕获每次尝试的上游上下文。
-// 最后的 account_auth 事件接管顶层状态并将其置零，之前的推理状态仍保留在 UpstreamErrors 中。
+// 最后的 provider_auth 事件接管顶层状态并将其置零，之前的推理状态仍保留在 UpstreamErrors 中。
 func applyOpsUpstreamFieldsFromContext(c *gin.Context, entry *opscore.OpsInsertErrorLogInput) {
 	if c == nil || entry == nil {
 		return
@@ -1319,7 +1319,7 @@ func applyOpsUpstreamErrorEvents(entry *opscore.OpsInsertErrorLogInput, events [
 	entry.UpstreamStatusCode = nil
 	entry.UpstreamErrorMessage = nil
 	entry.UpstreamErrorDetail = nil
-	if last.Stage == opscore.ErrorPhaseAccountAuth {
+	if last.Stage == opscore.ErrorPhaseProviderAuth {
 		code := 0
 		entry.UpstreamStatusCode = &code
 	} else if last.UpstreamStatusCode > 0 {
@@ -1338,7 +1338,7 @@ func suppressOpsUpstreamAttributionForLocalModelConfiguration(c *gin.Context, en
 	if entry == nil || !HasOpsClientBusinessLimited(c) || OpsClientBusinessLimitedReason(c) != OpsClientBusinessLimitedReasonLocalModelConfiguration {
 		return
 	}
-	entry.AccountID = nil
+	entry.ProviderID = nil
 	entry.UpstreamEndpoint = ""
 	entry.UpstreamModel = ""
 	entry.UpstreamStatusCode = nil
@@ -1678,7 +1678,7 @@ func inferStreamFailureStatus(_ *gin.Context, parsed parsedOpsError) int {
 // 正式 key 尚未写入，回退到 middleware 写入的 ops fallback key
 // （含 User/Group/Platform），从而让日志能展示 用户/分组/平台。
 
-// selectedOpsPlatform 只使用已选账号的快照，尚未选号的错误保留 unknown。
+// selectedOpsPlatform 只使用已选提供商的快照，尚未选号的错误保留 unknown。
 func selectedOpsPlatform(c *gin.Context) string {
 	if c != nil && c.Request != nil {
 		if platform, ok := c.Request.Context().Value(telemetry.Platform).(string); ok && strings.TrimSpace(platform) != "" {
@@ -1704,7 +1704,7 @@ func classifyOpsErrorLog(c *gin.Context, errType, message, code string, status i
 		LocalModelConfiguration:      OpsClientBusinessLimitedReason(c) == OpsClientBusinessLimitedReasonLocalModelConfiguration,
 		UpstreamError:                hasOpsUpstreamErrorContext(c),
 		UpstreamClientInvalidRequest: isOpsUpstreamClientInvalidRequest(c, errType, code, status),
-		AccountAuthFailure:           hasOpsAccountAuthFailure(c),
+		ProviderAuthFailure:          hasOpsProviderAuthFailure(c),
 	})
 }
 
@@ -1754,7 +1754,7 @@ func hasOpsUpstreamErrorContext(c *gin.Context) bool {
 	return false
 }
 
-func hasOpsAccountAuthFailure(c *gin.Context) bool {
+func hasOpsProviderAuthFailure(c *gin.Context) bool {
 	if c == nil {
 		return false
 	}
@@ -1762,7 +1762,7 @@ func hasOpsAccountAuthFailure(c *gin.Context) bool {
 		if events, ok := v.([]*opscore.OpsUpstreamErrorEvent); ok {
 			for i := len(events) - 1; i >= 0; i-- {
 				if events[i] != nil {
-					return events[i].Stage == opscore.ErrorPhaseAccountAuth
+					return events[i].Stage == opscore.ErrorPhaseProviderAuth
 				}
 			}
 		}
@@ -1798,9 +1798,9 @@ func shouldSkipOpsErrorLog(ctx context.Context, ops *opscore.OpsService, message
 		}
 	}
 
-	// Check if "no available accounts" errors should be ignored
-	if settings.IgnoreNoAvailableAccounts {
-		if strings.Contains(msgLower, opsErrNoAvailableAccounts) || strings.Contains(bodyLower, opsErrNoAvailableAccounts) {
+	// Check if "no available providers" errors should be ignored
+	if settings.IgnoreNoAvailableProviders {
+		if strings.Contains(msgLower, opsErrNoAvailableProviders) || strings.Contains(bodyLower, opsErrNoAvailableProviders) {
 			return true
 		}
 	}
@@ -1814,9 +1814,9 @@ func shouldSkipOpsErrorLog(ctx context.Context, ops *opscore.OpsService, message
 
 	// Check if insufficient balance errors should be ignored
 	if settings.IgnoreInsufficientBalanceErrors {
-		if strings.Contains(bodyLower, opsErrInsufficientBalance) || strings.Contains(bodyLower, opsErrInsufficientAccountBalance) ||
+		if strings.Contains(bodyLower, opsErrInsufficientBalance) || strings.Contains(bodyLower, opsErrInsufficientProviderBalance) ||
 			strings.Contains(bodyLower, opsErrInsufficientQuota) ||
-			strings.Contains(msgLower, opsErrInsufficientBalance) || strings.Contains(msgLower, opsErrInsufficientAccountBalance) {
+			strings.Contains(msgLower, opsErrInsufficientBalance) || strings.Contains(msgLower, opsErrInsufficientProviderBalance) {
 			return true
 		}
 	}

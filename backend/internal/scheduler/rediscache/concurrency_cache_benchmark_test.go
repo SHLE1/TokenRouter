@@ -15,8 +15,8 @@ const benchSlotTTLMinutes = 15
 
 var benchSlotTTL = time.Duration(benchSlotTTLMinutes) * time.Minute
 
-// BenchmarkAccountConcurrency 用于对比 SCAN 与有序集合的计数性能。
-func BenchmarkAccountConcurrency(b *testing.B) {
+// BenchmarkProviderConcurrency 用于对比 SCAN 与有序集合的计数性能。
+func BenchmarkProviderConcurrency(b *testing.B) {
 	rdb := newBenchmarkRedisClient(b)
 	defer func() {
 		_ = rdb.Close()
@@ -28,8 +28,8 @@ func BenchmarkAccountConcurrency(b *testing.B) {
 	for _, size := range []int{10, 100, 1000} {
 		size := size
 		b.Run(fmt.Sprintf("zset/slots=%d", size), func(b *testing.B) {
-			accountID := time.Now().UnixNano()
-			key := accountSlotKey(accountID)
+			providerID := time.Now().UnixNano()
+			key := providerSlotKey(providerID)
 
 			b.StopTimer()
 			members := make([]redis.Z, 0, size)
@@ -50,7 +50,7 @@ func BenchmarkAccountConcurrency(b *testing.B) {
 
 			b.ReportAllocs()
 			for i := 0; i < b.N; i++ {
-				if _, err := cache.GetAccountConcurrency(ctx, accountID); err != nil {
+				if _, err := cache.GetProviderConcurrency(ctx, providerID); err != nil {
 					b.Fatalf("获取并发数量失败: %v", err)
 				}
 			}
@@ -62,14 +62,14 @@ func BenchmarkAccountConcurrency(b *testing.B) {
 		})
 
 		b.Run(fmt.Sprintf("scan/slots=%d", size), func(b *testing.B) {
-			accountID := time.Now().UnixNano()
-			pattern := fmt.Sprintf("%s%d:*", accountSlotKeyPrefix, accountID)
+			providerID := time.Now().UnixNano()
+			pattern := fmt.Sprintf("%s%d:*", providerSlotKeyPrefix, providerID)
 			keys := make([]string, 0, size)
 
 			b.StopTimer()
 			pipe := rdb.Pipeline()
 			for i := 0; i < size; i++ {
-				key := fmt.Sprintf("%s%d:req_%d", accountSlotKeyPrefix, accountID, i)
+				key := fmt.Sprintf("%s%d:req_%d", providerSlotKeyPrefix, providerID, i)
 				keys = append(keys, key)
 				pipe.Set(ctx, key, "1", benchSlotTTL)
 			}

@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"testing"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	protocolcore "github.com/TokenFlux/TokenRouter/internal/protocol"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 
 	s15httpx "github.com/TokenFlux/TokenRouter/internal/server/httpx"
@@ -18,31 +18,41 @@ func TestProtocolNativeMatrixAndSave(t *testing.T) {
 		platform, kind, auth string
 		count                int
 	}{
-		{capability.PlatformAnthropic, capability.AccountTypeAPIKey, "", 1}, {capability.PlatformAnthropic, capability.AccountTypeBedrock, "", 1},
-		{capability.PlatformOpenAI, capability.AccountTypeAPIKey, "", 8}, {capability.PlatformOpenAI, capability.AccountTypeOAuth, "", 5},
-		{capability.PlatformOpenAI, capability.AccountTypeOAuth, accountcore.OpenAIAuthModePersonalAccessToken, 3}, {capability.PlatformOpenAI, capability.AccountTypeOAuth, accountcore.OpenAIAuthModeAgentIdentity, 4},
-		{capability.PlatformDeepseek, capability.AccountTypeAPIKey, "", 3}, {capability.PlatformKimi, capability.AccountTypeAPIKey, "", 3}, {capability.PlatformZhipu, capability.AccountTypeAPIKey, "", 2},
-		{capability.PlatformGemini, capability.AccountTypeAPIKey, "", 2}, {capability.PlatformGemini, capability.AccountTypeServiceAccount, "", 2}, {capability.PlatformGemini, capability.AccountTypeOAuth, "", 1},
-		{capability.PlatformAntigravity, capability.AccountTypeOAuth, "", 1}, {capability.PlatformAntigravity, capability.AccountTypeAPIKey, "", 0},
-		{capability.PlatformGrok, capability.AccountTypeAPIKey, "", 11}, {capability.PlatformGrok, capability.AccountTypeOAuth, "", 11}, {capability.PlatformQoder, capability.AccountTypeCosy, "", 1},
+		{capability.PlatformAnthropic, capability.ProviderTypeAPIKey, "", 1},
+		{capability.PlatformAnthropic, capability.ProviderTypeBedrock, "", 1},
+		{capability.PlatformOpenAI, capability.ProviderTypeAPIKey, "", 8},
+		{capability.PlatformOpenAI, capability.ProviderTypeOAuth, "", 5},
+		{capability.PlatformOpenAI, capability.ProviderTypeOAuth, providercore.OpenAIAuthModePersonalAccessToken, 3},
+		{capability.PlatformOpenAI, capability.ProviderTypeOAuth, providercore.OpenAIAuthModeAgentIdentity, 4},
+		{capability.PlatformDeepseek, capability.ProviderTypeAPIKey, "", 3},
+		{capability.PlatformKimi, capability.ProviderTypeAPIKey, "", 3},
+		{capability.PlatformZhipu, capability.ProviderTypeAPIKey, "", 2},
+		{capability.PlatformGemini, capability.ProviderTypeAPIKey, "", 2},
+		{capability.PlatformGemini, capability.ProviderTypeServiceAccount, "", 2},
+		{capability.PlatformGemini, capability.ProviderTypeOAuth, "", 1},
+		{capability.PlatformAntigravity, capability.ProviderTypeOAuth, "", 1},
+		{capability.PlatformAntigravity, capability.ProviderTypeAPIKey, "", 0},
+		{capability.PlatformGrok, capability.ProviderTypeAPIKey, "", 11},
+		{capability.PlatformGrok, capability.ProviderTypeOAuth, "", 11},
+		{capability.PlatformQoder, capability.ProviderTypeCosy, "", 1},
 	} {
 		t.Run(tc.platform+"/"+tc.kind+"/"+tc.auth, func(t *testing.T) {
-			account := &accountcore.Record{Platform: tc.platform, Type: tc.kind, Credentials: map[string]any{"auth_mode": tc.auth}}
-			options := account.NativeProtocolOptions()
+			provider := &providercore.Record{Platform: tc.platform, Type: tc.kind, Credentials: map[string]any{"auth_mode": tc.auth}}
+			options := provider.NativeProtocolOptions()
 			require.Len(t, options, tc.count)
 			for _, protocol := range options {
-				account.Credentials[accountcore.UpstreamProtocolsKey] = []string{string(protocol)}
-				require.NoError(t, accountcore.NormalizeAccountProtocols(account))
-				require.Equal(t, []protocolcore.ProtocolID{protocol}, account.UpstreamProtocols())
-				target, ok := (ModelPolicy{Record: account}).ProtocolRoute(nil, protocol)
+				provider.Credentials[providercore.UpstreamProtocolsKey] = []string{string(protocol)}
+				require.NoError(t, providercore.NormalizeProviderProtocols(provider))
+				require.Equal(t, []protocolcore.ProtocolID{protocol}, provider.UpstreamProtocols())
+				target, ok := (ModelPolicy{Record: provider}).ProtocolRoute(nil, protocol)
 				require.True(t, ok)
 				require.Equal(t, protocol, target)
 			}
-			account.Credentials[accountcore.UpstreamProtocolsKey] = []string{}
-			require.NoError(t, accountcore.NormalizeAccountProtocols(account))
-			require.Empty(t, account.UpstreamProtocols())
-			account.Credentials[accountcore.UpstreamProtocolsKey] = []string{"unknown"}
-			require.Equal(t, http.StatusBadRequest, s15httpx.ErrorCode(accountcore.NormalizeAccountProtocols(account)))
+			provider.Credentials[providercore.UpstreamProtocolsKey] = []string{}
+			require.NoError(t, providercore.NormalizeProviderProtocols(provider))
+			require.Empty(t, provider.UpstreamProtocols())
+			provider.Credentials[providercore.UpstreamProtocolsKey] = []string{"unknown"}
+			require.Equal(t, http.StatusBadRequest, s15httpx.ErrorCode(providercore.NormalizeProviderProtocols(provider)))
 		})
 	}
 }

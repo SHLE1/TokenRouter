@@ -28,7 +28,7 @@ func (s *dashboardUsageRepoCapture) GetUsageTrendWithFilters(
 	ctx context.Context,
 	startTime, endTime time.Time,
 	granularity string,
-	userID, apiKeyID, accountID, groupID int64,
+	userID, apiKeyID, providerID, groupID int64,
 	model string,
 	requestType *int16,
 	stream *bool,
@@ -42,7 +42,7 @@ func (s *dashboardUsageRepoCapture) GetUsageTrendWithFilters(
 func (s *dashboardUsageRepoCapture) GetModelStatsWithFilters(
 	ctx context.Context,
 	startTime, endTime time.Time,
-	userID, apiKeyID, accountID, groupID int64,
+	userID, apiKeyID, providerID, groupID int64,
 	requestType *int16,
 	stream *bool,
 	billingType *int8,
@@ -67,7 +67,6 @@ func (s *dashboardUsageRepoCapture) GetUserSpendingRanking(
 }
 
 func newDashboardRequestTypeTestRouter(repo *dashboardUsageRepoCapture) *gin.Engine {
-
 	dashboardSvc := usage.NewDashboardService(repo, nil, nil, nil)
 	handler := NewDashboardHandler(dashboardSvc, timezone.NewCalendar(time.Local))
 	router := gin.New()
@@ -172,7 +171,6 @@ func TestDashboardModelStatsValidModelSource(t *testing.T) {
 }
 
 func TestDashboardUsersRankingLimitAndCache(t *testing.T) {
-
 	repo := &dashboardUsageRepoCapture{
 		ranking: []usage.UserSpendingRankingItem{
 			{UserID: 7, Email: "rank@example.com", ActualCost: 10.5, Requests: 3, Tokens: 300},

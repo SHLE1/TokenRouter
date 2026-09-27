@@ -8,8 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
-	accountpg "github.com/TokenFlux/TokenRouter/internal/account/postgres"
 	"github.com/TokenFlux/TokenRouter/internal/app"
 	"github.com/TokenFlux/TokenRouter/internal/app/lifecycle"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
@@ -19,6 +17,8 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/completion"
 	"github.com/TokenFlux/TokenRouter/internal/infra/timingwheel"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/timezone"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
+	providerpg "github.com/TokenFlux/TokenRouter/internal/provider/postgres"
 	usagepg "github.com/TokenFlux/TokenRouter/internal/usage/postgres"
 	"github.com/stretchr/testify/require"
 )
@@ -37,11 +37,11 @@ func TestS16NativeCompletionRuntimeOneFinancialEffect(t *testing.T) {
 	f := newDatabaseFixture(t)
 	ctx := t.Context()
 	calendar := timezone.NewCalendar(time.UTC)
-	accounts := accountpg.NewAccountStore(f.client, f.db, accountpg.AccountStoreOptions{})
+	providers := providerpg.NewProviderStore(f.client, f.db, providerpg.ProviderStoreOptions{})
 	funds := billingpg.NewSettlementStore(f.db, calendar, nil)
 	logs := usagepg.NewUsageLogRepositoryWithSQL(f.client, nativeCompletionSQL{f.db}, calendar)
 	wheel := timingwheel.New()
-	deferred := account.NewDeferredService(accounts, wheel, account.DeferredOptions{})
+	deferred := provider.NewDeferredService(providers, wheel, provider.DeferredOptions{})
 	tasks := lifecycle.NewTasks()
 	t.Cleanup(func() {
 		cleanup, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -54,10 +54,10 @@ func TestS16NativeCompletionRuntimeOneFinancialEffect(t *testing.T) {
 	cfg := &config.Config{RunMode: config.RunModeStandard}
 	cfg.Default.RateMultiplier = 1
 	rates := app.NewS16GatewayBillingRates(nil, cfg)
-	health := app.NewS16AccountHealthRuntime(accounts, nil, cfg, nil, nil, nil, nil, nil)
+	health := app.NewS16ProviderHealthRuntime(providers, nil, cfg, nil, nil, nil, nil, nil)
 	calculator := billing.NewCalculator(nativeCompletionCatalog{}, billing.CalculatorOptions{DefaultRateMultiplier: 1})
 	prices := billing.NewPriceResolver(nil, calculator, nil, nil, nil)
-	recorders := app.NewS16CompletionRecorders(rates, calculator, prices, funds, logs, nil, nil, deferred, nil, nil, accounts, health, nil, tasks, cfg)
+	recorders := app.NewS16CompletionRecorders(rates, calculator, prices, funds, logs, nil, nil, deferred, nil, nil, providers, health, nil, tasks, cfg)
 	for _, openAI := range []bool{false, true} {
 		name := "messages"
 		if openAI {
@@ -68,7 +68,7 @@ func TestS16NativeCompletionRuntimeOneFinancialEffect(t *testing.T) {
 			require.NoError(t, err)
 			key, err := f.client.APIKey.Create().SetUserID(user.ID).SetName("fixture").SetKey("sk-completion-" + name).SetQuota(100).SetBillingMode("balance").Save(ctx)
 			require.NoError(t, err)
-			selected, err := f.client.Account.Create().SetName("completion-" + name).SetPlatform("openai").SetType("apikey").Save(ctx)
+			selected, err := f.client.Provider.Create().SetName("completion-" + name).SetPlatform("openai").SetType("apikey").Save(ctx)
 			require.NoError(t, err)
 			requestID := "s16-completion-" + name
 			input := &completion.Input{
@@ -77,7 +77,7 @@ func TestS16NativeCompletionRuntimeOneFinancialEffect(t *testing.T) {
 				Result:             &completion.Result{RequestID: requestID, Model: "fixture-cost", Usage: completion.TokenUsage{InputTokens: 100}},
 				APIKey:             &completion.KeySnapshot{ID: key.ID, Key: key.Key, BillingMode: "balance", Quota: 100},
 				User:               &completion.PayerSnapshot{ID: user.ID, Balance: 10},
-				Account:            &completion.AccountSnapshot{ID: selected.ID, Platform: "openai", Type: "apikey", OpenAI: true, RateMultiplier: 1},
+				Provider:           &completion.ProviderSnapshot{ID: selected.ID, Platform: "openai", Type: "apikey", OpenAI: true, RateMultiplier: 1},
 				RequestPayloadHash: "fixture-payload",
 			}
 			recorder := recorders.Forward

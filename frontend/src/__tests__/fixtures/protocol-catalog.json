@@ -246,7 +246,7 @@
       ]
     }
   ],
-  "accounts": [
+  "providers": [
     {
       "platform": "anthropic",
       "type": "oauth",

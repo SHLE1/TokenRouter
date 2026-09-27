@@ -56,7 +56,7 @@ type Candidate struct {
 	ResolveUpstream  func(context.Context, string) string
 	Bind             func(string) ExecutionProvider
 }
-type AccountReader interface {
+type ProviderReader interface {
 	GetByID(context.Context, int64) (*Candidate, error)
 	ListSchedulableByPlatform(context.Context, string) ([]Candidate, error)
 	ListSchedulableByGroupIDAndPlatform(context.Context, int64, string) ([]Candidate, error)
@@ -86,7 +86,7 @@ type PublicOptions struct {
 type Public struct {
 	Now                    func() time.Time
 	Repo                   BatchImageRepository
-	AccountRepo            AccountReader
+	ProviderRepo           ProviderReader
 	PricingConfigService   GroupMappingReader
 	GroupRepo              GroupReader
 	UserGroupRateRepo      BatchImageUserGroupRateRepository
@@ -184,10 +184,10 @@ func (s *Public) Submit(ctx context.Context, owner BatchImageOwner, req BatchIma
 	if err != nil {
 		return nil, err
 	}
-	provider, account, upstreamModel, err := s.SelectProviderAndAccount(
+	platform, provider, upstreamModel, err := s.SelectProviderAndProvider(
 		ctx,
 		owner,
-		normalized.Provider,
+		normalized.Platform,
 		routingModel,
 		groupMapping,
 	)
@@ -196,7 +196,7 @@ func (s *Public) Submit(ctx context.Context, owner BatchImageOwner, req BatchIma
 	}
 	pricingRequest := normalized
 	pricingRequest.Model = BatchImagePricingModel(groupMapping, normalized.Model, routingModel, upstreamModel)
-	pricingSnapshot, err := s.ResolvePricingSnapshot(ctx, owner, pricingRequest, provider.Name(), account)
+	pricingSnapshot, err := s.ResolvePricingSnapshot(ctx, owner, pricingRequest, platform.Name(), provider)
 	if err != nil {
 		return nil, err
 	}
@@ -215,7 +215,7 @@ func (s *Public) Submit(ctx context.Context, owner BatchImageOwner, req BatchIma
 		return nil, err
 	}
 	apiKeyID := owner.APIKeyID
-	accountID := account.ID
+	providerID := provider.ID
 	holdID := BatchImageHoldRequestID(batchID)
 	holdAmount := pricingSnapshot.HoldAmount
 	job, err := s.Repo.CreateBatchImageJob(ctx, CreateBatchImageJobParams{
@@ -224,11 +224,11 @@ func (s *Public) Submit(ctx context.Context, owner BatchImageOwner, req BatchIma
 		BillingUserID:              owner.BillingUserID,
 		TeamID:                     owner.TeamID,
 		APIKeyID:                   &apiKeyID,
-		AccountID:                  &accountID,
+		ProviderID:                 &providerID,
 		GroupID:                    owner.GroupID,
 		BillingMode:                owner.BillingMode,
 		PreferredSubscriptionID:    CloneInt64Ptr(owner.PreferredSubscriptionID),
-		Provider:                   provider.Name(),
+		Platform:                   platform.Name(),
 		Model:                      upstreamModel,
 		RequestedModel:             requestedModel,
 		InternalModel:              normalized.Model,
@@ -243,7 +243,7 @@ func (s *Public) Submit(ctx context.Context, owner BatchImageOwner, req BatchIma
 		SubscriptionRateMultiplier: pricingSnapshot.SubscriptionRateMultiplier,
 		BalanceRateMultiplier:      pricingSnapshot.BalanceRateMultiplier,
 		PlanGroupRateEnabled:       pricingSnapshot.PlanGroupRateEnabled,
-		AccountRateMultiplier:      pricingSnapshot.AccountRateMultiplier,
+		ProviderRateMultiplier:     pricingSnapshot.ProviderRateMultiplier,
 		BatchDiscountMultiplier:    pricingSnapshot.BatchDiscountMultiplier,
 		HoldMultiplier:             pricingSnapshot.HoldMultiplier,
 		BillableUnitPrice:          pricingSnapshot.BillableUnitPrice,
@@ -318,7 +318,7 @@ func (s *Public) Submit(ctx context.Context, owner BatchImageOwner, req BatchIma
 	hbCtx, hbCancel := context.WithCancel(ctx)
 	hbDone := make(chan struct{})
 	go s.RunSubmitHeartbeat(hbCtx, job.BatchID, hbDone)
-	providerJob, err := provider.Submit(ctx, job, input)
+	providerJob, err := platform.Submit(ctx, job, input)
 	hbCancel()
 	<-hbDone
 	if err != nil {
@@ -335,7 +335,7 @@ func (s *Public) Submit(ctx context.Context, owner BatchImageOwner, req BatchIma
 		if releaseErr := s.ReleaseFailedSubmitHold(ctx, job, requestHash); releaseErr != nil {
 			return nil, releaseErr
 		}
-		_ = s.Repo.RecordBatchImageJobSubmitFailure(ctx, job.BatchID, "PROVIDER_SUBMIT_FAILED", "provider job name missing", true)
+		_ = s.Repo.RecordBatchImageJobSubmitFailure(ctx, job.BatchID, "PROVIDER_SUBMIT_FAILED", "platform job name missing", true)
 		s.HidePreUpstreamSubmitFailure(ctx, owner, job)
 		return nil, ErrBatchImageProviderSubmitFailed
 	}
@@ -345,13 +345,13 @@ func (s *Public) Submit(ctx context.Context, owner BatchImageOwner, req BatchIma
 		ProviderJobName:   providerJob.ProviderJobName,
 		ProviderInputRef:  providerJob.ProviderInputRef,
 		ProviderOutputRef: providerJob.ProviderOutputRef,
-		GCSInputURI:       BatchImageGCSRef(provider.Name(), providerJob.ProviderInputRef),
-		GCSOutputURI:      BatchImageGCSRef(provider.Name(), providerJob.ProviderOutputRef),
-		EventPayload:      map[string]any{"provider": provider.Name()},
+		GCSInputURI:       BatchImageGCSRef(platform.Name(), providerJob.ProviderInputRef),
+		GCSOutputURI:      BatchImageGCSRef(platform.Name(), providerJob.ProviderOutputRef),
+		EventPayload:      map[string]any{"platform": platform.Name()},
 	}); err != nil {
 		// job 可能已被恢复扫描转 failed 并退款：上游批任务已创建成功，
 		// 必须尽力取消并清理输入，否则上游照常产生成本（孤儿任务）。
-		s.AbortOrphanProviderJob(ctx, provider, job, providerJob)
+		s.AbortOrphanProviderJob(ctx, platform, job, providerJob)
 		return nil, err
 	}
 
@@ -395,7 +395,7 @@ func (s *Public) ReleaseFailedSubmitHold(ctx context.Context, job *BatchImageJob
 	return nil
 }
 
-// RunSubmitHeartbeat 在 provider.Submit 期间周期性刷新 job 的 updated_at，
+// RunSubmitHeartbeat 在 platform.Submit 期间周期性刷新 job 的 updated_at，
 // 使 stale 恢复扫描能区分"仍在慢提交"与"进程死亡后的滞留"。
 func (s *Public) RunSubmitHeartbeat(ctx context.Context, batchID string, done chan<- struct{}) {
 	defer close(done)
@@ -431,31 +431,31 @@ func (s *Public) SubmitHeartbeatInterval() time.Duration {
 
 // AbortOrphanProviderJob 在上游任务创建成功但本地状态推进失败时，
 // 尽力取消上游批任务并清理已上传的输入文件，避免孤儿任务持续产生成本。
-func (s *Public) AbortOrphanProviderJob(ctx context.Context, provider ExecutionProvider, job *BatchImageJob, providerJob *BatchProviderJob) {
-	if s == nil || provider == nil || job == nil || providerJob == nil {
+func (s *Public) AbortOrphanProviderJob(ctx context.Context, platform ExecutionProvider, job *BatchImageJob, providerJob *BatchProviderJob) {
+	if s == nil || platform == nil || job == nil || providerJob == nil {
 		return
 	}
 	orphan := *job
 	orphan.ProviderJobName = BatchImageOptionalStringPtr(providerJob.ProviderJobName)
 	orphan.ProviderInputRef = BatchImageOptionalStringPtr(providerJob.ProviderInputRef)
-	orphan.GCSInputURI = BatchImageOptionalStringPtr(BatchImageGCSRef(provider.Name(), providerJob.ProviderInputRef))
-	if err := provider.Cancel(ctx, &orphan); err != nil {
+	orphan.GCSInputURI = BatchImageOptionalStringPtr(BatchImageGCSRef(platform.Name(), providerJob.ProviderInputRef))
+	if err := platform.Cancel(ctx, &orphan); err != nil {
 		s.warn("batch_image.orphan_provider_job_cancel_failed",
 			"batch_id", job.BatchID,
-			"provider", provider.Name(),
+			"platform", platform.Name(),
 			"error", err,
 		)
 	}
-	if err := provider.Cleanup(ctx, &orphan, CleanupTargetInput); err != nil {
+	if err := platform.Cleanup(ctx, &orphan, CleanupTargetInput); err != nil {
 		s.warn("batch_image.orphan_provider_job_cleanup_failed",
 			"batch_id", job.BatchID,
-			"provider", provider.Name(),
+			"platform", platform.Name(),
 			"error", err,
 		)
 	}
 	if err := s.Repo.AppendBatchImageEvent(ctx, job.BatchID, "provider_job_aborted_after_submit", map[string]any{
 		"batch_id": job.BatchID,
-		"provider": provider.Name(),
+		"platform": platform.Name(),
 	}); err != nil {
 		s.warn("batch_image.orphan_provider_job_event_failed",
 			"batch_id", job.BatchID,
@@ -614,26 +614,26 @@ func (s *Public) ListModels(ctx context.Context, owner BatchImageOwner) (*BatchI
 		if !s.ProviderExists(providerName) {
 			continue
 		}
-		accounts, err := s.ListCandidateAccounts(ctx, owner.GroupID, BatchImageProviderPlatform(providerName))
+		providers, err := s.ListCandidateProviders(ctx, owner.GroupID, BatchImageProviderPlatform(providerName))
 		if err != nil {
 			return nil, err
 		}
-		for i := range accounts {
-			account := accounts[i]
-			if !account.IsSchedulable() || !account.SupportsProvider(providerName) {
+		for i := range providers {
+			provider := providers[i]
+			if !provider.IsSchedulable() || !provider.SupportsProvider(providerName) {
 				continue
 			}
-			for _, model := range BatchImageModelsFromAccountMapping(&account) {
+			for _, model := range BatchImageModelsFromProviderMapping(&provider) {
 				mapping, routingModel, err := s.ResolveBatchImageGroupModel(ctx, owner.GroupID, model)
 				if err != nil {
 					continue
 				}
-				upstreamModel := mappedCandidateModel(&account, routingModel)
+				upstreamModel := mappedCandidateModel(&provider, routingModel)
 				pricingModel := BatchImagePricingModel(mapping, model, routingModel, upstreamModel)
 				if _, err := s.Pricing.BatchImageUnitPrice(ctx, BatchImagePriceInput{Model: pricingModel, GroupID: owner.GroupID, ImageSize: "1K"}); err != nil {
 					continue
 				}
-				if !account.IsModelSupported(model) {
+				if !provider.IsModelSupported(model) {
 					continue
 				}
 				if modelsByProvider[providerName] == nil {
@@ -655,7 +655,7 @@ func (s *Public) ListModels(ctx context.Context, owner BatchImageOwner) (*BatchI
 			out = append(out, BatchImagePublicModel{
 				ID:       model,
 				Object:   "image.batch.model",
-				Provider: providerName,
+				Platform: providerName,
 			})
 		}
 	}
@@ -709,17 +709,17 @@ func (s *Public) Cancel(ctx context.Context, owner BatchImageOwner, batchID stri
 		return BatchImageJobToPublic(job), nil
 	}
 	if job.ProviderJobName != nil && strings.TrimSpace(*job.ProviderJobName) != "" {
-		if !s.ProviderExists(job.Provider) {
+		if !s.ProviderExists(job.Platform) {
 			return nil, ErrBatchImageUnsupportedProvider
 		}
-		if job.AccountID == nil {
+		if job.ProviderID == nil {
 			return nil, ErrBatchImageCancelFailed
 		}
-		account, err := s.AccountRepo.GetByID(ctx, *job.AccountID)
+		provider, err := s.ProviderRepo.GetByID(ctx, *job.ProviderID)
 		if err != nil {
 			return nil, ErrBatchImageCancelFailed
 		}
-		if err := account.Bind(job.Provider).Cancel(ctx, job); err != nil {
+		if err := provider.Bind(job.Platform).Cancel(ctx, job); err != nil {
 			return nil, ErrBatchImageCancelFailed
 		}
 		if eventErr := s.Repo.AppendBatchImageEvent(ctx, job.BatchID, "job_cancel_requested", map[string]any{"batch_id": job.BatchID}); eventErr != nil {
@@ -761,7 +761,7 @@ func (s *Public) ValidateSubmitRequest(req BatchImageSubmitRequest) (BatchImageS
 	req.Model = strings.TrimSpace(req.Model)
 	req.TaskName = strings.TrimSpace(req.TaskName)
 	req.ParentBatchID = strings.TrimSpace(req.ParentBatchID)
-	req.Provider = strings.TrimSpace(req.Provider)
+	req.Platform = strings.TrimSpace(req.Platform)
 	req.ResponseMimeType = strings.TrimSpace(req.ResponseMimeType)
 	req.AspectRatio = strings.TrimSpace(req.AspectRatio)
 	req.ImageSize = strings.TrimSpace(req.ImageSize)
@@ -774,7 +774,7 @@ func (s *Public) ValidateSubmitRequest(req BatchImageSubmitRequest) (BatchImageS
 	if len(req.TaskName) > 255 {
 		req.TaskName = TruncateBatchImageMessage(req.TaskName, 255)
 	}
-	if req.Provider != "" && !IsSupportedBatchImageProvider(req.Provider) {
+	if req.Platform != "" && !IsSupportedBatchImageProvider(req.Platform) {
 		return req, ErrBatchImageUnsupportedProvider
 	}
 	if len(req.Items) == 0 {
@@ -921,7 +921,7 @@ func (s *Public) ResolveBatchImageGroupModel(ctx context.Context, groupID *int64
 	}
 	billingModel := routing.ModelForRestriction(mapping.RestrictionModelSource, requestedModel, routingModel)
 	if billingModel != "" && s.PricingConfigService.IsModelRestricted(ctx, *groupID, billingModel) {
-		return mapping, routingModel, ErrBatchImageNoAccountAvailable
+		return mapping, routingModel, ErrBatchImageNoProviderAvailable
 	}
 	return mapping, routingModel, nil
 }
@@ -930,8 +930,8 @@ func BatchImagePricingModel(mapping GroupMappingResult, requestedModel, groupMap
 	return routing.BillingModelForPrice(mapping, requestedModel, groupMappedModel, upstreamModel)
 }
 
-// SelectProviderAndAccount 按分组映射模型选择账号，并返回账号映射后的实际上游模型。
-func (s *Public) SelectProviderAndAccount(
+// SelectProviderAndProvider 按分组映射模型选择提供商，并返回提供商映射后的实际上游模型。
+func (s *Public) SelectProviderAndProvider(
 	ctx context.Context,
 	owner BatchImageOwner,
 	requestedProvider, routingModel string,
@@ -942,28 +942,28 @@ func (s *Public) SelectProviderAndAccount(
 		if !s.ProviderExists(providerName) {
 			continue
 		}
-		accounts, err := s.ListCandidateAccounts(ctx, owner.GroupID, BatchImageProviderPlatform(providerName))
+		providers, err := s.ListCandidateProviders(ctx, owner.GroupID, BatchImageProviderPlatform(providerName))
 		if err != nil {
 			return nil, nil, "", err
 		}
-		sort.SliceStable(accounts, func(i, j int) bool {
-			if accounts[i].Priority != accounts[j].Priority {
-				return accounts[i].Priority > accounts[j].Priority
+		sort.SliceStable(providers, func(i, j int) bool {
+			if providers[i].Priority != providers[j].Priority {
+				return providers[i].Priority > providers[j].Priority
 			}
-			return accounts[i].ID < accounts[j].ID
+			return providers[i].ID < providers[j].ID
 		})
-		for i := range accounts {
-			account := accounts[i]
-			if !account.IsSchedulable() || !account.IsModelSupported(routingModel) {
+		for i := range providers {
+			provider := providers[i]
+			if !provider.IsSchedulable() || !provider.IsModelSupported(routingModel) {
 				continue
 			}
-			if !account.ProtocolEnabled() {
+			if !provider.ProtocolEnabled() {
 				continue
 			}
-			if !account.SupportsProvider(providerName) {
+			if !provider.SupportsProvider(providerName) {
 				continue
 			}
-			upstreamModel := strings.TrimSpace(account.ResolveUpstream(ctx, routingModel))
+			upstreamModel := strings.TrimSpace(provider.ResolveUpstream(ctx, routingModel))
 			if upstreamModel == "" {
 				continue
 			}
@@ -973,23 +973,23 @@ func (s *Public) SelectProviderAndAccount(
 				continue
 			}
 			s.RegisterModel(ctx, upstreamModel)
-			return account.Bind(providerName), &account, upstreamModel, nil
+			return provider.Bind(providerName), &provider, upstreamModel, nil
 		}
 	}
 	if requestedProvider != "" {
-		return nil, nil, "", ErrBatchImageNoAccountAvailable
+		return nil, nil, "", ErrBatchImageNoProviderAvailable
 	}
-	return nil, nil, "", ErrBatchImageNoAccountAvailable
+	return nil, nil, "", ErrBatchImageNoProviderAvailable
 }
 
-func (s *Public) ListCandidateAccounts(ctx context.Context, groupID *int64, platform string) ([]Candidate, error) {
-	if s.AccountRepo == nil {
-		return nil, ErrBatchImageNoAccountAvailable
+func (s *Public) ListCandidateProviders(ctx context.Context, groupID *int64, platform string) ([]Candidate, error) {
+	if s.ProviderRepo == nil {
+		return nil, ErrBatchImageNoProviderAvailable
 	}
 	if groupID != nil && *groupID > 0 {
-		return s.AccountRepo.ListSchedulableByGroupIDAndPlatform(ctx, *groupID, platform)
+		return s.ProviderRepo.ListSchedulableByGroupIDAndPlatform(ctx, *groupID, platform)
 	}
-	return nil, ErrBatchImageNoAccountAvailable
+	return nil, ErrBatchImageNoProviderAvailable
 }
 
 func (s *Public) EnsureGroupAllowsBatchImage(ctx context.Context, groupID *int64) error {
@@ -1009,7 +1009,7 @@ func (s *Public) EnsureGroupAllowsBatchImage(ctx context.Context, groupID *int64
 	return nil
 }
 
-func (s *Public) ResolvePricingSnapshot(ctx context.Context, owner BatchImageOwner, req BatchImageSubmitRequest, provider string, account *Candidate) (*BatchImagePricingSnapshot, error) {
+func (s *Public) ResolvePricingSnapshot(ctx context.Context, owner BatchImageOwner, req BatchImageSubmitRequest, platform string, provider *Candidate) (*BatchImagePricingSnapshot, error) {
 	billingMode, ok := billing.NormalizeAPIKeyBillingMode(owner.BillingMode)
 	if !ok {
 		return nil, apikey.ErrInvalidAPIKeyBillingMode
@@ -1109,14 +1109,14 @@ func (s *Public) ResolvePricingSnapshot(ctx context.Context, owner BatchImageOwn
 		)
 		holdMultiplier = discountMultiplier
 	}
-	accountMultiplier := 1.0
-	if account != nil {
-		accountMultiplier = account.BillingRateMultiplier()
+	providerMultiplier := 1.0
+	if provider != nil {
+		providerMultiplier = provider.BillingRateMultiplier()
 	}
-	if accountMultiplier < 0 {
-		accountMultiplier = 0
+	if providerMultiplier < 0 {
+		providerMultiplier = 0
 	}
-	standardUnitPrice := unit * groupMultiplier * accountMultiplier
+	standardUnitPrice := unit * groupMultiplier * providerMultiplier
 	billableUnitPrice := standardUnitPrice * discountMultiplier
 	holdUnitPrice := standardUnitPrice * holdMultiplier
 	return &BatchImagePricingSnapshot{
@@ -1125,7 +1125,7 @@ func (s *Public) ResolvePricingSnapshot(ctx context.Context, owner BatchImageOwn
 		SubscriptionRateMultiplier: subscriptionRateMultiplier,
 		BalanceRateMultiplier:      balanceRateMultiplier,
 		PlanGroupRateEnabled:       planGroupRateEnabled,
-		AccountRateMultiplier:      accountMultiplier,
+		ProviderRateMultiplier:     providerMultiplier,
 		BatchDiscountMultiplier:    discountMultiplier,
 		HoldMultiplier:             holdMultiplier,
 		BillableUnitPrice:          billableUnitPrice,
@@ -1136,7 +1136,7 @@ func (s *Public) ResolvePricingSnapshot(ctx context.Context, owner BatchImageOwn
 }
 
 func (s *Public) Enabled() bool {
-	return s != nil && s.Repo != nil && s.AccountRepo != nil && s.Options.Enabled
+	return s != nil && s.Repo != nil && s.ProviderRepo != nil && s.Options.Enabled
 }
 
 func (s *Public) InvalidateAuthCache(ctx context.Context, userID int64) {
@@ -1223,8 +1223,8 @@ func HashCompositeBatchImageSubmitRequest(req BatchImageSubmitRequest, groupID *
 	return hex.EncodeToString(sum[:])
 }
 
-func BatchImageProviderPlatform(provider string) string {
-	switch provider {
+func BatchImageProviderPlatform(platform string) string {
+	switch platform {
 	case BatchImageProviderGeminiAPI, BatchImageProviderVertex:
 		return PlatformGemini
 	default:
@@ -1239,11 +1239,11 @@ func BatchImageProviderSelectionOrder(requestedProvider string) []string {
 	return []string{BatchImageProviderGeminiAPI, BatchImageProviderVertex}
 }
 
-func BatchImageModelsFromAccountMapping(account *Candidate) []string {
-	if account == nil {
+func BatchImageModelsFromProviderMapping(provider *Candidate) []string {
+	if provider == nil {
 		return nil
 	}
-	mapping := account.GetModelMapping()
+	mapping := provider.GetModelMapping()
 	if len(mapping) == 0 {
 		return nil
 	}
@@ -1278,10 +1278,10 @@ func BatchImageProviderSubmitPublicError(err error) error {
 		return ErrBatchImageVertexGCSBucketMissing
 	case "BATCH_IMAGE_PROVIDER_MISSING_API_KEY":
 		return ErrBatchImageProviderMissingAPIKey
-	case "BATCH_IMAGE_PROVIDER_MISSING_SERVICE_ACCOUNT":
+	case "BATCH_IMAGE_PROVIDER_MISSING_SERVICE_PROVIDER":
 		return ErrBatchImageProviderMissingServiceAccount
-	case "BATCH_IMAGE_PROVIDER_UNSUPPORTED_ACCOUNT":
-		return ErrBatchImageProviderUnsupportedAccount
+	case "BATCH_IMAGE_PROVIDER_UNSUPPORTED_PROVIDER":
+		return ErrBatchImageProviderUnsupportedProvider
 	default:
 		return ErrBatchImageProviderSubmitFailed
 	}

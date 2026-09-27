@@ -5,7 +5,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
 )
 
-// TLSProfiles 把唯一策略实例的结果转换为传输指纹，不持有账号或第二份缓存。
+// TLSProfiles 把唯一策略实例的结果转换为传输指纹，不持有提供商或第二份缓存。
 type TLSProfiles struct {
 	*egress.TLSFingerprintProfileService
 }

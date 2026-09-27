@@ -5,16 +5,16 @@ import (
 	"strings"
 	"time"
 
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/logredact"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 	"github.com/tidwall/gjson"
 )
 
-// OpenAIFailoverPolicy 只计算当前账号的恢复资格与截止时间，不执行请求或切换循环。
+// OpenAIFailoverPolicy 只计算当前提供商的恢复资格与截止时间，不执行请求或切换循环。
 type OpenAIFailoverPolicy struct {
-	Health *accountprovider.OpenAIResponseHealth
+	Health *provideradapter.OpenAIResponseHealth
 }
 
 const (
@@ -52,7 +52,7 @@ func ShouldFailoverUpstreamStatus(statusCode int) bool {
 }
 
 func ShouldFailoverOpenAIResponse(statusCode int, upstreamMsg string, upstreamBody []byte) bool {
-	// cyber_policy 即使被中间层包成 5xx，仍属于请求拒绝，不触发账号切换。
+	// cyber_policy 即使被中间层包成 5xx，仍属于请求拒绝，不触发提供商切换。
 	if IsOpenAICyberWarningPayload(upstreamBody, upstreamMsg) {
 		return false
 	}
@@ -80,32 +80,32 @@ func NewOpenAIUpstreamFailure(
 	responseHeaders http.Header,
 	responseBody []byte,
 	upstreamMsg string,
-	retryableOnSameAccount bool,
+	retryableOnSameProvider bool,
 ) *forwardcore.UpstreamFailoverError {
 	requestScopedCapacity := openai.IsOpenAIRequestScopedCapacityShed(upstreamMsg, responseBody)
 	failoverErr := &forwardcore.UpstreamFailoverError{
-		StatusCode:             statusCode,
-		ResponseBody:           responseBody,
-		ResponseHeaders:        responseHeaders.Clone(),
-		RetryableOnSameAccount: retryableOnSameAccount || requestScopedCapacity,
-		RequestScopedTransient: requestScopedCapacity,
+		StatusCode:              statusCode,
+		ResponseBody:            responseBody,
+		ResponseHeaders:         responseHeaders.Clone(),
+		RetryableOnSameProvider: retryableOnSameProvider || requestScopedCapacity,
+		RequestScopedTransient:  requestScopedCapacity,
 	}
 	if IsOpenAIRequestBodyTooLargeError(statusCode, upstreamMsg, responseBody) {
-		failoverErr.RetryableOnSameAccount = false
+		failoverErr.RetryableOnSameProvider = false
 		failoverErr.RequestScopedTransient = false
-		failoverErr.Scope = forwardcore.GatewayFailureScopeAccount
+		failoverErr.Scope = forwardcore.GatewayFailureScopeProvider
 		failoverErr.Reason = openAIRequestBodyTooLargeReason
-		failoverErr.NextAccountAction = forwardcore.NextAccountRetry
+		failoverErr.NextProviderAction = forwardcore.NextProviderRetry
 		failoverErr.ClientStatusCode = http.StatusRequestEntityTooLarge
 		failoverErr.ClientMessage = forwardcore.OpenAIRequestBodyTooLargeClientMessage
 	}
 	if IsOpenAIHTTPUpstreamAccessStateError(statusCode, upstreamMsg, responseBody) {
-		failoverErr.RetryableOnSameAccount = false
+		failoverErr.RetryableOnSameProvider = false
 		failoverErr.RequestScopedTransient = false
-		failoverErr.Stage = forwardcore.GatewayFailureStageAccountAuth
-		failoverErr.Scope = forwardcore.GatewayFailureScopeAccount
+		failoverErr.Stage = forwardcore.GatewayFailureStageProviderAuth
+		failoverErr.Scope = forwardcore.GatewayFailureScopeProvider
 		failoverErr.Reason = forwardcore.OpenAIUpstreamAccessStateReason
-		failoverErr.NextAccountAction = forwardcore.NextAccountRetry
+		failoverErr.NextProviderAction = forwardcore.NextProviderRetry
 		failoverErr.ClientStatusCode = http.StatusBadGateway
 		failoverErr.ClientMessage = openAIUpstreamAccessUnavailableClientMessage
 	} else if requestScopedCapacity {
@@ -116,39 +116,39 @@ func NewOpenAIUpstreamFailure(
 	return failoverErr
 }
 
-func (p OpenAIFailoverPolicy) NewAccountFailure(
-	account *ExecutionAccount,
+func (p OpenAIFailoverPolicy) NewProviderFailure(
+	provider *ExecutionProvider,
 	statusCode int,
 	responseHeaders http.Header,
 	responseBody []byte,
 	upstreamMsg string,
 	shouldDisable bool,
-	retryableOnSameAccount bool,
+	retryableOnSameProvider bool,
 ) *forwardcore.UpstreamFailoverError {
-	return p.NewAccountFailureWithClassificationHeaders(account, statusCode, responseHeaders, responseHeaders, responseBody, upstreamMsg, shouldDisable, retryableOnSameAccount)
+	return p.NewProviderFailureWithClassificationHeaders(provider, statusCode, responseHeaders, responseHeaders, responseBody, upstreamMsg, shouldDisable, retryableOnSameProvider)
 }
 
-func (p OpenAIFailoverPolicy) NewAccountFailureWithClassificationHeaders(
-	account *ExecutionAccount,
+func (p OpenAIFailoverPolicy) NewProviderFailureWithClassificationHeaders(
+	provider *ExecutionProvider,
 	statusCode int,
 	responseHeaders http.Header,
 	classificationHeaders http.Header,
 	responseBody []byte,
 	upstreamMsg string,
 	shouldDisable bool,
-	retryableOnSameAccount bool,
+	retryableOnSameProvider bool,
 ) *forwardcore.UpstreamFailoverError {
-	oauth429Retry := p.Health.RetryOAuth429(ExecutionRecord(account), statusCode, shouldDisable, classificationHeaders, responseBody)
+	oauth429Retry := p.Health.RetryOAuth429(ExecutionRecord(provider), statusCode, shouldDisable, classificationHeaders, responseBody)
 	failoverErr := NewOpenAIUpstreamFailure(
 		statusCode,
 		responseHeaders,
 		responseBody,
 		upstreamMsg,
-		retryableOnSameAccount || oauth429Retry,
+		retryableOnSameProvider || oauth429Retry,
 	)
 	if oauth429Retry {
-		failoverErr.SameAccountRetryDeadline = p.Health.RetryDeadline(ExecutionRecord(account))
-		failoverErr.SameAccountRetryDelay = OpenAI429RetryDelay(responseHeaders, failoverErr.SameAccountRetryDeadline)
+		failoverErr.SameProviderRetryDeadline = p.Health.RetryDeadline(ExecutionRecord(provider))
+		failoverErr.SameProviderRetryDelay = OpenAI429RetryDelay(responseHeaders, failoverErr.SameProviderRetryDeadline)
 	}
 	return failoverErr
 }
@@ -177,28 +177,27 @@ func OpenAICapacityShedClientMessage(upstreamMsg string, body []byte) string {
 }
 
 // OpenAISemantic429Headers 仅把明确的 Spark 窗口头用于流内语义限流。
-func OpenAISemantic429Headers(target *ExecutionAccount, model string, headers http.Header) http.Header {
+func OpenAISemantic429Headers(target *ExecutionProvider, model string, headers http.Header) http.Header {
 	if IsCodexSparkModel(model) && target != nil && target.View().IsOpenAIOAuthLike() {
 		return headers
 	}
 	return nil
 }
 
-// OpenAIStreamFailureRetryable 保留容量降载与账号池模式的同账号重试资格。
-func OpenAIStreamFailureRetryable(account *ExecutionAccount, payload []byte, message string) bool {
-	if account == nil {
+// OpenAIStreamFailureRetryable 保留容量降载与提供商池模式的同提供商重试资格。
+func OpenAIStreamFailureRetryable(provider *ExecutionProvider, payload []byte, message string) bool {
+	if provider == nil {
 		return false
 	}
-	// 容量降载由客户端身份或模型容量触发，与当前账号健康无关；非池账号也应先
-	// 做有界同账号重试，避免无意义地轮换并冷却整组账号。
+	// 容量降载由客户端身份或模型容量触发，与当前提供商健康无关；非池提供商也应先
+	// 做有界同提供商重试，避免无意义地轮换并冷却整组提供商。
 	if openai.IsOpenAIUpstreamCapacityShedEvent(payload) {
 		return true
 	}
-	if !account.View().IsPoolMode() {
+	if !provider.View().IsPoolMode() {
 		return false
 	}
 	semanticStatus := openai.OpenAIStreamFailedEventSemanticStatus(payload, message)
-	return account.View().IsPoolModeRetryableStatus(semanticStatus) ||
+	return provider.View().IsPoolModeRetryableStatus(semanticStatus) ||
 		openai.IsOpenAITransientProcessingError(http.StatusBadRequest, message, payload)
-
 }

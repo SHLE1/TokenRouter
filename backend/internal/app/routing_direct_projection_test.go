@@ -3,7 +3,7 @@ package app
 import (
 	"testing"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/stretchr/testify/require"
 )
 
@@ -11,8 +11,8 @@ import (
 func TestRoutingGroupProjectionKeepsLazyModelDefaults(t *testing.T) {
 	calls := 0
 	catalog := map[string]string{"model-b": "model-b"}
-	reader := routingGroupAccounts{Defaults: account.ModelMappingDefaults{Antigravity: func() map[string]string { calls++; return catalog }}}
-	source := &account.Record{ID: 8, Platform: account.PlatformAntigravity, Type: account.AccountTypeOAuth}
+	reader := routingGroupProviders{Defaults: provider.ModelMappingDefaults{Antigravity: func() map[string]string { calls++; return catalog }}}
+	source := &provider.Record{ID: 8, Platform: provider.PlatformAntigravity, Type: provider.ProviderTypeOAuth}
 	first := reader.project(source)
 	require.Equal(t, []string{"model-b"}, first.Models)
 	require.Equal(t, 1, calls)

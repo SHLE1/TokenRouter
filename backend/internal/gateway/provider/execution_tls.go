@@ -5,7 +5,7 @@ import (
 )
 
 // ExecutionTLSSelection 只提取资格与配置 ID，策略选择由 egress 拥有。
-func ExecutionTLSSelection(value *ExecutionAccount, routerMatch []egress.TLSFingerprintRouterMatchResult) egress.TLSSelection {
+func ExecutionTLSSelection(value *ExecutionProvider, routerMatch []egress.TLSFingerprintRouterMatchResult) egress.TLSSelection {
 	selection := egress.TLSSelection{}
 	if value != nil {
 		selection.Enabled = value.View().IsTLSFingerprintEnabled()

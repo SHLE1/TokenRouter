@@ -8,26 +8,26 @@ import (
 	"sync"
 	"time"
 
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 
-	acctcore "github.com/TokenFlux/TokenRouter/internal/account"
+	acctcore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
 type agentIdentityWSConnectionInvalidator interface {
-	InvalidateAgentIdentityWSConnections(accountID int64)
+	InvalidateAgentIdentityWSConnections(providerID int64)
 }
 
-// 兼容入口只转换记录和写回时机；锁、复查与登记规则由唯一账号协调器执行。
-func ensureAgentIdentityTaskForAccount(ctx context.Context, coordinator *acctcore.OpenAITaskCoordinator, register func(context.Context, *acctcore.Record) (string, error), repo ExecutionAccountStore, wsInvalidator agentIdentityWSConnectionInvalidator, taskMu *sync.Mutex, value *ExecutionAccount, expectedTaskID string) error {
+// 兼容入口只转换记录和写回时机；锁、复查与登记规则由唯一提供商协调器执行。
+func ensureAgentIdentityTaskForProvider(ctx context.Context, coordinator *acctcore.OpenAITaskCoordinator, register func(context.Context, *acctcore.Record) (string, error), repo ExecutionProviderStore, wsInvalidator agentIdentityWSConnectionInvalidator, taskMu *sync.Mutex, value *ExecutionProvider, expectedTaskID string) error {
 	input := ExecutionRecord(value)
-	originals := map[*acctcore.Record]*ExecutionAccount{input: value}
-	legacyValue := func(record *acctcore.Record) *ExecutionAccount {
+	originals := map[*acctcore.Record]*ExecutionProvider{input: value}
+	legacyValue := func(record *acctcore.Record) *ExecutionProvider {
 		if original, ok := originals[record]; ok {
 			return original
 		}
-		return NewExecutionAccount(record)
+		return NewExecutionProvider(record)
 	}
 	options := acctcore.OpenAITaskOptions{
 		FallbackMutex: taskMu,
@@ -59,28 +59,28 @@ func ensureAgentIdentityTaskForAccount(ctx context.Context, coordinator *acctcor
 	return err
 }
 
-func (s *ExecutionAgentIdentity) Ensure(ctx context.Context, account *ExecutionAccount, expectedTaskID string) error {
+func (s *ExecutionAgentIdentity) Ensure(ctx context.Context, provider *ExecutionProvider, expectedTaskID string) error {
 	if s == nil {
 		return errors.New("openai gateway service is nil")
 	}
-	return ensureAgentIdentityTaskForAccount(ctx, s.coordinator, s.register, s.store, s, &s.taskMu, account, expectedTaskID)
+	return ensureAgentIdentityTaskForProvider(ctx, s.coordinator, s.register, s.store, s, &s.taskMu, provider, expectedTaskID)
 }
 
-func (s *ExecutionAgentIdentity) Headers(ctx context.Context, account *ExecutionAccount, token string) (http.Header, error) {
-	if account == nil {
-		return nil, errors.New("account is nil")
+func (s *ExecutionAgentIdentity) Headers(ctx context.Context, provider *ExecutionProvider, token string) (http.Header, error) {
+	if provider == nil {
+		return nil, errors.New("provider is nil")
 	}
-	credAccount := account
-	if account.View().IsShadow() {
-		resolved, err := CredentialAccount(ctx, s.store, account)
+	credProvider := provider
+	if provider.View().IsShadow() {
+		resolved, err := CredentialProvider(ctx, s.store, provider)
 		if err != nil {
 			return nil, err
 		}
-		credAccount = resolved
+		credProvider = resolved
 	}
 	headers := make(http.Header)
-	if credAccount != nil && credAccount.View().IsOpenAIAgentIdentity() {
-		agentHeaders, err := buildAgentIdentityAuthenticationHeaders(ctx, s.coordinator, s.register, s.store, s, &s.taskMu, credAccount)
+	if credProvider != nil && credProvider.View().IsOpenAIAgentIdentity() {
+		agentHeaders, err := buildAgentIdentityAuthenticationHeaders(ctx, s.coordinator, s.register, s.store, s, &s.taskMu, credProvider)
 		if err != nil {
 			return nil, err
 		}
@@ -90,20 +90,20 @@ func (s *ExecutionAgentIdentity) Headers(ctx context.Context, account *Execution
 	return headers, nil
 }
 
-func buildAgentIdentityAuthenticationHeaders(ctx context.Context, coordinator *acctcore.OpenAITaskCoordinator, register func(context.Context, *acctcore.Record) (string, error), repo ExecutionAccountStore, wsInvalidator agentIdentityWSConnectionInvalidator, taskMu *sync.Mutex, account *ExecutionAccount) (http.Header, error) {
-	headers, _, err := buildAgentIdentityAuthenticationHeadersWithTask(ctx, coordinator, register, repo, wsInvalidator, taskMu, account)
+func buildAgentIdentityAuthenticationHeaders(ctx context.Context, coordinator *acctcore.OpenAITaskCoordinator, register func(context.Context, *acctcore.Record) (string, error), repo ExecutionProviderStore, wsInvalidator agentIdentityWSConnectionInvalidator, taskMu *sync.Mutex, provider *ExecutionProvider) (http.Header, error) {
+	headers, _, err := buildAgentIdentityAuthenticationHeadersWithTask(ctx, coordinator, register, repo, wsInvalidator, taskMu, provider)
 	return headers, err
 }
 
 // buildAgentIdentityAuthenticationHeadersWithTask 同时返回本次签名使用的 task，供失败恢复执行 CAS。
-func buildAgentIdentityAuthenticationHeadersWithTask(ctx context.Context, coordinator *acctcore.OpenAITaskCoordinator, register func(context.Context, *acctcore.Record) (string, error), repo ExecutionAccountStore, wsInvalidator agentIdentityWSConnectionInvalidator, taskMu *sync.Mutex, account *ExecutionAccount) (http.Header, string, error) {
-	if account == nil || !account.View().IsOpenAIAgentIdentity() {
-		return nil, "", errors.New("agent identity account is required")
+func buildAgentIdentityAuthenticationHeadersWithTask(ctx context.Context, coordinator *acctcore.OpenAITaskCoordinator, register func(context.Context, *acctcore.Record) (string, error), repo ExecutionProviderStore, wsInvalidator agentIdentityWSConnectionInvalidator, taskMu *sync.Mutex, provider *ExecutionProvider) (http.Header, string, error) {
+	if provider == nil || !provider.View().IsOpenAIAgentIdentity() {
+		return nil, "", errors.New("agent identity provider is required")
 	}
-	if err := ensureAgentIdentityTaskForAccount(ctx, coordinator, register, repo, wsInvalidator, taskMu, account, ""); err != nil {
+	if err := ensureAgentIdentityTaskForProvider(ctx, coordinator, register, repo, wsInvalidator, taskMu, provider, ""); err != nil {
 		return nil, "", err
 	}
-	key, err := accountprovider.AgentIdentityKey(account.View())
+	key, err := provideradapter.AgentIdentityKey(provider.View())
 	if err != nil {
 		return nil, "", err
 	}
@@ -116,26 +116,26 @@ func buildAgentIdentityAuthenticationHeadersWithTask(ctx context.Context, coordi
 	return headers, key.TaskID, nil
 }
 
-func (s *ExecutionAgentIdentity) RefreshHeaders(ctx context.Context, account *ExecutionAccount, headers http.Header) (http.Header, error) {
-	if account == nil {
+func (s *ExecutionAgentIdentity) RefreshHeaders(ctx context.Context, provider *ExecutionProvider, headers http.Header) (http.Header, error) {
+	if provider == nil {
 		return upstream.CloneHeader(headers), nil
 	}
-	credAccount := account
-	if account.View().IsShadow() {
-		resolved, err := CredentialAccount(ctx, s.store, account)
+	credProvider := provider
+	if provider.View().IsShadow() {
+		resolved, err := CredentialProvider(ctx, s.store, provider)
 		if err != nil {
 			return nil, err
 		}
-		credAccount = resolved
+		credProvider = resolved
 	}
-	if !credAccount.View().IsOpenAIAgentIdentity() {
+	if !credProvider.View().IsOpenAIAgentIdentity() {
 		return upstream.CloneHeader(headers), nil
 	}
 	refreshed := upstream.CloneHeader(headers)
 	if refreshed == nil {
 		refreshed = make(http.Header)
 	}
-	authHeaders, err := buildAgentIdentityAuthenticationHeaders(ctx, s.coordinator, s.register, s.store, s, &s.taskMu, credAccount)
+	authHeaders, err := buildAgentIdentityAuthenticationHeaders(ctx, s.coordinator, s.register, s.store, s, &s.taskMu, credProvider)
 	if err != nil {
 		return nil, err
 	}
@@ -143,67 +143,68 @@ func (s *ExecutionAgentIdentity) RefreshHeaders(ctx context.Context, account *Ex
 	return refreshed, nil
 }
 
-func (s *ExecutionAgentIdentity) Recover(ctx context.Context, account *ExecutionAccount, expectedTaskID string) error {
-	if account != nil && account.View().IsShadow() {
-		if resolved, err := CredentialAccount(ctx, s.store, account); err == nil && resolved != nil && strings.TrimSpace(expectedTaskID) == "" {
+func (s *ExecutionAgentIdentity) Recover(ctx context.Context, provider *ExecutionProvider, expectedTaskID string) error {
+	if provider != nil && provider.View().IsShadow() {
+		if resolved, err := CredentialProvider(ctx, s.store, provider); err == nil && resolved != nil && strings.TrimSpace(expectedTaskID) == "" {
 			expectedTaskID = strings.TrimSpace(resolved.View().GetCredential("task_id"))
 		}
 	}
-	return s.Ensure(ctx, account, expectedTaskID)
+	return s.Ensure(ctx, provider, expectedTaskID)
 }
 
-func (s *ExecutionAgentIdentity) UsesAgentIdentity(ctx context.Context, account *ExecutionAccount) bool {
-	if account == nil {
+func (s *ExecutionAgentIdentity) UsesAgentIdentity(ctx context.Context, provider *ExecutionProvider) bool {
+	if provider == nil {
 		return false
 	}
-	credAccount := account
-	if account.View().IsShadow() {
-		resolved, err := CredentialAccount(ctx, s.store, account)
+	credProvider := provider
+	if provider.View().IsShadow() {
+		resolved, err := CredentialProvider(ctx, s.store, provider)
 		if err != nil {
 			return false
 		}
-		credAccount = resolved
+		credProvider = resolved
 	}
-	return credAccount != nil && credAccount.View().IsOpenAIAgentIdentity()
+	return credProvider != nil && credProvider.View().IsOpenAIAgentIdentity()
 }
 
 // RedactExecutionAgentBody 在上游错误进入日志、Ops 或响应前移除凭据值。
 // 正常响应不应回显这些字段，此处仍做纵深防护以阻止异常上游泄漏。
-func RedactExecutionAgentBody(ctx context.Context, repo ExecutionAccountStore, account *ExecutionAccount, body []byte) []byte {
-	if account == nil || len(body) == 0 {
+func RedactExecutionAgentBody(ctx context.Context, repo ExecutionProviderStore, provider *ExecutionProvider, body []byte) []byte {
+	if provider == nil || len(body) == 0 {
 		return body
 	}
-	credAccount := account
-	if account != nil && account.View().IsShadow() {
-		if resolved, err := CredentialAccount(ctx, repo, account); err == nil && resolved != nil {
-			credAccount = resolved
+	credProvider := provider
+	if provider != nil && provider.View().IsShadow() {
+		if resolved, err := CredentialProvider(ctx, repo, provider); err == nil && resolved != nil {
+			credProvider = resolved
 		}
 	}
-	if credAccount == nil || !credAccount.View().IsOpenAIAgentIdentity() {
+	if credProvider == nil || !credProvider.View().IsOpenAIAgentIdentity() {
 		return body
 	}
-	return openai.RedactAgentIdentityBody(body, credAccount.View().GetCredential)
+	return openai.RedactAgentIdentityBody(body, credProvider.View().GetCredential)
 }
 
-func (s *ExecutionAgentIdentity) Redact(ctx context.Context, account *ExecutionAccount, body []byte) []byte {
-	if !s.UsesAgentIdentity(ctx, account) {
+func (s *ExecutionAgentIdentity) Redact(ctx context.Context, provider *ExecutionProvider, body []byte) []byte {
+	if !s.UsesAgentIdentity(ctx, provider) {
 		return body
 	}
-	return RedactExecutionAgentBody(ctx, s.store, account, body)
+	return RedactExecutionAgentBody(ctx, s.store, provider, body)
 }
 
 // ExecutionAgentIdentity 封装本次执行所需身份协作，不持有 Gin、配置或第二份注册状态。
 type ExecutionAgentIdentity struct {
-	store       ExecutionAccountStore
+	store       ExecutionProviderStore
 	coordinator *acctcore.OpenAITaskCoordinator
 	register    func(context.Context, *acctcore.Record) (string, error)
 	invalidate  func(int64)
 	taskMu      sync.Mutex
 }
 
-func NewExecutionAgentIdentity(coordinator *acctcore.OpenAITaskCoordinator, store ExecutionAccountStore, register func(context.Context, *acctcore.Record) (string, error), invalidate func(int64)) *ExecutionAgentIdentity {
+func NewExecutionAgentIdentity(coordinator *acctcore.OpenAITaskCoordinator, store ExecutionProviderStore, register func(context.Context, *acctcore.Record) (string, error), invalidate func(int64)) *ExecutionAgentIdentity {
 	return &ExecutionAgentIdentity{store: store, coordinator: coordinator, register: register, invalidate: invalidate}
 }
+
 func (s *ExecutionAgentIdentity) InvalidateAgentIdentityWSConnections(id int64) {
 	if s.invalidate != nil {
 		s.invalidate(id)

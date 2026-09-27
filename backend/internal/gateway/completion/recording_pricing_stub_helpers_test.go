@@ -3,7 +3,7 @@ package completion_test
 import (
 	"testing"
 
-	"github.com/TokenFlux/TokenRouter/internal/billing/provider"
+	billingadapter "github.com/TokenFlux/TokenRouter/internal/billing/provider"
 	"github.com/stretchr/testify/require"
 )
 
@@ -23,7 +23,7 @@ const openAILadderCatalogJSON = `{
 }`
 
 // newStubPricingServiceFromJSON 通过与生产相同的解析路径创建价格目录 stub。
-func newStubPricingServiceFromJSON(t *testing.T, body string) *provider.PricingService {
+func newStubPricingServiceFromJSON(t *testing.T, body string) *billingadapter.PricingService {
 	t.Helper()
 	service := newPricingServiceFixture(pricingServiceFixture{})
 	data, err := service.ParsePricingData([]byte(body))

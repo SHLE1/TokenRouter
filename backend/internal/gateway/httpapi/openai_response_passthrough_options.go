@@ -22,9 +22,9 @@ import (
 	"go.uber.org/zap"
 )
 
-func (p *OpenAIResponseOutput) PassthroughOptions(ctx context.Context, c *gin.Context, account *gatewayprovider.ExecutionAccount) upstreamopenai.PassthroughOptions {
+func (p *OpenAIResponseOutput) PassthroughOptions(ctx context.Context, c *gin.Context, provider *gatewayprovider.ExecutionProvider) upstreamopenai.PassthroughOptions {
 	stream := upstreamopenai.StreamOptions{
-		NativeOpenAI: account != nil && account.Record.Platform == capability.PlatformOpenAI,
+		NativeOpenAI: provider != nil && provider.Record.Platform == capability.PlatformOpenAI,
 		MaxLineSize:  openAIResponseDefaultMaxLineSize,
 		TTFTMode:     func() string { return p.TTFTMode(ctx) },
 		Logf: func(format string, args ...any) {
@@ -32,25 +32,25 @@ func (p *OpenAIResponseOutput) PassthroughOptions(ctx context.Context, c *gin.Co
 		},
 		MarkCommitted:       func() { MarkResponseCommitted(c) },
 		ClientOutputStarted: func(started bool) bool { return OpenAIStreamClientOutputStarted(c, started) },
-		ClearDisconnect:     func() { gatewayprovider.ClearProxyStreamDisconnect(p.ProxyCircuit, account) },
+		ClearDisconnect:     func() { gatewayprovider.ClearProxyStreamDisconnect(p.ProxyCircuit, provider) },
 		RecordDisconnect: func(err error, id string) {
-			gatewayprovider.RecordProxyStreamDisconnect(p.ProxyCircuit, account, err, id)
+			gatewayprovider.RecordProxyStreamDisconnect(p.ProxyCircuit, provider, err, id)
 		},
 		TerminalSideEffects: func(body []byte, message string, headers http.Header, model string) {
-			p.TerminalAccountEffects(c, account, body, message, headers, model)
+			p.TerminalProviderEffects(c, provider, body, message, headers, model)
 		},
 		Failover: func(id string, body []byte, message string) error {
-			return p.NewStreamFailure(c, account, true, id, body, message)
+			return p.NewStreamFailure(c, provider, true, id, body, message)
 		},
 		RecordError: func(id, kind string, body []byte, message string) {
-			p.RecordStreamError(c, account, true, id, kind, body, message)
+			p.RecordStreamError(c, provider, true, id, kind, body, message)
 		},
 		CompactFallback: func(body []byte, message string) error { return NewOpenAICompactFailure(c, body, message) },
 		ErrorRule: func(body []byte, message string) (int, string, string, bool) {
-			return ApplyOpenAIStreamFailedErrorRule(c, account.Record.Platform, body, message)
+			return ApplyOpenAIStreamFailedErrorRule(c, provider.Record.Platform, body, message)
 		},
 		CapacitySuppressed: func(id, event string) {
-			LogOpenAICapacityFailoverSuppressed(ctx, account, "passthrough_sse", id, event)
+			LogOpenAICapacityFailoverSuppressed(ctx, provider, "passthrough_sse", id, event)
 		},
 		MarkCyber: func(value upstreamopenai.CyberObservation) {
 			MarkOpsCyberPolicy(c, moderationflow.Mark{Code: value.Code, Message: value.Message, Body: value.Body, UpstreamStatus: value.UpstreamStatus, UpstreamInTok: value.UpstreamInTok, UpstreamOutTok: value.UpstreamOutTok})
@@ -60,7 +60,7 @@ func (p *OpenAIResponseOutput) PassthroughOptions(ctx context.Context, c *gin.Co
 			return RestoreCodexToolNamesFromSSEContext(c, body, event)
 		},
 		EmptyCompleted: func(id string) error {
-			return NewOpenAIResponsesEmptyCompletedFailoverError(c, ExecutionErrorAccount(account), id)
+			return NewOpenAIResponsesEmptyCompletedFailoverError(c, ExecutionErrorProvider(provider), id)
 		},
 		BuildOpenAIResponseFailedSSE:        gatewayprovider.BuildOpenAIResponseFailedSSE,
 		WrapOpenAIUpstreamWarningIfCyber:    gatewayprovider.WrapOpenAIUpstreamWarningIfCyber,
@@ -68,8 +68,8 @@ func (p *OpenAIResponseOutput) PassthroughOptions(ctx context.Context, c *gin.Co
 		OpenAIStreamDataStartsTTFT:          gatewayprovider.OpenAIStreamDataStartsTTFT,
 		OpenAIStreamEventIsTerminalWithType: openai.OpenAIStreamEventIsTerminalWithType,
 	}
-	if account != nil {
-		stream.AccountID = account.Record.ID
+	if provider != nil {
+		stream.ProviderID = provider.Record.ID
 	}
 	if p.Options.Configured && p.Options.MaxLineSize > 0 {
 		stream.MaxLineSize = p.Options.MaxLineSize
@@ -84,9 +84,9 @@ func (p *OpenAIResponseOutput) PassthroughOptions(ctx context.Context, c *gin.Co
 			MarkOpsTimestamp(c, telemetry.FirstVisibleOutputAt)
 		}
 	}
-	nonstream := p.NonStreamOptions(ctx, c, account)
+	nonstream := p.NonStreamOptions(ctx, c, provider)
 	nonstream.TerminalFailover = func(resp *http.Response, event string, body []byte, message, model string) error {
-		if failure := p.nonStreamingTerminalFailure(c, resp, account, true, event, body, message, model); failure != nil {
+		if failure := p.nonStreamingTerminalFailure(c, resp, provider, true, event, body, message, model); failure != nil {
 			return failure
 		}
 		return nil
@@ -112,16 +112,16 @@ func (p *OpenAIResponseOutput) PassthroughOptions(ctx context.Context, c *gin.Co
 				return
 			}
 			var id int64
-			if account != nil {
-				id = account.Record.ID
+			if provider != nil {
+				id = provider.Record.ID
 			}
 			gatewaytelemetry.SuccessMissingUsage(ctx, id, resp.StatusCode, usage, event, disconnected)
 		},
 		MissingTerminal: func(id string) {
-			logging.FromContext(ctx).With(zap.String("component", "service.openai_gateway"), zap.Int64("account_id", account.Record.ID), zap.String("upstream_request_id", id)).Info("OpenAI passthrough 上游流在未收到 [DONE] 时结束，疑似断流")
+			logging.FromContext(ctx).With(zap.String("component", "service.openai_gateway"), zap.Int64("provider_id", provider.Record.ID), zap.String("upstream_request_id", id)).Info("OpenAI passthrough 上游流在未收到 [DONE] 时结束，疑似断流")
 		},
 		PassthroughFailoverWithModel: func(id string, body []byte, message, model string) error {
-			return p.NewStreamFailureWithModel(c, account, true, id, body, message, model)
+			return p.NewStreamFailureWithModel(c, provider, true, id, body, message, model)
 		},
 	}
 }

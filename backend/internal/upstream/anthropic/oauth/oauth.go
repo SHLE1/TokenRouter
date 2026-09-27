@@ -90,6 +90,8 @@ func BuildAuthorizationURL(state, codeChallenge, scope string) string {
 	)
 }
 
-type TokenResponse = wire.OAuthTokenResponse
-type OrgInfo = wire.OAuthOrgInfo
-type AccountInfo = wire.OAuthAccountInfo
+type (
+	TokenResponse = wire.OAuthTokenResponse
+	OrgInfo       = wire.OAuthOrgInfo
+	ProviderInfo  = wire.OAuthProviderInfo
+)

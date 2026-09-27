@@ -37,7 +37,7 @@ func NormalizeGroupSchedulerType(value string) (GroupSchedulerType, error) {
 	}
 }
 
-// Group 在共享值契约上拥有分组规则，账号只读取 accessview 的值投影。
+// Group 在共享值契约上拥有分组规则，提供商只读取 accessview 的值投影。
 type GroupRoutingPolicy = accessview.GroupRoutingPolicy
 
 type Group accessview.GroupConfig
@@ -68,22 +68,22 @@ func IsGroupContextValid(group *Group) bool {
 	return true
 }
 
-// GetRoutingAccountIDs 根据请求模型获取路由账号 ID 列表
-// 返回匹配的优先账号 ID 列表，如果没有匹配规则则返回 nil
-func (g *Group) GetRoutingAccountIDs(requestedModel string) []int64 {
+// GetRoutingProviderIDs 根据请求模型获取路由提供商 ID 列表
+// 返回匹配的优先提供商 ID 列表，如果没有匹配规则则返回 nil
+func (g *Group) GetRoutingProviderIDs(requestedModel string) []int64 {
 	if !g.ModelRoutingEnabled || len(g.ModelRouting) == 0 || requestedModel == "" {
 		return nil
 	}
 
 	// 1. 精确匹配优先
-	if accountIDs, ok := g.ModelRouting[requestedModel]; ok && len(accountIDs) > 0 {
-		return accountIDs
+	if providerIDs, ok := g.ModelRouting[requestedModel]; ok && len(providerIDs) > 0 {
+		return providerIDs
 	}
 
 	// 2. 通配符匹配（前缀匹配）
-	for pattern, accountIDs := range g.ModelRouting {
-		if MatchModelPattern(pattern, requestedModel) && len(accountIDs) > 0 {
-			return accountIDs
+	for pattern, providerIDs := range g.ModelRouting {
+		if MatchModelPattern(pattern, requestedModel) && len(providerIDs) > 0 {
+			return providerIDs
 		}
 	}
 

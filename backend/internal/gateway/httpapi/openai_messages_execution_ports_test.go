@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
@@ -21,7 +21,7 @@ func TestOpenAIMessagesExecutionAdapterPreservesNilFailover(t *testing.T) {
 	writer := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(writer)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", nil)
-	p := &openAIMessagesExecutionAdapter{s: &OpenAITextExecutor{Output: &OpenAIResponseOutput{Health: &accountprovider.OpenAIResponseHealth{}}}, c: c, account: &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI}}}
+	p := &openAIMessagesExecutionAdapter{s: &OpenAITextExecutor{Output: &OpenAIResponseOutput{Health: &provideradapter.OpenAIResponseHealth{}}}, c: c, provider: &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI}}}
 	body := []byte(`{"error":{"type":"invalid_request_error","message":"model not found"}}`)
 	err := p.FailoverHTTP(context.Background(), &http.Response{StatusCode: 400, Header: make(http.Header)}, body, "model not found", "gpt6")
 	require.NoError(t, err)

@@ -9,12 +9,12 @@ import (
 
 	routingtestkit "github.com/TokenFlux/TokenRouter/internal/routing/testkit"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/config"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	schedulercore "github.com/TokenFlux/TokenRouter/internal/scheduler"
@@ -24,7 +24,7 @@ import (
 // withAdvancedSchedulerTestGroup 为高级调度测试明确注入最终目标分组。
 // 生产代码不再读取全局开关，测试也必须声明该分组使用 advanced。
 
-// ListModelAvailabilityCandidates 模拟只按持久配置筛选模型诊断候选账号。
+// ListModelAvailabilityCandidates 模拟只按持久配置筛选模型诊断候选提供商。
 
 // noSlotSchedulerTestConcurrencyCache 在辅助选择错误触碰真实并发槽时立即暴露问题。
 
@@ -48,12 +48,12 @@ func TestOpenAIGatewayService_MessagesRoutingModelUsesFullMappingChain(t *testin
 					InputPrice: &price,
 				}},
 			}
-			accounts := []gatewayprovider.ExecutionAccount{
+			providers := []gatewayprovider.ExecutionProvider{
 				{
-					Record: accountcore.Record{
+					Record: providercore.Record{
 						LoadLocation: time.LoadLocation, ID: 42111,
 						Platform:    capability.PlatformOpenAI,
-						Type:        capability.AccountTypeAPIKey,
+						Type:        capability.ProviderTypeAPIKey,
 						Status:      billing.StatusActive,
 						Schedulable: true,
 						Concurrency: 1,
@@ -65,10 +65,10 @@ func TestOpenAIGatewayService_MessagesRoutingModelUsesFullMappingChain(t *testin
 					},
 				},
 				{
-					Record: accountcore.Record{
+					Record: providercore.Record{
 						LoadLocation: time.LoadLocation, ID: 42112,
 						Platform:    capability.PlatformOpenAI,
-						Type:        capability.AccountTypeAPIKey,
+						Type:        capability.ProviderTypeAPIKey,
 						Status:      billing.StatusActive,
 						Schedulable: true,
 						Concurrency: 1,
@@ -84,7 +84,7 @@ func TestOpenAIGatewayService_MessagesRoutingModelUsesFullMappingChain(t *testin
 			cfg.Gateway.Scheduling.LoadBatchEnabled = false
 			cache := &schedulerTestGatewayCache{sessionBindings: map[string]int64{"sticky": 42111}}
 			svc := newCompatibleSelectionForTest(CompatibleDependencies{
-				Reads: Reads{Accounts: schedulerTestOpenAIAccountRepo{accounts: accounts}},
+				Reads: Reads{Providers: schedulerTestOpenAIProviderRepo{providers: providers}},
 				Shared: Shared{
 					Cache:       cache,
 					Concurrency: schedulercore.NewConcurrencyService(schedulerTestConcurrencyCache{}, schedulercore.Diagnostics{Logf: logging.LegacyPrintf, Event: logging.Event}),
@@ -98,22 +98,22 @@ func TestOpenAIGatewayService_MessagesRoutingModelUsesFullMappingChain(t *testin
 				svc.schedulerParameters = newAdvancedSchedulerParametersForTest(cfg, "true")
 			}
 
-			selection, _, err := svc.SelectAccountWithSchedulerForCapabilityAndRoutingModel(
+			selection, _, err := svc.SelectProviderWithSchedulerForCapabilityAndRoutingModel(
 				context.Background(),
 				&groupID,
 				"",
 				"sticky",
 				"client-alias",
 				"dispatch-model",
-				nil, egress.OpenAIUpstreamTransportAny, accountcore.OpenAIEndpointCapabilityTextGeneration,
+				nil, egress.OpenAIUpstreamTransportAny, providercore.OpenAIEndpointCapabilityTextGeneration,
 				false,
 				false,
 			)
 			require.NoError(t, err)
 			require.NotNil(t, selection)
-			require.NotNil(t, selection.Account)
-			require.Equal(t, int64(42112), selection.Account.Record.ID)
-			require.Equal(t, "allowed-upstream", gatewayprovider.ExecutionModelPolicy(selection.Account).ForwardModel("group-model", "dispatch-model"))
+			require.NotNil(t, selection.Provider)
+			require.Equal(t, int64(42112), selection.Provider.Record.ID)
+			require.Equal(t, "allowed-upstream", gatewayprovider.ExecutionModelPolicy(selection.Provider).ForwardModel("group-model", "dispatch-model"))
 			if selection.ReleaseFunc != nil {
 				selection.ReleaseFunc()
 			}

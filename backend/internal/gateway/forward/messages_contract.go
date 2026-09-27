@@ -9,13 +9,13 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 )
 
-// MessageInput 固化账号资格与静态选项，不携带凭据或完整账号。
+// MessageInput 固化提供商资格与静态选项，不携带凭据或完整提供商。
 type MessageInput struct {
-	AccountPresent, HTTPPresent, OAuth, Passthrough, Bedrock bool
-	AccountID                                                int64
-	AccountName, AccountType, Platform                       string
-	LogErrorBody, FailoverOn400                              bool
-	LogErrorBodyMaxBytes                                     int
+	ProviderPresent, HTTPPresent, OAuth, Passthrough, Bedrock bool
+	ProviderID                                                int64
+	ProviderName, ProviderType, Platform                      string
+	LogErrorBody, FailoverOn400                               bool
+	LogErrorBodyMaxBytes                                      int
 }
 type PassthroughInput struct {
 	Body                        []byte
@@ -29,11 +29,11 @@ type NormalizeOptions struct {
 	MetadataUserID                          string
 }
 type Notice struct {
-	UpstreamURL                                                     string
-	Passthrough                                                     bool
-	Platform, AccountName, UpstreamRequestID, Kind, Message, Detail string
-	AccountID                                                       int64
-	UpstreamStatusCode                                              int
+	UpstreamURL                                                      string
+	Passthrough                                                      bool
+	Platform, ProviderName, UpstreamRequestID, Kind, Message, Detail string
+	ProviderID                                                       int64
+	UpstreamStatusCode                                               int
 }
 type ExchangeResponse struct {
 	StatusCode int
@@ -60,7 +60,7 @@ type MessageExecution struct {
 	Hooks                MessageHooks
 }
 
-// MessagePorts 是账号/设置/网络的单步能力，核心持有准备顺序和错误决定。
+// MessagePorts 是提供商/设置/网络的单步能力，核心持有准备顺序和错误决定。
 type MessagePorts interface {
 	ShouldEmulate(context.Context, *int64, []byte) bool
 	Emulate(context.Context, *requeststate.ParsedRequest) (*Result, error)
@@ -71,7 +71,7 @@ type MessagePorts interface {
 	Begin() (func(), error)
 	Beta(context.Context, string) error
 	DebugOriginal([]byte, string, bool)
-	AccountMappedModel(string) string
+	ProviderMappedModel(string) string
 	IsClaudeCode(context.Context, []byte, string) bool
 	SystemSettings(context.Context) (bool, string, string)
 	RewriteSystem([]byte, *requeststate.ParsedRequest, string, string) []byte

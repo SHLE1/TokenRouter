@@ -12,8 +12,8 @@ import (
 	"testing"
 	time "time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 	"github.com/stretchr/testify/require"
@@ -21,7 +21,6 @@ import (
 )
 
 func TestOpenAIGatewayService_APIKeyPassthrough_StripsInvalidInputItemIDs(t *testing.T) {
-
 	upstream := &auxiliaryHTTPRecorder{resp: &http.Response{
 		StatusCode: http.StatusOK,
 		Header:     http.Header{"Content-Type": []string{"application/json"}},
@@ -31,8 +30,8 @@ func TestOpenAIGatewayService_APIKeyPassthrough_StripsInvalidInputItemIDs(t *tes
 	}}
 	svc := newOpenAIImageGenerationControlTestService(upstream)
 	c, _ := newOpenAIImageGenerationControlTestContext(true, "codex_cli_rs/0.144.1")
-	account := newOpenAIImageGenerationControlTestAccount()
-	account.Record.Extra = map[string]any{"openai_passthrough": true}
+	provider := newOpenAIImageGenerationControlTestProvider()
+	provider.Record.Extra = map[string]any{"openai_passthrough": true}
 
 	body := []byte(`{
 		"model":"gpt-5.6-sol",
@@ -51,7 +50,7 @@ func TestOpenAIGatewayService_APIKeyPassthrough_StripsInvalidInputItemIDs(t *tes
 		]
 	}`)
 
-	result, err := svc.Forward(context.Background(), c, account, body)
+	result, err := svc.Forward(context.Background(), c, provider, body)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.NotNil(t, upstream.lastReq)
@@ -75,9 +74,8 @@ func TestOpenAIGatewayService_APIKeyPassthrough_StripsInvalidInputItemIDs(t *tes
 }
 
 func TestOpenAIGatewayService_OAuthPassthrough_SanitizesNativeToolItemIDs(t *testing.T) {
-
-	for _, accountType := range []string{capability.AccountTypeOAuth, capability.AccountTypeSetupToken} {
-		t.Run(accountType, func(t *testing.T) {
+	for _, providerType := range []string{capability.ProviderTypeOAuth, capability.ProviderTypeSetupToken} {
+		t.Run(providerType, func(t *testing.T) {
 			upstreamSSE := "data: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp_test\",\"model\":\"gpt-5.6-sol\",\"output\":[],\"usage\":{\"input_tokens\":1,\"output_tokens\":1,\"total_tokens\":2}}}\n\ndata: [DONE]\n\n"
 			upstream := &auxiliaryHTTPRecorder{resp: &http.Response{
 				StatusCode: http.StatusOK,
@@ -86,13 +84,13 @@ func TestOpenAIGatewayService_OAuthPassthrough_SanitizesNativeToolItemIDs(t *tes
 			}}
 			svc := newOpenAIImageGenerationControlTestService(upstream)
 			c, _ := newOpenAIImageGenerationControlTestContext(true, "codex_cli_rs/0.144.1")
-			account := newOpenAIImageGenerationControlTestAccount()
-			account.Record.Type = accountType
-			account.Record.Credentials = map[string]any{
+			provider := newOpenAIImageGenerationControlTestProvider()
+			provider.Record.Type = providerType
+			provider.Record.Credentials = map[string]any{
 				"access_token":       "oauth-token",
-				"chatgpt_account_id": "chatgpt-account",
+				"chatgpt_account_id": "chatgpt-provider",
 			}
-			account.Record.Extra = map[string]any{"openai_passthrough": true}
+			provider.Record.Extra = map[string]any{"openai_passthrough": true}
 
 			body := []byte(`{
 		"model":"gpt-5.6-sol",
@@ -106,7 +104,7 @@ func TestOpenAIGatewayService_OAuthPassthrough_SanitizesNativeToolItemIDs(t *tes
 		]
 	}`)
 
-			result, err := svc.Forward(context.Background(), c, account, body)
+			result, err := svc.Forward(context.Background(), c, provider, body)
 			require.NoError(t, err)
 			require.NotNil(t, result)
 			require.NotNil(t, upstream.lastReq)
@@ -120,7 +118,6 @@ func TestOpenAIGatewayService_OAuthPassthrough_SanitizesNativeToolItemIDs(t *tes
 }
 
 func TestOpenAIGatewayService_SetupTokenLegacy_SanitizesAndTransforms(t *testing.T) {
-
 	upstreamSSE := "data: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp_test\",\"model\":\"gpt-5.6-sol\",\"output\":[],\"usage\":{\"input_tokens\":1,\"output_tokens\":1,\"total_tokens\":2}}}\n\ndata: [DONE]\n\n"
 	upstream := &auxiliaryHTTPRecorder{resp: &http.Response{
 		StatusCode: http.StatusOK,
@@ -129,13 +126,13 @@ func TestOpenAIGatewayService_SetupTokenLegacy_SanitizesAndTransforms(t *testing
 	}}
 	svc := newOpenAIImageGenerationControlTestService(upstream)
 	c, _ := newOpenAIImageGenerationControlTestContext(true, "codex_cli_rs/0.144.1")
-	account := newOpenAIImageGenerationControlTestAccount()
-	account.Record.Type = capability.AccountTypeSetupToken
-	account.Record.Credentials = map[string]any{
+	provider := newOpenAIImageGenerationControlTestProvider()
+	provider.Record.Type = capability.ProviderTypeSetupToken
+	provider.Record.Credentials = map[string]any{
 		"access_token":       "setup-token",
-		"chatgpt_account_id": "chatgpt-account",
+		"chatgpt_account_id": "chatgpt-provider",
 	}
-	account.Record.Extra = map[string]any{"openai_passthrough": false}
+	provider.Record.Extra = map[string]any{"openai_passthrough": false}
 	body := []byte(`{
 		"model":"gpt-5.6-sol",
 		"stream":true,
@@ -148,7 +145,7 @@ func TestOpenAIGatewayService_SetupTokenLegacy_SanitizesAndTransforms(t *testing
 		]
 	}`)
 
-	result, err := svc.Forward(context.Background(), c, account, body)
+	result, err := svc.Forward(context.Background(), c, provider, body)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.NotNil(t, upstream.lastReq)
@@ -161,7 +158,6 @@ func TestOpenAIGatewayService_SetupTokenLegacy_SanitizesAndTransforms(t *testing
 }
 
 func TestOpenAIGatewayService_APIKeyPassthrough_StripsInvalidReasoningItemIDs(t *testing.T) {
-
 	upstream := &auxiliaryHTTPRecorder{resp: &http.Response{
 		StatusCode: http.StatusOK,
 		Header:     http.Header{"Content-Type": []string{"application/json"}},
@@ -171,8 +167,8 @@ func TestOpenAIGatewayService_APIKeyPassthrough_StripsInvalidReasoningItemIDs(t 
 	}}
 	service := newOpenAIImageGenerationControlTestService(upstream)
 	c, _ := newOpenAIImageGenerationControlTestContext(true, "codex_cli_rs/0.144.1")
-	account := newOpenAIImageGenerationControlTestAccount()
-	account.Record.Extra = map[string]any{"openai_passthrough": true}
+	provider := newOpenAIImageGenerationControlTestProvider()
+	provider.Record.Extra = map[string]any{"openai_passthrough": true}
 	body := []byte(`{
 		"model":"gpt-5.6-sol",
 		"stream":false,
@@ -183,7 +179,7 @@ func TestOpenAIGatewayService_APIKeyPassthrough_StripsInvalidReasoningItemIDs(t 
 		]
 	}`)
 
-	result, err := service.Forward(context.Background(), c, account, body)
+	result, err := service.Forward(context.Background(), c, provider, body)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -258,10 +254,13 @@ func TestNormalizeOpenAIResponsesWebSocketCompatibilityBodyPreservesOpaqueRefere
 		{"type":"future_item","id":"item_future","payload":"keep"}
 	]}`)
 
-	for _, accountType := range []string{capability.AccountTypeAPIKey, capability.AccountTypeOAuth} {
-		t.Run(accountType, func(t *testing.T) {
-			normalized, changed, err := gatewayprovider.NormalizeOpenAIResponsesWebSocketCompatibilityBody(body, gatewayprovider.ExecutionProtocolRecord(&gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI,
-				Type: accountType},
+	for _, providerType := range []string{capability.ProviderTypeAPIKey, capability.ProviderTypeOAuth} {
+		t.Run(providerType, func(t *testing.T) {
+			normalized, changed, err := gatewayprovider.NormalizeOpenAIResponsesWebSocketCompatibilityBody(body, gatewayprovider.ExecutionProtocolRecord(&gatewayprovider.ExecutionProvider{
+				Record: providercore.Record{
+					LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI,
+					Type: providerType,
+				},
 			}), false)
 
 			require.NoError(t, err)
@@ -273,8 +272,11 @@ func TestNormalizeOpenAIResponsesWebSocketCompatibilityBodyPreservesOpaqueRefere
 			require.Equal(t, "ctco_bad", gjson.GetBytes(normalized, "input.2.id").String())
 			require.Equal(t, "item_future", gjson.GetBytes(normalized, "input.3.id").String())
 
-			second, changedAgain, err := gatewayprovider.NormalizeOpenAIResponsesWebSocketCompatibilityBody(normalized, gatewayprovider.ExecutionProtocolRecord(&gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI,
-				Type: accountType},
+			second, changedAgain, err := gatewayprovider.NormalizeOpenAIResponsesWebSocketCompatibilityBody(normalized, gatewayprovider.ExecutionProtocolRecord(&gatewayprovider.ExecutionProvider{
+				Record: providercore.Record{
+					LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI,
+					Type: providerType,
+				},
 			}), false)
 			require.NoError(t, err)
 			require.False(t, changedAgain)

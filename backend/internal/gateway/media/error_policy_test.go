@@ -10,7 +10,7 @@ import (
 func TestMediaErrorPoliciesPreserveLazySideEffectsAndPriority(t *testing.T) {
 	t.Run("embedding invalid input", func(t *testing.T) {
 		var order []string
-		err := ResolveEmbeddingFailure(400, EmbeddingFailurePorts{InvalidRequest: func() bool { return true }, Forward: func() { order = append(order, "forward") }, ApplyPolicy: func() { t.Fatal("invalid request must not write account health") }})
+		err := ResolveEmbeddingFailure(400, EmbeddingFailurePorts{InvalidRequest: func() bool { return true }, Forward: func() { order = append(order, "forward") }, ApplyPolicy: func() { t.Fatal("invalid request must not write provider health") }})
 		require.EqualError(t, err, "upstream invalid request: 400")
 		require.Equal(t, []string{"forward"}, order)
 	})

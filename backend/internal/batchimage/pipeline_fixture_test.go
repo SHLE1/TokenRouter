@@ -18,10 +18,10 @@ import (
 )
 
 // newBatchProcessorFixture 仅装配原生处理器及当前跨任务夹具的数据端口。
-func newBatchProcessorFixture(repo batchimage.BatchImageRepository, registry *batchimage.Registry[batchprovider.BatchImageProvider], accounts batchprovider.ResultAccounts, indexer *batchimage.ResultIndexer, funds batchimage.FundingStore, auth apikey.APIKeyAuthCacheInvalidator, delay time.Duration) *batchimage.ProviderProcessor {
+func newBatchProcessorFixture(repo batchimage.BatchImageRepository, registry *batchimage.Registry[batchprovider.BatchImageProvider], providers batchprovider.ResultProviders, indexer *batchimage.ResultIndexer, funds batchimage.FundingStore, auth apikey.APIKeyAuthCacheInvalidator, delay time.Duration) *batchimage.ProviderProcessor {
 	core := &batchimage.ProviderProcessor{Repo: repo, Funding: nativeTaskFundingFixture(funds), DefaultRequeue: delay, Indexer: indexer}
-	if registry != nil && accounts != nil {
-		core.ResolveProvider = (batchprovider.ResultAccess{Registry: registry, Accounts: accounts}).Process
+	if registry != nil && providers != nil {
+		core.ResolveProvider = (batchprovider.ResultAccess{Registry: registry, Providers: providers}).Process
 	}
 	if auth != nil {
 		core.InvalidateAuth = auth.InvalidateAuthCacheByUserID

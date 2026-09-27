@@ -8,9 +8,9 @@ import (
 	"maps"
 	"slices"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
-	accountpostgres "github.com/TokenFlux/TokenRouter/internal/account/postgres"
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
+	providerpostgres "github.com/TokenFlux/TokenRouter/internal/provider/postgres"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/config"
 	"github.com/TokenFlux/TokenRouter/internal/infra/postgres"
@@ -28,15 +28,15 @@ func PreviewGroupMigration(ctx context.Context, cfg *config.Config, output io.Wr
 	if err != nil {
 		return err
 	}
-	warnings, err := accountpostgres.PreviewModelScopeMigration(ctx, db, func(value *account.Record, model string) bool {
-		return value.FinalModelWhitelisted(model, accountprovider.ModelDefaults(), accountprovider.ModelRules(value))
+	warnings, err := providerpostgres.PreviewModelScopeMigration(ctx, db, func(value *provider.Record, model string) bool {
+		return value.FinalModelWhitelisted(model, provideradapter.ModelDefaults(), provideradapter.ModelRules(value))
 	}, configuredModelsOutsideDefaults)
 	if err != nil {
 		return err
 	}
 	preview := struct {
 		routingpostgres.PricingMigrationPreview
-		AccountModelWarnings []accountpostgres.ModelScopeMigrationWarning `json:"account_model_warnings"`
+		ProviderModelWarnings []providerpostgres.ModelScopeMigrationWarning `json:"provider_model_warnings"`
 	}{report, warnings}
 	encoder := json.NewEncoder(output)
 	encoder.SetIndent("", "  ")
@@ -50,9 +50,9 @@ func PreviewGroupMigration(ctx context.Context, cfg *config.Config, output io.Wr
 }
 
 // configuredModelsOutsideDefaults 单列显式扩展，避免未曾调用过的自定义模型在预检中遗漏。
-func configuredModelsOutsideDefaults(value *account.Record) []string {
-	defaults := accountprovider.ModelDefaults()
-	base := &account.Record{Platform: value.Platform, Type: value.Type, ParentAccountID: value.ParentAccountID, Credentials: maps.Clone(value.Credentials), Extra: value.Extra}
+func configuredModelsOutsideDefaults(value *provider.Record) []string {
+	defaults := provideradapter.ModelDefaults()
+	base := &provider.Record{Platform: value.Platform, Type: value.Type, ParentProviderID: value.ParentProviderID, Credentials: maps.Clone(value.Credentials), Extra: value.Extra}
 	delete(base.Credentials, "model_mapping")
 	delete(base.Credentials, "model_whitelist")
 	known := base.GetConfiguredRequestModels(defaults)

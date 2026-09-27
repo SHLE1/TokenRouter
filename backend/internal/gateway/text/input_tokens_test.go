@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/failover"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/stretchr/testify/require"
 )
 
@@ -24,7 +24,7 @@ func (p *inputTokenFixture) Select(ids map[int64]struct{}) (Selection, bool, err
 	p.selected++
 	_, yes := ids[1]
 	p.excluded = append(p.excluded, yes)
-	return Selection{Account: account.AccountSnapshot{ID: 1}, RetryLimit: 1}, true, nil
+	return Selection{Provider: provider.ProviderSnapshot{ID: 1}, RetryLimit: 1}, true, nil
 }
 func (p *inputTokenFixture) SelectionFailed(error, *AttemptFailure, bool) { p.failed = true }
 func (p *inputTokenFixture) Forward(Selection) *AttemptFailure {
@@ -49,16 +49,16 @@ func TestInputTokensRetryBoundaries(t *testing.T) {
 		require.True(t, p.exhausted)
 		require.Equal(t, 1, p.selected)
 	})
-	t.Run("同账号等待取消不追加执行", func(t *testing.T) {
+	t.Run("同提供商等待取消不追加执行", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
-		p := &inputTokenFixture{ctx: ctx, results: []*AttemptFailure{{Cause: failure, Policy: &failover.FailureInfo{RetryNext: true, RetryableOnSameAccount: true}}}}
+		p := &inputTokenFixture{ctx: ctx, results: []*AttemptFailure{{Cause: failure, Policy: &failover.FailureInfo{RetryNext: true, RetryableOnSameProvider: true}}}}
 		RunInputTokens(p, 3)
 		require.Equal(t, 1, p.selected)
 		require.Equal(t, 1, p.forwarded)
 		require.False(t, p.exhausted)
 	})
-	t.Run("切换时排除失败账号", func(t *testing.T) {
+	t.Run("切换时排除失败提供商", func(t *testing.T) {
 		p := &inputTokenFixture{ctx: context.Background(), results: []*AttemptFailure{{Cause: failure, Policy: &failover.FailureInfo{RetryNext: true}}, nil}}
 		RunInputTokens(p, 1)
 		require.Equal(t, []bool{false, true}, p.excluded)

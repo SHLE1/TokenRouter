@@ -13,7 +13,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 )
 
-// StreamClient 只发送一次已准备的 Qoder 请求，不执行账号调度或资金动作。
+// StreamClient 只发送一次已准备的 Qoder 请求，不执行提供商调度或资金动作。
 type StreamClient interface {
 	StreamRequestContext(context.Context, *SessionContext, string, []byte, map[string]string) (*http.Response, error)
 }
@@ -21,26 +21,26 @@ type streamClientWithDoer interface {
 	StreamRequestContextWithDoer(context.Context, *SessionContext, string, []byte, map[string]string, RequestDoer) (*http.Response, error)
 }
 
-// Target 只接受本次平台所需的投影和受控凭据入口，不能读取任意账号字段。
+// Target 只接受本次平台所需的投影和受控凭据入口，不能读取任意提供商字段。
 type Target struct {
-	AccountID int64
-	Site      Site
-	UserType  string
-	Metadata  RequestMetadata
-	Session   func(context.Context) (*SessionContext, error)
-	Client    func() (StreamClient, error)
-	Doer      RequestDoer
+	ProviderID int64
+	Site       Site
+	UserType   string
+	Metadata   RequestMetadata
+	Session    func(context.Context) (*SessionContext, error)
+	Client     func() (StreamClient, error)
+	Doer       RequestDoer
 }
 
 func (t *Target) TargetID() int64 {
 	if t == nil {
 		return 0
 	}
-	return t.AccountID
+	return t.ProviderID
 }
 
 // String 防止诊断格式化展开闭包、代理及凭据。
-func (t *Target) String() string { return fmt.Sprintf("qoder target account=%d", t.TargetID()) }
+func (t *Target) String() string { return fmt.Sprintf("qoder target provider=%d", t.TargetID()) }
 
 // ExecuteOptions 保存唯一会话实例和本次执行预算，构造不启动工作。
 type ExecuteOptions struct {
@@ -68,10 +68,10 @@ func NewExecutor(options ExecuteOptions) *Executor {
 func (e *Executor) PrepareConversation(target *Target, wireProtocol protocol.ProtocolID, request QoderPayloadRequest) (map[string]any, string, *QoderConversationPlan) {
 	request.UserType = target.UserType
 	request.Site = target.Site
-	key, source := QoderConversationKey(target.Metadata, target.AccountID, string(wireProtocol), request)
+	key, source := QoderConversationKey(target.Metadata, target.ProviderID, string(wireProtocol), request)
 	plan := e.conversations.PlanWithOptions(key, request.System, request.Tools, request.Messages, QoderConversationPlanOptions{AppendToExisting: wireProtocol == protocol.ProtocolOpenAIResponses && strings.TrimSpace(request.PreviousResponseID) != ""})
 	payload, model := BuildQoderPayloadWithOptions(request, plan.SessionID, plan.MessagesToSend, plan.IncludeSystem, plan.IncludeTools)
-	plan.Log(target.Metadata, target.AccountID, string(wireProtocol), request.Model, source, request, payload)
+	plan.Log(target.Metadata, target.ProviderID, string(wireProtocol), request.Model, source, request, payload)
 	return payload, model, plan
 }
 
@@ -237,12 +237,12 @@ func (e *Executor) Execute(ctx context.Context, input upstream.AttemptInput, sin
 			result.ClientDisconnect = true
 		}
 	}
-	plan.LogUsage(target.Metadata, target.AccountID, nativeUsage, result.Usage)
+	plan.LogUsage(target.Metadata, target.ProviderID, nativeUsage, result.Usage)
 	if commitComplete {
 		plan.Commit(nativeUsage)
 	}
 	if input.Protocol == protocol.ProtocolOpenAIResponses && request.ResponseID != "" {
-		plan.AddAlias(QoderAccountScopedConversationKey(target.AccountID, QoderConversationExplicitSessionKey(target.Metadata, request.ResponseID)))
+		plan.AddAlias(QoderProviderScopedConversationKey(target.ProviderID, QoderConversationExplicitSessionKey(target.Metadata, request.ResponseID)))
 	}
 	result.Duration = time.Since(start)
 	return result, nil

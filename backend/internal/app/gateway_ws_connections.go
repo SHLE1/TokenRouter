@@ -22,16 +22,16 @@ func openAIWSPoolOptions(cfg *config.Config) *openai.WSPoolOptions {
 	}
 	options := cfg.Gateway.OpenAIWS
 	return &openai.WSPoolOptions{
-		MaxConnsPerAccount:                         options.MaxConnsPerAccount,
-		DynamicMaxConnsByAccountConcurrencyEnabled: options.DynamicMaxConnsByAccountConcurrencyEnabled,
-		ModeRouterV2Enabled:                        options.ModeRouterV2Enabled,
-		OAuthMaxConnsFactor:                        options.OAuthMaxConnsFactor,
-		APIKeyMaxConnsFactor:                       options.APIKeyMaxConnsFactor,
-		MinIdlePerAccount:                          options.MinIdlePerAccount,
-		MaxIdlePerAccount:                          options.MaxIdlePerAccount,
-		QueueLimitPerConn:                          options.QueueLimitPerConn,
-		PoolTargetUtilization:                      options.PoolTargetUtilization,
-		PrewarmCooldownMS:                          options.PrewarmCooldownMS,
-		DialTimeoutSeconds:                         options.DialTimeoutSeconds,
+		MaxConnsPerProvider:                         options.MaxConnsPerProvider,
+		DynamicMaxConnsByProviderConcurrencyEnabled: options.DynamicMaxConnsByProviderConcurrencyEnabled,
+		ModeRouterV2Enabled:                         options.ModeRouterV2Enabled,
+		OAuthMaxConnsFactor:                         options.OAuthMaxConnsFactor,
+		APIKeyMaxConnsFactor:                        options.APIKeyMaxConnsFactor,
+		MinIdlePerProvider:                          options.MinIdlePerProvider,
+		MaxIdlePerProvider:                          options.MaxIdlePerProvider,
+		QueueLimitPerConn:                           options.QueueLimitPerConn,
+		PoolTargetUtilization:                       options.PoolTargetUtilization,
+		PrewarmCooldownMS:                           options.PrewarmCooldownMS,
+		DialTimeoutSeconds:                          options.DialTimeoutSeconds,
 	}
 }

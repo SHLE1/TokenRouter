@@ -13,21 +13,21 @@ import (
 // Configuration 是迁移前的组合输入。测试装配时将它投影为独立的价格和分组策略，
 // 使已有协议用例继续验证同一请求行为；生产实体不包含这些策略字段。
 type Configuration struct {
-	BillingSettings          *pricing.BillingSettings
-	ID                       int64
-	Name                     string
-	Description              string
-	Status                   string
-	BillingModelSource       string
-	RestrictModels           bool
-	Features                 string
-	FeaturesConfig           map[string]any
-	CreatedAt                time.Time
-	UpdatedAt                time.Time
-	GroupIDs                 []int64
-	ModelPricing             []routing.ModelPricingEntry
-	ModelMapping             map[string]string
-	AccountStatsPricingRules []routing.AccountStatsPricingRule
+	BillingSettings           *pricing.BillingSettings
+	ID                        int64
+	Name                      string
+	Description               string
+	Status                    string
+	BillingModelSource        string
+	RestrictModels            bool
+	Features                  string
+	FeaturesConfig            map[string]any
+	CreatedAt                 time.Time
+	UpdatedAt                 time.Time
+	GroupIDs                  []int64
+	ModelPricing              []routing.ModelPricingEntry
+	ModelMapping              map[string]string
+	ProviderStatsPricingRules []routing.ProviderStatsPricingRule
 }
 
 func (c Configuration) Price() routing.PricingConfig {
@@ -35,7 +35,7 @@ func (c Configuration) Price() routing.PricingConfig {
 	if c.BillingSettings != nil {
 		settings = c.BillingSettings.Clone()
 	}
-	return routing.PricingConfig{BillingSettings: settings, ID: c.ID, Name: c.Name, Description: c.Description, Status: c.Status, BillingModelSource: c.BillingModelSource, CreatedAt: c.CreatedAt, UpdatedAt: c.UpdatedAt, GroupIDs: c.GroupIDs, ModelPricing: c.ModelPricing, AccountStatsPricingRules: c.AccountStatsPricingRules}
+	return routing.PricingConfig{BillingSettings: settings, ID: c.ID, Name: c.Name, Description: c.Description, Status: c.Status, BillingModelSource: c.BillingModelSource, CreatedAt: c.CreatedAt, UpdatedAt: c.UpdatedAt, GroupIDs: c.GroupIDs, ModelPricing: c.ModelPricing, ProviderStatsPricingRules: c.ProviderStatsPricingRules}
 }
 
 func (c Configuration) Policy() routing.GroupRoutingPolicy {
@@ -57,7 +57,7 @@ func (c *Configuration) Clone() *Configuration {
 	out := *c
 	price := c.Price()
 	clone := price.Clone()
-	out.GroupIDs, out.ModelPricing, out.AccountStatsPricingRules = clone.GroupIDs, clone.ModelPricing, clone.AccountStatsPricingRules
+	out.GroupIDs, out.ModelPricing, out.ProviderStatsPricingRules = clone.GroupIDs, clone.ModelPricing, clone.ProviderStatsPricingRules
 	policy := c.Policy().Clone()
 	out.FeaturesConfig = policy.FeaturesConfig
 	out.ModelMapping = policy.ModelMapping

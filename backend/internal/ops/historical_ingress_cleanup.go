@@ -51,6 +51,7 @@ func CleanupHistoricalIngress(ctx context.Context, store HistoricalIngressStore,
 	}
 	return counts, scanned, matched, deleted, nil
 }
+
 func parseErrorIdentity(body, fallbackMessage string) (string, string) {
 	var payload struct {
 		Code    string `json:"code"`
@@ -72,6 +73,7 @@ func parseErrorIdentity(body, fallbackMessage string) (string, string) {
 	}
 	return strings.TrimSpace(payload.Code), message
 }
+
 func historicalIngressRejectReason(item HistoricalIngressCandidate) (string, bool) {
 	code, message := parseErrorIdentity(item.Body, item.Message)
 	switch code {
@@ -103,7 +105,7 @@ func historicalIngressRejectReason(item HistoricalIngressCandidate) (string, boo
 		return "invalid_key", true
 	case normalized == "API key is disabled":
 		return "key_disabled", true
-	case normalized == "User account is not active":
+	case normalized == "User provider is not active":
 		return "user_inactive", true
 	case normalized == "API Key 所属分组已删除":
 		return "group_deleted", true

@@ -20,7 +20,7 @@ type trackedBody struct {
 
 func (b *trackedBody) Close() error { b.closes++; return nil }
 
-// 使用固定上游错误验证同账号恢复预算；此处不存在账号选择或完成提交端口。
+// 使用固定上游错误验证同提供商恢复预算；此处不存在提供商选择或完成提交端口。
 func TestRunHTTPRecoveryBoundaries(t *testing.T) {
 	for _, kind := range []string{"agent", "encrypted", "plain"} {
 		t.Run(kind, func(t *testing.T) {

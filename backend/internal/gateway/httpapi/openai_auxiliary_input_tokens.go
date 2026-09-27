@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/logredact"
@@ -24,36 +24,36 @@ import (
 )
 
 // ForwardResponsesInputTokens 转发 OpenAI 原生 POST /responses/input_tokens。
-// 不支持该预检端点的账号使用本地估算，避免把已知不兼容请求发送到上游。
+// 不支持该预检端点的提供商使用本地估算，避免把已知不兼容请求发送到上游。
 func (s *OpenAIAuxiliary) ForwardResponsesInputTokens(
 	ctx context.Context,
 	c *gin.Context,
-	account *gatewayprovider.ExecutionAccount,
+	provider *gatewayprovider.ExecutionProvider,
 	body []byte,
 ) error {
-	if account == nil {
-		writeOpenAIResponsesInputTokensError(c, http.StatusServiceUnavailable, "api_error", "No available OpenAI accounts")
-		return fmt.Errorf("responses input_tokens: missing account")
+	if provider == nil {
+		writeOpenAIResponsesInputTokensError(c, http.StatusServiceUnavailable, "api_error", "No available OpenAI providers")
+		return fmt.Errorf("responses input_tokens: missing provider")
 	}
 
 	// 此辅助协议只覆盖已实现的 OpenAI 兼容计数，不能把其它平台凭据送到 OpenAI 端点。
-	if account.Record.Platform != "openai" && !account.View().IsGrok() && !account.View().IsCNProvider() {
-		writeOpenAIResponsesInputTokensError(c, http.StatusNotFound, "not_found_error", "Responses input token counting is not supported for this account")
+	if provider.Record.Platform != "openai" && !provider.View().IsGrok() && !provider.View().IsCNProvider() {
+		writeOpenAIResponsesInputTokensError(c, http.StatusNotFound, "not_found_error", "Responses input token counting is not supported for this provider")
 		return nil
 	}
 
-	prepared, err := gatewayprovider.PrepareNativeInputTokens(body, account)
+	prepared, err := gatewayprovider.PrepareNativeInputTokens(body, provider)
 	if err != nil {
 		writeOpenAIResponsesInputTokensError(c, http.StatusBadRequest, "invalid_request_error", "Failed to parse request body")
 		return err
 	}
 
-	if gatewayprovider.EstimateInputTokensLocally(account) {
-		writeOpenAIResponsesInputTokensFallback(c, account, prepared, 0, "local_account")
+	if gatewayprovider.EstimateInputTokensLocally(provider) {
+		writeOpenAIResponsesInputTokensFallback(c, provider, prepared, 0, "local_provider")
 		return nil
 	}
 
-	token, _, err := s.Requests.Credentials.Resolve(ctx, gatewayprovider.ExecutionRecord(account))
+	token, _, err := s.Requests.Credentials.Resolve(ctx, gatewayprovider.ExecutionRecord(provider))
 	if err != nil {
 		writeOpenAIResponsesInputTokensError(c, http.StatusBadGateway, "upstream_error", "Failed to get access token")
 		return fmt.Errorf("responses input_tokens: get access token: %w", err)
@@ -64,14 +64,14 @@ func (s *OpenAIAuxiliary) ForwardResponsesInputTokens(
 		writeOpenAIResponsesInputTokensError(c, http.StatusInternalServerError, "api_error", "Failed to build request")
 		return fmt.Errorf("responses input_tokens: marshal request: %w", err)
 	}
-	upstreamReq, err := s.buildInputTokensUpstreamRequest(ctx, c, account, upstreamBody, token)
+	upstreamReq, err := s.buildInputTokensUpstreamRequest(ctx, c, provider, upstreamBody, token)
 	if err != nil {
 		writeOpenAIResponsesInputTokensError(c, http.StatusInternalServerError, "api_error", "Failed to build request")
 		return fmt.Errorf("responses input_tokens: build request: %w", err)
 	}
 	proxyURL := ""
-	if account.Record.Proxy != nil {
-		proxyURL = account.Record.Proxy.URL()
+	if provider.Record.Proxy != nil {
+		proxyURL = provider.Record.Proxy.URL()
 	}
 	if s.Requests.Transport == nil {
 		writeOpenAIResponsesInputTokensError(c, http.StatusBadGateway, "upstream_error", "Upstream request failed")
@@ -80,7 +80,7 @@ func (s *OpenAIAuxiliary) ForwardResponsesInputTokens(
 	return openai.CountNativeInputTokens(upstreamReq, openai.NativeInputTokensOptions{
 		Enter: s.Enter,
 		Do: func(req *http.Request) (*http.Response, error) {
-			return s.Requests.Transport.Do(req, proxyURL, account.Record.ID, account.Record.Concurrency)
+			return s.Requests.Transport.Do(req, proxyURL, provider.Record.ID, provider.Record.Concurrency)
 		},
 		TransportError: func(err error) error {
 			safeErr := logredact.SanitizeUpstreamQueries(err.Error())
@@ -90,33 +90,33 @@ func (s *OpenAIAuxiliary) ForwardResponsesInputTokens(
 		},
 		ReadBody: s.readResponsesInputTokensBody,
 		HTTPError: func(resp *http.Response, respBody []byte) error {
-			if resp.StatusCode == http.StatusNotFound || (account.Record.Type == capability.AccountTypeOAuth && isOpenAIOAuthInputTokensUnsupported(resp.StatusCode, respBody)) {
-				writeOpenAIResponsesInputTokensFallback(c, account, prepared, resp.StatusCode, "upstream_unsupported")
+			if resp.StatusCode == http.StatusNotFound || (provider.Record.Type == capability.ProviderTypeOAuth && isOpenAIOAuthInputTokensUnsupported(resp.StatusCode, respBody)) {
+				writeOpenAIResponsesInputTokensFallback(c, provider, prepared, resp.StatusCode, "upstream_unsupported")
 				return nil
 			}
-			return s.handleResponsesInputTokensUpstreamError(ctx, c, account, prepared, resp, respBody)
+			return s.handleResponsesInputTokensUpstreamError(ctx, c, provider, prepared, resp, respBody)
 		},
 		WriteError: func(status int, kind, message string) { writeOpenAIResponsesInputTokensError(c, status, kind, message) },
 	}, ResponseSink{Writer: c.Writer})
 }
 
-func writeOpenAIResponsesInputTokensFallback(c *gin.Context, account *gatewayprovider.ExecutionAccount, prepared *gatewayprovider.InputTokensPrepared, statusCode int, reason string) {
+func writeOpenAIResponsesInputTokensFallback(c *gin.Context, provider *gatewayprovider.ExecutionProvider, prepared *gatewayprovider.InputTokensPrepared, statusCode int, reason string) {
 	estimated := openAIInputTokensFallbackMinimum
 	if prepared != nil {
 		if got, err := tokenestimate.Responses(prepared.Request); err == nil && got > 0 {
 			estimated = got
 		}
 	}
-	accountID := int64(0)
+	providerID := int64(0)
 	model := ""
-	if account != nil {
-		accountID = account.Record.ID
+	if provider != nil {
+		providerID = provider.Record.ID
 	}
 	if prepared != nil {
 		model = prepared.UpstreamModel
 	}
 	logging.L().Info("openai responses input_tokens: local estimate fallback",
-		zap.Int64("account_id", accountID),
+		zap.Int64("provider_id", providerID),
 		zap.Int("upstream_status", statusCode),
 		zap.Int("estimated_input_tokens", estimated),
 		zap.String("upstream_model", model),
@@ -143,32 +143,32 @@ func (s *OpenAIAuxiliary) readResponsesInputTokensBody(resp *http.Response) ([]b
 func (s *OpenAIAuxiliary) handleResponsesInputTokensUpstreamError(
 	ctx context.Context,
 	c *gin.Context,
-	account *gatewayprovider.ExecutionAccount,
+	provider *gatewayprovider.ExecutionProvider,
 	prepared *gatewayprovider.InputTokensPrepared,
 	resp *http.Response,
 	body []byte,
 ) error {
 	upstreamMsg := logredact.SanitizeUpstreamQueries(strings.TrimSpace(upstream.ExtractErrorMessage(body)))
-	var decision accountcore.UpstreamErrorDecision
-	if account.Record.Platform == capability.PlatformGrok {
-		decision = gatewayprovider.ApplyGrokExecutionHealth(ctx, s.Output.GrokHealth, account, resp.StatusCode, resp.Header, body, "", prepared.UpstreamModel)
+	var decision providercore.UpstreamErrorDecision
+	if provider.Record.Platform == capability.PlatformGrok {
+		decision = gatewayprovider.ApplyGrokExecutionHealth(ctx, s.Output.GrokHealth, provider, resp.StatusCode, resp.Header, body, "", prepared.UpstreamModel)
 	} else {
-		decision = gatewayprovider.ApplyOpenAIResponseHealth(ctx, s.Output.Health, account, resp.StatusCode, resp.Header, body, false, prepared.UpstreamModel)
+		decision = gatewayprovider.ApplyOpenAIResponseHealth(ctx, s.Output.Health, provider, resp.StatusCode, resp.Header, body, false, prepared.UpstreamModel)
 	}
 	if decision.ShouldReturnGenericError() {
 		writeOpenAIResponsesInputTokensError(c, http.StatusInternalServerError, "upstream_error", "Upstream gateway error")
 		return fmt.Errorf("responses input_tokens: upstream error %d (custom policy)", resp.StatusCode)
 	}
 	defaultFailover := gatewayprovider.ShouldFailoverOpenAIResponse(resp.StatusCode, upstreamMsg, body)
-	if account.Record.Platform == capability.PlatformGrok {
+	if provider.Record.Platform == capability.PlatformGrok {
 		defaultFailover = gatewayprovider.ShouldFailoverGrokResponse(resp.StatusCode, body)
 	}
-	if decision.ShouldFailover(gatewayprovider.ExecutionErrorPolicy(account), resp.StatusCode, defaultFailover) {
+	if decision.ShouldFailover(gatewayprovider.ExecutionErrorPolicy(provider), resp.StatusCode, defaultFailover) {
 		return &forwardcore.UpstreamFailoverError{
-			StatusCode:             resp.StatusCode,
-			ResponseBody:           body,
-			ResponseHeaders:        resp.Header.Clone(),
-			RetryableOnSameAccount: decision.RetryableOnSameAccount(gatewayprovider.ExecutionErrorPolicy(account), resp.StatusCode),
+			StatusCode:              resp.StatusCode,
+			ResponseBody:            body,
+			ResponseHeaders:         resp.Header.Clone(),
+			RetryableOnSameProvider: decision.RetryableOnSameProvider(gatewayprovider.ExecutionErrorPolicy(provider), resp.StatusCode),
 		}
 	}
 	SetOpsUpstreamError(c, resp.StatusCode, upstreamMsg, "")

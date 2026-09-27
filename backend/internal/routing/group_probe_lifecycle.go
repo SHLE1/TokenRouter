@@ -12,7 +12,7 @@ type ProbeSchedule interface {
 	Stop() context.Context
 }
 
-// ProbeExecutionResult 是执行器返回的结果投影，不携带账号或 HTTP 上下文。
+// ProbeExecutionResult 是执行器返回的结果投影，不携带提供商或 HTTP 上下文。
 type ProbeExecutionResult struct {
 	Status       string
 	LatencyMs    int64
@@ -52,17 +52,20 @@ type GroupAvailabilityProbeRunnerService struct {
 func NewGroupAvailabilityProbeRunnerService(repo GroupAvailabilityProbeRepository, executor GroupProbeExecutor, options GroupProbeOptions) *GroupAvailabilityProbeRunnerService {
 	return &GroupAvailabilityProbeRunnerService{repo: repo, executor: executor, options: options, instanceID: options.InstanceID}
 }
+
 func (s *GroupAvailabilityProbeRunnerService) now() time.Time {
 	if s.options.Now != nil {
 		return s.options.Now()
 	}
 	return time.Now()
 }
+
 func (s *GroupAvailabilityProbeRunnerService) observe(message string, args ...any) {
 	if s.options.Observe != nil {
 		s.options.Observe(message, args...)
 	}
 }
+
 func (s *GroupAvailabilityProbeRunnerService) initializeContextLocked() {
 	if s.ctx == nil {
 		s.ctx, s.cancel = context.WithCancel(context.Background())
@@ -71,6 +74,7 @@ func (s *GroupAvailabilityProbeRunnerService) initializeContextLocked() {
 		s.idle = make(chan struct{})
 	}
 }
+
 func (s *GroupAvailabilityProbeRunnerService) Start() {
 	if s == nil {
 		return
@@ -92,6 +96,7 @@ func (s *GroupAvailabilityProbeRunnerService) Start() {
 	}
 	s.observe("[GroupAvailabilityProbe] started (tick=every minute)")
 }
+
 func (s *GroupAvailabilityProbeRunnerService) beginRun() (context.Context, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -102,6 +107,7 @@ func (s *GroupAvailabilityProbeRunnerService) beginRun() (context.Context, bool)
 	s.active = true
 	return s.ctx, true
 }
+
 func (s *GroupAvailabilityProbeRunnerService) endRun() {
 	s.mu.Lock()
 	defer s.mu.Unlock()

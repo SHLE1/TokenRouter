@@ -1,4 +1,4 @@
-// Alpha Search 单次执行管理网络/输出，账号选择和资金完成仍由调用方负责。
+// Alpha Search 单次执行管理网络/输出，提供商选择和资金完成仍由调用方负责。
 package openai
 
 import (
@@ -14,9 +14,9 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 )
 
-// AlphaSearchTarget 不暴露完整账号，准备好的请求禁止序列化或日志展开。
+// AlphaSearchTarget 不暴露完整提供商，准备好的请求禁止序列化或日志展开。
 type AlphaSearchTarget struct {
-	AccountID         int64
+	ProviderID        int64
 	Request           *http.Request `json:"-"`
 	ResponsesFallback bool
 	Model             string
@@ -34,10 +34,11 @@ func (t *AlphaSearchTarget) TargetID() int64 {
 	if t == nil {
 		return 0
 	}
-	return t.AccountID
+	return t.ProviderID
 }
+
 func (t *AlphaSearchTarget) String() string {
-	return fmt.Sprintf("openai alpha search target account=%d", t.TargetID())
+	return fmt.Sprintf("openai alpha search target provider=%d", t.TargetID())
 }
 func (t *AlphaSearchTarget) GoString() string { return t.String() }
 

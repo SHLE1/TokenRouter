@@ -109,7 +109,7 @@ describe('global header and sidebar hierarchy', () => {
 })
 
 describe('AppSidebar admin personal menu', () => {
-  it('shows the regular dashboard under My Account for admins', () => {
+  it('shows the regular dashboard under My Provider for admins', () => {
     const personalNavItemsBlockMatch = componentSource.match(
       /const personalNavItems = computed\(\(\): NavItem\[\] => \{[\s\S]*?const adminNavItems = computed/
     )

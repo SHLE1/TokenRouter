@@ -14,9 +14,9 @@ import (
 
 	sessiontestkit "github.com/TokenFlux/TokenRouter/internal/gateway/session/testkit"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	upstreamcore "github.com/TokenFlux/TokenRouter/internal/upstream"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
@@ -24,7 +24,6 @@ import (
 )
 
 func TestForwardResponses_ForceChatCompletionsRoutesNonStreamingToChatCompletions(t *testing.T) {
-
 	body := []byte(`{"model":"deepseek-v4-flash","input":"hello","reasoning":{"effort":"max"},"stream":false,"service_tier":"priority"}`)
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -42,7 +41,7 @@ func TestForwardResponses_ForceChatCompletionsRoutesNonStreamingToChatCompletion
 	svc := newResponsesFixture(responsesFixtureInputs{options: protocolHTTPOptions(), transport: upstream})
 	SetActualOpenAIUpstreamEndpoint(c, "/v1/responses")
 
-	result, err := svc.Forward(context.Background(), c, forceChatResponsesFallbackAccount(), body)
+	result, err := svc.Forward(context.Background(), c, forceChatResponsesFallbackProvider(), body)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, "http://upstream.example/v1/chat/completions", upstream.lastReq.URL.String())
@@ -65,7 +64,6 @@ func TestForwardResponses_ForceChatCompletionsRoutesNonStreamingToChatCompletion
 }
 
 func TestForwardResponses_ForceChatCompletionsRoutesStreamingToChatCompletions(t *testing.T) {
-
 	body := []byte(`{"model":"gpt-5.4","input":"hello","stream":true}`)
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -93,7 +91,7 @@ func TestForwardResponses_ForceChatCompletionsRoutesStreamingToChatCompletions(t
 	}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: protocolHTTPOptions(), transport: upstream})
 
-	result, err := svc.Forward(context.Background(), c, forceChatResponsesFallbackAccount(), body)
+	result, err := svc.Forward(context.Background(), c, forceChatResponsesFallbackProvider(), body)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, "http://upstream.example/v1/chat/completions", upstream.lastReq.URL.String())
@@ -110,7 +108,6 @@ func TestForwardResponses_ForceChatCompletionsRoutesStreamingToChatCompletions(t
 }
 
 func TestForwardResponses_ChatFallbackRejectsInvalidToolArgumentsAtOutputLimit(t *testing.T) {
-
 	body := []byte(`{"model":"deepseek-v4-flash","input":"run the command","stream":true}`)
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -132,7 +129,7 @@ func TestForwardResponses_ChatFallbackRejectsInvalidToolArgumentsAtOutputLimit(t
 	}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: protocolHTTPOptions(), transport: upstream})
 
-	result, err := svc.Forward(context.Background(), c, forceChatResponsesFallbackAccount(), body)
+	result, err := svc.Forward(context.Background(), c, forceChatResponsesFallbackProvider(), body)
 	require.ErrorContains(t, err, "invalid JSON")
 	require.NotNil(t, result)
 	require.Equal(t, 4, result.Usage.InputTokens)
@@ -143,7 +140,6 @@ func TestForwardResponses_ChatFallbackRejectsInvalidToolArgumentsAtOutputLimit(t
 }
 
 func TestForwardResponses_DeepSeekReasoningOnlyStreamProducesVisibleText(t *testing.T) {
-
 	body := []byte(`{"model":"deepseek-reasoner","input":"hello","stream":true}`)
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -167,7 +163,7 @@ func TestForwardResponses_DeepSeekReasoningOnlyStreamProducesVisibleText(t *test
 	}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: protocolHTTPOptions(), transport: upstream})
 
-	result, err := svc.Forward(context.Background(), c, forceChatResponsesFallbackAccount(), body)
+	result, err := svc.Forward(context.Background(), c, forceChatResponsesFallbackProvider(), body)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.True(t, result.Stream)
@@ -178,7 +174,6 @@ func TestForwardResponses_DeepSeekReasoningOnlyStreamProducesVisibleText(t *test
 }
 
 func TestForwardResponses_PreserveClientProtocolUsesResponsesEndpoint(t *testing.T) {
-
 	body := []byte(`{"model":"deepseek-v4-flash","input":"hello","reasoning":{"effort":"max"},"stream":false}`)
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -194,12 +189,12 @@ func TestForwardResponses_PreserveClientProtocolUsesResponsesEndpoint(t *testing
 		)),
 	}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: protocolHTTPOptions(), transport: upstream})
-	account := rawChatCompletionsTestAccount()
-	account.Record.Extra = map[string]any{
-		accountcore.ExtraKeyTextRouteMode: string(accountcore.TextRouteModePreserveClientProtocol),
+	provider := rawChatCompletionsTestProvider()
+	provider.Record.Extra = map[string]any{
+		providercore.ExtraKeyTextRouteMode: string(providercore.TextRouteModePreserveClientProtocol),
 	}
 
-	result, err := svc.Forward(context.Background(), c, account, body)
+	result, err := svc.Forward(context.Background(), c, provider, body)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, "http://upstream.example/v1/responses", upstream.lastReq.URL.String())
@@ -211,12 +206,12 @@ func TestForwardResponses_PreserveClientProtocolUsesResponsesEndpoint(t *testing
 	require.Equal(t, "max", *result.ReasoningEffort)
 }
 
-func forceChatResponsesFallbackAccount() *gatewayprovider.ExecutionAccount {
-	account := rawChatCompletionsTestAccount()
-	account.Record.Extra = map[string]any{
-		accountcore.ExtraKeyTextRouteMode: string(accountcore.TextRouteModeForceChatCompletions),
+func forceChatResponsesFallbackProvider() *gatewayprovider.ExecutionProvider {
+	provider := rawChatCompletionsTestProvider()
+	provider.Record.Extra = map[string]any{
+		providercore.ExtraKeyTextRouteMode: string(providercore.TextRouteModeForceChatCompletions),
 	}
-	return account
+	return provider
 }
 
 type reasoningCacheStub struct {
@@ -241,7 +236,6 @@ func (c *reasoningCacheStub) GetReasoningContent(_ context.Context, itemID strin
 }
 
 func TestForwardResponsesChatFallbackRestoresEncryptedReasoningFromCache(t *testing.T) {
-
 	body := []byte(`{"model":"deepseek-reasoner","stream":false,"input":[
 		{"type":"reasoning","id":"item_plain","summary":[{"type":"summary_text","text":"plain thinking"}]},
 		{"type":"function_call","call_id":"call_0","name":"get_value","arguments":"{}"},
@@ -263,7 +257,7 @@ func TestForwardResponsesChatFallbackRestoresEncryptedReasoningFromCache(t *test
 	cache := &reasoningCacheStub{getResp: map[string]string{"item_enc": "cached thinking"}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: protocolHTTPOptions(), transport: upstream, cache: cache})
 
-	result, err := svc.Forward(context.Background(), c, forceChatResponsesFallbackAccount(), body)
+	result, err := svc.Forward(context.Background(), c, forceChatResponsesFallbackProvider(), body)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, "plain thinking", gjson.GetBytes(upstream.lastBody, "messages.0.reasoning_content").String())

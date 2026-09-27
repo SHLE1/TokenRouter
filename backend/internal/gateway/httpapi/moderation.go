@@ -67,7 +67,7 @@ func ClientRequestedUsageFields(c *gin.Context, mapping routing.GroupMappingResu
 	return mapping.ToUsageFields(ClientRequestedModel(c, fallbackModel), upstreamModel)
 }
 
-func RecordOpenAICyberWarningWithSnapshot(endpoints ModerationEndpoints, svc ModerationPort, c *gin.Context, reqLog *zap.Logger, apiKey *apikey.APIKey, account *moderationflow.Account, model string, statusCode int, responseBody []byte, warningText string, promptExcerpt string, snapshot moderation.ContentModerationInput) bool {
+func RecordOpenAICyberWarningWithSnapshot(endpoints ModerationEndpoints, svc ModerationPort, c *gin.Context, reqLog *zap.Logger, apiKey *apikey.APIKey, provider *moderationflow.Provider, model string, statusCode int, responseBody []byte, warningText string, promptExcerpt string, snapshot moderation.ContentModerationInput) bool {
 	if svc == nil || c == nil {
 		return false
 	}
@@ -75,7 +75,7 @@ func RecordOpenAICyberWarningWithSnapshot(endpoints ModerationEndpoints, svc Mod
 	if c.GetBool(CyberWarningRecordedKey) {
 		return false
 	}
-	input := BuildOpenAICyberWarningInput(endpoints, c, apiKey, account, model, statusCode, responseBody, warningText, promptExcerpt)
+	input := BuildOpenAICyberWarningInput(endpoints, c, apiKey, provider, model, statusCode, responseBody, warningText, promptExcerpt)
 	input.Content = moderationflow.SnapshotContent(snapshot)
 	warning, err := svc.RecordCyberWarning(c.Request.Context(), input)
 	if err != nil {
@@ -93,7 +93,7 @@ func RecordOpenAICyberWarningWithSnapshot(endpoints ModerationEndpoints, svc Mod
 			zap.Int64p("user_id", warning.UserID),
 			zap.Int64p("billing_user_id", warning.BillingUserID),
 			zap.Int64p("team_id", warning.TeamID),
-			zap.Int64p("account_id", warning.AccountID),
+			zap.Int64p("provider_id", warning.ProviderID),
 			zap.Int("violation_count", warning.ViolationCount),
 			zap.Bool("auto_banned", warning.AutoBanned),
 		)
@@ -101,7 +101,7 @@ func RecordOpenAICyberWarningWithSnapshot(endpoints ModerationEndpoints, svc Mod
 	return warning != nil
 }
 
-func BuildOpenAICyberWarningInput(endpoints ModerationEndpoints, c *gin.Context, apiKey *apikey.APIKey, account *moderationflow.Account, model string, statusCode int, responseBody []byte, warningText string, promptExcerpt string) moderation.ContentModerationCyberWarningInput {
+func BuildOpenAICyberWarningInput(endpoints ModerationEndpoints, c *gin.Context, apiKey *apikey.APIKey, provider *moderationflow.Provider, model string, statusCode int, responseBody []byte, warningText string, promptExcerpt string) moderation.ContentModerationCyberWarningInput {
 	identity := ResolveContentModerationIdentity(apiKey, authctx.AuthSubject{})
 	input := moderation.ContentModerationCyberWarningInput{
 		RequestID:      ContentModerationRequestID(c.Request.Context()),
@@ -127,9 +127,9 @@ func BuildOpenAICyberWarningInput(endpoints ModerationEndpoints, c *gin.Context,
 			input.GroupName = apiKey.Group.Name
 		}
 	}
-	if account != nil {
-		input.AccountID = account.ID
-		input.AccountName = account.Name
+	if provider != nil {
+		input.ProviderID = provider.ID
+		input.ProviderName = provider.Name
 	}
 	if input.Endpoint == "" && c.Request != nil && c.Request.URL != nil {
 		input.Endpoint = c.Request.URL.Path

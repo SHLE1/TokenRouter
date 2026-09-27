@@ -437,7 +437,7 @@ func TestBuildUsageCleanupWhere(t *testing.T) {
 	end := start.Add(24 * time.Hour)
 	userID := int64(1)
 	apiKeyID := int64(2)
-	accountID := int64(3)
+	providerID := int64(3)
 	groupID := int64(4)
 	teamID := int64(5)
 	model := " gpt-4 "
@@ -449,7 +449,7 @@ func TestBuildUsageCleanupWhere(t *testing.T) {
 		EndTime:     end,
 		UserID:      &userID,
 		APIKeyID:    &apiKeyID,
-		AccountID:   &accountID,
+		ProviderID:  &providerID,
 		GroupID:     &groupID,
 		TeamID:      &teamID,
 		Model:       &model,
@@ -457,8 +457,8 @@ func TestBuildUsageCleanupWhere(t *testing.T) {
 		BillingType: &billingType,
 	})
 
-	require.Equal(t, "created_at >= $1 AND created_at <= $2 AND user_id = $3 AND api_key_id = $4 AND account_id = $5 AND group_id = $6 AND team_id = $7 AND model = $8 AND stream = $9 AND billing_type = $10", where)
-	require.Equal(t, []any{start, end, userID, apiKeyID, accountID, groupID, teamID, "gpt-4", stream, billingType}, args)
+	require.Equal(t, "created_at >= $1 AND created_at <= $2 AND user_id = $3 AND api_key_id = $4 AND provider_id = $5 AND group_id = $6 AND team_id = $7 AND model = $8 AND stream = $9 AND billing_type = $10", where)
+	require.Equal(t, []any{start, end, userID, apiKeyID, providerID, groupID, teamID, "gpt-4", stream, billingType}, args)
 }
 
 func TestBuildUsageCleanupWhereRequestTypePriority(t *testing.T) {

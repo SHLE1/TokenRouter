@@ -5,28 +5,31 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func newFingerprintExecutionAccount(id int64, extra map[string]any) *gatewayprovider.ExecutionAccount {
-	if accountcore.CodexFingerprintModeRequiresSeed(accountcore.CodexFingerprintModeFromExtra(extra)) {
+func newFingerprintExecutionProvider(id int64, extra map[string]any) *gatewayprovider.ExecutionProvider {
+	if providercore.CodexFingerprintModeRequiresSeed(providercore.CodexFingerprintModeFromExtra(extra)) {
 		if extra == nil {
 			extra = make(map[string]any)
 		}
-		if _, exists := extra[accountcore.CodexFingerprintSeedExtraKey]; !exists {
-			extra[accountcore.CodexFingerprintSeedExtraKey] = testCodexFingerprintSeed
+		if _, exists := extra[providercore.CodexFingerprintSeedExtraKey]; !exists {
+			extra[providercore.CodexFingerprintSeedExtraKey] = testCodexFingerprintSeed
 		}
 	}
-	return &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: id,
-		Platform: capability.PlatformOpenAI,
-		Type:     capability.AccountTypeOAuth,
-		Extra:    extra},
+	return &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: id,
+			Platform: capability.PlatformOpenAI,
+			Type:     capability.ProviderTypeOAuth,
+			Extra:    extra,
+		},
 	}
 }
 
@@ -63,7 +66,7 @@ func newFingerprintExecutionAccount(id int64, extra map[string]any) *gatewayprov
 func TestBuildUpstreamRequestOpenAIPassthrough_AppliesStagedFingerprint(t *testing.T) {
 	svc := newResponsesFixture(responsesFixtureInputs{})
 	// 收敛是显式 opt-in（#5610）：显式开启后验证透传路径的出站头收敛。
-	account := newFingerprintExecutionAccount(2001, map[string]any{
+	provider := newFingerprintExecutionProvider(2001, map[string]any{
 		"openai_oauth_passthrough": true,
 		"codex_fingerprint_mode":   "session",
 	})
@@ -75,15 +78,15 @@ func TestBuildUpstreamRequestOpenAIPassthrough_AppliesStagedFingerprint(t *testi
 	c.Request.Header.Set("x-codex-turn-metadata", `{"installation_id":"real-install","session_id":"real-session","sandbox":"seatbelt"}`)
 
 	// 复刻 forwardOpenAIPassthrough 的解析+暂存 seam（默认 session 模式）
-	ids := accountprovider.CodexFingerprintIDsFromRequest(account.View(), c.Request.Header)
+	ids := provideradapter.CodexFingerprintIDsFromRequest(provider.View(), c.Request.Header)
 	require.NotNil(t, ids)
 	StageCodexFingerprintIDs(c, ids)
 
 	body := []byte(`{"model":"gpt-5.6-sol","input":[],"stream":true}`)
-	req, err := svc.Requests.BuildPassthrough(context.Background(), c, account, body, "test-token")
+	req, err := svc.Requests.BuildPassthrough(context.Background(), c, provider, body, "test-token")
 	require.NoError(t, err)
 
-	assert.Equal(t, ids.SessionID, req.Header.Get("session_id"), "session 模式下出站 session_id 应为账号级收敛值")
+	assert.Equal(t, ids.SessionID, req.Header.Get("session_id"), "session 模式下出站 session_id 应为提供商级收敛值")
 	assert.Equal(t, ids.InstallationID, req.Header.Get("x-codex-installation-id"))
 	assert.Equal(t, ids.WindowID, req.Header.Get("x-codex-window-id"))
 	assert.Equal(t, ids.ThreadID, req.Header.Get("x-client-request-id"))
@@ -95,7 +98,7 @@ func TestBuildUpstreamRequestOpenAIPassthrough_AppliesStagedFingerprint(t *testi
 
 func TestBuildUpstreamRequestOpenAIPassthrough_OffModeKeepsIsolatedSession(t *testing.T) {
 	svc := newResponsesFixture(responsesFixtureInputs{})
-	account := newFingerprintExecutionAccount(2002, map[string]any{
+	provider := newFingerprintExecutionProvider(2002, map[string]any{
 		"openai_oauth_passthrough": true,
 		"codex_fingerprint_mode":   "off",
 	})
@@ -104,12 +107,12 @@ func TestBuildUpstreamRequestOpenAIPassthrough_OffModeKeepsIsolatedSession(t *te
 	c.Request.Header.Set("session_id", "real-client-session")
 	c.Request.Header.Set("originator", "codex_cli_rs")
 
-	ids := accountprovider.CodexFingerprintIDsFromRequest(account.View(), c.Request.Header)
+	ids := provideradapter.CodexFingerprintIDsFromRequest(provider.View(), c.Request.Header)
 	require.Nil(t, ids)
 	StageCodexFingerprintIDs(c, ids)
 
 	body := []byte(`{"model":"gpt-5.6-sol","input":[],"stream":true}`)
-	req, err := svc.Requests.BuildPassthrough(context.Background(), c, account, body, "test-token")
+	req, err := svc.Requests.BuildPassthrough(context.Background(), c, provider, body, "test-token")
 	require.NoError(t, err)
 
 	assert.NotEmpty(t, req.Header.Get("session_id"))

@@ -21,12 +21,12 @@ func TestConcurrencyErrorResponse(t *testing.T) {
 	}{
 		{
 			name:        "true concurrency timeout remains rate limit",
-			err:         &ConcurrencyError{SlotType: "account", IsTimeout: true},
+			err:         &ConcurrencyError{SlotType: "provider", IsTimeout: true},
 			slotType:    "user",
 			wantStatus:  http.StatusTooManyRequests,
 			wantType:    "rate_limit_error",
 			wantCode:    GatewayConcurrencyLimitCode,
-			wantMessage: "Concurrency limit exceeded for account, please retry later",
+			wantMessage: "Concurrency limit exceeded for provider, please retry later",
 		},
 		{
 			name:        "wait queue full is rate limit",

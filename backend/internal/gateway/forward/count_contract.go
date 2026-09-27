@@ -4,7 +4,7 @@ import (
 	"context"
 )
 
-// CountPorts 仅提供 token 计数的单账号执行能力，不包含选槽或资金接口。
+// CountPorts 仅提供 token 计数的单提供商执行能力，不包含选槽或资金接口。
 type CountPorts interface {
 	ResolveModel(context.Context, string) string
 	ReplaceModel([]byte, string) []byte

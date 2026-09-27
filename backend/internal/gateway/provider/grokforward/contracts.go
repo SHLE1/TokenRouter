@@ -13,15 +13,15 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/grok"
 )
 
-// Input 仅带已选账号和本次请求投影，不携带凭据或旧业务实体。
+// Input 仅带已选提供商和本次请求投影，不携带凭据或旧业务实体。
 type Input struct {
-	AccountID                          int64
-	AccountName, AccountType, Platform string
-	OAuth, HTTPPresent, Compact        bool
-	Body                               []byte
-	OriginalModel                      string
-	Stream                             bool
-	StartedAt                          time.Time
+	ProviderID                           int64
+	ProviderName, ProviderType, Platform string
+	OAuth, HTTPPresent, Compact          bool
+	Body                                 []byte
+	OriginalModel                        string
+	Stream                               bool
+	StartedAt                            time.Time
 }
 
 // Options 复用唯一平台编解码器及应用的原生 attempt 生命周期屏障。
@@ -33,30 +33,33 @@ type Options struct {
 
 const ComposerVisionModel = "grok-build-0.1"
 
-type Decision struct{ Generic, Failover, RetrySameAccount bool }
-type Retry struct {
-	Retryable bool
-	Delay     time.Duration
-	Deadline  time.Time
-	Max       int
-}
+type (
+	Decision struct{ Generic, Failover, RetrySameProvider bool }
+	Retry    struct {
+		Retryable bool
+		Delay     time.Duration
+		Deadline  time.Time
+		Max       int
+	}
+)
+
 type Failure struct {
-	StatusCode                                     int
-	ResponseBody                                   []byte
-	ResponseHeaders                                http.Header
-	RetryableOnSameAccount, RequestScopedTransient bool
-	SameAccountRetryDelay                          time.Duration
-	SameAccountRetryDeadline                       time.Time
-	SameAccountRetryMax                            int
+	StatusCode                                      int
+	ResponseBody                                    []byte
+	ResponseHeaders                                 http.Header
+	RetryableOnSameProvider, RequestScopedTransient bool
+	SameProviderRetryDelay                          time.Duration
+	SameProviderRetryDeadline                       time.Time
+	SameProviderRetryMax                            int
 }
 type Notice struct {
-	AccountID                        int64
-	Platform, AccountName            string
+	ProviderID                       int64
+	Platform, ProviderName           string
 	UpstreamStatusCode               int
 	UpstreamRequestID, Kind, Message string
 }
 
-// Ports 将账号健康和 HTTP 读取缩为单步能力；服务不通过单一回调保留整段编排。
+// Ports 将提供商健康和 HTTP 读取缩为单步能力；服务不通过单一回调保留整段编排。
 type Ports interface {
 	BillingModel(string) string
 	UpstreamModel(string) string

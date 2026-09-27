@@ -9,11 +9,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 取消与显式完成竞争时，资源只归还一次，且后取得的账号资源先于用户资源释放。
+// 取消与显式完成竞争时，资源只归还一次，且后取得的提供商资源先于用户资源释放。
 func TestLeaseConcurrentReleaseOwnership(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	var order []string
-	l := NewLease(ctx, ReleaseOnCancel, func() { order = append(order, "user") }, func() { order = append(order, "account") })
+	l := NewLease(ctx, ReleaseOnCancel, func() { order = append(order, "user") }, func() { order = append(order, "provider") })
 	var wg sync.WaitGroup
 	for range 16 {
 		wg.Add(1)
@@ -21,7 +21,7 @@ func TestLeaseConcurrentReleaseOwnership(t *testing.T) {
 	}
 	cancel()
 	wg.Wait()
-	require.Equal(t, []string{"account", "user"}, order)
+	require.Equal(t, []string{"provider", "user"}, order)
 }
 
 // Qoder 完成释放模式在客户端已取消时仍保持容量，直到上游收尾明确释放。

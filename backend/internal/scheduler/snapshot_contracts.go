@@ -13,9 +13,9 @@ type SnapshotMetadata struct {
 	GroupIDs []int64
 }
 
-// SnapshotAccount 将发布数据保留在 Adapter 中；核心只能查看其重建元数据。
-// 同批次复用这个对象不会再次查询数据库或复制完整账号缓存。
-type SnapshotAccount interface {
+// SnapshotProvider 将发布数据保留在 Adapter 中；核心只能查看其重建元数据。
+// 同批次复用这个对象不会再次查询数据库或复制完整提供商缓存。
+type SnapshotProvider interface {
 	SnapshotMetadata() SnapshotMetadata
 }
 
@@ -29,16 +29,16 @@ type SnapshotGroup struct {
 
 func (g *SnapshotGroup) IsActive() bool { return g != nil && g.Status == "active" }
 
-// SnapshotAccountSource 保留原分组/平台查询差异，Adapter 返回可发布的数据拥有者。
-type SnapshotAccountSource interface {
-	GetByID(context.Context, int64) (SnapshotAccount, error)
-	GetByIDs(context.Context, []int64) ([]SnapshotAccount, error)
-	ListSchedulableByPlatform(context.Context, string) ([]SnapshotAccount, error)
-	ListSchedulableUngroupedByPlatform(context.Context, string) ([]SnapshotAccount, error)
-	ListSchedulableByGroupIDAndPlatform(context.Context, int64, string) ([]SnapshotAccount, error)
-	ListSchedulableByPlatforms(context.Context, []string) ([]SnapshotAccount, error)
-	ListSchedulableUngroupedByPlatforms(context.Context, []string) ([]SnapshotAccount, error)
-	ListSchedulableByGroupIDAndPlatforms(context.Context, int64, []string) ([]SnapshotAccount, error)
+// SnapshotProviderSource 保留原分组/平台查询差异，Adapter 返回可发布的数据拥有者。
+type SnapshotProviderSource interface {
+	GetByID(context.Context, int64) (SnapshotProvider, error)
+	GetByIDs(context.Context, []int64) ([]SnapshotProvider, error)
+	ListSchedulableByPlatform(context.Context, string) ([]SnapshotProvider, error)
+	ListSchedulableUngroupedByPlatform(context.Context, string) ([]SnapshotProvider, error)
+	ListSchedulableByGroupIDAndPlatform(context.Context, int64, string) ([]SnapshotProvider, error)
+	ListSchedulableByPlatforms(context.Context, []string) ([]SnapshotProvider, error)
+	ListSchedulableUngroupedByPlatforms(context.Context, []string) ([]SnapshotProvider, error)
+	ListSchedulableByGroupIDAndPlatforms(context.Context, int64, []string) ([]SnapshotProvider, error)
 }
 
 type SnapshotGroupSource interface {
@@ -63,16 +63,16 @@ type SnapshotOptions struct {
 
 // SnapshotCache 的数据对象仅由存储 Adapter 解码和发布，调度规则不读取其完整内容。
 type SnapshotCache interface {
-	GetSnapshot(context.Context, SchedulerBucket) ([]SnapshotAccount, bool, error)
+	GetSnapshot(context.Context, SchedulerBucket) ([]SnapshotProvider, bool, error)
 	CaptureBucketWriteToken(context.Context, SchedulerBucket) (SchedulerBucketWriteToken, error)
-	SetSnapshot(context.Context, SchedulerBucket, SchedulerBucketWriteToken, []SnapshotAccount) error
+	SetSnapshot(context.Context, SchedulerBucket, SchedulerBucketWriteToken, []SnapshotProvider) error
 	RetireBucket(context.Context, SchedulerBucket) error
 	ReopenBucket(context.Context, SchedulerBucket) (SchedulerBucketWriteToken, error)
 	TryAcquireGroupLifecycleLease(context.Context, int64, time.Duration) (SchedulerGroupLifecycleLease, bool, error)
 	ReleaseGroupLifecycleLease(context.Context, SchedulerGroupLifecycleLease) error
-	GetAccount(context.Context, int64) (SnapshotAccount, error)
-	SetAccount(context.Context, SnapshotAccount) error
-	DeleteAccount(context.Context, int64) error
+	GetProvider(context.Context, int64) (SnapshotProvider, error)
+	SetProvider(context.Context, SnapshotProvider) error
+	DeleteProvider(context.Context, int64) error
 	UpdateLastUsed(context.Context, map[int64]time.Time) error
 	AcquireBucketLease(context.Context, SchedulerBucket, time.Duration) (*BucketLease, bool, error)
 	ListBuckets(context.Context) ([]SchedulerBucket, error)
@@ -82,7 +82,7 @@ type SnapshotCache interface {
 
 // SnapshotBindings 注入错误身份与观察端口，独立于 nil 配置的历史语义。
 type SnapshotBindings struct {
-	AccountNotFound error
-	GroupNotFound   error
-	Diagnostics     Diagnostics
+	ProviderNotFound error
+	GroupNotFound    error
+	Diagnostics      Diagnostics
 }

@@ -3,7 +3,7 @@ package rediscache
 import (
 	"context"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/rediscache/codec"
 )
@@ -15,22 +15,23 @@ func NewSnapshotReader(source *scheduler.SnapshotService) *SnapshotReader {
 	return &SnapshotReader{source: source}
 }
 
-func (s *SnapshotReader) GetAccount(ctx context.Context, id int64) (*account.Record, error) {
-	value, err := s.source.GetAccount(ctx, id)
+func (s *SnapshotReader) GetProvider(ctx context.Context, id int64) (*provider.Record, error) {
+	value, err := s.source.GetProvider(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 	return codec.RecordValue(value)
 }
-func (s *SnapshotReader) ListAccounts(ctx context.Context, group *int64, platform string, forced bool) ([]account.Record, bool, error) {
-	values, mixed, err := s.source.ListSchedulableAccounts(ctx, group, platform, forced)
+
+func (s *SnapshotReader) ListProviders(ctx context.Context, group *int64, platform string, forced bool) ([]provider.Record, bool, error) {
+	values, mixed, err := s.source.ListSchedulableProviders(ctx, group, platform, forced)
 	if err != nil {
 		return nil, mixed, err
 	}
 	if values == nil {
 		return nil, mixed, nil
 	}
-	out := make([]account.Record, 0, len(values))
+	out := make([]provider.Record, 0, len(values))
 	for _, value := range values {
 		record, err := codec.RecordValue(value)
 		if err != nil {

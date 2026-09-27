@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestSortedUniqueAccountIDs(t *testing.T) {
+func TestSortedUniqueProviderIDs(t *testing.T) {
 	tests := []struct {
 		name  string
 		input []int64
@@ -21,7 +21,7 @@ func TestSortedUniqueAccountIDs(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.want, SortedUniqueAccountIDs(tt.input))
+			require.Equal(t, tt.want, SortedUniqueProviderIDs(tt.input))
 		})
 	}
 }

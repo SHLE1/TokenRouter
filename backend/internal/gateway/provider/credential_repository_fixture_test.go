@@ -5,20 +5,21 @@ package provider_test
 import (
 	"context"
 
-	acctcore "github.com/TokenFlux/TokenRouter/internal/account"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	acctcore "github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
-// 为网关测试提供账号记录和存储参与能力，刷新逻辑由账号模块执行。
+// 为网关测试提供提供商记录和存储参与能力，刷新逻辑由提供商模块执行。
 type tokenSourceFixtureReader struct {
-	source gatewayprovider.ExecutionAccountStore
+	source gatewayprovider.ExecutionProviderStore
 }
 
 func (r tokenSourceFixtureReader) GetByID(ctx context.Context, id int64) (*acctcore.Record, error) {
 	v, err := r.source.GetByID(ctx, id)
 	return gatewayprovider.ExecutionRecord(v), err
 }
-func tokenSourceFixtureRepository(repo gatewayprovider.ExecutionAccountStore) acctcore.RefreshRepository {
+
+func tokenSourceFixtureRepository(repo gatewayprovider.ExecutionProviderStore) acctcore.RefreshRepository {
 	if repo == nil {
 		return nil
 	}

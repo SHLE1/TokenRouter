@@ -13,9 +13,9 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
 	authctx "github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	apikey "github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
@@ -44,13 +44,13 @@ type gatewaySessionLimitCacheStub struct {
 	unregistered map[int64][]string
 }
 
-func (s *gatewaySessionLimitCacheStub) RegisterSession(_ context.Context, accountID int64, sessionID string, _ int, _ time.Duration) (bool, error) {
-	s.registered[accountID] = append(s.registered[accountID], sessionID)
+func (s *gatewaySessionLimitCacheStub) RegisterSession(_ context.Context, providerID int64, sessionID string, _ int, _ time.Duration) (bool, error) {
+	s.registered[providerID] = append(s.registered[providerID], sessionID)
 	return true, nil
 }
 
-func (s *gatewaySessionLimitCacheStub) UnregisterSession(_ context.Context, accountID int64, sessionID string) error {
-	s.unregistered[accountID] = append(s.unregistered[accountID], sessionID)
+func (s *gatewaySessionLimitCacheStub) UnregisterSession(_ context.Context, providerID int64, sessionID string) error {
+	s.unregistered[providerID] = append(s.unregistered[providerID], sessionID)
 	return nil
 }
 
@@ -59,13 +59,13 @@ type gatewaySessionUpstreamStub struct {
 	called  []int64
 }
 
-func (s *gatewaySessionUpstreamStub) Do(_ *http.Request, _ string, accountID int64, _ int) (*http.Response, error) {
-	s.called = append(s.called, accountID)
-	return s.respond(accountID)
+func (s *gatewaySessionUpstreamStub) Do(_ *http.Request, _ string, providerID int64, _ int) (*http.Response, error) {
+	s.called = append(s.called, providerID)
+	return s.respond(providerID)
 }
 
-func (s *gatewaySessionUpstreamStub) DoWithTLS(req *http.Request, proxy string, accountID int64, concurrency int, _ *tlsfingerprint.Profile) (*http.Response, error) {
-	return s.Do(req, proxy, accountID, concurrency)
+func (s *gatewaySessionUpstreamStub) DoWithTLS(req *http.Request, proxy string, providerID int64, concurrency int, _ *tlsfingerprint.Profile) (*http.Response, error) {
+	return s.Do(req, proxy, providerID, concurrency)
 }
 
 func gatewaySessionResponse(status int, stream bool) *http.Response {
@@ -84,27 +84,27 @@ func gatewaySessionResponse(status int, stream bool) *http.Response {
 }
 
 // 使用真实调度、Forward 和 handler 收尾，只替换外部上游、Redis 与账单依赖。
-func newGatewaySessionLimitFixture(t *testing.T, accountType string, failover bool, upstream *gatewaySessionUpstreamStub) (*messageEndpointsFixture, *apikey.APIKey, *gatewaySessionLimitCacheStub) {
+func newGatewaySessionLimitFixture(t *testing.T, providerType string, failover bool, upstream *gatewaySessionUpstreamStub) (*messageEndpointsFixture, *apikey.APIKey, *gatewaySessionLimitCacheStub) {
 	t.Helper()
 	groupID := int64(11)
 	group := &routing.Group{ID: groupID, Hydrated: true, Status: billing.StatusActive}
-	accounts := []*gatewayprovider.ExecutionAccount{{
-		Record: accountcore.Record{
-			LoadLocation: time.LoadLocation, ID: 12, Name: "session-test", Platform: capability.PlatformAnthropic, Type: accountType,
+	providers := []*gatewayprovider.ExecutionProvider{{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 12, Name: "session-test", Platform: capability.PlatformAnthropic, Type: providerType,
 			Credentials: map[string]any{"access_token": "test-token"}, Extra: map[string]any{"max_sessions": 1},
 			Concurrency: 2, Status: billing.StatusActive, Schedulable: true,
-			AccountGroups: []accountcore.GroupMembership{{AccountID: 12, GroupID: groupID}},
+			ProviderGroups: []providercore.GroupMembership{{ProviderID: 12, GroupID: groupID}},
 		},
 	}}
 	if failover {
-		second := *accounts[0]
+		second := *providers[0]
 		second.Record.ID, second.Record.Priority = 13, 1
-		second.Record.AccountGroups = []accountcore.GroupMembership{{AccountID: second.Record.ID, GroupID: groupID}}
-		accounts = append(accounts, &second)
+		second.Record.ProviderGroups = []providercore.GroupMembership{{ProviderID: second.Record.ID, GroupID: groupID}}
+		providers = append(providers, &second)
 	}
 	sessions := &gatewaySessionLimitCacheStub{registered: make(map[int64][]string), unregistered: make(map[int64][]string)}
 	cfg := &config.Config{RunMode: config.RunModeSimple}
-	snapshots := scheduler.NewSnapshotService(&fakeSchedulerCache{accounts: accounts}, nil, nil, nil, nil, scheduler.SnapshotBindings{})
+	snapshots := scheduler.NewSnapshotService(&fakeSchedulerCache{providers: providers}, nil, nil, nil, nil, scheduler.SnapshotBindings{})
 	billingCache := newBillingEligibilityFixture(cfg)
 	billingCache.Start()
 	t.Cleanup(billingCache.Stop)
@@ -148,7 +148,7 @@ func serveGatewaySessionMessage(h *messageEndpointsFixture, key *apikey.APIKey, 
 }
 
 func TestGatewayHandlerMessages_SessionSlotLifecycle(t *testing.T) {
-	for _, accountType := range []string{capability.AccountTypeOAuth, capability.AccountTypeSetupToken} {
+	for _, providerType := range []string{capability.ProviderTypeOAuth, capability.ProviderTypeSetupToken} {
 		for _, tc := range []struct {
 			name         string
 			stream       bool
@@ -162,26 +162,26 @@ func TestGatewayHandlerMessages_SessionSlotLifecycle(t *testing.T) {
 			{name: "transport_failure", transportErr: true},
 			{name: "failover_success", upstreamCode: http.StatusInternalServerError, failover: true},
 		} {
-			t.Run(accountType+"/"+tc.name, func(t *testing.T) {
-				upstream := &gatewaySessionUpstreamStub{respond: func(accountID int64) (*http.Response, error) {
+			t.Run(providerType+"/"+tc.name, func(t *testing.T) {
+				upstream := &gatewaySessionUpstreamStub{respond: func(providerID int64) (*http.Response, error) {
 					if tc.transportErr {
 						return nil, errors.New("test upstream connection failed")
 					}
 					status := tc.upstreamCode
-					if tc.failover && accountID == 13 {
+					if tc.failover && providerID == 13 {
 						status = http.StatusOK
 					}
 					return gatewaySessionResponse(status, tc.stream), nil
 				}}
-				h, key, sessions := newGatewaySessionLimitFixture(t, accountType, tc.failover, upstream)
+				h, key, sessions := newGatewaySessionLimitFixture(t, providerType, tc.failover, upstream)
 				response := serveGatewaySessionMessage(h, key, tc.stream)
 				require.NotEmpty(t, sessions.registered[12])
 				if tc.failover {
 					require.Equal(t, http.StatusOK, response.Code, response.Body.String())
 					require.Equal(t, []int64{12, 13}, upstream.called)
-					require.Equal(t, sessions.registered[12], sessions.unregistered[12], "失败账号的槽必须释放")
+					require.Equal(t, sessions.registered[12], sessions.unregistered[12], "失败提供商的槽必须释放")
 					require.NotEmpty(t, sessions.registered[13])
-					require.Empty(t, sessions.unregistered[13], "成功账号的槽必须保留")
+					require.Empty(t, sessions.unregistered[13], "成功提供商的槽必须保留")
 					return
 				}
 				require.Equal(t, []int64{12}, upstream.called)

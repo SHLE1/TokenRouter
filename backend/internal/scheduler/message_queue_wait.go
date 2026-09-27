@@ -9,7 +9,7 @@ import (
 // QueueObserver 绑定请求级观察，核心不持有 HTTP 或日志后端。
 type QueueObserver struct {
 	Wait  WaitObserver
-	Event func(name string, accountID int64, err error)
+	Event func(name string, providerID int64, err error)
 	Delay func(time.Duration)
 }
 
@@ -20,17 +20,17 @@ func (o QueueObserver) event(name string, id int64, err error) {
 }
 
 // AcquireWithWait 保留串行锁首次尝试及 RPM 延迟时点；失败放行不会伪造已持有的锁。
-func (s *UserMessageQueueService) acquireWithWait(parent context.Context, accountID int64, baseRPM int, timeout time.Duration, observer QueueObserver) (*Lease, error) {
+func (s *UserMessageQueueService) acquireWithWait(parent context.Context, providerID int64, baseRPM int, timeout time.Duration, observer QueueObserver) (*Lease, error) {
 	ctx, cancel := context.WithTimeout(parent, timeout)
 	defer cancel()
-	result, err := s.TryAcquire(ctx, accountID)
+	result, err := s.TryAcquire(ctx, providerID)
 	if err != nil {
 		return nil, err
 	}
 	if result.Acquired {
-		return s.finishQueueAcquire(ctx, accountID, baseRPM, result, observer)
+		return s.finishQueueAcquire(ctx, providerID, baseRPM, result, observer)
 	}
-	return s.WaitForLock(ctx, accountID, baseRPM, observer)
+	return s.WaitForLock(ctx, providerID, baseRPM, observer)
 }
 
 // finishQueueAcquire 在延迟开始前接管锁；取消或异常返回不会遗失释放责任。
@@ -59,7 +59,7 @@ func (s *UserMessageQueueService) finishQueueAcquire(ctx context.Context, id int
 }
 
 // WaitForLock 仅轮询资源；同步观察失败立即终止等待。
-func (s *UserMessageQueueService) WaitForLock(ctx context.Context, accountID int64, baseRPM int, observer QueueObserver) (*Lease, error) {
+func (s *UserMessageQueueService) WaitForLock(ctx context.Context, providerID int64, baseRPM int, observer QueueObserver) (*Lease, error) {
 	if observer.Wait.Begin != nil {
 		if err := observer.Wait.Begin(); err != nil {
 			return nil, err
@@ -77,18 +77,18 @@ func (s *UserMessageQueueService) WaitForLock(ctx context.Context, accountID int
 	for {
 		select {
 		case <-ctx.Done():
-			return nil, fmt.Errorf("umq wait timeout for account %d", accountID)
+			return nil, fmt.Errorf("umq wait timeout for provider %d", providerID)
 		case <-ping:
 			if err := observer.Wait.Heartbeat(); err != nil {
 				return nil, err
 			}
 		case <-timer.C:
-			result, err := s.TryAcquire(ctx, accountID)
+			result, err := s.TryAcquire(ctx, providerID)
 			if err != nil {
 				return nil, err
 			}
 			if result.Acquired {
-				return s.finishQueueAcquire(ctx, accountID, baseRPM, result, observer)
+				return s.finishQueueAcquire(ctx, providerID, baseRPM, result, observer)
 			}
 			backoff = NextBackoff(backoff)
 			timer.Reset(backoff)

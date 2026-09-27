@@ -14,7 +14,7 @@ const concretePlatforms = [
 ]
 
 describe('platform option catalogs', () => {
-  it('exposes every concrete account platform', () => {
+  it('exposes every concrete provider platform', () => {
     expect(CONCRETE_PLATFORM_OPTIONS.map((option) => option.value)).toEqual(concretePlatforms)
   })
 

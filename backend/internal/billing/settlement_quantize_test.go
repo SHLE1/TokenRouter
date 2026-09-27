@@ -33,7 +33,7 @@ func TestUsageBillingCommandQuantizesAPIKeyCountersIdentically(t *testing.T) {
 		RequestID:           "req-5229",
 		UserID:              1,
 		APIKeyID:            2,
-		AccountID:           3,
+		ProviderID:          3,
 		APIKeyQuotaCost:     actualCost,
 		APIKeyRateLimitCost: actualCost,
 	}
@@ -107,19 +107,19 @@ func TestNormalizeQuantizesStorageBoundMonetaryFields(t *testing.T) {
 		RequestID:           "req-5229-fields",
 		UserID:              1,
 		APIKeyID:            2,
-		AccountID:           3,
+		ProviderID:          3,
 		BillableAmountUSD:   raw,
 		BaseAmountUSD:       raw,
 		APIKeyQuotaCost:     raw,
 		APIKeyRateLimitCost: raw,
-		AccountQuotaCost:    raw,
+		ProviderQuotaCost:   raw,
 	}
 	cmd.Normalize()
 
 	for name, got := range map[string]float64{
 		"APIKeyQuotaCost":     cmd.APIKeyQuotaCost,
 		"APIKeyRateLimitCost": cmd.APIKeyRateLimitCost,
-		"AccountQuotaCost":    cmd.AccountQuotaCost,
+		"ProviderQuotaCost":   cmd.ProviderQuotaCost,
 	} {
 		require.LessOrEqual(t, decimalPlaces(got), int32(UsageBillingMonetaryScale), name)
 	}
@@ -138,7 +138,7 @@ func TestNormalizeKeepsFingerprintDerivedFromRawAmounts(t *testing.T) {
 			RequestID:         "req-5229-fp",
 			UserID:            1,
 			APIKeyID:          2,
-			AccountID:         3,
+			ProviderID:        3,
 			BillableAmountUSD: raw,
 			APIKeyQuotaCost:   raw,
 		}

@@ -21,7 +21,7 @@ const (
 	BedrockRoutingUnverifiedRegion  BedrockRoutingFailure = "unverified_region"
 )
 
-// BedrockModelRoutingError 对外只给出失败类别；账号配置细节由管理员诊断单独读取。
+// BedrockModelRoutingError 对外只给出失败类别；提供商配置细节由管理员诊断单独读取。
 type BedrockModelRoutingError struct {
 	Reason          BedrockRoutingFailure
 	ModelID         string
@@ -34,7 +34,7 @@ func (e *BedrockModelRoutingError) Error() string {
 	return "bedrock model routing failed: " + string(e.Reason)
 }
 
-// BedrockRoutingDiagnostic 仅用于管理员测试与内部日志，不向普通客户端暴露账号区域。
+// BedrockRoutingDiagnostic 仅用于管理员测试与内部日志，不向普通客户端暴露提供商区域。
 func BedrockRoutingDiagnostic(err error) string {
 	var failure *BedrockModelRoutingError
 	if !errors.As(err, &failure) {
@@ -61,12 +61,12 @@ func BedrockRoutingDiagnostic(err error) string {
 
 // ResolveBedrockModelRoute 只从已核实的模型/来源区域规则选择推理 ID，不按区域名称猜测。
 // @project-doc docs/interfaces/anthropic_upstream.md#bedrock_region_routing
-func ResolveBedrockModelRoute(account *RouteInput, requestedModel string) (BedrockModelRoute, error) {
-	route := BedrockModelRoute{SourceRegion: BedrockRuntimeRegion(account)}
-	if account == nil {
+func ResolveBedrockModelRoute(provider *RouteInput, requestedModel string) (BedrockModelRoute, error) {
+	route := BedrockModelRoute{SourceRegion: BedrockRuntimeRegion(provider)}
+	if provider == nil {
 		return route, &BedrockModelRoutingError{Reason: BedrockRoutingInvalidModel, ModelID: requestedModel, SourceRegion: route.SourceRegion}
 	}
-	modelID := strings.TrimSpace(account.Model)
+	modelID := strings.TrimSpace(provider.Model)
 	defaultID, isDefaultAlias := DefaultBedrockModelMapping[modelID]
 	if isDefaultAlias {
 		modelID = defaultID
@@ -74,7 +74,7 @@ func ResolveBedrockModelRoute(account *RouteInput, requestedModel string) (Bedro
 	baseID := BedrockBaseModelID(modelID)
 	rule, knownModel := BedrockModelRegionRules[baseID]
 	failure := &BedrockModelRoutingError{
-		ModelID: modelID, SourceRegion: route.SourceRegion, ForceGlobal: ShouldForceBedrockGlobal(account),
+		ModelID: modelID, SourceRegion: route.SourceRegion, ForceGlobal: ShouldForceBedrockGlobal(provider),
 	}
 	if !knownModel {
 		if !isDefaultAlias && IsLikelyBedrockModelID(modelID) {
@@ -89,7 +89,7 @@ func ResolveBedrockModelRoute(account *RouteInput, requestedModel string) (Bedro
 		return route, failure
 	}
 	failure.GlobalAvailable = rule.GlobalProfile.Supports(route.SourceRegion)
-	// 显式裸基础 ID 在已确认支持单区域调用的来源区域保持原样；默认地域预设仍按账号路由。
+	// 显式裸基础 ID 在已确认支持单区域调用的来源区域保持原样；默认地域预设仍按提供商路由。
 	if !failure.ForceGlobal && !isDefaultAlias && modelID == baseID && slices.Contains(rule.InRegionSources, route.SourceRegion) {
 		route.ModelID = modelID
 		return route, nil

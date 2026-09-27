@@ -20,7 +20,7 @@ type StaticRequestInput struct {
 func BuildStaticRequest(ctx context.Context, body []byte, input StaticRequestInput) (*http.Request, string, bool, error) {
 	baseURL, apiKey := strings.TrimSpace(input.BaseURL), strings.TrimSpace(input.APIKey)
 	if baseURL == "" || apiKey == "" {
-		return nil, "", false, fmt.Errorf("upstream account missing base_url or api_key")
+		return nil, "", false, fmt.Errorf("upstream provider missing base_url or api_key")
 	}
 	baseURL = strings.TrimSuffix(baseURL, "/")
 	var request wire.ClaudeRequest

@@ -1,0 +1,113 @@
+//go:build integration
+
+package migrations_test
+
+import (
+	"context"
+	"database/sql"
+	"io/fs"
+	"testing"
+	"testing/fstest"
+	"time"
+
+	infra "github.com/TokenFlux/TokenRouter/internal/infra/postgres"
+	"github.com/TokenFlux/TokenRouter/migrations"
+	_ "github.com/lib/pq"
+	"github.com/stretchr/testify/require"
+	tcpostgres "github.com/testcontainers/testcontainers-go/modules/postgres"
+)
+
+// TestProviderNamesMigration 使用历史 schema 验证锁失败回滚、数据保留和物理文件不变。
+func TestProviderNamesMigration(t *testing.T) {
+	ctx := context.Background()
+	pg, err := tcpostgres.Run(ctx, "postgres:18.1-alpine3.23", tcpostgres.WithDatabase("provider_names"), tcpostgres.WithUsername("postgres"), tcpostgres.WithPassword("postgres"), tcpostgres.BasicWaitStrategies())
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, pg.Terminate(ctx)) })
+	dsn, err := pg.ConnectionString(ctx, "sslmode=disable")
+	require.NoError(t, err)
+	db, err := sql.Open("postgres", dsn)
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, db.Close()) })
+	before := fstest.MapFS{}
+	entries, err := fs.ReadDir(migrations.FS, ".")
+	require.NoError(t, err)
+	for _, entry := range entries {
+		if entry.Name() >= "282_" {
+			continue
+		}
+		content, err := migrations.FS.ReadFile(entry.Name())
+		require.NoError(t, err)
+		before[entry.Name()] = &fstest.MapFile{Data: content}
+	}
+	require.NoError(t, infra.ApplyMigrations(ctx, db, before))
+	_, err = db.ExecContext(ctx, `
+ INSERT INTO users(id,email,password_hash) VALUES(71,'provider-migration@example.test','fixture');
+ INSERT INTO accounts(id,name,platform,type,credentials) VALUES(71,'fixture','openai','api_key','{"account_mode":"payg","chatgpt_account_id":"external","account_uuid":"external-uuid","chatgpt_account_is_fedramp":true,"service_account_json":{"client_email":"fixture@example.test"}}');
+ INSERT INTO api_keys(id,user_id,key,name) VALUES(71,71,'provider-migration-key','fixture');
+ INSERT INTO usage_logs(user_id,billing_user_id,api_key_id,account_id,model,request_id,actual_cost)
+ SELECT 71,71,71,71,'fixture','migration-'||n,0.25 FROM generate_series(1,10000) n;
+ INSERT INTO settings(key,value) VALUES
+ ('ops_email_notification_config','{"report":{"account_health_enabled":true,"account_health_schedule":"daily"}}'),
+ ('notification_email_template:account.quota_alert:en','{"subject":"{{ account_name }}","html":"{{\naccount_id\t}}"}'),
+ ('notification_email_template:content_moderation.account_disabled:en','{"subject":"Login disabled"}');
+ CREATE TABLE unrelated_accounts(id BIGSERIAL PRIMARY KEY, account_id BIGINT);
+ CREATE TABLE migration_physical_probe AS SELECT oid,relfilenode FROM pg_class
+ WHERE oid='usage_logs'::regclass OR oid IN(SELECT indexrelid FROM pg_index WHERE indrelid='usage_logs'::regclass);
+ `)
+	require.NoError(t, err)
+	migration, err := migrations.FS.ReadFile("282_rename_accounts_to_providers.sql")
+	require.NoError(t, err)
+	apply := func() error {
+		tx, err := db.BeginTx(ctx, nil)
+		if err != nil {
+			return err
+		}
+		defer func() { _ = tx.Rollback() }()
+		if _, err = tx.ExecContext(ctx, string(migration)); err != nil {
+			return err
+		}
+		return tx.Commit()
+	}
+	// 读事务阻止大表改名；超时后整个迁移必须回滚，包括已改名的小表。
+	holder, err := db.BeginTx(ctx, nil)
+	require.NoError(t, err)
+	_, err = holder.ExecContext(ctx, "LOCK TABLE usage_logs IN ACCESS SHARE MODE")
+	require.NoError(t, err)
+	started := time.Now()
+	require.ErrorContains(t, apply(), "lock timeout")
+	require.Less(t, time.Since(started), 30*time.Second)
+	var oldExists bool
+	require.NoError(t, db.QueryRowContext(ctx, "SELECT to_regclass('accounts') IS NOT NULL").Scan(&oldExists))
+	require.True(t, oldExists)
+	require.NoError(t, holder.Rollback())
+	started = time.Now()
+	require.NoError(t, infra.ApplyMigrations(ctx, db, migrations.FS))
+	t.Logf("provider migration took %s", time.Since(started))
+	// runner 重试不执行已提交迁移；SQL 自身重放也不覆盖配置。
+	require.NoError(t, infra.ApplyMigrations(ctx, db, migrations.FS))
+	require.NoError(t, apply())
+	var count, changed int
+	var cost float64
+	require.NoError(t, db.QueryRowContext(ctx, "SELECT count(*),sum(actual_cost) FROM usage_logs WHERE provider_id=71").Scan(&count, &cost))
+	require.Equal(t, 10000, count)
+	require.Equal(t, float64(2500), cost)
+	require.NoError(t, db.QueryRowContext(ctx, "SELECT count(*) FROM migration_physical_probe b JOIN pg_class c ON c.oid=b.oid WHERE c.relfilenode<>b.relfilenode").Scan(&changed))
+	require.Zero(t, changed)
+	var credentials string
+	require.NoError(t, db.QueryRowContext(ctx, "SELECT credentials::text FROM providers WHERE id=71").Scan(&credentials))
+	require.JSONEq(t, `{"provider_mode":"payg","chatgpt_account_id":"external","account_uuid":"external-uuid","chatgpt_account_is_fedramp":true,"service_account_json":{"client_email":"fixture@example.test"}}`, credentials)
+	var setting string
+	require.NoError(t, db.QueryRowContext(ctx, "SELECT value FROM settings WHERE key='ops_email_notification_config'").Scan(&setting))
+	require.JSONEq(t, `{"report":{"provider_health_enabled":true,"provider_health_schedule":"daily"}}`, setting)
+	require.NoError(t, db.QueryRowContext(ctx, "SELECT value FROM settings WHERE key='notification_email_template:provider.quota_alert:en'").Scan(&setting))
+	require.JSONEq(t, `{"subject":"{{provider_name}}","html":"{{provider_id}}"}`, setting)
+	require.NoError(t, db.QueryRowContext(ctx, "SELECT value FROM settings WHERE key='notification_email_template:content_moderation.account_disabled:en'").Scan(&setting))
+	require.NoError(t, db.QueryRowContext(ctx, "SELECT to_regclass('unrelated_accounts_pkey') IS NOT NULL AND to_regclass('unrelated_accounts_id_seq') IS NOT NULL").Scan(&oldExists))
+	require.True(t, oldExists)
+	// 在相同隔离实例中重建空 schema，验证全新安装可执行全部历史迁移。
+	_, err = db.ExecContext(ctx, "DROP SCHEMA public CASCADE; CREATE SCHEMA public")
+	require.NoError(t, err)
+	require.NoError(t, infra.ApplyMigrations(ctx, db, migrations.FS))
+	require.NoError(t, db.QueryRowContext(ctx, "SELECT to_regclass('providers') IS NOT NULL").Scan(&oldExists))
+	require.True(t, oldExists)
+}

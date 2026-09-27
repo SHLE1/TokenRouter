@@ -41,7 +41,7 @@ func GroupFromRoutingBase(g *routing.Group) Group {
 }
 
 // GroupFromServiceAdmin converts a service Group to DTO for admin users.
-// It includes internal fields like model_routing and account_count.
+// It includes internal fields like model_routing and provider_count.
 func AdminGroupFromRouting[A any](g *routing.Group) *AdminGroup[A] {
 	if g == nil {
 		return nil
@@ -60,9 +60,9 @@ func AdminGroupFromRouting[A any](g *routing.Group) *AdminGroup[A] {
 		ModelsListConfig:           g.ModelsListConfig,
 		AvailabilityProbeConfig:    g.AvailabilityProbeConfig,
 		SupportedModelScopes:       g.SupportedModelScopes,
-		AccountCount:               g.AccountCount,
-		ActiveAccountCount:         g.ActiveAccountCount,
-		RateLimitedAccountCount:    g.RateLimitedAccountCount,
+		ProviderCount:              g.ProviderCount,
+		ActiveProviderCount:        g.ActiveProviderCount,
+		RateLimitedProviderCount:   g.RateLimitedProviderCount,
 		SortOrder:                  g.SortOrder,
 	}
 

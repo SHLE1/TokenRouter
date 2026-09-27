@@ -5,12 +5,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/stretchr/testify/require"
 )
@@ -23,12 +23,12 @@ func TestCompletionCaptureKeepsTurnTimeAndIndependentInputs(t *testing.T) {
 		ID: groupID, RateMultiplier: 0.25,
 	}}
 	user := &identity.User{ID: 3, Balance: 9}
-	target := &account.Record{ID: 4, RateMultiplier: &multiplier, Extra: map[string]any{account.AccountExtraUpstreamRequestIDHeader: "X-Request-ID"}}
+	target := &provider.Record{ID: 4, RateMultiplier: &multiplier, Extra: map[string]any{provider.ProviderExtraUpstreamRequestIDHeader: "X-Request-ID"}}
 	result := &forward.OpenAIResult{RequestID: "upstream", Model: "model", ImageOutputSizes: []string{"1K"}, ImageSizeBreakdown: map[string]int{"1K": 1}}
 	turnAt := time.Date(2026, 9, 9, 12, 0, 0, 0, time.UTC)
 	ctx := context.WithValue(context.Background(), telemetry.RequestID, "local")
 	in := &OpenAICapture{
-		APIKey: key, User: user, Account: target, Result: result, PricingAt: turnAt,
+		APIKey: key, User: user, Provider: target, Result: result, PricingAt: turnAt,
 		RequestBody: []byte(`{"reasoning":{"effort":"high"}}`), Subscription: &billing.UserSubscription{ID: 5},
 	}
 	// 捕获之前的合法输入变化应生效，不能在构造输入时提前拍快照。
@@ -46,7 +46,7 @@ func TestCompletionCaptureKeepsTurnTimeAndIndependentInputs(t *testing.T) {
 	require.Equal(t, 10.0, out.User.Balance)
 	require.Equal(t, int64(17), *out.APIKey.GroupID)
 	require.Equal(t, 0.25, out.APIKey.Group.RateMultiplier)
-	require.Equal(t, 1.5, out.Account.RateMultiplier)
+	require.Equal(t, 1.5, out.Provider.RateMultiplier)
 	require.Equal(t, []string{"1K"}, out.Result.ImageOutputSizes)
 	require.Equal(t, 1, out.Result.ImageSizeBreakdown["1K"])
 	require.Equal(t, "high", *out.RequestedReasoningEffort)

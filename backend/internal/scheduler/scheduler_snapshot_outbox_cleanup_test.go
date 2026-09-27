@@ -20,7 +20,7 @@ type outboxCleanupCache struct {
 	listBucketCalls int
 }
 
-func (c *outboxCleanupCache) GetSnapshot(ctx context.Context, bucket SchedulerBucket) ([]SnapshotAccount, bool, error) {
+func (c *outboxCleanupCache) GetSnapshot(ctx context.Context, bucket SchedulerBucket) ([]SnapshotProvider, bool, error) {
 	return nil, false, nil
 }
 
@@ -28,7 +28,7 @@ func (c *outboxCleanupCache) CaptureBucketWriteToken(ctx context.Context, bucket
 	return SchedulerBucketWriteToken{Bucket: bucket, Epoch: 1}, nil
 }
 
-func (c *outboxCleanupCache) SetSnapshot(ctx context.Context, bucket SchedulerBucket, token SchedulerBucketWriteToken, accounts []SnapshotAccount) error {
+func (c *outboxCleanupCache) SetSnapshot(ctx context.Context, bucket SchedulerBucket, token SchedulerBucketWriteToken, providers []SnapshotProvider) error {
 	return nil
 }
 
@@ -48,15 +48,15 @@ func (c *outboxCleanupCache) ReleaseGroupLifecycleLease(context.Context, Schedul
 	return nil
 }
 
-func (c *outboxCleanupCache) GetAccount(ctx context.Context, accountID int64) (SnapshotAccount, error) {
+func (c *outboxCleanupCache) GetProvider(ctx context.Context, providerID int64) (SnapshotProvider, error) {
 	return nil, nil
 }
 
-func (c *outboxCleanupCache) SetAccount(ctx context.Context, account SnapshotAccount) error {
+func (c *outboxCleanupCache) SetProvider(ctx context.Context, provider SnapshotProvider) error {
 	return nil
 }
 
-func (c *outboxCleanupCache) DeleteAccount(ctx context.Context, accountID int64) error {
+func (c *outboxCleanupCache) DeleteProvider(ctx context.Context, providerID int64) error {
 	return nil
 }
 
@@ -104,11 +104,11 @@ type outboxCleanupRepo struct {
 	firstCreatedAfterID []int64
 }
 
-type outboxCleanupAccountRepo struct {
-	SnapshotAccountSource
+type outboxCleanupProviderRepo struct {
+	SnapshotProviderSource
 }
 
-func (r *outboxCleanupAccountRepo) ListSchedulableUngroupedByPlatform(context.Context, string) ([]SnapshotAccount, error) {
+func (r *outboxCleanupProviderRepo) ListSchedulableUngroupedByPlatform(context.Context, string) ([]SnapshotProvider, error) {
 	return nil, nil
 }
 
@@ -222,7 +222,7 @@ func TestSchedulerSnapshotServicePollOutboxCleansConsumedRowsAfterWatermark(t *t
 	cache := &outboxCleanupCache{}
 	repo := &outboxCleanupRepo{
 		events: []SchedulerOutboxEvent{
-			{ID: 10000, EventType: SchedulerOutboxEventAccountLastUsed},
+			{ID: 10000, EventType: SchedulerOutboxEventProviderLastUsed},
 		},
 		rows:         int64Range(1, 10003),
 		lockAcquired: true,
@@ -257,7 +257,7 @@ func TestSchedulerSnapshotServicePollOutboxSkipsCleanupWhenLockUnavailable(t *te
 	cache := &outboxCleanupCache{}
 	repo := &outboxCleanupRepo{
 		events: []SchedulerOutboxEvent{
-			{ID: 3, EventType: SchedulerOutboxEventAccountLastUsed},
+			{ID: 3, EventType: SchedulerOutboxEventProviderLastUsed},
 		},
 		rows:         []int64{1, 2, 3, 4},
 		lockAcquired: false,
@@ -291,7 +291,7 @@ func TestSchedulerSnapshotServicePollOutboxDoesNotCleanupOnHandleFailure(t *test
 		events: []SchedulerOutboxEvent{
 			{
 				ID:        5,
-				EventType: SchedulerOutboxEventAccountLastUsed,
+				EventType: SchedulerOutboxEventProviderLastUsed,
 				Payload: map[string]any{
 					"last_used": map[string]any{"101": float64(123)},
 				},
@@ -324,13 +324,12 @@ func TestSchedulerSnapshotServicePollOutboxDoesNotUseConsumedEventForLag(t *test
 		events: []SchedulerOutboxEvent{
 			{
 				ID:        7,
-				EventType: SchedulerOutboxEventAccountLastUsed,
+				EventType: SchedulerOutboxEventProviderLastUsed,
 				CreatedAt: time.Now().Add(-time.Hour),
 			},
 		},
 	}
 	cfg := &SnapshotOptions{
-
 		OutboxLagWarnSeconds:     1,
 		OutboxLagRebuildSeconds:  1,
 		OutboxLagRebuildFailures: 1,
@@ -390,12 +389,11 @@ func TestSchedulerSnapshotServiceCheckOutboxLagLatchesPersistentDegradation(t *t
 				rows:   tt.rows,
 			}
 			cfg := &SnapshotOptions{
-
 				OutboxLagRebuildSeconds:  tt.lagSeconds,
 				OutboxLagRebuildFailures: 1,
 				OutboxBacklogRebuildRows: tt.backlogThreshold,
 			}
-			svc := NewSnapshotService(cache, repo, &outboxCleanupAccountRepo{}, nil, cfg)
+			svc := NewSnapshotService(cache, repo, &outboxCleanupProviderRepo{}, nil, cfg)
 
 			for range 3 {
 				svc.checkOutboxLag(context.Background(), 0)
@@ -415,7 +413,6 @@ func TestSchedulerSnapshotServiceCheckOutboxLagFailedRebuildRearmsAfterRecovery(
 		rows:   []int64{1},
 	}
 	cfg := &SnapshotOptions{
-
 		OutboxLagRebuildSeconds:  1,
 		OutboxLagRebuildFailures: 1,
 	}
@@ -447,12 +444,11 @@ func TestSchedulerSnapshotServiceCheckOutboxLagFailedRebuildRetriesAfterCooldown
 		rows:   []int64{1},
 	}
 	cfg := &SnapshotOptions{
-
 		OutboxLagRebuildSeconds:    1,
 		OutboxLagRebuildFailures:   1,
 		FullRebuildIntervalSeconds: 0,
 	}
-	svc := NewSnapshotService(cache, repo, &outboxCleanupAccountRepo{}, nil, cfg)
+	svc := NewSnapshotService(cache, repo, &outboxCleanupProviderRepo{}, nil, cfg)
 
 	svc.checkOutboxLag(context.Background(), 0)
 	for range 3 {
@@ -504,7 +500,6 @@ func TestSchedulerSnapshotServiceCheckOutboxLagBacklogRetryDoesNotBypassNewLagTh
 		rows:   []int64{100},
 	}
 	cfg := &SnapshotOptions{
-
 		OutboxLagRebuildSeconds:  1,
 		OutboxLagRebuildFailures: 3,
 		OutboxBacklogRebuildRows: 50,
@@ -543,7 +538,6 @@ func TestSchedulerSnapshotServiceCheckOutboxLagLagRetryDoesNotDelayOrEscalateNew
 		rows:   []int64{1},
 	}
 	cfg := &SnapshotOptions{
-
 		OutboxLagRebuildSeconds:  1,
 		OutboxLagRebuildFailures: 1,
 		OutboxBacklogRebuildRows: 50,
@@ -579,7 +573,6 @@ func TestSchedulerSnapshotServiceCheckOutboxLagBacklogRetrySurvivesUnknownBacklo
 		rows:   []int64{100},
 	}
 	cfg := &SnapshotOptions{
-
 		OutboxBacklogRebuildRows: 50,
 	}
 	svc := NewSnapshotService(cache, repo, nil, nil, cfg)
@@ -631,7 +624,6 @@ func TestSchedulerSnapshotServiceCheckOutboxLagPreemptsUnknownBacklogRetryAtThre
 		rows:   []int64{100},
 	}
 	cfg := &SnapshotOptions{
-
 		OutboxLagRebuildSeconds:  1,
 		OutboxLagRebuildFailures: 3,
 		OutboxBacklogRebuildRows: 50,
@@ -693,12 +685,11 @@ func TestSchedulerSnapshotServicePollOutboxEmptyBatchClearsDegradedEpisode(t *te
 		rows:   []int64{1},
 	}
 	cfg := &SnapshotOptions{
-
 		OutboxLagRebuildSeconds:  1,
 		OutboxLagRebuildFailures: 1,
 		OutboxBacklogRebuildRows: 1,
 	}
-	svc := NewSnapshotService(cache, repo, &outboxCleanupAccountRepo{}, nil, cfg)
+	svc := NewSnapshotService(cache, repo, &outboxCleanupProviderRepo{}, nil, cfg)
 
 	svc.checkOutboxLag(context.Background(), 0)
 	cache.watermark = 1
@@ -758,7 +749,6 @@ func TestSchedulerSnapshotServicePollOutboxHealthyEmptyBatchSkipsLagHealthQuerie
 	cache := &outboxCleanupCache{}
 	repo := &outboxCleanupRepo{}
 	cfg := &SnapshotOptions{
-
 		OutboxLagRebuildSeconds:  1,
 		OutboxLagRebuildFailures: 1,
 		OutboxBacklogRebuildRows: 1,
@@ -790,11 +780,10 @@ func TestSchedulerSnapshotServiceEmptyPollDoesNotReleaseRunningRebuild(t *testin
 		rows:   []int64{1},
 	}
 	cfg := &SnapshotOptions{
-
 		OutboxLagRebuildSeconds:  1,
 		OutboxLagRebuildFailures: 1,
 	}
-	svc := NewSnapshotService(cache, repo, &outboxCleanupAccountRepo{}, nil, cfg)
+	svc := NewSnapshotService(cache, repo, &outboxCleanupProviderRepo{}, nil, cfg)
 
 	firstDone := make(chan struct{})
 	go func() {

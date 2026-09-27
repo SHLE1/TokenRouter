@@ -49,7 +49,7 @@ const saving = ref(false)
 const editingId = ref<number | null>(null)
 const draft = ref<AlertRule | null>(null)
 
-type MetricGroup = 'system' | 'group' | 'account'
+type MetricGroup = 'system' | 'group' | 'provider'
 
 interface MetricDefinition {
   type: MetricType
@@ -62,7 +62,7 @@ interface MetricDefinition {
 }
 
 const groupMetricTypes = new Set<MetricType>([
-  'group_available_accounts',
+  'group_available_providers',
   'group_available_ratio',
   'group_rate_limit_ratio'
 ])
@@ -183,10 +183,10 @@ const metricDefinitions = computed(() => {
 
     // Group-level metrics (requires group_id filter)
     {
-      type: 'group_available_accounts',
+      type: 'group_available_providers',
       group: 'group',
-      label: t('admin.ops.alertRules.metrics.groupAvailableAccounts'),
-      description: t('admin.ops.alertRules.metricDescriptions.groupAvailableAccounts'),
+      label: t('admin.ops.alertRules.metrics.groupAvailableProviders'),
+      description: t('admin.ops.alertRules.metricDescriptions.groupAvailableProviders'),
       recommendedOperator: '<',
       recommendedThreshold: 1
     },
@@ -209,37 +209,37 @@ const metricDefinitions = computed(() => {
       unit: '%'
     },
 
-    // Account-level metrics
+    // Provider-level metrics
     {
-      type: 'account_rate_limited_count',
-      group: 'account',
-      label: t('admin.ops.alertRules.metrics.accountRateLimitedCount'),
-      description: t('admin.ops.alertRules.metricDescriptions.accountRateLimitedCount'),
+      type: 'provider_rate_limited_count',
+      group: 'provider',
+      label: t('admin.ops.alertRules.metrics.providerRateLimitedCount'),
+      description: t('admin.ops.alertRules.metricDescriptions.providerRateLimitedCount'),
       recommendedOperator: '>',
       recommendedThreshold: 0
     },
     {
-      type: 'account_error_count',
-      group: 'account',
-      label: t('admin.ops.alertRules.metrics.accountErrorCount'),
-      description: t('admin.ops.alertRules.metricDescriptions.accountErrorCount'),
+      type: 'provider_error_count',
+      group: 'provider',
+      label: t('admin.ops.alertRules.metrics.providerErrorCount'),
+      description: t('admin.ops.alertRules.metricDescriptions.providerErrorCount'),
       recommendedOperator: '>',
       recommendedThreshold: 0
     },
     {
-      type: 'account_error_ratio',
-      group: 'account',
-      label: t('admin.ops.alertRules.metrics.accountErrorRatio'),
-      description: t('admin.ops.alertRules.metricDescriptions.accountErrorRatio'),
+      type: 'provider_error_ratio',
+      group: 'provider',
+      label: t('admin.ops.alertRules.metrics.providerErrorRatio'),
+      description: t('admin.ops.alertRules.metricDescriptions.providerErrorRatio'),
       recommendedOperator: '>',
       recommendedThreshold: 5,
       unit: '%'
     },
     {
-      type: 'overload_account_count',
-      group: 'account',
-      label: t('admin.ops.alertRules.metrics.overloadAccountCount'),
-      description: t('admin.ops.alertRules.metricDescriptions.overloadAccountCount'),
+      type: 'overload_provider_count',
+      group: 'provider',
+      label: t('admin.ops.alertRules.metrics.overloadProviderCount'),
+      description: t('admin.ops.alertRules.metricDescriptions.overloadProviderCount'),
       recommendedOperator: '>',
       recommendedThreshold: 0
     }
@@ -268,7 +268,7 @@ const metricOptions = computed(() => {
     ]
   }
 
-  return [...buildGroup('system'), ...buildGroup('group'), ...buildGroup('account')]
+  return [...buildGroup('system'), ...buildGroup('group'), ...buildGroup('provider')]
 })
 
 const operatorOptions = computed(() => {

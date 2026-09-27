@@ -552,11 +552,11 @@ func TestModelMarketplaceDoesNotInventModelsWithoutCandidates(t *testing.T) {
 	}}
 	svc := newMarketplaceFixture(
 		&marketplaceGroupRepoStub{groups: []routing.Group{{
-			ID:                 1,
-			Name:               "Qoder",
-			Status:             billing.StatusActive,
-			RateMultiplier:     1,
-			ActiveAccountCount: 1,
+			ID:                  1,
+			Name:                "Qoder",
+			Status:              billing.StatusActive,
+			RateMultiplier:      1,
+			ActiveProviderCount: 1,
 		}}},
 		settingRepo, newMarketplaceCalculator(nil, nil), nil,
 	)
@@ -565,7 +565,7 @@ func TestModelMarketplaceDoesNotInventModelsWithoutCandidates(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListPublic returned error: %v", err)
 	}
-	require.Empty(t, groups, "账号计数不能替代实际可请求能力")
+	require.Empty(t, groups, "提供商计数不能替代实际可请求能力")
 }
 
 type marketplaceGroupRepoStub struct {

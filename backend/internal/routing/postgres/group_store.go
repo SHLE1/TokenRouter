@@ -29,9 +29,9 @@ type GroupAccessParticipant interface {
 	Delete(context.Context, int64) error
 }
 type GroupStoreOptions struct {
-	Accounts func(postgresinfra.Executor) GroupLinkParticipant
-	Users    func(postgresinfra.Executor) GroupAccessParticipant
-	Enqueue  func(context.Context, postgresinfra.Executor, *int64) error
+	Providers func(postgresinfra.Executor) GroupLinkParticipant
+	Users     func(postgresinfra.Executor) GroupAccessParticipant
+	Enqueue   func(context.Context, postgresinfra.Executor, *int64) error
 }
 
 func NewGroupStore(client *dbent.Client, db postgresinfra.Executor, options GroupStoreOptions) *GroupStore {
@@ -169,7 +169,7 @@ func (r *GroupStore) FindByDuplicateOperationID(ctx context.Context, operationID
 	return GroupFromEnt(row), nil
 }
 
-// CreateFromSource 原子保存分组副本、源账号绑定和调度事件。
+// CreateFromSource 原子保存分组副本、源提供商绑定和调度事件。
 func (r *GroupStore) CreateFromSource(ctx context.Context, groupIn *routing.Group, sourceGroupID int64) error {
 	if groupIn == nil {
 		return errors.New("group is nil")
@@ -193,12 +193,12 @@ func (r *GroupStore) CreateFromSource(ctx context.Context, groupIn *routing.Grou
 	if err := createGroupRecord(txCtx, txClient, groupIn); err != nil {
 		return err
 	}
-	result, err := r.options.Accounts(txClient).Copy(txCtx, groupIn.ID, sourceGroupID, groupIn.RequireOAuthOnly)
+	result, err := r.options.Providers(txClient).Copy(txCtx, groupIn.ID, sourceGroupID, groupIn.RequireOAuthOnly)
 	if err != nil {
 		return err
 	}
 	if count, countErr := result.RowsAffected(); countErr == nil {
-		groupIn.AccountCount = count
+		groupIn.ProviderCount = count
 	}
 	if err := r.options.Enqueue(txCtx, txClient, &groupIn.ID); err != nil {
 		return err
@@ -217,12 +217,12 @@ func (r *GroupStore) GetByID(ctx context.Context, id int64) (*routing.Group, err
 	if err != nil {
 		return nil, err
 	}
-	counts, err := r.loadAccountCounts(ctx, []int64{out.ID})
+	counts, err := r.loadProviderCounts(ctx, []int64{out.ID})
 	if err == nil {
 		c := counts[out.ID]
-		out.AccountCount = c.Total
-		out.ActiveAccountCount = c.Active
-		out.RateLimitedAccountCount = c.RateLimited
+		out.ProviderCount = c.Total
+		out.ActiveProviderCount = c.Active
+		out.RateLimitedProviderCount = c.RateLimited
 	}
 	return out, nil
 }
@@ -230,7 +230,7 @@ func (r *GroupStore) GetByID(ctx context.Context, id int64) (*routing.Group, err
 func (r *GroupStore) GetByIDLite(ctx context.Context, id int64) (*routing.Group, error) {
 	client := clientFromContext(ctx, r.client)
 
-	// AccountCount is intentionally not loaded here; use GetByID when needed.
+	// ProviderCount is intentionally not loaded here; use GetByID when needed.
 	m, err := client.Group.Query().
 		Where(group.IDEQ(id)).
 		Only(ctx)
@@ -371,8 +371,8 @@ func (r *GroupStore) ListWithFilters(ctx context.Context, params pagination.Pagi
 		return nil, nil, err
 	}
 
-	if strings.EqualFold(strings.TrimSpace(params.SortBy), "account_count") {
-		return r.listWithAccountCountSort(ctx, q, params, total)
+	if strings.EqualFold(strings.TrimSpace(params.SortBy), "provider_count") {
+		return r.listWithProviderCountSort(ctx, q, params, total)
 	}
 
 	groupsQuery := q.
@@ -395,21 +395,21 @@ func (r *GroupStore) ListWithFilters(ctx context.Context, params pagination.Pagi
 		groupIDs = append(groupIDs, g.ID)
 	}
 
-	counts, err := r.loadAccountCounts(ctx, groupIDs)
+	counts, err := r.loadProviderCounts(ctx, groupIDs)
 	if err == nil {
 		for i := range outGroups {
 			c := counts[outGroups[i].ID]
-			outGroups[i].AccountCount = c.Total
-			outGroups[i].ActiveAccountCount = c.Active
-			outGroups[i].RateLimitedAccountCount = c.RateLimited
+			outGroups[i].ProviderCount = c.Total
+			outGroups[i].ActiveProviderCount = c.Active
+			outGroups[i].RateLimitedProviderCount = c.RateLimited
 		}
 	}
 
 	return outGroups, pagination.ResultFromTotal(int64(total), params), nil
 }
 
-func (r *GroupStore) listWithAccountCountSort(ctx context.Context, q *dbent.GroupQuery, params pagination.PaginationParams, total int) ([]routing.Group, *pagination.PaginationResult, error) {
-	// 第一步：只查 ID + sort_order（轻量，不做分页 — 需要全量排序 account_count）。
+func (r *GroupStore) listWithProviderCountSort(ctx context.Context, q *dbent.GroupQuery, params pagination.PaginationParams, total int) ([]routing.Group, *pagination.PaginationResult, error) {
+	// 第一步：只查 ID + sort_order（轻量，不做分页 — 需要全量排序 provider_count）。
 	rows, err := q.Clone().
 		Select(group.FieldID, group.FieldSortOrder).
 		Order(dbent.Asc(group.FieldSortOrder), dbent.Asc(group.FieldID)).
@@ -419,9 +419,9 @@ func (r *GroupStore) listWithAccountCountSort(ctx context.Context, q *dbent.Grou
 	}
 
 	type sortEntry struct {
-		id           int64
-		sortOrder    int
-		accountCount int64
+		id            int64
+		sortOrder     int
+		providerCount int64
 	}
 	entries := make([]sortEntry, 0, len(rows))
 	groupIDs := make([]int64, len(rows))
@@ -430,15 +430,15 @@ func (r *GroupStore) listWithAccountCountSort(ctx context.Context, q *dbent.Grou
 		entries = append(entries, sortEntry{id: r.ID, sortOrder: r.SortOrder})
 	}
 
-	// 第二步：批量加载 account counts（一次 SQL）。
-	counts, err := r.loadAccountCounts(ctx, groupIDs)
+	// 第二步：批量加载 provider counts（一次 SQL）。
+	counts, err := r.loadProviderCounts(ctx, groupIDs)
 	if err != nil {
 		return nil, nil, err
 	}
 	for i := range entries {
 		c := counts[entries[i].id]
 		if c.Total > 0 {
-			entries[i].accountCount = c.Total
+			entries[i].providerCount = c.Total
 		}
 	}
 
@@ -451,13 +451,13 @@ func (r *GroupStore) listWithAccountCountSort(ctx context.Context, q *dbent.Grou
 		return a.sortOrder < b.sortOrder
 	}
 	sort.SliceStable(entries, func(i, j int) bool {
-		if entries[i].accountCount == entries[j].accountCount {
+		if entries[i].providerCount == entries[j].providerCount {
 			return tieCmp(entries[i], entries[j])
 		}
 		if sortOrder == pagination.SortOrderAsc {
-			return entries[i].accountCount < entries[j].accountCount
+			return entries[i].providerCount < entries[j].providerCount
 		}
-		return entries[i].accountCount > entries[j].accountCount
+		return entries[i].providerCount > entries[j].providerCount
 	})
 
 	// 第四步：分页，只加载当前页需要的完整 Group。
@@ -484,9 +484,9 @@ func (r *GroupStore) listWithAccountCountSort(ctx context.Context, q *dbent.Grou
 	for i := range groups {
 		g := GroupFromEnt(groups[i])
 		c := counts[g.ID]
-		g.AccountCount = c.Total
-		g.ActiveAccountCount = c.Active
-		g.RateLimitedAccountCount = c.RateLimited
+		g.ProviderCount = c.Total
+		g.ActiveProviderCount = c.Active
+		g.RateLimitedProviderCount = c.RateLimited
 		if idx, ok := pageIdx[g.ID]; ok {
 			outGroups[idx] = *g
 		}
@@ -568,13 +568,13 @@ func (r *GroupStore) ListActive(ctx context.Context) ([]routing.Group, error) {
 		groupIDs = append(groupIDs, g.ID)
 	}
 
-	counts, err := r.loadAccountCounts(ctx, groupIDs)
+	counts, err := r.loadProviderCounts(ctx, groupIDs)
 	if err == nil {
 		for i := range outGroups {
 			c := counts[outGroups[i].ID]
-			outGroups[i].AccountCount = c.Total
-			outGroups[i].ActiveAccountCount = c.Active
-			outGroups[i].RateLimitedAccountCount = c.RateLimited
+			outGroups[i].ProviderCount = c.Total
+			outGroups[i].ActiveProviderCount = c.Active
+			outGroups[i].RateLimitedProviderCount = c.RateLimited
 		}
 	}
 
@@ -679,7 +679,7 @@ func (r *GroupStore) ExistsByIDs(ctx context.Context, ids []int64) (map[int64]bo
 	return result, nil
 }
 
-func (r *GroupStore) GetAccountCount(ctx context.Context, groupID int64) (total int64, active int64, err error) {
+func (r *GroupStore) GetProviderCount(ctx context.Context, groupID int64) (total int64, active int64, err error) {
 	sqlq := r.sqlExecutorFromContext(ctx)
 	var rateLimited int64
 	err = postgresinfra.ScanSingleRow(ctx, sqlq,
@@ -687,22 +687,22 @@ func (r *GroupStore) GetAccountCount(ctx context.Context, groupID int64) (total 
 			COUNT(*) FILTER (WHERE a.deleted_at IS NULL),
 			COUNT(*) FILTER (WHERE %s),
 			COUNT(*) FILTER (WHERE %s)
-		FROM account_groups ag JOIN accounts a ON a.id = ag.account_id
-		WHERE ag.group_id = $1`, groupAccountAvailableSQL, groupAccountTemporarilyLimitedSQL),
+		FROM provider_groups ag JOIN providers a ON a.id = ag.provider_id
+		WHERE ag.group_id = $1`, groupProviderAvailableSQL, groupProviderTemporarilyLimitedSQL),
 		[]any{groupID}, &total, &active, &rateLimited)
 	return
 }
 
-func (r *GroupStore) DeleteAccountGroupsByGroupID(ctx context.Context, groupID int64) (int64, error) {
+func (r *GroupStore) DeleteProviderGroupsByGroupID(ctx context.Context, groupID int64) (int64, error) {
 	sqlq := r.sqlExecutorFromContext(ctx)
 
-	res, err := r.options.Accounts(sqlq).Clear(ctx, groupID)
+	res, err := r.options.Providers(sqlq).Clear(ctx, groupID)
 	if err != nil {
 		return 0, err
 	}
 	affected, _ := res.RowsAffected()
 	if err := r.options.Enqueue(ctx, sqlq, &groupID); err != nil {
-		logger.LegacyPrintf("repository.group", "[SchedulerOutbox] enqueue group account clear failed: group=%d err=%v", groupID, err)
+		logger.LegacyPrintf("repository.group", "[SchedulerOutbox] enqueue group provider clear failed: group=%d err=%v", groupID, err)
 	}
 	return affected, nil
 }
@@ -757,7 +757,7 @@ func (r *GroupStore) DeleteCascade(ctx context.Context, id int64) ([]int64, erro
 	if err := r.options.Users(exec).Delete(ctx, id); err != nil {
 		return nil, err
 	}
-	if _, err := r.options.Accounts(exec).Clear(ctx, id); err != nil {
+	if _, err := r.options.Providers(exec).Clear(ctx, id); err != nil {
 		return nil, err
 	}
 
@@ -778,15 +778,15 @@ func (r *GroupStore) DeleteCascade(ctx context.Context, id int64) ([]int64, erro
 	return affectedUserIDs, nil
 }
 
-type groupAccountCounts struct {
+type groupProviderCounts struct {
 	Total       int64
 	Active      int64
 	RateLimited int64
 }
 
 const (
-	// 分组页的"可用"账号数必须与账号仓储的 ListSchedulableByGroupID 过滤口径一致。
-	groupAccountAvailableSQL = `a.deleted_at IS NULL
+	// 分组页的"可用"提供商数必须与提供商仓储的 ListSchedulableByGroupID 过滤口径一致。
+	groupProviderAvailableSQL = `a.deleted_at IS NULL
 				AND a.status = 'active'
 				AND a.schedulable = true
 				AND (a.expires_at IS NULL OR a.expires_at > NOW() OR a.auto_pause_on_expired = FALSE)
@@ -794,8 +794,8 @@ const (
 				AND (a.overload_until IS NULL OR a.overload_until <= NOW())
 				AND (a.temp_unschedulable_until IS NULL OR a.temp_unschedulable_until <= NOW())`
 
-	// 这里沿用历史字段名 RateLimitedAccountCount，但统计的是会让账号暂时退出调度的时间窗口。
-	groupAccountTemporarilyLimitedSQL = `a.deleted_at IS NULL
+	// 这里沿用历史字段名 RateLimitedProviderCount，但统计的是会让提供商暂时退出调度的时间窗口。
+	groupProviderTemporarilyLimitedSQL = `a.deleted_at IS NULL
 				AND a.status = 'active'
 				AND a.schedulable = true
 				AND (a.expires_at IS NULL OR a.expires_at > NOW() OR a.auto_pause_on_expired = FALSE)
@@ -806,9 +806,9 @@ const (
 				)`
 )
 
-func (r *GroupStore) loadAccountCounts(ctx context.Context, groupIDs []int64) (counts map[int64]groupAccountCounts, err error) {
+func (r *GroupStore) loadProviderCounts(ctx context.Context, groupIDs []int64) (counts map[int64]groupProviderCounts, err error) {
 	sqlq := r.sqlExecutorFromContext(ctx)
-	counts = make(map[int64]groupAccountCounts, len(groupIDs))
+	counts = make(map[int64]groupProviderCounts, len(groupIDs))
 	if len(groupIDs) == 0 {
 		return counts, nil
 	}
@@ -819,10 +819,10 @@ func (r *GroupStore) loadAccountCounts(ctx context.Context, groupIDs []int64) (c
 			COUNT(*) FILTER (WHERE a.deleted_at IS NULL) AS total,
 			COUNT(*) FILTER (WHERE %s) AS active,
 			COUNT(*) FILTER (WHERE %s) AS rate_limited
-		FROM account_groups ag
-		JOIN accounts a ON a.id = ag.account_id
+		FROM provider_groups ag
+		JOIN providers a ON a.id = ag.provider_id
 		WHERE ag.group_id = ANY($1)
-		GROUP BY ag.group_id`, groupAccountAvailableSQL, groupAccountTemporarilyLimitedSQL),
+		GROUP BY ag.group_id`, groupProviderAvailableSQL, groupProviderTemporarilyLimitedSQL),
 		pq.Array(groupIDs),
 	)
 	if err != nil {
@@ -837,7 +837,7 @@ func (r *GroupStore) loadAccountCounts(ctx context.Context, groupIDs []int64) (c
 
 	for rows.Next() {
 		var groupID int64
-		var c groupAccountCounts
+		var c groupProviderCounts
 		if err = rows.Scan(&groupID, &c.Total, &c.Active, &c.RateLimited); err != nil {
 			return nil, err
 		}
@@ -850,8 +850,8 @@ func (r *GroupStore) loadAccountCounts(ctx context.Context, groupIDs []int64) (c
 	return counts, nil
 }
 
-// GetAccountIDsByGroupIDs 获取多个分组的所有账号 ID（去重）
-func (r *GroupStore) GetAccountIDsByGroupIDs(ctx context.Context, groupIDs []int64) ([]int64, error) {
+// GetProviderIDsByGroupIDs 获取多个分组的所有提供商 ID（去重）
+func (r *GroupStore) GetProviderIDsByGroupIDs(ctx context.Context, groupIDs []int64) ([]int64, error) {
 	sqlq := r.sqlExecutorFromContext(ctx)
 	if len(groupIDs) == 0 {
 		return nil, nil
@@ -859,7 +859,7 @@ func (r *GroupStore) GetAccountIDsByGroupIDs(ctx context.Context, groupIDs []int
 
 	rows, err := sqlq.QueryContext(
 		ctx,
-		"SELECT DISTINCT account_id FROM account_groups WHERE group_id = ANY($1) ORDER BY account_id",
+		"SELECT DISTINCT provider_id FROM provider_groups WHERE group_id = ANY($1) ORDER BY provider_id",
 		pq.Array(groupIDs),
 	)
 	if err != nil {
@@ -867,37 +867,37 @@ func (r *GroupStore) GetAccountIDsByGroupIDs(ctx context.Context, groupIDs []int
 	}
 	defer func() { _ = rows.Close() }()
 
-	var accountIDs []int64
+	var providerIDs []int64
 	for rows.Next() {
-		var accountID int64
-		if err := rows.Scan(&accountID); err != nil {
+		var providerID int64
+		if err := rows.Scan(&providerID); err != nil {
 			return nil, err
 		}
-		accountIDs = append(accountIDs, accountID)
+		providerIDs = append(providerIDs, providerID)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
-	return accountIDs, nil
+	return providerIDs, nil
 }
 
-// BindAccountsToGroup 将多个账号绑定到指定分组（批量插入，忽略已存在的绑定）
-func (r *GroupStore) BindAccountsToGroup(ctx context.Context, groupID int64, accountIDs []int64) error {
+// BindProvidersToGroup 将多个提供商绑定到指定分组（批量插入，忽略已存在的绑定）
+func (r *GroupStore) BindProvidersToGroup(ctx context.Context, groupID int64, providerIDs []int64) error {
 	sqlq := r.sqlExecutorFromContext(ctx)
-	if len(accountIDs) == 0 {
+	if len(providerIDs) == 0 {
 		return nil
 	}
 
 	// 使用 INSERT ... ON CONFLICT DO NOTHING 忽略已存在的绑定
-	err := r.options.Accounts(sqlq).Bind(ctx, groupID, accountIDs)
+	err := r.options.Providers(sqlq).Bind(ctx, groupID, providerIDs)
 	if err != nil {
 		return err
 	}
 
 	// 发送调度器事件
 	if err := r.options.Enqueue(ctx, sqlq, &groupID); err != nil {
-		logger.LegacyPrintf("repository.group", "[SchedulerOutbox] enqueue bind accounts to group failed: group=%d err=%v", groupID, err)
+		logger.LegacyPrintf("repository.group", "[SchedulerOutbox] enqueue bind providers to group failed: group=%d err=%v", groupID, err)
 	}
 
 	return nil

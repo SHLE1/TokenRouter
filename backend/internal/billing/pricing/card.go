@@ -36,15 +36,15 @@ func (m BillingMode) IsValidUsageFilter() bool {
 	return false
 }
 
-// AccountStatsPricingRule 账号统计定价规则
-// 每条规则包含匹配条件（分组/账号）和独立的模型定价。
+// ProviderStatsPricingRule 提供商统计定价规则
+// 每条规则包含匹配条件（分组/提供商）和独立的模型定价。
 // 多条规则按 SortOrder 排序，先命中为准。
-type AccountStatsPricingRule struct {
+type ProviderStatsPricingRule struct {
 	ID              int64
 	PricingConfigID int64
 	Name            string
 	GroupIDs        []int64
-	AccountIDs      []int64
+	ProviderIDs     []int64
 	SortOrder       int
 	Pricing         []ModelPricingEntry // 规则内的模型定价（复用现有定价结构）
 	CreatedAt       time.Time

@@ -19,11 +19,11 @@ func groupFromView(v *usage.GroupView) *Group {
 	return &out
 }
 
-func accountFromView(v *usage.AccountView) *AccountSummary {
+func providerFromView(v *usage.ProviderView) *ProviderSummary {
 	if v == nil {
 		return nil
 	}
-	return &AccountSummary{ID: v.ID, Name: v.Name}
+	return &ProviderSummary{ID: v.ID, Name: v.Name}
 }
 
 func userFromView(v *usage.UserView) *User {

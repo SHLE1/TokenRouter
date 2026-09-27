@@ -17,11 +17,11 @@ const
 // fail-open 告警限频，避免代理故障期间刷屏。
 openAIProxyStreamFailOpenLogInterval = 5 * time.Second
 
-func openAIProxyStreamCircuitProxyID(account *gatewayprovider.ExecutionAccount) (int64, bool) {
-	if account == nil || account.Record.Platform != capability.PlatformOpenAI || account.Record.ProxyID == nil || *account.Record.ProxyID <= 0 {
+func openAIProxyStreamCircuitProxyID(provider *gatewayprovider.ExecutionProvider) (int64, bool) {
+	if provider == nil || provider.Record.Platform != capability.PlatformOpenAI || provider.Record.ProxyID == nil || *provider.Record.ProxyID <= 0 {
 		return 0, false
 	}
-	return *account.Record.ProxyID, true
+	return *provider.Record.ProxyID, true
 }
 
 func withOpenAIProxyStreamQuarantineBypass(ctx context.Context) context.Context {
@@ -41,8 +41,8 @@ func openAIProxyStreamQuarantineBypassed(ctx context.Context) bool {
 	return requeststate.ExecutionHintsFromContext(ctx).ProxyQuarantineBypass
 }
 
-func (s *Compatible) isOpenAIProxyStreamQuarantined(ctx context.Context, account *gatewayprovider.ExecutionAccount) bool {
-	proxyID, ok := openAIProxyStreamCircuitProxyID(account)
+func (s *Compatible) isOpenAIProxyStreamQuarantined(ctx context.Context, provider *gatewayprovider.ExecutionProvider) bool {
+	proxyID, ok := openAIProxyStreamCircuitProxyID(provider)
 	if !ok {
 		return false
 	}

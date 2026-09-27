@@ -8,7 +8,7 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 
-	"github.com/TokenFlux/TokenRouter/internal/egress/provider"
+	egressadapter "github.com/TokenFlux/TokenRouter/internal/egress/provider"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/logredact"
 
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
@@ -20,8 +20,8 @@ import (
 	"go.uber.org/zap"
 )
 
-func (p *OpenAIResponseOutput) BindResponseAccount(ctx context.Context, c *gin.Context, account *gatewayprovider.ExecutionAccount, responseID string) {
-	if p == nil || account == nil || account.Record.ID <= 0 {
+func (p *OpenAIResponseOutput) BindResponseProvider(ctx context.Context, c *gin.Context, provider *gatewayprovider.ExecutionProvider, responseID string) {
+	if p == nil || provider == nil || provider.Record.ID <= 0 {
 		return
 	}
 	responseID = strings.TrimSpace(responseID)
@@ -34,13 +34,13 @@ func (p *OpenAIResponseOutput) BindResponseAccount(ctx context.Context, c *gin.C
 	}
 	groupID := OpenAIResponseGroupID(c)
 	ttl := p.ResponseTTL()
-	gatewayprovider.LogOpenAIWSBindResponseAccountWarn(groupID, account.Record.ID, responseID, store.BindResponseAccount(ctx, groupID, responseID, account.Record.ID, ttl))
+	gatewayprovider.LogOpenAIWSBindResponseProviderWarn(groupID, provider.Record.ID, responseID, store.BindResponseProvider(ctx, groupID, responseID, provider.Record.ID, ttl))
 	if owner, ok := ResponseOwnerFromContext(c); ok {
 		if err := store.BindHTTPResponseOwner(ctx, groupID, responseID, owner.UserID, owner.APIKeyID, p.ResponseTTL()); err != nil {
 			logging.L().Warn(
 				"openai.http_bind_response_owner_failed",
 				zap.Int64("group_id", groupID),
-				zap.Int64("account_id", account.Record.ID),
+				zap.Int64("provider_id", provider.Record.ID),
 				zap.Int64("user_id", owner.UserID),
 				zap.Int64("api_key_id", owner.APIKeyID),
 				zap.String("response_id", gatewayprovider.TruncateOpenAIWSLogValue(responseID, gatewayprovider.OpenAIWSIDValueMaxLen)),
@@ -62,7 +62,7 @@ func (p *OpenAIResponseOutput) ProtocolError(resp *http.Response, c *gin.Context
 		WriteOpenAICompactSSEFailureMessage(c, http.StatusBadGateway, "upstream_error", message, MarkOpsStreamError)
 		return fmt.Errorf("non-streaming openai protocol error: %s", message)
 	}
-	provider.WriteFilteredHeaders(c.Writer.Header(), resp.Header, p.Headers)
+	egressadapter.WriteFilteredHeaders(c.Writer.Header(), resp.Header, p.Headers)
 	c.Writer.Header().Set("Content-Type", "application/json; charset=utf-8")
 	c.JSON(http.StatusBadGateway, gin.H{
 		"error": gin.H{

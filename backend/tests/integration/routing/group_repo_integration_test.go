@@ -80,7 +80,7 @@ func (s *GroupRepoSuite) TestCreate() {
 	s.Require().Equal("test-create", got.Name)
 }
 
-func (s *GroupRepoSuite) TestCreateFromSourcePreservesPriorityAndFiltersIneligibleAccounts() {
+func (s *GroupRepoSuite) TestCreateFromSourcePreservesPriorityAndFiltersIneligibleProviders() {
 	source := &routing.Group{
 		Name: "duplicate-source",
 
@@ -94,7 +94,7 @@ func (s *GroupRepoSuite) TestCreateFromSourcePreservesPriorityAndFiltersIneligib
 	}
 	s.Require().NoError(s.repo.Create(s.ctx, source))
 
-	insertAccount := func(name, accountType string, deleted bool) int64 {
+	insertProvider := func(name, providerType string, deleted bool) int64 {
 		var id int64
 		deletedAt := any(nil)
 		if deleted {
@@ -103,20 +103,20 @@ func (s *GroupRepoSuite) TestCreateFromSourcePreservesPriorityAndFiltersIneligib
 		s.Require().NoError(postgresinfra.ScanSingleRow(
 			s.ctx,
 			s.tx,
-			"INSERT INTO accounts (name, platform, type, deleted_at) VALUES ($1, $2, $3, $4) RETURNING id",
-			[]any{name, capability.PlatformOpenAI, accountType, deletedAt},
+			"INSERT INTO providers (name, platform, type, deleted_at) VALUES ($1, $2, $3, $4) RETURNING id",
+			[]any{name, capability.PlatformOpenAI, providerType, deletedAt},
 			&id,
 		))
 		return id
 	}
-	oauthID := insertAccount("duplicate-oauth", capability.AccountTypeOAuth, false)
-	apiKeyID := insertAccount("duplicate-apikey", capability.AccountTypeAPIKey, false)
-	deletedID := insertAccount("duplicate-deleted", capability.AccountTypeOAuth, true)
-	for _, accountID := range []int64{oauthID, apiKeyID, deletedID} {
+	oauthID := insertProvider("duplicate-oauth", capability.ProviderTypeOAuth, false)
+	apiKeyID := insertProvider("duplicate-apikey", capability.ProviderTypeAPIKey, false)
+	deletedID := insertProvider("duplicate-deleted", capability.ProviderTypeOAuth, true)
+	for _, providerID := range []int64{oauthID, apiKeyID, deletedID} {
 		_, err := s.tx.ExecContext(
 			s.ctx,
-			"INSERT INTO account_groups (account_id, group_id, created_at) VALUES ($1, $2, NOW())",
-			accountID,
+			"INSERT INTO provider_groups (provider_id, group_id, created_at) VALUES ($1, $2, NOW())",
+			providerID,
 			source.ID,
 		)
 		s.Require().NoError(err)
@@ -135,20 +135,20 @@ func (s *GroupRepoSuite) TestCreateFromSourcePreservesPriorityAndFiltersIneligib
 		ResponsesImagePolicy: "inherit",
 	}
 	s.Require().NoError(s.repo.CreateFromSource(s.ctx, duplicate, source.ID))
-	s.Require().EqualValues(1, duplicate.AccountCount)
+	s.Require().EqualValues(1, duplicate.ProviderCount)
 
 	rows, err := s.tx.QueryContext(
 		s.ctx,
-		"SELECT account_id FROM account_groups WHERE group_id = $1 ORDER BY account_id",
+		"SELECT provider_id FROM provider_groups WHERE group_id = $1 ORDER BY provider_id",
 		duplicate.ID,
 	)
 	s.Require().NoError(err)
 	defer func() { _ = rows.Close() }()
 	s.Require().True(rows.Next())
-	var copiedAccountID int64
-	s.Require().NoError(rows.Scan(&copiedAccountID))
-	s.Require().Equal(oauthID, copiedAccountID)
-	s.Require().False(rows.Next(), "API-key and soft-deleted accounts must not be copied")
+	var copiedProviderID int64
+	s.Require().NoError(rows.Scan(&copiedProviderID))
+	s.Require().Equal(oauthID, copiedProviderID)
+	s.Require().False(rows.Next(), "API-key and soft-deleted providers must not be copied")
 
 	recovered, err := s.repo.FindByDuplicateOperationID(s.ctx, duplicate.DuplicateOperationID)
 	s.Require().NoError(err)
@@ -171,7 +171,7 @@ func (s *GroupRepoSuite) TestGetByID_NotFound() {
 	s.Require().ErrorIs(err, routing.ErrGroupNotFound)
 }
 
-func (s *GroupRepoSuite) TestGetByIDLite_DoesNotUseAccountCount() {
+func (s *GroupRepoSuite) TestGetByIDLite_DoesNotUseProviderCount() {
 	group := &routing.Group{
 		Name: "lite-group",
 
@@ -569,7 +569,7 @@ func (s *GroupRepoSuite) TestUpdateSortOrders_MissingGroupNoPartialUpdate() {
 	s.Require().Equal(beforeSort, after.SortOrder)
 }
 
-func (s *GroupRepoSuite) TestListWithFilters_AccountCount() {
+func (s *GroupRepoSuite) TestListWithFilters_ProviderCount() {
 	g1 := &routing.Group{
 		Name: "g1",
 
@@ -595,17 +595,17 @@ func (s *GroupRepoSuite) TestListWithFilters_AccountCount() {
 	s.Require().NoError(s.repo.Create(s.ctx, g1))
 	s.Require().NoError(s.repo.Create(s.ctx, g2))
 
-	var accountID int64
+	var providerID int64
 	s.Require().NoError(postgresinfra.ScanSingleRow(
 		s.ctx,
 		s.tx,
-		"INSERT INTO accounts (name, platform, type) VALUES ($1, $2, $3) RETURNING id",
-		[]any{"acc1", capability.PlatformAnthropic, capability.AccountTypeOAuth},
-		&accountID,
+		"INSERT INTO providers (name, platform, type) VALUES ($1, $2, $3) RETURNING id",
+		[]any{"acc1", capability.PlatformAnthropic, capability.ProviderTypeOAuth},
+		&providerID,
 	))
-	_, err := s.tx.ExecContext(s.ctx, "INSERT INTO account_groups (account_id, group_id, created_at) VALUES ($1, $2, NOW())", accountID, g1.ID)
+	_, err := s.tx.ExecContext(s.ctx, "INSERT INTO provider_groups (provider_id, group_id, created_at) VALUES ($1, $2, NOW())", providerID, g1.ID)
 	s.Require().NoError(err)
-	_, err = s.tx.ExecContext(s.ctx, "INSERT INTO account_groups (account_id, group_id, created_at) VALUES ($1, $2, NOW())", accountID, g2.ID)
+	_, err = s.tx.ExecContext(s.ctx, "INSERT INTO provider_groups (provider_id, group_id, created_at) VALUES ($1, $2, NOW())", providerID, g2.ID)
 	s.Require().NoError(err)
 
 	isExclusive := true
@@ -614,7 +614,7 @@ func (s *GroupRepoSuite) TestListWithFilters_AccountCount() {
 	s.Require().Equal(int64(1), page.Total)
 	s.Require().Len(groups, 1)
 	s.Require().Equal(g2.ID, groups[0].ID, "ListWithFilters returned wrong group")
-	s.Require().Equal(int64(1), groups[0].AccountCount, "AccountCount mismatch")
+	s.Require().Equal(int64(1), groups[0].ProviderCount, "ProviderCount mismatch")
 }
 
 // --- ListActive / ListActiveByPlatform ---
@@ -736,9 +736,9 @@ func (s *GroupRepoSuite) TestExistsByName() {
 	s.Require().False(notExists)
 }
 
-// --- GetAccountCount ---
+// --- GetProviderCount ---
 
-func (s *GroupRepoSuite) TestGetAccountCount() {
+func (s *GroupRepoSuite) TestGetProviderCount() {
 	group := &routing.Group{
 		Name: "g-count",
 
@@ -756,30 +756,30 @@ func (s *GroupRepoSuite) TestGetAccountCount() {
 	s.Require().NoError(postgresinfra.ScanSingleRow(
 		s.ctx,
 		s.tx,
-		"INSERT INTO accounts (name, platform, type) VALUES ($1, $2, $3) RETURNING id",
-		[]any{"a1", capability.PlatformAnthropic, capability.AccountTypeOAuth},
+		"INSERT INTO providers (name, platform, type) VALUES ($1, $2, $3) RETURNING id",
+		[]any{"a1", capability.PlatformAnthropic, capability.ProviderTypeOAuth},
 		&a1,
 	))
 	var a2 int64
 	s.Require().NoError(postgresinfra.ScanSingleRow(
 		s.ctx,
 		s.tx,
-		"INSERT INTO accounts (name, platform, type) VALUES ($1, $2, $3) RETURNING id",
-		[]any{"a2", capability.PlatformAnthropic, capability.AccountTypeOAuth},
+		"INSERT INTO providers (name, platform, type) VALUES ($1, $2, $3) RETURNING id",
+		[]any{"a2", capability.PlatformAnthropic, capability.ProviderTypeOAuth},
 		&a2,
 	))
 
-	_, err := s.tx.ExecContext(s.ctx, "INSERT INTO account_groups (account_id, group_id, created_at) VALUES ($1, $2, NOW())", a1, group.ID)
+	_, err := s.tx.ExecContext(s.ctx, "INSERT INTO provider_groups (provider_id, group_id, created_at) VALUES ($1, $2, NOW())", a1, group.ID)
 	s.Require().NoError(err)
-	_, err = s.tx.ExecContext(s.ctx, "INSERT INTO account_groups (account_id, group_id, created_at) VALUES ($1, $2, NOW())", a2, group.ID)
+	_, err = s.tx.ExecContext(s.ctx, "INSERT INTO provider_groups (provider_id, group_id, created_at) VALUES ($1, $2, NOW())", a2, group.ID)
 	s.Require().NoError(err)
 
-	count, _, err := s.repo.GetAccountCount(s.ctx, group.ID)
-	s.Require().NoError(err, "GetAccountCount")
+	count, _, err := s.repo.GetProviderCount(s.ctx, group.ID)
+	s.Require().NoError(err, "GetProviderCount")
 	s.Require().Equal(int64(2), count)
 }
 
-func (s *GroupRepoSuite) TestGetAccountCount_Empty() {
+func (s *GroupRepoSuite) TestGetProviderCount_Empty() {
 	group := &routing.Group{
 		Name: "g-empty",
 
@@ -793,15 +793,15 @@ func (s *GroupRepoSuite) TestGetAccountCount_Empty() {
 	}
 	s.Require().NoError(s.repo.Create(s.ctx, group))
 
-	count, _, err := s.repo.GetAccountCount(s.ctx, group.ID)
+	count, _, err := s.repo.GetProviderCount(s.ctx, group.ID)
 	s.Require().NoError(err)
 	s.Require().Zero(count)
 }
 
-// TestListWithFilters_ActiveAccountCount_LessThanTotal 验证 ActiveAccountCount 正确区分可用与不可用账号。
-// 当分组内存在 disabled 或 schedulable=false 的账号时，ActiveAccountCount 必须小于 AccountCount，
-// 且与 GetAccountCount 返回的 active 值一致。
-func (s *GroupRepoSuite) TestListWithFilters_ActiveAccountCount_LessThanTotal() {
+// TestListWithFilters_ActiveProviderCount_LessThanTotal 验证 ActiveProviderCount 正确区分可用与不可用提供商。
+// 当分组内存在 disabled 或 schedulable=false 的提供商时，ActiveProviderCount 必须小于 ProviderCount，
+// 且与 GetProviderCount 返回的 active 值一致。
+func (s *GroupRepoSuite) TestListWithFilters_ActiveProviderCount_LessThanTotal() {
 	g := &routing.Group{
 		Name: "g-mixed-status",
 
@@ -815,29 +815,29 @@ func (s *GroupRepoSuite) TestListWithFilters_ActiveAccountCount_LessThanTotal() 
 	}
 	s.Require().NoError(s.repo.Create(s.ctx, g))
 
-	insertAccount := func(name, status string, schedulable bool) int64 {
+	insertProvider := func(name, status string, schedulable bool) int64 {
 		var id int64
 		s.Require().NoError(postgresinfra.ScanSingleRow(
 			s.ctx, s.tx,
-			"INSERT INTO accounts (name, platform, type, status, schedulable) VALUES ($1, $2, $3, $4, $5) RETURNING id",
-			[]any{name, capability.PlatformAnthropic, capability.AccountTypeOAuth, status, schedulable},
+			"INSERT INTO providers (name, platform, type, status, schedulable) VALUES ($1, $2, $3, $4, $5) RETURNING id",
+			[]any{name, capability.PlatformAnthropic, capability.ProviderTypeOAuth, status, schedulable},
 			&id,
 		))
 		return id
 	}
-	link := func(accountID int64) {
+	link := func(providerID int64) {
 		_, err := s.tx.ExecContext(s.ctx,
-			"INSERT INTO account_groups (account_id, group_id, created_at) VALUES ($1, $2, NOW())",
-			accountID, g.ID)
+			"INSERT INTO provider_groups (provider_id, group_id, created_at) VALUES ($1, $2, NOW())",
+			providerID, g.ID)
 		s.Require().NoError(err)
 	}
 
-	// 账号 1：active + schedulable，同时计入 total 与 active。
-	link(insertAccount("acc-active-sched", billing.StatusActive, true))
-	// 账号 2：disabled，仅计入 total。
-	link(insertAccount("acc-disabled", billing.StatusDisabled, true))
-	// 账号 3：active 但不可调度，仅计入 total。
-	link(insertAccount("acc-unschedulable", billing.StatusActive, false))
+	// 提供商 1：active + schedulable，同时计入 total 与 active。
+	link(insertProvider("acc-active-sched", billing.StatusActive, true))
+	// 提供商 2：disabled，仅计入 total。
+	link(insertProvider("acc-disabled", billing.StatusDisabled, true))
+	// 提供商 3：active 但不可调度，仅计入 total。
+	link(insertProvider("acc-unschedulable", billing.StatusActive, false))
 
 	// --- ListWithFilters 路径 ---
 	isExclusive := false
@@ -854,20 +854,20 @@ func (s *GroupRepoSuite) TestListWithFilters_ActiveAccountCount_LessThanTotal() 
 		}
 	}
 	s.Require().NotNil(found, "created group must appear in ListWithFilters result")
-	s.Assert().Equal(int64(3), found.AccountCount, "AccountCount must count all 3 accounts")
-	s.Assert().Equal(int64(1), found.ActiveAccountCount, "ActiveAccountCount must count only the active+schedulable account")
+	s.Assert().Equal(int64(3), found.ProviderCount, "ProviderCount must count all 3 providers")
+	s.Assert().Equal(int64(1), found.ActiveProviderCount, "ActiveProviderCount must count only the active+schedulable provider")
 
-	// --- GetAccountCount 必须返回相同统计口径 ---
-	total, active, err := s.repo.GetAccountCount(s.ctx, g.ID)
+	// --- GetProviderCount 必须返回相同统计口径 ---
+	total, active, err := s.repo.GetProviderCount(s.ctx, g.ID)
 	s.Require().NoError(err)
-	s.Assert().Equal(found.AccountCount, total, "GetAccountCount total must match ListWithFilters AccountCount")
-	s.Assert().Equal(found.ActiveAccountCount, active, "GetAccountCount active must match ListWithFilters ActiveAccountCount")
+	s.Assert().Equal(found.ProviderCount, total, "GetProviderCount total must match ListWithFilters ProviderCount")
+	s.Assert().Equal(found.ActiveProviderCount, active, "GetProviderCount active must match ListWithFilters ActiveProviderCount")
 }
 
-// TestListWithFilters_RateLimitedAccountCount 验证临时受限账号不会计入可用账号数。
-// rate_limit / overload / temp_unschedulable 都会让账号退出当前调度池，
-// 因此 ActiveAccountCount 必须与真实调度查询口径一致。
-func (s *GroupRepoSuite) TestListWithFilters_RateLimitedAccountCount() {
+// TestListWithFilters_RateLimitedProviderCount 验证临时受限提供商不会计入可用提供商数。
+// rate_limit / overload / temp_unschedulable 都会让提供商退出当前调度池，
+// 因此 ActiveProviderCount 必须与真实调度查询口径一致。
+func (s *GroupRepoSuite) TestListWithFilters_RateLimitedProviderCount() {
 	g := &routing.Group{
 		Name: "g-rate-limited",
 
@@ -883,52 +883,52 @@ func (s *GroupRepoSuite) TestListWithFilters_RateLimitedAccountCount() {
 
 	var normalID int64
 	s.Require().NoError(postgresinfra.ScanSingleRow(s.ctx, s.tx,
-		"INSERT INTO accounts (name, platform, type) VALUES ($1, $2, $3) RETURNING id",
-		[]any{"acc-normal", capability.PlatformAnthropic, capability.AccountTypeOAuth},
+		"INSERT INTO providers (name, platform, type) VALUES ($1, $2, $3) RETURNING id",
+		[]any{"acc-normal", capability.PlatformAnthropic, capability.ProviderTypeOAuth},
 		&normalID))
 
 	var rateLimitedID int64
 	s.Require().NoError(postgresinfra.ScanSingleRow(s.ctx, s.tx,
-		"INSERT INTO accounts (name, platform, type, rate_limit_reset_at) VALUES ($1, $2, $3, NOW() + INTERVAL '1 hour') RETURNING id",
-		[]any{"acc-rate-limited", capability.PlatformAnthropic, capability.AccountTypeOAuth},
+		"INSERT INTO providers (name, platform, type, rate_limit_reset_at) VALUES ($1, $2, $3, NOW() + INTERVAL '1 hour') RETURNING id",
+		[]any{"acc-rate-limited", capability.PlatformAnthropic, capability.ProviderTypeOAuth},
 		&rateLimitedID))
 
 	var overloadedID int64
 	s.Require().NoError(postgresinfra.ScanSingleRow(s.ctx, s.tx,
-		"INSERT INTO accounts (name, platform, type, overload_until) VALUES ($1, $2, $3, NOW() + INTERVAL '1 hour') RETURNING id",
-		[]any{"acc-overloaded", capability.PlatformAnthropic, capability.AccountTypeOAuth},
+		"INSERT INTO providers (name, platform, type, overload_until) VALUES ($1, $2, $3, NOW() + INTERVAL '1 hour') RETURNING id",
+		[]any{"acc-overloaded", capability.PlatformAnthropic, capability.ProviderTypeOAuth},
 		&overloadedID))
 
 	var tempUnschedulableID int64
 	s.Require().NoError(postgresinfra.ScanSingleRow(s.ctx, s.tx,
-		"INSERT INTO accounts (name, platform, type, temp_unschedulable_until) VALUES ($1, $2, $3, NOW() + INTERVAL '1 hour') RETURNING id",
-		[]any{"acc-temp-unschedulable", capability.PlatformAnthropic, capability.AccountTypeOAuth},
+		"INSERT INTO providers (name, platform, type, temp_unschedulable_until) VALUES ($1, $2, $3, NOW() + INTERVAL '1 hour') RETURNING id",
+		[]any{"acc-temp-unschedulable", capability.PlatformAnthropic, capability.ProviderTypeOAuth},
 		&tempUnschedulableID))
 
 	var expiredID int64
 	s.Require().NoError(postgresinfra.ScanSingleRow(s.ctx, s.tx,
-		"INSERT INTO accounts (name, platform, type, expires_at, auto_pause_on_expired) VALUES ($1, $2, $3, NOW() - INTERVAL '1 hour', TRUE) RETURNING id",
-		[]any{"acc-expired", capability.PlatformAnthropic, capability.AccountTypeOAuth},
+		"INSERT INTO providers (name, platform, type, expires_at, auto_pause_on_expired) VALUES ($1, $2, $3, NOW() - INTERVAL '1 hour', TRUE) RETURNING id",
+		[]any{"acc-expired", capability.PlatformAnthropic, capability.ProviderTypeOAuth},
 		&expiredID))
 
 	_, err := s.tx.ExecContext(s.ctx,
-		"INSERT INTO account_groups (account_id, group_id, created_at) VALUES ($1, $2, NOW())",
+		"INSERT INTO provider_groups (provider_id, group_id, created_at) VALUES ($1, $2, NOW())",
 		normalID, g.ID)
 	s.Require().NoError(err)
 	_, err = s.tx.ExecContext(s.ctx,
-		"INSERT INTO account_groups (account_id, group_id, created_at) VALUES ($1, $2, NOW())",
+		"INSERT INTO provider_groups (provider_id, group_id, created_at) VALUES ($1, $2, NOW())",
 		rateLimitedID, g.ID)
 	s.Require().NoError(err)
 	_, err = s.tx.ExecContext(s.ctx,
-		"INSERT INTO account_groups (account_id, group_id, created_at) VALUES ($1, $2, NOW())",
+		"INSERT INTO provider_groups (provider_id, group_id, created_at) VALUES ($1, $2, NOW())",
 		overloadedID, g.ID)
 	s.Require().NoError(err)
 	_, err = s.tx.ExecContext(s.ctx,
-		"INSERT INTO account_groups (account_id, group_id, created_at) VALUES ($1, $2, NOW())",
+		"INSERT INTO provider_groups (provider_id, group_id, created_at) VALUES ($1, $2, NOW())",
 		tempUnschedulableID, g.ID)
 	s.Require().NoError(err)
 	_, err = s.tx.ExecContext(s.ctx,
-		"INSERT INTO account_groups (account_id, group_id, created_at) VALUES ($1, $2, NOW())",
+		"INSERT INTO provider_groups (provider_id, group_id, created_at) VALUES ($1, $2, NOW())",
 		expiredID, g.ID)
 	s.Require().NoError(err)
 
@@ -946,25 +946,25 @@ func (s *GroupRepoSuite) TestListWithFilters_RateLimitedAccountCount() {
 		}
 	}
 	s.Require().NotNil(found, "created group must appear in ListWithFilters result")
-	s.Assert().Equal(int64(5), found.AccountCount, "AccountCount must include all linked accounts")
-	s.Assert().Equal(int64(1), found.ActiveAccountCount, "ActiveAccountCount must include only currently schedulable accounts")
-	s.Assert().Equal(int64(3), found.RateLimitedAccountCount, "RateLimitedAccountCount must include temporarily limited accounts")
+	s.Assert().Equal(int64(5), found.ProviderCount, "ProviderCount must include all linked providers")
+	s.Assert().Equal(int64(1), found.ActiveProviderCount, "ActiveProviderCount must include only currently schedulable providers")
+	s.Assert().Equal(int64(3), found.RateLimitedProviderCount, "RateLimitedProviderCount must include temporarily limited providers")
 
-	total, active, err := s.repo.GetAccountCount(s.ctx, g.ID)
+	total, active, err := s.repo.GetProviderCount(s.ctx, g.ID)
 	s.Require().NoError(err)
-	s.Assert().Equal(found.AccountCount, total, "GetAccountCount total must match ListWithFilters AccountCount")
-	s.Assert().Equal(found.ActiveAccountCount, active, "GetAccountCount active must match ListWithFilters ActiveAccountCount")
+	s.Assert().Equal(found.ProviderCount, total, "GetProviderCount total must match ListWithFilters ProviderCount")
+	s.Assert().Equal(found.ActiveProviderCount, active, "GetProviderCount active must match ListWithFilters ActiveProviderCount")
 
 	detail, err := s.repo.GetByID(s.ctx, g.ID)
 	s.Require().NoError(err)
-	s.Assert().Equal(found.AccountCount, detail.AccountCount, "GetByID AccountCount must match ListWithFilters")
-	s.Assert().Equal(found.ActiveAccountCount, detail.ActiveAccountCount, "GetByID ActiveAccountCount must match ListWithFilters")
-	s.Assert().Equal(found.RateLimitedAccountCount, detail.RateLimitedAccountCount, "GetByID RateLimitedAccountCount must match ListWithFilters")
+	s.Assert().Equal(found.ProviderCount, detail.ProviderCount, "GetByID ProviderCount must match ListWithFilters")
+	s.Assert().Equal(found.ActiveProviderCount, detail.ActiveProviderCount, "GetByID ActiveProviderCount must match ListWithFilters")
+	s.Assert().Equal(found.RateLimitedProviderCount, detail.RateLimitedProviderCount, "GetByID RateLimitedProviderCount must match ListWithFilters")
 }
 
-// --- DeleteAccountGroupsByGroupID ---
+// --- DeleteProviderGroupsByGroupID ---
 
-func (s *GroupRepoSuite) TestDeleteAccountGroupsByGroupID() {
+func (s *GroupRepoSuite) TestDeleteProviderGroupsByGroupID() {
 	g := &routing.Group{
 		Name: "g-del",
 
@@ -977,27 +977,27 @@ func (s *GroupRepoSuite) TestDeleteAccountGroupsByGroupID() {
 		ResponsesImagePolicy: "inherit",
 	}
 	s.Require().NoError(s.repo.Create(s.ctx, g))
-	var accountID int64
+	var providerID int64
 	s.Require().NoError(postgresinfra.ScanSingleRow(
 		s.ctx,
 		s.tx,
-		"INSERT INTO accounts (name, platform, type) VALUES ($1, $2, $3) RETURNING id",
-		[]any{"acc-del", capability.PlatformAnthropic, capability.AccountTypeOAuth},
-		&accountID,
+		"INSERT INTO providers (name, platform, type) VALUES ($1, $2, $3) RETURNING id",
+		[]any{"acc-del", capability.PlatformAnthropic, capability.ProviderTypeOAuth},
+		&providerID,
 	))
-	_, err := s.tx.ExecContext(s.ctx, "INSERT INTO account_groups (account_id, group_id, created_at) VALUES ($1, $2, NOW())", accountID, g.ID)
+	_, err := s.tx.ExecContext(s.ctx, "INSERT INTO provider_groups (provider_id, group_id, created_at) VALUES ($1, $2, NOW())", providerID, g.ID)
 	s.Require().NoError(err)
 
-	affected, err := s.repo.DeleteAccountGroupsByGroupID(s.ctx, g.ID)
-	s.Require().NoError(err, "DeleteAccountGroupsByGroupID")
+	affected, err := s.repo.DeleteProviderGroupsByGroupID(s.ctx, g.ID)
+	s.Require().NoError(err, "DeleteProviderGroupsByGroupID")
 	s.Require().Equal(int64(1), affected, "expected 1 affected row")
 
-	count, _, err := s.repo.GetAccountCount(s.ctx, g.ID)
-	s.Require().NoError(err, "GetAccountCount")
-	s.Require().Equal(int64(0), count, "expected 0 account groups")
+	count, _, err := s.repo.GetProviderCount(s.ctx, g.ID)
+	s.Require().NoError(err, "GetProviderCount")
+	s.Require().Equal(int64(0), count, "expected 0 provider groups")
 }
 
-func (s *GroupRepoSuite) TestDeleteAccountGroupsByGroupID_MultipleAccounts() {
+func (s *GroupRepoSuite) TestDeleteProviderGroupsByGroupID_MultipleProviders() {
 	g := &routing.Group{
 		Name: "g-multi",
 
@@ -1011,32 +1011,32 @@ func (s *GroupRepoSuite) TestDeleteAccountGroupsByGroupID_MultipleAccounts() {
 	}
 	s.Require().NoError(s.repo.Create(s.ctx, g))
 
-	insertAccount := func(name string) int64 {
+	insertProvider := func(name string) int64 {
 		var id int64
 		s.Require().NoError(postgresinfra.ScanSingleRow(
 			s.ctx,
 			s.tx,
-			"INSERT INTO accounts (name, platform, type) VALUES ($1, $2, $3) RETURNING id",
-			[]any{name, capability.PlatformAnthropic, capability.AccountTypeOAuth},
+			"INSERT INTO providers (name, platform, type) VALUES ($1, $2, $3) RETURNING id",
+			[]any{name, capability.PlatformAnthropic, capability.ProviderTypeOAuth},
 			&id,
 		))
 		return id
 	}
-	a1 := insertAccount("a1")
-	a2 := insertAccount("a2")
-	a3 := insertAccount("a3")
-	_, err := s.tx.ExecContext(s.ctx, "INSERT INTO account_groups (account_id, group_id, created_at) VALUES ($1, $2, NOW())", a1, g.ID)
+	a1 := insertProvider("a1")
+	a2 := insertProvider("a2")
+	a3 := insertProvider("a3")
+	_, err := s.tx.ExecContext(s.ctx, "INSERT INTO provider_groups (provider_id, group_id, created_at) VALUES ($1, $2, NOW())", a1, g.ID)
 	s.Require().NoError(err)
-	_, err = s.tx.ExecContext(s.ctx, "INSERT INTO account_groups (account_id, group_id, created_at) VALUES ($1, $2, NOW())", a2, g.ID)
+	_, err = s.tx.ExecContext(s.ctx, "INSERT INTO provider_groups (provider_id, group_id, created_at) VALUES ($1, $2, NOW())", a2, g.ID)
 	s.Require().NoError(err)
-	_, err = s.tx.ExecContext(s.ctx, "INSERT INTO account_groups (account_id, group_id, created_at) VALUES ($1, $2, NOW())", a3, g.ID)
+	_, err = s.tx.ExecContext(s.ctx, "INSERT INTO provider_groups (provider_id, group_id, created_at) VALUES ($1, $2, NOW())", a3, g.ID)
 	s.Require().NoError(err)
 
-	affected, err := s.repo.DeleteAccountGroupsByGroupID(s.ctx, g.ID)
+	affected, err := s.repo.DeleteProviderGroupsByGroupID(s.ctx, g.ID)
 	s.Require().NoError(err)
 	s.Require().Equal(int64(3), affected)
 
-	count, _, _ := s.repo.GetAccountCount(s.ctx, g.ID)
+	count, _, _ := s.repo.GetProviderCount(s.ctx, g.ID)
 	s.Require().Zero(count)
 }
 

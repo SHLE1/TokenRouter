@@ -6,12 +6,12 @@ import (
 
 	textflow "github.com/TokenFlux/TokenRouter/internal/gateway/text"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
-var openAIResponsesImageIntentRoutingBenchmarkSink account.OpenAIEndpointCapability
+var openAIResponsesImageIntentRoutingBenchmarkSink provider.OpenAIEndpointCapability
 
 func BenchmarkOpenAIResponsesImageIntentRouting_LargeToolsBody(b *testing.B) {
 	body := buildLargeOpenAIResponsesToolsBody(32 << 20)
@@ -35,11 +35,11 @@ func BenchmarkOpenAIResponsesImageIntentRouting_LargeToolsBody(b *testing.B) {
 		for range b.N {
 			imageIntent := gatewayprovider.ImageIntent().IsExplicitImageGenerationIntent("/v1/responses", "gpt-5.4", body)
 			// 对照优化前路径：路由阶段会再次扫描同一份未修改的 body。
-			requiredCapability := account.OpenAIEndpointCapabilityTextGeneration
+			requiredCapability := provider.OpenAIEndpointCapabilityTextGeneration
 			if gatewayprovider.ImageIntent().IsExplicitImageGenerationIntent("/v1/responses", "gpt-5.4", body) && platform == capability.PlatformOpenAI {
-				requiredCapability = account.OpenAIEndpointCapabilityResponses
+				requiredCapability = provider.OpenAIEndpointCapabilityResponses
 			}
-			if imageIntent && requiredCapability != account.OpenAIEndpointCapabilityResponses {
+			if imageIntent && requiredCapability != provider.OpenAIEndpointCapabilityResponses {
 				b.Fatal("explicit image intent must require Responses")
 			}
 			openAIResponsesImageIntentRoutingBenchmarkSink = requiredCapability

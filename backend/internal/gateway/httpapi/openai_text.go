@@ -10,18 +10,18 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway/execution"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
 	"github.com/TokenFlux/TokenRouter/internal/moderation"
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
-// OpenAITextOptions 只投影 HTTP 限制和原账号切换上限，不携带配置对象。
+// OpenAITextOptions 只投影 HTTP 限制和原提供商切换上限，不携带配置对象。
 type OpenAITextOptions struct {
 	MaxBodyBytes             int64
 	MaxSwitches              int
@@ -52,8 +52,8 @@ type OpenAITextCall struct {
 	SelectionContext                                               context.Context
 	Mapping                                                        routing.GroupMappingResult
 	RoutingStart                                                   time.Time
-	RequiredCapability                                             account.OpenAIEndpointCapability
-	AccountLayerModel, PromptCacheKey                              string
+	RequiredCapability                                             provider.OpenAIEndpointCapability
+	ProviderLayerModel, PromptCacheKey                             string
 	Log                                                            *zap.Logger
 }
 
@@ -100,7 +100,7 @@ type OpenAITextBackend interface {
 	Isolate(context.Context, *apikey.APIKey, int64, string, string) error
 	GuardianContext(context.Context, *gin.Context, []byte, string) context.Context
 	AllowsMessages(*apikey.APIKey) bool
-	MessageAccountModel(context.Context, *apikey.APIKey, string) string
+	MessageProviderModel(context.Context, *apikey.APIKey, string) string
 	MetadataSession(*gin.Context, string, string, string, []byte) (string, string)
 	ChatImageModel(string, routing.GroupMappingResult) bool
 	ErrorMetadata(*gin.Context) (string, string)
@@ -141,7 +141,7 @@ func (h *OpenAITextHandler) executeText(c *gin.Context, call OpenAITextCall, kin
 		SessionHash: call.SessionHash,
 		AttemptBody: call.ForwardBody,
 
-		Text: execution.TextState{Kind: kind, Platform: call.Platform, SelectionContext: call.SelectionContext, Mapping: call.Mapping, SessionHashBody: call.SessionHashBody, ForwardModel: call.ForwardModel, PreviousResponseID: call.PreviousResponseID, AccountLayerModel: call.AccountLayerModel, PromptCacheKey: call.PromptCacheKey, NativeCompactionV2: call.NativeCompactionV2, LegacyCompact: call.LegacyCompact, RequireCompact: call.RequireCompact, RequiredCapability: call.RequiredCapability, RoutingStart: call.RoutingStart},
+		Text: execution.TextState{Kind: kind, Platform: call.Platform, SelectionContext: call.SelectionContext, Mapping: call.Mapping, SessionHashBody: call.SessionHashBody, ForwardModel: call.ForwardModel, PreviousResponseID: call.PreviousResponseID, ProviderLayerModel: call.ProviderLayerModel, PromptCacheKey: call.PromptCacheKey, NativeCompactionV2: call.NativeCompactionV2, LegacyCompact: call.LegacyCompact, RequireCompact: call.RequireCompact, RequiredCapability: call.RequiredCapability, RoutingStart: call.RoutingStart},
 	}
 	output := &MessagesOutput{ResponseSink: ResponseSink{Writer: c.Writer}, HTTP: c, Log: call.Log, StreamStarted: call.StreamStarted}
 	_, _ = h.executor.Execute(c.Request.Context(), request, output)

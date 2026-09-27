@@ -13,31 +13,31 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// Messages 保留单账号请求准备、原生执行及错误/部分用量的原时序。
+// Messages 保留单提供商请求准备、原生执行及错误/部分用量的原时序。
 func Messages(ctx context.Context, p MessagePorts, in MessageInput, parsed *requeststate.ParsedRequest) (*Result, error) {
 	startTime := time.Now()
 	if parsed == nil {
 		return nil, fmt.Errorf("parse request: empty request")
 	}
 
-	if in.AccountPresent && p.ShouldEmulate(ctx, parsed.GroupID, parsed.Body.Bytes()) {
+	if in.ProviderPresent && p.ShouldEmulate(ctx, parsed.GroupID, parsed.Body.Bytes()) {
 		return p.Emulate(ctx, parsed)
 	}
 
-	if in.AccountPresent && in.Passthrough {
+	if in.ProviderPresent && in.Passthrough {
 		passthroughBody := parsed.Body.Bytes()
 		passthroughModel := parsed.Model
 		if passthroughModel != "" {
 			if mappedModel := p.MappedModel(passthroughModel); mappedModel != passthroughModel {
 				passthroughBody = p.ReplaceModel(passthroughBody, mappedModel)
-				p.Log(fmt.Sprintf("Passthrough model mapping: %s -> %s (account: %s)", parsed.Model, mappedModel, in.AccountName))
+				p.Log(fmt.Sprintf("Passthrough model mapping: %s -> %s (provider: %s)", parsed.Model, mappedModel, in.ProviderName))
 				passthroughModel = mappedModel
 			}
 		}
 		return p.Passthrough(ctx, PassthroughInput{Body: passthroughBody, Parsed: parsed, RequestModel: passthroughModel, OriginalModel: parsed.Model, Stream: parsed.Stream, StartedAt: startTime})
 	}
 
-	if in.AccountPresent && in.Bedrock {
+	if in.ProviderPresent && in.Bedrock {
 		return p.Bedrock(ctx, parsed, startTime)
 	}
 
@@ -68,15 +68,15 @@ func Messages(ctx context.Context, p MessagePorts, in MessageInput, parsed *requ
 		p.DebugOriginal(body, reqModel, reqStream)
 	}
 
-	// 账号模型映射必须先于平台模型规范化执行，确保调度、限制检查和实际转发使用同一条链路。
-	accountMappedModel := p.AccountMappedModel(reqModel)
-	if accountMappedModel != reqModel {
-		if err := replaceBody(p.ReplaceModel(body, accountMappedModel)); err != nil {
+	// 提供商模型映射必须先于平台模型规范化执行，确保调度、限制检查和实际转发使用同一条链路。
+	providerMappedModel := p.ProviderMappedModel(reqModel)
+	if providerMappedModel != reqModel {
+		if err := replaceBody(p.ReplaceModel(body, providerMappedModel)); err != nil {
 			return nil, err
 		}
-		reqModel = accountMappedModel
-		parsed.Model = accountMappedModel
-		p.Log(fmt.Sprintf("Model mapping applied: %s -> %s (account: %s, source=account)", originalModel, accountMappedModel, in.AccountName))
+		reqModel = providerMappedModel
+		parsed.Model = providerMappedModel
+		p.Log(fmt.Sprintf("Model mapping applied: %s -> %s (provider: %s, source=provider)", originalModel, providerMappedModel, in.ProviderName))
 	}
 
 	// Claude Code 客户端判定：UA 匹配 claude-cli/* 且携带 metadata.user_id。
@@ -146,7 +146,7 @@ func Messages(ctx context.Context, p MessagePorts, in MessageInput, parsed *requ
 		}
 		reqModel = mappedModel
 		parsed.Model = mappedModel
-		p.Log(fmt.Sprintf("Platform model normalization applied: %s -> %s (account: %s)", accountMappedModel, mappedModel, in.AccountName))
+		p.Log(fmt.Sprintf("Platform model normalization applied: %s -> %s (provider: %s)", providerMappedModel, mappedModel, in.ProviderName))
 	}
 
 	if p.InjectTTL(ctx) {
@@ -176,7 +176,7 @@ func Messages(ctx context.Context, p MessagePorts, in MessageInput, parsed *requ
 			if err := replaceBody(rewritten); err != nil {
 				return nil, err
 			}
-			p.Log(fmt.Sprintf("Account %d: rewrote thinking.type for %s", in.AccountID, reqModel))
+			p.Log(fmt.Sprintf("Provider %d: rewrote thinking.type for %s", in.ProviderID, reqModel))
 		}
 	}
 
@@ -195,8 +195,8 @@ func Messages(ctx context.Context, p MessagePorts, in MessageInput, parsed *requ
 				respBody, _ := p.ReadErrorBody()
 				p.ResetErrorBody(respBody)
 
-				p.Log(fmt.Sprintf("[Forward] Upstream error (retry exhausted, failover): Account=%d(%s) Status=%d RequestID=%s Body=%s",
-					in.AccountID, in.AccountName, resp.StatusCode, resp.RequestID, p.Truncate(string(respBody), 1000)))
+				p.Log(fmt.Sprintf("[Forward] Upstream error (retry exhausted, failover): Provider=%d(%s) Status=%d RequestID=%s Body=%s",
+					in.ProviderID, in.ProviderName, resp.StatusCode, resp.RequestID, p.Truncate(string(respBody), 1000)))
 
 				decision := p.Health(ctx, "retry", resp.StatusCode, resp.Headers, respBody, reqModel)
 				if decision.Generic {
@@ -204,8 +204,8 @@ func Messages(ctx context.Context, p MessagePorts, in MessageInput, parsed *requ
 				}
 				p.Observe(Notice{
 					Platform:           in.Platform,
-					AccountID:          in.AccountID,
-					AccountName:        in.AccountName,
+					ProviderID:         in.ProviderID,
+					ProviderName:       in.ProviderName,
 					UpstreamStatusCode: resp.StatusCode,
 					UpstreamRequestID:  resp.RequestID,
 					Kind:               "retry_exhausted_failover",
@@ -217,7 +217,7 @@ func Messages(ctx context.Context, p MessagePorts, in MessageInput, parsed *requ
 						return ""
 					}(),
 				})
-				return true, p.FailoverError(resp.StatusCode, respBody, decision.RetrySameAccount)
+				return true, p.FailoverError(resp.StatusCode, respBody, decision.RetrySameProvider)
 			}
 			return early(p.HandleError(ctx, reqModel, true))
 		}
@@ -226,8 +226,8 @@ func Messages(ctx context.Context, p MessagePorts, in MessageInput, parsed *requ
 			respBody, _ := p.ReadErrorBody()
 			p.ResetErrorBody(respBody)
 
-			p.Log(fmt.Sprintf("[Forward] Upstream error (failover): Account=%d(%s) Status=%d RequestID=%s Body=%s",
-				in.AccountID, in.AccountName, resp.StatusCode, resp.RequestID, p.Truncate(string(respBody), 1000)))
+			p.Log(fmt.Sprintf("[Forward] Upstream error (failover): Provider=%d(%s) Status=%d RequestID=%s Body=%s",
+				in.ProviderID, in.ProviderName, resp.StatusCode, resp.RequestID, p.Truncate(string(respBody), 1000)))
 
 			decision := p.Health(ctx, "failover", resp.StatusCode, resp.Headers, respBody, reqModel)
 			if decision.Generic {
@@ -235,7 +235,7 @@ func Messages(ctx context.Context, p MessagePorts, in MessageInput, parsed *requ
 			}
 			p.Observe(Notice{
 				Platform:           in.Platform,
-				AccountID:          in.AccountID,
+				ProviderID:         in.ProviderID,
 				UpstreamStatusCode: resp.StatusCode,
 				UpstreamRequestID:  resp.RequestID,
 				Kind:               "failover",
@@ -247,14 +247,13 @@ func Messages(ctx context.Context, p MessagePorts, in MessageInput, parsed *requ
 					return ""
 				}(),
 			})
-			return true, p.FailoverError(resp.StatusCode, respBody, decision.RetrySameAccount)
+			return true, p.FailoverError(resp.StatusCode, respBody, decision.RetrySameProvider)
 		}
 		if resp.StatusCode >= 400 {
 
 			if resp.StatusCode == 400 && in.FailoverOn400 {
 				respBody, readErr := p.ReadErrorBody()
 				if readErr != nil {
-
 					return early(p.HandleError(ctx, reqModel, false))
 				}
 				p.ResetErrorBody(respBody)
@@ -272,8 +271,8 @@ func Messages(ctx context.Context, p MessagePorts, in MessageInput, parsed *requ
 					}
 					p.Observe(Notice{
 						Platform:           in.Platform,
-						AccountID:          in.AccountID,
-						AccountName:        in.AccountName,
+						ProviderID:         in.ProviderID,
+						ProviderName:       in.ProviderName,
 						UpstreamStatusCode: resp.StatusCode,
 						UpstreamRequestID:  resp.RequestID,
 						Kind:               "failover_on_400",
@@ -283,25 +282,24 @@ func Messages(ctx context.Context, p MessagePorts, in MessageInput, parsed *requ
 
 					if in.LogErrorBody {
 						p.Log(fmt.Sprintf(
-							"Account %d: 400 error, attempting failover: %s",
-							in.AccountID,
+							"Provider %d: 400 error, attempting failover: %s",
+							in.ProviderID,
 							p.TruncateBytes(respBody, in.LogErrorBodyMaxBytes),
 						))
 					} else {
-						p.Log(fmt.Sprintf("Account %d: 400 error, attempting failover", in.AccountID))
+						p.Log(fmt.Sprintf("Provider %d: 400 error, attempting failover", in.ProviderID))
 					}
 					decision := p.Health(ctx, "failover", resp.StatusCode, resp.Headers, respBody, reqModel)
 					if decision.Generic {
 						return early(p.HandleError(ctx, reqModel, false))
 					}
-					return true, p.FailoverError(resp.StatusCode, respBody, decision.RetrySameAccount)
+					return true, p.FailoverError(resp.StatusCode, respBody, decision.RetrySameProvider)
 				}
 			}
 			return early(p.HandleError(ctx, reqModel, false))
 		}
 
 		if !bytes.Equal(lastWireBody, body) {
-
 			if err := replaceBody(lastWireBody); err != nil {
 				return true, err
 			}
@@ -356,8 +354,8 @@ func Messages(ctx context.Context, p MessagePorts, in MessageInput, parsed *requ
 
 				p.Observe(Notice{
 					Platform:           in.Platform,
-					AccountID:          in.AccountID,
-					AccountName:        in.AccountName,
+					ProviderID:         in.ProviderID,
+					ProviderName:       in.ProviderName,
 					UpstreamStatusCode: semanticStatus,
 					UpstreamRequestID:  resp.RequestID,
 					Kind:               "stream_error",
@@ -366,8 +364,8 @@ func Messages(ctx context.Context, p MessagePorts, in MessageInput, parsed *requ
 				})
 
 				p.Log(fmt.Sprintf(
-					"[Forward] SSE error event in stream: Account=%d(%s) RequestID=%s Body=%s",
-					in.AccountID, in.AccountName, resp.RequestID,
+					"[Forward] SSE error event in stream: Provider=%d(%s) RequestID=%s Body=%s",
+					in.ProviderID, in.ProviderName, resp.RequestID,
 					p.Truncate(raw, 1000),
 				))
 
@@ -383,7 +381,7 @@ func Messages(ctx context.Context, p MessagePorts, in MessageInput, parsed *requ
 					return nil, fmt.Errorf("upstream SSE error not in custom error codes")
 				}
 				if !p.Written() && decision.Failover {
-					return nil, p.FailoverError(semanticStatus, body, decision.RetrySameAccount)
+					return nil, p.FailoverError(semanticStatus, body, decision.RetrySameProvider)
 				}
 				return nil, err
 			}

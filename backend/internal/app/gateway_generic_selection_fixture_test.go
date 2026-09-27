@@ -5,20 +5,20 @@ import (
 	"log/slog"
 	"time"
 
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/completion"
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
 	gatewaytestkit "github.com/TokenFlux/TokenRouter/internal/gateway/testkit"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/search"
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/selection"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
-	"github.com/TokenFlux/TokenRouter/internal/egress/provider"
+	egressadapter "github.com/TokenFlux/TokenRouter/internal/egress/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
@@ -34,7 +34,7 @@ import (
 
 // newGenericExecutionAndSelectionFixture 显式组合原执行入口与原生选择，不复制窗口或调度规则。
 func newGenericExecutionAndSelectionFixture(
-	accountRepo gatewayprovider.ExecutionAccountStore,
+	providerRepo gatewayprovider.ExecutionProviderStore,
 	groupRepo routing.GroupRepository, usageLogRepo usage.UsageLogRepository,
 
 	cache session.GatewayCache,
@@ -42,43 +42,43 @@ func newGenericExecutionAndSelectionFixture(
 	schedulerSnapshot *scheduler.SnapshotService,
 	concurrencyService *scheduler.ConcurrencyService,
 
-	healthObserver *accountprovider.UpstreamHealth,
+	healthObserver *provideradapter.UpstreamHealth,
 	identityService *claude.RequestFingerprint,
-	httpUpstream httpclient.UpstreamTransport, deferredService *accountcore.DeferredService,
+	httpUpstream httpclient.UpstreamTransport, deferredService *providercore.DeferredService,
 
-	messageCredentials *accountcore.MessageCredentialSource,
+	messageCredentials *providercore.MessageCredentialSource,
 	sessionLimitCache scheduler.SessionLimitCache,
 	windowCostCache billing.WindowCostCache,
 	rpmCache scheduler.RPMCache,
 	digestStore *session.DigestSessionStore,
 	settingService *gatewayprovider.RuntimeReaders,
-	tlsFPProfileService *provider.TLSProfiles,
+	tlsFPProfileService *egressadapter.TLSProfiles,
 	pricingConfigService *routing.PricingConfigService,
 	resolver *billing.PriceResolver,
 
 	headerFilter *egress.CompiledHeaderFilter,
 ) (*messageExecutionFixture, *selection.Generic, *gatewayhttp.MessagesExecutor) {
-	var retryStore accountcore.RetryCooldownStore
-	if accountRepo != nil {
-		retryStore = fixtureRetryStore{accountRepo}
+	var retryStore providercore.RetryCooldownStore
+	if providerRepo != nil {
+		retryStore = fixtureRetryStore{providerRepo}
 	}
 	source := &messageExecutionFixture{
 		Routes: gatewayprovider.NewRoutePlanner(pricingConfigService), Cache: cache, Digest: digestStore,
-		Cooldown: accountcore.NewRetryCooldown(retryStore, accountcore.RetryCooldownOptions{}),
+		Cooldown: providercore.NewRetryCooldown(retryStore, providercore.RetryCooldownOptions{}),
 	}
 	feedback := scheduler.NewRuntimeStats(time.Now)
 	window := billing.NewWindowCostGuard(windowCostCache, gatewaytestkit.WindowCosts(usageLogRepo), billing.WindowCostGuardOptions{Now: time.Now, Stats: billing.SharedWindowCostMetrics(), Log: func(format string, args ...any) {
 		logging.LegacyPrintf("service.gateway", format, args...)
 	}, Debug: slog.Debug})
 	var write func(context.Context, int64, string) error
-	if accountRepo != nil {
-		write = accountRepo.SetError
+	if providerRepo != nil {
+		write = providerRepo.SetError
 	}
 	choices := selection.NewGeneric(selection.GenericDependencies{
 		Reads: selection.Reads{
-			Accounts: withSelectionGroupFixture(accountRepo),
-			Groups:   groupRepo,
-			Snapshot: provideSelectionSnapshots(schedulerSnapshot),
+			Providers: withSelectionGroupFixture(providerRepo),
+			Groups:    groupRepo,
+			Snapshot:  provideSelectionSnapshots(schedulerSnapshot),
 		},
 		Shared: selection.Shared{
 			Cache:         cache,
@@ -92,19 +92,19 @@ func newGenericExecutionAndSelectionFixture(
 		WindowPrefetchAvailable: windowCostCache != nil && usageLogRepo != nil,
 		RPM:                     rpmCache,
 
-		Sessions:        sessionLimitCache,
-		SetAccountError: write,
+		Sessions:         sessionLimitCache,
+		SetProviderError: write,
 	}, selectionOptions(cfg))
 	var searchSettings *search.ConfigService
 	if settingService != nil {
 		searchSettings = settingService.Search
 	}
 	searchTools := ProvideGatewaySearchTools(searchSettings, pricingConfigService)
-	messages := provideMessagesExecution(messageCredentials, identityService, httpUpstream, healthObserver, tlsFPProfileService, settingService, resolver, searchTools, nil, nil, accountRepo, deferredService, cfg, headerFilter, pricingConfigService)
+	messages := provideMessagesExecution(messageCredentials, identityService, httpUpstream, healthObserver, tlsFPProfileService, settingService, resolver, searchTools, nil, nil, providerRepo, deferredService, cfg, headerFilter, pricingConfigService)
 	return source, choices, messages
 }
 
-// newEmptyGenericSelectionFixture 保留零值入口的缺省预算，不配置额外账号或窗口来源。
+// newEmptyGenericSelectionFixture 保留零值入口的缺省预算，不配置额外提供商或窗口来源。
 func newEmptyGenericSelectionFixture() *selection.Generic {
 	return selection.NewGeneric(selection.GenericDependencies{}, selection.DefaultOptions())
 }
@@ -114,14 +114,14 @@ type messageExecutionFixture struct {
 	Routes   *gatewayprovider.RoutePlanner
 	Cache    session.GatewayCache
 	Digest   *session.DigestSessionStore
-	Cooldown *accountcore.RetryCooldown
+	Cooldown *providercore.RetryCooldown
 	Recorder *completion.Recorder
 }
 type fixtureRetryStore struct {
-	gatewayprovider.ExecutionAccountStore
+	gatewayprovider.ExecutionProviderStore
 }
 
-func (s fixtureRetryStore) GetByID(ctx context.Context, id int64) (*accountcore.Record, error) {
-	value, err := s.ExecutionAccountStore.GetByID(ctx, id)
+func (s fixtureRetryStore) GetByID(ctx context.Context, id int64) (*providercore.Record, error) {
+	value, err := s.ExecutionProviderStore.GetByID(ctx, id)
 	return gatewayprovider.ExecutionRecord(value), err
 }

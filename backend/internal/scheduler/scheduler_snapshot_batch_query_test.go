@@ -12,62 +12,62 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type batchAccountQueryKey struct {
+type batchProviderQueryKey struct {
 	groupID  int64
 	platform string
 	mixed    bool
 }
 
-type batchAccountQueryResult struct {
-	accounts []SnapshotAccount
-	err      error
+type batchProviderQueryResult struct {
+	providers []SnapshotProvider
+	err       error
 }
 
-type batchAccountQueryRepo struct {
-	SnapshotAccountSource
+type batchProviderQueryRepo struct {
+	SnapshotProviderSource
 
 	mu        sync.Mutex
-	calls     map[batchAccountQueryKey]int
-	results   map[batchAccountQueryKey][]batchAccountQueryResult
-	beforeRun func(batchAccountQueryKey)
+	calls     map[batchProviderQueryKey]int
+	results   map[batchProviderQueryKey][]batchProviderQueryResult
+	beforeRun func(batchProviderQueryKey)
 }
 
-func newBatchAccountQueryRepo() *batchAccountQueryRepo {
-	return &batchAccountQueryRepo{
-		calls:   make(map[batchAccountQueryKey]int),
-		results: make(map[batchAccountQueryKey][]batchAccountQueryResult),
+func newBatchProviderQueryRepo() *batchProviderQueryRepo {
+	return &batchProviderQueryRepo{
+		calls:   make(map[batchProviderQueryKey]int),
+		results: make(map[batchProviderQueryKey][]batchProviderQueryResult),
 	}
 }
 
-func (r *batchAccountQueryRepo) ListSchedulableByGroupIDAndPlatform(_ context.Context, groupID int64, platform string) ([]SnapshotAccount, error) {
-	return r.run(batchAccountQueryKey{groupID: groupID, platform: platform})
+func (r *batchProviderQueryRepo) ListSchedulableByGroupIDAndPlatform(_ context.Context, groupID int64, platform string) ([]SnapshotProvider, error) {
+	return r.run(batchProviderQueryKey{groupID: groupID, platform: platform})
 }
 
-func (r *batchAccountQueryRepo) ListSchedulableByGroupIDAndPlatforms(_ context.Context, groupID int64, platforms []string) ([]SnapshotAccount, error) {
-	return r.run(batchAccountQueryKey{groupID: groupID, platform: platforms[0], mixed: true})
+func (r *batchProviderQueryRepo) ListSchedulableByGroupIDAndPlatforms(_ context.Context, groupID int64, platforms []string) ([]SnapshotProvider, error) {
+	return r.run(batchProviderQueryKey{groupID: groupID, platform: platforms[0], mixed: true})
 }
 
-func (r *batchAccountQueryRepo) ListSchedulableUngroupedByPlatform(_ context.Context, platform string) ([]SnapshotAccount, error) {
-	return r.run(batchAccountQueryKey{platform: platform})
+func (r *batchProviderQueryRepo) ListSchedulableUngroupedByPlatform(_ context.Context, platform string) ([]SnapshotProvider, error) {
+	return r.run(batchProviderQueryKey{platform: platform})
 }
 
-func (r *batchAccountQueryRepo) ListSchedulableUngroupedByPlatforms(_ context.Context, platforms []string) ([]SnapshotAccount, error) {
-	return r.run(batchAccountQueryKey{platform: platforms[0], mixed: true})
+func (r *batchProviderQueryRepo) ListSchedulableUngroupedByPlatforms(_ context.Context, platforms []string) ([]SnapshotProvider, error) {
+	return r.run(batchProviderQueryKey{platform: platforms[0], mixed: true})
 }
 
-func (r *batchAccountQueryRepo) ListModelAvailabilityCandidates(context.Context, *int64, []string, bool) ([]SnapshotAccount, error) {
+func (r *batchProviderQueryRepo) ListModelAvailabilityCandidates(context.Context, *int64, []string, bool) ([]SnapshotProvider, error) {
 	panic("unexpected ListModelAvailabilityCandidates call")
 }
 
-func (r *batchAccountQueryRepo) ListSchedulableByPlatform(_ context.Context, platform string) ([]SnapshotAccount, error) {
-	return r.run(batchAccountQueryKey{platform: platform})
+func (r *batchProviderQueryRepo) ListSchedulableByPlatform(_ context.Context, platform string) ([]SnapshotProvider, error) {
+	return r.run(batchProviderQueryKey{platform: platform})
 }
 
-func (r *batchAccountQueryRepo) ListSchedulableByPlatforms(_ context.Context, platforms []string) ([]SnapshotAccount, error) {
-	return r.run(batchAccountQueryKey{platform: platforms[0], mixed: true})
+func (r *batchProviderQueryRepo) ListSchedulableByPlatforms(_ context.Context, platforms []string) ([]SnapshotProvider, error) {
+	return r.run(batchProviderQueryKey{platform: platforms[0], mixed: true})
 }
 
-func (r *batchAccountQueryRepo) run(key batchAccountQueryKey) ([]SnapshotAccount, error) {
+func (r *batchProviderQueryRepo) run(key batchProviderQueryKey) ([]SnapshotProvider, error) {
 	r.mu.Lock()
 	r.calls[key]++
 	call := r.calls[key]
@@ -80,9 +80,9 @@ func (r *batchAccountQueryRepo) run(key batchAccountQueryKey) ([]SnapshotAccount
 	}
 	if call <= len(results) {
 		result := results[call-1]
-		return append([]SnapshotAccount(nil), result.accounts...), result.err
+		return append([]SnapshotProvider(nil), result.providers...), result.err
 	}
-	return []SnapshotAccount{snapshotTestAccount{
+	return []SnapshotProvider{snapshotTestProvider{
 		ID:          int64(call),
 		Name:        "source",
 		Platform:    key.platform,
@@ -91,15 +91,15 @@ func (r *batchAccountQueryRepo) run(key batchAccountQueryKey) ([]SnapshotAccount
 	}}, nil
 }
 
-func (r *batchAccountQueryRepo) callCount(key batchAccountQueryKey) int {
+func (r *batchProviderQueryRepo) callCount(key batchProviderQueryKey) int {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return r.calls[key]
 }
 
 type batchSnapshotWrite struct {
-	token    SchedulerBucketWriteToken
-	accounts []SnapshotAccount
+	token     SchedulerBucketWriteToken
+	providers []SnapshotProvider
 }
 
 type batchSnapshotCache struct {
@@ -119,7 +119,7 @@ type batchSnapshotCache struct {
 	beforeSet   func()
 }
 
-type batchSnapshotAccountIDCache struct {
+type batchSnapshotProviderIDCache struct {
 	*batchSnapshotCache
 
 	reuseMu     sync.Mutex
@@ -130,8 +130,8 @@ type batchSnapshotAccountIDCache struct {
 	returnEmpty bool
 }
 
-func newBatchSnapshotAccountIDCache() *batchSnapshotAccountIDCache {
-	return &batchSnapshotAccountIDCache{
+func newBatchSnapshotProviderIDCache() *batchSnapshotProviderIDCache {
+	return &batchSnapshotProviderIDCache{
 		batchSnapshotCache: newBatchSnapshotCache(),
 		fullCalls:          make(map[SchedulerBucket]int),
 		idOnlyCalls:        make(map[SchedulerBucket]int),
@@ -140,11 +140,11 @@ func newBatchSnapshotAccountIDCache() *batchSnapshotAccountIDCache {
 	}
 }
 
-func (c *batchSnapshotAccountIDCache) SetSnapshotAndReturnAccountIDs(ctx context.Context, bucket SchedulerBucket, token SchedulerBucketWriteToken, accounts []SnapshotAccount) ([]int64, error) {
+func (c *batchSnapshotProviderIDCache) SetSnapshotAndReturnProviderIDs(ctx context.Context, bucket SchedulerBucket, token SchedulerBucketWriteToken, providers []SnapshotProvider) ([]int64, error) {
 	c.reuseMu.Lock()
 	c.fullCalls[bucket]++
 	c.reuseMu.Unlock()
-	if err := c.SetSnapshot(ctx, bucket, token, accounts); err != nil {
+	if err := c.SetSnapshot(ctx, bucket, token, providers); err != nil {
 		return nil, err
 	}
 	c.reuseMu.Lock()
@@ -157,14 +157,14 @@ func (c *batchSnapshotAccountIDCache) SetSnapshotAndReturnAccountIDs(ctx context
 	if returnEmpty {
 		return []int64{}, nil
 	}
-	ids := make([]int64, 0, len(accounts))
-	for _, account := range accounts {
-		ids = append(ids, snapshotTestData(account).ID)
+	ids := make([]int64, 0, len(providers))
+	for _, provider := range providers {
+		ids = append(ids, snapshotTestData(provider).ID)
 	}
 	return ids, nil
 }
 
-func (c *batchSnapshotAccountIDCache) SetSnapshotByAccountIDs(ctx context.Context, bucket SchedulerBucket, token SchedulerBucketWriteToken, accountIDs []int64) error {
+func (c *batchSnapshotProviderIDCache) SetSnapshotByProviderIDs(ctx context.Context, bucket SchedulerBucket, token SchedulerBucketWriteToken, providerIDs []int64) error {
 	c.reuseMu.Lock()
 	c.idOnlyCalls[bucket]++
 	err := c.idOnlyError[bucket]
@@ -172,14 +172,14 @@ func (c *batchSnapshotAccountIDCache) SetSnapshotByAccountIDs(ctx context.Contex
 	if err != nil {
 		return err
 	}
-	accounts := make([]SnapshotAccount, 0, len(accountIDs))
-	for _, id := range accountIDs {
-		accounts = append(accounts, snapshotTestAccount{ID: id})
+	providers := make([]SnapshotProvider, 0, len(providerIDs))
+	for _, id := range providerIDs {
+		providers = append(providers, snapshotTestProvider{ID: id})
 	}
-	return c.SetSnapshot(ctx, bucket, token, accounts)
+	return c.SetSnapshot(ctx, bucket, token, providers)
 }
 
-func (c *batchSnapshotAccountIDCache) reuseCounts(bucket SchedulerBucket) (full, idOnly int) {
+func (c *batchSnapshotProviderIDCache) reuseCounts(bucket SchedulerBucket) (full, idOnly int) {
 	c.reuseMu.Lock()
 	defer c.reuseMu.Unlock()
 	return c.fullCalls[bucket], c.idOnlyCalls[bucket]
@@ -222,7 +222,7 @@ func (c *batchSnapshotCache) UnlockBucket(context.Context, SchedulerBucket) erro
 	return nil
 }
 
-func (c *batchSnapshotCache) SetSnapshot(_ context.Context, bucket SchedulerBucket, token SchedulerBucketWriteToken, accounts []SnapshotAccount) error {
+func (c *batchSnapshotCache) SetSnapshot(_ context.Context, bucket SchedulerBucket, token SchedulerBucketWriteToken, providers []SnapshotProvider) error {
 	if c.beforeSet != nil {
 		c.beforeSet()
 	}
@@ -237,8 +237,8 @@ func (c *batchSnapshotCache) SetSnapshot(_ context.Context, bucket SchedulerBuck
 	}
 	c.versions[bucket]++
 	c.writes[bucket] = append(c.writes[bucket], batchSnapshotWrite{
-		token:    token,
-		accounts: append([]SnapshotAccount(nil), accounts...),
+		token:     token,
+		providers: append([]SnapshotProvider(nil), providers...),
 	})
 	return nil
 }
@@ -255,8 +255,8 @@ func (c *batchSnapshotCache) bucketState(bucket SchedulerBucket) (locks, attempt
 	return c.locks[bucket], c.setAttempts[bucket], c.versions[bucket], append([]batchSnapshotWrite(nil), c.writes[bucket]...)
 }
 
-func newBatchQueryTestService(cache SnapshotCache, accounts SnapshotAccountSource, runMode string) *SnapshotService {
-	return NewSnapshotService(cache, nil, accounts, nil, &SnapshotOptions{Simple: runMode == "simple"})
+func newBatchQueryTestService(cache SnapshotCache, providers SnapshotProviderSource, runMode string) *SnapshotService {
+	return NewSnapshotService(cache, nil, providers, nil, &SnapshotOptions{Simple: runMode == "simple"})
 }
 
 func TestSchedulerRebuildBatchReusesSingleForcedQueryAndKeepsSnapshotsIndependent(t *testing.T) {
@@ -264,16 +264,16 @@ func TestSchedulerRebuildBatchReusesSingleForcedQueryAndKeepsSnapshotsIndependen
 	single := SchedulerBucket{GroupID: groupID, Platform: PlatformOpenAI, Mode: SchedulerModeSingle}
 	forced := SchedulerBucket{GroupID: groupID, Platform: PlatformOpenAI, Mode: SchedulerModeForced}
 	cache := newBatchSnapshotCache()
-	repo := newBatchAccountQueryRepo()
+	repo := newBatchProviderQueryRepo()
 	wantCaptures := 2
-	repo.beforeRun = func(batchAccountQueryKey) {
+	repo.beforeRun = func(batchProviderQueryKey) {
 		require.Equal(t, wantCaptures, cache.captureCount(), "all tokens must be prepared before the first DB query")
 		wantCaptures += 2
 	}
 	svc := newBatchQueryTestService(cache, repo, "standard")
 
 	require.NoError(t, svc.rebuildBuckets(context.Background(), []SchedulerBucket{single, forced}, "first"))
-	queryKey := batchAccountQueryKey{groupID: groupID, platform: PlatformOpenAI}
+	queryKey := batchProviderQueryKey{groupID: groupID, platform: PlatformOpenAI}
 	require.Equal(t, 1, repo.callCount(queryKey))
 	for _, bucket := range []SchedulerBucket{single, forced} {
 		locks, attempts, version, writes := cache.bucketState(bucket)
@@ -281,7 +281,7 @@ func TestSchedulerRebuildBatchReusesSingleForcedQueryAndKeepsSnapshotsIndependen
 		require.Equal(t, 1, attempts, bucket.String())
 		require.Equal(t, 1, version, bucket.String())
 		require.Len(t, writes, 1, bucket.String())
-		require.Equal(t, "source", snapshotTestData(writes[0].accounts[0]).Name, bucket.String())
+		require.Equal(t, "source", snapshotTestData(writes[0].providers[0]).Name, bucket.String())
 		require.Equal(t, bucket, writes[0].token.Bucket)
 	}
 	_, _, _, singleWrites := cache.bucketState(single)
@@ -296,16 +296,16 @@ func TestSchedulerRebuildBatchReusesSingleForcedQueryAndKeepsSnapshotsIndependen
 		require.Equal(t, 2, attempts, bucket.String())
 		require.Equal(t, 2, version, bucket.String())
 		require.Len(t, writes, 2, bucket.String())
-		require.Equal(t, "source", snapshotTestData(writes[1].accounts[0]).Name, bucket.String())
+		require.Equal(t, "source", snapshotTestData(writes[1].providers[0]).Name, bucket.String())
 	}
 }
 
-func TestSchedulerRebuildBatchReusesAccountPayloadForSingleForced(t *testing.T) {
+func TestSchedulerRebuildBatchReusesProviderPayloadForSingleForced(t *testing.T) {
 	const groupID int64 = 211
 	single := SchedulerBucket{GroupID: groupID, Platform: PlatformOpenAI, Mode: SchedulerModeSingle}
 	forced := SchedulerBucket{GroupID: groupID, Platform: PlatformOpenAI, Mode: SchedulerModeForced}
-	cache := newBatchSnapshotAccountIDCache()
-	repo := newBatchAccountQueryRepo()
+	cache := newBatchSnapshotProviderIDCache()
+	repo := newBatchProviderQueryRepo()
 	svc := newBatchQueryTestService(cache, repo, "standard")
 
 	for run := 1; run <= 2; run++ {
@@ -317,17 +317,17 @@ func TestSchedulerRebuildBatchReusesAccountPayloadForSingleForced(t *testing.T) 
 		require.Zero(t, full)
 		require.Equal(t, run, idOnly)
 	}
-	require.Equal(t, 2, repo.callCount(batchAccountQueryKey{groupID: groupID, platform: PlatformOpenAI}), "账号载荷不得跨重建批次复用")
+	require.Equal(t, 2, repo.callCount(batchProviderQueryKey{groupID: groupID, platform: PlatformOpenAI}), "提供商载荷不得跨重建批次复用")
 }
 
-func TestSchedulerRebuildBatchDoesNotReuseAccountPayloadAfterFirstWriterFailure(t *testing.T) {
+func TestSchedulerRebuildBatchDoesNotReuseProviderPayloadAfterFirstWriterFailure(t *testing.T) {
 	const groupID int64 = 212
 	single := SchedulerBucket{GroupID: groupID, Platform: PlatformOpenAI, Mode: SchedulerModeSingle}
 	forced := SchedulerBucket{GroupID: groupID, Platform: PlatformOpenAI, Mode: SchedulerModeForced}
 	wantErr := errors.New("snapshot write failed")
-	cache := newBatchSnapshotAccountIDCache()
+	cache := newBatchSnapshotProviderIDCache()
 	cache.setErrors[single] = wantErr
-	svc := newBatchQueryTestService(cache, newBatchAccountQueryRepo(), "standard")
+	svc := newBatchQueryTestService(cache, newBatchProviderQueryRepo(), "standard")
 
 	err := svc.rebuildBuckets(context.Background(), []SchedulerBucket{single, forced}, "failure")
 	require.ErrorIs(t, err, wantErr)
@@ -342,14 +342,14 @@ func TestSchedulerRebuildBatchDoesNotReuseAccountPayloadAfterFirstWriterFailure(
 	require.Len(t, writes, 1)
 }
 
-func TestSchedulerRebuildBatchDoesNotReuseAccountPayloadAfterLateFirstWriterFailure(t *testing.T) {
+func TestSchedulerRebuildBatchDoesNotReuseProviderPayloadAfterLateFirstWriterFailure(t *testing.T) {
 	const groupID int64 = 216
 	single := SchedulerBucket{GroupID: groupID, Platform: PlatformOpenAI, Mode: SchedulerModeSingle}
 	forced := SchedulerBucket{GroupID: groupID, Platform: PlatformOpenAI, Mode: SchedulerModeForced}
 	wantErr := errors.New("snapshot activation failed")
-	cache := newBatchSnapshotAccountIDCache()
+	cache := newBatchSnapshotProviderIDCache()
 	cache.fullLateErr[single] = wantErr
-	svc := newBatchQueryTestService(cache, newBatchAccountQueryRepo(), "standard")
+	svc := newBatchQueryTestService(cache, newBatchProviderQueryRepo(), "standard")
 
 	err := svc.rebuildBuckets(context.Background(), []SchedulerBucket{single, forced}, "late-failure")
 	require.ErrorIs(t, err, wantErr)
@@ -364,13 +364,13 @@ func TestSchedulerRebuildBatchDoesNotReuseAccountPayloadAfterLateFirstWriterFail
 	require.Len(t, writes, 1)
 }
 
-func TestSchedulerRebuildBatchDoesNotReuseAccountPayloadAfterLockBusy(t *testing.T) {
+func TestSchedulerRebuildBatchDoesNotReuseProviderPayloadAfterLockBusy(t *testing.T) {
 	const groupID int64 = 213
 	single := SchedulerBucket{GroupID: groupID, Platform: PlatformOpenAI, Mode: SchedulerModeSingle}
 	forced := SchedulerBucket{GroupID: groupID, Platform: PlatformOpenAI, Mode: SchedulerModeForced}
-	cache := newBatchSnapshotAccountIDCache()
+	cache := newBatchSnapshotProviderIDCache()
 	cache.lockBusy[single] = true
-	svc := newBatchQueryTestService(cache, newBatchAccountQueryRepo(), "standard")
+	svc := newBatchQueryTestService(cache, newBatchProviderQueryRepo(), "standard")
 
 	require.NoError(t, svc.rebuildBuckets(context.Background(), []SchedulerBucket{single, forced}, "busy"))
 	full, idOnly := cache.reuseCounts(single)
@@ -390,8 +390,8 @@ func TestSchedulerRebuildBatchKeepsMixedAndDifferentQueriesOnFullWrites(t *testi
 	openAIForced := SchedulerBucket{GroupID: groupID, Platform: PlatformOpenAI, Mode: SchedulerModeForced}
 	anthropicSingle := SchedulerBucket{GroupID: groupID, Platform: PlatformAnthropic, Mode: SchedulerModeSingle}
 	anthropicMixed := SchedulerBucket{GroupID: groupID, Platform: PlatformAnthropic, Mode: SchedulerModeMixed}
-	cache := newBatchSnapshotAccountIDCache()
-	svc := newBatchQueryTestService(cache, newBatchAccountQueryRepo(), "standard")
+	cache := newBatchSnapshotProviderIDCache()
+	svc := newBatchQueryTestService(cache, newBatchProviderQueryRepo(), "standard")
 
 	require.NoError(t, svc.rebuildBuckets(context.Background(), []SchedulerBucket{openAISingle, openAIForced, anthropicSingle, anthropicMixed}, "scope"))
 	full, idOnly := cache.reuseCounts(openAISingle)
@@ -413,14 +413,14 @@ func TestSchedulerRebuildBatchKeepsMixedAndDifferentQueriesOnFullWrites(t *testi
 	require.Equal(t, 1, attempts, "mixed 桶必须继续走原 SetSnapshot")
 }
 
-func TestSchedulerRebuildBatchPropagatesAccountIDOnlyWriteFailure(t *testing.T) {
+func TestSchedulerRebuildBatchPropagatesProviderIDOnlyWriteFailure(t *testing.T) {
 	const groupID int64 = 215
 	single := SchedulerBucket{GroupID: groupID, Platform: PlatformOpenAI, Mode: SchedulerModeSingle}
 	forced := SchedulerBucket{GroupID: groupID, Platform: PlatformOpenAI, Mode: SchedulerModeForced}
 	wantErr := errors.New("id-only write failed")
-	cache := newBatchSnapshotAccountIDCache()
+	cache := newBatchSnapshotProviderIDCache()
 	cache.idOnlyError[forced] = wantErr
-	svc := newBatchQueryTestService(cache, newBatchAccountQueryRepo(), "standard")
+	svc := newBatchQueryTestService(cache, newBatchProviderQueryRepo(), "standard")
 
 	err := svc.rebuildBuckets(context.Background(), []SchedulerBucket{single, forced}, "id-error")
 	require.ErrorIs(t, err, wantErr)
@@ -429,13 +429,13 @@ func TestSchedulerRebuildBatchPropagatesAccountIDOnlyWriteFailure(t *testing.T) 
 	require.Equal(t, 1, idOnly)
 }
 
-func TestSchedulerRebuildBatchReusesSuccessfulEmptyAccountIDs(t *testing.T) {
+func TestSchedulerRebuildBatchReusesSuccessfulEmptyProviderIDs(t *testing.T) {
 	const groupID int64 = 217
 	single := SchedulerBucket{GroupID: groupID, Platform: PlatformOpenAI, Mode: SchedulerModeSingle}
 	forced := SchedulerBucket{GroupID: groupID, Platform: PlatformOpenAI, Mode: SchedulerModeForced}
-	cache := newBatchSnapshotAccountIDCache()
+	cache := newBatchSnapshotProviderIDCache()
 	cache.returnEmpty = true
-	svc := newBatchQueryTestService(cache, newBatchAccountQueryRepo(), "standard")
+	svc := newBatchQueryTestService(cache, newBatchProviderQueryRepo(), "standard")
 
 	require.NoError(t, svc.rebuildBuckets(context.Background(), []SchedulerBucket{single, forced}, "empty"))
 	full, idOnly := cache.reuseCounts(single)
@@ -446,14 +446,14 @@ func TestSchedulerRebuildBatchReusesSuccessfulEmptyAccountIDs(t *testing.T) {
 	require.Equal(t, 1, idOnly, "已成功缓存的空 ID 集也必须通过 map presence 复用")
 	_, _, _, writes := cache.bucketState(forced)
 	require.Len(t, writes, 1)
-	require.Empty(t, writes[0].accounts)
+	require.Empty(t, writes[0].providers)
 }
 
-func TestSchedulerRebuildBatchReusesAccountPayloadForSimpleGroupZero(t *testing.T) {
+func TestSchedulerRebuildBatchReusesProviderPayloadForSimpleGroupZero(t *testing.T) {
 	single := SchedulerBucket{GroupID: 0, Platform: PlatformOpenAI, Mode: SchedulerModeSingle}
 	forced := SchedulerBucket{GroupID: 0, Platform: PlatformOpenAI, Mode: SchedulerModeForced}
-	cache := newBatchSnapshotAccountIDCache()
-	svc := newBatchQueryTestService(cache, newBatchAccountQueryRepo(), "simple")
+	cache := newBatchSnapshotProviderIDCache()
+	svc := newBatchQueryTestService(cache, newBatchProviderQueryRepo(), "simple")
 
 	require.NoError(t, svc.rebuildBuckets(context.Background(), []SchedulerBucket{single, forced}, "simple"))
 	full, idOnly := cache.reuseCounts(single)
@@ -464,20 +464,20 @@ func TestSchedulerRebuildBatchReusesAccountPayloadForSimpleGroupZero(t *testing.
 	require.Equal(t, 1, idOnly)
 }
 
-func TestSchedulerAccountQueryCacheReleasesSnapshotAccountIDs(t *testing.T) {
+func TestSchedulerProviderQueryCacheReleasesSnapshotProviderIDs(t *testing.T) {
 	single := schedulerBucketWriteTask{bucket: SchedulerBucket{GroupID: 218, Platform: PlatformOpenAI, Mode: SchedulerModeSingle}}
 	forced := schedulerBucketWriteTask{bucket: SchedulerBucket{GroupID: 218, Platform: PlatformOpenAI, Mode: SchedulerModeForced}}
-	queries := newSchedulerAccountQueryCache([]schedulerBucketWriteTask{single, forced})
-	key, ok := schedulerAccountQueryKeyForBucket(single.bucket)
+	queries := newSchedulerProviderQueryCache([]schedulerBucketWriteTask{single, forced})
+	key, ok := schedulerProviderQueryKeyForBucket(single.bucket)
 	require.True(t, ok)
-	queries.snapshotAccountIDs[key] = []int64{1, 2}
+	queries.snapshotProviderIDs[key] = []int64{1, 2}
 
 	queries.release(single.bucket)
-	require.Contains(t, queries.snapshotAccountIDs, key)
+	require.Contains(t, queries.snapshotProviderIDs, key)
 	queries.release(forced.bucket)
-	require.NotContains(t, queries.snapshotAccountIDs, key)
+	require.NotContains(t, queries.snapshotProviderIDs, key)
 	require.Empty(t, queries.remaining)
-	require.Empty(t, queries.accounts)
+	require.Empty(t, queries.providers)
 }
 
 func TestSchedulerRebuildBatchKeepsMixedAndDifferentKeysIndependent(t *testing.T) {
@@ -492,15 +492,15 @@ func TestSchedulerRebuildBatchKeepsMixedAndDifferentKeysIndependent(t *testing.T
 		{GroupID: -1, Platform: PlatformOpenAI, Mode: SchedulerModeForced},
 	}
 	cache := newBatchSnapshotCache()
-	repo := newBatchAccountQueryRepo()
+	repo := newBatchProviderQueryRepo()
 	svc := newBatchQueryTestService(cache, repo, "standard")
 
 	require.NoError(t, svc.rebuildBuckets(context.Background(), buckets, "test"))
-	require.Equal(t, 2, repo.callCount(batchAccountQueryKey{groupID: groupID, platform: PlatformAnthropic}))
-	require.Zero(t, repo.callCount(batchAccountQueryKey{groupID: groupID, platform: PlatformAnthropic, mixed: true}))
-	require.Equal(t, 1, repo.callCount(batchAccountQueryKey{groupID: groupID + 1, platform: PlatformAnthropic}))
-	require.Equal(t, 1, repo.callCount(batchAccountQueryKey{groupID: groupID, platform: PlatformGemini}))
-	require.Zero(t, repo.callCount(batchAccountQueryKey{platform: PlatformOpenAI}), "没有有效分组时不查询账号")
+	require.Equal(t, 2, repo.callCount(batchProviderQueryKey{groupID: groupID, platform: PlatformAnthropic}))
+	require.Zero(t, repo.callCount(batchProviderQueryKey{groupID: groupID, platform: PlatformAnthropic, mixed: true}))
+	require.Equal(t, 1, repo.callCount(batchProviderQueryKey{groupID: groupID + 1, platform: PlatformAnthropic}))
+	require.Equal(t, 1, repo.callCount(batchProviderQueryKey{groupID: groupID, platform: PlatformGemini}))
+	require.Zero(t, repo.callCount(batchProviderQueryKey{platform: PlatformOpenAI}), "没有有效分组时不查询提供商")
 	for _, bucket := range buckets {
 		locks, attempts, version, _ := cache.bucketState(bucket)
 		require.Equal(t, 1, locks, bucket.String())
@@ -513,46 +513,46 @@ func TestSchedulerRebuildBatchKeepsSimpleModeBucketGroupsIndependent(t *testing.
 	single := SchedulerBucket{GroupID: 204, Platform: PlatformOpenAI, Mode: SchedulerModeSingle}
 	forced := SchedulerBucket{GroupID: 0, Platform: PlatformOpenAI, Mode: SchedulerModeForced}
 	cache := newBatchSnapshotCache()
-	repo := newBatchAccountQueryRepo()
+	repo := newBatchProviderQueryRepo()
 	svc := newBatchQueryTestService(cache, repo, "simple")
 
 	require.NoError(t, svc.rebuildBuckets(context.Background(), []SchedulerBucket{single, forced}, "test"))
-	require.Equal(t, 1, repo.callCount(batchAccountQueryKey{groupID: 204, platform: PlatformOpenAI}))
-	require.Zero(t, repo.callCount(batchAccountQueryKey{platform: PlatformOpenAI}))
+	require.Equal(t, 1, repo.callCount(batchProviderQueryKey{groupID: 204, platform: PlatformOpenAI}))
+	require.Zero(t, repo.callCount(batchProviderQueryKey{platform: PlatformOpenAI}))
 }
 
 func TestSchedulerRebuildBatchDoesNotCacheMixedOrHistoricalQueries(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
 		bucket SchedulerBucket
-		key    batchAccountQueryKey
+		key    batchProviderQueryKey
 	}{
 		{
 			name:   "mixed",
 			bucket: SchedulerBucket{GroupID: 204, Platform: PlatformAnthropic, Mode: SchedulerModeMixed},
-			key:    batchAccountQueryKey{groupID: 204, platform: PlatformAnthropic},
+			key:    batchProviderQueryKey{groupID: 204, platform: PlatformAnthropic},
 		},
 		{
 			name:   "historical",
 			bucket: SchedulerBucket{GroupID: 204, Platform: PlatformOpenAI, Mode: "unknown"},
-			key:    batchAccountQueryKey{groupID: 204, platform: PlatformOpenAI},
+			key:    batchProviderQueryKey{groupID: 204, platform: PlatformOpenAI},
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			cache := newBatchSnapshotCache()
 			token, err := cache.CaptureBucketWriteToken(context.Background(), tc.bucket)
 			require.NoError(t, err)
-			repo := newBatchAccountQueryRepo()
+			repo := newBatchProviderQueryRepo()
 			svc := newBatchQueryTestService(cache, repo, "standard")
 			tasks := []schedulerBucketWriteTask{
 				{bucket: tc.bucket, token: token},
 				{bucket: tc.bucket, token: token},
 			}
-			queries := newSchedulerAccountQueryCache(tasks)
+			queries := newSchedulerProviderQueryCache(tasks)
 
 			require.NoError(t, svc.rebuildPreparedBucketTasks(context.Background(), tasks, "test", false, queries))
 			require.Equal(t, 2, repo.callCount(tc.key))
-			require.Empty(t, queries.accounts)
+			require.Empty(t, queries.providers)
 			locks, attempts, version, _ := cache.bucketState(tc.bucket)
 			require.Equal(t, 2, locks)
 			require.Equal(t, 2, attempts)
@@ -566,11 +566,11 @@ func TestSchedulerRebuildBatchRetriesQueryFailureForFollowingBucket(t *testing.T
 	single := SchedulerBucket{GroupID: groupID, Platform: PlatformOpenAI, Mode: SchedulerModeSingle}
 	forced := SchedulerBucket{GroupID: groupID, Platform: PlatformOpenAI, Mode: SchedulerModeForced}
 	wantErr := errors.New("first query failed")
-	key := batchAccountQueryKey{groupID: groupID, platform: PlatformOpenAI}
-	repo := newBatchAccountQueryRepo()
-	repo.results[key] = []batchAccountQueryResult{
+	key := batchProviderQueryKey{groupID: groupID, platform: PlatformOpenAI}
+	repo := newBatchProviderQueryRepo()
+	repo.results[key] = []batchProviderQueryResult{
 		{err: wantErr},
-		{accounts: []SnapshotAccount{snapshotTestAccount{ID: 2051, Name: "retry", Platform: PlatformOpenAI}}},
+		{providers: []SnapshotProvider{snapshotTestProvider{ID: 2051, Name: "retry", Platform: PlatformOpenAI}}},
 	}
 	cache := newBatchSnapshotCache()
 	svc := newBatchQueryTestService(cache, repo, "standard")
@@ -584,7 +584,7 @@ func TestSchedulerRebuildBatchRetriesQueryFailureForFollowingBucket(t *testing.T
 	require.Zero(t, singleVersion)
 	require.Equal(t, 1, forcedAttempts)
 	require.Equal(t, 1, forcedVersion)
-	require.Equal(t, "retry", snapshotTestData(forcedWrites[0].accounts[0]).Name)
+	require.Equal(t, "retry", snapshotTestData(forcedWrites[0].providers[0]).Name)
 }
 
 func TestSchedulerFullRebuildSharesSuccessfulQueryAcrossStrictAndOrdinarySegments(t *testing.T) {
@@ -597,7 +597,7 @@ func TestSchedulerFullRebuildSharesSuccessfulQueryAcrossStrictAndOrdinarySegment
 	require.NoError(t, err)
 	forcedToken, err := cache.CaptureBucketWriteToken(context.Background(), forced)
 	require.NoError(t, err)
-	repo := newBatchAccountQueryRepo()
+	repo := newBatchProviderQueryRepo()
 	svc := newBatchQueryTestService(cache, repo, "standard")
 
 	err = svc.prepareAndRebuildFullSnapshot(
@@ -608,7 +608,7 @@ func TestSchedulerFullRebuildSharesSuccessfulQueryAcrossStrictAndOrdinarySegment
 		"test",
 	)
 	require.ErrorIs(t, err, ErrSchedulerBucketWriteFenced)
-	require.Equal(t, 1, repo.callCount(batchAccountQueryKey{groupID: groupID, platform: PlatformOpenAI}), "SetSnapshot failure must not discard a successful query")
+	require.Equal(t, 1, repo.callCount(batchProviderQueryKey{groupID: groupID, platform: PlatformOpenAI}), "SetSnapshot failure must not discard a successful query")
 	_, singleAttempts, singleVersion, _ := cache.bucketState(single)
 	_, forcedAttempts, forcedVersion, _ := cache.bucketState(forced)
 	require.Equal(t, 1, singleAttempts)
@@ -625,11 +625,11 @@ func TestSchedulerRebuildBatchPreservesLockBusyAndFencingPolicy(t *testing.T) {
 	t.Run("ordinary lock busy skips only that bucket", func(t *testing.T) {
 		cache := newBatchSnapshotCache()
 		cache.lockBusy[single] = true
-		repo := newBatchAccountQueryRepo()
+		repo := newBatchProviderQueryRepo()
 		svc := newBatchQueryTestService(cache, repo, "standard")
 
 		require.NoError(t, svc.rebuildBuckets(context.Background(), []SchedulerBucket{single, forced}, "test"))
-		require.Equal(t, 1, repo.callCount(batchAccountQueryKey{groupID: groupID, platform: PlatformOpenAI}))
+		require.Equal(t, 1, repo.callCount(batchProviderQueryKey{groupID: groupID, platform: PlatformOpenAI}))
 		_, singleAttempts, _, _ := cache.bucketState(single)
 		_, forcedAttempts, forcedVersion, _ := cache.bucketState(forced)
 		require.Zero(t, singleAttempts)
@@ -644,7 +644,7 @@ func TestSchedulerRebuildBatchPreservesLockBusyAndFencingPolicy(t *testing.T) {
 		require.NoError(t, err)
 		forcedToken, err := cache.CaptureBucketWriteToken(context.Background(), forced)
 		require.NoError(t, err)
-		repo := newBatchAccountQueryRepo()
+		repo := newBatchProviderQueryRepo()
 		svc := newBatchQueryTestService(cache, repo, "standard")
 
 		err = svc.prepareAndRebuildFullSnapshot(
@@ -655,7 +655,7 @@ func TestSchedulerRebuildBatchPreservesLockBusyAndFencingPolicy(t *testing.T) {
 			"test",
 		)
 		require.ErrorIs(t, err, ErrSchedulerBucketRebuildBusy)
-		require.Equal(t, 1, repo.callCount(batchAccountQueryKey{groupID: groupID, platform: PlatformOpenAI}))
+		require.Equal(t, 1, repo.callCount(batchProviderQueryKey{groupID: groupID, platform: PlatformOpenAI}))
 		_, forcedAttempts, forcedVersion, _ := cache.bucketState(forced)
 		require.Equal(t, 1, forcedAttempts)
 		require.Equal(t, 1, forcedVersion)
@@ -664,11 +664,11 @@ func TestSchedulerRebuildBatchPreservesLockBusyAndFencingPolicy(t *testing.T) {
 	t.Run("ordinary fencing stays non-fatal", func(t *testing.T) {
 		cache := newBatchSnapshotCache()
 		cache.setErrors[single] = ErrSchedulerBucketWriteFenced
-		repo := newBatchAccountQueryRepo()
+		repo := newBatchProviderQueryRepo()
 		svc := newBatchQueryTestService(cache, repo, "standard")
 
 		require.NoError(t, svc.rebuildBuckets(context.Background(), []SchedulerBucket{single, forced}, "test"))
-		require.Equal(t, 1, repo.callCount(batchAccountQueryKey{groupID: groupID, platform: PlatformOpenAI}))
+		require.Equal(t, 1, repo.callCount(batchProviderQueryKey{groupID: groupID, platform: PlatformOpenAI}))
 		_, singleAttempts, singleVersion, _ := cache.bucketState(single)
 		_, forcedAttempts, forcedVersion, _ := cache.bucketState(forced)
 		require.Equal(t, 1, singleAttempts)
@@ -681,7 +681,7 @@ func TestSchedulerRebuildBatchPreservesLockBusyAndFencingPolicy(t *testing.T) {
 func TestSchedulerRebuildBatchReleasesResultsAfterLastConsumer(t *testing.T) {
 	const groups = 128
 	cache := newBatchSnapshotCache()
-	repo := newBatchAccountQueryRepo()
+	repo := newBatchProviderQueryRepo()
 	tasks := make([]schedulerBucketWriteTask, 0, groups*2)
 	wantLockErr := errors.New("lock failed")
 	for i := 1; i <= groups; i++ {
@@ -700,10 +700,10 @@ func TestSchedulerRebuildBatchReleasesResultsAfterLastConsumer(t *testing.T) {
 			tasks = append(tasks, schedulerBucketWriteTask{bucket: bucket, token: token})
 		}
 	}
-	queries := newSchedulerAccountQueryCache(tasks)
+	queries := newSchedulerProviderQueryCache(tasks)
 	maxResident := 0
 	cache.beforeSet = func() {
-		if resident := len(queries.accounts); resident > maxResident {
+		if resident := len(queries.providers); resident > maxResident {
 			maxResident = resident
 		}
 	}
@@ -712,21 +712,21 @@ func TestSchedulerRebuildBatchReleasesResultsAfterLastConsumer(t *testing.T) {
 	err := svc.rebuildPreparedBucketTasks(context.Background(), tasks, "test", false, queries)
 	require.ErrorIs(t, err, wantLockErr)
 	require.LessOrEqual(t, maxResident, 1, "adjacent single/forced pairs must not accumulate full-batch results")
-	require.Empty(t, queries.accounts)
+	require.Empty(t, queries.providers)
 	require.Empty(t, queries.remaining)
 	for i := 1; i <= groups; i++ {
-		key := batchAccountQueryKey{groupID: int64(300 + i), platform: PlatformOpenAI}
+		key := batchProviderQueryKey{groupID: int64(300 + i), platform: PlatformOpenAI}
 		require.Equal(t, 1, repo.callCount(key), key)
 	}
 }
 
 type batchQueryBenchmarkRepo struct {
-	SnapshotAccountSource
-	accounts []SnapshotAccount
+	SnapshotProviderSource
+	providers []SnapshotProvider
 }
 
-func (r *batchQueryBenchmarkRepo) ListSchedulableByGroupIDAndPlatform(context.Context, int64, string) ([]SnapshotAccount, error) {
-	return r.accounts, nil
+func (r *batchQueryBenchmarkRepo) ListSchedulableByGroupIDAndPlatform(context.Context, int64, string) ([]SnapshotProvider, error) {
+	return r.providers, nil
 }
 
 type batchQueryBenchmarkCache struct {
@@ -745,10 +745,10 @@ func (c *batchQueryBenchmarkCache) UnlockBucket(context.Context, SchedulerBucket
 	return nil
 }
 
-var batchQueryBenchmarkAccountCount int
+var batchQueryBenchmarkProviderCount int
 
-func (c *batchQueryBenchmarkCache) SetSnapshot(_ context.Context, _ SchedulerBucket, _ SchedulerBucketWriteToken, accounts []SnapshotAccount) error {
-	batchQueryBenchmarkAccountCount = len(accounts)
+func (c *batchQueryBenchmarkCache) SetSnapshot(_ context.Context, _ SchedulerBucket, _ SchedulerBucketWriteToken, providers []SnapshotProvider) error {
+	batchQueryBenchmarkProviderCount = len(providers)
 	return nil
 }
 
@@ -762,14 +762,14 @@ func BenchmarkSchedulerRebuildBatchQueryReuse(b *testing.B) {
 		name string
 		size int
 	}{
-		{name: "1_account", size: 1},
-		{name: "10000_accounts", size: 10_000},
+		{name: "1_provider", size: 1},
+		{name: "10000_providers", size: 10_000},
 	} {
 		b.Run(tc.name, func(b *testing.B) {
-			accounts := make([]SnapshotAccount, tc.size)
+			providers := make([]SnapshotProvider, tc.size)
 			svc := newBatchQueryTestService(
 				&batchQueryBenchmarkCache{},
-				&batchQueryBenchmarkRepo{accounts: accounts}, "standard",
+				&batchQueryBenchmarkRepo{providers: providers}, "standard",
 			)
 			b.ReportAllocs()
 			b.ResetTimer()

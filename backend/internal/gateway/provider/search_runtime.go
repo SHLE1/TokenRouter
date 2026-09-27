@@ -50,11 +50,11 @@ func NewSearchTools(runtime *search.ConfigService, groupPolicies *routing.Pricin
 	return searchtools.NewEmulator(searchSource{registry}, settings, policy, time.Now, func() string { return uuid.New().String() }, observeSearch)
 }
 
-// SearchAccountMode 保留历史布尔输入的原诊断字段和级别。
-func SearchAccountMode(value *searchtools.AccountPolicy) string {
-	selection := searchtools.AccountMode(value)
+// SearchProviderMode 保留历史布尔输入的原诊断字段和级别。
+func SearchProviderMode(value *searchtools.ProviderPolicy) string {
+	selection := searchtools.ProviderMode(value)
 	if selection.LegacyBool != nil {
-		slog.Debug("legacy bool web_search_emulation value", "account_id", value.ID, "value", *selection.LegacyBool)
+		slog.Debug("legacy bool web_search_emulation value", "provider_id", value.ID, "value", *selection.LegacyBool)
 	}
 	return selection.Mode
 }
@@ -62,7 +62,7 @@ func SearchAccountMode(value *searchtools.AccountPolicy) string {
 func observeSearch(e searchtools.Event) {
 	switch e.Kind {
 	case "executing":
-		slog.Info("web search emulation: executing search", "account_id", e.AccountID, "account_name", e.AccountName, "query", e.Query)
+		slog.Info("web search emulation: executing search", "provider_id", e.ProviderID, "provider_name", e.ProviderName, "query", e.Query)
 	case "completed":
 		slog.Info("web search emulation: search completed", "provider", e.Provider, "results_count", e.Results)
 	case "search_failed":

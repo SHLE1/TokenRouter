@@ -9,7 +9,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
-type snapshotTestAccount struct {
+type snapshotTestProvider struct {
 	ID          int64
 	Name        string
 	Platform    string
@@ -18,14 +18,15 @@ type snapshotTestAccount struct {
 	GroupIDs    []int64
 }
 
-func (a snapshotTestAccount) SnapshotMetadata() SnapshotMetadata {
+func (a snapshotTestProvider) SnapshotMetadata() SnapshotMetadata {
 	return SnapshotMetadata{ID: a.ID, Name: a.Name, Platform: a.Platform, GroupIDs: slices.Clone(a.GroupIDs)}
 }
-func snapshotTestData(value SnapshotAccount) *snapshotTestAccount {
+
+func snapshotTestData(value SnapshotProvider) *snapshotTestProvider {
 	switch v := value.(type) {
-	case snapshotTestAccount:
+	case snapshotTestProvider:
 		return &v
-	case *snapshotTestAccount:
+	case *snapshotTestProvider:
 		return v
 	default:
 		panic("unexpected snapshot fixture")
@@ -36,44 +37,50 @@ const (
 	StatusActive   = "active"
 	StatusDisabled = "disabled"
 )
-const PlatformAnthropic = capability.PlatformAnthropic
-const PlatformOpenAI = capability.PlatformOpenAI
-const PlatformGemini = capability.PlatformGemini
-const PlatformAntigravity = capability.PlatformAntigravity
-const PlatformQoder = capability.PlatformQoder
-const PlatformGrok = capability.PlatformGrok
+
+const (
+	PlatformAnthropic   = capability.PlatformAnthropic
+	PlatformOpenAI      = capability.PlatformOpenAI
+	PlatformGemini      = capability.PlatformGemini
+	PlatformAntigravity = capability.PlatformAntigravity
+	PlatformQoder       = capability.PlatformQoder
+	PlatformGrok        = capability.PlatformGrok
+)
 
 // ptrInt64 保留原测试的可选分组输入。
 func ptrInt64(value int64) *int64 { return &value }
 
-// retirementAccountSource 保留原平台夹具的过滤与可控数据库屏障。
-type retirementAccountSource struct {
-	SnapshotAccountSource
-	accounts         []SnapshotAccount
-	listPlatformFunc func(context.Context, string) ([]SnapshotAccount, error)
+// retirementProviderSource 保留原平台夹具的过滤与可控数据库屏障。
+type retirementProviderSource struct {
+	SnapshotProviderSource
+	providers        []SnapshotProvider
+	listPlatformFunc func(context.Context, string) ([]SnapshotProvider, error)
 }
 
-func (r *retirementAccountSource) ListSchedulableByPlatform(ctx context.Context, platform string) ([]SnapshotAccount, error) {
+func (r *retirementProviderSource) ListSchedulableByPlatform(ctx context.Context, platform string) ([]SnapshotProvider, error) {
 	if r.listPlatformFunc != nil {
 		return r.listPlatformFunc(ctx, platform)
 	}
-	var out []SnapshotAccount
-	for _, a := range r.accounts {
+	var out []SnapshotProvider
+	for _, a := range r.providers {
 		if a.SnapshotMetadata().Platform == platform {
 			out = append(out, a)
 		}
 	}
 	return out, nil
 }
-func (r *retirementAccountSource) ListSchedulableByGroupIDAndPlatform(ctx context.Context, _ int64, platform string) ([]SnapshotAccount, error) {
+
+func (r *retirementProviderSource) ListSchedulableByGroupIDAndPlatform(ctx context.Context, _ int64, platform string) ([]SnapshotProvider, error) {
 	return r.ListSchedulableByPlatform(ctx, platform)
 }
-func (r *retirementAccountSource) ListSchedulableUngroupedByPlatform(ctx context.Context, platform string) ([]SnapshotAccount, error) {
+
+func (r *retirementProviderSource) ListSchedulableUngroupedByPlatform(ctx context.Context, platform string) ([]SnapshotProvider, error) {
 	return r.ListSchedulableByPlatform(ctx, platform)
 }
-func (r *retirementAccountSource) ListSchedulableByPlatforms(ctx context.Context, platforms []string) ([]SnapshotAccount, error) {
-	var out []SnapshotAccount
-	for _, a := range r.accounts {
+
+func (r *retirementProviderSource) ListSchedulableByPlatforms(ctx context.Context, platforms []string) ([]SnapshotProvider, error) {
+	var out []SnapshotProvider
+	for _, a := range r.providers {
 		for _, platform := range platforms {
 			if a.SnapshotMetadata().Platform == platform {
 				out = append(out, a)
@@ -83,9 +90,11 @@ func (r *retirementAccountSource) ListSchedulableByPlatforms(ctx context.Context
 	}
 	return out, nil
 }
-func (r *retirementAccountSource) ListSchedulableByGroupIDAndPlatforms(ctx context.Context, _ int64, platforms []string) ([]SnapshotAccount, error) {
+
+func (r *retirementProviderSource) ListSchedulableByGroupIDAndPlatforms(ctx context.Context, _ int64, platforms []string) ([]SnapshotProvider, error) {
 	return r.ListSchedulableByPlatforms(ctx, platforms)
 }
-func (r *retirementAccountSource) ListSchedulableUngroupedByPlatforms(ctx context.Context, platforms []string) ([]SnapshotAccount, error) {
+
+func (r *retirementProviderSource) ListSchedulableUngroupedByPlatforms(ctx context.Context, platforms []string) ([]SnapshotProvider, error) {
 	return r.ListSchedulableByPlatforms(ctx, platforms)
 }

@@ -36,7 +36,7 @@ func insertBatchImageAllowanceTestJob(t *testing.T, batchID string, actorUserID,
 	_, err := integrationDB.ExecContext(context.Background(), `
 		INSERT INTO batch_image_jobs (
 			batch_id, user_id, billing_user_id, team_id, api_key_id,
-			provider, model, item_count, estimated_cost, hold_amount, created_at, updated_at
+			platform, model, item_count, estimated_cost, hold_amount, created_at, updated_at
 		) VALUES ($1, $2, $3, $4, $5, 'gemini', 'image-test', 1, 1, 1, $6, $6)`,
 		batchID, actorUserID, billingUserID, teamID, apiKeyID, createdAt)
 	require.NoError(t, err)

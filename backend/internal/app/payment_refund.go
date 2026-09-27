@@ -24,14 +24,14 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/payment"
 
 	paymentpostgres "github.com/TokenFlux/TokenRouter/internal/payment/postgres"
-	"github.com/TokenFlux/TokenRouter/internal/payment/provider"
+	paymentadapter "github.com/TokenFlux/TokenRouter/internal/payment/provider"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/timezone"
 
 	routingpostgres "github.com/TokenFlux/TokenRouter/internal/routing/postgres"
 )
 
 func providePaymentRuntime(client *dbent.Client, registry *payment.Registry, balancer payment.LoadBalancer, redeem *billing.RedeemService, subscriptions *billing.SubscriptionService, affiliate *promotion.AffiliateService, notification *notificationcore.NotificationEmailService, instances *paymentpostgres.InstanceStore, routingGroups *routingpostgres.GroupStore, identityUsers *identitypostgres.UserStore, coreConfig *payment.ConfigService, key payment.EncryptionKey, settings *identity.OAuthSettings, tasks *lifecycle.Tasks, calendar timezone.Calendar) *payment.Runtime {
-	bindings := payment.NewProviderBindings(instances, registry, balancer, payment.BindingRuntime{Factory: provider.CreateProvider, RegistryFactory: provider.CreateProvider, Warn: slog.Warn}, false)
+	bindings := payment.NewProviderBindings(instances, registry, balancer, payment.BindingRuntime{Factory: paymentadapter.CreateProvider, RegistryFactory: paymentadapter.CreateProvider, Warn: slog.Warn}, false)
 	store := paymentpostgres.NewRefundStore(client, func(tx *dbent.Tx) payment.RefundRights {
 		return paymentRefundRights{balances: billingpostgres.BalanceInTx(tx), subscriptions: billingpostgres.SubscriptionsInTx(tx, billingGroups{Repository: routingGroups}, billing.DateRuntime{Now: time.Now, Calendar: &calendar})}
 	})
@@ -79,7 +79,7 @@ func providePaymentRuntime(client *dbent.Client, registry *payment.Registry, bal
 			}
 			return appID, secret, nil
 		},
-		CreateProvider: provider.CreateProvider, RememberLocale: notification.RememberRecipientLocale,
+		CreateProvider: paymentadapter.CreateProvider, RememberLocale: notification.RememberRecipientLocale,
 		Observe: func(ctx context.Context) func() { return timing.ObserveDependency(ctx, "payment") }, Error: slog.Error,
 		Audit: func(ctx context.Context, id int64, action, operator string, detail map[string]any) {
 			if e := store.AppendObservation(ctx, id, action, operator, detail); e != nil {
@@ -124,13 +124,16 @@ type paymentRefundRights struct {
 func (p paymentRefundRights) DeductBalance(ctx context.Context, id int64, amount float64) (float64, error) {
 	return p.balances.DeductRefundBalance(ctx, id, amount)
 }
+
 func (p paymentRefundRights) CompensateBalance(ctx context.Context, id int64, amount float64) error {
 	return p.balances.CompensateRefundBalance(ctx, id, amount)
 }
+
 func (p paymentRefundRights) AdjustSubscription(ctx context.Context, id int64, days int) error {
 	_, err := p.subscriptions.ExtendSubscription(ctx, id, days)
 	return err
 }
+
 func (p paymentRefundRights) RevokeSubscription(ctx context.Context, id int64) error {
 	return p.subscriptions.RevokeSubscription(ctx, id)
 }

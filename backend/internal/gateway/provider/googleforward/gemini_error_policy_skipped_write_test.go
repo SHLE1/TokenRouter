@@ -13,12 +13,12 @@ import (
 	"testing"
 	time "time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/googleforward"
 	gatewaytestkit "github.com/TokenFlux/TokenRouter/internal/gateway/testkit"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
@@ -28,7 +28,7 @@ import (
 // ErrorPolicySkipped 的客户端写出契约（与 OpenAI 网关路径对齐）：
 //   - 池模式：不可 failover 的 4xx 按上游原始状态码/响应体保真写出，不改写成 5xx；
 //   - 自定义错误码未命中：统一 500 + 固定文案，上游细节只进 ops 错误日志；
-//   - 可 failover 的状态码（两种账号）一律换号，不透传。
+//   - 可 failover 的状态码（两种提供商）一律换号，不透传。
 // ---------------------------------------------------------------------------
 
 const geminiSkippedTestUpstreamMsg = "antigravity executor: invalid Gemini function call history"
@@ -40,7 +40,6 @@ func geminiSkippedTestUpstreamBody() string {
 func newGeminiErrorFixture(status int, body string) (*googleforward.Gemini, *geminiCompatHTTPUpstreamStub) {
 	httpStub := &geminiCompatHTTPUpstreamStub{
 		response: &http.Response{
-
 			StatusCode: status,
 
 			Header: http.Header{"Content-Type": []string{"application/json"}},
@@ -49,51 +48,51 @@ func newGeminiErrorFixture(status int, body string) (*googleforward.Gemini, *gem
 		},
 	}
 	svc := newGeminiFixture(geminiDependencies{
-
 		httpUpstream: httpStub,
 
 		cfg: &googleforward.Options{},
 
-		healthObserver: newUpstreamHealthForTest(&gatewaytestkit.ErrorPolicyStore{}, &googleforward.Options{}, nil, accountcore.HealthOptions{}, nil),
+		healthObserver: newUpstreamHealthForTest(&gatewaytestkit.ErrorPolicyStore{}, &googleforward.Options{}, nil, providercore.HealthOptions{}, nil),
 	})
 	return svc, httpStub
 }
 
-func geminiPoolModeAPIKeyAccount() *gatewayprovider.ExecutionAccount {
-	return &gatewayprovider.ExecutionAccount{Record: accountcore.Record{
-		LoadLocation: time.LoadLocation,
-		ID:           700,
+func geminiPoolModeAPIKeyProvider() *gatewayprovider.ExecutionProvider {
+	return &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation,
+			ID:           700,
 
-		Platform: capability.PlatformGemini,
+			Platform: capability.PlatformGemini,
 
-		Type: capability.AccountTypeAPIKey,
+			Type: capability.ProviderTypeAPIKey,
 
-		Credentials: map[string]any{
-			"api_key":   "test-key",
-			"pool_mode": true,
+			Credentials: map[string]any{
+				"api_key":   "test-key",
+				"pool_mode": true,
+			},
 		},
-	},
 	}
 }
 
-func geminiCustomCodesAPIKeyAccount() *gatewayprovider.ExecutionAccount {
-	return &gatewayprovider.ExecutionAccount{Record: accountcore.Record{
-		LoadLocation: time.LoadLocation,
-		ID:           701,
+func geminiCustomCodesAPIKeyProvider() *gatewayprovider.ExecutionProvider {
+	return &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation,
+			ID:           701,
 
-		Platform: capability.PlatformGemini,
+			Platform: capability.PlatformGemini,
 
-		Type: capability.AccountTypeAPIKey,
+			Type: capability.ProviderTypeAPIKey,
 
-		Credentials: map[string]any{
+			Credentials: map[string]any{
+				"api_key": "test-key",
 
-			"api_key": "test-key",
+				"custom_error_codes_enabled": true,
 
-			"custom_error_codes_enabled": true,
-
-			"custom_error_codes": []any{float64(429)},
+				"custom_error_codes": []any{float64(429)},
+			},
 		},
-	},
 	}
 }
 
@@ -106,12 +105,11 @@ func newGeminiNativeTestContext(t *testing.T) (*gin.Context, *httptest.ResponseR
 }
 
 func TestGeminiForwardNative_PoolModeSkipped400PassthroughRealStatus(t *testing.T) {
-
 	upstreamBody := geminiSkippedTestUpstreamBody()
 	svc, _ := newGeminiErrorFixture(http.StatusBadRequest, upstreamBody)
 	c, rec := newGeminiNativeTestContext(t)
 
-	result, err := svc.ForwardNative(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, false), geminiPoolModeAPIKeyAccount(), "gemini-2.5-flash", "generateContent", false, []byte(`{"contents":[{"role":"user","parts":[{"text":"hi"}]}]}`))
+	result, err := svc.ForwardNative(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, false), geminiPoolModeAPIKeyProvider(), "gemini-2.5-flash", "generateContent", false, []byte(`{"contents":[{"role":"user","parts":[{"text":"hi"}]}]}`))
 
 	require.Nil(t, result)
 	require.Error(t, err)
@@ -123,11 +121,10 @@ func TestGeminiForwardNative_PoolModeSkipped400PassthroughRealStatus(t *testing.
 }
 
 func TestGeminiForwardNative_PoolModeSkipped503Failover(t *testing.T) {
-
 	svc, _ := newGeminiErrorFixture(http.StatusServiceUnavailable, `{"error":{"message":"Upstream service temporarily unavailable"}}`)
 	c, rec := newGeminiNativeTestContext(t)
 
-	result, err := svc.ForwardNative(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, false), geminiPoolModeAPIKeyAccount(), "gemini-2.5-flash", "generateContent", false, []byte(`{"contents":[{"role":"user","parts":[{"text":"hi"}]}]}`))
+	result, err := svc.ForwardNative(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, false), geminiPoolModeAPIKeyProvider(), "gemini-2.5-flash", "generateContent", false, []byte(`{"contents":[{"role":"user","parts":[{"text":"hi"}]}]}`))
 
 	require.Nil(t, result)
 	var failoverErr *forwardcore.UpstreamFailoverError
@@ -137,11 +134,10 @@ func TestGeminiForwardNative_PoolModeSkipped503Failover(t *testing.T) {
 }
 
 func TestGeminiForwardNative_CustomCodesMiss400HiddenAs500(t *testing.T) {
-
 	svc, _ := newGeminiErrorFixture(http.StatusBadRequest, geminiSkippedTestUpstreamBody())
 	c, rec := newGeminiNativeTestContext(t)
 
-	result, err := svc.ForwardNative(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, false), geminiCustomCodesAPIKeyAccount(), "gemini-2.5-flash", "generateContent", false, []byte(`{"contents":[{"role":"user","parts":[{"text":"hi"}]}]}`))
+	result, err := svc.ForwardNative(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, false), geminiCustomCodesAPIKeyProvider(), "gemini-2.5-flash", "generateContent", false, []byte(`{"contents":[{"role":"user","parts":[{"text":"hi"}]}]}`))
 
 	require.Nil(t, result)
 	require.Error(t, err)
@@ -157,29 +153,27 @@ func TestGeminiForwardNative_CustomCodesMiss400HiddenAs500(t *testing.T) {
 }
 
 func TestGeminiForwardNative_CustomCodesMiss500Failover(t *testing.T) {
-
 	svc, _ := newGeminiErrorFixture(http.StatusInternalServerError, `{"error":{"message":"internal"}}`)
 	c, rec := newGeminiNativeTestContext(t)
 
-	result, err := svc.ForwardNative(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, false), geminiCustomCodesAPIKeyAccount(), "gemini-2.5-flash", "generateContent", false, []byte(`{"contents":[{"role":"user","parts":[{"text":"hi"}]}]}`))
+	result, err := svc.ForwardNative(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, false), geminiCustomCodesAPIKeyProvider(), "gemini-2.5-flash", "generateContent", false, []byte(`{"contents":[{"role":"user","parts":[{"text":"hi"}]}]}`))
 
 	require.Nil(t, result)
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.True(t, errors.As(err, &failoverErr), "自定义错误码未命中的 500 应换号")
 	require.Equal(t, http.StatusInternalServerError, failoverErr.StatusCode)
-	require.False(t, failoverErr.RetryableOnSameAccount, "非池模式不应同账号重试")
+	require.False(t, failoverErr.RetryableOnSameProvider, "非池模式不应同提供商重试")
 	require.Zero(t, rec.Body.Len())
 }
 
 func TestGeminiForwardAsChatCompletions_CustomCodesMiss400HiddenAs500(t *testing.T) {
-
 	svc, _ := newGeminiErrorFixture(http.StatusBadRequest, geminiSkippedTestUpstreamBody())
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	body := []byte(`{"model":"gemini-2.5-flash","messages":[{"role":"user","content":"hi"}]}`)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", strings.NewReader(string(body)))
 
-	result, err := svc.ForwardAsChatCompletions(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, false), geminiCustomCodesAPIKeyAccount(), body)
+	result, err := svc.ForwardAsChatCompletions(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, false), geminiCustomCodesAPIKeyProvider(), body)
 
 	require.Nil(t, result)
 	require.Error(t, err)
@@ -195,14 +189,13 @@ func TestGeminiForwardAsChatCompletions_CustomCodesMiss400HiddenAs500(t *testing
 }
 
 func TestGeminiForwardAsChatCompletions_PoolMode400KeepsUpstreamMessage(t *testing.T) {
-
 	svc, _ := newGeminiErrorFixture(http.StatusBadRequest, geminiSkippedTestUpstreamBody())
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	body := []byte(`{"model":"gemini-2.5-flash","messages":[{"role":"user","content":"hi"}]}`)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", strings.NewReader(string(body)))
 
-	result, err := svc.ForwardAsChatCompletions(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, false), geminiPoolModeAPIKeyAccount(), body)
+	result, err := svc.ForwardAsChatCompletions(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, false), geminiPoolModeAPIKeyProvider(), body)
 
 	require.Nil(t, result)
 	require.Error(t, err)
@@ -217,13 +210,12 @@ func TestGeminiForwardAsChatCompletions_PoolMode400KeepsUpstreamMessage(t *testi
 }
 
 func TestWriteGeminiMappedError_400KeepsUpstreamMessage(t *testing.T) {
-
 	svc := newGeminiFixture(geminiDependencies{cfg: &googleforward.Options{}})
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
 
-	err := gatewayhttp.NewGoogleBoundary(c, svc.Options, false).GeminiMappedError(&gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 702, Platform: capability.PlatformGemini}}, http.StatusBadRequest, "req-1", []byte(geminiSkippedTestUpstreamBody()))
+	err := gatewayhttp.NewGoogleBoundary(c, svc.Options, false).GeminiMappedError(&gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 702, Platform: capability.PlatformGemini}}, http.StatusBadRequest, "req-1", []byte(geminiSkippedTestUpstreamBody()))
 
 	require.Error(t, err)
 	require.Equal(t, http.StatusBadRequest, rec.Code)

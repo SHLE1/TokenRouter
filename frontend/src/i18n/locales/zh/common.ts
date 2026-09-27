@@ -126,7 +126,7 @@ export default {
     groups: '分组管理',
     pricing: '价格管理',
     subscriptions: '订阅管理',
-    accounts: '账号管理',
+    providers: '提供商管理',
     proxies: 'IP管理',
     redeemCodes: '兑换码',
     ops: '运维监控',

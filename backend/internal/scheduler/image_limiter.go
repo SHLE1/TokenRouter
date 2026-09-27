@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// ImageConcurrencyLimiter 保留独立本地容量，不与账号 Redis 池合并。
+// ImageConcurrencyLimiter 保留独立本地容量，不与提供商 Redis 池合并。
 type ImageConcurrencyLimiter struct {
 	mu      sync.Mutex
 	notify  chan struct{}

@@ -273,18 +273,18 @@ func maxReasoningEffortBillingMultiplier(model, effort string, p *pricing.ModelP
 	return pricing.MaxReasoningEffortBillingMultiplier(model, effort, p)
 }
 
-// cacheOverrideTarget 保留账号优先及设置查询时机，不提前读取动态设置。
+// cacheOverrideTarget 保留提供商优先及设置查询时机，不提前读取动态设置。
 func (s *Recorder) cacheOverrideTarget(ctx context.Context, input *Input) string {
 	if input.CacheOverrideTarget != "" {
 		return input.CacheOverrideTarget
 	}
-	if input.Account == nil {
+	if input.Provider == nil {
 		return ""
 	}
-	if input.Account.CacheTTLOverrideEnabled {
-		return input.Account.CacheTTLOverrideTarget
+	if input.Provider.CacheTTLOverrideEnabled {
+		return input.Provider.CacheTTLOverrideTarget
 	}
-	if input.Account.AnthropicOAuthOrSetupToken && s.cacheInjection != nil && s.cacheInjection.IsAnthropicCacheTTL1hInjectionEnabled(ctx) {
+	if input.Provider.AnthropicOAuthOrSetupToken && s.cacheInjection != nil && s.cacheInjection.IsAnthropicCacheTTL1hInjectionEnabled(ctx) {
 		return "5m"
 	}
 	return ""

@@ -248,8 +248,8 @@ const fallbackPlaceholders = [
   "{{recharge_amount}}",
   "{{order_id}}",
   "{{unsubscribe_url}}",
-  "{{account_id}}",
-  "{{account_name}}",
+  "{{provider_id}}",
+  "{{provider_name}}",
   "{{platform}}",
   "{{quota_dimension}}",
   "{{quota_used}}",
@@ -368,9 +368,9 @@ const eventDisplayMeta: Record<string, EventDisplayMeta> = {
     timing: "余额充值订单支付完成并入账后发送。",
     categoryLabel: "计费",
   },
-  "account.quota_alert": {
-    label: "账号限额告警",
-    timing: "上游账号的用量达到配置的额度告警阈值时发送给管理员通知邮箱。",
+  "provider.quota_alert": {
+    label: "提供商限额告警",
+    timing: "上游提供商的用量达到配置的额度告警阈值时发送给管理员通知邮箱。",
     categoryLabel: "管理告警",
   },
   "content_moderation.violation_notice": {
@@ -378,8 +378,8 @@ const eventDisplayMeta: Record<string, EventDisplayMeta> = {
     timing: "用户请求命中内容审计或风控规则、但尚未被禁用时发送。",
     categoryLabel: "风控",
   },
-  "content_moderation.account_disabled": {
-    label: "内容审计禁用账号",
+  "content_moderation.provider_disabled": {
+    label: "内容审计禁用提供商",
     timing: "内容审计违规次数达到封禁阈值并自动禁用用户账号时发送。",
     categoryLabel: "风控",
   },
@@ -390,7 +390,7 @@ const eventDisplayMeta: Record<string, EventDisplayMeta> = {
   },
   "ops.scheduled_report": {
     label: "运维定时报表",
-    timing: "运维日报、周报、错误摘要或账号健康报表到达配置的发送时间时发送；日报和周报的完整指标均可在模板中编辑。",
+    timing: "运维日报、周报、错误摘要或提供商健康报表到达配置的发送时间时发送；日报和周报的完整指标均可在模板中编辑。",
     categoryLabel: "运维",
   },
 };
@@ -436,19 +436,19 @@ const eventDisplayMetaEn: Record<string, EventDisplayMeta> = {
     timing: "Sent after a balance recharge order is paid and credited.",
     categoryLabel: "Billing",
   },
-  "account.quota_alert": {
-    label: "Account Quota Alert",
-    timing: "Sent to admin notification emails when an upstream account reaches the configured quota alert threshold.",
+  "provider.quota_alert": {
+    label: "Provider Quota Alert",
+    timing: "Sent to admin notification emails when an upstream provider reaches the configured quota alert threshold.",
     categoryLabel: "Admin",
   },
   "content_moderation.violation_notice": {
     label: "Risk Control Violation Notice",
-    timing: "Sent when a user request triggers content moderation or risk-control rules but the account is not disabled yet.",
+    timing: "Sent when a user request triggers content moderation or risk-control rules but the provider is not disabled yet.",
     categoryLabel: "Risk Control",
   },
-  "content_moderation.account_disabled": {
-    label: "Risk Control Account Disabled",
-    timing: "Sent when content moderation reaches the ban threshold and automatically disables the user account.",
+  "content_moderation.provider_disabled": {
+    label: "Risk Control Provider Disabled",
+    timing: "Sent when content moderation reaches the ban threshold and automatically disables the user provider.",
     categoryLabel: "Risk Control",
   },
   "ops.alert": {
@@ -458,7 +458,7 @@ const eventDisplayMetaEn: Record<string, EventDisplayMeta> = {
   },
   "ops.scheduled_report": {
     label: "Ops Scheduled Report",
-    timing: "Sent when a configured daily, weekly, error digest, or account health report reaches its scheduled send time. Every daily and weekly summary metric is editable in this template.",
+    timing: "Sent when a configured daily, weekly, error digest, or provider health report reaches its scheduled send time. Every daily and weekly summary metric is editable in this template.",
     categoryLabel: "Ops",
   },
 };

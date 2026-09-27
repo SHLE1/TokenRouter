@@ -106,14 +106,14 @@ const (
 	EdgeAPIKeyCompositeGroups = "api_key_composite_groups"
 	// EdgeUsageLogs holds the string denoting the usage_logs edge name in mutations.
 	EdgeUsageLogs = "usage_logs"
-	// EdgeAccounts holds the string denoting the accounts edge name in mutations.
-	EdgeAccounts = "accounts"
+	// EdgeProviders holds the string denoting the providers edge name in mutations.
+	EdgeProviders = "providers"
 	// EdgeAllowedUsers holds the string denoting the allowed_users edge name in mutations.
 	EdgeAllowedUsers = "allowed_users"
 	// EdgeDisabledPublicUsers holds the string denoting the disabled_public_users edge name in mutations.
 	EdgeDisabledPublicUsers = "disabled_public_users"
-	// EdgeAccountGroups holds the string denoting the account_groups edge name in mutations.
-	EdgeAccountGroups = "account_groups"
+	// EdgeProviderGroups holds the string denoting the provider_groups edge name in mutations.
+	EdgeProviderGroups = "provider_groups"
 	// EdgeUserAllowedGroups holds the string denoting the user_allowed_groups edge name in mutations.
 	EdgeUserAllowedGroups = "user_allowed_groups"
 	// EdgeUserDisabledPublicGroups holds the string denoting the user_disabled_public_groups edge name in mutations.
@@ -141,11 +141,11 @@ const (
 	UsageLogsInverseTable = "usage_logs"
 	// UsageLogsColumn is the table column denoting the usage_logs relation/edge.
 	UsageLogsColumn = "group_id"
-	// AccountsTable is the table that holds the accounts relation/edge. The primary key declared below.
-	AccountsTable = "account_groups"
-	// AccountsInverseTable is the table name for the Account entity.
-	// It exists in this package in order to avoid circular dependency with the "account" package.
-	AccountsInverseTable = "accounts"
+	// ProvidersTable is the table that holds the providers relation/edge. The primary key declared below.
+	ProvidersTable = "provider_groups"
+	// ProvidersInverseTable is the table name for the Provider entity.
+	// It exists in this package in order to avoid circular dependency with the "provider" package.
+	ProvidersInverseTable = "providers"
 	// AllowedUsersTable is the table that holds the allowed_users relation/edge. The primary key declared below.
 	AllowedUsersTable = "user_allowed_groups"
 	// AllowedUsersInverseTable is the table name for the User entity.
@@ -156,13 +156,13 @@ const (
 	// DisabledPublicUsersInverseTable is the table name for the User entity.
 	// It exists in this package in order to avoid circular dependency with the "user" package.
 	DisabledPublicUsersInverseTable = "users"
-	// AccountGroupsTable is the table that holds the account_groups relation/edge.
-	AccountGroupsTable = "account_groups"
-	// AccountGroupsInverseTable is the table name for the AccountGroup entity.
-	// It exists in this package in order to avoid circular dependency with the "accountgroup" package.
-	AccountGroupsInverseTable = "account_groups"
-	// AccountGroupsColumn is the table column denoting the account_groups relation/edge.
-	AccountGroupsColumn = "group_id"
+	// ProviderGroupsTable is the table that holds the provider_groups relation/edge.
+	ProviderGroupsTable = "provider_groups"
+	// ProviderGroupsInverseTable is the table name for the ProviderGroup entity.
+	// It exists in this package in order to avoid circular dependency with the "providergroup" package.
+	ProviderGroupsInverseTable = "provider_groups"
+	// ProviderGroupsColumn is the table column denoting the provider_groups relation/edge.
+	ProviderGroupsColumn = "group_id"
 	// UserAllowedGroupsTable is the table that holds the user_allowed_groups relation/edge.
 	UserAllowedGroupsTable = "user_allowed_groups"
 	// UserAllowedGroupsInverseTable is the table name for the UserAllowedGroup entity.
@@ -226,9 +226,9 @@ var Columns = []string{
 }
 
 var (
-	// AccountsPrimaryKey and AccountsColumn2 are the table columns denoting the
-	// primary key for the accounts relation (M2M).
-	AccountsPrimaryKey = []string{"account_id", "group_id"}
+	// ProvidersPrimaryKey and ProvidersColumn2 are the table columns denoting the
+	// primary key for the providers relation (M2M).
+	ProvidersPrimaryKey = []string{"provider_id", "group_id"}
 	// AllowedUsersPrimaryKey and AllowedUsersColumn2 are the table columns denoting the
 	// primary key for the allowed_users relation (M2M).
 	AllowedUsersPrimaryKey = []string{"user_id", "group_id"}
@@ -549,17 +549,17 @@ func ByUsageLogs(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	}
 }
 
-// ByAccountsCount orders the results by accounts count.
-func ByAccountsCount(opts ...sql.OrderTermOption) OrderOption {
+// ByProvidersCount orders the results by providers count.
+func ByProvidersCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborsCount(s, newAccountsStep(), opts...)
+		sqlgraph.OrderByNeighborsCount(s, newProvidersStep(), opts...)
 	}
 }
 
-// ByAccounts orders the results by accounts terms.
-func ByAccounts(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+// ByProviders orders the results by providers terms.
+func ByProviders(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newAccountsStep(), append([]sql.OrderTerm{term}, terms...)...)
+		sqlgraph.OrderByNeighborTerms(s, newProvidersStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
 
@@ -591,17 +591,17 @@ func ByDisabledPublicUsers(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOpti
 	}
 }
 
-// ByAccountGroupsCount orders the results by account_groups count.
-func ByAccountGroupsCount(opts ...sql.OrderTermOption) OrderOption {
+// ByProviderGroupsCount orders the results by provider_groups count.
+func ByProviderGroupsCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborsCount(s, newAccountGroupsStep(), opts...)
+		sqlgraph.OrderByNeighborsCount(s, newProviderGroupsStep(), opts...)
 	}
 }
 
-// ByAccountGroups orders the results by account_groups terms.
-func ByAccountGroups(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+// ByProviderGroups orders the results by provider_groups terms.
+func ByProviderGroups(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newAccountGroupsStep(), append([]sql.OrderTerm{term}, terms...)...)
+		sqlgraph.OrderByNeighborTerms(s, newProviderGroupsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
 
@@ -653,11 +653,11 @@ func newUsageLogsStep() *sqlgraph.Step {
 		sqlgraph.Edge(sqlgraph.O2M, false, UsageLogsTable, UsageLogsColumn),
 	)
 }
-func newAccountsStep() *sqlgraph.Step {
+func newProvidersStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(AccountsInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.M2M, true, AccountsTable, AccountsPrimaryKey...),
+		sqlgraph.To(ProvidersInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2M, true, ProvidersTable, ProvidersPrimaryKey...),
 	)
 }
 func newAllowedUsersStep() *sqlgraph.Step {
@@ -674,11 +674,11 @@ func newDisabledPublicUsersStep() *sqlgraph.Step {
 		sqlgraph.Edge(sqlgraph.M2M, true, DisabledPublicUsersTable, DisabledPublicUsersPrimaryKey...),
 	)
 }
-func newAccountGroupsStep() *sqlgraph.Step {
+func newProviderGroupsStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(AccountGroupsInverseTable, AccountGroupsColumn),
-		sqlgraph.Edge(sqlgraph.O2M, true, AccountGroupsTable, AccountGroupsColumn),
+		sqlgraph.To(ProviderGroupsInverseTable, ProviderGroupsColumn),
+		sqlgraph.Edge(sqlgraph.O2M, true, ProviderGroupsTable, ProviderGroupsColumn),
 	)
 }
 func newUserAllowedGroupsStep() *sqlgraph.Step {

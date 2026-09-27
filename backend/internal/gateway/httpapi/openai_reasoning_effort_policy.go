@@ -24,7 +24,7 @@ func ReasoningEffortPolicyForRequest(c *gin.Context, apiKey *apikey.APIKey, plat
 	if err != nil {
 		maxEffort = ""
 	}
-	// 平台专属档位只作用于能够表达该档位的实际账号。
+	// 平台专属档位只作用于能够表达该档位的实际提供商。
 	var mappings []routing.ReasoningEffortMapping
 	for _, mapping := range group.ReasoningEffortMappings {
 		if _, err := routing.NormalizeReasoningEffortMappingValueForPlatform(platform, mapping.From); err != nil {

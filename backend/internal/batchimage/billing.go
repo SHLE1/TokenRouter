@@ -74,7 +74,7 @@ func BuildHoldCommand(job *BatchImageJob, requestID string, actualAmount float64
 		RequestPayloadHash:          strings.TrimSpace(payloadHash),
 	}
 	if job.PricingSnapshotVersion >= 2 {
-		scale := math.Max(job.AccountRateMultiplier, 0) * math.Max(job.HoldMultiplier, 0)
+		scale := math.Max(job.ProviderRateMultiplier, 0) * math.Max(job.HoldMultiplier, 0)
 		settlementScale := 0.0
 		if job.HoldMultiplier > 0 {
 			settlementScale = math.Max(job.BatchDiscountMultiplier, 0) / job.HoldMultiplier

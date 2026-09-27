@@ -1,4 +1,4 @@
-// Chat 编排保留 Responses 形状短路、平台分流和同账号恢复，不另开账号循环。
+// Chat 编排保留 Responses 形状短路、平台分流和同提供商恢复，不另开提供商循环。
 package openaiforward
 
 import (
@@ -31,7 +31,7 @@ func RunChat(ctx context.Context, body []byte, promptCacheKey, defaultMappedMode
 	}
 	if !p.ClientAllowed(ctx, body) {
 		p.PolicyDenied()
-		p.Reject(403, "forbidden_error", "This account only allows Codex official clients")
+		p.Reject(403, "forbidden_error", "This provider only allows Codex official clients")
 		return nil, errors.New("codex_cli_only restriction: only codex official clients are allowed")
 	}
 	if profile.Protocol != "" && profile.Protocol != protocol.ProtocolOpenAIResponses && !gjson.GetBytes(body, "messages").Exists() && gjson.GetBytes(body, "input").Exists() {
@@ -63,7 +63,7 @@ func RunChat(ctx context.Context, body []byte, promptCacheKey, defaultMappedMode
 				return p.DispatchChat(ctx, DispatchGrok, body, promptCacheKey, defaultMappedModel)
 			} else {
 				p.Debug("grok chat_completions: using raw fallback",
-					zap.Int64("account_id", profile.ID),
+					zap.Int64("provider_id", profile.ID),
 					zap.String("reason", reason),
 				)
 			}
@@ -79,7 +79,7 @@ func RunChat(ctx context.Context, body []byte, promptCacheKey, defaultMappedMode
 	// 自适应协议分流识别，否则会把 input 原样发给只接受 messages 的上游。
 	isResponsesShape := !gjson.GetBytes(body, "messages").Exists() && gjson.GetBytes(body, "input").Exists()
 
-	// 自适应账号的标准 Chat 入站使用供应商原生 CC 端点；Responses 形状下，
+	// 自适应提供商的标准 Chat 入站使用供应商原生 CC 端点；Responses 形状下，
 	// DeepSeek / Kimi 保留原生 Responses，智谱先转换为 Chat。
 	if profile.Adaptive {
 		if !isResponsesShape {
@@ -108,7 +108,7 @@ func RunChat(ctx context.Context, body []byte, promptCacheKey, defaultMappedMode
 		return p.DispatchChat(ctx, DispatchAnthropic, body, promptCacheKey, defaultMappedModel)
 	}
 
-	// 固定 Chat 协议的 CN 账号，以及其他 APIKey 账号在探测/管理员策略要求
+	// 固定 Chat 协议的 CN 提供商，以及其他 APIKey 提供商在探测/管理员策略要求
 	// Chat 时，均走 CC 直转。
 	if profile.RawChat {
 		return p.DispatchChat(ctx, DispatchRawChat, body, promptCacheKey, defaultMappedModel)
@@ -185,7 +185,7 @@ func RunChat(ctx context.Context, body []byte, promptCacheKey, defaultMappedMode
 	}
 
 	logFields := []zap.Field{
-		zap.Int64("account_id", profile.ID),
+		zap.Int64("provider_id", profile.ID),
 		zap.String("original_model", originalModel),
 		zap.String("billing_model", billingModel),
 		zap.String("upstream_model", upstreamModel),
@@ -226,7 +226,7 @@ func RunChat(ctx context.Context, body []byte, promptCacheKey, defaultMappedMode
 		} else if promptCacheKey != "" {
 			reqBody["prompt_cache_key"] = promptCacheKey
 		}
-		p.AccountIdentity(reqBody, p.APIKeyID())
+		p.ProviderIdentity(reqBody, p.APIKeyID())
 		responsesBody, err = json.Marshal(reqBody)
 		if err != nil {
 			return nil, fmt.Errorf("remarshal after codex transform: %w", err)
@@ -238,7 +238,7 @@ func RunChat(ctx context.Context, body []byte, promptCacheKey, defaultMappedMode
 			if err := json.Unmarshal(responsesBody, &reqBody); err != nil {
 				return nil, fmt.Errorf("unmarshal for prompt cache key injection: %w", err)
 			}
-			// API Key 账号的 Chat Completions 转 Responses 路径不会经过 Codex transform，
+			// API Key 提供商的 Chat Completions 转 Responses 路径不会经过 Codex transform，
 			// 需要在这里把入口解析出的 prompt_cache_key 补回上游请求体。
 			if existing, ok := reqBody["prompt_cache_key"].(string); !ok || strings.TrimSpace(existing) == "" {
 				reqBody["prompt_cache_key"] = trimmedKey
@@ -253,7 +253,6 @@ func RunChat(ctx context.Context, body []byte, promptCacheKey, defaultMappedMode
 	// 4b. Apply OpenAI fast policy (may filter service_tier or block the request).
 	updatedBody, policyErr := p.ApplyChatFast(ctx, upstreamModel, responsesBody)
 	if policyErr != nil {
-
 		return nil, policyErr
 	}
 	responsesBody = updatedBody
@@ -346,7 +345,7 @@ func RunChat(ctx context.Context, body []byte, promptCacheKey, defaultMappedMode
 		result.ReasoningEffort = reasoningEffort
 	}
 
-	// OAuth 账号从响应头提取并保存 Codex 用量快照。
+	// OAuth 提供商从响应头提取并保存 Codex 用量快照。
 	// 排除 spark 影子:其 codex_* 仅由 QueryUsage(/wham/usage bengalfox)更新(外审第7轮 P1)。
 	if handleErr == nil && profile.UsesCodex && !profile.Shadow {
 		p.UpdateCodexUsage(ctx, resp.Header)

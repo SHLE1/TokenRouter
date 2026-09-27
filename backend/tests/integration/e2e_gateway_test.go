@@ -18,8 +18,8 @@ import (
 var (
 	baseURL = getEnv("BASE_URL", "http://localhost:8080")
 	// ENDPOINT_PREFIX: 端点前缀，支持混合模式和非混合模式测试
-	// - "" (默认): 使用 /v1/messages, /v1beta/models（混合模式，可调度 antigravity 账户）
-	// - "/antigravity": 使用 /antigravity/v1/messages, /antigravity/v1beta/models（非混合模式，仅 antigravity 账户）
+	// - "" (默认): 使用 /v1/messages, /v1beta/models（混合模式，可调度 antigravity 提供商）
+	// - "/antigravity": 使用 /antigravity/v1/messages, /antigravity/v1beta/models（非混合模式，仅 antigravity 提供商）
 	endpointPrefix = getEnv("ENDPOINT_PREFIX", "")
 	testInterval   = 1 * time.Second // 测试间隔，防止限流
 )
@@ -530,9 +530,9 @@ func testClaudeMessageWithTools(t *testing.T, claudeKey string, model string) {
 		t.Fatalf("Schema 清理失败，收到 400 错误: %s", string(respBody))
 	}
 
-	// 503 可能是账号限流，不算测试失败
+	// 503 可能是提供商限流，不算测试失败
 	if resp.StatusCode == 503 {
-		t.Skipf("账号暂时不可用 (503): %s", string(respBody))
+		t.Skipf("提供商暂时不可用 (503): %s", string(respBody))
 	}
 
 	// 429 是限流
@@ -658,9 +658,9 @@ func testClaudeThinkingWithToolHistory(t *testing.T, claudeKey string, model str
 		t.Fatalf("thought_signature 处理失败，收到 400 错误: %s", string(respBody))
 	}
 
-	// 503 可能是账号限流，不算测试失败
+	// 503 可能是提供商限流，不算测试失败
 	if resp.StatusCode == 503 {
-		t.Skipf("账号暂时不可用 (503): %s", string(respBody))
+		t.Skipf("提供商暂时不可用 (503): %s", string(respBody))
 	}
 
 	// 429 是限流
@@ -792,7 +792,7 @@ func testClaudeWithNoSignature(t *testing.T, claudeKey string, model string) {
 	}
 
 	if resp.StatusCode == 503 {
-		t.Skipf("账号暂时不可用 (503): %s", string(respBody))
+		t.Skipf("提供商暂时不可用 (503): %s", string(respBody))
 	}
 
 	if resp.StatusCode == 429 {

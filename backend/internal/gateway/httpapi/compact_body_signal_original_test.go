@@ -6,8 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	textflow "github.com/TokenFlux/TokenRouter/internal/gateway/text"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
@@ -47,7 +47,7 @@ func TestNormalizeOpenAIResponsesCompactRequest_RemoteV2StaysOnResponses(t *test
 	require.False(t, IsOpenAIResponsesCompactPath(c))
 	require.True(t, IsBareOpenAIResponsesPath(c))
 	require.True(t, IsOpenAIRemoteCompactionV2Request(normalized))
-	require.Equal(t, account.OpenAIEndpointCapabilityRemoteCompactionV2,
+	require.Equal(t, provider.OpenAIEndpointCapabilityRemoteCompactionV2,
 		textflow.RequiredResponsesCapability(false, true, false, capability.PlatformOpenAI))
 	require.Equal(t, body, normalized)
 	require.True(t, gjson.GetBytes(normalized, "stream").Bool())

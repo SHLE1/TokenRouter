@@ -12,10 +12,10 @@ import (
 
 	gatewaytestkit "github.com/TokenFlux/TokenRouter/internal/gateway/testkit"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	gatewaysession "github.com/TokenFlux/TokenRouter/internal/gateway/session"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	routing "github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	xai "github.com/TokenFlux/TokenRouter/internal/upstream/grok"
@@ -29,7 +29,7 @@ func newGrokCacheTestContext(apiKeyID int64) *gin.Context {
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
 	if apiKeyID > 0 {
-		SetOpsSelectedAccount(c, 1, capability.PlatformGrok)
+		SetOpsSelectedProvider(c, 1, capability.PlatformGrok)
 		c.Set("api_key", &apikey.APIKey{ID: apiKeyID, Group: &routing.Group{}})
 	}
 	return c
@@ -376,13 +376,13 @@ func TestGrokConversationHeaderIsScopedToGrokRequestScheduling(t *testing.T) {
 	require.Equal(t, "native-grok-session", ExplicitOpenAIRequestSessionID(grokContext, body))
 
 	openAIContext := newGrokCacheTestContext(601)
-	SetOpsSelectedAccount(openAIContext, 1, capability.PlatformOpenAI)
+	SetOpsSelectedProvider(openAIContext, 1, capability.PlatformOpenAI)
 	openAIContext.Set("api_key", &apikey.APIKey{ID: 601, Group: &routing.Group{}})
 	openAIContext.Request.Header.Set(GrokConversationIDHeader, "must-be-ignored")
 	require.Equal(t, "body-session", ExplicitOpenAIRequestSessionID(openAIContext, body))
 
 	withoutGrokHeader := newGrokCacheTestContext(601)
-	SetOpsSelectedAccount(withoutGrokHeader, 1, capability.PlatformOpenAI)
+	SetOpsSelectedProvider(withoutGrokHeader, 1, capability.PlatformOpenAI)
 	withoutGrokHeader.Set("api_key", &apikey.APIKey{ID: 601, Group: &routing.Group{}})
 	require.Equal(t, GenerateOpenAISessionHash(withoutGrokHeader, body), GenerateOpenAISessionHash(openAIContext, body))
 }
@@ -416,8 +416,8 @@ func TestApplyGrokCacheIdentityWritesResponsesBodyAndHeader(t *testing.T) {
 }
 
 func TestGrokFreeMessagesClientToolCacheDefaultsOnForKnownFree(t *testing.T) {
-	account := gatewaytestkit.HealthyGrokOAuthAccount(901, "access-token")
-	account.Record.Credentials["subscription_tier"] = " FREE "
+	provider := gatewaytestkit.HealthyGrokOAuthProvider(901, "access-token")
+	provider.Record.Credentials["subscription_tier"] = " FREE "
 	tests := []struct {
 		name           string
 		toolChoiceJSON string
@@ -432,7 +432,7 @@ func TestGrokFreeMessagesClientToolCacheDefaultsOnForKnownFree(t *testing.T) {
 			intentBody := []byte(`{"model":"grok","tools":[{"type":"function","name":"lookup","description":"look up a value","parameters":{"type":"object"}},{"type":"function","name":"save","parameters":{"type":"object"}}]` + tt.toolChoiceJSON + `}`)
 			body, err := xai.ApplyGrokResponsesCacheIdentity(intentBody, intentBody, "isolated-id", true)
 			require.NoError(t, err)
-			body, err = gatewayprovider.ApplyGrokFreeMessagesFunctionToolCacheRoute(body, intentBody, account, "isolated-id")
+			body, err = gatewayprovider.ApplyGrokFreeMessagesFunctionToolCacheRoute(body, intentBody, provider, "isolated-id")
 
 			require.NoError(t, err)
 			require.Equal(t, "isolated-id", gjson.GetBytes(body, "prompt_cache_key").String())
@@ -451,8 +451,8 @@ func TestGrokFreeMessagesClientToolCacheDefaultsOnForKnownFree(t *testing.T) {
 
 // Grok Build 可能把原生搜索工具声明成同名函数，缓存路由必须转换并去重。
 func TestGrokFreeFunctionToolCacheRouteConvertsNamedSearchFunctions(t *testing.T) {
-	account := gatewaytestkit.HealthyGrokOAuthAccount(916, "access-token")
-	account.Record.Credentials["subscription_tier"] = "free"
+	provider := gatewaytestkit.HealthyGrokOAuthProvider(916, "access-token")
+	provider.Record.Credentials["subscription_tier"] = "free"
 	intentBody := []byte(`{
 		"model":"grok",
 		"tools":[
@@ -464,7 +464,7 @@ func TestGrokFreeFunctionToolCacheRouteConvertsNamedSearchFunctions(t *testing.T
 		"tool_choice":"auto"
 	}`)
 
-	patched, err := gatewayprovider.ApplyGrokFreeMessagesFunctionToolCacheRoute(intentBody, intentBody, account, "isolated-id")
+	patched, err := gatewayprovider.ApplyGrokFreeMessagesFunctionToolCacheRoute(intentBody, intentBody, provider, "isolated-id")
 	require.NoError(t, err)
 	tools := gjson.GetBytes(patched, "tools").Array()
 	require.Len(t, tools, 3)
@@ -475,12 +475,12 @@ func TestGrokFreeFunctionToolCacheRouteConvertsNamedSearchFunctions(t *testing.T
 	require.Equal(t, "x_search", tools[2].Get("type").String())
 	require.False(t, tools[2].Get("name").Exists())
 
-	second, err := gatewayprovider.ApplyGrokFreeMessagesFunctionToolCacheRoute(patched, intentBody, account, "isolated-id")
+	second, err := gatewayprovider.ApplyGrokFreeMessagesFunctionToolCacheRoute(patched, intentBody, provider, "isolated-id")
 	require.NoError(t, err)
 	require.JSONEq(t, string(patched), string(second))
 }
 
-func TestGrokFreeMessagesClientToolCacheDefaultsWithMissingAccountSetting(t *testing.T) {
+func TestGrokFreeMessagesClientToolCacheDefaultsWithMissingProviderSetting(t *testing.T) {
 	body := []byte(`{"model":"grok","tools":[{"type":"function","name":"view_image","parameters":{"type":"object"}}],"tool_choice":"auto"}`)
 	tests := []struct {
 		name  string
@@ -493,11 +493,11 @@ func TestGrokFreeMessagesClientToolCacheDefaultsWithMissingAccountSetting(t *tes
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			account := gatewaytestkit.HealthyGrokOAuthAccount(90101, "access-token")
-			account.Record.Credentials["subscription_tier"] = "free"
-			account.Record.Extra = tt.extra
+			provider := gatewaytestkit.HealthyGrokOAuthProvider(90101, "access-token")
+			provider.Record.Credentials["subscription_tier"] = "free"
+			provider.Record.Extra = tt.extra
 
-			patched, err := gatewayprovider.ApplyGrokFreeMessagesFunctionToolCacheRoute(body, body, account, "isolated-id")
+			patched, err := gatewayprovider.ApplyGrokFreeMessagesFunctionToolCacheRoute(body, body, provider, "isolated-id")
 
 			require.NoError(t, err)
 			tools := gjson.GetBytes(patched, "tools").Array()
@@ -509,14 +509,14 @@ func TestGrokFreeMessagesClientToolCacheDefaultsWithMissingAccountSetting(t *tes
 }
 
 func TestApplyGrokCacheIdentityAppendsNativeToolsWhenSearchPresent(t *testing.T) {
-	account := gatewaytestkit.HealthyGrokOAuthAccount(901, "access-token")
-	account.Record.Credentials["subscription_tier"] = " FREE "
+	provider := gatewaytestkit.HealthyGrokOAuthProvider(901, "access-token")
+	provider.Record.Credentials["subscription_tier"] = " FREE "
 
 	// 包含 web_search 的函数工具会转换为原生工具，并补齐 x_search。
 	intentBody := []byte(`{"model":"grok","tools":[{"type":"function","name":"lookup","description":"look up a value","parameters":{"type":"object"}},{"type":"function","name":"web_search","description":"search","parameters":{"type":"object"}}]}`)
 	body, err := xai.ApplyGrokResponsesCacheIdentity(intentBody, intentBody, "isolated-id", true)
 	require.NoError(t, err)
-	body, err = gatewayprovider.ApplyGrokFreeMessagesFunctionToolCacheRoute(body, intentBody, account, "isolated-id")
+	body, err = gatewayprovider.ApplyGrokFreeMessagesFunctionToolCacheRoute(body, intentBody, provider, "isolated-id")
 	require.NoError(t, err)
 
 	tools := gjson.GetBytes(body, "tools").Array()
@@ -527,15 +527,15 @@ func TestApplyGrokCacheIdentityAppendsNativeToolsWhenSearchPresent(t *testing.T)
 	require.Equal(t, "x_search", tools[2].Get("type").String())
 }
 
-func TestGrokFreeClientToolCacheAccountOptIn(t *testing.T) {
-	account := gatewaytestkit.HealthyGrokOAuthAccount(9011, "access-token")
-	account.Record.Credentials["subscription_tier"] = "free"
-	account.Record.Extra = map[string]any{"grok_client_tool_cache_enabled": true}
+func TestGrokFreeClientToolCacheProviderOptIn(t *testing.T) {
+	provider := gatewaytestkit.HealthyGrokOAuthProvider(9011, "access-token")
+	provider.Record.Credentials["subscription_tier"] = "free"
+	provider.Record.Extra = map[string]any{"grok_client_tool_cache_enabled": true}
 	intentBody := []byte(`{"model":"grok","tools":[{"type":"function","name":"view_image","parameters":{"type":"object"}},{"type":"function","name":"read_file","parameters":{"type":"object"}}],"tool_choice":"auto"}`)
 
 	body, err := xai.ApplyGrokResponsesCacheIdentity(intentBody, intentBody, "isolated-id", true)
 	require.NoError(t, err)
-	body, err = gatewayprovider.ApplyGrokFreeMessagesFunctionToolCacheRoute(body, intentBody, account, "isolated-id")
+	body, err = gatewayprovider.ApplyGrokFreeMessagesFunctionToolCacheRoute(body, intentBody, provider, "isolated-id")
 	require.NoError(t, err)
 
 	tools := gjson.GetBytes(body, "tools").Array()
@@ -546,7 +546,7 @@ func TestGrokFreeClientToolCacheAccountOptIn(t *testing.T) {
 	require.Equal(t, "x_search", tools[3].Get("type").String())
 }
 
-func TestGrokFreeMessagesClientToolCacheAccountOptOut(t *testing.T) {
+func TestGrokFreeMessagesClientToolCacheProviderOptOut(t *testing.T) {
 	body := []byte(`{"model":"grok","tools":[{"type":"function","name":"view_image","parameters":{"type":"object"}}],"tool_choice":"auto"}`)
 	tests := []struct {
 		name  string
@@ -560,11 +560,11 @@ func TestGrokFreeMessagesClientToolCacheAccountOptOut(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			account := gatewaytestkit.HealthyGrokOAuthAccount(90111, "access-token")
-			account.Record.Credentials["subscription_tier"] = "free"
-			account.Record.Extra = map[string]any{"grok_client_tool_cache_enabled": tt.value}
+			provider := gatewaytestkit.HealthyGrokOAuthProvider(90111, "access-token")
+			provider.Record.Credentials["subscription_tier"] = "free"
+			provider.Record.Extra = map[string]any{"grok_client_tool_cache_enabled": tt.value}
 
-			patched, err := gatewayprovider.ApplyGrokFreeMessagesFunctionToolCacheRoute(body, body, account, "isolated-id")
+			patched, err := gatewayprovider.ApplyGrokFreeMessagesFunctionToolCacheRoute(body, body, provider, "isolated-id")
 
 			require.NoError(t, err)
 			require.JSONEq(t, string(body), string(patched))
@@ -572,17 +572,17 @@ func TestGrokFreeMessagesClientToolCacheAccountOptOut(t *testing.T) {
 	}
 }
 
-func TestGrokFreeClientToolCacheRequestOptInOverridesAccountOptOut(t *testing.T) {
-	account := gatewaytestkit.HealthyGrokOAuthAccount(9014, "access-token")
-	account.Record.Credentials["subscription_tier"] = "free"
-	account.Record.Extra = map[string]any{"grok_client_tool_cache_enabled": false}
+func TestGrokFreeClientToolCacheRequestOptInOverridesProviderOptOut(t *testing.T) {
+	provider := gatewaytestkit.HealthyGrokOAuthProvider(9014, "access-token")
+	provider.Record.Credentials["subscription_tier"] = "free"
+	provider.Record.Extra = map[string]any{"grok_client_tool_cache_enabled": false}
 	c := newGrokCacheTestContext(9014)
 	c.Request.Header.Set("X-Sub2API-Grok-Client-Tool-Cache", "prefer-cache")
 	intentBody := []byte(`{"model":"grok","tools":[{"type":"function","name":"view_image","parameters":{"type":"object"}}],"tool_choice":"auto"}`)
 
 	body, err := xai.ApplyGrokResponsesCacheIdentity(intentBody, intentBody, "isolated-id", true)
 	require.NoError(t, err)
-	body, err = ApplyGrokFreeRequestToolCacheRoute(c, body, intentBody, account, "isolated-id")
+	body, err = ApplyGrokFreeRequestToolCacheRoute(c, body, intentBody, provider, "isolated-id")
 	require.NoError(t, err)
 
 	tools := gjson.GetBytes(body, "tools").Array()
@@ -593,13 +593,13 @@ func TestGrokFreeClientToolCacheRequestOptInOverridesAccountOptOut(t *testing.T)
 }
 
 func TestGrokFreeChatRequestClientToolCacheDefaultsOnWithoutClientFingerprint(t *testing.T) {
-	account := gatewaytestkit.HealthyGrokOAuthAccount(90140, "access-token")
-	account.Record.Credentials["subscription_tier"] = "free"
+	provider := gatewaytestkit.HealthyGrokOAuthProvider(90140, "access-token")
+	provider.Record.Credentials["subscription_tier"] = "free"
 	c := newGrokCacheTestContext(90140)
 	c.Request.URL.Path = "/v1/chat/completions"
 	body := []byte(`{"model":"grok","tools":[{"type":"function","name":"view_image","parameters":{"type":"object"}}],"tool_choice":"auto"}`)
 
-	patched, err := ApplyGrokFreeRequestToolCacheRoute(c, body, body, account, "isolated-id")
+	patched, err := ApplyGrokFreeRequestToolCacheRoute(c, body, body, provider, "isolated-id")
 
 	require.NoError(t, err)
 	tools := gjson.GetBytes(patched, "tools").Array()
@@ -610,8 +610,8 @@ func TestGrokFreeChatRequestClientToolCacheDefaultsOnWithoutClientFingerprint(t 
 }
 
 func TestGrokFreeClientToolCacheClaudeDesktopResponsesAutoOptIn(t *testing.T) {
-	account := gatewaytestkit.HealthyGrokOAuthAccount(90141, "access-token")
-	account.Record.Credentials["subscription_tier"] = "free"
+	provider := gatewaytestkit.HealthyGrokOAuthProvider(90141, "access-token")
+	provider.Record.Credentials["subscription_tier"] = "free"
 	body := []byte(`{"model":"grok","tools":[{"type":"function","name":"Read","parameters":{"type":"object"}},{"type":"function","name":"Edit","parameters":{"type":"object"}}],"tool_choice":"auto"}`)
 
 	for _, xApp := range []string{"cli", "cli-bg"} {
@@ -623,7 +623,7 @@ func TestGrokFreeClientToolCacheClaudeDesktopResponsesAutoOptIn(t *testing.T) {
 			c.Request.Header.Set("anthropic-client-platform", "desktop_app")
 			c.Request.Header.Set("X-Claude-Code-Session-Id", "desktop-session-1")
 
-			patched, err := ApplyGrokFreeRequestToolCacheRoute(c, body, body, account, "isolated-id")
+			patched, err := ApplyGrokFreeRequestToolCacheRoute(c, body, body, provider, "isolated-id")
 
 			require.NoError(t, err)
 			tools := gjson.GetBytes(patched, "tools").Array()
@@ -637,9 +637,9 @@ func TestGrokFreeClientToolCacheClaudeDesktopResponsesAutoOptIn(t *testing.T) {
 }
 
 func TestGrokFreeClientToolCacheClaudeDesktopFingerprintRequiresAllSignals(t *testing.T) {
-	account := gatewaytestkit.HealthyGrokOAuthAccount(90142, "access-token")
-	account.Record.Credentials["subscription_tier"] = "free"
-	account.Record.Extra = map[string]any{"grok_client_tool_cache_enabled": false}
+	provider := gatewaytestkit.HealthyGrokOAuthProvider(90142, "access-token")
+	provider.Record.Credentials["subscription_tier"] = "free"
+	provider.Record.Extra = map[string]any{"grok_client_tool_cache_enabled": false}
 	body := []byte(`{"model":"grok","tools":[{"type":"function","name":"Read","parameters":{"type":"object"}}],"tool_choice":"auto"}`)
 
 	tests := []struct {
@@ -730,7 +730,7 @@ func TestGrokFreeClientToolCacheClaudeDesktopFingerprintRequiresAllSignals(t *te
 				c.Request.Header.Set("X-Claude-Code-Session-Id", tt.session)
 			}
 
-			patched, err := ApplyGrokFreeRequestToolCacheRoute(c, body, body, account, "isolated-id")
+			patched, err := ApplyGrokFreeRequestToolCacheRoute(c, body, body, provider, "isolated-id")
 
 			require.NoError(t, err)
 			require.JSONEq(t, string(body), string(patched))
@@ -739,8 +739,8 @@ func TestGrokFreeClientToolCacheClaudeDesktopFingerprintRequiresAllSignals(t *te
 }
 
 func TestGrokFreeClientToolCacheExplicitRequestOptOut(t *testing.T) {
-	account := gatewaytestkit.HealthyGrokOAuthAccount(90144, "access-token")
-	account.Record.Credentials["subscription_tier"] = "free"
+	provider := gatewaytestkit.HealthyGrokOAuthProvider(90144, "access-token")
+	provider.Record.Credentials["subscription_tier"] = "free"
 	body := []byte(`{"model":"grok","tools":[{"type":"function","name":"Read","parameters":{"type":"object"}}],"tool_choice":"auto"}`)
 
 	for _, value := range []string{"0", "false", "no", "off"} {
@@ -749,7 +749,7 @@ func TestGrokFreeClientToolCacheExplicitRequestOptOut(t *testing.T) {
 			c.Request.URL.Path = "/v1/chat/completions"
 			c.Request.Header.Set("X-Sub2API-Grok-Client-Tool-Cache", value)
 
-			patched, err := ApplyGrokFreeRequestToolCacheRoute(c, body, body, account, "isolated-id")
+			patched, err := ApplyGrokFreeRequestToolCacheRoute(c, body, body, provider, "isolated-id")
 
 			require.NoError(t, err)
 			require.JSONEq(t, string(body), string(patched))
@@ -758,8 +758,8 @@ func TestGrokFreeClientToolCacheExplicitRequestOptOut(t *testing.T) {
 }
 
 func TestGrokFreeClientToolCacheClaudeDesktopAutoOptInDoesNotOverridePaidTier(t *testing.T) {
-	account := gatewaytestkit.HealthyGrokOAuthAccount(90143, "access-token")
-	account.Record.Credentials["subscription_tier"] = "supergrok"
+	provider := gatewaytestkit.HealthyGrokOAuthProvider(90143, "access-token")
+	provider.Record.Credentials["subscription_tier"] = "supergrok"
 	c := newGrokCacheTestContext(90143)
 	c.Request.Header.Set("User-Agent", "claude-cli/2.1.215 (external, claude-desktop-3p, agent-sdk/0.3.215)")
 	c.Request.Header.Set("X-App", "cli")
@@ -767,19 +767,19 @@ func TestGrokFreeClientToolCacheClaudeDesktopAutoOptInDoesNotOverridePaidTier(t 
 	c.Request.Header.Set("X-Claude-Code-Session-Id", "desktop-session-1")
 	body := []byte(`{"model":"grok","tools":[{"type":"function","name":"Read","parameters":{"type":"object"}}],"tool_choice":"auto"}`)
 
-	patched, err := ApplyGrokFreeRequestToolCacheRoute(c, body, body, account, "isolated-id")
+	patched, err := ApplyGrokFreeRequestToolCacheRoute(c, body, body, provider, "isolated-id")
 
 	require.NoError(t, err)
 	require.JSONEq(t, string(body), string(patched))
 }
 
-func TestGrokFreeRequestClientSearchFunctionUsesDefaultAccountPolicy(t *testing.T) {
-	account := gatewaytestkit.HealthyGrokOAuthAccount(9015, "access-token")
-	account.Record.Credentials["subscription_tier"] = "free"
+func TestGrokFreeRequestClientSearchFunctionUsesDefaultProviderPolicy(t *testing.T) {
+	provider := gatewaytestkit.HealthyGrokOAuthProvider(9015, "access-token")
+	provider.Record.Credentials["subscription_tier"] = "free"
 	c := newGrokCacheTestContext(9015)
 	body := []byte(`{"model":"grok","tools":[{"type":"function","name":"view_image","parameters":{"type":"object"}},{"type":"function","name":"web_search","parameters":{"type":"object"}}],"tool_choice":"auto"}`)
 
-	patched, err := ApplyGrokFreeRequestToolCacheRoute(c, body, body, account, "isolated-id")
+	patched, err := ApplyGrokFreeRequestToolCacheRoute(c, body, body, provider, "isolated-id")
 
 	require.NoError(t, err)
 	tools := gjson.GetBytes(patched, "tools").Array()
@@ -790,12 +790,12 @@ func TestGrokFreeRequestClientSearchFunctionUsesDefaultAccountPolicy(t *testing.
 }
 
 func TestGrokFreeRequestToolChoiceNoneUsesSafeCacheRoute(t *testing.T) {
-	account := gatewaytestkit.HealthyGrokOAuthAccount(9016, "access-token")
-	account.Record.Credentials["subscription_tier"] = "free"
+	provider := gatewaytestkit.HealthyGrokOAuthProvider(9016, "access-token")
+	provider.Record.Credentials["subscription_tier"] = "free"
 	c := newGrokCacheTestContext(9016)
 	body := []byte(`{"model":"grok","tools":[{"type":"function","name":"view_image","parameters":{"type":"object"}}],"tool_choice":"none"}`)
 
-	patched, err := ApplyGrokFreeRequestToolCacheRoute(c, body, body, account, "isolated-id")
+	patched, err := ApplyGrokFreeRequestToolCacheRoute(c, body, body, provider, "isolated-id")
 
 	require.NoError(t, err)
 	tools := gjson.GetBytes(patched, "tools").Array()
@@ -821,13 +821,13 @@ func TestApplyGrokCacheIdentityRecognizesResponsesLiteAdditionalTools(t *testing
 }
 
 func TestGrokFreeCacheRoutePreservesMixedSupportedToolsWithSearchIntent(t *testing.T) {
-	account := gatewaytestkit.HealthyGrokOAuthAccount(9012, "access-token")
-	account.Record.Credentials["subscription_tier"] = "free"
+	provider := gatewaytestkit.HealthyGrokOAuthProvider(9012, "access-token")
+	provider.Record.Credentials["subscription_tier"] = "free"
 	intentBody := []byte(`{"model":"grok","tools":[{"type":"function","name":"view_image","parameters":{"type":"object"}},{"type":"shell"},{"type":"web_search"}],"tool_choice":"auto"}`)
 
 	body, err := xai.ApplyGrokResponsesCacheIdentity(intentBody, intentBody, "isolated-id", true)
 	require.NoError(t, err)
-	body, err = gatewayprovider.ApplyGrokFreeMessagesFunctionToolCacheRoute(body, intentBody, account, "isolated-id")
+	body, err = gatewayprovider.ApplyGrokFreeMessagesFunctionToolCacheRoute(body, intentBody, provider, "isolated-id")
 	require.NoError(t, err)
 
 	tools := gjson.GetBytes(body, "tools").Array()
@@ -839,20 +839,20 @@ func TestGrokFreeCacheRoutePreservesMixedSupportedToolsWithSearchIntent(t *testi
 }
 
 func TestGrokClientToolCacheOptInDoesNotOverridePaidTier(t *testing.T) {
-	account := gatewaytestkit.HealthyGrokOAuthAccount(9013, "access-token")
-	account.Record.Credentials["subscription_tier"] = "supergrok"
-	account.Record.Extra = map[string]any{"grok_client_tool_cache_enabled": true}
+	provider := gatewaytestkit.HealthyGrokOAuthProvider(9013, "access-token")
+	provider.Record.Credentials["subscription_tier"] = "supergrok"
+	provider.Record.Extra = map[string]any{"grok_client_tool_cache_enabled": true}
 	body := []byte(`{"model":"grok","tools":[{"type":"function","name":"view_image","parameters":{"type":"object"}}],"tool_choice":"auto"}`)
 
-	patched, err := gatewayprovider.ApplyGrokFreeMessagesFunctionToolCacheRoute(body, body, account, "isolated-id")
+	patched, err := gatewayprovider.ApplyGrokFreeMessagesFunctionToolCacheRoute(body, body, provider, "isolated-id")
 
 	require.NoError(t, err)
 	require.JSONEq(t, string(body), string(patched))
 }
 
 func TestApplyGrokCacheIdentityRequiresPatchedFunctionTools(t *testing.T) {
-	account := gatewaytestkit.HealthyGrokOAuthAccount(902, "access-token")
-	account.Record.Credentials["subscription_tier"] = "free"
+	provider := gatewaytestkit.HealthyGrokOAuthProvider(902, "access-token")
+	provider.Record.Credentials["subscription_tier"] = "free"
 	intentBody := []byte(`{"model":"grok","tools":[{"type":"function","name":"lookup"}],"tool_choice":"auto"}`)
 	tests := []struct {
 		name        string
@@ -869,7 +869,7 @@ func TestApplyGrokCacheIdentityRequiresPatchedFunctionTools(t *testing.T) {
 			beforeTools := gjson.Get(tt.patchedBody, "tools")
 			body, err := xai.ApplyGrokResponsesCacheIdentity([]byte(tt.patchedBody), intentBody, "isolated-id", true)
 			require.NoError(t, err)
-			body, err = gatewayprovider.ApplyGrokFreeMessagesFunctionToolCacheRoute(body, intentBody, account, "isolated-id")
+			body, err = gatewayprovider.ApplyGrokFreeMessagesFunctionToolCacheRoute(body, intentBody, provider, "isolated-id")
 
 			require.NoError(t, err)
 			require.Equal(t, "isolated-id", gjson.GetBytes(body, "prompt_cache_key").String())
@@ -884,14 +884,14 @@ func TestGrokFreeMessagesFunctionToolCacheRouteRequiresKnownFreeTier(t *testing.
 	// 以函数形式加入 web_search 来触发原生工具注入；纯客户端函数已不再触发。
 	intentBody := []byte(`{"model":"grok","tools":[{"type":"function","name":"lookup"},{"type":"function","name":"web_search"}],"tool_choice":"auto"}`)
 	tests := []struct {
-		name    string
-		account *gatewayprovider.ExecutionAccount
-		wantMix bool
+		name     string
+		provider *gatewayprovider.ExecutionProvider
+		wantMix  bool
 	}{
 		{
 			name: "free credential tier",
-			account: func() *gatewayprovider.ExecutionAccount {
-				a := gatewaytestkit.HealthyGrokOAuthAccount(910, "access-token")
+			provider: func() *gatewayprovider.ExecutionProvider {
+				a := gatewaytestkit.HealthyGrokOAuthProvider(910, "access-token")
 				a.Record.Credentials["subscription_tier"] = "free"
 				return a
 			}(),
@@ -899,18 +899,18 @@ func TestGrokFreeMessagesFunctionToolCacheRouteRequiresKnownFreeTier(t *testing.
 		},
 		{
 			name: "free billing tier",
-			account: func() *gatewayprovider.ExecutionAccount {
-				a := gatewaytestkit.HealthyGrokOAuthAccount(911, "access-token")
-				a.Record.Extra = map[string]any{accountcore.GrokUsageBillingExtraKey: map[string]any{"plan": "FREE"}}
+			provider: func() *gatewayprovider.ExecutionProvider {
+				a := gatewaytestkit.HealthyGrokOAuthProvider(911, "access-token")
+				a.Record.Extra = map[string]any{providercore.GrokUsageBillingExtraKey: map[string]any{"plan": "FREE"}}
 				return a
 			}(),
 			wantMix: true,
 		},
 		{
 			name: "free successful billing has blank plan",
-			account: func() *gatewayprovider.ExecutionAccount {
-				a := gatewaytestkit.HealthyGrokOAuthAccount(9111, "access-token")
-				a.Record.Extra = map[string]any{accountcore.GrokUsageBillingExtraKey: map[string]any{
+			provider: func() *gatewayprovider.ExecutionProvider {
+				a := gatewaytestkit.HealthyGrokOAuthProvider(9111, "access-token")
+				a.Record.Extra = map[string]any{providercore.GrokUsageBillingExtraKey: map[string]any{
 					"status_code":        http.StatusOK,
 					"source":             "billing_probe",
 					"monthly_updated_at": "2026-07-15T05:00:00Z",
@@ -921,9 +921,9 @@ func TestGrokFreeMessagesFunctionToolCacheRouteRequiresKnownFreeTier(t *testing.
 		},
 		{
 			name: "free rolling token quota",
-			account: func() *gatewayprovider.ExecutionAccount {
-				a := gatewaytestkit.HealthyGrokOAuthAccount(9112, "access-token")
-				a.Record.Extra = map[string]any{accountcore.GrokQuotaSnapshotExtraKey: map[string]any{
+			provider: func() *gatewayprovider.ExecutionProvider {
+				a := gatewaytestkit.HealthyGrokOAuthProvider(9112, "access-token")
+				a.Record.Extra = map[string]any{providercore.GrokQuotaSnapshotExtraKey: map[string]any{
 					"headers_observed": true,
 					"tokens":           map[string]any{"limit": xai.GrokFreeRolling24hTokenLimit},
 				}}
@@ -933,9 +933,9 @@ func TestGrokFreeMessagesFunctionToolCacheRouteRequiresKnownFreeTier(t *testing.
 		},
 		{
 			name: "legacy free rolling token quota",
-			account: func() *gatewayprovider.ExecutionAccount {
-				a := gatewaytestkit.HealthyGrokOAuthAccount(9113, "access-token")
-				a.Record.Extra = map[string]any{accountcore.GrokQuotaSnapshotExtraKey: map[string]any{
+			provider: func() *gatewayprovider.ExecutionProvider {
+				a := gatewaytestkit.HealthyGrokOAuthProvider(9113, "access-token")
+				a.Record.Extra = map[string]any{providercore.GrokQuotaSnapshotExtraKey: map[string]any{
 					"headers_observed": true,
 					"tokens":           map[string]any{"limit": int64(2_000_000)},
 				}}
@@ -945,19 +945,19 @@ func TestGrokFreeMessagesFunctionToolCacheRouteRequiresKnownFreeTier(t *testing.
 		},
 		{
 			name: "supergrok remains unchanged",
-			account: func() *gatewayprovider.ExecutionAccount {
-				a := gatewaytestkit.HealthyGrokOAuthAccount(912, "access-token")
+			provider: func() *gatewayprovider.ExecutionProvider {
+				a := gatewaytestkit.HealthyGrokOAuthProvider(912, "access-token")
 				a.Record.Credentials["subscription_tier"] = "supergrok"
 				return a
 			}(),
 		},
 		{
 			name: "paid billing overrides stale free quota",
-			account: func() *gatewayprovider.ExecutionAccount {
-				a := gatewaytestkit.HealthyGrokOAuthAccount(9121, "access-token")
+			provider: func() *gatewayprovider.ExecutionProvider {
+				a := gatewaytestkit.HealthyGrokOAuthProvider(9121, "access-token")
 				a.Record.Extra = map[string]any{
-					accountcore.GrokUsageBillingExtraKey: map[string]any{"plan": "SuperGrok", "status_code": http.StatusOK},
-					accountcore.GrokQuotaSnapshotExtraKey: map[string]any{
+					providercore.GrokUsageBillingExtraKey: map[string]any{"plan": "SuperGrok", "status_code": http.StatusOK},
+					providercore.GrokQuotaSnapshotExtraKey: map[string]any{
 						"headers_observed": true,
 						"tokens":           map[string]any{"limit": int64(2_000_000)},
 					},
@@ -967,20 +967,20 @@ func TestGrokFreeMessagesFunctionToolCacheRouteRequiresKnownFreeTier(t *testing.
 		},
 		{
 			name: "paid billing overrides stale free credentials",
-			account: func() *gatewayprovider.ExecutionAccount {
-				a := gatewaytestkit.HealthyGrokOAuthAccount(9123, "access-token")
+			provider: func() *gatewayprovider.ExecutionProvider {
+				a := gatewaytestkit.HealthyGrokOAuthProvider(9123, "access-token")
 				a.Record.Credentials["subscription_tier"] = "free"
 				a.Record.Extra = map[string]any{
-					accountcore.GrokUsageBillingExtraKey: map[string]any{"plan": "SuperGrok", "status_code": http.StatusOK},
+					providercore.GrokUsageBillingExtraKey: map[string]any{"plan": "SuperGrok", "status_code": http.StatusOK},
 				}
 				return a
 			}(),
 		},
 		{
 			name: "partial billing without monthly evidence remains unknown",
-			account: func() *gatewayprovider.ExecutionAccount {
-				a := gatewaytestkit.HealthyGrokOAuthAccount(9122, "access-token")
-				a.Record.Extra = map[string]any{accountcore.GrokUsageBillingExtraKey: map[string]any{
+			provider: func() *gatewayprovider.ExecutionProvider {
+				a := gatewaytestkit.HealthyGrokOAuthProvider(9122, "access-token")
+				a.Record.Extra = map[string]any{providercore.GrokUsageBillingExtraKey: map[string]any{
 					"status_code":    http.StatusOK,
 					"source":         "billing_probe",
 					"partial":        true,
@@ -990,16 +990,16 @@ func TestGrokFreeMessagesFunctionToolCacheRouteRequiresKnownFreeTier(t *testing.
 			}(),
 		},
 		{
-			name:    "unknown tier remains unchanged",
-			account: gatewaytestkit.HealthyGrokOAuthAccount(913, "access-token"),
+			name:     "unknown tier remains unchanged",
+			provider: gatewaytestkit.HealthyGrokOAuthProvider(913, "access-token"),
 		},
 		{
 			name: "api key remains unchanged",
-			account: &gatewayprovider.ExecutionAccount{
-				Record: accountcore.Record{
+			provider: &gatewayprovider.ExecutionProvider{
+				Record: providercore.Record{
 					LoadLocation: time.LoadLocation, ID: 914,
 					Platform: capability.PlatformGrok,
-					Type:     capability.AccountTypeAPIKey,
+					Type:     capability.ProviderTypeAPIKey,
 				},
 			},
 		},
@@ -1007,7 +1007,7 @@ func TestGrokFreeMessagesFunctionToolCacheRouteRequiresKnownFreeTier(t *testing.
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			body, err := gatewayprovider.ApplyGrokFreeMessagesFunctionToolCacheRoute(intentBody, intentBody, tt.account, "isolated-id")
+			body, err := gatewayprovider.ApplyGrokFreeMessagesFunctionToolCacheRoute(intentBody, intentBody, tt.provider, "isolated-id")
 
 			require.NoError(t, err)
 			tools := gjson.GetBytes(body, "tools").Array()
@@ -1017,17 +1017,17 @@ func TestGrokFreeMessagesFunctionToolCacheRouteRequiresKnownFreeTier(t *testing.
 				require.Equal(t, "x_search", tools[2].Get("type").String())
 				return
 			}
-			require.Len(t, tools, 2, "non-free accounts should not get native search injected")
+			require.Len(t, tools, 2, "non-free providers should not get native search injected")
 		})
 	}
 }
 
 func TestGrokFreeMessagesFunctionToolCacheRouteRequiresIdentity(t *testing.T) {
-	account := gatewaytestkit.HealthyGrokOAuthAccount(915, "access-token")
-	account.Record.Credentials["subscription_tier"] = "free"
+	provider := gatewaytestkit.HealthyGrokOAuthProvider(915, "access-token")
+	provider.Record.Credentials["subscription_tier"] = "free"
 	body := []byte(`{"model":"grok","tools":[{"type":"function","name":"lookup"}],"tool_choice":"auto"}`)
 
-	patched, err := gatewayprovider.ApplyGrokFreeMessagesFunctionToolCacheRoute(body, body, account, "")
+	patched, err := gatewayprovider.ApplyGrokFreeMessagesFunctionToolCacheRoute(body, body, provider, "")
 
 	require.NoError(t, err)
 	require.JSONEq(t, string(body), string(patched))

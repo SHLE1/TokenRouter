@@ -13,12 +13,12 @@ import (
 	"github.com/tidwall/sjson"
 )
 
-// ModelResolver 只投影当前账号与最终分组的模型链。
+// ModelResolver 只投影当前提供商与最终分组的模型链。
 type ModelResolver interface {
 	ResolveModel(context.Context, *int64, string) (string, string, error)
 }
 
-// rewriteLiveSidebandClientPayload 对每轮 session.model 执行 Key、分组和账号映射。
+// rewriteLiveSidebandClientPayload 对每轮 session.model 执行 Key、分组和提供商映射。
 func RewriteClientPayload(
 	ctx context.Context,
 	record *session.LiveCallRecord,

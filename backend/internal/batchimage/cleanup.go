@@ -28,6 +28,7 @@ func (s *Cleanup) warn(event string, values ...any) {
 		s.Observe(event, values...)
 	}
 }
+
 func (s *Cleanup) Run(ctx context.Context) {
 	ticker := time.NewTicker(s.CleanupInterval())
 	defer ticker.Stop()
@@ -61,6 +62,7 @@ func (s *Cleanup) AppendCleanupEvent(ctx context.Context, batchID, eventType str
 		)
 	}
 }
+
 func (s *Cleanup) DeleteOutputsForOwner(ctx context.Context, owner BatchImageOwner, batchID string) (*BatchImagePublicBatch, error) {
 	job, err := s.Repo.GetBatchImageJobByBatchIDForOwner(ctx, owner.UserID, owner.APIKeyID, batchID)
 	if err != nil {
@@ -86,6 +88,7 @@ func (s *Cleanup) DeleteOutputsForOwner(ctx context.Context, owner BatchImageOwn
 	}
 	return BatchImageJobToPublic(updated), nil
 }
+
 func (s *Cleanup) CleanupInput(ctx context.Context, batchID string) error {
 	job, err := s.Repo.GetBatchImageJobByBatchID(ctx, batchID)
 	if err != nil {
@@ -93,6 +96,7 @@ func (s *Cleanup) CleanupInput(ctx context.Context, batchID string) error {
 	}
 	return s.CleanupJob(ctx, job, CleanupTargetInput, "ttl")
 }
+
 func (s *Cleanup) CleanupOutput(ctx context.Context, batchID string, reason string) error {
 	job, err := s.Repo.GetBatchImageJobByBatchID(ctx, batchID)
 	if err != nil {
@@ -100,6 +104,7 @@ func (s *Cleanup) CleanupOutput(ctx context.Context, batchID string, reason stri
 	}
 	return s.CleanupJob(ctx, job, CleanupTargetOutput, reason)
 }
+
 func (s *Cleanup) RunOnce(ctx context.Context, now time.Time) (BatchImageCleanupRunResult, error) {
 	if s == nil || s.Repo == nil {
 		return BatchImageCleanupRunResult{}, ErrBatchImageCleanupFailed
@@ -140,6 +145,7 @@ func (s *Cleanup) RunOnce(ctx context.Context, now time.Time) (BatchImageCleanup
 	}
 	return result, nil
 }
+
 func (s *Cleanup) CleanupJob(ctx context.Context, job *BatchImageJob, target CleanupTarget, reason string) error {
 	if job == nil {
 		return ErrBatchImageJobNotFound
@@ -188,15 +194,16 @@ func (s *Cleanup) CleanupJob(ctx context.Context, job *BatchImageJob, target Cle
 	}
 	return s.Repo.MarkBatchImageOutputDeleted(ctx, job.BatchID, deletedAt)
 }
+
 func (s *Cleanup) CallProviderCleanup(ctx context.Context, job *BatchImageJob, target CleanupTarget) error {
 	if s == nil || s.ResolveProvider == nil {
 		return ErrBatchImageCleanupFailed
 	}
-	provider, err := s.ResolveProvider(ctx, job)
+	platform, err := s.ResolveProvider(ctx, job)
 	if err != nil {
 		return err
 	}
-	if err := provider.Cleanup(ctx, job, target); err != nil {
+	if err := platform.Cleanup(ctx, job, target); err != nil {
 		if CleanupErrorIsNotFound(err) {
 			return nil
 		}
@@ -204,18 +211,21 @@ func (s *Cleanup) CallProviderCleanup(ctx context.Context, job *BatchImageJob, t
 	}
 	return nil
 }
+
 func (s *Cleanup) InputRetentionAfterTerminal() time.Duration {
 	if s != nil && s.Options.InputRetention > 0 {
 		return s.Options.InputRetention
 	}
 	return DefaultBatchImageInputRetentionAfterTerminal
 }
+
 func (s *Cleanup) CleanupInterval() time.Duration {
 	if s != nil && s.Options.Interval > 0 {
 		return s.Options.Interval
 	}
 	return DefaultBatchImageCleanupInterval
 }
+
 func (s *Cleanup) CleanupBatchSize() int {
 	if s != nil && s.Options.BatchSize > 0 {
 		return s.Options.BatchSize
@@ -240,6 +250,7 @@ func CleanupEventPayload(batchID string, target CleanupTarget, reason string, de
 	}
 	return payload
 }
+
 func CleanupErrorIsNotFound(err error) bool {
 	if err == nil {
 		return false
@@ -248,6 +259,7 @@ func CleanupErrorIsNotFound(err error) bool {
 	msg := strings.ToUpper(err.Error())
 	return strings.Contains(reason, "NOT_FOUND") || strings.Contains(msg, "NOT FOUND") || strings.Contains(msg, "404")
 }
+
 func CleanupFailureCode(err error) string {
 	if errors.Is(err, ErrBatchImageProviderUnsafeCleanupPath) {
 		return "BATCH_IMAGE_CLEANUP_UNSAFE_PATH"

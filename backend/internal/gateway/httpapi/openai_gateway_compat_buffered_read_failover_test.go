@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 	"github.com/gin-gonic/gin"
@@ -26,7 +26,6 @@ func (r *openAICompatBufferedReadErrorCloser) Read([]byte) (int, error) { return
 func (r *openAICompatBufferedReadErrorCloser) Close() error             { return nil }
 
 func TestChatCompletionsBufferedResponsesReadErrorReturnsFailover(t *testing.T) {
-
 	readErrors := []struct {
 		name string
 		err  error
@@ -45,8 +44,8 @@ func TestChatCompletionsBufferedResponsesReadErrorReturnsFailover(t *testing.T) 
 				Header:     http.Header{"Content-Type": []string{"text/event-stream"}, "X-Request-Id": []string{"upstream-rid"}},
 				Body:       &openAICompatBufferedReadErrorCloser{err: test.err},
 			}
-			result, err := (newResponsesFixture(responsesFixtureInputs{})).Output.ChatBuffered(
-				resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 40, Name: "openai-oauth", Platform: capability.PlatformOpenAI}},
+			result, err := newResponsesFixture(responsesFixtureInputs{}).Output.ChatBuffered(
+				resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 40, Name: "openai-oauth", Platform: capability.PlatformOpenAI}},
 				"gpt-5.6-sol", "gpt-5.6-sol", "gpt-5.6-sol", time.Now(),
 			)
 			require.Error(t, err)
@@ -63,15 +62,14 @@ func TestChatCompletionsBufferedResponsesReadErrorReturnsFailover(t *testing.T) 
 }
 
 func TestChatCompletionsBufferedResponsesReadErrorDoesNotFailoverAfterClientCancel(t *testing.T) {
-
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	requestContext, cancel := context.WithCancel(context.Background())
 	cancel()
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", nil).WithContext(requestContext)
 	resp := &http.Response{StatusCode: http.StatusOK, Header: http.Header{}, Body: &openAICompatBufferedReadErrorCloser{err: io.ErrUnexpectedEOF}}
-	result, err := (newResponsesFixture(responsesFixtureInputs{})).Output.ChatBuffered(
-		resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 40, Name: "openai-oauth", Platform: capability.PlatformOpenAI}},
+	result, err := newResponsesFixture(responsesFixtureInputs{}).Output.ChatBuffered(
+		resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 40, Name: "openai-oauth", Platform: capability.PlatformOpenAI}},
 		"gpt-5.6-sol", "gpt-5.6-sol", "gpt-5.6-sol", time.Now(),
 	)
 	require.Error(t, err)
@@ -81,13 +79,12 @@ func TestChatCompletionsBufferedResponsesReadErrorDoesNotFailoverAfterClientCanc
 }
 
 func TestChatCompletionsBufferedResponsesOversizedLineDoesNotFailover(t *testing.T) {
-
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", nil)
 	resp := &http.Response{StatusCode: http.StatusOK, Header: http.Header{}, Body: &openAICompatBufferedReadErrorCloser{err: bufio.ErrTooLong}}
-	result, err := (newResponsesFixture(responsesFixtureInputs{})).Output.ChatBuffered(
-		resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 40, Name: "openai-oauth", Platform: capability.PlatformOpenAI}},
+	result, err := newResponsesFixture(responsesFixtureInputs{}).Output.ChatBuffered(
+		resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 40, Name: "openai-oauth", Platform: capability.PlatformOpenAI}},
 		"gpt-5.6-sol", "gpt-5.6-sol", "gpt-5.6-sol", time.Now(),
 	)
 	require.ErrorIs(t, err, bufio.ErrTooLong)

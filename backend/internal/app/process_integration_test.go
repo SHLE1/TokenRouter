@@ -232,17 +232,17 @@ func TestS02ProcessModes(t *testing.T) {
 			require.Less(t, strings.Index(logs, "stopped TimingWheelService"), strings.Index(logs, "stopped Redis"))
 			require.Less(t, strings.Index(logs, "stopped Redis"), strings.Index(logs, "stopped Ent"))
 			// 周期维护只启动一次；生产者停止后才结束共享刷新、查询与技术依赖。
-			for _, name := range []string{"TokenRefreshService", "AccountExpiryService", "ProxyExpiryService", "ScheduledTestRunnerService", "GroupAvailabilityProbeRunnerService", "CNProviderBalanceCheckService", "OllamaCloudUsageService", "DeferredService", "TLSFingerprintProfileService", "TLSFingerprintRouterService"} {
+			for _, name := range []string{"TokenRefreshService", "ProviderExpiryService", "ProxyExpiryService", "ScheduledTestRunnerService", "GroupAvailabilityProbeRunnerService", "CNProviderBalanceCheckService", "OllamaCloudUsageService", "DeferredService", "TLSFingerprintProfileService", "TLSFingerprintRouterService"} {
 				require.Equal(t, 1, strings.Count(logs, "[Lifecycle] started "+name), name)
 				require.Equal(t, 1, strings.Count(logs, "[Lifecycle] stopped "+name), name)
 				require.Less(t, strings.Index(logs, "stopped "+name), strings.Index(logs, "stopped Redis"), name)
 			}
-			for _, name := range []string{"AccountRefreshCoordinator", "AccountOAuthUsage", "AccountUpstreamUsage", "AccountImportProbes", "AccountPrivacy", "AccountTier", "AccountModelList", "GrokQuotaProbes", "TLSFingerprintCollectorService"} {
+			for _, name := range []string{"ProviderRefreshCoordinator", "ProviderOAuthUsage", "ProviderUpstreamUsage", "ProviderImportProbes", "ProviderPrivacy", "ProviderTier", "ProviderModelList", "GrokQuotaProbes", "TLSFingerprintCollectorService"} {
 				require.Equal(t, 1, strings.Count(logs, "[Lifecycle] stopped "+name), name)
 				require.Less(t, strings.Index(logs, "stopped "+name), strings.Index(logs, "stopped Redis"), name)
 			}
 			require.Less(t, strings.Index(logs, "stopped HTTPRequests"), strings.Index(logs, "stopped TokenRefreshService"))
-			require.Less(t, strings.Index(logs, "stopped TokenRefreshService"), strings.Index(logs, "stopped AccountRefreshCoordinator"))
+			require.Less(t, strings.Index(logs, "stopped TokenRefreshService"), strings.Index(logs, "stopped ProviderRefreshCoordinator"))
 			require.Less(t, strings.Index(logs, "stopped DeferredService"), strings.Index(logs, "stopped TimingWheelService"))
 
 			// 快照、并发和串行队列各启动一次；实际请求结束后才停止，随后关闭存储。

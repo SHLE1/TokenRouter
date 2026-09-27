@@ -16,6 +16,7 @@ type PublicHandler struct {
 func NewPublicHandler(s *site.PublicService, version string) *PublicHandler {
 	return &PublicHandler{settingService: s, version: version}
 }
+
 func publicLoginAgreementDocumentsToDTO(items []site.LoginAgreementDocument) []dto.LoginAgreementDocument {
 	result := make([]dto.LoginAgreementDocument, 0, len(items))
 	for _, item := range items {
@@ -117,7 +118,7 @@ func (h *PublicHandler) GetPublicSettings(c *gin.Context) {
 		BalanceUnitSymbol:                   settings.BalanceUnitSymbol,
 		BalanceIconSVG:                      settings.BalanceIconSVG,
 		BalanceLowNotifyEnabled:             settings.BalanceLowNotifyEnabled,
-		AccountQuotaNotifyEnabled:           settings.AccountQuotaNotifyEnabled,
+		ProviderQuotaNotifyEnabled:          settings.ProviderQuotaNotifyEnabled,
 		RiskControlEnabled:                  settings.RiskControlEnabled,
 		AffiliateEnabled:                    settings.AffiliateEnabled,
 		BalanceLowNotifyThreshold:           settings.BalanceLowNotifyThreshold,

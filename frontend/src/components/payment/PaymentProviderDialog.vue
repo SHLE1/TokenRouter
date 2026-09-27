@@ -169,7 +169,7 @@
               data-lpignore="true"
               data-bwignore="true"
               spellcheck="false"
-              :placeholder="editing ? t('admin.accounts.leaveEmptyToKeep') : ''"
+              :placeholder="editing ? t('admin.providers.leaveEmptyToKeep') : ''"
             />
             <div v-else-if="field.sensitive" class="relative">
               <input
@@ -181,7 +181,7 @@
                 data-lpignore="true"
                 data-bwignore="true"
                 spellcheck="false"
-                :placeholder="editing ? t('admin.accounts.leaveEmptyToKeep') : (field.defaultValue || '')"
+                :placeholder="editing ? t('admin.providers.leaveEmptyToKeep') : (field.defaultValue || '')"
               />
               <button
                 type="button"

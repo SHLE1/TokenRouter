@@ -38,7 +38,7 @@ type dashboardSnapshotV2Response struct {
 type dashboardSnapshotV2Filters struct {
 	UserID             int64
 	APIKeyID           int64
-	AccountID          int64
+	ProviderID         int64
 	GroupID            int64
 	TeamID             int64
 	Model              string
@@ -54,7 +54,7 @@ type dashboardSnapshotV2CacheKey struct {
 	Granularity        string `json:"granularity"`
 	UserID             int64  `json:"user_id"`
 	APIKeyID           int64  `json:"api_key_id"`
-	AccountID          int64  `json:"account_id"`
+	ProviderID         int64  `json:"provider_id"`
 	GroupID            int64  `json:"group_id"`
 	TeamID             int64  `json:"team_id"`
 	Model              string `json:"model"`
@@ -101,7 +101,7 @@ func (h *DashboardHandler) GetSnapshotV2(c *gin.Context) {
 		Granularity:        granularity,
 		UserID:             filters.UserID,
 		APIKeyID:           filters.APIKeyID,
-		AccountID:          filters.AccountID,
+		ProviderID:         filters.ProviderID,
 		GroupID:            filters.GroupID,
 		TeamID:             filters.TeamID,
 		Model:              filters.Model,
@@ -183,7 +183,7 @@ func (h *DashboardHandler) buildSnapshotV2Response(
 			granularity,
 			filters.UserID,
 			filters.APIKeyID,
-			filters.AccountID,
+			filters.ProviderID,
 			filters.GroupID,
 			filters.TeamID,
 			filters.Model,
@@ -205,7 +205,7 @@ func (h *DashboardHandler) buildSnapshotV2Response(
 			endTime,
 			filters.UserID,
 			filters.APIKeyID,
-			filters.AccountID,
+			filters.ProviderID,
 			filters.GroupID,
 			filters.TeamID,
 			usage.ModelSourceRequested,
@@ -227,7 +227,7 @@ func (h *DashboardHandler) buildSnapshotV2Response(
 			endTime,
 			filters.UserID,
 			filters.APIKeyID,
-			filters.AccountID,
+			filters.ProviderID,
 			filters.GroupID,
 			filters.TeamID,
 			filters.RequestType,
@@ -271,12 +271,12 @@ func parseDashboardSnapshotV2Filters(c *gin.Context) (*dashboardSnapshotV2Filter
 		}
 		filters.APIKeyID = id
 	}
-	if accountIDStr := strings.TrimSpace(c.Query("account_id")); accountIDStr != "" {
-		id, err := strconv.ParseInt(accountIDStr, 10, 64)
+	if providerIDStr := strings.TrimSpace(c.Query("provider_id")); providerIDStr != "" {
+		id, err := strconv.ParseInt(providerIDStr, 10, 64)
 		if err != nil {
 			return nil, err
 		}
-		filters.AccountID = id
+		filters.ProviderID = id
 	}
 	if groupIDStr := strings.TrimSpace(c.Query("group_id")); groupIDStr != "" {
 		id, err := strconv.ParseInt(groupIDStr, 10, 64)

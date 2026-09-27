@@ -114,6 +114,7 @@ func ParseImageOutputs(body []byte, httpError func(int, string) error) ([]upstre
 	}
 	return outputs, nil
 }
+
 func GenerateImages(ctx context.Context, request wire.ImageGenerateRequest, options ImageOptions) ([]upstream.ImageOutput, error) {
 	if options.Enter != nil {
 		done, err := options.Enter()
@@ -131,7 +132,7 @@ func GenerateImages(ctx context.Context, request wire.ImageGenerateRequest, opti
 	projectID := strings.TrimSpace(options.ProjectID)
 	switch {
 	case options.Mode == ServiceAccountCredential:
-		// Vertex 服务账号：{location}-aiplatform.../v1/projects/.../models/{model}:generateContent + Bearer。
+		// Vertex 服务提供商：{location}-aiplatform.../v1/projects/.../models/{model}:generateContent + Bearer。
 		targetURL, err = options.VertexURL()
 		if err != nil {
 			return nil, options.Invalid("build vertex gemini url: %s", err.Error())
@@ -186,7 +187,7 @@ func GenerateImages(ctx context.Context, request wire.ImageGenerateRequest, opti
 	if err := applyImageAuth(ctx, req, options); err != nil {
 		return nil, err
 	}
-	// 账号级请求头覆写最后应用，配置值优先于内置默认头。
+	// 提供商级请求头覆写最后应用，配置值优先于内置默认头。
 	options.ApplyHeaders(req.Header)
 
 	resp, err := options.Do(req)
@@ -211,7 +212,7 @@ func GenerateImages(ctx context.Context, request wire.ImageGenerateRequest, opti
 	return ParseImageOutputs(respBody, options.HTTPError)
 }
 
-// applyGeminiAuth 按账号类型设置鉴权头：apikey 用 x-goog-api-key，其余用 Bearer token。
+// applyGeminiAuth 按提供商类型设置鉴权头：apikey 用 x-goog-api-key，其余用 Bearer token。
 func applyImageAuth(ctx context.Context, req *http.Request, options ImageOptions) error {
 	if options.Mode == APIKeyCredential {
 		apiKey := strings.TrimSpace(options.APIKey())

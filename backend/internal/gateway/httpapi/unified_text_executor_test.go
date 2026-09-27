@@ -9,24 +9,24 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/completion"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/forward"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/googleforward"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/messageforward"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/searchtools"
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 )
 
-// TestUnifiedTextDispatchUsesSelectedAccount 只装配实际账号需要的执行器，错误分派会立即失败。
-func TestUnifiedTextDispatchUsesSelectedAccount(t *testing.T) {
+// TestUnifiedTextDispatchUsesSelectedProvider 只装配实际提供商需要的执行器，错误分派会立即失败。
+func TestUnifiedTextDispatchUsesSelectedProvider(t *testing.T) {
 	tests := []struct{ platform, model, path, response string }{
 		{"anthropic", "claude-sonnet-4-5", "/v1/messages", `{"id":"msg-native","type":"message","role":"assistant","model":"claude-sonnet-4-5","content":[{"type":"text","text":"ok"}],"stop_reason":"end_turn","usage":{"input_tokens":10,"output_tokens":3,"cache_creation_input_tokens":7,"cache_read_input_tokens":5,"cache_creation":{"ephemeral_5m_input_tokens":2,"ephemeral_1h_input_tokens":5},"speed":"fast"}}`},
 		{"gemini", "gemini-2.5-flash", ":generateContent", `{"candidates":[{"content":{"role":"model","parts":[{"text":"ok"}]},"finishReason":"STOP"}],"usageMetadata":{"promptTokenCount":10,"candidatesTokenCount":3,"totalTokenCount":13}}`},
@@ -38,11 +38,11 @@ func TestUnifiedTextDispatchUsesSelectedAccount(t *testing.T) {
 			c, _ := gin.CreateTestContext(rec)
 			c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
 			transport := &auxiliaryHTTPRecorder{resp: &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(tt.response))}}
-			target := provider.NewExecutionAccount(&account.Record{ID: 42, Name: "selected", Platform: tt.platform, Type: "apikey", Concurrency: 1, Credentials: map[string]any{"api_key": "test-key"}})
+			target := gatewayadapter.NewExecutionProvider(&provider.Record{ID: 42, Name: "selected", Platform: tt.platform, Type: "apikey", Concurrency: 1, Credentials: map[string]any{"api_key": "test-key"}})
 			executor := &UnifiedTextExecutor{}
 			switch tt.platform {
 			case "anthropic":
-				executor.Anthropic = NewMessagesExecutor(messageforward.NewRuntime(messageforward.Dependencies{Search: searchtools.NewEmulator(unifiedSearchSource{}, nil, nil, nil, nil, nil), Credentials: &account.MessageCredentialSource{}, Transport: transport, Deferred: &account.DeferredService{}}, messageforward.Options{Configured: true, ResponseReadLimit: 1 << 20}), nil)
+				executor.Anthropic = NewMessagesExecutor(messageforward.NewRuntime(messageforward.Dependencies{Search: searchtools.NewEmulator(unifiedSearchSource{}, nil, nil, nil, nil, nil), Credentials: &provider.MessageCredentialSource{}, Transport: transport, Deferred: &provider.DeferredService{}}, messageforward.Options{Configured: true, ResponseReadLimit: 1 << 20}), nil)
 			case "gemini":
 				executor.Gemini = &GeminiExecutor{Runtime: &googleforward.Gemini{Transport: transport, Options: googleforward.Options{Configured: true, ResponseReadLimit: 1 << 20}}}
 			case "openai":
@@ -79,7 +79,7 @@ func (w *unifiedRecordWriter) Create(_ context.Context, row *usage.UsageLog) (bo
 
 type unifiedRecordEffects struct{}
 
-func (unifiedRecordEffects) AccountUsed(int64)                                                    {}
+func (unifiedRecordEffects) ProviderUsed(int64)                                                   {}
 func (unifiedRecordEffects) InvalidateAuth(context.Context, string)                               {}
 func (unifiedRecordEffects) Settled(completion.SettlementInput, *billing.UsageBillingApplyResult) {}
 
@@ -98,7 +98,7 @@ func TestUnifiedNativeUsageSurvivesCaptureAndRecord(t *testing.T) {
 	native.Usage.CacheCreation1hTokens = 99
 	require.Equal(t, 7, result.NativeUsage.CacheCreation1hTokens)
 	user := &identity.User{ID: 1}
-	input := provider.CaptureOpenAI(context.Background(), &provider.OpenAICapture{Result: result, APIKey: &apikey.APIKey{ID: 2, User: user}, User: user, Account: &account.Record{ID: 3, Platform: "anthropic", Type: "apikey"}})
+	input := gatewayadapter.CaptureOpenAI(context.Background(), &gatewayadapter.OpenAICapture{Result: result, APIKey: &apikey.APIKey{ID: 2, User: user}, User: user, Provider: &provider.Record{ID: 3, Platform: "anthropic", Type: "apikey"}})
 	require.True(t, input.Result.NativeUsage)
 	require.Equal(t, 5, input.Result.Usage.CacheCreation5mTokens)
 	require.Equal(t, 7, input.Result.Usage.CacheCreation1hTokens)

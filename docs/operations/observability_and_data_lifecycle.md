@@ -5,7 +5,7 @@
 ## 章节导航
 
 - [数据面的职责](#数据面的职责)：判断一条记录是否可以丢弃或清理时读取。
-- [专题路由](#专题路由)：进入监控、聚合或账号维护详细文档。
+- [专题路由](#专题路由)：进入监控、聚合或提供商维护详细文档。
 - [关联与脱敏](#关联与脱敏)：修改日志字段、错误透传或查询筛选时读取。
 - [后台运行时](#后台运行时)：修改队列、worker、leader lock 或心跳时读取。
 - [聚合与查询](#聚合与查询)：修改仪表盘和 Ops 读取路径时读取。
@@ -27,9 +27,9 @@
 
 `usage`、`audit`、`ops` 分别拥有对应记录、用例和存储 Adapter；app 统一持有生产实例。供应商用量解析、请求 ID 选择、结算和 `UsageRecordWorkerPool` 的完成任务仍在网关；资金去重归档由 billing 的命名能力执行。
 
-用量生产消费者直接使用 `usage.UsageLog`、查询接口和同一 PostgreSQL Store，保持用量事实与展示投影分离。关联用户、Key、账号仍为展示投影。网关完成记录在写入前保留客户端模型展示覆盖，只影响 `requested_model`，不改变实际模型、映射链或计费输入。
+用量生产消费者直接使用 `usage.UsageLog`、查询接口和同一 PostgreSQL Store，保持用量事实与展示投影分离。关联用户、Key、提供商仍为展示投影。网关完成记录在写入前保留客户端模型展示覆盖，只影响 `requested_model`，不改变实际模型、映射链或计费输入。
 
-用量日志不是扣费账本，Ops 事件也不是请求成功的唯一证据。结算失败时保留的用量日志仍包含计算成本，但以 `actual_cost=0` 标识未成功扣费；这类记录必须与结算表对账，不能作为扣费成功的证据。排查金额时以结算事务和账单分配为准，再用 `request_id`、用户、Key、账号和时间窗口关联用量/Ops 数据。清理分析记录不会退款，也不能修复一笔错误结算。
+用量日志不是扣费账本，Ops 事件也不是请求成功的唯一证据。结算失败时保留的用量日志仍包含计算成本，但以 `actual_cost=0` 标识未成功扣费；这类记录必须与结算表对账，不能作为扣费成功的证据。排查金额时以结算事务和账单分配为准，再用 `request_id`、用户、Key、提供商和时间窗口关联用量/Ops 数据。清理分析记录不会退款，也不能修复一笔错误结算。
 
 ## 专题路由
 
@@ -37,18 +37,18 @@
 | --- | --- |
 | Ops 指标、实时流量、错误、告警和邮件报告 | [运维监控与告警](ops_monitoring_and_alerting.md) |
 | Usage/Ops 小时日聚合、水位、回填和查询降级 | [使用记录与运维预聚合](pre_aggregation.md) |
-| 上游账号刷新、测试、配额探测和自动恢复 | [账号维护](account_maintenance.md) |
+| 上游提供商刷新、测试、配额探测和自动恢复 | [提供商维护](provider_maintenance.md) |
 | 内容审核日志、风险命中和自动处置 | [内容审核与风险处置](../domains/content_moderation.md) |
 
 ## 关联与脱敏
 
-网关为每次请求生成内部 client request ID，并把归一化 endpoint、platform、requested/upstream model、用户、API Key、账号和团队等维度带入允许的用量/Ops 记录。入站 `X-Client-Request-ID` 仅作为受限的 `parent_client_request_id` 保存，用于跨 TokenRouter/Sub2API 链路排障，不参与权限、路由或结算幂等；服务生成的内部 ID 通过 `X-Sub2API-Request-ID` 暴露给下游诊断。客户端提供的 session ID 只作为显式关联字段，不从 prompt 或缓存键推导。
+网关为每次请求生成内部 client request ID，并把归一化 endpoint、platform、requested/upstream model、用户、API Key、提供商和团队等维度带入允许的用量/Ops 记录。入站 `X-Client-Request-ID` 仅作为受限的 `parent_client_request_id` 保存，用于跨 TokenRouter/Sub2API 链路排障，不参与权限、路由或结算幂等；服务生成的内部 ID 通过 `X-Sub2API-Request-ID` 暴露给下游诊断。客户端提供的 session ID 只作为显式关联字段，不从 prompt 或缓存键推导。
 
-网关入口只接受字符受限的 `X-Client-Request-ID` 作为父级关联值；缺失或不安全时，响应回退使用服务生成的内部 ID，服务不会把生成的关联 ID 加入上游请求。内部 ID 通过 `X-Sub2API-Request-ID` 响应头标识，调用方 ID 与内部 ID 均会进入访问日志，但只有内部 ID 能作为结算幂等来源。流式网关的 `http.access` 记录还会尽力写入 `request_content_length`、`account_slot_acquired_ms`、`upstream_get_conn_ms`、`upstream_got_conn_ms`、`upstream_wrote_request_ms`、`upstream_first_response_byte_ms`、`upstream_first_sse_data_ms`、`first_visible_output_ms` 和 `first_downstream_flush_ms`；`upstream_attempt_count`、各阶段计数、连接复用和写入错误字段用于识别连接池等待、重试与传输异常。阶段字段只包含时间、计数和连接复用状态，不包含请求体或凭据。
+网关入口只接受字符受限的 `X-Client-Request-ID` 作为父级关联值；缺失或不安全时，响应回退使用服务生成的内部 ID，服务不会把生成的关联 ID 加入上游请求。内部 ID 通过 `X-Sub2API-Request-ID` 响应头标识，调用方 ID 与内部 ID 均会进入访问日志，但只有内部 ID 能作为结算幂等来源。流式网关的 `http.access` 记录还会尽力写入 `request_content_length`、`provider_slot_acquired_ms`、`upstream_get_conn_ms`、`upstream_got_conn_ms`、`upstream_wrote_request_ms`、`upstream_first_response_byte_ms`、`upstream_first_sse_data_ms`、`first_visible_output_ms` 和 `first_downstream_flush_ms`；`upstream_attempt_count`、各阶段计数、连接复用和写入错误字段用于识别连接池等待、重试与传输异常。阶段字段只包含时间、计数和连接复用状态，不包含请求体或凭据。
 
 凭据、Authorization、Cookie、refresh token、支付密钥、对象存储 secret、完整上游 body 和用户提示不能直接写入日志。上游错误只透传允许的安全字段；系统日志 sink 在落库前再次整理字段并限制长度。新增日志字段时要同时检查：结构化 logger、Ops sink 的字段白名单/脱敏、管理端 DTO、导出和测试夹具。
 
-审计 Redactor 由 app 直接注入账号与支付模块的敏感字段清单，HTTP 捕获共享该实例。Ops 构造、日志 sink 与报告任务也直接使用所属模块实例。
+审计 Redactor 由 app 直接注入提供商与支付模块的敏感字段清单，HTTP 捕获共享该实例。Ops 构造、日志 sink 与报告任务也直接使用所属模块实例。
 
 多实例中每条系统日志带 host，便于区分进程来源。关联 ID 不是授权凭据；管理端详情、实时流和 WebSocket 仍必须经过管理员鉴权与相应 step-up 门禁。
 
@@ -58,7 +58,7 @@
 观测对象构造不启动后台任务；app 完成依赖和回调绑定后，通过统一生命周期启动周期任务，按需资源仍在首次使用时启动。HTTP 使用五秒优雅关闭预算，后台清理共用独立的三十秒预算。各队列的故障和交付保证分别保留：
 
 - Usage record worker 使用有界队列；默认拥塞策略可同步降级，也支持 sample/drop。队列深度、成功、失败、丢弃和同步降级计数必须进入运行时诊断。显式 drop/sample 溢出仍按运维配置丢弃；池已停止的关停窗口则使用独立提交状态，计费任务在调用侧内联同步兜底。
-- Ops 错误采集队列在进入队列前清理敏感字段，并保留原批次窗口、工作数、条数/字节上限和过载丢弃；关闭先封闭入队，再等待已取得的批次完成。HTTP 响应捕获、SSE 分片观察和 writer 复用由 `gateway/httpapi` 拥有，app 显式注入同一 Ops 队列及只读身份/拒绝投影；认证失败时已加载的 Key 不构成认证主体。Cyber 专项记录复用该队列，不安装全局队列绑定。HTTP 捕获与供应商错误分类只提交观测输入。Ops 的错误类型、阶段、严重性与 SLA 排除判断由 `ops.ClassifyRequestError` 等纯规则统一执行；HTTP 只固化本地限制、路由容量、账号认证和上游响应事实，不把 Gin Context 传入分类核心。
+- Ops 错误采集队列在进入队列前清理敏感字段，并保留原批次窗口、工作数、条数/字节上限和过载丢弃；关闭先封闭入队，再等待已取得的批次完成。HTTP 响应捕获、SSE 分片观察和 writer 复用由 `gateway/httpapi` 拥有，app 显式注入同一 Ops 队列及只读身份/拒绝投影；认证失败时已加载的 Key 不构成认证主体。Cyber 专项记录复用该队列，不安装全局队列绑定。HTTP 捕获与供应商错误分类只提交观测输入。Ops 的错误类型、阶段、严重性与 SLA 排除判断由 `ops.ClassifyRequestError` 等纯规则统一执行；HTTP 只固化本地限制、路由容量、提供商认证和上游响应事实，不把 Gin Context 传入分类核心。
 - Ops system log sink 只索引选定等级/组件，按批写 PostgreSQL；队列满时不阻塞主请求，而是增加 dropped counter。落库连续失败后从 2 秒开始指数退避，最长 60 秒；退避期间直接丢弃观测批次并计入 dropped，避免日志链路持续占用数据库连接，任意一次成功会立即恢复正常写入。重复 Start 不产生新写入协程或独立退避状态；Stop 幂等且不能重开。停止等待受应用剩余预算约束，超时会报告未完成项，不能记为排空成功。
 - 运维指标采集器、小时/日聚合器、告警评估器、计划报告和清理任务各自维护周期、开关、leader lock 与 job heartbeat。
 - Usage cleanup 任务持久化为 pending/running/succeeded/failed/canceled，分批删除；进程中断后 stale running 任务可以重新抢占继续执行。
@@ -73,7 +73,7 @@
 
 原始 `usage_logs`、Ops 原始事件和系统指标是聚合来源，hourly/daily rollup 及缓存是读取优化。仪表盘、趋势、直方图、SLA 和排名查询可以按配置选择预聚合或原始表，并在覆盖不足时回退；任何聚合结果都不参与余额或订阅扣减。
 
-用户、管理员与公开 `/usage` 查询直接绑定 usage；API Key/身份/团队只通过批量投影或 SQL 查询参与函数组合，保留原付款/行为主体、用户费用/账号成本和模型口径。查询缓存按各原数据面分别持有，key、TTL、singleflight 与 stale refresh 不合并；缓存边界返回独立副本。`pkg/querycache` 只提供缓存机制，ETag、304 和响应 Header 由 HTTP Adapter 决定。
+用户、管理员与公开 `/usage` 查询直接绑定 usage；API Key/身份/团队只通过批量投影或 SQL 查询参与函数组合，保留原付款/行为主体、用户费用/提供商成本和模型口径。查询缓存按各原数据面分别持有，key、TTL、singleflight 与 stale refresh 不合并；缓存边界返回独立副本。`pkg/querycache` 只提供缓存机制，ETag、304 和响应 Header 由 HTTP Adapter 决定。
 
 用量 HTTP 日期解析使用 app 注入的 Calendar。未提供或无法解析用户时区时回退该服务端位置；日期型结束值按日历增加一天形成排他上界，跨夏令时的一天可以是 23 或 25 小时。带偏移的明确时间不追加一天。公开查询、排行和仪表盘继续保留各自默认范围与取时点，不统一为同一时间窗口。
 
@@ -88,7 +88,7 @@
 
 Ops cleanup 按运行时设置清理错误日志、系统日志、指标/聚合、告警、心跳及清理审计等表，并以批处理和暂停降低数据库压力。多实例只由 leader 执行，数据库维护任务运行时跳过。保留天数为 `0` 的具体含义由目标计划决定，修改默认值前必须覆盖 truncate/delete 计划测试。
 
-Usage cleanup 是管理员显式创建的持久任务，必须提供时间范围，可再按用户、团队、Key、账号、分组、模型、请求类型、流式或计费类型收窄。删除按批推进并记录操作人、进度、取消和错误。只要任务已经删除记录，成功、取消或随后失败都会在统一收尾登记受影响范围的异步聚合重算；重算使用聚合运行时 context，取消状态仍为 canceled。它没有新增持久修复队列，也不承诺进程崩溃后的修复投递。对大范围清理应先备份并估算分区、索引、vacuum 和查询影响。
+Usage cleanup 是管理员显式创建的持久任务，必须提供时间范围，可再按用户、团队、Key、提供商、分组、模型、请求类型、流式或计费类型收窄。删除按批推进并记录操作人、进度、取消和错误。只要任务已经删除记录，成功、取消或随后失败都会在统一收尾登记受影响范围的异步聚合重算；重算使用聚合运行时 context，取消状态仍为 canceled。它没有新增持久修复队列，也不承诺进程崩溃后的修复投递。对大范围清理应先备份并估算分区、索引、vacuum 和查询影响。
 
 通用审计的清空操作由 audit/postgres 在同一事务内锁表、计数、TRUNCATE 并插入留痕；任何一步失败都回滚，序列继续沿用原行为。管理员 API Key 仍被拒绝，并继续验证原 TOTP 凭据。普通管理员审计保持尽力异步写入；Ops 系统日志清理的留痕仍尽力执行，支付专项审计与退款事务维持原保证。
 

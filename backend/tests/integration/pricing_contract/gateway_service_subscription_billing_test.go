@@ -6,12 +6,12 @@ import (
 	"testing"
 	time "time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	identity "github.com/TokenFlux/TokenRouter/internal/identity"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/usage"
@@ -64,7 +64,7 @@ func TestBuildUsageBillingCommand_BillableAmountTracksActualCost(t *testing.T) {
 				Cost:         &pricing.CostBreakdown{TotalCost: tt.totalCost, ActualCost: tt.actualCost},
 				User:         &identity.User{ID: 1},
 				APIKey:       &apikey.APIKey{ID: 2, GroupID: &groupID},
-				Account:      &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 3}},
+				Provider:     &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 3}},
 				Subscription: &billing.UserSubscription{ID: subID},
 			}
 
@@ -79,68 +79,68 @@ func TestBuildUsageBillingCommand_BillableAmountTracksActualCost(t *testing.T) {
 	}
 }
 
-func TestBuildUsageBillingCommand_AccountQuotaUsesAccountStatsCost(t *testing.T) {
+func TestBuildUsageBillingCommand_ProviderQuotaUsesProviderStatsCost(t *testing.T) {
 	t.Parallel()
 
 	customCost := 2.0
 	zeroCost := 0.0
 	tests := []struct {
-		name                  string
-		accountStatsCost      *float64
-		totalCost             float64
-		actualCost            float64
-		accountRateMultiplier float64
-		wantAccountQuota      float64
+		name                   string
+		providerStatsCost      *float64
+		totalCost              float64
+		actualCost             float64
+		providerRateMultiplier float64
+		wantProviderQuota      float64
 	}{
 		{
-			name:                  "自定义账号成本乘账号倍率",
-			accountStatsCost:      &customCost,
-			totalCost:             5,
-			actualCost:            7,
-			accountRateMultiplier: 1.5,
-			wantAccountQuota:      3,
+			name:                   "自定义提供商成本乘提供商倍率",
+			providerStatsCost:      &customCost,
+			totalCost:              5,
+			actualCost:             7,
+			providerRateMultiplier: 1.5,
+			wantProviderQuota:      3,
 		},
 		{
-			name:                  "空账号成本回退总成本",
-			totalCost:             4,
-			actualCost:            1.25,
-			accountRateMultiplier: 2,
-			wantAccountQuota:      8,
+			name:                   "空提供商成本回退总成本",
+			totalCost:              4,
+			actualCost:             1.25,
+			providerRateMultiplier: 2,
+			wantProviderQuota:      8,
 		},
 		{
-			name:                  "显式零账号成本不累计额度",
-			accountStatsCost:      &zeroCost,
-			totalCost:             4,
-			actualCost:            1.25,
-			accountRateMultiplier: 3,
-			wantAccountQuota:      0,
+			name:                   "显式零提供商成本不累计额度",
+			providerStatsCost:      &zeroCost,
+			totalCost:              4,
+			actualCost:             1.25,
+			providerRateMultiplier: 3,
+			wantProviderQuota:      0,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			usageLog := &usage.UsageLog{AccountStatsCost: tt.accountStatsCost}
+			usageLog := &usage.UsageLog{ProviderStatsCost: tt.providerStatsCost}
 			p := &contractSettlementInput{
 				Cost: &pricing.CostBreakdown{
 					TotalCost:  tt.totalCost,
 					ActualCost: tt.actualCost,
 				},
-				User:                  &identity.User{ID: 1},
-				APIKey:                &apikey.APIKey{ID: 2},
-				Account:               &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 3, Type: capability.AccountTypeAPIKey, Extra: map[string]any{"quota_limit": 100}}},
-				AccountRateMultiplier: tt.accountRateMultiplier,
+				User:                   &identity.User{ID: 1},
+				APIKey:                 &apikey.APIKey{ID: 2},
+				Provider:               &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 3, Type: capability.ProviderTypeAPIKey, Extra: map[string]any{"quota_limit": 100}}},
+				ProviderRateMultiplier: tt.providerRateMultiplier,
 			}
 
-			cmd := buildContractBillingCommand("req-account-quota", usageLog, p)
+			cmd := buildContractBillingCommand("req-provider-quota", usageLog, p)
 
 			if cmd == nil {
 				t.Fatal("buildContractBillingCommand returned nil")
 			}
-			if cmd.AccountQuotaCost != tt.wantAccountQuota {
-				t.Errorf("AccountQuotaCost = %v, want %v", cmd.AccountQuotaCost, tt.wantAccountQuota)
+			if cmd.ProviderQuotaCost != tt.wantProviderQuota {
+				t.Errorf("ProviderQuotaCost = %v, want %v", cmd.ProviderQuotaCost, tt.wantProviderQuota)
 			}
-			// 用户余额、订阅和 API Key 配额仍必须使用 ActualCost，不能被账号成本口径影响。
+			// 用户余额、订阅和 API Key 配额仍必须使用 ActualCost，不能被提供商成本口径影响。
 			if cmd.BillableAmountUSD != tt.actualCost {
 				t.Errorf("BillableAmountUSD = %v, want %v", cmd.BillableAmountUSD, tt.actualCost)
 			}
@@ -157,7 +157,7 @@ func TestBuildUsageBillingCommand_IncludesRequestGroupID(t *testing.T) {
 			ID:      20,
 			GroupID: &groupID,
 		},
-		Account: &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 30, Type: capability.AccountTypeAPIKey}},
+		Provider: &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 30, Type: capability.ProviderTypeAPIKey}},
 	}
 
 	cmd := buildContractBillingCommand("req-group", nil, p)
@@ -199,7 +199,7 @@ func TestBuildUsageBillingCommand_NonTokenModesKeepAllocationRates(t *testing.T)
 				},
 				User:                            &identity.User{ID: 1},
 				APIKey:                          &apikey.APIKey{ID: 2},
-				Account:                         &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 3}},
+				Provider:                        &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 3}},
 				SubscriptionRateMultiplier:      0.15,
 				SubscriptionRateMultiplierScale: 1,
 				BalanceRateMultiplier:           2,
@@ -234,7 +234,7 @@ func TestBuildUsageBillingCommand_TokenModeKeepsAllocationRates(t *testing.T) {
 		},
 		User:                            &identity.User{ID: 1},
 		APIKey:                          &apikey.APIKey{ID: 2},
-		Account:                         &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 3}},
+		Provider:                        &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 3}},
 		SubscriptionRateMultiplier:      0.8,
 		SubscriptionRateMultiplierScale: 1.5,
 		BalanceRateMultiplier:           0.3,
@@ -257,25 +257,25 @@ func TestBuildUsageBillingCommand_TokenModeKeepsAllocationRates(t *testing.T) {
 }
 
 // TestBuildUsageBillingCommand_UsesOverrideBaseAmountForFreeFast 验证免费 Fast
-// 可以替换用户资金分配的基础价，同时保留账号统计成本对应的额度口径。
+// 可以替换用户资金分配的基础价，同时保留提供商统计成本对应的额度口径。
 func TestBuildUsageBillingCommand_UsesOverrideBaseAmountForFreeFast(t *testing.T) {
 	standardBase := 0.4
 	fastTotal := 1.2
 	standardActual := 0.2
-	accountStatsCost := fastTotal
+	providerStatsCost := fastTotal
 	groupID := int64(88)
-	accountRate := 1.5
+	providerRate := 1.5
 
-	cmd := buildContractBillingCommand("req-free-fast-base", &usage.UsageLog{AccountStatsCost: &accountStatsCost}, &contractSettlementInput{
+	cmd := buildContractBillingCommand("req-free-fast-base", &usage.UsageLog{ProviderStatsCost: &providerStatsCost}, &contractSettlementInput{
 		Cost: &pricing.CostBreakdown{
 			TotalCost:  fastTotal,
 			ActualCost: standardActual,
 		},
-		BillingBaseAmountUSD:  &standardBase,
-		User:                  &identity.User{ID: 1},
-		APIKey:                &apikey.APIKey{ID: 2, GroupID: &groupID},
-		Account:               &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 3, Type: capability.AccountTypeAPIKey, Extra: map[string]any{"quota_limit": 100}}},
-		AccountRateMultiplier: accountRate,
+		BillingBaseAmountUSD:   &standardBase,
+		User:                   &identity.User{ID: 1},
+		APIKey:                 &apikey.APIKey{ID: 2, GroupID: &groupID},
+		Provider:               &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 3, Type: capability.ProviderTypeAPIKey, Extra: map[string]any{"quota_limit": 100}}},
+		ProviderRateMultiplier: providerRate,
 	})
 
 	if cmd == nil {
@@ -287,7 +287,7 @@ func TestBuildUsageBillingCommand_UsesOverrideBaseAmountForFreeFast(t *testing.T
 	if cmd.BillableAmountUSD != standardActual {
 		t.Fatalf("BillableAmountUSD = %v, want %v", cmd.BillableAmountUSD, standardActual)
 	}
-	if diff := cmd.AccountQuotaCost - fastTotal*accountRate; diff > 1e-12 || diff < -1e-12 {
-		t.Fatalf("AccountQuotaCost = %v, want %v", cmd.AccountQuotaCost, fastTotal*accountRate)
+	if diff := cmd.ProviderQuotaCost - fastTotal*providerRate; diff > 1e-12 || diff < -1e-12 {
+		t.Fatalf("ProviderQuotaCost = %v, want %v", cmd.ProviderQuotaCost, fastTotal*providerRate)
 	}
 }

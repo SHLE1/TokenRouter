@@ -10,7 +10,7 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/pkg/logredact"
 
-	"github.com/TokenFlux/TokenRouter/internal/egress/provider"
+	egressadapter "github.com/TokenFlux/TokenRouter/internal/egress/provider"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway/moderationflow"
@@ -25,20 +25,19 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func (p *OpenAIResponseOutput) StreamOptions(ctx context.Context, c *gin.Context, account *gatewayprovider.ExecutionAccount, reasoningEffort string) openai.StreamOptions {
+func (p *OpenAIResponseOutput) StreamOptions(ctx context.Context, c *gin.Context, provider *gatewayprovider.ExecutionProvider, reasoningEffort string) openai.StreamOptions {
 	observer := UpstreamResponseModelObserverFromContext(c)
 	if observer == nil {
 		observer = BeginUpstreamResponseModelObservation(c)
 	}
 	options := openai.StreamOptions{
+		NativeOpenAI: provider != nil && provider.Record.Platform == capability.PlatformOpenAI,
 
-		NativeOpenAI: account != nil && account.Record.Platform == capability.PlatformOpenAI,
+		StageFirstOutput: provider != nil && provider.Record.Platform == capability.PlatformOpenAI,
 
-		StageFirstOutput: account != nil && account.Record.Platform == capability.PlatformOpenAI,
+		CodexFailureTerminal: provider != nil && provider.View().IsOpenAIOAuthLike(),
 
-		CodexFailureTerminal: account != nil && account.View().IsOpenAIOAuthLike(),
-
-		GrokIdlePolicy: account != nil && account.Record.Platform == capability.PlatformGrok,
+		GrokIdlePolicy: provider != nil && provider.Record.Platform == capability.PlatformGrok,
 
 		MaxLineSize: openAIResponseDefaultMaxLineSize,
 
@@ -56,24 +55,24 @@ func (p *OpenAIResponseOutput) StreamOptions(ctx context.Context, c *gin.Context
 
 		ClientOutputStarted: func(started bool) bool { return OpenAIStreamClientOutputStarted(c, started) },
 
-		StagedHeadersCommitted: func(headers http.Header) { p.Turns.Commit(c, account, headers) },
+		StagedHeadersCommitted: func(headers http.Header) { p.Turns.Commit(c, provider, headers) },
 
-		ClearDisconnect: func() { gatewayprovider.ClearProxyStreamDisconnect(p.ProxyCircuit, account) },
+		ClearDisconnect: func() { gatewayprovider.ClearProxyStreamDisconnect(p.ProxyCircuit, provider) },
 
 		RecordDisconnect: func(err error, requestID string) {
-			gatewayprovider.RecordProxyStreamDisconnect(p.ProxyCircuit, account, err, requestID)
+			gatewayprovider.RecordProxyStreamDisconnect(p.ProxyCircuit, provider, err, requestID)
 		},
 
 		TerminalSideEffects: func(body []byte, message string, headers http.Header, model string) {
-			p.TerminalAccountEffects(c, account, body, message, headers, model)
+			p.TerminalProviderEffects(c, provider, body, message, headers, model)
 		},
 
 		Failover: func(requestID string, body []byte, message string) error {
-			return p.NewStreamFailure(c, account, false, requestID, body, message)
+			return p.NewStreamFailure(c, provider, false, requestID, body, message)
 		},
 
 		FailoverWithModel: func(requestID string, body []byte, message, model string, headers http.Header) error {
-			return p.NewStreamFailureWithModel(c, account, false, requestID, body, message, model, headers)
+			return p.NewStreamFailureWithModel(c, provider, false, requestID, body, message, model, headers)
 		},
 
 		MarkSafeFailover: func(err error) {
@@ -83,17 +82,17 @@ func (p *OpenAIResponseOutput) StreamOptions(ctx context.Context, c *gin.Context
 		},
 
 		RecordError: func(requestID, kind string, body []byte, message string) {
-			p.RecordStreamError(c, account, false, requestID, kind, body, message)
+			p.RecordStreamError(c, provider, false, requestID, kind, body, message)
 		},
 
 		CompactFallback: func(body []byte, message string) error { return NewOpenAICompactFailure(c, body, message) },
 
 		ErrorRule: func(body []byte, message string) (int, string, string, bool) {
-			return ApplyOpenAIStreamFailedErrorRule(c, account.Record.Platform, body, message)
+			return ApplyOpenAIStreamFailedErrorRule(c, provider.Record.Platform, body, message)
 		},
 
 		CapacitySuppressed: func(requestID, eventType string) {
-			LogOpenAICapacityFailoverSuppressed(ctx, account, "native_sse", requestID, eventType)
+			LogOpenAICapacityFailoverSuppressed(ctx, provider, "native_sse", requestID, eventType)
 		},
 
 		MarkCyber: func(value openai.CyberObservation) {
@@ -118,26 +117,25 @@ func (p *OpenAIResponseOutput) StreamOptions(ctx context.Context, c *gin.Context
 		},
 
 		EmptyCompleted: func(requestID string) error {
-			return NewOpenAIResponsesEmptyCompletedFailoverError(c, ExecutionErrorAccount(account), requestID)
+			return NewOpenAIResponsesEmptyCompletedFailoverError(c, ExecutionErrorProvider(provider), requestID)
 		},
 
 		CountSearch: grok.CountGrokNativeSearchCallsInSSEDataDedup,
 
 		StreamTimeout: func(model string) {
 			if p.Observer != nil {
-				p.Observer.Core.HandleStreamTimeout(ctx, gatewayprovider.ExecutionRecord(account), model)
-
+				p.Observer.Core.HandleStreamTimeout(ctx, gatewayprovider.ExecutionRecord(provider), model)
 			}
 		},
 
 		IdleCooldown: func() {
-			p.GrokHealth.TempUnschedule(ctx, account.View(), 2*time.Minute, "grok stream idle timeout")
+			p.GrokHealth.TempUnschedule(ctx, provider.View(), 2*time.Minute, "grok stream idle timeout")
 		},
 
-		IdleFailover: func(interval time.Duration) error { return gatewayprovider.GrokStreamIdleFailure(account, interval) },
+		IdleFailover: func(interval time.Duration) error { return gatewayprovider.GrokStreamIdleFailure(provider, interval) },
 
 		FirstOutputError: func(start time.Time, model, effort string, timeout time.Duration, phase string, headers http.Header) error {
-			return p.FirstOutputFailure(ctx, c, account, start, model, effort, timeout, phase, headers)
+			return p.FirstOutputFailure(ctx, c, provider, start, model, effort, timeout, phase, headers)
 		},
 
 		KeepaliveBytes: func(count int) { RecordOpenAIStreamKeepaliveBytes(c, count) },
@@ -152,8 +150,8 @@ func (p *OpenAIResponseOutput) StreamOptions(ctx context.Context, c *gin.Context
 
 		OpenAIStreamEventIsTerminalWithType: responseprotocol.OpenAIStreamEventIsTerminalWithType,
 	}
-	if account != nil {
-		options.AccountID = account.Record.ID
+	if provider != nil {
+		options.ProviderID = provider.Record.ID
 	}
 	if options.NativeOpenAI {
 		options.FirstOutputTimeout = p.FirstOutputTimeout(reasoningEffort)
@@ -180,17 +178,17 @@ func (p *OpenAIResponseOutput) StreamOptions(ctx context.Context, c *gin.Context
 		var pending http.Header
 		if staged {
 			if p.Headers != nil {
-				pending = provider.FilterHeaders(headers, p.Headers)
+				pending = egressadapter.FilterHeaders(headers, p.Headers)
 			} else if requestID := strings.TrimSpace(headers.Get("x-request-id")); requestID != "" {
 				pending = http.Header{"X-Request-Id": {requestID}}
 			}
 		} else if p.Headers != nil {
-			provider.WriteFilteredHeaders(output, headers, p.Headers)
+			egressadapter.WriteFilteredHeaders(output, headers, p.Headers)
 		}
 		if staged {
 			StageCodexTurnState(&pending, headers)
 		} else {
-			p.Turns.Relay(c, account, headers)
+			p.Turns.Relay(c, provider, headers)
 		}
 		return pending
 	}

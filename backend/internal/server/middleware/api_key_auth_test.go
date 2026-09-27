@@ -1089,7 +1089,7 @@ func TestAPIKeyAuthSetsOpsFallbackKeyOnEarlyAbort(t *testing.T) {
 	req.Header.Set("x-api-key", apiKey.Key)
 	router.ServeHTTP(w, req)
 
-	// 分组停用时请求会早退中断，但 Ops fallback key 仍应写入，含 user/group；平台在选定账号后记录。
+	// 分组停用时请求会早退中断，但 Ops fallback key 仍应写入，含 user/group；平台在选定提供商后记录。
 	require.Equal(t, http.StatusForbidden, w.Code)
 	require.Contains(t, w.Body.String(), "GROUP_DISABLED")
 	require.True(t, fallbackOK, "鉴权早退时也应写入 ops fallback api key")
@@ -1898,7 +1898,7 @@ func TestAPIKeyAuthRejectsExhaustedBalance(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	require.Equal(t, http.StatusForbidden, w.Code)
-	requireAPIKeyAuthError(t, w, "INSUFFICIENT_BALANCE", "Insufficient account balance")
+	requireAPIKeyAuthError(t, w, "INSUFFICIENT_BALANCE", "Insufficient provider balance")
 }
 
 func TestAPIKeyAuthOpenAIQuotaErrorFormat(t *testing.T) {
@@ -2116,19 +2116,19 @@ func (r *stubGroupRepoForAuth) ExistsByName(ctx context.Context, name string) (b
 	return false, errors.New("not implemented")
 }
 
-func (r *stubGroupRepoForAuth) GetAccountCount(ctx context.Context, groupID int64) (int64, int64, error) {
+func (r *stubGroupRepoForAuth) GetProviderCount(ctx context.Context, groupID int64) (int64, int64, error) {
 	return 0, 0, errors.New("not implemented")
 }
 
-func (r *stubGroupRepoForAuth) DeleteAccountGroupsByGroupID(ctx context.Context, groupID int64) (int64, error) {
+func (r *stubGroupRepoForAuth) DeleteProviderGroupsByGroupID(ctx context.Context, groupID int64) (int64, error) {
 	return 0, errors.New("not implemented")
 }
 
-func (r *stubGroupRepoForAuth) GetAccountIDsByGroupIDs(ctx context.Context, groupIDs []int64) ([]int64, error) {
+func (r *stubGroupRepoForAuth) GetProviderIDsByGroupIDs(ctx context.Context, groupIDs []int64) ([]int64, error) {
 	return nil, errors.New("not implemented")
 }
 
-func (r *stubGroupRepoForAuth) BindAccountsToGroup(ctx context.Context, groupID int64, accountIDs []int64) error {
+func (r *stubGroupRepoForAuth) BindProvidersToGroup(ctx context.Context, groupID int64, providerIDs []int64) error {
 	return errors.New("not implemented")
 }
 

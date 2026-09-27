@@ -27,13 +27,13 @@ func TestQoderGatewayErrorDetailsKeepsEntitlementDeniedAsForbidden(t *testing.T)
 	status, errType, message, ok := qoderErrorDetailsForContract(&qoder.APIError{
 		StatusCode: http.StatusForbidden,
 		Code:       "112",
-		Message:    "model not available for this account",
+		Message:    "model not available for this provider",
 	})
 
 	require.True(t, ok)
 	require.Equal(t, http.StatusForbidden, status)
 	require.Equal(t, "upstream_error", errType)
-	require.Equal(t, "Qoder upstream error 112: model not available for this account", message)
+	require.Equal(t, "Qoder upstream error 112: model not available for this provider", message)
 }
 
 func TestQoderGatewayErrorDetailsMapsRateLimit(t *testing.T) {

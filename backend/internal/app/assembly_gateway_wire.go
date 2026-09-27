@@ -47,7 +47,7 @@ var gatewayAssemblyProviders = wire.NewSet(
 	provideUsageRecordWorkerPool,
 	provideQoderRequestActivity,
 	provideQoderChat,
-	provideExecutionAccountStore,
+	provideExecutionProviderStore,
 	provideFundingAdmission,
 	gatewayExecutionProviders,
 	provideOpenAIHTTPResources,

@@ -5,26 +5,26 @@ import (
 	"sync"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 )
 
 // RealtimePorts 仅在下游升级前取得凭据和连接，保持四次候选预算。
 type RealtimePorts interface {
-	SelectRealtime(context.Context, map[int64]struct{}) (account.AccountSnapshot, bool, error)
-	AcquireRealtime(context.Context, account.AccountSnapshot) (func(), bool)
-	RealtimeCredential(context.Context, account.AccountSnapshot) (string, error)
-	OpenRealtime(context.Context, account.AccountSnapshot, string, string) (upstream.FrameConn, error)
-	RealtimeOpenFailed(context.Context, account.AccountSnapshot, error)
+	SelectRealtime(context.Context, map[int64]struct{}) (provider.ProviderSnapshot, bool, error)
+	AcquireRealtime(context.Context, provider.ProviderSnapshot) (func(), bool)
+	RealtimeCredential(context.Context, provider.ProviderSnapshot) (string, error)
+	OpenRealtime(context.Context, provider.ProviderSnapshot, string, string) (upstream.FrameConn, error)
+	RealtimeOpenFailed(context.Context, provider.ProviderSnapshot, error)
 }
 
-// RealtimeLease 明确拥有上游连接及账号槽；下游连接由 HTTP Adapter 关闭。
+// RealtimeLease 明确拥有上游连接及提供商槽；下游连接由 HTTP Adapter 关闭。
 type RealtimeLease struct {
-	Account account.AccountSnapshot
-	Conn    upstream.FrameConn
-	release func()
-	once    sync.Once
-	err     error
+	Provider provider.ProviderSnapshot
+	Conn     upstream.FrameConn
+	release  func()
+	once     sync.Once
+	err      error
 }
 
 func (l *RealtimeLease) Close() error {
@@ -78,7 +78,7 @@ func OpenRealtime(ctx context.Context, model string, dialTimeout time.Duration, 
 		if release == nil || conn == nil {
 			return result
 		}
-		result.Lease = &RealtimeLease{Account: candidate, Conn: conn, release: release}
+		result.Lease = &RealtimeLease{Provider: candidate, Conn: conn, release: release}
 		return result
 	}
 	return result

@@ -1,4 +1,4 @@
-// 单次执行拥有平台交换、响应输出和关闭；全局 failover、资金及账号状态归调用方。
+// 单次执行拥有平台交换、响应输出和关闭；全局 failover、资金及提供商状态归调用方。
 package antigravity
 
 import (
@@ -29,10 +29,10 @@ const (
 	ModeStaticClaudeResponse
 )
 
-// Target 只携带单次技术选项及受控端口，不包含账号实体或凭据集合。
+// Target 只携带单次技术选项及受控端口，不包含提供商实体或凭据集合。
 type Target struct {
 	OutputError    func(error)
-	AccountID      int64
+	ProviderID     int64
 	Model          string
 	Mode           ResponseMode
 	StartedAt      time.Time
@@ -48,9 +48,10 @@ func (t *Target) TargetID() int64 {
 	if t == nil {
 		return 0
 	}
-	return t.AccountID
+	return t.ProviderID
 }
-func (t *Target) String() string   { return fmt.Sprintf("antigravity target account=%d", t.TargetID()) }
+
+func (t *Target) String() string   { return fmt.Sprintf("antigravity target provider=%d", t.TargetID()) }
 func (t *Target) GoString() string { return t.String() }
 
 type Executor struct{}
@@ -231,6 +232,7 @@ func (s *observedSink) InitialOutput() upstream.OutputHead {
 	}
 	return upstream.OutputHead{}
 }
+
 func (s *observedSink) Emit(event upstream.OutputEvent) error {
 	if s.nonStream && len(event.Data) > 0 {
 		event.Semantic = event.Semantic || bridge.CompatJSONHasContent(event.Data) || anthropicwire.ObserveMessage(string(event.Data)).Semantic || geminiwire.ObservePayload(event.Data).Semantic

@@ -20,7 +20,7 @@ func BatchImageJobToPublic(job *BatchImageJob) *BatchImagePublicBatch {
 		ParentBatchID:   job.ParentBatchID,
 		Status:          PublicBatchImageStatus(job.Status),
 		Model:           BatchImageRequestedModel(job),
-		Provider:        job.Provider,
+		Platform:        job.Platform,
 		ItemCount:       job.ItemCount,
 		SuccessCount:    job.SuccessCount,
 		FailCount:       job.FailCount,
@@ -34,6 +34,7 @@ func BatchImageJobToPublic(job *BatchImageJob) *BatchImagePublicBatch {
 		OutputDeletedAt: BatchImageUnixPtr(job.OutputDeletedAt),
 	}
 }
+
 func BatchImageItemToPublic(item *BatchImageItem) BatchImagePublicItem {
 	out := BatchImagePublicItem{
 		CustomID:      item.CustomID,
@@ -58,6 +59,7 @@ func BatchImageItemToPublic(item *BatchImageItem) BatchImagePublicItem {
 	}
 	return out
 }
+
 func BatchImageUnixPtr(t *time.Time) *int64 {
 	if t == nil {
 		return nil
@@ -83,6 +85,7 @@ func BatchImageItemErrorSource(item *BatchImageItem) string {
 		return ""
 	}
 }
+
 func PublicBatchImageStatus(status string) string {
 	switch status {
 	case BatchImageJobStatusCreated, BatchImageJobStatusUploading, BatchImageJobStatusSubmitted:
@@ -105,6 +108,7 @@ func PublicBatchImageStatus(status string) string {
 		return status
 	}
 }
+
 func BatchImagePublicTaskName(job *BatchImageJob) string {
 	if job == nil {
 		return ""
@@ -114,17 +118,19 @@ func BatchImagePublicTaskName(job *BatchImageJob) string {
 	}
 	return DefaultBatchImageTaskName(job.CreatedAt)
 }
+
 func DefaultBatchImageTaskName(now time.Time) string {
 	if now.IsZero() {
 		now = time.Now()
 	}
 	return now.Format("2006-01-02 15:04:05")
 }
+
 func SanitizeBatchImagePublicMessage(message string) string {
 	message = strings.TrimSpace(message)
 	for _, marker := range []string{"gs://", "files/", "projects/"} {
 		if strings.Contains(message, marker) {
-			message = "upstream provider operation failed"
+			message = "upstream platform operation failed"
 			break
 		}
 	}

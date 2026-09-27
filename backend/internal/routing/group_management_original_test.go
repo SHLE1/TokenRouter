@@ -361,20 +361,20 @@ func (s *groupRepoStubForAdmin) ExistsByName(_ context.Context, _ string) (bool,
 	panic("unexpected ExistsByName call")
 }
 
-func (s *groupRepoStubForAdmin) GetAccountCount(_ context.Context, _ int64) (int64, int64, error) {
-	panic("unexpected GetAccountCount call")
+func (s *groupRepoStubForAdmin) GetProviderCount(_ context.Context, _ int64) (int64, int64, error) {
+	panic("unexpected GetProviderCount call")
 }
 
-func (s *groupRepoStubForAdmin) DeleteAccountGroupsByGroupID(_ context.Context, _ int64) (int64, error) {
-	panic("unexpected DeleteAccountGroupsByGroupID call")
+func (s *groupRepoStubForAdmin) DeleteProviderGroupsByGroupID(_ context.Context, _ int64) (int64, error) {
+	panic("unexpected DeleteProviderGroupsByGroupID call")
 }
 
-func (s *groupRepoStubForAdmin) BindAccountsToGroup(_ context.Context, _ int64, _ []int64) error {
-	panic("unexpected BindAccountsToGroup call")
+func (s *groupRepoStubForAdmin) BindProvidersToGroup(_ context.Context, _ int64, _ []int64) error {
+	panic("unexpected BindProvidersToGroup call")
 }
 
-func (s *groupRepoStubForAdmin) GetAccountIDsByGroupIDs(_ context.Context, _ []int64) ([]int64, error) {
-	panic("unexpected GetAccountIDsByGroupIDs call")
+func (s *groupRepoStubForAdmin) GetProviderIDsByGroupIDs(_ context.Context, _ []int64) ([]int64, error) {
+	panic("unexpected GetProviderIDsByGroupIDs call")
 }
 
 func (s *groupRepoStubForAdmin) UpdateSortOrders(_ context.Context, _ []routing.GroupSortOrderUpdate) error {
@@ -393,12 +393,12 @@ func TestAdminService_ListGroups_PassesSortParams(t *testing.T) {
 	}
 	svc := newOriginalGroupAdmin(repo, nil, nil)
 
-	_, _, err := svc.ListGroups(context.Background(), 3, 25, capability.PlatformOpenAI, billing.StatusActive, "needle", nil, "account_count", "ASC")
+	_, _, err := svc.ListGroups(context.Background(), 3, 25, capability.PlatformOpenAI, billing.StatusActive, "needle", nil, "provider_count", "ASC")
 	require.NoError(t, err)
 	require.Equal(t, pagination.PaginationParams{
 		Page:      3,
 		PageSize:  25,
-		SortBy:    "account_count",
+		SortBy:    "provider_count",
 		SortOrder: "ASC",
 	}, repo.listWithFiltersParams)
 }
@@ -475,7 +475,7 @@ func TestAdminService_CreateGroup_DisablesBatchImageWhenImageGenerationDisabled(
 	require.False(t, group.AllowBatchImageGeneration)
 }
 
-// 批量图片准入独立于账号平台，实际provider在创建任务时选择。
+// 批量图片准入独立于提供商平台，实际provider在创建任务时选择。
 func TestAdminServiceCreateGroupAllowsExplicitBatchProtocol(t *testing.T) {
 	repo := &groupRepoStubForAdmin{}
 	group, err := newOriginalGroupAdmin(repo, nil, nil).CreateGroup(context.Background(), &routing.CreateGroupInput{Name: "batch", RateMultiplier: 1, AllowedProtocols: []protocol.ProtocolID{protocol.ProtocolImageBatches}})
@@ -483,7 +483,7 @@ func TestAdminServiceCreateGroupAllowsExplicitBatchProtocol(t *testing.T) {
 	require.True(t, group.AllowBatchImageGeneration)
 }
 
-// 功能策略保存于分组，执行时仅由适用账号使用。
+// 功能策略保存于分组，执行时仅由适用提供商使用。
 func TestAdminServiceCreateGroupPreservesFastPolicies(t *testing.T) {
 	repo := &groupRepoStubForAdmin{}
 	group, err := newOriginalGroupAdmin(repo, nil, nil).CreateGroup(context.Background(), &routing.CreateGroupInput{Name: "fast", RateMultiplier: 1, ForceOpenAIFast: true})
@@ -870,20 +870,20 @@ func (s *groupRepoStubForFallbackCycle) ExistsByName(_ context.Context, _ string
 	panic("unexpected ExistsByName call")
 }
 
-func (s *groupRepoStubForFallbackCycle) GetAccountCount(_ context.Context, _ int64) (int64, int64, error) {
-	panic("unexpected GetAccountCount call")
+func (s *groupRepoStubForFallbackCycle) GetProviderCount(_ context.Context, _ int64) (int64, int64, error) {
+	panic("unexpected GetProviderCount call")
 }
 
-func (s *groupRepoStubForFallbackCycle) DeleteAccountGroupsByGroupID(_ context.Context, _ int64) (int64, error) {
-	panic("unexpected DeleteAccountGroupsByGroupID call")
+func (s *groupRepoStubForFallbackCycle) DeleteProviderGroupsByGroupID(_ context.Context, _ int64) (int64, error) {
+	panic("unexpected DeleteProviderGroupsByGroupID call")
 }
 
-func (s *groupRepoStubForFallbackCycle) BindAccountsToGroup(_ context.Context, _ int64, _ []int64) error {
-	panic("unexpected BindAccountsToGroup call")
+func (s *groupRepoStubForFallbackCycle) BindProvidersToGroup(_ context.Context, _ int64, _ []int64) error {
+	panic("unexpected BindProvidersToGroup call")
 }
 
-func (s *groupRepoStubForFallbackCycle) GetAccountIDsByGroupIDs(_ context.Context, _ []int64) ([]int64, error) {
-	panic("unexpected GetAccountIDsByGroupIDs call")
+func (s *groupRepoStubForFallbackCycle) GetProviderIDsByGroupIDs(_ context.Context, _ []int64) ([]int64, error) {
+	panic("unexpected GetProviderIDsByGroupIDs call")
 }
 
 func (s *groupRepoStubForFallbackCycle) UpdateSortOrders(_ context.Context, _ []routing.GroupSortOrderUpdate) error {
@@ -962,20 +962,20 @@ func (s *groupRepoStubForInvalidRequestFallback) ExistsByName(_ context.Context,
 	panic("unexpected ExistsByName call")
 }
 
-func (s *groupRepoStubForInvalidRequestFallback) GetAccountCount(_ context.Context, _ int64) (int64, int64, error) {
-	panic("unexpected GetAccountCount call")
+func (s *groupRepoStubForInvalidRequestFallback) GetProviderCount(_ context.Context, _ int64) (int64, int64, error) {
+	panic("unexpected GetProviderCount call")
 }
 
-func (s *groupRepoStubForInvalidRequestFallback) DeleteAccountGroupsByGroupID(_ context.Context, _ int64) (int64, error) {
-	panic("unexpected DeleteAccountGroupsByGroupID call")
+func (s *groupRepoStubForInvalidRequestFallback) DeleteProviderGroupsByGroupID(_ context.Context, _ int64) (int64, error) {
+	panic("unexpected DeleteProviderGroupsByGroupID call")
 }
 
-func (s *groupRepoStubForInvalidRequestFallback) GetAccountIDsByGroupIDs(_ context.Context, _ []int64) ([]int64, error) {
-	panic("unexpected GetAccountIDsByGroupIDs call")
+func (s *groupRepoStubForInvalidRequestFallback) GetProviderIDsByGroupIDs(_ context.Context, _ []int64) ([]int64, error) {
+	panic("unexpected GetProviderIDsByGroupIDs call")
 }
 
-func (s *groupRepoStubForInvalidRequestFallback) BindAccountsToGroup(_ context.Context, _ int64, _ []int64) error {
-	panic("unexpected BindAccountsToGroup call")
+func (s *groupRepoStubForInvalidRequestFallback) BindProvidersToGroup(_ context.Context, _ int64, _ []int64) error {
+	panic("unexpected BindProvidersToGroup call")
 }
 
 func (s *groupRepoStubForInvalidRequestFallback) UpdateSortOrders(_ context.Context, _ []routing.GroupSortOrderUpdate) error {

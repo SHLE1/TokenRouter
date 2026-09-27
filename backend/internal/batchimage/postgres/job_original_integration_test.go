@@ -44,7 +44,7 @@ func TestBatchImageRepository_CreateJobAndDuplicates(t *testing.T) {
 		BatchID:        batchID,
 		UserID:         userID,
 		BillingUserID:  userID,
-		Provider:       batchimage.BatchImageProviderGeminiAPI,
+		Platform:       batchimage.BatchImageProviderGeminiAPI,
 		Model:          "upstream-image-model",
 		RequestedModel: "Gemini/image-alias",
 		InternalModel:  "gemini-2.5-flash-image",
@@ -63,7 +63,7 @@ func TestBatchImageRepository_CreateJobAndDuplicates(t *testing.T) {
 		BatchID:       batchID,
 		UserID:        userID,
 		BillingUserID: userID,
-		Provider:      batchimage.BatchImageProviderGeminiAPI,
+		Platform:      batchimage.BatchImageProviderGeminiAPI,
 		Model:         "gemini-2.5-flash-image",
 		ItemCount:     1,
 	})
@@ -76,10 +76,10 @@ func TestBatchImageRepository_InvalidProvider(t *testing.T) {
 	repo, userID := newBatchImageRepositoryWithSQL(t, tx)
 
 	_, err := repo.CreateBatchImageJob(context.Background(), batchimage.CreateBatchImageJobParams{
-		BatchID:       batchImageTestID(t, "provider"),
+		BatchID:       batchImageTestID(t, "platform"),
 		UserID:        userID,
 		BillingUserID: userID,
-		Provider:      "unknown",
+		Platform:      "unknown",
 		Model:         "gemini-2.5-flash-image",
 		ItemCount:     1,
 	})
@@ -98,7 +98,7 @@ func TestBatchImageRepository_TransitionIncrementsVersionAndEvents(t *testing.T)
 		BatchID:       batchID,
 		UserID:        userID,
 		BillingUserID: userID,
-		Provider:      batchimage.BatchImageProviderVertex,
+		Platform:      batchimage.BatchImageProviderVertex,
 		Model:         "gemini-2.5-flash-image",
 		ItemCount:     1,
 	})
@@ -132,7 +132,7 @@ func TestBatchImageRepository_InvalidTransition(t *testing.T) {
 		BatchID:       batchID,
 		UserID:        userID,
 		BillingUserID: userID,
-		Provider:      batchimage.BatchImageProviderGeminiAPI,
+		Platform:      batchimage.BatchImageProviderGeminiAPI,
 		Model:         "gemini-2.5-flash-image",
 		ItemCount:     1,
 	})
@@ -153,7 +153,7 @@ func TestBatchImageRepository_TerminalStatusCannotMoveBack(t *testing.T) {
 		BatchID:       batchID,
 		UserID:        userID,
 		BillingUserID: userID,
-		Provider:      batchimage.BatchImageProviderGeminiAPI,
+		Platform:      batchimage.BatchImageProviderGeminiAPI,
 		Model:         "gemini-2.5-flash-image",
 		Status:        batchimage.BatchImageJobStatusCompleted,
 		ItemCount:     1,
@@ -177,7 +177,7 @@ func TestBatchImageRepository_ItemCustomIDUniqueness(t *testing.T) {
 			BatchID:       batchID,
 			UserID:        userID,
 			BillingUserID: userID,
-			Provider:      batchimage.BatchImageProviderGeminiAPI,
+			Platform:      batchimage.BatchImageProviderGeminiAPI,
 			Model:         "gemini-2.5-flash-image",
 			ItemCount:     1,
 		})
@@ -229,7 +229,7 @@ func TestBatchImageRepository_ReplaceBatchImageItemsForJob(t *testing.T) {
 		BatchID:       batchID,
 		UserID:        userID,
 		BillingUserID: userID,
-		Provider:      batchimage.BatchImageProviderGeminiAPI,
+		Platform:      batchimage.BatchImageProviderGeminiAPI,
 		Model:         "gemini-2.5-flash-image",
 		ItemCount:     2,
 	})
@@ -274,7 +274,7 @@ func TestBatchImageRepository_MarkBatchImageJobSettled(t *testing.T) {
 	repo, userID := newBatchImageRepositoryWithSQL(t, tx)
 	batchID := batchImageTestID(t, "settled")
 	apiKeyID := int64(2001)
-	accountID := int64(3001)
+	providerID := int64(3001)
 	providerJob := "providers/job"
 	outputRef := "files/output"
 	now := time.Date(2026, 7, 4, 10, 0, 0, 0, time.UTC)
@@ -284,8 +284,8 @@ func TestBatchImageRepository_MarkBatchImageJobSettled(t *testing.T) {
 		UserID:            userID,
 		BillingUserID:     userID,
 		APIKeyID:          &apiKeyID,
-		AccountID:         &accountID,
-		Provider:          batchimage.BatchImageProviderGeminiAPI,
+		ProviderID:        &providerID,
+		Platform:          batchimage.BatchImageProviderGeminiAPI,
 		Model:             "gemini-image",
 		Status:            batchimage.BatchImageJobStatusSettling,
 		ProviderJobName:   &providerJob,
@@ -330,7 +330,7 @@ func TestBatchImageRepository_SetBatchImageJobSettlementFailed(t *testing.T) {
 		BatchID:       batchID,
 		UserID:        userID,
 		BillingUserID: userID,
-		Provider:      batchimage.BatchImageProviderGeminiAPI,
+		Platform:      batchimage.BatchImageProviderGeminiAPI,
 		Model:         "gemini-image",
 		Status:        batchimage.BatchImageJobStatusSettling,
 		ItemCount:     1,
@@ -360,7 +360,7 @@ func TestBatchImageRepository_AppendEvent(t *testing.T) {
 		BatchID:       batchID,
 		UserID:        userID,
 		BillingUserID: userID,
-		Provider:      batchimage.BatchImageProviderVertex,
+		Platform:      batchimage.BatchImageProviderVertex,
 		Model:         "gemini-2.5-flash-image",
 		ItemCount:     1,
 	})

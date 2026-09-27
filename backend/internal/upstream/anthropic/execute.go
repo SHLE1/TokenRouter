@@ -1,4 +1,4 @@
-// 本文件把一次账号内交换与协议输出组合成统一执行入口；全局选账号仍由调用者拥有。
+// 本文件把一次提供商内交换与协议输出组合成统一执行入口；全局选提供商仍由调用者拥有。
 package anthropic
 
 import (
@@ -17,14 +17,14 @@ import (
 )
 
 type Target struct {
-	AccountID                    int64
+	ProviderID                   int64
 	Model                        string
 	Exchange                     ExchangeOptions
 	Response                     ResponseOptions
 	StartedAt                    time.Time
 	Passthrough, MimicClaudeCode bool
 	Enter                        func() (func(), error)
-	// BeforeResponse 衔接 HTTP 错误处理与账号观测；stop 表示外层已处理响应。
+	// BeforeResponse 衔接 HTTP 错误处理与提供商观测；stop 表示外层已处理响应。
 	BeforeResponse func(context.Context, *http.Response, []byte) (stop bool, err error)
 	BeforeStream   func()
 	OnStream       func(*StreamResult, error)
@@ -36,9 +36,10 @@ func (t *Target) TargetID() int64 {
 	if t == nil {
 		return 0
 	}
-	return t.AccountID
+	return t.ProviderID
 }
-func (t *Target) String() string   { return fmt.Sprintf("anthropic target account=%d", t.TargetID()) }
+
+func (t *Target) String() string   { return fmt.Sprintf("anthropic target provider=%d", t.TargetID()) }
 func (t *Target) GoString() string { return t.String() }
 
 type Executor struct{}

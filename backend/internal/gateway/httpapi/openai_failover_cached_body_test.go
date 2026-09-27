@@ -11,12 +11,12 @@ import (
 	"testing"
 	"time"
 
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
@@ -31,8 +31,7 @@ func (panicOnReadCloser) Read(_ []byte) (int, error) {
 
 func (panicOnReadCloser) Close() error { return nil }
 
-func TestOpenAIGatewayService_Forward_FailoverReparsesCachedBodyForNextAccount(t *testing.T) {
-
+func TestOpenAIGatewayService_Forward_FailoverReparsesCachedBodyForNextProvider(t *testing.T) {
 	tests := []struct {
 		name          string
 		requestModel  string
@@ -42,21 +41,21 @@ func TestOpenAIGatewayService_Forward_FailoverReparsesCachedBodyForNextAccount(t
 		wantSecond    string
 	}{
 		{
-			name:          "both accounts have mapping",
+			name:          "both providers have mapping",
 			firstMapping:  map[string]any{"alias-model": "base-model-a"},
 			secondMapping: map[string]any{"alias-model": "base-model-b"},
 			wantFirst:     "base-model-a",
 			wantSecond:    "base-model-b",
 		},
 		{
-			name:         "first account has mapping second account has none",
+			name:         "first provider has mapping second provider has none",
 			requestModel: "gpt-5.4-high",
 			firstMapping: map[string]any{"gpt-5.4-high": "gpt-5.4"},
 			wantFirst:    "gpt-5.4",
 			wantSecond:   "gpt-5.4",
 		},
 		{
-			name:          "first account has no mapping second account has mapping",
+			name:          "first provider has no mapping second provider has mapping",
 			secondMapping: map[string]any{"alias-model": "base-model-b"},
 			wantFirst:     "alias-model",
 			wantSecond:    "base-model-b",
@@ -97,10 +96,10 @@ func TestOpenAIGatewayService_Forward_FailoverReparsesCachedBodyForNextAccount(t
 			}}
 			svc := newResponsesFixture(responsesFixtureInputs{transport: upstream})
 
-			firstAccount := openAIFailoverCachedBodyTestAccount(1, "account-a", tt.firstMapping)
-			secondAccount := openAIFailoverCachedBodyTestAccount(2, "account-b", tt.secondMapping)
+			firstProvider := openAIFailoverCachedBodyTestProvider(1, "provider-a", tt.firstMapping)
+			secondProvider := openAIFailoverCachedBodyTestProvider(2, "provider-b", tt.secondMapping)
 
-			_, err := svc.Forward(context.Background(), c, firstAccount, body)
+			_, err := svc.Forward(context.Background(), c, firstProvider, body)
 			require.Error(t, err)
 			var failoverErr *forwardcore.UpstreamFailoverError
 			require.True(t, errors.As(err, &failoverErr))
@@ -108,7 +107,7 @@ func TestOpenAIGatewayService_Forward_FailoverReparsesCachedBodyForNextAccount(t
 			require.Equal(t, tt.wantFirst, gjson.GetBytes(upstream.bodies[0], "model").String())
 
 			c.Set("openai_parsed_request_body", map[string]any{"model": tt.wantFirst, "stream": true})
-			result, err := svc.Forward(context.Background(), c, secondAccount, body)
+			result, err := svc.Forward(context.Background(), c, secondProvider, body)
 			require.NoError(t, err)
 			require.NotNil(t, result)
 			require.Len(t, upstream.bodies, 2)
@@ -119,9 +118,12 @@ func TestOpenAIGatewayService_Forward_FailoverReparsesCachedBodyForNextAccount(t
 
 func TestOpenAIGatewayService_HandleFailoverSideEffects_DoesNotRereadResponseBody(t *testing.T) {
 	svc := newResponsesFixture(responsesFixtureInputs{})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 88,
-		Platform: capability.PlatformOpenAI,
-		Type:     capability.AccountTypeOAuth},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 88,
+			Platform: capability.PlatformOpenAI,
+			Type:     capability.ProviderTypeOAuth,
+		},
 	}
 	resp := &http.Response{
 		StatusCode: http.StatusTooManyRequests,
@@ -130,26 +132,29 @@ func TestOpenAIGatewayService_HandleFailoverSideEffects_DoesNotRereadResponseBod
 	}
 
 	require.NotPanics(t, func() {
-		svc.Output.ApplyHTTPFailure(context.Background(), resp, account, []byte(`{"error":{"type":"rate_limit_error","message":"rate limited"}}`))
+		svc.Output.ApplyHTTPFailure(context.Background(), resp, provider, []byte(`{"error":{"type":"rate_limit_error","message":"rate limited"}}`))
 	})
 
-	require.False(t, svc.Output.Health.Runtime.Blocked(account.Record.ID, func() string { return accountcore.RefreshCredentialIdentity(account.View()) }))
-	require.True(t, accountprovider.CanRetryOpenAI429(svc.Output.Health.Runtime, account.View(), nil, nil))
+	require.False(t, svc.Output.Health.Runtime.Blocked(provider.Record.ID, func() string { return providercore.RefreshCredentialIdentity(provider.View()) }))
+	require.True(t, provideradapter.CanRetryOpenAI429(svc.Output.Health.Runtime, provider.View(), nil, nil))
 }
 
-func openAIFailoverCachedBodyTestAccount(id int64, name string, mapping map[string]any) *gatewayprovider.ExecutionAccount {
-	credentials := map[string]any{"access_token": "oauth-token", "chatgpt_account_id": "chatgpt-account"}
+func openAIFailoverCachedBodyTestProvider(id int64, name string, mapping map[string]any) *gatewayprovider.ExecutionProvider {
+	credentials := map[string]any{"access_token": "oauth-token", "chatgpt_account_id": "chatgpt-provider"}
 	if mapping != nil {
 		credentials["model_mapping"] = mapping
 	}
-	return &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: id,
-		Name:           name,
-		Platform:       capability.PlatformOpenAI,
-		Type:           capability.AccountTypeOAuth,
-		Concurrency:    1,
-		Credentials:    credentials,
-		Status:         billing.StatusActive,
-		Schedulable:    true,
-		RateMultiplier: new(float64(1))},
+	return &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: id,
+			Name:           name,
+			Platform:       capability.PlatformOpenAI,
+			Type:           capability.ProviderTypeOAuth,
+			Concurrency:    1,
+			Credentials:    credentials,
+			Status:         billing.StatusActive,
+			Schedulable:    true,
+			RateMultiplier: new(float64(1)),
+		},
 	}
 }

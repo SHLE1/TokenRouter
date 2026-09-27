@@ -15,7 +15,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// ImageResponseOptions 只提供本次输出和观测，不保存账号或配置。
+// ImageResponseOptions 只提供本次输出和观测，不保存提供商或配置。
 type ImageResponseOptions struct {
 	PreserveContentType bool
 	Backfill            func([]byte) []byte
@@ -113,7 +113,7 @@ func ReadImagesOAuthNonStreaming(
 			}
 			return wire.ForwardUsage{}, 0, nil, textFallbackErr
 		}
-		// 真空响应：既无图也无文字输出，保持短暂可重试语义并优先同账号重试。
+		// 真空响应：既无图也无文字输出，保持短暂可重试语义并优先同提供商重试。
 		options.ObserveError(http.StatusBadGateway, "upstream did not return image output", options.Summary(body))
 		return wire.ForwardUsage{}, 0, nil, options.EmptyOutput(body)
 	}

@@ -8,16 +8,16 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/googleforward"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
 )
 
-// TestSelectedCountDispatchPreservesLocalAndUnsupportedPaths 不支持的账号不会发出生成或计数网络请求。
+// TestSelectedCountDispatchPreservesLocalAndUnsupportedPaths 不支持的提供商不会发出生成或计数网络请求。
 func TestSelectedCountDispatchPreservesLocalAndUnsupportedPaths(t *testing.T) {
 	for _, platform := range []string{"grok", "qoder", "antigravity", "kimi"} {
 		t.Run(platform, func(t *testing.T) {
@@ -27,7 +27,7 @@ func TestSelectedCountDispatchPreservesLocalAndUnsupportedPaths(t *testing.T) {
 			body := []byte(`{"model":"public-model","messages":[{"role":"user","content":"hello world"}]}`)
 			parsed, err := requeststate.ParseGatewayRequest(requeststate.NewRequestBodyRef(body), "anthropic")
 			require.NoError(t, err)
-			target := provider.NewExecutionAccount(&account.Record{ID: 1, Platform: platform, Type: "apikey"})
+			target := gatewayadapter.NewExecutionProvider(&provider.Record{ID: 1, Platform: platform, Type: "apikey"})
 			transport := &auxiliaryHTTPRecorder{}
 			auxiliary := newAuxiliaryFixture(auxiliaryFixtureInputs{transport: transport})
 			require.NoError(t, ForwardSelectedCountTokens(context.Background(), c, target, parsed, nil, auxiliary, nil))
@@ -50,7 +50,7 @@ func TestSelectedGeminiCountUsesNativeCountProtocol(t *testing.T) {
 	body := []byte(`{"model":"draw-alias","system":"Be concise","messages":[{"role":"user","content":"hello world"}],"tools":[{"name":"lookup","input_schema":{"type":"object"}}]}`)
 	parsed, err := requeststate.ParseGatewayRequest(requeststate.NewRequestBodyRef(body), "anthropic")
 	require.NoError(t, err)
-	target := provider.NewExecutionAccount(&account.Record{ID: 1, Platform: "gemini", Type: "apikey", Credentials: map[string]any{"api_key": "test-key", "model_mapping": map[string]any{"draw-alias": "gemini-2.5-flash"}}})
+	target := gatewayadapter.NewExecutionProvider(&provider.Record{ID: 1, Platform: "gemini", Type: "apikey", Credentials: map[string]any{"api_key": "test-key", "model_mapping": map[string]any{"draw-alias": "gemini-2.5-flash"}}})
 	transport := &auxiliaryHTTPRecorder{resp: &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"totalTokens":37}`))}}
 	executor := &GeminiExecutor{Runtime: &googleforward.Gemini{Transport: transport, Options: googleforward.Options{Configured: true, ResponseReadLimit: 1 << 20}}}
 	require.NoError(t, ForwardSelectedCountTokens(context.Background(), c, target, parsed, nil, nil, executor))
@@ -62,7 +62,7 @@ func TestSelectedGeminiCountUsesNativeCountProtocol(t *testing.T) {
 	require.True(t, gjson.GetBytes(transport.lastBody, "generateContentRequest.tools").Exists())
 }
 
-func TestResponsesInputTokensRejectsUnsupportedActualAccount(t *testing.T) {
+func TestResponsesInputTokensRejectsUnsupportedActualProvider(t *testing.T) {
 	for _, platform := range []string{"anthropic", "gemini", "antigravity", "qoder"} {
 		t.Run(platform, func(t *testing.T) {
 			rec := httptest.NewRecorder()
@@ -70,7 +70,7 @@ func TestResponsesInputTokensRejectsUnsupportedActualAccount(t *testing.T) {
 			c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses/input_tokens", nil)
 			transport := &auxiliaryHTTPRecorder{}
 			executor := newAuxiliaryFixture(auxiliaryFixtureInputs{transport: transport})
-			target := provider.NewExecutionAccount(&account.Record{ID: 1, Platform: platform, Type: "apikey"})
+			target := gatewayadapter.NewExecutionProvider(&provider.Record{ID: 1, Platform: platform, Type: "apikey"})
 			require.NoError(t, executor.ForwardResponsesInputTokens(context.Background(), c, target, []byte(`{"model":"public-model","input":"hello"}`)))
 			require.Equal(t, http.StatusNotFound, rec.Code)
 			require.Nil(t, transport.lastReq)

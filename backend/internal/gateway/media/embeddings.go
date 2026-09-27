@@ -4,11 +4,11 @@ import (
 	"context"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
-// EmbeddingResult 固化本次已选账号执行的计费观测，不携带旧实体或连接。
+// EmbeddingResult 固化本次已选提供商执行的计费观测，不携带旧实体或连接。
 type EmbeddingResult struct {
 	RequestID, Model, BillingModel, UpstreamModel string
 	Headers                                       map[string][]string
@@ -28,7 +28,7 @@ type EmbeddingOutcome struct {
 // EmbeddingEvent 只报告编排时点，日志和 HTTP 输出由入口处理。
 type EmbeddingEvent struct {
 	Kind                            string
-	Account                         account.AccountSnapshot
+	Provider                        provider.ProviderSnapshot
 	Outcome                         EmbeddingOutcome
 	Excluded, Switches, MaxSwitches int
 	Elapsed                         time.Duration
@@ -36,12 +36,12 @@ type EmbeddingEvent struct {
 
 // EmbeddingsPorts 是单请求端口；选取与等待使用同一已获得的选择，不能再次选号。
 type EmbeddingsPorts interface {
-	SelectEmbedding(context.Context, map[int64]struct{}) (account.AccountSnapshot, bool, error)
-	AcquireEmbedding(context.Context, account.AccountSnapshot) (func(), bool)
-	ForwardEmbedding(context.Context, account.AccountSnapshot, []byte) EmbeddingOutcome
-	ReportEmbedding(context.Context, account.AccountSnapshot, *EmbeddingResult, bool, error)
-	CompleteEmbedding(context.Context, account.AccountSnapshot, *EmbeddingResult)
-	SwitchEmbedding(account.AccountSnapshot)
+	SelectEmbedding(context.Context, map[int64]struct{}) (provider.ProviderSnapshot, bool, error)
+	AcquireEmbedding(context.Context, provider.ProviderSnapshot) (func(), bool)
+	ForwardEmbedding(context.Context, provider.ProviderSnapshot, []byte) EmbeddingOutcome
+	ReportEmbedding(context.Context, provider.ProviderSnapshot, *EmbeddingResult, bool, error)
+	CompleteEmbedding(context.Context, provider.ProviderSnapshot, *EmbeddingResult)
+	SwitchEmbedding(provider.ProviderSnapshot)
 	ObserveEmbedding(EmbeddingEvent)
 	ClientGone() bool
 }
@@ -54,8 +54,8 @@ type EmbeddingFailure struct {
 	Excluded int
 }
 
-// RunEmbeddings 唯一拥有 Embeddings 账号尝试循环；不会在等待失败后另起一次请求。
-// 准入已按原顺序完成，返回前先释放账号槽，成功后仅提交一次完成处理。
+// RunEmbeddings 唯一拥有 Embeddings 提供商尝试循环；不会在等待失败后另起一次请求。
+// 准入已按原顺序完成，返回前先释放提供商槽，成功后仅提交一次完成处理。
 func RunEmbeddings(ctx context.Context, body []byte, maxSwitches int, ports EmbeddingsPorts) *EmbeddingFailure {
 	if maxSwitches <= 0 {
 		maxSwitches = 3
@@ -77,7 +77,7 @@ func RunEmbeddings(ctx context.Context, body []byte, maxSwitches int, ports Embe
 		if !present {
 			return &EmbeddingFailure{Stage: "empty_selection"}
 		}
-		ports.ObserveEmbedding(EmbeddingEvent{Kind: "selected", Account: selected})
+		ports.ObserveEmbedding(EmbeddingEvent{Kind: "selected", Provider: selected})
 		release, acquired := ports.AcquireEmbedding(ctx, selected)
 		if !acquired {
 			return nil
@@ -98,7 +98,7 @@ func RunEmbeddings(ctx context.Context, body []byte, maxSwitches int, ports Embe
 				}
 				ports.ReportEmbedding(ctx, selected, outcome.Result, false, outcome.Err)
 				if ports.ClientGone() {
-					ports.ObserveEmbedding(EmbeddingEvent{Kind: "forward_canceled", Account: selected, Outcome: outcome})
+					ports.ObserveEmbedding(EmbeddingEvent{Kind: "forward_canceled", Provider: selected, Outcome: outcome})
 					return nil
 				}
 				ports.SwitchEmbedding(selected)
@@ -108,7 +108,7 @@ func RunEmbeddings(ctx context.Context, body []byte, maxSwitches int, ports Embe
 					return &EmbeddingFailure{Stage: "exhausted", Outcome: outcome}
 				}
 				switches++
-				ports.ObserveEmbedding(EmbeddingEvent{Kind: "switch", Account: selected, Outcome: outcome, Switches: switches, MaxSwitches: maxSwitches})
+				ports.ObserveEmbedding(EmbeddingEvent{Kind: "switch", Provider: selected, Outcome: outcome, Switches: switches, MaxSwitches: maxSwitches})
 				continue
 			}
 			ports.ReportEmbedding(ctx, selected, outcome.Result, false, outcome.Err)
@@ -116,7 +116,7 @@ func RunEmbeddings(ctx context.Context, body []byte, maxSwitches int, ports Embe
 		}
 		ports.ReportEmbedding(ctx, selected, outcome.Result, true, nil)
 		ports.CompleteEmbedding(ctx, selected, outcome.Result)
-		ports.ObserveEmbedding(EmbeddingEvent{Kind: "completed", Account: selected, Switches: switches})
+		ports.ObserveEmbedding(EmbeddingEvent{Kind: "completed", Provider: selected, Switches: switches})
 		return nil
 	}
 }

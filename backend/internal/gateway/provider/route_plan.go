@@ -51,10 +51,10 @@ func RoutePlanForMapping(ctx context.Context, group *routing.Group, groupID *int
 	return routing.Plan(routing.PlanInput{Group: view, GroupID: groupID, ClientProtocol: protocol, RequestedModel: requested, GroupMapping: mapping})
 }
 
-// AccountForProtocolAttempt 使用当前计划重新验证候选，模型规则仍在原匹配时机读取。
-func AccountForProtocolAttempt(ctx context.Context, value *ExecutionAccount) (*ExecutionAccount, error) {
+// ProviderForProtocolAttempt 使用当前计划重新验证候选，模型规则仍在原匹配时机读取。
+func ProviderForProtocolAttempt(ctx context.Context, value *ExecutionProvider) (*ExecutionProvider, error) {
 	if value == nil {
-		return nil, fmt.Errorf("account is nil")
+		return nil, fmt.Errorf("provider is nil")
 	}
 	attempt, resolved, err := requeststate.RoutingStateFromContext(ctx).ResolveAttempt(ExecutionSnapshot(value), value.Route)
 	if err != nil {

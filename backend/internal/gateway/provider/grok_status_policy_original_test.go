@@ -9,15 +9,13 @@ import (
 )
 
 func TestShouldFailoverGrokUpstreamError405IsGrokOnly(t *testing.T) {
-
 	require.True(t, gatewayprovider.ShouldFailoverGrokResponse(http.StatusMethodNotAllowed, nil),
-		"Grok 405 应触发切号，使粘性会话可以迁移到支持该端点的账号")
+		"Grok 405 应触发切号，使粘性会话可以迁移到支持该端点的提供商")
 	require.False(t, gatewayprovider.ShouldFailoverUpstreamStatus(http.StatusMethodNotAllowed),
 		"通用 OpenAI 错误策略不应因 Grok 的端点能力差异扩大切号范围")
 }
 
 func TestShouldFailoverGrokUpstreamErrorExistingCodesStillWork(t *testing.T) {
-
 	for _, code := range []int{401, 402, 403, 405, 429, 500, 502, 503, 504, 529} {
 		require.True(t, gatewayprovider.ShouldFailoverGrokResponse(code, nil), "状态码 %d 应触发 Grok 切号", code)
 	}

@@ -12,13 +12,13 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/live"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
@@ -113,14 +113,14 @@ func (d *liveTestDialer) Dial(
 	return d.conn, http.StatusSwitchingProtocols, nil, nil
 }
 
-type liveTestAccountRepo struct {
-	gatewayprovider.ExecutionAccountStore
+type liveTestProviderRepo struct {
+	gatewayprovider.ExecutionProviderStore
 
-	account *gatewayprovider.ExecutionAccount
+	provider *gatewayprovider.ExecutionProvider
 }
 
-func (r *liveTestAccountRepo) GetByID(context.Context, int64) (*gatewayprovider.ExecutionAccount, error) {
-	return r.account, nil
+func (r *liveTestProviderRepo) GetByID(context.Context, int64) (*gatewayprovider.ExecutionProvider, error) {
+	return r.provider, nil
 }
 
 type liveTestStore struct {
@@ -285,7 +285,7 @@ func TestFinalizeLiveCallIsIdempotentAndWritesZeroUsage(t *testing.T) {
 	record := &session.LiveCallRecord{
 		CallID:            "call_secret",
 		CallHash:          live.HashCallID("call_secret"),
-		AccountID:         11,
+		ProviderID:        11,
 		APIKeyID:          22,
 		UserID:            33,
 		GroupID:           44,
@@ -362,15 +362,15 @@ func TestGetLiveCallForIdentityRejectsMismatchedCaller(t *testing.T) {
 		GroupID:  &groupID,
 	})
 	require.NoError(t, err)
-	require.Equal(t, record.AccountID, loaded.AccountID)
+	require.Equal(t, record.ProviderID, loaded.ProviderID)
 }
 
 func TestLiveSidebandRewritesEachSessionModelAndRestoresResponse(t *testing.T) {
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 11,
 			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeOAuth,
+			Type:        capability.ProviderTypeOAuth,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Credentials: map[string]any{
@@ -379,7 +379,7 @@ func TestLiveSidebandRewritesEachSessionModelAndRestoresResponse(t *testing.T) {
 			},
 		},
 	}
-	upstreamModel := gatewayprovider.ExecutionModelPolicy(account).OpenAIUpstream("gpt-5", false, false)
+	upstreamModel := gatewayprovider.ExecutionModelPolicy(provider).OpenAIUpstream("gpt-5", false, false)
 	record := &session.LiveCallRecord{
 		GroupID:            44,
 		Model:              "gpt-5",
@@ -390,7 +390,7 @@ func TestLiveSidebandRewritesEachSessionModelAndRestoresResponse(t *testing.T) {
 	service := newLiveFixture(liveFixtureInputs{})
 	payload := []byte(`{"type":"session.update","session":{"model":"live-alias","tools":[{"model":"tool-alias"}],"instructions":"keep live-alias and gpt-5.1-codex"}}`)
 
-	rewritten, clientModel, internalModels, err := service.rewriteLiveSidebandClientPayload(context.Background(), record, account, payload)
+	rewritten, clientModel, internalModels, err := service.rewriteLiveSidebandClientPayload(context.Background(), record, provider, payload)
 
 	require.NoError(t, err)
 	require.Equal(t, "live-alias", clientModel)
@@ -409,11 +409,11 @@ func TestLiveSidebandRewritesEachSessionModelAndRestoresResponse(t *testing.T) {
 
 func TestProxyLiveSidebandForwardsTextAndBinary(t *testing.T) {
 	profileService, routerService := newLiveTLSRoutingServices()
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 11,
 			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeOAuth,
+			Type:        capability.ProviderTypeOAuth,
 			Concurrency: 2,
 			Credentials: map[string]any{
 				"access_token":       "test-access-token",
@@ -428,7 +428,7 @@ func TestProxyLiveSidebandForwardsTextAndBinary(t *testing.T) {
 	record := &session.LiveCallRecord{
 		CallID:     "call_proxy",
 		CallHash:   live.HashCallID("call_proxy"),
-		AccountID:  account.Record.ID,
+		ProviderID: provider.Record.ID,
 		APIKeyID:   22,
 		UserID:     33,
 		LeaseID:    "lease-1",
@@ -445,7 +445,7 @@ func TestProxyLiveSidebandForwardsTextAndBinary(t *testing.T) {
 	require.NoError(t, store.SaveLiveCall(context.Background(), record, time.Hour))
 	upstream := newLiveTestFrameConn()
 	dialer := &liveTestDialer{conn: upstream}
-	service := newLiveFixture(liveFixtureInputs{accounts: &liveTestAccountRepo{account: account}, store: store, dialer: dialer, cipher: attestationCipher, profiles: profileService, routers: routerService})
+	service := newLiveFixture(liveFixtureInputs{providers: &liveTestProviderRepo{provider: provider}, store: store, dialer: dialer, cipher: attestationCipher, profiles: profileService, routers: routerService})
 	proxyResult := make(chan error, 1)
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		downstream, err := coderws.Accept(writer, request, nil)
@@ -589,7 +589,7 @@ func TestObserveLiveCallStoreOutageFallsBackToExpiryFinalize(t *testing.T) {
 			record := &session.LiveCallRecord{
 				CallID:     "call_store_outage",
 				CallHash:   live.HashCallID("call_store_outage"),
-				AccountID:  11,
+				ProviderID: 11,
 				APIKeyID:   22,
 				UserID:     33,
 				LeaseID:    "lease-1",
@@ -641,7 +641,7 @@ func TestFinalizeLiveCallUsageLogFallsBackToSyncCreate(t *testing.T) {
 	record := &session.LiveCallRecord{
 		CallID:     "call_usage_fallback",
 		CallHash:   live.HashCallID("call_usage_fallback"),
-		AccountID:  11,
+		ProviderID: 11,
 		APIKeyID:   22,
 		UserID:     33,
 		LeaseID:    "lease-1",

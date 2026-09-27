@@ -12,11 +12,11 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/googleforward"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/gemini"
@@ -42,14 +42,14 @@ func TestGeminiForwardAsResponsesReturnsResponsesFormat(t *testing.T) {
 		Body: io.NopCloser(strings.NewReader(upstreamBody)),
 	}}
 	svc := newGeminiFixture(geminiDependencies{httpUpstream: httpStub, cfg: &googleforward.Options{}})
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation,
 			ID:           201,
 
 			Platform: capability.PlatformGemini,
 
-			Type: capability.AccountTypeAPIKey,
+			Type: capability.ProviderTypeAPIKey,
 
 			Concurrency: 1,
 
@@ -66,7 +66,7 @@ func TestGeminiForwardAsResponsesReturnsResponsesFormat(t *testing.T) {
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", bytes.NewReader(body))
 
-	result, err := svc.ForwardAsResponses(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, false), account, body, nil)
+	result, err := svc.ForwardAsResponses(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, false), provider, body, nil)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -112,14 +112,14 @@ func TestGeminiForwardAsResponsesOAuthCollectsReasoningTextAndTools(t *testing.T
 
 		cfg: &googleforward.Options{},
 	})
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation,
 			ID:           204,
 
 			Platform: capability.PlatformGemini,
 
-			Type: capability.AccountTypeOAuth,
+			Type: capability.ProviderTypeOAuth,
 
 			Concurrency: 1,
 
@@ -134,7 +134,7 @@ func TestGeminiForwardAsResponsesOAuthCollectsReasoningTextAndTools(t *testing.T
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", bytes.NewReader(body))
 
-	result, err := svc.ForwardAsResponses(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, false), account, body, nil)
+	result, err := svc.ForwardAsResponses(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, false), provider, body, nil)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -167,11 +167,11 @@ func TestGeminiForwardAsResponsesStreamsReasoningTextToolAndUsage(t *testing.T) 
 		Body: io.NopCloser(strings.NewReader(upstreamBody)),
 	}}
 	svc := newGeminiFixture(geminiDependencies{httpUpstream: httpStub, cfg: &googleforward.Options{}})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{
 		LoadLocation: time.LoadLocation,
 		ID:           202,
 		Platform:     capability.PlatformGemini,
-		Type:         capability.AccountTypeAPIKey,
+		Type:         capability.ProviderTypeAPIKey,
 		Concurrency:  1,
 		Credentials:  map[string]any{"api_key": "gemini-key"},
 	}}
@@ -180,7 +180,7 @@ func TestGeminiForwardAsResponsesStreamsReasoningTextToolAndUsage(t *testing.T) 
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", bytes.NewReader(body))
 
-	result, err := svc.ForwardAsResponses(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, false), account, body, nil)
+	result, err := svc.ForwardAsResponses(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, false), provider, body, nil)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -223,11 +223,11 @@ func TestGeminiForwardAsResponsesCommitsStreamBeforeReadFailure(t *testing.T) {
 		Body: &geminiResponsesFailingStream{},
 	}}
 	svc := newGeminiFixture(geminiDependencies{httpUpstream: httpStub, cfg: &googleforward.Options{}})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{
 		LoadLocation: time.LoadLocation,
 		ID:           203,
 		Platform:     capability.PlatformGemini,
-		Type:         capability.AccountTypeAPIKey,
+		Type:         capability.ProviderTypeAPIKey,
 		Concurrency:  1,
 		Credentials:  map[string]any{"api_key": "gemini-key"},
 	}}
@@ -236,7 +236,7 @@ func TestGeminiForwardAsResponsesCommitsStreamBeforeReadFailure(t *testing.T) {
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", bytes.NewReader(body))
 
-	_, err := svc.ForwardAsResponses(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, false), account, body, nil)
+	_, err := svc.ForwardAsResponses(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, false), provider, body, nil)
 
 	require.ErrorContains(t, err, "stream read error")
 	require.Positive(t, recorder.Body.Len(), "首个字节写出后 handler 必须禁止 failover")
@@ -253,11 +253,11 @@ func TestGeminiForwardAsResponsesMapsUpstreamError(t *testing.T) {
 		)),
 	}}
 	svc := newGeminiFixture(geminiDependencies{httpUpstream: httpStub, cfg: &googleforward.Options{}})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{
 		LoadLocation: time.LoadLocation,
 		ID:           205,
 		Platform:     capability.PlatformGemini,
-		Type:         capability.AccountTypeAPIKey,
+		Type:         capability.ProviderTypeAPIKey,
 		Concurrency:  1,
 		Credentials:  map[string]any{"api_key": "gemini-key"},
 	}}
@@ -266,7 +266,7 @@ func TestGeminiForwardAsResponsesMapsUpstreamError(t *testing.T) {
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", bytes.NewReader(body))
 
-	result, err := svc.ForwardAsResponses(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, false), account, body, nil)
+	result, err := svc.ForwardAsResponses(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, false), provider, body, nil)
 
 	require.Nil(t, result)
 	require.Error(t, err)
@@ -290,11 +290,11 @@ func TestGeminiForwardAsResponsesReturnsFailoverBeforeResponseStarts(t *testing.
 		)),
 	}}
 	svc := newGeminiFixture(geminiDependencies{httpUpstream: httpStub, cfg: &googleforward.Options{}})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{
 		LoadLocation: time.LoadLocation,
 		ID:           206,
 		Platform:     capability.PlatformGemini,
-		Type:         capability.AccountTypeAPIKey,
+		Type:         capability.ProviderTypeAPIKey,
 		Concurrency:  1,
 		Credentials:  map[string]any{"api_key": "gemini-key"},
 	}}
@@ -303,7 +303,7 @@ func TestGeminiForwardAsResponsesReturnsFailoverBeforeResponseStarts(t *testing.
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", bytes.NewReader(body))
 
-	result, err := svc.ForwardAsResponses(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, false), account, body, nil)
+	result, err := svc.ForwardAsResponses(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, false), provider, body, nil)
 
 	require.Nil(t, result)
 	var failoverErr *forwardcore.UpstreamFailoverError

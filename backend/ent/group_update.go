@@ -13,11 +13,11 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/dialect/sql/sqljson"
 	"entgo.io/ent/schema/field"
-	"github.com/TokenFlux/TokenRouter/ent/account"
 	"github.com/TokenFlux/TokenRouter/ent/apikey"
 	"github.com/TokenFlux/TokenRouter/ent/apikeycompositegroup"
 	"github.com/TokenFlux/TokenRouter/ent/group"
 	"github.com/TokenFlux/TokenRouter/ent/predicate"
+	"github.com/TokenFlux/TokenRouter/ent/provider"
 	"github.com/TokenFlux/TokenRouter/ent/usagelog"
 	"github.com/TokenFlux/TokenRouter/ent/user"
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
@@ -681,19 +681,19 @@ func (_u *GroupUpdate) AddUsageLogs(v ...*UsageLog) *GroupUpdate {
 	return _u.AddUsageLogIDs(ids...)
 }
 
-// AddAccountIDs adds the "accounts" edge to the Account entity by IDs.
-func (_u *GroupUpdate) AddAccountIDs(ids ...int64) *GroupUpdate {
-	_u.mutation.AddAccountIDs(ids...)
+// AddProviderIDs adds the "providers" edge to the Provider entity by IDs.
+func (_u *GroupUpdate) AddProviderIDs(ids ...int64) *GroupUpdate {
+	_u.mutation.AddProviderIDs(ids...)
 	return _u
 }
 
-// AddAccounts adds the "accounts" edges to the Account entity.
-func (_u *GroupUpdate) AddAccounts(v ...*Account) *GroupUpdate {
+// AddProviders adds the "providers" edges to the Provider entity.
+func (_u *GroupUpdate) AddProviders(v ...*Provider) *GroupUpdate {
 	ids := make([]int64, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
 	}
-	return _u.AddAccountIDs(ids...)
+	return _u.AddProviderIDs(ids...)
 }
 
 // AddAllowedUserIDs adds the "allowed_users" edge to the User entity by IDs.
@@ -794,25 +794,25 @@ func (_u *GroupUpdate) RemoveUsageLogs(v ...*UsageLog) *GroupUpdate {
 	return _u.RemoveUsageLogIDs(ids...)
 }
 
-// ClearAccounts clears all "accounts" edges to the Account entity.
-func (_u *GroupUpdate) ClearAccounts() *GroupUpdate {
-	_u.mutation.ClearAccounts()
+// ClearProviders clears all "providers" edges to the Provider entity.
+func (_u *GroupUpdate) ClearProviders() *GroupUpdate {
+	_u.mutation.ClearProviders()
 	return _u
 }
 
-// RemoveAccountIDs removes the "accounts" edge to Account entities by IDs.
-func (_u *GroupUpdate) RemoveAccountIDs(ids ...int64) *GroupUpdate {
-	_u.mutation.RemoveAccountIDs(ids...)
+// RemoveProviderIDs removes the "providers" edge to Provider entities by IDs.
+func (_u *GroupUpdate) RemoveProviderIDs(ids ...int64) *GroupUpdate {
+	_u.mutation.RemoveProviderIDs(ids...)
 	return _u
 }
 
-// RemoveAccounts removes "accounts" edges to Account entities.
-func (_u *GroupUpdate) RemoveAccounts(v ...*Account) *GroupUpdate {
+// RemoveProviders removes "providers" edges to Provider entities.
+func (_u *GroupUpdate) RemoveProviders(v ...*Provider) *GroupUpdate {
 	ids := make([]int64, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
 	}
-	return _u.RemoveAccountIDs(ids...)
+	return _u.RemoveProviderIDs(ids...)
 }
 
 // ClearAllowedUsers clears all "allowed_users" edges to the User entity.
@@ -1265,58 +1265,58 @@ func (_u *GroupUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	if _u.mutation.AccountsCleared() {
+	if _u.mutation.ProvidersCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
 			Inverse: true,
-			Table:   group.AccountsTable,
-			Columns: group.AccountsPrimaryKey,
+			Table:   group.ProvidersTable,
+			Columns: group.ProvidersPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(account.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(provider.FieldID, field.TypeInt64),
 			},
 		}
-		createE := &AccountGroupCreate{config: _u.config, mutation: newAccountGroupMutation(_u.config, OpCreate)}
+		createE := &ProviderGroupCreate{config: _u.config, mutation: newProviderGroupMutation(_u.config, OpCreate)}
 		createE.defaults()
 		_, specE := createE.createSpec()
 		edge.Target.Fields = specE.Fields
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := _u.mutation.RemovedAccountsIDs(); len(nodes) > 0 && !_u.mutation.AccountsCleared() {
+	if nodes := _u.mutation.RemovedProvidersIDs(); len(nodes) > 0 && !_u.mutation.ProvidersCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
 			Inverse: true,
-			Table:   group.AccountsTable,
-			Columns: group.AccountsPrimaryKey,
+			Table:   group.ProvidersTable,
+			Columns: group.ProvidersPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(account.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(provider.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		createE := &AccountGroupCreate{config: _u.config, mutation: newAccountGroupMutation(_u.config, OpCreate)}
+		createE := &ProviderGroupCreate{config: _u.config, mutation: newProviderGroupMutation(_u.config, OpCreate)}
 		createE.defaults()
 		_, specE := createE.createSpec()
 		edge.Target.Fields = specE.Fields
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := _u.mutation.AccountsIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.ProvidersIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
 			Inverse: true,
-			Table:   group.AccountsTable,
-			Columns: group.AccountsPrimaryKey,
+			Table:   group.ProvidersTable,
+			Columns: group.ProvidersPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(account.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(provider.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		createE := &AccountGroupCreate{config: _u.config, mutation: newAccountGroupMutation(_u.config, OpCreate)}
+		createE := &ProviderGroupCreate{config: _u.config, mutation: newProviderGroupMutation(_u.config, OpCreate)}
 		createE.defaults()
 		_, specE := createE.createSpec()
 		edge.Target.Fields = specE.Fields
@@ -2099,19 +2099,19 @@ func (_u *GroupUpdateOne) AddUsageLogs(v ...*UsageLog) *GroupUpdateOne {
 	return _u.AddUsageLogIDs(ids...)
 }
 
-// AddAccountIDs adds the "accounts" edge to the Account entity by IDs.
-func (_u *GroupUpdateOne) AddAccountIDs(ids ...int64) *GroupUpdateOne {
-	_u.mutation.AddAccountIDs(ids...)
+// AddProviderIDs adds the "providers" edge to the Provider entity by IDs.
+func (_u *GroupUpdateOne) AddProviderIDs(ids ...int64) *GroupUpdateOne {
+	_u.mutation.AddProviderIDs(ids...)
 	return _u
 }
 
-// AddAccounts adds the "accounts" edges to the Account entity.
-func (_u *GroupUpdateOne) AddAccounts(v ...*Account) *GroupUpdateOne {
+// AddProviders adds the "providers" edges to the Provider entity.
+func (_u *GroupUpdateOne) AddProviders(v ...*Provider) *GroupUpdateOne {
 	ids := make([]int64, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
 	}
-	return _u.AddAccountIDs(ids...)
+	return _u.AddProviderIDs(ids...)
 }
 
 // AddAllowedUserIDs adds the "allowed_users" edge to the User entity by IDs.
@@ -2212,25 +2212,25 @@ func (_u *GroupUpdateOne) RemoveUsageLogs(v ...*UsageLog) *GroupUpdateOne {
 	return _u.RemoveUsageLogIDs(ids...)
 }
 
-// ClearAccounts clears all "accounts" edges to the Account entity.
-func (_u *GroupUpdateOne) ClearAccounts() *GroupUpdateOne {
-	_u.mutation.ClearAccounts()
+// ClearProviders clears all "providers" edges to the Provider entity.
+func (_u *GroupUpdateOne) ClearProviders() *GroupUpdateOne {
+	_u.mutation.ClearProviders()
 	return _u
 }
 
-// RemoveAccountIDs removes the "accounts" edge to Account entities by IDs.
-func (_u *GroupUpdateOne) RemoveAccountIDs(ids ...int64) *GroupUpdateOne {
-	_u.mutation.RemoveAccountIDs(ids...)
+// RemoveProviderIDs removes the "providers" edge to Provider entities by IDs.
+func (_u *GroupUpdateOne) RemoveProviderIDs(ids ...int64) *GroupUpdateOne {
+	_u.mutation.RemoveProviderIDs(ids...)
 	return _u
 }
 
-// RemoveAccounts removes "accounts" edges to Account entities.
-func (_u *GroupUpdateOne) RemoveAccounts(v ...*Account) *GroupUpdateOne {
+// RemoveProviders removes "providers" edges to Provider entities.
+func (_u *GroupUpdateOne) RemoveProviders(v ...*Provider) *GroupUpdateOne {
 	ids := make([]int64, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
 	}
-	return _u.RemoveAccountIDs(ids...)
+	return _u.RemoveProviderIDs(ids...)
 }
 
 // ClearAllowedUsers clears all "allowed_users" edges to the User entity.
@@ -2713,58 +2713,58 @@ func (_u *GroupUpdateOne) sqlSave(ctx context.Context) (_node *Group, err error)
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	if _u.mutation.AccountsCleared() {
+	if _u.mutation.ProvidersCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
 			Inverse: true,
-			Table:   group.AccountsTable,
-			Columns: group.AccountsPrimaryKey,
+			Table:   group.ProvidersTable,
+			Columns: group.ProvidersPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(account.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(provider.FieldID, field.TypeInt64),
 			},
 		}
-		createE := &AccountGroupCreate{config: _u.config, mutation: newAccountGroupMutation(_u.config, OpCreate)}
+		createE := &ProviderGroupCreate{config: _u.config, mutation: newProviderGroupMutation(_u.config, OpCreate)}
 		createE.defaults()
 		_, specE := createE.createSpec()
 		edge.Target.Fields = specE.Fields
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := _u.mutation.RemovedAccountsIDs(); len(nodes) > 0 && !_u.mutation.AccountsCleared() {
+	if nodes := _u.mutation.RemovedProvidersIDs(); len(nodes) > 0 && !_u.mutation.ProvidersCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
 			Inverse: true,
-			Table:   group.AccountsTable,
-			Columns: group.AccountsPrimaryKey,
+			Table:   group.ProvidersTable,
+			Columns: group.ProvidersPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(account.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(provider.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		createE := &AccountGroupCreate{config: _u.config, mutation: newAccountGroupMutation(_u.config, OpCreate)}
+		createE := &ProviderGroupCreate{config: _u.config, mutation: newProviderGroupMutation(_u.config, OpCreate)}
 		createE.defaults()
 		_, specE := createE.createSpec()
 		edge.Target.Fields = specE.Fields
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := _u.mutation.AccountsIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.ProvidersIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
 			Inverse: true,
-			Table:   group.AccountsTable,
-			Columns: group.AccountsPrimaryKey,
+			Table:   group.ProvidersTable,
+			Columns: group.ProvidersPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(account.FieldID, field.TypeInt64),
+				IDSpec: sqlgraph.NewFieldSpec(provider.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		createE := &AccountGroupCreate{config: _u.config, mutation: newAccountGroupMutation(_u.config, OpCreate)}
+		createE := &ProviderGroupCreate{config: _u.config, mutation: newProviderGroupMutation(_u.config, OpCreate)}
 		createE.defaults()
 		_, specE := createE.createSpec()
 		edge.Target.Fields = specE.Fields

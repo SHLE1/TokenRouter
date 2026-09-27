@@ -17,7 +17,7 @@ import (
 	"github.com/dgraph-io/ristretto"
 )
 
-const KeyApiKeyAuthSnapshotVersion = 45
+const KeyApiKeyAuthSnapshotVersion = 46
 
 type KeyApiKeyAuthCacheConfig struct {
 	l1Size        int

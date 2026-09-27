@@ -12,10 +12,10 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
@@ -56,20 +56,22 @@ func (u *blockingOpenAIResponseHeaderUpstream) DoWithTLS(req *http.Request, _ st
 }
 
 func TestOpenAIForwardFirstOutputTimeoutIncludesResponseHeaderWait(t *testing.T) {
-
 	upstream := &blockingOpenAIResponseHeaderUpstream{canceled: make(chan struct{})}
 	svc := newResponsesFixture(responsesFixtureInputs{options: &responsesFixtureOptions{Response: OpenAIResponseOptions{OpenAIFirstOutputTimeoutSeconds: 1, MaxLineSize: openAIResponseDefaultMaxLineSize}}, transport: upstream})
 	body := []byte(`{"model":"gpt-5.5","stream":true,"reasoning":{"effort":"low"},"input":"hello"}`)
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", bytes.NewReader(body))
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Name: "oauth-test", Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth,
-		Status: billing.StatusActive, Schedulable: true, Concurrency: 1,
-		Credentials: map[string]any{"access_token": "test-token", "chatgpt_account_id": "test-account"}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1, Name: "oauth-test", Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth,
+			Status: billing.StatusActive, Schedulable: true, Concurrency: 1,
+			Credentials: map[string]any{"access_token": "test-token", "chatgpt_account_id": "test-provider"},
+		},
 	}
 
 	started := time.Now()
-	_, err := svc.Forward(context.Background(), c, account, body)
+	_, err := svc.Forward(context.Background(), c, provider, body)
 
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError
@@ -98,7 +100,7 @@ func TestOpenAINativeFirstOutputTimeoutDisabledPreservesSynchronousStream(t *tes
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
 
-	result, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI}}, time.Now(), "model", "model", "")
+	result, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI}}, time.Now(), "model", "model", "")
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -122,7 +124,7 @@ func TestOpenAINativeFirstOutputTimeoutIgnoresPreambleAndCleansReader(t *testing
 	body := &firstOutputCloseTrackingBody{ReadCloser: pr, closed: make(chan struct{})}
 	resp := &http.Response{StatusCode: http.StatusOK, Header: http.Header{}, Body: body}
 
-	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI}}, time.Now().Add(-2*time.Second), "model", "model", "")
+	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI}}, time.Now().Add(-2*time.Second), "model", "model", "")
 
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError
@@ -179,7 +181,7 @@ func TestOpenAINativeFirstOutputTimeoutDisarmsAfterSemanticOutput(t *testing.T) 
 		"X-Ratelimit-Remaining-Requests": []string{"42"},
 	}, Body: pr}
 
-	result, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI}}, time.Now(), "model", "model", "")
+	result, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI}}, time.Now(), "model", "model", "")
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -232,7 +234,7 @@ func assertOpenAINativeLargeOpenEventTimesOutWithoutLeak(t *testing.T, line stri
 		"X-Ratelimit-Remaining-Requests": []string{"1"},
 	}, Body: body}
 
-	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI}}, time.Now(), "model", "model", "")
+	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI}}, time.Now(), "model", "model", "")
 
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)
@@ -271,7 +273,7 @@ func TestOpenAINativeFirstOutputEOFDispatchesTerminalEventWithoutBlankLine(t *te
 		Body: io.NopCloser(strings.NewReader(payload)),
 	}
 
-	result, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI}}, time.Now(), "model", "model", "")
+	result, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI}}, time.Now(), "model", "model", "")
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -307,7 +309,7 @@ func TestOpenAINativeFirstOutputStageOverflowFailsOverWithoutAttemptBytes(t *tes
 		Body: io.NopCloser(strings.NewReader(body)),
 	}
 
-	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI}}, time.Now(), "model", "model", "")
+	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI}}, time.Now(), "model", "model", "")
 
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)
@@ -336,7 +338,7 @@ func TestOpenAINativeFirstOutputScannerRejectsOversizedLineWithoutLeak(t *testin
 		Body: io.NopCloser(strings.NewReader(body)),
 	}
 
-	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI}}, time.Now(), "model", "model", "")
+	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI}}, time.Now(), "model", "model", "")
 
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)
@@ -369,7 +371,7 @@ func TestOpenAINativeFirstOutputScannerAllowsLargeEventAfterSemanticBoundary(t *
 		Body:       io.NopCloser(strings.NewReader(body)),
 	}
 
-	result, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI}}, time.Now(), "model", "model", "")
+	result, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI}}, time.Now(), "model", "model", "")
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -397,7 +399,7 @@ func TestOpenAINativeFirstOutputTimeoutDisabledKeepsPreamblePrivateAcrossKeepali
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
 	resp := &http.Response{StatusCode: http.StatusOK, Header: http.Header{}, Body: pr}
 
-	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI}}, time.Now(), "model", "model", "")
+	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI}}, time.Now(), "model", "model", "")
 
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)
@@ -434,7 +436,7 @@ func TestOpenAINativeFirstOutputFailoverKeepsAttemptHeadersPrivateAfterKeepalive
 		Body: trackedFirstBody,
 	}
 
-	_, firstErr := svc.Output.Stream(c.Request.Context(), firstResp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI}}, time.Now(), "model", "model", "")
+	_, firstErr := svc.Output.Stream(c.Request.Context(), firstResp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI}}, time.Now(), "model", "model", "")
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, firstErr, &failoverErr)
 	require.Contains(t, rec.Body.String(), ":\n\n", "first attempt should have committed only a stable keepalive")
@@ -454,7 +456,7 @@ func TestOpenAINativeFirstOutputFailoverKeepsAttemptHeadersPrivateAfterKeepalive
 			"",
 		}, "\n"))),
 	}
-	result, secondErr := svc.Output.Stream(c.Request.Context(), secondResp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformOpenAI}}, time.Now(), "model", "model", "")
+	result, secondErr := svc.Output.Stream(c.Request.Context(), secondResp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformOpenAI}}, time.Now(), "model", "model", "")
 
 	require.NoError(t, secondErr)
 	require.NotNil(t, result)
@@ -467,7 +469,7 @@ func TestOpenAINativeFirstOutputFailoverKeepsAttemptHeadersPrivateAfterKeepalive
 	select {
 	case <-firstWriterDone:
 	case <-time.After(time.Second):
-		t.Fatal("first account writer did not exit after timeout")
+		t.Fatal("first provider writer did not exit after timeout")
 	}
 }
 

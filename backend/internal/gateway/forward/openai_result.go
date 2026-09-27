@@ -15,7 +15,7 @@ type OpenAIResult struct {
 	NativeUsage *protocolcore.TokenUsage
 	RequestID   string
 	ResponseID  string
-	// UpstreamHeaders 是直接上游的响应头，用于按账户配置解析上游请求标识。
+	// UpstreamHeaders 是直接上游的响应头，用于按提供商配置解析上游请求标识。
 	UpstreamHeaders map[string][]string
 	Usage           protocolopenai.ForwardUsage
 	Model           string // 原始模型（用于响应和日志显示）
@@ -70,9 +70,9 @@ type OpenAIResult struct {
 	// AudioUsage 在有值时携带 Voice 计费单位。
 	AudioUsage *protocolcore.AudioUsage
 
-	wsReplayInput                []json.RawMessage
-	wsReplayInputExists          bool
-	wsAccountFailoverReplayInput []json.RawMessage
+	wsReplayInput                 []json.RawMessage
+	wsReplayInputExists           bool
+	wsProviderFailoverReplayInput []json.RawMessage
 }
 
 // SucceededForScheduling 判断转发结果能否作为上游调度成功，并清除模型级短暂状态。
@@ -100,12 +100,12 @@ func (r *OpenAIResult) WSReplayInput() ([]json.RawMessage, bool) {
 	return r.wsReplayInput, r.wsReplayInputExists
 }
 
-// SetWSAccountFailoverReplayInput 保存跨账号恢复收集器的既有结果。
-func (r *OpenAIResult) SetWSAccountFailoverReplayInput(input []json.RawMessage) {
-	r.wsAccountFailoverReplayInput = input
+// SetWSProviderFailoverReplayInput 保存跨提供商恢复收集器的既有结果。
+func (r *OpenAIResult) SetWSProviderFailoverReplayInput(input []json.RawMessage) {
+	r.wsProviderFailoverReplayInput = input
 }
 
-// WSAccountFailoverReplayInput 供当前轮恢复边界读取；不进入 JSON 或完成计费投影。
-func (r *OpenAIResult) WSAccountFailoverReplayInput() []json.RawMessage {
-	return r.wsAccountFailoverReplayInput
+// WSProviderFailoverReplayInput 供当前轮恢复边界读取；不进入 JSON 或完成计费投影。
+func (r *OpenAIResult) WSProviderFailoverReplayInput() []json.RawMessage {
+	return r.wsProviderFailoverReplayInput
 }

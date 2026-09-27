@@ -11,12 +11,12 @@ import (
 
 	sessiontestkit "github.com/TokenFlux/TokenRouter/internal/gateway/session/testkit"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/moderationflow"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	gatewayws "github.com/TokenFlux/TokenRouter/internal/gateway/ws"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 	coderws "github.com/coder/websocket"
@@ -26,9 +26,9 @@ import (
 )
 
 // openAIWSIngressCapacityShedRepo 补齐 SetError，避免非容量类错误（如
-// workspace_suspended）走到账号状态副作用时打空指针。
+// workspace_suspended）走到提供商状态副作用时打空指针。
 type openAIWSIngressCapacityShedRepo struct {
-	wsFixtureAccountStore
+	wsFixtureProviderStore
 }
 
 func (r *openAIWSIngressCapacityShedRepo) SetError(context.Context, int64, string) error { return nil }
@@ -49,7 +49,6 @@ func (r *openAIWSIngressCapacityShedRepo) UpdateExtra(context.Context, int64, ma
 //
 // 第二个用例锁住改写范围：非容量类错误码必须原样下发，客户端依赖原码各自处理。
 func TestProxyResponsesWebSocketFromClient_RewritesCapacityShedCodeForClient(t *testing.T) {
-
 	tests := []struct {
 		name           string
 		upstreamEvents [][]byte
@@ -87,9 +86,9 @@ func TestProxyResponsesWebSocketFromClient_RewritesCapacityShedCodeForClient(t *
 			options := newOpenAIWSV2TestConfig()
 			options.Request.URLPolicy.Enabled = false
 			options.Request.URLPolicy.AllowInsecureHTTP = true
-			options.Pool.MaxConnsPerAccount = 1
-			options.Pool.MinIdlePerAccount = 0
-			options.Pool.MaxIdlePerAccount = 1
+			options.Pool.MaxConnsPerProvider = 1
+			options.Pool.MinIdlePerProvider = 0
+			options.Pool.MaxIdlePerProvider = 1
 			options.Pool.QueueLimitPerConn = 8
 			options.WS.DialTimeoutSeconds = 3
 			options.WS.ReadTimeoutSeconds = 3
@@ -103,18 +102,21 @@ func TestProxyResponsesWebSocketFromClient_RewritesCapacityShedCodeForClient(t *
 			pool := newOpenAIWSConnPool(options)
 			pool.SetClientDialerForTest(&openAIWSCaptureDialer{conn: captureConn})
 
-			account := gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 5401,
-				Name:        "openai-ingress-capacity-shed",
-				Platform:    capability.PlatformOpenAI,
-				Type:        capability.AccountTypeAPIKey,
-				Status:      billing.StatusActive,
-				Schedulable: true,
-				Concurrency: 1,
-				Credentials: map[string]any{"api_key": "sk-test"},
-				Extra:       map[string]any{"responses_websockets_v2_enabled": true}},
+			provider := gatewayprovider.ExecutionProvider{
+				Record: providercore.Record{
+					LoadLocation: time.LoadLocation, ID: 5401,
+					Name:        "openai-ingress-capacity-shed",
+					Platform:    capability.PlatformOpenAI,
+					Type:        capability.ProviderTypeAPIKey,
+					Status:      billing.StatusActive,
+					Schedulable: true,
+					Concurrency: 1,
+					Credentials: map[string]any{"api_key": "sk-test"},
+					Extra:       map[string]any{"responses_websockets_v2_enabled": true},
+				},
 			}
-			repo := &openAIWSIngressCapacityShedRepo{wsFixtureAccountStore: wsFixtureAccountStore{accounts: []gatewayprovider.ExecutionAccount{account}}}
-			svc := newWSFixture(wsFixtureInputs{accounts: repo, health: newUpstreamHealthForTest(repo, nil, nil, accountcore.HealthOptions{}, nil), transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, options: options, corrector: openai.NewCodexToolCorrector(), pool: pool})
+			repo := &openAIWSIngressCapacityShedRepo{wsFixtureProviderStore: wsFixtureProviderStore{providers: []gatewayprovider.ExecutionProvider{provider}}}
+			svc := newWSFixture(wsFixtureInputs{providers: repo, health: newUpstreamHealthForTest(repo, nil, nil, providercore.HealthOptions{}, nil), transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, options: options, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
 			serverDone := make(chan struct{})
 			wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -138,7 +140,7 @@ func TestProxyResponsesWebSocketFromClient_RewritesCapacityShedCodeForClient(t *
 				if readErr != nil || (msgType != coderws.MessageText && msgType != coderws.MessageBinary) {
 					return
 				}
-				_ = svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, &account, "sk-test", firstMessage, nil)
+				_ = svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, &provider, "sk-test", firstMessage, nil)
 			}))
 			defer wsServer.Close()
 
@@ -186,7 +188,6 @@ func TestProxyResponsesWebSocketFromClient_RewritesCapacityShedCodeForClient(t *
 
 // ctx_pool 必须在错误早退前保存风控证据和用量，供 handler 的 AfterTurn 消费。
 func TestProxyResponsesWebSocketFromClient_MarksCyberPolicyBeforeEarlyReturn(t *testing.T) {
-
 	tests := []struct {
 		name          string
 		upstreamEvent []byte
@@ -217,20 +218,23 @@ func TestProxyResponsesWebSocketFromClient_MarksCyberPolicyBeforeEarlyReturn(t *
 			options.Request.URLPolicy.Enabled = false
 			options.Request.URLPolicy.AllowInsecureHTTP = true
 			options.WS.ModeRouterV2Enabled = true
-			options.WS.IngressModeDefault = accountcore.OpenAIWSIngressModeCtxPool
-			options.Pool.MinIdlePerAccount = 0
+			options.WS.IngressModeDefault = providercore.OpenAIWSIngressModeCtxPool
+			options.Pool.MinIdlePerProvider = 0
 
 			captureConn := &openAIWSCaptureConn{events: [][]byte{append([]byte(nil), tt.upstreamEvent...)}}
 			pool := newOpenAIWSConnPool(options)
 			t.Cleanup(pool.Close)
 			pool.SetClientDialerForTest(&openAIWSCaptureDialer{conn: captureConn})
 			svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
-			account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 5402, Name: "openai-ingress-cyber", Platform: capability.PlatformOpenAI,
-				Type: capability.AccountTypeAPIKey, Status: billing.StatusActive, Schedulable: true, Concurrency: 1,
-				Credentials: map[string]any{"api_key": "sk-test"},
-				Extra: map[string]any{
-					"openai_apikey_responses_websockets_v2_mode": accountcore.OpenAIWSIngressModeCtxPool,
-				}},
+			provider := &gatewayprovider.ExecutionProvider{
+				Record: providercore.Record{
+					LoadLocation: time.LoadLocation, ID: 5402, Name: "openai-ingress-cyber", Platform: capability.PlatformOpenAI,
+					Type: capability.ProviderTypeAPIKey, Status: billing.StatusActive, Schedulable: true, Concurrency: 1,
+					Credentials: map[string]any{"api_key": "sk-test"},
+					Extra: map[string]any{
+						"openai_apikey_responses_websockets_v2_mode": providercore.OpenAIWSIngressModeCtxPool,
+					},
+				},
 			}
 
 			markCh := make(chan *moderationflow.Mark, 1)
@@ -257,7 +261,7 @@ func TestProxyResponsesWebSocketFromClient_MarksCyberPolicyBeforeEarlyReturn(t *
 				hooks := &gatewayws.OpenAIIngressHooks{AfterTurn: func(_ gatewayws.OpenAITurnCapture) {
 					markCh <- GetOpsCyberPolicy(ginCtx)
 				}}
-				serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, account, "sk-test", firstMessage, hooks)
+				serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, provider, "sk-test", firstMessage, hooks)
 			}))
 			defer wsServer.Close()
 

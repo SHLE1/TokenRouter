@@ -5,8 +5,8 @@ import (
 	"strings"
 )
 
-// AccountTestBody 保留 Responses 探测所需字段，同时使用管理端自定义提示词。
-func AccountTestBody(model, prompt string) ([]byte, error) {
+// ProviderTestBody 保留 Responses 探测所需字段，同时使用管理端自定义提示词。
+func ProviderTestBody(model, prompt string) ([]byte, error) {
 	model = strings.TrimSpace(model)
 	if model == "" {
 		model = DefaultResponsesModel

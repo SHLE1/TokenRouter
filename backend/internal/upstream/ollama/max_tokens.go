@@ -1,4 +1,4 @@
-// 输出上限使用显式账号配置投影；诊断由调用者在原位置记录。
+// 输出上限使用显式提供商配置投影；诊断由调用者在原位置记录。
 package ollama
 
 import (
@@ -8,10 +8,12 @@ import (
 	"github.com/tidwall/sjson"
 )
 
-const MaxTokensCapExtraKey = "ollama_max_tokens_cap"
-const DefaultMaxTokensCap = 65535
+const (
+	MaxTokensCapExtraKey = "ollama_max_tokens_cap"
+	DefaultMaxTokensCap  = 65535
+)
 
-// ollamaCloudMaxTokensCap 返回账号配置的 max_tokens 上限。账号为 nil 或 extra 中
+// ollamaCloudMaxTokensCap 返回提供商配置的 max_tokens 上限。提供商为 nil 或 extra 中
 // 无该键时返回默认值；键值为数值类型（float64/int64/int/json.Number）时返回其整数
 // 值（0 或负数表示显式禁用 clamp）；其它类型回退默认值。
 func MaxTokensCap(value any, present bool) int64 {

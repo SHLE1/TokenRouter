@@ -14,26 +14,26 @@ import (
 	"testing"
 	"time"
 
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
 	gatewaytestkit "github.com/TokenFlux/TokenRouter/internal/gateway/testkit"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 )
 
-// openAITransportAccountRepoStub 只记录临时不可调度调用，其他仓储方法不应被触达。
-type openAITransportAccountRepoStub struct {
+// openAITransportProviderRepoStub 只记录临时不可调度调用，其他仓储方法不应被触达。
+type openAITransportProviderRepoStub struct {
 	tempUnschedCalls []tempUnschedCall
 }
 
 // TestClassifyUpstreamTransportError 验证传输层上游错误的持久性分类。
-// 持久错误重试同一代理/账号无意义，应摘除并告警；瞬时错误仅切换账号，不摘除当前账号。
+// 持久错误重试同一代理/提供商无意义，应摘除并告警；瞬时错误仅切换提供商，不摘除当前提供商。
 func TestClassifyUpstreamTransportError(t *testing.T) {
 	cases := []struct {
 		name       string
@@ -47,7 +47,7 @@ func TestClassifyUpstreamTransportError(t *testing.T) {
 		{"dns resolution failure", errors.New(`dial tcp: lookup proxy.example.com: no such host`), true},
 		{"network unreachable", errors.New(`dial tcp 1.2.3.4:443: connect: network is unreachable`), true},
 
-		// 瞬时错误：短暂抖动，切换账号但不摘除当前账号。
+		// 瞬时错误：短暂抖动，切换提供商但不摘除当前提供商。
 		{"client timeout", errors.New(`Post "https://chatgpt.com/...": context deadline exceeded (Client.Timeout exceeded while awaiting headers)`), false},
 		{"i/o timeout", errors.New(`dial tcp 1.2.3.4:443: i/o timeout`), false},
 		{"connection reset by peer", errors.New(`read tcp 10.0.0.1:5->2.2.2.2:443: read: connection reset by peer`), false},
@@ -100,13 +100,12 @@ func TestClassifyUpstreamTransportError(t *testing.T) {
 	}
 }
 
-func (r *openAITransportAccountRepoStub) SetTempUnschedulable(_ context.Context, id int64, until time.Time, reason string) error {
-	r.tempUnschedCalls = append(r.tempUnschedCalls, tempUnschedCall{accountID: id, until: until, reason: reason})
+func (r *openAITransportProviderRepoStub) SetTempUnschedulable(_ context.Context, id int64, until time.Time, reason string) error {
+	r.tempUnschedCalls = append(r.tempUnschedCalls, tempUnschedCall{providerID: id, until: until, reason: reason})
 	return nil
 }
 
 func newOpenAITransportErrTestContext() (*gin.Context, *httptest.ResponseRecorder) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
@@ -114,13 +113,13 @@ func newOpenAITransportErrTestContext() (*gin.Context, *httptest.ResponseRecorde
 }
 
 func TestHandleOpenAIUpstreamTransportError_PersistentEvictsAndFailsOver(t *testing.T) {
-	repo := &openAITransportAccountRepoStub{}
+	repo := &openAITransportProviderRepoStub{}
 	svc := transportHealthFixture(repo, nil)
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 4627, Name: "proxy-expired", Platform: capability.PlatformOpenAI}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 4627, Name: "proxy-expired", Platform: capability.PlatformOpenAI}}
 	c, rec := newOpenAITransportErrTestContext()
 
 	before := time.Now()
-	retErr := svc.Failure.Handle(context.Background(), c, account,
+	retErr := svc.Failure.Handle(context.Background(), c, provider,
 		errors.New(`Post "https://chatgpt.com/backend-api/codex/responses": socks connect tcp 85.255.176.68:12324->chatgpt.com:443: username/password authentication failed`), false)
 	after := time.Now()
 
@@ -128,68 +127,74 @@ func TestHandleOpenAIUpstreamTransportError_PersistentEvictsAndFailsOver(t *test
 	require.True(t, errors.As(retErr, &failoverErr), "persistent error must return *UpstreamFailoverError")
 	require.Equal(t, http.StatusBadGateway, failoverErr.StatusCode)
 	require.Len(t, repo.tempUnschedCalls, 1)
-	require.Equal(t, int64(4627), repo.tempUnschedCalls[0].accountID)
+	require.Equal(t, int64(4627), repo.tempUnschedCalls[0].providerID)
 	require.Contains(t, repo.tempUnschedCalls[0].reason, "authentication failed")
 	require.True(t, repo.tempUnschedCalls[0].until.After(before.Add((10*time.Minute)-time.Second)))
 	require.True(t, repo.tempUnschedCalls[0].until.Before(after.Add((10*time.Minute)+time.Second)))
-	require.True(t, svc.Failure.Health.Runtime.Blocked(account.Record.ID, nil))
+	require.True(t, svc.Failure.Health.Runtime.Blocked(provider.Record.ID, nil))
 	require.Equal(t, 0, rec.Body.Len())
 }
 
 func TestHandleOpenAIUpstreamTransportError_TransientFailsOverWithoutEviction(t *testing.T) {
-	repo := &openAITransportAccountRepoStub{}
+	repo := &openAITransportProviderRepoStub{}
 	svc := transportHealthFixture(repo, nil)
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 99, Name: "flaky", Platform: capability.PlatformOpenAI}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 99, Name: "flaky", Platform: capability.PlatformOpenAI}}
 	c, rec := newOpenAITransportErrTestContext()
 
-	err := svc.Failure.Handle(context.Background(), c, account,
+	err := svc.Failure.Handle(context.Background(), c, provider,
 		errors.New(`Post "https://chatgpt.com/...": context deadline exceeded (Client.Timeout exceeded while awaiting headers)`), false)
 
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.True(t, errors.As(err, &failoverErr), "transient error must return *UpstreamFailoverError")
 	require.Empty(t, repo.tempUnschedCalls)
-	require.False(t, svc.Failure.Health.Runtime.Blocked(account.Record.ID, nil))
+	require.False(t, svc.Failure.Health.Runtime.Blocked(provider.Record.ID, nil))
 	require.Equal(t, 0, rec.Body.Len())
 }
 
 func TestHandleOpenAIUpstreamTransportError_ContextCanceledNoFailover(t *testing.T) {
-	repo := &openAITransportAccountRepoStub{}
+	repo := &openAITransportProviderRepoStub{}
 	svc := transportHealthFixture(repo, nil)
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 77, Name: "healthy", Platform: capability.PlatformOpenAI}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 77, Name: "healthy", Platform: capability.PlatformOpenAI}}
 	c, rec := newOpenAITransportErrTestContext()
 
-	err := svc.Failure.Handle(context.Background(), c, account, context.Canceled, false)
+	err := svc.Failure.Handle(context.Background(), c, provider, context.Canceled, false)
 
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.False(t, errors.As(err, &failoverErr), "context.Canceled must not return *UpstreamFailoverError")
 	require.Empty(t, repo.tempUnschedCalls)
-	require.False(t, svc.Failure.Health.Runtime.Blocked(account.Record.ID, nil))
+	require.False(t, svc.Failure.Health.Runtime.Blocked(provider.Record.ID, nil))
 	require.Equal(t, 0, rec.Body.Len())
 }
 
 func TestHandleOpenAIUpstreamTransportError_WrappedContextCanceledNoFailover(t *testing.T) {
-	repo := &openAITransportAccountRepoStub{}
+	repo := &openAITransportProviderRepoStub{}
 	svc := transportHealthFixture(repo, nil)
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 78, Name: "healthy2", Platform: capability.PlatformOpenAI}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 78, Name: "healthy2", Platform: capability.PlatformOpenAI}}
 	c, _ := newOpenAITransportErrTestContext()
 
-	err := svc.Failure.Handle(context.Background(), c, account, fmt.Errorf("http request failed: %w", context.Canceled), false)
+	err := svc.Failure.Handle(context.Background(), c, provider, fmt.Errorf("http request failed: %w", context.Canceled), false)
 
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.False(t, errors.As(err, &failoverErr), "wrapped context.Canceled must not return *UpstreamFailoverError")
 	require.Empty(t, repo.tempUnschedCalls)
-	require.False(t, svc.Failure.Health.Runtime.Blocked(account.Record.ID, nil))
+	require.False(t, svc.Failure.Health.Runtime.Blocked(provider.Record.ID, nil))
 }
 
-// TestHandleOpenAIUpstreamTransportError_RecordsOllamaActivityOnly 验证传输错误只记录 Ollama Cloud 账号活动。
+// TestHandleOpenAIUpstreamTransportError_RecordsOllamaActivityOnly 验证传输错误只记录 Ollama Cloud 提供商活动。
 func TestHandleOpenAIUpstreamTransportError_RecordsOllamaActivityOnly(t *testing.T) {
 	deferred, activity := gatewaytestkit.DeferredActivityRecorder(t)
-	svc := transportHealthFixture(&openAITransportAccountRepoStub{}, deferred)
-	ollama := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 501, Name: "ollama-cloud", Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey,
-		Credentials: map[string]any{"api_key": "k-ollama", "base_url": "https://ollama.com"}},
+	svc := transportHealthFixture(&openAITransportProviderRepoStub{}, deferred)
+	ollama := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 501, Name: "ollama-cloud", Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey,
+			Credentials: map[string]any{"api_key": "k-ollama", "base_url": "https://ollama.com"},
+		},
 	}
-	other := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 502, Name: "openai-official", Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey,
-		Credentials: map[string]any{"api_key": "k-openai", "base_url": "https://api.openai.com"}},
+	other := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 502, Name: "openai-official", Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey,
+			Credentials: map[string]any{"api_key": "k-openai", "base_url": "https://api.openai.com"},
+		},
 	}
 	c, _ := newOpenAITransportErrTestContext()
 
@@ -206,9 +211,12 @@ func TestHandleOpenAIUpstreamTransportError_RecordsOllamaActivityOnly(t *testing
 // TestHandleOpenAIUpstreamTransportError_ContextCanceledSkipsOllamaActivity 验证客户端取消不会记录活动。
 func TestHandleOpenAIUpstreamTransportError_ContextCanceledSkipsOllamaActivity(t *testing.T) {
 	deferred, activity := gatewaytestkit.DeferredActivityRecorder(t)
-	svc := transportHealthFixture(&openAITransportAccountRepoStub{}, deferred)
-	ollama := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 503, Name: "ollama-canceled", Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey,
-		Credentials: map[string]any{"api_key": "k-ollama", "base_url": "https://ollama.com"}},
+	svc := transportHealthFixture(&openAITransportProviderRepoStub{}, deferred)
+	ollama := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 503, Name: "ollama-canceled", Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey,
+			Credentials: map[string]any{"api_key": "k-ollama", "base_url": "https://ollama.com"},
+		},
 	}
 	c, _ := newOpenAITransportErrTestContext()
 
@@ -220,15 +228,21 @@ func TestHandleOpenAIUpstreamTransportError_ContextCanceledSkipsOllamaActivity(t
 	require.False(t, ok, "context.Canceled is client disconnect before a fault; do not count as Ollama activity")
 }
 
-// TestHandleOpenAIAccountUpstreamError_RecordsOllamaActivityOnly 验证非 2xx 响应只记录 Ollama Cloud 账号活动。
-func TestHandleOpenAIAccountUpstreamError_RecordsOllamaActivityOnly(t *testing.T) {
+// TestHandleOpenAIProviderUpstreamError_RecordsOllamaActivityOnly 验证非 2xx 响应只记录 Ollama Cloud 提供商活动。
+func TestHandleOpenAIProviderUpstreamError_RecordsOllamaActivityOnly(t *testing.T) {
 	deferred, activity := gatewaytestkit.DeferredActivityRecorder(t)
 	svc := transportHealthFixture(nil, deferred)
-	ollama := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 504, Name: "ollama-429", Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey,
-		Credentials: map[string]any{"api_key": "k-ollama", "base_url": "https://ollama.com"}},
+	ollama := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 504, Name: "ollama-429", Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey,
+			Credentials: map[string]any{"api_key": "k-ollama", "base_url": "https://ollama.com"},
+		},
 	}
-	other := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 505, Name: "openai-429", Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey,
-		Credentials: map[string]any{"api_key": "k-openai", "base_url": "https://api.openai.com"}},
+	other := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 505, Name: "openai-429", Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey,
+			Credentials: map[string]any{"api_key": "k-openai", "base_url": "https://api.openai.com"},
+		},
 	}
 
 	_ = gatewayprovider.ApplyOpenAIResponseHealth(context.Background(), svc.Output.Health, ollama, http.StatusTooManyRequests, http.Header{}, []byte(`{"error":{"message":"rate"}}`), false, "gpt-test").StopScheduling
@@ -243,17 +257,17 @@ func TestHandleOpenAIAccountUpstreamError_RecordsOllamaActivityOnly(t *testing.T
 
 // 传输错误测试使用的最小状态写入观测。
 type tempUnschedCall struct {
-	accountID int64
-	until     time.Time
-	reason    string
+	providerID int64
+	until      time.Time
+	reason     string
 }
 
 // 夹具保留共享运行状态及真实 Deferred，只组合本文件实际使用的能力。
-func transportHealthFixture(store *openAITransportAccountRepoStub, deferred *accountcore.DeferredService) *GrokExecutor {
-	state := accountcore.NewRuntimeBlockState(time.Now)
-	health := &accountprovider.TransportHealth{Runtime: state, Deferred: deferred}
+func transportHealthFixture(store *openAITransportProviderRepoStub, deferred *providercore.DeferredService) *GrokExecutor {
+	state := providercore.NewRuntimeBlockState(time.Now)
+	health := &provideradapter.TransportHealth{Runtime: state, Deferred: deferred}
 	if store != nil {
 		health.Store = store
 	}
-	return &GrokExecutor{Failure: &UpstreamTransportFailure{Health: health}, Output: &OpenAIResponseOutput{Health: &accountprovider.OpenAIResponseHealth{Runtime: state, Deferred: deferred}}}
+	return &GrokExecutor{Failure: &UpstreamTransportFailure{Health: health}, Output: &OpenAIResponseOutput{Health: &provideradapter.OpenAIResponseHealth{Runtime: state, Deferred: deferred}}}
 }

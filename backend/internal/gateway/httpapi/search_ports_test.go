@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
@@ -14,6 +13,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/searchtools"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/testkit"
 	"github.com/TokenFlux/TokenRouter/internal/identity"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/stretchr/testify/require"
@@ -33,7 +33,7 @@ type searchTargetProbe struct {
 }
 
 func (p *searchTargetProbe) Select(_ context.Context, group int64, _ string, _ map[int64]struct{}) (StandaloneSearchTarget, searchtools.Selection, bool, error) {
-	return p, searchtools.Selection{AccountID: 7, Acquired: true, Release: func() { p.releases++ }}, true, nil
+	return p, searchtools.Selection{ProviderID: 7, Acquired: true, Release: func() { p.releases++ }}, true, nil
 }
 
 func (p *searchTargetProbe) Execute(_ context.Context, body []byte) ([]byte, error) {
@@ -42,9 +42,9 @@ func (p *searchTargetProbe) Execute(_ context.Context, body []byte) ([]byte, err
 	return []byte(`{"output":[{"type":"web_search_call","action":{"sources":[{"url":"https://source.test","title":"source","snippet":"result"}]}}]}`), nil
 }
 
-func (p *searchTargetProbe) CompletionRecord() *account.Record {
+func (p *searchTargetProbe) CompletionRecord() *provider.Record {
 	p.snapshots++
-	return &account.Record{ID: 7, Platform: capability.PlatformGrok, Type: capability.AccountTypeAPIKey}
+	return &provider.Record{ID: 7, Platform: capability.PlatformGrok, Type: capability.ProviderTypeAPIKey}
 }
 
 func TestSearchNativePortsCompleteEachRequestOnce(t *testing.T) {

@@ -58,8 +58,8 @@ func BenchmarkHTTPUpstreamProxyClient(b *testing.B) {
 		// 预热：确保客户端已缓存
 		entry, err := svc.acquire(UpstreamRequestOptions{
 			ProxyURL:   proxyURL,
-			AccountID:  1,
-			Isolation:  "account_proxy",
+			ProviderID: 1,
+			Isolation:  "provider_proxy",
 			MaxClients: 5000,
 			IdleTTL:    15 * time.Minute,
 			Settings:   settings,

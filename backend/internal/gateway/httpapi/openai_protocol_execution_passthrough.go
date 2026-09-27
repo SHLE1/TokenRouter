@@ -1,16 +1,15 @@
 package httpapi
 
 import (
-	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
-	openaiexecution "github.com/TokenFlux/TokenRouter/internal/gateway/provider/openaiforward"
-
 	"context"
-
 	"fmt"
 	"net/http"
 	"sort"
 	"strings"
 	"time"
+
+	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	openaiexecution "github.com/TokenFlux/TokenRouter/internal/gateway/provider/openaiforward"
 
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 
@@ -29,17 +28,18 @@ import (
 	"go.uber.org/zap"
 )
 
-// 旧透传入口仅保持签名，当前账号的请求准备和恢复由目标执行器唯一实现。
-func (s *OpenAITextExecutor) Passthrough(ctx context.Context, c *gin.Context, account *gatewayprovider.ExecutionAccount, body, canonicalImageIntentBody []byte, reqModel string, attemptImageIntentInvalidated bool, reasoningEffort *string, reqStream bool, startTime time.Time, tlsRouterMatch ...egress.TLSFingerprintRouterMatchResult) (*forwardcore.OpenAIResult, error) {
+// 旧透传入口仅保持签名，当前提供商的请求准备和恢复由目标执行器唯一实现。
+func (s *OpenAITextExecutor) Passthrough(ctx context.Context, c *gin.Context, provider *gatewayprovider.ExecutionProvider, body, canonicalImageIntentBody []byte, reqModel string, attemptImageIntentInvalidated bool, reasoningEffort *string, reqStream bool, startTime time.Time, tlsRouterMatch ...egress.TLSFingerprintRouterMatchResult) (*forwardcore.OpenAIResult, error) {
 	input := openaiexecution.PassthroughInput{Body: body, CanonicalImageIntentBody: canonicalImageIntentBody, Model: reqModel, ImageIntentInvalidated: attemptImageIntentInvalidated, ReasoningEffort: reasoningEffort, Stream: reqStream, StartedAt: startTime}
-	p := &openAIPassthroughExecutionAdapter{openAIMessagesExecutionAdapter: &openAIMessagesExecutionAdapter{s: s, c: c, account: account, tls: tlsRouterMatch}}
+	p := &openAIPassthroughExecutionAdapter{openAIMessagesExecutionAdapter: &openAIMessagesExecutionAdapter{s: s, c: c, provider: provider, tls: tlsRouterMatch}}
 	result, err := openaiexecution.RunPassthrough(ctx, input, p)
 	return openaiexecution.ToForwardResult(result), err
 }
+
 func logOpenAIPassthroughInstructionsRejected(
 	ctx context.Context,
 	c *gin.Context,
-	account *gatewayprovider.ExecutionAccount,
+	provider *gatewayprovider.ExecutionProvider,
 	reqModel string,
 	rejectReason string,
 	body []byte,
@@ -47,19 +47,19 @@ func logOpenAIPassthroughInstructionsRejected(
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	accountID := int64(0)
-	accountName := ""
-	accountType := ""
-	if account != nil {
-		accountID = account.Record.ID
-		accountName = strings.TrimSpace(account.Record.Name)
-		accountType = strings.TrimSpace(string(account.Record.Type))
+	providerID := int64(0)
+	providerName := ""
+	providerType := ""
+	if provider != nil {
+		providerID = provider.Record.ID
+		providerName = strings.TrimSpace(provider.Record.Name)
+		providerType = strings.TrimSpace(string(provider.Record.Type))
 	}
 	fields := []zap.Field{
 		zap.String("component", "service.openai_gateway"),
-		zap.Int64("account_id", accountID),
-		zap.String("account_name", accountName),
-		zap.String("account_type", accountType),
+		zap.Int64("provider_id", providerID),
+		zap.String("provider_name", providerName),
+		zap.String("provider_type", providerType),
 		zap.String("request_model", strings.TrimSpace(reqModel)),
 		zap.String("reject_reason", strings.TrimSpace(rejectReason)),
 	}
@@ -67,19 +67,20 @@ func logOpenAIPassthroughInstructionsRejected(
 	logging.FromContext(ctx).With(fields...).Warn("OpenAI passthrough 本地拦截：Codex 请求缺少有效 instructions")
 }
 
-// shouldFailoverOpenAIPassthroughResponse 只投影账号类别与平台错误分类。
-func shouldFailoverOpenAIPassthroughResponse(account *gatewayprovider.ExecutionAccount, status int, body []byte) bool {
+// shouldFailoverOpenAIPassthroughResponse 只投影提供商类别与平台错误分类。
+func shouldFailoverOpenAIPassthroughResponse(provider *gatewayprovider.ExecutionProvider, status int, body []byte) bool {
 	return openaiexecution.ShouldFailoverPassthrough(status, body, openaiexecution.PassthroughFailureOptions{
-		APIKey:        account != nil && account.Record.Type == capability.AccountTypeAPIKey,
+		APIKey:        provider != nil && provider.Record.Type == capability.ProviderTypeAPIKey,
 		Cyber:         func(b []byte) bool { hit, _, _ := openai.DetectOpenAICyberPolicy(b); return hit },
 		ContextWindow: func(b []byte) bool { return openai.IsOpenAIContextWindowError("", b) },
 		AccessState:   func(s int, b []byte) bool { return gatewayprovider.IsOpenAIHTTPUpstreamAccessStateError(s, "", b) },
 		BodyTooLarge:  func(s int, b []byte) bool { return gatewayprovider.IsOpenAIRequestBodyTooLargeError(s, "", b) },
 		PoolRetryable: func(s int) bool {
-			return account != nil && account.View().IsPoolMode() && account.View().IsPoolModeRetryableStatus(s)
+			return provider != nil && provider.View().IsPoolMode() && provider.View().IsPoolModeRetryableStatus(s)
 		},
 	})
 }
+
 func collectOpenAIPassthroughTimeoutHeaders(h http.Header) []string {
 	if h == nil {
 		return nil

@@ -1,4 +1,4 @@
-// 旧透传装配只投影原账号能力和 HTTP 技术参数，不持有恢复循环。
+// 旧透传装配只投影原提供商能力和 HTTP 技术参数，不持有恢复循环。
 package httpapi
 
 import (
@@ -13,8 +13,8 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway/media"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/tierpolicy"
@@ -32,7 +32,7 @@ type openAIPassthroughExecutionAdapter struct {
 }
 
 func (p *openAIPassthroughExecutionAdapter) Profile() forward.MessagesProfile {
-	return forward.MessagesProfile{Profile: openAIForwardProfile(p.account), ID: p.account.Record.ID, Shadow: p.account.View().IsShadow()}
+	return forward.MessagesProfile{Profile: openAIForwardProfile(p.provider), ID: p.provider.Record.ID, Shadow: p.provider.View().IsShadow()}
 }
 
 func (p *openAIPassthroughExecutionAdapter) CompactPath() bool {
@@ -42,11 +42,11 @@ func (p *openAIPassthroughExecutionAdapter) CompactPath() bool {
 // ForwardModel 与普通转发共用单跳模型规则，压缩专用配置保持优先。
 func (p *openAIPassthroughExecutionAdapter) ForwardModel(model string, compact bool) string {
 	if compact && p.s.Compact != nil {
-		if configured := p.s.Compact.ResolveModel(p.account, model); configured != "" {
+		if configured := p.s.Compact.ResolveModel(p.provider, model); configured != "" {
 			return configured
 		}
 	}
-	return provider.ExecutionModelPolicy(p.account).OpenAIUpstream(model, compact, true)
+	return gatewayadapter.ExecutionModelPolicy(p.provider).OpenAIUpstream(model, compact, true)
 }
 
 func (p *openAIPassthroughExecutionAdapter) InstructionsRejection(model string, body []byte) string {
@@ -58,7 +58,7 @@ func (p *openAIPassthroughExecutionAdapter) PolicyDenied() {
 }
 
 func (p *openAIPassthroughExecutionAdapter) LogInstructionsRejected(ctx context.Context, model, reason string, body []byte) {
-	logOpenAIPassthroughInstructionsRejected(ctx, p.c, p.account, model, reason, body)
+	logOpenAIPassthroughInstructionsRejected(ctx, p.c, p.provider, model, reason, body)
 }
 
 func (p *openAIPassthroughExecutionAdapter) Reject(status int, kind, message, param string) {
@@ -73,8 +73,8 @@ func (p *openAIPassthroughExecutionAdapter) OAuthBody(body []byte, compact bool)
 	return openai.NormalizeOpenAIPassthroughOAuthBody(body, compact)
 }
 
-func (p *openAIPassthroughExecutionAdapter) AccountIdentityRaw(body []byte) ([]byte, bool, error) {
-	return openai.ApplyCodexAccountIdentityClientMetadataRaw(body, accountprovider.CodexIdentityNamespace(CodexIdentityRecord(p.c, p.account.View())), APIKeyIDFromContext(p.c))
+func (p *openAIPassthroughExecutionAdapter) ProviderIdentityRaw(body []byte) ([]byte, bool, error) {
+	return openai.ApplyCodexProviderIdentityClientMetadataRaw(body, provideradapter.CodexIdentityNamespace(CodexIdentityRecord(p.c, p.provider.View())), APIKeyIDFromContext(p.c))
 }
 
 func (p *openAIPassthroughExecutionAdapter) StageFingerprint(ids *openai.FingerprintIDs) {
@@ -86,7 +86,7 @@ func (p *openAIPassthroughExecutionAdapter) Fingerprint() *openai.FingerprintIDs
 	if p.c != nil && p.c.Request != nil {
 		headers = p.c.Request.Header
 	}
-	return accountprovider.CodexFingerprintIDsFromRequest(p.account.View(), headers)
+	return provideradapter.CodexFingerprintIDsFromRequest(p.provider.View(), headers)
 }
 
 func (p *openAIPassthroughExecutionAdapter) FingerprintBody(body []byte, ids *openai.FingerprintIDs) ([]byte, bool, error) {
@@ -98,15 +98,15 @@ func (p *openAIPassthroughExecutionAdapter) HasContext() bool {
 }
 
 func (p *openAIPassthroughExecutionAdapter) LiteHeader() bool {
-	return provider.ImageIntent().IsOpenAIResponsesLiteHeader(p.c.GetHeader(media.ResponsesLiteHeader))
+	return gatewayadapter.ImageIntent().IsOpenAIResponsesLiteHeader(p.c.GetHeader(media.ResponsesLiteHeader))
 }
 
 func (p *openAIPassthroughExecutionAdapter) LitePayloadFlag(body []byte) bool {
-	return provider.ImageIntent().IsOpenAIResponsesLiteWebSocketPayload(body)
+	return gatewayadapter.ImageIntent().IsOpenAIResponsesLiteWebSocketPayload(body)
 }
 
 func (p *openAIPassthroughExecutionAdapter) CompatibilityBody(body []byte, lite bool) ([]byte, bool, error) {
-	return provider.NormalizeOpenAIResponsesWebSocketCompatibilityBody(body, provider.ExecutionProtocolRecord(p.account), lite)
+	return gatewayadapter.NormalizeOpenAIResponsesWebSocketCompatibilityBody(body, gatewayadapter.ExecutionProtocolRecord(p.provider), lite)
 }
 
 func (p *openAIPassthroughExecutionAdapter) ReservedToolNames(body []byte) ([]byte, map[string]string, bool, error) {
@@ -130,11 +130,11 @@ func (p *openAIPassthroughExecutionAdapter) AdaptClientTools(body []byte) ([]byt
 }
 
 func (p *openAIPassthroughExecutionAdapter) NormalizeLite(body []byte) ([]byte, bool, error) {
-	return provider.NormalizeResponsesLiteForAccount(p.account.View(), body)
+	return gatewayadapter.NormalizeResponsesLiteForProvider(p.provider.View(), body)
 }
 
 func (p *openAIPassthroughExecutionAdapter) ApplyFastPass(ctx context.Context, model string, body []byte) ([]byte, error) {
-	updated, err := tierpolicy.ApplyBody(body, p.s.FastPolicy.Input(ctx, p.account, model))
+	updated, err := tierpolicy.ApplyBody(body, p.s.FastPolicy.Input(ctx, p.provider, model))
 	var blocked *tierpolicy.BlockedError
 	if errors.As(err, &blocked) {
 		WriteFastPolicyBlockedResponse(p.c, blocked)
@@ -143,11 +143,11 @@ func (p *openAIPassthroughExecutionAdapter) ApplyFastPass(ctx context.Context, m
 }
 
 func (p *openAIPassthroughExecutionAdapter) ImageIntent(model string, canonical []byte, policy string, body []byte, invalidated bool) bool {
-	return ResolveOpenAIPassthroughImageIntent(p.c, model, canonical, policy, body, invalidated, provider.ImageIntent().IsImageGenerationIntent)
+	return ResolveOpenAIPassthroughImageIntent(p.c, model, canonical, policy, body, invalidated, gatewayadapter.ImageIntent().IsImageGenerationIntent)
 }
 
 func (p *openAIPassthroughExecutionAdapter) ExplicitImageIntent(model string, body []byte) bool {
-	return provider.ImageIntent().IsExplicitImageGenerationIntent(media.OpenAIResponsesEndpoint, model, body)
+	return gatewayadapter.ImageIntent().IsExplicitImageGenerationIntent(media.OpenAIResponsesEndpoint, model, body)
 }
 
 func (p *openAIPassthroughExecutionAdapter) ImageAllowed() bool {
@@ -163,7 +163,7 @@ func (p *openAIPassthroughExecutionAdapter) ImagePermissionMessage() string {
 }
 
 func (p *openAIPassthroughExecutionAdapter) ImageBilling(body []byte, model string) (forward.ImageBilling, error) {
-	v, err := provider.ImageIntent().ResolveOpenAIResponsesImageBillingConfigDetailedFromBody(body, model)
+	v, err := gatewayadapter.ImageIntent().ResolveOpenAIResponsesImageBillingConfigDetailedFromBody(body, model)
 	return forward.ImageBilling{Model: v.Model, SizeTier: v.SizeTier, InputSize: v.InputSize}, err
 }
 
@@ -180,7 +180,7 @@ func (p *openAIPassthroughExecutionAdapter) WarnTimeoutHeaders(ctx context.Conte
 		return
 	}
 	if h := collectOpenAIPassthroughTimeoutHeaders(p.c.Request.Header); len(h) > 0 {
-		log := logging.FromContext(ctx).With(zap.String("component", "service.openai_gateway"), zap.Int64("account_id", p.account.Record.ID), zap.Strings("timeout_headers", h))
+		log := logging.FromContext(ctx).With(zap.String("component", "service.openai_gateway"), zap.Int64("provider_id", p.provider.Record.ID), zap.Strings("timeout_headers", h))
 		if p.s.Requests.AllowTimeoutHeaders() {
 			log.Warn("OpenAI passthrough 透传请求包含超时相关请求头，且当前配置为放行，可能导致上游提前断流")
 		} else {
@@ -190,14 +190,14 @@ func (p *openAIPassthroughExecutionAdapter) WarnTimeoutHeaders(ctx context.Conte
 }
 
 func (p *openAIPassthroughExecutionAdapter) AccessToken(ctx context.Context) (string, error) {
-	token, _, err := p.s.Requests.Credentials.Resolve(ctx, provider.ExecutionRecord(p.account))
+	token, _, err := p.s.Requests.Credentials.Resolve(ctx, gatewayadapter.ExecutionRecord(p.provider))
 	return token, err
 }
 
 func (p *openAIPassthroughExecutionAdapter) PrepareTransportPass() {
 	p.proxyURL = ""
-	if p.account.Record.ProxyID != nil && p.account.Record.Proxy != nil {
-		p.proxyURL = p.account.Record.Proxy.URL()
+	if p.provider.Record.ProxyID != nil && p.provider.Record.Proxy != nil {
+		p.proxyURL = p.provider.Record.Proxy.URL()
 	}
 }
 
@@ -216,11 +216,11 @@ func (p *openAIPassthroughExecutionAdapter) UpstreamModelObserved(model string) 
 }
 
 func (p *openAIPassthroughExecutionAdapter) BuildPass(ctx context.Context, body []byte, token string) (*http.Request, error) {
-	return p.s.Requests.BuildPassthrough(ctx, p.c, p.account, body, token, p.tls...)
+	return p.s.Requests.BuildPassthrough(ctx, p.c, p.provider, body, token, p.tls...)
 }
 
 func (p *openAIPassthroughExecutionAdapter) SendPass(r *http.Request) (*http.Response, error) {
-	return p.s.Requests.Transport.DoWithTLS(r, p.proxyURL, p.account.Record.ID, p.account.Record.Concurrency, p.s.Requests.TLSProfile(p.account, p.tls...))
+	return p.s.Requests.Transport.DoWithTLS(r, p.proxyURL, p.provider.Record.ID, p.provider.Record.Concurrency, p.s.Requests.TLSProfile(p.provider, p.tls...))
 }
 
 func (p *openAIPassthroughExecutionAdapter) Latency(d time.Duration) {
@@ -228,15 +228,15 @@ func (p *openAIPassthroughExecutionAdapter) Latency(d time.Duration) {
 }
 
 func (p *openAIPassthroughExecutionAdapter) TransportErrorPass(ctx context.Context, err error) error {
-	return p.s.Requests.Failure.Handle(ctx, p.c, p.account, err, true)
+	return p.s.Requests.Failure.Handle(ctx, p.c, p.provider, err, true)
 }
 
 func (p *openAIPassthroughExecutionAdapter) CompactRetry(model string, body []byte, status int, message string, payload []byte, tried bool) ([]byte, string, bool) {
-	return p.s.Compact.Prepare(p.c, p.account, model, body, status, message, payload, tried)
+	return p.s.Compact.Prepare(p.c, p.provider, model, body, status, message, payload, tried)
 }
 
 func (p *openAIPassthroughExecutionAdapter) CompactObserved(r *http.Response, body []byte, message string) {
-	p.s.Compact.Observe(p.c, p.account, r, body, message, true)
+	p.s.Compact.Observe(p.c, p.provider, r, body, message, true)
 }
 
 func (p *openAIPassthroughExecutionAdapter) ErrorCode(body []byte) string {
@@ -244,15 +244,15 @@ func (p *openAIPassthroughExecutionAdapter) ErrorCode(body []byte) string {
 }
 
 func (p *openAIPassthroughExecutionAdapter) ShouldFailover(status int, body []byte) bool {
-	return shouldFailoverOpenAIPassthroughResponse(p.account, status, body)
+	return shouldFailoverOpenAIPassthroughResponse(p.provider, status, body)
 }
 
 func (p *openAIPassthroughExecutionAdapter) FailoverError(ctx context.Context, r *http.Response, body, payload []byte) error {
-	return p.s.Output.PassthroughFailoverError(ctx, r, p.c, p.account, body, payload)
+	return p.s.Output.PassthroughFailoverError(ctx, r, p.c, p.provider, body, payload)
 }
 
 func (p *openAIPassthroughExecutionAdapter) ErrorResponsePass(ctx context.Context, r *http.Response, body, payload []byte) error {
-	return p.s.Output.PassthroughError(ctx, r, p.c, p.account, body, payload)
+	return p.s.Output.PassthroughError(ctx, r, p.c, p.provider, body, payload)
 }
 
 func (p *openAIPassthroughExecutionAdapter) WrapResponseBody(r *http.Response) {
@@ -267,16 +267,16 @@ func (p *openAIPassthroughExecutionAdapter) WrapResponseBody(r *http.Response) {
 
 func (p *openAIPassthroughExecutionAdapter) ObserveProvenance(h http.Header) {
 	if ExtractCodexTurnState(h) != "" {
-		p.s.Requests.Turns.Commit(p.c, p.account, h)
+		p.s.Requests.Turns.Commit(p.c, p.provider, h)
 	}
 }
 
 func (p *openAIPassthroughExecutionAdapter) ResponseOptions(ctx context.Context) openai.PassthroughOptions {
-	return p.s.Output.PassthroughOptions(ctx, p.c, p.account)
+	return p.s.Output.PassthroughOptions(ctx, p.c, p.provider)
 }
 
 func (p *openAIPassthroughExecutionAdapter) CompactFromSignal(model string, body []byte, err error, tried bool, r *http.Response) ([]byte, string, bool) {
-	return p.s.Compact.ApplySignal(p.c, p.account, model, body, err, tried, r)
+	return p.s.Compact.ApplySignal(p.c, p.provider, model, body, err, tried, r)
 }
 
 func (p *openAIPassthroughExecutionAdapter) CompactSignal(err error) (forward.CompactFailure, bool) {
@@ -292,7 +292,7 @@ func (p *openAIPassthroughExecutionAdapter) CompactErrorResponse(r *http.Respons
 }
 
 func (p *openAIPassthroughExecutionAdapter) BindOwner(ctx context.Context, id string) {
-	p.s.Output.BindResponseAccount(ctx, p.c, p.account, id)
+	p.s.Output.BindResponseProvider(ctx, p.c, p.provider, id)
 }
 
 func (p *openAIPassthroughExecutionAdapter) ObservedServiceTier() string {

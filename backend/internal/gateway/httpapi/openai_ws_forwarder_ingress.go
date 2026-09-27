@@ -14,7 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// openAIWSImageIntentForRoutingModel 用分组映射模型 G 还原判定请求体，避免账号模型 U 改写生图语义。
+// openAIWSImageIntentForRoutingModel 用分组映射模型 G 还原判定请求体，避免提供商模型 U 改写生图语义。
 // 宽泛意图供图片状态和计费使用，显式意图只负责权限门禁。
 func openAIWSImageIntentForRoutingModel(routingModel, upstreamModel string, body []byte, platform string) ([]byte, bool, bool) {
 	imageIntentBody := body
@@ -48,6 +48,6 @@ func newOpenAIWSDownstreamWriteContext(controlCtx context.Context, hooks *gatewa
 }
 
 // ProxyResponsesWebSocketFromClient 保留现有平台适配入口，逐轮编排由 gateway/ws 持有。
-func (s *OpenAIWebSocketExecutor) ProxyResponsesWebSocketFromClient(ctx context.Context, c *gin.Context, clientConn *coderws.Conn, account *gatewayprovider.ExecutionAccount, token string, firstClientMessage []byte, hooks *gatewayws.OpenAIIngressHooks) error {
-	return s.executeWSIngressAdapter(ctx, c, clientConn, account, token, firstClientMessage, hooks)
+func (s *OpenAIWebSocketExecutor) ProxyResponsesWebSocketFromClient(ctx context.Context, c *gin.Context, clientConn *coderws.Conn, provider *gatewayprovider.ExecutionProvider, token string, firstClientMessage []byte, hooks *gatewayws.OpenAIIngressHooks) error {
+	return s.executeWSIngressAdapter(ctx, c, clientConn, provider, token, firstClientMessage, hooks)
 }

@@ -1,4 +1,4 @@
-// Ollama Chat 的思考字段补齐只处理报文字节，账号资格由调用方决定。
+// Ollama Chat 的思考字段补齐只处理报文字节，提供商资格由调用方决定。
 package ollama
 
 import (
@@ -46,6 +46,7 @@ func NormalizeOllamaCloudChatCompletionsRequest(body []byte) []byte {
 	}
 	return updated
 }
+
 func NormalizeOllamaCloudChatCompletionsResponseJSON(body []byte) []byte {
 	if !gjson.ValidBytes(body) {
 		return body
@@ -85,6 +86,7 @@ func NormalizeOllamaCloudChatCompletionsResponseJSON(body []byte) []byte {
 	}
 	return updated
 }
+
 func NormalizeOllamaCloudChatCompletionsSSELine(line string) string {
 	payload, ok := wireopenai.ExtractSSEDataLine(line)
 	if !ok {
@@ -104,6 +106,7 @@ func NormalizeOllamaCloudChatCompletionsSSELine(line string) string {
 	}
 	return line[:prefixLen] + string(rewritten)
 }
+
 func jsonNonEmptyString(v gjson.Result) (string, bool) {
 	if v.Type != gjson.String || v.Str == "" {
 		return "", false

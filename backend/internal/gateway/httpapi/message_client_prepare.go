@@ -11,7 +11,7 @@ import (
 	"github.com/tidwall/sjson"
 )
 
-// PrepareMessageClientContext 在路由与账号选择前解析客户端、探针和 thinking 的可信请求内状态。
+// PrepareMessageClientContext 在路由与提供商选择前解析客户端、探针和 thinking 的可信请求内状态。
 func PrepareMessageClientContext(c *gin.Context, body []byte, bounds func(context.Context) (string, string)) error {
 	// 身份探测沿用 Messages 入口的宽松 stream 读取；仅规范化解析副本，出站报文不变。
 	identityBody := body

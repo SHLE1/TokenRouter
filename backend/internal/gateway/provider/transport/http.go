@@ -156,23 +156,23 @@ func (s *Client) redirectChecker(req *http.Request, via []*http.Request) error {
 }
 
 // getIsolationMode 获取连接池隔离模式
-// 从配置中读取，无效值回退到 account_proxy 模式
+// 从配置中读取，无效值回退到 provider_proxy 模式
 //
 // 返回:
-//   - string: 隔离模式（proxy/account/account_proxy）
+//   - string: 隔离模式（proxy/provider/provider_proxy）
 func (s *Client) getIsolationMode() string {
 	if s.options() == nil {
-		return "account_proxy"
+		return "provider_proxy"
 	}
 	mode := strings.ToLower(strings.TrimSpace(s.options().ConnectionPoolIsolation))
 	if mode == "" {
-		return "account_proxy"
+		return "provider_proxy"
 	}
 	switch mode {
-	case "proxy", "account", "account_proxy":
+	case "proxy", "provider", "provider_proxy":
 		return mode
 	default:
-		return "account_proxy"
+		return "provider_proxy"
 	}
 }
 
@@ -201,25 +201,25 @@ func (s *Client) clientIdleTTL() time.Duration {
 }
 
 // resolvePoolSettings 解析连接池配置
-// 根据隔离策略和账户并发数动态调整连接池参数
+// 根据隔离策略和提供商并发数动态调整连接池参数
 //
 // 参数:
 //   - isolation: 隔离模式
-//   - accountConcurrency: 账户并发限制
+//   - providerConcurrency: 提供商并发限制
 //
 // 返回:
 //   - poolSettings: 连接池配置
 //
 // 说明:
-//   - 账户隔离模式下，连接池大小与账户并发数对应
-//   - 这确保了单账户不会占用过多连接资源
-func (s *Client) resolvePoolSettings(isolation string, accountConcurrency int) poolSettings {
+//   - 提供商隔离模式下，连接池大小与提供商并发数对应
+//   - 这确保了单提供商不会占用过多连接资源
+func (s *Client) resolvePoolSettings(isolation string, providerConcurrency int) poolSettings {
 	settings := defaultPoolSettings(s.options())
-	// 账户隔离模式下，根据账户并发数调整连接池大小
-	if (isolation == "account" || isolation == "account_proxy") && accountConcurrency > 0 {
-		settings.MaxIdleConns = accountConcurrency
-		settings.MaxIdleConnsPerHost = accountConcurrency
-		settings.MaxConnsPerHost = accountConcurrency
+	// 提供商隔离模式下，根据提供商并发数调整连接池大小
+	if (isolation == "provider" || isolation == "provider_proxy") && providerConcurrency > 0 {
+		settings.MaxIdleConns = providerConcurrency
+		settings.MaxIdleConnsPerHost = providerConcurrency
+		settings.MaxConnsPerHost = providerConcurrency
 	}
 	return settings
 }
@@ -429,7 +429,7 @@ func (s *Client) options() *Options {
 }
 
 // transportOptions 将平台和配置转为一次执行使用的技术快照。
-func (s *Client) transportOptions(req *http.Request, proxyURL string, accountID int64, concurrency int, tlsProfile *tlsfingerprint.Profile) (httpclient.UpstreamRequestOptions, error) {
+func (s *Client) transportOptions(req *http.Request, proxyURL string, providerID int64, concurrency int, tlsProfile *tlsfingerprint.Profile) (httpclient.UpstreamRequestOptions, error) {
 	proxyKey, parsedProxy, err := normalizeProxyURL(proxyURL)
 	if err != nil {
 		return httpclient.UpstreamRequestOptions{}, err
@@ -454,7 +454,7 @@ func (s *Client) transportOptions(req *http.Request, proxyURL string, accountID 
 
 	opts := httpclient.UpstreamRequestOptions{
 		ProxyURL:   policy.ProxyURL,
-		AccountID:  accountID,
+		ProviderID: providerID,
 		Isolation:  isolation,
 		MaxClients: s.maxUpstreamClients(),
 		IdleTTL:    s.clientIdleTTL(),
@@ -483,12 +483,12 @@ func (s *Client) transportOptions(req *http.Request, proxyURL string, accountID 
 }
 
 // Do 保留请求 Header、目标验证与平台策略的执行顺序。
-func (s *Client) Do(req *http.Request, proxyURL string, accountID int64, concurrency int) (*http.Response, error) {
+func (s *Client) Do(req *http.Request, proxyURL string, providerID int64, concurrency int) (*http.Response, error) {
 	applyGrokCLIProxyHeaders(req)
 	if err := s.validateRequestHost(req); err != nil {
 		return nil, err
 	}
-	opts, err := s.transportOptions(req, proxyURL, accountID, concurrency, nil)
+	opts, err := s.transportOptions(req, proxyURL, providerID, concurrency, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -496,15 +496,15 @@ func (s *Client) Do(req *http.Request, proxyURL string, accountID int64, concurr
 }
 
 // DoWithTLS 保留 nil/明文 HTTP 回退，并将已选定的指纹交给通用池。
-func (s *Client) DoWithTLS(req *http.Request, proxyURL string, accountID int64, concurrency int, profile *tlsfingerprint.Profile) (*http.Response, error) {
+func (s *Client) DoWithTLS(req *http.Request, proxyURL string, providerID int64, concurrency int, profile *tlsfingerprint.Profile) (*http.Response, error) {
 	if profile == nil || (req != nil && req.URL != nil && strings.EqualFold(req.URL.Scheme, "http")) {
-		return s.Do(req, proxyURL, accountID, concurrency)
+		return s.Do(req, proxyURL, providerID, concurrency)
 	}
 	applyGrokCLIProxyHeaders(req)
 	if err := s.validateRequestHost(req); err != nil {
 		return nil, err
 	}
-	opts, err := s.transportOptions(req, proxyURL, accountID, concurrency, profile)
+	opts, err := s.transportOptions(req, proxyURL, providerID, concurrency, profile)
 	if err != nil {
 		return nil, err
 	}

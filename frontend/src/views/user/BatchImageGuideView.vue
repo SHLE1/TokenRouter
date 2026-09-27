@@ -776,7 +776,7 @@ import {
 import type { ApiKey } from '@/types'
 import type { Column } from '@/components/common/types'
 
-type BatchImageJobRow = Pick<BatchImageJob, 'id' | 'task_name' | 'parent_batch_id' | 'status' | 'model' | 'provider' | 'item_count' | 'success_count' | 'fail_count' | 'estimated_cost' | 'hold_amount' | 'actual_cost' | 'created_at' | 'downloaded_at'> & {
+type BatchImageJobRow = Pick<BatchImageJob, 'id' | 'task_name' | 'parent_batch_id' | 'status' | 'model' | 'platform' | 'item_count' | 'success_count' | 'fail_count' | 'estimated_cost' | 'hold_amount' | 'actual_cost' | 'created_at' | 'downloaded_at'> & {
   api_key_id: number
   api_key_name: string
   child_count: number
@@ -1352,7 +1352,7 @@ function toJobRow(job: BatchImageJob, key = selectedApiKey.value): BatchImageJob
     parent_batch_id: job.parent_batch_id || null,
     status: job.status,
     model: job.model,
-    provider: job.provider,
+    platform: job.platform,
     item_count: job.item_count,
     success_count: job.success_count,
     fail_count: job.fail_count,
@@ -1840,7 +1840,7 @@ async function retryFailedJob(job: BatchImageJobRow | BatchImageJob) {
         model: job.model,
         task_name: `${job.task_name || defaultTaskName()} ${t('batchImage.messages.retryTaskNameSuffix')}`,
         parent_batch_id: rootBatchIdForRetry(job),
-        provider: job.provider,
+        platform: job.platform,
         image_size: '1K',
         response_mime_type: form.responseMimeType,
         items: failedItems,
@@ -2451,7 +2451,7 @@ type BatchImageTextKey =
   | 'loadingModels'
   | 'noModels'
   | 'noModelsHint'
-  | 'noCompatibleAccount'
+  | 'noCompatibleProvider'
   | 'unsupportedProvider'
   | 'providerSubmitFailed'
   | 'vertexGcsBucketMissing'
@@ -2516,8 +2516,8 @@ function batchImageErrorMessage(error: any, fallback: string) {
   if (code === 'API_KEY_REQUIRED' || code === '401') {
     return batchImagePlainError(batchImageText('authRequired'))
   }
-  if (code === 'BATCH_IMAGE_NO_ACCOUNT_AVAILABLE' || /no compatible batch image account/i.test(message)) {
-    return batchImageAdminError(batchImageText('noCompatibleAccount'), error)
+  if (code === 'BATCH_IMAGE_NO_PROVIDER_AVAILABLE' || /no compatible batch image provider/i.test(message)) {
+    return batchImageAdminError(batchImageText('noCompatibleProvider'), error)
   }
   if (code === 'BATCH_IMAGE_UNSUPPORTED_PROVIDER' || /unsupported batch image provider/i.test(message)) {
     return batchImageAdminError(batchImageText('unsupportedProvider'), error)
@@ -2528,8 +2528,8 @@ function batchImageErrorMessage(error: any, fallback: string) {
   if (
     code === 'BATCH_IMAGE_PROVIDER_SUBMIT_FAILED' ||
     code === 'BATCH_IMAGE_PROVIDER_MISSING_API_KEY' ||
-    code === 'BATCH_IMAGE_PROVIDER_MISSING_SERVICE_ACCOUNT' ||
-    code === 'BATCH_IMAGE_PROVIDER_UNSUPPORTED_ACCOUNT'
+    code === 'BATCH_IMAGE_PROVIDER_MISSING_SERVICE_PROVIDER' ||
+    code === 'BATCH_IMAGE_PROVIDER_UNSUPPORTED_PROVIDER'
   ) {
     return batchImageAdminError(batchImageText('providerSubmitFailed'), error)
   }

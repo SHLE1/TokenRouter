@@ -3,22 +3,22 @@ package googleforward
 import (
 	"net/http"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 	"github.com/TokenFlux/TokenRouter/internal/ops"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/antigravity"
 )
 
-// 投影当前尝试，复用账号探测和转发共享的重试实例。
+// 投影当前尝试，复用提供商探测和转发共享的重试实例。
 func (s *Antigravity) antigravityRetryAdapter(p antigravityRetryLoopParams) (*antigravity.RetryAdapter, antigravity.RetryInput) {
-	value := gatewayprovider.ExecutionRecord(p.account)
+	value := gatewayprovider.ExecutionRecord(p.provider)
 	factory := s.Retry
-	return factory.Bind(accountprovider.AntigravityRetryRequest{
+	return factory.Bind(provideradapter.AntigravityRetryRequest{
 		Context:             p.ctx,
-		Account:             value,
-		ModelStore:          p.accountRepo,
+		Provider:            value,
+		ModelStore:          p.providerRepo,
 		Prefix:              p.prefix,
 		ProxyURL:            p.proxyURL,
 		AccessToken:         p.accessToken,
@@ -26,15 +26,15 @@ func (s *Antigravity) antigravityRetryAdapter(p antigravityRetryLoopParams) (*an
 		Body:                p.body,
 		RequestedModel:      p.requestedModel,
 		Thinking:            requeststate.HealthThinking(p.ctx),
-		SingleAccount:       isSingleAccountRetry(p.ctx),
+		SingleProvider:      isSingleProviderRetry(p.ctx),
 		Sticky:              p.isStickySession,
 		UserAgent:           p.userAgent,
 		PolicyModelFallback: requeststate.HealthModel(p.ctx, nil),
 
 		Do: func(req *http.Request) (*http.Response, error) {
 			// 原传输/测试端口可发布本次请求的新窗口；在下一次签名恢复前同步显式尝试视图。
-			resp, err := p.httpUpstream.Do(req, p.proxyURL, p.account.Record.ID, p.account.Record.Concurrency)
-			value.Extra = gatewayprovider.ExecutionRecord(p.account).Extra
+			resp, err := p.httpUpstream.Do(req, p.proxyURL, p.provider.Record.ID, p.provider.Record.Concurrency)
+			value.Extra = gatewayprovider.ExecutionRecord(p.provider).Extra
 			return resp, err
 		},
 
@@ -45,13 +45,13 @@ func (s *Antigravity) antigravityRetryAdapter(p antigravityRetryLoopParams) (*an
 			return s.Options.LogErrorBody, s.Options.LogErrorBodyMaxBytes
 		},
 
-		Changed: func(record *accountcore.Record) { p.account.Record.Extra = record.Extra },
+		Changed: func(record *providercore.Record) { p.provider.Record.Extra = record.Extra },
 
 		Observe: func(o antigravity.RetryObservation) {
 			p.c.Observe(ops.OpsUpstreamErrorEvent{
-				Platform:           p.account.Record.Platform,
-				AccountID:          o.AccountID,
-				AccountName:        o.AccountName,
+				Platform:           p.provider.Record.Platform,
+				ProviderID:         o.ProviderID,
+				ProviderName:       o.ProviderName,
 				UpstreamStatusCode: o.UpstreamStatusCode,
 				UpstreamRequestID:  o.UpstreamRequestID,
 				UpstreamURL:        o.UpstreamURL,
@@ -66,8 +66,8 @@ func (s *Antigravity) antigravityRetryAdapter(p antigravityRetryLoopParams) (*an
 		},
 
 		HandleError: func(status int, header http.Header, body []byte) {
-			p.handleError(p.ctx, p.prefix, p.account, status, header, body, p.requestedModel, p.groupID, p.sessionHash, p.isStickySession)
-			value.Extra = p.account.Record.Extra
+			p.handleError(p.ctx, p.prefix, p.provider, status, header, body, p.requestedModel, p.groupID, p.sessionHash, p.isStickySession)
+			value.Extra = p.provider.Record.Extra
 		},
 
 		ClearSticky: func() { s.clearStickySession(p.ctx, p.groupID, p.sessionHash) },

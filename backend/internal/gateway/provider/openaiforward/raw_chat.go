@@ -1,4 +1,4 @@
-// 原生 Chat 编排仅拥有当次准备、发送和响应读取，不增加账号切换。
+// 原生 Chat 编排仅拥有当次准备、发送和响应读取，不增加提供商切换。
 package openaiforward
 
 import (
@@ -74,7 +74,7 @@ func RunRawChat(ctx context.Context, body []byte, defaultMappedModel string, p R
 		return nil, err
 	}
 	if strings.TrimSpace(token) == "" {
-		return nil, fmt.Errorf("account %d missing %s credential", profile.ID, tokenKind)
+		return nil, fmt.Errorf("provider %d missing %s credential", profile.ID, tokenKind)
 	}
 
 	var bridgeUsage protocolopenai.ForwardUsage
@@ -109,7 +109,7 @@ func RunRawChat(ctx context.Context, body []byte, defaultMappedModel string, p R
 	upstreamBody = p.OllamaBody(upstreamBody)
 
 	p.Debug("openai chat_completions raw: forwarding without protocol conversion",
-		zap.Int64("account_id", profile.ID),
+		zap.Int64("provider_id", profile.ID),
 		zap.String("original_model", originalModel),
 		zap.String("billing_model", billingModel),
 		zap.String("upstream_model", upstreamModel),

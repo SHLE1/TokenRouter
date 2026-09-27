@@ -2,11 +2,11 @@
 package app
 
 import (
-	"github.com/TokenFlux/TokenRouter/internal/account"
-	"github.com/TokenFlux/TokenRouter/internal/account/rediscache"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
+	"github.com/TokenFlux/TokenRouter/internal/provider/rediscache"
 	"github.com/redis/go-redis/v9"
 )
 
-func provideOAuthTokenCache(rdb *redis.Client) account.AccessTokenCache {
+func provideOAuthTokenCache(rdb *redis.Client) provider.AccessTokenCache {
 	return rediscache.NewOAuthTokenCache(rdb)
 }

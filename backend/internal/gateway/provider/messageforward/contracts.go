@@ -33,7 +33,7 @@ type Options struct {
 	URLValidation        egress.ValidationOptions
 }
 
-// AttemptState 只属于一次准备与响应转换，不能放入账号或跨请求缓存。
+// AttemptState 只属于一次准备与响应转换，不能放入提供商或跨请求缓存。
 // BetaEvaluated 区分尚未查询和已经得到空过滤集，保持 Messages 与 count 的读取差异。
 type AttemptState struct {
 	BetaEvaluated bool

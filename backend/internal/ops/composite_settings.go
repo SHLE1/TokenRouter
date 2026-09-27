@@ -24,37 +24,37 @@ func PrepareMonitoringSettings(v CompositeMonitoringSettings) map[string]string 
 }
 
 // MergeQuotaAutoPauseSettings 是共享 Ops JSON 的唯一合并边界，不覆盖其它高级设置。
-func MergeQuotaAutoPauseSettings(raw string, quota OpsOpenAIAccountQuotaAutoPauseSettings) (*OpsAdvancedSettings, error) {
+func MergeQuotaAutoPauseSettings(raw string, quota OpsOpenAIProviderQuotaAutoPauseSettings) (*OpsAdvancedSettings, error) {
 	value := defaultOpsAdvancedSettings()
 	if strings.TrimSpace(raw) != "" {
 		if err := json.Unmarshal([]byte(raw), value); err != nil {
 			return nil, fmt.Errorf("unmarshal ops advanced settings: %w", err)
 		}
 	}
-	value.OpenAIAccountQuotaAutoPause = quota
+	value.OpenAIProviderQuotaAutoPause = quota
 	normalizeOpsAdvancedSettings(value)
 	return value, nil
 }
 
-// ParseQuotaAutoPauseSettings 只读取本模块 JSON 中的账号只读投影。
-func ParseQuotaAutoPauseSettings(raw string) OpsOpenAIAccountQuotaAutoPauseSettings {
+// ParseQuotaAutoPauseSettings 只读取本模块 JSON 中的提供商只读投影。
+func ParseQuotaAutoPauseSettings(raw string) OpsOpenAIProviderQuotaAutoPauseSettings {
 	cfg := defaultOpsAdvancedSettings()
 	if strings.TrimSpace(raw) != "" {
 		if err := json.Unmarshal([]byte(raw), cfg); err != nil {
-			return OpsOpenAIAccountQuotaAutoPauseSettings{}
+			return OpsOpenAIProviderQuotaAutoPauseSettings{}
 		}
 	}
 	normalizeOpsAdvancedSettings(cfg)
-	return cfg.OpenAIAccountQuotaAutoPause
+	return cfg.OpenAIProviderQuotaAutoPause
 }
 
 // ParseRuntimeQuotaAutoPauseSettings 保留运行缓存与管理回显对坏 JSON 的原有差异。
-func ParseRuntimeQuotaAutoPauseSettings(raw string) OpsOpenAIAccountQuotaAutoPauseSettings {
+func ParseRuntimeQuotaAutoPauseSettings(raw string) OpsOpenAIProviderQuotaAutoPauseSettings {
 	cfg := defaultOpsAdvancedSettings()
 	if strings.TrimSpace(raw) != "" {
 		if jsonErr := json.Unmarshal([]byte(raw), cfg); jsonErr == nil {
 			normalizeOpsAdvancedSettings(cfg)
 		}
 	}
-	return cfg.OpenAIAccountQuotaAutoPause
+	return cfg.OpenAIProviderQuotaAutoPause
 }

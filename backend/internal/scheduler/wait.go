@@ -5,12 +5,12 @@ import (
 	"time"
 )
 
-// WaitCounters 仅操作原有用户及账号计数，不承担槽位或资金校验。
+// WaitCounters 仅操作原有用户及提供商计数，不承担槽位或资金校验。
 type WaitCounters interface {
 	IncrementWaitCount(context.Context, int64, int) (bool, error)
 	DecrementWaitCount(context.Context, int64) error
-	IncrementAccountWaitCount(context.Context, int64, int) (bool, error)
-	DecrementAccountWaitCount(context.Context, int64) error
+	IncrementProviderWaitCount(context.Context, int64, int) (bool, error)
+	DecrementProviderWaitCount(context.Context, int64) error
 }
 
 // WaitOwnership 区分未写入、确认取得和写入结果不明；只有确认取得才拥有补偿责任。
@@ -39,12 +39,12 @@ func EnterUserWait(ctx context.Context, cache WaitCounters, id int64, maxWait in
 	return enterWait(ctx, id, maxWait, "user", cache.IncrementWaitCount, cache.DecrementWaitCount, diagnostics)
 }
 
-// EnterAccountWait 保持原账号等待上限和故障放行，不释放别的请求取得的计数。
-func EnterAccountWait(ctx context.Context, cache WaitCounters, id int64, maxWait int, diagnostics Diagnostics) (WaitResult, error) {
+// EnterProviderWait 保持原提供商等待上限和故障放行，不释放别的请求取得的计数。
+func EnterProviderWait(ctx context.Context, cache WaitCounters, id int64, maxWait int, diagnostics Diagnostics) (WaitResult, error) {
 	if cache == nil {
 		return WaitResult{Allowed: true}, nil
 	}
-	return enterWait(ctx, id, maxWait, "account", cache.IncrementAccountWaitCount, cache.DecrementAccountWaitCount, diagnostics)
+	return enterWait(ctx, id, maxWait, "provider", cache.IncrementProviderWaitCount, cache.DecrementProviderWaitCount, diagnostics)
 }
 
 func enterWait(ctx context.Context, id int64, maxWait int, kind string, increment func(context.Context, int64, int) (bool, error), decrement func(context.Context, int64) error, diagnostics Diagnostics) (WaitResult, error) {

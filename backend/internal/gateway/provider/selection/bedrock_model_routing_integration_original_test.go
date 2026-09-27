@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	logging "github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	scheduler "github.com/TokenFlux/TokenRouter/internal/scheduler"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing"
@@ -18,11 +18,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// newBedrockRoutingTestAccount 使用虚构凭据构造可调度账号，测试不会访问真实 AWS。
-func newBedrockRoutingTestAccount(id int64, region string, forceGlobal bool) gatewayprovider.ExecutionAccount {
-	account := gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
-			LoadLocation: time.LoadLocation, ID: id, Platform: capability.PlatformAnthropic, Type: capability.AccountTypeBedrock,
+// newBedrockRoutingTestProvider 使用虚构凭据构造可调度提供商，测试不会访问真实 AWS。
+func newBedrockRoutingTestProvider(id int64, region string, forceGlobal bool) gatewayprovider.ExecutionProvider {
+	provider := gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: id, Platform: capability.PlatformAnthropic, Type: capability.ProviderTypeBedrock,
 			Status: billing.StatusActive, Schedulable: true, Concurrency: 5, Priority: int(id),
 			Credentials: map[string]any{
 				"aws_region": region, "auth_mode": "sigv4",
@@ -31,45 +31,45 @@ func newBedrockRoutingTestAccount(id int64, region string, forceGlobal bool) gat
 		},
 	}
 	if forceGlobal {
-		account.Record.Credentials["aws_force_global"] = "true"
+		provider.Record.Credentials["aws_force_global"] = "true"
 	}
-	return account
+	return provider
 }
 
 // 正式转发与管理员测试必须使用相同 ID；全局推理不改变来源端点和 SigV4 签名范围。
 
-// 无有效路由时不调用上游或写账号状态，管理员仅在确有全局能力时收到开启提示。
+// 无有效路由时不调用上游或写提供商状态，管理员仅在确有全局能力时收到开启提示。
 
-// 地域不支持的粘性账号必须被跳过，账号筛选和错误诊断应使用相同的区域规则。
+// 地域不支持的粘性提供商必须被跳过，提供商筛选和错误诊断应使用相同的区域规则。
 func TestBedrockRegionRouting_SchedulerAndDiagnosisAgree(t *testing.T) {
 	groupID := int64(5200)
-	invalid := newBedrockRoutingTestAccount(1, "ap-northeast-1", false)
-	valid := newBedrockRoutingTestAccount(2, "us-east-1", false)
+	invalid := newBedrockRoutingTestProvider(1, "ap-northeast-1", false)
+	valid := newBedrockRoutingTestProvider(2, "us-east-1", false)
 	for _, loadBatchEnabled := range []bool{false, true} {
 		for _, withValid := range []bool{false, true} {
 			name := "全部无效"
 			if withValid {
-				name = "存在有效账号"
+				name = "存在有效提供商"
 			}
 			if loadBatchEnabled {
 				name += "批量负载"
 			}
 			t.Run(name, func(t *testing.T) {
-				accounts := []gatewayprovider.ExecutionAccount{invalid}
+				providers := []gatewayprovider.ExecutionProvider{invalid}
 				if withValid {
-					accounts = append(accounts, valid)
+					providers = append(providers, valid)
 				}
-				repo := &mockAccountRepoForPlatform{accounts: accounts, accountsByID: map[int64]*gatewayprovider.ExecutionAccount{}}
-				for i := range repo.accounts {
-					repo.accounts[i].Record.AccountGroups = []accountcore.GroupMembership{{AccountID: repo.accounts[i].Record.ID, GroupID: groupID}}
-					repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
+				repo := &mockProviderRepoForPlatform{providers: providers, providersByID: map[int64]*gatewayprovider.ExecutionProvider{}}
+				for i := range repo.providers {
+					repo.providers[i].Record.ProviderGroups = []providercore.GroupMembership{{ProviderID: repo.providers[i].Record.ID, GroupID: groupID}}
+					repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 				}
 				group := &routing.Group{ID: groupID, Status: billing.StatusActive, Hydrated: true}
 				cfg := testConfig()
 				cfg.Gateway.Scheduling.LoadBatchEnabled = loadBatchEnabled
 				gateway := newGenericSelectionForTest(GenericDependencies{
 					Reads: Reads{
-						Accounts: repo,
+						Providers: repo,
 
 						Groups: &mockGroupRepoForGateway{groups: map[int64]*routing.Group{groupID: group}},
 					},
@@ -80,12 +80,12 @@ func TestBedrockRegionRouting_SchedulerAndDiagnosisAgree(t *testing.T) {
 				}, cfg)
 
 				diagnosis := gatewayprovider.NewModelAvailability(selectionAvailabilityFixture{repo}, nil, false, false).DiagnoseGeneral(context.Background(), &groupID, "claude-sonnet-5", capability.PlatformAnthropic)
-				require.True(t, diagnosis.HasAccountsInPool)
+				require.True(t, diagnosis.HasProvidersInPool)
 				require.Equal(t, withValid, diagnosis.HasModelSupport)
-				selected, err := gateway.SelectAccountWithLoadAwareness(context.Background(), &groupID, "sticky", "claude-sonnet-5", nil, "", 0)
+				selected, err := gateway.SelectProviderWithLoadAwareness(context.Background(), &groupID, "sticky", "claude-sonnet-5", nil, "", 0)
 				if withValid {
 					require.NoError(t, err)
-					require.Equal(t, valid.Record.ID, selected.Account.Record.ID)
+					require.Equal(t, valid.Record.ID, selected.Provider.Record.ID)
 					if selected.ReleaseFunc != nil {
 						selected.ReleaseFunc()
 					}
@@ -102,20 +102,20 @@ func TestBedrockRegionRouting_SchedulerAndDiagnosisAgree(t *testing.T) {
 
 // bedrockMarketplaceGroups 仅提供区域路由回归所需的分组数据。
 
-func (m *mockAccountRepoForPlatform) availabilityRecords(_ context.Context, groupID *int64, platforms []string, includeGrouped bool) ([]gatewayprovider.ExecutionAccount, error) {
+func (m *mockProviderRepoForPlatform) availabilityRecords(_ context.Context, groupID *int64, platforms []string, includeGrouped bool) ([]gatewayprovider.ExecutionProvider, error) {
 	platformSet := make(map[string]struct{}, len(platforms))
 	for _, platform := range platforms {
 		platformSet[platform] = struct{}{}
 	}
-	result := make([]gatewayprovider.ExecutionAccount, 0, len(m.accounts))
-	for _, acc := range m.accounts {
+	result := make([]gatewayprovider.ExecutionProvider, 0, len(m.providers))
+	for _, acc := range m.providers {
 		if _, ok := platformSet[acc.Record.Platform]; !ok || acc.Record.Status != billing.StatusActive || !acc.Record.Schedulable {
 			continue
 		}
 		if groupID != nil {
 			inGroup := false
-			for _, accountGroup := range acc.Record.AccountGroups {
-				if accountGroup.GroupID == *groupID {
+			for _, providerGroup := range acc.Record.ProviderGroups {
+				if providerGroup.GroupID == *groupID {
 					inGroup = true
 					break
 				}
@@ -123,7 +123,7 @@ func (m *mockAccountRepoForPlatform) availabilityRecords(_ context.Context, grou
 			if !inGroup {
 				continue
 			}
-		} else if !includeGrouped && (len(acc.Record.AccountGroups) > 0 || len(acc.Record.GroupIDs) > 0) {
+		} else if !includeGrouped && (len(acc.Record.ProviderGroups) > 0 || len(acc.Record.GroupIDs) > 0) {
 			continue
 		}
 		result = append(result, acc)
@@ -132,11 +132,11 @@ func (m *mockAccountRepoForPlatform) availabilityRecords(_ context.Context, grou
 }
 
 // selectionAvailabilityFixture 保留原候选查询过滤，只投影诊断需要的记录。
-type selectionAvailabilityFixture struct{ *mockAccountRepoForPlatform }
+type selectionAvailabilityFixture struct{ *mockProviderRepoForPlatform }
 
-func (s selectionAvailabilityFixture) ListModelAvailabilityCandidates(ctx context.Context, group *int64, platforms []string, all bool) ([]accountcore.Record, error) {
+func (s selectionAvailabilityFixture) ListModelAvailabilityCandidates(ctx context.Context, group *int64, platforms []string, all bool) ([]providercore.Record, error) {
 	values, err := s.availabilityRecords(ctx, group, platforms, all)
-	out := make([]accountcore.Record, len(values))
+	out := make([]providercore.Record, len(values))
 	for i := range values {
 		out[i] = values[i].Record
 	}

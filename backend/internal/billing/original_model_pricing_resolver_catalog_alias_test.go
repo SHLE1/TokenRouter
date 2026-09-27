@@ -9,7 +9,7 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
-	"github.com/TokenFlux/TokenRouter/internal/billing/provider"
+	billingadapter "github.com/TokenFlux/TokenRouter/internal/billing/provider"
 	"github.com/TokenFlux/TokenRouter/internal/config"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
@@ -40,8 +40,8 @@ func TestResolveCatalogAliasesPreserveConfigPricing(t *testing.T) {
 					Models: []string{tc.base}, BillingMode: routing.BillingModeToken, InputPrice: &pricingConfigPrice,
 				}}}
 				repository := &routingtestkit.ConfigRows{Values: []routingtestkit.Configuration{configPricing}, Platforms: map[int64]string{groupID: tc.platform}}
-				pricingConfigs := routingtestkit.NewPricingConfigService(repository, nil, routing.PricingConfigOptions{Now: time.Now, LoadLocation: provider.LoadPricingLocation})
-				var catalog *provider.PricingService
+				pricingConfigs := routingtestkit.NewPricingConfigService(repository, nil, routing.PricingConfigOptions{Now: time.Now, LoadLocation: billingadapter.LoadPricingLocation})
+				var catalog *billingadapter.PricingService
 				if hasCatalog {
 					catalog = newCatalogFixture(catalogFixture{pricingData: map[string]*pricing.LiteLLMModelPricing{
 						tc.base: {Mode: "chat", InputCostPerToken: 1e-6, OutputCostPerToken: 2e-6},
@@ -74,7 +74,7 @@ func TestResolveCatalogAliasesPreserveConfigPricing(t *testing.T) {
 	}
 }
 
-// 同一共享价表中的基础模型价可用于对应别名，账号平台不形成额外价格边界。
+// 同一共享价表中的基础模型价可用于对应别名，提供商平台不形成额外价格边界。
 func TestResolveCatalogAliasesUseUnifiedPricingConfig(t *testing.T) {
 	groupID := int64(999)
 	price := 9e-6
@@ -109,7 +109,7 @@ func TestGroupAndPricingCatalogAliasPrecedence(t *testing.T) {
 				group := &routing.Group{ID: 990}
 
 				repository := &routingtestkit.ConfigRows{Platforms: map[int64]string{group.ID: tc.platform}}
-				pricingConfigs := routingtestkit.NewPricingConfigService(repository, nil, routing.PricingConfigOptions{Now: time.Now, LoadLocation: provider.LoadPricingLocation})
+				pricingConfigs := routingtestkit.NewPricingConfigService(repository, nil, routing.PricingConfigOptions{Now: time.Now, LoadLocation: billingadapter.LoadPricingLocation})
 				resolver := billingtestkit.PriceResolver(pricingConfigs, newCalculator(&config.Config{}, nil))
 				resolve := func(cards []routing.ModelPricingEntry) *pricing.ResolvedPricing {
 					configPricing := routingtestkit.Configuration{ID: 990, Status: billing.StatusActive, GroupIDs: []int64{group.ID}}

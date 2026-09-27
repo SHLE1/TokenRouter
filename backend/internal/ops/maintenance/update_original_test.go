@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/ops/provider"
+	opsadapter "github.com/TokenFlux/TokenRouter/internal/ops/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/ops"
 	"github.com/TokenFlux/TokenRouter/internal/ops/maintenance"
@@ -125,5 +125,5 @@ func TestUpdateServiceRollbackToVersionAcceptsVPrefix(t *testing.T) {
 
 // newOriginalMaintenanceUpdate 只装配原发布查询与安装器，拒绝路径仍运行真实维护规则。
 func newOriginalMaintenanceUpdate(cache ops.UpdateCache, client *updateServiceGitHubClientStub, version, buildType string) *maintenance.UpdateService {
-	return maintenance.NewUpdateService(ops.NewReleaseQuery(cache, client, version, buildType), provider.NewBinaryInstaller(client, nil))
+	return maintenance.NewUpdateService(ops.NewReleaseQuery(cache, client, version, buildType), opsadapter.NewBinaryInstaller(client, nil))
 }

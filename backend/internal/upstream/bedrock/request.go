@@ -21,18 +21,18 @@ const FeatureKeyBedrockCCCompat = "bedrock_cc_compat"
 
 var BedrockCrossRegionPrefixes = []string{"us.", "eu.", "apac.", "jp.", "au.", "us-gov.", "global."}
 
-func BedrockRuntimeRegion(account *RouteInput) string {
-	if account == nil {
+func BedrockRuntimeRegion(provider *RouteInput) string {
+	if provider == nil {
 		return DefaultBedrockRegion
 	}
-	if region := strings.TrimSpace(account.Region); region != "" {
+	if region := strings.TrimSpace(provider.Region); region != "" {
 		return region
 	}
 	return DefaultBedrockRegion
 }
 
-func ShouldForceBedrockGlobal(account *RouteInput) bool {
-	return account != nil && account.ForceGlobal
+func ShouldForceBedrockGlobal(provider *RouteInput) bool {
+	return provider != nil && provider.ForceGlobal
 }
 
 func IsRegionalBedrockModelID(modelID string) bool {
@@ -72,8 +72,8 @@ func IsLikelyBedrockModelID(modelID string) bool {
 }
 
 // ResolveBedrockModelID 为调度与模型目录提供同一条区域解析边界。
-func ResolveBedrockModelID(account *RouteInput, requestedModel string) (string, bool) {
-	route, err := ResolveBedrockModelRoute(account, requestedModel)
+func ResolveBedrockModelID(provider *RouteInput, requestedModel string) (string, bool) {
+	route, err := ResolveBedrockModelRoute(provider, requestedModel)
 	return route.ModelID, err == nil
 }
 

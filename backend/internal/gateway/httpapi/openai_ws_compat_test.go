@@ -56,6 +56,7 @@ func (c *openAIWSPolicyEnforcingFrameConn) runtime() gatewayws.FrameConn {
 	})
 	return c.core
 }
+
 func (c *openAIWSPolicyEnforcingFrameConn) ReadFrame(ctx context.Context) (coderws.MessageType, []byte, error) {
 	if c == nil || c.inner == nil {
 		return coderws.MessageText, nil, upstreamopenai.ErrWSConnClosed
@@ -63,12 +64,14 @@ func (c *openAIWSPolicyEnforcingFrameConn) ReadFrame(ctx context.Context) (coder
 	typ, body, err := c.runtime().ReadFrame(ctx)
 	return coderws.MessageType(typ), body, err
 }
+
 func (c *openAIWSPolicyEnforcingFrameConn) WriteFrame(ctx context.Context, typ coderws.MessageType, body []byte) error {
 	if c == nil || c.inner == nil {
 		return upstreamopenai.ErrWSConnClosed
 	}
 	return c.runtime().WriteFrame(ctx, int(typ), body)
 }
+
 func (c *openAIWSPolicyEnforcingFrameConn) Close() error {
 	if c == nil || c.inner == nil {
 		return nil
@@ -86,6 +89,7 @@ func (c *openAIWSClientFrameConn) markTurnStarted() {
 		gatewayws.TurnActivity{Waiting: &c.waitingForNextTurn, Started: c.interTurnStarted}.MarkStarted()
 	}
 }
+
 func (c *openAIWSClientFrameConn) markTurnCompleted() {
 	if c != nil {
 		gatewayws.TurnActivity{Waiting: &c.waitingForNextTurn, Started: c.interTurnStarted}.MarkCompleted()
@@ -95,20 +99,20 @@ func (c *openAIWSClientFrameConn) markTurnCompleted() {
 // openAIWSPassthroughPolicyModelForFrame returns the upstream-perspective
 // model name that should be passed to evaluateOpenAIFastPolicy for a single
 // passthrough WS frame. Mirrors the HTTP-side normalization
-// (account.GetMappedModel + normalizeOpenAIModelForUpstream) so the WS path
+// (provider.GetMappedModel + normalizeOpenAIModelForUpstream) so the WS path
 // matches model whitelists identically.
-func openAIWSPassthroughPolicyModelForFrame(account *gatewayprovider.ExecutionAccount, payload []byte) string {
-	if account == nil || len(payload) == 0 {
+func openAIWSPassthroughPolicyModelForFrame(provider *gatewayprovider.ExecutionProvider, payload []byte) string {
+	if provider == nil || len(payload) == 0 {
 		return ""
 	}
 	original := strings.TrimSpace(gjson.GetBytes(payload, "model").String())
 	if original == "" {
 		return ""
 	}
-	if account.View().IsOpenAIPassthroughEnabled() {
+	if provider.View().IsOpenAIPassthroughEnabled() {
 		return original
 	}
-	return gatewayprovider.ExecutionModelPolicy(account).NormalizeOpenAI(gatewayprovider.ExecutionModelPolicy(account).Mapped(original))
+	return gatewayprovider.ExecutionModelPolicy(provider).NormalizeOpenAI(gatewayprovider.ExecutionModelPolicy(provider).Mapped(original))
 }
 
 // openAIWSPassthroughPolicyModelFromSessionFrame returns the upstream model
@@ -128,8 +132,8 @@ func openAIWSPassthroughPolicyModelForFrame(account *gatewayprovider.ExecutionAc
 // session.update to gpt-5.5, then send response.create without "model" so
 // the per-frame resolver returns "" and the stale capturedSessionModel falls
 // back to gpt-4o — defeating the gpt-5.5 fast-policy filter.
-func openAIWSPassthroughPolicyModelFromSessionFrame(account *gatewayprovider.ExecutionAccount, payload []byte) string {
-	if account == nil || len(payload) == 0 {
+func openAIWSPassthroughPolicyModelFromSessionFrame(provider *gatewayprovider.ExecutionProvider, payload []byte) string {
+	if provider == nil || len(payload) == 0 {
 		return ""
 	}
 	frameType := strings.TrimSpace(gjson.GetBytes(payload, "type").String())
@@ -140,10 +144,10 @@ func openAIWSPassthroughPolicyModelFromSessionFrame(account *gatewayprovider.Exe
 	if original == "" {
 		return ""
 	}
-	if account.View().IsOpenAIPassthroughEnabled() {
+	if provider.View().IsOpenAIPassthroughEnabled() {
 		return original
 	}
-	return gatewayprovider.ExecutionModelPolicy(account).NormalizeOpenAI(gatewayprovider.ExecutionModelPolicy(account).Mapped(original))
+	return gatewayprovider.ExecutionModelPolicy(provider).NormalizeOpenAI(gatewayprovider.ExecutionModelPolicy(provider).Mapped(original))
 }
 
 // 旧方法名仅委托原子会话元数据，不保留另一份状态。
@@ -157,6 +161,7 @@ func newOpenAIWSPassthroughUsageMeta(model string, body []byte) *openAIWSPassthr
 	meta := gatewayws.NewUsageMeta(model, body, gatewayws.RequestUsageDecoder{})
 	return &openAIWSPassthroughUsageMeta{UsageMeta: meta, reasoningEffort: &meta.ReasoningEffort}
 }
+
 func (m *openAIWSPassthroughUsageMeta) initFromFirstFrame(body []byte, model string) {
 	if m != nil {
 		m.InitFromFirstFrame(body, model)
@@ -181,6 +186,7 @@ type openAIWSPassthroughTurnLifecycle struct{ *gatewayws.TurnLifecycle }
 func newOpenAIWSPassthroughTurnLifecycle(inFlight bool) *openAIWSPassthroughTurnLifecycle {
 	return &openAIWSPassthroughTurnLifecycle{gatewayws.NewTurnLifecycle(inFlight)}
 }
+
 func (l *openAIWSPassthroughTurnLifecycle) beginResponseCreate(fn func()) bool {
 	if l == nil {
 		return false
@@ -193,6 +199,7 @@ func (l *openAIWSPassthroughTurnLifecycle) beginTerminalWrite() {
 		l.BeginTerminalWrite()
 	}
 }
+
 func (l *openAIWSPassthroughTurnLifecycle) finishTerminalWrite(ok bool, fn func()) {
 	if l != nil {
 		l.FinishTerminalWrite(ok, fn)

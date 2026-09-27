@@ -14,10 +14,10 @@ import (
 )
 
 type proxyRepoStub struct {
-	deleteErr    error
-	countErr     error
-	accountCount int64
-	deletedIDs   []int64
+	deleteErr     error
+	countErr      error
+	providerCount int64
+	deletedIDs    []int64
 }
 
 func (s *proxyRepoStub) Create(ctx context.Context, proxy *egress.Proxy) error {
@@ -53,27 +53,27 @@ func (s *proxyRepoStub) ListActive(ctx context.Context) ([]egress.Proxy, error) 
 	panic("unexpected ListActive call")
 }
 
-func (s *proxyRepoStub) ListActiveWithAccountCount(ctx context.Context) ([]egress.ProxyWithAccountCount, error) {
-	panic("unexpected ListActiveWithAccountCount call")
+func (s *proxyRepoStub) ListActiveWithProviderCount(ctx context.Context) ([]egress.ProxyWithProviderCount, error) {
+	panic("unexpected ListActiveWithProviderCount call")
 }
 
-func (s *proxyRepoStub) ListWithFiltersAndAccountCount(ctx context.Context, params pagination.PaginationParams, protocol, status, search string) ([]egress.ProxyWithAccountCount, *pagination.PaginationResult, error) {
-	panic("unexpected ListWithFiltersAndAccountCount call")
+func (s *proxyRepoStub) ListWithFiltersAndProviderCount(ctx context.Context, params pagination.PaginationParams, protocol, status, search string) ([]egress.ProxyWithProviderCount, *pagination.PaginationResult, error) {
+	panic("unexpected ListWithFiltersAndProviderCount call")
 }
 
 func (s *proxyRepoStub) ExistsByHostPortAuth(ctx context.Context, host string, port int, username, password string) (bool, error) {
 	panic("unexpected ExistsByHostPortAuth call")
 }
 
-func (s *proxyRepoStub) CountAccountsByProxyID(ctx context.Context, proxyID int64) (int64, error) {
+func (s *proxyRepoStub) CountProvidersByProxyID(ctx context.Context, proxyID int64) (int64, error) {
 	if s.countErr != nil {
 		return 0, s.countErr
 	}
-	return s.accountCount, nil
+	return s.providerCount, nil
 }
 
-func (s *proxyRepoStub) ListAccountSummariesByProxyID(ctx context.Context, proxyID int64) ([]egress.ProxyAccountSummary, error) {
-	panic("unexpected ListAccountSummariesByProxyID call")
+func (s *proxyRepoStub) ListProviderSummariesByProxyID(ctx context.Context, proxyID int64) ([]egress.ProxyProviderSummary, error) {
+	panic("unexpected ListProviderSummariesByProxyID call")
 }
 
 func (s *proxyRepoStub) SweepExpiredProxies(_ context.Context, _ time.Time) (int64, error) {
@@ -111,7 +111,7 @@ func TestAdminService_DeleteProxy_Idempotent(t *testing.T) {
 }
 
 func TestAdminService_DeleteProxy_InUse(t *testing.T) {
-	repo := &proxyRepoStub{accountCount: 2}
+	repo := &proxyRepoStub{providerCount: 2}
 	svc := egress.NewProxyAdmin(repo, nil, nil, nil, egress.ProxyAdminOptions{})
 
 	err := svc.DeleteProxy(context.Background(), 77)

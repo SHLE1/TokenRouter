@@ -12,9 +12,9 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
@@ -22,10 +22,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 三种客户端协议在实际账号确定后、请求上游前执行该账号平台的拒绝策略。
+// 三种客户端协议在实际提供商确定后、请求上游前执行该提供商平台的拒绝策略。
 func TestAnthropicReasoningPolicy_AllEntrypointsDeny(t *testing.T) {
 	executor := &gatewayhttp.UnifiedTextExecutor{}
-	target := provider.NewExecutionAccount(&account.Record{ID: 1, Platform: "anthropic", Type: "apikey"})
+	target := gatewayadapter.NewExecutionProvider(&provider.Record{ID: 1, Platform: "anthropic", Type: "apikey"})
 	for _, tc := range []struct {
 		path, field string
 		handle      func(*gin.Context)

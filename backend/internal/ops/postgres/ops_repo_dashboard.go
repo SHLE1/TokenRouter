@@ -1026,7 +1026,7 @@ func buildUsageWhere(filter *ops.OpsDashboardFilter, start, end time.Time, start
 		idx++
 	}
 	if platform != "" {
-		// 使用记录自身的平台快照，不依赖当前账号或分组状态。
+		// 使用记录自身的平台快照，不依赖当前提供商或分组状态。
 		args = append(args, platform)
 		clauses = append(clauses, fmt.Sprintf("ul.platform = $%d", idx))
 		idx++

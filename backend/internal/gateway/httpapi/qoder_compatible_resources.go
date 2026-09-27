@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway/completion"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
@@ -77,8 +77,8 @@ func qoderStickySessionHashFromSeed(seed string) string {
 	return gatewaysession.QoderHashFromSeed(seed)
 }
 
-func (h *QoderCompatibleRuntime) bindQoderStickySessions(ctx context.Context, groupID *int64, sessionHash string, accountID int64, endpoint QoderEndpoint, result *forwardcore.MessagesResult, reqLog *zap.Logger) {
-	if h == nil || h.options.Execution == nil || accountID <= 0 {
+func (h *QoderCompatibleRuntime) bindQoderStickySessions(ctx context.Context, groupID *int64, sessionHash string, providerID int64, endpoint QoderEndpoint, result *forwardcore.MessagesResult, reqLog *zap.Logger) {
+	if h == nil || h.options.Execution == nil || providerID <= 0 {
 		return
 	}
 	bindCtx, cancel := qoderDetachedTimeoutContext(ctx, 5*time.Second)
@@ -87,8 +87,8 @@ func (h *QoderCompatibleRuntime) bindQoderStickySessions(ctx context.Context, gr
 		if hash == "" {
 			return
 		}
-		if err := h.options.Execution.BindStickySession(bindCtx, groupID, hash, accountID); err != nil && reqLog != nil {
-			reqLog.Warn("qoder.bind_sticky_session_failed", zap.Int64("account_id", accountID), zap.Error(err))
+		if err := h.options.Execution.BindStickySession(bindCtx, groupID, hash, providerID); err != nil && reqLog != nil {
+			reqLog.Warn("qoder.bind_sticky_session_failed", zap.Int64("provider_id", providerID), zap.Error(err))
 		}
 	}
 	bind(sessionHash)
@@ -114,15 +114,15 @@ func prepareQoderRequestContext(c *gin.Context, body []byte, endpoint QoderEndpo
 	}
 }
 
-func (h *QoderCompatibleRuntime) shouldRefreshQoderAccount(err error, streamStarted bool) bool {
+func (h *QoderCompatibleRuntime) shouldRefreshQoderProvider(err error, streamStarted bool) bool {
 	if h == nil || !h.options.PlatformAvailable || streamStarted {
 		return false
 	}
 	return h.options.MayRefresh(err)
 }
 
-// refreshQoderAccount 只保留原三十秒恢复预算，供应商与持久化由受控目标完成。
-func (h *QoderCompatibleRuntime) refreshQoderAccount(ctx context.Context, target QoderCompatibleTarget) (QoderCompatibleTarget, error) {
+// refreshQoderProvider 只保留原三十秒恢复预算，供应商与持久化由受控目标完成。
+func (h *QoderCompatibleRuntime) refreshQoderProvider(ctx context.Context, target QoderCompatibleTarget) (QoderCompatibleTarget, error) {
 	if h == nil || !h.options.PlatformAvailable {
 		return nil, errors.New("qoder gateway service is not configured")
 	}
@@ -131,65 +131,65 @@ func (h *QoderCompatibleRuntime) refreshQoderAccount(ctx context.Context, target
 	return target.Refresh(refreshCtx)
 }
 
-func (h *QoderCompatibleRuntime) acquireQoderAccountSlotWithWait(c *gin.Context, account *accountcore.AccountSnapshot, waitPlan *scheduler.AccountWaitPlan, reqStream bool, streamStarted *bool, reqLog *zap.Logger) (func(), error) {
-	if account == nil {
-		return nil, errors.New("account is nil")
+func (h *QoderCompatibleRuntime) acquireQoderProviderSlotWithWait(c *gin.Context, provider *providercore.ProviderSnapshot, waitPlan *scheduler.ProviderWaitPlan, reqStream bool, streamStarted *bool, reqLog *zap.Logger) (func(), error) {
+	if provider == nil {
+		return nil, errors.New("provider is nil")
 	}
 	if h == nil || h.concurrencyHelper == nil {
 		return nil, nil
 	}
 	if waitPlan == nil {
-		return h.concurrencyHelper.AcquireAccountSlotWithWait(c, account.ID, account.Concurrency, reqStream, streamStarted)
+		return h.concurrencyHelper.AcquireProviderSlotWithWait(c, provider.ID, provider.Concurrency, reqStream, streamStarted)
 	}
 
 	ctx := c.Request.Context()
-	accountWaitCounted := false
-	waitEntry, err := h.concurrencyHelper.EnterAccountWait(ctx, account.ID, waitPlan.MaxWaiting)
+	providerWaitCounted := false
+	waitEntry, err := h.concurrencyHelper.EnterProviderWait(ctx, provider.ID, waitPlan.MaxWaiting)
 	canWait := waitEntry.Allowed
 	if err != nil {
 		if reqLog != nil {
-			reqLog.Warn("qoder.account_wait_counter_increment_failed", zap.Int64("account_id", account.ID), zap.Error(err))
+			reqLog.Warn("qoder.provider_wait_counter_increment_failed", zap.Int64("provider_id", provider.ID), zap.Error(err))
 		}
 	} else if !canWait {
 		if reqLog != nil {
-			reqLog.Info("qoder.account_wait_queue_full",
-				zap.Int64("account_id", account.ID),
+			reqLog.Info("qoder.provider_wait_queue_full",
+				zap.Int64("provider_id", provider.ID),
 				zap.Int("max_waiting", waitPlan.MaxWaiting),
 			)
 		}
-		return nil, &WaitQueueFullError{SlotType: "account"}
+		return nil, &WaitQueueFullError{SlotType: "provider"}
 	}
 	if err == nil && canWait {
-		accountWaitCounted = true
+		providerWaitCounted = true
 	}
 	releaseWait := func() {
-		if accountWaitCounted {
+		if providerWaitCounted {
 			waitEntry.Release()
-			accountWaitCounted = false
+			providerWaitCounted = false
 		}
 	}
 
-	accountRelease, err := h.concurrencyHelper.AcquireAccountSlotWithWaitTimeout(c, account.ID, waitPlan.MaxConcurrency, waitPlan.Timeout, reqStream, streamStarted)
+	providerRelease, err := h.concurrencyHelper.AcquireProviderSlotWithWaitTimeout(c, provider.ID, waitPlan.MaxConcurrency, waitPlan.Timeout, reqStream, streamStarted)
 	if err != nil {
 		releaseWait()
 		return nil, err
 	}
 	releaseWait()
-	return accountRelease, nil
+	return providerRelease, nil
 }
 
-func (h *QoderCompatibleRuntime) acquireQoderRetryAccountSlot(c *gin.Context, account *accountcore.AccountSnapshot, selection QoderCompatibleSelection, reqStream bool, streamStarted *bool) (func(), error) {
-	if account == nil {
-		return nil, errors.New("account is nil")
+func (h *QoderCompatibleRuntime) acquireQoderRetryProviderSlot(c *gin.Context, provider *providercore.ProviderSnapshot, selection QoderCompatibleSelection, reqStream bool, streamStarted *bool) (func(), error) {
+	if provider == nil {
+		return nil, errors.New("provider is nil")
 	}
 	if h == nil || h.concurrencyHelper == nil {
 		return nil, nil
 	}
-	maxConcurrency := account.Concurrency
+	maxConcurrency := provider.Concurrency
 	if selection != nil && selection.WaitPlan() != nil {
-		return h.acquireQoderAccountSlotWithWait(c, account, selection.WaitPlan(), reqStream, streamStarted, nil)
+		return h.acquireQoderProviderSlotWithWait(c, provider, selection.WaitPlan(), reqStream, streamStarted, nil)
 	}
-	return h.concurrencyHelper.AcquireAccountSlotWithWait(c, account.ID, maxConcurrency, reqStream, streamStarted)
+	return h.concurrencyHelper.AcquireProviderSlotWithWait(c, provider.ID, maxConcurrency, reqStream, streamStarted)
 }
 
 func (h *QoderCompatibleRuntime) handleConcurrencyError(c *gin.Context, err error, slotType string, streamStarted bool, endpoint QoderEndpoint) {

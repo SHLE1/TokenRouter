@@ -4,8 +4,8 @@ package provider
 import (
 	"fmt"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	wire "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
@@ -13,7 +13,7 @@ import (
 // path requires a concrete object type at a function tool's parameter root.
 // This defect is shared by the OpenAI, Anthropic, Grok, and CN-compatible paths.
 func ShouldRepairOpenAIResponsesNullToolSchemaType(platform string) bool {
-	return platform == capability.PlatformOpenAI || platform == capability.PlatformAnthropic || platform == capability.PlatformGrok || account.IsCNProvider(platform)
+	return platform == capability.PlatformOpenAI || platform == capability.PlatformAnthropic || platform == capability.PlatformGrok || provider.IsCNProvider(platform)
 }
 
 // ShouldSanitizeOpenAIResponsesToolSchemaPatterns is intentionally narrower:

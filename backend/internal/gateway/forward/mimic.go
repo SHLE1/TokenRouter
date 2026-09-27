@@ -2,7 +2,7 @@ package forward
 
 import "context"
 
-// MimicPorts 提供平台格式与设置读取，流程不接收旧账号或动态 JSON 对象。
+// MimicPorts 提供平台格式与设置读取，流程不接收旧提供商或动态 JSON 对象。
 type MimicPorts interface {
 	SystemSettings(context.Context) (bool, string, string)
 	RewriteMimicSystem([]byte, string, string, string) []byte

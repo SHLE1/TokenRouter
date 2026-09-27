@@ -14,7 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// GetConcurrencyStats returns real-time concurrency usage aggregated by platform/group/account.
+// GetConcurrencyStats returns real-time concurrency usage aggregated by platform/group/provider.
 // GET /api/v1/admin/ops/concurrency
 func (h *OpsHandler) GetConcurrencyStats(c *gin.Context) {
 	if h.opsService == nil {
@@ -31,7 +31,7 @@ func (h *OpsHandler) GetConcurrencyStats(c *gin.Context) {
 			"enabled":   false,
 			"platform":  map[string]*ops.PlatformConcurrencyInfo{},
 			"group":     map[int64]*ops.GroupConcurrencyInfo{},
-			"account":   map[int64]*ops.AccountConcurrencyInfo{},
+			"provider":  map[int64]*ops.ProviderConcurrencyInfo{},
 			"timestamp": time.Now().UTC(),
 		})
 		return
@@ -48,7 +48,7 @@ func (h *OpsHandler) GetConcurrencyStats(c *gin.Context) {
 		groupID = &id
 	}
 
-	platform, group, account, collectedAt, err := h.opsService.GetConcurrencyStats(c.Request.Context(), platformFilter, groupID)
+	platform, group, provider, collectedAt, err := h.opsService.GetConcurrencyStats(c.Request.Context(), platformFilter, groupID)
 	if err != nil {
 		if isOpsRealtimeRequestCanceled(c, err) {
 			return
@@ -61,7 +61,7 @@ func (h *OpsHandler) GetConcurrencyStats(c *gin.Context) {
 		"enabled":  true,
 		"platform": platform,
 		"group":    group,
-		"account":  account,
+		"provider": provider,
 	}
 	if collectedAt != nil {
 		payload["timestamp"] = collectedAt.UTC()
@@ -109,13 +109,13 @@ func (h *OpsHandler) GetUserConcurrencyStats(c *gin.Context) {
 	response.Success(c, payload)
 }
 
-// GetAccountAvailability returns account availability statistics.
-// GET /api/v1/admin/ops/account-availability
+// GetProviderAvailability returns provider availability statistics.
+// GET /api/v1/admin/ops/provider-availability
 //
 // Query params:
 // - platform: optional
 // - group_id: optional
-func (h *OpsHandler) GetAccountAvailability(c *gin.Context) {
+func (h *OpsHandler) GetProviderAvailability(c *gin.Context) {
 	if h.opsService == nil {
 		response.Error(c, http.StatusServiceUnavailable, "Ops service not available")
 		return
@@ -130,7 +130,7 @@ func (h *OpsHandler) GetAccountAvailability(c *gin.Context) {
 			"enabled":   false,
 			"platform":  map[string]*ops.PlatformAvailability{},
 			"group":     map[int64]*ops.GroupAvailability{},
-			"account":   map[int64]*ops.AccountAvailability{},
+			"provider":  map[int64]*ops.ProviderAvailability{},
 			"timestamp": time.Now().UTC(),
 		})
 		return
@@ -147,7 +147,7 @@ func (h *OpsHandler) GetAccountAvailability(c *gin.Context) {
 		groupID = &id
 	}
 
-	platformStats, groupStats, accountStats, collectedAt, err := h.opsService.GetAccountAvailabilityStats(c.Request.Context(), platform, groupID)
+	platformStats, groupStats, providerStats, collectedAt, err := h.opsService.GetProviderAvailabilityStats(c.Request.Context(), platform, groupID)
 	if err != nil {
 		if isOpsRealtimeRequestCanceled(c, err) {
 			return
@@ -160,7 +160,7 @@ func (h *OpsHandler) GetAccountAvailability(c *gin.Context) {
 		"enabled":  true,
 		"platform": platformStats,
 		"group":    groupStats,
-		"account":  accountStats,
+		"provider": providerStats,
 	}
 	if collectedAt != nil {
 		payload["timestamp"] = collectedAt.UTC()

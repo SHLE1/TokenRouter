@@ -18,7 +18,7 @@ import (
 	identity "github.com/TokenFlux/TokenRouter/internal/identity"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/timezone"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 	"github.com/stretchr/testify/require"
 )
@@ -72,6 +72,7 @@ func (r *s08PausedState) GetUsageAnalyticsAggregationState(ctx context.Context) 
 	}
 	return v, e
 }
+
 func TestS08ManualBackfillPreservesConcurrentState(t *testing.T) {
 	ctx := context.Background()
 	base := NewAggregationStoreWithSQL(integrationDB, timezone.NewCalendar(time.Local))
@@ -128,6 +129,7 @@ func (r *s08CanceledCleanup) CreateTask(ctx context.Context, t *usage.UsageClean
 	r.taskID = t.ID
 	return e
 }
+
 func (r *s08CanceledCleanup) DeleteUsageLogsBatch(ctx context.Context, f usage.UsageCleanupFilters, n int) (int64, error) {
 	d, e := r.UsageCleanupRepository.DeleteUsageLogsBatch(ctx, f, n)
 	if e == nil && d > 0 {
@@ -135,6 +137,7 @@ func (r *s08CanceledCleanup) DeleteUsageLogsBatch(ctx context.Context, f usage.U
 	}
 	return d, e
 }
+
 func (r *s08CanceledCleanup) GetTaskStatus(ctx context.Context, id int64) (string, error) {
 	v, e := r.UsageCleanupRepository.GetTaskStatus(ctx, id)
 	if v == usage.UsageCleanupStatusCanceled {
@@ -153,17 +156,18 @@ func (r *s08RepairStore) RecomputeUsageAnalyticsRange(ctx context.Context, start
 	r.done <- e
 	return e
 }
+
 func TestS08CanceledPartialCleanupRepairsCommittedData(t *testing.T) {
 	ctx := context.Background()
 	client := testEntClient(t)
 	u := mustCreateUser(t, client, &identity.User{Email: "s08-cancel@test.local", Balance: 7})
 	key := mustCreateApiKey(t, client, &apikey.APIKey{UserID: u.ID, Key: "sk-s08-cancel", Name: "k"})
-	account := mustCreateAccount(t, client, &accountcore.Record{Name: "s08-cancel"})
+	provider := mustCreateProvider(t, client, &providercore.Record{Name: "s08-cancel"})
 	repo := NewUsageLogRepositoryWithSQL(client, integrationDB, timezone.NewCalendar(time.Local))
 	defer repo.StopUsageBatchers()
 	now := time.Now().UTC().Add(-72 * time.Hour)
 	for i := 0; i < 2; i++ {
-		_, e := repo.Create(ctx, &usage.UsageLog{UserID: u.ID, APIKeyID: key.ID, AccountID: account.ID, Model: "planning", TotalCost: 1, ActualCost: 1, CreatedAt: now})
+		_, e := repo.Create(ctx, &usage.UsageLog{UserID: u.ID, APIKeyID: key.ID, ProviderID: provider.ID, Model: "planning", TotalCost: 1, ActualCost: 1, CreatedAt: now})
 		require.NoError(t, e)
 	}
 	base := NewAggregationStoreWithSQL(integrationDB, timezone.NewCalendar(time.Local))

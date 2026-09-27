@@ -7,7 +7,7 @@ import (
 
 const groupModelUnsupportedAvailableModelsLimit = 20
 
-// GroupModelUnsupportedError 表示当前分组没有支持本次请求模型的可调度账号。
+// GroupModelUnsupportedError 表示当前分组没有支持本次请求模型的可调度提供商。
 type GroupModelUnsupportedError struct {
 	Platform        string
 	RequestedModel  string

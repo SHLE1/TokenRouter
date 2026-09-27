@@ -21,7 +21,7 @@ func TestGatewayCacheLiveCallIdentityAndController(t *testing.T) {
 	record := &session.LiveCallRecord{
 		CallID:                "call_secret",
 		CallHash:              HashLiveCallID("call_secret"),
-		AccountID:             11,
+		ProviderID:            11,
 		APIKeyID:              22,
 		UserID:                33,
 		GroupID:               44,
@@ -41,7 +41,7 @@ func TestGatewayCacheLiveCallIdentityAndController(t *testing.T) {
 	loaded, err := otherInstance.GetLiveCall(context.Background(), record.CallHash)
 	require.NoError(t, err)
 	require.Equal(t, record.CallID, loaded.CallID)
-	require.Equal(t, record.AccountID, loaded.AccountID)
+	require.Equal(t, record.ProviderID, loaded.ProviderID)
 	require.Equal(t, record.AttestationCiphertext, loaded.AttestationCiphertext)
 	require.Equal(t, record.RequestedModel, loaded.RequestedModel)
 	require.Equal(t, record.UpstreamModel, loaded.UpstreamModel)

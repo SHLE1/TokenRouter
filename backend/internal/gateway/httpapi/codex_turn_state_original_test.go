@@ -1,15 +1,15 @@
 package httpapi
 
 import (
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
-
-	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
-
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
+
+	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
@@ -48,7 +48,7 @@ func TestRelayOpenAICodexTurnStateRecordsOnlyDeliveredState(t *testing.T) {
 	c, _ := newTurnStateTestContext(t, 7, "session-delivered")
 	upstream := http.Header{"X-Codex-Turn-State": []string{"blob-a"}}
 
-	svc.Relay(c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 42}}, upstream)
+	svc.Relay(c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 42}}, upstream)
 	require.Equal(t, "blob-a", c.Writer.Header().Get("X-Codex-Turn-State"))
 	origin, ok := svc.Origins.Owner("7\x00session-delivered")
 	require.True(t, ok)
@@ -56,7 +56,7 @@ func TestRelayOpenAICodexTurnStateRecordsOnlyDeliveredState(t *testing.T) {
 	require.Equal(t, int64(42), origin)
 
 	// 上游未返回时必须移除可能来自前一尝试的残留状态。
-	svc.Relay(c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 43}}, http.Header{})
+	svc.Relay(c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 43}}, http.Header{})
 	require.Empty(t, c.Writer.Header().Get("X-Codex-Turn-State"))
 }
 
@@ -69,7 +69,7 @@ func TestStagedOpenAICodexTurnStateOnlyRecordsAfterCommit(t *testing.T) {
 	_, exists := svc.Origins.Owner("8\x00session-staged")
 	require.False(t, exists)
 
-	svc.Commit(c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 52}}, staged)
+	svc.Commit(c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 52}}, staged)
 	origin, exists := svc.Origins.Owner("8\x00session-staged")
 	require.True(t, exists)
 	require.NotZero(t, origin)
@@ -79,19 +79,19 @@ func TestStagedOpenAICodexTurnStateOnlyRecordsAfterCommit(t *testing.T) {
 func TestGuardOpenAICodexTurnStateEchoStripsOnlyForeignOrigin(t *testing.T) {
 	svc := &CodexTurnStateHeaders{Origins: session.NewCodexTurnOrigins(time.Now), TTL: func() time.Duration { return time.Hour }}
 	c, _ := newTurnStateTestContext(t, 9, "session-guard")
-	svc.Relay(c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 61}}, http.Header{"X-Codex-Turn-State": []string{"blob-c"}})
+	svc.Relay(c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 61}}, http.Header{"X-Codex-Turn-State": []string{"blob-c"}})
 
-	sameAccount := http.Header{"X-Codex-Turn-State": []string{"blob-c"}}
-	svc.Guard(c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 61}}, sameAccount)
-	require.Equal(t, "blob-c", sameAccount.Get("X-Codex-Turn-State"))
+	sameProvider := http.Header{"X-Codex-Turn-State": []string{"blob-c"}}
+	svc.Guard(c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 61}}, sameProvider)
+	require.Equal(t, "blob-c", sameProvider.Get("X-Codex-Turn-State"))
 
-	foreignAccount := http.Header{"X-Codex-Turn-State": []string{"blob-c"}}
-	svc.Guard(c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 62}}, foreignAccount)
-	require.Empty(t, foreignAccount.Get("X-Codex-Turn-State"))
+	foreignProvider := http.Header{"X-Codex-Turn-State": []string{"blob-c"}}
+	svc.Guard(c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 62}}, foreignProvider)
+	require.Empty(t, foreignProvider.Get("X-Codex-Turn-State"))
 
 	svc.Origins.Record("9\x00session-guard", 61, -time.Minute)
 	expired := http.Header{"X-Codex-Turn-State": []string{"blob-c"}}
-	svc.Guard(c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 62}}, expired)
+	svc.Guard(c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 62}}, expired)
 	require.Equal(t, "blob-c", expired.Get("X-Codex-Turn-State"))
 }
 
@@ -120,19 +120,19 @@ func TestWriteOpenAIPassthroughResponseHeaders_RelaysReasoningIncluded(t *testin
 // 对齐真实 Codex：该头是会话级常量，挂在 OAuth 的每个请求上，而不是只在
 // 压缩回合出现（codex-rs build_model_client_beta_features_header）。
 func TestApplyOpenAICodexBetaFeatures(t *testing.T) {
-	oauthAccount := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth}}
-	apiKeyAccount := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}}
+	oauthProvider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}}
+	apiKeyProvider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
 	c, _ := newTurnStateTestContext(t, 1, "session-beta")
 
 	headers := http.Header{}
-	ApplyOpenAICodexBetaFeatures(c, oauthAccount != nil && oauthAccount.View().IsOpenAIOAuthLike(), headers)
+	ApplyOpenAICodexBetaFeatures(c, oauthProvider != nil && oauthProvider.View().IsOpenAIOAuthLike(), headers)
 	require.Equal(t, "remote_compaction_v2", headers.Get("X-Codex-Beta-Features"))
 
 	headers.Set("X-Codex-Beta-Features", "other_feature")
-	ApplyOpenAICodexBetaFeatures(c, oauthAccount != nil && oauthAccount.View().IsOpenAIOAuthLike(), headers)
+	ApplyOpenAICodexBetaFeatures(c, oauthProvider != nil && oauthProvider.View().IsOpenAIOAuthLike(), headers)
 	require.Equal(t, "other_feature", headers.Get("X-Codex-Beta-Features"))
 
 	MarkOpenAINativeCompactionV2(c)
-	ApplyOpenAICodexBetaFeatures(c, apiKeyAccount != nil && apiKeyAccount.View().IsOpenAIOAuthLike(), headers)
+	ApplyOpenAICodexBetaFeatures(c, apiKeyProvider != nil && apiKeyProvider.View().IsOpenAIOAuthLike(), headers)
 	require.Contains(t, headers.Get("X-Codex-Beta-Features"), "remote_compaction_v2")
 }

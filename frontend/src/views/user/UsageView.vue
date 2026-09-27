@@ -1,7 +1,7 @@
 <template>
   <AppLayout>
     <div class="space-y-6">
-      <UsageStatsCards :stats="usageStats" :show-account-cost="false" :show-standard-cost="false" />
+      <UsageStatsCards :stats="usageStats" :show-provider-cost="false" :show-standard-cost="false" />
 
       <div class="space-y-4">
         <div class="card p-4">
@@ -31,7 +31,7 @@
             :show-source-toggle="false"
             :show-metric-toggle="true"
             :enable-breakdown="false"
-            :show-account-cost="false"
+            :show-provider-cost="false"
             :show-standard-cost="false"
             :start-date="startDate"
             :end-date="endDate"
@@ -43,7 +43,7 @@
             chart-type="bar"
             :show-metric-toggle="true"
             :enable-breakdown="false"
-            :show-account-cost="false"
+            :show-provider-cost="false"
             :show-standard-cost="false"
             :start-date="startDate"
             :end-date="endDate"
@@ -214,7 +214,7 @@
           :loading="loading"
           :columns="visibleColumns"
           :server-side-sort="true"
-          :show-account-billing="false"
+          :show-provider-billing="false"
           :show-standard-cost="false"
           :show-upstream-endpoint="false"
           :user-clickable="false"

@@ -1,11 +1,8 @@
 package messageforward_test
 
 import (
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/messageforward"
-
 	"context"
 	"encoding/json"
-
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -13,8 +10,10 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/messageforward"
+
 	"github.com/TokenFlux/TokenRouter/internal/billing"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
@@ -30,7 +29,6 @@ import (
 )
 
 func TestGatewayService_AnthropicAPIKeyPassthrough_ForwardStreamPreservesBodyAndAuthReplacement(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
@@ -70,32 +68,35 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_ForwardStreamPreservesBodyAnd
 
 	cfg := &messageforward.Options{Configured: true, PreserveContentType: true, ResponseReadLimit: 134217728, MaxLineSize: defaultMaxLineSize}
 	svc := newHTTPRuntimeFixture(
-		cfg, messageforward.Dependencies{Transport: upstream, Health: newPartialHealthFixture(), Deferred: &accountcore.DeferredService{}}, compileResponseHeaderFilter(cfg),
+		cfg, messageforward.Dependencies{Transport: upstream, Health: newPartialHealthFixture(), Deferred: &providercore.DeferredService{}}, compileResponseHeaderFilter(cfg),
 	)
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 101,
-		Name:        "anthropic-apikey-pass",
-		Platform:    capability.PlatformAnthropic,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":       "upstream-anthropic-key",
-			"base_url":      "https://api.anthropic.com",
-			"model_mapping": map[string]any{"claude-3-7-sonnet-20250219": "claude-3-haiku-20240307"},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 101,
+			Name:        "anthropic-apikey-pass",
+			Platform:    capability.PlatformAnthropic,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":       "upstream-anthropic-key",
+				"base_url":      "https://api.anthropic.com",
+				"model_mapping": map[string]any{"claude-3-7-sonnet-20250219": "claude-3-haiku-20240307"},
+			},
+			Extra: map[string]any{
+				"anthropic_passthrough": true,
+			},
+			Status:      billing.StatusActive,
+			Schedulable: true,
 		},
-		Extra: map[string]any{
-			"anthropic_passthrough": true,
-		},
-		Status:      billing.StatusActive,
-		Schedulable: true},
 	}
 
-	result, err := svc.Forward(context.Background(), c, account, parsed)
+	result, err := svc.Forward(context.Background(), c, provider, parsed)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.True(t, result.Stream)
 
-	require.Equal(t, "claude-3-haiku-20240307", gjson.GetBytes(upstream.lastBody, "model").String(), "透传模式应应用账号级模型映射")
+	require.Equal(t, "claude-3-haiku-20240307", gjson.GetBytes(upstream.lastBody, "model").String(), "透传模式应应用提供商级模型映射")
 
 	require.Equal(t, "upstream-anthropic-key", claude.GetHeaderRaw(upstream.lastReq.Header, "x-api-key"))
 	require.Empty(t, claude.GetHeaderRaw(upstream.lastReq.Header, "authorization"))
@@ -112,7 +113,6 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_ForwardStreamPreservesBodyAnd
 }
 
 func TestGatewayService_AnthropicAPIKeyPassthrough_ForwardCountTokensPreservesBody(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages/count_tokens", nil)
@@ -144,27 +144,30 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_ForwardCountTokensPreservesBo
 		cfg, messageforward.Dependencies{Transport: upstream, Health: newPartialHealthFixture()}, compileResponseHeaderFilter(cfg),
 	)
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 102,
-		Name:        "anthropic-apikey-pass-count",
-		Platform:    capability.PlatformAnthropic,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":       "upstream-anthropic-key",
-			"base_url":      "https://api.anthropic.com",
-			"model_mapping": map[string]any{"claude-3-5-sonnet-latest": "claude-3-opus-20240229"},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 102,
+			Name:        "anthropic-apikey-pass-count",
+			Platform:    capability.PlatformAnthropic,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":       "upstream-anthropic-key",
+				"base_url":      "https://api.anthropic.com",
+				"model_mapping": map[string]any{"claude-3-5-sonnet-latest": "claude-3-opus-20240229"},
+			},
+			Extra: map[string]any{
+				"anthropic_passthrough": true,
+			},
+			Status:      billing.StatusActive,
+			Schedulable: true,
 		},
-		Extra: map[string]any{
-			"anthropic_passthrough": true,
-		},
-		Status:      billing.StatusActive,
-		Schedulable: true},
 	}
 
-	err := svc.ForwardCountTokens(context.Background(), c, account, parsed)
+	err := svc.ForwardCountTokens(context.Background(), c, provider, parsed)
 	require.NoError(t, err)
 
-	require.Equal(t, "claude-3-opus-20240229", gjson.GetBytes(upstream.lastBody, "model").String(), "count_tokens 透传模式应应用账号级模型映射")
+	require.Equal(t, "claude-3-opus-20240229", gjson.GetBytes(upstream.lastBody, "model").String(), "count_tokens 透传模式应应用提供商级模型映射")
 	require.Equal(t, "upstream-anthropic-key", claude.GetHeaderRaw(upstream.lastReq.Header, "x-api-key"))
 	require.Empty(t, claude.GetHeaderRaw(upstream.lastReq.Header, "authorization"))
 	require.Empty(t, claude.GetHeaderRaw(upstream.lastReq.Header, "cookie"))
@@ -174,7 +177,6 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_ForwardCountTokensPreservesBo
 }
 
 func TestGatewayService_AnthropicAPIKeyPassthrough_ModelMappingEdgeCases(t *testing.T) {
-
 	tests := []struct {
 		name          string
 		model         string
@@ -266,15 +268,18 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_ModelMappingEdgeCases(t *test
 				credentials["model_mapping"] = tt.modelMapping
 			}
 
-			account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 300,
-				Name:        "edge-case-test",
-				Platform:    capability.PlatformAnthropic,
-				Type:        capability.AccountTypeAPIKey,
-				Concurrency: 1,
-				Credentials: credentials,
-				Extra:       map[string]any{"anthropic_passthrough": true},
-				Status:      billing.StatusActive,
-				Schedulable: true},
+			provider := &gatewayprovider.ExecutionProvider{
+				Record: providercore.Record{
+					LoadLocation: time.LoadLocation, ID: 300,
+					Name:        "edge-case-test",
+					Platform:    capability.PlatformAnthropic,
+					Type:        capability.ProviderTypeAPIKey,
+					Concurrency: 1,
+					Credentials: credentials,
+					Extra:       map[string]any{"anthropic_passthrough": true},
+					Status:      billing.StatusActive,
+					Schedulable: true,
+				},
 			}
 
 			if tt.endpoint == "messages" {
@@ -293,7 +298,7 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_ModelMappingEdgeCases(t *test
 					&messageforward.Options{Configured: true, PreserveContentType: true, ResponseReadLimit: 134217728}, messageforward.Dependencies{Transport: upstream, Health: newPartialHealthFixture()}, nil,
 				)
 
-				result, err := svc.Forward(context.Background(), c, account, parsed)
+				result, err := svc.Forward(context.Background(), c, provider, parsed)
 				require.NoError(t, err)
 				require.NotNil(t, result)
 				require.Equal(t, tt.expectedModel, gjson.GetBytes(upstream.lastBody, "model").String(),
@@ -313,7 +318,7 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_ModelMappingEdgeCases(t *test
 					&messageforward.Options{Configured: true, PreserveContentType: true, ResponseReadLimit: 134217728, MaxLineSize: defaultMaxLineSize}, messageforward.Dependencies{Transport: upstream, Health: newPartialHealthFixture()}, nil,
 				)
 
-				err := svc.ForwardCountTokens(context.Background(), c, account, parsed)
+				err := svc.ForwardCountTokens(context.Background(), c, provider, parsed)
 				require.NoError(t, err)
 				require.Equal(t, tt.expectedModel, gjson.GetBytes(upstream.lastBody, "model").String(),
 					"CountTokens 上游请求体中的模型应为: %s", tt.expectedModel)
@@ -326,7 +331,6 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_ModelMappingEdgeCases(t *test
 // 确保模型映射只替换 model，业务输入字段保持不变，生成参数仍按 count_tokens 规则清理。
 
 func TestGatewayService_AnthropicAPIKeyPassthrough_ModelMappingPreservesOtherFields(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages/count_tokens", nil)
@@ -351,22 +355,25 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_ModelMappingPreservesOtherFie
 		&messageforward.Options{Configured: true, PreserveContentType: true, ResponseReadLimit: 134217728, MaxLineSize: defaultMaxLineSize}, messageforward.Dependencies{Transport: upstream, Health: newPartialHealthFixture()}, nil,
 	)
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 301,
-		Name:        "preserve-fields-test",
-		Platform:    capability.PlatformAnthropic,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":       "upstream-key",
-			"base_url":      "https://api.anthropic.com",
-			"model_mapping": map[string]any{"claude-sonnet-4-20250514": "claude-sonnet-4-5-20241022"},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 301,
+			Name:        "preserve-fields-test",
+			Platform:    capability.PlatformAnthropic,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":       "upstream-key",
+				"base_url":      "https://api.anthropic.com",
+				"model_mapping": map[string]any{"claude-sonnet-4-20250514": "claude-sonnet-4-5-20241022"},
+			},
+			Extra:       map[string]any{"anthropic_passthrough": true},
+			Status:      billing.StatusActive,
+			Schedulable: true,
 		},
-		Extra:       map[string]any{"anthropic_passthrough": true},
-		Status:      billing.StatusActive,
-		Schedulable: true},
 	}
 
-	err := svc.ForwardCountTokens(context.Background(), c, account, parsed)
+	err := svc.ForwardCountTokens(context.Background(), c, provider, parsed)
 	require.NoError(t, err)
 
 	sentBody := upstream.lastBody
@@ -379,7 +386,6 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_ModelMappingPreservesOtherFie
 }
 
 func TestGatewayService_AnthropicAPIKeyPassthrough_CountTokensFiltersGenerationFields(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages/count_tokens", nil)
@@ -401,9 +407,9 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_CountTokensFiltersGenerationF
 	svc := newHTTPRuntimeFixture(
 		&messageforward.Options{Configured: true, PreserveContentType: true, ResponseReadLimit: 134217728, MaxLineSize: defaultMaxLineSize}, messageforward.Dependencies{Transport: upstream, Health: newPartialHealthFixture()}, nil,
 	)
-	account := newAnthropicAPIKeyAccountForTest()
+	provider := newAnthropicAPIKeyProviderForTest()
 
-	err := svc.ForwardCountTokens(context.Background(), c, account, parsed)
+	err := svc.ForwardCountTokens(context.Background(), c, provider, parsed)
 	require.NoError(t, err)
 
 	sentBody := upstream.lastBody
@@ -423,7 +429,6 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_CountTokensFiltersGenerationF
 // 确保空模型名不会触发映射逻辑
 
 func TestGatewayService_AnthropicAPIKeyPassthrough_EmptyModelSkipsMapping(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages/count_tokens", nil)
@@ -447,29 +452,31 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_EmptyModelSkipsMapping(t *tes
 		&messageforward.Options{Configured: true, PreserveContentType: true, ResponseReadLimit: 134217728, MaxLineSize: defaultMaxLineSize}, messageforward.Dependencies{Transport: upstream, Health: newPartialHealthFixture()}, nil,
 	)
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 302,
-		Name:        "empty-model-test",
-		Platform:    capability.PlatformAnthropic,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":       "upstream-key",
-			"base_url":      "https://api.anthropic.com",
-			"model_mapping": map[string]any{"*": "claude-3-opus-20240229"},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 302,
+			Name:        "empty-model-test",
+			Platform:    capability.PlatformAnthropic,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"api_key":       "upstream-key",
+				"base_url":      "https://api.anthropic.com",
+				"model_mapping": map[string]any{"*": "claude-3-opus-20240229"},
+			},
+			Extra:       map[string]any{"anthropic_passthrough": true},
+			Status:      billing.StatusActive,
+			Schedulable: true,
 		},
-		Extra:       map[string]any{"anthropic_passthrough": true},
-		Status:      billing.StatusActive,
-		Schedulable: true},
 	}
 
-	err := svc.ForwardCountTokens(context.Background(), c, account, parsed)
+	err := svc.ForwardCountTokens(context.Background(), c, provider, parsed)
 	require.NoError(t, err)
 	// 空模型名时，body 应原样透传，不应触发映射
 	require.Equal(t, body, upstream.lastBody, "空模型名时请求体不应被修改")
 }
 
 func TestGatewayService_AnthropicAPIKeyPassthrough_CountTokens404PassthroughNotError(t *testing.T) {
-
 	tests := []struct {
 		name            string
 		statusCode      int
@@ -529,21 +536,24 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_CountTokens404PassthroughNotE
 				&messageforward.Options{Configured: true, PreserveContentType: true, ResponseReadLimit: 134217728, MaxLineSize: defaultMaxLineSize}, messageforward.Dependencies{Transport: upstream, Health: nil}, nil,
 			)
 
-			account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 200,
-				Name:        "proxy-acc",
-				Platform:    capability.PlatformAnthropic,
-				Type:        capability.AccountTypeAPIKey,
-				Concurrency: 1,
-				Credentials: map[string]any{
-					"api_key":  "sk-proxy",
-					"base_url": "https://proxy.example.com",
+			provider := &gatewayprovider.ExecutionProvider{
+				Record: providercore.Record{
+					LoadLocation: time.LoadLocation, ID: 200,
+					Name:        "proxy-acc",
+					Platform:    capability.PlatformAnthropic,
+					Type:        capability.ProviderTypeAPIKey,
+					Concurrency: 1,
+					Credentials: map[string]any{
+						"api_key":  "sk-proxy",
+						"base_url": "https://proxy.example.com",
+					},
+					Extra:       map[string]any{"anthropic_passthrough": true},
+					Status:      billing.StatusActive,
+					Schedulable: true,
 				},
-				Extra:       map[string]any{"anthropic_passthrough": true},
-				Status:      billing.StatusActive,
-				Schedulable: true},
 			}
 
-			err := svc.ForwardCountTokens(context.Background(), c, account, parsed)
+			err := svc.ForwardCountTokens(context.Background(), c, provider, parsed)
 
 			if tt.wantPassthrough {
 				// 返回 nil（不记录为错误），HTTP 状态码 404 + Anthropic 错误体
@@ -556,7 +566,7 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_CountTokens404PassthroughNotE
 				require.True(t, ok)
 				require.Equal(t, "not_found_error", errObj["type"])
 			} else if tt.statusCode >= http.StatusInternalServerError {
-				// 首次输出前的上游服务错误交给 handler 切换账号，不在 service 层提前写响应。
+				// 首次输出前的上游服务错误交给 handler 切换提供商，不在 service 层提前写响应。
 				var failoverErr *forwardcore.UpstreamFailoverError
 				require.ErrorAs(t, err, &failoverErr)
 				require.Equal(t, tt.statusCode, failoverErr.StatusCode)
@@ -570,7 +580,6 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_CountTokens404PassthroughNotE
 }
 
 func TestGatewayService_QoderCountTokensUnsupported(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages/count_tokens", nil)
@@ -583,16 +592,19 @@ func TestGatewayService_QoderCountTokensUnsupported(t *testing.T) {
 		},
 	}
 	svc := newHTTPRuntimeFixture(nil, messageforward.Dependencies{Transport: upstream}, nil)
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 301,
-		Name:        "qoder",
-		Platform:    capability.PlatformQoder,
-		Type:        capability.AccountTypeCosy,
-		Concurrency: 1,
-		Status:      billing.StatusActive,
-		Schedulable: true},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 301,
+			Name:        "qoder",
+			Platform:    capability.PlatformQoder,
+			Type:        capability.ProviderTypeCosy,
+			Concurrency: 1,
+			Status:      billing.StatusActive,
+			Schedulable: true,
+		},
 	}
 
-	err := svc.ForwardCountTokens(context.Background(), c, account, parsed)
+	err := svc.ForwardCountTokens(context.Background(), c, provider, parsed)
 
 	require.NoError(t, err)
 	require.Equal(t, http.StatusNotFound, rec.Code)
@@ -605,8 +617,7 @@ func TestGatewayService_QoderCountTokensUnsupported(t *testing.T) {
 	require.Equal(t, "not_found_error", errObj["type"])
 }
 
-func TestGatewayService_AnthropicOAuth_AppliesAccountMappingBeforeNormalization(t *testing.T) {
-
+func TestGatewayService_AnthropicOAuth_AppliesProviderMappingBeforeNormalization(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
@@ -623,22 +634,25 @@ func TestGatewayService_AnthropicOAuth_AppliesAccountMappingBeforeNormalization(
 	}}
 	cfg := &messageforward.Options{Configured: true, PreserveContentType: true, ResponseReadLimit: 134217728, MaxLineSize: defaultMaxLineSize}
 	svc := newHTTPRuntimeFixture(
-		cfg, messageforward.Dependencies{Transport: upstream, Health: newPartialHealthFixture(), Deferred: &accountcore.DeferredService{}}, compileResponseHeaderFilter(cfg),
+		cfg, messageforward.Dependencies{Transport: upstream, Health: newPartialHealthFixture(), Deferred: &providercore.DeferredService{}}, compileResponseHeaderFilter(cfg),
 	)
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 303,
-		Name:        "anthropic-oauth-mapping",
-		Platform:    capability.PlatformAnthropic,
-		Type:        capability.AccountTypeOAuth,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"access_token":  "oauth-token",
-			"model_mapping": map[string]any{"client-alias": "claude-sonnet-4-5"},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 303,
+			Name:        "anthropic-oauth-mapping",
+			Platform:    capability.PlatformAnthropic,
+			Type:        capability.ProviderTypeOAuth,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"access_token":  "oauth-token",
+				"model_mapping": map[string]any{"client-alias": "claude-sonnet-4-5"},
+			},
+			Status:      billing.StatusActive,
+			Schedulable: true,
 		},
-		Status:      billing.StatusActive,
-		Schedulable: true},
 	}
 
-	result, err := svc.Forward(context.Background(), c, account, parsed)
+	result, err := svc.Forward(context.Background(), c, provider, parsed)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, "claude-sonnet-4-5-20250929", result.UpstreamModel)
@@ -646,7 +660,6 @@ func TestGatewayService_AnthropicOAuth_AppliesAccountMappingBeforeNormalization(
 }
 
 func TestGatewayService_AnthropicOAuthMimic_RewritesSystemWithBillingBlock(t *testing.T) {
-
 	tests := []struct {
 		name                       string
 		body                       string
@@ -701,22 +714,25 @@ func TestGatewayService_AnthropicOAuthMimic_RewritesSystemWithBillingBlock(t *te
 
 			cfg := &messageforward.Options{Configured: true, PreserveContentType: true, ResponseReadLimit: 134217728, MaxLineSize: defaultMaxLineSize}
 			svc := newHTTPRuntimeFixture(
-				cfg, messageforward.Dependencies{Transport: upstream, Health: newPartialHealthFixture(), Deferred: &accountcore.DeferredService{}}, compileResponseHeaderFilter(cfg),
+				cfg, messageforward.Dependencies{Transport: upstream, Health: newPartialHealthFixture(), Deferred: &providercore.DeferredService{}}, compileResponseHeaderFilter(cfg),
 			)
 
-			account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 301,
-				Name:        "anthropic-oauth-mimic",
-				Platform:    capability.PlatformAnthropic,
-				Type:        capability.AccountTypeOAuth,
-				Concurrency: 1,
-				Credentials: map[string]any{
-					"access_token": "oauth-token",
+			provider := &gatewayprovider.ExecutionProvider{
+				Record: providercore.Record{
+					LoadLocation: time.LoadLocation, ID: 301,
+					Name:        "anthropic-oauth-mimic",
+					Platform:    capability.PlatformAnthropic,
+					Type:        capability.ProviderTypeOAuth,
+					Concurrency: 1,
+					Credentials: map[string]any{
+						"access_token": "oauth-token",
+					},
+					Status:      billing.StatusActive,
+					Schedulable: true,
 				},
-				Status:      billing.StatusActive,
-				Schedulable: true},
 			}
 
-			result, err := svc.Forward(context.Background(), c, account, parsed)
+			result, err := svc.Forward(context.Background(), c, provider, parsed)
 			require.NoError(t, err)
 			require.NotNil(t, result)
 			require.NotNil(t, upstream.lastReq)
@@ -771,7 +787,6 @@ func TestGatewayService_AnthropicOAuthMimic_RewritesSystemWithBillingBlock(t *te
 }
 
 func TestGatewayService_AnthropicOAuthRealClaudeCodeHaiku_PreservesClientHeadersAndBody(t *testing.T) {
-
 	metadataUserID := claude.FormatMetadataUserID(
 		"a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
 		"550e8400-e29b-41d4-a716-446655440000",
@@ -802,13 +817,16 @@ func TestGatewayService_AnthropicOAuthRealClaudeCodeHaiku_PreservesClientHeaders
 	}}
 	cfg := &messageforward.Options{Configured: true, PreserveContentType: true, ResponseReadLimit: 134217728, MaxLineSize: defaultMaxLineSize}
 	svc := newHTTPRuntimeFixture(
-		cfg, messageforward.Dependencies{Transport: upstream, Health: newPartialHealthFixture(), Deferred: &accountcore.DeferredService{}}, compileResponseHeaderFilter(cfg),
+		cfg, messageforward.Dependencies{Transport: upstream, Health: newPartialHealthFixture(), Deferred: &providercore.DeferredService{}}, compileResponseHeaderFilter(cfg),
 	)
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 302, Name: "anthropic-real-cc", Platform: capability.PlatformAnthropic, Type: capability.AccountTypeOAuth, Concurrency: 1,
-		Credentials: map[string]any{"access_token": "oauth-token"}, Status: billing.StatusActive, Schedulable: true},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 302, Name: "anthropic-real-cc", Platform: capability.PlatformAnthropic, Type: capability.ProviderTypeOAuth, Concurrency: 1,
+			Credentials: map[string]any{"access_token": "oauth-token"}, Status: billing.StatusActive, Schedulable: true,
+		},
 	}
 
-	result, err := svc.Forward(context.Background(), c, account, parsed)
+	result, err := svc.Forward(context.Background(), c, provider, parsed)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.NotNil(t, upstream.lastReq)
@@ -826,7 +844,6 @@ func TestGatewayService_AnthropicOAuthRealClaudeCodeHaiku_PreservesClientHeaders
 // TestGatewayService_AnthropicOAuthProxiedClaudeCode_PreservesSystemCachePrefix 验证代理覆盖 UA 后仍保留客户端缓存前缀。
 
 func TestGatewayService_AnthropicOAuthProxiedClaudeCode_PreservesSystemCachePrefix(t *testing.T) {
-
 	metadataUserID := claude.FormatMetadataUserID(
 		"a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
 		"550e8400-e29b-41d4-a716-446655440000",
@@ -851,13 +868,16 @@ func TestGatewayService_AnthropicOAuthProxiedClaudeCode_PreservesSystemCachePref
 	}}
 	cfg := &messageforward.Options{Configured: true, PreserveContentType: true, ResponseReadLimit: 134217728, MaxLineSize: defaultMaxLineSize}
 	svc := newHTTPRuntimeFixture(
-		cfg, messageforward.Dependencies{Transport: upstream, Health: newPartialHealthFixture(), Deferred: &accountcore.DeferredService{}}, compileResponseHeaderFilter(cfg),
+		cfg, messageforward.Dependencies{Transport: upstream, Health: newPartialHealthFixture(), Deferred: &providercore.DeferredService{}}, compileResponseHeaderFilter(cfg),
 	)
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 304, Name: "anthropic-proxied-cc", Platform: capability.PlatformAnthropic, Type: capability.AccountTypeOAuth, Concurrency: 1,
-		Credentials: map[string]any{"access_token": "oauth-token"}, Status: billing.StatusActive, Schedulable: true},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 304, Name: "anthropic-proxied-cc", Platform: capability.PlatformAnthropic, Type: capability.ProviderTypeOAuth, Concurrency: 1,
+			Credentials: map[string]any{"access_token": "oauth-token"}, Status: billing.StatusActive, Schedulable: true,
+		},
 	}
 
-	result, err := svc.Forward(context.Background(), c, account, parsed)
+	result, err := svc.Forward(context.Background(), c, provider, parsed)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.NotNil(t, upstream.lastReq)
@@ -870,7 +890,6 @@ func TestGatewayService_AnthropicOAuthProxiedClaudeCode_PreservesSystemCachePref
 }
 
 func TestGatewayService_AnthropicOAuth_SystemPromptInjectionCanBeDisabled(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
@@ -895,22 +914,25 @@ func TestGatewayService_AnthropicOAuth_SystemPromptInjectionCanBeDisabled(t *tes
 		gateway.SettingKeyEnableClaudeOAuthSystemPromptInjection: "false",
 	}})
 	svc := newHTTPRuntimeFixture(
-		cfg, messageforward.Dependencies{Transport: upstream, Health: newPartialHealthFixture(), Settings: settingService, Deferred: &accountcore.DeferredService{}}, compileResponseHeaderFilter(cfg),
+		cfg, messageforward.Dependencies{Transport: upstream, Health: newPartialHealthFixture(), Settings: settingService, Deferred: &providercore.DeferredService{}}, compileResponseHeaderFilter(cfg),
 	)
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 302,
-		Name:        "anthropic-oauth-no-system-injection",
-		Platform:    capability.PlatformAnthropic,
-		Type:        capability.AccountTypeOAuth,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"access_token": "oauth-token",
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 302,
+			Name:        "anthropic-oauth-no-system-injection",
+			Platform:    capability.PlatformAnthropic,
+			Type:        capability.ProviderTypeOAuth,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"access_token": "oauth-token",
+			},
+			Status:      billing.StatusActive,
+			Schedulable: true,
 		},
-		Status:      billing.StatusActive,
-		Schedulable: true},
 	}
 
-	result, err := svc.Forward(context.Background(), c, account, parsed)
+	result, err := svc.Forward(context.Background(), c, provider, parsed)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 

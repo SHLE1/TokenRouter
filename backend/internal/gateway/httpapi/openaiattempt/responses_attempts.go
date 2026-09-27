@@ -7,10 +7,10 @@ import (
 	"net/http"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway/failover"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
@@ -45,10 +45,10 @@ type responsesAttemptBridge struct {
 	selectionCtx                                                             context.Context
 	groupMapping                                                             routing.GroupMappingResult
 	routingStart                                                             time.Time
-	requiredCapability                                                       accountcore.OpenAIEndpointCapability
+	requiredCapability                                                       providercore.OpenAIEndpointCapability
 	selection                                                                *gatewaycapture.SelectionResult
-	account                                                                  *gatewaycapture.ExecutionAccount
-	accountReleaseFunc                                                       func()
+	provider                                                                 *gatewaycapture.ExecutionProvider
+	providerReleaseFunc                                                      func()
 	result                                                                   *forwardcore.OpenAIResult
 	writerSizeBeforeForward                                                  int
 	cyberPolicyHandled, wroteFallback                                        bool
@@ -58,11 +58,11 @@ type responsesAttemptBridge struct {
 
 // Select 只执行单次 Responses 适配操作，不持有重试循环。
 func (b *responsesAttemptBridge) Select(excluded map[int64]struct{}) (textflow.ResponseSelection, error) {
-	// Select account supporting the requested model
-	b.reqLog.Debug("openai.account_selecting", zap.Int("excluded_account_count", len(excluded)))
+	// Select provider supporting the requested model
+	b.reqLog.Debug("openai.provider_selecting", zap.Int("excluded_provider_count", len(excluded)))
 	var scheduleDecision scheduler.PlatformDecision
 	var err error
-	b.selection, scheduleDecision, err = b.binding().selectAccountWithSchedulerForCapability(
+	b.selection, scheduleDecision, err = b.binding().selectProviderWithSchedulerForCapability(
 		b.selectionCtx,
 		b.apiKey.GroupID,
 		b.previousResponseID,
@@ -76,18 +76,18 @@ func (b *responsesAttemptBridge) Select(excluded map[int64]struct{}) (textflow.R
 	if err != nil {
 		return textflow.ResponseSelection{}, err
 	}
-	if b.selection == nil || b.selection.Account == nil {
-		cls := ClassifyOpenAICompatibleNoAccountErrorFromGin(b.c, b.binding().diagnoser, b.apiKey, b.reqModel, b.reqModel)
+	if b.selection == nil || b.selection.Provider == nil {
+		cls := ClassifyOpenAICompatibleNoProviderErrorFromGin(b.c, b.binding().diagnoser, b.apiKey, b.reqModel, b.reqModel)
 		if !cls.ModelNotFound {
 			gatewayhttp.MarkOpsRoutingCapacityLimited(b.c)
 		}
 		b.binding().handleStreamingAwareError(b.c, cls.Status, cls.ErrType, cls.Message, *b.streamStarted)
 		return textflow.ResponseSelection{}, nil
 	}
-	if b.previousResponseID != "" && b.selection != nil && b.selection.Account != nil {
-		b.reqLog.Debug("openai.account_selected_with_previous_response_id", zap.Int64("account_id", b.selection.Account.Record.ID))
+	if b.previousResponseID != "" && b.selection != nil && b.selection.Provider != nil {
+		b.reqLog.Debug("openai.provider_selected_with_previous_response_id", zap.Int64("provider_id", b.selection.Provider.Record.ID))
 	}
-	b.reqLog.Debug("openai.account_schedule_decision",
+	b.reqLog.Debug("openai.provider_schedule_decision",
 		zap.String("layer", scheduleDecision.Layer),
 		zap.Bool("sticky_previous_hit", scheduleDecision.StickyPreviousHit),
 		zap.Bool("sticky_session_hit", scheduleDecision.StickySessionHit),
@@ -96,11 +96,11 @@ func (b *responsesAttemptBridge) Select(excluded map[int64]struct{}) (textflow.R
 		zap.Int64("latency_ms", scheduleDecision.LatencyMs),
 		zap.Float64("load_skew", scheduleDecision.LoadSkew),
 	)
-	b.account = b.selection.Account
-	if b.previousResponseID != "" && !b.account.View().IsOpenAIApiKey() {
+	b.provider = b.selection.Provider
+	if b.previousResponseID != "" && !b.provider.View().IsOpenAIApiKey() {
 		// The public Responses HTTP API supports previous_response_id on API-key
-		// accounts. OAuth/SetupToken upstreams do not, so keep searching instead
-		// of silently deleting continuation state from a mixed account pool.
+		// providers. OAuth/SetupToken upstreams do not, so keep searching instead
+		// of silently deleting continuation state from a mixed provider pool.
 
 		if b.selection.ReleaseFunc != nil {
 			b.selection.ReleaseFunc()
@@ -112,19 +112,19 @@ func (b *responsesAttemptBridge) Select(excluded map[int64]struct{}) (textflow.R
 			Scope:            forwardcore.GatewayFailureScopeRequest,
 			Reason:           forwardcore.OpenAIHTTPContinuationUnsupportedReason,
 			ClientStatusCode: http.StatusBadRequest,
-			ClientMessage:    "previous_response_id requires an OpenAI API-key account for HTTP requests",
+			ClientMessage:    "previous_response_id requires an OpenAI API-key provider for HTTP requests",
 		}
-		b.reqLog.Debug("openai.account_skipped_http_continuation_unsupported",
-			zap.Int64("account_id", b.account.Record.ID),
-			zap.String("account_type", b.account.Record.Type),
+		b.reqLog.Debug("openai.provider_skipped_http_continuation_unsupported",
+			zap.Int64("provider_id", b.provider.Record.ID),
+			zap.String("provider_type", b.provider.Record.Type),
 		)
 		picked := b.selectedView()
 		picked.Skip = &textflow.AttemptFailure{Cause: skipped, Policy: skipped.RetryFailure()}
 		return picked, nil
 	}
-	b.sessionHash = EnsureOpenAIPoolModeSessionHash(b.sessionHash, b.account)
-	b.reqLog.Debug("openai.account_selected", zap.Int64("account_id", b.account.Record.ID), zap.String("account_name", b.account.Record.Name))
-	gatewayhttp.SetOpsSelectedAccount(b.c, b.account.Record.ID, b.account.Record.Platform)
+	b.sessionHash = EnsureOpenAIPoolModeSessionHash(b.sessionHash, b.provider)
+	b.reqLog.Debug("openai.provider_selected", zap.Int64("provider_id", b.provider.Record.ID), zap.String("provider_name", b.provider.Record.Name))
+	gatewayhttp.SetOpsSelectedProvider(b.c, b.provider.Record.ID, b.provider.Record.Platform)
 
 	return b.selectedView(), nil
 }
@@ -137,20 +137,20 @@ func (b *responsesAttemptBridge) SelectionFailure(err error, excludedCount int, 
 	}
 
 	if gatewayhttp.FailoverClientGone(b.c) {
-		b.reqLog.Info("openai.account_select_aborted_client_disconnected", zap.Error(err))
+		b.reqLog.Info("openai.provider_select_aborted_client_disconnected", zap.Error(err))
 		return
 	}
-	b.reqLog.Warn("openai.account_select_failed",
+	b.reqLog.Warn("openai.provider_select_failed",
 		zap.Error(gatewayhttp.OpenAICompatibleSelectionErrorForLog(err, b.requestPlatform)),
-		zap.Int("excluded_account_count", excludedCount),
+		zap.Int("excluded_provider_count", excludedCount),
 	)
 	if excludedCount == 0 {
-		if b.legacyCompact && errors.Is(err, scheduler.ErrNoAvailableCompactAccounts) {
+		if b.legacyCompact && errors.Is(err, scheduler.ErrNoAvailableCompactProviders) {
 			gatewayhttp.MarkOpsRoutingCapacityLimitedIfNoAvailable(b.c, err)
-			b.binding().handleStreamingAwareError(b.c, http.StatusServiceUnavailable, "compact_not_supported", "No available accounts support /responses/compact", *b.streamStarted)
+			b.binding().handleStreamingAwareError(b.c, http.StatusServiceUnavailable, "compact_not_supported", "No available providers support /responses/compact", *b.streamStarted)
 			return
 		}
-		cls := ClassifyNoAccountErrorFromGin(b.c, b.binding().diagnoser, b.apiKey, b.reqModel, b.reqModel, b.requestPlatform)
+		cls := ClassifyNoProviderErrorFromGin(b.c, b.binding().diagnoser, b.apiKey, b.reqModel, b.reqModel, b.requestPlatform)
 		cls = classifySelectionFailureError(err, cls)
 		if !cls.ModelNotFound {
 			gatewayhttp.MarkOpsRoutingCapacityLimitedIfNoAvailable(b.c, err)
@@ -168,10 +168,10 @@ func (b *responsesAttemptBridge) SelectionFailure(err error, excludedCount int, 
 // Acquire 只执行单次 Responses 适配操作，不持有重试循环。
 func (b *responsesAttemptBridge) Acquire() bool {
 	if b.sessionAttempts != nil && b.binding().sessions.Track != nil {
-		b.binding().sessions.Track(b.sessionAttempts, b.account, b.sessionHash)
+		b.binding().sessions.Track(b.sessionAttempts, b.provider, b.sessionHash)
 	}
 	var acquired bool
-	b.accountReleaseFunc, acquired = b.binding().acquireResponsesAccountSlot(b.c, b.apiKey.GroupID, b.sessionHash, b.selection, b.reqStream, b.streamStarted, b.reqLog)
+	b.providerReleaseFunc, acquired = b.binding().acquireResponsesProviderSlot(b.c, b.apiKey.GroupID, b.sessionHash, b.selection, b.reqStream, b.streamStarted, b.reqLog)
 	return acquired
 }
 
@@ -185,21 +185,21 @@ func (b *responsesAttemptBridge) Forward() textflow.ResponseOutcome {
 	// 不能因心跳字节变化而放弃 failover 换号（#3887）。
 	b.writerSizeBeforeForward = gatewayhttp.OpenAICompactKeepaliveAdjustedWrittenSize(b.c)
 	// 跨透传边界时，从不可变的 canonical 请求体派生当前尝试体，
-	// 避免非透传上游拒绝透传账号产生的私有加密 reasoning 项。
-	attemptBody := b.binding().deriveOpenAIForwardAttemptBody(b.reqLog, b.forwardBody, b.account, &b.passthroughFailoverState)
+	// 避免非透传上游拒绝透传提供商产生的私有加密 reasoning 项。
+	attemptBody := b.binding().deriveOpenAIForwardAttemptBody(b.reqLog, b.forwardBody, b.provider, &b.passthroughFailoverState)
 	b.result, err = func() (*forwardcore.OpenAIResult, error) {
 		defer func() {
-			if b.accountReleaseFunc != nil {
-				b.accountReleaseFunc()
+			if b.providerReleaseFunc != nil {
+				b.providerReleaseFunc()
 			}
 		}()
-		return b.binding().forward(b.c.Request.Context(), b.c, b.account, attemptBody)
+		return b.binding().forward(b.c.Request.Context(), b.c, b.provider, attemptBody)
 	}()
 	var cyberBlockBodyHTTP []byte
 	if gatewayhttp.GetOpsCyberPolicy(b.c) != nil {
 		cyberBlockBodyHTTP = b.sessionHashBody
 	}
-	b.cyberPolicyHandled = b.binding().recordCyberPolicyIfMarked(b.c, b.apiKey, b.account, b.subscription, b.reqModel, err != nil, cyberBlockBodyHTTP, gatewayhttp.ClientRequestedUsageFields(b.c, b.groupMapping, b.reqModel, ""), billing.HashUsageRequestPayload(b.body), b.nativeCompactionV2)
+	b.cyberPolicyHandled = b.binding().recordCyberPolicyIfMarked(b.c, b.apiKey, b.provider, b.subscription, b.reqModel, err != nil, cyberBlockBodyHTTP, gatewayhttp.ClientRequestedUsageFields(b.c, b.groupMapping, b.reqModel, ""), billing.HashUsageRequestPayload(b.body), b.nativeCompactionV2)
 	forwardDurationMs := time.Since(forwardStart).Milliseconds()
 	upstreamLatencyMs, _ := GetContextInt64(b.c, gatewayhttp.OpsUpstreamLatencyMsKey)
 	responseLatencyMs := forwardDurationMs
@@ -233,7 +233,7 @@ func (b *responsesAttemptBridge) Complete() {
 	clientIP := clientip.GetClientIP(b.c)
 	requestPayloadHash := billing.HashUsageRequestPayload(b.body)
 	inboundEndpoint := gatewayhttp.GetInboundEndpoint(b.c)
-	upstreamEndpoint := ResolveOpenAIUpstreamEndpoint(b.c, b.account, res)
+	upstreamEndpoint := ResolveOpenAIUpstreamEndpoint(b.c, b.provider, res)
 
 	clientSessionID := gatewayhttp.ExtractClientSessionID(b.c)
 	// 入队前固化资金与报文投影，worker 不再读取请求中的实体。
@@ -241,7 +241,7 @@ func (b *responsesAttemptBridge) Complete() {
 		Result:             res,
 		APIKey:             b.apiKey,
 		User:               b.apiKey.User,
-		Account:            gatewaycapture.ExecutionCompletionRecord(b.account),
+		Provider:           gatewaycapture.ExecutionCompletionRecord(b.provider),
 		Subscription:       b.subscription,
 		InboundEndpoint:    inboundEndpoint,
 		UpstreamEndpoint:   upstreamEndpoint,
@@ -267,7 +267,7 @@ func (b *responsesAttemptBridge) Complete() {
 				zap.Int64("api_key_id", completionInput.APIKey.ID),
 				zap.Any("group_id", completionInput.APIKey.GroupID),
 				zap.String("model", completionModel),
-				zap.Int64("account_id", completionInput.Account.ID),
+				zap.Int64("provider_id", completionInput.Provider.ID),
 			).Error("openai.record_usage_failed", zap.Error(err))
 		}
 	})
@@ -276,7 +276,7 @@ func (b *responsesAttemptBridge) Complete() {
 // PartialImages 只执行单次 Responses 适配操作，不持有重试循环。
 func (b *responsesAttemptBridge) PartialImages(err error) {
 	b.reqLog.Warn("openai.forward_partial_error_with_image_result",
-		zap.Int64("account_id", b.account.Record.ID),
+		zap.Int64("provider_id", b.provider.Record.ID),
 		zap.Int("image_count", b.result.ImageCount),
 		zap.Error(err),
 	)
@@ -291,14 +291,14 @@ func (b *responsesAttemptBridge) RetryReady(failure *textflow.AttemptFailure) bo
 	}
 	if gatewayhttp.FailoverClientGone(b.c) {
 		b.reqLog.Info("openai.failover_aborted_client_disconnected",
-			zap.Int64("account_id", b.account.Record.ID),
+			zap.Int64("provider_id", b.provider.Record.ID),
 			zap.Int("upstream_status", failoverErr.StatusCode),
 		)
 		return false
 	}
-	b.binding().recordOpenAICyberWarning(b.c, b.reqLog, b.apiKey, b.account, b.reqModel, failoverErr.StatusCode, failoverErr.ResponseBody, err.Error())
+	b.binding().recordOpenAICyberWarning(b.c, b.reqLog, b.apiKey, b.provider, b.reqModel, failoverErr.StatusCode, failoverErr.ResponseBody, err.Error())
 	if !OpenAIForwardMayFailover(b.c, b.writerSizeBeforeForward, failoverErr) {
-		b.binding().observeOpenAIAccountHealthFailure(b.c.Request.Context(), b.account, err)
+		b.binding().observeOpenAIProviderHealthFailure(b.c.Request.Context(), b.provider, err)
 		b.binding().handleFailoverExhausted(b.c, failoverErr, true)
 		return false
 	}
@@ -307,8 +307,8 @@ func (b *responsesAttemptBridge) RetryReady(failure *textflow.AttemptFailure) bo
 	if b.c.Writer.Written() {
 		*b.streamStarted = true
 	}
-	if failoverErr.ShouldReportAccountScheduleFailure() {
-		b.binding().reportOpenAIAccountScheduleResult(b.account, OpenAIAccountScheduleModel(b.c, b.account, b.forwardModel, b.requireCompact, nil), false, nil, err)
+	if failoverErr.ShouldReportProviderScheduleFailure() {
+		b.binding().reportOpenAIProviderScheduleResult(b.provider, OpenAIProviderScheduleModel(b.c, b.provider, b.forwardModel, b.requireCompact, nil), false, nil, err)
 	}
 	return true
 }
@@ -317,8 +317,8 @@ func (b *responsesAttemptBridge) RetryReady(failure *textflow.AttemptFailure) bo
 func (b *responsesAttemptBridge) RetryWait(failure *textflow.AttemptFailure, retryLimit, retryCount int, retryDelay time.Duration) {
 	var failoverErr *forwardcore.UpstreamFailoverError
 	errors.As(failure.Cause, &failoverErr)
-	b.reqLog.Warn("openai.pool_mode_same_account_retry",
-		zap.Int64("account_id", b.account.Record.ID),
+	b.reqLog.Warn("openai.pool_mode_same_provider_retry",
+		zap.Int64("provider_id", b.provider.Record.ID),
 		zap.Int("upstream_status", failoverErr.StatusCode),
 		zap.Int("retry_limit", retryLimit),
 		zap.Int("retry_count", retryCount),
@@ -327,16 +327,16 @@ func (b *responsesAttemptBridge) RetryWait(failure *textflow.AttemptFailure, ret
 }
 
 // Switching 只执行单次 Responses 适配操作，不持有重试循环。
-func (b *responsesAttemptBridge) Switching(failure *textflow.AttemptFailure, switchCount, maxAccountSwitches int) {
+func (b *responsesAttemptBridge) Switching(failure *textflow.AttemptFailure, switchCount, maxProviderSwitches int) {
 	var failoverErr *forwardcore.UpstreamFailoverError
 	errors.As(failure.Cause, &failoverErr)
 	failoverSwitchFields := []zap.Field{
-		zap.Int64("account_id", b.account.Record.ID),
+		zap.Int64("provider_id", b.provider.Record.ID),
 		zap.Int("upstream_status", failoverErr.StatusCode),
 		zap.Int("switch_count", switchCount),
-		zap.Int("max_switches", maxAccountSwitches),
+		zap.Int("max_switches", maxProviderSwitches),
 	}
-	failoverSwitchFields = AppendOpenAIAccountProxyLogFields(failoverSwitchFields, b.account)
+	failoverSwitchFields = AppendOpenAIProviderProxyLogFields(failoverSwitchFields, b.provider)
 	b.reqLog.Warn("openai.upstream_failover_switching", failoverSwitchFields...)
 }
 
@@ -346,11 +346,11 @@ func (b *responsesAttemptBridge) OtherFailure(err error) {
 	if v, ok := GetContextInt64(b.c, gatewayhttp.OpsUpstreamStatusCodeKey); ok {
 		statusCode = int(v)
 	}
-	recordedWarning := b.binding().recordOpenAIForwardErrorCyberWarning(b.c, b.reqLog, b.apiKey, b.account, b.reqModel, statusCode, err)
+	recordedWarning := b.binding().recordOpenAIForwardErrorCyberWarning(b.c, b.reqLog, b.apiKey, b.provider, b.reqModel, statusCode, err)
 	if !recordedWarning {
-		b.binding().recordOpenAICyberWarning(b.c, b.reqLog, b.apiKey, b.account, b.reqModel, statusCode, nil, err.Error())
+		b.binding().recordOpenAICyberWarning(b.c, b.reqLog, b.apiKey, b.provider, b.reqModel, statusCode, nil, err.Error())
 	}
-	b.binding().reportOpenAIAccountScheduleResult(b.account, OpenAIAccountScheduleModel(b.c, b.account, b.forwardModel, b.requireCompact, b.result), false, nil, err)
+	b.binding().reportOpenAIProviderScheduleResult(b.provider, OpenAIProviderScheduleModel(b.c, b.provider, b.forwardModel, b.requireCompact, b.result), false, nil, err)
 	upstreamErrorAlreadyCommunicated := gatewayhttp.OpenAIForwardErrorAlreadyCommunicated(b.c, b.writerSizeBeforeForward, err)
 	b.wroteFallback = false
 	// cyber warning 场景下，service 层可能已经把上游 response.failed/JSON 错误写给下游。
@@ -359,7 +359,7 @@ func (b *responsesAttemptBridge) OtherFailure(err error) {
 		b.wroteFallback = b.binding().ensureOpenAIForwardErrorResponse(b.c, *b.streamStarted, err)
 	}
 	b.fields = []zap.Field{
-		zap.Int64("account_id", b.account.Record.ID),
+		zap.Int64("provider_id", b.provider.Record.ID),
 		zap.Bool("fallback_error_response_written", b.wroteFallback),
 		zap.Bool("upstream_error_response_already_written", upstreamErrorAlreadyCommunicated),
 		zap.Error(err),
@@ -379,19 +379,19 @@ func (b *responsesAttemptBridge) Failed() {
 func (b *responsesAttemptBridge) Success() {
 	if b.result != nil {
 		// 排除 spark 影子:其 codex_* 仅由 QueryUsage(/wham/usage bengalfox)更新(外审第7轮 P1)。
-		if b.account.View().IsOpenAI() && b.account.Record.Type == capability.AccountTypeOAuth && !b.account.View().IsShadow() {
-			b.binding().updateCodexUsageSnapshotFromHeaders(b.c.Request.Context(), b.account.Record.ID, b.result.ResponseHeaders)
+		if b.provider.View().IsOpenAI() && b.provider.Record.Type == capability.ProviderTypeOAuth && !b.provider.View().IsShadow() {
+			b.binding().updateCodexUsageSnapshotFromHeaders(b.c.Request.Context(), b.provider.Record.ID, b.result.ResponseHeaders)
 		}
-		b.binding().reportOpenAIAccountScheduleResult(b.account, OpenAIAccountScheduleModel(b.c, b.account, b.forwardModel, b.requireCompact, b.result), b.result.SucceededForScheduling(), b.result.FirstTokenMs)
+		b.binding().reportOpenAIProviderScheduleResult(b.provider, OpenAIProviderScheduleModel(b.c, b.provider, b.forwardModel, b.requireCompact, b.result), b.result.SucceededForScheduling(), b.result.FirstTokenMs)
 	} else {
-		b.binding().reportOpenAIAccountScheduleResult(b.account, OpenAIAccountScheduleModel(b.c, b.account, b.forwardModel, b.requireCompact, b.result), b.result.SucceededForScheduling(), nil)
+		b.binding().reportOpenAIProviderScheduleResult(b.provider, OpenAIProviderScheduleModel(b.c, b.provider, b.forwardModel, b.requireCompact, b.result), b.result.SucceededForScheduling(), nil)
 	}
 }
 
 // Completed 只执行单次 Responses 适配操作，不持有重试循环。
 func (b *responsesAttemptBridge) Completed(switchCount int) {
 	b.reqLog.Debug("openai.request_completed",
-		zap.Int64("account_id", b.account.Record.ID),
+		zap.Int64("provider_id", b.provider.Record.ID),
 		zap.Int("switch_count", switchCount),
 	)
 }
@@ -400,7 +400,7 @@ func (b *responsesAttemptBridge) Context() context.Context { return b.c.Request.
 func (b *responsesAttemptBridge) CanAttempt() bool         { return OpenAIRequestAllowsFailoverReplay(b.c) }
 
 func (b *responsesAttemptBridge) selectedView() textflow.ResponseSelection {
-	return textflow.ResponseSelection{Selection: gatewaycapture.CaptureTextSelection(b.account), Available: true, OAuth: failover.OAuth429Account{OpenAI: b.account.View().IsOpenAIOAuthLike(), Grok: b.account.Record.Platform == capability.PlatformGrok && b.account.Record.Type == capability.AccountTypeOAuth}}
+	return textflow.ResponseSelection{Selection: gatewaycapture.CaptureTextSelection(b.provider), Available: true, OAuth: failover.OAuth429Provider{OpenAI: b.provider.View().IsOpenAIOAuthLike(), Grok: b.provider.Record.Platform == capability.PlatformGrok && b.provider.Record.Type == capability.ProviderTypeOAuth}}
 }
 
 func (b *responsesAttemptBridge) Exhausted(failure *textflow.AttemptFailure) {
@@ -413,8 +413,8 @@ func (b *responsesAttemptBridge) Exhausted(failure *textflow.AttemptFailure) {
 }
 
 func (b *responsesAttemptBridge) Switched() {
-	if b.sessionAttempts != nil && b.account != nil {
-		b.sessionAttempts.Abandon(b.account.Record.ID)
+	if b.sessionAttempts != nil && b.provider != nil {
+		b.sessionAttempts.Abandon(b.provider.Record.ID)
 	}
-	b.binding().recordOpenAIAccountSwitchForSelection(b.selection)
+	b.binding().recordOpenAIProviderSwitchForSelection(b.selection)
 }

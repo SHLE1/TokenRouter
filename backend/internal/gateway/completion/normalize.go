@@ -34,6 +34,7 @@ func ResolveBillingServiceTier(requested, observed string) ServiceTierBillingRes
 	resolution.Downgraded = true
 	return resolution
 }
+
 func ServiceTierCostRank(tier string) (rank int, known bool) {
 	switch normalizeBillingServiceTier(tier) {
 	case "flex":
@@ -46,6 +47,7 @@ func ServiceTierCostRank(tier string) (rank int, known bool) {
 		return 1, false
 	}
 }
+
 func applyCacheOverride(usage *TokenUsage, target string) bool {
 	projected := protocol.TokenUsage{CacheCreationInputTokens: usage.CacheCreationInputTokens, CacheCreation5mTokens: usage.CacheCreation5mTokens, CacheCreation1hTokens: usage.CacheCreation1hTokens}
 	changed := protocol.ApplyCacheTTLOverride(&projected, target)
@@ -55,7 +57,7 @@ func applyCacheOverride(usage *TokenUsage, target string) bool {
 }
 
 // normalizeResult 只依据请求快照与实际观察降档，不查询平台或修改共享结果。
-func (s *Recorder) normalizeResult(r *Result, a *AccountSnapshot, openAI bool, observedAccount *AccountSnapshot) ServiceTierBillingResolution {
+func (s *Recorder) normalizeResult(r *Result, a *ProviderSnapshot, openAI bool, observedProvider *ProviderSnapshot) ServiceTierBillingResolution {
 	// 缺失结果不产生档位调整或观测事件。
 	if r == nil {
 		return ServiceTierBillingResolution{}
@@ -90,9 +92,9 @@ func (s *Recorder) normalizeResult(r *Result, a *AccountSnapshot, openAI bool, o
 		if openAI {
 			event.Component = "service.openai_gateway"
 		}
-		if observedAccount != nil {
-			event.AccountID = observedAccount.ID
-			event.Platform = observedAccount.Platform
+		if observedProvider != nil {
+			event.ProviderID = observedProvider.ID
+			event.Platform = observedProvider.Platform
 		}
 		s.observeEvent(event)
 	}
@@ -106,6 +108,7 @@ func ResolveOpenAIServiceTierBilling(oauthLike bool, requested, observed string)
 	}
 	return ResolveBillingServiceTier(requested, observed)
 }
+
 func CodexOAuthResponseTierIsNonAuthoritative(observed string) bool {
 	return normalizeBillingServiceTier(observed) == "default"
 }

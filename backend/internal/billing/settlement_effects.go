@@ -4,7 +4,7 @@ import (
 	"context"
 )
 
-// SettlementEffectInput 只包含已提交资金事实与缓存标识，不接收请求或账号实体。
+// SettlementEffectInput 只包含已提交资金事实与缓存标识，不接收请求或提供商实体。
 type SettlementEffectInput struct {
 	UserID, KeyID             int64
 	HasUser, HasKeyRateLimits bool
@@ -14,15 +14,15 @@ type SettlementEffectInput struct {
 
 // SettlementEffects 是提交后调用的无状态端口集合，缓存队列由唯一 Eligibility 持有。
 type SettlementEffects struct {
-	Cache                        *Eligibility
-	Background                   func(string, func()) bool
-	Observe                      Observe
-	BalanceWarning               func(int64, float64, error)
-	AccountUsed                  func()
-	NotifyBalance, NotifyAccount func()
+	Cache                         *Eligibility
+	Background                    func(string, func()) bool
+	Observe                       Observe
+	BalanceWarning                func(int64, float64, error)
+	ProviderUsed                  func()
+	NotifyBalance, NotifyProvider func()
 }
 
-// Finalize 保留缓存、Key 窗口、账号完成和通知的执行顺序。
+// Finalize 保留缓存、Key 窗口、提供商完成和通知的执行顺序。
 func (e SettlementEffects) Finalize(input SettlementEffectInput) {
 	if input.Cost == nil {
 		return
@@ -37,14 +37,14 @@ func (e SettlementEffects) Finalize(input SettlementEffectInput) {
 	if rateCost > 0 && input.HasKeyRateLimits {
 		e.Cache.QueueUpdateAPIKeyRateLimitUsage(input.KeyID, rateCost)
 	}
-	if e.AccountUsed != nil {
-		e.AccountUsed()
+	if e.ProviderUsed != nil {
+		e.ProviderUsed()
 	}
 	if e.NotifyBalance != nil {
 		e.launch("billing/settlement:notifyBalance", e.NotifyBalance)
 	}
-	if e.NotifyAccount != nil {
-		e.launch("billing/settlement:notifyAccount", e.NotifyAccount)
+	if e.NotifyProvider != nil {
+		e.launch("billing/settlement:notifyProvider", e.NotifyProvider)
 	}
 }
 

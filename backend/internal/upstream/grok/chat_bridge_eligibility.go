@@ -1,4 +1,4 @@
-// Grok 报文规则保留旧平台差异；所有方法只处理本次输入，不持有账号或请求全局状态。
+// Grok 报文规则保留旧平台差异；所有方法只处理本次输入，不持有提供商或请求全局状态。
 package grok
 
 import (
@@ -254,6 +254,7 @@ func (m BodyCodec) GrokChatResponsesBridgeEligibility(body []byte) (bool, string
 
 	return true, ""
 }
+
 func (m BodyCodec) GrokChatFunctionDeclarationsBridgeable(raw json.RawMessage) (bool, string) {
 	if strings.TrimSpace(string(raw)) == "null" {
 		return true, ""
@@ -315,6 +316,7 @@ func (m BodyCodec) GrokChatFunctionDeclarationsBridgeable(raw json.RawMessage) (
 	}
 	return true, ""
 }
+
 func (m BodyCodec) GrokChatToolChoiceBridgeable(raw json.RawMessage) (bool, string) {
 	if strings.TrimSpace(string(raw)) == "null" {
 		return true, ""
@@ -330,6 +332,7 @@ func (m BodyCodec) GrokChatToolChoiceBridgeable(raw json.RawMessage) (bool, stri
 		return false, "unsupported_tool_choice"
 	}
 }
+
 func (m BodyCodec) GrokChatHasFunctionDeclarations(root map[string]json.RawMessage) bool {
 	for _, field := range []string{"tools", "functions"} {
 		raw, exists := root[field]
@@ -343,6 +346,7 @@ func (m BodyCodec) GrokChatHasFunctionDeclarations(root map[string]json.RawMessa
 	}
 	return false
 }
+
 func (m BodyCodec) GrokChatMessageFieldsBridgeable(message map[string]json.RawMessage, allowedFields ...string) (bool, string) {
 	allowed := make(map[string]struct{}, len(allowedFields))
 	for _, field := range allowedFields {
@@ -355,6 +359,7 @@ func (m BodyCodec) GrokChatMessageFieldsBridgeable(message map[string]json.RawMe
 	}
 	return true, ""
 }
+
 func (m BodyCodec) GrokChatRequiredMessageContentBridgeable(raw json.RawMessage) (bool, string) {
 	var content string
 	if json.Unmarshal(raw, &content) == nil {
@@ -367,6 +372,7 @@ func (m BodyCodec) GrokChatRequiredMessageContentBridgeable(raw json.RawMessage)
 	// Responses input_text/input_image，从而保留 Chat Completions 语义。
 	return m.GrokChatStructuredContentBridgeable(raw)
 }
+
 func (m BodyCodec) GrokChatAssistantToolCallsBridgeable(raw json.RawMessage) (int, string) {
 	if strings.TrimSpace(string(raw)) == "null" {
 		return 0, ""
@@ -420,6 +426,7 @@ func (m BodyCodec) GrokChatAssistantToolCallsBridgeable(raw json.RawMessage) (in
 	}
 	return len(calls), ""
 }
+
 func (m BodyCodec) GrokChatStructuredContentBridgeable(raw json.RawMessage) (bool, string) {
 	var parts []map[string]json.RawMessage
 	if err := json.Unmarshal(raw, &parts); err != nil {
@@ -454,6 +461,7 @@ func (m BodyCodec) GrokChatStructuredContentBridgeable(raw json.RawMessage) (boo
 	}
 	return true, ""
 }
+
 func (m BodyCodec) GrokChatNullOrNone(raw json.RawMessage) bool {
 	if strings.TrimSpace(string(raw)) == "null" {
 		return true
@@ -461,9 +469,11 @@ func (m BodyCodec) GrokChatNullOrNone(raw json.RawMessage) bool {
 	var value string
 	return json.Unmarshal(raw, &value) == nil && strings.EqualFold(strings.TrimSpace(value), "none")
 }
+
 func (m BodyCodec) GrokChatJSONNull(raw json.RawMessage) bool {
 	return strings.TrimSpace(string(raw)) == "null"
 }
+
 func (m BodyCodec) GrokChatNullOrEmptyArray(raw json.RawMessage) bool {
 	if strings.TrimSpace(string(raw)) == "null" {
 		return true
@@ -471,6 +481,7 @@ func (m BodyCodec) GrokChatNullOrEmptyArray(raw json.RawMessage) bool {
 	var values []json.RawMessage
 	return json.Unmarshal(raw, &values) == nil && len(values) == 0
 }
+
 func (m BodyCodec) GrokChatResponsesCacheIntentBody(body []byte) ([]byte, error) {
 	// Responses 转换器会省略空 Chat tools 数组；此时 auto/none 也没有语义效果，不能阻止
 	// 普通无工具缓存路由。非空的已转换工具始终完整保留。
@@ -498,6 +509,7 @@ func (m BodyCodec) GrokChatResponsesBridgeModel(model string) bool {
 		return false
 	}
 }
+
 func (m BodyCodec) GrokChatResponsesRuntimeEligible(upstreamModel, cacheIdentity string) bool {
 	return m.GrokChatResponsesBridgeModel(upstreamModel) && strings.TrimSpace(cacheIdentity) != ""
 }

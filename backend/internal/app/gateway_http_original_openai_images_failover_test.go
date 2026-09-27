@@ -12,12 +12,12 @@ import (
 	"testing"
 	time "time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
 	testkit "github.com/TokenFlux/TokenRouter/internal/apikey/testkit"
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	authctx "github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	apikey "github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
@@ -39,52 +39,52 @@ import (
 	"go.uber.org/zap/zaptest/observer"
 )
 
-type openAIImagesFailoverAccountRepo struct {
-	gatewayprovider.ExecutionAccountStore
+type openAIImagesFailoverProviderRepo struct {
+	gatewayprovider.ExecutionProviderStore
 
-	accounts []gatewayprovider.ExecutionAccount
+	providers []gatewayprovider.ExecutionProvider
 }
 
-func (r openAIImagesFailoverAccountRepo) GetByID(_ context.Context, id int64) (*gatewayprovider.ExecutionAccount, error) {
-	for i := range r.accounts {
-		if r.accounts[i].Record.ID == id {
-			account := r.accounts[i]
-			return &account, nil
+func (r openAIImagesFailoverProviderRepo) GetByID(_ context.Context, id int64) (*gatewayprovider.ExecutionProvider, error) {
+	for i := range r.providers {
+		if r.providers[i].Record.ID == id {
+			provider := r.providers[i]
+			return &provider, nil
 		}
 	}
-	return nil, scheduler.ErrNoAvailableAccounts
+	return nil, scheduler.ErrNoAvailableProviders
 }
 
-func (r openAIImagesFailoverAccountRepo) ListSchedulableByGroupIDAndPlatform(_ context.Context, _ int64, platform string) ([]gatewayprovider.ExecutionAccount, error) {
-	return r.accountsForPlatform(platform), nil
+func (r openAIImagesFailoverProviderRepo) ListSchedulableByGroupIDAndPlatform(_ context.Context, _ int64, platform string) ([]gatewayprovider.ExecutionProvider, error) {
+	return r.providersForPlatform(platform), nil
 }
 
-func (r openAIImagesFailoverAccountRepo) ListSchedulableByPlatform(_ context.Context, platform string) ([]gatewayprovider.ExecutionAccount, error) {
-	return r.accountsForPlatform(platform), nil
+func (r openAIImagesFailoverProviderRepo) ListSchedulableByPlatform(_ context.Context, platform string) ([]gatewayprovider.ExecutionProvider, error) {
+	return r.providersForPlatform(platform), nil
 }
 
-func (r openAIImagesFailoverAccountRepo) ListSchedulableUngroupedByPlatform(_ context.Context, platform string) ([]gatewayprovider.ExecutionAccount, error) {
-	return r.accountsForPlatform(platform), nil
+func (r openAIImagesFailoverProviderRepo) ListSchedulableUngroupedByPlatform(_ context.Context, platform string) ([]gatewayprovider.ExecutionProvider, error) {
+	return r.providersForPlatform(platform), nil
 }
 
-func (r openAIImagesFailoverAccountRepo) accountsForPlatform(platform string) []gatewayprovider.ExecutionAccount {
-	out := make([]gatewayprovider.ExecutionAccount, 0, len(r.accounts))
-	for _, account := range r.accounts {
-		if platform == "" || account.Record.Platform == platform {
-			out = append(out, account)
+func (r openAIImagesFailoverProviderRepo) providersForPlatform(platform string) []gatewayprovider.ExecutionProvider {
+	out := make([]gatewayprovider.ExecutionProvider, 0, len(r.providers))
+	for _, provider := range r.providers {
+		if platform == "" || provider.Record.Platform == platform {
+			out = append(out, provider)
 		}
 	}
 	return out
 }
 
 type openAIImagesFailoverHTTPUpstream struct {
-	mu         sync.Mutex
-	accountIDs []int64
+	mu          sync.Mutex
+	providerIDs []int64
 }
 
-func (u *openAIImagesFailoverHTTPUpstream) Do(_ *http.Request, _ string, accountID int64, _ int) (*http.Response, error) {
+func (u *openAIImagesFailoverHTTPUpstream) Do(_ *http.Request, _ string, providerID int64, _ int) (*http.Response, error) {
 	u.mu.Lock()
-	u.accountIDs = append(u.accountIDs, accountID)
+	u.providerIDs = append(u.providerIDs, providerID)
 	u.mu.Unlock()
 	return &http.Response{
 		StatusCode: http.StatusOK,
@@ -98,25 +98,25 @@ func (u *openAIImagesFailoverHTTPUpstream) Do(_ *http.Request, _ string, account
 	}, nil
 }
 
-func (u *openAIImagesFailoverHTTPUpstream) DoWithTLS(req *http.Request, proxyURL string, accountID int64, accountConcurrency int, _ *tlsfingerprint.Profile) (*http.Response, error) {
-	return u.Do(req, proxyURL, accountID, accountConcurrency)
+func (u *openAIImagesFailoverHTTPUpstream) DoWithTLS(req *http.Request, proxyURL string, providerID int64, providerConcurrency int, _ *tlsfingerprint.Profile) (*http.Response, error) {
+	return u.Do(req, proxyURL, providerID, providerConcurrency)
 }
 
 func (u *openAIImagesFailoverHTTPUpstream) calls() []int64 {
 	u.mu.Lock()
 	defer u.mu.Unlock()
-	return append([]int64(nil), u.accountIDs...)
+	return append([]int64(nil), u.providerIDs...)
 }
 
 func TestOpenAIGatewayHandlerImages_ServerErrorFailsOverAndReturnsClearErrorWhenExhausted(t *testing.T) {
 	groupID := int64(3130)
-	accounts := []gatewayprovider.ExecutionAccount{
+	providers := []gatewayprovider.ExecutionProvider{
 		{
-			Record: accountcore.Record{
+			Record: providercore.Record{
 				LoadLocation: time.LoadLocation, ID: 1,
-				Name:        "image-account-1",
+				Name:        "image-provider-1",
 				Platform:    capability.PlatformOpenAI,
-				Type:        capability.AccountTypeOAuth,
+				Type:        capability.ProviderTypeOAuth,
 				Status:      billing.StatusActive,
 				Schedulable: true,
 				Concurrency: 0,
@@ -125,11 +125,11 @@ func TestOpenAIGatewayHandlerImages_ServerErrorFailsOverAndReturnsClearErrorWhen
 			},
 		},
 		{
-			Record: accountcore.Record{
+			Record: providercore.Record{
 				LoadLocation: time.LoadLocation, ID: 2,
-				Name:        "image-account-2",
+				Name:        "image-provider-2",
 				Platform:    capability.PlatformOpenAI,
-				Type:        capability.AccountTypeOAuth,
+				Type:        capability.ProviderTypeOAuth,
 				Status:      billing.StatusActive,
 				Schedulable: true,
 				Concurrency: 0,
@@ -138,11 +138,11 @@ func TestOpenAIGatewayHandlerImages_ServerErrorFailsOverAndReturnsClearErrorWhen
 			},
 		},
 	}
-	accountRepo := openAIImagesFailoverAccountRepo{accounts: accounts}
+	providerRepo := openAIImagesFailoverProviderRepo{providers: providers}
 	upstream := &openAIImagesFailoverHTTPUpstream{}
 	cfg := &config.Config{RunMode: config.RunModeSimple}
 	gatewayService, gatewayServiceChoices, gatewayServiceCredentialPort := newOpenAIExecutionAndSelectionFixture(
-		accountRepo,
+		providerRepo,
 		nil,
 		cfg,
 		nil,
@@ -152,7 +152,7 @@ func TestOpenAIGatewayHandlerImages_ServerErrorFailsOverAndReturnsClearErrorWhen
 
 		upstream,
 		nil,
-		nil, newOpenAIExecutionCredentialsForTest(accountRepo,
+		nil, newOpenAIExecutionCredentialsForTest(providerRepo,
 
 			nil), nil,
 		nil,
@@ -186,7 +186,7 @@ func TestOpenAIGatewayHandlerImages_ServerErrorFailsOverAndReturnsClearErrorWhen
 		nil,
 		nil,
 		nil,
-		cfg, nil, newExecutionAvailabilityForTest(accountRepo,
+		cfg, nil, newExecutionAvailabilityForTest(providerRepo,
 
 			nil, cfg), gatewayServiceChoices,
 	)
@@ -212,10 +212,10 @@ func TestOpenAIGatewayHandlerImages_ServerErrorFailsOverAndReturnsClearErrorWhen
 	c.Set(string(authctx.ContextKeyUser), authctx.AuthSubject{UserID: 100, Concurrency: 0})
 
 	handler.Images(c)
-	accountSelectingLogs := observedLogs.FilterMessage("openai.images.account_selecting").All()
-	require.NotEmpty(t, accountSelectingLogs)
+	providerSelectingLogs := observedLogs.FilterMessage("openai.images.provider_selecting").All()
+	require.NotEmpty(t, providerSelectingLogs)
 	loggedFields := make(map[string]string)
-	for _, field := range accountSelectingLogs[0].Context {
+	for _, field := range providerSelectingLogs[0].Context {
 		loggedFields[field.Key] = field.String
 	}
 	require.Equal(t, "high", loggedFields["img_quality"])

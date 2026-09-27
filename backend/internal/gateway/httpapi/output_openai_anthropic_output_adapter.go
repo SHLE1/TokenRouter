@@ -3,15 +3,14 @@ package httpapi
 import (
 	"context"
 	"crypto/rand"
-
-	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
-
-	"github.com/TokenFlux/TokenRouter/internal/egress/provider"
-	"github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
-
 	"io"
 	"net/http"
 	"time"
+
+	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
+
+	egressadapter "github.com/TokenFlux/TokenRouter/internal/egress/provider"
+	"github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
 
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	forward "github.com/TokenFlux/TokenRouter/internal/gateway/provider/openaiforward"
@@ -33,7 +32,7 @@ func (p *OpenAIResponseOutput) AnthropicOptions(c *gin.Context, writeError func(
 		StreamInterval: p.TextStreamInterval,
 		CopyHeaders: func(dst, src http.Header) {
 			if p.Headers != nil {
-				provider.WriteFilteredHeaders(dst, src, p.Headers)
+				egressadapter.WriteFilteredHeaders(dst, src, p.Headers)
 			}
 		},
 		ReverseTools: func(body []byte) []byte { return ReverseToolNamesIfPresent(c, body) },
@@ -42,20 +41,19 @@ func (p *OpenAIResponseOutput) AnthropicOptions(c *gin.Context, writeError func(
 	}
 }
 
-func (p *OpenAIResponseOutput) AnthropicDirectOptions(c *gin.Context, account *gatewayprovider.ExecutionAccount) forward.NativeAnthropicOptions {
+func (p *OpenAIResponseOutput) AnthropicDirectOptions(c *gin.Context, provider *gatewayprovider.ExecutionProvider) forward.NativeAnthropicOptions {
 	return forward.NativeAnthropicOptions{
-		AccountID: account.Record.ID,
+		ProviderID: provider.Record.ID,
 		UpdateWindow: func(ctx context.Context, h http.Header) {
 			if p.Observer != nil {
-				gatewayprovider.ObserveExecutionSessionWindow(ctx, p.Observer, account, h)
-
+				gatewayprovider.ObserveExecutionSessionWindow(ctx, p.Observer, provider, h)
 			}
 		},
 		ReadBody: func(r io.Reader) ([]byte, error) {
 			return ReadUpstreamResponseBody(r, p.Options.ReadLimit, c, AnthropicResponseTooLarge)
 		},
 		InvalidJSON: func(ctx context.Context, r *http.Response, body []byte, err error, model string) error {
-			return gatewayprovider.NonJSONUpstreamFailure(ctx, p.Observer, r, account, body, err, model)
+			return gatewayprovider.NonJSONUpstreamFailure(ctx, p.Observer, r, provider, body, err, model)
 		},
 		ForceCache: requeststate.IsForceCacheBilling, ClassifyCache: anthropic.ClassifyResponseInputAsCacheRead,
 		CopyHeaders:  func(dst, src http.Header) { WriteAnthropicPassthroughHeaders(dst, src, p.Headers) },
@@ -77,8 +75,7 @@ func (p *OpenAIResponseOutput) AnthropicDirectOptions(c *gin.Context, account *g
 		Log: func(format string, args ...any) { logging.LegacyPrintf("service.gateway", format, args...) },
 		HandleTimeout: func(ctx context.Context, model string) {
 			if p.Observer != nil {
-				p.Observer.Core.HandleStreamTimeout(ctx, gatewayprovider.ExecutionRecord(account), model)
-
+				p.Observer.Core.HandleStreamTimeout(ctx, gatewayprovider.ExecutionRecord(provider), model)
 			}
 		},
 	}

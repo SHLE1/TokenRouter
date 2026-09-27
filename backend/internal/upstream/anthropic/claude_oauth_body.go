@@ -1,4 +1,4 @@
-// 本文件拥有 Anthropic 请求字节规范化；账号、设置与请求上下文由外层投影。
+// 本文件拥有 Anthropic 请求字节规范化；提供商、设置与请求上下文由外层投影。
 package anthropic
 
 import (
@@ -49,6 +49,7 @@ func SanitizeSystemText(text string) string {
 	)
 	return text
 }
+
 func MarshalAnthropicSystemTextBlock(text string, includeCacheControl bool) ([]byte, error) {
 	block := AnthropicSystemTextBlockPayload{
 		Type: "text",
@@ -62,6 +63,7 @@ func MarshalAnthropicSystemTextBlock(text string, includeCacheControl bool) ([]b
 	}
 	return json.Marshal(block)
 }
+
 func MarshalAnthropicSystemTextBlockWithCacheControl(text string, cacheControl any) ([]byte, error) {
 	block := map[string]any{
 		"type": "text",
@@ -72,9 +74,11 @@ func MarshalAnthropicSystemTextBlockWithCacheControl(text string, cacheControl a
 	}
 	return json.Marshal(block)
 }
+
 func MarshalAnthropicMetadata(userID string) ([]byte, error) {
 	return json.Marshal(AnthropicMetadataPayload{UserID: userID})
 }
+
 func BuildJSONArrayRaw(items [][]byte) []byte {
 	if len(items) == 0 {
 		return []byte("[]")
@@ -97,6 +101,7 @@ func BuildJSONArrayRaw(items [][]byte) []byte {
 	buf = append(buf, ']')
 	return buf
 }
+
 func SetJSONValueBytes(body []byte, path string, value any) ([]byte, bool) {
 	next, err := sjson.SetBytes(body, path, value)
 	if err != nil {
@@ -104,6 +109,7 @@ func SetJSONValueBytes(body []byte, path string, value any) ([]byte, bool) {
 	}
 	return next, true
 }
+
 func SetJSONRawBytes(body []byte, path string, raw []byte) ([]byte, bool) {
 	next, err := sjson.SetRawBytes(body, path, raw)
 	if err != nil {
@@ -111,6 +117,7 @@ func SetJSONRawBytes(body []byte, path string, raw []byte) ([]byte, bool) {
 	}
 	return next, true
 }
+
 func DeleteJSONPathBytes(body []byte, path string) ([]byte, bool) {
 	next, err := sjson.DeleteBytes(body, path)
 	if err != nil {
@@ -118,6 +125,7 @@ func DeleteJSONPathBytes(body []byte, path string) ([]byte, bool) {
 	}
 	return next, true
 }
+
 func NormalizeClaudeOAuthSystemBody(body []byte, opts ClaudeOAuthNormalizeOptions) ([]byte, bool) {
 	sys := gjson.GetBytes(body, "system")
 	if !sys.Exists() {
@@ -167,6 +175,7 @@ func NormalizeClaudeOAuthSystemBody(body []byte, opts ClaudeOAuthNormalizeOption
 
 	return out, modified
 }
+
 func EnsureClaudeOAuthMetadataUserID(body []byte, userID string) ([]byte, bool) {
 	if strings.TrimSpace(userID) == "" {
 		return body, false
@@ -196,6 +205,7 @@ func EnsureClaudeOAuthMetadataUserID(body []byte, userID string) ([]byte, bool) 
 	}
 	return SetJSONRawBytes(body, "metadata", raw)
 }
+
 func NormalizeClaudeOAuthRequestBody(body []byte, modelID string, opts ClaudeOAuthNormalizeOptions) ([]byte, string) {
 	if len(body) == 0 {
 		return body, modelID
@@ -298,14 +308,14 @@ func NormalizeClaudeOAuthRequestBody(body []byte, modelID string, opts ClaudeOAu
 // BuildStableSessionSeed 为伪装路径合成的 metadata.user_id session_id 生成"会话级稳定"种子。
 //
 // 真实 Claude Code 的 session_id 是进程级随机 UUID，在一段会话内跨请求保持不变。无状态代理
-// 无法恢复该值，这里用"会话内不变的锚点"近似：账号 ID + 客户端区分因子 + 首条 user 消息文本。
+// 无法恢复该值，这里用"会话内不变的锚点"近似：提供商 ID + 客户端区分因子 + 首条 user 消息文本。
 // 对话在尾部追加 messages 时这三者都不变，因此 generateSessionUUID(seed) 跨轮稳定。
 //
 // 注意：粘性路由键 GenerateSessionHash 按设计逐轮变化（见其测试），本函数与之独立、互不影响。
-// accountID 恒存在，故 seed 永不为空 —— 输出始终是确定性 UUID，而非随机值。
-func BuildStableSessionSeed(accountID int64, clientDiscriminator, firstUserText string) string {
+// providerID 恒存在，故 seed 永不为空 —— 输出始终是确定性 UUID，而非随机值。
+func BuildStableSessionSeed(providerID int64, clientDiscriminator, firstUserText string) string {
 	var b strings.Builder
-	_, _ = b.WriteString(strconv.FormatInt(accountID, 10))
+	_, _ = b.WriteString(strconv.FormatInt(providerID, 10))
 	_, _ = b.WriteString("::")
 	_, _ = b.WriteString(clientDiscriminator)
 	_, _ = b.WriteString("::")
@@ -472,6 +482,7 @@ func InjectClaudeCodePrompt(body []byte, system any) []byte {
 func RewriteSystemForNonClaudeCode(body []byte, system any) []byte {
 	return RewriteSystemForNonClaudeCodeWithPromptBlocks(body, system, "", "")
 }
+
 func RewriteSystemForNonClaudeCodeWithPrompt(body []byte, system any, expansionPrompt string) []byte {
 	return RewriteSystemForNonClaudeCodeWithPromptBlocks(body, system, expansionPrompt, "")
 }
@@ -503,6 +514,7 @@ func ClaudeOAuthSystemPromptBlocksForModel(model, configured string) string {
 	}
 	return configured
 }
+
 func DefaultClaudeOAuthExpansionPrompt(expansionPrompt string) string {
 	expansionPrompt = strings.TrimSpace(expansionPrompt)
 	if expansionPrompt == "" {
@@ -510,6 +522,7 @@ func DefaultClaudeOAuthExpansionPrompt(expansionPrompt string) string {
 	}
 	return expansionPrompt
 }
+
 func ParseClaudeOAuthSystemPromptBlocksConfig(raw string) ([]ClaudeOAuthSystemPromptBlockConfig, error) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
@@ -528,6 +541,7 @@ func ParseClaudeOAuthSystemPromptBlocksConfig(raw string) ([]ClaudeOAuthSystemPr
 	}
 	return envelope.Blocks, nil
 }
+
 func DecodeClaudeOAuthSystemPromptCacheControl(raw json.RawMessage) (any, error) {
 	trimmed := bytes.TrimSpace(raw)
 	if len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) || bytes.Equal(trimmed, []byte("false")) {
@@ -548,6 +562,7 @@ func DecodeClaudeOAuthSystemPromptCacheControl(raw json.RawMessage) (any, error)
 	}
 	return value, nil
 }
+
 func ExpandClaudeOAuthSystemPromptTextTemplate(body []byte, text string, expansionPrompt string) (string, error) {
 	if text == "" {
 		return "", nil
@@ -567,6 +582,7 @@ func ExpandClaudeOAuthSystemPromptTextTemplate(body []byte, text string, expansi
 	)
 	return replacer.Replace(text), nil
 }
+
 func DefaultClaudeOAuthSystemPromptBlockConfig() []ClaudeOAuthSystemPromptBlockConfig {
 	enabled := true
 	return []ClaudeOAuthSystemPromptBlockConfig{
@@ -590,6 +606,7 @@ func DefaultClaudeOAuthSystemPromptBlockConfig() []ClaudeOAuthSystemPromptBlockC
 		},
 	}
 }
+
 func BuildClaudeOAuthSystemPromptBlocksJSON(body []byte, expansionPrompt string, blocksConfig string) ([][]byte, error) {
 	blocks, err := ParseClaudeOAuthSystemPromptBlocksConfig(blocksConfig)
 	if err != nil {
@@ -630,6 +647,7 @@ func BuildClaudeOAuthSystemPromptBlocksJSON(body []byte, expansionPrompt string,
 	}
 	return items, nil
 }
+
 func ValidateClaudeOAuthSystemPromptBlocksConfig(raw string) error {
 	if strings.TrimSpace(raw) == "" {
 		return nil
@@ -652,6 +670,7 @@ func ValidateClaudeOAuthSystemPromptBlocksConfig(raw string) error {
 	}
 	return nil
 }
+
 func ExtractSystemTextAndCacheControl(system any) (string, any) {
 	switch v := system.(type) {
 	case string:
@@ -680,6 +699,7 @@ func ExtractSystemTextAndCacheControl(system any) (string, any) {
 		return "", nil
 	}
 }
+
 func RewriteSystemForNonClaudeCodeWithPromptBlocks(body []byte, system any, expansionPrompt string, blocksConfig string) []byte {
 	system = NormalizeSystemParam(system)
 	expansionPrompt = DefaultClaudeOAuthExpansionPrompt(expansionPrompt)
@@ -919,6 +939,7 @@ func EnforceCacheControlLimit(body []byte) []byte {
 func InjectAnthropicCacheControlTTL1h(body []byte) []byte {
 	return ForceEphemeralCacheControlTTL(body, CacheTTLTarget1h)
 }
+
 func ForceEphemeralCacheControlTTL(body []byte, ttl string) []byte {
 	if len(body) == 0 || ttl == "" {
 		return body

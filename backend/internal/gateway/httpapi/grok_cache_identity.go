@@ -30,8 +30,8 @@ func ResolveGrokCacheIdentity(c *gin.Context, body []byte, explicitKey, upstream
 
 // ApplyGrokFreeRequestToolCacheRoute 还接受请求级开关。该兼容协议头仅在本地消费，
 // buildGrokResponsesRequest 只向上游转发明确支持的 OpenAI-Beta 头。
-func ApplyGrokFreeRequestToolCacheRoute(c *gin.Context, body, intentSourceBody []byte, account *gatewayprovider.ExecutionAccount, cacheIdentity string) ([]byte, error) {
-	allowPureClientTools, accountPolicyExplicit := gatewayprovider.GrokClientToolCacheAccountPolicy(account)
+func ApplyGrokFreeRequestToolCacheRoute(c *gin.Context, body, intentSourceBody []byte, provider *gatewayprovider.ExecutionProvider, cacheIdentity string) ([]byte, error) {
+	allowPureClientTools, providerPolicyExplicit := gatewayprovider.GrokClientToolCacheProviderPolicy(provider)
 	requestOptOut := false
 	if c != nil {
 		switch strings.ToLower(strings.TrimSpace(c.GetHeader(grokClientToolCacheOptInHeader))) {
@@ -42,13 +42,13 @@ func ApplyGrokFreeRequestToolCacheRoute(c *gin.Context, body, intentSourceBody [
 			requestOptOut = true
 		}
 	}
-	if !allowPureClientTools && !accountPolicyExplicit && !requestOptOut && isGrokClaudeDesktopResponsesCacheRequest(c) {
+	if !allowPureClientTools && !providerPolicyExplicit && !requestOptOut && isGrokClaudeDesktopResponsesCacheRequest(c) {
 		allowPureClientTools = true
 	}
-	// 名为 web_search/x_search 的函数仍是客户端函数。已知 Free OAuth 账号默认使用
-	// 缓存路由；请求级启用可覆盖账号关闭，而请求级关闭始终优先。旧 Claude 指纹仅在
-	// 尚无账号策略时作为兼容回退（#4486）。
-	return gatewayprovider.ApplyGrokFreeToolCacheRoute(body, intentSourceBody, account, cacheIdentity, allowPureClientTools, allowPureClientTools)
+	// 名为 web_search/x_search 的函数仍是客户端函数。已知 Free OAuth 提供商默认使用
+	// 缓存路由；请求级启用可覆盖提供商关闭，而请求级关闭始终优先。旧 Claude 指纹仅在
+	// 尚无提供商策略时作为兼容回退（#4486）。
+	return gatewayprovider.ApplyGrokFreeToolCacheRoute(body, intentSourceBody, provider, cacheIdentity, allowPureClientTools, allowPureClientTools)
 }
 
 // isGrokClaudeDesktopResponsesCacheRequest 识别 Claude Desktop 本地代理经 CC Switch

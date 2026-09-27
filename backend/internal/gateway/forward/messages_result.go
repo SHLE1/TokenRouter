@@ -11,7 +11,7 @@ import (
 // MessagesResult 保存通用 Messages 执行的原始用量与完成元数据，不携带旧业务实体。
 type MessagesResult struct {
 	RequestID string
-	// UpstreamHeaders 是直接上游的响应头，用于按账户配置解析上游请求标识。
+	// UpstreamHeaders 是直接上游的响应头，用于按提供商配置解析上游请求标识。
 	UpstreamHeaders map[string][]string
 	Usage           upstream.TokenUsage
 	Model           string

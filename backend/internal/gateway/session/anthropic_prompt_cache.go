@@ -4,9 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-	"time"
-
 	"sync"
+	"time"
 
 	protocolanthropic "github.com/TokenFlux/TokenRouter/internal/protocol/anthropic"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
@@ -41,19 +40,19 @@ func BuildAnthropicDigestChain(req *protocolanthropic.AnthropicRequest) string {
 	return strings.Join(parts, "-")
 }
 
-func anthropicDigestNamespace(accountID int64, cAPIKeyID int64) string {
-	if accountID <= 0 {
+func anthropicDigestNamespace(providerID int64, cAPIKeyID int64) string {
+	if providerID <= 0 {
 		return ""
 	}
-	return fmt.Sprintf("%d|%d|", accountID, cAPIKeyID)
+	return fmt.Sprintf("%d|%d|", providerID, cAPIKeyID)
 }
 
 // Find 逐级回退到最长有效摘要，保持到期清理时点。
-func (s *AnthropicPromptCache) Find(accountID int64, cAPIKeyID int64, digestChain string) (promptCacheKey string, matchedChain string) {
+func (s *AnthropicPromptCache) Find(providerID int64, cAPIKeyID int64, digestChain string) (promptCacheKey string, matchedChain string) {
 	if s == nil || digestChain == "" {
 		return "", ""
 	}
-	ns := anthropicDigestNamespace(accountID, cAPIKeyID)
+	ns := anthropicDigestNamespace(providerID, cAPIKeyID)
 	if ns == "" {
 		return "", ""
 	}
@@ -78,11 +77,11 @@ func (s *AnthropicPromptCache) Find(accountID int64, cAPIKeyID int64, digestChai
 }
 
 // Bind 保留原TTL和旧链删除顺序，不延长其它绑定。
-func (s *AnthropicPromptCache) Bind(accountID int64, cAPIKeyID int64, digestChain, promptCacheKey, oldDigestChain string, ttl time.Duration) {
+func (s *AnthropicPromptCache) Bind(providerID int64, cAPIKeyID int64, digestChain, promptCacheKey, oldDigestChain string, ttl time.Duration) {
 	if s == nil || digestChain == "" || strings.TrimSpace(promptCacheKey) == "" {
 		return
 	}
-	ns := anthropicDigestNamespace(accountID, cAPIKeyID)
+	ns := anthropicDigestNamespace(providerID, cAPIKeyID)
 	if ns == "" {
 		return
 	}
@@ -143,7 +142,7 @@ func CloneAnthropicDigestRequest(req *protocolanthropic.AnthropicRequest) *proto
 	return &cp
 }
 
-// AnthropicPromptCache 独占账号与 Key 隔离的摘要绑定；没有后台清理或额外存储。
+// AnthropicPromptCache 独占提供商与 Key 隔离的摘要绑定；没有后台清理或额外存储。
 type AnthropicPromptCache struct {
 	entries sync.Map
 	clock   func() time.Time
@@ -156,6 +155,7 @@ func NewAnthropicPromptCache(clock func() time.Time) *AnthropicPromptCache {
 	}
 	return &AnthropicPromptCache{clock: clock}
 }
+
 func (s *AnthropicPromptCache) now() time.Time {
 	if s.clock != nil {
 		return s.clock()

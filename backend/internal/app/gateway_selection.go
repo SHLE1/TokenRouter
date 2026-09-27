@@ -7,15 +7,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/config"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/selection"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 	"github.com/TokenFlux/TokenRouter/internal/usage"
@@ -23,12 +23,12 @@ import (
 )
 
 // provideSelectionReads 只组合原有查询端口；快照与数据库的先后由选择用例保留。
-func provideSelectionReads(accounts provider.ExecutionAccountStore, groups routing.GroupRepository, snapshots selection.Snapshots) selection.Reads {
-	return selection.Reads{Accounts: accounts, Groups: groups, Snapshot: snapshots}
+func provideSelectionReads(providers gatewayadapter.ExecutionProviderStore, groups routing.GroupRepository, snapshots selection.Snapshots) selection.Reads {
+	return selection.Reads{Providers: providers, Groups: groups, Snapshot: snapshots}
 }
 
 // provideSelectionShared 发布共享的反馈、参数、计数、健康和分组策略读取实例。
-func provideSelectionShared(cache session.GatewayCache, concurrency *scheduler.ConcurrencyService, health *accountprovider.UpstreamHealth, modelConfigs *routing.PricingConfigService, shared *schedulerSharedState) selection.Shared {
+func provideSelectionShared(cache session.GatewayCache, concurrency *scheduler.ConcurrencyService, health *provideradapter.UpstreamHealth, modelConfigs *routing.PricingConfigService, shared *schedulerSharedState) selection.Shared {
 	return selection.Shared{
 		Cache:         cache,
 		Concurrency:   concurrency,
@@ -65,8 +65,8 @@ func selectionOptions(cfg *config.Config) selection.Options {
 }
 
 // provideSelectionModelTransient 由执行反馈与选号共同持有一个模型瞬态状态。
-func provideSelectionModelTransient() *account.ModelTransientState {
-	return account.NewModelTransientState(0)
+func provideSelectionModelTransient() *provider.ModelTransientState {
+	return provider.NewModelTransientState(0)
 }
 
 // provideSelectionProxyCircuit 保留原默认值和正数覆盖，执行观测与选号共用同一隔离状态。
@@ -88,12 +88,12 @@ func provideSelectionProxyCircuit(cfg *config.Config) *egress.ProxyStreamCircuit
 	return egress.NewProxyStreamCircuit(options)
 }
 
-func provideGenericSelection(reads selection.Reads, shared selection.Shared, cfg *config.Config, windows billing.WindowCostCache, source usage.UsageLogRepository, nativeUsage *usagepostgres.Store, rpm scheduler.RPMCache, sessions scheduler.SessionLimitCache, gates *selectionFreeQuotaGates, accounts provider.ExecutionAccountStore) *selection.Generic {
+func provideGenericSelection(reads selection.Reads, shared selection.Shared, cfg *config.Config, windows billing.WindowCostCache, source usage.UsageLogRepository, nativeUsage *usagepostgres.Store, rpm scheduler.RPMCache, sessions scheduler.SessionLimitCache, gates *selectionFreeQuotaGates, providers gatewayadapter.ExecutionProviderStore) *selection.Generic {
 	stats := usageWindowStats{nativeUsage}
 	guard := billing.NewWindowCostGuard(windows, stats, billing.WindowCostGuardOptions{Now: time.Now, Stats: billing.SharedWindowCostMetrics(), Log: func(format string, args ...any) { logging.LegacyPrintf("service.gateway", format, args...) }, Debug: slog.Debug})
 	var write func(context.Context, int64, string) error
-	if accounts != nil {
-		write = accounts.SetError
+	if providers != nil {
+		write = providers.SetError
 	}
 	return selection.NewGeneric(selection.GenericDependencies{
 		Reads:                   reads,
@@ -103,11 +103,11 @@ func provideGenericSelection(reads selection.Reads, shared selection.Shared, cfg
 		RPM:                     rpm,
 		Sessions:                sessions,
 		FreeQuota:               gates.Generic,
-		SetAccountError:         write,
+		SetProviderError:        write,
 	}, selectionOptions(cfg))
 }
 
-func provideCompatibleSelection(generic *selection.Generic, gemini *selection.Gemini, reads selection.Reads, shared selection.Shared, cfg *config.Config, responses session.OpenAIWSStateStore, quota *account.QuotaSettingsCache, blocks *account.RuntimeBlockState, transient *account.ModelTransientState, proxy *egress.ProxyStreamCircuit, state *schedulerSharedState, gates *selectionFreeQuotaGates) *selection.Compatible {
+func provideCompatibleSelection(generic *selection.Generic, gemini *selection.Gemini, reads selection.Reads, shared selection.Shared, cfg *config.Config, responses session.OpenAIWSStateStore, quota *provider.QuotaSettingsCache, blocks *provider.RuntimeBlockState, transient *provider.ModelTransientState, proxy *egress.ProxyStreamCircuit, state *schedulerSharedState, gates *selectionFreeQuotaGates) *selection.Compatible {
 	return selection.NewCompatible(selection.CompatibleDependencies{
 		Generic: generic, Gemini: gemini,
 		Reads:                reads,
@@ -123,6 +123,6 @@ func provideCompatibleSelection(generic *selection.Generic, gemini *selection.Ge
 	}, selectionOptions(cfg))
 }
 
-func provideGeminiSelection(reads selection.Reads, shared selection.Shared, cfg *config.Config, quota *account.GeminiPrecheck) *selection.Gemini {
+func provideGeminiSelection(reads selection.Reads, shared selection.Shared, cfg *config.Config, quota *provider.GeminiPrecheck) *selection.Gemini {
 	return selection.NewGemini(selection.GeminiDependencies{Reads: reads, Shared: shared, QuotaPrecheck: quota}, selectionOptions(cfg))
 }

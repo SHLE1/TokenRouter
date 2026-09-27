@@ -1,4 +1,4 @@
-// 搜索工具识别和合成内容的唯一字节规则，不读取账号、设置或存储。
+// 搜索工具识别和合成内容的唯一字节规则，不读取提供商、设置或存储。
 package searchtools
 
 import (
@@ -22,7 +22,7 @@ const (
 	ToolUseIDPrefix            = "srvtoolu_ws_"
 	tokenEstimateDivisor       = 4
 
-	// FeatureKey is the key used in Account.Extra and PricingConfig.FeaturesConfig.
+	// FeatureKey is the key used in Provider.Extra and PricingConfig.FeaturesConfig.
 	FeatureKey = "web_search_emulation"
 )
 

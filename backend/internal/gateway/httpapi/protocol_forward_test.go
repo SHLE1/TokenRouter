@@ -13,10 +13,10 @@ import (
 	"testing"
 	time "time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	routing "github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/gin-gonic/gin"
@@ -38,14 +38,14 @@ func TestProtocolForwardUsesConfiguredTarget(t *testing.T) {
 			if ingress.name == "chat completions" {
 				source = protocol.ProtocolOpenAIChatCompletions
 			}
-			a := adaptiveProtocolTestAccount(platform, map[string]any{accountcore.APIProtocolChatCompletions: "http://chat.example", accountcore.APIProtocolAnthropic: "http://anthropic.example", accountcore.APIProtocolResponses: "http://responses.example"})
+			a := adaptiveProtocolTestProvider(platform, map[string]any{providercore.APIProtocolChatCompletions: "http://chat.example", providercore.APIProtocolAnthropic: "http://anthropic.example", providercore.APIProtocolResponses: "http://responses.example"})
 			for _, target := range a.View().NativeProtocolOptions() {
 				if target != protocol.ProtocolAnthropicMessages && target != protocol.ProtocolOpenAIResponses && target != protocol.ProtocolOpenAIChatCompletions {
 					continue
 				}
 				t.Run(platform+"/"+string(source)+"/"+string(target), func(t *testing.T) {
-					account := *a
-					account.Record.Credentials = map[string]any{"api_key": "test", "base_url": "http://grok.example/v1", accountcore.UpstreamProtocolsKey: []protocol.ProtocolID{target}, "api_base_urls": a.Record.Credentials["api_base_urls"]}
+					provider := *a
+					provider.Record.Credentials = map[string]any{"api_key": "test", "base_url": "http://grok.example/v1", providercore.UpstreamProtocolsKey: []protocol.ProtocolID{target}, "api_base_urls": a.Record.Credentials["api_base_urls"]}
 					group := &routing.Group{ProtocolFallbacks: map[protocol.ProtocolID][]protocol.ProtocolID{source: {target}}}
 					ctx := requeststate.WithClientProtocol(requeststate.WithGroup(context.Background(), group), source)
 					c := adaptiveProtocolTestContext(ingress.path, ingress.body)
@@ -55,11 +55,11 @@ func TestProtocolForwardUsesConfiguredTarget(t *testing.T) {
 					var err error
 					switch source {
 					case protocol.ProtocolAnthropicMessages:
-						_, err = svc.Text.Messages(ctx, c, &account, ingress.body, "", "")
+						_, err = svc.Text.Messages(ctx, c, &provider, ingress.body, "", "")
 					case protocol.ProtocolOpenAIChatCompletions:
-						_, err = svc.Text.Chat(ctx, c, &account, ingress.body, "", "")
+						_, err = svc.Text.Chat(ctx, c, &provider, ingress.body, "", "")
 					default:
-						_, err = svc.Forward(ctx, c, &account, ingress.body)
+						_, err = svc.Forward(ctx, c, &provider, ingress.body)
 					}
 					require.Error(t, err)
 					require.NotNil(t, upstream.lastReq, err)
@@ -88,7 +88,7 @@ func TestProtocolForwardUsesConfiguredTarget(t *testing.T) {
 						require.True(t, gjson.GetBytes(upstream.lastBody, "input").Exists())
 						require.False(t, gjson.GetBytes(upstream.lastBody, "messages").Exists())
 					}
-					require.Empty(t, account.Route.Protocol())
+					require.Empty(t, provider.Route.Protocol())
 				})
 			}
 		}
@@ -106,7 +106,7 @@ func TestProtocolForwardConvertedResponsesRetainsWireContract(t *testing.T) {
 		{"tool", `{"model":"gpt-test","input":"hello","stream":false,"tools":[{"type":"function","name":"lookup","parameters":{"type":"object"}}]}`, `{"id":"chat-1","object":"chat.completion","choices":[{"index":0,"message":{"role":"assistant","tool_calls":[{"id":"call_1","type":"function","function":{"name":"lookup","arguments":"{}"}}]},"finish_reason":"tool_calls"}],"usage":{"prompt_tokens":3,"completion_tokens":2}}`, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey, Credentials: map[string]any{"api_key": "test", "base_url": "http://upstream.example", accountcore.UpstreamProtocolsKey: []string{"openai_chat_completions"}}}}
+			provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey, Credentials: map[string]any{"api_key": "test", "base_url": "http://upstream.example", providercore.UpstreamProtocolsKey: []string{"openai_chat_completions"}}}}
 			group := &routing.Group{ProtocolFallbacks: map[protocol.ProtocolID][]protocol.ProtocolID{protocol.ProtocolOpenAIResponses: {protocol.ProtocolOpenAIChatCompletions}}}
 			ctx := requeststate.WithClientProtocol(requeststate.WithGroup(context.Background(), group), protocol.ProtocolOpenAIResponses)
 			recorder := httptest.NewRecorder()
@@ -118,7 +118,7 @@ func TestProtocolForwardConvertedResponsesRetainsWireContract(t *testing.T) {
 			}
 			upstream := &auxiliaryHTTPRecorder{resp: &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": []string{contentType}}, Body: io.NopCloser(strings.NewReader(tc.response))}}
 			svc := newResponsesFixture(responsesFixtureInputs{options: protocolHTTPOptions(), transport: upstream})
-			result, err := svc.Forward(ctx, c, account, []byte(tc.body))
+			result, err := svc.Forward(ctx, c, provider, []byte(tc.body))
 			require.NoError(t, err)
 			require.Equal(t, 3, result.Usage.InputTokens)
 			require.Equal(t, 2, result.Usage.OutputTokens)

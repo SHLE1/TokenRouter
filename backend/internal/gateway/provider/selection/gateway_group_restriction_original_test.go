@@ -8,11 +8,11 @@ import (
 	"testing"
 	time "time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	pricingprovider "github.com/TokenFlux/TokenRouter/internal/billing/provider"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	routingtestkit "github.com/TokenFlux/TokenRouter/internal/routing/testkit"
@@ -36,7 +36,7 @@ func TestModelForRestriction_GroupMapped(t *testing.T) {
 func TestModelForRestriction_Upstream(t *testing.T) {
 	t.Parallel()
 	got := routing.ModelForRestriction(routing.BillingModelSourceUpstream, "claude-sonnet-4-5", "claude-sonnet-4-6")
-	require.Equal(t, "", got, "upstream should return empty (per-account check needed)")
+	require.Equal(t, "", got, "upstream should return empty (per-provider check needed)")
 }
 
 func TestModelForRestriction_Empty(t *testing.T) {
@@ -45,52 +45,52 @@ func TestModelForRestriction_Empty(t *testing.T) {
 	require.Equal(t, "claude-sonnet-4-6", got, "empty source defaults to group_mapped")
 }
 
-// --- resolveAccountUpstreamModel ---
+// --- resolveProviderUpstreamModel ---
 
-func TestResolveAccountUpstreamModel_Antigravity(t *testing.T) {
+func TestResolveProviderUpstreamModel_Antigravity(t *testing.T) {
 	t.Parallel()
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, Platform: capability.PlatformAntigravity}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, Platform: capability.PlatformAntigravity}}
 	// Antigravity 平台使用 DefaultAntigravityModelMapping
-	got := resolveAccountUpstreamModel(context.Background(), account, "claude-sonnet-4-6")
+	got := resolveProviderUpstreamModel(context.Background(), provider, "claude-sonnet-4-6")
 	require.Equal(t, "claude-sonnet-4-6", got)
 }
 
-func TestResolveAccountUpstreamModel_Antigravity_Unsupported(t *testing.T) {
+func TestResolveProviderUpstreamModel_Antigravity_Unsupported(t *testing.T) {
 	t.Parallel()
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAntigravity}}
-	got := resolveAccountUpstreamModel(context.Background(), account, "totally-unknown-model")
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAntigravity}}
+	got := resolveProviderUpstreamModel(context.Background(), provider, "totally-unknown-model")
 	require.Equal(t, "", got, "unsupported model should return empty")
 }
 
-func TestResolveAccountUpstreamModel_NonAntigravity(t *testing.T) {
+func TestResolveProviderUpstreamModel_NonAntigravity(t *testing.T) {
 	t.Parallel()
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, Platform: capability.PlatformAnthropic}}
-	got := resolveAccountUpstreamModel(context.Background(), account, "claude-sonnet-4-6")
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, Platform: capability.PlatformAnthropic}}
+	got := resolveProviderUpstreamModel(context.Background(), provider, "claude-sonnet-4-6")
 	require.Equal(t, "claude-sonnet-4-6", got, "no mapping = passthrough")
 }
 
-func TestResolveAccountUpstreamModel_AnthropicOAuthAppliesMappingBeforeNormalization(t *testing.T) {
+func TestResolveProviderUpstreamModel_AnthropicOAuthAppliesMappingBeforeNormalization(t *testing.T) {
 	t.Parallel()
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, Platform: capability.PlatformAnthropic,
-			Type: capability.AccountTypeOAuth,
+			Type: capability.ProviderTypeOAuth,
 			Credentials: map[string]any{
 				"model_mapping": map[string]any{"client-alias": "claude-sonnet-4-5"},
 			},
 		},
 	}
 
-	got := resolveAccountUpstreamModel(context.Background(), account, "client-alias")
+	got := resolveProviderUpstreamModel(context.Background(), provider, "client-alias")
 	require.Equal(t, "claude-sonnet-4-5-20250929", got)
 }
 
-func TestResolveAccountUpstreamModel_BedrockUsesRegionalFinalModel(t *testing.T) {
+func TestResolveProviderUpstreamModel_BedrockUsesRegionalFinalModel(t *testing.T) {
 	t.Parallel()
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, Platform: capability.PlatformAnthropic,
-			Type: capability.AccountTypeBedrock,
+			Type: capability.ProviderTypeBedrock,
 			Credentials: map[string]any{
 				"model_whitelist": []string{"*"},
 				"aws_region":      "us-east-1",
@@ -98,20 +98,20 @@ func TestResolveAccountUpstreamModel_BedrockUsesRegionalFinalModel(t *testing.T)
 		},
 	}
 
-	got := resolveAccountUpstreamModel(context.Background(), account, "claude-sonnet-4-5")
+	got := resolveProviderUpstreamModel(context.Background(), provider, "claude-sonnet-4-5")
 	require.Equal(t, "us.anthropic.claude-sonnet-4-5-20250929-v1:0", got)
 }
 
-func TestResolveAccountUpstreamModel_AntigravityUsesThinkingContext(t *testing.T) {
+func TestResolveProviderUpstreamModel_AntigravityUsesThinkingContext(t *testing.T) {
 	t.Parallel()
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, Platform: capability.PlatformAntigravity}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, Platform: capability.PlatformAntigravity}}
 	ctx := requeststate.WithThinkingEnabled(context.Background(), true)
 
-	got := resolveAccountUpstreamModel(ctx, account, "claude-sonnet-4-5")
+	got := resolveProviderUpstreamModel(ctx, provider, "claude-sonnet-4-5")
 	require.Equal(t, "claude-sonnet-4-5-thinking", got)
 }
 
-func TestIsModelSupportedByAccountWithContext_QoderUsesGroupMappedAccountLayerModel(t *testing.T) {
+func TestIsModelSupportedByProviderWithContext_QoderUsesGroupMappedProviderLayerModel(t *testing.T) {
 	t.Parallel()
 	ch := routingtestkit.Configuration{
 		ID:           1,
@@ -128,8 +128,8 @@ func TestIsModelSupportedByAccountWithContext_QoderUsesGroupMappedAccountLayerMo
 		Status:   billing.StatusActive,
 		Hydrated: true,
 	})
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, Platform: capability.PlatformQoder,
 			Credentials: map[string]any{
 				"model_mapping":   map[string]any{"qmodel": "ultimate"},
@@ -138,8 +138,8 @@ func TestIsModelSupportedByAccountWithContext_QoderUsesGroupMappedAccountLayerMo
 		},
 	}
 
-	require.True(t, svc.isModelSupportedByAccountWithContext(ctx, account, "my-qoder"),
-		"account whitelist should be checked after channel mapping and account mapping")
+	require.True(t, svc.isModelSupportedByProviderWithContext(ctx, provider, "my-qoder"),
+		"provider whitelist should be checked after channel mapping and provider mapping")
 }
 
 // --- checkGroupModelRestriction ---
@@ -283,7 +283,7 @@ func TestCheckGroupModelRestriction_Requested_Allowed(t *testing.T) {
 
 func TestCheckGroupModelRestriction_Upstream_SkipsPreCheck(t *testing.T) {
 	t.Parallel()
-	// upstream 模式：预检查始终跳过（返回 false），需逐账号检查
+	// upstream 模式：预检查始终跳过（返回 false），需逐提供商检查
 	ch := routingtestkit.Configuration{
 		ID:                 1,
 		Status:             billing.StatusActive,
@@ -299,7 +299,7 @@ func TestCheckGroupModelRestriction_Upstream_SkipsPreCheck(t *testing.T) {
 
 	gid := int64(10)
 	require.False(t, svc.checkGroupModelRestriction(context.Background(), &gid, "unknown-model"),
-		"upstream mode should skip pre-check (per-account check needed)")
+		"upstream mode should skip pre-check (per-provider check needed)")
 }
 
 func TestCheckGroupModelRestriction_RestrictModelsDisabled(t *testing.T) {
@@ -351,12 +351,12 @@ func TestIsUpstreamModelRestrictedByGroup_Restricted(t *testing.T) {
 	pricingConfigSvc := routingtestkit.NewConfigServiceFixture(routingtestkit.StandardPricingConfigRepository(ch, map[int64]string{10: "anthropic"}))
 	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{}, Shared: Shared{GroupPolicies: pricingConfigSvc}}, nil)
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.
 		// claude-sonnet-4-6 在 DefaultAntigravityModelMapping 中，映射后仍为 claude-sonnet-4-6
 		// 但定价列表只有 claude-opus-4-6
 		LoadLocation, Platform: capability.PlatformAntigravity}}
 
-	require.True(t, svc.isUpstreamModelRestrictedByGroup(context.Background(), 10, account, "claude-sonnet-4-6"),
+	require.True(t, svc.isUpstreamModelRestrictedByGroup(context.Background(), 10, provider, "claude-sonnet-4-6"),
 		"upstream model claude-sonnet-4-6 NOT in pricing → restricted")
 }
 
@@ -374,12 +374,12 @@ func TestIsUpstreamModelRestrictedByGroup_Allowed(t *testing.T) {
 	pricingConfigSvc := routingtestkit.NewConfigServiceFixture(routingtestkit.StandardPricingConfigRepository(ch, map[int64]string{10: "anthropic"}))
 	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{}, Shared: Shared{GroupPolicies: pricingConfigSvc}}, nil)
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, Platform: capability.PlatformAntigravity}}
-	require.False(t, svc.isUpstreamModelRestrictedByGroup(context.Background(), 10, account, "claude-sonnet-4-6"),
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, Platform: capability.PlatformAntigravity}}
+	require.False(t, svc.isUpstreamModelRestrictedByGroup(context.Background(), 10, provider, "claude-sonnet-4-6"),
 		"upstream model claude-sonnet-4-6 IS in pricing → allowed")
 }
 
-func TestIsUpstreamModelRestrictedByGroup_AppliesGroupMappingBeforeAccountMapping(t *testing.T) {
+func TestIsUpstreamModelRestrictedByGroup_AppliesGroupMappingBeforeProviderMapping(t *testing.T) {
 	t.Parallel()
 	price := 1e-6
 	ch := routingtestkit.Configuration{
@@ -396,8 +396,8 @@ func TestIsUpstreamModelRestrictedByGroup_AppliesGroupMappingBeforeAccountMappin
 	pricingConfigSvc := routingtestkit.NewConfigServiceFixture(routingtestkit.StandardPricingConfigRepository(ch, map[int64]string{10: capability.PlatformQoder}))
 	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{}, Shared: Shared{GroupPolicies: pricingConfigSvc}}, nil)
 
-	account := &gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, Platform: capability.PlatformQoder,
 			Credentials: map[string]any{
 				"model_mapping": map[string]any{"qmodel": "ultimate"},
@@ -405,8 +405,8 @@ func TestIsUpstreamModelRestrictedByGroup_AppliesGroupMappingBeforeAccountMappin
 		},
 	}
 
-	require.False(t, svc.isUpstreamModelRestrictedByGroup(context.Background(), 10, account, "my-qoder"),
-		"upstream restriction should check the final model after channel mapping and account mapping")
+	require.False(t, svc.isUpstreamModelRestrictedByGroup(context.Background(), 10, provider, "my-qoder"),
+		"upstream restriction should check the final model after channel mapping and provider mapping")
 }
 
 func TestIsUpstreamModelRestrictedByGroup_QoderUpstreamBasisAllowsConfiguredUpstream(t *testing.T) {
@@ -427,9 +427,9 @@ func TestIsUpstreamModelRestrictedByGroup_QoderUpstreamBasisAllowsConfiguredUpst
 	pricingConfigSvc := routingtestkit.NewConfigServiceFixture(routingtestkit.StandardPricingConfigRepository(ch, map[int64]string{10: capability.PlatformQoder}))
 	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{}, Shared: Shared{GroupPolicies: pricingConfigSvc}}, nil)
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, Platform: capability.PlatformQoder}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, Platform: capability.PlatformQoder}}
 
-	require.False(t, svc.isUpstreamModelRestrictedByGroup(context.Background(), 10, account, "qwen3.7-plus"),
+	require.False(t, svc.isUpstreamModelRestrictedByGroup(context.Background(), 10, provider, "qwen3.7-plus"),
 		"已配置的上游模型属于白名单，价格为空不影响放行")
 }
 
@@ -447,10 +447,10 @@ func TestIsUpstreamModelRestrictedByGroup_UnsupportedModel(t *testing.T) {
 	pricingConfigSvc := routingtestkit.NewConfigServiceFixture(routingtestkit.StandardPricingConfigRepository(ch, map[int64]string{10: "anthropic"}))
 	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{}, Shared: Shared{GroupPolicies: pricingConfigSvc}}, nil)
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.
 		// totally-unknown-model 不在 DefaultAntigravityModelMapping 中 → 映射结果为空
 		LoadLocation, Platform: capability.PlatformAntigravity}}
 
-	require.False(t, svc.isUpstreamModelRestrictedByGroup(context.Background(), 10, account, "totally-unknown-model"),
-		"unmappable model → upstream model empty → not restricted (account filter handles this)")
+	require.False(t, svc.isUpstreamModelRestrictedByGroup(context.Background(), 10, provider, "totally-unknown-model"),
+		"unmappable model → upstream model empty → not restricted (provider filter handles this)")
 }

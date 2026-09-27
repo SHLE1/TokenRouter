@@ -38,7 +38,7 @@ type MediaHTTPFailure struct {
 	Err           error
 }
 
-// GenerationHTTPInput 把已解析的输入交给固定依赖工厂，不携带旧身份或账号对象。
+// GenerationHTTPInput 把已解析的输入交给固定依赖工厂，不携带旧身份或提供商对象。
 type GenerationHTTPInput struct {
 	Grok                                           bool
 	Subject                                        MediaSubject
@@ -47,7 +47,7 @@ type GenerationHTTPInput struct {
 	RequestModel, RoutingModel, SessionHash        string
 	Mapping                                        routing.GroupMappingResult
 	Endpoint, RequestID, ContentType, VideoCreated string
-	BoundAccountID                                 int64
+	BoundProviderID                                int64
 }
 type MediaHTTPPorts interface {
 	Access(*gin.Context) (*MediaAccess, bool)
@@ -76,7 +76,7 @@ type MediaHTTPPorts interface {
 	ParseGrok(string, []byte) GrokMediaInput
 	NormalizeGrok(string, string, bool) string
 	ResolveCompositeVideo(*gin.Context, string, int64) (*MediaAccess, int64, error)
-	ResolveVideoAccount(context.Context, *int64, string, int64, int64) (int64, error)
+	ResolveVideoProvider(context.Context, *int64, string, int64, int64) (int64, error)
 	RewriteGrok([]byte, string, string) ([]byte, string, error)
 }
 
@@ -146,7 +146,7 @@ func (h *MediaHandler) Images(c *gin.Context) {
 	if routingModel == "" {
 		routingModel = strings.TrimSpace(requestModel)
 	}
-	// 分组映射后仍可能是账号别名，图片模型资格由逐候选的最终上游模型校验。
+	// 分组映射后仍可能是提供商别名，图片模型资格由逐候选的最终上游模型校验。
 	routed := *parsed
 	routed.Model = routingModel
 	parsed.RequiredCapability = media.ClassifyImageCapability(&routed)
@@ -318,7 +318,7 @@ func (h *MediaHandler) GrokMedia(c *gin.Context, endpoint, requestID string) {
 		sessionHash = media.GrokMediaVideoRequestSessionHash(requestID, subject.UserID, access.ID)
 		if bound <= 0 {
 			var err error
-			bound, err = h.ports.ResolveVideoAccount(c.Request.Context(), access.GroupID, requestID, subject.UserID, access.ID)
+			bound, err = h.ports.ResolveVideoProvider(c.Request.Context(), access.GroupID, requestID, subject.UserID, access.ID)
 			if err != nil || bound <= 0 {
 				log.Info("grok_media.video_lookup_owner_binding_missing", zap.Error(err))
 				h.ports.Error(c, 404, "not_found_error", "Video request not found")
@@ -336,8 +336,8 @@ func (h *MediaHandler) GrokMedia(c *gin.Context, endpoint, requestID string) {
 	if media.IsVideoCreate(endpoint) {
 		created = media.GrokVideoPendingCreatedAtNow()
 	}
-	input := GenerationHTTPInput{Grok: true, Subject: subject, Body: body, RequestModel: requestModel, RoutingModel: routingModel, SessionHash: sessionHash, Mapping: mapping, Endpoint: endpoint, RequestID: requestID, ContentType: forwardType, BoundAccountID: bound, VideoCreated: created}
-	media.RunGrokMedia(ctx, media.GenerationRequest{Body: forwardBody, MaxSwitches: h.ports.MaxSwitches(), RoutingStarted: time.Now(), Generation: generation, VideoLookup: lookup, BoundAccountID: bound}, h.ports.NewGenerationPorts(c, input, log, &streamStarted))
+	input := GenerationHTTPInput{Grok: true, Subject: subject, Body: body, RequestModel: requestModel, RoutingModel: routingModel, SessionHash: sessionHash, Mapping: mapping, Endpoint: endpoint, RequestID: requestID, ContentType: forwardType, BoundProviderID: bound, VideoCreated: created}
+	media.RunGrokMedia(ctx, media.GenerationRequest{Body: forwardBody, MaxSwitches: h.ports.MaxSwitches(), RoutingStarted: time.Now(), Generation: generation, VideoLookup: lookup, BoundProviderID: bound}, h.ports.NewGenerationPorts(c, input, log, &streamStarted))
 }
 
 // recoverMedia 在直接 defer 中读取 panic，保留旧 fallback 与诊断字段。

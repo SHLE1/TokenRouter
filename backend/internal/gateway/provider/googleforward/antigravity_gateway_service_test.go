@@ -13,7 +13,6 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
@@ -22,6 +21,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
 	"github.com/TokenFlux/TokenRouter/internal/ops"
 	protocolanthropic "github.com/TokenFlux/TokenRouter/internal/protocol/anthropic"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	settingscore "github.com/TokenFlux/TokenRouter/internal/settings"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
@@ -60,7 +60,6 @@ func TestAntigravityUpstreamErrorBodyReadLimit_RespectsDiagnosticLimit(t *testin
 
 func TestStripSignatureSensitiveBlocksFromClaudeRequest(t *testing.T) {
 	req := &protocolanthropic.ClaudeRequest{
-
 		Model: "claude-sonnet-4-5",
 
 		Thinking: &protocolanthropic.ThinkingConfig{
@@ -69,9 +68,7 @@ func TestStripSignatureSensitiveBlocksFromClaudeRequest(t *testing.T) {
 		},
 
 		Messages: []protocolanthropic.ClaudeMessage{
-
 			{
-
 				Role: "assistant",
 
 				Content: json.RawMessage(`[
@@ -81,7 +78,6 @@ func TestStripSignatureSensitiveBlocksFromClaudeRequest(t *testing.T) {
 			},
 
 			{
-
 				Role: "user",
 
 				Content: json.RawMessage(`[
@@ -115,7 +111,6 @@ func TestStripSignatureSensitiveBlocksFromClaudeRequest(t *testing.T) {
 
 func TestStripThinkingFromClaudeRequest_DoesNotDowngradeTools(t *testing.T) {
 	req := &protocolanthropic.ClaudeRequest{
-
 		Model: "claude-sonnet-4-5",
 
 		Thinking: &protocolanthropic.ThinkingConfig{
@@ -125,7 +120,6 @@ func TestStripThinkingFromClaudeRequest_DoesNotDowngradeTools(t *testing.T) {
 
 		Messages: []protocolanthropic.ClaudeMessage{
 			{
-
 				Role: "assistant",
 
 				Content: json.RawMessage(`[{"type":"thinking","thinking":"secret plan"},{"type":"tool_use","id":"t1","name":"Bash","input":{"command":"ls"}}]`),
@@ -202,8 +196,8 @@ func (s *queuedHTTPUpstreamStub) Do(req *http.Request, _ string, _ int64, _ int)
 	return resp, err
 }
 
-func (s *queuedHTTPUpstreamStub) DoWithTLS(req *http.Request, proxyURL string, accountID int64, concurrency int, _ *tlsfingerprint.Profile) (*http.Response, error) {
-	return s.Do(req, proxyURL, accountID, concurrency)
+func (s *queuedHTTPUpstreamStub) DoWithTLS(req *http.Request, proxyURL string, providerID int64, concurrency int, _ *tlsfingerprint.Profile) (*http.Response, error) {
+	return s.Do(req, proxyURL, providerID, concurrency)
 }
 
 type antigravitySettingRepoStub struct{}
@@ -238,17 +232,15 @@ func (s *antigravitySettingRepoStub) Delete(ctx context.Context, key string) err
 
 func TestResolveAntigravityProjectID(t *testing.T) {
 	tests := []struct {
-		name    string
-		account *gatewayprovider.ExecutionAccount
-		want    string
-		wantErr bool
+		name     string
+		provider *gatewayprovider.ExecutionProvider
+		want     string
+		wantErr  bool
 	}{
-
 		{
-
 			name: "优先使用自动回填的 project_id",
 
-			account: &gatewayprovider.ExecutionAccount{Record: accountcore.Record{
+			provider: &gatewayprovider.ExecutionProvider{Record: providercore.Record{
 				LoadLocation: time.LoadLocation,
 				Credentials: map[string]any{
 					"project_id":             " onboard-project ",
@@ -260,10 +252,9 @@ func TestResolveAntigravityProjectID(t *testing.T) {
 		},
 
 		{
-
 			name: "使用 credentials 中的手工 fallback",
 
-			account: &gatewayprovider.ExecutionAccount{Record: accountcore.Record{
+			provider: &gatewayprovider.ExecutionProvider{Record: providercore.Record{
 				LoadLocation: time.LoadLocation,
 				Credentials: map[string]any{
 					"antigravity_project_id": " configured-project ",
@@ -274,10 +265,9 @@ func TestResolveAntigravityProjectID(t *testing.T) {
 		},
 
 		{
-
 			name: "兼容 extra 中的手工 fallback",
 
-			account: &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Extra: map[string]any{
+			provider: &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Extra: map[string]any{
 				"antigravity_project_id": " extra-project ",
 			}}},
 
@@ -285,10 +275,9 @@ func TestResolveAntigravityProjectID(t *testing.T) {
 		},
 
 		{
-
 			name: "缺少 project_id",
 
-			account: &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Credentials: map[string]any{}}},
+			provider: &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Credentials: map[string]any{}}},
 
 			wantErr: true,
 		},
@@ -296,7 +285,7 @@ func TestResolveAntigravityProjectID(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := googleforward.ResolveProjectForTest(tc.account)
+			got, err := googleforward.ResolveProjectForTest(tc.provider)
 			if tc.wantErr {
 				require.ErrorIs(t, err, antigravity.ErrProjectIDRequired)
 				require.Empty(t, got)
@@ -309,7 +298,6 @@ func TestResolveAntigravityProjectID(t *testing.T) {
 }
 
 func TestAntigravityGatewayService_ForwardGemini_UsesConfiguredProjectFallback(t *testing.T) {
-
 	writer := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(writer)
 
@@ -325,7 +313,6 @@ func TestAntigravityGatewayService_ForwardGemini_UsesConfiguredProjectFallback(t
 	upstream := &queuedHTTPUpstreamStub{
 		responses: []*http.Response{
 			{
-
 				StatusCode: http.StatusOK,
 
 				Header: http.Header{"Content-Type": []string{"text/event-stream"}},
@@ -335,7 +322,6 @@ func TestAntigravityGatewayService_ForwardGemini_UsesConfiguredProjectFallback(t
 		},
 	}
 	svc := newAntigravityFixture(antigravityDependencies{
-
 		settingService: newExecutionReadersFixture(&antigravitySettingRepoStub{}), options: fixtureOptions(&googleforward.Options{MaxLineSize: 500 * 1024 * 1024}),
 
 		tokenProvider: newAntigravityTokenSourceForTest(nil),
@@ -343,34 +329,34 @@ func TestAntigravityGatewayService_ForwardGemini_UsesConfiguredProjectFallback(t
 		httpUpstream: upstream,
 	})
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{
-		LoadLocation: time.LoadLocation,
-		ID:           101,
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation,
+			ID:           101,
 
-		Name: "acc-configured-project",
+			Name: "acc-configured-project",
 
-		Platform: capability.PlatformAntigravity,
+			Platform: capability.PlatformAntigravity,
 
-		Type: capability.AccountTypeOAuth,
+			Type: capability.ProviderTypeOAuth,
 
-		Status: billing.StatusActive,
+			Status: billing.StatusActive,
 
-		Concurrency: 1,
+			Concurrency: 1,
 
-		Credentials: map[string]any{
+			Credentials: map[string]any{
+				"access_token": "token",
 
-			"access_token": "token",
+				"antigravity_project_id": "configured-project",
 
-			"antigravity_project_id": "configured-project",
-
-			"model_mapping": map[string]any{
-				"gemini-2.5-flash": "gemini-2.5-flash",
+				"model_mapping": map[string]any{
+					"gemini-2.5-flash": "gemini-2.5-flash",
+				},
 			},
 		},
-	},
 	}
 
-	result, err := svc.ForwardGemini(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, true), account, "gemini-2.5-flash", "streamGenerateContent", true, body, false)
+	result, err := svc.ForwardGemini(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, true), provider, "gemini-2.5-flash", "streamGenerateContent", true, body, false)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Len(t, upstream.requestBodies, 1)
@@ -381,16 +367,13 @@ func TestAntigravityGatewayService_ForwardGemini_UsesConfiguredProjectFallback(t
 }
 
 func TestAntigravityGatewayService_ForwardGemini_ImageUsesDefaultMappingAndOAuth(t *testing.T) {
-
 	writer := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(writer)
 	body := []byte(`{"contents":[{"role":"user","parts":[{"text":"draw a cat"}]}],"generationConfig":{"responseModalities":["TEXT","IMAGE"],"imageConfig":{"aspectRatio":"1:1"}}}`)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1beta/models/gemini-3.1-flash-image:generateContent", bytes.NewReader(body))
 
 	upstream := &queuedHTTPUpstreamStub{
-
 		responses: []*http.Response{{
-
 			StatusCode: http.StatusOK,
 
 			Header: http.Header{"Content-Type": []string{"text/event-stream"}},
@@ -407,35 +390,35 @@ func TestAntigravityGatewayService_ForwardGemini_ImageUsesDefaultMappingAndOAuth
 		},
 	}
 	svc := newAntigravityFixture(antigravityDependencies{
-
 		settingService: newExecutionReadersFixture(&antigravitySettingRepoStub{}), options: fixtureOptions(&googleforward.Options{MaxLineSize: 500 * 1024 * 1024}),
 
 		tokenProvider: newAntigravityTokenSourceForTest(nil),
 
 		httpUpstream: upstream,
 	})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{
-		LoadLocation: time.LoadLocation,
-		ID:           104,
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation,
+			ID:           104,
 
-		Name: "antigravity-image",
+			Name: "antigravity-image",
 
-		Platform: capability.PlatformAntigravity,
+			Platform: capability.PlatformAntigravity,
 
-		Type: capability.AccountTypeOAuth,
+			Type: capability.ProviderTypeOAuth,
 
-		Status: billing.StatusActive,
+			Status: billing.StatusActive,
 
-		Concurrency: 1,
+			Concurrency: 1,
 
-		Credentials: map[string]any{
-			"access_token": "test-access-token",
-			"project_id":   "test-project",
+			Credentials: map[string]any{
+				"access_token": "test-access-token",
+				"project_id":   "test-project",
+			},
 		},
-	},
 	}
 
-	result, err := svc.ForwardGemini(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, true), account, "gemini-3.1-flash-image", "generateContent", true, body, false)
+	result, err := svc.ForwardGemini(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, true), provider, "gemini-3.1-flash-image", "generateContent", true, body, false)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -456,7 +439,6 @@ func TestAntigravityGatewayService_ForwardGemini_ImageUsesDefaultMappingAndOAuth
 }
 
 func TestAntigravityGatewayService_ForwardGemini_PreservesServerSideToolInvocationConfig(t *testing.T) {
-
 	body := []byte(`{"contents":[{"role":"user","parts":[{"text":"hello"}]}],"tools":[{"functionDeclarations":[{"name":"get_weather","parameters":{"type":"object","additionalProperties":false}}]},{"googleSearch":{}}],"toolConfig":{"includeServerSideToolInvocations":true}}`)
 	writer := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(writer)
@@ -464,7 +446,6 @@ func TestAntigravityGatewayService_ForwardGemini_PreservesServerSideToolInvocati
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1beta/models/gemini-2.5-flash:generateContent", bytes.NewReader(body))
 
 	upstream := &queuedHTTPUpstreamStub{responses: []*http.Response{{
-
 		StatusCode: http.StatusOK,
 
 		Header: http.Header{"Content-Type": []string{"text/event-stream"}},
@@ -472,31 +453,31 @@ func TestAntigravityGatewayService_ForwardGemini_PreservesServerSideToolInvocati
 		Body: io.NopCloser(strings.NewReader("data: {\"response\":{\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"ok\"}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{}}}\n\n")),
 	}}}
 	svc := newAntigravityFixture(antigravityDependencies{
-
 		settingService: newExecutionReadersFixture(&antigravitySettingRepoStub{}), options: fixtureOptions(&googleforward.Options{MaxLineSize: 500 * 1024 * 1024}),
 
 		tokenProvider: newAntigravityTokenSourceForTest(nil),
 
 		httpUpstream: upstream,
 	})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{
-		LoadLocation: time.LoadLocation,
-		ID:           103,
-		Name:         "native-gemini",
-		Platform:     capability.PlatformAntigravity,
-		Type:         capability.AccountTypeOAuth,
-		Status:       billing.StatusActive,
-		Concurrency:  1,
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation,
+			ID:           103,
+			Name:         "native-gemini",
+			Platform:     capability.PlatformAntigravity,
+			Type:         capability.ProviderTypeOAuth,
+			Status:       billing.StatusActive,
+			Concurrency:  1,
 
-		Credentials: map[string]any{
-			"access_token":  "token",
-			"project_id":    "project-103",
-			"model_mapping": map[string]any{"gemini-2.5-flash": "gemini-2.5-flash"},
+			Credentials: map[string]any{
+				"access_token":  "token",
+				"project_id":    "project-103",
+				"model_mapping": map[string]any{"gemini-2.5-flash": "gemini-2.5-flash"},
+			},
 		},
-	},
 	}
 
-	result, err := svc.ForwardGemini(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, true), account, "gemini-2.5-flash", "generateContent", false, body, false)
+	result, err := svc.ForwardGemini(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, true), provider, "gemini-2.5-flash", "generateContent", false, body, false)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Len(t, upstream.requestBodies, 1)
@@ -512,7 +493,6 @@ func TestAntigravityGatewayService_ForwardGemini_PreservesServerSideToolInvocati
 }
 
 func TestAntigravityGatewayService_ForwardGemini_MissingProjectReturnsLocalError(t *testing.T) {
-
 	writer := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(writer)
 
@@ -530,30 +510,31 @@ func TestAntigravityGatewayService_ForwardGemini_MissingProjectReturnsLocalError
 		httpUpstream:  upstream,
 	})
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{
-		LoadLocation: time.LoadLocation,
-		ID:           102,
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation,
+			ID:           102,
 
-		Name: "acc-missing-project",
+			Name: "acc-missing-project",
 
-		Platform: capability.PlatformAntigravity,
+			Platform: capability.PlatformAntigravity,
 
-		Type: capability.AccountTypeOAuth,
+			Type: capability.ProviderTypeOAuth,
 
-		Status: billing.StatusActive,
+			Status: billing.StatusActive,
 
-		Concurrency: 1,
+			Concurrency: 1,
 
-		Credentials: map[string]any{
-			"access_token": "token",
-			"model_mapping": map[string]any{
-				"gemini-2.5-flash": "gemini-2.5-flash",
+			Credentials: map[string]any{
+				"access_token": "token",
+				"model_mapping": map[string]any{
+					"gemini-2.5-flash": "gemini-2.5-flash",
+				},
 			},
 		},
-	},
 	}
 
-	result, err := svc.ForwardGemini(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, true), account, "gemini-2.5-flash", "streamGenerateContent", true, body, false)
+	result, err := svc.ForwardGemini(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, true), provider, "gemini-2.5-flash", "streamGenerateContent", true, body, false)
 	require.Nil(t, result)
 	require.ErrorIs(t, err, antigravity.ErrProjectIDRequired)
 	require.Equal(t, http.StatusBadRequest, writer.Code)
@@ -563,12 +544,10 @@ func TestAntigravityGatewayService_ForwardGemini_MissingProjectReturnsLocalError
 }
 
 func TestAntigravityGatewayService_Forward_PromptTooLong(t *testing.T) {
-
 	writer := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(writer)
 
 	body, err := json.Marshal(map[string]any{
-
 		"model": "claude-opus-4-6",
 
 		"messages": []map[string]any{
@@ -586,7 +565,6 @@ func TestAntigravityGatewayService_Forward_PromptTooLong(t *testing.T) {
 
 	respBody := []byte(`{"error":{"message":"Prompt is too long"}}`)
 	resp := &http.Response{
-
 		StatusCode: http.StatusBadRequest,
 
 		Header: http.Header{"X-Request-Id": []string{"req-1"}},
@@ -595,7 +573,6 @@ func TestAntigravityGatewayService_Forward_PromptTooLong(t *testing.T) {
 	}
 
 	svc := newAntigravityFixture(antigravityDependencies{
-
 		settingService: newExecutionReadersFixture(&antigravitySettingRepoStub{}), options: fixtureOptions(&googleforward.Options{MaxLineSize: 500 * 1024 * 1024}),
 
 		tokenProvider: newAntigravityTokenSourceForTest(nil),
@@ -603,28 +580,29 @@ func TestAntigravityGatewayService_Forward_PromptTooLong(t *testing.T) {
 		httpUpstream: &httpUpstreamStub{resp: resp},
 	})
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{
-		LoadLocation: time.LoadLocation,
-		ID:           1,
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation,
+			ID:           1,
 
-		Name: "acc-1",
+			Name: "acc-1",
 
-		Platform: capability.PlatformAntigravity,
+			Platform: capability.PlatformAntigravity,
 
-		Type: capability.AccountTypeOAuth,
+			Type: capability.ProviderTypeOAuth,
 
-		Status: billing.StatusActive,
+			Status: billing.StatusActive,
 
-		Concurrency: 1,
+			Concurrency: 1,
 
-		Credentials: map[string]any{
-			"access_token": "token",
-			"project_id":   "proj",
+			Credentials: map[string]any{
+				"access_token": "token",
+				"project_id":   "proj",
+			},
 		},
-	},
 	}
 
-	result, err := svc.Forward(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, true), account, body, false)
+	result, err := svc.Forward(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, true), provider, body, false)
 	require.Nil(t, result)
 
 	var promptErr *antigravity.PromptTooLongError
@@ -642,15 +620,13 @@ func TestAntigravityGatewayService_Forward_PromptTooLong(t *testing.T) {
 }
 
 // TestAntigravityGatewayService_Forward_ModelRateLimitTriggersFailover
-// 验证：当账号存在模型限流且剩余时间 >= antigravityRateLimitThreshold 时，
-// Forward 方法应返回 UpstreamFailoverError，触发 Handler 切换账号
+// 验证：当提供商存在模型限流且剩余时间 >= antigravityRateLimitThreshold 时，
+// Forward 方法应返回 UpstreamFailoverError，触发 Handler 切换提供商
 func TestAntigravityGatewayService_Forward_ModelRateLimitTriggersFailover(t *testing.T) {
-
 	writer := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(writer)
 
 	body, err := json.Marshal(map[string]any{
-
 		"model": "claude-opus-4-6",
 
 		"messages": []map[string]any{
@@ -668,7 +644,6 @@ func TestAntigravityGatewayService_Forward_ModelRateLimitTriggersFailover(t *tes
 
 	// 不需要真正调用上游，因为预检查会直接返回切换信号
 	svc := newAntigravityFixture(antigravityDependencies{
-
 		tokenProvider: newAntigravityTokenSourceForTest(nil),
 
 		httpUpstream: &httpUpstreamStub{resp: nil, err: nil},
@@ -676,50 +651,51 @@ func TestAntigravityGatewayService_Forward_ModelRateLimitTriggersFailover(t *tes
 
 	// 设置模型限流：剩余时间 30 秒（> antigravityRateLimitThreshold 7s）
 	futureResetAt := time.Now().Add(30 * time.Second).Format(time.RFC3339)
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{
-		LoadLocation: time.LoadLocation,
-		ID:           1,
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation,
+			ID:           1,
 
-		Name: "acc-rate-limited",
+			Name: "acc-rate-limited",
 
-		Platform: capability.PlatformAntigravity,
+			Platform: capability.PlatformAntigravity,
 
-		Type: capability.AccountTypeOAuth,
+			Type: capability.ProviderTypeOAuth,
 
-		Status: billing.StatusActive,
+			Status: billing.StatusActive,
 
-		Concurrency: 1,
+			Concurrency: 1,
 
-		Credentials: map[string]any{
-			"access_token": "token",
-			"project_id":   "proj",
-		},
+			Credentials: map[string]any{
+				"access_token": "token",
+				"project_id":   "proj",
+			},
 
-		Extra: map[string]any{"model_rate_limits": map[string]any{
-			"claude-opus-4-6-thinking": map[string]any{
-				"rate_limit_reset_at": futureResetAt,
+			Extra: map[string]any{
+				"model_rate_limits": map[string]any{
+					"claude-opus-4-6-thinking": map[string]any{
+						"rate_limit_reset_at": futureResetAt,
+					},
+				},
 			},
 		},
-		},
-	},
 	}
 
-	result, err := svc.Forward(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, true), account, body, false)
+	result, err := svc.Forward(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, true), provider, body, false)
 	require.Nil(t, result, "Forward should not return result when model rate limited")
 	require.NotNil(t, err, "Forward should return error")
 
 	// 核心验证：错误应该是 UpstreamFailoverError，而不是普通 502 错误
 	var failoverErr *forwardcore.UpstreamFailoverError
-	require.ErrorAs(t, err, &failoverErr, "error should be UpstreamFailoverError to trigger account switch")
+	require.ErrorAs(t, err, &failoverErr, "error should be UpstreamFailoverError to trigger provider switch")
 	require.Equal(t, http.StatusServiceUnavailable, failoverErr.StatusCode)
 	// 非粘性会话请求，ForceCacheBilling 应为 false
 	require.False(t, failoverErr.ForceCacheBilling, "ForceCacheBilling should be false for non-sticky session")
 }
 
 // TestAntigravityGatewayService_ForwardGemini_ModelRateLimitTriggersFailover
-// 验证：ForwardGemini 方法同样能正确将 AntigravityAccountSwitchError 转换为 UpstreamFailoverError
+// 验证：ForwardGemini 方法同样能正确将 AntigravityProviderSwitchError 转换为 UpstreamFailoverError
 func TestAntigravityGatewayService_ForwardGemini_ModelRateLimitTriggersFailover(t *testing.T) {
-
 	writer := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(writer)
 
@@ -735,7 +711,6 @@ func TestAntigravityGatewayService_ForwardGemini_ModelRateLimitTriggersFailover(
 
 	// 不需要真正调用上游，因为预检查会直接返回切换信号
 	svc := newAntigravityFixture(antigravityDependencies{
-
 		tokenProvider: newAntigravityTokenSourceForTest(nil),
 
 		httpUpstream: &httpUpstreamStub{resp: nil, err: nil},
@@ -743,41 +718,43 @@ func TestAntigravityGatewayService_ForwardGemini_ModelRateLimitTriggersFailover(
 
 	// 设置模型限流：剩余时间 30 秒（> antigravityRateLimitThreshold 7s）
 	futureResetAt := time.Now().Add(30 * time.Second).Format(time.RFC3339)
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{
-		LoadLocation: time.LoadLocation,
-		ID:           2,
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation,
+			ID:           2,
 
-		Name: "acc-gemini-rate-limited",
+			Name: "acc-gemini-rate-limited",
 
-		Platform: capability.PlatformAntigravity,
+			Platform: capability.PlatformAntigravity,
 
-		Type: capability.AccountTypeOAuth,
+			Type: capability.ProviderTypeOAuth,
 
-		Status: billing.StatusActive,
+			Status: billing.StatusActive,
 
-		Concurrency: 1,
+			Concurrency: 1,
 
-		Credentials: map[string]any{
-			"access_token": "token",
-			"project_id":   "proj",
-		},
+			Credentials: map[string]any{
+				"access_token": "token",
+				"project_id":   "proj",
+			},
 
-		Extra: map[string]any{"model_rate_limits": map[string]any{
-			"gemini-2.5-flash": map[string]any{
-				"rate_limit_reset_at": futureResetAt,
+			Extra: map[string]any{
+				"model_rate_limits": map[string]any{
+					"gemini-2.5-flash": map[string]any{
+						"rate_limit_reset_at": futureResetAt,
+					},
+				},
 			},
 		},
-		},
-	},
 	}
 
-	result, err := svc.ForwardGemini(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, true), account, "gemini-2.5-flash", "generateContent", false, body, false)
+	result, err := svc.ForwardGemini(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, true), provider, "gemini-2.5-flash", "generateContent", false, body, false)
 	require.Nil(t, result, "ForwardGemini should not return result when model rate limited")
 	require.NotNil(t, err, "ForwardGemini should return error")
 
 	// 核心验证：错误应该是 UpstreamFailoverError，而不是普通 502 错误
 	var failoverErr *forwardcore.UpstreamFailoverError
-	require.ErrorAs(t, err, &failoverErr, "error should be UpstreamFailoverError to trigger account switch")
+	require.ErrorAs(t, err, &failoverErr, "error should be UpstreamFailoverError to trigger provider switch")
 	require.Equal(t, http.StatusServiceUnavailable, failoverErr.StatusCode)
 	// 非粘性会话请求，ForceCacheBilling 应为 false
 	require.False(t, failoverErr.ForceCacheBilling, "ForceCacheBilling should be false for non-sticky session")
@@ -786,7 +763,6 @@ func TestAntigravityGatewayService_ForwardGemini_ModelRateLimitTriggersFailover(
 // TestAntigravityGatewayService_Forward_StickySessionForceCacheBilling
 // 验证：粘性会话切换时，UpstreamFailoverError.ForceCacheBilling 应为 true
 func TestAntigravityGatewayService_Forward_StickySessionForceCacheBilling(t *testing.T) {
-
 	writer := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(writer)
 
@@ -800,7 +776,6 @@ func TestAntigravityGatewayService_Forward_StickySessionForceCacheBilling(t *tes
 	c.Request = req
 
 	svc := newAntigravityFixture(antigravityDependencies{
-
 		tokenProvider: newAntigravityTokenSourceForTest(nil),
 
 		httpUpstream: &httpUpstreamStub{resp: nil, err: nil},
@@ -808,42 +783,44 @@ func TestAntigravityGatewayService_Forward_StickySessionForceCacheBilling(t *tes
 
 	// 设置模型限流：剩余时间 30 秒（> antigravityRateLimitThreshold 7s）
 	futureResetAt := time.Now().Add(30 * time.Second).Format(time.RFC3339)
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{
-		LoadLocation: time.LoadLocation,
-		ID:           3,
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation,
+			ID:           3,
 
-		Name: "acc-sticky-rate-limited",
+			Name: "acc-sticky-rate-limited",
 
-		Platform: capability.PlatformAntigravity,
+			Platform: capability.PlatformAntigravity,
 
-		Type: capability.AccountTypeOAuth,
+			Type: capability.ProviderTypeOAuth,
 
-		Status: billing.StatusActive,
+			Status: billing.StatusActive,
 
-		Concurrency: 1,
+			Concurrency: 1,
 
-		Credentials: map[string]any{
-			"access_token": "token",
-			"project_id":   "proj",
-		},
+			Credentials: map[string]any{
+				"access_token": "token",
+				"project_id":   "proj",
+			},
 
-		Extra: map[string]any{"model_rate_limits": map[string]any{
-			"claude-opus-4-6-thinking": map[string]any{
-				"rate_limit_reset_at": futureResetAt,
+			Extra: map[string]any{
+				"model_rate_limits": map[string]any{
+					"claude-opus-4-6-thinking": map[string]any{
+						"rate_limit_reset_at": futureResetAt,
+					},
+				},
 			},
 		},
-		},
-	},
 	}
 
 	// 传入 isStickySession = true
-	result, err := svc.Forward(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, true), account, body, true)
+	result, err := svc.Forward(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, true), provider, body, true)
 	require.Nil(t, result, "Forward should not return result when model rate limited")
 	require.NotNil(t, err, "Forward should return error")
 
 	// 核心验证：粘性会话切换时，ForceCacheBilling 应为 true
 	var failoverErr *forwardcore.UpstreamFailoverError
-	require.ErrorAs(t, err, &failoverErr, "error should be UpstreamFailoverError to trigger account switch")
+	require.ErrorAs(t, err, &failoverErr, "error should be UpstreamFailoverError to trigger provider switch")
 	require.Equal(t, http.StatusServiceUnavailable, failoverErr.StatusCode)
 	require.True(t, failoverErr.ForceCacheBilling, "ForceCacheBilling should be true for sticky session switch")
 }
@@ -851,7 +828,6 @@ func TestAntigravityGatewayService_Forward_StickySessionForceCacheBilling(t *tes
 // TestAntigravityGatewayService_ForwardGemini_StickySessionForceCacheBilling verifies
 // that ForwardGemini sets ForceCacheBilling=true for sticky session switch.
 func TestAntigravityGatewayService_ForwardGemini_StickySessionForceCacheBilling(t *testing.T) {
-
 	writer := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(writer)
 
@@ -866,7 +842,6 @@ func TestAntigravityGatewayService_ForwardGemini_StickySessionForceCacheBilling(
 	c.Request = req
 
 	svc := newAntigravityFixture(antigravityDependencies{
-
 		tokenProvider: newAntigravityTokenSourceForTest(nil),
 
 		httpUpstream: &httpUpstreamStub{resp: nil, err: nil},
@@ -874,48 +849,49 @@ func TestAntigravityGatewayService_ForwardGemini_StickySessionForceCacheBilling(
 
 	// 设置模型限流：剩余时间 30 秒（> antigravityRateLimitThreshold 7s）
 	futureResetAt := time.Now().Add(30 * time.Second).Format(time.RFC3339)
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{
-		LoadLocation: time.LoadLocation,
-		ID:           4,
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation,
+			ID:           4,
 
-		Name: "acc-gemini-sticky-rate-limited",
+			Name: "acc-gemini-sticky-rate-limited",
 
-		Platform: capability.PlatformAntigravity,
+			Platform: capability.PlatformAntigravity,
 
-		Type: capability.AccountTypeOAuth,
+			Type: capability.ProviderTypeOAuth,
 
-		Status: billing.StatusActive,
+			Status: billing.StatusActive,
 
-		Concurrency: 1,
+			Concurrency: 1,
 
-		Credentials: map[string]any{
-			"access_token": "token",
-			"project_id":   "proj",
-		},
+			Credentials: map[string]any{
+				"access_token": "token",
+				"project_id":   "proj",
+			},
 
-		Extra: map[string]any{"model_rate_limits": map[string]any{
-			"gemini-2.5-flash": map[string]any{
-				"rate_limit_reset_at": futureResetAt,
+			Extra: map[string]any{
+				"model_rate_limits": map[string]any{
+					"gemini-2.5-flash": map[string]any{
+						"rate_limit_reset_at": futureResetAt,
+					},
+				},
 			},
 		},
-		},
-	},
 	}
 
 	// 传入 isStickySession = true
-	result, err := svc.ForwardGemini(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, true), account, "gemini-2.5-flash", "generateContent", false, body, true)
+	result, err := svc.ForwardGemini(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, true), provider, "gemini-2.5-flash", "generateContent", false, body, true)
 	require.Nil(t, result, "ForwardGemini should not return result when model rate limited")
 	require.NotNil(t, err, "ForwardGemini should return error")
 
 	// 核心验证：粘性会话切换时，ForceCacheBilling 应为 true
 	var failoverErr *forwardcore.UpstreamFailoverError
-	require.ErrorAs(t, err, &failoverErr, "error should be UpstreamFailoverError to trigger account switch")
+	require.ErrorAs(t, err, &failoverErr, "error should be UpstreamFailoverError to trigger provider switch")
 	require.Equal(t, http.StatusServiceUnavailable, failoverErr.StatusCode)
 	require.True(t, failoverErr.ForceCacheBilling, "ForceCacheBilling should be true for sticky session switch")
 }
 
 func TestAntigravityGatewayService_ForwardGemini_ClearsStickySessionOnGeminiRateLimit(t *testing.T) {
-
 	writer := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(writer)
 
@@ -939,58 +915,56 @@ func TestAntigravityGatewayService_ForwardGemini_ClearsStickySessionOnGeminiRate
 		}
 	}`)
 	upstream := &httpUpstreamStub{resp: &http.Response{
-
 		StatusCode: http.StatusTooManyRequests,
 
 		Header: http.Header{},
 
 		Body: io.NopCloser(bytes.NewReader(respBody)),
 	}}
-	repo := &stubAntigravityAccountRepo{}
+	repo := &stubAntigravityProviderRepo{}
 	cache := &stubSmartRetryCache{}
 	svc := newAntigravityFixture(antigravityDependencies{
-
 		tokenProvider: newAntigravityTokenSourceForTest(nil),
 
 		httpUpstream: upstream,
 
-		accountRepo: repo,
+		providerRepo: repo,
 
 		cache: cache,
 	})
 
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{
-		LoadLocation: time.LoadLocation,
-		ID:           44,
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation,
+			ID:           44,
 
-		Name: "acc-gemini-runtime-rate-limited",
+			Name: "acc-gemini-runtime-rate-limited",
 
-		Platform: capability.PlatformAntigravity,
+			Platform: capability.PlatformAntigravity,
 
-		Type: capability.AccountTypeOAuth,
+			Type: capability.ProviderTypeOAuth,
 
-		Status: billing.StatusActive,
+			Status: billing.StatusActive,
 
-		Schedulable: true,
+			Schedulable: true,
 
-		Concurrency: 1,
+			Concurrency: 1,
 
-		Credentials: map[string]any{
+			Credentials: map[string]any{
+				"access_token": "token",
 
-			"access_token": "token",
+				"expires_at": time.Now().Add(time.Hour).Format(time.RFC3339),
 
-			"expires_at": time.Now().Add(time.Hour).Format(time.RFC3339),
+				"project_id": "proj",
+			},
 
-			"project_id": "proj",
+			Extra: map[string]any{
+				"mixed_scheduling": true,
+			},
 		},
-
-		Extra: map[string]any{
-			"mixed_scheduling": true,
-		},
-	},
 	}
 
-	result, err := svc.ForwardGemini(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, true), account, "gemini-3-flash-preview", "generateContent", false, body, true, forwardcore.WithGeminiSession(77, "gemini:sticky-runtime"))
+	result, err := svc.ForwardGemini(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, true), provider, "gemini-3-flash-preview", "generateContent", false, body, true, forwardcore.WithGeminiSession(77, "gemini:sticky-runtime"))
 
 	require.Nil(t, result)
 	var failoverErr *forwardcore.UpstreamFailoverError
@@ -1007,12 +981,10 @@ func TestAntigravityGatewayService_ForwardGemini_ClearsStickySessionOnGeminiRate
 // TestAntigravityGatewayService_Forward_BillsWithMappedModel
 // 验证：Antigravity Claude 转发返回的计费模型使用映射后的模型
 func TestAntigravityGatewayService_Forward_BillsWithMappedModel(t *testing.T) {
-
 	writer := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(writer)
 
 	body, err := json.Marshal(map[string]any{
-
 		"model": "claude-sonnet-4-5",
 
 		"messages": []map[string]any{
@@ -1030,7 +1002,6 @@ func TestAntigravityGatewayService_Forward_BillsWithMappedModel(t *testing.T) {
 
 	upstreamBody := []byte("data: {\"response\":{\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"ok\"}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"promptTokenCount\":8,\"candidatesTokenCount\":3}}}\n\n")
 	resp := &http.Response{
-
 		StatusCode: http.StatusOK,
 
 		Header: http.Header{"X-Request-Id": []string{"req-bill-1"}},
@@ -1039,7 +1010,6 @@ func TestAntigravityGatewayService_Forward_BillsWithMappedModel(t *testing.T) {
 	}
 
 	svc := newAntigravityFixture(antigravityDependencies{
-
 		settingService: newExecutionReadersFixture(&antigravitySettingRepoStub{}), options: fixtureOptions(&googleforward.Options{MaxLineSize: 500 * 1024 * 1024}),
 
 		tokenProvider: newAntigravityTokenSourceForTest(nil),
@@ -1048,34 +1018,34 @@ func TestAntigravityGatewayService_Forward_BillsWithMappedModel(t *testing.T) {
 	})
 
 	const mappedModel = "gemini-3-pro-high"
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{
-		LoadLocation: time.LoadLocation,
-		ID:           5,
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation,
+			ID:           5,
 
-		Name: "acc-forward-billing",
+			Name: "acc-forward-billing",
 
-		Platform: capability.PlatformAntigravity,
+			Platform: capability.PlatformAntigravity,
 
-		Type: capability.AccountTypeOAuth,
+			Type: capability.ProviderTypeOAuth,
 
-		Status: billing.StatusActive,
+			Status: billing.StatusActive,
 
-		Concurrency: 1,
+			Concurrency: 1,
 
-		Credentials: map[string]any{
+			Credentials: map[string]any{
+				"access_token": "token",
 
-			"access_token": "token",
+				"project_id": "proj",
 
-			"project_id": "proj",
-
-			"model_mapping": map[string]any{
-				"claude-sonnet-4-5": mappedModel,
+				"model_mapping": map[string]any{
+					"claude-sonnet-4-5": mappedModel,
+				},
 			},
 		},
-	},
 	}
 
-	result, err := svc.Forward(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, true), account, body, false)
+	result, err := svc.Forward(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, true), provider, body, false)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, "claude-sonnet-4-5", result.Model)
@@ -1085,7 +1055,6 @@ func TestAntigravityGatewayService_Forward_BillsWithMappedModel(t *testing.T) {
 // TestAntigravityGatewayService_ForwardGemini_BillsWithMappedModel
 // 验证：Antigravity Gemini 转发返回的计费模型使用映射后的模型
 func TestAntigravityGatewayService_ForwardGemini_BillsWithMappedModel(t *testing.T) {
-
 	writer := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(writer)
 
@@ -1101,7 +1070,6 @@ func TestAntigravityGatewayService_ForwardGemini_BillsWithMappedModel(t *testing
 
 	upstreamBody := []byte("data: {\"response\":{\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"ok\"}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"promptTokenCount\":8,\"candidatesTokenCount\":3}}}\n\n")
 	resp := &http.Response{
-
 		StatusCode: http.StatusOK,
 
 		Header: http.Header{"X-Request-Id": []string{"req-bill-2"}},
@@ -1110,7 +1078,6 @@ func TestAntigravityGatewayService_ForwardGemini_BillsWithMappedModel(t *testing
 	}
 
 	svc := newAntigravityFixture(antigravityDependencies{
-
 		settingService: newExecutionReadersFixture(&antigravitySettingRepoStub{}), options: fixtureOptions(&googleforward.Options{MaxLineSize: 500 * 1024 * 1024}),
 
 		tokenProvider: newAntigravityTokenSourceForTest(nil),
@@ -1119,34 +1086,34 @@ func TestAntigravityGatewayService_ForwardGemini_BillsWithMappedModel(t *testing
 	})
 
 	const mappedModel = "gemini-3-pro-high"
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{
-		LoadLocation: time.LoadLocation,
-		ID:           6,
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation,
+			ID:           6,
 
-		Name: "acc-gemini-billing",
+			Name: "acc-gemini-billing",
 
-		Platform: capability.PlatformAntigravity,
+			Platform: capability.PlatformAntigravity,
 
-		Type: capability.AccountTypeOAuth,
+			Type: capability.ProviderTypeOAuth,
 
-		Status: billing.StatusActive,
+			Status: billing.StatusActive,
 
-		Concurrency: 1,
+			Concurrency: 1,
 
-		Credentials: map[string]any{
+			Credentials: map[string]any{
+				"access_token": "token",
 
-			"access_token": "token",
+				"project_id": "proj",
 
-			"project_id": "proj",
-
-			"model_mapping": map[string]any{
-				"gemini-2.5-flash": mappedModel,
+				"model_mapping": map[string]any{
+					"gemini-2.5-flash": mappedModel,
+				},
 			},
 		},
-	},
 	}
 
-	result, err := svc.ForwardGemini(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, true), account, "gemini-2.5-flash", "generateContent", true, body, false)
+	result, err := svc.ForwardGemini(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, true), provider, "gemini-2.5-flash", "generateContent", true, body, false)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, "gemini-2.5-flash", result.Model)
@@ -1154,13 +1121,11 @@ func TestAntigravityGatewayService_ForwardGemini_BillsWithMappedModel(t *testing
 }
 
 func TestAntigravityGatewayService_ForwardGemini_RetriesCorruptedThoughtSignature(t *testing.T) {
-
 	writer := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(writer)
 
 	body, err := json.Marshal(map[string]any{
 		"contents": []map[string]any{
-
 			{"role": "user", "parts": []map[string]any{{"text": "hello"}}},
 
 			{"role": "model", "parts": []map[string]any{{"text": "thinking", "thought": true, "thoughtSignature": "sig_bad_1"}}},
@@ -1181,9 +1146,7 @@ func TestAntigravityGatewayService_ForwardGemini_RetriesCorruptedThoughtSignatur
 
 	upstream := &queuedHTTPUpstreamStub{
 		responses: []*http.Response{
-
 			{
-
 				StatusCode: http.StatusBadRequest,
 
 				Header: http.Header{
@@ -1195,7 +1158,6 @@ func TestAntigravityGatewayService_ForwardGemini_RetriesCorruptedThoughtSignatur
 			},
 
 			{
-
 				StatusCode: http.StatusOK,
 
 				Header: http.Header{
@@ -1209,7 +1171,6 @@ func TestAntigravityGatewayService_ForwardGemini_RetriesCorruptedThoughtSignatur
 	}
 
 	svc := newAntigravityFixture(antigravityDependencies{
-
 		settingService: newExecutionReadersFixture(&antigravitySettingRepoStub{}), options: fixtureOptions(&googleforward.Options{MaxLineSize: 500 * 1024 * 1024}),
 
 		tokenProvider: newAntigravityTokenSourceForTest(nil),
@@ -1219,34 +1180,34 @@ func TestAntigravityGatewayService_ForwardGemini_RetriesCorruptedThoughtSignatur
 
 	const originalModel = "gemini-3.1-pro-preview"
 	const mappedModel = "gemini-3.1-pro-high"
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{
-		LoadLocation: time.LoadLocation,
-		ID:           7,
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation,
+			ID:           7,
 
-		Name: "acc-gemini-signature",
+			Name: "acc-gemini-signature",
 
-		Platform: capability.PlatformAntigravity,
+			Platform: capability.PlatformAntigravity,
 
-		Type: capability.AccountTypeOAuth,
+			Type: capability.ProviderTypeOAuth,
 
-		Status: billing.StatusActive,
+			Status: billing.StatusActive,
 
-		Concurrency: 1,
+			Concurrency: 1,
 
-		Credentials: map[string]any{
+			Credentials: map[string]any{
+				"access_token": "token",
 
-			"access_token": "token",
+				"project_id": "proj",
 
-			"project_id": "proj",
-
-			"model_mapping": map[string]any{
-				originalModel: mappedModel,
+				"model_mapping": map[string]any{
+					originalModel: mappedModel,
+				},
 			},
 		},
-	},
 	}
 
-	result, err := svc.ForwardGemini(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, true), account, originalModel, "streamGenerateContent", true, body, false)
+	result, err := svc.ForwardGemini(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, true), provider, originalModel, "streamGenerateContent", true, body, false)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, originalModel, result.Model)
@@ -1270,13 +1231,11 @@ func TestAntigravityGatewayService_ForwardGemini_RetriesCorruptedThoughtSignatur
 }
 
 func TestAntigravityGatewayService_ForwardGemini_SignatureRetryPropagatesFailover(t *testing.T) {
-
 	writer := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(writer)
 
 	body, err := json.Marshal(map[string]any{
 		"contents": []map[string]any{
-
 			{"role": "user", "parts": []map[string]any{{"text": "hello"}}},
 
 			{"role": "model", "parts": []map[string]any{{"text": "thinking", "thought": true, "thoughtSignature": "sig_bad_1"}}},
@@ -1291,38 +1250,36 @@ func TestAntigravityGatewayService_ForwardGemini_SignatureRetryPropagatesFailove
 
 	const originalModel = "gemini-3.1-pro-preview"
 	const mappedModel = "gemini-3.1-pro-high"
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{
-		LoadLocation: time.LoadLocation,
-		ID:           8,
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation,
+			ID:           8,
 
-		Name: "acc-gemini-signature-failover",
+			Name: "acc-gemini-signature-failover",
 
-		Platform: capability.PlatformAntigravity,
+			Platform: capability.PlatformAntigravity,
 
-		Type: capability.AccountTypeOAuth,
+			Type: capability.ProviderTypeOAuth,
 
-		Status: billing.StatusActive,
+			Status: billing.StatusActive,
 
-		Concurrency: 1,
+			Concurrency: 1,
 
-		Credentials: map[string]any{
+			Credentials: map[string]any{
+				"access_token": "token",
 
-			"access_token": "token",
+				"project_id": "proj",
 
-			"project_id": "proj",
-
-			"model_mapping": map[string]any{
-				originalModel: mappedModel,
+				"model_mapping": map[string]any{
+					originalModel: mappedModel,
+				},
 			},
 		},
-	},
 	}
 
 	upstream := &queuedHTTPUpstreamStub{
-
 		responses: []*http.Response{
 			{
-
 				StatusCode: http.StatusBadRequest,
 
 				Header: http.Header{
@@ -1339,17 +1296,17 @@ func TestAntigravityGatewayService_ForwardGemini_SignatureRetryPropagatesFailove
 				return
 			}
 			futureResetAt := time.Now().Add(30 * time.Second).Format(time.RFC3339)
-			account.Record.Extra = map[string]any{"model_rate_limits": map[string]any{
-				mappedModel: map[string]any{
-					"rate_limit_reset_at": futureResetAt,
+			provider.Record.Extra = map[string]any{
+				"model_rate_limits": map[string]any{
+					mappedModel: map[string]any{
+						"rate_limit_reset_at": futureResetAt,
+					},
 				},
-			},
 			}
 		},
 	}
 
 	svc := newAntigravityFixture(antigravityDependencies{
-
 		settingService: newExecutionReadersFixture(&antigravitySettingRepoStub{}), options: fixtureOptions(&googleforward.Options{MaxLineSize: 500 * 1024 * 1024}),
 
 		tokenProvider: newAntigravityTokenSourceForTest(nil),
@@ -1357,7 +1314,7 @@ func TestAntigravityGatewayService_ForwardGemini_SignatureRetryPropagatesFailove
 		httpUpstream: upstream,
 	})
 
-	result, err := svc.ForwardGemini(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, true), account, originalModel, "streamGenerateContent", true, body, true)
+	result, err := svc.ForwardGemini(context.Background(), gatewayhttp.NewGoogleBoundary(c, svc.Options, true), provider, originalModel, "streamGenerateContent", true, body, true)
 	require.Nil(t, result)
 
 	var failoverErr *forwardcore.UpstreamFailoverError
@@ -1378,7 +1335,6 @@ func TestAntigravityGatewayService_ForwardGemini_SignatureRetryPropagatesFailove
 // TestStreamUpstreamResponse_UsageAndFirstToken
 // 验证：usage 字段可被累积/覆盖更新，并且能记录首 token 时间
 func TestStreamUpstreamResponse_UsageAndFirstToken(t *testing.T) {
-
 	svc := newAntigravityStreamFixture(&googleforward.Options{MaxLineSize: 500 * 1024 * 1024})
 
 	rec := httptest.NewRecorder()
@@ -1416,7 +1372,6 @@ func TestStreamUpstreamResponse_UsageAndFirstToken(t *testing.T) {
 // TestStreamUpstreamResponse_NormalComplete
 // 验证：正常流式转发完成时，数据正确透传、usage 正确收集、clientDisconnect=false
 func TestStreamUpstreamResponse_NormalComplete(t *testing.T) {
-
 	svc := newAntigravityStreamFixture(&googleforward.Options{MaxLineSize: 500 * 1024 * 1024})
 
 	rec := httptest.NewRecorder()
@@ -1458,7 +1413,6 @@ func TestStreamUpstreamResponse_NormalComplete(t *testing.T) {
 // TestHandleGeminiStreamingResponse_NormalComplete
 // 验证：正常 Gemini 流式转发，数据正确透传、usage 正确收集
 func TestHandleGeminiStreamingResponse_NormalComplete(t *testing.T) {
-
 	svc := newAntigravityStreamFixture(&googleforward.Options{MaxLineSize: 500 * 1024 * 1024})
 
 	rec := httptest.NewRecorder()
@@ -1503,7 +1457,6 @@ func TestHandleGeminiStreamingResponse_NormalComplete(t *testing.T) {
 // TestHandleClaudeStreamingResponse_NormalComplete
 // 验证：正常 Claude 流式转发（Gemini→Claude 转换），数据正确转换并输出
 func TestHandleClaudeStreamingResponse_NormalComplete(t *testing.T) {
-
 	svc := newAntigravityStreamFixture(&googleforward.Options{MaxLineSize: 500 * 1024 * 1024})
 
 	rec := httptest.NewRecorder()
@@ -1544,7 +1497,6 @@ func TestHandleClaudeStreamingResponse_NormalComplete(t *testing.T) {
 // TestHandleGeminiStreamingResponse_ThoughtsTokenCount
 // 验证：Gemini 流式转发时 thoughtsTokenCount 被计入 OutputTokens
 func TestHandleGeminiStreamingResponse_ThoughtsTokenCount(t *testing.T) {
-
 	svc := newAntigravityStreamFixture(&googleforward.Options{MaxLineSize: 500 * 1024 * 1024})
 
 	rec := httptest.NewRecorder()
@@ -1578,7 +1530,6 @@ func TestHandleGeminiStreamingResponse_ThoughtsTokenCount(t *testing.T) {
 // TestHandleClaudeStreamingResponse_ThoughtsTokenCount
 // 验证：Gemini→Claude 流式转换时 thoughtsTokenCount 被计入 OutputTokens
 func TestHandleClaudeStreamingResponse_ThoughtsTokenCount(t *testing.T) {
-
 	svc := newAntigravityStreamFixture(&googleforward.Options{MaxLineSize: 500 * 1024 * 1024})
 
 	rec := httptest.NewRecorder()
@@ -1611,7 +1562,6 @@ func TestHandleClaudeStreamingResponse_ThoughtsTokenCount(t *testing.T) {
 // TestStreamUpstreamResponse_ClientDisconnectDrainsUsage
 // 验证：客户端写入失败后，streamUpstreamResponse 继续读取上游以收集 usage
 func TestStreamUpstreamResponse_ClientDisconnectDrainsUsage(t *testing.T) {
-
 	svc := newAntigravityStreamFixture(&googleforward.Options{MaxLineSize: 500 * 1024 * 1024})
 
 	rec := httptest.NewRecorder()
@@ -1644,7 +1594,6 @@ func TestStreamUpstreamResponse_ClientDisconnectDrainsUsage(t *testing.T) {
 // TestStreamUpstreamResponse_ContextCanceled
 // 验证：context 取消时返回 usage 且标记 clientDisconnect
 func TestStreamUpstreamResponse_ContextCanceled(t *testing.T) {
-
 	svc := newAntigravityStreamFixture(&googleforward.Options{MaxLineSize: 500 * 1024 * 1024})
 
 	rec := httptest.NewRecorder()
@@ -1665,7 +1614,6 @@ func TestStreamUpstreamResponse_ContextCanceled(t *testing.T) {
 // TestStreamUpstreamResponse_Timeout
 // 验证：上游超时时返回已收集的 usage
 func TestStreamUpstreamResponse_Timeout(t *testing.T) {
-
 	svc := newAntigravityStreamFixture(&googleforward.Options{StreamInterval: 1, MaxLineSize: 500 * 1024 * 1024})
 
 	rec := httptest.NewRecorder()
@@ -1686,7 +1634,6 @@ func TestStreamUpstreamResponse_Timeout(t *testing.T) {
 // TestStreamUpstreamResponse_TimeoutAfterClientDisconnect
 // 验证：客户端断开后上游超时，返回 usage 并标记 clientDisconnect
 func TestStreamUpstreamResponse_TimeoutAfterClientDisconnect(t *testing.T) {
-
 	svc := newAntigravityStreamFixture(&googleforward.Options{StreamInterval: 1, MaxLineSize: 500 * 1024 * 1024})
 
 	rec := httptest.NewRecorder()
@@ -1714,7 +1661,6 @@ func TestStreamUpstreamResponse_TimeoutAfterClientDisconnect(t *testing.T) {
 // TestHandleGeminiStreamingResponse_ClientDisconnect
 // 验证：Gemini 流式转发中客户端断开后继续 drain 上游
 func TestHandleGeminiStreamingResponse_ClientDisconnect(t *testing.T) {
-
 	svc := newAntigravityStreamFixture(&googleforward.Options{MaxLineSize: 500 * 1024 * 1024})
 
 	rec := httptest.NewRecorder()
@@ -1743,7 +1689,6 @@ func TestHandleGeminiStreamingResponse_ClientDisconnect(t *testing.T) {
 // TestHandleGeminiStreamingResponse_ContextCanceled
 // 验证：context 取消时不注入错误事件
 func TestHandleGeminiStreamingResponse_ContextCanceled(t *testing.T) {
-
 	svc := newAntigravityStreamFixture(&googleforward.Options{MaxLineSize: 500 * 1024 * 1024})
 
 	rec := httptest.NewRecorder()
@@ -1765,7 +1710,6 @@ func TestHandleGeminiStreamingResponse_ContextCanceled(t *testing.T) {
 // TestHandleClaudeStreamingResponse_ClientDisconnect
 // 验证：Claude 流式转发中客户端断开后继续 drain 上游
 func TestHandleClaudeStreamingResponse_ClientDisconnect(t *testing.T) {
-
 	svc := newAntigravityStreamFixture(&googleforward.Options{MaxLineSize: 500 * 1024 * 1024})
 
 	rec := httptest.NewRecorder()
@@ -1794,7 +1738,6 @@ func TestHandleClaudeStreamingResponse_ClientDisconnect(t *testing.T) {
 // TestHandleClaudeStreamingResponse_EmptyStream
 // 验证：上游只返回无法解析的 SSE 行时，触发 UpstreamFailoverError 而不是向客户端发出残缺流
 func TestHandleClaudeStreamingResponse_EmptyStream(t *testing.T) {
-
 	svc := newAntigravityStreamFixture(&googleforward.Options{MaxLineSize: 500 * 1024 * 1024})
 
 	rec := httptest.NewRecorder()
@@ -1820,7 +1763,7 @@ func TestHandleClaudeStreamingResponse_EmptyStream(t *testing.T) {
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)
-	require.True(t, failoverErr.RetryableOnSameAccount)
+	require.True(t, failoverErr.RetryableOnSameProvider)
 
 	// 客户端不应收到任何 SSE 事件（既无 message_start 也无 message_stop）
 	body := rec.Body.String()
@@ -1832,7 +1775,6 @@ func TestHandleClaudeStreamingResponse_EmptyStream(t *testing.T) {
 // TestHandleClaudeStreamingResponse_ContextCanceled
 // 验证：context 取消时不注入错误事件
 func TestHandleClaudeStreamingResponse_ContextCanceled(t *testing.T) {
-
 	svc := newAntigravityStreamFixture(&googleforward.Options{MaxLineSize: 500 * 1024 * 1024})
 
 	rec := httptest.NewRecorder()
@@ -1859,9 +1801,7 @@ func TestExtractSSEUsage(t *testing.T) {
 		line     string
 		expected upstream.TokenUsage
 	}{
-
 		{
-
 			name: "message_delta with output_tokens",
 
 			line: `data: {"type":"message_delta","usage":{"output_tokens":42}}`,
@@ -1876,7 +1816,6 @@ func TestExtractSSEUsage(t *testing.T) {
 		},
 
 		{
-
 			name: "top-level usage with all fields",
 
 			line: `data: {"usage":{"input_tokens":10,"output_tokens":20,"cache_read_input_tokens":5,"cache_creation_input_tokens":3}}`,
@@ -1916,7 +1855,7 @@ func TestExtractSSEUsage(t *testing.T) {
 
 // TestExtractSSEUsage_StreamingSequence 复现 issue #2332：完整的 Anthropic streaming
 // 序列（message_start → message_delta）必须把两类事件中的 usage 字段都汇入同一份累计值，
-// 否则透传账号产出的 usage_logs 会出现 input_tokens=0、仅有 output_tokens 的"残缺"记录。
+// 否则透传提供商产出的 usage_logs 会出现 input_tokens=0、仅有 output_tokens 的"残缺"记录。
 func TestExtractSSEUsage_StreamingSequence(t *testing.T) {
 	svc := newAntigravityFixture(antigravityDependencies{})
 	usage := &upstream.TokenUsage{}
@@ -1934,7 +1873,6 @@ func TestExtractSSEUsage_StreamingSequence(t *testing.T) {
 // TestAntigravityClientWriter 验证 antigravityClientWriter 的断开检测
 func TestAntigravityClientWriter(t *testing.T) {
 	t.Run("normal write succeeds", func(t *testing.T) {
-
 		rec := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(rec)
 		flusher, _ := c.Writer.(http.Flusher)
@@ -1947,7 +1885,6 @@ func TestAntigravityClientWriter(t *testing.T) {
 	})
 
 	t.Run("write failure marks disconnected", func(t *testing.T) {
-
 		rec := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(rec)
 		fw := &antigravityFailingWriter{ResponseWriter: c.Writer, failAfter: 0}
@@ -1960,7 +1897,6 @@ func TestAntigravityClientWriter(t *testing.T) {
 	})
 
 	t.Run("subsequent writes are no-op", func(t *testing.T) {
-
 		rec := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(rec)
 		fw := &antigravityFailingWriter{ResponseWriter: c.Writer, failAfter: 0}
@@ -1989,9 +1925,7 @@ func TestUnwrapV1InternalResponse(t *testing.T) {
 		expected string
 		wantErr  bool
 	}{
-
 		{
-
 			name: "正常 response 包装",
 
 			input: []byte(`{"response":{"id":"123","content":"hello"}}`),
@@ -2030,7 +1964,6 @@ func TestUnwrapV1InternalResponse(t *testing.T) {
 		},
 
 		{
-
 			name: "嵌套 response 只解一层",
 
 			input: []byte(`{"response":{"response":{"inner":true}}}`),
@@ -2116,7 +2049,6 @@ func generateLargeUnwrapJSON(minSize int) []byte {
 		current += len(text) + 20 // 估算 JSON 编码开销
 	}
 	inner := map[string]any{
-
 		"candidates": []map[string]any{
 			{"content": map[string]any{"parts": parts}},
 		},

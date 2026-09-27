@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
@@ -42,9 +42,9 @@ func (p mappingHTTPTransport) DoWithTLS(request *http.Request, proxy string, id 
 
 // 验证 HTTP 透传实际发送显式映射后的模型，并保持单跳和请求模型的回填口径。
 func TestOpenAIPassthroughHTTPAppliesExplicitModelMappingOnce(t *testing.T) {
-	for _, accountType := range []string{capability.AccountTypeAPIKey, capability.AccountTypeOAuth} {
+	for _, providerType := range []string{capability.ProviderTypeAPIKey, capability.ProviderTypeOAuth} {
 		for _, stream := range []bool{false, true} {
-			t.Run(fmt.Sprintf("%s/stream=%v", accountType, stream), func(t *testing.T) {
+			t.Run(fmt.Sprintf("%s/stream=%v", providerType, stream), func(t *testing.T) {
 				observed := make(chan []byte, 1)
 				server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					body, err := io.ReadAll(r.Body)
@@ -73,9 +73,9 @@ func TestOpenAIPassthroughHTTPAppliesExplicitModelMappingOnce(t *testing.T) {
 				c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", bytes.NewReader(body))
 				c.Request.Header.Set("Content-Type", "application/json")
 				c.Request.Header.Set("User-Agent", "codex_cli_rs/0.1.0")
-				service := newResponsesFixture(responsesFixtureInputs{transport: mappingHTTPTransport{client: server.Client(), endpoint: target}, credentials: &account.OpenAIExecutionCredentials{}})
-				value := provider.NewExecutionAccount(&account.Record{ID: 981, Platform: capability.PlatformOpenAI, Type: accountType, Concurrency: 1, Status: account.StatusActive, Schedulable: true, Extra: map[string]any{"openai_passthrough": true}, Credentials: map[string]any{
-					"api_key": "test-key", "base_url": "https://api.openai.com", "access_token": "test-oauth", "chatgpt_account_id": "test-account",
+				service := newResponsesFixture(responsesFixtureInputs{transport: mappingHTTPTransport{client: server.Client(), endpoint: target}, credentials: &provider.OpenAIExecutionCredentials{}})
+				value := gatewayadapter.NewExecutionProvider(&provider.Record{ID: 981, Platform: capability.PlatformOpenAI, Type: providerType, Concurrency: 1, Status: provider.StatusActive, Schedulable: true, Extra: map[string]any{"openai_passthrough": true}, Credentials: map[string]any{
+					"api_key": "test-key", "base_url": "https://api.openai.com", "access_token": "test-oauth", "chatgpt_account_id": "test-provider",
 					"model_mapping":   map[string]any{"public-model": "gpt-5.4", "gpt-5.4": "must-not-map-again"},
 					"model_whitelist": []string{"gpt-5.4"},
 				}})

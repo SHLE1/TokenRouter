@@ -16,11 +16,11 @@ type CreativeOutput = upstream.ImageOutput
 // CreativeExecuteResult 是任务执行结果，由 CreativeRunExecutor 返回。
 type CreativeExecuteResult struct {
 	Outputs      []CreativeOutput
-	AccountID    int64
+	ProviderID   int64
 	ProviderCost float64
 }
 
-// ErrCreativeExecutionPending 表示任务暂时没有用户或账号执行槽位，应保留 queued 并重排。
+// ErrCreativeExecutionPending 表示任务暂时没有用户或提供商执行槽位，应保留 queued 并重排。
 var ErrCreativeExecutionPending = errors.New("creative execution is pending concurrency admission")
 
 const (
@@ -310,7 +310,7 @@ func (w *CreativeRunWorker) Process(ctx context.Context, runID string) (Creative
 			// Redis 基础设施故障不能变成终态；保持 active 由调用方重排队。
 			return CreativeProcessResult{}, err
 		}
-		// 载荷/输入过期或损坏：provider 未执行，按 result_lost 处理并释放预占。
+		// 载荷/输入过期或损坏：platform 未执行，按 result_lost 处理并释放预占。
 		if markErr := w.service.MarkResultLost(ctx, runID, false); markErr != nil {
 			w.warn("creative.worker_mark_result_lost_failed",
 				"run_id", runID,
@@ -346,20 +346,20 @@ func (w *CreativeRunWorker) Process(ctx context.Context, runID string) (Creative
 		return w.handleExecuteError(ctx, runID, err)
 	}
 	if execution == nil || execution.Target == nil {
-		return w.handleExecuteError(ctx, runID, errors.New("creative execution account is unavailable"))
+		return w.handleExecuteError(ctx, runID, errors.New("creative execution provider is unavailable"))
 	}
 
-	// 组合 Lease 按逆序释放账号与用户槽；只覆盖生成阶段。
+	// 组合 Lease 按逆序释放提供商与用户槽；只覆盖生成阶段。
 	slots.Own(execution.ReleaseFunc)
 	releaseSlots := slots.Release
 
-	// 幂等推进 running；账号已在 Prepare 阶段准入，成功结算时再写入实际账号。
+	// 幂等推进 running；提供商已在 Prepare 阶段准入，成功结算时再写入实际提供商。
 	if err := w.service.MarkRunning(ctx, runID, 0); err != nil {
 		return CreativeProcessResult{}, err
 	}
-	// 先持久化实际账号，再调用 provider，确保结果元数据已落库时可恢复结算。
-	if execution.AccountID > 0 {
-		if err := w.repo.SetCreativeRunExecution(ctx, runID, execution.AccountID, execution.Provider, time.Now()); err != nil {
+	// 先持久化实际提供商，再调用 platform，确保结果元数据已落库时可恢复结算。
+	if execution.ProviderID > 0 {
+		if err := w.repo.SetCreativeRunExecution(ctx, runID, execution.ProviderID, execution.Platform, time.Now()); err != nil {
 			return CreativeProcessResult{}, err
 		}
 	}
@@ -400,7 +400,7 @@ func (w *CreativeRunWorker) Process(ctx context.Context, runID string) (Creative
 	}
 	// 已确认成功后只重试记录事实，不能把同一结果重新送入供应商分支。
 	for {
-		_, recordErr := w.service.SucceedRun(ctx, runID, result.AccountID, results)
+		_, recordErr := w.service.SucceedRun(ctx, runID, result.ProviderID, results)
 		if recordErr == nil {
 			break
 		}
@@ -468,8 +468,8 @@ func (w *CreativeRunWorker) loadPayload(ctx context.Context, runID string) (*Cre
 	return payload, nil
 }
 
-// recoverPersistedProviderResult 检查 provider 已返回但 run 状态写入前进程崩溃的窗口。
-// 输出元数据已经落库时无需再次调用 provider，直接补记 provider 成功并进入结算。
+// recoverPersistedProviderResult 检查 platform 已返回但 run 状态写入前进程崩溃的窗口。
+// 输出元数据已经落库时无需再次调用 platform，直接补记 platform 成功并进入结算。
 func (w *CreativeRunWorker) recoverPersistedProviderResult(ctx context.Context, run *CreativeRun) (bool, error) {
 	if w == nil || run == nil || run.Status != CreativeRunStatusRunning {
 		return false, nil
@@ -490,10 +490,10 @@ func (w *CreativeRunWorker) recoverPersistedProviderResult(ctx context.Context, 
 			successCount++
 		}
 	}
-	if successCount == 0 || run.AccountID == nil || *run.AccountID <= 0 {
+	if successCount == 0 || run.ProviderID == nil || *run.ProviderID <= 0 {
 		return false, nil
 	}
-	if err := w.repo.MarkCreativeRunProviderSucceeded(ctx, run.RunID, *run.AccountID, time.Now()); err != nil {
+	if err := w.repo.MarkCreativeRunProviderSucceeded(ctx, run.RunID, *run.ProviderID, time.Now()); err != nil {
 		return false, err
 	}
 	if err := w.service.EnsureCreativeOutbox(ctx, run.RunID, CreativeRunOutboxSettle); err != nil {
@@ -673,13 +673,13 @@ func (w *CreativeRunWorker) RunStaleActiveRecovery(ctx context.Context) {
 	}
 }
 
-// ExecutionTarget 隐藏凭据与具体平台，只能执行本次已选账号的请求。
+// ExecutionTarget 隐藏凭据与具体平台，只能执行本次已选提供商的请求。
 type ExecutionTarget interface {
 	Execute(context.Context, CreativeRun, CreativeRunPayload) (*CreativeExecuteResult, error)
 }
 type CreativeExecution struct {
-	Provider      string
-	AccountID     int64
+	Platform      string
+	ProviderID    int64
 	UpstreamModel string
 	Target        ExecutionTarget
 	ReleaseFunc   func()

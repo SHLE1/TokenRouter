@@ -14,7 +14,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
-var ErrCreativeSettlementAccountMissing = apperror.BadRequest("BATCH_IMAGE_SETTLEMENT_MISSING_ACCOUNT_ID", "batch image settlement account id is missing")
+var ErrCreativeSettlementProviderMissing = apperror.BadRequest("BATCH_IMAGE_SETTLEMENT_MISSING_PROVIDER_ID", "batch image settlement provider id is missing")
 
 type Results struct {
 	Now            func() time.Time
@@ -237,8 +237,8 @@ func (s *Results) InvalidateCreativeAuthCache(ctx context.Context, userID int64)
 	}
 }
 
-// MarkRunning 把任务从 queued 推进到 running 并回填账号；重复调用幂等。
-func (s *Results) MarkRunning(ctx context.Context, runID string, accountID int64) error {
+// MarkRunning 把任务从 queued 推进到 running 并回填提供商；重复调用幂等。
+func (s *Results) MarkRunning(ctx context.Context, runID string, providerID int64) error {
 	if s == nil || s.Repo == nil {
 		return errors.New("creative service is not configured")
 	}
@@ -255,10 +255,10 @@ func (s *Results) MarkRunning(ctx context.Context, runID string, accountID int64
 		}
 		return ErrCreativeInvalidTransition
 	}
-	return s.Repo.MarkCreativeRunRunning(ctx, runID, accountID, s.now())
+	return s.Repo.MarkCreativeRunRunning(ctx, runID, providerID, s.now())
 }
 
-func (s *Results) SucceedRun(ctx context.Context, runID string, accountID int64, results []ProviderOutput) (*CreativeRunPublic, error) {
+func (s *Results) SucceedRun(ctx context.Context, runID string, providerID int64, results []ProviderOutput) (*CreativeRunPublic, error) {
 	if s == nil || s.Repo == nil {
 		return nil, errors.New("creative service is not configured")
 	}
@@ -273,7 +273,7 @@ func (s *Results) SucceedRun(ctx context.Context, runID string, accountID int64,
 	for _, result := range results {
 		outputs = append(outputs, ProviderOutput{Index: result.Index, Success: result.Success, Bytes: result.Bytes, Mime: result.Mime, ErrorCode: result.ErrorCode, ErrorMessage: SanitizeCreativeMessage(result.ErrorMessage)})
 	}
-	if err := s.CreativeDelivery().Record(ctx, runID, accountID, outputs); err != nil {
+	if err := s.CreativeDelivery().Record(ctx, runID, providerID, outputs); err != nil {
 		return nil, err
 	}
 	if s.Outbox == nil {
@@ -290,7 +290,7 @@ func (s *Results) CreativeDelivery() ResultDelivery {
 	return ResultDelivery{Now: s.Now, Repo: s.Repo, Outcomes: outcomes, Store: s.TransientStore, TTL: s.TransientTTL}
 }
 
-// SettleRun 捕获 provider 已成功的结果并写 usage log；失败时保持 settlement_pending。
+// SettleRun 捕获 platform 已成功的结果并写 usage log；失败时保持 settlement_pending。
 func (s *Results) SettleRun(ctx context.Context, runID string) error {
 	if s == nil || s.Repo == nil {
 		return errors.New("creative service is not configured")
@@ -317,8 +317,8 @@ func (s *Results) SettleRun(ctx context.Context, runID string) error {
 		}
 		run.Status = CreativeRunStatusSettlementPending
 	}
-	if run.AccountID == nil || *run.AccountID <= 0 {
-		return ErrCreativeSettlementAccountMissing
+	if run.ProviderID == nil || *run.ProviderID <= 0 {
+		return ErrCreativeSettlementProviderMissing
 	}
 	outputs, err := s.Repo.ListCreativeRunOutputs(ctx, runID)
 	if err != nil {
@@ -351,7 +351,7 @@ func (s *Results) SettleRun(ctx context.Context, runID string) error {
 	}
 	outcomes := s.CreativeDelivery().Outcomes
 	if outcomes == nil {
-		return errors.New("creative provider outcome store is not configured")
+		return errors.New("creative platform outcome store is not configured")
 	}
 	if err := outcomes.CompleteProviderOutcome(ctx, runID, actualCost, lost, s.now()); err != nil {
 		if !errors.Is(err, ErrCreativeInvalidTransition) {
@@ -504,7 +504,7 @@ func (s *Results) MarkResultLost(ctx context.Context, runID string, providerSucc
 
 // RecordCreativeUsageLog 按成功输出数写图片用量日志（request_id = creative_settle:{runID}）。
 func (s *Results) RecordCreativeUsageLog(ctx context.Context, run *CreativeRun, actualCost float64, successCount int, billingResult *billing.TaskFundsResult, createdAt time.Time) {
-	if s == nil || s.RecordUsage == nil || run == nil || run.AccountID == nil || successCount <= 0 {
+	if s == nil || s.RecordUsage == nil || run == nil || run.ProviderID == nil || successCount <= 0 {
 		return
 	}
 	billingMode := "image"
@@ -534,8 +534,8 @@ func (s *Results) RecordCreativeUsageLog(ctx context.Context, run *CreativeRun, 
 		UserID:                run.UserID,
 		BillingUserID:         run.UserID,
 		APIKeyID:              run.APIKeyID,
-		AccountID:             *run.AccountID,
-		Platform:              run.Provider,
+		ProviderID:            *run.ProviderID,
+		Platform:              run.Platform,
 		RequestID:             CreativeSettlementRequestID(run.RunID),
 		Model:                 run.Model,
 		RequestedModel:        run.RequestedModel,

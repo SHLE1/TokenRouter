@@ -12,7 +12,7 @@ export interface ProtocolDefinition {
 export interface ProtocolCatalog {
   auxiliary_operations: { operation: string; protocol?: ProtocolID; authorization: string }[]
   protocols: ProtocolDefinition[]
-  accounts: { platform: string; type: string; auth_mode: string; protocols: ProtocolID[] }[]
+  providers: { platform: string; type: string; auth_mode: string; protocols: ProtocolID[] }[]
   groups: { protocols: ProtocolID[]; defaults: ProtocolID[]; fallback_targets: Partial<Record<ProtocolID, ProtocolID[]>>; default_fallbacks: Partial<Record<ProtocolID, ProtocolID[]>> }[]
 }
 
@@ -42,10 +42,10 @@ export function loadProtocolCatalog(): Promise<ProtocolCatalog> {
 
 export function nativeProtocolOptions(platform: string, type: string, authMode = ''): ProtocolID[] {
   if (authMode === '*') {
-    const profiles = protocolCatalog.value?.accounts.filter(profile => profile.platform === platform && profile.type === type) ?? []
+    const profiles = protocolCatalog.value?.providers.filter(profile => profile.platform === platform && profile.type === type) ?? []
     return (profiles[0]?.protocols ?? []).filter(id => profiles.every(profile => profile.protocols.includes(id)))
   }
   const normalized = authMode.trim().toLowerCase()
   const mode = ['personalaccesstoken', 'personal_access_token'].includes(normalized) ? 'personalAccessToken' : normalized === 'agentidentity' ? 'agentIdentity' : ''
-  return protocolCatalog.value?.accounts.find(profile => profile.platform === platform && profile.type === type && profile.auth_mode === mode)?.protocols ?? []
+  return protocolCatalog.value?.providers.find(profile => profile.platform === platform && profile.type === type && profile.auth_mode === mode)?.protocols ?? []
 }

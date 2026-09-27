@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	accountpostgres "github.com/TokenFlux/TokenRouter/internal/account/postgres"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/batchimage"
 	batchprovider "github.com/TokenFlux/TokenRouter/internal/batchimage/provider"
@@ -14,12 +13,13 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/completion"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/modeltrace"
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry"
+	providerpostgres "github.com/TokenFlux/TokenRouter/internal/provider/postgres"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
-// provideS13BatchPublic 直接绑定原生提交用例，共享任务、账号、资金和模型配置读取实例。
-func provideS13BatchPublic(repo batchimage.BatchImageRepository, accounts *accountpostgres.AccountStore, modelConfigs *routing.PricingConfigService, groups routing.GroupRepository, rates billing.UserGroupRateRepository, queue batchimage.BatchImageQueue, pricing *batchimage.Pricing, funds *billing.Funds, subscriptions *billingpostgres.SettlementStore, auth apikey.APIKeyAuthCacheInvalidator, cfg *config.Config, registry *batchimage.Registry[batchprovider.BatchImageProvider]) *batchimage.Public {
-	core := &batchimage.Public{Now: time.Now, Repo: repo, AccountRepo: &batchprovider.Candidates{Source: accounts, Registry: registry, ObserveModel: modeltrace.RegisterStage}, GroupRepo: batchPricingGroups{groups, modelConfigs}, UserGroupRateRepo: rates, Queue: queue, Pricing: pricing, Funding: batchimage.Funding{Store: funds, Observe: creativeObserve}, Observe: creativeObserve}
+// provideS13BatchPublic 直接绑定原生提交用例，共享任务、提供商、资金和模型配置读取实例。
+func provideS13BatchPublic(repo batchimage.BatchImageRepository, providers *providerpostgres.ProviderStore, modelConfigs *routing.PricingConfigService, groups routing.GroupRepository, rates billing.UserGroupRateRepository, queue batchimage.BatchImageQueue, pricing *batchimage.Pricing, funds *billing.Funds, subscriptions *billingpostgres.SettlementStore, auth apikey.APIKeyAuthCacheInvalidator, cfg *config.Config, registry *batchimage.Registry[batchprovider.BatchImageProvider]) *batchimage.Public {
+	core := &batchimage.Public{Now: time.Now, Repo: repo, ProviderRepo: &batchprovider.Candidates{Source: providers, Registry: registry, ObserveModel: modeltrace.RegisterStage}, GroupRepo: batchPricingGroups{groups, modelConfigs}, UserGroupRateRepo: rates, Queue: queue, Pricing: pricing, Funding: batchimage.Funding{Store: funds, Observe: creativeObserve}, Observe: creativeObserve}
 	if modelConfigs != nil {
 		core.PricingConfigService = modelConfigs
 	}

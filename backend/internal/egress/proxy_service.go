@@ -12,7 +12,7 @@ import (
 
 var (
 	ErrProxyNotFound = infraerrors.NotFound("PROXY_NOT_FOUND", "proxy not found")
-	ErrProxyInUse    = infraerrors.Conflict("PROXY_IN_USE", "proxy is in use by accounts")
+	ErrProxyInUse    = infraerrors.Conflict("PROXY_IN_USE", "proxy is in use by providers")
 )
 
 type ProxyRepository interface {
@@ -24,13 +24,13 @@ type ProxyRepository interface {
 
 	List(ctx context.Context, params pagination.PaginationParams) ([]Proxy, *pagination.PaginationResult, error)
 	ListWithFilters(ctx context.Context, params pagination.PaginationParams, protocol, status, search string) ([]Proxy, *pagination.PaginationResult, error)
-	ListWithFiltersAndAccountCount(ctx context.Context, params pagination.PaginationParams, protocol, status, search string) ([]ProxyWithAccountCount, *pagination.PaginationResult, error)
+	ListWithFiltersAndProviderCount(ctx context.Context, params pagination.PaginationParams, protocol, status, search string) ([]ProxyWithProviderCount, *pagination.PaginationResult, error)
 	ListActive(ctx context.Context) ([]Proxy, error)
-	ListActiveWithAccountCount(ctx context.Context) ([]ProxyWithAccountCount, error)
+	ListActiveWithProviderCount(ctx context.Context) ([]ProxyWithProviderCount, error)
 
 	ExistsByHostPortAuth(ctx context.Context, host string, port int, username, password string) (bool, error)
-	CountAccountsByProxyID(ctx context.Context, proxyID int64) (int64, error)
-	ListAccountSummariesByProxyID(ctx context.Context, proxyID int64) ([]ProxyAccountSummary, error)
+	CountProvidersByProxyID(ctx context.Context, proxyID int64) (int64, error)
+	ListProviderSummariesByProxyID(ctx context.Context, proxyID int64) ([]ProxyProviderSummary, error)
 
 	SweepExpiredProxies(ctx context.Context, now time.Time) (changed int64, err error)
 	ListAllForFallback(ctx context.Context) ([]Proxy, error)

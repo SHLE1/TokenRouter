@@ -3,15 +3,15 @@ package app
 import (
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
 	"github.com/TokenFlux/TokenRouter/internal/config"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/googleforward"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/gemini"
 )
 
@@ -38,9 +38,9 @@ func googleForwardOptions(cfg *config.Config) googleforward.Options {
 }
 
 // provideGeminiForward 绑定唯一凭据、配额和健康观察；构造期间不发起请求。
-func provideGeminiForward(store provider.ExecutionAccountStore, tokens *account.GeminiTokenSource, health *accountprovider.UpstreamHealth, precheck *account.GeminiPrecheck, transport httpclient.UpstreamTransport, filter *egress.CompiledHeaderFilter, cfg *config.Config, activity *gatewayRequestActivity) *googleforward.Gemini {
+func provideGeminiForward(store gatewayadapter.ExecutionProviderStore, tokens *provider.GeminiTokenSource, health *provideradapter.UpstreamHealth, precheck *provider.GeminiPrecheck, transport httpclient.UpstreamTransport, filter *egress.CompiledHeaderFilter, cfg *config.Config, activity *gatewayRequestActivity) *googleforward.Gemini {
 	daily := func() *int64 {
-		value := account.GeminiDailyResetTime(time.Now(), geminiQuotaLocation()).Unix()
+		value := provider.GeminiDailyResetTime(time.Now(), geminiQuotaLocation()).Unix()
 		return &value
 	}
 	return &googleforward.Gemini{
@@ -50,7 +50,7 @@ func provideGeminiForward(store provider.ExecutionAccountStore, tokens *account.
 		Transport:    transport,
 		HeaderFilter: filter,
 		Enter:        activity.Enter,
-		Errors: &accountprovider.GeminiErrorObserver{
+		Errors: &provideradapter.GeminiErrorObserver{
 			Other:          health,
 			Precheck:       precheck,
 			SetRateLimited: store.SetRateLimited,
@@ -59,12 +59,13 @@ func provideGeminiForward(store provider.ExecutionAccountStore, tokens *account.
 		},
 	}
 }
+
 func provideGeminiExecutor(runtime *googleforward.Gemini) *gatewayhttp.GeminiExecutor {
 	return &gatewayhttp.GeminiExecutor{Runtime: runtime}
 }
 
-// provideAntigravityForward 与账号探测共享重试和健康实例，应用只投影动态读取端口。
-func provideAntigravityForward(store provider.ExecutionAccountStore, tokens *account.AntigravityTokenSource, retry *accountprovider.AntigravityRetry, observer *accountprovider.AntigravityErrorObserver, transport httpclient.UpstreamTransport, readers *provider.RuntimeReaders, sticky session.GatewayCache, cfg *config.Config, activity *gatewayRequestActivity) *googleforward.Antigravity {
+// provideAntigravityForward 与提供商探测共享重试和健康实例，应用只投影动态读取端口。
+func provideAntigravityForward(store gatewayadapter.ExecutionProviderStore, tokens *provider.AntigravityTokenSource, retry *provideradapter.AntigravityRetry, observer *provideradapter.AntigravityErrorObserver, transport httpclient.UpstreamTransport, readers *gatewayadapter.RuntimeReaders, sticky session.GatewayCache, cfg *config.Config, activity *gatewayRequestActivity) *googleforward.Antigravity {
 	return &googleforward.Antigravity{
 		Options:   googleForwardOptions(cfg),
 		Tokens:    tokens,
@@ -78,6 +79,7 @@ func provideAntigravityForward(store provider.ExecutionAccountStore, tokens *acc
 		Enter:     activity.Enter,
 	}
 }
+
 func provideAntigravityExecutor(runtime *googleforward.Antigravity) *gatewayhttp.AntigravityExecutor {
 	return &gatewayhttp.AntigravityExecutor{Runtime: runtime}
 }

@@ -23,15 +23,15 @@ type CollectedPercentiles struct {
 	Max *int
 }
 
-type AccountLoadSource interface {
-	ListSchedulable(context.Context) ([]AccountObservation, error)
+type ProviderLoadSource interface {
+	ListSchedulable(context.Context) ([]ProviderObservation, error)
 }
 type MetricsSource interface {
 	AdvisoryLocker
 	QueryUsageCounts(context.Context, time.Time, time.Time) (int64, int64, error)
 	QueryUsageLatency(context.Context, time.Time, time.Time) (CollectedPercentiles, CollectedPercentiles, error)
 	QueryErrorCounts(context.Context, time.Time, time.Time, []int) (int64, int64, int64, int64, int64, int64, error)
-	QueryAccountSwitchCount(context.Context, time.Time, time.Time) (int64, error)
+	QueryProviderSwitchCount(context.Context, time.Time, time.Time) (int64, error)
 }
 type HostSampler interface {
 	CollectSystemStats(context.Context) (*CollectedSystemStats, error)

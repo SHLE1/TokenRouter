@@ -31,7 +31,7 @@ func NewBatchImageRepository(db *sql.DB) service.BatchImageRepository {
 }
 
 func (r *Repository) CreateBatchImageJob(ctx context.Context, params service.CreateBatchImageJobParams) (*service.BatchImageJob, error) {
-	if !service.IsSupportedBatchImageProvider(params.Provider) {
+	if !service.IsSupportedBatchImageProvider(params.Platform) {
 		return nil, service.ErrBatchImageInvalidProvider
 	}
 	if params.BatchID == "" {
@@ -773,12 +773,12 @@ func createBatchImageJobWithSQL(ctx context.Context, sqlq SQLExecutor, params se
 	}
 	return scanBatchImageJob(sqlq.QueryRowContext(ctx, `
 INSERT INTO batch_image_jobs (
-    batch_id, user_id, billing_user_id, team_id, api_key_id, account_id, group_id, provider, model, requested_model, internal_model, task_name, parent_batch_id, status,
+    batch_id, user_id, billing_user_id, team_id, api_key_id, provider_id, group_id, platform, model, requested_model, internal_model, task_name, parent_batch_id, status,
     provider_job_name, provider_input_ref, provider_output_ref, gcs_input_uri, gcs_output_uri,
     item_count, success_count, fail_count, cancelled_count,
     estimated_cost, hold_amount, actual_cost, balance_hold_amount, subscription_hold_allocations,
     subscription_rate_multiplier, balance_rate_multiplier, plan_group_rate_multiplier_enabled,
-    base_unit_price, group_rate_multiplier, account_rate_multiplier,
+    base_unit_price, group_rate_multiplier, provider_rate_multiplier,
     batch_discount_multiplier, hold_multiplier, billable_unit_price, hold_unit_price,
     pricing_snapshot_version,
     currency, hold_id,
@@ -798,12 +798,12 @@ INSERT INTO batch_image_jobs (
     $48, $49
 )
 RETURNING `+batchImageJobColumns,
-		params.BatchID, params.UserID, params.BillingUserID, params.TeamID, params.APIKeyID, params.AccountID, params.GroupID, params.Provider, params.Model, requestedModel, internalModel, params.TaskName, params.ParentBatchID, params.Status,
+		params.BatchID, params.UserID, params.BillingUserID, params.TeamID, params.APIKeyID, params.ProviderID, params.GroupID, params.Platform, params.Model, requestedModel, internalModel, params.TaskName, params.ParentBatchID, params.Status,
 		params.ProviderJobName, params.ProviderInputRef, params.ProviderOutputRef, params.GCSInputURI, params.GCSOutputURI,
 		params.ItemCount, params.SuccessCount, params.FailCount, params.CancelledCount,
 		params.EstimatedCost, params.HoldAmount, params.ActualCost, params.BalanceHoldAmount, string(subscriptionHoldAllocations),
 		params.SubscriptionRateMultiplier, params.BalanceRateMultiplier, params.PlanGroupRateEnabled,
-		params.BaseUnitPrice, params.GroupRateMultiplier, params.AccountRateMultiplier,
+		params.BaseUnitPrice, params.GroupRateMultiplier, params.ProviderRateMultiplier,
 		params.BatchDiscountMultiplier, params.HoldMultiplier, params.BillableUnitPrice, params.HoldUnitPrice,
 		params.PricingSnapshotVersion,
 		params.Currency, params.HoldID,
@@ -853,13 +853,13 @@ type rowScanner interface {
 }
 
 const batchImageJobColumns = `
-id, batch_id, user_id, billing_user_id, team_id, api_key_id, account_id, group_id, provider, model, requested_model, internal_model, task_name, parent_batch_id, status,
+id, batch_id, user_id, billing_user_id, team_id, api_key_id, provider_id, group_id, platform, model, requested_model, internal_model, task_name, parent_batch_id, status,
 provider_job_name, provider_input_ref, provider_output_ref, gcs_input_uri, gcs_output_uri,
 item_count, success_count, fail_count, cancelled_count,
 estimated_cost, hold_amount, actual_cost, allowance_reserved,
 balance_hold_amount, subscription_hold_allocations,
 subscription_rate_multiplier, balance_rate_multiplier, plan_group_rate_multiplier_enabled,
-base_unit_price, group_rate_multiplier, account_rate_multiplier,
+base_unit_price, group_rate_multiplier, provider_rate_multiplier,
 batch_discount_multiplier, hold_multiplier, billable_unit_price, hold_unit_price,
 pricing_snapshot_version,
 currency, hold_id,
@@ -873,7 +873,7 @@ const batchImageJobSelectSQL = `SELECT ` + batchImageJobColumns + ` FROM batch_i
 
 func scanBatchImageJob(row rowScanner) (*service.BatchImageJob, error) {
 	var job service.BatchImageJob
-	var teamID, apiKeyID, accountID, groupID sql.NullInt64
+	var teamID, apiKeyID, providerID, groupID sql.NullInt64
 	var providerJobName, providerInputRef, providerOutputRef, gcsInputURI, gcsOutputURI sql.NullString
 	var parentBatchID sql.NullString
 	var holdAmount, actualCost sql.NullFloat64
@@ -886,13 +886,13 @@ func scanBatchImageJob(row rowScanner) (*service.BatchImageJob, error) {
 	var submittedAt, startedAt, finishedAt, settledAt sql.NullTime
 
 	err := row.Scan(
-		&job.ID, &job.BatchID, &job.UserID, &job.BillingUserID, &teamID, &apiKeyID, &accountID, &groupID, &job.Provider, &job.Model, &job.RequestedModel, &job.InternalModel, &job.TaskName, &parentBatchID, &job.Status,
+		&job.ID, &job.BatchID, &job.UserID, &job.BillingUserID, &teamID, &apiKeyID, &providerID, &groupID, &job.Platform, &job.Model, &job.RequestedModel, &job.InternalModel, &job.TaskName, &parentBatchID, &job.Status,
 		&providerJobName, &providerInputRef, &providerOutputRef, &gcsInputURI, &gcsOutputURI,
 		&job.ItemCount, &job.SuccessCount, &job.FailCount, &job.CancelledCount,
 		&job.EstimatedCost, &holdAmount, &actualCost, &job.AllowanceReserved,
 		&job.BalanceHoldAmount, &subscriptionHoldAllocationsRaw,
 		&job.SubscriptionRateMultiplier, &job.BalanceRateMultiplier, &job.PlanGroupRateEnabled,
-		&job.BaseUnitPrice, &job.GroupRateMultiplier, &job.AccountRateMultiplier,
+		&job.BaseUnitPrice, &job.GroupRateMultiplier, &job.ProviderRateMultiplier,
 		&job.BatchDiscountMultiplier, &job.HoldMultiplier, &job.BillableUnitPrice, &job.HoldUnitPrice,
 		&job.PricingSnapshotVersion,
 		&job.Currency, &holdID,
@@ -908,7 +908,7 @@ func scanBatchImageJob(row rowScanner) (*service.BatchImageJob, error) {
 
 	job.APIKeyID = batchImageNullInt64Ptr(apiKeyID)
 	job.TeamID = batchImageNullInt64Ptr(teamID)
-	job.AccountID = batchImageNullInt64Ptr(accountID)
+	job.ProviderID = batchImageNullInt64Ptr(providerID)
 	job.GroupID = batchImageNullInt64Ptr(groupID)
 	job.PreferredSubscriptionID = batchImageNullInt64Ptr(preferredSubscriptionID)
 	job.ProviderJobName = batchImageNullStringPtr(providerJobName)

@@ -2,7 +2,7 @@ package requeststate
 
 import "sync"
 
-// ResponseFailureEffects 记录已经执行的账号副作用，只能由后续输出消费一次。
+// ResponseFailureEffects 记录已经执行的提供商副作用，只能由后续输出消费一次。
 type ResponseFailureEffects struct {
 	mu       sync.Mutex
 	status   int
@@ -15,6 +15,7 @@ func (s *ResponseFailureEffects) Store(status int, disabled bool) {
 	s.status, s.disabled, s.present = status, disabled, true
 	s.mu.Unlock()
 }
+
 func (s *ResponseFailureEffects) Consume() (int, bool, bool) {
 	if s == nil {
 		return 0, false, false

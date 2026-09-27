@@ -11,20 +11,20 @@ import (
 	wire "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 )
 
-// ClientPayload 是一轮经过入站规则规范化后的独立报文，不持有旧账号或 HTTP context。
+// ClientPayload 是一轮经过入站规则规范化后的独立报文，不持有旧提供商或 HTTP context。
 type ClientPayload struct {
-	PayloadRaw               []byte
-	AccountIdentitySourceRaw []byte
-	RawForHash               []byte
-	PromptCacheKey           string
-	PreviousResponseID       string
-	OriginalModel            string
-	RoutingModel             string
-	ImageBillingModel        string
-	ImageSizeTier            string
-	ImageInputSize           string
-	PayloadBytes             int
-	RequestedReasoningEffort *string
+	PayloadRaw                []byte
+	ProviderIdentitySourceRaw []byte
+	RawForHash                []byte
+	PromptCacheKey            string
+	PreviousResponseID        string
+	OriginalModel             string
+	RoutingModel              string
+	ImageBillingModel         string
+	ImageSizeTier             string
+	ImageInputSize            string
+	PayloadBytes              int
+	RequestedReasoningEffort  *string
 }
 
 // ForwardResult 保存一次 WS turn 的可观测结果和恢复输入。
@@ -37,36 +37,36 @@ type ForwardResult struct {
 	AudioUsage           *protocol.AudioUsage
 	UpstreamWarning      *forwardcore.UpstreamWarning
 
-	RequestID                    string
-	ResponseID                   string
-	UpstreamHeaders              map[string][]string
-	Usage                        wire.ForwardUsage
-	Model                        string
-	BillingModel                 string
-	UpstreamModel                string
-	UpstreamResponseServiceTier  string
-	UpstreamEndpoint             string
-	ServiceTier                  *string
-	ReasoningEffort              *string
-	RequestedReasoningEffort     *string
-	Stream                       bool
-	OpenAIWSMode                 bool
-	UpstreamTerminalEvent        string
-	ResponseHeaders              map[string][]string
-	ResponseTurnState            string
-	Duration                     time.Duration
-	FirstTokenMs                 *int
-	ClientDisconnect             bool
-	ImageCount                   int
-	ImageSize                    string
-	ImageInputSize               string
-	ImageOutputSize              string
-	ImageOutputSizes             []string
-	ImageSizeSource              string
-	ImageSizeBreakdown           map[string]int
-	WSReplayInput                []json.RawMessage
-	WSReplayInputExists          bool
-	WSAccountFailoverReplayInput []json.RawMessage
+	RequestID                     string
+	ResponseID                    string
+	UpstreamHeaders               map[string][]string
+	Usage                         wire.ForwardUsage
+	Model                         string
+	BillingModel                  string
+	UpstreamModel                 string
+	UpstreamResponseServiceTier   string
+	UpstreamEndpoint              string
+	ServiceTier                   *string
+	ReasoningEffort               *string
+	RequestedReasoningEffort      *string
+	Stream                        bool
+	OpenAIWSMode                  bool
+	UpstreamTerminalEvent         string
+	ResponseHeaders               map[string][]string
+	ResponseTurnState             string
+	Duration                      time.Duration
+	FirstTokenMs                  *int
+	ClientDisconnect              bool
+	ImageCount                    int
+	ImageSize                     string
+	ImageInputSize                string
+	ImageOutputSize               string
+	ImageOutputSizes              []string
+	ImageSizeSource               string
+	ImageSizeBreakdown            map[string]int
+	WSReplayInput                 []json.RawMessage
+	WSReplayInputExists           bool
+	WSProviderFailoverReplayInput []json.RawMessage
 }
 
 // TurnCapture 固化当前 turn，完成处理只接收该快照。
@@ -132,7 +132,7 @@ type ReplayCodec interface {
 	ClassifyPrevious(string) string
 }
 
-// IngressPort 只提供一个操作或一次上游 turn，不持有账号切换/会话重试循环。
+// IngressPort 只提供一个操作或一次上游 turn，不持有提供商切换/会话重试循环。
 type IngressPort interface {
 	Parse([]byte, bool, int) (ClientPayload, error)
 	ShouldBridge(ClientPayload) bool
@@ -166,9 +166,9 @@ type IngressPort interface {
 
 // IngressOptions 保留每条入站会话原有的控制预算与亲和配置。
 type IngressOptions struct {
-	AccountType        string
+	ProviderType       string
 	BridgeThreshold    int64
-	AccountID          int64
+	ProviderID         int64
 	Platform           string
 	GroupID            int64
 	UseBridge          bool
@@ -191,7 +191,7 @@ type IngressSession struct {
 	Port    IngressPort
 }
 
-// AcquireRecoveryError 仅标记允许进行一次账号身份恢复的拨号失败。
+// AcquireRecoveryError 仅标记允许进行一次提供商身份恢复的拨号失败。
 type AcquireRecoveryError struct{ Err error }
 
 func (e *AcquireRecoveryError) Error() string { return e.Err.Error() }

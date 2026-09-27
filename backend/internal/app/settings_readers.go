@@ -5,11 +5,11 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/creative"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/audit"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/admission"
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 	"github.com/TokenFlux/TokenRouter/internal/promotion"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/server/runtimeconfig"
 	"github.com/TokenFlux/TokenRouter/internal/settings"
@@ -26,8 +26,8 @@ func providePromotionSettings(store *settings.Store) *promotion.RuntimeSettings 
 	return promotion.NewRuntimeSettings(store)
 }
 
-func provideAccountSettings(store *settings.Store) *account.RuntimeSettings {
-	return account.NewRuntimeSettings(store, settings.ErrSettingNotFound)
+func provideProviderSettings(store *settings.Store) *provider.RuntimeSettings {
+	return provider.NewRuntimeSettings(store, settings.ErrSettingNotFound)
 }
 
 func provideUsageSettings(store *settings.Store) *usage.RuntimeSettings {

@@ -5,8 +5,8 @@ import (
 
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/ops"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
@@ -77,7 +77,7 @@ func provideGatewaySettings(store *settings.Store) *gateway.RuntimeSettings {
 	}, gateway.ClientSettingsOptions{NormalizeUserAgentVersion: antigravity.NormalizeUserAgentVersion, DefaultUserAgentVersion: antigravity.GetDefaultUserAgentVersion})
 }
 
-// provideQuotaSettings 将共享 JSON 的 Ops 解释投影给账号，不复制缓存或使用旧 SettingsService。
-func provideQuotaSettings(store *settings.Store) *account.QuotaSettingsCache {
-	return account.NewQuotaSettingsCache(store, settings.ErrSettingNotFound, ops.ParseRuntimeQuotaAutoPauseSettings)
+// provideQuotaSettings 将共享 JSON 的 Ops 解释投影给提供商，不复制缓存或使用旧 SettingsService。
+func provideQuotaSettings(store *settings.Store) *provider.QuotaSettingsCache {
+	return provider.NewQuotaSettingsCache(store, settings.ErrSettingNotFound, ops.ParseRuntimeQuotaAutoPauseSettings)
 }

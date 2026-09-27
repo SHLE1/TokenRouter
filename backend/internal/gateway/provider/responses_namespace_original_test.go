@@ -7,131 +7,140 @@ import (
 
 	protocolbridge "github.com/TokenFlux/TokenRouter/internal/protocol/bridge"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
 )
 
 func TestShouldFlattenOpenAIResponsesNamespaces(t *testing.T) {
-	oauth := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth}}
-	apiKey := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}}
-	grokOAuth := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformGrok, Type: capability.AccountTypeOAuth}}
-	flattenOAuth := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI,
-		Type:  capability.AccountTypeOAuth,
-		Extra: map[string]any{"openai_responses_flatten_namespaces": true}},
+	oauth := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}}
+	apiKey := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
+	grokOAuth := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformGrok, Type: capability.ProviderTypeOAuth}}
+	flattenOAuth := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI,
+			Type:  capability.ProviderTypeOAuth,
+			Extra: map[string]any{"openai_responses_flatten_namespaces": true},
+		},
 	}
-	flattenAPIKey := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI,
-		Type:  capability.AccountTypeAPIKey,
-		Extra: map[string]any{"openai_responses_flatten_namespaces": true}},
+	flattenAPIKey := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI,
+			Type:  capability.ProviderTypeAPIKey,
+			Extra: map[string]any{"openai_responses_flatten_namespaces": true},
+		},
 	}
 
 	tests := []struct {
 		name               string
-		account            *gatewayprovider.ExecutionAccount
+		provider           *gatewayprovider.ExecutionProvider
 		transport          egress.OpenAIUpstreamTransport
 		passthroughEnabled bool
 		compactPath        bool
 		want               bool
 	}{
-		{name: "oauth_http_default_preserves", account: oauth, transport: egress.OpenAIUpstreamTransportHTTPSSE, want: false},
-		{name: "oauth_http_passthrough_default_preserves", account: oauth, transport: egress.OpenAIUpstreamTransportHTTPSSE, passthroughEnabled: true, want: false},
-		{name: "oauth_wsv2_default_preserves", account: oauth, transport: egress.OpenAIUpstreamTransportResponsesWebsocketV2, want: false},
+		{name: "oauth_http_default_preserves", provider: oauth, transport: egress.OpenAIUpstreamTransportHTTPSSE, want: false},
+		{name: "oauth_http_passthrough_default_preserves", provider: oauth, transport: egress.OpenAIUpstreamTransportHTTPSSE, passthroughEnabled: true, want: false},
+		{name: "oauth_wsv2_default_preserves", provider: oauth, transport: egress.OpenAIUpstreamTransportResponsesWebsocketV2, want: false},
 		// compact 端点的 schema 更窄，保持既有摊平行为。
-		{name: "oauth_compact_flattens", account: oauth, transport: egress.OpenAIUpstreamTransportHTTPSSE, compactPath: true, want: true},
-		{name: "oauth_compact_wsv2_preserves", account: oauth, transport: egress.OpenAIUpstreamTransportResponsesWebsocketV2, compactPath: true, want: false},
-		{name: "apikey_compact", account: apiKey, transport: egress.OpenAIUpstreamTransportHTTPSSE, compactPath: true, want: false},
-		{name: "oauth_flatten_enabled_http", account: flattenOAuth, transport: egress.OpenAIUpstreamTransportHTTPSSE, want: true},
-		{name: "oauth_flatten_enabled_http_passthrough", account: flattenOAuth, transport: egress.OpenAIUpstreamTransportHTTPSSE, passthroughEnabled: true, want: true},
+		{name: "oauth_compact_flattens", provider: oauth, transport: egress.OpenAIUpstreamTransportHTTPSSE, compactPath: true, want: true},
+		{name: "oauth_compact_wsv2_preserves", provider: oauth, transport: egress.OpenAIUpstreamTransportResponsesWebsocketV2, compactPath: true, want: false},
+		{name: "apikey_compact", provider: apiKey, transport: egress.OpenAIUpstreamTransportHTTPSSE, compactPath: true, want: false},
+		{name: "oauth_flatten_enabled_http", provider: flattenOAuth, transport: egress.OpenAIUpstreamTransportHTTPSSE, want: true},
+		{name: "oauth_flatten_enabled_http_passthrough", provider: flattenOAuth, transport: egress.OpenAIUpstreamTransportHTTPSSE, passthroughEnabled: true, want: true},
 		// WSv2 出口原样转发上游事件、不做回程还原，摊平会让客户端收到无法匹配的平名。
-		{name: "oauth_flatten_enabled_wsv2", account: flattenOAuth, transport: egress.OpenAIUpstreamTransportResponsesWebsocketV2, want: false},
-		// 透传账号先于 WSv2 分支经 HTTP 转发返回，开关打开时仍需摊平。
-		{name: "oauth_flatten_enabled_wsv2_passthrough", account: flattenOAuth, transport: egress.OpenAIUpstreamTransportResponsesWebsocketV2, passthroughEnabled: true, want: true},
-		{name: "apikey_flatten_enabled_http", account: flattenAPIKey, transport: egress.OpenAIUpstreamTransportHTTPSSE, want: false},
-		{name: "apikey_http", account: apiKey, transport: egress.OpenAIUpstreamTransportHTTPSSE, want: false},
-		{name: "grok_oauth_http", account: grokOAuth, transport: egress.OpenAIUpstreamTransportHTTPSSE, want: false},
-		{name: "nil_account", account: nil, transport: egress.OpenAIUpstreamTransportHTTPSSE, want: false},
+		{name: "oauth_flatten_enabled_wsv2", provider: flattenOAuth, transport: egress.OpenAIUpstreamTransportResponsesWebsocketV2, want: false},
+		// 透传提供商先于 WSv2 分支经 HTTP 转发返回，开关打开时仍需摊平。
+		{name: "oauth_flatten_enabled_wsv2_passthrough", provider: flattenOAuth, transport: egress.OpenAIUpstreamTransportResponsesWebsocketV2, passthroughEnabled: true, want: true},
+		{name: "apikey_flatten_enabled_http", provider: flattenAPIKey, transport: egress.OpenAIUpstreamTransportHTTPSSE, want: false},
+		{name: "apikey_http", provider: apiKey, transport: egress.OpenAIUpstreamTransportHTTPSSE, want: false},
+		{name: "grok_oauth_http", provider: grokOAuth, transport: egress.OpenAIUpstreamTransportHTTPSSE, want: false},
+		{name: "nil_provider", provider: nil, transport: egress.OpenAIUpstreamTransportHTTPSSE, want: false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			require.Equal(t, tt.want, gatewayprovider.ShouldFlattenOpenAIResponsesNamespaces(
-				tt.account, tt.transport, tt.passthroughEnabled, tt.compactPath,
+				tt.provider, tt.transport, tt.passthroughEnabled, tt.compactPath,
 			))
 		})
 	}
 }
 
 func TestShouldKeepOpenAIResponsesToolCallNamespaces(t *testing.T) {
-	oauth := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth}}
-	apiKey := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}}
-	setupToken := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeSetupToken}}
-	flattenOAuth := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI,
-		Type:  capability.AccountTypeOAuth,
-		Extra: map[string]any{"openai_responses_flatten_namespaces": true}},
+	oauth := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}}
+	apiKey := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
+	setupToken := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeSetupToken}}
+	flattenOAuth := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI,
+			Type:  capability.ProviderTypeOAuth,
+			Extra: map[string]any{"openai_responses_flatten_namespaces": true},
+		},
 	}
 
 	tests := []struct {
 		name               string
-		account            *gatewayprovider.ExecutionAccount
+		provider           *gatewayprovider.ExecutionProvider
 		transport          egress.OpenAIUpstreamTransport
 		passthroughEnabled bool
 		compactPath        bool
 		body               []byte
 		want               bool
 	}{
-		{name: "oauth_http_keeps", account: oauth, transport: egress.OpenAIUpstreamTransportHTTPSSE, want: true},
-		{name: "oauth_http_passthrough_keeps", account: oauth, transport: egress.OpenAIUpstreamTransportHTTPSSE, passthroughEnabled: true, want: true},
-		{name: "oauth_compact_strips", account: oauth, transport: egress.OpenAIUpstreamTransportHTTPSSE, compactPath: true, want: false},
-		{name: "oauth_flatten_enabled_strips", account: flattenOAuth, transport: egress.OpenAIUpstreamTransportHTTPSSE, want: false},
-		{name: "oauth_wsv2_keeps", account: oauth, transport: egress.OpenAIUpstreamTransportResponsesWebsocketV2, want: true},
-		{name: "oauth_compact_wsv2_strips", account: oauth, transport: egress.OpenAIUpstreamTransportResponsesWebsocketV2, compactPath: true, want: false},
+		{name: "oauth_http_keeps", provider: oauth, transport: egress.OpenAIUpstreamTransportHTTPSSE, want: true},
+		{name: "oauth_http_passthrough_keeps", provider: oauth, transport: egress.OpenAIUpstreamTransportHTTPSSE, passthroughEnabled: true, want: true},
+		{name: "oauth_compact_strips", provider: oauth, transport: egress.OpenAIUpstreamTransportHTTPSSE, compactPath: true, want: false},
+		{name: "oauth_flatten_enabled_strips", provider: flattenOAuth, transport: egress.OpenAIUpstreamTransportHTTPSSE, want: false},
+		{name: "oauth_wsv2_keeps", provider: oauth, transport: egress.OpenAIUpstreamTransportResponsesWebsocketV2, want: true},
+		{name: "oauth_compact_wsv2_strips", provider: oauth, transport: egress.OpenAIUpstreamTransportResponsesWebsocketV2, compactPath: true, want: false},
 		// API Key 默认按标准 Responses API 清理；请求显式声明 namespace 工具时，
 		// 自定义上游需要原样接收对应的历史调用。
-		{name: "apikey_without_namespace_tool_strips", account: apiKey, transport: egress.OpenAIUpstreamTransportHTTPSSE, want: false},
-		{name: "apikey_with_namespace_tool_keeps", account: apiKey, transport: egress.OpenAIUpstreamTransportHTTPSSE, body: []byte(`{"tools":[{"type":"namespace","name":"mcp__codex_app","tools":[]}]}`), want: true},
-		{name: "apikey_with_mixed_case_namespace_tool_keeps", account: apiKey, transport: egress.OpenAIUpstreamTransportHTTPSSE, body: []byte(`{"tools":[{"type":" Namespace ","name":"mcp__codex_app","tools":[]}]}`), want: true},
-		{name: "apikey_function_tool_with_namespace_field_strips", account: apiKey, transport: egress.OpenAIUpstreamTransportHTTPSSE, body: []byte(`{"tools":[{"type":"function","name":"automation_update","namespace":"mcp__codex_app"}]}`), want: false},
-		{name: "apikey_compact_with_namespace_tool_strips", account: apiKey, transport: egress.OpenAIUpstreamTransportHTTPSSE, compactPath: true, body: []byte(`{"tools":[{"type":"namespace","name":"mcp__codex_app","tools":[]}]}`), want: false},
-		{name: "setup_token_keeps", account: setupToken, transport: egress.OpenAIUpstreamTransportHTTPSSE, want: true},
-		{name: "nil_account", account: nil, transport: egress.OpenAIUpstreamTransportHTTPSSE, want: false},
+		{name: "apikey_without_namespace_tool_strips", provider: apiKey, transport: egress.OpenAIUpstreamTransportHTTPSSE, want: false},
+		{name: "apikey_with_namespace_tool_keeps", provider: apiKey, transport: egress.OpenAIUpstreamTransportHTTPSSE, body: []byte(`{"tools":[{"type":"namespace","name":"mcp__codex_app","tools":[]}]}`), want: true},
+		{name: "apikey_with_mixed_case_namespace_tool_keeps", provider: apiKey, transport: egress.OpenAIUpstreamTransportHTTPSSE, body: []byte(`{"tools":[{"type":" Namespace ","name":"mcp__codex_app","tools":[]}]}`), want: true},
+		{name: "apikey_function_tool_with_namespace_field_strips", provider: apiKey, transport: egress.OpenAIUpstreamTransportHTTPSSE, body: []byte(`{"tools":[{"type":"function","name":"automation_update","namespace":"mcp__codex_app"}]}`), want: false},
+		{name: "apikey_compact_with_namespace_tool_strips", provider: apiKey, transport: egress.OpenAIUpstreamTransportHTTPSSE, compactPath: true, body: []byte(`{"tools":[{"type":"namespace","name":"mcp__codex_app","tools":[]}]}`), want: false},
+		{name: "setup_token_keeps", provider: setupToken, transport: egress.OpenAIUpstreamTransportHTTPSSE, want: true},
+		{name: "nil_provider", provider: nil, transport: egress.OpenAIUpstreamTransportHTTPSSE, want: false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			require.Equal(t, tt.want, gatewayprovider.ShouldKeepOpenAIResponsesToolCallNamespaces(
-				tt.account, tt.transport, tt.passthroughEnabled, tt.compactPath, tt.body,
+				tt.provider, tt.transport, tt.passthroughEnabled, tt.compactPath, tt.body,
 			))
 		})
 	}
 }
 
 func TestShouldStripOpenAIResponsesInputNamespaces(t *testing.T) {
-	oauth := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth}}
-	apiKey := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}}
-	setupToken := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeSetupToken}}
-	grokOAuth := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformGrok, Type: capability.AccountTypeOAuth}}
+	oauth := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}}
+	apiKey := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
+	setupToken := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeSetupToken}}
+	grokOAuth := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformGrok, Type: capability.ProviderTypeOAuth}}
 
 	tests := []struct {
 		name               string
-		account            *gatewayprovider.ExecutionAccount
+		provider           *gatewayprovider.ExecutionProvider
 		transport          egress.OpenAIUpstreamTransport
 		passthroughEnabled bool
 		want               bool
 	}{
-		{name: "oauth_http", account: oauth, transport: egress.OpenAIUpstreamTransportHTTPSSE, want: true},
-		{name: "apikey_http", account: apiKey, transport: egress.OpenAIUpstreamTransportHTTPSSE, want: true},
-		{name: "oauth_wsv2", account: oauth, transport: egress.OpenAIUpstreamTransportResponsesWebsocketV2, want: false},
-		{name: "apikey_wsv2", account: apiKey, transport: egress.OpenAIUpstreamTransportResponsesWebsocketV2, want: false},
-		{name: "oauth_wsv2_passthrough", account: oauth, transport: egress.OpenAIUpstreamTransportResponsesWebsocketV2, passthroughEnabled: true, want: true},
-		{name: "apikey_wsv2_passthrough", account: apiKey, transport: egress.OpenAIUpstreamTransportResponsesWebsocketV2, passthroughEnabled: true, want: true},
-		{name: "setup_token_http", account: setupToken, transport: egress.OpenAIUpstreamTransportHTTPSSE, want: true},
-		{name: "grok_oauth_http", account: grokOAuth, transport: egress.OpenAIUpstreamTransportHTTPSSE, want: false},
-		{name: "nil_account", account: nil, transport: egress.OpenAIUpstreamTransportHTTPSSE, want: false},
+		{name: "oauth_http", provider: oauth, transport: egress.OpenAIUpstreamTransportHTTPSSE, want: true},
+		{name: "apikey_http", provider: apiKey, transport: egress.OpenAIUpstreamTransportHTTPSSE, want: true},
+		{name: "oauth_wsv2", provider: oauth, transport: egress.OpenAIUpstreamTransportResponsesWebsocketV2, want: false},
+		{name: "apikey_wsv2", provider: apiKey, transport: egress.OpenAIUpstreamTransportResponsesWebsocketV2, want: false},
+		{name: "oauth_wsv2_passthrough", provider: oauth, transport: egress.OpenAIUpstreamTransportResponsesWebsocketV2, passthroughEnabled: true, want: true},
+		{name: "apikey_wsv2_passthrough", provider: apiKey, transport: egress.OpenAIUpstreamTransportResponsesWebsocketV2, passthroughEnabled: true, want: true},
+		{name: "setup_token_http", provider: setupToken, transport: egress.OpenAIUpstreamTransportHTTPSSE, want: true},
+		{name: "grok_oauth_http", provider: grokOAuth, transport: egress.OpenAIUpstreamTransportHTTPSSE, want: false},
+		{name: "nil_provider", provider: nil, transport: egress.OpenAIUpstreamTransportHTTPSSE, want: false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.want, gatewayprovider.ShouldStripOpenAIResponsesInputNamespaces(tt.account, tt.transport, tt.passthroughEnabled))
+			require.Equal(t, tt.want, gatewayprovider.ShouldStripOpenAIResponsesInputNamespaces(tt.provider, tt.transport, tt.passthroughEnabled))
 		})
 	}
 }

@@ -34,7 +34,7 @@ func ValidateVoiceEndpoint(endpoint string) (string, string, error) {
 	return endpoint, baseEndpoint, nil
 }
 
-// BuildVoiceRequest 接收完成 egress 校验后的 URL 与本次认证头，不读取账号或配置。
+// BuildVoiceRequest 接收完成 egress 校验后的 URL 与本次认证头，不读取提供商或配置。
 func BuildVoiceRequest(ctx context.Context, method, targetURL, token, contentType string, body []byte, applyHeaders func(http.Header)) (*http.Request, error) {
 	req, err := http.NewRequestWithContext(ctx, method, targetURL, bytes.NewReader(body))
 	if err != nil {

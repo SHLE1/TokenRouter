@@ -538,8 +538,8 @@ func TestLoadDefaultOpenAIWSConfig(t *testing.T) {
 	if cfg.Gateway.OpenAIWS.ResponsesWebsockets {
 		t.Fatalf("Gateway.OpenAIWS.ResponsesWebsockets = true, want false")
 	}
-	if !cfg.Gateway.OpenAIWS.DynamicMaxConnsByAccountConcurrencyEnabled {
-		t.Fatalf("Gateway.OpenAIWS.DynamicMaxConnsByAccountConcurrencyEnabled = false, want true")
+	if !cfg.Gateway.OpenAIWS.DynamicMaxConnsByProviderConcurrencyEnabled {
+		t.Fatalf("Gateway.OpenAIWS.DynamicMaxConnsByProviderConcurrencyEnabled = false, want true")
 	}
 	if cfg.Gateway.OpenAIWS.OAuthMaxConnsFactor != 1.0 {
 		t.Fatalf("Gateway.OpenAIWS.OAuthMaxConnsFactor = %v, want 1.0", cfg.Gateway.OpenAIWS.OAuthMaxConnsFactor)
@@ -2254,9 +2254,9 @@ func TestValidateConfig_OpenAIWSRules(t *testing.T) {
 		wantErr string
 	}{
 		{
-			name:    "max_conns_per_account 必须为正数",
-			mutate:  func(c *Config) { c.Gateway.OpenAIWS.MaxConnsPerAccount = 0 },
-			wantErr: "gateway.openai_ws.max_conns_per_account",
+			name:    "max_conns_per_provider 必须为正数",
+			mutate:  func(c *Config) { c.Gateway.OpenAIWS.MaxConnsPerProvider = 0 },
+			wantErr: "gateway.openai_ws.max_conns_per_provider",
 		},
 		{
 			name:    "client_first_message_timeout_seconds 必须为正数",
@@ -2279,31 +2279,31 @@ func TestValidateConfig_OpenAIWSRules(t *testing.T) {
 			wantErr: "gateway.openai_ws.max_ingress_connections_per_api_key",
 		},
 		{
-			name:    "min_idle_per_account 不能为负数",
-			mutate:  func(c *Config) { c.Gateway.OpenAIWS.MinIdlePerAccount = -1 },
-			wantErr: "gateway.openai_ws.min_idle_per_account",
+			name:    "min_idle_per_provider 不能为负数",
+			mutate:  func(c *Config) { c.Gateway.OpenAIWS.MinIdlePerProvider = -1 },
+			wantErr: "gateway.openai_ws.min_idle_per_provider",
 		},
 		{
-			name:    "max_idle_per_account 不能为负数",
-			mutate:  func(c *Config) { c.Gateway.OpenAIWS.MaxIdlePerAccount = -1 },
-			wantErr: "gateway.openai_ws.max_idle_per_account",
+			name:    "max_idle_per_provider 不能为负数",
+			mutate:  func(c *Config) { c.Gateway.OpenAIWS.MaxIdlePerProvider = -1 },
+			wantErr: "gateway.openai_ws.max_idle_per_provider",
 		},
 		{
-			name: "min_idle_per_account 不能大于 max_idle_per_account",
+			name: "min_idle_per_provider 不能大于 max_idle_per_provider",
 			mutate: func(c *Config) {
-				c.Gateway.OpenAIWS.MinIdlePerAccount = 3
-				c.Gateway.OpenAIWS.MaxIdlePerAccount = 2
+				c.Gateway.OpenAIWS.MinIdlePerProvider = 3
+				c.Gateway.OpenAIWS.MaxIdlePerProvider = 2
 			},
-			wantErr: "gateway.openai_ws.min_idle_per_account must be <= max_idle_per_account",
+			wantErr: "gateway.openai_ws.min_idle_per_provider must be <= max_idle_per_provider",
 		},
 		{
-			name: "max_idle_per_account 不能大于 max_conns_per_account",
+			name: "max_idle_per_provider 不能大于 max_conns_per_provider",
 			mutate: func(c *Config) {
-				c.Gateway.OpenAIWS.MaxConnsPerAccount = 2
-				c.Gateway.OpenAIWS.MinIdlePerAccount = 1
-				c.Gateway.OpenAIWS.MaxIdlePerAccount = 3
+				c.Gateway.OpenAIWS.MaxConnsPerProvider = 2
+				c.Gateway.OpenAIWS.MinIdlePerProvider = 1
+				c.Gateway.OpenAIWS.MaxIdlePerProvider = 3
 			},
-			wantErr: "gateway.openai_ws.max_idle_per_account must be <= max_conns_per_account",
+			wantErr: "gateway.openai_ws.max_idle_per_provider must be <= max_conns_per_provider",
 		},
 		{
 			name:    "dial_timeout_seconds 必须为正数",

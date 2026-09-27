@@ -10,14 +10,14 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
-	"github.com/TokenFlux/TokenRouter/internal/egress/provider"
+	egressadapter "github.com/TokenFlux/TokenRouter/internal/egress/provider"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	gatewaysession "github.com/TokenFlux/TokenRouter/internal/gateway/session"
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
 	openaicore "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	upstreamcore "github.com/TokenFlux/TokenRouter/internal/upstream"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
@@ -41,8 +41,8 @@ type liveAttestationStub struct {
 }
 
 // newLiveTLSRoutingServices 构造同时覆盖 TLS 模板和身份头的 Live 路由规则。
-func newLiveTLSRoutingServices() (*provider.TLSProfiles, *egress.TLSFingerprintRouterService) {
-	profileService := provider.NewTLSProfiles(egress.NewTLSFingerprintProfileService(&liveProfileStore{values: []*egress.TLSFingerprintProfile{{ID: 20, Name: "live-routed"}}}, nil))
+func newLiveTLSRoutingServices() (*egressadapter.TLSProfiles, *egress.TLSFingerprintRouterService) {
+	profileService := egressadapter.NewTLSProfiles(egress.NewTLSFingerprintProfileService(&liveProfileStore{values: []*egress.TLSFingerprintProfile{{ID: 20, Name: "live-routed"}}}, nil))
 	profileService.Start()
 
 	router := &egress.TLSFingerprintRouter{
@@ -97,30 +97,36 @@ func (s *liveHTTPUpstreamStub) Do(
 func (s *liveHTTPUpstreamStub) DoWithTLS(
 	request *http.Request,
 	proxyURL string,
-	accountID int64,
-	accountConcurrency int,
+	providerID int64,
+	providerConcurrency int,
 	profile *tlsfingerprint.Profile,
 ) (*http.Response, error) {
 	s.tlsProfile = profile
-	return s.Do(request, proxyURL, accountID, accountConcurrency)
+	return s.Do(request, proxyURL, providerID, providerConcurrency)
 }
 
 func TestLiveCapabilityOnlyAllowsOpenAIOAuth(t *testing.T) {
-	require.True(t, accountprovider.SupportsOpenAIEndpoint(gatewayprovider.ExecutionProtocolRecord(&gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth}}), accountcore.OpenAIEndpointCapabilityLive))
-	require.False(t, accountprovider.SupportsOpenAIEndpoint(gatewayprovider.ExecutionProtocolRecord(&gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}}), accountcore.OpenAIEndpointCapabilityLive))
-	require.False(t, accountprovider.SupportsOpenAIEndpoint(gatewayprovider.ExecutionProtocolRecord(&gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformGrok, Type: capability.AccountTypeOAuth}}), accountcore.OpenAIEndpointCapabilityLive))
-	require.False(t, accountprovider.SupportsOpenAIEndpoint(gatewayprovider.ExecutionProtocolRecord(&gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI,
-		Type: capability.AccountTypeOAuth,
-		Credentials: map[string]any{
-			accountcore.OpenAIAuthModeCredentialKey: accountcore.OpenAIAuthModePersonalAccessToken,
-		}},
-	}), accountcore.OpenAIEndpointCapabilityLive))
-	require.False(t, accountprovider.SupportsOpenAIEndpoint(gatewayprovider.ExecutionProtocolRecord(&gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI,
-		Type: capability.AccountTypeOAuth,
-		Credentials: map[string]any{
-			accountcore.OpenAIAuthModeCredentialKey: accountcore.OpenAIAuthModeAgentIdentity,
-		}},
-	}), accountcore.OpenAIEndpointCapabilityLive))
+	require.True(t, provideradapter.SupportsOpenAIEndpoint(gatewayprovider.ExecutionProtocolRecord(&gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}}), providercore.OpenAIEndpointCapabilityLive))
+	require.False(t, provideradapter.SupportsOpenAIEndpoint(gatewayprovider.ExecutionProtocolRecord(&gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}), providercore.OpenAIEndpointCapabilityLive))
+	require.False(t, provideradapter.SupportsOpenAIEndpoint(gatewayprovider.ExecutionProtocolRecord(&gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformGrok, Type: capability.ProviderTypeOAuth}}), providercore.OpenAIEndpointCapabilityLive))
+	require.False(t, provideradapter.SupportsOpenAIEndpoint(gatewayprovider.ExecutionProtocolRecord(&gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI,
+			Type: capability.ProviderTypeOAuth,
+			Credentials: map[string]any{
+				providercore.OpenAIAuthModeCredentialKey: providercore.OpenAIAuthModePersonalAccessToken,
+			},
+		},
+	}), providercore.OpenAIEndpointCapabilityLive))
+	require.False(t, provideradapter.SupportsOpenAIEndpoint(gatewayprovider.ExecutionProtocolRecord(&gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI,
+			Type: capability.ProviderTypeOAuth,
+			Credentials: map[string]any{
+				providercore.OpenAIAuthModeCredentialKey: providercore.OpenAIAuthModeAgentIdentity,
+			},
+		},
+	}), providercore.OpenAIEndpointCapabilityLive))
 }
 
 func TestValidateLiveCallRequestDoesNotRequireDelegation(t *testing.T) {
@@ -136,18 +142,21 @@ func TestCreateUpstreamLiveCallPreservesSession(t *testing.T) {
 	upstream := &liveHTTPUpstreamStub{}
 	profileService, routerService := newLiveTLSRoutingServices()
 	service := newLiveFixture(liveFixtureInputs{transport: upstream, profiles: profileService, routers: routerService})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 7,
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeOAuth,
-		Concurrency: 2,
-		Credentials: map[string]any{
-			"access_token":       "test-access-token",
-			"chatgpt_account_id": "acct_test",
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 7,
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeOAuth,
+			Concurrency: 2,
+			Credentials: map[string]any{
+				"access_token":       "test-access-token",
+				"chatgpt_account_id": "acct_test",
+			},
+			Extra: map[string]any{
+				"enable_tls_fingerprint":    true,
+				"tls_fingerprint_router_id": int64(9),
+			},
 		},
-		Extra: map[string]any{
-			"enable_tls_fingerprint":    true,
-			"tls_fingerprint_router_id": int64(9),
-		}},
 	}
 	session := json.RawMessage(`{
 		"model":"gpt-live-test",
@@ -155,8 +164,8 @@ func TestCreateUpstreamLiveCallPreservesSession(t *testing.T) {
 		"custom":{"keep":true}
 	}`)
 
-	tlsRouterMatch := service.matchLiveTLSFingerprintRouter(account, "test-live-client")
-	created, err := service.createUpstreamLiveCall(context.Background(), account, &gatewaysession.LiveCallRequest{
+	tlsRouterMatch := service.matchLiveTLSFingerprintRouter(provider, "test-live-client")
+	created, err := service.createUpstreamLiveCall(context.Background(), provider, &gatewaysession.LiveCallRequest{
 		SDP:     "v=offer\r\n",
 		Session: session,
 	}, `{"v":1,"s":0,"t":"v1.test"}`, tlsRouterMatch)
@@ -189,34 +198,37 @@ func TestCreateUpstreamLiveCallPreservesSession(t *testing.T) {
 func TestLiveClientPolicyUsesTLSRouterMatch(t *testing.T) {
 	_, routerService := newLiveTLSRoutingServices()
 	service := newLiveFixture(liveFixtureInputs{routers: routerService})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI,
-		Type: capability.AccountTypeOAuth,
-		Extra: map[string]any{
-			"tls_fingerprint_router_id":  int64(9),
-			"openai_oauth_client_policy": accountcore.OpenAIOAuthClientPolicyTLSRouterMatchedOnly,
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI,
+			Type: capability.ProviderTypeOAuth,
+			Extra: map[string]any{
+				"tls_fingerprint_router_id":  int64(9),
+				"openai_oauth_client_policy": providercore.OpenAIOAuthClientPolicyTLSRouterMatchedOnly,
+			},
+		},
 	}
 
-	matched := service.matchLiveTLSFingerprintRouter(account, "test-live-client")
+	matched := service.matchLiveTLSFingerprintRouter(provider, "test-live-client")
 	result := service.liveClientPolicyResult(
 		context.Background(),
-		account,
+		provider,
 		gatewaysession.LiveCallIdentity{UserAgent: "test-live-client"},
 		matched,
 	)
 	require.True(t, result.Enabled)
 	require.True(t, result.Matched)
 
-	notMatched := service.matchLiveTLSFingerprintRouter(account, "unknown-client")
+	notMatched := service.matchLiveTLSFingerprintRouter(provider, "unknown-client")
 	result = service.liveClientPolicyResult(
 		context.Background(),
-		account,
+		provider,
 		gatewaysession.LiveCallIdentity{UserAgent: "unknown-client"},
 		notMatched,
 	)
 	require.True(t, result.Enabled)
 	require.False(t, result.Matched)
-	require.Equal(t, accountcore.CodexClientRestrictionReasonNotMatchedTLSRouter, result.Reason)
+	require.Equal(t, providercore.CodexClientRestrictionReasonNotMatchedTLSRouter, result.Reason)
 }
 
 func TestLiveAttestationCipherRoundTripAndRejectsOtherInstanceKey(t *testing.T) {
@@ -256,11 +268,11 @@ func TestPrepareLiveAttestationEncryptsHeaderAndReturnsExplicitProviderError(t *
 }
 
 func TestLiveMaxSessionDurationDefaultsAndOverrides(t *testing.T) {
-	require.Equal(t, defaultLiveMaxSessionDuration, (newLiveFixture(liveFixtureInputs{})).liveMaxSessionDuration())
+	require.Equal(t, defaultLiveMaxSessionDuration, newLiveFixture(liveFixtureInputs{}).liveMaxSessionDuration())
 	require.Equal(
 		t,
 		90*time.Second,
-		(newLiveFixture(liveFixtureInputs{duration: time.Duration(90) * time.Second})).liveMaxSessionDuration(),
+		newLiveFixture(liveFixtureInputs{duration: time.Duration(90) * time.Second}).liveMaxSessionDuration(),
 	)
 }
 

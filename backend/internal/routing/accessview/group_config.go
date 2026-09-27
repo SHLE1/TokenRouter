@@ -7,7 +7,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
 )
 
-// GroupConfig 是无递归关联的分组值契约，供账号等消费者按需投影。
+// GroupConfig 是无递归关联的分组值契约，供提供商等消费者按需投影。
 type GroupConfig struct {
 	RoutingPolicy GroupRoutingPolicy
 	ID            int64
@@ -46,7 +46,7 @@ type GroupConfig struct {
 
 	// 模型路由配置
 	// key: 模型匹配模式（支持 * 通配符，如 "claude-opus-*"）
-	// value: 优先账号 ID 列表
+	// value: 优先提供商 ID 列表
 	ModelRouting        map[string][]int64
 	ModelRoutingEnabled bool
 
@@ -72,8 +72,8 @@ type GroupConfig struct {
 	// OpenAIFastPolicy 保存管理员选择的互斥加速策略。
 	OpenAIFastPolicy string
 
-	RequireOAuthOnly   bool // 仅允许非 apikey 类型账号关联（OpenAI/Antigravity/Anthropic/Gemini）
-	RequirePrivacySet  bool // 调度时仅允许 privacy 已成功设置的账号（OpenAI/Antigravity/Anthropic/Gemini）
+	RequireOAuthOnly   bool // 仅允许非 apikey 类型提供商关联（OpenAI/Antigravity/Anthropic/Gemini）
+	RequirePrivacySet  bool // 调度时仅允许 privacy 已成功设置的提供商（OpenAI/Antigravity/Anthropic/Gemini）
 	DefaultMappedModel string
 	ModelsListConfig   GroupModelsListConfig
 	// AvailabilityProbeConfig 控制该分组的主动可用性探测。
@@ -91,9 +91,9 @@ type GroupConfig struct {
 	// ReasoningEffortMappings 在应用上限前改写请求中显式指定的值。
 	ReasoningEffortMappings []ReasoningEffortMapping
 
-	CreatedAt               time.Time
-	UpdatedAt               time.Time
-	AccountCount            int64
-	ActiveAccountCount      int64
-	RateLimitedAccountCount int64
+	CreatedAt                time.Time
+	UpdatedAt                time.Time
+	ProviderCount            int64
+	ActiveProviderCount      int64
+	RateLimitedProviderCount int64
 }

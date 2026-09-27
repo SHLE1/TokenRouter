@@ -10,23 +10,23 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 )
 
-// issue #6171：v0.1.181 起，/v1/images/generations 只要上游"回文字没回图"，账号就被
+// issue #6171：v0.1.181 起，/v1/images/generations 只要上游"回文字没回图"，提供商就被
 // 写 30 分钟 openai:image_generation 模型级冷却。该判据是**请求级**的（这个 prompt
-// 这一轮模型选择了说话），却被当成**账号级**能力失效；又因为同一个错误被判为
-// 可重试（502）并驱动 failover，一次闲聊回复会沿着号池逐个把账号冷却掉。
+// 这一轮模型选择了说话），却被当成**提供商级**能力失效；又因为同一个错误被判为
+// 可重试（502）并驱动 failover，一次闲聊回复会沿着号池逐个把提供商冷却掉。
 
-// countingModelRateLimitRepo 记录 SetModelRateLimit 调用，用于断言"没写账号状态"。
+// countingModelRateLimitRepo 记录 SetModelRateLimit 调用，用于断言"没写提供商状态"。
 type countingModelRateLimitRepo struct {
-	gatewayprovider.ExecutionAccountStore
+	gatewayprovider.ExecutionProviderStore
 	calls  int
 	scopes []string
 }
@@ -46,8 +46,8 @@ func newImagesCooldownContext(t *testing.T) (*gin.Context, *httptest.ResponseRec
 	return c, rec
 }
 
-func imagesCooldownAccount() *gatewayprovider.ExecutionAccount {
-	return &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 77, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth, Name: "img-oauth"}}
+func imagesCooldownProvider() *gatewayprovider.ExecutionProvider {
+	return &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 77, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth, Name: "img-oauth"}}
 }
 
 func TestShouldCoolOpenAIImagesToolForError(t *testing.T) {
@@ -72,7 +72,7 @@ func TestShouldCoolOpenAIImagesToolForError(t *testing.T) {
 			want: false,
 		},
 		{
-			// 上游自己在 error 帧里点名该状态：这才是账号级证据，保持冷却。
+			// 上游自己在 error 帧里点名该状态：这才是提供商级证据，保持冷却。
 			name: "structured_upstream_error_frame",
 			err: &openai.OpenAIImagesUpstreamError{
 				StatusCode: http.StatusBadGateway,
@@ -89,50 +89,50 @@ func TestShouldCoolOpenAIImagesToolForError(t *testing.T) {
 	}
 }
 
-// 主复现：文字兜底判据不得写账号级冷却。
-func TestHandleOpenAIImagesOAuthResponseError_TextFallbackDoesNotCoolAccount(t *testing.T) {
+// 主复现：文字兜底判据不得写提供商级冷却。
+func TestHandleOpenAIImagesOAuthResponseError_TextFallbackDoesNotCoolProvider(t *testing.T) {
 	c, _ := newImagesCooldownContext(t)
 	repo := &countingModelRateLimitRepo{}
 	svc := newImagesFixture(imagesFixtureInputs{store: repo})
-	account := imagesCooldownAccount()
+	provider := imagesCooldownProvider()
 
 	upstreamErr := openai.OpenAIImagesTextFallbackErrorForText("Here's a polished image prompt for your request.")
 	require.NotNil(t, upstreamErr)
 	require.Equal(t, "image_generation_unavailable", upstreamErr.Code)
 
 	err := svc.handleOpenAIImagesOAuthResponseError(
-		context.Background(), c, account, "gpt-image-2", "https://upstream.example/v1/responses",
+		context.Background(), c, provider, "gpt-image-2", "https://upstream.example/v1/responses",
 		&http.Response{StatusCode: http.StatusOK, Header: http.Header{}}, OpenAIImagesJSONKeepaliveAdjustedWrittenSize(c), upstreamErr,
 	)
 
-	require.Zero(t, repo.calls, "模型闲聊不构成账号级证据，不得写 30 分钟冷却")
+	require.Zero(t, repo.calls, "模型闲聊不构成提供商级证据，不得写 30 分钟冷却")
 
-	// 换号行为必须原样保留：本 PR 只撤销账号状态写入，不动 failover。
+	// 换号行为必须原样保留：本 PR 只撤销提供商状态写入，不动 failover。
 	var failover *forwardcore.UpstreamFailoverError
 	require.True(t, errors.As(err, &failover), "仍应触发换号，got %T", err)
 }
 
 // 对照不变式：上游 error 帧点名该状态时仍然冷却，否则等于把功能整个废掉。
-func TestHandleOpenAIImagesOAuthResponseError_StructuredUnavailableStillCoolsAccount(t *testing.T) {
+func TestHandleOpenAIImagesOAuthResponseError_StructuredUnavailableStillCoolsProvider(t *testing.T) {
 	c, _ := newImagesCooldownContext(t)
 	repo := &countingModelRateLimitRepo{}
 	svc := newImagesFixture(imagesFixtureInputs{store: repo})
-	account := imagesCooldownAccount()
+	provider := imagesCooldownProvider()
 
 	upstreamErr := &openai.OpenAIImagesUpstreamError{
 		StatusCode: http.StatusBadGateway,
 		ErrorType:  "upstream_error",
 		Code:       "image_generation_unavailable",
-		Message:    "image generation tool is not available for this account",
+		Message:    "image generation tool is not available for this provider",
 	}
 
 	_ = svc.handleOpenAIImagesOAuthResponseError(
-		context.Background(), c, account, "gpt-image-2", "https://upstream.example/v1/responses",
+		context.Background(), c, provider, "gpt-image-2", "https://upstream.example/v1/responses",
 		&http.Response{StatusCode: http.StatusOK, Header: http.Header{}}, OpenAIImagesJSONKeepaliveAdjustedWrittenSize(c), upstreamErr,
 	)
 
 	require.Equal(t, 1, repo.calls, "结构化上游证据仍须写冷却")
-	require.Equal(t, []string{accountcore.OpenAIImageGenerationRateLimitKey}, repo.scopes)
+	require.Equal(t, []string{providercore.OpenAIImageGenerationRateLimitKey}, repo.scopes)
 }
 
 // 标记必须打在文字兜底的两个入口上，且不影响违规拦截分支的判定。
@@ -176,5 +176,5 @@ func TestOpenAIImagesTextFallback_RemainsRetryableAndThusCascades(t *testing.T) 
 	err := openai.OpenAIImagesTextFallbackErrorForText("Here's a polished image prompt for your request.")
 	require.NotNil(t, err)
 	require.True(t, openai.IsOpenAIImagesRetryableUpstreamError(err),
-		"文字兜底判据是可重试的——正因如此，写账号冷却会沿号池级联")
+		"文字兜底判据是可重试的——正因如此，写提供商冷却会沿号池级联")
 }

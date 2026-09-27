@@ -14,7 +14,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 	"github.com/google/uuid"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/stretchr/testify/require"
 )
 
@@ -27,14 +27,14 @@ func TestUsageLog_SessionIDPersistence(t *testing.T) {
 
 	user := mustCreateUser(t, client, &identity.User{Email: "session-id-" + uuid.NewString() + "@example.com"})
 	apiKey := mustCreateApiKey(t, client, &apikey.APIKey{UserID: user.ID, Key: "sk-session-" + uuid.NewString(), Name: "k"})
-	account := mustCreateAccount(t, client, &accountcore.Record{Name: "acc-session-" + uuid.NewString()})
+	provider := mustCreateProvider(t, client, &providercore.Record{Name: "acc-session-" + uuid.NewString()})
 
 	sessionID := "sess-" + uuid.NewString()
 
 	withSession := &usage.UsageLog{
 		UserID:       user.ID,
 		APIKeyID:     apiKey.ID,
-		AccountID:    account.ID,
+		ProviderID:   provider.ID,
 		RequestID:    uuid.NewString(),
 		Model:        "claude-3",
 		InputTokens:  10,
@@ -51,7 +51,7 @@ func TestUsageLog_SessionIDPersistence(t *testing.T) {
 	withoutSession := &usage.UsageLog{
 		UserID:       user.ID,
 		APIKeyID:     apiKey.ID,
-		AccountID:    account.ID,
+		ProviderID:   provider.ID,
 		RequestID:    uuid.NewString(),
 		Model:        "claude-3",
 		InputTokens:  7,

@@ -11,15 +11,15 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
 type transportTempUnschedRepoStub struct {
-	gatewayprovider.ExecutionAccountStore
+	gatewayprovider.ExecutionProviderStore
 
 	calls      int
 	lastID     int64
@@ -45,15 +45,15 @@ func newTransportErrorFixture(t *testing.T) *privateHTTPBoundary {
 
 // TestHandleUpstreamTransportError_TransientFailsOverWithoutEviction pins the
 // contract for transient transport blips (EOF / connection reset): the request
-// fails over to another account, the current account stays schedulable, and
+// fails over to another provider, the current provider stays schedulable, and
 // nothing is written to the response (the handler owns it).
 func TestHandleUpstreamTransportError_TransientFailsOverWithoutEviction(t *testing.T) {
 	repo := &transportTempUnschedRepoStub{}
-	s := NewRuntime(Dependencies{AccountState: repo}, Options{})
+	s := NewRuntime(Dependencies{ProviderState: repo}, Options{})
 	c := newTransportErrorFixture(t)
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 149, Name: "acc", Platform: capability.PlatformAnthropic}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 149, Name: "acc", Platform: capability.PlatformAnthropic}}
 
-	err := s.transportError(context.Background(), c, account,
+	err := s.transportError(context.Background(), c, provider,
 		errors.New(`Post "http://upstream/v1/messages?beta=true": EOF`), forwardcore.Notice{})
 
 	var failoverErr *forwardcore.UpstreamFailoverError
@@ -66,8 +66,8 @@ func TestHandleUpstreamTransportError_TransientFailsOverWithoutEviction(t *testi
 	if string(failoverErr.ResponseBody) != string(gatewayTransportFailoverBody) {
 		t.Fatalf("ResponseBody = %s, want legacy 502 body", failoverErr.ResponseBody)
 	}
-	if !failoverErr.ShouldRetryNextAccount() {
-		t.Fatal("transient transport error must allow retrying the next account")
+	if !failoverErr.ShouldRetryNextProvider() {
+		t.Fatal("transient transport error must allow retrying the next provider")
 	}
 	if repo.calls != 0 {
 		t.Fatalf("SetTempUnschedulable called %d times for a transient error, want 0", repo.calls)
@@ -77,17 +77,17 @@ func TestHandleUpstreamTransportError_TransientFailsOverWithoutEviction(t *testi
 	}
 }
 
-// TestHandleUpstreamTransportError_PersistentEvictsAccount pins the contract
+// TestHandleUpstreamTransportError_PersistentEvictsProvider pins the contract
 // for durable faults (dead endpoint / DNS / proxy credentials): fail over AND
-// temporarily unschedule the account for the transport cooldown.
-func TestHandleUpstreamTransportError_PersistentEvictsAccount(t *testing.T) {
+// temporarily unschedule the provider for the transport cooldown.
+func TestHandleUpstreamTransportError_PersistentEvictsProvider(t *testing.T) {
 	repo := &transportTempUnschedRepoStub{}
-	s := NewRuntime(Dependencies{AccountState: repo}, Options{})
+	s := NewRuntime(Dependencies{ProviderState: repo}, Options{})
 	c := newTransportErrorFixture(t)
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 149, Name: "acc", Platform: capability.PlatformAnthropic}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 149, Name: "acc", Platform: capability.PlatformAnthropic}}
 
 	before := time.Now()
-	err := s.transportError(context.Background(), c, account,
+	err := s.transportError(context.Background(), c, provider,
 		errors.New(`dial tcp 1.2.3.4:443: connect: connection refused`), forwardcore.Notice{})
 
 	var failoverErr *forwardcore.UpstreamFailoverError
@@ -97,8 +97,8 @@ func TestHandleUpstreamTransportError_PersistentEvictsAccount(t *testing.T) {
 	if repo.calls != 1 {
 		t.Fatalf("SetTempUnschedulable called %d times for a persistent error, want 1", repo.calls)
 	}
-	if repo.lastID != account.Record.ID {
-		t.Fatalf("unscheduled account = %d, want %d", repo.lastID, account.Record.ID)
+	if repo.lastID != provider.Record.ID {
+		t.Fatalf("unscheduled provider = %d, want %d", repo.lastID, provider.Record.ID)
 	}
 	wantUntil := before.Add(gatewayTransportErrorTempUnschedDuration)
 	if repo.lastUntil.Before(wantUntil.Add(-time.Minute)) || repo.lastUntil.After(wantUntil.Add(time.Minute)) {
@@ -114,16 +114,16 @@ func TestHandleUpstreamTransportError_PersistentEvictsAccount(t *testing.T) {
 // chance to exhibit a fault.
 func TestHandleUpstreamTransportError_ClientCanceledNoFailover(t *testing.T) {
 	repo := &transportTempUnschedRepoStub{}
-	s := NewRuntime(Dependencies{AccountState: repo}, Options{})
+	s := NewRuntime(Dependencies{ProviderState: repo}, Options{})
 	c := newTransportErrorFixture(t)
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 149, Name: "acc", Platform: capability.PlatformAnthropic}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 149, Name: "acc", Platform: capability.PlatformAnthropic}}
 
 	inErr := context.Canceled
-	err := s.transportError(context.Background(), c, account, inErr, forwardcore.Notice{})
+	err := s.transportError(context.Background(), c, provider, inErr, forwardcore.Notice{})
 
 	var failoverErr *forwardcore.UpstreamFailoverError
 	if errors.As(err, &failoverErr) {
-		t.Fatal("canceled client must not fail over to another account")
+		t.Fatal("canceled client must not fail over to another provider")
 	}
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("err = %v, want context.Canceled passthrough", err)
@@ -138,11 +138,11 @@ func TestHandleUpstreamTransportError_ClientCanceledNoFailover(t *testing.T) {
 // transient fault: fail over, no eviction.
 func TestHandleUpstreamTransportError_UpstreamDeadlineStillFailsOver(t *testing.T) {
 	repo := &transportTempUnschedRepoStub{}
-	s := NewRuntime(Dependencies{AccountState: repo}, Options{})
+	s := NewRuntime(Dependencies{ProviderState: repo}, Options{})
 	c := newTransportErrorFixture(t)
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 149, Name: "acc", Platform: capability.PlatformAnthropic}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 149, Name: "acc", Platform: capability.PlatformAnthropic}}
 
-	err := s.transportError(context.Background(), c, account,
+	err := s.transportError(context.Background(), c, provider,
 		context.DeadlineExceeded, forwardcore.Notice{})
 
 	var failoverErr *forwardcore.UpstreamFailoverError

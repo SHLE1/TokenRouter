@@ -15,9 +15,9 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 	logging "github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/config"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
@@ -29,29 +29,29 @@ func testConfig() *config.Config {
 	return &config.Config{RunMode: config.RunModeStandard}
 }
 
-// mockAccountRepoForPlatform 单平台测试用的 mock
-type mockAccountRepoForPlatform struct {
-	accounts         []gatewayprovider.ExecutionAccount
-	accountsByID     map[int64]*gatewayprovider.ExecutionAccount
-	listPlatformFunc func(ctx context.Context, platform string) ([]gatewayprovider.ExecutionAccount, error)
+// mockProviderRepoForPlatform 单平台测试用的 mock
+type mockProviderRepoForPlatform struct {
+	providers        []gatewayprovider.ExecutionProvider
+	providersByID    map[int64]*gatewayprovider.ExecutionProvider
+	listPlatformFunc func(ctx context.Context, platform string) ([]gatewayprovider.ExecutionProvider, error)
 	getByIDCalls     int
 }
 
-func (m *mockAccountRepoForPlatform) GetByID(ctx context.Context, id int64) (*gatewayprovider.ExecutionAccount, error) {
+func (m *mockProviderRepoForPlatform) GetByID(ctx context.Context, id int64) (*gatewayprovider.ExecutionProvider, error) {
 	m.getByIDCalls++
-	if acc, ok := m.accountsByID[id]; ok {
-		prepareSelectionFixtureAccount(ctx, acc, nil)
+	if acc, ok := m.providersByID[id]; ok {
+		prepareSelectionFixtureProvider(ctx, acc, nil)
 		return acc, nil
 	}
-	return nil, errors.New("account not found")
+	return nil, errors.New("provider not found")
 }
 
-func (m *mockAccountRepoForPlatform) ListSchedulableByPlatform(ctx context.Context, platform string) ([]gatewayprovider.ExecutionAccount, error) {
+func (m *mockProviderRepoForPlatform) ListSchedulableByPlatform(ctx context.Context, platform string) ([]gatewayprovider.ExecutionProvider, error) {
 	if m.listPlatformFunc != nil {
 		return m.listPlatformFunc(ctx, platform)
 	}
-	var result []gatewayprovider.ExecutionAccount
-	for _, acc := range m.accounts {
+	var result []gatewayprovider.ExecutionProvider
+	for _, acc := range m.providers {
 		if acc.Record.Platform == platform && acc.View().IsSchedulable() {
 			result = append(result, acc)
 		}
@@ -59,26 +59,26 @@ func (m *mockAccountRepoForPlatform) ListSchedulableByPlatform(ctx context.Conte
 	return result, nil
 }
 
-func (m *mockAccountRepoForPlatform) ListSchedulableByGroupIDAndPlatform(ctx context.Context, groupID int64, platform string) ([]gatewayprovider.ExecutionAccount, error) {
-	for i := range m.accounts {
-		prepareSelectionFixtureAccount(ctx, &m.accounts[i], &groupID)
+func (m *mockProviderRepoForPlatform) ListSchedulableByGroupIDAndPlatform(ctx context.Context, groupID int64, platform string) ([]gatewayprovider.ExecutionProvider, error) {
+	for i := range m.providers {
+		prepareSelectionFixtureProvider(ctx, &m.providers[i], &groupID)
 	}
 	return m.ListSchedulableByPlatform(ctx, platform)
 }
 
-// Stub methods to implement AccountRepository interface
+// Stub methods to implement ProviderRepository interface
 
-func (m *mockAccountRepoForPlatform) ListSchedulableByGroupID(ctx context.Context, groupID int64) ([]gatewayprovider.ExecutionAccount, error) {
+func (m *mockProviderRepoForPlatform) ListSchedulableByGroupID(ctx context.Context, groupID int64) ([]gatewayprovider.ExecutionProvider, error) {
 	return nil, nil
 }
 
-func (m *mockAccountRepoForPlatform) ListSchedulableByPlatforms(ctx context.Context, platforms []string) ([]gatewayprovider.ExecutionAccount, error) {
-	var result []gatewayprovider.ExecutionAccount
+func (m *mockProviderRepoForPlatform) ListSchedulableByPlatforms(ctx context.Context, platforms []string) ([]gatewayprovider.ExecutionProvider, error) {
+	var result []gatewayprovider.ExecutionProvider
 	platformSet := make(map[string]bool)
 	for _, p := range platforms {
 		platformSet[p] = true
 	}
-	for _, acc := range m.accounts {
+	for _, acc := range m.providers {
 		if platformSet[acc.Record.Platform] && acc.View().IsSchedulable() {
 			result = append(result, acc)
 		}
@@ -86,18 +86,18 @@ func (m *mockAccountRepoForPlatform) ListSchedulableByPlatforms(ctx context.Cont
 	return result, nil
 }
 
-func (m *mockAccountRepoForPlatform) ListSchedulableByGroupIDAndPlatforms(ctx context.Context, groupID int64, platforms []string) ([]gatewayprovider.ExecutionAccount, error) {
-	for i := range m.accounts {
-		prepareSelectionFixtureAccount(ctx, &m.accounts[i], &groupID)
+func (m *mockProviderRepoForPlatform) ListSchedulableByGroupIDAndPlatforms(ctx context.Context, groupID int64, platforms []string) ([]gatewayprovider.ExecutionProvider, error) {
+	for i := range m.providers {
+		prepareSelectionFixtureProvider(ctx, &m.providers[i], &groupID)
 	}
 	return m.ListSchedulableByPlatforms(ctx, platforms)
 }
 
-func (m *mockAccountRepoForPlatform) ListSchedulableUngroupedByPlatform(ctx context.Context, platform string) ([]gatewayprovider.ExecutionAccount, error) {
+func (m *mockProviderRepoForPlatform) ListSchedulableUngroupedByPlatform(ctx context.Context, platform string) ([]gatewayprovider.ExecutionProvider, error) {
 	return m.ListSchedulableByPlatform(ctx, platform)
 }
 
-func (m *mockAccountRepoForPlatform) ListSchedulableUngroupedByPlatforms(ctx context.Context, platforms []string) ([]gatewayprovider.ExecutionAccount, error) {
+func (m *mockProviderRepoForPlatform) ListSchedulableUngroupedByPlatforms(ctx context.Context, platforms []string) ([]gatewayprovider.ExecutionProvider, error) {
 	return m.ListSchedulableByPlatforms(ctx, platforms)
 }
 
@@ -109,18 +109,18 @@ type mockGatewayCacheForPlatform struct {
 	deletedSessions map[string]int
 }
 
-func (m *mockGatewayCacheForPlatform) GetSessionAccountID(ctx context.Context, groupID int64, sessionHash string) (int64, error) {
+func (m *mockGatewayCacheForPlatform) GetSessionProviderID(ctx context.Context, groupID int64, sessionHash string) (int64, error) {
 	if id, ok := m.sessionBindings[sessionHash]; ok {
 		return id, nil
 	}
 	return 0, errors.New("not found")
 }
 
-func (m *mockGatewayCacheForPlatform) SetSessionAccountID(ctx context.Context, groupID int64, sessionHash string, accountID int64, ttl time.Duration) error {
+func (m *mockGatewayCacheForPlatform) SetSessionProviderID(ctx context.Context, groupID int64, sessionHash string, providerID int64, ttl time.Duration) error {
 	if m.sessionBindings == nil {
 		m.sessionBindings = make(map[string]int64)
 	}
-	m.sessionBindings[sessionHash] = accountID
+	m.sessionBindings[sessionHash] = providerID
 	return nil
 }
 
@@ -128,7 +128,7 @@ func (m *mockGatewayCacheForPlatform) RefreshSessionTTL(ctx context.Context, gro
 	return nil
 }
 
-func (m *mockGatewayCacheForPlatform) DeleteSessionAccountID(ctx context.Context, groupID int64, sessionHash string) error {
+func (m *mockGatewayCacheForPlatform) DeleteSessionProviderID(ctx context.Context, groupID int64, sessionHash string) error {
 	if m.sessionBindings == nil {
 		return nil
 	}
@@ -166,200 +166,200 @@ func ptr[T any](v T) *T {
 	return &v
 }
 
-// TestGatewayService_SelectAccountForModelWithPlatform_Anthropic 测试 anthropic 单平台选择
-func TestGatewayService_SelectAccountForModelWithPlatform_Anthropic(t *testing.T) {
+// TestGatewayService_SelectProviderForModelWithPlatform_Anthropic 测试 anthropic 单平台选择
+func TestGatewayService_SelectProviderForModelWithPlatform_Anthropic(t *testing.T) {
 	ctx := context.Background()
 
-	repo := &mockAccountRepoForPlatform{
-		accounts: []gatewayprovider.ExecutionAccount{
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true}},
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true}},
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 3, Platform: capability.PlatformAntigravity, Priority: 1, Status: billing.StatusActive, Schedulable: true}}, // 应被隔离
+	repo := &mockProviderRepoForPlatform{
+		providers: []gatewayprovider.ExecutionProvider{
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true}},
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true}},
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 3, Platform: capability.PlatformAntigravity, Priority: 1, Status: billing.StatusActive, Schedulable: true}}, // 应被隔离
 		},
-		accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+		providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 	}
-	for i := range repo.accounts {
-		repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
+	for i := range repo.providers {
+		repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 	}
 
 	cache := &mockGatewayCacheForPlatform{}
 
-	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Accounts: repo}, Shared: Shared{Cache: cache}}, testConfig())
+	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Providers: repo}, Shared: Shared{Cache: cache}}, testConfig())
 
-	acc, err := svc.selectAccountForModelWithPlatform(ctx, selectionFixtureGroupID(ctx), "", "claude-3-5-sonnet-20241022", nil, capability.PlatformAnthropic)
+	acc, err := svc.selectProviderForModelWithPlatform(ctx, selectionFixtureGroupID(ctx), "", "claude-3-5-sonnet-20241022", nil, capability.PlatformAnthropic)
 	require.NoError(t, err)
 	require.NotNil(t, acc)
-	require.Equal(t, int64(1), acc.Record.ID, "应选择优先级最高的 anthropic 账户")
-	require.Equal(t, capability.PlatformAnthropic, acc.Record.Platform, "应只返回 anthropic 平台账户")
+	require.Equal(t, int64(1), acc.Record.ID, "应选择优先级最高的 anthropic 提供商")
+	require.Equal(t, capability.PlatformAnthropic, acc.Record.Platform, "应只返回 anthropic 平台提供商")
 }
 
-// TestGatewayService_SelectAccountForModelWithPlatform_Antigravity 测试 antigravity 单平台选择
-func TestGatewayService_SelectAccountForModelWithPlatform_Antigravity(t *testing.T) {
+// TestGatewayService_SelectProviderForModelWithPlatform_Antigravity 测试 antigravity 单平台选择
+func TestGatewayService_SelectProviderForModelWithPlatform_Antigravity(t *testing.T) {
 	ctx := context.Background()
 
-	repo := &mockAccountRepoForPlatform{
-		accounts: []gatewayprovider.ExecutionAccount{
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true}}, // 应被隔离
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAntigravity, Priority: 1, Status: billing.StatusActive, Schedulable: true}},
+	repo := &mockProviderRepoForPlatform{
+		providers: []gatewayprovider.ExecutionProvider{
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true}}, // 应被隔离
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAntigravity, Priority: 1, Status: billing.StatusActive, Schedulable: true}},
 		},
-		accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+		providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 	}
-	for i := range repo.accounts {
-		repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
+	for i := range repo.providers {
+		repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 	}
 
 	cache := &mockGatewayCacheForPlatform{}
 
-	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Accounts: repo}, Shared: Shared{Cache: cache}}, testConfig())
+	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Providers: repo}, Shared: Shared{Cache: cache}}, testConfig())
 
-	acc, err := svc.selectAccountForModelWithPlatform(ctx, selectionFixtureGroupID(ctx), "", "claude-sonnet-4-5", nil, capability.PlatformAntigravity)
+	acc, err := svc.selectProviderForModelWithPlatform(ctx, selectionFixtureGroupID(ctx), "", "claude-sonnet-4-5", nil, capability.PlatformAntigravity)
 	require.NoError(t, err)
 	require.NotNil(t, acc)
 	require.Equal(t, int64(2), acc.Record.ID)
-	require.Equal(t, capability.PlatformAntigravity, acc.Record.Platform, "应只返回 antigravity 平台账户")
+	require.Equal(t, capability.PlatformAntigravity, acc.Record.Platform, "应只返回 antigravity 平台提供商")
 }
 
-// TestGatewayService_SelectAccountForModelWithPlatform_PriorityAndLastUsed 测试优先级和最后使用时间
-func TestGatewayService_SelectAccountForModelWithPlatform_PriorityAndLastUsed(t *testing.T) {
+// TestGatewayService_SelectProviderForModelWithPlatform_PriorityAndLastUsed 测试优先级和最后使用时间
+func TestGatewayService_SelectProviderForModelWithPlatform_PriorityAndLastUsed(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now()
 
-	repo := &mockAccountRepoForPlatform{
-		accounts: []gatewayprovider.ExecutionAccount{
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, LastUsedAt: ptr(now.Add(-1 * time.Hour))}},
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, LastUsedAt: ptr(now.Add(-2 * time.Hour))}},
+	repo := &mockProviderRepoForPlatform{
+		providers: []gatewayprovider.ExecutionProvider{
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, LastUsedAt: ptr(now.Add(-1 * time.Hour))}},
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, LastUsedAt: ptr(now.Add(-2 * time.Hour))}},
 		},
-		accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+		providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 	}
-	for i := range repo.accounts {
-		repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
+	for i := range repo.providers {
+		repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 	}
 
 	cache := &mockGatewayCacheForPlatform{}
 
-	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Accounts: repo}, Shared: Shared{Cache: cache}}, testConfig())
+	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Providers: repo}, Shared: Shared{Cache: cache}}, testConfig())
 
-	acc, err := svc.selectAccountForModelWithPlatform(ctx, selectionFixtureGroupID(ctx), "", "claude-3-5-sonnet-20241022", nil, capability.PlatformAnthropic)
+	acc, err := svc.selectProviderForModelWithPlatform(ctx, selectionFixtureGroupID(ctx), "", "claude-3-5-sonnet-20241022", nil, capability.PlatformAnthropic)
 	require.NoError(t, err)
 	require.NotNil(t, acc)
-	require.Equal(t, int64(2), acc.Record.ID, "同优先级应选择最久未用的账户")
+	require.Equal(t, int64(2), acc.Record.ID, "同优先级应选择最久未用的提供商")
 }
 
-func TestGatewayService_SelectAccountForModelWithPlatform_GeminiOAuthPreference(t *testing.T) {
+func TestGatewayService_SelectProviderForModelWithPlatform_GeminiOAuthPreference(t *testing.T) {
 	ctx := context.Background()
 
-	repo := &mockAccountRepoForPlatform{
-		accounts: []gatewayprovider.ExecutionAccount{
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformGemini, Priority: 1, Status: billing.StatusActive, Schedulable: true, Type: capability.AccountTypeAPIKey}},
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformGemini, Priority: 1, Status: billing.StatusActive, Schedulable: true, Type: capability.AccountTypeOAuth}},
+	repo := &mockProviderRepoForPlatform{
+		providers: []gatewayprovider.ExecutionProvider{
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformGemini, Priority: 1, Status: billing.StatusActive, Schedulable: true, Type: capability.ProviderTypeAPIKey}},
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformGemini, Priority: 1, Status: billing.StatusActive, Schedulable: true, Type: capability.ProviderTypeOAuth}},
 		},
-		accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+		providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 	}
-	for i := range repo.accounts {
-		repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
+	for i := range repo.providers {
+		repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 	}
 
 	cache := &mockGatewayCacheForPlatform{}
 
-	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Accounts: repo}, Shared: Shared{Cache: cache}}, testConfig())
+	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Providers: repo}, Shared: Shared{Cache: cache}}, testConfig())
 
-	acc, err := svc.selectAccountForModelWithPlatform(ctx, selectionFixtureGroupID(ctx), "", "gemini-2.5-pro", nil, capability.PlatformGemini)
+	acc, err := svc.selectProviderForModelWithPlatform(ctx, selectionFixtureGroupID(ctx), "", "gemini-2.5-pro", nil, capability.PlatformGemini)
 	require.NoError(t, err)
 	require.NotNil(t, acc)
-	require.Equal(t, int64(2), acc.Record.ID, "同优先级且未使用时应优先选择OAuth账户")
+	require.Equal(t, int64(2), acc.Record.ID, "同优先级且未使用时应优先选择OAuth提供商")
 }
 
-// TestGatewayService_SelectAccountForModelWithPlatform_NoAvailableAccounts 测试无可用账户
-func TestGatewayService_SelectAccountForModelWithPlatform_NoAvailableAccounts(t *testing.T) {
+// TestGatewayService_SelectProviderForModelWithPlatform_NoAvailableProviders 测试无可用提供商
+func TestGatewayService_SelectProviderForModelWithPlatform_NoAvailableProviders(t *testing.T) {
 	ctx := context.Background()
 
-	repo := &mockAccountRepoForPlatform{
-		accounts:     []gatewayprovider.ExecutionAccount{},
-		accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+	repo := &mockProviderRepoForPlatform{
+		providers:     []gatewayprovider.ExecutionProvider{},
+		providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 	}
 
 	cache := &mockGatewayCacheForPlatform{}
 
-	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Accounts: repo}, Shared: Shared{Cache: cache}}, testConfig())
+	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Providers: repo}, Shared: Shared{Cache: cache}}, testConfig())
 
-	acc, err := svc.selectAccountForModelWithPlatform(ctx, selectionFixtureGroupID(ctx), "", "claude-3-5-sonnet-20241022", nil, capability.PlatformAnthropic)
+	acc, err := svc.selectProviderForModelWithPlatform(ctx, selectionFixtureGroupID(ctx), "", "claude-3-5-sonnet-20241022", nil, capability.PlatformAnthropic)
 	require.Error(t, err)
 	require.Nil(t, acc)
-	require.ErrorIs(t, err, scheduler.ErrNoAvailableAccounts)
+	require.ErrorIs(t, err, scheduler.ErrNoAvailableProviders)
 }
 
-// TestGatewayService_SelectAccountForModelWithPlatform_AllExcluded 测试所有账户被排除
-func TestGatewayService_SelectAccountForModelWithPlatform_AllExcluded(t *testing.T) {
+// TestGatewayService_SelectProviderForModelWithPlatform_AllExcluded 测试所有提供商被排除
+func TestGatewayService_SelectProviderForModelWithPlatform_AllExcluded(t *testing.T) {
 	ctx := context.Background()
 
-	repo := &mockAccountRepoForPlatform{
-		accounts: []gatewayprovider.ExecutionAccount{
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true}},
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true}},
+	repo := &mockProviderRepoForPlatform{
+		providers: []gatewayprovider.ExecutionProvider{
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true}},
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true}},
 		},
-		accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+		providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 	}
-	for i := range repo.accounts {
-		repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
+	for i := range repo.providers {
+		repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 	}
 
 	cache := &mockGatewayCacheForPlatform{}
 
-	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Accounts: repo}, Shared: Shared{Cache: cache}}, testConfig())
+	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Providers: repo}, Shared: Shared{Cache: cache}}, testConfig())
 
 	excludedIDs := map[int64]struct{}{1: {}, 2: {}}
-	acc, err := svc.selectAccountForModelWithPlatform(ctx, selectionFixtureGroupID(ctx), "", "claude-3-5-sonnet-20241022", excludedIDs, capability.PlatformAnthropic)
+	acc, err := svc.selectProviderForModelWithPlatform(ctx, selectionFixtureGroupID(ctx), "", "claude-3-5-sonnet-20241022", excludedIDs, capability.PlatformAnthropic)
 	require.Error(t, err)
 	require.Nil(t, acc)
 }
 
-// TestGatewayService_SelectAccountForModelWithPlatform_Schedulability 测试账户可调度性检查
-func TestGatewayService_SelectAccountForModelWithPlatform_Schedulability(t *testing.T) {
+// TestGatewayService_SelectProviderForModelWithPlatform_Schedulability 测试提供商可调度性检查
+func TestGatewayService_SelectProviderForModelWithPlatform_Schedulability(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now()
 
 	tests := []struct {
 		name       string
-		accounts   []gatewayprovider.ExecutionAccount
+		providers  []gatewayprovider.ExecutionProvider
 		expectedID int64
 	}{
 		{
-			name: "过载账户被跳过",
-			accounts: []gatewayprovider.ExecutionAccount{
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, OverloadUntil: ptr(now.Add(1 * time.Hour))}},
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true}},
+			name: "过载提供商被跳过",
+			providers: []gatewayprovider.ExecutionProvider{
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, OverloadUntil: ptr(now.Add(1 * time.Hour))}},
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true}},
 			},
 			expectedID: 2,
 		},
 		{
-			name: "限流账户被跳过",
-			accounts: []gatewayprovider.ExecutionAccount{
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, RateLimitResetAt: ptr(now.Add(1 * time.Hour))}},
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true}},
+			name: "限流提供商被跳过",
+			providers: []gatewayprovider.ExecutionProvider{
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, RateLimitResetAt: ptr(now.Add(1 * time.Hour))}},
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true}},
 			},
 			expectedID: 2,
 		},
 		{
-			name: "非active账户被跳过",
-			accounts: []gatewayprovider.ExecutionAccount{
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: "error", Schedulable: true}},
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true}},
+			name: "非active提供商被跳过",
+			providers: []gatewayprovider.ExecutionProvider{
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: "error", Schedulable: true}},
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true}},
 			},
 			expectedID: 2,
 		},
 		{
 			name: "schedulable=false被跳过",
-			accounts: []gatewayprovider.ExecutionAccount{
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: false}},
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true}},
+			providers: []gatewayprovider.ExecutionProvider{
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: false}},
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true}},
 			},
 			expectedID: 2,
 		},
 		{
-			name: "过期的过载账户可调度",
-			accounts: []gatewayprovider.ExecutionAccount{
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, OverloadUntil: ptr(now.Add(-1 * time.Hour))}},
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true}},
+			name: "过期的过载提供商可调度",
+			providers: []gatewayprovider.ExecutionProvider{
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, OverloadUntil: ptr(now.Add(-1 * time.Hour))}},
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true}},
 			},
 			expectedID: 1,
 		},
@@ -367,19 +367,19 @@ func TestGatewayService_SelectAccountForModelWithPlatform_Schedulability(t *test
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &mockAccountRepoForPlatform{
-				accounts:     tt.accounts,
-				accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+			repo := &mockProviderRepoForPlatform{
+				providers:     tt.providers,
+				providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 			}
-			for i := range repo.accounts {
-				repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
+			for i := range repo.providers {
+				repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 			}
 
 			cache := &mockGatewayCacheForPlatform{}
 
-			svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Accounts: repo}, Shared: Shared{Cache: cache}}, testConfig())
+			svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Providers: repo}, Shared: Shared{Cache: cache}}, testConfig())
 
-			acc, err := svc.selectAccountForModelWithPlatform(ctx, selectionFixtureGroupID(ctx), "", "claude-3-5-sonnet-20241022", nil, capability.PlatformAnthropic)
+			acc, err := svc.selectProviderForModelWithPlatform(ctx, selectionFixtureGroupID(ctx), "", "claude-3-5-sonnet-20241022", nil, capability.PlatformAnthropic)
 			require.NoError(t, err)
 			require.NotNil(t, acc)
 			require.Equal(t, tt.expectedID, acc.Record.ID)
@@ -387,150 +387,150 @@ func TestGatewayService_SelectAccountForModelWithPlatform_Schedulability(t *test
 	}
 }
 
-// TestGatewayService_SelectAccountForModelWithPlatform_StickySession 测试粘性会话
-func TestGatewayService_SelectAccountForModelWithPlatform_StickySession(t *testing.T) {
+// TestGatewayService_SelectProviderForModelWithPlatform_StickySession 测试粘性会话
+func TestGatewayService_SelectProviderForModelWithPlatform_StickySession(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("粘性会话命中-同平台", func(t *testing.T) {
-		repo := &mockAccountRepoForPlatform{
-			accounts: []gatewayprovider.ExecutionAccount{
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true}},
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true}},
+		repo := &mockProviderRepoForPlatform{
+			providers: []gatewayprovider.ExecutionProvider{
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true}},
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true}},
 			},
-			accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+			providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 		}
-		for i := range repo.accounts {
-			repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
+		for i := range repo.providers {
+			repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 		}
 
 		cache := &mockGatewayCacheForPlatform{
 			sessionBindings: map[string]int64{"session-123": 1},
 		}
 
-		svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Accounts: repo}, Shared: Shared{Cache: cache}}, testConfig())
+		svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Providers: repo}, Shared: Shared{Cache: cache}}, testConfig())
 
-		acc, err := svc.selectAccountForModelWithPlatform(ctx, selectionFixtureGroupID(ctx), "session-123", "claude-3-5-sonnet-20241022", nil, capability.PlatformAnthropic)
+		acc, err := svc.selectProviderForModelWithPlatform(ctx, selectionFixtureGroupID(ctx), "session-123", "claude-3-5-sonnet-20241022", nil, capability.PlatformAnthropic)
 		require.NoError(t, err)
 		require.NotNil(t, acc)
-		require.Equal(t, int64(1), acc.Record.ID, "应返回粘性会话绑定的账户")
+		require.Equal(t, int64(1), acc.Record.ID, "应返回粘性会话绑定的提供商")
 	})
 
 	t.Run("粘性会话不匹配平台-降级选择", func(t *testing.T) {
-		repo := &mockAccountRepoForPlatform{
-			accounts: []gatewayprovider.ExecutionAccount{
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAntigravity, Priority: 2, Status: billing.StatusActive, Schedulable: true}}, // 粘性会话绑定但平台不匹配
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true}},
+		repo := &mockProviderRepoForPlatform{
+			providers: []gatewayprovider.ExecutionProvider{
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAntigravity, Priority: 2, Status: billing.StatusActive, Schedulable: true}}, // 粘性会话绑定但平台不匹配
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true}},
 			},
-			accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+			providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 		}
-		for i := range repo.accounts {
-			repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
+		for i := range repo.providers {
+			repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 		}
 
 		cache := &mockGatewayCacheForPlatform{
-			sessionBindings: map[string]int64{"session-123": 1}, // 绑定 antigravity 账户
+			sessionBindings: map[string]int64{"session-123": 1}, // 绑定 antigravity 提供商
 		}
 
-		svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Accounts: repo}, Shared: Shared{Cache: cache}}, testConfig())
+		svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Providers: repo}, Shared: Shared{Cache: cache}}, testConfig())
 
-		// 请求 anthropic 平台，但粘性会话绑定的是 antigravity 账户
-		acc, err := svc.selectAccountForModelWithPlatform(ctx, selectionFixtureGroupID(ctx), "session-123", "claude-3-5-sonnet-20241022", nil, capability.PlatformAnthropic)
+		// 请求 anthropic 平台，但粘性会话绑定的是 antigravity 提供商
+		acc, err := svc.selectProviderForModelWithPlatform(ctx, selectionFixtureGroupID(ctx), "session-123", "claude-3-5-sonnet-20241022", nil, capability.PlatformAnthropic)
 		require.NoError(t, err)
 		require.NotNil(t, acc)
-		require.Equal(t, int64(2), acc.Record.ID, "粘性会话账户平台不匹配，应降级选择同平台账户")
+		require.Equal(t, int64(2), acc.Record.ID, "粘性会话提供商平台不匹配，应降级选择同平台提供商")
 		require.Equal(t, capability.PlatformAnthropic, acc.Record.Platform)
 	})
 
-	t.Run("粘性会话账户被排除-降级选择", func(t *testing.T) {
-		repo := &mockAccountRepoForPlatform{
-			accounts: []gatewayprovider.ExecutionAccount{
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true}},
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true}},
+	t.Run("粘性会话提供商被排除-降级选择", func(t *testing.T) {
+		repo := &mockProviderRepoForPlatform{
+			providers: []gatewayprovider.ExecutionProvider{
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true}},
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true}},
 			},
-			accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+			providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 		}
-		for i := range repo.accounts {
-			repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
+		for i := range repo.providers {
+			repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 		}
 
 		cache := &mockGatewayCacheForPlatform{
 			sessionBindings: map[string]int64{"session-123": 1},
 		}
 
-		svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Accounts: repo}, Shared: Shared{Cache: cache}}, testConfig())
+		svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Providers: repo}, Shared: Shared{Cache: cache}}, testConfig())
 
 		excludedIDs := map[int64]struct{}{1: {}}
-		acc, err := svc.selectAccountForModelWithPlatform(ctx, selectionFixtureGroupID(ctx), "session-123", "claude-3-5-sonnet-20241022", excludedIDs, capability.PlatformAnthropic)
+		acc, err := svc.selectProviderForModelWithPlatform(ctx, selectionFixtureGroupID(ctx), "session-123", "claude-3-5-sonnet-20241022", excludedIDs, capability.PlatformAnthropic)
 		require.NoError(t, err)
 		require.NotNil(t, acc)
-		require.Equal(t, int64(2), acc.Record.ID, "粘性会话账户被排除，应选择其他账户")
+		require.Equal(t, int64(2), acc.Record.ID, "粘性会话提供商被排除，应选择其他提供商")
 	})
 
-	t.Run("粘性会话账户不可调度-降级选择", func(t *testing.T) {
-		repo := &mockAccountRepoForPlatform{
-			accounts: []gatewayprovider.ExecutionAccount{
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 2, Status: "error", Schedulable: true}},
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true}},
+	t.Run("粘性会话提供商不可调度-降级选择", func(t *testing.T) {
+		repo := &mockProviderRepoForPlatform{
+			providers: []gatewayprovider.ExecutionProvider{
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 2, Status: "error", Schedulable: true}},
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true}},
 			},
-			accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+			providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 		}
-		for i := range repo.accounts {
-			repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
+		for i := range repo.providers {
+			repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 		}
 
 		cache := &mockGatewayCacheForPlatform{
 			sessionBindings: map[string]int64{"session-123": 1},
 		}
 
-		svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Accounts: repo}, Shared: Shared{Cache: cache}}, testConfig())
+		svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Providers: repo}, Shared: Shared{Cache: cache}}, testConfig())
 
-		acc, err := svc.selectAccountForModelWithPlatform(ctx, selectionFixtureGroupID(ctx), "session-123", "claude-3-5-sonnet-20241022", nil, capability.PlatformAnthropic)
+		acc, err := svc.selectProviderForModelWithPlatform(ctx, selectionFixtureGroupID(ctx), "session-123", "claude-3-5-sonnet-20241022", nil, capability.PlatformAnthropic)
 		require.NoError(t, err)
 		require.NotNil(t, acc)
-		require.Equal(t, int64(2), acc.Record.ID, "粘性会话账户不可调度，应选择其他账户")
+		require.Equal(t, int64(2), acc.Record.ID, "粘性会话提供商不可调度，应选择其他提供商")
 	})
 }
 
-func TestGatewayService_SelectAccountForModelWithExclusions_ForcePlatform(t *testing.T) {
+func TestGatewayService_SelectProviderForModelWithExclusions_ForcePlatform(t *testing.T) {
 	ctx := context.Background()
 	ctx = apikey.WithForcePlatform(ctx, capability.PlatformAntigravity)
 
-	repo := &mockAccountRepoForPlatform{
-		accounts: []gatewayprovider.ExecutionAccount{
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true}},
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAntigravity, Priority: 2, Status: billing.StatusActive, Schedulable: true}},
+	repo := &mockProviderRepoForPlatform{
+		providers: []gatewayprovider.ExecutionProvider{
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true}},
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAntigravity, Priority: 2, Status: billing.StatusActive, Schedulable: true}},
 		},
-		accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+		providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 	}
-	for i := range repo.accounts {
-		repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
+	for i := range repo.providers {
+		repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 	}
 
 	cache := &mockGatewayCacheForPlatform{}
 
-	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Accounts: repo}, Shared: Shared{Cache: cache}}, testConfig())
+	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Providers: repo}, Shared: Shared{Cache: cache}}, testConfig())
 
-	acc, err := svc.SelectAccountForModelWithExclusions(ctx, selectionFixtureGroupID(ctx), "", "claude-sonnet-4-5", nil)
+	acc, err := svc.SelectProviderForModelWithExclusions(ctx, selectionFixtureGroupID(ctx), "", "claude-sonnet-4-5", nil)
 	require.NoError(t, err)
 	require.NotNil(t, acc)
 	require.Equal(t, int64(2), acc.Record.ID)
 	require.Equal(t, capability.PlatformAntigravity, acc.Record.Platform)
 }
 
-func TestGatewayService_SelectAccountForModelWithPlatform_RoutedStickySessionClears(t *testing.T) {
+func TestGatewayService_SelectProviderForModelWithPlatform_RoutedStickySessionClears(t *testing.T) {
 	ctx := context.Background()
 	groupID := int64(10)
 	requestedModel := "claude-3-5-sonnet-20241022"
 
-	repo := &mockAccountRepoForPlatform{
-		accounts: []gatewayprovider.ExecutionAccount{
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusDisabled, Schedulable: true}},
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true}},
+	repo := &mockProviderRepoForPlatform{
+		providers: []gatewayprovider.ExecutionProvider{
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusDisabled, Schedulable: true}},
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true}},
 		},
-		accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+		providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 	}
-	for i := range repo.accounts {
-		repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
+	for i := range repo.providers {
+		repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 	}
 
 	cache := &mockGatewayCacheForPlatform{
@@ -555,13 +555,13 @@ func TestGatewayService_SelectAccountForModelWithPlatform_RoutedStickySessionCle
 
 	svc := newGenericSelectionForTest(GenericDependencies{
 		Reads: Reads{
-			Groups:   groupRepo,
-			Accounts: repo,
+			Groups:    groupRepo,
+			Providers: repo,
 		},
 		Shared: Shared{Cache: cache},
 	}, testConfig())
 
-	acc, err := svc.selectAccountForModelWithPlatform(ctx, &groupID, "session-123", requestedModel, nil, capability.PlatformAnthropic)
+	acc, err := svc.selectProviderForModelWithPlatform(ctx, &groupID, "session-123", requestedModel, nil, capability.PlatformAnthropic)
 	require.NoError(t, err)
 	require.NotNil(t, acc)
 	require.Equal(t, int64(2), acc.Record.ID)
@@ -569,20 +569,20 @@ func TestGatewayService_SelectAccountForModelWithPlatform_RoutedStickySessionCle
 	require.Equal(t, int64(2), cache.sessionBindings["session-123"])
 }
 
-func TestGatewayService_SelectAccountForModelWithPlatform_RoutedStickySessionHit(t *testing.T) {
+func TestGatewayService_SelectProviderForModelWithPlatform_RoutedStickySessionHit(t *testing.T) {
 	ctx := context.Background()
 	groupID := int64(11)
 	requestedModel := "claude-3-5-sonnet-20241022"
 
-	repo := &mockAccountRepoForPlatform{
-		accounts: []gatewayprovider.ExecutionAccount{
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true}},
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true}},
+	repo := &mockProviderRepoForPlatform{
+		providers: []gatewayprovider.ExecutionProvider{
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true}},
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true}},
 		},
-		accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+		providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 	}
-	for i := range repo.accounts {
-		repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
+	for i := range repo.providers {
+		repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 	}
 
 	cache := &mockGatewayCacheForPlatform{
@@ -607,32 +607,32 @@ func TestGatewayService_SelectAccountForModelWithPlatform_RoutedStickySessionHit
 
 	svc := newGenericSelectionForTest(GenericDependencies{
 		Reads: Reads{
-			Groups:   groupRepo,
-			Accounts: repo,
+			Groups:    groupRepo,
+			Providers: repo,
 		},
 		Shared: Shared{Cache: cache},
 	}, testConfig())
 
-	acc, err := svc.selectAccountForModelWithPlatform(ctx, &groupID, "session-456", requestedModel, nil, capability.PlatformAnthropic)
+	acc, err := svc.selectProviderForModelWithPlatform(ctx, &groupID, "session-456", requestedModel, nil, capability.PlatformAnthropic)
 	require.NoError(t, err)
 	require.NotNil(t, acc)
 	require.Equal(t, int64(1), acc.Record.ID)
 }
 
-func TestGatewayService_SelectAccountForModelWithPlatform_RoutedFallbackToNormal(t *testing.T) {
+func TestGatewayService_SelectProviderForModelWithPlatform_RoutedFallbackToNormal(t *testing.T) {
 	ctx := context.Background()
 	groupID := int64(12)
 	requestedModel := "claude-3-5-sonnet-20241022"
 
-	repo := &mockAccountRepoForPlatform{
-		accounts: []gatewayprovider.ExecutionAccount{
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true}},
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true}},
+	repo := &mockProviderRepoForPlatform{
+		providers: []gatewayprovider.ExecutionProvider{
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true}},
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true}},
 		},
-		accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+		providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 	}
-	for i := range repo.accounts {
-		repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
+	for i := range repo.providers {
+		repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 	}
 
 	cache := &mockGatewayCacheForPlatform{}
@@ -653,21 +653,21 @@ func TestGatewayService_SelectAccountForModelWithPlatform_RoutedFallbackToNormal
 		},
 	}
 
-	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Accounts: repo, Groups: groupRepo}, Shared: Shared{Cache: cache}}, testConfig())
+	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Providers: repo, Groups: groupRepo}, Shared: Shared{Cache: cache}}, testConfig())
 
-	acc, err := svc.selectAccountForModelWithPlatform(ctx, &groupID, "", requestedModel, nil, capability.PlatformAnthropic)
+	acc, err := svc.selectProviderForModelWithPlatform(ctx, &groupID, "", requestedModel, nil, capability.PlatformAnthropic)
 	require.NoError(t, err)
 	require.NotNil(t, acc)
 	require.Equal(t, int64(1), acc.Record.ID)
 }
 
-func TestGatewayService_SelectAccountForModelWithPlatform_NoModelSupport(t *testing.T) {
+func TestGatewayService_SelectProviderForModelWithPlatform_NoModelSupport(t *testing.T) {
 	ctx := context.Background()
 
-	repo := &mockAccountRepoForPlatform{
-		accounts: []gatewayprovider.ExecutionAccount{
+	repo := &mockProviderRepoForPlatform{
+		providers: []gatewayprovider.ExecutionProvider{
 			{
-				Record: accountcore.Record{
+				Record: providercore.Record{
 					LoadLocation: time.LoadLocation, ID: 1,
 					Platform:    capability.PlatformAnthropic,
 					Priority:    1,
@@ -677,17 +677,17 @@ func TestGatewayService_SelectAccountForModelWithPlatform_NoModelSupport(t *test
 				},
 			},
 		},
-		accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+		providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 	}
-	for i := range repo.accounts {
-		repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
+	for i := range repo.providers {
+		repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 	}
 
 	cache := &mockGatewayCacheForPlatform{}
 
-	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Accounts: repo}, Shared: Shared{Cache: cache}}, testConfig())
+	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Providers: repo}, Shared: Shared{Cache: cache}}, testConfig())
 
-	acc, err := svc.selectAccountForModelWithPlatform(ctx, selectionFixtureGroupID(ctx), "", "claude-3-5-sonnet-20241022", nil, capability.PlatformAnthropic)
+	acc, err := svc.selectProviderForModelWithPlatform(ctx, selectionFixtureGroupID(ctx), "", "claude-3-5-sonnet-20241022", nil, capability.PlatformAnthropic)
 	require.Error(t, err)
 	require.Nil(t, acc)
 	var modelErr *routing.GroupModelUnsupportedError
@@ -699,14 +699,14 @@ func TestGatewayService_SelectAccountForModelWithPlatform_NoModelSupport(t *test
 	require.Contains(t, err.Error(), "Available models: claude-3-5-haiku-20241022")
 }
 
-func TestGatewayService_SelectAccountForModelWithPlatform_ModelRateLimitedNotGroupUnsupported(t *testing.T) {
+func TestGatewayService_SelectProviderForModelWithPlatform_ModelRateLimitedNotGroupUnsupported(t *testing.T) {
 	ctx := context.Background()
 	resetAt := time.Now().Add(10 * time.Minute).Format(time.RFC3339)
 
-	repo := &mockAccountRepoForPlatform{
-		accounts: []gatewayprovider.ExecutionAccount{
+	repo := &mockProviderRepoForPlatform{
+		providers: []gatewayprovider.ExecutionProvider{
 			{
-				Record: accountcore.Record{
+				Record: providercore.Record{
 					LoadLocation: time.LoadLocation, ID: 1,
 					Platform:    capability.PlatformAnthropic,
 					Priority:    1,
@@ -721,7 +721,7 @@ func TestGatewayService_SelectAccountForModelWithPlatform_ModelRateLimitedNotGro
 				},
 			},
 			{
-				Record: accountcore.Record{
+				Record: providercore.Record{
 					LoadLocation: time.LoadLocation, ID: 2,
 					Platform:    capability.PlatformAnthropic,
 					Priority:    2,
@@ -731,59 +731,59 @@ func TestGatewayService_SelectAccountForModelWithPlatform_ModelRateLimitedNotGro
 				},
 			},
 		},
-		accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+		providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 	}
-	for i := range repo.accounts {
-		repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
+	for i := range repo.providers {
+		repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 	}
 
 	svc := newGenericSelectionForTest(GenericDependencies{
-		Reads:  Reads{Accounts: repo},
+		Reads:  Reads{Providers: repo},
 		Shared: Shared{Cache: &mockGatewayCacheForPlatform{}},
 	}, testConfig())
 
-	acc, err := svc.selectAccountForModelWithPlatform(ctx, selectionFixtureGroupID(ctx), "", "claude-3-5-sonnet-20241022", nil, capability.PlatformAnthropic)
+	acc, err := svc.selectProviderForModelWithPlatform(ctx, selectionFixtureGroupID(ctx), "", "claude-3-5-sonnet-20241022", nil, capability.PlatformAnthropic)
 	require.Error(t, err)
 	require.Nil(t, acc)
 	var modelErr *routing.GroupModelUnsupportedError
 	require.False(t, errors.As(err, &modelErr))
-	require.ErrorIs(t, err, scheduler.ErrNoAvailableAccounts)
+	require.ErrorIs(t, err, scheduler.ErrNoAvailableProviders)
 }
 
-func TestGatewayService_SelectAccountForModelWithPlatform_GeminiPreferOAuth(t *testing.T) {
+func TestGatewayService_SelectProviderForModelWithPlatform_GeminiPreferOAuth(t *testing.T) {
 	ctx := context.Background()
 
-	repo := &mockAccountRepoForPlatform{
-		accounts: []gatewayprovider.ExecutionAccount{
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformGemini, Priority: 1, Status: billing.StatusActive, Schedulable: true, Type: capability.AccountTypeAPIKey}},
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformGemini, Priority: 1, Status: billing.StatusActive, Schedulable: true, Type: capability.AccountTypeOAuth}},
+	repo := &mockProviderRepoForPlatform{
+		providers: []gatewayprovider.ExecutionProvider{
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformGemini, Priority: 1, Status: billing.StatusActive, Schedulable: true, Type: capability.ProviderTypeAPIKey}},
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformGemini, Priority: 1, Status: billing.StatusActive, Schedulable: true, Type: capability.ProviderTypeOAuth}},
 		},
-		accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+		providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 	}
-	for i := range repo.accounts {
-		repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
+	for i := range repo.providers {
+		repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 	}
 
 	cache := &mockGatewayCacheForPlatform{}
 
-	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Accounts: repo}, Shared: Shared{Cache: cache}}, testConfig())
+	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Providers: repo}, Shared: Shared{Cache: cache}}, testConfig())
 
-	acc, err := svc.selectAccountForModelWithPlatform(ctx, selectionFixtureGroupID(ctx), "", "gemini-2.5-pro", nil, capability.PlatformGemini)
+	acc, err := svc.selectProviderForModelWithPlatform(ctx, selectionFixtureGroupID(ctx), "", "gemini-2.5-pro", nil, capability.PlatformGemini)
 	require.NoError(t, err)
 	require.NotNil(t, acc)
 	require.Equal(t, int64(2), acc.Record.ID)
 }
 
-func TestGatewayService_SelectAccountForModelWithPlatform_GeminiAPIKeyModelMappingFilter(t *testing.T) {
+func TestGatewayService_SelectProviderForModelWithPlatform_GeminiAPIKeyModelMappingFilter(t *testing.T) {
 	ctx := context.Background()
 
-	repo := &mockAccountRepoForPlatform{
-		accounts: []gatewayprovider.ExecutionAccount{
+	repo := &mockProviderRepoForPlatform{
+		providers: []gatewayprovider.ExecutionProvider{
 			{
-				Record: accountcore.Record{
+				Record: providercore.Record{
 					LoadLocation: time.LoadLocation, ID: 1,
 					Platform:    capability.PlatformGemini,
-					Type:        capability.AccountTypeAPIKey,
+					Type:        capability.ProviderTypeAPIKey,
 					Priority:    1,
 					Status:      billing.StatusActive,
 					Schedulable: true,
@@ -791,10 +791,10 @@ func TestGatewayService_SelectAccountForModelWithPlatform_GeminiAPIKeyModelMappi
 				},
 			},
 			{
-				Record: accountcore.Record{
+				Record: providercore.Record{
 					LoadLocation: time.LoadLocation, ID: 2,
 					Platform:    capability.PlatformGemini,
-					Type:        capability.AccountTypeAPIKey,
+					Type:        capability.ProviderTypeAPIKey,
 					Priority:    2,
 					Status:      billing.StatusActive,
 					Schedulable: true,
@@ -802,22 +802,22 @@ func TestGatewayService_SelectAccountForModelWithPlatform_GeminiAPIKeyModelMappi
 				},
 			},
 		},
-		accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+		providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 	}
-	for i := range repo.accounts {
-		repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
+	for i := range repo.providers {
+		repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 	}
 
 	cache := &mockGatewayCacheForPlatform{}
 
-	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Accounts: repo}, Shared: Shared{Cache: cache}}, testConfig())
+	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Providers: repo}, Shared: Shared{Cache: cache}}, testConfig())
 
-	acc, err := svc.selectAccountForModelWithPlatform(ctx, selectionFixtureGroupID(ctx), "", "gemini-2.5-flash", nil, capability.PlatformGemini)
+	acc, err := svc.selectProviderForModelWithPlatform(ctx, selectionFixtureGroupID(ctx), "", "gemini-2.5-flash", nil, capability.PlatformGemini)
 	require.NoError(t, err)
 	require.NotNil(t, acc)
-	require.Equal(t, int64(2), acc.Record.ID, "应过滤不支持请求模型的 APIKey 账号")
+	require.Equal(t, int64(2), acc.Record.ID, "应过滤不支持请求模型的 APIKey 提供商")
 
-	acc, err = svc.selectAccountForModelWithPlatform(ctx, selectionFixtureGroupID(ctx), "", "gemini-3-pro-preview", nil, capability.PlatformGemini)
+	acc, err = svc.selectProviderForModelWithPlatform(ctx, selectionFixtureGroupID(ctx), "", "gemini-3-pro-preview", nil, capability.PlatformGemini)
 	require.Error(t, err)
 	require.Nil(t, acc)
 	var modelErr *routing.GroupModelUnsupportedError
@@ -829,40 +829,40 @@ func TestGatewayService_SelectAccountForModelWithPlatform_GeminiAPIKeyModelMappi
 	require.Contains(t, err.Error(), "Available models: gemini-2.5-flash, gemini-2.5-pro")
 }
 
-func TestGatewayService_SelectAccountForModelWithPlatform_StickyInGroup(t *testing.T) {
+func TestGatewayService_SelectProviderForModelWithPlatform_StickyInGroup(t *testing.T) {
 	ctx := context.Background()
 	groupID := int64(50)
 
-	repo := &mockAccountRepoForPlatform{
-		accounts: []gatewayprovider.ExecutionAccount{
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, AccountGroups: []accountcore.GroupMembership{{GroupID: groupID}}}},
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true, AccountGroups: []accountcore.GroupMembership{{GroupID: groupID}}}},
+	repo := &mockProviderRepoForPlatform{
+		providers: []gatewayprovider.ExecutionProvider{
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, ProviderGroups: []providercore.GroupMembership{{GroupID: groupID}}}},
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true, ProviderGroups: []providercore.GroupMembership{{GroupID: groupID}}}},
 		},
-		accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+		providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 	}
-	for i := range repo.accounts {
-		repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
+	for i := range repo.providers {
+		repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 	}
 
 	cache := &mockGatewayCacheForPlatform{
 		sessionBindings: map[string]int64{"session-group": 1},
 	}
 
-	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Accounts: repo}, Shared: Shared{Cache: cache}}, testConfig())
+	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Providers: repo}, Shared: Shared{Cache: cache}}, testConfig())
 
-	acc, err := svc.selectAccountForModelWithPlatform(ctx, &groupID, "session-group", "", nil, capability.PlatformAnthropic)
+	acc, err := svc.selectProviderForModelWithPlatform(ctx, &groupID, "session-group", "", nil, capability.PlatformAnthropic)
 	require.NoError(t, err)
 	require.NotNil(t, acc)
 	require.Equal(t, int64(1), acc.Record.ID)
 }
 
-func TestGatewayService_SelectAccountForModelWithPlatform_StickyModelMismatchFallback(t *testing.T) {
+func TestGatewayService_SelectProviderForModelWithPlatform_StickyModelMismatchFallback(t *testing.T) {
 	ctx := context.Background()
 
-	repo := &mockAccountRepoForPlatform{
-		accounts: []gatewayprovider.ExecutionAccount{
+	repo := &mockProviderRepoForPlatform{
+		providers: []gatewayprovider.ExecutionProvider{
 			{
-				Record: accountcore.Record{
+				Record: providercore.Record{
 					LoadLocation: time.LoadLocation, ID: 1,
 					Platform:    capability.PlatformAnthropic,
 					Priority:    1,
@@ -871,111 +871,111 @@ func TestGatewayService_SelectAccountForModelWithPlatform_StickyModelMismatchFal
 					Credentials: map[string]any{"model_mapping": map[string]any{"claude-3-5-haiku-20241022": "claude-3-5-haiku-20241022"}},
 				},
 			},
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true}},
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true}},
 		},
-		accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+		providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 	}
-	for i := range repo.accounts {
-		repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
+	for i := range repo.providers {
+		repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 	}
 
 	cache := &mockGatewayCacheForPlatform{
 		sessionBindings: map[string]int64{"session-miss": 1},
 	}
 
-	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Accounts: repo}, Shared: Shared{Cache: cache}}, testConfig())
+	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Providers: repo}, Shared: Shared{Cache: cache}}, testConfig())
 
-	acc, err := svc.selectAccountForModelWithPlatform(ctx, selectionFixtureGroupID(ctx), "session-miss", "claude-3-5-sonnet-20241022", nil, capability.PlatformAnthropic)
+	acc, err := svc.selectProviderForModelWithPlatform(ctx, selectionFixtureGroupID(ctx), "session-miss", "claude-3-5-sonnet-20241022", nil, capability.PlatformAnthropic)
 	require.NoError(t, err)
 	require.NotNil(t, acc)
 	require.Equal(t, int64(2), acc.Record.ID)
 }
 
-func TestGatewayService_SelectAccountForModelWithPlatform_PreferNeverUsed(t *testing.T) {
+func TestGatewayService_SelectProviderForModelWithPlatform_PreferNeverUsed(t *testing.T) {
 	ctx := context.Background()
 	lastUsed := time.Now().Add(-1 * time.Hour)
 
-	repo := &mockAccountRepoForPlatform{
-		accounts: []gatewayprovider.ExecutionAccount{
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, LastUsedAt: &lastUsed}},
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true}},
+	repo := &mockProviderRepoForPlatform{
+		providers: []gatewayprovider.ExecutionProvider{
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, LastUsedAt: &lastUsed}},
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true}},
 		},
-		accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+		providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 	}
-	for i := range repo.accounts {
-		repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
+	for i := range repo.providers {
+		repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 	}
 
 	cache := &mockGatewayCacheForPlatform{}
 
-	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Accounts: repo}, Shared: Shared{Cache: cache}}, testConfig())
+	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Providers: repo}, Shared: Shared{Cache: cache}}, testConfig())
 
-	acc, err := svc.selectAccountForModelWithPlatform(ctx, selectionFixtureGroupID(ctx), "", "claude-3-5-sonnet-20241022", nil, capability.PlatformAnthropic)
+	acc, err := svc.selectProviderForModelWithPlatform(ctx, selectionFixtureGroupID(ctx), "", "claude-3-5-sonnet-20241022", nil, capability.PlatformAnthropic)
 	require.NoError(t, err)
 	require.NotNil(t, acc)
 	require.Equal(t, int64(2), acc.Record.ID)
 }
 
-func TestGatewayService_SelectAccountForModelWithPlatform_NoAccounts(t *testing.T) {
+func TestGatewayService_SelectProviderForModelWithPlatform_NoProviders(t *testing.T) {
 	ctx := context.Background()
-	repo := &mockAccountRepoForPlatform{
-		accounts:     []gatewayprovider.ExecutionAccount{},
-		accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+	repo := &mockProviderRepoForPlatform{
+		providers:     []gatewayprovider.ExecutionProvider{},
+		providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 	}
 
 	cache := &mockGatewayCacheForPlatform{}
 
-	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Accounts: repo}, Shared: Shared{Cache: cache}}, testConfig())
+	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Providers: repo}, Shared: Shared{Cache: cache}}, testConfig())
 
-	acc, err := svc.selectAccountForModelWithPlatform(ctx, selectionFixtureGroupID(ctx), "", "", nil, capability.PlatformAnthropic)
+	acc, err := svc.selectProviderForModelWithPlatform(ctx, selectionFixtureGroupID(ctx), "", "", nil, capability.PlatformAnthropic)
 	require.Error(t, err)
 	require.Nil(t, acc)
-	require.ErrorIs(t, err, scheduler.ErrNoAvailableAccounts)
+	require.ErrorIs(t, err, scheduler.ErrNoAvailableProviders)
 }
 
-func TestGatewayService_isModelSupportedByAccount(t *testing.T) {
+func TestGatewayService_isModelSupportedByProvider(t *testing.T) {
 	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{}, Shared: Shared{}}, nil)
 
 	tests := []struct {
 		name     string
-		account  *gatewayprovider.ExecutionAccount
+		provider *gatewayprovider.ExecutionProvider
 		model    string
 		expected bool
 	}{
 		{
 			name:     "Antigravity平台-支持默认映射中的claude模型",
-			account:  &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAntigravity}},
+			provider: &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAntigravity}},
 			model:    "claude-sonnet-4-5",
 			expected: true,
 		},
 		{
 			name:     "Antigravity平台-不支持非默认映射中的claude模型",
-			account:  &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAntigravity}},
+			provider: &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAntigravity}},
 			model:    "claude-3-5-sonnet-20241022",
 			expected: false,
 		},
 		{
 			name:     "Antigravity平台-支持gemini模型",
-			account:  &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAntigravity}},
+			provider: &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAntigravity}},
 			model:    "gemini-2.5-flash",
 			expected: true,
 		},
 		{
 			name:     "Antigravity平台-不支持gpt模型",
-			account:  &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAntigravity}},
+			provider: &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAntigravity}},
 			model:    "gpt-4",
 			expected: false,
 		},
 		{
 			name:     "Anthropic平台-无映射配置-支持所有模型",
-			account:  &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAnthropic}},
+			provider: &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAnthropic}},
 			model:    "claude-3-5-sonnet-20241022",
 			expected: false,
 		},
 		{
 			name: "Anthropic平台-有映射配置-未命中映射时按透传支持模型",
-			account: &gatewayprovider.ExecutionAccount{
-				Record: accountcore.Record{
+			provider: &gatewayprovider.ExecutionProvider{
+				Record: providercore.Record{
 					LoadLocation: time.LoadLocation, Platform: capability.PlatformAnthropic,
 					Credentials: map[string]any{"model_mapping": map[string]any{"claude-opus-4": "x"}},
 				},
@@ -985,8 +985,8 @@ func TestGatewayService_isModelSupportedByAccount(t *testing.T) {
 		},
 		{
 			name: "Anthropic平台-有映射配置-支持配置的模型",
-			account: &gatewayprovider.ExecutionAccount{
-				Record: accountcore.Record{
+			provider: &gatewayprovider.ExecutionProvider{
+				Record: providercore.Record{
 					LoadLocation: time.LoadLocation, Platform: capability.PlatformAnthropic,
 					Credentials: map[string]any{"model_mapping": map[string]any{"claude-3-5-sonnet-20241022": "x"}},
 				},
@@ -996,16 +996,16 @@ func TestGatewayService_isModelSupportedByAccount(t *testing.T) {
 		},
 		{
 			name:     "Gemini平台-无映射配置-支持所有模型",
-			account:  &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformGemini, Type: capability.AccountTypeAPIKey}},
+			provider: &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformGemini, Type: capability.ProviderTypeAPIKey}},
 			model:    "gemini-2.5-flash",
 			expected: true,
 		},
 		{
 			name: "Gemini平台-有映射配置-未命中映射时按透传支持模型",
-			account: &gatewayprovider.ExecutionAccount{
-				Record: accountcore.Record{
+			provider: &gatewayprovider.ExecutionProvider{
+				Record: providercore.Record{
 					LoadLocation: time.LoadLocation, Platform: capability.PlatformGemini,
-					Type: capability.AccountTypeAPIKey,
+					Type: capability.ProviderTypeAPIKey,
 					Credentials: map[string]any{
 						"model_mapping": map[string]any{"gemini-2.5-pro": "upstream-model"},
 					},
@@ -1016,10 +1016,10 @@ func TestGatewayService_isModelSupportedByAccount(t *testing.T) {
 		},
 		{
 			name: "Gemini平台-有映射配置-支持配置的模型",
-			account: &gatewayprovider.ExecutionAccount{
-				Record: accountcore.Record{
+			provider: &gatewayprovider.ExecutionProvider{
+				Record: providercore.Record{
 					LoadLocation: time.LoadLocation, Platform: capability.PlatformGemini,
-					Type: capability.AccountTypeAPIKey,
+					Type: capability.ProviderTypeAPIKey,
 					Credentials: map[string]any{
 						"model_mapping": map[string]any{"gemini-2.5-pro": "gemini-2.5-pro"},
 					},
@@ -1032,81 +1032,81 @@ func TestGatewayService_isModelSupportedByAccount(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := svc.isModelSupportedByAccount(tt.account, tt.model)
+			got := svc.isModelSupportedByProvider(tt.provider, tt.model)
 			require.Equal(t, tt.expected, got)
 		})
 	}
 }
 
-// TestGatewayService_selectAccountWithMixedScheduling 测试混合调度
+// TestGatewayService_selectProviderWithMixedScheduling 测试混合调度
 func TestGenericGroupIncludesAntigravityWithoutMixedFlag(t *testing.T) {
 	groupID := int64(1)
-	values := []gatewayprovider.ExecutionAccount{
-		mixedGroupAccount(1, capability.PlatformAnthropic, "*", groupID),
-		mixedGroupAccount(2, capability.PlatformAntigravity, "*", groupID),
+	values := []gatewayprovider.ExecutionProvider{
+		mixedGroupProvider(1, capability.PlatformAnthropic, "*", groupID),
+		mixedGroupProvider(2, capability.PlatformAntigravity, "*", groupID),
 	}
 	values[0].Record.Priority = 2
-	values[1].Record.Type = capability.AccountTypeOAuth
+	values[1].Record.Type = capability.ProviderTypeOAuth
 	values[1].Record.Extra = map[string]any{"mixed_scheduling": false}
-	repo := advancedSchedulerRegressionAccountRepo(values)
-	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Accounts: repo}}, nil)
+	repo := advancedSchedulerRegressionProviderRepo(values)
+	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Providers: repo}}, nil)
 	ctx := requeststate.WithGroup(context.Background(), &routing.Group{ID: groupID, Status: billing.StatusActive, Hydrated: true})
-	selected, err := svc.SelectAccountForModelWithExclusions(ctx, &groupID, "", "claude-sonnet-4-5", nil)
+	selected, err := svc.SelectProviderForModelWithExclusions(ctx, &groupID, "", "claude-sonnet-4-5", nil)
 	require.NoError(t, err)
 	require.Equal(t, int64(2), selected.Record.ID)
 	forced := apikey.WithForcePlatform(ctx, capability.PlatformAnthropic)
-	selected, err = svc.SelectAccountForModelWithExclusions(forced, &groupID, "", "claude-sonnet-4-5", nil)
+	selected, err = svc.SelectProviderForModelWithExclusions(forced, &groupID, "", "claude-sonnet-4-5", nil)
 	require.NoError(t, err)
 	require.Equal(t, int64(1), selected.Record.ID)
 }
 
 type mockConcurrencyCache struct {
-	acquireAccountCalls int
-	loadBatchCalls      int
-	acquireResults      map[int64]bool
-	loadBatchErr        error
-	loadMap             map[int64]*scheduler.AccountLoadInfo
-	waitCounts          map[int64]int
-	skipDefaultLoad     bool
+	acquireProviderCalls int
+	loadBatchCalls       int
+	acquireResults       map[int64]bool
+	loadBatchErr         error
+	loadMap              map[int64]*scheduler.ProviderLoadInfo
+	waitCounts           map[int64]int
+	skipDefaultLoad      bool
 }
 
-func (m *mockConcurrencyCache) AcquireAccountSlot(ctx context.Context, accountID int64, maxConcurrency int, requestID string) (bool, error) {
-	m.acquireAccountCalls++
+func (m *mockConcurrencyCache) AcquireProviderSlot(ctx context.Context, providerID int64, maxConcurrency int, requestID string) (bool, error) {
+	m.acquireProviderCalls++
 	if m.acquireResults != nil {
-		if result, ok := m.acquireResults[accountID]; ok {
+		if result, ok := m.acquireResults[providerID]; ok {
 			return result, nil
 		}
 	}
 	return true, nil
 }
 
-func (m *mockConcurrencyCache) ReleaseAccountSlot(ctx context.Context, accountID int64, requestID string) error {
+func (m *mockConcurrencyCache) ReleaseProviderSlot(ctx context.Context, providerID int64, requestID string) error {
 	return nil
 }
 
-func (m *mockConcurrencyCache) GetAccountConcurrency(ctx context.Context, accountID int64) (int, error) {
+func (m *mockConcurrencyCache) GetProviderConcurrency(ctx context.Context, providerID int64) (int, error) {
 	return 0, nil
 }
 
-func (m *mockConcurrencyCache) GetAccountConcurrencyBatch(ctx context.Context, accountIDs []int64) (map[int64]int, error) {
-	result := make(map[int64]int, len(accountIDs))
-	for _, accountID := range accountIDs {
-		result[accountID] = 0
+func (m *mockConcurrencyCache) GetProviderConcurrencyBatch(ctx context.Context, providerIDs []int64) (map[int64]int, error) {
+	result := make(map[int64]int, len(providerIDs))
+	for _, providerID := range providerIDs {
+		result[providerID] = 0
 	}
 	return result, nil
 }
 
-func (m *mockConcurrencyCache) IncrementAccountWaitCount(ctx context.Context, accountID int64, maxWait int) (bool, error) {
+func (m *mockConcurrencyCache) IncrementProviderWaitCount(ctx context.Context, providerID int64, maxWait int) (bool, error) {
 	return true, nil
 }
 
-func (m *mockConcurrencyCache) DecrementAccountWaitCount(ctx context.Context, accountID int64) error {
+func (m *mockConcurrencyCache) DecrementProviderWaitCount(ctx context.Context, providerID int64) error {
 	return nil
 }
 
-func (m *mockConcurrencyCache) GetAccountWaitingCount(ctx context.Context, accountID int64) (int, error) {
+func (m *mockConcurrencyCache) GetProviderWaitingCount(ctx context.Context, providerID int64) (int, error) {
 	if m.waitCounts != nil {
-		if count, ok := m.waitCounts[accountID]; ok {
+		if count, ok := m.waitCounts[providerID]; ok {
 			return count, nil
 		}
 	}
@@ -1133,29 +1133,29 @@ func (m *mockConcurrencyCache) DecrementWaitCount(ctx context.Context, userID in
 	return nil
 }
 
-func (m *mockConcurrencyCache) GetAccountsLoadBatch(ctx context.Context, accounts []scheduler.AccountWithConcurrency) (map[int64]*scheduler.AccountLoadInfo, error) {
+func (m *mockConcurrencyCache) GetProvidersLoadBatch(ctx context.Context, providers []scheduler.ProviderWithConcurrency) (map[int64]*scheduler.ProviderLoadInfo, error) {
 	m.loadBatchCalls++
 	if m.loadBatchErr != nil {
 		return nil, m.loadBatchErr
 	}
-	result := make(map[int64]*scheduler.AccountLoadInfo, len(accounts))
+	result := make(map[int64]*scheduler.ProviderLoadInfo, len(providers))
 	if m.skipDefaultLoad && m.loadMap != nil {
-		for _, acc := range accounts {
+		for _, acc := range providers {
 			if load, ok := m.loadMap[acc.ID]; ok {
 				result[acc.ID] = load
 			}
 		}
 		return result, nil
 	}
-	for _, acc := range accounts {
+	for _, acc := range providers {
 		if m.loadMap != nil {
 			if load, ok := m.loadMap[acc.ID]; ok {
 				result[acc.ID] = load
 				continue
 			}
 		}
-		result[acc.ID] = &scheduler.AccountLoadInfo{
-			AccountID:          acc.ID,
+		result[acc.ID] = &scheduler.ProviderLoadInfo{
+			ProviderID:         acc.ID,
 			CurrentConcurrency: 0,
 			WaitingCount:       0,
 			LoadRate:           0,
@@ -1164,11 +1164,11 @@ func (m *mockConcurrencyCache) GetAccountsLoadBatch(ctx context.Context, account
 	return result, nil
 }
 
-func (m *mockConcurrencyCache) CleanupExpiredAccountSlots(ctx context.Context, accountID int64) error {
+func (m *mockConcurrencyCache) CleanupExpiredProviderSlots(ctx context.Context, providerID int64) error {
 	return nil
 }
 
-func (m *mockConcurrencyCache) CleanupExpiredAccountSlotKeys(ctx context.Context) error {
+func (m *mockConcurrencyCache) CleanupExpiredProviderSlotKeys(ctx context.Context) error {
 	return nil
 }
 
@@ -1189,16 +1189,16 @@ func (m *mockConcurrencyCache) GetUsersLoadBatch(ctx context.Context, users []sc
 	return result, nil
 }
 
-func TestSelectAccountWithLoadAwareness_FiltersUpstreamRestrictedAccounts(t *testing.T) {
+func TestSelectProviderWithLoadAwareness_FiltersUpstreamRestrictedProviders(t *testing.T) {
 	for _, loadBatchEnabled := range []bool{false, true} {
 		loadMode := "旧版调度"
 		if loadBatchEnabled {
 			loadMode = "负载批量调度"
 		}
 		for _, modelRoutingEnabled := range []bool{false, true} {
-			stickyMode := "普通粘性账号"
+			stickyMode := "普通粘性提供商"
 			if modelRoutingEnabled {
-				stickyMode = "模型路由粘性账号"
+				stickyMode = "模型路由粘性提供商"
 			}
 			t.Run(loadMode+"/"+stickyMode, func(t *testing.T) {
 				groupID := int64(4210)
@@ -1212,41 +1212,41 @@ func TestSelectAccountWithLoadAwareness_FiltersUpstreamRestrictedAccounts(t *tes
 						Models: []string{"allowed-upstream"},
 					}},
 				}
-				accounts := []gatewayprovider.ExecutionAccount{
+				providers := []gatewayprovider.ExecutionProvider{
 					{
-						Record: accountcore.Record{
+						Record: providercore.Record{
 							LoadLocation: time.LoadLocation, ID: 1,
 							Platform:    capability.PlatformAnthropic,
 							Priority:    1,
 							Status:      billing.StatusActive,
 							Schedulable: true,
 							Concurrency: 5,
-							AccountGroups: []accountcore.GroupMembership{{
-								AccountID: 1,
-								GroupID:   groupID,
+							ProviderGroups: []providercore.GroupMembership{{
+								ProviderID: 1,
+								GroupID:    groupID,
 							}},
 							Credentials: map[string]any{"model_mapping": map[string]any{"group-model": "blocked-upstream"}},
 						},
 					},
 					{
-						Record: accountcore.Record{
+						Record: providercore.Record{
 							LoadLocation: time.LoadLocation, ID: 2,
 							Platform:    capability.PlatformAnthropic,
 							Priority:    2,
 							Status:      billing.StatusActive,
 							Schedulable: true,
 							Concurrency: 5,
-							AccountGroups: []accountcore.GroupMembership{{
-								AccountID: 2,
-								GroupID:   groupID,
+							ProviderGroups: []providercore.GroupMembership{{
+								ProviderID: 2,
+								GroupID:    groupID,
 							}},
 							Credentials: map[string]any{"model_mapping": map[string]any{"group-model": "allowed-upstream"}},
 						},
 					},
 				}
-				accountRepo := &mockAccountRepoForPlatform{accounts: accounts, accountsByID: map[int64]*gatewayprovider.ExecutionAccount{}}
-				for i := range accountRepo.accounts {
-					accountRepo.accountsByID[accountRepo.accounts[i].Record.ID] = &accountRepo.accounts[i]
+				providerRepo := &mockProviderRepoForPlatform{providers: providers, providersByID: map[int64]*gatewayprovider.ExecutionProvider{}}
+				for i := range providerRepo.providers {
+					providerRepo.providersByID[providerRepo.providers[i].Record.ID] = &providerRepo.providers[i]
 				}
 				group := &routing.Group{
 					ID: groupID,
@@ -1263,7 +1263,7 @@ func TestSelectAccountWithLoadAwareness_FiltersUpstreamRestrictedAccounts(t *tes
 				cfg.Gateway.Scheduling.LoadBatchEnabled = loadBatchEnabled
 				svc := newGenericSelectionForTest(GenericDependencies{
 					Reads: Reads{
-						Accounts: accountRepo,
+						Providers: providerRepo,
 
 						Groups: &mockGroupRepoForGateway{groups: map[int64]*routing.Group{groupID: group}},
 					},
@@ -1280,33 +1280,33 @@ func TestSelectAccountWithLoadAwareness_FiltersUpstreamRestrictedAccounts(t *tes
 					},
 				}, cfg)
 
-				result, err := svc.SelectAccountWithLoadAwareness(context.Background(), &groupID, "sticky", "client-alias", nil, "", 0)
+				result, err := svc.SelectProviderWithLoadAwareness(context.Background(), &groupID, "sticky", "client-alias", nil, "", 0)
 				require.NoError(t, err)
 				require.NotNil(t, result)
-				require.Equal(t, int64(2), result.Account.Record.ID)
+				require.Equal(t, int64(2), result.Provider.Record.ID)
 			})
 		}
 	}
 }
 
-// TestSelectAccountWithLoadAwareness_AppliesGroupMappingOnce 验证调度入口只把客户端模型 R 映射为一次 C。
-func TestSelectAccountWithLoadAwareness_AppliesGroupMappingOnce(t *testing.T) {
+// TestSelectProviderWithLoadAwareness_AppliesGroupMappingOnce 验证调度入口只把客户端模型 R 映射为一次 C。
+func TestSelectProviderWithLoadAwareness_AppliesGroupMappingOnce(t *testing.T) {
 	groupID := int64(4212)
 	pricingConfig := routingtestkit.Configuration{
 		ID:           78,
 		Status:       billing.StatusActive,
 		ModelMapping: map[string]string{"client-alias": "group-model", "group-model": "double-mapped-model"},
 	}
-	account := gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 1,
 			Platform:    capability.PlatformGemini,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Concurrency: 5,
-			AccountGroups: []accountcore.GroupMembership{{
-				AccountID: 1,
-				GroupID:   groupID,
+			ProviderGroups: []providercore.GroupMembership{{
+				ProviderID: 1,
+				GroupID:    groupID,
 			}},
 			Credentials: map[string]any{
 				"model_mapping":   map[string]any{"group-model": "upstream-model"},
@@ -1314,9 +1314,9 @@ func TestSelectAccountWithLoadAwareness_AppliesGroupMappingOnce(t *testing.T) {
 			},
 		},
 	}
-	accountRepo := &mockAccountRepoForPlatform{
-		accounts:     []gatewayprovider.ExecutionAccount{account},
-		accountsByID: map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: &account},
+	providerRepo := &mockProviderRepoForPlatform{
+		providers:     []gatewayprovider.ExecutionProvider{provider},
+		providersByID: map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: &provider},
 	}
 	group := &routing.Group{
 		ID: groupID,
@@ -1326,7 +1326,7 @@ func TestSelectAccountWithLoadAwareness_AppliesGroupMappingOnce(t *testing.T) {
 	}
 	svc := newGenericSelectionForTest(GenericDependencies{
 		Reads: Reads{
-			Accounts: accountRepo,
+			Providers: providerRepo,
 
 			Groups: &mockGroupRepoForGateway{groups: map[int64]*routing.Group{groupID: group}},
 		},
@@ -1334,14 +1334,14 @@ func TestSelectAccountWithLoadAwareness_AppliesGroupMappingOnce(t *testing.T) {
 			capability.PlatformGemini, pricingConfig)},
 	}, testConfig())
 
-	result, err := svc.SelectAccountWithLoadAwareness(context.Background(), &groupID, "", "client-alias", nil, "", 0)
+	result, err := svc.SelectProviderWithLoadAwareness(context.Background(), &groupID, "", "client-alias", nil, "", 0)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
-	require.Equal(t, account.Record.ID, result.Account.Record.ID)
+	require.Equal(t, provider.Record.ID, result.Provider.Record.ID)
 }
 
-func TestLegacySchedulers_FilterUpstreamRestrictedAccountsInEveryShortcut(t *testing.T) {
+func TestLegacySchedulers_FilterUpstreamRestrictedProvidersInEveryShortcut(t *testing.T) {
 	testCases := []struct {
 		name                string
 		mixed               bool
@@ -1369,41 +1369,41 @@ func TestLegacySchedulers_FilterUpstreamRestrictedAccountsInEveryShortcut(t *tes
 					Models: []string{"allowed-upstream"},
 				}},
 			}
-			accounts := []gatewayprovider.ExecutionAccount{
+			providers := []gatewayprovider.ExecutionProvider{
 				{
-					Record: accountcore.Record{
+					Record: providercore.Record{
 						LoadLocation: time.LoadLocation, ID: 1,
 						Platform:    capability.PlatformAnthropic,
 						Priority:    1,
 						Status:      billing.StatusActive,
 						Schedulable: true,
 						Concurrency: 5,
-						AccountGroups: []accountcore.GroupMembership{{
-							AccountID: 1,
-							GroupID:   groupID,
+						ProviderGroups: []providercore.GroupMembership{{
+							ProviderID: 1,
+							GroupID:    groupID,
 						}},
 						Credentials: map[string]any{"model_mapping": map[string]any{"group-model": "blocked-upstream"}},
 					},
 				},
 				{
-					Record: accountcore.Record{
+					Record: providercore.Record{
 						LoadLocation: time.LoadLocation, ID: 2,
 						Platform:    capability.PlatformAnthropic,
 						Priority:    2,
 						Status:      billing.StatusActive,
 						Schedulable: true,
 						Concurrency: 5,
-						AccountGroups: []accountcore.GroupMembership{{
-							AccountID: 2,
-							GroupID:   groupID,
+						ProviderGroups: []providercore.GroupMembership{{
+							ProviderID: 2,
+							GroupID:    groupID,
 						}},
 						Credentials: map[string]any{"model_mapping": map[string]any{"group-model": "allowed-upstream"}},
 					},
 				},
 			}
-			accountRepo := &mockAccountRepoForPlatform{accounts: accounts, accountsByID: map[int64]*gatewayprovider.ExecutionAccount{}}
-			for i := range accountRepo.accounts {
-				accountRepo.accountsByID[accountRepo.accounts[i].Record.ID] = &accountRepo.accounts[i]
+			providerRepo := &mockProviderRepoForPlatform{providers: providers, providersByID: map[int64]*gatewayprovider.ExecutionProvider{}}
+			for i := range providerRepo.providers {
+				providerRepo.providersByID[providerRepo.providers[i].Record.ID] = &providerRepo.providers[i]
 			}
 			group := &routing.Group{
 				ID: groupID,
@@ -1418,7 +1418,7 @@ func TestLegacySchedulers_FilterUpstreamRestrictedAccountsInEveryShortcut(t *tes
 			cache := &mockGatewayCacheForPlatform{sessionBindings: map[string]int64{"sticky": 1}}
 			svc := newGenericSelectionForTest(GenericDependencies{
 				Reads: Reads{
-					Accounts: accountRepo,
+					Providers: providerRepo,
 
 					Groups: &mockGroupRepoForGateway{groups: map[int64]*routing.Group{groupID: group}},
 				},
@@ -1432,13 +1432,13 @@ func TestLegacySchedulers_FilterUpstreamRestrictedAccountsInEveryShortcut(t *tes
 			ctx := svc.withGroupContext(context.Background(), group)
 
 			var (
-				selected *gatewayprovider.ExecutionAccount
+				selected *gatewayprovider.ExecutionProvider
 				err      error
 			)
 			if tt.mixed {
-				selected, err = svc.selectAccountWithMixedScheduling(ctx, &groupID, tt.sessionHash, "client-alias", nil, capability.PlatformAnthropic)
+				selected, err = svc.selectProviderWithMixedScheduling(ctx, &groupID, tt.sessionHash, "client-alias", nil, capability.PlatformAnthropic)
 			} else {
-				selected, err = svc.selectAccountForModelWithPlatform(ctx, &groupID, tt.sessionHash, "client-alias", nil, capability.PlatformAnthropic)
+				selected, err = svc.selectProviderForModelWithPlatform(ctx, &groupID, tt.sessionHash, "client-alias", nil, capability.PlatformAnthropic)
 			}
 
 			require.NoError(t, err)
@@ -1448,20 +1448,20 @@ func TestLegacySchedulers_FilterUpstreamRestrictedAccountsInEveryShortcut(t *tes
 	}
 }
 
-// TestGatewayService_SelectAccountWithLoadAwareness tests load-aware account selection
-func TestGatewayService_SelectAccountWithLoadAwareness(t *testing.T) {
+// TestGatewayService_SelectProviderWithLoadAwareness tests load-aware provider selection
+func TestGatewayService_SelectProviderWithLoadAwareness(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("禁用负载批量查询-降级到传统选择", func(t *testing.T) {
-		repo := &mockAccountRepoForPlatform{
-			accounts: []gatewayprovider.ExecutionAccount{
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
+		repo := &mockProviderRepoForPlatform{
+			providers: []gatewayprovider.ExecutionProvider{
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
 			},
-			accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+			providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 		}
-		for i := range repo.accounts {
-			repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
+		for i := range repo.providers {
+			repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 		}
 
 		cache := &mockGatewayCacheForPlatform{}
@@ -1469,30 +1469,30 @@ func TestGatewayService_SelectAccountWithLoadAwareness(t *testing.T) {
 		cfg := testConfig()
 		cfg.Gateway.Scheduling.LoadBatchEnabled = false
 
-		svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Accounts: repo}, Shared: Shared{Cache: cache, Concurrency: nil}}, cfg)
+		svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Providers: repo}, Shared: Shared{Cache: cache, Concurrency: nil}}, cfg)
 
 		// No concurrency service
 
-		result, err := svc.SelectAccountWithLoadAwareness(ctx, selectionFixtureGroupID(ctx), "", "claude-3-5-sonnet-20241022", nil, "", int64(0))
+		result, err := svc.SelectProviderWithLoadAwareness(ctx, selectionFixtureGroupID(ctx), "", "claude-3-5-sonnet-20241022", nil, "", int64(0))
 		require.NoError(t, err)
 		require.NotNil(t, result)
-		require.NotNil(t, result.Account)
-		require.Equal(t, int64(1), result.Account.Record.ID, "应选择优先级最高的账号")
+		require.NotNil(t, result.Provider)
+		require.Equal(t, int64(1), result.Provider.Record.ID, "应选择优先级最高的提供商")
 	})
 
 	t.Run("模型路由-无ConcurrencyService也生效", func(t *testing.T) {
 		groupID := int64(1)
 		sessionHash := "sticky"
 
-		repo := &mockAccountRepoForPlatform{
-			accounts: []gatewayprovider.ExecutionAccount{
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5, AccountGroups: []accountcore.GroupMembership{{GroupID: groupID}}}},
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5, AccountGroups: []accountcore.GroupMembership{{GroupID: groupID}}}},
+		repo := &mockProviderRepoForPlatform{
+			providers: []gatewayprovider.ExecutionProvider{
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5, ProviderGroups: []providercore.GroupMembership{{GroupID: groupID}}}},
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5, ProviderGroups: []providercore.GroupMembership{{GroupID: groupID}}}},
 			},
-			accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+			providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 		}
-		for i := range repo.accounts {
-			repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
+		for i := range repo.providers {
+			repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 		}
 
 		cache := &mockGatewayCacheForPlatform{
@@ -1519,30 +1519,30 @@ func TestGatewayService_SelectAccountWithLoadAwareness(t *testing.T) {
 		cfg.Gateway.Scheduling.LoadBatchEnabled = true
 
 		svc := newGenericSelectionForTest(GenericDependencies{
-			Reads:  Reads{Accounts: repo, Groups: groupRepo},
+			Reads:  Reads{Providers: repo, Groups: groupRepo},
 			Shared: Shared{Cache: cache, Concurrency: nil},
 		}, cfg)
 
 		// legacy path
 
-		result, err := svc.SelectAccountWithLoadAwareness(ctx, &groupID, sessionHash, "claude-b", nil, "", int64(0))
+		result, err := svc.SelectProviderWithLoadAwareness(ctx, &groupID, sessionHash, "claude-b", nil, "", int64(0))
 		require.NoError(t, err)
 		require.NotNil(t, result)
-		require.NotNil(t, result.Account)
-		require.Equal(t, int64(2), result.Account.Record.ID, "切换到 claude-b 时应按模型路由切换账号")
-		require.Equal(t, int64(2), cache.sessionBindings[sessionHash], "粘性绑定应更新为路由选择的账号")
+		require.NotNil(t, result.Provider)
+		require.Equal(t, int64(2), result.Provider.Record.ID, "切换到 claude-b 时应按模型路由切换提供商")
+		require.Equal(t, int64(2), cache.sessionBindings[sessionHash], "粘性绑定应更新为路由选择的提供商")
 	})
 
 	t.Run("无ConcurrencyService-降级到传统选择", func(t *testing.T) {
-		repo := &mockAccountRepoForPlatform{
-			accounts: []gatewayprovider.ExecutionAccount{
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
+		repo := &mockProviderRepoForPlatform{
+			providers: []gatewayprovider.ExecutionProvider{
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
 			},
-			accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+			providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 		}
-		for i := range repo.accounts {
-			repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
+		for i := range repo.providers {
+			repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 		}
 
 		cache := &mockGatewayCacheForPlatform{}
@@ -1550,25 +1550,25 @@ func TestGatewayService_SelectAccountWithLoadAwareness(t *testing.T) {
 		cfg := testConfig()
 		cfg.Gateway.Scheduling.LoadBatchEnabled = true
 
-		svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Accounts: repo}, Shared: Shared{Cache: cache, Concurrency: nil}}, cfg)
+		svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Providers: repo}, Shared: Shared{Cache: cache, Concurrency: nil}}, cfg)
 
-		result, err := svc.SelectAccountWithLoadAwareness(ctx, selectionFixtureGroupID(ctx), "", "claude-3-5-sonnet-20241022", nil, "", int64(0))
+		result, err := svc.SelectProviderWithLoadAwareness(ctx, selectionFixtureGroupID(ctx), "", "claude-3-5-sonnet-20241022", nil, "", int64(0))
 		require.NoError(t, err)
 		require.NotNil(t, result)
-		require.NotNil(t, result.Account)
-		require.Equal(t, int64(2), result.Account.Record.ID, "应选择优先级最高的账号")
+		require.NotNil(t, result.Provider)
+		require.Equal(t, int64(2), result.Provider.Record.ID, "应选择优先级最高的提供商")
 	})
 
-	t.Run("排除账号-不选择被排除的账号", func(t *testing.T) {
-		repo := &mockAccountRepoForPlatform{
-			accounts: []gatewayprovider.ExecutionAccount{
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
+	t.Run("排除提供商-不选择被排除的提供商", func(t *testing.T) {
+		repo := &mockProviderRepoForPlatform{
+			providers: []gatewayprovider.ExecutionProvider{
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
 			},
-			accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+			providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 		}
-		for i := range repo.accounts {
-			repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
+		for i := range repo.providers {
+			repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 		}
 
 		cache := &mockGatewayCacheForPlatform{}
@@ -1576,25 +1576,25 @@ func TestGatewayService_SelectAccountWithLoadAwareness(t *testing.T) {
 		cfg := testConfig()
 		cfg.Gateway.Scheduling.LoadBatchEnabled = false
 
-		svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Accounts: repo}, Shared: Shared{Concurrency: nil, Cache: cache}}, cfg)
+		svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Providers: repo}, Shared: Shared{Concurrency: nil, Cache: cache}}, cfg)
 
 		excludedIDs := map[int64]struct{}{1: {}}
-		result, err := svc.SelectAccountWithLoadAwareness(ctx, selectionFixtureGroupID(ctx), "", "claude-3-5-sonnet-20241022", excludedIDs, "", int64(0))
+		result, err := svc.SelectProviderWithLoadAwareness(ctx, selectionFixtureGroupID(ctx), "", "claude-3-5-sonnet-20241022", excludedIDs, "", int64(0))
 		require.NoError(t, err)
 		require.NotNil(t, result)
-		require.NotNil(t, result.Account)
-		require.Equal(t, int64(2), result.Account.Record.ID, "不应选择被排除的账号")
+		require.NotNil(t, result.Provider)
+		require.Equal(t, int64(2), result.Provider.Record.ID, "不应选择被排除的提供商")
 	})
 
 	t.Run("粘性命中-不调用GetByID", func(t *testing.T) {
-		repo := &mockAccountRepoForPlatform{
-			accounts: []gatewayprovider.ExecutionAccount{
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
+		repo := &mockProviderRepoForPlatform{
+			providers: []gatewayprovider.ExecutionProvider{
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
 			},
-			accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+			providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 		}
-		for i := range repo.accounts {
-			repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
+		for i := range repo.providers {
+			repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 		}
 
 		cache := &mockGatewayCacheForPlatform{
@@ -1607,7 +1607,7 @@ func TestGatewayService_SelectAccountWithLoadAwareness(t *testing.T) {
 		concurrencyCache := &mockConcurrencyCache{}
 
 		svc := newGenericSelectionForTest(GenericDependencies{
-			Reads: Reads{Accounts: repo},
+			Reads: Reads{Providers: repo},
 			Shared: Shared{
 				Cache: cache,
 				Concurrency: scheduler.NewConcurrencyService(concurrencyCache,
@@ -1616,24 +1616,24 @@ func TestGatewayService_SelectAccountWithLoadAwareness(t *testing.T) {
 			},
 		}, cfg)
 
-		result, err := svc.SelectAccountWithLoadAwareness(ctx, selectionFixtureGroupID(ctx), "sticky", "claude-3-5-sonnet-20241022", nil, "", int64(0))
+		result, err := svc.SelectProviderWithLoadAwareness(ctx, selectionFixtureGroupID(ctx), "sticky", "claude-3-5-sonnet-20241022", nil, "", int64(0))
 		require.NoError(t, err)
 		require.NotNil(t, result)
-		require.NotNil(t, result.Account)
-		require.Equal(t, int64(1), result.Account.Record.ID)
+		require.NotNil(t, result.Provider)
+		require.Equal(t, int64(1), result.Provider.Record.ID)
 		require.Equal(t, 0, repo.getByIDCalls, "粘性命中不应调用GetByID")
 		require.Equal(t, 0, concurrencyCache.loadBatchCalls, "粘性命中应在负载批量查询前返回")
 	})
 
-	t.Run("粘性账号不在候选集-回退负载感知选择", func(t *testing.T) {
-		repo := &mockAccountRepoForPlatform{
-			accounts: []gatewayprovider.ExecutionAccount{
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
+	t.Run("粘性提供商不在候选集-回退负载感知选择", func(t *testing.T) {
+		repo := &mockProviderRepoForPlatform{
+			providers: []gatewayprovider.ExecutionProvider{
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
 			},
-			accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+			providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 		}
-		for i := range repo.accounts {
-			repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
+		for i := range repo.providers {
+			repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 		}
 
 		cache := &mockGatewayCacheForPlatform{
@@ -1646,7 +1646,7 @@ func TestGatewayService_SelectAccountWithLoadAwareness(t *testing.T) {
 		concurrencyCache := &mockConcurrencyCache{}
 
 		svc := newGenericSelectionForTest(GenericDependencies{
-			Reads: Reads{Accounts: repo},
+			Reads: Reads{Providers: repo},
 			Shared: Shared{
 				Cache: cache,
 				Concurrency: scheduler.NewConcurrencyService(concurrencyCache,
@@ -1655,29 +1655,29 @@ func TestGatewayService_SelectAccountWithLoadAwareness(t *testing.T) {
 			},
 		}, cfg)
 
-		result, err := svc.SelectAccountWithLoadAwareness(ctx, selectionFixtureGroupID(ctx), "sticky", "claude-3-5-sonnet-20241022", nil, "", int64(0))
+		result, err := svc.SelectProviderWithLoadAwareness(ctx, selectionFixtureGroupID(ctx), "sticky", "claude-3-5-sonnet-20241022", nil, "", int64(0))
 		require.NoError(t, err)
 		require.NotNil(t, result)
-		require.NotNil(t, result.Account)
-		require.Equal(t, int64(2), result.Account.Record.ID, "粘性账号不在候选集时应回退到可用账号")
-		require.Equal(t, 0, repo.getByIDCalls, "粘性账号缺失不应回退到GetByID")
+		require.NotNil(t, result.Provider)
+		require.Equal(t, int64(2), result.Provider.Record.ID, "粘性提供商不在候选集时应回退到可用提供商")
+		require.Equal(t, 0, repo.getByIDCalls, "粘性提供商缺失不应回退到GetByID")
 		require.Equal(t, 1, concurrencyCache.loadBatchCalls, "应继续进行负载批量查询")
 	})
 
-	t.Run("粘性账号禁用-清理会话并回退选择", func(t *testing.T) {
+	t.Run("粘性提供商禁用-清理会话并回退选择", func(t *testing.T) {
 		testCtx := apikey.WithForcePlatform(ctx, capability.PlatformAnthropic)
-		repo := &mockAccountRepoForPlatform{
-			accounts: []gatewayprovider.ExecutionAccount{
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: false, Concurrency: 5}},
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
+		repo := &mockProviderRepoForPlatform{
+			providers: []gatewayprovider.ExecutionProvider{
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: false, Concurrency: 5}},
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
 			},
-			accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+			providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 		}
-		for i := range repo.accounts {
-			repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
+		for i := range repo.providers {
+			repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 		}
-		repo.listPlatformFunc = func(ctx context.Context, platform string) ([]gatewayprovider.ExecutionAccount, error) {
-			return repo.accounts, nil
+		repo.listPlatformFunc = func(ctx context.Context, platform string) ([]gatewayprovider.ExecutionProvider, error) {
+			return repo.providers, nil
 		}
 
 		cache := &mockGatewayCacheForPlatform{
@@ -1690,7 +1690,7 @@ func TestGatewayService_SelectAccountWithLoadAwareness(t *testing.T) {
 		concurrencyCache := &mockConcurrencyCache{}
 
 		svc := newGenericSelectionForTest(GenericDependencies{
-			Reads: Reads{Accounts: repo},
+			Reads: Reads{Providers: repo},
 			Shared: Shared{
 				Cache: cache,
 				Concurrency: scheduler.NewConcurrencyService(concurrencyCache,
@@ -1699,20 +1699,20 @@ func TestGatewayService_SelectAccountWithLoadAwareness(t *testing.T) {
 			},
 		}, cfg)
 
-		result, err := svc.SelectAccountWithLoadAwareness(testCtx, selectionFixtureGroupID(testCtx), "sticky", "claude-3-5-sonnet-20241022", nil, "", int64(0))
+		result, err := svc.SelectProviderWithLoadAwareness(testCtx, selectionFixtureGroupID(testCtx), "sticky", "claude-3-5-sonnet-20241022", nil, "", int64(0))
 		require.NoError(t, err)
 		require.NotNil(t, result)
-		require.NotNil(t, result.Account)
-		require.Equal(t, int64(2), result.Account.Record.ID, "粘性账号禁用时应回退到可用账号")
+		require.NotNil(t, result.Provider)
+		require.Equal(t, int64(2), result.Provider.Record.ID, "粘性提供商禁用时应回退到可用提供商")
 		updatedID, ok := cache.sessionBindings["sticky"]
 		require.True(t, ok, "粘性会话应更新绑定")
-		require.Equal(t, int64(2), updatedID, "粘性会话应绑定到新账号")
+		require.Equal(t, int64(2), updatedID, "粘性会话应绑定到新提供商")
 	})
 
-	t.Run("无可用账号-返回错误", func(t *testing.T) {
-		repo := &mockAccountRepoForPlatform{
-			accounts:     []gatewayprovider.ExecutionAccount{},
-			accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+	t.Run("无可用提供商-返回错误", func(t *testing.T) {
+		repo := &mockProviderRepoForPlatform{
+			providers:     []gatewayprovider.ExecutionProvider{},
+			providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 		}
 
 		cache := &mockGatewayCacheForPlatform{}
@@ -1720,79 +1720,79 @@ func TestGatewayService_SelectAccountWithLoadAwareness(t *testing.T) {
 		cfg := testConfig()
 		cfg.Gateway.Scheduling.LoadBatchEnabled = false
 
-		svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Accounts: repo}, Shared: Shared{Concurrency: nil, Cache: cache}}, cfg)
+		svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Providers: repo}, Shared: Shared{Concurrency: nil, Cache: cache}}, cfg)
 
-		result, err := svc.SelectAccountWithLoadAwareness(ctx, selectionFixtureGroupID(ctx), "", "claude-3-5-sonnet-20241022", nil, "", int64(0))
+		result, err := svc.SelectProviderWithLoadAwareness(ctx, selectionFixtureGroupID(ctx), "", "claude-3-5-sonnet-20241022", nil, "", int64(0))
 		require.Error(t, err)
 		require.Nil(t, result)
-		require.ErrorIs(t, err, scheduler.ErrNoAvailableAccounts)
+		require.ErrorIs(t, err, scheduler.ErrNoAvailableProviders)
 	})
 
-	t.Run("过滤不可调度账号-限流账号被跳过", func(t *testing.T) {
+	t.Run("过滤不可调度提供商-限流提供商被跳过", func(t *testing.T) {
 		now := time.Now()
 		resetAt := now.Add(10 * time.Minute)
 
-		repo := &mockAccountRepoForPlatform{
-			accounts: []gatewayprovider.ExecutionAccount{
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5, RateLimitResetAt: &resetAt}},
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
+		repo := &mockProviderRepoForPlatform{
+			providers: []gatewayprovider.ExecutionProvider{
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5, RateLimitResetAt: &resetAt}},
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
 			},
-			accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+			providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 		}
-		for i := range repo.accounts {
-			repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
+		for i := range repo.providers {
+			repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 		}
 
 		cache := &mockGatewayCacheForPlatform{}
 		cfg := testConfig()
 		cfg.Gateway.Scheduling.LoadBatchEnabled = false
 
-		svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Accounts: repo}, Shared: Shared{Cache: cache, Concurrency: nil}}, cfg)
+		svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Providers: repo}, Shared: Shared{Cache: cache, Concurrency: nil}}, cfg)
 
-		result, err := svc.SelectAccountWithLoadAwareness(ctx, selectionFixtureGroupID(ctx), "", "claude-3-5-sonnet-20241022", nil, "", int64(0))
+		result, err := svc.SelectProviderWithLoadAwareness(ctx, selectionFixtureGroupID(ctx), "", "claude-3-5-sonnet-20241022", nil, "", int64(0))
 		require.NoError(t, err)
 		require.NotNil(t, result)
-		require.NotNil(t, result.Account)
-		require.Equal(t, int64(2), result.Account.Record.ID, "应跳过限流账号，选择可用账号")
+		require.NotNil(t, result.Provider)
+		require.Equal(t, int64(2), result.Provider.Record.ID, "应跳过限流提供商，选择可用提供商")
 	})
 
-	t.Run("过滤不可调度账号-过载账号被跳过", func(t *testing.T) {
+	t.Run("过滤不可调度提供商-过载提供商被跳过", func(t *testing.T) {
 		now := time.Now()
 		overloadUntil := now.Add(10 * time.Minute)
 
-		repo := &mockAccountRepoForPlatform{
-			accounts: []gatewayprovider.ExecutionAccount{
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5, OverloadUntil: &overloadUntil}},
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
+		repo := &mockProviderRepoForPlatform{
+			providers: []gatewayprovider.ExecutionProvider{
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5, OverloadUntil: &overloadUntil}},
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
 			},
-			accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+			providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 		}
-		for i := range repo.accounts {
-			repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
+		for i := range repo.providers {
+			repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 		}
 
 		cache := &mockGatewayCacheForPlatform{}
 		cfg := testConfig()
 		cfg.Gateway.Scheduling.LoadBatchEnabled = false
 
-		svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Accounts: repo}, Shared: Shared{Concurrency: nil, Cache: cache}}, cfg)
+		svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Providers: repo}, Shared: Shared{Concurrency: nil, Cache: cache}}, cfg)
 
-		result, err := svc.SelectAccountWithLoadAwareness(ctx, selectionFixtureGroupID(ctx), "", "claude-3-5-sonnet-20241022", nil, "", int64(0))
+		result, err := svc.SelectProviderWithLoadAwareness(ctx, selectionFixtureGroupID(ctx), "", "claude-3-5-sonnet-20241022", nil, "", int64(0))
 		require.NoError(t, err)
 		require.NotNil(t, result)
-		require.NotNil(t, result.Account)
-		require.Equal(t, int64(2), result.Account.Record.ID, "应跳过过载账号，选择可用账号")
+		require.NotNil(t, result.Provider)
+		require.Equal(t, int64(2), result.Provider.Record.ID, "应跳过过载提供商，选择可用提供商")
 	})
 
-	t.Run("粘性账号槽位满-返回粘性等待计划", func(t *testing.T) {
-		repo := &mockAccountRepoForPlatform{
-			accounts: []gatewayprovider.ExecutionAccount{
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
+	t.Run("粘性提供商槽位满-返回粘性等待计划", func(t *testing.T) {
+		repo := &mockProviderRepoForPlatform{
+			providers: []gatewayprovider.ExecutionProvider{
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
 			},
-			accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+			providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 		}
-		for i := range repo.accounts {
-			repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
+		for i := range repo.providers {
+			repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 		}
 
 		cache := &mockGatewayCacheForPlatform{
@@ -1809,7 +1809,7 @@ func TestGatewayService_SelectAccountWithLoadAwareness(t *testing.T) {
 		}
 
 		svc := newGenericSelectionForTest(GenericDependencies{
-			Reads: Reads{Accounts: repo},
+			Reads: Reads{Providers: repo},
 			Shared: Shared{
 				Cache: cache,
 				Concurrency: scheduler.NewConcurrencyService(concurrencyCache,
@@ -1818,24 +1818,24 @@ func TestGatewayService_SelectAccountWithLoadAwareness(t *testing.T) {
 			},
 		}, cfg)
 
-		result, err := svc.SelectAccountWithLoadAwareness(ctx, selectionFixtureGroupID(ctx), "sticky", "claude-3-5-sonnet-20241022", nil, "", int64(0))
+		result, err := svc.SelectProviderWithLoadAwareness(ctx, selectionFixtureGroupID(ctx), "sticky", "claude-3-5-sonnet-20241022", nil, "", int64(0))
 		require.NoError(t, err)
 		require.NotNil(t, result)
 		require.NotNil(t, result.WaitPlan)
-		require.Equal(t, int64(1), result.Account.Record.ID)
+		require.Equal(t, int64(1), result.Provider.Record.ID)
 		require.Equal(t, 0, concurrencyCache.loadBatchCalls)
 	})
 
 	t.Run("负载批量查询失败-降级旧顺序选择", func(t *testing.T) {
-		repo := &mockAccountRepoForPlatform{
-			accounts: []gatewayprovider.ExecutionAccount{
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
+		repo := &mockProviderRepoForPlatform{
+			providers: []gatewayprovider.ExecutionProvider{
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
 			},
-			accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+			providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 		}
-		for i := range repo.accounts {
-			repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
+		for i := range repo.providers {
+			repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 		}
 
 		cache := &mockGatewayCacheForPlatform{}
@@ -1848,7 +1848,7 @@ func TestGatewayService_SelectAccountWithLoadAwareness(t *testing.T) {
 		}
 
 		svc := newGenericSelectionForTest(GenericDependencies{
-			Reads: Reads{Accounts: repo},
+			Reads: Reads{Providers: repo},
 			Shared: Shared{
 				Cache: cache,
 				Concurrency: scheduler.NewConcurrencyService(concurrencyCache,
@@ -1857,27 +1857,27 @@ func TestGatewayService_SelectAccountWithLoadAwareness(t *testing.T) {
 			},
 		}, cfg)
 
-		result, err := svc.SelectAccountWithLoadAwareness(ctx, selectionFixtureGroupID(ctx), "legacy", "claude-3-5-sonnet-20241022", nil, "", int64(0))
+		result, err := svc.SelectProviderWithLoadAwareness(ctx, selectionFixtureGroupID(ctx), "legacy", "claude-3-5-sonnet-20241022", nil, "", int64(0))
 		require.NoError(t, err)
 		require.NotNil(t, result)
-		require.NotNil(t, result.Account)
-		require.Equal(t, int64(2), result.Account.Record.ID)
+		require.NotNil(t, result.Provider)
+		require.Equal(t, int64(2), result.Provider.Record.ID)
 		require.Equal(t, int64(2), cache.sessionBindings["legacy"])
 	})
 
-	t.Run("模型路由-粘性账号等待计划", func(t *testing.T) {
+	t.Run("模型路由-粘性提供商等待计划", func(t *testing.T) {
 		groupID := int64(20)
 		sessionHash := "route-sticky"
 
-		repo := &mockAccountRepoForPlatform{
-			accounts: []gatewayprovider.ExecutionAccount{
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
+		repo := &mockProviderRepoForPlatform{
+			providers: []gatewayprovider.ExecutionProvider{
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
 			},
-			accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+			providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 		}
-		for i := range repo.accounts {
-			repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
+		for i := range repo.providers {
+			repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 		}
 
 		cache := &mockGatewayCacheForPlatform{
@@ -1909,7 +1909,7 @@ func TestGatewayService_SelectAccountWithLoadAwareness(t *testing.T) {
 		}
 
 		svc := newGenericSelectionForTest(GenericDependencies{
-			Reads: Reads{Accounts: repo, Groups: groupRepo},
+			Reads: Reads{Providers: repo, Groups: groupRepo},
 			Shared: Shared{
 				Concurrency: scheduler.NewConcurrencyService(concurrencyCache,
 
@@ -1921,26 +1921,26 @@ func TestGatewayService_SelectAccountWithLoadAwareness(t *testing.T) {
 			},
 		}, cfg)
 
-		result, err := svc.SelectAccountWithLoadAwareness(ctx, &groupID, sessionHash, "claude-3-5-sonnet-20241022", nil, "", int64(0))
+		result, err := svc.SelectProviderWithLoadAwareness(ctx, &groupID, sessionHash, "claude-3-5-sonnet-20241022", nil, "", int64(0))
 		require.NoError(t, err)
 		require.NotNil(t, result)
 		require.NotNil(t, result.WaitPlan)
-		require.Equal(t, int64(1), result.Account.Record.ID)
+		require.Equal(t, int64(1), result.Provider.Record.ID)
 	})
 
-	t.Run("模型路由-粘性账号命中", func(t *testing.T) {
+	t.Run("模型路由-粘性提供商命中", func(t *testing.T) {
 		groupID := int64(20)
 		sessionHash := "route-hit"
 
-		repo := &mockAccountRepoForPlatform{
-			accounts: []gatewayprovider.ExecutionAccount{
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
+		repo := &mockProviderRepoForPlatform{
+			providers: []gatewayprovider.ExecutionProvider{
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
 			},
-			accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+			providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 		}
-		for i := range repo.accounts {
-			repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
+		for i := range repo.providers {
+			repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 		}
 
 		cache := &mockGatewayCacheForPlatform{
@@ -1968,7 +1968,7 @@ func TestGatewayService_SelectAccountWithLoadAwareness(t *testing.T) {
 		concurrencyCache := &mockConcurrencyCache{}
 
 		svc := newGenericSelectionForTest(GenericDependencies{
-			Reads: Reads{Accounts: repo, Groups: groupRepo},
+			Reads: Reads{Providers: repo, Groups: groupRepo},
 			Shared: Shared{
 				Cache: cache,
 				Concurrency: scheduler.NewConcurrencyService(
@@ -1976,26 +1976,26 @@ func TestGatewayService_SelectAccountWithLoadAwareness(t *testing.T) {
 			},
 		}, cfg)
 
-		result, err := svc.SelectAccountWithLoadAwareness(ctx, &groupID, sessionHash, "claude-3-5-sonnet-20241022", nil, "", int64(0))
+		result, err := svc.SelectProviderWithLoadAwareness(ctx, &groupID, sessionHash, "claude-3-5-sonnet-20241022", nil, "", int64(0))
 		require.NoError(t, err)
 		require.NotNil(t, result)
-		require.NotNil(t, result.Account)
-		require.Equal(t, int64(1), result.Account.Record.ID)
+		require.NotNil(t, result.Provider)
+		require.Equal(t, int64(1), result.Provider.Record.ID)
 		require.Equal(t, 0, concurrencyCache.loadBatchCalls)
 	})
 
-	t.Run("模型路由-粘性账号缺失-清理并回退", func(t *testing.T) {
+	t.Run("模型路由-粘性提供商缺失-清理并回退", func(t *testing.T) {
 		groupID := int64(22)
 		sessionHash := "route-missing"
 
-		repo := &mockAccountRepoForPlatform{
-			accounts: []gatewayprovider.ExecutionAccount{
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
+		repo := &mockProviderRepoForPlatform{
+			providers: []gatewayprovider.ExecutionProvider{
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
 			},
-			accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+			providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 		}
-		for i := range repo.accounts {
-			repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
+		for i := range repo.providers {
+			repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 		}
 
 		cache := &mockGatewayCacheForPlatform{
@@ -2024,8 +2024,8 @@ func TestGatewayService_SelectAccountWithLoadAwareness(t *testing.T) {
 
 		svc := newGenericSelectionForTest(GenericDependencies{
 			Reads: Reads{
-				Groups:   groupRepo,
-				Accounts: repo,
+				Groups:    groupRepo,
+				Providers: repo,
 			},
 			Shared: Shared{
 				Cache: cache,
@@ -2034,27 +2034,27 @@ func TestGatewayService_SelectAccountWithLoadAwareness(t *testing.T) {
 			},
 		}, cfg)
 
-		result, err := svc.SelectAccountWithLoadAwareness(ctx, &groupID, sessionHash, "claude-3-5-sonnet-20241022", nil, "", int64(0))
+		result, err := svc.SelectProviderWithLoadAwareness(ctx, &groupID, sessionHash, "claude-3-5-sonnet-20241022", nil, "", int64(0))
 		require.NoError(t, err)
 		require.NotNil(t, result)
-		require.NotNil(t, result.Account)
-		require.Equal(t, int64(2), result.Account.Record.ID)
+		require.NotNil(t, result.Provider)
+		require.Equal(t, int64(2), result.Provider.Record.ID)
 		require.Equal(t, 1, cache.deletedSessions[sessionHash])
 		require.Equal(t, int64(2), cache.sessionBindings[sessionHash])
 	})
 
-	t.Run("模型路由-按负载选择账号", func(t *testing.T) {
+	t.Run("模型路由-按负载选择提供商", func(t *testing.T) {
 		groupID := int64(21)
 
-		repo := &mockAccountRepoForPlatform{
-			accounts: []gatewayprovider.ExecutionAccount{
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
+		repo := &mockProviderRepoForPlatform{
+			providers: []gatewayprovider.ExecutionProvider{
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
 			},
-			accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+			providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 		}
-		for i := range repo.accounts {
-			repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
+		for i := range repo.providers {
+			repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 		}
 
 		cache := &mockGatewayCacheForPlatform{}
@@ -2078,14 +2078,14 @@ func TestGatewayService_SelectAccountWithLoadAwareness(t *testing.T) {
 		cfg.Gateway.Scheduling.LoadBatchEnabled = true
 
 		concurrencyCache := &mockConcurrencyCache{
-			loadMap: map[int64]*scheduler.AccountLoadInfo{
-				1: {AccountID: 1, LoadRate: 80},
-				2: {AccountID: 2, LoadRate: 20},
+			loadMap: map[int64]*scheduler.ProviderLoadInfo{
+				1: {ProviderID: 1, LoadRate: 80},
+				2: {ProviderID: 2, LoadRate: 20},
 			},
 		}
 
 		svc := newGenericSelectionForTest(GenericDependencies{
-			Reads: Reads{Accounts: repo, Groups: groupRepo},
+			Reads: Reads{Providers: repo, Groups: groupRepo},
 			Shared: Shared{
 				Concurrency: scheduler.NewConcurrencyService(concurrencyCache,
 
@@ -2097,26 +2097,26 @@ func TestGatewayService_SelectAccountWithLoadAwareness(t *testing.T) {
 			},
 		}, cfg)
 
-		result, err := svc.SelectAccountWithLoadAwareness(ctx, &groupID, "route", "claude-3-5-sonnet-20241022", nil, "", int64(0))
+		result, err := svc.SelectProviderWithLoadAwareness(ctx, &groupID, "route", "claude-3-5-sonnet-20241022", nil, "", int64(0))
 		require.NoError(t, err)
 		require.NotNil(t, result)
-		require.NotNil(t, result.Account)
-		require.Equal(t, int64(2), result.Account.Record.ID)
+		require.NotNil(t, result.Provider)
+		require.Equal(t, int64(2), result.Provider.Record.ID)
 		require.Equal(t, int64(2), cache.sessionBindings["route"])
 	})
 
-	t.Run("模型路由-路由账号全满返回等待计划", func(t *testing.T) {
+	t.Run("模型路由-路由提供商全满返回等待计划", func(t *testing.T) {
 		groupID := int64(23)
 
-		repo := &mockAccountRepoForPlatform{
-			accounts: []gatewayprovider.ExecutionAccount{
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
+		repo := &mockProviderRepoForPlatform{
+			providers: []gatewayprovider.ExecutionProvider{
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
 			},
-			accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+			providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 		}
-		for i := range repo.accounts {
-			repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
+		for i := range repo.providers {
+			repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 		}
 
 		cache := &mockGatewayCacheForPlatform{}
@@ -2141,14 +2141,14 @@ func TestGatewayService_SelectAccountWithLoadAwareness(t *testing.T) {
 
 		concurrencyCache := &mockConcurrencyCache{
 			acquireResults: map[int64]bool{1: false, 2: false},
-			loadMap: map[int64]*scheduler.AccountLoadInfo{
-				1: {AccountID: 1, LoadRate: 10},
-				2: {AccountID: 2, LoadRate: 20},
+			loadMap: map[int64]*scheduler.ProviderLoadInfo{
+				1: {ProviderID: 1, LoadRate: 10},
+				2: {ProviderID: 2, LoadRate: 20},
 			},
 		}
 
 		svc := newGenericSelectionForTest(GenericDependencies{
-			Reads: Reads{Accounts: repo, Groups: groupRepo},
+			Reads: Reads{Providers: repo, Groups: groupRepo},
 			Shared: Shared{
 				Concurrency: scheduler.NewConcurrencyService(concurrencyCache,
 
@@ -2160,26 +2160,26 @@ func TestGatewayService_SelectAccountWithLoadAwareness(t *testing.T) {
 			},
 		}, cfg)
 
-		result, err := svc.SelectAccountWithLoadAwareness(ctx, &groupID, "route-full", "claude-3-5-sonnet-20241022", nil, "", int64(0))
+		result, err := svc.SelectProviderWithLoadAwareness(ctx, &groupID, "route-full", "claude-3-5-sonnet-20241022", nil, "", int64(0))
 		require.NoError(t, err)
 		require.NotNil(t, result)
 		require.NotNil(t, result.WaitPlan)
-		require.Equal(t, int64(1), result.Account.Record.ID)
+		require.Equal(t, int64(1), result.Provider.Record.ID)
 	})
 
-	t.Run("模型路由-路由账号全满-回退普通选择", func(t *testing.T) {
+	t.Run("模型路由-路由提供商全满-回退普通选择", func(t *testing.T) {
 		groupID := int64(22)
 
-		repo := &mockAccountRepoForPlatform{
-			accounts: []gatewayprovider.ExecutionAccount{
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 3, Platform: capability.PlatformAnthropic, Priority: 0, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
+		repo := &mockProviderRepoForPlatform{
+			providers: []gatewayprovider.ExecutionProvider{
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 3, Platform: capability.PlatformAnthropic, Priority: 0, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
 			},
-			accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+			providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 		}
-		for i := range repo.accounts {
-			repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
+		for i := range repo.providers {
+			repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 		}
 
 		cache := &mockGatewayCacheForPlatform{}
@@ -2203,15 +2203,15 @@ func TestGatewayService_SelectAccountWithLoadAwareness(t *testing.T) {
 		cfg.Gateway.Scheduling.LoadBatchEnabled = true
 
 		concurrencyCache := &mockConcurrencyCache{
-			loadMap: map[int64]*scheduler.AccountLoadInfo{
-				1: {AccountID: 1, LoadRate: 100},
-				2: {AccountID: 2, LoadRate: 100},
-				3: {AccountID: 3, LoadRate: 0},
+			loadMap: map[int64]*scheduler.ProviderLoadInfo{
+				1: {ProviderID: 1, LoadRate: 100},
+				2: {ProviderID: 2, LoadRate: 100},
+				3: {ProviderID: 3, LoadRate: 0},
 			},
 		}
 
 		svc := newGenericSelectionForTest(GenericDependencies{
-			Reads: Reads{Accounts: repo, Groups: groupRepo},
+			Reads: Reads{Providers: repo, Groups: groupRepo},
 			Shared: Shared{
 				Cache: cache,
 				Concurrency: scheduler.NewConcurrencyService(
@@ -2219,24 +2219,24 @@ func TestGatewayService_SelectAccountWithLoadAwareness(t *testing.T) {
 			},
 		}, cfg)
 
-		result, err := svc.SelectAccountWithLoadAwareness(ctx, &groupID, "fallback", "claude-3-5-sonnet-20241022", nil, "", int64(0))
+		result, err := svc.SelectProviderWithLoadAwareness(ctx, &groupID, "fallback", "claude-3-5-sonnet-20241022", nil, "", int64(0))
 		require.NoError(t, err)
 		require.NotNil(t, result)
-		require.NotNil(t, result.Account)
-		require.Equal(t, int64(3), result.Account.Record.ID)
+		require.NotNil(t, result.Provider)
+		require.Equal(t, int64(3), result.Provider.Record.ID)
 		require.Equal(t, int64(3), cache.sessionBindings["fallback"])
 	})
 
 	t.Run("负载批量失败且无法获取-兜底等待", func(t *testing.T) {
-		repo := &mockAccountRepoForPlatform{
-			accounts: []gatewayprovider.ExecutionAccount{
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
+		repo := &mockProviderRepoForPlatform{
+			providers: []gatewayprovider.ExecutionProvider{
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
 			},
-			accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+			providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 		}
-		for i := range repo.accounts {
-			repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
+		for i := range repo.providers {
+			repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 		}
 
 		cache := &mockGatewayCacheForPlatform{}
@@ -2250,7 +2250,7 @@ func TestGatewayService_SelectAccountWithLoadAwareness(t *testing.T) {
 		}
 
 		svc := newGenericSelectionForTest(GenericDependencies{
-			Reads: Reads{Accounts: repo},
+			Reads: Reads{Providers: repo},
 			Shared: Shared{
 				Cache: cache,
 				Concurrency: scheduler.NewConcurrencyService(concurrencyCache,
@@ -2259,25 +2259,25 @@ func TestGatewayService_SelectAccountWithLoadAwareness(t *testing.T) {
 			},
 		}, cfg)
 
-		result, err := svc.SelectAccountWithLoadAwareness(ctx, selectionFixtureGroupID(ctx), "", "claude-3-5-sonnet-20241022", nil, "", int64(0))
+		result, err := svc.SelectProviderWithLoadAwareness(ctx, selectionFixtureGroupID(ctx), "", "claude-3-5-sonnet-20241022", nil, "", int64(0))
 		require.NoError(t, err)
 		require.NotNil(t, result)
 		require.NotNil(t, result.WaitPlan)
-		require.Equal(t, int64(1), result.Account.Record.ID)
+		require.Equal(t, int64(1), result.Provider.Record.ID)
 	})
 
 	t.Run("跨平台基础排序-同优先级候选均可调度", func(t *testing.T) {
 		groupID := int64(24)
 
-		repo := &mockAccountRepoForPlatform{
-			accounts: []gatewayprovider.ExecutionAccount{
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformGemini, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5, Type: capability.AccountTypeAPIKey}},
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformGemini, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5, Type: capability.AccountTypeOAuth}},
+		repo := &mockProviderRepoForPlatform{
+			providers: []gatewayprovider.ExecutionProvider{
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformGemini, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5, Type: capability.ProviderTypeAPIKey}},
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformGemini, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5, Type: capability.ProviderTypeOAuth}},
 			},
-			accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+			providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 		}
-		for i := range repo.accounts {
-			repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
+		for i := range repo.providers {
+			repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 		}
 
 		cache := &mockGatewayCacheForPlatform{}
@@ -2297,14 +2297,14 @@ func TestGatewayService_SelectAccountWithLoadAwareness(t *testing.T) {
 		cfg.Gateway.Scheduling.LoadBatchEnabled = true
 
 		concurrencyCache := &mockConcurrencyCache{
-			loadMap: map[int64]*scheduler.AccountLoadInfo{
-				1: {AccountID: 1, LoadRate: 10},
-				2: {AccountID: 2, LoadRate: 10},
+			loadMap: map[int64]*scheduler.ProviderLoadInfo{
+				1: {ProviderID: 1, LoadRate: 10},
+				2: {ProviderID: 2, LoadRate: 10},
 			},
 		}
 
 		svc := newGenericSelectionForTest(GenericDependencies{
-			Reads: Reads{Accounts: repo, Groups: groupRepo},
+			Reads: Reads{Providers: repo, Groups: groupRepo},
 			Shared: Shared{
 				Cache: cache,
 				Concurrency: scheduler.NewConcurrencyService(
@@ -2312,23 +2312,23 @@ func TestGatewayService_SelectAccountWithLoadAwareness(t *testing.T) {
 			},
 		}, cfg)
 
-		result, err := svc.SelectAccountWithLoadAwareness(ctx, &groupID, "gemini", "gemini-2.5-pro", nil, "", int64(0))
+		result, err := svc.SelectProviderWithLoadAwareness(ctx, &groupID, "gemini", "gemini-2.5-pro", nil, "", int64(0))
 		require.NoError(t, err)
 		require.NotNil(t, result)
-		require.NotNil(t, result.Account)
-		require.Contains(t, []int64{1, 2}, result.Account.Record.ID)
+		require.NotNil(t, result.Provider)
+		require.Contains(t, []int64{1, 2}, result.Provider.Record.ID)
 	})
 
 	t.Run("模型路由-过滤路径覆盖", func(t *testing.T) {
 		groupID := int64(70)
 		now := time.Now().Add(10 * time.Minute)
-		repo := &mockAccountRepoForPlatform{
-			accounts: []gatewayprovider.ExecutionAccount{
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 3, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: false, Concurrency: 5}},
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 4, Platform: capability.PlatformAntigravity, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
+		repo := &mockProviderRepoForPlatform{
+			providers: []gatewayprovider.ExecutionProvider{
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 3, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: false, Concurrency: 5}},
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 4, Platform: capability.PlatformAntigravity, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
 				{
-					Record: accountcore.Record{
+					Record: providercore.Record{
 						Credentials:  map[string]any{"model_whitelist": []string{"*"}},
 						LoadLocation: time.LoadLocation, ID: 5,
 						Platform:    capability.PlatformAnthropic,
@@ -2346,7 +2346,7 @@ func TestGatewayService_SelectAccountWithLoadAwareness(t *testing.T) {
 					},
 				},
 				{
-					Record: accountcore.Record{
+					Record: providercore.Record{
 						LoadLocation: time.LoadLocation, ID: 6,
 						Platform:    capability.PlatformAnthropic,
 						Priority:    1,
@@ -2356,12 +2356,12 @@ func TestGatewayService_SelectAccountWithLoadAwareness(t *testing.T) {
 						Credentials: map[string]any{"model_mapping": map[string]any{"claude-3-5-haiku-20241022": "claude-3-5-haiku-20241022"}},
 					},
 				},
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 7, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 7, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
 			},
-			accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+			providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 		}
-		for i := range repo.accounts {
-			repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
+		for i := range repo.providers {
+			repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 		}
 
 		cache := &mockGatewayCacheForPlatform{}
@@ -2387,7 +2387,7 @@ func TestGatewayService_SelectAccountWithLoadAwareness(t *testing.T) {
 		concurrencyCache := &mockConcurrencyCache{}
 
 		svc := newGenericSelectionForTest(GenericDependencies{
-			Reads: Reads{Accounts: repo, Groups: groupRepo},
+			Reads: Reads{Providers: repo, Groups: groupRepo},
 			Shared: Shared{
 				Cache: cache,
 				Concurrency: scheduler.NewConcurrencyService(
@@ -2396,25 +2396,25 @@ func TestGatewayService_SelectAccountWithLoadAwareness(t *testing.T) {
 		}, cfg)
 
 		excluded := map[int64]struct{}{1: {}}
-		result, err := svc.SelectAccountWithLoadAwareness(ctx, &groupID, "", "claude-3-5-sonnet-20241022", excluded, "", int64(0))
+		result, err := svc.SelectProviderWithLoadAwareness(ctx, &groupID, "", "claude-3-5-sonnet-20241022", excluded, "", int64(0))
 		require.NoError(t, err)
 		require.NotNil(t, result)
-		require.NotNil(t, result.Account)
-		require.Equal(t, int64(4), result.Account.Record.ID)
+		require.NotNil(t, result.Provider)
+		require.Equal(t, int64(4), result.Provider.Record.ID)
 	})
 
 	t.Run("ClaudeCode限制-入口已授权回退分组", func(t *testing.T) {
 		groupID := int64(60)
 		fallbackID := int64(61)
 
-		repo := &mockAccountRepoForPlatform{
-			accounts: []gatewayprovider.ExecutionAccount{
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformGemini, Priority: 1, Status: billing.StatusActive, Schedulable: true}},
+		repo := &mockProviderRepoForPlatform{
+			providers: []gatewayprovider.ExecutionProvider{
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformGemini, Priority: 1, Status: billing.StatusActive, Schedulable: true}},
 			},
-			accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+			providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 		}
-		for i := range repo.accounts {
-			repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
+		for i := range repo.providers {
+			repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 		}
 
 		groupRepo := &mockGroupRepoForGateway{
@@ -2443,7 +2443,7 @@ func TestGatewayService_SelectAccountWithLoadAwareness(t *testing.T) {
 		cfg.Gateway.Scheduling.LoadBatchEnabled = false
 
 		svc := newGenericSelectionForTest(GenericDependencies{
-			Reads:  Reads{Accounts: repo, Groups: groupRepo},
+			Reads:  Reads{Providers: repo, Groups: groupRepo},
 			Shared: Shared{Cache: &mockGatewayCacheForPlatform{}, Concurrency: nil},
 		},
 
@@ -2451,11 +2451,11 @@ func TestGatewayService_SelectAccountWithLoadAwareness(t *testing.T) {
 
 		admitted := requeststate.WithGroup(ctx, groupRepo.groups[fallbackID])
 		admitted = requeststate.WithRoutePlan(admitted, routing.Plan(routing.PlanInput{Group: groupRepo.groups[fallbackID]}))
-		result, err := svc.SelectAccountWithLoadAwareness(admitted, &fallbackID, "", "gemini-2.5-pro", nil, "", int64(0))
+		result, err := svc.SelectProviderWithLoadAwareness(admitted, &fallbackID, "", "gemini-2.5-pro", nil, "", int64(0))
 		require.NoError(t, err)
 		require.NotNil(t, result)
-		require.NotNil(t, result.Account)
-		require.Equal(t, int64(1), result.Account.Record.ID)
+		require.NotNil(t, result.Provider)
+		require.Equal(t, int64(1), result.Provider.Record.ID)
 	})
 
 	t.Run("ClaudeCode限制-无降级返回错误", func(t *testing.T) {
@@ -2477,26 +2477,26 @@ func TestGatewayService_SelectAccountWithLoadAwareness(t *testing.T) {
 		cfg.Gateway.Scheduling.LoadBatchEnabled = false
 
 		svc := newGenericSelectionForTest(GenericDependencies{
-			Reads:  Reads{Accounts: &mockAccountRepoForPlatform{}, Groups: groupRepo},
+			Reads:  Reads{Providers: &mockProviderRepoForPlatform{}, Groups: groupRepo},
 			Shared: Shared{Cache: &mockGatewayCacheForPlatform{}, Concurrency: nil},
 		}, cfg)
 
-		result, err := svc.SelectAccountWithLoadAwareness(ctx, &groupID, "", "claude-3-5-sonnet-20241022", nil, "", int64(0))
+		result, err := svc.SelectProviderWithLoadAwareness(ctx, &groupID, "", "claude-3-5-sonnet-20241022", nil, "", int64(0))
 		require.Error(t, err)
 		require.Nil(t, result)
 		require.ErrorIs(t, err, routing.ErrClaudeCodeOnly)
 	})
 
 	t.Run("负载可用但无法获取槽位-兜底等待", func(t *testing.T) {
-		repo := &mockAccountRepoForPlatform{
-			accounts: []gatewayprovider.ExecutionAccount{
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
+		repo := &mockProviderRepoForPlatform{
+			providers: []gatewayprovider.ExecutionProvider{
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 2, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
 			},
-			accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+			providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 		}
-		for i := range repo.accounts {
-			repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
+		for i := range repo.providers {
+			repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 		}
 
 		cache := &mockGatewayCacheForPlatform{}
@@ -2506,14 +2506,14 @@ func TestGatewayService_SelectAccountWithLoadAwareness(t *testing.T) {
 
 		concurrencyCache := &mockConcurrencyCache{
 			acquireResults: map[int64]bool{1: false, 2: false},
-			loadMap: map[int64]*scheduler.AccountLoadInfo{
-				1: {AccountID: 1, LoadRate: 10},
-				2: {AccountID: 2, LoadRate: 20},
+			loadMap: map[int64]*scheduler.ProviderLoadInfo{
+				1: {ProviderID: 1, LoadRate: 10},
+				2: {ProviderID: 2, LoadRate: 20},
 			},
 		}
 
 		svc := newGenericSelectionForTest(GenericDependencies{
-			Reads: Reads{Accounts: repo},
+			Reads: Reads{Providers: repo},
 			Shared: Shared{
 				Cache: cache,
 				Concurrency: scheduler.NewConcurrencyService(concurrencyCache,
@@ -2522,23 +2522,23 @@ func TestGatewayService_SelectAccountWithLoadAwareness(t *testing.T) {
 			},
 		}, cfg)
 
-		result, err := svc.SelectAccountWithLoadAwareness(ctx, selectionFixtureGroupID(ctx), "wait", "claude-3-5-sonnet-20241022", nil, "", int64(0))
+		result, err := svc.SelectProviderWithLoadAwareness(ctx, selectionFixtureGroupID(ctx), "wait", "claude-3-5-sonnet-20241022", nil, "", int64(0))
 		require.NoError(t, err)
 		require.NotNil(t, result)
 		require.NotNil(t, result.WaitPlan)
-		require.Equal(t, int64(1), result.Account.Record.ID)
+		require.Equal(t, int64(1), result.Provider.Record.ID)
 	})
 
 	t.Run("负载信息缺失-使用默认负载", func(t *testing.T) {
-		repo := &mockAccountRepoForPlatform{
-			accounts: []gatewayprovider.ExecutionAccount{
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
-				{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
+		repo := &mockProviderRepoForPlatform{
+			providers: []gatewayprovider.ExecutionProvider{
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
+				{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true, Concurrency: 5}},
 			},
-			accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+			providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 		}
-		for i := range repo.accounts {
-			repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
+		for i := range repo.providers {
+			repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 		}
 
 		cache := &mockGatewayCacheForPlatform{}
@@ -2547,14 +2547,14 @@ func TestGatewayService_SelectAccountWithLoadAwareness(t *testing.T) {
 		cfg.Gateway.Scheduling.LoadBatchEnabled = true
 
 		concurrencyCache := &mockConcurrencyCache{
-			loadMap: map[int64]*scheduler.AccountLoadInfo{
-				1: {AccountID: 1, LoadRate: 50},
+			loadMap: map[int64]*scheduler.ProviderLoadInfo{
+				1: {ProviderID: 1, LoadRate: 50},
 			},
 			skipDefaultLoad: true,
 		}
 
 		svc := newGenericSelectionForTest(GenericDependencies{
-			Reads: Reads{Accounts: repo},
+			Reads: Reads{Providers: repo},
 			Shared: Shared{
 				Cache: cache,
 				Concurrency: scheduler.NewConcurrencyService(concurrencyCache,
@@ -2563,11 +2563,11 @@ func TestGatewayService_SelectAccountWithLoadAwareness(t *testing.T) {
 			},
 		}, cfg)
 
-		result, err := svc.SelectAccountWithLoadAwareness(ctx, selectionFixtureGroupID(ctx), "missing-load", "claude-3-5-sonnet-20241022", nil, "", int64(0))
+		result, err := svc.SelectProviderWithLoadAwareness(ctx, selectionFixtureGroupID(ctx), "missing-load", "claude-3-5-sonnet-20241022", nil, "", int64(0))
 		require.NoError(t, err)
 		require.NotNil(t, result)
-		require.NotNil(t, result.Account)
-		require.Equal(t, int64(2), result.Account.Record.ID)
+		require.NotNil(t, result.Provider)
+		require.Equal(t, int64(2), result.Provider.Record.ID)
 	})
 }
 
@@ -2582,25 +2582,25 @@ func TestGatewayService_GroupResolution_ReusesContextGroup(t *testing.T) {
 	}
 	ctx = requeststate.WithGroup(ctx, group)
 
-	repo := &mockAccountRepoForPlatform{
-		accounts: []gatewayprovider.ExecutionAccount{
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true}},
+	repo := &mockProviderRepoForPlatform{
+		providers: []gatewayprovider.ExecutionProvider{
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true}},
 		},
-		accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+		providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 	}
-	for i := range repo.accounts {
-		repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
+	for i := range repo.providers {
+		repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 	}
 
 	groupRepo := &mockGroupRepoForGateway{
 		groups: map[int64]*routing.Group{groupID: group},
 	}
 
-	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Accounts: repo, Groups: groupRepo}, Shared: Shared{}}, testConfig())
+	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Providers: repo, Groups: groupRepo}, Shared: Shared{}}, testConfig())
 
-	account, err := svc.SelectAccountForModelWithExclusions(ctx, &groupID, "", "claude-3-5-sonnet-20241022", nil)
+	provider, err := svc.SelectProviderForModelWithExclusions(ctx, &groupID, "", "claude-3-5-sonnet-20241022", nil)
 	require.NoError(t, err)
-	require.NotNil(t, account)
+	require.NotNil(t, provider)
 	require.Equal(t, 1, groupRepo.getByIDCalls) // +1 for require_privacy_set check
 	require.Equal(t, 0, groupRepo.getByIDLiteCalls)
 }
@@ -2615,14 +2615,14 @@ func TestGatewayService_GroupResolution_IgnoresInvalidContextGroup(t *testing.T)
 	}
 	ctx = requeststate.WithGroup(ctx, ctxGroup)
 
-	repo := &mockAccountRepoForPlatform{
-		accounts: []gatewayprovider.ExecutionAccount{
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true}},
+	repo := &mockProviderRepoForPlatform{
+		providers: []gatewayprovider.ExecutionProvider{
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true}},
 		},
-		accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+		providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 	}
-	for i := range repo.accounts {
-		repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
+	for i := range repo.providers {
+		repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 	}
 
 	group := &routing.Group{
@@ -2635,11 +2635,11 @@ func TestGatewayService_GroupResolution_IgnoresInvalidContextGroup(t *testing.T)
 		groups: map[int64]*routing.Group{groupID: group},
 	}
 
-	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Accounts: repo, Groups: groupRepo}, Shared: Shared{}}, testConfig())
+	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Providers: repo, Groups: groupRepo}, Shared: Shared{}}, testConfig())
 
-	account, err := svc.SelectAccountForModelWithExclusions(ctx, &groupID, "", "claude-3-5-sonnet-20241022", nil)
+	provider, err := svc.SelectProviderForModelWithExclusions(ctx, &groupID, "", "claude-3-5-sonnet-20241022", nil)
 	require.NoError(t, err)
-	require.NotNil(t, account)
+	require.NotNil(t, provider)
 	require.Equal(t, 1, groupRepo.getByIDCalls) // +1 for require_privacy_set check
 	require.Equal(t, 1, groupRepo.getByIDLiteCalls)
 }
@@ -2689,26 +2689,26 @@ func TestGatewayService_GroupResolution_RejectsImplicitFallback(t *testing.T) {
 	}
 	ctx = requeststate.WithGroup(ctx, group)
 
-	repo := &mockAccountRepoForPlatform{
-		accounts: []gatewayprovider.ExecutionAccount{
-			{Record: accountcore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true}},
+	repo := &mockProviderRepoForPlatform{
+		providers: []gatewayprovider.ExecutionProvider{
+			{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformAnthropic, Priority: 1, Status: billing.StatusActive, Schedulable: true}},
 		},
-		accountsByID: map[int64]*gatewayprovider.ExecutionAccount{},
+		providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 	}
-	for i := range repo.accounts {
-		repo.accountsByID[repo.accounts[i].Record.ID] = &repo.accounts[i]
+	for i := range repo.providers {
+		repo.providersByID[repo.providers[i].Record.ID] = &repo.providers[i]
 	}
 
 	groupRepo := &mockGroupRepoForGateway{
 		groups: map[int64]*routing.Group{fallbackID: fallbackGroup},
 	}
 
-	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Accounts: repo, Groups: groupRepo}, Shared: Shared{}}, testConfig())
+	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{Providers: repo, Groups: groupRepo}, Shared: Shared{}}, testConfig())
 
-	account, err := svc.SelectAccountForModelWithExclusions(ctx, &groupID, "", "claude-3-5-sonnet-20241022", nil)
+	provider, err := svc.SelectProviderForModelWithExclusions(ctx, &groupID, "", "claude-3-5-sonnet-20241022", nil)
 	require.ErrorIs(t, err, routing.ErrClaudeCodeOnly)
-	require.Nil(t, account)
-	// 回退目标还未准入，不读取它的策略或账号池。
+	require.Nil(t, provider)
+	// 回退目标还未准入，不读取它的策略或提供商池。
 	require.Zero(t, groupRepo.getByIDCalls)
 	require.Zero(t, groupRepo.getByIDLiteCalls)
 }

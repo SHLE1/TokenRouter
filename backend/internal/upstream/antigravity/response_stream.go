@@ -30,12 +30,14 @@ type ResponseOptions struct {
 	IsFailover                                                      func(error) bool
 	MarkCommitted                                                   func()
 }
-type ResponseAdapter struct{ Options ResponseOptions }
-type StreamResult struct {
-	Usage            *upstream.TokenUsage
-	FirstTokenMs     *int
-	ClientDisconnect bool // 客户端是否在流式传输过程中断开
-}
+type (
+	ResponseAdapter struct{ Options ResponseOptions }
+	StreamResult    struct {
+		Usage            *upstream.TokenUsage
+		FirstTokenMs     *int
+		ClientDisconnect bool // 客户端是否在流式传输过程中断开
+	}
+)
 
 // ClientWriter 封装流式响应的客户端写入，自动检测断开并标记。
 // 断开后所有写入操作变为 no-op，调用方通过 Disconnected() 判断是否继续 drain 上游。
@@ -87,6 +89,7 @@ func (cw *ClientWriter) prepareFirstWrite() {
 	cw.beforeFirstWrite = nil
 	prepare()
 }
+
 func (cw *ClientWriter) markDisconnected() {
 	cw.disconnected = true
 	logger.LegacyPrintf("service.antigravity_gateway", "Client disconnected during streaming (%s), continuing to drain upstream for billing", cw.prefix)
@@ -105,6 +108,7 @@ func HandleStreamReadError(err error, clientDisconnected bool, prefix string) (d
 	}
 	return false, false
 }
+
 func (s *ResponseAdapter) HandleGeminiStreamingResponse(c *upstream.OutputContext, resp *http.Response, startTime time.Time) (*StreamResult, error) {
 	c.Status(resp.StatusCode)
 	c.Header("Cache-Control", "no-cache")
@@ -468,7 +472,7 @@ returnResponse:
 	// 选择最后一个有效响应
 	finalResponse := bridge.NativePickGeminiCollectResult(last, lastWithParts)
 
-	// 处理空响应情况 — 触发同账号重试 + failover 切换账号
+	// 处理空响应情况 — 触发同提供商重试 + failover 切换提供商
 	if last == nil && lastWithParts == nil {
 		logger.LegacyPrintf("service.antigravity_gateway", "[antigravity-Forward] warning: empty stream response (gemini non-stream), triggering failover")
 		return nil, s.Options.Failover([]byte(`{"error":"empty stream response from upstream"}`))
@@ -787,7 +791,7 @@ func (s *ResponseAdapter) CollectClaudeStreamResponse(resp *http.Response, start
 	}
 
 returnResponse:
-	// 处理空响应情况 — 触发同账号重试 + failover 切换账号
+	// 处理空响应情况 — 触发同提供商重试 + failover 切换提供商
 	if !meaningfulResponse {
 		logger.LegacyPrintf("service.antigravity_gateway", "[antigravity-Forward] warning: empty stream response (claude non-stream), triggering failover")
 		return nil, nil, s.Options.Failover([]byte(`{"error":"empty stream response from upstream"}`))
@@ -983,7 +987,7 @@ func (s *ResponseAdapter) HandleClaudeStreamingResponse(c *upstream.OutputContex
 					cw.Write(finalEvents)
 				} else if !processor.MessageStartSent() && !cw.Disconnected() {
 					// 整个流未收到任何可解析的上游数据（全部 SSE 行均无法被 JSON 解析），
-					// 触发 failover 在同账号重试，避免向客户端发出缺少 message_start 的残缺流
+					// 触发 failover 在同提供商重试，避免向客户端发出缺少 message_start 的残缺流
 					logger.LegacyPrintf("service.antigravity_gateway", "[antigravity-Claude-Stream] empty stream response (no valid events parsed), triggering failover")
 					return nil, s.Options.Failover([]byte(`{"error":"empty stream response from upstream"}`))
 				}
@@ -1044,6 +1048,7 @@ func (s *ResponseAdapter) HandleClaudeStreamingResponse(c *upstream.OutputContex
 		}
 	}
 }
+
 func (s *ResponseAdapter) ExtractImageInputSize(body []byte) string {
 	var req protocolgemini.GeminiRequest
 	if err := json.Unmarshal(body, &req); err != nil {

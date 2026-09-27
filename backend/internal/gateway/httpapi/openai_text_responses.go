@@ -188,7 +188,7 @@ func (h *OpenAITextHandler) Responses(c *gin.Context) {
 		return
 	}
 
-	// 分组映射模型 G 决定生图并发和账号端点能力，客户端模型 R 继续用于日志与会话语义。
+	// 分组映射模型 G 决定生图并发和提供商端点能力，客户端模型 R 继续用于日志与会话语义。
 	// 当前分组和分组映射结果进入独立计划，不改变原解析位置。
 	groupMappingRoutePlan := h.backend.Plan(c.Request.Context(), apiKey, reqModel)
 	groupMapping := groupMappingRoutePlan.Mapping()
@@ -198,9 +198,9 @@ func (h *OpenAITextHandler) Responses(c *gin.Context) {
 	if forwardModel == "" {
 		forwardModel = reqModel
 	}
-	// 权限、并发和账号能力只看显式意图；宽泛意图继续供转发层处理工具与计费。
+	// 权限、并发和提供商能力只看显式意图；宽泛意图继续供转发层处理工具与计费。
 	imageIntent := h.backend.ExplicitImageIntent("/v1/responses", routingModel, forwardBody)
-	// 只有 HTTP Responses 入口会按账号开关进入自动透传，供 upstream 限制计算真实模型。
+	// 只有 HTTP Responses 入口会按提供商开关进入自动透传，供 upstream 限制计算真实模型。
 	selectionCtx := h.backend.PassthroughContext(c.Request.Context())
 	// 错误诊断也必须看到相同入口语义，避免把可透传模型误报为 model_not_found。
 	c.Request = c.Request.WithContext(selectionCtx)
@@ -283,12 +283,12 @@ func (h *OpenAITextHandler) Responses(c *gin.Context) {
 	))
 	requireCompact := legacyCompact
 
-	// 生图意图的 /v1/responses 请求必须调度到确实支持 Responses API 的账号，否则
+	// 生图意图的 /v1/responses 请求必须调度到确实支持 Responses API 的提供商，否则
 	// 会在 forward 阶段被静默降级为无法生图的 Chat Completions 直转（#4417）。
 	// 仅对 OpenAI 平台生效：Grok 生图走独立的 forwardGrokResponses 路径，不应被过滤。
 	// 复用前置权限与并发阶段按分组映射模型 G 和未再修改的 forwardBody 确认的显式生图意图，
 	// 避免大 tools 请求重复扫描。
-	// 该判断已排除 Codex 被动 image_gen namespace，避免 CC-only 账号被误过滤（#4476）。
+	// 该判断已排除 Codex 被动 image_gen namespace，避免 CC-only 提供商被误过滤（#4476）。
 	requiredCapability := textflow.RequiredResponsesCapability(
 		imageIntent,
 		nativeCompactionV2,

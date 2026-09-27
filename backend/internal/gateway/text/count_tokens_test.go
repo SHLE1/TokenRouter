@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/failover"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/stretchr/testify/require"
 )
 
@@ -24,7 +24,7 @@ func (p *countFixture) Select(ids map[int64]struct{}) (Selection, error) {
 	p.selected++
 	_, excluded := ids[1]
 	p.excluded = append(p.excluded, excluded)
-	return Selection{Account: account.AccountSnapshot{ID: int64(p.selected), Platform: "anthropic"}}, nil
+	return Selection{Provider: provider.ProviderSnapshot{ID: int64(p.selected), Platform: "anthropic"}}, nil
 }
 func (p *countFixture) SelectionFailed(error, *AttemptFailure) { p.failed = true }
 func (p *countFixture) Prepare(Selection) bool                 { p.prepared++; return true }
@@ -33,13 +33,17 @@ func (p *countFixture) Forward(Selection) *AttemptFailure {
 	p.outcomes = p.outcomes[1:]
 	return out
 }
-func (p *countFixture) ForwardFailed(Selection, error)                                     { p.failed = true }
-func (p *countFixture) ReleaseSession(Selection)                                           { p.released++ }
-func (p *countFixture) Exhausted(Selection, *AttemptFailure)                               { p.exhausted = true }
+
+func (p *countFixture) ForwardFailed(Selection, error) { p.failed = true }
+
+func (p *countFixture) ReleaseSession(Selection) { p.released++ }
+
+func (p *countFixture) Exhausted(Selection, *AttemptFailure) { p.exhausted = true }
+
 func (p *countFixture) Canceled()                                                          { p.canceled = true }
 func (*countFixture) TempUnscheduleRetryableError(context.Context, int64, *AttemptFailure) {}
 func TestCountTokensAttemptBoundaries(t *testing.T) {
-	t.Run("失败账号排除且每次重新准备", func(t *testing.T) {
+	t.Run("失败提供商排除且每次重新准备", func(t *testing.T) {
 		p := &countFixture{ctx: context.Background(), outcomes: []*AttemptFailure{{Cause: errors.New("retry"), Policy: &failover.FailureInfo{RetryNext: true}}, nil}}
 		RunCountTokens(p, 2, nil)
 		require.Equal(t, 2, p.selected)

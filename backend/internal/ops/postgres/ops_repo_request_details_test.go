@@ -75,7 +75,7 @@ func emptyRequestDetailRows() *sqlmock.Rows {
 		"message",
 		"user_id",
 		"api_key_id",
-		"account_id",
+		"provider_id",
 		"group_id",
 		"stream",
 	})

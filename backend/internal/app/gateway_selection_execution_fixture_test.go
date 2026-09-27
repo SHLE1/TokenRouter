@@ -11,11 +11,11 @@ import (
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
 	gatewaytestkit "github.com/TokenFlux/TokenRouter/internal/gateway/testkit"
 
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
-	"github.com/TokenFlux/TokenRouter/internal/egress/provider"
+	egressadapter "github.com/TokenFlux/TokenRouter/internal/egress/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/promptpolicy"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/selection"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
@@ -23,8 +23,8 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/config"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
@@ -32,23 +32,23 @@ import (
 
 // newOpenAIExecutionAndSelectionFixture 组合真实执行组件与原生选择器，显式共享所有可变状态。
 func newOpenAIExecutionAndSelectionFixture(
-	accountRepo gatewayprovider.ExecutionAccountStore,
+	providerRepo gatewayprovider.ExecutionProviderStore,
 	cache session.GatewayCache,
 	cfg *config.Config,
 	schedulerSnapshot *scheduler.SnapshotService,
 	concurrencyService *scheduler.ConcurrencyService,
 
-	healthObserver *accountprovider.UpstreamHealth,
+	healthObserver *provideradapter.UpstreamHealth,
 	httpUpstream httpclient.UpstreamTransport,
-	tlsFPProfileService *provider.TLSProfiles,
-	deferredService *accountcore.DeferredService,
-	executionCredentials *accountcore.OpenAIExecutionCredentials,
-	grokTokenProvider *accountcore.GrokTokenSource,
+	tlsFPProfileService *egressadapter.TLSProfiles,
+	deferredService *providercore.DeferredService,
+	executionCredentials *providercore.OpenAIExecutionCredentials,
+	grokTokenProvider *providercore.GrokTokenSource,
 	resolver *billing.PriceResolver,
 	pricingConfigService *routing.PricingConfigService,
 
 	settingService *gatewayprovider.RuntimeReaders,
-	prompts *promptpolicy.Service, headerFilter *egress.CompiledHeaderFilter, stateStore session.OpenAIWSStateStore, modelTransient *accountcore.ModelTransientState, proxyCircuit *egress.ProxyStreamCircuit,
+	prompts *promptpolicy.Service, headerFilter *egress.CompiledHeaderFilter, stateStore session.OpenAIWSStateStore, modelTransient *providercore.ModelTransientState, proxyCircuit *egress.ProxyStreamCircuit,
 	tlsFPRouterServices ...*egress.TLSFingerprintRouterService,
 ) (*gatewayExecutionFixture, *selection.Compatible, *gatewayhttp.RequestCredentialExecutor) {
 	if modelTransient ==
@@ -62,15 +62,15 @@ func newOpenAIExecutionAndSelectionFixture(
 	if stateStore == nil {
 		stateStore = session.NewOpenAIWSStateStore(cache, gatewayprovider.LogOpenAIWSModeInfo)
 	}
-	blocks := accountcore.NewRuntimeBlockState(time.Now)
+	blocks := providercore.NewRuntimeBlockState(time.Now)
 	feedback := scheduler.NewRuntimeStats(time.Now)
 	sticky := &scheduler.StickyStats{}
-	var quota *accountcore.QuotaSettingsCache
+	var quota *providercore.QuotaSettingsCache
 	if settingService != nil {
 		quota = settingService.Quota
 	}
 	choices := selection.NewCompatible(selection.CompatibleDependencies{
-		Reads: selection.Reads{Accounts: withSelectionGroupFixture(accountRepo), Snapshot: provideSelectionSnapshots(schedulerSnapshot)},
+		Reads: selection.Reads{Providers: withSelectionGroupFixture(providerRepo), Snapshot: provideSelectionSnapshots(schedulerSnapshot)},
 		Shared: selection.Shared{
 			Cache: cache,
 
@@ -88,23 +88,23 @@ func newOpenAIExecutionAndSelectionFixture(
 		ProxyCircuit: proxyCircuit,
 		StickyStats:  sticky,
 	}, selectionOptions(cfg))
-	credentials := gatewaytestkit.RequestCredentials(accountRepo, executionCredentials, grokTokenProvider, blocks)
+	credentials := gatewaytestkit.RequestCredentials(providerRepo, executionCredentials, grokTokenProvider, blocks)
 	executionCredentials = credentials.Source
 
 	turnHeaders := provideCodexTurnStateHeaders(choices)
-	grokHealth := &accountprovider.GrokHealth{Store: accountRepo, Health: healthObserver, Runtime: blocks, ModelTransient: modelTransient, Throttle: accountcore.NewWriteThrottle(30 * time.Second), NormalizeModel: func(value *accountcore.Record, model string) string {
+	grokHealth := &provideradapter.GrokHealth{Store: providerRepo, Health: healthObserver, Runtime: blocks, ModelTransient: modelTransient, Throttle: providercore.NewWriteThrottle(30 * time.Second), NormalizeModel: func(value *providercore.Record, model string) string {
 		return (gatewayprovider.ModelPolicy{Record: value}).NormalizeOpenAI(model)
 	}}
 	connections := gatewayhttp.NewOpenAIWSConnections(openAIWSPoolOptions(cfg), nil)
-	identity := gatewayprovider.NewExecutionAgentIdentity(&accountcore.OpenAITaskCoordinator{}, accountRepo, nil, connections.InvalidateAccount)
+	identity := gatewayprovider.NewExecutionAgentIdentity(&providercore.OpenAITaskCoordinator{}, providerRepo, nil, connections.InvalidateProvider)
 	output := provideOpenAIResponseOutput(cfg, provideOpenAIResponseHealth(healthObserver, blocks, modelTransient, deferredService), grokHealth, healthObserver, headerFilter, turnHeaders, proxyCircuit, settingService, stateStore, choices, provideReasoningHistory(cache), identity)
 	activity := &gatewayRequestActivity{Operations: lifecycle.NewOperations("GatewayRequestsAndAttempts")}
-	grokExecutor := provideGrokExecutor(cfg, credentials, httpUpstream, output, grokHealth, tlsFPProfileService, settingService, blocks, deferredService, accountRepo, activity, resolver, connections)
+	grokExecutor := provideGrokExecutor(cfg, credentials, httpUpstream, output, grokHealth, tlsFPProfileService, settingService, blocks, deferredService, providerRepo, activity, resolver, connections)
 	var routers *egress.TLSFingerprintRouterService
 	if len(tlsFPRouterServices) > 0 {
 		routers = tlsFPRouterServices[0]
 	}
-	text := openAITextExecution(cfg, accountRepo, identity, executionCredentials, httpUpstream, tlsFPProfileService, routers, settingService, grokExecutor, output, provideAnthropicPromptCache(), choices.OpenAIHTTPResponseStickyTTL, provideCompactExecutor(cfg))
+	text := openAITextExecution(cfg, providerRepo, identity, executionCredentials, httpUpstream, tlsFPProfileService, routers, settingService, grokExecutor, output, provideAnthropicPromptCache(), choices.OpenAIHTTPResponseStickyTTL, provideCompactExecutor(cfg))
 	lineage := provideOpenAIEncryptedLineage(stateStore, choices)
 	imagePolicy := provideOpenAIImageBridgePolicy(cfg)
 	sockets := provideOpenAIWebSockets(cfg, connections, text, prompts, choices, lineage, imagePolicy, cache)
@@ -119,7 +119,7 @@ func newOpenAIExecutionAndSelectionFixture(
 	return source, choices, &gatewayhttp.RequestCredentialExecutor{Runtime: credentials}
 }
 
-// newEmptyCompatibleSelectionFixture 对应原零值执行入口，仍不配置任何账号来源。
+// newEmptyCompatibleSelectionFixture 对应原零值执行入口，仍不配置任何提供商来源。
 func newEmptyCompatibleSelectionFixture() *selection.Compatible {
 	return selection.NewCompatible(selection.CompatibleDependencies{}, selection.DefaultOptions())
 }

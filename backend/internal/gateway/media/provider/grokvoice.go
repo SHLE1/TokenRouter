@@ -13,7 +13,7 @@ import (
 )
 
 type GrokVoiceOptions struct {
-	AccountID                           int64
+	ProviderID                          int64
 	Endpoint, BaseEndpoint, ContentType string
 	Request                             *http.Request `json:"-"`
 	Do                                  func(*http.Request) (*http.Response, error)
@@ -26,7 +26,7 @@ type GrokVoiceOptions struct {
 
 // String 防止技术参数中的令牌或请求被默认日志展开。
 func (o GrokVoiceOptions) String() string {
-	return fmt.Sprintf("media GrokVoice account=%d", o.AccountID)
+	return fmt.Sprintf("media GrokVoice provider=%d", o.ProviderID)
 }
 func (o GrokVoiceOptions) GoString() string { return o.String() }
 
@@ -35,7 +35,7 @@ type GrokVoice struct{ Options GrokVoiceOptions }
 func (e GrokVoice) Execute(ctx context.Context, input upstream.AttemptInput, sink upstream.OutputSink) (upstream.AttemptResult, error) {
 	o := e.Options
 	target := &grok.VoiceTarget{
-		AccountID:      o.AccountID,
+		ProviderID:     o.ProviderID,
 		Endpoint:       o.Endpoint,
 		BaseEndpoint:   o.BaseEndpoint,
 		ContentType:    o.ContentType,

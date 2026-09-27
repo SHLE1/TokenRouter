@@ -7,25 +7,25 @@ import (
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway/forward"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 
 	"github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
 )
 
 // streamOptions 保留响应窗口观察和逐事件缓存规则读取，不复制流解析状态。
-func (r *Runtime) streamOptions(output HTTPBoundary, state *AttemptState, target *provider.ExecutionAccount) anthropic.StreamOptions {
+func (r *Runtime) streamOptions(output HTTPBoundary, state *AttemptState, target *gatewayadapter.ExecutionProvider) anthropic.StreamOptions {
 	options := anthropic.StreamOptions{
-		AccountID: target.Record.ID,
-		ToolNames: state.ToolNames,
+		ProviderID: target.Record.ID,
+		ToolNames:  state.ToolNames,
 		UpdateWindow: func(ctx context.Context, headers http.Header) {
-			provider.ObserveExecutionSessionWindow(ctx, r.dependencies.Health, target, headers)
+			gatewayadapter.ObserveExecutionSessionWindow(ctx, r.dependencies.Health, target, headers)
 		},
 		OverrideCache: func(ctx context.Context) (string, bool) {
 			return r.cacheUsageOverride(ctx, target)
 		},
 		Failover: func(body []byte) error {
-			return &forward.UpstreamFailoverError{StatusCode: 502, ResponseBody: body, RetryableOnSameAccount: true}
+			return &forward.UpstreamFailoverError{StatusCode: 502, ResponseBody: body, RetryableOnSameProvider: true}
 		},
 	}
 	if output.RequestPresent() {
@@ -43,13 +43,13 @@ func (r *Runtime) streamOptions(output HTTPBoundary, state *AttemptState, target
 	}
 	if r.dependencies.Health != nil {
 		options.OnTimeout = func(ctx context.Context, model string) {
-			r.dependencies.Health.Core.HandleStreamTimeout(ctx, provider.ExecutionRecord(target), model)
+			r.dependencies.Health.Core.HandleStreamTimeout(ctx, gatewayadapter.ExecutionRecord(target), model)
 		}
 	}
 	return options
 }
 
-func (r *Runtime) responseOptions(ctx context.Context, output HTTPBoundary, state *AttemptState, target *provider.ExecutionAccount, model string, passthrough bool) anthropic.ResponseOptions {
+func (r *Runtime) responseOptions(ctx context.Context, output HTTPBoundary, state *AttemptState, target *gatewayadapter.ExecutionProvider, model string, passthrough bool) anthropic.ResponseOptions {
 	options := anthropic.ResponseOptions{
 		StreamOptions: r.streamOptions(output, state, target),
 		ReadBody: func(reader io.Reader) ([]byte, error) {
@@ -63,7 +63,7 @@ func (r *Runtime) responseOptions(ctx context.Context, output HTTPBoundary, stat
 		if !passthrough {
 			models = []string{model}
 		}
-		return provider.NonJSONUpstreamFailure(ctx, r.dependencies.Health, response, target, body, err, models...)
+		return gatewayadapter.NonJSONUpstreamFailure(ctx, r.dependencies.Health, response, target, body, err, models...)
 	}
 	options.WriteHeaders = func(dst, src http.Header) { output.WriteHeaders(dst, src, passthrough) }
 	if passthrough && r.dependencies.Health == nil {

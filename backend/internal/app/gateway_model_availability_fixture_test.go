@@ -8,8 +8,8 @@ import (
 )
 
 // newExecutionAvailabilityForTest 显式传递同一测试仓储和分组策略，不从执行服务反查依赖。
-func newExecutionAvailabilityForTest(store gatewayprovider.ExecutionAccountStore, modelConfigs *routing.PricingConfigService, cfg *config.Config) *gatewayModelAvailability {
-	var source gatewayprovider.AvailabilityAccounts
+func newExecutionAvailabilityForTest(store gatewayprovider.ExecutionProviderStore, modelConfigs *routing.PricingConfigService, cfg *config.Config) *gatewayModelAvailability {
+	var source gatewayprovider.AvailabilityProviders
 	if store != nil {
 		source = gatewaytestkit.AvailabilityStore{Source: store}
 	}

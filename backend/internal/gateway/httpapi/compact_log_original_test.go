@@ -123,7 +123,6 @@ func TestIsOpenAILegacyCompactPath(t *testing.T) {
 }
 
 func TestLogOpenAIRemoteCompactOutcome_Succeeded(t *testing.T) {
-
 	logSink, restore := captureHandlerStructuredLog(t)
 	defer restore()
 
@@ -132,7 +131,7 @@ func TestLogOpenAIRemoteCompactOutcome_Succeeded(t *testing.T) {
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses/compact", nil)
 	c.Request.Header.Set("User-Agent", "codex_cli_rs/0.125.0")
 	c.Set(OpsModelKey, "gpt-5.3-codex")
-	c.Set(OpsAccountIDKey, int64(123))
+	c.Set(OpsProviderIDKey, int64(123))
 	c.Header("x-request-id", "rid-compact-ok")
 	c.Status(http.StatusOK)
 
@@ -144,12 +143,11 @@ func TestLogOpenAIRemoteCompactOutcome_Succeeded(t *testing.T) {
 	require.True(t, logSink.ContainsFieldValue("status_code", "200"))
 	require.True(t, logSink.ContainsFieldValue("path", "/v1/responses/compact"))
 	require.True(t, logSink.ContainsFieldValue("request_model", "gpt-5.3-codex"))
-	require.True(t, logSink.ContainsFieldValue("account_id", "123"))
+	require.True(t, logSink.ContainsFieldValue("provider_id", "123"))
 	require.True(t, logSink.ContainsFieldValue("upstream_request_id", "rid-compact-ok"))
 }
 
 func TestLogOpenAIRemoteCompactOutcome_Failed(t *testing.T) {
-
 	logSink, restore := captureHandlerStructuredLog(t)
 	defer restore()
 
@@ -169,7 +167,6 @@ func TestLogOpenAIRemoteCompactOutcome_Failed(t *testing.T) {
 }
 
 func TestLogOpenAIRemoteCompactOutcome_NonCompactSkips(t *testing.T) {
-
 	logSink, restore := captureHandlerStructuredLog(t)
 	defer restore()
 

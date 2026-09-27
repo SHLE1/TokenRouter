@@ -8,8 +8,8 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
-// BasicAccount 仅包含原基础排序使用的身份与观测；候选不能读取执行凭据。
-type BasicAccount struct {
+// BasicProvider 仅包含原基础排序使用的身份与观测；候选不能读取执行凭据。
+type BasicProvider struct {
 	ID               int64
 	Type             string
 	Priority         int
@@ -17,41 +17,41 @@ type BasicAccount struct {
 	SessionWindowEnd *time.Time
 }
 type BasicCandidate struct {
-	Account *BasicAccount
-	Load    *AccountLoadInfo
+	Provider *BasicProvider
+	Load     *ProviderLoadInfo
 }
 
-func FilterByMinPriority(accounts []BasicCandidate) []BasicCandidate {
-	if len(accounts) == 0 {
-		return accounts
+func FilterByMinPriority(providers []BasicCandidate) []BasicCandidate {
+	if len(providers) == 0 {
+		return providers
 	}
-	minPriority := accounts[0].Account.Priority
-	for _, acc := range accounts[1:] {
-		if acc.Account.Priority < minPriority {
-			minPriority = acc.Account.Priority
+	minPriority := providers[0].Provider.Priority
+	for _, acc := range providers[1:] {
+		if acc.Provider.Priority < minPriority {
+			minPriority = acc.Provider.Priority
 		}
 	}
-	result := make([]BasicCandidate, 0, len(accounts))
-	for _, acc := range accounts {
-		if acc.Account.Priority == minPriority {
+	result := make([]BasicCandidate, 0, len(providers))
+	for _, acc := range providers {
+		if acc.Provider.Priority == minPriority {
 			result = append(result, acc)
 		}
 	}
 	return result
 }
 
-func FilterByMinLoadRate(accounts []BasicCandidate) []BasicCandidate {
-	if len(accounts) == 0 {
-		return accounts
+func FilterByMinLoadRate(providers []BasicCandidate) []BasicCandidate {
+	if len(providers) == 0 {
+		return providers
 	}
-	minLoadRate := accounts[0].Load.LoadRate
-	for _, acc := range accounts[1:] {
+	minLoadRate := providers[0].Load.LoadRate
+	for _, acc := range providers[1:] {
 		if acc.Load.LoadRate < minLoadRate {
 			minLoadRate = acc.Load.LoadRate
 		}
 	}
-	result := make([]BasicCandidate, 0, len(accounts))
-	for _, acc := range accounts {
+	result := make([]BasicCandidate, 0, len(providers))
+	for _, acc := range providers {
 		if acc.Load.LoadRate == minLoadRate {
 			result = append(result, acc)
 		}
@@ -59,14 +59,14 @@ func FilterByMinLoadRate(accounts []BasicCandidate) []BasicCandidate {
 	return result
 }
 
-func FilterBySoonestReset(accounts []BasicCandidate, now func() time.Time) []BasicCandidate {
-	if len(accounts) <= 1 {
-		return accounts
+func FilterBySoonestReset(providers []BasicCandidate, now func() time.Time) []BasicCandidate {
+	if len(providers) <= 1 {
+		return providers
 	}
 	instant := now()
 	var minEnd *time.Time
-	for _, acc := range accounts {
-		end := acc.Account.SessionWindowEnd
+	for _, acc := range providers {
+		end := acc.Provider.SessionWindowEnd
 		if end == nil || !instant.Before(*end) {
 			continue
 		}
@@ -75,12 +75,12 @@ func FilterBySoonestReset(accounts []BasicCandidate, now func() time.Time) []Bas
 		}
 	}
 	if minEnd == nil {
-		// 没有任何账号拥有活跃窗口，保持原集合
-		return accounts
+		// 没有任何提供商拥有活跃窗口，保持原集合
+		return providers
 	}
-	result := make([]BasicCandidate, 0, len(accounts))
-	for _, acc := range accounts {
-		end := acc.Account.SessionWindowEnd
+	result := make([]BasicCandidate, 0, len(providers))
+	for _, acc := range providers {
+		end := acc.Provider.SessionWindowEnd
 		if end != nil && instant.Before(*end) && end.Equal(*minEnd) {
 			result = append(result, acc)
 		}
@@ -88,36 +88,36 @@ func FilterBySoonestReset(accounts []BasicCandidate, now func() time.Time) []Bas
 	return result
 }
 
-func SelectByLRU(accounts []BasicCandidate, preferOAuth bool) *BasicCandidate {
-	if len(accounts) == 0 {
+func SelectByLRU(providers []BasicCandidate, preferOAuth bool) *BasicCandidate {
+	if len(providers) == 0 {
 		return nil
 	}
-	if len(accounts) == 1 {
-		return &accounts[0]
+	if len(providers) == 1 {
+		return &providers[0]
 	}
 
 	// 1. 找到最小的 LastUsedAt（nil 被视为最小）
 	var minTime *time.Time
 	hasNil := false
-	for _, acc := range accounts {
-		if acc.Account.LastUsedAt == nil {
+	for _, acc := range providers {
+		if acc.Provider.LastUsedAt == nil {
 			hasNil = true
 			break
 		}
-		if minTime == nil || acc.Account.LastUsedAt.Before(*minTime) {
-			minTime = acc.Account.LastUsedAt
+		if minTime == nil || acc.Provider.LastUsedAt.Before(*minTime) {
+			minTime = acc.Provider.LastUsedAt
 		}
 	}
 
-	// 2. 收集所有具有最小 LastUsedAt 的账号索引
+	// 2. 收集所有具有最小 LastUsedAt 的提供商索引
 	var candidateIdxs []int
-	for i, acc := range accounts {
+	for i, acc := range providers {
 		if hasNil {
-			if acc.Account.LastUsedAt == nil {
+			if acc.Provider.LastUsedAt == nil {
 				candidateIdxs = append(candidateIdxs, i)
 			}
 		} else {
-			if acc.Account.LastUsedAt != nil && acc.Account.LastUsedAt.Equal(*minTime) {
+			if acc.Provider.LastUsedAt != nil && acc.Provider.LastUsedAt.Equal(*minTime) {
 				candidateIdxs = append(candidateIdxs, i)
 			}
 		}
@@ -125,14 +125,14 @@ func SelectByLRU(accounts []BasicCandidate, preferOAuth bool) *BasicCandidate {
 
 	// 3. 如果只有一个候选，直接返回
 	if len(candidateIdxs) == 1 {
-		return &accounts[candidateIdxs[0]]
+		return &providers[candidateIdxs[0]]
 	}
 
 	// 4. 如果有多个候选且 preferOAuth，优先选择 OAuth 类型
 	if preferOAuth {
 		var oauthIdxs []int
 		for _, idx := range candidateIdxs {
-			if accounts[idx].Account.Type == capability.AccountTypeOAuth {
+			if providers[idx].Provider.Type == capability.ProviderTypeOAuth {
 				oauthIdxs = append(oauthIdxs, idx)
 			}
 		}
@@ -143,12 +143,12 @@ func SelectByLRU(accounts []BasicCandidate, preferOAuth bool) *BasicCandidate {
 
 	// 5. 随机选择一个
 	selectedIdx := candidateIdxs[mathrand.Intn(len(candidateIdxs))]
-	return &accounts[selectedIdx]
+	return &providers[selectedIdx]
 }
 
-func SortAccountsByPriorityAndLastUsed(accounts []*BasicAccount, preferOAuth bool) {
-	sort.SliceStable(accounts, func(i, j int) bool {
-		a, b := accounts[i], accounts[j]
+func SortProvidersByPriorityAndLastUsed(providers []*BasicProvider, preferOAuth bool) {
+	sort.SliceStable(providers, func(i, j int) bool {
+		a, b := providers[i], providers[j]
 		if a.Priority != b.Priority {
 			return a.Priority < b.Priority
 		}
@@ -159,61 +159,61 @@ func SortAccountsByPriorityAndLastUsed(accounts []*BasicAccount, preferOAuth boo
 			return false
 		case a.LastUsedAt == nil && b.LastUsedAt == nil:
 			if preferOAuth && a.Type != b.Type {
-				return a.Type == capability.AccountTypeOAuth
+				return a.Type == capability.ProviderTypeOAuth
 			}
 			return false
 		default:
 			return a.LastUsedAt.Before(*b.LastUsedAt)
 		}
 	})
-	ShuffleWithinPriorityAndLastUsed(accounts, preferOAuth)
+	ShuffleWithinPriorityAndLastUsed(providers, preferOAuth)
 }
 
-func ShuffleWithinSortGroups(accounts []BasicCandidate) {
-	if len(accounts) <= 1 {
+func ShuffleWithinSortGroups(providers []BasicCandidate) {
+	if len(providers) <= 1 {
 		return
 	}
 	i := 0
-	for i < len(accounts) {
+	for i < len(providers) {
 		j := i + 1
-		for j < len(accounts) && SameAccountWithLoadGroup(accounts[i], accounts[j]) {
+		for j < len(providers) && SameProviderWithLoadGroup(providers[i], providers[j]) {
 			j++
 		}
 		if j-i > 1 {
 			mathrand.Shuffle(j-i, func(a, b int) {
-				accounts[i+a], accounts[i+b] = accounts[i+b], accounts[i+a]
+				providers[i+a], providers[i+b] = providers[i+b], providers[i+a]
 			})
 		}
 		i = j
 	}
 }
 
-func SameAccountWithLoadGroup(a, b BasicCandidate) bool {
-	if a.Account.Priority != b.Account.Priority {
+func SameProviderWithLoadGroup(a, b BasicCandidate) bool {
+	if a.Provider.Priority != b.Provider.Priority {
 		return false
 	}
 	if a.Load.LoadRate != b.Load.LoadRate {
 		return false
 	}
-	return SameLastUsedAt(a.Account.LastUsedAt, b.Account.LastUsedAt)
+	return SameLastUsedAt(a.Provider.LastUsedAt, b.Provider.LastUsedAt)
 }
 
-func ShuffleWithinPriorityAndLastUsed(accounts []*BasicAccount, preferOAuth bool) {
-	if len(accounts) <= 1 {
+func ShuffleWithinPriorityAndLastUsed(providers []*BasicProvider, preferOAuth bool) {
+	if len(providers) <= 1 {
 		return
 	}
 	i := 0
-	for i < len(accounts) {
+	for i < len(providers) {
 		j := i + 1
-		for j < len(accounts) && SameAccountGroup(accounts[i], accounts[j]) {
+		for j < len(providers) && SameProviderGroup(providers[i], providers[j]) {
 			j++
 		}
 		if j-i > 1 {
 			if preferOAuth {
-				oauth := make([]*BasicAccount, 0, j-i)
-				others := make([]*BasicAccount, 0, j-i)
-				for _, acc := range accounts[i:j] {
-					if acc.Type == capability.AccountTypeOAuth {
+				oauth := make([]*BasicProvider, 0, j-i)
+				others := make([]*BasicProvider, 0, j-i)
+				for _, acc := range providers[i:j] {
+					if acc.Type == capability.ProviderTypeOAuth {
 						oauth = append(oauth, acc)
 					} else {
 						others = append(others, acc)
@@ -225,11 +225,11 @@ func ShuffleWithinPriorityAndLastUsed(accounts []*BasicAccount, preferOAuth bool
 				if len(others) > 1 {
 					mathrand.Shuffle(len(others), func(a, b int) { others[a], others[b] = others[b], others[a] })
 				}
-				copy(accounts[i:], oauth)
-				copy(accounts[i+len(oauth):], others)
+				copy(providers[i:], oauth)
+				copy(providers[i+len(oauth):], others)
 			} else {
 				mathrand.Shuffle(j-i, func(a, b int) {
-					accounts[i+a], accounts[i+b] = accounts[i+b], accounts[i+a]
+					providers[i+a], providers[i+b] = providers[i+b], providers[i+a]
 				})
 			}
 		}
@@ -237,7 +237,7 @@ func ShuffleWithinPriorityAndLastUsed(accounts []*BasicAccount, preferOAuth bool
 	}
 }
 
-func SameAccountGroup(a, b *BasicAccount) bool {
+func SameProviderGroup(a, b *BasicProvider) bool {
 	if a.Priority != b.Priority {
 		return false
 	}
@@ -255,35 +255,35 @@ func SameLastUsedAt(a, b *time.Time) bool {
 	}
 }
 
-func SortAccountsByPriorityOnly(accounts []*BasicAccount, preferOAuth bool) {
-	sort.SliceStable(accounts, func(i, j int) bool {
-		a, b := accounts[i], accounts[j]
+func SortProvidersByPriorityOnly(providers []*BasicProvider, preferOAuth bool) {
+	sort.SliceStable(providers, func(i, j int) bool {
+		a, b := providers[i], providers[j]
 		if a.Priority != b.Priority {
 			return a.Priority < b.Priority
 		}
 		if preferOAuth && a.Type != b.Type {
-			return a.Type == capability.AccountTypeOAuth
+			return a.Type == capability.ProviderTypeOAuth
 		}
 		return false
 	})
 }
 
-func ShuffleWithinPriority(accounts []*BasicAccount, now func() time.Time) {
-	if len(accounts) <= 1 {
+func ShuffleWithinPriority(providers []*BasicProvider, now func() time.Time) {
+	if len(providers) <= 1 {
 		return
 	}
 	r := mathrand.New(mathrand.NewSource(now().UnixNano()))
 	start := 0
-	for start < len(accounts) {
-		priority := accounts[start].Priority
+	for start < len(providers) {
+		priority := providers[start].Priority
 		end := start + 1
-		for end < len(accounts) && accounts[end].Priority == priority {
+		for end < len(providers) && providers[end].Priority == priority {
 			end++
 		}
-		// 对 [start, end) 范围内的账户随机打乱
+		// 对 [start, end) 范围内的提供商随机打乱
 		if end-start > 1 {
 			r.Shuffle(end-start, func(i, j int) {
-				accounts[start+i], accounts[start+j] = accounts[start+j], accounts[start+i]
+				providers[start+i], providers[start+j] = providers[start+j], providers[start+i]
 			})
 		}
 		start = end

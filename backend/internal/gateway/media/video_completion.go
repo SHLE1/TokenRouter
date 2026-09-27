@@ -10,7 +10,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// VideoCompletion 只包含完成计费所需观测，不携带账号或用户实体。
+// VideoCompletion 只包含完成计费所需观测，不携带提供商或用户实体。
 type VideoCompletion struct {
 	RequestID, ResponseID, Model, BillingModel, UpstreamModel, VideoResolution string
 	ImageCount, VideoCount, VideoDurationSeconds                               int
@@ -19,7 +19,7 @@ type VideoCompletion struct {
 
 // VideoNotice 由入口按原日志级别与字段记录；核心不安装日志后端。
 type VideoNotice struct {
-	AccountID       int64
+	ProviderID      int64
 	Kind            string
 	TaskID          string
 	DurationSeconds int
@@ -32,6 +32,7 @@ func videoNotice(o VideoObserver, n VideoNotice) {
 		o.ObserveVideo(n)
 	}
 }
+
 func firstNonEmpty(values ...string) string {
 	for _, v := range values {
 		if s := strings.TrimSpace(v); s != "" {
@@ -194,7 +195,6 @@ func ExtractGrokVideoBillingFromStatusBody(statusBody []byte, pending *GrokVideo
 		responseID = strings.TrimSpace(requestID)
 	}
 	return &VideoCompletion{
-
 		ResponseID: responseID,
 
 		Model: model,

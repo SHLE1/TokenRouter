@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/grok"
 	"github.com/stretchr/testify/require"
@@ -80,23 +80,25 @@ func TestClassifyGrokUpstreamFailure_GrokSubscriptionRequiredIsBilling(t *testin
 	require.True(t, d.ShouldCooldown)
 }
 
-func TestGrokRetryableOnSameAccount_CapacityAndRateLimit(t *testing.T) {
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 9105, Platform: capability.PlatformGrok, Type: capability.AccountTypeOAuth}}
-	require.True(t, gatewayprovider.GrokRetryableOnSameAccount(account, http.StatusTooManyRequests,
+func TestGrokRetryableOnSameProvider_CapacityAndRateLimit(t *testing.T) {
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 9105, Platform: capability.PlatformGrok, Type: capability.ProviderTypeOAuth}}
+	require.True(t, gatewayprovider.GrokRetryableOnSameProvider(provider, http.StatusTooManyRequests,
 		[]byte(`{"error":{"message":"The model is currently at capacity due to high demand"}}`)))
-	require.False(t, gatewayprovider.GrokRetryableOnSameAccount(account, http.StatusTooManyRequests,
+	require.False(t, gatewayprovider.GrokRetryableOnSameProvider(provider, http.StatusTooManyRequests,
 		[]byte(`{"error":{"message":"rate limit exceeded"}}`)))
-	require.False(t, gatewayprovider.GrokRetryableOnSameAccount(account, http.StatusPaymentRequired,
+	require.False(t, gatewayprovider.GrokRetryableOnSameProvider(provider, http.StatusPaymentRequired,
 		[]byte(`{"error":{"message":"You have run out of credits or need a Grok subscription"}}`)))
-	poolAccount := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 9108, Platform: capability.PlatformGrok, Type: capability.AccountTypeOAuth,
-		Credentials: map[string]any{"pool_mode": true}}}
-	require.False(t, gatewayprovider.GrokRetryableOnSameAccount(poolAccount, http.StatusTooManyRequests,
+	poolProvider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{
+		LoadLocation: time.LoadLocation, ID: 9108, Platform: capability.PlatformGrok, Type: capability.ProviderTypeOAuth,
+		Credentials: map[string]any{"pool_mode": true},
+	}}
+	require.False(t, gatewayprovider.GrokRetryableOnSameProvider(poolProvider, http.StatusTooManyRequests,
 		[]byte(`{"error":{"code":"subscription:free-usage-exhausted"}}`)),
-		"pool free-usage must fail over instead of retrying the exhausted account")
-	require.False(t, gatewayprovider.GrokRetryableOnSameAccount(account, http.StatusBadRequest,
+		"pool free-usage must fail over instead of retrying the exhausted provider")
+	require.False(t, gatewayprovider.GrokRetryableOnSameProvider(provider, http.StatusBadRequest,
 		[]byte(`{"error":{"message":"capacity field is invalid"}}`)))
-	nonGrok := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 9106, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth}}
-	require.False(t, gatewayprovider.GrokRetryableOnSameAccount(nonGrok, http.StatusTooManyRequests,
+	nonGrok := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 9106, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}}
+	require.False(t, gatewayprovider.GrokRetryableOnSameProvider(nonGrok, http.StatusTooManyRequests,
 		[]byte(`{"error":{"message":"model at capacity"}}`)))
 }
 
@@ -111,16 +113,16 @@ func TestShouldMarkGrokTeamModelRateLimit_ExcludesCapacity(t *testing.T) {
 		[]byte(`{"error":{"message":"invalid request"}}`)))
 }
 
-func TestGrokSameAccountRetryMetadata_CapacityDeadline(t *testing.T) {
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 9107, Platform: capability.PlatformGrok, Type: capability.AccountTypeOAuth}}
-	retryable, delay, deadline, retryMax := gatewayprovider.GrokSameAccountRetryMetadata(account, http.StatusTooManyRequests,
+func TestGrokSameProviderRetryMetadata_CapacityDeadline(t *testing.T) {
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 9107, Platform: capability.PlatformGrok, Type: capability.ProviderTypeOAuth}}
+	retryable, delay, deadline, retryMax := gatewayprovider.GrokSameProviderRetryMetadata(provider, http.StatusTooManyRequests,
 		[]byte(`{"error":{"message":"model capacity exceeded"}}`))
 	require.True(t, retryable)
 	require.Equal(t, 500*time.Millisecond, delay)
 	require.WithinDuration(t, time.Now().Add(30*time.Second), deadline, 2*time.Second)
 	require.Equal(t, 1, retryMax)
 
-	retryable, delay, deadline, retryMax = gatewayprovider.GrokSameAccountRetryMetadata(account, http.StatusTooManyRequests,
+	retryable, delay, deadline, retryMax = gatewayprovider.GrokSameProviderRetryMetadata(provider, http.StatusTooManyRequests,
 		[]byte(`{"error":{"message":"rate limit exceeded"}}`))
 	require.False(t, retryable)
 	require.Zero(t, delay)
@@ -173,19 +175,16 @@ func TestClassifyGrokUpstreamFailure_GenericShapeErrorDoesNotFailover(t *testing
 }
 
 func TestShouldFailoverGrokUpstreamError_FreeUsageBody(t *testing.T) {
-
 	body := []byte(`{"error":{"code":"subscription:free-usage-exhausted","message":"free usage exhausted"}}`)
 	require.True(t, gatewayprovider.ShouldFailoverGrokResponse(http.StatusBadRequest, body))
 }
 
 func TestShouldFailoverGrokUpstreamError_CompatibilityBody(t *testing.T) {
-
 	body := []byte(`{"error":{"message":"Could not decode the compaction blob"}}`)
 	require.True(t, gatewayprovider.ShouldFailoverGrokResponse(http.StatusUnprocessableEntity, body))
 }
 
 func TestShouldFailoverGrokUpstreamError_ContentPolicyStillNoFailover(t *testing.T) {
-
 	body := []byte(`{"error":{"code":"new_sensitive","message":"text is sensitive"}}`)
 	require.False(t, gatewayprovider.ShouldFailoverGrokResponse(http.StatusForbidden, body))
 }

@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
@@ -20,7 +20,6 @@ import (
 )
 
 func TestOpenAIGatewayService_Forward_CompactOnlyModelMappingOverridesOAuthUpstreamModel(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	body := []byte(`{"model":"gpt-5.4","stream":false,"instructions":"compact-test","input":"hello"}`)
@@ -34,22 +33,25 @@ func TestOpenAIGatewayService_Forward_CompactOnlyModelMappingOverridesOAuthUpstr
 	}}
 
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1,
-		Name:        "openai-oauth",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeOAuth,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"access_token":          "oauth-token",
-			"chatgpt_account_id":    "chatgpt-acc",
-			"model_mapping":         map[string]any{"gpt-5.4": "gpt-5.3-codex"},
-			"compact_model_mapping": map[string]any{"gpt-5.4": "gpt-5.4-openai-compact"},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1,
+			Name:        "openai-oauth",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeOAuth,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"access_token":          "oauth-token",
+				"chatgpt_account_id":    "chatgpt-acc",
+				"model_mapping":         map[string]any{"gpt-5.4": "gpt-5.3-codex"},
+				"compact_model_mapping": map[string]any{"gpt-5.4": "gpt-5.4-openai-compact"},
+			},
+			Status:      billing.StatusActive,
+			Schedulable: true,
 		},
-		Status:      billing.StatusActive,
-		Schedulable: true},
 	}
 
-	result, err := svc.Forward(context.Background(), c, account, body)
+	result, err := svc.Forward(context.Background(), c, provider, body)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, "gpt-5.4", result.Model)
@@ -61,7 +63,6 @@ func TestOpenAIGatewayService_Forward_CompactOnlyModelMappingOverridesOAuthUpstr
 }
 
 func TestOpenAIGatewayService_Forward_APIKeyCompactSanitizesStatelessReplayAfterStoreWasDropped(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	body := []byte(`{"model":"gpt-5.5","parallel_tool_calls":true,"input":[` +
@@ -80,11 +81,14 @@ func TestOpenAIGatewayService_Forward_APIKeyCompactSanitizesStatelessReplayAfter
 		)),
 	}}
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 7, Name: "azure-openai", Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey,
-		Credentials: map[string]any{"api_key": "test-key"}, Status: billing.StatusActive, Schedulable: true},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 7, Name: "azure-openai", Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey,
+			Credentials: map[string]any{"api_key": "test-key"}, Status: billing.StatusActive, Schedulable: true,
+		},
 	}
 
-	result, err := svc.Forward(context.Background(), c, account, body)
+	result, err := svc.Forward(context.Background(), c, provider, body)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -94,7 +98,6 @@ func TestOpenAIGatewayService_Forward_APIKeyCompactSanitizesStatelessReplayAfter
 }
 
 func TestOpenAIGatewayService_Forward_NormalizesCompactionTriggerAfterHistoryCleanup(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	body := []byte(`{"model":"gpt-5.4","stream":false,"input":[{"type":"compaction_trigger"},{"type":"function_call","call_id":"call_1","name":"lookup","arguments":"{}"},{"type":"function_call_output","call_id":"call_1","output":"ok"},{"type":"message","role":"user","content":"visible"}]}`)
@@ -107,12 +110,15 @@ func TestOpenAIGatewayService_Forward_NormalizesCompactionTriggerAfterHistoryCle
 		Body:       io.NopCloser(strings.NewReader(`{"id":"resp_trigger","status":"completed","output":[],"usage":{"input_tokens":1,"output_tokens":1}}`)),
 	}}
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 4, Name: "openai-oauth", Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth, Concurrency: 1,
-		Credentials: map[string]any{"access_token": "oauth-token", "chatgpt_account_id": "chatgpt-acc"},
-		Status:      billing.StatusActive, Schedulable: true},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 4, Name: "openai-oauth", Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth, Concurrency: 1,
+			Credentials: map[string]any{"access_token": "oauth-token", "chatgpt_account_id": "chatgpt-acc"},
+			Status:      billing.StatusActive, Schedulable: true,
+		},
 	}
 
-	result, err := svc.Forward(context.Background(), c, account, body)
+	result, err := svc.Forward(context.Background(), c, provider, body)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	items := gjson.GetBytes(upstream.lastBody, "input").Array()
@@ -124,7 +130,6 @@ func TestOpenAIGatewayService_Forward_NormalizesCompactionTriggerAfterHistoryCle
 }
 
 func TestOpenAIGatewayService_Forward_NonCompactRequestIgnoresCompactOnlyModelMapping(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	body := []byte(`{"model":"gpt-5.4","stream":false,"instructions":"normal-test","input":"hello"}`)
@@ -138,21 +143,24 @@ func TestOpenAIGatewayService_Forward_NonCompactRequestIgnoresCompactOnlyModelMa
 	}}
 
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 2,
-		Name:        "openai-oauth",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeOAuth,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"access_token":          "oauth-token",
-			"chatgpt_account_id":    "chatgpt-acc",
-			"compact_model_mapping": map[string]any{"gpt-5.4": "gpt-5.4-openai-compact"},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 2,
+			Name:        "openai-oauth",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeOAuth,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"access_token":          "oauth-token",
+				"chatgpt_account_id":    "chatgpt-acc",
+				"compact_model_mapping": map[string]any{"gpt-5.4": "gpt-5.4-openai-compact"},
+			},
+			Status:      billing.StatusActive,
+			Schedulable: true,
 		},
-		Status:      billing.StatusActive,
-		Schedulable: true},
 	}
 
-	result, err := svc.Forward(context.Background(), c, account, body)
+	result, err := svc.Forward(context.Background(), c, provider, body)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, "gpt-5.4", result.Model)
@@ -161,7 +169,6 @@ func TestOpenAIGatewayService_Forward_NonCompactRequestIgnoresCompactOnlyModelMa
 }
 
 func TestOpenAIGatewayService_OAuthPassthrough_CompactOnlyModelMappingOverridesUpstreamModel(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses/compact", bytes.NewReader(nil))
@@ -176,22 +183,25 @@ func TestOpenAIGatewayService_OAuthPassthrough_CompactOnlyModelMappingOverridesU
 	}}
 
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 3,
-		Name:        "openai-oauth-pass",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeOAuth,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"access_token":          "oauth-token",
-			"chatgpt_account_id":    "chatgpt-acc",
-			"compact_model_mapping": map[string]any{"gpt-5.4": "gpt-5.4-openai-compact"},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 3,
+			Name:        "openai-oauth-pass",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeOAuth,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"access_token":          "oauth-token",
+				"chatgpt_account_id":    "chatgpt-acc",
+				"compact_model_mapping": map[string]any{"gpt-5.4": "gpt-5.4-openai-compact"},
+			},
+			Extra:       map[string]any{"openai_passthrough": true},
+			Status:      billing.StatusActive,
+			Schedulable: true,
 		},
-		Extra:       map[string]any{"openai_passthrough": true},
-		Status:      billing.StatusActive,
-		Schedulable: true},
 	}
 
-	result, err := svc.Forward(context.Background(), c, account, originalBody)
+	result, err := svc.Forward(context.Background(), c, provider, originalBody)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, "gpt-5.4", result.Model)

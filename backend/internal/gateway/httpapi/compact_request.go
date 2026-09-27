@@ -135,9 +135,9 @@ func (h *OpenAITextHandler) LogRemoteCompactOutcome(c *gin.Context, startedAt ti
 				fields = append(fields, zap.String("request_model", strings.TrimSpace(model)))
 			}
 		}
-		if v, ok := c.Get(OpsAccountIDKey); ok {
-			if accountID, ok := v.(int64); ok && accountID > 0 {
-				fields = append(fields, zap.Int64("account_id", accountID))
+		if v, ok := c.Get(OpsProviderIDKey); ok {
+			if providerID, ok := v.(int64); ok && providerID > 0 {
+				fields = append(fields, zap.Int64("provider_id", providerID))
 			}
 		}
 		if c.Writer != nil {

@@ -5,19 +5,19 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/config"
 	"github.com/TokenFlux/TokenRouter/internal/creative"
 	creativeprovider "github.com/TokenFlux/TokenRouter/internal/creative/provider"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/selection"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
 )
 
-// creativeExecutionGroupProbe 只提供原生分组读取，验证装配不提前取得账号或启动尝试。
+// creativeExecutionGroupProbe 只提供原生分组读取，验证装配不提前取得提供商或启动尝试。
 type creativeExecutionGroupProbe struct{ reads int }
 
 func (p *creativeExecutionGroupProbe) GetByIDLite(context.Context, int64) (*routing.Group, error) {
@@ -33,7 +33,7 @@ func TestCreativeExecutorNativeAssemblyPreservesPrepareReads(t *testing.T) {
 	require.Zero(t, groups.reads)
 	require.Equal(t, 17*time.Second, executor.Timeout)
 	_, err := executor.Prepare(context.Background(), creative.CreativeRun{GroupID: 12, Model: "gemini-3.1-flash-image", Operation: creative.CreativeOperationGenerate})
-	require.ErrorContains(t, err, "no compatible creative account available")
+	require.ErrorContains(t, err, "no compatible creative provider available")
 	require.Equal(t, 1, groups.reads, "一次读取完整策略用于全部候选")
 	require.Equal(t, 5*time.Minute, provideCreativeExecutor(nil, nil, nil, nil, nil).Timeout)
 }
@@ -48,17 +48,17 @@ func (s creativePolicyGroups) GetByIDLite(ctx context.Context, id int64) (*routi
 	return s.GetByID(ctx, id)
 }
 
-type creativePolicyAccounts struct {
-	selection.Accounts
-	value *gatewayprovider.ExecutionAccount
+type creativePolicyProviders struct {
+	selection.Providers
+	value *gatewayprovider.ExecutionProvider
 }
 
-func (s creativePolicyAccounts) GetByID(context.Context, int64) (*gatewayprovider.ExecutionAccount, error) {
+func (s creativePolicyProviders) GetByID(context.Context, int64) (*gatewayprovider.ExecutionProvider, error) {
 	return s.value, nil
 }
 
-func (s creativePolicyAccounts) ListSchedulableByGroupIDAndPlatform(context.Context, int64, string) ([]gatewayprovider.ExecutionAccount, error) {
-	return []gatewayprovider.ExecutionAccount{*s.value}, nil
+func (s creativePolicyProviders) ListSchedulableByGroupIDAndPlatform(context.Context, int64, string) ([]gatewayprovider.ExecutionProvider, error) {
+	return []gatewayprovider.ExecutionProvider{*s.value}, nil
 }
 
 // 价格存储为空，验证分组策略不依赖价格配置关联。
@@ -83,12 +83,12 @@ func TestCreativeExecutorForwardsModelAllowedByGroupScheduler(t *testing.T) {
 	}}
 	groups := creativePolicyGroups{group}
 	policies := routing.NewPricingConfigService(creativeNoPrices{}, nil, routing.PricingConfigOptions{ReadGroup: groups.GetByIDLite})
-	accounts := creativePolicyAccounts{value: gatewayprovider.NewExecutionAccount(&account.Record{
+	providers := creativePolicyProviders{value: gatewayprovider.NewExecutionProvider(&provider.Record{
 		ID: 55, Platform: creative.PlatformOpenAI, Type: "apikey", Status: "active", Schedulable: true,
 		GroupIDs: []int64{group.ID}, Credentials: map[string]any{"model_whitelist": []string{"gpt-image-1", "gpt-image-2"}},
 	})}
 	choices := selection.NewCompatible(selection.CompatibleDependencies{
-		Reads: selection.Reads{Accounts: accounts, Groups: groups}, Shared: selection.Shared{GroupPolicies: policies},
+		Reads: selection.Reads{Providers: providers, Groups: groups}, Shared: selection.Shared{GroupPolicies: policies},
 	}, selection.DefaultOptions())
 	executor := provideCreativeExecutor(nil, groups, &gatewayprovider.CreativeTargets{}, nil, choices)
 	run := creative.CreativeRun{GroupID: group.ID, Model: "gpt-image-1", Operation: creative.CreativeOperationGenerate, ImageSize: "1K"}
@@ -124,10 +124,10 @@ func TestCreativeExecutorKeepsPersistedGroupWhenClientRestricted(t *testing.T) {
 		return nil, nil
 	}
 	_, err := executor.Prepare(context.Background(), creative.CreativeRun{
-		GroupID: group.ID, Provider: creative.PlatformOpenAI,
+		GroupID: group.ID, Platform: creative.PlatformOpenAI,
 		Model: "gpt-image-2", Operation: creative.CreativeOperationGenerate,
 	})
-	require.ErrorContains(t, err, "no compatible creative account")
+	require.ErrorContains(t, err, "no compatible creative provider")
 	require.False(t, selected)
 	require.True(t, creativeGroupView(group).ClaudeCodeOnly)
 }

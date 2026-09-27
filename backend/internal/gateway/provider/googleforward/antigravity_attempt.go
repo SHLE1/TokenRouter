@@ -25,7 +25,7 @@ import (
 type geminiExecutionAdapter struct {
 	s                       *Antigravity
 	c                       *attempt
-	account                 *gatewayprovider.ExecutionAccount
+	provider                *gatewayprovider.ExecutionProvider
 	token, proxyURL, prefix string
 	retry                   *antigravity.RetryAdapter
 	params                  antigravity.RetryInput
@@ -47,7 +47,7 @@ func (a *geminiExecutionAdapter) ImageTier(size string) string {
 func (a *geminiExecutionAdapter) ZeroCount() { a.c.Count(0) }
 
 func (a *geminiExecutionAdapter) MappedModel(model string) string {
-	return a.s.getMappedModel(a.account, model)
+	return a.s.getMappedModel(a.provider, model)
 }
 
 func (a *geminiExecutionAdapter) FeatureDenied() {
@@ -55,18 +55,18 @@ func (a *geminiExecutionAdapter) FeatureDenied() {
 }
 
 func (a *geminiExecutionAdapter) Credential(ctx context.Context) error {
-	token, err := gatewayprovider.ExecutionToken(ctx, a.s.Tokens, a.account)
+	token, err := gatewayprovider.ExecutionToken(ctx, a.s.Tokens, a.provider)
 	a.token = token
 	return err
 }
 
 func (a *geminiExecutionAdapter) ProjectID() (string, error) {
-	return resolveAntigravityProjectID(a.account)
+	return resolveAntigravityProjectID(a.provider)
 }
 
 func (a *geminiExecutionAdapter) Transport() {
-	if a.account.Record.ProxyID != nil && a.account.Record.Proxy != nil {
-		a.proxyURL = a.account.Record.Proxy.URL()
+	if a.provider.Record.ProxyID != nil && a.provider.Record.Proxy != nil {
+		a.proxyURL = a.provider.Record.Proxy.URL()
 	}
 }
 
@@ -101,21 +101,20 @@ func (a *geminiExecutionAdapter) Retry(ctx context.Context, in forwardcore.Gemin
 }
 
 func (a *geminiExecutionAdapter) SwitchError(err error) (bool, bool) {
-	if v, ok := antigravity.IsAntigravityAccountSwitchError(err); ok {
+	if v, ok := antigravity.IsAntigravityProviderSwitchError(err); ok {
 		return v.IsStickySession, true
 	}
 	return false, false
 }
 
 func (a *geminiExecutionAdapter) Failover(status int, body []byte, retry, sticky bool) error {
-	return &forwardcore.UpstreamFailoverError{StatusCode: status, ResponseBody: body, RetryableOnSameAccount: retry, ForceCacheBilling: sticky}
+	return &forwardcore.UpstreamFailoverError{StatusCode: status, ResponseBody: body, RetryableOnSameProvider: retry, ForceCacheBilling: sticky}
 }
 
 func (a *geminiExecutionAdapter) ClientCanceled() bool { return a.c.RequestContext().Err() != nil }
 
 func (a *geminiExecutionAdapter) Recover(ctx context.Context, in forwardcore.GeminiExecution) (forwardcore.GeminiRecovery, error) {
 	opts := antigravity.GeminiRecoveryOptions{
-
 		Retry: func(body []byte) (*http.Response, error) {
 			next := a.params
 			next.Body = body
@@ -150,13 +149,13 @@ func (a *geminiExecutionAdapter) Recover(ctx context.Context, in forwardcore.Gem
 		Observe:       a.retry.Options.Observe,
 	}
 	recovered, err := antigravity.RecoverGemini(ctx, antigravity.GeminiRecoveryInput{
-		AccountID:   a.account.Record.ID,
-		AccountName: a.account.Record.Name,
-		ProjectID:   in.ProjectID,
-		Model:       in.Model,
-		Action:      in.UpstreamAction,
-		AccessToken: a.token,
-		Body:        in.InjectedBody,
+		ProviderID:   a.provider.Record.ID,
+		ProviderName: a.provider.Record.Name,
+		ProjectID:    in.ProjectID,
+		Model:        in.Model,
+		Action:       in.UpstreamAction,
+		AccessToken:  a.token,
+		Body:         in.InjectedBody,
 	}, a.response, opts)
 	if err == nil {
 		a.response = recovered.Response
@@ -171,7 +170,7 @@ func (a *geminiExecutionAdapter) Unwrap(body []byte) ([]byte, error) {
 }
 
 func (a *geminiExecutionAdapter) Health(ctx context.Context, status int, headers map[string][]string, body []byte, in forwardcore.GeminiExecution) {
-	a.s.handleUpstreamError(ctx, a.prefix, a.account, status, headers, body, in.OriginalModel, in.GroupID, in.SessionHash, in.Sticky)
+	a.s.handleUpstreamError(ctx, a.prefix, a.provider, status, headers, body, in.OriginalModel, in.GroupID, in.SessionHash, in.Sticky)
 }
 
 func (a *geminiExecutionAdapter) ErrorMessage(body []byte) string {
@@ -195,8 +194,8 @@ func (a *geminiExecutionAdapter) GoogleConfigError(message string) bool {
 func (a *geminiExecutionAdapter) Observe(n forwardcore.Notice) {
 	a.c.Observe(ops.OpsUpstreamErrorEvent{
 		Platform:           n.Platform,
-		AccountID:          n.AccountID,
-		AccountName:        n.AccountName,
+		ProviderID:         n.ProviderID,
+		ProviderName:       n.ProviderName,
 		UpstreamStatusCode: n.UpstreamStatusCode,
 		UpstreamRequestID:  n.UpstreamRequestID,
 		Kind:               n.Kind,
@@ -219,17 +218,16 @@ func (a *geminiExecutionAdapter) ErrorBody(status int, contentType string, body 
 
 func (a *geminiExecutionAdapter) Execute(ctx context.Context, in forwardcore.GeminiExecution, h forwardcore.GeminiHooks) (upstream.AttemptResult, error) {
 	a.retry, a.params = a.s.antigravityRetryAdapter(antigravityRetryLoopParams{
-
 		ctx:             ctx,
 		prefix:          a.prefix,
-		account:         a.account,
+		provider:        a.provider,
 		proxyURL:        a.proxyURL,
 		accessToken:     a.token,
 		action:          in.UpstreamAction,
 		body:            in.Body,
 		c:               a.c,
 		httpUpstream:    a.s.Transport,
-		accountRepo:     a.s.Store,
+		providerRepo:    a.s.Store,
 		handleError:     a.s.handleUpstreamError,
 		requestedModel:  in.OriginalModel,
 		isStickySession: in.Sticky,
@@ -237,13 +235,12 @@ func (a *geminiExecutionAdapter) Execute(ctx context.Context, in forwardcore.Gem
 		sessionHash:     in.SessionHash,
 	})
 	target := &antigravity.Target{
-
-		AccountID: a.account.Record.ID,
-		Model:     in.Model,
-		Mode:      antigravity.ModeGeminiResponse,
-		StartedAt: in.StartedAt,
-		Response:  a.s.antigravityResponseAdapter(a.c).Options,
-		Enter:     a.s.Enter,
+		ProviderID: a.provider.Record.ID,
+		Model:      in.Model,
+		Mode:       antigravity.ModeGeminiResponse,
+		StartedAt:  in.StartedAt,
+		Response:   a.s.antigravityResponseAdapter(a.c).Options,
+		Enter:      a.s.Enter,
 
 		Exchange: func(context.Context) (*http.Response, error) {
 			if err := h.Exchange(); err != nil {

@@ -8,7 +8,7 @@ import (
 )
 
 func usageLogFromServiceUser(l *usage.UsageLog) UsageLog {
-	// 普通用户 DTO：严禁包含管理员字段（例如 account_rate_multiplier、account、upstream_model）。
+	// 普通用户 DTO：严禁包含管理员字段（例如 provider_rate_multiplier、provider、upstream_model）。
 	requestType := l.EffectiveRequestType()
 	stream, openAIWSMode := usage.ApplyLegacyRequestFields(requestType, l.Stream, l.OpenAIWSMode)
 	requestedModel := l.RequestedModel
@@ -20,7 +20,7 @@ func usageLogFromServiceUser(l *usage.UsageLog) UsageLog {
 		UserID:                    l.UserID,
 		TeamID:                    l.TeamID,
 		APIKeyID:                  l.APIKeyID,
-		AccountID:                 l.AccountID,
+		ProviderID:                l.ProviderID,
 		Platform:                  l.Platform,
 		RequestID:                 l.RequestID,
 		Model:                     requestedModel,
@@ -100,7 +100,7 @@ func cloneBillingAllocationsDTO(allocations []billing.BillingAllocation) []billi
 
 // FromUsage converts a service UsageLog to DTO for regular users.
 // FromUsage 转换普通用户可见的用量日志 DTO。
-// 该 DTO 保留用户计费和请求元数据，但排除管理员专用的账号/上游内部字段。
+// 该 DTO 保留用户计费和请求元数据，但排除管理员专用的提供商/上游内部字段。
 func FromUsage(l *usage.UsageLog) *UsageLog {
 	if l == nil {
 		return nil
@@ -110,7 +110,7 @@ func FromUsage(l *usage.UsageLog) *UsageLog {
 }
 
 // FromUsageAdmin converts a service UsageLog to DTO for admin users.
-// It includes minimal Account info (ID, Name only) and IP address.
+// It includes minimal Provider info (ID, Name only) and IP address.
 func FromUsageAdmin(l *usage.UsageLog) *AdminUsageLog {
 	if l == nil {
 		return nil
@@ -118,16 +118,16 @@ func FromUsageAdmin(l *usage.UsageLog) *AdminUsageLog {
 	usageLog := usageLogFromServiceUser(l)
 	usageLog.UpstreamEndpoint = l.UpstreamEndpoint
 	return &AdminUsageLog{
-		UsageLog:              usageLog,
-		UpstreamModel:         l.UpstreamModel,
-		UpstreamRequestID:     l.UpstreamRequestID,
-		PricingConfigID:       l.PricingConfigID,
-		ModelMappingChain:     l.ModelMappingChain,
-		BillingTier:           l.BillingTier,
-		AccountRateMultiplier: l.AccountRateMultiplier,
-		AccountStatsCost:      l.AccountStatsCost,
-		IPAddress:             l.IPAddress,
-		Account:               accountFromView(l.Account),
+		UsageLog:               usageLog,
+		UpstreamModel:          l.UpstreamModel,
+		UpstreamRequestID:      l.UpstreamRequestID,
+		PricingConfigID:        l.PricingConfigID,
+		ModelMappingChain:      l.ModelMappingChain,
+		BillingTier:            l.BillingTier,
+		ProviderRateMultiplier: l.ProviderRateMultiplier,
+		ProviderStatsCost:      l.ProviderStatsCost,
+		IPAddress:              l.IPAddress,
+		Provider:               providerFromView(l.Provider),
 	}
 }
 
@@ -138,7 +138,7 @@ func TimingFromOps(timing *ops.OpsRequestTiming) *UsageLogTiming {
 	}
 	return &UsageLogTiming{
 		RequestContentLength:           timing.RequestContentLength,
-		AccountSlotAcquiredMs:          timing.AccountSlotAcquiredMs,
+		ProviderSlotAcquiredMs:         timing.ProviderSlotAcquiredMs,
 		UpstreamGetConnMs:              timing.UpstreamGetConnMs,
 		UpstreamGotConnMs:              timing.UpstreamGotConnMs,
 		UpstreamWroteRequestMs:         timing.UpstreamWroteRequestMs,
@@ -167,7 +167,7 @@ func CleanupFromUsage(task *usage.UsageCleanupTask) *UsageCleanupTask {
 			EndTime:     task.Filters.EndTime,
 			UserID:      task.Filters.UserID,
 			APIKeyID:    task.Filters.APIKeyID,
-			AccountID:   task.Filters.AccountID,
+			ProviderID:  task.Filters.ProviderID,
 			GroupID:     task.Filters.GroupID,
 			Model:       task.Filters.Model,
 			RequestType: RequestTypeStringPtr(task.Filters.RequestType),

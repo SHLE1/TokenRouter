@@ -1,4 +1,4 @@
-// CLI 403 回退只派生当前请求的客户端，不修改共享传输或账号策略。
+// CLI 403 回退只派生当前请求的客户端，不修改共享传输或提供商策略。
 package grok
 
 import (
@@ -24,7 +24,7 @@ const (
 
 // AccessDeniedFallbackTransport 保持订阅 CLI 代理为 OAuth 主路由；仅当代理返回
 // 兼容性特有的 403 "Access denied" 且请求体可重放时，才向 api.x.ai 重试一次。
-// 其它授权失败继续返回原响应，避免改变账号调度语义。
+// 其它授权失败继续返回原响应，避免改变提供商调度语义。
 type AccessDeniedFallbackTransport struct {
 	Base http.RoundTripper
 }
@@ -168,7 +168,7 @@ type prefixedReadCloser struct {
 
 // ApplyTransportCLIHeaders 在最终共享 transport 边界写入官方 Grok Build 客户端身份。
 // 仅精确匹配 CLI 代理主机，避免改变直连 api.x.ai 的流量，并统一覆盖 Responses、
-// Chat Completions、媒体、额度探测和账号测试请求。
+// Chat Completions、媒体、额度探测和提供商测试请求。
 func ApplyTransportCLIHeaders(req *http.Request) {
 	if req == nil || req.URL == nil || !strings.EqualFold(strings.TrimSpace(req.URL.Hostname()), grokCLIProxyHost) {
 		return

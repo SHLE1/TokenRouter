@@ -24,8 +24,8 @@ import (
 	dbent "github.com/TokenFlux/TokenRouter/ent"
 	"github.com/TokenFlux/TokenRouter/internal/routing/accessview"
 
-	accountpg "github.com/TokenFlux/TokenRouter/internal/account/postgres"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
+	providerpg "github.com/TokenFlux/TokenRouter/internal/provider/postgres"
 
 	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
 
@@ -106,7 +106,7 @@ func TestS09QoderHTTPStorageChain(t *testing.T) {
 				}
 				return nil
 			}, Select: func(context.Context, map[int64]struct{}) (*gateway.Selection, error) {
-				t.Fatal("等待未通过不应选择账号")
+				t.Fatal("等待未通过不应选择提供商")
 				return nil, nil
 			}}
 			ports.WaitObserver = func(string) scheduler.WaitObserver {
@@ -148,7 +148,7 @@ func TestS09QoderHTTPStorageChain(t *testing.T) {
 	keys := keypg.NewKeyStore(f.client, f.db, nil)
 	auth := apikey.NewAPIKeyService(keys, nil, nil, nil, nil, nil, &apikey.Options{})
 	groups := routingpg.NewGroupStore(f.client, f.db, routingpg.GroupStoreOptions{})
-	accounts := accountpg.NewAccountStore(f.client, f.db, accountpg.AccountStoreOptions{Group: func(g *dbent.Group) *accessview.GroupConfig {
+	providers := providerpg.NewProviderStore(f.client, f.db, providerpg.ProviderStoreOptions{Group: func(g *dbent.Group) *accessview.GroupConfig {
 		return (*accessview.GroupConfig)(routingpg.GroupFromEnt(g))
 	}})
 	eligibility := billing.NewEligibility(billingredis.NewBillingCache(rdb), s09BalanceReader{f.db}, nil, func() billing.EligibilityOptions { return billing.EligibilityOptions{RunMode: "standard"} }, nil)
@@ -168,7 +168,7 @@ func TestS09QoderHTTPStorageChain(t *testing.T) {
 			require.NoError(t, err)
 			key, err := f.client.APIKey.Create().SetUserID(user.ID).SetGroupID(group.ID).SetKey("sk-s09-" + uid).SetName("fixture").SetQuota(100).SetBillingMode("balance").Save(ctx)
 			require.NoError(t, err)
-			acc, err := f.client.Account.Create().SetName("s09-" + uid).SetPlatform("qoder").SetType("cosy").SetCredentials(map[string]any{"upstream_protocols": []string{"qoder_chat"}}).SetConcurrency(1).AddGroupIDs(group.ID).Save(ctx)
+			acc, err := f.client.Provider.Create().SetName("s09-" + uid).SetPlatform("qoder").SetType("cosy").SetCredentials(map[string]any{"upstream_protocols": []string{"qoder_chat"}}).SetConcurrency(1).AddGroupIDs(group.ID).Save(ctx)
 			require.NoError(t, err)
 			var calls, completed atomic.Int32
 			nativeBody := successfulQoderStream
@@ -225,7 +225,7 @@ func TestS09QoderHTTPStorageChain(t *testing.T) {
 						done <- costErr
 						return
 					}
-					command := &billing.UsageBillingCommand{RequestID: uid, APIKeyID: key.ID, UserID: user.ID, ActorUserID: user.ID, AccountID: acc.ID, AccountType: "cosy", GroupID: &group.ID, APIKeyBillingMode: "balance", Model: "auto", InputTokens: result.Usage.InputTokens, OutputTokens: result.Usage.OutputTokens, BillableAmountUSD: cost.ActualCost, BaseAmountUSD: cost.TotalCost, BalanceRateMultiplier: 1, APIKeyQuotaCost: cost.ActualCost, AccountQuotaCost: cost.TotalCost * 2}
+					command := &billing.UsageBillingCommand{RequestID: uid, APIKeyID: key.ID, UserID: user.ID, ActorUserID: user.ID, ProviderID: acc.ID, ProviderType: "cosy", GroupID: &group.ID, APIKeyBillingMode: "balance", Model: "auto", InputTokens: result.Usage.InputTokens, OutputTokens: result.Usage.OutputTokens, BillableAmountUSD: cost.ActualCost, BaseAmountUSD: cost.TotalCost, BalanceRateMultiplier: 1, APIKeyQuotaCost: cost.ActualCost, ProviderQuotaCost: cost.TotalCost * 2}
 					settled, settleErr := funds.Settle(taskCtx, command)
 					if settleErr != nil {
 						done <- settleErr
@@ -234,8 +234,8 @@ func TestS09QoderHTTPStorageChain(t *testing.T) {
 					if settled.Applied {
 						completed.Add(1)
 					}
-					accountCost := cost.TotalCost * 2
-					_, createErr := facts.Create(taskCtx, &usage.UsageLog{UserID: user.ID, BillingUserID: user.ID, APIKeyID: key.ID, AccountID: acc.ID, GroupID: &group.ID, RequestID: uid, Model: "auto", InputTokens: result.Usage.InputTokens, OutputTokens: result.Usage.OutputTokens, TotalCost: cost.TotalCost, ActualCost: cost.ActualCost, BalanceAmountUSD: cost.ActualCost, AccountStatsCost: &accountCost, RateMultiplier: 1, Stream: tc.stream, CreatedAt: time.Now()})
+					providerCost := cost.TotalCost * 2
+					_, createErr := facts.Create(taskCtx, &usage.UsageLog{UserID: user.ID, BillingUserID: user.ID, APIKeyID: key.ID, ProviderID: acc.ID, GroupID: &group.ID, RequestID: uid, Model: "auto", InputTokens: result.Usage.InputTokens, OutputTokens: result.Usage.OutputTokens, TotalCost: cost.TotalCost, ActualCost: cost.ActualCost, BalanceAmountUSD: cost.ActualCost, ProviderStatsCost: &providerCost, RateMultiplier: 1, Stream: tc.stream, CreatedAt: time.Now()})
 					done <- createErr
 				})
 			}
@@ -254,15 +254,15 @@ func TestS09QoderHTTPStorageChain(t *testing.T) {
 				return eligibility.Check(callCtx, billing.CheckInput{Payer: &billing.UserSummary{ID: user.ID}, Key: &billing.KeySnapshot{ID: key.ID, BillingMode: "balance"}, Group: &billing.GroupSnapshot{ID: group.ID}, Platform: "qoder"})
 			}
 
-			runtime.selectAccount = func(callCtx context.Context, request gateway.Request, excluded map[int64]struct{}) (*gateway.Selection, error) {
-				record, loadErr := accounts.GetByID(callCtx, acc.ID)
+			runtime.selectProvider = func(callCtx context.Context, request gateway.Request, excluded map[int64]struct{}) (*gateway.Selection, error) {
+				record, loadErr := providers.GetByID(callCtx, acc.ID)
 				if loadErr != nil {
 					return nil, loadErr
 				}
 				snapshot := record.RoutingSnapshot()
 				selectionInput := scheduler.SelectionInput{RoutePlan: request.Route, Candidates: []scheduler.SelectionCandidate{{Snapshot: &snapshot}}, ExcludedIDs: excluded}
 				fresh := func(ctx context.Context, candidate scheduler.SelectionCandidate) (scheduler.SelectionCandidate, bool) {
-					r, e := accounts.GetByID(ctx, acc.ID)
+					r, e := providers.GetByID(ctx, acc.ID)
 					if e != nil {
 						return candidate, false
 					}
@@ -273,7 +273,7 @@ func TestS09QoderHTTPStorageChain(t *testing.T) {
 					return candidate, ok
 				}
 				selected, ok, selectErr := scheduler.RequestLease(callCtx).Select(callCtx, selectionInput, scheduler.AttemptSelectionPorts{Acquire: func(ctx context.Context, id int64, limit int) (*scheduler.AcquireResult, bool, error) {
-					r, e := concur.AcquireAccountSlot(ctx, id, limit)
+					r, e := concur.AcquireProviderSlot(ctx, id, limit)
 					return r, true, e
 				}, Fresh: fresh, CanRecheck: func() bool { return true }, Recheck: fresh, CompactAllowed: func(scheduler.SelectionCandidate) bool { return true }})
 				if selectErr != nil {
@@ -282,7 +282,7 @@ func TestS09QoderHTTPStorageChain(t *testing.T) {
 				if !ok {
 					return nil, fmt.Errorf("fixture candidate unavailable")
 				}
-				target := &qoder.Target{AccountID: acc.ID, Site: qoder.SiteGlobal, UserType: "personal_standard", Metadata: qoder.RequestMetadata{APIKeyID: key.ID}, Session: func(context.Context) (*qoder.SessionContext, error) { return session, nil }, Client: func() (qoder.StreamClient, error) { return client, nil }}
+				target := &qoder.Target{ProviderID: acc.ID, Site: qoder.SiteGlobal, UserType: "personal_standard", Metadata: qoder.RequestMetadata{APIKeyID: key.ID}, Session: func(context.Context) (*qoder.SessionContext, error) { return session, nil }, Client: func() (qoder.StreamClient, error) { return client, nil }}
 				return &gateway.Selection{Snapshot: snapshot, Plan: *selected.Candidate.Plan, Acquired: true, Release: selected.Attempt.Release, Executor: executor, Input: upstream.AttemptInput{Protocol: protocol.ProtocolOpenAIChatCompletions, Body: request.Body, Stream: request.Stream, ResponseModel: request.Model, Target: target}, Complete: complete}, nil
 			}
 			handler := &gatewayhttp.QoderChatHandler{Executor: gateway.NewQoderExecutor(3, time.Second, concur, runtime)}
@@ -333,9 +333,9 @@ func TestS09QoderHTTPStorageChain(t *testing.T) {
 				userSlots, readErr := concurCache.GetUserConcurrency(ctx, user.ID)
 				require.NoError(t, readErr)
 				require.Equal(t, 1, userSlots)
-				accountSlots, readErr := concurCache.GetAccountConcurrency(ctx, acc.ID)
+				providerSlots, readErr := concurCache.GetProviderConcurrency(ctx, acc.ID)
 				require.NoError(t, readErr)
-				require.Equal(t, 1, accountSlots)
+				require.Equal(t, 1, providerSlots)
 				close(tailAllowed)
 			} else {
 				data, readErr := io.ReadAll(response.Body)
@@ -373,14 +373,14 @@ func TestS09QoderHTTPStorageChain(t *testing.T) {
 			require.InDelta(t, 0.18, quota, 1e-8)
 			require.NoError(t, f.db.QueryRowContext(ctx, "SELECT count(*) FROM usage_logs WHERE request_id=$1", uid).Scan(&count))
 			require.Equal(t, 1, count)
-			var actual, accountCost float64
-			require.NoError(t, f.db.QueryRowContext(ctx, "SELECT actual_cost,account_stats_cost FROM usage_logs WHERE request_id=$1", uid).Scan(&actual, &accountCost))
+			var actual, providerCost float64
+			require.NoError(t, f.db.QueryRowContext(ctx, "SELECT actual_cost,provider_stats_cost FROM usage_logs WHERE request_id=$1", uid).Scan(&actual, &providerCost))
 			require.InDelta(t, 0.18, actual, 1e-8)
-			require.InDelta(t, 0.36, accountCost, 1e-8)
+			require.InDelta(t, 0.36, providerCost, 1e-8)
 			slots, err := concurCache.GetUserConcurrency(ctx, user.ID)
 			require.NoError(t, err)
 			require.Zero(t, slots)
-			slots, err = concurCache.GetAccountConcurrency(ctx, acc.ID)
+			slots, err = concurCache.GetProviderConcurrency(ctx, acc.ID)
 			require.NoError(t, err)
 			require.Zero(t, slots)
 		})
@@ -389,9 +389,9 @@ func TestS09QoderHTTPStorageChain(t *testing.T) {
 
 // s11StorageQoderRuntime 仅替换供应商与依赖取得；执行、租约、真实资金及分析存储均走新生产模块。
 type s11StorageQoderRuntime struct {
-	prepare       func(context.Context, gateway.Request) (gateway.Request, error)
-	check         func(context.Context) error
-	selectAccount func(context.Context, gateway.Request, map[int64]struct{}) (*gateway.Selection, error)
+	prepare        func(context.Context, gateway.Request) (gateway.Request, error)
+	check          func(context.Context) error
+	selectProvider func(context.Context, gateway.Request, map[int64]struct{}) (*gateway.Selection, error)
 }
 
 func (r *s11StorageQoderRuntime) Prepare(ctx context.Context, v gateway.Request) (gateway.Request, error) {
@@ -403,7 +403,7 @@ func (r *s11StorageQoderRuntime) Check(ctx context.Context, _ gateway.Request, _
 }
 
 func (r *s11StorageQoderRuntime) Select(ctx context.Context, v gateway.Request, excluded map[int64]struct{}) (*gateway.Selection, error) {
-	return r.selectAccount(ctx, v, excluded)
+	return r.selectProvider(ctx, v, excluded)
 }
 func (*s11StorageQoderRuntime) CanRefresh(error) bool      { return false }
 func (*s11StorageQoderRuntime) CanFailover(error) bool     { return true }

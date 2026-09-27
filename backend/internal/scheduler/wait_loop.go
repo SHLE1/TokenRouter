@@ -56,7 +56,7 @@ func (s *ConcurrencyService) WaitForSlot(parent context.Context, slotType string
 		if slotType == "user" {
 			return s.AcquireUserSlot(ctx, id, limit)
 		}
-		return s.AcquireAccountSlot(ctx, id, limit)
+		return s.AcquireProviderSlot(ctx, id, limit)
 	}
 	if immediate {
 		result, err := acquire()

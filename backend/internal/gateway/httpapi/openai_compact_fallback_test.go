@@ -14,11 +14,11 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway/compact"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/ops"
 	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
@@ -34,7 +34,6 @@ func newOpenAICompactFallbackTestContext(t *testing.T, path string) *gin.Context
 }
 
 func TestPrepareOpenAICompactFallbackRetryRequiresExplicitCompact(t *testing.T) {
-
 	svc := newResponsesFixture(responsesFixtureInputs{compactModel: "gpt-5.4"})
 	c := newOpenAICompactFallbackTestContext(t, "/v1/responses")
 	body := []byte(`{"model":"gpt-5.5","input":[{"type":"message","role":"user","content":"hello"}]}`)
@@ -50,7 +49,6 @@ func TestPrepareOpenAICompactFallbackRetryRequiresExplicitCompact(t *testing.T) 
 }
 
 func TestPrepareOpenAICompactFallbackRetryPreservesNativeTriggerAndContext(t *testing.T) {
-
 	svc := newResponsesFixture(responsesFixtureInputs{compactModel: "gpt-5.4"})
 	c := newOpenAICompactFallbackTestContext(t, "/v1/responses")
 	MarkOpenAINativeCompactionV2(c)
@@ -70,18 +68,17 @@ func TestPrepareOpenAICompactFallbackRetryPreservesNativeTriggerAndContext(t *te
 	require.Equal(t, pathBefore, OpenAIResponsesRequestPathSuffix(c))
 }
 
-func TestResolveOpenAICompactFallbackModelPrefersAccountMapping(t *testing.T) {
+func TestResolveOpenAICompactFallbackModelPrefersProviderMapping(t *testing.T) {
 	svc := newResponsesFixture(responsesFixtureInputs{compactModel: "global-compact"})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Credentials: map[string]any{
-		"compact_model_mapping": map[string]any{"gpt-5.5": "account-compact"},
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Credentials: map[string]any{
+		"compact_model_mapping": map[string]any{"gpt-5.5": "provider-compact"},
 	}}}
 
-	require.Equal(t, "account-compact", svc.Text.Compact.ResolveModel(account, "gpt-5.5"))
-	require.Equal(t, "global-compact", svc.Text.Compact.ResolveModel(account, "unmapped-model"))
+	require.Equal(t, "provider-compact", svc.Text.Compact.ResolveModel(provider, "gpt-5.5"))
+	require.Equal(t, "global-compact", svc.Text.Compact.ResolveModel(provider, "unmapped-model"))
 }
 
 func TestOpenAIGatewayForwardUsesGlobalCompactModelOnInitialLegacyRequest(t *testing.T) {
-
 	body := []byte(`{"model":"gpt-5.5","stream":false,"instructions":"compact-test","input":[]}`)
 	c := newOpenAICompactFallbackTestContext(t, "/v1/responses/compact")
 	c.Request.Body = io.NopCloser(bytes.NewReader(body))
@@ -92,12 +89,15 @@ func TestOpenAIGatewayForwardUsesGlobalCompactModelOnInitialLegacyRequest(t *tes
 		Body:       io.NopCloser(strings.NewReader(`{"id":"resp_compact","status":"completed","model":"global-compact","output":[],"usage":{"input_tokens":1,"output_tokens":1}}`)),
 	}}
 	svc := newResponsesFixture(responsesFixtureInputs{compactModel: "global-compact", transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Name: "openai-oauth", Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth, Concurrency: 1,
-		Credentials: map[string]any{"access_token": "oauth-token", "chatgpt_account_id": "chatgpt-account"},
-		Status:      billing.StatusActive, Schedulable: true},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1, Name: "openai-oauth", Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth, Concurrency: 1,
+			Credentials: map[string]any{"access_token": "oauth-token", "chatgpt_account_id": "chatgpt-provider"},
+			Status:      billing.StatusActive, Schedulable: true,
+		},
 	}
 
-	result, err := svc.Forward(context.Background(), c, account, body)
+	result, err := svc.Forward(context.Background(), c, provider, body)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -107,7 +107,6 @@ func TestOpenAIGatewayForwardUsesGlobalCompactModelOnInitialLegacyRequest(t *tes
 }
 
 func TestPrepareOpenAICompactFallbackRetryLegacyPathAndSingleAttemptGuard(t *testing.T) {
-
 	svc := newResponsesFixture(responsesFixtureInputs{compactModel: "gpt-5.4"})
 	c := newOpenAICompactFallbackTestContext(t, "/v1/responses/compact")
 	body := []byte(`{"model":"gpt-5.5","input":[]}`)
@@ -129,7 +128,6 @@ func TestPrepareOpenAICompactFallbackRetryLegacyPathAndSingleAttemptGuard(t *tes
 }
 
 func TestPrepareOpenAICompactFallbackRetryDoesNotHideSpecificBusinessFailure(t *testing.T) {
-
 	svc := newResponsesFixture(responsesFixtureInputs{compactModel: "gpt-5.4"})
 	c := newOpenAICompactFallbackTestContext(t, "/v1/responses/compact")
 	body := []byte(`{"model":"gpt-5.5","input":[]}`)
@@ -168,7 +166,6 @@ func TestIsOpenAICompactModelFailureRequiresExplicitModelAvailabilityMessage(t *
 }
 
 func TestPrepareOpenAICompactFallbackRetrySkipsSameModel(t *testing.T) {
-
 	svc := newResponsesFixture(responsesFixtureInputs{compactModel: "gpt-5.5"})
 	c := newOpenAICompactFallbackTestContext(t, "/v1/responses/compact")
 	body := []byte(`{"model":"gpt-5.5","input":[]}`)
@@ -181,7 +178,6 @@ func TestPrepareOpenAICompactFallbackRetrySkipsSameModel(t *testing.T) {
 }
 
 func TestOpenAIGatewayForwardRetriesExplicitNativeCompactHTTPFailureOnce(t *testing.T) {
-
 	body := []byte(`{"model":"gpt-5.5","stream":false,"instructions":"compact-test","input":[{"type":"message","role":"user","content":"hello"},{"type":"compaction_trigger"}]}`)
 	c := newOpenAICompactFallbackTestContext(t, "/v1/responses")
 	c.Request.Body = io.NopCloser(bytes.NewReader(body))
@@ -201,12 +197,15 @@ func TestOpenAIGatewayForwardRetriesExplicitNativeCompactHTTPFailureOnce(t *test
 		},
 	}}
 	svc := newResponsesFixture(responsesFixtureInputs{compactModel: "gpt-5.4", transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Name: "openai-oauth", Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth, Concurrency: 1,
-		Credentials: map[string]any{"access_token": "oauth-token", "chatgpt_account_id": "chatgpt-account"},
-		Status:      billing.StatusActive, Schedulable: true},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1, Name: "openai-oauth", Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth, Concurrency: 1,
+			Credentials: map[string]any{"access_token": "oauth-token", "chatgpt_account_id": "chatgpt-provider"},
+			Status:      billing.StatusActive, Schedulable: true,
+		},
 	}
 
-	result, err := svc.Forward(context.Background(), c, account, body)
+	result, err := svc.Forward(context.Background(), c, provider, body)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -227,7 +226,6 @@ func TestOpenAIGatewayForwardRetriesExplicitNativeCompactHTTPFailureOnce(t *test
 }
 
 func TestOpenAIGatewayForwardRetriesExplicitNativeCompactSSEFailureBeforeOutput(t *testing.T) {
-
 	body := []byte(`{"model":"gpt-5.5","stream":false,"instructions":"compact-test","input":[{"type":"message","role":"user","content":"hello"},{"type":"compaction_trigger"}]}`)
 	c := newOpenAICompactFallbackTestContext(t, "/v1/responses")
 	c.Request.Body = io.NopCloser(bytes.NewReader(body))
@@ -248,12 +246,15 @@ func TestOpenAIGatewayForwardRetriesExplicitNativeCompactSSEFailureBeforeOutput(
 		},
 	}}
 	svc := newResponsesFixture(responsesFixtureInputs{compactModel: "gpt-5.4", transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Name: "openai-oauth", Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth, Concurrency: 1,
-		Credentials: map[string]any{"access_token": "oauth-token", "chatgpt_account_id": "chatgpt-account"},
-		Status:      billing.StatusActive, Schedulable: true},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1, Name: "openai-oauth", Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth, Concurrency: 1,
+			Credentials: map[string]any{"access_token": "oauth-token", "chatgpt_account_id": "chatgpt-provider"},
+			Status:      billing.StatusActive, Schedulable: true,
+		},
 	}
 
-	result, err := svc.Forward(context.Background(), c, account, body)
+	result, err := svc.Forward(context.Background(), c, provider, body)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -265,7 +266,6 @@ func TestOpenAIGatewayForwardRetriesExplicitNativeCompactSSEFailureBeforeOutput(
 }
 
 func TestOpenAIGatewayForwardRetriesStreamingCompactFailureBeforeOutput(t *testing.T) {
-
 	body := []byte(`{"model":"gpt-5.5","stream":true,"instructions":"compact-test","input":[{"type":"message","role":"user","content":"hello"},{"type":"compaction_trigger"}]}`)
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
@@ -283,12 +283,15 @@ func TestOpenAIGatewayForwardRetriesStreamingCompactFailureBeforeOutput(t *testi
 		{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{"text/event-stream"}}, Body: io.NopCloser(strings.NewReader(completed))},
 	}}
 	svc := newResponsesFixture(responsesFixtureInputs{compactModel: "gpt-5.4", transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Name: "openai-oauth", Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth, Concurrency: 1,
-		Credentials: map[string]any{"access_token": "oauth-token", "chatgpt_account_id": "chatgpt-account"},
-		Status:      billing.StatusActive, Schedulable: true},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1, Name: "openai-oauth", Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth, Concurrency: 1,
+			Credentials: map[string]any{"access_token": "oauth-token", "chatgpt_account_id": "chatgpt-provider"},
+			Status:      billing.StatusActive, Schedulable: true,
+		},
 	}
 
-	result, err := svc.Forward(context.Background(), c, account, body)
+	result, err := svc.Forward(context.Background(), c, provider, body)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -299,7 +302,6 @@ func TestOpenAIGatewayForwardRetriesStreamingCompactFailureBeforeOutput(t *testi
 }
 
 func TestOpenAIGatewayForwardDoesNotRecurseWhenCompactFallbackAlsoFails(t *testing.T) {
-
 	body := []byte(`{"model":"gpt-5.5","stream":true,"instructions":"compact-test","input":[{"type":"message","role":"user","content":"hello"},{"type":"compaction_trigger"}]}`)
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
@@ -318,12 +320,15 @@ func TestOpenAIGatewayForwardDoesNotRecurseWhenCompactFallbackAlsoFails(t *testi
 		{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{"text/event-stream"}}, Body: io.NopCloser(strings.NewReader(failed))},
 	}}
 	svc := newResponsesFixture(responsesFixtureInputs{compactModel: "gpt-5.4", transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Name: "openai-oauth", Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth, Concurrency: 1,
-		Credentials: map[string]any{"access_token": "oauth-token", "chatgpt_account_id": "chatgpt-account"},
-		Status:      billing.StatusActive, Schedulable: true},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1, Name: "openai-oauth", Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth, Concurrency: 1,
+			Credentials: map[string]any{"access_token": "oauth-token", "chatgpt_account_id": "chatgpt-provider"},
+			Status:      billing.StatusActive, Schedulable: true,
+		},
 	}
 
-	result, err := svc.Forward(context.Background(), c, account, body)
+	result, err := svc.Forward(context.Background(), c, provider, body)
 
 	require.Error(t, err)
 	require.Nil(t, result)
@@ -345,7 +350,6 @@ func TestOpenAIGatewayForwardDoesNotRecurseWhenCompactFallbackAlsoFails(t *testi
 }
 
 func TestOpenAIPassthroughCompactFallbackSecondStreamFailureUsesStandardErrorPath(t *testing.T) {
-
 	body := []byte(`{"model":"gpt-5.5","stream":true,"input":[{"type":"compaction_trigger"}]}`)
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
@@ -360,13 +364,16 @@ func TestOpenAIPassthroughCompactFallbackSecondStreamFailureUsesStandardErrorPat
 		{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{"text/event-stream"}}, Body: io.NopCloser(strings.NewReader(failed))},
 	}}
 	svc := newResponsesFixture(responsesFixtureInputs{compactModel: "gpt-5.4", transport: upstream})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Name: "openai-oauth", Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth, Concurrency: 1,
-		Credentials: map[string]any{"access_token": "oauth-token", "chatgpt_account_id": "chatgpt-account"},
-		Status:      billing.StatusActive, Schedulable: true},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 1, Name: "openai-oauth", Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth, Concurrency: 1,
+			Credentials: map[string]any{"access_token": "oauth-token", "chatgpt_account_id": "chatgpt-provider"},
+			Status:      billing.StatusActive, Schedulable: true,
+		},
 	}
 
 	result, err := svc.Text.Passthrough(
-		context.Background(), c, account, body, body, "gpt-5.5", false, nil, true, time.Now(),
+		context.Background(), c, provider, body, body, "gpt-5.5", false, nil, true, time.Now(),
 	)
 
 	require.Error(t, err)

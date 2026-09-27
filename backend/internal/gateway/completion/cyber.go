@@ -8,7 +8,7 @@ import (
 // RecordCyber 保留错误路径的补记资格和原 RecordOpenAI 计费/零费用规则。
 // 调用者在提交前冻结 Input；这里不重试转发，也不绕开唯一记录实现。
 func (s *Recorder) RecordCyber(ctx context.Context, in *Input) {
-	if s == nil || in == nil || in.APIKey == nil || in.User == nil || in.Account == nil || in.Result == nil || strings.TrimSpace(in.Result.Model) == "" {
+	if s == nil || in == nil || in.APIKey == nil || in.User == nil || in.Provider == nil || in.Result == nil || strings.TrimSpace(in.Result.Model) == "" {
 		return
 	}
 	snapshot := Snapshot(in)

@@ -128,7 +128,7 @@ func OpenAIImagesJSONKeepalivePresent(c *gin.Context) bool {
 }
 
 // OpenAIImagesJSONKeepaliveAdjustedWrittenSize 从响应大小中排除心跳空白，
-// 使账号重试和故障切换仍可继续执行。
+// 使提供商重试和故障切换仍可继续执行。
 func OpenAIImagesJSONKeepaliveAdjustedWrittenSize(c *gin.Context) int {
 	if c == nil || c.Writer == nil {
 		return -1

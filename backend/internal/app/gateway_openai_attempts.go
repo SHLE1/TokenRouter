@@ -57,7 +57,7 @@ func provideOpenAIAttemptBindings(
 		b.Selection.UpdateCodexUsageSnapshotFromHeaders = s.Text.CodexUsage.Headers
 	}
 	if generic != nil {
-		b.Sessions = openaiattempt.SessionPorts{New: generic.NewSessionAttempts, Track: generic.TrackSessionAttempt, IncrementRPM: generic.IncrementAccountRPM}
+		b.Sessions = openaiattempt.SessionPorts{New: generic.NewSessionAttempts, Track: generic.TrackSessionAttempt, IncrementRPM: generic.IncrementProviderRPM}
 	}
 	if unified != nil {
 		b.Forward.Forward = unified.Responses
@@ -66,18 +66,18 @@ func provideOpenAIAttemptBindings(
 		b.Forward.EnforceOpenAIClientPolicyForRequest = unified.EnforceClient
 	}
 	if choices != nil {
-		b.Sessions.StickyAccountID = choices.StickyAccountID
+		b.Sessions.StickyProviderID = choices.StickyProviderID
 		support.Sticky = choices
-		b.Selection.ObserveOpenAIAccountHealthFailure = choices.ObserveOpenAIAccountHealthFailure
-		b.Selection.RecordOpenAIAccountSwitchForSelection = choices.RecordOpenAIAccountSwitchForSelection
-		b.Selection.ReportOpenAIAccountScheduleResult = func(a *gatewaycapture.ExecutionAccount, model string, success bool, first *int, errs ...error) bool {
-			return choices.ReportOpenAIAccountScheduleResult(a, model, success, first, errs...)
+		b.Selection.ObserveOpenAIProviderHealthFailure = choices.ObserveOpenAIProviderHealthFailure
+		b.Selection.RecordOpenAIProviderSwitchForSelection = choices.RecordOpenAIProviderSwitchForSelection
+		b.Selection.ReportOpenAIProviderScheduleResult = func(a *gatewaycapture.ExecutionProvider, model string, success bool, first *int, errs ...error) bool {
+			return choices.ReportOpenAIProviderScheduleResult(a, model, success, first, errs...)
 		}
-		b.Selection.SelectAccountWithSchedulerForCapability = choices.SelectAccountWithSchedulerForCapability
-		b.Selection.SelectAccountWithSchedulerForCapabilityAndRoutingModel = choices.SelectAccountWithSchedulerForCapabilityAndRoutingModel
-		b.Selection.SelectImages = choices.SelectAccountWithSchedulerForImages
-		b.Selection.RecordSwitch = choices.RecordOpenAIAccountSwitch
-		b.Selection.ReportSelection = choices.ReportOpenAIAccountScheduleResultForSelection
+		b.Selection.SelectProviderWithSchedulerForCapability = choices.SelectProviderWithSchedulerForCapability
+		b.Selection.SelectProviderWithSchedulerForCapabilityAndRoutingModel = choices.SelectProviderWithSchedulerForCapabilityAndRoutingModel
+		b.Selection.SelectImages = choices.SelectProviderWithSchedulerForImages
+		b.Selection.RecordSwitch = choices.RecordOpenAIProviderSwitch
+		b.Selection.ReportSelection = choices.ReportOpenAIProviderScheduleResultForSelection
 	}
 
 	if availability != nil {

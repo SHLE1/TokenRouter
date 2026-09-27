@@ -1657,7 +1657,7 @@ func (s *APIKeyService) IncrementUsage(ctx context.Context, keyID int64) error {
 }
 
 // GetAvailableGroups 获取用户有权限绑定的分组列表。
-// group 仅负责路由/账号集合，不再承载订阅语义。
+// group 仅负责路由/提供商集合，不再承载订阅语义。
 func (s *APIKeyService) GetAvailableGroups(ctx context.Context, userID int64) ([]routing.Group, error) {
 	// 获取用户信息
 	user, err := s.userRepo.GetByID(ctx, userID)

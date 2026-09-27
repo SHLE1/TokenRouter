@@ -6,7 +6,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
-// IsOpenAIRequestBodyTooLarge 判断当前失败是否仍可通过更换账号发送相同报文。
+// IsOpenAIRequestBodyTooLarge 判断当前失败是否仍可通过更换提供商发送相同报文。
 func IsOpenAIRequestBodyTooLarge(e *forward.UpstreamFailoverError) bool {
 	return e != nil && e.Reason == "openai_request_body_too_large"
 }

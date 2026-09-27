@@ -92,7 +92,6 @@ func (s *OAuthClient) postTokenForm(ctx context.Context, formData url.Values, pr
 		request.SetHeader("originator", originator)
 	}
 	resp, err := request.Post(s.tokenURL)
-
 	if err != nil {
 		if shouldReturnOpenAINoProxyHint(ctx, proxyURL, err) {
 			return nil, newOpenAINoProxyHintError(err)
@@ -124,7 +123,7 @@ func (s *OAuthClient) postTokenFormWithTLS(ctx context.Context, formData url.Val
 	}
 	req = req.WithContext(upstream.WithHTTPUpstreamProfile(req.Context(), upstream.HTTPUpstreamProfileOpenAI))
 
-	resp, err := s.httpUpstream.DoWithTLS(req, proxyURL, option.AccountID, option.AccountConcurrency, option.TLSProfile)
+	resp, err := s.httpUpstream.DoWithTLS(req, proxyURL, option.ProviderID, option.ProviderConcurrency, option.TLSProfile)
 	if err != nil {
 		if shouldReturnOpenAINoProxyHint(ctx, proxyURL, err) {
 			return nil, newOpenAINoProxyHintError(err)
@@ -189,13 +188,13 @@ func newOpenAINoProxyHintError(cause error) error {
 
 // OAuthTokenRequestOptions 只描述本次交换的技术身份及 TLS 快照。
 type OAuthTokenRequestOptions struct {
-	UserAgent          string
-	TLSProfile         *tlsfingerprint.Profile
-	AccountID          int64
-	AccountConcurrency int
+	UserAgent           string
+	TLSProfile          *tlsfingerprint.Profile
+	ProviderID          int64
+	ProviderConcurrency int
 }
 
-// OAuthHTTPUpstream 复用应用唯一 HTTP 池，不读取账号实体或配置。
+// OAuthHTTPUpstream 复用应用唯一 HTTP 池，不读取提供商实体或配置。
 type OAuthHTTPUpstream interface {
 	DoWithTLS(*http.Request, string, int64, int, *tlsfingerprint.Profile) (*http.Response, error)
 }

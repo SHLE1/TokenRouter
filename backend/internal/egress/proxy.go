@@ -51,9 +51,9 @@ func (p *Proxy) URL() string {
 	return u.String()
 }
 
-type ProxyWithAccountCount struct {
+type ProxyWithProviderCount struct {
 	Proxy
-	AccountCount   int64
+	ProviderCount  int64
 	LatencyMs      *int64
 	LatencyStatus  string
 	LatencyMessage string
@@ -69,7 +69,7 @@ type ProxyWithAccountCount struct {
 	QualityChecked *int64
 }
 
-type ProxyAccountSummary struct {
+type ProxyProviderSummary struct {
 	ID       int64
 	Name     string
 	Platform string

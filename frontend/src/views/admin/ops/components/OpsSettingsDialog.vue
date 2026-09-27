@@ -579,12 +579,12 @@ async function saveAllSettings() {
 
             <div class="flex items-center justify-between">
               <div>
-                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('admin.ops.settings.ignoreNoAvailableAccounts') }}</label>
+                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('admin.ops.settings.ignoreNoAvailableProviders') }}</label>
                 <p class="mt-1 text-xs text-gray-500">
-                  {{ t('admin.ops.settings.ignoreNoAvailableAccountsHint') }}
+                  {{ t('admin.ops.settings.ignoreNoAvailableProvidersHint') }}
                 </p>
               </div>
-              <Toggle v-model="advancedSettings.ignore_no_available_accounts" />
+              <Toggle v-model="advancedSettings.ignore_no_available_providers" />
             </div>
 
             <div class="flex items-center justify-between">

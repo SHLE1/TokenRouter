@@ -35,7 +35,7 @@ func Logger() gin.HandlerFunc {
 		statusCode := c.Writer.Status()
 		clientIP := clientip.GetClientIP(c)
 		protocol := c.Request.Proto
-		accountID, hasAccountID := c.Request.Context().Value(telemetry.AccountID).(int64)
+		providerID, hasProviderID := c.Request.Context().Value(telemetry.ProviderID).(int64)
 		platform, _ := c.Request.Context().Value(telemetry.Platform).(string)
 		model, _ := c.Request.Context().Value(telemetry.Model).(string)
 		reason, rejected := GetIngressRejectReason(c)
@@ -69,8 +69,8 @@ func Logger() gin.HandlerFunc {
 				zap.Bool(logging.OpsSystemLogSkipField, true),
 			)
 		}
-		if hasAccountID && accountID > 0 {
-			fields = append(fields, zap.Int64("account_id", accountID))
+		if hasProviderID && providerID > 0 {
+			fields = append(fields, zap.Int64("provider_id", providerID))
 		}
 		if platform != "" {
 			fields = append(fields, zap.String("platform", platform))
@@ -92,7 +92,7 @@ func Logger() gin.HandlerFunc {
 	}
 }
 
-// appendRequestStageFields 将请求入口、账号槽位和出站 HTTP 阶段写入访问日志。
+// appendRequestStageFields 将请求入口、提供商槽位和出站 HTTP 阶段写入访问日志。
 // 这些字段只记录时间与计数，不记录请求体、凭据或上游响应内容。
 func appendRequestStageFields(fields []zap.Field, c *gin.Context) []zap.Field {
 	if c == nil || c.Request == nil {
@@ -107,7 +107,7 @@ func appendRequestStageFields(fields []zap.Field, c *gin.Context) []zap.Field {
 		}
 		fields = append(fields, zap.Int64(name, at.Sub(startedAt).Milliseconds()))
 	}
-	appendTimestamp(telemetry.AccountSlotAcquiredAt, "account_slot_acquired_ms")
+	appendTimestamp(telemetry.ProviderSlotAcquiredAt, "provider_slot_acquired_ms")
 	appendTimestamp(telemetry.FirstSSEDataAt, "upstream_first_sse_data_ms")
 	appendTimestamp(telemetry.FirstVisibleOutputAt, "first_visible_output_ms")
 	appendTimestamp(telemetry.FirstDownstreamFlushAt, "first_downstream_flush_ms")

@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/gateway"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/vertex"
@@ -30,14 +30,17 @@ func newVertexBetaTestContext(t *testing.T, anthropicBeta string) *requestBounda
 	return c
 }
 
-func newVertexServiceAccount(id int64) *gatewayprovider.ExecutionAccount {
-	return &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: id,
-		Platform: capability.PlatformAnthropic,
-		Type:     capability.AccountTypeServiceAccount,
-		Credentials: map[string]any{
-			"project_id": "vertex-proj",
-			"location":   "us-east5",
-		}},
+func newVertexServiceAccount(id int64) *gatewayprovider.ExecutionProvider {
+	return &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: id,
+			Platform: capability.PlatformAnthropic,
+			Type:     capability.ProviderTypeServiceAccount,
+			Credentials: map[string]any{
+				"project_id": "vertex-proj",
+				"location":   "us-east5",
+			},
+		},
 	}
 }
 

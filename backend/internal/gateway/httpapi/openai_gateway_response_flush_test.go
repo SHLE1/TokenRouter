@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 	"github.com/gin-gonic/gin"
@@ -465,9 +465,9 @@ func TestOpenAIResponseFlush_BareErrorFollowedByCompletedUsesCompletedTerminal(t
 func TestOpenAIResponseFlush_CompatibleAPIKeyDoesNotUseCodexBareErrorSynthesis(t *testing.T) {
 	body := "data: {\"type\":\"error\",\"error\":{\"code\":\"provider_error\",\"message\":\"provider failed\"}}\n\n"
 	recorder := newOpenAIResponseFlushRecorder()
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 2, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
 
-	result, err := runOpenAIResponseFlushTestWithAccount(recorder, io.NopCloser(strings.NewReader(body)), OpenAIResponseOptions{}, account)
+	result, err := runOpenAIResponseFlushTestWithProvider(recorder, io.NopCloser(strings.NewReader(body)), OpenAIResponseOptions{}, provider)
 
 	require.Error(t, err)
 	require.NotNil(t, result)
@@ -594,11 +594,10 @@ func TestOpenAIResponseFlush_ClientDisconnectStillDrainsUsage(t *testing.T) {
 }
 
 func runOpenAIResponseFlushTest(recorder *openAIResponseFlushRecorder, body io.ReadCloser, gatewayCfg OpenAIResponseOptions) (*openai.StreamingResult, error) {
-	return runOpenAIResponseFlushTestWithAccount(recorder, body, gatewayCfg, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth}})
+	return runOpenAIResponseFlushTestWithProvider(recorder, body, gatewayCfg, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}})
 }
 
-func runOpenAIResponseFlushTestWithAccount(recorder *openAIResponseFlushRecorder, body io.ReadCloser, gatewayCfg OpenAIResponseOptions, account *gatewayprovider.ExecutionAccount) (*openai.StreamingResult, error) {
-
+func runOpenAIResponseFlushTestWithProvider(recorder *openAIResponseFlushRecorder, body io.ReadCloser, gatewayCfg OpenAIResponseOptions, provider *gatewayprovider.ExecutionProvider) (*openai.StreamingResult, error) {
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
 	output := newAuxiliaryFixture(auxiliaryFixtureInputs{}).Output
@@ -612,7 +611,7 @@ func runOpenAIResponseFlushTestWithAccount(recorder *openAIResponseFlushRecorder
 		Header:     http.Header{"Content-Type": []string{"text/event-stream"}},
 		Body:       body,
 	}
-	return output.Stream(context.Background(), resp, c, account, time.Now(), "gpt-5", "gpt-5", "")
+	return output.Stream(context.Background(), resp, c, provider, time.Now(), "gpt-5", "gpt-5", "")
 }
 
 func runOpenAIResponseFlushTestAsync(recorder *openAIResponseFlushRecorder, body io.ReadCloser, gatewayCfg OpenAIResponseOptions) (<-chan *openai.StreamingResult, <-chan error) {

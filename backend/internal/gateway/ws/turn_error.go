@@ -42,7 +42,7 @@ type IngressTurnError struct {
 	wroteDownstream bool
 }
 
-// CurrentTurnFailoverError 携带可在替换账号上重放的当前回合请求。
+// CurrentTurnFailoverError 携带可在替换提供商上重放的当前回合请求。
 type CurrentTurnFailoverError struct {
 	cause        error
 	retryPayload []byte
@@ -69,7 +69,7 @@ func NewCurrentTurnFailoverError(cause error, retryPayload []byte) error {
 	}
 }
 
-// CurrentTurnRetryPayload 返回替换账号可安全重放的当前回合请求副本。
+// CurrentTurnRetryPayload 返回替换提供商可安全重放的当前回合请求副本。
 func CurrentTurnRetryPayload(err error) ([]byte, bool) {
 	var retryErr *CurrentTurnFailoverError
 	if !errors.As(err, &retryErr) || retryErr == nil {

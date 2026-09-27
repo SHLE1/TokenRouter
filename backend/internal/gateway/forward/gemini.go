@@ -79,7 +79,7 @@ func Gemini(ctx context.Context, p GeminiPorts, in GeminiInput) (*Result, error)
 	// 清理 Schema
 	if cleanedBody, err := p.CleanSchema(injectedBody); err == nil {
 		injectedBody = cleanedBody
-		p.Log(fmt.Sprintf("[Antigravity] Cleaned request schema in forwarded request for account %s", in.AccountName))
+		p.Log(fmt.Sprintf("[Antigravity] Cleaned request schema in forwarded request for provider %s", in.ProviderName))
 	} else {
 		p.Log(fmt.Sprintf("[Antigravity] Failed to clean schema: %v", err))
 	}
@@ -116,7 +116,7 @@ func Gemini(ctx context.Context, p GeminiPorts, in GeminiInput) (*Result, error)
 	hooks.Exchange = func() error {
 		err := p.Retry(ctx, execution)
 		if err != nil {
-			// 检查是否是账号切换信号，转换为 UpstreamFailoverError 让 Handler 切换账号
+			// 检查是否是提供商切换信号，转换为 UpstreamFailoverError 让 Handler 切换提供商
 			if switchSticky, ok := p.SwitchError(err); ok {
 				return p.Failover(503, nil, false, switchSticky)
 			}
@@ -158,13 +158,13 @@ func Gemini(ctx context.Context, p GeminiPorts, in GeminiInput) (*Result, error)
 
 		p.SetError(resp.StatusCode, upstreamMsg, upstreamDetail)
 
-		// 精确匹配服务端配置类 400 错误，触发同账号重试 + failover
+		// 精确匹配服务端配置类 400 错误，触发同提供商重试 + failover
 		if resp.StatusCode == 400 && p.GoogleConfigError(strings.ToLower(upstreamMsg)) {
-			p.StdLog(fmt.Sprintf("%s status=400 google_config_error failover=true upstream_message=%q account=%d", prefix, upstreamMsg, in.AccountID))
+			p.StdLog(fmt.Sprintf("%s status=400 google_config_error failover=true upstream_message=%q provider=%d", prefix, upstreamMsg, in.ProviderID))
 			p.Observe(Notice{
 				Platform:           in.Platform,
-				AccountID:          in.AccountID,
-				AccountName:        in.AccountName,
+				ProviderID:         in.ProviderID,
+				ProviderName:       in.ProviderName,
 				UpstreamStatusCode: resp.StatusCode,
 				UpstreamRequestID:  requestID,
 				Kind:               "failover",
@@ -177,8 +177,8 @@ func Gemini(ctx context.Context, p GeminiPorts, in GeminiInput) (*Result, error)
 		if p.ShouldFailover(resp.StatusCode) {
 			p.Observe(Notice{
 				Platform:           in.Platform,
-				AccountID:          in.AccountID,
-				AccountName:        in.AccountName,
+				ProviderID:         in.ProviderID,
+				ProviderName:       in.ProviderName,
 				UpstreamStatusCode: resp.StatusCode,
 				UpstreamRequestID:  requestID,
 				Kind:               "failover",
@@ -192,8 +192,8 @@ func Gemini(ctx context.Context, p GeminiPorts, in GeminiInput) (*Result, error)
 		}
 		p.Observe(Notice{
 			Platform:           in.Platform,
-			AccountID:          in.AccountID,
-			AccountName:        in.AccountName,
+			ProviderID:         in.ProviderID,
+			ProviderName:       in.ProviderName,
 			UpstreamStatusCode: resp.StatusCode,
 			UpstreamRequestID:  requestID,
 			Kind:               "http_error",

@@ -47,6 +47,7 @@ func (s *ProxyExpiryService) Start() {
 	s.done = make(chan struct{})
 	go s.run(ctx, s.done)
 }
+
 func (s *ProxyExpiryService) run(ctx context.Context, done chan struct{}) {
 	defer close(done)
 	ticker := time.NewTicker(s.interval)
@@ -64,6 +65,7 @@ func (s *ProxyExpiryService) run(ctx context.Context, done chan struct{}) {
 		}
 	}
 }
+
 func (s *ProxyExpiryService) sweep(parent context.Context) {
 	if parent.Err() != nil {
 		return
@@ -76,7 +78,7 @@ func (s *ProxyExpiryService) sweep(parent context.Context) {
 		return
 	}
 	if changed > 0 {
-		log.Printf("[ProxyExpiry] re-routed %d accounts off expired proxies", changed)
+		log.Printf("[ProxyExpiry] re-routed %d providers off expired proxies", changed)
 	}
 }
 

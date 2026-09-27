@@ -17,11 +17,11 @@ import (
 func (s *OpenAITextExecutor) NativeMessages(
 	ctx context.Context,
 	c *gin.Context,
-	account *gatewayprovider.ExecutionAccount,
+	provider *gatewayprovider.ExecutionProvider,
 	body []byte,
 	defaultMappedModel string,
 ) (*forwardcore.OpenAIResult, error) {
-	adapter := &openAINativeAnthropicAdapter{openAIMessagesExecutionAdapter: &openAIMessagesExecutionAdapter{s: s, c: c, account: account}, kind: openaiexecution.NativeMessages}
+	adapter := &openAINativeAnthropicAdapter{openAIMessagesExecutionAdapter: &openAIMessagesExecutionAdapter{s: s, c: c, provider: provider}, kind: openaiexecution.NativeMessages}
 	result, err := openaiexecution.ForwardNativeMessages(ctx, body, defaultMappedModel, adapter)
 	return openaiexecution.ToForwardResult(result), err
 }
@@ -36,11 +36,11 @@ func (s *OpenAITextExecutor) NativeMessages(
 func (s *OpenAITextExecutor) NativeChat(
 	ctx context.Context,
 	c *gin.Context,
-	account *gatewayprovider.ExecutionAccount,
+	provider *gatewayprovider.ExecutionProvider,
 	body []byte,
 	defaultMappedModel string,
 ) (*forwardcore.OpenAIResult, error) {
-	adapter := &openAINativeAnthropicAdapter{openAIMessagesExecutionAdapter: &openAIMessagesExecutionAdapter{s: s, c: c, account: account}, kind: openaiexecution.NativeChat}
+	adapter := &openAINativeAnthropicAdapter{openAIMessagesExecutionAdapter: &openAIMessagesExecutionAdapter{s: s, c: c, provider: provider}, kind: openaiexecution.NativeChat}
 	result, err := openaiexecution.ForwardNativeChat(ctx, body, defaultMappedModel, adapter)
 	return openaiexecution.ToForwardResult(result), err
 }
@@ -55,11 +55,11 @@ func (s *OpenAITextExecutor) NativeChat(
 func (s *OpenAITextExecutor) NativeResponses(
 	ctx context.Context,
 	c *gin.Context,
-	account *gatewayprovider.ExecutionAccount,
+	provider *gatewayprovider.ExecutionProvider,
 	body []byte,
 	defaultMappedModel string,
 ) (*forwardcore.OpenAIResult, error) {
-	adapter := &openAINativeAnthropicAdapter{openAIMessagesExecutionAdapter: &openAIMessagesExecutionAdapter{s: s, c: c, account: account}, kind: openaiexecution.NativeResponses}
+	adapter := &openAINativeAnthropicAdapter{openAIMessagesExecutionAdapter: &openAIMessagesExecutionAdapter{s: s, c: c, provider: provider}, kind: openaiexecution.NativeResponses}
 	result, err := openaiexecution.ForwardNativeResponses(ctx, body, defaultMappedModel, adapter)
 	return openaiexecution.ToForwardResult(result), err
 }

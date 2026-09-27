@@ -9,7 +9,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/ops"
 	"github.com/TokenFlux/TokenRouter/internal/payment"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/site"
 
@@ -205,11 +205,11 @@ func Prepare(ctx context.Context, settings *Snapshot, options PrepareOptions) (m
 		updates[key] = value
 	}
 
-	accountValues, err := account.PrepareAdminSettings(account.AdminSettings{AccountQuotaNotifyEnabled: settings.AccountQuotaNotifyEnabled, AccountQuotaNotifyEmails: settings.AccountQuotaNotifyEmails, AccountSchedulingThresholds: settings.AccountSchedulingThresholds})
+	providerValues, err := provider.PrepareAdminSettings(provider.AdminSettings{ProviderQuotaNotifyEnabled: settings.ProviderQuotaNotifyEnabled, ProviderQuotaNotifyEmails: settings.ProviderQuotaNotifyEmails, ProviderSchedulingThresholds: settings.ProviderSchedulingThresholds})
 	if err != nil {
 		return nil, err
 	}
-	for key, value := range accountValues {
+	for key, value := range providerValues {
 		updates[key] = value
 	}
 
@@ -219,7 +219,7 @@ func Prepare(ctx context.Context, settings *Snapshot, options PrepareOptions) (m
 }
 
 // prepareQuotaMerge 保留额外 GetAll 的原时点，Ops 独占共享 JSON 合并。
-func prepareQuotaMerge(ctx context.Context, options PrepareOptions, quota account.QuotaAutoPauseSettings) (*ops.OpsAdvancedSettings, error) {
+func prepareQuotaMerge(ctx context.Context, options PrepareOptions, quota provider.QuotaAutoPauseSettings) (*ops.OpsAdvancedSettings, error) {
 	values, err := options.ReadValues(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("get settings for ops advanced merge: %w", err)

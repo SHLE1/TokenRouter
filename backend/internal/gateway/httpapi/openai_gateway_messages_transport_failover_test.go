@@ -16,7 +16,6 @@ import (
 )
 
 func TestForwardAsAnthropic_TransportError_ReturnsFailoverError(t *testing.T) {
-
 	body := []byte(`{"model":"gpt-5.4","max_tokens":32,"messages":[{"role":"user","content":"hello"}],"stream":false}`)
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -28,8 +27,8 @@ func TestForwardAsAnthropic_TransportError_ReturnsFailoverError(t *testing.T) {
 	}
 	svc := newResponsesFixture(responsesFixtureInputs{options: protocolHTTPOptions(), transport: upstream})
 
-	account := rawChatCompletionsTestAccount()
-	_, err := svc.Text.Messages(context.Background(), c, account, body, "", "")
+	provider := rawChatCompletionsTestProvider()
+	_, err := svc.Text.Messages(context.Background(), c, provider, body, "", "")
 
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError
@@ -38,7 +37,6 @@ func TestForwardAsAnthropic_TransportError_ReturnsFailoverError(t *testing.T) {
 }
 
 func TestForwardAsAnthropic_TransportError_DoesNotWriteResponse(t *testing.T) {
-
 	body := []byte(`{"model":"gpt-5.4","max_tokens":32,"messages":[{"role":"user","content":"hello"}],"stream":false}`)
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -50,15 +48,14 @@ func TestForwardAsAnthropic_TransportError_DoesNotWriteResponse(t *testing.T) {
 	}
 	svc := newResponsesFixture(responsesFixtureInputs{options: protocolHTTPOptions(), transport: upstream})
 
-	account := rawChatCompletionsTestAccount()
-	_, _ = svc.Text.Messages(context.Background(), c, account, body, "", "")
+	provider := rawChatCompletionsTestProvider()
+	_, _ = svc.Text.Messages(context.Background(), c, provider, body, "", "")
 
 	require.Equal(t, http.StatusOK, rec.Code, "transport error must not write HTTP response — handler owns the response for failover")
 	require.Empty(t, rec.Body.String(), "response body must be empty so handler can write the correct error or failover")
 }
 
 func TestForwardAsAnthropic_TransportError_ClientCanceled_NoFailover(t *testing.T) {
-
 	body := []byte(`{"model":"gpt-5.4","max_tokens":32,"messages":[{"role":"user","content":"hello"}],"stream":false}`)
 	rec := httptest.NewRecorder()
 	cancelCtx, cancel := context.WithCancel(context.Background())
@@ -72,8 +69,8 @@ func TestForwardAsAnthropic_TransportError_ClientCanceled_NoFailover(t *testing.
 	}
 	svc := newResponsesFixture(responsesFixtureInputs{options: protocolHTTPOptions(), transport: upstream})
 
-	account := rawChatCompletionsTestAccount()
-	_, err := svc.Text.Messages(context.Background(), c, account, body, "", "")
+	provider := rawChatCompletionsTestProvider()
+	_, err := svc.Text.Messages(context.Background(), c, provider, body, "", "")
 
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError

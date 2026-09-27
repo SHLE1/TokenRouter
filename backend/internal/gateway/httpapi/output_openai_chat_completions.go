@@ -16,7 +16,7 @@ import (
 
 func (p *OpenAIResponseOutput) BufferedReadFailure(
 	c *gin.Context,
-	account *gatewayprovider.ExecutionAccount,
+	provider *gatewayprovider.ExecutionProvider,
 	resp *http.Response,
 	requestID string,
 	err error,
@@ -49,7 +49,7 @@ func (p *OpenAIResponseOutput) BufferedReadFailure(
 		responseHeaders = resp.Header
 	}
 	failoverErr := p.NewStreamPolicyFailure(
-		c, account, false, requestID, responseHeaders, http.StatusBadGateway, payload, message, false,
+		c, provider, false, requestID, responseHeaders, http.StatusBadGateway, payload, message, false,
 	)
 	// 保留稳定错误码，确保重试耗尽后客户端和透传规则仍能识别传输故障。
 	failoverErr.ResponseBody = payload

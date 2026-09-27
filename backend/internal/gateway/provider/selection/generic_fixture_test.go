@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 
@@ -100,19 +100,19 @@ func selectionFixtureGroupID(ctx context.Context) *int64 {
 	return &id
 }
 
-// prepareSelectionFixtureAccount 显式声明算法夹具的模型范围，专门的模型能力测试直接构造账号。
-func prepareSelectionFixtureAccount(ctx context.Context, value *gatewayprovider.ExecutionAccount, groupID *int64) {
+// prepareSelectionFixtureProvider 显式声明算法夹具的模型范围，专门的模型能力测试直接构造提供商。
+func prepareSelectionFixtureProvider(ctx context.Context, value *gatewayprovider.ExecutionProvider, groupID *int64) {
 	if value == nil {
 		return
 	}
 	if value.Record.Type == "" {
-		value.Record.Type = capability.AccountTypeAPIKey
+		value.Record.Type = capability.ProviderTypeAPIKey
 	}
 	if value.Record.Credentials == nil {
 		value.Record.Credentials = map[string]any{}
 	}
 	if _, set := value.Record.Credentials["model_whitelist"]; !set {
-		mapping := account.ResolveModelMapping(&value.Record, accountprovider.ModelDefaults())
+		mapping := provider.ResolveModelMapping(&value.Record, provideradapter.ModelDefaults())
 		if len(mapping) == 0 {
 			value.Record.Credentials["model_whitelist"] = []string{"*"}
 		} else {
@@ -126,7 +126,7 @@ func prepareSelectionFixtureAccount(ctx context.Context, value *gatewayprovider.
 	if groupID == nil {
 		groupID = selectionFixtureGroupID(ctx)
 	}
-	if len(value.Record.GroupIDs) == 0 && len(value.Record.AccountGroups) == 0 {
+	if len(value.Record.GroupIDs) == 0 && len(value.Record.ProviderGroups) == 0 {
 		value.Record.GroupIDs = []int64{*groupID}
 	}
 }

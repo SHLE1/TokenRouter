@@ -29,16 +29,16 @@ type OpenAIOAuthServiceSuite struct {
 }
 
 type openAIOAuthHTTPUpstreamRecorder struct {
-	calledDo           bool
-	calledDoWithTLS    bool
-	req                *http.Request
-	proxyURL           string
-	accountID          int64
-	accountConcurrency int
-	profile            *tlsfingerprint.Profile
-	form               url.Values
-	statusCode         int
-	responseBody       string
+	calledDo            bool
+	calledDoWithTLS     bool
+	req                 *http.Request
+	proxyURL            string
+	providerID          int64
+	providerConcurrency int
+	profile             *tlsfingerprint.Profile
+	form                url.Values
+	statusCode          int
+	responseBody        string
 }
 
 func (r *openAIOAuthHTTPUpstreamRecorder) Do(_ *http.Request, _ string, _ int64, _ int) (*http.Response, error) {
@@ -46,12 +46,12 @@ func (r *openAIOAuthHTTPUpstreamRecorder) Do(_ *http.Request, _ string, _ int64,
 	return nil, errors.New("Do should not be called")
 }
 
-func (r *openAIOAuthHTTPUpstreamRecorder) DoWithTLS(req *http.Request, proxyURL string, accountID int64, accountConcurrency int, profile *tlsfingerprint.Profile) (*http.Response, error) {
+func (r *openAIOAuthHTTPUpstreamRecorder) DoWithTLS(req *http.Request, proxyURL string, providerID int64, providerConcurrency int, profile *tlsfingerprint.Profile) (*http.Response, error) {
 	r.calledDoWithTLS = true
 	r.req = req
 	r.proxyURL = proxyURL
-	r.accountID = accountID
-	r.accountConcurrency = accountConcurrency
+	r.providerID = providerID
+	r.providerConcurrency = providerConcurrency
 	r.profile = profile
 	body, _ := io.ReadAll(req.Body)
 	form, _ := url.ParseQuery(string(body))
@@ -404,10 +404,10 @@ func (s *OpenAIOAuthServiceSuite) TestExchangeCode_WithTLSProfileUsesHTTPUpstrea
 	s.svc = &OAuthClient{tokenURL: "https://auth.com/oauth/token", httpUpstream: upstream}
 
 	resp, err := s.svc.ExchangeCode(s.ctx, "code", "verifier", "", "http://proxy.local:8080", "client-id", OAuthTokenRequestOptions{
-		UserAgent:          "Token UA",
-		TLSProfile:         profile,
-		AccountID:          123,
-		AccountConcurrency: 2,
+		UserAgent:           "Token UA",
+		TLSProfile:          profile,
+		ProviderID:          123,
+		ProviderConcurrency: 2,
 	})
 
 	require.NoError(s.T(), err)
@@ -416,8 +416,8 @@ func (s *OpenAIOAuthServiceSuite) TestExchangeCode_WithTLSProfileUsesHTTPUpstrea
 	require.True(s.T(), upstream.calledDoWithTLS)
 	require.Same(s.T(), profile, upstream.profile)
 	require.Equal(s.T(), "http://proxy.local:8080", upstream.proxyURL)
-	require.Equal(s.T(), int64(123), upstream.accountID)
-	require.Equal(s.T(), 2, upstream.accountConcurrency)
+	require.Equal(s.T(), int64(123), upstream.providerID)
+	require.Equal(s.T(), 2, upstream.providerConcurrency)
 	require.Equal(s.T(), upstreamcore.HTTPUpstreamProfileOpenAI, upstreamcore.HTTPUpstreamProfileFromContext(upstream.req.Context()))
 	require.Equal(s.T(), "application/x-www-form-urlencoded", upstream.req.Header.Get("Content-Type"))
 	require.Equal(s.T(), "application/json", upstream.req.Header.Get("Accept"))

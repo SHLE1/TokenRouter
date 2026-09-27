@@ -1,5 +1,5 @@
 // Package googleforward 组合 Google 平台的请求准备、凭据和单次执行。
-// 平台重试仍由 upstream 持有，HTTP 输出与账号健康写入分别交给对应端口。
+// 平台重试仍由 upstream 持有，HTTP 输出与提供商健康写入分别交给对应端口。
 package googleforward
 
 import (
@@ -7,16 +7,16 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 	"github.com/TokenFlux/TokenRouter/internal/gateway"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/forward"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
 	"github.com/TokenFlux/TokenRouter/internal/ops"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/logredact"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
@@ -48,6 +48,7 @@ func (o Options) LogConfig() (bool, int) {
 	}
 	return o.Configured && o.LogErrorBody, n
 }
+
 func (o Options) ErrorDetail(body []byte) string {
 	enabled, n := o.LogConfig()
 	if !enabled {
@@ -74,23 +75,23 @@ type Output interface {
 	ClaudeError(int, string, string) error
 	GoogleError(int, string) error
 	ChatError(int, string, string) error
-	GeminiCustomCodeSkippedError(*provider.ExecutionAccount, int, string, []byte, func()) error
-	GeminiNativeUpstreamError(*provider.ExecutionAccount, *http.Response, []byte, string, bool) error
-	GeminiMappedError(*provider.ExecutionAccount, int, string, []byte) error
-	GeminiOpenAICompatMappedError(*provider.ExecutionAccount, int, string, []byte, gemini.OpenAICompatProtocol) error
+	GeminiCustomCodeSkippedError(*gatewayadapter.ExecutionProvider, int, string, []byte, func()) error
+	GeminiNativeUpstreamError(*gatewayadapter.ExecutionProvider, *http.Response, []byte, string, bool) error
+	GeminiMappedError(*gatewayadapter.ExecutionProvider, int, string, []byte) error
+	GeminiOpenAICompatMappedError(*gatewayadapter.ExecutionProvider, int, string, []byte, gemini.OpenAICompatProtocol) error
 	GeminiOpenAICompatError(gemini.OpenAICompatProtocol, int, string, string) error
 	AntigravityCompatError(int, string, string) error
-	MappedAntigravityCompatError(*provider.ExecutionAccount, int, string, []byte) error
+	MappedAntigravityCompatError(*gatewayadapter.ExecutionProvider, int, string, []byte) error
 	MapAntigravityCollectionError(error) error
-	MappedClaudeError(*provider.ExecutionAccount, int, string, []byte) error
+	MappedClaudeError(*gatewayadapter.ExecutionProvider, int, string, []byte) error
 }
 
 // Gemini 只组合凭据、传输和错误观察；不持有另一平台服务或完整配置。
 type Gemini struct {
 	Options      Options
-	Tokens       *account.GeminiTokenSource
-	Health       *accountprovider.UpstreamHealth
-	Errors       *accountprovider.GeminiErrorObserver
+	Tokens       *provider.GeminiTokenSource
+	Health       *provideradapter.UpstreamHealth
+	Errors       *provideradapter.GeminiErrorObserver
 	Transport    httpclient.UpstreamTransport
 	HeaderFilter *egress.CompiledHeaderFilter
 	Enter        func() (func(), error)
@@ -99,10 +100,10 @@ type Gemini struct {
 // Antigravity 使用应用已有的健康与重试实例，每次调用独立构造平台输入。
 type Antigravity struct {
 	Options   Options
-	Tokens    *account.AntigravityTokenSource
-	Retry     *accountprovider.AntigravityRetry
-	Errors    *accountprovider.AntigravityErrorObserver
-	Store     provider.ExecutionAccountStore
+	Tokens    *provider.AntigravityTokenSource
+	Retry     *provideradapter.AntigravityRetry
+	Errors    *provideradapter.AntigravityErrorObserver
+	Store     gatewayadapter.ExecutionProviderStore
 	Transport httpclient.UpstreamTransport
 	Gateway   *gateway.RuntimeSettings
 	Routing   *routing.RuntimeSettings
@@ -110,7 +111,7 @@ type Antigravity struct {
 	Enter     func() (func(), error)
 }
 
-// attempt 的图片计数与工具映射只属于一次平台调用，切换账号时重新创建。
+// attempt 的图片计数与工具映射只属于一次平台调用，切换提供商时重新创建。
 type attempt struct {
 	Output
 	ToolNames *anthropic.ToolNameRewrite
@@ -120,11 +121,13 @@ type attempt struct {
 func (a *attempt) reverseTools(body []byte) []byte {
 	return anthropic.RestoreToolNamesInBytes(body, a.ToolNames)
 }
+
 func (a *attempt) observeImages(body []byte) {
 	if n := gemini.CountGeminiInlineImageOutputs(body); n > a.Images {
 		a.Images = n
 	}
 }
+
 func (a *attempt) imageCount(original, mapped string) int {
 	if a.Images > 0 {
 		return a.Images
@@ -134,6 +137,7 @@ func (a *attempt) imageCount(original, mapped string) int {
 	}
 	return 0
 }
+
 func messagesResult(value *forward.Result) *forward.MessagesResult {
 	if value == nil {
 		return nil

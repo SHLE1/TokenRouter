@@ -3,7 +3,7 @@ package openai
 
 import "strings"
 
-// TrimEncryptedReasoningItems 清理一次性解密错误恢复中的账号绑定状态：
+// TrimEncryptedReasoningItems 清理一次性解密错误恢复中的提供商绑定状态：
 // reasoning 保留可复用骨架，加密 compaction 则必须整项删除。
 func TrimEncryptedReasoningItems(reqBody map[string]any) bool {
 	if len(reqBody) == 0 {
@@ -84,6 +84,7 @@ func TrimEncryptedReasoningItems(reqBody map[string]any) bool {
 		return false
 	}
 }
+
 func SanitizeEncryptedReasoningInputItem(item any) (next any, changed bool, keep bool) {
 	inputItem, ok := item.(map[string]any)
 	if !ok {

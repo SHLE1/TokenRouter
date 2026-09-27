@@ -17,7 +17,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 
 	routingpostgres "github.com/TokenFlux/TokenRouter/internal/routing/postgres"
-	"github.com/TokenFlux/TokenRouter/internal/routing/provider"
+	routingadapter "github.com/TokenFlux/TokenRouter/internal/routing/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/upstream/qoder"
 )
@@ -60,7 +60,7 @@ func providePricingCatalog(calculator *billing.Calculator, prices *pricingprovid
 			modes[model] = value.Mode
 		}
 		for _, platform := range []string{"anthropic", "openai", "gemini", "antigravity", "qoder", "grok"} {
-			for _, model := range provider.DefaultGroupModelCandidates(platform) {
+			for _, model := range routingadapter.DefaultGroupModelCandidates(platform) {
 				if _, exists := entries[model]; !exists {
 					entries[model] = platform
 				}

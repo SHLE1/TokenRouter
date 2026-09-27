@@ -22,7 +22,7 @@ type auxiliaryHTTPRecorder struct {
 	lastTLSProfile *tlsfingerprint.Profile
 }
 
-func (u *auxiliaryHTTPRecorder) Do(req *http.Request, proxyURL string, accountID int64, accountConcurrency int) (*http.Response, error) {
+func (u *auxiliaryHTTPRecorder) Do(req *http.Request, proxyURL string, providerID int64, providerConcurrency int) (*http.Response, error) {
 	u.lastReq = req
 	u.lastProxyURL = proxyURL
 	if req != nil && req.Body != nil {
@@ -43,7 +43,8 @@ func (u *auxiliaryHTTPRecorder) Do(req *http.Request, proxyURL string, accountID
 	}
 	return u.resp, nil
 }
-func (u *auxiliaryHTTPRecorder) DoWithTLS(req *http.Request, proxyURL string, accountID int64, accountConcurrency int, profile *tlsfingerprint.Profile) (*http.Response, error) {
+
+func (u *auxiliaryHTTPRecorder) DoWithTLS(req *http.Request, proxyURL string, providerID int64, providerConcurrency int, profile *tlsfingerprint.Profile) (*http.Response, error) {
 	u.lastTLSProfile = profile
-	return u.Do(req, proxyURL, accountID, accountConcurrency)
+	return u.Do(req, proxyURL, providerID, providerConcurrency)
 }

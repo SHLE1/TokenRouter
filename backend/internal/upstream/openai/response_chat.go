@@ -1,4 +1,4 @@
-// Chat 输出适配持有本次协议状态，不持有账号、配置或资金服务。
+// Chat 输出适配持有本次协议状态，不持有提供商、配置或资金服务。
 package openai
 
 import (
@@ -39,7 +39,7 @@ type ChatFailure struct {
 	Type, Message string
 }
 
-// ChatResponseOptions 只接收原账号策略、输出和转换的显式端口。
+// ChatResponseOptions 只接收原提供商策略、输出和转换的显式端口。
 type ChatResponseOptions struct {
 	Runtime                           bridge.Runtime
 	RequestContext                    context.Context

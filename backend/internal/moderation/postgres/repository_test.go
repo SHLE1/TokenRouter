@@ -275,7 +275,7 @@ func TestContentModerationRepositoryListCyberWarningsReturnsTeamAttribution(t *t
 	mock.ExpectQuery("FROM content_moderation_cyber_warnings w").WithArgs(20, 0).WillReturnRows(
 		sqlmock.NewRows([]string{
 			"id", "request_id", "user_id", "user_email", "billing_user_id", "team_id", "api_key_id", "api_key_name", "group_id", "group_name",
-			"account_id", "account_name", "endpoint", "model", "upstream_status", "warning_text", "prompt_excerpt",
+			"provider_id", "provider_name", "endpoint", "model", "upstream_status", "warning_text", "prompt_excerpt",
 			"violation_count", "auto_banned", "email_sent", "user_status", "source", "content_complete", "audit_complete",
 			"text_unit_count", "image_unit_count", "failed_unit_count", "created_at",
 		}).AddRow(
@@ -303,7 +303,7 @@ func TestContentModerationRepositoryGetCyberWarningReturnsTeamAttribution(t *tes
 	mock.ExpectQuery("FROM content_moderation_cyber_warnings w").WithArgs(int64(19)).WillReturnRows(
 		sqlmock.NewRows([]string{
 			"id", "request_id", "user_id", "user_email", "billing_user_id", "team_id", "api_key_id", "api_key_name", "group_id", "group_name",
-			"account_id", "account_name", "endpoint", "model", "upstream_status", "warning_text", "prompt_excerpt",
+			"provider_id", "provider_name", "endpoint", "model", "upstream_status", "warning_text", "prompt_excerpt",
 			"violation_count", "auto_banned", "email_sent", "user_status", "source", "input_items", "content_complete", "audit_complete",
 			"text_unit_count", "image_unit_count", "failed_unit_count", "failed_units", "created_at",
 		}).AddRow(
@@ -362,7 +362,7 @@ func TestContentModerationRepositoryCreateCyberWarningAndApplyUserBan_DisablesUs
 	userID := int64(1001)
 	billingUserID := int64(1000)
 	teamID := int64(3001)
-	accountID := int64(2001)
+	providerID := int64(2001)
 	createdAt := time.Now()
 	warning := &service.ContentModerationCyberWarning{
 		RequestID:      "req_1",
@@ -370,8 +370,8 @@ func TestContentModerationRepositoryCreateCyberWarningAndApplyUserBan_DisablesUs
 		UserEmail:      "user@example.com",
 		BillingUserID:  &billingUserID,
 		TeamID:         &teamID,
-		AccountID:      &accountID,
-		AccountName:    "openai-1",
+		ProviderID:     &providerID,
+		ProviderName:   "openai-1",
 		Endpoint:       "/v1/responses",
 		Model:          "gpt-5.1",
 		UpstreamStatus: 400,
@@ -394,8 +394,8 @@ func TestContentModerationRepositoryCreateCyberWarningAndApplyUserBan_DisablesUs
 			warning.APIKeyName,
 			nil,
 			warning.GroupName,
-			accountID,
-			warning.AccountName,
+			providerID,
+			warning.ProviderName,
 			warning.Endpoint,
 			warning.Model,
 			warning.UpstreamStatus,
@@ -467,7 +467,7 @@ func TestContentModerationRepositoryCreateCyberWarningAndApplyUserBan_KeepsBelow
 			nil,
 			warning.GroupName,
 			nil,
-			warning.AccountName,
+			warning.ProviderName,
 			warning.Endpoint,
 			warning.Model,
 			warning.UpstreamStatus,

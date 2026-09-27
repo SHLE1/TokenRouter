@@ -62,19 +62,19 @@ func CompactionTestHasOutput(body []byte) bool {
 	return openai.ResponsesOutputHasCompactionItem(body)
 }
 
-func CompactionTestSessionID(accountID int64) string {
+func CompactionTestSessionID(providerID int64) string {
 	// 保留既有会话标识，避免重命名内部函数改变上游对测试请求的处理。
-	if accountID <= 0 {
+	if providerID <= 0 {
 		return DeriveStableUUIDv4("tokenrouter:openai-native-compaction-v2-probe:anonymous")
 	}
-	return DeriveStableUUIDv4("tokenrouter:openai-native-compaction-v2-probe:" + strconv.FormatInt(accountID, 10))
+	return DeriveStableUUIDv4("tokenrouter:openai-native-compaction-v2-probe:" + strconv.FormatInt(providerID, 10))
 }
 
 // LegacyCompactionTestSessionID 保持旧端点既有会话格式，避免兼容性测试本身改变
 // legacy 上游对请求形状的识别。
-func LegacyCompactionTestSessionID(accountID int64) string {
-	if accountID <= 0 {
+func LegacyCompactionTestSessionID(providerID int64) string {
+	if providerID <= 0 {
 		return "probe_compact"
 	}
-	return "probe_compact_" + strconv.FormatInt(accountID, 10)
+	return "probe_compact_" + strconv.FormatInt(providerID, 10)
 }

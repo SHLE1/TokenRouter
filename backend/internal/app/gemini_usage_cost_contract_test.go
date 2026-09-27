@@ -5,32 +5,32 @@ package app
 import (
 	"testing"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 
 	usagecore "github.com/TokenFlux/TokenRouter/internal/usage"
 	"github.com/stretchr/testify/require"
 )
 
-func TestGeminiAggregateUsageUsesAccountCost(t *testing.T) {
-	// 用户扣费倍率与账号成本倍率不同时，Gemini 本地用量必须保持账号成本口径。
+func TestGeminiAggregateUsageUsesProviderCost(t *testing.T) {
+	// 用户扣费倍率与提供商成本倍率不同时，Gemini 本地用量必须保持提供商成本口径。
 	stats := []usagecore.ModelStat{
 		{
-			Model:       "gemini-2.5-pro",
-			Requests:    2,
-			TotalTokens: 300,
-			ActualCost:  500,
-			AccountCost: 10,
+			Model:        "gemini-2.5-pro",
+			Requests:     2,
+			TotalTokens:  300,
+			ActualCost:   500,
+			ProviderCost: 10,
 		},
 		{
-			Model:       "gemini-2.5-flash",
-			Requests:    3,
-			TotalTokens: 400,
-			ActualCost:  100,
-			AccountCost: 2,
+			Model:        "gemini-2.5-flash",
+			Requests:     3,
+			TotalTokens:  400,
+			ActualCost:   100,
+			ProviderCost: 2,
 		},
 	}
 
-	totals := account.AggregateGeminiUsage(projectGeminiModelUsage(stats))
+	totals := provider.AggregateGeminiUsage(projectGeminiModelUsage(stats))
 
 	require.Equal(t, int64(2), totals.ProRequests)
 	require.Equal(t, int64(3), totals.FlashRequests)

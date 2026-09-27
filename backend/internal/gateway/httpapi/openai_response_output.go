@@ -4,11 +4,11 @@ import (
 	"context"
 	"time"
 
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 	"github.com/TokenFlux/TokenRouter/internal/gateway"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
@@ -29,15 +29,15 @@ type OpenAIResponseOptions struct {
 type OpenAIResponseOutput struct {
 	Reasoning    *session.ReasoningHistory
 	Options      OpenAIResponseOptions
-	Health       *accountprovider.OpenAIResponseHealth
-	GrokHealth   *accountprovider.GrokHealth
-	Observer     *accountprovider.UpstreamHealth
+	Health       *provideradapter.OpenAIResponseHealth
+	GrokHealth   *provideradapter.GrokHealth
+	Observer     *provideradapter.UpstreamHealth
 	Headers      *egress.CompiledHeaderFilter
 	Turns        *CodexTurnStateHeaders
 	Corrector    *openai.CodexToolCorrector
 	ProxyCircuit *egress.ProxyStreamCircuit
 	TTFT         func(context.Context) string
-	Redact       func(context.Context, *provider.ExecutionAccount, []byte) []byte
+	Redact       func(context.Context, *gatewayadapter.ExecutionProvider, []byte) []byte
 	Responses    session.OpenAIWSStateStore
 	ResponseTTL  func() time.Duration
 }
@@ -49,7 +49,8 @@ func (p *OpenAIResponseOutput) TTFTMode(ctx context.Context) string {
 	}
 	return gateway.NormalizeOpenAITTFTMode(mode)
 }
-func (p *OpenAIResponseOutput) redact(ctx context.Context, target *provider.ExecutionAccount, body []byte) []byte {
+
+func (p *OpenAIResponseOutput) redact(ctx context.Context, target *gatewayadapter.ExecutionProvider, body []byte) []byte {
 	if p == nil || p.Redact == nil {
 		return body
 	}
@@ -58,10 +59,10 @@ func (p *OpenAIResponseOutput) redact(ctx context.Context, target *provider.Exec
 
 const openAIResponseDefaultMaxLineSize = 500 * 1024 * 1024
 
-// ExecutionErrorAccount 仅投影当前尝试的诊断字段，不向输出层传递凭据。
-func ExecutionErrorAccount(value *provider.ExecutionAccount) *UpstreamErrorAccount {
+// ExecutionErrorProvider 仅投影当前尝试的诊断字段，不向输出层传递凭据。
+func ExecutionErrorProvider(value *gatewayadapter.ExecutionProvider) *UpstreamErrorProvider {
 	if value == nil {
 		return nil
 	}
-	return &UpstreamErrorAccount{ID: value.Record.ID, Name: value.Record.Name, Platform: value.Record.Platform}
+	return &UpstreamErrorProvider{ID: value.Record.ID, Name: value.Record.Name, Platform: value.Record.Platform}
 }

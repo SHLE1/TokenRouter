@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-// CRSProxySpec 是导入文件中的代理身份，不包含运行客户端或账号。
+// CRSProxySpec 是导入文件中的代理身份，不包含运行客户端或提供商。
 type CRSProxySpec struct {
 	Protocol string `json:"protocol"`
 	Host     string `json:"host"`
@@ -76,6 +76,7 @@ func MatchOrCreateCRSProxy(ctx context.Context, store CRSProxyStore, enabled boo
 	id := proxy.ID
 	return &id, nil
 }
+
 func CRSDefaultProxyName(base, protocol, host string, port int) string {
 	base = strings.TrimSpace(base)
 	if base == "" {

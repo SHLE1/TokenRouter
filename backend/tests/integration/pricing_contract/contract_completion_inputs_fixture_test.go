@@ -26,17 +26,17 @@ type contractSettlementInput struct {
 	Cost                            *pricing.CostBreakdown
 	User                            *identity.User
 	APIKey                          *apikey.APIKey
-	Account                         *gatewaycapture.ExecutionAccount
+	Provider                        *gatewaycapture.ExecutionProvider
 	Subscription                    *billing.UserSubscription
 	RequestPayloadHash              string
-	AccountRateMultiplier           float64
+	ProviderRateMultiplier          float64
 	SubscriptionRateMultiplier      float64
 	SubscriptionRateMultiplierScale float64
 	BalanceRateMultiplier           float64
 	APIKeyService                   gatewaycapture.QuotaUpdater
 	Platform                        string // 来自 APIKey 关联 Group 的平台标识
 	// BillingBaseAmountUSD 是用户资金分配使用的未倍率基础金额；nil 时沿用 Cost.TotalCost。
-	// 免费 Fast 需要把用户基础价切换为 Standard，同时保留 Fast 的账号统计基础成本。
+	// 免费 Fast 需要把用户基础价切换为 Standard，同时保留 Fast 的提供商统计基础成本。
 	BillingBaseAmountUSD *float64
 }
 
@@ -48,10 +48,10 @@ func projectContractSettlement(p *contractSettlementInput) *completion.Settlemen
 		Cost:                            p.Cost,
 		User:                            gatewaycapture.ProjectCompletionPayer(p.User),
 		APIKey:                          gatewaycapture.ProjectCompletionKey(p.APIKey),
-		Account:                         gatewaycapture.ProjectCompletionAccount(gatewaycapture.ExecutionCompletionRecord(p.Account)),
+		Provider:                        gatewaycapture.ProjectCompletionProvider(gatewaycapture.ExecutionCompletionRecord(p.Provider)),
 		Subscription:                    p.Subscription,
 		RequestPayloadHash:              p.RequestPayloadHash,
-		AccountRateMultiplier:           p.AccountRateMultiplier,
+		ProviderRateMultiplier:          p.ProviderRateMultiplier,
 		SubscriptionRateMultiplier:      p.SubscriptionRateMultiplier,
 		SubscriptionRateMultiplierScale: p.SubscriptionRateMultiplierScale,
 		BalanceRateMultiplier:           p.BalanceRateMultiplier,

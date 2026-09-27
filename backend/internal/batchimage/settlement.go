@@ -77,8 +77,8 @@ func (s *Settlement) Settle(ctx context.Context, batchID string) (*BatchImageSet
 	if job.APIKeyID == nil || *job.APIKeyID <= 0 {
 		return nil, ErrBatchImageSettlementMissingAPIKeyID
 	}
-	if job.AccountID == nil || *job.AccountID <= 0 {
-		return nil, ErrBatchImageSettlementMissingAccountID
+	if job.ProviderID == nil || *job.ProviderID <= 0 {
+		return nil, ErrBatchImageSettlementMissingProviderID
 	}
 	// 重试耗尽检查必须先于各类可重复失败的校验（counts/manifest/定价/超冻结），
 	// 否则这些错误路径会绕过耗尽出口，settling job 无限 requeue、冻结余额永不释放。
@@ -240,11 +240,11 @@ func (s *Settlement) FailExhaustedSettlement(ctx context.Context, job *BatchImag
 }
 
 func (s *Settlement) RecordUsageLog(ctx context.Context, job *BatchImageJob, actualCost float64, requestID string, createdAt time.Time, billingResult *billing.TaskFundsResult) {
-	if s == nil || s.RecordUsage == nil || job == nil || job.APIKeyID == nil || job.AccountID == nil {
+	if s == nil || s.RecordUsage == nil || job == nil || job.APIKeyID == nil || job.ProviderID == nil {
 		return
 	}
 	billingMode := "image"
-	accountRateMultiplier := job.AccountRateMultiplier
+	providerRateMultiplier := job.ProviderRateMultiplier
 	inboundEndpoint := "/v1/images/batches"
 	upstreamEndpoint := "vertex:batchPredictionJobs"
 	imageSize := "1K"
@@ -264,42 +264,42 @@ func (s *Settlement) RecordUsageLog(ctx context.Context, job *BatchImageJob, act
 		allocations = []billing.BillingAllocation{{Type: billing.BillingAllocationTypeBalance, AmountUSD: actualCost}}
 	}
 	rateMultiplier := job.GroupRateMultiplier * job.BatchDiscountMultiplier
-	if job.PricingSnapshotVersion >= 2 && job.SuccessCount > 0 && job.BaseUnitPrice > 0 && accountRateMultiplier > 0 {
+	if job.PricingSnapshotVersion >= 2 && job.SuccessCount > 0 && job.BaseUnitPrice > 0 && providerRateMultiplier > 0 {
 		// 混合结算没有单一来源倍率，日志记录本次实际生效的等效分组倍率。
-		rateMultiplier = actualCost / (job.BaseUnitPrice * float64(job.SuccessCount) * accountRateMultiplier)
+		rateMultiplier = actualCost / (job.BaseUnitPrice * float64(job.SuccessCount) * providerRateMultiplier)
 	}
 	requestedModel := BatchImageRequestedModel(job)
 	internalModel := BatchImageInternalModel(job)
 	usageLog := &usage.UsageLog{
-		UserID:                job.UserID,
-		BillingUserID:         job.BillingUserID,
-		TeamID:                job.TeamID,
-		APIKeyID:              *job.APIKeyID,
-		AccountID:             *job.AccountID,
-		Platform:              BatchImageProviderPlatform(job.Provider),
-		RequestID:             strings.TrimSpace(requestID),
-		Model:                 internalModel,
-		RequestedModel:        requestedModel,
-		UpstreamModel:         optionalTrimmedStringPtr(job.Model),
-		ModelMappingChain:     optionalTrimmedStringPtr(routing.BuildModelMappingChain(requestedModel, internalModel, job.Model)),
-		InboundEndpoint:       &inboundEndpoint,
-		UpstreamEndpoint:      &upstreamEndpoint,
-		ImageCount:            job.SuccessCount,
-		ImageOutputCost:       actualCost,
-		TotalCost:             actualCost,
-		ActualCost:            actualCost,
-		SubscriptionAmountUSD: subscriptionAmount,
-		BalanceAmountUSD:      balanceAmount,
-		BillingAllocations:    allocations,
-		SubscriptionID:        firstAllocatedSubscriptionID(allocations),
-		RateMultiplier:        rateMultiplier,
-		AccountRateMultiplier: &accountRateMultiplier,
-		BillingType:           billingType,
-		RequestType:           usage.RequestTypeSync,
-		BillingMode:           &billingMode,
-		ImageSize:             &imageSize,
-		SessionID:             job.SessionID,
-		CreatedAt:             createdAt,
+		UserID:                 job.UserID,
+		BillingUserID:          job.BillingUserID,
+		TeamID:                 job.TeamID,
+		APIKeyID:               *job.APIKeyID,
+		ProviderID:             *job.ProviderID,
+		Platform:               BatchImageProviderPlatform(job.Platform),
+		RequestID:              strings.TrimSpace(requestID),
+		Model:                  internalModel,
+		RequestedModel:         requestedModel,
+		UpstreamModel:          optionalTrimmedStringPtr(job.Model),
+		ModelMappingChain:      optionalTrimmedStringPtr(routing.BuildModelMappingChain(requestedModel, internalModel, job.Model)),
+		InboundEndpoint:        &inboundEndpoint,
+		UpstreamEndpoint:       &upstreamEndpoint,
+		ImageCount:             job.SuccessCount,
+		ImageOutputCost:        actualCost,
+		TotalCost:              actualCost,
+		ActualCost:             actualCost,
+		SubscriptionAmountUSD:  subscriptionAmount,
+		BalanceAmountUSD:       balanceAmount,
+		BillingAllocations:     allocations,
+		SubscriptionID:         firstAllocatedSubscriptionID(allocations),
+		RateMultiplier:         rateMultiplier,
+		ProviderRateMultiplier: &providerRateMultiplier,
+		BillingType:            billingType,
+		RequestType:            usage.RequestTypeSync,
+		BillingMode:            &billingMode,
+		ImageSize:              &imageSize,
+		SessionID:              job.SessionID,
+		CreatedAt:              createdAt,
 	}
 	s.RecordUsage(ctx, usageLog)
 }
@@ -341,7 +341,7 @@ func BuildBatchImageSettlementManifestHash(job *BatchImageJob) string {
 	}
 	parts := []string{
 		strings.TrimSpace(job.BatchID),
-		strings.TrimSpace(job.Provider),
+		strings.TrimSpace(job.Platform),
 		strings.TrimSpace(job.Model),
 		BatchImageDerefString(job.ProviderJobName),
 		BatchImageDerefString(job.ProviderOutputRef),

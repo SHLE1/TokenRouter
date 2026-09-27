@@ -13,14 +13,14 @@ import (
 
 	egressredis "github.com/TokenFlux/TokenRouter/internal/egress/rediscache"
 
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/google/wire"
 )
 
 // egress 模块的组合根登记；这里只分组原 provider，不创建资源或复制业务实现。
 var egressAssemblyProviders = wire.NewSet(
-	wire.Bind(new(accountprovider.OpenAITokenProfileResolver), new(*provider.TLSProfiles)),
-	wire.Bind(new(accountprovider.OpenAITokenRouterReader), new(*egress.TLSFingerprintRouterService)),
+	wire.Bind(new(provideradapter.OpenAITokenProfileResolver), new(*provider.TLSProfiles)),
+	wire.Bind(new(provideradapter.OpenAITokenRouterReader), new(*egress.TLSFingerprintRouterService)),
 	provideProxyExpiry,
 	provideProxyTransfer,
 	provideProxyHTTP,

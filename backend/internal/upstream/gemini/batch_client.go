@@ -1,4 +1,4 @@
-// Batch 技术客户端只接收 URL、HTTP 客户端与错误契约，不持有任务或业务账号。
+// Batch 技术客户端只接收 URL、HTTP 客户端与错误契约，不持有任务或业务提供商。
 package gemini
 
 import (
@@ -22,20 +22,22 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/gemini/codeassist"
 )
 
-type GeminiUploadedFile = wire.GeminiUploadedFile
-type GeminiBatchJob = wire.GeminiBatchJob
-type GeminiBatchDest = wire.GeminiBatchDest
-type GeminiBatchResponse = wire.GeminiBatchResponse
-type GeminiBatchError = wire.GeminiBatchError
-type GeminiBatchHTTPClient struct {
-	missingAPIKey error
-	baseURL       string
-	client        *http.Client
-}
+type (
+	GeminiUploadedFile    = wire.GeminiUploadedFile
+	GeminiBatchJob        = wire.GeminiBatchJob
+	GeminiBatchDest       = wire.GeminiBatchDest
+	GeminiBatchResponse   = wire.GeminiBatchResponse
+	GeminiBatchError      = wire.GeminiBatchError
+	GeminiBatchHTTPClient struct {
+		missingAPIKey error
+		baseURL       string
+		client        *http.Client
+	}
+)
 
 func NewGeminiBatchHTTPClient(baseURL string, client *http.Client, missingAPIKey error) *GeminiBatchHTTPClient {
 	if missingAPIKey == nil {
-		missingAPIKey = apperror.BadRequest("BATCH_IMAGE_PROVIDER_MISSING_API_KEY", "batch image provider account is missing api key")
+		missingAPIKey = apperror.BadRequest("BATCH_IMAGE_PROVIDER_MISSING_API_KEY", "batch image provider provider is missing api key")
 	}
 	baseURL = strings.TrimRight(strings.TrimSpace(baseURL), "/")
 	if baseURL == "" {
@@ -46,6 +48,7 @@ func NewGeminiBatchHTTPClient(baseURL string, client *http.Client, missingAPIKey
 	}
 	return &GeminiBatchHTTPClient{baseURL: baseURL, client: client, missingAPIKey: missingAPIKey}
 }
+
 func (c *GeminiBatchHTTPClient) UploadJSONL(ctx context.Context, apiKey string, displayName string, r io.Reader) (*GeminiUploadedFile, error) {
 	var body bytes.Buffer
 	writer := multipart.NewWriter(&body)
@@ -92,6 +95,7 @@ func (c *GeminiBatchHTTPClient) UploadJSONL(ctx context.Context, apiKey string, 
 	}
 	return resp.GeminiUploadedFile, nil
 }
+
 func (c *GeminiBatchHTTPClient) CreateBatch(ctx context.Context, apiKey string, model string, fileName string, displayName string) (*GeminiBatchJob, error) {
 	body := map[string]any{
 		"batch": map[string]any{
@@ -110,6 +114,7 @@ func (c *GeminiBatchHTTPClient) CreateBatch(ctx context.Context, apiKey string, 
 	req.Header.Set("Content-Type", "application/json")
 	return c.doBatchJob(req)
 }
+
 func (c *GeminiBatchHTTPClient) GetBatch(ctx context.Context, apiKey string, batchName string) (*GeminiBatchJob, error) {
 	req, err := c.newRequest(ctx, http.MethodGet, "/v1beta/"+strings.TrimLeft(batchName, "/"), apiKey, nil)
 	if err != nil {
@@ -117,6 +122,7 @@ func (c *GeminiBatchHTTPClient) GetBatch(ctx context.Context, apiKey string, bat
 	}
 	return c.doBatchJob(req)
 }
+
 func (c *GeminiBatchHTTPClient) CancelBatch(ctx context.Context, apiKey string, batchName string) error {
 	req, err := c.newRequest(ctx, http.MethodPost, "/v1beta/"+strings.TrimLeft(batchName, "/")+":cancel", apiKey, nil)
 	if err != nil {
@@ -124,6 +130,7 @@ func (c *GeminiBatchHTTPClient) CancelBatch(ctx context.Context, apiKey string, 
 	}
 	return c.doNoBody(req)
 }
+
 func (c *GeminiBatchHTTPClient) DownloadFile(ctx context.Context, apiKey string, fileName string) (io.ReadCloser, string, error) {
 	metaReq, err := c.newRequest(ctx, http.MethodGet, "/v1beta/"+strings.TrimLeft(fileName, "/"), apiKey, nil)
 	if err != nil {
@@ -171,6 +178,7 @@ func (c *GeminiBatchHTTPClient) DownloadFile(ctx context.Context, apiKey string,
 	}
 	return resp.Body, contentType, nil
 }
+
 func (c *GeminiBatchHTTPClient) DeleteFile(ctx context.Context, apiKey string, fileName string) error {
 	req, err := c.newRequest(ctx, http.MethodDelete, "/v1beta/"+strings.TrimLeft(fileName, "/"), apiKey, nil)
 	if err != nil {
@@ -178,6 +186,7 @@ func (c *GeminiBatchHTTPClient) DeleteFile(ctx context.Context, apiKey string, f
 	}
 	return c.doNoBody(req)
 }
+
 func (c *GeminiBatchHTTPClient) doBatchJob(req *http.Request) (*GeminiBatchJob, error) {
 	var job GeminiBatchJob
 	if err := c.doJSON(req, &job); err != nil {
@@ -186,6 +195,7 @@ func (c *GeminiBatchHTTPClient) doBatchJob(req *http.Request) (*GeminiBatchJob, 
 	job.Raw = map[string]any{}
 	return &job, nil
 }
+
 func (c *GeminiBatchHTTPClient) doNoBody(req *http.Request) error {
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -197,6 +207,7 @@ func (c *GeminiBatchHTTPClient) doNoBody(req *http.Request) error {
 	}
 	return nil
 }
+
 func (c *GeminiBatchHTTPClient) doJSON(req *http.Request, out any) error {
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -208,6 +219,7 @@ func (c *GeminiBatchHTTPClient) doJSON(req *http.Request, out any) error {
 	}
 	return json.NewDecoder(resp.Body).Decode(out)
 }
+
 func (c *GeminiBatchHTTPClient) newRequest(ctx context.Context, method, path, apiKey string, body io.Reader) (*http.Request, error) {
 	if strings.TrimSpace(apiKey) == "" {
 		return nil, c.missingAPIKey
@@ -255,6 +267,7 @@ func (e *GeminiAPIError) Error() string {
 	}
 	return fmt.Sprintf("gemini api error: status=%d message=%s", e.StatusCode, e.Message)
 }
+
 func readGeminiAPIError(resp *http.Response) error {
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 8192))
 	message := string(body)
@@ -271,6 +284,7 @@ func readGeminiAPIError(resp *http.Response) error {
 	}
 	return &GeminiAPIError{StatusCode: resp.StatusCode, Message: message}
 }
+
 func ProviderError(reason, message string, cause error) error {
 	err := apperror.New(apperror.CategoryBadGateway, reason, message)
 	if cause != nil {
@@ -278,6 +292,7 @@ func ProviderError(reason, message string, cause error) error {
 	}
 	return err
 }
+
 func MapClientError(err error) error {
 	if err == nil {
 		return nil

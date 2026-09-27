@@ -14,12 +14,12 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 	gatewaytestkit "github.com/TokenFlux/TokenRouter/internal/gateway/testkit"
 	protocolcore "github.com/TokenFlux/TokenRouter/internal/protocol"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 
 	"github.com/TokenFlux/TokenRouter/internal/upstream/qoder"
@@ -33,11 +33,11 @@ const qoderCachedUsageSSEForTest = "data: {\"body\":\"{\\\"usage\\\":{\\\"prompt
 func TestQoderGatewayAllowsExplicitPreviewCompatibilityMapping(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
-	account := &accountcore.Record{
+	provider := &providercore.Record{
 		ID:       88,
 		Name:     "qoder",
 		Platform: capability.PlatformQoder,
-		Type:     capability.AccountTypeCosy,
+		Type:     capability.ProviderTypeCosy,
 		Credentials: map[string]any{
 			"model_mapping": map[string]any{
 				"qwen3.8-max-preview": "qmodel_38max",
@@ -49,18 +49,18 @@ func TestQoderGatewayAllowsExplicitPreviewCompatibilityMapping(t *testing.T) {
 		Body: "data: {\"body\":\"{\\\"choices\\\":[{\\\"delta\\\":{\\\"content\\\":\\\"OK\\\"}}]}\"}\n\n" +
 			"data: {\"body\":\"[DONE]\"}\n\n",
 	}
-	svc := gatewaytestkit.NewQoderFixture(accountprovider.NewQoderTokenProvider(qoder.SessionBuilder{}),
+	svc := gatewaytestkit.NewQoderFixture(provideradapter.NewQoderTokenProvider(qoder.SessionBuilder{}),
 		client, nil)
 
-	svc.Tokens.Core.Sessions = map[int64]accountcore.QoderSessionCacheEntry[*qoder.SessionContext]{
-		account.ID: {
-			CredentialsHash: accountcore.QoderCredentialsHash(account.Credentials),
+	svc.Tokens.Core.Sessions = map[int64]providercore.QoderSessionCacheEntry[*qoder.SessionContext]{
+		provider.ID: {
+			CredentialsHash: providercore.QoderCredentialsHash(provider.Credentials),
 			Session:         &qoder.SessionContext{Identity: &qoder.AuthIdentity{SecurityOauthToken: "token"}},
 		},
 	}
 	body := []byte(`{"model":"qwen3.8-max-preview","messages":[{"role":"user","content":"hi"}],"stream":true}`)
 
-	result, err := ForwardQoderAttempt(context.Background(), c, svc.Runtime, account, body, protocolcore.ProtocolOpenAIChatCompletions)
+	result, err := ForwardQoderAttempt(context.Background(), c, svc.Runtime, provider, body, protocolcore.ProtocolOpenAIChatCompletions)
 
 	require.NoError(t, err)
 	require.Equal(t, "qwen3.8-max-preview", result.Model)
@@ -75,43 +75,43 @@ func TestQoderGatewayForwardUsesOriginalModelAfterGroupMapping(t *testing.T) {
 		name string
 		path string
 		body []byte
-		call func(context.Context, *gatewaytestkit.QoderFixture, *gin.Context, *accountcore.Record, []byte, string) (*forwardcore.MessagesResult, error)
+		call func(context.Context, *gatewaytestkit.QoderFixture, *gin.Context, *providercore.Record, []byte, string) (*forwardcore.MessagesResult, error)
 	}{
 		{
 			name: "chat completions",
 			path: "/v1/chat/completions",
 			body: []byte(`{"model":"qmodel","messages":[{"role":"user","content":"hi"}],"stream":false}`),
-			call: func(ctx context.Context, svc *gatewaytestkit.QoderFixture, c *gin.Context, account *accountcore.Record, body []byte, responseModel string) (*forwardcore.MessagesResult, error) {
-				return ForwardQoderAttempt(ctx, c, svc.Runtime, account, body, protocolcore.ProtocolOpenAIChatCompletions, responseModel)
+			call: func(ctx context.Context, svc *gatewaytestkit.QoderFixture, c *gin.Context, provider *providercore.Record, body []byte, responseModel string) (*forwardcore.MessagesResult, error) {
+				return ForwardQoderAttempt(ctx, c, svc.Runtime, provider, body, protocolcore.ProtocolOpenAIChatCompletions, responseModel)
 			},
 		},
 		{
 			name: "responses",
 			path: "/v1/responses",
 			body: []byte(`{"model":"qmodel","input":"hi","stream":false}`),
-			call: func(ctx context.Context, svc *gatewaytestkit.QoderFixture, c *gin.Context, account *accountcore.Record, body []byte, responseModel string) (*forwardcore.MessagesResult, error) {
-				return ForwardQoderAttempt(ctx, c, svc.Runtime, account, body, protocolcore.ProtocolOpenAIResponses, responseModel)
+			call: func(ctx context.Context, svc *gatewaytestkit.QoderFixture, c *gin.Context, provider *providercore.Record, body []byte, responseModel string) (*forwardcore.MessagesResult, error) {
+				return ForwardQoderAttempt(ctx, c, svc.Runtime, provider, body, protocolcore.ProtocolOpenAIResponses, responseModel)
 			},
 		},
 		{
 			name: "messages",
 			path: "/v1/messages",
 			body: []byte(`{"model":"qmodel","max_tokens":16,"messages":[{"role":"user","content":"hi"}],"stream":false}`),
-			call: func(ctx context.Context, svc *gatewaytestkit.QoderFixture, c *gin.Context, account *accountcore.Record, body []byte, responseModel string) (*forwardcore.MessagesResult, error) {
-				return ForwardQoderAttempt(ctx, c, svc.Runtime, account, body, protocolcore.ProtocolAnthropicMessages, responseModel)
+			call: func(ctx context.Context, svc *gatewaytestkit.QoderFixture, c *gin.Context, provider *providercore.Record, body []byte, responseModel string) (*forwardcore.MessagesResult, error) {
+				return ForwardQoderAttempt(ctx, c, svc.Runtime, provider, body, protocolcore.ProtocolAnthropicMessages, responseModel)
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			account, svc, client := gatewaytestkit.NewDefaultQoderFixture()
+			provider, svc, client := gatewaytestkit.NewDefaultQoderFixture()
 
 			rec := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(rec)
 			c.Request = httptest.NewRequest(http.MethodPost, tt.path, bytes.NewReader(tt.body))
 
-			result, err := tt.call(context.Background(), svc, c, account, tt.body, "qwen3.7-plus")
+			result, err := tt.call(context.Background(), svc, c, provider, tt.body, "qwen3.7-plus")
 
 			require.NoError(t, err)
 			require.Equal(t, "qwen3.7-plus", result.Model)
@@ -123,14 +123,14 @@ func TestQoderGatewayForwardUsesOriginalModelAfterGroupMapping(t *testing.T) {
 }
 
 func TestQoderGatewayChatCompletionsReusesSessionAndSendsFullReplay(t *testing.T) {
-	account, svc, client := gatewaytestkit.NewDefaultQoderFixture()
+	provider, svc, client := gatewaytestkit.NewDefaultQoderFixture()
 
-	first := qoderForwardChatCompletionsForTest(t, svc, account, "stable-chat-session", []byte(`{
+	first := qoderForwardChatCompletionsForTest(t, svc, provider, "stable-chat-session", []byte(`{
 		"model":"auto",
 		"messages":[{"role":"system","content":"be terse"},{"role":"user","content":"hello"}],
 		"stream":false
 	}`))
-	second := qoderForwardChatCompletionsForTest(t, svc, account, "stable-chat-session", []byte(`{
+	second := qoderForwardChatCompletionsForTest(t, svc, provider, "stable-chat-session", []byte(`{
 		"model":"auto",
 		"messages":[
 			{"role":"system","content":"be terse"},
@@ -157,14 +157,14 @@ func TestQoderGatewayChatCompletionsReusesSessionAndSendsFullReplay(t *testing.T
 }
 
 func TestQoderGatewayChatCompletionsWithoutSessionDoesNotReuseByFirstText(t *testing.T) {
-	account, svc, _ := gatewaytestkit.NewDefaultQoderFixture()
+	provider, svc, _ := gatewaytestkit.NewDefaultQoderFixture()
 
-	first := qoderForwardChatCompletionsForTest(t, svc, account, "", []byte(`{
+	first := qoderForwardChatCompletionsForTest(t, svc, provider, "", []byte(`{
 		"model":"auto",
 		"messages":[{"role":"user","content":"hello"}],
 		"stream":false
 	}`))
-	second := qoderForwardChatCompletionsForTest(t, svc, account, "", []byte(`{
+	second := qoderForwardChatCompletionsForTest(t, svc, provider, "", []byte(`{
 		"model":"auto",
 		"messages":[
 			{"role":"user","content":"hello"},
@@ -181,7 +181,7 @@ func TestQoderGatewayChatCompletionsWithoutSessionDoesNotReuseByFirstText(t *tes
 }
 
 func TestQoderGatewayChatCompletionsMapsUpstreamToolNameToDeclaredOpenAITool(t *testing.T) {
-	account, svc, client := gatewaytestkit.NewDefaultQoderFixture()
+	provider, svc, client := gatewaytestkit.NewDefaultQoderFixture()
 	client.Body = qoderWrappedSSELineForTest(t, map[string]any{"choices": []any{
 		map[string]any{"delta": map[string]any{"tool_calls": []any{
 			map[string]any{"index": 0, "id": "call_1", "type": "function", "function": map[string]any{"name": "Bash", "arguments": `{"command":"pwd"}`}},
@@ -195,7 +195,7 @@ func TestQoderGatewayChatCompletionsMapsUpstreamToolNameToDeclaredOpenAITool(t *
 		"stream":false
 	}`)
 
-	result, response := qoderForwardChatCompletionsResultAndBodyForTest(t, svc, account, "", body)
+	result, response := qoderForwardChatCompletionsResultAndBodyForTest(t, svc, provider, "", body)
 
 	require.False(t, result.Stream)
 	require.Equal(t, "tool_calls", gjson.Get(response, "choices.0.finish_reason").String())
@@ -207,7 +207,7 @@ func TestQoderGatewayChatCompletionsMapsUpstreamToolNameToDeclaredOpenAITool(t *
 }
 
 func TestQoderGatewayChatCompletionsConvertsLegacyFunctions(t *testing.T) {
-	account, svc, client := gatewaytestkit.NewDefaultQoderFixture()
+	provider, svc, client := gatewaytestkit.NewDefaultQoderFixture()
 	body := []byte(`{
 		"model":"deepseek-v4-pro",
 		"messages":[{"role":"user","content":"weather"}],
@@ -220,7 +220,7 @@ func TestQoderGatewayChatCompletionsConvertsLegacyFunctions(t *testing.T) {
 		"stream":false
 	}`)
 
-	result, _ := qoderForwardChatCompletionsResultAndBodyForTest(t, svc, account, "", body)
+	result, _ := qoderForwardChatCompletionsResultAndBodyForTest(t, svc, provider, "", body)
 
 	require.False(t, result.Stream)
 	upstream := qoderLastUpstreamPayloadForTest(t, client)
@@ -234,7 +234,7 @@ func TestQoderGatewayChatCompletionsConvertsLegacyFunctions(t *testing.T) {
 }
 
 func TestQoderGatewayChatCompletionsLegacyFunctionCallNoneClearsTools(t *testing.T) {
-	account, svc, client := gatewaytestkit.NewDefaultQoderFixture()
+	provider, svc, client := gatewaytestkit.NewDefaultQoderFixture()
 	body := []byte(`{
 		"model":"deepseek-v4-pro",
 		"messages":[{"role":"user","content":"plain answer"}],
@@ -243,7 +243,7 @@ func TestQoderGatewayChatCompletionsLegacyFunctionCallNoneClearsTools(t *testing
 		"stream":false
 	}`)
 
-	result, _ := qoderForwardChatCompletionsResultAndBodyForTest(t, svc, account, "", body)
+	result, _ := qoderForwardChatCompletionsResultAndBodyForTest(t, svc, provider, "", body)
 
 	require.False(t, result.Stream)
 	upstream := qoderLastUpstreamPayloadForTest(t, client)
@@ -252,7 +252,7 @@ func TestQoderGatewayChatCompletionsLegacyFunctionCallNoneClearsTools(t *testing
 }
 
 func TestQoderGatewayMessagesMapsUpstreamToolNameToDeclaredAnthropicTool(t *testing.T) {
-	account, svc, client := gatewaytestkit.NewDefaultQoderFixture()
+	provider, svc, client := gatewaytestkit.NewDefaultQoderFixture()
 	client.Body = qoderWrappedSSELineForTest(t, map[string]any{"choices": []any{
 		map[string]any{"delta": map[string]any{"tool_calls": []any{
 			map[string]any{"index": 0, "id": "call_1", "type": "function", "function": map[string]any{"name": "Bash", "arguments": `{"command":"pwd"}`}},
@@ -266,7 +266,7 @@ func TestQoderGatewayMessagesMapsUpstreamToolNameToDeclaredAnthropicTool(t *test
 		"stream":false
 	}`)
 
-	result, response := qoderForwardMessagesResultAndBodyForTest(t, svc, account, body)
+	result, response := qoderForwardMessagesResultAndBodyForTest(t, svc, provider, body)
 
 	require.False(t, result.Stream)
 	require.Equal(t, "tool_use", gjson.Get(response, "stop_reason").String())
@@ -279,7 +279,7 @@ func TestQoderGatewayMessagesMapsUpstreamToolNameToDeclaredAnthropicTool(t *test
 }
 
 func TestQoderGatewayResponsesMapsUpstreamToolNameToDeclaredFunctionCall(t *testing.T) {
-	account, svc, client := gatewaytestkit.NewDefaultQoderFixture()
+	provider, svc, client := gatewaytestkit.NewDefaultQoderFixture()
 	client.Body = qoderWrappedSSELineForTest(t, map[string]any{"choices": []any{
 		map[string]any{"delta": map[string]any{"tool_calls": []any{
 			map[string]any{"index": 0, "id": "call_1", "type": "function", "function": map[string]any{"name": "Bash", "arguments": `{"command":"pwd"}`}},
@@ -293,7 +293,7 @@ func TestQoderGatewayResponsesMapsUpstreamToolNameToDeclaredFunctionCall(t *test
 		"stream":false
 	}`)
 
-	result, response := qoderForwardResponsesResultAndBodyForTest(t, svc, account, body)
+	result, response := qoderForwardResponsesResultAndBodyForTest(t, svc, provider, body)
 
 	require.False(t, result.Stream)
 	require.Equal(t, "response", gjson.Get(response, "object").String())
@@ -307,9 +307,9 @@ func TestQoderGatewayResponsesMapsUpstreamToolNameToDeclaredFunctionCall(t *test
 }
 
 func TestQoderGatewayResponsesPreviousResponseIDReusesQoderSession(t *testing.T) {
-	account, svc, client := gatewaytestkit.NewDefaultQoderFixture()
+	provider, svc, client := gatewaytestkit.NewDefaultQoderFixture()
 
-	_, firstResponse := qoderForwardResponsesResultAndBodyForTest(t, svc, account, []byte(`{
+	_, firstResponse := qoderForwardResponsesResultAndBodyForTest(t, svc, provider, []byte(`{
 		"model":"deepseek-v4-pro",
 		"instructions":"be terse",
 		"input":"hello",
@@ -319,7 +319,7 @@ func TestQoderGatewayResponsesPreviousResponseIDReusesQoderSession(t *testing.T)
 	require.NotEmpty(t, firstID)
 	firstPayload := qoderPayloadAtForTest(t, client, 0)
 
-	_, secondResponse := qoderForwardResponsesResultAndBodyForTest(t, svc, account, []byte(`{
+	_, secondResponse := qoderForwardResponsesResultAndBodyForTest(t, svc, provider, []byte(`{
 		"model":"deepseek-v4-pro",
 		"previous_response_id":`+strconv.Quote(firstID)+`,
 		"input":"next",
@@ -332,7 +332,7 @@ func TestQoderGatewayResponsesPreviousResponseIDReusesQoderSession(t *testing.T)
 	require.Equal(t, firstPayload["session_id"], secondPayload["session_id"])
 	require.Equal(t, "next", qoderPayloadPromptForTest(t, secondPayload))
 
-	qoderForwardResponsesResultAndBodyForTest(t, svc, account, []byte(`{
+	qoderForwardResponsesResultAndBodyForTest(t, svc, provider, []byte(`{
 		"model":"deepseek-v4-pro",
 		"previous_response_id":`+strconv.Quote(secondID)+`,
 		"input":"third",
@@ -343,16 +343,16 @@ func TestQoderGatewayResponsesPreviousResponseIDReusesQoderSession(t *testing.T)
 	require.Equal(t, "third", qoderPayloadPromptForTest(t, thirdPayload))
 }
 
-func TestQoderGatewayResponsesPreviousResponseIDIsScopedByAccount(t *testing.T) {
-	account, svc, client := gatewaytestkit.NewDefaultQoderFixture()
-	account2 := *account
-	account2.ID = account.ID + 1
-	svc.Tokens.Core.Sessions[account2.ID] = accountcore.QoderSessionCacheEntry[*qoder.SessionContext]{
-		CredentialsHash: accountcore.QoderCredentialsHash(account2.Credentials),
+func TestQoderGatewayResponsesPreviousResponseIDIsScopedByProvider(t *testing.T) {
+	provider, svc, client := gatewaytestkit.NewDefaultQoderFixture()
+	provider2 := *provider
+	provider2.ID = provider.ID + 1
+	svc.Tokens.Core.Sessions[provider2.ID] = providercore.QoderSessionCacheEntry[*qoder.SessionContext]{
+		CredentialsHash: providercore.QoderCredentialsHash(provider2.Credentials),
 		Session:         &qoder.SessionContext{Identity: &qoder.AuthIdentity{SecurityOauthToken: "token-2"}},
 	}
 
-	_, firstResponse := qoderForwardResponsesResultAndBodyForTest(t, svc, account, []byte(`{
+	_, firstResponse := qoderForwardResponsesResultAndBodyForTest(t, svc, provider, []byte(`{
 		"model":"deepseek-v4-pro",
 		"input":"hello",
 		"stream":false
@@ -361,20 +361,20 @@ func TestQoderGatewayResponsesPreviousResponseIDIsScopedByAccount(t *testing.T) 
 	require.NotEmpty(t, firstID)
 	firstPayload := qoderPayloadAtForTest(t, client, 0)
 
-	qoderForwardResponsesResultAndBodyForTest(t, svc, &account2, []byte(`{
+	qoderForwardResponsesResultAndBodyForTest(t, svc, &provider2, []byte(`{
 		"model":"deepseek-v4-pro",
 		"previous_response_id":`+strconv.Quote(firstID)+`,
 		"input":"next",
 		"stream":false
 	}`))
 	secondPayload := qoderPayloadAtForTest(t, client, 1)
-	require.NotEqual(t, firstPayload["session_id"], secondPayload["session_id"], "Qoder upstream sessions are account-scoped; a response id from one account must not alias another account's session")
+	require.NotEqual(t, firstPayload["session_id"], secondPayload["session_id"], "Qoder upstream sessions are provider-scoped; a response id from one provider must not alias another provider's session")
 }
 
 func TestQoderGatewayResponsesPreviousResponseIDWithExplicitSessionAppendsToExistingSession(t *testing.T) {
-	account, svc, client := gatewaytestkit.NewDefaultQoderFixture()
+	provider, svc, client := gatewaytestkit.NewDefaultQoderFixture()
 
-	_, firstResponse := qoderForwardResponsesResultAndBodyForTest(t, svc, account, []byte(`{
+	_, firstResponse := qoderForwardResponsesResultAndBodyForTest(t, svc, provider, []byte(`{
 		"model":"deepseek-v4-pro",
 		"session_id":"responses-explicit-session",
 		"input":"hello",
@@ -384,7 +384,7 @@ func TestQoderGatewayResponsesPreviousResponseIDWithExplicitSessionAppendsToExis
 	require.NotEmpty(t, firstID)
 	firstPayload := qoderPayloadAtForTest(t, client, 0)
 
-	qoderForwardResponsesResultAndBodyForTest(t, svc, account, []byte(`{
+	qoderForwardResponsesResultAndBodyForTest(t, svc, provider, []byte(`{
 		"model":"deepseek-v4-pro",
 		"session_id":"responses-explicit-session",
 		"previous_response_id":`+strconv.Quote(firstID)+`,
@@ -397,9 +397,9 @@ func TestQoderGatewayResponsesPreviousResponseIDWithExplicitSessionAppendsToExis
 }
 
 func TestQoderGatewayResponsesGeneratedResponseIDDoesNotMaskPromptCacheKey(t *testing.T) {
-	account, svc, client := gatewaytestkit.NewDefaultQoderFixture()
+	provider, svc, client := gatewaytestkit.NewDefaultQoderFixture()
 
-	_, firstResponse := qoderForwardResponsesResultAndBodyForTest(t, svc, account, []byte(`{
+	_, firstResponse := qoderForwardResponsesResultAndBodyForTest(t, svc, provider, []byte(`{
 		"model":"deepseek-v4-pro",
 		"prompt_cache_key":"responses-cache-session",
 		"input":[{"type":"message","role":"user","content":[{"type":"input_text","text":"hello"}]}],
@@ -409,7 +409,7 @@ func TestQoderGatewayResponsesGeneratedResponseIDDoesNotMaskPromptCacheKey(t *te
 	require.NotEmpty(t, firstID)
 	firstPayload := qoderPayloadAtForTest(t, client, 0)
 
-	qoderForwardResponsesResultAndBodyForTest(t, svc, account, []byte(`{
+	qoderForwardResponsesResultAndBodyForTest(t, svc, provider, []byte(`{
 		"model":"deepseek-v4-pro",
 		"prompt_cache_key":"responses-cache-session",
 		"input":[
@@ -421,7 +421,7 @@ func TestQoderGatewayResponsesGeneratedResponseIDDoesNotMaskPromptCacheKey(t *te
 	secondPayload := qoderPayloadAtForTest(t, client, 1)
 	require.Equal(t, firstPayload["session_id"], secondPayload["session_id"])
 
-	qoderForwardResponsesResultAndBodyForTest(t, svc, account, []byte(`{
+	qoderForwardResponsesResultAndBodyForTest(t, svc, provider, []byte(`{
 		"model":"deepseek-v4-pro",
 		"previous_response_id":`+strconv.Quote(firstID)+`,
 		"input":"branch from first id",
@@ -433,10 +433,10 @@ func TestQoderGatewayResponsesGeneratedResponseIDDoesNotMaskPromptCacheKey(t *te
 }
 
 func TestQoderGatewayResponsesStreamEmptyOutputAliasesResponseIDToStableSession(t *testing.T) {
-	account, svc, client := gatewaytestkit.NewDefaultQoderFixture()
+	provider, svc, client := gatewaytestkit.NewDefaultQoderFixture()
 	client.Body = "data: {\"body\":\"[DONE]\"}\n\n"
 
-	_, firstStream := qoderForwardResponsesResultAndBodyForTest(t, svc, account, []byte(`{
+	_, firstStream := qoderForwardResponsesResultAndBodyForTest(t, svc, provider, []byte(`{
 		"model":"deepseek-v4-pro",
 		"prompt_cache_key":"responses-empty-stream-session",
 		"input":"hello",
@@ -449,7 +449,7 @@ func TestQoderGatewayResponsesStreamEmptyOutputAliasesResponseIDToStableSession(
 	client.Body = qoderWrappedSSELineForTest(t, map[string]any{"choices": []any{
 		map[string]any{"delta": map[string]any{"content": "OK"}},
 	}}) + "data: {\"body\":\"[DONE]\"}\n\n"
-	qoderForwardResponsesResultAndBodyForTest(t, svc, account, []byte(`{
+	qoderForwardResponsesResultAndBodyForTest(t, svc, provider, []byte(`{
 		"model":"deepseek-v4-pro",
 		"previous_response_id":`+strconv.Quote(firstID)+`,
 		"input":"next",
@@ -461,9 +461,9 @@ func TestQoderGatewayResponsesStreamEmptyOutputAliasesResponseIDToStableSession(
 }
 
 func TestQoderGatewayResponsesStreamPreviousResponseIDReusesQoderSession(t *testing.T) {
-	account, svc, client := gatewaytestkit.NewDefaultQoderFixture()
+	provider, svc, client := gatewaytestkit.NewDefaultQoderFixture()
 
-	_, firstStream := qoderForwardResponsesResultAndBodyForTest(t, svc, account, []byte(`{
+	_, firstStream := qoderForwardResponsesResultAndBodyForTest(t, svc, provider, []byte(`{
 		"model":"deepseek-v4-pro",
 		"instructions":"be terse",
 		"input":"hello",
@@ -476,7 +476,7 @@ func TestQoderGatewayResponsesStreamPreviousResponseIDReusesQoderSession(t *test
 	require.Equal(t, firstID, firstCompleted.Get("response.id").String())
 	firstPayload := qoderPayloadAtForTest(t, client, 0)
 
-	_, secondStream := qoderForwardResponsesResultAndBodyForTest(t, svc, account, []byte(`{
+	_, secondStream := qoderForwardResponsesResultAndBodyForTest(t, svc, provider, []byte(`{
 		"model":"deepseek-v4-pro",
 		"previous_response_id":`+strconv.Quote(firstID)+`,
 		"input":"next",
@@ -494,7 +494,7 @@ func TestQoderGatewayResponsesStreamPreviousResponseIDReusesQoderSession(t *test
 }
 
 func TestQoderGatewayResponsesStreamsDeclaredFunctionCallEvents(t *testing.T) {
-	account, svc, client := gatewaytestkit.NewDefaultQoderFixture()
+	provider, svc, client := gatewaytestkit.NewDefaultQoderFixture()
 	client.Body = qoderWrappedSSELineForTest(t, map[string]any{"choices": []any{
 		map[string]any{"delta": map[string]any{"tool_calls": []any{
 			map[string]any{"index": 0, "id": "call_1", "type": "function", "function": map[string]any{"name": "Bash", "arguments": `{"command":"pwd"}`}},
@@ -508,7 +508,7 @@ func TestQoderGatewayResponsesStreamsDeclaredFunctionCallEvents(t *testing.T) {
 		"stream":true
 	}`)
 
-	result, response := qoderForwardResponsesResultAndBodyForTest(t, svc, account, body)
+	result, response := qoderForwardResponsesResultAndBodyForTest(t, svc, provider, body)
 
 	require.True(t, result.Stream)
 	events := qoderResponsesStreamEventsForTest(t, response)
@@ -531,7 +531,7 @@ func TestQoderGatewayResponsesStreamsDeclaredFunctionCallEvents(t *testing.T) {
 }
 
 func TestQoderGatewayResponsesToolContinuationUsesToolResultsAsPrompt(t *testing.T) {
-	account, svc, client := gatewaytestkit.NewDefaultQoderFixture()
+	provider, svc, client := gatewaytestkit.NewDefaultQoderFixture()
 	tools := `[{"type":"function","name":"bash","parameters":{"type":"object","properties":{"command":{"type":"string"}},"required":["command"]}}]`
 	firstBody := []byte(`{
 		"model":"deepseek-v4-pro",
@@ -552,8 +552,8 @@ func TestQoderGatewayResponsesToolContinuationUsesToolResultsAsPrompt(t *testing
 		"stream":true
 	}`)
 
-	qoderForwardResponsesResultAndBodyForTest(t, svc, account, firstBody, qoderHeader("session_id", "responses-tool-continuation"))
-	qoderForwardResponsesResultAndBodyForTest(t, svc, account, secondBody, qoderHeader("session_id", "responses-tool-continuation"))
+	qoderForwardResponsesResultAndBodyForTest(t, svc, provider, firstBody, qoderHeader("session_id", "responses-tool-continuation"))
+	qoderForwardResponsesResultAndBodyForTest(t, svc, provider, secondBody, qoderHeader("session_id", "responses-tool-continuation"))
 
 	payload := qoderLastUpstreamPayloadForTest(t, client)
 	prompt := qoderPayloadPromptForTest(t, payload)
@@ -565,7 +565,7 @@ func TestQoderGatewayResponsesToolContinuationUsesToolResultsAsPrompt(t *testing
 }
 
 func TestQoderGatewayResponsesToolContinuationGroupsFunctionCallsIntoOneAssistantTurn(t *testing.T) {
-	account, svc, client := gatewaytestkit.NewDefaultQoderFixture()
+	provider, svc, client := gatewaytestkit.NewDefaultQoderFixture()
 	tools := `[{"type":"function","name":"bash","parameters":{"type":"object","properties":{"command":{"type":"string"}},"required":["command"]}},{"type":"function","name":"glob","parameters":{"type":"object","properties":{"pattern":{"type":"string"}},"required":["pattern"]}}]`
 	body := []byte(`{
 		"model":"deepseek-v4-pro",
@@ -580,7 +580,7 @@ func TestQoderGatewayResponsesToolContinuationGroupsFunctionCallsIntoOneAssistan
 		"stream":true
 	}`)
 
-	qoderForwardResponsesResultAndBodyForTest(t, svc, account, body, qoderHeader("session_id", "responses-grouped-tool-continuation"))
+	qoderForwardResponsesResultAndBodyForTest(t, svc, provider, body, qoderHeader("session_id", "responses-grouped-tool-continuation"))
 
 	payload := qoderLastUpstreamPayloadForTest(t, client)
 	messages := qoderFixtureValue[[]any](t, payload["messages"])
@@ -598,16 +598,16 @@ func TestQoderGatewayResponsesToolContinuationGroupsFunctionCallsIntoOneAssistan
 }
 
 func TestQoderGatewayClaudeRequestsWithoutSessionDoNotReuseByFirstText(t *testing.T) {
-	account, svc, _ := gatewaytestkit.NewDefaultQoderFixture()
+	provider, svc, _ := gatewaytestkit.NewDefaultQoderFixture()
 	largeTools := qoderLargeToolsJSONForTest()
-	first := qoderForwardMessagesForTest(t, svc, account, "", []byte(`{
+	first := qoderForwardMessagesForTest(t, svc, provider, "", []byte(`{
 		"model":"deepseek-v4-pro",
 		"system":"You are Claude Code, Anthropic's official CLI for Claude.",
 		"messages":[{"role":"user","content":"你好"}],
 		"tools":`+largeTools+`,
 		"stream":false
 	}`), qoderHeader("User-Agent", "claude-cli/2.1.177 (external, cli)"))
-	second := qoderForwardMessagesForTest(t, svc, account, "", []byte(`{
+	second := qoderForwardMessagesForTest(t, svc, provider, "", []byte(`{
 		"model":"deepseek-v4-pro",
 		"system":"You are Claude Code, Anthropic's official CLI for Claude.",
 		"messages":[
@@ -625,7 +625,7 @@ func TestQoderGatewayClaudeRequestsWithoutSessionDoNotReuseByFirstText(t *testin
 }
 
 func TestQoderGatewayClaudeCodeContextWithoutSessionUsesStablePrefixKey(t *testing.T) {
-	account, svc, _ := gatewaytestkit.NewDefaultQoderFixture()
+	provider, svc, _ := gatewaytestkit.NewDefaultQoderFixture()
 	largeTools := qoderLargeToolsJSONForTest()
 	system1 := "x-anthropic-billing-header: cc_version=2.1.177.19c; cc_entrypoint=sdk-cli; cch=29156;\n" +
 		"You are Claude Code, Anthropic's official CLI for Claude.\n" +
@@ -633,7 +633,7 @@ func TestQoderGatewayClaudeCodeContextWithoutSessionUsesStablePrefixKey(t *testi
 	system2 := "x-anthropic-billing-header: cc_version=2.1.177.19c; cc_entrypoint=sdk-cli; cch=40d8d;\n" +
 		"You are Claude Code, Anthropic's official CLI for Claude.\n" +
 		"Stable Claude Code system body."
-	first := qoderForwardMessagesForTest(t, svc, account, "", []byte(`{
+	first := qoderForwardMessagesForTest(t, svc, provider, "", []byte(`{
 		"model":"claude-opus-4-6",
 		"system":`+strconv.Quote(system1)+`,
 		"messages":[{"role":"user","content":"inspect"}],
@@ -643,7 +643,7 @@ func TestQoderGatewayClaudeCodeContextWithoutSessionUsesStablePrefixKey(t *testi
 		qoderHeader("User-Agent", "claude-cli/2.1.177 (external, sdk-cli)"),
 		qoderHeader("X-Test-Claude-Code-Context", "true"),
 	)
-	second := qoderForwardMessagesForTest(t, svc, account, "", []byte(`{
+	second := qoderForwardMessagesForTest(t, svc, provider, "", []byte(`{
 		"model":"claude-opus-4-6",
 		"system":`+strconv.Quote(system2)+`,
 		"messages":[
@@ -670,7 +670,7 @@ func TestQoderGatewayClaudeCodeContextWithoutSessionUsesStablePrefixKey(t *testi
 }
 
 func TestQoderGatewayDoesNotCommitConversationOnUpstreamFailure(t *testing.T) {
-	account, svc, client := gatewaytestkit.NewDefaultQoderFixture()
+	provider, svc, client := gatewaytestkit.NewDefaultQoderFixture()
 	client.Err = errors.New("upstream failed")
 	body := []byte(`{
 		"model":"auto",
@@ -680,16 +680,16 @@ func TestQoderGatewayDoesNotCommitConversationOnUpstreamFailure(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
-	_, err := ForwardQoderAttempt(context.Background(), c, svc.Runtime, account, body, protocolcore.ProtocolOpenAIChatCompletions)
+	_, err := ForwardQoderAttempt(context.Background(), c, svc.Runtime, provider, body, protocolcore.ProtocolOpenAIChatCompletions)
 	require.Error(t, err)
 
 	client.Err = nil
-	first := qoderForwardChatCompletionsForTest(t, svc, account, "", body)
+	first := qoderForwardChatCompletionsForTest(t, svc, provider, "", body)
 	require.Len(t, qoderFixtureValue[[]any](t, first["messages"]), 1)
 }
 
 func TestQoderGatewayReservesConversationAfterUpstreamAcceptsBeforeStreamCompletes(t *testing.T) {
-	account, svc, _ := gatewaytestkit.NewDefaultQoderFixture()
+	provider, svc, _ := gatewaytestkit.NewDefaultQoderFixture()
 	client := newBlockingQoderClientStub(t)
 	svc.Client = client
 	body1 := []byte(`{
@@ -722,11 +722,11 @@ func TestQoderGatewayReservesConversationAfterUpstreamAcceptsBeforeStreamComplet
 	var firstErr error
 	go func() {
 		defer wg.Done()
-		_, firstErr = ForwardQoderAttempt(context.Background(), firstCtx, svc.Runtime, account, body1, protocolcore.ProtocolAnthropicMessages)
+		_, firstErr = ForwardQoderAttempt(context.Background(), firstCtx, svc.Runtime, provider, body1, protocolcore.ProtocolAnthropicMessages)
 	}()
 	client.waitForCalls(1)
 
-	secondPayload := qoderForwardMessagesForTest(t, svc, account, "", body2, qoderHeader("User-Agent", "claude-cli/2.1.177 (external, cli)"))
+	secondPayload := qoderForwardMessagesForTest(t, svc, provider, "", body2, qoderHeader("User-Agent", "claude-cli/2.1.177 (external, cli)"))
 	client.finishFirst()
 	wg.Wait()
 	require.NoError(t, firstErr)
@@ -743,7 +743,7 @@ func TestQoderGatewayReservesConversationAfterUpstreamAcceptsBeforeStreamComplet
 }
 
 func TestQoderGatewayDoesNotCommitFailedPostToolStreamAsComplete(t *testing.T) {
-	account, svc, _ := gatewaytestkit.NewDefaultQoderFixture()
+	provider, svc, _ := gatewaytestkit.NewDefaultQoderFixture()
 	client := newBlockingQoderClientStub(t)
 	svc.Client = client
 	body1 := []byte(`{
@@ -776,7 +776,7 @@ func TestQoderGatewayDoesNotCommitFailedPostToolStreamAsComplete(t *testing.T) {
 	var firstErr error
 	go func() {
 		defer wg.Done()
-		_, firstErr = ForwardQoderAttempt(context.Background(), firstCtx, svc.Runtime, account, body1, protocolcore.ProtocolAnthropicMessages)
+		_, firstErr = ForwardQoderAttempt(context.Background(), firstCtx, svc.Runtime, provider, body1, protocolcore.ProtocolAnthropicMessages)
 	}()
 	client.waitForCalls(1)
 
@@ -787,10 +787,10 @@ func TestQoderGatewayDoesNotCommitFailedPostToolStreamAsComplete(t *testing.T) {
 	failedCtx, _ := gin.CreateTestContext(failedRec)
 	failedCtx.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", bytes.NewReader(body2))
 	failedCtx.Request.Header.Set("User-Agent", "claude-cli/2.1.177 (external, cli)")
-	_, failedErr := ForwardQoderAttempt(context.Background(), failedCtx, svc.Runtime, account, body2, protocolcore.ProtocolAnthropicMessages)
+	_, failedErr := ForwardQoderAttempt(context.Background(), failedCtx, svc.Runtime, provider, body2, protocolcore.ProtocolAnthropicMessages)
 	require.Error(t, failedErr)
 
-	retryPayload := qoderForwardMessagesForTest(t, svc, account, "", body2, qoderHeader("User-Agent", "claude-cli/2.1.177 (external, cli)"))
+	retryPayload := qoderForwardMessagesForTest(t, svc, provider, "", body2, qoderHeader("User-Agent", "claude-cli/2.1.177 (external, cli)"))
 	client.finishFirst()
 	wg.Wait()
 	require.NoError(t, firstErr)
@@ -816,7 +816,7 @@ func TestQoderGatewayDoesNotCommitFailedPostToolStreamAsComplete(t *testing.T) {
 }
 
 func TestQoderGatewayRollsBackAcceptedConversationOnStreamParseFailure(t *testing.T) {
-	account, svc, client := gatewaytestkit.NewDefaultQoderFixture()
+	provider, svc, client := gatewaytestkit.NewDefaultQoderFixture()
 	body1 := []byte(`{
 		"model":"glm-5.1",
 		"prompt_cache_key":"rollback-accepted-stream",
@@ -838,7 +838,7 @@ func TestQoderGatewayRollsBackAcceptedConversationOnStreamParseFailure(t *testin
 		"stream":true
 	}`)
 
-	firstPayload := qoderForwardMessagesForTest(t, svc, account, "", body1, qoderHeader("User-Agent", "claude-cli/2.1.177 (external, cli)"))
+	firstPayload := qoderForwardMessagesForTest(t, svc, provider, "", body1, qoderHeader("User-Agent", "claude-cli/2.1.177 (external, cli)"))
 
 	client.Body = "data: {\"body\":\"{\\\"choices\\\":[{\\\"delta\\\":{\\\"content\\\":\\\""
 
@@ -846,13 +846,13 @@ func TestQoderGatewayRollsBackAcceptedConversationOnStreamParseFailure(t *testin
 	failedCtx, _ := gin.CreateTestContext(failedRec)
 	failedCtx.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", bytes.NewReader(body2))
 	failedCtx.Request.Header.Set("User-Agent", "claude-cli/2.1.177 (external, cli)")
-	_, failedErr := ForwardQoderAttempt(context.Background(), failedCtx, svc.Runtime, account, body2, protocolcore.ProtocolAnthropicMessages)
+	_, failedErr := ForwardQoderAttempt(context.Background(), failedCtx, svc.Runtime, provider, body2, protocolcore.ProtocolAnthropicMessages)
 	require.Error(t, failedErr)
 
 	client.Body = "data: {\"body\":\"{\\\"choices\\\":[{\\\"delta\\\":{\\\"content\\\":\\\"OK\\\"}}]}\"}\n\n" +
 		"data: {\"body\":\"{\\\"usage\\\":{\\\"prompt_tokens\\\":5,\\\"completion_tokens\\\":1,\\\"total_tokens\\\":6}}\"}\n\n" +
 		"data: {\"body\":\"[DONE]\"}\n\n"
-	retryPayload := qoderForwardMessagesForTest(t, svc, account, "", body2, qoderHeader("User-Agent", "claude-cli/2.1.177 (external, cli)"))
+	retryPayload := qoderForwardMessagesForTest(t, svc, provider, "", body2, qoderHeader("User-Agent", "claude-cli/2.1.177 (external, cli)"))
 	require.Equal(t, firstPayload["session_id"], retryPayload["session_id"])
 	require.NotEmpty(t, qoderFixtureValue[[]any](t, retryPayload["tools"]))
 	messages := qoderFixtureValue[[]any](t, retryPayload["messages"])
@@ -864,13 +864,13 @@ func TestQoderGatewayRollsBackAcceptedConversationOnStreamParseFailure(t *testin
 }
 
 func TestQoderGatewayFallsBackToFullReplayWhenPrefixDoesNotMatch(t *testing.T) {
-	account, svc, _ := gatewaytestkit.NewDefaultQoderFixture()
-	first := qoderForwardChatCompletionsForTest(t, svc, account, "stable-session", []byte(`{
+	provider, svc, _ := gatewaytestkit.NewDefaultQoderFixture()
+	first := qoderForwardChatCompletionsForTest(t, svc, provider, "stable-session", []byte(`{
 		"model":"auto",
 		"messages":[{"role":"user","content":"first"}],
 		"stream":false
 	}`))
-	second := qoderForwardChatCompletionsForTest(t, svc, account, "stable-session", []byte(`{
+	second := qoderForwardChatCompletionsForTest(t, svc, provider, "stable-session", []byte(`{
 		"model":"auto",
 		"messages":[
 			{"role":"user","content":"changed"},
@@ -887,14 +887,14 @@ func TestQoderGatewayFallsBackToFullReplayWhenPrefixDoesNotMatch(t *testing.T) {
 }
 
 func TestQoderGatewayFallsBackToFullReplayWhenSystemOrToolsChange(t *testing.T) {
-	account, svc, _ := gatewaytestkit.NewDefaultQoderFixture()
-	first := qoderForwardChatCompletionsForTest(t, svc, account, "", []byte(`{
+	provider, svc, _ := gatewaytestkit.NewDefaultQoderFixture()
+	first := qoderForwardChatCompletionsForTest(t, svc, provider, "", []byte(`{
 		"model":"auto",
 		"messages":[{"role":"system","content":"be terse"},{"role":"user","content":"hello"}],
 		"tools":[{"type":"function","function":{"name":"read","parameters":{"type":"object"}}}],
 		"stream":false
 	}`))
-	second := qoderForwardChatCompletionsForTest(t, svc, account, "", []byte(`{
+	second := qoderForwardChatCompletionsForTest(t, svc, provider, "", []byte(`{
 		"model":"auto",
 		"messages":[
 			{"role":"system","content":"be detailed"},
@@ -916,14 +916,14 @@ func TestQoderGatewayFallsBackToFullReplayWhenSystemOrToolsChange(t *testing.T) 
 }
 
 func TestQoderGatewayUsesExplicitBodySessionID(t *testing.T) {
-	account, svc, _ := gatewaytestkit.NewDefaultQoderFixture()
-	first := qoderForwardChatCompletionsForTest(t, svc, account, "", []byte(`{
+	provider, svc, _ := gatewaytestkit.NewDefaultQoderFixture()
+	first := qoderForwardChatCompletionsForTest(t, svc, provider, "", []byte(`{
 		"model":"auto",
 		"session_id":"body-session-1",
 		"messages":[{"role":"user","content":"hello"}],
 		"stream":false
 	}`))
-	second := qoderForwardChatCompletionsForTest(t, svc, account, "", []byte(`{
+	second := qoderForwardChatCompletionsForTest(t, svc, provider, "", []byte(`{
 		"model":"auto",
 		"session_id":"body-session-1",
 		"messages":[{"role":"user","content":"hello"},{"role":"assistant","content":"hi"},{"role":"user","content":"next"}],
@@ -935,15 +935,15 @@ func TestQoderGatewayUsesExplicitBodySessionID(t *testing.T) {
 }
 
 func TestQoderGatewayAnthropicMetadataSessionWinsOverChangingHeader(t *testing.T) {
-	account, svc, _ := gatewaytestkit.NewDefaultQoderFixture()
-	metadata := `{"device_id":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef","account_uuid":"","session_id":"11111111-2222-3333-4444-555555555555"}`
-	first := qoderForwardMessagesForTest(t, svc, account, "volatile-header-1", []byte(`{
+	provider, svc, _ := gatewaytestkit.NewDefaultQoderFixture()
+	metadata := `{"device_id":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef","provider_uuid":"","session_id":"11111111-2222-3333-4444-555555555555"}`
+	first := qoderForwardMessagesForTest(t, svc, provider, "volatile-header-1", []byte(`{
 		"model":"deepseek-v4-pro",
 		"metadata":{"user_id":`+strconv.Quote(metadata)+`},
 		"messages":[{"role":"user","content":"inspect"}],
 		"stream":false
 	}`))
-	second := qoderForwardMessagesForTest(t, svc, account, "volatile-header-2", []byte(`{
+	second := qoderForwardMessagesForTest(t, svc, provider, "volatile-header-2", []byte(`{
 		"model":"deepseek-v4-pro",
 		"metadata":{"user_id":`+strconv.Quote(metadata)+`},
 		"messages":[
@@ -964,14 +964,14 @@ func TestQoderGatewayAnthropicMetadataSessionWinsOverChangingHeader(t *testing.T
 }
 
 func TestQoderGatewayClaudeCodeUsesExplicitHeaderSessionBeforeStableSeed(t *testing.T) {
-	account, svc, _ := gatewaytestkit.NewDefaultQoderFixture()
-	first := qoderForwardMessagesForTest(t, svc, account, "stable-header", []byte(`{
+	provider, svc, _ := gatewaytestkit.NewDefaultQoderFixture()
+	first := qoderForwardMessagesForTest(t, svc, provider, "stable-header", []byte(`{
 		"model":"deepseek-v4-pro",
 		"system":"You are Claude Code, Anthropic's official CLI for Claude.",
 		"messages":[{"role":"user","content":"inspect"}],
 		"stream":false
 	}`), qoderHeader("User-Agent", "claude-cli/2.1.162 (external, cli)"))
-	second := qoderForwardMessagesForTest(t, svc, account, "stable-header", []byte(`{
+	second := qoderForwardMessagesForTest(t, svc, provider, "stable-header", []byte(`{
 		"model":"deepseek-v4-pro",
 		"system":"You are Claude Code, Anthropic's official CLI for Claude.",
 		"messages":[
@@ -990,7 +990,7 @@ func TestQoderGatewayClaudeCodeUsesExplicitHeaderSessionBeforeStableSeed(t *test
 	require.Equal(t, "assistant", qoderFixtureValue[map[string]any](t, messages[2])["role"])
 	require.Equal(t, "user", qoderFixtureValue[map[string]any](t, messages[3])["role"])
 
-	other := qoderForwardMessagesForTest(t, svc, account, "other-header", []byte(`{
+	other := qoderForwardMessagesForTest(t, svc, provider, "other-header", []byte(`{
 		"model":"deepseek-v4-pro",
 		"system":"You are Claude Code, Anthropic's official CLI for Claude.",
 		"messages":[
@@ -1004,10 +1004,10 @@ func TestQoderGatewayClaudeCodeUsesExplicitHeaderSessionBeforeStableSeed(t *test
 }
 
 func TestQoderGatewayClaudeCodeUsesMetadataSessionBeforeStableSeed(t *testing.T) {
-	account, svc, _ := gatewaytestkit.NewDefaultQoderFixture()
-	metadata1 := `{"device_id":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef","account_uuid":"","session_id":"11111111-2222-3333-4444-555555555555"}`
+	provider, svc, _ := gatewaytestkit.NewDefaultQoderFixture()
+	metadata1 := `{"device_id":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef","provider_uuid":"","session_id":"11111111-2222-3333-4444-555555555555"}`
 	largeTools := qoderLargeToolsJSONForTest()
-	first := qoderForwardMessagesForTest(t, svc, account, "", []byte(`{
+	first := qoderForwardMessagesForTest(t, svc, provider, "", []byte(`{
 		"model":"deepseek-v4-pro",
 		"metadata":{"user_id":`+strconv.Quote(metadata1)+`},
 		"system":"You are Claude Code, Anthropic's official CLI for Claude.",
@@ -1015,7 +1015,7 @@ func TestQoderGatewayClaudeCodeUsesMetadataSessionBeforeStableSeed(t *testing.T)
 		"tools":`+largeTools+`,
 		"stream":false
 	}`), qoderHeader("User-Agent", "claude-cli/2.1.177 (external, cli)"))
-	second := qoderForwardMessagesForTest(t, svc, account, "", []byte(`{
+	second := qoderForwardMessagesForTest(t, svc, provider, "", []byte(`{
 		"model":"deepseek-v4-pro",
 		"metadata":{"user_id":`+strconv.Quote(metadata1)+`},
 		"system":"You are Claude Code, Anthropic's official CLI for Claude.",
@@ -1038,8 +1038,8 @@ func TestQoderGatewayClaudeCodeUsesMetadataSessionBeforeStableSeed(t *testing.T)
 	require.Equal(t, "user", qoderFixtureValue[map[string]any](t, messages[3])["role"])
 	require.Equal(t, "continue", qoderFixtureValue[map[string]any](t, qoderFixtureValue[map[string]any](t, second["chat_context"])["text"])["text"])
 
-	metadata2 := `{"device_id":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef","account_uuid":"","session_id":"66666666-7777-8888-9999-aaaaaaaaaaaa"}`
-	other := qoderForwardMessagesForTest(t, svc, account, "", []byte(`{
+	metadata2 := `{"device_id":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef","provider_uuid":"","session_id":"66666666-7777-8888-9999-aaaaaaaaaaaa"}`
+	other := qoderForwardMessagesForTest(t, svc, provider, "", []byte(`{
 		"model":"deepseek-v4-pro",
 		"metadata":{"user_id":`+strconv.Quote(metadata2)+`},
 		"system":"You are Claude Code, Anthropic's official CLI for Claude.",
@@ -1056,7 +1056,7 @@ func TestQoderGatewayClaudeCodeUsesMetadataSessionBeforeStableSeed(t *testing.T)
 }
 
 func TestQoderGatewayClaudeCodeIgnoresVolatileBillingCCHForSystemReuse(t *testing.T) {
-	account, svc, _ := gatewaytestkit.NewDefaultQoderFixture()
+	provider, svc, _ := gatewaytestkit.NewDefaultQoderFixture()
 	largeTools := qoderLargeToolsJSONForTest()
 	system1 := "x-anthropic-billing-header: cc_version=2.1.177.19c; cc_entrypoint=sdk-cli; cch=29156;\n" +
 		"You are a Claude agent, built on Anthropic's Claude Agent SDK.\n" +
@@ -1064,7 +1064,7 @@ func TestQoderGatewayClaudeCodeIgnoresVolatileBillingCCHForSystemReuse(t *testin
 	system2 := "x-anthropic-billing-header: cc_version=2.1.177.19c; cc_entrypoint=sdk-cli; cch=40d8d;\n" +
 		"You are a Claude agent, built on Anthropic's Claude Agent SDK.\n" +
 		"Stable Claude Code system body."
-	first := qoderForwardMessagesForTest(t, svc, account, "", []byte(`{
+	first := qoderForwardMessagesForTest(t, svc, provider, "", []byte(`{
 		"model":"glm-5.1",
 		"prompt_cache_key":"billing-cch-session",
 		"system":`+strconv.Quote(system1)+`,
@@ -1072,7 +1072,7 @@ func TestQoderGatewayClaudeCodeIgnoresVolatileBillingCCHForSystemReuse(t *testin
 		"tools":`+largeTools+`,
 		"stream":false
 	}`), qoderHeader("User-Agent", "claude-cli/2.1.177 (external, sdk-cli)"))
-	second := qoderForwardMessagesForTest(t, svc, account, "", []byte(`{
+	second := qoderForwardMessagesForTest(t, svc, provider, "", []byte(`{
 		"model":"glm-5.1",
 		"prompt_cache_key":"billing-cch-session",
 		"system":`+strconv.Quote(system2)+`,
@@ -1096,7 +1096,7 @@ func TestQoderGatewayClaudeCodeIgnoresVolatileBillingCCHForSystemReuse(t *testin
 }
 
 func TestQoderGatewayClaudeCodeUltimateStablePromptCacheKeyReportsCacheRead(t *testing.T) {
-	account, svc, client := gatewaytestkit.NewDefaultQoderFixture()
+	provider, svc, client := gatewaytestkit.NewDefaultQoderFixture()
 	largeTools := qoderLargeToolsJSONForTest()
 	system1 := "x-anthropic-billing-header: cc_version=2.1.177.19c; cc_entrypoint=sdk-cli; cch=29156;\n" +
 		"You are a Claude agent, built on Anthropic's Claude Agent SDK.\n" +
@@ -1127,7 +1127,7 @@ func TestQoderGatewayClaudeCodeUltimateStablePromptCacheKeyReportsCacheRead(t *t
 
 	client.Body = "data: {\"body\":\"{\\\"usage\\\":{\\\"prompt_tokens\\\":1200,\\\"completion_tokens\\\":30,\\\"total_tokens\\\":1230}}\"}\n\n" +
 		"data: {\"body\":\"[DONE]\"}\n\n"
-	firstResult := qoderForwardMessagesResultForTest(t, svc, account, firstBody, qoderHeader("User-Agent", "claude-cli/2.1.177 (external, sdk-cli)"))
+	firstResult := qoderForwardMessagesResultForTest(t, svc, provider, firstBody, qoderHeader("User-Agent", "claude-cli/2.1.177 (external, sdk-cli)"))
 	firstPayload := qoderLastUpstreamPayloadForTest(t, client)
 	require.Equal(t, "ultimate", firstResult.UpstreamModel)
 	require.Equal(t, 1200, firstResult.Usage.InputTokens)
@@ -1135,7 +1135,7 @@ func TestQoderGatewayClaudeCodeUltimateStablePromptCacheKeyReportsCacheRead(t *t
 
 	client.Body = "data: {\"body\":\"{\\\"usage\\\":{\\\"prompt_tokens\\\":1500,\\\"completion_tokens\\\":33,\\\"total_tokens\\\":1533,\\\"prompt_tokens_details\\\":{\\\"cached_tokens\\\":1400,\\\"cacheable_tokens\\\":100}}}\"}\n\n" +
 		"data: {\"body\":\"[DONE]\"}\n\n"
-	secondResult, secondResponse := qoderForwardMessagesResultAndBodyForTest(t, svc, account, secondBody, qoderHeader("User-Agent", "claude-cli/2.1.177 (external, sdk-cli)"))
+	secondResult, secondResponse := qoderForwardMessagesResultAndBodyForTest(t, svc, provider, secondBody, qoderHeader("User-Agent", "claude-cli/2.1.177 (external, sdk-cli)"))
 	secondPayload := qoderLastUpstreamPayloadForTest(t, client)
 
 	require.Equal(t, "ultimate", secondResult.UpstreamModel)
@@ -1148,13 +1148,13 @@ func TestQoderGatewayClaudeCodeUltimateStablePromptCacheKeyReportsCacheRead(t *t
 }
 
 func TestQoderGatewayStillFullReplaysWhenNonBillingSystemChanges(t *testing.T) {
-	account, svc, _ := gatewaytestkit.NewDefaultQoderFixture()
+	provider, svc, _ := gatewaytestkit.NewDefaultQoderFixture()
 	largeTools := qoderLargeToolsJSONForTest()
 	system1 := "x-anthropic-billing-header: cc_version=2.1.177.19c; cc_entrypoint=sdk-cli; cch=29156;\n" +
 		"Stable Claude Code system body."
 	system2 := "x-anthropic-billing-header: cc_version=2.1.177.19c; cc_entrypoint=sdk-cli; cch=40d8d;\n" +
 		"Changed Claude Code system body."
-	first := qoderForwardMessagesForTest(t, svc, account, "", []byte(`{
+	first := qoderForwardMessagesForTest(t, svc, provider, "", []byte(`{
 		"model":"glm-5.1",
 		"prompt_cache_key":"system-change-session",
 		"system":`+strconv.Quote(system1)+`,
@@ -1162,7 +1162,7 @@ func TestQoderGatewayStillFullReplaysWhenNonBillingSystemChanges(t *testing.T) {
 		"tools":`+largeTools+`,
 		"stream":false
 	}`), qoderHeader("User-Agent", "claude-cli/2.1.177 (external, sdk-cli)"))
-	second := qoderForwardMessagesForTest(t, svc, account, "", []byte(`{
+	second := qoderForwardMessagesForTest(t, svc, provider, "", []byte(`{
 		"model":"glm-5.1",
 		"prompt_cache_key":"system-change-session",
 		"system":`+strconv.Quote(system2)+`,
@@ -1181,16 +1181,16 @@ func TestQoderGatewayStillFullReplaysWhenNonBillingSystemChanges(t *testing.T) {
 }
 
 func TestQoderGatewayReusedAnthropicConversationOmitsUnchangedTools(t *testing.T) {
-	account, svc, _ := gatewaytestkit.NewDefaultQoderFixture()
+	provider, svc, _ := gatewaytestkit.NewDefaultQoderFixture()
 	largeTools := qoderLargeToolsJSONForTest()
-	first := qoderForwardMessagesForTest(t, svc, account, "stable-session", []byte(`{
+	first := qoderForwardMessagesForTest(t, svc, provider, "stable-session", []byte(`{
 		"model":"deepseek-v4-pro",
 		"system":"You are Claude Code, Anthropic's official CLI for Claude.",
 		"messages":[{"role":"user","content":"你好"}],
 		"tools":`+largeTools+`,
 		"stream":false
 	}`))
-	second := qoderForwardMessagesForTest(t, svc, account, "stable-session", []byte(`{
+	second := qoderForwardMessagesForTest(t, svc, provider, "stable-session", []byte(`{
 		"model":"deepseek-v4-pro",
 		"system":"You are Claude Code, Anthropic's official CLI for Claude.",
 		"messages":[
@@ -1214,7 +1214,7 @@ func TestQoderGatewayReusedAnthropicConversationOmitsUnchangedTools(t *testing.T
 }
 
 func TestQoderGatewayUsageComesFromUpstreamSSE(t *testing.T) {
-	account, svc, client := gatewaytestkit.NewDefaultQoderFixture()
+	provider, svc, client := gatewaytestkit.NewDefaultQoderFixture()
 	client.Body = "data: {\"body\":\"{\\\"choices\\\":[{\\\"delta\\\":{\\\"content\\\":\\\"OK\\\"}}]}\"}\n\n" +
 		"data: {\"body\":\"{\\\"usage\\\":{\\\"prompt_tokens\\\":1234,\\\"completion_tokens\\\":56,\\\"total_tokens\\\":1290}}\"}\n\n" +
 		"data: {\"body\":\"[DONE]\"}\n\n"
@@ -1233,7 +1233,7 @@ func TestQoderGatewayUsageComesFromUpstreamSSE(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", bytes.NewReader(body))
-	result, err := ForwardQoderAttempt(context.Background(), c, svc.Runtime, account, body, protocolcore.ProtocolAnthropicMessages)
+	result, err := ForwardQoderAttempt(context.Background(), c, svc.Runtime, provider, body, protocolcore.ProtocolAnthropicMessages)
 
 	require.NoError(t, err)
 	require.Equal(t, 1234, result.Usage.InputTokens)
@@ -1242,13 +1242,13 @@ func TestQoderGatewayUsageComesFromUpstreamSSE(t *testing.T) {
 }
 
 func TestQoderGatewayBuildsClientVisibleOpenAIUsageWithUpstreamTotals(t *testing.T) {
-	account, svc, client := gatewaytestkit.NewDefaultQoderFixture()
+	provider, svc, client := gatewaytestkit.NewDefaultQoderFixture()
 	client.Body = "data: {\"body\":\"{\\\"choices\\\":[{\\\"delta\\\":{\\\"content\\\":\\\"OK\\\"}}]}\"}\n\n" +
 		qoderCachedUsageSSEForTest +
 		"data: {\"body\":\"[DONE]\"}\n\n"
 	body := []byte(`{"model":"auto","messages":[{"role":"user","content":"hi"}],"stream":false}`)
 
-	result, response := qoderForwardChatCompletionsResultAndBodyForTest(t, svc, account, "", body)
+	result, response := qoderForwardChatCompletionsResultAndBodyForTest(t, svc, provider, "", body)
 
 	require.Equal(t, 25, result.Usage.InputTokens)
 	require.Equal(t, 66612, result.Usage.CacheReadInputTokens)
@@ -1262,13 +1262,13 @@ func TestQoderGatewayBuildsClientVisibleOpenAIUsageWithUpstreamTotals(t *testing
 }
 
 func TestQoderGatewayOpenAIUsageKeepsUpstreamPromptWhenCachedExceedsPrompt(t *testing.T) {
-	account, svc, client := gatewaytestkit.NewDefaultQoderFixture()
+	provider, svc, client := gatewaytestkit.NewDefaultQoderFixture()
 	client.Body = "data: {\"body\":\"{\\\"choices\\\":[{\\\"delta\\\":{\\\"content\\\":\\\"OK\\\"}}]}\"}\n\n" +
 		"data: {\"body\":\"{\\\"usage\\\":{\\\"prompt_tokens\\\":10,\\\"completion_tokens\\\":6,\\\"total_tokens\\\":16,\\\"prompt_tokens_details\\\":{\\\"cached_tokens\\\":15,\\\"cacheable_tokens\\\":1}}}\"}\n\n" +
 		"data: {\"body\":\"[DONE]\"}\n\n"
 	body := []byte(`{"model":"auto","messages":[{"role":"user","content":"hi"}],"stream":false}`)
 
-	result, response := qoderForwardChatCompletionsResultAndBodyForTest(t, svc, account, "", body)
+	result, response := qoderForwardChatCompletionsResultAndBodyForTest(t, svc, provider, "", body)
 
 	require.Equal(t, 0, result.Usage.InputTokens)
 	require.Equal(t, 15, result.Usage.CacheReadInputTokens)
@@ -1280,13 +1280,13 @@ func TestQoderGatewayOpenAIUsageKeepsUpstreamPromptWhenCachedExceedsPrompt(t *te
 }
 
 func TestQoderGatewayBuildsClientVisibleAnthropicUsageWithCacheRead(t *testing.T) {
-	account, svc, client := gatewaytestkit.NewDefaultQoderFixture()
+	provider, svc, client := gatewaytestkit.NewDefaultQoderFixture()
 	client.Body = "data: {\"body\":\"{\\\"choices\\\":[{\\\"delta\\\":{\\\"content\\\":\\\"OK\\\"}}]}\"}\n\n" +
 		qoderCachedUsageSSEForTest +
 		"data: {\"body\":\"[DONE]\"}\n\n"
 	body := []byte(`{"model":"auto","messages":[{"role":"user","content":"hi"}],"stream":false}`)
 
-	result, response := qoderForwardMessagesResultAndBodyForTest(t, svc, account, body)
+	result, response := qoderForwardMessagesResultAndBodyForTest(t, svc, provider, body)
 
 	require.Equal(t, 25, result.Usage.InputTokens)
 	require.Equal(t, 66612, result.Usage.CacheReadInputTokens)
@@ -1298,7 +1298,7 @@ func TestQoderGatewayBuildsClientVisibleAnthropicUsageWithCacheRead(t *testing.T
 }
 
 func TestQoderGatewayDoesNotSubtractPreviousUsageOnFullReplay(t *testing.T) {
-	account, svc, client := gatewaytestkit.NewDefaultQoderFixture()
+	provider, svc, client := gatewaytestkit.NewDefaultQoderFixture()
 	firstBody := []byte(`{
 		"model":"deepseek-v4-pro",
 		"prompt_cache_key":"usage-delta-session",
@@ -1322,12 +1322,12 @@ func TestQoderGatewayDoesNotSubtractPreviousUsageOnFullReplay(t *testing.T) {
 
 	client.Body = "data: {\"body\":\"{\\\"usage\\\":{\\\"prompt_tokens\\\":1200,\\\"completion_tokens\\\":30,\\\"total_tokens\\\":1230}}\"}\n\n" +
 		"data: {\"body\":\"[DONE]\"}\n\n"
-	firstResult := qoderForwardMessagesResultForTest(t, svc, account, firstBody, qoderHeader("User-Agent", "claude-cli/2.1.177 (external, cli)"))
+	firstResult := qoderForwardMessagesResultForTest(t, svc, provider, firstBody, qoderHeader("User-Agent", "claude-cli/2.1.177 (external, cli)"))
 	require.Equal(t, 1200, firstResult.Usage.InputTokens)
 
 	client.Body = "data: {\"body\":\"{\\\"usage\\\":{\\\"prompt_tokens\\\":10000,\\\"completion_tokens\\\":33,\\\"total_tokens\\\":10033}}\"}\n\n" +
 		"data: {\"body\":\"[DONE]\"}\n\n"
-	secondResult := qoderForwardMessagesResultForTest(t, svc, account, secondBody, qoderHeader("User-Agent", "claude-cli/2.1.177 (external, cli)"))
+	secondResult := qoderForwardMessagesResultForTest(t, svc, provider, secondBody, qoderHeader("User-Agent", "claude-cli/2.1.177 (external, cli)"))
 	require.Equal(t, 10000, secondResult.Usage.InputTokens)
 	require.Equal(t, 33, secondResult.Usage.OutputTokens)
 	secondPayload := qoderLastUpstreamPayloadForTest(t, client)
@@ -1336,7 +1336,7 @@ func TestQoderGatewayDoesNotSubtractPreviousUsageOnFullReplay(t *testing.T) {
 }
 
 func TestQoderGatewayReturnsDeltaUsageToAnthropicClientOnReusedConversation(t *testing.T) {
-	account, svc, client := gatewaytestkit.NewDefaultQoderFixture()
+	provider, svc, client := gatewaytestkit.NewDefaultQoderFixture()
 	firstBody := []byte(`{
 		"model":"deepseek-v4-pro",
 		"prompt_cache_key":"client-usage-delta-session",
@@ -1362,13 +1362,13 @@ func TestQoderGatewayReturnsDeltaUsageToAnthropicClientOnReusedConversation(t *t
 
 	client.Body = "data: {\"body\":\"{\\\"usage\\\":{\\\"prompt_tokens\\\":1200,\\\"completion_tokens\\\":30,\\\"total_tokens\\\":1230}}\"}\n\n" +
 		"data: {\"body\":\"[DONE]\"}\n\n"
-	firstResult, firstResponse := qoderForwardMessagesResultAndBodyForTest(t, svc, account, firstBody, qoderHeader("User-Agent", "claude-cli/2.1.177 (external, cli)"))
+	firstResult, firstResponse := qoderForwardMessagesResultAndBodyForTest(t, svc, provider, firstBody, qoderHeader("User-Agent", "claude-cli/2.1.177 (external, cli)"))
 	require.Equal(t, 1200, firstResult.Usage.InputTokens)
 	require.Equal(t, int64(1200), gjson.Get(firstResponse, "usage.input_tokens").Int())
 
 	client.Body = "data: {\"body\":\"{\\\"usage\\\":{\\\"prompt_tokens\\\":10000,\\\"completion_tokens\\\":33,\\\"total_tokens\\\":10033}}\"}\n\n" +
 		"data: {\"body\":\"[DONE]\"}\n\n"
-	secondResult, secondResponse := qoderForwardMessagesResultAndBodyForTest(t, svc, account, secondBody, qoderHeader("User-Agent", "claude-cli/2.1.177 (external, cli)"))
+	secondResult, secondResponse := qoderForwardMessagesResultAndBodyForTest(t, svc, provider, secondBody, qoderHeader("User-Agent", "claude-cli/2.1.177 (external, cli)"))
 	require.Equal(t, 10000, secondResult.Usage.InputTokens)
 	require.Equal(t, 33, secondResult.Usage.OutputTokens)
 	require.Equal(t, int64(10000), gjson.Get(secondResponse, "usage.input_tokens").Int())
@@ -1379,8 +1379,8 @@ func TestQoderGatewayReturnsDeltaUsageToAnthropicClientOnReusedConversation(t *t
 }
 
 func TestQoderGatewayAnthropicToolUseResultSendsIncrementalTail(t *testing.T) {
-	account, svc, _ := gatewaytestkit.NewDefaultQoderFixture()
-	first := qoderForwardMessagesForTest(t, svc, account, "", []byte(`{
+	provider, svc, _ := gatewaytestkit.NewDefaultQoderFixture()
+	first := qoderForwardMessagesForTest(t, svc, provider, "", []byte(`{
 		"model":"auto",
 		"prompt_cache_key":"anthropic-tool-session",
 		"system":"be useful",
@@ -1388,7 +1388,7 @@ func TestQoderGatewayAnthropicToolUseResultSendsIncrementalTail(t *testing.T) {
 		"tools":[{"name":"bash","input_schema":{"type":"object"}}],
 		"stream":false
 	}`))
-	second := qoderForwardMessagesForTest(t, svc, account, "", []byte(`{
+	second := qoderForwardMessagesForTest(t, svc, provider, "", []byte(`{
 		"model":"auto",
 		"prompt_cache_key":"anthropic-tool-session",
 		"system":"be useful",
@@ -1429,15 +1429,15 @@ func TestQoderGatewayAnthropicToolUseResultSendsIncrementalTail(t *testing.T) {
 }
 
 func TestQoderGatewayOpenAIToolCallsSendIncrementalTail(t *testing.T) {
-	account, svc, _ := gatewaytestkit.NewDefaultQoderFixture()
-	first := qoderForwardChatCompletionsForTest(t, svc, account, "", []byte(`{
+	provider, svc, _ := gatewaytestkit.NewDefaultQoderFixture()
+	first := qoderForwardChatCompletionsForTest(t, svc, provider, "", []byte(`{
 		"model":"auto",
 		"prompt_cache_key":"openai-tool-session",
 		"messages":[{"role":"user","content":"run pwd"}],
 		"tools":[{"type":"function","function":{"name":"bash","parameters":{"type":"object"}}}],
 		"stream":false
 	}`))
-	second := qoderForwardChatCompletionsForTest(t, svc, account, "", []byte(`{
+	second := qoderForwardChatCompletionsForTest(t, svc, provider, "", []byte(`{
 		"model":"auto",
 		"prompt_cache_key":"openai-tool-session",
 		"messages":[
@@ -1470,7 +1470,7 @@ func TestQoderGatewayOpenAIToolCallsSendIncrementalTail(t *testing.T) {
 }
 
 func TestQoderGatewayRepeatedClaudeCodeRequestKeepsNonEmptyIncrementalTail(t *testing.T) {
-	account, svc, _ := gatewaytestkit.NewDefaultQoderFixture()
+	provider, svc, _ := gatewaytestkit.NewDefaultQoderFixture()
 	body := []byte(`{
 		"model":"glm-5.1",
 		"prompt_cache_key":"repeated-claude-request-session",
@@ -1486,8 +1486,8 @@ func TestQoderGatewayRepeatedClaudeCodeRequestKeepsNonEmptyIncrementalTail(t *te
 		"stream":false
 	}`)
 
-	first := qoderForwardMessagesForTest(t, svc, account, "", body, qoderHeader("User-Agent", "claude-cli/2.1.177 (external, cli)"))
-	second := qoderForwardMessagesForTest(t, svc, account, "", body, qoderHeader("User-Agent", "claude-cli/2.1.177 (external, cli)"))
+	first := qoderForwardMessagesForTest(t, svc, provider, "", body, qoderHeader("User-Agent", "claude-cli/2.1.177 (external, cli)"))
+	second := qoderForwardMessagesForTest(t, svc, provider, "", body, qoderHeader("User-Agent", "claude-cli/2.1.177 (external, cli)"))
 
 	require.Equal(t, first["session_id"], second["session_id"])
 	require.NotEmpty(t, qoderFixtureValue[[]any](t, second["tools"]))
@@ -1498,7 +1498,7 @@ func TestQoderGatewayRepeatedClaudeCodeRequestKeepsNonEmptyIncrementalTail(t *te
 }
 
 func TestQoderGatewayStreamsDeltaUsageToOpenAIClientOnReusedConversation(t *testing.T) {
-	account, svc, client := gatewaytestkit.NewDefaultQoderFixture()
+	provider, svc, client := gatewaytestkit.NewDefaultQoderFixture()
 	firstBody := []byte(`{
 		"model":"auto",
 		"prompt_cache_key":"openai-stream-usage-delta-session",
@@ -1525,14 +1525,14 @@ func TestQoderGatewayStreamsDeltaUsageToOpenAIClientOnReusedConversation(t *test
 	client.Body = "data: {\"body\":\"{\\\"choices\\\":[{\\\"delta\\\":{\\\"content\\\":\\\"OK\\\"}}]}\"}\n\n" +
 		"data: {\"body\":\"{\\\"usage\\\":{\\\"prompt_tokens\\\":1200,\\\"completion_tokens\\\":30,\\\"total_tokens\\\":1230}}\"}\n\n" +
 		"data: {\"body\":\"[DONE]\"}\n\n"
-	firstResult, firstStream := qoderForwardChatCompletionsResultAndBodyForTest(t, svc, account, "", firstBody, qoderHeader("User-Agent", "claude-cli/2.1.177 (external, cli)"))
+	firstResult, firstStream := qoderForwardChatCompletionsResultAndBodyForTest(t, svc, provider, "", firstBody, qoderHeader("User-Agent", "claude-cli/2.1.177 (external, cli)"))
 	require.Equal(t, 1200, firstResult.Usage.InputTokens)
 	require.Contains(t, firstStream, `"prompt_tokens":1200`)
 
 	client.Body = "data: {\"body\":\"{\\\"choices\\\":[{\\\"delta\\\":{\\\"content\\\":\\\"OK\\\"}}]}\"}\n\n" +
 		"data: {\"body\":\"{\\\"usage\\\":{\\\"prompt_tokens\\\":10000,\\\"completion_tokens\\\":33,\\\"total_tokens\\\":10033}}\"}\n\n" +
 		"data: {\"body\":\"[DONE]\"}\n\n"
-	secondResult, secondStream := qoderForwardChatCompletionsResultAndBodyForTest(t, svc, account, "", secondBody, qoderHeader("User-Agent", "claude-cli/2.1.177 (external, cli)"))
+	secondResult, secondStream := qoderForwardChatCompletionsResultAndBodyForTest(t, svc, provider, "", secondBody, qoderHeader("User-Agent", "claude-cli/2.1.177 (external, cli)"))
 	secondPayload := qoderLastUpstreamPayloadForTest(t, client)
 	require.NotEmpty(t, qoderFixtureValue[[]any](t, secondPayload["tools"]))
 	require.Equal(t, 10000, secondResult.Usage.InputTokens)
@@ -1542,9 +1542,9 @@ func TestQoderGatewayStreamsDeltaUsageToOpenAIClientOnReusedConversation(t *test
 }
 
 func TestQoderGatewayAnthropicConversationAfterToolResultKeepsReducingPayload(t *testing.T) {
-	account, svc, client := gatewaytestkit.NewDefaultQoderFixture()
+	provider, svc, client := gatewaytestkit.NewDefaultQoderFixture()
 	largeTools := qoderLargeToolsJSONForTest()
-	first := qoderForwardMessagesForTest(t, svc, account, "", []byte(`{
+	first := qoderForwardMessagesForTest(t, svc, provider, "", []byte(`{
 		"model":"glm-5.1",
 		"prompt_cache_key":"post-tool-reducing-session",
 		"system":"You are Claude Code, Anthropic's official CLI for Claude.",
@@ -1552,7 +1552,7 @@ func TestQoderGatewayAnthropicConversationAfterToolResultKeepsReducingPayload(t 
 		"tools":`+largeTools+`,
 		"stream":false
 	}`), qoderHeader("User-Agent", "claude-cli/2.1.177 (external, cli)"))
-	second := qoderForwardMessagesForTest(t, svc, account, "", []byte(`{
+	second := qoderForwardMessagesForTest(t, svc, provider, "", []byte(`{
 		"model":"glm-5.1",
 		"prompt_cache_key":"post-tool-reducing-session",
 		"system":"You are Claude Code, Anthropic's official CLI for Claude.",
@@ -1611,15 +1611,15 @@ func TestQoderGatewayForwardChatCompletionsHonorsCanceledContext(t *testing.T) {
 	c, _ := gin.CreateTestContext(rec)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	account := &accountcore.Record{
+	provider := &providercore.Record{
 		ID:       93,
 		Platform: capability.PlatformQoder,
-		Type:     capability.AccountTypeCosy,
+		Type:     capability.ProviderTypeCosy,
 		Credentials: map[string]any{
 			"pat": "pat-token",
 		},
 	}
-	provider := accountprovider.NewQoderTokenProvider(qoder.SessionBuilder{ExchangePAT: func(ctx context.Context, _ string, _ *qoder.MachineIdentity) (*qoder.AuthIdentity, error) {
+	tokenSource := provideradapter.NewQoderTokenProvider(qoder.SessionBuilder{ExchangePAT: func(ctx context.Context, _ string, _ *qoder.MachineIdentity) (*qoder.AuthIdentity, error) {
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
@@ -1627,9 +1627,9 @@ func TestQoderGatewayForwardChatCompletionsHonorsCanceledContext(t *testing.T) {
 			return &qoder.AuthIdentity{SecurityOauthToken: "token", UID: "uid"}, nil
 		}
 	}})
-	svc := gatewaytestkit.NewQoderFixture(provider, nil, nil)
+	svc := gatewaytestkit.NewQoderFixture(tokenSource, nil, nil)
 
-	_, err := ForwardQoderAttempt(ctx, c, svc.Runtime, account, []byte(`{"model":"auto","messages":[{"role":"user","content":"hi"}]}`), protocolcore.ProtocolOpenAIChatCompletions)
+	_, err := ForwardQoderAttempt(ctx, c, svc.Runtime, provider, []byte(`{"model":"auto","messages":[{"role":"user","content":"hi"}]}`), protocolcore.ProtocolOpenAIChatCompletions)
 
 	require.ErrorIs(t, err, context.Canceled)
 	require.False(t, c.Writer.Written())
@@ -1671,13 +1671,13 @@ func qoderHeader(key, value string) qoderForwardTestHeader {
 	return qoderForwardTestHeader{key: key, value: value}
 }
 
-func qoderForwardChatCompletionsForTest(t *testing.T, svc *gatewaytestkit.QoderFixture, account *accountcore.Record, sessionID string, body []byte, headers ...qoderForwardTestHeader) map[string]any {
+func qoderForwardChatCompletionsForTest(t *testing.T, svc *gatewaytestkit.QoderFixture, provider *providercore.Record, sessionID string, body []byte, headers ...qoderForwardTestHeader) map[string]any {
 	t.Helper()
-	_, _ = qoderForwardChatCompletionsResultAndBodyForTest(t, svc, account, sessionID, body, headers...)
+	_, _ = qoderForwardChatCompletionsResultAndBodyForTest(t, svc, provider, sessionID, body, headers...)
 	return qoderLastUpstreamPayloadForTest(t, qoderFixtureValue[*gatewaytestkit.QoderClient](t, svc.Client))
 }
 
-func qoderForwardChatCompletionsResultAndBodyForTest(t *testing.T, svc *gatewaytestkit.QoderFixture, account *accountcore.Record, sessionID string, body []byte, headers ...qoderForwardTestHeader) (*forwardcore.MessagesResult, string) {
+func qoderForwardChatCompletionsResultAndBodyForTest(t *testing.T, svc *gatewaytestkit.QoderFixture, provider *providercore.Record, sessionID string, body []byte, headers ...qoderForwardTestHeader) (*forwardcore.MessagesResult, string) {
 	t.Helper()
 
 	rec := httptest.NewRecorder()
@@ -1689,14 +1689,14 @@ func qoderForwardChatCompletionsResultAndBodyForTest(t *testing.T, svc *gatewayt
 	for _, header := range headers {
 		c.Request.Header.Set(header.key, header.value)
 	}
-	result, err := ForwardQoderAttempt(context.Background(), c, svc.Runtime, account, body, protocolcore.ProtocolOpenAIChatCompletions)
+	result, err := ForwardQoderAttempt(context.Background(), c, svc.Runtime, provider, body, protocolcore.ProtocolOpenAIChatCompletions)
 	require.NoError(t, err)
 	return result, rec.Body.String()
 }
 
-func qoderForwardMessagesForTest(t *testing.T, svc *gatewaytestkit.QoderFixture, account *accountcore.Record, sessionID string, body []byte, headers ...qoderForwardTestHeader) map[string]any {
+func qoderForwardMessagesForTest(t *testing.T, svc *gatewaytestkit.QoderFixture, provider *providercore.Record, sessionID string, body []byte, headers ...qoderForwardTestHeader) map[string]any {
 	t.Helper()
-	result := qoderForwardMessagesResultForTest(t, svc, account, body, append([]qoderForwardTestHeader{qoderHeader("session_id", sessionID)}, headers...)...)
+	result := qoderForwardMessagesResultForTest(t, svc, provider, body, append([]qoderForwardTestHeader{qoderHeader("session_id", sessionID)}, headers...)...)
 	require.NotNil(t, result)
 	client, ok := svc.Client.(interface {
 		BodyAt(int) []byte
@@ -1706,13 +1706,13 @@ func qoderForwardMessagesForTest(t *testing.T, svc *gatewaytestkit.QoderFixture,
 	return qoderPayloadAtForTest(t, client, client.BodyCount()-1)
 }
 
-func qoderForwardMessagesResultForTest(t *testing.T, svc *gatewaytestkit.QoderFixture, account *accountcore.Record, body []byte, headers ...qoderForwardTestHeader) *forwardcore.MessagesResult {
+func qoderForwardMessagesResultForTest(t *testing.T, svc *gatewaytestkit.QoderFixture, provider *providercore.Record, body []byte, headers ...qoderForwardTestHeader) *forwardcore.MessagesResult {
 	t.Helper()
-	result, _ := qoderForwardMessagesResultAndBodyForTest(t, svc, account, body, headers...)
+	result, _ := qoderForwardMessagesResultAndBodyForTest(t, svc, provider, body, headers...)
 	return result
 }
 
-func qoderForwardMessagesResultAndBodyForTest(t *testing.T, svc *gatewaytestkit.QoderFixture, account *accountcore.Record, body []byte, headers ...qoderForwardTestHeader) (*forwardcore.MessagesResult, string) {
+func qoderForwardMessagesResultAndBodyForTest(t *testing.T, svc *gatewaytestkit.QoderFixture, provider *providercore.Record, body []byte, headers ...qoderForwardTestHeader) (*forwardcore.MessagesResult, string) {
 	t.Helper()
 
 	rec := httptest.NewRecorder()
@@ -1726,12 +1726,12 @@ func qoderForwardMessagesResultAndBodyForTest(t *testing.T, svc *gatewaytestkit.
 	if strings.EqualFold(strings.TrimSpace(c.Request.Header.Get("X-Test-Claude-Code-Context")), "true") {
 		c.Request = c.Request.WithContext(requeststate.SetClaudeCodeClient(c.Request.Context(), true))
 	}
-	result, err := ForwardQoderAttempt(context.Background(), c, svc.Runtime, account, body, protocolcore.ProtocolAnthropicMessages)
+	result, err := ForwardQoderAttempt(context.Background(), c, svc.Runtime, provider, body, protocolcore.ProtocolAnthropicMessages)
 	require.NoError(t, err)
 	return result, rec.Body.String()
 }
 
-func qoderForwardResponsesResultAndBodyForTest(t *testing.T, svc *gatewaytestkit.QoderFixture, account *accountcore.Record, body []byte, headers ...qoderForwardTestHeader) (*forwardcore.MessagesResult, string) {
+func qoderForwardResponsesResultAndBodyForTest(t *testing.T, svc *gatewaytestkit.QoderFixture, provider *providercore.Record, body []byte, headers ...qoderForwardTestHeader) (*forwardcore.MessagesResult, string) {
 	t.Helper()
 
 	rec := httptest.NewRecorder()
@@ -1742,7 +1742,7 @@ func qoderForwardResponsesResultAndBodyForTest(t *testing.T, svc *gatewaytestkit
 			c.Request.Header.Set(header.key, header.value)
 		}
 	}
-	result, err := ForwardQoderAttempt(context.Background(), c, svc.Runtime, account, body, protocolcore.ProtocolOpenAIResponses)
+	result, err := ForwardQoderAttempt(context.Background(), c, svc.Runtime, provider, body, protocolcore.ProtocolOpenAIResponses)
 	require.NoError(t, err)
 	return result, rec.Body.String()
 }

@@ -5,21 +5,21 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 
 	"github.com/stretchr/testify/require"
 )
 
-func TestOpenAIGatewayService_GetSchedulableAccount_ExhaustedCodexExtraDoesNotSetRateLimit(t *testing.T) {
+func TestOpenAIGatewayService_GetSchedulableProvider_ExhaustedCodexExtraDoesNotSetRateLimit(t *testing.T) {
 	resetAt := time.Now().Add(6 * 24 * time.Hour)
-	account := gatewayprovider.ExecutionAccount{
-		Record: accountcore.Record{
+	provider := gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
 			Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 701,
 			Platform:    capability.PlatformOpenAI,
-			Type:        capability.AccountTypeOAuth,
+			Type:        capability.ProviderTypeOAuth,
 			Status:      billing.StatusActive,
 			Schedulable: true,
 			Concurrency: 1,
@@ -29,15 +29,15 @@ func TestOpenAIGatewayService_GetSchedulableAccount_ExhaustedCodexExtraDoesNotSe
 			},
 		},
 	}
-	repo := &openAICodexExtraListRepo{selectionAccountFixture: selectionAccountFixture{accounts: []gatewayprovider.ExecutionAccount{account}}, rateLimitCh: make(chan time.Time, 1)}
+	repo := &openAICodexExtraListRepo{selectionProviderFixture: selectionProviderFixture{providers: []gatewayprovider.ExecutionProvider{provider}}, rateLimitCh: make(chan time.Time, 1)}
 	svc := newCompatibleSelectionForTest(CompatibleDependencies{
 		Reads: Reads{
-			Accounts: repo,
+			Providers: repo,
 		}, Shared: Shared{},
 	},
 		nil)
 
-	fresh, err := svc.getSchedulableAccount(context.Background(), account.Record.ID)
+	fresh, err := svc.getSchedulableProvider(context.Background(), provider.Record.ID)
 	require.NoError(t, err)
 	require.NotNil(t, fresh)
 	require.Nil(t, fresh.Record.RateLimitResetAt)

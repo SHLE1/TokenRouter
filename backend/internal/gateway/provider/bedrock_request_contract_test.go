@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/bedrock"
 	"github.com/stretchr/testify/require"
@@ -26,13 +26,13 @@ func TestResolveBedrockModelID_OfficialVersionlessModels(t *testing.T) {
 				{name: "全局推理", region: "us-east-1", prefix: "global", forceGlobal: true},
 			} {
 				t.Run(scope.name, func(t *testing.T) {
-					account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAnthropic, Type: capability.AccountTypeBedrock, Credentials: map[string]any{
+					provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAnthropic, Type: capability.ProviderTypeBedrock, Credentials: map[string]any{
 						"aws_region": scope.region,
 					}}}
 					if scope.forceGlobal {
-						account.Record.Credentials["aws_force_global"] = "true"
+						provider.Record.Credentials["aws_force_global"] = "true"
 					}
-					modelID, ok := gatewayprovider.ExecutionModelPolicy(account).Bedrock(model)
+					modelID, ok := gatewayprovider.ExecutionModelPolicy(provider).Bedrock(model)
 					require.True(t, ok)
 					wantID := scope.prefix + ".anthropic." + model
 					require.Equal(t, wantID, modelID)

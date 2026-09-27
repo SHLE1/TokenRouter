@@ -13,10 +13,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestShouldReportOpenAIWSProxyAccountFailure 验证本地路由拒绝不会污染账号健康状态。
-func TestShouldReportOpenAIWSProxyAccountFailure(t *testing.T) {
-	t.Run("本地模型路由拒绝不惩罚账号", func(t *testing.T) {
-		routingErr := errors.New("model is not supported by the selected websocket account")
+// TestShouldReportOpenAIWSProxyProviderFailure 验证本地路由拒绝不会污染提供商健康状态。
+func TestShouldReportOpenAIWSProxyProviderFailure(t *testing.T) {
+	t.Run("本地模型路由拒绝不惩罚提供商", func(t *testing.T) {
+		routingErr := errors.New("model is not supported by the selected websocket provider")
 		err := fmt.Errorf("wrapped ingress turn: %w", NewOpenAIWSClientCloseError(coderws.StatusPolicyViolation, gatewayws.EntryLocalRoutingReason("gpt-unsupported"), gatewayws.EntryLocalRoutingCause(routingErr)))
 
 		require.False(t, gatewayws.EntryShouldReportFailure(err))
@@ -24,10 +24,10 @@ func TestShouldReportOpenAIWSProxyAccountFailure(t *testing.T) {
 		var closeErr *OpenAIWSClientCloseError
 		require.ErrorAs(t, err, &closeErr)
 		require.Equal(t, coderws.StatusPolicyViolation, closeErr.StatusCode())
-		require.Equal(t, "model gpt-unsupported is not available for this websocket group or account", closeErr.Reason())
+		require.Equal(t, "model gpt-unsupported is not available for this websocket group or provider", closeErr.Reason())
 	})
 
-	t.Run("上游策略错误仍惩罚账号", func(t *testing.T) {
+	t.Run("上游策略错误仍惩罚提供商", func(t *testing.T) {
 		err := NewOpenAIWSClientCloseError(
 			coderws.StatusPolicyViolation,
 			"upstream websocket authentication failed",
@@ -36,7 +36,7 @@ func TestShouldReportOpenAIWSProxyAccountFailure(t *testing.T) {
 		require.True(t, gatewayws.EntryShouldReportFailure(err))
 	})
 
-	t.Run("分组推理超限拒绝不惩罚账号", func(t *testing.T) {
+	t.Run("分组推理超限拒绝不惩罚提供商", func(t *testing.T) {
 		overLimit := &routing.ReasoningEffortOverLimitError{Requested: "high", Max: "low"}
 		err := NewOpenAIWSClientCloseError(
 			coderws.StatusPolicyViolation,
@@ -46,11 +46,11 @@ func TestShouldReportOpenAIWSProxyAccountFailure(t *testing.T) {
 		require.False(t, gatewayws.EntryShouldReportFailure(err))
 	})
 
-	t.Run("普通代理错误仍惩罚账号", func(t *testing.T) {
+	t.Run("普通代理错误仍惩罚提供商", func(t *testing.T) {
 		require.True(t, gatewayws.EntryShouldReportFailure(errors.New("upstream websocket read failed")))
 	})
 
-	t.Run("空错误不惩罚账号", func(t *testing.T) {
+	t.Run("空错误不惩罚提供商", func(t *testing.T) {
 		require.False(t, gatewayws.EntryShouldReportFailure(nil))
 	})
 }

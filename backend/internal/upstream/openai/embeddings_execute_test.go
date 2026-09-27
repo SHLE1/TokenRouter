@@ -61,12 +61,11 @@ func TestEmbeddingsExecutorLocalTLSAndResourceOwnership(t *testing.T) {
 			defer server.Close()
 			failure := errors.New("fixture classified response")
 			target := &EmbeddingsTarget{
-
-				AccountID: 21,
-				Model:     "fixture-embedding",
-				URL:       server.URL,
-				Token:     "fixture-token",
-				UserAgent: "fixture-agent",
+				ProviderID: 21,
+				Model:      "fixture-embedding",
+				URL:        server.URL,
+				Token:      "fixture-token",
+				UserAgent:  "fixture-agent",
 
 				ForwardHeaders: http.Header{"X-Test-Order": {"client"}},
 

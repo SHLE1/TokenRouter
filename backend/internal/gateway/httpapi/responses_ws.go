@@ -22,7 +22,7 @@ type ResponsesWSOptions struct {
 	MaxIngressConnectionsPerAPIKey int
 	ReadLimit                      int64
 	FirstMessageTimeout            time.Duration
-	MaxAccountSwitches             int
+	MaxProviderSwitches            int
 }
 
 // ResponsesWSCall 是完成升级后交给依赖工厂的明确请求投影。
@@ -172,7 +172,7 @@ func (h *ResponsesWSHandler) ResponsesWebSocket(c *gin.Context) {
 
 	subjectView := gatewayws.EntrySubject{UserID: subject.UserID, Concurrency: subject.Concurrency}
 	ports := h.backend.Entry(c, ResponsesWSCall{Key: apiKey, Subject: subjectView, Conn: wsConn, Logger: reqLog, ClientIP: clientIP, UserAgent: userAgent})
-	gatewayws.RunEntry(ctx, ports, gatewayws.EntryInput{Key: apiKey, Subject: subjectView, ClientLifecycleContext: clientLifecycleCtx, FirstTurnStartedAt: firstTurnStartedAt, ClientIP: clientIP, UserAgent: userAgent, MaxAccountSwitches: h.options.MaxAccountSwitches}, WSClientFrames{Conn: wsConn}, firstMessage)
+	gatewayws.RunEntry(ctx, ports, gatewayws.EntryInput{Key: apiKey, Subject: subjectView, ClientLifecycleContext: clientLifecycleCtx, FirstTurnStartedAt: firstTurnStartedAt, ClientIP: clientIP, UserAgent: userAgent, MaxProviderSwitches: h.options.MaxProviderSwitches}, WSClientFrames{Conn: wsConn}, firstMessage)
 }
 
 // IsResponsesWSUpgrade 保留原 Upgrade 和 Connection 判断。

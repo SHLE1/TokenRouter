@@ -35,23 +35,28 @@ func (s *userHandlerRepoStub) Create(context.Context, *identitycore.User) error 
 func (s *userHandlerRepoStub) CreateWithNormalizedEmailGuard(ctx context.Context, user *identitycore.User, _ string) error {
 	return s.Create(ctx, user)
 }
+
 func (s *userHandlerRepoStub) GetByID(context.Context, int64) (*identitycore.User, error) {
 	cloned := *s.user
 	return &cloned, nil
 }
+
 func (s *userHandlerRepoStub) GetByEmail(context.Context, string) (*identitycore.User, error) {
 	cloned := *s.user
 	return &cloned, nil
 }
+
 func (s *userHandlerRepoStub) GetFirstAdmin(context.Context) (*identitycore.User, error) {
 	cloned := *s.user
 	return &cloned, nil
 }
+
 func (s *userHandlerRepoStub) Update(_ context.Context, user *identitycore.User, _ identitycore.UserUpdateFields) error {
 	cloned := *user
 	s.user = &cloned
 	return nil
 }
+
 func (s *userHandlerRepoStub) UpdateWithNormalizedEmailGuard(ctx context.Context, user *identitycore.User, _ string, fields identitycore.UserUpdateFields) error {
 	return s.Update(ctx, user, fields)
 }
@@ -68,6 +73,7 @@ func (s *userHandlerRepoStub) GetUserAvatar(context.Context, int64) (*identityco
 		SHA256:          s.user.AvatarSHA256,
 	}, nil
 }
+
 func (s *userHandlerRepoStub) UpsertUserAvatar(_ context.Context, _ int64, input identitycore.UpsertUserAvatarInput) (*identitycore.UserAvatar, error) {
 	s.user.AvatarURL = input.URL
 	s.user.AvatarSource = input.StorageProvider
@@ -82,6 +88,7 @@ func (s *userHandlerRepoStub) UpsertUserAvatar(_ context.Context, _ int64, input
 		SHA256:          input.SHA256,
 	}, nil
 }
+
 func (s *userHandlerRepoStub) DeleteUserAvatar(context.Context, int64) error {
 	s.user.AvatarURL = ""
 	s.user.AvatarSource = ""
@@ -90,9 +97,11 @@ func (s *userHandlerRepoStub) DeleteUserAvatar(context.Context, int64) error {
 	s.user.AvatarSHA256 = ""
 	return nil
 }
+
 func (s *userHandlerRepoStub) List(context.Context, pagination.PaginationParams) ([]identitycore.User, *pagination.PaginationResult, error) {
 	return nil, nil, nil
 }
+
 func (s *userHandlerRepoStub) ListWithFilters(context.Context, pagination.PaginationParams, identitycore.UserListFilters) ([]identitycore.User, *pagination.PaginationResult, error) {
 	return nil, nil, nil
 }
@@ -113,13 +122,17 @@ func (s *userHandlerRepoStub) AdjustBalance(ctx context.Context, id int64, delta
 func (s *userHandlerRepoStub) SetBalance(ctx context.Context, id int64, value float64) (identitycore.BalanceChange, error) {
 	panic("unexpected SetBalance call")
 }
+
 func (s *userHandlerRepoStub) BatchAddConcurrency(context.Context, []int64, int) (int, error) {
 	return 0, nil
 }
+
 func (s *userHandlerRepoStub) BatchUpdateLimits(context.Context, []int64, *int, *int) (int, error) {
 	return 0, nil
 }
+
 func (s *userHandlerRepoStub) ExistsByEmail(context.Context, string) (bool, error) { return false, nil }
+
 func (s *userHandlerRepoStub) ExistsByNormalizedEmail(context.Context, string) (bool, error) {
 	return false, nil
 }
@@ -127,21 +140,26 @@ func (s *userHandlerRepoStub) LockRegistrationEmail(context.Context, string) err
 func (s *userHandlerRepoStub) RemoveGroupFromAllowedGroups(context.Context, int64) (int64, error) {
 	return 0, nil
 }
+
 func (s *userHandlerRepoStub) AddGroupToAllowedGroups(context.Context, int64, int64) error {
 	return nil
 }
+
 func (s *userHandlerRepoStub) GetLatestUsedAtByUserIDs(context.Context, []int64) (map[int64]*time.Time, error) {
 	return map[int64]*time.Time{}, nil
 }
+
 func (s *userHandlerRepoStub) GetLatestUsedAtByUserID(context.Context, int64) (*time.Time, error) {
 	return nil, nil
 }
+
 func (s *userHandlerRepoStub) UpdateUserLastActiveAt(_ context.Context, _ int64, activeAt time.Time) error {
 	if s.user != nil {
 		s.user.LastActiveAt = &activeAt
 	}
 	return nil
 }
+
 func (s *userHandlerRepoStub) RemoveGroupFromUserAllowedGroups(context.Context, int64, int64) error {
 	return nil
 }
@@ -151,11 +169,13 @@ func (s *userHandlerRepoStub) DisableTotp(context.Context, int64) error         
 func (s *userHandlerRepoStub) GetByIDIncludeDeleted(ctx context.Context, id int64) (*identitycore.User, error) {
 	return s.GetByID(ctx, id)
 }
+
 func (s *userHandlerRepoStub) ListUserAuthIdentities(context.Context, int64) ([]identitycore.UserAuthIdentityRecord, error) {
 	out := make([]identitycore.UserAuthIdentityRecord, len(s.identities))
 	copy(out, s.identities)
 	return out, nil
 }
+
 func (s *userHandlerRepoStub) UnbindUserAuthProvider(_ context.Context, _ int64, provider string) error {
 	s.unbound = append(s.unbound, provider)
 	filtered := s.identities[:0]
@@ -170,7 +190,6 @@ func (s *userHandlerRepoStub) UnbindUserAuthProvider(_ context.Context, _ int64,
 }
 
 func TestUserHandlerUpdateProfileReturnsAvatarURL(t *testing.T) {
-
 	repo := &userHandlerRepoStub{
 		user: &identitycore.User{
 			ID:       11,
@@ -207,7 +226,6 @@ func TestUserHandlerUpdateProfileReturnsAvatarURL(t *testing.T) {
 }
 
 func TestUserHandlerUpdateProfileRejectsEmailField(t *testing.T) {
-
 	repo := &userHandlerRepoStub{
 		user: &identitycore.User{
 			ID:       11,
@@ -243,7 +261,6 @@ func TestUserHandlerUpdateProfileRejectsEmailField(t *testing.T) {
 }
 
 func TestUserHandlerGetProfileReturnsIdentitySummaries(t *testing.T) {
-
 	verifiedAt := time.Date(2026, 4, 20, 8, 30, 0, 0, time.UTC)
 	repo := &userHandlerRepoStub{
 		user: &identitycore.User{
@@ -330,7 +347,6 @@ func TestUserHandlerGetProfileReturnsIdentitySummaries(t *testing.T) {
 }
 
 func TestUserHandlerGetProfileReturnsLegacyCompatibilityFields(t *testing.T) {
-
 	verifiedAt := time.Date(2026, 4, 20, 8, 30, 0, 0, time.UTC)
 	repo := &userHandlerRepoStub{
 		user: &identitycore.User{
@@ -410,7 +426,6 @@ func TestUserHandlerGetProfileReturnsLegacyCompatibilityFields(t *testing.T) {
 }
 
 func TestUserHandlerGetProfileDoesNotInferEditedProfileSourcesWithoutMatchingIdentityMetadata(t *testing.T) {
-
 	repo := &userHandlerRepoStub{
 		user: &identitycore.User{
 			ID:           22,
@@ -567,7 +582,6 @@ func (s *userHandlerEmailCacheStub) IncrNotifyCodeUserRate(context.Context, int6
 }
 
 func TestUserHandlerBindEmailIdentityReturnsProfileResponse(t *testing.T) {
-
 	repo := &userHandlerRepoStub{
 		user: &identitycore.User{
 			ID:       11,
@@ -597,7 +611,7 @@ func TestUserHandlerBindEmailIdentityReturnsProfileResponse(t *testing.T) {
 	body := []byte(`{"email":"new@example.com","verify_code":"123456","password":"new-password"}`)
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
-	c.Request = httptest.NewRequest(http.MethodPost, "/api/v1/user/account-bindings/email", bytes.NewReader(body))
+	c.Request = httptest.NewRequest(http.MethodPost, "/api/v1/user/provider-bindings/email", bytes.NewReader(body))
 	c.Request.Header.Set("Content-Type", "application/json")
 	c.Params = gin.Params{{Key: "provider", Value: "email"}}
 	c.Set(string(authctx.ContextKeyUser), authctx.AuthSubject{UserID: 11})
@@ -620,7 +634,6 @@ func TestUserHandlerBindEmailIdentityReturnsProfileResponse(t *testing.T) {
 }
 
 func TestUserHandlerUnbindIdentityReturnsUpdatedProfile(t *testing.T) {
-
 	repo := &userHandlerRepoStub{
 		user: &identitycore.User{
 			ID:       21,
@@ -649,7 +662,7 @@ func TestUserHandlerUnbindIdentityReturnsUpdatedProfile(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
-	c.Request = httptest.NewRequest(http.MethodDelete, "/api/v1/user/account-bindings/linuxdo", nil)
+	c.Request = httptest.NewRequest(http.MethodDelete, "/api/v1/user/provider-bindings/linuxdo", nil)
 	c.Set(string(authctx.ContextKeyUser), authctx.AuthSubject{UserID: 21})
 	c.Params = gin.Params{{Key: "provider", Value: "linuxdo"}}
 
@@ -673,7 +686,6 @@ func TestUserHandlerUnbindIdentityReturnsUpdatedProfile(t *testing.T) {
 }
 
 func TestUserHandlerUnbindIdentityRevokesAllUserSessionsWhenAuthServiceConfigured(t *testing.T) {
-
 	repo := &userHandlerRepoStub{
 		user: &identitycore.User{
 			ID:           23,
@@ -708,7 +720,7 @@ func TestUserHandlerUnbindIdentityRevokesAllUserSessionsWhenAuthServiceConfigure
 
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
-	c.Request = httptest.NewRequest(http.MethodDelete, "/api/v1/user/account-bindings/linuxdo", nil)
+	c.Request = httptest.NewRequest(http.MethodDelete, "/api/v1/user/provider-bindings/linuxdo", nil)
 	c.Set(string(authctx.ContextKeyUser), authctx.AuthSubject{UserID: 23})
 	c.Params = gin.Params{{Key: "provider", Value: "linuxdo"}}
 
@@ -724,7 +736,6 @@ func TestUserHandlerUnbindIdentityRevokesAllUserSessionsWhenAuthServiceConfigure
 }
 
 func TestUserHandlerUnbindIdentityDoesNotRevokeSessionsWhenNothingWasUnbound(t *testing.T) {
-
 	repo := &userHandlerRepoStub{
 		user: &identitycore.User{
 			ID:           24,
@@ -754,7 +765,7 @@ func TestUserHandlerUnbindIdentityDoesNotRevokeSessionsWhenNothingWasUnbound(t *
 
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
-	c.Request = httptest.NewRequest(http.MethodDelete, "/api/v1/user/account-bindings/linuxdo", nil)
+	c.Request = httptest.NewRequest(http.MethodDelete, "/api/v1/user/provider-bindings/linuxdo", nil)
 	c.Set(string(authctx.ContextKeyUser), authctx.AuthSubject{UserID: 24})
 	c.Params = gin.Params{{Key: "provider", Value: "linuxdo"}}
 
@@ -767,7 +778,6 @@ func TestUserHandlerUnbindIdentityDoesNotRevokeSessionsWhenNothingWasUnbound(t *
 }
 
 func TestUserHandlerBindEmailIdentityRejectsWrongCurrentPasswordForBoundEmail(t *testing.T) {
-
 	user := &identitycore.User{
 		ID:       11,
 		Email:    "current@example.com",
@@ -802,7 +812,7 @@ func TestUserHandlerBindEmailIdentityRejectsWrongCurrentPasswordForBoundEmail(t 
 	body := []byte(`{"email":"new@example.com","verify_code":"123456","password":"wrong-password"}`)
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
-	c.Request = httptest.NewRequest(http.MethodPost, "/api/v1/user/account-bindings/email", bytes.NewReader(body))
+	c.Request = httptest.NewRequest(http.MethodPost, "/api/v1/user/provider-bindings/email", bytes.NewReader(body))
 	c.Request.Header.Set("Content-Type", "application/json")
 	c.Set(string(authctx.ContextKeyUser), authctx.AuthSubject{UserID: 11})
 
@@ -823,7 +833,6 @@ func TestUserHandlerBindEmailIdentityRejectsWrongCurrentPasswordForBoundEmail(t 
 }
 
 func TestUserHandlerStartIdentityBindingReturnsAuthorizeURL(t *testing.T) {
-
 	repo := &userHandlerRepoStub{
 		user: &identitycore.User{
 			ID:       11,

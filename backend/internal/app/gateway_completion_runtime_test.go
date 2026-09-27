@@ -5,10 +5,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/app/lifecycle"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/config"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/stretchr/testify/require"
 )
 
@@ -29,7 +29,7 @@ func TestCompletionRuntimeOwnsIsolatedRatesAndSharedRecorders(t *testing.T) {
 	cfg := &config.Config{}
 	repo := &completionRateScopeFixture{value: 2}
 	rates := provideGatewayBillingRates(repo, cfg)
-	health := &accountHealthRuntime{Health: account.NewHealthService(nil, nil, account.HealthOptions{})}
+	health := &providerHealthRuntime{Health: provider.NewHealthService(nil, nil, provider.HealthOptions{})}
 	tasks := lifecycle.NewTasks()
 	recorders := ProvideGatewayCompletionRecorders(rates, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, health, nil, tasks, cfg)
 	require.Zero(t, repo.calls)

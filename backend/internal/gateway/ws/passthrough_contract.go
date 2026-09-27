@@ -79,9 +79,9 @@ type PassthroughPort interface {
 	ClosedError() error
 }
 
-// PassthroughOptions 只包含既有账号资格和本次会话的技术预算。
+// PassthroughOptions 只包含既有提供商资格和本次会话的技术预算。
 type PassthroughOptions struct {
-	AccountID            int64
+	ProviderID           int64
 	OAuth                bool
 	WriteTimeout         time.Duration
 	IdleTimeout          time.Duration

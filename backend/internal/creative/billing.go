@@ -19,7 +19,7 @@ const (
 )
 
 // creativePricingSnapshotVersion 采用与批量图片第二版一致的按基础金额分配语义。
-// 创作台没有批量折扣与账号倍率：scale 固定为 1，hold 与结算同价。
+// 创作台没有批量折扣与提供商倍率：scale 固定为 1，hold 与结算同价。
 const creativePricingSnapshotVersion = 2
 
 func CreativeHoldRequestID(runID string) string {
@@ -198,6 +198,7 @@ func cloneBillingAllocations(values []billing.BillingAllocation) []billing.Billi
 	}
 	return out
 }
+
 func batchImageSubscriptionAllocations(values []billing.BillingAllocation) []billing.BillingAllocation {
 	out := make([]billing.BillingAllocation, 0, len(values))
 	for _, v := range values {

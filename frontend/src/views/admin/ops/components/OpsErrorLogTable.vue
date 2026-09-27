@@ -95,12 +95,12 @@
           <span v-else class="text-sm text-gray-400 dark:text-gray-500">-</span>
         </template>
 
-        <template #cell-account="{ row }">
+        <template #cell-provider="{ row }">
           <span
-            v-if="row.account_id"
+            v-if="row.provider_id"
             class="text-sm text-gray-900 dark:text-white"
-            :title="t('admin.ops.errorLog.accountId') + ' ' + row.account_id"
-          >{{ row.account_name || '#' + row.account_id }}</span>
+            :title="t('admin.ops.errorLog.providerId') + ' ' + row.provider_id"
+          >{{ row.provider_name || '#' + row.provider_id }}</span>
           <span v-else class="text-sm text-gray-400 dark:text-gray-500">-</span>
         </template>
 
@@ -198,12 +198,12 @@ import { mapErrorSortKey, statusCodeBadgeClass } from '@/utils/errorBadges'
 
 const { t } = useI18n()
 
-// 列序对齐管理端用量明细:身份(用户→Key→账号)→请求形态(平台→模型→端点→分组→类型)
+// 列序对齐管理端用量明细:身份(用户→Key→提供商)→请求形态(平台→模型→端点→分组→类型)
 // →结果(状态→消息)→时间→UA→IP→操作。
 const allColumns = computed<Column[]>(() => [
   { key: 'user', label: t('admin.ops.errorLog.user') },
   { key: 'api_key', label: t('admin.ops.errorLog.apiKey') },
-  { key: 'account', label: t('admin.ops.errorLog.account') },
+  { key: 'provider', label: t('admin.ops.errorLog.provider') },
   { key: 'platform', label: t('admin.ops.errorLog.platform') },
   { key: 'model', label: t('admin.ops.errorLog.model'), sortable: true },
   { key: 'endpoint', label: t('admin.ops.errorLog.endpoint') },
@@ -269,8 +269,8 @@ function getTypeBadge(log: OpsErrorLog): { label: string; className: string } {
   if (phase === 'auth' && owner === 'client') {
     return { label: t('admin.ops.errorLog.typeAuth'), className: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' }
   }
-  if (phase === 'account_auth') {
-    return { label: t('admin.ops.errorLog.typeAccountAuth'), className: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' }
+  if (phase === 'provider_auth') {
+    return { label: t('admin.ops.errorLog.typeProviderAuth'), className: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' }
   }
   if (phase === 'routing' && owner === 'platform') {
     return { label: t('admin.ops.errorLog.typeRouting'), className: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' }

@@ -13,7 +13,7 @@ func (s *Recorder) CalculateRecordUsageCost(
 	ctx context.Context,
 	result *Result,
 	apiKey *KeySnapshot,
-	account *AccountSnapshot,
+	provider *ProviderSnapshot,
 	billingModel string,
 	requestedModel string,
 	billingModelSource string,
@@ -28,11 +28,11 @@ func (s *Recorder) CalculateRecordUsageCost(
 	// 图片生成：共享价格配置定价为令牌计费时走令牌路径，否则走图片计费
 	if result.ImageCount > 0 {
 		if resolved, pricingModel := s.resolveConfigPricingForUsage(ctx, billingModel, apiKey); resolved != nil && resolved.Mode == BillingModeToken {
-			return s.CalculateTokenCost(ctx, result, apiKey, account, billingModel, requestedModel, billingModelSource, groupMappedModel, multiplier, opts)
+			return s.CalculateTokenCost(ctx, result, apiKey, provider, billingModel, requestedModel, billingModelSource, groupMappedModel, multiplier, opts)
 		} else if resolved != nil {
-			return s.CalculateImageCost(ctx, result, apiKey, account, billingModel, requestedModel, billingModelSource, groupMappedModel, pricingModel, resolved, imageMultiplier, opts.PricingAt)
+			return s.CalculateImageCost(ctx, result, apiKey, provider, billingModel, requestedModel, billingModelSource, groupMappedModel, pricingModel, resolved, imageMultiplier, opts.PricingAt)
 		}
-		return s.CalculateImageCost(ctx, result, apiKey, account, billingModel, requestedModel, billingModelSource, groupMappedModel, billingModel, nil, imageMultiplier, opts.PricingAt)
+		return s.CalculateImageCost(ctx, result, apiKey, provider, billingModel, requestedModel, billingModelSource, groupMappedModel, billingModel, nil, imageMultiplier, opts.PricingAt)
 	}
 
 	// 语音用量优先按价格配置的连续单位价格结算，未配置时沿用价格配置通用音频价。
@@ -63,7 +63,7 @@ func (s *Recorder) CalculateRecordUsageCost(
 	}
 
 	// Token 费用与搜索附加费分别计算，搜索不会替代模型本身的 token 费用。
-	tokenCost := s.CalculateTokenCost(ctx, result, apiKey, account, billingModel, requestedModel, billingModelSource, groupMappedModel, multiplier, opts)
+	tokenCost := s.CalculateTokenCost(ctx, result, apiKey, provider, billingModel, requestedModel, billingModelSource, groupMappedModel, multiplier, opts)
 	if result.SearchCount > 0 {
 		price := groupSearchPricePer1kFromAPIKey(apiKey)
 		if price != nil && *price == 0 {
@@ -97,7 +97,7 @@ func (s *Recorder) CalculateImageCost(
 	ctx context.Context,
 	result *Result,
 	apiKey *KeySnapshot,
-	account *AccountSnapshot,
+	provider *ProviderSnapshot,
 	billingModel string,
 	requestedModel string,
 	billingModelSource string,
@@ -145,7 +145,7 @@ func (s *Recorder) CalculateTokenCost(
 	ctx context.Context,
 	result *Result,
 	apiKey *KeySnapshot,
-	account *AccountSnapshot,
+	provider *ProviderSnapshot,
 	billingModel string,
 	requestedModel string,
 	billingModelSource string,
@@ -444,11 +444,11 @@ func (s *Recorder) CalculateOpenAIVideoCost(ctx context.Context, billingModel st
 
 func (s *Recorder) FilterCNProviderBillingModelCandidates(
 	ctx context.Context,
-	account *AccountSnapshot,
+	provider *ProviderSnapshot,
 	apiKey *KeySnapshot,
 	candidates []string,
 ) []string {
-	if account == nil || !account.CNProvider {
+	if provider == nil || !provider.CNProvider {
 		return candidates
 	}
 	filtered := make([]string, 0, len(candidates))
@@ -518,11 +518,11 @@ func OpenAIUsageBillingModel(result *Result, fields PricingUsageFields) string {
 	return billingModel
 }
 
-func GroupBillsOpenAIFastAtStandard(apiKey *KeySnapshot, account *AccountSnapshot, serviceTier string) bool {
+func GroupBillsOpenAIFastAtStandard(apiKey *KeySnapshot, provider *ProviderSnapshot, serviceTier string) bool {
 	if apiKey == nil || apiKey.Group == nil || !apiKey.Group.FreeOpenAIFast {
 		return false
 	}
-	if account == nil || !account.OpenAI || !apiKey.Group.SupportsOpenAIFast {
+	if provider == nil || !provider.OpenAI || !apiKey.Group.SupportsOpenAIFast {
 		return false
 	}
 	switch normalizeBillingServiceTier(serviceTier) {

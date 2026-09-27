@@ -405,9 +405,9 @@ const form = reactive({
 })
 
 const profileOptions = computed<SelectOption[]>(() => [
-  { value: 0, label: t('admin.accounts.quotaControl.tlsFingerprint.defaultProfile') },
+  { value: 0, label: t('admin.providers.quotaControl.tlsFingerprint.defaultProfile') },
   ...(profiles.value.length > 0
-    ? [{ value: -1, label: t('admin.accounts.quotaControl.tlsFingerprint.randomProfile') }]
+    ? [{ value: -1, label: t('admin.providers.quotaControl.tlsFingerprint.randomProfile') }]
     : []),
   ...profiles.value.map((profile) => ({ value: profile.id, label: profile.name }))
 ])

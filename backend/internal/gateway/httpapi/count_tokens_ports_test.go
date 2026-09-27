@@ -8,13 +8,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 	"github.com/gin-gonic/gin"
@@ -69,8 +69,8 @@ type countHTTPContractTarget struct {
 	id      int64
 }
 
-func (t countHTTPContractTarget) Snapshot() account.AccountSnapshot {
-	return account.AccountSnapshot{ID: t.id, Platform: "anthropic"}
+func (t countHTTPContractTarget) Snapshot() provider.ProviderSnapshot {
+	return provider.ProviderSnapshot{ID: t.id, Platform: "anthropic"}
 }
 func (t countHTTPContractTarget) RetryLimit() int { return 0 }
 func (t countHTTPContractTarget) ReleaseSession(context.Context, string) {

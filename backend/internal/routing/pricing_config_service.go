@@ -196,7 +196,7 @@ func newEmptyPricingConfigCache() *pricingConfigCache {
 	}
 }
 
-// expandPricingToCache 以分组和模型建立精确及通配符索引，不读取账号平台。
+// expandPricingToCache 以分组和模型建立精确及通配符索引，不读取提供商平台。
 func expandPricingToCache(cache *pricingConfigCache, config *PricingConfig, groupID int64) {
 	for i := range config.ModelPricing {
 		entry := &config.ModelPricing[i]
@@ -410,7 +410,7 @@ func (s *PricingConfigService) IsModelRestricted(ctx context.Context, groupID in
 }
 
 // PricingEntries 校验定价条目（冲突检测 + 区间校验 + 计费模式校验），
-// 同时用于主价格配置定价和 account_stats_pricing_rules 的内部定价。
+// 同时用于主价格配置定价和 provider_stats_pricing_rules 的内部定价。
 func (v PricingConfigValidation) PricingEntries(pricing []ModelPricingEntry) error {
 	if err := validateNoConflictingModels(pricing); err != nil {
 		return err
@@ -554,31 +554,31 @@ func checkPricesNotNegative(p ModelPricingEntry) error {
 	return nil
 }
 
-// AccountStatsPricing 校验账号统计定价，并拒绝仅用于实际请求计费的 Fast 倍率。
-func (v PricingConfigValidation) AccountStatsPricing(pricing []ModelPricingEntry) error {
+// ProviderStatsPricing 校验提供商统计定价，并拒绝仅用于实际请求计费的 Fast 倍率。
+func (v PricingConfigValidation) ProviderStatsPricing(pricing []ModelPricingEntry) error {
 	for _, p := range pricing {
 		if p.FastModeMultiplier != nil {
 			return infraerrors.BadRequest(
-				"ACCOUNT_STATS_FAST_MODE_MULTIPLIER_UNSUPPORTED",
-				"fast_mode_multiplier is not supported for account stats pricing",
+				"PROVIDER_STATS_FAST_MODE_MULTIPLIER_UNSUPPORTED",
+				"fast_mode_multiplier is not supported for provider stats pricing",
 			)
 		}
 		if p.FastMultiplier != nil || p.FlexMultiplier != nil {
 			return infraerrors.BadRequest(
-				"ACCOUNT_STATS_TIER_MULTIPLIER_UNSUPPORTED",
-				"service tier multipliers are not supported for account stats pricing",
+				"PROVIDER_STATS_TIER_MULTIPLIER_UNSUPPORTED",
+				"service tier multipliers are not supported for provider stats pricing",
 			)
 		}
 		if p.MaxReasoningEffortMultiplier != nil {
 			return infraerrors.BadRequest(
-				"ACCOUNT_STATS_REASONING_MULTIPLIER_UNSUPPORTED",
-				"max_reasoning_effort_multiplier is not supported for account stats pricing",
+				"PROVIDER_STATS_REASONING_MULTIPLIER_UNSUPPORTED",
+				"max_reasoning_effort_multiplier is not supported for provider stats pricing",
 			)
 		}
 		if p.TimePricing != nil && len(p.TimePricing.Periods) > 0 {
 			return infraerrors.BadRequest(
-				"ACCOUNT_STATS_TIME_PRICING_UNSUPPORTED",
-				"account stats pricing does not support time pricing",
+				"PROVIDER_STATS_TIME_PRICING_UNSUPPORTED",
+				"provider stats pricing does not support time pricing",
 			)
 		}
 	}
@@ -633,9 +633,9 @@ func (s *PricingConfigService) Create(ctx context.Context, input *CreatePricingC
 		GroupIDs:     input.GroupIDs,
 		ModelPricing: input.ModelPricing,
 
-		AccountStatsPricingRules: input.AccountStatsPricingRules,
+		ProviderStatsPricingRules: input.ProviderStatsPricingRules,
 	}
-	if err := input.BillingSettingsPatch.Apply(&pricingConfig.BillingSettings); err != nil {
+	if err := input.Apply(&pricingConfig.BillingSettings); err != nil {
 		return nil, err
 	}
 	if pricingConfig.BillingModelSource == "" {
@@ -645,9 +645,9 @@ func (s *PricingConfigService) Create(ctx context.Context, input *CreatePricingC
 	if err := s.validation.PricingEntries(pricingConfig.ModelPricing); err != nil {
 		return nil, err
 	}
-	for i, rule := range pricingConfig.AccountStatsPricingRules {
-		if err := s.validation.AccountStatsPricing(rule.Pricing); err != nil {
-			return nil, fmt.Errorf("account stats pricing rule #%d: %w", i+1, err)
+	for i, rule := range pricingConfig.ProviderStatsPricingRules {
+		if err := s.validation.ProviderStatsPricing(rule.Pricing); err != nil {
+			return nil, fmt.Errorf("provider stats pricing rule #%d: %w", i+1, err)
 		}
 	}
 
@@ -679,9 +679,9 @@ func (s *PricingConfigService) Update(ctx context.Context, id int64, input *Upda
 	if err := s.validation.PricingEntries(pricingConfig.ModelPricing); err != nil {
 		return nil, err
 	}
-	for i, rule := range pricingConfig.AccountStatsPricingRules {
-		if err := s.validation.AccountStatsPricing(rule.Pricing); err != nil {
-			return nil, fmt.Errorf("account stats pricing rule #%d: %w", i+1, err)
+	for i, rule := range pricingConfig.ProviderStatsPricingRules {
+		if err := s.validation.ProviderStatsPricing(rule.Pricing); err != nil {
+			return nil, fmt.Errorf("provider stats pricing rule #%d: %w", i+1, err)
 		}
 	}
 
@@ -699,7 +699,7 @@ func (s *PricingConfigService) Update(ctx context.Context, id int64, input *Upda
 
 // applyUpdateInput 将更新请求的字段应用到价格配置实体上。
 func (s *PricingConfigService) applyUpdateInput(ctx context.Context, pricingConfig *PricingConfig, input *UpdatePricingConfigInput) error {
-	if err := input.BillingSettingsPatch.Apply(&pricingConfig.BillingSettings); err != nil {
+	if err := input.Apply(&pricingConfig.BillingSettings); err != nil {
 		return err
 	}
 	if input.Name != "" && input.Name != pricingConfig.Name {
@@ -733,8 +733,8 @@ func (s *PricingConfigService) applyUpdateInput(ctx context.Context, pricingConf
 		pricingConfig.BillingModelSource = input.BillingModelSource
 	}
 
-	if input.AccountStatsPricingRules != nil {
-		pricingConfig.AccountStatsPricingRules = *input.AccountStatsPricingRules
+	if input.ProviderStatsPricingRules != nil {
+		pricingConfig.ProviderStatsPricingRules = *input.ProviderStatsPricingRules
 	}
 	return nil
 }
@@ -915,7 +915,7 @@ type CreatePricingConfigInput struct {
 
 	BillingModelSource string
 
-	AccountStatsPricingRules []AccountStatsPricingRule
+	ProviderStatsPricingRules []ProviderStatsPricingRule
 }
 
 // UpdatePricingConfigInput 更新价格配置输入
@@ -929,7 +929,7 @@ type UpdatePricingConfigInput struct {
 
 	BillingModelSource string
 
-	AccountStatsPricingRules *[]AccountStatsPricingRule
+	ProviderStatsPricingRules *[]ProviderStatsPricingRule
 }
 
 // BuildModelMappingChain 按首次出现顺序生成去重后的模型映射链。

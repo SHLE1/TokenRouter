@@ -60,8 +60,8 @@ func ExchangePassthrough(ctx context.Context, body []byte, options ExchangeOptio
 				_ = resp.Body.Close()
 				options.Observe(ExchangeNotice{
 					Platform:           options.Platform,
-					AccountID:          options.AccountID,
-					AccountName:        options.AccountName,
+					ProviderID:         options.ProviderID,
+					ProviderName:       options.ProviderName,
 					UpstreamStatusCode: resp.StatusCode,
 					UpstreamRequestID:  resp.Header.Get("x-request-id"),
 					UpstreamURL:        options.SafeURL(upstreamReq.URL.String()),
@@ -70,8 +70,8 @@ func ExchangePassthrough(ctx context.Context, body []byte, options ExchangeOptio
 					Message:            options.ErrorMessage(respBody),
 					Detail:             options.Detail(respBody),
 				})
-				logger.LegacyPrintf("service.gateway", "Anthropic passthrough account %d: upstream error %d, retry %d/%d after %v (elapsed=%v/%v)",
-					options.AccountID, resp.StatusCode, attempt, options.MaxAttempts, delay, elapsed, options.MaxElapsed)
+				logger.LegacyPrintf("service.gateway", "Anthropic passthrough provider %d: upstream error %d, retry %d/%d after %v (elapsed=%v/%v)",
+					options.ProviderID, resp.StatusCode, attempt, options.MaxAttempts, delay, elapsed, options.MaxElapsed)
 				if err := upstream.WaitContext(ctx, delay); err != nil {
 					return nil, lastWireBody, err
 				}

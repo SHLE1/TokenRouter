@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	accountpostgres "github.com/TokenFlux/TokenRouter/internal/account/postgres"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/batchimage"
 	batchprovider "github.com/TokenFlux/TokenRouter/internal/batchimage/provider"
@@ -13,13 +12,14 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/completion"
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/querycache"
+	providerpostgres "github.com/TokenFlux/TokenRouter/internal/provider/postgres"
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
 // provideS13BatchRuntime 直接绑定唯一资金、处理和恢复实例，保留原四条运行循环。
-func provideS13BatchRuntime(repo batchimage.BatchImageRepository, accounts *accountpostgres.AccountStore, queue batchimage.BatchImageQueue, funds *billing.Funds, logs usage.UsageLogRepository, pricing *batchimage.Pricing, auth apikey.APIKeyAuthCacheInvalidator, cfg *config.Config, registry *batchimage.Registry[batchprovider.BatchImageProvider]) *batchimage.Runtime {
+func provideS13BatchRuntime(repo batchimage.BatchImageRepository, providers *providerpostgres.ProviderStore, queue batchimage.BatchImageQueue, funds *billing.Funds, logs usage.UsageLogRepository, pricing *batchimage.Pricing, auth apikey.APIKeyAuthCacheInvalidator, cfg *config.Config, registry *batchimage.Registry[batchprovider.BatchImageProvider]) *batchimage.Runtime {
 	funding := batchimage.Funding{Store: funds, Observe: creativeObserve}
-	processor := &batchimage.ProviderProcessor{Repo: repo, Funding: funding, Observe: creativeObserve, ResolveProvider: (batchprovider.ResultAccess{Registry: registry, Accounts: accounts}).Process}
+	processor := &batchimage.ProviderProcessor{Repo: repo, Funding: funding, Observe: creativeObserve, ResolveProvider: (batchprovider.ResultAccess{Registry: registry, Providers: providers}).Process}
 	settlement := &batchimage.Settlement{Repo: repo, Funding: funding, Observe: creativeObserve}
 	if cfg != nil {
 		settlement.Retention = time.Duration(cfg.BatchImage.OutputRetentionAfterTerminalHours) * time.Hour

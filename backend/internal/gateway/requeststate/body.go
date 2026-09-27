@@ -27,7 +27,7 @@ var (
 
 // SessionContext 粘性会话上下文，用于区分不同来源的请求。
 // 仅在 GenerateSessionHash 第 3 级 fallback（消息内容 hash）时混入，
-// 避免不同用户发送相同消息产生相同 hash 导致账号集中。
+// 避免不同用户发送相同消息产生相同 hash 导致提供商集中。
 type SessionContext struct {
 	ClientIP  string
 	UserAgent string
@@ -373,7 +373,7 @@ func (p *ParsedRequest) SystemValue() (any, bool) {
 	return system, true
 }
 
-// CloneForBody 为单次账号尝试创建独立 body 视图，避免 failover 复用已改写的 ParsedRequest。
+// CloneForBody 为单次提供商尝试创建独立 body 视图，避免 failover 复用已改写的 ParsedRequest。
 func (p *ParsedRequest) CloneForBody(body []byte) (*ParsedRequest, error) {
 	if p == nil {
 		return nil, fmt.Errorf("parse request: empty request")

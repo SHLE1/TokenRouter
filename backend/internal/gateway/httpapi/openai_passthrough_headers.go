@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/TokenFlux/TokenRouter/internal/egress"
-	"github.com/TokenFlux/TokenRouter/internal/egress/provider"
+	egressadapter "github.com/TokenFlux/TokenRouter/internal/egress/provider"
 	// 本文件承载 /v1/responses 透传转发及其流式、非流式响应与错误处理。
 )
 
@@ -15,7 +15,7 @@ func WriteOpenAIPassthroughResponseHeaders(dst http.Header, src http.Header, fil
 		return
 	}
 	if filter != nil {
-		provider.WriteFilteredHeaders(dst, src, filter)
+		egressadapter.WriteFilteredHeaders(dst, src, filter)
 	} else {
 		// 兜底：尽量保留最基础的 content-type
 		if v := strings.TrimSpace(src.Get("Content-Type")); v != "" {
@@ -58,7 +58,7 @@ func WriteOpenAIPassthroughResponseHeaders(dst http.Header, src http.Header, fil
 	}
 
 	// 回合状态不受通用响应头白名单控制；上游缺失时也要清理旧值，避免
-	// failover 后把其它账号的状态留在下游响应中。
+	// failover 后把其它提供商的状态留在下游响应中。
 	turnStateKey := http.CanonicalHeaderKey(CodexTurnStateHeader)
 	dst.Del(turnStateKey)
 	for _, value := range getCaseInsensitiveValues(src, CodexTurnStateHeader) {

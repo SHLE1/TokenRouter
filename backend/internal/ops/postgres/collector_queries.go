@@ -11,7 +11,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/ops"
 )
 
-func (c *MetricsQueries) QueryAccountSwitchCount(ctx context.Context, start, end time.Time) (int64, error) {
+func (c *MetricsQueries) QueryProviderSwitchCount(ctx context.Context, start, end time.Time) (int64, error) {
 	q := `
 SELECT
   COALESCE(SUM(CASE
@@ -31,16 +31,20 @@ WHERE o.created_at >= $1 AND o.created_at < $2
 	}
 	return count, nil
 }
+
 func opsMetricsSLACountableSQL(statusExpr, upstreamStatusExpr, upstreamErrorsExpr, ownerExpr, businessExpr string, ignoredStatusCodes []int) string {
 	return fmt.Sprintf("(NOT COALESCE(%s, false) AND NOT %s)", businessExpr, opsMetricsClientSideStatusExcludedSQL(statusExpr, upstreamStatusExpr, upstreamErrorsExpr, ownerExpr, ignoredStatusCodes))
 }
+
 func opsMetricsBusinessLimitedSQL(statusExpr, upstreamStatusExpr, upstreamErrorsExpr, ownerExpr, businessExpr string, ignoredStatusCodes []int) string {
 	return fmt.Sprintf("(COALESCE(%s, false) OR %s)", businessExpr, opsMetricsClientSideStatusExcludedSQL(statusExpr, upstreamStatusExpr, upstreamErrorsExpr, ownerExpr, ignoredStatusCodes))
 }
+
 func opsMetricsClientSideStatusExcludedSQL(statusExpr, upstreamStatusExpr, upstreamErrorsExpr, ownerExpr string, ignoredStatusCodes []int) string {
 	// 分钟级系统指标也排除配置的客户端侧状态码，保持 dashboard/raw 与 system metrics 口径一致。
 	return fmt.Sprintf("(%s AND NOT %s)", opsMetricsIgnoredStatusCodeSQL(statusExpr, ignoredStatusCodes), opsMetricsUpstreamContextSQL(upstreamStatusExpr, upstreamErrorsExpr, ownerExpr))
 }
+
 func opsMetricsIgnoredStatusCodeSQL(statusExpr string, ignoredStatusCodes []int) string {
 	codes := ops.NormalizeOpsIgnoredStatusCodes(ignoredStatusCodes)
 	if len(codes) == 0 {
@@ -52,6 +56,7 @@ func opsMetricsIgnoredStatusCodeSQL(statusExpr string, ignoredStatusCodes []int)
 	}
 	return fmt.Sprintf("COALESCE(%s, 0) IN (%s)", statusExpr, strings.Join(parts, ", "))
 }
+
 func opsMetricsUpstreamContextSQL(upstreamStatusExpr, upstreamErrorsExpr, ownerExpr string) string {
 	upstreamErrorsPresentSQL := fmt.Sprintf(`COALESCE(
   CASE
@@ -64,6 +69,7 @@ func opsMetricsUpstreamContextSQL(upstreamStatusExpr, upstreamErrorsExpr, ownerE
 
 	return fmt.Sprintf("(%s IS NOT NULL OR %s OR LOWER(COALESCE(%s, '')) = 'provider')", upstreamStatusExpr, upstreamErrorsPresentSQL, ownerExpr)
 }
+
 func (c *MetricsQueries) QueryErrorCounts(ctx context.Context, start, end time.Time, ignoredStatusCodes []int) (
 	errorTotal int64,
 	businessLimited int64,
@@ -99,6 +105,7 @@ WHERE created_at >= $1 AND created_at < $2
 	}
 	return errorTotal, businessLimited, errorSLA, upstreamExcl429529, upstream429, upstream529, nil
 }
+
 func (c *MetricsQueries) QueryUsageLatency(ctx context.Context, start, end time.Time) (duration ops.CollectedPercentiles, ttft ops.CollectedPercentiles, err error) {
 	{
 		q := `
@@ -168,6 +175,7 @@ WHERE created_at >= $1 AND created_at < $2
 
 	return duration, ttft, nil
 }
+
 func (c *MetricsQueries) QueryUsageCounts(ctx context.Context, start, end time.Time) (successCount int64, tokenConsumed int64, err error) {
 	q := `
 SELECT

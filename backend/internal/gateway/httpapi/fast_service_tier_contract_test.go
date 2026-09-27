@@ -14,11 +14,11 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 	gatewaytestkit "github.com/TokenFlux/TokenRouter/internal/gateway/testkit"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	billingcore "github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/gateway"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/tierpolicy"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
 
@@ -28,7 +28,6 @@ import (
 )
 
 func TestForwardAsChatCompletions_ServiceTierFastNormalizedToPriorityUpstream(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	body := []byte(`{"model":"gpt-5.5","messages":[{"role":"user","content":"hello"}],"service_tier":"fast","stream":false}`)
@@ -42,16 +41,19 @@ func TestForwardAsChatCompletions_ServiceTierFastNormalizedToPriorityUpstream(t 
 	}}
 
 	svc := newResponsesFixture(responsesFixtureInputs{options: &responsesFixtureOptions{}, transport: upstream, readers: newHTTPReadersFixture(&gatewaytestkit.FastPolicySettingsRepo{Values: map[string]string{}}, nil)})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 21,
-		Name:        "openai-compatible",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{"api_key": "sk-compatible"},
-		Extra:       map[string]any{}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 21,
+			Name:        "openai-compatible",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{"api_key": "sk-compatible"},
+			Extra:       map[string]any{},
+		},
 	}
 
-	_, err := svc.Text.Chat(context.Background(), c, account, body, "", "gpt-5.5")
+	_, err := svc.Text.Chat(context.Background(), c, provider, body, "", "gpt-5.5")
 	require.Error(t, err) // upstream 400 → 错误返回，但请求体已被 recorder 捕获
 	require.NotNil(t, upstream.lastBody)
 	require.Equal(t, "priority", gjson.GetBytes(upstream.lastBody, "service_tier").String(),
@@ -59,7 +61,6 @@ func TestForwardAsChatCompletions_ServiceTierFastNormalizedToPriorityUpstream(t 
 }
 
 func TestForwardAsChatCompletions_ServiceTierPriorityPreservedUpstream(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	body := []byte(`{"model":"gpt-5.5","messages":[{"role":"user","content":"hello"}],"service_tier":"priority","stream":false}`)
@@ -73,23 +74,25 @@ func TestForwardAsChatCompletions_ServiceTierPriorityPreservedUpstream(t *testin
 	}}
 
 	svc := newResponsesFixture(responsesFixtureInputs{options: &responsesFixtureOptions{}, transport: upstream, readers: newHTTPReadersFixture(&gatewaytestkit.FastPolicySettingsRepo{Values: map[string]string{}}, nil)})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 2,
-		Name:        "openai-compatible",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{"api_key": "sk-compatible"},
-		Extra:       map[string]any{}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 2,
+			Name:        "openai-compatible",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{"api_key": "sk-compatible"},
+			Extra:       map[string]any{},
+		},
 	}
 
-	_, err := svc.Text.Chat(context.Background(), c, account, body, "", "gpt-5.5")
+	_, err := svc.Text.Chat(context.Background(), c, provider, body, "", "gpt-5.5")
 	require.Error(t, err)
 	require.NotNil(t, upstream.lastBody)
 	require.Equal(t, "priority", gjson.GetBytes(upstream.lastBody, "service_tier").String())
 }
 
 func TestForward_ResponsesServiceTierFastNormalizedToPriorityUpstream(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	body := []byte(`{"model":"gpt-5.5","service_tier":"fast","input":"hello","stream":false}`)
@@ -105,18 +108,21 @@ func TestForward_ResponsesServiceTierFastNormalizedToPriorityUpstream(t *testing
 	}}
 
 	svc := newResponsesFixture(responsesFixtureInputs{options: &responsesFixtureOptions{Request: OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{Enabled: false}}}, transport: upstream, readers: newHTTPReadersFixture(&gatewaytestkit.FastPolicySettingsRepo{Values: map[string]string{}}, nil)})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 7,
-		Name:        "openai-apikey",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{"api_key": "sk-test"},
-		Extra:       map[string]any{},
-		Status:      billingcore.StatusActive,
-		Schedulable: true},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 7,
+			Name:        "openai-apikey",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{"api_key": "sk-test"},
+			Extra:       map[string]any{},
+			Status:      billingcore.StatusActive,
+			Schedulable: true,
+		},
 	}
 
-	result, err := svc.Forward(context.Background(), c, account, body)
+	result, err := svc.Forward(context.Background(), c, provider, body)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.NotNil(t, upstream.lastBody)
@@ -128,7 +134,6 @@ func TestForward_ResponsesServiceTierFastNormalizedToPriorityUpstream(t *testing
 }
 
 func TestForward_ResponsesServiceTierOmittedStaysOmitted(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	body := []byte(`{"model":"gpt-5.5","input":"hello","stream":false}`)
@@ -144,18 +149,21 @@ func TestForward_ResponsesServiceTierOmittedStaysOmitted(t *testing.T) {
 	}}
 
 	svc := newResponsesFixture(responsesFixtureInputs{options: &responsesFixtureOptions{Request: OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{Enabled: false}}}, transport: upstream, readers: newHTTPReadersFixture(&gatewaytestkit.FastPolicySettingsRepo{Values: map[string]string{}}, nil)})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 7,
-		Name:        "openai-apikey",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{"api_key": "sk-test"},
-		Extra:       map[string]any{},
-		Status:      billingcore.StatusActive,
-		Schedulable: true},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 7,
+			Name:        "openai-apikey",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{"api_key": "sk-test"},
+			Extra:       map[string]any{},
+			Status:      billingcore.StatusActive,
+			Schedulable: true,
+		},
 	}
 
-	result, err := svc.Forward(context.Background(), c, account, body)
+	result, err := svc.Forward(context.Background(), c, provider, body)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.NotNil(t, upstream.lastBody)
@@ -165,7 +173,6 @@ func TestForward_ResponsesServiceTierOmittedStaysOmitted(t *testing.T) {
 }
 
 func TestForwardStreaming_ServiceTierPropagatedToResult(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	body := []byte(`{"model":"gpt-5.5","service_tier":"fast","input":"hello","stream":true}`)
@@ -184,18 +191,21 @@ func TestForwardStreaming_ServiceTierPropagatedToResult(t *testing.T) {
 	}}
 
 	svc := newResponsesFixture(responsesFixtureInputs{options: &responsesFixtureOptions{Request: OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{Enabled: false}}}, transport: upstream, readers: newHTTPReadersFixture(&gatewaytestkit.FastPolicySettingsRepo{Values: map[string]string{}}, nil)})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 7,
-		Name:        "openai-apikey",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{"api_key": "sk-test"},
-		Extra:       map[string]any{},
-		Status:      billingcore.StatusActive,
-		Schedulable: true},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 7,
+			Name:        "openai-apikey",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{"api_key": "sk-test"},
+			Extra:       map[string]any{},
+			Status:      billingcore.StatusActive,
+			Schedulable: true,
+		},
 	}
 
-	result, err := svc.Forward(context.Background(), c, account, body)
+	result, err := svc.Forward(context.Background(), c, provider, body)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.NotNil(t, result.ServiceTier)
@@ -207,7 +217,6 @@ func TestForwardStreaming_ServiceTierPropagatedToResult(t *testing.T) {
 }
 
 func TestForward_ResponsesKeepsOutboundAndObservedServiceTiersSeparate(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	body := []byte(`{"model":"gpt-5.5","service_tier":"fast","input":"hello","stream":false}`)
@@ -224,18 +233,21 @@ func TestForward_ResponsesKeepsOutboundAndObservedServiceTiersSeparate(t *testin
 	}}
 
 	svc := newResponsesFixture(responsesFixtureInputs{options: &responsesFixtureOptions{Request: OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{Enabled: false}}}, transport: upstream, readers: newHTTPReadersFixture(&gatewaytestkit.FastPolicySettingsRepo{Values: map[string]string{}}, nil)})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 7,
-		Name:        "openai-apikey",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{"api_key": "sk-test"},
-		Extra:       map[string]any{},
-		Status:      billingcore.StatusActive,
-		Schedulable: true},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 7,
+			Name:        "openai-apikey",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{"api_key": "sk-test"},
+			Extra:       map[string]any{},
+			Status:      billingcore.StatusActive,
+			Schedulable: true,
+		},
 	}
 
-	result, err := svc.Forward(context.Background(), c, account, body)
+	result, err := svc.Forward(context.Background(), c, provider, body)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.NotNil(t, result.ServiceTier)
@@ -247,7 +259,6 @@ func TestForward_ResponsesKeepsOutboundAndObservedServiceTiersSeparate(t *testin
 }
 
 func TestForwardStreaming_KeepsOutboundAndObservedServiceTiersSeparate(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	body := []byte(`{"model":"gpt-5.5","service_tier":"fast","input":"hello","stream":true}`)
@@ -265,18 +276,21 @@ func TestForwardStreaming_KeepsOutboundAndObservedServiceTiersSeparate(t *testin
 	}}
 
 	svc := newResponsesFixture(responsesFixtureInputs{options: &responsesFixtureOptions{Request: OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{Enabled: false}}}, transport: upstream, readers: newHTTPReadersFixture(&gatewaytestkit.FastPolicySettingsRepo{Values: map[string]string{}}, nil)})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 7,
-		Name:        "openai-apikey",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{"api_key": "sk-test"},
-		Extra:       map[string]any{},
-		Status:      billingcore.StatusActive,
-		Schedulable: true},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 7,
+			Name:        "openai-apikey",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{"api_key": "sk-test"},
+			Extra:       map[string]any{},
+			Status:      billingcore.StatusActive,
+			Schedulable: true,
+		},
 	}
 
-	result, err := svc.Forward(context.Background(), c, account, body)
+	result, err := svc.Forward(context.Background(), c, provider, body)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.NotNil(t, result.ServiceTier)
@@ -287,7 +301,6 @@ func TestForwardStreaming_KeepsOutboundAndObservedServiceTiersSeparate(t *testin
 }
 
 func TestForwardAsChatCompletions_KeepsOutboundAndObservedServiceTiersSeparate(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	body := []byte(`{"model":"gpt-5.5","messages":[{"role":"user","content":"hello"}],"service_tier":"fast","stream":false}`)
@@ -306,18 +319,21 @@ func TestForwardAsChatCompletions_KeepsOutboundAndObservedServiceTiersSeparate(t
 	}}
 
 	svc := newResponsesFixture(responsesFixtureInputs{options: &responsesFixtureOptions{Request: OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{Enabled: false}}}, transport: upstream, readers: newHTTPReadersFixture(&gatewaytestkit.FastPolicySettingsRepo{Values: map[string]string{}}, nil)})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 21,
-		Name:        "openai-compatible",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{"api_key": "sk-compatible"},
-		Extra:       map[string]any{},
-		Status:      billingcore.StatusActive,
-		Schedulable: true},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 21,
+			Name:        "openai-compatible",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{"api_key": "sk-compatible"},
+			Extra:       map[string]any{},
+			Status:      billingcore.StatusActive,
+			Schedulable: true,
+		},
 	}
 
-	result, err := svc.Text.Chat(context.Background(), c, account, body, "", "gpt-5.5")
+	result, err := svc.Text.Chat(context.Background(), c, provider, body, "", "gpt-5.5")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.NotNil(t, result.ServiceTier)
@@ -329,7 +345,6 @@ func TestForwardAsChatCompletions_KeepsOutboundAndObservedServiceTiersSeparate(t
 }
 
 func TestForward_ServiceTierFilteredByPolicyBillsStandard(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	body := []byte(`{"model":"gpt-5.5","service_tier":"priority","input":"hello","stream":false}`)
@@ -355,18 +370,21 @@ func TestForward_ServiceTierFilteredByPolicyBillsStandard(t *testing.T) {
 	}}
 
 	svc := newResponsesFixture(responsesFixtureInputs{options: &responsesFixtureOptions{Request: OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{Enabled: false}}}, transport: upstream, readers: newHTTPReadersFixture(repo, nil)})
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 7,
-		Name:        "openai-apikey",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{"api_key": "sk-test"},
-		Extra:       map[string]any{},
-		Status:      billingcore.StatusActive,
-		Schedulable: true},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 7,
+			Name:        "openai-apikey",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeAPIKey,
+			Concurrency: 1,
+			Credentials: map[string]any{"api_key": "sk-test"},
+			Extra:       map[string]any{},
+			Status:      billingcore.StatusActive,
+			Schedulable: true,
+		},
 	}
 
-	result, err := svc.Forward(context.Background(), c, account, body)
+	result, err := svc.Forward(context.Background(), c, provider, body)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	// 出站 body 已剥离 service_tier、上游也未回显 → 无 tier → 按标准价计费。

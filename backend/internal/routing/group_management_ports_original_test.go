@@ -10,8 +10,8 @@ import (
 
 	context "context"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
 
 	math "math"
@@ -144,21 +144,21 @@ func TestAdminServiceGroupAdvancedSchedulerOverrides(t *testing.T) {
 	})
 }
 
-// groupModelsListAccountRepoStub 只实现候选模型测试需要的可调度账号查询。
-type groupModelsListAccountRepoStub struct {
-	routing.GroupAccounts
-	accounts      []account.Record
+// groupModelsListProviderRepoStub 只实现候选模型测试需要的可调度提供商查询。
+type groupModelsListProviderRepoStub struct {
+	routing.GroupProviders
+	providers     []provider.Record
 	calledGroupID int64
 }
 
-func (s *groupModelsListAccountRepoStub) ListSchedulableByGroupID(_ context.Context, groupID int64) ([]routing.GroupAccount, error) {
+func (s *groupModelsListProviderRepoStub) ListSchedulableByGroupID(_ context.Context, groupID int64) ([]routing.GroupProvider, error) {
 	s.calledGroupID = groupID
-	out := make([]routing.GroupAccount, len(s.accounts))
-	for i, record := range s.accounts {
+	out := make([]routing.GroupProvider, len(s.providers))
+	for i, record := range s.providers {
 		if record.Type == "" {
-			record.Type = capability.AccountTypeAPIKey
+			record.Type = capability.ProviderTypeAPIKey
 		}
-		out[i] = routing.GroupAccount{ID: record.ID, Platform: record.Platform, Type: record.Type, Models: record.GetConfiguredRequestModels(accountprovider.ModelDefaults())}
+		out[i] = routing.GroupProvider{ID: record.ID, Platform: record.Platform, Type: record.Type, Models: record.GetConfiguredRequestModels(provideradapter.ModelDefaults())}
 	}
 	return out, nil
 }
@@ -169,8 +169,8 @@ func TestAdminService_GetGroupModelsListCandidates_UsesConfiguredRequestModels(t
 	groupRepo := &groupRepoStubForAdmin{
 		getByID: &routing.Group{ID: groupID},
 	}
-	accountRepo := &groupModelsListAccountRepoStub{
-		accounts: []account.Record{
+	providerRepo := &groupModelsListProviderRepoStub{
+		providers: []provider.Record{
 			{
 				ID:       1,
 				Platform: capability.PlatformOpenAI,
@@ -187,12 +187,12 @@ func TestAdminService_GetGroupModelsListCandidates_UsesConfiguredRequestModels(t
 			},
 		},
 	}
-	svc := newOriginalGroupAdminPorts(groupRepo, nil, nil, nil, accountRepo, nil, nil)
+	svc := newOriginalGroupAdminPorts(groupRepo, nil, nil, nil, providerRepo, nil, nil)
 
 	models, err := svc.GetGroupModelsListCandidates(context.Background(), groupID, "")
 
 	require.NoError(t, err)
-	require.Equal(t, groupID, accountRepo.calledGroupID)
+	require.Equal(t, groupID, providerRepo.calledGroupID)
 	require.Equal(t, []string{"claude-sonnet-4-6", "deepseek-v4-flash", "deepseek-v4-pro"}, models)
 }
 
@@ -209,17 +209,17 @@ func TestAdminServiceCustomModelsCannotInventUnsupportedModels(t *testing.T) {
 			},
 		},
 	}
-	accountRepo := &groupModelsListAccountRepoStub{
-		accounts: []account.Record{
+	providerRepo := &groupModelsListProviderRepoStub{
+		providers: []provider.Record{
 			{ID: 1, Platform: capability.PlatformOpenAI},
 		},
 	}
-	svc := newOriginalGroupAdminPorts(groupRepo, nil, nil, nil, accountRepo, nil, nil)
+	svc := newOriginalGroupAdminPorts(groupRepo, nil, nil, nil, providerRepo, nil, nil)
 
 	models, err := svc.GetGroupModelsListCandidates(context.Background(), groupID, "")
 
 	require.NoError(t, err)
-	require.Equal(t, groupID, accountRepo.calledGroupID)
+	require.Equal(t, groupID, providerRepo.calledGroupID)
 	require.Empty(t, models)
 }
 
@@ -236,8 +236,8 @@ func TestAdminService_GetGroupModelsListCandidates_FiltersCustomModelsList(t *te
 			},
 		},
 	}
-	accountRepo := &groupModelsListAccountRepoStub{
-		accounts: []account.Record{
+	providerRepo := &groupModelsListProviderRepoStub{
+		providers: []provider.Record{
 			{
 				ID:       1,
 				Platform: capability.PlatformOpenAI,
@@ -247,7 +247,7 @@ func TestAdminService_GetGroupModelsListCandidates_FiltersCustomModelsList(t *te
 			},
 		},
 	}
-	svc := newOriginalGroupAdminPorts(groupRepo, nil, nil, nil, accountRepo, nil, nil)
+	svc := newOriginalGroupAdminPorts(groupRepo, nil, nil, nil, providerRepo, nil, nil)
 
 	models, err := svc.GetGroupModelsListCandidates(context.Background(), groupID, "")
 
@@ -268,8 +268,8 @@ func TestAdminServiceGetGroupModelsListCandidatesKeepsEmptyIntersection(t *testi
 			},
 		},
 	}
-	accountRepo := &groupModelsListAccountRepoStub{
-		accounts: []account.Record{
+	providerRepo := &groupModelsListProviderRepoStub{
+		providers: []provider.Record{
 			{
 				ID:       1,
 				Platform: capability.PlatformAnthropic,
@@ -279,7 +279,7 @@ func TestAdminServiceGetGroupModelsListCandidatesKeepsEmptyIntersection(t *testi
 			},
 		},
 	}
-	svc := newOriginalGroupAdminPorts(groupRepo, nil, nil, nil, accountRepo, nil, nil)
+	svc := newOriginalGroupAdminPorts(groupRepo, nil, nil, nil, providerRepo, nil, nil)
 
 	models, err := svc.GetGroupModelsListCandidates(context.Background(), groupID, "")
 
@@ -293,17 +293,17 @@ func TestAdminService_GetGroupModelsListCandidates_FallsBackToPlatformDefaults(t
 	groupRepo := &groupRepoStubForAdmin{
 		getByID: &routing.Group{ID: groupID},
 	}
-	accountRepo := &groupModelsListAccountRepoStub{
-		accounts: []account.Record{
+	providerRepo := &groupModelsListProviderRepoStub{
+		providers: []provider.Record{
 			{ID: 1, Platform: capability.PlatformOpenAI},
 		},
 	}
-	svc := newOriginalGroupAdminPorts(groupRepo, nil, nil, nil, accountRepo, nil, nil)
+	svc := newOriginalGroupAdminPorts(groupRepo, nil, nil, nil, providerRepo, nil, nil)
 
 	models, err := svc.GetGroupModelsListCandidates(context.Background(), groupID, "")
 
 	require.NoError(t, err)
-	require.ElementsMatch(t, accountprovider.DefaultAccountModels(&account.Record{Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}), models)
+	require.ElementsMatch(t, provideradapter.DefaultProviderModels(&provider.Record{Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}), models)
 }
 
 func TestAdminService_CreateGroup_AppendsSortOrder(t *testing.T) {

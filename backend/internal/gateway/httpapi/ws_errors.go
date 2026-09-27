@@ -19,7 +19,7 @@ import (
 type ResponsesWSFailure struct {
 	Reason            string
 	StatusCode        int
-	AccountAuth       bool
+	ProviderAuth      bool
 	CredentialMessage string
 }
 
@@ -34,7 +34,7 @@ func CloseResponsesWSFailure(c *gin.Context, conn *coderws.Conn, failoverErr *Re
 		if reason := strings.TrimSpace(failoverErr.Reason); reason != "" {
 			errorCode = reason
 		}
-		if failoverErr.AccountAuth {
+		if failoverErr.ProviderAuth {
 			intendedStatus = http.StatusServiceUnavailable
 			errorType = "api_error"
 			message = failoverErr.CredentialMessage
@@ -62,6 +62,7 @@ func CloseResponsesWSFailure(c *gin.Context, conn *coderws.Conn, failoverErr *Re
 	mark(c, errorType, errorCode, message, intendedStatus)
 	CloseResponsesWS(conn, closeStatus, message)
 }
+
 func WriteResponsesWSModeration(ctx context.Context, conn *coderws.Conn, decision *moderation.Decision) {
 	if conn == nil || decision == nil {
 		return
@@ -113,6 +114,7 @@ func WriteResponsesWSCyberBlocked(ctx context.Context, conn *coderws.Conn, messa
 	defer cancel()
 	_ = conn.Write(writeCtx, coderws.MessageText, payload)
 }
+
 func WriteResponsesWSIsolation(ctx context.Context, conn *coderws.Conn, err error) bool {
 	if err == nil {
 		return false
@@ -171,7 +173,7 @@ func ResponsesWSIsolationCloseReason(err error) string {
 	return "session isolation check failed"
 }
 
-// ResponsesWSEndedByClient 保留正常关闭和客户端取消的原账号归因边界。
+// ResponsesWSEndedByClient 保留正常关闭和客户端取消的原提供商归因边界。
 func ResponsesWSEndedByClient(err error, info gatewayws.EntryClose) bool {
 	if err == nil {
 		return true

@@ -1,4 +1,4 @@
-// OpenAI 错误与输出判定只依赖原生报文；账号健康写入与全局重试由外层拥有。
+// OpenAI 错误与输出判定只依赖原生报文；提供商健康写入与全局重试由外层拥有。
 package openai
 
 import (
@@ -14,8 +14,10 @@ import (
 	"github.com/tidwall/sjson"
 )
 
-const OpenAIPropertyNameAboveMaxLengthCode = "property_name_above_max_length"
-const OpenAICapacityShedRetryableClientCode = "server_error"
+const (
+	OpenAIPropertyNameAboveMaxLengthCode  = "property_name_above_max_length"
+	OpenAICapacityShedRetryableClientCode = "server_error"
+)
 
 func OpenAIStreamEventIsPreamble(eventType string) bool {
 	switch strings.TrimSpace(eventType) {
@@ -181,7 +183,7 @@ func IsOpenAIUpstreamCapacityShedEvent(payload []byte) bool {
 // SanitizeOpenAICapacityShedErrorCodeForClient 把即将写给下游客户端的
 // error / response.failed 事件中的容量降载错误码改写为客户端可重试的错误码。
 // 走到转发这一步说明网关侧 failover 已不可用（流中途）或已用尽；保留原始降载码
-// 只会让客户端就地终止会话。错误消息原样保留；监控与账号状态判定都基于改写前
+// 只会让客户端就地终止会话。错误消息原样保留；监控与提供商状态判定都基于改写前
 // 的原始 payload，不受影响。rate_limit 等其他错误码一律不动（客户端依赖
 // rate_limit_exceeded 原码解析重试延时）。
 func SanitizeOpenAICapacityShedErrorCodeForClient(payload []byte) ([]byte, bool) {
@@ -214,7 +216,7 @@ func OpenAIStreamFailedEventSemanticStatus(payload []byte, message string) int {
 		return http.StatusBadRequest
 	}
 	// 聚合上游可能在 HTTP 200 的 response.failed 中携带真实状态码；
-	// 必须优先保留，才能让任意自定义错误码命中统一账号策略。
+	// 必须优先保留，才能让任意自定义错误码命中统一提供商策略。
 	for _, path := range []string{
 		"response.error.status_code",
 		"response.error.status",
@@ -315,7 +317,7 @@ func OpenAIStreamCredentialAuthFailure(payload []byte) bool {
 	return false
 }
 
-func OpenAIStream403AccountFailure(payload []byte, message string) bool {
+func OpenAIStream403ProviderFailure(payload []byte, message string) bool {
 	return IsOpenAIUpstreamAccessStateError(message, payload) || OpenAIStreamCredentialAuthFailure(payload)
 }
 
@@ -331,7 +333,7 @@ func OpenAIStreamFailedEventShouldFailover(payload []byte, message string) bool 
 	}
 	semanticStatus := OpenAIStreamFailureStatus(payload, message)
 	if semanticStatus == http.StatusForbidden {
-		return OpenAIStream403AccountFailure(payload, message)
+		return OpenAIStream403ProviderFailure(payload, message)
 	}
 	// A response.failed event is transported over HTTP 200. Prefer its semantic
 	// rate-limit status over a generic/invalid_request error type so it can enter
@@ -375,7 +377,7 @@ func OpenAIStreamFailedEventShouldFailover(payload []byte, message string) bool 
 }
 
 // OpenAIStreamErrorEventShouldFailover 只处理尚未写出语义内容的裸 error 事件。
-// response.failed 仍由统一账号策略处理，避免重复记录或重复切号。
+// response.failed 仍由统一提供商策略处理，避免重复记录或重复切号。
 func OpenAIStreamErrorEventShouldFailover(payload []byte, message string) bool {
 	if hit, _, _ := DetectOpenAICyberPolicy(payload); hit {
 		return false
@@ -388,7 +390,7 @@ func OpenAIStreamErrorEventShouldFailover(payload []byte, message string) bool {
 	}
 	switch OpenAIStreamFailedEventSemanticStatus(payload, message) {
 	case http.StatusForbidden:
-		return OpenAIStream403AccountFailure(payload, message)
+		return OpenAIStream403ProviderFailure(payload, message)
 	case http.StatusUnauthorized, http.StatusTooManyRequests, 529:
 		return true
 	}

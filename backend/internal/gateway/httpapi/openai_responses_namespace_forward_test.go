@@ -39,7 +39,7 @@ func TestOpenAIGatewayService_OAuthPreservesCodexNamespaceTools(t *testing.T) {
 	c := newOpenAIRejectedFieldTestContext(body)
 
 	result, err := newOpenAIRejectedFieldTestService(upstream).Forward(
-		context.Background(), c, newOpenAIOAuthNamespaceTestAccount(), body,
+		context.Background(), c, newOpenAIOAuthNamespaceTestProvider(), body,
 	)
 
 	require.NoError(t, err)
@@ -66,7 +66,7 @@ func TestOpenAIGatewayService_APIKeyPreservesDeclaredNamespaceToolCalls(t *testi
 	c := newOpenAIRejectedFieldTestContext(body)
 
 	result, err := newOpenAIRejectedFieldTestService(upstream).Forward(
-		context.Background(), c, newOpenAIRejectedFieldTestAccount(), body,
+		context.Background(), c, newOpenAIRejectedFieldTestProvider(), body,
 	)
 
 	require.NoError(t, err)
@@ -91,7 +91,7 @@ func TestOpenAIGatewayService_OAuthCompactKeepsFlattening(t *testing.T) {
 	c.Request.URL.Path = "/v1/responses/compact"
 
 	result, err := newOpenAIRejectedFieldTestService(upstream).Forward(
-		context.Background(), c, newOpenAIOAuthNamespaceTestAccount(), body,
+		context.Background(), c, newOpenAIOAuthNamespaceTestProvider(), body,
 	)
 
 	require.NoError(t, err)
@@ -102,17 +102,17 @@ func TestOpenAIGatewayService_OAuthCompactKeepsFlattening(t *testing.T) {
 	require.Equal(t, "collaboration__spawn_agent", gjson.GetBytes(forwarded, "input.0.name").String())
 }
 
-// 账号兼容开关打开后恢复 namespace 摊平旧行为。
+// 提供商兼容开关打开后恢复 namespace 摊平旧行为。
 func TestOpenAIGatewayService_OAuthFlattenFlagRestoresLegacyBehavior(t *testing.T) {
 	body := []byte(codexNamespaceRequestBody)
 	upstream := &auxiliaryHTTPRecorder{responses: []*http.Response{
 		newOpenAIRejectedFieldTestResponse(http.StatusOK, namespaceForwardOKResponse),
 	}}
 	c := newOpenAIRejectedFieldTestContext(body)
-	account := newOpenAIOAuthNamespaceTestAccount()
-	account.Record.Extra = map[string]any{"openai_responses_flatten_namespaces": true}
+	provider := newOpenAIOAuthNamespaceTestProvider()
+	provider.Record.Extra = map[string]any{"openai_responses_flatten_namespaces": true}
 
-	result, err := newOpenAIRejectedFieldTestService(upstream).Forward(context.Background(), c, account, body)
+	result, err := newOpenAIRejectedFieldTestService(upstream).Forward(context.Background(), c, provider, body)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -126,7 +126,7 @@ func TestOpenAIGatewayService_OAuthFlattenFlagRestoresLegacyBehavior(t *testing.
 	}, OpenAIResponsesNamespaceNames(c)["collaboration__spawn_agent"])
 }
 
-// failover 复用 gin.Context 时，每次转发都必须清除上一个账号留下的映射。
+// failover 复用 gin.Context 时，每次转发都必须清除上一个提供商留下的映射。
 func TestOpenAIGatewayService_ForwardClearsStaleNamespaceNames(t *testing.T) {
 	body := []byte(codexNamespaceRequestBody)
 	upstream := &auxiliaryHTTPRecorder{responses: []*http.Response{
@@ -138,7 +138,7 @@ func TestOpenAIGatewayService_ForwardClearsStaleNamespaceNames(t *testing.T) {
 	})
 
 	_, err := newOpenAIRejectedFieldTestService(upstream).Forward(
-		context.Background(), c, newOpenAIOAuthNamespaceTestAccount(), body,
+		context.Background(), c, newOpenAIOAuthNamespaceTestProvider(), body,
 	)
 
 	require.NoError(t, err)

@@ -17,8 +17,8 @@ import (
 
 	dbent "github.com/TokenFlux/TokenRouter/ent"
 
-	dbaccount "github.com/TokenFlux/TokenRouter/ent/account"
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	dbprovider "github.com/TokenFlux/TokenRouter/ent/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/stretchr/testify/require"
 )
 
@@ -78,7 +78,7 @@ func mustCreateUser(t *testing.T, client *dbent.Client, u *identity.User) *ident
 	return u
 }
 
-func mustCreateAccount(t *testing.T, client *dbent.Client, a *accountcore.Record) *accountcore.Record {
+func mustCreateProvider(t *testing.T, client *dbent.Client, a *providercore.Record) *providercore.Record {
 	t.Helper()
 	ctx := context.Background()
 
@@ -86,10 +86,10 @@ func mustCreateAccount(t *testing.T, client *dbent.Client, a *accountcore.Record
 		a.Platform = capability.PlatformAnthropic
 	}
 	if a.Type == "" {
-		a.Type = capability.AccountTypeOAuth
+		a.Type = capability.ProviderTypeOAuth
 	}
 	if a.Status == "" {
-		a.Status = accountcore.StatusActive
+		a.Status = providercore.StatusActive
 	}
 	if a.Concurrency == 0 {
 		a.Concurrency = 3
@@ -107,7 +107,7 @@ func mustCreateAccount(t *testing.T, client *dbent.Client, a *accountcore.Record
 		a.Extra = map[string]any{}
 	}
 
-	create := client.Account.Create().
+	create := client.Provider.Create().
 		SetName(a.Name).
 		SetPlatform(a.Platform).
 		SetType(a.Type).
@@ -149,15 +149,15 @@ func mustCreateAccount(t *testing.T, client *dbent.Client, a *accountcore.Record
 	if !a.UpdatedAt.IsZero() {
 		create.SetUpdatedAt(a.UpdatedAt)
 	}
-	if a.ParentAccountID != nil {
-		create.SetParentAccountID(*a.ParentAccountID)
+	if a.ParentProviderID != nil {
+		create.SetParentProviderID(*a.ParentProviderID)
 	}
 	if a.QuotaDimension != "" {
-		create.SetQuotaDimension(dbaccount.QuotaDimension(a.QuotaDimension))
+		create.SetQuotaDimension(dbprovider.QuotaDimension(a.QuotaDimension))
 	}
 
 	created, err := create.Save(ctx)
-	require.NoError(t, err, "create account")
+	require.NoError(t, err, "create provider")
 
 	a.ID = created.ID
 	a.CreatedAt = created.CreatedAt
@@ -255,8 +255,7 @@ func mustCreateGroup(t *testing.T, client *dbent.Client, g *routing.Group) *rout
 		SetStatus(g.Status).
 		SetRateMultiplier(g.RateMultiplier).
 		SetIsExclusive(g.IsExclusive).
-		SetForceOpenaiFast(g.ForceOpenAIFast).
-		SetFreeOpenaiFast(g.FreeOpenAIFast)
+		SetForceOpenaiFast(g.ForceOpenAIFast)
 	if g.Description != "" {
 		create.SetDescription(g.Description)
 	}

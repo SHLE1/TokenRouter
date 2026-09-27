@@ -18,7 +18,7 @@ func TestPricingRoutesRejectPolicyFieldsAndRemoveOldEndpoints(t *testing.T) {
 	router := gin.New()
 	handler := NewPricingHandler(nil, &routing.PricingCatalog{})
 	RegisterPricingRoutes(router.Group("/api/v1/admin"), handler)
-	for _, field := range []string{"model_mapping", "restrict_models", "features_config", "features", "apply_pricing_to_account_stats"} {
+	for _, field := range []string{"model_mapping", "restrict_models", "features_config", "features", "apply_pricing_to_provider_stats"} {
 		response := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/pricing/configs", strings.NewReader(`{"name":"price","`+field+`":null}`))
 		req.Header.Set("Content-Type", "application/json")

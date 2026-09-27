@@ -12,10 +12,10 @@ import (
 	"testing"
 	time "time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/media"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
@@ -41,7 +41,6 @@ func TestApplyCodexOAuthTransform_PreservesLiteNamespaceToolChoice(t *testing.T)
 }
 
 func TestOpenAIGatewayServiceForward_NormalizesResponsesLiteToolsForOAuth(t *testing.T) {
-
 	for _, passthrough := range []bool{false, true} {
 		name := "managed"
 		if passthrough {
@@ -62,10 +61,13 @@ func TestOpenAIGatewayServiceForward_NormalizesResponsesLiteToolsForOAuth(t *tes
 				)),
 			}}
 			svc := newResponsesFixture(responsesFixtureInputs{transport: upstream})
-			account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 501, Name: "responses-lite", Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth,
-				Concurrency: 1, Status: billing.StatusActive, Schedulable: true, RateMultiplier: new(float64(1)),
-				Credentials: map[string]any{"access_token": "oauth-token", "chatgpt_account_id": "chatgpt-account"},
-				Extra:       map[string]any{"openai_passthrough": passthrough}},
+			provider := &gatewayprovider.ExecutionProvider{
+				Record: providercore.Record{
+					LoadLocation: time.LoadLocation, ID: 501, Name: "responses-lite", Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth,
+					Concurrency: 1, Status: billing.StatusActive, Schedulable: true, RateMultiplier: new(float64(1)),
+					Credentials: map[string]any{"access_token": "oauth-token", "chatgpt_account_id": "chatgpt-provider"},
+					Extra:       map[string]any{"openai_passthrough": passthrough},
+				},
 			}
 			body := []byte(`{
 				"model":"gpt-5.6-terra","stream":true,"instructions":"test",
@@ -81,7 +83,7 @@ func TestOpenAIGatewayServiceForward_NormalizesResponsesLiteToolsForOAuth(t *tes
 				"tool_choice":{"type":"namespace","name":"collaboration"}
 			}`)
 
-			result, err := svc.Forward(context.Background(), c, account, body)
+			result, err := svc.Forward(context.Background(), c, provider, body)
 
 			require.NoError(t, err)
 			require.NotNil(t, result)
@@ -105,7 +107,7 @@ func TestOpenAIGatewayServiceForward_NormalizesResponsesLiteToolsForOAuth(t *tes
 			badUpstream := &auxiliaryHTTPRecorder{}
 			svc.Requests.Transport = badUpstream
 
-			result, err = svc.Forward(context.Background(), badCtx, account, []byte(`{"model":"gpt-5.6-terra","tools":[{"type":"function","name":"shell"}],"parallel_tool_calls":"false"}`))
+			result, err = svc.Forward(context.Background(), badCtx, provider, []byte(`{"model":"gpt-5.6-terra","tools":[{"type":"function","name":"shell"}],"parallel_tool_calls":"false"}`))
 
 			require.ErrorContains(t, err, "parallel_tool_calls to be a boolean")
 			require.Nil(t, result)
@@ -127,7 +129,7 @@ func TestOpenAIGatewayServiceForward_NormalizesResponsesLiteToolsForOAuth(t *tes
 				requestCtx.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", bytes.NewReader(nil))
 				requestCtx.Request.Header.Set(media.ResponsesLiteHeader, "true")
 
-				result, err = svc.Forward(context.Background(), requestCtx, account, []byte(malformed.body))
+				result, err = svc.Forward(context.Background(), requestCtx, provider, []byte(malformed.body))
 
 				require.Error(t, err)
 				require.Nil(t, result)
@@ -139,7 +141,6 @@ func TestOpenAIGatewayServiceForward_NormalizesResponsesLiteToolsForOAuth(t *tes
 }
 
 func TestOpenAIGatewayServiceForward_DisablesResponsesLiteParallelToolCallsForAPIKey(t *testing.T) {
-
 	for _, passthrough := range []bool{false, true} {
 		name := "managed"
 		if passthrough {
@@ -162,12 +163,15 @@ func TestOpenAIGatewayServiceForward_DisablesResponsesLiteParallelToolCallsForAP
 			cfg := &responsesFixtureOptions{}
 			cfg.Request.URLPolicy.Enabled = false
 			svc := newResponsesFixture(responsesFixtureInputs{options: cfg, transport: upstream})
-			account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 502, Name: "responses-lite-apikey", Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey,
-				Concurrency: 1, Status: billing.StatusActive, Schedulable: true, RateMultiplier: new(float64(1)),
-				Credentials: map[string]any{"api_key": "sk-test", "base_url": "https://example.com"},
-				Extra: map[string]any{
-					"openai_passthrough": passthrough,
-				}},
+			provider := &gatewayprovider.ExecutionProvider{
+				Record: providercore.Record{
+					LoadLocation: time.LoadLocation, ID: 502, Name: "responses-lite-apikey", Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey,
+					Concurrency: 1, Status: billing.StatusActive, Schedulable: true, RateMultiplier: new(float64(1)),
+					Credentials: map[string]any{"api_key": "sk-test", "base_url": "https://example.com"},
+					Extra: map[string]any{
+						"openai_passthrough": passthrough,
+					},
+				},
 			}
 			body := []byte(`{
 				"model":"gpt-5.6-terra","stream":true,
@@ -176,7 +180,7 @@ func TestOpenAIGatewayServiceForward_DisablesResponsesLiteParallelToolCallsForAP
 				"input":"hello"
 			}`)
 
-			result, err := svc.Forward(context.Background(), c, account, body)
+			result, err := svc.Forward(context.Background(), c, provider, body)
 
 			require.NoError(t, err)
 			require.NotNil(t, result)

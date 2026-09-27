@@ -58,7 +58,7 @@ type CreateUsageCleanupTaskRequest struct {
 	EndDate     string  `json:"end_date"`
 	UserID      *int64  `json:"user_id"`
 	APIKeyID    *int64  `json:"api_key_id"`
-	AccountID   *int64  `json:"account_id"`
+	ProviderID  *int64  `json:"provider_id"`
 	GroupID     *int64  `json:"group_id"`
 	TeamID      *int64  `json:"team_id"`
 	Model       *string `json:"model"`
@@ -83,7 +83,7 @@ func (h *UsageHandler) List(c *gin.Context) {
 	}
 
 	// Parse filters
-	var userID, apiKeyID, accountID, groupID, teamID int64
+	var userID, apiKeyID, providerID, groupID, teamID int64
 	if userIDStr := c.Query("user_id"); userIDStr != "" {
 		id, err := strconv.ParseInt(userIDStr, 10, 64)
 		if err != nil {
@@ -102,13 +102,13 @@ func (h *UsageHandler) List(c *gin.Context) {
 		apiKeyID = id
 	}
 
-	if accountIDStr := c.Query("account_id"); accountIDStr != "" {
-		id, err := strconv.ParseInt(accountIDStr, 10, 64)
+	if providerIDStr := c.Query("provider_id"); providerIDStr != "" {
+		id, err := strconv.ParseInt(providerIDStr, 10, 64)
 		if err != nil {
-			response.BadRequest(c, "Invalid account_id")
+			response.BadRequest(c, "Invalid provider_id")
 			return
 		}
-		accountID = id
+		providerID = id
 	}
 
 	if groupIDStr := c.Query("group_id"); groupIDStr != "" {
@@ -205,7 +205,7 @@ func (h *UsageHandler) List(c *gin.Context) {
 	filters := usage.UsageLogFilters{
 		UserID:             userID,
 		APIKeyID:           apiKeyID,
-		AccountID:          accountID,
+		ProviderID:         providerID,
 		GroupID:            groupID,
 		TeamID:             teamID,
 		RequestID:          requestID,
@@ -274,7 +274,7 @@ func usageLogClientRequestID(requestID string) string {
 // GET /api/v1/admin/usage/stats
 func (h *UsageHandler) Stats(c *gin.Context) {
 	// Parse filters - same as List endpoint
-	var userID, apiKeyID, accountID, groupID, teamID int64
+	var userID, apiKeyID, providerID, groupID, teamID int64
 	if userIDStr := c.Query("user_id"); userIDStr != "" {
 		id, err := strconv.ParseInt(userIDStr, 10, 64)
 		if err != nil {
@@ -293,13 +293,13 @@ func (h *UsageHandler) Stats(c *gin.Context) {
 		apiKeyID = id
 	}
 
-	if accountIDStr := c.Query("account_id"); accountIDStr != "" {
-		id, err := strconv.ParseInt(accountIDStr, 10, 64)
+	if providerIDStr := c.Query("provider_id"); providerIDStr != "" {
+		id, err := strconv.ParseInt(providerIDStr, 10, 64)
 		if err != nil {
-			response.BadRequest(c, "Invalid account_id")
+			response.BadRequest(c, "Invalid provider_id")
 			return
 		}
-		accountID = id
+		providerID = id
 	}
 
 	if groupIDStr := c.Query("group_id"); groupIDStr != "" {
@@ -405,7 +405,7 @@ func (h *UsageHandler) Stats(c *gin.Context) {
 	filters := usage.UsageLogFilters{
 		UserID:             userID,
 		APIKeyID:           apiKeyID,
-		AccountID:          accountID,
+		ProviderID:         providerID,
 		GroupID:            groupID,
 		TeamID:             teamID,
 		Model:              model,
@@ -601,7 +601,7 @@ func (h *UsageHandler) CreateCleanupTask(c *gin.Context) {
 		EndTime:     endTime,
 		UserID:      req.UserID,
 		APIKeyID:    req.APIKeyID,
-		AccountID:   req.AccountID,
+		ProviderID:  req.ProviderID,
 		GroupID:     req.GroupID,
 		TeamID:      req.TeamID,
 		Model:       req.Model,
@@ -618,9 +618,9 @@ func (h *UsageHandler) CreateCleanupTask(c *gin.Context) {
 	if filters.APIKeyID != nil {
 		apiKeyID = *filters.APIKeyID
 	}
-	var accountID any
-	if filters.AccountID != nil {
-		accountID = *filters.AccountID
+	var providerID any
+	if filters.ProviderID != nil {
+		providerID = *filters.ProviderID
 	}
 	var groupID any
 	if filters.GroupID != nil {
@@ -651,13 +651,13 @@ func (h *UsageHandler) CreateCleanupTask(c *gin.Context) {
 		Body:       req,
 	}
 	h.ExecuteAdminIdempotentJSON(c, "admin.usage.cleanup_tasks.create", idempotencyPayload, h.DefaultWriteIdempotencyTTL(), func(ctx context.Context) (any, error) {
-		logger.LegacyPrintf("handler.admin.usage", "[UsageCleanup] 请求创建清理任务: operator=%d start=%s end=%s user_id=%v api_key_id=%v account_id=%v group_id=%v model=%v request_type=%v stream=%v billing_type=%v tz=%q",
+		logger.LegacyPrintf("handler.admin.usage", "[UsageCleanup] 请求创建清理任务: operator=%d start=%s end=%s user_id=%v api_key_id=%v provider_id=%v group_id=%v model=%v request_type=%v stream=%v billing_type=%v tz=%q",
 			subject.UserID,
 			filters.StartTime.Format(time.RFC3339),
 			filters.EndTime.Format(time.RFC3339),
 			userID,
 			apiKeyID,
-			accountID,
+			providerID,
 			groupID,
 			model,
 			requestTypeName,

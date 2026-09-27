@@ -88,10 +88,10 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true, requiresAdmin: true, title: 'Groups' }
   },
   {
-    path: '/admin/accounts',
-    name: 'AdminAccounts',
-    component: () => import('@/views/admin/AccountsView.vue'),
-    meta: { requiresAuth: true, requiresAdmin: true, title: 'Accounts' }
+    path: '/admin/providers',
+    name: 'AdminProviders',
+    component: () => import('@/views/admin/ProvidersView.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true, title: 'Providers' }
   },
   {
     path: '/admin/proxies',
@@ -211,7 +211,7 @@ import { AppLayout } from '@/components/layout'
 
     <template #footer>
       <p class="text-gray-600">
-        Don't have an account?
+        Don't have an provider?
         <router-link to="/register" class="text-indigo-600 hover:underline"> Sign up </router-link>
       </p>
     </template>

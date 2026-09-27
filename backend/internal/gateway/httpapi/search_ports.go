@@ -19,9 +19,9 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 	"github.com/TokenFlux/TokenRouter/internal/moderation"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/server/clientip"
 
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
@@ -32,13 +32,13 @@ import (
 	"go.uber.org/zap"
 )
 
-// StandaloneSearchTarget 仅保留本次已选账号的受控执行与完成快照能力。
+// StandaloneSearchTarget 仅保留本次已选提供商的受控执行与完成快照能力。
 type StandaloneSearchTarget interface {
-	CompletionRecord() *accountcore.Record
+	CompletionRecord() *providercore.Record
 	Execute(context.Context, []byte) ([]byte, error)
 }
 
-// StandaloneSearchSelector 不向 HTTP 暴露旧账号实体或完整网关服务。
+// StandaloneSearchSelector 不向 HTTP 暴露旧提供商实体或完整网关服务。
 type StandaloneSearchSelector interface {
 	Select(context.Context, int64, string, map[int64]struct{}) (StandaloneSearchTarget, searchtools.Selection, bool, error)
 }
@@ -96,11 +96,11 @@ func (p SearchPorts) Run(c *gin.Context, groupID int64, isX bool) SearchHTTPRun 
 }
 
 func (p SearchPorts) ConcurrencyError(c *gin.Context, err error) {
-	status, kind, code, message := ConcurrencyErrorResponse(err, "account")
+	status, kind, code, message := ConcurrencyErrorResponse(err, "provider")
 	WriteAnthropicStreamError(c, status, kind, code, message, false, MarkOpsStreamError)
 }
 
-// 当前账号仅在当前 HTTP Adapter 内用于执行和同步快照，不进入核心或后台闭包。
+// 当前提供商仅在当前 HTTP Adapter 内用于执行和同步快照，不进入核心或后台闭包。
 type gatewayStandaloneSearchRun struct {
 	ports   SearchPorts
 	c       *gin.Context
@@ -120,7 +120,7 @@ func (r *gatewayStandaloneSearchRun) Select(ctx context.Context, model string, e
 
 func (r *gatewayStandaloneSearchRun) CanSwitch(err error) bool {
 	var failure *forwardcore.UpstreamFailoverError
-	return errors.As(err, &failure) && failure.ShouldRetryNextAccount()
+	return errors.As(err, &failure) && failure.ShouldRetryNextProvider()
 }
 
 func (r *gatewayStandaloneSearchRun) Execute(ctx context.Context, _ int64, request searchtools.StandaloneRequest, model string, maxResults int) (*contract.SearchResponse, string, error) {
@@ -143,16 +143,16 @@ func (r *gatewayStandaloneSearchRun) Acquire(ctx context.Context, selected searc
 		return nil, false, nil
 	}
 	counted := false
-	wait, err := r.ports.Concurrency.EnterAccountWait(ctx, selected.AccountID, selected.WaitPlan.MaxWaiting)
+	wait, err := r.ports.Concurrency.EnterProviderWait(ctx, selected.ProviderID, selected.WaitPlan.MaxWaiting)
 	if err != nil {
-		logging.L().Warn("gateway.web_search.account_wait_counter_increment_failed", zap.Int64("account_id", selected.AccountID), zap.Error(err))
+		logging.L().Warn("gateway.web_search.provider_wait_counter_increment_failed", zap.Int64("provider_id", selected.ProviderID), zap.Error(err))
 	} else if !wait.Allowed {
 		return nil, false, nil
 	} else {
 		counted = true
 	}
 	streamStarted := false
-	release, err := r.ports.Concurrency.AcquireAccountSlotWithWaitTimeout(r.c, selected.AccountID, selected.WaitPlan.MaxConcurrency, selected.WaitPlan.Timeout, false, &streamStarted)
+	release, err := r.ports.Concurrency.AcquireProviderSlotWithWaitTimeout(r.c, selected.ProviderID, selected.WaitPlan.MaxConcurrency, selected.WaitPlan.Timeout, false, &streamStarted)
 	if counted {
 		wait.Release()
 	}
@@ -164,7 +164,7 @@ func (r *gatewayStandaloneSearchRun) Acquire(ctx context.Context, selected searc
 
 func (r *gatewayStandaloneSearchRun) Complete(c *gin.Context, req searchtools.StandaloneRequest, _ searchtools.StandaloneResult, isXSearch bool) {
 	ports := r.ports
-	account := r.target.CompletionRecord()
+	provider := r.target.CompletionRecord()
 	apiKey, _ := keyhttp.GetAPIKeyFromContext(c)
 	subscription, _ := SubscriptionFromContext(c)
 	searchLabel := "web_search"
@@ -174,7 +174,7 @@ func (r *gatewayStandaloneSearchRun) Complete(c *gin.Context, req searchtools.St
 	userAgent := c.GetHeader("User-Agent")
 	clientIP := clientip.GetClientIP(c)
 	inboundEndpoint := GetInboundEndpoint(c)
-	upstreamEndpoint := GetUpstreamEndpoint(c, account.Platform)
+	upstreamEndpoint := GetUpstreamEndpoint(c, provider.Platform)
 	requestPayloadHash := billing.HashUsageRequestPayload([]byte(req.Query))
 
 	// request ID 是结算幂等键，必须按调用唯一；查询、IP 或 UA 哈希会错误合并重复搜索。
@@ -189,7 +189,7 @@ func (r *gatewayStandaloneSearchRun) Complete(c *gin.Context, req searchtools.St
 		},
 		APIKey:             apiKey,
 		User:               apiKey.User,
-		Account:            account,
+		Provider:           provider,
 		Subscription:       subscription,
 		InboundEndpoint:    inboundEndpoint,
 		UpstreamEndpoint:   upstreamEndpoint,
@@ -205,7 +205,7 @@ func (r *gatewayStandaloneSearchRun) Complete(c *gin.Context, req searchtools.St
 				zap.String("component", "handler.gateway.web_search"),
 				zap.Int64("user_id", completionInput.User.ID),
 				zap.Int64("api_key_id", completionInput.APIKey.ID),
-				zap.Int64("account_id", completionInput.Account.ID),
+				zap.Int64("provider_id", completionInput.Provider.ID),
 			).Error("gateway.web_search.record_usage_failed", zap.Error(err))
 		}
 	})

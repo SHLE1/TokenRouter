@@ -13,9 +13,9 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	upstreamcore "github.com/TokenFlux/TokenRouter/internal/upstream"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
@@ -26,29 +26,28 @@ import (
 
 func TestIsOpenAIOAuthLike(t *testing.T) {
 	tests := []struct {
-		name    string
-		account *gatewayprovider.ExecutionAccount
-		want    bool
-		codex   bool
+		name     string
+		provider *gatewayprovider.ExecutionProvider
+		want     bool
+		codex    bool
 	}{
-		{name: "openai_oauth", account: &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeOAuth}}, want: true, codex: true},
-		{name: "openai_setup_token", account: &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeSetupToken}}, want: true, codex: true},
-		{name: "openai_api_key", account: &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey}}, want: false, codex: false},
-		{name: "anthropic_setup_token", account: &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAnthropic, Type: capability.AccountTypeSetupToken}}, want: false, codex: false},
-		{name: "grok_setup_token", account: &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformGrok, Type: capability.AccountTypeSetupToken}}, want: false, codex: false},
-		{name: "nil", account: nil, want: false, codex: false},
+		{name: "openai_oauth", provider: &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}}, want: true, codex: true},
+		{name: "openai_setup_token", provider: &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeSetupToken}}, want: true, codex: true},
+		{name: "openai_api_key", provider: &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}, want: false, codex: false},
+		{name: "anthropic_setup_token", provider: &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAnthropic, Type: capability.ProviderTypeSetupToken}}, want: false, codex: false},
+		{name: "grok_setup_token", provider: &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformGrok, Type: capability.ProviderTypeSetupToken}}, want: false, codex: false},
+		{name: "nil", provider: nil, want: false, codex: false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.want, tt.account.View().IsOpenAIOAuthLike())
-			require.Equal(t, tt.codex, tt.account.View().UsesOpenAICodexProtocol())
+			require.Equal(t, tt.want, tt.provider.View().IsOpenAIOAuthLike())
+			require.Equal(t, tt.codex, tt.provider.View().UsesOpenAICodexProtocol())
 		})
 	}
 }
 
 func TestOpenAISetupTokenChatCompletionsUsesCodexTransform(t *testing.T) {
-
 	body := []byte(`{"model":"gpt-5.4","messages":[{"role":"system","content":"setup instructions"},{"role":"user","content":"hello"}],"stream":false}`)
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -61,9 +60,9 @@ func TestOpenAISetupTokenChatCompletionsUsesCodexTransform(t *testing.T) {
 		Body:       io.NopCloser(strings.NewReader(`{"error":{"type":"invalid_request_error","message":"stop after request capture"}}`)),
 	}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: &responsesFixtureOptions{}, transport: upstream})
-	account := openAISetupTokenCompatAccount(71)
+	provider := openAISetupTokenCompatProvider(71)
 
-	result, err := svc.Text.Chat(context.Background(), c, account, body, "", "gpt-5.4")
+	result, err := svc.Text.Chat(context.Background(), c, provider, body, "", "gpt-5.4")
 
 	require.Error(t, err)
 	require.Nil(t, result)
@@ -79,7 +78,6 @@ func TestOpenAISetupTokenChatCompletionsUsesCodexTransform(t *testing.T) {
 }
 
 func TestOpenAISetupTokenMessagesUsesCodexBridgeAndTurnState(t *testing.T) {
-
 	firstResp := openAICompatSSECompletedResponse("resp_setup_first", "gpt-5.4")
 	firstResp.Header.Set("x-codex-turn-state", "turn_state_setup")
 	upstream := &auxiliaryHTTPRecorder{responses: []*http.Response{
@@ -87,7 +85,7 @@ func TestOpenAISetupTokenMessagesUsesCodexBridgeAndTurnState(t *testing.T) {
 		openAICompatSSECompletedResponse("resp_setup_second", "gpt-5.4"),
 	}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: &responsesFixtureOptions{Request: OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{Enabled: false}}}, transport: upstream})
-	account := openAISetupTokenCompatAccount(72)
+	provider := openAISetupTokenCompatProvider(72)
 
 	messages := make([]string, 0, 12+3)
 	for i := 0; i < 12+3; i++ {
@@ -99,7 +97,7 @@ func TestOpenAISetupTokenMessagesUsesCodexBridgeAndTurnState(t *testing.T) {
 	firstCtx.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", bytes.NewReader(firstBody))
 	firstCtx.Request.Header.Set("Content-Type", "application/json")
 
-	firstResult, err := svc.Text.Messages(context.Background(), firstCtx, account, firstBody, "stable-cache-key", "gpt-5.4")
+	firstResult, err := svc.Text.Messages(context.Background(), firstCtx, provider, firstBody, "stable-cache-key", "gpt-5.4")
 
 	require.NoError(t, err)
 	require.NotNil(t, firstResult)
@@ -121,26 +119,29 @@ func TestOpenAISetupTokenMessagesUsesCodexBridgeAndTurnState(t *testing.T) {
 	secondCtx.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", bytes.NewReader(secondBody))
 	secondCtx.Request.Header.Set("Content-Type", "application/json")
 
-	secondResult, err := svc.Text.Messages(context.Background(), secondCtx, account, secondBody, "stable-cache-key", "gpt-5.4")
+	secondResult, err := svc.Text.Messages(context.Background(), secondCtx, provider, secondBody, "stable-cache-key", "gpt-5.4")
 
 	require.NoError(t, err)
 	require.NotNil(t, secondResult)
 	require.True(t, IsOpenAICompatMessagesBridgeContext(secondCtx))
 	require.Equal(t, "turn_state_setup", upstream.requests[1].Header.Get("x-codex-turn-state"))
-	require.Equal(t, upstreamcore.GenerateSessionUUID(openai.IsolateOpenAIUpstreamSessionID(0, accountprovider.CodexIdentityNamespace(account.View()), "stable-cache-key")), upstream.requests[1].Header.Get("session_id"))
+	require.Equal(t, upstreamcore.GenerateSessionUUID(openai.IsolateOpenAIUpstreamSessionID(0, provideradapter.CodexIdentityNamespace(provider.View()), "stable-cache-key")), upstream.requests[1].Header.Get("session_id"))
 	require.Empty(t, upstream.requests[1].Header.Get("conversation_id"))
 	requireOpenAIMessagesCodexIdentity(t, upstream.requests[1], openai.CodexCLIUserAgent, "codex-tui")
 }
 
-func openAISetupTokenCompatAccount(id int64) *gatewayprovider.ExecutionAccount {
-	return &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: id,
-		Name:        "openai-setup-token",
-		Platform:    capability.PlatformOpenAI,
-		Type:        capability.AccountTypeSetupToken,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"access_token":       "setup-token-value",
-			"chatgpt_account_id": "chatgpt-setup",
-		}},
+func openAISetupTokenCompatProvider(id int64) *gatewayprovider.ExecutionProvider {
+	return &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: id,
+			Name:        "openai-setup-token",
+			Platform:    capability.PlatformOpenAI,
+			Type:        capability.ProviderTypeSetupToken,
+			Concurrency: 1,
+			Credentials: map[string]any{
+				"access_token":       "setup-token-value",
+				"chatgpt_account_id": "chatgpt-setup",
+			},
+		},
 	}
 }

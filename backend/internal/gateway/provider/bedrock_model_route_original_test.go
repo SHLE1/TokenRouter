@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/bedrock"
 	"github.com/stretchr/testify/require"
@@ -38,7 +38,7 @@ func TestResolveBedrockModelRoute_RegionMatrix(t *testing.T) {
 		{name: "裸基础 ID 选择已核实地域", model: "anthropic.claude-haiku-4-5-20251001-v1:0", region: "us-east-1", want: "us.anthropic.claude-haiku-4-5-20251001-v1:0"},
 		{name: "显式基础 ID 保留已支持的单区域调用", model: "anthropic.claude-opus-4-6-v1", region: "eu-west-2", want: "anthropic.claude-opus-4-6-v1"},
 		{name: "单区域基础 ID 仍受全局开关控制", model: "anthropic.claude-opus-4-6-v1", region: "eu-west-2", global: true, want: "global.anthropic.claude-opus-4-6-v1"},
-		{name: "显式已知前缀遵守账号区域", model: "us.anthropic.claude-opus-4-7", region: "eu-west-1", want: "eu.anthropic.claude-opus-4-7"},
+		{name: "显式已知前缀遵守提供商区域", model: "us.anthropic.claude-opus-4-7", region: "eu-west-1", want: "eu.anthropic.claude-opus-4-7"},
 		{name: "Fable 裸模型全局", model: "claude-fable-5-1", region: "eu-west-1", global: true, want: "global.anthropic.claude-fable-5-1"},
 		{name: "Fable 欧洲地域不可用", model: "claude-fable-5", region: "eu-west-1", failure: bedrock.BedrockRoutingUnsupportedRegion, globalHint: true},
 		{name: "型号无全局能力", model: "claude-opus-4-1", region: "us-east-1", global: true, failure: bedrock.BedrockRoutingUnsupportedRegion},
@@ -52,13 +52,13 @@ func TestResolveBedrockModelRoute_RegionMatrix(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			account := &accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAnthropic, Type: capability.AccountTypeBedrock, Credentials: map[string]any{"aws_region": tc.region}}
+			provider := &providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAnthropic, Type: capability.ProviderTypeBedrock, Credentials: map[string]any{"aws_region": tc.region}}
 			if tc.global {
-				account.Credentials["aws_force_global"] = "true"
+				provider.Credentials["aws_force_global"] = "true"
 			}
-			route, err := (ModelPolicy{Record: account}).BedrockRoute(tc.model)
+			route, err := (ModelPolicy{Record: provider}).BedrockRoute(tc.model)
 			require.Equal(t, tc.region, route.SourceRegion)
-			modelID, ok := (ModelPolicy{Record: account}).Bedrock(tc.model)
+			modelID, ok := (ModelPolicy{Record: provider}).Bedrock(tc.model)
 			require.Equal(t, err == nil, ok)
 			require.Equal(t, route.ModelID, modelID)
 			if tc.failure == "" {
@@ -81,8 +81,8 @@ func TestResolveBedrockModelRoute_RegionMatrix(t *testing.T) {
 	}
 }
 
-// 显式资源标识保持透传；此处特意覆盖旧错误后缀，确保不会引入历史账号迁移兼容。
-func TestResolveBedrockModelRoute_OpaqueIDsAndAccountMapping(t *testing.T) {
+// 显式资源标识保持透传；此处特意覆盖旧错误后缀，确保不会引入历史提供商迁移兼容。
+func TestResolveBedrockModelRoute_OpaqueIDsAndProviderMapping(t *testing.T) {
 	t.Parallel()
 	for _, modelID := range []string{
 		"arn:aws:bedrock:us-east-1:123456789012:application-inference-profile/abc",
@@ -91,29 +91,29 @@ func TestResolveBedrockModelRoute_OpaqueIDsAndAccountMapping(t *testing.T) {
 		"us.anthropic.claude-opus-5-v1",
 	} {
 		t.Run(modelID, func(t *testing.T) {
-			account := &accountcore.Record{LoadLocation: time.LoadLocation, Credentials: map[string]any{
+			provider := &providercore.Record{LoadLocation: time.LoadLocation, Credentials: map[string]any{
 				"aws_region": "eu-west-1", "aws_force_global": "true",
 				"model_mapping": map[string]any{"client-alias": modelID},
 			}}
-			before, err := json.Marshal(account.Credentials)
+			before, err := json.Marshal(provider.Credentials)
 			require.NoError(t, err)
-			route, err := (ModelPolicy{Record: account}).BedrockRoute("client-alias")
+			route, err := (ModelPolicy{Record: provider}).BedrockRoute("client-alias")
 			require.NoError(t, err)
 			require.Equal(t, modelID, route.ModelID)
-			after, err := json.Marshal(account.Credentials)
+			after, err := json.Marshal(provider.Credentials)
 			require.NoError(t, err)
 			require.Equal(t, before, after)
 		})
 	}
-	account := &accountcore.Record{LoadLocation: time.LoadLocation, Credentials: map[string]any{
+	provider := &providercore.Record{LoadLocation: time.LoadLocation, Credentials: map[string]any{
 		"aws_region":    " ap-northeast-3 ",
 		"model_mapping": map[string]any{"client-*": "claude-opus-4-7"},
 	}}
-	route, err := (ModelPolicy{Record: account}).BedrockRoute("client-alias")
+	route, err := (ModelPolicy{Record: provider}).BedrockRoute("client-alias")
 	require.NoError(t, err)
 	require.Equal(t, "ap-northeast-3", route.SourceRegion)
 	require.Equal(t, "jp.anthropic.claude-opus-4-7", route.ModelID)
-	route, err = (ModelPolicy{Record: &accountcore.Record{LoadLocation: time.LoadLocation}}).BedrockRoute("claude-opus-5")
+	route, err = (ModelPolicy{Record: &providercore.Record{LoadLocation: time.LoadLocation}}).BedrockRoute("claude-opus-5")
 	require.NoError(t, err)
 	require.Equal(t, bedrock.DefaultBedrockRegion, route.SourceRegion)
 	_, err = (ModelPolicy{Record: nil}).BedrockRoute("claude-opus-5")

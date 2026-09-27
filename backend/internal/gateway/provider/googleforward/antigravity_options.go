@@ -5,10 +5,10 @@ import (
 	"io"
 	"net/http"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/logredact"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/antigravity"
 )
 
@@ -52,13 +52,13 @@ func (s *Antigravity) getUpstreamErrorDetail(body []byte) string {
 }
 
 // getMappedModel 获取映射后的模型名
-// 完全依赖映射配置：账户映射（通配符）→ 默认映射兜底
-func (s *Antigravity) getMappedModel(account *gatewayprovider.ExecutionAccount, requestedModel string) string {
-	return accountprovider.MapAntigravityModel(gatewayprovider.ExecutionRecord(account), requestedModel)
+// 完全依赖映射配置：提供商映射（通配符）→ 默认映射兜底
+func (s *Antigravity) getMappedModel(provider *gatewayprovider.ExecutionProvider, requestedModel string) string {
+	return provideradapter.MapAntigravityModel(gatewayprovider.ExecutionRecord(provider), requestedModel)
 }
 
-func resolveAntigravityProjectID(account *gatewayprovider.ExecutionAccount) (string, error) {
-	return accountcore.ResolveAntigravityProjectID(gatewayprovider.ExecutionRecord(account), antigravity.ErrProjectIDRequired)
+func resolveAntigravityProjectID(provider *gatewayprovider.ExecutionProvider) (string, error) {
+	return providercore.ResolveAntigravityProjectID(gatewayprovider.ExecutionRecord(provider), antigravity.ErrProjectIDRequired)
 }
 
 func (s *Antigravity) getClaudeTransformOptions(ctx context.Context) antigravity.TransformOptions {

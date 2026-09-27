@@ -27,9 +27,9 @@ const (
 	opsMetricsCollectorHeartbeatTimeout = 2 * time.Second
 )
 
-// opsSchedulableAccountLoadRepository 是 Ops 采样可选使用的轻量账号投影能力。
-type opsSchedulableAccountLoadRepository interface {
-	ListSchedulableAccountLoads(ctx context.Context) ([]AccountWithConcurrency, error)
+// opsSchedulableProviderLoadRepository 是 Ops 采样可选使用的轻量提供商投影能力。
+type opsSchedulableProviderLoadRepository interface {
+	ListSchedulableProviderLoads(ctx context.Context) ([]ProviderWithConcurrency, error)
 }
 
 type OpsMetricsCollector struct {
@@ -40,7 +40,7 @@ type OpsMetricsCollector struct {
 	settingRepo      Settings
 	cfg              *Options
 
-	accountRepo        AccountLoadSource
+	providerRepo       ProviderLoadSource
 	concurrencyService ConcurrencyReader
 
 	db          MetricsSource
@@ -60,7 +60,7 @@ type OpsMetricsCollector struct {
 func NewOpsMetricsCollector(
 	opsRepo OpsRepository,
 	settingRepo Settings,
-	accountRepo AccountLoadSource,
+	providerRepo ProviderLoadSource,
 	concurrencyService ConcurrencyReader,
 	db MetricsSource,
 	redisClient RuntimeCache,
@@ -71,7 +71,7 @@ func NewOpsMetricsCollector(
 		opsRepo:            opsRepo,
 		settingRepo:        settingRepo,
 		cfg:                cfg,
-		accountRepo:        accountRepo,
+		providerRepo:       providerRepo,
 		concurrencyService: concurrencyService,
 		db:                 db,
 		redisClient:        redisClient,
@@ -114,7 +114,6 @@ func (c *OpsMetricsCollector) Stop() {
 	})
 	c.lifecycleMu.Unlock()
 	c.loopWG.Wait()
-
 }
 
 func (c *OpsMetricsCollector) run() {
@@ -297,9 +296,9 @@ func (c *OpsMetricsCollector) collectAndPersist(ctx context.Context) error {
 		return fmt.Errorf("query error counts: %w", err)
 	}
 
-	accountSwitchCount, err := c.db.QueryAccountSwitchCount(ctx, windowStart, windowEnd)
+	providerSwitchCount, err := c.db.QueryProviderSwitchCount(ctx, windowStart, windowEnd)
 	if err != nil {
-		return fmt.Errorf("query account switch counts: %w", err)
+		return fmt.Errorf("query provider switch counts: %w", err)
 	}
 
 	windowSeconds := windowEnd.Sub(windowStart).Seconds()
@@ -326,10 +325,10 @@ func (c *OpsMetricsCollector) collectAndPersist(ctx context.Context) error {
 		Upstream429Count:             upstream429,
 		Upstream529Count:             upstream529,
 
-		TokenConsumed:      tokenConsumed,
-		AccountSwitchCount: accountSwitchCount,
-		QPS:                float64Ptr(RoundTo1DP(qps)),
-		TPS:                float64Ptr(RoundTo1DP(tps)),
+		TokenConsumed:       tokenConsumed,
+		ProviderSwitchCount: providerSwitchCount,
+		QPS:                 float64Ptr(RoundTo1DP(qps)),
+		TPS:                 float64Ptr(RoundTo1DP(tps)),
 
 		DurationP50Ms: duration.P50,
 		DurationP90Ms: duration.P90,
@@ -379,7 +378,7 @@ func (c *OpsMetricsCollector) collectAndPersist(ctx context.Context) error {
 }
 
 func (c *OpsMetricsCollector) collectConcurrencyQueueDepth(parentCtx context.Context) *int {
-	if c == nil || c.accountRepo == nil || c.concurrencyService == nil {
+	if c == nil || c.providerRepo == nil || c.concurrencyService == nil {
 		return nil
 	}
 	if parentCtx == nil {
@@ -390,16 +389,16 @@ func (c *OpsMetricsCollector) collectConcurrencyQueueDepth(parentCtx context.Con
 	ctx, cancel := context.WithTimeout(parentCtx, 2*time.Second)
 	defer cancel()
 
-	accountLoads, err := c.listSchedulableAccountLoads(ctx)
+	providerLoads, err := c.listSchedulableProviderLoads(ctx)
 	if err != nil {
 		return nil
 	}
-	if len(accountLoads) == 0 {
+	if len(providerLoads) == 0 {
 		zero := 0
 		return &zero
 	}
 
-	loadMap, err := c.concurrencyService.GetAccountsLoadBatch(ctx, accountLoads)
+	loadMap, err := c.concurrencyService.GetProvidersLoadBatch(ctx, providerLoads)
 	if err != nil {
 		return nil
 	}
@@ -423,24 +422,24 @@ func (c *OpsMetricsCollector) collectConcurrencyQueueDepth(parentCtx context.Con
 	return &v
 }
 
-// listSchedulableAccountLoads 优先使用轻量投影，不支持时保持原仓储回退语义。
-func (c *OpsMetricsCollector) listSchedulableAccountLoads(ctx context.Context) ([]AccountWithConcurrency, error) {
-	if repo, ok := c.accountRepo.(opsSchedulableAccountLoadRepository); ok {
-		return repo.ListSchedulableAccountLoads(ctx)
+// listSchedulableProviderLoads 优先使用轻量投影，不支持时保持原仓储回退语义。
+func (c *OpsMetricsCollector) listSchedulableProviderLoads(ctx context.Context) ([]ProviderWithConcurrency, error) {
+	if repo, ok := c.providerRepo.(opsSchedulableProviderLoadRepository); ok {
+		return repo.ListSchedulableProviderLoads(ctx)
 	}
 
-	accounts, err := c.accountRepo.ListSchedulable(ctx)
+	providers, err := c.providerRepo.ListSchedulable(ctx)
 	if err != nil {
 		return nil, err
 	}
-	loads := make([]AccountWithConcurrency, 0, len(accounts))
-	for _, account := range accounts {
-		if account.ID <= 0 {
+	loads := make([]ProviderWithConcurrency, 0, len(providers))
+	for _, provider := range providers {
+		if provider.ID <= 0 {
 			continue
 		}
-		loads = append(loads, AccountWithConcurrency{
-			ID:             account.ID,
-			MaxConcurrency: account.EffectiveLoadFactor(),
+		loads = append(loads, ProviderWithConcurrency{
+			ID:             provider.ID,
+			MaxConcurrency: provider.EffectiveLoadFactor(),
 		})
 	}
 	return loads, nil

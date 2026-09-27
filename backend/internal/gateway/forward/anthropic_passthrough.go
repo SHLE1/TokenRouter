@@ -10,7 +10,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// APIKeyPassthrough 保留已选账号的响应判断与部分用量；交换和原生流仍由 upstream 唯一实现。
+// APIKeyPassthrough 保留已选提供商的响应判断与部分用量；交换和原生流仍由 upstream 唯一实现。
 func APIKeyPassthrough(ctx context.Context, p PassthroughPorts, in MessageInput, input APIKeyInput) (*Result, error) {
 	done, err := p.Begin()
 	if err != nil {
@@ -27,8 +27,8 @@ func APIKeyPassthrough(ctx context.Context, p PassthroughPorts, in MessageInput,
 
 	p.ResolveProxy()
 
-	p.Log(fmt.Sprintf("[Anthropic 自动透传] 命中 API Key 透传分支: account=%d name=%s model=%s stream=%v",
-		in.AccountID, in.AccountName, input.RequestModel, input.RequestStream))
+	p.Log(fmt.Sprintf("[Anthropic 自动透传] 命中 API Key 透传分支: provider=%d name=%s model=%s stream=%v",
+		in.ProviderID, in.ProviderName, input.RequestModel, input.RequestStream))
 
 	p.MarkPassthrough()
 
@@ -56,8 +56,8 @@ func APIKeyPassthrough(ctx context.Context, p PassthroughPorts, in MessageInput,
 				respBody, _ := p.ReadErrorBody()
 				p.ResetErrorBody(respBody)
 
-				p.Log(fmt.Sprintf("[Anthropic Passthrough] Upstream error (retry exhausted, failover): Account=%d(%s) Status=%d RequestID=%s Body=%s",
-					in.AccountID, in.AccountName, resp.StatusCode, resp.RequestID, p.Truncate(string(respBody), 1000)))
+				p.Log(fmt.Sprintf("[Anthropic Passthrough] Upstream error (retry exhausted, failover): Provider=%d(%s) Status=%d RequestID=%s Body=%s",
+					in.ProviderID, in.ProviderName, resp.StatusCode, resp.RequestID, p.Truncate(string(respBody), 1000)))
 
 				decision := p.Health(ctx, "retry", resp.StatusCode, resp.Headers, respBody, input.RequestModel)
 				if decision.Generic {
@@ -65,8 +65,8 @@ func APIKeyPassthrough(ctx context.Context, p PassthroughPorts, in MessageInput,
 				}
 				p.Observe(Notice{
 					Platform:           in.Platform,
-					AccountID:          in.AccountID,
-					AccountName:        in.AccountName,
+					ProviderID:         in.ProviderID,
+					ProviderName:       in.ProviderName,
 					UpstreamStatusCode: resp.StatusCode,
 					UpstreamRequestID:  resp.RequestID,
 					Passthrough:        true,
@@ -79,7 +79,7 @@ func APIKeyPassthrough(ctx context.Context, p PassthroughPorts, in MessageInput,
 						return ""
 					}(),
 				})
-				return true, p.FailoverError(resp.StatusCode, respBody, decision.RetrySameAccount)
+				return true, p.FailoverError(resp.StatusCode, respBody, decision.RetrySameProvider)
 			}
 			return early(p.HandleError(ctx, input.RequestModel, true))
 		}
@@ -88,8 +88,8 @@ func APIKeyPassthrough(ctx context.Context, p PassthroughPorts, in MessageInput,
 			respBody, _ := p.ReadErrorBody()
 			p.ResetErrorBody(respBody)
 
-			p.Log(fmt.Sprintf("[Anthropic Passthrough] Upstream error (failover): Account=%d(%s) Status=%d RequestID=%s Body=%s",
-				in.AccountID, in.AccountName, resp.StatusCode, resp.RequestID, p.Truncate(string(respBody), 1000)))
+			p.Log(fmt.Sprintf("[Anthropic Passthrough] Upstream error (failover): Provider=%d(%s) Status=%d RequestID=%s Body=%s",
+				in.ProviderID, in.ProviderName, resp.StatusCode, resp.RequestID, p.Truncate(string(respBody), 1000)))
 
 			decision := p.Health(ctx, "failover", resp.StatusCode, resp.Headers, respBody, input.RequestModel)
 			if decision.Generic {
@@ -97,8 +97,8 @@ func APIKeyPassthrough(ctx context.Context, p PassthroughPorts, in MessageInput,
 			}
 			p.Observe(Notice{
 				Platform:           in.Platform,
-				AccountID:          in.AccountID,
-				AccountName:        in.AccountName,
+				ProviderID:         in.ProviderID,
+				ProviderName:       in.ProviderName,
 				UpstreamStatusCode: resp.StatusCode,
 				UpstreamRequestID:  resp.RequestID,
 				Passthrough:        true,
@@ -111,7 +111,7 @@ func APIKeyPassthrough(ctx context.Context, p PassthroughPorts, in MessageInput,
 					return ""
 				}(),
 			})
-			return true, p.FailoverError(resp.StatusCode, respBody, decision.RetrySameAccount)
+			return true, p.FailoverError(resp.StatusCode, respBody, decision.RetrySameProvider)
 		}
 
 		if resp.StatusCode >= 400 {

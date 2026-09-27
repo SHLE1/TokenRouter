@@ -24,7 +24,7 @@ func (r *dashboardUsageRepoCacheProbe) GetUsageTrendWithFilters(
 	ctx context.Context,
 	startTime, endTime time.Time,
 	granularity string,
-	userID, apiKeyID, accountID, groupID int64,
+	userID, apiKeyID, providerID, groupID int64,
 	model string,
 	requestType *int16,
 	stream *bool,
@@ -59,7 +59,6 @@ func (r *dashboardUsageRepoCacheProbe) GetUserUsageTrend(
 }
 
 func resetDashboardReadCachesForTest() {
-
 	dashboardSnapshotV2Cache = newSnapshotCache(30 * time.Second)
 }
 

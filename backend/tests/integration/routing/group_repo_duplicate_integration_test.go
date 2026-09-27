@@ -25,14 +25,14 @@ func TestCreateGroupFromSourceRollsBackWhenOutboxInsertFails(t *testing.T) {
 		SetName(fmt.Sprintf("duplicate-rollback-source-%d", suffix)).
 		Save(ctx)
 	require.NoError(t, err)
-	account, err := client.Account.Create().
-		SetName(fmt.Sprintf("duplicate-rollback-account-%d", suffix)).
+	provider, err := client.Provider.Create().
+		SetName(fmt.Sprintf("duplicate-rollback-provider-%d", suffix)).
 		SetPlatform(capability.PlatformAnthropic).
-		SetType(capability.AccountTypeOAuth).
+		SetType(capability.ProviderTypeOAuth).
 		Save(ctx)
 	require.NoError(t, err)
-	_, err = client.AccountGroup.Create().
-		SetAccountID(account.ID).
+	_, err = client.ProviderGroup.Create().
+		SetProviderID(provider.ID).
 		SetGroupID(source.ID).
 		Save(ctx)
 	require.NoError(t, err)
@@ -64,8 +64,8 @@ func TestCreateGroupFromSourceRollsBackWhenOutboxInsertFails(t *testing.T) {
 		_, _ = integrationDB.ExecContext(context.Background(), fmt.Sprintf("DROP TRIGGER IF EXISTS %s ON scheduler_outbox", triggerName))
 		_, _ = integrationDB.ExecContext(context.Background(), fmt.Sprintf("DROP FUNCTION IF EXISTS %s()", functionName))
 		_, _ = integrationDB.ExecContext(context.Background(), "DELETE FROM scheduler_outbox WHERE group_id = $1", source.ID)
-		_, _ = integrationDB.ExecContext(context.Background(), "DELETE FROM account_groups WHERE account_id = $1", account.ID)
-		_, _ = integrationDB.ExecContext(context.Background(), "DELETE FROM accounts WHERE id = $1", account.ID)
+		_, _ = integrationDB.ExecContext(context.Background(), "DELETE FROM provider_groups WHERE provider_id = $1", provider.ID)
+		_, _ = integrationDB.ExecContext(context.Background(), "DELETE FROM providers WHERE id = $1", provider.ID)
 		_, _ = integrationDB.ExecContext(context.Background(), "DELETE FROM groups WHERE name IN ($1, $2)", source.Name, duplicateName)
 	})
 
@@ -85,7 +85,7 @@ func TestCreateGroupFromSourceRollsBackWhenOutboxInsertFails(t *testing.T) {
 
 	var groupCount, bindingCount, outboxCount int
 	require.NoError(t, integrationDB.QueryRowContext(ctx, "SELECT COUNT(*) FROM groups WHERE name = $1", duplicateName).Scan(&groupCount))
-	require.NoError(t, integrationDB.QueryRowContext(ctx, "SELECT COUNT(*) FROM account_groups WHERE group_id = $1", duplicate.ID).Scan(&bindingCount))
+	require.NoError(t, integrationDB.QueryRowContext(ctx, "SELECT COUNT(*) FROM provider_groups WHERE group_id = $1", duplicate.ID).Scan(&bindingCount))
 	require.NoError(t, integrationDB.QueryRowContext(ctx, "SELECT COUNT(*) FROM scheduler_outbox WHERE group_id = $1", duplicate.ID).Scan(&outboxCount))
 	require.Zero(t, groupCount)
 	require.Zero(t, bindingCount)

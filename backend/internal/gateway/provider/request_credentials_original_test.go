@@ -13,7 +13,6 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/pkg/querycache"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
@@ -21,6 +20,7 @@ import (
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/ops"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 
 	xai "github.com/TokenFlux/TokenRouter/internal/upstream/grok"
@@ -29,20 +29,20 @@ import (
 )
 
 type grokCredentialPersistingRepo struct {
-	*tokenRefreshAccountRepo
+	*tokenRefreshProviderRepo
 }
 
 func (r *grokCredentialPersistingRepo) SetError(ctx context.Context, id int64, message string) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	if err := r.tokenRefreshAccountRepo.SetError(ctx, id, message); err != nil {
+	if err := r.tokenRefreshProviderRepo.SetError(ctx, id, message); err != nil {
 		return err
 	}
-	if account := r.accountsByID[id]; account != nil {
-		account.Record.Status = accountcore.StatusError
-		account.Record.Schedulable = false
-		account.Record.ErrorMessage = message
+	if provider := r.providersByID[id]; provider != nil {
+		provider.Record.Status = providercore.StatusError
+		provider.Record.Schedulable = false
+		provider.Record.ErrorMessage = message
 	}
 	return nil
 }
@@ -58,7 +58,7 @@ func (r *grokCredentialProxyRepoStub) GetByID(context.Context, int64) (*egress.P
 }
 
 type grokCredentialBlockingRepo struct {
-	*tokenRefreshAccountRepo
+	*tokenRefreshProviderRepo
 	setErrorStarted chan struct{}
 	setTempStarted  chan struct{}
 	onceError       sync.Once
@@ -66,18 +66,18 @@ type grokCredentialBlockingRepo struct {
 }
 
 type grokCredentialCommitThenCancelRepo struct {
-	*tokenRefreshAccountRepo
+	*tokenRefreshProviderRepo
 	returnErr error
 }
 
 type grokCredentialUncommittedDeadlineRepo struct {
-	*tokenRefreshAccountRepo
+	*tokenRefreshProviderRepo
 }
 
 func (r *grokCredentialUncommittedDeadlineRepo) SetGrokCredentialErrorIfMatch(
 	context.Context,
 	int64,
-	accountcore.CredentialMutationSnapshot,
+	providercore.CredentialMutationSnapshot,
 	string,
 ) (bool, error) {
 	return false, context.DeadlineExceeded
@@ -86,7 +86,7 @@ func (r *grokCredentialUncommittedDeadlineRepo) SetGrokCredentialErrorIfMatch(
 func (r *grokCredentialUncommittedDeadlineRepo) SetGrokCredentialTempUnschedulableIfMatch(
 	context.Context,
 	int64,
-	accountcore.CredentialMutationSnapshot,
+	providercore.CredentialMutationSnapshot,
 	time.Time,
 	string,
 ) (bool, error) {
@@ -96,13 +96,13 @@ func (r *grokCredentialUncommittedDeadlineRepo) SetGrokCredentialTempUnschedulab
 func (r *grokCredentialCommitThenCancelRepo) SetGrokCredentialErrorIfMatch(
 	ctx context.Context,
 	id int64,
-	_ accountcore.CredentialMutationSnapshot,
+	_ providercore.CredentialMutationSnapshot,
 	reason string,
 ) (bool, error) {
-	account := r.accountsByID[id]
-	account.Record.Status = accountcore.StatusError
-	account.Record.Schedulable = false
-	account.Record.ErrorMessage = reason
+	provider := r.providersByID[id]
+	provider.Record.Status = providercore.StatusError
+	provider.Record.Schedulable = false
+	provider.Record.ErrorMessage = reason
 	if r.returnErr != nil {
 		return false, r.returnErr
 	}
@@ -113,13 +113,13 @@ func (r *grokCredentialCommitThenCancelRepo) SetGrokCredentialErrorIfMatch(
 func (r *grokCredentialCommitThenCancelRepo) SetGrokCredentialTempUnschedulableIfMatch(
 	ctx context.Context,
 	id int64,
-	_ accountcore.CredentialMutationSnapshot,
+	_ providercore.CredentialMutationSnapshot,
 	until time.Time,
 	reason string,
 ) (bool, error) {
-	account := r.accountsByID[id]
-	account.Record.TempUnschedulableUntil = &until
-	account.Record.TempUnschedulableReason = reason
+	provider := r.providersByID[id]
+	provider.Record.TempUnschedulableUntil = &until
+	provider.Record.TempUnschedulableReason = reason
 	if r.returnErr != nil {
 		return false, r.returnErr
 	}
@@ -142,7 +142,7 @@ func (r *grokCredentialBlockingRepo) SetTempUnschedulable(ctx context.Context, _
 func (r *grokCredentialBlockingRepo) SetGrokCredentialErrorIfMatch(
 	ctx context.Context,
 	_ int64,
-	_ accountcore.CredentialMutationSnapshot,
+	_ providercore.CredentialMutationSnapshot,
 	_ string,
 ) (bool, error) {
 	r.onceError.Do(func() { close(r.setErrorStarted) })
@@ -153,7 +153,7 @@ func (r *grokCredentialBlockingRepo) SetGrokCredentialErrorIfMatch(
 func (r *grokCredentialBlockingRepo) SetGrokCredentialTempUnschedulableIfMatch(
 	ctx context.Context,
 	_ int64,
-	_ accountcore.CredentialMutationSnapshot,
+	_ providercore.CredentialMutationSnapshot,
 	_ time.Time,
 	_ string,
 ) (bool, error) {
@@ -163,7 +163,7 @@ func (r *grokCredentialBlockingRepo) SetGrokCredentialTempUnschedulableIfMatch(
 }
 
 type grokCredentialBlockingCache struct {
-	accountcore.AccessTokenCache
+	providercore.AccessTokenCache
 	deleteStarted chan struct{}
 	releaseDelete chan struct{}
 	once          sync.Once
@@ -172,49 +172,49 @@ type grokCredentialBlockingCache struct {
 }
 
 type grokCredentialSequencedRepo struct {
-	*tokenRefreshAccountRepo
+	*tokenRefreshProviderRepo
 	mu      sync.Mutex
-	latest  *gatewayprovider.ExecutionAccount
+	latest  *gatewayprovider.ExecutionProvider
 	getCall int
 }
 
 type grokCredentialRereadFailureRepo struct {
-	*tokenRefreshAccountRepo
-	account *gatewayprovider.ExecutionAccount
-	err     error
+	*tokenRefreshProviderRepo
+	provider *gatewayprovider.ExecutionProvider
+	err      error
 }
 
 type grokCredentialCountingRefresher struct {
 	refreshCalls int
 }
 
-func (r *grokCredentialCountingRefresher) CacheKey(account *accountcore.Record) string {
-	return accountcore.GrokTokenCacheKey(account)
+func (r *grokCredentialCountingRefresher) CacheKey(provider *providercore.Record) string {
+	return providercore.GrokTokenCacheKey(provider)
 }
 
-func (r *grokCredentialCountingRefresher) CanRefresh(*accountcore.Record) bool { return true }
+func (r *grokCredentialCountingRefresher) CanRefresh(*providercore.Record) bool { return true }
 
-func (r *grokCredentialCountingRefresher) NeedsRefresh(*accountcore.Record, time.Duration) bool {
+func (r *grokCredentialCountingRefresher) NeedsRefresh(*providercore.Record, time.Duration) bool {
 	return true
 }
 
-func (r *grokCredentialCountingRefresher) Refresh(context.Context, *accountcore.Record) (map[string]any, error) {
+func (r *grokCredentialCountingRefresher) Refresh(context.Context, *providercore.Record) (map[string]any, error) {
 	r.refreshCalls++
 	return map[string]any{"access_token": "must-not-be-used"}, nil
 }
 
-func (r *grokCredentialRereadFailureRepo) GetByID(context.Context, int64) (*gatewayprovider.ExecutionAccount, error) {
-	return r.account, r.err
+func (r *grokCredentialRereadFailureRepo) GetByID(context.Context, int64) (*gatewayprovider.ExecutionProvider, error) {
+	return r.provider, r.err
 }
 
-func (r *grokCredentialSequencedRepo) GetByID(ctx context.Context, id int64) (*gatewayprovider.ExecutionAccount, error) {
+func (r *grokCredentialSequencedRepo) GetByID(ctx context.Context, id int64) (*gatewayprovider.ExecutionProvider, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.getCall++
 	if r.getCall > 1 && r.latest != nil {
 		return r.latest, nil
 	}
-	return r.tokenRefreshAccountRepo.GetByID(ctx, id)
+	return r.tokenRefreshProviderRepo.GetByID(ctx, id)
 }
 
 func (c *grokCredentialBlockingCache) DeleteAccessToken(ctx context.Context, _ string) error {
@@ -237,29 +237,28 @@ func (c *grokCredentialBlockingCache) wasDeleted() bool {
 }
 
 func TestGetRequestCredentialMapsPermanentGrokOAuthFailureAndRedactsSecrets(t *testing.T) {
-
-	account := expiredGrokOAuthAccountForCredentialTest(701)
-	repo := &tokenRefreshAccountRepo{}
-	repo.accountsByID = map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: account}
+	provider := expiredGrokOAuthProviderForCredentialTest(701)
+	repo := &tokenRefreshProviderRepo{}
+	repo.providersByID = map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider}
 	cache := &grokTokenCacheForProviderTest{lockResult: true}
-	provider := newGrokTokenSourceForTest(repo, cache)
-	bindGrokRefreshForTest(provider, newGrokCredentialRefreshForTest(repo, cache), &tokenRefresherStub{
+	tokenSource := newGrokTokenSourceForTest(repo, cache)
+	bindGrokRefreshForTest(tokenSource, newGrokCredentialRefreshForTest(repo, cache), &tokenRefresherStub{
 		err: apperror.New(http.StatusBadGateway, "GROK_OAUTH_TOKEN_REFRESH_FAILED", "invalid_grant access_token=leaked-access refresh_token=leaked-refresh"),
 	})
-	svc := newRequestCredentialsFixture(repo, provider)
+	svc := newRequestCredentialsFixture(repo, tokenSource)
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())
 
-	token, kind, err := svc.Resolve(context.Background(), c, account)
+	token, kind, err := svc.Resolve(context.Background(), c, provider)
 	require.Error(t, err)
 	require.Empty(t, token)
 	require.Empty(t, kind)
 
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)
-	require.Equal(t, forwardcore.GatewayFailureStageAccountAuth, failoverErr.Stage)
-	require.Equal(t, forwardcore.GatewayFailureScopeAccount, failoverErr.Scope)
+	require.Equal(t, forwardcore.GatewayFailureStageProviderAuth, failoverErr.Stage)
+	require.Equal(t, forwardcore.GatewayFailureScopeProvider, failoverErr.Scope)
 	require.Equal(t, forwardcore.GrokCredentialReasonRevoked, failoverErr.Reason)
-	require.True(t, failoverErr.ShouldRetryNextAccount())
+	require.True(t, failoverErr.ShouldRetryNextProvider())
 	require.Equal(t, 0, failoverErr.StatusCode)
 	require.Equal(t, http.StatusServiceUnavailable, failoverErr.ClientStatusCode)
 	require.NotContains(t, err.Error(), "leaked-access")
@@ -267,8 +266,8 @@ func TestGetRequestCredentialMapsPermanentGrokOAuthFailureAndRedactsSecrets(t *t
 
 	require.Equal(t, 1, repo.setErrorCalls)
 	require.Zero(t, repo.setTempUnschedCalls)
-	require.True(t, credentialBlocked(svc, account))
-	require.Equal(t, []string{accountcore.GrokTokenCacheKey(gatewayprovider.ExecutionRecord(account))}, cache.deletedKeys)
+	require.True(t, credentialBlocked(svc, provider))
+	require.Equal(t, []string{providercore.GrokTokenCacheKey(gatewayprovider.ExecutionRecord(provider))}, cache.deletedKeys)
 	require.NotContains(t, repo.lastErrorMessage, "leaked-access")
 	require.NotContains(t, repo.lastErrorMessage, "leaked-refresh")
 
@@ -277,8 +276,8 @@ func TestGetRequestCredentialMapsPermanentGrokOAuthFailureAndRedactsSecrets(t *t
 	events, ok := rawEvents.([]*ops.OpsUpstreamErrorEvent)
 	require.True(t, ok)
 	require.Len(t, events, 1)
-	require.Equal(t, string(forwardcore.GatewayFailureStageAccountAuth), events[0].Stage)
-	require.Equal(t, string(forwardcore.GatewayFailureScopeAccount), events[0].Scope)
+	require.Equal(t, string(forwardcore.GatewayFailureStageProviderAuth), events[0].Stage)
+	require.Equal(t, string(forwardcore.GatewayFailureScopeProvider), events[0].Scope)
 	require.Equal(t, string(forwardcore.GrokCredentialReasonRevoked), events[0].Reason)
 	require.Zero(t, events[0].UpstreamStatusCode)
 	require.NotContains(t, events[0].Message, "leaked-access")
@@ -286,33 +285,32 @@ func TestGetRequestCredentialMapsPermanentGrokOAuthFailureAndRedactsSecrets(t *t
 }
 
 func TestGetRequestCredentialPermanentMappingsPersistAndInvalidate(t *testing.T) {
-
 	tests := []struct {
 		name        string
-		prepare     func(*gatewayprovider.ExecutionAccount)
+		prepare     func(*gatewayprovider.ExecutionProvider)
 		refreshErr  error
 		wantReason  forwardcore.GatewayFailureReason
 		cachedToken string
 	}{
 		{
 			name: "missing refresh credential",
-			prepare: func(account *gatewayprovider.ExecutionAccount) {
-				delete(account.Record.Credentials, "refresh_token")
+			prepare: func(provider *gatewayprovider.ExecutionProvider) {
+				delete(provider.Record.Credentials, "refresh_token")
 			},
 			wantReason: forwardcore.GrokCredentialReasonMissing,
 		},
 		{
 			name: "missing access credential",
-			prepare: func(account *gatewayprovider.ExecutionAccount) {
-				delete(account.Record.Credentials, "access_token")
-				account.Record.Credentials["expires_at"] = time.Now().Add(2 * time.Hour).UTC().Format(time.RFC3339)
+			prepare: func(provider *gatewayprovider.ExecutionProvider) {
+				delete(provider.Record.Credentials, "access_token")
+				provider.Record.Credentials["expires_at"] = time.Now().Add(2 * time.Hour).UTC().Format(time.RFC3339)
 			},
 			wantReason:  forwardcore.GrokCredentialReasonMissing,
 			cachedToken: "stale-cached-access",
 		},
 		{
 			name:       "explicit entitlement action required",
-			prepare:    func(*gatewayprovider.ExecutionAccount) {},
+			prepare:    func(*gatewayprovider.ExecutionProvider) {},
 			refreshErr: apperror.New(http.StatusForbidden, "GROK_OAUTH_ENTITLEMENT_DENIED", "access_denied"),
 			wantReason: forwardcore.GrokCredentialReasonEntitlement,
 		},
@@ -320,35 +318,34 @@ func TestGetRequestCredentialPermanentMappingsPersistAndInvalidate(t *testing.T)
 
 	for index, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			account := expiredGrokOAuthAccountForCredentialTest(int64(720 + index))
-			account.Record.Status = billing.StatusActive
-			account.Record.Schedulable = true
-			tt.prepare(account)
-			baseRepo := &tokenRefreshAccountRepo{}
-			baseRepo.accountsByID = map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: account}
-			repo := &grokCredentialPersistingRepo{tokenRefreshAccountRepo: baseRepo}
+			provider := expiredGrokOAuthProviderForCredentialTest(int64(720 + index))
+			provider.Record.Status = billing.StatusActive
+			provider.Record.Schedulable = true
+			tt.prepare(provider)
+			baseRepo := &tokenRefreshProviderRepo{}
+			baseRepo.providersByID = map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider}
+			repo := &grokCredentialPersistingRepo{tokenRefreshProviderRepo: baseRepo}
 			cache := &grokTokenCacheForProviderTest{lockResult: true, token: tt.cachedToken}
-			provider := newGrokTokenSourceForTest(repo, cache)
-			bindGrokRefreshForTest(provider, newGrokCredentialRefreshForTest(repo, cache), &tokenRefresherStub{err: tt.refreshErr})
-			svc := newRequestCredentialsFixture(repo, provider)
+			tokenSource := newGrokTokenSourceForTest(repo, cache)
+			bindGrokRefreshForTest(tokenSource, newGrokCredentialRefreshForTest(repo, cache), &tokenRefresherStub{err: tt.refreshErr})
+			svc := newRequestCredentialsFixture(repo, tokenSource)
 			c, _ := gin.CreateTestContext(httptest.NewRecorder())
 
-			_, _, err := svc.Resolve(context.Background(), c, account)
+			_, _, err := svc.Resolve(context.Background(), c, provider)
 			var failoverErr *forwardcore.UpstreamFailoverError
 			require.ErrorAs(t, err, &failoverErr)
 			require.Equal(t, tt.wantReason, failoverErr.Reason)
-			require.Equal(t, forwardcore.GatewayFailureScopeAccount, failoverErr.Scope)
+			require.Equal(t, forwardcore.GatewayFailureScopeProvider, failoverErr.Scope)
 			require.Equal(t, 1, baseRepo.setErrorCalls)
-			require.Equal(t, accountcore.StatusError, account.Record.Status)
-			require.False(t, account.Record.Schedulable)
-			require.True(t, credentialBlocked(svc, account))
-			require.Equal(t, []string{accountcore.GrokTokenCacheKey(gatewayprovider.ExecutionRecord(account))}, cache.deletedKeys)
+			require.Equal(t, providercore.StatusError, provider.Record.Status)
+			require.False(t, provider.Record.Schedulable)
+			require.True(t, credentialBlocked(svc, provider))
+			require.Equal(t, []string{providercore.GrokTokenCacheKey(gatewayprovider.ExecutionRecord(provider))}, cache.deletedKeys)
 		})
 	}
 }
 
 func TestGetRequestCredentialMissingAccessNeverRefreshesAndPermanentlyFailsOver(t *testing.T) {
-
 	tests := []struct {
 		name      string
 		expiresAt *time.Time
@@ -360,472 +357,470 @@ func TestGetRequestCredentialMissingAccessNeverRefreshesAndPermanentlyFailsOver(
 
 	for index, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			account := expiredGrokOAuthAccountForCredentialTest(int64(760 + index))
-			account.Record.Schedulable = true
-			delete(account.Record.Credentials, "access_token")
+			provider := expiredGrokOAuthProviderForCredentialTest(int64(760 + index))
+			provider.Record.Schedulable = true
+			delete(provider.Record.Credentials, "access_token")
 			if tt.expiresAt == nil {
-				delete(account.Record.Credentials, "expires_at")
+				delete(provider.Record.Credentials, "expires_at")
 			} else {
-				account.Record.Credentials["expires_at"] = tt.expiresAt.UTC().Format(time.RFC3339)
+				provider.Record.Credentials["expires_at"] = tt.expiresAt.UTC().Format(time.RFC3339)
 			}
-			baseRepo := &tokenRefreshAccountRepo{}
-			baseRepo.accountsByID = map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: account}
-			repo := &grokCredentialPersistingRepo{tokenRefreshAccountRepo: baseRepo}
+			baseRepo := &tokenRefreshProviderRepo{}
+			baseRepo.providersByID = map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider}
+			repo := &grokCredentialPersistingRepo{tokenRefreshProviderRepo: baseRepo}
 			cache := &grokTokenCacheForProviderTest{lockResult: true, token: "stale-cache-must-not-win"}
 			refresher := &grokCredentialCountingRefresher{}
-			provider := newGrokTokenSourceForTest(repo, cache)
-			bindGrokRefreshForTest(provider, newGrokCredentialRefreshForTest(repo, cache), refresher)
-			svc := newRequestCredentialsFixture(repo, provider)
+			tokenSource := newGrokTokenSourceForTest(repo, cache)
+			bindGrokRefreshForTest(tokenSource, newGrokCredentialRefreshForTest(repo, cache), refresher)
+			svc := newRequestCredentialsFixture(repo, tokenSource)
 			c, _ := gin.CreateTestContext(httptest.NewRecorder())
 
-			token, kind, err := svc.Resolve(context.Background(), c, account)
+			token, kind, err := svc.Resolve(context.Background(), c, provider)
 			var failoverErr *forwardcore.UpstreamFailoverError
 			require.ErrorAs(t, err, &failoverErr)
 			require.Empty(t, token)
 			require.Empty(t, kind)
 			require.Equal(t, forwardcore.GrokCredentialReasonMissing, failoverErr.Reason)
-			require.Equal(t, forwardcore.NextAccountRetry, failoverErr.NextAccountAction)
+			require.Equal(t, forwardcore.NextProviderRetry, failoverErr.NextProviderAction)
 			require.Zero(t, refresher.refreshCalls, "structurally missing access credentials must not reach the token endpoint")
 			require.Equal(t, 1, baseRepo.setErrorCalls)
-			require.Equal(t, accountcore.StatusError, account.Record.Status)
-			require.False(t, account.Record.Schedulable)
-			require.Equal(t, []string{accountcore.GrokTokenCacheKey(gatewayprovider.ExecutionRecord(account))}, cache.deletedKeys)
-			require.True(t, credentialBlocked(svc, account))
+			require.Equal(t, providercore.StatusError, provider.Record.Status)
+			require.False(t, provider.Record.Schedulable)
+			require.Equal(t, []string{providercore.GrokTokenCacheKey(gatewayprovider.ExecutionRecord(provider))}, cache.deletedKeys)
+			require.True(t, credentialBlocked(svc, provider))
 		})
 	}
 }
 
 func TestGetRequestCredentialWarmCachedAccessWithMissingRefreshPermanentlyFailsOver(t *testing.T) {
-	account := expiredGrokOAuthAccountForCredentialTest(764)
-	account.Record.Credentials["access_token"] = "valid-access"
-	account.Record.Credentials["expires_at"] = time.Now().Add(2 * time.Hour).UTC().Format(time.RFC3339)
-	delete(account.Record.Credentials, "refresh_token")
-	baseRepo := &tokenRefreshAccountRepo{}
-	baseRepo.accountsByID = map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: account}
-	repo := &grokCredentialPersistingRepo{tokenRefreshAccountRepo: baseRepo}
+	provider := expiredGrokOAuthProviderForCredentialTest(764)
+	provider.Record.Credentials["access_token"] = "valid-access"
+	provider.Record.Credentials["expires_at"] = time.Now().Add(2 * time.Hour).UTC().Format(time.RFC3339)
+	delete(provider.Record.Credentials, "refresh_token")
+	baseRepo := &tokenRefreshProviderRepo{}
+	baseRepo.providersByID = map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider}
+	repo := &grokCredentialPersistingRepo{tokenRefreshProviderRepo: baseRepo}
 	cache := &grokTokenCacheForProviderTest{lockResult: true, token: "valid-access"}
 	refresher := &grokCredentialCountingRefresher{}
-	provider := newGrokTokenSourceForTest(repo, cache)
-	bindGrokRefreshForTest(provider, newGrokCredentialRefreshForTest(repo, cache), refresher)
-	svc := newRequestCredentialsFixture(repo, provider)
+	tokenSource := newGrokTokenSourceForTest(repo, cache)
+	bindGrokRefreshForTest(tokenSource, newGrokCredentialRefreshForTest(repo, cache), refresher)
+	svc := newRequestCredentialsFixture(repo, tokenSource)
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())
 
-	_, _, err := svc.Resolve(context.Background(), c, account)
+	_, _, err := svc.Resolve(context.Background(), c, provider)
 
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)
 	require.Equal(t, forwardcore.GrokCredentialReasonMissing, failoverErr.Reason)
-	require.Equal(t, forwardcore.NextAccountRetry, failoverErr.NextAccountAction)
+	require.Equal(t, forwardcore.NextProviderRetry, failoverErr.NextProviderAction)
 	require.Zero(t, refresher.refreshCalls)
 	require.Equal(t, 1, baseRepo.setErrorCalls)
-	require.Equal(t, []string{accountcore.GrokTokenCacheKey(gatewayprovider.ExecutionRecord(account))}, cache.deletedKeys)
-	require.True(t, credentialBlocked(svc, account))
+	require.Equal(t, []string{providercore.GrokTokenCacheKey(gatewayprovider.ExecutionRecord(provider))}, cache.deletedKeys)
+	require.True(t, credentialBlocked(svc, provider))
 }
 
 func TestGetRequestCredentialMapsTransientAndProviderFailuresSeparately(t *testing.T) {
-
-	t.Run("account transient temporarily unschedules", func(t *testing.T) {
-		account := expiredGrokOAuthAccountForCredentialTest(702)
-		repo := &tokenRefreshAccountRepo{}
-		repo.accountsByID = map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: account}
+	t.Run("provider transient temporarily unschedules", func(t *testing.T) {
+		provider := expiredGrokOAuthProviderForCredentialTest(702)
+		repo := &tokenRefreshProviderRepo{}
+		repo.providersByID = map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider}
 		cache := &grokTokenCacheForProviderTest{lockResult: true}
-		provider := newGrokTokenSourceForTest(repo, cache)
-		bindGrokRefreshForTest(provider, newGrokCredentialRefreshForTest(repo, cache), &tokenRefresherStub{err: errors.New("temporary refresh transport failure")})
-		svc := newRequestCredentialsFixture(repo, provider)
+		tokenSource := newGrokTokenSourceForTest(repo, cache)
+		bindGrokRefreshForTest(tokenSource, newGrokCredentialRefreshForTest(repo, cache), &tokenRefresherStub{err: errors.New("temporary refresh transport failure")})
+		svc := newRequestCredentialsFixture(repo, tokenSource)
 		c, _ := gin.CreateTestContext(httptest.NewRecorder())
 
-		_, _, err := svc.Resolve(context.Background(), c, account)
-		var failoverErr *forwardcore.UpstreamFailoverError
-		require.ErrorAs(t, err, &failoverErr)
-		require.Equal(t, forwardcore.GatewayFailureScopeAccount, failoverErr.Scope)
-		require.Equal(t, forwardcore.GrokCredentialReasonRefreshTransient, failoverErr.Reason)
-		require.True(t, failoverErr.ShouldRetryNextAccount())
-		require.Zero(t, repo.setErrorCalls)
-		require.Equal(t, 1, repo.setTempUnschedCalls)
-		require.True(t, credentialBlocked(svc, account))
-	})
-
-	t.Run("shared provider configuration stops without mutation", func(t *testing.T) {
-		account := expiredGrokOAuthAccountForCredentialTest(703)
-		repo := &tokenRefreshAccountRepo{}
-		repo.accountsByID = map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: account}
-		provider := newGrokTokenSourceForTest(repo, nil)
-		svc := newRequestCredentialsFixture(repo, provider)
-		c, _ := gin.CreateTestContext(httptest.NewRecorder())
-
-		_, _, err := svc.Resolve(context.Background(), c, account)
+		_, _, err := svc.Resolve(context.Background(), c, provider)
 		var failoverErr *forwardcore.UpstreamFailoverError
 		require.ErrorAs(t, err, &failoverErr)
 		require.Equal(t, forwardcore.GatewayFailureScopeProvider, failoverErr.Scope)
-		require.Equal(t, forwardcore.NextAccountStop, failoverErr.NextAccountAction)
+		require.Equal(t, forwardcore.GrokCredentialReasonRefreshTransient, failoverErr.Reason)
+		require.True(t, failoverErr.ShouldRetryNextProvider())
 		require.Zero(t, repo.setErrorCalls)
-		require.Zero(t, repo.setTempUnschedCalls)
-		require.False(t, credentialBlocked(svc, account))
+		require.Equal(t, 1, repo.setTempUnschedCalls)
+		require.True(t, credentialBlocked(svc, provider))
 	})
 
-	t.Run("account reread failures preserve shared versus missing-row scope", func(t *testing.T) {
+	t.Run("shared provider configuration stops without mutation", func(t *testing.T) {
+		provider := expiredGrokOAuthProviderForCredentialTest(703)
+		repo := &tokenRefreshProviderRepo{}
+		repo.providersByID = map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider}
+		tokenSource := newGrokTokenSourceForTest(repo, nil)
+		svc := newRequestCredentialsFixture(repo, tokenSource)
+		c, _ := gin.CreateTestContext(httptest.NewRecorder())
+
+		_, _, err := svc.Resolve(context.Background(), c, provider)
+		var failoverErr *forwardcore.UpstreamFailoverError
+		require.ErrorAs(t, err, &failoverErr)
+		require.Equal(t, forwardcore.GatewayFailureScopeShared, failoverErr.Scope)
+		require.Equal(t, forwardcore.NextProviderStop, failoverErr.NextProviderAction)
+		require.Zero(t, repo.setErrorCalls)
+		require.Zero(t, repo.setTempUnschedCalls)
+		require.False(t, credentialBlocked(svc, provider))
+	})
+
+	t.Run("provider reread failures preserve shared versus missing-row scope", func(t *testing.T) {
 		for _, tt := range []struct {
-			name    string
-			account *gatewayprovider.ExecutionAccount
-			err     error
+			name     string
+			provider *gatewayprovider.ExecutionProvider
+			err      error
 		}{
 			{name: "repository error", err: errors.New("database temporarily unavailable")},
 			{name: "missing row"},
 		} {
 			t.Run(tt.name, func(t *testing.T) {
-				account := expiredGrokOAuthAccountForCredentialTest(712)
-				baseRepo := &tokenRefreshAccountRepo{}
-				baseRepo.accountsByID = map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: account}
-				repo := &grokCredentialRereadFailureRepo{tokenRefreshAccountRepo: baseRepo, account: tt.account, err: tt.err}
+				provider := expiredGrokOAuthProviderForCredentialTest(712)
+				baseRepo := &tokenRefreshProviderRepo{}
+				baseRepo.providersByID = map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider}
+				repo := &grokCredentialRereadFailureRepo{tokenRefreshProviderRepo: baseRepo, provider: tt.provider, err: tt.err}
 				cache := &grokTokenCacheForProviderTest{lockResult: true}
-				provider := newGrokTokenSourceForTest(repo, cache)
-				bindGrokRefreshForTest(provider, newGrokCredentialRefreshForTest(repo, cache), accountcore.NewGrokTokenRefresher(nil))
-				svc := newRequestCredentialsFixture(repo, provider)
+				tokenSource := newGrokTokenSourceForTest(repo, cache)
+				bindGrokRefreshForTest(tokenSource, newGrokCredentialRefreshForTest(repo, cache), providercore.NewGrokTokenRefresher(nil))
+				svc := newRequestCredentialsFixture(repo, tokenSource)
 				c, _ := gin.CreateTestContext(httptest.NewRecorder())
 
-				_, _, err := svc.Resolve(context.Background(), c, account)
+				_, _, err := svc.Resolve(context.Background(), c, provider)
 				var failoverErr *forwardcore.UpstreamFailoverError
 				require.ErrorAs(t, err, &failoverErr)
 				if tt.err != nil {
-					require.Equal(t, forwardcore.GatewayFailureScopeProvider, failoverErr.Scope)
+					require.Equal(t, forwardcore.GatewayFailureScopeShared, failoverErr.Scope)
 					require.Equal(t, forwardcore.GrokCredentialReasonProviderDown, failoverErr.Reason)
-					require.Equal(t, forwardcore.NextAccountStop, failoverErr.NextAccountAction)
+					require.Equal(t, forwardcore.NextProviderStop, failoverErr.NextProviderAction)
 				} else {
-					require.Equal(t, forwardcore.GatewayFailureScopeAccount, failoverErr.Scope)
-					require.Equal(t, forwardcore.GrokCredentialReasonAccountChanged, failoverErr.Reason)
-					require.Equal(t, forwardcore.NextAccountRetry, failoverErr.NextAccountAction)
+					require.Equal(t, forwardcore.GatewayFailureScopeProvider, failoverErr.Scope)
+					require.Equal(t, forwardcore.GrokCredentialReasonProviderChanged, failoverErr.Reason)
+					require.Equal(t, forwardcore.NextProviderRetry, failoverErr.NextProviderAction)
 				}
 				require.Zero(t, baseRepo.setErrorCalls)
 				require.Zero(t, baseRepo.setTempUnschedCalls)
 				require.Empty(t, cache.deletedKeys)
-				require.False(t, credentialBlocked(svc, account))
+				require.False(t, credentialBlocked(svc, provider))
 			})
 		}
 	})
 
-	t.Run("fresh account eligibility changes retry without mutating stale state", func(t *testing.T) {
+	t.Run("fresh provider eligibility changes retry without mutating stale state", func(t *testing.T) {
 		for _, tt := range []struct {
 			name   string
-			mutate func(*gatewayprovider.ExecutionAccount)
+			mutate func(*gatewayprovider.ExecutionProvider)
 		}{
 			{
 				name: "account disabled",
-				mutate: func(account *gatewayprovider.ExecutionAccount) {
-					account.Record.Status = billing.StatusDisabled
+				mutate: func(provider *gatewayprovider.ExecutionProvider) {
+					provider.Record.Status = billing.StatusDisabled
 				},
 			},
 			{
-				name: "account converted",
-				mutate: func(account *gatewayprovider.ExecutionAccount) {
-					account.Record.Type = capability.AccountTypeUpstream
+				name: "provider converted",
+				mutate: func(provider *gatewayprovider.ExecutionProvider) {
+					provider.Record.Type = capability.ProviderTypeUpstream
 				},
 			},
 			{
-				name: "account manually unschedulable",
-				mutate: func(account *gatewayprovider.ExecutionAccount) {
-					account.Record.Schedulable = false
+				name: "provider manually unschedulable",
+				mutate: func(provider *gatewayprovider.ExecutionProvider) {
+					provider.Record.Schedulable = false
 				},
 			},
 			{
-				name: "account temporarily unschedulable",
-				mutate: func(account *gatewayprovider.ExecutionAccount) {
+				name: "provider temporarily unschedulable",
+				mutate: func(provider *gatewayprovider.ExecutionProvider) {
 					until := time.Now().Add(time.Minute)
-					account.Record.TempUnschedulableUntil = &until
+					provider.Record.TempUnschedulableUntil = &until
 				},
 			},
 		} {
 			t.Run(tt.name, func(t *testing.T) {
-				staleAccount := expiredGrokOAuthAccountForCredentialTest(713)
-				freshAccount := *staleAccount
-				freshAccount.Record.Credentials = querycache.ShallowMap(staleAccount.Record.Credentials)
-				tt.mutate(&freshAccount)
-				repo := &tokenRefreshAccountRepo{}
-				repo.accountsByID = map[int64]*gatewayprovider.ExecutionAccount{staleAccount.Record.ID: &freshAccount}
+				staleProvider := expiredGrokOAuthProviderForCredentialTest(713)
+				freshProvider := *staleProvider
+				freshProvider.Record.Credentials = querycache.ShallowMap(staleProvider.Record.Credentials)
+				tt.mutate(&freshProvider)
+				repo := &tokenRefreshProviderRepo{}
+				repo.providersByID = map[int64]*gatewayprovider.ExecutionProvider{staleProvider.Record.ID: &freshProvider}
 				cache := &grokTokenCacheForProviderTest{lockResult: true}
-				provider := newGrokTokenSourceForTest(repo, cache)
-				bindGrokRefreshForTest(provider, newGrokCredentialRefreshForTest(repo, cache), accountcore.NewGrokTokenRefresher(nil))
-				svc := newRequestCredentialsFixture(repo, provider)
+				tokenSource := newGrokTokenSourceForTest(repo, cache)
+				bindGrokRefreshForTest(tokenSource, newGrokCredentialRefreshForTest(repo, cache), providercore.NewGrokTokenRefresher(nil))
+				svc := newRequestCredentialsFixture(repo, tokenSource)
 				c, _ := gin.CreateTestContext(httptest.NewRecorder())
 
-				_, _, err := svc.Resolve(context.Background(), c, staleAccount)
+				_, _, err := svc.Resolve(context.Background(), c, staleProvider)
 				var failoverErr *forwardcore.UpstreamFailoverError
 				require.ErrorAs(t, err, &failoverErr)
-				require.Equal(t, forwardcore.GatewayFailureScopeAccount, failoverErr.Scope)
-				require.Equal(t, forwardcore.GrokCredentialReasonAccountChanged, failoverErr.Reason)
-				require.Equal(t, forwardcore.NextAccountRetry, failoverErr.NextAccountAction)
+				require.Equal(t, forwardcore.GatewayFailureScopeProvider, failoverErr.Scope)
+				require.Equal(t, forwardcore.GrokCredentialReasonProviderChanged, failoverErr.Reason)
+				require.Equal(t, forwardcore.NextProviderRetry, failoverErr.NextProviderAction)
 				require.Zero(t, repo.setErrorCalls)
 				require.Zero(t, repo.setTempUnschedCalls)
 				require.Empty(t, cache.deletedKeys)
-				require.False(t, credentialBlocked(svc, staleAccount))
+				require.False(t, credentialBlocked(svc, staleProvider))
 			})
 		}
 	})
 
-	t.Run("fresh missing refresh credential permanently blocks the account", func(t *testing.T) {
-		staleAccount := expiredGrokOAuthAccountForCredentialTest(714)
-		staleAccount.Record.Schedulable = true
-		freshAccount := *staleAccount
-		freshAccount.Record.Credentials = querycache.ShallowMap(staleAccount.Record.Credentials)
-		delete(freshAccount.Record.Credentials, "refresh_token")
-		baseRepo := &tokenRefreshAccountRepo{}
-		baseRepo.accountsByID = map[int64]*gatewayprovider.ExecutionAccount{staleAccount.Record.ID: &freshAccount}
-		repo := &grokCredentialPersistingRepo{tokenRefreshAccountRepo: baseRepo}
+	t.Run("fresh missing refresh credential permanently blocks the provider", func(t *testing.T) {
+		staleProvider := expiredGrokOAuthProviderForCredentialTest(714)
+		staleProvider.Record.Schedulable = true
+		freshProvider := *staleProvider
+		freshProvider.Record.Credentials = querycache.ShallowMap(staleProvider.Record.Credentials)
+		delete(freshProvider.Record.Credentials, "refresh_token")
+		baseRepo := &tokenRefreshProviderRepo{}
+		baseRepo.providersByID = map[int64]*gatewayprovider.ExecutionProvider{staleProvider.Record.ID: &freshProvider}
+		repo := &grokCredentialPersistingRepo{tokenRefreshProviderRepo: baseRepo}
 		cache := &grokTokenCacheForProviderTest{lockResult: true}
-		provider := newGrokTokenSourceForTest(repo, cache)
-		bindGrokRefreshForTest(provider, newGrokCredentialRefreshForTest(repo, cache), accountcore.NewGrokTokenRefresher(nil))
-		svc := newRequestCredentialsFixture(repo, provider)
+		tokenSource := newGrokTokenSourceForTest(repo, cache)
+		bindGrokRefreshForTest(tokenSource, newGrokCredentialRefreshForTest(repo, cache), providercore.NewGrokTokenRefresher(nil))
+		svc := newRequestCredentialsFixture(repo, tokenSource)
 		c, _ := gin.CreateTestContext(httptest.NewRecorder())
 
-		_, _, err := svc.Resolve(context.Background(), c, staleAccount)
-		var failoverErr *forwardcore.UpstreamFailoverError
-		require.ErrorAs(t, err, &failoverErr)
-		require.Equal(t, forwardcore.GatewayFailureScopeAccount, failoverErr.Scope)
-		require.Equal(t, forwardcore.GrokCredentialReasonMissing, failoverErr.Reason)
-		require.Equal(t, forwardcore.NextAccountRetry, failoverErr.NextAccountAction)
-		require.Equal(t, 1, baseRepo.setErrorCalls)
-		require.Zero(t, baseRepo.setTempUnschedCalls)
-		require.Equal(t, accountcore.StatusError, freshAccount.Record.Status)
-		require.False(t, freshAccount.Record.Schedulable)
-		require.Equal(t, []string{accountcore.GrokTokenCacheKey(gatewayprovider.ExecutionRecord(staleAccount))}, cache.deletedKeys)
-		require.True(t, credentialBlocked(svc, staleAccount))
-	})
-
-	t.Run("refresh added after locked structural failure wins conditional mutation", func(t *testing.T) {
-		staleAccount := expiredGrokOAuthAccountForCredentialTest(717)
-		freshAccount := *staleAccount
-		freshAccount.Record.Credentials = querycache.ShallowMap(staleAccount.Record.Credentials)
-		delete(freshAccount.Record.Credentials, "refresh_token")
-		repo := &tokenRefreshAccountRepo{}
-		repo.accountsByID = map[int64]*gatewayprovider.ExecutionAccount{staleAccount.Record.ID: &freshAccount}
-		repo.beforeConditionalState = func() {
-			repaired := freshAccount
-			repaired.Record.Credentials = querycache.ShallowMap(freshAccount.Record.Credentials)
-			repaired.Record.Credentials["refresh_token"] = "repaired-refresh-token"
-			repaired.Record.Credentials["expires_at"] = time.Now().Add(time.Hour).UTC().Format(time.RFC3339)
-			repo.accountsByID[staleAccount.Record.ID] = &repaired
-		}
-		cache := &grokTokenCacheForProviderTest{lockResult: true}
-		provider := newGrokTokenSourceForTest(repo, cache)
-		bindGrokRefreshForTest(provider, newGrokCredentialRefreshForTest(repo, cache), accountcore.NewGrokTokenRefresher(nil))
-		svc := newRequestCredentialsFixture(repo, provider)
-		c, _ := gin.CreateTestContext(httptest.NewRecorder())
-
-		token, kind, err := svc.Resolve(context.Background(), c, staleAccount)
-
-		require.NoError(t, err)
-		require.Equal(t, "expired-access-token", token)
-		require.Equal(t, "oauth", kind)
-		require.Zero(t, repo.setErrorCalls)
-		require.Zero(t, repo.setTempUnschedCalls)
-		require.Empty(t, cache.deletedKeys)
-		require.False(t, credentialBlocked(svc, staleAccount))
-	})
-
-	t.Run("expiry-only repair wins full credential fingerprint CAS", func(t *testing.T) {
-		account := expiredGrokOAuthAccountForCredentialTest(718)
-		repo := &tokenRefreshAccountRepo{}
-		repo.accountsByID = map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: account}
-		repo.beforeConditionalState = func() {
-			repaired := *account
-			repaired.Record.Credentials = querycache.ShallowMap(account.Record.Credentials)
-			repaired.Record.Credentials["expires_at"] = time.Now().Add(time.Hour).UTC().Format(time.RFC3339)
-			repo.accountsByID[account.Record.ID] = &repaired
-		}
-		cache := &grokTokenCacheForProviderTest{lockResult: true}
-		provider := newGrokTokenSourceForTest(repo, cache)
-		bindGrokRefreshForTest(provider, newGrokCredentialRefreshForTest(repo, cache), &tokenRefresherStub{
-			err: apperror.New(http.StatusBadGateway, "GROK_OAUTH_TOKEN_REFRESH_FAILED", "invalid_grant"),
-		})
-		svc := newRequestCredentialsFixture(repo, provider)
-		c, _ := gin.CreateTestContext(httptest.NewRecorder())
-
-		token, kind, err := svc.Resolve(context.Background(), c, account)
-
-		require.NoError(t, err)
-		require.Equal(t, "expired-access-token", token)
-		require.Equal(t, "oauth", kind)
-		require.Zero(t, repo.setErrorCalls)
-		require.Empty(t, cache.deletedKeys)
-		require.False(t, credentialBlocked(svc, account))
-	})
-
-	t.Run("generic token endpoint 403 stops as shared provider failure", func(t *testing.T) {
-		account := expiredGrokOAuthAccountForCredentialTest(708)
-		repo := &tokenRefreshAccountRepo{}
-		repo.accountsByID = map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: account}
-		cache := &grokTokenCacheForProviderTest{lockResult: true}
-		provider := newGrokTokenSourceForTest(repo, cache)
-		bindGrokRefreshForTest(provider, newGrokCredentialRefreshForTest(repo, cache), &tokenRefresherStub{
-			err: apperror.New(http.StatusBadGateway, "GROK_OAUTH_TOKEN_REFRESH_FAILED", "token refresh failed: status 403, body: forbidden"),
-		})
-		svc := newRequestCredentialsFixture(repo, provider)
-		c, _ := gin.CreateTestContext(httptest.NewRecorder())
-
-		_, _, err := svc.Resolve(context.Background(), c, account)
+		_, _, err := svc.Resolve(context.Background(), c, staleProvider)
 		var failoverErr *forwardcore.UpstreamFailoverError
 		require.ErrorAs(t, err, &failoverErr)
 		require.Equal(t, forwardcore.GatewayFailureScopeProvider, failoverErr.Scope)
-		require.Equal(t, forwardcore.GrokCredentialReasonProviderDown, failoverErr.Reason)
-		require.Equal(t, forwardcore.NextAccountStop, failoverErr.NextAccountAction)
+		require.Equal(t, forwardcore.GrokCredentialReasonMissing, failoverErr.Reason)
+		require.Equal(t, forwardcore.NextProviderRetry, failoverErr.NextProviderAction)
+		require.Equal(t, 1, baseRepo.setErrorCalls)
+		require.Zero(t, baseRepo.setTempUnschedCalls)
+		require.Equal(t, providercore.StatusError, freshProvider.Record.Status)
+		require.False(t, freshProvider.Record.Schedulable)
+		require.Equal(t, []string{providercore.GrokTokenCacheKey(gatewayprovider.ExecutionRecord(staleProvider))}, cache.deletedKeys)
+		require.True(t, credentialBlocked(svc, staleProvider))
+	})
+
+	t.Run("refresh added after locked structural failure wins conditional mutation", func(t *testing.T) {
+		staleProvider := expiredGrokOAuthProviderForCredentialTest(717)
+		freshProvider := *staleProvider
+		freshProvider.Record.Credentials = querycache.ShallowMap(staleProvider.Record.Credentials)
+		delete(freshProvider.Record.Credentials, "refresh_token")
+		repo := &tokenRefreshProviderRepo{}
+		repo.providersByID = map[int64]*gatewayprovider.ExecutionProvider{staleProvider.Record.ID: &freshProvider}
+		repo.beforeConditionalState = func() {
+			repaired := freshProvider
+			repaired.Record.Credentials = querycache.ShallowMap(freshProvider.Record.Credentials)
+			repaired.Record.Credentials["refresh_token"] = "repaired-refresh-token"
+			repaired.Record.Credentials["expires_at"] = time.Now().Add(time.Hour).UTC().Format(time.RFC3339)
+			repo.providersByID[staleProvider.Record.ID] = &repaired
+		}
+		cache := &grokTokenCacheForProviderTest{lockResult: true}
+		tokenSource := newGrokTokenSourceForTest(repo, cache)
+		bindGrokRefreshForTest(tokenSource, newGrokCredentialRefreshForTest(repo, cache), providercore.NewGrokTokenRefresher(nil))
+		svc := newRequestCredentialsFixture(repo, tokenSource)
+		c, _ := gin.CreateTestContext(httptest.NewRecorder())
+
+		token, kind, err := svc.Resolve(context.Background(), c, staleProvider)
+
+		require.NoError(t, err)
+		require.Equal(t, "expired-access-token", token)
+		require.Equal(t, "oauth", kind)
 		require.Zero(t, repo.setErrorCalls)
 		require.Zero(t, repo.setTempUnschedCalls)
 		require.Empty(t, cache.deletedKeys)
-		require.False(t, credentialBlocked(svc, account))
+		require.False(t, credentialBlocked(svc, staleProvider))
 	})
 
-	t.Run("account proxy generic 403 remains bounded account transient", func(t *testing.T) {
-		account := expiredGrokOAuthAccountForCredentialTest(711)
-		proxyID := int64(43)
-		account.Record.ProxyID = &proxyID
-		account.Record.Proxy = &egress.Proxy{}
-		repo := &tokenRefreshAccountRepo{}
-		repo.accountsByID = map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: account}
+	t.Run("expiry-only repair wins full credential fingerprint CAS", func(t *testing.T) {
+		provider := expiredGrokOAuthProviderForCredentialTest(718)
+		repo := &tokenRefreshProviderRepo{}
+		repo.providersByID = map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider}
+		repo.beforeConditionalState = func() {
+			repaired := *provider
+			repaired.Record.Credentials = querycache.ShallowMap(provider.Record.Credentials)
+			repaired.Record.Credentials["expires_at"] = time.Now().Add(time.Hour).UTC().Format(time.RFC3339)
+			repo.providersByID[provider.Record.ID] = &repaired
+		}
 		cache := &grokTokenCacheForProviderTest{lockResult: true}
-		provider := newGrokTokenSourceForTest(repo, cache)
-		bindGrokRefreshForTest(provider, newGrokCredentialRefreshForTest(repo, cache), &tokenRefresherStub{
-			err: apperror.New(http.StatusBadGateway, "GROK_OAUTH_TOKEN_REFRESH_FAILED", "token refresh failed: status 403, body: forbidden"),
+		tokenSource := newGrokTokenSourceForTest(repo, cache)
+		bindGrokRefreshForTest(tokenSource, newGrokCredentialRefreshForTest(repo, cache), &tokenRefresherStub{
+			err: apperror.New(http.StatusBadGateway, "GROK_OAUTH_TOKEN_REFRESH_FAILED", "invalid_grant"),
 		})
-		svc := newRequestCredentialsFixture(repo, provider)
+		svc := newRequestCredentialsFixture(repo, tokenSource)
 		c, _ := gin.CreateTestContext(httptest.NewRecorder())
 
-		_, _, err := svc.Resolve(context.Background(), c, account)
+		token, kind, err := svc.Resolve(context.Background(), c, provider)
+
+		require.NoError(t, err)
+		require.Equal(t, "expired-access-token", token)
+		require.Equal(t, "oauth", kind)
+		require.Zero(t, repo.setErrorCalls)
+		require.Empty(t, cache.deletedKeys)
+		require.False(t, credentialBlocked(svc, provider))
+	})
+
+	t.Run("generic token endpoint 403 stops as shared provider failure", func(t *testing.T) {
+		provider := expiredGrokOAuthProviderForCredentialTest(708)
+		repo := &tokenRefreshProviderRepo{}
+		repo.providersByID = map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider}
+		cache := &grokTokenCacheForProviderTest{lockResult: true}
+		tokenSource := newGrokTokenSourceForTest(repo, cache)
+		bindGrokRefreshForTest(tokenSource, newGrokCredentialRefreshForTest(repo, cache), &tokenRefresherStub{
+			err: apperror.New(http.StatusBadGateway, "GROK_OAUTH_TOKEN_REFRESH_FAILED", "token refresh failed: status 403, body: forbidden"),
+		})
+		svc := newRequestCredentialsFixture(repo, tokenSource)
+		c, _ := gin.CreateTestContext(httptest.NewRecorder())
+
+		_, _, err := svc.Resolve(context.Background(), c, provider)
 		var failoverErr *forwardcore.UpstreamFailoverError
 		require.ErrorAs(t, err, &failoverErr)
-		require.Equal(t, forwardcore.GatewayFailureScopeAccount, failoverErr.Scope)
+		require.Equal(t, forwardcore.GatewayFailureScopeShared, failoverErr.Scope)
+		require.Equal(t, forwardcore.GrokCredentialReasonProviderDown, failoverErr.Reason)
+		require.Equal(t, forwardcore.NextProviderStop, failoverErr.NextProviderAction)
+		require.Zero(t, repo.setErrorCalls)
+		require.Zero(t, repo.setTempUnschedCalls)
+		require.Empty(t, cache.deletedKeys)
+		require.False(t, credentialBlocked(svc, provider))
+	})
+
+	t.Run("provider proxy generic 403 remains bounded provider transient", func(t *testing.T) {
+		provider := expiredGrokOAuthProviderForCredentialTest(711)
+		proxyID := int64(43)
+		provider.Record.ProxyID = &proxyID
+		provider.Record.Proxy = &egress.Proxy{}
+		repo := &tokenRefreshProviderRepo{}
+		repo.providersByID = map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider}
+		cache := &grokTokenCacheForProviderTest{lockResult: true}
+		tokenSource := newGrokTokenSourceForTest(repo, cache)
+		bindGrokRefreshForTest(tokenSource, newGrokCredentialRefreshForTest(repo, cache), &tokenRefresherStub{
+			err: apperror.New(http.StatusBadGateway, "GROK_OAUTH_TOKEN_REFRESH_FAILED", "token refresh failed: status 403, body: forbidden"),
+		})
+		svc := newRequestCredentialsFixture(repo, tokenSource)
+		c, _ := gin.CreateTestContext(httptest.NewRecorder())
+
+		_, _, err := svc.Resolve(context.Background(), c, provider)
+		var failoverErr *forwardcore.UpstreamFailoverError
+		require.ErrorAs(t, err, &failoverErr)
+		require.Equal(t, forwardcore.GatewayFailureScopeProvider, failoverErr.Scope)
 		require.Equal(t, forwardcore.GrokCredentialReasonRefreshTransient, failoverErr.Reason)
-		require.Equal(t, forwardcore.NextAccountRetry, failoverErr.NextAccountAction)
+		require.Equal(t, forwardcore.NextProviderRetry, failoverErr.NextProviderAction)
 		require.Zero(t, repo.setErrorCalls)
 		require.Equal(t, 1, repo.setTempUnschedCalls)
 		require.Empty(t, cache.deletedKeys)
-		require.True(t, credentialBlocked(svc, account))
+		require.True(t, credentialBlocked(svc, provider))
 	})
 
-	t.Run("proxy repository read failure stops without account mutation", func(t *testing.T) {
-		account := expiredGrokOAuthAccountForCredentialTest(709)
+	t.Run("proxy repository read failure stops without provider mutation", func(t *testing.T) {
+		provider := expiredGrokOAuthProviderForCredentialTest(709)
 		proxyID := int64(41)
-		account.Record.ProxyID = &proxyID
-		account.Record.Proxy = &egress.Proxy{}
-		repo := &tokenRefreshAccountRepo{}
-		repo.accountsByID = map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: account}
+		provider.Record.ProxyID = &proxyID
+		provider.Record.Proxy = &egress.Proxy{}
+		repo := &tokenRefreshProviderRepo{}
+		repo.providersByID = map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider}
 		cache := &grokTokenCacheForProviderTest{lockResult: true}
 		oauthSvc := newGrokAuthorizationForTest(&grokCredentialProxyRepoStub{err: errors.New("database temporarily unavailable")}, &grokOAuthClientStub{})
 		oauthSvc.Start()
 		defer stopGrokAuthorizationForTest(t, oauthSvc)
-		provider := newGrokTokenSourceForTest(repo, cache)
-		bindGrokRefreshForTest(provider, newGrokCredentialRefreshForTest(repo, cache), accountcore.NewGrokTokenRefresher(oauthSvc))
-		svc := newRequestCredentialsFixture(repo, provider)
+		tokenSource := newGrokTokenSourceForTest(repo, cache)
+		bindGrokRefreshForTest(tokenSource, newGrokCredentialRefreshForTest(repo, cache), providercore.NewGrokTokenRefresher(oauthSvc))
+		svc := newRequestCredentialsFixture(repo, tokenSource)
 		c, _ := gin.CreateTestContext(httptest.NewRecorder())
 
-		_, _, err := svc.Resolve(context.Background(), c, account)
+		_, _, err := svc.Resolve(context.Background(), c, provider)
 		var failoverErr *forwardcore.UpstreamFailoverError
 		require.ErrorAs(t, err, &failoverErr)
-		require.Equal(t, forwardcore.GatewayFailureScopeProvider, failoverErr.Scope)
+		require.Equal(t, forwardcore.GatewayFailureScopeShared, failoverErr.Scope)
 		require.Equal(t, forwardcore.GrokCredentialReasonProviderDown, failoverErr.Reason)
-		require.Equal(t, forwardcore.NextAccountStop, failoverErr.NextAccountAction)
+		require.Equal(t, forwardcore.NextProviderStop, failoverErr.NextProviderAction)
 		require.Zero(t, repo.setErrorCalls)
 		require.Zero(t, repo.setTempUnschedCalls)
 		require.Empty(t, cache.deletedKeys)
-		require.False(t, credentialBlocked(svc, account))
+		require.False(t, credentialBlocked(svc, provider))
 	})
 
-	t.Run("structurally missing configured proxy permanently blocks only that account", func(t *testing.T) {
-		account := expiredGrokOAuthAccountForCredentialTest(710)
-		account.Record.Status = billing.StatusActive
-		account.Record.Schedulable = true
+	t.Run("structurally missing configured proxy permanently blocks only that provider", func(t *testing.T) {
+		provider := expiredGrokOAuthProviderForCredentialTest(710)
+		provider.Record.Status = billing.StatusActive
+		provider.Record.Schedulable = true
 		proxyID := int64(42)
-		account.Record.ProxyID = &proxyID
-		baseRepo := &tokenRefreshAccountRepo{}
-		baseRepo.accountsByID = map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: account}
-		repo := &grokCredentialPersistingRepo{tokenRefreshAccountRepo: baseRepo}
+		provider.Record.ProxyID = &proxyID
+		baseRepo := &tokenRefreshProviderRepo{}
+		baseRepo.providersByID = map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider}
+		repo := &grokCredentialPersistingRepo{tokenRefreshProviderRepo: baseRepo}
 		cache := &grokTokenCacheForProviderTest{lockResult: true}
 		oauthSvc := newGrokAuthorizationForTest(&grokCredentialProxyRepoStub{err: egress.ErrProxyNotFound}, &grokOAuthClientStub{})
 		oauthSvc.Start()
 		defer stopGrokAuthorizationForTest(t, oauthSvc)
-		provider := newGrokTokenSourceForTest(repo, cache)
-		bindGrokRefreshForTest(provider, newGrokCredentialRefreshForTest(repo, cache), accountcore.NewGrokTokenRefresher(oauthSvc))
-		svc := newRequestCredentialsFixture(repo, provider)
+		tokenSource := newGrokTokenSourceForTest(repo, cache)
+		bindGrokRefreshForTest(tokenSource, newGrokCredentialRefreshForTest(repo, cache), providercore.NewGrokTokenRefresher(oauthSvc))
+		svc := newRequestCredentialsFixture(repo, tokenSource)
 		c, _ := gin.CreateTestContext(httptest.NewRecorder())
 
-		_, _, err := svc.Resolve(context.Background(), c, account)
+		_, _, err := svc.Resolve(context.Background(), c, provider)
 		var failoverErr *forwardcore.UpstreamFailoverError
 		require.ErrorAs(t, err, &failoverErr)
-		require.Equal(t, forwardcore.GatewayFailureScopeAccount, failoverErr.Scope)
+		require.Equal(t, forwardcore.GatewayFailureScopeProvider, failoverErr.Scope)
 		require.Equal(t, forwardcore.GrokCredentialReasonProxyInvalid, failoverErr.Reason)
-		require.Equal(t, forwardcore.NextAccountRetry, failoverErr.NextAccountAction)
+		require.Equal(t, forwardcore.NextProviderRetry, failoverErr.NextProviderAction)
 		require.Equal(t, 1, baseRepo.setErrorCalls)
-		require.Equal(t, accountcore.StatusError, account.Record.Status)
-		require.False(t, account.Record.Schedulable)
-		require.Equal(t, []string{accountcore.GrokTokenCacheKey(gatewayprovider.ExecutionRecord(account))}, cache.deletedKeys)
-		require.True(t, credentialBlocked(svc, account))
+		require.Equal(t, providercore.StatusError, provider.Record.Status)
+		require.False(t, provider.Record.Schedulable)
+		require.Equal(t, []string{providercore.GrokTokenCacheKey(gatewayprovider.ExecutionRecord(provider))}, cache.deletedKeys)
+		require.True(t, credentialBlocked(svc, provider))
 	})
 }
 
 func TestGetRequestCredentialRuntimeBlockWinsBeforeWarmTokenCache(t *testing.T) {
-	account := expiredGrokOAuthAccountForCredentialTest(716)
-	account.Record.Credentials["access_token"] = "valid-access"
-	account.Record.Credentials["expires_at"] = time.Now().Add(2 * time.Hour).UTC().Format(time.RFC3339)
-	repo := &tokenRefreshAccountRepo{}
-	repo.accountsByID = map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: account}
+	provider := expiredGrokOAuthProviderForCredentialTest(716)
+	provider.Record.Credentials["access_token"] = "valid-access"
+	provider.Record.Credentials["expires_at"] = time.Now().Add(2 * time.Hour).UTC().Format(time.RFC3339)
+	repo := &tokenRefreshProviderRepo{}
+	repo.providersByID = map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider}
 	cache := &grokTokenCacheForProviderTest{token: "valid-access"}
-	provider := newGrokTokenSourceForTest(repo, cache)
-	svc := newRequestCredentialsFixture(repo, provider)
-	svc.Runtime.Runtime.BlockAccountScheduling(gatewayprovider.ExecutionRecord(account), time.Now().Add(time.Minute), "independent")
+	tokenSource := newGrokTokenSourceForTest(repo, cache)
+	svc := newRequestCredentialsFixture(repo, tokenSource)
+	svc.Runtime.Runtime.BlockProviderScheduling(gatewayprovider.ExecutionRecord(provider), time.Now().Add(time.Minute), "independent")
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())
 
-	_, _, err := svc.Resolve(context.Background(), c, account)
+	_, _, err := svc.Resolve(context.Background(), c, provider)
 
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)
-	require.Equal(t, forwardcore.GrokCredentialReasonAccountChanged, failoverErr.Reason)
-	require.Equal(t, forwardcore.NextAccountRetry, failoverErr.NextAccountAction)
+	require.Equal(t, forwardcore.GrokCredentialReasonProviderChanged, failoverErr.Reason)
+	require.Equal(t, forwardcore.NextProviderRetry, failoverErr.NextProviderAction)
 	require.Zero(t, cache.getCalls)
 	require.Zero(t, repo.setErrorCalls)
 	require.Zero(t, repo.setTempUnschedCalls)
 }
 
 func TestGetRequestCredentialWarmCachedAccessWithMissingConfiguredProxyPermanentlyFailsOver(t *testing.T) {
-	account := expiredGrokOAuthAccountForCredentialTest(715)
-	account.Record.Credentials["access_token"] = "valid-access"
-	account.Record.Credentials["expires_at"] = time.Now().Add(2 * time.Hour).UTC().Format(time.RFC3339)
+	provider := expiredGrokOAuthProviderForCredentialTest(715)
+	provider.Record.Credentials["access_token"] = "valid-access"
+	provider.Record.Credentials["expires_at"] = time.Now().Add(2 * time.Hour).UTC().Format(time.RFC3339)
 	proxyID := int64(44)
-	account.Record.ProxyID = &proxyID
-	account.Record.Proxy = nil
-	baseRepo := &tokenRefreshAccountRepo{}
-	baseRepo.accountsByID = map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: account}
-	repo := &grokCredentialPersistingRepo{tokenRefreshAccountRepo: baseRepo}
+	provider.Record.ProxyID = &proxyID
+	provider.Record.Proxy = nil
+	baseRepo := &tokenRefreshProviderRepo{}
+	baseRepo.providersByID = map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider}
+	repo := &grokCredentialPersistingRepo{tokenRefreshProviderRepo: baseRepo}
 	cache := &grokTokenCacheForProviderTest{lockResult: true, token: "valid-access"}
 	refresher := &grokCredentialCountingRefresher{}
-	provider := newGrokTokenSourceForTest(repo, cache)
-	bindGrokRefreshForTest(provider, newGrokCredentialRefreshForTest(repo, cache), refresher)
-	svc := newRequestCredentialsFixture(repo, provider)
+	tokenSource := newGrokTokenSourceForTest(repo, cache)
+	bindGrokRefreshForTest(tokenSource, newGrokCredentialRefreshForTest(repo, cache), refresher)
+	svc := newRequestCredentialsFixture(repo, tokenSource)
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())
 
-	_, _, err := svc.Resolve(context.Background(), c, account)
+	_, _, err := svc.Resolve(context.Background(), c, provider)
 
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)
 	require.Equal(t, forwardcore.GrokCredentialReasonProxyInvalid, failoverErr.Reason)
-	require.Equal(t, forwardcore.NextAccountRetry, failoverErr.NextAccountAction)
+	require.Equal(t, forwardcore.NextProviderRetry, failoverErr.NextProviderAction)
 	require.Zero(t, refresher.refreshCalls)
 	require.Equal(t, 1, baseRepo.setErrorCalls)
-	require.Equal(t, []string{accountcore.GrokTokenCacheKey(gatewayprovider.ExecutionRecord(account))}, cache.deletedKeys)
-	require.True(t, credentialBlocked(svc, account))
+	require.Equal(t, []string{providercore.GrokTokenCacheKey(gatewayprovider.ExecutionRecord(provider))}, cache.deletedKeys)
+	require.True(t, credentialBlocked(svc, provider))
 }
 
-func TestGetRequestCredentialCancellationAndBudgetDoNotMutateAccount(t *testing.T) {
-
-	account := expiredGrokOAuthAccountForCredentialTest(704)
-	repo := &tokenRefreshAccountRepo{}
-	repo.accountsByID = map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: account}
-	provider := newGrokTokenSourceForTest(repo, nil)
-	svc := newRequestCredentialsFixture(repo, provider)
+func TestGetRequestCredentialCancellationAndBudgetDoNotMutateProvider(t *testing.T) {
+	provider := expiredGrokOAuthProviderForCredentialTest(704)
+	repo := &tokenRefreshProviderRepo{}
+	repo.providersByID = map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider}
+	tokenSource := newGrokTokenSourceForTest(repo, nil)
+	svc := newRequestCredentialsFixture(repo, tokenSource)
 
 	t.Run("parent cancellation is returned directly", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
 		c, _ := gin.CreateTestContext(httptest.NewRecorder())
 
-		_, _, err := svc.Resolve(ctx, c, account)
+		_, _, err := svc.Resolve(ctx, c, provider)
 		require.ErrorIs(t, err, context.Canceled)
 		var failoverErr *forwardcore.UpstreamFailoverError
 		require.False(t, errors.As(err, &failoverErr))
@@ -835,25 +830,24 @@ func TestGetRequestCredentialCancellationAndBudgetDoNotMutateAccount(t *testing.
 		c, _ := gin.CreateTestContext(httptest.NewRecorder())
 		gatewayhttp.RequestCredentialBudget(c).Deadline = time.Now().Add(-time.Second)
 
-		_, _, err := svc.Resolve(context.Background(), c, account)
+		_, _, err := svc.Resolve(context.Background(), c, provider)
 		var failoverErr *forwardcore.UpstreamFailoverError
 		require.ErrorAs(t, err, &failoverErr)
 		require.Equal(t, forwardcore.GatewayFailureScopeRequest, failoverErr.Scope)
 		require.Equal(t, forwardcore.GrokCredentialReasonFailoverTimeout, failoverErr.Reason)
-		require.False(t, failoverErr.ShouldRetryNextAccount())
+		require.False(t, failoverErr.ShouldRetryNextProvider())
 	})
 
 	require.Zero(t, repo.setErrorCalls)
 	require.Zero(t, repo.setTempUnschedCalls)
-	require.False(t, credentialBlocked(svc, account))
+	require.False(t, credentialBlocked(svc, provider))
 }
 
 func TestGetRequestCredentialStateMutationFailureStopsAndKeepsRuntimeBlock(t *testing.T) {
-
 	tests := []struct {
 		name            string
 		refreshErr      error
-		configure       func(*tokenRefreshAccountRepo, *grokTokenCacheForProviderTest)
+		configure       func(*tokenRefreshProviderRepo, *grokTokenCacheForProviderTest)
 		wantSetError    int
 		wantSetTemp     int
 		wantCacheDelete int
@@ -861,7 +855,7 @@ func TestGetRequestCredentialStateMutationFailureStopsAndKeepsRuntimeBlock(t *te
 		{
 			name:       "permanent state persistence",
 			refreshErr: apperror.New(http.StatusBadGateway, "GROK_OAUTH_TOKEN_REFRESH_FAILED", "invalid_grant"),
-			configure: func(repo *tokenRefreshAccountRepo, _ *grokTokenCacheForProviderTest) {
+			configure: func(repo *tokenRefreshProviderRepo, _ *grokTokenCacheForProviderTest) {
 				repo.setErrorErr = errors.New("database write failed")
 			},
 			wantSetError: 1,
@@ -869,7 +863,7 @@ func TestGetRequestCredentialStateMutationFailureStopsAndKeepsRuntimeBlock(t *te
 		{
 			name:       "transient state persistence",
 			refreshErr: errors.New("temporary refresh transport failure"),
-			configure: func(repo *tokenRefreshAccountRepo, _ *grokTokenCacheForProviderTest) {
+			configure: func(repo *tokenRefreshProviderRepo, _ *grokTokenCacheForProviderTest) {
 				repo.setTempUnschedErr = errors.New("database write failed")
 			},
 			wantSetTemp: 1,
@@ -877,7 +871,7 @@ func TestGetRequestCredentialStateMutationFailureStopsAndKeepsRuntimeBlock(t *te
 		{
 			name:       "permanent token cache invalidation",
 			refreshErr: apperror.New(http.StatusBadGateway, "GROK_OAUTH_TOKEN_REFRESH_FAILED", "invalid_grant"),
-			configure: func(_ *tokenRefreshAccountRepo, cache *grokTokenCacheForProviderTest) {
+			configure: func(_ *tokenRefreshProviderRepo, cache *grokTokenCacheForProviderTest) {
 				cache.deleteErr = errors.New("cache delete failed")
 			},
 			wantSetError:    1,
@@ -887,126 +881,126 @@ func TestGetRequestCredentialStateMutationFailureStopsAndKeepsRuntimeBlock(t *te
 
 	for index, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			account := expiredGrokOAuthAccountForCredentialTest(int64(740 + index))
-			repo := &tokenRefreshAccountRepo{}
-			repo.accountsByID = map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: account}
+			provider := expiredGrokOAuthProviderForCredentialTest(int64(740 + index))
+			repo := &tokenRefreshProviderRepo{}
+			repo.providersByID = map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider}
 			cache := &grokTokenCacheForProviderTest{lockResult: true}
 			tt.configure(repo, cache)
-			provider := newGrokTokenSourceForTest(repo, cache)
-			bindGrokRefreshForTest(provider, newGrokCredentialRefreshForTest(repo, cache), &tokenRefresherStub{err: tt.refreshErr})
-			svc := newRequestCredentialsFixture(repo, provider)
+			tokenSource := newGrokTokenSourceForTest(repo, cache)
+			bindGrokRefreshForTest(tokenSource, newGrokCredentialRefreshForTest(repo, cache), &tokenRefresherStub{err: tt.refreshErr})
+			svc := newRequestCredentialsFixture(repo, tokenSource)
 			c, _ := gin.CreateTestContext(httptest.NewRecorder())
 
-			_, _, err := svc.Resolve(context.Background(), c, account)
+			_, _, err := svc.Resolve(context.Background(), c, provider)
 			var failoverErr *forwardcore.UpstreamFailoverError
 			require.ErrorAs(t, err, &failoverErr)
-			require.Equal(t, forwardcore.GatewayFailureScopeProvider, failoverErr.Scope)
+			require.Equal(t, forwardcore.GatewayFailureScopeShared, failoverErr.Scope)
 			require.Equal(t, forwardcore.GrokCredentialReasonStateUpdate, failoverErr.Reason)
-			require.Equal(t, forwardcore.NextAccountStop, failoverErr.NextAccountAction)
+			require.Equal(t, forwardcore.NextProviderStop, failoverErr.NextProviderAction)
 			require.Equal(t, tt.wantSetError, repo.setErrorCalls)
 			require.Equal(t, tt.wantSetTemp, repo.setTempUnschedCalls)
 			require.Len(t, cache.deletedKeys, tt.wantCacheDelete)
-			require.True(t, credentialBlocked(svc, account), "failed mutation must retain the immediate local block")
+			require.True(t, credentialBlocked(svc, provider), "failed mutation must retain the immediate local block")
 		})
 	}
 }
 
 func TestGrokCredentialMutationBoundariesHonorParentCancellation(t *testing.T) {
 	t.Run("blocked SetError cancellation prevents cache and runtime mutation", func(t *testing.T) {
-		account := expiredGrokOAuthAccountForCredentialTest(730)
-		baseRepo := &tokenRefreshAccountRepo{}
-		baseRepo.accountsByID = map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: account}
+		provider := expiredGrokOAuthProviderForCredentialTest(730)
+		baseRepo := &tokenRefreshProviderRepo{}
+		baseRepo.providersByID = map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider}
 		repo := &grokCredentialBlockingRepo{
-			tokenRefreshAccountRepo: baseRepo,
-			setErrorStarted:         make(chan struct{}),
-			setTempStarted:          make(chan struct{}),
+			tokenRefreshProviderRepo: baseRepo,
+			setErrorStarted:          make(chan struct{}),
+			setTempStarted:           make(chan struct{}),
 		}
 		cache := &grokTokenCacheForProviderTest{}
 		svc := newRequestCredentialsFixture(repo, newGrokTokenSourceForTest(repo, cache))
 		ctx, cancel := context.WithCancel(context.Background())
 		result := make(chan error, 1)
 		go func() {
-			_, err := svc.Runtime.Recovery.Apply(ctx, gatewayprovider.ExecutionRecord(account), credentialMutationForTest(forwardcore.GrokCredentialFailure{
+			_, err := svc.Runtime.Recovery.Apply(ctx, gatewayprovider.ExecutionRecord(provider), credentialMutationForTest(forwardcore.GrokCredentialFailure{
 				Reason: forwardcore.GrokCredentialReasonRevoked, Permanent: true,
 			}))
 			result <- err
 		}()
 		<-repo.setErrorStarted
-		require.True(t, credentialBlocked(svc, account), "runtime block must precede persistent SetError")
+		require.True(t, credentialBlocked(svc, provider), "runtime block must precede persistent SetError")
 		cancel()
 
 		require.ErrorIs(t, <-result, context.Canceled)
 		require.Zero(t, baseRepo.setErrorCalls)
 		require.Empty(t, cache.deletedKeys)
-		require.False(t, credentialBlocked(svc, account))
+		require.False(t, credentialBlocked(svc, provider))
 	})
 
 	t.Run("blocked temporary unschedule cancellation prevents runtime mutation", func(t *testing.T) {
-		account := expiredGrokOAuthAccountForCredentialTest(731)
-		baseRepo := &tokenRefreshAccountRepo{}
-		baseRepo.accountsByID = map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: account}
+		provider := expiredGrokOAuthProviderForCredentialTest(731)
+		baseRepo := &tokenRefreshProviderRepo{}
+		baseRepo.providersByID = map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider}
 		repo := &grokCredentialBlockingRepo{
-			tokenRefreshAccountRepo: baseRepo,
-			setErrorStarted:         make(chan struct{}),
-			setTempStarted:          make(chan struct{}),
+			tokenRefreshProviderRepo: baseRepo,
+			setErrorStarted:          make(chan struct{}),
+			setTempStarted:           make(chan struct{}),
 		}
 		svc := newRequestCredentialsFixture(repo, nil)
 		ctx, cancel := context.WithCancel(context.Background())
 		result := make(chan error, 1)
 		go func() {
-			_, err := svc.Runtime.Recovery.Apply(ctx, gatewayprovider.ExecutionRecord(account), credentialMutationForTest(forwardcore.GrokCredentialFailure{
+			_, err := svc.Runtime.Recovery.Apply(ctx, gatewayprovider.ExecutionRecord(provider), credentialMutationForTest(forwardcore.GrokCredentialFailure{
 				Reason: forwardcore.GrokCredentialReasonRefreshTransient, Transient: true,
 			}))
 			result <- err
 		}()
 		<-repo.setTempStarted
-		require.True(t, credentialBlocked(svc, account), "runtime block must precede temporary unscheduling")
+		require.True(t, credentialBlocked(svc, provider), "runtime block must precede temporary unscheduling")
 		cancel()
 
 		require.ErrorIs(t, <-result, context.Canceled)
 		require.Zero(t, baseRepo.setTempUnschedCalls)
-		require.False(t, credentialBlocked(svc, account))
+		require.False(t, credentialBlocked(svc, provider))
 	})
 
 	t.Run("post-commit cancellation finishes cache cleanup and retains quarantine", func(t *testing.T) {
-		account := expiredGrokOAuthAccountForCredentialTest(732)
-		repo := &tokenRefreshAccountRepo{}
-		repo.accountsByID = map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: account}
+		provider := expiredGrokOAuthProviderForCredentialTest(732)
+		repo := &tokenRefreshProviderRepo{}
+		repo.providersByID = map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider}
 		cache := &grokCredentialBlockingCache{deleteStarted: make(chan struct{}), releaseDelete: make(chan struct{})}
 		svc := newRequestCredentialsFixture(repo, newGrokTokenSourceForTest(repo, cache))
 		ctx, cancel := context.WithCancel(context.Background())
 		result := make(chan error, 1)
 		go func() {
-			_, err := svc.Runtime.Recovery.Apply(ctx, gatewayprovider.ExecutionRecord(account), credentialMutationForTest(forwardcore.GrokCredentialFailure{
+			_, err := svc.Runtime.Recovery.Apply(ctx, gatewayprovider.ExecutionRecord(provider), credentialMutationForTest(forwardcore.GrokCredentialFailure{
 				Reason: forwardcore.GrokCredentialReasonRevoked, Permanent: true,
 			}))
 			result <- err
 		}()
 		<-cache.deleteStarted
-		require.True(t, credentialBlocked(svc, account), "runtime block must precede cache invalidation")
+		require.True(t, credentialBlocked(svc, provider), "runtime block must precede cache invalidation")
 		cancel()
 		close(cache.releaseDelete)
 
 		require.ErrorIs(t, <-result, context.Canceled)
 		require.Equal(t, 1, repo.setErrorCalls)
 		require.True(t, cache.wasDeleted())
-		require.True(t, credentialBlocked(svc, account))
+		require.True(t, credentialBlocked(svc, provider))
 	})
 }
 
 func TestGrokCredentialMutationLockWaitHonorsCredentialBudget(t *testing.T) {
-	account := expiredGrokOAuthAccountForCredentialTest(735)
-	repo := &tokenRefreshAccountRepo{}
-	repo.accountsByID = map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: account}
+	provider := expiredGrokOAuthProviderForCredentialTest(735)
+	repo := &tokenRefreshProviderRepo{}
+	repo.providersByID = map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider}
 	svc := newRequestCredentialsFixture(repo, newGrokTokenSourceForTest(repo, &grokTokenCacheForProviderTest{}))
-	mutationLock := newCredentialMutationHold(svc.Runtime.Recovery, account.Record.ID)
+	mutationLock := newCredentialMutationHold(svc.Runtime.Recovery, provider.Record.ID)
 	require.NoError(t, mutationLock.Lock(context.Background()))
 	defer mutationLock.Unlock()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Millisecond)
 	defer cancel()
 
 	startedAt := time.Now()
-	token, err := svc.Runtime.Recovery.Apply(ctx, gatewayprovider.ExecutionRecord(account), credentialMutationForTest(forwardcore.GrokCredentialFailure{
+	token, err := svc.Runtime.Recovery.Apply(ctx, gatewayprovider.ExecutionRecord(provider), credentialMutationForTest(forwardcore.GrokCredentialFailure{
 		Reason: forwardcore.GrokCredentialReasonRevoked, Permanent: true,
 	}))
 
@@ -1015,110 +1009,108 @@ func TestGrokCredentialMutationLockWaitHonorsCredentialBudget(t *testing.T) {
 	require.Less(t, time.Since(startedAt), 500*time.Millisecond)
 	require.Zero(t, repo.setErrorCalls)
 	require.Zero(t, repo.setTempUnschedCalls)
-	require.False(t, credentialBlocked(svc, account))
+	require.False(t, credentialBlocked(svc, provider))
 }
 
 func TestGetRequestCredentialBudgetBoundsBlockedConditionalMutation(t *testing.T) {
-
-	account := expiredGrokOAuthAccountForCredentialTest(736)
-	baseRepo := &tokenRefreshAccountRepo{}
-	baseRepo.accountsByID = map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: account}
+	provider := expiredGrokOAuthProviderForCredentialTest(736)
+	baseRepo := &tokenRefreshProviderRepo{}
+	baseRepo.providersByID = map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider}
 	repo := &grokCredentialBlockingRepo{
-		tokenRefreshAccountRepo: baseRepo,
-		setErrorStarted:         make(chan struct{}),
-		setTempStarted:          make(chan struct{}),
+		tokenRefreshProviderRepo: baseRepo,
+		setErrorStarted:          make(chan struct{}),
+		setTempStarted:           make(chan struct{}),
 	}
 	cache := &grokTokenCacheForProviderTest{lockResult: true}
-	provider := newGrokTokenSourceForTest(repo, cache)
-	bindGrokRefreshForTest(provider, newGrokCredentialRefreshForTest(repo, cache), &tokenRefresherStub{
+	tokenSource := newGrokTokenSourceForTest(repo, cache)
+	bindGrokRefreshForTest(tokenSource, newGrokCredentialRefreshForTest(repo, cache), &tokenRefresherStub{
 		err: apperror.New(http.StatusBadGateway, "GROK_OAUTH_TOKEN_REFRESH_FAILED", "invalid_grant"),
 	})
-	svc := newRequestCredentialsFixture(repo, provider)
+	svc := newRequestCredentialsFixture(repo, tokenSource)
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())
 	gatewayhttp.RequestCredentialBudget(c).Deadline = time.Now().Add(40 * time.Millisecond)
 
 	startedAt := time.Now()
-	token, kind, err := svc.Resolve(context.Background(), c, account)
+	token, kind, err := svc.Resolve(context.Background(), c, provider)
 
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)
 	require.Equal(t, forwardcore.GatewayFailureScopeRequest, failoverErr.Scope)
 	require.Equal(t, forwardcore.GrokCredentialReasonFailoverTimeout, failoverErr.Reason)
-	require.Equal(t, forwardcore.NextAccountStop, failoverErr.NextAccountAction)
+	require.Equal(t, forwardcore.NextProviderStop, failoverErr.NextProviderAction)
 	require.Empty(t, token)
 	require.Empty(t, kind)
 	require.Less(t, time.Since(startedAt), 500*time.Millisecond)
 	require.Zero(t, baseRepo.setErrorCalls)
 	require.Zero(t, baseRepo.setTempUnschedCalls)
 	require.Empty(t, cache.deletedKeys)
-	require.False(t, credentialBlocked(svc, account))
+	require.False(t, credentialBlocked(svc, provider))
 }
 
-func TestGetRequestCredentialLockHeldTimeoutDoesNotQuarantineAccount(t *testing.T) {
-
+func TestGetRequestCredentialLockHeldTimeoutDoesNotQuarantineProvider(t *testing.T) {
 	tests := []struct {
 		name       string
-		buildRepo  func(*gatewayprovider.ExecutionAccount) gatewayprovider.ExecutionAccountStore
+		buildRepo  func(*gatewayprovider.ExecutionProvider) gatewayprovider.ExecutionProviderStore
 		wantScope  forwardcore.GatewayFailureScope
 		wantReason forwardcore.GatewayFailureReason
-		wantAction forwardcore.NextAccountAction
+		wantAction forwardcore.NextProviderAction
 	}{
 		{
 			name: "authoritative row unchanged",
-			buildRepo: func(account *gatewayprovider.ExecutionAccount) gatewayprovider.ExecutionAccountStore {
-				repo := &tokenRefreshAccountRepo{}
-				repo.accountsByID = map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: account}
+			buildRepo: func(provider *gatewayprovider.ExecutionProvider) gatewayprovider.ExecutionProviderStore {
+				repo := &tokenRefreshProviderRepo{}
+				repo.providersByID = map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider}
 				return repo
 			},
-			wantScope:  forwardcore.GatewayFailureScopeAccount,
-			wantReason: forwardcore.GrokCredentialReasonAccountChanged,
-			wantAction: forwardcore.NextAccountRetry,
+			wantScope:  forwardcore.GatewayFailureScopeProvider,
+			wantReason: forwardcore.GrokCredentialReasonProviderChanged,
+			wantAction: forwardcore.NextProviderRetry,
 		},
 		{
-			name: "selected account was deleted",
-			buildRepo: func(account *gatewayprovider.ExecutionAccount) gatewayprovider.ExecutionAccountStore {
-				base := &tokenRefreshAccountRepo{}
-				base.accountsByID = map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: account}
-				return &grokCredentialRereadFailureRepo{tokenRefreshAccountRepo: base}
-			},
-			wantScope:  forwardcore.GatewayFailureScopeAccount,
-			wantReason: forwardcore.GrokCredentialReasonAccountChanged,
-			wantAction: forwardcore.NextAccountRetry,
-		},
-		{
-			name: "shared account store unavailable",
-			buildRepo: func(account *gatewayprovider.ExecutionAccount) gatewayprovider.ExecutionAccountStore {
-				base := &tokenRefreshAccountRepo{}
-				base.accountsByID = map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: account}
-				return &grokCredentialRereadFailureRepo{tokenRefreshAccountRepo: base, err: errors.New("database unavailable")}
+			name: "selected provider was deleted",
+			buildRepo: func(provider *gatewayprovider.ExecutionProvider) gatewayprovider.ExecutionProviderStore {
+				base := &tokenRefreshProviderRepo{}
+				base.providersByID = map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider}
+				return &grokCredentialRereadFailureRepo{tokenRefreshProviderRepo: base}
 			},
 			wantScope:  forwardcore.GatewayFailureScopeProvider,
+			wantReason: forwardcore.GrokCredentialReasonProviderChanged,
+			wantAction: forwardcore.NextProviderRetry,
+		},
+		{
+			name: "shared provider store unavailable",
+			buildRepo: func(provider *gatewayprovider.ExecutionProvider) gatewayprovider.ExecutionProviderStore {
+				base := &tokenRefreshProviderRepo{}
+				base.providersByID = map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider}
+				return &grokCredentialRereadFailureRepo{tokenRefreshProviderRepo: base, err: errors.New("database unavailable")}
+			},
+			wantScope:  forwardcore.GatewayFailureScopeShared,
 			wantReason: forwardcore.GrokCredentialReasonProviderDown,
-			wantAction: forwardcore.NextAccountStop,
+			wantAction: forwardcore.NextProviderStop,
 		},
 	}
 
 	for index, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			account := expiredGrokOAuthAccountForCredentialTest(int64(7400 + index))
-			repo := tt.buildRepo(account)
+			provider := expiredGrokOAuthProviderForCredentialTest(int64(7400 + index))
+			repo := tt.buildRepo(provider)
 			cache := &grokTokenCacheForProviderTest{lockResult: false}
-			provider := newGrokTokenSourceForTest(repo, cache)
-			bindGrokRefreshForTest(provider, newGrokCredentialRefreshForTest(repo, cache), &tokenRefresherStub{})
-			svc := newRequestCredentialsFixture(repo, provider)
+			tokenSource := newGrokTokenSourceForTest(repo, cache)
+			bindGrokRefreshForTest(tokenSource, newGrokCredentialRefreshForTest(repo, cache), &tokenRefresherStub{})
+			svc := newRequestCredentialsFixture(repo, tokenSource)
 			c, _ := gin.CreateTestContext(httptest.NewRecorder())
 
 			startedAt := time.Now()
-			_, _, err := svc.Resolve(context.Background(), c, account)
+			_, _, err := svc.Resolve(context.Background(), c, provider)
 
 			var failoverErr *forwardcore.UpstreamFailoverError
 			require.ErrorAs(t, err, &failoverErr)
 			require.Equal(t, tt.wantScope, failoverErr.Scope)
 			require.Equal(t, tt.wantReason, failoverErr.Reason)
-			require.Equal(t, tt.wantAction, failoverErr.NextAccountAction)
+			require.Equal(t, tt.wantAction, failoverErr.NextProviderAction)
 			require.Less(t, time.Since(startedAt), 3*time.Second)
 			switch countingRepo := repo.(type) {
-			case *tokenRefreshAccountRepo:
+			case *tokenRefreshProviderRepo:
 				require.Zero(t, countingRepo.setErrorCalls)
 				require.Zero(t, countingRepo.setTempUnschedCalls)
 			case *grokCredentialRereadFailureRepo:
@@ -1126,7 +1118,7 @@ func TestGetRequestCredentialLockHeldTimeoutDoesNotQuarantineAccount(t *testing.
 				require.Zero(t, countingRepo.setTempUnschedCalls)
 			}
 			require.Empty(t, cache.deletedKeys)
-			require.False(t, credentialBlocked(svc, account))
+			require.False(t, credentialBlocked(svc, provider))
 		})
 	}
 }
@@ -1135,43 +1127,43 @@ func TestGrokCredentialMutationCancellationAmbiguityConfirmsDurableCommit(t *tes
 	tests := []struct {
 		name      string
 		class     forwardcore.GrokCredentialFailure
-		committed func(*gatewayprovider.ExecutionAccount) bool
+		committed func(*gatewayprovider.ExecutionProvider) bool
 	}{
 		{
 			name:  "permanent quarantine",
 			class: forwardcore.GrokCredentialFailure{Reason: forwardcore.GrokCredentialReasonRevoked, Permanent: true},
-			committed: func(account *gatewayprovider.ExecutionAccount) bool {
-				return account.Record.Status == accountcore.StatusError && !account.Record.Schedulable && account.Record.ErrorMessage == string(forwardcore.GrokCredentialReasonRevoked)
+			committed: func(provider *gatewayprovider.ExecutionProvider) bool {
+				return provider.Record.Status == providercore.StatusError && !provider.Record.Schedulable && provider.Record.ErrorMessage == string(forwardcore.GrokCredentialReasonRevoked)
 			},
 		},
 		{
 			name:  "temporary quarantine",
 			class: forwardcore.GrokCredentialFailure{Reason: forwardcore.GrokCredentialReasonRefreshTransient, Transient: true},
-			committed: func(account *gatewayprovider.ExecutionAccount) bool {
-				return account.Record.TempUnschedulableUntil != nil && account.Record.TempUnschedulableReason == string(forwardcore.GrokCredentialReasonRefreshTransient)
+			committed: func(provider *gatewayprovider.ExecutionProvider) bool {
+				return provider.Record.TempUnschedulableUntil != nil && provider.Record.TempUnschedulableReason == string(forwardcore.GrokCredentialReasonRefreshTransient)
 			},
 		},
 	}
 
 	for index, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			account := expiredGrokOAuthAccountForCredentialTest(int64(737 + index))
-			baseRepo := &tokenRefreshAccountRepo{}
-			baseRepo.accountsByID = map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: account}
-			repo := &grokCredentialCommitThenCancelRepo{tokenRefreshAccountRepo: baseRepo}
+			provider := expiredGrokOAuthProviderForCredentialTest(int64(737 + index))
+			baseRepo := &tokenRefreshProviderRepo{}
+			baseRepo.providersByID = map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider}
+			repo := &grokCredentialCommitThenCancelRepo{tokenRefreshProviderRepo: baseRepo}
 			cache := &grokTokenCacheForProviderTest{}
 			svc := newRequestCredentialsFixture(repo, newGrokTokenSourceForTest(repo, cache))
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Millisecond)
 			defer cancel()
 
-			token, err := svc.Runtime.Recovery.Apply(ctx, gatewayprovider.ExecutionRecord(account), credentialMutationForTest(tt.class))
+			token, err := svc.Runtime.Recovery.Apply(ctx, gatewayprovider.ExecutionRecord(provider), credentialMutationForTest(tt.class))
 
 			require.ErrorIs(t, err, context.DeadlineExceeded)
 			require.Empty(t, token)
-			require.True(t, tt.committed(account), "the detached confirmation must recognize the durable mutation")
-			require.True(t, credentialBlocked(svc, account), "a confirmed durable quarantine must retain its runtime block")
+			require.True(t, tt.committed(provider), "the detached confirmation must recognize the durable mutation")
+			require.True(t, credentialBlocked(svc, provider), "a confirmed durable quarantine must retain its runtime block")
 			if tt.class.Permanent {
-				require.Equal(t, []string{accountcore.GrokTokenCacheKey(gatewayprovider.ExecutionRecord(account))}, cache.deletedKeys)
+				require.Equal(t, []string{providercore.GrokTokenCacheKey(gatewayprovider.ExecutionRecord(provider))}, cache.deletedKeys)
 			} else {
 				require.Empty(t, cache.deletedKeys)
 			}
@@ -1190,28 +1182,28 @@ func TestGrokCredentialInnerStateDeadlineAmbiguityConfirmsDurableCommit(t *testi
 
 	for index, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			account := expiredGrokOAuthAccountForCredentialTest(int64(7500 + index))
-			baseRepo := &tokenRefreshAccountRepo{}
-			baseRepo.accountsByID = map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: account}
+			provider := expiredGrokOAuthProviderForCredentialTest(int64(7500 + index))
+			baseRepo := &tokenRefreshProviderRepo{}
+			baseRepo.providersByID = map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider}
 			repo := &grokCredentialCommitThenCancelRepo{
-				tokenRefreshAccountRepo: baseRepo,
-				returnErr:               context.DeadlineExceeded,
+				tokenRefreshProviderRepo: baseRepo,
+				returnErr:                context.DeadlineExceeded,
 			}
 			cache := &grokTokenCacheForProviderTest{}
 			svc := newRequestCredentialsFixture(repo, newGrokTokenSourceForTest(repo, cache))
 
-			token, err := svc.Runtime.Recovery.Apply(context.Background(), gatewayprovider.ExecutionRecord(account), credentialMutationForTest(tt.class))
+			token, err := svc.Runtime.Recovery.Apply(context.Background(), gatewayprovider.ExecutionRecord(provider), credentialMutationForTest(tt.class))
 
 			require.NoError(t, err, "the detached readback must resolve the inner timeout's commit ambiguity")
 			require.Empty(t, token)
-			require.True(t, credentialBlocked(svc, account))
+			require.True(t, credentialBlocked(svc, provider))
 			if tt.class.Permanent {
-				require.Equal(t, accountcore.StatusError, account.Record.Status)
-				require.False(t, account.Record.Schedulable)
-				require.Equal(t, []string{accountcore.GrokTokenCacheKey(gatewayprovider.ExecutionRecord(account))}, cache.deletedKeys)
+				require.Equal(t, providercore.StatusError, provider.Record.Status)
+				require.False(t, provider.Record.Schedulable)
+				require.Equal(t, []string{providercore.GrokTokenCacheKey(gatewayprovider.ExecutionRecord(provider))}, cache.deletedKeys)
 			} else {
-				require.NotNil(t, account.Record.TempUnschedulableUntil)
-				require.Equal(t, string(forwardcore.GrokCredentialReasonRefreshTransient), account.Record.TempUnschedulableReason)
+				require.NotNil(t, provider.Record.TempUnschedulableUntil)
+				require.Equal(t, string(forwardcore.GrokCredentialReasonRefreshTransient), provider.Record.TempUnschedulableReason)
 				require.Empty(t, cache.deletedKeys)
 			}
 		})
@@ -1229,83 +1221,85 @@ func TestGrokCredentialUnconfirmedInnerStateDeadlineStopsAndRetainsSafetyBlock(t
 
 	for index, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			account := expiredGrokOAuthAccountForCredentialTest(int64(7600 + index))
-			baseRepo := &tokenRefreshAccountRepo{}
-			baseRepo.accountsByID = map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: account}
-			repo := &grokCredentialUncommittedDeadlineRepo{tokenRefreshAccountRepo: baseRepo}
+			provider := expiredGrokOAuthProviderForCredentialTest(int64(7600 + index))
+			baseRepo := &tokenRefreshProviderRepo{}
+			baseRepo.providersByID = map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider}
+			repo := &grokCredentialUncommittedDeadlineRepo{tokenRefreshProviderRepo: baseRepo}
 			cache := &grokTokenCacheForProviderTest{}
 			svc := newRequestCredentialsFixture(repo, newGrokTokenSourceForTest(repo, cache))
 
-			token, err := svc.Runtime.Recovery.Apply(context.Background(), gatewayprovider.ExecutionRecord(account), credentialMutationForTest(tt.class))
+			token, err := svc.Runtime.Recovery.Apply(context.Background(), gatewayprovider.ExecutionRecord(provider), credentialMutationForTest(tt.class))
 
-			require.ErrorIs(t, err, accountcore.ErrGrokCredentialStateUpdateFailed)
+			require.ErrorIs(t, err, providercore.ErrGrokCredentialStateUpdateFailed)
 			require.Empty(t, token)
-			require.True(t, credentialBlocked(svc, account), "an unknown commit outcome must retain the local safety block")
-			require.Equal(t, billing.StatusActive, account.Record.Status)
-			require.True(t, account.Record.Schedulable)
-			require.Nil(t, account.Record.TempUnschedulableUntil)
+			require.True(t, credentialBlocked(svc, provider), "an unknown commit outcome must retain the local safety block")
+			require.Equal(t, billing.StatusActive, provider.Record.Status)
+			require.True(t, provider.Record.Schedulable)
+			require.Nil(t, provider.Record.TempUnschedulableUntil)
 			require.Empty(t, cache.deletedKeys)
 		})
 	}
 }
 
 func TestGrokCredentialRuntimeRollbackOwnership(t *testing.T) {
-	account := expiredGrokOAuthAccountForCredentialTest(734)
+	provider := expiredGrokOAuthProviderForCredentialTest(734)
 	t.Run("later extending block survives", func(t *testing.T) {
 		svc := newRequestCredentialsFixture(nil, nil)
 		until := time.Now().Add(time.Minute)
-		rollbackFirst := svc.Runtime.Runtime.BlockRollback(account.Record.ID, until, "first")
+		rollbackFirst := svc.Runtime.Runtime.BlockRollback(provider.Record.ID, until, "first")
 
 		secondInstalled := make(chan struct{})
 		go func() {
-			svc.Runtime.Runtime.BlockAccountScheduling(gatewayprovider.ExecutionRecord(account), until.Add(time.Minute), "independent")
+			svc.Runtime.Runtime.BlockProviderScheduling(gatewayprovider.ExecutionRecord(provider), until.Add(time.Minute), "independent")
 			close(secondInstalled)
 		}()
 		<-secondInstalled
 		rollbackFirst()
 
-		require.True(t, credentialBlocked(svc, account),
+		require.True(t, credentialBlocked(svc, provider),
 			"rollback owned by the first invocation must not remove a later extending block")
 	})
 
 	t.Run("independent shorter block steals rollback ownership", func(t *testing.T) {
 		svc := newRequestCredentialsFixture(nil, nil)
 		until := time.Now().Add(2 * time.Minute)
-		rollbackFirst := svc.Runtime.Runtime.BlockRollback(account.Record.ID, until, "first")
-		svc.Runtime.Runtime.BlockAccountScheduling(gatewayprovider.ExecutionRecord(account), until.Add(-time.Minute), "shorter-no-op")
+		rollbackFirst := svc.Runtime.Runtime.BlockRollback(provider.Record.ID, until, "first")
+		svc.Runtime.Runtime.BlockProviderScheduling(gatewayprovider.ExecutionRecord(provider), until.Add(-time.Minute), "shorter-no-op")
 
 		rollbackFirst()
 
-		require.True(t, credentialBlocked(svc, account))
+		require.True(t, credentialBlocked(svc, provider))
 	})
 
 	t.Run("serialized tentative rollbacks leave no block", func(t *testing.T) {
 		svc := newRequestCredentialsFixture(nil, nil)
 		for i := 0; i < 2; i++ {
-			mu := newCredentialMutationHold(svc.Runtime.Recovery, account.Record.ID)
+			mu := newCredentialMutationHold(svc.Runtime.Recovery, provider.Record.ID)
 			require.NoError(t, mu.Lock(context.Background()))
-			rollback := svc.Runtime.Runtime.BlockRollback(account.Record.ID, time.Now().Add(time.Minute), "tentative")
+			rollback := svc.Runtime.Runtime.BlockRollback(provider.Record.ID, time.Now().Add(time.Minute), "tentative")
 			rollback()
 			mu.Unlock()
 		}
-		require.False(t, credentialBlocked(svc, account))
+		require.False(t, credentialBlocked(svc, provider))
 	})
 }
 
 func TestGetRequestCredentialAPIKeyBypassesOAuthFailureMapping(t *testing.T) {
-
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 705,
-		Platform: capability.PlatformGrok,
-		Type:     capability.AccountTypeAPIKey,
-		Credentials: map[string]any{
-			"api_key":  "third-party-key",
-			"base_url": "https://grok.example.test/v1",
-		}},
+	provider := &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: 705,
+			Platform: capability.PlatformGrok,
+			Type:     capability.ProviderTypeAPIKey,
+			Credentials: map[string]any{
+				"api_key":  "third-party-key",
+				"base_url": "https://grok.example.test/v1",
+			},
+		},
 	}
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())
 	svc := newRequestCredentialsFixture(nil, nil)
 
-	token, kind, err := svc.Resolve(context.Background(), c, account)
+	token, kind, err := svc.Resolve(context.Background(), c, provider)
 	require.NoError(t, err)
 	require.Equal(t, "third-party-key", token)
 	require.Equal(t, "apikey", kind)
@@ -1313,30 +1307,30 @@ func TestGetRequestCredentialAPIKeyBypassesOAuthFailureMapping(t *testing.T) {
 	require.False(t, hasEvents)
 }
 
-func TestPermanentCredentialFailureDoesNotDisableConcurrentlyRefreshedAccount(t *testing.T) {
-	account := expiredGrokOAuthAccountForCredentialTest(707)
-	latest := *account
-	latest.Record.Credentials = querycache.ShallowMap(account.Record.Credentials)
+func TestPermanentCredentialFailureDoesNotDisableConcurrentlyRefreshedProvider(t *testing.T) {
+	provider := expiredGrokOAuthProviderForCredentialTest(707)
+	latest := *provider
+	latest.Record.Credentials = querycache.ShallowMap(provider.Record.Credentials)
 	latest.Record.Credentials["access_token"] = "fresh-access-token"
 	latest.Record.Credentials["refresh_token"] = "rotated-refresh-token"
 	latest.Record.Credentials["expires_at"] = time.Now().Add(time.Hour).UTC().Format(time.RFC3339)
 	latest.Record.Credentials["_token_version"] = time.Now().UnixMilli()
-	repo := &tokenRefreshAccountRepo{}
-	repo.accountsByID = map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: &latest}
+	repo := &tokenRefreshProviderRepo{}
+	repo.providersByID = map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: &latest}
 	cache := &grokTokenCacheForProviderTest{}
 	svc := newRequestCredentialsFixture(repo, newGrokTokenSourceForTest(repo, cache))
 
-	_, mutationErr := svc.Runtime.Recovery.Apply(context.Background(), gatewayprovider.ExecutionRecord(account), credentialMutationForTest(forwardcore.GrokCredentialFailure{
-		Scope:     forwardcore.GatewayFailureScopeAccount,
+	_, mutationErr := svc.Runtime.Recovery.Apply(context.Background(), gatewayprovider.ExecutionRecord(provider), credentialMutationForTest(forwardcore.GrokCredentialFailure{
+		Scope:     forwardcore.GatewayFailureScopeProvider,
 		Reason:    forwardcore.GrokCredentialReasonRevoked,
-		Action:    forwardcore.NextAccountRetry,
+		Action:    forwardcore.NextProviderRetry,
 		Permanent: true,
 	}))
 
 	require.NoError(t, mutationErr)
 	require.Zero(t, repo.setErrorCalls)
 	require.Empty(t, cache.deletedKeys)
-	require.False(t, credentialBlocked(svc, account))
+	require.False(t, credentialBlocked(svc, provider))
 }
 
 func TestCredentialFailureConditionalMutationLosesToConcurrentRefresh(t *testing.T) {
@@ -1348,25 +1342,25 @@ func TestCredentialFailureConditionalMutationLosesToConcurrentRefresh(t *testing
 		{name: "transient", refreshErr: errors.New("temporary refresh transport failure")},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			account := expiredGrokOAuthAccountForCredentialTest(int64(770 + index))
-			repo := &tokenRefreshAccountRepo{}
-			repo.accountsByID = map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: account}
+			provider := expiredGrokOAuthProviderForCredentialTest(int64(770 + index))
+			repo := &tokenRefreshProviderRepo{}
+			repo.providersByID = map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider}
 			repo.beforeConditionalState = func() {
-				fresh := *account
-				fresh.Record.Credentials = querycache.ShallowMap(account.Record.Credentials)
+				fresh := *provider
+				fresh.Record.Credentials = querycache.ShallowMap(provider.Record.Credentials)
 				fresh.Record.Credentials["access_token"] = "refresh-won-token"
 				fresh.Record.Credentials["refresh_token"] = "refresh-won-refresh"
 				fresh.Record.Credentials["expires_at"] = time.Now().Add(2 * time.Hour).UTC().Format(time.RFC3339)
 				fresh.Record.Credentials["_token_version"] = time.Now().UnixMilli()
-				repo.accountsByID[account.Record.ID] = &fresh
+				repo.providersByID[provider.Record.ID] = &fresh
 			}
 			cache := &grokTokenCacheForProviderTest{lockResult: true}
-			provider := newGrokTokenSourceForTest(repo, cache)
-			bindGrokRefreshForTest(provider, newGrokCredentialRefreshForTest(repo, cache), &tokenRefresherStub{err: tt.refreshErr})
-			svc := newRequestCredentialsFixture(repo, provider)
+			tokenSource := newGrokTokenSourceForTest(repo, cache)
+			bindGrokRefreshForTest(tokenSource, newGrokCredentialRefreshForTest(repo, cache), &tokenRefresherStub{err: tt.refreshErr})
+			svc := newRequestCredentialsFixture(repo, tokenSource)
 			c, _ := gin.CreateTestContext(httptest.NewRecorder())
 
-			token, kind, err := svc.Resolve(context.Background(), c, account)
+			token, kind, err := svc.Resolve(context.Background(), c, provider)
 
 			require.NoError(t, err)
 			require.Equal(t, "refresh-won-token", token)
@@ -1374,7 +1368,7 @@ func TestCredentialFailureConditionalMutationLosesToConcurrentRefresh(t *testing
 			require.Zero(t, repo.setErrorCalls)
 			require.Zero(t, repo.setTempUnschedCalls)
 			require.Empty(t, cache.deletedKeys)
-			require.False(t, credentialBlocked(svc, account))
+			require.False(t, credentialBlocked(svc, provider))
 		})
 	}
 }
@@ -1388,76 +1382,76 @@ func TestCredentialFailureConditionalMutationLosesToConcurrentProxyRepair(t *tes
 		{name: "transient", refreshErr: errors.New("temporary refresh transport failure")},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			account := expiredGrokOAuthAccountForCredentialTest(int64(780 + index))
+			provider := expiredGrokOAuthProviderForCredentialTest(int64(780 + index))
 			oldProxyID := int64(10)
-			account.Record.ProxyID = &oldProxyID
-			account.Record.Proxy = &egress.Proxy{}
-			repo := &tokenRefreshAccountRepo{}
-			repo.accountsByID = map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: account}
+			provider.Record.ProxyID = &oldProxyID
+			provider.Record.Proxy = &egress.Proxy{}
+			repo := &tokenRefreshProviderRepo{}
+			repo.providersByID = map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider}
 			repo.beforeConditionalState = func() {
-				fresh := *account
-				fresh.Record.Credentials = querycache.ShallowMap(account.Record.Credentials)
+				fresh := *provider
+				fresh.Record.Credentials = querycache.ShallowMap(provider.Record.Credentials)
 				repairedProxyID := int64(11)
 				fresh.Record.ProxyID = &repairedProxyID
-				repo.accountsByID[account.Record.ID] = &fresh
+				repo.providersByID[provider.Record.ID] = &fresh
 			}
 			cache := &grokTokenCacheForProviderTest{lockResult: true}
-			provider := newGrokTokenSourceForTest(repo, cache)
-			bindGrokRefreshForTest(provider, newGrokCredentialRefreshForTest(repo, cache), &tokenRefresherStub{err: tt.refreshErr})
-			svc := newRequestCredentialsFixture(repo, provider)
+			tokenSource := newGrokTokenSourceForTest(repo, cache)
+			bindGrokRefreshForTest(tokenSource, newGrokCredentialRefreshForTest(repo, cache), &tokenRefresherStub{err: tt.refreshErr})
+			svc := newRequestCredentialsFixture(repo, tokenSource)
 			c, _ := gin.CreateTestContext(httptest.NewRecorder())
 
-			_, _, err := svc.Resolve(context.Background(), c, account)
+			_, _, err := svc.Resolve(context.Background(), c, provider)
 
 			var failoverErr *forwardcore.UpstreamFailoverError
 			require.ErrorAs(t, err, &failoverErr)
-			require.Equal(t, forwardcore.GrokCredentialReasonAccountChanged, failoverErr.Reason)
-			require.Equal(t, forwardcore.NextAccountRetry, failoverErr.NextAccountAction)
+			require.Equal(t, forwardcore.GrokCredentialReasonProviderChanged, failoverErr.Reason)
+			require.Equal(t, forwardcore.NextProviderRetry, failoverErr.NextProviderAction)
 			require.Zero(t, repo.setErrorCalls)
 			require.Zero(t, repo.setTempUnschedCalls)
 			require.Empty(t, cache.deletedKeys)
-			require.False(t, credentialBlocked(svc, account))
+			require.False(t, credentialBlocked(svc, provider))
 		})
 	}
 }
 
 func TestCredentialFailureConditionalMutationLosesToSameIDProxyRestoration(t *testing.T) {
-	account := expiredGrokOAuthAccountForCredentialTest(790)
+	provider := expiredGrokOAuthProviderForCredentialTest(790)
 	proxyID := int64(10)
-	account.Record.ProxyID = &proxyID
-	account.Record.Proxy = nil
-	repo := &tokenRefreshAccountRepo{}
-	repo.accountsByID = map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: account}
+	provider.Record.ProxyID = &proxyID
+	provider.Record.Proxy = nil
+	repo := &tokenRefreshProviderRepo{}
+	repo.providersByID = map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider}
 	repo.beforeConditionalState = func() {
-		account.Record.Proxy = &egress.Proxy{ID: proxyID}
+		provider.Record.Proxy = &egress.Proxy{ID: proxyID}
 	}
 	cache := &grokTokenCacheForProviderTest{lockResult: true}
-	provider := newGrokTokenSourceForTest(repo, cache)
-	svc := newRequestCredentialsFixture(repo, provider)
+	tokenSource := newGrokTokenSourceForTest(repo, cache)
+	svc := newRequestCredentialsFixture(repo, tokenSource)
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())
 
-	_, _, err := svc.Resolve(context.Background(), c, account)
+	_, _, err := svc.Resolve(context.Background(), c, provider)
 
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)
-	require.Equal(t, forwardcore.GrokCredentialReasonAccountChanged, failoverErr.Reason)
-	require.Equal(t, forwardcore.NextAccountRetry, failoverErr.NextAccountAction)
+	require.Equal(t, forwardcore.GrokCredentialReasonProviderChanged, failoverErr.Reason)
+	require.Equal(t, forwardcore.NextProviderRetry, failoverErr.NextProviderAction)
 	require.Zero(t, repo.setErrorCalls)
 	require.Zero(t, repo.setTempUnschedCalls)
 	require.Empty(t, cache.deletedKeys)
-	require.False(t, credentialBlocked(svc, account))
+	require.False(t, credentialBlocked(svc, provider))
 }
 
 func TestCredentialFailureConditionalMutationLosesToConcurrentUnschedulableState(t *testing.T) {
 	future := time.Now().Add(time.Hour)
 	states := []struct {
 		name   string
-		mutate func(*gatewayprovider.ExecutionAccount)
+		mutate func(*gatewayprovider.ExecutionProvider)
 	}{
-		{name: "admin schedulable false", mutate: func(account *gatewayprovider.ExecutionAccount) { account.Record.Schedulable = false }},
-		{name: "temporary cooldown", mutate: func(account *gatewayprovider.ExecutionAccount) { account.Record.TempUnschedulableUntil = &future }},
-		{name: "rate limit cooldown", mutate: func(account *gatewayprovider.ExecutionAccount) { account.Record.RateLimitResetAt = &future }},
-		{name: "overload cooldown", mutate: func(account *gatewayprovider.ExecutionAccount) { account.Record.OverloadUntil = &future }},
+		{name: "admin schedulable false", mutate: func(provider *gatewayprovider.ExecutionProvider) { provider.Record.Schedulable = false }},
+		{name: "temporary cooldown", mutate: func(provider *gatewayprovider.ExecutionProvider) { provider.Record.TempUnschedulableUntil = &future }},
+		{name: "rate limit cooldown", mutate: func(provider *gatewayprovider.ExecutionProvider) { provider.Record.RateLimitResetAt = &future }},
+		{name: "overload cooldown", mutate: func(provider *gatewayprovider.ExecutionProvider) { provider.Record.OverloadUntil = &future }},
 	}
 	classes := []struct {
 		name  string
@@ -1470,19 +1464,19 @@ func TestCredentialFailureConditionalMutationLosesToConcurrentUnschedulableState
 	for classIndex, classCase := range classes {
 		for stateIndex, stateCase := range states {
 			t.Run(classCase.name+"/"+stateCase.name, func(t *testing.T) {
-				account := expiredGrokOAuthAccountForCredentialTest(int64(791 + classIndex*10 + stateIndex))
-				repo := &tokenRefreshAccountRepo{}
-				repo.accountsByID = map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: account}
-				repo.beforeConditionalState = func() { stateCase.mutate(account) }
+				provider := expiredGrokOAuthProviderForCredentialTest(int64(791 + classIndex*10 + stateIndex))
+				repo := &tokenRefreshProviderRepo{}
+				repo.providersByID = map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider}
+				repo.beforeConditionalState = func() { stateCase.mutate(provider) }
 				svc := newRequestCredentialsFixture(repo, newGrokTokenSourceForTest(repo, &grokTokenCacheForProviderTest{}))
 
-				token, err := svc.Runtime.Recovery.Apply(context.Background(), gatewayprovider.ExecutionRecord(account), credentialMutationForTest(classCase.class))
+				token, err := svc.Runtime.Recovery.Apply(context.Background(), gatewayprovider.ExecutionRecord(provider), credentialMutationForTest(classCase.class))
 
-				require.ErrorIs(t, err, accountcore.ErrRefreshAccountStateChanged)
+				require.ErrorIs(t, err, providercore.ErrRefreshProviderStateChanged)
 				require.Empty(t, token)
 				require.Zero(t, repo.setErrorCalls)
 				require.Zero(t, repo.setTempUnschedCalls)
-				require.False(t, credentialBlocked(svc, account))
+				require.False(t, credentialBlocked(svc, provider))
 			})
 		}
 	}
@@ -1492,28 +1486,28 @@ func TestCredentialFailureCASMissDoesNotRecoverIneligibleLatestCredential(t *tes
 	future := time.Now().Add(time.Hour)
 	states := []struct {
 		name               string
-		mutate             func(*gatewayhttp.RequestCredentialExecutor, *gatewayprovider.ExecutionAccount)
+		mutate             func(*gatewayhttp.RequestCredentialExecutor, *gatewayprovider.ExecutionProvider)
 		wantRuntimeBlocked bool
 	}{
-		{name: "disabled", mutate: func(_ *gatewayhttp.RequestCredentialExecutor, account *gatewayprovider.ExecutionAccount) {
-			account.Record.Status = billing.StatusDisabled
+		{name: "disabled", mutate: func(_ *gatewayhttp.RequestCredentialExecutor, provider *gatewayprovider.ExecutionProvider) {
+			provider.Record.Status = billing.StatusDisabled
 		}},
-		{name: "not schedulable", mutate: func(_ *gatewayhttp.RequestCredentialExecutor, account *gatewayprovider.ExecutionAccount) {
-			account.Record.Schedulable = false
+		{name: "not schedulable", mutate: func(_ *gatewayhttp.RequestCredentialExecutor, provider *gatewayprovider.ExecutionProvider) {
+			provider.Record.Schedulable = false
 		}},
-		{name: "temporarily unschedulable", mutate: func(_ *gatewayhttp.RequestCredentialExecutor, account *gatewayprovider.ExecutionAccount) {
-			account.Record.TempUnschedulableUntil = &future
+		{name: "temporarily unschedulable", mutate: func(_ *gatewayhttp.RequestCredentialExecutor, provider *gatewayprovider.ExecutionProvider) {
+			provider.Record.TempUnschedulableUntil = &future
 		}},
-		{name: "rate limited", mutate: func(_ *gatewayhttp.RequestCredentialExecutor, account *gatewayprovider.ExecutionAccount) {
-			account.Record.RateLimitResetAt = &future
+		{name: "rate limited", mutate: func(_ *gatewayhttp.RequestCredentialExecutor, provider *gatewayprovider.ExecutionProvider) {
+			provider.Record.RateLimitResetAt = &future
 		}},
-		{name: "overloaded", mutate: func(_ *gatewayhttp.RequestCredentialExecutor, account *gatewayprovider.ExecutionAccount) {
-			account.Record.OverloadUntil = &future
+		{name: "overloaded", mutate: func(_ *gatewayhttp.RequestCredentialExecutor, provider *gatewayprovider.ExecutionProvider) {
+			provider.Record.OverloadUntil = &future
 		}},
 		{
 			name: "independently runtime blocked",
-			mutate: func(svc *gatewayhttp.RequestCredentialExecutor, account *gatewayprovider.ExecutionAccount) {
-				svc.Runtime.Runtime.BlockAccountScheduling(gatewayprovider.ExecutionRecord(account), time.Now().Add(24*time.Hour), "independent")
+			mutate: func(svc *gatewayhttp.RequestCredentialExecutor, provider *gatewayprovider.ExecutionProvider) {
+				svc.Runtime.Runtime.BlockProviderScheduling(gatewayprovider.ExecutionRecord(provider), time.Now().Add(24*time.Hour), "independent")
 			},
 			wantRuntimeBlocked: true,
 		},
@@ -1529,83 +1523,82 @@ func TestCredentialFailureCASMissDoesNotRecoverIneligibleLatestCredential(t *tes
 	for classIndex, classCase := range classes {
 		for stateIndex, stateCase := range states {
 			t.Run(classCase.name+"/"+stateCase.name, func(t *testing.T) {
-				account := expiredGrokOAuthAccountForCredentialTest(int64(800 + classIndex*20 + stateIndex))
-				repo := &tokenRefreshAccountRepo{}
-				repo.accountsByID = map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: account}
+				provider := expiredGrokOAuthProviderForCredentialTest(int64(800 + classIndex*20 + stateIndex))
+				repo := &tokenRefreshProviderRepo{}
+				repo.providersByID = map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider}
 				svc := newRequestCredentialsFixture(repo, newGrokTokenSourceForTest(repo, &grokTokenCacheForProviderTest{}))
 				repo.beforeConditionalState = func() {
-					latest := *account
-					latest.Record.Credentials = querycache.ShallowMap(account.Record.Credentials)
+					latest := *provider
+					latest.Record.Credentials = querycache.ShallowMap(provider.Record.Credentials)
 					latest.Record.Credentials["access_token"] = "fresh-but-ineligible-token"
 					latest.Record.Credentials["refresh_token"] = "fresh-but-ineligible-refresh"
 					latest.Record.Credentials["expires_at"] = time.Now().Add(2 * time.Hour).UTC().Format(time.RFC3339)
 					latest.Record.Credentials["_token_version"] = time.Now().UnixMilli()
 					stateCase.mutate(svc, &latest)
-					repo.accountsByID[account.Record.ID] = &latest
+					repo.providersByID[provider.Record.ID] = &latest
 				}
 
-				token, err := svc.Runtime.Recovery.Apply(context.Background(), gatewayprovider.ExecutionRecord(account), credentialMutationForTest(classCase.class))
+				token, err := svc.Runtime.Recovery.Apply(context.Background(), gatewayprovider.ExecutionRecord(provider), credentialMutationForTest(classCase.class))
 
-				require.ErrorIs(t, err, accountcore.ErrRefreshAccountStateChanged)
+				require.ErrorIs(t, err, providercore.ErrRefreshProviderStateChanged)
 				require.Empty(t, token)
 				require.Zero(t, repo.setErrorCalls)
 				require.Zero(t, repo.setTempUnschedCalls)
-				require.Equal(t, stateCase.wantRuntimeBlocked, credentialBlocked(svc, account))
+				require.Equal(t, stateCase.wantRuntimeBlocked, credentialBlocked(svc, provider))
 			})
 		}
 	}
 }
 
-func TestGetRequestCredentialSharedCredentialPersistenceFailureStopsWithoutAccountMutation(t *testing.T) {
-	account := expiredGrokOAuthAccountForCredentialTest(782)
-	repo := &tokenRefreshAccountRepo{conditionalSuccessErr: errors.New("database unavailable")}
-	repo.accountsByID = map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: account}
+func TestGetRequestCredentialSharedCredentialPersistenceFailureStopsWithoutProviderMutation(t *testing.T) {
+	provider := expiredGrokOAuthProviderForCredentialTest(782)
+	repo := &tokenRefreshProviderRepo{conditionalSuccessErr: errors.New("database unavailable")}
+	repo.providersByID = map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider}
 	cache := &grokTokenCacheForProviderTest{lockResult: true}
-	provider := newGrokTokenSourceForTest(repo, cache)
-	bindGrokRefreshForTest(provider, newGrokCredentialRefreshForTest(repo, cache), &tokenRefresherStub{credentials: map[string]any{
+	tokenSource := newGrokTokenSourceForTest(repo, cache)
+	bindGrokRefreshForTest(tokenSource, newGrokCredentialRefreshForTest(repo, cache), &tokenRefresherStub{credentials: map[string]any{
 		"access_token":  "new-access-token",
 		"refresh_token": "new-refresh-token",
 		"expires_at":    time.Now().Add(time.Hour).UTC().Format(time.RFC3339),
 	}})
-	svc := newRequestCredentialsFixture(repo, provider)
+	svc := newRequestCredentialsFixture(repo, tokenSource)
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())
 
-	_, _, err := svc.Resolve(context.Background(), c, account)
+	_, _, err := svc.Resolve(context.Background(), c, provider)
 
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)
-	require.Equal(t, forwardcore.GatewayFailureScopeProvider, failoverErr.Scope)
+	require.Equal(t, forwardcore.GatewayFailureScopeShared, failoverErr.Scope)
 	require.Equal(t, forwardcore.GrokCredentialReasonProviderDown, failoverErr.Reason)
-	require.Equal(t, forwardcore.NextAccountStop, failoverErr.NextAccountAction)
+	require.Equal(t, forwardcore.NextProviderStop, failoverErr.NextProviderAction)
 	require.Equal(t, 1, repo.conditionalSuccessCalls)
 	require.Zero(t, repo.updateCredentialsCalls)
 	require.Zero(t, repo.setErrorCalls)
 	require.Zero(t, repo.setTempUnschedCalls)
 	require.Empty(t, cache.deletedKeys)
-	require.False(t, credentialBlocked(svc, account))
+	require.False(t, credentialBlocked(svc, provider))
 }
 
 func TestGetRequestCredentialRecoversConcurrentRefreshWithoutFailover(t *testing.T) {
-
-	account := expiredGrokOAuthAccountForCredentialTest(733)
-	latest := *account
-	latest.Record.Credentials = querycache.ShallowMap(account.Record.Credentials)
+	provider := expiredGrokOAuthProviderForCredentialTest(733)
+	latest := *provider
+	latest.Record.Credentials = querycache.ShallowMap(provider.Record.Credentials)
 	latest.Record.Credentials["access_token"] = "fresh-concurrent-access"
 	latest.Record.Credentials["refresh_token"] = "fresh-concurrent-refresh"
 	latest.Record.Credentials["expires_at"] = time.Now().Add(2 * time.Hour).UTC().Format(time.RFC3339)
 	latest.Record.Credentials["_token_version"] = time.Now().UnixMilli()
-	baseRepo := &tokenRefreshAccountRepo{}
-	baseRepo.accountsByID = map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: account}
-	repo := &grokCredentialSequencedRepo{tokenRefreshAccountRepo: baseRepo, latest: &latest}
+	baseRepo := &tokenRefreshProviderRepo{}
+	baseRepo.providersByID = map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider}
+	repo := &grokCredentialSequencedRepo{tokenRefreshProviderRepo: baseRepo, latest: &latest}
 	cache := &grokTokenCacheForProviderTest{lockResult: true}
-	provider := newGrokTokenSourceForTest(repo, cache)
-	bindGrokRefreshForTest(provider, newGrokCredentialRefreshForTest(repo, cache), &tokenRefresherStub{
+	tokenSource := newGrokTokenSourceForTest(repo, cache)
+	bindGrokRefreshForTest(tokenSource, newGrokCredentialRefreshForTest(repo, cache), &tokenRefresherStub{
 		err: apperror.New(http.StatusForbidden, "GROK_OAUTH_ENTITLEMENT_DENIED", "access_denied"),
 	})
-	svc := newRequestCredentialsFixture(repo, provider)
+	svc := newRequestCredentialsFixture(repo, tokenSource)
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())
 
-	token, kind, err := svc.Resolve(context.Background(), c, account)
+	token, kind, err := svc.Resolve(context.Background(), c, provider)
 
 	require.NoError(t, err)
 	require.Equal(t, "fresh-concurrent-access", token)
@@ -1613,22 +1606,25 @@ func TestGetRequestCredentialRecoversConcurrentRefreshWithoutFailover(t *testing
 	require.Zero(t, baseRepo.setErrorCalls)
 	require.Zero(t, baseRepo.setTempUnschedCalls)
 	require.Empty(t, cache.deletedKeys)
-	require.False(t, credentialBlocked(svc, account))
+	require.False(t, credentialBlocked(svc, provider))
 	_, hasEvents := c.Get(gatewayhttp.OpsUpstreamErrorsKey)
 	require.False(t, hasEvents)
 }
 
-func expiredGrokOAuthAccountForCredentialTest(id int64) *gatewayprovider.ExecutionAccount {
-	return &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: id,
-		Platform:    capability.PlatformGrok,
-		Type:        capability.AccountTypeOAuth,
-		Status:      billing.StatusActive,
-		Schedulable: true,
-		Credentials: map[string]any{
-			"access_token":  "expired-access-token",
-			"refresh_token": "refresh-token",
-			"expires_at":    time.Now().Add(-time.Minute).UTC().Format(time.RFC3339),
-			"base_url":      xai.DefaultCLIBaseURL,
-		}},
+func expiredGrokOAuthProviderForCredentialTest(id int64) *gatewayprovider.ExecutionProvider {
+	return &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: id,
+			Platform:    capability.PlatformGrok,
+			Type:        capability.ProviderTypeOAuth,
+			Status:      billing.StatusActive,
+			Schedulable: true,
+			Credentials: map[string]any{
+				"access_token":  "expired-access-token",
+				"refresh_token": "refresh-token",
+				"expires_at":    time.Now().Add(-time.Minute).UTC().Format(time.RFC3339),
+				"base_url":      xai.DefaultCLIBaseURL,
+			},
+		},
 	}
 }

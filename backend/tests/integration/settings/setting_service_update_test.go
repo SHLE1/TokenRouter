@@ -470,7 +470,6 @@ func TestSettingService_UpdateSettings_TablePreferences(t *testing.T) {
 }
 
 func TestSettingService_UpdateSettings_PaymentVisibleMethodsAndAdvancedScheduler(t *testing.T) {
-
 	repo := &settingUpdateRepoStub{}
 	svc := settingskit.NewComposite(repo, &config.Config{})
 
@@ -523,7 +522,6 @@ func TestSettingService_UpdateSettings_PaymentVisibleMethodsAndAdvancedScheduler
 }
 
 func TestSettingServiceRefreshCachedSettingsKeepsIndependentEWMAProcessDefaults(t *testing.T) {
-
 	cfg := &config.Config{}
 	cfg.Gateway.AdvancedScheduler.EWMAErrorRateAlpha = 0.35
 	cfg.Gateway.AdvancedScheduler.EWMATTFTAlpha = 0.8
@@ -621,14 +619,14 @@ func TestSettingService_GetAllSettings_AdvancedSchedulerEffectiveValuesUseConfig
 func TestSettingService_UpdateSettings_OpenAIQuotaAutoPauseMergesOpsAdvancedSettings(t *testing.T) {
 	repo := &settingUpdateRepoStub{
 		values: map[string]string{
-			ops.SettingKeyOpsAdvancedSettings: `{"data_retention":{"cleanup_enabled":true,"cleanup_schedule":"0 3 * * *","error_log_retention_days":14,"minute_metrics_retention_days":7,"hourly_metrics_retention_days":30},"aggregation":{"aggregation_enabled":true},"openai_account_quota_auto_pause":{"default_threshold_5h":0.8,"default_threshold_7d":0.75},"ignore_count_tokens_errors":false,"ignore_context_canceled":true,"ignore_no_available_accounts":true,"ignore_invalid_api_key_errors":true,"ignore_insufficient_balance_errors":false,"display_openai_token_stats":true,"display_alert_events":false,"auto_refresh_enabled":true,"auto_refresh_interval_seconds":45}`,
+			ops.SettingKeyOpsAdvancedSettings: `{"data_retention":{"cleanup_enabled":true,"cleanup_schedule":"0 3 * * *","error_log_retention_days":14,"minute_metrics_retention_days":7,"hourly_metrics_retention_days":30},"aggregation":{"aggregation_enabled":true},"openai_provider_quota_auto_pause":{"default_threshold_5h":0.8,"default_threshold_7d":0.75},"ignore_count_tokens_errors":false,"ignore_context_canceled":true,"ignore_no_available_providers":true,"ignore_invalid_api_key_errors":true,"ignore_insufficient_balance_errors":false,"display_openai_token_stats":true,"display_alert_events":false,"auto_refresh_enabled":true,"auto_refresh_interval_seconds":45}`,
 		},
 	}
 	svc := settingskit.NewComposite(repo, &config.Config{})
 
 	err := svc.Save(context.Background(), &composite.Snapshot{
 		OpenAIQuotaAutoPauseSettingsSet: true,
-		OpenAIQuotaAutoPauseSettings: ops.OpsOpenAIAccountQuotaAutoPauseSettings{
+		OpenAIQuotaAutoPauseSettings: ops.OpsOpenAIProviderQuotaAutoPauseSettings{
 			DefaultThreshold5h: 0.95,
 			DefaultThreshold7d: 1.2,
 		},
@@ -646,16 +644,16 @@ func TestSettingService_UpdateSettings_OpenAIQuotaAutoPauseMergesOpsAdvancedSett
 	require.False(t, got.DisplayAlertEvents)
 	require.True(t, got.AutoRefreshEnabled)
 	require.Equal(t, 45, got.AutoRefreshIntervalSec)
-	require.Equal(t, 0.95, got.OpenAIAccountQuotaAutoPause.DefaultThreshold5h)
-	require.Equal(t, 1.0, got.OpenAIAccountQuotaAutoPause.DefaultThreshold7d)
-	require.Equal(t, got.OpenAIAccountQuotaAutoPause, svc.Quota.GetOpenAIQuotaAutoPauseSettings(context.Background()))
+	require.Equal(t, 0.95, got.OpenAIProviderQuotaAutoPause.DefaultThreshold5h)
+	require.Equal(t, 1.0, got.OpenAIProviderQuotaAutoPause.DefaultThreshold7d)
+	require.Equal(t, got.OpenAIProviderQuotaAutoPause, svc.Quota.GetOpenAIQuotaAutoPauseSettings(context.Background()))
 }
 
 func TestSettingService_ParseSettings_OpenAIQuotaAutoPauseFromOpsAdvancedSettings(t *testing.T) {
 	svc := settingskit.NewComposite(&settingUpdateRepoStub{}, &config.Config{})
 
 	got := composite.Parse(map[string]string{
-		ops.SettingKeyOpsAdvancedSettings: `{"openai_account_quota_auto_pause":{"default_threshold_5h":0.7,"default_threshold_7d":1.3}}`,
+		ops.SettingKeyOpsAdvancedSettings: `{"openai_provider_quota_auto_pause":{"default_threshold_5h":0.7,"default_threshold_7d":1.3}}`,
 	}, svc.Read)
 
 	require.Equal(t, 0.7, got.OpenAIQuotaAutoPauseSettings.DefaultThreshold5h)

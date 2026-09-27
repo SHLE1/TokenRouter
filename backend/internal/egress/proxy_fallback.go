@@ -5,9 +5,9 @@ import (
 	"time"
 )
 
-// ResolveProxyFallbackTarget 计算一个过期代理 start 应把账号改投到哪里。
+// ResolveProxyFallbackTarget 计算一个过期代理 start 应把提供商改投到哪里。
 // 返回 (targetID, change)：
-//   - change=false：不改动账号（mode=none，或链路成环/无解的兜底）
+//   - change=false：不改动提供商（mode=none，或链路成环/无解的兜底）
 //   - change=true, targetID=nil：改投为直连
 //   - change=true, targetID!=nil：改投到该备用代理 id
 //

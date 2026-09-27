@@ -86,8 +86,7 @@ func mustCreateGroup(t *testing.T, client *dbent.Client, g *routing.Group) *rout
 		SetStatus(g.Status).
 		SetRateMultiplier(g.RateMultiplier).
 		SetIsExclusive(g.IsExclusive).
-		SetForceOpenaiFast(g.ForceOpenAIFast).
-		SetFreeOpenaiFast(g.FreeOpenAIFast)
+		SetForceOpenaiFast(g.ForceOpenAIFast)
 	if g.Description != "" {
 		create.SetDescription(g.Description)
 	}

@@ -2,31 +2,31 @@
 
 Antigravity 原生 OAuth 只显示 GenerateContent 的平台适配变体，Messages/Responses/Chat 是分组转换入口；历史 upstream 类型保留 Messages 原生直连，静态 API Key 的既有契约冲突不因目录统一而扩大支持范围。统一配置字段与入口门禁见[统一协议能力](protocol_capabilities.md)。
 
-本文描述 Antigravity 账号接入、专用 Claude/Gemini 端点、协议转换、跨平台分组选号与上游失败语义。它用于修改 Antigravity 适配器时保持平台隔离，不记录终端用户的 Claude Code 操作技巧，也不承诺上游未验证的模型能力。
+本文描述 Antigravity 提供商接入、专用 Claude/Gemini 端点、协议转换、跨平台分组选号与上游失败语义。它用于修改 Antigravity 适配器时保持平台隔离，不记录终端用户的 Claude Code 操作技巧，也不承诺上游未验证的模型能力。
 
 ## 章节导航
 
-- [账号与凭据](#账号与凭据)：修改 OAuth 导入、刷新或账号资格时读取。
+- [提供商与凭据](#提供商与凭据)：修改 OAuth 导入、刷新或提供商资格时读取。
 - [专用端点](#专用端点)：修改强制平台路由时读取。
 - [协议适配](#协议适配)：修改 Claude/Gemini/OpenAI 转换时读取。
-- [跨平台分组选号](#跨平台分组选号)：修改账号参与分组调度和专用入口过滤时读取。
+- [跨平台分组选号](#跨平台分组选号)：修改提供商参与分组调度和专用入口过滤时读取。
 - [模型与额度](#模型与额度)：修改可见模型、配额或价格归属时读取。
 - [失败与恢复](#失败与恢复)：修改限流、重试、切换或凭据错误时读取。
 
 <a id="antigravity_account_contract"></a>
-## 账号与凭据
+## 提供商与凭据
 
-Antigravity 账号的 `platform` 为 `antigravity`。管理端通过 `/api/v1/admin/antigravity/oauth/*` 生成授权 URL、交换 code 或验证/刷新 refresh token，再使用通用账号创建/更新路径保存凭据。OAuth access token 由 token provider 在使用前刷新；project ID、subscription/tier、privacy mode、额度和上游 user agent 等属于账号/运行时元数据。
+Antigravity 提供商的 `platform` 为 `antigravity`。管理端通过 `/api/v1/admin/antigravity/oauth/*` 生成授权 URL、交换 code 或验证/刷新 refresh token，再使用通用提供商创建/更新路径保存凭据。OAuth access token 由 token provider 在使用前刷新；project ID、subscription/tier、privacy mode、额度和上游 user agent 等属于提供商/运行时元数据。
 
-管理端还提供“静态上游”表单，但当前把它保存为 `type=apikey`；Antigravity Claude 直连和 token provider 的历史静态分支只识别 `type=upstream`。这两种类型目前不能视为等价，新的静态账号不构成完整正式支持。历史 `upstream` 账号仅用于 Claude 直连兼容。
+管理端还提供“静态上游”表单，但当前把它保存为 `type=apikey`；Antigravity Claude 直连和 token provider 的历史静态分支只识别 `type=upstream`。这两种类型目前不能视为等价，新的静态提供商不构成完整正式支持。历史 `upstream` 提供商仅用于 Claude 直连兼容。
 
-原生兼容转发要求 `type=oauth` 的 Antigravity 账号。setup token、upstream 或 API-key 类型不能被当成原生 OAuth 兼容账号；服务应返回可操作错误而不是把不匹配凭据发送给上游。standard-tier 账号缺少必要 project ID 时也要显式拒绝。完整平台/账号分类和已知冲突见[上游账号能力矩阵](upstream_account_matrix.md)。
+原生兼容转发要求 `type=oauth` 的 Antigravity 提供商。setup token、upstream 或 API-key 类型不能被当成原生 OAuth 兼容提供商；服务应返回可操作错误而不是把不匹配凭据发送给上游。standard-tier 提供商缺少必要 project ID 时也要显式拒绝。完整平台/提供商分类和已知冲突见[上游提供商能力矩阵](upstream_provider_matrix.md)。
 
-账号导入、凭据刷新和批量导入后会检查/设置适用的隐私状态。凭据、refresh token、project ID 和上游响应中的内部标识不得出现在客户端错误或模型列表中。
+提供商导入、凭据刷新和批量导入后会检查/设置适用的隐私状态。凭据、refresh token、project ID 和上游响应中的内部标识不得出现在客户端错误或模型列表中。
 
 ## 专用端点
 
-专用路由在 API Key 鉴权前写入 `ForcePlatform=antigravity`，因此只选择 Antigravity 账号，并继续遵守 Key 绑定分组的权限、模型与协议规则：
+专用路由在 API Key 鉴权前写入 `ForcePlatform=antigravity`，因此只选择 Antigravity 提供商，并继续遵守 Key 绑定分组的权限、模型与协议规则：
 
 | 入口 | 客户端协议 | 处理 |
 | --- | --- | --- |
@@ -38,11 +38,11 @@ Antigravity 账号的 `platform` 为 `antigravity`。管理端通过 `/api/v1/ad
 
 Claude Code 可把 base URL 指向部署地址的 `/antigravity`，认证值仍是 TokenRouter API Key。Gemini 入口中的 `x-goog-api-key` 同样接收 TokenRouter Key，不是 Google 上游 key。
 
-专用路由仍执行请求体限制、client request ID、Ops error logger、endpoint 归一化、分组和订阅/余额准入。强制平台只限制候选账号，不能绕过 Key、团队、分组或模型权限。
+专用路由仍执行请求体限制、client request ID、Ops error logger、endpoint 归一化、分组和订阅/余额准入。强制平台只限制候选提供商，不能绕过 Key、团队、分组或模型权限。
 
 ## 协议适配
 
-通用 Claude/Gemini wire 变体、schema 清理、非流及 SSE 状态已由 `protocol` 唯一实现；与 OpenAI 兼容报文不同的 `max_tokens`、metadata、tools 形状保留明确变体。`upstream/antigravity` 拥有 v1internal 外壳、project/身份补丁、原生 session ID、模型回退和流式协议事实；账号授权、项目发现、token 回填和健康写入归 `account`。
+通用 Claude/Gemini wire 变体、schema 清理、非流及 SSE 状态已由 `protocol` 唯一实现；与 OpenAI 兼容报文不同的 `max_tokens`、metadata、tools 形状保留明确变体。`upstream/antigravity` 拥有 v1internal 外壳、project/身份补丁、原生 session ID、模型回退和流式协议事实；提供商授权、项目发现、token 回填和健康写入归 `provider`。
 
 `gateway/httpapi.AntigravityExecutor` 负责 HTTP 错误展示和 Ops 投影，入站完成处理使用原生完成器。平台/模型判断选择 thinking/signature/tool 选项后传入 bridge，纯转换不反向读取这些平台状态。
 
@@ -50,7 +50,7 @@ Antigravity 分组支持 Messages、Responses、Chat 和 Gemini GenerateContent�
 
 Anthropic Messages 经过 Antigravity request transformer 生成上游 Gemini/内部请求形状，响应和 SSE 再恢复为 Anthropic 协议。工具定义、tool choice、thinking、缓存断点、图片输入、token 用量和停止原因都需要双向转换；schema cleaner 会移除上游不接受的 JSON Schema 表达。
 
-通用 OpenAI Chat Completions 和 Responses 在选到原生 Antigravity OAuth 账号时走兼容适配器：
+通用 OpenAI Chat Completions 和 Responses 在选到原生 Antigravity OAuth 提供商时走兼容适配器：
 
 ```text
 Chat Completions / Responses
@@ -67,42 +67,42 @@ Chat Completions / Responses
 
 ## 跨平台分组选号
 
-Antigravity 账号可与其它平台账号关联到同一分组。选择器依次检查组成员、模型范围、协议路线、账号状态、额度和并发；账号不再需要配置混合调度开关。`/antigravity/*` 专用入口额外强制使用 Antigravity 账号。
+Antigravity 提供商可与其它平台提供商关联到同一分组。选择器依次检查组成员、模型范围、协议路线、提供商状态、额度和并发；提供商不再需要配置混合调度开关。`/antigravity/*` 专用入口额外强制使用 Antigravity 提供商。
 
-客户端的 Messages、Responses、Chat 或 Gemini 协议决定响应形状。分组保存权限、倍率和策略，实际账号决定上游认证和转发协议。账号移组或资格变化后会刷新所属分组的共享快照与相关平台桶。已有显式会话仍受签名、会话隔离、粘性和缓存计费约束。
+客户端的 Messages、Responses、Chat 或 Gemini 协议决定响应形状。分组保存权限、倍率和策略，实际提供商决定上游认证和转发协议。提供商移组或资格变化后会刷新所属分组的共享快照与相关平台桶。已有显式会话仍受签名、会话隔离、粘性和缓存计费约束。
 
 ## 模型与额度
 
-Antigravity 同时提供 Claude 与 Gemini 模型族。Gemini 3.6 Flash 的基础、high、low、medium 与 tiered 五种模型 ID 均进入默认模型目录和身份映射；账号存在自定义映射时，只要没有覆盖它们的通配符，这些精确直通映射仍会自动保留。可见模型来自默认映射、分组白名单、账号资格和当前可请求解析；API Key 精确别名可投影到列表，目标不可请求时不展示。模型能力不能只由名称前缀推断，thinking/image 等能力由适配器与账号详情共同约束。
+Antigravity 同时提供 Claude 与 Gemini 模型族。Gemini 3.6 Flash 的基础、high、low、medium 与 tiered 五种模型 ID 均进入默认模型目录和身份映射；提供商存在自定义映射时，只要没有覆盖它们的通配符，这些精确直通映射仍会自动保留。可见模型来自默认映射、分组白名单、提供商资格和当前可请求解析；API Key 精确别名可投影到列表，目标不可请求时不展示。模型能力不能只由名称前缀推断，thinking/image 等能力由适配器与提供商详情共同约束。
 
-账号模型先完成一次映射，再应用本次请求的 thinking 后缀，最后检查最终模型白名单。只允许 thinking 变体时，基础名称加 thinking 的请求可以通过；白名单只允许基础模型时，thinking 请求会被拒绝。最终模型不再作为新的输入执行第二次账号映射。
+提供商模型先完成一次映射，再应用本次请求的 thinking 后缀，最后检查最终模型白名单。只允许 thinking 变体时，基础名称加 thinking 的请求可以通过；白名单只允许基础模型时，thinking 请求会被拒绝。最终模型不再作为新的输入执行第二次提供商映射。
 
-额度查询按账号和模型 scope 保存上游 reset/remaining 状态，并可包含 AI Credits。429/503 分类区分模型限流、credits 耗尽和共享容量不足。上游账号额度独立于用户余额、订阅和 Key 限额；使用记录的平台取实际执行账号。账号成本和用户售价分别解析，用户价格不因最终选择 Antigravity 账号而改变。
+额度查询按提供商和模型 scope 保存上游 reset/remaining 状态，并可包含 AI Credits。429/503 分类区分模型限流、credits 耗尽和共享容量不足。上游提供商额度独立于用户余额、订阅和 Key 限额；使用记录的平台取实际执行提供商。提供商成本和用户售价分别解析，用户价格不因最终选择 Antigravity 提供商而改变。
 
 ## 失败与恢复
 
-- 短 `RetryInfo` 可以在同账号做一次受限等待；长模型限流标记模型/账号并请求调度层切换。
-- 单账号模式允许有总等待上限的退避重试，多账号模式优先切换；Context 取消立即停止。
-- `MODEL_CAPACITY_EXHAUSTED` 被视为共享模型容量，使用全局去重和有界重试，不能通过快速轮换账号放大上游压力。
-- 粘性会话切换账号时可把普通输入按 cache-read 计费，反映缓存失效；该标志必须进入结算输入。
-- OAuth credential 被刷新后仍遭拒绝时返回要求重新授权并检查 project ID 的脱敏提示，同时把账号标记为可恢复错误。
+- 短 `RetryInfo` 可以在同提供商做一次受限等待；长模型限流标记模型/提供商并请求调度层切换。
+- 单提供商模式允许有总等待上限的退避重试，多提供商模式优先切换；Context 取消立即停止。
+- `MODEL_CAPACITY_EXHAUSTED` 被视为共享模型容量，使用全局去重和有界重试，不能通过快速轮换提供商放大上游压力。
+- 粘性会话切换提供商时可把普通输入按 cache-read 计费，反映缓存失效；该标志必须进入结算输入。
+- OAuth credential 被刷新后仍遭拒绝时返回要求重新授权并检查 project ID 的脱敏提示，同时把提供商标记为可恢复错误。
 - 只有白名单中的安全上游提示可以透传；响应体日志受开关、字节上限和脱敏约束。
 
-修改适配器时应覆盖非流/流、Claude/Gemini/OpenAI 三种客户端形状、工具/thinking、单/多账号限流、移组后的快照失效和用量归属测试。
+修改适配器时应覆盖非流/流、Claude/Gemini/OpenAI 三种客户端形状、工具/thinking、单/多提供商限流、移组后的快照失效和用量归属测试。
 
 <a id="antigravity_native_execution"></a>
-## 平台执行与账号职责
+## 平台执行与提供商职责
 
-`upstream/antigravity.Executor` 接入 Claude、Gemini、Chat、Responses 和历史静态 upstream 五条生产链，闭合单次平台交换、恢复、输出及最终响应体关闭。账号内普通重试、智能重试、credits 请求和共享模型容量去重只有一份实现；全局账号切换、付款主体和资金完成由网关编排持有；`gateway/provider/googleforward.Antigravity` 只组合本次凭据、转换选项和同步输出。`Probe` 复用同一平台重试，只测试指定账号，不取得用户或账号的请求槽。
+`upstream/antigravity.Executor` 接入 Claude、Gemini、Chat、Responses 和历史静态 upstream 五条生产链，闭合单次平台交换、恢复、输出及最终响应体关闭。提供商内普通重试、智能重试、credits 请求和共享模型容量去重只有一份实现；全局提供商切换、付款主体和资金完成由网关编排持有；`gateway/provider/googleforward.Antigravity` 只组合本次凭据、转换选项和同步输出。`Probe` 复用同一平台重试，只测试指定提供商，不取得用户或提供商的请求槽。
 
-流通过同步 `OutputSink` 输出，保留原来每种协议的前导缓冲、非流收集、心跳、首 token 与断开后的尾部读取规则。结果区分已观测 usage、是否服务和错误；HTTP 提交及重试关闭与语义输出分开，失败结算仍按 Antigravity 入口的完成资格判断。使用记录在请求期固化实际账号平台，后台完成器只消费冻结结果，不再从分组推导平台。
+流通过同步 `OutputSink` 输出，保留原来每种协议的前导缓冲、非流收集、心跳、首 token 与断开后的尾部读取规则。结果区分已观测 usage、是否服务和错误；HTTP 提交及重试关闭与语义输出分开，失败结算仍按 Antigravity 入口的完成资格判断。使用记录在请求期固化实际提供商平台，后台完成器只消费冻结结果，不再从分组推导平台。
 
-OAuth 会话、交换后的一次性删除、项目与套餐发现、隐私设置及验证由 `account.AntigravityAuthorization` 编排。原生客户端只执行供应商协议，wire 变体由 `protocol/google` 保留。token provider 的 project 回填冷却、缓存键、八秒请求刷新预算、后台十五分钟刷新资格与原 CAS 不变。额度展示、credits/模型窗口及 INTERNAL 500 惩罚归账号；共享缓存、计数器和发布端口复用原实例。
+OAuth 会话、交换后的一次性删除、项目与套餐发现、隐私设置及验证由 `provider.AntigravityAuthorization` 编排。原生客户端只执行供应商协议，wire 变体由 `protocol/google` 保留。token provider 的 project 回填冷却、缓存键、八秒请求刷新预算、后台十五分钟刷新资格与原 CAS 不变。额度展示、credits/模型窗口及 INTERNAL 500 惩罚归提供商；共享缓存、计数器和发布端口复用原实例。
 
-app 直接构造 `account.AntigravityAuthorization` 并登记授权活动，provider 组合原生协议客户端与代理读取端口。管理、刷新和恢复消费者使用同一授权实例。构造不启动清理；停止取消运行操作并等待，仍保留原有限重试的收尾行为。预算耗尽报告未完成项，不视作排空成功。管理授权 URL、DTO 和错误响应保持原 HTTP 契约。
+app 直接构造 `provider.AntigravityAuthorization` 并登记授权活动，provider 组合原生协议客户端与代理读取端口。管理、刷新和恢复消费者使用同一授权实例。构造不启动清理；停止取消运行操作并等待，仍保留原有限重试的收尾行为。预算耗尽报告未完成项，不视作排空成功。管理授权 URL、DTO 和错误响应保持原 HTTP 契约。
 
-指定账号的管理与后台测试由 `account/provider.AntigravityProbe` 闭合执行，复用同一 `AntigravityRetry` 和原生平台循环。探针 UA 是显式请求字段，不通过专用 Context 键传递；测试不记录 Ops 错误或操作粘性会话。app 绑定唯一健康、计数器与发布端口，并使探测与转发共用尝试关闭屏障。令牌、模型映射、最小提示词、错误正文上限和响应体关闭顺序保持原行为。
+指定提供商的管理与后台测试由 `provider/provider.AntigravityProbe` 闭合执行，复用同一 `AntigravityRetry` 和原生平台循环。探针 UA 是显式请求字段，不通过专用 Context 键传递；测试不记录 Ops 错误或操作粘性会话。app 绑定唯一健康、计数器与发布端口，并使探测与转发共用尝试关闭屏障。令牌、模型映射、最小提示词、错误正文上限和响应体关闭顺序保持原行为。
 
-错误观测由 `account/provider.AntigravityErrorObserver` 组合原生账号健康端口。模型窗口先于一般错误处理，503 共享容量不足不升级为账号冷却；429 缺少模型信息时沿用原最终模型和账号级兜底。app 注入同一健康、发布与平台观测实例，平台准备器只传入本次 thinking、错误报文和粘性清除动作。
+错误观测由 `provider/provider.AntigravityErrorObserver` 组合原生提供商健康端口。模型窗口先于一般错误处理，503 共享容量不足不升级为提供商冷却；429 缺少模型信息时沿用原最终模型和提供商级兜底。app 注入同一健康、发布与平台观测实例，平台准备器只传入本次 thinking、错误报文和粘性清除动作。
 
-相关文档：[上游账号能力矩阵](upstream_account_matrix.md)、[网关请求生命周期](../architecture/gateway_request_lifecycle.md)、[路由与结算](../domains/routing_and_billing.md)、[HTTP 接口边界](http_api.md)、[接口目录](index.md)。
+相关文档：[上游提供商能力矩阵](upstream_provider_matrix.md)、[网关请求生命周期](../architecture/gateway_request_lifecycle.md)、[路由与结算](../domains/routing_and_billing.md)、[HTTP 接口边界](http_api.md)、[接口目录](index.md)。

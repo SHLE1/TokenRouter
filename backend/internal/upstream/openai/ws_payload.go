@@ -1,4 +1,4 @@
-// 平台续接报文只处理每轮输入，账号选择、会话缓存与入站重试由调用方拥有。
+// 平台续接报文只处理每轮输入，提供商选择、会话缓存与入站重试由调用方拥有。
 package openai
 
 import (
@@ -490,7 +490,7 @@ func SetOpenAIWSPayloadInputSequence(
 	return sjson.SetRawBytes(payload, "input", inputRaw)
 }
 
-// BuildOpenAIWSCurrentTurnRetryPayload 构造替换账号可用的无链路当前回合请求。
+// BuildOpenAIWSCurrentTurnRetryPayload 构造替换提供商可用的无链路当前回合请求。
 // 只有 input 能完整覆盖所有 function_call_output 时才允许剥离 previous_response_id。
 func BuildOpenAIWSCurrentTurnRetryPayload(
 	payload []byte,

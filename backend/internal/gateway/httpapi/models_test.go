@@ -156,5 +156,5 @@ func TestGeminiModelsCompositePermissionsAndForcedPlatform(t *testing.T) {
 	p.key = &apikey.APIKey{Group: disabled}
 	c, w = modelsContext()
 	handler.GeminiV1BetaListModels(c)
-	require.Equal(t, 403, w.Code, "强制账号平台不能绕过分组协议权限")
+	require.Equal(t, 403, w.Code, "强制提供商平台不能绕过分组协议权限")
 }

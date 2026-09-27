@@ -40,14 +40,14 @@ func provideResponsesWSHTTP(
 // responsesWSOptions 保留入站连接与首帧的原静态默认值。
 func responsesWSOptions(cfg *config.Config) gatewayhttp.ResponsesWSOptions {
 	options := gatewayhttp.ResponsesWSOptions{
-		MaxAccountSwitches:  3,
+		MaxProviderSwitches: 3,
 		ReadLimit:           gatewayhttp.ResolveOpenAIWSClientReadLimitBytes(openAIWSExecutionOptions(cfg)),
 		FirstMessageTimeout: gatewayhttp.ResolveOpenAIWSClientFirstMessageTimeout(openAIWSExecutionOptions(cfg)),
 	}
 	if cfg != nil {
 		options.MaxIngressConnectionsPerAPIKey = cfg.Gateway.OpenAIWS.MaxIngressConnectionsPerAPIKey
-		if cfg.Gateway.MaxAccountSwitches > 0 {
-			options.MaxAccountSwitches = cfg.Gateway.MaxAccountSwitches
+		if cfg.Gateway.MaxProviderSwitches > 0 {
+			options.MaxProviderSwitches = cfg.Gateway.MaxProviderSwitches
 		}
 	}
 	return options
@@ -81,7 +81,7 @@ func responsesWSBindings(source *gatewayhttp.OpenAIWebSocketExecutor, credential
 		b.ReportSelection = common.Selection.ReportSelection
 		b.Stop429 = stopOpenAI429
 		b.Credential = credentials.Resolve
-		b.ResolveRouting = choices.ResolveOpenAIWSRoutingModelForAccount
+		b.ResolveRouting = choices.ResolveOpenAIWSRoutingModelForProvider
 		b.BeginPreemption = source.BeginOpenAIWSIngressSessionPreemption
 		b.Relay = source.ProxyResponsesWebSocketFromClient
 	}

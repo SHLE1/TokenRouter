@@ -20,29 +20,29 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
-// SelectAccount 选择账号（粘性会话+优先级）
-func (s *Generic) SelectAccount(ctx context.Context, groupID *int64, sessionHash string) (*gatewayprovider.ExecutionAccount, error) {
-	return s.SelectAccountForModel(ctx, groupID, sessionHash, "")
+// SelectProvider 选择提供商（粘性会话+优先级）
+func (s *Generic) SelectProvider(ctx context.Context, groupID *int64, sessionHash string) (*gatewayprovider.ExecutionProvider, error) {
+	return s.SelectProviderForModel(ctx, groupID, sessionHash, "")
 }
 
-// SelectAccountForModel 选择支持指定模型的账号（粘性会话+优先级+模型映射）
-func (s *Generic) SelectAccountForModel(ctx context.Context, groupID *int64, sessionHash string, requestedModel string) (*gatewayprovider.ExecutionAccount, error) {
-	return s.SelectAccountForModelWithExclusions(ctx, groupID, sessionHash, requestedModel, nil)
+// SelectProviderForModel 选择支持指定模型的提供商（粘性会话+优先级+模型映射）
+func (s *Generic) SelectProviderForModel(ctx context.Context, groupID *int64, sessionHash string, requestedModel string) (*gatewayprovider.ExecutionProvider, error) {
+	return s.SelectProviderForModelWithExclusions(ctx, groupID, sessionHash, requestedModel, nil)
 }
 
-// SelectAccountForModelWithExclusions selects an account supporting the requested model while excluding specified accounts.
-func (s *Generic) SelectAccountForModelWithExclusions(ctx context.Context, groupID *int64, sessionHash string, requestedModel string, excludedIDs map[int64]struct{}) (*gatewayprovider.ExecutionAccount, error) {
+// SelectProviderForModelWithExclusions selects an provider supporting the requested model while excluding specified providers.
+func (s *Generic) SelectProviderForModelWithExclusions(ctx context.Context, groupID *int64, sessionHash string, requestedModel string, excludedIDs map[int64]struct{}) (*gatewayprovider.ExecutionProvider, error) {
 	ctx = withSelectionRequest(ctx, groupID, requestedModel)
 	core, scope := s.genericSelector()
 	selected, err := core.SelectOnly(ctx, schedulercore.SelectionInput{GroupID: groupID, SessionHash: sessionHash, RequestedModel: requestedModel, ExcludedIDs: excludedIDs})
-	return scope.oldAccount(selected), err
+	return scope.oldProvider(selected), err
 }
 
-// SelectAccountWithLoadAwareness selects account with load-awareness and wait plan.
+// SelectProviderWithLoadAwareness selects provider with load-awareness and wait plan.
 // metadataUserID: 用于客户端亲和调度，从中提取客户端 ID
 // sub2apiUserID: 系统用户 ID，用于二维亲和调度
 // @project-doc docs/architecture/gateway_request_lifecycle.md#account_selection_and_failover
-func (s *Generic) SelectAccountWithLoadAwareness(ctx context.Context, groupID *int64, sessionHash string, requestedModel string, excludedIDs map[int64]struct{}, metadataUserID string, sub2apiUserID int64) (*gatewayprovider.SelectionResult, error) {
+func (s *Generic) SelectProviderWithLoadAwareness(ctx context.Context, groupID *int64, sessionHash string, requestedModel string, excludedIDs map[int64]struct{}, metadataUserID string, sub2apiUserID int64) (*gatewayprovider.SelectionResult, error) {
 	ctx = withSelectionRequest(ctx, groupID, requestedModel)
 	core, scope := s.genericSelector()
 	plan, _ := requeststate.RoutePlanFromContext(ctx)
@@ -50,10 +50,10 @@ func (s *Generic) SelectAccountWithLoadAwareness(ctx context.Context, groupID *i
 	return scope.restore(result), err
 }
 
-// ReportAdvancedAccountScheduleResult 将通用网关转发结果写入高级调度运行时反馈。
+// ReportAdvancedProviderScheduleResult 将通用网关转发结果写入高级调度运行时反馈。
 // 只有实际由高级调度器选出的请求才会更新统计，基础调度器保持原有行为。
-func (s *Generic) ReportAdvancedAccountScheduleResult(selection *gatewayprovider.SelectionResult, accountID int64, success bool, result *forwardcore.MessagesResult) {
-	if s == nil || selection == nil || !selection.AdvancedScheduler || accountID <= 0 {
+func (s *Generic) ReportAdvancedProviderScheduleResult(selection *gatewayprovider.SelectionResult, providerID int64, success bool, result *forwardcore.MessagesResult) {
+	if s == nil || selection == nil || !selection.AdvancedScheduler || providerID <= 0 {
 		return
 	}
 	var firstTokenMs *int
@@ -61,14 +61,14 @@ func (s *Generic) ReportAdvancedAccountScheduleResult(selection *gatewayprovider
 		firstTokenMs = result.FirstTokenMs
 	}
 	if selection.AdvancedSchedulerFeedback != nil {
-		s.advancedSchedulerStats().Report(accountID, success, firstTokenMs, *selection.AdvancedSchedulerFeedback)
+		s.advancedSchedulerStats().Report(providerID, success, firstTokenMs, *selection.AdvancedSchedulerFeedback)
 		return
 	}
-	s.advancedSchedulerStats().Report(accountID, success, firstTokenMs)
+	s.advancedSchedulerStats().Report(providerID, success, firstTokenMs)
 }
 
-// RecordAdvancedAccountSwitch 记录高级调度请求的一次账号切换事件。
-func (s *Generic) RecordAdvancedAccountSwitch(selection *gatewayprovider.SelectionResult) {
+// RecordAdvancedProviderSwitch 记录高级调度请求的一次提供商切换事件。
+func (s *Generic) RecordAdvancedProviderSwitch(selection *gatewayprovider.SelectionResult) {
 	if s == nil || selection == nil || !selection.AdvancedScheduler {
 		return
 	}
@@ -76,12 +76,12 @@ func (s *Generic) RecordAdvancedAccountSwitch(selection *gatewayprovider.Selecti
 }
 
 // tryAcquireByAdvancedScheduler 在既有硬过滤完成后按通用评分和 Top-K 加权顺序复核并发槽位。
-// 所有账号仍逐个调用 tryAcquireAccountSlot，因此负载快照过期时不会越过真实并发上限。
+// 所有提供商仍逐个调用 tryAcquireProviderSlot，因此负载快照过期时不会越过真实并发上限。
 func (s *Generic) tryAcquireByAdvancedScheduler(
 	ctx context.Context,
 	groupID *int64,
 	sessionHash string,
-	available []accountWithLoad,
+	available []providerWithLoad,
 ) (*gatewayprovider.SelectionResult, bool, error) {
 	core, scope := s.genericSelector()
 	result, found, err := core.TryAdvanced(ctx, groupID, sessionHash, scope.loads(available))
@@ -93,10 +93,10 @@ func (s *Generic) advancedSchedulerStats() *schedulercore.RuntimeStats {
 	if s == nil {
 		return nil
 	}
-	if s.advancedAccountStats == nil {
-		s.advancedAccountStats = schedulercore.NewRuntimeStats(time.Now)
+	if s.advancedProviderStats == nil {
+		s.advancedProviderStats = schedulercore.NewRuntimeStats(time.Now)
 	}
-	return s.advancedAccountStats
+	return s.advancedProviderStats
 }
 
 // advancedSchedulerEffectiveSettingsForRequest 将最终分组覆盖应用到网关通用设置之上。
@@ -144,7 +144,7 @@ func (s *Generic) ResolveGroupByID(ctx context.Context, groupID int64) (*routing
 	return s.resolveGroupByID(ctx, groupID)
 }
 
-func (s *Generic) routingAccountIDsForRequest(ctx context.Context, groupID *int64, requestedModel string, platform string) []int64 {
+func (s *Generic) routingProviderIDsForRequest(ctx context.Context, groupID *int64, requestedModel string, platform string) []int64 {
 	if groupID == nil || requestedModel == "" {
 		return nil
 	}
@@ -157,7 +157,7 @@ func (s *Generic) routingAccountIDsForRequest(ctx context.Context, groupID *int6
 	}
 
 	routingModel := s.groupMappedModelForGroup(ctx, groupID, requestedModel)
-	ids := group.GetRoutingAccountIDs(routingModel)
+	ids := group.GetRoutingProviderIDs(routingModel)
 	if s.debugModelRoutingEnabled() {
 		logging.LegacyPrintf("service.gateway", "[ModelRoutingDebug] routing lookup: group_id=%d model=%s enabled=%v rules=%d matched_ids=%v",
 			group.ID, requestedModel, group.ModelRoutingEnabled, len(group.ModelRouting), ids)
@@ -194,218 +194,218 @@ func (s *Generic) resolvePlatform(ctx context.Context, groupID *int64, group *ro
 	return "", false, nil
 }
 
-func (s *Generic) listSchedulableAccounts(ctx context.Context, groupID *int64, platform string, hasForcePlatform bool) ([]gatewayprovider.ExecutionAccount, bool, error) {
+func (s *Generic) listSchedulableProviders(ctx context.Context, groupID *int64, platform string, hasForcePlatform bool) ([]gatewayprovider.ExecutionProvider, bool, error) {
 	if groupID == nil || *groupID <= 0 {
 		return nil, false, nil
 	}
-	var accounts []gatewayprovider.ExecutionAccount
+	var providers []gatewayprovider.ExecutionProvider
 	var err error
 	if s.schedulerSnapshot != nil {
-		accounts, _, err = readSnapshotAccounts(ctx, s.schedulerSnapshot, groupID, platform, hasForcePlatform)
+		providers, _, err = readSnapshotProviders(ctx, s.schedulerSnapshot, groupID, platform, hasForcePlatform)
 	} else if platform == "" {
-		accounts, err = s.accountRepo.ListSchedulableByGroupIDAndPlatforms(ctx, *groupID, capability.AccountPlatforms())
+		providers, err = s.providerRepo.ListSchedulableByGroupIDAndPlatforms(ctx, *groupID, capability.ProviderPlatforms())
 	} else {
-		accounts, err = s.accountRepo.ListSchedulableByGroupIDAndPlatform(ctx, *groupID, platform)
+		providers, err = s.providerRepo.ListSchedulableByGroupIDAndPlatform(ctx, *groupID, platform)
 	}
 	if err != nil {
 		return nil, false, err
 	}
-	accounts = s.filterAccountsBySchedulingThreshold(ctx, accounts)
-	accounts = s.filterGrokFreeQuotaAccountsForGateway(ctx, accounts)
-	return accounts, false, nil
+	providers = s.filterProvidersBySchedulingThreshold(ctx, providers)
+	providers = s.filterGrokFreeQuotaProvidersForGateway(ctx, providers)
+	return providers, false, nil
 }
 
-// IsSingleAntigravityAccountGroup 检查指定分组是否只有一个 antigravity 平台的可调度账号。
-// 用于 Handler 层在首次请求时提前设置 SingleAccountRetry context，
-// 避免单账号分组收到 503 时错误地设置模型限流标记导致后续请求连续快速失败。
-func (s *Generic) IsSingleAntigravityAccountGroup(ctx context.Context, groupID *int64) bool {
-	accounts, _, err := s.listSchedulableAccounts(ctx, groupID, capability.PlatformAntigravity, true)
+// IsSingleAntigravityProviderGroup 检查指定分组是否只有一个 antigravity 平台的可调度提供商。
+// 用于 Handler 层在首次请求时提前设置 SingleProviderRetry context，
+// 避免单提供商分组收到 503 时错误地设置模型限流标记导致后续请求连续快速失败。
+func (s *Generic) IsSingleAntigravityProviderGroup(ctx context.Context, groupID *int64) bool {
+	providers, _, err := s.listSchedulableProviders(ctx, groupID, capability.PlatformAntigravity, true)
 	if err != nil {
 		return false
 	}
-	return len(accounts) == 1
+	return len(providers) == 1
 }
 
-func (s *Generic) isAccountAllowedForPlatform(account *gatewayprovider.ExecutionAccount, platform string, useMixed bool) bool {
-	return account != nil && (platform == "" || account.Record.Platform == platform)
+func (s *Generic) isProviderAllowedForPlatform(provider *gatewayprovider.ExecutionProvider, platform string, useMixed bool) bool {
+	return provider != nil && (platform == "" || provider.Record.Platform == platform)
 }
 
-func (s *Generic) isAccountSchedulableForSelection(account *gatewayprovider.ExecutionAccount) bool {
-	if account == nil {
+func (s *Generic) isProviderSchedulableForSelection(provider *gatewayprovider.ExecutionProvider) bool {
+	if provider == nil {
 		return false
 	}
-	return account.View().IsSchedulable()
+	return provider.View().IsSchedulable()
 }
 
-func (s *Generic) isAccountSchedulableForModelSelection(ctx context.Context, account *gatewayprovider.ExecutionAccount, requestedModel string) bool {
-	if account == nil {
+func (s *Generic) isProviderSchedulableForModelSelection(ctx context.Context, provider *gatewayprovider.ExecutionProvider, requestedModel string) bool {
+	if provider == nil {
 		return false
 	}
-	routingModel := s.groupMappedModelForAccountLayer(ctx, requestedModel)
-	return gatewayprovider.ExecutionModelPolicy(account).Schedulable(ctx, routingModel)
+	routingModel := s.groupMappedModelForProviderLayer(ctx, requestedModel)
+	return gatewayprovider.ExecutionModelPolicy(provider).Schedulable(ctx, routingModel)
 }
 
-// shouldClearStickySessionForAccountLayer 使用分组映射后的模型检查粘性账号模型限流。
-func (s *Generic) shouldClearStickySessionForAccountLayer(ctx context.Context, account *gatewayprovider.ExecutionAccount, requestedModel string) bool {
-	routingModel := s.groupMappedModelForAccountLayer(ctx, requestedModel)
-	return shouldClearStickySession(account, routingModel)
+// shouldClearStickySessionForProviderLayer 使用分组映射后的模型检查粘性提供商模型限流。
+func (s *Generic) shouldClearStickySessionForProviderLayer(ctx context.Context, provider *gatewayprovider.ExecutionProvider, requestedModel string) bool {
+	routingModel := s.groupMappedModelForProviderLayer(ctx, requestedModel)
+	return shouldClearStickySession(provider, routingModel)
 }
 
-// isAccountEligibleExceptModelSupport 判断账号除模型白名单/映射外是否具备本次请求资格。
-func (s *Generic) isAccountEligibleExceptModelSupport(ctx context.Context, account *gatewayprovider.ExecutionAccount, requestedModel string, platform string, excludedIDs map[int64]struct{}, useMixed bool, groupID *int64, schedGroup *routing.Group) bool {
-	if !gatewayprovider.ExecutionModelPolicy(account).AllowsProtocol(ctx) {
+// isProviderEligibleExceptModelSupport 判断提供商除模型白名单/映射外是否具备本次请求资格。
+func (s *Generic) isProviderEligibleExceptModelSupport(ctx context.Context, provider *gatewayprovider.ExecutionProvider, requestedModel string, platform string, excludedIDs map[int64]struct{}, useMixed bool, groupID *int64, schedGroup *routing.Group) bool {
+	if !gatewayprovider.ExecutionModelPolicy(provider).AllowsProtocol(ctx) {
 		return false
 	}
-	if account == nil {
+	if provider == nil {
 		return false
 	}
 	if excludedIDs != nil {
-		if _, excluded := excludedIDs[account.Record.ID]; excluded {
+		if _, excluded := excludedIDs[provider.Record.ID]; excluded {
 			return false
 		}
 	}
-	if !s.isAccountSchedulableForSelection(account) || !s.isAccountAllowedForPlatform(account, platform, useMixed) {
+	if !s.isProviderSchedulableForSelection(provider) || !s.isProviderAllowedForPlatform(provider, platform, useMixed) {
 		return false
 	}
-	if schedGroup != nil && schedGroup.RequirePrivacySet && !account.View().IsPrivacySet() {
+	if schedGroup != nil && schedGroup.RequirePrivacySet && !provider.View().IsPrivacySet() {
 		return false
 	}
-	if !s.isAccountSchedulableForQuota(account) || !s.isAccountSchedulableForWindowCost(ctx, account, false) || !s.isAccountSchedulableForRPM(ctx, account, false) {
+	if !s.isProviderSchedulableForQuota(provider) || !s.isProviderSchedulableForWindowCost(ctx, provider, false) || !s.isProviderSchedulableForRPM(ctx, provider, false) {
 		return false
 	}
 	if groupID != nil && s.needsUpstreamGroupRestrictionCheck(ctx, groupID) &&
-		s.isUpstreamModelRestrictedByGroup(ctx, *groupID, account, requestedModel) {
+		s.isUpstreamModelRestrictedByGroup(ctx, *groupID, provider, requestedModel) {
 		return false
 	}
 	return true
 }
 
-// shouldUseGroupModelUnsupportedError 判断账号选择失败是否明确由分组模型限制导致。
-func (s *Generic) shouldUseGroupModelUnsupportedError(ctx context.Context, accounts []gatewayprovider.ExecutionAccount, requestedModel string, platform string, excludedIDs map[int64]struct{}, useMixed bool, groupID *int64, schedGroup *routing.Group) bool {
+// shouldUseGroupModelUnsupportedError 判断提供商选择失败是否明确由分组模型限制导致。
+func (s *Generic) shouldUseGroupModelUnsupportedError(ctx context.Context, providers []gatewayprovider.ExecutionProvider, requestedModel string, platform string, excludedIDs map[int64]struct{}, useMixed bool, groupID *int64, schedGroup *routing.Group) bool {
 	requestedModel = strings.TrimSpace(requestedModel)
-	if requestedModel == "" || len(accounts) == 0 {
+	if requestedModel == "" || len(providers) == 0 {
 		return false
 	}
-	hasRelevantAccount := false
-	for i := range accounts {
-		acc := &accounts[i]
-		if !s.isAccountEligibleExceptModelSupport(ctx, acc, requestedModel, platform, excludedIDs, useMixed, groupID, schedGroup) {
+	hasRelevantProvider := false
+	for i := range providers {
+		acc := &providers[i]
+		if !s.isProviderEligibleExceptModelSupport(ctx, acc, requestedModel, platform, excludedIDs, useMixed, groupID, schedGroup) {
 			continue
 		}
-		hasRelevantAccount = true
-		if s.isModelSupportedByAccountWithContext(ctx, acc, requestedModel) {
+		hasRelevantProvider = true
+		if s.isModelSupportedByProviderWithContext(ctx, acc, requestedModel) {
 			return false
 		}
 	}
-	return hasRelevantAccount
+	return hasRelevantProvider
 }
 
 // groupModelUnsupportedErrorIfApplicable 在确认是分组模型限制时返回 typed error。
-func (s *Generic) groupModelUnsupportedErrorIfApplicable(ctx context.Context, accounts []gatewayprovider.ExecutionAccount, requestedModel string, platform string, excludedIDs map[int64]struct{}, useMixed bool, groupID *int64, schedGroup *routing.Group) error {
-	if s.shouldUseGroupModelUnsupportedError(ctx, accounts, requestedModel, platform, excludedIDs, useMixed, groupID, schedGroup) {
-		if err := routing.NewGroupModelRejection(platform, requestedModel, modelRejectionSources(accounts)); err != nil {
+func (s *Generic) groupModelUnsupportedErrorIfApplicable(ctx context.Context, providers []gatewayprovider.ExecutionProvider, requestedModel string, platform string, excludedIDs map[int64]struct{}, useMixed bool, groupID *int64, schedGroup *routing.Group) error {
+	if s.shouldUseGroupModelUnsupportedError(ctx, providers, requestedModel, platform, excludedIDs, useMixed, groupID, schedGroup) {
+		if err := routing.NewGroupModelRejection(platform, requestedModel, modelRejectionSources(providers)); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// isAccountInGroup checks if the account belongs to the specified group.
-// When groupID is nil, returns true only for ungrouped accounts (no group assignments).
-func (s *Generic) isAccountInGroup(account *gatewayprovider.ExecutionAccount, groupID *int64) bool {
-	return openAIStickyAccountMatchesGroup(account, groupID)
+// isProviderInGroup checks if the provider belongs to the specified group.
+// When groupID is nil, returns true only for ungrouped providers (no group assignments).
+func (s *Generic) isProviderInGroup(provider *gatewayprovider.ExecutionProvider, groupID *int64) bool {
+	return openAIStickyProviderMatchesGroup(provider, groupID)
 }
 
-func (s *Generic) tryAcquireAccountSlot(ctx context.Context, accountID int64, maxConcurrency int) (*schedulercore.AcquireResult, error) {
+func (s *Generic) tryAcquireProviderSlot(ctx context.Context, providerID int64, maxConcurrency int) (*schedulercore.AcquireResult, error) {
 	if schedulercore.IsSelectOnly(ctx) {
 		return &schedulercore.AcquireResult{Acquired: true, ReleaseFunc: func() {}}, nil
 	}
 	if s.concurrencyService == nil {
 		return &schedulercore.AcquireResult{Acquired: true, ReleaseFunc: func() {}}, nil
 	}
-	return s.concurrencyService.AcquireAccountSlot(ctx, accountID, maxConcurrency)
+	return s.concurrencyService.AcquireProviderSlot(ctx, providerID, maxConcurrency)
 }
 
-func (s *Generic) withWindowCostPrefetch(ctx context.Context, accounts []gatewayprovider.ExecutionAccount) context.Context {
-	if ctx == nil || len(accounts) == 0 || !s.windowPrefetchAvailable {
+func (s *Generic) withWindowCostPrefetch(ctx context.Context, providers []gatewayprovider.ExecutionProvider) context.Context {
+	if ctx == nil || len(providers) == 0 || !s.windowPrefetchAvailable {
 		return ctx
 	}
-	values := make([]billing.CostWindowInput, len(accounts))
-	for i := range accounts {
-		values[i] = costWindowInput(&accounts[i])
+	values := make([]billing.CostWindowInput, len(providers))
+	for i := range providers {
+		values[i] = costWindowInput(&providers[i])
 	}
 	return s.windowCostGuard().Prefetch(ctx, values)
 }
 
-// isAccountSchedulableForQuota 检查账号是否在配额限制内
-// 适用于配置了 quota_limit 的 apikey 和 bedrock 类型账号
-func (s *Generic) isAccountSchedulableForQuota(account *gatewayprovider.ExecutionAccount) bool {
-	if !account.View().IsAPIKeyOrBedrock() {
+// isProviderSchedulableForQuota 检查提供商是否在配额限制内
+// 适用于配置了 quota_limit 的 apikey 和 bedrock 类型提供商
+func (s *Generic) isProviderSchedulableForQuota(provider *gatewayprovider.ExecutionProvider) bool {
+	if !provider.View().IsAPIKeyOrBedrock() {
 		return true
 	}
-	return !account.View().IsQuotaExceeded()
+	return !provider.View().IsQuotaExceeded()
 }
 
-// isAccountSchedulableForWindowCost 检查账号是否可根据窗口费用进行调度
-// 仅适用于 Anthropic OAuth/SetupToken 账号
+// isProviderSchedulableForWindowCost 检查提供商是否可根据窗口费用进行调度
+// 仅适用于 Anthropic OAuth/SetupToken 提供商
 // 返回 true 表示可调度，false 表示不可调度
-func (s *Generic) isAccountSchedulableForWindowCost(ctx context.Context, account *gatewayprovider.ExecutionAccount, sticky bool) bool {
-	return s.windowCostGuard().Allow(ctx, costWindowInput(account), sticky)
+func (s *Generic) isProviderSchedulableForWindowCost(ctx context.Context, provider *gatewayprovider.ExecutionProvider, sticky bool) bool {
+	return s.windowCostGuard().Allow(ctx, costWindowInput(provider), sticky)
 }
 
-// withRPMPrefetch 批量预取所有候选账号的 RPM 计数
-func (s *Generic) withRPMPrefetch(ctx context.Context, accounts []gatewayprovider.ExecutionAccount) context.Context {
+// withRPMPrefetch 批量预取所有候选提供商的 RPM 计数
+func (s *Generic) withRPMPrefetch(ctx context.Context, providers []gatewayprovider.ExecutionProvider) context.Context {
 	if s.rpmCache == nil {
 		return ctx
 	}
 
 	var ids []int64
-	for i := range accounts {
-		if accounts[i].View().IsAnthropicOAuthOrSetupToken() && gatewayprovider.ExecutionRuntimeConfig(&accounts[i]).GetBaseRPM() > 0 {
-			ids = append(ids, accounts[i].Record.ID)
+	for i := range providers {
+		if providers[i].View().IsAnthropicOAuthOrSetupToken() && gatewayprovider.ExecutionRuntimeConfig(&providers[i]).GetBaseRPM() > 0 {
+			ids = append(ids, providers[i].Record.ID)
 		}
 	}
 	return schedulercore.PrefetchRPM(ctx, s.rpmCache, ids)
 }
 
-// isAccountSchedulableForRPM 检查账号是否可根据 RPM 进行调度
-// 仅适用于 Anthropic OAuth/SetupToken 账号
-func (s *Generic) isAccountSchedulableForRPM(ctx context.Context, account *gatewayprovider.ExecutionAccount, sticky bool) bool {
-	if !account.View().IsAnthropicOAuthOrSetupToken() {
+// isProviderSchedulableForRPM 检查提供商是否可根据 RPM 进行调度
+// 仅适用于 Anthropic OAuth/SetupToken 提供商
+func (s *Generic) isProviderSchedulableForRPM(ctx context.Context, provider *gatewayprovider.ExecutionProvider, sticky bool) bool {
+	if !provider.View().IsAnthropicOAuthOrSetupToken() {
 		return true
 	}
-	return schedulercore.AllowAccountRPM(ctx, s.rpmCache, schedulercore.AccountRPMInput{ID: account.Record.ID, Enabled: true, Base: gatewayprovider.ExecutionRuntimeConfig(account).GetBaseRPM(), Buffer: gatewayprovider.ExecutionRuntimeConfig(account).GetRPMStickyBuffer(), Strategy: gatewayprovider.ExecutionRuntimeConfig(account).GetRPMStrategy()}, sticky)
+	return schedulercore.AllowProviderRPM(ctx, s.rpmCache, schedulercore.ProviderRPMInput{ID: provider.Record.ID, Enabled: true, Base: gatewayprovider.ExecutionRuntimeConfig(provider).GetBaseRPM(), Buffer: gatewayprovider.ExecutionRuntimeConfig(provider).GetRPMStickyBuffer(), Strategy: gatewayprovider.ExecutionRuntimeConfig(provider).GetRPMStrategy()}, sticky)
 }
 
-// IncrementAccountRPM increments the RPM counter for the given account.
+// IncrementProviderRPM increments the RPM counter for the given provider.
 // 已知 TOCTOU 竞态：调度时读取 RPM 计数与此处递增之间存在时间窗口，
 // 高并发下可能短暂超出 RPM 限制。这是与 WindowCost 一致的 soft-limit
 // 设计权衡——可接受的少量超额优于加锁带来的延迟和复杂度。
-func (s *Generic) IncrementAccountRPM(ctx context.Context, id int64) error {
-	return schedulercore.IncrementAccountRPM(ctx, s.rpmCache, id)
+func (s *Generic) IncrementProviderRPM(ctx context.Context, id int64) error {
+	return schedulercore.IncrementProviderRPM(ctx, s.rpmCache, id)
 }
 
 // checkAndRegisterSession 检查并注册会话，用于会话数量限制
-// 仅适用于 Anthropic OAuth/SetupToken 账号
+// 仅适用于 Anthropic OAuth/SetupToken 提供商
 // sessionID: 会话标识符（使用粘性会话的 hash）
 // 返回 true 表示允许（在限制内或会话已存在），false 表示拒绝（超出限制且是新会话）
-func (s *Generic) checkAndRegisterSession(ctx context.Context, account *gatewayprovider.ExecutionAccount, session string) bool {
+func (s *Generic) checkAndRegisterSession(ctx context.Context, provider *gatewayprovider.ExecutionProvider, session string) bool {
 	if schedulercore.IsSelectOnly(ctx) {
 		return true
 	}
-	return schedulercore.RegisterSession(ctx, s.sessionLimitCache, schedulerSessionBinding(account, session))
+	return schedulercore.RegisterSession(ctx, s.sessionLimitCache, schedulerSessionBinding(provider, session))
 }
 
-// ReleaseAccountSession 立即释放会话槽（不等待空闲超时）
+// ReleaseProviderSession 立即释放会话槽（不等待空闲超时）
 // 供 handler 在请求最终失败（选号成功但转发失败/客户端中断）时调用：
-// 上游从未真正服务该会话，若继续占槽，max_sessions 受限的账号会被失败请求的
+// 上游从未真正服务该会话，若继续占槽，max_sessions 受限的提供商会被失败请求的
 // session hash 卡满整个空闲窗口，后续新会话全部被拒。
-// 适用条件与 checkAndRegisterSession 对齐；不适用账号为 no-op，幂等可安全重复调用。
-func (s *Generic) ReleaseAccountSession(ctx context.Context, account *gatewayprovider.ExecutionAccount, session string) {
+// 适用条件与 checkAndRegisterSession 对齐；不适用提供商为 no-op，幂等可安全重复调用。
+func (s *Generic) ReleaseProviderSession(ctx context.Context, provider *gatewayprovider.ExecutionProvider, session string) {
 	if s == nil {
 		return
 	}
-	schedulercore.FinishSession(ctx, s.sessionLimitCache, schedulerSessionBinding(account, session), schedulercore.AttemptOutcome{}, schedulercore.Diagnostics{
+	schedulercore.FinishSession(ctx, s.sessionLimitCache, schedulerSessionBinding(provider, session), schedulercore.AttemptOutcome{}, schedulercore.Diagnostics{
 		Logf: logging.LegacyPrintf,
 
 		Event: logging.Event,
@@ -413,76 +413,76 @@ func (s *Generic) ReleaseAccountSession(ctx context.Context, account *gatewaypro
 	)
 }
 
-func schedulerSessionBinding(account *gatewayprovider.ExecutionAccount, session string) schedulercore.SessionBinding {
-	if account == nil {
+func schedulerSessionBinding(provider *gatewayprovider.ExecutionProvider, session string) schedulercore.SessionBinding {
+	if provider == nil {
 		return schedulercore.SessionBinding{}
 	}
-	return schedulercore.SessionBinding{AccountID: account.Record.ID, SessionID: session, Enabled: account.View().IsAnthropicOAuthOrSetupToken(), Limit: gatewayprovider.ExecutionRuntimeConfig(account).GetMaxSessions(), IdleTimeout: time.Duration(gatewayprovider.ExecutionRuntimeConfig(account).GetSessionIdleTimeoutMinutes()) * time.Minute}
+	return schedulercore.SessionBinding{ProviderID: provider.Record.ID, SessionID: session, Enabled: provider.View().IsAnthropicOAuthOrSetupToken(), Limit: gatewayprovider.ExecutionRuntimeConfig(provider).GetMaxSessions(), IdleTimeout: time.Duration(gatewayprovider.ExecutionRuntimeConfig(provider).GetSessionIdleTimeoutMinutes()) * time.Minute}
 }
 
-func (s *Generic) getSchedulableAccount(ctx context.Context, accountID int64) (*gatewayprovider.ExecutionAccount, error) {
+func (s *Generic) getSchedulableProvider(ctx context.Context, providerID int64) (*gatewayprovider.ExecutionProvider, error) {
 	var (
-		account *gatewayprovider.ExecutionAccount
-		err     error
+		provider *gatewayprovider.ExecutionProvider
+		err      error
 	)
 	if s.schedulerSnapshot != nil {
-		account, err = readSnapshotAccount(ctx, s.schedulerSnapshot, accountID)
+		provider, err = readSnapshotProvider(ctx, s.schedulerSnapshot, providerID)
 	} else {
-		account, err = s.accountRepo.GetByID(ctx, accountID)
+		provider, err = s.providerRepo.GetByID(ctx, providerID)
 	}
-	if err != nil || account == nil {
-		return account, err
+	if err != nil || provider == nil {
+		return provider, err
 	}
-	if s.isAccountBlockedBySchedulingThreshold(ctx, account) {
+	if s.isProviderBlockedBySchedulingThreshold(ctx, provider) {
 		return nil, nil
 	}
 
-	if account.View().IsGrok() {
-		if gated := s.filterGrokFreeQuotaAccountsForGateway(ctx, []gatewayprovider.ExecutionAccount{*account}); len(gated) == 0 {
+	if provider.View().IsGrok() {
+		if gated := s.filterGrokFreeQuotaProvidersForGateway(ctx, []gatewayprovider.ExecutionProvider{*provider}); len(gated) == 0 {
 			return nil, nil
 		}
 	}
-	return account, nil
+	return provider, nil
 }
 
-func (s *Generic) filterAccountsBySchedulingThreshold(ctx context.Context, accounts []gatewayprovider.ExecutionAccount) []gatewayprovider.ExecutionAccount {
-	if len(accounts) == 0 {
-		return accounts
+func (s *Generic) filterProvidersBySchedulingThreshold(ctx context.Context, providers []gatewayprovider.ExecutionProvider) []gatewayprovider.ExecutionProvider {
+	if len(providers) == 0 {
+		return providers
 	}
 
-	filtered := make([]gatewayprovider.ExecutionAccount, 0, len(accounts))
-	for i := range accounts {
-		if s.isAccountBlockedBySchedulingThreshold(ctx, &accounts[i]) {
+	filtered := make([]gatewayprovider.ExecutionProvider, 0, len(providers))
+	for i := range providers {
+		if s.isProviderBlockedBySchedulingThreshold(ctx, &providers[i]) {
 			continue
 		}
-		filtered = append(filtered, accounts[i])
+		filtered = append(filtered, providers[i])
 	}
 	return filtered
 }
 
-func (s *Generic) isAccountBlockedBySchedulingThreshold(ctx context.Context, account *gatewayprovider.ExecutionAccount) bool {
-	if s == nil || s.healthObserver == nil || account == nil {
+func (s *Generic) isProviderBlockedBySchedulingThreshold(ctx context.Context, provider *gatewayprovider.ExecutionProvider) bool {
+	if s == nil || s.healthObserver == nil || provider == nil {
 		return false
 	}
-	return gatewayprovider.ApplyExecutionSchedulingThreshold(ctx, s.healthObserver, account)
+	return gatewayprovider.ApplyExecutionSchedulingThreshold(ctx, s.healthObserver, provider)
 }
 
-func (s *Generic) hydrateSelectedAccount(ctx context.Context, account *gatewayprovider.ExecutionAccount) (*gatewayprovider.ExecutionAccount, error) {
-	if account == nil || s.schedulerSnapshot == nil {
-		return account, nil
+func (s *Generic) hydrateSelectedProvider(ctx context.Context, provider *gatewayprovider.ExecutionProvider) (*gatewayprovider.ExecutionProvider, error) {
+	if provider == nil || s.schedulerSnapshot == nil {
+		return provider, nil
 	}
-	var hydrated *gatewayprovider.ExecutionAccount
+	var hydrated *gatewayprovider.ExecutionProvider
 	var err error
-	if s.accountRepo != nil {
-		hydrated, err = s.accountRepo.GetByID(ctx, account.Record.ID)
+	if s.providerRepo != nil {
+		hydrated, err = s.providerRepo.GetByID(ctx, provider.Record.ID)
 	} else {
-		hydrated, err = readSnapshotAccount(ctx, s.schedulerSnapshot, account.Record.ID)
+		hydrated, err = readSnapshotProvider(ctx, s.schedulerSnapshot, provider.Record.ID)
 	}
 	if err != nil {
 		return nil, err
 	}
 	if hydrated == nil {
-		return nil, schedulercore.ErrNoAvailableAccounts
+		return nil, schedulercore.ErrNoAvailableProviders
 	}
 	if input, ok := ctx.Value(selectionRequestKey{}).(selectionRequest); ok {
 		groupID := input.groupID
@@ -491,20 +491,20 @@ func (s *Generic) hydrateSelectedAccount(ctx context.Context, account *gatewaypr
 		}
 		model := s.groupMappedModelForGroup(ctx, groupID, input.model)
 		policy := gatewayprovider.ExecutionModelPolicy(hydrated)
-		if !openAIStickyAccountMatchesGroup(hydrated, groupID) || !policy.Schedulable(ctx, model) || !policy.Supports(ctx, model) {
-			return nil, schedulercore.ErrNoAvailableAccounts
+		if !openAIStickyProviderMatchesGroup(hydrated, groupID) || !policy.Schedulable(ctx, model) || !policy.Supports(ctx, model) {
+			return nil, schedulercore.ErrNoAvailableProviders
 		}
 	}
 	return hydrated, nil
 }
 
-func (s *Generic) newSelectionResult(ctx context.Context, account *gatewayprovider.ExecutionAccount, acquired bool, release func(), waitPlan *schedulercore.AccountWaitPlan) (*gatewayprovider.SelectionResult, error) {
+func (s *Generic) newSelectionResult(ctx context.Context, provider *gatewayprovider.ExecutionProvider, acquired bool, release func(), waitPlan *schedulercore.ProviderWaitPlan) (*gatewayprovider.SelectionResult, error) {
 	attempt := schedulercore.NewAttemptLease(schedulercore.RequestLease(ctx), nil, release)
 	if release != nil {
 		release = attempt.Release
 	}
 
-	hydrated, err := s.hydrateSelectedAccount(ctx, account)
+	hydrated, err := s.hydrateSelectedProvider(ctx, provider)
 	if err != nil {
 		if release != nil {
 			release()
@@ -512,7 +512,7 @@ func (s *Generic) newSelectionResult(ctx context.Context, account *gatewayprovid
 		return nil, err
 	}
 	selection := &gatewayprovider.SelectionResult{
-		Account:     hydrated,
+		Provider:    hydrated,
 		Acquired:    acquired,
 		ReleaseFunc: release,
 		WaitPlan:    waitPlan,
@@ -550,14 +550,14 @@ func (s *Generic) logDetailedSelectionFailure(
 	sessionHash string,
 	requestedModel string,
 	platform string,
-	accounts []gatewayprovider.ExecutionAccount,
+	providers []gatewayprovider.ExecutionProvider,
 	excludedIDs map[int64]struct{},
 	allowMixedScheduling bool,
 ) selectionFailureStats {
-	stats := s.collectSelectionFailureStats(ctx, accounts, requestedModel, platform, excludedIDs, allowMixedScheduling)
+	stats := s.collectSelectionFailureStats(ctx, providers, requestedModel, platform, excludedIDs, allowMixedScheduling)
 	logging.LegacyPrintf(
 		"service.gateway",
-		"[SelectAccountDetailed] group_id=%v model=%s platform=%s session=%s total=%d eligible=%d excluded=%d unschedulable=%d platform_filtered=%d model_unsupported=%d model_rate_limited=%d sample_platform_filtered=%v sample_model_unsupported=%v sample_model_rate_limited=%v",
+		"[SelectProviderDetailed] group_id=%v model=%s platform=%s session=%s total=%d eligible=%d excluded=%d unschedulable=%d platform_filtered=%d model_unsupported=%d model_rate_limited=%d sample_platform_filtered=%v sample_model_unsupported=%v sample_model_rate_limited=%v",
 		derefGroupID(groupID),
 		requestedModel,
 		platform,
@@ -578,18 +578,18 @@ func (s *Generic) logDetailedSelectionFailure(
 
 func (s *Generic) collectSelectionFailureStats(
 	ctx context.Context,
-	accounts []gatewayprovider.ExecutionAccount,
+	providers []gatewayprovider.ExecutionProvider,
 	requestedModel string,
 	platform string,
 	excludedIDs map[int64]struct{},
 	allowMixedScheduling bool,
 ) selectionFailureStats {
 	stats := selectionFailureStats{
-		Total: len(accounts),
+		Total: len(providers),
 	}
 
-	for i := range accounts {
-		acc := &accounts[i]
+	for i := range providers {
+		acc := &providers[i]
 		diagnosis := s.diagnoseSelectionFailure(ctx, acc, requestedModel, platform, excludedIDs, allowMixedScheduling)
 		switch diagnosis.Category {
 		case "excluded":
@@ -604,7 +604,7 @@ func (s *Generic) collectSelectionFailureStats(
 			stats.SampleMappingIDs = appendSelectionFailureSampleID(stats.SampleMappingIDs, acc.Record.ID)
 		case "model_rate_limited":
 			stats.ModelRateLimited++
-			routingModel := s.groupMappedModelForAccountLayer(ctx, requestedModel)
+			routingModel := s.groupMappedModelForProviderLayer(ctx, requestedModel)
 			remaining := gatewayprovider.ExecutionModelPolicy(acc).LimitRemaining(ctx, routingModel).Truncate(time.Second)
 			stats.SampleRateLimitIDs = appendSelectionFailureRateSample(stats.SampleRateLimitIDs, acc.Record.ID, remaining)
 		default:
@@ -617,35 +617,35 @@ func (s *Generic) collectSelectionFailureStats(
 
 func (s *Generic) diagnoseSelectionFailure(
 	ctx context.Context,
-	acc *gatewayprovider.ExecutionAccount,
+	acc *gatewayprovider.ExecutionProvider,
 	requestedModel string,
 	platform string,
 	excludedIDs map[int64]struct{},
 	allowMixedScheduling bool,
 ) selectionFailureDiagnosis {
 	if acc == nil {
-		return selectionFailureDiagnosis{Category: "unschedulable", Detail: "account_nil"}
+		return selectionFailureDiagnosis{Category: "unschedulable", Detail: "provider_nil"}
 	}
 	if _, excluded := excludedIDs[acc.Record.ID]; excluded {
 		return selectionFailureDiagnosis{Category: "excluded"}
 	}
-	if !s.isAccountSchedulableForSelection(acc) {
+	if !s.isProviderSchedulableForSelection(acc) {
 		return selectionFailureDiagnosis{Category: "unschedulable", Detail: "generic_unschedulable"}
 	}
 	if isPlatformFilteredForSelection(acc, platform, allowMixedScheduling) {
 		return selectionFailureDiagnosis{
 			Category: "platform_filtered",
-			Detail:   fmt.Sprintf("account_platform=%s requested_platform=%s", acc.Record.Platform, strings.TrimSpace(platform)),
+			Detail:   fmt.Sprintf("provider_platform=%s requested_platform=%s", acc.Record.Platform, strings.TrimSpace(platform)),
 		}
 	}
-	if requestedModel != "" && !s.isModelSupportedByAccountWithContext(ctx, acc, requestedModel) {
+	if requestedModel != "" && !s.isModelSupportedByProviderWithContext(ctx, acc, requestedModel) {
 		return selectionFailureDiagnosis{
 			Category: "model_unsupported",
 			Detail:   fmt.Sprintf("model=%s", requestedModel),
 		}
 	}
-	if !s.isAccountSchedulableForModelSelection(ctx, acc, requestedModel) {
-		routingModel := s.groupMappedModelForAccountLayer(ctx, requestedModel)
+	if !s.isProviderSchedulableForModelSelection(ctx, acc, requestedModel) {
+		routingModel := s.groupMappedModelForProviderLayer(ctx, requestedModel)
 		remaining := gatewayprovider.ExecutionModelPolicy(acc).LimitRemaining(ctx, routingModel).Truncate(time.Second)
 		return selectionFailureDiagnosis{
 			Category: "model_rate_limited",
@@ -655,7 +655,7 @@ func (s *Generic) diagnoseSelectionFailure(
 	return selectionFailureDiagnosis{Category: "eligible"}
 }
 
-func isPlatformFilteredForSelection(acc *gatewayprovider.ExecutionAccount, platform string, allowMixedScheduling bool) bool {
+func isPlatformFilteredForSelection(acc *gatewayprovider.ExecutionProvider, platform string, allowMixedScheduling bool) bool {
 	return acc == nil || platform != "" && acc.Record.Platform != platform
 }
 
@@ -667,12 +667,12 @@ func appendSelectionFailureSampleID(samples []int64, id int64) []int64 {
 	return append(samples, id)
 }
 
-func appendSelectionFailureRateSample(samples []string, accountID int64, remaining time.Duration) []string {
+func appendSelectionFailureRateSample(samples []string, providerID int64, remaining time.Duration) []string {
 	const limit = 5
 	if len(samples) >= limit {
 		return samples
 	}
-	return append(samples, fmt.Sprintf("%d(%s)", accountID, remaining))
+	return append(samples, fmt.Sprintf("%d(%s)", providerID, remaining))
 }
 
 func summarizeSelectionFailureStats(stats selectionFailureStats) string {
@@ -688,18 +688,18 @@ func summarizeSelectionFailureStats(stats selectionFailureStats) string {
 	)
 }
 
-// isModelSupportedByAccountWithContext 根据分组映射后的模型检查账号支持能力。
-func (s *Generic) isModelSupportedByAccountWithContext(ctx context.Context, account *gatewayprovider.ExecutionAccount, requestedModel string) bool {
-	routingModel := s.groupMappedModelForAccountLayer(ctx, requestedModel)
-	return s.isRoutingModelSupportedByAccountWithContext(ctx, account, routingModel)
+// isModelSupportedByProviderWithContext 根据分组映射后的模型检查提供商支持能力。
+func (s *Generic) isModelSupportedByProviderWithContext(ctx context.Context, provider *gatewayprovider.ExecutionProvider, requestedModel string) bool {
+	routingModel := s.groupMappedModelForProviderLayer(ctx, requestedModel)
+	return s.isRoutingModelSupportedByProviderWithContext(ctx, provider, routingModel)
 }
 
-// isRoutingModelSupportedByAccountWithContext 检查已经过分组映射的模型，避免重复执行分组映射。
-func (s *Generic) isRoutingModelSupportedByAccountWithContext(ctx context.Context, account *gatewayprovider.ExecutionAccount, routingModel string) bool {
-	return gatewayprovider.ExecutionModelPolicy(account).Supports(ctx, routingModel)
+// isRoutingModelSupportedByProviderWithContext 检查已经过分组映射的模型，避免重复执行分组映射。
+func (s *Generic) isRoutingModelSupportedByProviderWithContext(ctx context.Context, provider *gatewayprovider.ExecutionProvider, routingModel string) bool {
+	return gatewayprovider.ExecutionModelPolicy(provider).Supports(ctx, routingModel)
 }
 
-func (s *Generic) groupMappedModelForAccountLayer(ctx context.Context, requestedModel string) string {
+func (s *Generic) groupMappedModelForProviderLayer(ctx context.Context, requestedModel string) string {
 	if s == nil || s.groupPolicies == nil || strings.TrimSpace(requestedModel) == "" {
 		return requestedModel
 	}
@@ -711,9 +711,9 @@ func (s *Generic) groupMappedModelForAccountLayer(ctx context.Context, requested
 	return s.groupMappedModelForGroup(ctx, &groupID, requestedModel)
 }
 
-// isModelSupportedByAccount 根据账户平台检查模型支持（无 context，用于非 Antigravity 平台）
-func (s *Generic) isModelSupportedByAccount(account *gatewayprovider.ExecutionAccount, requestedModel string) bool {
-	return gatewayprovider.ExecutionModelPolicy(account).Supports(context.Background(), requestedModel)
+// isModelSupportedByProvider 根据提供商平台检查模型支持（无 context，用于非 Antigravity 平台）
+func (s *Generic) isModelSupportedByProvider(provider *gatewayprovider.ExecutionProvider, requestedModel string) bool {
+	return gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), requestedModel)
 }
 
 // NewSessionAttempts 为一次请求提供唯一会话完成集合，不保存全局副本。
@@ -726,7 +726,7 @@ func (s *Generic) NewSessionAttempts() *schedulercore.SessionAttempts {
 	)
 }
 
-// TrackSessionAttempt 只投影原账号会话参数，最终状态由执行入口传入。
-func (s *Generic) TrackSessionAttempt(attempts *schedulercore.SessionAttempts, account *gatewayprovider.ExecutionAccount, session string) {
-	attempts.Track(schedulerSessionBinding(account, session))
+// TrackSessionAttempt 只投影原提供商会话参数，最终状态由执行入口传入。
+func (s *Generic) TrackSessionAttempt(attempts *schedulercore.SessionAttempts, provider *gatewayprovider.ExecutionProvider, session string) {
+	attempts.Track(schedulerSessionBinding(provider, session))
 }

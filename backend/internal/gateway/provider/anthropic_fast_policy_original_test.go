@@ -11,8 +11,8 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/modelidentity"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry"
 
@@ -35,11 +35,11 @@ import (
 
 func TestClaudeAPIKeyFastModeWireEncoding(t *testing.T) {
 	resolver := fastModeTestResolver()
-	account := &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAnthropic, Type: capability.AccountTypeAPIKey}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAnthropic, Type: capability.ProviderTypeAPIKey}}
 
 	forceOnCtx := fastModeTestContext(apikey.APIKeyFastModePolicyForceOn, "claude-opus-4-8")
 	body, headers, err := gatewayprovider.
-		ApplyAnthropicFastMode(forceOnCtx, resolver, account, "claude-opus-4-8", []byte(`{"model":"claude-opus-4-8"}`), http.Header{})
+		ApplyAnthropicFastMode(forceOnCtx, resolver, provider, "claude-opus-4-8", []byte(`{"model":"claude-opus-4-8"}`), http.Header{})
 	require.NoError(t, err)
 	require.Equal(t, "fast", gjson.GetBytes(body, "speed").String())
 	require.True(t, claude.ContainsBetaToken(claude.GetHeaderRaw(headers, "anthropic-beta"), claude.BetaFastMode))
@@ -47,7 +47,7 @@ func TestClaudeAPIKeyFastModeWireEncoding(t *testing.T) {
 	forceOffCtx := fastModeTestContext(apikey.APIKeyFastModePolicyForceOff, "claude-opus-4-8")
 	claude.SetHeaderRaw(headers, "anthropic-beta", claude.BetaFastMode+",context-management-2025-06-27")
 	body, headers, err = gatewayprovider.
-		ApplyAnthropicFastMode(forceOffCtx, resolver, account, "claude-opus-4-8", body, headers)
+		ApplyAnthropicFastMode(forceOffCtx, resolver, provider, "claude-opus-4-8", body, headers)
 	require.NoError(t, err)
 	require.False(t, gjson.GetBytes(body, "speed").Exists())
 	require.False(t, claude.ContainsBetaToken(claude.GetHeaderRaw(headers, "anthropic-beta"), claude.BetaFastMode))
@@ -58,15 +58,15 @@ func TestClaudeAPIKeyFastModeWireEncoding(t *testing.T) {
 func TestClaudeAPIKeyFastModeForceOffIgnoresCapabilityAndCredentialType(t *testing.T) {
 	ctx := fastModeTestContext(apikey.APIKeyFastModePolicyForceOff, "claude-opus-4-8")
 
-	for _, accountType := range []string{capability.AccountTypeAPIKey, capability.AccountTypeOAuth, capability.AccountTypeSetupToken} {
-		t.Run(accountType, func(t *testing.T) {
+	for _, providerType := range []string{capability.ProviderTypeAPIKey, capability.ProviderTypeOAuth, capability.ProviderTypeSetupToken} {
+		t.Run(providerType, func(t *testing.T) {
 			headers := http.Header{}
 			claude.SetHeaderRaw(headers, "anthropic-beta", claude.BetaFastMode+",context-management-2025-06-27")
 			body, updatedHeaders, err := gatewayprovider.
 				ApplyAnthropicFastMode(
 					ctx, nil,
 
-					&gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAnthropic, Type: accountType}},
+					&gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAnthropic, Type: providerType}},
 					"claude-opus-4-8",
 					[]byte(`{"model":"claude-opus-4-8","speed":"fast"}`),
 					headers,

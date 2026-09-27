@@ -23,29 +23,32 @@ func (c *waitOwnershipCache) IncrementWaitCount(context.Context, int64, int) (bo
 	}
 	return c.allowed, c.err
 }
-func (c *waitOwnershipCache) IncrementAccountWaitCount(ctx context.Context, id int64, limit int) (bool, error) {
+
+func (c *waitOwnershipCache) IncrementProviderWaitCount(ctx context.Context, id int64, limit int) (bool, error) {
 	return c.IncrementWaitCount(ctx, id, limit)
 }
+
 func (c *waitOwnershipCache) DecrementWaitCount(context.Context, int64) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.count--
 	return nil
 }
-func (c *waitOwnershipCache) DecrementAccountWaitCount(ctx context.Context, id int64) error {
+
+func (c *waitOwnershipCache) DecrementProviderWaitCount(ctx context.Context, id int64) error {
 	return c.DecrementWaitCount(ctx, id)
 }
 
 func TestWaitOwnershipFailOpenAndRepeatedRelease(t *testing.T) {
-	for _, account := range []bool{false, true} {
+	for _, provider := range []bool{false, true} {
 		for _, failure := range []bool{false, true} {
 			cache := &waitOwnershipCache{count: 1, allowed: true}
 			if failure {
 				cache.err = errors.New("未确认增加计数")
 			}
 			enter := EnterUserWait
-			if account {
-				enter = EnterAccountWait
+			if provider {
+				enter = EnterProviderWait
 			}
 			result, err := enter(context.Background(), cache, 1, 20, Diagnostics{})
 			require.NoError(t, err)

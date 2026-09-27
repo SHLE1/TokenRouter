@@ -1,4 +1,4 @@
-// 本文件只执行 Qoder 刷新协议；是否刷新、缓存与条件持久化仍由账号用例决定。
+// 本文件只执行 Qoder 刷新协议；是否刷新、缓存与条件持久化仍由提供商用例决定。
 package qoder
 
 import (
@@ -9,15 +9,18 @@ import (
 	"time"
 )
 
-type SessionRefresher func(context.Context, string, string, *MachineIdentity) (*AuthIdentity, error)
-type CN20SessionRefresher func(context.Context, string, *MachineIdentity) (*AuthIdentity, time.Time, error)
-type CNCosySessionRefresher func(context.Context, string, string, string, string, *MachineIdentity) (*AuthIdentity, error)
-type RefreshExchange struct {
-	RefreshSession SessionRefresher
-	RefreshCN20    CN20SessionRefresher
-	RefreshCNCosy  CNCosySessionRefresher
-	Doer           RequestDoer
-}
+type (
+	SessionRefresher       func(context.Context, string, string, *MachineIdentity) (*AuthIdentity, error)
+	CN20SessionRefresher   func(context.Context, string, *MachineIdentity) (*AuthIdentity, time.Time, error)
+	CNCosySessionRefresher func(context.Context, string, string, string, string, *MachineIdentity) (*AuthIdentity, error)
+	RefreshExchange        struct {
+		RefreshSession SessionRefresher
+		RefreshCN20    CN20SessionRefresher
+		RefreshCNCosy  CNCosySessionRefresher
+		Doer           RequestDoer
+	}
+)
+
 type RefreshResult struct {
 	Identity  *AuthIdentity
 	Machine   *MachineIdentity
@@ -26,25 +29,25 @@ type RefreshResult struct {
 	ExpiresAt time.Time
 }
 
-func (r *RefreshExchange) Refresh(ctx context.Context, account *CredentialInput) (*RefreshResult, error) {
-	site, err := credentialSite(account)
+func (r *RefreshExchange) Refresh(ctx context.Context, provider *CredentialInput) (*RefreshResult, error) {
+	site, err := credentialSite(provider)
 	if err != nil {
 		return nil, err
 	}
-	refreshMode, err := credentialRefreshMode(account)
+	refreshMode, err := credentialRefreshMode(provider)
 	if err != nil {
 		return nil, err
 	}
-	if strings.TrimSpace(account.GetCredential("pat")) != "" {
+	if strings.TrimSpace(provider.GetCredential("pat")) != "" {
 		refreshMode = RefreshModeCosy
 	}
-	machineID := strings.TrimSpace(account.GetCredential("machine_id"))
-	if machineID == "" && strings.TrimSpace(account.GetCredential("pat")) == "" {
+	machineID := strings.TrimSpace(provider.GetCredential("machine_id"))
+	if machineID == "" && strings.TrimSpace(provider.GetCredential("pat")) == "" {
 		return nil, errors.New("qoder refresh requires machine_id")
 	}
-	machine := MachineForCredentials(account)
+	machine := MachineForCredentials(provider)
 	doer := r.Doer
-	identity, expiresAt, err := r.refreshIdentity(ctx, account, site, refreshMode, machine, doer)
+	identity, expiresAt, err := r.refreshIdentity(ctx, provider, site, refreshMode, machine, doer)
 	if err != nil {
 		return nil, fmt.Errorf("qoder refresh token: %w", err)
 	}
@@ -54,19 +57,20 @@ func (r *RefreshExchange) Refresh(ctx context.Context, account *CredentialInput)
 	if strings.TrimSpace(identity.SecurityOauthToken) == "" {
 		return nil, errors.New("qoder refresh returned empty security_oauth_token")
 	}
-	ApplyIdentityMetadata(identity, account)
+	ApplyIdentityMetadata(identity, provider)
 
 	return &RefreshResult{Identity: identity, Machine: machine, Site: site, Mode: refreshMode, ExpiresAt: expiresAt}, nil
 }
+
 func (r *RefreshExchange) refreshIdentity(
 	ctx context.Context,
-	account *CredentialInput,
+	provider *CredentialInput,
 	site Site,
 	refreshMode string,
 	machine *MachineIdentity,
 	doer RequestDoer,
 ) (*AuthIdentity, time.Time, error) {
-	pat := strings.TrimSpace(account.GetCredential("pat"))
+	pat := strings.TrimSpace(provider.GetCredential("pat"))
 	if pat != "" {
 		if site == SiteCN {
 			profile := MustProfileForSite(SiteCN)
@@ -77,11 +81,11 @@ func (r *RefreshExchange) refreshIdentity(
 		return identity, time.Time{}, err
 	}
 
-	refreshToken := strings.TrimSpace(account.GetCredential("refresh_token"))
+	refreshToken := strings.TrimSpace(provider.GetCredential("refresh_token"))
 	if refreshToken == "" {
 		return nil, time.Time{}, errors.New("no refresh token available")
 	}
-	securityToken := strings.TrimSpace(account.GetCredential("security_oauth_token"))
+	securityToken := strings.TrimSpace(provider.GetCredential("security_oauth_token"))
 	if refreshMode == RefreshModeQoderCN20 {
 		if site != SiteCN {
 			return nil, time.Time{}, errors.New("qoder qodercn20 refresh requires cn site")
@@ -92,8 +96,8 @@ func (r *RefreshExchange) refreshIdentity(
 		return RefreshQoderCN20SessionContext(ctx, refreshToken, machine, MustProfileForSite(site), doer)
 	}
 	if site == SiteCN {
-		userID := FirstNonEmptyQoder(account.GetCredential("uid"), account.GetCredential("aid"))
-		organizationID := account.GetCredential("organization_id")
+		userID := FirstNonEmptyQoder(provider.GetCredential("uid"), provider.GetCredential("aid"))
+		organizationID := provider.GetCredential("organization_id")
 		if r.RefreshCNCosy != nil {
 			identity, err := r.RefreshCNCosy(ctx, refreshToken, securityToken, userID, organizationID, machine)
 			return identity, time.Time{}, err
@@ -110,7 +114,8 @@ func (r *RefreshExchange) refreshIdentity(
 	identity, err := refreshSession(ctx, refreshToken, securityToken, machine)
 	return identity, time.Time{}, err
 }
-func TokenInfoCredentials(identity *AuthIdentity, account *CredentialInput, machine *MachineIdentity) map[string]any {
+
+func TokenInfoCredentials(identity *AuthIdentity, provider *CredentialInput, machine *MachineIdentity) map[string]any {
 	credentials := map[string]any{}
 	if identity != nil {
 		if token := strings.TrimSpace(identity.SecurityOauthToken); token != "" {
@@ -149,8 +154,8 @@ func TokenInfoCredentials(identity *AuthIdentity, account *CredentialInput, mach
 			credentials["machine_type"] = machineType
 		}
 	}
-	if account != nil {
-		if refreshToken := account.GetCredential("refresh_token"); refreshToken != "" {
+	if provider != nil {
+		if refreshToken := provider.GetCredential("refresh_token"); refreshToken != "" {
 			if _, ok := credentials["refresh_token"]; !ok {
 				credentials["refresh_token"] = refreshToken
 			}

@@ -6,7 +6,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/tokenestimate"
 	"github.com/TokenFlux/TokenRouter/internal/protocol/bridge"
@@ -17,14 +17,14 @@ import (
 	"github.com/tidwall/sjson"
 )
 
-// ForwardSelectedCountTokens 在账号选择后分派，不取得生成槽、不发送生成请求或提交用量。
-func ForwardSelectedCountTokens(ctx context.Context, c *gin.Context, target *provider.ExecutionAccount, parsed *requeststate.ParsedRequest, messages *MessagesExecutor, auxiliary *OpenAIAuxiliary, gemini *GeminiExecutor) error {
+// ForwardSelectedCountTokens 在提供商选择后分派，不取得生成槽、不发送生成请求或提交用量。
+func ForwardSelectedCountTokens(ctx context.Context, c *gin.Context, target *gatewayadapter.ExecutionProvider, parsed *requeststate.ParsedRequest, messages *MessagesExecutor, auxiliary *OpenAIAuxiliary, gemini *GeminiExecutor) error {
 	if target == nil || parsed == nil {
 		return errors.New("count_tokens target is unavailable")
 	}
 	switch target.Record.Platform {
 	case "qoder", "antigravity":
-		WriteAnthropicError(c, http.StatusNotFound, "not_found_error", "", "count_tokens endpoint is not supported for this account")
+		WriteAnthropicError(c, http.StatusNotFound, "not_found_error", "", "count_tokens endpoint is not supported for this provider")
 		return nil
 	case "grok":
 		count, err := tokenestimate.Anthropic(parsed.Body.Bytes())
@@ -52,13 +52,13 @@ func ForwardSelectedCountTokens(ctx context.Context, c *gin.Context, target *pro
 }
 
 // forwardGeminiMessagesCount 保留系统提示词和工具定义，使用 Gemini 原生计数及其 OAuth scope 回退。
-func forwardGeminiMessagesCount(ctx context.Context, c *gin.Context, target *provider.ExecutionAccount, parsed *requeststate.ParsedRequest, executor *GeminiExecutor) error {
+func forwardGeminiMessagesCount(ctx context.Context, c *gin.Context, target *gatewayadapter.ExecutionProvider, parsed *requeststate.ParsedRequest, executor *GeminiExecutor) error {
 	body, err := bridge.NativeConvertClaudeMessagesToGeminiGenerateContent(bridge.NativeGeminiOptions{}, parsed.Body.Bytes())
 	if err != nil {
 		WriteAnthropicError(c, http.StatusBadRequest, "invalid_request_error", "", "Failed to parse request body")
 		return err
 	}
-	upstreamModel := provider.ExecutionModelPolicy(target).UpstreamModel(ctx, parsed.Model)
+	upstreamModel := gatewayadapter.ExecutionModelPolicy(target).UpstreamModel(ctx, parsed.Model)
 	body, err = sjson.SetBytes(body, "model", "models/"+upstreamModel)
 	if err != nil {
 		return err
@@ -87,7 +87,7 @@ func (o *messagesCountGoogleOutput) GoogleError(status int, message string) erro
 	return o.ClaudeError(status, "upstream_error", message)
 }
 
-func (o *messagesCountGoogleOutput) GeminiNativeUpstreamError(target *provider.ExecutionAccount, response *http.Response, body []byte, requestID string, oauth bool) error {
+func (o *messagesCountGoogleOutput) GeminiNativeUpstreamError(target *gatewayadapter.ExecutionProvider, response *http.Response, body []byte, requestID string, oauth bool) error {
 	return o.GeminiMappedError(target, response.StatusCode, requestID, gemininative.UnwrapIfNeeded(oauth, body))
 }
 

@@ -17,7 +17,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func (p *OpenAIResponseOutput) RecordMessagesStreamError(c *gin.Context, account *gatewayprovider.ExecutionAccount, upstreamRequestID, kind, message string) {
+func (p *OpenAIResponseOutput) RecordMessagesStreamError(c *gin.Context, provider *gatewayprovider.ExecutionProvider, upstreamRequestID, kind, message string) {
 	if c == nil {
 		return
 	}
@@ -30,10 +30,10 @@ func (p *OpenAIResponseOutput) RecordMessagesStreamError(c *gin.Context, account
 		Kind:               kind,
 		Message:            message,
 	}
-	if account != nil {
-		event.Platform = account.Record.Platform
-		event.AccountID = account.Record.ID
-		event.AccountName = account.Record.Name
+	if provider != nil {
+		event.Platform = provider.Record.Platform
+		event.ProviderID = provider.Record.ID
+		event.ProviderName = provider.Record.Name
 	}
 	AppendOpsUpstreamError(c, event)
 }

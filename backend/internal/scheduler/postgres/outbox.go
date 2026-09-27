@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	postgresinfra "github.com/TokenFlux/TokenRouter/internal/infra/postgres"
@@ -35,7 +36,7 @@ func (r *schedulerOutboxRepository) ListAfterAndReleaseDedup(ctx context.Context
 	}
 	rows, err := r.db.QueryContext(ctx, `
 		WITH selected AS MATERIALIZED (
-			SELECT id, event_type, account_id, group_id, payload, created_at
+			SELECT id, event_type, provider_id, group_id, payload, created_at
 			FROM scheduler_outbox
 			WHERE id > $1
 			ORDER BY id ASC
@@ -49,7 +50,7 @@ func (r *schedulerOutboxRepository) ListAfterAndReleaseDedup(ctx context.Context
 				AND o.dedup_key IS NOT NULL
 			RETURNING o.id
 		)
-		SELECT s.id, s.event_type, s.account_id, s.group_id, s.payload, s.created_at
+		SELECT s.id, s.event_type, s.provider_id, s.group_id, s.payload, s.created_at
 		FROM selected AS s
 		CROSS JOIN (SELECT COUNT(*) FROM released) AS release_barrier
 		ORDER BY s.id ASC
@@ -65,16 +66,16 @@ func (r *schedulerOutboxRepository) ListAfterAndReleaseDedup(ctx context.Context
 	for rows.Next() {
 		var (
 			payloadRaw []byte
-			accountID  sql.NullInt64
+			providerID sql.NullInt64
 			groupID    sql.NullInt64
 			event      scheduler.SchedulerOutboxEvent
 		)
-		if err := rows.Scan(&event.ID, &event.EventType, &accountID, &groupID, &payloadRaw, &event.CreatedAt); err != nil {
+		if err := rows.Scan(&event.ID, &event.EventType, &providerID, &groupID, &payloadRaw, &event.CreatedAt); err != nil {
 			return nil, err
 		}
-		if accountID.Valid {
-			v := accountID.Int64
-			event.AccountID = &v
+		if providerID.Valid {
+			v := providerID.Int64
+			event.ProviderID = &v
 		}
 		if groupID.Valid {
 			v := groupID.Int64
@@ -85,8 +86,16 @@ func (r *schedulerOutboxRepository) ListAfterAndReleaseDedup(ctx context.Context
 			if err := json.Unmarshal(payloadRaw, &payload); err != nil {
 				return nil, err
 			}
+			// 旧事件在读取边界归一化，不扫描或改写历史 outbox。
+			if ids, ok := payload["account_ids"]; ok {
+				if _, exists := payload["provider_ids"]; !exists {
+					payload["provider_ids"] = ids
+				}
+				delete(payload, "account_ids")
+			}
 			event.Payload = payload
 		}
+		event.EventType = strings.Replace(event.EventType, "account_", "provider_", 1)
 		events = append(events, event)
 	}
 	if err := rows.Err(); err != nil {
@@ -178,7 +187,7 @@ func (l *schedulerOutboxCleanupLease) Release() {
 	l.conn = nil
 }
 
-func enqueueSchedulerOutbox(ctx context.Context, exec postgresinfra.Executor, eventType string, accountID *int64, groupID *int64, payload any) error {
+func enqueueSchedulerOutbox(ctx context.Context, exec postgresinfra.Executor, eventType string, providerID *int64, groupID *int64, payload any) error {
 	if exec == nil {
 		return nil
 	}
@@ -193,14 +202,14 @@ func enqueueSchedulerOutbox(ctx context.Context, exec postgresinfra.Executor, ev
 		payloadJSON = encoded
 	}
 	query := `
-		INSERT INTO scheduler_outbox (event_type, account_id, group_id, payload)
+		INSERT INTO scheduler_outbox (event_type, provider_id, group_id, payload)
 		VALUES ($1, $2, $3, $4)
 	`
-	args := []any{eventType, accountID, groupID, payloadArg}
+	args := []any{eventType, providerID, groupID, payloadArg}
 	if schedulerOutboxEventSupportsDedup(eventType) {
-		dedupKey := schedulerOutboxDedupKey(eventType, accountID, groupID, payloadJSON)
+		dedupKey := schedulerOutboxDedupKey(eventType, providerID, groupID, payloadJSON)
 		query = `
-			INSERT INTO scheduler_outbox (event_type, account_id, group_id, payload, dedup_key)
+			INSERT INTO scheduler_outbox (event_type, provider_id, group_id, payload, dedup_key)
 			VALUES ($1, $2, $3, $4, $5)
 			ON CONFLICT (dedup_key) WHERE dedup_key IS NOT NULL DO NOTHING
 		`
@@ -210,12 +219,12 @@ func enqueueSchedulerOutbox(ctx context.Context, exec postgresinfra.Executor, ev
 	return err
 }
 
-func schedulerOutboxDedupKey(eventType string, accountID *int64, groupID *int64, payloadJSON []byte) string {
+func schedulerOutboxDedupKey(eventType string, providerID *int64, groupID *int64, payloadJSON []byte) string {
 	h := sha256.New()
 	_, _ = h.Write([]byte(eventType))
 	_, _ = h.Write([]byte{0})
-	if accountID != nil {
-		_, _ = h.Write([]byte(strconv.FormatInt(*accountID, 10)))
+	if providerID != nil {
+		_, _ = h.Write([]byte(strconv.FormatInt(*providerID, 10)))
 	}
 	_, _ = h.Write([]byte{0})
 	if groupID != nil {
@@ -228,7 +237,7 @@ func schedulerOutboxDedupKey(eventType string, accountID *int64, groupID *int64,
 
 func schedulerOutboxEventSupportsDedup(eventType string) bool {
 	switch eventType {
-	case scheduler.SchedulerOutboxEventAccountChanged,
+	case scheduler.SchedulerOutboxEventProviderChanged,
 		scheduler.SchedulerOutboxEventGroupChanged,
 		scheduler.SchedulerOutboxEventFullRebuild:
 		return true
@@ -237,12 +246,12 @@ func schedulerOutboxEventSupportsDedup(eventType string) bool {
 	}
 }
 
-// EnqueueAccountQuotaChangedInTx 只写调用者给定事务；资金提交失败时不发布账号变更。
-func EnqueueAccountQuotaChangedInTx(ctx context.Context, tx *sql.Tx, accountID int64) error {
-	return enqueueSchedulerOutbox(ctx, tx, scheduler.SchedulerOutboxEventAccountChanged, &accountID, nil, nil)
+// EnqueueProviderQuotaChangedInTx 只写调用者给定事务；资金提交失败时不发布提供商变更。
+func EnqueueProviderQuotaChangedInTx(ctx context.Context, tx *sql.Tx, providerID int64) error {
+	return enqueueSchedulerOutbox(ctx, tx, scheduler.SchedulerOutboxEventProviderChanged, &providerID, nil, nil)
 }
 
 // EnqueueSchedulerChange 只在给定连接写入原事件格式；不创建事务或发布提交后副作用。
-func EnqueueSchedulerChange(ctx context.Context, exec postgresinfra.Executor, eventType string, accountID, groupID *int64, payload any) error {
-	return enqueueSchedulerOutbox(ctx, exec, eventType, accountID, groupID, payload)
+func EnqueueSchedulerChange(ctx context.Context, exec postgresinfra.Executor, eventType string, providerID, groupID *int64, payload any) error {
+	return enqueueSchedulerOutbox(ctx, exec, eventType, providerID, groupID, payload)
 }

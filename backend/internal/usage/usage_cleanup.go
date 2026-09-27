@@ -30,7 +30,7 @@ type UsageCleanupFilters struct {
 	EndTime     time.Time `json:"end_time"`
 	UserID      *int64    `json:"user_id,omitempty"`
 	APIKeyID    *int64    `json:"api_key_id,omitempty"`
-	AccountID   *int64    `json:"account_id,omitempty"`
+	ProviderID  *int64    `json:"provider_id,omitempty"`
 	GroupID     *int64    `json:"group_id,omitempty"`
 	TeamID      *int64    `json:"team_id,omitempty"`
 	Model       *string   `json:"model,omitempty"`

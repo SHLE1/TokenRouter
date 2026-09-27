@@ -48,7 +48,7 @@ func AsResponses(ctx context.Context, p ConversionPorts, in ConversionInput, bod
 	anthropicReq.Stream = true
 	reqStream := true
 
-	// 4. 模型映射：分组映射已由 handler 写入 body，此处继续执行账号映射和平台规范化。
+	// 4. 模型映射：分组映射已由 handler 写入 body，此处继续执行提供商映射和平台规范化。
 	mappedModel := p.ResolveModel(ctx, originalModel)
 	if mappedModel == "" {
 		mappedModel = originalModel
@@ -69,7 +69,7 @@ func AsResponses(ctx context.Context, p ConversionPorts, in ConversionInput, bod
 		return nil, fmt.Errorf("marshal anthropic request: %w", err)
 	}
 
-	// OpenAI Responses 协议进来的请求永远不是 Claude Code 客户端，所以对 OAuth 账号
+	// OpenAI Responses 协议进来的请求永远不是 Claude Code 客户端，所以对 OAuth 提供商
 	// 必须完整执行 /v1/messages 主路径上的伪装链路（system 重写 + normalize + metadata 注入），
 	// 否则会被 Anthropic 判为第三方应用并扣 extra usage。
 	// 见 applyClaudeCodeOAuthMimicryToBody 的 godoc。
@@ -106,7 +106,7 @@ func AsResponses(ctx context.Context, p ConversionPorts, in ConversionInput, bod
 
 		if decision.Failover {
 			p.FailoverNotice(resp.StatusCode, upstreamMsg)
-			return nil, p.FailoverError(resp.StatusCode, respBody, decision.RetrySameAccount)
+			return nil, p.FailoverError(resp.StatusCode, respBody, decision.RetrySameProvider)
 		}
 
 		p.Output().Error(MapStatus(resp.StatusCode), "server_error", upstreamMsg)
@@ -153,7 +153,7 @@ func AsChat(ctx context.Context, p ConversionPorts, in ConversionInput, body []b
 	anthropicReq.Stream = true
 	reqStream := true
 
-	// 4. 模型映射：分组映射已由 handler 写入 body，此处继续执行账号映射和平台规范化。
+	// 4. 模型映射：分组映射已由 handler 写入 body，此处继续执行提供商映射和平台规范化。
 	mappedModel := p.ResolveModel(ctx, originalModel)
 	if mappedModel == "" {
 		mappedModel = originalModel
@@ -167,7 +167,7 @@ func AsChat(ctx context.Context, p ConversionPorts, in ConversionInput, body []b
 		return nil, fmt.Errorf("marshal anthropic request: %w", err)
 	}
 
-	// Chat Completions 协议进来的请求永远不是 Claude Code 客户端，所以对 OAuth 账号
+	// Chat Completions 协议进来的请求永远不是 Claude Code 客户端，所以对 OAuth 提供商
 	// 必须完整执行 /v1/messages 主路径上的伪装链路（system 重写 + normalize + metadata 注入），
 	// 否则会被 Anthropic 判为第三方应用并扣 extra usage。
 	// 见 applyClaudeCodeOAuthMimicryToBody 的 godoc。
@@ -204,7 +204,7 @@ func AsChat(ctx context.Context, p ConversionPorts, in ConversionInput, body []b
 
 		if decision.Failover {
 			p.FailoverNotice(resp.StatusCode, upstreamMsg)
-			return nil, p.FailoverError(resp.StatusCode, respBody, decision.RetrySameAccount)
+			return nil, p.FailoverError(resp.StatusCode, respBody, decision.RetrySameProvider)
 		}
 
 		p.Output().Error(MapStatus(resp.StatusCode), "server_error", upstreamMsg)

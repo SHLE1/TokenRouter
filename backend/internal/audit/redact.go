@@ -27,7 +27,7 @@ func auditNormalizeBodyKey(key string) string {
 
 // auditBodySensitiveExactKeys 请求体脱敏的精确匹配键（归一化后）。
 // 除内置清单外，程序化并入两份权威敏感表以防清单漂移：
-//   - SensitiveCredentialKeys：账号 credentials 的敏感子键（session_key / service_account_json 等）
+//   - SensitiveCredentialKeys：提供商 credentials 的敏感子键（session_key / service_account_json 等）
 //   - providerSensitiveConfigFields：支付渠道密钥字段（pkey / privatekey / apiv3key 等）
 //
 // Redactor 持有调用方投影的敏感键集合；发布后只读。
@@ -48,7 +48,7 @@ var auditBodySensitiveSubstrings = []string{
 	"password", "passwd", "secret", "token",
 	"apikey", "accesskey", "privatekey",
 	"otp", "credentialvalue",
-	"sessionkey", "serviceaccount",
+	"sessionkey", "serviceprovider",
 }
 
 func (r *Redactor) IsSensitiveKey(key string) bool {

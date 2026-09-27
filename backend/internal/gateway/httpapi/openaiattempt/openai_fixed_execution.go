@@ -39,8 +39,8 @@ func (r *Runtime) Open(ctx context.Context, in execution.Request, sink upstream.
 		mapped := requeststate.NewModelMappedBodyCache(in.Body, r.dependencies.replaceModelInBody)
 		return &openAIMessageAttemptBridge{
 			responsesAttemptBridge: base,
-			accountLayerModel:      in.Text.AccountLayerModel,
-			currentRoutingModel:    in.Text.AccountLayerModel,
+			providerLayerModel:     in.Text.ProviderLayerModel,
+			currentRoutingModel:    in.Text.ProviderLayerModel,
 			promptCacheKey:         in.Text.PromptCacheKey,
 			groupMappingMsg:        routing.GroupMappingResult(in.Text.Mapping),
 			mappedBodyForMessages:  mapped,

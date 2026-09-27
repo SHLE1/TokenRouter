@@ -11,7 +11,7 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 
-	accountprovider "github.com/TokenFlux/TokenRouter/internal/account/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 
@@ -53,28 +53,28 @@ func ExtractGrokVideoBillingFromStatusBody(statusBody []byte, pending *gatewayme
 func (s *GrokExecutor) ForwardGrokMedia(
 	ctx context.Context,
 	c *gin.Context,
-	account *gatewayprovider.ExecutionAccount,
+	provider *gatewayprovider.ExecutionProvider,
 	endpoint grok.GrokMediaEndpoint,
 	requestID string,
 	body []byte,
 	contentType string,
 ) (*forwardcore.OpenAIResult, error) {
 	startTime := time.Now()
-	if account == nil {
-		return nil, fmt.Errorf("grok account is required")
+	if provider == nil {
+		return nil, fmt.Errorf("grok provider is required")
 	}
-	if account.Record.Platform != capability.PlatformGrok {
-		return nil, fmt.Errorf("account platform %s is not supported for grok media", account.Record.Platform)
+	if provider.Record.Platform != capability.PlatformGrok {
+		return nil, fmt.Errorf("provider platform %s is not supported for grok media", provider.Record.Platform)
 	}
 
-	token, _, err := s.Credentials.Resolve(ctx, RequestCredentialBudget(c), CredentialObserver{Context: c}, account)
+	token, _, err := s.Credentials.Resolve(ctx, RequestCredentialBudget(c), CredentialObserver{Context: c}, provider)
 	if err != nil {
 		return nil, err
 	}
 	if endpoint == grok.GrokMediaEndpointVideoContent {
-		return s.forwardGrokMediaVideoContent(ctx, c, account, token, requestID, startTime)
+		return s.forwardGrokMediaVideoContent(ctx, c, provider, token, requestID, startTime)
 	}
-	targetURL, err := s.Routes.Media(account, endpoint, requestID)
+	targetURL, err := s.Routes.Media(provider, endpoint, requestID)
 	if err != nil {
 		return nil, err
 	}
@@ -91,14 +91,14 @@ func (s *GrokExecutor) ForwardGrokMedia(
 	billingModel := requestInfo.Model
 	upstreamModel := billingModel
 	if endpoint.RequiresRequestBody() {
-		if mappedModel := strings.TrimSpace(gatewayprovider.ExecutionModelPolicy(account).Mapped(requestInfo.Model)); mappedModel != "" {
+		if mappedModel := strings.TrimSpace(gatewayprovider.ExecutionModelPolicy(provider).Mapped(requestInfo.Model)); mappedModel != "" {
 			billingModel = mappedModel
 		}
-		upstreamModel = gatewayprovider.ExecutionModelPolicy(account).NormalizeOpenAI(billingModel)
+		upstreamModel = gatewayprovider.ExecutionModelPolicy(provider).NormalizeOpenAI(billingModel)
 		if upstreamModel != requestInfo.Model {
 			body, contentType, err = gatewayprovider.GrokMediaCodec().RewriteGrokMediaRequestModel(body, contentType, upstreamModel)
 			if err != nil {
-				return nil, fmt.Errorf("rewrite grok media account mapped model: %w", err)
+				return nil, fmt.Errorf("rewrite grok media provider mapped model: %w", err)
 			}
 		}
 		modeltrace.RegisterStage(ctx, upstreamModel)
@@ -111,32 +111,32 @@ func (s *GrokExecutor) ForwardGrokMedia(
 	upstreamCtx, releaseUpstreamCtx := gatewayprovider.DetachUpstreamContext(ctx)
 	defer releaseUpstreamCtx()
 	var cliHeaders func(http.Header)
-	if account.View().IsGrokOAuth() && isGrokCLIProxyTarget(targetURL) {
+	if provider.View().IsGrokOAuth() && isGrokCLIProxyTarget(targetURL) {
 		cliHeaders = grok.ApplyCLIHeaders
 	}
-	req, err := grok.BuildMediaRequest(upstreamCtx, endpoint, targetURL, token, contentType, body, cliHeaders, gatewayprovider.BindExecutionHeaders(account))
+	req, err := grok.BuildMediaRequest(upstreamCtx, endpoint, targetURL, token, contentType, body, cliHeaders, gatewayprovider.BindExecutionHeaders(provider))
 	if err != nil {
 		return nil, err
 	}
 	proxyURL := ""
-	if account.Record.ProxyID != nil && account.Record.Proxy != nil {
-		proxyURL = account.Record.Proxy.URL()
+	if provider.Record.ProxyID != nil && provider.Record.Proxy != nil {
+		proxyURL = provider.Record.Proxy.URL()
 	}
 	handled := false
 	var handledResult *forwardcore.OpenAIResult
 	target := &mediaprovider.GrokMediaOptions{
-		AccountID: account.Record.ID,
-		Endpoint:  endpoint,
-		Request:   req,
-		StartedAt: startTime,
-		Enter:     s.Enter,
+		ProviderID: provider.Record.ID,
+		Endpoint:   endpoint,
+		Request:    req,
+		StartedAt:  startTime,
+		Enter:      s.Enter,
 		Do: func(req *http.Request) (*http.Response, error) {
-			return s.Transport.Do(req, proxyURL, account.Record.ID, account.Record.Concurrency)
+			return s.Transport.Do(req, proxyURL, provider.Record.ID, provider.Record.Concurrency)
 		},
 		AfterExchange: func(elapsed time.Duration, err error) error {
 			SetOpsLatencyMs(c, OpsUpstreamLatencyMsKey, elapsed.Milliseconds())
 			if err != nil {
-				return s.Failure.Handle(ctx, c, account, err, false)
+				return s.Failure.Handle(ctx, c, provider, err, false)
 			}
 			return nil
 		},
@@ -144,10 +144,10 @@ func (s *GrokExecutor) ForwardGrokMedia(
 			if resp.StatusCode >= 400 {
 				handled = true
 				var err error
-				handledResult, err = s.handleGrokMediaErrorResponse(ctx, resp, c, account, requeststate.FirstNonEmpty(resp.Header.Get("x-request-id"), resp.Header.Get("xai-request-id")), upstreamModel)
+				handledResult, err = s.handleGrokMediaErrorResponse(ctx, resp, c, provider, requeststate.FirstNonEmpty(resp.Header.Get("x-request-id"), resp.Header.Get("xai-request-id")), upstreamModel)
 				return true, err
 			}
-			s.Health.ObserveResponse(ctx, account.View(), resp.Header, resp.StatusCode, requestInfo.Model)
+			s.Health.ObserveResponse(ctx, provider.View(), resp.Header, resp.StatusCode, requestInfo.Model)
 			return false, nil
 		},
 		ReadBody: func(reader io.Reader) ([]byte, error) {
@@ -203,7 +203,6 @@ func (s *GrokExecutor) ForwardGrokMedia(
 		}
 	}
 	return &forwardcore.OpenAIResult{
-
 		RequestID: result.RequestID,
 
 		UpstreamHeaders: result.UpstreamHeaders,
@@ -241,11 +240,11 @@ func (s *GrokExecutor) ForwardGrokMedia(
 func (s *GrokExecutor) forwardGrokMediaVideoContent(
 	ctx context.Context,
 	c *gin.Context,
-	account *gatewayprovider.ExecutionAccount,
+	provider *gatewayprovider.ExecutionProvider,
 	token, requestID string,
 	startTime time.Time,
 ) (*forwardcore.OpenAIResult, error) {
-	statusURL, err := s.Routes.Media(account, grok.GrokMediaEndpointVideoStatus, requestID)
+	statusURL, err := s.Routes.Media(provider, grok.GrokMediaEndpointVideoStatus, requestID)
 	if err != nil {
 		return nil, err
 	}
@@ -253,8 +252,8 @@ func (s *GrokExecutor) forwardGrokMediaVideoContent(
 	upstreamCtx, releaseUpstreamCtx := gatewayprovider.DetachUpstreamContext(ctx)
 	defer releaseUpstreamCtx()
 	proxyURL := ""
-	if account.Record.ProxyID != nil && account.Record.Proxy != nil {
-		proxyURL = account.Record.Proxy.URL()
+	if provider.Record.ProxyID != nil && provider.Record.Proxy != nil {
+		proxyURL = provider.Record.Proxy.URL()
 	}
 	rangeHeader := ""
 	if c != nil {
@@ -269,16 +268,16 @@ func (s *GrokExecutor) forwardGrokMediaVideoContent(
 		Range:     rangeHeader,
 		Context:   upstream.WithHTTPUpstreamRedirectsDisabled,
 		ContentURL: func() (string, error) {
-			return s.Routes.Media(account, grok.GrokMediaEndpointVideoContent, requestID)
+			return s.Routes.Media(provider, grok.GrokMediaEndpointVideoContent, requestID)
 		},
 		ApplyHeaders: func(headers http.Header, target string) {
-			if account.View().IsGrokOAuth() && isGrokCLIProxyTarget(target) {
+			if provider.View().IsGrokOAuth() && isGrokCLIProxyTarget(target) {
 				grok.ApplyCLIHeaders(headers)
 			}
-			accountprovider.ApplyAccountHeaderOverrides(gatewayprovider.ExecutionProtocolRecord(account), headers)
+			provideradapter.ApplyProviderHeaderOverrides(gatewayprovider.ExecutionProtocolRecord(provider), headers)
 		},
 		Do: func(req *http.Request) (*http.Response, error) {
-			return s.Transport.Do(req, proxyURL, account.Record.ID, account.Record.Concurrency)
+			return s.Transport.Do(req, proxyURL, provider.Record.ID, provider.Record.Concurrency)
 		},
 		ReadStatus: func(reader io.Reader) ([]byte, error) {
 			return ReadUpstreamResponseBody(reader, s.Output.Options.ReadLimit, c, OpenAIResponseTooLarge)
@@ -286,11 +285,11 @@ func (s *GrokExecutor) forwardGrokMediaVideoContent(
 		Latency: func(elapsed time.Duration) {
 			SetOpsLatencyMs(c, OpsUpstreamLatencyMsKey, elapsed.Milliseconds())
 		},
-		TransportError: func(err error) error { return s.Failure.Handle(ctx, c, account, err, false) },
+		TransportError: func(err error) error { return s.Failure.Handle(ctx, c, provider, err, false) },
 		HTTPError: func(resp *http.Response, id string) error {
 			handled = true
 			var err error
-			handledResult, err = s.handleGrokMediaErrorResponse(ctx, resp, c, account, id, "")
+			handledResult, err = s.handleGrokMediaErrorResponse(ctx, resp, c, provider, id, "")
 			return err
 		},
 		Enter: s.Enter,
@@ -306,14 +305,13 @@ func (s *GrokExecutor) forwardGrokMediaVideoContent(
 	contentRequestID := resource.RequestID
 	statusBody := resource.StatusBody
 
-	s.Health.ObserveResponse(ctx, account.View(), contentResp.Header, contentResp.StatusCode, "")
+	s.Health.ObserveResponse(ctx, provider.View(), contentResp.Header, contentResp.StatusCode, "")
 	if err := WriteGrokMediaContentResponse(c, contentResp, func() { MarkResponseCommitted(c) }); err != nil {
 		return nil, err
 	}
 	// 内容下载也是完成观测入口：状态体满足官方 done 和 video.url 条件时附加计费单位，
 	// 使处理器能够按与状态轮询相同的路径领取一次计费；待计费快照由处理器合并。
 	result := &forwardcore.OpenAIResult{
-
 		RequestID: contentRequestID,
 
 		UpstreamHeaders: contentResp.Header,
@@ -400,13 +398,13 @@ func (s *GrokExecutor) handleGrokMediaErrorResponse(
 	ctx context.Context,
 	resp *http.Response,
 	c *gin.Context,
-	account *gatewayprovider.ExecutionAccount,
+	provider *gatewayprovider.ExecutionProvider,
 	requestIDHeader string,
 	requestedModel string,
 ) (*forwardcore.OpenAIResult, error) {
 	body := s.Output.ReadErrorBody(resp)
-	// 在可配置的透传分支返回前同步账号策略；池模式默认只保留上游观测，不写本地冷却。
-	decision := gatewayprovider.ApplyGrokExecutionHealth(ctx, s.Health, account, resp.StatusCode, resp.Header, body, "", requestedModel)
+	// 在可配置的透传分支返回前同步提供商策略；池模式默认只保留上游观测，不写本地冷却。
+	decision := gatewayprovider.ApplyGrokExecutionHealth(ctx, s.Health, provider, resp.StatusCode, resp.Header, body, "", requestedModel)
 	upstreamMsg := logredact.SanitizeUpstreamQueries(strings.TrimSpace(upstream.ExtractErrorMessage(body)))
 	if upstreamMsg == "" {
 		upstreamMsg = fmt.Sprintf("xAI upstream returned status %d", resp.StatusCode)
@@ -430,17 +428,17 @@ func (s *GrokExecutor) handleGrokMediaErrorResponse(
 		},
 		Generic: decision.ShouldReturnGenericError,
 		Failover: func() bool {
-			return decision.ShouldFailover(gatewayprovider.ExecutionErrorPolicy(account), resp.StatusCode, gatewayprovider.ShouldFailoverGrokResponse(resp.StatusCode, body))
+			return decision.ShouldFailover(gatewayprovider.ExecutionErrorPolicy(provider), resp.StatusCode, gatewayprovider.ShouldFailoverGrokResponse(resp.StatusCode, body))
 		},
 		Retry: func() gatewaymedia.GrokRetry {
-			retryable, delay, deadline, maximum := gatewayprovider.GrokSameAccountRetryMetadata(account, resp.StatusCode, body)
-			return gatewaymedia.GrokRetry{Retryable: retryable, PolicyRetryable: decision.RetryableOnSameAccount(gatewayprovider.ExecutionErrorPolicy(account), resp.StatusCode), Delay: delay, Deadline: deadline, Maximum: maximum}
+			retryable, delay, deadline, maximum := gatewayprovider.GrokSameProviderRetryMetadata(provider, resp.StatusCode, body)
+			return gatewaymedia.GrokRetry{Retryable: retryable, PolicyRetryable: decision.RetryableOnSameProvider(gatewayprovider.ExecutionErrorPolicy(provider), resp.StatusCode), Delay: delay, Deadline: deadline, Maximum: maximum}
 		},
 		Observe: func(kind, message string) {
-			AppendOpsUpstreamError(c, ops.OpsUpstreamErrorEvent{Platform: account.Record.Platform, AccountID: account.Record.ID, AccountName: account.Record.Name, UpstreamStatusCode: resp.StatusCode, UpstreamRequestID: requestIDHeader, Kind: kind, Message: message, Detail: upstreamDetail})
+			AppendOpsUpstreamError(c, ops.OpsUpstreamErrorEvent{Platform: provider.Record.Platform, ProviderID: provider.Record.ID, ProviderName: provider.Record.Name, UpstreamStatusCode: resp.StatusCode, UpstreamRequestID: requestIDHeader, Kind: kind, Message: message, Detail: upstreamDetail})
 		},
 		Rewrite: func() (gatewaymedia.ErrorResponse, bool) {
-			status, typ, message, matched := ApplyErrorPassthroughRule(c, account.Record.Platform, resp.StatusCode, body, http.StatusBadGateway, "upstream_error", "Upstream request failed")
+			status, typ, message, matched := ApplyErrorPassthroughRule(c, provider.Record.Platform, resp.StatusCode, body, http.StatusBadGateway, "upstream_error", "Upstream request failed")
 			return gatewaymedia.ErrorResponse{Status: status, Type: typ, Message: message}, matched
 		},
 		Write: func(response gatewaymedia.ErrorResponse) {
@@ -448,7 +446,7 @@ func (s *GrokExecutor) handleGrokMediaErrorResponse(
 			WriteGrokMediaErrorResponse(c, response.Status, response.Type, response.Message)
 		},
 		NewFailover: func(retry gatewaymedia.GrokRetry, transient bool) error {
-			return &forwardcore.UpstreamFailoverError{StatusCode: resp.StatusCode, ResponseBody: body, ResponseHeaders: resp.Header.Clone(), RetryableOnSameAccount: retry.Retryable || retry.PolicyRetryable, RequestScopedTransient: transient, SameAccountRetryDelay: retry.Delay, SameAccountRetryDeadline: retry.Deadline, SameAccountRetryMax: retry.Maximum}
+			return &forwardcore.UpstreamFailoverError{StatusCode: resp.StatusCode, ResponseBody: body, ResponseHeaders: resp.Header.Clone(), RetryableOnSameProvider: retry.Retryable || retry.PolicyRetryable, RequestScopedTransient: transient, SameProviderRetryDelay: retry.Delay, SameProviderRetryDeadline: retry.Deadline, SameProviderRetryMax: retry.Maximum}
 		},
 	})
 }

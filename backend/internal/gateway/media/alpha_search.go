@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/failover"
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
 // AlphaResult 只携带成功搜索的按次计量与实际端点。
@@ -16,7 +16,7 @@ type AlphaResult struct {
 	Calls                                             int
 }
 type AlphaSelection struct {
-	Account    account.AccountSnapshot
+	Provider   provider.ProviderSnapshot
 	RetryLimit int
 }
 type AlphaOutcome struct {
@@ -27,7 +27,7 @@ type AlphaOutcome struct {
 }
 type AlphaEvent struct {
 	Kind                                          string
-	Account                                       account.AccountSnapshot
+	Provider                                      provider.ProviderSnapshot
 	Outcome                                       AlphaOutcome
 	Switches, MaxSwitches, RetryLimit, RetryCount int
 	Elapsed, RetryDelay                           time.Duration
@@ -50,7 +50,7 @@ type AlphaFailure struct {
 	Excluded int
 }
 
-// RunAlphaSearch 保留同账号恢复、账号切换与输出窗口的独立预算，不重复发起外层 failover。
+// RunAlphaSearch 保留同提供商恢复、提供商切换与输出窗口的独立预算，不重复发起外层 failover。
 func RunAlphaSearch(ctx context.Context, body []byte, maxSwitches int, ports AlphaPorts) *AlphaFailure {
 	if maxSwitches <= 0 {
 		maxSwitches = 3
@@ -69,8 +69,8 @@ func RunAlphaSearch(ctx context.Context, body []byte, maxSwitches int, ports Alp
 			}
 			return &AlphaFailure{Stage: "selection", Err: err, Outcome: last, Excluded: len(excluded)}
 		}
-		selected := selection.Account
-		ports.ObserveAlpha(AlphaEvent{Kind: "selected", Account: selected})
+		selected := selection.Provider
+		ports.ObserveAlpha(AlphaEvent{Kind: "selected", Provider: selected})
 		release, acquired := ports.AcquireAlpha(ctx, selection)
 		if !acquired {
 			return nil
@@ -99,13 +99,13 @@ func RunAlphaSearch(ctx context.Context, body []byte, maxSwitches int, ports Alp
 			return &AlphaFailure{Stage: "exhausted", Outcome: outcome}
 		}
 		if ports.AlphaClientGone() {
-			ports.ObserveAlpha(AlphaEvent{Kind: "forward_canceled", Account: selected, Outcome: outcome})
+			ports.ObserveAlpha(AlphaEvent{Kind: "forward_canceled", Provider: selected, Outcome: outcome})
 			return nil
 		}
-		if outcome.Failure.RetryableOnSameAccount && failover.SameAccountRetryAllowed(outcome.Failure, retries[selected.ID], selection.RetryLimit) {
+		if outcome.Failure.RetryableOnSameProvider && failover.SameProviderRetryAllowed(outcome.Failure, retries[selected.ID], selection.RetryLimit) {
 			retries[selected.ID]++
-			delay := failover.SameAccountRetryDelayFor(outcome.Failure, retries[selected.ID])
-			ports.ObserveAlpha(AlphaEvent{Kind: "retry", Account: selected, Outcome: outcome, RetryLimit: selection.RetryLimit, RetryCount: retries[selected.ID], RetryDelay: delay})
+			delay := failover.SameProviderRetryDelayFor(outcome.Failure, retries[selected.ID])
+			ports.ObserveAlpha(AlphaEvent{Kind: "retry", Provider: selected, Outcome: outcome, RetryLimit: selection.RetryLimit, RetryCount: retries[selected.ID], RetryDelay: delay})
 			select {
 			case <-ctx.Done():
 				return nil
@@ -123,6 +123,6 @@ func RunAlphaSearch(ctx context.Context, body []byte, maxSwitches int, ports Alp
 		if ports.StopAlpha429(selection, outcome.Failure.StatusCode, switches) {
 			return &AlphaFailure{Stage: "exhausted", Outcome: outcome}
 		}
-		ports.ObserveAlpha(AlphaEvent{Kind: "switch", Account: selected, Outcome: outcome, Switches: switches, MaxSwitches: maxSwitches})
+		ports.ObserveAlpha(AlphaEvent{Kind: "switch", Provider: selected, Outcome: outcome, Switches: switches, MaxSwitches: maxSwitches})
 	}
 }

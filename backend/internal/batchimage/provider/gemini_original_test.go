@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/batchimage"
 	batchimageprovider "github.com/TokenFlux/TokenRouter/internal/batchimage/provider"
@@ -23,31 +23,31 @@ import (
 
 func TestBatchImageProviderRegistry_ReturnsGeminiAPI(t *testing.T) {
 	registry := newOriginalBatchProviderRegistry()
-	provider, ok := registry.Get(batchimage.BatchImageProviderGeminiAPI)
+	platform, ok := registry.Get(batchimage.BatchImageProviderGeminiAPI)
 	require.True(t, ok)
-	require.Equal(t, batchimage.BatchImageProviderGeminiAPI, provider.Name())
+	require.Equal(t, batchimage.BatchImageProviderGeminiAPI, platform.Name())
 
 	must, err := registry.MustGet(batchimage.BatchImageProviderGeminiAPI)
 	require.NoError(t, err)
-	require.Same(t, provider, must)
+	require.Same(t, platform, must)
 
 	_, err = registry.MustGet("unknown_provider")
 	require.ErrorIs(t, err, batchimage.ErrBatchImageInvalidProvider)
 }
 
 func TestGeminiProvider_SupportsOnlyGeminiAPIKeyWithSecret(t *testing.T) {
-	provider := batchimageprovider.NewGeminiAPIBatchImageProvider(&fakeGeminiBatchClient{})
+	platform := batchimageprovider.NewGeminiAPIBatchImageProvider(&fakeGeminiBatchClient{})
 
-	require.True(t, provider.SupportsAccount(geminiAPIKeyAccount("sk-gemini")))
-	require.False(t, provider.SupportsAccount(&accountcore.Record{Platform: capability.PlatformGemini, Type: capability.AccountTypeAPIKey, Credentials: map[string]any{}}))
-	require.False(t, provider.SupportsAccount(&accountcore.Record{Platform: capability.PlatformGemini, Type: capability.AccountTypeOAuth, Credentials: map[string]any{"api_key": "sk"}}))
-	require.False(t, provider.SupportsAccount(&accountcore.Record{Platform: capability.PlatformOpenAI, Type: capability.AccountTypeAPIKey, Credentials: map[string]any{"api_key": "sk"}}))
-	require.False(t, provider.SupportsAccount(nil))
+	require.True(t, platform.SupportsProvider(geminiAPIKeyProvider("sk-gemini")))
+	require.False(t, platform.SupportsProvider(&providercore.Record{Platform: capability.PlatformGemini, Type: capability.ProviderTypeAPIKey, Credentials: map[string]any{}}))
+	require.False(t, platform.SupportsProvider(&providercore.Record{Platform: capability.PlatformGemini, Type: capability.ProviderTypeOAuth, Credentials: map[string]any{"api_key": "sk"}}))
+	require.False(t, platform.SupportsProvider(&providercore.Record{Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey, Credentials: map[string]any{"api_key": "sk"}}))
+	require.False(t, platform.SupportsProvider(nil))
 }
 
 func TestGeminiProvider_MissingAPIKeyRejected(t *testing.T) {
-	provider := batchimageprovider.NewGeminiAPIBatchImageProvider(&fakeGeminiBatchClient{})
-	_, err := provider.Submit(context.Background(), nil, &accountcore.Record{Platform: capability.PlatformGemini, Type: capability.AccountTypeAPIKey}, validGeminiBatchInput())
+	platform := batchimageprovider.NewGeminiAPIBatchImageProvider(&fakeGeminiBatchClient{})
+	_, err := platform.Submit(context.Background(), nil, &providercore.Record{Platform: capability.PlatformGemini, Type: capability.ProviderTypeAPIKey}, validGeminiBatchInput())
 	require.ErrorIs(t, err, batchimage.ErrBatchImageProviderMissingAPIKey)
 }
 
@@ -112,9 +112,9 @@ func TestGeminiProvider_SubmitUploadsJSONLThenCreatesBatch(t *testing.T) {
 		uploaded: &batchimageprovider.GeminiUploadedFile{Name: "files/input-jsonl"},
 		created:  &batchimageprovider.GeminiBatchJob{Name: "batches/job-123", State: "JOB_STATE_PENDING"},
 	}
-	provider := batchimageprovider.NewGeminiAPIBatchImageProvider(client)
+	platform := batchimageprovider.NewGeminiAPIBatchImageProvider(client)
 
-	got, err := provider.Submit(context.Background(), &batchimage.BatchImageJob{BatchID: "imgbatch_123", Model: "gemini-3.1-flash-image"}, geminiAPIKeyAccount("sk-secret"), validGeminiBatchInput())
+	got, err := platform.Submit(context.Background(), &batchimage.BatchImageJob{BatchID: "imgbatch_123", Model: "gemini-3.1-flash-image"}, geminiAPIKeyProvider("sk-secret"), validGeminiBatchInput())
 	require.NoError(t, err)
 	require.Equal(t, []string{"upload", "create"}, client.calls)
 	require.Equal(t, "files/input-jsonl", got.ProviderInputRef)
@@ -142,8 +142,8 @@ func TestGeminiProvider_GetMapsStates(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			provider := batchimageprovider.NewGeminiAPIBatchImageProvider(&fakeGeminiBatchClient{got: tt.job})
-			got, err := provider.Get(context.Background(), jobWithProviderName("batches/1"), geminiAPIKeyAccount("sk-secret"))
+			platform := batchimageprovider.NewGeminiAPIBatchImageProvider(&fakeGeminiBatchClient{got: tt.job})
+			got, err := platform.Get(context.Background(), jobWithProviderName("batches/1"), geminiAPIKeyProvider("sk-secret"))
 			require.NoError(t, err)
 			require.Equal(t, tt.wantState, got.InternalState)
 			require.Equal(t, tt.wantDone, got.Done)
@@ -155,7 +155,7 @@ func TestGeminiProvider_GetMapsStates(t *testing.T) {
 }
 
 func TestGeminiProvider_GetExtractsResponsesFileReference(t *testing.T) {
-	provider := batchimageprovider.NewGeminiAPIBatchImageProvider(&fakeGeminiBatchClient{
+	platform := batchimageprovider.NewGeminiAPIBatchImageProvider(&fakeGeminiBatchClient{
 		got: &batchimageprovider.GeminiBatchJob{
 			Name:     "batches/1",
 			State:    "JOB_STATE_SUCCEEDED",
@@ -163,14 +163,14 @@ func TestGeminiProvider_GetExtractsResponsesFileReference(t *testing.T) {
 		},
 	})
 
-	got, err := provider.Get(context.Background(), jobWithProviderName("batches/1"), geminiAPIKeyAccount("sk-secret"))
+	got, err := platform.Get(context.Background(), jobWithProviderName("batches/1"), geminiAPIKeyProvider("sk-secret"))
 	require.NoError(t, err)
 	require.Equal(t, batchimage.BatchProviderStateSucceeded, got.InternalState)
 	require.Equal(t, "files/responses-jsonl", got.ProviderOutputRef)
 }
 
 func TestGeminiProvider_GetRejectsInlineResultShape(t *testing.T) {
-	provider := batchimageprovider.NewGeminiAPIBatchImageProvider(&fakeGeminiBatchClient{
+	platform := batchimageprovider.NewGeminiAPIBatchImageProvider(&fakeGeminiBatchClient{
 		got: &batchimageprovider.GeminiBatchJob{
 			Name:     "batches/1",
 			State:    "JOB_STATE_SUCCEEDED",
@@ -178,16 +178,16 @@ func TestGeminiProvider_GetRejectsInlineResultShape(t *testing.T) {
 		},
 	})
 
-	_, err := provider.Get(context.Background(), jobWithProviderName("batches/1"), geminiAPIKeyAccount("sk-secret"))
+	_, err := platform.Get(context.Background(), jobWithProviderName("batches/1"), geminiAPIKeyProvider("sk-secret"))
 	require.ErrorIs(t, err, batchimage.ErrBatchImageProviderInlineResultUnsupported)
 }
 
 func TestGeminiProvider_OpenResultStreamsResultFile(t *testing.T) {
 	client := &fakeGeminiBatchClient{downloadBody: "line1\n", downloadContentType: "application/jsonl"}
-	provider := batchimageprovider.NewGeminiAPIBatchImageProvider(client)
+	platform := batchimageprovider.NewGeminiAPIBatchImageProvider(client)
 
 	outputRef := "files/output-jsonl"
-	r, contentType, err := provider.OpenResult(context.Background(), &batchimage.BatchImageJob{ProviderOutputRef: &outputRef}, geminiAPIKeyAccount("sk-secret"))
+	r, contentType, err := platform.OpenResult(context.Background(), &batchimage.BatchImageJob{ProviderOutputRef: &outputRef}, geminiAPIKeyProvider("sk-secret"))
 	require.NoError(t, err)
 	defer func() { require.NoError(t, r.Close()) }()
 
@@ -200,9 +200,9 @@ func TestGeminiProvider_OpenResultStreamsResultFile(t *testing.T) {
 
 func TestGeminiProvider_CancelCallsClient(t *testing.T) {
 	client := &fakeGeminiBatchClient{}
-	provider := batchimageprovider.NewGeminiAPIBatchImageProvider(client)
+	platform := batchimageprovider.NewGeminiAPIBatchImageProvider(client)
 
-	require.NoError(t, provider.Cancel(context.Background(), jobWithProviderName("batches/1"), geminiAPIKeyAccount("sk-secret")))
+	require.NoError(t, platform.Cancel(context.Background(), jobWithProviderName("batches/1"), geminiAPIKeyProvider("sk-secret")))
 	require.Equal(t, "batches/1", client.cancelledBatch)
 }
 
@@ -210,13 +210,13 @@ func TestGeminiProvider_CleanupDeletesRefsOnlyWhenPresent(t *testing.T) {
 	inputRef := "files/input"
 	outputRef := "files/output"
 	client := &fakeGeminiBatchClient{}
-	provider := batchimageprovider.NewGeminiAPIBatchImageProvider(client)
+	platform := batchimageprovider.NewGeminiAPIBatchImageProvider(client)
 
-	err := provider.Cleanup(context.Background(), &batchimage.BatchImageJob{ProviderInputRef: &inputRef, ProviderOutputRef: &outputRef}, geminiAPIKeyAccount("sk-secret"), batchimage.CleanupTargetAll)
+	err := platform.Cleanup(context.Background(), &batchimage.BatchImageJob{ProviderInputRef: &inputRef, ProviderOutputRef: &outputRef}, geminiAPIKeyProvider("sk-secret"), batchimage.CleanupTargetAll)
 	require.NoError(t, err)
 	require.Equal(t, []string{"files/input", "files/output"}, client.deletedFiles)
 
-	err = provider.Cleanup(context.Background(), &batchimage.BatchImageJob{}, geminiAPIKeyAccount("sk-secret"), batchimage.CleanupTargetAll)
+	err = platform.Cleanup(context.Background(), &batchimage.BatchImageJob{}, geminiAPIKeyProvider("sk-secret"), batchimage.CleanupTargetAll)
 	require.NoError(t, err)
 	require.Equal(t, []string{"files/input", "files/output"}, client.deletedFiles)
 }
@@ -224,9 +224,9 @@ func TestGeminiProvider_CleanupDeletesRefsOnlyWhenPresent(t *testing.T) {
 func TestGeminiProvider_ErrorsDoNotExposeAPIKey(t *testing.T) {
 	apiKey := "sk-top-secret"
 	client := &fakeGeminiBatchClient{uploadErr: &batchimageprovider.GeminiAPIError{StatusCode: 401, Message: "upstream body should be hidden " + apiKey}}
-	provider := batchimageprovider.NewGeminiAPIBatchImageProvider(client)
+	platform := batchimageprovider.NewGeminiAPIBatchImageProvider(client)
 
-	_, err := provider.Submit(context.Background(), nil, geminiAPIKeyAccount(apiKey), validGeminiBatchInput())
+	_, err := platform.Submit(context.Background(), nil, geminiAPIKeyProvider(apiKey), validGeminiBatchInput())
 	require.Error(t, err)
 	require.Equal(t, "GEMINI_AUTH_FAILED", apperror.Reason(err))
 	require.NotContains(t, err.Error(), apiKey)
@@ -237,9 +237,9 @@ func TestGeminiProvider_MetadataDoesNotStoreImageBytesOrBase64(t *testing.T) {
 		uploaded: &batchimageprovider.GeminiUploadedFile{Name: "files/input-jsonl"},
 		created:  &batchimageprovider.GeminiBatchJob{Name: "batches/job-123", State: "JOB_STATE_PENDING"},
 	}
-	provider := batchimageprovider.NewGeminiAPIBatchImageProvider(client)
+	platform := batchimageprovider.NewGeminiAPIBatchImageProvider(client)
 
-	got, err := provider.Submit(context.Background(), nil, geminiAPIKeyAccount("sk-secret"), validGeminiBatchInput())
+	got, err := platform.Submit(context.Background(), nil, geminiAPIKeyProvider("sk-secret"), validGeminiBatchInput())
 	require.NoError(t, err)
 	require.NotContains(t, got.ProviderJobName, "base64")
 	require.NotContains(t, got.ProviderInputRef, "base64")
@@ -273,10 +273,10 @@ func validGeminiBatchInput() batchimage.BatchImageInput {
 	}
 }
 
-func geminiAPIKeyAccount(apiKey string) *accountcore.Record {
-	return &accountcore.Record{
+func geminiAPIKeyProvider(apiKey string) *providercore.Record {
+	return &providercore.Record{
 		Platform:    capability.PlatformGemini,
-		Type:        capability.AccountTypeAPIKey,
+		Type:        capability.ProviderTypeAPIKey,
 		Credentials: map[string]any{"api_key": apiKey},
 	}
 }
@@ -365,7 +365,7 @@ func (f *fakeGeminiBatchClient) DeleteFile(_ context.Context, _ string, fileName
 	return f.deleteErr
 }
 
-// newOriginalBatchProviderRegistry 保留原默认两个 provider，直接使用唯一泛型注册表。
+// newOriginalBatchProviderRegistry 保留原默认两个 platform，直接使用唯一泛型注册表。
 func newOriginalBatchProviderRegistry() *batchimage.Registry[batchimageprovider.BatchImageProvider] {
 	return batchimage.NewRegistry[batchimageprovider.BatchImageProvider](batchimageprovider.NewGeminiAPIBatchImageProvider(nil), batchimageprovider.NewVertexBatchImageProvider(batchimageprovider.VertexBatchImageProviderOptions{}, nil, nil, nil))
 }

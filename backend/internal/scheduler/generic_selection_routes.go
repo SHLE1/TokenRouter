@@ -9,7 +9,7 @@ import (
 )
 
 // 基础单平台与混合选择使用同一独立投影，保留原粘性及优先级/最近使用顺序。
-func (s *GenericSelector) selectRoutes(ctx context.Context, groupID *int64, sessionHash string, requestedModel string, excludedIDs map[int64]struct{}) (*FlowAccount, error) {
+func (s *GenericSelector) selectRoutes(ctx context.Context, groupID *int64, sessionHash string, requestedModel string, excludedIDs map[int64]struct{}) (*FlowProvider, error) {
 	// 优先检查 context 中的强制平台（/antigravity 路由）
 	var platform string
 	var resolvedGroup *FlowGroup
@@ -34,7 +34,7 @@ func (s *GenericSelector) selectRoutes(ctx context.Context, groupID *int64, sess
 		resolvedGroup = group
 		platform = ""
 	} else {
-		// 无分组不能产生候选账号，后续查询返回空池。
+		// 无分组不能产生候选提供商，后续查询返回空池。
 		platform = ""
 	}
 
@@ -45,13 +45,13 @@ func (s *GenericSelector) selectRoutes(ctx context.Context, groupID *int64, sess
 		if err != nil {
 			return nil, err
 		}
-		if selection == nil || selection.Account == nil {
-			return nil, ErrNoAvailableAccounts
+		if selection == nil || selection.Provider == nil {
+			return nil, ErrNoAvailableProviders
 		}
 		if selection.ReleaseFunc != nil {
 			selection.ReleaseFunc()
 		}
-		return selection.Account, nil
+		return selection.Provider, nil
 	}
 
 	// 入口已经完成回退准入，模型检查使用当前授权分组。
@@ -59,19 +59,19 @@ func (s *GenericSelector) selectRoutes(ctx context.Context, groupID *int64, sess
 		s.diagnostics.event("warn", "group model restriction blocked request",
 			"group_id", derefGroupID(groupID),
 			"model", requestedModel)
-		return nil, fmt.Errorf("%w supporting model: %s (group model restriction)", ErrNoAvailableAccounts, requestedModel)
+		return nil, fmt.Errorf("%w supporting model: %s (group model restriction)", ErrNoAvailableProviders, requestedModel)
 	}
 
-	account, err := s.SelectPlatform(ctx, groupID, sessionHash, requestedModel, excludedIDs, platform)
+	provider, err := s.SelectPlatform(ctx, groupID, sessionHash, requestedModel, excludedIDs, platform)
 	if err != nil {
 		return nil, err
 	}
-	return s.ports.HydrateSelectedAccount(ctx, account)
+	return s.ports.HydrateSelectedProvider(ctx, provider)
 }
 
-func (s *GenericSelector) SelectPlatform(ctx context.Context, groupID *int64, sessionHash string, requestedModel string, excludedIDs map[int64]struct{}, platform string) (*FlowAccount, error) {
+func (s *GenericSelector) SelectPlatform(ctx context.Context, groupID *int64, sessionHash string, requestedModel string, excludedIDs map[int64]struct{}, platform string) (*FlowProvider, error) {
 	preferOAuth := platform == capability.PlatformGemini
-	routingAccountIDs := s.ports.RoutingAccountIDsForRequest(ctx, groupID, requestedModel, platform)
+	routingProviderIDs := s.ports.RoutingProviderIDsForRequest(ctx, groupID, requestedModel, platform)
 
 	var schedGroup *FlowGroup
 	if groupID != nil && s.ports.ReadGroup != nil {
@@ -79,35 +79,35 @@ func (s *GenericSelector) SelectPlatform(ctx context.Context, groupID *int64, se
 	}
 	// upstream 依据必须覆盖路由、粘性和普通候选的全部旧版选择分支。
 	needsUpstreamCheck := s.ports.NeedsUpstreamGroupRestrictionCheck(ctx, groupID)
-	isUpstreamAllowed := func(account *FlowAccount) bool {
-		return !needsUpstreamCheck || !s.ports.IsUpstreamModelRestrictedByGroup(ctx, *groupID, account, requestedModel)
+	isUpstreamAllowed := func(provider *FlowProvider) bool {
+		return !needsUpstreamCheck || !s.ports.IsUpstreamModelRestrictedByGroup(ctx, *groupID, provider, requestedModel)
 	}
 
-	var accounts []FlowAccount
-	accountsLoaded := false
+	var providers []FlowProvider
+	providersLoaded := false
 
-	if len(routingAccountIDs) > 0 {
+	if len(routingProviderIDs) > 0 {
 		if s.ports.DebugModelRoutingEnabled() {
 			s.diagnostics.printf("service.gateway", "[ModelRoutingDebug] legacy routed begin: group_id=%v model=%s platform=%s session=%s routed_ids=%v",
-				derefGroupID(groupID), requestedModel, platform, shortFlowSessionHash(sessionHash), routingAccountIDs)
+				derefGroupID(groupID), requestedModel, platform, shortFlowSessionHash(sessionHash), routingProviderIDs)
 		}
 
 		if sessionHash != "" && s.cache != nil {
-			accountID, err := s.cache.GetSessionAccountID(ctx, derefGroupID(groupID), sessionHash)
-			if err == nil && accountID > 0 && slices.Contains(routingAccountIDs, accountID) {
-				if _, excluded := excludedIDs[accountID]; !excluded {
-					account, err := s.ports.GetSchedulableAccount(ctx, accountID)
+			providerID, err := s.cache.GetSessionProviderID(ctx, derefGroupID(groupID), sessionHash)
+			if err == nil && providerID > 0 && slices.Contains(routingProviderIDs, providerID) {
+				if _, excluded := excludedIDs[providerID]; !excluded {
+					provider, err := s.ports.GetSchedulableProvider(ctx, providerID)
 
 					if err == nil {
-						clearSticky := s.ports.ShouldClearStickySessionForAccountLayer(ctx, account, requestedModel)
+						clearSticky := s.ports.ShouldClearStickySessionForProviderLayer(ctx, provider, requestedModel)
 						if clearSticky {
-							_ = s.cache.DeleteSessionAccountID(ctx, derefGroupID(groupID), sessionHash)
+							_ = s.cache.DeleteSessionProviderID(ctx, derefGroupID(groupID), sessionHash)
 						}
-						if !clearSticky && s.ports.IsAccountInGroup(account, groupID) && account.Platform == platform && (requestedModel == "" || s.ports.IsModelSupportedByAccountWithContext(ctx, account, requestedModel)) && isUpstreamAllowed(account) && s.ports.IsAccountSchedulableForModelSelection(ctx, account, requestedModel) && s.ports.IsAccountSchedulableForQuota(account) && s.ports.IsAccountSchedulableForWindowCost(ctx, account, true) && s.ports.IsAccountSchedulableForRPM(ctx, account, true) {
+						if !clearSticky && s.ports.IsProviderInGroup(provider, groupID) && provider.Platform == platform && (requestedModel == "" || s.ports.IsModelSupportedByProviderWithContext(ctx, provider, requestedModel)) && isUpstreamAllowed(provider) && s.ports.IsProviderSchedulableForModelSelection(ctx, provider, requestedModel) && s.ports.IsProviderSchedulableForQuota(provider) && s.ports.IsProviderSchedulableForWindowCost(ctx, provider, true) && s.ports.IsProviderSchedulableForRPM(ctx, provider, true) {
 							if s.ports.DebugModelRoutingEnabled() {
-								s.diagnostics.printf("service.gateway", "[ModelRoutingDebug] legacy routed sticky hit: group_id=%v model=%s session=%s account=%d", derefGroupID(groupID), requestedModel, shortFlowSessionHash(sessionHash), accountID)
+								s.diagnostics.printf("service.gateway", "[ModelRoutingDebug] legacy routed sticky hit: group_id=%v model=%s session=%s provider=%d", derefGroupID(groupID), requestedModel, shortFlowSessionHash(sessionHash), providerID)
 							}
-							return account, nil
+							return provider, nil
 						}
 					}
 				}
@@ -119,25 +119,25 @@ func (s *GenericSelector) SelectPlatform(ctx context.Context, groupID *int64, se
 			hasForcePlatform = false
 		}
 		var err error
-		accounts, _, err = s.ports.ListSchedulableAccounts(ctx, groupID, platform, hasForcePlatform)
+		providers, _, err = s.ports.ListSchedulableProviders(ctx, groupID, platform, hasForcePlatform)
 		if err != nil {
-			return nil, fmt.Errorf("query accounts failed: %w", err)
+			return nil, fmt.Errorf("query providers failed: %w", err)
 		}
-		accountsLoaded = true
+		providersLoaded = true
 
-		ctx = s.ports.WithWindowCostPrefetch(ctx, accounts)
-		ctx = s.ports.WithRPMPrefetch(ctx, accounts)
+		ctx = s.ports.WithWindowCostPrefetch(ctx, providers)
+		ctx = s.ports.WithRPMPrefetch(ctx, providers)
 
-		routingSet := make(map[int64]struct{}, len(routingAccountIDs))
-		for _, id := range routingAccountIDs {
+		routingSet := make(map[int64]struct{}, len(routingProviderIDs))
+		for _, id := range routingProviderIDs {
 			if id > 0 {
 				routingSet[id] = struct{}{}
 			}
 		}
 
-		var selected *FlowAccount
-		for i := range accounts {
-			acc := &accounts[i]
+		var selected *FlowProvider
+		for i := range providers {
+			acc := &providers[i]
 			if _, ok := routingSet[acc.ID]; !ok {
 				continue
 			}
@@ -145,31 +145,31 @@ func (s *GenericSelector) SelectPlatform(ctx context.Context, groupID *int64, se
 				continue
 			}
 
-			if !s.ports.IsAccountSchedulableForSelection(acc) {
+			if !s.ports.IsProviderSchedulableForSelection(acc) {
 				continue
 			}
 
 			if schedGroup != nil && schedGroup.RequirePrivacySet && !acc.IsPrivacySet() {
-				_ = s.ports.SetAccountError(ctx, acc.ID,
+				_ = s.ports.SetProviderError(ctx, acc.ID,
 					fmt.Sprintf("Privacy not set, required by group [%s]", schedGroup.Name))
 				continue
 			}
-			if requestedModel != "" && !s.ports.IsModelSupportedByAccountWithContext(ctx, acc, requestedModel) {
+			if requestedModel != "" && !s.ports.IsModelSupportedByProviderWithContext(ctx, acc, requestedModel) {
 				continue
 			}
 			if !isUpstreamAllowed(acc) {
 				continue
 			}
-			if !s.ports.IsAccountSchedulableForModelSelection(ctx, acc, requestedModel) {
+			if !s.ports.IsProviderSchedulableForModelSelection(ctx, acc, requestedModel) {
 				continue
 			}
-			if !s.ports.IsAccountSchedulableForQuota(acc) {
+			if !s.ports.IsProviderSchedulableForQuota(acc) {
 				continue
 			}
-			if !s.ports.IsAccountSchedulableForWindowCost(ctx, acc, false) {
+			if !s.ports.IsProviderSchedulableForWindowCost(ctx, acc, false) {
 				continue
 			}
-			if !s.ports.IsAccountSchedulableForRPM(ctx, acc, false) {
+			if !s.ports.IsProviderSchedulableForRPM(ctx, acc, false) {
 				continue
 			}
 			if selected == nil {
@@ -185,7 +185,7 @@ func (s *GenericSelector) SelectPlatform(ctx context.Context, groupID *int64, se
 				case acc.LastUsedAt != nil && selected.LastUsedAt == nil:
 
 				case acc.LastUsedAt == nil && selected.LastUsedAt == nil:
-					if preferOAuth && acc.Type != selected.Type && acc.Type == capability.AccountTypeOAuth {
+					if preferOAuth && acc.Type != selected.Type && acc.Type == capability.ProviderTypeOAuth {
 						selected = acc
 					}
 				default:
@@ -198,84 +198,84 @@ func (s *GenericSelector) SelectPlatform(ctx context.Context, groupID *int64, se
 
 		if selected != nil {
 			if sessionHash != "" && s.cache != nil {
-				if err := s.cache.SetSessionAccountID(ctx, derefGroupID(groupID), sessionHash, selected.ID, stickySessionTTL); err != nil {
-					s.diagnostics.printf("service.gateway", "set session account failed: session=%s account_id=%d err=%v", sessionHash, selected.ID, err)
+				if err := s.cache.SetSessionProviderID(ctx, derefGroupID(groupID), sessionHash, selected.ID, stickySessionTTL); err != nil {
+					s.diagnostics.printf("service.gateway", "set session provider failed: session=%s provider_id=%d err=%v", sessionHash, selected.ID, err)
 				}
 			}
 			if s.ports.DebugModelRoutingEnabled() {
-				s.diagnostics.printf("service.gateway", "[ModelRoutingDebug] legacy routed select: group_id=%v model=%s session=%s account=%d", derefGroupID(groupID), requestedModel, shortFlowSessionHash(sessionHash), selected.ID)
+				s.diagnostics.printf("service.gateway", "[ModelRoutingDebug] legacy routed select: group_id=%v model=%s session=%s provider=%d", derefGroupID(groupID), requestedModel, shortFlowSessionHash(sessionHash), selected.ID)
 			}
 			return selected, nil
 		}
-		s.diagnostics.printf("service.gateway", "[ModelRouting] No routed accounts available for model=%s, falling back to normal selection", requestedModel)
+		s.diagnostics.printf("service.gateway", "[ModelRouting] No routed providers available for model=%s, falling back to normal selection", requestedModel)
 	}
 
 	if sessionHash != "" && s.cache != nil {
-		accountID, err := s.cache.GetSessionAccountID(ctx, derefGroupID(groupID), sessionHash)
-		if err == nil && accountID > 0 {
-			if _, excluded := excludedIDs[accountID]; !excluded {
-				account, err := s.ports.GetSchedulableAccount(ctx, accountID)
+		providerID, err := s.cache.GetSessionProviderID(ctx, derefGroupID(groupID), sessionHash)
+		if err == nil && providerID > 0 {
+			if _, excluded := excludedIDs[providerID]; !excluded {
+				provider, err := s.ports.GetSchedulableProvider(ctx, providerID)
 
 				if err == nil {
-					clearSticky := s.ports.ShouldClearStickySessionForAccountLayer(ctx, account, requestedModel)
+					clearSticky := s.ports.ShouldClearStickySessionForProviderLayer(ctx, provider, requestedModel)
 					if clearSticky {
-						_ = s.cache.DeleteSessionAccountID(ctx, derefGroupID(groupID), sessionHash)
+						_ = s.cache.DeleteSessionProviderID(ctx, derefGroupID(groupID), sessionHash)
 					}
-					if !clearSticky && s.ports.IsAccountInGroup(account, groupID) && account.Platform == platform && (requestedModel == "" || s.ports.IsModelSupportedByAccountWithContext(ctx, account, requestedModel)) && isUpstreamAllowed(account) && s.ports.IsAccountSchedulableForModelSelection(ctx, account, requestedModel) && s.ports.IsAccountSchedulableForQuota(account) && s.ports.IsAccountSchedulableForWindowCost(ctx, account, true) && s.ports.IsAccountSchedulableForRPM(ctx, account, true) {
-						return account, nil
+					if !clearSticky && s.ports.IsProviderInGroup(provider, groupID) && provider.Platform == platform && (requestedModel == "" || s.ports.IsModelSupportedByProviderWithContext(ctx, provider, requestedModel)) && isUpstreamAllowed(provider) && s.ports.IsProviderSchedulableForModelSelection(ctx, provider, requestedModel) && s.ports.IsProviderSchedulableForQuota(provider) && s.ports.IsProviderSchedulableForWindowCost(ctx, provider, true) && s.ports.IsProviderSchedulableForRPM(ctx, provider, true) {
+						return provider, nil
 					}
 				}
 			}
 		}
 	}
 
-	if !accountsLoaded {
+	if !providersLoaded {
 		forcePlatform, hasForcePlatform := s.ports.ForcePlatform(ctx)
 		if hasForcePlatform && forcePlatform == "" {
 			hasForcePlatform = false
 		}
 		var err error
-		accounts, _, err = s.ports.ListSchedulableAccounts(ctx, groupID, platform, hasForcePlatform)
+		providers, _, err = s.ports.ListSchedulableProviders(ctx, groupID, platform, hasForcePlatform)
 		if err != nil {
-			return nil, fmt.Errorf("query accounts failed: %w", err)
+			return nil, fmt.Errorf("query providers failed: %w", err)
 		}
 	}
 
-	ctx = s.ports.WithWindowCostPrefetch(ctx, accounts)
-	ctx = s.ports.WithRPMPrefetch(ctx, accounts)
+	ctx = s.ports.WithWindowCostPrefetch(ctx, providers)
+	ctx = s.ports.WithRPMPrefetch(ctx, providers)
 
-	var selected *FlowAccount
-	for i := range accounts {
-		acc := &accounts[i]
+	var selected *FlowProvider
+	for i := range providers {
+		acc := &providers[i]
 		if _, excluded := excludedIDs[acc.ID]; excluded {
 			continue
 		}
 
-		if !s.ports.IsAccountSchedulableForSelection(acc) {
+		if !s.ports.IsProviderSchedulableForSelection(acc) {
 			continue
 		}
 
 		if schedGroup != nil && schedGroup.RequirePrivacySet && !acc.IsPrivacySet() {
-			_ = s.ports.SetAccountError(ctx, acc.ID,
+			_ = s.ports.SetProviderError(ctx, acc.ID,
 				fmt.Sprintf("Privacy not set, required by group [%s]", schedGroup.Name))
 			continue
 		}
-		if requestedModel != "" && !s.ports.IsModelSupportedByAccountWithContext(ctx, acc, requestedModel) {
+		if requestedModel != "" && !s.ports.IsModelSupportedByProviderWithContext(ctx, acc, requestedModel) {
 			continue
 		}
 		if !isUpstreamAllowed(acc) {
 			continue
 		}
-		if !s.ports.IsAccountSchedulableForModelSelection(ctx, acc, requestedModel) {
+		if !s.ports.IsProviderSchedulableForModelSelection(ctx, acc, requestedModel) {
 			continue
 		}
-		if !s.ports.IsAccountSchedulableForQuota(acc) {
+		if !s.ports.IsProviderSchedulableForQuota(acc) {
 			continue
 		}
-		if !s.ports.IsAccountSchedulableForWindowCost(ctx, acc, false) {
+		if !s.ports.IsProviderSchedulableForWindowCost(ctx, acc, false) {
 			continue
 		}
-		if !s.ports.IsAccountSchedulableForRPM(ctx, acc, false) {
+		if !s.ports.IsProviderSchedulableForRPM(ctx, acc, false) {
 			continue
 		}
 		if selected == nil {
@@ -291,7 +291,7 @@ func (s *GenericSelector) SelectPlatform(ctx context.Context, groupID *int64, se
 			case acc.LastUsedAt != nil && selected.LastUsedAt == nil:
 
 			case acc.LastUsedAt == nil && selected.LastUsedAt == nil:
-				if preferOAuth && acc.Type != selected.Type && acc.Type == capability.AccountTypeOAuth {
+				if preferOAuth && acc.Type != selected.Type && acc.Type == capability.ProviderTypeOAuth {
 					selected = acc
 				}
 			default:
@@ -303,25 +303,25 @@ func (s *GenericSelector) SelectPlatform(ctx context.Context, groupID *int64, se
 	}
 
 	if selected == nil {
-		if err := s.ports.GroupModelUnsupportedErrorIfApplicable(ctx, accounts, requestedModel, platform, excludedIDs, false, groupID, schedGroup); err != nil {
+		if err := s.ports.GroupModelUnsupportedErrorIfApplicable(ctx, providers, requestedModel, platform, excludedIDs, false, groupID, schedGroup); err != nil {
 			return nil, err
 		}
-		stats := s.ports.LogDetailedSelectionFailure(ctx, groupID, sessionHash, requestedModel, platform, accounts, excludedIDs, false)
+		stats := s.ports.LogDetailedSelectionFailure(ctx, groupID, sessionHash, requestedModel, platform, providers, excludedIDs, false)
 		if requestedModel != "" {
-			return nil, fmt.Errorf("%w supporting model: %s (%s)", ErrNoAvailableAccounts, requestedModel, stats)
+			return nil, fmt.Errorf("%w supporting model: %s (%s)", ErrNoAvailableProviders, requestedModel, stats)
 		}
-		return nil, ErrNoAvailableAccounts
+		return nil, ErrNoAvailableProviders
 	}
 
 	if sessionHash != "" && s.cache != nil {
-		if err := s.cache.SetSessionAccountID(ctx, derefGroupID(groupID), sessionHash, selected.ID, stickySessionTTL); err != nil {
-			s.diagnostics.printf("service.gateway", "set session account failed: session=%s account_id=%d err=%v", sessionHash, selected.ID, err)
+		if err := s.cache.SetSessionProviderID(ctx, derefGroupID(groupID), sessionHash, selected.ID, stickySessionTTL); err != nil {
+			s.diagnostics.printf("service.gateway", "set session provider failed: session=%s provider_id=%d err=%v", sessionHash, selected.ID, err)
 		}
 	}
 
 	return selected, nil
 }
 
-func (s *GenericSelector) SelectMixed(ctx context.Context, groupID *int64, sessionHash string, requestedModel string, excludedIDs map[int64]struct{}, nativePlatform string) (*FlowAccount, error) {
+func (s *GenericSelector) SelectMixed(ctx context.Context, groupID *int64, sessionHash string, requestedModel string, excludedIDs map[int64]struct{}, nativePlatform string) (*FlowProvider, error) {
 	return s.SelectPlatform(ctx, groupID, sessionHash, requestedModel, excludedIDs, "")
 }

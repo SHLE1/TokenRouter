@@ -142,8 +142,8 @@ func (p messagesHTTPBackend) CachedSession(ctx context.Context, groupID *int64, 
 	return p.bindings.CachedSession(ctx, groupID, hash)
 }
 
-func (p messagesHTTPBackend) Prefetch(c *gin.Context, accountID, groupID int64) {
-	c.Request = c.Request.WithContext(requeststate.WithPrefetchedStickySession(c.Request.Context(), accountID, groupID))
+func (p messagesHTTPBackend) Prefetch(c *gin.Context, providerID, groupID int64) {
+	c.Request = c.Request.WithContext(requeststate.WithPrefetchedStickySession(c.Request.Context(), providerID, groupID))
 }
 
 func (p messagesHTTPBackend) PrepareGemini(ctx context.Context, call MessagesCall) (*requeststate.ParsedRequest, error) {

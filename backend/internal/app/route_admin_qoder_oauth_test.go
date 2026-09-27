@@ -7,14 +7,13 @@ import (
 	"strings"
 	"testing"
 
-	accounthttp "github.com/TokenFlux/TokenRouter/internal/account/httpapi"
+	providerhttp "github.com/TokenFlux/TokenRouter/internal/provider/httpapi"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 )
 
 func TestAdminRoutesQoderOAuthPathsAreRegistered(t *testing.T) {
-
 	router := gin.New()
 	qoderOAuthService := provideQoderAuthorization(nil)
 	qoderOAuthService.Core.Start()
@@ -24,7 +23,7 @@ func TestAdminRoutesQoderOAuthPathsAreRegistered(t *testing.T) {
 		router.Group("/api/v1/admin"),
 		&routeTestHandlers{
 			Admin: &routeTestAdminHandlers{
-				QoderOAuth: accounthttp.NewQoderOAuthHandler(qoderOAuthService),
+				QoderOAuth: providerhttp.NewQoderOAuthHandler(qoderOAuthService),
 			},
 		},
 	)

@@ -41,7 +41,7 @@ func (r *creativeRunRepository) CreateCreativeRun(ctx context.Context, params se
 		SetUserID(params.UserID).
 		SetGroupID(params.GroupID).
 		SetAPIKeyID(params.APIKeyID).
-		SetProvider(params.Provider).
+		SetPlatform(params.Platform).
 		SetModel(params.Model).
 		SetRequestedModel(params.RequestedModel).
 		SetOperation(params.Operation).
@@ -247,8 +247,8 @@ func (r *creativeRunRepository) TransitionCreativeRunStatus(ctx context.Context,
 	return nil
 }
 
-// MarkCreativeRunRunning 幂等推进 queued -> running 并回填执行账号。
-func (r *creativeRunRepository) MarkCreativeRunRunning(ctx context.Context, runID string, accountID int64, now time.Time) error {
+// MarkCreativeRunRunning 幂等推进 queued -> running 并回填执行提供商。
+func (r *creativeRunRepository) MarkCreativeRunRunning(ctx context.Context, runID string, providerID int64, now time.Time) error {
 	current, err := r.client.CreativeRun.Query().
 		Where(creativerun.RunIDEQ(runID)).
 		Only(ctx)
@@ -256,11 +256,11 @@ func (r *creativeRunRepository) MarkCreativeRunRunning(ctx context.Context, runI
 		return translatePersistenceError(err, service.ErrCreativeRunNotFound, nil)
 	}
 	if current.Status == service.CreativeRunStatusRunning {
-		// 重复执行（worker 重试）视为成功，但确保账号已回填。
-		if accountID > 0 && (current.AccountID == nil || *current.AccountID != accountID) {
+		// 重复执行（worker 重试）视为成功，但确保提供商已回填。
+		if providerID > 0 && (current.ProviderID == nil || *current.ProviderID != providerID) {
 			_, err := r.client.CreativeRun.Update().
 				Where(creativerun.RunIDEQ(runID)).
-				SetAccountID(accountID).
+				SetProviderID(providerID).
 				SetUpdatedAt(now).
 				Save(ctx)
 			return err
@@ -279,8 +279,8 @@ func (r *creativeRunRepository) MarkCreativeRunRunning(ctx context.Context, runI
 		SetVersion(current.Version + 1).
 		SetStartedAt(now).
 		SetUpdatedAt(now)
-	if accountID > 0 {
-		builder.SetAccountID(accountID)
+	if providerID > 0 {
+		builder.SetProviderID(providerID)
 	}
 	affected, err := builder.Save(ctx)
 	if err != nil {
@@ -292,15 +292,15 @@ func (r *creativeRunRepository) MarkCreativeRunRunning(ctx context.Context, runI
 	return nil
 }
 
-// SetCreativeRunExecution 持久化执行器最终选中的真实上游账号。
-func (r *creativeRunRepository) SetCreativeRunExecution(ctx context.Context, runID string, accountID int64, provider string, now time.Time) error {
-	if accountID <= 0 {
+// SetCreativeRunExecution 持久化执行器最终选中的真实上游提供商。
+func (r *creativeRunRepository) SetCreativeRunExecution(ctx context.Context, runID string, providerID int64, platform string, now time.Time) error {
+	if providerID <= 0 {
 		return nil
 	}
 	affected, err := r.client.CreativeRun.Update().
 		Where(creativerun.RunIDEQ(runID)).
-		SetProvider(provider).
-		SetAccountID(accountID).
+		SetPlatform(platform).
+		SetProviderID(providerID).
 		SetUpdatedAt(now).
 		Save(ctx)
 	if err != nil {
@@ -347,9 +347,9 @@ func (r *creativeRunRepository) MarkCreativeRunSucceeded(ctx context.Context, ru
 	return nil
 }
 
-// MarkCreativeRunProviderSucceeded 在输出已经写入 Redis 后记录 provider 成功，
-// 后续只允许 settlement worker 重试计费和落库，不重新调用 provider。
-func (r *creativeRunRepository) MarkCreativeRunProviderSucceeded(ctx context.Context, runID string, accountID int64, now time.Time) error {
+// MarkCreativeRunProviderSucceeded 在输出已经写入 Redis 后记录 platform 成功，
+// 后续只允许 settlement worker 重试计费和落库，不重新调用 platform。
+func (r *creativeRunRepository) MarkCreativeRunProviderSucceeded(ctx context.Context, runID string, providerID int64, now time.Time) error {
 	current, err := r.client.CreativeRun.Query().Where(creativerun.RunIDEQ(runID)).Only(ctx)
 	if err != nil {
 		return translatePersistenceError(err, service.ErrCreativeRunNotFound, nil)
@@ -362,8 +362,8 @@ func (r *creativeRunRepository) MarkCreativeRunProviderSucceeded(ctx context.Con
 		SetProviderResultRecordedAt(now).
 		SetUpdatedAt(now).
 		AddVersion(1)
-	if accountID > 0 {
-		builder.SetAccountID(accountID)
+	if providerID > 0 {
+		builder.SetProviderID(providerID)
 	}
 	if current.Status == service.CreativeRunStatusRunning {
 		builder.SetStatus(service.CreativeRunStatusProviderSucceeded)
@@ -659,8 +659,8 @@ func creativeRunEntityToService(entity *dbent.CreativeRun) *service.CreativeRun 
 		WorkspaceID:                 entity.WorkspaceID,
 		GroupID:                     entity.GroupID,
 		APIKeyID:                    entity.APIKeyID,
-		AccountID:                   entity.AccountID,
-		Provider:                    entity.Provider,
+		ProviderID:                  entity.ProviderID,
+		Platform:                    entity.Platform,
 		Model:                       entity.Model,
 		RequestedModel:              requestedModel,
 		Operation:                   entity.Operation,

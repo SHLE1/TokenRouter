@@ -61,7 +61,7 @@
               :class="{ 'sidebar-link-active': isActive(item.path), 'sidebar-link-collapsed': sidebarCollapsed }"
               :title="sidebarCollapsed ? item.label : undefined"
               :id="
-                item.path === '/admin/accounts'
+                item.path === '/admin/providers'
                   ? 'sidebar-channel-manage'
                   : item.path === '/admin/groups'
                     ? 'sidebar-group-manage'
@@ -636,7 +636,7 @@ const userNavItems = computed((): NavItem[] => {
   return authStore.isSimpleMode ? visibleItems.filter(item => !item.hideInSimpleMode) : visibleItems
 })
 
-// 管理员“我的账户”分组使用的个人导航项
+// 管理员“我的提供商”分组使用的个人导航项
 const personalNavItems = computed((): NavItem[] => {
   const items: NavItem[] = [
     { path: '/dashboard', label: t('nav.dashboard'), icon: DashboardIcon },
@@ -717,7 +717,7 @@ const adminNavItems = computed((): NavItem[] => {
     { path: '/admin/groups', label: t('nav.groups'), icon: FolderIcon, hideInSimpleMode: true },
     { path: '/admin/pricing', label: t('nav.pricing', '价格管理'), icon: PricingIcon, hideInSimpleMode: true },
     { path: '/admin/subscriptions', label: t('nav.subscriptions'), icon: CreditCardIcon, hideInSimpleMode: true },
-    { path: '/admin/accounts', label: t('nav.accounts'), icon: GlobeIcon },
+    { path: '/admin/providers', label: t('nav.providers'), icon: GlobeIcon },
     { path: '/admin/announcements', label: t('nav.announcements'), icon: BellIcon },
     { path: '/admin/proxies', label: t('nav.proxies'), icon: ServerIcon },
     {
@@ -796,7 +796,7 @@ function handleMenuItemClick(itemPath: string) {
   // Map paths to tour selectors
   const pathToSelector: Record<string, string> = {
     '/admin/groups': '#sidebar-group-manage',
-    '/admin/accounts': '#sidebar-channel-manage',
+    '/admin/providers': '#sidebar-channel-manage',
     '/keys': '[data-tour="sidebar-my-keys"]',
     '/usage': '[data-tour="sidebar-usage"]'
   }

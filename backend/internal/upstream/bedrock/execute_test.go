@@ -97,7 +97,7 @@ func TestExecuteBedrockWireAndRelease(t *testing.T) {
 				}
 			}))
 			defer server.Close()
-			target := &Target{AccountID: 7, ReadBody: io.ReadAll, Enter: func() (func(), error) { return func() { released.Add(1) }, nil }, Request: RequestOptions{ModelID: "anthropic.fixture", Region: "us-east-1", APIKeyMode: true, APIKey: "fixture-key", Stream: stream, Do: func(r *http.Request) (*http.Response, error) {
+			target := &Target{ProviderID: 7, ReadBody: io.ReadAll, Enter: func() (func(), error) { return func() { released.Add(1) }, nil }, Request: RequestOptions{ModelID: "anthropic.fixture", Region: "us-east-1", APIKeyMode: true, APIKey: "fixture-key", Stream: stream, Do: func(r *http.Request) (*http.Response, error) {
 				// 本地服务器只替换目的地，保留原生构造的路径、载荷和认证头。
 				local, _ := http.NewRequestWithContext(r.Context(), r.Method, server.URL+r.URL.RequestURI(), r.Body)
 				local.Header = r.Header.Clone()

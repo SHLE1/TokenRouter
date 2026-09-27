@@ -18,12 +18,12 @@ import (
 
 	grok "github.com/TokenFlux/TokenRouter/internal/upstream/grok"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/protocol/bridge"
 	"github.com/TokenFlux/TokenRouter/internal/protocol/openai"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 
 	"github.com/gin-gonic/gin"
@@ -46,7 +46,6 @@ func TestClearGrokResponsesClientToolMappingRemovesStaleContextState(t *testing.
 }
 
 func TestForwardGrokResponsesClientToolNameConflictReturns400(t *testing.T) {
-
 	body := []byte(`{
 		"model":"grok","stream":false,"input":"hello",
 		"tools":[
@@ -59,9 +58,9 @@ func TestForwardGrokResponsesClientToolNameConflictReturns400(t *testing.T) {
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", bytes.NewReader(body))
 	upstream := &auxiliaryHTTPRecorder{}
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream})
-	account := grokProtocolAPIKeyAccount(7101)
+	provider := grokProtocolAPIKeyProvider(7101)
 
-	result, err := svc.Grok.ForwardResponses(context.Background(), c, account, body, "grok", false, time.Now())
+	result, err := svc.Grok.ForwardResponses(context.Background(), c, provider, body, "grok", false, time.Now())
 
 	require.Error(t, err)
 	require.Nil(t, result)
@@ -73,7 +72,6 @@ func TestForwardGrokResponsesClientToolNameConflictReturns400(t *testing.T) {
 }
 
 func TestForwardGrokResponsesMalformedToolSearchOutputReturns400BeforeUpstream(t *testing.T) {
-
 	body := []byte(`{
 		"model":"grok","stream":false,
 		"tools":[{"type":"tool_search"}],
@@ -84,9 +82,9 @@ func TestForwardGrokResponsesMalformedToolSearchOutputReturns400BeforeUpstream(t
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", bytes.NewReader(body))
 	upstream := &auxiliaryHTTPRecorder{}
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream})
-	account := grokProtocolAPIKeyAccount(7103)
+	provider := grokProtocolAPIKeyProvider(7103)
 
-	result, err := svc.Grok.ForwardResponses(context.Background(), c, account, body, "grok", false, time.Now())
+	result, err := svc.Grok.ForwardResponses(context.Background(), c, provider, body, "grok", false, time.Now())
 
 	require.Error(t, err)
 	require.Nil(t, result)
@@ -98,7 +96,6 @@ func TestForwardGrokResponsesMalformedToolSearchOutputReturns400BeforeUpstream(t
 }
 
 func TestForwardGrokResponsesOAuthRestoresClientToolsNonStreaming(t *testing.T) {
-
 	body := groktestkit.ClientToolsRequest(false)
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
@@ -106,9 +103,9 @@ func TestForwardGrokResponsesOAuthRestoresClientToolsNonStreaming(t *testing.T) 
 	c.Request.Header.Set("Content-Type", "application/json")
 	c.Set("api_key", &apikey.APIKey{ID: 7102})
 
-	account := grokProtocolOAuthAccount(7102)
-	repo := &grokQuotaAccountRepo{grokFixtureAccounts: &grokFixtureAccounts{
-		accountsByID: map[int64]*gatewayprovider.ExecutionAccount{account.Record.ID: account},
+	provider := grokProtocolOAuthProvider(7102)
+	repo := &grokQuotaProviderRepo{grokFixtureProviders: &grokFixtureProviders{
+		providersByID: map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider},
 	}}
 	upstream := &auxiliaryHTTPRecorder{resp: &http.Response{
 		StatusCode: http.StatusOK,
@@ -126,9 +123,9 @@ func TestForwardGrokResponsesOAuthRestoresClientToolsNonStreaming(t *testing.T) 
 			"usage":{"input_tokens":9,"output_tokens":3,"total_tokens":12}
 		}`)),
 	}}
-	svc := newResponsesFixture(responsesFixtureInputs{grokTokens: newHTTPGrokTokenFixture(repo, nil), transport: upstream, accounts: repo})
+	svc := newResponsesFixture(responsesFixtureInputs{grokTokens: newHTTPGrokTokenFixture(repo, nil), transport: upstream, providers: repo})
 
-	result, err := svc.Grok.ForwardResponses(context.Background(), c, account, body, "grok", false, time.Now())
+	result, err := svc.Grok.ForwardResponses(context.Background(), c, provider, body, "grok", false, time.Now())
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -153,7 +150,6 @@ func TestForwardGrokResponsesOAuthRestoresClientToolsNonStreaming(t *testing.T) 
 }
 
 func TestForwardGrokResponsesAPIKeyRestoresClientToolsFromSSEForNonStreamingRequest(t *testing.T) {
-
 	body := groktestkit.ClientToolsRequest(false)
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
@@ -169,9 +165,9 @@ func TestForwardGrokResponsesAPIKeyRestoresClientToolsFromSSEForNonStreamingRequ
 		Body: io.NopCloser(strings.NewReader(grokProtocolUpstreamSSE())),
 	}}
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream})
-	account := grokProtocolAPIKeyAccount(7104)
+	provider := grokProtocolAPIKeyProvider(7104)
 
-	result, err := svc.Grok.ForwardResponses(context.Background(), c, account, body, "grok", false, time.Now())
+	result, err := svc.Grok.ForwardResponses(context.Background(), c, provider, body, "grok", false, time.Now())
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -190,7 +186,6 @@ func TestForwardGrokResponsesAPIKeyRestoresClientToolsFromSSEForNonStreamingRequ
 }
 
 func TestForwardGrokResponsesAPIKeyRestoresClientToolsStreaming(t *testing.T) {
-
 	body := groktestkit.ClientToolsRequest(true)
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
@@ -206,9 +201,9 @@ func TestForwardGrokResponsesAPIKeyRestoresClientToolsStreaming(t *testing.T) {
 		Body: io.NopCloser(strings.NewReader(grokProtocolUpstreamSSE())),
 	}}
 	svc := newResponsesFixture(responsesFixtureInputs{transport: upstream})
-	account := grokProtocolAPIKeyAccount(7103)
+	provider := grokProtocolAPIKeyProvider(7103)
 
-	result, err := svc.Grok.ForwardResponses(context.Background(), c, account, body, "grok", true, time.Now())
+	result, err := svc.Grok.ForwardResponses(context.Background(), c, provider, body, "grok", true, time.Now())
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -266,21 +261,27 @@ type grokProtocolSSEFrame struct {
 	data  []byte
 }
 
-func grokProtocolOAuthAccount(id int64) *gatewayprovider.ExecutionAccount {
-	return &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: id, Name: "grok-oauth-protocol", Platform: capability.PlatformGrok, Type: capability.AccountTypeOAuth,
-		Status: billing.StatusActive, Schedulable: true, Concurrency: 1,
-		Credentials: map[string]any{
-			"access_token": "oauth-protocol-token", "refresh_token": "refresh-token",
-			"expires_at": time.Now().Add(2 * accountcore.GrokTokenRefreshSkew).UTC().Format(time.RFC3339),
-			"base_url":   grok.DefaultCLIBaseURL, "subscription_tier": "supergrok",
-		}},
+func grokProtocolOAuthProvider(id int64) *gatewayprovider.ExecutionProvider {
+	return &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: id, Name: "grok-oauth-protocol", Platform: capability.PlatformGrok, Type: capability.ProviderTypeOAuth,
+			Status: billing.StatusActive, Schedulable: true, Concurrency: 1,
+			Credentials: map[string]any{
+				"access_token": "oauth-protocol-token", "refresh_token": "refresh-token",
+				"expires_at": time.Now().Add(2 * providercore.GrokTokenRefreshSkew).UTC().Format(time.RFC3339),
+				"base_url":   grok.DefaultCLIBaseURL, "subscription_tier": "supergrok",
+			},
+		},
 	}
 }
 
-func grokProtocolAPIKeyAccount(id int64) *gatewayprovider.ExecutionAccount {
-	return &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: id, Name: "grok-api-key-protocol", Platform: capability.PlatformGrok, Type: capability.AccountTypeAPIKey,
-		Status: billing.StatusActive, Schedulable: true, Concurrency: 1,
-		Credentials: map[string]any{"api_key": "xai-protocol-key", "base_url": "https://api.x.ai/v1"}},
+func grokProtocolAPIKeyProvider(id int64) *gatewayprovider.ExecutionProvider {
+	return &gatewayprovider.ExecutionProvider{
+		Record: providercore.Record{
+			LoadLocation: time.LoadLocation, ID: id, Name: "grok-api-key-protocol", Platform: capability.PlatformGrok, Type: capability.ProviderTypeAPIKey,
+			Status: billing.StatusActive, Schedulable: true, Concurrency: 1,
+			Credentials: map[string]any{"api_key": "xai-protocol-key", "base_url": "https://api.x.ai/v1"},
+		},
 	}
 }
 

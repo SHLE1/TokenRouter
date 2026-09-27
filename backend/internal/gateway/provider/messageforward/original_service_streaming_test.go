@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	accountcore "github.com/TokenFlux/TokenRouter/internal/account"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/gin-gonic/gin"
@@ -16,7 +16,6 @@ import (
 )
 
 func TestGatewayService_StreamingReusesScannerBufferAndStillParsesUsage(t *testing.T) {
-
 	svc := newStreamingRuntimeFixture(0)
 
 	rec := httptest.NewRecorder()
@@ -34,7 +33,7 @@ func TestGatewayService_StreamingReusesScannerBufferAndStillParsesUsage(t *testi
 		_, _ = pw.Write([]byte("data: [DONE]\n\n"))
 	}()
 
-	result, err := streamResponseFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", false)
+	result, err := streamResponseFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", false)
 	_ = pr.Close()
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -44,7 +43,6 @@ func TestGatewayService_StreamingReusesScannerBufferAndStillParsesUsage(t *testi
 }
 
 func TestGatewayService_StreamingKeepaliveUsesIdleTimer(t *testing.T) {
-
 	svc := newStreamingRuntimeFixture(time.Second)
 
 	rec := httptest.NewRecorder()
@@ -61,7 +59,7 @@ func TestGatewayService_StreamingKeepaliveUsesIdleTimer(t *testing.T) {
 		_, _ = pw.Write([]byte("event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n"))
 	}()
 
-	result, err := streamResponseFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", false)
+	result, err := streamResponseFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", false)
 	_ = pr.Close()
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -69,7 +67,6 @@ func TestGatewayService_StreamingKeepaliveUsesIdleTimer(t *testing.T) {
 }
 
 func TestGatewayService_StreamingKeepaliveUsesNoopDeltaForAffectedClaudeCodeVersion(t *testing.T) {
-
 	svc := newStreamingRuntimeFixture(time.Second)
 
 	rec := httptest.NewRecorder()
@@ -89,7 +86,7 @@ func TestGatewayService_StreamingKeepaliveUsesNoopDeltaForAffectedClaudeCodeVers
 		_, _ = pw.Write([]byte("event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n"))
 	}()
 
-	result, err := streamResponseFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", false)
+	result, err := streamResponseFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", false)
 	_ = pr.Close()
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -99,7 +96,6 @@ func TestGatewayService_StreamingKeepaliveUsesNoopDeltaForAffectedClaudeCodeVers
 }
 
 func TestGatewayService_StreamingKeepaliveUsesNoopDeltaDuringToolUseForAffectedClaudeCodeVersion(t *testing.T) {
-
 	svc := newStreamingRuntimeFixture(time.Second)
 
 	rec := httptest.NewRecorder()
@@ -119,7 +115,7 @@ func TestGatewayService_StreamingKeepaliveUsesNoopDeltaDuringToolUseForAffectedC
 		_, _ = pw.Write([]byte("event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n"))
 	}()
 
-	result, err := streamResponseFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", false)
+	result, err := streamResponseFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", false)
 	_ = pr.Close()
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -130,7 +126,6 @@ func TestGatewayService_StreamingKeepaliveUsesNoopDeltaDuringToolUseForAffectedC
 }
 
 func TestGatewayService_StreamingKeepaliveKeepsPingForOlderClaudeCodeVersion(t *testing.T) {
-
 	svc := newStreamingRuntimeFixture(time.Second)
 
 	rec := httptest.NewRecorder()
@@ -150,7 +145,7 @@ func TestGatewayService_StreamingKeepaliveKeepsPingForOlderClaudeCodeVersion(t *
 		_, _ = pw.Write([]byte("event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n"))
 	}()
 
-	result, err := streamResponseFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionAccount{Record: accountcore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", false)
+	result, err := streamResponseFixture(svc, context.Background(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", false)
 	_ = pr.Close()
 	require.NoError(t, err)
 	require.NotNil(t, result)

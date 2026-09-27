@@ -35,7 +35,7 @@ import (
 func (s *GrokExecutor) ChatResponses(
 	ctx context.Context,
 	c *gin.Context,
-	account *gatewayprovider.ExecutionAccount,
+	provider *gatewayprovider.ExecutionProvider,
 	body []byte,
 	promptCacheKey string,
 	defaultMappedModel string,
@@ -49,14 +49,14 @@ func (s *GrokExecutor) ChatResponses(
 	}
 	originalModel := chatReq.Model
 	clientStream := chatReq.Stream
-	billingModel := gatewayprovider.ExecutionModelPolicy(account).ForwardModel(originalModel, defaultMappedModel)
-	upstreamModel := gatewayprovider.ExecutionModelPolicy(account).NormalizeOpenAI(billingModel)
+	billingModel := gatewayprovider.ExecutionModelPolicy(provider).ForwardModel(originalModel, defaultMappedModel)
+	upstreamModel := gatewayprovider.ExecutionModelPolicy(provider).NormalizeOpenAI(billingModel)
 	cacheIdentity := ResolveGrokCacheIdentity(c, body, promptCacheKey, upstreamModel)
 	// 图片输入必须通过 Responses 桥接：原始 Chat Completions 路径无法把 image_url
 	// 转发给非 Composer 模型的 Grok 原生视觉能力，否则图片会被静默丢弃；
 	// 因此即使没有 prompt-cache 身份也要路由到 Responses。
 	hasImageInput := protocolopenai.JSONValueMayContainImageInput(gjson.GetBytes(body, "messages"))
-	if account.Route.Protocol() == "" && !gatewayprovider.GrokBodyCodec().GrokChatResponsesRuntimeEligible(upstreamModel, cacheIdentity) && (!hasImageInput || !gatewayprovider.GrokBodyCodec().GrokChatResponsesBridgeModel(upstreamModel)) {
+	if provider.Route.Protocol() == "" && !gatewayprovider.GrokBodyCodec().GrokChatResponsesRuntimeEligible(upstreamModel, cacheIdentity) && (!hasImageInput || !gatewayprovider.GrokBodyCodec().GrokChatResponsesBridgeModel(upstreamModel)) {
 		return nil, false, nil
 	}
 
@@ -91,12 +91,12 @@ func (s *GrokExecutor) ChatResponses(
 	if err != nil {
 		return nil, true, fmt.Errorf("apply grok responses bridge cache identity: %w", err)
 	}
-	responsesBody, err = ApplyGrokFreeRequestToolCacheRoute(c, responsesBody, intentBody, account, cacheIdentity)
+	responsesBody, err = ApplyGrokFreeRequestToolCacheRoute(c, responsesBody, intentBody, provider, cacheIdentity)
 	if err != nil {
 		return nil, true, fmt.Errorf("apply grok responses bridge function-tool cache route: %w", err)
 	}
 
-	updatedBody, policyErr := tierpolicy.ApplyBody(responsesBody, s.FastPolicy.Input(ctx, account, upstreamModel))
+	updatedBody, policyErr := tierpolicy.ApplyBody(responsesBody, s.FastPolicy.Input(ctx, provider, upstreamModel))
 	if policyErr != nil {
 		var blocked *tierpolicy.BlockedError
 		if errors.As(policyErr, &blocked) {
@@ -107,12 +107,12 @@ func (s *GrokExecutor) ChatResponses(
 	}
 	responsesBody = updatedBody
 
-	token, _, err := s.Credentials.Resolve(ctx, RequestCredentialBudget(c), CredentialObserver{Context: c}, account)
+	token, _, err := s.Credentials.Resolve(ctx, RequestCredentialBudget(c), CredentialObserver{Context: c}, provider)
 	if err != nil {
 		return nil, true, fmt.Errorf("get grok access token: %w", err)
 	}
 	upstreamCtx, releaseUpstreamCtx := gatewayprovider.DetachUpstreamContext(ctx)
-	upstreamReq, err := s.BuildResponsesRequest(upstreamCtx, c, account, responsesBody, token, cacheIdentity, true)
+	upstreamReq, err := s.BuildResponsesRequest(upstreamCtx, c, provider, responsesBody, token, cacheIdentity, true)
 	releaseUpstreamCtx()
 	if err != nil {
 		return nil, true, fmt.Errorf("build grok responses bridge request: %w", err)
@@ -120,15 +120,14 @@ func (s *GrokExecutor) ChatResponses(
 	SetActualOpenAIUpstreamEndpoint(c, grok.GrokChatResponsesEndpoint)
 
 	proxyURL := ""
-	if account.Record.ProxyID != nil && account.Record.Proxy != nil {
-		proxyURL = account.Record.Proxy.URL()
+	if provider.Record.ProxyID != nil && provider.Record.Proxy != nil {
+		proxyURL = provider.Record.Proxy.URL()
 	}
 
 	var result *protocolforward.OpenAIResult
 	var handleErr error
 	target := &grok.ResponsesTarget{
-
-		AccountID: account.Record.ID,
+		ProviderID: provider.Record.ID,
 
 		Model: upstreamModel,
 
@@ -137,44 +136,41 @@ func (s *GrokExecutor) ChatResponses(
 		PassRawStream: true,
 
 		Exchange: grok.ResponsesExchange{
-
 			SingleExchange: true,
 
 			Build: func([]byte) (*http.Request, error) { return upstreamReq, nil },
 
 			Do: func(req *http.Request) (*http.Response, error) {
-				return s.Transport.DoWithTLS(req, proxyURL, account.Record.ID, account.Record.Concurrency, s.TLSProfile(account, tlsRouterMatch...))
+				return s.Transport.DoWithTLS(req, proxyURL, provider.Record.ID, provider.Record.Concurrency, s.TLSProfile(provider, tlsRouterMatch...))
 			},
 
 			ReadError: s.Output.ReadErrorBody,
 
 			AfterExchange: func(err error) error {
 				if err != nil {
-					return s.Failure.Handle(ctx, c, account, err, false)
+					return s.Failure.Handle(ctx, c, provider, err, false)
 				}
 				return nil
 			},
 		},
 
 		BeforeResponse: func(resp *http.Response, _ []byte) (bool, error) {
-
 			if resp.StatusCode >= http.StatusBadRequest {
 				respBody, upstreamMsg := s.Output.ReadReplayableError(resp)
 				if upstreamMsg == "" {
 					upstreamMsg = fmt.Sprintf("xAI upstream returned status %d", resp.StatusCode)
 				}
-				decision := gatewayprovider.ApplyGrokExecutionHealth(ctx, s.Health, account, resp.StatusCode, resp.Header, respBody, "", upstreamModel)
+				decision := gatewayprovider.ApplyGrokExecutionHealth(ctx, s.Health, provider, resp.StatusCode, resp.Header, respBody, "", upstreamModel)
 				kind := "http_error"
-				if decision.ShouldFailover(gatewayprovider.ExecutionErrorPolicy(account), resp.StatusCode, gatewayprovider.ShouldFailoverGrokResponse(resp.StatusCode, respBody)) {
+				if decision.ShouldFailover(gatewayprovider.ExecutionErrorPolicy(provider), resp.StatusCode, gatewayprovider.ShouldFailoverGrokResponse(resp.StatusCode, respBody)) {
 					kind = "failover"
 				}
 				AppendOpsUpstreamError(c, ops.OpsUpstreamErrorEvent{
+					Platform: provider.Record.Platform,
 
-					Platform: account.Record.Platform,
+					ProviderID: provider.Record.ID,
 
-					AccountID: account.Record.ID,
-
-					AccountName: account.Record.Name,
+					ProviderName: provider.Record.Name,
 
 					UpstreamStatusCode: resp.StatusCode,
 
@@ -185,49 +181,47 @@ func (s *GrokExecutor) ChatResponses(
 					Message: upstreamMsg,
 				})
 				if decision.ShouldReturnGenericError() {
-					result, handleErr = s.Output.CompatError(resp, c, account, WriteForwardChatError, WriteForwardChatErrorBody, billingModel)
+					result, handleErr = s.Output.CompatError(resp, c, provider, WriteForwardChatError, WriteForwardChatErrorBody, billingModel)
 					return true, handleErr
 				}
 				if kind == "failover" {
-					retryable, retryDelay, retryDeadline, retryMax := gatewayprovider.GrokSameAccountRetryMetadata(account, resp.StatusCode, respBody)
+					retryable, retryDelay, retryDeadline, retryMax := gatewayprovider.GrokSameProviderRetryMetadata(provider, resp.StatusCode, respBody)
 					return true, &protocolforward.UpstreamFailoverError{
-
 						StatusCode: resp.StatusCode,
 
 						ResponseBody: respBody,
 
 						ResponseHeaders: resp.Header.Clone(),
 
-						RetryableOnSameAccount: retryable || decision.RetryableOnSameAccount(gatewayprovider.ExecutionErrorPolicy(account), resp.StatusCode),
+						RetryableOnSameProvider: retryable || decision.RetryableOnSameProvider(gatewayprovider.ExecutionErrorPolicy(provider), resp.StatusCode),
 
 						RequestScopedTransient: retryable && resp.StatusCode == http.StatusTooManyRequests,
 
-						SameAccountRetryDelay: retryDelay,
+						SameProviderRetryDelay: retryDelay,
 
-						SameAccountRetryDeadline: retryDeadline,
+						SameProviderRetryDeadline: retryDeadline,
 
-						SameAccountRetryMax: retryMax,
+						SameProviderRetryMax: retryMax,
 					}
 				}
-				result, handleErr = s.Output.CompatError(resp, c, account, WriteForwardChatError, WriteForwardChatErrorBody, billingModel)
+				result, handleErr = s.Output.CompatError(resp, c, provider, WriteForwardChatError, WriteForwardChatErrorBody, billingModel)
 				return true, handleErr
 			}
 
-			s.Health.ObserveResponse(ctx, account.View(), resp.Header, resp.StatusCode, upstreamModel)
+			s.Health.ObserveResponse(ctx, provider.View(), resp.Header, resp.StatusCode, upstreamModel)
 			return false, nil
 		},
 
 		ReadResponse: func(resp *http.Response, _ upstream.AttemptInput, _ upstream.OutputSink) (upstream.ResponsesObservation, error) {
 			if clientStream {
-				result, err = s.Output.ChatStreaming(resp, c, account, originalModel, billingModel, upstreamModel, startTime, len(body))
+				result, err = s.Output.ChatStreaming(resp, c, provider, originalModel, billingModel, upstreamModel, startTime, len(body))
 			} else {
-				result, err = s.Output.ChatBuffered(resp, c, account, originalModel, billingModel, upstreamModel, startTime)
+				result, err = s.Output.ChatBuffered(resp, c, provider, originalModel, billingModel, upstreamModel, startTime)
 			}
 			if result == nil {
 				return upstream.ResponsesObservation{}, err
 			}
 			return upstream.ResponsesObservation{
-
 				Usage: &result.Usage,
 
 				HasUsage: protocolopenai.OpenAIUsageHasTokens(&result.Usage),
@@ -253,7 +247,6 @@ func (s *GrokExecutor) ChatResponses(
 		sink = ResponseSink{Writer: c.Writer}
 	}
 	nativeResult, err := (grok.ResponsesExecutor{}).Execute(upstreamCtx, upstream.AttemptInput{
-
 		Protocol: protocol.ProtocolOpenAIResponses,
 
 		Body: responsesBody,

@@ -86,7 +86,7 @@ const openAIUpstreamClientErrorFallbackType = "invalid_request_error"
 const openAIUpstreamClientErrorFallbackMessage = "Upstream rejected the request"
 
 // IsOpenAIDeterministicClientError 判断错误是否为不可通过换号或重试恢复的客户端请求错误。
-// fork 的普通账号与池模式使用不同故障转移规则，因此必须同时检查既有分类结果。
+// fork 的普通提供商与池模式使用不同故障转移规则，因此必须同时检查既有分类结果。
 func IsOpenAIDeterministicClientError(statusCode int, shouldFailover bool) bool {
 	return statusCode == http.StatusBadRequest && !shouldFailover
 }

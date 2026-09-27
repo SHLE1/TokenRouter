@@ -60,7 +60,7 @@ type Group struct {
 	FallbackGroupIDOnInvalidRequest *int64 `json:"fallback_group_id_on_invalid_request,omitempty"`
 	// 当前分组不可用时优先回退使用的分组 ID
 	UnavailableFallbackGroupID *int64 `json:"unavailable_fallback_group_id,omitempty"`
-	// 模型路由配置：模型模式 -> 优先账号ID列表
+	// 模型路由配置：模型模式 -> 优先提供商ID列表
 	ModelRouting map[string][]int64 `json:"model_routing,omitempty"`
 	// 是否启用模型路由配置
 	ModelRoutingEnabled bool `json:"model_routing_enabled,omitempty"`
@@ -84,11 +84,11 @@ type Group struct {
 	OpenaiFastPolicy string `json:"openai_fast_policy,omitempty"`
 	// 是否强制此 OpenAI 分组请求使用 service_tier=priority
 	ForceOpenaiFast bool `json:"force_openai_fast,omitempty"`
-	// 仅允许非 apikey 类型账号关联到此分组
+	// 仅允许非 apikey 类型提供商关联到此分组
 	RequireOauthOnly bool `json:"require_oauth_only,omitempty"`
-	// 调度时仅允许 privacy 已成功设置的账号
+	// 调度时仅允许 privacy 已成功设置的提供商
 	RequirePrivacySet bool `json:"require_privacy_set,omitempty"`
-	// 默认映射模型 ID，当账号级映射找不到时使用此值
+	// 默认映射模型 ID，当提供商级映射找不到时使用此值
 	DefaultMappedModel string `json:"default_mapped_model,omitempty"`
 	// 自定义 /v1/models 展示列表配置；仅影响模型列表响应，不影响调度
 	ModelsListConfig accessview.GroupModelsListConfig `json:"models_list_config,omitempty"`
@@ -118,14 +118,14 @@ type GroupEdges struct {
 	APIKeyCompositeGroups []*APIKeyCompositeGroup `json:"api_key_composite_groups,omitempty"`
 	// UsageLogs holds the value of the usage_logs edge.
 	UsageLogs []*UsageLog `json:"usage_logs,omitempty"`
-	// Accounts holds the value of the accounts edge.
-	Accounts []*Account `json:"accounts,omitempty"`
+	// Providers holds the value of the providers edge.
+	Providers []*Provider `json:"providers,omitempty"`
 	// AllowedUsers holds the value of the allowed_users edge.
 	AllowedUsers []*User `json:"allowed_users,omitempty"`
 	// DisabledPublicUsers holds the value of the disabled_public_users edge.
 	DisabledPublicUsers []*User `json:"disabled_public_users,omitempty"`
-	// AccountGroups holds the value of the account_groups edge.
-	AccountGroups []*AccountGroup `json:"account_groups,omitempty"`
+	// ProviderGroups holds the value of the provider_groups edge.
+	ProviderGroups []*ProviderGroup `json:"provider_groups,omitempty"`
 	// UserAllowedGroups holds the value of the user_allowed_groups edge.
 	UserAllowedGroups []*UserAllowedGroup `json:"user_allowed_groups,omitempty"`
 	// UserDisabledPublicGroups holds the value of the user_disabled_public_groups edge.
@@ -162,13 +162,13 @@ func (e GroupEdges) UsageLogsOrErr() ([]*UsageLog, error) {
 	return nil, &NotLoadedError{edge: "usage_logs"}
 }
 
-// AccountsOrErr returns the Accounts value or an error if the edge
+// ProvidersOrErr returns the Providers value or an error if the edge
 // was not loaded in eager-loading.
-func (e GroupEdges) AccountsOrErr() ([]*Account, error) {
+func (e GroupEdges) ProvidersOrErr() ([]*Provider, error) {
 	if e.loadedTypes[3] {
-		return e.Accounts, nil
+		return e.Providers, nil
 	}
-	return nil, &NotLoadedError{edge: "accounts"}
+	return nil, &NotLoadedError{edge: "providers"}
 }
 
 // AllowedUsersOrErr returns the AllowedUsers value or an error if the edge
@@ -189,13 +189,13 @@ func (e GroupEdges) DisabledPublicUsersOrErr() ([]*User, error) {
 	return nil, &NotLoadedError{edge: "disabled_public_users"}
 }
 
-// AccountGroupsOrErr returns the AccountGroups value or an error if the edge
+// ProviderGroupsOrErr returns the ProviderGroups value or an error if the edge
 // was not loaded in eager-loading.
-func (e GroupEdges) AccountGroupsOrErr() ([]*AccountGroup, error) {
+func (e GroupEdges) ProviderGroupsOrErr() ([]*ProviderGroup, error) {
 	if e.loadedTypes[6] {
-		return e.AccountGroups, nil
+		return e.ProviderGroups, nil
 	}
-	return nil, &NotLoadedError{edge: "account_groups"}
+	return nil, &NotLoadedError{edge: "provider_groups"}
 }
 
 // UserAllowedGroupsOrErr returns the UserAllowedGroups value or an error if the edge
@@ -552,9 +552,9 @@ func (_m *Group) QueryUsageLogs() *UsageLogQuery {
 	return NewGroupClient(_m.config).QueryUsageLogs(_m)
 }
 
-// QueryAccounts queries the "accounts" edge of the Group entity.
-func (_m *Group) QueryAccounts() *AccountQuery {
-	return NewGroupClient(_m.config).QueryAccounts(_m)
+// QueryProviders queries the "providers" edge of the Group entity.
+func (_m *Group) QueryProviders() *ProviderQuery {
+	return NewGroupClient(_m.config).QueryProviders(_m)
 }
 
 // QueryAllowedUsers queries the "allowed_users" edge of the Group entity.
@@ -567,9 +567,9 @@ func (_m *Group) QueryDisabledPublicUsers() *UserQuery {
 	return NewGroupClient(_m.config).QueryDisabledPublicUsers(_m)
 }
 
-// QueryAccountGroups queries the "account_groups" edge of the Group entity.
-func (_m *Group) QueryAccountGroups() *AccountGroupQuery {
-	return NewGroupClient(_m.config).QueryAccountGroups(_m)
+// QueryProviderGroups queries the "provider_groups" edge of the Group entity.
+func (_m *Group) QueryProviderGroups() *ProviderGroupQuery {
+	return NewGroupClient(_m.config).QueryProviderGroups(_m)
 }
 
 // QueryUserAllowedGroups queries the "user_allowed_groups" edge of the Group entity.
