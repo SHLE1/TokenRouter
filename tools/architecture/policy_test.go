@@ -15,6 +15,8 @@ func TestDependencyBoundaries(t *testing.T) {
 		allowed  bool
 	}{
 		{"migrations/pricing_preview_fixture_test.go", modulePath + "/internal/billing/pricing", true},
+		{"migrations/pricing_merge_fixture_test.go", modulePath + "/internal/billing/pricing", true},
+		{"migrations/pricing_merge_test.go", modulePath + "/internal/billing/pricing", true},
 		{"migrations/new_test.go", modulePath + "/internal/billing/pricing", false},
 		{"migrations/platform_independent_pricing_integration_test.go", modulePath + "/internal/routing/postgres", false},
 		{"internal/provider/new.go", modulePath + "/internal/billing", true},

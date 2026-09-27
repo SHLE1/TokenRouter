@@ -5,10 +5,6 @@ import (
 	proxydto "github.com/TokenFlux/TokenRouter/internal/egress/httpapi/dto"
 )
 
-type Proxy = proxydto.Proxy
-
-type ProxyWithProviderCount = proxydto.ProxyWithProviderCount
-
 type AdminProxy = proxydto.AdminProxy
 
 type AdminProxyWithProviderCount = proxydto.AdminProxyWithProviderCount

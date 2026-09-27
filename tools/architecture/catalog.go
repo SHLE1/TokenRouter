@@ -381,7 +381,7 @@ var ioFileExceptions = map[string]string{
 
 // 窄权限属于指定文件，不能由相邻文件或目标子包继承。
 var filePermissions = []filePermission{
-	{Scope: "migrations", Imports: "internal/billing/pricing", Files: "pricing_preview_fixture_test.go"},
+	{Scope: "migrations", Imports: "internal/billing/pricing", Files: "pricing_preview_fixture_test.go pricing_merge_fixture_test.go pricing_merge_test.go"},
 	{Scope: "migrations", Imports: "internal/infra/postgres github.com/lib/pq github.com/testcontainers/testcontainers-go/modules/postgres", Files: "platform_independent_groups_integration_test.go platform_independent_pricing_integration_test.go provider_names_integration_test.go"},
 	{Scope: "internal/usage/postgres", Imports: "internal/ops/postgres", Files: "platform_snapshot_integration_test.go"},
 	{Scope: "internal/provider", Imports: "internal/provider/provider", Files: `admin_editor_fixture_test.go admin_legacy_extra_test.go

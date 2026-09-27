@@ -1,4 +1,4 @@
-package pricing
+package migrations_test
 
 import (
 	"bytes"
@@ -8,35 +8,37 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 )
 
-// MergeConflict 保留冲突模型和原条目编号，供迁移预检定位需要人工处理的价卡。
-type MergeConflict struct {
+// pricingMergeConflict 保留冲突模型和原条目编号，供迁移预检定位需要人工处理的价卡。
+type pricingMergeConflict struct {
 	Models   []string `json:"models"`
 	EntryIDs []int64  `json:"entry_ids"`
 	Reason   string   `json:"reason"`
 }
 
-// MergePriceCards 合并同一作用域的历史价卡；不能比较的配置返回完整冲突清单。
+// mergePriceCards 合并同一作用域的历史价卡；不能比较的配置返回完整冲突清单。
 // 单价逐桶取高，空值保留继承含义；不同作用域的提供商成本规则必须分别调用。
-func MergePriceCards(entries []ModelPricingEntry) ([]ModelPricingEntry, []MergeConflict) {
+func mergePriceCards(entries []pricing.ModelPricingEntry) ([]pricing.ModelPricingEntry, []pricingMergeConflict) {
 	type mergedEntry struct {
-		card ModelPricingEntry
+		card pricing.ModelPricingEntry
 		ids  []int64
 	}
 	byModel := make(map[string]*mergedEntry)
-	var conflicts []MergeConflict
+	var conflicts []pricingMergeConflict
 	for _, entry := range entries {
 		for _, model := range entry.Models {
-			model = NormalizePriceModelName(model)
+			model = pricing.NormalizePriceModelName(model)
 			if model == "" || strings.Contains(strings.TrimSuffix(model, "*"), "*") {
-				conflicts = append(conflicts, MergeConflict{Models: []string{model}, EntryIDs: []int64{entry.ID}, Reason: "invalid model pattern"})
+				conflicts = append(conflicts, pricingMergeConflict{Models: []string{model}, EntryIDs: []int64{entry.ID}, Reason: "invalid model pattern"})
 				continue
 			}
 			card := entry.Clone()
 			card.Models = []string{model}
 			if card.BillingMode == "" {
-				card.BillingMode = BillingModeToken
+				card.BillingMode = pricing.BillingModeToken
 			}
 			previous := byModel[model]
 			if previous == nil {
@@ -46,7 +48,7 @@ func MergePriceCards(entries []ModelPricingEntry) ([]ModelPricingEntry, []MergeC
 			previous.ids = append(previous.ids, entry.ID)
 			merged, reason := mergePriceCard(previous.card, card)
 			if reason != "" {
-				conflicts = append(conflicts, MergeConflict{Models: []string{model}, EntryIDs: append([]int64(nil), previous.ids...), Reason: reason})
+				conflicts = append(conflicts, pricingMergeConflict{Models: []string{model}, EntryIDs: append([]int64(nil), previous.ids...), Reason: reason})
 				continue
 			}
 			previous.card = merged
@@ -62,14 +64,14 @@ func MergePriceCards(entries []ModelPricingEntry) ([]ModelPricingEntry, []MergeC
 			if modelPatternsOverlap(left, right) {
 				ids := append([]int64(nil), byModel[left].ids...)
 				ids = append(ids, byModel[right].ids...)
-				conflicts = append(conflicts, MergeConflict{Models: []string{left, right}, EntryIDs: ids, Reason: "overlapping model patterns"})
+				conflicts = append(conflicts, pricingMergeConflict{Models: []string{left, right}, EntryIDs: ids, Reason: "overlapping model patterns"})
 			}
 		}
 	}
 	if len(conflicts) > 0 {
 		return nil, conflicts
 	}
-	out := make([]ModelPricingEntry, 0, len(models))
+	out := make([]pricing.ModelPricingEntry, 0, len(models))
 	for _, model := range models {
 		out = append(out, byModel[model].card)
 	}
@@ -83,17 +85,17 @@ func modelPatternsOverlap(left, right string) bool {
 }
 
 // mergePriceCard 先核对所有非价格规则，再对相同计量单位的显式单价取高。
-func mergePriceCard(left, right ModelPricingEntry) (ModelPricingEntry, string) {
+func mergePriceCard(left, right pricing.ModelPricingEntry) (pricing.ModelPricingEntry, string) {
 	l, err := comparablePriceRules(left)
 	if err != nil {
-		return ModelPricingEntry{}, err.Error()
+		return pricing.ModelPricingEntry{}, err.Error()
 	}
 	r, err := comparablePriceRules(right)
 	if err != nil {
-		return ModelPricingEntry{}, err.Error()
+		return pricing.ModelPricingEntry{}, err.Error()
 	}
 	if !bytes.Equal(l, r) {
-		return ModelPricingEntry{}, "billing mode, intervals, multipliers or time rules differ"
+		return pricing.ModelPricingEntry{}, "billing mode, intervals, multipliers or time rules differ"
 	}
 	merged := left.Clone()
 	destination := cardUnitPrices(&merged)
@@ -101,11 +103,11 @@ func mergePriceCard(left, right ModelPricingEntry) (ModelPricingEntry, string) {
 	for i := range destination {
 		a, b := *destination[i], *source[i]
 		if (a == nil) != (b == nil) {
-			return ModelPricingEntry{}, "inherited and explicit prices cannot be compared"
+			return pricing.ModelPricingEntry{}, "inherited and explicit prices cannot be compared"
 		}
 		if a != nil {
 			if math.IsNaN(*a) || math.IsNaN(*b) || math.IsInf(*a, 0) || math.IsInf(*b, 0) || *a < 0 || *b < 0 {
-				return ModelPricingEntry{}, "invalid unit price"
+				return pricing.ModelPricingEntry{}, "invalid unit price"
 			}
 			value := math.Max(*a, *b)
 			*destination[i] = &value
@@ -115,7 +117,7 @@ func mergePriceCard(left, right ModelPricingEntry) (ModelPricingEntry, string) {
 }
 
 // cardUnitPrices 只枚举金额桶；倍率、区间边界及排序不参加逐项取高。
-func cardUnitPrices(card *ModelPricingEntry) []**float64 {
+func cardUnitPrices(card *pricing.ModelPricingEntry) []**float64 {
 	prices := []**float64{&card.InputPrice, &card.OutputPrice, &card.CacheWritePrice, &card.CacheWrite1hPrice, &card.CacheReadPrice, &card.ImageInputPrice, &card.ImageOutputPrice, &card.PerRequestPrice}
 	for i := range card.Intervals {
 		interval := &card.Intervals[i]
@@ -125,7 +127,7 @@ func cardUnitPrices(card *ModelPricingEntry) []**float64 {
 }
 
 // comparablePriceRules 去掉存储身份及金额，仅比较会改变计费口径的规则。
-func comparablePriceRules(card ModelPricingEntry) ([]byte, error) {
+func comparablePriceRules(card pricing.ModelPricingEntry) ([]byte, error) {
 	card = card.Clone()
 	card.ID, card.PricingConfigID = 0, 0
 	card.Models = nil

@@ -25,29 +25,6 @@ func ProxyFromEgress(p *egress.Proxy) *Proxy {
 	}
 }
 
-func ProxyWithProviderCountFromEgress(p *egress.ProxyWithProviderCount) *ProxyWithProviderCount {
-	if p == nil {
-		return nil
-	}
-	return &ProxyWithProviderCount{
-		Proxy:          *ProxyFromEgress(&p.Proxy),
-		ProviderCount:  p.ProviderCount,
-		LatencyMs:      p.LatencyMs,
-		LatencyStatus:  p.LatencyStatus,
-		LatencyMessage: p.LatencyMessage,
-		IPAddress:      p.IPAddress,
-		Country:        p.Country,
-		CountryCode:    p.CountryCode,
-		Region:         p.Region,
-		City:           p.City,
-		QualityStatus:  p.QualityStatus,
-		QualityScore:   p.QualityScore,
-		QualityGrade:   p.QualityGrade,
-		QualitySummary: p.QualitySummary,
-		QualityChecked: p.QualityChecked,
-	}
-}
-
 // ProxyFromEgressAdmin converts a service Proxy to AdminProxy DTO for admin users.
 // It includes the password field - user-facing endpoints must not use this.
 func ProxyFromEgressAdmin(p *egress.Proxy) *AdminProxy {

@@ -23,7 +23,7 @@ type pricingMigrationScope struct {
 	ID        int64                       `json:"id"`
 	Before    json.RawMessage             `json:"before"`
 	After     []pricing.ModelPricingEntry `json:"after"`
-	Conflicts []pricing.MergeConflict     `json:"conflicts,omitempty"`
+	Conflicts []pricingMergeConflict      `json:"conflicts,omitempty"`
 }
 
 // previewPricingMigration 读取迁移 276 之前的 schema，历史 accounts 表名在此保留。
@@ -63,7 +63,7 @@ ORDER BY 1, 2`)
 		}
 		// 预检保留旧平台标签与行 ID，管理员可以定位待合并条目；运行时价卡不再持有平台。
 		scope.Before = append(json.RawMessage(nil), raw...)
-		scope.After, scope.Conflicts = pricing.MergePriceCards(original)
+		scope.After, scope.Conflicts = mergePriceCards(original)
 		report.Blocked = report.Blocked || len(scope.Conflicts) > 0
 		report.Scopes = append(report.Scopes, scope)
 	}
