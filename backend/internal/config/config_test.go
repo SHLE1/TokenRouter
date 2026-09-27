@@ -1633,16 +1633,6 @@ func TestValidateConfigErrors(t *testing.T) {
 			wantErr: "jwt.secret must be at least 32 bytes",
 		},
 		{
-			name:    "subscription maintenance worker_count non-negative",
-			mutate:  func(c *Config) { c.SubscriptionMaintenance.WorkerCount = -1 },
-			wantErr: "subscription_maintenance.worker_count",
-		},
-		{
-			name:    "subscription maintenance queue_size non-negative",
-			mutate:  func(c *Config) { c.SubscriptionMaintenance.QueueSize = -1 },
-			wantErr: "subscription_maintenance.queue_size",
-		},
-		{
 			name:    "jwt expire hour positive",
 			mutate:  func(c *Config) { c.JWT.ExpireHour = 0 },
 			wantErr: "jwt.expire_hour must be positive",
@@ -2678,4 +2668,19 @@ func TestLoadIgnoresLegacyRunMode(t *testing.T) {
 			require.JSONEq(t, string(before), string(after))
 		})
 	}
+}
+
+// TestLoadIgnoresRetiredSubscriptionMaintenance 验证旧队列配置不会阻止正常启动。
+func TestLoadIgnoresRetiredSubscriptionMaintenance(t *testing.T) {
+	resetViperWithJWTSecret(t)
+	configFile := filepath.Join(t.TempDir(), "config.yaml")
+	require.NoError(t, os.WriteFile(configFile, []byte("subscription_maintenance:\n  worker_count: -1\n  queue_size: -1\nserver:\n  port: 8091\n"), 0o600))
+	t.Setenv("CONFIG_FILE", configFile)
+	t.Setenv("SUBSCRIPTION_MAINTENANCE_WORKER_COUNT", "-2")
+	t.Setenv("SUBSCRIPTION_MAINTENANCE_QUEUE_SIZE", "-2")
+	cfg, err := Load()
+	require.NoError(t, err)
+	require.Equal(t, 8091, cfg.Server.Port)
+	cfg.JWT.ExpireHour = 0
+	require.ErrorContains(t, cfg.Validate(), "jwt.expire_hour")
 }

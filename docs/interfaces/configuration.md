@@ -41,6 +41,8 @@
 2. 否则按顺序搜索 `DATA_DIR`（若设置）、`/app/data`、当前目录、`./config`、`/etc/sub2api` 中的 `config.yaml`。
 3. 文件不存在允许继续使用默认值和环境变量；文件存在但 YAML 无法读取/解析则启动失败。
 
+`subscription_maintenance.worker_count`、`subscription_maintenance.queue_size` 及对应环境变量已退役。加载器忽略这些旧键，不启动订阅维护队列；其余已知配置仍按现有规则校验。
+
 网关的静态体积、等待、切换上限和完成执行器参数由 app/构造适配投影为独立 Options，核心不接收完整 Config。HTTP 请求、原生尝试和完成队列复用同一应用图。用户提示替换及错误规则仍按原设置来源和生效时机读取，分别由 gateway/promptpolicy 与 gateway/errorpolicy 持有唯一运行状态。错误规则的管理写入、回源与发布在单服务进程内协调，不能据此推断新增跨实例一致性保证。
 
 环境变量把点分键转成大写下划线，例如 `database.host` 对应 `DATABASE_HOST`，`gateway.max_body_size` 对应 `GATEWAY_MAX_BODY_SIZE`。`setDefaults` 还负责把所有 struct 键注册进 Viper，使纯环境变量部署能被 `Unmarshal` 看到；新增字段不能只加 `mapstructure` tag 而不注册默认/可达键。定价进程配置中的 `pricing.override_file` 是可选本地 JSON 补丁，按字段浅合并覆盖远程目录和回退文件，修改后在重启或下一次目录下载时生效；文件缺失/非法只记录告警并保留原目录。

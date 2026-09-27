@@ -59,43 +59,42 @@ const DefaultUpstreamResponseReadMaxBytes int64 = 128 * 1024 * 1024
 const DefaultModelsListReadMaxBytes int64 = 8 * 1024 * 1024
 
 type Config struct {
-	Server                  ServerConfig                  `mapstructure:"server"`
-	Log                     LogConfig                     `mapstructure:"log"`
-	CORS                    CORSConfig                    `mapstructure:"cors"`
-	Security                SecurityConfig                `mapstructure:"security"`
-	Billing                 BillingConfig                 `mapstructure:"billing"`
-	Turnstile               TurnstileConfig               `mapstructure:"turnstile"`
-	Database                DatabaseConfig                `mapstructure:"database"`
-	Redis                   RedisConfig                   `mapstructure:"redis"`
-	Ops                     OpsConfig                     `mapstructure:"ops"`
-	JWT                     JWTConfig                     `mapstructure:"jwt"`
-	Totp                    TotpConfig                    `mapstructure:"totp"`
-	WebAuthn                WebAuthnConfig                `mapstructure:"webauthn"`
-	LinuxDo                 LinuxDoConnectConfig          `mapstructure:"linuxdo_connect"`
-	WeChat                  WeChatConnectConfig           `mapstructure:"wechat_connect"`
-	OIDC                    OIDCConnectConfig             `mapstructure:"oidc_connect"`
-	DingTalk                DingTalkConnectConfig         `mapstructure:"dingtalk_connect"`
-	GitHubOAuth             EmailOAuthProviderConfig      `mapstructure:"github_oauth"`
-	GoogleOAuth             EmailOAuthProviderConfig      `mapstructure:"google_oauth"`
-	Default                 DefaultConfig                 `mapstructure:"default"`
-	RateLimit               RateLimitConfig               `mapstructure:"rate_limit"`
-	Pricing                 PricingConfig                 `mapstructure:"pricing"`
-	Gateway                 GatewayConfig                 `mapstructure:"gateway"`
-	APIKeyAuth              APIKeyAuthCacheConfig         `mapstructure:"api_key_auth_cache"`
-	SubscriptionCache       SubscriptionCacheConfig       `mapstructure:"subscription_cache"`
-	SubscriptionMaintenance SubscriptionMaintenanceConfig `mapstructure:"subscription_maintenance"`
-	Dashboard               DashboardCacheConfig          `mapstructure:"dashboard_cache"`
-	DashboardAgg            DashboardAggregationConfig    `mapstructure:"dashboard_aggregation"`
-	UsageCleanup            UsageCleanupConfig            `mapstructure:"usage_cleanup"`
-	Concurrency             ConcurrencyConfig             `mapstructure:"concurrency"`
-	TokenRefresh            TokenRefreshConfig            `mapstructure:"token_refresh"`
-	Timezone                string                        `mapstructure:"timezone"` // e.g. "Asia/Shanghai", "UTC"
-	Gemini                  GeminiConfig                  `mapstructure:"gemini"`
-	Update                  UpdateConfig                  `mapstructure:"update"`
-	Idempotency             IdempotencyConfig             `mapstructure:"idempotency"`
-	BatchImage              BatchImageConfig              `mapstructure:"batch_image"`
-	Creative                CreativeConfig                `mapstructure:"creative"`
-	Team                    TeamConfig                    `mapstructure:"team"`
+	Server            ServerConfig               `mapstructure:"server"`
+	Log               LogConfig                  `mapstructure:"log"`
+	CORS              CORSConfig                 `mapstructure:"cors"`
+	Security          SecurityConfig             `mapstructure:"security"`
+	Billing           BillingConfig              `mapstructure:"billing"`
+	Turnstile         TurnstileConfig            `mapstructure:"turnstile"`
+	Database          DatabaseConfig             `mapstructure:"database"`
+	Redis             RedisConfig                `mapstructure:"redis"`
+	Ops               OpsConfig                  `mapstructure:"ops"`
+	JWT               JWTConfig                  `mapstructure:"jwt"`
+	Totp              TotpConfig                 `mapstructure:"totp"`
+	WebAuthn          WebAuthnConfig             `mapstructure:"webauthn"`
+	LinuxDo           LinuxDoConnectConfig       `mapstructure:"linuxdo_connect"`
+	WeChat            WeChatConnectConfig        `mapstructure:"wechat_connect"`
+	OIDC              OIDCConnectConfig          `mapstructure:"oidc_connect"`
+	DingTalk          DingTalkConnectConfig      `mapstructure:"dingtalk_connect"`
+	GitHubOAuth       EmailOAuthProviderConfig   `mapstructure:"github_oauth"`
+	GoogleOAuth       EmailOAuthProviderConfig   `mapstructure:"google_oauth"`
+	Default           DefaultConfig              `mapstructure:"default"`
+	RateLimit         RateLimitConfig            `mapstructure:"rate_limit"`
+	Pricing           PricingConfig              `mapstructure:"pricing"`
+	Gateway           GatewayConfig              `mapstructure:"gateway"`
+	APIKeyAuth        APIKeyAuthCacheConfig      `mapstructure:"api_key_auth_cache"`
+	SubscriptionCache SubscriptionCacheConfig    `mapstructure:"subscription_cache"`
+	Dashboard         DashboardCacheConfig       `mapstructure:"dashboard_cache"`
+	DashboardAgg      DashboardAggregationConfig `mapstructure:"dashboard_aggregation"`
+	UsageCleanup      UsageCleanupConfig         `mapstructure:"usage_cleanup"`
+	Concurrency       ConcurrencyConfig          `mapstructure:"concurrency"`
+	TokenRefresh      TokenRefreshConfig         `mapstructure:"token_refresh"`
+	Timezone          string                     `mapstructure:"timezone"` // e.g. "Asia/Shanghai", "UTC"
+	Gemini            GeminiConfig               `mapstructure:"gemini"`
+	Update            UpdateConfig               `mapstructure:"update"`
+	Idempotency       IdempotencyConfig          `mapstructure:"idempotency"`
+	BatchImage        BatchImageConfig           `mapstructure:"batch_image"`
+	Creative          CreativeConfig             `mapstructure:"creative"`
+	Team              TeamConfig                 `mapstructure:"team"`
 }
 
 // TeamConfig 控制团队功能的默认开放策略。
@@ -1476,13 +1475,6 @@ type SubscriptionCacheConfig struct {
 	JitterPercent int `mapstructure:"jitter_percent"`
 }
 
-// SubscriptionMaintenanceConfig 订阅窗口维护后台任务配置。
-// 用于将“请求路径触发的维护动作”有界化，避免高并发下 goroutine 膨胀。
-type SubscriptionMaintenanceConfig struct {
-	WorkerCount int `mapstructure:"worker_count"`
-	QueueSize   int `mapstructure:"queue_size"`
-}
-
 // DashboardCacheConfig 仪表盘统计缓存配置
 type DashboardCacheConfig struct {
 	// Enabled: 是否启用仪表盘缓存
@@ -2326,10 +2318,6 @@ func setDefaults() {
 	viper.SetDefault("gemini.oauth.scopes", "")
 	viper.SetDefault("gemini.quota.policy", "")
 
-	// Subscription Maintenance (bounded queue + worker pool)
-	viper.SetDefault("subscription_maintenance.worker_count", 2)
-	viper.SetDefault("subscription_maintenance.queue_size", 1024)
-
 	setEnvReachableDefaults()
 }
 
@@ -2510,13 +2498,6 @@ func (c *Config) Validate() error {
 		if c.Log.Sampling.Thereafter < 0 {
 			return fmt.Errorf("log.sampling.thereafter must be non-negative")
 		}
-	}
-
-	if c.SubscriptionMaintenance.WorkerCount < 0 {
-		return fmt.Errorf("subscription_maintenance.worker_count must be non-negative")
-	}
-	if c.SubscriptionMaintenance.QueueSize < 0 {
-		return fmt.Errorf("subscription_maintenance.queue_size must be non-negative")
 	}
 
 	// Gemini OAuth 配置校验：client_id 与 client_secret 必须同时设置或同时留空。

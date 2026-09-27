@@ -97,8 +97,6 @@ func TestAPIKeyAuthEnforcesQuotaAndCredentials(t *testing.T) {
 
 	t.Run("completes_maintenance_before_request", func(t *testing.T) {
 		cfg := &config.Config{}
-		cfg.SubscriptionMaintenance.WorkerCount = 1
-		cfg.SubscriptionMaintenance.QueueSize = 1
 
 		apiKeyService := testkit.NewService(apiKeyRepo, nil, nil, nil, nil, nil, cfg)
 		apiKeyService.Start()

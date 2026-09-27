@@ -89,7 +89,7 @@ Wire 构造对象并登记资源后，lifecycle 才启动后台工作。时间�
 
 定价 provider 由 `app/pricing.go` 投影独立 Options，按初始化、启动、停止的顺序接入生命周期。远端客户端和运行实例直接使用 billing/provider。Calculator、PriceResolver 和 PricingConfigService 也由 app 直接提供实例，供计算与查价消费者共享。平台模型别名和动态 Grok 默认值由 gateway/provider/modelidentity 投影，每次查价只取得一次快照；纯定价不读取平台运行状态。Key 与分组模型追踪由 gateway/modeltrace 组合。
 
-billing 的余额/Key 缓存队列 和订阅过期提醒由 app 绑定到现有生命周期。提醒保留立即首轮、每分钟扫描和既有 Redis/数据库 leader 策略，停止时取消并等待在途操作。未接入生产图的订阅维护队列不启动。
+billing 的余额/Key 缓存队列和订阅过期提醒由 app 绑定到现有生命周期。提醒保留立即首轮、每分钟扫描和既有 Redis/数据库 leader 策略，停止时取消并等待在途操作。
 
 搜索运行时先于 HTTP 开放初始化，所有配置代次共享在途计数；配置替换只退役旧客户端的空闲连接，不取消已进入的搜索。关闭时停止新搜索并等待额度清理。审核先封闭队列并等待；邮件队列在通知生产者之后排空，预算耗尽会取消 SMTP 并报告未完成项。HTTP 五秒与后台三十秒总预算保持独立，超时不能被报告成排空成功。
 
