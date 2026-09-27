@@ -29,8 +29,6 @@ import (
 
 const (
 	defaultLiveMaxSessionDuration = time.Hour
-	liveRedisOperationTimeout     = 3 * time.Second
-	liveUpstreamBodyLimit         = 2 << 20
 )
 
 const (

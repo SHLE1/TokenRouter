@@ -8,7 +8,7 @@ import (
 	dbent "github.com/TokenFlux/TokenRouter/ent"
 	"github.com/TokenFlux/TokenRouter/ent/announcement"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
-	service "github.com/TokenFlux/TokenRouter/internal/site"
+	"github.com/TokenFlux/TokenRouter/internal/site"
 
 	entsql "entgo.io/ent/dialect/sql"
 )
@@ -17,11 +17,11 @@ type announcementRepository struct {
 	client *dbent.Client
 }
 
-func NewAnnouncementRepository(client *dbent.Client) service.AnnouncementRepository {
+func NewAnnouncementRepository(client *dbent.Client) site.AnnouncementRepository {
 	return &announcementRepository{client: client}
 }
 
-func (r *announcementRepository) Create(ctx context.Context, a *service.Announcement) error {
+func (r *announcementRepository) Create(ctx context.Context, a *site.Announcement) error {
 	client := clientFromContext(ctx, r.client)
 	builder := client.Announcement.Create().
 		SetTitle(a.Title).
@@ -52,7 +52,7 @@ func (r *announcementRepository) Create(ctx context.Context, a *service.Announce
 	return nil
 }
 
-func (r *announcementRepository) GetByID(ctx context.Context, id int64) (*service.Announcement, error) {
+func (r *announcementRepository) GetByID(ctx context.Context, id int64) (*site.Announcement, error) {
 	m, err := r.client.Announcement.Query().
 		Where(announcement.IDEQ(id)).
 		Only(ctx)
@@ -62,7 +62,7 @@ func (r *announcementRepository) GetByID(ctx context.Context, id int64) (*servic
 	return announcementEntityToService(m), nil
 }
 
-func (r *announcementRepository) Update(ctx context.Context, a *service.Announcement) error {
+func (r *announcementRepository) Update(ctx context.Context, a *site.Announcement) error {
 	client := clientFromContext(ctx, r.client)
 	builder := client.Announcement.UpdateOneID(a.ID).
 		SetTitle(a.Title).
@@ -112,11 +112,11 @@ func (r *announcementRepository) ArchiveExpired(ctx context.Context, now time.Ti
 	client := clientFromContext(ctx, r.client)
 	updated, err := client.Announcement.Update().
 		Where(
-			announcement.StatusEQ(service.AnnouncementStatusActive),
+			announcement.StatusEQ(site.AnnouncementStatusActive),
 			announcement.EndsAtNotNil(),
 			announcement.EndsAtLTE(now),
 		).
-		SetStatus(service.AnnouncementStatusArchived).
+		SetStatus(site.AnnouncementStatusArchived).
 		Save(ctx)
 	return int64(updated), err
 }
@@ -124,8 +124,8 @@ func (r *announcementRepository) ArchiveExpired(ctx context.Context, now time.Ti
 func (r *announcementRepository) List(
 	ctx context.Context,
 	params pagination.PaginationParams,
-	filters service.AnnouncementListFilters,
-) ([]service.Announcement, *pagination.PaginationResult, error) {
+	filters site.AnnouncementListFilters,
+) ([]site.Announcement, *pagination.PaginationResult, error) {
 	q := r.client.Announcement.Query()
 
 	if filters.Status != "" {
@@ -211,10 +211,10 @@ func announcementListOrders(params pagination.PaginationParams) []func(*entsql.S
 	}
 }
 
-func (r *announcementRepository) ListActive(ctx context.Context, now time.Time) ([]service.Announcement, error) {
+func (r *announcementRepository) ListActive(ctx context.Context, now time.Time) ([]site.Announcement, error) {
 	q := r.client.Announcement.Query().
 		Where(
-			announcement.StatusEQ(service.AnnouncementStatusActive),
+			announcement.StatusEQ(site.AnnouncementStatusActive),
 			announcement.Or(announcement.StartsAtIsNil(), announcement.StartsAtLTE(now)),
 			announcement.Or(announcement.EndsAtIsNil(), announcement.EndsAtGT(now)),
 		).
@@ -228,7 +228,7 @@ func (r *announcementRepository) ListActive(ctx context.Context, now time.Time) 
 	return announcementEntitiesToService(items), nil
 }
 
-func applyAnnouncementEntityToService(dst *service.Announcement, src *dbent.Announcement) {
+func applyAnnouncementEntityToService(dst *site.Announcement, src *dbent.Announcement) {
 	if dst == nil || src == nil {
 		return
 	}
@@ -237,11 +237,11 @@ func applyAnnouncementEntityToService(dst *service.Announcement, src *dbent.Anno
 	dst.UpdatedAt = src.UpdatedAt
 }
 
-func announcementEntityToService(m *dbent.Announcement) *service.Announcement {
+func announcementEntityToService(m *dbent.Announcement) *site.Announcement {
 	if m == nil {
 		return nil
 	}
-	return &service.Announcement{
+	return &site.Announcement{
 		ID:         m.ID,
 		Title:      m.Title,
 		Content:    m.Content,
@@ -257,8 +257,8 @@ func announcementEntityToService(m *dbent.Announcement) *service.Announcement {
 	}
 }
 
-func announcementEntitiesToService(models []*dbent.Announcement) []service.Announcement {
-	out := make([]service.Announcement, 0, len(models))
+func announcementEntitiesToService(models []*dbent.Announcement) []site.Announcement {
+	out := make([]site.Announcement, 0, len(models))
 	for i := range models {
 		if s := announcementEntityToService(models[i]); s != nil {
 			out = append(out, *s)

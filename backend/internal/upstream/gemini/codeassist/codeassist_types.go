@@ -3,11 +3,14 @@ package codeassist
 
 import wire "github.com/TokenFlux/TokenRouter/internal/protocol/gemini"
 
-type LoadCodeAssistRequest = wire.LoadCodeAssistRequest
-type LoadCodeAssistMetadata = wire.LoadCodeAssistMetadata
-type TierInfo = wire.TierInfo
-type LoadCodeAssistResponse = wire.LoadCodeAssistResponse
-type AllowedTier = wire.AllowedTier
-type OnboardUserRequest = wire.OnboardUserRequest
-type OnboardUserResponse = wire.OnboardUserResponse
-type OnboardUserResultData = wire.OnboardUserResultData
+type (
+	LoadCodeAssistRequest  = wire.LoadCodeAssistRequest
+	LoadCodeAssistMetadata = wire.LoadCodeAssistMetadata
+	TierInfo               = wire.TierInfo
+	LoadCodeAssistResponse = wire.LoadCodeAssistResponse
+)
+
+type (
+	OnboardUserRequest  = wire.OnboardUserRequest
+	OnboardUserResponse = wire.OnboardUserResponse
+)

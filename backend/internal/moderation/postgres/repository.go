@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	service "github.com/TokenFlux/TokenRouter/internal/moderation"
+	"github.com/TokenFlux/TokenRouter/internal/moderation"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
 )
 
@@ -27,7 +27,7 @@ func NewContentModerationRepository(db *sql.DB, users UserParticipation) *Store 
 	return &Store{db: db, users: users}
 }
 
-func (r *Store) CreateLog(ctx context.Context, log *service.ContentModerationLog) error {
+func (r *Store) CreateLog(ctx context.Context, log *moderation.ContentModerationLog) error {
 	if log == nil {
 		return nil
 	}
@@ -114,7 +114,7 @@ INSERT INTO content_moderation_logs (
 	return nil
 }
 
-func (r *Store) ListLogs(ctx context.Context, filter service.ContentModerationLogFilter) ([]service.ContentModerationLog, *pagination.PaginationResult, error) {
+func (r *Store) ListLogs(ctx context.Context, filter moderation.ContentModerationLogFilter) ([]moderation.ContentModerationLog, *pagination.PaginationResult, error) {
 	where, args := buildContentModerationLogWhere(filter)
 	whereSQL := "WHERE " + strings.Join(where, " AND ")
 
@@ -155,9 +155,9 @@ LIMIT $`+fmt.Sprint(len(queryArgs)-1)+` OFFSET $`+fmt.Sprint(len(queryArgs)),
 	}
 	defer func() { _ = rows.Close() }()
 
-	items := make([]service.ContentModerationLog, 0)
+	items := make([]moderation.ContentModerationLog, 0)
 	for rows.Next() {
-		var item service.ContentModerationLog
+		var item moderation.ContentModerationLog
 		var userID, billingUserID, teamID, apiKeyID, groupID, latency, queueDelay sql.NullInt64
 		var scoresRaw, thresholdsRaw []byte
 		if err := rows.Scan(
@@ -241,8 +241,8 @@ LIMIT $`+fmt.Sprint(len(queryArgs)-1)+` OFFSET $`+fmt.Sprint(len(queryArgs)),
 }
 
 // GetLog 只在管理员详情接口读取完整正文和失败单元，列表查询不携带这些大字段。
-func (r *Store) GetLog(ctx context.Context, id int64) (*service.ContentModerationLog, error) {
-	var item service.ContentModerationLog
+func (r *Store) GetLog(ctx context.Context, id int64) (*moderation.ContentModerationLog, error) {
+	var item moderation.ContentModerationLog
 	var userID, billingUserID, teamID, apiKeyID, groupID, latency, queueDelay sql.NullInt64
 	var scoresRaw, thresholdsRaw, inputItemsRaw, failedUnitsRaw []byte
 	err := r.db.QueryRowContext(ctx, `
@@ -283,7 +283,7 @@ WHERE l.id = $1
 	return &item, nil
 }
 
-func assignContentModerationNullableIDs(item *service.ContentModerationLog, userID sql.NullInt64, billingUserID sql.NullInt64, teamID sql.NullInt64, apiKeyID sql.NullInt64, groupID sql.NullInt64, latency sql.NullInt64, queueDelay sql.NullInt64) {
+func assignContentModerationNullableIDs(item *moderation.ContentModerationLog, userID sql.NullInt64, billingUserID sql.NullInt64, teamID sql.NullInt64, apiKeyID sql.NullInt64, groupID sql.NullInt64, latency sql.NullInt64, queueDelay sql.NullInt64) {
 	if userID.Valid {
 		value := userID.Int64
 		item.UserID = &value
@@ -339,7 +339,7 @@ WHERE user_id = $1
 	return count, nil
 }
 
-func (r *Store) CreateCyberWarning(ctx context.Context, warning *service.ContentModerationCyberWarning) error {
+func (r *Store) CreateCyberWarning(ctx context.Context, warning *moderation.ContentModerationCyberWarning) error {
 	if warning == nil {
 		return nil
 	}
@@ -350,7 +350,7 @@ func (r *Store) CreateCyberWarning(ctx context.Context, warning *service.Content
 }
 
 // @project-doc docs/domains/content_moderation.md#moderation_transactions
-func (r *Store) CreateCyberWarningAndApplyUserBan(ctx context.Context, warning *service.ContentModerationCyberWarning, policy service.ContentModerationCyberWarningPolicy) (bool, error) {
+func (r *Store) CreateCyberWarningAndApplyUserBan(ctx context.Context, warning *moderation.ContentModerationCyberWarning, policy moderation.ContentModerationCyberWarningPolicy) (bool, error) {
 	if warning == nil {
 		return false, nil
 	}
@@ -381,7 +381,7 @@ func (r *Store) CreateCyberWarningAndApplyUserBan(ctx context.Context, warning *
 	return autoBanJustApplied, nil
 }
 
-func insertContentModerationCyberWarning(ctx context.Context, q sqlQueryRower, warning *service.ContentModerationCyberWarning) error {
+func insertContentModerationCyberWarning(ctx context.Context, q sqlQueryRower, warning *moderation.ContentModerationCyberWarning) error {
 	inputItems, err := json.Marshal(warning.InputItems)
 	if err != nil {
 		return fmt.Errorf("marshal cyber warning input items: %w", err)
@@ -446,7 +446,7 @@ INSERT INTO content_moderation_cyber_warnings (
 	return nil
 }
 
-func (r *Store) lockCyberWarningUserTx(ctx context.Context, tx *sql.Tx, warning *service.ContentModerationCyberWarning) (string, bool, error) {
+func (r *Store) lockCyberWarningUserTx(ctx context.Context, tx *sql.Tx, warning *moderation.ContentModerationCyberWarning) (string, bool, error) {
 	if warning == nil || warning.UserID == nil || *warning.UserID <= 0 {
 		return "", false, nil
 	}
@@ -457,7 +457,7 @@ func (r *Store) lockCyberWarningUserTx(ctx context.Context, tx *sql.Tx, warning 
 	return status, locked, nil
 }
 
-func (r *Store) applyCyberWarningUserBanTx(ctx context.Context, tx *sql.Tx, warning *service.ContentModerationCyberWarning, policy service.ContentModerationCyberWarningPolicy, userStatus string, userLocked bool) (bool, error) {
+func (r *Store) applyCyberWarningUserBanTx(ctx context.Context, tx *sql.Tx, warning *moderation.ContentModerationCyberWarning, policy moderation.ContentModerationCyberWarningPolicy, userStatus string, userLocked bool) (bool, error) {
 	if warning == nil || warning.UserID == nil || *warning.UserID <= 0 || !userLocked {
 		return false, nil
 	}
@@ -487,7 +487,7 @@ WHERE user_id = $1
 	autoBanJustApplied := false
 	if policy.AutoBanEnabled && policy.BanThreshold > 0 && count >= policy.BanThreshold {
 		warning.AutoBanned = true
-		if userStatus != service.StatusDisabled {
+		if userStatus != moderation.StatusDisabled {
 			applied, err := r.users(tx).SetDisabled(ctx, userID)
 			if err != nil {
 				return false, fmt.Errorf("disable cyber warning user: %w", err)
@@ -505,7 +505,7 @@ WHERE id = $1
 	return autoBanJustApplied, nil
 }
 
-func (r *Store) ListCyberWarnings(ctx context.Context, filter service.ContentModerationCyberWarningFilter) ([]service.ContentModerationCyberWarning, *pagination.PaginationResult, error) {
+func (r *Store) ListCyberWarnings(ctx context.Context, filter moderation.ContentModerationCyberWarningFilter) ([]moderation.ContentModerationCyberWarning, *pagination.PaginationResult, error) {
 	where, args := buildContentModerationCyberWhere(filter)
 	whereSQL := "WHERE " + strings.Join(where, " AND ")
 
@@ -545,9 +545,9 @@ LIMIT $`+fmt.Sprint(len(queryArgs)-1)+` OFFSET $`+fmt.Sprint(len(queryArgs)),
 	}
 	defer func() { _ = rows.Close() }()
 
-	items := make([]service.ContentModerationCyberWarning, 0)
+	items := make([]moderation.ContentModerationCyberWarning, 0)
 	for rows.Next() {
-		var item service.ContentModerationCyberWarning
+		var item moderation.ContentModerationCyberWarning
 		var userID, billingUserID, teamID, apiKeyID, groupID, providerID sql.NullInt64
 		if err := rows.Scan(
 			&item.ID,
@@ -614,8 +614,8 @@ LIMIT $`+fmt.Sprint(len(queryArgs)-1)+` OFFSET $`+fmt.Sprint(len(queryArgs)),
 }
 
 // GetCyberWarning 返回 Cyber 命中时保存的完整当前轮快照和媒体元数据。
-func (r *Store) GetCyberWarning(ctx context.Context, id int64) (*service.ContentModerationCyberWarning, error) {
-	var item service.ContentModerationCyberWarning
+func (r *Store) GetCyberWarning(ctx context.Context, id int64) (*moderation.ContentModerationCyberWarning, error) {
+	var item moderation.ContentModerationCyberWarning
 	var userID, billingUserID, teamID, apiKeyID, groupID, providerID sql.NullInt64
 	var inputItemsRaw, failedUnitsRaw []byte
 	err := r.db.QueryRowContext(ctx, `
@@ -673,7 +673,7 @@ WHERE w.id = $1
 	return &item, nil
 }
 
-func insertContentModerationMedia(ctx context.Context, q sqlQueryRower, media *service.ContentModerationMedia) error {
+func insertContentModerationMedia(ctx context.Context, q sqlQueryRower, media *moderation.ContentModerationMedia) error {
 	if media == nil {
 		return nil
 	}
@@ -699,7 +699,7 @@ RETURNING id, created_at
 	return nil
 }
 
-func (r *Store) listContentModerationMedia(ctx context.Context, ownerColumn string, ownerID int64) ([]service.ContentModerationMedia, error) {
+func (r *Store) listContentModerationMedia(ctx context.Context, ownerColumn string, ownerID int64) ([]moderation.ContentModerationMedia, error) {
 	if ownerColumn != "log_id" && ownerColumn != "cyber_warning_id" {
 		return nil, errors.New("invalid content moderation media owner")
 	}
@@ -713,9 +713,9 @@ ORDER BY source_index ASC, id ASC
 		return nil, fmt.Errorf("list content moderation media: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
-	items := make([]service.ContentModerationMedia, 0)
+	items := make([]moderation.ContentModerationMedia, 0)
 	for rows.Next() {
-		var item service.ContentModerationMedia
+		var item moderation.ContentModerationMedia
 		if err := rows.Scan(&item.ID, &item.SourceIndex, &item.Source, &item.MIMEType, &item.SHA256, &item.ByteSize, &item.OriginalRef, &item.SnapshotStatus, &item.SnapshotError, &item.CreatedAt); err != nil {
 			return nil, fmt.Errorf("scan content moderation media: %w", err)
 		}
@@ -728,8 +728,8 @@ ORDER BY source_index ASC, id ASC
 }
 
 // GetMediaContent 仅供鉴权后的管理员媒体接口读取二进制快照。
-func (r *Store) GetMediaContent(ctx context.Context, id int64) (*service.ContentModerationMedia, error) {
-	var item service.ContentModerationMedia
+func (r *Store) GetMediaContent(ctx context.Context, id int64) (*moderation.ContentModerationMedia, error) {
+	var item moderation.ContentModerationMedia
 	err := r.db.QueryRowContext(ctx, `
 SELECT id, source_index, source, mime_type, sha256, byte_size, original_ref, snapshot_status, snapshot_error, content, created_at
 FROM content_moderation_media
@@ -778,10 +778,10 @@ WHERE id = $1
 	return nil
 }
 
-func (r *Store) GetCyberSummary(ctx context.Context, filter service.ContentModerationCyberWarningFilter) (*service.ContentModerationCyberSummary, error) {
+func (r *Store) GetCyberSummary(ctx context.Context, filter moderation.ContentModerationCyberWarningFilter) (*moderation.ContentModerationCyberSummary, error) {
 	where, args := buildContentModerationCyberWhere(filter)
 	whereSQL := "WHERE " + strings.Join(where, " AND ")
-	result := &service.ContentModerationCyberSummary{}
+	result := &moderation.ContentModerationCyberSummary{}
 	if err := r.db.QueryRowContext(ctx, `
 SELECT
     COUNT(*),
@@ -812,7 +812,7 @@ LIMIT 100`, args...)
 	}
 	defer func() { _ = userRows.Close() }()
 	for userRows.Next() {
-		var item service.ContentModerationCyberUserSummary
+		var item moderation.ContentModerationCyberUserSummary
 		var userID sql.NullInt64
 		if err := userRows.Scan(&item.Count, &userID, &item.UserEmail, &item.APIKeys, &item.LastSeen); err != nil {
 			return nil, fmt.Errorf("scan content moderation cyber user summary: %w", err)
@@ -843,7 +843,7 @@ LIMIT 100`, args...)
 	}
 	defer func() { _ = providerRows.Close() }()
 	for providerRows.Next() {
-		var item service.ContentModerationCyberProviderSummary
+		var item moderation.ContentModerationCyberProviderSummary
 		var providerID sql.NullInt64
 		if err := providerRows.Scan(&item.Count, &providerID, &item.ProviderName, &item.Users, &item.LastSeen); err != nil {
 			return nil, fmt.Errorf("scan content moderation cyber provider summary: %w", err)
@@ -860,8 +860,8 @@ LIMIT 100`, args...)
 	return result, nil
 }
 
-func (r *Store) CleanupExpiredLogs(ctx context.Context, hitBefore time.Time, nonHitBefore time.Time) (*service.ContentModerationCleanupResult, error) {
-	result := &service.ContentModerationCleanupResult{FinishedAt: time.Now()}
+func (r *Store) CleanupExpiredLogs(ctx context.Context, hitBefore time.Time, nonHitBefore time.Time) (*moderation.ContentModerationCleanupResult, error) {
+	result := &moderation.ContentModerationCleanupResult{FinishedAt: time.Now()}
 	if r == nil || r.db == nil {
 		return result, nil
 	}
@@ -904,7 +904,7 @@ func nullableIntPtr(value *int) any {
 	return *value
 }
 
-func buildContentModerationLogWhere(filter service.ContentModerationLogFilter) ([]string, []any) {
+func buildContentModerationLogWhere(filter moderation.ContentModerationLogFilter) ([]string, []any) {
 	where := []string{"l.id IS NOT NULL"}
 	args := make([]any, 0)
 	add := func(expr string, value any) {
@@ -950,7 +950,7 @@ func buildContentModerationLogWhere(filter service.ContentModerationLogFilter) (
 	return where, args
 }
 
-func buildContentModerationCyberWhere(filter service.ContentModerationCyberWarningFilter) ([]string, []any) {
+func buildContentModerationCyberWhere(filter moderation.ContentModerationCyberWarningFilter) ([]string, []any) {
 	where := []string{"w.id IS NOT NULL"}
 	args := make([]any, 0)
 	add := func(expr string, value any) {

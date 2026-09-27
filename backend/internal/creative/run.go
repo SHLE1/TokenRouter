@@ -115,12 +115,6 @@ func NormalizeCreativeWorkspaceID(raw string) (string, error) {
 	return strings.ToLower(parsed.String()), nil
 }
 
-// ValidateCreativeRunScope 防止内部调用绕过工作区校验。
-func ValidateCreativeRunScope(scope CreativeRunScope) error {
-	_, err := NormalizeCreativeRunScope(scope)
-	return err
-}
-
 // NormalizeCreativeRunScope 校验用户身份并将工作区 UUID 规范化为小写。
 func NormalizeCreativeRunScope(scope CreativeRunScope) (CreativeRunScope, error) {
 	if scope.UserID <= 0 {

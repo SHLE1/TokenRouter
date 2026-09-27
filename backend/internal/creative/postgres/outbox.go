@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	service "github.com/TokenFlux/TokenRouter/internal/creative"
+	"github.com/TokenFlux/TokenRouter/internal/creative"
 )
 
 // creativeRunOutboxRepository 使用 PostgreSQL 原生 SQL 实现可恢复的创作台后台动作。
@@ -19,11 +19,11 @@ type creativeRunOutboxRepository struct {
 }
 
 // NewCreativeRunOutboxRepository 创建创作台 outbox 仓储。
-func NewCreativeRunOutboxRepository(db *sql.DB) service.CreativeRunOutboxRepository {
+func NewCreativeRunOutboxRepository(db *sql.DB) creative.CreativeRunOutboxRepository {
 	return &creativeRunOutboxRepository{db: db}
 }
 
-func (r *creativeRunOutboxRepository) Ensure(ctx context.Context, runID string, operation service.CreativeRunOutboxOperation, availableAt time.Time) error {
+func (r *creativeRunOutboxRepository) Ensure(ctx context.Context, runID string, operation creative.CreativeRunOutboxOperation, availableAt time.Time) error {
 	if r == nil || r.db == nil {
 		return errors.New("creative run outbox database is not configured")
 	}
@@ -46,7 +46,7 @@ func (r *creativeRunOutboxRepository) Ensure(ctx context.Context, runID string, 
 	return err
 }
 
-func (r *creativeRunOutboxRepository) Claim(ctx context.Context, workerID string, limit int, lease time.Duration) ([]service.CreativeRunOutbox, error) {
+func (r *creativeRunOutboxRepository) Claim(ctx context.Context, workerID string, limit int, lease time.Duration) ([]creative.CreativeRunOutbox, error) {
 	if r == nil || r.db == nil {
 		return nil, errors.New("creative run outbox database is not configured")
 	}
@@ -90,9 +90,9 @@ func (r *creativeRunOutboxRepository) Claim(ctx context.Context, workerID string
 		return nil, err
 	}
 	defer func() { _ = rows.Close() }()
-	out := make([]service.CreativeRunOutbox, 0, limit)
+	out := make([]creative.CreativeRunOutbox, 0, limit)
 	for rows.Next() {
-		var event service.CreativeRunOutbox
+		var event creative.CreativeRunOutbox
 		var operation, status string
 		if err := rows.Scan(
 			&event.ID, &event.RunID, &operation, &status, &event.AvailableAt,
@@ -101,8 +101,8 @@ func (r *creativeRunOutboxRepository) Claim(ctx context.Context, workerID string
 		); err != nil {
 			return nil, err
 		}
-		event.Operation = service.CreativeRunOutboxOperation(operation)
-		event.Status = service.CreativeRunOutboxStatus(status)
+		event.Operation = creative.CreativeRunOutboxOperation(operation)
+		event.Status = creative.CreativeRunOutboxStatus(status)
 		out = append(out, event)
 	}
 	if err := rows.Err(); err != nil {
@@ -169,4 +169,4 @@ func newCreativeOutboxLeaseToken(workerID string) (string, error) {
 	return workerID + ":" + hex.EncodeToString(raw[:]), nil
 }
 
-var _ service.CreativeRunOutboxRepository = (*creativeRunOutboxRepository)(nil)
+var _ creative.CreativeRunOutboxRepository = (*creativeRunOutboxRepository)(nil)

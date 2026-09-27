@@ -85,10 +85,6 @@ func contentModerationRunePrefix(text string, limit int) (string, int) {
 	return text, count
 }
 
-func ExtractContentModerationText(protocol string, body []byte) string {
-	return ExtractContentModerationInput(protocol, body).Text
-}
-
 func ExtractContentModerationPromptExcerpt(protocol string, body []byte) string {
 	input := ExtractContentModerationInput(protocol, body)
 	return ExtractContentModerationPromptExcerptFromInput(input)

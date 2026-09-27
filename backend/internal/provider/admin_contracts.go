@@ -63,6 +63,3 @@ type Admin struct {
 func NewAdmin(store AdminStore, options AdminOptions) *Admin {
 	return &Admin{providerRepo: store, options: options}
 }
-
-// Privacy 提供同一提供商模块的隐私用例，供旧管理入口转接。
-func (s *Admin) Privacy() *PrivacyService { return s.options.Privacy }

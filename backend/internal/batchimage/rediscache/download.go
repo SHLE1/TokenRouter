@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	service "github.com/TokenFlux/TokenRouter/internal/batchimage"
+	"github.com/TokenFlux/TokenRouter/internal/batchimage"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -42,7 +42,7 @@ type batchImageDownloadLimiter struct {
 	ttl          time.Duration
 }
 
-func NewBatchImageDownloadLimiter(rdb *redis.Client, cfg *DownloadOptions) service.BatchImageDownloadLimiter {
+func NewBatchImageDownloadLimiter(rdb *redis.Client, cfg *DownloadOptions) batchimage.BatchImageDownloadLimiter {
 	maxActive := defaultBatchImageDownloadConcurrency
 	ttl := defaultBatchImageDownloadActiveTTL
 	if cfg != nil {
@@ -61,9 +61,9 @@ func NewBatchImageDownloadLimiter(rdb *redis.Client, cfg *DownloadOptions) servi
 	}
 }
 
-func (l *batchImageDownloadLimiter) Acquire(ctx context.Context, userID string, kind string) (service.BatchImageDownloadPermit, error) {
+func (l *batchImageDownloadLimiter) Acquire(ctx context.Context, userID string, kind string) (batchimage.BatchImageDownloadPermit, error) {
 	if l == nil || l.rdb == nil {
-		return nil, service.ErrBatchImageDownloadLimited
+		return nil, batchimage.ErrBatchImageDownloadLimited
 	}
 	key := l.activeKey(userID)
 	ok, err := batchImageDownloadAcquireScript.Run(ctx, l.rdb, []string{key}, l.maxActive, int(l.ttl.Seconds())).Int()
@@ -71,7 +71,7 @@ func (l *batchImageDownloadLimiter) Acquire(ctx context.Context, userID string, 
 		return nil, err
 	}
 	if ok != 1 {
-		return nil, service.ErrBatchImageDownloadLimited
+		return nil, batchimage.ErrBatchImageDownloadLimited
 	}
 	return &batchImageDownloadPermit{rdb: l.rdb, key: key}, nil
 }
@@ -97,8 +97,10 @@ func (p *batchImageDownloadPermit) Release(ctx context.Context) error {
 	return p.err
 }
 
-var _ service.BatchImageDownloadLimiter = (*batchImageDownloadLimiter)(nil)
-var _ service.BatchImageDownloadPermit = (*batchImageDownloadPermit)(nil)
+var (
+	_ batchimage.BatchImageDownloadLimiter = (*batchImageDownloadLimiter)(nil)
+	_ batchimage.BatchImageDownloadPermit  = (*batchImageDownloadPermit)(nil)
+)
 
 // DownloadOptions 只投影原下载计数和 TTL 参数。
 type DownloadOptions struct {

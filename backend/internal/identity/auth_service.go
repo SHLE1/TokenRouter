@@ -28,19 +28,6 @@ type AuthSignupGrantPlan struct {
 	Subscriptions []DefaultSubscriptionSetting
 }
 
-func (s *AuthService) SetRuntimeCaches(authCacheInvalidator APIKeyAuthCacheInvalidator, billingCache BillingCache) {
-	s.Invalidator = authCacheInvalidator
-	s.BalanceCache = billingCache
-}
-
-func (s *AuthService) SetTencentCaptchaService(tencentCaptchaService *TencentCaptchaService) {
-	s.Tencent = tencentCaptchaService
-}
-
-func (s *AuthService) SetAliyunCaptchaService(aliyunCaptchaService *AliyunCaptchaService) {
-	s.Aliyun = aliyunCaptchaService
-}
-
 // Register 用户注册，返回token和用户
 func (s *AuthService) Register(ctx context.Context, email, password string) (string, *User, error) {
 	return s.RegisterWithVerification(ctx, email, password, "", "", "", "")
@@ -359,11 +346,6 @@ func (s *AuthService) VerifyTurnstileForRegister(ctx context.Context, token, rem
 	return s.VerifyCaptchaForRegister(ctx, CaptchaProof{TurnstileToken: token}, remoteIP, verifyCode)
 }
 
-// VerifyTurnstile 保留旧内部接口，生产 handler 使用 VerifyCaptcha。
-func (s *AuthService) VerifyTurnstile(ctx context.Context, token string, remoteIP string) error {
-	return s.VerifyCaptcha(ctx, CaptchaProof{TurnstileToken: token}, remoteIP)
-}
-
 // IsTurnstileEnabled 检查是否启用Turnstile验证
 func (s *AuthService) IsTurnstileEnabled(ctx context.Context) bool {
 	if s.Turnstile == nil {
@@ -417,107 +399,6 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (string
 		return "", nil, fmt.Errorf("generate token: %w", err)
 	}
 
-	return token, user, nil
-}
-
-// LoginOrRegisterOAuth 用于第三方 OAuth/SSO 登录：
-// - 如果邮箱已存在：直接登录（不需要本地密码）
-// - 如果邮箱不存在：创建新用户并登录
-//
-// 该函数处理 LinuxDo 用户登录；Claude、OpenAI、Gemini 等上游提供商的 OAuth 由提供商模块负责。
-// 为了满足现有数据库约束（需要密码哈希），新用户会生成随机密码并进行哈希保存。
-func (s *AuthService) LoginOrRegisterOAuth(ctx context.Context, email, username string) (string, *User, error) {
-	email = strings.TrimSpace(email)
-	if email == "" || len(email) > 255 {
-		return "", nil, infraerrors.BadRequest("INVALID_EMAIL", "invalid email")
-	}
-	if _, err := mail.ParseAddress(email); err != nil {
-		return "", nil, infraerrors.BadRequest("INVALID_EMAIL", "invalid email")
-	}
-
-	username = strings.TrimSpace(username)
-	if len([]rune(username)) > 100 {
-		username = string([]rune(username)[:100])
-	}
-
-	user, err := s.Users.GetByEmail(ctx, email)
-	if err != nil {
-		if errors.Is(err, ErrUserNotFound) {
-			// OAuth 首次登录视为注册（fail-close：settingService 未配置时不允许注册）
-			if s.Settings == nil || !s.Settings.IsRegistrationEnabled(ctx) {
-				return "", nil, ErrRegDisabled
-			}
-
-			randomPassword, err := RandomHexString(32)
-			if err != nil {
-				s.Observer.Printf("service.auth", "[Auth] Failed to generate random password for oauth signup: %v", err)
-				return "", nil, ErrServiceUnavailable
-			}
-			hashedPassword, err := s.HashPassword(randomPassword)
-			if err != nil {
-				return "", nil, fmt.Errorf("hash password: %w", err)
-			}
-
-			signupSource := AuthInferLegacySignupSource(email)
-			grantPlan := s.AuthResolveSignupGrantPlan(ctx, signupSource)
-			var defaultRPMLimit int
-			if s.Settings != nil {
-				defaultRPMLimit = s.Settings.GetDefaultUserRPMLimit(ctx)
-			}
-
-			newUser := &User{
-				Email:        email,
-				Username:     username,
-				PasswordHash: hashedPassword,
-				Role:         RoleUser,
-				Balance:      grantPlan.Balance,
-				Concurrency:  grantPlan.Concurrency,
-				RPMLimit:     defaultRPMLimit,
-				Status:       StatusActive,
-				SignupSource: signupSource,
-			}
-
-			if err := s.AuthCreateRegisteredUser(ctx, newUser, nil); err != nil {
-				if errors.Is(err, ErrEmailExists) {
-					// 并发场景：GetByEmail 与 Create 之间用户被创建。
-					user, err = s.Users.GetByEmail(ctx, email)
-					if err != nil {
-						if errors.Is(err, ErrUserNotFound) {
-							return "", nil, ErrEmailExists
-						}
-						s.Observer.Printf("service.auth", "[Auth] Database error getting user after conflict: %v", err)
-						return "", nil, ErrServiceUnavailable
-					}
-				} else {
-					s.Observer.Printf("service.auth", "[Auth] Database error creating oauth user: %v", err)
-					return "", nil, ErrServiceUnavailable
-				}
-			} else {
-				user = newUser
-				s.AuthPostAuthUserBootstrap(ctx, user, signupSource, false)
-				s.AuthAssignSubscriptions(ctx, user.ID, grantPlan.Subscriptions, "auto assigned by signup defaults")
-			}
-		} else {
-			s.Observer.Printf("service.auth", "[Auth] Database error during oauth login: %v", err)
-			return "", nil, ErrServiceUnavailable
-		}
-	}
-
-	if !user.IsActive() {
-		return "", nil, ErrUserNotActive
-	}
-
-	// 尽力补全：当用户名为空时，使用第三方返回的用户名回填。
-	if user.Username == "" && username != "" {
-		user.Username = username
-		if err := s.Users.Update(ctx, user, UserUpdateFields{Username: true}); err != nil {
-			s.Observer.Printf("service.auth", "[Auth] Failed to update username after oauth login: %v", err)
-		}
-	}
-	token, err := s.GenerateToken(ctx, user)
-	if err != nil {
-		return "", nil, fmt.Errorf("generate token: %w", err)
-	}
 	return token, user, nil
 }
 
@@ -1008,30 +889,6 @@ func (s *AuthService) AuthPreparePasswordReset(ctx context.Context, email, front
 	resetURL := fmt.Sprintf("%s/reset-password", strings.TrimSuffix(frontendBaseURL, "/"))
 
 	return siteName, resetURL, true
-}
-
-// RequestPasswordReset 请求密码重置（同步发送）
-// Security: Returns the same response regardless of whether the email exists (prevent user enumeration)
-func (s *AuthService) RequestPasswordReset(ctx context.Context, email, frontendBaseURL string, locale ...string) error {
-	if !s.IsPasswordResetEnabled(ctx) {
-		return infraerrors.Forbidden("PASSWORD_RESET_DISABLED", "password reset is not enabled")
-	}
-	if s.Email == nil {
-		return ErrServiceUnavailable
-	}
-
-	siteName, resetURL, shouldProceed := s.AuthPreparePasswordReset(ctx, email, frontendBaseURL)
-	if !shouldProceed {
-		return nil // Silent success to prevent enumeration
-	}
-
-	if err := s.Email.SendPasswordResetEmail(ctx, email, siteName, resetURL, FirstEmailLocale(locale)); err != nil {
-		s.Observer.Printf("service.auth", "[Auth] Failed to send password reset email to %s: %v", email, err)
-		return nil // Silent success to prevent enumeration
-	}
-
-	s.Observer.Printf("service.auth", "[Auth] Password reset email sent to: %s", email)
-	return nil
 }
 
 // RequestPasswordResetAsync 异步请求密码重置（队列发送）

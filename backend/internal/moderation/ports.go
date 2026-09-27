@@ -10,9 +10,11 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/settings"
 )
 
-type ContentModerationMedia = contract.ContentModerationMedia
-type SettingRepository = settings.Repository
-type Setting = settings.Setting
+type (
+	ContentModerationMedia = contract.ContentModerationMedia
+	SettingRepository      = settings.Repository
+	Setting                = settings.Setting
+)
 
 var ErrSettingNotFound = settings.ErrSettingNotFound
 
@@ -34,10 +36,13 @@ type ProxyInfo struct {
 type ProxyRepository interface {
 	Lookup(context.Context, int64, time.Time) (ProxyInfo, error)
 }
-type APIKeyAuthCacheInvalidator interface{ InvalidateAuthCacheByUserID(context.Context, int64) }
-type AuditTransport interface {
-	Execute(context.Context, string, string, []byte, func() (string, error), any) (int, []byte, error)
-}
+type (
+	APIKeyAuthCacheInvalidator interface{ InvalidateAuthCacheByUserID(context.Context, int64) }
+	AuditTransport             interface {
+		Execute(context.Context, string, string, []byte, func() (string, error), any) (int, []byte, error)
+	}
+)
+
 type Runtime struct {
 	MissingRow    func(error) bool
 	MissingUser   func(error) bool
@@ -54,12 +59,11 @@ type RiskSender interface {
 	SendCyberAccountDisabledEmail(context.Context, *notice.RiskPolicy, *notice.RiskWarning) error
 }
 
-const StatusActive = "active"
-const StatusDisabled = "disabled"
-const SettingKeyContentModerationConfig = "content_moderation_config"
-const SettingKeyRiskControlEnabled = "risk_control_enabled"
-const SettingKeySiteName = "site_name"
+const (
+	StatusActive                      = "active"
+	StatusDisabled                    = "disabled"
+	SettingKeyContentModerationConfig = "content_moderation_config"
+	SettingKeyRiskControlEnabled      = "risk_control_enabled"
+)
 
-// CheckInput 与 Decision 是新消费者使用的审核契约名。
-type CheckInput = ContentModerationCheckInput
 type Decision = ContentModerationDecision

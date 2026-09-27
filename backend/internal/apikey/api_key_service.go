@@ -1524,44 +1524,6 @@ func (s *APIKeyService) Delete(ctx context.Context, id int64, userID int64) erro
 	return nil
 }
 
-// ValidateKey 验证API Key是否有效（用于认证中间件）
-func (s *APIKeyService) ValidateKey(ctx context.Context, key string) (*APIKey, *User, error) {
-	// 获取API Key
-	apiKey, err := s.GetByKey(ctx, key)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// 检查API Key状态
-	if !apiKey.IsActive() {
-		return nil, nil, infraerrors.Unauthorized("API_KEY_INACTIVE", "api key is not active")
-	}
-
-	// 团队 Key 的 User 已在认证加载阶段替换为当前付款 Owner。
-	user := apiKey.User
-	if user == nil {
-		user, err = s.userRepo.GetByID(ctx, apiKey.UserID)
-		if err != nil {
-			return nil, nil, fmt.Errorf("get user: %w", err)
-		}
-	}
-
-	// 检查用户状态
-	if !user.IsActive() {
-		return nil, nil, ErrUserNotActive
-	}
-	if apiKey.TeamID != nil {
-		if err := s.ValidateTeamKeyLifecycle(apiKey); err != nil {
-			return nil, nil, err
-		}
-		if err := KeyCheckTeamMemberLimitSnapshot(apiKey.TeamMembership); err != nil {
-			return nil, nil, err
-		}
-	}
-
-	return apiKey, user, nil
-}
-
 // ValidateTeamKeyLifecycle 校验团队 Key 当前仍属于有效团队关系。
 func (s *APIKeyService) ValidateTeamKeyLifecycle(apiKey *APIKey) error {
 	if apiKey == nil || apiKey.TeamID == nil {
@@ -1679,11 +1641,6 @@ func (s *APIKeyService) GetAvailableGroups(ctx context.Context, userID int64) ([
 	}
 
 	return availableGroups, nil
-}
-
-// GetAvailableGroupsForScope 让团队 Key 使用 Owner 的分组授权。
-func (s *APIKeyService) GetAvailableGroupsForScope(ctx context.Context, userID int64, scope string) ([]routing.Group, error) {
-	return s.GetAvailableGroupsForScopeWithSubscription(ctx, userID, scope, nil)
 }
 
 // GetAvailableGroupsForScopeWithSubscription 返回付款主体原有权限与指定套餐分组的交集。

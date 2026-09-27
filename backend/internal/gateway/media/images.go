@@ -105,12 +105,6 @@ func (r *ImageRequest) ValidateRoutingModel(routingModel string) error {
 	return nil
 }
 
-func ApplyImageDefaults(req *ImageRequest) {
-	value := NativeImageRequest(req)
-	upstreamcore.ApplyOpenAIImagesDefaults(value)
-	ApplyNativeImageRequest(req, value)
-}
-
 func IsImageGenerationModel(model string) bool {
 	return IsGPTImageGenerationModel(model) || IsGrokImageGenerationModel(model)
 }

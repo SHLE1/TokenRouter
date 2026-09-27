@@ -88,16 +88,6 @@ func MatchesPattern(clientIP, pattern string) bool {
 	return ip.Equal(patternIP)
 }
 
-// MatchesAnyPattern 检查 IP 是否匹配任意一个模式。
-func MatchesAnyPattern(clientIP string, patterns []string) bool {
-	for _, pattern := range patterns {
-		if MatchesPattern(clientIP, pattern) {
-			return true
-		}
-	}
-	return false
-}
-
 // ValidateIPPattern 验证 IP 或 CIDR 格式是否有效。
 func ValidateIPPattern(pattern string) bool {
 	if strings.Contains(pattern, "/") {

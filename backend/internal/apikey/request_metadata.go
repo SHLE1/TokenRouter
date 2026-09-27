@@ -43,8 +43,3 @@ func ForcePlatformFromContext(ctx context.Context) (string, bool) {
 	v := RequestMetadataFromContext(ctx)
 	return v.ForcePlatform, v.ForcePlatformSet
 }
-
-func InboundEndpointFromContext(ctx context.Context) (string, bool) {
-	v := RequestMetadataFromContext(ctx)
-	return v.InboundEndpoint, v.InboundEndpointSet
-}

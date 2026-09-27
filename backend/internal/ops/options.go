@@ -86,9 +86,7 @@ type UserObservation struct {
 type ProviderReader interface {
 	ListPage(context.Context, pagination.PaginationParams, string, int64) ([]ProviderObservation, *pagination.PaginationResult, error)
 }
-type ProviderStatsReader interface {
-	ListOpsProvidersForStats(context.Context, string, *int64) ([]ProviderObservation, error)
-}
+
 type UserReader interface {
 	ListActivePage(context.Context, pagination.PaginationParams) ([]UserObservation, *pagination.PaginationResult, error)
 }

@@ -2,16 +2,15 @@ package creative
 
 import (
 	"context"
-
 	"time"
 
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
 
 var (
-	ErrCreativeQueueEmpty          = infraerrors.New(infraerrors.CategoryNotFound, "CREATIVE_QUEUE_EMPTY", "creative queue is empty")
-	ErrCreativeAlreadyQueued       = infraerrors.New(infraerrors.CategoryConflict, "CREATIVE_ALREADY_QUEUED", "creative run is already queued")
-	ErrCreativeLockNotAcquired     = infraerrors.New(infraerrors.CategoryConflict, "CREATIVE_LOCK_NOT_ACQUIRED", "creative run lock was not acquired")
+	ErrCreativeQueueEmpty    = infraerrors.New(infraerrors.CategoryNotFound, "CREATIVE_QUEUE_EMPTY", "creative queue is empty")
+	ErrCreativeAlreadyQueued = infraerrors.New(infraerrors.CategoryConflict, "CREATIVE_ALREADY_QUEUED", "creative run is already queued")
+
 	ErrCreativeLeaseLost           = infraerrors.New(infraerrors.CategoryConflict, "CREATIVE_LEASE_LOST", "creative run lease is no longer owned")
 	ErrInvalidCreativeQueuePayload = infraerrors.New(infraerrors.CategoryBadRequest, "CREATIVE_QUEUE_INVALID_PAYLOAD", "invalid creative queue payload")
 )

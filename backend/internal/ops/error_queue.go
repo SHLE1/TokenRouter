@@ -32,17 +32,20 @@ type ErrorLogQueue struct {
 func NewErrorLogQueue(options ErrorLogQueueOptions) *ErrorLogQueue {
 	return &ErrorLogQueue{options: options, opsErrorLogShutdownCh: make(chan struct{})}
 }
+
 func (q *ErrorLogQueue) report(format string, args ...any) {
 	if q.options.Logf != nil {
 		q.options.Logf(format, args...)
 	}
 }
+
 func (q *ErrorLogQueue) stack() []byte {
 	if q.options.Stack != nil {
 		return q.options.Stack()
 	}
 	return nil
 }
+
 func (q *ErrorLogQueue) processors() int {
 	if q.options.Processors != nil {
 		return q.options.Processors()
@@ -72,6 +75,7 @@ func PrepareErrorLogInput(entry *OpsInsertErrorLogInput) (bool, error) {
 	}
 	return sanitized, SanitizeOpsUpstreamErrorsForQueue(entry)
 }
+
 func opsErrorLogConfig(processors int) (workerCount int, queueSize int) {
 	workerCount = processors * 2
 	if workerCount < opsErrorLogMinWorkerCount {
@@ -91,6 +95,7 @@ func opsErrorLogConfig(processors int) (workerCount int, queueSize int) {
 
 	return workerCount, queueSize
 }
+
 func estimateOpsErrorLogJobBytes(entry *OpsInsertErrorLogInput) int64 {
 	if entry == nil {
 		return 1
@@ -114,6 +119,7 @@ func estimateOpsErrorLogJobBytes(entry *OpsInsertErrorLogInput) int64 {
 	}
 	return int64(size)
 }
+
 func (q *ErrorLogQueue) reserveOpsErrorLogQueueBytes(size int64) bool {
 	if size < 1 {
 		size = 1
@@ -129,6 +135,7 @@ func (q *ErrorLogQueue) reserveOpsErrorLogQueueBytes(size int64) bool {
 		}
 	}
 }
+
 func (q *ErrorLogQueue) maybeLogOpsErrorLogDrop() {
 	now := time.Now().Unix()
 
@@ -158,18 +165,23 @@ func (q *ErrorLogQueue) maybeLogOpsErrorLogDrop() {
 		q.opsErrorLogSanitized.Load(),
 	)
 }
+
 func (q *ErrorLogQueue) OpsErrorLogSanitizedTotal() int64 {
 	return q.opsErrorLogSanitized.Load()
 }
+
 func (q *ErrorLogQueue) OpsErrorLogProcessedTotal() int64 {
 	return q.opsErrorLogProcessed.Load()
 }
+
 func (q *ErrorLogQueue) OpsErrorLogEnqueuedTotal() int64 {
 	return q.opsErrorLogEnqueued.Load()
 }
+
 func (q *ErrorLogQueue) OpsErrorLogDroppedTotal() int64 {
 	return q.opsErrorLogDropped.Load()
 }
+
 func (q *ErrorLogQueue) OpsErrorLogQueueCapacity() int {
 	q.opsErrorLogMu.RLock()
 	ch := q.opsErrorLogQueue
@@ -179,12 +191,15 @@ func (q *ErrorLogQueue) OpsErrorLogQueueCapacity() int {
 	}
 	return cap(ch)
 }
+
 func (q *ErrorLogQueue) OpsErrorLogQueueBytesCapacity() int64 {
 	return opsErrorLogMaxQueueBytes
 }
+
 func (q *ErrorLogQueue) OpsErrorLogQueueBytes() int64 {
 	return q.opsErrorLogQueueBytes.Load()
 }
+
 func (q *ErrorLogQueue) OpsErrorLogQueueLength() int64 {
 	return q.opsErrorLogQueueLen.Load()
 }
@@ -224,6 +239,7 @@ func (q *ErrorLogQueue) Stop() bool {
 	defer cancel()
 	return q.Shutdown(ctx) == nil
 }
+
 func normalizeOpsPersistentUserAgent(value string) string {
 	return truncateString(strings.TrimSpace(strings.ToValidUTF8(value, "")), opsErrorLogMaxUserAgentBytes)
 }
@@ -281,6 +297,7 @@ func (q *ErrorLogQueue) Enqueue(ops *OpsService, entry *OpsInsertErrorLogInput) 
 		q.maybeLogOpsErrorLogDrop()
 	}
 }
+
 func (q *ErrorLogQueue) flushOpsErrorLogBatch(batch []opsErrorLogJob) {
 	if len(batch) == 0 {
 		return
@@ -314,6 +331,7 @@ func (q *ErrorLogQueue) flushOpsErrorLogBatch(batch []opsErrorLogJob) {
 	}
 	q.opsErrorLogProcessed.Add(processed)
 }
+
 func (q *ErrorLogQueue) startOpsErrorLogWorkers() {
 	q.opsErrorLogMu.Lock()
 	defer q.opsErrorLogMu.Unlock()
@@ -397,10 +415,3 @@ const (
 	opsErrorLogMaxQueueBytes      = 32 * 1024 * 1024
 	opsErrorLogMaxUserAgentBytes  = 512
 )
-
-func NormalizeOpsPersistentUserAgent(value string) string {
-	return normalizeOpsPersistentUserAgent(value)
-}
-func EstimateOpsErrorLogJobBytes(entry *OpsInsertErrorLogInput) int64 {
-	return estimateOpsErrorLogJobBytes(entry)
-}

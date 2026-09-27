@@ -5,11 +5,11 @@ import (
 	"context"
 	"time"
 
-	service "github.com/TokenFlux/TokenRouter/internal/settings/preaggregation"
+	"github.com/TokenFlux/TokenRouter/internal/settings/preaggregation"
 	"github.com/lib/pq"
 )
 
-func ReadAPIKeyUsageTotals(ctx context.Context, sqlq sqlExecutor, preAggregation *service.PreAggregationSettingsService, keyIDs []int64) (map[int64]float64, error) {
+func ReadAPIKeyUsageTotals(ctx context.Context, sqlq sqlExecutor, preAggregation *preaggregation.PreAggregationSettingsService, keyIDs []int64) (map[int64]float64, error) {
 	result := make(map[int64]float64, len(keyIDs))
 	if len(keyIDs) == 0 {
 		return result, nil

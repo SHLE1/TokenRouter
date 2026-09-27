@@ -28,8 +28,6 @@ func maxReasoningEffortBillingMultiplier(model, effort string, pricing *ModelPri
 	return purepricing.MaxReasoningEffortBillingMultiplier(model, effort, pricing)
 }
 
-var ErrModelPricingUnavailable = purepricing.ErrModelPricingUnavailable
-
 // GetModelPricing 获取模型价格配置
 func (s *Calculator) GetModelPricing(model string) (*ModelPricing, error) {
 	model = strings.ToLower(model)
@@ -229,9 +227,6 @@ func (s *Calculator) ForceUpdatePricing() error {
 
 // ModelDisplayPricing 保留旧用量/定价类型入口。
 type ModelDisplayPricing = purepricing.ModelDisplayPricing
-
-// ModelDisplayPricingInterval 保留旧用量/定价类型入口。
-type ModelDisplayPricingInterval = purepricing.ModelDisplayPricingInterval
 
 // GetDisplayPricing 返回用于模型广场展示的价格信息。
 // 它会优先识别图片模型并展示按图计费，否则展示按 token 计费。

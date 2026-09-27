@@ -48,11 +48,10 @@ const (
 
 	// Grok CLI 代理会拒绝未标识受支持客户端版本的请求。二进制内置已验证版本，
 	// 同时允许运维人员通过环境变量升级，无需等待 TokenRouter 发版。
-	grokCLIProxyHost       = "cli-chat-proxy.grok.com"
-	grokOfficialAPIHost    = "api.x.ai"
-	grokCLIStableVersion   = xai.CLIClientVersion // preferred pin (not the minimum floor)
-	grokCLIVersionOverride = xai.CLIVersionEnv
-	grokFallbackBodyLimit  = 64 << 10
+	grokCLIProxyHost    = "cli-chat-proxy.grok.com"
+	grokOfficialAPIHost = "api.x.ai"
+	// preferred pin (not the minimum floor)
+
 )
 
 const (
@@ -60,7 +59,6 @@ const (
 	upstreamProtocolModeOpenAIH1         = "openai_h1"
 	upstreamProtocolModeOpenAIH2         = "openai_h2"
 	upstreamProtocolModeOpenAIH1Fallback = "openai_h1_fallback"
-	upstreamProtocolModeGrok             = "grok"
 )
 
 type openAIHTTP2Settings struct {

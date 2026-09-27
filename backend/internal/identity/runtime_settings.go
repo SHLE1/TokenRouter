@@ -231,12 +231,6 @@ func (s *RuntimeSettings) GetCaptchaProviderConfig(ctx context.Context) (Captcha
 	}, nil
 }
 
-// IsTencentCaptchaEnabled 保留身份设置的原读取时点、缺省和失败语义。
-func (s *RuntimeSettings) IsTencentCaptchaEnabled(ctx context.Context) bool {
-	value, err := s.settingRepo.GetValue(ctx, SettingKeyTencentCaptchaEnabled)
-	return err == nil && value == "true"
-}
-
 // GetTencentCaptchaConfig 保留身份设置的原读取时点、缺省和失败语义。
 func (s *RuntimeSettings) GetTencentCaptchaConfig(ctx context.Context) TencentCaptchaConfig {
 	config, err := s.GetCaptchaProviderConfig(ctx)

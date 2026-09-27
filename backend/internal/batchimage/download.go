@@ -33,10 +33,10 @@ type Download struct {
 }
 
 const (
-	DefaultBatchImageZipMaxItems          = 200
-	DefaultBatchImageZipMaxBytes          = 512 * 1024 * 1024
-	DefaultBatchImageDownloadDuration     = 10 * time.Minute
-	DefaultBatchImageDownloadConcurrency  = 1
+	DefaultBatchImageZipMaxItems      = 200
+	DefaultBatchImageZipMaxBytes      = 512 * 1024 * 1024
+	DefaultBatchImageDownloadDuration = 10 * time.Minute
+
 	BatchImageDownloadScannerMaxLineBytes = 16 * 1024 * 1024
 )
 

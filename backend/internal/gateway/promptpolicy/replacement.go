@@ -95,14 +95,6 @@ func DefaultUserPromptReplacementConfig() *UserPromptReplacementConfig {
 	}
 }
 
-func DefaultConfigJSON() string {
-	raw, err := json.Marshal(DefaultUserPromptReplacementConfig())
-	if err != nil {
-		return `{"enabled":true,"rules":[]}`
-	}
-	return string(raw)
-}
-
 func ParseConfig(raw string, warn func(string, ...any)) *UserPromptReplacementConfig {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
@@ -236,23 +228,6 @@ func (s *Service) GetUserPromptReplacementConfig(ctx context.Context) (*UserProm
 		return nil, fmt.Errorf("get user prompt replacement config: %w", err)
 	}
 	return ParseConfig(raw, s.warn), nil
-}
-
-// SetUserPromptReplacementConfig 保存用户提示词替换配置。
-func (s *Service) SetUserPromptReplacementConfig(ctx context.Context, cfg *UserPromptReplacementConfig) error {
-	normalized, err := normalizeUserPromptReplacementConfig(cfg)
-	if err != nil {
-		return err
-	}
-	raw, err := json.Marshal(normalized)
-	if err != nil {
-		return fmt.Errorf("marshal user prompt replacement config: %w", err)
-	}
-	if err := s.store.Set(ctx, SettingKeyUserPromptReplacementConfig, string(raw)); err != nil {
-		return fmt.Errorf("set user prompt replacement config: %w", err)
-	}
-	userPromptReplacementCache.Store((*CompiledConfig)(nil))
-	return nil
 }
 
 func (s *Service) getCompiledUserPromptReplacementConfig(ctx context.Context) *CompiledConfig {
@@ -496,19 +471,6 @@ func replaceTextResultAtPath(body []byte, path string, result gjson.Result, rule
 	return next
 }
 
-// UserPromptReplacementRuleTargetGroupOptions 返回前端可用的 capture group 选项。
-func UserPromptReplacementRuleTargetGroupOptions(pattern string) []int {
-	compiled, err := regexp.Compile(strings.TrimSpace(pattern))
-	if err != nil {
-		return []int{0}
-	}
-	options := make([]int, 0, compiled.NumSubexp()+1)
-	for i := 0; i <= compiled.NumSubexp(); i++ {
-		options = append(options, i)
-	}
-	return options
-}
-
 func ConfigToRaw(cfg *UserPromptReplacementConfig) (string, error) {
 	normalized, err := normalizeUserPromptReplacementConfig(cfg)
 	if err != nil {
@@ -537,6 +499,7 @@ type Service struct {
 func New(store Settings, notFound error, warn func(string, ...any)) *Service {
 	return &Service{store: store, notFound: notFound, warn: warn}
 }
+
 func emit(warn func(string, ...any), name string, fields ...any) {
 	if warn != nil {
 		warn(name, fields...)

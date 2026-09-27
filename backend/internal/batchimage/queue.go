@@ -9,10 +9,10 @@ import (
 )
 
 var (
-	ErrBatchImageLeaseLost           = infraerrors.Conflict("BATCH_IMAGE_LEASE_LOST", "batch image job lease is no longer owned")
-	ErrBatchImageQueueEmpty          = infraerrors.New(infraerrors.CategoryNotFound, "BATCH_IMAGE_QUEUE_EMPTY", "batch image queue is empty")
-	ErrBatchImageAlreadyQueued       = infraerrors.New(infraerrors.CategoryConflict, "BATCH_IMAGE_ALREADY_QUEUED", "batch image job is already queued")
-	ErrBatchImageLockNotAcquired     = infraerrors.New(infraerrors.CategoryConflict, "BATCH_IMAGE_LOCK_NOT_ACQUIRED", "batch image job lock was not acquired")
+	ErrBatchImageLeaseLost     = infraerrors.Conflict("BATCH_IMAGE_LEASE_LOST", "batch image job lease is no longer owned")
+	ErrBatchImageQueueEmpty    = infraerrors.New(infraerrors.CategoryNotFound, "BATCH_IMAGE_QUEUE_EMPTY", "batch image queue is empty")
+	ErrBatchImageAlreadyQueued = infraerrors.New(infraerrors.CategoryConflict, "BATCH_IMAGE_ALREADY_QUEUED", "batch image job is already queued")
+
 	ErrInvalidBatchImageQueuePayload = infraerrors.New(infraerrors.CategoryBadRequest, "BATCH_IMAGE_QUEUE_INVALID_PAYLOAD", "invalid batch image queue payload")
 )
 

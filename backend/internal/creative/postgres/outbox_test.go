@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	service "github.com/TokenFlux/TokenRouter/internal/creative"
+	"github.com/TokenFlux/TokenRouter/internal/creative"
 	"github.com/stretchr/testify/require"
 )
 
@@ -24,7 +24,7 @@ func TestCreativeRunOutboxClaimAndComplete(t *testing.T) {
 	events, err := repo.Claim(context.Background(), "worker", 2, 2*time.Minute)
 	require.NoError(t, err)
 	require.Len(t, events, 1)
-	require.Equal(t, service.CreativeRunOutboxSettle, events[0].Operation)
+	require.Equal(t, creative.CreativeRunOutboxSettle, events[0].Operation)
 	require.Equal(t, "worker:token", events[0].LeaseToken)
 	mock.ExpectExec("UPDATE creative_run_outbox").
 		WithArgs(int64(9), "worker:token").

@@ -58,20 +58,6 @@ func ValidateNormalizedUsage(usage *UpstreamUsageInfo) error {
 	return usageview.ValidateNormalizedUsage(usage)
 }
 
-func ValidateUsageAmount(amount *UpstreamUsageAmount) error {
-	return usageview.ValidateUsageAmount(amount)
-}
-
-func ValidateUsageLimits(limits []UpstreamUsageLimit) error {
-	return usageview.ValidateUsageLimits(limits)
-}
-
-func ValidNonNegativeNumber(value float64) bool { return usageview.ValidNonNegativeNumber(value) }
-
-func ValidPositiveNumber(value float64) bool { return usageview.ValidPositiveNumber(value) }
-
-func ValidFiniteNumber(value float64) bool { return usageview.ValidFiniteNumber(value) }
-
 func UpstreamUsageContextError(ctx context.Context) error {
 	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 		return ErrUpstreamUsageTimeout

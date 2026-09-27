@@ -208,14 +208,6 @@ func CloneOpenAIQuotaRequest(req *http.Request) (*http.Request, error) {
 	return cloned, nil
 }
 
-func RemarshalOpenAIQuotaPayload(raw map[string]any, target any) error {
-	encoded, err := json.Marshal(raw)
-	if err != nil {
-		return err
-	}
-	return json.Unmarshal(encoded, target)
-}
-
 func GenerateOpenAIQuotaRedeemRequestID() (string, error) {
 	b := make([]byte, 16)
 	if _, err := rand.Read(b); err != nil {

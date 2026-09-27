@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	service "github.com/TokenFlux/TokenRouter/internal/backup"
+	"github.com/TokenFlux/TokenRouter/internal/backup"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 )
@@ -21,8 +21,7 @@ type apiEnvelope struct {
 }
 
 func TestDataManagementHandler_AgentHealthAlways200(t *testing.T) {
-
-	svc := service.NewDataManagementServiceWithOptions(filepath.Join(t.TempDir(), "missing.sock"), 50*time.Millisecond)
+	svc := backup.NewDataManagementServiceWithOptions(filepath.Join(t.TempDir(), "missing.sock"), 50*time.Millisecond)
 	h := NewDataManagementHandler(svc)
 
 	r := gin.New()
@@ -45,13 +44,12 @@ func TestDataManagementHandler_AgentHealthAlways200(t *testing.T) {
 	}
 	require.NoError(t, json.Unmarshal(envelope.Data, &data))
 	require.False(t, data.Enabled)
-	require.Equal(t, service.DataManagementDeprecatedReason, data.Reason)
+	require.Equal(t, backup.DataManagementDeprecatedReason, data.Reason)
 	require.Equal(t, svc.SocketPath(), data.SocketPath)
 }
 
 func TestDataManagementHandler_NonHealthRouteReturns503WhenDisabled(t *testing.T) {
-
-	svc := service.NewDataManagementServiceWithOptions(filepath.Join(t.TempDir(), "missing.sock"), 50*time.Millisecond)
+	svc := backup.NewDataManagementServiceWithOptions(filepath.Join(t.TempDir(), "missing.sock"), 50*time.Millisecond)
 	h := NewDataManagementHandler(svc)
 
 	r := gin.New()
@@ -66,7 +64,7 @@ func TestDataManagementHandler_NonHealthRouteReturns503WhenDisabled(t *testing.T
 	var envelope apiEnvelope
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &envelope))
 	require.Equal(t, http.StatusServiceUnavailable, envelope.Code)
-	require.Equal(t, service.DataManagementDeprecatedReason, envelope.Reason)
+	require.Equal(t, backup.DataManagementDeprecatedReason, envelope.Reason)
 }
 
 func TestNormalizeBackupIdempotencyKey(t *testing.T) {

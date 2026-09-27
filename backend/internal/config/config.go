@@ -645,11 +645,6 @@ func (c *Config) TrustForwardedIPForAPIKeyACL() bool {
 	return c.ForwardedClientIPSettings().TrustForwardedIP
 }
 
-// ForwardedClientIPTrustEnabled 表示旧版转发头兼容模式当前是否覆盖 server.trusted_proxies。
-func (c *Config) ForwardedClientIPTrustEnabled() bool {
-	return c != nil && c.TrustForwardedIPForAPIKeyACL()
-}
-
 func (c *Config) SetForwardedClientIPSettings(enabled bool, headers []string) {
 	if c == nil {
 		return

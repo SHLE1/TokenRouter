@@ -133,17 +133,6 @@ func normalizeObservedAnthropicSpeed(raw string) string {
 	}
 }
 
-func (o *ResponseObserver) ObserveGemini(payload []byte) {
-	model := firstValidTrimmedGJSONModel(
-		payload,
-		"modelVersion",
-		"response.modelVersion",
-		"response.response.modelVersion",
-	)
-	// Gemini 流没有统一的模型终态声明，保留最近分块的模型。
-	o.Observe(model, true)
-}
-
 func (o *ResponseObserver) Model() string {
 	if o == nil {
 		return ""
@@ -152,10 +141,6 @@ func (o *ResponseObserver) Model() string {
 		return o.terminal
 	}
 	return o.first
-}
-
-func (o *ResponseObserver) Conflict() bool {
-	return o != nil && o.conflict
 }
 
 func firstValidTrimmedGJSONModel(payload []byte, paths ...string) string {

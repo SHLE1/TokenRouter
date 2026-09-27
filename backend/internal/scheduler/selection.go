@@ -28,11 +28,6 @@ type SelectionInput struct {
 	PreserveStickyBinding bool
 }
 
-// ResolveCandidate 在每次候选、fresh/DB 复核点执行单步协议解析，不保存共享状态。
-func (in SelectionInput) ResolveCandidate(candidate provider.ProviderSnapshot) (routing.CandidatePlan, bool) {
-	return in.RoutePlan.ResolveCandidate(candidate)
-}
-
 // AttemptSelectionPorts 保留获取、fresh 和数据库复核的独立预算及查询时点。
 // 供应商资格由只读端口给出，gateway 继续拥有真正的上游重试循环。
 type AttemptSelectionPorts struct {

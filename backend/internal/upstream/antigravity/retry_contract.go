@@ -12,7 +12,6 @@ import (
 )
 
 const (
-	AntigravityStickySessionTTL         = time.Hour
 	AntigravityMaxRetries               = 3
 	AntigravityRetryBaseDelay           = 1 * time.Second
 	AntigravityRetryMaxDelay            = 16 * time.Second

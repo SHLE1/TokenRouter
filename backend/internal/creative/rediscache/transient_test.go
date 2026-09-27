@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	service "github.com/TokenFlux/TokenRouter/internal/creative"
+	"github.com/TokenFlux/TokenRouter/internal/creative"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
@@ -21,7 +21,7 @@ func newCreativeTestRedis(t *testing.T) (*miniredis.Miniredis, *redis.Client) {
 	return server, client
 }
 
-func newCreativeTestTransientStore(client *redis.Client) service.CreativeTransientStore {
+func newCreativeTestTransientStore(client *redis.Client) creative.CreativeTransientStore {
 	return NewCreativeTransientStore(client, &TransientOptions{TransientTTLSeconds: 60})
 }
 
@@ -32,13 +32,13 @@ func TestCreativeTransientStoreRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	runID := "crun_testroundtrip0123"
 
-	payload := &service.CreativeRunPayload{
+	payload := &creative.CreativeRunPayload{
 		RunID:       runID,
 		UserID:      7,
 		GroupID:     12,
 		APIKeyID:    900,
 		Model:       "gemini-3.1-flash-image",
-		Operation:   service.CreativeOperationInpaint,
+		Operation:   creative.CreativeOperationInpaint,
 		Prompt:      "临时 prompt",
 		SourceCount: 2,
 		HasMask:     true,
@@ -87,16 +87,16 @@ func TestCreativeTransientStoreExpiry(t *testing.T) {
 	ctx := context.Background()
 	runID := "crun_testexpiry012345"
 
-	require.NoError(t, store.SavePayload(ctx, runID, &service.CreativeRunPayload{RunID: runID, Prompt: "x"}))
+	require.NoError(t, store.SavePayload(ctx, runID, &creative.CreativeRunPayload{RunID: runID, Prompt: "x"}))
 	require.NoError(t, store.SaveOutput(ctx, runID, 0, []byte("out"), time.Minute))
 
 	// 快进 61 秒越过 60 秒 TTL。
 	server.FastForward(61 * time.Second)
 
 	_, err := store.LoadPayload(ctx, runID)
-	require.ErrorIs(t, err, service.ErrCreativeTransientFailed)
+	require.ErrorIs(t, err, creative.ErrCreativeTransientFailed)
 	_, err = store.LoadOutput(ctx, runID, 0)
-	require.ErrorIs(t, err, service.ErrCreativeTransientFailed)
+	require.ErrorIs(t, err, creative.ErrCreativeTransientFailed)
 }
 
 // TestCreativeTransientStoreInputsMissing 校验缺失任一张源图时报错。
@@ -128,7 +128,7 @@ func TestCreativeQueueEnqueueReserveAck(t *testing.T) {
 
 	require.NoError(t, queue.Enqueue(ctx, runID))
 	// 重复入队返回明确冲突。
-	require.ErrorIs(t, queue.Enqueue(ctx, runID), service.ErrCreativeAlreadyQueued)
+	require.ErrorIs(t, queue.Enqueue(ctx, runID), creative.ErrCreativeAlreadyQueued)
 
 	reserved, err := queue.Reserve(ctx, time.Second)
 	require.NoError(t, err)
@@ -136,10 +136,10 @@ func TestCreativeQueueEnqueueReserveAck(t *testing.T) {
 
 	// 队列已空。
 	_, err = queue.Reserve(ctx, 50*time.Millisecond)
-	require.ErrorIs(t, err, service.ErrCreativeQueueEmpty)
+	require.ErrorIs(t, err, creative.ErrCreativeQueueEmpty)
 
 	// 非法 payload 校验。
-	require.ErrorIs(t, queue.Enqueue(ctx, "bad-id"), service.ErrInvalidCreativeQueuePayload)
+	require.ErrorIs(t, queue.Enqueue(ctx, "bad-id"), creative.ErrInvalidCreativeQueuePayload)
 
 	// Ack 后任务彻底离开队列结构。
 	require.NoError(t, queue.Ack(ctx, runID, reserved.LeaseToken))
@@ -175,7 +175,7 @@ func TestCreativeQueueRecoverStaleActive(t *testing.T) {
 
 	// staleAfter 为 0 视为非法参数。
 	_, err = queue.RecoverStaleActive(ctx, 0, 10)
-	require.ErrorIs(t, err, service.ErrInvalidCreativeQueuePayload)
+	require.ErrorIs(t, err, creative.ErrInvalidCreativeQueuePayload)
 }
 
 // TestCreativeQueueLeaseFencingOldWorkerCannotAck 校验 stale 接管后旧 worker token 不能再确认任务。
@@ -198,6 +198,6 @@ func TestCreativeQueueLeaseFencingOldWorkerCannotAck(t *testing.T) {
 	second, err := queue.Reserve(ctx, time.Second)
 	require.NoError(t, err)
 	require.NotEqual(t, first.LeaseToken, second.LeaseToken)
-	require.ErrorIs(t, queue.Ack(ctx, runID, first.LeaseToken), service.ErrCreativeLeaseLost)
+	require.ErrorIs(t, queue.Ack(ctx, runID, first.LeaseToken), creative.ErrCreativeLeaseLost)
 	require.NoError(t, queue.Ack(ctx, runID, second.LeaseToken))
 }

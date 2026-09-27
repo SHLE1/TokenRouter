@@ -6,62 +6,62 @@ import (
 	"strings"
 	"time"
 
-	service "github.com/TokenFlux/TokenRouter/internal/moderation"
+	"github.com/TokenFlux/TokenRouter/internal/moderation"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
 	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
 	"github.com/gin-gonic/gin"
 )
 
 type ContentModerationHandler struct {
-	service *service.ContentModerationService
+	service *moderation.ContentModerationService
 }
 
-func NewContentModerationHandler(svc *service.ContentModerationService) *ContentModerationHandler {
+func NewContentModerationHandler(svc *moderation.ContentModerationService) *ContentModerationHandler {
 	return &ContentModerationHandler{service: svc}
 }
 
 type contentModerationConfigRequest struct {
-	Enabled                 *bool                                        `json:"enabled"`
-	Mode                    *string                                      `json:"mode"`
-	BaseURL                 *string                                      `json:"base_url"`
-	Model                   *string                                      `json:"model"`
-	ProxyID                 *int64                                       `json:"proxy_id"`
-	APIKey                  *string                                      `json:"api_key"`
-	APIKeys                 *[]string                                    `json:"api_keys"`
-	APIKeyEntries           *[]service.ContentModerationAPIKeyEntryInput `json:"api_key_entries"`
-	APIKeyUpdates           *[]service.ContentModerationAPIKeyMetadata   `json:"api_key_updates"`
-	APIKeysMode             string                                       `json:"api_keys_mode"`
-	DeleteAPIKeyHashes      *[]string                                    `json:"delete_api_key_hashes"`
-	ClearAPIKey             bool                                         `json:"clear_api_key"`
-	TimeoutMS               *int                                         `json:"timeout_ms"`
-	SampleRate              *int                                         `json:"sample_rate"`
-	AllGroups               *bool                                        `json:"all_groups"`
-	GroupIDs                *[]int64                                     `json:"group_ids"`
-	RecordNonHits           *bool                                        `json:"record_non_hits"`
-	Thresholds              *map[string]float64                          `json:"thresholds"`
-	WorkerCount             *int                                         `json:"worker_count"`
-	QueueSize               *int                                         `json:"queue_size"`
-	BlockStatus             *int                                         `json:"block_status"`
-	BlockMessage            *string                                      `json:"block_message"`
-	EmailOnHit              *bool                                        `json:"email_on_hit"`
-	AutoBanEnabled          *bool                                        `json:"auto_ban_enabled"`
-	BanThreshold            *int                                         `json:"ban_threshold"`
-	ViolationWindowHours    *int                                         `json:"violation_window_hours"`
-	RetryCount              *int                                         `json:"retry_count"`
-	HitRetentionDays        *int                                         `json:"hit_retention_days"`
-	NonHitRetentionDays     *int                                         `json:"non_hit_retention_days"`
-	PreHashCheckEnabled     *bool                                        `json:"pre_hash_check_enabled"`
-	CyberWarningEnabled     *bool                                        `json:"cyber_warning_enabled"`
-	CyberAutoBanEnabled     *bool                                        `json:"cyber_auto_ban_enabled"`
-	CyberBanThreshold       *int                                         `json:"cyber_ban_threshold"`
-	CyberWindowHours        *int                                         `json:"cyber_violation_window_hours"`
-	BlockedKeywords         *[]string                                    `json:"blocked_keywords"`
-	KeywordBlockingMode     *string                                      `json:"keyword_blocking_mode"`
-	ModelFilter             *service.ContentModerationModelFilter        `json:"model_filter"`
-	AuditUserTextMaxChars   *int                                         `json:"audit_user_text_max_chars"`
-	AuditImages             *bool                                        `json:"audit_images"`
-	AuditToolOutputs        *bool                                        `json:"audit_tool_outputs"`
-	AuditToolOutputMaxChars *int                                         `json:"audit_tool_output_max_chars"`
+	Enabled                 *bool                                           `json:"enabled"`
+	Mode                    *string                                         `json:"mode"`
+	BaseURL                 *string                                         `json:"base_url"`
+	Model                   *string                                         `json:"model"`
+	ProxyID                 *int64                                          `json:"proxy_id"`
+	APIKey                  *string                                         `json:"api_key"`
+	APIKeys                 *[]string                                       `json:"api_keys"`
+	APIKeyEntries           *[]moderation.ContentModerationAPIKeyEntryInput `json:"api_key_entries"`
+	APIKeyUpdates           *[]moderation.ContentModerationAPIKeyMetadata   `json:"api_key_updates"`
+	APIKeysMode             string                                          `json:"api_keys_mode"`
+	DeleteAPIKeyHashes      *[]string                                       `json:"delete_api_key_hashes"`
+	ClearAPIKey             bool                                            `json:"clear_api_key"`
+	TimeoutMS               *int                                            `json:"timeout_ms"`
+	SampleRate              *int                                            `json:"sample_rate"`
+	AllGroups               *bool                                           `json:"all_groups"`
+	GroupIDs                *[]int64                                        `json:"group_ids"`
+	RecordNonHits           *bool                                           `json:"record_non_hits"`
+	Thresholds              *map[string]float64                             `json:"thresholds"`
+	WorkerCount             *int                                            `json:"worker_count"`
+	QueueSize               *int                                            `json:"queue_size"`
+	BlockStatus             *int                                            `json:"block_status"`
+	BlockMessage            *string                                         `json:"block_message"`
+	EmailOnHit              *bool                                           `json:"email_on_hit"`
+	AutoBanEnabled          *bool                                           `json:"auto_ban_enabled"`
+	BanThreshold            *int                                            `json:"ban_threshold"`
+	ViolationWindowHours    *int                                            `json:"violation_window_hours"`
+	RetryCount              *int                                            `json:"retry_count"`
+	HitRetentionDays        *int                                            `json:"hit_retention_days"`
+	NonHitRetentionDays     *int                                            `json:"non_hit_retention_days"`
+	PreHashCheckEnabled     *bool                                           `json:"pre_hash_check_enabled"`
+	CyberWarningEnabled     *bool                                           `json:"cyber_warning_enabled"`
+	CyberAutoBanEnabled     *bool                                           `json:"cyber_auto_ban_enabled"`
+	CyberBanThreshold       *int                                            `json:"cyber_ban_threshold"`
+	CyberWindowHours        *int                                            `json:"cyber_violation_window_hours"`
+	BlockedKeywords         *[]string                                       `json:"blocked_keywords"`
+	KeywordBlockingMode     *string                                         `json:"keyword_blocking_mode"`
+	ModelFilter             *moderation.ContentModerationModelFilter        `json:"model_filter"`
+	AuditUserTextMaxChars   *int                                            `json:"audit_user_text_max_chars"`
+	AuditImages             *bool                                           `json:"audit_images"`
+	AuditToolOutputs        *bool                                           `json:"audit_tool_outputs"`
+	AuditToolOutputMaxChars *int                                            `json:"audit_tool_output_max_chars"`
 }
 
 type contentModerationAPIKeyTestRequest struct {
@@ -93,7 +93,7 @@ func (h *ContentModerationHandler) UpdateConfig(c *gin.Context) {
 		response.BadRequest(c, "Invalid request: "+err.Error())
 		return
 	}
-	cfg, err := h.service.UpdateConfig(c.Request.Context(), service.UpdateContentModerationConfigInput{
+	cfg, err := h.service.UpdateConfig(c.Request.Context(), moderation.UpdateContentModerationConfigInput{
 		Enabled:                 req.Enabled,
 		Mode:                    req.Mode,
 		BaseURL:                 req.BaseURL,
@@ -149,7 +149,7 @@ func (h *ContentModerationHandler) TestAPIKeys(c *gin.Context) {
 		response.BadRequest(c, "Invalid request: "+err.Error())
 		return
 	}
-	result, err := h.service.TestAPIKeys(c.Request.Context(), service.TestContentModerationAPIKeysInput{
+	result, err := h.service.TestAPIKeys(c.Request.Context(), moderation.TestContentModerationAPIKeysInput{
 		APIKeys:   req.APIKeys,
 		BaseURL:   req.BaseURL,
 		Model:     req.Model,
@@ -176,7 +176,7 @@ func (h *ContentModerationHandler) GetStatus(c *gin.Context) {
 
 func (h *ContentModerationHandler) ListLogs(c *gin.Context) {
 	page, pageSize := response.ParsePagination(c)
-	filter := service.ContentModerationLogFilter{
+	filter := moderation.ContentModerationLogFilter{
 		Pagination: pagination.PaginationParams{
 			Page:      page,
 			PageSize:  pageSize,
@@ -293,8 +293,8 @@ func (h *ContentModerationHandler) GetCyberSummary(c *gin.Context) {
 	response.Success(c, summary)
 }
 
-func parseCyberWarningFilter(c *gin.Context, withPagination bool) (service.ContentModerationCyberWarningFilter, string, bool) {
-	filter := service.ContentModerationCyberWarningFilter{Search: c.Query("search")}
+func parseCyberWarningFilter(c *gin.Context, withPagination bool) (moderation.ContentModerationCyberWarningFilter, string, bool) {
+	filter := moderation.ContentModerationCyberWarningFilter{Search: c.Query("search")}
 	if withPagination {
 		page, pageSize := response.ParsePagination(c)
 		filter.Pagination = pagination.PaginationParams{

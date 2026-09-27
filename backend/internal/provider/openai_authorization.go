@@ -184,11 +184,6 @@ func (s *OpenAIAuthorization) exchangeCode(ctx context.Context, input *OpenAIExc
 	return tokenInfo, nil
 }
 
-// 使用原刷新入口和 client_id 回退。
-func (s *OpenAIAuthorization) refreshToken(ctx context.Context, refreshToken string, proxyURL string) (*OpenAITokenInfo, error) {
-	return s.refreshTokenWithClientID(ctx, refreshToken, proxyURL, "")
-}
-
 // 按显式 client_id 刷新，缺省行为保持。
 func (s *OpenAIAuthorization) refreshTokenWithClientID(ctx context.Context, refreshToken string, proxyURL string, clientID string) (*OpenAITokenInfo, error) {
 	return s.refreshTokenWithParameters(ctx, refreshToken, proxyURL, clientID, 0, nil)
@@ -425,26 +420,6 @@ func (s *OpenAIAuthorization) ExchangeCode(ctx context.Context, input *OpenAIExc
 	return s.exchangeCode(ctx, input)
 }
 
-// RefreshToken 将当前操作登记到唯一授权实例的生命周期。
-func (s *OpenAIAuthorization) RefreshToken(ctx context.Context, refreshToken string, proxyURL string) (*OpenAITokenInfo, error) {
-	ctx, finish, err := s.activity.begin(ctx, ErrProbeStopped)
-	if err != nil {
-		return nil, err
-	}
-	defer finish()
-	return s.refreshToken(ctx, refreshToken, proxyURL)
-}
-
-// RefreshTokenWithClientID 将当前操作登记到唯一授权实例的生命周期。
-func (s *OpenAIAuthorization) RefreshTokenWithClientID(ctx context.Context, refreshToken string, proxyURL string, clientID string) (*OpenAITokenInfo, error) {
-	ctx, finish, err := s.activity.begin(ctx, ErrProbeStopped)
-	if err != nil {
-		return nil, err
-	}
-	defer finish()
-	return s.refreshTokenWithClientID(ctx, refreshToken, proxyURL, clientID)
-}
-
 // RefreshTokenWithClientIDAndRouter 将当前操作登记到唯一授权实例的生命周期。
 func (s *OpenAIAuthorization) RefreshTokenWithClientIDAndRouter(ctx context.Context, refreshToken string, proxyURL string, clientID string, routerID *int64) (*OpenAITokenInfo, error) {
 	ctx, finish, err := s.activity.begin(ctx, ErrProbeStopped)
@@ -453,16 +428,6 @@ func (s *OpenAIAuthorization) RefreshTokenWithClientIDAndRouter(ctx context.Cont
 	}
 	defer finish()
 	return s.refreshTokenWithClientIDAndRouter(ctx, refreshToken, proxyURL, clientID, routerID)
-}
-
-// RefreshTokenWithParameters 将当前操作登记到唯一授权实例的生命周期。
-func (s *OpenAIAuthorization) RefreshTokenWithParameters(ctx context.Context, refreshToken string, proxyURL string, clientID string, routerID int64, provider *Record) (*OpenAITokenInfo, error) {
-	ctx, finish, err := s.activity.begin(ctx, ErrProbeStopped)
-	if err != nil {
-		return nil, err
-	}
-	defer finish()
-	return s.refreshTokenWithParameters(ctx, refreshToken, proxyURL, clientID, routerID, provider)
 }
 
 // RefreshProviderToken 将当前操作登记到唯一授权实例的生命周期。

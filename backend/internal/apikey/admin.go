@@ -38,15 +38,6 @@ func (s *Admin) AdminUpdateAPIKeyGroupID(ctx context.Context, id int64, gid *int
 	return s.updateManagedFields(ctx, id, gid, false, true)
 }
 
-// AdminResetAPIKeyRateLimitUsage 保留内部单独重置入口的复合 Key 支持。
-func (s *Admin) AdminResetAPIKeyRateLimitUsage(ctx context.Context, id int64) (*APIKey, error) {
-	v, e := s.updateManagedFields(ctx, id, nil, true, false)
-	if v == nil {
-		return nil, e
-	}
-	return v.APIKey, e
-}
-
 // UpdateManagedFields 保证同一个 HTTP 请求的配置与消费重置一起提交。
 func (s *Admin) UpdateManagedFields(ctx context.Context, id int64, gid *int64, reset bool) (*AdminUpdateAPIKeyGroupIDResult, error) {
 	return s.updateManagedFields(ctx, id, gid, reset, true)

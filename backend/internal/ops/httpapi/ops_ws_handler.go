@@ -52,9 +52,7 @@ var upgrader = websocket.Upgrader{
 }
 
 const (
-	qpsWSPushInterval       = 2 * time.Second
-	qpsWSRefreshInterval    = 5 * time.Second
-	qpsWSRequestCountWindow = 1 * time.Minute
+	qpsWSPushInterval = 2 * time.Second
 
 	defaultMaxWSConns      = 100
 	defaultMaxWSConnsPerIP = 20

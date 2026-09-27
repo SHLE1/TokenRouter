@@ -13,15 +13,6 @@ var RegistrationEmailDomainPattern = regexp.MustCompile(
 	`^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$`,
 )
 
-// RegistrationEmailSuffix extracts normalized suffix in "@domain" form.
-func RegistrationEmailSuffix(email string) string {
-	_, domain, ok := SplitEmailForPolicy(email)
-	if !ok {
-		return ""
-	}
-	return "@" + domain
-}
-
 // RegistrationEmailDomain 返回邮箱对应的可注册主域名，用于域名注册额度归一化。
 // 例如 abc.com 和 sub.abc.com 都返回 abc.com；公共后缀无法识别时保留原域名。
 func RegistrationEmailDomain(email string) string {

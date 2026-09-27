@@ -141,9 +141,6 @@ const (
 	StatusActive   = "active"
 	StatusDisabled = "disabled"
 	StatusError    = "error"
-	StatusUnused   = "unused"
-	StatusUsed     = "used"
-	StatusExpired  = "expired"
 )
 
 // Platform constants
@@ -323,13 +320,6 @@ func (a *Record) IsRateLimited() bool {
 	return a.now().Before(*a.RateLimitResetAt)
 }
 
-func (a *Record) IsOverloaded() bool {
-	if a.OverloadUntil == nil {
-		return false
-	}
-	return a.now().Before(*a.OverloadUntil)
-}
-
 func (a *Record) IsOAuth() bool {
 	return a.Type == ProviderTypeOAuth || a.Type == ProviderTypeSetupToken
 }
@@ -359,19 +349,6 @@ func (a *Record) IsGrok() bool {
 
 func (a *Record) IsGrokOAuth() bool {
 	return a.IsGrok() && a.Type == ProviderTypeOAuth
-}
-
-// IsKimi / IsZhipu / IsDeepseek 标识国产 OpenAI 兼容提供商。
-func (a *Record) IsKimi() bool {
-	return a.Platform == PlatformKimi
-}
-
-func (a *Record) IsZhipu() bool {
-	return a.Platform == PlatformZhipu
-}
-
-func (a *Record) IsDeepseek() bool {
-	return a.Platform == PlatformDeepseek
 }
 
 // IsCNProvider 报告是否为国产 OpenAI 兼容供应商（kimi/zhipu/deepseek）。
@@ -842,39 +819,6 @@ func ResolveFinalModelWhitelist(platform string, credentials map[string]any, map
 		return nil, false
 	}
 	return ExtractFinalModelWhitelist(platform, mapping), false
-}
-
-// ConfiguredQoderRequestModels 将 model_mapping key 作为 Qoder 请求和展示模型集合。
-// 如果没有配置 mapping，model_whitelist 仍可作为仅白名单提供商的显式请求模型列表。
-func ConfiguredQoderRequestModels(mapping map[string]string, whitelist map[string]struct{}) []string {
-	if len(mapping) == 0 && len(whitelist) == 0 {
-		return nil
-	}
-	modelSet := make(map[string]struct{}, len(mapping)+len(whitelist))
-	if len(mapping) > 0 {
-		for rawModel := range mapping {
-			model := strings.TrimSpace(rawModel)
-			if model != "" {
-				modelSet[model] = struct{}{}
-			}
-		}
-	} else {
-		for rawModel := range whitelist {
-			model := strings.TrimSpace(rawModel)
-			if model != "" {
-				modelSet[model] = struct{}{}
-			}
-		}
-	}
-	if len(modelSet) == 0 {
-		return nil
-	}
-	models := make([]string, 0, len(modelSet))
-	for model := range modelSet {
-		models = append(models, model)
-	}
-	sort.Strings(models)
-	return models
 }
 
 // GetOpenAICompactMode 返回管理员选择的旧版压缩开关。
@@ -1413,13 +1357,6 @@ func (a *Record) GetGrokRefreshToken() string {
 	return a.GetCredential("refresh_token")
 }
 
-func (a *Record) GetOpenAIIDToken() string {
-	if !a.IsOpenAIOAuth() {
-		return ""
-	}
-	return a.GetCredential("id_token")
-}
-
 func (a *Record) GetOpenAIApiKey() string {
 	if !a.IsOpenAIApiKey() {
 		return ""
@@ -1492,13 +1429,6 @@ func (a *Record) GetOpenAIDeviceID() string {
 		return ""
 	}
 	return strings.TrimSpace(a.GetExtraString("openai_device_id"))
-}
-
-func (a *Record) GetOpenAISessionID() string {
-	if !a.IsOpenAIOAuth() {
-		return ""
-	}
-	return strings.TrimSpace(a.GetExtraString("openai_session_id"))
 }
 
 func GrokMediaEligibilityOverride(extra map[string]any) (bool, bool) {
@@ -1586,35 +1516,6 @@ func (a *Record) SupportsOpenAIImageCapability(capability OpenAIImagesCapability
 	default:
 		return true
 	}
-}
-
-func (a *Record) GetChatGPTUserID() string {
-	if !a.IsOpenAIOAuth() {
-		return ""
-	}
-	return a.GetCredential("chatgpt_user_id")
-}
-
-func (a *Record) GetOpenAIOrganizationID() string {
-	if !a.IsOpenAIOAuth() {
-		return ""
-	}
-	return a.GetCredential("organization_id")
-}
-
-func (a *Record) GetOpenAITokenExpiresAt() *time.Time {
-	if !a.IsOpenAIOAuth() {
-		return nil
-	}
-	return a.GetCredentialAsTime("expires_at")
-}
-
-func (a *Record) IsOpenAITokenExpired() bool {
-	expiresAt := a.GetOpenAITokenExpiresAt()
-	if expiresAt == nil {
-		return false
-	}
-	return a.now().Add(60 * time.Second).After(*expiresAt)
 }
 
 // IsOveragesEnabled 检查 Antigravity 提供商是否启用 AI Credits 超量请求。

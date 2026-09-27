@@ -13,7 +13,7 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 
-	service "github.com/TokenFlux/TokenRouter/internal/creative"
+	"github.com/TokenFlux/TokenRouter/internal/creative"
 	middleware2 "github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
 	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
 
@@ -38,12 +38,12 @@ func NewCreativeHandler(service CreativeUseCases) *CreativeHandler {
 }
 
 // creativeRunScopeFromRequest 解析创作台浏览器工作区并绑定当前用户身份。
-func creativeRunScopeFromRequest(c *gin.Context, userID int64) (service.CreativeRunScope, error) {
-	workspaceID, err := service.NormalizeCreativeWorkspaceID(c.GetHeader(service.CreativeWorkspaceHeader))
+func creativeRunScopeFromRequest(c *gin.Context, userID int64) (creative.CreativeRunScope, error) {
+	workspaceID, err := creative.NormalizeCreativeWorkspaceID(c.GetHeader(creative.CreativeWorkspaceHeader))
 	if err != nil {
-		return service.CreativeRunScope{}, err
+		return creative.CreativeRunScope{}, err
 	}
-	return service.CreativeRunScope{UserID: userID, WorkspaceID: workspaceID}, nil
+	return creative.CreativeRunScope{UserID: userID, WorkspaceID: workspaceID}, nil
 }
 
 // ListModels 返回当前用户可用的分组 + 图片模型组合。
@@ -97,8 +97,8 @@ type creativeCreateRunRequest struct {
 	Model         string
 	Operation     string
 	Prompt        string
-	SourceImages  []service.CreativeInputImage
-	Mask          *service.CreativeInputImage
+	SourceImages  []creative.CreativeInputImage
+	Mask          *creative.CreativeInputImage
 	ImageSize     string
 	AspectRatio   string
 	Quality       string
@@ -140,14 +140,14 @@ func (h *CreativeHandler) CreateRun(c *gin.Context) {
 	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, totalInputLimit+creativeMultipartOverheadBytes)
 	req, err := parseCreativeCreateRunMultipart(c, partLimit, totalInputLimit)
 	if err != nil {
-		if errors.Is(err, service.ErrCreativeAssetTooLarge) || errors.Is(err, service.ErrCreativeInputTooLarge) {
+		if errors.Is(err, creative.ErrCreativeAssetTooLarge) || errors.Is(err, creative.ErrCreativeInputTooLarge) {
 			response.ErrorFrom(c, err)
 			return
 		}
-		response.ErrorFrom(c, service.ErrCreativeInvalidParams)
+		response.ErrorFrom(c, creative.ErrCreativeInvalidParams)
 		return
 	}
-	got, err := h.service.CreateRun(c.Request.Context(), scope, service.CreateCreativeRunParamsPublic{
+	got, err := h.service.CreateRun(c.Request.Context(), scope, creative.CreateCreativeRunParamsPublic{
 		GroupID:       req.GroupID,
 		Model:         req.Model,
 		Operation:     req.Operation,
@@ -208,7 +208,7 @@ func parseCreativeCreateRunMultipart(c *gin.Context, partLimit, totalInputLimit 
 			remaining := totalInputLimit - totalFileBytes
 			if remaining <= 0 {
 				_ = part.Close()
-				return nil, service.ErrCreativeInputTooLarge
+				return nil, creative.ErrCreativeInputTooLarge
 			}
 			readLimit := partLimit
 			if remaining < readLimit {
@@ -219,26 +219,26 @@ func parseCreativeCreateRunMultipart(c *gin.Context, partLimit, totalInputLimit 
 			if readErr != nil {
 				var maxBytesErr *http.MaxBytesError
 				if errors.As(readErr, &maxBytesErr) {
-					return nil, service.ErrCreativeInputTooLarge
+					return nil, creative.ErrCreativeInputTooLarge
 				}
 				return nil, readErr
 			}
 			if int64(len(data)) > readLimit {
 				if readLimit < partLimit {
-					return nil, service.ErrCreativeInputTooLarge
+					return nil, creative.ErrCreativeInputTooLarge
 				}
-				return nil, service.ErrCreativeAssetTooLarge
+				return nil, creative.ErrCreativeAssetTooLarge
 			}
 			totalFileBytes += int64(len(data))
 			partMIME := normalizeCreativeUploadMime(strings.TrimSpace(part.Header.Get("Content-Type")), data)
 			switch {
 			case name == "mask":
 				if len(data) > 0 {
-					req.Mask = &service.CreativeInputImage{Bytes: data, Mime: partMIME}
+					req.Mask = &creative.CreativeInputImage{Bytes: data, Mime: partMIME}
 				}
 			case name == "source_images" || name == "source_images[]" || strings.HasPrefix(name, "source_images["):
 				if len(data) > 0 {
-					req.SourceImages = append(req.SourceImages, service.CreativeInputImage{Bytes: data, Mime: partMIME})
+					req.SourceImages = append(req.SourceImages, creative.CreativeInputImage{Bytes: data, Mime: partMIME})
 				}
 			}
 			continue
@@ -253,7 +253,7 @@ func parseCreativeCreateRunMultipart(c *gin.Context, partLimit, totalInputLimit 
 		case "group_id":
 			groupID, parseErr := strconv.ParseInt(value, 10, 64)
 			if parseErr != nil || groupID <= 0 {
-				return nil, service.ErrCreativeInvalidParams
+				return nil, creative.ErrCreativeInvalidParams
 			}
 			req.GroupID = groupID
 		case "model":
@@ -270,7 +270,7 @@ func parseCreativeCreateRunMultipart(c *gin.Context, partLimit, totalInputLimit 
 			req.Quality = value
 		case "output_format", "output_compression", "response_mime_type":
 			// 创作台统一输出 PNG，旧格式参数不再兼容。
-			return nil, service.ErrCreativeInvalidParams
+			return nil, creative.ErrCreativeInvalidParams
 		case "background":
 			req.Background = strings.ToLower(value)
 		case "thinking_level":
@@ -278,7 +278,7 @@ func parseCreativeCreateRunMultipart(c *gin.Context, partLimit, totalInputLimit 
 		}
 	}
 	if req.GroupID <= 0 {
-		return nil, service.ErrCreativeInvalidParams
+		return nil, creative.ErrCreativeInvalidParams
 	}
 	return req, nil
 }
@@ -328,7 +328,7 @@ func (h *CreativeHandler) ListRuns(c *gin.Context) {
 		return
 	}
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
-	got, err := h.service.ListRuns(c.Request.Context(), scope, service.CreativeRunFilter{
+	got, err := h.service.ListRuns(c.Request.Context(), scope, creative.CreativeRunFilter{
 		Status: strings.TrimSpace(c.Query("status")),
 		Limit:  limit,
 		Offset: 0,
@@ -371,16 +371,16 @@ func (h *CreativeHandler) ListActiveRuns(c *gin.Context) {
 	if rawCursor := strings.TrimSpace(c.Query("cursor")); rawCursor != "" {
 		decoded, decodeErr := base64.RawURLEncoding.DecodeString(rawCursor)
 		if decodeErr != nil {
-			response.ErrorFrom(c, service.ErrCreativeInvalidParams)
+			response.ErrorFrom(c, creative.ErrCreativeInvalidParams)
 			return
 		}
 		offset, err = strconv.Atoi(string(decoded))
 		if err != nil || offset < 0 {
-			response.ErrorFrom(c, service.ErrCreativeInvalidParams)
+			response.ErrorFrom(c, creative.ErrCreativeInvalidParams)
 			return
 		}
 	}
-	got, err := h.service.ListRuns(c.Request.Context(), scope, service.CreativeRunFilter{
+	got, err := h.service.ListRuns(c.Request.Context(), scope, creative.CreativeRunFilter{
 		Status: "active",
 		Limit:  limit,
 		Offset: offset,
@@ -454,7 +454,7 @@ func (h *CreativeHandler) GetOutputContent(c *gin.Context) {
 	}
 	outputIndex, err := strconv.Atoi(c.Param("index"))
 	if err != nil || outputIndex < 0 {
-		response.ErrorFrom(c, service.ErrCreativeOutputNotFound)
+		response.ErrorFrom(c, creative.ErrCreativeOutputNotFound)
 		return
 	}
 	content, err := h.service.GetOutputContent(c.Request.Context(), scope, c.Param("id"), outputIndex)
@@ -491,7 +491,7 @@ func (h *CreativeHandler) AckOutput(c *gin.Context) {
 	}
 	outputIndex, err := strconv.Atoi(c.Param("index"))
 	if err != nil || outputIndex < 0 {
-		response.ErrorFrom(c, service.ErrCreativeOutputNotFound)
+		response.ErrorFrom(c, creative.ErrCreativeOutputNotFound)
 		return
 	}
 	if err := h.service.AckOutput(c.Request.Context(), scope, c.Param("id"), outputIndex); err != nil {
@@ -503,15 +503,15 @@ func (h *CreativeHandler) AckOutput(c *gin.Context) {
 
 // CreativeUseCases 只暴露 HTTP 消费的任务契约，不依赖旧聚合服务。
 type CreativeUseCases interface {
-	ListModels(context.Context, int64) (*service.CreativeModelsResponse, error)
-	GetCapabilities(context.Context) *service.CreativeCapabilitiesResponse
+	ListModels(context.Context, int64) (*creative.CreativeModelsResponse, error)
+	GetCapabilities(context.Context) *creative.CreativeCapabilitiesResponse
 	MaxAssetBytes() int64
 	MaxTotalInputBytes() int64
-	CreateRun(context.Context, service.CreativeRunScope, service.CreateCreativeRunParamsPublic, string) (*service.CreativeRunPublic, error)
-	ListRuns(context.Context, service.CreativeRunScope, service.CreativeRunFilter) (*service.CreativeListRunsResponse, error)
-	GetRun(context.Context, service.CreativeRunScope, string) (*service.CreativeRunPublic, error)
-	GetOutputContent(context.Context, service.CreativeRunScope, string, int) (*service.CreativeOutputContent, error)
-	AckOutput(context.Context, service.CreativeRunScope, string, int) error
+	CreateRun(context.Context, creative.CreativeRunScope, creative.CreateCreativeRunParamsPublic, string) (*creative.CreativeRunPublic, error)
+	ListRuns(context.Context, creative.CreativeRunScope, creative.CreativeRunFilter) (*creative.CreativeListRunsResponse, error)
+	GetRun(context.Context, creative.CreativeRunScope, string) (*creative.CreativeRunPublic, error)
+	GetOutputContent(context.Context, creative.CreativeRunScope, string, int) (*creative.CreativeOutputContent, error)
+	AckOutput(context.Context, creative.CreativeRunScope, string, int) error
 }
 
 // BindActivity 在构造阶段绑定任务入口关闭屏障，释放覆盖完整 HTTP 流式输出。

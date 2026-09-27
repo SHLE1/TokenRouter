@@ -41,15 +41,6 @@ func NewClient(apiBaseURL string) *Client {
 	return NewClientForProfile(profile)
 }
 
-// NewClientForSite 使用指定站点的默认 profile 创建 COSY 客户端。
-func NewClientForSite(site Site) (*Client, error) {
-	profile, err := ProfileForSite(site)
-	if err != nil {
-		return nil, err
-	}
-	return NewClientForProfile(profile), nil
-}
-
 // NewClientForProfile 使用可注入端点的站点 profile 创建 COSY 客户端。
 func NewClientForProfile(profile Profile) *Client {
 	normalized, err := NormalizeProfile(profile)
@@ -1207,17 +1198,4 @@ func StreamEvents(resp *http.Response) <-chan SSEEvent {
 		}
 	}()
 	return ch
-}
-
-// ParseSSEEvent 解析单行 SSE data，并返回第一个事件。
-// 这是面向单事件消费场景的 ParseSSELine 便捷封装。
-func ParseSSEEvent(line string) (*SSEEvent, error) {
-	events, err := ParseSSELine(line)
-	if err != nil {
-		return nil, err
-	}
-	if len(events) == 0 {
-		return nil, nil
-	}
-	return &events[0], nil
 }

@@ -6,7 +6,6 @@ import (
 )
 
 const (
-	opsCleanupBatchTimeout     = 15 * time.Second
 	opsCleanupCronStopTimeout  = 3 * time.Second
 	opsCleanupRunTimeout       = 30 * time.Minute
 	opsCleanupHeartbeatTimeout = 2 * time.Second

@@ -22,9 +22,7 @@ func (o RealtimeOptions) GoString() string { return o.String() }
 func (o RealtimeOptions) native() grok.RealtimeDialOptions {
 	return grok.RealtimeDialOptions{BaseURL: o.BaseURL, Model: o.Model, Token: o.Token, CLIHeaders: o.CLIHeaders, ApplyHeaders: o.ApplyHeaders, Dial: o.Dial, Enter: o.Enter}
 }
+
 func DialRealtime(ctx context.Context, options RealtimeOptions) (*grok.RealtimeSession, error) {
 	return grok.DialRealtime(ctx, options.native())
-}
-func ProbeRealtime(ctx context.Context, options RealtimeOptions) error {
-	return grok.ProbeRealtime(ctx, options.native())
 }

@@ -143,12 +143,6 @@ func ContentModerationDefaultThresholds() map[string]float64 {
 	}
 }
 
-func ContentModerationCategories() []string {
-	out := make([]string, len(contentModerationCategoryOrder))
-	copy(out, contentModerationCategoryOrder)
-	return out
-}
-
 type ContentModerationConfig struct {
 	Enabled bool   `json:"enabled"`
 	Mode    string `json:"mode"`

@@ -48,13 +48,6 @@ type GroupSortOrderRepository interface {
 	LockGroupSortOrder(ctx context.Context) error
 }
 
-// AdminGroupRepository 将管理端专用写能力显式注入管理服务，避免扩大网关侧测试替身接口。
-type AdminGroupRepository interface {
-	GroupRepository
-	GroupDuplicateRepository
-	GroupSortOrderRepository
-}
-
 // GroupSortOrderUpdate 分组排序更新
 type GroupSortOrderUpdate struct {
 	ID        int64 `json:"id"`

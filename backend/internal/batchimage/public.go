@@ -23,9 +23,7 @@ import (
 
 const PlatformGemini = "gemini"
 const (
-	BillingModelSourceRequested   = routing.BillingModelSourceRequested
-	BillingModelSourceUpstream    = routing.BillingModelSourceUpstream
-	BillingModelSourceGroupMapped = routing.BillingModelSourceGroupMapped
+	BillingModelSourceUpstream = routing.BillingModelSourceUpstream
 )
 
 type (
@@ -131,7 +129,7 @@ const (
 	DefaultBatchImageImageSize          = "1K"
 	DefaultBatchImageDiscountMultiplier = 0.5
 	DefaultBatchImageHoldMultiplier     = 0.6
-	MaxBatchImagePublicErrorChars       = 500
+
 	MaxBatchImageReferenceImageBytes    = 10 * 1024 * 1024
 	DefaultBatchImageMaxReferenceImages = 1000
 	DefaultBatchImageMaxReferenceBytes  = 128 * 1024 * 1024

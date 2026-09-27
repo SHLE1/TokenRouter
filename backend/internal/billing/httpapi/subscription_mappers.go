@@ -5,11 +5,6 @@ import (
 	billingdto "github.com/TokenFlux/TokenRouter/internal/billing/httpapi/dto"
 )
 
-// SubscriptionPlanFromServiceShallow 委托所属模块的唯一实现。
-func SubscriptionPlanFromServiceShallow(plan *billing.SubscriptionPlan) *SubscriptionPlan {
-	return billingdto.SubscriptionPlanFromServiceShallow(plan)
-}
-
 // UserSubscriptionFromService 委托所属模块的唯一实现。
 func UserSubscriptionFromService(sub *billing.UserSubscription) *UserSubscription {
 	return billingdto.UserSubscriptionFromService(sub)

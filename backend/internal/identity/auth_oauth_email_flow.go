@@ -321,13 +321,6 @@ func (s *AuthService) RollbackOAuthEmailAccountCreation(ctx context.Context, use
 	return nil
 }
 
-func AuthOauthEmailFlowStringValue(value *string) string {
-	if value == nil {
-		return ""
-	}
-	return *value
-}
-
 // ValidatePasswordCredentials checks the local password without completing the
 // login flow. This is used by pending third-party account adoption flows before
 // the external identity has been bound.

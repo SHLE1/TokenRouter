@@ -11,7 +11,7 @@ import (
 
 	sqlutil "github.com/TokenFlux/TokenRouter/internal/infra/postgres"
 
-	service "github.com/TokenFlux/TokenRouter/internal/audit"
+	"github.com/TokenFlux/TokenRouter/internal/audit"
 	"github.com/lib/pq"
 )
 
@@ -30,7 +30,7 @@ const auditLogInsertColumns = `created_at, actor_user_id, actor_email, actor_rol
 credential_masked, action, method, path, request_id, client_ip, user_agent,
 request_body, status_code, latency_ms, extra`
 
-func auditLogInsertValues(log *service.AuditLog) []any {
+func auditLogInsertValues(log *audit.AuditLog) []any {
 	createdAt := log.CreatedAt
 	if createdAt.IsZero() {
 		createdAt = time.Now().UTC()
@@ -61,7 +61,7 @@ func auditLogInsertValues(log *service.AuditLog) []any {
 	}
 }
 
-func (r *Store) BatchInsert(ctx context.Context, logs []*service.AuditLog) (int64, error) {
+func (r *Store) BatchInsert(ctx context.Context, logs []*audit.AuditLog) (int64, error) {
 	if r == nil || r.db == nil {
 		return 0, fmt.Errorf("nil audit log repository")
 	}
@@ -112,7 +112,7 @@ func (r *Store) BatchInsert(ctx context.Context, logs []*service.AuditLog) (int6
 	return inserted, nil
 }
 
-func (r *Store) Insert(ctx context.Context, log *service.AuditLog) error {
+func (r *Store) Insert(ctx context.Context, log *audit.AuditLog) error {
 	if r == nil || r.db == nil {
 		return fmt.Errorf("nil audit log repository")
 	}
@@ -125,7 +125,7 @@ VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`
 	return err
 }
 
-func buildAuditLogsWhere(filter *service.AuditLogFilter) (string, []any) {
+func buildAuditLogsWhere(filter *audit.AuditLogFilter) (string, []any) {
 	clauses := make([]string, 0, 10)
 	args := make([]any, 0, 10)
 	clauses = append(clauses, "1=1")
@@ -197,8 +197,8 @@ const auditLogSelectColumns = `
   l.latency_ms,
   COALESCE(l.extra::text, '{}')`
 
-func scanAuditLogRow(scan func(dest ...any) error) (*service.AuditLog, error) {
-	item := &service.AuditLog{}
+func scanAuditLogRow(scan func(dest ...any) error) (*audit.AuditLog, error) {
+	item := &audit.AuditLog{}
 	var actorUserID sql.NullInt64
 	var extraRaw string
 	if err := scan(
@@ -236,12 +236,12 @@ func scanAuditLogRow(scan func(dest ...any) error) (*service.AuditLog, error) {
 	return item, nil
 }
 
-func (r *Store) List(ctx context.Context, filter *service.AuditLogFilter) (*service.AuditLogList, error) {
+func (r *Store) List(ctx context.Context, filter *audit.AuditLogFilter) (*audit.AuditLogList, error) {
 	if r == nil || r.db == nil {
 		return nil, fmt.Errorf("nil audit log repository")
 	}
 	if filter == nil {
-		filter = &service.AuditLogFilter{}
+		filter = &audit.AuditLogFilter{}
 	}
 
 	page := filter.Page
@@ -275,7 +275,7 @@ LIMIT $` + strconv.Itoa(len(args)+1) + ` OFFSET $` + strconv.Itoa(len(args)+2)
 	}
 	defer func() { _ = rows.Close() }()
 
-	logs := make([]*service.AuditLog, 0, pageSize)
+	logs := make([]*audit.AuditLog, 0, pageSize)
 	for rows.Next() {
 		item, err := scanAuditLogRow(rows.Scan)
 		if err != nil {
@@ -289,7 +289,7 @@ LIMIT $` + strconv.Itoa(len(args)+1) + ` OFFSET $` + strconv.Itoa(len(args)+2)
 		return nil, err
 	}
 
-	return &service.AuditLogList{
+	return &audit.AuditLogList{
 		Logs:     logs,
 		Total:    total,
 		Page:     page,
@@ -297,7 +297,7 @@ LIMIT $` + strconv.Itoa(len(args)+1) + ` OFFSET $` + strconv.Itoa(len(args)+2)
 	}, nil
 }
 
-func (r *Store) GetByID(ctx context.Context, id int64) (*service.AuditLog, error) {
+func (r *Store) GetByID(ctx context.Context, id int64) (*audit.AuditLog, error) {
 	if r == nil || r.db == nil {
 		return nil, fmt.Errorf("nil audit log repository")
 	}
@@ -306,7 +306,7 @@ func (r *Store) GetByID(ctx context.Context, id int64) (*service.AuditLog, error
 	item, err := scanAuditLogRow(row.Scan)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, service.ErrAuditLogNotFound
+			return nil, audit.ErrAuditLogNotFound
 		}
 		return nil, err
 	}
@@ -351,7 +351,7 @@ DELETE FROM audit_logs WHERE id IN (SELECT id FROM batch)`, cutoff.UTC(), batchS
 }
 
 // ClearWithTrace 把原记录清空与必须持久的留痕放在同一 PostgreSQL 事务中。
-func (r *Store) ClearWithTrace(ctx context.Context, trace *service.AuditLog) (int64, error) {
+func (r *Store) ClearWithTrace(ctx context.Context, trace *audit.AuditLog) (int64, error) {
 	if trace == nil {
 		return 0, fmt.Errorf("audit clear trace is required")
 	}

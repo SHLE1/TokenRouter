@@ -10,7 +10,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/DATA-DOG/go-sqlmock"
 	dbent "github.com/TokenFlux/TokenRouter/ent"
-	service "github.com/TokenFlux/TokenRouter/internal/site"
+	"github.com/TokenFlux/TokenRouter/internal/site"
 	"github.com/stretchr/testify/require"
 )
 
@@ -25,7 +25,7 @@ func TestAnnouncementRepositoryArchiveExpired(t *testing.T) {
 
 	now := time.Date(2026, time.August, 1, 12, 0, 0, 0, time.UTC)
 	mock.ExpectExec(regexp.QuoteMeta(`UPDATE "announcements" SET "status" = $1, "updated_at" = $2 WHERE ("announcements"."status" = $3 AND "announcements"."ends_at" IS NOT NULL) AND "announcements"."ends_at" <= $4`)).
-		WithArgs(service.AnnouncementStatusArchived, sqlmock.AnyArg(), service.AnnouncementStatusActive, now).
+		WithArgs(site.AnnouncementStatusArchived, sqlmock.AnyArg(), site.AnnouncementStatusActive, now).
 		WillReturnResult(sqlmock.NewResult(0, 2))
 
 	repo := NewAnnouncementRepository(client)

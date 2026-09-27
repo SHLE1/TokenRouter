@@ -72,11 +72,6 @@ func GenerateCodeChallenge(verifier string) string {
 	return oauthpkce.Challenge(verifier)
 }
 
-// BuildAuthorizationURL builds the OpenAI OAuth authorization URL
-func BuildAuthorizationURL(state, codeChallenge, redirectURI string) string {
-	return BuildAuthorizationURLForPlatform(state, codeChallenge, redirectURI, OAuthPlatformOpenAI)
-}
-
 // BuildAuthorizationURLForPlatform builds authorization URL by platform.
 func BuildAuthorizationURLForPlatform(state, codeChallenge, redirectURI, platform string) string {
 	if redirectURI == "" {
@@ -107,41 +102,9 @@ func OAuthClientConfigByPlatform(platform string) (clientID string, codexFlow bo
 	return ClientID, true
 }
 
-type TokenRequest = wire.OAuthTokenRequest
-
 type TokenResponse = wire.OAuthTokenResponse
 
-type RefreshTokenRequest = wire.OAuthRefreshTokenRequest
-
 type IDTokenClaims = wire.OAuthIDTokenClaims
-
-type OpenAIAuthClaims = wire.OAuthAuthClaims
-
-type OrganizationClaim = wire.OAuthOrganizationClaim
-
-// BuildTokenRequest creates a token exchange request for OpenAI
-func BuildTokenRequest(code, codeVerifier, redirectURI string) *TokenRequest {
-	if redirectURI == "" {
-		redirectURI = DefaultRedirectURI
-	}
-	return &TokenRequest{
-		GrantType:    "authorization_code",
-		ClientID:     ClientID,
-		Code:         code,
-		RedirectURI:  redirectURI,
-		CodeVerifier: codeVerifier,
-	}
-}
-
-// BuildRefreshTokenRequest creates a refresh token request for OpenAI
-func BuildRefreshTokenRequest(refreshToken string) *RefreshTokenRequest {
-	return &RefreshTokenRequest{
-		GrantType:    "refresh_token",
-		RefreshToken: refreshToken,
-		ClientID:     ClientID,
-		Scope:        RefreshScopes,
-	}
-}
 
 // DecodeIDToken decodes the ID Token JWT payload without validating expiration.
 // Use this for best-effort extraction (e.g., during data import) where the token may be expired.
@@ -198,5 +161,3 @@ func ParseIDToken(idToken string) (*IDTokenClaims, error) {
 
 	return claims, nil
 }
-
-type UserInfo = wire.OAuthUserInfo

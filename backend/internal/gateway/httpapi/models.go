@@ -425,10 +425,6 @@ func CustomModelsListAllowsModel(availablePatterns []string, model string) bool 
 	return false
 }
 
-func MergeModelIDs(primary, secondary []string) []string {
-	return modeldisplay.MergeModelIDs(primary, secondary)
-}
-
 func GrokModelSupportsConfigurableReasoning(modelID string) bool {
 	switch strings.ToLower(strings.TrimSpace(modelID)) {
 	case "grok-4.6", "grok-4.6-latest", "grok-4.5", "grok-4.5-latest", "grok", "grok-latest", "grok-build", "grok-build-latest", "grok-build-0.1":

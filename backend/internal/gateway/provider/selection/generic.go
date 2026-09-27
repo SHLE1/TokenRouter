@@ -20,11 +20,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
-// SelectProvider 选择提供商（粘性会话+优先级）
-func (s *Generic) SelectProvider(ctx context.Context, groupID *int64, sessionHash string) (*gatewayprovider.ExecutionProvider, error) {
-	return s.SelectProviderForModel(ctx, groupID, sessionHash, "")
-}
-
 // SelectProviderForModel 选择支持指定模型的提供商（粘性会话+优先级+模型映射）
 func (s *Generic) SelectProviderForModel(ctx context.Context, groupID *int64, sessionHash string, requestedModel string) (*gatewayprovider.ExecutionProvider, error) {
 	return s.SelectProviderForModelWithExclusions(ctx, groupID, sessionHash, requestedModel, nil)
@@ -138,10 +133,6 @@ func (s *Generic) resolveGroupByID(ctx context.Context, groupID int64) (*routing
 		return nil, fmt.Errorf("get group failed: %w", err)
 	}
 	return group, nil
-}
-
-func (s *Generic) ResolveGroupByID(ctx context.Context, groupID int64) (*routing.Group, error) {
-	return s.resolveGroupByID(ctx, groupID)
 }
 
 func (s *Generic) routingProviderIDsForRequest(ctx context.Context, groupID *int64, requestedModel string, platform string) []int64 {

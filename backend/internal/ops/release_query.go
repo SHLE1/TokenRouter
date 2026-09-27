@@ -64,9 +64,6 @@ func compareVersions(current, latest string) int {
 	return 0
 }
 
-// CompareVersions 保留旧比较入口的唯一规则。
-func CompareVersions(current, latest string) int { return compareVersions(current, latest) }
-
 func (s *ReleaseQuery) SaveToCache(ctx context.Context, info *UpdateInfo) {
 	cacheData := struct {
 		Latest      string       `json:"latest"`

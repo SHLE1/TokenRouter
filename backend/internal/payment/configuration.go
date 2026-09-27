@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/TokenFlux/TokenRouter/internal/billing"
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
 
@@ -189,21 +188,8 @@ type ProviderDraftTestResult struct {
 	Reachable bool `json:"reachable"`
 }
 
-type CreatePlanRequest = billing.CreatePlanRequest
-
-type UpdatePlanRequest = billing.UpdatePlanRequest
-
 func (s *ConfigService) GetByID(ctx context.Context, id int64) (*SubscriptionPlan, error) {
 	return s.plans.GetPlan(ctx, id)
-}
-
-// IsPaymentEnabled returns whether the payment system is enabled.
-func (s *ConfigService) IsPaymentEnabled(ctx context.Context) bool {
-	val, err := s.settingRepo.GetValue(ctx, SettingPaymentEnabled)
-	if err != nil {
-		return false
-	}
-	return val == "true"
 }
 
 // GetPaymentConfig returns the full payment configuration.

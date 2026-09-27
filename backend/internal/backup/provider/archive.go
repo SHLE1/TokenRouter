@@ -14,16 +14,19 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/backup"
 )
 
-type BackupRecord = backup.BackupRecord
-type BackupS3Config = backup.BackupS3Config
-type BackupDumpOptions = backup.BackupDumpOptions
-type BackupObjectStore = backup.BackupObjectStore
-type BackupObjectStoreSizedUploader = backup.BackupObjectStoreSizedUploader
-type BackupObjectStoreProgressUploader = backup.BackupObjectStoreProgressUploader
+type (
+	BackupRecord                   = backup.BackupRecord
+	BackupS3Config                 = backup.BackupS3Config
+	BackupDumpOptions              = backup.BackupDumpOptions
+	BackupObjectStore              = backup.BackupObjectStore
+	BackupObjectStoreSizedUploader = backup.BackupObjectStoreSizedUploader
+)
 
-const BackupStorageTypeS3 = backup.BackupStorageTypeS3
-const BackupS3UploadModeSpooledPut = backup.BackupS3UploadModeSpooledPut
-const backupObjectCleanupTimeout = 2 * time.Minute
+const (
+	BackupStorageTypeS3          = backup.BackupStorageTypeS3
+	BackupS3UploadModeSpooledPut = backup.BackupS3UploadModeSpooledPut
+	backupObjectCleanupTimeout   = 2 * time.Minute
+)
 
 // Archive 每次执行使用独立回调副本，不共享请求状态。
 type Archive struct {
@@ -38,6 +41,7 @@ func NewArchive(dumper backup.DBDumper, partSize int64) *Archive {
 	}
 	return &Archive{dumper: dumper, partSizeBytes: partSize}
 }
+
 func (s *Archive) Write(ctx context.Context, record *BackupRecord, objectStore BackupObjectStore, s3Cfg *BackupS3Config, dumpOptions BackupDumpOptions, save func(context.Context, *BackupRecord) error, cleanup func(time.Duration) (context.Context, context.CancelFunc)) (int64, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()

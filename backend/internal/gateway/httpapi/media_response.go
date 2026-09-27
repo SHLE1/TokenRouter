@@ -44,19 +44,6 @@ func WriteEmbeddingsError(c *gin.Context, statusCode int, errType, message strin
 	})
 }
 
-func GrokMediaErrorType(statusCode int) string {
-	switch statusCode {
-	case http.StatusBadRequest:
-		return "invalid_request_error"
-	case http.StatusNotFound:
-		return "not_found_error"
-	case http.StatusTooManyRequests:
-		return "rate_limit_error"
-	default:
-		return "upstream_error"
-	}
-}
-
 func WriteGrokMediaErrorResponse(c *gin.Context, statusCode int, errType, message string) {
 	if c == nil || c.Writer == nil || c.Writer.Written() {
 		return

@@ -8,8 +8,6 @@ import (
 	purepricing "github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 )
 
-const PricingSourceConfig = purepricing.PricingSourceConfig
-
 const PricingSourceLiteLLM = purepricing.PricingSourceLiteLLM
 
 const PricingSourceFallback = purepricing.PricingSourceFallback

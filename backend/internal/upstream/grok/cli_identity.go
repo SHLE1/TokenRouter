@@ -25,9 +25,6 @@ const (
 
 	// CLIClientIdentifier 是 Grok shell/CLI 使用的 x-grok-client-identifier 值。
 	CLIClientIdentifier = "grok-shell"
-
-	// CLIClientMode 用于 CLI 接口的账单与额度探测。
-	CLIClientMode = "cli"
 )
 
 // ResolveCLIVersion 返回受支持的 CLI 客户端版本。

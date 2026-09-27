@@ -1,8 +1,6 @@
 // Package geminicli provides helpers for interacting with Gemini CLI tools.
 package codeassist
 
-import "time"
-
 const (
 	AIStudioBaseURL  = "https://generativelanguage.googleapis.com"
 	GeminiCliBaseURL = "https://cloudcode-pa.googleapis.com"
@@ -27,11 +25,6 @@ const (
 	// https://www.googleapis.com/auth/generative-language.retriever (often with cloud-platform).
 	DefaultAIStudioScopes = "https://www.googleapis.com/auth/cloud-platform https://www.googleapis.com/auth/generative-language.retriever"
 
-	// DefaultGoogleOneScopes (DEPRECATED, no longer used)
-	// Google One now always uses the built-in Gemini CLI client with DefaultCodeAssistScopes.
-	// This constant is kept for backward compatibility but is not actively used.
-	DefaultGoogleOneScopes = "https://www.googleapis.com/auth/cloud-platform https://www.googleapis.com/auth/generative-language.retriever https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile"
-
 	// GeminiCLIRedirectURI is the redirect URI used by Gemini CLI for Code Assist OAuth.
 	GeminiCLIRedirectURI = "https://codeassist.google.com/authcode"
 
@@ -43,8 +36,6 @@ const (
 
 	// GeminiCLIOAuthClientSecretEnv is the environment variable name for the built-in client secret.
 	GeminiCLIOAuthClientSecretEnv = "GEMINI_CLI_OAUTH_CLIENT_SECRET"
-
-	SessionTTL = 30 * time.Minute
 
 	// GeminiCLIUserAgent mimics Gemini CLI to maximize compatibility with internal endpoints.
 	GeminiCLIUserAgent = "GeminiCLI/0.1.5 (Windows; AMD64)"

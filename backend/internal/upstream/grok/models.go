@@ -21,11 +21,6 @@ func SetRuntimeModelMappingOptions(opts ModelMappingOptions) {
 	runtimeMappingVersion.Add(1)
 }
 
-// RuntimeModelMappingVersion 在运行时映射配置变化时递增，用于让提供商映射缓存立即失效。
-func RuntimeModelMappingVersion() uint64 {
-	return runtimeMappingVersion.Load()
-}
-
 // RuntimeModelMappingOptions 返回最近一次已发布的 Grok 运行时映射配置。
 func RuntimeModelMappingOptions() ModelMappingOptions {
 	if value := runtimeMappingOpts.Load(); value != nil {
@@ -76,12 +71,11 @@ const DefaultTextModel = "grok-4.6"
 
 // 以下为官方 Imagine 模型 ID。
 const (
-	DefaultImagineImageQualityModel  = "grok-imagine-image-quality"
-	DefaultImagineImageFastModel     = "grok-imagine-image"
-	DefaultImagineImage20Model       = "grok-imagine-image-2.0"
-	DefaultImagineVideoModel         = "grok-imagine-video"
-	DefaultImagineVideo15Model       = "grok-imagine-video-1.5"
-	DefaultImagineVideo15LegacyModel = "grok-imagine-video-1.5-preview"
+	DefaultImagineImageQualityModel = "grok-imagine-image-quality"
+	DefaultImagineImageFastModel    = "grok-imagine-image"
+	DefaultImagineImage20Model      = "grok-imagine-image-2.0"
+	DefaultImagineVideoModel        = "grok-imagine-video"
+	DefaultImagineVideo15Model      = "grok-imagine-video-1.5"
 )
 
 // ModelMappingOptions 控制默认映射的可选扩展。

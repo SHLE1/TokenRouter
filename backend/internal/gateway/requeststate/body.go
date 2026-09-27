@@ -345,22 +345,6 @@ func (p *ParsedRequest) InputRaw() []byte {
 	return p.raw(p.inputRange)
 }
 
-func (p *ParsedRequest) DecodeSystem(dst any) error {
-	raw := p.SystemRaw()
-	if len(raw) == 0 {
-		return nil
-	}
-	return json.Unmarshal(raw, dst)
-}
-
-func (p *ParsedRequest) DecodeMessages(dst any) error {
-	raw := p.MessagesRaw()
-	if len(raw) == 0 {
-		return nil
-	}
-	return json.Unmarshal(raw, dst)
-}
-
 func (p *ParsedRequest) SystemValue() (any, bool) {
 	raw := p.SystemRaw()
 	if len(raw) == 0 {

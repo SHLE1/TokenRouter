@@ -30,11 +30,6 @@ func (s *Compatible) BindStickySession(ctx context.Context, groupID *int64, sess
 	return s.setStickySessionProviderID(ctx, groupID, sessionHash, providerID, ttl)
 }
 
-// SelectProvider selects an OpenAI provider with sticky session support
-func (s *Compatible) SelectProvider(ctx context.Context, groupID *int64, sessionHash string) (*gatewayprovider.ExecutionProvider, error) {
-	return s.SelectProviderForModel(ctx, groupID, sessionHash, "")
-}
-
 // SelectProviderForModel 选择支持请求模型的提供商。
 func (s *Compatible) SelectProviderForModel(ctx context.Context, groupID *int64, sessionHash string, requestedModel string) (*gatewayprovider.ExecutionProvider, error) {
 	return s.SelectProviderForModelWithExclusions(ctx, groupID, sessionHash, requestedModel, nil)

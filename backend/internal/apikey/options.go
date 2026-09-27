@@ -10,7 +10,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/timezone"
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/team"
 )
 
@@ -75,17 +74,15 @@ type ConcurrencyReader interface {
 }
 
 const (
-	StatusActive      = "active"
-	PlatformAnthropic = capability.PlatformAnthropic
-	PlatformOpenAI    = capability.PlatformOpenAI
-	PlatformGemini    = capability.PlatformGemini
-	TeamStatusActive  = team.TeamStatusActive
-	TeamRoleOwner     = team.TeamRoleOwner
+	StatusActive = "active"
+
+	TeamStatusActive = team.TeamStatusActive
+	TeamRoleOwner    = team.TeamRoleOwner
 )
 
 var (
-	ErrUserNotFound              = identity.ErrUserNotFound
-	ErrUserNotActive             = identity.ErrUserNotActive
+	ErrUserNotFound = identity.ErrUserNotFound
+
 	ErrInsufficientPerms         = identity.ErrInsufficientPerms
 	ErrTeamFeatureDisabled       = team.ErrTeamFeatureDisabled
 	ErrTeamMembershipRequired    = team.ErrTeamMembershipRequired

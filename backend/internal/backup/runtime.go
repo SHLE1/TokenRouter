@@ -65,6 +65,7 @@ func New(repo SettingRepository, options Options, encryptor SecretEncryptor, fac
 		stopDone:                make(chan struct{}),
 	}
 }
+
 func (s *BackupService) begin(ctx context.Context) (context.Context, func(), error) {
 	s.operationLifecycleMu.Lock()
 	defer s.operationLifecycleMu.Unlock()
@@ -77,7 +78,6 @@ func (s *BackupService) begin(ctx context.Context) (context.Context, func(), err
 	var once sync.Once
 	return combined, func() { once.Do(func() { stop(); cancel(); s.wg.Done() }) }, nil
 }
-func (s *BackupService) Start() { _ = s.StartContext(context.Background()) }
 
 // StartContext 同步预热共享一次执行；停止期间不能创建新的 cron。
 func (s *BackupService) StartContext(ctx context.Context) error {
@@ -140,6 +140,7 @@ func (s *BackupService) BeginStopContext(ctx context.Context) {
 	s.bgCancel()
 	s.operationLifecycleMu.Unlock()
 }
+
 func (s *BackupService) Stop() {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -176,6 +177,7 @@ func (s *BackupService) StopContext(ctx context.Context) error {
 	<-s.stopDone
 	return s.stopErr
 }
+
 func (s *BackupService) saveFinal(record *BackupRecord) error {
 	s.operationLifecycleMu.RLock()
 	base := s.shutdownContext
@@ -201,6 +203,7 @@ func (s *BackupService) CreateBackup(ctx context.Context, triggeredBy string, ex
 	defer done()
 	return s.createBackup(ctx, triggeredBy, expireDays)
 }
+
 func (s *BackupService) RestoreBackup(ctx context.Context, id string) error {
 	ctx, done, err := s.begin(ctx)
 	if err != nil {

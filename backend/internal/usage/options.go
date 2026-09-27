@@ -27,11 +27,14 @@ type DashboardAggregationConfig struct {
 	Retention                        DashboardAggregationRetentionConfig
 	RecomputeDays                    int
 }
-type DashboardAggregationRetentionConfig struct{ UsageLogsDays, UsageBillingDedupDays, HourlyDays, DailyDays int }
-type UsageCleanupConfig struct {
-	Enabled                                                            bool
-	MaxRangeDays, BatchSize, WorkerIntervalSeconds, TaskTimeoutSeconds int
-}
+type (
+	DashboardAggregationRetentionConfig struct{ UsageLogsDays, UsageBillingDedupDays, HourlyDays, DailyDays int }
+	UsageCleanupConfig                  struct {
+		Enabled                                                            bool
+		MaxRangeDays, BatchSize, WorkerIntervalSeconds, TaskTimeoutSeconds int
+	}
+)
+
 type DashboardConfig struct {
 	Enabled                                                           bool
 	StatsFreshTTLSeconds, StatsTTLSeconds, StatsRefreshTimeoutSeconds int
@@ -45,15 +48,14 @@ type AggregationSettings interface {
 	Resolve(context.Context) p.PreAggregationSettings
 	RegisterListener(func(p.PreAggregationSettings, p.PreAggregationSettings))
 }
-type PreAggregationSettings = p.PreAggregationSettings
-type SingletonLocker func(context.Context, string, string, time.Duration) (func(), bool)
+type (
+	PreAggregationSettings = p.PreAggregationSettings
+	SingletonLocker        func(context.Context, string, string, time.Duration) (func(), bool)
+)
 
 var ErrCleanupTaskNotFound = errors.New("usage cleanup task not found")
 
 func logUsage(component, format string, args ...any) { log.Printf(format, args...) }
-
-// TruncateToDayUTC 保留旧报表调用方需要的 UTC 日期计算。
-func TruncateToDayUTC(t time.Time) time.Time { return truncateToDayUTC(t) }
 
 func usageReporter(options *Options) func(string, string, ...any) {
 	if options == nil {

@@ -43,12 +43,10 @@ type DingTalkRegistrationPolicy struct {
 	CorpRestrictionPolicy       string
 }
 type (
-	RedeemCode                 = billing.RedeemCode
-	RedeemCodeRepository       = billing.RedeemCodeRepository
-	AssignSubscriptionInput    = billing.AssignSubscriptionInput
-	UserSubscription           = billing.UserSubscription
-	APIKeyAuthCacheInvalidator = UserAuthInvalidator
-	BillingCache               = UserBalanceCache
+	RedeemCode              = billing.RedeemCode
+	RedeemCodeRepository    = billing.RedeemCodeRepository
+	AssignSubscriptionInput = billing.AssignSubscriptionInput
+	UserSubscription        = billing.UserSubscription
 )
 
 const (
@@ -57,10 +55,7 @@ const (
 	StatusUsed           = billing.StatusUsed
 )
 
-var (
-	ErrRedeemCodeNotFound = billing.ErrRedeemCodeNotFound
-	ErrRedeemCodeUsed     = billing.ErrRedeemCodeUsed
-)
+var ErrRedeemCodeNotFound = billing.ErrRedeemCodeNotFound
 
 // AuthIdentity 是提供方持久主体的只读值。
 type AuthIdentity struct {

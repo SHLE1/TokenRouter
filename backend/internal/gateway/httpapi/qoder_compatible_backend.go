@@ -90,10 +90,6 @@ func (h *QoderCompatibleRuntime) SessionHash(c *gin.Context, endpoint QoderEndpo
 	return h.qoderSessionHash(c, QoderEndpoint(endpoint), body, id)
 }
 
-func (h *QoderCompatibleRuntime) Error(c *gin.Context, status int, kind, message string, endpoint QoderEndpoint) {
-	h.errorResponse(c, status, kind, message, QoderEndpoint(endpoint))
-}
-
 func (h *QoderCompatibleRuntime) ConcurrencyError(c *gin.Context, err error, kind string, started bool, endpoint QoderEndpoint) {
 	h.handleConcurrencyError(c, err, kind, started, QoderEndpoint(endpoint))
 }

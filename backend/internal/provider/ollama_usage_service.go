@@ -78,9 +78,6 @@ const (
 	ollamaCloudUsageLeaderLockTTL         = 2 * time.Minute
 )
 
-// StartContext 在组合根绑定后启动；旧入口复用相同运行拥有者。
-func (s *OllamaCloudUsageService) Start() { _ = s.StartContext(context.Background()) }
-
 func (s *OllamaCloudUsageService) StartContext(ctx context.Context) error {
 	if s == nil {
 		return nil

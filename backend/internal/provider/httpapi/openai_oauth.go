@@ -41,8 +41,6 @@ type OpenAIProviderStateRecoverer interface {
 const (
 	OpenAIQuotaResetWarningCacheRefreshFailed     = providercore.OpenAIQuotaResetWarningCacheRefreshFailed
 	OpenAIQuotaResetWarningProviderRecoveryFailed = providercore.OpenAIQuotaResetWarningProviderRecoveryFailed
-	OpenAIQuotaResetWarningProviderRefreshFailed  = providercore.OpenAIQuotaResetWarningProviderRefreshFailed
-	OpenAIQuotaResetPostProcessTimeout            = providercore.OpenAIQuotaResetPostProcessTimeout
 )
 
 type OpenAIQuotaResetResponse struct {
@@ -57,15 +55,6 @@ type OpenAIQuotaResetResponse struct {
 type OpenAIQuotaRefreshResponse struct {
 	wire.OpenAIQuotaUsage
 	CachePersisted bool `json:"cache_persisted"`
-}
-
-// OpenAIQuotaResetPostProcessContext 让已消费重置次数后的收尾工作不受客户端断开影响。
-func OpenAIQuotaResetPostProcessContext(ctx context.Context) (context.Context, context.CancelFunc) {
-	base := context.Background()
-	if ctx != nil {
-		base = context.WithoutCancel(ctx)
-	}
-	return context.WithTimeout(base, OpenAIQuotaResetPostProcessTimeout)
 }
 
 func oauthPlatformFromPath(c *gin.Context) string {
@@ -286,10 +275,6 @@ func (h *OpenAIOAuthHandler) CreateProviderFromCodexPAT(c *gin.Context) {
 		return
 	}
 	response.Success(c, dto.ProviderFromRecord(value))
-}
-
-func BuildOpenAICodexPATProviderName(name string, tokenInfo *providercore.OpenAITokenInfo) string {
-	return providercore.BuildOpenAICodexPATProviderName(name, tokenInfo)
 }
 
 // QueryQuota 查询 OpenAI OAuth 提供商的上游限流窗口和可用重置次数。

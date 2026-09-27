@@ -24,6 +24,7 @@ func (c Calendar) Location() *time.Location {
 	}
 	return c.location
 }
+
 func (c Calendar) Now() time.Time {
 	// 未指定时区时保留 time.Now 的单调时钟，兼容全局初始化前的调用。
 	if c.location == nil {
@@ -78,10 +79,6 @@ func (c Calendar) StartOfMonth(t time.Time) time.Time {
 	loc := c.Location()
 	t = t.In(loc)
 	return time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, loc)
-}
-
-func (c Calendar) ParseInLocation(layout, value string) (time.Time, error) {
-	return time.ParseInLocation(layout, value, c.Location())
 }
 
 func (c Calendar) ParseInUserLocation(layout, value, userTZ string) (time.Time, error) {

@@ -12,7 +12,6 @@ import (
 type StreamingProcessor struct {
 	*bridge.GeminiToAnthropicStreamProcessor
 }
-type UsageMapHook = bridge.UsageMapHook
 
 // NewStreamingProcessor 注入原来的 ID 生成来源。
 func NewStreamingProcessor(model string) *StreamingProcessor {

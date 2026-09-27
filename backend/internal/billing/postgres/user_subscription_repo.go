@@ -573,26 +573,7 @@ func (r *SubscriptionStore) BatchUpdateExpiredStatus(ctx context.Context) (int64
 	return int64(n), err
 }
 
-func (r *SubscriptionStore) ListExpired(ctx context.Context) ([]billing.UserSubscription, error) {
-	client := clientFromContext(ctx, r.client)
-	subs, err := client.UserSubscription.Query().
-		Where(usersubscription.ExpiresAtLTE(time.Now())).
-		All(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return userSubscriptionEntitiesToService(subs), nil
-}
-
 func (r *SubscriptionStore) CountByGroupID(_ context.Context, _ int64) (int64, error) {
-	return 0, nil
-}
-
-func (r *SubscriptionStore) CountActiveByGroupID(_ context.Context, _ int64) (int64, error) {
-	return 0, nil
-}
-
-func (r *SubscriptionStore) DeleteByGroupID(_ context.Context, _ int64) (int64, error) {
 	return 0, nil
 }
 

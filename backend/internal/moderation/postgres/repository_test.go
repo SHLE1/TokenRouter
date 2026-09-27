@@ -8,12 +8,12 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	service "github.com/TokenFlux/TokenRouter/internal/moderation"
+	"github.com/TokenFlux/TokenRouter/internal/moderation"
 	"github.com/stretchr/testify/require"
 )
 
 func TestBuildContentModerationLogWhere_BlockFiltersStandardBlocksOnly(t *testing.T) {
-	where, args := buildContentModerationLogWhere(service.ContentModerationLogFilter{Result: "block"})
+	where, args := buildContentModerationLogWhere(moderation.ContentModerationLogFilter{Result: "block"})
 
 	require.Empty(t, args)
 	sql := strings.Join(where, " AND ")
@@ -24,7 +24,7 @@ func TestBuildContentModerationLogWhere_BlockFiltersStandardBlocksOnly(t *testin
 }
 
 func TestBuildContentModerationLogWhere_LegacyBlockedIncludesAllBlockActions(t *testing.T) {
-	where, args := buildContentModerationLogWhere(service.ContentModerationLogFilter{Result: "blocked"})
+	where, args := buildContentModerationLogWhere(moderation.ContentModerationLogFilter{Result: "blocked"})
 
 	require.Empty(t, args)
 	// 旧版管理端仍会传 blocked，保留原聚合行为以兼容前后端滚动升级。
@@ -32,21 +32,21 @@ func TestBuildContentModerationLogWhere_LegacyBlockedIncludesAllBlockActions(t *
 }
 
 func TestBuildContentModerationLogWhere_KeywordBlockFiltersKeywordBlocksOnly(t *testing.T) {
-	where, args := buildContentModerationLogWhere(service.ContentModerationLogFilter{Result: "keyword_block"})
+	where, args := buildContentModerationLogWhere(moderation.ContentModerationLogFilter{Result: "keyword_block"})
 
 	require.Empty(t, args)
 	require.Contains(t, strings.Join(where, " AND "), "l.action = 'keyword_block'")
 }
 
 func TestBuildContentModerationLogWhere_HashBlockFiltersHashBlocksOnly(t *testing.T) {
-	where, args := buildContentModerationLogWhere(service.ContentModerationLogFilter{Result: "hash_block"})
+	where, args := buildContentModerationLogWhere(moderation.ContentModerationLogFilter{Result: "hash_block"})
 
 	require.Empty(t, args)
 	require.Contains(t, strings.Join(where, " AND "), "l.action = 'hash_block'")
 }
 
 func TestBuildContentModerationLogWhere_HitExcludesAllBlockActions(t *testing.T) {
-	where, args := buildContentModerationLogWhere(service.ContentModerationLogFilter{Result: "hit"})
+	where, args := buildContentModerationLogWhere(moderation.ContentModerationLogFilter{Result: "hit"})
 
 	require.Empty(t, args)
 	sql := strings.Join(where, " AND ")
@@ -66,7 +66,7 @@ func TestContentModerationRepositoryCreateLog_PersistsMatchedKeyword(t *testing.
 	latencyMS := 42
 	queueDelayMS := 7
 	createdAt := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
-	log := &service.ContentModerationLog{
+	log := &moderation.ContentModerationLog{
 		RequestID:         "req-keyword",
 		UserID:            &userID,
 		UserEmail:         "user@example.com",
@@ -79,8 +79,8 @@ func TestContentModerationRepositoryCreateLog_PersistsMatchedKeyword(t *testing.
 		Endpoint:          "/v1/messages",
 		Provider:          "anthropic",
 		Model:             "claude-sonnet-4",
-		Mode:              service.ContentModerationModePreBlock,
-		Action:            service.ContentModerationActionKeywordBlock,
+		Mode:              moderation.ContentModerationModePreBlock,
+		Action:            moderation.ContentModerationActionKeywordBlock,
 		Flagged:           true,
 		HighestCategory:   "keyword",
 		HighestScore:      1,
@@ -148,15 +148,15 @@ func TestContentModerationRepositoryCreateLogPersistsReviewMedia(t *testing.T) {
 	db, mock := newSQLMock(t)
 	repo := newTestModerationRepository(db)
 	createdAt := time.Now()
-	log := &service.ContentModerationLog{
-		Source:          service.ContentModerationSourceTool,
+	log := &moderation.ContentModerationLog{
+		Source:          moderation.ContentModerationSourceTool,
 		ContentComplete: true,
 		AuditComplete:   true,
-		InputItems: []service.ContentModerationInputItem{{
-			Index: 0, Source: service.ContentModerationSourceTool, Type: service.ContentModerationItemTypeImage, ImageRef: "data:image/png;base64,aW1hZ2U=",
+		InputItems: []moderation.ContentModerationInputItem{{
+			Index: 0, Source: moderation.ContentModerationSourceTool, Type: moderation.ContentModerationItemTypeImage, ImageRef: "data:image/png;base64,aW1hZ2U=",
 		}},
-		Media: []service.ContentModerationMedia{{
-			SourceIndex: 0, Source: service.ContentModerationSourceTool, MIMEType: "image/png", SHA256: strings.Repeat("a", 64), ByteSize: 5,
+		Media: []moderation.ContentModerationMedia{{
+			SourceIndex: 0, Source: moderation.ContentModerationSourceTool, MIMEType: "image/png", SHA256: strings.Repeat("a", 64), ByteSize: 5,
 			OriginalRef: "data:image/png;base64,aW1hZ2U=", SnapshotStatus: "ready", Content: []byte("image"),
 		}},
 	}
@@ -165,7 +165,7 @@ func TestContentModerationRepositoryCreateLogPersistsReviewMedia(t *testing.T) {
 	mock.ExpectQuery("INSERT INTO content_moderation_logs").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at"}).AddRow(int64(101), createdAt))
 	mock.ExpectQuery("INSERT INTO content_moderation_media").
-		WithArgs(int64(101), nil, 0, service.ContentModerationSourceTool, "image/png", strings.Repeat("a", 64), int64(5), log.Media[0].OriginalRef, "ready", "", []byte("image")).
+		WithArgs(int64(101), nil, 0, moderation.ContentModerationSourceTool, "image/png", strings.Repeat("a", 64), int64(5), log.Media[0].OriginalRef, "ready", "", []byte("image")).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at"}).AddRow(int64(201), createdAt))
 	mock.ExpectCommit()
 
@@ -177,7 +177,7 @@ func TestContentModerationRepositoryCreateLogPersistsReviewMedia(t *testing.T) {
 func TestContentModerationRepositoryCreateLogRollsBackWhenMediaInsertFails(t *testing.T) {
 	db, mock := newSQLMock(t)
 	repo := newTestModerationRepository(db)
-	log := &service.ContentModerationLog{Media: []service.ContentModerationMedia{{OriginalRef: "data:image/png;base64,aW1hZ2U="}}}
+	log := &moderation.ContentModerationLog{Media: []moderation.ContentModerationMedia{{OriginalRef: "data:image/png;base64,aW1hZ2U="}}}
 
 	mock.ExpectBegin()
 	mock.ExpectQuery("INSERT INTO content_moderation_logs").
@@ -213,7 +213,7 @@ func TestContentModerationRepositoryListLogsReturnsTeamAttribution(t *testing.T)
 		),
 	)
 
-	items, page, err := repo.ListLogs(context.Background(), service.ContentModerationLogFilter{})
+	items, page, err := repo.ListLogs(context.Background(), moderation.ContentModerationLogFilter{})
 
 	require.NoError(t, err)
 	require.Equal(t, int64(1), page.Total)
@@ -285,7 +285,7 @@ func TestContentModerationRepositoryListCyberWarningsReturnsTeamAttribution(t *t
 		),
 	)
 
-	items, page, err := repo.ListCyberWarnings(context.Background(), service.ContentModerationCyberWarningFilter{})
+	items, page, err := repo.ListCyberWarnings(context.Background(), moderation.ContentModerationCyberWarningFilter{})
 
 	require.NoError(t, err)
 	require.Equal(t, int64(1), page.Total)
@@ -364,7 +364,7 @@ func TestContentModerationRepositoryCreateCyberWarningAndApplyUserBan_DisablesUs
 	teamID := int64(3001)
 	providerID := int64(2001)
 	createdAt := time.Now()
-	warning := &service.ContentModerationCyberWarning{
+	warning := &moderation.ContentModerationCyberWarning{
 		RequestID:      "req_1",
 		UserID:         &userID,
 		UserEmail:      "user@example.com",
@@ -382,7 +382,7 @@ func TestContentModerationRepositoryCreateCyberWarningAndApplyUserBan_DisablesUs
 	mock.ExpectBegin()
 	mock.ExpectQuery(regexp.QuoteMeta("SELECT status FROM users WHERE id = $1 FOR UPDATE")).
 		WithArgs(userID).
-		WillReturnRows(sqlmock.NewRows([]string{"status"}).AddRow(service.StatusActive))
+		WillReturnRows(sqlmock.NewRows([]string{"status"}).AddRow(moderation.StatusActive))
 	mock.ExpectQuery(regexp.QuoteMeta("INSERT INTO content_moderation_cyber_warnings")).
 		WithArgs(
 			warning.RequestID,
@@ -418,14 +418,14 @@ func TestContentModerationRepositoryCreateCyberWarningAndApplyUserBan_DisablesUs
 		WithArgs(userID, sqlmock.AnyArg(), int64(99)).
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(3))
 	mock.ExpectExec(regexp.QuoteMeta("UPDATE users")).
-		WithArgs(userID, service.StatusDisabled).
+		WithArgs(userID, moderation.StatusDisabled).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec(regexp.QuoteMeta("UPDATE content_moderation_cyber_warnings")).
 		WithArgs(int64(99), 3, true).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectCommit()
 
-	autoBanned, err := repo.CreateCyberWarningAndApplyUserBan(context.Background(), warning, service.ContentModerationCyberWarningPolicy{
+	autoBanned, err := repo.CreateCyberWarningAndApplyUserBan(context.Background(), warning, moderation.ContentModerationCyberWarningPolicy{
 		AutoBanEnabled: true,
 		BanThreshold:   3,
 		WindowHours:    720,
@@ -444,7 +444,7 @@ func TestContentModerationRepositoryCreateCyberWarningAndApplyUserBan_KeepsBelow
 	db, mock := newSQLMock(t)
 	repo := newTestModerationRepository(db)
 	userID := int64(1001)
-	warning := &service.ContentModerationCyberWarning{
+	warning := &moderation.ContentModerationCyberWarning{
 		RequestID:      "req_1",
 		UserID:         &userID,
 		WarningText:    "flagged by OpenAI cyber policy",
@@ -454,7 +454,7 @@ func TestContentModerationRepositoryCreateCyberWarningAndApplyUserBan_KeepsBelow
 	mock.ExpectBegin()
 	mock.ExpectQuery(regexp.QuoteMeta("SELECT status FROM users WHERE id = $1 FOR UPDATE")).
 		WithArgs(userID).
-		WillReturnRows(sqlmock.NewRows([]string{"status"}).AddRow(service.StatusActive))
+		WillReturnRows(sqlmock.NewRows([]string{"status"}).AddRow(moderation.StatusActive))
 	mock.ExpectQuery(regexp.QuoteMeta("INSERT INTO content_moderation_cyber_warnings")).
 		WithArgs(
 			warning.RequestID,
@@ -494,7 +494,7 @@ func TestContentModerationRepositoryCreateCyberWarningAndApplyUserBan_KeepsBelow
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectCommit()
 
-	autoBanned, err := repo.CreateCyberWarningAndApplyUserBan(context.Background(), warning, service.ContentModerationCyberWarningPolicy{
+	autoBanned, err := repo.CreateCyberWarningAndApplyUserBan(context.Background(), warning, moderation.ContentModerationCyberWarningPolicy{
 		AutoBanEnabled: true,
 		BanThreshold:   3,
 		WindowHours:    720,

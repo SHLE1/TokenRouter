@@ -320,17 +320,6 @@ func (lb *DefaultLoadBalancer) decryptConfig(stored string) (map[string]string, 
 	return nil, nil
 }
 
-// GetInstanceDailyAmount returns the total completed order amount for an instance today.
-func (lb *DefaultLoadBalancer) GetInstanceDailyAmount(ctx context.Context, instanceID string) (float64, error) {
-	todayStart := startOfDay(lb.runtime.Now())
-
-	amount, err := lb.source.PaidDailyAmount(ctx, instanceID, todayStart)
-	if err != nil {
-		return 0, fmt.Errorf("query daily amount: %w", err)
-	}
-	return amount, nil
-}
-
 func startOfDay(t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
 }
@@ -402,6 +391,7 @@ func (lb *DefaultLoadBalancer) observe(level, message string, attrs ...any) {
 		lb.runtime.Observe(level, message, attrs...)
 	}
 }
+
 func selectionObserver(values []SelectionObserver) SelectionObserver {
 	if len(values) > 0 && values[0] != nil {
 		return values[0]

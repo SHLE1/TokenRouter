@@ -43,9 +43,7 @@ const (
 	LinuxDoOAuthDefaultRedirectTo  = "/dashboard"
 	LinuxDoOAuthDefaultFrontendCB  = "/auth/linuxdo/callback"
 
-	LinuxDoOAuthMaxRedirectLen      = 2048
 	LinuxDoOAuthMaxFragmentValueLen = 512
-	LinuxDoOAuthMaxSubjectLen       = identity.OAuthLinuxDoMaxSubjectLength
 
 	OauthIntentLogin           = "login"
 	OauthIntentBindCurrentUser = "bind_current_user"

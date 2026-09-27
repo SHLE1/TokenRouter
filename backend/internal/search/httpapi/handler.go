@@ -4,14 +4,14 @@ package httpapi
 import (
 	"strings"
 
-	service "github.com/TokenFlux/TokenRouter/internal/search"
+	"github.com/TokenFlux/TokenRouter/internal/search"
 	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
 	"github.com/gin-gonic/gin"
 )
 
-type Handler struct{ settingService *service.ConfigService }
+type Handler struct{ settingService *search.ConfigService }
 
-func New(s *service.ConfigService) *Handler { return &Handler{settingService: s} }
+func New(s *search.ConfigService) *Handler { return &Handler{settingService: s} }
 
 // TestWebSearchEmulation 测试 Web Search 搜索
 // POST /api/v1/admin/settings/web-search-emulation/test
@@ -27,7 +27,7 @@ func (h *Handler) TestWebSearchEmulation(c *gin.Context) {
 		req.Query = "搜索今年世界大事件"
 	}
 
-	result, err := service.TestWebSearch(c.Request.Context(), req.Query, h.settingService.Registry())
+	result, err := search.TestWebSearch(c.Request.Context(), req.Query, h.settingService.Registry())
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return
@@ -49,7 +49,7 @@ func (h *Handler) ResetWebSearchUsage(c *gin.Context) {
 		response.BadRequest(c, "provider_type is required")
 		return
 	}
-	if err := service.ResetWebSearchUsage(c.Request.Context(), req.ProviderType, h.settingService.Registry()); err != nil {
+	if err := search.ResetWebSearchUsage(c.Request.Context(), req.ProviderType, h.settingService.Registry()); err != nil {
 		response.ErrorFrom(c, err)
 		return
 	}
@@ -59,7 +59,7 @@ func (h *Handler) ResetWebSearchUsage(c *gin.Context) {
 // UpdateWebSearchEmulationConfig 更新 Web Search 模拟配置
 // PUT /api/v1/admin/settings/web-search-emulation
 func (h *Handler) UpdateWebSearchEmulationConfig(c *gin.Context) {
-	var cfg service.WebSearchEmulationConfig
+	var cfg search.WebSearchEmulationConfig
 	if err := c.ShouldBindJSON(&cfg); err != nil {
 		response.BadRequest(c, "Invalid request: "+err.Error())
 		return
@@ -76,7 +76,7 @@ func (h *Handler) UpdateWebSearchEmulationConfig(c *gin.Context) {
 		response.ErrorFrom(c, err)
 		return
 	}
-	response.Success(c, service.PopulateWebSearchUsage(c.Request.Context(), updated, h.settingService.Registry()))
+	response.Success(c, search.PopulateWebSearchUsage(c.Request.Context(), updated, h.settingService.Registry()))
 }
 
 // GetWebSearchEmulationConfig 获取 Web Search 模拟配置
@@ -87,5 +87,5 @@ func (h *Handler) GetWebSearchEmulationConfig(c *gin.Context) {
 		response.ErrorFrom(c, err)
 		return
 	}
-	response.Success(c, service.PopulateWebSearchUsage(c.Request.Context(), cfg, h.settingService.Registry()))
+	response.Success(c, search.PopulateWebSearchUsage(c.Request.Context(), cfg, h.settingService.Registry()))
 }

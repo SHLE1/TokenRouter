@@ -100,8 +100,6 @@ func (s *SubscriptionService) EnrichSubscriptionPlanGroups(ctx context.Context, 
 
 func (s *SubscriptionService) Stop() {}
 
-func (s *SubscriptionService) InvalidateSubCache(_ int64, _ int64) {}
-
 type AssignSubscriptionInput struct {
 	UserID              int64
 	PlanID              int64
@@ -1042,10 +1040,6 @@ func (s *SubscriptionService) DoWindowMaintenance(sub *UserSubscription) {
 	_ = s.CheckAndResetWindows(ctx, sub)
 }
 
-func (s *SubscriptionService) RecordUsage(ctx context.Context, subscriptionID int64, costUSD float64) error {
-	return s.userSubRepo.IncrementUsage(ctx, subscriptionID, costUSD)
-}
-
 type SubscriptionProgress struct {
 	ID            int64                `json:"id"`
 	PlanID        int64                `json:"plan_id"`
@@ -1134,37 +1128,6 @@ func NormalizedWindowProgress(limit *float64, used float64, resetAt, windowStart
 		ResetsAt:        resetsAt,
 		ResetsInSeconds: resetsIn,
 	}, true
-}
-
-func (s *SubscriptionService) GetUserSubscriptionsWithProgress(ctx context.Context, userID int64) ([]SubscriptionProgress, error) {
-	subs, err := s.userSubRepo.ListActiveByUserID(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-	progresses := make([]SubscriptionProgress, 0, len(subs))
-	for i := range subs {
-		progresses = append(progresses, *s.CalculateProgress(&subs[i]))
-	}
-	return progresses, nil
-}
-
-func (s *SubscriptionService) ValidateSubscription(ctx context.Context, sub *UserSubscription) error {
-	if sub == nil {
-		return ErrSubscriptionNotFound
-	}
-	switch sub.EffectiveStatus(s.clock.now()) {
-	case SubscriptionStatusExpired:
-		_ = s.userSubRepo.UpdateStatus(ctx, sub.ID, SubscriptionStatusExpired)
-		return ErrSubscriptionExpired
-	case SubscriptionStatusSuspended:
-		return ErrSubscriptionSuspended
-	case SubscriptionStatusPending:
-		return ErrSubscriptionInvalid
-	case SubscriptionStatusRevoked:
-		return ErrSubscriptionNotFound
-	default:
-		return nil
-	}
 }
 
 var ErrSubscriptionInvalid = apperror.Forbidden("SUBSCRIPTION_INVALID", "subscription is invalid or expired")

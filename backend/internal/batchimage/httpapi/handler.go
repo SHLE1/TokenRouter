@@ -13,7 +13,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/server/httpx"
 
-	service "github.com/TokenFlux/TokenRouter/internal/batchimage"
+	"github.com/TokenFlux/TokenRouter/internal/batchimage"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
@@ -45,9 +45,9 @@ func (h *BatchImageHandler) Submit(c *gin.Context) {
 		defer done()
 	}
 
-	var req service.BatchImageSubmitRequest
+	var req batchimage.BatchImageSubmitRequest
 	if err := infraerrors.BindJSONStrict(c, &req); err != nil {
-		BatchImageError(c, service.ErrBatchImageInvalidItems)
+		BatchImageError(c, batchimage.ErrBatchImageInvalidItems)
 		return
 	}
 	owner, ok := h.owner(c)
@@ -105,7 +105,7 @@ func (h *BatchImageHandler) List(c *gin.Context) {
 		return
 	}
 	limit, _ := strconv.Atoi(c.Query("limit"))
-	got, err := h.service.List(c.Request.Context(), owner, service.BatchImageJobsQuery{
+	got, err := h.service.List(c.Request.Context(), owner, batchimage.BatchImageJobsQuery{
 		Status:     c.Query("status"),
 		TaskName:   c.Query("task_name"),
 		Downloaded: c.Query("downloaded"),
@@ -140,10 +140,10 @@ func (h *BatchImageHandler) Models(c *gin.Context) {
 	if apiKey != nil && apiKey.IsComposite {
 		preferredSubscription, ready := h.preferred(c, apiKey)
 		if !ready {
-			c.JSON(http.StatusOK, &service.BatchImagePublicModelsResponse{Object: "list", Data: make([]service.BatchImagePublicModel, 0)})
+			c.JSON(http.StatusOK, &batchimage.BatchImagePublicModelsResponse{Object: "list", Data: make([]batchimage.BatchImagePublicModel, 0)})
 			return
 		}
-		out := &service.BatchImagePublicModelsResponse{Object: "list", Data: make([]service.BatchImagePublicModel, 0)}
+		out := &batchimage.BatchImagePublicModelsResponse{Object: "list", Data: make([]batchimage.BatchImagePublicModel, 0)}
 		for _, binding := range apiKey.CompositeGroups {
 			if !gatewayhttp.CompositeGroupAvailableToUser(apiKey, preferredSubscription, binding.Group) || !binding.Group.AllowBatchImageGeneration {
 				continue
@@ -176,14 +176,14 @@ func (h *BatchImageHandler) Models(c *gin.Context) {
 }
 
 // AppendBatchImageAPIKeyModelAliases 按目标模型的提供方克隆批量图片模型别名。
-func AppendBatchImageAPIKeyModelAliases(models []service.BatchImagePublicModel, mapping map[string]string) []service.BatchImagePublicModel {
+func AppendBatchImageAPIKeyModelAliases(models []batchimage.BatchImagePublicModel, mapping map[string]string) []batchimage.BatchImagePublicModel {
 	modelIDs := make([]string, 0, len(models))
-	templates := make(map[string][]service.BatchImagePublicModel)
+	templates := make(map[string][]batchimage.BatchImagePublicModel)
 	for _, model := range models {
 		modelIDs = append(modelIDs, model.ID)
 		templates[model.ID] = append(templates[model.ID], model)
 	}
-	result := append([]service.BatchImagePublicModel(nil), models...)
+	result := append([]batchimage.BatchImagePublicModel(nil), models...)
 	for _, alias := range apikey.AvailableAPIKeyModelAliases(modelIDs, mapping) {
 		for _, template := range templates[mapping[alias]] {
 			template.ID = alias
@@ -209,7 +209,7 @@ func (h *BatchImageHandler) Items(c *gin.Context) {
 		return
 	}
 	limit, _ := strconv.Atoi(c.Query("limit"))
-	got, err := h.service.ListItems(c.Request.Context(), owner, c.Param("id"), service.BatchImageItemsQuery{
+	got, err := h.service.ListItems(c.Request.Context(), owner, c.Param("id"), batchimage.BatchImageItemsQuery{
 		Status: c.Query("status"),
 		Limit:  limit,
 		Cursor: c.Query("cursor"),
@@ -263,7 +263,7 @@ func (h *BatchImageHandler) ItemContent(c *gin.Context) {
 	if raw := c.Query("image_index"); raw != "" {
 		parsed, err := strconv.Atoi(raw)
 		if err != nil {
-			BatchImageError(c, service.ErrBatchImageItemImageIndexOutOfRange)
+			BatchImageError(c, batchimage.ErrBatchImageItemImageIndexOutOfRange)
 			return
 		}
 		imageIndex = parsed
@@ -276,7 +276,7 @@ func (h *BatchImageHandler) ItemContent(c *gin.Context) {
 	defer func() { _ = stream.Reader.Close() }()
 
 	c.Header("Content-Type", stream.ContentType)
-	c.Header("Content-Disposition", service.BatchImageContentDispositionAttachment(stream.Filename))
+	c.Header("Content-Disposition", batchimage.BatchImageContentDispositionAttachment(stream.Filename))
 	c.Header("Cache-Control", "private, max-age=300")
 	c.Header("X-Content-Type-Options", "nosniff")
 	if stream.ContentLength != nil && *stream.ContentLength >= 0 {
@@ -291,7 +291,7 @@ func (h *BatchImageHandler) ItemContent(c *gin.Context) {
 
 // markDownloadedBestEffort 在响应体已写出后标记下载状态；
 // 此时无法再向客户端返回错误，失败只能记日志（不能静默丢弃）。
-func (h *BatchImageHandler) markDownloadedBestEffort(c *gin.Context, owner service.BatchImageOwner) {
+func (h *BatchImageHandler) markDownloadedBestEffort(c *gin.Context, owner batchimage.BatchImageOwner) {
 	if err := h.service.MarkDownloaded(c.Request.Context(), owner, c.Param("id")); err != nil {
 		logging.L().Warn("batch_image.mark_downloaded_failed",
 			zap.String("batch_id", c.Param("id")),
@@ -318,10 +318,10 @@ func (h *BatchImageHandler) Download(c *gin.Context) {
 	maxItems, _ := strconv.Atoi(c.Query("max_items"))
 
 	c.Header("Content-Type", "application/zip")
-	c.Header("Content-Disposition", service.BatchImageContentDispositionAttachment(c.Param("id")+".zip"))
+	c.Header("Content-Disposition", batchimage.BatchImageContentDispositionAttachment(c.Param("id")+".zip"))
 	c.Header("Cache-Control", "private, no-store")
 	c.Header("X-Content-Type-Options", "nosniff")
-	result, err := h.download.StreamZip(c.Request.Context(), owner, c.Param("id"), service.BatchImageZipOptions{
+	result, err := h.download.StreamZip(c.Request.Context(), owner, c.Param("id"), batchimage.BatchImageZipOptions{
 		Status:          c.Query("status"),
 		MaxItems:        maxItems,
 		IncludeManifest: true,
@@ -380,16 +380,16 @@ func (h *BatchImageHandler) DeleteOutputs(c *gin.Context) {
 	c.JSON(http.StatusOK, got)
 }
 
-func (h *BatchImageHandler) owner(c *gin.Context) (service.BatchImageOwner, bool) {
+func (h *BatchImageHandler) owner(c *gin.Context) (batchimage.BatchImageOwner, bool) {
 	apiKey, ok := h.access.Key(c)
 	if !ok || apiKey == nil || apiKey.ID <= 0 || apiKey.UserID <= 0 {
-		return service.BatchImageOwner{}, false
+		return batchimage.BatchImageOwner{}, false
 	}
 	billingUserID := apiKey.UserID
 	if apiKey.User != nil && apiKey.User.ID > 0 {
 		billingUserID = apiKey.User.ID
 	}
-	return service.BatchImageOwner{
+	return batchimage.BatchImageOwner{
 		UserID:                  apiKey.UserID,
 		BillingUserID:           billingUserID,
 		TeamID:                  apiKey.TeamID,
@@ -414,7 +414,7 @@ func BatchImageError(c *gin.Context, err error) {
 		code = "INTERNAL_ERROR"
 		message = "internal error"
 	}
-	if errors.Is(err, service.ErrBatchImageJobNotFound) {
+	if errors.Is(err, batchimage.ErrBatchImageJobNotFound) {
 		status = http.StatusNotFound
 		code = "BATCH_IMAGE_NOT_FOUND"
 		message = "batch image job not found"
@@ -447,21 +447,21 @@ func (h *BatchImageHandler) preferred(c *gin.Context, k *apikey.APIKey) (*billin
 }
 
 type UseCases interface {
-	Submit(context.Context, service.BatchImageOwner, service.BatchImageSubmitRequest, string) (*service.BatchImagePublicBatch, error)
-	Get(context.Context, service.BatchImageOwner, string) (*service.BatchImagePublicBatch, error)
-	List(context.Context, service.BatchImageOwner, service.BatchImageJobsQuery) (*service.BatchImagePublicListResponse, error)
-	ListModels(context.Context, service.BatchImageOwner) (*service.BatchImagePublicModelsResponse, error)
-	ListItems(context.Context, service.BatchImageOwner, string, service.BatchImageItemsQuery) (*service.BatchImagePublicItemsResponse, error)
-	Cancel(context.Context, service.BatchImageOwner, string) (*service.BatchImagePublicBatch, error)
-	MarkDownloaded(context.Context, service.BatchImageOwner, string) error
-	DeleteRecord(context.Context, service.BatchImageOwner, string) error
+	Submit(context.Context, batchimage.BatchImageOwner, batchimage.BatchImageSubmitRequest, string) (*batchimage.BatchImagePublicBatch, error)
+	Get(context.Context, batchimage.BatchImageOwner, string) (*batchimage.BatchImagePublicBatch, error)
+	List(context.Context, batchimage.BatchImageOwner, batchimage.BatchImageJobsQuery) (*batchimage.BatchImagePublicListResponse, error)
+	ListModels(context.Context, batchimage.BatchImageOwner) (*batchimage.BatchImagePublicModelsResponse, error)
+	ListItems(context.Context, batchimage.BatchImageOwner, string, batchimage.BatchImageItemsQuery) (*batchimage.BatchImagePublicItemsResponse, error)
+	Cancel(context.Context, batchimage.BatchImageOwner, string) (*batchimage.BatchImagePublicBatch, error)
+	MarkDownloaded(context.Context, batchimage.BatchImageOwner, string) error
+	DeleteRecord(context.Context, batchimage.BatchImageOwner, string) error
 }
 type DownloadUseCases interface {
-	OpenItemContent(context.Context, service.BatchImageOwner, string, string, int) (*service.BatchImageContentStream, error)
-	StreamZip(context.Context, service.BatchImageOwner, string, service.BatchImageZipOptions, io.Writer) (*service.BatchImageZipResult, error)
+	OpenItemContent(context.Context, batchimage.BatchImageOwner, string, string, int) (*batchimage.BatchImageContentStream, error)
+	StreamZip(context.Context, batchimage.BatchImageOwner, string, batchimage.BatchImageZipOptions, io.Writer) (*batchimage.BatchImageZipResult, error)
 }
 type CleanupUseCases interface {
-	DeleteOutputsForOwner(context.Context, service.BatchImageOwner, string) (*service.BatchImagePublicBatch, error)
+	DeleteOutputsForOwner(context.Context, batchimage.BatchImageOwner, string) (*batchimage.BatchImagePublicBatch, error)
 }
 
 // BindActivity 在构造阶段绑定任务入口关闭屏障，释放覆盖完整 HTTP 流式输出。

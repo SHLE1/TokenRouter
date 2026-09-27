@@ -231,9 +231,6 @@ func canonicalizeCodexOriginator(name string) string {
 	return name
 }
 
-// CodexCLIOriginator 是 codex-rs 客户端的历史 originator，保留用于兼容识别。
-const CodexCLIOriginator = "codex_cli_rs"
-
 // CodexDefaultOriginator 是网关默认使用的 Codex TUI originator。
 const CodexDefaultOriginator = "codex-tui"
 

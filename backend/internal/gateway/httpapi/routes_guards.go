@@ -34,7 +34,6 @@ type RouteMiddleware struct {
 
 const (
 	RouteLimitLocalPolicyDenied = "local_policy_denied"
-	RouteLimitLocalFeatureGate  = "local_feature_gate"
 )
 
 // RouteGuards 共享现有路由表和当次认证投影，不读取请求报文。

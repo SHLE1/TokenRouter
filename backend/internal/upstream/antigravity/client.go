@@ -658,8 +658,6 @@ type FetchUserInfoRequest = googlewire.AntigravityFetchUserInfoRequest
 
 type FetchUserInfoResponse = googlewire.AntigravityFetchUserInfoResponse
 
-type IneligibleTier = googlewire.AntigravityIneligibleTier
-
 type LoadCodeAssistRequest = googlewire.AntigravityLoadCodeAssistRequest
 
 type LoadCodeAssistResponse = googlewire.AntigravityLoadCodeAssistResponse

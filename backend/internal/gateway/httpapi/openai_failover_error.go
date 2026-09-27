@@ -142,8 +142,3 @@ func MapOpenAIUpstreamError(statusCode int) (int, string, string) {
 		return http.StatusBadGateway, "upstream_error", "Upstream request failed"
 	}
 }
-
-// WriteFailoverExhausted 使用当前文本入口的输出状态，裁决仅保留一份。
-func (h *OpenAITextHandler) WriteFailoverExhausted(c *gin.Context, failure *OpenAIFailoverError, started bool, rules ErrorRuleMatcher, hooks FailoverErrorHooks) {
-	h.errorOutput().WriteFailoverExhausted(c, failure, started, rules, hooks)
-}

@@ -43,19 +43,6 @@ func NewTurnstileService(settingService CaptchaSettings, verifier TurnstileVerif
 	}
 }
 
-// VerifyToken 验证 Turnstile token
-func (s *TurnstileService) VerifyToken(ctx context.Context, token string, remoteIP string) error {
-	// 检查是否启用 Turnstile
-	if !s.settingService.IsTurnstileEnabled(ctx) {
-		s.observer.Printf("service.turnstile", "%s", "[Turnstile] Disabled, skipping verification")
-		return nil
-	}
-
-	// 获取 Secret Key
-	secretKey := s.settingService.GetTurnstileSecretKey(ctx)
-	return s.VerifyTokenWithSecret(ctx, secretKey, token, remoteIP)
-}
-
 func (s *TurnstileService) VerifyTokenWithSecret(ctx context.Context, secretKey, token, remoteIP string) error {
 	if secretKey == "" {
 		s.observer.Printf("service.turnstile", "%s", "[Turnstile] Secret key not configured")

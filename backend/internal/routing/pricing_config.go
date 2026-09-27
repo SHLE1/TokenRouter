@@ -82,11 +82,6 @@ func (c *PricingConfig) GetModelPricing(model string) *ModelPricingEntry {
 	return nil
 }
 
-// FindMatchingInterval 委托唯一纯定价实现，保留旧调用签名。
-func FindMatchingInterval(intervals []PricingInterval, totalTokens int) *PricingInterval {
-	return pricing.FindMatchingInterval(intervals, totalTokens)
-}
-
 // Clone 返回 PricingConfig 的深拷贝
 func (c *PricingConfig) Clone() *PricingConfig {
 	if c == nil {

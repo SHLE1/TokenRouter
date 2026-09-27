@@ -2,8 +2,6 @@ package billing
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
@@ -22,9 +20,9 @@ var (
 )
 
 const (
-	redeemMaxErrorsPerHour  = 20
-	redeemRateLimitDuration = time.Hour
-	redeemLockDuration      = 10 * time.Second // 锁超时时间，防止死锁
+	redeemMaxErrorsPerHour = 20
+
+	redeemLockDuration = 10 * time.Second // 锁超时时间，防止死锁
 )
 
 type ctxKeySkipRedeemAffiliate struct{}
@@ -72,102 +70,6 @@ func NewRedeemService(repo RedeemCodeRepository, users BalanceReader, subs *Subs
 		runtime.Now = time.Now
 	}
 	return &RedeemService{redeemRepo: repo, userRepo: users, subscriptionService: subs, cache: cache, billingCacheService: eligibility, transactions: transactions, authCacheInvalidator: auth, affiliateService: affiliate, runtime: runtime}
-}
-
-// GenerateRandomCode 生成随机兑换码
-func (s *RedeemService) GenerateRandomCode() (string, error) {
-	// 生成16字节随机数据
-	bytes := make([]byte, 16)
-	if _, err := rand.Read(bytes); err != nil {
-		return "", fmt.Errorf("generate random bytes: %w", err)
-	}
-
-	// 转换为十六进制字符串
-	code := hex.EncodeToString(bytes)
-
-	// 格式化为 XXXX-XXXX-XXXX-XXXX 格式
-	parts := []string{
-		strings.ToUpper(code[0:8]),
-		strings.ToUpper(code[8:16]),
-		strings.ToUpper(code[16:24]),
-		strings.ToUpper(code[24:32]),
-	}
-
-	return strings.Join(parts, "-"), nil
-}
-
-// GenerateCodes 批量生成兑换码
-func (s *RedeemService) GenerateCodes(ctx context.Context, req GenerateCodesRequest) ([]RedeemCode, error) {
-	if req.Count <= 0 {
-		return nil, apperror.BadRequest("REDEEM_CODE_COUNT_INVALID", "count must be greater than 0")
-	}
-
-	// 邀请码类型不需要数值，其他类型需要非零值（支持负数用于退款）
-	if req.Type != RedeemTypeInvitation && req.Value == 0 {
-		return nil, apperror.BadRequest("REDEEM_CODE_VALUE_INVALID", "value must not be zero")
-	}
-
-	if req.Count > 1000 {
-		return nil, apperror.BadRequest("REDEEM_CODE_COUNT_TOO_LARGE", "cannot generate more than 1000 codes at once")
-	}
-
-	codeType := req.Type
-	if codeType == "" {
-		codeType = RedeemTypeBalance
-	}
-
-	maxUses := 1
-	if req.MaxUses != nil {
-		if *req.MaxUses < 0 {
-			return nil, apperror.BadRequest("REDEEM_CODE_MAX_USES_INVALID", "max_uses must be greater than or equal to 0")
-		}
-		maxUses = *req.MaxUses
-	}
-
-	customCode := strings.TrimSpace(req.Code)
-	if customCode != "" {
-		if req.Count != 1 {
-			return nil, apperror.BadRequest("REDEEM_CODE_CUSTOM_COUNT_INVALID", "count must be 1 when code is provided")
-		}
-		if len(customCode) > 32 {
-			return nil, apperror.BadRequest("REDEEM_CODE_TOO_LONG", "code must be at most 32 characters")
-		}
-	}
-
-	// 邀请码类型的 value 设为 0
-	value := req.Value
-	if codeType == RedeemTypeInvitation {
-		value = 0
-		maxUses = 1
-	}
-
-	codes := make([]RedeemCode, 0, req.Count)
-	for i := 0; i < req.Count; i++ {
-		codeValue := customCode
-		if codeValue == "" {
-			code, err := s.GenerateRandomCode()
-			if err != nil {
-				return nil, fmt.Errorf("generate code: %w", err)
-			}
-			codeValue = code
-		}
-
-		codes = append(codes, RedeemCode{
-			Code:      codeValue,
-			Type:      codeType,
-			Value:     value,
-			Status:    StatusUnused,
-			MaxUses:   maxUses,
-			ExpiresAt: req.ExpiresAt,
-		})
-	}
-
-	// 批量插入
-	if err := s.redeemRepo.CreateBatch(ctx, codes); err != nil {
-		return nil, fmt.Errorf("create batch codes: %w", err)
-	}
-
-	return codes, nil
 }
 
 // CreateCode creates a redeem code with caller-provided code value.

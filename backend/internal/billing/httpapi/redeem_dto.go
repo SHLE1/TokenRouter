@@ -9,8 +9,6 @@ type RedeemCode = billingdto.RedeemCode
 
 type AdminRedeemCode = billingdto.AdminRedeemCode
 
-type NullableTimeField = billingdto.NullableTimeField
-
 type BatchUpdateRedeemCodeFields = billingdto.BatchUpdateRedeemCodeFields
 
 type BatchUpdateRedeemCodesRequest = billingdto.BatchUpdateRedeemCodesRequest

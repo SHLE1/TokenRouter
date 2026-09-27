@@ -19,15 +19,14 @@ var (
 	ErrUpstreamUsageDisabled = infraerrors.New(infraerrors.Category(422),
 		"UPSTREAM_USAGE_DISABLED", "upstream usage query is disabled for this provider",
 	)
-	ErrUpstreamUsageUnsupported       = usageview.ErrUpstreamUsageUnsupported
-	ErrUpstreamUsageAuthFailed        = usageview.ErrUpstreamUsageAuthFailed
+	ErrUpstreamUsageUnsupported = usageview.ErrUpstreamUsageUnsupported
+
 	ErrUpstreamUsageWalletUnavailable = usageview.ErrUpstreamUsageWalletUnavailable
-	ErrUpstreamUsageWalletAuthFailed  = usageview.ErrUpstreamUsageWalletAuthFailed
-	ErrUpstreamUsageRateLimited       = usageview.ErrUpstreamUsageRateLimited
-	ErrUpstreamUsageTimeout           = usageview.ErrUpstreamUsageTimeout
-	ErrUpstreamUsageInvalidResponse   = usageview.ErrUpstreamUsageInvalidResponse
-	ErrUpstreamUsageRequestFailed     = usageview.ErrUpstreamUsageRequestFailed
-	ErrUpstreamUsageIdentityChanged   = infraerrors.Conflict(
+
+	ErrUpstreamUsageTimeout         = usageview.ErrUpstreamUsageTimeout
+	ErrUpstreamUsageInvalidResponse = usageview.ErrUpstreamUsageInvalidResponse
+	ErrUpstreamUsageRequestFailed   = usageview.ErrUpstreamUsageRequestFailed
+	ErrUpstreamUsageIdentityChanged = infraerrors.Conflict(
 		"UPSTREAM_USAGE_IDENTITY_CHANGED", "provider credentials or connection settings changed during the query",
 	)
 	ErrUpstreamUsageConfigInvalid = usageview.ErrUpstreamUsageConfigInvalid

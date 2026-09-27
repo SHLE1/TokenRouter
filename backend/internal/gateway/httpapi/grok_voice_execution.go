@@ -130,23 +130,6 @@ func (s *GrokExecutor) ForwardGrokVoice(ctx context.Context, c *gin.Context, pro
 	}, nil
 }
 
-// ProxyGrokRealtime 将 JSON Realtime 事件中继到 xAI 原生 Voice WebSocket。
-// 音频以 base64 包含在 JSON 事件中，保持原始 JSON 字节即可，无需转换协议事件类型。
-func (s *GrokExecutor) ProxyGrokRealtime(ctx context.Context, c *gin.Context, client *coderws.Conn, provider *gatewayprovider.ExecutionProvider, token, model string) (bool, error) {
-	if s == nil || client == nil || provider == nil {
-		return false, fmt.Errorf("realtime service, client, and provider are required")
-	}
-	if provider.Record.Platform != capability.PlatformGrok {
-		return false, fmt.Errorf("provider platform %s is not supported for grok realtime", provider.Record.Platform)
-	}
-	upstream, err := s.OpenGrokRealtime(ctx, provider, token, model)
-	if err != nil {
-		return false, err
-	}
-	defer func() { _ = upstream.Close() }()
-	return s.ProxyGrokRealtimeConn(ctx, c, client, upstream)
-}
-
 func (s *GrokExecutor) OpenGrokRealtime(ctx context.Context, provider *gatewayprovider.ExecutionProvider, token, model string) (*grok.RealtimeSession, error) {
 	if s == nil || provider == nil || provider.Record.Platform != capability.PlatformGrok {
 		return nil, fmt.Errorf("grok realtime provider is required")
@@ -164,27 +147,6 @@ func (s *GrokExecutor) HandleGrokRealtimeUpstreamError(ctx context.Context, prov
 		statusCode = http.StatusBadGateway
 	}
 	_ = gatewayprovider.ApplyGrokExecutionHealth(ctx, s.Health, provider, statusCode, nil, body, "")
-}
-
-func (s *GrokExecutor) ProxyGrokRealtimeConn(ctx context.Context, c *gin.Context, client *coderws.Conn, upstream *grok.RealtimeSession) (bool, error) {
-	if s == nil || client == nil || !upstream.Ready() {
-		return false, fmt.Errorf("realtime connection is required")
-	}
-	return grok.RelayRealtime(ctx, grokClientFrames{client}, upstream)
-}
-
-func (s *GrokExecutor) ProbeGrokRealtime(ctx context.Context, provider *gatewayprovider.ExecutionProvider, token, model string) error {
-	if s == nil || provider == nil {
-		return fmt.Errorf("realtime service and provider are required")
-	}
-	if provider.Record.Platform != capability.PlatformGrok {
-		return fmt.Errorf("provider platform %s is not supported for grok realtime", provider.Record.Platform)
-	}
-	base, err := s.Routes.Voice(provider, "realtime")
-	if err != nil {
-		return err
-	}
-	return mediaprovider.ProbeRealtime(ctx, s.grokRealtimeOptions(provider, base, token, model))
 }
 
 // HTTP/既有 WS SDK 只转换同步帧接口，升级与连接租约仍由原入口拥有。
@@ -236,14 +198,6 @@ func (s *GrokExecutor) grokRealtimeOptions(provider *gatewayprovider.ExecutionPr
 		options.CLIHeaders = grok.ApplyCLIHeaders
 	}
 	return options
-}
-
-// ProxyGrokRealtimeFrames 接收受控帧连接，供 media 持有关闭和提供商槽所有权。
-func (s *GrokExecutor) ProxyGrokRealtimeFrames(ctx context.Context, client *coderws.Conn, conn upstreamcore.FrameConn) (bool, error) {
-	if s == nil || client == nil || conn == nil {
-		return false, fmt.Errorf("realtime connection is required")
-	}
-	return grok.RelayRealtime(ctx, grokClientFrames{client}, conn)
 }
 
 // RelayGrokRealtimeFrames 只连接原生帧中继；入站升级与槽位由媒体 HTTP/core 拥有。

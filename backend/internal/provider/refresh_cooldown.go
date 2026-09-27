@@ -1,7 +1,6 @@
 package provider
 
 import (
-	"context"
 	"time"
 )
 
@@ -12,9 +11,6 @@ type RefreshCooldownVersion struct {
 	QuotaDimension   string
 	Until            *time.Time
 	Reason           string
-}
-type RefreshCooldownWriter interface {
-	ClearRefreshCooldownIfUnchanged(context.Context, RefreshCooldownVersion) (bool, error)
 }
 
 func ObserveRefreshCooldown(value *Record) RefreshCooldownVersion {

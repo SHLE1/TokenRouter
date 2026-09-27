@@ -243,12 +243,6 @@ func (s *GrantSettings) UpdateAuthSourceDefaultSettings(ctx context.Context, set
 	return nil
 }
 
-// ErrDefaultSubPlanInvalid 保留原 reason 和错误身份。
-var ErrDefaultSubPlanInvalid = billing.ErrDefaultSubPlanInvalid
-
-// ErrDefaultSubPlanDuplicate 保留原 reason 和错误身份。
-var ErrDefaultSubPlanDuplicate = billing.ErrDefaultSubPlanDuplicate
-
 func ParseDefaultSubscriptions(raw string) []DefaultSubscriptionSetting {
 	return billing.ParseDefaultSubscriptions(raw)
 }

@@ -277,10 +277,6 @@ func NewOAuthClientForProfile(profile Profile, httpClient *http.Client) *OAuthCl
 	}
 }
 
-func NewDeviceAuthRequest() (*DeviceAuthRequest, error) {
-	return NewDeviceAuthRequestForProfile(MustProfileForSite(SiteGlobal))
-}
-
 // NewDeviceAuthRequestForSite 为指定站点生成设备授权参数。
 func NewDeviceAuthRequestForSite(site Site) (*DeviceAuthRequest, error) {
 	profile, err := ProfileForSite(site)

@@ -121,10 +121,6 @@ func (s *UserSubscription) DaysRemainingAt(now time.Time) int {
 	return days
 }
 
-func (s *UserSubscription) IsWindowActivated() bool {
-	return s.DailyWindowStart != nil || s.WeeklyWindowStart != nil || s.MonthlyWindowStart != nil
-}
-
 func (s *UserSubscription) HasQuotaLimit() bool {
 	return PositiveSubscriptionLimit(s.DailyLimitUSD) ||
 		PositiveSubscriptionLimit(s.WeeklyLimitUSD) ||
@@ -286,34 +282,6 @@ func (s *UserSubscription) MonthlyResetTime() *time.Time {
 		t = s.ExpiresAt
 	}
 	return &t
-}
-
-func (s *UserSubscription) CheckDailyLimit(additionalCost float64) bool {
-	if s.DailyLimitUSD == nil || *s.DailyLimitUSD <= 0 {
-		return true
-	}
-	return s.DailyUsageUSD+additionalCost <= *s.DailyLimitUSD
-}
-
-func (s *UserSubscription) CheckWeeklyLimit(additionalCost float64) bool {
-	if s.WeeklyLimitUSD == nil || *s.WeeklyLimitUSD <= 0 {
-		return true
-	}
-	return s.WeeklyUsageUSD+additionalCost <= *s.WeeklyLimitUSD
-}
-
-func (s *UserSubscription) CheckMonthlyLimit(additionalCost float64) bool {
-	if s.MonthlyLimitUSD == nil || *s.MonthlyLimitUSD <= 0 {
-		return true
-	}
-	return s.MonthlyUsageUSD+additionalCost <= *s.MonthlyLimitUSD
-}
-
-func (s *UserSubscription) CheckAllLimits(additionalCost float64) (daily, weekly, monthly bool) {
-	daily = s.CheckDailyLimit(additionalCost)
-	weekly = s.CheckWeeklyLimit(additionalCost)
-	monthly = s.CheckMonthlyLimit(additionalCost)
-	return
 }
 
 func (s *UserSubscription) RemainingDailyUSD() *float64 {

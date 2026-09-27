@@ -16,8 +16,8 @@ import (
 )
 
 const (
-	OAuthIssuer           = "https://auth.x.ai"
-	DiscoveryURL          = OAuthIssuer + "/.well-known/openid-configuration"
+	OAuthIssuer = "https://auth.x.ai"
+
 	DefaultAuthorizeURL   = OAuthIssuer + "/oauth2/authorize"
 	DefaultTokenURL       = OAuthIssuer + "/oauth2/token"
 	DefaultBaseURL        = "https://api.x.ai/v1"
@@ -280,17 +280,6 @@ func IsOfficialBaseURLHost(host string) bool {
 		}
 	}
 	return false
-}
-
-// IsParseableBaseURL 报告 raw 是否能解析出 host。
-// 供读取路径判定存量脏数据：无法解析的值应回落默认端点，而不是把流量发往未定义目标。
-func IsParseableBaseURL(raw string) bool {
-	trimmed := strings.TrimSpace(raw)
-	if trimmed == "" {
-		return false
-	}
-	parsed, err := url.Parse(trimmed)
-	return err == nil && parsed.Host != ""
 }
 
 // IsOfficialBaseURL 报告 raw 是否指向官方主机（api.x.ai / *.api.x.ai 区域端点 / CLI 网关），

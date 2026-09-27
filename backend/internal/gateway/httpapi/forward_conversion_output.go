@@ -27,9 +27,11 @@ func (o ForwardConversionOutput) CopyHeaders(headers map[string][]string) {
 		egressprovider.WriteFilteredHeaders(o.Context.Writer.Header(), headers, o.Filter)
 	}
 }
+
 func (o ForwardConversionOutput) BeginJSON() {
 	o.Context.Writer.Header().Set("Content-Type", "application/json; charset=utf-8")
 }
+
 func (o ForwardConversionOutput) BeginStream() {
 	h := o.Context.Writer.Header()
 	h.Set("Content-Type", "text/event-stream")
@@ -42,12 +44,15 @@ func (o ForwardConversionOutput) ReverseTools(body []byte) []byte { return o.Rev
 func (o ForwardConversionOutput) JSONBytes(body []byte) {
 	o.Context.Data(http.StatusOK, "application/json; charset=utf-8", body)
 }
+
 func (o ForwardConversionOutput) ResponsesJSON(value *protocolopenai.ResponsesResponse) {
 	o.Context.JSON(http.StatusOK, value)
 }
+
 func (o ForwardConversionOutput) ChatJSON(value *protocolopenai.ChatCompletionsResponse) {
 	o.Context.JSON(http.StatusOK, value)
 }
+
 func (o ForwardConversionOutput) Event(kind string, body []byte) (int, error) {
 	if kind != "" {
 		return fmt.Fprintf(o.Context.Writer, "event: %s\ndata: %s\n\n", kind, body)
@@ -63,6 +68,7 @@ func (o ForwardConversionOutput) Error(status int, kind, message string) {
 	}
 	o.Context.JSON(status, gin.H{"error": gin.H{"type": kind, "message": message}})
 }
+
 func (o ForwardConversionOutput) Observe(level, message string, err error, requestID, event string) {
 	o.Diagnostic(level, message, err, requestID, event)
 }
@@ -89,11 +95,6 @@ func WriteForwardCountSuccess(c *gin.Context, status int, headers map[string][]s
 // WriteForwardCountError 沿用计数端点的 Anthropic 错误格式，不追加提交标记。
 func WriteForwardCountError(c *gin.Context, status int, kind, message string) {
 	c.JSON(status, gin.H{"type": "error", "error": gin.H{"type": kind, "message": message}})
-}
-
-// WriteForwardGeminiZeroCount 保留 Gemini countTokens 的本地零值兼容响应。
-func WriteForwardGeminiZeroCount(c *gin.Context) {
-	c.JSON(http.StatusOK, map[string]int{"totalTokens": 0})
 }
 
 // WriteForwardGeminiErrorBody 只写调用方已判定的错误，不参与恢复判断。

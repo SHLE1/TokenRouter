@@ -35,22 +35,6 @@ const MatchModeAny = "any"
 const MatchModeAll = "all"
 
 // 支持的平台常量
-const (
-	PlatformAnthropic   = "anthropic"
-	PlatformOpenAI      = "openai"
-	PlatformGemini      = "gemini"
-	PlatformAntigravity = "antigravity"
-	PlatformQoder       = "qoder"
-	PlatformGrok        = "grok"
-	PlatformKimi        = "kimi"
-	PlatformZhipu       = "zhipu"
-	PlatformDeepseek    = "deepseek"
-)
-
-// AllPlatforms 返回所有支持的平台列表
-func AllPlatforms() []string {
-	return []string{PlatformAnthropic, PlatformOpenAI, PlatformGemini, PlatformAntigravity, PlatformQoder, PlatformGrok, PlatformKimi, PlatformZhipu, PlatformDeepseek}
-}
 
 // Validate 验证规则配置的有效性
 func (r *ErrorPassthroughRule) Validate() error {

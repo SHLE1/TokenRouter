@@ -371,9 +371,6 @@ func (r *Store) fillDashboardUsageStatsFromUsageLogs(ctx context.Context, stats 
 // UserDashboardStats 用户仪表盘统计
 type UserDashboardStats = usage.UserDashboardStats
 
-// PlatformDashboardStats 单平台用量明细
-type PlatformDashboardStats = usage.PlatformDashboardStats
-
 // GetUserDashboardStats 获取用户专属的仪表盘统计
 func (r *Store) GetUserDashboardStats(ctx context.Context, userID int64) (*UserDashboardStats, error) {
 	if stats, ok, err := r.getUserDashboardStatsFromAnalytics(ctx, userID); err == nil && ok {

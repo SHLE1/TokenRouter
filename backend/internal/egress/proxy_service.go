@@ -37,16 +37,6 @@ type ProxyRepository interface {
 	CountExpiringSoon(ctx context.Context, now time.Time) (int64, error)
 }
 
-// CreateProxyRequest 创建代理请求
-type CreateProxyRequest struct {
-	Name     string `json:"name"`
-	Protocol string `json:"protocol"`
-	Host     string `json:"host"`
-	Port     int    `json:"port"`
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
 // UpdateProxyRequest 更新代理请求
 type UpdateProxyRequest struct {
 	Name     *string `json:"name"`
@@ -68,26 +58,6 @@ func NewProxyService(proxyRepo ProxyRepository) *ProxyService {
 	return &ProxyService{
 		proxyRepo: proxyRepo,
 	}
-}
-
-// Create 创建代理
-func (s *ProxyService) Create(ctx context.Context, req CreateProxyRequest) (*Proxy, error) {
-	// 创建代理
-	proxy := &Proxy{
-		Name:     req.Name,
-		Protocol: req.Protocol,
-		Host:     req.Host,
-		Port:     req.Port,
-		Username: req.Username,
-		Password: req.Password,
-		Status:   StatusActive,
-	}
-
-	if err := s.proxyRepo.Create(ctx, proxy); err != nil {
-		return nil, fmt.Errorf("create proxy: %w", err)
-	}
-
-	return proxy, nil
 }
 
 // GetByID 根据ID获取代理
@@ -173,28 +143,4 @@ func (s *ProxyService) Delete(ctx context.Context, id int64) error {
 	}
 
 	return nil
-}
-
-// TestConnection 测试代理连接（需要实现具体测试逻辑）
-func (s *ProxyService) TestConnection(ctx context.Context, id int64) error {
-	proxy, err := s.proxyRepo.GetByID(ctx, id)
-	if err != nil {
-		return fmt.Errorf("get proxy: %w", err)
-	}
-
-	// TODO: 实现代理连接测试逻辑
-	// 可以尝试通过代理发送测试请求
-	_ = proxy
-
-	return nil
-}
-
-// GetURL 获取代理URL
-func (s *ProxyService) GetURL(ctx context.Context, id int64) (string, error) {
-	proxy, err := s.proxyRepo.GetByID(ctx, id)
-	if err != nil {
-		return "", fmt.Errorf("get proxy: %w", err)
-	}
-
-	return proxy.URL(), nil
 }

@@ -67,11 +67,6 @@ func (s *UserAttributeService) CreateDefinition(ctx context.Context, input Creat
 	return def, nil
 }
 
-// GetDefinition retrieves a definition by ID
-func (s *UserAttributeService) GetDefinition(ctx context.Context, id int64) (*UserAttributeDefinition, error) {
-	return s.defRepo.GetByID(ctx, id)
-}
-
 // GetDefinitionByKey retrieves a definition by its unique key
 func (s *UserAttributeService) GetDefinitionByKey(ctx context.Context, key string) (*UserAttributeDefinition, error) {
 	return s.defRepo.GetByKey(ctx, key)

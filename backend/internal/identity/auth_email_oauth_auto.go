@@ -23,19 +23,6 @@ type EmailOAuthIdentityInput struct {
 	UpstreamMetadata map[string]any
 }
 
-func (s *AuthService) LoginOrRegisterVerifiedEmailOAuth(ctx context.Context, input EmailOAuthIdentityInput) (*TokenPair, *User, error) {
-	return s.AuthLoginOrRegisterVerifiedEmailOAuth(ctx, input, "", "", "")
-}
-
-func (s *AuthService) LoginOrRegisterVerifiedEmailOAuthWithInvitation(
-	ctx context.Context,
-	input EmailOAuthIdentityInput,
-	invitationCode string,
-	affiliateCode string,
-) (*TokenPair, *User, error) {
-	return s.AuthLoginOrRegisterVerifiedEmailOAuth(ctx, input, invitationCode, affiliateCode, "")
-}
-
 func (s *AuthService) LoginOrRegisterVerifiedEmailOAuthWithSignupCodes(
 	ctx context.Context,
 	input EmailOAuthIdentityInput,

@@ -758,17 +758,6 @@ func (s *TeamService) Dissolve(ctx context.Context, ownerUserID int64) error {
 	return nil
 }
 
-func (s *TeamService) AdminSetStatus(ctx context.Context, teamID int64, status string) error {
-	if status != TeamStatusActive && status != TeamStatusSuspended {
-		return infraerrors.BadRequest("TEAM_STATUS_INVALID", "无效的团队状态")
-	}
-	if err := s.repo.SetStatus(ctx, teamID, status); err != nil {
-		return err
-	}
-	s.invalidateTeamKeys(ctx, teamID)
-	return nil
-}
-
 // AdminUpdateName 允许平台管理员修正团队名称，并复用统一的名称校验规则。
 func (s *TeamService) AdminUpdateName(ctx context.Context, teamID int64, name string) error {
 	name, err := NormalizeTeamName(name)
@@ -776,13 +765,6 @@ func (s *TeamService) AdminUpdateName(ctx context.Context, teamID int64, name st
 		return err
 	}
 	return s.repo.UpdateName(ctx, teamID, name)
-}
-
-func (s *TeamService) AdminSetMemberLimit(ctx context.Context, teamID int64, limit int) error {
-	if limit < 0 {
-		return infraerrors.BadRequest("TEAM_MEMBER_LIMIT_INVALID", "团队成员上限不能为负数")
-	}
-	return s.repo.SetMemberLimit(ctx, teamID, limit)
 }
 
 // AdminUpdate 在写入前校验所有字段，再由仓储使用一条语句原子更新。
@@ -1007,9 +989,4 @@ func (s *TeamService) now() time.Time {
 		return s.options.Now()
 	}
 	return time.Now()
-}
-
-// NormalizeTeamUsageQuery 为旧用量入口保留系统时钟的缺省行为。
-func NormalizeTeamUsageQuery(query TeamUsageQuery) TeamUsageQuery {
-	return NormalizeTeamUsageQueryAt(query, time.Now())
 }

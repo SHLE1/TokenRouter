@@ -7,9 +7,6 @@ import "github.com/TokenFlux/TokenRouter/internal/gateway/clientmeta"
 // IsBrowserUserAgent 委托纯客户端解析。
 func IsBrowserUserAgent(userAgent string) bool { return clientmeta.IsBrowserUserAgent(userAgent) }
 
-// IsCodexCLIRequest 委托纯客户端解析。
-func IsCodexCLIRequest(userAgent string) bool { return clientmeta.IsCodexCLIRequest(userAgent) }
-
 // IsCodexOfficialClientRequest 委托纯客户端解析。
 func IsCodexOfficialClientRequest(userAgent string) bool {
 	return clientmeta.IsCodexOfficialClientRequest(userAgent)
@@ -35,11 +32,7 @@ func PairCodexClientIdentity(userAgent string) (originator string, pairedUA stri
 	return clientmeta.PairCodexClientIdentity(userAgent)
 }
 
-const CodexCLIOriginator = clientmeta.CodexCLIOriginator
 const CodexDefaultOriginator = clientmeta.CodexDefaultOriginator
-
-// ParseCodexEngineVersion 委托纯客户端解析。
-func ParseCodexEngineVersion(ua string) (string, bool) { return clientmeta.ParseCodexEngineVersion(ua) }
 
 // normalizeCodexClientHeader 供旧许可策略复用唯一的字符串归一化。
 func normalizeCodexClientHeader(value string) string {

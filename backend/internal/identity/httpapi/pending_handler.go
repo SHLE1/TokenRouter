@@ -288,10 +288,6 @@ func ReadCompletionResponse(session map[string]any) (map[string]any, bool) {
 	return identity.ReadCompletionResponse(session)
 }
 
-func ClonePendingMap(values map[string]any) map[string]any {
-	return identity.ClonePendingMap(values)
-}
-
 func MergePendingCompletionResponse(session *identity.PendingAuthSession, overrides map[string]any) map[string]any {
 	return identity.MergePendingCompletionResponse(session, overrides)
 }
@@ -320,14 +316,6 @@ func EnsurePendingOAuthCompleteRegistrationSession(session *identity.PendingAuth
 	return identity.EnsurePendingOAuthCompleteRegistrationSession(session)
 }
 
-func BuildLegacyCompleteRegistrationPendingResponse(
-	session *identity.PendingAuthSession,
-	forceEmailOnSignup bool,
-	emailVerificationRequired bool,
-) map[string]any {
-	return identity.BuildLegacyCompleteRegistrationPendingResponse(session, forceEmailOnSignup, emailVerificationRequired)
-}
-
 func (r OauthAdoptionDecisionRequest) hasDecision() bool {
 	return r.AdoptDisplayName != nil || r.AdoptAvatar != nil
 }
@@ -344,18 +332,6 @@ func BindOptionalOAuthAdoptionDecision(c *gin.Context) (OauthAdoptionDecisionReq
 		return req, err
 	}
 	return req, nil
-}
-
-func CloneOAuthMetadata(values map[string]any) map[string]any {
-	return identity.CloneOAuthMetadata(values)
-}
-
-func MergeOAuthMetadata(base map[string]any, overlay map[string]any) map[string]any {
-	return identity.MergeOAuthMetadata(base, overlay)
-}
-
-func NormalizeAdoptedOAuthDisplayName(value string) string {
-	return identity.NormalizeAdoptedOAuthDisplayName(value)
 }
 
 func (h *PendingHandler) BindLinuxDoOAuthLogin(c *gin.Context) {
@@ -443,12 +419,6 @@ func (h *PendingHandler) SendPendingOAuthVerifyCode(c *gin.Context) {
 	})
 }
 
-func ShouldBindPendingOAuthIdentity(session *identity.PendingAuthSession, decision *identity.IdentityAdoptionDecision) bool {
-	return identity.ShouldBindPendingOAuthIdentity(session, decision)
-}
-
-func ShouldSkipAvatarAdoption(err error) bool { return identity.ShouldSkipAvatarAdoption(err) }
-
 func ApplySuggestedProfileToCompletionResponse(payload map[string]any, upstream map[string]any) {
 	identity.ApplySuggestedProfileToCompletionResponse(payload, upstream)
 }
@@ -525,10 +495,6 @@ func BuildPendingOAuthSessionStatusPayload(session *identity.PendingAuthSession)
 
 func NormalizePendingOAuthCompletionResponse(payload map[string]any) map[string]any {
 	return identity.NormalizePendingOAuthCompletionResponse(payload)
-}
-
-func PendingOAuthChoiceCompletionResponse(session *identity.PendingAuthSession, email string) map[string]any {
-	return identity.PendingOAuthChoiceCompletionResponse(session, email)
 }
 
 func WriteOAuthTokenPairResponse(c *gin.Context, tokenPair *identity.TokenPair) {

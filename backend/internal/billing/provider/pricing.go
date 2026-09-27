@@ -10,7 +10,6 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
-	"regexp"
 	"slices"
 	"sort"
 	"strings"
@@ -702,41 +701,6 @@ func (s *PricingService) GetModelModalities(modelName string) ([]string, []strin
 	return query.GetModelModalities(modelName)
 }
 
-// LookupModelCatalogEntryLocked 在原有锁边界内调用纯目录查询。
-func (s *PricingService) LookupModelCatalogEntryLocked(candidates []string) *LiteLLMModelPricing {
-	query := s.catalogQuery()
-	defer s.emitCatalogDiagnostics(query)
-	return query.LookupModelCatalogEntry(candidates)
-}
-
-// ExtractBaseName 在原有锁边界内调用纯目录查询。
-func (s *PricingService) ExtractBaseName(model string) string {
-	query := s.catalogQuery()
-	defer s.emitCatalogDiagnostics(query)
-	return query.ExtractBaseName(model)
-}
-
-// MatchByModelFamily 在原有锁边界内调用纯目录查询。
-func (s *PricingService) MatchByModelFamily(model string) *LiteLLMModelPricing {
-	query := s.catalogQuery()
-	defer s.emitCatalogDiagnostics(query)
-	return query.MatchByModelFamily(model)
-}
-
-// MatchOpenAIModel 在原有锁边界内调用纯目录查询。
-func (s *PricingService) MatchOpenAIModel(model string) *LiteLLMModelPricing {
-	query := s.catalogQuery()
-	defer s.emitCatalogDiagnostics(query)
-	return query.MatchOpenAIModel(model)
-}
-
-// GenerateOpenAIModelVariants 在原有锁边界内调用纯目录查询。
-func (s *PricingService) GenerateOpenAIModelVariants(model string, datePattern *regexp.Regexp) []string {
-	query := s.catalogQuery()
-	defer s.emitCatalogDiagnostics(query)
-	return query.GenerateOpenAIModelVariants(model, datePattern)
-}
-
 // GetStatus 获取服务状态
 func (s *PricingService) GetStatus() map[string]any {
 	s.mu.RLock()
@@ -798,7 +762,6 @@ func (s *PricingService) Start() {
 // 目录值属于纯定价包，provider 只持有一个可替换的缓存实例。
 type (
 	LiteLLMModelPricing = purepricing.LiteLLMModelPricing
-	LiteLLMRawEntry     = purepricing.LiteLLMRawEntry
 )
 
 // Options 由 app 从一次加载的配置投影，provider 不接收 config 或业务实体。

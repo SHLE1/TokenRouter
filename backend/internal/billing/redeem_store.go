@@ -40,24 +40,6 @@ type RedeemCodeRepository interface {
 	SumPositiveBalanceByUser(ctx context.Context, userID int64) (float64, error)
 }
 
-// GenerateCodesRequest 生成兑换码请求
-type GenerateCodesRequest struct {
-	Code      string     `json:"code"`
-	Count     int        `json:"count"`
-	Value     float64    `json:"value"`
-	Type      string     `json:"type"`
-	MaxUses   *int       `json:"max_uses"`
-	ExpiresAt *time.Time `json:"expires_at"`
-}
-
-// RedeemCodeResponse 兑换码响应
-type RedeemCodeResponse struct {
-	Code      string    `json:"code"`
-	Value     float64   `json:"value"`
-	Status    string    `json:"status"`
-	CreatedAt time.Time `json:"created_at"`
-}
-
 type NullableTimeUpdate struct {
 	Set   bool
 	Value *time.Time

@@ -15,12 +15,10 @@ import (
 
 // Timeout constants for proxy and search operations.
 const (
-	quotaKeyPrefix      = "websearch:quota:"
-	proxyUnavailableKey = "websearch:proxy_unavailable:%d"
 	proxyUnavailableTTL = 5 * time.Minute
 	quotaTTLBuffer      = 24 * time.Hour
 	defaultQuotaTTL     = 31*24*time.Hour + quotaTTLBuffer // fallback when no subscription date
-	maxCachedClients    = 100
+
 )
 
 // ErrProxyUnavailable indicates the search failed due to a proxy connectivity issue.

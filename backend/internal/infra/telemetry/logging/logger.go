@@ -101,19 +101,6 @@ func Reconfigure(mutator func(*InitOptions) error) error {
 	return initLocked(next)
 }
 
-func SetLevel(level string) error {
-	lv, ok := parseLevel(level)
-	if !ok {
-		return fmt.Errorf("invalid log level: %s", level)
-	}
-
-	mu.Lock()
-	defer mu.Unlock()
-	atomicLevel.SetLevel(lv)
-	initOptions.Level = strings.ToLower(strings.TrimSpace(level))
-	return nil
-}
-
 func CurrentLevel() string {
 	mu.RLock()
 	defer mu.RUnlock()
@@ -137,44 +124,6 @@ func loadSink() Sink {
 		return nil
 	}
 	return state.sink
-}
-
-// WriteSinkEvent 直接写入日志 sink，不经过全局日志级别门控。
-// 用于需要“可观测性入库”与“业务输出级别”解耦的场景（例如 ops 系统日志索引）。
-func WriteSinkEvent(level, component, message string, fields map[string]any) {
-	sink := loadSink()
-	if sink == nil {
-		return
-	}
-
-	level = strings.ToLower(strings.TrimSpace(level))
-	if level == "" {
-		level = "info"
-	}
-	component = strings.TrimSpace(component)
-	message = strings.TrimSpace(message)
-	if message == "" {
-		return
-	}
-
-	eventFields := make(map[string]any, len(fields)+1)
-	for k, v := range fields {
-		eventFields[k] = v
-	}
-	if component != "" {
-		if _, ok := eventFields["component"]; !ok {
-			eventFields["component"] = component
-		}
-	}
-
-	sink.WriteLogEvent(&LogEvent{
-		Time:       time.Now(),
-		Level:      level,
-		Component:  component,
-		Message:    message,
-		LoggerName: component,
-		Fields:     eventFields,
-	})
 }
 
 func L() *zap.Logger {

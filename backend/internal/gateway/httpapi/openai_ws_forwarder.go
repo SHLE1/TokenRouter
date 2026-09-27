@@ -92,25 +92,6 @@ func (s *OpenAIWebSocketExecutor) SnapshotOpenAIWSPoolMetrics() openai.WSPoolMet
 	return pool.SnapshotMetrics()
 }
 
-type OpenAIWSPerformanceMetricsSnapshot struct {
-	Pool      openai.WSPoolMetricsSnapshot      `json:"pool"`
-	Retry     OpenAIWSRetryMetricsSnapshot      `json:"retry"`
-	Transport openai.WSTransportMetricsSnapshot `json:"transport"`
-}
-
-func (s *OpenAIWebSocketExecutor) SnapshotOpenAIWSPerformanceMetrics() OpenAIWSPerformanceMetricsSnapshot {
-	pool := s.Connections.Pool()
-	snapshot := OpenAIWSPerformanceMetricsSnapshot{
-		Retry: s.SnapshotOpenAIWSRetryMetrics(),
-	}
-	if pool == nil {
-		return snapshot
-	}
-	snapshot.Pool = pool.SnapshotMetrics()
-	snapshot.Transport = pool.SnapshotTransportMetrics()
-	return snapshot
-}
-
 func (s *OpenAIWebSocketExecutor) OpenAIHTTPResponseStickyTTL() time.Duration {
 	if s != nil && s.Options != nil {
 		seconds := s.Options.StickyResponseIDTTLSeconds

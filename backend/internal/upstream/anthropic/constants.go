@@ -31,17 +31,6 @@ var DroppedBetas = []string{}
 // DefaultBetaHeader Claude Code 客户端默认的 anthropic-beta header
 const DefaultBetaHeader = BetaClaudeCode + "," + BetaOAuth + "," + BetaInterleavedThinking + "," + BetaFineGrainedToolStreaming
 
-// MessageBetaHeaderNoTools /v1/messages 在无工具时的 beta header
-//
-// NOTE: Claude Code OAuth credentials are scoped to Claude Code. When we "mimic"
-// Claude Code for non-Claude-Code clients, we must include the claude-code beta
-// even if the request doesn't use tools, otherwise upstream may reject the
-// request as a non-Claude-Code API request.
-const MessageBetaHeaderNoTools = BetaClaudeCode + "," + BetaOAuth + "," + BetaInterleavedThinking
-
-// MessageBetaHeaderWithTools /v1/messages 在有工具时的 beta header
-const MessageBetaHeaderWithTools = BetaClaudeCode + "," + BetaOAuth + "," + BetaInterleavedThinking
-
 // CountTokensBetaHeader count_tokens 请求使用的 anthropic-beta header
 const CountTokensBetaHeader = BetaClaudeCode + "," + BetaOAuth + "," + BetaInterleavedThinking + "," + BetaTokenCounting
 
@@ -204,30 +193,12 @@ var ModelIDOverrides = map[string]string{
 	"claude-haiku-4-5":  "claude-haiku-4-5-20251001",
 }
 
-// ModelIDReverseOverrides 用于将上游模型 ID 还原为短名
-var ModelIDReverseOverrides = map[string]string{
-	"claude-sonnet-4-5-20250929": "claude-sonnet-4-5",
-	"claude-opus-4-5-20251101":   "claude-opus-4-5",
-	"claude-haiku-4-5-20251001":  "claude-haiku-4-5",
-}
-
 // NormalizeModelID 根据 Claude OAuth 规则映射模型
 func NormalizeModelID(id string) string {
 	if id == "" {
 		return id
 	}
 	if mapped, ok := ModelIDOverrides[id]; ok {
-		return mapped
-	}
-	return id
-}
-
-// DenormalizeModelID 将上游模型 ID 转换为短名
-func DenormalizeModelID(id string) string {
-	if id == "" {
-		return id
-	}
-	if mapped, ok := ModelIDReverseOverrides[id]; ok {
 		return mapped
 	}
 	return id

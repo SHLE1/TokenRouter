@@ -28,11 +28,6 @@ import (
 
 type CompatibleTextKind uint8
 
-const (
-	CompatibleResponses CompatibleTextKind = iota
-	CompatibleChat
-)
-
 type CompatibleTextCall struct {
 	MessagesCall
 	RequestContext                        context.Context

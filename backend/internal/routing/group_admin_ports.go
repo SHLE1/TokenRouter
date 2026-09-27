@@ -65,8 +65,3 @@ func (s *GroupAdmin) ValidateAdvancedOverrides(ctx context.Context, overrides Gr
 	}
 	return policy.ValidateEffectiveWeights(policy.ApplyGroupWeightOverrides(weights, overrides))
 }
-
-// Mutate 供旧管理入口委托原有事务边界，参与方沿用同一个 context。
-func (s *GroupAdmin) Mutate(ctx context.Context, fn func(context.Context) error) error {
-	return s.options.Mutate(ctx, fn)
-}

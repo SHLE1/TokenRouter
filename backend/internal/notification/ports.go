@@ -9,21 +9,27 @@ import (
 )
 
 type SettingRepository = settings.Repository
-type Setting = settings.Setting
 
 var ErrSettingNotFound = settings.ErrSettingNotFound
 
-type NotificationEmailSendInput = SendRequest
-type Sender interface {
-	SendEmail(context.Context, string, string, string) error
-}
-type SMTPConfig = contract.SMTPConfig
-type SMTPTransport interface {
-	Send(context.Context, *SMTPConfig, string, string, string) error
-	Test(context.Context, *SMTPConfig) error
-}
+type (
+	NotificationEmailSendInput = SendRequest
+	Sender                     interface {
+		SendEmail(context.Context, string, string, string) error
+	}
+)
 
-const defaultSiteName = "Sub2API"
-const SettingKeySiteName = "site_name"
-const SettingKeyAPIBaseURL = "api_base_url"
-const SettingKeyFrontendURL = "frontend_url"
+type (
+	SMTPConfig    = contract.SMTPConfig
+	SMTPTransport interface {
+		Send(context.Context, *SMTPConfig, string, string, string) error
+		Test(context.Context, *SMTPConfig) error
+	}
+)
+
+const (
+	defaultSiteName       = "Sub2API"
+	SettingKeySiteName    = "site_name"
+	SettingKeyAPIBaseURL  = "api_base_url"
+	SettingKeyFrontendURL = "frontend_url"
+)

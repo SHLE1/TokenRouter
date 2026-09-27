@@ -31,9 +31,7 @@ import (
 )
 
 const (
-	geminiMaxRetries     = 5
-	geminiRetryBaseDelay = 1 * time.Second
-	geminiRetryMaxDelay  = 16 * time.Second
+	geminiMaxRetries = 5
 )
 
 const geminiAppliedTempPolicyHeader = "X-TokenRouter-Internal-Temp-Policy-Applied"

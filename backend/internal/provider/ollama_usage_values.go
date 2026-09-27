@@ -23,17 +23,6 @@ type OllamaCloudUsageSettings struct {
 	DebounceMinutes int  `json:"debounce_minutes"` // 最近一次请求后的尾随静默期
 }
 
-type OllamaCloudUsageWindow = usageview.OllamaCloudUsageWindow
-
-type OllamaCloudUsageModelWindow = usageview.OllamaCloudUsageModelWindow
-
-const (
-	OllamaCloudUsageModelWindowFiveHour = usageview.OllamaCloudUsageModelWindowFiveHour
-	OllamaCloudUsageModelWindowSevenDay = usageview.OllamaCloudUsageModelWindowSevenDay
-)
-
-type OllamaCloudUsageModel = usageview.OllamaCloudUsageModel
-
 type OllamaCloudUsageData = usageview.OllamaCloudUsageData
 
 // OllamaCloudUsageSnapshot 是提供商 extra 中唯一持久化的用量观测数据。

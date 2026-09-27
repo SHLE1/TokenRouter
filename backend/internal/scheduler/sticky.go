@@ -19,11 +19,6 @@ type StickyCache interface {
 	RefreshSessionTTL(context.Context, int64, string, time.Duration) error
 	DeleteSessionProviderID(context.Context, int64, string) error
 }
-type SessionOwnerCache interface {
-	SetSessionOwnerGroupID(context.Context, int64, string, string, int64, time.Duration) (bool, error)
-	GetSessionOwnerGroupID(context.Context, int64, string, string) (int64, error)
-	RefreshSessionOwnerTTL(context.Context, int64, string, string, time.Duration) error
-}
 
 // StickyStats 仅有一个进程实例，各次兼容入口复用此观测。
 type StickyStats struct {

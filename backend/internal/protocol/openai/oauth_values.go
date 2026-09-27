@@ -1,8 +1,6 @@
 // OAuth wire 值与表单编码不持有授权会话、提供商或交换客户端。
 package openai
 
-import "net/url"
-
 // OAuthTokenRequest represents the token exchange request body
 type OAuthTokenRequest struct {
 	GrantType    string `json:"grant_type"`
@@ -61,27 +59,6 @@ type OAuthOrganizationClaim struct {
 	Role      string `json:"role"`
 	Title     string `json:"title"`
 	IsDefault bool   `json:"is_default"`
-}
-
-// ToFormData converts OAuthTokenRequest to URL-encoded form data
-func (r *OAuthTokenRequest) ToFormData() string {
-	params := url.Values{}
-	params.Set("grant_type", r.GrantType)
-	params.Set("client_id", r.ClientID)
-	params.Set("code", r.Code)
-	params.Set("redirect_uri", r.RedirectURI)
-	params.Set("code_verifier", r.CodeVerifier)
-	return params.Encode()
-}
-
-// ToFormData converts OAuthRefreshTokenRequest to URL-encoded form data
-func (r *OAuthRefreshTokenRequest) ToFormData() string {
-	params := url.Values{}
-	params.Set("grant_type", r.GrantType)
-	params.Set("client_id", r.ClientID)
-	params.Set("refresh_token", r.RefreshToken)
-	params.Set("scope", r.Scope)
-	return params.Encode()
 }
 
 // OAuthUserInfo represents user information extracted from ID Token claims.

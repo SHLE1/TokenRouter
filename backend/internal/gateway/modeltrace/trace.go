@@ -33,6 +33,7 @@ func NewAPIKeyModelRedirectTrace(clientModel, sourceModel, targetModel string) *
 	trace.RegisterModel(targetModel)
 	return trace
 }
+
 func (t *APIKeyModelRedirectTrace) RegisterModel(model string) {
 	if t == nil {
 		return
@@ -151,18 +152,6 @@ func responseMetadataModels(data []byte) []string {
 	return models
 }
 
-// Restore 只恢复原协议元数据，调用方显式传递本次请求追踪。
-func (trace *APIKeyModelRedirectTrace) Restore(data []byte) []byte {
-	if trace == nil || strings.TrimSpace(trace.ClientModel) == "" {
-		return data
-	}
-	trace.RegisterResponsePayload(data)
-	for _, model := range trace.ResponseModels() {
-		data = ReplaceModelMetadata(data, model, trace.ClientModel)
-	}
-	return data
-}
-
 // ContextKey 供旧上下文边界保留唯一 Trace；新用例直接接收 Trace。
 type ContextKey struct{}
 
@@ -175,6 +164,7 @@ func WithContext(ctx context.Context, trace *APIKeyModelRedirectTrace) context.C
 	}
 	return context.WithValue(ctx, ContextKey{}, trace)
 }
+
 func FromContext(ctx context.Context) (*APIKeyModelRedirectTrace, bool) {
 	if ctx == nil {
 		return nil, false

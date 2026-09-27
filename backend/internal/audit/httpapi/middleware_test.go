@@ -13,7 +13,7 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
 
-	service "github.com/TokenFlux/TokenRouter/internal/audit"
+	"github.com/TokenFlux/TokenRouter/internal/audit"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
@@ -45,29 +45,29 @@ func (b *partialErrorBody) Close() error { return nil }
 
 type auditCaptureRepository struct {
 	mu   sync.Mutex
-	logs []*service.AuditLog
+	logs []*audit.AuditLog
 }
 
-func (r *auditCaptureRepository) BatchInsert(_ context.Context, logs []*service.AuditLog) (int64, error) {
+func (r *auditCaptureRepository) BatchInsert(_ context.Context, logs []*audit.AuditLog) (int64, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.logs = append(r.logs, logs...)
 	return int64(len(logs)), nil
 }
 
-func (r *auditCaptureRepository) Insert(_ context.Context, log *service.AuditLog) error {
+func (r *auditCaptureRepository) Insert(_ context.Context, log *audit.AuditLog) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.logs = append(r.logs, log)
 	return nil
 }
 
-func (r *auditCaptureRepository) List(context.Context, *service.AuditLogFilter) (*service.AuditLogList, error) {
-	return &service.AuditLogList{}, nil
+func (r *auditCaptureRepository) List(context.Context, *audit.AuditLogFilter) (*audit.AuditLogList, error) {
+	return &audit.AuditLogList{}, nil
 }
 
-func (r *auditCaptureRepository) GetByID(context.Context, int64) (*service.AuditLog, error) {
-	return nil, service.ErrAuditLogNotFound
+func (r *auditCaptureRepository) GetByID(context.Context, int64) (*audit.AuditLog, error) {
+	return nil, audit.ErrAuditLogNotFound
 }
 
 func (r *auditCaptureRepository) Count(context.Context) (int64, error) { return 0, nil }
@@ -93,8 +93,8 @@ func TestDeriveAuditAction(t *testing.T) {
 			t.Fatalf("deriveAuditAction(%q, %q) = %q, want %q", tc.method, tc.path, got, tc.want)
 		}
 	}
-	if got := auditActionOverrides["POST /api/v1/subscriptions/:id/revoke"]; got != service.AuditActionUserSubscriptionRevoke {
-		t.Fatalf("subscription revoke audit action = %q, want %q", got, service.AuditActionUserSubscriptionRevoke)
+	if got := auditActionOverrides["POST /api/v1/subscriptions/:id/revoke"]; got != audit.AuditActionUserSubscriptionRevoke {
+		t.Fatalf("subscription revoke audit action = %q, want %q", got, audit.AuditActionUserSubscriptionRevoke)
 	}
 }
 
@@ -115,7 +115,7 @@ func TestAuditMiddlewareRestoresPartialBodyAfterReadError(t *testing.T) {
 	var got []byte
 
 	router := gin.New()
-	router.POST("/api/v1/admin/test", gin.HandlerFunc(NewAuditLogMiddleware(nil, service.NewRedactor(nil))), func(c *gin.Context) {
+	router.POST("/api/v1/admin/test", gin.HandlerFunc(NewAuditLogMiddleware(nil, audit.NewRedactor(nil))), func(c *gin.Context) {
 		var err error
 		got, err = io.ReadAll(c.Request.Body)
 		if err != nil {
@@ -145,7 +145,7 @@ func TestOllamaCloudUsageSessionRouteOmitsAuditBody(t *testing.T) {
 	require.Contains(t, auditBodyOmittedRoutes, "PUT /api/v1/admin/providers/:id/ollama-cloud-usage/session")
 
 	repository := &auditCaptureRepository{}
-	auditService := service.NewAuditLogService(repository, nil)
+	auditService := audit.NewAuditLogService(repository, nil)
 	auditService.Start()
 
 	router := gin.New()
@@ -154,7 +154,7 @@ func TestOllamaCloudUsageSessionRouteOmitsAuditBody(t *testing.T) {
 		c.Set(string(authctx.ContextKeyUserRole), "admin")
 		c.Next()
 	})
-	router.Use(gin.HandlerFunc(NewAuditLogMiddleware(auditService, service.NewRedactor(nil))))
+	router.Use(gin.HandlerFunc(NewAuditLogMiddleware(auditService, audit.NewRedactor(nil))))
 	router.PUT("/api/v1/admin/providers/:id/ollama-cloud-usage/session", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"ok": true})
 	})
@@ -168,7 +168,7 @@ func TestOllamaCloudUsageSessionRouteOmitsAuditBody(t *testing.T) {
 	auditService.Stop()
 
 	repository.mu.Lock()
-	logs := append([]*service.AuditLog(nil), repository.logs...)
+	logs := append([]*audit.AuditLog(nil), repository.logs...)
 	repository.mu.Unlock()
 	require.Len(t, logs, 1)
 	require.Equal(t, "<credential-bearing body omitted>", logs[0].RequestBody)
@@ -185,23 +185,23 @@ func TestPasskeyFinishRoutesOmitAuditBody(t *testing.T) {
 	}
 }
 
-func (r *auditCaptureRepository) ClearWithTrace(_ context.Context, trace *service.AuditLog) (int64, error) {
+func (r *auditCaptureRepository) ClearWithTrace(_ context.Context, trace *audit.AuditLog) (int64, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	n := len(r.logs)
-	r.logs = []*service.AuditLog{trace}
+	r.logs = []*audit.AuditLog{trace}
 	return int64(n), nil
 }
 
 // clearHTTPRepository 只实现清空端口，避免 HTTP 测试把分步清空误当作闭合操作。
 type clearHTTPRepository struct {
-	service.AuditLogRepository
-	trace *service.AuditLog
+	audit.AuditLogRepository
+	trace *audit.AuditLog
 	err   error
 	order *[]string
 }
 
-func (r *clearHTTPRepository) ClearWithTrace(_ context.Context, trace *service.AuditLog) (int64, error) {
+func (r *clearHTTPRepository) ClearWithTrace(_ context.Context, trace *audit.AuditLog) (int64, error) {
 	*r.order = append(*r.order, "clear-with-trace")
 	r.trace = trace
 	return 7, r.err
@@ -229,8 +229,8 @@ func TestAuditClearHTTPAuthorizationAndTrace(t *testing.T) {
 		status                   int
 		wantOrder                []string
 	}{
-		{name: "admin-key-rejected-before-body", auth: service.AuditAuthMethodAdminAPIKey, status: http.StatusForbidden, reason: "STEP_UP_ADMIN_API_KEY_FORBIDDEN"},
-		{name: "missing-subject", auth: service.AuditAuthMethodJWT, status: http.StatusUnauthorized},
+		{name: "admin-key-rejected-before-body", auth: audit.AuditAuthMethodAdminAPIKey, status: http.StatusForbidden, reason: "STEP_UP_ADMIN_API_KEY_FORBIDDEN"},
+		{name: "missing-subject", auth: audit.AuditAuthMethodJWT, status: http.StatusUnauthorized},
 		{name: "malformed-body", user: 77, body: "{", status: http.StatusBadRequest, reason: "TOTP_CODE_REQUIRED"},
 		{name: "missing-code", user: 77, body: `{}`, status: http.StatusBadRequest, reason: "TOTP_CODE_REQUIRED"},
 		{name: "totp-not-enabled", user: 77, body: `{"totp_code":"123456"}`, verifyErr: apperror.Forbidden("TOTP_NOT_SETUP", "not enabled"), status: http.StatusForbidden, reason: "TOTP_NOT_SETUP", wantOrder: []string{"totp"}},
@@ -243,7 +243,7 @@ func TestAuditClearHTTPAuthorizationAndTrace(t *testing.T) {
 			var order []string
 			repo := &clearHTTPRepository{err: tc.storeErr, order: &order}
 			verifier := &clearTOTPVerifier{err: tc.verifyErr, order: &order}
-			svc := service.NewAuditLogService(repo, nil)
+			svc := audit.NewAuditLogService(repo, nil)
 			t.Cleanup(svc.Stop)
 			h := NewAuditLogHandler(svc, verifier)
 			router := gin.New()
@@ -277,7 +277,7 @@ func TestAuditClearHTTPAuthorizationAndTrace(t *testing.T) {
 				require.Equal(t, tc.user, *repo.trace.ActorUserID)
 				require.Equal(t, "admin", repo.trace.ActorRole)
 				require.Equal(t, "test-clear", repo.trace.RequestID)
-				require.Equal(t, service.AuditActionAuditLogClear, repo.trace.Action)
+				require.Equal(t, audit.AuditActionAuditLogClear, repo.trace.Action)
 				require.NotEqual(t, "test-contract-credential", repo.trace.CredentialMasked)
 			}
 			require.Equal(t, tc.status == http.StatusOK, skipped)

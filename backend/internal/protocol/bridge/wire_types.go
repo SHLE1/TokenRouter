@@ -8,52 +8,60 @@ import (
 )
 
 // 协议类型由各 wire 包唯一拥有；桥接内部复用别名，不复制编解码实现。
-type AnthropicRequest = anthropic.AnthropicRequest
-type AnthropicOutputConfig = anthropic.AnthropicOutputConfig
-type AnthropicThinking = anthropic.AnthropicThinking
-type AnthropicMessage = anthropic.AnthropicMessage
-type AnthropicContentBlock = anthropic.AnthropicContentBlock
-type AnthropicImageSource = anthropic.AnthropicImageSource
-type AnthropicTool = anthropic.AnthropicTool
-type AnthropicCacheControl = anthropic.AnthropicCacheControl
+type (
+	AnthropicRequest      = anthropic.AnthropicRequest
+	AnthropicOutputConfig = anthropic.AnthropicOutputConfig
+	AnthropicThinking     = anthropic.AnthropicThinking
+	AnthropicMessage      = anthropic.AnthropicMessage
+	AnthropicContentBlock = anthropic.AnthropicContentBlock
+	AnthropicImageSource  = anthropic.AnthropicImageSource
+	AnthropicTool         = anthropic.AnthropicTool
+)
+
 type AnthropicResponse = anthropic.AnthropicResponse
-type AnthropicPromptTokensDetails = anthropic.AnthropicPromptTokensDetails
-type AnthropicUsage = anthropic.AnthropicUsage
-type AnthropicStreamEvent = anthropic.AnthropicStreamEvent
-type AnthropicDelta = anthropic.AnthropicDelta
-type ResponsesRequest = openai.ResponsesRequest
-type ResponsesReasoning = openai.ResponsesReasoning
-type ResponsesText = openai.ResponsesText
-type ResponsesInputItem = openai.ResponsesInputItem
-type ResponsesContentPart = openai.ResponsesContentPart
-type ResponsesTool = openai.ResponsesTool
-type ResponsesResponse = openai.ResponsesResponse
-type ResponsesError = openai.ResponsesError
-type ResponsesIncompleteDetails = openai.ResponsesIncompleteDetails
-type ResponsesOutput = openai.ResponsesOutput
-type WebSearchAction = openai.WebSearchAction
-type ResponsesSummary = openai.ResponsesSummary
-type ResponsesUsage = openai.ResponsesUsage
-type ResponsesInputTokensDetails = openai.ResponsesInputTokensDetails
-type ResponsesOutputTokensDetails = openai.ResponsesOutputTokensDetails
-type ResponsesStreamEvent = openai.ResponsesStreamEvent
-type ChatCompletionsRequest = openai.ChatCompletionsRequest
-type ChatStreamOptions = openai.ChatStreamOptions
-type ChatMessage = openai.ChatMessage
-type ChatContentPart = openai.ChatContentPart
-type ChatImageURL = openai.ChatImageURL
-type ChatFile = openai.ChatFile
-type ChatTool = openai.ChatTool
-type ChatFunction = openai.ChatFunction
-type ChatToolCall = openai.ChatToolCall
-type ChatFunctionCall = openai.ChatFunctionCall
-type ChatCompletionsResponse = openai.ChatCompletionsResponse
-type ChatChoice = openai.ChatChoice
-type ChatUsage = openai.ChatUsage
-type ChatTokenDetails = openai.ChatTokenDetails
-type ChatCompletionsChunk = openai.ChatCompletionsChunk
-type ChatChunkChoice = openai.ChatChunkChoice
-type ChatDelta = openai.ChatDelta
+
+type (
+	AnthropicUsage               = anthropic.AnthropicUsage
+	AnthropicStreamEvent         = anthropic.AnthropicStreamEvent
+	AnthropicDelta               = anthropic.AnthropicDelta
+	ResponsesRequest             = openai.ResponsesRequest
+	ResponsesReasoning           = openai.ResponsesReasoning
+	ResponsesText                = openai.ResponsesText
+	ResponsesInputItem           = openai.ResponsesInputItem
+	ResponsesContentPart         = openai.ResponsesContentPart
+	ResponsesTool                = openai.ResponsesTool
+	ResponsesResponse            = openai.ResponsesResponse
+	ResponsesError               = openai.ResponsesError
+	ResponsesIncompleteDetails   = openai.ResponsesIncompleteDetails
+	ResponsesOutput              = openai.ResponsesOutput
+	WebSearchAction              = openai.WebSearchAction
+	ResponsesSummary             = openai.ResponsesSummary
+	ResponsesUsage               = openai.ResponsesUsage
+	ResponsesInputTokensDetails  = openai.ResponsesInputTokensDetails
+	ResponsesOutputTokensDetails = openai.ResponsesOutputTokensDetails
+	ResponsesStreamEvent         = openai.ResponsesStreamEvent
+	ChatCompletionsRequest       = openai.ChatCompletionsRequest
+)
+
+type (
+	ChatMessage     = openai.ChatMessage
+	ChatContentPart = openai.ChatContentPart
+	ChatImageURL    = openai.ChatImageURL
+)
+
+type (
+	ChatTool                = openai.ChatTool
+	ChatFunction            = openai.ChatFunction
+	ChatToolCall            = openai.ChatToolCall
+	ChatFunctionCall        = openai.ChatFunctionCall
+	ChatCompletionsResponse = openai.ChatCompletionsResponse
+	ChatChoice              = openai.ChatChoice
+	ChatUsage               = openai.ChatUsage
+	ChatTokenDetails        = openai.ChatTokenDetails
+	ChatCompletionsChunk    = openai.ChatCompletionsChunk
+	ChatChunkChoice         = openai.ChatChunkChoice
+	ChatDelta               = openai.ChatDelta
+)
 
 func AnthropicStopReasonPtr(s string) *string {
 	return anthropic.AnthropicStopReasonPtr(s)

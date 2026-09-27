@@ -95,10 +95,6 @@ func (s *Admin) ClearProviderError(ctx context.Context, id int64) (*Record, erro
 	return s.providerRepo.GetByID(ctx, id)
 }
 
-func (s *Admin) SetProviderError(ctx context.Context, id int64, errorMsg string) error {
-	return s.providerRepo.SetError(ctx, id, errorMsg)
-}
-
 func (s *Admin) SetProviderSchedulable(ctx context.Context, id int64, schedulable bool) (*Record, error) {
 	if err := s.providerRepo.SetSchedulable(ctx, id, schedulable); err != nil {
 		return nil, err

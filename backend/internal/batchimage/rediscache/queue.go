@@ -7,7 +7,7 @@ import (
 	"errors"
 	"time"
 
-	service "github.com/TokenFlux/TokenRouter/internal/batchimage"
+	"github.com/TokenFlux/TokenRouter/internal/batchimage"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -91,7 +91,7 @@ type batchImageQueue struct {
 	lockTTL        time.Duration
 }
 
-func NewBatchImageQueue(rdb *redis.Client, cfg *QueueOptions) service.BatchImageQueue {
+func NewBatchImageQueue(rdb *redis.Client, cfg *QueueOptions) batchimage.BatchImageQueue {
 	opts := QueueOptions{}
 	if cfg != nil {
 		opts = *cfg
@@ -149,8 +149,8 @@ func normalizeBatchImageQueueOptions(opts QueueOptions) QueueOptions {
 }
 
 func (q *batchImageQueue) Enqueue(ctx context.Context, batchID string) error {
-	if !service.IsValidBatchImageID(batchID) {
-		return service.ErrInvalidBatchImageQueuePayload
+	if !batchimage.IsValidBatchImageID(batchID) {
+		return batchimage.ErrInvalidBatchImageQueuePayload
 	}
 
 	applied, err := batchImageEnqueueScript.Run(ctx, q.rdb,
@@ -161,24 +161,24 @@ func (q *batchImageQueue) Enqueue(ctx context.Context, batchID string) error {
 		return err
 	}
 	if applied == 0 {
-		return service.ErrBatchImageAlreadyQueued
+		return batchimage.ErrBatchImageAlreadyQueued
 	}
 	return nil
 }
 
-func (q *batchImageQueue) Reserve(ctx context.Context, blockTimeout time.Duration) (service.ReservedBatchImageJob, error) {
+func (q *batchImageQueue) Reserve(ctx context.Context, blockTimeout time.Duration) (batchimage.ReservedBatchImageJob, error) {
 	deadline := time.Now().Add(blockTimeout)
 	for {
 		batchID, err := q.reserveOnce(ctx)
 		if err == nil {
-			return service.ReservedBatchImageJob{BatchID: batchID}, nil
+			return batchimage.ReservedBatchImageJob{BatchID: batchID}, nil
 		}
-		if !errors.Is(err, service.ErrBatchImageQueueEmpty) {
-			return service.ReservedBatchImageJob{}, err
+		if !errors.Is(err, batchimage.ErrBatchImageQueueEmpty) {
+			return batchimage.ReservedBatchImageJob{}, err
 		}
 		remaining := time.Until(deadline)
 		if remaining <= 0 {
-			return service.ReservedBatchImageJob{}, service.ErrBatchImageQueueEmpty
+			return batchimage.ReservedBatchImageJob{}, batchimage.ErrBatchImageQueueEmpty
 		}
 		wait := batchImageReservePollInterval
 		if remaining < wait {
@@ -188,7 +188,7 @@ func (q *batchImageQueue) Reserve(ctx context.Context, blockTimeout time.Duratio
 		select {
 		case <-ctx.Done():
 			timer.Stop()
-			return service.ReservedBatchImageJob{}, ctx.Err()
+			return batchimage.ReservedBatchImageJob{}, ctx.Err()
 		case <-timer.C:
 		}
 	}
@@ -197,19 +197,19 @@ func (q *batchImageQueue) Reserve(ctx context.Context, blockTimeout time.Duratio
 func (q *batchImageQueue) reserveOnce(ctx context.Context) (string, error) {
 	raw, err := batchImageReserveScript.Run(ctx, q.rdb, []string{q.readyKey, q.activeKey}, time.Now().UnixMilli()).Result()
 	if errors.Is(err, redis.Nil) {
-		return "", service.ErrBatchImageQueueEmpty
+		return "", batchimage.ErrBatchImageQueueEmpty
 	}
 	if err != nil {
 		return "", err
 	}
 	batchID, ok := raw.(string)
-	if !ok || !service.IsValidBatchImageID(batchID) {
+	if !ok || !batchimage.IsValidBatchImageID(batchID) {
 		// 非法 payload 已被脚本写入 active，必须移除，否则 stale 恢复会把它
 		// 无限重投回 ready。
 		if ok && batchID != "" {
 			_ = q.rdb.ZRem(ctx, q.activeKey, batchID).Err()
 		}
-		return "", service.ErrInvalidBatchImageQueuePayload
+		return "", batchimage.ErrInvalidBatchImageQueuePayload
 	}
 	return batchID, nil
 }
@@ -218,9 +218,11 @@ func (q *batchImageQueue) reserveOnce(ctx context.Context) (string, error) {
 func (q *batchImageQueue) RequeueAfter(ctx context.Context, id string, delay time.Duration) error {
 	return q.mutateOwned(ctx, id, "", "requeue", delay)
 }
+
 func (q *batchImageQueue) Ack(ctx context.Context, id string) error {
 	return q.mutateOwned(ctx, id, "", "ack", 0)
 }
+
 func (q *batchImageQueue) Heartbeat(ctx context.Context, id string) error {
 	return q.mutateOwned(ctx, id, "", "heartbeat", 0)
 }
@@ -243,8 +245,8 @@ return 1
 `)
 
 func (q *batchImageQueue) mutateOwned(ctx context.Context, id, token, action string, delay time.Duration) error {
-	if !service.IsValidBatchImageID(id) {
-		return service.ErrInvalidBatchImageQueuePayload
+	if !batchimage.IsValidBatchImageID(id) {
+		return batchimage.ErrInvalidBatchImageQueuePayload
 	}
 	now := time.Now()
 	n, err := batchImageOwnedMutation.Run(ctx, q.rdb, []string{q.lockKey(id), q.activeKey, q.delayedKey, q.readyKey, q.inflightKey(id)}, id, token, action, now.UnixMilli(), delay.Milliseconds(), now.Add(delay).UnixMilli()).Int()
@@ -252,7 +254,7 @@ func (q *batchImageQueue) mutateOwned(ctx context.Context, id, token, action str
 		return err
 	}
 	if n != 1 {
-		return service.ErrBatchImageLeaseLost
+		return batchimage.ErrBatchImageLeaseLost
 	}
 	return nil
 }
@@ -266,7 +268,7 @@ func (q *batchImageQueue) MoveDueDelayedToReady(ctx context.Context, limit int) 
 
 func (q *batchImageQueue) RecoverStaleActive(ctx context.Context, staleAfter time.Duration, limit int) (int, error) {
 	if staleAfter <= 0 {
-		return 0, service.ErrInvalidBatchImageQueuePayload
+		return 0, batchimage.ErrInvalidBatchImageQueuePayload
 	}
 	if limit <= 0 {
 		limit = 100
@@ -275,9 +277,9 @@ func (q *batchImageQueue) RecoverStaleActive(ctx context.Context, staleAfter tim
 	return batchImageRecoverStaleActiveScript.Run(ctx, q.rdb, []string{q.activeKey, q.readyKey}, cutoff, limit).Int()
 }
 
-func (q *batchImageQueue) TryAcquireJobLock(ctx context.Context, batchID string, ttl time.Duration) (service.BatchImageJobLock, bool, error) {
-	if !service.IsValidBatchImageID(batchID) {
-		return nil, false, service.ErrInvalidBatchImageQueuePayload
+func (q *batchImageQueue) TryAcquireJobLock(ctx context.Context, batchID string, ttl time.Duration) (batchimage.BatchImageJobLock, bool, error) {
+	if !batchimage.IsValidBatchImageID(batchID) {
+		return nil, false, batchimage.ErrInvalidBatchImageQueuePayload
 	}
 	if ttl <= 0 {
 		ttl = q.lockTTL
@@ -333,12 +335,12 @@ func (l *batchImageRedisJobLock) Refresh(ctx context.Context, ttl time.Duration)
 		return err
 	}
 	if n != 1 {
-		return service.ErrBatchImageLeaseLost
+		return batchimage.ErrBatchImageLeaseLost
 	}
 	return nil
 }
 
-var _ service.BatchImageJobLockRefresher = (*batchImageRedisJobLock)(nil)
+var _ batchimage.BatchImageJobLockRefresher = (*batchImageRedisJobLock)(nil)
 
 func newBatchImageLockToken() (string, error) {
 	var b [16]byte
@@ -348,14 +350,16 @@ func newBatchImageLockToken() (string, error) {
 	return hex.EncodeToString(b[:]), nil
 }
 
-var _ service.BatchImageQueue = (*batchImageQueue)(nil)
+var _ batchimage.BatchImageQueue = (*batchImageQueue)(nil)
 
 func (l *batchImageRedisJobLock) Heartbeat(ctx context.Context) error {
 	return l.queue.mutateOwned(ctx, l.id, l.token, "heartbeat", 0)
 }
+
 func (l *batchImageRedisJobLock) Ack(ctx context.Context) error {
 	return l.queue.mutateOwned(ctx, l.id, l.token, "ack", 0)
 }
+
 func (l *batchImageRedisJobLock) RequeueAfter(ctx context.Context, delay time.Duration) error {
 	return l.queue.mutateOwned(ctx, l.id, l.token, "requeue", delay)
 }

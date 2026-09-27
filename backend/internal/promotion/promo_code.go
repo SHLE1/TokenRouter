@@ -34,8 +34,6 @@ type PromoCodeUsage struct {
 	User      *UserView
 }
 
-// CanUse 检查优惠码是否可用
-func (p *PromoCode) CanUse() bool { return p.CanUseAt(time.Now()) }
 func (p *PromoCode) CanUseAt(now time.Time) bool {
 	if p.Status != PromoCodeStatusActive {
 		return false
@@ -51,6 +49,7 @@ func (p *PromoCode) CanUseAt(now time.Time) bool {
 
 // IsExpired 检查是否已过期
 func (p *PromoCode) IsExpired() bool { return p.IsExpiredAt(time.Now()) }
+
 func (p *PromoCode) IsExpiredAt(now time.Time) bool {
 	return p.ExpiresAt != nil && now.After(*p.ExpiresAt)
 }

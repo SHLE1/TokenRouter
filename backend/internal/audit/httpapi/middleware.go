@@ -8,7 +8,7 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
 
-	service "github.com/TokenFlux/TokenRouter/internal/audit"
+	"github.com/TokenFlux/TokenRouter/internal/audit"
 	identityhttp "github.com/TokenFlux/TokenRouter/internal/identity/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry"
 
@@ -26,8 +26,6 @@ const (
 	auditCtxKeySkip       = "audit_skip"
 	// ContextKeyAuthEmail 认证中间件写入的用户邮箱（审计用）。
 	ContextKeyAuthEmail = "auth_email"
-	// ContextKeySessionID 认证中间件写入的会话 ID（refresh token family）。
-	ContextKeySessionID = "session_id"
 )
 
 // SetAuditAction 允许 handler / 中间件为当前请求指定审计动作名（覆盖自动推导）。
@@ -67,12 +65,12 @@ var auditSensitiveReads = map[string]string{
 
 // auditActionOverrides 变更类请求的动作名精确映射（未命中时自动推导）。
 var auditActionOverrides = map[string]string{
-	"POST /api/v1/auth/login":                                 service.AuditActionLogin,
-	"POST /api/v1/auth/login/2fa":                             service.AuditActionLogin2FA,
-	"POST /api/v1/auth/register":                              service.AuditActionRegister,
-	"POST /api/v1/auth/refresh":                               service.AuditActionTokenRefresh,
-	"POST /api/v1/user/totp/step-up":                          service.AuditActionStepUpVerify,
-	"POST /api/v1/admin/audit-logs/clear":                     service.AuditActionAuditLogClear,
+	"POST /api/v1/auth/login":                                 audit.AuditActionLogin,
+	"POST /api/v1/auth/login/2fa":                             audit.AuditActionLogin2FA,
+	"POST /api/v1/auth/register":                              audit.AuditActionRegister,
+	"POST /api/v1/auth/refresh":                               audit.AuditActionTokenRefresh,
+	"POST /api/v1/user/totp/step-up":                          audit.AuditActionStepUpVerify,
+	"POST /api/v1/admin/audit-logs/clear":                     audit.AuditActionAuditLogClear,
 	"POST /api/v1/admin/providers/data":                       "admin.providers.import",
 	"POST /api/v1/admin/providers/:id/upstream-usage/query":   "admin.providers.upstream_usage.query",
 	"POST /api/v1/admin/providers/upstream-usage/query/batch": "admin.providers.upstream_usage.query_batch",
@@ -82,7 +80,7 @@ var auditActionOverrides = map[string]string{
 	"PUT /api/v1/admin/backups/s3-config":                     "admin.backups.s3_config.update",
 	"POST /api/v1/admin/settings/admin-api-key/regenerate":    "admin.admin_api_key.regenerate",
 	"DELETE /api/v1/admin/settings/admin-api-key":             "admin.admin_api_key.delete",
-	"POST /api/v1/subscriptions/:id/revoke":                   service.AuditActionUserSubscriptionRevoke,
+	"POST /api/v1/subscriptions/:id/revoke":                   audit.AuditActionUserSubscriptionRevoke,
 }
 
 // auditBodyOmittedRoutes 请求体几乎整体由凭证构成的路由（如整块粘贴 auth JSON 的导入接口）。
@@ -98,7 +96,7 @@ var auditBodyOmittedRoutes = map[string]struct{}{
 // 记录范围：变更类请求（POST/PUT/PATCH/DELETE）+ 白名单内的敏感 GET 读取。
 // 挂载位置：admin / user / admin-payment 组挂在各自认证中间件之后（只审计已认证请求，
 // 未过认证的 401/403 不入库）；auth 组（登录/注册/刷新）无前置认证，天然记录失败尝试。
-func NewAuditLogMiddleware(auditService *service.AuditLogService, redactor *service.Redactor) AuditLogMiddleware {
+func NewAuditLogMiddleware(auditService *audit.AuditLogService, redactor *audit.Redactor) AuditLogMiddleware {
 	return AuditLogMiddleware(func(c *gin.Context) {
 		routeKey := c.Request.Method + " " + c.FullPath()
 
@@ -129,7 +127,7 @@ func NewAuditLogMiddleware(auditService *service.AuditLogService, redactor *serv
 			bodyRedacted = "<credential-bearing body omitted>"
 		} else if c.Request.Body != nil && c.Request.Method != "GET" {
 			orig := c.Request.Body
-			raw, err := io.ReadAll(io.LimitReader(orig, service.AuditRequestBodyCaptureLimit+1))
+			raw, err := io.ReadAll(io.LimitReader(orig, audit.AuditRequestBodyCaptureLimit+1))
 			c.Request.Body = &restoredBody{
 				Reader: io.MultiReader(bytes.NewReader(raw), orig),
 				closer: orig,
@@ -152,7 +150,7 @@ func NewAuditLogMiddleware(auditService *service.AuditLogService, redactor *serv
 			return
 		}
 
-		entry := &service.AuditLog{
+		entry := &audit.AuditLog{
 			CreatedAt:   time.Now().UTC(),
 			Action:      action,
 			Method:      c.Request.Method,
@@ -189,7 +187,7 @@ func NewAuditLogMiddleware(auditService *service.AuditLogService, redactor *serv
 		entry.ActorEmail = c.GetString(ContextKeyAuthEmail)
 		entry.AuthMethod = c.GetString("auth_method")
 		if entry.AuthMethod == "" && entry.ActorUserID != nil {
-			entry.AuthMethod = service.AuditAuthMethodJWT
+			entry.AuthMethod = audit.AuditAuthMethodJWT
 		}
 		if v, ok := c.Get(auditCtxKeyActorID); ok {
 			if id, ok := v.(int64); ok && id > 0 {
@@ -213,7 +211,7 @@ func NewAuditLogMiddleware(auditService *service.AuditLogService, redactor *serv
 			}
 			extra["params"] = params
 		}
-		if q := service.RedactAuditQuery(c.Request.URL.RawQuery); q != "" {
+		if q := audit.RedactAuditQuery(c.Request.URL.RawQuery); q != "" {
 			extra["query"] = q
 		}
 		if len(extra) > 0 {
@@ -236,7 +234,7 @@ func (b *restoredBody) Close() error { return b.closer.Close() }
 // MaskedRequestCredential 提取请求头中的凭证并做首尾掩码。
 func MaskedRequestCredential(c *gin.Context) string {
 	if apiKey := strings.TrimSpace(c.GetHeader("x-api-key")); apiKey != "" {
-		return "x-api-key " + service.MaskAuditCredential(apiKey)
+		return "x-api-key " + audit.MaskAuditCredential(apiKey)
 	}
 	authHeader := strings.TrimSpace(c.GetHeader("Authorization"))
 	if authHeader == "" {
@@ -244,9 +242,9 @@ func MaskedRequestCredential(c *gin.Context) string {
 	}
 	parts := strings.SplitN(authHeader, " ", 2)
 	if len(parts) == 2 {
-		return parts[0] + " " + service.MaskAuditCredential(strings.TrimSpace(parts[1]))
+		return parts[0] + " " + audit.MaskAuditCredential(strings.TrimSpace(parts[1]))
 	}
-	return service.MaskAuditCredential(authHeader)
+	return audit.MaskAuditCredential(authHeader)
 }
 
 // deriveAuditAction 由 method + 路由模板自动推导动作名，

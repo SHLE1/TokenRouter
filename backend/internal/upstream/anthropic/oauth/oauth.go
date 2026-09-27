@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
-	"time"
 
 	wire "github.com/TokenFlux/TokenRouter/internal/protocol/anthropic"
 
@@ -29,9 +28,6 @@ const (
 	ScopeAPI = "user:profile user:inference user:sessions:claude_code user:mcp_servers user:file_upload"
 	// Scopes - Setup token (inference only)
 	ScopeInference = "user:inference"
-
-	// Session TTL
-	SessionTTL = 30 * time.Minute
 )
 
 // OAuthSession stores OAuth flow state

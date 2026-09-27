@@ -41,17 +41,6 @@ func NewOrderExpiry(service OrderReconciler, interval time.Duration, runtime Exp
 	return &OrderExpiry{service: service, interval: interval, runtime: runtime, done: make(chan struct{})}
 }
 
-// ConfigureLease 仅用于启动前装配，运行后不替换本轮的锁拥有者。
-func (s *OrderExpiry) ConfigureLease(acquire func(context.Context) (func(), bool)) {
-	if s == nil {
-		return
-	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if !s.started && !s.stopped {
-		s.runtime.Acquire = acquire
-	}
-}
 func (s *OrderExpiry) Start(ctx context.Context) {
 	if s == nil {
 		return
@@ -66,6 +55,7 @@ func (s *OrderExpiry) Start(ctx context.Context) {
 	s.started = true
 	go s.run(runCtx)
 }
+
 func (s *OrderExpiry) run(ctx context.Context) {
 	defer close(s.done)
 	ticker := time.NewTicker(s.interval)
@@ -80,6 +70,7 @@ func (s *OrderExpiry) run(ctx context.Context) {
 		}
 	}
 }
+
 func (s *OrderExpiry) StopContext(ctx context.Context) error {
 	if s == nil {
 		return nil
@@ -107,6 +98,7 @@ func (s *OrderExpiry) StopContext(ctx context.Context) error {
 		return fmt.Errorf("payment order expiry unfinished: %w", ctx.Err())
 	}
 }
+
 func (s *OrderExpiry) runOnce(ctx context.Context) {
 	if ctx.Err() != nil {
 		return

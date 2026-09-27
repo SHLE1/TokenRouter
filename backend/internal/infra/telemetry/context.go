@@ -17,5 +17,4 @@ const (
 	ClientModel            ContextKey = "ctx_client_model"
 	Platform               ContextKey = "ctx_platform"
 	ProviderID             ContextKey = "ctx_provider_id"
-	RetryCount             ContextKey = "ctx_retry_count"
 )

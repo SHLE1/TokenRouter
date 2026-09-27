@@ -86,21 +86,6 @@ func (h *OpenAITextHandler) recoverAnthropicMessagesPanic(c *gin.Context, starte
 	}
 }
 
-// WriteError 根据当前请求选择 JSON 错误或 compact 流错误输出。
-func (h *OpenAITextHandler) WriteError(c *gin.Context, status int, kind, message string) {
-	h.errorResponse(c, status, kind, message)
-}
-
-// WriteAnthropicError 保留 Anthropic 兼容 JSON。
-func (h *OpenAITextHandler) WriteAnthropicError(c *gin.Context, status int, kind, message string) {
-	h.anthropicErrorResponse(c, status, kind, message)
-}
-
-// WriteAnthropicStreamingError 保留该入口独立的 SSE 外形与写失败语义。
-func (h *OpenAITextHandler) WriteAnthropicStreamingError(c *gin.Context, status int, kind, message string, started bool) {
-	h.anthropicStreamingAwareError(c, status, kind, message, started)
-}
-
 // errorOutput 保留测试/专用 HTTP backend 的观测端口，算法与生产默认输出器相同。
 func (h *OpenAITextHandler) errorOutput() OpenAIErrorOutput {
 	return OpenAIErrorOutput{stopCompact: h.backend.StopCompact, markStream: h.backend.MarkStream, markFailure: h.backend.MarkStreamFailure, metadata: h.backend.ErrorMetadata}

@@ -6,14 +6,14 @@ import (
 
 	dbent "github.com/TokenFlux/TokenRouter/ent"
 	"github.com/TokenFlux/TokenRouter/ent/announcementread"
-	service "github.com/TokenFlux/TokenRouter/internal/site"
+	"github.com/TokenFlux/TokenRouter/internal/site"
 )
 
 type announcementReadRepository struct {
 	client *dbent.Client
 }
 
-func NewAnnouncementReadRepository(client *dbent.Client) service.AnnouncementReadRepository {
+func NewAnnouncementReadRepository(client *dbent.Client) site.AnnouncementReadRepository {
 	return &announcementReadRepository{client: client}
 }
 

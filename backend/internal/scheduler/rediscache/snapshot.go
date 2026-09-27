@@ -25,7 +25,6 @@ const (
 	schedulerEpochPrefix            = "sched:v4:epoch:"
 	schedulerRetiredPrefix          = "sched:v4:retired:"
 	schedulerSnapshotPrefix         = "sched:v4:"
-	schedulerLockPrefix             = "sched:v4:lock:"
 
 	defaultSchedulerSnapshotMGetChunkSize  = 128
 	defaultSchedulerSnapshotWriteChunkSize = 256

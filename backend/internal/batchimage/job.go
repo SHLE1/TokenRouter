@@ -325,15 +325,6 @@ type MarkBatchImageJobSettledParams struct {
 	OutputExpiresAt *time.Time
 }
 
-type BatchImageEvent struct {
-	ID        int64
-	JobID     string
-	EventType string
-	Payload   []byte
-	EventHash *string
-	CreatedAt time.Time
-}
-
 type BatchImageRepository interface {
 	CreateBatchImageJob(ctx context.Context, params CreateBatchImageJobParams) (*BatchImageJob, error)
 	GetBatchImageJobByBatchID(ctx context.Context, batchID string) (*BatchImageJob, error)

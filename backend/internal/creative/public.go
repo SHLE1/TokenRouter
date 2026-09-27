@@ -166,11 +166,10 @@ func mappedCatalogModel(a CatalogProvider, m string) string {
 }
 
 const (
-	DefaultCreativeMaxPromptChars = 8000
-	DefaultCreativeResponseMime   = "image/png"
-	DefaultCreativeImageSize      = "1K"
-	MaxCreativeMaskBytes          = 4 << 20
-	MaxCreativeGeminiInlineBytes  = 20 << 20
+	DefaultCreativeResponseMime = "image/png"
+
+	MaxCreativeMaskBytes         = 4 << 20
+	MaxCreativeGeminiInlineBytes = 20 << 20
 )
 
 // ErrCreativeContentBlocked 是内容审核命中后的拒绝错误。

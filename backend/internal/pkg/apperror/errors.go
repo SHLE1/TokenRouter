@@ -26,9 +26,6 @@ type ApplicationError struct {
 	cause error
 }
 
-// Error is kept for backwards compatibility within this package.
-type Error = ApplicationError
-
 func (e *ApplicationError) Error() string {
 	if e == nil {
 		return "<nil>"
@@ -86,11 +83,6 @@ func New(code Category, reason, message string) *ApplicationError {
 
 // Newf New(code fmt.Sprintf(format, a...))
 func Newf(code Category, reason, format string, a ...any) *ApplicationError {
-	return New(code, reason, fmt.Sprintf(format, a...))
-}
-
-// Errorf returns an error object for the code, message and error info.
-func Errorf(code Category, reason, format string, a ...any) error {
 	return New(code, reason, fmt.Sprintf(format, a...))
 }
 

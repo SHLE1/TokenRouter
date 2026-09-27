@@ -57,7 +57,7 @@ func (s *ScheduledTestRunnerService) observe(format string, args ...any) {
 		s.options.Observe(format, args...)
 	}
 }
-func (s *ScheduledTestRunnerService) Start() { _ = s.StartContext(context.Background()) }
+
 func (s *ScheduledTestRunnerService) StartContext(ctx context.Context) error {
 	if s == nil {
 		return nil

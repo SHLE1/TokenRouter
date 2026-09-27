@@ -76,15 +76,6 @@ func (s *RuntimeSettings) GetUsageRankingSettings(ctx context.Context) (UsageRan
 	return ParseRankingSettings(values), nil
 }
 
-// GetUsageRankingLimit 只使用用量展示需要的设置投影。
-func (s *RuntimeSettings) GetUsageRankingLimit(ctx context.Context) int {
-	settings, err := s.GetUsageRankingSettings(ctx)
-	if err != nil {
-		return DefaultUsageRankingLimit
-	}
-	return settings.Limit
-}
-
 // IsUserErrorViewAllowed 只使用用量展示需要的设置投影。
 func (s *RuntimeSettings) IsUserErrorViewAllowed(ctx context.Context) bool {
 	vals, err := s.settingRepo.GetMultiple(ctx, []string{SettingKeyAllowUserViewErrorRequests})

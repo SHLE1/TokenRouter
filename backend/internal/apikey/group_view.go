@@ -1,7 +1,6 @@
 package apikey
 
 import (
-	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/accessview"
 )
@@ -11,7 +10,6 @@ type (
 	GroupSchedulerType              = accessview.GroupSchedulerType
 	GroupAdvancedSchedulerOverrides = accessview.GroupAdvancedSchedulerOverrides
 	GroupModelsListConfig           = accessview.GroupModelsListConfig
-	GroupAvailabilityProbeConfig    = accessview.GroupAvailabilityProbeConfig
-	ReasoningEffortMapping          = routing.ReasoningEffortMapping
-	ModelPricingEntry               = pricing.ModelPricingEntry
+
+	ReasoningEffortMapping = routing.ReasoningEffortMapping
 )

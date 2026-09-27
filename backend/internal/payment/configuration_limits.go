@@ -77,37 +77,6 @@ func (s *ConfigService) ConfigPcApplyEnabledVisibleMethodInstances(ctx context.C
 	return filtered
 }
 
-// GetMethodLimits returns per-payment-type limits from enabled provider instances.
-func (s *ConfigService) GetMethodLimits(ctx context.Context, types []string) ([]MethodLimits, error) {
-	instances, err := s.store.ListInstances(ctx, InstanceFilter{EnabledOnly: true})
-	if err != nil {
-		return nil, fmt.Errorf("query provider instances: %w", err)
-	}
-	cfg, err := s.GetPaymentConfig(ctx)
-	if err != nil {
-		return nil, err
-	}
-	result := make([]MethodLimits, 0, len(types))
-	for _, pt := range types {
-		var matching []*ProviderInstance
-		for _, inst := range instances {
-			if InstanceSupportsType(inst.SupportedTypes, pt) {
-				matching = append(matching, inst)
-			}
-		}
-		currency, ok := s.ConfigPcAggregateMethodCurrency(matching)
-		if !ok {
-			continue
-		}
-		ml := ConfigPcAggregateMethodLimits(pt, matching)
-		ml = ConfigPcApplyEffectiveMethodFee(cfg, ml)
-		ml.DisplayName = s.ConfigPcAggregateMethodDisplayName(pt, matching)
-		ml.Currency = currency
-		result = append(result, ml)
-	}
-	return result, nil
-}
-
 func ConfigPcApplyEffectiveMethodFee(cfg *PaymentConfig, ml MethodLimits) MethodLimits {
 	fee := cfg.EffectiveMethodFee(ml.PaymentType)
 	ml.FixedFee = fee.FixedFee

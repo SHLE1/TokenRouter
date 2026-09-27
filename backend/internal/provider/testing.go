@@ -256,10 +256,6 @@ func (s *TestService) RunTestBackground(ctx context.Context, id int64, model str
 	return s.RunTestBackgroundWithPromptAndUserAgent(ctx, id, model, "", "")
 }
 
-func (s *TestService) RunTestBackgroundWithPrompt(ctx context.Context, id int64, model, prompt string) (*ScheduledTestResult, error) {
-	return s.RunTestBackgroundWithPromptAndUserAgent(ctx, id, model, prompt, "")
-}
-
 func (s *TestService) RunTestBackgroundWithPromptAndUserAgent(ctx context.Context, id int64, model, prompt, userAgent string) (*ScheduledTestResult, error) {
 	started := s.options.Now()
 	sink := &testResultSink{}

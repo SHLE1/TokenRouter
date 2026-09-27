@@ -89,9 +89,9 @@ type TotpSetupResponse struct {
 }
 
 const (
-	totpSetupTTL    = 5 * time.Minute
-	totpLoginTTL    = 5 * time.Minute
-	totpAttemptsTTL = 15 * time.Minute
+	totpSetupTTL = 5 * time.Minute
+	totpLoginTTL = 5 * time.Minute
+
 	maxTotpAttempts = 5
 	totpIssuer      = "Sub2API"
 )
@@ -480,15 +480,6 @@ func (s *TotpService) GetLoginSession(ctx context.Context, tempToken string) (*T
 // DeleteLoginSession deletes a login session
 func (s *TotpService) DeleteLoginSession(ctx context.Context, tempToken string) error {
 	return s.cache.DeleteLoginSession(ctx, tempToken)
-}
-
-// IsTotpEnabledForUser checks if TOTP is enabled for a specific user
-func (s *TotpService) IsTotpEnabledForUser(ctx context.Context, userID int64) (bool, error) {
-	user, err := s.userRepo.GetByID(ctx, userID)
-	if err != nil {
-		return false, fmt.Errorf("get user: %w", err)
-	}
-	return user.TotpEnabled, nil
 }
 
 // MaskEmail masks an email address for display

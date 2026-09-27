@@ -297,55 +297,6 @@ func (s *GeminiAuthorization) fetchGoogleOneTier(ctx context.Context, accessToke
 	return tierID, storageInfo, nil
 }
 
-// RefreshProviderGoogleOneTier 刷新单个提供商的 Google One Tier
-func (s *GeminiAuthorization) RefreshProviderGoogleOneTier(
-	ctx context.Context,
-	provider *Record,
-) (tierID string, extra map[string]any, credentials map[string]any, err error) {
-	operation, done, startErr := s.activity.begin(ctx, errors.New("gemini authorization is stopped"))
-	if startErr != nil {
-		return "", nil, nil, startErr
-	}
-	defer done()
-	ctx = operation
-
-	if provider == nil {
-		return "", nil, nil, fmt.Errorf("provider is nil")
-	}
-
-	// 验证提供商类型
-	oauthType, ok := provider.Credentials["oauth_type"].(string)
-	if !ok || oauthType != "google_one" {
-		return "", nil, nil, fmt.Errorf("not a google_one OAuth provider")
-	}
-
-	// 获取 access_token
-	accessToken, ok := provider.Credentials["access_token"].(string)
-	if !ok || accessToken == "" {
-		return "", nil, nil, fmt.Errorf("missing access_token")
-	}
-
-	// 获取 proxy URL
-	var proxyURL string
-	if provider.ProxyID != nil && provider.Proxy != nil {
-		proxyURL = provider.Proxy.URL()
-	}
-
-	// 调用 Drive API
-	tierID, storageInfo, err := s.fetchGoogleOneTier(ctx, accessToken, proxyURL)
-	if err != nil {
-		return "", nil, nil, err
-	}
-
-	observation := GoogleOneTierObservation{TierID: tierID}
-	if storageInfo != nil {
-		observation.Storage = &GoogleOneStorage{Limit: storageInfo.Limit, Usage: storageInfo.Usage}
-		observation.ObservedAt = time.Now()
-	}
-	extra, credentials = ProjectGoogleOneTier(provider, observation)
-	return tierID, extra, credentials, nil
-}
-
 func (s *GeminiAuthorization) ExchangeCode(ctx context.Context, input *GeminiExchangeCodeInput) (*GeminiTokenInfo, error) {
 	operation, done, startErr := s.activity.begin(ctx, errors.New("gemini authorization is stopped"))
 	if startErr != nil {

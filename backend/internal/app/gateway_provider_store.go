@@ -34,11 +34,6 @@ func (r *executionProviderStore) GetByIDs(ctx context.Context, ids []int64) ([]*
 	return out, err
 }
 
-func (r *executionProviderStore) ListOpsProvidersForStats(ctx context.Context, platformFilter string, groupIDFilter *int64) ([]gatewayprovider.ExecutionProvider, error) {
-	v, err := r.data.ListOpsProvidersForStats(ctx, platformFilter, groupIDFilter)
-	return gatewayprovider.ExecutionProviders(v), err
-}
-
 func (r *executionProviderStore) ListByPlatform(ctx context.Context, platform string) ([]gatewayprovider.ExecutionProvider, error) {
 	v, err := r.data.ListByPlatform(ctx, platform)
 	return gatewayprovider.ExecutionProviders(v), err

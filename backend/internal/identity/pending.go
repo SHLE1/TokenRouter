@@ -87,10 +87,6 @@ func SanitizePendingAuthLocalFlowState(localFlowState map[string]any) map[string
 	return sanitized
 }
 
-func ValidatePendingSessionState(session *PendingAuthSession, browserSessionKey string, expiredErr error, consumedErr error) error {
-	return ValidatePendingSessionStateWithClock(session, browserSessionKey, expiredErr, consumedErr, time.Now)
-}
-
 func ValidatePendingSessionStateWithClock(session *PendingAuthSession, browserSessionKey string, expiredErr error, consumedErr error, readTime func() time.Time) error {
 	if session == nil {
 		return ErrPendingAuthSessionNotFound

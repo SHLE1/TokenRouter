@@ -19,10 +19,11 @@ type Mailer struct {
 func NewMailer(repo SettingRepository, transport SMTPTransport) *Mailer {
 	return &Mailer{settingRepo: repo, transport: transport}
 }
+
 func (s *Mailer) SetNotificationEmailService(n *NotificationEmailService) {
 	s.notificationEmailService = n
 }
-func (s *Mailer) NotificationService() *NotificationEmailService { return s.notificationEmailService }
+
 func (s *Mailer) SendEmail(ctx context.Context, to, subject, body string) error {
 	if err := ctx.Err(); err != nil {
 		return err
@@ -33,17 +34,13 @@ func (s *Mailer) SendEmail(ctx context.Context, to, subject, body string) error 
 	}
 	return s.transport.Send(ctx, cfg, to, subject, body)
 }
+
 func (s *Mailer) SendEmailWithConfigContext(ctx context.Context, cfg *SMTPConfig, to, subject, body string) error {
 	return s.transport.Send(ctx, cfg, to, subject, body)
 }
-func (s *Mailer) SendEmailWithConfig(cfg *SMTPConfig, to, subject, body string) error {
-	return s.SendEmailWithConfigContext(context.Background(), cfg, to, subject, body)
-}
+
 func (s *Mailer) TestSMTPConnectionContext(ctx context.Context, cfg *SMTPConfig) error {
 	return s.transport.Test(ctx, cfg)
-}
-func (s *Mailer) TestSMTPConnectionWithConfig(cfg *SMTPConfig) error {
-	return s.TestSMTPConnectionContext(context.Background(), cfg)
 }
 
 var ErrEmailNotConfigured = contract.ErrEmailNotConfigured
@@ -101,13 +98,15 @@ func (s *Mailer) GetSMTPConfig(ctx context.Context) (*SMTPConfig, error) {
 	}, nil
 }
 
-const SettingKeySMTPFrom = "smtp_from"
-const SettingKeySMTPFromName = "smtp_from_name"
-const SettingKeySMTPHost = "smtp_host"
-const SettingKeySMTPPassword = "smtp_password"
-const SettingKeySMTPPort = "smtp_port"
-const SettingKeySMTPUseTLS = "smtp_use_tls"
-const SettingKeySMTPUsername = "smtp_username"
+const (
+	SettingKeySMTPFrom     = "smtp_from"
+	SettingKeySMTPFromName = "smtp_from_name"
+	SettingKeySMTPHost     = "smtp_host"
+	SettingKeySMTPPassword = "smtp_password"
+	SettingKeySMTPPort     = "smtp_port"
+	SettingKeySMTPUseTLS   = "smtp_use_tls"
+	SettingKeySMTPUsername = "smtp_username"
+)
 
 // SanitizeEmailHeader 防止模板参数注入额外邮件头。
 func SanitizeEmailHeader(s string) string { return strings.NewReplacer("\r", "", "\n", "").Replace(s) }

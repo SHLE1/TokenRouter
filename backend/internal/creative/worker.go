@@ -119,11 +119,6 @@ type creativeLeaseState struct {
 	lost atomic.Bool
 }
 
-// Run 是 worker 主循环；ctx 取消后退出。
-func (w *CreativeRunWorker) Run(ctx context.Context) {
-	w.RunUntilStopped(ctx, nil)
-}
-
 // RunUntilStopped 运行一个可优雅排空的 worker；stop 关闭后不再领取新任务。
 func (w *CreativeRunWorker) RunUntilStopped(ctx context.Context, stop <-chan struct{}) {
 	if w == nil {

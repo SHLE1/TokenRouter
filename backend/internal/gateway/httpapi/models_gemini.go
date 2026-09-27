@@ -136,18 +136,6 @@ func (h *ModelsHandler) requestableGeminiModels(c *gin.Context, key *apikey.APIK
 	return models, true
 }
 
-func (h *ModelsHandler) WriteGeminiModelsListWithAPIKeyAliases(c *gin.Context, payload GeminiModelsList, apiKey *apikey.APIKey) {
-	body, err := json.Marshal(payload)
-	if err != nil {
-		WriteGoogleError(c, http.StatusInternalServerError, "Failed to encode models")
-		return
-	}
-	if apiKey != nil {
-		body = h.AppendAPIKeyAliasesToGeminiModelsJSON(body, apiKey.ModelMapping)
-	}
-	c.Data(http.StatusOK, "application/json; charset=utf-8", body)
-}
-
 func (h *ModelsHandler) AppendAPIKeyAliasesToGeminiModelsJSON(body []byte, mapping map[string]string) []byte {
 	if len(body) == 0 || len(mapping) == 0 {
 		return body
@@ -213,27 +201,6 @@ func (h *ModelsHandler) CustomGeminiModelsList(group *routing.Group) (GeminiMode
 		models = append(models, h.catalog.GeminiModel(modelID, false))
 	}
 	return GeminiModelsList{Models: models}, true
-}
-
-func (h *ModelsHandler) WriteUpstreamResponse(c *gin.Context, res *ModelHTTPResponse) {
-	if res == nil {
-		WriteGoogleError(c, http.StatusBadGateway, "Empty upstream response")
-		return
-	}
-	for k, vv := range res.Headers {
-		// 不覆盖内容长度和逐跳 Header。
-		if strings.EqualFold(k, "Content-Length") || strings.EqualFold(k, "Transfer-Encoding") || strings.EqualFold(k, "Connection") {
-			continue
-		}
-		for _, v := range vv {
-			c.Writer.Header().Add(k, v)
-		}
-	}
-	contentType := res.Headers.Get("Content-Type")
-	if contentType == "" {
-		contentType = "application/json"
-	}
-	c.Data(res.StatusCode, contentType, res.Body)
 }
 
 func (h *ModelsHandler) ShouldFallbackGeminiModels(res *ModelHTTPResponse) bool {

@@ -65,11 +65,6 @@ func CalculatePayAmountWithFeeForCurrency(baseAmount float64, cfg FeeConfig, cur
 	}
 }
 
-// PayAmountString 返回默认币种支付网关需要的字符串金额。
-func (b FeeBreakdown) PayAmountString() string {
-	return b.PayAmountStringForCurrency(DefaultPaymentCurrency)
-}
-
 // PayAmountStringForCurrency 按币种精度返回支付网关需要的字符串金额。
 func (b FeeBreakdown) PayAmountStringForCurrency(currency string) string {
 	return decimal.NewFromFloat(b.PayAmount).StringFixed(int32(CurrencyMaxFractionDigits(currency)))

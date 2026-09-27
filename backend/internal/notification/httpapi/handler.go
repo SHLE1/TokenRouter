@@ -5,7 +5,7 @@ import (
 	"html"
 	"strings"
 
-	service "github.com/TokenFlux/TokenRouter/internal/notification"
+	"github.com/TokenFlux/TokenRouter/internal/notification"
 	"github.com/TokenFlux/TokenRouter/internal/notification/httpapi/dto"
 	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
 
@@ -21,7 +21,7 @@ type TestSMTPRequest struct {
 	SMTPUseTLS   *bool  `json:"smtp_use_tls"`
 }
 
-func ResolveSMTPUseTLS(requested *bool, savedConfig *service.SMTPConfig) bool {
+func ResolveSMTPUseTLS(requested *bool, savedConfig *notification.SMTPConfig) bool {
 	if requested != nil {
 		return *requested
 	}
@@ -40,7 +40,7 @@ func (h *Handler) TestSMTPConnection(c *gin.Context) {
 	req.SMTPHost = strings.TrimSpace(req.SMTPHost)
 	req.SMTPUsername = strings.TrimSpace(req.SMTPUsername)
 
-	var savedConfig *service.SMTPConfig
+	var savedConfig *notification.SMTPConfig
 	if cfg, err := h.emailService.GetSMTPConfig(c.Request.Context()); err == nil && cfg != nil {
 		savedConfig = cfg
 	}
@@ -67,7 +67,7 @@ func (h *Handler) TestSMTPConnection(c *gin.Context) {
 		return
 	}
 
-	config := &service.SMTPConfig{
+	config := &notification.SMTPConfig{
 		Host:     req.SMTPHost,
 		Port:     req.SMTPPort,
 		Username: req.SMTPUsername,
@@ -110,7 +110,7 @@ func (h *Handler) SendTestEmail(c *gin.Context) {
 	req.SMTPFrom = strings.TrimSpace(req.SMTPFrom)
 	req.SMTPFromName = strings.TrimSpace(req.SMTPFromName)
 
-	var savedConfig *service.SMTPConfig
+	var savedConfig *notification.SMTPConfig
 	if cfg, err := h.emailService.GetSMTPConfig(c.Request.Context()); err == nil && cfg != nil {
 		savedConfig = cfg
 	}
@@ -143,7 +143,7 @@ func (h *Handler) SendTestEmail(c *gin.Context) {
 		return
 	}
 
-	config := &service.SMTPConfig{
+	config := &notification.SMTPConfig{
 		Host:     req.SMTPHost,
 		Port:     req.SMTPPort,
 		Username: req.SMTPUsername,
@@ -278,7 +278,7 @@ func (h *Handler) PreviewEmailTemplate(c *gin.Context) {
 		response.BadRequest(c, "Invalid request: "+err.Error())
 		return
 	}
-	preview, err := h.notificationEmailService.PreviewTemplate(c.Request.Context(), service.NotificationEmailPreviewInput{
+	preview, err := h.notificationEmailService.PreviewTemplate(c.Request.Context(), notification.NotificationEmailPreviewInput{
 		Event:     req.Event,
 		Locale:    req.Locale,
 		Subject:   req.Subject,
@@ -292,7 +292,7 @@ func (h *Handler) PreviewEmailTemplate(c *gin.Context) {
 	response.Success(c, dto.EmailTemplatePreviewResponse{Subject: preview.Subject, HTML: preview.HTML})
 }
 
-func emailTemplateEventOptionsToDTO(events []service.NotificationEmailEventInfo) []dto.EmailTemplateEventOption {
+func emailTemplateEventOptionsToDTO(events []notification.NotificationEmailEventInfo) []dto.EmailTemplateEventOption {
 	items := make([]dto.EmailTemplateEventOption, 0, len(events))
 	for _, event := range events {
 		items = append(items, dto.EmailTemplateEventOption{
@@ -306,7 +306,7 @@ func emailTemplateEventOptionsToDTO(events []service.NotificationEmailEventInfo)
 	return items
 }
 
-func emailTemplateSummariesToDTO(templates []service.NotificationEmailTemplate) []dto.EmailTemplateSummary {
+func emailTemplateSummariesToDTO(templates []notification.NotificationEmailTemplate) []dto.EmailTemplateSummary {
 	items := make([]dto.EmailTemplateSummary, 0, len(templates))
 	for _, tmpl := range templates {
 		items = append(items, dto.EmailTemplateSummary{
@@ -320,7 +320,7 @@ func emailTemplateSummariesToDTO(templates []service.NotificationEmailTemplate) 
 	return items
 }
 
-func emailTemplateDetailToDTO(tmpl service.NotificationEmailTemplate) dto.EmailTemplateDetail {
+func emailTemplateDetailToDTO(tmpl notification.NotificationEmailTemplate) dto.EmailTemplateDetail {
 	return dto.EmailTemplateDetail{
 		Event:        tmpl.Event,
 		Locale:       tmpl.Locale,
@@ -332,14 +332,14 @@ func emailTemplateDetailToDTO(tmpl service.NotificationEmailTemplate) dto.EmailT
 	}
 }
 
-func emailTemplateUpdatedAt(tmpl service.NotificationEmailTemplate) string {
+func emailTemplateUpdatedAt(tmpl notification.NotificationEmailTemplate) string {
 	if tmpl.UpdatedAt == nil {
 		return ""
 	}
 	return tmpl.UpdatedAt.Format("2006-01-02T15:04:05Z07:00")
 }
 
-func emailTemplatePlaceholderUnion(events []service.NotificationEmailEventInfo) []string {
+func emailTemplatePlaceholderUnion(events []notification.NotificationEmailEventInfo) []string {
 	seen := make(map[string]struct{})
 	placeholders := make([]string, 0)
 	for _, event := range events {
@@ -355,13 +355,15 @@ func emailTemplatePlaceholderUnion(events []service.NotificationEmailEventInfo) 
 }
 
 // SiteNameReader 只读取公开站点名称。
-type SiteNameReader interface{ GetSiteName(context.Context) string }
-type Handler struct {
-	emailService             *service.Mailer
-	notificationEmailService *service.NotificationEmailService
-	settingService           SiteNameReader
-}
+type (
+	SiteNameReader interface{ GetSiteName(context.Context) string }
+	Handler        struct {
+		emailService             *notification.Mailer
+		notificationEmailService *notification.NotificationEmailService
+		settingService           SiteNameReader
+	}
+)
 
-func New(email *service.Mailer, n *service.NotificationEmailService, site SiteNameReader) *Handler {
+func New(email *notification.Mailer, n *notification.NotificationEmailService, site SiteNameReader) *Handler {
 	return &Handler{emailService: email, notificationEmailService: n, settingService: site}
 }

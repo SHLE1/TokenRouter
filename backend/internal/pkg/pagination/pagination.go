@@ -24,15 +24,6 @@ type PaginationResult struct {
 	Pages    int
 }
 
-// DefaultPagination 默认分页参数
-func DefaultPagination() PaginationParams {
-	return PaginationParams{
-		Page:      1,
-		PageSize:  20,
-		SortOrder: SortOrderDesc,
-	}
-}
-
 // Offset 计算偏移量
 func (p PaginationParams) Offset() int {
 	if p.Page < 1 {

@@ -237,14 +237,6 @@ func getModelInfo(modelID string) (info modelInfo, matched bool) {
 	return info, bestMatch != ""
 }
 
-// GetModelDisplayName 根据模型 ID 获取人类可读的显示名称
-func GetModelDisplayName(modelID string) string {
-	if info, ok := getModelInfo(modelID); ok {
-		return info.DisplayName
-	}
-	return modelID
-}
-
 // buildModelIdentityText 构建模型身份提示文本
 // 如果模型 ID 没有匹配到映射，返回空字符串
 func buildModelIdentityText(modelID string) string {

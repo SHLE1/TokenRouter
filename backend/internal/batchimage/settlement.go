@@ -331,10 +331,6 @@ func (s *Settlement) OutputRetentionAfterTerminal() time.Duration {
 	return 72 * time.Hour
 }
 
-func BatchImageSettlementRequestID(batchID string) string {
-	return BatchImageSettlementRequestPrefix + strings.TrimSpace(batchID)
-}
-
 func BuildBatchImageSettlementManifestHash(job *BatchImageJob) string {
 	if job == nil {
 		return ""
@@ -362,10 +358,9 @@ func (r *BatchImageSettlementResult) String() string {
 }
 
 const (
-	BatchImageSettlementRequestPrefix = "batch_image_settlement:"
-	BatchImageSettlementRetryDelay    = time.Minute
-	BatchImageSettlementMaxRetries    = 5
-	BatchImageCostEpsilon             = 0.00000001
+	BatchImageSettlementRetryDelay = time.Minute
+	BatchImageSettlementMaxRetries = 5
+	BatchImageCostEpsilon          = 0.00000001
 )
 
 func optionalTrimmedStringPtr(raw string) *string {

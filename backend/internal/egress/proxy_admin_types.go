@@ -140,8 +140,6 @@ var ProxyQualityTargets = []ProxyQualityTarget{
 }
 
 const (
-	proxyQualityRequestTimeout        = 15 * time.Second
-	proxyQualityResponseHeaderTimeout = 10 * time.Second
-	ProxyQualityMaxBodyBytes          = int64(8 * 1024)
-	ProxyQualityClientUserAgent       = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36"
+	ProxyQualityMaxBodyBytes    = int64(8 * 1024)
+	ProxyQualityClientUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36"
 )

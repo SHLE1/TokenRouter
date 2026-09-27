@@ -62,11 +62,6 @@ func (s *Stripe) ensureInit() {
 	}
 }
 
-// GetPublishableKey returns the publishable key for frontend use.
-func (s *Stripe) GetPublishableKey() string {
-	return s.config["publishableKey"]
-}
-
 func (s *Stripe) Name() string        { return "Stripe" }
 func (s *Stripe) ProviderKey() string { return payment.TypeStripe }
 func (s *Stripe) SupportedTypes() []payment.PaymentType {

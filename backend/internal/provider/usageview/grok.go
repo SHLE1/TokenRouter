@@ -4,7 +4,6 @@ package usageview
 import "github.com/TokenFlux/TokenRouter/internal/upstream/usageview"
 
 type (
-	BillingProductSummary = usageview.BillingProductSummary
-	BillingSummary        = usageview.BillingSummary
-	QuotaWindow           = usageview.QuotaWindow
+	BillingSummary = usageview.BillingSummary
+	QuotaWindow    = usageview.QuotaWindow
 )

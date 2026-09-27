@@ -242,14 +242,6 @@ func (s *GrokAuthorization) refreshToken(ctx context.Context, refreshToken, prox
 	return tokenInfo, nil
 }
 
-func (s *GrokAuthorization) validateRefreshToken(ctx context.Context, refreshToken string, proxyID *int64) (*GrokTokenInfo, error) {
-	proxyURL, err := s.proxyURL(ctx, proxyID)
-	if err != nil {
-		return nil, err
-	}
-	return s.refreshToken(ctx, refreshToken, proxyURL, s.Options.EffectiveClientID())
-}
-
 // ValidateSSOToken 将 Web SSO Cookie 转换为 Build OAuth 令牌。
 // 原始 sso_token 绝不写入 GrokTokenInfo 或提供商凭证。
 func (s *GrokAuthorization) validateSSOToken(ctx context.Context, ssoToken string, proxyID *int64) (*GrokTokenInfo, error) {
@@ -499,15 +491,6 @@ func (s *GrokAuthorization) RefreshToken(ctx context.Context, refreshToken, prox
 	}
 	defer done()
 	return s.refreshToken(operation, refreshToken, proxyURL, clientID)
-}
-
-func (s *GrokAuthorization) ValidateRefreshToken(ctx context.Context, refreshToken string, proxyID *int64) (*GrokTokenInfo, error) {
-	operation, done, err := s.activity.begin(ctx, errors.New("grok authorization is stopped"))
-	if err != nil {
-		return nil, err
-	}
-	defer done()
-	return s.validateRefreshToken(operation, refreshToken, proxyID)
 }
 
 func (s *GrokAuthorization) ValidateSSOToken(ctx context.Context, ssoToken string, proxyID *int64) (*GrokTokenInfo, error) {

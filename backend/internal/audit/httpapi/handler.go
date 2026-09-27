@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"net/http"
 	"strconv"
 	"strings"
@@ -8,9 +9,7 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
 
-	"context"
-
-	service "github.com/TokenFlux/TokenRouter/internal/audit"
+	"github.com/TokenFlux/TokenRouter/internal/audit"
 	identityhttp "github.com/TokenFlux/TokenRouter/internal/identity/httpapi"
 	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
 
@@ -20,12 +19,12 @@ import (
 // AuditLogHandler 操作审计日志管理接口。
 // 审计日志仅管理员可见；不提供单条删除，仅支持带 TOTP 验证的全量清空。
 type AuditLogHandler struct {
-	auditService *service.AuditLogService
+	auditService *audit.AuditLogService
 	totpService  TOTPVerifier
 }
 
 // NewAuditLogHandler 创建审计日志处理器。
-func NewAuditLogHandler(auditService *service.AuditLogService, totpService TOTPVerifier) *AuditLogHandler {
+func NewAuditLogHandler(auditService *audit.AuditLogService, totpService TOTPVerifier) *AuditLogHandler {
 	return &AuditLogHandler{
 		auditService: auditService,
 		totpService:  totpService,
@@ -40,7 +39,7 @@ func (h *AuditLogHandler) List(c *gin.Context) {
 		pageSize = 200
 	}
 
-	filter := &service.AuditLogFilter{
+	filter := &audit.AuditLogFilter{
 		Page:       page,
 		PageSize:   pageSize,
 		ActorEmail: strings.TrimSpace(c.Query("actor_email")),
@@ -117,7 +116,7 @@ type auditLogClearRequest struct {
 //  3. admin API key（机器凭证）不允许清空
 //  4. 清空完成后同步写入一条留痕记录（操作者、IP、UA、删除行数）
 func (h *AuditLogHandler) Clear(c *gin.Context) {
-	if c.GetString("auth_method") == service.AuditAuthMethodAdminAPIKey {
+	if c.GetString("auth_method") == audit.AuditAuthMethodAdminAPIKey {
 		response.ErrorWithDetails(c, http.StatusForbidden,
 			"Admin API key cannot clear audit logs; a two-factor verified admin session is required",
 			"STEP_UP_ADMIN_API_KEY_FORBIDDEN", nil)
@@ -145,7 +144,7 @@ func (h *AuditLogHandler) Clear(c *gin.Context) {
 
 	uid := subject.UserID
 	role, _ := authctx.GetUserRoleFromContext(c)
-	trace := &service.AuditLog{
+	trace := &audit.AuditLog{
 		ActorUserID:      &uid,
 		ActorEmail:       c.GetString(ContextKeyAuthEmail),
 		ActorRole:        role,

@@ -12,7 +12,7 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 
-	service "github.com/TokenFlux/TokenRouter/internal/batchimage"
+	"github.com/TokenFlux/TokenRouter/internal/batchimage"
 )
 
 type SQLExecutor interface {
@@ -26,23 +26,23 @@ type Repository struct {
 	sql SQLExecutor
 }
 
-func NewBatchImageRepository(db *sql.DB) service.BatchImageRepository {
+func NewBatchImageRepository(db *sql.DB) batchimage.BatchImageRepository {
 	return &Repository{db: db, sql: db}
 }
 
-func (r *Repository) CreateBatchImageJob(ctx context.Context, params service.CreateBatchImageJobParams) (*service.BatchImageJob, error) {
-	if !service.IsSupportedBatchImageProvider(params.Platform) {
-		return nil, service.ErrBatchImageInvalidProvider
+func (r *Repository) CreateBatchImageJob(ctx context.Context, params batchimage.CreateBatchImageJobParams) (*batchimage.BatchImageJob, error) {
+	if !batchimage.IsSupportedBatchImageProvider(params.Platform) {
+		return nil, batchimage.ErrBatchImageInvalidProvider
 	}
 	if params.BatchID == "" {
-		batchID, err := service.NewBatchImageID()
+		batchID, err := batchimage.NewBatchImageID()
 		if err != nil {
 			return nil, err
 		}
 		params.BatchID = batchID
 	}
 	if params.Status == "" {
-		params.Status = service.BatchImageJobStatusCreated
+		params.Status = batchimage.BatchImageJobStatusCreated
 	}
 	if params.Currency == "" {
 		params.Currency = "USD"
@@ -63,39 +63,39 @@ func (r *Repository) CreateBatchImageJob(ctx context.Context, params service.Cre
 
 	job, err := createBatchImageJobWithSQL(ctx, r.sql, params)
 	if err != nil {
-		return nil, translatePersistenceError(err, nil, service.ErrBatchImageJobExists)
+		return nil, translatePersistenceError(err, nil, batchimage.ErrBatchImageJobExists)
 	}
 	return job, nil
 }
 
-func (r *Repository) GetBatchImageJobByBatchID(ctx context.Context, batchID string) (*service.BatchImageJob, error) {
+func (r *Repository) GetBatchImageJobByBatchID(ctx context.Context, batchID string) (*batchimage.BatchImageJob, error) {
 	job, err := scanBatchImageJob(r.sql.QueryRowContext(ctx, batchImageJobSelectSQL+" WHERE batch_id = $1", batchID))
 	if err != nil {
-		return nil, translatePersistenceError(err, service.ErrBatchImageJobNotFound, nil)
+		return nil, translatePersistenceError(err, batchimage.ErrBatchImageJobNotFound, nil)
 	}
 	return job, nil
 }
 
-func (r *Repository) GetBatchImageJobByIdempotencyKey(ctx context.Context, userID, apiKeyID int64, key string) (*service.BatchImageJob, error) {
+func (r *Repository) GetBatchImageJobByIdempotencyKey(ctx context.Context, userID, apiKeyID int64, key string) (*batchimage.BatchImageJob, error) {
 	job, err := scanBatchImageJob(r.sql.QueryRowContext(ctx, batchImageJobSelectSQL+`
  WHERE user_id = $1 AND api_key_id = $2 AND idempotency_key = $3
  ORDER BY id DESC LIMIT 1`, userID, apiKeyID, key))
 	if err != nil {
-		return nil, translatePersistenceError(err, service.ErrBatchImageJobNotFound, nil)
+		return nil, translatePersistenceError(err, batchimage.ErrBatchImageJobNotFound, nil)
 	}
 	return job, nil
 }
 
-func (r *Repository) GetBatchImageJobByBatchIDForOwner(ctx context.Context, userID, apiKeyID int64, batchID string) (*service.BatchImageJob, error) {
+func (r *Repository) GetBatchImageJobByBatchIDForOwner(ctx context.Context, userID, apiKeyID int64, batchID string) (*batchimage.BatchImageJob, error) {
 	job, err := scanBatchImageJob(r.sql.QueryRowContext(ctx, batchImageJobSelectSQL+`
  WHERE batch_id = $1 AND user_id = $2 AND api_key_id = $3 AND user_deleted_at IS NULL`, batchID, userID, apiKeyID))
 	if err != nil {
-		return nil, translatePersistenceError(err, service.ErrBatchImageJobNotFound, nil)
+		return nil, translatePersistenceError(err, batchimage.ErrBatchImageJobNotFound, nil)
 	}
 	return job, nil
 }
 
-func (r *Repository) ListBatchImageJobsForOwner(ctx context.Context, userID, apiKeyID int64, filter service.BatchImageJobFilter) ([]*service.BatchImageJob, error) {
+func (r *Repository) ListBatchImageJobsForOwner(ctx context.Context, userID, apiKeyID int64, filter batchimage.BatchImageJobFilter) ([]*batchimage.BatchImageJob, error) {
 	limit := filter.Limit
 	if limit <= 0 || limit > 100 {
 		limit = 20
@@ -143,15 +143,15 @@ func (r *Repository) ListBatchImageJobsForOwner(ctx context.Context, userID, api
 	return scanBatchImageJobs(rows)
 }
 
-func (r *Repository) GetBatchImageJobByID(ctx context.Context, id int64) (*service.BatchImageJob, error) {
+func (r *Repository) GetBatchImageJobByID(ctx context.Context, id int64) (*batchimage.BatchImageJob, error) {
 	job, err := scanBatchImageJob(r.sql.QueryRowContext(ctx, batchImageJobSelectSQL+" WHERE id = $1", id))
 	if err != nil {
-		return nil, translatePersistenceError(err, service.ErrBatchImageJobNotFound, nil)
+		return nil, translatePersistenceError(err, batchimage.ErrBatchImageJobNotFound, nil)
 	}
 	return job, nil
 }
 
-func (r *Repository) TransitionBatchImageJobStatus(ctx context.Context, batchID, toStatus string, opts service.BatchImageTransitionOptions) error {
+func (r *Repository) TransitionBatchImageJobStatus(ctx context.Context, batchID, toStatus string, opts batchimage.BatchImageTransitionOptions) error {
 	if r.db == nil {
 		return r.transitionBatchImageJobStatusWithSQL(ctx, r.sql, batchID, toStatus, opts)
 	}
@@ -215,15 +215,15 @@ UPDATE batch_image_jobs
 SET provider_output_ref = $2, updated_at = $3
 WHERE batch_id = $1`, batchID, providerOutputRef, time.Now())
 	if err != nil {
-		return translatePersistenceError(err, service.ErrBatchImageJobNotFound, nil)
+		return translatePersistenceError(err, batchimage.ErrBatchImageJobNotFound, nil)
 	}
 	if affected, err := res.RowsAffected(); err == nil && affected == 0 {
-		return service.ErrBatchImageJobNotFound
+		return batchimage.ErrBatchImageJobNotFound
 	}
 	return nil
 }
 
-func (r *Repository) UpdateBatchImageJobProviderSubmit(ctx context.Context, params service.UpdateBatchImageJobProviderSubmitParams) error {
+func (r *Repository) UpdateBatchImageJobProviderSubmit(ctx context.Context, params batchimage.UpdateBatchImageJobProviderSubmitParams) error {
 	if r.db == nil {
 		return r.updateBatchImageJobProviderSubmitWithSQL(ctx, r.sql, params)
 	}
@@ -241,13 +241,13 @@ func (r *Repository) UpdateBatchImageJobProviderSubmit(ctx context.Context, para
 	return tx.Commit()
 }
 
-func (r *Repository) updateBatchImageJobProviderSubmitWithSQL(ctx context.Context, sqlq SQLExecutor, params service.UpdateBatchImageJobProviderSubmitParams) error {
+func (r *Repository) updateBatchImageJobProviderSubmitWithSQL(ctx context.Context, sqlq SQLExecutor, params batchimage.UpdateBatchImageJobProviderSubmitParams) error {
 	var current string
 	if err := sqlq.QueryRowContext(ctx, `SELECT status FROM batch_image_jobs WHERE batch_id = $1 FOR UPDATE`, params.BatchID).Scan(&current); err != nil {
-		return translatePersistenceError(err, service.ErrBatchImageJobNotFound, nil)
+		return translatePersistenceError(err, batchimage.ErrBatchImageJobNotFound, nil)
 	}
-	if !service.CanTransitionBatchImageJob(current, service.BatchImageJobStatusSubmitted) {
-		return service.ErrBatchImageInvalidTransition
+	if !batchimage.CanTransitionBatchImageJob(current, batchimage.BatchImageJobStatusSubmitted) {
+		return batchimage.ErrBatchImageInvalidTransition
 	}
 	now := time.Now()
 	if _, err := sqlq.ExecContext(ctx, `
@@ -292,7 +292,7 @@ WHERE batch_id = $1`, batchID, code, message, now)
 	return appendBatchImageEventWithSQL(ctx, r.sql, batchID, eventType, map[string]any{"error_code": code})
 }
 
-func (r *Repository) MarkBatchImageJobSettled(ctx context.Context, params service.MarkBatchImageJobSettledParams) error {
+func (r *Repository) MarkBatchImageJobSettled(ctx context.Context, params batchimage.MarkBatchImageJobSettledParams) error {
 	if r.db == nil {
 		return r.markBatchImageJobSettledWithSQL(ctx, r.sql, params)
 	}
@@ -311,7 +311,7 @@ func (r *Repository) MarkBatchImageJobSettled(ctx context.Context, params servic
 	return tx.Commit()
 }
 
-func (r *Repository) markBatchImageJobSettledWithSQL(ctx context.Context, sqlq SQLExecutor, params service.MarkBatchImageJobSettledParams) error {
+func (r *Repository) markBatchImageJobSettledWithSQL(ctx context.Context, sqlq SQLExecutor, params batchimage.MarkBatchImageJobSettledParams) error {
 	now := time.Now()
 	if params.Now != nil {
 		now = *params.Now
@@ -341,15 +341,15 @@ WHERE batch_id = $1
 	if affected == 0 {
 		job, getErr := scanBatchImageJob(sqlq.QueryRowContext(ctx, batchImageJobSelectSQL+" WHERE batch_id = $1", params.BatchID))
 		if getErr != nil {
-			return translatePersistenceError(getErr, service.ErrBatchImageJobNotFound, nil)
+			return translatePersistenceError(getErr, batchimage.ErrBatchImageJobNotFound, nil)
 		}
-		if job.Status != service.BatchImageJobStatusSettling {
-			if job.Status == service.BatchImageJobStatusCompleted {
-				return service.ErrBatchImageAlreadySettled
+		if job.Status != batchimage.BatchImageJobStatusSettling {
+			if job.Status == batchimage.BatchImageJobStatusCompleted {
+				return batchimage.ErrBatchImageAlreadySettled
 			}
-			return service.ErrBatchImageSettlementInvalidStatus
+			return batchimage.ErrBatchImageSettlementInvalidStatus
 		}
-		return service.ErrBatchImageSettlementManifestConflict
+		return batchimage.ErrBatchImageSettlementManifestConflict
 	}
 	return appendBatchImageEventWithSQL(ctx, sqlq, params.BatchID, "settlement_completed", params.EventPayload)
 }
@@ -365,20 +365,20 @@ SET last_error_code = $2,
 WHERE batch_id = $1
 RETURNING retry_count`, batchID, code, message, time.Now()).Scan(&retryCount)
 	if err != nil {
-		return 0, translatePersistenceError(err, service.ErrBatchImageJobNotFound, nil)
+		return 0, translatePersistenceError(err, batchimage.ErrBatchImageJobNotFound, nil)
 	}
 	return retryCount, appendBatchImageEventWithSQL(ctx, r.sql, batchID, "settlement_failed", map[string]any{
 		"error_code": code,
 	})
 }
 
-func (r *Repository) transitionBatchImageJobStatusWithSQL(ctx context.Context, sqlq SQLExecutor, batchID, toStatus string, opts service.BatchImageTransitionOptions) error {
+func (r *Repository) transitionBatchImageJobStatusWithSQL(ctx context.Context, sqlq SQLExecutor, batchID, toStatus string, opts batchimage.BatchImageTransitionOptions) error {
 	var current string
 	if err := sqlq.QueryRowContext(ctx, `SELECT status FROM batch_image_jobs WHERE batch_id = $1 FOR UPDATE`, batchID).Scan(&current); err != nil {
-		return translatePersistenceError(err, service.ErrBatchImageJobNotFound, nil)
+		return translatePersistenceError(err, batchimage.ErrBatchImageJobNotFound, nil)
 	}
-	if !service.CanTransitionBatchImageJob(current, toStatus) {
-		return service.ErrBatchImageInvalidTransition
+	if !batchimage.CanTransitionBatchImageJob(current, toStatus) {
+		return batchimage.ErrBatchImageInvalidTransition
 	}
 
 	now := time.Now()
@@ -409,22 +409,22 @@ WHERE batch_id = $1`, batchID, toStatus, now, opts.ErrorCode, opts.ErrorMessage)
 	return nil
 }
 
-func (r *Repository) CreateBatchImageItem(ctx context.Context, params service.CreateBatchImageItemParams) (*service.BatchImageItem, error) {
+func (r *Repository) CreateBatchImageItem(ctx context.Context, params batchimage.CreateBatchImageItemParams) (*batchimage.BatchImageItem, error) {
 	item, err := createBatchImageItemWithSQL(ctx, r.sql, params)
 	if err != nil {
-		return nil, translatePersistenceError(err, nil, service.ErrBatchImageItemExists)
+		return nil, translatePersistenceError(err, nil, batchimage.ErrBatchImageItemExists)
 	}
 	return item, nil
 }
 
-func (r *Repository) BulkCreateBatchImageItems(ctx context.Context, params []service.CreateBatchImageItemParams) error {
+func (r *Repository) BulkCreateBatchImageItems(ctx context.Context, params []batchimage.CreateBatchImageItemParams) error {
 	if len(params) == 0 {
 		return nil
 	}
 	if r.db == nil {
 		for _, param := range params {
 			if _, err := createBatchImageItemWithSQL(ctx, r.sql, param); err != nil {
-				return translatePersistenceError(err, nil, service.ErrBatchImageItemExists)
+				return translatePersistenceError(err, nil, batchimage.ErrBatchImageItemExists)
 			}
 		}
 		return nil
@@ -440,13 +440,13 @@ func (r *Repository) BulkCreateBatchImageItems(ctx context.Context, params []ser
 
 	for _, param := range params {
 		if _, err := createBatchImageItemWithSQL(ctx, tx, param); err != nil {
-			return translatePersistenceError(err, nil, service.ErrBatchImageItemExists)
+			return translatePersistenceError(err, nil, batchimage.ErrBatchImageItemExists)
 		}
 	}
 	return tx.Commit()
 }
 
-func (r *Repository) ReplaceBatchImageItemsForJob(ctx context.Context, batchID string, items []service.CreateBatchImageItemParams, counts service.BatchImageCounts) error {
+func (r *Repository) ReplaceBatchImageItemsForJob(ctx context.Context, batchID string, items []batchimage.CreateBatchImageItemParams, counts batchimage.BatchImageCounts) error {
 	if r.db == nil {
 		return r.replaceBatchImageItemsForJobWithSQL(ctx, r.sql, batchID, items, counts)
 	}
@@ -465,16 +465,16 @@ func (r *Repository) ReplaceBatchImageItemsForJob(ctx context.Context, batchID s
 	return tx.Commit()
 }
 
-func (r *Repository) replaceBatchImageItemsForJobWithSQL(ctx context.Context, sqlq SQLExecutor, batchID string, items []service.CreateBatchImageItemParams, counts service.BatchImageCounts) error {
+func (r *Repository) replaceBatchImageItemsForJobWithSQL(ctx context.Context, sqlq SQLExecutor, batchID string, items []batchimage.CreateBatchImageItemParams, counts batchimage.BatchImageCounts) error {
 	var id int64
 	var status string
 	if err := sqlq.QueryRowContext(ctx, `SELECT id, status FROM batch_image_jobs WHERE batch_id = $1 FOR UPDATE`, batchID).Scan(&id, &status); err != nil {
-		return translatePersistenceError(err, service.ErrBatchImageJobNotFound, nil)
+		return translatePersistenceError(err, batchimage.ErrBatchImageJobNotFound, nil)
 	}
 	// 仅允许 indexing 状态重建 item 表：防止锁过期后掉队的 worker
 	// 重写已完成/已结算 job 的条目，造成账目与结果漂移。
-	if status != service.BatchImageJobStatusIndexing {
-		return service.ErrBatchImageIndexStateConflict
+	if status != batchimage.BatchImageJobStatusIndexing {
+		return batchimage.ErrBatchImageIndexStateConflict
 	}
 	promptPreviews, err := r.batchImageItemPromptPreviews(ctx, sqlq, batchID)
 	if err != nil {
@@ -491,7 +491,7 @@ func (r *Repository) replaceBatchImageItemsForJobWithSQL(ctx context.Context, sq
 			}
 		}
 		if _, err := createBatchImageItemWithSQL(ctx, sqlq, item); err != nil {
-			return translatePersistenceError(err, nil, service.ErrBatchImageItemExists)
+			return translatePersistenceError(err, nil, batchimage.ErrBatchImageItemExists)
 		}
 	}
 	_, err = sqlq.ExecContext(ctx, `
@@ -523,7 +523,7 @@ func (r *Repository) batchImageItemPromptPreviews(ctx context.Context, sqlq SQLE
 	return out, rows.Err()
 }
 
-func (r *Repository) ListBatchImageItems(ctx context.Context, batchID string, filter service.BatchImageItemFilter) ([]*service.BatchImageItem, error) {
+func (r *Repository) ListBatchImageItems(ctx context.Context, batchID string, filter batchimage.BatchImageItemFilter) ([]*batchimage.BatchImageItem, error) {
 	limit := filter.Limit
 	if limit <= 0 || limit > 500 {
 		limit = 100
@@ -547,7 +547,7 @@ func (r *Repository) ListBatchImageItems(ctx context.Context, batchID string, fi
 	}
 	defer func() { _ = rows.Close() }()
 
-	var items []*service.BatchImageItem
+	var items []*batchimage.BatchImageItem
 	for rows.Next() {
 		item, err := scanBatchImageItem(rows)
 		if err != nil {
@@ -561,31 +561,31 @@ func (r *Repository) ListBatchImageItems(ctx context.Context, batchID string, fi
 	return items, nil
 }
 
-func (r *Repository) ListBatchImageItemsForOwner(ctx context.Context, userID, apiKeyID int64, batchID string, filter service.BatchImageItemFilter) ([]*service.BatchImageItem, error) {
+func (r *Repository) ListBatchImageItemsForOwner(ctx context.Context, userID, apiKeyID int64, batchID string, filter batchimage.BatchImageItemFilter) ([]*batchimage.BatchImageItem, error) {
 	if _, err := r.GetBatchImageJobByBatchIDForOwner(ctx, userID, apiKeyID, batchID); err != nil {
 		return nil, err
 	}
 	return r.ListBatchImageItems(ctx, batchID, filter)
 }
 
-func (r *Repository) GetBatchImageJobForDownload(ctx context.Context, userID, apiKeyID int64, batchID string) (*service.BatchImageJob, error) {
+func (r *Repository) GetBatchImageJobForDownload(ctx context.Context, userID, apiKeyID int64, batchID string) (*batchimage.BatchImageJob, error) {
 	return r.GetBatchImageJobByBatchIDForOwner(ctx, userID, apiKeyID, batchID)
 }
 
-func (r *Repository) GetBatchImageItemForDownload(ctx context.Context, batchID, customID string) (*service.BatchImageItem, error) {
+func (r *Repository) GetBatchImageItemForDownload(ctx context.Context, batchID, customID string) (*batchimage.BatchImageItem, error) {
 	item, err := scanBatchImageItem(r.sql.QueryRowContext(ctx, batchImageItemSelectSQL+`
  WHERE job_id = $1 AND custom_id = $2`, batchID, customID))
 	if err != nil {
-		return nil, translatePersistenceError(err, service.ErrBatchImageItemNotFound, nil)
+		return nil, translatePersistenceError(err, batchimage.ErrBatchImageItemNotFound, nil)
 	}
 	return item, nil
 }
 
-func (r *Repository) ListBatchImageItemsForDownload(ctx context.Context, batchID string, status string, limit int) ([]*service.BatchImageItem, error) {
-	return r.ListBatchImageItems(ctx, batchID, service.BatchImageItemFilter{Status: status, Limit: limit})
+func (r *Repository) ListBatchImageItemsForDownload(ctx context.Context, batchID string, status string, limit int) ([]*batchimage.BatchImageItem, error) {
+	return r.ListBatchImageItems(ctx, batchID, batchimage.BatchImageItemFilter{Status: status, Limit: limit})
 }
 
-func (r *Repository) ListBatchImageJobsDueForInputCleanup(ctx context.Context, cutoff time.Time, limit int) ([]*service.BatchImageJob, error) {
+func (r *Repository) ListBatchImageJobsDueForInputCleanup(ctx context.Context, cutoff time.Time, limit int) ([]*batchimage.BatchImageJob, error) {
 	if limit <= 0 || limit > 1000 {
 		limit = 100
 	}
@@ -603,7 +603,7 @@ func (r *Repository) ListBatchImageJobsDueForInputCleanup(ctx context.Context, c
 	return scanBatchImageJobs(rows)
 }
 
-func (r *Repository) ListBatchImageJobsDueForOutputCleanup(ctx context.Context, now time.Time, limit int) ([]*service.BatchImageJob, error) {
+func (r *Repository) ListBatchImageJobsDueForOutputCleanup(ctx context.Context, now time.Time, limit int) ([]*batchimage.BatchImageJob, error) {
 	if limit <= 0 || limit > 1000 {
 		limit = 100
 	}
@@ -622,7 +622,7 @@ func (r *Repository) ListBatchImageJobsDueForOutputCleanup(ctx context.Context, 
 	return scanBatchImageJobs(rows)
 }
 
-func (r *Repository) ListStaleUnsubmittedBatchImageJobs(ctx context.Context, cutoff time.Time, limit int) ([]*service.BatchImageJob, error) {
+func (r *Repository) ListStaleUnsubmittedBatchImageJobs(ctx context.Context, cutoff time.Time, limit int) ([]*batchimage.BatchImageJob, error) {
 	if limit <= 0 || limit > 1000 {
 		limit = 100
 	}
@@ -651,7 +651,7 @@ WHERE batch_id = $1`, batchID, deletedAt)
 		return err
 	}
 	if affected, err := res.RowsAffected(); err == nil && affected == 0 {
-		return service.ErrBatchImageJobNotFound
+		return batchimage.ErrBatchImageJobNotFound
 	}
 	return appendBatchImageEventWithSQL(ctx, r.sql, batchID, "input_cleanup_completed", map[string]any{
 		"batch_id":       batchID,
@@ -673,7 +673,7 @@ WHERE batch_id = $1`, batchID, deletedAt)
 		return err
 	}
 	if affected, err := res.RowsAffected(); err == nil && affected == 0 {
-		return service.ErrBatchImageJobNotFound
+		return batchimage.ErrBatchImageJobNotFound
 	}
 	return appendBatchImageEventWithSQL(ctx, r.sql, batchID, "output_cleanup_completed", map[string]any{
 		"batch_id":       batchID,
@@ -692,7 +692,7 @@ WHERE batch_id = $1`, batchID, downloadedAt)
 		return err
 	}
 	if affected, err := res.RowsAffected(); err == nil && affected == 0 {
-		return service.ErrBatchImageJobNotFound
+		return batchimage.ErrBatchImageJobNotFound
 	}
 	return appendBatchImageEventWithSQL(ctx, r.sql, batchID, "download_completed", map[string]any{
 		"batch_id":      batchID,
@@ -714,7 +714,7 @@ WHERE batch_id = $1
 		return err
 	}
 	if affected, err := res.RowsAffected(); err == nil && affected == 0 {
-		return service.ErrBatchImageRecordDeleteNotReady
+		return batchimage.ErrBatchImageRecordDeleteNotReady
 	}
 	return appendBatchImageEventWithSQL(ctx, r.sql, batchID, "user_record_deleted", map[string]any{
 		"batch_id":   batchID,
@@ -734,7 +734,7 @@ WHERE batch_id = $1`, batchID, expiresAt, time.Now())
 		return err
 	}
 	if affected, err := res.RowsAffected(); err == nil && affected == 0 {
-		return service.ErrBatchImageJobNotFound
+		return batchimage.ErrBatchImageJobNotFound
 	}
 	return nil
 }
@@ -757,7 +757,7 @@ func (r *Repository) AppendBatchImageEvent(ctx context.Context, batchID, eventTy
 	return appendBatchImageEventWithSQL(ctx, r.sql, batchID, eventType, payload)
 }
 
-func createBatchImageJobWithSQL(ctx context.Context, sqlq SQLExecutor, params service.CreateBatchImageJobParams) (*service.BatchImageJob, error) {
+func createBatchImageJobWithSQL(ctx context.Context, sqlq SQLExecutor, params batchimage.CreateBatchImageJobParams) (*batchimage.BatchImageJob, error) {
 	subscriptionHoldAllocations, err := json.Marshal(params.SubscriptionHoldAllocations)
 	if err != nil {
 		return nil, err
@@ -812,7 +812,7 @@ RETURNING `+batchImageJobColumns,
 	))
 }
 
-func createBatchImageItemWithSQL(ctx context.Context, sqlq SQLExecutor, params service.CreateBatchImageItemParams) (*service.BatchImageItem, error) {
+func createBatchImageItemWithSQL(ctx context.Context, sqlq SQLExecutor, params batchimage.CreateBatchImageItemParams) (*batchimage.BatchImageItem, error) {
 	return scanBatchImageItem(sqlq.QueryRowContext(ctx, `
 INSERT INTO batch_image_items (
     job_id, custom_id, status, request_hash, prompt_preview, provider_source_object,
@@ -871,8 +871,8 @@ created_at, updated_at, submitted_at, started_at, finished_at, settled_at`
 
 const batchImageJobSelectSQL = `SELECT ` + batchImageJobColumns + ` FROM batch_image_jobs`
 
-func scanBatchImageJob(row rowScanner) (*service.BatchImageJob, error) {
-	var job service.BatchImageJob
+func scanBatchImageJob(row rowScanner) (*batchimage.BatchImageJob, error) {
+	var job batchimage.BatchImageJob
 	var teamID, apiKeyID, providerID, groupID sql.NullInt64
 	var providerJobName, providerInputRef, providerOutputRef, gcsInputURI, gcsOutputURI sql.NullString
 	var parentBatchID sql.NullString
@@ -943,8 +943,8 @@ func scanBatchImageJob(row rowScanner) (*service.BatchImageJob, error) {
 	return &job, nil
 }
 
-func scanBatchImageJobs(rows *sql.Rows) ([]*service.BatchImageJob, error) {
-	var jobs []*service.BatchImageJob
+func scanBatchImageJobs(rows *sql.Rows) ([]*batchimage.BatchImageJob, error) {
+	var jobs []*batchimage.BatchImageJob
 	for rows.Next() {
 		job, err := scanBatchImageJob(rows)
 		if err != nil {
@@ -967,8 +967,8 @@ created_at, indexed_at`
 
 const batchImageItemSelectSQL = `SELECT ` + batchImageItemColumns + ` FROM batch_image_items`
 
-func scanBatchImageItem(row rowScanner) (*service.BatchImageItem, error) {
-	var item service.BatchImageItem
+func scanBatchImageItem(row rowScanner) (*batchimage.BatchImageItem, error) {
+	var item batchimage.BatchImageItem
 	var requestHash, promptPreview, providerSourceObject sql.NullString
 	var sourceLineNumber sql.NullInt64
 	var sourceByteOffset, sourceByteLength sql.NullInt64
@@ -1038,7 +1038,7 @@ func batchImageNullTimePtr(v sql.NullTime) *time.Time {
 	return &v.Time
 }
 
-var _ service.BatchImageRepository = (*Repository)(nil)
+var _ batchimage.BatchImageRepository = (*Repository)(nil)
 
 // NewRepositoryWithSQL 参与已有 SQL 执行器；不会在构造时获取连接或启动任务。
 func NewRepositoryWithSQL(sqlq SQLExecutor) *Repository { return &Repository{sql: sqlq} }

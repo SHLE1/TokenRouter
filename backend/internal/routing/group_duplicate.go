@@ -192,15 +192,3 @@ func (s *GroupAdmin) DuplicateGroup(ctx context.Context, id int64, actorScope, o
 		}
 	}
 }
-
-// CloneGroupModelPricing 保持复制分组的模型、区间、分时配置与源分组互相独立。
-func CloneGroupModelPricing(pricing []ModelPricingEntry) []ModelPricingEntry {
-	if pricing == nil {
-		return nil
-	}
-	cloned := make([]ModelPricingEntry, len(pricing))
-	for i := range pricing {
-		cloned[i] = pricing[i].Clone()
-	}
-	return cloned
-}

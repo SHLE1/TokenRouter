@@ -24,10 +24,6 @@ func (s *ConfigService) ConfigValidateProviderConfig(providerKey string, config 
 	return err
 }
 
-func (s *ConfigService) ListProviderInstances(ctx context.Context) ([]*ProviderInstance, error) {
-	return s.store.ListInstances(ctx, InstanceFilter{SortByOrder: true})
-}
-
 // ProviderInstanceResponse is the API response for a provider instance.
 type ProviderInstanceResponse struct {
 	ID              int64             `json:"id"`
@@ -86,14 +82,6 @@ func (s *ConfigService) ConfigDecryptAndMaskConfig(providerKey, encrypted string
 		masked[k] = v
 	}
 	return masked, nil
-}
-
-// ConfigPendingOrderStatuses are order statuses considered "in progress".
-var ConfigPendingOrderStatuses = []string{
-	OrderStatusPending,
-	OrderStatusProcessing,
-	OrderStatusPaid,
-	OrderStatusRecharging,
 }
 
 // ConfigProviderSensitiveConfigFields is the authoritative list of config keys that

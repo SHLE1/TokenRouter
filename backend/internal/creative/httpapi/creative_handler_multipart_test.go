@@ -9,14 +9,13 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	service "github.com/TokenFlux/TokenRouter/internal/creative"
+	"github.com/TokenFlux/TokenRouter/internal/creative"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 )
 
 // TestParseCreativeCreateRunMultipartStopsAtTotalLimit 验证解析阶段不会继续累积超出总量的文件。
 func TestParseCreativeCreateRunMultipartStopsAtTotalLimit(t *testing.T) {
-
 	var body bytes.Buffer
 	writer := multipart.NewWriter(&body)
 	require.NoError(t, writer.WriteField("group_id", "12"))
@@ -37,5 +36,5 @@ func TestParseCreativeCreateRunMultipartStopsAtTotalLimit(t *testing.T) {
 
 	parsed, err := parseCreativeCreateRunMultipart(ctx, 32, 8)
 	require.Nil(t, parsed)
-	require.ErrorIs(t, err, service.ErrCreativeInputTooLarge)
+	require.ErrorIs(t, err, creative.ErrCreativeInputTooLarge)
 }

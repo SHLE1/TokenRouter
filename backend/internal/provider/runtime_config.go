@@ -123,14 +123,6 @@ func (a *RuntimeConfig) GetWindowCostStickyReserve() float64 {
 	return 10.0
 }
 
-// CheckWindowCostSchedulability 根据当前窗口费用检查调度状态
-// - 费用 < 阈值: WindowCostSchedulable（可正常调度）
-// - 费用 >= 阈值 且 < 阈值+预留: WindowCostStickyOnly（仅粘性会话）
-// - 费用 >= 阈值+预留: WindowCostNotSchedulable（不可调度）
-func (a *RuntimeConfig) CheckWindowCostSchedulability(current float64) WindowCostSchedulability {
-	return billing.CheckWindowCost(current, a.GetWindowCostLimit(), a.GetWindowCostStickyReserve())
-}
-
 // GetCurrentWindowStartTime 获取当前有效的窗口开始时间
 // 逻辑：
 // 1. 如果窗口未过期（SessionWindowEnd 存在且在当前时间之后），使用记录的 SessionWindowStart

@@ -512,8 +512,3 @@ func (r *Store) StopUsageBatchers() {
 	r.batchLifecycleMu.Unlock()
 	r.batchWG.Wait()
 }
-
-// SetPreAggregationSettings 仅在装配时绑定唯一运行设置。
-func (r *Store) SetPreAggregationSettings(s *preaggregation.PreAggregationSettingsService) {
-	r.preAggregation = s
-}

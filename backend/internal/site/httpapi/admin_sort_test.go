@@ -8,13 +8,13 @@ import (
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
-	service "github.com/TokenFlux/TokenRouter/internal/site"
+	"github.com/TokenFlux/TokenRouter/internal/site"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 )
 
 type announcementRepoCapture struct {
-	service.AnnouncementRepository
+	site.AnnouncementRepository
 	listParams pagination.PaginationParams
 }
 
@@ -23,9 +23,9 @@ func (r *announcementRepoCapture) ArchiveExpired(context.Context, time.Time) (in
 	return 0, nil
 }
 
-func (r *announcementRepoCapture) List(ctx context.Context, params pagination.PaginationParams, filters service.AnnouncementListFilters) ([]service.Announcement, *pagination.PaginationResult, error) {
+func (r *announcementRepoCapture) List(ctx context.Context, params pagination.PaginationParams, filters site.AnnouncementListFilters) ([]site.Announcement, *pagination.PaginationResult, error) {
 	r.listParams = params
-	return []service.Announcement{}, &pagination.PaginationResult{
+	return []site.Announcement{}, &pagination.PaginationResult{
 		Total:    0,
 		Page:     params.Page,
 		PageSize: params.PageSize,
@@ -33,25 +33,25 @@ func (r *announcementRepoCapture) List(ctx context.Context, params pagination.Pa
 	}, nil
 }
 
-func (r *announcementRepoCapture) GetByID(ctx context.Context, id int64) (*service.Announcement, error) {
-	return &service.Announcement{
+func (r *announcementRepoCapture) GetByID(ctx context.Context, id int64) (*site.Announcement, error) {
+	return &site.Announcement{
 		ID:        id,
 		Title:     "announcement",
 		Content:   "content",
-		Status:    service.AnnouncementStatusActive,
+		Status:    site.AnnouncementStatusActive,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}, nil
 }
 
 type announcementUserRepoCapture struct {
-	service.UserReader
+	site.UserReader
 	listParams pagination.PaginationParams
 }
 
-func (r *announcementUserRepoCapture) ListWithFilters(ctx context.Context, params pagination.PaginationParams, filters service.UserListFilters) ([]service.UserSnapshot, *pagination.PaginationResult, error) {
+func (r *announcementUserRepoCapture) ListWithFilters(ctx context.Context, params pagination.PaginationParams, filters site.UserListFilters) ([]site.UserSnapshot, *pagination.PaginationResult, error) {
 	r.listParams = params
-	return []service.UserSnapshot{}, &pagination.PaginationResult{
+	return []site.UserSnapshot{}, &pagination.PaginationResult{
 		Total:    0,
 		Page:     params.Page,
 		PageSize: params.PageSize,
@@ -60,7 +60,7 @@ func (r *announcementUserRepoCapture) ListWithFilters(ctx context.Context, param
 }
 
 type announcementReadRepoCapture struct {
-	service.AnnouncementReadRepository
+	site.AnnouncementReadRepository
 }
 
 func (r *announcementReadRepoCapture) GetReadMapByUsers(ctx context.Context, announcementID int64, userIDs []int64) (map[int64]time.Time, error) {
@@ -68,12 +68,12 @@ func (r *announcementReadRepoCapture) GetReadMapByUsers(ctx context.Context, ann
 }
 
 type announcementUserSubRepoCapture struct {
-	service.SubscriptionReader
+	site.SubscriptionReader
 }
 
 func newAnnouncementSortTestRouter(announcementRepo *announcementRepoCapture, userRepo *announcementUserRepoCapture) *gin.Engine {
 	gin.SetMode(gin.TestMode)
-	svc := service.NewAnnouncementService(
+	svc := site.NewAnnouncementService(
 		announcementRepo,
 		&announcementReadRepoCapture{},
 		userRepo,

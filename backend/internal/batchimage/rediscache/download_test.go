@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	service "github.com/TokenFlux/TokenRouter/internal/batchimage"
+	"github.com/TokenFlux/TokenRouter/internal/batchimage"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
@@ -31,7 +31,7 @@ func TestBatchImageDownloadLimiter_AcquireDenyReleaseAndTTL(t *testing.T) {
 	require.True(t, mr.TTL(limiter.activeKey("11")) > 0)
 
 	_, err = limiter.Acquire(ctx, "11", "zip")
-	require.ErrorIs(t, err, service.ErrBatchImageDownloadLimited)
+	require.ErrorIs(t, err, batchimage.ErrBatchImageDownloadLimited)
 
 	require.NoError(t, permit.Release(ctx))
 	require.NoError(t, permit.Release(ctx))

@@ -17,17 +17,15 @@ type SnapshotCacheEntry struct {
 	ExpiresAt time.Time
 }
 type SnapshotCache struct{ cache *querycache.Cache }
-type SnapshotCacheLoadResult struct {
-	Entry SnapshotCacheEntry
-	Hit   bool
-}
 
 func NewSnapshotCache(ttl time.Duration) *SnapshotCache {
 	return &SnapshotCache{cache: querycache.NewCache(ttl)}
 }
+
 func snapshotEntry(e querycache.Entry) SnapshotCacheEntry {
 	return SnapshotCacheEntry{ETag: BuildETagFromAny(e.Payload), Payload: e.Payload, ExpiresAt: e.ExpiresAt}
 }
+
 func (c *SnapshotCache) Get(key string) (SnapshotCacheEntry, bool) {
 	if c == nil {
 		return SnapshotCacheEntry{}, false
@@ -38,12 +36,14 @@ func (c *SnapshotCache) Get(key string) (SnapshotCacheEntry, bool) {
 	}
 	return snapshotEntry(e), true
 }
+
 func (c *SnapshotCache) Set(key string, payload any) SnapshotCacheEntry {
 	if c == nil {
 		return SnapshotCacheEntry{}
 	}
 	return snapshotEntry(c.cache.Set(key, payload))
 }
+
 func (c *SnapshotCache) GetOrLoad(key string, load func() (any, error)) (SnapshotCacheEntry, bool, error) {
 	if load == nil {
 		return SnapshotCacheEntry{}, false, nil
@@ -58,6 +58,7 @@ func (c *SnapshotCache) GetOrLoad(key string, load func() (any, error)) (Snapsho
 	}
 	return snapshotEntry(entry), hit, nil
 }
+
 func BuildETagFromAny(payload any) string {
 	raw, err := json.Marshal(payload)
 	if err != nil {
@@ -66,6 +67,7 @@ func BuildETagFromAny(payload any) string {
 	sum := sha256.Sum256(raw)
 	return "\"" + hex.EncodeToString(sum[:]) + "\""
 }
+
 func ParseBoolQueryWithDefault(raw string, def bool) bool {
 	value := strings.TrimSpace(strings.ToLower(raw))
 	if value == "" {

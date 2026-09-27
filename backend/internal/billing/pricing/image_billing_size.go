@@ -1,7 +1,6 @@
 package pricing
 
 import (
-	"sort"
 	"strconv"
 	"strings"
 )
@@ -181,19 +180,4 @@ func NormalizeImageSizeBreakdown(in map[string]int) map[string]int {
 		return nil
 	}
 	return out
-}
-
-func SortedImageBillingBreakdownKeys(breakdown map[string]int) []string {
-	keys := make([]string, 0, len(breakdown))
-	for key := range breakdown {
-		keys = append(keys, key)
-	}
-	sort.Slice(keys, func(i, j int) bool {
-		left, right := ImageTierRank(keys[i]), ImageTierRank(keys[j])
-		if left == right {
-			return keys[i] < keys[j]
-		}
-		return left < right
-	})
-	return keys
 }

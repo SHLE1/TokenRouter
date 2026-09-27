@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	OpenAIResponsesEndpoint          = "/v1/responses"
-	OpenAIResponsesCompactEndpoint   = "/v1/responses/compact"
+	OpenAIResponsesEndpoint = "/v1/responses"
+
 	ResponsesLiteHeader              = "X-OpenAI-Internal-Codex-Responses-Lite"
 	ResponsesLiteHeaderKey           = "x-openai-internal-codex-responses-lite"
 	ResponsesLiteWSMetadataKey       = "ws_request_header_x_openai_internal_codex_responses_lite"
@@ -43,10 +43,6 @@ func (p ImageIntentPolicy) IsOpenAIResponsesLiteWebSocketPayload(body []byte) bo
 		return false
 	}
 	return p.IsOpenAIResponsesLiteHeader(gjson.GetBytes(body, "client_metadata."+ResponsesLiteWSMetadataKey).String())
-}
-
-func (p ImageIntentPolicy) ImageGenerationPermissionMessage() string {
-	return ImageGenerationPermissionMessage
 }
 
 func (p ImageIntentPolicy) IsImageGenerationIntent(endpoint string, requestedModel string, body []byte) bool {

@@ -8,20 +8,6 @@ import (
 	"strings"
 )
 
-// GetWebhookProvider returns the provider instance that should verify a webhook.
-// It resolves the original provider instance from the order whenever possible and
-// only falls back to a registry provider for legacy/single-instance scenarios.
-func (s *ProviderBindings) GetWebhookProvider(ctx context.Context, providerKey, outTradeNo string) (Provider, error) {
-	providers, err := s.GetWebhookProviders(ctx, providerKey, outTradeNo)
-	if err != nil {
-		return nil, err
-	}
-	if len(providers) == 0 {
-		return nil, ErrProviderNotFound
-	}
-	return providers[0], nil
-}
-
 // GetWebhookProviders returns provider candidates that can verify the webhook.
 // Official WeChat Pay may require multiple candidates because the callback body
 // cannot be bound to a merchant before decryption.
@@ -77,6 +63,7 @@ func (s *ProviderBindings) GetWebhookProviders(ctx context.Context, providerKey,
 	}
 	return []Provider{prov}, nil
 }
+
 func (s *ProviderBindings) GetPinnedOrderProvider(ctx context.Context, o *Order) (Provider, error) {
 	inst, err := s.GetOrderProviderInstance(ctx, o)
 	if err != nil {
@@ -87,6 +74,7 @@ func (s *ProviderBindings) GetPinnedOrderProvider(ctx context.Context, o *Order)
 	}
 	return s.CreateProviderFromInstance(ctx, inst)
 }
+
 func (s *ProviderBindings) WebhookRegistryFallbackAllowed(ctx context.Context, providerKey string) bool {
 	providerKey = strings.TrimSpace(providerKey)
 	if providerKey == "" || s == nil || s.store == nil {
@@ -100,9 +88,11 @@ func (s *ProviderBindings) WebhookRegistryFallbackAllowed(ctx context.Context, p
 	}
 	return count <= 1
 }
+
 func PsHasPinnedProviderInstance(order *Order) bool {
 	return order != nil && (PsOrderProviderSnapshot(order) != nil || (order.ProviderInstanceID != nil && strings.TrimSpace(*order.ProviderInstanceID) != ""))
 }
+
 func (s *ProviderBindings) GetEnabledWebhookProvidersByKey(ctx context.Context, providerKey string) ([]Provider, error) {
 	providerKey = strings.TrimSpace(providerKey)
 	instances, err := s.store.ListInstances(ctx, InstanceFilter{ProviderKey: providerKey, EnabledOnly: true, SortByOrder: true})
@@ -151,6 +141,7 @@ func (s *ProviderBindings) GetOrderProvider(ctx context.Context, o *Order) (Prov
 	s.EnsureProviders(ctx)
 	return s.registry.GetProvider(o.PaymentType)
 }
+
 func PaymentOrderAllowsRegistryFallback(order *Order) bool {
 	if order == nil {
 		return false
@@ -166,6 +157,7 @@ func PaymentOrderAllowsRegistryFallback(order *Order) bool {
 	}
 	return true
 }
+
 func PaymentOrderFallbackProviderKey(registry *Registry, order *Order) string {
 	if order == nil {
 		return ""
@@ -177,6 +169,7 @@ func PaymentOrderFallbackProviderKey(registry *Registry, order *Order) string {
 	}
 	return strings.TrimSpace(GetBasePaymentType(strings.TrimSpace(order.PaymentType)))
 }
+
 func (s *ProviderBindings) CreateProviderFromInstance(ctx context.Context, inst *ProviderInstance) (Provider, error) {
 	if inst == nil {
 		return nil, fmt.Errorf("payment provider instance is missing")
@@ -197,6 +190,7 @@ func (s *ProviderBindings) CreateProviderFromInstance(ctx context.Context, inst 
 	}
 	return prov, nil
 }
+
 func (s *ProviderBindings) ResolveSnapshotOrderProviderInstance(ctx context.Context, order *Order, snapshot *OrderProviderSnapshot) (*ProviderInstance, error) {
 	if s == nil || s.store == nil || order == nil || snapshot == nil {
 		return nil, nil
@@ -288,6 +282,7 @@ func (s *ProviderBindings) GetRefundOrderProviderInstance(ctx context.Context, o
 	}
 	return inst, nil
 }
+
 func (s *ProviderBindings) ResolveUniqueLegacyOrderProviderInstance(ctx context.Context, o *Order) (*ProviderInstance, error) {
 	paymentType := GetBasePaymentType(strings.TrimSpace(o.PaymentType))
 	providerKey := strings.TrimSpace(refundStringValue(o.ProviderKey))
@@ -318,6 +313,7 @@ func (s *ProviderBindings) ResolveUniqueLegacyOrderProviderInstance(ctx context.
 	}
 	return nil, nil
 }
+
 func PsFilterLegacyOrderProviderInstances(orderPaymentType string, instances []*ProviderInstance) []*ProviderInstance {
 	if len(instances) == 0 {
 		return nil
@@ -333,6 +329,7 @@ func PsFilterLegacyOrderProviderInstances(orderPaymentType string, instances []*
 	}
 	return matched
 }
+
 func PsLegacyOrderMatchesInstance(orderPaymentType string, inst *ProviderInstance) bool {
 	if inst == nil {
 		return false
@@ -403,6 +400,7 @@ func (s *ProviderBindings) RefreshProvidersChecked(ctx context.Context) error {
 	s.providersLoaded = true
 	return nil
 }
+
 func (s *ProviderBindings) LoadProviders(ctx context.Context) ([]Provider, error) {
 	instances, err := s.store.ListInstances(ctx, InstanceFilter{EnabledOnly: true})
 	if err != nil {

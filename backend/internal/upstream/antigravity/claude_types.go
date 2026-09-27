@@ -15,29 +15,17 @@ type ClaudeMessage = anthropic.ClaudeMessage
 
 type ThinkingConfig = anthropic.ThinkingConfig
 
-type ClaudeMetadata = anthropic.ClaudeMetadata
-
 type ClaudeTool = anthropic.ClaudeTool
-
-type CustomToolSpec = anthropic.CustomToolSpec
 
 type ClaudeCustomToolSpec = anthropic.ClaudeCustomToolSpec
 
 type SystemBlock = anthropic.SystemBlock
 
-type ContentBlock = anthropic.ContentBlock
-
-type ImageSource = anthropic.ImageSource
-
 type ClaudeResponse = anthropic.ClaudeResponse
-
-type ClaudeContentItem = anthropic.ClaudeContentItem
 
 type ClaudeUsage = anthropic.ClaudeUsage
 
 type ClaudeError = anthropic.ClaudeError
-
-type ErrorDetail = anthropic.ErrorDetail
 
 // modelDef Antigravity 模型定义（内部使用）
 type modelDef struct {

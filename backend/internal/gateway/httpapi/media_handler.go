@@ -195,14 +195,6 @@ func (h *MediaHandler) Images(c *gin.Context) {
 	media.RunImages(ctx, media.GenerationRequest{Body: body, Stream: parsed.Stream, MaxSwitches: h.ports.MaxSwitches(), RoutingStarted: routingStarted}, h.ports.NewGenerationPorts(c, input, log, &streamStarted))
 }
 
-func (h *MediaHandler) GrokImages(c *gin.Context) {
-	endpoint := "images_generations"
-	if strings.Contains(c.Request.URL.Path, "/images/edits") {
-		endpoint = "images_edits"
-	}
-	h.GrokMedia(c, endpoint, "")
-}
-
 func (h *MediaHandler) GrokVideoGeneration(c *gin.Context) { h.GrokMedia(c, "videos_generations", "") }
 func (h *MediaHandler) GrokVideoEdit(c *gin.Context)       { h.GrokMedia(c, "videos_edits", "") }
 func (h *MediaHandler) GrokVideoExtension(c *gin.Context)  { h.GrokMedia(c, "videos_extensions", "") }

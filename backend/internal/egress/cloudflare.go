@@ -1,7 +1,6 @@
 package egress
 
 import (
-	"fmt"
 	"net/textproto"
 	"regexp"
 	"strings"
@@ -70,15 +69,6 @@ func ExtractCloudflareRayID(headers map[string][]string, body []byte) string {
 		return strings.TrimSpace(matches[1])
 	}
 	return ""
-}
-
-// FormatCloudflareChallengeMessage appends cf-ray info when available.
-func FormatCloudflareChallengeMessage(base string, headers map[string][]string, body []byte) string {
-	rayID := ExtractCloudflareRayID(headers, body)
-	if rayID == "" {
-		return base
-	}
-	return fmt.Sprintf("%s (cf-ray: %s)", base, rayID)
 }
 
 // TruncateBody truncates body text for logging/inspection.

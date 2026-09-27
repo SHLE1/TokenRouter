@@ -66,20 +66,3 @@ func ReadLocalAuth(authDir string) (*qoder.AuthInfo, error) {
 
 	return &info, nil
 }
-
-// LoadLocalIdentity 从本地 Qoder 认证数据加载身份。
-func LoadLocalIdentity(authDir string) (*qoder.AuthIdentity, *qoder.MachineIdentity, error) {
-	info, err := ReadLocalAuth(authDir)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	identity := info.ToAuthIdentity()
-	machine := &qoder.MachineIdentity{
-		MachineID:    info.MachineID,
-		MachineToken: qoder.RandomToken(50),
-		MachineType:  qoder.RandomHex(18),
-	}
-
-	return identity, machine, nil
-}

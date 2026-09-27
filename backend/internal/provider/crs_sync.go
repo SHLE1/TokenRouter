@@ -1002,11 +1002,6 @@ func ReconcileCRSOllamaCloudUsageExtra(
 	}
 }
 
-// CRSDefaultProxyName 为旧辅助入口委托代理所属规则。
-func CRSDefaultProxyName(base, protocol, host string, port int) string {
-	return egress.CRSDefaultProxyName(base, protocol, host, port)
-}
-
 func CRSDefaultName(name, id string) string {
 	if strings.TrimSpace(name) != "" {
 		return strings.TrimSpace(name)

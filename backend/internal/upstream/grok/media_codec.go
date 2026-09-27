@@ -298,11 +298,6 @@ func (m MediaCodec) ParseGrokMediaMultipartRequest(contentType string, body []by
 	}
 }
 
-func (m MediaCodec) IsOfficialGrokVideoStatusDone(statusBody []byte) bool {
-	// 官方枚举值包括 pending、done、expired 与 failed。
-	return strings.EqualFold(strings.TrimSpace(gjson.GetBytes(statusBody, "status").String()), "done")
-}
-
 // RewriteGrokMediaRequestModel 同时支持 JSON 与 multipart 媒体请求的模型改写。
 func (m MediaCodec) RewriteGrokMediaRequestModel(body []byte, contentType, model string) ([]byte, string, error) {
 	return upstream.RewriteImageModel(body, contentType, model)

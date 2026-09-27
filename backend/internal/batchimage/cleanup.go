@@ -46,10 +46,10 @@ func (s *Cleanup) Run(ctx context.Context) {
 }
 
 const (
-	DefaultBatchImageInputRetentionAfterTerminal  = 24 * time.Hour
-	DefaultBatchImageOutputRetentionAfterTerminal = 72 * time.Hour
-	DefaultBatchImageCleanupInterval              = 30 * time.Minute
-	DefaultBatchImageCleanupBatchSize             = 100
+	DefaultBatchImageInputRetentionAfterTerminal = 24 * time.Hour
+
+	DefaultBatchImageCleanupInterval  = 30 * time.Minute
+	DefaultBatchImageCleanupBatchSize = 100
 )
 
 // AppendCleanupEvent 追加清理审计事件；事件写入失败不阻断清理流程，但必须留痕。

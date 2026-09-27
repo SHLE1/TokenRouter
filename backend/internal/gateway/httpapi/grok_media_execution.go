@@ -31,10 +31,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func ExtractGrokMediaModel(contentType string, body []byte) string {
-	return gatewayprovider.GrokMediaCodec().ExtractGrokMediaModel(contentType, body)
-}
-
 // xAI 异步视频状态的官方成功结构如下（docs.x.ai Video Generation）：
 //
 //	示例：{"status":"done","model":"grok-imagine-video-1.5","video":{"url":"...","duration":8,"respect_moderation":true}}

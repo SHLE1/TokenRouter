@@ -699,10 +699,6 @@ func (r *TeamRepository) ListTeamKeyStrings(ctx context.Context, teamID int64) (
 	return r.keys.ListTeamKeyStrings(ctx, teamID)
 }
 
-func TeamUsageWhere(teamID int64, query team.TeamUsageQuery) (string, []any) {
-	return usagequery.TeamUsageWhere(teamID, query)
-}
-
 func (r *TeamRepository) GetUsageSummary(ctx context.Context, teamID int64, query team.TeamUsageQuery) (*team.TeamUsageSummary, error) {
 	return usagequery.GetUsageSummary(ctx, r.db, teamID, query, r.dateCalendar())
 }
@@ -729,11 +725,6 @@ func (r *TeamRepository) EnableTeamKey(ctx context.Context, teamID, keyID int64,
 
 func (r *TeamRepository) DeleteTeamKey(ctx context.Context, teamID, keyID int64, actorUserID *int64) (string, error) {
 	return r.keys.DeleteTeamKey(ctx, teamID, keyID, actorUserID)
-}
-
-// NormalizeTeamMembershipWindows 为旧存储入口保留系统日期对象，规则只有 billing 一份。
-func NormalizeTeamMembershipWindows(member *team.TeamMembership, now time.Time) {
-	normalizeMemberQuotaWindows(member, now, timezone.NewCalendar(time.Local))
 }
 
 func normalizeMemberQuotaWindows(member *team.TeamMembership, now time.Time, calendar timezone.Calendar) {
