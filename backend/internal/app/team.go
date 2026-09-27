@@ -1,4 +1,3 @@
-// 本文件维护 app 的所属能力；兼容入口复用唯一实现。
 package app
 
 import (
@@ -33,6 +32,7 @@ func (p teamIdentityUsers) GetByID(ctx context.Context, id int64) (*team.UserSna
 	}
 	return &team.UserSnapshot{ID: u.ID, Email: u.Email, Username: u.Username}, e
 }
+
 func (p teamIdentityUsers) GetByEmail(ctx context.Context, email string) (*team.UserSnapshot, error) {
 	u, e := p.Users.GetByEmail(ctx, email)
 	if u == nil {
@@ -40,6 +40,7 @@ func (p teamIdentityUsers) GetByEmail(ctx context.Context, email string) (*team.
 	}
 	return &team.UserSnapshot{ID: u.ID, Email: u.Email, Username: u.Username}, e
 }
+
 func provideTeam(repo team.TeamRepository, users *identitypostgres.UserStore, email *notification.Mailer, cache apikey.APIKeyCache, limiter team.TeamInvitationLimiter, settings *site.DisplaySettings, cfg *config.Config) *team.TeamService {
 	var options *team.Options
 	if cfg != nil {

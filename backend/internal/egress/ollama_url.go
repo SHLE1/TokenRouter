@@ -1,4 +1,4 @@
-// 本文件维护 egress 的所属能力；兼容入口复用唯一实现。
+// Ollama 云地址识别用于限制会话凭据的发送目标。
 package egress
 
 import (

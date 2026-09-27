@@ -1,4 +1,3 @@
-// 本文件维护 httpapi 的所属能力；兼容入口复用唯一实现。
 package httpapi
 
 import (
@@ -21,53 +20,71 @@ type AuthenticationHandler struct {
 func (h *AuthenticationHandler) BindDingTalkOAuthLogin(c *gin.Context) {
 	h.DingTalk.BindDingTalkOAuthLogin(c)
 }
+
 func (h *AuthenticationHandler) BindLinuxDoOAuthLogin(c *gin.Context) {
 	h.Pending.BindLinuxDoOAuthLogin(c)
 }
+
 func (h *AuthenticationHandler) BindOIDCOAuthLogin(c *gin.Context) { h.Pending.BindOIDCOAuthLogin(c) }
+
 func (h *AuthenticationHandler) BindPendingOAuthLogin(c *gin.Context) {
 	h.Pending.BindPendingOAuthLogin(c)
 }
+
 func (h *AuthenticationHandler) BindWeChatOAuthLogin(c *gin.Context) {
 	h.Pending.BindWeChatOAuthLogin(c)
 }
+
 func (h *AuthenticationHandler) CompleteDingTalkOAuthRegistration(c *gin.Context) {
 	h.DingTalk.CompleteDingTalkOAuthRegistration(c)
 }
+
 func (h *AuthenticationHandler) CompleteGitHubOAuthRegistration(c *gin.Context) {
 	h.Email.CompleteGitHubOAuthRegistration(c)
 }
+
 func (h *AuthenticationHandler) CompleteGoogleOAuthRegistration(c *gin.Context) {
 	h.Email.CompleteGoogleOAuthRegistration(c)
 }
+
 func (h *AuthenticationHandler) CompleteLinuxDoOAuthRegistration(c *gin.Context) {
 	h.LinuxDo.CompleteLinuxDoOAuthRegistration(c)
 }
+
 func (h *AuthenticationHandler) CompleteOIDCOAuthRegistration(c *gin.Context) {
 	h.OIDC.CompleteOIDCOAuthRegistration(c)
 }
+
 func (h *AuthenticationHandler) CompleteWeChatOAuthRegistration(c *gin.Context) {
 	h.WeChat.CompleteWeChatOAuthRegistration(c)
 }
+
 func (h *AuthenticationHandler) CreateDingTalkOAuthAccount(c *gin.Context) {
 	h.DingTalk.CreateDingTalkOAuthAccount(c)
 }
+
 func (h *AuthenticationHandler) CreateLinuxDoOAuthAccount(c *gin.Context) {
 	h.Pending.CreateLinuxDoOAuthAccount(c)
 }
+
 func (h *AuthenticationHandler) CreateOIDCOAuthAccount(c *gin.Context) {
 	h.Pending.CreateOIDCOAuthAccount(c)
 }
+
 func (h *AuthenticationHandler) CreatePendingOAuthAccount(c *gin.Context) {
 	h.Pending.CreatePendingOAuthAccount(c)
 }
+
 func (h *AuthenticationHandler) CreateWeChatOAuthAccount(c *gin.Context) {
 	h.Pending.CreateWeChatOAuthAccount(c)
 }
+
 func (h *AuthenticationHandler) DingTalkOAuthCallback(c *gin.Context) {
 	h.DingTalk.DingTalkOAuthCallback(c)
 }
+
 func (h *AuthenticationHandler) DingTalkOAuthStart(c *gin.Context) { h.DingTalk.DingTalkOAuthStart(c) }
+
 func (h *AuthenticationHandler) ExchangePendingOAuthCompletion(c *gin.Context) {
 	h.Pending.ExchangePendingOAuthCompletion(c)
 }
@@ -101,6 +118,8 @@ func (h *AuthenticationHandler) SendVerifyCode(c *gin.Context) { h.Session.SendV
 func (h *AuthenticationHandler) ValidateInvitationCode(c *gin.Context) {
 	h.Session.ValidateInvitationCode(c)
 }
-func (h *AuthenticationHandler) ValidatePromoCode(c *gin.Context)   { h.Session.ValidatePromoCode(c) }
+
+func (h *AuthenticationHandler) ValidatePromoCode(c *gin.Context) { h.Session.ValidatePromoCode(c) }
+
 func (h *AuthenticationHandler) WeChatOAuthCallback(c *gin.Context) { h.WeChat.WeChatOAuthCallback(c) }
 func (h *AuthenticationHandler) WeChatOAuthStart(c *gin.Context)    { h.WeChat.WeChatOAuthStart(c) }

@@ -1221,6 +1221,3 @@ func ParseSSEEvent(line string) (*SSEEvent, error) {
 	}
 	return &events[0], nil
 }
-
-// 保留 url 包引用，避免后续调整导入时误删。
-var _ = url.Parse

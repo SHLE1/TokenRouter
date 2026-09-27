@@ -1,4 +1,3 @@
-// 本文件维护 postgres 的所属能力；兼容入口复用唯一实现。
 package postgres
 
 import (
@@ -26,15 +25,18 @@ type RedeemWriters struct {
 func (w RedeemWriters) UpdateBalance(ctx context.Context, id int64, amount float64) error {
 	return w.Balances.UpdateBalance(ctx, id, amount)
 }
+
 func (w RedeemWriters) ApplyRedeemBalanceAdjustment(ctx context.Context, id int64, amount float64) error {
 	return w.Balances.ApplyRedeemBalanceAdjustment(ctx, id, amount)
 }
+
 func (w RedeemWriters) UpdateConcurrency(ctx context.Context, id int64, delta int) error {
 	if w.Concurrency == nil {
 		return billing.ErrRedeemConcurrencyUnsupported
 	}
 	return w.Concurrency.UpdateConcurrency(ctx, id, delta)
 }
+
 func (w RedeemWriters) ApplyRedeemConcurrencyAdjustment(ctx context.Context, id int64, delta int) error {
 	if w.Concurrency == nil {
 		return billing.ErrRedeemConcurrencyUnsupported

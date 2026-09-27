@@ -1,4 +1,3 @@
-// 本文件维护 identity 的所属能力；兼容入口复用唯一实现。
 package identity
 
 import (
@@ -84,7 +83,6 @@ func (s *SessionService) ValidateToken(tokenString string) (*JWTClaims, error) {
 		}
 		return []byte(s.options.Secret), nil
 	})
-
 	if err != nil {
 		if errors.Is(err, jwt.ErrTokenExpired) {
 			// token 过期但仍返回 claims（用于 RefreshToken 等场景）

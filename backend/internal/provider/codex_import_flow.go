@@ -1,4 +1,4 @@
-// 本文件维护 provider 的所属能力；兼容入口复用唯一实现。
+// Codex 导入逐项创建或更新提供商，并汇总每条输入的执行结果。
 package provider
 
 import (

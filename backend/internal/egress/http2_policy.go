@@ -1,4 +1,3 @@
-// 本文件维护 egress 的所属能力；兼容入口复用唯一实现。
 package egress
 
 import (
@@ -60,6 +59,7 @@ func (p *TransportPolicy) Resolve(profile, proxyKey, proxyScheme string, options
 	}
 	return TransportOpenAIH2
 }
+
 func (p *TransportPolicy) Active(key string, now time.Time) bool {
 	raw, ok := p.fallbacks.Load(key)
 	if !ok {
@@ -68,6 +68,7 @@ func (p *TransportPolicy) Active(key string, now time.Time) bool {
 	state, ok := raw.(*openAIHTTP2FallbackState)
 	return ok && state != nil && state.isFallbackActive(now)
 }
+
 func (p *TransportPolicy) ObserveFailure(profile, mode, key string, compatibilityFailure bool, options HTTP2Options, now time.Time) (bool, time.Time) {
 	if profile != "openai" || mode != TransportOpenAIH2 || !options.Enabled || !options.AllowProxyFallbackToHTTP1 || !httpProxyKey(key) || !compatibilityFailure {
 		return false, time.Time{}
@@ -79,6 +80,7 @@ func (p *TransportPolicy) ObserveFailure(profile, mode, key string, compatibilit
 	}
 	return state.recordFailure(now, options.FallbackErrorThreshold, options.FallbackWindow, options.FallbackTTL)
 }
+
 func (p *TransportPolicy) ObserveSuccess(profile, mode, key string) {
 	if profile != "openai" || mode != TransportOpenAIH2 || !httpProxyKey(key) {
 		return
@@ -90,6 +92,7 @@ func (p *TransportPolicy) ObserveSuccess(profile, mode, key string) {
 		}
 	}
 }
+
 func httpProxyKey(key string) bool {
 	return strings.HasPrefix(key, "http://") || strings.HasPrefix(key, "https://")
 }

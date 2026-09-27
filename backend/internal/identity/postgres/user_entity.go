@@ -1,4 +1,3 @@
-// 本文件维护 postgres 的所属能力；兼容入口复用唯一实现。
 package postgres
 
 import (
@@ -53,37 +52,3 @@ type SQLExecutor interface {
 	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
 }
 type sqlQueryer = postgresinfra.Queryer
-
-// UserToEntity 仅为旧 HTTP 入口恢复标量形状，不附加 Ent 客户端或关联边。
-func UserToEntity(u *identitycore.User) *dbent.User {
-	if u == nil {
-		return nil
-	}
-	return &dbent.User{
-		ID:                         u.ID,
-		Email:                      u.Email,
-		Username:                   u.Username,
-		Notes:                      u.Notes,
-		PasswordHash:               u.PasswordHash,
-		Role:                       u.Role,
-		Balance:                    u.Balance,
-		FrozenBalance:              u.FrozenBalance,
-		Concurrency:                u.Concurrency,
-		Status:                     u.Status,
-		SignupSource:               u.SignupSource,
-		LastLoginAt:                u.LastLoginAt,
-		LastActiveAt:               u.LastActiveAt,
-		TotpSecretEncrypted:        u.TotpSecretEncrypted,
-		TotpEnabled:                u.TotpEnabled,
-		TotpEnabledAt:              u.TotpEnabledAt,
-		BalanceNotifyEnabled:       u.BalanceNotifyEnabled,
-		BalanceNotifyThresholdType: u.BalanceNotifyThresholdType,
-		BalanceNotifyThreshold:     u.BalanceNotifyThreshold,
-		TotalRecharged:             u.TotalRecharged,
-		RpmLimit:                   u.RPMLimit,
-		APIKeyLimit:                u.APIKeyLimit,
-		CreatedAt:                  u.CreatedAt,
-		UpdatedAt:                  u.UpdatedAt,
-		DeletedAt:                  u.DeletedAt,
-	}
-}

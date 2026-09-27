@@ -1,4 +1,4 @@
-// 本文件维护 apikey 的所属能力；兼容入口复用唯一实现。
+// 认证缓存键使用 API Key 摘要，避免将原始凭据写入缓存键名。
 package apikey
 
 import (

@@ -1,4 +1,3 @@
-// 本文件维护 provider 的所属能力；兼容入口复用唯一实现。
 package provider
 
 // SanitizeManagedBaseRPM 对 extra map 中的 base_rpm 值进行范围校验和归一化。

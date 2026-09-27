@@ -1,4 +1,3 @@
-// 本文件维护 routing 的所属能力；兼容入口复用唯一实现。
 package routing
 
 import (
@@ -24,22 +23,6 @@ func (g *Group) AllowsClientProtocol(protocol protocol.ProtocolID) bool {
 		return false
 	}
 	return slices.Contains(g.AllowedProtocols, protocol)
-}
-
-// FilterGroupClientProtocolsForPlatform 在平台切换时只保留新平台支持的协议。
-func FilterGroupClientProtocolsForPlatform(platform string, protocols []protocol.ProtocolID) []protocol.ProtocolID {
-	supportedProtocols := capability.SupportedGroupClientProtocols(platform)
-	selectedSet := make(map[protocol.ProtocolID]struct{}, len(protocols))
-	for _, protocol := range protocols {
-		selectedSet[protocol] = struct{}{}
-	}
-	selected := make([]protocol.ProtocolID, 0, len(selectedSet))
-	for _, protocol := range supportedProtocols {
-		if _, ok := selectedSet[protocol]; ok {
-			selected = append(selected, protocol)
-		}
-	}
-	return selected
 }
 
 // NormalizeGroupProtocolPolicy 校验一次原始集合，再应用兼容输入并生成旧字段镜像。

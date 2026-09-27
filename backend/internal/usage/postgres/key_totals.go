@@ -1,4 +1,4 @@
-// 本文件维护 repository 的所属能力；兼容入口复用唯一实现。
+// 批量读取 API Key 用量总额，并使用预聚合设置选择查询方式。
 package postgres
 
 import (

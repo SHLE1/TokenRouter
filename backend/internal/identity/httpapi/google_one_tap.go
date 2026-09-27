@@ -1,4 +1,3 @@
-// 本文件维护 httpapi 的所属能力；兼容入口复用唯一实现。
 package httpapi
 
 import (
@@ -14,11 +13,14 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type GoogleOneTapOptions struct{ ClientID, FrontendRedirectURL string }
-type GoogleOneTapHTTPOptions struct {
-	LoadConfig          func(context.Context) (GoogleOneTapOptions, error)
-	RegistrationEnabled func(context.Context) bool
-}
+type (
+	GoogleOneTapOptions     struct{ ClientID, FrontendRedirectURL string }
+	GoogleOneTapHTTPOptions struct {
+		LoadConfig          func(context.Context) (GoogleOneTapOptions, error)
+		RegistrationEnabled func(context.Context) bool
+	}
+)
+
 type GoogleOneTapHandler struct {
 	*PendingHandler
 	Verifier      identity.GoogleIDTokenVerifier
@@ -28,12 +30,16 @@ type GoogleOneTapHandler struct {
 func NewGoogleOneTapHandler(pending *PendingHandler, verifier identity.GoogleIDTokenVerifier, options GoogleOneTapHTTPOptions) *GoogleOneTapHandler {
 	return &GoogleOneTapHandler{pending, verifier, options}
 }
+
 func (h *GoogleOneTapHandler) verifyGoogleOneTapCredential(ctx context.Context, credential, audience string) (*identity.GoogleIDTokenClaims, error) {
 	return h.Verifier.Verify(ctx, credential, audience)
 }
 
-const emailOAuthDefaultRedirect = "/dashboard"
-const emailOAuthDefaultFrontendCB = "/auth/oauth/callback"
+const (
+	emailOAuthDefaultRedirect   = "/dashboard"
+	emailOAuthDefaultFrontendCB = "/auth/oauth/callback"
+)
+
 const (
 	GoogleOneTapCredentialMaxBytes  = 16 * 1024
 	GoogleOneTapContextMaxBytes     = 256
@@ -178,6 +184,7 @@ func (h *GoogleOneTapHandler) GoogleOneTap(c *gin.Context) {
 		TokenType:    "Bearer",
 	})
 }
+
 func WriteGoogleOneTapResponse(c *gin.Context, payload GoogleOneTapResponse) {
 	c.Header("Cache-Control", "no-store")
 	c.Header("Pragma", "no-cache")

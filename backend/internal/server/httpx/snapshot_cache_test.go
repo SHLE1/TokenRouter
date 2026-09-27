@@ -1,6 +1,5 @@
 //go:build unit
 
-// 本文件维护 httpx 的所属能力；兼容入口复用唯一实现。
 package httpx
 
 import (

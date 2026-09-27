@@ -1,4 +1,3 @@
-// 本文件维护 identity 的所属能力；兼容入口复用唯一实现。
 package identity
 
 import (
@@ -19,12 +18,15 @@ type DingTalkSyncRuntime struct {
 func (s *DingTalkSyncRuntime) Async(ctx context.Context, cfg DingTalkOAuthOptions, client DingTalkOAuthClient, id int64, staff *DingTalkProfileSnapshot, username bool) {
 	RunDingTalkSync(ctx, s.Run, s.Observe, func(ctx context.Context) { s.Sync(ctx, cfg, client, id, staff, username) })
 }
+
 func (s *DingTalkSyncRuntime) Sync(ctx context.Context, cfg DingTalkOAuthOptions, client DingTalkOAuthClient, id int64, staff *DingTalkProfileSnapshot, username bool) {
 	s.Profiles.Sync(ctx, DingTalkSyncOptions{CorpRestrictionPolicy: cfg.CorpRestrictionPolicy, SyncCorpEmail: cfg.SyncCorpEmail, SyncDisplayName: cfg.SyncDisplayName, SyncDept: cfg.SyncDept, SyncCorpEmailAttrKey: cfg.SyncCorpEmailAttrKey, SyncDisplayNameAttrKey: cfg.SyncDisplayNameAttrKey, SyncDeptAttrKey: cfg.SyncDeptAttrKey}, client, id, staff, username)
 }
+
 func (s *DingTalkSyncRuntime) FromClaims(ctx context.Context, cfg DingTalkOAuthOptions, client DingTalkOAuthClient, id int64, claims map[string]any, username bool) {
 	s.Async(ctx, cfg, client, id, DingTalkProfileFromClaims(claims), username)
 }
+
 func (s *DingTalkSyncRuntime) Pending(ctx context.Context, p *PendingAuthSession, id int64, username bool) {
 	if p == nil || id <= 0 || !strings.EqualFold(strings.TrimSpace(p.ProviderType), "dingtalk") {
 		return

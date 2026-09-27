@@ -37,7 +37,7 @@ func BenchmarkOpenAIWSForwarderHotPath(b *testing.B) {
 		benchmarkOpenAIWSBoolSink = payload["tools"] != nil
 		benchmarkOpenAIWSStringSink = gatewayprovider.SummarizeOpenAIWSPayloadKeySizes(payload, openAIWSPayloadKeySizeTopN)
 		benchmarkOpenAIWSStringSink = gatewayprovider.SummarizeOpenAIWSInput(payload["input"])
-		benchmarkOpenAIWSPayloadJSONSink = payloadAsJSON(payload)
+		benchmarkOpenAIWSPayloadJSONSink = string(payloadAsJSONBytes(payload))
 	}
 }
 

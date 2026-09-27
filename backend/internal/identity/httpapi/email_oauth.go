@@ -1,4 +1,3 @@
-// 本文件维护 httpapi 的所属能力；兼容入口复用唯一实现。
 package httpapi
 
 import (
@@ -40,13 +39,17 @@ const (
 func (h *EmailOAuthHandler) GitHubOAuthStart(c *gin.Context)    { h.EmailOAuthStart(c, "github") }
 func (h *EmailOAuthHandler) GoogleOAuthStart(c *gin.Context)    { h.EmailOAuthStart(c, "google") }
 func (h *EmailOAuthHandler) GitHubOAuthCallback(c *gin.Context) { h.EmailOAuthCallback(c, "github") }
+
 func (h *EmailOAuthHandler) GoogleOAuthCallback(c *gin.Context) { h.EmailOAuthCallback(c, "google") }
+
 func (h *EmailOAuthHandler) CompleteGitHubOAuthRegistration(c *gin.Context) {
 	h.CompleteEmailOAuthRegistration(c, "github")
 }
+
 func (h *EmailOAuthHandler) CompleteGoogleOAuthRegistration(c *gin.Context) {
 	h.CompleteEmailOAuthRegistration(c, "google")
 }
+
 func (h *EmailOAuthHandler) EmailOAuthStart(c *gin.Context, provider string) {
 	if !h.RequireActionCaptchaForOAuthLoginStart(c) {
 		return
@@ -85,6 +88,7 @@ func (h *EmailOAuthHandler) EmailOAuthStart(c *gin.Context, provider string) {
 	}
 	RespondOAuthStart(c, authURL)
 }
+
 func (h *EmailOAuthHandler) EmailOAuthCallback(c *gin.Context, provider string) {
 	cfg, cfgErr := h.loadConfig(c.Request.Context(), provider)
 	if cfgErr != nil {
@@ -142,6 +146,7 @@ func (h *EmailOAuthHandler) EmailOAuthCallback(c *gin.Context, provider string) 
 	}
 	h.EmailOAuthCallbackWithProfile(c, provider, cfg, frontendCallback, redirectTo, profile)
 }
+
 func (h *EmailOAuthHandler) EmailOAuthCallbackWithProfile(
 	c *gin.Context,
 	provider string,
@@ -190,6 +195,7 @@ func (h *EmailOAuthHandler) EmailOAuthCallbackWithProfile(
 	fragment.Set("redirect", redirectTo)
 	RedirectOAuthFragment(c, frontendCallback, fragment)
 }
+
 func (h *EmailOAuthHandler) EmailOAuthAffCode(c *gin.Context) string {
 	if c == nil {
 		return ""
@@ -199,6 +205,7 @@ func (h *EmailOAuthHandler) EmailOAuthAffCode(c *gin.Context) string {
 	}
 	return ""
 }
+
 func (h *EmailOAuthHandler) CompleteEmailOAuthRegistration(c *gin.Context, provider string) {
 	var req CompleteEmailOAuthRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -291,6 +298,7 @@ func BuildEmailOAuthAuthorizeURL(cfg identity.EmailOAuthOptions, state string) (
 	u.RawQuery = q.Encode()
 	return u.String(), nil
 }
+
 func EmailOAuthSetCookie(c *gin.Context, name, value string, secure bool) {
 	http.SetCookie(c.Writer, &http.Cookie{
 		Name:     name,
@@ -302,6 +310,7 @@ func EmailOAuthSetCookie(c *gin.Context, name, value string, secure bool) {
 		SameSite: http.SameSiteLaxMode,
 	})
 }
+
 func EmailOAuthClearCookie(c *gin.Context, name string, secure bool) {
 	http.SetCookie(c.Writer, &http.Cookie{
 		Name:     name,

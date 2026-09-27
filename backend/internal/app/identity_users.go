@@ -1,4 +1,3 @@
-// 本文件维护 app 的所属能力；兼容入口复用唯一实现。
 package app
 
 import (
@@ -17,6 +16,7 @@ type announcementUsers struct{ Repository identity.UserRepository }
 func provideAnnouncementUsers(users *identitypostgres.UserStore) site.UserReader {
 	return &announcementUsers{users}
 }
+
 func (a *announcementUsers) GetByID(ctx context.Context, id int64) (*site.UserSnapshot, error) {
 	u, e := a.Repository.GetByID(ctx, id)
 	if e != nil || u == nil {
@@ -24,6 +24,7 @@ func (a *announcementUsers) GetByID(ctx context.Context, id int64) (*site.UserSn
 	}
 	return &site.UserSnapshot{ID: u.ID, Email: u.Email, Username: u.Username, Balance: u.Balance}, nil
 }
+
 func (a *announcementUsers) ListWithFilters(ctx context.Context, p pagination.PaginationParams, f site.UserListFilters) ([]site.UserSnapshot, *pagination.PaginationResult, error) {
 	users, page, e := a.Repository.ListWithFilters(ctx, p, identity.UserListFilters{Search: f.Search})
 	if e != nil {

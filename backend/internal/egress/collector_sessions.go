@@ -1,4 +1,3 @@
-// 本文件维护 egress 的所属能力；兼容入口复用唯一实现。
 package egress
 
 import (
@@ -28,6 +27,7 @@ func NewCaptureSessions(now func() time.Time) *CaptureSessions {
 	}
 	return &CaptureSessions{states: make(map[string]*captureSession), now: now}
 }
+
 func (s *CaptureSessions) prune(now time.Time) {
 	for token, state := range s.states {
 		if now.After(state.expiresAt) {
@@ -35,6 +35,7 @@ func (s *CaptureSessions) prune(now time.Time) {
 		}
 	}
 }
+
 func (s *CaptureSessions) state(token string) (*captureSession, error) {
 	s.prune(s.now())
 	state := s.states[token]
@@ -43,6 +44,7 @@ func (s *CaptureSessions) state(token string) (*captureSession, error) {
 	}
 	return state, nil
 }
+
 func (s *CaptureSessions) Create(baseURL, caPEM string, ttl time.Duration) (*TLSFingerprintCollectorSession, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -55,6 +57,7 @@ func (s *CaptureSessions) Create(baseURL, caPEM string, ttl time.Duration) (*TLS
 	s.states[token] = &captureSession{token: token, expiresAt: expires}
 	return &TLSFingerprintCollectorSession{Token: token, ExpiresAt: expires, CaptureURL: baseURL + "/capture/" + token, CAPEM: caPEM}, nil
 }
+
 func (s *CaptureSessions) Append(token string, record *TLSFingerprintCaptureRecord, max int) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -68,6 +71,7 @@ func (s *CaptureSessions) Append(token string, record *TLSFingerprintCaptureReco
 	}
 	return nil
 }
+
 func (s *CaptureSessions) List(token string) ([]*TLSFingerprintCaptureRecord, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -80,11 +84,13 @@ func (s *CaptureSessions) List(token string) ([]*TLSFingerprintCaptureRecord, er
 	sort.Slice(out, func(i, j int) bool { return out[i].CapturedAt.After(out[j].CapturedAt) })
 	return out, nil
 }
+
 func (s *CaptureSessions) Delete(token string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	delete(s.states, token)
 }
+
 func randomHexToken(bytesLen int) (string, error) {
 	buf := make([]byte, bytesLen)
 	if _, err := rand.Read(buf); err != nil {

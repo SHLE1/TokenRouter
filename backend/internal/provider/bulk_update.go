@@ -1,4 +1,3 @@
-// 本文件维护 provider 的所属能力；兼容入口复用唯一实现。
 package provider
 
 // ProviderBulkUpdate 表达批量配置补丁；nil 指针表示不修改对应字段。

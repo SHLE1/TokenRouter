@@ -1,4 +1,3 @@
-// 本文件维护 identity 的所属能力；兼容入口复用唯一实现。
 package identity
 
 import (
@@ -16,12 +15,15 @@ type OAuthBindingSigner struct{ secret string }
 func NewOAuthBindingSigner(secret string) OAuthBindingSigner {
 	return OAuthBindingSigner{secret: secret}
 }
+
 func (s OAuthBindingSigner) Sign(id int64) (string, error) {
 	return BuildOAuthBindUserCookieValue(id, s.secret)
 }
+
 func (s OAuthBindingSigner) Verify(value string) (int64, error) {
 	return ParseOAuthBindUserCookieValue(value, s.secret)
 }
+
 func BuildOAuthBindUserCookieValue(userID int64, secret string) (string, error) {
 	secret = strings.TrimSpace(secret)
 	if userID <= 0 || secret == "" {
@@ -33,6 +35,7 @@ func BuildOAuthBindUserCookieValue(userID int64, secret string) (string, error) 
 	signature := base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
 	return payload + "." + signature, nil
 }
+
 func ParseOAuthBindUserCookieValue(value string, secret string) (int64, error) {
 	secret = strings.TrimSpace(secret)
 	if secret == "" {

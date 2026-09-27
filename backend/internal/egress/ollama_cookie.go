@@ -1,4 +1,4 @@
-// 本文件维护 egress 的所属能力；兼容入口复用唯一实现。
+// Ollama 会话输入只保留允许的 Cookie，并限制总长度。
 package egress
 
 import (
@@ -58,6 +58,7 @@ func NormalizeOllamaCloudUsageCookie(raw string) (string, error) {
 	}
 	return strings.Join(normalized, "; "), nil
 }
+
 func isAllowedOllamaCloudSessionCookie(name string) bool {
 	switch name {
 	case "wos-session", "__Secure-session", "session", "ollama_session", "__Host-ollama_session":

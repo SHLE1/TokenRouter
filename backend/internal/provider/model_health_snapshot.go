@@ -1,4 +1,4 @@
-// 本文件维护 provider 的所属能力；兼容入口复用唯一实现。
+// 模型健康快照记录指定范围的限流时间和原因。
 package provider
 
 import (

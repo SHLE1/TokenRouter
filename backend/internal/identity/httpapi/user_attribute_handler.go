@@ -1,13 +1,11 @@
-// 本文件维护 httpapi 的所属能力；兼容入口复用唯一实现。
 package httpapi
 
 import (
 	"encoding/json"
-
-	"github.com/TokenFlux/TokenRouter/internal/identity"
-
 	"strconv"
 	"time"
+
+	"github.com/TokenFlux/TokenRouter/internal/identity"
 
 	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
 	"github.com/gin-gonic/gin"

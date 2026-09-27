@@ -1,4 +1,3 @@
-// 本文件维护 team 的所属能力；兼容入口复用唯一实现。
 package team
 
 import (
@@ -980,16 +979,19 @@ type UserReader interface {
 	GetByID(context.Context, int64) (*UserSnapshot, error)
 	GetByEmail(context.Context, string) (*UserSnapshot, error)
 }
-type Settings interface{ GetFrontendURL(context.Context) string }
-type KeyInvalidator interface{ InvalidateAuthCacheByKey(context.Context, string) }
-type Notifier interface {
-	SendInvitation(context.Context, string, string, string, time.Time) error
-	SendOwnershipTransfer(context.Context, string, string, string) error
-}
+type (
+	Settings       interface{ GetFrontendURL(context.Context) string }
+	KeyInvalidator interface{ InvalidateAuthCacheByKey(context.Context, string) }
+	Notifier       interface {
+		SendInvitation(context.Context, string, string, string, time.Time) error
+		SendOwnershipTransfer(context.Context, string, string, string) error
+	}
+)
 
 func NewTeamService(repo TeamRepository, users UserReader, notifier Notifier, keys KeyInvalidator, limiter TeamInvitationLimiter, settings Settings, options *Options) *TeamService {
 	return &TeamService{repo: repo, userRepo: users, emailService: notifier, apiKeyCache: keys, inviteLimiter: limiter, settingService: settings, options: options}
 }
+
 func (s *TeamService) SendInvitationEmail(ctx context.Context, email, teamName, link string, expiresAt time.Time) error {
 	if s.emailService == nil {
 		return nil

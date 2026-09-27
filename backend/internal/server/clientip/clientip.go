@@ -28,11 +28,6 @@ func SetForwardedIPSettings(c *gin.Context, enabled bool, headers []string) {
 	})
 }
 
-// SetLegacyForwardedIPTrust 记录当前请求是否由原始转发头覆盖 Gin 的可信代理链。
-func SetLegacyForwardedIPTrust(c *gin.Context, enabled bool) {
-	SetForwardedIPSettings(c, enabled, nil)
-}
-
 func requestForwardedIPSettings(c *gin.Context) (forwardedIPSettings, bool) {
 	if c == nil {
 		return forwardedIPSettings{}, false

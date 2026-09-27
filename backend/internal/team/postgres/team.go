@@ -1,16 +1,14 @@
-// 本文件维护 postgres 的所属能力；兼容入口复用唯一实现。
 package postgres
 
 import (
-	usagequery "github.com/TokenFlux/TokenRouter/internal/usage/postgres/query"
-
 	"context"
-
 	"database/sql"
-
 	"errors"
-
 	"fmt"
+	"strings"
+	"time"
+
+	usagequery "github.com/TokenFlux/TokenRouter/internal/usage/postgres/query"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 
@@ -19,10 +17,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/team"
 
 	"github.com/lib/pq"
-
-	"strings"
-
-	"time"
 )
 
 type TeamRepository struct {
@@ -741,6 +735,7 @@ func (r *TeamRepository) DeleteTeamKey(ctx context.Context, teamID, keyID int64,
 func NormalizeTeamMembershipWindows(member *team.TeamMembership, now time.Time) {
 	normalizeMemberQuotaWindows(member, now, timezone.NewCalendar(time.Local))
 }
+
 func normalizeMemberQuotaWindows(member *team.TeamMembership, now time.Time, calendar timezone.Calendar) {
 	if member == nil {
 		return
@@ -753,6 +748,7 @@ func normalizeMemberQuotaWindows(member *team.TeamMembership, now time.Time, cal
 	member.WeeklyWindowStart = projected.WeeklyWindowStart
 	member.MonthlyWindowStart = projected.MonthlyWindowStart
 }
+
 func (r *TeamRepository) normalizeMemberWindows(member *team.TeamMembership, now time.Time) {
 	normalizeMemberQuotaWindows(member, now, r.dateCalendar())
 }

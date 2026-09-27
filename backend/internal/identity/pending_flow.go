@@ -1,4 +1,3 @@
-// 本文件维护 identity 的所属能力；兼容入口复用唯一实现。
 package identity
 
 import (
@@ -74,6 +73,7 @@ type PendingFlow struct {
 func (f *PendingFlow) Available() bool {
 	return f != nil && f.Database != nil && f.Database.HasDatabase()
 }
+
 func (f *PendingFlow) AdoptionDecision(ctx context.Context, sessionID int64, choice OAuthAdoptionChoice, ensure bool) (*IdentityAdoptionDecision, error) {
 	if !f.Available() {
 		return nil, infraerrors.ServiceUnavailable("PENDING_AUTH_NOT_READY", "pending auth service is not ready")
@@ -146,6 +146,7 @@ func (f *PendingFlow) FinalizeCreatedAccountWithChoice(ctx context.Context, p Pe
 	p.Decision = decision
 	return f.FinalizeCreatedAccount(ctx, p)
 }
+
 func (f *PendingFlow) compensateCreatedAccount(ctx context.Context, p PendingAccountFinalization, original error) error {
 	if p.User != nil && p.User.ID > 0 {
 		if rollbackErr := f.Auth.RollbackOAuthEmailAccountCreation(ctx, p.User.ID, strings.TrimSpace(p.InvitationCode)); rollbackErr != nil {

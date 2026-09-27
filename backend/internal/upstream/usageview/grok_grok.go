@@ -1,4 +1,3 @@
-// 本文件维护 usageview 的所属能力；兼容入口复用唯一实现。
 package usageview
 
 // BillingProductSummary 是供前端使用的规范化产品用量记录。

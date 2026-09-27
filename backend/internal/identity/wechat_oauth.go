@@ -1,4 +1,3 @@
-// 本文件维护 identity 的所属能力；兼容入口复用唯一实现。
 package identity
 
 import (
@@ -48,6 +47,7 @@ func WeChatSyntheticEmail(subject string) string {
 	}
 	return "wechat-" + subject + WeChatConnectSyntheticEmailDomain
 }
+
 func WeChatFallbackUsername(subject string) string {
 	subject = strings.TrimSpace(subject)
 	if subject == "" {
@@ -56,6 +56,7 @@ func WeChatFallbackUsername(subject string) string {
 	// 保留旧授权流程的 512 字节 UTF-8 安全截断边界。
 	return "wechat_" + logredact.TruncateUTF8Value(subject, 512)
 }
+
 func PrepareWeChatPending(
 	intent string,
 	providerSubject string,
@@ -98,6 +99,7 @@ func PrepareWeChatPending(
 		CompletionResponse:     completionResponse,
 	}, nil
 }
+
 func PrepareWeChatChoice(
 	identity PendingAuthIdentityKey,
 	suggestedEmail string,

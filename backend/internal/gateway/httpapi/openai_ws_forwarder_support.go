@@ -196,10 +196,6 @@ func (s *OpenAIWebSocketExecutor) performOpenAIWSGeneratePrewarm(
 	return nil
 }
 
-func payloadAsJSON(payload map[string]any) string {
-	return string(payloadAsJSONBytes(payload))
-}
-
 func payloadAsJSONBytes(payload map[string]any) []byte {
 	if len(payload) == 0 {
 		return []byte("{}")

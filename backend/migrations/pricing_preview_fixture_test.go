@@ -1,4 +1,6 @@
-package postgres
+//go:build integration
+
+package migrations_test
 
 import (
 	"context"
@@ -9,14 +11,14 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 )
 
-// PricingMigrationPreview 返回可复核的变价与冲突；不包含提供商凭据或 Key 字符串。
-type PricingMigrationPreview struct {
-	Scopes        []PricingMigrationScope `json:"scopes"`
+// pricingMigrationPreview 返回可复核的变价与冲突；不包含提供商凭据或 Key 字符串。
+type pricingMigrationPreview struct {
+	Scopes        []pricingMigrationScope `json:"scopes"`
 	UnboundKeyIDs []int64                 `json:"unbound_key_ids"`
 	Blocked       bool                    `json:"blocked"`
 }
 
-type PricingMigrationScope struct {
+type pricingMigrationScope struct {
 	Kind      string                      `json:"kind"`
 	ID        int64                       `json:"id"`
 	Before    json.RawMessage             `json:"before"`
@@ -24,10 +26,10 @@ type PricingMigrationScope struct {
 	Conflicts []pricing.MergeConflict     `json:"conflicts,omitempty"`
 }
 
-// PreviewPricingMigration 读取迁移 276 之前的 schema，历史 accounts 表名在此保留。
+// previewPricingMigration 读取迁移 276 之前的 schema，历史 accounts 表名在此保留。
 // 预检使用只读一致性事务，失败不修改持久数据。
-func PreviewPricingMigration(ctx context.Context, db *sql.DB) (PricingMigrationPreview, error) {
-	report := PricingMigrationPreview{Scopes: []PricingMigrationScope{}, UnboundKeyIDs: []int64{}}
+func previewPricingMigration(ctx context.Context, db *sql.DB) (pricingMigrationPreview, error) {
+	report := pricingMigrationPreview{Scopes: []pricingMigrationScope{}, UnboundKeyIDs: []int64{}}
 	tx, err := db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelRepeatableRead, ReadOnly: true})
 	if err != nil {
 		return report, err
@@ -48,7 +50,7 @@ ORDER BY 1, 2`)
 		return report, fmt.Errorf("read migration price cards: %w", err)
 	}
 	for rows.Next() {
-		var scope PricingMigrationScope
+		var scope pricingMigrationScope
 		var raw []byte
 		if err := rows.Scan(&scope.Kind, &scope.ID, &raw); err != nil {
 			_ = rows.Close()

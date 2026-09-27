@@ -1,4 +1,4 @@
-// 本文件维护 provider 的所属能力；兼容入口复用唯一实现。
+// Qoder 用量策略决定缓存有效期及配额限流的恢复条件。
 package provider
 
 import (

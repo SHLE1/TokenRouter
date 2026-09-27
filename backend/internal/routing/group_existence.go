@@ -1,4 +1,4 @@
-// 本文件维护 routing 的所属能力；兼容入口复用唯一实现。
+// 分组 ID 校验优先批量查询，缺少批量能力时逐项读取。
 package routing
 
 import (

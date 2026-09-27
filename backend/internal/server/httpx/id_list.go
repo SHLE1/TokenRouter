@@ -1,4 +1,4 @@
-// 本文件维护 httpx 的所属能力；兼容入口复用唯一实现。
+// NormalizeInt64IDList 规范化 ID 集合，过滤无效值并去重。
 package httpx
 
 import (

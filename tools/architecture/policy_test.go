@@ -14,6 +14,9 @@ func TestDependencyBoundaries(t *testing.T) {
 		imported string
 		allowed  bool
 	}{
+		{"migrations/pricing_preview_fixture_test.go", modulePath + "/internal/billing/pricing", true},
+		{"migrations/new_test.go", modulePath + "/internal/billing/pricing", false},
+		{"migrations/platform_independent_pricing_integration_test.go", modulePath + "/internal/routing/postgres", false},
 		{"internal/provider/new.go", modulePath + "/internal/billing", true},
 		{"internal/provider/helpers/new.go", modulePath + "/internal/billing", true},
 		{"internal/provider/helpers/store.go", "database/sql", false},

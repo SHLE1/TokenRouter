@@ -1,4 +1,3 @@
-// 本文件维护 provider 的所属能力；兼容入口复用唯一实现。
 package provider
 
 // AllowedSchedulingThresholdPlatforms 是允许设置提供商自动停调阈值的平台列表。

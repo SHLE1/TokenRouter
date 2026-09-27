@@ -1,4 +1,3 @@
-// 本文件维护 provider 的所属能力；兼容入口复用唯一实现。
 package provider
 
 import (
@@ -15,7 +14,6 @@ import (
 
 // TestResolveDingTalkDeptPath_SingleLevel 验证单层部门（parent_id=1）返回部门名。
 func TestResolveDingTalkDeptPath_SingleLevel(t *testing.T) {
-
 	callCount := 0
 	responses := map[string]string{
 		"42": `{"errcode":0,"result":{"dept_id":42,"name":"研发部","parent_id":1}}`,
@@ -51,7 +49,6 @@ func TestResolveDingTalkDeptPath_SingleLevel(t *testing.T) {
 
 // TestResolveDingTalkDeptPath_MultiLevel 验证多层部门路径拼接。
 func TestResolveDingTalkDeptPath_MultiLevel(t *testing.T) {
-
 	// 模拟：42(AI研发) → parent=10(研发部) → parent=1(根)
 	responses := map[string]string{
 		"42": `{"errcode":0,"result":{"dept_id":42,"name":"AI研发","parent_id":10}}`,

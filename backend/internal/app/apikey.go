@@ -1,15 +1,14 @@
-// 本文件维护 app 的所属能力；兼容入口复用唯一实现。
 package app
 
 import (
 	"context"
+	"database/sql"
+	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/timezone"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 	"github.com/TokenFlux/TokenRouter/internal/settings/preaggregation"
-
-	"database/sql"
 
 	dbent "github.com/TokenFlux/TokenRouter/ent"
 
@@ -23,8 +22,6 @@ import (
 
 	routingpostgres "github.com/TokenFlux/TokenRouter/internal/routing/postgres"
 
-	"time"
-
 	"github.com/TokenFlux/TokenRouter/internal/team"
 	usagepostgres "github.com/TokenFlux/TokenRouter/internal/usage/postgres"
 )
@@ -35,6 +32,7 @@ func provideKeyStore(client *dbent.Client, db *sql.DB, settings *preaggregation.
 		return usagepostgres.ReadAPIKeyUsageTotals(ctx, db, settings, ids)
 	})
 }
+
 func provideKeyRepository(keys *keypostgres.KeyStore) apikey.APIKeyRepository {
 	return keys
 }

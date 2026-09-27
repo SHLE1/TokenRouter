@@ -1,4 +1,3 @@
-// 本文件维护 httpapi 的所属能力；兼容入口复用唯一实现。
 package httpapi
 
 import (
@@ -47,9 +46,11 @@ type AdminUserHandler[K any] struct {
 func NewAdminUserHandler[K any](users UserAdministration, keys func(context.Context, int64, int, int, string, string) ([]K, int64, error), concurrency func(context.Context, []identity.User) (map[int64]int, error), stepUp func(*gin.Context) bool) *AdminUserHandler[K] {
 	return &AdminUserHandler[K]{adminService: users, listKeys: keys, concurrency: concurrency, stepUp: stepUp}
 }
+
 func (h *AdminUserHandler[K]) userResponse(u *identity.User) *dto.AdminUser[K] {
 	return dto.AdminUserFromIdentity[K](u, nil)
 }
+
 func adminID(c *gin.Context) int64 {
 	s, ok := authctx.GetAuthSubjectFromContext(c)
 	if !ok {

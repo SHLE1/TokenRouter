@@ -26,10 +26,12 @@ func NewReleaseQuery(cache UpdateCache, client ReleaseQueryClient, version, buil
 	return &ReleaseQuery{cache, client, version, buildType}
 }
 
-const updateCacheTTL = 1200
-const githubRepo = "TokenFlux/TokenRouter"
-const maxRollbackVersions = 3
-const rollbackFetchPageSize = 15
+const (
+	updateCacheTTL        = 1200
+	githubRepo            = "TokenFlux/TokenRouter"
+	maxRollbackVersions   = 3
+	rollbackFetchPageSize = 15
+)
 
 func parseVersion(v string) [3]int {
 	v = strings.TrimPrefix(v, "v")
@@ -45,9 +47,6 @@ func parseVersion(v string) [3]int {
 	}
 	return result
 }
-
-// ParseVersion 保留旧比较入口的唯一规则。
-func ParseVersion(v string) [3]int { return parseVersion(v) }
 
 // compareVersions compares two semantic versions
 func compareVersions(current, latest string) int {
@@ -67,6 +66,7 @@ func compareVersions(current, latest string) int {
 
 // CompareVersions 保留旧比较入口的唯一规则。
 func CompareVersions(current, latest string) int { return compareVersions(current, latest) }
+
 func (s *ReleaseQuery) SaveToCache(ctx context.Context, info *UpdateInfo) {
 	cacheData := struct {
 		Latest      string       `json:"latest"`
@@ -81,6 +81,7 @@ func (s *ReleaseQuery) SaveToCache(ctx context.Context, info *UpdateInfo) {
 	data, _ := json.Marshal(cacheData)
 	_ = s.cache.SetUpdateInfo(ctx, string(data), time.Duration(updateCacheTTL)*time.Second)
 }
+
 func (s *ReleaseQuery) GetFromCache(ctx context.Context) (*UpdateInfo, error) {
 	data, err := s.cache.GetUpdateInfo(ctx)
 	if err != nil {
@@ -109,6 +110,7 @@ func (s *ReleaseQuery) GetFromCache(ctx context.Context) (*UpdateInfo, error) {
 		BuildType:      s.buildType,
 	}, nil
 }
+
 func (s *ReleaseQuery) FetchLatestRelease(ctx context.Context) (*UpdateInfo, error) {
 	release, err := s.githubClient.FetchLatestRelease(ctx, githubRepo)
 	if err != nil {

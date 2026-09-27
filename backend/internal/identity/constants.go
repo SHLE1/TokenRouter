@@ -1,9 +1,11 @@
-// 本文件维护 identity 的所属能力；兼容入口复用唯一实现。
+// 身份模块集中定义 API Key 数量边界和第三方登录的保留邮箱域名。
 package identity
 
-const DefaultUserAPIKeyLimit = 100
-const MaxUserAPIKeyLimit = 2_147_483_647
-const LinuxDoConnectSyntheticEmailDomain = "@linuxdo-connect.invalid"
-const OIDCConnectSyntheticEmailDomain = "@oidc-connect.invalid"
-const WeChatConnectSyntheticEmailDomain = "@wechat-connect.invalid"
-const DingTalkConnectSyntheticEmailDomain = "@dingtalk-connect.invalid"
+const (
+	DefaultUserAPIKeyLimit              = 100
+	MaxUserAPIKeyLimit                  = 2_147_483_647
+	LinuxDoConnectSyntheticEmailDomain  = "@linuxdo-connect.invalid"
+	OIDCConnectSyntheticEmailDomain     = "@oidc-connect.invalid"
+	WeChatConnectSyntheticEmailDomain   = "@wechat-connect.invalid"
+	DingTalkConnectSyntheticEmailDomain = "@dingtalk-connect.invalid"
+)

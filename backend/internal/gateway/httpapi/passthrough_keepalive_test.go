@@ -5,7 +5,6 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
@@ -101,5 +100,4 @@ func TestPassthroughKeepaliveDisabledKeepsWriterUntouched(t *testing.T) {
 	stop()
 	require.Zero(t, rec.Body.Len())
 	require.False(t, StopOpenAICompactSSEKeepaliveCommitted(c))
-	_ = time.Now
 }

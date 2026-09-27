@@ -499,7 +499,7 @@ func TestQoderGatewayWritesOpenAIStream(t *testing.T) {
 		{IsDone: true},
 	}
 
-	err := qoder.WriteQoderOpenAIStream(&upstream.OutputContext{Writer: c.Writer}, "auto", events)
+	err := writeQoderOpenAIEvents(t, &upstream.OutputContext{Writer: c.Writer}, "auto", events)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, rec.Code)
 	require.Contains(t, rec.Body.String(), `"delta":{"role":"assistant"}`)
@@ -520,7 +520,7 @@ func TestQoderGatewayWritesOpenAIToolCallsStream(t *testing.T) {
 		{IsDone: true},
 	}
 
-	err := qoder.WriteQoderOpenAIStream(&upstream.OutputContext{Writer: c.Writer}, "auto", events)
+	err := writeQoderOpenAIEvents(t, &upstream.OutputContext{Writer: c.Writer}, "auto", events)
 	require.NoError(t, err)
 
 	body := rec.Body.String()
@@ -543,7 +543,7 @@ func TestQoderGatewayWritesOpenAIToolCallsStreamSkipsEmptyArgumentPlaceholder(t 
 		{IsDone: true},
 	}
 
-	err := qoder.WriteQoderOpenAIStream(&upstream.OutputContext{Writer: c.Writer}, "auto", events)
+	err := writeQoderOpenAIEvents(t, &upstream.OutputContext{Writer: c.Writer}, "auto", events)
 	require.NoError(t, err)
 
 	body := rec.Body.String()
@@ -565,7 +565,7 @@ func TestQoderGatewayWritesOpenAIToolCallsStreamSkipsTypeOnlyPlaceholderChunk(t 
 		{IsDone: true},
 	}
 
-	err := qoder.WriteQoderOpenAIStream(&upstream.OutputContext{Writer: c.Writer}, "auto", events)
+	err := writeQoderOpenAIEvents(t, &upstream.OutputContext{Writer: c.Writer}, "auto", events)
 	require.NoError(t, err)
 
 	chunks := qoderOpenAIStreamChunksForTest(t, rec.Body.String())
@@ -593,7 +593,7 @@ func TestQoderGatewayWritesOpenAIToolCallsStreamMergesIndexDriftForSameCall(t *t
 		{IsDone: true},
 	}
 
-	err := qoder.WriteQoderOpenAIStream(&upstream.OutputContext{Writer: c.Writer}, "auto", events)
+	err := writeQoderOpenAIEvents(t, &upstream.OutputContext{Writer: c.Writer}, "auto", events)
 	require.NoError(t, err)
 
 	body := rec.Body.String()
@@ -617,7 +617,7 @@ func TestQoderGatewayWritesOpenAIToolCallsStreamKeepsParallelCallIndexes(t *test
 		{IsDone: true},
 	}
 
-	err := qoder.WriteQoderOpenAIStream(&upstream.OutputContext{Writer: c.Writer}, "auto", events)
+	err := writeQoderOpenAIEvents(t, &upstream.OutputContext{Writer: c.Writer}, "auto", events)
 	require.NoError(t, err)
 
 	chunks := qoderOpenAIStreamChunksForTest(t, rec.Body.String())
@@ -648,7 +648,7 @@ func TestQoderGatewayWritesOpenAIToolCallsStreamDropsAmbiguousParallelArgumentDe
 		{IsDone: true},
 	}
 
-	err := qoder.WriteQoderOpenAIStream(&upstream.OutputContext{Writer: c.Writer}, "auto", events)
+	err := writeQoderOpenAIEvents(t, &upstream.OutputContext{Writer: c.Writer}, "auto", events)
 	require.NoError(t, err)
 
 	body := rec.Body.String()
@@ -668,7 +668,7 @@ func TestQoderGatewayWritesOpenAIStreamParsesXMLTextToolCall(t *testing.T) {
 		{IsDone: true},
 	}
 
-	err := qoder.WriteQoderOpenAIStream(&upstream.OutputContext{Writer: c.Writer}, "auto", events)
+	err := writeQoderOpenAIEvents(t, &upstream.OutputContext{Writer: c.Writer}, "auto", events)
 	require.NoError(t, err)
 
 	body := rec.Body.String()
@@ -690,7 +690,7 @@ func TestQoderGatewayWritesOpenAIStreamParsesDSMLTextToolCall(t *testing.T) {
 		{IsDone: true},
 	}
 
-	err := qoder.WriteQoderOpenAIStream(&upstream.OutputContext{Writer: c.Writer}, "auto", events)
+	err := writeQoderOpenAIEvents(t, &upstream.OutputContext{Writer: c.Writer}, "auto", events)
 	require.NoError(t, err)
 
 	body := rec.Body.String()
@@ -712,7 +712,7 @@ func TestQoderGatewayWritesAnthropicStream(t *testing.T) {
 		{IsDone: true},
 	}
 
-	err := qoder.WriteQoderAnthropicStream(&upstream.OutputContext{Writer: c.Writer}, "claude-opus-4-6", events)
+	err := writeQoderAnthropicEvents(t, &upstream.OutputContext{Writer: c.Writer}, "claude-opus-4-6", events)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, rec.Code)
 	body := rec.Body.String()
@@ -734,7 +734,7 @@ func TestQoderGatewayWritesAnthropicStreamParsesXMLTextToolCall(t *testing.T) {
 		{IsDone: true},
 	}
 
-	err := qoder.WriteQoderAnthropicStream(&upstream.OutputContext{Writer: c.Writer}, "claude-opus-4-6", events)
+	err := writeQoderAnthropicEvents(t, &upstream.OutputContext{Writer: c.Writer}, "claude-opus-4-6", events)
 	require.NoError(t, err)
 
 	body := rec.Body.String()
@@ -757,7 +757,7 @@ func TestQoderGatewayWritesAnthropicStreamParsesDSMLTextToolCall(t *testing.T) {
 		{IsDone: true},
 	}
 
-	err := qoder.WriteQoderAnthropicStream(&upstream.OutputContext{Writer: c.Writer}, "claude-opus-4-6", events)
+	err := writeQoderAnthropicEvents(t, &upstream.OutputContext{Writer: c.Writer}, "claude-opus-4-6", events)
 	require.NoError(t, err)
 
 	body := rec.Body.String()
@@ -778,7 +778,7 @@ func TestQoderGatewayWritesAnthropicStreamParsesJSONTextToolCall(t *testing.T) {
 		{IsDone: true},
 	}
 
-	err := qoder.WriteQoderAnthropicStream(&upstream.OutputContext{Writer: c.Writer}, "claude-opus-4-6", events)
+	err := writeQoderAnthropicEvents(t, &upstream.OutputContext{Writer: c.Writer}, "claude-opus-4-6", events)
 	require.NoError(t, err)
 
 	body := rec.Body.String()
@@ -800,7 +800,7 @@ func TestQoderGatewayWritesAnthropicToolUseStream(t *testing.T) {
 		{IsDone: true},
 	}
 
-	err := qoder.WriteQoderAnthropicStream(&upstream.OutputContext{Writer: c.Writer}, "auto", events)
+	err := writeQoderAnthropicEvents(t, &upstream.OutputContext{Writer: c.Writer}, "auto", events)
 	require.NoError(t, err)
 
 	body := rec.Body.String()
@@ -827,7 +827,7 @@ func TestQoderGatewayWritesAnthropicToolUseStreamKeepsSplitArgumentsInOneBlock(t
 		{IsDone: true},
 	}
 
-	err := qoder.WriteQoderAnthropicStream(&upstream.OutputContext{Writer: c.Writer}, "auto", events)
+	err := writeQoderAnthropicEvents(t, &upstream.OutputContext{Writer: c.Writer}, "auto", events)
 	require.NoError(t, err)
 
 	body := rec.Body.String()
@@ -847,7 +847,7 @@ func TestQoderGatewayWritesAnthropicToolUseStreamDoesNotFinalizeEmptyObjectPlace
 		{IsDone: true},
 	}
 
-	err := qoder.WriteQoderAnthropicStream(&upstream.OutputContext{Writer: c.Writer}, "claude-opus-4-6", events)
+	err := writeQoderAnthropicEvents(t, &upstream.OutputContext{Writer: c.Writer}, "claude-opus-4-6", events)
 	require.NoError(t, err)
 
 	body := rec.Body.String()
@@ -886,7 +886,7 @@ func TestQoderGatewayWritesAnthropicToolUseStreamSkipsTypeOnlyPlaceholder(t *tes
 		{IsDone: true},
 	}
 
-	err := qoder.WriteQoderAnthropicStream(&upstream.OutputContext{Writer: c.Writer}, "claude-opus-4-6", events)
+	err := writeQoderAnthropicEvents(t, &upstream.OutputContext{Writer: c.Writer}, "claude-opus-4-6", events)
 	require.NoError(t, err)
 
 	body := rec.Body.String()
@@ -899,7 +899,7 @@ func TestQoderGatewayWritesAnthropicToolUseStreamKeepsNoIndexNamedParallelToolCa
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 
-	err := qoder.WriteQoderAnthropicStream(&upstream.OutputContext{Writer: c.Writer}, "claude-opus-4-6", qoderNoIndexNamedParallelToolCallEventsForTest())
+	err := writeQoderAnthropicEvents(t, &upstream.OutputContext{Writer: c.Writer}, "claude-opus-4-6", qoderNoIndexNamedParallelToolCallEventsForTest())
 	require.NoError(t, err)
 
 	streamEvents := qoderAnthropicStreamEventsForTest(t, rec.Body.String())
@@ -933,7 +933,7 @@ func TestQoderGatewayWritesAnthropicToolUseStreamKeepsRepeatedIndexNamedParallel
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 
-	err := qoder.WriteQoderAnthropicStream(&upstream.OutputContext{Writer: c.Writer}, "claude-opus-4-6", qoderRepeatedIndexNamedParallelToolCallEventsForTest())
+	err := writeQoderAnthropicEvents(t, &upstream.OutputContext{Writer: c.Writer}, "claude-opus-4-6", qoderRepeatedIndexNamedParallelToolCallEventsForTest())
 	require.NoError(t, err)
 
 	streamEvents := qoderAnthropicStreamEventsForTest(t, rec.Body.String())
@@ -984,7 +984,7 @@ func TestQoderGatewayWritesAnthropicToolUseStreamKeepsSameIndexNewIDSplitArgumen
 		{IsDone: true},
 	}
 
-	err := qoder.WriteQoderAnthropicStream(&upstream.OutputContext{Writer: c.Writer}, "claude-opus-4-6", events)
+	err := writeQoderAnthropicEvents(t, &upstream.OutputContext{Writer: c.Writer}, "claude-opus-4-6", events)
 	require.NoError(t, err)
 
 	streamEvents := qoderAnthropicStreamEventsForTest(t, rec.Body.String())
@@ -1026,7 +1026,7 @@ func TestQoderGatewayWritesAnthropicToolUseStreamKeepsParallelCallIndexes(t *tes
 		{IsDone: true},
 	}
 
-	err := qoder.WriteQoderAnthropicStream(&upstream.OutputContext{Writer: c.Writer}, "auto", events)
+	err := writeQoderAnthropicEvents(t, &upstream.OutputContext{Writer: c.Writer}, "auto", events)
 	require.NoError(t, err)
 
 	body := rec.Body.String()
@@ -1410,7 +1410,7 @@ func TestQoderGatewayWritesAnthropicStreamNormalizesExecuteBashToolCall(t *testi
 		{IsDone: true},
 	}
 
-	err := qoder.WriteQoderAnthropicStream(&upstream.OutputContext{Writer: c.Writer}, "auto", events)
+	err := writeQoderAnthropicEvents(t, &upstream.OutputContext{Writer: c.Writer}, "auto", events)
 	require.NoError(t, err)
 
 	body := rec.Body.String()
@@ -1650,4 +1650,68 @@ func qoderFixtureValue[T any](t *testing.T, raw any) T {
 	value, ok := raw.(T)
 	require.True(t, ok, "unexpected decoded fixture type: %T", raw)
 	return value
+}
+
+// qoderEventResponse 将事件夹具编码为真实上游报文，输出转换仍由生产流式入口执行。
+func qoderEventResponse(t *testing.T, events []qoder.SSEEvent) *http.Response {
+	t.Helper()
+	var body strings.Builder
+	for _, event := range events {
+		if event.IsDone {
+			_, _ = body.WriteString("data: [DONE]\n\n")
+			continue
+		}
+		inner := map[string]any{}
+		if event.HasUsage {
+			usage := map[string]any{"prompt_tokens": event.PromptTokens, "completion_tokens": event.CompletionTokens, "total_tokens": event.TotalTokens}
+			if d := event.UsageDetails.PromptTokensDetails; d != nil {
+				usage["prompt_tokens_details"] = map[string]any{"cached_tokens": d.CachedTokens, "cacheable_tokens": d.CacheableTokens}
+			}
+			if d := event.UsageDetails.CompletionTokensDetails; d != nil {
+				usage["completion_tokens_details"] = map[string]any{"reasoning_tokens": d.ReasoningTokens}
+			}
+			inner["usage"] = usage
+		} else {
+			delta := map[string]any{}
+			switch event.Type {
+			case "text_delta":
+				delta["content"] = event.Text
+			case "reasoning_delta":
+				delta["reasoning_content"] = event.Text
+			case "tool_call_delta":
+				tool := map[string]any{"id": event.ToolCallID, "type": event.ToolType, "function": map[string]any{"name": event.ToolName, "arguments": event.Arguments}}
+				if event.HasToolCallIndex {
+					tool["index"] = event.ToolCallIndex
+				}
+				delta["tool_calls"] = []any{tool}
+			default:
+				t.Fatalf("unsupported event fixture %q", event.Type)
+			}
+			inner["choices"] = []any{map[string]any{"delta": delta}}
+		}
+		_, _ = body.WriteString(qoderWrappedSSELineForTest(t, inner))
+	}
+	return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body.String()))}
+}
+
+// writeQoderOpenAIEvents 通过真实响应解析和转换入口验证事件夹具。
+func writeQoderOpenAIEvents(t *testing.T, c *upstream.OutputContext, model string, events []qoder.SSEEvent, mappers ...qoder.QoderToolNameMapper) error {
+	t.Helper()
+	options := []qoder.QoderOpenAIStreamResponseOption{qoder.QoderOpenAIStreamIncludeUsage(true)}
+	for _, mapper := range mappers {
+		options = append(options, qoder.QoderOpenAIStreamToolNameMapper(mapper))
+	}
+	_, err := qoder.WriteQoderOpenAIStreamResponse(t.Context(), c, model, qoderEventResponse(t, events), options...)
+	return err
+}
+
+// writeQoderAnthropicEvents 复用与实际请求相同的响应解析和内容块生命周期。
+func writeQoderAnthropicEvents(t *testing.T, c *upstream.OutputContext, model string, events []qoder.SSEEvent, mappers ...qoder.QoderToolNameMapper) error {
+	t.Helper()
+	var options []qoder.QoderAnthropicStreamResponseOption
+	for _, mapper := range mappers {
+		options = append(options, qoder.QoderAnthropicStreamToolNameMapper(mapper))
+	}
+	_, err := qoder.WriteQoderAnthropicStreamResponse(t.Context(), c, model, qoderEventResponse(t, events), options...)
+	return err
 }

@@ -1,4 +1,4 @@
-// 本文件维护 egress 的所属能力；兼容入口复用唯一实现。
+// ProxyAdministrator 定义管理端所需的代理查询、变更和探测操作。
 package egress
 
 import (

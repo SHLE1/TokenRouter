@@ -1,4 +1,3 @@
-// 本文件维护 provider 的所属能力；兼容入口复用唯一实现。
 package provider
 
 import (
@@ -25,9 +24,11 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
 )
 
-type TLSFingerprintCollectorStatus = egress.TLSFingerprintCollectorStatus
-type TLSFingerprintCollectorSession = egress.TLSFingerprintCollectorSession
-type TLSFingerprintCaptureRecord = egress.TLSFingerprintCaptureRecord
+type (
+	TLSFingerprintCollectorStatus  = egress.TLSFingerprintCollectorStatus
+	TLSFingerprintCollectorSession = egress.TLSFingerprintCollectorSession
+	TLSFingerprintCaptureRecord    = egress.TLSFingerprintCaptureRecord
+)
 
 // CollectorOptions 由 app 投影配置，不包含完整应用配置或业务服务。
 type CollectorOptions struct {
@@ -49,6 +50,7 @@ func NewTLSFingerprintCollectorService(options CollectorOptions) *TLSFingerprint
 	}
 	return &TLSFingerprintCollectorService{options: options, now: now, sessions: egress.NewCaptureSessions(now)}
 }
+
 func (s *TLSFingerprintCollectorService) collectorConfigLocked() CollectorOptions { return s.options }
 
 const (

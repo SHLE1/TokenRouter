@@ -1,4 +1,3 @@
-// 本文件维护 provider 的所属能力；兼容入口复用唯一实现。
 package provider
 
 import (
@@ -26,6 +25,7 @@ func (ProxyQualityHTTP) ProbeTargets(ctx context.Context, proxyURL string, targe
 	}
 	return out, nil
 }
+
 func RunProxyQualityTarget(ctx context.Context, client *http.Client, target egress.ProxyQualityTarget) egress.ProxyQualityCheckItem {
 	item := egress.ProxyQualityCheckItem{
 		Target: target.Target,

@@ -1,4 +1,4 @@
-// 本文件维护 pagination 的所属能力；兼容入口复用唯一实现。
+// Slice 按分页参数截取内存集合，并约束切片边界。
 package pagination
 
 func Slice[T any](items []T, params PaginationParams) []T {

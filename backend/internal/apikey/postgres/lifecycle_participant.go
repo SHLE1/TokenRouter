@@ -1,4 +1,4 @@
-// 本文件维护 postgres 的所属能力；兼容入口复用唯一实现。
+// Key 生命周期参与者复用外层事务执行删除审计和分组调整。
 package postgres
 
 import (
@@ -17,9 +17,11 @@ type LifecycleParticipant struct {
 func (r *KeyStore) LifecycleInTx(tx *dbent.Tx) *LifecycleParticipant {
 	return &LifecycleParticipant{store: &KeyStore{client: tx.Client(), sql: tx.Client(), usageTotals: r.usageTotals}, tx: tx}
 }
+
 func (p *LifecycleParticipant) DeleteWithAudit(ctx context.Context, id int64) error {
 	return p.store.KeyDeleteWithTombstone(ctx, p.tx.Client(), id, fmt.Sprintf("__deleted__%d__%d", id, time.Now().UnixNano()))
 }
+
 func (p *LifecycleParticipant) UpdateGroupIDByUserAndGroup(ctx context.Context, userID, oldID, newID int64) (int64, error) {
 	return p.store.UpdateGroupIDByUserAndGroup(dbent.NewTxContext(ctx, p.tx), userID, oldID, newID)
 }

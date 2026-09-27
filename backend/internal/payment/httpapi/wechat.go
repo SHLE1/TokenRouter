@@ -1,18 +1,14 @@
-// 本文件维护 handler 的所属能力；兼容入口复用唯一实现。
 package httpapi
 
 import (
-	"github.com/TokenFlux/TokenRouter/internal/pkg/oauthpkce"
-
 	"context"
 	"encoding/json"
-
 	"net/http"
-
 	"net/url"
 	"strconv"
-
 	"strings"
+
+	"github.com/TokenFlux/TokenRouter/internal/pkg/oauthpkce"
 
 	identitycore "github.com/TokenFlux/TokenRouter/internal/identity"
 
@@ -200,13 +196,15 @@ type WeChatPaymentToken struct {
 	Scope  string
 }
 
-const WechatPaymentOAuthFrontendCB = "/auth/wechat/payment/callback"
-const WechatPaymentOAuthDefaultTo = "/purchase"
-const WechatPaymentOAuthScope = "wechat_payment_oauth_scope"
-const WechatPaymentOAuthContextName = "wechat_payment_oauth_context"
-const WechatPaymentOAuthRedirect = "wechat_payment_oauth_redirect"
-const WechatPaymentOAuthStateName = "wechat_payment_oauth_state"
-const WechatPaymentOAuthCookiePath = "/api/v1/auth/oauth/wechat/payment"
+const (
+	WechatPaymentOAuthFrontendCB  = "/auth/wechat/payment/callback"
+	WechatPaymentOAuthDefaultTo   = "/purchase"
+	WechatPaymentOAuthScope       = "wechat_payment_oauth_scope"
+	WechatPaymentOAuthContextName = "wechat_payment_oauth_context"
+	WechatPaymentOAuthRedirect    = "wechat_payment_oauth_redirect"
+	WechatPaymentOAuthStateName   = "wechat_payment_oauth_state"
+	WechatPaymentOAuthCookiePath  = "/api/v1/auth/oauth/wechat/payment"
+)
 
 type WechatPaymentOAuthContext struct {
 	PaymentType string `json:"payment_type"`
@@ -223,6 +221,7 @@ func NormalizeWeChatPaymentType(raw string) string {
 		return ""
 	}
 }
+
 func NormalizeWeChatPaymentScope(raw string) string {
 	for _, part := range strings.FieldsFunc(strings.TrimSpace(raw), func(r rune) bool {
 		return r == ',' || r == ' ' || r == '\t' || r == '\n' || r == '\r'
@@ -236,6 +235,7 @@ func NormalizeWeChatPaymentScope(raw string) string {
 	}
 	return "snsapi_base"
 }
+
 func NormalizeWeChatPaymentRedirectPath(path string) string {
 	path = strings.TrimSpace(path)
 	if path == "" {
@@ -249,6 +249,7 @@ func NormalizeWeChatPaymentRedirectPath(path string) string {
 	}
 	return path
 }
+
 func EncodeWeChatPaymentOAuthContext(ctx WechatPaymentOAuthContext) (string, error) {
 	data, err := json.Marshal(ctx)
 	if err != nil {
@@ -256,6 +257,7 @@ func EncodeWeChatPaymentOAuthContext(ctx WechatPaymentOAuthContext) (string, err
 	}
 	return string(data), nil
 }
+
 func DecodeWeChatPaymentOAuthContext(raw string) (WechatPaymentOAuthContext, error) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
@@ -267,10 +269,12 @@ func DecodeWeChatPaymentOAuthContext(raw string) (WechatPaymentOAuthContext, err
 	}
 	return ctx, nil
 }
+
 func ParseWeChatPaymentPlanID(raw string) int64 {
 	id, _ := strconv.ParseInt(strings.TrimSpace(raw), 10, 64)
 	return id
 }
+
 func WechatPaymentSetCookie(c *gin.Context, name string, value string, maxAgeSec int, secure bool) {
 	http.SetCookie(c.Writer, &http.Cookie{
 		Name:     name,
@@ -282,6 +286,7 @@ func WechatPaymentSetCookie(c *gin.Context, name string, value string, maxAgeSec
 		SameSite: http.SameSiteLaxMode,
 	})
 }
+
 func WechatPaymentClearCookie(c *gin.Context, name string, secure bool) {
 	http.SetCookie(c.Writer, &http.Cookie{
 		Name:     name,

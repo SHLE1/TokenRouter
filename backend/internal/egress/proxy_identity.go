@@ -1,4 +1,4 @@
-// 本文件维护 egress 的所属能力；兼容入口复用唯一实现。
+// 连接身份包含地址、认证及状态，用于识别代理连接配置是否变化。
 package egress
 
 type ProxyConnectionIdentity struct {

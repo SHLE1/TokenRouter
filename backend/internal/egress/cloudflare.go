@@ -1,4 +1,3 @@
-// 本文件维护 egress 的所属能力；兼容入口复用唯一实现。
 package egress
 
 import (
@@ -93,6 +92,7 @@ func TruncateBody(body []byte, max int) string {
 	}
 	return raw[:max] + "...(truncated)"
 }
+
 func responseHeaderValue(headers map[string][]string, key string) string {
 	values := headers[textproto.CanonicalMIMEHeaderKey(key)]
 	if len(values) == 0 {

@@ -70,13 +70,3 @@ func IsUsageLogCreateDropped(err error) bool {
 	}
 	return target.disposition == usageLogCreateDispositionDropped
 }
-
-func ShouldBillAfterUsageLogCreate(inserted bool, err error) bool {
-	if inserted {
-		return true
-	}
-	if err == nil {
-		return false
-	}
-	return !IsUsageLogCreateNotPersisted(err)
-}

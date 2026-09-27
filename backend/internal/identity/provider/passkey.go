@@ -1,4 +1,3 @@
-// 本文件维护 provider 的所属能力；兼容入口复用唯一实现。
 package provider
 
 import (
@@ -31,6 +30,7 @@ func NewPasskeyVerifier(options PasskeyOptions) (identity.PasskeyVerifier, error
 	}
 	return &WebAuthnVerifier{WebAuthn: instance}, nil
 }
+
 func (v *WebAuthnVerifier) FinishRegistration(user webauthn.User, session webauthn.SessionData, response io.Reader) (*webauthn.Credential, error) {
 	parsed, err := protocol.ParseCredentialCreationResponseBody(response)
 	if err != nil {
@@ -38,6 +38,7 @@ func (v *WebAuthnVerifier) FinishRegistration(user webauthn.User, session webaut
 	}
 	return v.CreateCredential(user, session, parsed)
 }
+
 func (v *WebAuthnVerifier) FinishPasskeyLogin(handler webauthn.DiscoverableUserHandler, session webauthn.SessionData, response io.Reader) (webauthn.User, *webauthn.Credential, error) {
 	parsed, err := protocol.ParseCredentialRequestResponseBody(response)
 	if err != nil {

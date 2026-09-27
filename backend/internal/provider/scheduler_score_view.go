@@ -1,4 +1,3 @@
-// 本文件维护 provider 的所属能力；兼容入口复用唯一实现。
 package provider
 
 // ProviderSchedulerScore 表示管理端展示的提供商调度评分。

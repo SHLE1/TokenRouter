@@ -1,4 +1,3 @@
-// 本文件维护 httpapi 的所属能力；兼容入口复用唯一实现。
 package httpapi
 
 import (
@@ -17,12 +16,14 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type BackendSettings interface{ IsBackendModeEnabled(context.Context) bool }
-type PasskeyHandler struct {
-	passkeys    *identity.PasskeyService
-	authService *identity.AuthService
-	settingSvc  BackendSettings
-}
+type (
+	BackendSettings interface{ IsBackendModeEnabled(context.Context) bool }
+	PasskeyHandler  struct {
+		passkeys    *identity.PasskeyService
+		authService *identity.AuthService
+		settingSvc  BackendSettings
+	}
+)
 
 func NewPasskeyHandler(
 	passkeys *identity.PasskeyService,

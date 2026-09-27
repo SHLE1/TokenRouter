@@ -1,4 +1,4 @@
-// 本文件维护 postgres 的所属能力；兼容入口复用唯一实现。
+// 认证仓储将身份用例的读写委托给共享 AuthState。
 package postgres
 
 import (

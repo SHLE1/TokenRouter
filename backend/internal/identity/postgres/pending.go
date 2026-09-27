@@ -1,4 +1,4 @@
-// 本文件维护 postgres 的所属能力；兼容入口复用唯一实现。
+// 待完成身份操作使用键级锁和事务协调会话消费、身份绑定及资料采纳。
 package postgres
 
 import (
@@ -420,26 +420,33 @@ func (s *AuthPendingIdentityService) UpsertAdoptionDecision(ctx context.Context,
 	return decision, nil
 }
 
-var ErrPendingAuthSessionNotFound = identity.ErrPendingAuthSessionNotFound
-var ErrPendingAuthSessionExpired = identity.ErrPendingAuthSessionExpired
-var ErrPendingAuthSessionConsumed = identity.ErrPendingAuthSessionConsumed
-var ErrPendingAuthCodeInvalid = identity.ErrPendingAuthCodeInvalid
-var ErrPendingAuthCodeExpired = identity.ErrPendingAuthCodeExpired
-var ErrPendingAuthCodeConsumed = identity.ErrPendingAuthCodeConsumed
-var ErrPendingAuthBrowserMismatch = identity.ErrPendingAuthBrowserMismatch
+var (
+	ErrPendingAuthSessionNotFound = identity.ErrPendingAuthSessionNotFound
+	ErrPendingAuthSessionExpired  = identity.ErrPendingAuthSessionExpired
+	ErrPendingAuthSessionConsumed = identity.ErrPendingAuthSessionConsumed
+	ErrPendingAuthCodeInvalid     = identity.ErrPendingAuthCodeInvalid
+	ErrPendingAuthCodeExpired     = identity.ErrPendingAuthCodeExpired
+	ErrPendingAuthCodeConsumed    = identity.ErrPendingAuthCodeConsumed
+	ErrPendingAuthBrowserMismatch = identity.ErrPendingAuthBrowserMismatch
+)
 
-const defaultPendingAuthTTL = identity.DefaultPendingAuthTTL
-const defaultPendingAuthCompletionTTL = identity.DefaultPendingAuthCompletionTTL
+const (
+	defaultPendingAuthTTL           = identity.DefaultPendingAuthTTL
+	defaultPendingAuthCompletionTTL = identity.DefaultPendingAuthCompletionTTL
+)
 
-type PendingAuthIdentityKey = identity.PendingAuthIdentityKey
-type CreatePendingAuthSessionInput = identity.CreatePendingAuthSessionInput
-type IssuePendingAuthCompletionCodeInput = identity.IssuePendingAuthCompletionCodeInput
-type IssuePendingAuthCompletionCodeResult = identity.IssuePendingAuthCompletionCodeResult
-type PendingIdentityAdoptionDecisionInput = identity.PendingIdentityAdoptionDecisionInput
+type (
+	PendingAuthIdentityKey               = identity.PendingAuthIdentityKey
+	CreatePendingAuthSessionInput        = identity.CreatePendingAuthSessionInput
+	IssuePendingAuthCompletionCodeInput  = identity.IssuePendingAuthCompletionCodeInput
+	IssuePendingAuthCompletionCodeResult = identity.IssuePendingAuthCompletionCodeResult
+	PendingIdentityAdoptionDecisionInput = identity.PendingIdentityAdoptionDecisionInput
+)
 
 func sanitizePendingAuthLocalFlowState(localFlowState map[string]any) map[string]any {
 	return identity.SanitizePendingAuthLocalFlowState(localFlowState)
 }
+
 func validatePendingSessionState(session *dbent.PendingAuthSession, browserSessionKey string, expiredErr error, consumedErr error, readTime func() time.Time) error {
 	return identity.ValidatePendingSessionStateWithClock(PendingAuthSessionFromEntity(session), browserSessionKey, expiredErr, consumedErr, readTime)
 }

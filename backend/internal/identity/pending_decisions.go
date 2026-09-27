@@ -1,4 +1,4 @@
-// 本文件维护 identity 的所属能力；兼容入口复用唯一实现。
+// 待完成登录流程根据邮箱和身份状态选择注册、绑定或资料采纳分支。
 package identity
 
 import (
@@ -36,6 +36,7 @@ func (f *PendingFlow) EmailShouldCreatePendingRegistration(ctx context.Context, 
 	}
 	return false, nil
 }
+
 func (f *PendingFlow) LegacyRegistrationStatus(
 	ctx context.Context,
 	session *PendingAuthSession, emailVerificationRequired, forceEmailOnSignup bool,
@@ -70,6 +71,7 @@ func (f *PendingFlow) LegacyRegistrationStatus(
 	}
 	return updatedSession, true, nil
 }
+
 func (f *PendingFlow) TransitionAccountToChoice(
 	ctx context.Context,
 	session *PendingAuthSession,
@@ -94,6 +96,7 @@ func (f *PendingFlow) TransitionAccountToChoice(
 	}
 	return session, nil
 }
+
 func (f *PendingFlow) SkipAdoptionPrompt(
 	ctx context.Context,
 	session *PendingAuthSession,

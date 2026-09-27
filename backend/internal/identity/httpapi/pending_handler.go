@@ -1,4 +1,3 @@
-// 本文件维护 httpapi 的所属能力；兼容入口复用唯一实现。
 package httpapi
 
 import (
@@ -43,25 +42,33 @@ func (h *PendingHandler) pendingIdentityService() (identity.PendingStore, error)
 	}
 	return h.flow.Store, nil
 }
+
 func (h *PendingHandler) isForceEmailOnThirdPartySignup(ctx context.Context) bool {
 	return h.pendingOptions.ForceEmailOnSignup != nil && h.pendingOptions.ForceEmailOnSignup(ctx)
 }
+
 func (h *PendingHandler) ensurePendingOAuthAdoptionDecision(c *gin.Context, id int64, r OauthAdoptionDecisionRequest) (*identity.IdentityAdoptionDecision, error) {
 	return h.flow.AdoptionDecision(c.Request.Context(), id, identity.OAuthAdoptionChoice{AdoptDisplayName: r.AdoptDisplayName, AdoptAvatar: r.AdoptAvatar}, true)
 }
+
 func (h *PendingHandler) upsertPendingOAuthAdoptionDecision(c *gin.Context, id int64, r OauthAdoptionDecisionRequest) (*identity.IdentityAdoptionDecision, error) {
 	return h.flow.AdoptionDecision(c.Request.Context(), id, identity.OAuthAdoptionChoice{AdoptDisplayName: r.AdoptDisplayName, AdoptAvatar: r.AdoptAvatar}, false)
 }
+
 func (h *PendingHandler) transitionPendingOAuthAccountToChoiceState(c *gin.Context, p *identity.PendingAuthSession, u *identity.User, email string) (*identity.PendingAuthSession, error) {
 	return h.flow.TransitionAccountToChoice(c.Request.Context(), p, u, email)
 }
+
 func (h *PendingHandler) shouldSkipPendingOAuthAdoptionPrompt(ctx context.Context, p *identity.PendingAuthSession, state map[string]any) (bool, error) {
 	return h.flow.SkipAdoptionPrompt(ctx, p, state)
 }
 
-const oauthIntentBindCurrentUser = "bind_current_user"
-const linuxDoOAuthDefaultRedirectTo = "/dashboard"
-const linuxDoOAuthMaxRedirectLen = 2048
+const (
+	oauthIntentBindCurrentUser    = "bind_current_user"
+	linuxDoOAuthDefaultRedirectTo = "/dashboard"
+	linuxDoOAuthMaxRedirectLen    = 2048
+)
+
 const (
 	OauthPendingBrowserCookiePath = "/api/v1/auth/oauth"
 	OauthPendingBrowserCookieName = "oauth_pending_browser_session"

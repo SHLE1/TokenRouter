@@ -1,20 +1,19 @@
-// 本文件维护 postgres 的所属能力；兼容入口复用唯一实现。
 package postgres
 
 import (
-	usagequery "github.com/TokenFlux/TokenRouter/internal/usage/postgres/query"
-
 	"context"
-
 	"database/sql"
+	"errors"
+	"fmt"
+	"sort"
+	"strings"
+	"time"
+
+	usagequery "github.com/TokenFlux/TokenRouter/internal/usage/postgres/query"
 
 	"entgo.io/ent/dialect"
 
 	entsql "entgo.io/ent/dialect/sql"
-
-	"errors"
-
-	"fmt"
 
 	dbent "github.com/TokenFlux/TokenRouter/ent"
 
@@ -51,12 +50,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/team"
 
 	"github.com/lib/pq"
-
-	"sort"
-
-	"strings"
-
-	"time"
 )
 
 const (

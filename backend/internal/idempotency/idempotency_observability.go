@@ -150,16 +150,6 @@ func safeAuditField(v string) string {
 	return value
 }
 
-func resetIdempotencyMetricsForTest() {
-	defaultIdempotencyMetrics.claimTotal.Store(0)
-	defaultIdempotencyMetrics.replayTotal.Store(0)
-	defaultIdempotencyMetrics.conflictTotal.Store(0)
-	defaultIdempotencyMetrics.retryBackoffTotal.Store(0)
-	defaultIdempotencyMetrics.processingDurationCount.Store(0)
-	defaultIdempotencyMetrics.processingDurationMicros.Store(0)
-	defaultIdempotencyMetrics.storeUnavailableTotal.Store(0)
-}
-
 func builderWriteString(builder *strings.Builder, value string) {
 	_, _ = builder.WriteString(value)
 }
@@ -182,6 +172,7 @@ func notifyObserver(observer Observer, component, message string) {
 		observer.Observe(component, message)
 	}
 }
+
 func (c *IdempotencyCoordinator) observe(component, message string) {
 	if c != nil {
 		notifyObserver(c.observer, component, message)

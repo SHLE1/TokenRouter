@@ -1,4 +1,3 @@
-// 本文件维护 httpapi 的所属能力；兼容入口复用唯一实现。
 package httpapi
 
 import (
@@ -31,12 +30,14 @@ type DingTalkHandler struct {
 func NewDingTalkHandler(p *PendingHandler, b *OAuthBindHandler, s *identity.DingTalkSyncRuntime, o DingTalkHTTPOptions) *DingTalkHandler {
 	return &DingTalkHandler{p, b, s, o}
 }
+
 func (h *DingTalkHandler) isDingTalkSignupBlocked(ctx context.Context, cfg identity.DingTalkOAuthOptions) bool {
 	if h.dingTalkOptions.RegistrationEnabled == nil {
 		return false
 	}
 	return identity.DingTalkSignupBlocked(cfg, h.dingTalkOptions.RegistrationEnabled(ctx))
 }
+
 func (h *DingTalkHandler) findDingTalkCompatEmailUser(ctx context.Context, email string) (*identity.User, error) {
 	if !DingTalkLevelThreeEnabled {
 		return nil, nil
@@ -85,6 +86,7 @@ func DingTalkUpstreamRedirect(c *gin.Context, frontendCallback, step string, err
 	}
 	RedirectOAuthError(c, frontendCallback, identity.DingTalkErrorCode(err), msg, "")
 }
+
 func SetDingTalkCookie(c *gin.Context, name string, value string, maxAgeSec int, secure bool) {
 	http.SetCookie(c.Writer, &http.Cookie{
 		Name:     name,
@@ -96,6 +98,7 @@ func SetDingTalkCookie(c *gin.Context, name string, value string, maxAgeSec int,
 		SameSite: http.SameSiteLaxMode,
 	})
 }
+
 func ClearDingTalkCookie(c *gin.Context, name string, secure bool) {
 	http.SetCookie(c.Writer, &http.Cookie{
 		Name:     name,
@@ -243,45 +246,10 @@ func (h *DingTalkHandler) DingTalkOAuthCallback(c *gin.Context) {
 
 	identityKey := identity.PendingAuthIdentityKey{ProviderType: "dingtalk", ProviderKey: "dingtalk", ProviderSubject: unionID}
 
-	// 第 3/4 步调用策略由 policy 决定，与 require_email 解耦。
-	// policy=internal_only → 必须成功（硬失败），因为 AppType=internal 已保证用户在应用企业。
-	// policy=none / "" → 尝试，失败降级（公网场景跨组织用户属正常预期）。
-	// require_email 只影响 Step 3/4 结果后的邮箱处理路径，不影响是否调用。
-	var staff *identity.DingTalkProfileSnapshot
-	switch cfg.CorpRestrictionPolicy {
-	case "internal_only":
-		// AppType=internal 已保证用户在应用企业，第 3/4 步必须成功。
-		// 失败表示钉钉 OAPI 故障或应用配置错误，应硬失败。
-		upstreamUserID, errStep3 := client.GetUserIdByUnionId(c.Request.Context(), unionID)
-		if errStep3 != nil {
-			DingTalkUpstreamRedirect(c, frontendCallback, "get_user_id", errStep3)
-			return
-		}
-		staffInfo, errStep4 := client.GetStaffInfoByUserId(c.Request.Context(), upstreamUserID)
-		if errStep4 != nil {
-			DingTalkUpstreamRedirect(c, frontendCallback, "get_staff_info", errStep4)
-			return
-		}
-		staff = staffInfo
-
-	default: // "none" or ""
-		// 公网登录，跨组织用户第 3/4 步可能失败（设计预期），尝试调用，失败降级。
-		// 即使 require_email=false 也尝试拿 name（用于 upstreamClaims.username），失败就空着。
-		upstreamUserID, errStep3 := client.GetUserIdByUnionId(c.Request.Context(), unionID)
-		if errStep3 != nil {
-			slog.Debug("dingtalk step3 fallback (none/cross-org)",
-				"corp_id", corpID, "union_id", unionID, "err", errStep3.Error())
-			staff = &identity.DingTalkProfileSnapshot{}
-			break
-		}
-		staffInfo, errStep4 := client.GetStaffInfoByUserId(c.Request.Context(), upstreamUserID)
-		if errStep4 != nil {
-			slog.Debug("dingtalk step4 fallback (none/cross-org)",
-				"corp_id", corpID, "union_id", unionID, "err", errStep4.Error())
-			staff = &identity.DingTalkProfileSnapshot{}
-			break
-		}
-		staff = staffInfo
+	staff, failedStep, err := loadDingTalkStaff(c.Request.Context(), client, cfg.CorpRestrictionPolicy, unionID, corpID)
+	if err != nil {
+		DingTalkUpstreamRedirect(c, frontendCallback, failedStep, err)
+		return
 	}
 
 	// nick 来自 OIDC /contact/users/me，优先作为钉钉昵称（user/get.nickname 多数为空）。
@@ -573,6 +541,7 @@ func (h *DingTalkHandler) CreateDingTalkOAuthAccount(c *gin.Context) {
 func (h *DingTalkHandler) BindDingTalkOAuthLogin(c *gin.Context) {
 	h.BindPendingLoginForProvider(c, "dingtalk")
 }
+
 func (h *DingTalkHandler) CreateDingTalkChoiceSession(
 	c *gin.Context,
 	identityKey identity.PendingAuthIdentityKey,
@@ -588,4 +557,26 @@ func (h *DingTalkHandler) CreateDingTalkChoiceSession(
 ) error {
 	draft := identity.PrepareDingTalkChoice(identityKey, suggestedEmail, resolvedEmail, redirectTo, browserSessionKey, upstreamClaims, compatEmail, compatEmailUser, forceEmailOnSignup, signupBlocked)
 	return h.CreateOAuthPendingSession(c, draft)
+}
+
+// loadDingTalkStaff 执行企业用户和资料查询；企业内登录要求成功，其他策略允许跨组织查询失败后降级。
+// require_email 由调用方在查询结束后处理，不影响这里的查询顺序。
+func loadDingTalkStaff(ctx context.Context, client identity.DingTalkOAuthClient, policy, unionID, corpID string) (*identity.DingTalkProfileSnapshot, string, error) {
+	upstreamUserID, err := client.GetUserIdByUnionId(ctx, unionID)
+	if err != nil {
+		if policy == "internal_only" {
+			return nil, "get_user_id", err
+		}
+		slog.Debug("dingtalk step3 fallback (none/cross-org)", "corp_id", corpID, "union_id", unionID, "err", err)
+		return &identity.DingTalkProfileSnapshot{}, "", nil
+	}
+	staff, err := client.GetStaffInfoByUserId(ctx, upstreamUserID)
+	if err != nil {
+		if policy == "internal_only" {
+			return nil, "get_staff_info", err
+		}
+		slog.Debug("dingtalk step4 fallback (none/cross-org)", "corp_id", corpID, "union_id", unionID, "err", err)
+		return &identity.DingTalkProfileSnapshot{}, "", nil
+	}
+	return staff, "", nil
 }

@@ -1,4 +1,3 @@
-// 本文件维护 provider 的所属能力；兼容入口复用唯一实现。
 package provider
 
 // SanitizeStoredCredentials 移除 OAuth 兑换后不得写入提供商凭据的 Grok SSO、密码和 cookie。

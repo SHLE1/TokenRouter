@@ -1,4 +1,3 @@
-// 本文件维护 identity 的所属能力；兼容入口复用唯一实现。
 package identity
 
 import (
@@ -50,6 +49,7 @@ func (s *UserAdmin) BindUserAuthIdentity(ctx context.Context, userID int64, inpu
 	verifiedAt := s.now().UTC()
 	return s.Transactions.BindAuthIdentity(ctx, PreparedAdminIdentityBinding{UserID: userID, ProviderType: providerType, ProviderKey: canonicalProviderKey, ProviderSubject: providerSubject, CompatibleKeys: compatibleProviderKeys, Issuer: issuer, Metadata: input.Metadata, Channel: channelInput, VerifiedAt: verifiedAt})
 }
+
 func (s *UserAdmin) DeleteUser(ctx context.Context, id int64) error {
 	// 保护管理员账号，避免后台误删最高权限用户。
 	user, err := s.Users.GetByID(ctx, id)
@@ -99,6 +99,7 @@ func (s *UserAdmin) ListKeysForDeletion(ctx context.Context, userID int64) ([]Ad
 	}
 	return keys, nil
 } // ReplaceUserGroup 替换用户的专属分组
+
 func (s *UserAdmin) ReplaceUserGroup(ctx context.Context, userID, oldGroupID, newGroupID int64) (*ReplaceUserGroupResult, error) {
 	if oldGroupID == newGroupID {
 		return nil, infraerrors.BadRequest("SAME_GROUP", "old and new group must be different")

@@ -1,4 +1,3 @@
-// 本文件维护 egress 的所属能力；兼容入口复用唯一实现。
 package egress
 
 // RequestPolicyInput 只提供当前层已决定的出站值，不查询提供商、配置、DNS 或存储。

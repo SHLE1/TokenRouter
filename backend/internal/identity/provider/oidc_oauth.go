@@ -1,4 +1,3 @@
-// 本文件维护 provider 的所属能力；兼容入口复用唯一实现。
 package provider
 
 import (
@@ -22,8 +21,10 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-type OidcTokenResponse = identity.OIDCTokenResponse
-type OidcTokenExchangeError = identity.OIDCTokenExchangeError
+type (
+	OidcTokenResponse      = identity.OIDCTokenResponse
+	OidcTokenExchangeError = identity.OIDCTokenExchangeError
+)
 
 type OidcIDTokenClaims struct {
 	Email             string `json:"email,omitempty"`
@@ -478,9 +479,11 @@ type OIDCClient struct{}
 func (OIDCClient) ExchangeCode(ctx context.Context, c OIDCOptions, code, redirect, verifier string) (*OidcTokenResponse, error) {
 	return OidcExchangeCode(ctx, c, code, redirect, verifier)
 }
+
 func (OIDCClient) FetchUserInfo(ctx context.Context, c OIDCOptions, t *OidcTokenResponse) (*OidcUserInfoClaims, error) {
 	return OidcFetchUserInfo(ctx, c, t)
 }
+
 func (OIDCClient) ValidateIDToken(ctx context.Context, c OIDCOptions, token, nonce string) (*identity.OIDCVerifiedClaims, error) {
 	v, e := OidcParseAndValidateIDToken(ctx, c, token, nonce)
 	if v == nil {

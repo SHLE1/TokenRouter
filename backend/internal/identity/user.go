@@ -1,4 +1,3 @@
-// 本文件维护 identity 的所属能力；兼容入口复用唯一实现。
 package identity
 
 import (
@@ -139,6 +138,7 @@ var ErrUserNotFound = billing.ErrUserNotFound
 
 // ParseNotifyEmails 复用身份联系邮箱序列化兼容。
 func ParseNotifyEmails(raw string) []NotifyEmailEntry { return contact.ParseNotifyEmails(raw) }
+
 func MarshalNotifyEmails(entries []NotifyEmailEntry) string {
 	return contact.MarshalNotifyEmails(entries)
 }

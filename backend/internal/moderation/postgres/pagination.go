@@ -1,4 +1,4 @@
-// 本文件维护 repository 的所属能力；兼容入口复用唯一实现。
+// 根据审核查询总数和分页参数构造分页结果。
 package postgres
 
 import (

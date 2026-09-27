@@ -1,4 +1,4 @@
-// 本文件维护 provider 的所属能力；兼容入口复用唯一实现。
+// Agent Identity 模式由提供商的 OpenAI 认证配置决定。
 package provider
 
 import (

@@ -1,4 +1,3 @@
-// 本文件维护 authctx 的所属能力；兼容入口复用唯一实现。
 package authctx
 
 import (
@@ -39,6 +38,7 @@ func SetPrincipal(c *gin.Context, p identity.Principal, concurrency int, email s
 	c.Set(ContextKeyAuthEmail, email)
 	c.Set(ContextKeySessionID, p.SessionID)
 }
+
 func recordFromContext(c *gin.Context) (authenticationRecord, bool) {
 	v, ok := c.Get(principalKey)
 	if !ok {
@@ -47,10 +47,12 @@ func recordFromContext(c *gin.Context) (authenticationRecord, bool) {
 	r, ok := v.(authenticationRecord)
 	return r, ok
 }
+
 func GetPrincipal(c *gin.Context) (identity.Principal, bool) {
 	r, ok := recordFromContext(c)
 	return r.Principal, ok
 }
+
 func GetAuthSubjectFromContext(c *gin.Context) (AuthSubject, bool) {
 	if r, ok := recordFromContext(c); ok {
 		return r.Subject, r.HasSubject
@@ -62,6 +64,7 @@ func GetAuthSubjectFromContext(c *gin.Context) (AuthSubject, bool) {
 	s, ok := v.(AuthSubject)
 	return s, ok
 }
+
 func GetUserRoleFromContext(c *gin.Context) (string, bool) {
 	if r, ok := recordFromContext(c); ok {
 		return r.Role, r.HasRole

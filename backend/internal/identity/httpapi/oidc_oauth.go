@@ -1,4 +1,3 @@
-// 本文件维护 httpapi 的所属能力；兼容入口复用唯一实现。
 package httpapi
 
 import (
@@ -576,6 +575,7 @@ func BuildOIDCAuthorizeURL(cfg identity.OIDCOAuthOptions, state, nonce, codeChal
 	u.RawQuery = q.Encode()
 	return u.String(), nil
 }
+
 func OIDCSetCookie(c *gin.Context, name, value string, maxAgeSec int, secure bool) {
 	http.SetCookie(c.Writer, &http.Cookie{
 		Name:     name,
@@ -587,6 +587,7 @@ func OIDCSetCookie(c *gin.Context, name, value string, maxAgeSec int, secure boo
 		SameSite: http.SameSiteLaxMode,
 	})
 }
+
 func OIDCClearCookie(c *gin.Context, name string, secure bool) {
 	http.SetCookie(c.Writer, &http.Cookie{
 		Name:     name,
@@ -647,6 +648,7 @@ func (h *OIDCHandler) TryOIDCVerifiedEmailFastPath(
 	RedirectOAuthFragment(c, frontendCallback, fragment)
 	return true
 }
+
 func (h *OIDCHandler) CreateOIDCChoiceSession(
 	c *gin.Context,
 	identityKey identity.PendingAuthIdentityKey,

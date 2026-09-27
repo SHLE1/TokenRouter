@@ -1,4 +1,3 @@
-// 本文件维护 transfer 的所属能力；兼容入口复用唯一实现。
 package transfer
 
 // OpenAIOAuthImportProviderDefaults 是 OpenAI OAuth 导入模板允许填充的提供商字段。

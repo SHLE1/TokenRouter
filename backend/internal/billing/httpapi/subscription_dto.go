@@ -1,4 +1,4 @@
-// 本文件维护 httpapi 的所属能力；兼容入口复用唯一实现。
+// 订阅接口共享套餐、用户订阅和批量分配结果的 DTO。
 package httpapi
 
 import (

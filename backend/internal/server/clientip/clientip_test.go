@@ -11,7 +11,6 @@ import (
 )
 
 func TestGetTrustedClientIPUsesGinClientIP(t *testing.T) {
-
 	r := gin.New()
 	require.NoError(t, r.SetTrustedProxies(nil))
 
@@ -32,7 +31,6 @@ func TestGetTrustedClientIPUsesGinClientIP(t *testing.T) {
 }
 
 func TestGetClientIPPreservesLegacyDockerForwardedHeaders(t *testing.T) {
-
 	r := gin.New()
 	require.NoError(t, r.SetTrustedProxies(nil))
 	r.GET("/t", func(c *gin.Context) {
@@ -51,7 +49,6 @@ func TestGetClientIPPreservesLegacyDockerForwardedHeaders(t *testing.T) {
 }
 
 func TestGetSecurityClientIPSwitchEnabledUsesLegacyHeaders(t *testing.T) {
-
 	r := gin.New()
 	require.NoError(t, r.SetTrustedProxies(nil))
 	r.GET("/t", func(c *gin.Context) {
@@ -69,7 +66,6 @@ func TestGetSecurityClientIPSwitchEnabledUsesLegacyHeaders(t *testing.T) {
 }
 
 func TestGetSecurityClientIPCustomHeaderPrecedenceAndFallback(t *testing.T) {
-
 	tests := []struct {
 		name           string
 		trustForward   bool
@@ -183,7 +179,6 @@ func TestGetSecurityClientIPCustomHeaderPrecedenceAndFallback(t *testing.T) {
 }
 
 func TestGetSecurityClientIPSwitchDisabledUsesConfiguredTrustedProxy(t *testing.T) {
-
 	r := gin.New()
 	require.NoError(t, r.SetTrustedProxies([]string{"9.9.9.9"}))
 	r.GET("/t", func(c *gin.Context) {
@@ -200,11 +195,10 @@ func TestGetSecurityClientIPSwitchDisabledUsesConfiguredTrustedProxy(t *testing.
 }
 
 func TestGetClientIPSwitchDisabledUsesTrustedProxyChain(t *testing.T) {
-
 	r := gin.New()
 	require.NoError(t, r.SetTrustedProxies(nil))
 	r.GET("/t", func(c *gin.Context) {
-		SetLegacyForwardedIPTrust(c, false)
+		SetForwardedIPSettings(c, false, nil)
 		c.String(200, GetClientIP(c))
 	})
 
@@ -218,7 +212,6 @@ func TestGetClientIPSwitchDisabledUsesTrustedProxyChain(t *testing.T) {
 }
 
 func TestGetSecurityClientIPRequestSnapshotCopiesCustomHeaders(t *testing.T) {
-
 	r := gin.New()
 	require.NoError(t, r.SetTrustedProxies(nil))
 	r.GET("/t", func(c *gin.Context) {
@@ -239,7 +232,6 @@ func TestGetSecurityClientIPRequestSnapshotCopiesCustomHeaders(t *testing.T) {
 }
 
 func TestGetSecurityClientIPRequestSnapshotOverridesLiveFallback(t *testing.T) {
-
 	tests := []struct {
 		name          string
 		requestTrust  bool
@@ -260,7 +252,7 @@ func TestGetSecurityClientIPRequestSnapshotOverridesLiveFallback(t *testing.T) {
 			r := gin.New()
 			require.NoError(t, r.SetTrustedProxies(nil))
 			r.GET("/t", func(c *gin.Context) {
-				SetLegacyForwardedIPTrust(c, test.requestTrust)
+				SetForwardedIPSettings(c, test.requestTrust, nil)
 				c.String(200, GetSecurityClientIP(c, test.fallbackTrust))
 			})
 

@@ -1,4 +1,4 @@
-// 本文件维护 accessview 的所属能力；兼容入口复用唯一实现。
+// 推理强度映射同时记录来源、目标以及可选的模型匹配范围。
 package accessview
 
 type ReasoningEffortMapping struct {

@@ -1,4 +1,4 @@
-// 本文件维护 provider 的所属能力；兼容入口复用唯一实现。
+// 响应头按已编译的过滤规则复制到下游。
 package provider
 
 import (
@@ -8,7 +8,6 @@ import (
 )
 
 func FilterHeaders(src http.Header, filter *egress.CompiledHeaderFilter) http.Header {
-
 	filtered := make(http.Header, len(src))
 	for key, values := range src {
 		if !filter.Allows(key) {

@@ -34,14 +34,3 @@ func CopyCompositeGroups(values []APIKeyCompositeGroup) []APIKeyCompositeGroup {
 	}
 	return out
 }
-
-func CopyAPIKeys(values []APIKey) []APIKey {
-	if values == nil {
-		return nil
-	}
-	out := make([]APIKey, len(values))
-	for i := range values {
-		out[i] = *CopyAPIKey(&values[i])
-	}
-	return out
-}

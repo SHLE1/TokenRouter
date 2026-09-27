@@ -11,7 +11,6 @@ import (
 	"testing/fstest"
 
 	"github.com/TokenFlux/TokenRouter/internal/infra/postgres"
-	routingpostgres "github.com/TokenFlux/TokenRouter/internal/routing/postgres"
 	"github.com/TokenFlux/TokenRouter/migrations"
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/require"
@@ -93,7 +92,7 @@ INSERT INTO groups(name,model_pricing) VALUES ('group price','[{"platform":"anth
 			_, err := db.ExecContext(ctx, `DELETE FROM pricing_configs WHERE id=78001`)
 			require.NoError(t, err)
 		}()
-		preview, err := routingpostgres.PreviewPricingMigration(ctx, db)
+		preview, err := previewPricingMigration(ctx, db)
 		require.NoError(t, err)
 		require.False(t, preview.Blocked)
 		found := false
@@ -116,7 +115,7 @@ INSERT INTO groups(name,model_pricing) VALUES ('group price','[{"platform":"anth
 		require.Equal(t, 2, count)
 		_, err = db.ExecContext(ctx, `UPDATE pricing_config_model_pricing SET input_price=NULL WHERE pricing_config_id=78001 AND platform='openai'`)
 		require.NoError(t, err)
-		preview, err = routingpostgres.PreviewPricingMigration(ctx, db)
+		preview, err = previewPricingMigration(ctx, db)
 		require.NoError(t, err)
 		require.True(t, preview.Blocked)
 		var archive sql.NullString

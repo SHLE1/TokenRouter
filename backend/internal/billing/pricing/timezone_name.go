@@ -1,4 +1,4 @@
-// 本文件维护 pricing 的所属能力；兼容入口复用唯一实现。
+// 时区名称必须非空，且不能使用依赖进程设置的 Local。
 package pricing
 
 import (

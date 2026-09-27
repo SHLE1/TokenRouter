@@ -1,4 +1,3 @@
-// 本文件维护 identity 的所属能力；兼容入口复用唯一实现。
 package identity
 
 import (
@@ -108,25 +107,27 @@ type UserGroupRPMStatus struct {
 }
 
 // UserAdmin 持有用户管理所需窄端口；分组与 Key 只读投影不携带旧服务实例。
-type UserAdmin struct{ AdminDependencies }
-type AdminDependencies struct {
-	Now           func() time.Time
-	Users         UserRepository
-	Groups        AdminGroupReader
-	Keys          AdminKeyReader
-	Rates         billing.UserGroupRateRepository
-	RPM           AdminRPMReader
-	Settings      AdminUserSettings
-	Subscriptions DefaultSubscriptionAssigner
-	Balances      billing.BalanceAdjuster
-	Records       AdminAdjustmentRecords
-	Invalidator   AdminInvalidator
-	BalanceCache  UserBalanceCache
-	Affiliates    AdminAffiliateAccruer
-	Transactions  AdminTransactions
-	Observer      Observer
-	Background    func(string, func()) bool
-}
+type (
+	UserAdmin         struct{ AdminDependencies }
+	AdminDependencies struct {
+		Now           func() time.Time
+		Users         UserRepository
+		Groups        AdminGroupReader
+		Keys          AdminKeyReader
+		Rates         billing.UserGroupRateRepository
+		RPM           AdminRPMReader
+		Settings      AdminUserSettings
+		Subscriptions DefaultSubscriptionAssigner
+		Balances      billing.BalanceAdjuster
+		Records       AdminAdjustmentRecords
+		Invalidator   AdminInvalidator
+		BalanceCache  UserBalanceCache
+		Affiliates    AdminAffiliateAccruer
+		Transactions  AdminTransactions
+		Observer      Observer
+		Background    func(string, func()) bool
+	}
+)
 
 func NewUserAdmin(d AdminDependencies) *UserAdmin { return &UserAdmin{d} }
 func (s *UserAdmin) RunBackground(name string, fn func()) bool {

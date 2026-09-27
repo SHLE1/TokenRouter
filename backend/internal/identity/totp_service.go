@@ -1,4 +1,3 @@
-// 本文件维护 identity 的所属能力；兼容入口复用唯一实现。
 package identity
 
 import (
@@ -118,7 +117,8 @@ func NewTotpService(
 	emailQueueService VerificationQueue,
 	clocks ...func() time.Time,
 ) *TotpService {
-	return &TotpService{operationClock: clockFromOptional(clocks),
+	return &TotpService{
+		operationClock:    clockFromOptional(clocks),
 		userRepo:          userRepo,
 		encryptor:         encryptor,
 		cache:             cache,

@@ -4,13 +4,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/google/uuid"
-
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/stretchr/testify/require"
 )
 
-func TestProviderServiceUpdateStripsOllamaManagedExtra(t *testing.T) {
+func TestAdminUpdatePreservesOllamaManagedExtra(t *testing.T) {
 	provider := ollamaUsageProvider(61)
 	provider.Extra = map[string]any{
 		providercore.OllamaCloudUsageSessionExtraKey:     "local-ciphertext",
@@ -18,7 +16,7 @@ func TestProviderServiceUpdateStripsOllamaManagedExtra(t *testing.T) {
 		providercore.OllamaCloudUsageSnapshotExtraKey:    map[string]any{"status": providercore.OllamaCloudUsageStatusOK},
 	}
 	repo := &ollamaManagedExtraUpdateRepo{provider: provider}
-	svc := providercore.NewBasicProviders(repo, nil, uuid.NewString)
+	svc := newProviderEditorForTest(repo)
 	requestedExtra := map[string]any{
 		"note": "preserved",
 		providercore.OllamaCloudUsageSessionExtraKey:     "forged-ciphertext",
@@ -26,18 +24,18 @@ func TestProviderServiceUpdateStripsOllamaManagedExtra(t *testing.T) {
 		providercore.OllamaCloudUsageSnapshotExtraKey:    nil,
 	}
 
-	_, err := svc.Update(context.Background(), provider.ID, providercore.UpdateProviderRequest{Extra: &requestedExtra})
+	_, err := svc.UpdateProvider(context.Background(), provider.ID, &providercore.UpdateProviderInput{Extra: requestedExtra})
 	require.NoError(t, err)
 	require.Equal(t, "preserved", repo.updated.Extra["note"])
-	require.NotContains(t, repo.updated.Extra, providercore.OllamaCloudUsageSessionExtraKey)
-	require.NotContains(t, repo.updated.Extra, providercore.OllamaCloudUsageAutoRefreshExtraKey)
-	require.NotContains(t, repo.updated.Extra, providercore.OllamaCloudUsageSnapshotExtraKey)
+	require.Equal(t, "local-ciphertext", repo.updated.Extra[providercore.OllamaCloudUsageSessionExtraKey])
+	require.Equal(t, true, repo.updated.Extra[providercore.OllamaCloudUsageAutoRefreshExtraKey])
+	require.Equal(t, provider.Extra[providercore.OllamaCloudUsageSnapshotExtraKey], repo.updated.Extra[providercore.OllamaCloudUsageSnapshotExtraKey])
 
 	require.Contains(t, requestedExtra, providercore.OllamaCloudUsageSessionExtraKey)
 }
 
 type ollamaManagedExtraUpdateRepo struct {
-	providercore.BasicProviderStore
+	providercore.AdminStore
 	provider *providercore.Record
 	updated  *providercore.Record
 }

@@ -1,4 +1,3 @@
-// 本文件维护 apikey 的所属能力；兼容入口复用唯一实现。
 package apikey
 
 import (
@@ -111,10 +110,8 @@ type APIKey struct {
 	ActorUser      *User
 	Team           *Team
 	TeamMembership *TeamMembership
-	Group          *routing.
-		// FallbackWhenGroupUnavailable 控制绑定分组停用时是否允许回退到管理员明确配置的目标。
-		Group
-
+	Group          *routing.Group
+	// FallbackWhenGroupUnavailable 控制绑定分组停用时是否允许回退到管理员明确配置的目标。
 	FallbackWhenGroupUnavailable bool
 	// CurrentConcurrency 表示当前 API Key 的实时活跃请求数。
 	CurrentConcurrency int

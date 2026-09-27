@@ -1,4 +1,4 @@
-// 本文件维护 postgres 的所属能力；兼容入口复用唯一实现。
+// 认证失效 outbox 通过认领租约、重试和第二轮投递协调多实例缓存失效。
 package postgres
 
 import (

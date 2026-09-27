@@ -1,4 +1,4 @@
-// 本文件维护 provider 的所属能力；兼容入口复用唯一实现。
+// Codex 指纹种子在创建时生成，更新时按提供商身份保留或清理。
 package provider
 
 import (

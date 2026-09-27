@@ -1,4 +1,3 @@
-// 本文件维护 postgres 的所属能力；兼容入口复用唯一实现。
 package postgres
 
 import (
@@ -16,9 +15,11 @@ type RegistrationInvitations struct{ client *dbent.Client }
 func NewRegistrationInvitations(client *dbent.Client) *RegistrationInvitations {
 	return &RegistrationInvitations{client}
 }
+
 func RegistrationInvitationsInTx(tx *dbent.Tx) *RegistrationInvitations {
 	return &RegistrationInvitations{tx.Client()}
 }
+
 func (r *RegistrationInvitations) Load(ctx context.Context, invitationCode string) (*billing.RedeemCode, error) {
 	client := r.client
 	entity, err := client.RedeemCode.Query().Where(redeemcode.CodeEQ(invitationCode)).Only(ctx)
@@ -44,6 +45,7 @@ func (r *RegistrationInvitations) Load(ctx context.Context, invitationCode strin
 		PlanID:    entity.PlanID,
 	}, nil
 }
+
 func (r *RegistrationInvitations) Consume(ctx context.Context, invitationID, userID int64) error {
 	client := r.client
 	affected, err := client.RedeemCode.Update().
@@ -74,6 +76,7 @@ func (r *RegistrationInvitations) RestoreSnapshot(ctx context.Context, code *bil
 	_, err := redeemUpdateBuilder(r.client, code).Save(ctx)
 	return err
 }
+
 func registrationInvitationNotes(v *string) string {
 	if v == nil {
 		return ""

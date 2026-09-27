@@ -1,4 +1,3 @@
-// 本文件维护 provider 的所属能力；兼容入口复用唯一实现。
 package provider
 
 // BackgroundSkipAction 定义后台刷新服务在“未实际刷新”场景的计数方式。

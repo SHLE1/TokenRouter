@@ -1,4 +1,3 @@
-// 本文件维护 apikey 的所属能力；兼容入口复用唯一实现。
 package apikey
 
 import (
@@ -31,6 +30,7 @@ func WithInboundEndpoint(ctx context.Context, endpoint string) context.Context {
 	value.InboundEndpoint, value.InboundEndpointSet = endpoint, true
 	return WithRequestMetadata(ctx, value)
 }
+
 func RequestMetadataFromContext(ctx context.Context) RequestMetadata {
 	if ctx == nil {
 		return RequestMetadata{}
@@ -38,10 +38,12 @@ func RequestMetadataFromContext(ctx context.Context) RequestMetadata {
 	v, _ := ctx.Value(requestMetadataKey{}).(RequestMetadata)
 	return v
 }
+
 func ForcePlatformFromContext(ctx context.Context) (string, bool) {
 	v := RequestMetadataFromContext(ctx)
 	return v.ForcePlatform, v.ForcePlatformSet
 }
+
 func InboundEndpointFromContext(ctx context.Context) (string, bool) {
 	v := RequestMetadataFromContext(ctx)
 	return v.InboundEndpoint, v.InboundEndpointSet

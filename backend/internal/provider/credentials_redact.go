@@ -1,4 +1,3 @@
-// 本文件维护 provider 的所属能力；兼容入口复用唯一实现。
 package provider
 
 // SensitiveCredentialKeys 列出 Provider.Credentials JSON map 中绝不允许返回到前端的子键。

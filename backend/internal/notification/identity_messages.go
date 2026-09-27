@@ -10,8 +10,10 @@ import (
 	"time"
 )
 
-const verifyCodeTTL = 15 * time.Minute
-const passwordResetTokenTTL = 30 * time.Minute
+const (
+	verifyCodeTTL         = 15 * time.Minute
+	passwordResetTokenTTL = 30 * time.Minute
+)
 
 func (s *Mailer) SendVerifyCodeMessage(ctx context.Context, email, siteName, code, locale string) error {
 	if s.notificationEmailService != nil {
@@ -45,6 +47,7 @@ func (s *Mailer) SendVerifyCodeMessage(ctx context.Context, email, siteName, cod
 
 	return nil
 }
+
 func (s *Mailer) SendPasswordResetMessage(ctx context.Context, email, siteName, fullResetURL, locale string) error {
 	if s.notificationEmailService != nil {
 		err := s.notificationEmailService.Send(ctx, NotificationEmailSendInput{
@@ -164,12 +167,4 @@ func (s *Mailer) buildPasswordResetEmailBody(resetURL, siteName string) string {
 </body>
 </html>
 `, html.EscapeString(siteName), html.EscapeString(resetURL), html.EscapeString(resetURL))
-}
-
-// VerifyCodeBody 与 PasswordResetBody 供旧正文兼容入口委托。
-func VerifyCodeBody(code, site string) string {
-	return (*Mailer)(nil).buildVerifyCodeEmailBody(code, site)
-}
-func PasswordResetBody(url, site string) string {
-	return (*Mailer)(nil).buildPasswordResetEmailBody(url, site)
 }

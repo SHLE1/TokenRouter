@@ -1,4 +1,3 @@
-// 本文件维护 postgres 的所属能力；兼容入口复用唯一实现。
 package postgres
 
 import (
@@ -122,6 +121,7 @@ func TeamKeyActorCondition(actorUserID *int64, args []any) (string, []any) {
 	args = append(args, *actorUserID)
 	return fmt.Sprintf(" AND k.user_id = $%d", len(args)), args
 }
+
 func batchImageNullInt64Ptr(v sql.NullInt64) *int64 {
 	if !v.Valid {
 		return nil
@@ -152,6 +152,7 @@ func (k *TeamKeys) DisableHistoricalMemberInTx(ctx context.Context, tx *sql.Tx, 
 	_, err := tx.ExecContext(ctx, `UPDATE api_keys SET status = 'disabled', updated_at = $3 WHERE team_id = $1 AND user_id = $2 AND created_at < $3 AND deleted_at IS NULL`, teamID, userID, now)
 	return err
 }
+
 func (k *TeamKeys) DisableTeamInTx(ctx context.Context, tx *sql.Tx, teamID int64, now time.Time) error {
 	_, err := tx.ExecContext(ctx, `UPDATE api_keys SET status = 'disabled', updated_at = $2 WHERE team_id = $1 AND deleted_at IS NULL`, teamID, now)
 	return err

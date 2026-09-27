@@ -35,7 +35,7 @@ func (r *configurationInterleave) GetByID(ctx context.Context, id int64) (*provi
 }
 
 func TestConfigurationWriteAuthority(t *testing.T) {
-	for _, mode := range []string{"name", "extra", "status", "admin_name", "admin_extra", "admin_credentials"} {
+	for _, mode := range []string{"name", "extra", "status", "credentials"} {
 		t.Run(mode, func(t *testing.T) {
 			ctx := context.Background()
 			client := testEntClient(t)
@@ -53,24 +53,18 @@ func TestConfigurationWriteAuthority(t *testing.T) {
 				 status='error', error_message='new-health-error', schedulable=false WHERE id=$1`, row.ID)
 				require.NoError(t, err)
 			}
-			svc := provider.NewBasicProviders(repo, nil, uuid.NewString)
 			admin := provider.NewAdmin(repo, provider.AdminOptions{Creation: provider.CreationOptions{Now: time.Now, LoadLocation: time.LoadLocation, NewSeed: uuid.NewString}, Credentials: provideradapter.CreateCredentialHooks(nil, nil)})
 			switch mode {
-			case "admin_name":
-				_, err = admin.UpdateProvider(ctx, row.ID, &provider.UpdateProviderInput{Name: "edited-name"})
-			case "admin_extra":
-				_, err = admin.UpdateProvider(ctx, row.ID, &provider.UpdateProviderInput{Extra: map[string]any{"quota_limit": 200.0}})
-			case "admin_credentials":
-				_, err = admin.UpdateProvider(ctx, row.ID, &provider.UpdateProviderInput{Credentials: map[string]any{"model_mapping": map[string]any{"alias": "target"}}})
 			case "name":
-				name := "edited-name"
-				_, err = svc.Update(ctx, row.ID, provider.UpdateProviderRequest{Name: &name})
+				_, err = admin.UpdateProvider(ctx, row.ID, &provider.UpdateProviderInput{Name: "edited-name"})
 			case "extra":
-				extra := map[string]any{"quota_limit": 200.0}
-				_, err = svc.Update(ctx, row.ID, provider.UpdateProviderRequest{Extra: &extra})
+				_, err = admin.UpdateProvider(ctx, row.ID, &provider.UpdateProviderInput{Extra: map[string]any{"quota_limit": 200.0}})
+			case "credentials":
+				_, err = admin.UpdateProvider(ctx, row.ID, &provider.UpdateProviderInput{Credentials: map[string]any{"model_mapping": map[string]any{"alias": "target"}}})
 			case "status":
-				err = svc.UpdateStatus(ctx, row.ID, billing.StatusActive, "explicit-recovery")
+				_, err = admin.UpdateProvider(ctx, row.ID, &provider.UpdateProviderInput{Status: billing.StatusActive})
 			}
+
 			require.NoError(t, err)
 			current, err := repo.ProviderStore.GetByID(ctx, row.ID)
 			require.NoError(t, err)
@@ -81,12 +75,12 @@ func TestConfigurationWriteAuthority(t *testing.T) {
 			require.False(t, current.Schedulable)
 			if mode == "status" {
 				require.Equal(t, billing.StatusActive, current.Status)
-				require.Equal(t, "explicit-recovery", current.ErrorMessage)
+				require.Equal(t, "new-health-error", current.ErrorMessage)
 			} else {
 				require.Equal(t, provider.StatusError, current.Status)
 				require.Equal(t, "new-health-error", current.ErrorMessage)
 			}
-			if mode == "extra" || mode == "admin_extra" {
+			if mode == "extra" {
 				require.Equal(t, float64(200), current.Extra["quota_limit"])
 			}
 		})

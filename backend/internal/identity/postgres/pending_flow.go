@@ -1,4 +1,3 @@
-// 本文件维护 postgres 的所属能力；兼容入口复用唯一实现。
 package postgres
 
 import (
@@ -26,26 +25,33 @@ func (d *PendingFlowDatabase) LoadAdoptionDecision(ctx context.Context, id int64
 	}
 	return IdentityAdoptionDecisionFromEntity(v), err
 }
+
 func (d *PendingFlowDatabase) FindUserByNormalizedEmail(ctx context.Context, email string) (*identitycore.User, error) {
 	v, e := FindUserByNormalizedEmail(ctx, d.Client, email)
 	return UserFromEntity(v), e
 }
+
 func (d *PendingFlowDatabase) UpdateProgress(ctx context.Context, p *identitycore.PendingAuthSession, intent, email string, target *int64, state map[string]any) (*identitycore.PendingAuthSession, error) {
 	v, e := UpdatePendingOAuthSessionProgress(ctx, d.Client, PendingAuthSessionToEntity(p), intent, email, target, state)
 	return PendingAuthSessionFromEntity(v), e
 }
+
 func (d *PendingFlowDatabase) EnsureRegistrationIdentityAvailable(ctx context.Context, p *identitycore.PendingAuthSession) error {
 	return EnsurePendingOAuthRegistrationIdentityAvailable(ctx, d.Client, PendingAuthSessionToEntity(p))
 }
+
 func (d *PendingFlowDatabase) IdentityExistsForUser(ctx context.Context, p *identitycore.PendingAuthSession, id int64) (bool, error) {
 	return PendingOAuthIdentityExistsForUser(ctx, d.Client, PendingAuthSessionToEntity(p), id)
 }
+
 func (d *PendingFlowDatabase) ApplyBinding(ctx context.Context, p identitycore.PendingBinding) error {
 	return ApplyPendingOAuthBinding(ctx, d.Client, d.Auth, d.Profiles, PendingAuthSessionToEntity(p.Session), IdentityAdoptionDecisionToEntity(p.Decision), p.OverrideUserID, p.ForceBind, p.ApplyFirstBindDefaults)
 }
+
 func (d *PendingFlowDatabase) ApplyAdoption(ctx context.Context, p *identitycore.PendingAuthSession, choice *identitycore.IdentityAdoptionDecision, id *int64) error {
 	return ApplyPendingOAuthAdoption(ctx, d.Client, d.Auth, d.Profiles, PendingAuthSessionToEntity(p), IdentityAdoptionDecisionToEntity(choice), id)
 }
+
 func (d *PendingFlowDatabase) ApplyAdoptionAndConsume(ctx context.Context, p *identitycore.PendingAuthSession, choice *identitycore.IdentityAdoptionDecision, id int64) error {
 	return ApplyPendingOAuthAdoptionAndConsumeSession(ctx, d.Client, d.Auth, d.Profiles, PendingAuthSessionToEntity(p), IdentityAdoptionDecisionToEntity(choice), id)
 }
@@ -86,6 +92,7 @@ func (d *PendingFlowDatabase) FinalizeCreatedAccount(ctx context.Context, p iden
 	}
 	return nil
 }
+
 func (d *PendingFlowDatabase) FindOAuthIdentityUser(ctx context.Context, identity identitycore.PendingAuthIdentityKey) (*identitycore.User, error) {
 	client := d.Client
 	if client == nil {

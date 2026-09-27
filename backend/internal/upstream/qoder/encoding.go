@@ -58,11 +58,6 @@ func Decode(encoded string) ([]byte, error) {
 	return base64.RawStdEncoding.DecodeString(noPad)
 }
 
-// EncodeBytesToString 是 Encode 的便捷封装。
-func EncodeBytesToString(plaintext []byte) string {
-	return Encode(plaintext)
-}
-
 // EncodeString 是字符串输入的便捷封装。
 func EncodeString(plaintext string) string {
 	return Encode([]byte(plaintext))
@@ -82,15 +77,3 @@ func DecodeString(encoded string) (string, error) {
 func EncodeJSON(compactJSON []byte) string {
 	return Encode(compactJSON)
 }
-
-// MustDecode 在解码失败时 panic，仅用于测试。
-func MustDecode(encoded string) []byte {
-	b, err := Decode(encoded)
-	if err != nil {
-		panic(err)
-	}
-	return b
-}
-
-// 保留 strings.NewReader 引用，避免后续调整导入时误删 strings。
-var _ = strings.NewReader

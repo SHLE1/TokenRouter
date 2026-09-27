@@ -1,4 +1,3 @@
-// 本文件维护 dto 的所属能力；兼容入口复用唯一实现。
 package dto
 
 import (
@@ -97,6 +96,7 @@ func UserFromIdentity[K any](u *identity.User, keys []K) *User[K] {
 	}
 	return out
 }
+
 func AdminUserFromIdentity[K any](u *identity.User, keys []K) *AdminUser[K] {
 	base := UserFromIdentity(u, keys)
 	if base == nil {

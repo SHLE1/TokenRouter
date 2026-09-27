@@ -53,13 +53,11 @@ func TestSummarizeOpenAIWSDialError(t *testing.T) {
 	require.Equal(t, "req_123", reqID)
 }
 
-// 错误字段原文与包装摘要继续一致，截断与字符替换不改变。
-func TestOpenAIWSErrorEventHelpers_DiagnosticsConsistentWithWrapper(t *testing.T) {
+// 错误字段从实际报文解析后，按生产日志规则净化并保留可诊断信息。
+func TestOpenAIWSErrorEventDiagnostics(t *testing.T) {
 	message := []byte(`{"type":"error","error":{"type":"invalid_request_error","code":"invalid_request","message":"invalid input"}}`)
-	codeRaw, errTypeRaw, errMsgRaw := protocolopenai.ParseWSErrorEventFields(message)
-	wrappedCode, wrappedType, wrappedMsg := summarizeOpenAIWSErrorEventFields(message)
-	rawCode, rawType, rawMsg := SummarizeOpenAIWSErrorEventFieldsFromRaw(codeRaw, errTypeRaw, errMsgRaw)
-	require.Equal(t, wrappedCode, rawCode)
-	require.Equal(t, wrappedType, rawType)
-	require.Equal(t, wrappedMsg, rawMsg)
+	code, kind, msg := SummarizeOpenAIWSErrorEventFieldsFromRaw(protocolopenai.ParseWSErrorEventFields(message))
+	require.Equal(t, "invalid_request", code)
+	require.Equal(t, "invalid_request_err", kind)
+	require.Equal(t, "invalid input", msg)
 }

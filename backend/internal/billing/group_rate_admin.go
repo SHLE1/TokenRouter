@@ -1,4 +1,3 @@
-// 本文件维护 billing 的所属能力；兼容入口复用唯一实现。
 package billing
 
 import (
@@ -24,12 +23,14 @@ func (s *GroupRateAdmin) GetGroupRateMultipliers(ctx context.Context, groupID in
 	}
 	return s.userGroupRateRepo.GetByGroupID(ctx, groupID)
 }
+
 func (s *GroupRateAdmin) ClearGroupRateMultipliers(ctx context.Context, groupID int64) error {
 	if s.userGroupRateRepo == nil {
 		return nil
 	}
 	return s.userGroupRateRepo.DeleteByGroupID(ctx, groupID)
 }
+
 func (s *GroupRateAdmin) BatchSetGroupRateMultipliers(ctx context.Context, groupID int64, entries []GroupRateMultiplierInput) error {
 	if s.userGroupRateRepo == nil {
 		return nil
@@ -41,6 +42,7 @@ func (s *GroupRateAdmin) BatchSetGroupRateMultipliers(ctx context.Context, group
 	}
 	return s.userGroupRateRepo.SyncGroupRateMultipliers(ctx, groupID, entries)
 }
+
 func (s *GroupRateAdmin) ClearGroupRPMOverrides(ctx context.Context, groupID int64) error {
 	if s.userGroupRateRepo == nil {
 		return nil
@@ -54,6 +56,7 @@ func (s *GroupRateAdmin) ClearGroupRPMOverrides(ctx context.Context, groupID int
 	}
 	return nil
 }
+
 func (s *GroupRateAdmin) BatchSetGroupRPMOverrides(ctx context.Context, groupID int64, entries []GroupRPMOverrideInput) error {
 	if s.userGroupRateRepo == nil {
 		return nil

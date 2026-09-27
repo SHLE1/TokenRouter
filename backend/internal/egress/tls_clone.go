@@ -1,4 +1,3 @@
-// 本文件维护 egress 的所属能力；兼容入口复用唯一实现。
 package egress
 
 import (
@@ -36,6 +35,7 @@ func CloneTLSFingerprintRouter(p *TLSFingerprintRouter) *TLSFingerprintRouter {
 	copied.Rules = slices.Clone(p.Rules)
 	return &copied
 }
+
 func clonePointer[T any](p *T) *T {
 	if p == nil {
 		return nil

@@ -1,4 +1,3 @@
-// 本文件维护 postgres 的所属能力；兼容入口复用唯一实现。
 package postgres
 
 import (
@@ -34,7 +33,6 @@ func (r *userAttributeDefinitionRepository) Create(ctx context.Context, def *ide
 		SetPlaceholder(def.Placeholder).
 		SetEnabled(def.Enabled).
 		Save(ctx)
-
 	if err != nil {
 		return translatePersistenceError(err, nil, identity.ErrAttributeKeyExists)
 	}
@@ -84,7 +82,6 @@ func (r *userAttributeDefinitionRepository) Update(ctx context.Context, def *ide
 		SetDisplayOrder(def.DisplayOrder).
 		SetEnabled(def.Enabled).
 		Save(ctx)
-
 	if err != nil {
 		return translatePersistenceError(err, identity.ErrAttributeDefinitionNotFound, identity.ErrAttributeKeyExists)
 	}

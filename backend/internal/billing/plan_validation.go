@@ -69,17 +69,6 @@ func NormalizePlanGroupRateMultipliers(groupIDs []int64, rates map[int64]float64
 	return out, nil
 }
 
-func ClonePlanGroupRates(in map[int64]float64) map[int64]float64 {
-	if len(in) == 0 {
-		return map[int64]float64{}
-	}
-	out := make(map[int64]float64, len(in))
-	for k, v := range in {
-		out[k] = v
-	}
-	return out
-}
-
 func ValidatePlanRequired(name string, price float64, validityDays int, validityUnit string, originalPrice *float64) error {
 	if strings.TrimSpace(name) == "" {
 		return apperror.BadRequest("PLAN_NAME_REQUIRED", "plan name is required")

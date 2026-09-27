@@ -1,4 +1,4 @@
-// 本文件维护 postgres 的所属能力；兼容入口复用唯一实现。
+// 将 Ent 分组记录投影为路由领域值。
 package postgres
 
 import (

@@ -1,4 +1,3 @@
-// 本文件维护 provider 的所属能力；兼容入口复用唯一实现。
 package provider
 
 // sparkShadowAllowedCredentialKeys 是 spark 影子提供商唯一可写的凭据键集合(仅模型映射)。

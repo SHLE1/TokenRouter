@@ -1,4 +1,3 @@
-// 本文件维护 identity 的所属能力；兼容入口复用唯一实现。
 package identity
 
 import (
@@ -91,6 +90,7 @@ func SanitizePendingAuthLocalFlowState(localFlowState map[string]any) map[string
 func ValidatePendingSessionState(session *PendingAuthSession, browserSessionKey string, expiredErr error, consumedErr error) error {
 	return ValidatePendingSessionStateWithClock(session, browserSessionKey, expiredErr, consumedErr, time.Now)
 }
+
 func ValidatePendingSessionStateWithClock(session *PendingAuthSession, browserSessionKey string, expiredErr error, consumedErr error, readTime func() time.Time) error {
 	if session == nil {
 		return ErrPendingAuthSessionNotFound

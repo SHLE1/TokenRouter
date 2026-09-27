@@ -1,4 +1,4 @@
-// 本文件维护 identity 的所属能力；兼容入口复用唯一实现。
+// 用户资料、头像和通知邮箱操作使用这些结构化错误。
 package identity
 
 import (

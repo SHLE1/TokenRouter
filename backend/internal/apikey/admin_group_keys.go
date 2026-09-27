@@ -1,4 +1,4 @@
-// 本文件维护 apikey 的所属能力；兼容入口复用唯一实现。
+// 管理端按分组分页读取 API Key，并返回匹配总数。
 package apikey
 
 import (

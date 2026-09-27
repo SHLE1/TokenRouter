@@ -861,3 +861,14 @@ func TestIdempotencyCoordinator_HelperBranches(t *testing.T) {
 
 // ptrTime 构造边界场景的时间指针。
 func ptrTime(t time.Time) *time.Time { return &t }
+
+// resetIdempotencyMetricsForTest 隔离测试之间的进程级指标。
+func resetIdempotencyMetricsForTest() {
+	defaultIdempotencyMetrics.claimTotal.Store(0)
+	defaultIdempotencyMetrics.replayTotal.Store(0)
+	defaultIdempotencyMetrics.conflictTotal.Store(0)
+	defaultIdempotencyMetrics.retryBackoffTotal.Store(0)
+	defaultIdempotencyMetrics.processingDurationCount.Store(0)
+	defaultIdempotencyMetrics.processingDurationMicros.Store(0)
+	defaultIdempotencyMetrics.storeUnavailableTotal.Store(0)
+}

@@ -1,11 +1,11 @@
-// 本文件维护 app 的所属能力；兼容入口复用唯一实现。
 package app
 
 import (
+	"context"
+	"time"
+
 	"github.com/TokenFlux/TokenRouter/internal/promotion"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
-
-	"context"
 
 	dbent "github.com/TokenFlux/TokenRouter/ent"
 
@@ -26,8 +26,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
 
 	routingpostgres "github.com/TokenFlux/TokenRouter/internal/routing/postgres"
-
-	"time"
 )
 
 // identityAdminKeys 为身份管理转换 Key 只读列表，保留分页查询与排序。
@@ -57,6 +55,7 @@ func provideIdentityAdmin(client *dbent.Client, users *identitypostgres.UserStor
 	transactions := &identitypostgres.AdminMutations{Client: client, Users: users, Keys: keys, KeysInTx: func(tx *dbent.Tx) identity.AdminKeyParticipant { return keys.LifecycleInTx(tx) }, Observer: observe}
 	return identity.NewUserAdmin(identity.AdminDependencies{Now: time.Now, Users: users, Groups: identityAdminGroups{Repository: groups}, Keys: identityAdminKeys{keys}, Rates: rates, RPM: rpm, Settings: settings, Subscriptions: subs, Balances: balances, Records: records, Invalidator: invalidator, BalanceCache: cache, Affiliates: affiliates, Transactions: transactions, Observer: observe, Background: tasks.Go})
 }
+
 func provideKeyAdmin(client *dbent.Client, keys *keypostgres.KeyStore, users *identitypostgres.UserStore, groups *routingpostgres.GroupStore, invalidator apikey.APIKeyAuthCacheInvalidator, cache *billing.Eligibility) *apikey.Admin {
 	mutations := &keypostgres.AdminGroupMutations{Client: client, Keys: keys, Users: users, UsersInTx: func(tx *dbent.Tx) keypostgres.GroupAccessWriter { return identitypostgres.GroupAccessInTx(tx) }, Observer: logging.LegacyPrintf}
 	return &apikey.Admin{Keys: keys, Users: users, Groups: keyGroups{Repository: groups}, Mutations: mutations, Invalidator: invalidator, RateLimits: cache}

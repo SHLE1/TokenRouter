@@ -1,4 +1,3 @@
-// 本文件维护 postgres 的所属能力；兼容入口复用唯一实现。
 package postgres
 
 import (
@@ -48,6 +47,7 @@ func (s *AdminMutations) DeleteUserAndKeys(ctx context.Context, id int64, keys [
 	}
 	return nil
 }
+
 func (s *AdminMutations) DeleteUserWithKeys(ctx context.Context, id int64, keys []identitycore.AdminKeySummary, writer identitycore.AdminKeyParticipant) error {
 	if writer != nil {
 		for _, key := range keys {
@@ -66,6 +66,7 @@ func (s *AdminMutations) DeleteUserWithKeys(ctx context.Context, id int64, keys 
 	}
 	return nil
 }
+
 func (s *AdminMutations) ReplaceUserGroup(ctx context.Context, userID, oldGroupID, newGroupID int64) (int64, error) { // 事务保证原子性
 	if s.Client == nil {
 		return 0, fmt.Errorf("entClient is nil, cannot perform group replacement")
@@ -103,6 +104,7 @@ func (s *AdminMutations) ReplaceUserGroup(ctx context.Context, userID, oldGroupI
 
 	return migrated, nil
 }
+
 func (s *AdminMutations) BindAuthIdentity(ctx context.Context, p identitycore.PreparedAdminIdentityBinding) (*identitycore.AdminBoundAuthIdentity, error) {
 	userID, providerType, providerSubject := p.UserID, p.ProviderType, p.ProviderSubject
 	canonicalProviderKey, compatibleProviderKeys := p.ProviderKey, p.CompatibleKeys

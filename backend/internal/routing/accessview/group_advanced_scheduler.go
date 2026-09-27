@@ -1,4 +1,4 @@
-// 本文件维护 accessview 的所属能力；兼容入口复用唯一实现。
+// 分组访问视图共享调度策略的覆盖配置类型。
 package accessview
 
 import (

@@ -1,4 +1,4 @@
-// 本文件维护 identity 的所属能力；兼容入口复用唯一实现。
+// 微信身份查询同时识别当前渠道键和历史渠道键。
 package identity
 
 import (

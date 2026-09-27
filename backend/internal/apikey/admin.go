@@ -1,4 +1,3 @@
-// 本文件维护 apikey 的所属能力；兼容入口复用唯一实现。
 package apikey
 
 import (
@@ -52,6 +51,7 @@ func (s *Admin) AdminResetAPIKeyRateLimitUsage(ctx context.Context, id int64) (*
 func (s *Admin) UpdateManagedFields(ctx context.Context, id int64, gid *int64, reset bool) (*AdminUpdateAPIKeyGroupIDResult, error) {
 	return s.updateManagedFields(ctx, id, gid, reset, true)
 }
+
 func (s *Admin) updateManagedFields(ctx context.Context, id int64, gid *int64, reset, checkComposite bool) (*AdminUpdateAPIKeyGroupIDResult, error) {
 	key, err := s.Keys.GetByID(ctx, id)
 	if err != nil {
@@ -133,6 +133,7 @@ func (s *Admin) updateManagedFields(ctx context.Context, id int64, gid *int64, r
 	}
 	return out, nil
 }
+
 func (s *Admin) GetUserAPIKeys(ctx context.Context, userID int64, page, pageSize int, sortBy, sortOrder string) ([]APIKey, int64, error) {
 	params := pagination.PaginationParams{Page: page, PageSize: pageSize, SortBy: sortBy, SortOrder: sortOrder}
 	keys, result, err := s.Keys.ListByUserID(ctx, userID, params, APIKeyListFilters{})

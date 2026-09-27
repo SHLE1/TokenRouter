@@ -1,4 +1,3 @@
-// 本文件维护 postgres 的所属能力；兼容入口复用唯一实现。
 package postgres
 
 import (
@@ -16,6 +15,7 @@ type GroupAccessParticipant struct {
 func GroupAccessInTx(tx *dbent.Tx) *GroupAccessParticipant {
 	return &GroupAccessParticipant{tx: tx, store: &UserStore{client: tx.Client()}}
 }
+
 func (p *GroupAccessParticipant) AddGroupToAllowedGroups(ctx context.Context, userID, groupID int64) error {
 	return p.store.AddGroupToAllowedGroups(dbent.NewTxContext(ctx, p.tx), userID, groupID)
 }

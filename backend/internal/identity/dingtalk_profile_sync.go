@@ -1,4 +1,3 @@
-// 本文件维护 identity 的所属能力；兼容入口复用唯一实现。
 package identity
 
 import (
@@ -28,12 +27,14 @@ func (f DingTalkDepartmentFunc) ResolveDepartmentPath(ctx context.Context, id in
 }
 
 // ProfileSyncObserver 把既有诊断交给装配适配，核心不安装日志后端。
-type ProfileSyncObserver func(level, message string, args ...any)
-type DingTalkProfileSync struct {
-	Users      *UserService
-	Attributes *UserAttributeService
-	Observe    ProfileSyncObserver
-}
+type (
+	ProfileSyncObserver func(level, message string, args ...any)
+	DingTalkProfileSync struct {
+		Users      *UserService
+		Attributes *UserAttributeService
+		Observe    ProfileSyncObserver
+	}
+)
 
 func (s *DingTalkProfileSync) log(level, message string, args ...any) {
 	if s.Observe != nil {

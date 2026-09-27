@@ -1,4 +1,3 @@
-// 本文件维护 httpapi 的所属能力；兼容入口复用唯一实现。
 package httpapi
 
 import (
@@ -29,6 +28,7 @@ type WeChatHandler struct {
 func NewWeChatHandler(p *PendingHandler, b *OAuthBindHandler, client identity.WeChatOAuthClient, options WeChatHTTPOptions) *WeChatHandler {
 	return &WeChatHandler{p, b, client, options}
 }
+
 func (h *WeChatHandler) FrontendCallback(ctx context.Context) string {
 	if h.wechatOptions.FrontendCallback != nil {
 		return h.wechatOptions.FrontendCallback(ctx)
@@ -454,6 +454,7 @@ func (h *WeChatHandler) CreateWeChatBindSession(
 		&currentUser.ID,
 	)
 }
+
 func ResolveWeChatOAuthMode(rawMode string, c *gin.Context) (string, error) {
 	mode := strings.ToLower(strings.TrimSpace(rawMode))
 	if mode == "" {
@@ -467,12 +468,14 @@ func ResolveWeChatOAuthMode(rawMode string, c *gin.Context) (string, error) {
 	}
 	return mode, nil
 }
+
 func IsWeChatBrowserRequest(c *gin.Context) bool {
 	if c == nil || c.Request == nil {
 		return false
 	}
 	return strings.Contains(strings.ToLower(strings.TrimSpace(c.GetHeader("User-Agent"))), "micromessenger")
 }
+
 func NormalizeWeChatOAuthIntent(raw string) string {
 	switch strings.ToLower(strings.TrimSpace(raw)) {
 	case "", "login":
@@ -485,6 +488,7 @@ func NormalizeWeChatOAuthIntent(raw string) string {
 		return WechatOAuthIntentLogin
 	}
 }
+
 func BuildWeChatAuthorizeURL(cfg identity.WeChatOAuthOptions, state string) (string, error) {
 	u, err := url.Parse(cfg.AuthorizeURL)
 	if err != nil {
@@ -500,6 +504,7 @@ func BuildWeChatAuthorizeURL(cfg identity.WeChatOAuthOptions, state string) (str
 	u.Fragment = "wechat_redirect"
 	return u.String(), nil
 }
+
 func ResolveWeChatOAuthAbsoluteURL(apiBaseURL string, c *gin.Context, callbackPath string) string {
 	callbackPath = strings.TrimSpace(callbackPath)
 	if callbackPath == "" {
@@ -535,6 +540,7 @@ func ResolveWeChatOAuthAbsoluteURL(apiBaseURL string, c *gin.Context, callbackPa
 	}
 	return scheme + "://" + host + callbackPath
 }
+
 func WeChatSetCookie(c *gin.Context, name string, value string, maxAgeSec int, secure bool) {
 	http.SetCookie(c.Writer, &http.Cookie{
 		Name:     name,
@@ -546,6 +552,7 @@ func WeChatSetCookie(c *gin.Context, name string, value string, maxAgeSec int, s
 		SameSite: http.SameSiteLaxMode,
 	})
 }
+
 func WeChatClearCookie(c *gin.Context, name string, secure bool) {
 	http.SetCookie(c.Writer, &http.Cookie{
 		Name:     name,
@@ -557,6 +564,7 @@ func WeChatClearCookie(c *gin.Context, name string, secure bool) {
 		SameSite: http.SameSiteLaxMode,
 	})
 }
+
 func (h *WeChatHandler) CreateWeChatSession(
 	c *gin.Context,
 	intent string,
@@ -575,6 +583,7 @@ func (h *WeChatHandler) CreateWeChatSession(
 	}
 	return h.CreateOAuthPendingSession(c, draft)
 }
+
 func (h *WeChatHandler) CreateWeChatChoiceSession(
 	c *gin.Context,
 	identityKey identity.PendingAuthIdentityKey,

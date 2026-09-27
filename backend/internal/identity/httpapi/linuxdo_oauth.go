@@ -1,4 +1,3 @@
-// 本文件维护 httpapi 的所属能力；兼容入口复用唯一实现。
 package httpapi
 
 import (
@@ -478,6 +477,7 @@ func BuildLinuxDoAuthorizeURL(cfg identity.LinuxDoOAuthOptions, state string, co
 	u.RawQuery = q.Encode()
 	return u.String(), nil
 }
+
 func RedirectOAuthError(c *gin.Context, frontendCallback string, code string, message string, description string) {
 	fragment := url.Values{}
 	fragment.Set("error", TruncateOAuthFragment(code))
@@ -489,6 +489,7 @@ func RedirectOAuthError(c *gin.Context, frontendCallback string, code string, me
 	}
 	RedirectOAuthFragment(c, frontendCallback, fragment)
 }
+
 func RedirectOAuthTokenPair(c *gin.Context, frontendCallback string, tokenPair *identity.TokenPair, redirectTo string) {
 	fragment := url.Values{}
 	if tokenPair != nil {
@@ -517,6 +518,7 @@ func RedirectOAuthTokenPair(c *gin.Context, frontendCallback string, tokenPair *
 	}
 	RedirectOAuthFragment(c, frontendCallback, fragment)
 }
+
 func RedirectOAuthFragment(c *gin.Context, frontendCallback string, fragment url.Values) {
 	u, err := url.Parse(frontendCallback)
 	if err != nil {
@@ -533,6 +535,7 @@ func RedirectOAuthFragment(c *gin.Context, frontendCallback string, fragment url
 	c.Header("Pragma", "no-cache")
 	c.Redirect(http.StatusFound, u.String())
 }
+
 func OAuthSingleLine(value string) string {
 	value = strings.TrimSpace(value)
 	if value == "" {
@@ -540,6 +543,7 @@ func OAuthSingleLine(value string) string {
 	}
 	return strings.Join(strings.Fields(value), " ")
 }
+
 func LinuxDoSetCookie(c *gin.Context, name string, value string, maxAgeSec int, secure bool) {
 	http.SetCookie(c.Writer, &http.Cookie{
 		Name:     name,
@@ -551,6 +555,7 @@ func LinuxDoSetCookie(c *gin.Context, name string, value string, maxAgeSec int, 
 		SameSite: http.SameSiteLaxMode,
 	})
 }
+
 func LinuxDoClearCookie(c *gin.Context, name string, secure bool) {
 	http.SetCookie(c.Writer, &http.Cookie{
 		Name:     name,
@@ -562,6 +567,7 @@ func LinuxDoClearCookie(c *gin.Context, name string, secure bool) {
 		SameSite: http.SameSiteLaxMode,
 	})
 }
+
 func TruncateOAuthFragment(value string) string {
 	value = strings.TrimSpace(value)
 	if value == "" {
@@ -575,6 +581,7 @@ func TruncateOAuthFragment(value string) string {
 	}
 	return value
 }
+
 func NormalizeOAuthIntent(raw string) string {
 	switch strings.ToLower(strings.TrimSpace(raw)) {
 	case "", OauthIntentLogin:
@@ -585,6 +592,7 @@ func NormalizeOAuthIntent(raw string) string {
 		return OauthIntentLogin
 	}
 }
+
 func (h *LinuxDoHandler) CreateLinuxDoChoiceSession(
 	c *gin.Context,
 	identityKey identity.PendingAuthIdentityKey,

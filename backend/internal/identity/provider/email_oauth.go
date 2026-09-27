@@ -1,4 +1,3 @@
-// 本文件维护 provider 的所属能力；兼容入口复用唯一实现。
 package provider
 
 import (
@@ -15,9 +14,11 @@ import (
 )
 
 // EmailOAuthProviderConfig 保存 GitHub/Google 这类邮箱 OAuth 登录的配置。
-type EmailOAuthOptions = identity.EmailOAuthOptions
-type EmailOAuthTokenResponse = identity.EmailOAuthTokenResponse
-type EmailOAuthProfile = identity.EmailOAuthProfile
+type (
+	EmailOAuthOptions       = identity.EmailOAuthOptions
+	EmailOAuthTokenResponse = identity.EmailOAuthTokenResponse
+	EmailOAuthProfile       = identity.EmailOAuthProfile
+)
 
 func ExchangeEmailOAuthCode(ctx context.Context, cfg EmailOAuthOptions, code string) (*EmailOAuthTokenResponse, error) {
 	resp, err := req.C().
@@ -163,6 +164,7 @@ type EmailOAuthClientAdapter struct{}
 func (EmailOAuthClientAdapter) ExchangeCode(ctx context.Context, c EmailOAuthOptions, code string) (*EmailOAuthTokenResponse, error) {
 	return ExchangeEmailOAuthCode(ctx, c, code)
 }
+
 func (EmailOAuthClientAdapter) FetchProfile(ctx context.Context, provider string, c EmailOAuthOptions, t *EmailOAuthTokenResponse) (*EmailOAuthProfile, error) {
 	return FetchEmailOAuthProfile(ctx, provider, c, t)
 }

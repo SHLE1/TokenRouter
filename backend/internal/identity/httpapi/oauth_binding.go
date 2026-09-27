@@ -1,4 +1,3 @@
-// 本文件维护 httpapi 的所属能力；兼容入口复用唯一实现。
 package httpapi
 
 import (
@@ -24,9 +23,11 @@ func NewOAuthBindHandler(session *SessionHandler, signer identity.OAuthBindingSi
 	return &OAuthBindHandler{session, signer}
 }
 
-const oauthBindAccessTokenCookieName = "oauth_bind_access_token"
-const oauthBindAccessTokenCookiePath = "/api/v1/auth/oauth"
-const oauthBindAccessTokenCookieTTL = 10 * 60
+const (
+	oauthBindAccessTokenCookieName = "oauth_bind_access_token"
+	oauthBindAccessTokenCookiePath = "/api/v1/auth/oauth"
+	oauthBindAccessTokenCookieTTL  = 10 * 60
+)
 
 func (h *OAuthBindHandler) PrepareOAuthBindAccessTokenCookie(c *gin.Context) {
 	const bearerPrefix = "Bearer "
@@ -47,6 +48,7 @@ func (h *OAuthBindHandler) PrepareOAuthBindAccessTokenCookie(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 	c.Writer.WriteHeaderNow()
 }
+
 func (h *OAuthBindHandler) BuildOAuthBindUserCookieFromContext(c *gin.Context) (string, error) {
 	userID, err := h.ResolveOAuthBindTargetUserID(c)
 	if err != nil || userID == nil || *userID <= 0 {
@@ -54,6 +56,7 @@ func (h *OAuthBindHandler) BuildOAuthBindUserCookieFromContext(c *gin.Context) (
 	}
 	return h.Signer.Sign(*userID)
 }
+
 func (h *OAuthBindHandler) ResolveOAuthBindTargetUserID(c *gin.Context) (*int64, error) {
 	if subject, ok := authctx.GetAuthSubjectFromContext(c); ok && subject.UserID > 0 {
 		return &subject.UserID, nil
@@ -89,6 +92,7 @@ func (h *OAuthBindHandler) ResolveOAuthBindTargetUserID(c *gin.Context) (*int64,
 	}
 	return &user.ID, nil
 }
+
 func (h *OAuthBindHandler) ReadOAuthBindUserIDFromCookie(c *gin.Context, cookieName string) (int64, error) {
 	value, err := ReadCookieDecoded(c, cookieName)
 	if err != nil {
@@ -96,6 +100,7 @@ func (h *OAuthBindHandler) ReadOAuthBindUserIDFromCookie(c *gin.Context, cookieN
 	}
 	return h.Signer.Verify(value)
 }
+
 func ClearOAuthBindAccessTokenCookie(c *gin.Context, secure bool) {
 	http.SetCookie(c.Writer, &http.Cookie{
 		Name:     oauthBindAccessTokenCookieName,
@@ -107,6 +112,7 @@ func ClearOAuthBindAccessTokenCookie(c *gin.Context, secure bool) {
 		SameSite: http.SameSiteLaxMode,
 	})
 }
+
 func SetOAuthBindAccessTokenCookie(c *gin.Context, token string, secure bool) {
 	http.SetCookie(c.Writer, &http.Cookie{
 		Name:     oauthBindAccessTokenCookieName,

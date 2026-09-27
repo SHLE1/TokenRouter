@@ -1,4 +1,4 @@
-// 本文件维护 httpapi 的所属能力；兼容入口复用唯一实现。
+// 退出登录时清除各 OAuth 流程的状态、绑定和待完成会话 Cookie。
 package httpapi
 
 import (
@@ -30,5 +30,4 @@ func ClearOAuthLoginCookies(c *gin.Context) {
 	WeChatClearCookie(c, WechatOAuthIntentCookieName, secureCookie)
 	WeChatClearCookie(c, WechatOAuthModeCookieName, secureCookie)
 	WeChatClearCookie(c, WechatOAuthBindUserCookieName, secureCookie)
-
 }

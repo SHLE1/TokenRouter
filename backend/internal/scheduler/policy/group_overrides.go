@@ -1,4 +1,3 @@
-// 本文件维护 policy 的所属能力；兼容入口复用唯一实现。
 package policy
 
 // GroupAdvancedSchedulerOverrides 保存分组对通用高级调度器的稀疏覆盖。

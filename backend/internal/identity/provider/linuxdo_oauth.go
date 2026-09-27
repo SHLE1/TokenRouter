@@ -1,4 +1,3 @@
-// 本文件维护 provider 的所属能力；兼容入口复用唯一实现。
 package provider
 
 import (
@@ -15,8 +14,10 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-type LinuxDoTokenResponse = identity.LinuxDoTokenResponse
-type LinuxDoTokenExchangeError = identity.LinuxDoTokenExchangeError
+type (
+	LinuxDoTokenResponse      = identity.LinuxDoTokenResponse
+	LinuxDoTokenExchangeError = identity.LinuxDoTokenExchangeError
+)
 
 // LinuxDoClient 接入身份端口，复用原 HTTP 与解析实现。
 type LinuxDoClient struct{}
@@ -24,9 +25,11 @@ type LinuxDoClient struct{}
 func (LinuxDoClient) ExchangeCode(ctx context.Context, o LinuxDoOptions, code, redirect, verifier string) (*LinuxDoTokenResponse, error) {
 	return LinuxDoExchangeCode(ctx, o, code, redirect, verifier)
 }
+
 func (LinuxDoClient) FetchUserInfo(ctx context.Context, o LinuxDoOptions, t *LinuxDoTokenResponse) (string, string, string, string, string, error) {
 	return LinuxDoFetchUserInfo(ctx, o, t)
 }
+
 func LinuxDoExchangeCode(
 	ctx context.Context,
 	cfg LinuxDoOptions,

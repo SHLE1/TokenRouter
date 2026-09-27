@@ -1,4 +1,3 @@
-// 本文件维护 provider 的所属能力；兼容入口复用唯一实现。
 package provider
 
 import (
@@ -17,11 +16,15 @@ import (
 // WeChatOptions 只包含客户端所需凭据与请求目标。
 type WeChatOptions struct{ AppID, AppSecret, TokenURL, UserInfoURL string }
 
-const DefaultWeChatTokenURL = "https://api.weixin.qq.com/sns/oauth2/access_token"
-const DefaultWeChatUserInfoURL = "https://api.weixin.qq.com/sns/userinfo"
+const (
+	DefaultWeChatTokenURL    = "https://api.weixin.qq.com/sns/oauth2/access_token"
+	DefaultWeChatUserInfoURL = "https://api.weixin.qq.com/sns/userinfo"
+)
 
-type WechatOAuthTokenResponse = identity.WeChatOAuthTokenResponse
-type WechatOAuthUserInfoResponse = identity.WeChatOAuthUserInfoResponse
+type (
+	WechatOAuthTokenResponse    = identity.WeChatOAuthTokenResponse
+	WechatOAuthUserInfoResponse = identity.WeChatOAuthUserInfoResponse
+)
 
 func FetchWeChatOAuthIdentity(ctx context.Context, cfg WeChatOptions, code string) (*WechatOAuthTokenResponse, *WechatOAuthUserInfoResponse, error) {
 	tokenResp, err := ExchangeWeChatOAuthCode(ctx, cfg, code)

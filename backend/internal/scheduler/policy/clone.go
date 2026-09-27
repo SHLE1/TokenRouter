@@ -1,4 +1,3 @@
-// 本文件维护 policy 的所属能力；兼容入口复用唯一实现。
 package policy
 
 // CloneGroupAdvancedSchedulerOverrides 返回覆盖对象及其指针字段的独立副本。

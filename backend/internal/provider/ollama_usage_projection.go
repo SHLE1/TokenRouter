@@ -1,4 +1,4 @@
-// 本文件维护 provider 的所属能力；兼容入口复用唯一实现。
+// 从提供商附加字段读取 Ollama 会话配置和已保存的用量快照。
 package provider
 
 import (

@@ -1,4 +1,3 @@
-// 本文件维护 usageview 的所属能力；兼容入口复用唯一实现。
 package usageview
 
 import (
@@ -40,6 +39,7 @@ func CloneBillingSummary(value *BillingSummary) *BillingSummary {
 	}
 	return &out
 }
+
 func clonePointer[T any](value *T) *T {
 	if value == nil {
 		return nil

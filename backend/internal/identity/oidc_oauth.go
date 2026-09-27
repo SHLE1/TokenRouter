@@ -1,4 +1,3 @@
-// 本文件维护 identity 的所属能力；兼容入口复用唯一实现。
 package identity
 
 import (
@@ -94,6 +93,7 @@ func OIDCIdentityKey(issuer, subject string) string {
 	subject = strings.TrimSpace(subject)
 	return issuer + "\x1f" + subject
 }
+
 func OIDCSyntheticEmailFromIdentityKey(identityKey string) string {
 	identityKey = strings.TrimSpace(identityKey)
 	if identityKey == "" {
@@ -102,6 +102,7 @@ func OIDCSyntheticEmailFromIdentityKey(identityKey string) string {
 	sum := sha256.Sum256([]byte(identityKey))
 	return "oidc-" + hex.EncodeToString(sum[:16]) + OIDCConnectSyntheticEmailDomain
 }
+
 func OIDCFallbackUsername(subject string) string {
 	subject = strings.TrimSpace(subject)
 	if subject == "" {
@@ -110,6 +111,7 @@ func OIDCFallbackUsername(subject string) string {
 	sum := sha256.Sum256([]byte(subject))
 	return "oidc_" + hex.EncodeToString(sum[:])[:12]
 }
+
 func PrepareOIDCChoice(
 	identity PendingAuthIdentityKey,
 	suggestedEmail string,
@@ -172,6 +174,7 @@ func PrepareOIDCChoice(
 		CompletionResponse:     completionResponse,
 	}
 }
+
 func OIDCVerifiedEmailIdentity(identity PendingAuthIdentityKey, compatEmail, username string, upstreamClaims map[string]any) EmailOAuthIdentityInput {
 	verifiedEmail := strings.TrimSpace(strings.ToLower(compatEmail))
 	upstreamMetadata := make(map[string]any, len(upstreamClaims)+1)

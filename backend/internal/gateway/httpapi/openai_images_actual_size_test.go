@@ -20,7 +20,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/media"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
-	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
@@ -57,10 +56,6 @@ func TestOpenAIGatewayServiceForwardImages_OAuthUsesDecodedOutputDimensions(t *t
 	require.Equal(t, "1672x941", gjson.Get(run.recorder.Body.String(), "size").String())
 	require.Equal(t, "auto", gjson.Get(run.recorder.Body.String(), "quality").String())
 	require.Equal(t, []string{"1672x941"}, run.result.ImageOutputSizes)
-	forwardcore.ApplyOpenAIImageBillingResolution(run.result)
-	require.Equal(t, pricing.ImageBillingSize2K, run.result.ImageSize)
-	require.Equal(t, "1672x941", run.result.ImageOutputSize)
-	require.Equal(t, pricing.ImageSizeSourceOutput, run.result.ImageSizeSource)
 }
 
 func TestOpenAIGatewayServiceForwardImages_OAuthStreamingUsesDecodedOutputDimensions(t *testing.T) {

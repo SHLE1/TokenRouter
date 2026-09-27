@@ -1,4 +1,4 @@
-// 本文件维护 httpapi 的所属能力；兼容入口复用唯一实现。
+// 兑换接口共享 DTO 定义，避免请求字段与展示结构分叉。
 package httpapi
 
 import (

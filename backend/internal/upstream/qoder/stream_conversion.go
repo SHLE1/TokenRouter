@@ -213,63 +213,6 @@ func WriteQoderStreamKeepalive(c *upstream.OutputContext, started bool) error {
 	return err
 }
 
-func WriteQoderOpenAIStream(c *upstream.OutputContext, model string, events []SSEEvent, toolNameMappers ...QoderToolNameMapper) error {
-	events = NormalizeQoderTextToolCallEvents(events)
-
-	c.Writer.Header().Set("Content-Type", "text/event-stream")
-	c.Writer.Header().Set("Cache-Control", "no-cache")
-	c.Writer.Header().Set("Connection", "keep-alive")
-	c.Writer.Header().Set("X-Accel-Buffering", "no")
-	c.Writer.WriteHeader(http.StatusOK)
-
-	completionID := "chatcmpl-" + strings.ReplaceAll(uuid.NewString(), "-", "")[:24]
-	if err := WriteSSEData(c.Writer, OpenAIChunk(completionID, model, map[string]any{"role": "assistant"}, nil)); err != nil {
-		return err
-	}
-	usage := upstream.TokenUsage{}
-	totalTokens := 0
-	toolCalls := NewQoderOpenAIToolCallAccumulator(toolNameMappers...)
-	for _, event := range events {
-		if event.HasUsage {
-			MergeQoderUsageEvent(&usage, event)
-			totalTokens = event.TotalTokens
-			if err := WriteSSEData(c.Writer, OpenAIUsageChunk(completionID, model, usage, totalTokens, event.UsageDetails)); err != nil {
-				return err
-			}
-			continue
-		}
-		if event.IsDone {
-			finishReason := "stop"
-			if toolCalls.HasToolCalls() {
-				finishReason = "tool_calls"
-			}
-			if err := WriteSSEData(c.Writer, OpenAIChunk(completionID, model, map[string]any{}, finishReason)); err != nil {
-				return err
-			}
-			_, err := io.WriteString(c.Writer, "data: [DONE]\n\n")
-			if flusher, ok := c.Writer.(http.Flusher); ok {
-				flusher.Flush()
-			}
-			return err
-		}
-		if event.Type == "text_delta" && event.Text != "" {
-			if err := WriteSSEData(c.Writer, OpenAIChunk(completionID, model, map[string]any{"content": event.Text}, nil)); err != nil {
-				return err
-			}
-		}
-		if event.Type == "tool_call_delta" {
-			deltas := toolCalls.AppendDelta(event)
-			if len(deltas) == 0 {
-				continue
-			}
-			if err := WriteSSEData(c.Writer, OpenAIChunk(completionID, model, map[string]any{"tool_calls": deltas}, nil)); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
 type QoderStreamResult struct {
 	// HasUsage 标记上游已明确提供计量，显式零值与缺失分开。
 	HasUsage     bool
@@ -874,7 +817,8 @@ func (a *QoderOpenAIToolCallAccumulator) AppendDelta(event SSEEvent) []any {
 	if QoderToolCallDeltaIsEmptyPlaceholder(event) {
 		return []any{}
 	}
-	if event.ToolCallID == "" && !event.HasToolCallIndex && event.ToolName == "" && event.ToolType == "" && event.Arguments != "" && len(a.calls) > 1 {
+	// type 只描述工具种类，解析器还会补齐 function，不能用它识别参数所属的调用。
+	if event.ToolCallID == "" && !event.HasToolCallIndex && event.ToolName == "" && event.Arguments != "" && len(a.calls) > 1 {
 		return []any{}
 	}
 	index := a.resolveIndex(event)
@@ -964,7 +908,7 @@ func (a *QoderOpenAIToolCallAccumulator) resolveIndex(event SSEEvent) int {
 			}
 		}
 	}
-	if event.HasToolCallIndex && event.ToolCallIndex >= 0 && event.ToolCallID == "" && (event.ToolName != "" || event.ToolType != "") {
+	if event.HasToolCallIndex && event.ToolCallIndex >= 0 && event.ToolCallID == "" && event.ToolName != "" {
 		if event.ToolCallIndex < len(a.calls) && a.shouldStartNewToolCallInSlot(event, event.ToolCallIndex) {
 			return len(a.calls)
 		}
@@ -999,7 +943,7 @@ func (a *QoderOpenAIToolCallAccumulator) shouldStartNewToolCallInSlot(event SSEE
 	if a == nil || index < 0 || index >= len(a.calls) || event.ToolCallID != "" {
 		return false
 	}
-	if event.ToolName == "" && event.ToolType == "" {
+	if event.ToolName == "" {
 		return false
 	}
 	existing := a.calls[index]
@@ -1209,89 +1153,6 @@ func WriteQoderOpenAIStreamResponse(ctx context.Context, c *upstream.OutputConte
 		return qoderPartialStreamResult(result), err
 	}
 	return result, nil
-}
-
-func WriteQoderAnthropicStream(c *upstream.OutputContext, model string, events []SSEEvent, toolNameMappers ...QoderToolNameMapper) error {
-	events = NormalizeQoderTextToolCallEvents(events)
-
-	c.Writer.Header().Set("Content-Type", "text/event-stream")
-	c.Writer.Header().Set("Cache-Control", "no-cache")
-	c.Writer.Header().Set("Connection", "keep-alive")
-	c.Writer.Header().Set("X-Accel-Buffering", "no")
-	c.Writer.WriteHeader(http.StatusOK)
-
-	messageID := "msg_" + strings.ReplaceAll(uuid.NewString(), "-", "")
-	if err := WriteAnthropicSSE(c.Writer, "message_start", map[string]any{
-		"type": "message_start",
-		"message": map[string]any{
-			"id":            messageID,
-			"type":          "message",
-			"role":          "assistant",
-			"model":         model,
-			"content":       []any{},
-			"stop_reason":   nil,
-			"stop_sequence": nil,
-			"usage":         map[string]any{"input_tokens": 0, "output_tokens": 0},
-		},
-	}); err != nil {
-		return err
-	}
-	usage := upstream.TokenUsage{}
-	writer := NewQoderAnthropicContentWriter(c.Writer, toolNameMappers...)
-	finalized := false
-	finish := func() error {
-		if finalized {
-			return nil
-		}
-		finalized = true
-		if err := writer.closeOpenBlock(); err != nil {
-			return err
-		}
-		if err := writer.ensureContentBlock(); err != nil {
-			return err
-		}
-		if err := WriteAnthropicSSE(c.Writer, "message_delta", map[string]any{
-			"type": "message_delta",
-			"delta": map[string]any{
-				"stop_reason":   writer.stopReason(),
-				"stop_sequence": nil,
-			},
-			"usage": QoderAnthropicUsage(usage, QoderUsageDetailsFromEvents(events)),
-		}); err != nil {
-			return err
-		}
-		return WriteAnthropicSSE(c.Writer, "message_stop", map[string]any{"type": "message_stop"})
-	}
-	for _, event := range events {
-		if event.HasUsage {
-			MergeQoderUsageEvent(&usage, event)
-			continue
-		}
-		if event.IsDone {
-			return finish()
-		}
-		if event.Type == "text_delta" && event.Text != "" {
-			if err := writer.writeTextDelta(event.Text); err != nil {
-				return err
-			}
-			continue
-		}
-		if event.Type == "reasoning_delta" {
-			if err := writer.writeThinkingDelta(event.Text); err != nil {
-				return err
-			}
-			continue
-		}
-		if event.Type == "tool_call_delta" {
-			if err := writer.writeToolCall(event); err != nil {
-				return err
-			}
-		}
-	}
-	if err := finish(); err != nil {
-		return err
-	}
-	return nil
 }
 
 func WriteQoderAnthropicStreamResponse(ctx context.Context, c *upstream.OutputContext, model string, resp *http.Response, options ...QoderAnthropicStreamResponseOption) (*QoderStreamResult, error) {
