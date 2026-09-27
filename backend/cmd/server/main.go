@@ -75,20 +75,10 @@ func run() (err error) {
 	}()
 	setupMode := flag.Bool("setup", false, "Run setup wizard in CLI mode")
 	showVersion := flag.Bool("version", false, "Show version information")
-	previewGroups := flag.Bool("check-group-platform-migration", false, "Preview group migration without changing the database")
 	flag.Parse()
 	if *showVersion {
 		log.Printf("Sub2API %s (commit: %s, built: %s)\n", Version, Commit, Date)
 		return nil
-	}
-	if *previewGroups {
-		cfg, err := config.LoadForBootstrap()
-		if err != nil {
-			return err
-		}
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-		defer cancel()
-		return app.PreviewGroupMigration(ctx, cfg, os.Stdout)
 	}
 	if *setupMode {
 		return setup.RunCLI()
