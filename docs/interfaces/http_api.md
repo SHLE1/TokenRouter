@@ -65,6 +65,8 @@ RequestLogger
 
 订阅、兑换和套餐的用户/管理员 handler 与 DTO 位于 `billing/httpapi`，原路由汇总直接绑定这些实例。URL、认证/幂等中间件顺序、reason、CSV 和分页排序保持原契约；管理员套餐保留原 Ent 的字段省略及 `edges` 形状，公开套餐使用独立投影。
 
+管理员分组与兑换码不提供统计占位接口。已通过管理员认证的 `GET /api/v1/admin/groups/:id/stats` 返回 404；`GET /api/v1/admin/redeem-codes/stats` 按兑换码 ID 路由处理，返回非法 ID 的 400。分组页面使用 `/admin/groups/usage-summary` 和 `/capacity-summary` 获取真实汇总；兑换码页面使用列表中的条目及分页总数。
+
 用户资料、会话、七类身份、强认证与用户管理 HTTP 位于 `identity/httpapi`，团队位于 `team/httpapi`，Key 生命周期和凭据入口位于 `apikey/httpapi`。app 组合同一组身份处理器供原路由调用；微信支付 OAuth 在 payment/httpapi 单独接入原路径。HTTP 适配保留历史 DTO 形状与凭据差异，安全 `Principal` 和 Key 的 `AccessSnapshot` 分别表达身份与付款/成员上下文。
 
 网关 HTTP 请求的 Ops 观测键、流错误快照和传输标记由 `gateway/httpapi` 拥有；每个 WS turn 独立保留首个错误及当次提供商/模型/规则匹配快照。转发消费者直接使用这一实现，采集队列与持久化继续由 Ops 拥有。错误规则只改变原客户端展示与监控跳过语义，不改变重试和结算。

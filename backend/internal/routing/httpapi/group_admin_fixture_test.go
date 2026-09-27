@@ -27,15 +27,7 @@ func setupGroupAdminContractRouter() (*gin.Engine, *groupAdminFixture) {
 		return []keydto.APIKey[groupdto.Group]{*keydto.APIKeyFromKey(key, func(g *routing.Group) *groupdto.Group { return groupdto.GroupFromRouting(apikey.RoutingGroup(g)) })}, 1, nil
 	}})
 	router := gin.New()
-	router.GET("/api/v1/admin/groups", handler.List)
-	router.GET("/api/v1/admin/groups/all", handler.GetAll)
-	router.GET("/api/v1/admin/groups/:id/models-list-candidates", handler.GetModelsListCandidates)
-	router.GET("/api/v1/admin/groups/:id", handler.GetByID)
-	router.POST("/api/v1/admin/groups", handler.Create)
-	router.PUT("/api/v1/admin/groups/:id", handler.Update)
-	router.DELETE("/api/v1/admin/groups/:id", handler.Delete)
-	router.GET("/api/v1/admin/groups/:id/stats", handler.GetStats)
-	router.GET("/api/v1/admin/groups/:id/api-keys", handler.GetGroupAPIKeys)
+	RegisterGroupRoutes(router.Group("/api/v1/admin"), handler)
 	return router, source
 }
 

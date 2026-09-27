@@ -36,7 +36,6 @@ func RegisterGroupRoutes(admin *gin.RouterGroup, endpoint *GroupHandler) {
 		groups.POST("/:id/duplicate", endpoint.Duplicate)
 		groups.PUT("/:id", endpoint.Update)
 		groups.DELETE("/:id", endpoint.Delete)
-		groups.GET("/:id/stats", endpoint.GetStats)
 		groups.GET("/:id/rate-multipliers", endpoint.GetGroupRateMultipliers)
 		groups.PUT("/:id/rate-multipliers", endpoint.BatchSetGroupRateMultipliers)
 		groups.DELETE("/:id/rate-multipliers", endpoint.ClearGroupRateMultipliers)

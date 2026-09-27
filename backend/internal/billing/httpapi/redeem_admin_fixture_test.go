@@ -27,14 +27,7 @@ func setupRedeemAdminContractRouter() (*gin.Engine, *redeemAdminFixture) {
 	router := gin.New()
 	source := newRedeemAdminFixture()
 	handler := NewAdminRedeemHandler(source, nil)
-	router.GET("/api/v1/admin/redeem-codes", handler.List)
-	router.GET("/api/v1/admin/redeem-codes/:id", handler.GetByID)
-	router.POST("/api/v1/admin/redeem-codes", handler.Generate)
-	router.PUT("/api/v1/admin/redeem-codes/:id", handler.Update)
-	router.DELETE("/api/v1/admin/redeem-codes/:id", handler.Delete)
-	router.POST("/api/v1/admin/redeem-codes/batch-delete", handler.BatchDelete)
-	router.POST("/api/v1/admin/redeem-codes/:id/expire", handler.Expire)
-	router.GET("/api/v1/admin/redeem-codes/:id/stats", handler.GetStats)
+	RegisterRedeemCodeRoutes(router.Group("/api/v1/admin"), handler)
 	return router, source
 }
 

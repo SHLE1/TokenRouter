@@ -40,11 +40,14 @@ type RedeemTransactions interface {
 	ApplyBalance(context.Context, int64, float64) error
 	ApplyConcurrency(context.Context, int64, int) error
 }
-type RedeemAuthInvalidator interface{ InvalidateAuthCacheByUserID(context.Context, int64) }
-type RedeemAffiliate interface {
-	IsEnabled(context.Context) bool
-	AccrueInviteRebate(context.Context, int64, float64) (float64, error)
-}
+type (
+	RedeemAuthInvalidator interface{ InvalidateAuthCacheByUserID(context.Context, int64) }
+	RedeemAffiliate       interface {
+		IsEnabled(context.Context) bool
+		AccrueInviteRebate(context.Context, int64, float64) (float64, error)
+	}
+)
+
 type RedeemRuntime struct {
 	Now        func() time.Time
 	Observe    Observe
@@ -362,7 +365,6 @@ func (s *RedeemService) Redeem(ctx context.Context, userID int64, code string) (
 
 // redeemInTx 的全部写入使用事务 Adapter 提供的同一个 context；不在此发布副作用。
 func (s *RedeemService) redeemInTx(ctx, txCtx context.Context, userID int64, code string) (*RedeemCode, error) {
-
 	redeemCode, err := s.redeemRepo.GetByCodeForUpdate(txCtx, code)
 	if err != nil {
 		if errors.Is(err, ErrRedeemCodeNotFound) {
@@ -561,22 +563,6 @@ func (s *RedeemService) validateRedeemCodeForUser(ctx context.Context, redeemCod
 	return nil
 }
 
-// GetStats 获取兑换码统计信息
-func (s *RedeemService) GetStats(ctx context.Context) (map[string]any, error) {
-	// TODO: 实现统计逻辑
-	// 统计未使用、已使用的兑换码数量
-	// 统计总面值等
-
-	stats := map[string]any{
-		"total_codes":  0,
-		"unused_codes": 0,
-		"used_codes":   0,
-		"total_value":  0.0,
-	}
-
-	return stats, nil
-}
-
 // GetUserHistory 获取用户的兑换历史
 func (s *RedeemService) GetUserHistory(ctx context.Context, userID int64, limit int) ([]RedeemCode, error) {
 	codes, err := s.redeemRepo.ListByUser(ctx, userID, limit)
@@ -587,8 +573,10 @@ func (s *RedeemService) GetUserHistory(ctx context.Context, userID int64, limit 
 }
 
 // 不支持负向原子权益的兼容仓储保留原错误文本。
-var ErrRedeemBalanceUnsupported = errors.New("user repository does not support atomic redeem balance adjustments")
-var ErrRedeemConcurrencyUnsupported = errors.New("user repository does not support atomic redeem concurrency adjustments")
+var (
+	ErrRedeemBalanceUnsupported     = errors.New("user repository does not support atomic redeem balance adjustments")
+	ErrRedeemConcurrencyUnsupported = errors.New("user repository does not support atomic redeem concurrency adjustments")
+)
 
 func (s *RedeemService) runBackground(name string, fn func()) {
 	if s.runtime.Background == nil {

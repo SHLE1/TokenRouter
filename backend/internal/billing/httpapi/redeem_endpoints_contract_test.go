@@ -25,7 +25,7 @@ func TestRedeemHandlerEndpoints(t *testing.T) {
 
 	body, _ := json.Marshal(map[string]any{"count": 1, "type": "balance", "value": 10})
 	rec = httptest.NewRecorder()
-	req = httptest.NewRequest(http.MethodPost, "/api/v1/admin/redeem-codes", bytes.NewReader(body))
+	req = httptest.NewRequest(http.MethodPost, "/api/v1/admin/redeem-codes/generate", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code)
@@ -61,7 +61,7 @@ func TestRedeemHandlerEndpoints(t *testing.T) {
 	require.Equal(t, http.StatusOK, rec.Code)
 
 	rec = httptest.NewRecorder()
-	req = httptest.NewRequest(http.MethodGet, "/api/v1/admin/redeem-codes/5/stats", nil)
+	req = httptest.NewRequest(http.MethodGet, "/api/v1/admin/redeem-codes/stats", nil)
 	router.ServeHTTP(rec, req)
-	require.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, http.StatusBadRequest, rec.Code)
 }

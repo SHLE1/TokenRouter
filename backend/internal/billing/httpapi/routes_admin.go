@@ -9,7 +9,6 @@ func RegisterRedeemCodeRoutes(admin *gin.RouterGroup, endpoint *AdminRedeemHandl
 	codes := admin.Group("/redeem-codes")
 	{
 		codes.GET("", endpoint.List)
-		codes.GET("/stats", endpoint.GetStats)
 		codes.GET("/export", endpoint.Export)
 		codes.GET("/:id", endpoint.GetByID)
 		codes.POST("/create-and-redeem", endpoint.CreateAndRedeem)
