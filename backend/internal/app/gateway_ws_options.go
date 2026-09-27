@@ -36,7 +36,6 @@ func openAIWSExecutionOptions(cfg *config.Config) *gatewayhttp.OpenAIWSOptions {
 		EventFlushBatchSize:                    v.EventFlushBatchSize,
 		EventFlushIntervalMS:                   v.EventFlushIntervalMS,
 		PrewarmCooldownMS:                      v.PrewarmCooldownMS,
-		FallbackCooldownSeconds:                v.FallbackCooldownSeconds,
 		RetryBackoffInitialMS:                  v.RetryBackoffInitialMS,
 		RetryBackoffMaxMS:                      v.RetryBackoffMaxMS,
 		RetryTotalBudgetMS:                     v.RetryTotalBudgetMS,

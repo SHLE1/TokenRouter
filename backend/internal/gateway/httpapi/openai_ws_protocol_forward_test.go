@@ -401,7 +401,7 @@ func TestOpenAIGatewayService_Forward_APIKeyHTTPPreservesPreviousResponseIDWhenW
 	require.Equal(t, "resp_123", gjson.GetBytes(upstream.lastBody, "previous_response_id").String())
 }
 
-func TestOpenAIGatewayService_Forward_WSv2Dial426FallbackHTTP(t *testing.T) {
+func TestOpenAIGatewayService_Forward_WSv2Dial426DoesNotFallbackHTTP(t *testing.T) {
 	ws426Server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUpgradeRequired)
 		_, _ = w.Write([]byte(`upgrade required`))
@@ -430,7 +430,6 @@ func TestOpenAIGatewayService_Forward_WSv2Dial426FallbackHTTP(t *testing.T) {
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.WS.FallbackCooldownSeconds = 1
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: upstream})
 
@@ -489,7 +488,6 @@ func TestOpenAIGatewayService_Forward_WSv2FailureDoesNotFallbackHTTP(t *testing.
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.WS.FallbackCooldownSeconds = 30
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: upstream})
 
@@ -612,7 +610,6 @@ func TestOpenAIGatewayService_Forward_WSv2FallbackWhenResponseAlreadyWrittenRetu
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.WS.FallbackCooldownSeconds = 1
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: upstream})
 
@@ -641,7 +638,7 @@ func TestOpenAIGatewayService_Forward_WSv2FallbackWhenResponseAlreadyWrittenRetu
 	require.Nil(t, upstream.lastReq, "已写下游响应时，不应再回退 HTTP")
 }
 
-func TestOpenAIGatewayService_Forward_WSv2StreamEarlyCloseFallbackHTTP(t *testing.T) {
+func TestOpenAIGatewayService_Forward_WSv2StreamEarlyCloseDoesNotFallbackHTTP(t *testing.T) {
 	upgrader := websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
 	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
@@ -700,7 +697,6 @@ func TestOpenAIGatewayService_Forward_WSv2StreamEarlyCloseFallbackHTTP(t *testin
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.WS.FallbackCooldownSeconds = 1
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: upstream, corrector: openai.NewCodexToolCorrector()})
 
@@ -729,7 +725,7 @@ func TestOpenAIGatewayService_Forward_WSv2StreamEarlyCloseFallbackHTTP(t *testin
 	require.Empty(t, rec.Body.String(), "未产出 token 前上游断连时不应写入下游半截流")
 }
 
-func TestOpenAIGatewayService_Forward_WSv2RetryFiveTimesThenFallbackHTTP(t *testing.T) {
+func TestOpenAIGatewayService_Forward_WSv2RetryExhaustedDoesNotFallbackHTTP(t *testing.T) {
 	var wsAttempts atomic.Int32
 	upgrader := websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
 	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -777,7 +773,6 @@ func TestOpenAIGatewayService_Forward_WSv2RetryFiveTimesThenFallbackHTTP(t *test
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.WS.FallbackCooldownSeconds = 1
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: upstream, corrector: openai.NewCodexToolCorrector()})
 
@@ -806,7 +801,7 @@ func TestOpenAIGatewayService_Forward_WSv2RetryFiveTimesThenFallbackHTTP(t *test
 	require.Equal(t, int32(openAIWSReconnectRetryLimit+1), wsAttempts.Load())
 }
 
-func TestOpenAIGatewayService_Forward_WSv2PolicyViolationFastFallbackHTTP(t *testing.T) {
+func TestOpenAIGatewayService_Forward_WSv2PolicyViolationDoesNotRetryOrFallbackHTTP(t *testing.T) {
 	var wsAttempts atomic.Int32
 	upgrader := websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
 	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -850,7 +845,6 @@ func TestOpenAIGatewayService_Forward_WSv2PolicyViolationFastFallbackHTTP(t *tes
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.WS.FallbackCooldownSeconds = 1
 	options.WS.RetryBackoffInitialMS = 1
 	options.WS.RetryBackoffMaxMS = 2
 	options.WS.RetryJitterRatio = 0
@@ -882,7 +876,7 @@ func TestOpenAIGatewayService_Forward_WSv2PolicyViolationFastFallbackHTTP(t *tes
 	require.Equal(t, int32(1), wsAttempts.Load(), "策略违规不应进行 WS 重试")
 }
 
-func TestOpenAIGatewayService_Forward_WSv2ConnectionLimitReachedRetryThenFallbackHTTP(t *testing.T) {
+func TestOpenAIGatewayService_Forward_WSv2ConnectionLimitRetryExhaustedDoesNotFallbackHTTP(t *testing.T) {
 	var wsAttempts atomic.Int32
 	upgrader := websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
 	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -932,7 +926,6 @@ func TestOpenAIGatewayService_Forward_WSv2ConnectionLimitReachedRetryThenFallbac
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.WS.FallbackCooldownSeconds = 1
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: upstream, corrector: openai.NewCodexToolCorrector()})
 
@@ -1034,7 +1027,6 @@ func TestOpenAIGatewayService_Forward_WSv2PreviousResponseNotFoundRecoversByDrop
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.WS.FallbackCooldownSeconds = 1
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: upstream, corrector: openai.NewCodexToolCorrector()})
 
@@ -1129,7 +1121,6 @@ func TestOpenAIGatewayService_Forward_WSv2PreviousResponseNotFoundSkipsRecoveryF
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.WS.FallbackCooldownSeconds = 1
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: upstream, corrector: openai.NewCodexToolCorrector()})
 
@@ -1222,7 +1213,6 @@ func TestOpenAIGatewayService_Forward_WSv2PreviousResponseNotFoundSkipsRecoveryW
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.WS.FallbackCooldownSeconds = 1
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: upstream, corrector: openai.NewCodexToolCorrector()})
 
@@ -1314,7 +1304,6 @@ func TestOpenAIGatewayService_Forward_WSv2PreviousResponseNotFoundOnlyRecoversOn
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.WS.FallbackCooldownSeconds = 1
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: upstream, corrector: openai.NewCodexToolCorrector()})
 
@@ -1424,7 +1413,6 @@ func TestOpenAIGatewayService_Forward_WSv2InvalidEncryptedContentRecoversOnce(t 
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.WS.FallbackCooldownSeconds = 1
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: upstream, corrector: openai.NewCodexToolCorrector()})
 
@@ -1523,7 +1511,6 @@ func TestOpenAIGatewayService_Forward_WSv2InvalidEncryptedContentSkipsRecoveryWi
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.WS.FallbackCooldownSeconds = 1
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: upstream, corrector: openai.NewCodexToolCorrector()})
 
@@ -1634,7 +1621,6 @@ func TestOpenAIGatewayService_Forward_WSv2InvalidEncryptedContentRecoversSingleO
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.WS.FallbackCooldownSeconds = 1
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: upstream, corrector: openai.NewCodexToolCorrector()})
 
@@ -1747,7 +1733,6 @@ func TestOpenAIGatewayService_Forward_WSv2InvalidEncryptedContentKeepsPreviousRe
 	options.WS.OAuthEnabled = true
 	options.WS.APIKeyEnabled = true
 	options.WS.ResponsesWebsocketsV2 = true
-	options.WS.FallbackCooldownSeconds = 1
 
 	svc := newWSFixture(wsFixtureInputs{options: options, transport: upstream, corrector: openai.NewCodexToolCorrector()})
 

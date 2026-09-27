@@ -536,9 +536,6 @@ func TestLoadDefaultOpenAIWSConfig(t *testing.T) {
 	if cfg.Gateway.OpenAIWS.StickyResponseIDTTLSeconds != 3600 {
 		t.Fatalf("Gateway.OpenAIWS.StickyResponseIDTTLSeconds = %d, want 3600", cfg.Gateway.OpenAIWS.StickyResponseIDTTLSeconds)
 	}
-	if cfg.Gateway.OpenAIWS.FallbackCooldownSeconds != 30 {
-		t.Fatalf("Gateway.OpenAIWS.FallbackCooldownSeconds = %d, want 30", cfg.Gateway.OpenAIWS.FallbackCooldownSeconds)
-	}
 	if cfg.Gateway.OpenAIWS.EventFlushBatchSize != 1 {
 		t.Fatalf("Gateway.OpenAIWS.EventFlushBatchSize = %d, want 1", cfg.Gateway.OpenAIWS.EventFlushBatchSize)
 	}
@@ -2280,11 +2277,6 @@ func TestValidateConfig_OpenAIWSRules(t *testing.T) {
 			wantErr: "gateway.openai_ws.queue_limit_per_conn",
 		},
 		{
-			name:    "fallback_cooldown_seconds 不能为负数",
-			mutate:  func(c *Config) { c.Gateway.OpenAIWS.FallbackCooldownSeconds = -1 },
-			wantErr: "gateway.openai_ws.fallback_cooldown_seconds",
-		},
-		{
 			name:    "store_disabled_conn_mode 必须为 strict|adaptive|off",
 			mutate:  func(c *Config) { c.Gateway.OpenAIWS.StoreDisabledConnMode = "invalid" },
 			wantErr: "gateway.openai_ws.store_disabled_conn_mode",
@@ -2683,4 +2675,40 @@ func TestLoadIgnoresRetiredSubscriptionMaintenance(t *testing.T) {
 	require.Equal(t, 8091, cfg.Server.Port)
 	cfg.JWT.ExpireHour = 0
 	require.ErrorContains(t, cfg.Validate(), "jwt.expire_hour")
+}
+
+// TestLoadIgnoresRetiredOpenAIWSFallbackCooldown 验证旧冷却键被忽略，重试配置仍按原规则读取和校验。
+func TestLoadIgnoresRetiredOpenAIWSFallbackCooldown(t *testing.T) {
+	cases := []struct {
+		name string
+		yaml string
+		env  string
+	}{
+		{
+			name: "YAML",
+			yaml: "gateway:\n  openai_ws:\n    fallback_cooldown_seconds: -1\n    retry_backoff_initial_ms: 137\n",
+		},
+		{
+			name: "环境变量",
+			yaml: "gateway:\n  openai_ws:\n    retry_backoff_initial_ms: 137\n",
+			env:  "-2",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			resetViperWithJWTSecret(t)
+			configFile := filepath.Join(t.TempDir(), "config.yaml")
+			require.NoError(t, os.WriteFile(configFile, []byte(tc.yaml), 0o600))
+			t.Setenv("CONFIG_FILE", configFile)
+			t.Setenv("GATEWAY_OPENAI_WS_FALLBACK_COOLDOWN_SECONDS", tc.env)
+			t.Setenv("GATEWAY_OPENAI_WS_RETRY_BACKOFF_INITIAL_MS", "")
+
+			cfg, err := Load()
+			require.NoError(t, err)
+			require.Equal(t, 137, cfg.Gateway.OpenAIWS.RetryBackoffInitialMS)
+
+			cfg.Gateway.OpenAIWS.RetryBackoffInitialMS = -1
+			require.ErrorContains(t, cfg.Validate(), "gateway.openai_ws.retry_backoff_initial_ms")
+		})
+	}
 }

@@ -334,8 +334,6 @@ gateway:
     event_flush_interval_ms: 10
     # 预热触发冷却（毫秒）
     prewarm_cooldown_ms: 300
-    # WS 回退到 HTTP 后的冷却时间（秒），用于避免 WS/HTTP 来回抖动；0 表示关闭冷却
-    fallback_cooldown_seconds: 30
     # WS 重试退避参数（毫秒）
     retry_backoff_initial_ms: 120
     retry_backoff_max_ms: 2000

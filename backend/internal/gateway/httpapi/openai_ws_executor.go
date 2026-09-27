@@ -13,20 +13,20 @@ import (
 
 // OpenAIWSOptions 只保存WS执行的静态参数；nil保留未配置时的原缺省语义。
 type OpenAIWSOptions struct {
-	Enabled, OAuthEnabled, APIKeyEnabled, ForceHTTP                                       bool
-	ResponsesWebsockets, ResponsesWebsocketsV2, ModeRouterV2Enabled                       bool
-	IngressModeDefault                                                                    string
-	ClientFirstMessageTimeoutSeconds, IngressInterTurnIdleTimeoutSeconds                  int
-	ClientReadLimitBytes, HTTPBridgeThresholdBytes                                        int64
-	HTTPBridgeEnabled                                                                     bool
-	AllowStoreRecovery, IngressPreviousResponseRecoveryEnabled                            bool
-	StoreDisabledConnMode                                                                 string
-	StoreDisabledForceNewConn, PrewarmGenerateEnabled                                     bool
-	DialTimeoutSeconds, ReadTimeoutSeconds, WriteTimeoutSeconds                           int
-	EventFlushBatchSize, EventFlushIntervalMS, PrewarmCooldownMS                          int
-	FallbackCooldownSeconds, RetryBackoffInitialMS, RetryBackoffMaxMS, RetryTotalBudgetMS int
-	RetryJitterRatio, PayloadLogSampleRate                                                float64
-	StickyResponseIDTTLSeconds                                                            int
+	Enabled, OAuthEnabled, APIKeyEnabled, ForceHTTP                      bool
+	ResponsesWebsockets, ResponsesWebsocketsV2, ModeRouterV2Enabled      bool
+	IngressModeDefault                                                   string
+	ClientFirstMessageTimeoutSeconds, IngressInterTurnIdleTimeoutSeconds int
+	ClientReadLimitBytes, HTTPBridgeThresholdBytes                       int64
+	HTTPBridgeEnabled                                                    bool
+	AllowStoreRecovery, IngressPreviousResponseRecoveryEnabled           bool
+	StoreDisabledConnMode                                                string
+	StoreDisabledForceNewConn, PrewarmGenerateEnabled                    bool
+	DialTimeoutSeconds, ReadTimeoutSeconds, WriteTimeoutSeconds          int
+	EventFlushBatchSize, EventFlushIntervalMS, PrewarmCooldownMS         int
+	RetryBackoffInitialMS, RetryBackoffMaxMS, RetryTotalBudgetMS         int
+	RetryJitterRatio, PayloadLogSampleRate                               float64
+	StickyResponseIDTTLSeconds                                           int
 }
 
 // OpenAIWSSelection 只提供已经选中提供商的传输选择与会话预算。

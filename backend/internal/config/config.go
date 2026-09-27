@@ -1104,8 +1104,6 @@ type GatewayOpenAIWSConfig struct {
 	EventFlushIntervalMS int `mapstructure:"event_flush_interval_ms"`
 	// PrewarmCooldownMS: 连接池预热触发冷却时间（毫秒）
 	PrewarmCooldownMS int `mapstructure:"prewarm_cooldown_ms"`
-	// FallbackCooldownSeconds: WS 回退冷却窗口，避免 WS/HTTP 抖动；0 表示关闭冷却
-	FallbackCooldownSeconds int `mapstructure:"fallback_cooldown_seconds"`
 	// RetryBackoffInitialMS: WS 重试初始退避（毫秒）；<=0 表示关闭退避
 	RetryBackoffInitialMS int `mapstructure:"retry_backoff_initial_ms"`
 	// RetryBackoffMaxMS: WS 重试最大退避（毫秒）
@@ -2163,7 +2161,6 @@ func setDefaults() {
 	viper.SetDefault("gateway.openai_ws.event_flush_batch_size", 1)
 	viper.SetDefault("gateway.openai_ws.event_flush_interval_ms", 10)
 	viper.SetDefault("gateway.openai_ws.prewarm_cooldown_ms", 300)
-	viper.SetDefault("gateway.openai_ws.fallback_cooldown_seconds", 30)
 	viper.SetDefault("gateway.openai_ws.retry_backoff_initial_ms", 120)
 	viper.SetDefault("gateway.openai_ws.retry_backoff_max_ms", 2000)
 	viper.SetDefault("gateway.openai_ws.retry_jitter_ratio", 0.2)
@@ -3231,9 +3228,6 @@ func (c *Config) Validate() error {
 	}
 	if c.Gateway.OpenAIWS.HTTPBridgeEnabled && c.Gateway.OpenAIWS.HTTPBridgeThresholdBytes == 0 {
 		return fmt.Errorf("gateway.openai_ws.http_bridge_threshold_bytes must be positive when http_bridge_enabled is true")
-	}
-	if c.Gateway.OpenAIWS.FallbackCooldownSeconds < 0 {
-		return fmt.Errorf("gateway.openai_ws.fallback_cooldown_seconds must be non-negative")
 	}
 	if c.Gateway.OpenAIWS.RetryBackoffInitialMS < 0 {
 		return fmt.Errorf("gateway.openai_ws.retry_backoff_initial_ms must be non-negative")
