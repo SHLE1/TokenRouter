@@ -317,7 +317,7 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 		}
 	}
 	if enabledCaptchaProviders > 1 {
-		response.BadRequest(c, "Multiple captchan providers (Cloudflare Turnstile / Tencent Captcha / Aliyun Captcha) cannot be enabled at the same time")
+		response.BadRequest(c, "Multiple captcha providers (Cloudflare Turnstile / Tencent Captcha / Aliyun Captcha) cannot be enabled at the same time")
 		return
 	}
 	// 规范化阿里云地域：未发送时保留已存值，非法值一律按中国内地落库。

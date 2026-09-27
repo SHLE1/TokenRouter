@@ -18,6 +18,8 @@ notification 支持 13 类事件：认证验证码、密码重置、通知邮箱
 
 模板按事件和语言保存，包含内置模板、管理员覆盖、预览和占位符校验。HTML 变量默认转义，原始 HTML 只允许明确授权的占位符。模板或配置错误可由业务发送适配使用原正文回退；发送失败或结果不明不会自动重发。Ops 提供报告的真实摘要和详情，预览样例不能混入实际报告。
 
+提供商额度告警使用 `provider.quota_alert`；用户审核封禁仍使用 `content_moderation.account_disabled`，管理端按相同事件名展示本地化文案。
+
 通知配置和模板使用 settings 存储，SMTP 由 `notification/smtp` 实现。模板管理、SMTP 测试及公开退订位于 `notification/httpapi`。
 
 <a id="notification_preferences"></a>

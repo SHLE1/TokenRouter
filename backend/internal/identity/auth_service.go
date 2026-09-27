@@ -273,7 +273,7 @@ func (s *AuthService) VerifyCaptcha(ctx context.Context, proof CaptchaProof, rem
 
 	providerConfig, err := s.Settings.GetCaptchaProviderConfig(ctx)
 	if err != nil {
-		s.Observer.Printf("service.auth", "%s", "[Auth] Failed to read captchan provider settings")
+		s.Observer.Printf("service.auth", "%s", "[Auth] Failed to read captcha provider settings")
 		return ErrServiceUnavailable
 	}
 	turnstileEnabled := providerConfig.TurnstileEnabled
@@ -326,7 +326,7 @@ func (s *AuthService) VerifyActionCaptchaIfEnabled(ctx context.Context, proof Ca
 
 	providerConfig, err := s.Settings.GetCaptchaProviderConfig(ctx)
 	if err != nil {
-		s.Observer.Printf("service.auth", "%s", "[Auth] Failed to read captchan provider settings")
+		s.Observer.Printf("service.auth", "%s", "[Auth] Failed to read captcha provider settings")
 		return ErrServiceUnavailable
 	}
 	tencentEnabled := providerConfig.Tencent.Enabled

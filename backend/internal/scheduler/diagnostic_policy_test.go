@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"testing"
+	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
@@ -45,4 +46,10 @@ func TestDiagnosticWeightedPreviousResponseIsIgnoredOutsideOpenAI(t *testing.T) 
 	require.Zero(t, outcome.forcedProviderID)
 	require.Equal(t, "ignored", outcome.previousResponseState)
 	require.Equal(t, "weighted", outcome.sessionStickyState)
+}
+
+// 关闭调度的原因码与管理端提供商诊断翻译保持一致。
+func TestDiagnosticDisabledProviderReason(t *testing.T) {
+	value := &DiagnosticProvider{ID: 7, Status: "active", Schedulable: false, GroupIDs: []int64{1}}
+	require.Equal(t, "provider_disabled", diagnosticBaseHardFilterReason(value, &DiagnosticGroup{ID: 1}, time.Now()))
 }

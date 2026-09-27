@@ -391,7 +391,7 @@ func (s *RequestFingerprint) RewriteUserIDWithMasking(ctx context.Context, body 
 	newUserID := FormatMetadataUserID(uidParsed.DeviceID, uidParsed.AccountUUID, maskedSessionID, version)
 
 	slog.Debug("session_id_masking_applied",
-		"account_id", providerID,
+		"provider_id", providerID,
 		"before", userID,
 		"after", newUserID,
 	)

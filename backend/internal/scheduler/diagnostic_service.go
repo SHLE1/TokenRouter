@@ -540,7 +540,7 @@ func diagnosticBaseHardFilterReason(provider *DiagnosticProvider, group *Diagnos
 		return "provider_inactive"
 	}
 	if !provider.Schedulable {
-		return "account_disabled"
+		return "provider_disabled"
 	}
 	if provider.AutoPauseOnExpired && provider.ExpiresAt != nil && !now.Before(*provider.ExpiresAt) {
 		return "provider_expired"

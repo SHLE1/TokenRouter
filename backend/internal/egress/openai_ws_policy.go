@@ -96,7 +96,7 @@ func ResolveOpenAIWSTransport(provider OpenAIWSProvider, wsCfg *OpenAIWSOptions)
 		return OpenAIWSHTTPDecision("feature_disabled")
 	}
 	if !provider.WSEnabled {
-		return OpenAIWSHTTPDecision("account_disabled")
+		return OpenAIWSHTTPDecision("provider_disabled")
 	}
 	if wsCfg.ResponsesWebsocketsV2 {
 		return OpenAIWSProtocolDecision{

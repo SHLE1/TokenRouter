@@ -1278,7 +1278,7 @@ func BatchImageProviderSubmitPublicError(err error) error {
 		return ErrBatchImageVertexGCSBucketMissing
 	case "BATCH_IMAGE_PROVIDER_MISSING_API_KEY":
 		return ErrBatchImageProviderMissingAPIKey
-	case "BATCH_IMAGE_PROVIDER_MISSING_SERVICE_PROVIDER":
+	case "BATCH_IMAGE_PROVIDER_MISSING_SERVICE_ACCOUNT":
 		return ErrBatchImageProviderMissingServiceAccount
 	case "BATCH_IMAGE_PROVIDER_UNSUPPORTED_PROVIDER":
 		return ErrBatchImageProviderUnsupportedProvider

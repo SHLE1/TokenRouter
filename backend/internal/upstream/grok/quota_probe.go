@@ -51,7 +51,7 @@ func FetchActiveQuota(ctx context.Context, options ActiveQuotaOptions) error {
 	if resp.StatusCode >= 400 {
 		const reason = "GROK_QUOTA_PROBE_UPSTREAM_ERROR"
 		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4<<10))
-		options.Warn("grok_quota_probe_failed", "account_id", options.ProviderID, "model", options.Model, "status", resp.StatusCode, "reason", reason)
+		options.Warn("grok_quota_probe_failed", "provider_id", options.ProviderID, "model", options.Model, "status", resp.StatusCode, "reason", reason)
 		return infraerrors.Newf(infraerrors.Category(options.MapStatus(resp.StatusCode)), reason, "upstream returned %d for probe model %q", resp.StatusCode, options.Model)
 	}
 	return nil

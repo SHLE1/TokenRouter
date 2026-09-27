@@ -378,8 +378,8 @@ const eventDisplayMeta: Record<string, EventDisplayMeta> = {
     timing: "用户请求命中内容审计或风控规则、但尚未被禁用时发送。",
     categoryLabel: "风控",
   },
-  "content_moderation.provider_disabled": {
-    label: "内容审计禁用提供商",
+  "content_moderation.account_disabled": {
+    label: "内容审计禁用账号",
     timing: "内容审计违规次数达到封禁阈值并自动禁用用户账号时发送。",
     categoryLabel: "风控",
   },
@@ -443,11 +443,11 @@ const eventDisplayMetaEn: Record<string, EventDisplayMeta> = {
   },
   "content_moderation.violation_notice": {
     label: "Risk Control Violation Notice",
-    timing: "Sent when a user request triggers content moderation or risk-control rules but the provider is not disabled yet.",
+    timing: "Sent when a user request triggers content moderation or risk-control rules but the user account is not disabled yet.",
     categoryLabel: "Risk Control",
   },
-  "content_moderation.provider_disabled": {
-    label: "Risk Control Provider Disabled",
+  "content_moderation.account_disabled": {
+    label: "Risk Control Account Disabled",
     timing: "Sent when content moderation reaches the ban threshold and automatically disables the user account.",
     categoryLabel: "Risk Control",
   },

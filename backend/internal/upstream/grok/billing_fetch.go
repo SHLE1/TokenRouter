@@ -67,7 +67,7 @@ func FetchBilling(ctx context.Context, options BillingFetchOptions) (*BillingSum
 		}
 		if statusCode >= 400 {
 			bodyText := options.Truncate(strings.TrimSpace(string(bodyBytes)), 240)
-			options.Warn("grok_quota_billing_failed", "account_id", options.ProviderID, "weekly", options.Weekly, "status", statusCode, "body", bodyText)
+			options.Warn("grok_quota_billing_failed", "provider_id", options.ProviderID, "weekly", options.Weekly, "status", statusCode, "body", bodyText)
 			return nil, statusCode, infraerrors.Newf(infraerrors.Category(options.MapStatus(statusCode)), "GROK_QUOTA_PROBE_UPSTREAM_ERROR", "billing returned %d: %s", statusCode, bodyText)
 		}
 		payload, err := ParseBillingPayload(bodyBytes)

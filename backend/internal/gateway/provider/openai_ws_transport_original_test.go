@@ -113,7 +113,7 @@ func TestOpenAIWSProtocolResolver_Resolve(t *testing.T) {
 		}
 		decision := resolveTransportTest(baseCfg, &provider)
 		require.Equal(t, egress.OpenAIUpstreamTransportHTTPSSE, decision.Transport)
-		require.Equal(t, "account_disabled", decision.Reason)
+		require.Equal(t, "provider_disabled", decision.Reason)
 	})
 
 	t.Run("OAuth提供商不会读取API Key专用开关", func(t *testing.T) {
@@ -123,7 +123,7 @@ func TestOpenAIWSProtocolResolver_Resolve(t *testing.T) {
 		}
 		decision := resolveTransportTest(baseCfg, &provider)
 		require.Equal(t, egress.OpenAIUpstreamTransportHTTPSSE, decision.Transport)
-		require.Equal(t, "account_disabled", decision.Reason)
+		require.Equal(t, "provider_disabled", decision.Reason)
 	})
 
 	t.Run("兼容旧键openai_ws_enabled", func(t *testing.T) {
