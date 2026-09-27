@@ -21,11 +21,9 @@ import (
 // Observe429 处理429限流错误
 // 解析响应头获取重置时间，标记提供商为限流状态
 func (s *RateLimitObserver) Observe429(ctx context.Context, provider *providercore.Record, headers http.Header, responseBody []byte) {
-	// Spark 影子：限流/熔断状态 100% 由 QueryUsage(/wham/usage body 的 codex_bengalfox)驱动。
-	// /responses 的 429 携带的 x-codex-*/usage_limit_reached 是 global codex 道(plan/spec §8),
-	// 套到影子会把 spark 误耦合到 global 窗口——即便 spark 仍有配额也会被冷却到 global reset,
-	// 单影子场景直接变成无可用提供商(外审第8轮 P1)。整段跳过;影子的 codex_* 仅由 provider_usage 的
-	// QueryUsage→persistOpenAICodexProbeSnapshot 维护,枯竭由调度守卫处理。
+	// Spark 影子的限流状态由 /wham/usage 的 codex_bengalfox 用量驱动。
+	// /responses 429 中的 x-codex-* 和 usage_limit_reached 属于全局窗口，不能用于暂停仍有配额的影子。
+	// 此处跳过影子，由用量查询维护 codex_* 快照，并由调度资格检查处理额度耗尽。
 	if provider.IsShadow() {
 		return
 	}

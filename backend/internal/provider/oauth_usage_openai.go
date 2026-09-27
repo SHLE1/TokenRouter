@@ -96,10 +96,9 @@ func isOpenAICodexSnapshotStale(provider *Record, now time.Time) bool {
 	if provider == nil || !provider.IsOpenAIOAuth() {
 		return false
 	}
-	// 普通提供商的 codex 刷新走 probe(/responses 头),要求 WSv2;但 spark 影子走 QueryUsage
-	// (/wham/usage body 的 codex_bengalfox),与 WSv2 无关——不能用 WSv2 门控其 staleness,否则首刷后
-	// codex_5h/7d 已存在→staleness 恒 false→spark 窗口永久冻结(外审第9轮 P1)。影子改按
-	// codex_usage_updated_at TTL 判定;实际查询频率仍由 ShouldProbeOpenAICodexSnapshot 的缓存 TTL 节流。
+	// 普通提供商从 /responses 响应头刷新 Codex 用量，要求启用 WSv2。
+	// Spark 影子从 /wham/usage 的 codex_bengalfox 读取用量，以 codex_usage_updated_at TTL 判断过期，
+	// 不受 WSv2 开关限制。实际查询频率仍由 ShouldProbeOpenAICodexSnapshot 的缓存 TTL 控制。
 	if !provider.IsShadow() && !provider.IsOpenAIResponsesWebSocketV2Enabled() {
 		return false
 	}

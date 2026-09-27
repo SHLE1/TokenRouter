@@ -21,17 +21,17 @@ import (
 )
 
 // 现有存储端口的计数器用于固定 SQL 查询次数与小型夹具 Explain 基线。
-type sQLCall struct {
+type sqlCall struct {
 	Query string `json:"query"`
 	Args  []any  `json:"-"`
 }
 type countingSQL struct {
 	sqlExecutor
-	calls []sQLCall
+	calls []sqlCall
 }
 
 func (s *countingSQL) QueryContext(ctx context.Context, q string, a ...any) (*sql.Rows, error) {
-	s.calls = append(s.calls, sQLCall{q, a})
+	s.calls = append(s.calls, sqlCall{q, a})
 	return s.sqlExecutor.QueryContext(ctx, q, a...)
 }
 

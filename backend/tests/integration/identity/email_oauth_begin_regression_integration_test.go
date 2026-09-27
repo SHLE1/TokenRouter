@@ -49,16 +49,16 @@ func (d *failNextTransaction) Tx(ctx context.Context) (dialect.Tx, error) {
 	return d.Driver.Tx(ctx)
 }
 
-type oAuthSettings struct{ settingscore.Repository }
+type oauthSettings struct{ settingscore.Repository }
 
-func (oAuthSettings) GetValue(_ context.Context, key string) (string, error) {
+func (oauthSettings) GetValue(_ context.Context, key string) (string, error) {
 	if key == identity.SettingKeyRegistrationEnabled {
 		return "true", nil
 	}
 	return "", nil
 }
 
-func (s oAuthSettings) GetMultiple(ctx context.Context, keys []string) (map[string]string, error) {
+func (s oauthSettings) GetMultiple(ctx context.Context, keys []string) (map[string]string, error) {
 	out := map[string]string{}
 	for _, key := range keys {
 		out[key], _ = s.GetValue(ctx, key)
@@ -87,7 +87,7 @@ func TestEmailOAuthBeginFailureCompensatesUser(t *testing.T) {
 	cfg.JWT.ExpireHour = 1
 	cfg.JWT.RefreshTokenExpireDays = 1
 	cfg.Default.UserConcurrency = 1
-	settings := identitytestkit.Settings(oAuthSettings{}, cfg)
+	settings := identitytestkit.Settings(oauthSettings{}, cfg)
 	auth := identitytestkit.Auth(client, &identity.AuthDependencies{Users: users, RefreshTokens: rediscache.NewRefreshTokenCache(rediscontainer.New(t)), Options: identitytestkit.AuthOptions(cfg), Settings: settings})
 	flow := &identity.PendingFlow{Store: identitypostgres.NewPendingRepository(client), Database: &identitypostgres.PendingFlowDatabase{Client: client, Auth: auth}, Auth: auth}
 	sessionHTTP := identityhttp.NewSessionHandler(auth, nil, settings, nil, nil, flow, identityhttp.SessionHTTPOptions{})

@@ -43,7 +43,7 @@ func newOAuthUsageFixture(options oauthUsageFixtureOptions) *provider.OAuthUsage
 	})
 }
 
-// 测试存储只按 ID 读取独立记录，复用原测试数据与缺失错误。
+// 测试存储按 ID 返回独立记录，缺失时返回对应错误。
 type usageRecordFixture struct{ providers []provider.Record }
 
 func (r usageRecordFixture) GetByID(_ context.Context, id int64) (*provider.Record, error) {

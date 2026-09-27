@@ -16,10 +16,6 @@ const (
 	ErrorPolicyCustomMatched                            // 自定义错误码命中，停止调度
 	ErrorPolicyTempUnscheduled                          // 临时不可调度规则命中
 	ErrorPolicyPoolBypassed                             // 池模式跳过默认本地状态，继续响应分类
-	// ErrorPolicyMatched 保留旧测试与外部调用方的枚举别名。
-	ErrorPolicyMatched = ErrorPolicyCustomMatched
-	// ErrorPolicySkipped 保留旧测试与外部调用方的枚举别名。
-	ErrorPolicySkipped = ErrorPolicyCustomSkipped
 )
 
 // UpstreamErrorDecision 汇总显式策略和默认提供商状态处理结果。

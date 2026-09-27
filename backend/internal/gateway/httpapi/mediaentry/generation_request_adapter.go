@@ -241,7 +241,7 @@ func (p *generationRequestAdapter) completeImages(value *gatewaymedia.Generation
 	h, c, apiKey, provider, requestModel, parsed, body, subscription, subject, groupMapping := p.h, p.c, p.apiKey, p.selection.Provider, p.requestModel, p.parsed, p.body, p.subscription, p.subject, p.groupMapping
 	result := legacyGenerationResult(value)
 	if result != nil {
-		// 排除 spark 影子:其 codex_* 仅由 QueryUsage(/wham/usage bengalfox)更新(外审第7轮 P1)。
+		// 排除 spark 影子:其 codex_* 仅由 QueryUsage(/wham/usage bengalfox)更新。
 		if provider.Record.Type == capability.ProviderTypeOAuth && !provider.View().IsShadow() {
 			h.bindings.Common.Selection.UpdateCodexUsageSnapshotFromHeaders(c.Request.Context(), provider.Record.ID, result.ResponseHeaders)
 		}

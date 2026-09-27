@@ -62,9 +62,8 @@ func PersistOpenAIObservedPlan(ctx context.Context, repo OpenAIPlanWriter, provi
 	if repo == nil || provider == nil || provider.Platform != capability.PlatformOpenAI {
 		return
 	}
-	// spark 影子提供商恒不持凭据:即便收到带 plan_type 的 429,也不能把 plan_type 写进影子 credentials
-	// ——该路径走 repo.BulkUpdate 直写、不经 persistProviderCredentials 守卫(外审第7轮 P1)。
-	// plan_type 由母提供商在自己的请求上维护,影子跳过。
+	// Spark 影子的 credentials 不保存凭据或 plan_type。此路径直接批量写入，必须在写入前排除影子。
+	// plan_type 由母提供商在自己的请求中维护。
 	if provider.IsCredentialShadow() {
 		return
 	}

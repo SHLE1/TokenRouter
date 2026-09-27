@@ -378,7 +378,7 @@ func (b *responsesAttemptBridge) Failed() {
 // Success 只执行单次 Responses 适配操作，不持有重试循环。
 func (b *responsesAttemptBridge) Success() {
 	if b.result != nil {
-		// 排除 spark 影子:其 codex_* 仅由 QueryUsage(/wham/usage bengalfox)更新(外审第7轮 P1)。
+		// 排除 spark 影子:其 codex_* 仅由 QueryUsage(/wham/usage bengalfox)更新。
 		if b.provider.View().IsOpenAI() && b.provider.Record.Type == capability.ProviderTypeOAuth && !b.provider.View().IsShadow() {
 			b.binding().updateCodexUsageSnapshotFromHeaders(b.c.Request.Context(), b.provider.Record.ID, b.result.ResponseHeaders)
 		}

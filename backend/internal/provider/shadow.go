@@ -52,9 +52,8 @@ func (s *Admin) CreateShadow(ctx context.Context, parentID int64, opts ShadowOpt
 		groupIDs = append([]int64(nil), parent.GroupIDs...)
 	}
 
-	// 4. 构造影子提供商（安全不变量：Credentials 恒不含 auth token，仅含 model_mapping）。
-	// name 为空时默认 "<母提供商名> (Spark)"——否则空 name 会在 ent(name NotEmpty)处变成裸 500
-	// (外审 E/P2);并 rune 安全截断到 ent MaxLen(100)。
+	// 4. 构造影子提供商。Credentials 仅保存 model_mapping，不保存认证令牌。
+	// 名称为空时使用 "<母提供商名> (Spark)"，避免触发数据库非空约束；按 rune 截断到 100 字符。
 	name := strings.TrimSpace(opts.Name)
 	if name == "" {
 		name = parent.Name + " (Spark)"
@@ -62,15 +61,14 @@ func (s *Admin) CreateShadow(ctx context.Context, parentID int64, opts ShadowOpt
 	if runes := []rune(name); len(runes) > 100 {
 		name = string(runes[:100])
 	}
-	// 并发未指定(<=0)时继承母提供商，避免 0 被限流器解读为"无限并发"（外审 F3）。
+	// 并发未指定(<=0)时继承母提供商，避免 0 被限流器解读为"无限并发"。
 	concurrency := opts.Concurrency
 	if concurrency <= 0 {
 		concurrency = parent.Concurrency
 	}
-	// 优先级未指定(<=0)时继承母提供商——前端一键创建只传 name,opts.Priority 省略即 0,而调度
-	// 比较是「数值越小越优先」(openai_provider_scheduler.isOpenAIProviderCandidateBetter),且 repo
-	// 显式 SetPriority 会绕过 ent 默认 50,直写 0 会让影子意外抢到最高优先级(外审第5轮 P1)。
-	// 与上方 Concurrency 一致采用「省略继承母提供商」语义(影子的 proxy/分组/并发亦全部继承母提供商)。
+	// 未指定优先级（<=0）时继承母提供商。前端只传名称创建时，Priority 的零值表示省略。
+	// 调度优先级数值越小越优先，存储显式 SetPriority 会绕过数据库默认值 50，不能直接写入这个零值。
+	// 代理始终继承母提供商，省略的分组和并发参数也沿用母提供商的值。
 	priority := opts.Priority
 	if priority <= 0 {
 		priority = parent.Priority
@@ -89,8 +87,8 @@ func (s *Admin) CreateShadow(ctx context.Context, parentID int64, opts ShadowOpt
 		Schedulable:      true,
 	}
 
-	// 5. 持久化（Create 填充 shadow.ID）。并发竞态:预查(步骤2)放行后另一请求抢先建成,本次会撞
-	// 一母一影唯一索引。复查确认确为"已存在"竞态时返回结构化 409 而非裸 500——外审 A/P1。
+	// 5. 持久化并填充 shadow.ID。预查后若有并发请求抢先创建，唯一索引会拒绝本次写入。
+	// 复查确认影子已经存在时返回结构化 409。
 	if err := s.providerRepo.Create(ctx, shadow); err != nil {
 		if existing, qerr := s.providerRepo.ListShadowsByParent(ctx, parentID); qerr == nil && len(existing) > 0 {
 			return nil, infraerrors.New(infraerrors.CategoryConflict, "SPARK_SHADOW_ALREADY_EXISTS",
@@ -99,10 +97,8 @@ func (s *Admin) CreateShadow(ctx context.Context, parentID int64, opts ShadowOpt
 		return nil, fmt.Errorf("create spark shadow: %w", err)
 	}
 
-	// 6. 绑定分组。注意:create+bind 非单一 DB 事务(通用 Create 走 r.client、outbox 走 r.sql,
-	// 无现成共享事务路径),故绑组失败时做 best-effort 补偿删除刚建的影子,避免半成品影子(否则
-	// 一母一影唯一索引会挡住重试)——外审 C/P1。补偿删除用 detached ctx,即便请求 ctx 已取消/超时
-	// 仍能完成清理(外审第4轮);进程崩溃这种极端仍可能残留,属已知权衡。
+	// 6. 绑定分组。创建和绑定未共用事务，绑定失败时尝试删除刚创建的影子，避免唯一索引阻止重试。
+	// 补偿删除使用独立取消上下文，请求取消或超时后仍会执行；进程崩溃时仍可能留下未完成的记录。
 	if len(groupIDs) > 0 {
 		if err := s.providerRepo.BindGroups(ctx, shadow.ID, groupIDs); err != nil {
 			if delErr := s.providerRepo.Delete(context.WithoutCancel(ctx), shadow.ID); delErr != nil {
@@ -125,9 +121,8 @@ func (s *Admin) propagateProxyToShadows(ctx context.Context, parentID int64, pro
 	return PropagateProviderProxyToShadows(ctx, s.providerRepo, parentID, proxyID)
 }
 
-// PropagateProviderProxyToShadows 把母提供商的 proxy 同步到其所有 spark 影子(影子 proxy 恒继承母提供商)。
-// 供 AdminService 编辑路径与 CRS 同步路径共用——后者改动母提供商 proxy 后必须同样传播,否则影子保留
-// 旧 proxy 出现出站漂移(外审第8轮)。
+// PropagateProviderProxyToShadows 将母提供商的代理同步到其 Spark 影子。
+// 管理编辑和 CRS 同步都调用此入口，确保影子的出站代理持续跟随母提供商。
 func PropagateProviderProxyToShadows(ctx context.Context, repo ShadowProxyStore, parentID int64, proxyID *int64) error {
 	shadows, err := repo.ListShadowsByParent(ctx, parentID)
 	if err != nil {

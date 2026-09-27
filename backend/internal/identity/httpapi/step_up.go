@@ -54,7 +54,7 @@ func EnforceStepUp(c *gin.Context, grantChecker StepUpGrantChecker, userReader U
 
 	adminAPIKey := c.GetString("auth_method") == "admin_api_key"
 	if principal, ok := authctx.GetPrincipal(c); ok {
-		// 已迁入口以验证后的凭据类型为准，旧 context 字段只兼容未迁入口。
+		// 已验证的 Principal 优先；没有 Principal 时使用 auth_method 上下文字段。
 		adminAPIKey = principal.CredentialKind == "admin_api_key"
 	}
 	if adminAPIKey {

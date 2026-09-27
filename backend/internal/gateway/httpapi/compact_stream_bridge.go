@@ -31,11 +31,6 @@ func MarkOpenAICompactClientStream(c *gin.Context) {
 	c.Set(openAICompactClientStreamKey, true)
 }
 
-// OpenAICompactClientStreamKeyForTest 暴露上下文键，仅供跨包 handler 测试断言。
-func OpenAICompactClientStreamKeyForTest() string {
-	return openAICompactClientStreamKey
-}
-
 func OpenAICompactClientWantsStream(c *gin.Context) bool {
 	if c == nil {
 		return false

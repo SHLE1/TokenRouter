@@ -1,4 +1,4 @@
-// 本文件将原测试输入转换为组合配置记录，编译和查价均使用真实模型配置服务。
+// 本文件将测试输入转换为组合配置记录，编译和查价均使用模型配置服务。
 package testkit
 
 import (
@@ -50,7 +50,7 @@ type ModelConfigData struct {
 	ByGroup       map[int64]*Configuration                // GroupID → 组合配置
 	Platforms     map[int64]string                        // GroupID → Platform
 
-	// 原测试记录的目录元数据
+	// 测试记录的目录元数据
 	ByID     map[int64]*Configuration
 	LoadedAt time.Time
 }
@@ -68,7 +68,7 @@ func NewModelConfigData() *ModelConfigData {
 	}
 }
 
-// ModelConfigDataFromRows 只记录旧测试的输入，真正编译在 routing 的生产入口执行。
+// ModelConfigDataFromRows 转换测试输入，由 routing 的生产入口编译配置。
 func ModelConfigDataFromRows(pricingConfigs []Configuration, platforms map[int64]string) *ModelConfigData {
 	fixture := NewModelConfigData()
 	fixture.Configurations = pricingConfigs

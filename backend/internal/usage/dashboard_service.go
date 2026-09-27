@@ -142,19 +142,10 @@ func (s *DashboardService) SetPreAggregationSettings(settings AggregationSetting
 	if settings != nil {
 		settings.RegisterListener(func(previous, next PreAggregationSettings) {
 			if previous.Usage != next.Usage {
-				s.runBackground("service/dashboard_service.go:SetPreAggregationSettings",
-
-					// ProvideDashboardService 创建读取统一预聚合配置的仪表盘服务。
-					func() { s.evictDashboardStatsCache(nil) })
+				s.runBackground("service/dashboard_service.go:SetPreAggregationSettings", func() { s.evictDashboardStatsCache(nil) })
 			}
 		})
 	}
-}
-
-func ProvideDashboardService(usageRepo UsageLogRepository, aggRepo DashboardAggregationRepository, cache DashboardStatsCache, cfg *Options, settings AggregationSettings) *DashboardService {
-	service := NewDashboardService(usageRepo, aggRepo, cache, cfg)
-	service.SetPreAggregationSettings(settings)
-	return service
 }
 
 func (s *DashboardService) GetDashboardStats(ctx context.Context) (*DashboardStats, error) {

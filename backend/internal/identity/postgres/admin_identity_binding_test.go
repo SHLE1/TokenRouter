@@ -293,7 +293,7 @@ func TestAdminServiceBindUserAuthIdentityRejectsInvalidProviderType(t *testing.T
 	require.Equal(t, "INVALID_INPUT", apperror.Reason(err))
 }
 
-// bindingUsersFixture 只返回原测试指定的目标身份，数据库归绑定事务适配持有。
+// bindingUsersFixture 返回测试指定的目标身份，数据库由绑定事务适配持有。
 type bindingUsersFixture struct {
 	identitycore.UserRepository
 	user *identitycore.User

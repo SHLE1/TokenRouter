@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// committedEntitlementClient 保留旧测试提交后按用户根清理的隔离边界。
+// committedEntitlementClient 在事务提交后按用户清理关联数据，隔离各个测试。
 func committedEntitlementClient(t *testing.T) *dbent.Client {
 	t.Helper()
 	t.Cleanup(func() {
@@ -31,7 +31,7 @@ func entitlementTx(t *testing.T) *dbent.Tx {
 	return tx
 }
 
-// billingUserForContract 只投影原测试所见用户字段，不复制身份或资金规则。
+// billingUserForContract 为资金测试投影所需用户字段。
 func billingUserForContract(u *identity.User) *billing.UserSummary {
 	if u == nil {
 		return nil

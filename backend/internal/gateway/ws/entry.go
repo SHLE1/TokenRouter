@@ -516,7 +516,7 @@ func RunEntry(ctx context.Context, p EntryPorts, in EntryInput, client ClientSoc
 				}
 				// WS 每个 turn 的分组映射可能覆盖默认计费模型，统一在记录用量前解析。
 				result.BillingModel = EntryBillingModel(result, turnGroupMapping, turnModel, result.UpstreamModel)
-				// 排除 spark 影子:其 codex_* 仅由 QueryUsage(/wham/usage bengalfox)更新(外审第7轮 P1)。
+				// 排除 spark 影子:其 codex_* 仅由 QueryUsage(/wham/usage bengalfox)更新。
 				if provider.Type == "oauth" && !provider.Shadow {
 					selection.Target.UpdateUsage(ctx, result.ResponseHeaders)
 				}

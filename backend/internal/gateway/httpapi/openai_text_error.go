@@ -16,6 +16,7 @@ func openAITextMaxBytesError(err error) (*http.MaxBytesError, bool) {
 	ok := errors.As(err, &limit)
 	return limit, ok
 }
+
 func (h *OpenAITextHandler) errorResponse(c *gin.Context, status int, kind, message string) {
 	h.errorOutput().WriteError(c, status, kind, message)
 }
@@ -31,9 +32,11 @@ func writeOpenAIRequestError(c *gin.Context, status int, kind, message string, s
 	}
 	c.JSON(status, gin.H{"error": gin.H{"type": kind, "message": message}})
 }
+
 func (h *OpenAITextHandler) handleStreamingAwareError(c *gin.Context, status int, kind, message string, started bool) {
 	h.WriteStreamingErrorWithCode(c, status, kind, "", message, started, false)
 }
+
 func (h *OpenAITextHandler) anthropicErrorResponse(c *gin.Context, status int, kind, message string) {
 	WriteAnthropicError(c, status, kind, "", message)
 }
@@ -49,6 +52,7 @@ func (h *OpenAITextHandler) handleOpenAISessionIsolationError(c *gin.Context, er
 	}
 	return true
 }
+
 func (h *OpenAITextHandler) handleAnthropicSessionIsolationError(c *gin.Context, err error, started bool) bool {
 	if err == nil {
 		return false
@@ -60,6 +64,7 @@ func (h *OpenAITextHandler) handleAnthropicSessionIsolationError(c *gin.Context,
 	}
 	return true
 }
+
 func (h *OpenAITextHandler) recoverResponsesPanic(c *gin.Context, started *bool) {
 	value := recover()
 	if value == nil {
@@ -68,6 +73,7 @@ func (h *OpenAITextHandler) recoverResponsesPanic(c *gin.Context, started *bool)
 	wrote := h.backend.EnsureFallback(c, started != nil && *started)
 	RequestLogger(c, "handler.openai_gateway.responses").Error("openai.responses_panic_recovered", zap.Bool("fallback_error_response_written", wrote), zap.Any("panic", value), zap.ByteString("stack", debug.Stack()))
 }
+
 func (h *OpenAITextHandler) recoverAnthropicMessagesPanic(c *gin.Context, started *bool) {
 	value := recover()
 	if value == nil {
@@ -80,7 +86,7 @@ func (h *OpenAITextHandler) recoverAnthropicMessagesPanic(c *gin.Context, starte
 	}
 }
 
-// WriteError 供已迁入口和暂存兼容调用共用相同 JSON/compact 输出。
+// WriteError 根据当前请求选择 JSON 错误或 compact 流错误输出。
 func (h *OpenAITextHandler) WriteError(c *gin.Context, status int, kind, message string) {
 	h.errorResponse(c, status, kind, message)
 }
@@ -99,9 +105,11 @@ func (h *OpenAITextHandler) WriteAnthropicStreamingError(c *gin.Context, status 
 func (h *OpenAITextHandler) errorOutput() OpenAIErrorOutput {
 	return OpenAIErrorOutput{stopCompact: h.backend.StopCompact, markStream: h.backend.MarkStream, markFailure: h.backend.MarkStreamFailure, metadata: h.backend.ErrorMetadata}
 }
+
 func (h *OpenAITextHandler) WriteStreamingErrorWithCode(c *gin.Context, status int, kind, code, message string, started, sla bool) {
 	h.errorOutput().WriteStreamingErrorWithCode(c, status, kind, code, message, started, sla)
 }
+
 func (h *OpenAITextHandler) anthropicStreamingAwareError(c *gin.Context, status int, kind, message string, started bool) {
 	(OpenAIErrorOutput{}).WriteAnthropicStreamingError(c, status, kind, message, started)
 }

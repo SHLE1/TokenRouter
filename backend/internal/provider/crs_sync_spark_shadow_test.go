@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestPropagateProviderProxyToShadows 外审第8轮:CRS/AdminService 改母提供商 proxy 后,
+// TestPropagateProviderProxyToShadows CRS/管理端 改母提供商 proxy 后,
 // 影子 proxy 必须跟随(影子 proxy 恒继承母提供商,否则出站漂移)。
 func TestPropagateProviderProxyToShadows(t *testing.T) {
 	ctx := context.Background()
@@ -46,7 +46,7 @@ func TestPropagateProviderProxyToShadows(t *testing.T) {
 	require.Nil(t, got.ProxyID, "clearing parent proxy must clear the shadow proxy too")
 }
 
-// TestGuardCRSShadowParentInvariant 外审第8/9轮:有 spark 影子的母提供商经 CRS 任意分支更新后,目标结果
+// TestGuardCRSShadowParentInvariant 有 spark 影子的母提供商经 CRS 任意分支更新后,目标结果
 // 必须仍是 OpenAI OAuth;否则(改 api_key 或跨平台 Anthropic/Gemini)影子读透母凭据失败、spark 全崩。
 func TestGuardCRSShadowParentInvariant(t *testing.T) {
 	ctx := context.Background()
@@ -74,7 +74,7 @@ func TestGuardCRSShadowParentInvariant(t *testing.T) {
 	require.Error(t, err, "must reject converting a shadow parent to openai api_key")
 	require.Contains(t, err.Error(), "spark-shadow parent")
 
-	// 跨平台改成 Anthropic OAuth(Type 仍 OAuth、仅 Platform 变)也被拒——第8轮只查 Type 的版本会漏。
+	// 跨平台改成 Anthropic OAuth(Type 仍 OAuth、仅 Platform 变)也被拒，验证平台和类型必须同时满足约束。
 	require.Error(t, provider.GuardCRSShadowParentInvariant(ctx, repo, mother, capability.PlatformAnthropic, capability.ProviderTypeOAuth),
 		"must reject moving a shadow parent to a non-OpenAI platform even if type stays oauth")
 

@@ -351,7 +351,7 @@ func TestIsGrokCLICompatibilityAccessDenied(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.want, isGrokCLICompatibilityAccessDenied([]byte(tt.body)))
+			require.Equal(t, tt.want, xai.IsCLICompatibilityAccessDenied([]byte(tt.body)))
 		})
 	}
 }
@@ -369,32 +369,32 @@ func TestIsGrokCLIAccessDeniedFallbackCandidateRequiresAuthenticatedReplayableCL
 	}
 
 	t.Run("valid candidate", func(t *testing.T) {
-		require.True(t, isGrokCLIAccessDeniedFallbackCandidate(newRequest(), newResponse()))
+		require.True(t, xai.IsCLIAccessDeniedFallbackCandidate(newRequest(), newResponse()))
 	})
 	t.Run("non CLI host", func(t *testing.T) {
 		req := newRequest()
 		req.URL.Host = "api.x.ai"
-		require.False(t, isGrokCLIAccessDeniedFallbackCandidate(req, newResponse()))
+		require.False(t, xai.IsCLIAccessDeniedFallbackCandidate(req, newResponse()))
 	})
 	t.Run("missing CLI identity", func(t *testing.T) {
 		req := newRequest()
 		req.Header.Del("X-XAI-Token-Auth")
-		require.False(t, isGrokCLIAccessDeniedFallbackCandidate(req, newResponse()))
+		require.False(t, xai.IsCLIAccessDeniedFallbackCandidate(req, newResponse()))
 	})
 	t.Run("missing bearer authentication", func(t *testing.T) {
 		req := newRequest()
 		req.Header.Del("Authorization")
-		require.False(t, isGrokCLIAccessDeniedFallbackCandidate(req, newResponse()))
+		require.False(t, xai.IsCLIAccessDeniedFallbackCandidate(req, newResponse()))
 	})
 	t.Run("non forbidden response", func(t *testing.T) {
 		resp := newResponse()
 		resp.StatusCode = http.StatusUnauthorized
-		require.False(t, isGrokCLIAccessDeniedFallbackCandidate(newRequest(), resp))
+		require.False(t, xai.IsCLIAccessDeniedFallbackCandidate(newRequest(), resp))
 	})
 	t.Run("non replayable request", func(t *testing.T) {
 		req := newRequest()
 		req.GetBody = nil
-		require.False(t, isGrokCLIAccessDeniedFallbackCandidate(req, newResponse()))
+		require.False(t, xai.IsCLIAccessDeniedFallbackCandidate(req, newResponse()))
 	})
 }
 
@@ -989,11 +989,11 @@ func TestHTTPUpstreamPublicHostsOnlyValidatesEveryRedirectHop(t *testing.T) {
 
 	plain, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "https://cdn.example.com/a.png", nil)
 	require.NoError(t, err)
-	require.Same(t, base, httpClientForUpstreamRequest(upstream, base, plain))
+	require.Same(t, base, httpClientForEgressPolicy(upstream, base, upstream.requestPolicy(plain)))
 
 	guarded, err := http.NewRequestWithContext(upstreamcore.WithHTTPUpstreamPublicHostsOnly(t.Context()), http.MethodGet, "https://cdn.example.com/a.png", nil)
 	require.NoError(t, err)
-	client := httpClientForUpstreamRequest(upstream, base, guarded)
+	client := httpClientForEgressPolicy(upstream, base, upstream.requestPolicy(guarded))
 	require.NotSame(t, base, client)
 	require.NotNil(t, client.CheckRedirect)
 	require.Nil(t, base.CheckRedirect, "the cached client must stay untouched")
@@ -1026,7 +1026,7 @@ func TestHTTPUpstreamPublicHostsOnlyPreservesExistingRedirectPolicy(t *testing.T
 	}}
 	guarded, err := http.NewRequestWithContext(upstreamcore.WithHTTPUpstreamPublicHostsOnly(t.Context()), http.MethodGet, "https://93.184.216.34/a.png", nil)
 	require.NoError(t, err)
-	client := httpClientForUpstreamRequest(upstream, base, guarded)
+	client := httpClientForEgressPolicy(upstream, base, upstream.requestPolicy(guarded))
 	private, err := http.NewRequest(http.MethodGet, "http://127.0.0.1/a.png", nil)
 	require.NoError(t, err)
 	require.Error(t, client.CheckRedirect(private, []*http.Request{guarded}))

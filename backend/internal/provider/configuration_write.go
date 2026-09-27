@@ -215,7 +215,7 @@ var managedConfigurationExtraKeys = []string{
 	"cn_usage_monitor_snapshot", "model_rate_limits", "antigravity_quota_scopes", "antigravity_credits_overages",
 }
 
-// WriteConfiguration 兼容旧测试端口；生产存储均实现闭合配置写入。
+// WriteConfiguration 优先使用配置写入端口；通用 Update 不支持带条件或字段补丁的写入。
 func WriteConfiguration(ctx context.Context, store interface {
 	Update(context.Context, *Record) error
 }, value *Record, change ConfigurationChange,

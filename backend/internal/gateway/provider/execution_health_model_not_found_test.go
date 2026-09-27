@@ -24,11 +24,10 @@ func TestRateLimitService_TempUnschedulableContextPreservesModelForPoolDependenc
 	provider.Record.Credentials["pool_mode"] = true
 	ctx := requeststate.WithHealthModel(context.Background(), []string{"gpt-5.4"})
 
-	// #4496 的池模式分支调用 tryTempUnschedulable 时不会显式传入模型。
-	// 请求上下文必须保留规范模型，确保组合后的行为仍限定在模型范围内。
-	handled := gatewayprovider.TryExecutionTemporaryFailure(ctx, svc, provider, http.StatusNotFound,
-
-		[]byte(`{"error":{"message":"endpoint not found"}}`))
+	// 池模式的健康观测未显式传入模型时，使用上下文中的规范模型限制冷却范围。
+	observation := gatewayprovider.HealthObservationFromContext(ctx, http.StatusNotFound, http.Header{},
+		[]byte(`{"error":{"message":"endpoint not found"}}`), nil)
+	handled := gatewayprovider.ApplyExecutionHealth(ctx, svc, provider, observation).StopScheduling
 
 	require.True(t, handled)
 	require.Zero(t, repo.TempCalls)

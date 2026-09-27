@@ -58,13 +58,10 @@ func (s *CRSSync) refreshOAuthToken(ctx context.Context, value *Record) {
 	}
 }
 
-// GuardCRSShadowParentInvariant 守住「有 spark 影子的母提供商」不变量(与 AdminService.UpdateProvider 一致):
-// 影子读透母提供商凭据,母提供商必须**始终是 OpenAI OAuth**。CRS 同步按全局 crs_account_id 匹配既有提供商
-// (GetByCRSAccountID 已排除影子、但能命中母提供商),各平台分支会重写 Platform/Type;若 CRS ID 跨 kind/平台
-// 碰撞,非 OpenAI 分支会把母提供商改成 Anthropic/Gemini 或 api_key→影子 resolveCredentialProvider 必崩(外审第9轮,
-// 收紧第8轮仅查 Type 的版本:Claude OAuth 把 Type 保持 OAuth 但 Platform 改成 Anthropic 能绕过旧守卫)。
-// 故任何会把母提供商目标结果改离 OpenAI OAuth 的 CRS 更新,在其有影子时一律拒绝(须先删影子);返回非 nil
-// 表示该提供商更新应被跳过(调用方标记 failed)。
+// GuardCRSShadowParentInvariant 要求有 Spark 影子的母提供商保持 OpenAI OAuth，与管理更新使用相同约束。
+// CRS 按全局 crs_account_id 查找记录；跨平台或类型的 ID 碰撞可能使同步分支改写母提供商的 Platform/Type，
+// 导致影子无法解析凭据。因此必须同时检查目标平台和类型；修改为其他组合前须先删除影子。
+// 返回错误时，调用方跳过该提供商更新并将条目标记为 failed。
 func GuardCRSShadowParentInvariant(ctx context.Context, repo ShadowProxyStore, existing *Record, newPlatform, newType string) error {
 	if existing == nil {
 		return nil
@@ -254,7 +251,7 @@ func (s *CRSSync) SyncFromCRS(ctx context.Context, input SyncFromCRSInput) (*Syn
 			continue
 		}
 
-		// 母提供商守卫(外审第9轮):CRS ID 跨平台碰撞时,本(Anthropic OAuth)分支不得改坏有 spark 影子的 OpenAI 母提供商。
+		// 母提供商守卫:CRS ID 跨平台碰撞时,本(Anthropic OAuth)分支不得改坏有 spark 影子的 OpenAI 母提供商。
 		if gerr := GuardCRSShadowParentInvariant(ctx, s.providerRepo, existing, PlatformAnthropic, targetType); gerr != nil {
 			item.Action = "failed"
 			item.Error = gerr.Error()
@@ -382,7 +379,7 @@ func (s *CRSSync) SyncFromCRS(ctx context.Context, input SyncFromCRSInput) (*Syn
 			continue
 		}
 
-		// 母提供商守卫(外审第9轮):CRS ID 跨平台碰撞时,本(Anthropic APIKey)分支不得改坏有 spark 影子的 OpenAI 母提供商。
+		// 母提供商守卫:CRS ID 跨平台碰撞时,本(Anthropic APIKey)分支不得改坏有 spark 影子的 OpenAI 母提供商。
 		if gerr := GuardCRSShadowParentInvariant(ctx, s.providerRepo, existing, PlatformAnthropic, ProviderTypeAPIKey); gerr != nil {
 			item.Action = "failed"
 			item.Error = gerr.Error()
@@ -556,9 +553,8 @@ func (s *CRSSync) SyncFromCRS(ctx context.Context, input SyncFromCRSInput) (*Syn
 		// 配置更新成功后尽力刷新令牌。
 		s.refreshOAuthToken(ctx, existing)
 
-		// 母提供商 proxy 经 CRS 改动后同步到其 spark 影子,避免影子保留旧 proxy 出现出站漂移(外审第8轮)。
-		// 影子 proxy 恒继承母提供商(创建即继承、AdminService 编辑也传播)。best-effort:母提供商本身已成功
-		// 更新,影子传播失败仅记录告警,不回退该条目状态。
+		// 母提供商的代理更新后同步到 Spark 影子，与管理编辑的继承规则一致。
+		// 母提供商已经更新成功，影子同步失败只记录告警，不回退条目状态。
 		if perr := PropagateProviderProxyToShadows(ctx, s.providerRepo, existing.ID, existing.ProxyID); perr != nil {
 			s.options.Warn("crs_sync_propagate_proxy_to_shadows_failed", "provider_id", existing.ID, "error", perr)
 		}
@@ -670,8 +666,8 @@ func (s *CRSSync) SyncFromCRS(ctx context.Context, input SyncFromCRSInput) (*Syn
 			continue
 		}
 
-		// 母提供商守卫(外审第8/9轮):CRS 不得把有 spark 影子的母提供商改离 OpenAI OAuth(此处会翻成 api_key),
-		// 否则影子读透母凭据失败、resolveCredentialProvider 必报错、spark 调度与用量刷新全崩。须先删影子再改。
+		// 有 Spark 影子的母提供商必须保持 OpenAI OAuth；此分支会改成 API Key，必须拒绝更新。
+		// 需要先删除影子，才能改变母提供商的凭据类型。
 		if gerr := GuardCRSShadowParentInvariant(ctx, s.providerRepo, existing, PlatformOpenAI, ProviderTypeAPIKey); gerr != nil {
 			item.Action = "failed"
 			item.Error = gerr.Error()
@@ -801,7 +797,7 @@ func (s *CRSSync) SyncFromCRS(ctx context.Context, input SyncFromCRSInput) (*Syn
 			continue
 		}
 
-		// 母提供商守卫(外审第9轮):CRS ID 跨平台碰撞时,本(Gemini OAuth)分支不得改坏有 spark 影子的 OpenAI 母提供商。
+		// 母提供商守卫:CRS ID 跨平台碰撞时,本(Gemini OAuth)分支不得改坏有 spark 影子的 OpenAI 母提供商。
 		if gerr := GuardCRSShadowParentInvariant(ctx, s.providerRepo, existing, PlatformGemini, ProviderTypeOAuth); gerr != nil {
 			item.Action = "failed"
 			item.Error = gerr.Error()
@@ -926,7 +922,7 @@ func (s *CRSSync) SyncFromCRS(ctx context.Context, input SyncFromCRSInput) (*Syn
 			continue
 		}
 
-		// 母提供商守卫(外审第9轮):CRS ID 跨平台碰撞时,本(Gemini APIKey)分支不得改坏有 spark 影子的 OpenAI 母提供商。
+		// 母提供商守卫:CRS ID 跨平台碰撞时,本(Gemini APIKey)分支不得改坏有 spark 影子的 OpenAI 母提供商。
 		if gerr := GuardCRSShadowParentInvariant(ctx, s.providerRepo, existing, PlatformGemini, ProviderTypeAPIKey); gerr != nil {
 			item.Action = "failed"
 			item.Error = gerr.Error()

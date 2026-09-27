@@ -14,7 +14,7 @@ func uniqueTeamTestEmail(prefix string) string {
 	return fmt.Sprintf("team-%s-%s@example.com", prefix, uuid.NewString())
 }
 
-// uniqueTestValue 保留兑换存储原测试的稳定名称编码。
+// uniqueTestValue 为兑换存储测试生成格式固定的唯一名称。
 func uniqueTestValue(t *testing.T, prefix string) string {
 	t.Helper()
 	safeName := strings.NewReplacer("/", "_", " ", "_").Replace(t.Name())

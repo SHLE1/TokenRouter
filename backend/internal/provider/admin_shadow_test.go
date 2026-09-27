@@ -195,9 +195,7 @@ func TestCreateShadow_BindGroups(t *testing.T) {
 	require.Equal(t, shadow.ID, providers[0].ID)
 }
 
-// TestDeleteProvider_CascadeToShadow verifies that deleting a parent provider also
-// deletes its spark shadow provider.
-// TestCreateShadow_InheritsParentConcurrency 验证外审 F3:未指定并发时
+// TestCreateShadow_InheritsParentConcurrency 验证未指定并发时
 // 影子继承母提供商并发,避免 Concurrency=0 被限流器当作"无限并发"。
 func TestCreateShadow_InheritsParentConcurrency(t *testing.T) {
 	ctx := context.Background()
@@ -234,7 +232,7 @@ func TestCreateShadow_InheritsParentConcurrency(t *testing.T) {
 	})
 }
 
-// TestCreateShadow_InheritsParentPriorityWhenOmitted 验证外审第5轮 P1:未指定优先级时
+// TestCreateShadow_InheritsParentPriorityWhenOmitted 验证未指定优先级时
 // 影子继承母提供商 priority,而非直写 0 抢到最高调度优先级(repo SetPriority 绕过 ent 默认 50,
 // 调度比较数值越小越优先;前端一键创建只传 name 即触发该路径)。
 func TestCreateShadow_InheritsParentPriorityWhenOmitted(t *testing.T) {
@@ -272,7 +270,7 @@ func TestCreateShadow_InheritsParentPriorityWhenOmitted(t *testing.T) {
 	})
 }
 
-// TestPersistProviderCredentials_SkipsShadow 验证外审第6轮 P1:凭据写入唯一汇聚点
+// TestPersistProviderCredentials_SkipsShadow 验证凭据写入唯一汇聚点
 // persistProviderCredentials 对 spark 影子早返 no-op,任何上游路径都无法把凭据落到影子行。
 func TestPersistProviderCredentials_SkipsShadow(t *testing.T) {
 	ctx := context.Background()
@@ -291,7 +289,7 @@ func TestPersistProviderCredentials_SkipsShadow(t *testing.T) {
 	require.Empty(t, repo.providers[shadow.ID].Credentials, "影子凭据不可被写入(仓储)")
 }
 
-// TestResolveCredentialProvider_RejectsParentShadow 验证外审第6轮 P2 防御:畸形数据/手工 DB
+// TestResolveCredentialProvider_RejectsParentShadow 验证畸形数据/手工 DB
 // 写出的「影子→影子」链,凭据解析必须 fail-closed 而非停在无凭据的一级影子。
 func TestResolveCredentialProvider_RejectsParentShadow(t *testing.T) {
 	ctx := context.Background()
@@ -318,7 +316,7 @@ func TestResolveCredentialProvider_RejectsParentShadow(t *testing.T) {
 	require.Error(t, err, "父提供商本身是影子时凭据解析应拒绝(fail-closed)")
 }
 
-// TestResetProviderQuota_RejectsShadow 验证外审第7轮 P2:通用 reset-quota 对影子明确 400 拒绝
+// TestResetProviderQuota_RejectsShadow 验证通用 reset-quota 对影子明确 400 拒绝
 // (影子不持自有配额,语义不一致),且母提供商仍可正常重置。
 func TestResetProviderQuota_RejectsShadow(t *testing.T) {
 	ctx := context.Background()
@@ -339,7 +337,7 @@ func TestResetProviderQuota_RejectsShadow(t *testing.T) {
 	require.NoError(t, svc.ResetProviderQuota(ctx, parent.ID), "母提供商 reset-quota 应放行")
 }
 
-// TestCreateShadow_RejectsShadowAsParent 验证外审 G6:不允许把影子当母创建二级影子。
+// TestCreateShadow_RejectsShadowAsParent 验证不允许把影子当母创建二级影子。
 func TestCreateShadow_RejectsShadowAsParent(t *testing.T) {
 	ctx := context.Background()
 	repo := newSparkShadowRepoStub()
@@ -358,7 +356,7 @@ func TestCreateShadow_RejectsShadowAsParent(t *testing.T) {
 	require.Equal(t, http.StatusBadRequest, httpx.ErrorCode(err), "影子当母应返回 400")
 }
 
-// TestCreateShadow_StructuredErrors 验证外审 G3:可预期业务错误返回结构化 4xx 而非 500。
+// TestCreateShadow_StructuredErrors 验证可预期业务错误返回结构化 4xx 而非 500。
 func TestCreateShadow_StructuredErrors(t *testing.T) {
 	ctx := context.Background()
 
@@ -385,7 +383,7 @@ func TestCreateShadow_StructuredErrors(t *testing.T) {
 	})
 }
 
-// TestUpdateProvider_RejectsTypeChangeOnShadow 验证外审 G7:影子 type 不可被普通更新改坏。
+// TestUpdateProvider_RejectsTypeChangeOnShadow 验证影子 type 不可被普通更新改坏。
 func TestUpdateProvider_RejectsTypeChangeOnShadow(t *testing.T) {
 	ctx := context.Background()
 	repo := newSparkShadowRepoStub()
@@ -407,7 +405,7 @@ func TestUpdateProvider_RejectsTypeChangeOnShadow(t *testing.T) {
 	require.NoError(t, err, "传入相同 type 应允许")
 }
 
-// TestBulkUpdateProviders_RejectsCredentialWriteToShadow 验证外审 G5:批量更新携带凭据时
+// TestBulkUpdateProviders_RejectsCredentialWriteToShadow 验证批量更新携带凭据时
 // 目标含影子必须被拒(与单提供商 UpdateProvider 守卫对齐,堵住 bulk 绕过)。
 func TestBulkUpdateProviders_RejectsCredentialWriteToShadow(t *testing.T) {
 	ctx := context.Background()
@@ -571,7 +569,7 @@ func TestBulkUpdateProviders_PropagatesProxyToShadow(t *testing.T) {
 }
 
 // raceCreateRepoStub 模拟并发竞态:对影子的 Create 撞一母一影唯一索引(返回错误),
-// 且复查时另一并发请求的影子已存在 → CreateShadow 应映射为结构化 409(外审 A/P1)。
+// 且复查时另一并发请求的影子已存在 → CreateShadow 应映射为结构化 409。
 type raceCreateRepoStub struct {
 	*sparkShadowRepoStub
 }
@@ -588,7 +586,7 @@ func (s *raceCreateRepoStub) Create(ctx context.Context, provider *providercore.
 	return s.sparkShadowRepoStub.Create(ctx, provider)
 }
 
-// TestCreateShadow_DefaultsNameFromParent 验证外审 E/P2:空 name 不应 500,
+// TestCreateShadow_DefaultsNameFromParent 验证空 name 不应 500,
 // 而是默认 "<母提供商名> (Spark)"。
 func TestCreateShadow_DefaultsNameFromParent(t *testing.T) {
 	ctx := context.Background()
@@ -605,7 +603,7 @@ func TestCreateShadow_DefaultsNameFromParent(t *testing.T) {
 	require.Equal(t, "mum (Spark)", shadow.Name)
 }
 
-// TestCreateShadow_ConcurrentCreateReturns409 验证外审 A/P1:并发竞态下预查放行后
+// TestCreateShadow_ConcurrentCreateReturns409 验证并发竞态下预查放行后
 // Create 撞唯一索引,应映射结构化 409 而非裸 500。
 func TestCreateShadow_ConcurrentCreateReturns409(t *testing.T) {
 	ctx := context.Background()
@@ -623,7 +621,7 @@ func TestCreateShadow_ConcurrentCreateReturns409(t *testing.T) {
 	require.Equal(t, http.StatusConflict, httpx.ErrorCode(err), "并发竞态撞唯一索引应映射 409 而非 500")
 }
 
-// TestUpdateProvider_RejectsParentTypeChangeWithShadow 验证外审 D/P1:母提供商有 spark 影子时,
+// TestUpdateProvider_RejectsParentTypeChangeWithShadow 验证母提供商有 spark 影子时,
 // 不能把 type 改出 OpenAI OAuth(否则影子被调度后透传凭据解析必失败)。
 func TestUpdateProvider_RejectsParentTypeChangeWithShadow(t *testing.T) {
 	ctx := context.Background()
@@ -646,7 +644,7 @@ func TestUpdateProvider_RejectsParentTypeChangeWithShadow(t *testing.T) {
 	require.NoError(t, err, "传入相同 type(no-op)应允许")
 }
 
-// TestUpdateProvider_IgnoresProxyChangeOnShadow 验证外审 B/P1:影子 proxy 恒继承母提供商,
+// TestUpdateProvider_IgnoresProxyChangeOnShadow 验证影子 proxy 恒继承母提供商,
 // 普通更新不得独立改动。
 func TestUpdateProvider_IgnoresProxyChangeOnShadow(t *testing.T) {
 	ctx := context.Background()

@@ -6,12 +6,13 @@ import (
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/config"
+	"github.com/TokenFlux/TokenRouter/internal/infra/postgres"
 	"github.com/stretchr/testify/require"
 
 	_ "github.com/lib/pq"
 )
 
-func TestClampDBPoolSettings(t *testing.T) {
+func TestPostgresPoolOptionsResolveSettings(t *testing.T) {
 	tests := []struct {
 		name                string
 		connMaxLifetime     int
@@ -60,7 +61,7 @@ func TestClampDBPoolSettings(t *testing.T) {
 				},
 			}
 
-			settings := clampDBPoolSettings(cfg)
+			settings := postgres.ResolvePoolSettings(postgresPoolOptions(cfg))
 			require.Equal(t, 50, settings.MaxOpenConns)
 			require.Equal(t, 10, settings.MaxIdleConns)
 			require.Equal(t, tt.wantMaxLifetime, settings.ConnMaxLifetime)

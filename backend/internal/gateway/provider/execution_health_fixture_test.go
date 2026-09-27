@@ -11,7 +11,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/settings"
 )
 
-// newUpstreamHealthForTest 仅投影原测试配置，不保留旧服务或调用代理。
+// newUpstreamHealthForTest 将测试配置投影为上游健康观测依赖。
 func newUpstreamHealthForTest(store gatewayprovider.ExecutionProviderStore, cfg *config.Config, cache provider.TempUnschedCache, options provider.HealthOptions, readers *gatewayprovider.RuntimeReaders) *provideradapter.UpstreamHealth {
 	if cfg != nil {
 		options.UnauthorizedCooldownMinutes = cfg.RateLimit.OAuth401CooldownMinutes

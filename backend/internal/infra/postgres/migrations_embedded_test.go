@@ -7,7 +7,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/migrations"
 )
 
-// applyEmbeddedMigrations 保留原测试对发布迁移集合的契约覆盖。
+// applyEmbeddedMigrations 为存储测试应用完整的发布迁移集合。
 func applyEmbeddedMigrations(ctx context.Context, db *sql.DB) error {
 	return ApplyMigrations(ctx, db, migrations.FS)
 }

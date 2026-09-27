@@ -123,7 +123,7 @@ func TestTaskFundingProjectionRollback(t *testing.T) {
 	require.True(t, result.Applied, fmt.Sprint(result))
 }
 
-// 原资金动作可以由已迁任务直接重放，不需要 CreativeEntity 兼容命令。
+// 任务直接重放资金动作，验证既有资金引用的幂等性。
 func TestNativeCreativeFundingReplay(t *testing.T) {
 	ctx := context.Background()
 	client := committedEntitlementClient(t)

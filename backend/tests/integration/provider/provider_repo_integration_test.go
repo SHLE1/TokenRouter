@@ -1630,7 +1630,7 @@ func (s *ProviderRepoSuite) TestGetByCRSAccountID_EmptyString() {
 	s.Require().Nil(got)
 }
 
-// TestGetByCRSAccountID_ExcludesSparkShadow 验证外审第7轮 P1:即便 spark 影子的 Extra 被误写入
+// TestGetByCRSAccountID_ExcludesSparkShadow 验证即便 spark 影子的 Extra 被误写入
 // crs_account_id,CRS 查询也绝不能命中影子(否则会被当普通提供商更新而覆盖 type/credentials/proxy)。
 func (s *ProviderRepoSuite) TestGetByCRSAccountID_ExcludesSparkShadow() {
 	crsID := "crs-shadow-only-99"
@@ -1649,7 +1649,7 @@ func (s *ProviderRepoSuite) TestGetByCRSAccountID_ExcludesSparkShadow() {
 	s.Require().Nil(got, "spark 影子即便带 crs_account_id 也不应被 CRS 命中")
 }
 
-// TestListCRSAccountIDs_ExcludesSparkShadow 验证外审第7轮 P1:影子的 crs_account_id 不应进入
+// TestListCRSAccountIDs_ExcludesSparkShadow 验证影子的 crs_account_id 不应进入
 // CRS 同步映射(否则后续 CRS 同步会把影子当普通提供商更新)。
 func (s *ProviderRepoSuite) TestListCRSAccountIDs_ExcludesSparkShadow() {
 	parent := mustCreateProvider(s.T(), s.client, &providercore.Record{

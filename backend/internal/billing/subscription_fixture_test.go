@@ -10,7 +10,7 @@ import (
 	billingpostgres "github.com/TokenFlux/TokenRouter/internal/billing/postgres"
 )
 
-// subscriptionSelectionGroupFixture 保留原测试对意外分组回源的拒绝。
+// subscriptionSelectionGroupFixture 拒绝订阅选择测试中未预期的分组回源。
 type subscriptionSelectionGroupFixture struct{}
 
 func (subscriptionSelectionGroupFixture) GetByIDLite(context.Context, int64) (*billing.SubscriptionPlanGroup, error) {

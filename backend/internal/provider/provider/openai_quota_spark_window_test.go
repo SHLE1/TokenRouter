@@ -188,7 +188,7 @@ func TestResetCreditShadowRejected(t *testing.T) {
 	_, err := svc.ResetCredit(context.Background(), 200)
 	require.ErrorIs(t, err, providercore.ErrSparkShadowResetNotSupported,
 		"shadow ResetCredit should return ErrSparkShadowResetNotSupported, got: %v", err)
-	// 外审 F6:必须是结构化 409(而非裸 error→500)。
+	// 必须是结构化 409(而非裸 error→500)。
 	require.Equal(t, http.StatusConflict, httpx.ErrorCode(err),
 		"shadow ResetCredit 应映射为 409 Conflict 而非 500")
 }

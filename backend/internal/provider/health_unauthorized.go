@@ -17,11 +17,9 @@ type UnauthorizedObservation struct {
 
 // ApplyUnauthorized 保留凭据母提供商解析、令牌失效与刷新冷却的原次序。
 func (s *HealthService) ApplyUnauthorized(ctx context.Context, provider *Record, observation UnauthorizedObservation) bool {
-	// 外审第9轮:Spark 影子无独立凭据,401 是母提供商 token 问题——失效缓存 / refresh_token 判断 /
-	// 永久禁用 / 临时不可调度都必须落到凭据 owner(母提供商),否则影子(无 refresh_token)必中
-	// "refresh_token missing"永久禁用分支、母提供商 token cache 也不会被清,把母提供商可恢复的 token
-	// 问题变成影子永久死亡。母提供商被标记 temp-unschedulable 后由 parentHealthyForShadow 级联排除影子。
-	// 非影子时 resolveCredentialProvider 返回自身;母提供商缺失/损坏(orphan 影子,罕见)时回退到原 provider。
+	// Spark 影子共用母提供商凭据。401 的缓存失效、refresh_token 检查、禁用和冷却均作用于母提供商，
+	// 避免因影子没有 refresh_token 而误将其永久禁用。母提供商进入冷却后，调度健康检查会排除其影子。
+	// 非影子直接使用自身记录；母提供商查找失败或不存在时，回退到当前记录。
 	authProvider := provider
 	if resolved, rerr := ResolveCredentialRecord(ctx, func(ctx context.Context, id int64) (*Record, error) { return s.providerRepo.GetByID(ctx, id) }, provider); rerr == nil && resolved != nil {
 		authProvider = resolved

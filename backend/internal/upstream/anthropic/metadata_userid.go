@@ -41,7 +41,7 @@ func IsNewMetadataFormatVersion(version string) bool {
 // Returns "" if the UA doesn't match the expected pattern.
 func ExtractCLIVersion(ua string) string { return clientmeta.ExtractClaudeCLIVersion(ua) }
 
-// 旧入口只转交协议值，不持有第二份解析规则。
+// 此入口转交协议值，解析规则由协议包统一维护。
 type (
 	ParsedUserID = wire.ParsedMetadataUserID
 	jsonUserID   = wire.MetadataUserID

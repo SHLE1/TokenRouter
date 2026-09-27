@@ -59,7 +59,7 @@ func TestOpenAIHTTP429StillUsesQuotaResetHeaders(t *testing.T) {
 	require.True(t, svc.Runtime.Blocked(provider.ID, func() string { return providercore.RefreshCredentialIdentity(provider) }), "HTTP 429 保留上游配额重置边界")
 }
 
-// TestOpenAI429FastPath_SkipsSparkShadow 外审第8轮 P1:spark 影子被选中后若 /responses 返回 429,
+// TestOpenAI429FastPath_SkipsSparkShadow spark 影子被选中后若 /responses 返回 429,
 // 不得按 global x-codex-* 信号写内存运行时熔断(否则 spark 被冷却到 global reset、单影子场景无可用提供商)。
 func TestOpenAI429FastPath_SkipsSparkShadow(t *testing.T) {
 	svc := &OpenAIResponseHealth{Runtime: providercore.NewRuntimeBlockState(time.Now)}

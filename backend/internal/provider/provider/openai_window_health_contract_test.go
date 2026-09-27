@@ -88,7 +88,7 @@ func TestHandle429_OpenAISyncsObservedPlanType(t *testing.T) {
 	require.Equal(t, provider.ID, repo.rateLimitedID)
 }
 
-// TestHandle429_SkipsSparkShadow 外审第8轮 P1:spark 影子的限流状态只由 QueryUsage(/wham/usage
+// TestHandle429_SkipsSparkShadow spark 影子的限流状态只由 QueryUsage(/wham/usage
 // codex_bengalfox)维护;/responses 429 携带的 global x-codex-* 不得对影子做任何 DB 限流写入,
 // 否则会把 spark 误耦合到 global codex 窗口、冷却到 global reset。
 func TestHandle429_SkipsSparkShadow(t *testing.T) {

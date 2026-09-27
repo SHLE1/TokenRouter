@@ -51,7 +51,7 @@ func TestCreateShadowDoesNotBindDefaultGroup(t *testing.T) {
 	require.Empty(t, repo.groupsOf[shadow.ID], "未指定分组且母提供商无分组时保留未分组状态")
 }
 
-// TestCreateShadow_InheritsParentGroups 验证外审 G1:未指定 group_ids 时
+// TestCreateShadow_InheritsParentGroups 验证未指定 group_ids 时
 // 影子继承母提供商当前分组(而非仅 openai-default),以便母在自定义组时影子也可路由。
 func TestCreateShadow_InheritsParentGroups(t *testing.T) {
 	ctx := context.Background()
@@ -72,7 +72,7 @@ func TestCreateShadow_InheritsParentGroups(t *testing.T) {
 	require.Equal(t, []int64{11, 22}, repo.groupsOf[shadow.ID], "未指定分组应继承母提供商分组,而非 openai-default")
 }
 
-// bindFailRepoStub 让 BindGroups 失败,用于验证绑组失败时补偿删除刚建的影子(外审 C/P1)。
+// bindFailRepoStub 让 BindGroups 失败,用于验证绑组失败时补偿删除刚建的影子。
 type bindFailRepoStub struct {
 	*sparkShadowRepoStub
 }
@@ -96,7 +96,7 @@ func (s *sparkShadowValidatingGroupRepoStub) ExistsByIDs(_ context.Context, ids 
 	return out, nil
 }
 
-// TestCreateShadow_InvalidGroupRejectedNoOrphan 验证外审 C/P1:显式无效分组应在
+// TestCreateShadow_InvalidGroupRejectedNoOrphan 验证显式无效分组应在
 // 创建前被拒,不留孤儿影子。
 func TestCreateShadow_InvalidGroupRejectedNoOrphan(t *testing.T) {
 	ctx := context.Background()
@@ -117,7 +117,7 @@ func TestCreateShadow_InvalidGroupRejectedNoOrphan(t *testing.T) {
 	require.Empty(t, shadows, "无效分组应在创建前被拒,不应建出影子")
 }
 
-// TestCreateShadow_BindFailureRollsBackShadow 验证外审 C/P1:绑组失败时补偿删除
+// TestCreateShadow_BindFailureRollsBackShadow 验证绑组失败时补偿删除
 // 刚建的影子,不留孤儿(否则一母一影唯一索引会挡住重试)。
 func TestCreateShadow_BindFailureRollsBackShadow(t *testing.T) {
 	ctx := context.Background()
@@ -184,7 +184,7 @@ func TestUpdateProvider_ShadowAllowsModelMappingAndGroupUpdate(t *testing.T) {
 	require.Empty(t, updated.GetOpenAIAccessToken(), "影子提供商不可持有母提供商 access_token")
 }
 
-// TestBulkUpdateProviders_RejectsProxyChangeOnShadow 验证外审第4轮 P1:批量更新携带 proxy 且
+// TestBulkUpdateProviders_RejectsProxyChangeOnShadow 验证批量更新携带 proxy 且
 // 目标含影子必须被拒(与单提供商 UpdateProvider 守卫对齐,堵住 bulk 绕过"proxy 恒继承母提供商")。
 func TestBulkUpdateProviders_RejectsProxyChangeOnShadow(t *testing.T) {
 	ctx := context.Background()

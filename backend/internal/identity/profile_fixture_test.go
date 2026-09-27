@@ -2,7 +2,7 @@
 
 package identity_test
 
-// runProfileBackground 保留原测试中异步失效的时机，完成由各用例的同步断言等待。
+// runProfileBackground 异步执行缓存失效，各用例通过同步断言等待完成。
 func runProfileBackground(_ string, task func()) bool {
 	go task()
 	return true

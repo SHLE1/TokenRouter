@@ -579,7 +579,7 @@ func (s *Gemini) shouldFailoverGeminiUpstreamError(statusCode int) bool {
 	}
 }
 
-// skippedErrorPolicyFailoverError 处理 ErrorPolicySkipped：跳过提供商状态写入不等于跳过换号。
+// skippedErrorPolicyFailoverError 处理 ErrorPolicyCustomSkipped：跳过提供商状态写入不等于跳过换号。
 // 可切换的状态码返回 UpstreamFailoverError；池模式仅对配置的状态允许同提供商重试。
 func (s *Gemini) skippedErrorPolicyFailoverError(c *attempt, provider *gatewayprovider.ExecutionProvider, statusCode int, respBody []byte, upstreamRequestID string) *forwardcore.UpstreamFailoverError {
 	if !s.shouldFailoverGeminiUpstreamError(statusCode) {

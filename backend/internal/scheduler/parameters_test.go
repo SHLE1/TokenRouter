@@ -99,7 +99,7 @@ func TestParameters_InvalidWeightSumsFallBackToConfig(t *testing.T) {
 	}
 }
 
-// parameterSourceStub 只提供原测试使用的两个读取端口。
+// parameterSourceStub 提供参数测试所需的两个读取端口。
 type parameterSourceStub struct{ values map[string]string }
 
 func (s *parameterSourceStub) GetMultiple(_ context.Context, keys []string) (map[string]string, error) {

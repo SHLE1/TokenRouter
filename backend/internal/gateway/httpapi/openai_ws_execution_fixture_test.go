@@ -142,7 +142,7 @@ func newWSFixture(v wsFixtureInputs) *wsExecutionFixture {
 	return &wsExecutionFixture{OpenAIWebSocketExecutor: ws, Responses: responses, Text: text, choices: choices, options: v.options}
 }
 
-// 新拥有者直接使用同一设置存储，保留原测试读取器的构造边界。
+// 测试读取器共享同一设置存储。
 func newExecutionReadersFixture(repo settings.Repository, _ *wsFixtureOptions) *gatewayadapter.RuntimeReaders {
 	if repo != nil {
 		repo = settings.New(repo)
@@ -154,7 +154,7 @@ func newUpstreamHealthForTest(store gatewayadapter.ExecutionProviderStore, _ *ws
 	return gatewaytestkit.NewHealthObserver(gatewaytestkit.HealthInput{Store: store, Cache: cache, Options: options, Readers: readers})
 }
 
-// setWSFixtureHealth 只改绑原测试替换的观察端口，不重建连接池或会话。
+// setWSFixtureHealth 替换测试所需的观察端口，复用现有连接池和会话。
 func setWSFixtureHealth(s *wsExecutionFixture, observer *provideradapter.UpstreamHealth) {
 	s.Output.Health.Health = observer
 	s.Output.GrokHealth.Health = observer

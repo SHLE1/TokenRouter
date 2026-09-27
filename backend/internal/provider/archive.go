@@ -70,10 +70,9 @@ func (h *Archive) Export(ctx context.Context, query ArchiveExportQuery) (transfe
 		return transfer.DataPayload{}, err
 	}
 
-	// 排除 spark 影子提供商:影子不持凭据,通用凭据型导出无法表达父子链接、导入侧又强制 credentials
-	// 非空——若混入会产出无法还原的坏备份(导入即失败)。影子的独立调度配置(priority/并发/分组/
-	// status,管理员可单独调)随之不进备份,还原后需在重建的影子上重新调优;前端按 skipped_shadows
-	// 提示用户(外审第5轮发现、第6轮裁决:保持排除 + 警告,不做完整往返)。
+	// 导出格式无法表达影子的父子链接，导入又要求凭据非空，因此排除 Spark 影子。
+	// 影子的独立优先级、并发、分组和状态也不在备份中；恢复后需重建影子并重新配置。
+	// 前端通过 skipped_shadows 提示跳过的数量。
 	skippedShadows := 0
 	exportable := make([]Record, 0, len(providers))
 	for i := range providers {

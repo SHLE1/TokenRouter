@@ -62,7 +62,7 @@ func TestNormalizeOpenAIResponsesCompactRequest_RemoteV2StaysOnResponses(t *test
 
 	_, seedExists := c.Get(OpenAICompactSessionSeedKey)
 	require.False(t, seedExists)
-	_, streamMarkerExists := c.Get(OpenAICompactClientStreamKeyForTest())
+	_, streamMarkerExists := c.Get(openAICompactClientStreamKey)
 	require.False(t, streamMarkerExists)
 	// 原生 V2 保持路径的同时必须留下协商标记，供出站请求补齐 beta feature。
 	require.True(t, c.GetBool("openai_native_compaction_v2"))
@@ -184,7 +184,7 @@ func TestNormalizeOpenAIResponsesCompactRequest_NonRemoteV2BodySignalPromoted(t 
 			require.Equal(t, "/v1/responses/compact", c.Request.URL.Path)
 			require.False(t, gjson.GetBytes(normalized, "stream").Exists())
 
-			marked, exists := c.Get(OpenAICompactClientStreamKeyForTest())
+			marked, exists := c.Get(openAICompactClientStreamKey)
 			require.Equal(t, tt.wantMarked, exists)
 			if tt.wantMarked {
 				require.Equal(t, true, marked)
@@ -238,6 +238,6 @@ func TestNormalizeOpenAIResponsesCompactRequest_PathBasedStreamTrueNotMarked(t *
 
 	_, ok := h.normalizeOpenAIResponsesCompactRequest(c, zap.NewNop(), body)
 	require.True(t, ok)
-	_, exists := c.Get(OpenAICompactClientStreamKeyForTest())
+	_, exists := c.Get(openAICompactClientStreamKey)
 	require.False(t, exists)
 }

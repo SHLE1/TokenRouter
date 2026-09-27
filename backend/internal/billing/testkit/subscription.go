@@ -1,4 +1,4 @@
-// 订阅内存替身保留原测试的排序、复制与调用记录，不替代存储事务证据。
+// 订阅内存替身提供排序、副本及调用记录；数据库事务由存储测试验证。
 package testkit
 
 import (
@@ -15,81 +15,107 @@ type SubscriptionRepositoryNoop struct{}
 func (SubscriptionRepositoryNoop) Create(context.Context, *billing.UserSubscription) error {
 	panic("unexpected Create call")
 }
+
 func (SubscriptionRepositoryNoop) GetByID(context.Context, int64) (*billing.UserSubscription, error) {
 	panic("unexpected GetByID call")
 }
+
 func (SubscriptionRepositoryNoop) GetByIDIncludeDeleted(context.Context, int64) (*billing.UserSubscription, error) {
 	panic("unexpected GetByIDIncludeDeleted call")
 }
+
 func (SubscriptionRepositoryNoop) GetByUserIDAndGroupID(context.Context, int64, int64) (*billing.UserSubscription, error) {
 	panic("unexpected GetByUserIDAndGroupID call")
 }
+
 func (SubscriptionRepositoryNoop) GetActiveByUserIDAndGroupID(context.Context, int64, int64) (*billing.UserSubscription, error) {
 	panic("unexpected GetActiveByUserIDAndGroupID call")
 }
+
 func (SubscriptionRepositoryNoop) GetLatestByUserIDAndPlanID(context.Context, int64, int64) (*billing.UserSubscription, error) {
 	panic("unexpected GetLatestByUserIDAndPlanID call")
 }
+
 func (SubscriptionRepositoryNoop) Update(context.Context, *billing.UserSubscription) error {
 	panic("unexpected Update call")
 }
+
 func (SubscriptionRepositoryNoop) Delete(context.Context, int64) error {
 	panic("unexpected Delete call")
 }
+
 func (SubscriptionRepositoryNoop) Restore(context.Context, int64, string) (*billing.UserSubscription, error) {
 	panic("unexpected Restore call")
 }
+
 func (SubscriptionRepositoryNoop) ListByUserID(context.Context, int64) ([]billing.UserSubscription, error) {
 	panic("unexpected ListByUserID call")
 }
+
 func (SubscriptionRepositoryNoop) ListByUserIDAndPlanID(context.Context, int64, int64) ([]billing.UserSubscription, error) {
 	panic("unexpected ListByUserIDAndPlanID call")
 }
+
 func (SubscriptionRepositoryNoop) ListActiveByUserID(context.Context, int64) ([]billing.UserSubscription, error) {
 	panic("unexpected ListActiveByUserID call")
 }
+
 func (SubscriptionRepositoryNoop) ListByGroupID(context.Context, int64, pagination.PaginationParams) ([]billing.UserSubscription, *pagination.PaginationResult, error) {
 	panic("unexpected ListByGroupID call")
 }
+
 func (SubscriptionRepositoryNoop) ListByPlanID(context.Context, int64, pagination.PaginationParams) ([]billing.UserSubscription, *pagination.PaginationResult, error) {
 	panic("unexpected ListByPlanID call")
 }
+
 func (SubscriptionRepositoryNoop) List(context.Context, pagination.PaginationParams, *int64, *int64, string, string, string, string) ([]billing.UserSubscription, *pagination.PaginationResult, error) {
 	panic("unexpected List call")
 }
+
 func (SubscriptionRepositoryNoop) ListBySourceOrderID(context.Context, int64) ([]billing.UserSubscription, error) {
 	panic("unexpected ListBySourceOrderID call")
 }
+
 func (SubscriptionRepositoryNoop) ExistsByUserIDAndGroupID(context.Context, int64, int64) (bool, error) {
 	panic("unexpected ExistsByUserIDAndGroupID call")
 }
+
 func (SubscriptionRepositoryNoop) ExtendExpiry(context.Context, int64, time.Time) error {
 	panic("unexpected ExtendExpiry call")
 }
+
 func (SubscriptionRepositoryNoop) UpdateStatus(context.Context, int64, string) error {
 	panic("unexpected UpdateStatus call")
 }
+
 func (SubscriptionRepositoryNoop) UpdateNotes(context.Context, int64, string) error {
 	panic("unexpected UpdateNotes call")
 }
+
 func (SubscriptionRepositoryNoop) ActivateWindows(context.Context, int64, time.Time, billing.SubscriptionWindowActivation) error {
 	panic("unexpected ActivateWindows call")
 }
+
 func (SubscriptionRepositoryNoop) ResetUsageWindows(context.Context, int64, bool, bool, bool, time.Time) error {
 	panic("unexpected ResetUsageWindows call")
 }
+
 func (SubscriptionRepositoryNoop) ResetDailyUsage(context.Context, int64, *time.Time, time.Time) error {
 	panic("unexpected ResetDailyUsage call")
 }
+
 func (SubscriptionRepositoryNoop) ResetWeeklyUsage(context.Context, int64, *time.Time, time.Time) error {
 	panic("unexpected ResetWeeklyUsage call")
 }
+
 func (SubscriptionRepositoryNoop) ResetMonthlyUsage(context.Context, int64, *time.Time, time.Time) error {
 	panic("unexpected ResetMonthlyUsage call")
 }
+
 func (SubscriptionRepositoryNoop) IncrementUsage(context.Context, int64, float64) error {
 	panic("unexpected IncrementUsage call")
 }
+
 func (SubscriptionRepositoryNoop) BatchUpdateExpiredStatus(context.Context) (int64, error) {
 	panic("unexpected BatchUpdateExpiredStatus call")
 }
@@ -110,9 +136,11 @@ func NewSubscriptionRepository() *SubscriptionRepository {
 		byUserPlan: make(map[string][]int64),
 	}
 }
+
 func (s *SubscriptionRepository) key(userID, planID int64) string {
 	return strconv.FormatInt(userID, 10) + ":" + strconv.FormatInt(planID, 10)
 }
+
 func (s *SubscriptionRepository) RebuildIndex() {
 	s.byUserPlan = make(map[string][]int64)
 	for id, sub := range s.ByID {
@@ -134,6 +162,7 @@ func (s *SubscriptionRepository) RebuildIndex() {
 		s.byUserPlan[key] = ids
 	}
 }
+
 func (s *SubscriptionRepository) Seed(sub *billing.UserSubscription) {
 	if sub == nil {
 		return
@@ -146,6 +175,7 @@ func (s *SubscriptionRepository) Seed(sub *billing.UserSubscription) {
 	s.ByID[cp.ID] = &cp
 	s.RebuildIndex()
 }
+
 func (s *SubscriptionRepository) Create(_ context.Context, sub *billing.UserSubscription) error {
 	if sub == nil {
 		return nil
@@ -161,6 +191,7 @@ func (s *SubscriptionRepository) Create(_ context.Context, sub *billing.UserSubs
 	s.RebuildIndex()
 	return nil
 }
+
 func (s *SubscriptionRepository) GetByID(_ context.Context, id int64) (*billing.UserSubscription, error) {
 	sub := s.ByID[id]
 	if sub == nil {
@@ -169,6 +200,7 @@ func (s *SubscriptionRepository) GetByID(_ context.Context, id int64) (*billing.
 	cp := *sub
 	return &cp, nil
 }
+
 func (s *SubscriptionRepository) GetByIDIncludeDeleted(_ context.Context, id int64) (*billing.UserSubscription, error) {
 	sub := s.ByID[id]
 	if sub == nil {
@@ -177,6 +209,7 @@ func (s *SubscriptionRepository) GetByIDIncludeDeleted(_ context.Context, id int
 	cp := *sub
 	return &cp, nil
 }
+
 func (s *SubscriptionRepository) GetLatestByUserIDAndPlanID(_ context.Context, userID, planID int64) (*billing.UserSubscription, error) {
 	ids := s.byUserPlan[s.key(userID, planID)]
 	if len(ids) == 0 {
@@ -193,6 +226,7 @@ func (s *SubscriptionRepository) GetLatestByUserIDAndPlanID(_ context.Context, u
 	cp := *latest
 	return &cp, nil
 }
+
 func (s *SubscriptionRepository) Update(_ context.Context, sub *billing.UserSubscription) error {
 	if sub == nil {
 		return nil
@@ -202,6 +236,7 @@ func (s *SubscriptionRepository) Update(_ context.Context, sub *billing.UserSubs
 	s.RebuildIndex()
 	return nil
 }
+
 func (s *SubscriptionRepository) Restore(_ context.Context, subscriptionID int64, restoredStatus string) (*billing.UserSubscription, error) {
 	sub := s.ByID[subscriptionID]
 	if sub == nil {
@@ -215,6 +250,7 @@ func (s *SubscriptionRepository) Restore(_ context.Context, subscriptionID int64
 	s.RebuildIndex()
 	return &cp, nil
 }
+
 func (s *SubscriptionRepository) ListByUserID(_ context.Context, userID int64) ([]billing.UserSubscription, error) {
 	out := make([]billing.UserSubscription, 0)
 	for _, sub := range s.ByID {
@@ -224,6 +260,7 @@ func (s *SubscriptionRepository) ListByUserID(_ context.Context, userID int64) (
 	}
 	return out, nil
 }
+
 func (s *SubscriptionRepository) ListByUserIDAndPlanID(_ context.Context, userID, planID int64) ([]billing.UserSubscription, error) {
 	ids := s.byUserPlan[s.key(userID, planID)]
 	out := make([]billing.UserSubscription, 0, len(ids))
@@ -232,6 +269,7 @@ func (s *SubscriptionRepository) ListByUserIDAndPlanID(_ context.Context, userID
 	}
 	return out, nil
 }
+
 func (s *SubscriptionRepository) ListActiveByUserID(_ context.Context, userID int64) ([]billing.UserSubscription, error) {
 	now := time.Now()
 	out := make([]billing.UserSubscription, 0)
@@ -242,6 +280,7 @@ func (s *SubscriptionRepository) ListActiveByUserID(_ context.Context, userID in
 	}
 	return out, nil
 }
+
 func (s *SubscriptionRepository) ListBySourceOrderID(_ context.Context, sourceOrderID int64) ([]billing.UserSubscription, error) {
 	out := make([]billing.UserSubscription, 0)
 	for _, sub := range s.ByID {

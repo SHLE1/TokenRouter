@@ -1629,7 +1629,7 @@ func qoderAnthropicStreamEventsForTest(t *testing.T, stream string) []qoderAnthr
 	return events
 }
 
-// qoderFailingHTTPWriter 保留原测试的同步写失败边界，验证断开后的尾部用量。
+// qoderFailingHTTPWriter 模拟同步写失败，验证客户端断开后仍能收集尾部用量。
 type qoderFailingHTTPWriter struct {
 	gin.ResponseWriter
 	failAfter int

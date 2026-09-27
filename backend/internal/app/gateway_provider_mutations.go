@@ -156,7 +156,7 @@ func (r *executionProviderStore) ClearUsageErrorIfUnchanged(ctx context.Context,
 	return r.data.ClearUsageErrorIfUnchanged(ctx, v)
 }
 
-// UpdateUsageSessionWindowEndIfUnchanged 旧入口只转交唯一提供商存储。
+// UpdateUsageSessionWindowEndIfUnchanged 将窗口条件更新委托给提供商存储。
 func (r *executionProviderStore) UpdateUsageSessionWindowEndIfUnchanged(ctx context.Context, v providercore.UsageObservationVersion, observed *time.Time, end time.Time) (bool, error) {
 	return r.data.UpdateUsageSessionWindowEndIfUnchanged(ctx, v, observed, end)
 }

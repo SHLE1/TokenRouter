@@ -102,7 +102,7 @@ func TestCheckErrorPolicy(t *testing.T) {
 			},
 			statusCode: 529,
 			body:       []byte(`{"error":{"message":"overloaded"}}`),
-			expected:   providercore.ErrorPolicyMatched,
+			expected:   providercore.ErrorPolicyCustomMatched,
 		},
 		{
 			name: "custom_error_codes_including_529_take_precedence",
@@ -117,7 +117,7 @@ func TestCheckErrorPolicy(t *testing.T) {
 			},
 			statusCode: 529,
 			body:       []byte(`{"error":{"message":"overloaded"}}`),
-			expected:   providercore.ErrorPolicyMatched,
+			expected:   providercore.ErrorPolicyCustomMatched,
 		},
 		{
 			name: "temp_unschedulable_hit_returns_temp_unscheduled",

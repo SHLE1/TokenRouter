@@ -17,8 +17,7 @@ import (
 func TestParentHealthyForShadow(t *testing.T) {
 	pid := int64(100)
 
-	// 所有母提供商 fixture 均设 Type=oauth:provider.ParentHealthyForShadow 现要求母提供商仍是 OpenAI OAuth
-	// (外审 D fail-closed),不设则各用例会因"非 oauth"而非被测原因失败,使断言失去意义。
+	// 母提供商夹具统一设为 OpenAI OAuth，让每个用例只触发自身要验证的健康条件。
 	healthyParent := &provider.Record{
 		ID:          100,
 		Platform:    capability.PlatformOpenAI,
@@ -202,7 +201,7 @@ func TestParentHealthyForShadow(t *testing.T) {
 	})
 
 	t.Run("non_oauth_parent_blocks_shadow", func(t *testing.T) {
-		// 外审 D:母提供商被改成非 OpenAI OAuth(如 apikey)后,透传凭据解析必失败,
+		// 母提供商被改成非 OpenAI OAuth(如 apikey)后,透传凭据解析必失败,
 		// 影子应 fail-closed 不进调度候选(即便提供商 active、凭据未过期)。
 		apikeyParent := &provider.Record{
 			ID:          100,

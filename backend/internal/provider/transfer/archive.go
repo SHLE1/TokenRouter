@@ -31,13 +31,9 @@ type DataPayload struct {
 	SkippedShadows int `json:"skipped_shadows,omitempty"`
 }
 
-// DataProvider 是管理员显式备份导出使用的提供商结构，故意不走 dto.Provider 的脱敏路径，
-// Credentials 原文返回。这是"管理员备份"这一显式行为的一部分；如未来需要导出脱敏版本，
-// 应新增独立结构而非修改这里。
-// 注意:本结构不含 parent_provider_id/quota_dimension——spark 影子提供商在 ExportData 处被显式
-// 排除(影子不持凭据、通用凭据型导入强制 credentials 非空无法重建父子链接),不在此表达。
-// 影子的独立调度配置(priority/并发/分组/status 管理员可单独调)亦不在本备份范围,属已知局限
-// (外审第6轮裁决:保持排除 + 前端警告,而非升级格式做完整往返)。
+// DataProvider 用于管理员备份导出，Credentials 保留原文，不经过 DTO 脱敏。
+// 格式不包含 parent_provider_id 或 quota_dimension，导入要求凭据非空，无法重建影子的父子链接。
+// Spark 影子及其独立优先级、并发、分组和状态不在导出范围，前端会提示跳过的影子数量。
 type DataProvider struct {
 	Name               string         `json:"name"`
 	Notes              *string        `json:"notes,omitempty"`

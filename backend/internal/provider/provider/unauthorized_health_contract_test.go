@@ -77,7 +77,7 @@ func TestRateLimitService_HandleUpstreamError_OAuth401SetsTempUnschedulable(t *t
 	})
 }
 
-// TestRateLimitService_HandleUpstreamError_SparkShadow401RedirectsToParent 外审第9轮:影子无独立凭据,
+// TestRateLimitService_HandleUpstreamError_SparkShadow401RedirectsToParent 影子无独立凭据,
 // 401(母提供商 token 问题)必须重定向到凭据 owner(母提供商)——母提供商 temp-unschedulable + token cache 失效,
 // 影子不得被永久禁用(否则母提供商可恢复的 token 问题会把影子永久打死)。
 func TestRateLimitService_HandleUpstreamError_SparkShadow401RedirectsToParent(t *testing.T) {

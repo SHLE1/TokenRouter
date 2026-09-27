@@ -218,7 +218,7 @@ func newModelListFixture(rows catalogueRows) *routing.ModelList {
 	return routing.NewModelList(catalogue.Read, time.Minute)
 }
 
-// resetModelListMetrics 保留原测试对唯一进程指标的精确断言。
+// resetModelListMetrics 重置进程级模型列表指标，避免用例之间相互影响。
 func resetModelListMetrics() {
 	metrics := routing.SharedModelListMetrics()
 	metrics.Hit.Store(0)

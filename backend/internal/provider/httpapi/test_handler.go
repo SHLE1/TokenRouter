@@ -10,7 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// TestHandler 仅绑定管理 HTTP 字段、SSE 与原测试成功后恢复端口。
+// TestHandler 绑定管理 HTTP 字段、SSE 输出和连接测试成功后的恢复端口。
 type TestHandler struct {
 	tests   *provider.TestService
 	recover func(context.Context, int64) error

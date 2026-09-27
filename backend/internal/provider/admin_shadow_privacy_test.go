@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestForceOpenAIPrivacy_SkipsShadow 验证外审第4轮:影子隐私设置跳过(由母提供商管理),
+// TestForceOpenAIPrivacy_SkipsShadow 验证影子隐私设置跳过(由母提供商管理),
 // 早返不触碰任何依赖(svc 无 deps,若未守卫会 nil panic)。
 func TestForceOpenAIPrivacy_SkipsShadow(t *testing.T) {
 	svc := providercore.NewPrivacyService(nil, nil, providercore.PrivacyOptions{})

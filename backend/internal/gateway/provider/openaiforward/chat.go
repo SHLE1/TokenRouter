@@ -346,7 +346,7 @@ func RunChat(ctx context.Context, body []byte, promptCacheKey, defaultMappedMode
 	}
 
 	// OAuth 提供商从响应头提取并保存 Codex 用量快照。
-	// 排除 spark 影子:其 codex_* 仅由 QueryUsage(/wham/usage bengalfox)更新(外审第7轮 P1)。
+	// 排除 spark 影子:其 codex_* 仅由 QueryUsage(/wham/usage bengalfox)更新。
 	if handleErr == nil && profile.UsesCodex && !profile.Shadow {
 		p.UpdateCodexUsage(ctx, resp.Header)
 	}

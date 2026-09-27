@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestPersistOpenAI429PlanType_SkipsShadow 验证外审第7轮 P1:429 plan_type 同步走 BulkUpdate 直写
+// TestPersistOpenAI429PlanType_SkipsShadow 验证429 plan_type 同步走 BulkUpdate 直写
 // (不经 persistProviderCredentials),必须对影子早返,否则会把 plan_type 写进影子 credentials。
 func TestPersistOpenAI429PlanType_SkipsShadow(t *testing.T) {
 	ctx := context.Background()
@@ -49,7 +49,7 @@ func (r *updateExtraSpyRepo) UpdateExtra(_ context.Context, _ int64, _ map[strin
 	return nil
 }
 
-// TestPersistOpenAICodexSnapshot_SkipsShadow 验证外审第7轮 P1:影子 codex_* 仅由 QueryUsage
+// TestPersistOpenAICodexSnapshot_SkipsShadow 验证影子 codex_* 仅由 QueryUsage
 // (/wham/usage bengalfox)更新,不能被 429 路径的 x-codex-* 全局头快照污染。
 func TestPersistOpenAICodexSnapshot_SkipsShadow(t *testing.T) {
 	headers := http.Header{}

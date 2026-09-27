@@ -1002,10 +1002,6 @@ func (s *UserService) SendNotifyEmailCode(ctx context.Context, userID int64, ema
 	return nil
 }
 
-func ProfileCheckNotifyCodeRateLimit(ctx context.Context, cache EmailCache, userID int64, email string) error {
-	return ProfileCheckNotifyCodeRateLimitWithClock(ctx, cache, userID, email, time.Now)
-}
-
 // ProfileCheckNotifyCodeRateLimit checks both email cooldown and user-level rate limit.
 func ProfileCheckNotifyCodeRateLimitWithClock(ctx context.Context, cache EmailCache, userID int64, email string, now func() time.Time) error {
 	existing, err := cache.GetNotifyVerifyCode(ctx, email)
@@ -1019,10 +1015,6 @@ func ProfileCheckNotifyCodeRateLimitWithClock(ctx context.Context, cache EmailCa
 		return ErrNotifyCodeUserRateLimit
 	}
 	return nil
-}
-
-func ProfileSaveNotifyVerifyCode(ctx context.Context, cache EmailCache, email, code string) error {
-	return ProfileSaveNotifyVerifyCodeWithClock(ctx, cache, email, code, time.Now)
 }
 
 // ProfileSaveNotifyVerifyCode saves the verification code to cache.
@@ -1046,10 +1038,6 @@ func (s *UserService) VerifyAndAddNotifyEmail(ctx context.Context, userID int64,
 	}
 	_ = cache.DeleteNotifyVerifyCode(ctx, email)
 	return s.ProfileAddOrVerifyNotifyEmail(ctx, userID, email)
-}
-
-func ProfileVerifyNotifyCode(ctx context.Context, cache EmailCache, email, code string) error {
-	return ProfileVerifyNotifyCodeWithClock(ctx, cache, email, code, time.Now)
 }
 
 // ProfileVerifyNotifyCode validates the verification code against the cached data.
@@ -1157,10 +1145,12 @@ type ProfileSettings interface {
 	GetMultiple(context.Context, []string) (map[string]string, error)
 	GetValue(context.Context, string) (string, error)
 }
-type UserAuthInvalidator interface{ InvalidateAuthCacheByUserID(context.Context, int64) }
-type UserBalanceCache interface {
-	InvalidateUserBalance(context.Context, int64) error
-}
+type (
+	UserAuthInvalidator interface{ InvalidateAuthCacheByUserID(context.Context, int64) }
+	UserBalanceCache    interface {
+		InvalidateUserBalance(context.Context, int64) error
+	}
+)
 
 // NotifyVerificationNotice 只表达身份已确认的验证码投递事实。
 type NotifyVerificationNotice struct {
@@ -1178,6 +1168,7 @@ func NewUserService(users UserRepository, settings ProfileSettings, auth UserAut
 	}
 	return &UserService{operationClock: clockFromOptional(clocks), userRepo: users, settingRepo: settings, authCacheInvalidator: auth, billingCache: balance, runBackground: background}
 }
+
 func (s *UserService) SendNotifyVerifyEmail(ctx context.Context, sender NotifyVerificationSender, userID int64, email, code, locale string) error {
 	siteName := "Sub2API"
 	if s.settingRepo != nil {
@@ -1198,6 +1189,7 @@ func NormalizeWeChatConnectModeSetting(raw string) string {
 		return "open"
 	}
 }
+
 func ParseWeChatConnectCapabilitySettings(settings map[string]string, enabled bool, mode string) (bool, bool, bool) {
 	mode = NormalizeWeChatConnectModeSetting(mode)
 	rawOpen, hasOpen := settings[SettingKeyWeChatConnectOpenEnabled]

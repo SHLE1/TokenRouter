@@ -25,10 +25,8 @@ func (r *ProviderStore) GetByCRSAccountID(ctx context.Context, crsProviderID str
 		return nil, nil
 	}
 
-	// 使用 sqljson.ValueEQ 生成 JSON 路径过滤，避免手写 SQL 片段导致语法兼容问题。
-	// 排除 spark 影子提供商(parent_provider_id 非空):影子不持凭据,绝不能被 CRS 当作普通提供商
-	// 更新而覆盖 type/credentials/proxy。即便影子 Extra 被误写入 crs_account_id 也不会命中
-	// (外审第7轮 P1)。
+	// 使用 sqljson.ValueEQ 生成 JSON 路径过滤。
+	// CRS 查询只匹配母提供商；即使影子的 Extra 含有 crs_account_id，也不能让同步覆盖其类型、凭据或代理。
 	m, err := r.client.Provider.Query().
 		Where(dbprovider.ParentProviderIDIsNil()).
 		Where(func(s *entsql.Selector) {
@@ -107,8 +105,7 @@ func (r *ProviderStore) FindByExtraField(ctx context.Context, key string, value 
 }
 
 func (r *ProviderStore) ListCRSAccountIDs(ctx context.Context) (map[string]int64, error) {
-	// parent_provider_id IS NULL 排除 spark 影子提供商:影子不是 CRS 提供商,绝不能进 CRS 同步映射
-	// (否则会被当普通提供商更新而覆盖 type/credentials/proxy)(外审第7轮 P1)。
+	// 只将母提供商加入 CRS 同步映射，避免后续同步覆盖影子的类型、凭据和继承代理。
 	rows, err := r.sql.QueryContext(ctx, `
 		SELECT id, extra->>'crs_account_id'
 		FROM providers

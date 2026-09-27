@@ -11,12 +11,12 @@ import (
 )
 
 // 模拟最新身份读取后、执行健康写入前管理员替换凭据。
-type cNDecisionRepo struct {
+type cnDecisionRepo struct {
 	*cnUsageMonitorRepo
 	changed bool
 }
 
-func (r *cNDecisionRepo) changeIdentity(id int64) {
+func (r *cnDecisionRepo) changeIdentity(id int64) {
 	if r.changed {
 		return
 	}
@@ -25,12 +25,12 @@ func (r *cNDecisionRepo) changeIdentity(id int64) {
 	r.providers[id].Credentials = map[string]any{"api_key": "new-admin-key", "provider_mode": acctcore.ProviderModePayG}
 }
 
-func (r *cNDecisionRepo) SetTempUnschedulable(ctx context.Context, id int64, until time.Time, reason string) error {
+func (r *cnDecisionRepo) SetTempUnschedulable(ctx context.Context, id int64, until time.Time, reason string) error {
 	r.changeIdentity(id)
 	return r.cnUsageMonitorRepo.SetTempUnschedulable(ctx, id, until, reason)
 }
 
-func (r *cNDecisionRepo) SetCNUsageDecisionCAS(ctx context.Context, id int64, expected time.Time, until time.Time, reason string, clear bool) (bool, error) {
+func (r *cnDecisionRepo) SetCNUsageDecisionCAS(ctx context.Context, id int64, expected time.Time, until time.Time, reason string, clear bool) (bool, error) {
 	r.changeIdentity(id)
 	if !r.providers[id].UpdatedAt.Equal(expected) {
 		return false, nil
@@ -43,7 +43,7 @@ func (r *cNDecisionRepo) SetCNUsageDecisionCAS(ctx context.Context, id int64, ex
 
 func TestCNMonitorOldIdentityCannotPauseNewCredentials(t *testing.T) {
 	value := newCNUsageMonitorProvider(1, capability.PlatformKimi, acctcore.ProviderModePayG)
-	repo := &cNDecisionRepo{cnUsageMonitorRepo: &cnUsageMonitorRepo{providers: map[int64]*acctcore.Record{1: value}, byPlatform: map[string][]int64{capability.PlatformKimi: {1}}, casResult: true}}
+	repo := &cnDecisionRepo{cnUsageMonitorRepo: &cnUsageMonitorRepo{providers: map[int64]*acctcore.Record{1: value}, byPlatform: map[string][]int64{capability.PlatformKimi: {1}}, casResult: true}}
 	upstream := &cnUsageMonitorHTTP{body: `{"code":0,"data":{"available_balance":0.1}}`}
 	cfg := newCNQueryFixtureOptions()
 	cfg.Monitor.BalanceThreshold = 0.5

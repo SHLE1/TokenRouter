@@ -1,4 +1,4 @@
-// Messages 旧入口只绑定提供商/会话及原生转换端口，不拥有请求恢复循环。
+// Messages 执行适配绑定提供商、会话及协议转换端口，请求恢复循环由执行器管理。
 package httpapi
 
 import (

@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/admission"
 )
 
-// newFundingAdmissionFixture 复用原测试已创建的资金缓存，原夹具均未配置 RPM 后端。
+// newFundingAdmissionFixture 复用夹具创建的资金缓存，RPM 后端保持未配置。
 func newFundingAdmissionFixture(funds *billing.Eligibility, cfg *config.Config) *admission.FundingAdmission {
 	return admission.NewFundingAdmission(funds, nil)
 }

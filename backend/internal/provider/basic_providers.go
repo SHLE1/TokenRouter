@@ -310,9 +310,8 @@ func (s *BasicProviders) Delete(ctx context.Context, id int64) error {
 		return ErrProviderNotFound
 	}
 
-	// 注意:此处不级联删除 spark 影子提供商。当前唯一的后台删除入口走 AdminService.DeleteProvider
-	// (已 ListShadowsByParent 先删影子再删母)。本方法目前无删除调用方;若未来有调用方经此
-	// 删除母提供商,需在此补级联,否则会留下孤儿影子(外审第6轮 P3:当前不可达,记为残留)。
+	// 此入口不级联删除影子；管理端删除使用 Admin.DeleteProvider，先删除影子再删除母提供商。
+	// 若为本入口新增母提供商删除调用，必须补上相同的级联约束。
 	if err := s.providerRepo.Delete(ctx, id); err != nil {
 		return fmt.Errorf("delete provider: %w", err)
 	}

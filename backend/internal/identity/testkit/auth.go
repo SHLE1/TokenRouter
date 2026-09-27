@@ -13,7 +13,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/promotion"
 )
 
-// AuthOptions 保留旧测试构造的启动参数投影，不读取环境或运行设置。
+// AuthOptions 为认证测试提供启动参数，不读取环境或运行设置。
 func AuthOptions(cfg *config.Config) *identity.AuthOptions {
 	if cfg == nil {
 		return nil

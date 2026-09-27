@@ -66,7 +66,7 @@ func (s *OpenAIProviderImport) RefreshProvider(ctx context.Context, providerID i
 	}
 
 	// spark 影子提供商凭据透传母提供商、自身恒空,刷新无意义;在调用上游前早拒,避免先打上游
-	// 再被凭据写守卫拦下的无谓副作用(外审第6轮)。
+	// 再被凭据写守卫拦下的无谓副作用。
 	if provider.IsCredentialShadow() {
 		return nil, &OpenAIProviderInputError{Message: "Cannot refresh spark shadow provider; its credentials are managed by the parent provider"}
 	}

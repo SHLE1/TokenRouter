@@ -9,7 +9,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
-// 新条件存储替身复用原测试的实际行，旧 HEAD 测试正文无需知道新契约。
+// 条件写入替身核对当前记录的身份和凭据版本，匹配后复用凭据更新逻辑。
 func (r *crsStaleCredentialRepo) UpdateOAuthCredentialsIfUnchanged(ctx context.Context, v provider.CredentialVersion, credentials map[string]any) (bool, error) {
 	c := r.current
 	if c.ID != v.ID || c.Platform != v.Platform || c.Type != v.Type || c.Status != v.Status || !reflect.DeepEqual(c.Credentials, v.Credentials) || !reflect.DeepEqual(c.ProxyID, v.ProxyID) {

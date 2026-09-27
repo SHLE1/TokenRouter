@@ -47,7 +47,7 @@ const (
 	PlatformGrok        = capability.PlatformGrok
 )
 
-// ptrInt64 保留原测试的可选分组输入。
+// ptrInt64 构造测试所需的可选分组 ID。
 func ptrInt64(value int64) *int64 { return &value }
 
 // retirementProviderSource 保留原平台夹具的过滤与可控数据库屏障。

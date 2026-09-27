@@ -182,7 +182,7 @@ func TestExportDataWithoutProxies(t *testing.T) {
 	require.Nil(t, resp.Data.Providers[0].ProxyKey)
 }
 
-// TestExportDataExcludesSparkShadow 验证外审第5轮 P1/P2:导出时排除 spark 影子提供商
+// TestExportDataExcludesSparkShadow 验证导出时排除 spark 影子提供商
 // (影子无凭据、导入侧强制 credentials 非空,混入会产出无法还原的坏备份),并透出跳过计数。
 func TestExportDataExcludesSparkShadow(t *testing.T) {
 	router, adminSvc := setupProviderDataRouter()

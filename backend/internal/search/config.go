@@ -16,12 +16,14 @@ import (
 	"golang.org/x/sync/singleflight"
 )
 
-const SettingKeyWebSearchEmulationConfig = "web_search_emulation_config"
-const webSearchEmulationCacheTTL = 60 * time.Second
-const webSearchEmulationErrorTTL = 5 * time.Second
-const webSearchEmulationDBTimeout = 5 * time.Second
-const sfKeyWebSearchConfig = "web_search_emulation_config"
-const maxWebSearchProviders = 10
+const (
+	SettingKeyWebSearchEmulationConfig = "web_search_emulation_config"
+	webSearchEmulationCacheTTL         = 60 * time.Second
+	webSearchEmulationErrorTTL         = 5 * time.Second
+	webSearchEmulationDBTimeout        = 5 * time.Second
+	sfKeyWebSearchConfig               = "web_search_emulation_config"
+	maxWebSearchProviders              = 10
+)
 
 var validProviderTypes = map[string]bool{ProviderTypeBrave: true, ProviderTypeTavily: true}
 
@@ -32,11 +34,14 @@ type ConfigRepository interface {
 type ProxyResolver interface {
 	URLs(context.Context, []int64) (map[int64]string, error)
 }
-type ManagerFactory func([]ProviderConfig, *WorkGroup) *Manager
-type cachedConfig struct {
-	config    *WebSearchEmulationConfig
-	expiresAt time.Time
-}
+type (
+	ManagerFactory func([]ProviderConfig, *WorkGroup) *Manager
+	cachedConfig   struct {
+		config    *WebSearchEmulationConfig
+		expiresAt time.Time
+	}
+)
+
 type ConfigService struct {
 	repo      ConfigRepository
 	proxies   ProxyResolver
@@ -56,6 +61,7 @@ func NewConfigService(repo ConfigRepository, proxies ProxyResolver, factory Mana
 	}
 	return &ConfigService{repo: repo, proxies: proxies, factory: factory, registry: registry, work: NewWorkGroup()}
 }
+
 func (s *ConfigService) GetWebSearchEmulationConfig(ctx context.Context) (*WebSearchEmulationConfig, error) {
 	if value := s.cache.Load(); value != nil && time.Now().Before(value.expiresAt) {
 		return CloneConfig(value.config), nil
@@ -75,6 +81,7 @@ func (s *ConfigService) GetWebSearchEmulationConfig(ctx context.Context) (*WebSe
 	}
 	return CloneConfig(cfg), nil
 }
+
 func (s *ConfigService) load() (*WebSearchEmulationConfig, error) {
 	s.publishMu.Lock()
 	revision := s.revision
@@ -140,6 +147,7 @@ func (s *ConfigService) SaveWebSearchEmulationConfig(ctx context.Context, input 
 	s.publishManager(ctx, cfg, revision)
 	return nil
 }
+
 func (s *ConfigService) Initialize(ctx context.Context) error {
 	done, err := s.work.Begin()
 	if err != nil {
@@ -207,10 +215,12 @@ func (s *ConfigService) publishManager(ctx context.Context, cfg *WebSearchEmulat
 	}
 	s.registry.Set(manager)
 }
+
 func (s *ConfigService) IsWebSearchEmulationEnabled(ctx context.Context) bool {
 	cfg, err := s.GetWebSearchEmulationConfig(ctx)
 	return err == nil && cfg.Enabled && len(cfg.Providers) > 0
 }
+
 func (s *ConfigService) StopContext(ctx context.Context) error {
 	err := s.work.Stop(ctx)
 	if err == nil {
@@ -222,7 +232,7 @@ func (s *ConfigService) StopContext(ctx context.Context) error {
 }
 func (s *ConfigService) Registry() *Registry { return s.registry }
 
-// Registry 是唯一当前 Manager 指针；旧入口仅持有该注册表的引用。
+// Registry 保存当前 Manager，各调用方通过同一注册表获取实例。
 type Registry struct{ current atomic.Pointer[Manager] }
 
 func NewRegistry() *Registry      { return &Registry{} }
@@ -233,6 +243,7 @@ func (r *Registry) Set(m *Manager) {
 		previous.Retire()
 	}
 }
+
 func CloneConfig(in *WebSearchEmulationConfig) *WebSearchEmulationConfig {
 	if in == nil {
 		return nil
@@ -299,6 +310,7 @@ func ValidateConfig(cfg *WebSearchEmulationConfig) error {
 	}
 	return nil
 }
+
 func ParseConfig(raw string) *WebSearchEmulationConfig {
 	cfg := &WebSearchEmulationConfig{}
 	if raw == "" {
@@ -331,6 +343,7 @@ func (s *ConfigService) mergeExistingAPIKeys(ctx context.Context, cfg *WebSearch
 		}
 	}
 }
+
 func (s *ConfigService) getWebSearchEmulationConfigRaw(ctx context.Context) (*WebSearchEmulationConfig, error) {
 	raw, err := s.repo.GetValue(ctx, SettingKeyWebSearchEmulationConfig)
 	if err != nil {
@@ -394,6 +407,7 @@ func ResetWebSearchUsage(ctx context.Context, providerType string, registry *Reg
 	}
 	return mgr.ResetUsage(ctx, providerType)
 }
+
 func TestWebSearch(ctx context.Context, query string, registry *Registry) (*WebSearchTestResult, error) {
 	mgr := registry.Get()
 	if mgr == nil {

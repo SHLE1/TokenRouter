@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestRefreshSingleProvider_RejectsShadow 验证外审第6轮:手动刷新对 spark 影子在调用上游前早拒
+// TestRefreshSingleProvider_RejectsShadow 验证手动刷新对 spark 影子在调用上游前早拒
 // (影子凭据由母提供商管理、自身恒空,刷新无意义)。该守卫同时覆盖单提供商与批量刷新两入口。
 func TestRefreshSingleProvider_RejectsShadow(t *testing.T) {
 	h := provider.NewManagedRefreshService(provider.ManagedRefreshOptions{}) // 影子在使用任何依赖前即返回,无需注入

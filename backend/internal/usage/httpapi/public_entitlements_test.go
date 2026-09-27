@@ -124,7 +124,7 @@ func TestUsageUnrestrictedBalanceModeDoesNotExposeSubscription(t *testing.T) {
 	require.False(t, hasSubscription)
 }
 
-// publicUsageContractHandler 使用生产 HTTP 用例，保留原测试上下文和日历边界。
+// publicUsageContractHandler 为生产 HTTP 用例装配测试上下文和日历。
 func publicUsageContractHandler() *PublicUsageHandler {
 	return NewPublicUsageHandler(nil, nil, nil, nil, PublicUsageContext{
 		Billing: func(c *gin.Context) (*billingcore.APIKeyBillingContext, bool) {

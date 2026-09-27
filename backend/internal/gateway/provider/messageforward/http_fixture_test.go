@@ -18,7 +18,7 @@ import (
 
 const defaultMaxLineSize = 500 * 1024 * 1024
 
-// 夹具仅投影原测试的静态参数，实际请求走生产 Runtime 和 HTTP Adapter。
+// 夹具投影静态测试参数，实际请求使用生产 Runtime 和 HTTP Adapter。
 func newHTTPRuntimeFixture(options *messageforward.Options, deps messageforward.Dependencies, filter *egress.CompiledHeaderFilter) *gatewayhttp.MessagesExecutor {
 	value := messageforward.Options{ResponseReadLimit: 128 * 1024 * 1024}
 	if options != nil {

@@ -13,7 +13,7 @@ func newOAuthSettingsFixture(repo settings.Repository, cfg *config.Config) *iden
 	return provideOAuthSettings(settings.New(repo), cfg)
 }
 
-// readOAuthAdminSettings 保留原测试未使用的默认并发值，展示规则由身份模块拥有。
+// readOAuthAdminSettings 为认证设置夹具提供默认并发值，展示规则由身份模块拥有。
 func readOAuthAdminSettings(source *identity.OAuthSettings, values map[string]string) *identity.AdminReadSettings {
 	return source.ReadAdminSettings(values, func() int { return 0 })
 }

@@ -13,12 +13,12 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
 )
 
-// newGroupAdminForTest 保留原测试的存储副本边界及默认策略，直接构造唯一分组用例。
+// newGroupAdminForTest 使用独立存储副本及默认策略构造分组管理用例。
 func newGroupAdminForTest(repo routing.GroupRepository, duplicate routing.GroupDuplicateRepository, pricingConfigs routing.GroupPricingInvalidator) *routing.GroupAdmin {
 	return newGroupAdminPortsForTest(repo, duplicate, pricingConfigs, nil, nil, nil, nil)
 }
 
-// newGroupAdminPortsForTest 只装配原测试需要的窄端口，不复制管理规则。
+// newGroupAdminPortsForTest 装配分组管理测试所需的端口。
 func newGroupAdminPortsForTest(repo routing.GroupRepository, duplicate routing.GroupDuplicateRepository, pricingConfigs routing.GroupPricingInvalidator, sortOrder routing.GroupSortOrderRepository, providers routing.GroupProviders, invalidator routing.GroupAdminInvalidator, weights *policy.ConfigScoreWeights, keyReaders ...routing.GroupKeyReader) *routing.GroupAdmin {
 	var keys routing.GroupKeyReader
 	if len(keyReaders) > 0 {

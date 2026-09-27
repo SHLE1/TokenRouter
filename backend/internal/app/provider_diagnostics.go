@@ -25,7 +25,7 @@ func provideSchedulerDiagnosticsHTTP(core *selection.Diagnostics) *schedulerhttp
 	return schedulerhttp.NewDiagnosticsHandler(core)
 }
 
-// providerDiagnosticSource 只投影已迁管理读取；调度诊断仍复用当前唯一的资格和反馈实例。
+// providerDiagnosticSource 投影管理读取结果，调度诊断复用资格检查和反馈实例。
 // 此旧提供商形状随网关诊断端口清理一起删除，不持有缓存、锁或评分规则。
 type providerDiagnosticSource struct {
 	providers *provider.Admin

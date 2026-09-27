@@ -71,14 +71,6 @@ type openAIHTTP2Settings struct {
 	fallbackTTL               time.Duration
 }
 
-// httpClientForUpstreamRequest 保留旧测试入口，实际生产调用使用已冻结的出站策略。
-func httpClientForUpstreamRequest(s *Client, client *http.Client, req *http.Request) *http.Client {
-	if client == nil || req == nil {
-		return client
-	}
-	return httpClientForEgressPolicy(s, client, s.requestPolicy(req))
-}
-
 // httpClientForEgressPolicy 保留原每请求派生与重定向检查先后顺序。
 func httpClientForEgressPolicy(s *Client, client *http.Client, policy egress.EgressPolicy) *http.Client {
 	if client == nil {
@@ -112,14 +104,6 @@ func httpClientForEgressPolicy(s *Client, client *http.Client, policy egress.Egr
 
 func httpClientWithGrokAccessDeniedFallback(client *http.Client) *http.Client {
 	return xai.ClientWithAccessDeniedFallback(client)
-}
-
-func isGrokCLICompatibilityAccessDenied(body []byte) bool {
-	return xai.IsCLICompatibilityAccessDenied(body)
-}
-
-func isGrokCLIAccessDeniedFallbackCandidate(req *http.Request, resp *http.Response) bool {
-	return xai.IsCLIAccessDeniedFallbackCandidate(req, resp)
 }
 
 func applyGrokCLIProxyHeaders(req *http.Request) { xai.ApplyTransportCLIHeaders(req) }

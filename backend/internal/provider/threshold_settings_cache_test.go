@@ -13,7 +13,7 @@ import (
 
 var errThresholdSettingMissing = errors.New("missing")
 
-// thresholdSettingsRepo 保留原测试的调用计数与缺键故障输入。
+// thresholdSettingsRepo 记录设置读取次数，并模拟缺键错误。
 type thresholdSettingsRepo struct {
 	data          map[string]string
 	getValueErr   error

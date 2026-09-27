@@ -21,8 +21,8 @@ func ResolveCredentialRecord(ctx context.Context, read func(context.Context, int
 	if parent == nil {
 		return nil, fmt.Errorf("spark shadow parent %d not found", *provider.ParentProviderID)
 	}
-	// 防御:创建路径已禁二级影子(G6),此处再挡一层——畸形数据/手工 DB 写出的影子→影子链
-	// 会让凭据解析停在无凭据的一级影子(只解一层),fail-closed 比静默返回坏母更安全(外审第6轮)。
+	// 创建入口禁止二级影子；此处也拒绝手工写入或损坏数据形成的影子链。
+	// 凭据解析只读取一层母提供商，不能返回仍无独立凭据的另一条影子记录。
 	if parent.IsCredentialShadow() {
 		return nil, fmt.Errorf("spark shadow parent %d is itself a shadow", parent.ID)
 	}

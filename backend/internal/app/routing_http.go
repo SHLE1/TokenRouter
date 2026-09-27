@@ -22,7 +22,7 @@ func provideGroupRateAdmin(repo billing.UserGroupRateRepository, keys *apikey.AP
 	return billing.NewGroupRateAdmin(repo, keys)
 }
 
-// provideRoutingGroupHTTP 组合已迁用例和只读展示投影，HTTP 直接使用 routing handler。
+// provideRoutingGroupHTTP 组合分组用例和只读展示投影，HTTP 使用 routing handler。
 func provideRoutingGroupHTTP(core *routing.GroupAdmin, capacity *routing.CapacityService, keys *apikey.Admin, rates *billing.GroupRateAdmin, dashboard *usage.DashboardService, calendar timezone.Calendar) *routinghttp.GroupHandler {
 	resources := routinghttp.GroupResources{
 		Capacity: capacity, Rates: rates, Today: calendar.Today,

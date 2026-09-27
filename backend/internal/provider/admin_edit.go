@@ -71,21 +71,20 @@ func (s *Admin) UpdateProvider(ctx context.Context, id int64, input *UpdateProvi
 	// 安全/身份不变量(影子提供商):通用更新路径被 edit/re-auth/refresh/batch 共用,
 	// 必须在此守住,否则仅在创建时的保证可被这些路径绕过。
 	if provider.IsCredentialShadow() {
-		// 影子绝不持有凭据(凭据只在母提供商)——外审 F5。
+		// 影子凭据由母提供商管理，不能独立写入。
 		if !IsAllowedSparkShadowCredentialsUpdate(input.Credentials) {
 			return nil, infraerrors.Newf(infraerrors.CategoryBadRequest, "SPARK_SHADOW_NO_CREDENTIALS",
 				"spark shadow providers do not hold auth credentials; only model mapping can be configured on the shadow provider")
 		}
-		// 影子 type 不可变——很多上游逻辑按 provider.Type 分支(OAuth transform / ChatGPT
-		// header 注入 / WS OAuth 决策),改成 apikey 会让 spark 影子被选中后按错误协议转发(外审 G7)。
+		// 影子类型必须保持 OAuth。认证转换、ChatGPT Header 和 WS 决策依赖该类型，
+		// 改成 API Key 会使请求按错误协议转发。
 		if input.Type != "" && input.Type != provider.Type {
 			return nil, infraerrors.Newf(infraerrors.CategoryBadRequest, "SPARK_SHADOW_IMMUTABLE_TYPE",
 				"spark shadow provider type cannot be changed; it must remain an OpenAI OAuth shadow")
 		}
 	} else if input.Type != "" && input.Type != provider.Type && input.Type != ProviderTypeOAuth {
-		// 母提供商守卫(外审 D/P1):有 spark 影子的提供商不能把 type 改出 OpenAI OAuth——影子读透母
-		// 凭据,母变成 apikey/setup_token 会让影子被调度后按错协议失败(resolveCredentialProvider
-		// 必报错)。须先删影子再改 type。
+		// 有 Spark 影子的母提供商必须保持 OpenAI OAuth，否则影子无法解析共用凭据。
+		// 修改母提供商类型前必须先删除影子。
 		shadows, serr := s.providerRepo.ListShadowsByParent(ctx, id)
 		if serr != nil {
 			return nil, serr
@@ -201,8 +200,7 @@ func (s *Admin) UpdateProvider(ctx context.Context, id int64, input *UpdateProvi
 	if input.Extra == nil {
 		provider.Extra = PrepareCodexFingerprintExtraForUpdate(provider, provider.Extra, s.options.Creation.NewSeed)
 	}
-	// 影子代理恒继承母提供商(由 propagateProxyToShadows 同步),不接受独立编辑——外审 B/P1;
-	// 否则要等母提供商下次改 proxy 才被覆盖,期间影子会出现"有时继承、有时独立"的漂移。
+	// 影子代理由母提供商同步，不能独立编辑，否则两次同步之间会出现出站代理不一致。
 	if input.ProxyID != nil && !provider.IsCredentialShadow() {
 		// 0 表示清除代理（前端发送 0 而不是 null 来表达清除意图）
 		if *input.ProxyID == 0 {
@@ -477,8 +475,8 @@ func (s *Admin) BulkUpdateProviders(ctx context.Context, input *BulkUpdateProvid
 			return nil, err
 		}
 	}
-	// 影子提供商绝不持有凭据:批量更新携带凭据时,目标中不得含影子(外审 G5,与单提供商
-	// UpdateProvider 守卫对齐)。覆盖显式 IDs 与 filter 解析出的 IDs(此处 ProviderIDs 已解析完成)。
+	// 批量写入凭据时，目标不能包含影子。
+	// ProviderIDs 此时已包含显式 ID 和筛选条件解析出的 ID。
 	if len(input.Credentials) > 0 {
 		for _, acc := range cachedTargets {
 			if acc != nil && acc.IsCredentialShadow() {
@@ -488,9 +486,8 @@ func (s *Admin) BulkUpdateProviders(ctx context.Context, input *BulkUpdateProvid
 		}
 	}
 
-	// 影子提供商 proxy 恒继承母提供商(与单提供商 UpdateProvider 守卫对齐——外审第4轮 P1):批量携带 proxy
-	// 时目标不得含影子,否则影子会获得独立 proxy、破坏继承不变量(网关按所选影子自身 proxy 出站,
-	// 要等母提供商下次改 proxy 才覆盖→漂移)。含影子即整体拒绝,提示从选择中剔除影子。
+	// 批量代理更新的目标不能包含影子，避免独立代理覆盖母提供商的继承值。
+	// 含影子时拒绝整批更新，要求调用方先将影子移出目标集合。
 	if input.ProxyID != nil {
 		for _, acc := range cachedTargets {
 			if acc != nil && acc.IsCredentialShadow() {

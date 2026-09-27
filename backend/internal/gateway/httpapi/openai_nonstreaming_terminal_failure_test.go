@@ -88,7 +88,7 @@ func TestNonStreamingSSEToJSON_CapacityFailedEventFailsOver(t *testing.T) {
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)
 	// fork 的语义分类保留 invalid_request_error 的 400 状态，而不是 upstream
-	// 原测试固定的 502；切号判定与流式路径仍保持一致。
+	// 响应固定为 502，切号判定与流式路径保持一致。
 	require.Equal(t, http.StatusBadRequest, failoverErr.StatusCode)
 	// 容量降载是请求级信号，先在同提供商有界重试——与流式路径同一套策略。
 	require.True(t, failoverErr.RetryableOnSameProvider)

@@ -483,7 +483,7 @@ func TestOpenAIOAuthServiceSuite(t *testing.T) {
 	suite.Run(t, new(OpenAIOAuthServiceSuite))
 }
 
-// 保留原测试在无法监听端口环境中的跳过条件，不把跳过计为行为通过。
+// 无法监听端口时跳过该用例。
 var oauthTestListenerCheck struct {
 	once sync.Once
 	err  error

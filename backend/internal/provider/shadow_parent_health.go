@@ -1,18 +1,11 @@
 package provider
 
-// ParentHealthyForShadow 报告 spark 影子提供商的母提供商凭据是否可用(影子据此可被调度)。
-//
-// 非影子提供商直接返回 true（不受此检查约束）。
-// lookup 将母提供商 ID 解析为当前 Provider（来自调度快照 map 或 repo）。
-//
-// 关键语义(F1 决策 A + 外审 D):母提供商须仍是 OpenAI OAuth(fail-closed——否则透传凭据解析必失败,
-// 影子不应进调度候选),且凭据「可用」。IsCredentialUsableForShadow 检查:提供商 active、OAuth token
-// 未过期、且**未处于 TempUnschedulableUntil 冷却期**——对 OpenAI 提供商该字段由 401/token 刷新耗尽/
-// transport·proxy 故障写入,代表共享凭据或传输坏死,故**连坐**影子。
-//
-// **刻意排除** global 维度的 RateLimitResetAt/OverloadUntil 与母提供商手动 Schedulable 开关:
-// 母提供商 global 429 不得连坐 spark 影子,否则会重新耦合影子架构本应解耦的两条 429 道。
-// 母提供商未找到(nil)、非 OpenAI OAuth、或凭据不可用时影子被挡。
+// ParentHealthyForShadow 判断 Spark 影子共用的母提供商凭据是否可用于调度。
+// 非影子直接返回 true；lookup 从调度快照或存储取得母提供商。
+// 母提供商必须是 OpenAI OAuth、状态为 active、令牌未过期，且不处于 TempUnschedulableUntil 冷却期。
+// 该冷却可能来自认证失败、刷新耗尽或传输故障，会影响共用凭据的影子。
+// 母提供商的全局 RateLimitResetAt、OverloadUntil 和手动 Schedulable 开关不参与此判断，
+// Spark 用量窗口独立维护。母提供商缺失、类型不符或凭据不可用时，影子不能进入候选池。
 func ParentHealthyForShadow(provider *Record, lookup func(int64) *Record) bool {
 	if provider == nil || !provider.IsShadow() {
 		return true
