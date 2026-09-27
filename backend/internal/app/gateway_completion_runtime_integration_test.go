@@ -33,7 +33,7 @@ func (nativeCompletionCatalog) GetModelPricing(string) *pricing.LiteLLMModelPric
 type nativeCompletionSQL struct{ *sql.DB }
 
 // 两种生产记录器都走真实结算与事实存储；重放不能再次扣款或写第二条事实。
-func TestS16NativeCompletionRuntimeOneFinancialEffect(t *testing.T) {
+func TestNativeCompletionRuntimeOneFinancialEffect(t *testing.T) {
 	f := newDatabaseFixture(t)
 	ctx := t.Context()
 	calendar := timezone.NewCalendar(time.UTC)
@@ -53,11 +53,11 @@ func TestS16NativeCompletionRuntimeOneFinancialEffect(t *testing.T) {
 	})
 	cfg := &config.Config{}
 	cfg.Default.RateMultiplier = 1
-	rates := app.NewS16GatewayBillingRates(nil, cfg)
-	health := app.NewS16ProviderHealthRuntime(providers, nil, cfg, nil, nil, nil, nil, nil)
+	rates := app.NewGatewayBillingRatesForTest(nil, cfg)
+	health := app.NewProviderHealthRuntimeForTest(providers, nil, cfg, nil, nil, nil, nil, nil)
 	calculator := billing.NewCalculator(nativeCompletionCatalog{}, billing.CalculatorOptions{DefaultRateMultiplier: 1})
 	prices := billing.NewPriceResolver(nil, calculator, nil, nil, nil)
-	recorders := app.NewS16CompletionRecorders(rates, calculator, prices, funds, logs, nil, nil, deferred, nil, nil, providers, health, nil, tasks, cfg)
+	recorders := app.NewCompletionRecordersForTest(rates, calculator, prices, funds, logs, nil, nil, deferred, nil, nil, providers, health, nil, tasks, cfg)
 	for _, openAI := range []bool{false, true} {
 		name := "messages"
 		if openAI {
@@ -70,7 +70,7 @@ func TestS16NativeCompletionRuntimeOneFinancialEffect(t *testing.T) {
 			require.NoError(t, err)
 			selected, err := f.client.Provider.Create().SetName("completion-" + name).SetPlatform("openai").SetType("apikey").Save(ctx)
 			require.NoError(t, err)
-			requestID := "s16-completion-" + name
+			requestID := "test-completion-" + name
 			input := &completion.Input{
 				RequestID:          requestID,
 				QuotaUpdates:       true,

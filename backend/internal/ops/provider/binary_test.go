@@ -37,8 +37,9 @@ func (c binaryFixtureClient) DownloadFile(ctx context.Context, url, dest string,
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(dest, data, 0600)
+	return os.WriteFile(dest, data, 0o600)
 }
+
 func (c binaryFixtureClient) FetchChecksumFile(ctx context.Context, url string) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", c.url+"/checksum", nil)
 	if err != nil {
@@ -51,11 +52,12 @@ func (c binaryFixtureClient) FetchChecksumFile(ctx context.Context, url string) 
 	defer func() { _ = res.Body.Close() }()
 	return io.ReadAll(res.Body)
 }
-func TestS14BinaryInstallAndRollback(t *testing.T) {
+
+func TestBinaryInstallAndRollback(t *testing.T) {
 	var buffer bytes.Buffer
 	gz := gzip.NewWriter(&buffer)
 	tw := tar.NewWriter(gz)
-	require.NoError(t, tw.WriteHeader(&tar.Header{Name: "sub2api", Mode: 0755, Size: 3}))
+	require.NoError(t, tw.WriteHeader(&tar.Header{Name: "sub2api", Mode: 0o755, Size: 3}))
 	_, err := tw.Write([]byte("new"))
 	require.NoError(t, err)
 	require.NoError(t, tw.Close())
@@ -72,7 +74,7 @@ func TestS14BinaryInstallAndRollback(t *testing.T) {
 	defer server.Close()
 	assets := []ops.Asset{{Name: name, DownloadURL: "https://github.com/fixture/" + name}, {Name: "checksums.txt", DownloadURL: "https://github.com/fixture/checksums.txt"}}
 	exe := filepath.Join(t.TempDir(), "server")
-	require.NoError(t, os.WriteFile(exe, []byte("old"), 0755))
+	require.NoError(t, os.WriteFile(exe, []byte("old"), 0o755))
 	installer := NewBinaryInstaller(binaryFixtureClient{server.URL}, func() (string, error) { return exe, nil })
 	require.NoError(t, installer.Apply(context.Background(), assets))
 	data, err := os.ReadFile(exe)

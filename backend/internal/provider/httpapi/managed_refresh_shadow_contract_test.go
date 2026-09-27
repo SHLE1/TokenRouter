@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 
-	s15httpx "github.com/TokenFlux/TokenRouter/internal/server/httpx"
+	"github.com/TokenFlux/TokenRouter/internal/server/httpx"
 	"github.com/stretchr/testify/require"
 )
 
@@ -27,5 +27,5 @@ func TestRefreshSingleProvider_RejectsShadow(t *testing.T) {
 
 	_, _, err := h.Refresh(context.Background(), shadow)
 	require.Error(t, err, "影子刷新应被早拒")
-	require.Equal(t, http.StatusBadRequest, s15httpx.ErrorCode(err))
+	require.Equal(t, http.StatusBadRequest, httpx.ErrorCode(err))
 }

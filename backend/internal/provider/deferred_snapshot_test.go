@@ -9,7 +9,7 @@ import (
 )
 
 // 旧批次写回失败时，同提供商的新活动时间必须保留，不能由旧批次回填覆盖。
-func TestS06DeferredFailureKeepsNewerPendingActivity(t *testing.T) {
+func TestDeferredFailureKeepsNewerPendingActivity(t *testing.T) {
 	repo := &deferredDrainRepository{entered: make(chan struct{}), release: make(chan struct{}), err: errors.New("forced write failure")}
 	wheel, err := NewTimingWheelService()
 	require.NoError(t, err)

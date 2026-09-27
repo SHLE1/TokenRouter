@@ -9,7 +9,7 @@ import (
 )
 
 // 缓存副本中的任意 JSON 数组/对象修改都不能污染已发布快照。
-func TestS06PricingConfigNestedSnapshotIsolation(t *testing.T) {
+func TestPricingConfigNestedSnapshotIsolation(t *testing.T) {
 	source := &GroupRoutingPolicy{FeaturesConfig: map[string]any{"extension": []any{map[string]any{"enabled": true}, []any{"original"}}}}
 	copied := source.Clone()
 	values, ok := copied.FeaturesConfig["extension"].([]any)
@@ -31,7 +31,7 @@ func TestS06PricingConfigNestedSnapshotIsolation(t *testing.T) {
 }
 
 // 发布快照后输入仍由存储调用者拥有，后续修改不得改变缓存值或分组关联。
-func TestS06PricingConfigPublicationOwnsSnapshot(t *testing.T) {
+func TestPricingConfigPublicationOwnsSnapshot(t *testing.T) {
 	pricingConfigs := []PricingConfig{{ID: 1, Status: StatusActive, GroupIDs: []int64{9}}}
 
 	cache := populatePricingConfigCache(pricingConfigs)

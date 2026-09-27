@@ -11,18 +11,18 @@ import (
 )
 
 // 隐私观测沿用原 Extra/outbox 提交，身份改变或事件失败不得写入成功模式。
-func TestS06PrivacyObservationIdentityAndOutbox(t *testing.T) {
+func TestPrivacyObservationIdentityAndOutbox(t *testing.T) {
 	for _, platform := range []string{provider.PlatformOpenAI, provider.PlatformAntigravity} {
 		for _, scenario := range []string{"success", "credential_changed", "status_changed", "outbox_failure"} {
 			t.Run(platform+"/"+scenario, func(t *testing.T) {
 				ctx := context.Background()
 				client := testEntClient(t)
-				row, err := client.Provider.Create().SetName("s06-privacy").SetPlatform(platform).SetType(provider.ProviderTypeOAuth).SetStatus(provider.StatusActive).SetCredentials(map[string]any{"access_token": "old", "project_id": "fixture"}).SetExtra(map[string]any{"privacy_mode": "previous"}).Save(ctx)
+				row, err := client.Provider.Create().SetName("test-privacy").SetPlatform(platform).SetType(provider.ProviderTypeOAuth).SetStatus(provider.StatusActive).SetCredentials(map[string]any{"access_token": "old", "project_id": "fixture"}).SetExtra(map[string]any{"privacy_mode": "previous"}).Save(ctx)
 				require.NoError(t, err)
 				t.Cleanup(func() { require.NoError(t, client.Provider.DeleteOneID(row.ID).Exec(ctx)) })
 				store := newProviderStoreContract(client, integrationDB, nil)
 				if scenario == "outbox_failure" {
-					store.SetEvents(s06FailConfigurationOutbox{})
+					store.SetEvents(failConfigurationOutbox{})
 				}
 				v, err := store.GetByID(ctx, row.ID)
 				require.NoError(t, err)

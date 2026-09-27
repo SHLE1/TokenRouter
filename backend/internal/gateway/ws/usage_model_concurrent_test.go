@@ -6,7 +6,7 @@ import (
 )
 
 // 复用生产上下行调用的两个方法，以同一开始屏障固定并发读写。
-func TestS09WSUsageModelConcurrentDirections(t *testing.T) {
+func TestWSUsageModelConcurrentDirections(t *testing.T) {
 	m := NewUsageMeta("first", nil, nil)
 	start := make(chan struct{})
 	var wg sync.WaitGroup

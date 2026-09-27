@@ -89,7 +89,8 @@ type systemUpdateErrorEnvelope struct {
 func newSystemHandlerTestRouter(t *testing.T, updateSvc *systemHandlerUpdateServiceStub, repo *systemOperationFixture) *gin.Engine {
 	t.Helper()
 
-	lockSvc := maintenance.NewSystemOperationLockService(repo, maintenance.Options{Log: logging.LegacyPrintf,
+	lockSvc := maintenance.NewSystemOperationLockService(repo, maintenance.Options{
+		Log:                logging.LegacyPrintf,
 		ProcessingTimeout:  time.Second,
 		SystemOperationTTL: time.Minute,
 	})
@@ -339,13 +340,13 @@ func TestSystemHandlerGetRollbackVersionsError(t *testing.T) {
 }
 
 // 重启 HTTP 仍先返回原响应形状，实际延迟和平台分支由 lifecycle 单独验证。
-type s14RestartRecorder struct{ calls int }
+type restartRecorder struct{ calls int }
 
-func (r *s14RestartRecorder) RequestRestart() error { r.calls++; return nil }
+func (r *restartRecorder) RequestRestart() error { r.calls++; return nil }
 func TestSystemHandlerRestartPreservesResponse(t *testing.T) {
 	repo := newSystemOperationFixture()
 	lock := maintenance.NewSystemOperationLockService(repo, maintenance.Options{Log: logging.LegacyPrintf, ProcessingTimeout: time.Hour, SystemOperationTTL: time.Hour})
-	restart := &s14RestartRecorder{}
+	restart := &restartRecorder{}
 	handler := NewSystemHandler(&systemHandlerUpdateServiceStub{}, lock, restart)
 	router := gin.New()
 	router.POST("/api/v1/admin/system/restart", handler.RestartService)

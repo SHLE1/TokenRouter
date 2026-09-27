@@ -17,7 +17,7 @@ import (
 )
 
 // 真实 Redis 中旧锁自然过期后，旧句柄不能释放继任持有者的锁。
-func TestS07BucketLeaseExpiredOwnerCannotReleaseSuccessor(t *testing.T) {
+func TestBucketLeaseExpiredOwnerCannotReleaseSuccessor(t *testing.T) {
 	ctx := context.Background()
 	rdb := testRedis(t)
 	cache := NewSnapshotCache(rdb, codec.ProviderCodec{})
@@ -47,18 +47,18 @@ func TestS07BucketLeaseExpiredOwnerCannotReleaseSuccessor(t *testing.T) {
 }
 
 // 仅注入增加操作的传输错误，查询和释放继续操作真实 Redis。
-type s07WaitIncrementFault struct{ scheduler.ConcurrencyCache }
+type waitIncrementFault struct{ scheduler.ConcurrencyCache }
 
-func (c s07WaitIncrementFault) IncrementWaitCount(context.Context, int64, int) (bool, error) {
+func (c waitIncrementFault) IncrementWaitCount(context.Context, int64, int) (bool, error) {
 	return false, errors.New("增加等待计数未确认")
 }
 
-func (c s07WaitIncrementFault) IncrementProviderWaitCount(context.Context, int64, int) (bool, error) {
+func (c waitIncrementFault) IncrementProviderWaitCount(context.Context, int64, int) (bool, error) {
 	return false, errors.New("增加提供商等待计数未确认")
 }
 
 // 错误放行后立即退出，不能递减 Redis 中另一个请求持有的用户或提供商计数。
-func TestS07WaitFailOpenDoesNotReleaseOtherRequest(t *testing.T) {
+func TestWaitFailOpenDoesNotReleaseOtherRequest(t *testing.T) {
 	ctx := context.Background()
 	rdb := testRedis(t)
 	cache := NewConcurrencyCache(rdb, 15, 900)
@@ -68,7 +68,7 @@ func TestS07WaitFailOpenDoesNotReleaseOtherRequest(t *testing.T) {
 	providerAllowed, err := cache.IncrementProviderWaitCount(ctx, 91002, 20)
 	require.NoError(t, err)
 	require.True(t, providerAllowed)
-	concurrency := scheduler.NewConcurrencyService(s07WaitIncrementFault{cache}, scheduler.Diagnostics{
+	concurrency := scheduler.NewConcurrencyService(waitIncrementFault{cache}, scheduler.Diagnostics{
 		Logf: logging.LegacyPrintf,
 
 		Event: logging.Event,

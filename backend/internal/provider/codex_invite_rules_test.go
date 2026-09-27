@@ -6,7 +6,7 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 
-	s15httpx "github.com/TokenFlux/TokenRouter/internal/server/httpx"
+	"github.com/TokenFlux/TokenRouter/internal/server/httpx"
 	"github.com/stretchr/testify/require"
 )
 
@@ -23,7 +23,7 @@ func TestNormalizeCodexInviteResetGrantType(t *testing.T) {
 func TestNormalizeCodexInviteEmailsRejectsInvalidAndTooMany(t *testing.T) {
 	_, err := normalizeCodexInviteEmails([]string{"bad-email"})
 	require.Error(t, err)
-	require.Equal(t, http.StatusBadRequest, s15httpx.ErrorCode(err))
+	require.Equal(t, http.StatusBadRequest, httpx.ErrorCode(err))
 
 	_, err = normalizeCodexInviteEmails([]string{"a@x.com,b@x.com,c@x.com,d@x.com,e@x.com,f@x.com"})
 	require.Error(t, err)

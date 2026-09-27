@@ -8,7 +8,7 @@ import (
 )
 
 // 缓存写入和返回都必须隔离，不因多个请求共享来源而串改策略。
-func TestS06TLSProfileSnapshotIsolation(t *testing.T) {
+func TestTLSProfileSnapshotIsolation(t *testing.T) {
 	source := &TLSFingerprintProfile{ID: 1, Name: "profile", CipherSuites: []uint16{4865}, ALPNProtocols: []string{"h2"}}
 	svc := NewTLSFingerprintProfileService(nil, nil)
 	svc.setLocalCache([]*TLSFingerprintProfile{source})
@@ -21,7 +21,8 @@ func TestS06TLSProfileSnapshotIsolation(t *testing.T) {
 	source.CipherSuites[0] = 4867
 	require.Equal(t, uint16(4865), svc.GetProfileByID(1).CipherSuites[0])
 }
-func TestS06TLSRouterSnapshotIsolation(t *testing.T) {
+
+func TestTLSRouterSnapshotIsolation(t *testing.T) {
 	id := int64(1)
 	source := &TLSFingerprintRouter{ID: 1, Name: "router", Enabled: true, ChatGPTOAuthTokenTLSFingerprintProfileID: &id}
 	svc := NewTLSFingerprintRouterService(nil, nil)

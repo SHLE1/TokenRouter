@@ -64,14 +64,6 @@ func MatchProviderStatsRule(rule *ProviderStatsPricingRule, providerID, groupID 
 	return false
 }
 
-// FindPricingForModel 在定价列表中查找匹配的模型定价。
-// 先精确匹配，再通配符匹配（按配置顺序，先匹配先使用）。
-//
-//nolint:unused // 兼容旧测试入口；生产路径需要过滤空定价行并调用 FindEffectivePricingForModel。
-func FindPricingForModel(pricingList []ModelPricingEntry, modelLower string) *ModelPricingEntry {
-	return FindPricingForModelByPredicate(pricingList, modelLower, nil)
-}
-
 // FindEffectivePricingForModel 用于提供商统计成本规则。
 // 空定价行只是配置占位，不是成本规则；显式 0 指针仍视为有效，返回 0 成本覆盖。
 func FindEffectivePricingForModel(pricingList []ModelPricingEntry, modelLower string) *ModelPricingEntry {
@@ -80,6 +72,7 @@ func FindEffectivePricingForModel(pricingList []ModelPricingEntry, modelLower st
 	})
 }
 
+// FindPricingForModelByPredicate 在通过筛选的定价行中先精确匹配，再按配置顺序匹配通配符。
 func FindPricingForModelByPredicate(pricingList []ModelPricingEntry, modelLower string, include func(*ModelPricingEntry) bool) *ModelPricingEntry {
 	if include == nil {
 		include = func(*ModelPricingEntry) bool { return true }

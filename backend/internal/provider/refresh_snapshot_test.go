@@ -9,7 +9,7 @@ import (
 )
 
 // 凭据交换失败后用于条件写入的快照必须保持交换前的嵌套值，不能被执行器改写。
-func TestS06RefreshAttemptSnapshotIsolation(t *testing.T) {
+func TestRefreshAttemptSnapshotIsolation(t *testing.T) {
 	credentials := map[string]any{"refresh_token": "initial", "session": map[string]any{"cookie": "initial"}}
 	provider := &Record{ID: 1, Platform: PlatformOpenAI, Type: ProviderTypeOAuth, Credentials: credentials}
 	attempted := snapshotRefreshRecord(provider)

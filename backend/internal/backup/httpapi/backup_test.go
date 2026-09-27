@@ -20,7 +20,7 @@ func (emptyBackupSettings) GetValue(context.Context, string) (string, error) { r
 func (emptyBackupSettings) Set(context.Context, string, string) error        { return nil }
 
 // 恢复密码在 handler 层复核；路由管理员/step-up 仍由原 server 路由契约覆盖。
-func TestS14RestorePasswordBoundary(t *testing.T) {
+func TestRestorePasswordBoundary(t *testing.T) {
 	for _, tc := range []struct {
 		name, body     string
 		subject, valid bool

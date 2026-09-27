@@ -55,8 +55,8 @@ func TestFixedWindowConcurrentCounts(t *testing.T) {
 // TestRedisSessionConcurrentConsumption 验证新旧实例共享 JSON/键格式且只能有一个领取者。
 func TestRedisSessionConcurrentConsumption(t *testing.T) {
 	client := startRedis(t, t.Context())
-	first := session.New(client, "s01:session", time.Minute)
-	second := session.New(client, "s01:session:", time.Minute)
+	first := session.New(client, "test:session", time.Minute)
+	second := session.New(client, "test:session:", time.Minute)
 	expected := map[string]string{"state": "opaque", "verifier": "test-value"}
 	require.NoError(t, first.Set(t.Context(), " id ", expected))
 	var decoded map[string]string
@@ -92,7 +92,7 @@ func TestRedisSessionConcurrentConsumption(t *testing.T) {
 	found, err = second.Get(t.Context(), "id", &decoded)
 	require.NoError(t, err)
 	require.False(t, found)
-	exists, err := client.Exists(t.Context(), "s01:session:id", "s01:session:used:id").Result()
+	exists, err := client.Exists(t.Context(), "test:session:id", "test:session:used:id").Result()
 	require.NoError(t, err)
 	require.Zero(t, exists)
 }

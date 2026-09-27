@@ -16,8 +16,8 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
-// provideS13BatchRuntime 直接绑定唯一资金、处理和恢复实例，保留原四条运行循环。
-func provideS13BatchRuntime(repo batchimage.BatchImageRepository, providers *providerpostgres.ProviderStore, queue batchimage.BatchImageQueue, funds *billing.Funds, logs usage.UsageLogRepository, pricing *batchimage.Pricing, auth apikey.APIKeyAuthCacheInvalidator, cfg *config.Config, registry *batchimage.Registry[batchprovider.BatchImageProvider]) *batchimage.Runtime {
+// provideBatchRuntime 绑定批量图片的资金、处理和恢复实例及后台运行循环。
+func provideBatchRuntime(repo batchimage.BatchImageRepository, providers *providerpostgres.ProviderStore, queue batchimage.BatchImageQueue, funds *billing.Funds, logs usage.UsageLogRepository, pricing *batchimage.Pricing, auth apikey.APIKeyAuthCacheInvalidator, cfg *config.Config, registry *batchimage.Registry[batchprovider.BatchImageProvider]) *batchimage.Runtime {
 	funding := batchimage.Funding{Store: funds, Observe: creativeObserve}
 	processor := &batchimage.ProviderProcessor{Repo: repo, Funding: funding, Observe: creativeObserve, ResolveProvider: (batchprovider.ResultAccess{Registry: registry, Providers: providers}).Process}
 	settlement := &batchimage.Settlement{Repo: repo, Funding: funding, Observe: creativeObserve}

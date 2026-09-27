@@ -25,7 +25,7 @@ import (
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 
-	s15httpx "github.com/TokenFlux/TokenRouter/internal/server/httpx"
+	"github.com/TokenFlux/TokenRouter/internal/server/httpx"
 	"github.com/stretchr/testify/require"
 )
 
@@ -189,7 +189,7 @@ func TestResetCreditShadowRejected(t *testing.T) {
 	require.ErrorIs(t, err, providercore.ErrSparkShadowResetNotSupported,
 		"shadow ResetCredit should return ErrSparkShadowResetNotSupported, got: %v", err)
 	// 外审 F6:必须是结构化 409(而非裸 error→500)。
-	require.Equal(t, http.StatusConflict, s15httpx.ErrorCode(err),
+	require.Equal(t, http.StatusConflict, httpx.ErrorCode(err),
 		"shadow ResetCredit 应映射为 409 Conflict 而非 500")
 }
 

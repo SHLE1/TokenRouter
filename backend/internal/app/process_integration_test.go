@@ -142,11 +142,11 @@ func waitProcessHTTP(t *testing.T, p *testProcess, port int, path string) string
 	return ""
 }
 
-func TestS02ProcessModes(t *testing.T) {
+func TestProcessModes(t *testing.T) {
 	backendRoot, err := filepath.Abs(filepath.Join("..", ".."))
 	require.NoError(t, err)
 	binary := filepath.Join(t.TempDir(), "server")
-	build := exec.Command("go", "build", "-ldflags=-X main.Version=s02-contract -X main.Commit=s02-head -X main.Date=s02-date -X main.BuildType=test", "-o", binary, "./cmd/server")
+	build := exec.Command("go", "build", "-ldflags=-X main.Version=test-contract -X main.Commit=test-head -X main.Date=test-date -X main.BuildType=test", "-o", binary, "./cmd/server")
 	build.Dir = backendRoot
 	build.Env = append(os.Environ(), "GOTOOLCHAIN=go1.27.0")
 	buildOutput, err := build.CombinedOutput()
@@ -154,7 +154,7 @@ func TestS02ProcessModes(t *testing.T) {
 	t.Run("version", func(t *testing.T) {
 		p := startTestProcess(t, binary, t.TempDir(), nil, "-version")
 		require.NoError(t, p.wait(t, 30*time.Second))
-		require.Contains(t, p.output.text(), "Sub2API s02-contract (commit: s02-head, built: s02-date)")
+		require.Contains(t, p.output.text(), "Sub2API test-contract (commit: test-head, built: test-date)")
 		require.NotContains(t, p.output.text(), "[Lifecycle] started")
 	})
 	fixture := newDatabaseFixture(t)
@@ -167,14 +167,14 @@ func TestS02ProcessModes(t *testing.T) {
 	redisPort, err := rdb.MappedPort(ctx, "6379/tcp")
 	require.NoError(t, err)
 	pricing := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = io.WriteString(w, `{"s02-model":{"input_cost_per_token":0.000001,"output_cost_per_token":0.000002}}`)
+		_, _ = io.WriteString(w, `{"test-model":{"input_cost_per_token":0.000001,"output_cost_per_token":0.000002}}`)
 	}))
 	t.Cleanup(pricing.Close)
 	configFor := func(t *testing.T, mode, dbname string, port int) (string, []string) {
 		t.Helper()
 		dir := t.TempDir()
 		priceFile := filepath.Join(dir, "prices.json")
-		require.NoError(t, os.WriteFile(priceFile, []byte(`{"s02-model":{"input_cost_per_token":0.000001}}`), 0o600))
+		require.NoError(t, os.WriteFile(priceFile, []byte(`{"test-model":{"input_cost_per_token":0.000001}}`), 0o600))
 		cfg := map[string]any{
 			"run_mode": mode, "timezone": "UTC",
 			"server":   map[string]any{"host": "127.0.0.1", "port": port, "mode": "release"},
@@ -186,7 +186,7 @@ func TestS02ProcessModes(t *testing.T) {
 		data, err := yaml.Marshal(cfg)
 		require.NoError(t, err)
 		require.NoError(t, os.WriteFile(filepath.Join(dir, "config.yaml"), data, 0o600))
-		return dir, []string{"PGAPPNAME=s02-" + mode}
+		return dir, []string{"PGAPPNAME=test-" + mode}
 	}
 	// 旧运行模式键仅作为升级兼容输入，启动不能修改既有管理员并发。
 	for _, mode := range []string{"standard", "simple"} {
@@ -199,7 +199,7 @@ func TestS02ProcessModes(t *testing.T) {
 				t.Cleanup(func() { require.NoError(t, fixture.client.User.DeleteOneID(row.ID).Exec(context.Background())) })
 			}
 			port := freeServerPort(t)
-			dir, env := configFor(t, mode, "s02_contracts", port)
+			dir, env := configFor(t, mode, "test_contracts", port)
 			p := startTestProcess(t, binary, dir, env)
 			waitProcessHTTP(t, p, port, "/health")
 			for id, concurrency := range administrators {
@@ -335,7 +335,7 @@ func TestS02ProcessModes(t *testing.T) {
 			require.NotContains(t, logs, "[Lifecycle] started TLSFingerprintCollectorService")
 			require.Eventually(t, func() bool {
 				var n int
-				err := fixture.db.QueryRow(`SELECT count(*) FROM pg_stat_activity WHERE application_name=$1`, "s02-"+mode).Scan(&n)
+				err := fixture.db.QueryRow(`SELECT count(*) FROM pg_stat_activity WHERE application_name=$1`, "test-"+mode).Scan(&n)
 				return err == nil && n == 0
 			}, 3*time.Second, 25*time.Millisecond)
 		})
@@ -350,13 +350,13 @@ func TestS02ProcessModes(t *testing.T) {
 		data, e := build.CombinedOutput()
 		require.NoError(t, e, string(data))
 		var id int64
-		email := "s05-jwtgen@example.com"
+		email := "test-jwtgen@example.com"
 		require.NoError(t, fixture.db.QueryRow("INSERT INTO users(email,password_hash,role,status) VALUES($1,'fixture','admin','active') RETURNING id", email).Scan(&id))
 		defer func() { _, e := fixture.db.Exec("DELETE FROM users WHERE id=$1", id); require.NoError(t, e) }()
 		var secret string
 		require.NoError(t, fixture.db.QueryRow("SELECT value FROM security_secrets WHERE key='jwt_secret'").Scan(&secret))
 		for _, args := range [][]string{nil, {"-email", email}} {
-			dir, env := configFor(t, "standard", "s02_contracts", freeServerPort(t))
+			dir, env := configFor(t, "standard", "test_contracts", freeServerPort(t))
 			p := startTestProcess(t, tool, dir, env, args...)
 			require.NoError(t, p.wait(t, 30*time.Second))
 			output := p.output.text()
@@ -389,7 +389,7 @@ func TestS02ProcessModes(t *testing.T) {
 		defer func() { _, e := fixture.db.Exec("DELETE FROM ops_error_logs WHERE id=$1", id); require.NoError(t, e) }()
 		before := time.Now().Add(time.Hour).UTC().Format(time.RFC3339)
 		for _, execute := range []bool{false, true} {
-			dir, env := configFor(t, "standard", "s02_contracts", freeServerPort(t))
+			dir, env := configFor(t, "standard", "test_contracts", freeServerPort(t))
 			args := []string{"--before", before}
 			if execute {
 				args = append(args, "--execute")
@@ -410,7 +410,7 @@ func TestS02ProcessModes(t *testing.T) {
 				require.Equal(t, 1, count)
 			}
 		}
-		dir, env := configFor(t, "standard", "s02_contracts", freeServerPort(t))
+		dir, env := configFor(t, "standard", "test_contracts", freeServerPort(t))
 		invalid := startTestProcess(t, tool, dir, env)
 		require.Error(t, invalid.wait(t, 30*time.Second))
 		require.Contains(t, invalid.output.text(), "--before is required")
@@ -426,14 +426,14 @@ func TestS02ProcessModes(t *testing.T) {
 			_, err := fixture.db.Exec(`UPDATE security_secrets SET value=$1 WHERE key='jwt_secret'`, original)
 			require.NoError(t, err)
 		}()
-		dir, env := configFor(t, "standard", "s02_contracts", freeServerPort(t))
+		dir, env := configFor(t, "standard", "test_contracts", freeServerPort(t))
 		p := startTestProcess(t, binary, dir, env)
 		require.Error(t, p.wait(t, 30*time.Second))
 		require.Contains(t, p.output.text(), "must be at least 32 bytes")
 		require.NotContains(t, p.output.text(), "[Lifecycle] started")
 		require.Eventually(t, func() bool {
 			var n int
-			err := fixture.db.QueryRow(`SELECT count(*) FROM pg_stat_activity WHERE application_name='s02-standard'`).Scan(&n)
+			err := fixture.db.QueryRow(`SELECT count(*) FROM pg_stat_activity WHERE application_name='test-standard'`).Scan(&n)
 			return err == nil && n == 0
 		}, 3*time.Second, 25*time.Millisecond)
 	})
@@ -443,7 +443,7 @@ func TestS02ProcessModes(t *testing.T) {
 		defer func() { _ = ln.Close() }()
 		address, ok := ln.Addr().(*net.TCPAddr)
 		require.True(t, ok)
-		dir, env := configFor(t, "standard", "s02_contracts", address.Port)
+		dir, env := configFor(t, "standard", "test_contracts", address.Port)
 		p := startTestProcess(t, binary, dir, env)
 		require.Error(t, p.wait(t, 60*time.Second))
 		require.Contains(t, p.output.text(), "address already in use")
@@ -459,7 +459,7 @@ func TestS02ProcessModes(t *testing.T) {
 		require.NotContains(t, p.output.text(), "[Lifecycle] started")
 	})
 	t.Run("cli-setup", func(t *testing.T) {
-		_, err := fixture.db.Exec(`CREATE DATABASE ` + pq.QuoteIdentifier("s02_cli"))
+		_, err := fixture.db.Exec(`CREATE DATABASE ` + pq.QuoteIdentifier("test_cli"))
 		require.NoError(t, err)
 		dir := t.TempDir()
 		p := startTestProcess(t, binary, dir, nil, "-setup")
@@ -469,16 +469,16 @@ func TestS02ProcessModes(t *testing.T) {
 			{"PostgreSQL Port", strconv.Itoa(fixture.port)},
 			{"PostgreSQL User", "postgres"},
 			{"PostgreSQL Password", "postgres"},
-			{"Database Name", "s02_cli"},
+			{"Database Name", "test_cli"},
 			{"SSL Mode", "disable"},
 			{"Redis Host", redisHost},
 			{"Redis Port", strconv.Itoa(redisPort.Int())},
 			{"Redis Password", ""},
 			{"Redis DB", "0"},
 			{"Enable Redis TLS?", "n"},
-			{"Admin Email", "s02-cli@example.test"},
-			{"Admin Password", "s02-test-password"},
-			{"Confirm Password", "s02-test-password"},
+			{"Admin Email", "test-cli@example.test"},
+			{"Admin Password", "test-test-password"},
+			{"Confirm Password", "test-test-password"},
 			{"Server Port", strconv.Itoa(freeServerPort(t))},
 			{"Proceed with installation?", "y"},
 		} {
@@ -494,13 +494,13 @@ func TestS02ProcessModes(t *testing.T) {
 		require.NotContains(t, p.output.text(), "[Lifecycle] started")
 	})
 	t.Run("auto-setup", func(t *testing.T) {
-		_, err := fixture.db.Exec(`CREATE DATABASE ` + pq.QuoteIdentifier("s02_auto"))
+		_, err := fixture.db.Exec(`CREATE DATABASE ` + pq.QuoteIdentifier("test_auto"))
 		require.NoError(t, err)
 		dir := t.TempDir()
 		port := freeServerPort(t)
 		p := startTestProcess(t, binary, dir, []string{
-			"AUTO_SETUP=true", "DATABASE_HOST=" + fixture.host, "DATABASE_PORT=" + strconv.Itoa(fixture.port), "DATABASE_USER=postgres", "DATABASE_PASSWORD=postgres", "DATABASE_DBNAME=s02_auto", "DATABASE_SSLMODE=disable",
-			"REDIS_HOST=" + redisHost, "REDIS_PORT=" + strconv.Itoa(redisPort.Int()), "ADMIN_EMAIL=s02-auto@example.test", "ADMIN_PASSWORD=s02-test-password", "SERVER_HOST=127.0.0.1", "SERVER_PORT=" + strconv.Itoa(port),
+			"AUTO_SETUP=true", "DATABASE_HOST=" + fixture.host, "DATABASE_PORT=" + strconv.Itoa(fixture.port), "DATABASE_USER=postgres", "DATABASE_PASSWORD=postgres", "DATABASE_DBNAME=test_auto", "DATABASE_SSLMODE=disable",
+			"REDIS_HOST=" + redisHost, "REDIS_PORT=" + strconv.Itoa(redisPort.Int()), "ADMIN_EMAIL=test-auto@example.test", "ADMIN_PASSWORD=test-test-password", "SERVER_HOST=127.0.0.1", "SERVER_PORT=" + strconv.Itoa(port),
 			"PRICING_REMOTE_URL=" + pricing.URL, "PRICING_HASH_URL=" + pricing.URL, "PRICING_DATA_DIR=" + dir, "LOG_OUTPUT_TO_FILE=false",
 		})
 		waitProcessHTTP(t, p, port, "/health")

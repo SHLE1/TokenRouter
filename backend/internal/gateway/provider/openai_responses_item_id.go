@@ -6,7 +6,7 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 
-	s09wire "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
+	openaiprotocol "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
@@ -31,7 +31,7 @@ func SanitizeOpenAIResponsesInputItemIDs(body []byte) ([]byte, bool, error) {
 			itemType := item.Get("type")
 			id := item.Get("id")
 			trimmedItemType := strings.TrimSpace(itemType.String())
-			parsed.stripCallID = item.Get("call_id").Exists() && s09wire.ShouldStripNonPairCallID(trimmedItemType)
+			parsed.stripCallID = item.Get("call_id").Exists() && openaiprotocol.ShouldStripNonPairCallID(trimmedItemType)
 			if id.Type == gjson.String {
 				parsed.stripID = openai.ShouldStripOpenAIResponsesInputItemID(trimmedItemType, id.String())
 			}

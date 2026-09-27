@@ -10,7 +10,7 @@ import (
 	settingskit "github.com/TokenFlux/TokenRouter/internal/settings/testkit"
 
 	"github.com/TokenFlux/TokenRouter/internal/identity"
-	s15httpx "github.com/TokenFlux/TokenRouter/internal/server/httpx"
+	"github.com/TokenFlux/TokenRouter/internal/server/httpx"
 	"github.com/TokenFlux/TokenRouter/internal/settings/composite"
 
 	"github.com/TokenFlux/TokenRouter/internal/config"
@@ -79,11 +79,11 @@ func TestSettingService_UpdateDefaultUserAPIKeyLimit(t *testing.T) {
 
 	err := svc.Save(context.Background(), &composite.Snapshot{DefaultUserAPIKeyLimit: -1})
 	require.ErrorIs(t, err, identity.ErrUserAPIKeyLimitInvalid)
-	require.Equal(t, 400, s15httpx.ErrorCode(err))
+	require.Equal(t, 400, httpx.ErrorCode(err))
 
 	err = svc.Save(context.Background(), &composite.Snapshot{DefaultUserAPIKeyLimit: identity.MaxUserAPIKeyLimit + 1})
 	require.ErrorIs(t, err, identity.ErrUserAPIKeyLimitInvalid)
-	require.Equal(t, 400, s15httpx.ErrorCode(err))
+	require.Equal(t, 400, httpx.ErrorCode(err))
 }
 
 func stringPointer(value string) *string {

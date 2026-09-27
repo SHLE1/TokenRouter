@@ -45,13 +45,13 @@ func (f antigravityFixtureTransport) RoundTrip(request *http.Request) (*http.Res
 	return f.transport.RoundTrip(copy)
 }
 
-func TestS09AntigravityNativeRefreshUsesOriginalCAS(t *testing.T) {
+func TestAntigravityNativeRefreshUsesOriginalCAS(t *testing.T) {
 	for _, changed := range []bool{false, true} {
 		t.Run(fmt.Sprintf("administrator=%v", changed), func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cancel()
 			client := testEntClient(t)
-			row, err := client.Provider.Create().SetName(fmt.Sprintf("s09-antigravity-%d", time.Now().UnixNano())).SetPlatform(capability.PlatformAntigravity).SetType(capability.ProviderTypeOAuth).SetCredentials(map[string]any{"access_token": "expired", "refresh_token": "original", "expires_at": time.Now().Add(-time.Hour).Unix(), "project_id": "fixture-project", "email": "fixture@example.invalid"}).Save(ctx)
+			row, err := client.Provider.Create().SetName(fmt.Sprintf("test-antigravity-%d", time.Now().UnixNano())).SetPlatform(capability.PlatformAntigravity).SetType(capability.ProviderTypeOAuth).SetCredentials(map[string]any{"access_token": "expired", "refresh_token": "original", "expires_at": time.Now().Add(-time.Hour).Unix(), "project_id": "fixture-project", "email": "fixture@example.invalid"}).Save(ctx)
 			require.NoError(t, err)
 			t.Cleanup(func() { require.NoError(t, client.Provider.DeleteOneID(row.ID).Exec(context.Background())) })
 			repo := newProviderStoreContract(client, integrationDB, nil)

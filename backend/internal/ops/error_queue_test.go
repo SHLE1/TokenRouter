@@ -35,6 +35,7 @@ func TestOpsErrorLogQueueByteBudget(t *testing.T) {
 		t.Fatalf("queue length = %d, want 1", got)
 	}
 }
+
 func TestEstimateOpsErrorLogJobBytesIncludesVariablePayloads(t *testing.T) {
 	base := estimateOpsErrorLogJobBytes(&OpsInsertErrorLogInput{})
 	message := "upstream message"
@@ -52,6 +53,7 @@ func TestEstimateOpsErrorLogJobBytesIncludesVariablePayloads(t *testing.T) {
 		t.Fatalf("estimated bytes = %d, expected variable payloads above %d", got, base+1024)
 	}
 }
+
 func TestEnqueueOpsErrorLog_QueueFullDrop(t *testing.T) {
 	resetOpsErrorLoggerStateForTest(t)
 
@@ -72,6 +74,7 @@ func TestEnqueueOpsErrorLog_QueueFullDrop(t *testing.T) {
 	require.Equal(t, int64(1), testErrorQueue.OpsErrorLogDroppedTotal())
 	require.Equal(t, int64(1), testErrorQueue.OpsErrorLogQueueLength())
 }
+
 func TestEnqueueOpsErrorLog_EarlyReturnBranches(t *testing.T) {
 	resetOpsErrorLoggerStateForTest(t)
 
@@ -105,6 +108,7 @@ func TestEnqueueOpsErrorLog_EarlyReturnBranches(t *testing.T) {
 	testErrorQueue.Enqueue(ops, entry)
 	require.Equal(t, int64(0), testErrorQueue.OpsErrorLogEnqueuedTotal())
 }
+
 func TestEnqueueOpsErrorLog_SanitizesAndBoundsBodyBeforeQueue(t *testing.T) {
 	setupOpsErrorLogTestQueue(t, 1)
 	ops := newLegacyShapeOpsService(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
@@ -121,6 +125,7 @@ func TestEnqueueOpsErrorLog_SanitizesAndBoundsBodyBeforeQueue(t *testing.T) {
 	require.NotContains(t, job.entry.ErrorBody, secret)
 	require.Equal(t, int64(1), testErrorQueue.OpsErrorLogSanitizedTotal())
 }
+
 func TestNormalizeOpsPersistentUserAgentBoundsAndPreservesUTF8(t *testing.T) {
 	value := strings.Repeat("a", opsErrorLogMaxUserAgentBytes-1) + "你" + strings.Repeat("b", 32)
 	got := normalizeOpsPersistentUserAgent("  " + value + "  ")
@@ -155,6 +160,7 @@ func resetOpsErrorLoggerStateForTest(t *testing.T) {
 	require.NoError(t, testErrorQueue.Shutdown(ctx))
 	testErrorQueue = NewErrorLogQueue(ErrorLogQueueOptions{})
 }
+
 func setupOpsErrorLogTestQueue(t *testing.T, size int) {
 	resetOpsErrorLoggerStateForTest(t)
 	testErrorQueue.opsErrorLogOnce.Do(func() {})
@@ -162,7 +168,7 @@ func setupOpsErrorLogTestQueue(t *testing.T, size int) {
 }
 
 // 构造与停止不启动懒队列，停止后的提交也不能重新开启 worker。
-func TestS08ErrorQueueConstructAndStopDoNotStartWorkers(t *testing.T) {
+func TestErrorQueueConstructAndStopDoNotStartWorkers(t *testing.T) {
 	starts := 0
 	q := NewErrorLogQueue(ErrorLogQueueOptions{Processors: func() int { starts++; return 2 }})
 	require.Zero(t, starts)

@@ -36,7 +36,7 @@ func TestPaymentRefundPostgresAtomicity(t *testing.T) {
 			var calls atomic.Int32
 			ready := make(chan struct{})
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.Method != http.MethodGet || r.URL.Path != "/v1/refunds/re_s00" {
+				if r.Method != http.MethodGet || r.URL.Path != "/v1/refunds/re_test" {
 					http.Error(w, "unexpected refund request", http.StatusBadRequest)
 					return
 				}
@@ -53,7 +53,7 @@ func TestPaymentRefundPostgresAtomicity(t *testing.T) {
 				}
 				w.Header().Set("Content-Type", "application/json")
 				_ = json.NewEncoder(w).Encode(map[string]string{
-					"id": "re_s00", "object": "refund", "status": "succeeded",
+					"id": "re_test", "object": "refund", "status": "succeeded",
 				})
 			}))
 			t.Cleanup(server.Close)
@@ -63,11 +63,11 @@ func TestPaymentRefundPostgresAtomicity(t *testing.T) {
 			}))
 			t.Cleanup(func() { stripe.SetBackend(stripe.APIBackend, originalBackend) })
 
-			user, err := client.User.Create().SetEmail("s00-refund@example.com").
-				SetPasswordHash("test-hash").SetUsername("s00-refund").SetBalance(100).Save(ctx)
+			user, err := client.User.Create().SetEmail("test-refund@example.com").
+				SetPasswordHash("test-hash").SetUsername("test-refund").SetBalance(100).Save(ctx)
 			require.NoError(t, err)
 			instance, err := client.PaymentProviderInstance.Create().SetProviderKey(payment.TypeStripe).
-				SetName("s00-refund").SetConfig(`{"secretKey":"test-only-key","currency":"USD"}`).
+				SetName("test-refund").SetConfig(`{"secretKey":"test-only-key","currency":"USD"}`).
 				SetSupportedTypes(payment.TypeStripe).SetRefundEnabled(true).Save(ctx)
 			require.NoError(t, err)
 			t.Cleanup(func() {
@@ -75,9 +75,9 @@ func TestPaymentRefundPostgresAtomicity(t *testing.T) {
 			})
 			order, err := client.PaymentOrder.Create().
 				SetUserID(user.ID).SetUserEmail(user.Email).SetUserName(user.Username).
-				SetAmount(50).SetPayAmount(50).SetRechargeCode("s00-refund").
-				SetOutTradeNo("s00-refund").SetPaymentType(payment.TypeStripe).
-				SetPaymentTradeNo("pi_s00").SetOrderType(payment.OrderTypeBalance).
+				SetAmount(50).SetPayAmount(50).SetRechargeCode("test-refund").
+				SetOutTradeNo("test-refund").SetPaymentType(payment.TypeStripe).
+				SetPaymentTradeNo("pi_test").SetOrderType(payment.OrderTypeBalance).
 				SetStatus(payment.OrderStatusRefundPending).SetRefundAmount(50).
 				SetExpiresAt(time.Now().Add(time.Hour)).SetPaidAt(time.Now()).
 				SetClientIP("127.0.0.1").SetSrcHost("test.local").
@@ -91,7 +91,7 @@ func TestPaymentRefundPostgresAtomicity(t *testing.T) {
 				require.NoError(t, client.PaymentOrder.DeleteOneID(order.ID).Exec(context.Background()))
 			})
 			_, err = client.PaymentAuditLog.Create().SetOrderID(orderID).SetAction("REFUND_PENDING").
-				SetOperator("admin").SetDetail(`{"refundID":"re_s00","deductBalance":true,"balanceDeducted":50,"deductionRollbackOK":true}`).Save(ctx)
+				SetOperator("admin").SetDetail(`{"refundID":"re_test","deductBalance":true,"balanceDeducted":50,"deductionRollbackOK":true}`).Save(ctx)
 			require.NoError(t, err)
 			svc := newPostgresRefundWorkflow(client)
 
@@ -121,7 +121,7 @@ func TestPaymentRefundPostgresAtomicity(t *testing.T) {
 				require.Equal(t, 1, successes)
 			} else {
 				// 触发器先确认扣款已在同一事务内可见，再使最后的审计写入失败。
-				functionName := fmt.Sprintf("s00_refund_audit_failure_%d", order.ID)
+				functionName := fmt.Sprintf("test_refund_audit_failure_%d", order.ID)
 				triggerName := functionName + "_trigger"
 				t.Cleanup(func() {
 					_, cleanupErr := integrationDB.ExecContext(context.Background(), fmt.Sprintf("DROP TRIGGER IF EXISTS %s ON payment_audit_logs", triggerName))

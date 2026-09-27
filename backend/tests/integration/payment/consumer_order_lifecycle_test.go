@@ -17,7 +17,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 
-	s15httpx "github.com/TokenFlux/TokenRouter/internal/server/httpx"
+	"github.com/TokenFlux/TokenRouter/internal/server/httpx"
 
 	"entgo.io/ent/dialect"
 	dbent "github.com/TokenFlux/TokenRouter/ent"
@@ -711,7 +711,7 @@ func TestForceExpireOrderRecordsAuditAndRejectsRepeatedTransition(t *testing.T) 
 
 	err = svc.ForceExpireOrder(ctx, order.ID, "repeat")
 	require.Error(t, err)
-	require.Equal(t, 409, s15httpx.ErrorCode(err))
+	require.Equal(t, 409, httpx.ErrorCode(err))
 	require.Equal(t, "ORDER_STATUS_CHANGED", apperror.Reason(err))
 }
 
@@ -748,7 +748,7 @@ func TestCancelOrderReturnsStatusUnavailableWhenProviderQueryFails(t *testing.T)
 
 	_, err := svc.CancelOrder(ctx, order.ID, order.UserID)
 	require.Error(t, err)
-	require.Equal(t, 503, s15httpx.ErrorCode(err))
+	require.Equal(t, 503, httpx.ErrorCode(err))
 	require.Equal(t, "PAYMENT_STATUS_UNAVAILABLE", apperror.Reason(err))
 
 	reloaded, getErr := client.PaymentOrder.Get(ctx, order.ID)

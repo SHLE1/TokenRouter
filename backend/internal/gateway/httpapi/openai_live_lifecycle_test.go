@@ -670,7 +670,7 @@ func TestFinalizeLiveCallUsageLogFallsBackToSyncCreate(t *testing.T) {
 
 // 进程停止只结束本地观察，不得将远端会话提前结算或释放其租约。
 func TestStopLiveObserversPreservesRemoteCall(t *testing.T) {
-	record := &session.LiveCallRecord{CallHash: "s02-shutdown", Controller: session.LiveControllerPending, ExpiresAt: time.Now().Add(time.Hour)}
+	record := &session.LiveCallRecord{CallHash: "test-shutdown", Controller: session.LiveControllerPending, ExpiresAt: time.Now().Add(time.Hour)}
 	store := &liveTestStore{record: record, claimErr: errors.New("temporary store failure")}
 	svc := newLiveFixture(liveFixtureInputs{store: store})
 	done := make(chan struct{})

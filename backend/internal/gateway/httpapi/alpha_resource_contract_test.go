@@ -19,21 +19,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type s09AlphaResponseBody struct {
+type alphaResponseBody struct {
 	io.ReadCloser
 	closes int
 }
 
-func (b *s09AlphaResponseBody) Close() error { b.closes++; return b.ReadCloser.Close() }
+func (b *alphaResponseBody) Close() error { b.closes++; return b.ReadCloser.Close() }
 
 // 可重试错误必须在写入响应前返回给 handler，以便切换提供商。
-func TestS09AlphaSearchFailoverClosesOriginalResponse(t *testing.T) {
+func TestAlphaSearchFailoverClosesOriginalResponse(t *testing.T) {
 	body := []byte(`{"id":"search-session","model":"gpt-5.6-sol","commands":{}}`)
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/alpha/search", bytes.NewReader(body))
 
-	closedBody := &s09AlphaResponseBody{ReadCloser: io.NopCloser(strings.NewReader(`{"error":{"message":"rate limited"}}`))}
+	closedBody := &alphaResponseBody{ReadCloser: io.NopCloser(strings.NewReader(`{"error":{"message":"rate limited"}}`))}
 	upstream := &auxiliaryHTTPRecorder{resp: &http.Response{
 		StatusCode: http.StatusTooManyRequests,
 		Header:     http.Header{"Content-Type": []string{"application/json"}},

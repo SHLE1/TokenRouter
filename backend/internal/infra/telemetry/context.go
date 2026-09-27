@@ -1,7 +1,7 @@
 // Package telemetry 拥有请求关联与时延标识；业务执行状态由网关显式投影。
 package telemetry
 
-// ContextKey 保留既有字符串键的类型身份，旧 ctxkey 以别名兼容。
+// ContextKey 区分请求观测键与普通字符串键。
 type ContextKey string
 
 const (

@@ -27,12 +27,12 @@ import (
 )
 
 // PostgreSQL 验证成功记录和 outbox 原子性；该测试不保存图片、prompt 或供应商原文。
-func TestS13ProviderOutcomeRollbackAndDeliveryLost(t *testing.T) {
+func TestProviderOutcomeRollbackAndDeliveryLost(t *testing.T) {
 	ctx := context.Background()
 	client := committedEntitlementClient(t)
-	user := mustCreateUser(t, client, &identity.User{Email: "s13-" + uuid.NewString() + "@example.com", Balance: 10})
-	group := mustCreateGroup(t, client, &routing.Group{Name: "s13-outcome-" + uuid.NewString()})
-	key := mustCreateApiKey(t, client, &apikey.APIKey{UserID: user.ID, Key: "sk-s13-" + uuid.NewString(), Name: "s13"})
+	user := mustCreateUser(t, client, &identity.User{Email: "test-" + uuid.NewString() + "@example.com", Balance: 10})
+	group := mustCreateGroup(t, client, &routing.Group{Name: "test-outcome-" + uuid.NewString()})
+	key := mustCreateApiKey(t, client, &apikey.APIKey{UserID: user.ID, Key: "sk-test-" + uuid.NewString(), Name: "test"})
 	repo := creativepg.NewCreativeRunRepository(client)
 	id := "crun_" + uuid.NewString()
 	_, err := repo.CreateCreativeRun(ctx, creative.CreateCreativeRunParams{RunID: id, UserID: user.ID, GroupID: group.ID, APIKeyID: key.ID, Model: "image", RequestedModel: "image", Operation: creative.CreativeOperationGenerate, RequestedOutputCount: 1, ImageSize: "1K", ResponseMIMEType: "image/png", PromptHash: "hash", RequestFingerprint: "fingerprint"})
@@ -40,11 +40,11 @@ func TestS13ProviderOutcomeRollbackAndDeliveryLost(t *testing.T) {
 	require.NoError(t, repo.MarkCreativeRunRunning(ctx, id, 0, time.Now()))
 	outcomes, ok := repo.(creative.ProviderOutcomeStore)
 	require.True(t, ok)
-	_, err = integrationDB.ExecContext(ctx, `CREATE FUNCTION s13_reject_outcome() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 's13 outcome audit failure'; END $$;
- CREATE TRIGGER s13_reject_outcome BEFORE INSERT ON creative_run_outbox FOR EACH ROW EXECUTE FUNCTION s13_reject_outcome();`)
+	_, err = integrationDB.ExecContext(ctx, `CREATE FUNCTION test_reject_outcome() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'test outcome audit failure'; END $$;
+ CREATE TRIGGER test_reject_outcome BEFORE INSERT ON creative_run_outbox FOR EACH ROW EXECUTE FUNCTION test_reject_outcome();`)
 	require.NoError(t, err)
 	cleanup := func() {
-		_, err := integrationDB.ExecContext(context.Background(), `DROP TRIGGER IF EXISTS s13_reject_outcome ON creative_run_outbox; DROP FUNCTION IF EXISTS s13_reject_outcome();`)
+		_, err := integrationDB.ExecContext(context.Background(), `DROP TRIGGER IF EXISTS test_reject_outcome ON creative_run_outbox; DROP FUNCTION IF EXISTS test_reject_outcome();`)
 		require.NoError(t, err)
 	}
 	t.Cleanup(cleanup)
@@ -55,7 +55,7 @@ func TestS13ProviderOutcomeRollbackAndDeliveryLost(t *testing.T) {
 	code := creative.OutputDeliveryPending
 	metadata := []creative.CreativeRunOutput{{OutputIndex: 0, Status: creative.CreativeRunOutputStatusSucceeded, MimeType: &mime, ByteSize: &size, TransientExpiresAt: &expires, ErrorCode: &code}}
 	err = outcomes.RecordProviderOutcome(ctx, id, 0, metadata, now)
-	require.ErrorContains(t, err, "s13 outcome audit failure")
+	require.ErrorContains(t, err, "test outcome audit failure")
 	run, err := repo.GetCreativeRunByRunID(ctx, id)
 	require.NoError(t, err)
 	require.Nil(t, run.ProviderResultRecordedAt)
@@ -77,22 +77,22 @@ func TestS13ProviderOutcomeRollbackAndDeliveryLost(t *testing.T) {
 	require.InDelta(t, 0.2, *run.ActualCost, 1e-10)
 }
 
-type s13FailingProjection struct{ billingpg.TaskProjection }
+type failingProjection struct{ billingpg.TaskProjection }
 
-func (p s13FailingProjection) SaveReservation(ctx context.Context, balance float64, alloc []billing.BillingAllocation, hold, estimated float64) error {
+func (p failingProjection) SaveReservation(ctx context.Context, balance float64, alloc []billing.BillingAllocation, hold, estimated float64) error {
 	if err := p.TaskProjection.SaveReservation(ctx, balance, alloc, hold, estimated); err != nil {
 		return err
 	}
-	return errors.New("s13 projection failure")
+	return errors.New("test projection failure")
 }
 
 // 同一资金事务中的任务投影失败，余额、任务快照与去重认领必须一起回滚。
-func TestS13TaskFundingProjectionRollback(t *testing.T) {
+func TestTaskFundingProjectionRollback(t *testing.T) {
 	ctx := context.Background()
 	client := committedEntitlementClient(t)
-	user := mustCreateUser(t, client, &identity.User{Email: "s13-funds-" + uuid.NewString() + "@example.com", Balance: 10})
-	group := mustCreateGroup(t, client, &routing.Group{Name: "s13-funds-" + uuid.NewString()})
-	key := mustCreateApiKey(t, client, &apikey.APIKey{UserID: user.ID, Key: "sk-s13-funds-" + uuid.NewString(), Name: "s13"})
+	user := mustCreateUser(t, client, &identity.User{Email: "test-funds-" + uuid.NewString() + "@example.com", Balance: 10})
+	group := mustCreateGroup(t, client, &routing.Group{Name: "test-funds-" + uuid.NewString()})
+	key := mustCreateApiKey(t, client, &apikey.APIKey{UserID: user.ID, Key: "sk-test-funds-" + uuid.NewString(), Name: "test"})
 	repo := creativepg.NewCreativeRunRepository(client)
 	id := "crun_" + uuid.NewString()
 	_, err := repo.CreateCreativeRun(ctx, creative.CreateCreativeRunParams{RunID: id, UserID: user.ID, GroupID: group.ID, APIKeyID: key.ID, Model: "image", RequestedModel: "image", Operation: creative.CreativeOperationGenerate, RequestedOutputCount: 1, ImageSize: "1K", ResponseMIMEType: "image/png", PromptHash: "hash", RequestFingerprint: "fingerprint", EstimatedCost: 0.2})
@@ -100,11 +100,11 @@ func TestS13TaskFundingProjectionRollback(t *testing.T) {
 	store := billingpg.NewSettlementStore(integrationDB, timezone.NewCalendar(time.Local),
 
 		nil, billingpg.TaskProjectionFactories{creative.FundingScope: func(tx *sql.Tx, ref billing.TaskReference) billingpg.TaskProjection {
-			return s13FailingProjection{creativepg.NewFundingParticipant(tx, ref.ID)}
+			return failingProjection{creativepg.NewFundingParticipant(tx, ref.ID)}
 		}})
 	cmd := &billing.TaskFundsCommand{Task: creative.FundingReference(id), UserID: user.ID, APIKeyID: key.ID, RequestID: "creative_hold:" + id, HoldAmount: 0.2}
 	_, err = store.Reserve(ctx, cmd)
-	require.ErrorContains(t, err, "s13 projection failure")
+	require.ErrorContains(t, err, "test projection failure")
 	var balance, frozen float64
 	require.NoError(t, integrationDB.QueryRowContext(ctx, `SELECT balance,COALESCE(frozen_balance,0) FROM users WHERE id=$1`, user.ID).Scan(&balance, &frozen))
 	require.Equal(t, 10.0, balance)
@@ -124,12 +124,12 @@ func TestS13TaskFundingProjectionRollback(t *testing.T) {
 }
 
 // 原资金动作可以由已迁任务直接重放，不需要 CreativeEntity 兼容命令。
-func TestS13NativeCreativeFundingReplay(t *testing.T) {
+func TestNativeCreativeFundingReplay(t *testing.T) {
 	ctx := context.Background()
 	client := committedEntitlementClient(t)
-	user := mustCreateUser(t, client, &identity.User{Email: "s13-native-" + uuid.NewString() + "@example.com", Balance: 10})
-	group := mustCreateGroup(t, client, &routing.Group{Name: "s13-native-" + uuid.NewString()})
-	key := mustCreateApiKey(t, client, &apikey.APIKey{UserID: user.ID, Key: "sk-s13-native-" + uuid.NewString(), Name: "native"})
+	user := mustCreateUser(t, client, &identity.User{Email: "test-native-" + uuid.NewString() + "@example.com", Balance: 10})
+	group := mustCreateGroup(t, client, &routing.Group{Name: "test-native-" + uuid.NewString()})
+	key := mustCreateApiKey(t, client, &apikey.APIKey{UserID: user.ID, Key: "sk-test-native-" + uuid.NewString(), Name: "native"})
 	repo := creativepg.NewCreativeRunRepository(client)
 	run, err := repo.CreateCreativeRun(ctx, creative.CreateCreativeRunParams{RunID: "crun_" + uuid.NewString(), UserID: user.ID, GroupID: group.ID, APIKeyID: key.ID, Model: "image", RequestedModel: "image", Operation: creative.CreativeOperationGenerate, RequestedOutputCount: 1, ImageSize: "1K", ResponseMIMEType: "image/png", PromptHash: "hash", RequestFingerprint: "fingerprint", EstimatedCost: 0.2, HoldAmount: 0.2, BaseUnitPrice: 0.2, SubscriptionRateMultiplier: 1, BalanceRateMultiplier: 1, PlanGroupRateEnabled: true})
 	require.NoError(t, err)

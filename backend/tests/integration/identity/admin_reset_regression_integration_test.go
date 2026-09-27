@@ -28,14 +28,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestS05AdminKeyResetAndInvalidGroupAreAtomic 验证同一管理请求失败时不保留消费重置。
-func TestS05AdminKeyResetAndInvalidGroupAreAtomic(t *testing.T) {
+// TestAdminKeyResetAndInvalidGroupAreAtomic 验证同一管理请求失败时不保留消费重置。
+func TestAdminKeyResetAndInvalidGroupAreAtomic(t *testing.T) {
 	ctx := context.Background()
 	integrationDB, client := identityDatabase(t)
 	users := postgres.NewUserStore(client, integrationDB)
 	keys := newKeyStoreFixture(client, integrationDB)
 	user := mustCreateUser(t, client, &identity.User{})
-	key := mustCreateApiKey(t, client, &apikey.APIKey{UserID: user.ID, Key: "s05-reset-" + uuid.NewString()})
+	key := mustCreateApiKey(t, client, &apikey.APIKey{UserID: user.ID, Key: "test-reset-" + uuid.NewString()})
 	now := time.Now().UTC().Truncate(time.Second)
 	_, err := integrationDB.ExecContext(ctx, "UPDATE api_keys SET usage_5h=12,usage_1d=13,usage_7d=14,window_5h_start=$2,window_1d_start=$2,window_7d_start=$2 WHERE id=$1", key.ID, now)
 	require.NoError(t, err)
@@ -57,19 +57,19 @@ func TestS05AdminKeyResetAndInvalidGroupAreAtomic(t *testing.T) {
 	require.WithinDuration(t, now, *stored.Window5hStart, time.Millisecond)
 }
 
-// TestS05AdminKeyCombinedWriteRollsBackOnDatabaseFailure 验证真实数据库拒绝配置写入时，消费重置也回滚。
-func TestS05AdminKeyCombinedWriteRollsBackOnDatabaseFailure(t *testing.T) {
+// TestAdminKeyCombinedWriteRollsBackOnDatabaseFailure 验证真实数据库拒绝配置写入时，消费重置也回滚。
+func TestAdminKeyCombinedWriteRollsBackOnDatabaseFailure(t *testing.T) {
 	ctx := context.Background()
 	integrationDB, client := identityDatabase(t)
 	users := postgres.NewUserStore(client, integrationDB)
 	keys := newKeyStoreFixture(client, integrationDB)
 	user := mustCreateUser(t, client, &identity.User{})
-	group := mustCreateGroup(t, client, &routing.Group{Name: "s05-atomic-group-" + uuid.NewString()})
-	key := mustCreateApiKey(t, client, &apikey.APIKey{UserID: user.ID, Key: "s05-atomic-update-" + uuid.NewString()})
+	group := mustCreateGroup(t, client, &routing.Group{Name: "test-atomic-group-" + uuid.NewString()})
+	key := mustCreateApiKey(t, client, &apikey.APIKey{UserID: user.ID, Key: "test-atomic-update-" + uuid.NewString()})
 	_, err := integrationDB.ExecContext(ctx, "UPDATE api_keys SET usage_5h=12,usage_1d=13,usage_7d=14,window_5h_start=NOW(),window_1d_start=NOW(),window_7d_start=NOW() WHERE id=$1", key.ID)
 	require.NoError(t, err)
-	name := fmt.Sprintf("s05_reject_key_%d", key.ID)
-	_, err = integrationDB.ExecContext(ctx, fmt.Sprintf("CREATE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 's05 reject key configuration'; END; $$", name))
+	name := fmt.Sprintf("test_reject_key_%d", key.ID)
+	_, err = integrationDB.ExecContext(ctx, fmt.Sprintf("CREATE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'test reject key configuration'; END; $$", name))
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		_, _ = integrationDB.ExecContext(ctx, "DROP TRIGGER IF EXISTS "+name+" ON api_keys")

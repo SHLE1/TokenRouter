@@ -12,24 +12,24 @@ import (
 )
 
 // 把取消固定在已经取得控制权、尚未查询提供商的交接点。
-type s11PlanningLiveStore struct {
+type cancelingLiveStore struct {
 	liveTestStore
 	cancel context.CancelFunc
 }
 
-func (s *s11PlanningLiveStore) ClaimLiveController(ctx context.Context, hash, controller, owner string) (bool, error) {
+func (s *cancelingLiveStore) ClaimLiveController(ctx context.Context, hash, controller, owner string) (bool, error) {
 	ok, err := s.liveTestStore.ClaimLiveController(ctx, hash, controller, owner)
 	s.cancel()
 	return ok, err
 }
 
-type s11PlanningLiveProviders struct {
+type countingLiveProviders struct {
 	gatewayprovider.ExecutionProviderStore
 
 	reads atomic.Int32
 }
 
-func (r *s11PlanningLiveProviders) GetByID(ctx context.Context, id int64) (*gatewayprovider.ExecutionProvider, error) {
+func (r *countingLiveProviders) GetByID(ctx context.Context, id int64) (*gatewayprovider.ExecutionProvider, error) {
 	r.reads.Add(1)
 	return nil, ctx.Err()
 }
@@ -37,9 +37,9 @@ func (r *s11PlanningLiveProviders) GetByID(ctx context.Context, id int64) (*gate
 func TestLiveHandoffCancellationStopsBeforeProviderLookup(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	record := &session.LiveCallRecord{CallHash: "planning", Controller: session.LiveControllerPending, ProviderID: 7, ExpiresAt: time.Now().Add(time.Minute)}
-	store := &s11PlanningLiveStore{liveTestStore: liveTestStore{record: record}, cancel: cancel}
-	providers := &s11PlanningLiveProviders{}
+	record := &session.LiveCallRecord{CallHash: "lifecycle-test", Controller: session.LiveControllerPending, ProviderID: 7, ExpiresAt: time.Now().Add(time.Minute)}
+	store := &cancelingLiveStore{liveTestStore: liveTestStore{record: record}, cancel: cancel}
+	providers := &countingLiveProviders{}
 	s := newLiveFixture(liveFixtureInputs{store: store, providers: providers})
 	s.liveObserverStopped = true
 	start := time.Now()

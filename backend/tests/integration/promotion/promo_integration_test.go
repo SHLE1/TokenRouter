@@ -28,10 +28,10 @@ func TestPromotionApplyCodeFundsAndUsageAtomicity(t *testing.T) {
 		t.Run("failure_"+failure, func(t *testing.T) {
 			ctx := context.Background()
 			client, integrationDB := testStore(t)
-			user, err := client.User.Create().SetEmail("s12-promo@example.com").SetPasswordHash("must-not-export").SetUsername("promo").SetBalance(5).Save(ctx)
+			user, err := client.User.Create().SetEmail("test-promo@example.com").SetPasswordHash("must-not-export").SetUsername("promo").SetBalance(5).Save(ctx)
 			require.NoError(t, err)
 			repo := promotionpostgres.NewPromoCodeRepository(client)
-			code := &promotion.PromoCode{Code: "S12PROMO", BonusAmount: 10, MaxUses: 2, Status: promotion.PromoCodeStatusActive}
+			code := &promotion.PromoCode{Code: "REFUNDPROMO", BonusAmount: 10, MaxUses: 2, Status: promotion.PromoCodeStatusActive}
 			require.NoError(t, repo.Create(ctx, code))
 			t.Cleanup(func() {
 				_, e := client.PromoCodeUsage.Delete().Where(promocodeusage.PromoCodeIDEQ(code.ID)).Exec(ctx)
@@ -46,8 +46,8 @@ func TestPromotionApplyCodeFundsAndUsageAtomicity(t *testing.T) {
 				if failure == "count" {
 					table, event, condition = "promo_codes", "UPDATE", fmt.Sprintf("NEW.id=%d AND NEW.used_count > OLD.used_count", code.ID)
 				}
-				name := fmt.Sprintf("s12_promo_failure_%d", code.ID)
-				_, err = integrationDB.ExecContext(ctx, fmt.Sprintf(`CREATE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF %s THEN IF (SELECT balance FROM users WHERE id=%d)<>15 THEN RAISE EXCEPTION 'credit not in same transaction'; END IF; RAISE EXCEPTION 's12 promo forced failure'; END IF; RETURN NEW; END; $$`, name, condition, user.ID))
+				name := fmt.Sprintf("test_promo_failure_%d", code.ID)
+				_, err = integrationDB.ExecContext(ctx, fmt.Sprintf(`CREATE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF %s THEN IF (SELECT balance FROM users WHERE id=%d)<>15 THEN RAISE EXCEPTION 'credit not in same transaction'; END IF; RAISE EXCEPTION 'test promo forced failure'; END IF; RETURN NEW; END; $$`, name, condition, user.ID))
 				require.NoError(t, err)
 				_, err = integrationDB.ExecContext(ctx, fmt.Sprintf("CREATE TRIGGER %s BEFORE %s ON %s FOR EACH ROW EXECUTE FUNCTION %s()", name, event, table, name))
 				require.NoError(t, err)
@@ -64,7 +64,7 @@ func TestPromotionApplyCodeFundsAndUsageAtomicity(t *testing.T) {
 			count, readErr := client.PromoCodeUsage.Query().Where(promocodeusage.PromoCodeIDEQ(code.ID)).Count(ctx)
 			require.NoError(t, readErr)
 			if failure != "" {
-				require.ErrorContains(t, err, "s12 promo forced failure")
+				require.ErrorContains(t, err, "test promo forced failure")
 				require.Equal(t, 5.0, current.Balance)
 				require.Zero(t, current.TotalRecharged)
 				require.Zero(t, count)
@@ -102,6 +102,7 @@ func TestPromotionApplyCodeFundsAndUsageAtomicity(t *testing.T) {
 type promotionInvalidationProbe struct{ auth, balance int }
 
 func (p *promotionInvalidationProbe) InvalidateAuthCacheByUserID(context.Context, int64) { p.auth++ }
+
 func (p *promotionInvalidationProbe) InvalidateUserBalance(context.Context, int64) error {
 	p.balance++
 	return nil

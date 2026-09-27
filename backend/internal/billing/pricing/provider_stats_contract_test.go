@@ -145,7 +145,7 @@ func TestFindPricingForModel(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := purepricing.FindPricingForModel(tt.list, tt.model)
+			result := purepricing.FindPricingForModelByPredicate(tt.list, tt.model, nil)
 			if tt.wantNil {
 				require.Nil(t, result)
 				return

@@ -61,8 +61,8 @@ func routeInventoryMount[T any](t *testing.T, factory any) T {
 	return result
 }
 
-// TestS15NativeRouteInventory 对照已登记的路由快照，实际调用生产注册函数并由 Gin 检测重复注册。
-func TestS15NativeRouteInventory(t *testing.T) {
+// TestNativeRouteInventory 对照已登记的路由快照，实际调用生产注册函数并由 Gin 检测重复注册。
+func TestNativeRouteInventory(t *testing.T) {
 	r := gin.New()
 	var chain []string
 	r.Use(func(c *gin.Context) { chain = c.HandlerNames(); c.Abort() })
@@ -117,7 +117,7 @@ func TestS15NativeRouteInventory(t *testing.T) {
 			Handlers     []string
 		}{route.Method, route.Path, append([]string(nil), chain...)})
 		require.NoError(t, err)
-		t.Logf("S15_ROUTE_CHAIN %s", encoded)
+		t.Logf("TEST_ROUTE_CHAIN %s", encoded)
 
 	}
 	sort.Strings(expected)

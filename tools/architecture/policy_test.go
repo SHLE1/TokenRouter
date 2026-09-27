@@ -51,7 +51,7 @@ func TestDependencyBoundaries(t *testing.T) {
 		{"internal/provider/health_spark.go", "net/http", true},
 		{"internal/provider/health_spark.go", "net/http/httptest", false},
 		{"internal/provider/new.go", "net/http", false},
-		{"internal/gateway/clientmeta/claude_validator_original_test.go", "os", true},
+		{"internal/gateway/clientmeta/claude_validator_contract_test.go", "os", true},
 		{"internal/gateway/clientmeta/new_test.go", "os", false},
 		{"internal/pkg/ipmatch/helpers/new.go", "net", true},
 		{"internal/pkg/ipmatch_extra/new.go", "net", false},

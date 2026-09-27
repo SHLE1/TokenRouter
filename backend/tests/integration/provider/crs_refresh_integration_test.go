@@ -13,27 +13,27 @@ import (
 )
 
 // PostgreSQL 真正提交管理员修改，与导入交换结果交错，确认不会被后续 CAS 覆盖。
-func TestS06CRSRefreshDatabaseInterleaving(t *testing.T) {
+func TestCRSRefreshDatabaseInterleaving(t *testing.T) {
 	for _, mode := range []string{"success", "credentials", "disabled", "cancelled", "outbox_failure"} {
 		t.Run(mode, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
 			client := testEntClient(t)
-			row, err := client.Provider.Create().SetName("s06-crs-refresh").SetPlatform(provider.PlatformOpenAI).SetType(provider.ProviderTypeOAuth).SetCredentials(map[string]any{"refresh_token": "source", "_token_version": 123}).Save(ctx)
+			row, err := client.Provider.Create().SetName("test-crs-refresh").SetPlatform(provider.PlatformOpenAI).SetType(provider.ProviderTypeOAuth).SetCredentials(map[string]any{"refresh_token": "source", "_token_version": 123}).Save(ctx)
 			require.NoError(t, err)
 			t.Cleanup(func() { require.NoError(t, client.Provider.DeleteOneID(row.ID).Exec(context.Background())) })
 			store := newProviderStoreContract(client, integrationDB, nil)
 			original, err := store.GetByID(ctx, row.ID)
 			require.NoError(t, err)
 			if mode == "outbox_failure" {
-				store.SetEvents(s06FailConfigurationOutbox{})
+				store.SetEvents(failConfigurationOutbox{})
 			}
 			api := provider.NewOAuthRefreshAPI(store, nil, provider.RefreshOptions{})
 			started, release := make(chan struct{}), make(chan struct{})
 			done := make(chan error, 1)
 			calls := 0
 			go func() {
-				done <- api.RefreshImported(ctx, original, fmt.Sprintf("s06-crs:%d", row.ID), func(context.Context, *provider.Record) map[string]any {
+				done <- api.RefreshImported(ctx, original, fmt.Sprintf("test-crs:%d", row.ID), func(context.Context, *provider.Record) map[string]any {
 					calls++
 					close(started)
 					<-release

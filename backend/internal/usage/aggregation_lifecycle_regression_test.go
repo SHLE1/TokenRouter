@@ -8,14 +8,14 @@ import (
 	"time"
 )
 
-type s08BlockingAggregation struct {
+type blockingAggregation struct {
 	DashboardAggregationRepository
 	entered  chan struct{}
 	release  chan struct{}
 	canceled atomic.Bool
 }
 
-func (r *s08BlockingAggregation) RecomputeRange(ctx context.Context, a, b time.Time) error {
+func (r *blockingAggregation) RecomputeRange(ctx context.Context, a, b time.Time) error {
 	close(r.entered)
 	select {
 	case <-ctx.Done():
@@ -25,8 +25,9 @@ func (r *s08BlockingAggregation) RecomputeRange(ctx context.Context, a, b time.T
 		return nil
 	}
 }
-func TestS08RegressionAggregationStopCancelsWork(t *testing.T) {
-	r := &s08BlockingAggregation{entered: make(chan struct{}), release: make(chan struct{})}
+
+func TestRegressionAggregationStopCancelsWork(t *testing.T) {
+	r := &blockingAggregation{entered: make(chan struct{}), release: make(chan struct{})}
 	s := NewDashboardAggregationService(r, nil, nil)
 	s.runtimeStarted = true
 	if e := s.TriggerRecomputeRange(time.Now().Add(-time.Hour), time.Now()); e != nil {
@@ -47,37 +48,39 @@ func TestS08RegressionAggregationStopCancelsWork(t *testing.T) {
 	}
 }
 
-type s08PartialCleanup struct {
+type partialCleanup struct {
 	UsageCleanupRepository
 	checks  int
 	deleted int64
 }
 
-func (r *s08PartialCleanup) GetTaskStatus(context.Context, int64) (string, error) {
+func (r *partialCleanup) GetTaskStatus(context.Context, int64) (string, error) {
 	r.checks++
 	if r.checks > 1 {
 		return UsageCleanupStatusCanceled, nil
 	}
 	return UsageCleanupStatusRunning, nil
 }
-func (r *s08PartialCleanup) DeleteUsageLogsBatch(context.Context, UsageCleanupFilters, int) (int64, error) {
+
+func (r *partialCleanup) DeleteUsageLogsBatch(context.Context, UsageCleanupFilters, int) (int64, error) {
 	r.deleted = 5000
 	return 5000, nil
 }
-func (r *s08PartialCleanup) UpdateTaskProgress(context.Context, int64, int64) error { return nil }
+func (r *partialCleanup) UpdateTaskProgress(context.Context, int64, int64) error { return nil }
 
-type s08RecomputeRecorder struct {
+type recomputeRecorder struct {
 	DashboardAggregationRepository
 	calls atomic.Int64
 }
 
-func (r *s08RecomputeRecorder) RecomputeRange(context.Context, time.Time, time.Time) error {
+func (r *recomputeRecorder) RecomputeRange(context.Context, time.Time, time.Time) error {
 	r.calls.Add(1)
 	return nil
 }
-func TestS08RegressionCanceledCleanupRepairsAggregates(t *testing.T) {
-	r := &s08PartialCleanup{}
-	ar := &s08RecomputeRecorder{}
+
+func TestRegressionCanceledCleanupRepairsAggregates(t *testing.T) {
+	r := &partialCleanup{}
+	ar := &recomputeRecorder{}
 	agg := NewDashboardAggregationService(ar, nil, nil)
 	agg.runtimeStarted = true
 	s := NewUsageCleanupService(r, nil, agg, nil)
@@ -94,7 +97,7 @@ func TestS08RegressionCanceledCleanupRepairsAggregates(t *testing.T) {
 }
 
 // 在真实运行标记之外，手动回填的全量状态写入可以覆盖并发实时进度。
-type s08StateRepo struct {
+type stateRepo struct {
 	UsageAnalyticsAggregationRepository
 	mu      sync.Mutex
 	state   UsageAnalyticsAggregationState
@@ -103,7 +106,7 @@ type s08StateRepo struct {
 	release chan struct{}
 }
 
-func (r *s08StateRepo) GetUsageAnalyticsAggregationState(context.Context) (*UsageAnalyticsAggregationState, error) {
+func (r *stateRepo) GetUsageAnalyticsAggregationState(context.Context) (*UsageAnalyticsAggregationState, error) {
 	r.mu.Lock()
 	v := r.state
 	r.mu.Unlock()
@@ -113,16 +116,18 @@ func (r *s08StateRepo) GetUsageAnalyticsAggregationState(context.Context) (*Usag
 	}
 	return &v, nil
 }
-func (r *s08StateRepo) SaveUsageAnalyticsAggregationState(_ context.Context, v *UsageAnalyticsAggregationState) error {
+
+func (r *stateRepo) SaveUsageAnalyticsAggregationState(_ context.Context, v *UsageAnalyticsAggregationState) error {
 	r.mu.Lock()
 	r.state = *v
 	r.mu.Unlock()
 	return nil
 }
-func TestS08RegressionManualBackfillPreservesLiveProgress(t *testing.T) {
+
+func TestRegressionManualBackfillPreservesLiveProgress(t *testing.T) {
 	old := time.Date(2026, 9, 1, 1, 0, 0, 0, time.UTC)
 	next := old.Add(time.Hour)
-	r := &s08StateRepo{state: UsageAnalyticsAggregationState{LiveWatermark: old}, entered: make(chan struct{}), release: make(chan struct{})}
+	r := &stateRepo{state: UsageAnalyticsAggregationState{LiveWatermark: old}, entered: make(chan struct{}), release: make(chan struct{})}
 	s := NewDashboardAggregationService(&dashboardAggregationRepoTestStub{}, nil, &Options{DashboardAgg: DashboardAggregationConfig{BackfillEnabled: true}})
 	s.analyticsRepo = r
 	done := make(chan error, 1)
@@ -141,7 +146,7 @@ func TestS08RegressionManualBackfillPreservesLiveProgress(t *testing.T) {
 	}
 }
 
-func (r *s08StateRepo) ApplyUsageAnalyticsState(_ context.Context, c AnalyticsStateChange) (*UsageAnalyticsAggregationState, error) {
+func (r *stateRepo) ApplyUsageAnalyticsState(_ context.Context, c AnalyticsStateChange) (*UsageAnalyticsAggregationState, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	v, e := ApplyAnalyticsStateChange(r.state, c)

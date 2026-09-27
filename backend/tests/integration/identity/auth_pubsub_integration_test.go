@@ -18,9 +18,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestS05AuthPubSubReconnect 验证现有双实例发布订阅协议、真实断线重订阅及停止顺序。
+// TestAuthPubSubReconnect 验证现有双实例发布订阅协议、真实断线重订阅及停止顺序。
 // 两个实例仅用于既有认证缓存兼容性，不扩大平台额度的单进程协调边界。
-func TestS05AuthPubSubReconnect(t *testing.T) {
+func TestAuthPubSubReconnect(t *testing.T) {
 	integrationDB, integrationEntClient := identityDatabase(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
 	defer cancel()
@@ -28,7 +28,7 @@ func TestS05AuthPubSubReconnect(t *testing.T) {
 	rdb := rediscontainer.New(t)
 	user := mustCreateUser(t, client, &identity.User{})
 	store := keypostgres.NewKeyStore(client, integrationDB, nil)
-	key := &apikey.APIKey{UserID: user.ID, Key: fmt.Sprintf("sk-s05-pubsub-%d", time.Now().UnixNano()), Name: "before", Status: "active", ModelMapping: map[string]string{"client": "upstream"}}
+	key := &apikey.APIKey{UserID: user.ID, Key: fmt.Sprintf("sk-test-pubsub-%d", time.Now().UnixNano()), Name: "before", Status: "active", ModelMapping: map[string]string{"client": "upstream"}}
 	require.NoError(t, store.Create(ctx, key))
 	cache := keyredis.NewAPIKeyCache(rdb)
 	options := &apikey.Options{APIKeyAuth: apikey.APIKeyAuthCacheConfig{L1Size: 1024, L1TTLSeconds: 60, L2TTLSeconds: 60, Singleflight: true}}

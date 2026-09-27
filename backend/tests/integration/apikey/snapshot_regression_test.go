@@ -15,13 +15,13 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/team"
 )
 
-// s05IsolationKey 覆盖认证快照的可变引用，凭据与地址均为本地测试数据。
-func s05IsolationKey() *apikey.APIKey {
+// isolationKey 覆盖认证快照的可变引用，凭据与地址均为本地测试数据。
+func isolationKey() *apikey.APIKey {
 	groupID, teamID, subscriptionID := int64(3), int64(4), int64(5)
 	threshold := 3.0
 	now := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
 	return &apikey.APIKey{
-		ID: 1, UserID: 2, Key: "s05-test-only", GroupID: &groupID, TeamID: &teamID, PreferredSubscriptionID: &subscriptionID, ExpiresAt: &now,
+		ID: 1, UserID: 2, Key: "test-test-only", GroupID: &groupID, TeamID: &teamID, PreferredSubscriptionID: &subscriptionID, ExpiresAt: &now,
 		IPWhitelist: []string{"127.0.0.1"}, IPBlacklist: []string{"192.0.2.1"}, ModelMapping: map[string]string{"alias": "original"},
 		User: &identity.User{ID: 2, AllowedGroups: []int64{3}, BalanceNotifyThreshold: &threshold, BalanceNotifyExtraEmails: []billing.NotifyEmailSummary{{Email: "test@example.invalid"}}},
 		Team: &team.Team{ID: 4}, TeamMembership: &team.TeamMembership{ID: 6, DailyWindowStart: &now},
@@ -32,8 +32,8 @@ func s05IsolationKey() *apikey.APIKey {
 	}
 }
 
-// TestS05AuthSnapshotIsolation 同一缓存快照的来源和每次物化都不能共享可变状态。
-func TestS05AuthSnapshotIsolation(t *testing.T) {
+// TestAuthSnapshotIsolation 同一缓存快照的来源和每次物化都不能共享可变状态。
+func TestAuthSnapshotIsolation(t *testing.T) {
 	changes := map[string]func(*apikey.APIKey){
 		"group_id":         func(k *apikey.APIKey) { *k.GroupID = 99 },
 		"team_id":          func(k *apikey.APIKey) { *k.TeamID = 99 },
@@ -58,7 +58,7 @@ func TestS05AuthSnapshotIsolation(t *testing.T) {
 		for _, direction := range []string{"source", "request"} {
 			t.Run(name+"/"+direction, func(t *testing.T) {
 				s := testkit.NewService(nil, nil, nil, nil, nil, nil, nil)
-				key := s05IsolationKey()
+				key := isolationKey()
 				snapshot := s.KeySnapshotFromAPIKey(context.Background(), key)
 				before, err := json.Marshal(snapshot)
 				if err != nil {
@@ -81,8 +81,8 @@ func TestS05AuthSnapshotIsolation(t *testing.T) {
 	}
 }
 
-// TestS05CompositeSnapshotFastPolicy 复合选组必须保留显式 Fast 策略。
-func TestS05CompositeSnapshotFastPolicy(t *testing.T) {
+// TestCompositeSnapshotFastPolicy 复合选组必须保留显式 Fast 策略。
+func TestCompositeSnapshotFastPolicy(t *testing.T) {
 	for _, policy := range []string{"force_off", "force_ultrafast"} {
 		t.Run(policy, func(t *testing.T) {
 			s := testkit.NewService(nil, nil, nil, nil, nil, nil, nil)
@@ -96,7 +96,7 @@ func TestS05CompositeSnapshotFastPolicy(t *testing.T) {
 			if err := json.Unmarshal(payload, &decoded); err != nil {
 				t.Fatal(err)
 			}
-			restored := s.KeySnapshotToAPIKey("s05-test-only", &decoded)
+			restored := s.KeySnapshotToAPIKey("test-test-only", &decoded)
 			if got := restored.CompositeGroups[0].Group.OpenAIFastPolicy; got != policy {
 				t.Fatalf("Fast 策略丢失：got %q want %q", got, policy)
 			}

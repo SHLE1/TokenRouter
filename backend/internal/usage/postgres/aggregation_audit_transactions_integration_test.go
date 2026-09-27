@@ -23,18 +23,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestS08AuditClearTraceFailureRollsBack(t *testing.T) {
+func TestAuditClearTraceFailureRollsBack(t *testing.T) {
 	ctx := context.Background()
 	repo := auditpg.NewAuditLogRepository(integrationDB)
 	s := audit.NewAuditLogService(repo, nil)
 	defer s.Stop()
 	_, err := integrationDB.ExecContext(ctx, "TRUNCATE audit_logs")
 	require.NoError(t, err)
-	require.NoError(t, repo.Insert(ctx, &audit.AuditLog{Action: "s08-original", CreatedAt: time.Now()}))
-	_, err = integrationDB.ExecContext(ctx, `CREATE FUNCTION s08_reject_clear_trace() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.action='admin.audit_log.clear' THEN RAISE EXCEPTION 's08 trace failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER s08_reject_clear_trace BEFORE INSERT ON audit_logs FOR EACH ROW EXECUTE FUNCTION s08_reject_clear_trace()`)
+	require.NoError(t, repo.Insert(ctx, &audit.AuditLog{Action: "test-original", CreatedAt: time.Now()}))
+	_, err = integrationDB.ExecContext(ctx, `CREATE FUNCTION test_reject_clear_trace() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.action='admin.audit_log.clear' THEN RAISE EXCEPTION 'test trace failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER test_reject_clear_trace BEFORE INSERT ON audit_logs FOR EACH ROW EXECUTE FUNCTION test_reject_clear_trace()`)
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		_, e := integrationDB.ExecContext(ctx, `DROP TRIGGER s08_reject_clear_trace ON audit_logs; DROP FUNCTION s08_reject_clear_trace(); TRUNCATE audit_logs`)
+		_, e := integrationDB.ExecContext(ctx, `DROP TRIGGER test_reject_clear_trace ON audit_logs; DROP FUNCTION test_reject_clear_trace(); TRUNCATE audit_logs`)
 		require.NoError(t, e)
 	})
 	_, err = s.ClearAll(ctx, &audit.AuditLog{})
@@ -42,7 +42,7 @@ func TestS08AuditClearTraceFailureRollsBack(t *testing.T) {
 	count, err := repo.Count(ctx)
 	require.NoError(t, err)
 	require.Equal(t, int64(1), count)
-	_, err = integrationDB.ExecContext(ctx, "DROP TRIGGER s08_reject_clear_trace ON audit_logs")
+	_, err = integrationDB.ExecContext(ctx, "DROP TRIGGER test_reject_clear_trace ON audit_logs")
 	require.NoError(t, err)
 	// 后续成功路径仍只保留一条留痕，并保存事务内取得的真实计数。
 	deleted, err := s.ClearAll(ctx, &audit.AuditLog{})
@@ -54,17 +54,17 @@ func TestS08AuditClearTraceFailureRollsBack(t *testing.T) {
 	require.Equal(t, audit.AuditActionAuditLogClear, action)
 	require.Equal(t, int64(1), deletedRows)
 	// 重新创建触发器，使统一清理函数始终删除存在的对象。
-	_, err = integrationDB.ExecContext(ctx, `CREATE TRIGGER s08_reject_clear_trace BEFORE INSERT ON audit_logs FOR EACH ROW EXECUTE FUNCTION s08_reject_clear_trace()`)
+	_, err = integrationDB.ExecContext(ctx, `CREATE TRIGGER test_reject_clear_trace BEFORE INSERT ON audit_logs FOR EACH ROW EXECUTE FUNCTION test_reject_clear_trace()`)
 	require.NoError(t, err)
 }
 
-type s08PausedState struct {
+type pausedState struct {
 	*AggregationStore
 	reads            atomic.Int32
 	entered, release chan struct{}
 }
 
-func (r *s08PausedState) GetUsageAnalyticsAggregationState(ctx context.Context) (*usage.UsageAnalyticsAggregationState, error) {
+func (r *pausedState) GetUsageAnalyticsAggregationState(ctx context.Context) (*usage.UsageAnalyticsAggregationState, error) {
 	v, e := r.AggregationStore.GetUsageAnalyticsAggregationState(ctx)
 	if r.reads.Add(1) == 1 {
 		close(r.entered)
@@ -73,7 +73,7 @@ func (r *s08PausedState) GetUsageAnalyticsAggregationState(ctx context.Context) 
 	return v, e
 }
 
-func TestS08ManualBackfillPreservesConcurrentState(t *testing.T) {
+func TestManualBackfillPreservesConcurrentState(t *testing.T) {
 	ctx := context.Background()
 	base := NewAggregationStoreWithSQL(integrationDB, timezone.NewCalendar(time.Local))
 	saved, err := base.GetUsageAnalyticsAggregationState(ctx)
@@ -82,7 +82,7 @@ func TestS08ManualBackfillPreservesConcurrentState(t *testing.T) {
 	old := time.Date(2026, 9, 1, 1, 0, 0, 0, time.UTC)
 	next := old.Add(time.Hour)
 	require.NoError(t, base.SaveUsageAnalyticsAggregationState(ctx, &usage.UsageAnalyticsAggregationState{LiveWatermark: old, Phase: "idle"}))
-	r := &s08PausedState{AggregationStore: base, entered: make(chan struct{}), release: make(chan struct{})}
+	r := &pausedState{AggregationStore: base, entered: make(chan struct{}), release: make(chan struct{})}
 	s := usage.NewDashboardAggregationService(r, nil, &usage.Options{DashboardAgg: usage.DashboardAggregationConfig{BackfillEnabled: true}})
 	s.SetPreAggregationSettings(nil)
 	defer s.Stop()
@@ -117,20 +117,20 @@ func TestS08ManualBackfillPreservesConcurrentState(t *testing.T) {
 	require.True(t, got.ManualBackfillCursor.Equal(newCursor))
 }
 
-type s08CanceledCleanup struct {
+type canceledCleanup struct {
 	usage.UsageCleanupRepository
 	taskID, operator int64
 	observed         chan struct{}
 	once             sync.Once
 }
 
-func (r *s08CanceledCleanup) CreateTask(ctx context.Context, t *usage.UsageCleanupTask) error {
+func (r *canceledCleanup) CreateTask(ctx context.Context, t *usage.UsageCleanupTask) error {
 	e := r.UsageCleanupRepository.CreateTask(ctx, t)
 	r.taskID = t.ID
 	return e
 }
 
-func (r *s08CanceledCleanup) DeleteUsageLogsBatch(ctx context.Context, f usage.UsageCleanupFilters, n int) (int64, error) {
+func (r *canceledCleanup) DeleteUsageLogsBatch(ctx context.Context, f usage.UsageCleanupFilters, n int) (int64, error) {
 	d, e := r.UsageCleanupRepository.DeleteUsageLogsBatch(ctx, f, n)
 	if e == nil && d > 0 {
 		_, e = r.CancelTask(ctx, r.taskID, r.operator)
@@ -138,7 +138,7 @@ func (r *s08CanceledCleanup) DeleteUsageLogsBatch(ctx context.Context, f usage.U
 	return d, e
 }
 
-func (r *s08CanceledCleanup) GetTaskStatus(ctx context.Context, id int64) (string, error) {
+func (r *canceledCleanup) GetTaskStatus(ctx context.Context, id int64) (string, error) {
 	v, e := r.UsageCleanupRepository.GetTaskStatus(ctx, id)
 	if v == usage.UsageCleanupStatusCanceled {
 		r.once.Do(func() { close(r.observed) })
@@ -146,38 +146,38 @@ func (r *s08CanceledCleanup) GetTaskStatus(ctx context.Context, id int64) (strin
 	return v, e
 }
 
-type s08RepairStore struct {
+type repairStore struct {
 	*AggregationStore
 	done chan error
 }
 
-func (r *s08RepairStore) RecomputeUsageAnalyticsRange(ctx context.Context, start, end time.Time) error {
+func (r *repairStore) RecomputeUsageAnalyticsRange(ctx context.Context, start, end time.Time) error {
 	e := r.AggregationStore.RecomputeUsageAnalyticsRange(ctx, start, end)
 	r.done <- e
 	return e
 }
 
-func TestS08CanceledPartialCleanupRepairsCommittedData(t *testing.T) {
+func TestCanceledPartialCleanupRepairsCommittedData(t *testing.T) {
 	ctx := context.Background()
 	client := testEntClient(t)
-	u := mustCreateUser(t, client, &identity.User{Email: "s08-cancel@test.local", Balance: 7})
-	key := mustCreateApiKey(t, client, &apikey.APIKey{UserID: u.ID, Key: "sk-s08-cancel", Name: "k"})
-	provider := mustCreateProvider(t, client, &providercore.Record{Name: "s08-cancel"})
+	u := mustCreateUser(t, client, &identity.User{Email: "test-cancel@test.local", Balance: 7})
+	key := mustCreateApiKey(t, client, &apikey.APIKey{UserID: u.ID, Key: "sk-test-cancel", Name: "k"})
+	provider := mustCreateProvider(t, client, &providercore.Record{Name: "test-cancel"})
 	repo := NewUsageLogRepositoryWithSQL(client, integrationDB, timezone.NewCalendar(time.Local))
 	defer repo.StopUsageBatchers()
 	now := time.Now().UTC().Add(-72 * time.Hour)
 	for i := 0; i < 2; i++ {
-		_, e := repo.Create(ctx, &usage.UsageLog{UserID: u.ID, APIKeyID: key.ID, ProviderID: provider.ID, Model: "planning", TotalCost: 1, ActualCost: 1, CreatedAt: now})
+		_, e := repo.Create(ctx, &usage.UsageLog{UserID: u.ID, APIKeyID: key.ID, ProviderID: provider.ID, Model: "lifecycle-test", TotalCost: 1, ActualCost: 1, CreatedAt: now})
 		require.NoError(t, e)
 	}
 	base := NewAggregationStoreWithSQL(integrationDB, timezone.NewCalendar(time.Local))
 	require.NoError(t, base.AggregateUsageAnalyticsRange(ctx, now.Add(-time.Hour), now.Add(time.Hour)))
-	ar := &s08RepairStore{AggregationStore: base, done: make(chan error, 1)}
+	ar := &repairStore{AggregationStore: base, done: make(chan error, 1)}
 	agg := usage.NewDashboardAggregationService(ar, nil, nil)
 	agg.SetPreAggregationSettings(nil)
 	agg.Start()
 	defer agg.Stop()
-	cr := &s08CanceledCleanup{UsageCleanupRepository: NewUsageCleanupRepository(client, integrationDB), operator: u.ID, observed: make(chan struct{})}
+	cr := &canceledCleanup{UsageCleanupRepository: NewUsageCleanupRepository(client, integrationDB), operator: u.ID, observed: make(chan struct{})}
 	cleanup := usage.NewUsageCleanupService(cr, nil, agg, &usage.Options{UsageCleanup: usage.UsageCleanupConfig{Enabled: true, BatchSize: 1}})
 	task, e := cleanup.CreateTask(ctx, usage.UsageCleanupFilters{StartTime: now.Add(-time.Hour), EndTime: now.Add(time.Hour), UserID: &u.ID}, u.ID)
 	require.NoError(t, e)

@@ -221,7 +221,7 @@ func (v *clearTOTPVerifier) VerifyCode(_ context.Context, user int64, code strin
 	return v.err
 }
 
-func TestS08AuditClearHTTPAuthorizationAndTrace(t *testing.T) {
+func TestAuditClearHTTPAuthorizationAndTrace(t *testing.T) {
 	cases := []struct {
 		name, auth, body, reason string
 		user                     int64
@@ -255,14 +255,14 @@ func TestS08AuditClearHTTPAuthorizationAndTrace(t *testing.T) {
 					c.Set("user_role", "admin")
 					c.Set(ContextKeyAuthEmail, "admin@example.test")
 				}
-				c.Header("X-Request-ID", "s08-clear")
+				c.Header("X-Request-ID", "test-clear")
 				h.Clear(c)
 				skipped = c.GetBool(auditCtxKeySkip)
 			})
 			w := httptest.NewRecorder()
 			req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/audit-logs/clear", bytes.NewBufferString(tc.body))
 			req.Header.Set("Content-Type", "application/json")
-			req.Header.Set("Authorization", "Bearer s08-contract-credential")
+			req.Header.Set("Authorization", "Bearer test-contract-credential")
 			router.ServeHTTP(w, req)
 			require.Equal(t, tc.status, w.Code, w.Body.String())
 			require.Equal(t, tc.wantOrder, order)
@@ -276,9 +276,9 @@ func TestS08AuditClearHTTPAuthorizationAndTrace(t *testing.T) {
 			if repo.trace != nil {
 				require.Equal(t, tc.user, *repo.trace.ActorUserID)
 				require.Equal(t, "admin", repo.trace.ActorRole)
-				require.Equal(t, "s08-clear", repo.trace.RequestID)
+				require.Equal(t, "test-clear", repo.trace.RequestID)
 				require.Equal(t, service.AuditActionAuditLogClear, repo.trace.Action)
-				require.NotEqual(t, "s08-contract-credential", repo.trace.CredentialMasked)
+				require.NotEqual(t, "test-contract-credential", repo.trace.CredentialMasked)
 			}
 			require.Equal(t, tc.status == http.StatusOK, skipped)
 			if skipped {

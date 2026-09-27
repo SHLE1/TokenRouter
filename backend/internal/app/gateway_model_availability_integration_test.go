@@ -14,18 +14,18 @@ import (
 )
 
 // 诊断必须直接读持久配置；瞬时冷却不把已配置模型误报为不存在。
-func TestS16ModelAvailabilityUsesPersistentProviderStore(t *testing.T) {
+func TestModelAvailabilityUsesPersistentProviderStore(t *testing.T) {
 	f := newDatabaseFixture(t)
 	ctx := t.Context()
-	group, err := f.client.Group.Create().SetName("s16-diagnostic-group").SetAllowedProtocols([]protocol.ProtocolID{protocol.ProtocolOpenAIResponses}).Save(ctx)
+	group, err := f.client.Group.Create().SetName("test-diagnostic-group").SetAllowedProtocols([]protocol.ProtocolID{protocol.ProtocolOpenAIResponses}).Save(ctx)
 	require.NoError(t, err)
 	cooldown := time.Now().Add(time.Hour)
-	row, err := f.client.Provider.Create().SetName("s16-diagnostic-provider").SetPlatform(capability.PlatformOpenAI).SetType(capability.ProviderTypeAPIKey).SetCredentials(map[string]any{"model_mapping": map[string]any{"public-known": "public-known"}}).SetRateLimitResetAt(cooldown).SetOverloadUntil(cooldown).SetTempUnschedulableUntil(cooldown).Save(ctx)
+	row, err := f.client.Provider.Create().SetName("test-diagnostic-provider").SetPlatform(capability.PlatformOpenAI).SetType(capability.ProviderTypeAPIKey).SetCredentials(map[string]any{"model_mapping": map[string]any{"public-known": "public-known"}}).SetRateLimitResetAt(cooldown).SetOverloadUntil(cooldown).SetTempUnschedulableUntil(cooldown).Save(ctx)
 	require.NoError(t, err)
 	_, err = f.client.ProviderGroup.Create().SetProviderID(row.ID).SetGroupID(group.ID).Save(ctx)
 	require.NoError(t, err)
-	store := app.NewS16ProviderStore(f.client, f.db, nil)
-	diagnoser := app.S16ModelAvailability(store, nil)
+	store := app.NewProviderStoreForTest(f.client, f.db, nil)
+	diagnoser := app.NewModelAvailabilityForTest(store, nil)
 	t.Run("configured_cooling_provider", func(t *testing.T) {
 		result := diagnoser.Compatible.DiagnoseModelAvailabilityForPlatform(ctx, &group.ID, "public-known", capability.PlatformOpenAI)
 		require.True(t, result.HasProvidersInPool)

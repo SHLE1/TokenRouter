@@ -1,4 +1,4 @@
-// Vertex 迁移保留原协议及取消边界，旧入口仅投影。
+// Vertex 服务账号凭据使用身份摘要缓存，并通过刷新锁协调令牌交换。
 package provider
 
 import (

@@ -33,6 +33,7 @@ func (r *runtimeSettings) GetValue(ctx context.Context, key string) (string, err
 	defer r.mu.Unlock()
 	return r.values[key], nil
 }
+
 func (r *runtimeSettings) Set(ctx context.Context, key, value string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -51,14 +52,17 @@ type runtimeArchive struct{ calls atomic.Int32 }
 func (a *runtimeArchive) Write(context.Context, *BackupRecord, BackupObjectStore, *BackupS3Config, BackupDumpOptions, func(context.Context, *BackupRecord) error, func(time.Duration) (context.Context, context.CancelFunc)) (int64, error) {
 	return 0, nil
 }
+
 func (a *runtimeArchive) Restore(context.Context, *BackupRecord, BackupObjectStore) error {
 	a.calls.Add(1)
 	return nil
 }
+
 func runtimeBackup(repo *runtimeSettings, archive *runtimeArchive) *BackupService {
 	return New(repo, Options{DatabaseName: "test", Now: time.Now}, nil, nil, nil, archive, nil)
 }
-func TestS14B01RepeatedStartAndStop(t *testing.T) {
+
+func TestRepeatedStartAndStop(t *testing.T) {
 	s := runtimeBackup(&runtimeSettings{}, &runtimeArchive{})
 	require.NoError(t, s.StartContext(context.Background()))
 	first := s.cronSched
@@ -70,7 +74,8 @@ func TestS14B01RepeatedStartAndStop(t *testing.T) {
 	_, err := s.StartBackup(context.Background(), "manual", 1)
 	require.Error(t, err)
 }
-func TestS14B02StopCancelsWarmup(t *testing.T) {
+
+func TestStopCancelsWarmup(t *testing.T) {
 	repo := &runtimeSettings{entered: make(chan struct{})}
 	s := runtimeBackup(repo, &runtimeArchive{})
 	started := make(chan struct{})
@@ -82,7 +87,8 @@ func TestS14B02StopCancelsWarmup(t *testing.T) {
 	<-started
 	require.True(t, repo.cancelled.Load())
 }
-func TestS14B06RestoreMustRegister(t *testing.T) {
+
+func TestRestoreMustRegister(t *testing.T) {
 	repo := &runtimeSettings{}
 	archive := &runtimeArchive{}
 	s := runtimeBackup(repo, archive)
@@ -97,7 +103,7 @@ func TestS14B06RestoreMustRegister(t *testing.T) {
 }
 
 // 阻塞操作的超时结果必须被后续 Stop 复用，不能伪装成已排空。
-func TestS14B02StopBudget(t *testing.T) {
+func TestStopBudget(t *testing.T) {
 	s := runtimeBackup(&runtimeSettings{}, &runtimeArchive{})
 	_, done, err := s.begin(context.Background())
 	require.NoError(t, err)
@@ -110,7 +116,7 @@ func TestS14B02StopBudget(t *testing.T) {
 }
 
 // 无效 cron 配置使定时备份降级，不得阻断整套应用启动。
-func TestS14StoredCronFailureDegrades(t *testing.T) {
+func TestStoredCronFailureDegrades(t *testing.T) {
 	repo := &runtimeSettings{values: map[string]string{settingKeyBackupSchedule: `{"enabled":true,"cron_expr":"not-a-cron"}`}}
 	s := runtimeBackup(repo, &runtimeArchive{})
 	require.NoError(t, s.StartContext(context.Background()))
@@ -118,7 +124,7 @@ func TestS14StoredCronFailureDegrades(t *testing.T) {
 }
 
 // 已在停机前开始的清理，也必须受随后传入的应用剩余预算约束。
-func TestS14B02CleanupUsesShutdownBudget(t *testing.T) {
+func TestCleanupUsesShutdownBudget(t *testing.T) {
 	s := runtimeBackup(&runtimeSettings{}, &runtimeArchive{})
 	cleanup, cancelCleanup := s.cleanupContext(time.Hour)
 	defer cancelCleanup()

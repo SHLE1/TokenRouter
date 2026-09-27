@@ -18,11 +18,11 @@ import (
 )
 
 // 核对状态比较及同连接参与，外层回滚和 outbox 写入失败都不能留下轮换凭据。
-func TestS06RefreshCredentialsCASAndOuterRollback(t *testing.T) {
+func TestRefreshCredentialsCASAndOuterRollback(t *testing.T) {
 	ctx := context.Background()
 	client := testEntClient(t)
 	suffix := time.Now().UnixNano()
-	row, err := client.Provider.Create().SetName(fmt.Sprintf("s06-credential-%d", suffix)).SetPlatform(capability.PlatformOpenAI).SetType(capability.ProviderTypeOAuth).SetCredentials(map[string]any{"refresh_token": "first"}).Save(ctx)
+	row, err := client.Provider.Create().SetName(fmt.Sprintf("test-credential-%d", suffix)).SetPlatform(capability.PlatformOpenAI).SetType(capability.ProviderTypeOAuth).SetCredentials(map[string]any{"refresh_token": "first"}).Save(ctx)
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, client.Provider.DeleteOneID(row.ID).Exec(context.Background())) })
 	repo := newProviderStoreContract(client, integrationDB, nil)
@@ -66,16 +66,16 @@ func TestS06RefreshCredentialsCASAndOuterRollback(t *testing.T) {
 	require.Equal(t, "committed", readVersion().Credentials["refresh_token"])
 }
 
-func TestS06RefreshCredentialsOutboxFailureRollsBack(t *testing.T) {
+func TestRefreshCredentialsOutboxFailureRollsBack(t *testing.T) {
 	ctx := context.Background()
 	client := testEntClient(t)
 	suffix := time.Now().UnixNano()
-	row, err := client.Provider.Create().SetName(fmt.Sprintf("s06-credential-outbox-%d", suffix)).SetPlatform(capability.PlatformGemini).SetType(capability.ProviderTypeOAuth).SetCredentials(map[string]any{"refresh_token": "first"}).Save(ctx)
+	row, err := client.Provider.Create().SetName(fmt.Sprintf("test-credential-outbox-%d", suffix)).SetPlatform(capability.PlatformGemini).SetType(capability.ProviderTypeOAuth).SetCredentials(map[string]any{"refresh_token": "first"}).Save(ctx)
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, client.Provider.DeleteOneID(row.ID).Exec(context.Background())) })
-	functionName := fmt.Sprintf("s06_credential_outbox_fail_%d", suffix)
-	triggerName := fmt.Sprintf("s06_credential_outbox_trigger_%d", suffix)
-	_, err = integrationDB.ExecContext(ctx, fmt.Sprintf(`CREATE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.provider_id = %d THEN RAISE EXCEPTION 's06 forced outbox failure'; END IF; RETURN NEW; END $$`, functionName, row.ID))
+	functionName := fmt.Sprintf("test_credential_outbox_fail_%d", suffix)
+	triggerName := fmt.Sprintf("test_credential_outbox_trigger_%d", suffix)
+	_, err = integrationDB.ExecContext(ctx, fmt.Sprintf(`CREATE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.provider_id = %d THEN RAISE EXCEPTION 'test forced outbox failure'; END IF; RETURN NEW; END $$`, functionName, row.ID))
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		_, e := integrationDB.ExecContext(context.Background(), fmt.Sprintf("DROP TRIGGER IF EXISTS %s ON scheduler_outbox", triggerName))
@@ -88,7 +88,7 @@ func TestS06RefreshCredentialsOutboxFailureRollsBack(t *testing.T) {
 	repo := newProviderStoreContract(client, integrationDB, nil)
 	version := providercore.CredentialVersion{ID: row.ID, Platform: row.Platform, Type: row.Type, Status: row.Status, Credentials: row.Credentials}
 	applied, err := repo.UpdateOAuthCredentialsIfUnchanged(ctx, version, map[string]any{"refresh_token": "uncommitted"})
-	require.ErrorContains(t, err, "s06 forced outbox failure")
+	require.ErrorContains(t, err, "test forced outbox failure")
 	require.False(t, applied)
 	current, err := repo.GetByID(ctx, row.ID)
 	require.NoError(t, err)
@@ -96,21 +96,21 @@ func TestS06RefreshCredentialsOutboxFailureRollsBack(t *testing.T) {
 }
 
 // 交换器只使用本地可控闸门，真实数据库在交换暂停期间完成管理员改凭据。
-type s06RefreshExchange struct {
+type refreshExchange struct {
 	started chan struct{}
 	release chan struct{}
 	calls   int
 }
 
-func (e *s06RefreshExchange) CanRefresh(a *providercore.Record) bool {
+func (e *refreshExchange) CanRefresh(a *providercore.Record) bool {
 	return a.Platform == capability.PlatformOpenAI && a.Type == capability.ProviderTypeOAuth
 }
-func (e *s06RefreshExchange) NeedsRefresh(*providercore.Record, time.Duration) bool { return true }
-func (e *s06RefreshExchange) CacheKey(a *providercore.Record) string {
-	return fmt.Sprintf("s06-refresh:%d", a.ID)
+func (e *refreshExchange) NeedsRefresh(*providercore.Record, time.Duration) bool { return true }
+func (e *refreshExchange) CacheKey(a *providercore.Record) string {
+	return fmt.Sprintf("test-refresh:%d", a.ID)
 }
 
-func (e *s06RefreshExchange) Refresh(ctx context.Context, _ *providercore.Record) (map[string]any, error) {
+func (e *refreshExchange) Refresh(ctx context.Context, _ *providercore.Record) (map[string]any, error) {
 	e.calls++
 	close(e.started)
 	select {
@@ -121,17 +121,17 @@ func (e *s06RefreshExchange) Refresh(ctx context.Context, _ *providercore.Record
 	}
 }
 
-func TestS06RefreshPublicEntryPreservesConcurrentAdminCredentials(t *testing.T) {
+func TestRefreshPublicEntryPreservesConcurrentAdminCredentials(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	client := testEntClient(t)
-	row, err := client.Provider.Create().SetName(fmt.Sprintf("s06-refresh-public-%d", time.Now().UnixNano())).SetPlatform(capability.PlatformOpenAI).SetType(capability.ProviderTypeOAuth).SetCredentials(map[string]any{"refresh_token": "original"}).Save(ctx)
+	row, err := client.Provider.Create().SetName(fmt.Sprintf("test-refresh-public-%d", time.Now().UnixNano())).SetPlatform(capability.PlatformOpenAI).SetType(capability.ProviderTypeOAuth).SetCredentials(map[string]any{"refresh_token": "original"}).Save(ctx)
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, client.Provider.DeleteOneID(row.ID).Exec(context.Background())) })
 	repo := newProviderStoreContract(client, integrationDB, nil)
 	original, err := repo.GetByID(ctx, row.ID)
 	require.NoError(t, err)
-	executor := &s06RefreshExchange{started: make(chan struct{}), release: make(chan struct{})}
+	executor := &refreshExchange{started: make(chan struct{}), release: make(chan struct{})}
 	type result struct {
 		value *providercore.OAuthRefreshResult
 		err   error

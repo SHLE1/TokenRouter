@@ -27,11 +27,13 @@ func (e *countingExecutor) Search(ctx context.Context, cfg ProviderConfig, req S
 	e.calls.Add(1)
 	return e.Executor.Search(ctx, cfg, req)
 }
+
 func (e *countingExecutor) IsProxyError(err error) bool {
 	e.classifications.Add(1)
 	return e.Executor.IsProxyError(err)
 }
-func TestS10SearchRedisReservations(t *testing.T) {
+
+func TestSearchRedisReservations(t *testing.T) {
 	setup, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	container, err := tcredis.Run(setup, "redis:8.4-alpine")

@@ -19,13 +19,13 @@ import (
 )
 
 // 两个调用在尝试加锁前汇合，锁内读取不得依赖修复前的错误交错。
-type s12PlanningAffiliateBarrier struct {
+type affiliateLockBarrier struct {
 	promotion.AffiliateRepository
 	ready chan struct{}
 	calls atomic.Int32
 }
 
-func (r *s12PlanningAffiliateBarrier) WithLockedInviter(ctx context.Context, id int64, fn func(context.Context) error) error {
+func (r *affiliateLockBarrier) WithLockedInviter(ctx context.Context, id int64, fn func(context.Context) error) error {
 	if r.calls.Add(1) == 2 {
 		close(r.ready)
 	}
@@ -36,14 +36,15 @@ func (r *s12PlanningAffiliateBarrier) WithLockedInviter(ctx context.Context, id 
 	}
 	return r.AffiliateRepository.WithLockedInviter(ctx, id, fn)
 }
+
 func TestAffiliateCapConcurrentAccrualUsesLockedLatestTotal(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	c := testEntClient(t)
 	repo := promotionpostgres.NewAffiliateRepository(c, func(tx *dbent.Tx) promotionpostgres.TransferBalance { return billingpostgres.BalanceInTx(tx) })
-	inviter, e := c.User.Create().SetEmail("s12-inviter@example.com").SetPasswordHash("hash").Save(ctx)
+	inviter, e := c.User.Create().SetEmail("test-inviter@example.com").SetPasswordHash("hash").Save(ctx)
 	require.NoError(t, e)
-	invitee, e := c.User.Create().SetEmail("s12-invitee@example.com").SetPasswordHash("hash").Save(ctx)
+	invitee, e := c.User.Create().SetEmail("test-invitee@example.com").SetPasswordHash("hash").Save(ctx)
 	require.NoError(t, e)
 	_, e = repo.EnsureUserAffiliate(ctx, inviter.ID)
 	require.NoError(t, e)
@@ -62,7 +63,7 @@ func TestAffiliateCapConcurrentAccrualUsesLockedLatestTotal(t *testing.T) {
 		require.NoError(t, sr.SetMultiple(context.Background(), original))
 	})
 	require.NoError(t, sr.SetMultiple(ctx, map[string]string{promotion.SettingKeyAffiliateEnabled: "true", promotion.SettingKeyAffiliateRebateRate: "100", promotion.SettingKeyAffiliateRebatePerInviteeCap: "10", promotion.SettingKeyAffiliateRebateFreezeHours: "0", promotion.SettingKeyAffiliateRebateDurationDays: "0"}))
-	barrier := &s12PlanningAffiliateBarrier{AffiliateRepository: repo, ready: make(chan struct{})}
+	barrier := &affiliateLockBarrier{AffiliateRepository: repo, ready: make(chan struct{})}
 	svc := promotion.NewAffiliateService(barrier, promotion.NewRuntimeSettings(sr), nil, nil, promotion.Runtime{})
 	errs := make(chan error, 2)
 	for range 2 {

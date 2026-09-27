@@ -12,7 +12,7 @@ import (
 func TestPrincipalOwnsLegacyProjection(t *testing.T) {
 	c, _ := gin.CreateTestContext(nil)
 	principal := identity.Principal{UserID: 7, Role: "user", SessionID: "session-1", CredentialKind: "jwt"}
-	SetPrincipal(c, principal, 3, "s05@example.invalid")
+	SetPrincipal(c, principal, 3, "test@example.invalid")
 	c.Set(ContextKeyUser, AuthSubject{UserID: 99, Concurrency: 999})
 	c.Set(ContextKeyUserRole, "admin")
 	got, ok := GetPrincipal(c)

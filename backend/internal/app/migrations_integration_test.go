@@ -15,12 +15,12 @@ import (
 )
 
 // 在隔离 PostgreSQL 上验证锁、checksum、事务回滚及并发索引重放，不触碰发布迁移。
-func TestS02MigrationsLockReplayAndRollback(t *testing.T) {
+func TestMigrationsLockReplayAndRollback(t *testing.T) {
 	fixture := newDatabaseFixture(t)
 	ctx := context.Background()
 	migrations := fstest.MapFS{
-		"900_s02_contract.sql":            {Data: []byte("CREATE TABLE s02_migration_contract(id bigint PRIMARY KEY, value text);")},
-		"901_s02_contract_index_notx.sql": {Data: []byte("CREATE INDEX CONCURRENTLY IF NOT EXISTS s02_migration_index ON s02_migration_contract(value);")},
+		"900_test_contract.sql":            {Data: []byte("CREATE TABLE test_migration_contract(id bigint PRIMARY KEY, value text);")},
+		"901_test_contract_index_notx.sql": {Data: []byte("CREATE INDEX CONCURRENTLY IF NOT EXISTS test_migration_index ON test_migration_contract(value);")},
 	}
 	var wg sync.WaitGroup
 	results := make(chan error, 2)
@@ -33,14 +33,14 @@ func TestS02MigrationsLockReplayAndRollback(t *testing.T) {
 		require.NoError(t, err)
 	}
 	var count int
-	require.NoError(t, fixture.db.QueryRow(`SELECT count(*) FROM schema_migrations WHERE filename LIKE '90%_s02_%'`).Scan(&count))
+	require.NoError(t, fixture.db.QueryRow(`SELECT count(*) FROM schema_migrations WHERE filename LIKE '90%_test_%'`).Scan(&count))
 	require.Equal(t, 2, count)
-	changed := fstest.MapFS{"900_s02_contract.sql": {Data: []byte("SELECT 1;")}}
+	changed := fstest.MapFS{"900_test_contract.sql": {Data: []byte("SELECT 1;")}}
 	require.ErrorContains(t, postgres.ApplyMigrations(ctx, fixture.db, changed), "checksum")
-	failed := fstest.MapFS{"902_s02_rollback.sql": {Data: []byte("CREATE TABLE s02_should_rollback(id bigint); SELECT 1/0;")}}
+	failed := fstest.MapFS{"902_test_rollback.sql": {Data: []byte("CREATE TABLE test_should_rollback(id bigint); SELECT 1/0;")}}
 	require.Error(t, postgres.ApplyMigrations(ctx, fixture.db, failed))
 	var rolledBack bool
-	require.NoError(t, fixture.db.QueryRow(`SELECT to_regclass('s02_should_rollback') IS NULL`).Scan(&rolledBack))
+	require.NoError(t, fixture.db.QueryRow(`SELECT to_regclass('test_should_rollback') IS NULL`).Scan(&rolledBack))
 	require.True(t, rolledBack)
 	conn, err := fixture.db.Conn(ctx)
 	require.NoError(t, err)

@@ -11,7 +11,7 @@ import (
 )
 
 // 规划夹具仅放在仓库外，通过 overlay 验证原实现。
-func TestS13StoppedRuntimesRejectStart(t *testing.T) {
+func TestStoppedRuntimesRejectStart(t *testing.T) {
 	t.Run("creative", func(t *testing.T) {
 		q := &parallelCreativeQueue{ready: make(chan string)}
 		w := newCreativeWorkerFixtureForSources(q, nil, nil, nil, nil, creative.CreativeWorkerOptions{})
@@ -22,5 +22,4 @@ func TestS13StoppedRuntimesRejectStart(t *testing.T) {
 		defer r.Stop()
 		require.False(t, r.Running(), "停止后的创作台 runtime 不应重开")
 	})
-
 }

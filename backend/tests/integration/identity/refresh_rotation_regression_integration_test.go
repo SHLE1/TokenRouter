@@ -19,14 +19,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// s05RefreshReadBarrier 让两个请求都读取到原凭据，再同时进入轮换，验证真实 Redis 原子消费。
-type s05RefreshReadBarrier struct {
+// refreshReadBarrier 让两个请求都读取到原凭据，再同时进入轮换，验证真实 Redis 原子消费。
+type refreshReadBarrier struct {
 	identity.RefreshTokenCache
 	arrived chan struct{}
 	release chan struct{}
 }
 
-func (c *s05RefreshReadBarrier) GetRefreshToken(ctx context.Context, key string) (*identity.RefreshTokenData, error) {
+func (c *refreshReadBarrier) GetRefreshToken(ctx context.Context, key string) (*identity.RefreshTokenData, error) {
 	value, err := c.RefreshTokenCache.GetRefreshToken(ctx, key)
 	if err != nil {
 		return nil, err
@@ -44,18 +44,18 @@ func (c *s05RefreshReadBarrier) GetRefreshToken(ctx context.Context, key string)
 	}
 }
 
-// s05RefreshDeleteFailure 同时覆盖旧删除入口与新消费入口，不模拟 Redis 的成功行为。
-type s05RefreshDeleteFailure struct {
+// refreshDeleteFailure 同时覆盖旧删除入口与新消费入口，不模拟 Redis 的成功行为。
+type refreshDeleteFailure struct {
 	identity.RefreshTokenCache
 	failure error
 }
 
-func (c s05RefreshDeleteFailure) DeleteRefreshToken(context.Context, string) error { return c.failure }
-func (c s05RefreshDeleteFailure) ConsumeRefreshToken(context.Context, string) (bool, error) {
+func (c refreshDeleteFailure) DeleteRefreshToken(context.Context, string) error { return c.failure }
+func (c refreshDeleteFailure) ConsumeRefreshToken(context.Context, string) (bool, error) {
 	return false, c.failure
 }
 
-func TestS05RefreshRotationConsumesOnce(t *testing.T) {
+func TestRefreshRotationConsumesOnce(t *testing.T) {
 	integrationDB, integrationEntClient := identityDatabase(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
@@ -63,12 +63,12 @@ func TestS05RefreshRotationConsumesOnce(t *testing.T) {
 	users := postgres.NewUserStore(client, integrationDB)
 	user := mustCreateUser(t, client, &identity.User{})
 	cache := rediscache.NewRefreshTokenCache(rediscontainer.New(t))
-	barrier := &s05RefreshReadBarrier{RefreshTokenCache: cache, arrived: make(chan struct{}, 2), release: make(chan struct{})}
+	barrier := &refreshReadBarrier{RefreshTokenCache: cache, arrived: make(chan struct{}, 2), release: make(chan struct{})}
 	var releaseOnce sync.Once
 	unblock := func() { releaseOnce.Do(func() { close(barrier.release) }) }
 	t.Cleanup(unblock)
 	cfg := &config.Config{}
-	cfg.JWT.Secret = "s05-local-fixture-only"
+	cfg.JWT.Secret = "test-local-fixture-only"
 	cfg.JWT.ExpireHour = 1
 	cfg.JWT.RefreshTokenExpireDays = 1
 	auth := identitytestkit.Auth(client, &identity.AuthDependencies{Users: users, RefreshTokens: barrier, Options: identitytestkit.AuthOptions(cfg)})
@@ -105,16 +105,16 @@ func TestS05RefreshRotationConsumesOnce(t *testing.T) {
 	require.Equal(t, 1, invalid, "已被并发请求消费的 token 必须拒绝")
 }
 
-func TestS05RefreshRotationStorageFailureDoesNotIssueTokens(t *testing.T) {
+func TestRefreshRotationStorageFailureDoesNotIssueTokens(t *testing.T) {
 	integrationDB, integrationEntClient := identityDatabase(t)
 	ctx := context.Background()
 	client := integrationEntClient
 	users := postgres.NewUserStore(client, integrationDB)
 	user := mustCreateUser(t, client, &identity.User{})
 	cache := rediscache.NewRefreshTokenCache(rediscontainer.New(t))
-	failing := s05RefreshDeleteFailure{RefreshTokenCache: cache, failure: errors.New("s05 injected token consume failure")}
+	failing := refreshDeleteFailure{RefreshTokenCache: cache, failure: errors.New("test injected token consume failure")}
 	cfg := &config.Config{}
-	cfg.JWT.Secret = "s05-local-fixture-only"
+	cfg.JWT.Secret = "test-local-fixture-only"
 	cfg.JWT.ExpireHour = 1
 	cfg.JWT.RefreshTokenExpireDays = 1
 	auth := identitytestkit.Auth(client, &identity.AuthDependencies{Users: users, RefreshTokens: failing, Options: identitytestkit.AuthOptions(cfg)})

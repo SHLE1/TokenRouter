@@ -18,15 +18,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type s06FailConfigurationOutbox struct{ providerEventsFixture }
+type failConfigurationOutbox struct{ providerEventsFixture }
 
-func (s06FailConfigurationOutbox) Write(ctx context.Context, exec postgresinfra.Executor, _ providerpostgres.ProviderEvent, _, _ *int64, _ any) error {
+func (failConfigurationOutbox) Write(ctx context.Context, exec postgresinfra.Executor, _ providerpostgres.ProviderEvent, _, _ *int64, _ any) error {
 	// 故障在真实事务连接上发生，验证配置 SQL 不会先行提交。
-	_, err := exec.ExecContext(ctx, "INSERT INTO s06_missing_outbox_fixture DEFAULT VALUES")
+	_, err := exec.ExecContext(ctx, "INSERT INTO test_missing_outbox_fixture DEFAULT VALUES")
 	return err
 }
 
-func TestS06ConfigurationTransactionAndOutbox(t *testing.T) {
+func TestConfigurationTransactionAndOutbox(t *testing.T) {
 	for _, mode := range []string{"outer_rollback", "outbox_failure"} {
 		t.Run(mode, func(t *testing.T) {
 			ctx := context.Background()
@@ -43,7 +43,7 @@ func TestS06ConfigurationTransactionAndOutbox(t *testing.T) {
 				defer func() { _ = tx.Rollback() }()
 				ctx = dbent.NewTxContext(ctx, tx)
 			} else {
-				store.SetEvents(s06FailConfigurationOutbox{})
+				store.SetEvents(failConfigurationOutbox{})
 			}
 			value := &acctcore.Record{ID: row.ID, Name: "pending-config"}
 			err = store.UpdateConfiguration(ctx, value, acctcore.ConfigurationChange{Fields: acctcore.ConfigName})
@@ -61,7 +61,7 @@ func TestS06ConfigurationTransactionAndOutbox(t *testing.T) {
 				require.Equal(t, 1, count)
 				require.NoError(t, tx.Rollback())
 			} else {
-				require.ErrorContains(t, err, "s06_missing_outbox_fixture")
+				require.ErrorContains(t, err, "test_missing_outbox_fixture")
 			}
 			outside, err := client.Provider.Get(context.Background(), row.ID)
 			require.NoError(t, err)

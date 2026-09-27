@@ -2853,13 +2853,6 @@ func (s *ContentModerationService) buildStructuredLog(input ContentModerationChe
 	return log
 }
 
-// buildLog 保留旧测试和内部调用兼容，新的审核路径统一使用结构化版本。
-func (s *ContentModerationService) buildLog(input ContentModerationCheckInput, cfg *ContentModerationConfig, action string, flagged bool, highestCategory string, highestScore float64, scores map[string]float64, text string, latency *int, queueDelay *int, errText string) *ContentModerationLog {
-	content := ContentModerationInput{Text: text}
-	content.Normalize()
-	return s.buildStructuredLog(input, cfg, action, flagged, highestCategory, highestScore, scores, content, latency, queueDelay, errText, nil)
-}
-
 func (s *ContentModerationService) persistContentModerationLog(ctx context.Context, cfg *ContentModerationConfig, log *ContentModerationLog, hashText string, recordHash bool, applySideEffects bool) {
 	if s == nil || log == nil {
 		return

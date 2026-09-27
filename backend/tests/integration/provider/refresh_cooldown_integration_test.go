@@ -12,13 +12,13 @@ import (
 )
 
 // PostgreSQL 条件清理保留命名/余额等无关修改，拒绝身份与新 cooldown，并保留尽力 outbox。
-func TestS06RefreshCooldownDatabaseIdentity(t *testing.T) {
+func TestRefreshCooldownDatabaseIdentity(t *testing.T) {
 	for _, change := range []string{"none", "name", "credentials", "status", "window", "reason", "outbox_failure", "cancelled"} {
 		t.Run(change, func(t *testing.T) {
 			ctx := context.Background()
 			client := testEntClient(t)
 			until := time.Now().UTC().Add(time.Hour).Truncate(time.Microsecond)
-			row, err := client.Provider.Create().SetName("s06-refresh-cooldown").SetPlatform(provider.PlatformGemini).SetType(provider.ProviderTypeOAuth).SetStatus(provider.StatusActive).SetCredentials(map[string]any{"refresh_token": "observed"}).SetTempUnschedulableUntil(until).SetTempUnschedulableReason("old").Save(ctx)
+			row, err := client.Provider.Create().SetName("test-refresh-cooldown").SetPlatform(provider.PlatformGemini).SetType(provider.ProviderTypeOAuth).SetStatus(provider.StatusActive).SetCredentials(map[string]any{"refresh_token": "observed"}).SetTempUnschedulableUntil(until).SetTempUnschedulableReason("old").Save(ctx)
 			require.NoError(t, err)
 			t.Cleanup(func() { require.NoError(t, client.Provider.DeleteOneID(row.ID).Exec(context.Background())) })
 			store := newProviderStoreContract(client, integrationDB, nil)
@@ -36,7 +36,7 @@ func TestS06RefreshCooldownDatabaseIdentity(t *testing.T) {
 			case "reason":
 				require.NoError(t, client.Provider.UpdateOneID(row.ID).SetTempUnschedulableReason("new").Exec(ctx))
 			case "outbox_failure":
-				store.SetEvents(s06FailConfigurationOutbox{})
+				store.SetEvents(failConfigurationOutbox{})
 			case "cancelled":
 				var cancel context.CancelFunc
 				ctx, cancel = context.WithCancel(ctx)

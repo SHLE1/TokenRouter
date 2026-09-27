@@ -12,7 +12,7 @@ import (
 )
 
 // 条件语句使用真实 PostgreSQL JSONB/NULL 比较，不将模拟存储当作竞争证据。
-func TestS06UsageObservationDatabaseIdentity(t *testing.T) {
+func TestUsageObservationDatabaseIdentity(t *testing.T) {
 	for _, action := range []string{"extra", "limit", "clear"} {
 		t.Run(action, func(t *testing.T) {
 			for _, change := range []string{"none", "name", "credentials", "status", "proxy", "window", "overload", "outbox_failure", "cancelled"} {
@@ -21,7 +21,7 @@ func TestS06UsageObservationDatabaseIdentity(t *testing.T) {
 					client := testEntClient(t)
 					now := time.Now().UTC().Truncate(time.Millisecond)
 					until := now.Add(time.Hour)
-					row, err := client.Provider.Create().SetName("s06-observation").SetPlatform(provider.PlatformQoder).SetType(provider.ProviderTypeCosy).SetStatus(provider.StatusActive).SetCredentials(map[string]any{"security_oauth_token": "observed"}).SetRateLimitedAt(now).SetRateLimitResetAt(until).Save(ctx)
+					row, err := client.Provider.Create().SetName("test-observation").SetPlatform(provider.PlatformQoder).SetType(provider.ProviderTypeCosy).SetStatus(provider.StatusActive).SetCredentials(map[string]any{"security_oauth_token": "observed"}).SetRateLimitedAt(now).SetRateLimitResetAt(until).Save(ctx)
 					require.NoError(t, err)
 					t.Cleanup(func() { require.NoError(t, client.Provider.DeleteOneID(row.ID).Exec(context.Background())) })
 					store := newProviderStoreContract(client, integrationDB, nil)
@@ -36,7 +36,7 @@ func TestS06UsageObservationDatabaseIdentity(t *testing.T) {
 					case "status":
 						require.NoError(t, client.Provider.UpdateOneID(row.ID).SetStatus(provider.StatusDisabled).Exec(ctx))
 					case "proxy":
-						p, err := client.Proxy.Create().SetName("s06-usage-proxy").SetProtocol("http").SetHost("127.0.0.1").SetPort(8182).Save(ctx)
+						p, err := client.Proxy.Create().SetName("test-usage-proxy").SetProtocol("http").SetHost("127.0.0.1").SetPort(8182).Save(ctx)
 						require.NoError(t, err)
 						require.NoError(t, client.Provider.UpdateOneID(row.ID).SetProxyID(p.ID).Exec(ctx))
 						t.Cleanup(func() {
@@ -48,7 +48,7 @@ func TestS06UsageObservationDatabaseIdentity(t *testing.T) {
 					case "overload":
 						require.NoError(t, client.Provider.UpdateOneID(row.ID).SetOverloadUntil(until).Exec(ctx))
 					case "outbox_failure":
-						store.SetEvents(s06FailConfigurationOutbox{})
+						store.SetEvents(failConfigurationOutbox{})
 					case "cancelled":
 						var cancel context.CancelFunc
 						ctx, cancel = context.WithCancel(ctx)

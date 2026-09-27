@@ -23,7 +23,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestS09QoderNativeChainCompletionFailures(t *testing.T) {
+func TestQoderNativeChainCompletionFailures(t *testing.T) {
 	for _, tc := range []struct {
 		name                 string
 		billingFail, logFail bool

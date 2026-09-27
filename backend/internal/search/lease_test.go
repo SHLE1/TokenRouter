@@ -26,6 +26,7 @@ func (q *quotaFixture) Increment(context.Context, string, time.Duration) (int64,
 	}
 	return q.used, nil
 }
+
 func (q *quotaFixture) Decrement(ctx context.Context, _ string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -37,6 +38,7 @@ func (q *quotaFixture) Decrement(ctx context.Context, _ string) error {
 	q.used--
 	return nil
 }
+
 func (q *quotaFixture) Usage(context.Context, string) (int64, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -45,7 +47,7 @@ func (q *quotaFixture) Usage(context.Context, string) (int64, error) {
 func (q *quotaFixture) Reset(context.Context, string) error                   { return nil }
 func (q *quotaFixture) MarkProxy(context.Context, int64, time.Duration) error { return nil }
 func (q *quotaFixture) ProxyAvailable(context.Context, int64) bool            { return true }
-func TestS10ConfirmedReservationReleasesOnlyOnce(t *testing.T) {
+func TestConfirmedReservationReleasesOnlyOnce(t *testing.T) {
 	q := &quotaFixture{used: 1}
 	manager := NewManager(nil, q, noSearchExecutor{}, nil)
 	lease := &quotaReservation{manager: manager, config: ProviderConfig{Type: ProviderTypeBrave, QuotaLimit: 10}, acquired: true}
@@ -60,7 +62,8 @@ func TestS10ConfirmedReservationReleasesOnlyOnce(t *testing.T) {
 	require.Equal(t, int64(1), q.decrements)
 	require.True(t, q.releaseDeadline)
 }
-func TestS10UncertainReservationDoesNotCompensate(t *testing.T) {
+
+func TestUncertainReservationDoesNotCompensate(t *testing.T) {
 	q := &quotaFixture{uncertain: true}
 	manager := NewManager(nil, q, noSearchExecutor{}, nil)
 	allowed, acquired := manager.tryReserveQuota(context.Background(), ProviderConfig{Type: ProviderTypeBrave, QuotaLimit: 10})
@@ -70,7 +73,8 @@ func TestS10UncertainReservationDoesNotCompensate(t *testing.T) {
 	lease.release(context.Background())
 	require.Zero(t, q.decrements)
 }
-func TestS10SearchStopWaitsAndRejectsNewWork(t *testing.T) {
+
+func TestSearchStopWaitsAndRejectsNewWork(t *testing.T) {
 	group := NewWorkGroup()
 	done, err := group.Begin()
 	require.NoError(t, err)
@@ -108,7 +112,7 @@ func (e canceledSearchExecutor) Search(ctx context.Context, _ ProviderConfig, _ 
 	return nil, ctx.Err()
 }
 
-func TestS10QuotaCleanupBudgetAndShutdownWait(t *testing.T) {
+func TestQuotaCleanupBudgetAndShutdownWait(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	quota := &blockedQuotaCleanup{entered: make(chan context.Context, 1)}

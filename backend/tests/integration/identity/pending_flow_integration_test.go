@@ -17,8 +17,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestS05PendingFinalizeRollbackAndCompensation 验证原两段注册事务在真实 PostgreSQL 上的回滚与补偿。
-func TestS05PendingFinalizeRollbackAndCompensation(t *testing.T) {
+// TestPendingFinalizeRollbackAndCompensation 验证原两段注册事务在真实 PostgreSQL 上的回滚与补偿。
+func TestPendingFinalizeRollbackAndCompensation(t *testing.T) {
 	integrationDB, integrationEntClient := identityDatabase(t)
 	ctx := context.Background()
 	client := integrationEntClient
@@ -33,9 +33,9 @@ func TestS05PendingFinalizeRollbackAndCompensation(t *testing.T) {
 		}
 		t.Run(label, func(t *testing.T) {
 			user := mustCreateUser(t, client, &identity.User{})
-			session, err := pending.CreatePendingSession(ctx, identity.CreatePendingAuthSessionInput{Intent: "login", Identity: identity.PendingAuthIdentityKey{ProviderType: "oidc", ProviderKey: "https://s05.example.invalid", ProviderSubject: uuid.NewString()}, BrowserSessionKey: uuid.NewString(), ResolvedEmail: user.Email})
+			session, err := pending.CreatePendingSession(ctx, identity.CreatePendingAuthSessionInput{Intent: "login", Identity: identity.PendingAuthIdentityKey{ProviderType: "oidc", ProviderKey: "https://test.example.invalid", ProviderSubject: uuid.NewString()}, BrowserSessionKey: uuid.NewString(), ResolvedEmail: user.Email})
 			require.NoError(t, err)
-			failure := errors.New("s05 after identity binding and pending consume")
+			failure := errors.New("test after identity binding and pending consume")
 			called := false
 			request := identity.PendingAccountFinalization{Session: session, User: identity.CopyUser(user), BeforeCommit: func(txCtx context.Context, _ *identity.PendingAuthSession) error {
 				called = true

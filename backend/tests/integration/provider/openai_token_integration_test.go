@@ -28,13 +28,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestS09OpenAITokenRefreshUsesOriginalCAS(t *testing.T) {
+func TestOpenAITokenRefreshUsesOriginalCAS(t *testing.T) {
 	for _, adminChange := range []bool{false, true} {
 		t.Run(fmt.Sprintf("administrator=%v", adminChange), func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cancel()
 			client := testEntClient(t)
-			row, err := client.Provider.Create().SetName(fmt.Sprintf("s09-openai-%d", time.Now().UnixNano())).SetPlatform(capability.PlatformOpenAI).SetType(capability.ProviderTypeOAuth).SetCredentials(map[string]any{"access_token": "expired", "refresh_token": "original", "expires_at": time.Now().Add(-time.Hour).Unix()}).Save(ctx)
+			row, err := client.Provider.Create().SetName(fmt.Sprintf("test-openai-%d", time.Now().UnixNano())).SetPlatform(capability.PlatformOpenAI).SetType(capability.ProviderTypeOAuth).SetCredentials(map[string]any{"access_token": "expired", "refresh_token": "original", "expires_at": time.Now().Add(-time.Hour).Unix()}).Save(ctx)
 			require.NoError(t, err)
 			t.Cleanup(func() { require.NoError(t, client.Provider.DeleteOneID(row.ID).Exec(context.Background())) })
 			repo := newProviderStoreContract(client, integrationDB, nil)
@@ -60,8 +60,8 @@ func TestS09OpenAITokenRefreshUsesOriginalCAS(t *testing.T) {
 			defer resumeOnce.Do(func() { close(resume) })
 			target, err := url.Parse(server.URL)
 			require.NoError(t, err)
-			native := openai.NewOAuthClient(s09OpenAILocalTransport{client: server.Client(), target: target})
-			oauth := provider.NewOpenAIAuthorization(provider.NewOpenAISessionStore(), provideradapter.OpenAIAuthorizationOptions(&provideradapter.OpenAIAuthorizationDependencies{Client: s09OpenAITLSClient{OAuthClient: native}}))
+			native := openai.NewOAuthClient(openAILocalTransport{client: server.Client(), target: target})
+			oauth := provider.NewOpenAIAuthorization(provider.NewOpenAISessionStore(), provideradapter.OpenAIAuthorizationOptions(&provideradapter.OpenAIAuthorizationDependencies{Client: openAITLSClient{OAuthClient: native}}))
 			t.Cleanup(func() { require.NoError(t, oauth.StopContext(context.Background())) })
 			cache := rediscache.NewOAuthTokenCache(rediscontainer.New(t))
 			store := repo
@@ -123,12 +123,12 @@ func TestS09OpenAITokenRefreshUsesOriginalCAS(t *testing.T) {
 }
 
 // 测试传输只把已构造的官方 token 请求送到本地 TLS 夹具，不访问真实供应商。
-type s09OpenAILocalTransport struct {
+type openAILocalTransport struct {
 	client *http.Client
 	target *url.URL
 }
 
-func (t s09OpenAILocalTransport) DoWithTLS(request *http.Request, _ string, _ int64, _ int, _ *tlsfingerprint.Profile) (*http.Response, error) {
+func (t openAILocalTransport) DoWithTLS(request *http.Request, _ string, _ int64, _ int, _ *tlsfingerprint.Profile) (*http.Response, error) {
 	copyRequest := request.Clone(request.Context())
 	copyRequest.URL.Scheme = t.target.Scheme
 	copyRequest.URL.Host = t.target.Host
@@ -136,8 +136,8 @@ func (t s09OpenAILocalTransport) DoWithTLS(request *http.Request, _ string, _ in
 }
 
 // 复用真实 OAuth 表单/响应解析；只指定现有可注入传输分支。
-type s09OpenAITLSClient struct{ *openai.OAuthClient }
+type openAITLSClient struct{ *openai.OAuthClient }
 
-func (c s09OpenAITLSClient) RefreshTokenWithClientID(ctx context.Context, token, proxy, clientID string, _ ...openai.OAuthTokenRequestOptions) (*openai.TokenResponse, error) {
+func (c openAITLSClient) RefreshTokenWithClientID(ctx context.Context, token, proxy, clientID string, _ ...openai.OAuthTokenRequestOptions) (*openai.TokenResponse, error) {
 	return c.OAuthClient.RefreshTokenWithClientID(ctx, token, proxy, clientID, openai.OAuthTokenRequestOptions{TLSProfile: &tlsfingerprint.Profile{}})
 }

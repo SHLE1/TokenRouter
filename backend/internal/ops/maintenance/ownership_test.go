@@ -9,7 +9,7 @@ import (
 )
 
 // 同一业务 operation ID 的再次认领仍必须具有独立代次。
-func TestS14B05SameOperationReclaimed(t *testing.T) {
+func TestSameOperationReclaimed(t *testing.T) {
 	repo := newInMemoryIdempotencyRepo()
 	s := NewSystemOperationLockService(repo, Options{ProcessingTimeout: time.Hour, SystemOperationTTL: 2 * time.Hour})
 	first, err := s.Acquire(context.Background(), "same")

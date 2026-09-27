@@ -344,13 +344,7 @@ func GetIntervalPricing(resolved *ResolvedPricing, totalContextTokens int) *Mode
 	return resolved.tokenPricingForInterval(FindMatchingInterval(resolved.Intervals, totalContextTokens))
 }
 
-// IntervalToModelPricing 将区间定价转换为 ModelPricing
-//
-//nolint:unused // 兼容旧测试入口；生产路径需要 base pricing fallback 并调用 WithBase 版本。
-func IntervalToModelPricing(iv *PricingInterval, supportsCacheBreakdown bool, chPricing *ModelPricingEntry) *ModelPricing {
-	return IntervalToModelPricingWithBase(iv, supportsCacheBreakdown, chPricing, nil)
-}
-
+// IntervalToModelPricingWithBase 将区间价转换为模型价，未配置的字段按基础价格回退。
 func IntervalToModelPricingWithBase(iv *PricingInterval, supportsCacheBreakdown bool, chPricing *ModelPricingEntry, base *ModelPricing) *ModelPricing {
 	if iv == nil {
 		return base

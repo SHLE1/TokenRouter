@@ -366,8 +366,8 @@ math net/textproto net/url reflect regexp slices sort strconv strings sync testi
 unsafe`
 
 var pureFileStandard = map[string]string{
-	"internal/gateway/clientmeta/claude_detection_original_test.go": "net/http/httptest",
-	"internal/gateway/clientmeta/claude_validator_original_test.go": "net/http net/http/httptest os",
+	"internal/gateway/clientmeta/claude_detection_test.go":          "net/http/httptest",
+	"internal/gateway/clientmeta/claude_validator_contract_test.go": "net/http net/http/httptest os",
 	"internal/upstream/usagecontract/request.go":                    "net/http",
 }
 
@@ -384,51 +384,51 @@ var filePermissions = []filePermission{
 	{Scope: "migrations", Imports: "internal/routing/postgres", Files: "platform_independent_pricing_integration_test.go"},
 	{Scope: "migrations", Imports: "internal/infra/postgres github.com/lib/pq github.com/testcontainers/testcontainers-go/modules/postgres", Files: "platform_independent_groups_integration_test.go platform_independent_pricing_integration_test.go provider_names_integration_test.go"},
 	{Scope: "internal/usage/postgres", Imports: "internal/ops/postgres", Files: "platform_snapshot_integration_test.go"},
-	{Scope: "internal/provider", Imports: "internal/provider/provider", Files: `admin_editor_original_fixture_test.go admin_legacy_extra_original_test.go
-admin_shadow_original_test.go`},
-	{Scope: "internal/apikey", Imports: "internal/apikey/postgres", Files: "admin_group_original_test.go"},
+	{Scope: "internal/provider", Imports: "internal/provider/provider", Files: `admin_editor_fixture_test.go admin_legacy_extra_test.go
+admin_shadow_test.go`},
+	{Scope: "internal/apikey", Imports: "internal/apikey/postgres", Files: "admin_group_test.go"},
 	{Scope: "internal/apikey/postgres", Imports: "internal/billing/postgres internal/usage/postgres/query", Files: "key_store.go"},
 	{Scope: "internal/backup", Imports: "internal/backup/provider internal/infra/postgres", Files: "backup_test.go"},
-	{Scope: "internal/batchimage", Imports: "internal/batchimage/provider", Files: `cleanup_original_test.go download_original_test.go mvp_original_test.go pipeline_fixture_test.go
-processor_original_test.go public_fixture_test.go public_original_test.go
-result_usecase_fixture_test.go settlement_original_test.go`},
+	{Scope: "internal/batchimage", Imports: "internal/batchimage/provider", Files: `cleanup_test.go download_test.go mvp_test.go pipeline_fixture_test.go
+processor_test.go public_fixture_test.go public_test.go
+result_usecase_fixture_test.go settlement_test.go`},
 	{Scope: "internal/batchimage", Imports: "internal/billing/provider internal/gateway/provider/modelidentity", Files: "public_price_fixture_test.go"},
-	{Scope: "internal/billing", Imports: "internal/billing/postgres", Files: `admin_redeem_mutations_original_test.go original_subscription_transaction_test.go
-subscription_original_fixture_test.go`},
+	{Scope: "internal/billing", Imports: "internal/billing/postgres", Files: `admin_redeem_mutations_test.go subscription_transaction_test.go
+subscription_fixture_test.go`},
 	{Scope: "internal/billing", Imports: "internal/billing/provider", Files: `calculator_calculator_fixture_test.go calculator_pricing_provider_fixture_test.go
-calculator_pricing_stub_helpers_test.go original_model_pricing_resolver_catalog_alias_test.go
-original_model_pricing_resolver_test.go`},
+calculator_pricing_stub_helpers_test.go model_pricing_resolver_catalog_alias_test.go
+model_pricing_resolver_test.go`},
 	{Scope: "internal/billing", Imports: "internal/gateway/provider/modelidentity", Files: `calculator_pricing_provider_fixture_test.go consumer_config_time_pricing_billing_test.go
-original_billing_service_test.go`},
+billing_service_test.go`},
 	{Scope: "internal/billing/postgres", Imports: "internal/batchimage/postgres", Files: "repo_unit_test.go"},
-	{Scope: "internal/creative", Imports: "internal/creative/provider", Files: "catalog_original_test.go creative_public_fixture_test.go"},
+	{Scope: "internal/creative", Imports: "internal/creative/provider", Files: "catalog_test.go creative_public_fixture_test.go"},
 	{Scope: "internal/creative", Imports: "internal/gateway/provider/modelidentity", Files: "creative_public_fixture_test.go support_fixture_test.go"},
 	{Scope: "internal/creative", Imports: "internal/billing/provider", Files: "support_fixture_test.go"},
-	{Scope: "internal/gateway/clientmeta", Imports: "net/http/httptest", Files: "claude_detection_original_test.go claude_validator_original_test.go"},
-	{Scope: "internal/gateway/clientmeta", Imports: "net/http os", Files: "claude_validator_original_test.go"},
-	{Scope: "internal/gateway/completion", Imports: "internal/gateway/provider", Files: "original_gateway_record_usage_test.go original_openai_gateway_record_usage_test.go"},
+	{Scope: "internal/gateway/clientmeta", Imports: "net/http/httptest", Files: "claude_detection_test.go claude_validator_contract_test.go"},
+	{Scope: "internal/gateway/clientmeta", Imports: "net/http os", Files: "claude_validator_contract_test.go"},
+	{Scope: "internal/gateway/completion", Imports: "internal/gateway/provider", Files: "gateway_record_usage_test.go openai_gateway_record_usage_test.go"},
 	{Scope: "internal/gateway/completion", Imports: "internal/billing/provider", Files: `recording_calculator_fixture_test.go recording_pricing_provider_fixture_test.go
 recording_pricing_stub_helpers_test.go`},
 	{Scope: "internal/gateway/completion", Imports: "internal/gateway/provider/modelidentity", Files: "recording_pricing_provider_fixture_test.go"},
 	{Scope: "internal/gateway/media", Imports: "internal/gateway/rediscache", Files: "video_integration_test.go"},
 	{Scope: "internal/gateway/rediscache", Imports: "internal/scheduler/rediscache", Files: "session.go"},
-	{Scope: "internal/identity", Imports: "internal/billing/postgres", Files: "admin_balance_original_test.go"},
-	{Scope: "internal/identity", Imports: "internal/identity/postgres", Files: "admin_delete_user_original_test.go"},
-	{Scope: "internal/identity", Imports: "internal/identity/provider", Files: "auth_settings_original_fixture_test.go dingtalk_original_test.go"},
+	{Scope: "internal/identity", Imports: "internal/billing/postgres", Files: "admin_balance_test.go"},
+	{Scope: "internal/identity", Imports: "internal/identity/postgres", Files: "admin_delete_user_test.go"},
+	{Scope: "internal/identity", Imports: "internal/identity/provider", Files: "auth_settings_fixture_test.go dingtalk_test.go"},
 	{Scope: "internal/identity/postgres", Imports: "internal/billing/postgres", Files: "auth_state.go user_repo.go"},
 	{Scope: "internal/identity/postgres", Imports: "internal/usage/postgres/query", Files: "user_repo.go"},
 	{Scope: "internal/moderation", Imports: "internal/moderation/provider", Files: "legacy_fixture_test.go"},
 	{Scope: "internal/moderation/postgres", Imports: "internal/identity/postgres", Files: "fixture_test.go"},
 	{Scope: "internal/payment/postgres", Imports: "internal/billing/postgres", Files: "consumer_order_snapshot_test.go"},
-	{Scope: "internal/routing", Imports: "internal/routing/provider", Files: `group_admin_original_fixture_test.go
+	{Scope: "internal/routing", Imports: "internal/routing/provider", Files: `group_admin_fixture_test.go
 marketplace_fixture_test.go`},
 	{Scope: "internal/routing", Imports: "internal/billing/provider", Files: `marketplace_catalog_fixture_test.go marketplace_fixture_test.go`},
-	{Scope: "internal/routing", Imports: "internal/provider/provider", Files: "group_management_ports_original_test.go"},
+	{Scope: "internal/routing", Imports: "internal/provider/provider", Files: "group_management_ports_test.go"},
 	{Scope: "internal/routing", Imports: "internal/gateway/provider/modelidentity", Files: "marketplace_catalog_fixture_test.go marketplace_fixture_test.go marketplace_quote_fixture_test.go"},
 	{Scope: "internal/scheduler/rediscache", Imports: "internal/provider/provider", Files: "scheduler_cache_integration_test.go scheduler_cache_unit_test.go"},
-	{Scope: "internal/search", Imports: "internal/search/provider", Files: "config_original_test.go"},
+	{Scope: "internal/search", Imports: "internal/search/provider", Files: "config_contract_test.go"},
 	{Scope: "internal/setup", Imports: "internal/app/bootstrap", Files: "setup.go"},
-	{Scope: "internal/team/postgres", Imports: "internal/apikey/postgres internal/billing/postgres", Files: "invitation_preview_original_test.go"},
+	{Scope: "internal/team/postgres", Imports: "internal/apikey/postgres internal/billing/postgres", Files: "invitation_preview_test.go"},
 	{Scope: "internal/team/postgres", Imports: "internal/usage/postgres/query", Files: "team.go"},
 	{Scope: "internal/upstream/usagecontract", Imports: "net/http", Files: "request.go"},
 	{Scope: "internal/usage/postgres", Imports: "internal/audit/postgres", Files: "aggregation_audit_transactions_integration_test.go"},

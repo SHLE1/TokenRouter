@@ -15,7 +15,7 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 
-	s15httpx "github.com/TokenFlux/TokenRouter/internal/server/httpx"
+	"github.com/TokenFlux/TokenRouter/internal/server/httpx"
 	"github.com/stretchr/testify/require"
 )
 
@@ -146,7 +146,7 @@ func TestCodexInviteResetServiceSendInviteMapsUnavailableInvite(t *testing.T) {
 	result, err := svc.SendInvite(context.Background(), provider.ID, []string{"a@example.com"})
 	require.Nil(t, result)
 	require.Error(t, err)
-	require.Equal(t, http.StatusForbidden, s15httpx.ErrorCode(err))
+	require.Equal(t, http.StatusForbidden, httpx.ErrorCode(err))
 	require.Equal(t, "CODEX_INVITE_RESET_REFERRAL_UNAVAILABLE", apperror.Reason(err))
 	require.Equal(t, "当前 Codex 推荐邀请入口暂不可用，但已有重置次数仍可使用", apperror.Message(err))
 	require.Equal(t, "该推荐码对应的推荐邀请不可用", apperror.FromError(err).Metadata["upstream_detail"])

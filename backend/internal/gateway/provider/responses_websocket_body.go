@@ -8,7 +8,7 @@ import (
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 
-	s09wire "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
+	openaiprotocol "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 	"github.com/TokenFlux/TokenRouter/internal/protocol/wirejson"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
@@ -62,7 +62,7 @@ func NormalizeOpenAIResponsesWebSocketCompatibilityBody(body []byte, provider *p
 		}
 	}
 	if provider != nil && provider.IsOpenAIOAuthLike() {
-		oauthBody, oauthChanged, err := s09wire.NormalizeOpenAIOAuthResponsesCompatibilityBody(normalized)
+		oauthBody, oauthChanged, err := openaiprotocol.NormalizeOpenAIOAuthResponsesCompatibilityBody(normalized)
 		if err != nil {
 			return body, false, err
 		}
@@ -136,7 +136,7 @@ func NormalizeOpenAIResponsesWebSocketCompatibilityBody(body []byte, provider *p
 	}
 	// Keep this last: earlier compatibility passes may filter or rebuild input.
 	// Remote compaction v2 requires one trigger as the final input item.
-	if triggerBody, triggerChanged, err := s09wire.NormalizeCompactionTriggerInputOrder(normalized); err != nil {
+	if triggerBody, triggerChanged, err := openaiprotocol.NormalizeCompactionTriggerInputOrder(normalized); err != nil {
 		return body, false, fmt.Errorf("normalize websocket compaction trigger order: %w", err)
 	} else if triggerChanged {
 		normalized = triggerBody

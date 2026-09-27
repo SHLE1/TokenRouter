@@ -59,17 +59,17 @@ import (
 	tcredis "github.com/testcontainers/testcontainers-go/modules/redis"
 )
 
-// s09BalanceReader 仅将真实数据库余额投影给 billing，不参与结算写入。
-type s09BalanceReader struct{ db *sql.DB }
+// balanceReader 仅将真实数据库余额投影给 billing，不参与结算写入。
+type balanceReader struct{ db *sql.DB }
 
-func (r s09BalanceReader) GetByID(ctx context.Context, id int64) (*billing.UserSummary, error) {
+func (r balanceReader) GetByID(ctx context.Context, id int64) (*billing.UserSummary, error) {
 	u := &billing.UserSummary{ID: id}
 	err := r.db.QueryRowContext(ctx, "SELECT balance FROM users WHERE id=$1", id).Scan(&u.Balance)
 	return u, err
 }
 
-// TestS09QoderHTTPStorageChain 使用真实 PostgreSQL/Redis、原完成 worker 和本地供应商 HTTP。
-func TestS09QoderHTTPStorageChain(t *testing.T) {
+// TestQoderHTTPStorageChain 使用真实 PostgreSQL/Redis、原完成 worker 和本地供应商 HTTP。
+func TestQoderHTTPStorageChain(t *testing.T) {
 	f := newDatabaseFixture(t)
 	ctx := context.Background()
 	container, err := tcredis.Run(ctx, "redis:8.4-alpine")
@@ -151,7 +151,7 @@ func TestS09QoderHTTPStorageChain(t *testing.T) {
 	providers := providerpg.NewProviderStore(f.client, f.db, providerpg.ProviderStoreOptions{Group: func(g *dbent.Group) *accessview.GroupConfig {
 		return (*accessview.GroupConfig)(routingpg.GroupFromEnt(g))
 	}})
-	eligibility := billing.NewEligibility(billingredis.NewBillingCache(rdb), s09BalanceReader{f.db}, nil, func() billing.EligibilityOptions { return billing.EligibilityOptions{} }, nil)
+	eligibility := billing.NewEligibility(billingredis.NewBillingCache(rdb), balanceReader{f.db}, nil, func() billing.EligibilityOptions { return billing.EligibilityOptions{} }, nil)
 	eligibility.Start()
 	t.Cleanup(eligibility.Stop)
 	price := &pricing.ResolvedPricing{Mode: pricing.BillingModeToken, Source: pricing.PricingSourceConfig, BasePricing: &pricing.ModelPricing{InputPricePerToken: 0.01, OutputPricePerToken: 0.02}}
@@ -162,13 +162,13 @@ func TestS09QoderHTTPStorageChain(t *testing.T) {
 	}{{name: "nonstream"}, {name: "stream", stream: true}, {name: "partial-failure", stream: true, partial: true}, {name: "upstream-timeout", stream: true, partial: true, timeout: true}, {name: "client-disconnect-tail-usage", stream: true, disconnect: true}} {
 		t.Run(tc.name, func(t *testing.T) {
 			uid := uuid.NewString()
-			user, err := f.client.User.Create().SetEmail(uid + "@s09.test").SetPasswordHash("fixture-only").SetBalance(10).SetConcurrency(1).Save(ctx)
+			user, err := f.client.User.Create().SetEmail(uid + "@test.test").SetPasswordHash("fixture-only").SetBalance(10).SetConcurrency(1).Save(ctx)
 			require.NoError(t, err)
-			group, err := f.client.Group.Create().SetName("s09-" + uid).SetAllowedProtocols([]protocol.ProtocolID{protocol.ProtocolOpenAIChatCompletions}).SetProtocolFallbacks(map[protocol.ProtocolID][]protocol.ProtocolID{protocol.ProtocolOpenAIChatCompletions: {protocol.ProtocolQoderChat}}).Save(ctx)
+			group, err := f.client.Group.Create().SetName("test-" + uid).SetAllowedProtocols([]protocol.ProtocolID{protocol.ProtocolOpenAIChatCompletions}).SetProtocolFallbacks(map[protocol.ProtocolID][]protocol.ProtocolID{protocol.ProtocolOpenAIChatCompletions: {protocol.ProtocolQoderChat}}).Save(ctx)
 			require.NoError(t, err)
-			key, err := f.client.APIKey.Create().SetUserID(user.ID).SetGroupID(group.ID).SetKey("sk-s09-" + uid).SetName("fixture").SetQuota(100).SetBillingMode("balance").Save(ctx)
+			key, err := f.client.APIKey.Create().SetUserID(user.ID).SetGroupID(group.ID).SetKey("sk-test-" + uid).SetName("fixture").SetQuota(100).SetBillingMode("balance").Save(ctx)
 			require.NoError(t, err)
-			acc, err := f.client.Provider.Create().SetName("s09-" + uid).SetPlatform("qoder").SetType("cosy").SetCredentials(map[string]any{"upstream_protocols": []string{"qoder_chat"}}).SetConcurrency(1).AddGroupIDs(group.ID).Save(ctx)
+			acc, err := f.client.Provider.Create().SetName("test-" + uid).SetPlatform("qoder").SetType("cosy").SetCredentials(map[string]any{"upstream_protocols": []string{"qoder_chat"}}).SetConcurrency(1).AddGroupIDs(group.ID).Save(ctx)
 			require.NoError(t, err)
 			var calls, completed atomic.Int32
 			nativeBody := successfulQoderStream
@@ -241,7 +241,7 @@ func TestS09QoderHTTPStorageChain(t *testing.T) {
 			}
 
 			// 使用固定 Execute；HTTP 只投影认证和报文，依赖不在每请求内重组。
-			runtime := &s11StorageQoderRuntime{}
+			runtime := &storageQoderRuntime{}
 			runtime.prepare = func(callCtx context.Context, request gateway.Request) (gateway.Request, error) {
 				grp, err := groups.GetByID(callCtx, group.ID)
 				if err != nil {
@@ -387,25 +387,25 @@ func TestS09QoderHTTPStorageChain(t *testing.T) {
 	}
 }
 
-// s11StorageQoderRuntime 仅替换供应商与依赖取得；执行、租约、真实资金及分析存储均走新生产模块。
-type s11StorageQoderRuntime struct {
+// storageQoderRuntime 仅替换供应商与依赖取得；执行、租约、真实资金及分析存储均走新生产模块。
+type storageQoderRuntime struct {
 	prepare        func(context.Context, gateway.Request) (gateway.Request, error)
 	check          func(context.Context) error
 	selectProvider func(context.Context, gateway.Request, map[int64]struct{}) (*gateway.Selection, error)
 }
 
-func (r *s11StorageQoderRuntime) Prepare(ctx context.Context, v gateway.Request) (gateway.Request, error) {
+func (r *storageQoderRuntime) Prepare(ctx context.Context, v gateway.Request) (gateway.Request, error) {
 	return r.prepare(ctx, v)
 }
 
-func (r *s11StorageQoderRuntime) Check(ctx context.Context, _ gateway.Request, _ bool) error {
+func (r *storageQoderRuntime) Check(ctx context.Context, _ gateway.Request, _ bool) error {
 	return r.check(ctx)
 }
 
-func (r *s11StorageQoderRuntime) Select(ctx context.Context, v gateway.Request, excluded map[int64]struct{}) (*gateway.Selection, error) {
+func (r *storageQoderRuntime) Select(ctx context.Context, v gateway.Request, excluded map[int64]struct{}) (*gateway.Selection, error) {
 	return r.selectProvider(ctx, v, excluded)
 }
-func (*s11StorageQoderRuntime) CanRefresh(error) bool      { return false }
-func (*s11StorageQoderRuntime) CanFailover(error) bool     { return true }
-func (*s11StorageQoderRuntime) RefreshPending(error) bool  { return false }
-func (*s11StorageQoderRuntime) QueueFailure(string, error) {}
+func (*storageQoderRuntime) CanRefresh(error) bool      { return false }
+func (*storageQoderRuntime) CanFailover(error) bool     { return true }
+func (*storageQoderRuntime) RefreshPending(error) bool  { return false }
+func (*storageQoderRuntime) QueueFailure(string, error) {}

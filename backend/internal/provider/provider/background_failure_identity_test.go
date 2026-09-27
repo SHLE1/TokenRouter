@@ -16,29 +16,29 @@ import (
 )
 
 // 返回旧交换失败之前，模拟管理员已经持久化一份新凭据。
-type s06OldFailureRefresher struct {
+type oldFailureRefresher struct {
 	row     *providercore.Record
 	failure error
 }
 
-func (*s06OldFailureRefresher) CanRefresh(*providercore.Record) bool { return true }
+func (*oldFailureRefresher) CanRefresh(*providercore.Record) bool { return true }
 
-func (*s06OldFailureRefresher) NeedsRefresh(*providercore.Record, time.Duration) bool { return true }
+func (*oldFailureRefresher) NeedsRefresh(*providercore.Record, time.Duration) bool { return true }
 
-func (*s06OldFailureRefresher) CacheKey(*providercore.Record) string { return "fixture:old-failure" }
+func (*oldFailureRefresher) CacheKey(*providercore.Record) string { return "fixture:old-failure" }
 
-func (r *s06OldFailureRefresher) Refresh(context.Context, *providercore.Record) (map[string]any, error) {
+func (r *oldFailureRefresher) Refresh(context.Context, *providercore.Record) (map[string]any, error) {
 	r.row.Credentials = map[string]any{"access_token": "fresh-admin-fixture", "refresh_token": "fresh-refresh-fixture"}
 	return nil, r.failure
 }
 
-type s06FailureBlocker struct{ calls int }
+type failureBlocker struct{ calls int }
 
-func (b *s06FailureBlocker) PrepareRefreshFailure(int64) func(providercore.RefreshFailureNotice) {
+func (b *failureBlocker) PrepareRefreshFailure(int64) func(providercore.RefreshFailureNotice) {
 	return func(providercore.RefreshFailureNotice) { b.calls++ }
 }
 
-func TestS06BackgroundFailureCannotBlockNewCredentials(t *testing.T) {
+func TestBackgroundFailureCannotBlockNewCredentials(t *testing.T) {
 	for _, engine := range []string{"fallback", "unified"} {
 		for _, platform := range []string{capability.PlatformAnthropic, capability.PlatformOpenAI, capability.PlatformGemini, capability.PlatformAntigravity, capability.PlatformQoder} {
 			for _, mode := range []string{"permanent", "retry_exhausted"} {
@@ -54,7 +54,7 @@ func TestS06BackgroundFailureCannotBlockNewCredentials(t *testing.T) {
 					snapshot.Credentials = maps.Clone(row.Credentials)
 					repo := &tokenRefreshProviderRepo{}
 					repo.providersByID = map[int64]*providercore.Record{1: row}
-					blocker := &s06FailureBlocker{}
+					blocker := &failureBlocker{}
 					s := newRefreshAttemptFixture(repo, &providercore.RefreshTuning{MaxRetries: 1}, nil, nil, nil)
 					s.Attempts.PrepareFailure = func(v *providercore.Record) func(time.Time, string) {
 						return providercore.PrepareRefreshFailureNotice(blocker, v)
@@ -66,7 +66,7 @@ func TestS06BackgroundFailureCannotBlockNewCredentials(t *testing.T) {
 					if mode == "retry_exhausted" {
 						message = "temporary upstream fixture"
 					}
-					refresher := &s06OldFailureRefresher{row: row, failure: errors.New(message)}
+					refresher := &oldFailureRefresher{row: row, failure: errors.New(message)}
 					require.Error(t, s.Attempts.Run(context.Background(), &snapshot, refresher, refresher, time.Hour, nil))
 					require.Zero(t, repo.setErrorCalls+repo.setTempUnschedCalls, "旧失败不能修改新身份的健康状态")
 					require.Zero(t, blocker.calls, "旧失败不能阻断新身份的内存调度")

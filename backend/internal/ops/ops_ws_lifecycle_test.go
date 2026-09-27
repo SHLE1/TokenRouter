@@ -27,7 +27,7 @@ func TestOpsWSShutdownCancelsIdleTimer(t *testing.T) {
 }
 
 // 跨请求的序列化快照仍是独立副本，不允许下游改写共享缓存。
-func TestS08RealtimePayloadRequestIsolation(t *testing.T) {
+func TestRealtimePayloadRequestIsolation(t *testing.T) {
 	r := NewRealtimeRuntime()
 	r.cache.payload.Store([]byte(`{"type":"qps_update"}`))
 	first := r.Payload()

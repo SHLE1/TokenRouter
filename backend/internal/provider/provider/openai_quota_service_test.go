@@ -18,7 +18,7 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 
-	s15httpx "github.com/TokenFlux/TokenRouter/internal/server/httpx"
+	"github.com/TokenFlux/TokenRouter/internal/server/httpx"
 	"github.com/stretchr/testify/require"
 )
 
@@ -224,7 +224,7 @@ func TestOpenAIQuotaServiceRejectsUnsupportedProvider(t *testing.T) {
 
 	_, err := svc.QueryUsage(context.Background(), provider.ID)
 	require.Error(t, err)
-	require.Equal(t, http.StatusBadRequest, s15httpx.ErrorCode(err))
+	require.Equal(t, http.StatusBadRequest, httpx.ErrorCode(err))
 	require.Equal(t, "OPENAI_QUOTA_UNSUPPORTED_PROVIDER", apperror.Reason(err))
 	require.False(t, strings.Contains(err.Error(), "sk-test"))
 }

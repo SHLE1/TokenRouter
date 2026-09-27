@@ -11,7 +11,7 @@ import (
 )
 
 // 展示 DTO 的嵌套修改不能回写提供商配置或缓存中的 map。
-func TestS06ProviderDTOHasIndependentNestedValues(t *testing.T) {
+func TestProviderDTOHasIndependentNestedValues(t *testing.T) {
 	value := &providercore.Record{Now: time.Now, LoadLocation: time.LoadLocation, Credentials: map[string]any{"model_mapping": map[string]any{"alias": "model"}}, Extra: map[string]any{"policy": map[string]any{"enabled": true}}}
 	view := dto.ProviderFromRecordShallow(value)
 	mapping, ok := view.Credentials["model_mapping"].(map[string]any)

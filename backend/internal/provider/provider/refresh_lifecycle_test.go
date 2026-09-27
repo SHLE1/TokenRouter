@@ -11,12 +11,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type s06RefreshStartPager struct {
+type refreshStartPager struct {
 	calls   atomic.Int32
 	entered chan struct{}
 }
 
-func (p *s06RefreshStartPager) ListOAuthRefreshCandidatePage(ctx context.Context, _ provider.OAuthRefreshPageOptions) (*provider.OAuthRefreshCandidatePage, error) {
+func (p *refreshStartPager) ListOAuthRefreshCandidatePage(ctx context.Context, _ provider.OAuthRefreshPageOptions) (*provider.OAuthRefreshCandidatePage, error) {
 	p.calls.Add(1)
 	p.entered <- struct{}{}
 	<-ctx.Done()
@@ -24,8 +24,8 @@ func (p *s06RefreshStartPager) ListOAuthRefreshCandidatePage(ctx context.Context
 }
 
 // 重复 Start 不能并发开启两轮立即扫描，即使两个循环共享同一个取消 context。
-func TestS06TokenRefreshStartIsIdempotent(t *testing.T) {
-	p := &s06RefreshStartPager{entered: make(chan struct{}, 2)}
+func TestTokenRefreshStartIsIdempotent(t *testing.T) {
+	p := &refreshStartPager{entered: make(chan struct{}, 2)}
 	s := provider.NewBackgroundRefreshService(provider.BackgroundRefreshOptions{Tuning: &provider.RefreshTuning{Enabled: true}, Pager: p, Registrations: []provider.RefreshRegistration{{Platform: provider.PlatformOpenAI, Refresher: &tokenRefreshTestRefresher{}}}})
 	defer func() { require.NoError(t, s.StopContext(context.Background())) }()
 	require.Zero(t, p.calls.Load())

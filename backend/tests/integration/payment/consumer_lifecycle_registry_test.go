@@ -20,15 +20,15 @@ import (
 )
 
 // 回归夹具只在驱动边界返回受控结果，不改变生产实现。
-type paymentS12Driver struct {
+type paymentDriver struct {
 	dialect.Driver
 	calls   atomic.Int32
 	entered chan context.Context
 	release chan struct{}
 }
 
-func (d *paymentS12Driver) Dialect() string { return dialect.SQLite }
-func (d *paymentS12Driver) Query(ctx context.Context, query string, args, result any) error {
+func (d *paymentDriver) Dialect() string { return dialect.SQLite }
+func (d *paymentDriver) Query(ctx context.Context, query string, args, result any) error {
 	n := d.calls.Add(1)
 	if n == 1 && d.entered != nil {
 		d.entered <- ctx
@@ -41,19 +41,19 @@ func (d *paymentS12Driver) Query(ctx context.Context, query string, args, result
 	return errors.New("fixture database unavailable")
 }
 
-type paymentS12Leader struct {
+type paymentLeader struct {
 	calls   atomic.Int32
 	entered chan struct{}
 }
 
-func (l *paymentS12Leader) TryAcquireLeaderLock(context.Context, string, string, time.Duration) (bool, error) {
+func (l *paymentLeader) TryAcquireLeaderLock(context.Context, string, string, time.Duration) (bool, error) {
 	l.calls.Add(1)
 	l.entered <- struct{}{}
 	return false, nil
 }
-func (l *paymentS12Leader) ReleaseLeaderLock(context.Context, string, string) error { return nil }
-func TestPaymentS12ExpiryRepeatedStart(t *testing.T) {
-	l := &paymentS12Leader{entered: make(chan struct{}, 4)}
+func (l *paymentLeader) ReleaseLeaderLock(context.Context, string, string) error { return nil }
+func TestPaymentExpiryRepeatedStart(t *testing.T) {
+	l := &paymentLeader{entered: make(chan struct{}, 4)}
 	s := payment.NewOrderExpiry(paymenttestkit.Lifecycle(nil, nil, nil, nil, nil, false), time.Hour, payment.ExpiryRuntime{Acquire: func(ctx context.Context) (func(), bool) {
 		return provider.AcquireSingletonLease(ctx, l, nil, payment.OrderExpiryLeaderKey, "fixture", payment.OrderExpiryLeaderTTL)
 	}})
@@ -68,8 +68,8 @@ func TestPaymentS12ExpiryRepeatedStart(t *testing.T) {
 	require.NoError(t, s.StopContext(context.Background()))
 }
 
-func TestPaymentS12ExpiryStartAfterStop(t *testing.T) {
-	l := &paymentS12Leader{entered: make(chan struct{}, 4)}
+func TestPaymentExpiryStartAfterStop(t *testing.T) {
+	l := &paymentLeader{entered: make(chan struct{}, 4)}
 	s := payment.NewOrderExpiry(paymenttestkit.Lifecycle(nil, nil, nil, nil, nil, false), time.Hour, payment.ExpiryRuntime{Acquire: func(ctx context.Context) (func(), bool) {
 		return provider.AcquireSingletonLease(ctx, l, nil, payment.OrderExpiryLeaderKey, "fixture", payment.OrderExpiryLeaderTTL)
 	}})
@@ -83,8 +83,8 @@ func TestPaymentS12ExpiryStartAfterStop(t *testing.T) {
 	require.NoError(t, s.StopContext(context.Background()))
 }
 
-func TestPaymentS12ExpiryStopCancelsQuery(t *testing.T) {
-	d := &paymentS12Driver{entered: make(chan context.Context, 1), release: make(chan struct{})}
+func TestPaymentExpiryStopCancelsQuery(t *testing.T) {
+	d := &paymentDriver{entered: make(chan context.Context, 1), release: make(chan struct{})}
 	client := dbent.NewClient(dbent.Driver(d))
 	s := payment.NewOrderExpiry(paymenttestkit.Lifecycle(client, nil, nil, nil, nil, false), time.Hour, payment.ExpiryRuntime{})
 	s.Start(context.Background())
@@ -104,8 +104,8 @@ func TestPaymentS12ExpiryStopCancelsQuery(t *testing.T) {
 	<-done
 }
 
-func TestPaymentS12ProvidersFailedInitialLoadRetries(t *testing.T) {
-	d := &paymentS12Driver{}
+func TestPaymentProvidersFailedInitialLoadRetries(t *testing.T) {
+	d := &paymentDriver{}
 	s := payment.NewProviderBindings(paymentpostgres.NewInstanceStore(dbent.NewClient(dbent.Driver(d))), payment.NewRegistry(), nil, payment.BindingRuntime{}, false)
 	s.EnsureProviders(context.Background())
 	s.EnsureProviders(context.Background())
@@ -114,8 +114,8 @@ func TestPaymentS12ProvidersFailedInitialLoadRetries(t *testing.T) {
 	}
 }
 
-func TestPaymentS12ProvidersFailedRefreshPreservesPublished(t *testing.T) {
-	d := &paymentS12Driver{}
+func TestPaymentProvidersFailedRefreshPreservesPublished(t *testing.T) {
+	d := &paymentDriver{}
 	reg := payment.NewRegistry()
 	reg.Register(paymenttestkit.StaticProvider{Key: payment.TypeStripe, Types: []string{payment.TypeStripe}})
 	s := payment.NewProviderBindings(paymentpostgres.NewInstanceStore(dbent.NewClient(dbent.Driver(d))), reg, nil, payment.BindingRuntime{}, false)

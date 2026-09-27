@@ -16,11 +16,11 @@ import (
 )
 
 // 验证真实 PostgreSQL 租约竞争、到期回收、最终结果与下次时间的原子保存。
-func TestS06GroupProbeLeaseAndAtomicResult(t *testing.T) {
+func TestGroupProbeLeaseAndAtomicResult(t *testing.T) {
 	ctx := context.Background()
 	client, integrationDB := routingDatabase(t)
 	suffix := time.Now().UnixNano()
-	group, err := client.Group.Create().SetName(fmt.Sprintf("s06-probe-%d", suffix)).
+	group, err := client.Group.Create().SetName(fmt.Sprintf("test-probe-%d", suffix)).
 		SetAllowedProtocols(capability.DefaultGroupClientProtocols(routing.PlatformOpenAI)).
 		SetProtocolFallbacks(capability.DefaultProtocolFallbacks(routing.PlatformOpenAI)).
 		SetAvailabilityProbeConfig(routing.GroupAvailabilityProbeConfig{Enabled: true, IntervalMinutes: 5, ModelID: "gpt-test", TimeoutSeconds: 10}).Save(ctx)
@@ -61,9 +61,9 @@ func TestS06GroupProbeLeaseAndAtomicResult(t *testing.T) {
 		return ids
 	}(), group.ID)
 
-	functionName := fmt.Sprintf("s06_probe_result_fail_%d", suffix)
-	triggerName := fmt.Sprintf("s06_probe_result_trigger_%d", suffix)
-	_, err = integrationDB.ExecContext(ctx, fmt.Sprintf(`CREATE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.group_id = %d THEN RAISE EXCEPTION 's06 forced schedule failure'; END IF; RETURN NEW; END $$`, functionName, group.ID))
+	functionName := fmt.Sprintf("test_probe_result_fail_%d", suffix)
+	triggerName := fmt.Sprintf("test_probe_result_trigger_%d", suffix)
+	_, err = integrationDB.ExecContext(ctx, fmt.Sprintf(`CREATE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.group_id = %d THEN RAISE EXCEPTION 'test forced schedule failure'; END IF; RETURN NEW; END $$`, functionName, group.ID))
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		_, e := integrationDB.ExecContext(context.Background(), fmt.Sprintf("DROP TRIGGER IF EXISTS %s ON group_availability_probe_states", triggerName))
@@ -75,7 +75,7 @@ func TestS06GroupProbeLeaseAndAtomicResult(t *testing.T) {
 	require.NoError(t, err)
 	result := &routing.GroupAvailabilityProbeResult{GroupID: group.ID, ModelID: "gpt-test", Status: routing.GroupAvailabilityProbeStatusSuccess, Success: true, LatencyMs: 15, StartedAt: now, FinishedAt: now.Add(15 * time.Millisecond)}
 	next := later.Add(5 * time.Minute)
-	require.ErrorContains(t, repo.SaveResultAndScheduleNext(ctx, result, next), "s06 forced schedule failure")
+	require.ErrorContains(t, repo.SaveResultAndScheduleNext(ctx, result, next), "test forced schedule failure")
 	var count int
 	require.NoError(t, integrationDB.QueryRowContext(ctx, "SELECT COUNT(*) FROM group_availability_probe_results WHERE group_id=$1", group.ID).Scan(&count))
 	require.Zero(t, count)

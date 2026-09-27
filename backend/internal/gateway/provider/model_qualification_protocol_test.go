@@ -8,7 +8,7 @@ import (
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 
-	s15httpx "github.com/TokenFlux/TokenRouter/internal/server/httpx"
+	"github.com/TokenFlux/TokenRouter/internal/server/httpx"
 	"github.com/stretchr/testify/require"
 )
 
@@ -52,7 +52,7 @@ func TestProtocolNativeMatrixAndSave(t *testing.T) {
 			require.NoError(t, providercore.NormalizeProviderProtocols(provider))
 			require.Empty(t, provider.UpstreamProtocols())
 			provider.Credentials[providercore.UpstreamProtocolsKey] = []string{"unknown"}
-			require.Equal(t, http.StatusBadRequest, s15httpx.ErrorCode(providercore.NormalizeProviderProtocols(provider)))
+			require.Equal(t, http.StatusBadRequest, httpx.ErrorCode(providercore.NormalizeProviderProtocols(provider)))
 		})
 	}
 }

@@ -9,7 +9,7 @@ import (
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 
-	s15httpx "github.com/TokenFlux/TokenRouter/internal/server/httpx"
+	"github.com/TokenFlux/TokenRouter/internal/server/httpx"
 	"github.com/stretchr/testify/require"
 )
 
@@ -56,7 +56,7 @@ func TestCNProviderCredentialValidationRejectsInvalid(t *testing.T) {
 				}
 				err := providercore.NormalizeCNProviderCredentials(provider, create)
 				require.Error(t, err)
-				require.Equal(t, http.StatusBadRequest, s15httpx.ErrorCode(err))
+				require.Equal(t, http.StatusBadRequest, httpx.ErrorCode(err))
 				require.Equal(t, tc.reason, apperror.Reason(err))
 			})
 		}

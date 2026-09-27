@@ -34,31 +34,31 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// s05FailNextTransaction 在用户已创建后仅拒绝下一次 Begin，不影响真实 PostgreSQL 的补偿删除。
-type s05FailNextTransaction struct {
+// failNextTransaction 在用户已创建后仅拒绝下一次 Begin，不影响真实 PostgreSQL 的补偿删除。
+type failNextTransaction struct {
 	dialect.Driver
 	armed    atomic.Bool
 	failures atomic.Int64
 }
 
-func (d *s05FailNextTransaction) Tx(ctx context.Context) (dialect.Tx, error) {
+func (d *failNextTransaction) Tx(ctx context.Context) (dialect.Tx, error) {
 	if d.armed.CompareAndSwap(true, false) {
 		d.failures.Add(1)
-		return nil, errors.New("s05 injected final binding begin failure")
+		return nil, errors.New("test injected final binding begin failure")
 	}
 	return d.Driver.Tx(ctx)
 }
 
-type s05OAuthSettings struct{ settingscore.Repository }
+type oAuthSettings struct{ settingscore.Repository }
 
-func (s05OAuthSettings) GetValue(_ context.Context, key string) (string, error) {
+func (oAuthSettings) GetValue(_ context.Context, key string) (string, error) {
 	if key == identity.SettingKeyRegistrationEnabled {
 		return "true", nil
 	}
 	return "", nil
 }
 
-func (s s05OAuthSettings) GetMultiple(ctx context.Context, keys []string) (map[string]string, error) {
+func (s oAuthSettings) GetMultiple(ctx context.Context, keys []string) (map[string]string, error) {
 	out := map[string]string{}
 	for _, key := range keys {
 		out[key], _ = s.GetValue(ctx, key)
@@ -66,11 +66,11 @@ func (s s05OAuthSettings) GetMultiple(ctx context.Context, keys []string) (map[s
 	return out, nil
 }
 
-// TestS05EmailOAuthBeginFailureCompensatesUser 覆盖真实创建提交后、第二段绑定事务无法开始的失败边界。
-func TestS05EmailOAuthBeginFailureCompensatesUser(t *testing.T) {
+// TestEmailOAuthBeginFailureCompensatesUser 覆盖真实创建提交后、第二段绑定事务无法开始的失败边界。
+func TestEmailOAuthBeginFailureCompensatesUser(t *testing.T) {
 	integrationDB, _ := identityDatabase(t)
 	ctx := context.Background()
-	driver := &s05FailNextTransaction{Driver: entsql.OpenDB(dialect.Postgres, integrationDB)}
+	driver := &failNextTransaction{Driver: entsql.OpenDB(dialect.Postgres, integrationDB)}
 	client := dbent.NewClient(dbent.Driver(driver))
 	client.User.Use(func(next dbent.Mutator) dbent.Mutator {
 		return dbent.MutateFunc(func(ctx context.Context, m dbent.Mutation) (dbent.Value, error) {
@@ -83,18 +83,18 @@ func TestS05EmailOAuthBeginFailureCompensatesUser(t *testing.T) {
 	})
 	users := identitypostgres.NewUserStore(client, integrationDB)
 	cfg := &config.Config{}
-	cfg.JWT.Secret = "s05-local-fixture-only"
+	cfg.JWT.Secret = "test-local-fixture-only"
 	cfg.JWT.ExpireHour = 1
 	cfg.JWT.RefreshTokenExpireDays = 1
 	cfg.Default.UserConcurrency = 1
-	settings := identitytestkit.Settings(s05OAuthSettings{}, cfg)
+	settings := identitytestkit.Settings(oAuthSettings{}, cfg)
 	auth := identitytestkit.Auth(client, &identity.AuthDependencies{Users: users, RefreshTokens: rediscache.NewRefreshTokenCache(rediscontainer.New(t)), Options: identitytestkit.AuthOptions(cfg), Settings: settings})
 	flow := &identity.PendingFlow{Store: identitypostgres.NewPendingRepository(client), Database: &identitypostgres.PendingFlowDatabase{Client: client, Auth: auth}, Auth: auth}
 	sessionHTTP := identityhttp.NewSessionHandler(auth, nil, settings, nil, nil, flow, identityhttp.SessionHTTPOptions{})
 	pendingHTTP := identityhttp.NewPendingHandler(sessionHTTP, flow, identityhttp.PendingHTTPOptions{})
 	h := identityhttp.NewEmailOAuthHandler(pendingHTTP, nil, nil)
-	email := "s05-" + uuid.NewString() + "@example.invalid"
-	session, err := client.PendingAuthSession.Create().SetSessionToken(uuid.NewString()).SetIntent("login").SetProviderType("github").SetProviderKey("github").SetProviderSubject(uuid.NewString()).SetResolvedEmail(email).SetBrowserSessionKey("s05-browser").SetExpiresAt(time.Now().Add(time.Minute)).Save(ctx)
+	email := "test-" + uuid.NewString() + "@example.invalid"
+	session, err := client.PendingAuthSession.Create().SetSessionToken(uuid.NewString()).SetIntent("login").SetProviderType("github").SetProviderKey("github").SetProviderSubject(uuid.NewString()).SetResolvedEmail(email).SetBrowserSessionKey("test-browser").SetExpiresAt(time.Now().Add(time.Minute)).Save(ctx)
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, client.PendingAuthSession.DeleteOneID(session.ID).Exec(ctx)) })
 	recorder := httptest.NewRecorder()

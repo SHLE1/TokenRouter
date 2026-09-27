@@ -21,15 +21,15 @@ import (
 )
 
 // 隔离数据库与本地供应商；只调用公开生产入口。
-func s12RefundRefund(t *testing.T, status string) (*dbent.Client, *payment.RefundWorkflow, *dbent.PaymentOrder) {
+func refundOrderFixture(t *testing.T, status string) (*dbent.Client, *payment.RefundWorkflow, *dbent.PaymentOrder) {
 	t.Helper()
 	ctx := context.Background()
 	c := testEntClient(t)
-	u, e := c.User.Create().SetEmail("s12-refund@example.com").SetPasswordHash("test-hash").SetUsername("s12").SetBalance(100).Save(ctx)
+	u, e := c.User.Create().SetEmail("test-refund@example.com").SetPasswordHash("test-hash").SetUsername("test").SetBalance(100).Save(ctx)
 	require.NoError(t, e)
-	inst, e := c.PaymentProviderInstance.Create().SetName("s12").SetProviderKey(payment.TypeStripe).SetConfig(`{"secretKey":"test-only","currency":"USD"}`).SetSupportedTypes(payment.TypeStripe).SetRefundEnabled(true).Save(ctx)
+	inst, e := c.PaymentProviderInstance.Create().SetName("test").SetProviderKey(payment.TypeStripe).SetConfig(`{"secretKey":"test-only","currency":"USD"}`).SetSupportedTypes(payment.TypeStripe).SetRefundEnabled(true).Save(ctx)
 	require.NoError(t, e)
-	o, e := c.PaymentOrder.Create().SetUserID(u.ID).SetUserEmail(u.Email).SetUserName(u.Username).SetAmount(50).SetPayAmount(50).SetRechargeCode("s12-refund").SetOutTradeNo("s12-refund").SetPaymentType(payment.TypeStripe).SetPaymentTradeNo("pi_s12").SetOrderType(payment.OrderTypeBalance).SetStatus(status).SetRefundAmount(50).SetExpiresAt(time.Now().Add(time.Hour)).SetPaidAt(time.Now()).SetClientIP("127.0.0.1").SetSrcHost("test.local").SetProviderInstanceID(strconv.FormatInt(inst.ID, 10)).Save(ctx)
+	o, e := c.PaymentOrder.Create().SetUserID(u.ID).SetUserEmail(u.Email).SetUserName(u.Username).SetAmount(50).SetPayAmount(50).SetRechargeCode("test-refund").SetOutTradeNo("test-refund").SetPaymentType(payment.TypeStripe).SetPaymentTradeNo("pi_test").SetOrderType(payment.OrderTypeBalance).SetStatus(status).SetRefundAmount(50).SetExpiresAt(time.Now().Add(time.Hour)).SetPaidAt(time.Now()).SetClientIP("127.0.0.1").SetSrcHost("test.local").SetProviderInstanceID(strconv.FormatInt(inst.ID, 10)).Save(ctx)
 	require.NoError(t, e)
 	t.Cleanup(func() {
 		_, e := c.PaymentAuditLog.Delete().Where(paymentauditlog.OrderIDEQ(strconv.FormatInt(o.ID, 10))).Exec(context.Background())
@@ -40,7 +40,8 @@ func s12RefundRefund(t *testing.T, status string) (*dbent.Client, *payment.Refun
 	s := newPostgresRefundWorkflow(c)
 	return c, s, o
 }
-func s12RefundStripe(t *testing.T, h http.HandlerFunc) {
+
+func refundStripeFixture(t *testing.T, h http.HandlerFunc) {
 	t.Helper()
 	server := httptest.NewServer(h)
 	t.Cleanup(server.Close)
@@ -48,11 +49,12 @@ func s12RefundStripe(t *testing.T, h http.HandlerFunc) {
 	stripe.SetBackend(stripe.APIBackend, stripe.GetBackendWithConfig(stripe.APIBackend, &stripe.BackendConfig{URL: stripe.String(server.URL), HTTPClient: server.Client(), MaxNetworkRetries: stripe.Int64(0)}))
 	t.Cleanup(func() { stripe.SetBackend(stripe.APIBackend, original) })
 }
-func s12RefundFailAudit(t *testing.T, c *dbent.Client, id int64, action string) {
+
+func refundFailAudit(t *testing.T, c *dbent.Client, id int64, action string) {
 	t.Helper()
-	name := fmt.Sprintf("s12_planning_audit_%d", id)
+	name := fmt.Sprintf("refund_audit_%d", id)
 	ctx := context.Background()
-	_, e := integrationDB.ExecContext(ctx, fmt.Sprintf(`CREATE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.order_id='%d' AND NEW.action='%s' THEN RAISE EXCEPTION 's12 forced audit failure'; END IF; RETURN NEW; END; $$`, name, id, action))
+	_, e := integrationDB.ExecContext(ctx, fmt.Sprintf(`CREATE FUNCTION %s() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.order_id='%d' AND NEW.action='%s' THEN RAISE EXCEPTION 'test forced audit failure'; END IF; RETURN NEW; END; $$`, name, id, action))
 	require.NoError(t, e)
 	_, e = integrationDB.ExecContext(ctx, fmt.Sprintf(`CREATE TRIGGER %s BEFORE INSERT ON payment_audit_logs FOR EACH ROW EXECUTE FUNCTION %s()`, name, name))
 	require.NoError(t, e)
@@ -61,16 +63,17 @@ func s12RefundFailAudit(t *testing.T, c *dbent.Client, id int64, action string) 
 		require.NoError(t, e)
 	})
 }
-func TestS12StaleRefundFailureOverwritesSuccess(t *testing.T) {
+
+func TestStaleRefundFailureOverwritesSuccess(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	c, s, o := s12RefundRefund(t, payment.OrderStatusRefundPending)
-	_, e := c.PaymentAuditLog.Create().SetOrderID(strconv.FormatInt(o.ID, 10)).SetAction("REFUND_PENDING").SetOperator("admin").SetDetail(`{"refundID":"re_s12","deductBalance":true,"balanceDeducted":50,"deductionRollbackOK":true}`).Save(ctx)
+	c, s, o := refundOrderFixture(t, payment.OrderStatusRefundPending)
+	_, e := c.PaymentAuditLog.Create().SetOrderID(strconv.FormatInt(o.ID, 10)).SetAction("REFUND_PENDING").SetOperator("admin").SetDetail(`{"refundID":"re_test","deductBalance":true,"balanceDeducted":50,"deductionRollbackOK":true}`).Save(ctx)
 	require.NoError(t, e)
 	entered := make(chan struct{})
 	release := make(chan struct{})
 	var calls atomic.Int32
-	s12RefundStripe(t, func(w http.ResponseWriter, r *http.Request) {
+	refundStripeFixture(t, func(w http.ResponseWriter, r *http.Request) {
 		status := "succeeded"
 		if calls.Add(1) == 1 {
 			close(entered)
@@ -82,7 +85,7 @@ func TestS12StaleRefundFailureOverwritesSuccess(t *testing.T) {
 			status = "failed"
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]string{"id": "re_s12", "object": "refund", "status": status})
+		_ = json.NewEncoder(w).Encode(map[string]string{"id": "re_test", "object": "refund", "status": status})
 	})
 	done := make(chan struct{})
 	go func() { _, _ = s.QueryAndFinalizeRefund(ctx, o.ID); close(done) }()
@@ -99,23 +102,24 @@ func TestS12StaleRefundFailureOverwritesSuccess(t *testing.T) {
 	t.Logf("balance=%v final_status=%s", u.Balance, current.Status)
 	require.Equal(t, payment.OrderStatusRefunded, current.Status, "迟到失败不得覆盖已完成退款")
 }
-func TestS12PendingRefundAuditLossSkipsDeduction(t *testing.T) {
+
+func TestPendingRefundAuditLossSkipsDeduction(t *testing.T) {
 	ctx := context.Background()
-	c, s, o := s12RefundRefund(t, payment.OrderStatusCompleted)
-	s12RefundStripe(t, func(w http.ResponseWriter, r *http.Request) {
+	c, s, o := refundOrderFixture(t, payment.OrderStatusCompleted)
+	refundStripeFixture(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if r.Method == http.MethodPost {
-			_, _ = w.Write([]byte(`{"id":"re_s12","object":"refund","status":"pending"}`))
+			_, _ = w.Write([]byte(`{"id":"re_test","object":"refund","status":"pending"}`))
 			return
 		}
-		_, _ = w.Write([]byte(`{"object":"list","data":[{"id":"re_s12","object":"refund","status":"succeeded"}],"has_more":false}`))
+		_, _ = w.Write([]byte(`{"object":"list","data":[{"id":"re_test","object":"refund","status":"succeeded"}],"has_more":false}`))
 	})
-	s12RefundFailAudit(t, c, o.ID, "REFUND_PENDING")
+	refundFailAudit(t, c, o.ID, "REFUND_PENDING")
 	plan, warning, e := s.PrepareRefund(ctx, o.ID, 50, "test", false, true)
 	require.NoError(t, e)
 	require.Nil(t, warning)
 	result, e := s.ExecuteRefund(ctx, plan)
-	require.ErrorContains(t, e, "s12 forced audit failure")
+	require.ErrorContains(t, e, "test forced audit failure")
 	require.Nil(t, result)
 	cur, readErr := c.PaymentOrder.Get(ctx, o.ID)
 	require.NoError(t, readErr)
@@ -131,14 +135,15 @@ func TestS12PendingRefundAuditLossSkipsDeduction(t *testing.T) {
 	t.Logf("confirmed refund deducted=%v balance=%v", result.BalanceDeducted, u.Balance)
 	require.Equal(t, 50.0, u.Balance, "缺失 pending 审计不能静默跳过权益回收")
 }
-func TestS12ImmediateRefundAuditFailureIsNotReported(t *testing.T) {
+
+func TestImmediateRefundAuditFailureIsNotReported(t *testing.T) {
 	ctx := context.Background()
-	c, s, o := s12RefundRefund(t, payment.OrderStatusCompleted)
-	s12RefundStripe(t, func(w http.ResponseWriter, r *http.Request) {
+	c, s, o := refundOrderFixture(t, payment.OrderStatusCompleted)
+	refundStripeFixture(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"id":"re_s12","object":"refund","status":"succeeded"}`))
+		_, _ = w.Write([]byte(`{"id":"re_test","object":"refund","status":"succeeded"}`))
 	})
-	s12RefundFailAudit(t, c, o.ID, "REFUND_SUCCESS")
+	refundFailAudit(t, c, o.ID, "REFUND_SUCCESS")
 	plan, warning, e := s.PrepareRefund(ctx, o.ID, 50, "test", false, true)
 	require.NoError(t, e)
 	require.Nil(t, warning)
@@ -154,22 +159,22 @@ func TestS12ImmediateRefundAuditFailureIsNotReported(t *testing.T) {
 }
 
 // 准备记录失败不得发生渠道调用，预扣、状态与审计必须全部回滚。
-func TestS12RefundPreparationAuditFailureStopsChannel(t *testing.T) {
+func TestRefundPreparationAuditFailureStopsChannel(t *testing.T) {
 	ctx := context.Background()
-	c, s, o := s12RefundRefund(t, payment.OrderStatusCompleted)
+	c, s, o := refundOrderFixture(t, payment.OrderStatusCompleted)
 	var calls atomic.Int32
-	s12RefundStripe(t, func(w http.ResponseWriter, r *http.Request) {
+	refundStripeFixture(t, func(w http.ResponseWriter, r *http.Request) {
 		calls.Add(1)
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"id":"re_s12","object":"refund","status":"succeeded"}`))
+		_, _ = w.Write([]byte(`{"id":"re_test","object":"refund","status":"succeeded"}`))
 	})
-	s12RefundFailAudit(t, c, o.ID, "REFUND_PREPARED")
+	refundFailAudit(t, c, o.ID, "REFUND_PREPARED")
 	plan, warning, err := s.PrepareRefund(ctx, o.ID, 50, "prepare failure", false, true)
 	require.NoError(t, err)
 	require.Nil(t, warning)
 	result, err := s.ExecuteRefund(ctx, plan)
 	require.Nil(t, result)
-	require.ErrorContains(t, err, "s12 forced audit failure")
+	require.ErrorContains(t, err, "test forced audit failure")
 	require.Zero(t, calls.Load())
 	assertRefundPostgresState(t, ctx, c, o.UserID, o.ID, 100, payment.OrderStatusCompleted, 0)
 	count, err := c.PaymentAuditLog.Query().Where(paymentauditlog.OrderIDEQ(strconv.FormatInt(o.ID, 10)), paymentauditlog.ActionEQ("REFUND_PREPARED")).Count(ctx)
@@ -178,20 +183,20 @@ func TestS12RefundPreparationAuditFailureStopsChannel(t *testing.T) {
 }
 
 // 即时成功落库失败后，只查询既有渠道结果；重复恢复不再次扣减或退款。
-func TestS12RefundPreparedRecoveryDoesNotRepeatChannelOrDeduction(t *testing.T) {
+func TestRefundPreparedRecoveryDoesNotRepeatChannelOrDeduction(t *testing.T) {
 	ctx := context.Background()
-	c, s, o := s12RefundRefund(t, payment.OrderStatusCompleted)
+	c, s, o := refundOrderFixture(t, payment.OrderStatusCompleted)
 	var refunds atomic.Int32
-	s12RefundStripe(t, func(w http.ResponseWriter, r *http.Request) {
+	refundStripeFixture(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if r.Method == http.MethodPost {
 			refunds.Add(1)
-			_, _ = w.Write([]byte(`{"id":"re_s12","object":"refund","status":"succeeded"}`))
+			_, _ = w.Write([]byte(`{"id":"re_test","object":"refund","status":"succeeded"}`))
 			return
 		}
-		_, _ = w.Write([]byte(`{"object":"list","data":[{"id":"re_s12","object":"refund","status":"succeeded"}],"has_more":false}`))
+		_, _ = w.Write([]byte(`{"object":"list","data":[{"id":"re_test","object":"refund","status":"succeeded"}],"has_more":false}`))
 	})
-	s12RefundFailAudit(t, c, o.ID, "REFUND_SUCCESS")
+	refundFailAudit(t, c, o.ID, "REFUND_SUCCESS")
 	plan, warning, err := s.PrepareRefund(ctx, o.ID, 50, "recover", false, true)
 	require.NoError(t, err)
 	require.Nil(t, warning)
@@ -204,7 +209,7 @@ func TestS12RefundPreparedRecoveryDoesNotRepeatChannelOrDeduction(t *testing.T) 
 	require.Nil(t, result)
 	require.Error(t, err)
 	assertRefundPostgresState(t, ctx, c, o.UserID, o.ID, 50, payment.OrderStatusRefunding, 0)
-	name := fmt.Sprintf("s12_planning_audit_%d", o.ID)
+	name := fmt.Sprintf("refund_audit_%d", o.ID)
 	_, err = integrationDB.ExecContext(ctx, fmt.Sprintf("DROP TRIGGER %s ON payment_audit_logs", name))
 	require.NoError(t, err)
 	result, err = s.QueryAndFinalizeRefund(ctx, o.ID)
@@ -218,13 +223,13 @@ func TestS12RefundPreparedRecoveryDoesNotRepeatChannelOrDeduction(t *testing.T) 
 }
 
 // 旧记录缺失或损坏时不得按默认零扣减完成，也不请求渠道。
-func TestS12RefundMissingRecoveryRequiresManualVerification(t *testing.T) {
+func TestRefundMissingRecoveryRequiresManualVerification(t *testing.T) {
 	for _, status := range []string{payment.OrderStatusRefundPending, payment.OrderStatusRefunding} {
 		t.Run(status, func(t *testing.T) {
 			ctx := context.Background()
-			c, s, o := s12RefundRefund(t, status)
+			c, s, o := refundOrderFixture(t, status)
 			var calls atomic.Int32
-			s12RefundStripe(t, func(w http.ResponseWriter, r *http.Request) { calls.Add(1); http.Error(w, "must not query", 500) })
+			refundStripeFixture(t, func(w http.ResponseWriter, r *http.Request) { calls.Add(1); http.Error(w, "must not query", 500) })
 			result, err := s.QueryAndFinalizeRefund(ctx, o.ID)
 			require.Nil(t, result)
 			require.ErrorContains(t, err, "manual verification")
@@ -235,18 +240,18 @@ func TestS12RefundMissingRecoveryRequiresManualVerification(t *testing.T) {
 }
 
 // 新恢复格式的缺字段、损坏和矛盾值都不能退化为默认零扣减。
-func TestS12RefundInvalidPreparedFactsRequireManualVerification(t *testing.T) {
+func TestRefundInvalidPreparedFactsRequireManualVerification(t *testing.T) {
 	for _, variant := range []string{"missing_choice", "corrupt_json", "contradictory_deduction"} {
 		t.Run(variant, func(t *testing.T) {
 			ctx := context.Background()
-			c, s, o := s12RefundRefund(t, payment.OrderStatusCompleted)
+			c, s, o := refundOrderFixture(t, payment.OrderStatusCompleted)
 			var calls atomic.Int32
-			s12RefundStripe(t, func(w http.ResponseWriter, r *http.Request) {
+			refundStripeFixture(t, func(w http.ResponseWriter, r *http.Request) {
 				calls.Add(1)
 				w.Header().Set("Content-Type", "application/json")
-				_, _ = w.Write([]byte(`{"id":"re_s12","object":"refund","status":"succeeded"}`))
+				_, _ = w.Write([]byte(`{"id":"re_test","object":"refund","status":"succeeded"}`))
 			})
-			s12RefundFailAudit(t, c, o.ID, "REFUND_SUCCESS")
+			refundFailAudit(t, c, o.ID, "REFUND_SUCCESS")
 			plan, warning, err := s.PrepareRefund(ctx, o.ID, 50, "recover", false, true)
 			require.NoError(t, err)
 			require.Nil(t, warning)
@@ -279,9 +284,9 @@ func TestS12RefundInvalidPreparedFactsRequireManualVerification(t *testing.T) {
 }
 
 // 生产迁移已对订单/动作建立唯一索引；必要审计不能让第二次合法尝试永久冲突。
-func TestS12RefundRepeatedAttemptsPreserveFactsWithUniqueAction(t *testing.T) {
+func TestRefundRepeatedAttemptsPreserveFactsWithUniqueAction(t *testing.T) {
 	ctx := context.Background()
-	c, s, o := s12RefundRefund(t, payment.OrderStatusCompleted)
+	c, s, o := refundOrderFixture(t, payment.OrderStatusCompleted)
 	var existed bool
 	require.NoError(t, integrationDB.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM pg_indexes WHERE indexname='idx_payment_audit_logs_order_action_uniq')").Scan(&existed))
 	if !existed {
@@ -293,14 +298,14 @@ func TestS12RefundRepeatedAttemptsPreserveFactsWithUniqueAction(t *testing.T) {
 		})
 	}
 	var calls atomic.Int32
-	s12RefundStripe(t, func(w http.ResponseWriter, r *http.Request) {
+	refundStripeFixture(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if calls.Add(1) < 3 {
 			w.WriteHeader(400)
 			_, _ = w.Write([]byte(`{"error":{"type":"invalid_request_error","message":"fixture refund rejected"}}`))
 			return
 		}
-		_, _ = w.Write([]byte(`{"id":"re_s12","object":"refund","status":"succeeded"}`))
+		_, _ = w.Write([]byte(`{"id":"re_test","object":"refund","status":"succeeded"}`))
 	})
 	for attempt := 0; attempt < 3; attempt++ {
 		plan, warning, err := s.PrepareRefund(ctx, o.ID, 50, "same refund", false, true)

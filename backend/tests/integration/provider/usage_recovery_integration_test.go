@@ -11,12 +11,12 @@ import (
 )
 
 // 用真实数据库检查迟到用量恢复的行身份、错误条件和原尽力 outbox 行为。
-func TestS06UsageRecoveryDatabaseIdentity(t *testing.T) {
+func TestUsageRecoveryDatabaseIdentity(t *testing.T) {
 	for _, change := range []string{"none", "name", "credentials", "status", "error", "proxy", "cancelled", "outbox_failure"} {
 		t.Run(change, func(t *testing.T) {
 			ctx := context.Background()
 			client := testEntClient(t)
-			row, err := client.Provider.Create().SetName("s06-usage-recovery").SetPlatform(provider.PlatformOpenAI).SetType(provider.ProviderTypeOAuth).SetStatus(provider.StatusError).SetErrorMessage("token refresh failed").SetSchedulable(false).SetCredentials(map[string]any{"refresh_token": "observed"}).Save(ctx)
+			row, err := client.Provider.Create().SetName("test-usage-recovery").SetPlatform(provider.PlatformOpenAI).SetType(provider.ProviderTypeOAuth).SetStatus(provider.StatusError).SetErrorMessage("token refresh failed").SetSchedulable(false).SetCredentials(map[string]any{"refresh_token": "observed"}).Save(ctx)
 			require.NoError(t, err)
 			t.Cleanup(func() { require.NoError(t, client.Provider.DeleteOneID(row.ID).Exec(context.Background())) })
 			store := newProviderStoreContract(client, integrationDB, nil)
@@ -32,7 +32,7 @@ func TestS06UsageRecoveryDatabaseIdentity(t *testing.T) {
 			case "error":
 				require.NoError(t, client.Provider.UpdateOneID(row.ID).SetErrorMessage("administrator forbidden").Exec(ctx))
 			case "proxy":
-				proxy, err := client.Proxy.Create().SetName("s06-usage-recovery-proxy").SetProtocol("http").SetHost("127.0.0.1").SetPort(8182).Save(ctx)
+				proxy, err := client.Proxy.Create().SetName("test-usage-recovery-proxy").SetProtocol("http").SetHost("127.0.0.1").SetPort(8182).Save(ctx)
 				require.NoError(t, err)
 				require.NoError(t, client.Provider.UpdateOneID(row.ID).SetProxyID(proxy.ID).Exec(ctx))
 				t.Cleanup(func() {
@@ -40,7 +40,7 @@ func TestS06UsageRecoveryDatabaseIdentity(t *testing.T) {
 					require.NoError(t, client.Proxy.DeleteOneID(proxy.ID).Exec(context.Background()))
 				})
 			case "outbox_failure":
-				store.SetEvents(s06FailConfigurationOutbox{})
+				store.SetEvents(failConfigurationOutbox{})
 			case "cancelled":
 				var cancel context.CancelFunc
 				ctx, cancel = context.WithCancel(ctx)

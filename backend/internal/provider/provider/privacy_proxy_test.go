@@ -20,23 +20,23 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type s06PrivacyProxyReader struct{ egress.ProxyRepository }
+type privacyProxyReader struct{ egress.ProxyRepository }
 
-func (s06PrivacyProxyReader) GetByID(context.Context, int64) (*egress.Proxy, error) {
+func (privacyProxyReader) GetByID(context.Context, int64) (*egress.Proxy, error) {
 	return nil, errors.New("forced proxy lookup failure")
 }
 
-type s06PrivacyProviderWriter struct {
+type privacyProviderWriter struct {
 	writes atomic.Int32
 }
 
-func (r *s06PrivacyProviderWriter) UpdatePrivacyModeIfUnchanged(context.Context, provider.UsageObservationVersion, string) (bool, error) {
+func (r *privacyProviderWriter) UpdatePrivacyModeIfUnchanged(context.Context, provider.UsageObservationVersion, string) (bool, error) {
 	r.writes.Add(1)
 	return true, nil
 }
 
 // 使用本地真实 HTTP 证明代理读取失败时不能退到直连，也不能写入成功状态。
-func TestS06PrivacyProxyLookupFailureDoesNotConnectDirectly(t *testing.T) {
+func TestPrivacyProxyLookupFailureDoesNotConnectDirectly(t *testing.T) {
 	for _, force := range []bool{false, true} {
 		t.Run(map[bool]string{false: "ensure", true: "force"}[force], func(t *testing.T) {
 			var calls atomic.Int32
@@ -46,8 +46,8 @@ func TestS06PrivacyProxyLookupFailureDoesNotConnectDirectly(t *testing.T) {
 				_, _ = w.Write([]byte(`{}`))
 			}))
 			defer server.Close()
-			writer := &s06PrivacyProviderWriter{}
-			svc := provider.NewPrivacyService(writer, s06PrivacyProxyReader{}, PrivacyOptions(func(string) (*req.Client, error) { return req.C().SetTimeout(time.Second), nil }, openai.PrivacyEndpoints{Settings: server.URL}))
+			writer := &privacyProviderWriter{}
+			svc := provider.NewPrivacyService(writer, privacyProxyReader{}, PrivacyOptions(func(string) (*req.Client, error) { return req.C().SetTimeout(time.Second), nil }, openai.PrivacyEndpoints{Settings: server.URL}))
 			id := int64(99)
 			value := &provider.Record{ID: 1, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth, ProxyID: &id, Credentials: map[string]any{"access_token": "test-token"}}
 			if force {
@@ -62,7 +62,7 @@ func TestS06PrivacyProxyLookupFailureDoesNotConnectDirectly(t *testing.T) {
 }
 
 // 后台刷新同样不能因代理仓储缺失或回源失败而退回直连。
-func TestS06RefreshPrivacyProxyLookupFailureDoesNotConnectDirectly(t *testing.T) {
+func TestRefreshPrivacyProxyLookupFailureDoesNotConnectDirectly(t *testing.T) {
 	for _, missing := range []bool{false, true} {
 		t.Run(map[bool]string{false: "lookup_failure", true: "missing_reader"}[missing], func(t *testing.T) {
 			var calls atomic.Int32
@@ -72,8 +72,8 @@ func TestS06RefreshPrivacyProxyLookupFailureDoesNotConnectDirectly(t *testing.T)
 				_, _ = w.Write([]byte(`{}`))
 			}))
 			defer server.Close()
-			writer := &s06PrivacyProviderWriter{}
-			var proxies egress.ProxyRepository = s06PrivacyProxyReader{}
+			writer := &privacyProviderWriter{}
+			var proxies egress.ProxyRepository = privacyProxyReader{}
 			if missing {
 				proxies = nil
 			}

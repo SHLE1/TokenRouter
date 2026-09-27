@@ -17,12 +17,12 @@ import (
 )
 
 // 转接只组合已有存储；资金字段保护和 Ent 事务仍由原生存储执行。
-func TestS16ExecutionStoreUsesNativeStateAndOuterTransaction(t *testing.T) {
+func TestExecutionStoreUsesNativeStateAndOuterTransaction(t *testing.T) {
 	f := newDatabaseFixture(t)
 	ctx := t.Context()
-	data := app.NewS16ProviderStore(f.client, f.db, nil)
+	data := app.NewProviderStoreForTest(f.client, f.db, nil)
 	funds := billingpostgres.NewProviderUsageStore(f.db, billingpostgres.ProviderUsageOptions{})
-	store := app.NewS16ExecutionProviderStore(data, funds)
+	store := app.NewExecutionProviderStoreForTest(data, funds)
 	row, err := f.client.Provider.Create().SetName("execution-store").SetPlatform(provider.PlatformOpenAI).SetType(provider.ProviderTypeAPIKey).SetCredentials(map[string]any{"api_key": "fixture-key"}).SetExtra(map[string]any{"quota_limit": 100.0, "quota_used": 0.0}).Save(ctx)
 	require.NoError(t, err)
 	value, err := store.GetByID(ctx, row.ID)

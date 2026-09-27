@@ -15,7 +15,7 @@ import (
 )
 
 // 并发夹具验证投递去重和退订初始化，不要求两个调用同时完成去重读取。
-func TestS10ConcurrentNotificationDelivery(t *testing.T) {
+func TestConcurrentNotificationDelivery(t *testing.T) {
 	repo := mailtest.NewMemorySettings()
 	server := mailtest.StartSMTPServer(t)
 	require.NoError(t, repo.SetMultiple(context.Background(), server.Settings()))
@@ -33,7 +33,8 @@ func TestS10ConcurrentNotificationDelivery(t *testing.T) {
 	require.Equal(t, int64(1), server.MessageCount())
 	require.Empty(t, n.locks.entries)
 }
-func TestS10ConcurrentFirstUnsubscribeSecret(t *testing.T) {
+
+func TestConcurrentFirstUnsubscribeSecret(t *testing.T) {
 	n := NewNotificationEmailService(mailtest.NewMemorySettings(), nil)
 	start := make(chan struct{})
 	tokens := make(chan string, 16)
@@ -55,7 +56,8 @@ func TestS10ConcurrentFirstUnsubscribeSecret(t *testing.T) {
 	}
 	require.Empty(t, n.locks.entries)
 }
-func TestS10NotificationLockCancellationAndIsolation(t *testing.T) {
+
+func TestNotificationLockCancellationAndIsolation(t *testing.T) {
 	var locks keyCoordinator
 	release, err := locks.acquire(context.Background(), "one")
 	require.NoError(t, err)
@@ -72,7 +74,8 @@ func TestS10NotificationLockCancellationAndIsolation(t *testing.T) {
 	release()
 	require.Empty(t, locks.entries)
 }
-func TestS10SMTPContextCancellation(t *testing.T) {
+
+func TestSMTPContextCancellation(t *testing.T) {
 	t.Run("before-send", func(t *testing.T) {
 		repo := mailtest.NewMemorySettings()
 		server := mailtest.StartSMTPServer(t)
@@ -125,10 +128,12 @@ func (p *blockingMailTask) SendVerifyCode(ctx context.Context, _, _ string, _ ..
 	<-ctx.Done()
 	return ctx.Err()
 }
+
 func (p *blockingMailTask) SendPasswordResetEmailWithCooldown(ctx context.Context, a, b, c string, d ...string) error {
 	return p.SendVerifyCode(ctx, a, b, d...)
 }
-func TestS10MailQueueBoundedDrain(t *testing.T) {
+
+func TestMailQueueBoundedDrain(t *testing.T) {
 	p := &blockingMailTask{started: make(chan struct{})}
 	q := NewEmailQueueService(p, 1)
 	require.NoError(t, q.EnqueueVerifyCode("fixture@example.com", "fixture"))
@@ -146,7 +151,7 @@ func TestS10MailQueueBoundedDrain(t *testing.T) {
 	require.True(t, q.stopped)
 }
 
-func TestS10MailQueueStopBeforeStartReportsPending(t *testing.T) {
+func TestMailQueueStopBeforeStartReportsPending(t *testing.T) {
 	queue := NewEmailQueueService(nil, 1)
 	require.NoError(t, queue.EnqueueVerifyCode("fixture@example.com", "fixture"))
 	require.ErrorContains(t, queue.StopContext(context.Background()), "1 tasks")

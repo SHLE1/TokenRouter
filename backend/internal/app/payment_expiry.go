@@ -27,7 +27,7 @@ func providePaymentExpiry(runtime *payment.Runtime, cache provider.CNMonitorLead
 	return runner
 }
 
-// 日志保持原名称和级别，后续完整支付装配时移入 app。
+// observePaymentExpiryRuntime 按维护步骤记录处理数量和错误。
 func observePaymentExpiryRuntime(step string, count int, err error) {
 	if err != nil {
 		switch step {

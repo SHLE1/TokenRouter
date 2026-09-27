@@ -35,7 +35,7 @@ func TestSchedulerSnapshotOutboxReplay(t *testing.T) {
 	require.NoError(t, err)
 	store := providerpostgres.NewProviderStore(f.client, f.db, providerpostgres.ProviderStoreOptions{})
 	cache := schedulerredis.NewSnapshotCache(rdb, codec.ProviderCodec{})
-	store.SetEvents(app.NewS16ProviderEvents(store, nil))
+	store.SetEvents(app.NewProviderEventsForTest(store, nil))
 	outbox := schedulerpostgres.NewSchedulerOutboxRepository(f.db)
 	cfg := &config.Config{}
 	cfg.Gateway.Scheduling.OutboxPollIntervalSeconds = 1
@@ -44,7 +44,7 @@ func TestSchedulerSnapshotOutboxReplay(t *testing.T) {
 	require.NoError(t, store.Create(ctx, value))
 	require.NoError(t, cache.SetProvider(ctx, codec.WrapRecord(value)))
 	groups := routingpostgres.NewGroupStore(f.client, f.db, routingpostgres.GroupStoreOptions{})
-	runtime := app.NewS16Snapshot(cache, outbox, store, groups, cfg)
+	runtime := app.NewSnapshotForTest(cache, outbox, store, groups, cfg)
 	runtime.Start()
 	t.Cleanup(runtime.Stop)
 	require.NoError(t, store.UpdateLastUsed(ctx, value.ID))

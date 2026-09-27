@@ -28,7 +28,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 
-	s09openai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
+	openaiprotocol "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 	"github.com/gin-gonic/gin"
 	"github.com/tidwall/gjson"
 	"go.uber.org/zap"
@@ -54,7 +54,7 @@ func (s *OpenAIAuxiliary) ForwardEmbeddings(
 	SetOpsUpstreamModel(c, upstreamModel)
 	upstreamBody := body
 	if upstreamModel != originalModel {
-		upstreamBody = s09openai.ReplaceModelInBody(body, upstreamModel)
+		upstreamBody = openaiprotocol.ReplaceModelInBody(body, upstreamModel)
 	}
 
 	logging.L().Debug("openai embeddings: forwarding",
@@ -230,7 +230,7 @@ func (s *OpenAIAuxiliary) ForwardEmbeddings(
 
 		UpstreamHeaders: result.UpstreamHeaders,
 
-		Usage: s09openai.ForwardUsage{
+		Usage: openaiprotocol.ForwardUsage{
 			InputTokens:              result.Usage.InputTokens,
 			ImageInputTokens:         result.ImageInputTokens,
 			OutputTokens:             result.Usage.OutputTokens,

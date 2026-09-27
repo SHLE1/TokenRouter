@@ -26,7 +26,7 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 
-	s09openai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
+	openaiprotocol "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 	"github.com/gin-gonic/gin"
 )
 
@@ -121,7 +121,7 @@ func (s *OpenAIImagesExecutor) handleOpenAIImagesOAuthNonStreamingResponse(
 	c *gin.Context,
 	responseFormat string,
 	fallbackModel string,
-) (s09openai.ForwardUsage, int, []string, error) {
+) (openaiprotocol.ForwardUsage, int, []string, error) {
 	return openai.ReadImagesOAuthNonStreaming(resp, ResponseSink{Writer: c.Writer}, s.Output.ImageOptions(c), responseFormat, fallbackModel)
 }
 
@@ -132,7 +132,7 @@ func (s *OpenAIImagesExecutor) handleOpenAIImagesOAuthStreamingResponse(
 	responseFormat string,
 	streamPrefix string,
 	fallbackModel string,
-) (s09openai.ForwardUsage, int, []string, *int, error) {
+) (openaiprotocol.ForwardUsage, int, []string, *int, error) {
 	return openai.ReadImagesOAuthStreaming(resp, upstream.NewOutputContext(ResponseSink{Writer: c.Writer}), s.Output.ImageOptions(c), startTime, responseFormat, streamPrefix, fallbackModel)
 }
 

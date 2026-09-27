@@ -24,16 +24,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestS05PasskeySDKCeremony 使用真实 SDK、签名、PostgreSQL 与 Redis，验证消费先于解析及凭据更新。
+// TestPasskeySDKCeremony 使用真实 SDK、签名、PostgreSQL 与 Redis，验证消费先于解析及凭据更新。
 // 本地软件认证器只验证服务端协议行为，不声称覆盖真实硬件或浏览器交互。
-func TestS05PasskeySDKCeremony(t *testing.T) {
+func TestPasskeySDKCeremony(t *testing.T) {
 	integrationDB, integrationEntClient := identityDatabase(t)
 	ctx := context.Background()
 	client := integrationEntClient
 	user := mustCreateUser(t, client, &identity.User{})
 	users := identitypostgres.NewUserStore(client, integrationDB)
 	repo := identitypostgres.NewPasskeyRepository(integrationDB)
-	verifier, e := identityadapter.NewPasskeyVerifier(identityadapter.PasskeyOptions{Enabled: true, RPID: "example.com", RPDisplayName: "S05", RPOrigins: []string{"https://example.com"}})
+	verifier, e := identityadapter.NewPasskeyVerifier(identityadapter.PasskeyOptions{Enabled: true, RPID: "example.com", RPDisplayName: "TEST", RPOrigins: []string{"https://example.com"}})
 	require.NoError(t, e)
 	core := identity.NewPasskeyService(true, verifier, repo, identityredis.NewPasskeySessionStore(rediscontainer.New(t)), users)
 	encode := base64.RawURLEncoding.EncodeToString
@@ -50,7 +50,7 @@ func TestS05PasskeySDKCeremony(t *testing.T) {
 	require.NoError(t, e)
 	public, e := cbor.Marshal(map[int]any{1: 2, 3: -7, -1: 1, -2: private.X.FillBytes(make([]byte, 32)), -3: private.Y.FillBytes(make([]byte, 32))})
 	require.NoError(t, e)
-	credentialID := []byte("s05-local-software-authenticator")
+	credentialID := []byte("test-local-software-authenticator")
 	rpHash := sha256.Sum256([]byte("example.com"))
 	auth := append([]byte{}, rpHash[:]...)
 	auth = append(auth, 0x45, 0, 0, 0, 0)
@@ -62,7 +62,7 @@ func TestS05PasskeySDKCeremony(t *testing.T) {
 	require.NoError(t, e)
 	clientData := marshal(map[string]any{"type": "webauthn.create", "challenge": creation.Response.Challenge, "origin": "https://example.com", "crossOrigin": false})
 	registration := marshal(map[string]any{"id": encode(credentialID), "rawId": encode(credentialID), "type": "public-key", "response": map[string]any{"clientDataJSON": encode(clientData), "attestationObject": encode(attestation), "transports": []string{"internal"}}, "clientExtensionResults": map[string]any{"credProps": map[string]any{"rk": true}}})
-	created, e := core.FinishRegistration(ctx, user.ID, token, "Local S05", bytes.NewReader(registration))
+	created, e := core.FinishRegistration(ctx, user.ID, token, "Local TEST", bytes.NewReader(registration))
 	require.NoError(t, e)
 	require.NotZero(t, created.ID)
 	record, e := repo.GetByCredentialID(ctx, credentialID)

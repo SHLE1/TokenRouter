@@ -46,7 +46,7 @@ func testEntTx(t *testing.T) *dbent.Tx {
 			bootstrapFixture.err = err
 			return
 		}
-		pg, err := tcpostgres.Run(ctx, "postgres:18.1-alpine3.23", tcpostgres.WithDatabase("s02_bootstrap"), tcpostgres.WithUsername("postgres"), tcpostgres.WithPassword("postgres"), tcpostgres.BasicWaitStrategies())
+		pg, err := tcpostgres.Run(ctx, "postgres:18.1-alpine3.23", tcpostgres.WithDatabase("test_bootstrap"), tcpostgres.WithUsername("postgres"), tcpostgres.WithPassword("postgres"), tcpostgres.BasicWaitStrategies())
 		if err != nil {
 			bootstrapFixture.err = err
 			return

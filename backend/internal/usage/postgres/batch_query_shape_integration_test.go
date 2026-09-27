@@ -21,39 +21,39 @@ import (
 )
 
 // 现有存储端口的计数器用于固定 SQL 查询次数与小型夹具 Explain 基线。
-type s08SQLCall struct {
+type sQLCall struct {
 	Query string `json:"query"`
 	Args  []any  `json:"-"`
 }
-type s08CountingSQL struct {
+type countingSQL struct {
 	sqlExecutor
-	calls []s08SQLCall
+	calls []sQLCall
 }
 
-func (s *s08CountingSQL) QueryContext(ctx context.Context, q string, a ...any) (*sql.Rows, error) {
-	s.calls = append(s.calls, s08SQLCall{q, a})
+func (s *countingSQL) QueryContext(ctx context.Context, q string, a ...any) (*sql.Rows, error) {
+	s.calls = append(s.calls, sQLCall{q, a})
 	return s.sqlExecutor.QueryContext(ctx, q, a...)
 }
 
-func TestS08QueryShapeMatchesPlanning(t *testing.T) {
+func TestUsageBatchQueryShape(t *testing.T) {
 	ctx := context.Background()
 	tx := testEntTx(t)
 	client := tx.Client()
 	writer := NewUsageLogRepositoryWithSQL(client, tx, timezone.NewCalendar(time.Local))
-	provider := mustCreateProvider(t, client, &providercore.Record{Name: "s08-query-shape"})
+	provider := mustCreateProvider(t, client, &providercore.Record{Name: "test-query-shape"})
 	ids := []int64{}
 	keys := []int64{}
 	for i := 0; i < 8; i++ {
-		u := mustCreateUser(t, client, &identity.User{Email: fmt.Sprintf("s08-query-%d@test.local", i)})
-		key := mustCreateApiKey(t, client, &apikey.APIKey{UserID: u.ID, Key: fmt.Sprintf("sk-s08-query-%d", i), Name: "k"})
+		u := mustCreateUser(t, client, &identity.User{Email: fmt.Sprintf("test-query-%d@test.local", i)})
+		key := mustCreateApiKey(t, client, &apikey.APIKey{UserID: u.ID, Key: fmt.Sprintf("sk-test-query-%d", i), Name: "k"})
 		ids = append(ids, u.ID)
 		keys = append(keys, key.ID)
 		for j := 0; j < 4; j++ {
-			_, e := writer.Create(ctx, &usage.UsageLog{UserID: u.ID, APIKeyID: key.ID, ProviderID: provider.ID, Model: "planning", InputTokens: 10, OutputTokens: 5, TotalCost: 0.1, ActualCost: 0.1, CreatedAt: time.Now().Add(-time.Hour)})
+			_, e := writer.Create(ctx, &usage.UsageLog{UserID: u.ID, APIKeyID: key.ID, ProviderID: provider.ID, Model: "lifecycle-test", InputTokens: 10, OutputTokens: 5, TotalCost: 0.1, ActualCost: 0.1, CreatedAt: time.Now().Add(-time.Hour)})
 			require.NoError(t, e)
 		}
 	}
-	counter := &s08CountingSQL{sqlExecutor: tx}
+	counter := &countingSQL{sqlExecutor: tx}
 	repo := NewUsageLogRepositoryWithSQL(client, counter, timezone.NewCalendar(time.Local))
 	start, end := time.Now().Add(-2*time.Hour), time.Now()
 	results := map[string]any{}
@@ -88,5 +88,5 @@ func TestS08QueryShapeMatchesPlanning(t *testing.T) {
 	for _, key := range []string{"batch_users_4", "batch_users_8", "batch_keys_4", "batch_keys_8", "user_ranking"} {
 		require.Equal(t, 1, results[key], key)
 	}
-	t.Logf("S08_QUERY_SHAPE=%s", raw)
+	t.Logf("TEST_QUERY_SHAPE=%s", raw)
 }

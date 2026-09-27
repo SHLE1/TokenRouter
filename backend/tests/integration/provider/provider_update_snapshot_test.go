@@ -13,10 +13,10 @@ import (
 )
 
 // 普通名称编辑不能把读取之后发生的使用时间和限流窗口写回旧值。
-func TestS06ProviderConfigurationPreservesConcurrentRuntime(t *testing.T) {
+func TestProviderConfigurationPreservesConcurrentRuntime(t *testing.T) {
 	ctx := context.Background()
 	client := testEntClient(t)
-	provider, err := client.Provider.Create().SetName(fmt.Sprintf("s06-runtime-%d", time.Now().UnixNano())).SetPlatform(capability.PlatformOpenAI).SetType(capability.ProviderTypeOAuth).Save(ctx)
+	provider, err := client.Provider.Create().SetName(fmt.Sprintf("test-runtime-%d", time.Now().UnixNano())).SetPlatform(capability.PlatformOpenAI).SetType(capability.ProviderTypeOAuth).Save(ctx)
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, client.Provider.DeleteOneID(provider.ID).Exec(context.Background())) })
 	repo := newProviderStoreContract(client, integrationDB, nil)

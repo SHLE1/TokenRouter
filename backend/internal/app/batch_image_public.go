@@ -17,8 +17,8 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
-// provideS13BatchPublic 直接绑定原生提交用例，共享任务、提供商、资金和模型配置读取实例。
-func provideS13BatchPublic(repo batchimage.BatchImageRepository, providers *providerpostgres.ProviderStore, modelConfigs *routing.PricingConfigService, groups routing.GroupRepository, rates billing.UserGroupRateRepository, queue batchimage.BatchImageQueue, pricing *batchimage.Pricing, funds *billing.Funds, subscriptions *billingpostgres.SettlementStore, auth apikey.APIKeyAuthCacheInvalidator, cfg *config.Config, registry *batchimage.Registry[batchprovider.BatchImageProvider]) *batchimage.Public {
+// provideBatchPublic 装配批量图片提交用例，共享任务、提供商、资金和模型配置读取实例。
+func provideBatchPublic(repo batchimage.BatchImageRepository, providers *providerpostgres.ProviderStore, modelConfigs *routing.PricingConfigService, groups routing.GroupRepository, rates billing.UserGroupRateRepository, queue batchimage.BatchImageQueue, pricing *batchimage.Pricing, funds *billing.Funds, subscriptions *billingpostgres.SettlementStore, auth apikey.APIKeyAuthCacheInvalidator, cfg *config.Config, registry *batchimage.Registry[batchprovider.BatchImageProvider]) *batchimage.Public {
 	core := &batchimage.Public{Now: time.Now, Repo: repo, ProviderRepo: &batchprovider.Candidates{Source: providers, Registry: registry, ObserveModel: modeltrace.RegisterStage}, GroupRepo: batchPricingGroups{groups, modelConfigs}, UserGroupRateRepo: rates, Queue: queue, Pricing: pricing, Funding: batchimage.Funding{Store: funds, Observe: creativeObserve}, Observe: creativeObserve}
 	if modelConfigs != nil {
 		core.PricingConfigService = modelConfigs

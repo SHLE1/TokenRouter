@@ -17,11 +17,11 @@ import (
 )
 
 // 通过真实组合根绑定 PostgreSQL；旧装配壳没有仓储，所有观测直接走原生入口。
-func TestS16NativeProviderHealthAssembly(t *testing.T) {
+func TestNativeProviderHealthAssembly(t *testing.T) {
 	f := newDatabaseFixture(t)
 	store := providerpostgres.NewProviderStore(f.client, f.db, providerpostgres.ProviderStoreOptions{})
 	cfg := &config.Config{}
-	runtime := app.NewS16ProviderHealthRuntime(store, nil, cfg, nil, nil, nil, nil, nil)
+	runtime := app.NewProviderHealthRuntimeForTest(store, nil, cfg, nil, nil, nil, nil, nil)
 	observer := runtime.Observer
 	require.Same(t, runtime.Health, observer.Core)
 	require.Same(t, runtime.Health, observer.Limits.Health)
@@ -29,7 +29,7 @@ func TestS16NativeProviderHealthAssembly(t *testing.T) {
 	require.NotNil(t, runtime.Recovery)
 
 	t.Run("anthropic window", func(t *testing.T) {
-		row, err := f.client.Provider.Create().SetName("s16-health-window").SetPlatform(provider.PlatformAnthropic).SetType(provider.ProviderTypeOAuth).Save(t.Context())
+		row, err := f.client.Provider.Create().SetName("test-health-window").SetPlatform(provider.PlatformAnthropic).SetType(provider.ProviderTypeOAuth).Save(t.Context())
 		require.NoError(t, err)
 		value, err := store.GetByID(t.Context(), row.ID)
 		require.NoError(t, err)
@@ -48,7 +48,7 @@ func TestS16NativeProviderHealthAssembly(t *testing.T) {
 	})
 
 	t.Run("image scope", func(t *testing.T) {
-		row, err := f.client.Provider.Create().SetName("s16-health-image").SetPlatform(provider.PlatformOpenAI).SetType(provider.ProviderTypeAPIKey).Save(t.Context())
+		row, err := f.client.Provider.Create().SetName("test-health-image").SetPlatform(provider.PlatformOpenAI).SetType(provider.ProviderTypeAPIKey).Save(t.Context())
 		require.NoError(t, err)
 		value, err := store.GetByID(t.Context(), row.ID)
 		require.NoError(t, err)
@@ -60,9 +60,9 @@ func TestS16NativeProviderHealthAssembly(t *testing.T) {
 	})
 
 	t.Run("shadow credential owner", func(t *testing.T) {
-		parent, err := f.client.Provider.Create().SetName("s16-health-parent").SetPlatform(provider.PlatformOpenAI).SetType(provider.ProviderTypeOAuth).SetCredentials(map[string]any{"refresh_token": "fixture-refresh"}).Save(t.Context())
+		parent, err := f.client.Provider.Create().SetName("test-health-parent").SetPlatform(provider.PlatformOpenAI).SetType(provider.ProviderTypeOAuth).SetCredentials(map[string]any{"refresh_token": "fixture-refresh"}).Save(t.Context())
 		require.NoError(t, err)
-		shadow, err := f.client.Provider.Create().SetName("s16-health-shadow").SetPlatform(provider.PlatformOpenAI).SetType(provider.ProviderTypeOAuth).SetParentProviderID(parent.ID).SetQuotaDimension(provider.QuotaDimensionSpark).Save(t.Context())
+		shadow, err := f.client.Provider.Create().SetName("test-health-shadow").SetPlatform(provider.PlatformOpenAI).SetType(provider.ProviderTypeOAuth).SetParentProviderID(parent.ID).SetQuotaDimension(provider.QuotaDimensionSpark).Save(t.Context())
 		require.NoError(t, err)
 		value, err := store.GetByID(t.Context(), shadow.ID)
 		require.NoError(t, err)

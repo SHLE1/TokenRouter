@@ -32,7 +32,7 @@ func (s *taskActivityUseCases) Get(context.Context, batchimage.BatchImageOwner, 
 // 真实 HTTP Adapter 的调用尚未结束时，关闭不能越过任务阶段释放共享存储。
 func TestTaskHTTPActivityTimeoutRetainsStorage(t *testing.T) {
 	manager := lifecycle.New()
-	activity := provideS13TaskActivity(manager)
+	activity := provideTaskActivity(manager)
 	calls := &taskActivityUseCases{entered: make(chan struct{}), release: make(chan struct{})}
 	h := batchhttp.NewBatchImageHandler(calls, nil, nil, batchhttp.AccessPorts{Key: func(*gin.Context) (*apikey.APIKey, bool) { return &apikey.APIKey{ID: 1, UserID: 2}, true }})
 	h.BindActivity(activity.Enter)

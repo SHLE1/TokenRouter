@@ -32,7 +32,7 @@ func (s *managedRecoveryInterleaveStore) ApplyManagedRecoveryStep(ctx context.Co
 	return applied, err
 }
 
-func TestS06ManagedRecoveryIndependentCommitsAndIdentity(t *testing.T) {
+func TestManagedRecoveryIndependentCommitsAndIdentity(t *testing.T) {
 	for step := provider.ManagedRecoveryError; step <= provider.ManagedRecoveryTemporary; step++ {
 		for _, scenario := range []string{"unchanged", "credentials", "error", "owned_state", "write_failure", "outbox_failure", "cancel"} {
 			t.Run(fmt.Sprintf("step_%d/%s", step, scenario), func(t *testing.T) {
@@ -40,12 +40,12 @@ func TestS06ManagedRecoveryIndependentCommitsAndIdentity(t *testing.T) {
 				client := testEntClient(t)
 				now := time.Now().UTC().Truncate(time.Second)
 				until := now.Add(time.Hour)
-				row, err := client.Provider.Create().SetName("s06-ag-recovery").SetPlatform(provider.PlatformAntigravity).SetType(provider.ProviderTypeOAuth).SetStatus(provider.StatusError).SetErrorMessage("missing_project_id: original").SetCredentials(map[string]any{"access_token": "old", "refresh_token": "old"}).SetRateLimitedAt(now).SetRateLimitResetAt(until).SetOverloadUntil(until).SetTempUnschedulableUntil(until).SetTempUnschedulableReason("old reason").SetExtra(map[string]any{"antigravity_quota_scopes": map[string]any{"old": true}, "model_rate_limits": map[string]any{"old": true}, "unrelated": "keep"}).Save(ctx)
+				row, err := client.Provider.Create().SetName("test-ag-recovery").SetPlatform(provider.PlatformAntigravity).SetType(provider.ProviderTypeOAuth).SetStatus(provider.StatusError).SetErrorMessage("missing_project_id: original").SetCredentials(map[string]any{"access_token": "old", "refresh_token": "old"}).SetRateLimitedAt(now).SetRateLimitResetAt(until).SetOverloadUntil(until).SetTempUnschedulableUntil(until).SetTempUnschedulableReason("old reason").SetExtra(map[string]any{"antigravity_quota_scopes": map[string]any{"old": true}, "model_rate_limits": map[string]any{"old": true}, "unrelated": "keep"}).Save(ctx)
 				require.NoError(t, err)
 				t.Cleanup(func() { require.NoError(t, client.Provider.DeleteOneID(row.ID).Exec(context.Background())) })
 				store := newProviderStoreContract(client, integrationDB, nil)
 				if scenario == "outbox_failure" {
-					store.SetEvents(s06FailConfigurationOutbox{})
+					store.SetEvents(failConfigurationOutbox{})
 				}
 				observed, err := store.GetByID(ctx, row.ID)
 				require.NoError(t, err)

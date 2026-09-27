@@ -17,7 +17,7 @@ import (
 )
 
 // 使用原迁移和真实 Redis 验证规则发布、兼容键与失败写入语义。
-func TestS11ErrorRulesStorageAndSubscription(t *testing.T) {
+func TestErrorRulesStorageAndSubscription(t *testing.T) {
 	f := newDatabaseFixture(t)
 	ctx := context.Background()
 	container, err := tcredis.Run(ctx, "redis:8.4-alpine")
@@ -42,7 +42,7 @@ func TestS11ErrorRulesStorageAndSubscription(t *testing.T) {
 		counts, e := rdb.PubSubNumSub(ctx, "error_passthrough_rules_updated").Result()
 		return e == nil && counts["error_passthrough_rules_updated"] == 2
 	}, 2*time.Second, 10*time.Millisecond)
-	rule, err := a.Create(ctx, &errorpolicy.ErrorPassthroughRule{Name: "s11", Enabled: true, MatchMode: errorpolicy.MatchModeAny, ErrorCodes: []int{503}, PassthroughCode: true, PassthroughBody: true, Platforms: []string{"openai"}})
+	rule, err := a.Create(ctx, &errorpolicy.ErrorPassthroughRule{Name: "test", Enabled: true, MatchMode: errorpolicy.MatchModeAny, ErrorCodes: []int{503}, PassthroughCode: true, PassthroughBody: true, Platforms: []string{"openai"}})
 	require.NoError(t, err)
 	require.Eventually(t, func() bool { return b.MatchRule("openai", 503, nil) != nil }, time.Second, 10*time.Millisecond)
 	raw, err := rdb.Get(ctx, "error_passthrough_rules").Bytes()

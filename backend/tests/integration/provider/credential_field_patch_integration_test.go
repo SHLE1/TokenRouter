@@ -12,7 +12,7 @@ import (
 )
 
 // 管理校验后、配置行锁前发生真实凭据轮换；字段补丁必须保留新 token 和未选配置。
-func TestS06CredentialFieldPatchPreservesLockTimeState(t *testing.T) {
+func TestCredentialFieldPatchPreservesLockTimeState(t *testing.T) {
 	cases := []struct {
 		name, field   string
 		value         any
@@ -23,12 +23,12 @@ func TestS06CredentialFieldPatchPreservesLockTimeState(t *testing.T) {
 			ctx := context.Background()
 			client := testEntClient(t)
 			initial := map[string]any{"access_token": "old", "refresh_token": "old-refresh", "base_url": "https://old.invalid", "org_uuid": "old-org", "account_uuid": "old-provider", "intercept_warmup_requests": true}
-			row, err := client.Provider.Create().SetName("s06-credential-field").SetPlatform(provider.PlatformAnthropic).SetType(provider.ProviderTypeOAuth).SetStatus(provider.StatusActive).SetCredentials(initial).Save(ctx)
+			row, err := client.Provider.Create().SetName("test-credential-field").SetPlatform(provider.PlatformAnthropic).SetType(provider.ProviderTypeOAuth).SetStatus(provider.StatusActive).SetCredentials(initial).Save(ctx)
 			require.NoError(t, err)
 			t.Cleanup(func() { require.NoError(t, client.Provider.DeleteOneID(row.ID).Exec(context.Background())) })
 			store := newProviderStoreContract(client, integrationDB, nil)
 			if tc.outboxFailure {
-				store.SetEvents(s06FailConfigurationOutbox{})
+				store.SetEvents(failConfigurationOutbox{})
 			}
 			rotated := provider.CloneValues(initial)
 			rotated["access_token"] = "rotated"

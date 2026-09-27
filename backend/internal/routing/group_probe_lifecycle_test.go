@@ -31,11 +31,12 @@ type probeExecutorStub struct{}
 func (probeExecutorStub) Select(context.Context, GroupAvailabilityProbeDueGroup, string) (int64, error) {
 	return 1, nil
 }
+
 func (probeExecutorStub) Test(context.Context, int64, string, string, string) (*ProbeExecutionResult, error) {
 	return &ProbeExecutionResult{Status: GroupAvailabilityProbeStatusSuccess}, nil
 }
 
-func TestS06ProbeStopPreventsLaterStart(t *testing.T) {
+func TestProbeStopPreventsLaterStart(t *testing.T) {
 	schedule := &probeScheduleStub{}
 	runner := NewGroupAvailabilityProbeRunnerService(&groupAvailabilityProbeRunnerRepoStub{}, probeExecutorStub{}, GroupProbeOptions{Schedule: schedule})
 	require.Zero(t, schedule.starts)
@@ -44,6 +45,7 @@ func TestS06ProbeStopPreventsLaterStart(t *testing.T) {
 	require.Zero(t, schedule.starts)
 	require.NoError(t, runner.StopContext(context.Background()))
 }
+
 func TestProbeRepeatedStartAndStop(t *testing.T) {
 	schedule := &probeScheduleStub{}
 	repo := &groupAvailabilityProbeRunnerRepoStub{}
@@ -58,6 +60,7 @@ func TestProbeRepeatedStartAndStop(t *testing.T) {
 	runner.Stop()
 	require.Equal(t, 1, schedule.stops)
 }
+
 func TestProbeStopCancelsClaimAndWaitsForRun(t *testing.T) {
 	started := make(chan struct{})
 	repo := &groupAvailabilityProbeRunnerRepoStub{claimStarted: started, releaseClaim: make(chan struct{})}
@@ -91,6 +94,7 @@ func (r *uncancellableProbeRepo) ClaimDue(context.Context, time.Time, time.Time,
 	<-r.release
 	return nil, nil
 }
+
 func TestProbeStopBudgetReportsUnfinishedClaim(t *testing.T) {
 	repo := &uncancellableProbeRepo{started: make(chan struct{}), release: make(chan struct{})}
 	runner := NewGroupAvailabilityProbeRunnerService(repo, probeExecutorStub{}, GroupProbeOptions{})
@@ -105,6 +109,7 @@ func TestProbeStopBudgetReportsUnfinishedClaim(t *testing.T) {
 	require.ErrorIs(t, err, context.DeadlineExceeded)
 	require.NoError(t, runner.StopContext(context.Background()))
 }
+
 func TestProbeInvalidScheduleDoesNotRetryStart(t *testing.T) {
 	schedule := &probeScheduleStub{err: errors.New("invalid schedule")}
 	runner := NewGroupAvailabilityProbeRunnerService(&groupAvailabilityProbeRunnerRepoStub{}, probeExecutorStub{}, GroupProbeOptions{Schedule: schedule})

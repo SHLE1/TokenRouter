@@ -9,7 +9,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 
-	s15httpx "github.com/TokenFlux/TokenRouter/internal/server/httpx"
+	"github.com/TokenFlux/TokenRouter/internal/server/httpx"
 )
 
 func TestNormalizeGroupAvailabilityProbeConfig(t *testing.T) {
@@ -123,8 +123,8 @@ func TestNormalizeGroupAvailabilityProbeConfigForAdminWriteReturnsBadRequest(t *
 		MaxRetries: groupAvailabilityProbeRetryPointer(routing.MaxGroupAvailabilityProbeMaxRetries + 1),
 	})
 
-	if s15httpx.ErrorCode(err) != http.StatusBadRequest {
-		t.Fatalf("normalizeGroupAvailabilityProbeConfigForAdminWrite() status = %d, want %d", s15httpx.ErrorCode(err), http.StatusBadRequest)
+	if httpx.ErrorCode(err) != http.StatusBadRequest {
+		t.Fatalf("normalizeGroupAvailabilityProbeConfigForAdminWrite() status = %d, want %d", httpx.ErrorCode(err), http.StatusBadRequest)
 	}
 	if apperror.Reason(err) != routing.InvalidGroupAvailabilityProbeConfigReason {
 		t.Fatalf("normalizeGroupAvailabilityProbeConfigForAdminWrite() reason = %q, want %q", apperror.Reason(err), routing.InvalidGroupAvailabilityProbeConfigReason)

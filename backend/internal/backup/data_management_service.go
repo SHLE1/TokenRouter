@@ -10,35 +10,14 @@ import (
 
 const (
 	DefaultDataManagementAgentSocketPath = "/tmp/sub2api-datamanagement.sock"
-	LegacyBackupAgentSocketPath          = "/tmp/sub2api-backup.sock"
-
-	DataManagementDeprecatedReason         = "DATA_MANAGEMENT_DEPRECATED"
-	DataManagementAgentSocketMissingReason = "DATA_MANAGEMENT_AGENT_SOCKET_MISSING"
-	DataManagementAgentUnavailableReason   = "DATA_MANAGEMENT_AGENT_UNAVAILABLE"
-
-	// Deprecated: keep old names for compatibility.
-	DefaultBackupAgentSocketPath   = DefaultDataManagementAgentSocketPath
-	BackupAgentSocketMissingReason = DataManagementAgentSocketMissingReason
-	BackupAgentUnavailableReason   = DataManagementAgentUnavailableReason
+	DataManagementDeprecatedReason       = "DATA_MANAGEMENT_DEPRECATED"
+	DataManagementAgentUnavailableReason = "DATA_MANAGEMENT_AGENT_UNAVAILABLE"
 )
 
-var (
-	ErrDataManagementDeprecated = infraerrors.ServiceUnavailable(
-		DataManagementDeprecatedReason,
-		"data management feature is deprecated",
-	)
-	ErrDataManagementAgentSocketMissing = infraerrors.ServiceUnavailable(
-		DataManagementAgentSocketMissingReason,
-		"data management agent socket is missing",
-	)
-	ErrDataManagementAgentUnavailable = infraerrors.ServiceUnavailable(
-		DataManagementAgentUnavailableReason,
-		"data management agent is unavailable",
-	)
-
-	// Deprecated: keep old names for compatibility.
-	ErrBackupAgentSocketMissing = ErrDataManagementAgentSocketMissing
-	ErrBackupAgentUnavailable   = ErrDataManagementAgentUnavailable
+// ErrDataManagementDeprecated 用于已停用的数据管理 RPC 入口。
+var ErrDataManagementDeprecated = infraerrors.ServiceUnavailable(
+	DataManagementDeprecatedReason,
+	"data management feature is deprecated",
 )
 
 type DataManagementAgentHealth struct {

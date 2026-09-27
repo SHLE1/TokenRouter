@@ -19,12 +19,12 @@ import (
 )
 
 // 读取后注入真实数据库变化，固定重现配置写入与刷新、消费、健康维护的交错。
-type s06ConfigurationInterleave struct {
+type configurationInterleave struct {
 	*providerpostgres.ProviderStore
 	afterRead func()
 }
 
-func (r *s06ConfigurationInterleave) GetByID(ctx context.Context, id int64) (*provider.Record, error) {
+func (r *configurationInterleave) GetByID(ctx context.Context, id int64) (*provider.Record, error) {
 	v, err := r.ProviderStore.GetByID(ctx, id)
 	if err == nil && r.afterRead != nil {
 		f := r.afterRead
@@ -34,18 +34,18 @@ func (r *s06ConfigurationInterleave) GetByID(ctx context.Context, id int64) (*pr
 	return v, err
 }
 
-func TestS06ConfigurationWriteAuthority(t *testing.T) {
+func TestConfigurationWriteAuthority(t *testing.T) {
 	for _, mode := range []string{"name", "extra", "status", "admin_name", "admin_extra", "admin_credentials"} {
 		t.Run(mode, func(t *testing.T) {
 			ctx := context.Background()
 			client := testEntClient(t)
-			row, err := client.Provider.Create().SetName("s06-config-authority").
+			row, err := client.Provider.Create().SetName("test-config-authority").
 				SetPlatform(capability.PlatformOpenAI).SetType(capability.ProviderTypeAPIKey).
 				SetCredentials(map[string]any{"api_key": "old-test-key", "upstream_protocols": []string{"openai_responses"}}).
 				SetExtra(map[string]any{"quota_used": 1.0, "quota_limit": 100.0}).Save(ctx)
 			require.NoError(t, err)
 			t.Cleanup(func() { require.NoError(t, client.Provider.DeleteOneID(row.ID).Exec(context.Background())) })
-			repo := &s06ConfigurationInterleave{ProviderStore: newProviderStoreContract(client, integrationDB, nil)}
+			repo := &configurationInterleave{ProviderStore: newProviderStoreContract(client, integrationDB, nil)}
 			repo.afterRead = func() {
 				_, err := integrationDB.ExecContext(ctx, `UPDATE providers SET
 				 credentials=jsonb_set(credentials,'{api_key}','"new-test-key"'),

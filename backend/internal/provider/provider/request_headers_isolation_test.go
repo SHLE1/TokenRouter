@@ -12,22 +12,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func s06HeaderOverrideProvider() *provider.Record {
+func headerOverrideProvider() *provider.Record {
 	return &provider.Record{Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey, Credentials: map[string]any{
 		"header_override_enabled": true, "header_overrides": map[string]any{"x-test-marker": "configured"},
 	}}
 }
 
 // 临时修改覆写结果不能影响另一个请求的配置。
-func TestS06HeaderOverrideResultIsolation(t *testing.T) {
-	provider := s06HeaderOverrideProvider()
+func TestHeaderOverrideResultIsolation(t *testing.T) {
+	provider := headerOverrideProvider()
 	provider.HeaderOverrides()["x-test-marker"] = "changed-by-caller"
 	require.Equal(t, "configured", provider.HeaderOverrides()["x-test-marker"])
 }
 
 // 并发解析不可变配置不得回写共享提供商字段。
-func TestS06HeaderOverrideConcurrentReads(t *testing.T) {
-	provider := s06HeaderOverrideProvider()
+func TestHeaderOverrideConcurrentReads(t *testing.T) {
+	provider := headerOverrideProvider()
 	start := make(chan struct{})
 	var wg sync.WaitGroup
 	for range 16 {

@@ -18,7 +18,7 @@ import (
 )
 
 // 真实 PostgreSQL 与实际管理用例验证 HTTP 导入、同批更新和部分失败；平台隐私任务不在本测试执行。
-func TestS06CodexImportHTTPDatabaseContract(t *testing.T) {
+func TestCodexImportHTTPDatabaseContract(t *testing.T) {
 	ctx := context.Background()
 	client := testEntClient(t)
 	store := newProviderStoreContract(client, integrationDB, nil)
@@ -31,7 +31,7 @@ func TestS06CodexImportHTTPDatabaseContract(t *testing.T) {
 	router := gin.New()
 	router.POST("/import/codex-session", h.ImportCodexSession)
 	user := time.Now().Format("150405.000000000")
-	source := map[string]any{"access_token": "fixture-at", "refresh_token": "fixture-rt", "chatgpt_account_id": "s06-team-" + user, "chatgpt_user_id": "s06-user-" + user}
+	source := map[string]any{"access_token": "fixture-at", "refresh_token": "fixture-rt", "chatgpt_account_id": "test-team-" + user, "chatgpt_user_id": "test-user-" + user}
 	request := func(contents []any) provider.CodexSessionImportResult {
 		t.Helper()
 		raw, err := json.Marshal(contents)

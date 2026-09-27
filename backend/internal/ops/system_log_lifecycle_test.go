@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logevent"
 )
 
-func TestS08RegressionSystemLogDuplicateStart(t *testing.T) {
+func TestRegressionSystemLogDuplicateStart(t *testing.T) {
 	entered := make(chan struct{}, 4)
 	release := make(chan struct{})
 	r := &opsRepoMock{BatchInsertSystemLogsFn: func(_ context.Context, in []*OpsInsertSystemLogInput) (int64, error) {
@@ -20,7 +20,7 @@ func TestS08RegressionSystemLogDuplicateStart(t *testing.T) {
 	s.Start()
 	s.Start()
 	for i := 0; i < 400; i++ {
-		s.WriteLogEvent(&logevent.LogEvent{Level: "error", Message: "planning"})
+		s.WriteLogEvent(&logevent.LogEvent{Level: "error", Message: "lifecycle-test"})
 	}
 	<-entered
 	select {

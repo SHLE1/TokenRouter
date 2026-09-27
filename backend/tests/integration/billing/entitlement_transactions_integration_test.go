@@ -21,7 +21,7 @@ import (
 )
 
 // 外层新建的用户和套餐尚未提交，读得到它们即证明初始读取和锁都在同一连接。
-func TestS04SubscriptionParticipantReadsUncommittedAndRollsBack(t *testing.T) {
+func TestSubscriptionParticipantReadsUncommittedAndRollsBack(t *testing.T) {
 	for _, explicit := range []bool{false, true} {
 		t.Run(fmt.Sprint(explicit), func(t *testing.T) {
 			ctx := context.Background()
@@ -29,9 +29,9 @@ func TestS04SubscriptionParticipantReadsUncommittedAndRollsBack(t *testing.T) {
 			tx, err := client.Tx(ctx)
 			require.NoError(t, err)
 			defer func() { _ = tx.Rollback() }()
-			user, err := tx.Client().User.Create().SetEmail("s04-participant@example.com").SetPasswordHash("hash").SetBalance(10).Save(ctx)
+			user, err := tx.Client().User.Create().SetEmail("test-participant@example.com").SetPasswordHash("hash").SetBalance(10).Save(ctx)
 			require.NoError(t, err)
-			plan, err := tx.Client().SubscriptionPlan.Create().SetPrice(10).SetName("s04 uncommitted").SetValidityDays(7).Save(ctx)
+			plan, err := tx.Client().SubscriptionPlan.Create().SetPrice(10).SetName("test uncommitted").SetValidityDays(7).Save(ctx)
 			require.NoError(t, err)
 			callCtx := dbent.NewTxContext(ctx, tx)
 			subs := billing.NewSubscriptionService(subscriptionContractEmptyGroups{}, billingpostgres.NewUserSubscriptionRepository(client), billingpostgres.NewSubscriptionMutations(client))
@@ -57,12 +57,12 @@ func TestS04SubscriptionParticipantReadsUncommittedAndRollsBack(t *testing.T) {
 }
 
 // 验证订阅有效期修改参与外层事务，并随外层事务失败回滚。
-func TestS04ValidityChangeParticipatesInOuterTransaction(t *testing.T) {
+func TestValidityChangeParticipatesInOuterTransaction(t *testing.T) {
 	ctx := context.Background()
 	client := committedEntitlementClient(t)
-	user, err := client.User.Create().SetEmail("s04-validity@example.com").SetPasswordHash("hash").Save(ctx)
+	user, err := client.User.Create().SetEmail("test-validity@example.com").SetPasswordHash("hash").Save(ctx)
 	require.NoError(t, err)
-	plan, err := client.SubscriptionPlan.Create().SetPrice(10).SetName("s04 validity").SetValidityDays(2).Save(ctx)
+	plan, err := client.SubscriptionPlan.Create().SetPrice(10).SetName("test validity").SetValidityDays(2).Save(ctx)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = client.SubscriptionPlan.DeleteOneID(plan.ID).Exec(context.Background()) })
 	now := time.Now().UTC().Truncate(time.Second)
@@ -90,7 +90,7 @@ func (r failedRedeemUsage) CreateUsage(ctx context.Context, usage *billing.Redee
 	if err := r.RedeemCodeRepository.CreateUsage(ctx, usage); err != nil {
 		return err
 	}
-	return errors.New("s04 usage audit failed after actual insert")
+	return errors.New("test usage audit failed after actual insert")
 }
 
 type redeemAuthObservation struct{ count atomic.Int32 }
@@ -98,18 +98,18 @@ type redeemAuthObservation struct{ count atomic.Int32 }
 func (o *redeemAuthObservation) InvalidateAuthCacheByUserID(context.Context, int64) { o.count.Add(1) }
 
 // 每种权益都真实写入后制造 usage 失败，验证余额/订阅/并发数和次数同事务回滚。
-func TestS04RedeemEffectsWaitForCommit(t *testing.T) {
+func TestRedeemEffectsWaitForCommit(t *testing.T) {
 	for _, kind := range []string{billing.RedeemTypeBalance, billing.RedeemTypeConcurrency, billing.RedeemTypeSubscription} {
 		t.Run(kind, func(t *testing.T) {
 			ctx := context.Background()
 			client := committedEntitlementClient(t)
-			user, err := client.User.Create().SetEmail("s04-redeem@example.com").SetPasswordHash("hash").SetBalance(10).SetConcurrency(2).Save(ctx)
+			user, err := client.User.Create().SetEmail("test-redeem@example.com").SetPasswordHash("hash").SetBalance(10).SetConcurrency(2).Save(ctx)
 			require.NoError(t, err)
-			plan, err := client.SubscriptionPlan.Create().SetPrice(10).SetName("s04 redeem").SetValidityDays(7).Save(ctx)
+			plan, err := client.SubscriptionPlan.Create().SetPrice(10).SetName("test redeem").SetValidityDays(7).Save(ctx)
 			require.NoError(t, err)
 			t.Cleanup(func() { _ = client.SubscriptionPlan.DeleteOneID(plan.ID).Exec(context.Background()) })
 			repo := billingpostgres.NewRedeemCodeRepository(client)
-			code := &billing.RedeemCode{Code: "S04-" + kind, Type: kind, Value: 5, Status: billing.StatusUnused, MaxUses: 1, PlanID: &plan.ID}
+			code := &billing.RedeemCode{Code: "TEST-" + kind, Type: kind, Value: 5, Status: billing.StatusUnused, MaxUses: 1, PlanID: &plan.ID}
 			require.NoError(t, repo.Create(ctx, code))
 			auth := &redeemAuthObservation{}
 			subs := billing.NewSubscriptionService(subscriptionContractEmptyGroups{}, billingpostgres.NewUserSubscriptionRepository(client), billingpostgres.NewSubscriptionMutations(client))
@@ -118,7 +118,7 @@ func TestS04RedeemEffectsWaitForCommit(t *testing.T) {
 					billingpostgres.NewRedeemMutations(client, billingpostgres.RedeemWriters{Balances: billingpostgres.NewBalanceStore(client), Concurrency: identitypostgres.NewConcurrencyStore(client)}), auth, nil, billing.RedeemRuntime{Now: time.Now})
 			}
 			_, err = makeService(failedRedeemUsage{repo}).Redeem(ctx, user.ID, code.Code)
-			require.ErrorContains(t, err, "s04 usage audit failed")
+			require.ErrorContains(t, err, "test usage audit failed")
 			require.Zero(t, auth.count.Load(), "写失败不得发布认证失效")
 			unchanged, err := client.User.Get(ctx, user.ID)
 			require.NoError(t, err)

@@ -11,9 +11,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestS13CreativeOutputFailureMustNotInferAgain(t *testing.T) {
+func TestCreativeOutputFailureMustNotInferAgain(t *testing.T) {
 	f := newCreativeWorkerFixture()
-	id := "crun_s13_output_failure"
+	id := "crun_test_output_failure"
 	seedCreativeRun(f, id, true)
 	f.store.saveOutputErr = errors.New("redis unavailable")
 	f.exec.result = &creative.CreativeExecuteResult{Outputs: []creative.CreativeOutput{{Index: 0, Bytes: []byte("img"), Mime: "image/png"}}, ProviderID: 55}

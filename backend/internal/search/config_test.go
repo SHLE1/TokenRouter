@@ -34,6 +34,7 @@ func (r *configFixture) GetValue(_ context.Context, _ string) (string, error) {
 	}
 	return raw, nil
 }
+
 func (r *configFixture) Set(_ context.Context, _, value string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -43,7 +44,8 @@ func (r *configFixture) Set(_ context.Context, _, value string) error {
 	r.raw = value
 	return nil
 }
-func TestS10ConfigOldLoadCannotOverwriteSave(t *testing.T) {
+
+func TestConfigOldLoadCannotOverwriteSave(t *testing.T) {
 	repo := &configFixture{raw: `{"enabled":false,"providers":[]}`, entered: make(chan struct{}), release: make(chan struct{})}
 	service := NewConfigService(repo, nil, nil, nil)
 	done := make(chan error, 1)
@@ -56,7 +58,8 @@ func TestS10ConfigOldLoadCannotOverwriteSave(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, value.Enabled)
 }
-func TestS10ConfigCopiesAndWriteFailure(t *testing.T) {
+
+func TestConfigCopiesAndWriteFailure(t *testing.T) {
 	repo := &configFixture{}
 	service := NewConfigService(repo, nil, nil, nil)
 	limit, sub, proxy, expiry := int64(10), int64(20), int64(30), int64(40)
@@ -110,7 +113,7 @@ func (noSearchExecutor) Search(context.Context, ProviderConfig, SearchRequest) (
 }
 func (noSearchExecutor) IsProxyError(error) bool { return false }
 func (noSearchExecutor) CloseIdle()              {}
-func TestS10OldManagerBuildCannotOverwriteSavedGeneration(t *testing.T) {
+func TestOldManagerBuildCannotOverwriteSavedGeneration(t *testing.T) {
 	repo := &configFixture{raw: `{"enabled":true,"providers":[{"type":"brave","api_key":"old","proxy_id":1}]}`}
 	proxy := &configProxyFixture{entered: make(chan struct{}), release: make(chan struct{})}
 	service := NewConfigService(repo, proxy, func(c []ProviderConfig, g *WorkGroup) *Manager { return NewManager(c, nil, noSearchExecutor{}, g) }, nil)
@@ -126,7 +129,7 @@ func TestS10OldManagerBuildCannotOverwriteSavedGeneration(t *testing.T) {
 	require.Error(t, service.Initialize(context.Background()))
 }
 
-func TestS10LoadedConfigurationThenSavedReplacement(t *testing.T) {
+func TestLoadedConfigurationThenSavedReplacement(t *testing.T) {
 	repo := &configFixture{raw: `{"enabled":false,"providers":[]}`}
 	service := NewConfigService(repo, nil, func(c []ProviderConfig, g *WorkGroup) *Manager { return NewManager(c, nil, noSearchExecutor{}, g) }, nil)
 	prior, err := service.GetWebSearchEmulationConfig(context.Background())
@@ -138,7 +141,8 @@ func TestS10LoadedConfigurationThenSavedReplacement(t *testing.T) {
 	require.True(t, current.Enabled)
 	require.Equal(t, "replacement", service.Registry().Get().ProviderConfigs()[0].APIKey)
 }
-func TestS10ConsecutiveSavesKeepLastPublication(t *testing.T) {
+
+func TestConsecutiveSavesKeepLastPublication(t *testing.T) {
 	repo := &configFixture{}
 	proxies := &configProxyFixture{entered: make(chan struct{}), release: make(chan struct{})}
 	service := NewConfigService(repo, proxies, func(c []ProviderConfig, g *WorkGroup) *Manager { return NewManager(c, nil, noSearchExecutor{}, g) }, nil)

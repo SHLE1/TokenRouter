@@ -14,8 +14,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestS15SettingsFieldOwnership 要求真实装配覆盖全部扁平输入；新增字段未登记时立即失败。
-func TestS15SettingsFieldOwnership(t *testing.T) {
+// TestSettingsFieldOwnership 要求真实装配覆盖全部扁平输入；新增字段未登记时立即失败。
+func TestSettingsFieldOwnership(t *testing.T) {
 	defaults := scheduler.DefaultAdminSettingsDefaults()
 	participants := staticSettingsParticipants(&payment.Runtime{}, nil, &defaults, provideGatewayAdminRules())
 	_, err := settings.NewRegistry(participants...)
@@ -27,7 +27,7 @@ func TestS15SettingsFieldOwnership(t *testing.T) {
 			Fields, Keys []string
 		}{participant.Module, participant.Fields, participant.Keys})
 		require.NoError(t, err)
-		t.Logf("S15_PARTICIPANT %s", encoded)
+		t.Logf("TEST_PARTICIPANT %s", encoded)
 		for _, field := range participant.Fields {
 			require.Empty(t, owners[field], "字段 %s 有多个所有者", field)
 			owners[field] = participant.Module

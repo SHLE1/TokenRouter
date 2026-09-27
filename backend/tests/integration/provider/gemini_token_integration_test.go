@@ -25,13 +25,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestS09GeminiTokenRefreshUsesOriginalCAS(t *testing.T) {
+func TestGeminiTokenRefreshUsesOriginalCAS(t *testing.T) {
 	for _, adminChange := range []bool{false, true} {
 		t.Run(fmt.Sprintf("administrator=%v", adminChange), func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cancel()
 			client := testEntClient(t)
-			row, err := client.Provider.Create().SetName(fmt.Sprintf("s09-gemini-%d", time.Now().UnixNano())).SetPlatform(capability.PlatformGemini).SetType(capability.ProviderTypeOAuth).SetCredentials(map[string]any{"access_token": "expired", "refresh_token": "original", "expires_at": time.Now().Add(-time.Hour).Unix(), "oauth_type": "code_assist", "project_id": fmt.Sprintf("project-%d", time.Now().UnixNano()), "tier_id": "gcp_standard"}).Save(ctx)
+			row, err := client.Provider.Create().SetName(fmt.Sprintf("test-gemini-%d", time.Now().UnixNano())).SetPlatform(capability.PlatformGemini).SetType(capability.ProviderTypeOAuth).SetCredentials(map[string]any{"access_token": "expired", "refresh_token": "original", "expires_at": time.Now().Add(-time.Hour).Unix(), "oauth_type": "code_assist", "project_id": fmt.Sprintf("project-%d", time.Now().UnixNano()), "tier_id": "gcp_standard"}).Save(ctx)
 			require.NoError(t, err)
 			t.Cleanup(func() { require.NoError(t, client.Provider.DeleteOneID(row.ID).Exec(context.Background())) })
 			repo := newProviderStoreContract(client, integrationDB, nil)

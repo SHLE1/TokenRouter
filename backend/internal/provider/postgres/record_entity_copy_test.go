@@ -8,7 +8,7 @@ import (
 )
 
 // Ent 行投影不能让返回记录的嵌套凭据修改反向污染原行对象。
-func TestS06ProviderEntityProjectionIsolatesNestedCredentials(t *testing.T) {
+func TestProviderEntityProjectionIsolatesNestedCredentials(t *testing.T) {
 	entity := &dbent.Provider{ID: 1, Credentials: map[string]any{"extension": map[string]any{"value": "original"}}}
 	projected := RecordFromEntity(entity)
 	copy, ok := projected.Credentials["extension"].(map[string]any)

@@ -17,11 +17,11 @@ import (
 	time "time"
 )
 
-// TestS04SetBalanceReturnsLockedOldValue 用真实行锁固定结算先于 set 提交，核对返回的实际旧值。
-func TestS04SetBalanceReturnsLockedOldValue(t *testing.T) {
+// TestSetBalanceReturnsLockedOldValue 用真实行锁固定结算先于 set 提交，核对返回的实际旧值。
+func TestSetBalanceReturnsLockedOldValue(t *testing.T) {
 	ctx := context.Background()
 	client := committedEntitlementClient(t)
-	user := mustCreateUser(t, client, &identity.User{Email: fmt.Sprintf("s04-set-%d@example.com", time.Now().UnixNano()), Balance: 100})
+	user := mustCreateUser(t, client, &identity.User{Email: fmt.Sprintf("test-set-%d@example.com", time.Now().UnixNano()), Balance: 100})
 	repo := postgres.NewUserStore(client, integrationDB)
 	tx, err := integrationDB.BeginTx(ctx, nil)
 	require.NoError(t, err)

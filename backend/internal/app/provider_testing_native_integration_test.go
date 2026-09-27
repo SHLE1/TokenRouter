@@ -38,12 +38,12 @@ func (f *nativeProviderTestTransport) DoWithTLS(req *http.Request, proxy string,
 	return f.Do(req, proxy, id, concurrency)
 }
 
-func TestS16NativeProviderTestAssembly(t *testing.T) {
+func TestNativeProviderTestAssembly(t *testing.T) {
 	f := newDatabaseFixture(t)
 	store := providerpostgres.NewProviderStore(f.client, f.db, providerpostgres.ProviderStoreOptions{})
 	transport := &nativeProviderTestTransport{}
 	manager := lifecycle.New()
-	core := app.NewS16ProviderTests(store, nil, nil, nil, nil, transport, &config.Config{}, nil, nil, nil, nil, manager)
+	core := app.NewProviderTestsForTest(store, nil, nil, nil, nil, transport, &config.Config{}, nil, nil, nil, nil, manager)
 	require.Empty(t, transport.requests, "构造不请求供应商")
 	for _, test := range []struct{ platform, model, path, body string }{
 		{provider.PlatformOpenAI, "gpt-5.4", "/v1/responses", "data: {\"type\":\"response.output_text.delta\",\"delta\":\"ok\"}\n\ndata: {\"type\":\"response.completed\"}\n\n"},
@@ -52,7 +52,7 @@ func TestS16NativeProviderTestAssembly(t *testing.T) {
 		{provider.PlatformKimi, "kimi-k2", "/v1/chat/completions", "data: {\"choices\":[{\"delta\":{\"content\":\"ok\"},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n"},
 	} {
 		t.Run(test.platform, func(t *testing.T) {
-			row, err := f.client.Provider.Create().SetName("s16-native-test-" + test.platform).SetPlatform(test.platform).SetType(provider.ProviderTypeAPIKey).SetCredentials(map[string]any{"api_key": "fixture-key", "base_url": "https://upstream.example", "api_protocol": "chat_completions"}).Save(t.Context())
+			row, err := f.client.Provider.Create().SetName("test-native-test-" + test.platform).SetPlatform(test.platform).SetType(provider.ProviderTypeAPIKey).SetCredentials(map[string]any{"api_key": "fixture-key", "base_url": "https://upstream.example", "api_protocol": "chat_completions"}).Save(t.Context())
 			require.NoError(t, err)
 			transport.body = test.body
 			before := len(transport.requests)

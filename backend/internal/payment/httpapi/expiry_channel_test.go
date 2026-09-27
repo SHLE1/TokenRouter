@@ -21,16 +21,19 @@ type expiryChannelOrders struct {
 }
 
 func (s *expiryChannelOrders) PendingReconciliation(context.Context, time.Time, int) ([]*payment.Order, error) {
-	return []*payment.Order{{ID: 1, PaymentType: payment.TypeAlipay, OutTradeNo: "s12-channel-cancel", Status: payment.OrderStatusPending}}, nil
+	return []*payment.Order{{ID: 1, PaymentType: payment.TypeAlipay, OutTradeNo: "test-channel-cancel", Status: payment.OrderStatusPending}}, nil
 }
+
 func (s *expiryChannelOrders) ProcessingIDs(context.Context) ([]int64, error) {
 	s.nextPhase.Add(1)
 	return nil, nil
 }
+
 func (s *expiryChannelOrders) RecoverableFulfillmentIDs(context.Context, time.Time, time.Duration, time.Duration) ([]int64, error) {
 	s.nextPhase.Add(1)
 	return nil, nil
 }
+
 func (s *expiryChannelOrders) ExpiredPending(context.Context, time.Time) ([]*payment.Order, error) {
 	s.nextPhase.Add(1)
 	return nil, nil
@@ -41,6 +44,7 @@ type expiryChannelInstances struct{ payment.BindingStore }
 func (expiryChannelInstances) ListInstances(context.Context, payment.InstanceFilter) ([]*payment.ProviderInstance, error) {
 	return nil, nil
 }
+
 func (expiryChannelInstances) CountEnabledInstances(context.Context, string) (int, error) {
 	return 0, nil
 }
@@ -55,6 +59,7 @@ func (expiryHTTPProvider) ProviderKey() string { return payment.TypeAlipay }
 func (expiryHTTPProvider) SupportedTypes() []payment.PaymentType {
 	return []payment.PaymentType{payment.TypeAlipay}
 }
+
 func (p expiryHTTPProvider) QueryOrder(ctx context.Context, _ string) (*payment.QueryOrderResponse, error) {
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, p.url, nil)
 	if err != nil {
@@ -66,6 +71,7 @@ func (p expiryHTTPProvider) QueryOrder(ctx context.Context, _ string) (*payment.
 	}
 	return nil, err
 }
+
 func TestPaymentExpiryStopCancelsChannelAndPreventsNextPhase(t *testing.T) {
 	entered := make(chan struct{})
 	cancelled := make(chan struct{})

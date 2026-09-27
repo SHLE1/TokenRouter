@@ -12,10 +12,10 @@ import (
 )
 
 // 根内外链接均用临时目录，不读取宿主真实备份。
-func TestS14B03LocalRoots(t *testing.T) {
+func TestLocalRoots(t *testing.T) {
 	root, outside := t.TempDir(), t.TempDir()
 	s := NewLocalBackupStore(root)
-	require.NoError(t, os.WriteFile(filepath.Join(outside, "fixture"), []byte("outside"), 0600))
+	require.NoError(t, os.WriteFile(filepath.Join(outside, "fixture"), []byte("outside"), 0o600))
 	require.NoError(t, os.Symlink(outside, filepath.Join(root, "outside")))
 	_, err := s.Download(context.Background(), "outside/fixture")
 	require.Error(t, err)
@@ -25,7 +25,7 @@ func TestS14B03LocalRoots(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join(outside, "fixture"))
 	require.NoError(t, err)
 	require.Equal(t, "outside", string(data))
-	require.NoError(t, os.Mkdir(filepath.Join(root, "inside"), 0700))
+	require.NoError(t, os.Mkdir(filepath.Join(root, "inside"), 0o700))
 	require.NoError(t, os.Symlink(filepath.Join(root, "inside"), filepath.Join(root, "alias")))
 	_, err = s.Upload(context.Background(), "alias/new", bytes.NewBufferString("safe"), "")
 	require.NoError(t, err)
@@ -39,10 +39,10 @@ func TestS14B03LocalRoots(t *testing.T) {
 }
 
 // 在校验后替换路径，目录句柄仍必须拒绝越界目标。
-func TestS14B03PathReplacement(t *testing.T) {
+func TestPathReplacement(t *testing.T) {
 	base, outside := t.TempDir(), t.TempDir()
 	s := NewLocalBackupStore(base)
-	require.NoError(t, os.Mkdir(filepath.Join(base, "dir"), 0700))
+	require.NoError(t, os.Mkdir(filepath.Join(base, "dir"), 0o700))
 	root, relative, err := s.rooted("dir/new")
 	require.NoError(t, err)
 	defer func() { _ = root.Close() }()
@@ -58,10 +58,10 @@ func TestS14B03PathReplacement(t *testing.T) {
 }
 
 // 根内最终符号链接删除只删除链接，保持原对象存储的文件删除语义。
-func TestS14B03DeleteInnerLinkPreservesTarget(t *testing.T) {
+func TestDeleteInnerLinkPreservesTarget(t *testing.T) {
 	base := t.TempDir()
 	s := NewLocalBackupStore(base)
-	require.NoError(t, os.WriteFile(filepath.Join(base, "target"), []byte("kept"), 0600))
+	require.NoError(t, os.WriteFile(filepath.Join(base, "target"), []byte("kept"), 0o600))
 	require.NoError(t, os.Symlink(filepath.Join(base, "target"), filepath.Join(base, "link")))
 	require.NoError(t, s.Delete(context.Background(), "link"))
 	data, err := os.ReadFile(filepath.Join(base, "target"))
@@ -71,7 +71,7 @@ func TestS14B03DeleteInnerLinkPreservesTarget(t *testing.T) {
 	require.True(t, os.IsNotExist(err))
 }
 
-func TestS14LocalMissingReadDoesNotCreateRoot(t *testing.T) {
+func TestLocalMissingReadDoesNotCreateRoot(t *testing.T) {
 	base := filepath.Join(t.TempDir(), "missing")
 	s := NewLocalBackupStore(base)
 	_, err := s.Download(context.Background(), "absent")

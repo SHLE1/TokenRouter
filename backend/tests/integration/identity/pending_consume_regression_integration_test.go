@@ -18,14 +18,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestS05PendingTransactionConsumesOnce 两个独立 PostgreSQL 事务读到未消费会话后竞争提交。
-func TestS05PendingTransactionConsumesOnce(t *testing.T) {
+// TestPendingTransactionConsumesOnce 两个独立 PostgreSQL 事务读到未消费会话后竞争提交。
+func TestPendingTransactionConsumesOnce(t *testing.T) {
 	integrationDB, _ := identityDatabase(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	// 独立 Ent 包装隔离测试 hook；底层连接池仍由集成测试总拥有者关闭。
 	client := dbent.NewClient(dbent.Driver(entsql.OpenDB(dialect.Postgres, integrationDB)))
-	session, err := client.PendingAuthSession.Create().SetSessionToken(uuid.NewString()).SetIntent("login").SetProviderType("oidc").SetProviderKey("s05-test").SetProviderSubject(uuid.NewString()).SetBrowserSessionKey("s05-browser").SetExpiresAt(time.Now().Add(time.Minute)).Save(ctx)
+	session, err := client.PendingAuthSession.Create().SetSessionToken(uuid.NewString()).SetIntent("login").SetProviderType("oidc").SetProviderKey("test-test").SetProviderSubject(uuid.NewString()).SetBrowserSessionKey("test-browser").SetExpiresAt(time.Now().Add(time.Minute)).Save(ctx)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, client.PendingAuthSession.DeleteOneID(session.ID).Exec(context.Background()))

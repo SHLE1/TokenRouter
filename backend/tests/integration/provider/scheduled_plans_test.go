@@ -14,10 +14,10 @@ import (
 )
 
 // 使用隔离 PostgreSQL 验证计划边界、结果保留数及级联删除，沿用原表和 SQL。
-func TestS06ScheduledPlanStorageContract(t *testing.T) {
+func TestScheduledPlanStorageContract(t *testing.T) {
 	ctx := context.Background()
 	client := testEntClient(t)
-	row, err := client.Provider.Create().SetName("s06-scheduled-fixture").SetPlatform(provider.PlatformOpenAI).SetType(provider.ProviderTypeAPIKey).Save(ctx)
+	row, err := client.Provider.Create().SetName("test-scheduled-fixture").SetPlatform(provider.PlatformOpenAI).SetType(provider.ProviderTypeAPIKey).Save(ctx)
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, client.Provider.DeleteOneID(row.ID).Exec(context.Background())) })
 	plans := providerpostgres.NewScheduledTestPlanRepository(integrationDB)

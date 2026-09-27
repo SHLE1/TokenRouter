@@ -6,19 +6,19 @@ import (
 	"time"
 )
 
-type s06ProviderExpiryRepo struct {
+type providerExpiryRepo struct {
 	ExpiryRepository
 	started chan struct{}
 }
 
-func (r *s06ProviderExpiryRepo) AutoPauseExpiredProviders(context.Context, time.Time) (int64, error) {
+func (r *providerExpiryRepo) AutoPauseExpiredProviders(context.Context, time.Time) (int64, error) {
 	close(r.started)
 	return 0, nil
 }
 
 // 已停止的拥有者不能因重复 Start 再执行到期扫描。
-func TestS06ProviderExpiryCannotRestartAfterStop(t *testing.T) {
-	repo := &s06ProviderExpiryRepo{started: make(chan struct{})}
+func TestProviderExpiryCannotRestartAfterStop(t *testing.T) {
+	repo := &providerExpiryRepo{started: make(chan struct{})}
 	svc := NewExpiryService(repo, ExpiryOptions{Interval: time.Hour})
 	svc.Stop()
 	svc.Start()

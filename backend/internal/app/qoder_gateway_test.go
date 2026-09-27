@@ -127,15 +127,15 @@ func TestQoderNativeGatewayCompletedFailureNeverRetriesSupplier(t *testing.T) {
 	require.EqualValues(t, 1, calls.Load())
 }
 
-// s09BlockingSink 模拟同步背压；下一帧必须等待当前写入结束。
-type s09BlockingSink struct {
+// blockingSink 模拟同步背压；下一帧必须等待当前写入结束。
+type blockingSink struct {
 	entered, proceed chan struct{}
 	once             atomic.Bool
 	failure          error
 }
 
-func (s *s09BlockingSink) Begin(upstream.OutputHead) error { return nil }
-func (s *s09BlockingSink) Emit(event upstream.OutputEvent) error {
+func (s *blockingSink) Begin(upstream.OutputHead) error { return nil }
+func (s *blockingSink) Emit(event upstream.OutputEvent) error {
 	if event.Semantic && s.once.CompareAndSwap(false, true) {
 		close(s.entered)
 		<-s.proceed
@@ -148,7 +148,7 @@ func TestQoderNativeGatewaySlowSinkAndWriteFailure(t *testing.T) {
 	for _, fail := range []bool{false, true} {
 		t.Run(fmt.Sprint(fail), func(t *testing.T) {
 			var calls, releases, completed atomic.Int32
-			sink := &s09BlockingSink{entered: make(chan struct{}), proceed: make(chan struct{})}
+			sink := &blockingSink{entered: make(chan struct{}), proceed: make(chan struct{})}
 			if fail {
 				sink.failure = errors.New("fixture downstream closed")
 			}
@@ -182,9 +182,9 @@ func TestQoderNativeGatewaySlowSinkAndWriteFailure(t *testing.T) {
 	}
 }
 
-type s09CancelableQoderClient struct{ entered chan struct{} }
+type cancelableQoderClient struct{ entered chan struct{} }
 
-func (c s09CancelableQoderClient) StreamRequestContext(ctx context.Context, _ *qoder.SessionContext, _ string, _ []byte, _ map[string]string) (*http.Response, error) {
+func (c cancelableQoderClient) StreamRequestContext(ctx context.Context, _ *qoder.SessionContext, _ string, _ []byte, _ map[string]string) (*http.Response, error) {
 	close(c.entered)
 	<-ctx.Done()
 	return nil, ctx.Err()
@@ -198,7 +198,7 @@ func TestQoderNativeGatewayNonstreamCancellation(t *testing.T) {
 	var releases, completed atomic.Int32
 	executor := qoder.NewExecutor(qoder.ExecuteOptions{})
 	ports := gateway.RequestPorts{CanFailover: func(error) bool { return true }, Select: func(context.Context, map[int64]struct{}) (*gateway.Selection, error) {
-		return &gateway.Selection{Acquired: true, Release: func() { releases.Add(1) }, Executor: executor, Input: upstream.AttemptInput{Protocol: protocol.ProtocolOpenAIChatCompletions, Body: []byte(`{"model":"auto","messages":[{"role":"user","content":"hi"}]}`), Target: &qoder.Target{Site: qoder.SiteGlobal, Session: func(context.Context) (*qoder.SessionContext, error) { return &qoder.SessionContext{}, nil }, Client: func() (qoder.StreamClient, error) { return s09CancelableQoderClient{entered}, nil }}}, Complete: func(context.Context, upstream.AttemptResult) { completed.Add(1) }}, nil
+		return &gateway.Selection{Acquired: true, Release: func() { releases.Add(1) }, Executor: executor, Input: upstream.AttemptInput{Protocol: protocol.ProtocolOpenAIChatCompletions, Body: []byte(`{"model":"auto","messages":[{"role":"user","content":"hi"}]}`), Target: &qoder.Target{Site: qoder.SiteGlobal, Session: func(context.Context) (*qoder.SessionContext, error) { return &qoder.SessionContext{}, nil }, Client: func() (qoder.StreamClient, error) { return cancelableQoderClient{entered}, nil }}}, Complete: func(context.Context, upstream.AttemptResult) { completed.Add(1) }}, nil
 	}}
 	go func() {
 		done <- gateway.NewQoderUseCase(3, time.Second).Run(ctx, gateway.Request{}, ports, &gateway.OutputTracker{Sink: gatewayhttp.ResponseSink{Writer: httptest.NewRecorder()}})

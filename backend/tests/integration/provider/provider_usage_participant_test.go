@@ -16,12 +16,12 @@ import (
 )
 
 // 使用真实事务验证消费写入和配置修改同连接；参与方法不发布 outbox，也不自行提交。
-func TestS06ProviderUsageParticipantKeepsOuterTransaction(t *testing.T) {
+func TestProviderUsageParticipantKeepsOuterTransaction(t *testing.T) {
 	ctx := context.Background()
 	client := testEntClient(t)
 	now := time.Now().UTC().Truncate(time.Second)
 	until := now.Add(time.Hour)
-	row, err := client.Provider.Create().SetName(fmt.Sprintf("s06-usage-%d", time.Now().UnixNano())).
+	row, err := client.Provider.Create().SetName(fmt.Sprintf("test-usage-%d", time.Now().UnixNano())).
 		SetPlatform(capability.PlatformOpenAI).SetType(capability.ProviderTypeAPIKey).
 		SetStatus(provider.StatusError).SetErrorMessage("preserve-health").SetSchedulable(false).
 		SetRateLimitedAt(now).SetRateLimitResetAt(until).SetOverloadUntil(until).

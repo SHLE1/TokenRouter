@@ -27,23 +27,23 @@ import (
 )
 
 // 在 Key 已写入后注入错误，验证成员和 Key 实际使用同一事务连接。
-type s05FailingMemberKeys struct {
+type failingMemberKeys struct {
 	*keypostgres.TeamKeys
 	err error
 }
 
-func (p s05FailingMemberKeys) DisableMemberInTx(ctx context.Context, tx *sql.Tx, teamID, userID int64, now time.Time) error {
+func (p failingMemberKeys) DisableMemberInTx(ctx context.Context, tx *sql.Tx, teamID, userID int64, now time.Time) error {
 	if err := p.TeamKeys.DisableMemberInTx(ctx, tx, teamID, userID, now); err != nil {
 		return err
 	}
 	return p.err
 }
 
-func TestS05MemberRemovalRollsBackKeyParticipant(t *testing.T) {
+func TestMemberRemovalRollsBackKeyParticipant(t *testing.T) {
 	integrationDB, integrationEntClient := identityDatabase(t)
 	ctx := context.Background()
-	owner := mustCreateUser(t, integrationEntClient, &identity.User{Email: "s05-owner-" + uuid.NewString() + "@example.com"})
-	member := mustCreateUser(t, integrationEntClient, &identity.User{Email: "s05-member-" + uuid.NewString() + "@example.com"})
+	owner := mustCreateUser(t, integrationEntClient, &identity.User{Email: "test-owner-" + uuid.NewString() + "@example.com"})
+	member := mustCreateUser(t, integrationEntClient, &identity.User{Email: "test-member-" + uuid.NewString() + "@example.com"})
 	repo := teampostgres.NewTeamRepository(integrationDB, keypostgres.NewTeamKeys(integrationDB), billingpostgres.NewMemberUsageStore(integrationDB, nil))
 	current, err := repo.Create(ctx, "事务参与验证", owner.ID, 10)
 	require.NoError(t, err)
@@ -53,11 +53,11 @@ func TestS05MemberRemovalRollsBackKeyParticipant(t *testing.T) {
 	_, err = repo.ResolveInvitation(ctx, token, member.ID, member.Email, "accepted", time.Now())
 	require.NoError(t, err)
 	key, err := integrationEntClient.APIKey.Create().SetUserID(member.ID).SetTeamID(current.Team.ID).
-		SetKey("s05-" + uuid.NewString()).SetName("参与者验证").SetStatus("active").Save(ctx)
+		SetKey("test-" + uuid.NewString()).SetName("参与者验证").SetStatus("active").Save(ctx)
 	require.NoError(t, err)
-	failure := errors.New("s05 key participant failed after write")
+	failure := errors.New("test key participant failed after write")
 	broken := teampostgres.NewTeamRepository(integrationDB,
-		s05FailingMemberKeys{TeamKeys: keypostgres.NewTeamKeys(integrationDB), err: failure},
+		failingMemberKeys{TeamKeys: keypostgres.NewTeamKeys(integrationDB), err: failure},
 		billingpostgres.NewMemberUsageStore(integrationDB, nil))
 	require.ErrorIs(t, broken.RemoveMember(ctx, current.Team.ID, member.ID, time.Now()), failure)
 	var leftAt sql.NullTime
@@ -73,13 +73,13 @@ func TestS05MemberRemovalRollsBackKeyParticipant(t *testing.T) {
 	require.Equal(t, "disabled", stored.Status)
 }
 
-func TestS05RedeemConcurrencyUsesOuterEntTransaction(t *testing.T) {
+func TestRedeemConcurrencyUsesOuterEntTransaction(t *testing.T) {
 	ctx := context.Background()
 	_, client := identityDatabase(t)
 	tx, err := client.Tx(ctx)
 	require.NoError(t, err)
 	defer func() { _ = tx.Rollback() }()
-	user, err := tx.Client().User.Create().SetEmail("s05-concurrency-" + uuid.NewString() + "@example.com").
+	user, err := tx.Client().User.Create().SetEmail("test-concurrency-" + uuid.NewString() + "@example.com").
 		SetPasswordHash("hash").SetConcurrency(3).SetBalance(10).Save(ctx)
 	require.NoError(t, err)
 	participant := billingpostgres.RedeemInTx(tx, identitypostgres.ConcurrencyInTx(tx))
@@ -99,11 +99,13 @@ func TestS05RedeemConcurrencyUsesOuterEntTransaction(t *testing.T) {
 	require.True(t, dbent.IsNotFound(err))
 }
 
-func TestS05InitialFundsDoNotCountAsRecharge(t *testing.T) {
+func TestInitialFundsDoNotCountAsRecharge(t *testing.T) {
 	ctx := context.Background()
 	integrationDB, client := identityDatabase(t)
-	user := &identity.User{Email: "s05-initial-" + uuid.NewString() + "@example.com", PasswordHash: "hash",
-		Role: identity.RoleUser, Status: billing.StatusActive, Balance: 12.5, Concurrency: 2}
+	user := &identity.User{
+		Email: "test-initial-" + uuid.NewString() + "@example.com", PasswordHash: "hash",
+		Role: identity.RoleUser, Status: billing.StatusActive, Balance: 12.5, Concurrency: 2,
+	}
 	require.NoError(t, identitypostgres.NewUserStore(client, integrationDB).Create(ctx, user))
 	stored, err := client.User.Get(ctx, user.ID)
 	require.NoError(t, err)
@@ -111,16 +113,16 @@ func TestS05InitialFundsDoNotCountAsRecharge(t *testing.T) {
 	require.Zero(t, stored.TotalRecharged, "注册初始资金不能套用累计充值语义")
 }
 
-// TestS05RegistrationInvitationUsesOuterTransaction 验证注册邀请码沿用同一事务，不混入普通多次兑换的 usage 语义。
-func TestS05RegistrationInvitationUsesOuterTransaction(t *testing.T) {
+// TestRegistrationInvitationUsesOuterTransaction 验证注册邀请码沿用同一事务，不混入普通多次兑换的 usage 语义。
+func TestRegistrationInvitationUsesOuterTransaction(t *testing.T) {
 	ctx := context.Background()
 	_, client := identityDatabase(t)
 	tx, err := client.Tx(ctx)
 	require.NoError(t, err)
 	defer func() { _ = tx.Rollback() }()
-	user, err := tx.Client().User.Create().SetEmail("s05-invite-" + uuid.NewString() + "@example.invalid").SetPasswordHash("hash").Save(ctx)
+	user, err := tx.Client().User.Create().SetEmail("test-invite-" + uuid.NewString() + "@example.invalid").SetPasswordHash("hash").Save(ctx)
 	require.NoError(t, err)
-	invitation, err := tx.Client().RedeemCode.Create().SetCode("s05-" + uuid.NewString()[:24]).SetType("invitation").SetStatus("unused").SetValue(0).SetMaxUses(1).Save(ctx)
+	invitation, err := tx.Client().RedeemCode.Create().SetCode("test-" + uuid.NewString()[:24]).SetType("invitation").SetStatus("unused").SetValue(0).SetMaxUses(1).Save(ctx)
 	require.NoError(t, err)
 	participant := billingpostgres.RegistrationInvitationsInTx(tx)
 	require.NoError(t, participant.Consume(ctx, invitation.ID, user.ID))

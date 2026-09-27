@@ -28,7 +28,7 @@ func (s passiveUsageInterleaveStore) UpdateUsageExtraIfUnchanged(ctx context.Con
 	return applied, err
 }
 
-func TestS06PassiveUsageIdentityAndIndependentWindow(t *testing.T) {
+func TestPassiveUsageIdentityAndIndependentWindow(t *testing.T) {
 	for _, scenario := range []string{"success", "extra_write_failed", "changed_before", "changed_between", "window_changed", "window_outbox_failed", "canceled", "missing_conditional_writer"} {
 		t.Run(scenario, func(t *testing.T) {
 			ctx := context.Background()
@@ -36,7 +36,7 @@ func TestS06PassiveUsageIdentityAndIndependentWindow(t *testing.T) {
 			now := time.Now().UTC().Truncate(time.Second)
 			oldEnd := now.Add(time.Hour)
 			newEnd := now.Add(2 * time.Hour)
-			row, err := client.Provider.Create().SetName("s06-passive").SetPlatform(provider.PlatformAnthropic).SetType(provider.ProviderTypeOAuth).SetStatus(provider.StatusActive).SetCredentials(map[string]any{"access_token": "old"}).SetSessionWindowEnd(oldEnd).SetExtra(map[string]any{"unrelated": "keep"}).Save(ctx)
+			row, err := client.Provider.Create().SetName("test-passive").SetPlatform(provider.PlatformAnthropic).SetType(provider.ProviderTypeOAuth).SetStatus(provider.StatusActive).SetCredentials(map[string]any{"access_token": "old"}).SetSessionWindowEnd(oldEnd).SetExtra(map[string]any{"unrelated": "keep"}).Save(ctx)
 			require.NoError(t, err)
 			t.Cleanup(func() { require.NoError(t, client.Provider.DeleteOneID(row.ID).Exec(context.Background())) })
 			store := newProviderStoreContract(client, integrationDB, nil)
@@ -56,9 +56,9 @@ func TestS06PassiveUsageIdentityAndIndependentWindow(t *testing.T) {
 					require.NoError(t, client.Provider.UpdateOneID(row.ID).SetSessionWindowEnd(newEnd.Add(time.Hour)).Exec(ctx))
 				}
 			case "window_outbox_failed":
-				store.SetEvents(s06FailConfigurationOutbox{})
+				store.SetEvents(failConfigurationOutbox{})
 			case "extra_write_failed":
-				constraint := fmt.Sprintf("s06_passive_extra_%d", row.ID)
+				constraint := fmt.Sprintf("test_passive_extra_%d", row.ID)
 				_, err := integrationDB.ExecContext(ctx, fmt.Sprintf("ALTER TABLE providers ADD CONSTRAINT %s CHECK (id<>%d OR NOT (COALESCE(extra,'{}'::jsonb) ? 'session_window_utilization')) NOT VALID", constraint, row.ID))
 				require.NoError(t, err)
 				t.Cleanup(func() {

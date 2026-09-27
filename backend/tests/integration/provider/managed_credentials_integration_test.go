@@ -12,12 +12,12 @@ import (
 )
 
 // 手动刷新沿用原管理校验与配置事务，仅在锁内附加交换身份条件。
-func TestS06ManagedCredentialsDatabaseCAS(t *testing.T) {
+func TestManagedCredentialsDatabaseCAS(t *testing.T) {
 	for _, change := range []string{"none", "name", "credentials", "status", "proxy", "outbox_failure", "cancelled"} {
 		t.Run(change, func(t *testing.T) {
 			ctx := context.Background()
 			client := testEntClient(t)
-			row, err := client.Provider.Create().SetName("s06-managed-refresh").SetPlatform(provider.PlatformAnthropic).SetType(provider.ProviderTypeOAuth).SetStatus(provider.StatusActive).SetCredentials(map[string]any{"refresh_token": "observed", "access_token": "old"}).Save(ctx)
+			row, err := client.Provider.Create().SetName("test-managed-refresh").SetPlatform(provider.PlatformAnthropic).SetType(provider.ProviderTypeOAuth).SetStatus(provider.StatusActive).SetCredentials(map[string]any{"refresh_token": "observed", "access_token": "old"}).Save(ctx)
 			require.NoError(t, err)
 			t.Cleanup(func() { require.NoError(t, client.Provider.DeleteOneID(row.ID).Exec(context.Background())) })
 			store := newProviderStoreContract(client, integrationDB, nil)
@@ -32,7 +32,7 @@ func TestS06ManagedCredentialsDatabaseCAS(t *testing.T) {
 			case "status":
 				require.NoError(t, client.Provider.UpdateOneID(row.ID).SetStatus(provider.StatusDisabled).Exec(ctx))
 			case "proxy":
-				proxy, err := client.Proxy.Create().SetName("s06-managed-proxy").SetProtocol("http").SetHost("127.0.0.1").SetPort(8123).Save(ctx)
+				proxy, err := client.Proxy.Create().SetName("test-managed-proxy").SetProtocol("http").SetHost("127.0.0.1").SetPort(8123).Save(ctx)
 				require.NoError(t, err)
 				require.NoError(t, client.Provider.UpdateOneID(row.ID).SetProxyID(proxy.ID).Exec(ctx))
 				t.Cleanup(func() {
@@ -40,7 +40,7 @@ func TestS06ManagedCredentialsDatabaseCAS(t *testing.T) {
 					require.NoError(t, client.Proxy.DeleteOneID(proxy.ID).Exec(context.Background()))
 				})
 			case "outbox_failure":
-				store.SetEvents(s06FailConfigurationOutbox{})
+				store.SetEvents(failConfigurationOutbox{})
 			case "cancelled":
 				var cancel context.CancelFunc
 				ctx, cancel = context.WithCancel(ctx)

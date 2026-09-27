@@ -12,19 +12,19 @@ import (
 )
 
 // 真实配置事务验证 Drive 观测只写自身字段，并在取锁后重新比较凭据身份。
-func TestS06TierObservationUsesCurrentIdentityAndFieldPatch(t *testing.T) {
+func TestTierObservationUsesCurrentIdentityAndFieldPatch(t *testing.T) {
 	for _, scenario := range []string{"success", "changed_during_observation", "changed_before_lock", "outbox_failure", "canceled"} {
 		t.Run(scenario, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 			client := testEntClient(t)
 			initial := map[string]any{"oauth_type": "google_one", "access_token": "original", "tier_id": "old"}
-			row, err := client.Provider.Create().SetName("s06-tier-observation").SetPlatform(provider.PlatformGemini).SetType(provider.ProviderTypeOAuth).SetStatus(provider.StatusActive).SetCredentials(initial).SetExtra(map[string]any{"admin_setting": "old"}).Save(ctx)
+			row, err := client.Provider.Create().SetName("test-tier-observation").SetPlatform(provider.PlatformGemini).SetType(provider.ProviderTypeOAuth).SetStatus(provider.StatusActive).SetCredentials(initial).SetExtra(map[string]any{"admin_setting": "old"}).Save(ctx)
 			require.NoError(t, err)
 			t.Cleanup(func() { require.NoError(t, client.Provider.DeleteOneID(row.ID).Exec(context.Background())) })
 			store := newProviderStoreContract(client, integrationDB, nil)
 			if scenario == "outbox_failure" {
-				store.SetEvents(s06FailConfigurationOutbox{})
+				store.SetEvents(failConfigurationOutbox{})
 			}
 			rotated := provider.CloneValues(initial)
 			rotated["access_token"] = "admin-new"

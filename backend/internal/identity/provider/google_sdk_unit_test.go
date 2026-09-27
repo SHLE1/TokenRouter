@@ -41,7 +41,7 @@ func TestGoogleOfficialValidatorWithLocalJWKS(t *testing.T) {
 	endpoint := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Cache-Control", "public, max-age=60")
-		_ = json.NewEncoder(w).Encode(map[string]any{"keys": []any{map[string]any{"kty": "RSA", "alg": "RS256", "use": "sig", "kid": "s05", "n": encode(key.N.Bytes()), "e": encode(big.NewInt(int64(key.E)).Bytes())}}})
+		_ = json.NewEncoder(w).Encode(map[string]any{"keys": []any{map[string]any{"kty": "RSA", "alg": "RS256", "use": "sig", "kid": "test", "n": encode(key.N.Bytes()), "e": encode(big.NewInt(int64(key.E)).Bytes())}}})
 	}))
 	defer endpoint.Close()
 	target, e := url.Parse(endpoint.URL)
@@ -49,7 +49,7 @@ func TestGoogleOfficialValidatorWithLocalJWKS(t *testing.T) {
 	validator, e := idtoken.NewValidator(ctx, option.WithHTTPClient(&http.Client{Transport: googleFixtureTransport{target}}))
 	require.NoError(t, e)
 	sign := func(claims map[string]any) string {
-		header, e := json.Marshal(map[string]any{"alg": "RS256", "kid": "s05", "typ": "JWT"})
+		header, e := json.Marshal(map[string]any{"alg": "RS256", "kid": "test", "typ": "JWT"})
 		require.NoError(t, e)
 		payload, e := json.Marshal(claims)
 		require.NoError(t, e)
@@ -73,7 +73,7 @@ func TestGoogleOfficialValidatorWithLocalJWKS(t *testing.T) {
 		{name: "signature", tamper: true},
 	} {
 		t.Run(sample.name, func(t *testing.T) {
-			claims := map[string]any{"iss": "https://accounts.google.com", "aud": "s05-client", "sub": "local-subject", "email": "local@example.com", "email_verified": true, "exp": time.Now().Add(time.Hour).Unix(), "iat": time.Now().Unix()}
+			claims := map[string]any{"iss": "https://accounts.google.com", "aud": "test-client", "sub": "local-subject", "email": "local@example.com", "email_verified": true, "exp": time.Now().Add(time.Hour).Unix(), "iat": time.Now().Unix()}
 			if sample.change != nil {
 				sample.change(claims)
 			}
@@ -86,9 +86,9 @@ func TestGoogleOfficialValidatorWithLocalJWKS(t *testing.T) {
 				parts[2] = encode(signature)
 				token = strings.Join(parts, ".")
 			} // 保持合法 JWT 结构，仅篡改签名。
-			payload, e := validator.Validate(ctx, token, "s05-client")
+			payload, e := validator.Validate(ctx, token, "test-client")
 			if e == nil {
-				_, e = ValidateGoogleIDTokenPayload(payload, "s05-client", time.Now())
+				_, e = ValidateGoogleIDTokenPayload(payload, "test-client", time.Now())
 			}
 			if sample.success {
 				require.NoError(t, e)

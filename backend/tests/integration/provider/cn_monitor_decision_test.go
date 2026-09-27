@@ -13,7 +13,7 @@ import (
 )
 
 // 真实 PostgreSQL 校验版本条件、同身份恢复、旧观测拒绝以及原尽力通知边界。
-func TestS06CNMonitorDecisionCAS(t *testing.T) {
+func TestCNMonitorDecisionCAS(t *testing.T) {
 	ctx := context.Background()
 	client := testEntClient(t)
 	row, err := client.Provider.Create().SetName("cn-monitor-cas").SetPlatform(acctcore.PlatformKimi).SetType(acctcore.ProviderTypeAPIKey).SetCredentials(map[string]any{"api_key": "old-fixture"}).Save(ctx)
@@ -60,7 +60,7 @@ func TestS06CNMonitorDecisionCAS(t *testing.T) {
 	_, err = integrationDB.ExecContext(ctx, "UPDATE providers SET temp_unschedulable_reason=$2 WHERE id=$1", row.ID, reason)
 	require.NoError(t, err)
 	// outbox 失败继续保留原先已提交的健康写入，不升级成回滚条件。
-	store.SetEvents(s06FailConfigurationOutbox{})
+	store.SetEvents(failConfigurationOutbox{})
 	wrote, err = store.SetCNUsageDecisionCAS(ctx, row.ID, current.UpdatedAt, time.Time{}, reason, true)
 	require.NoError(t, err)
 	require.True(t, wrote)

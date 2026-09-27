@@ -12,7 +12,7 @@ import (
 )
 
 // 真实 PostgreSQL 检验旧交换版本的写权限，普通改名不干扰失败处理，其它身份更改必须拒绝。
-func TestS06RefreshFailureVersionCAS(t *testing.T) {
+func TestRefreshFailureVersionCAS(t *testing.T) {
 	for _, kind := range []provider.RefreshFailureKind{provider.RefreshFailurePermanent, provider.RefreshFailureCooldown} {
 		for _, change := range []string{"none", "name", "credentials", "platform", "type", "status", "schedulable", "proxy"} {
 			t.Run(string(rune('0'+kind))+"/"+change, func(t *testing.T) {
@@ -91,7 +91,7 @@ func TestS06RefreshFailureVersionCAS(t *testing.T) {
 }
 
 // 更长 cooldown 是同身份的原有无变更结果；outbox 失败仍不回滚已经生效的健康写入。
-func TestS06RefreshFailureLongerCooldownAndOutboxFailure(t *testing.T) {
+func TestRefreshFailureLongerCooldownAndOutboxFailure(t *testing.T) {
 	ctx := context.Background()
 	client := testEntClient(t)
 	until := time.Now().Add(time.Hour).Truncate(time.Microsecond)
@@ -115,7 +115,7 @@ func TestS06RefreshFailureLongerCooldownAndOutboxFailure(t *testing.T) {
 	require.Equal(t, "existing-longer", *current.TempUnschedulableReason)
 	require.True(t, until.Equal(*current.TempUnschedulableUntil))
 	require.Equal(t, before.UpdatedAt, current.UpdatedAt)
-	store.SetEvents(s06FailConfigurationOutbox{})
+	store.SetEvents(failConfigurationOutbox{})
 	matched, err = store.ApplyOAuthRefreshFailure(ctx, version, provider.RefreshFailure{Kind: provider.RefreshFailurePermanent, Message: "fixture auth rejected"})
 	require.NoError(t, err)
 	require.True(t, matched)
@@ -126,7 +126,7 @@ func TestS06RefreshFailureLongerCooldownAndOutboxFailure(t *testing.T) {
 }
 
 // 强制刷新请求仍使用原 Extra/outbox 原子范围，并在后置清理时再次检查交换身份。
-func TestS06AntigravityRefreshRequestClearCAS(t *testing.T) {
+func TestAntigravityRefreshRequestClearCAS(t *testing.T) {
 	for _, mode := range []string{"success", "reauthorized", "outbox_failure"} {
 		t.Run(mode, func(t *testing.T) {
 			ctx := context.Background()
@@ -143,7 +143,7 @@ func TestS06AntigravityRefreshRequestClearCAS(t *testing.T) {
 				require.NoError(t, err)
 			}
 			if mode == "outbox_failure" {
-				store.SetEvents(s06FailConfigurationOutbox{})
+				store.SetEvents(failConfigurationOutbox{})
 			}
 			matched, err := store.ClearAntigravityRefreshRequest(ctx, version)
 			if mode == "outbox_failure" {

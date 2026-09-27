@@ -33,9 +33,9 @@ func (c *vertexCancelAfterLockCache) AcquireRefreshLock(ctx context.Context, key
 	return locked, err
 }
 
-func TestS09VertexLockCancellationWithRedis(t *testing.T) {
+func TestVertexLockCancellationWithRedis(t *testing.T) {
 	cache := rediscache.NewOAuthTokenCache(rediscontainer.New(t))
-	key := providermodule.VertexServiceAccountCacheKey(99, "s09-vertex-fixture", t.Name(), true)
+	key := providermodule.VertexServiceAccountCacheKey(99, "test-vertex-fixture", t.Name(), true)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	locked, err := cache.AcquireRefreshLock(ctx, key, 30*time.Second)

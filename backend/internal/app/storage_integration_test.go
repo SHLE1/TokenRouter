@@ -40,7 +40,7 @@ func newDatabaseFixture(t *testing.T) *databaseFixture {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	pg, err := tcpostgres.Run(ctx, "postgres:18.1-alpine3.23", tcpostgres.WithDatabase("s02_contracts"), tcpostgres.WithUsername("postgres"), tcpostgres.WithPassword("postgres"), tcpostgres.BasicWaitStrategies())
+	pg, err := tcpostgres.Run(ctx, "postgres:18.1-alpine3.23", tcpostgres.WithDatabase("test_contracts"), tcpostgres.WithUsername("postgres"), tcpostgres.WithPassword("postgres"), tcpostgres.BasicWaitStrategies())
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, pg.Terminate(context.Background())) })
 	dsn, err := pg.ConnectionString(ctx, "sslmode=disable", "TimeZone=UTC")
@@ -58,27 +58,27 @@ func newDatabaseFixture(t *testing.T) *databaseFixture {
 	return &databaseFixture{db: db, client: client, dsn: dsn, host: host, port: port.Int()}
 }
 
-func TestS02StorageContracts(t *testing.T) {
+func TestStorageContracts(t *testing.T) {
 	fixture := newDatabaseFixture(t)
 	ctx := context.Background()
 	t.Run("settings-batch-atomicity", func(t *testing.T) {
 		store := settings.New(settingspostgres.NewSettingRepository(fixture.client))
 		require.Same(t, store, settings.New(store), "接口投影必须保留同一设置状态")
-		require.NoError(t, store.Set(ctx, "s02_existing", "before"))
+		require.NoError(t, store.Set(ctx, "test_existing", "before"))
 		// 用临时触发器制造真实 SQL 失败，不改发布迁移或运行代码。
-		_, err := fixture.db.ExecContext(ctx, `CREATE FUNCTION s02_reject_setting() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.key = 's02_reject' THEN RAISE EXCEPTION 's02 injected failure'; END IF; RETURN NEW; END $$;
-CREATE TRIGGER s02_setting_failure BEFORE INSERT OR UPDATE ON settings FOR EACH ROW EXECUTE FUNCTION s02_reject_setting();`)
+		_, err := fixture.db.ExecContext(ctx, `CREATE FUNCTION test_reject_setting() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.key = 'test_reject' THEN RAISE EXCEPTION 'test injected failure'; END IF; RETURN NEW; END $$;
+CREATE TRIGGER test_setting_failure BEFORE INSERT OR UPDATE ON settings FOR EACH ROW EXECUTE FUNCTION test_reject_setting();`)
 		require.NoError(t, err)
 		t.Cleanup(func() {
-			_, e := fixture.db.ExecContext(ctx, `DROP TRIGGER s02_setting_failure ON settings; DROP FUNCTION s02_reject_setting();`)
+			_, e := fixture.db.ExecContext(ctx, `DROP TRIGGER test_setting_failure ON settings; DROP FUNCTION test_reject_setting();`)
 			require.NoError(t, e)
 		})
-		err = store.SetMultiple(ctx, map[string]string{"s02_existing": "after", "s02_reject": "value"})
+		err = store.SetMultiple(ctx, map[string]string{"test_existing": "after", "test_reject": "value"})
 		require.Error(t, err)
-		value, err := store.GetValue(ctx, "s02_existing")
+		value, err := store.GetValue(ctx, "test_existing")
 		require.NoError(t, err)
 		require.Equal(t, "before", value)
-		_, err = store.Get(ctx, "s02_reject")
+		_, err = store.Get(ctx, "test_reject")
 		require.ErrorIs(t, err, settings.ErrSettingNotFound)
 	})
 	t.Run("idempotency-concurrent-claim-replay-cleanup", func(t *testing.T) {
@@ -86,7 +86,7 @@ CREATE TRIGGER s02_setting_failure BEFORE INSERT OR UPDATE ON settings FOR EACH 
 		cfg := idempotency.DefaultIdempotencyConfig()
 		cfg.ObserveOnly = false
 		coordinator := idempotency.NewIdempotencyCoordinator(repo, cfg)
-		opts := idempotency.IdempotencyExecuteOptions{Scope: "s02.test", ActorScope: "user:1", Method: "POST", Route: "/contract", IdempotencyKey: "same-key", Payload: map[string]string{"value": "same"}, RequireKey: true}
+		opts := idempotency.IdempotencyExecuteOptions{Scope: "test.test", ActorScope: "user:1", Method: "POST", Route: "/contract", IdempotencyKey: "same-key", Payload: map[string]string{"value": "same"}, RequireKey: true}
 		var effects atomic.Int32
 		var wg sync.WaitGroup
 		results := make(chan error, 24)
@@ -117,7 +117,7 @@ CREATE TRIGGER s02_setting_failure BEFORE INSERT OR UPDATE ON settings FOR EACH 
 		require.EqualValues(t, 1, deleted)
 	})
 	t.Run("announcement-transactions-and-first-read", func(t *testing.T) {
-		user, err := fixture.client.User.Create().SetEmail("s02@example.test").SetPasswordHash("test-only").Save(ctx)
+		user, err := fixture.client.User.Create().SetEmail("test@example.test").SetPasswordHash("test-only").Save(ctx)
 		require.NoError(t, err)
 		repo := sitepostgres.NewAnnouncementRepository(fixture.client)
 		reads := sitepostgres.NewAnnouncementReadRepository(fixture.client)

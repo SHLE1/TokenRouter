@@ -12,7 +12,7 @@ import (
 )
 
 // 数值错误构造器用作错误身份夹具，HTTP 映射由 httpx 提供。
-func TestToHTTP_S15Legacy(t *testing.T) {
+func TestToHTTP_Legacy(t *testing.T) {
 	tests := []struct {
 		name           string
 		err            error
@@ -46,7 +46,7 @@ func TestToHTTP_S15Legacy(t *testing.T) {
 	}
 }
 
-func TestToHTTP_MetadataDeepCopy_S15Legacy(t *testing.T) {
+func TestToHTTP_MetadataDeepCopy_Legacy(t *testing.T) {
 	md := map[string]string{"k": "v"}
 	appErr := apperror.BadRequest("BAD_REQUEST", "invalid").WithMetadata(md)
 

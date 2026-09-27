@@ -51,22 +51,22 @@ func (s *antigravityProbeTransport) DoWithTLS(req *http.Request, proxy string, i
 	return s.Do(req, proxy, id, concurrency)
 }
 
-func TestS16NativeAntigravityProbeAssembly(t *testing.T) {
+func TestNativeAntigravityProbeAssembly(t *testing.T) {
 	t.Setenv("GATEWAY_ANTIGRAVITY_FORWARD_BASE_URL", "prod")
 	f := newDatabaseFixture(t)
 	store := providerpostgres.NewProviderStore(f.client, f.db, providerpostgres.ProviderStoreOptions{})
 	cfg := &config.Config{}
-	runtime := app.NewS16ProviderHealthRuntime(store, nil, cfg, nil, nil, nil, nil, nil)
+	runtime := app.NewProviderHealthRuntimeForTest(store, nil, cfg, nil, nil, nil, nil, nil)
 	tokens := &provider.AntigravityTokenSource{}
 	transport := &antigravityProbeTransport{}
-	retry := app.NewS16AntigravityRetry(store, nil, runtime, nil, transport, cfg)
+	retry := app.NewAntigravityRetryForTest(store, nil, runtime, nil, transport, cfg)
 	manager := lifecycle.New()
-	activity := app.NewS16GatewayActivity(manager)
-	probe := app.NewS16AntigravityProbe(tokens, retry, activity)
-	core := app.NewS16ProviderTests(store, nil, nil, nil, probe, transport, cfg, nil, nil, nil, nil, manager)
+	activity := app.NewGatewayActivityForTest(manager)
+	probe := app.NewAntigravityProbeForTest(tokens, retry, activity)
+	core := app.NewProviderTestsForTest(store, nil, nil, nil, probe, transport, cfg, nil, nil, nil, nil, manager)
 	require.Empty(t, transport.requests)
 
-	row, err := f.client.Provider.Create().SetName("s16-antigravity-probe").SetPlatform(provider.PlatformAntigravity).SetType(provider.ProviderTypeOAuth).SetCredentials(map[string]any{
+	row, err := f.client.Provider.Create().SetName("test-antigravity-probe").SetPlatform(provider.PlatformAntigravity).SetType(provider.ProviderTypeOAuth).SetCredentials(map[string]any{
 		"access_token": "fixture-probe-token", "project_id": "fixture-project",
 		"expires_at":    time.Now().Add(time.Hour).Format(time.RFC3339),
 		"model_mapping": map[string]any{"claude-sonnet-4-5": "claude-sonnet-4-5", "gemini-3.1-pro-preview": "gemini-3.1-pro-high"},
