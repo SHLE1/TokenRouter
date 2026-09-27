@@ -52,7 +52,7 @@ func (s *ClaudeUsageServiceSuite) TestFetchUsage_Success() {
 		AllowPrivateHosts: true,
 	}
 
-	resp, err := s.fetcher.FetchUsage(context.Background(), "at", "")
+	resp, err := s.fetcher.FetchUsageWithOptions(context.Background(), &anthropic.UsageFetchOptions{AccessToken: "at", ProxyURL: ""})
 	require.NoError(s.T(), err, "FetchUsage")
 	require.Equal(s.T(), 12.5, resp.FiveHour.Utilization, "FiveHour utilization mismatch")
 	require.Equal(s.T(), 34.0, resp.SevenDay.Utilization, "SevenDay utilization mismatch")
@@ -74,7 +74,7 @@ func (s *ClaudeUsageServiceSuite) TestFetchUsage_NonOK() {
 		AllowPrivateHosts: true,
 	}
 
-	_, err := s.fetcher.FetchUsage(context.Background(), "at", "")
+	_, err := s.fetcher.FetchUsageWithOptions(context.Background(), &anthropic.UsageFetchOptions{AccessToken: "at", ProxyURL: ""})
 	require.Error(s.T(), err)
 	require.ErrorContains(s.T(), err, "status 401")
 	require.ErrorContains(s.T(), err, "nope")
@@ -91,7 +91,7 @@ func (s *ClaudeUsageServiceSuite) TestFetchUsage_BadJSON() {
 		AllowPrivateHosts: true,
 	}
 
-	_, err := s.fetcher.FetchUsage(context.Background(), "at", "")
+	_, err := s.fetcher.FetchUsageWithOptions(context.Background(), &anthropic.UsageFetchOptions{AccessToken: "at", ProxyURL: ""})
 	require.Error(s.T(), err)
 	require.ErrorContains(s.T(), err, "decode response failed")
 }
@@ -110,7 +110,7 @@ func (s *ClaudeUsageServiceSuite) TestFetchUsage_ContextCancel() {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // Cancel immediately
 
-	_, err := s.fetcher.FetchUsage(ctx, "at", "")
+	_, err := s.fetcher.FetchUsageWithOptions(ctx, &anthropic.UsageFetchOptions{AccessToken: "at", ProxyURL: ""})
 	require.Error(s.T(), err, "expected error for cancelled context")
 }
 
@@ -120,7 +120,7 @@ func (s *ClaudeUsageServiceSuite) TestFetchUsage_InvalidProxyReturnsError() {
 		AllowPrivateHosts: true,
 	}
 
-	_, err := s.fetcher.FetchUsage(context.Background(), "at", "://bad-proxy-url")
+	_, err := s.fetcher.FetchUsageWithOptions(context.Background(), &anthropic.UsageFetchOptions{AccessToken: "at", ProxyURL: "://bad-proxy-url"})
 	require.Error(s.T(), err)
 	require.ErrorContains(s.T(), err, "create http client failed")
 }

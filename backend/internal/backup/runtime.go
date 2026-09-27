@@ -124,9 +124,6 @@ func (s *BackupService) StartContext(ctx context.Context) error {
 	return nil
 }
 
-// BeginStop 先取消工作，应用可在等待 HTTP 之前调用。
-func (s *BackupService) BeginStop() { s.BeginStopContext(context.Background()) }
-
 // BeginStopContext 保存应用剩余预算后再取消工作。
 func (s *BackupService) BeginStopContext(ctx context.Context) {
 	s.operationLifecycleMu.Lock()

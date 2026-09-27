@@ -70,19 +70,6 @@ func (s *Generic) RecordAdvancedProviderSwitch(selection *gatewayprovider.Select
 	s.advancedSchedulerStats().ReportSwitch()
 }
 
-// tryAcquireByAdvancedScheduler 在既有硬过滤完成后按通用评分和 Top-K 加权顺序复核并发槽位。
-// 所有提供商仍逐个调用 tryAcquireProviderSlot，因此负载快照过期时不会越过真实并发上限。
-func (s *Generic) tryAcquireByAdvancedScheduler(
-	ctx context.Context,
-	groupID *int64,
-	sessionHash string,
-	available []providerWithLoad,
-) (*gatewayprovider.SelectionResult, bool, error) {
-	core, scope := s.genericSelector()
-	result, found, err := core.TryAdvanced(ctx, groupID, sessionHash, scope.loads(available))
-	return scope.restore(result), found, err
-}
-
 // advancedSchedulerStats 返回网关级运行时反馈；测试或旧构造路径未初始化时惰性补齐。
 func (s *Generic) advancedSchedulerStats() *schedulercore.RuntimeStats {
 	if s == nil {
@@ -700,11 +687,6 @@ func (s *Generic) groupMappedModelForProviderLayer(ctx context.Context, requeste
 	}
 	groupID := group.ID
 	return s.groupMappedModelForGroup(ctx, &groupID, requestedModel)
-}
-
-// isModelSupportedByProvider 根据提供商平台检查模型支持（无 context，用于非 Antigravity 平台）
-func (s *Generic) isModelSupportedByProvider(provider *gatewayprovider.ExecutionProvider, requestedModel string) bool {
-	return gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), requestedModel)
 }
 
 // NewSessionAttempts 为一次请求提供唯一会话完成集合，不保存全局副本。

@@ -11,7 +11,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 	"github.com/TokenFlux/TokenRouter/internal/ops"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/logredact"
-	"github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	mediaprovider "github.com/TokenFlux/TokenRouter/internal/gateway/media/provider"
@@ -230,16 +229,4 @@ func (s *OpenAIImagesExecutor) buildOpenAIImagesRequest(
 	options := s.Requests.ResponseOptions(ctx, c, provider, token, targetURL, false, tlsRouterMatch...)
 	options.AllowHeader = func(name string) bool { return AllowOpenAIPassthroughHeader(name) }
 	return upstreamopenai.BuildImagesRequest(ctx, body, contentType, options)
-}
-
-func (s *OpenAIImagesExecutor) handleOpenAIImagesNonStreamingResponse(
-	ctx context.Context,
-	resp *http.Response,
-	c *gin.Context,
-	provider *gatewayprovider.ExecutionProvider,
-	parsed *gatewaymedia.ImageRequest,
-) (openai.ForwardUsage, int, []string, error) {
-	options := s.Output.ImageOptions(c)
-	options.Backfill = func(body []byte) []byte { return s.backfillOpenAIImagesB64JSON(ctx, provider, parsed, body) }
-	return upstreamopenai.ReadImagesNonStreaming(resp, ResponseSink{Writer: c.Writer}, options)
 }

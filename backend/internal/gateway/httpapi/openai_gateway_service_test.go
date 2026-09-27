@@ -336,7 +336,7 @@ func TestOpenAIStreamingTimeout(t *testing.T) {
 	}
 
 	start := time.Now()
-	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}, start, "model", "model", "")
+	_, err := svc.Output.ReadStreamObservation(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}, start, "model", "model", "")
 	_ = pw.Close()
 	_ = pr.Close()
 
@@ -364,7 +364,7 @@ func TestOpenAIStreamingContextCanceledReturnsIncompleteErrorWithoutInjectingErr
 		Header:     http.Header{},
 	}
 
-	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", "")
+	_, err := svc.Output.ReadStreamObservation(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", "")
 	if err == nil || !strings.Contains(err.Error(), "stream usage incomplete") {
 		t.Fatalf("expected incomplete stream error, got %v", err)
 	}
@@ -387,7 +387,7 @@ func TestOpenAIStreamingReadErrorBeforeOutputReturnsFailover(t *testing.T) {
 		Header:     http.Header{"X-Request-Id": []string{"rid-disconnect"}},
 	}
 
-	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
+	_, err := svc.Output.ReadStreamObservation(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)
@@ -436,7 +436,7 @@ func TestOpenAIStreamingPostOutputDisconnectQuarantinesSharedProxyWithoutSameStr
 			Header: http.Header{"X-Request-Id": []string{"rid-proxy-disconnect"}},
 		}
 
-		_, err := svc.Output.Stream(c.Request.Context(), resp, c, provider, time.Now(), "gpt-5.6-sol", "gpt-5.6-sol", "")
+		_, err := svc.Output.ReadStreamObservation(c.Request.Context(), resp, c, provider, time.Now(), "gpt-5.6-sol", "gpt-5.6-sol", "")
 		require.Error(t, err)
 		var failoverErr *forwardcore.UpstreamFailoverError
 		require.False(t, errors.As(err, &failoverErr), "post-output disconnect must not fail over inside the same stream")
@@ -468,7 +468,7 @@ func TestOpenAIStreamingTerminalAndClientCancellationDoNotQuarantineProxy(t *tes
 		},
 		Header: http.Header{},
 	}
-	_, err := svc.Output.Stream(terminalCtx.Request.Context(), terminalResp, terminalCtx, provider, time.Now(), "model", "model", "")
+	_, err := svc.Output.ReadStreamObservation(terminalCtx.Request.Context(), terminalResp, terminalCtx, provider, time.Now(), "model", "model", "")
 	require.NoError(t, err)
 
 	for range 2 {
@@ -485,7 +485,7 @@ func TestOpenAIStreamingTerminalAndClientCancellationDoNotQuarantineProxy(t *tes
 			},
 			Header: http.Header{},
 		}
-		_, err = svc.Output.Stream(c.Request.Context(), resp, c, provider, time.Now(), "model", "model", "")
+		_, err = svc.Output.ReadStreamObservation(c.Request.Context(), resp, c, provider, time.Now(), "model", "model", "")
 		require.Error(t, err)
 	}
 
@@ -518,7 +518,7 @@ func TestOpenAIStreamingResponseFailedBeforeOutputReturnsFailover(t *testing.T) 
 		Header: http.Header{"X-Request-Id": []string{"rid-failed"}},
 	}
 
-	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
+	_, err := svc.Output.ReadStreamObservation(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)
@@ -559,7 +559,7 @@ func TestOpenAIStreamingResponseFailedCapacityBeforeOutputReturnsFailover(t *tes
 			},
 		},
 	}
-	_, err := svc.Output.Stream(c.Request.Context(), resp, c, provider, time.Now(), "model", "model", "")
+	_, err := svc.Output.ReadStreamObservation(c.Request.Context(), resp, c, provider, time.Now(), "model", "model", "")
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)
@@ -591,7 +591,7 @@ func TestOpenAIStreamingResponseFailedBeforeOutputServerOverloadedCodeReturnsFai
 		Header: http.Header{"X-Request-Id": []string{"rid-overloaded-failed"}},
 	}
 
-	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
+	_, err := svc.Output.ReadStreamObservation(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)
@@ -638,7 +638,7 @@ func TestOpenAIStreamingResponseFailedBeforeOutputRateLimitUsesPoolRetryPolicy(t
 		},
 	}
 
-	_, err := svc.Output.Stream(c.Request.Context(), resp, c, provider, time.Now(), "model", "model", "")
+	_, err := svc.Output.ReadStreamObservation(c.Request.Context(), resp, c, provider, time.Now(), "model", "model", "")
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)
@@ -685,7 +685,7 @@ func TestOpenAIStreamingResponseFailedRateLimitDoesNotBlockProviderScheduling(t 
 	}
 	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 11, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth, Name: "oauth-provider"}}
 
-	_, err := svc.Output.Stream(c.Request.Context(), resp, c, provider, time.Now(), "model", "model", "")
+	_, err := svc.Output.ReadStreamObservation(c.Request.Context(), resp, c, provider, time.Now(), "model", "model", "")
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)
@@ -724,7 +724,7 @@ func TestOpenAIStreamingResponseFailedAfterOutputSanitizesVerboseResponseForClie
 		Header: http.Header{"X-Request-Id": []string{"rid-failed-after-output"}},
 	}
 
-	result, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
+	result, err := svc.Output.ReadStreamObservation(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.False(t, errors.As(err, &failoverErr), "流已向客户端输出后不得重放请求")
@@ -763,7 +763,7 @@ func TestOpenAIStreamingContextWindowResponseFailedBeforeOutputPassesThrough(t *
 		Header: http.Header{"X-Request-Id": []string{"rid-context-window-failed"}},
 	}
 
-	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
+	_, err := svc.Output.ReadStreamObservation(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.False(t, errors.As(err, &failoverErr))
@@ -801,7 +801,7 @@ func TestOpenAIStreamingContextWindowResponseFailedBeforeOutputAppliesPassthroug
 		Header: http.Header{"X-Request-Id": []string{"rid-context-window-passthrough-rule"}},
 	}
 
-	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
+	_, err := svc.Output.ReadStreamObservation(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.False(t, errors.As(err, &failoverErr))
@@ -840,7 +840,7 @@ func TestOpenAIStreamingPreambleOnlyMissingTerminalReturnsFailover(t *testing.T)
 		Header: http.Header{"X-Request-Id": []string{"rid-missing-terminal"}},
 	}
 
-	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
+	_, err := svc.Output.ReadStreamObservation(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)
@@ -873,7 +873,7 @@ func TestOpenAIStreamingPreambleKeepaliveUsesDownstreamIdle(t *testing.T) {
 		_, _ = pw.Write([]byte("data: {\"type\":\"response.completed\",\"response\":{\"usage\":{\"input_tokens\":1,\"output_tokens\":2}}}\n\n"))
 	}()
 
-	result, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
+	result, err := svc.Output.ReadStreamObservation(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
 	_ = pr.Close()
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -904,7 +904,7 @@ func TestOpenAIStreamingNormalizesTerminalOutputFromDeltas(t *testing.T) {
 		Header: http.Header{"X-Request-Id": []string{"rid-sdk-parse"}},
 	}
 
-	result, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
+	result, err := svc.Output.ReadStreamObservation(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -934,7 +934,7 @@ func TestOpenAIStreamingNormalizesTerminalOutputToEmptyArray(t *testing.T) {
 		Header: http.Header{"X-Request-Id": []string{"rid-empty-output"}},
 	}
 
-	result, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
+	result, err := svc.Output.ReadStreamObservation(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -967,7 +967,7 @@ func TestOpenAIStreamingPolicyResponseFailedBeforeOutputPassesThrough(t *testing
 		Header: http.Header{"X-Request-Id": []string{"rid-policy-failed"}},
 	}
 
-	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
+	_, err := svc.Output.ReadStreamObservation(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.False(t, errors.As(err, &failoverErr))
@@ -997,7 +997,7 @@ func TestOpenAIStreamingPolicyResponseFailedCarriesHTTPStatusWarning(t *testing.
 		Header: http.Header{"X-Request-Id": []string{"rid-policy-failed"}},
 	}
 
-	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
+	_, err := svc.Output.ReadStreamObservation(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
 
 	require.Error(t, err)
 	warning, ok := forwardcore.WarningFromError(err)
@@ -1028,7 +1028,7 @@ func TestOpenAIStreamingCybersecurityRiskResponseFailedCarriesHTTPStatusWarning(
 		Header: http.Header{"X-Request-Id": []string{"rid-cybersecurity-risk"}},
 	}
 
-	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
+	_, err := svc.Output.ReadStreamObservation(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "model", "model", "")
 
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError
@@ -1098,7 +1098,7 @@ func TestOpenAIStreamingClientDisconnectDrainsUpstreamUsage(t *testing.T) {
 		_, _ = pw.Write([]byte("data: {\"type\":\"response.completed\",\"response\":{\"usage\":{\"input_tokens\":3,\"output_tokens\":5,\"input_tokens_details\":{\"cached_tokens\":1}}}}\n\n"))
 	}()
 
-	result, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", "")
+	result, err := svc.Output.ReadStreamObservation(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", "")
 	_ = pr.Close()
 	if err != nil {
 		t.Fatalf("expected nil error, got %v", err)
@@ -1134,7 +1134,7 @@ func TestOpenAIStreamingMissingTerminalEventReturnsIncompleteError(t *testing.T)
 		_, _ = pw.Write([]byte("data: {\"type\":\"response.output_text.delta\",\"delta\":\"partial\",\"output_index\":0}\n\n"))
 	}()
 
-	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", "")
+	_, err := svc.Output.ReadStreamObservation(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", "")
 	_ = pr.Close()
 	if err == nil || !strings.Contains(err.Error(), "missing terminal event") {
 		t.Fatalf("expected missing terminal event error, got %v", err)
@@ -1161,7 +1161,7 @@ func TestOpenAIStreamingPassthroughMissingTerminalEventReturnsIncompleteError(t 
 		_, _ = pw.Write([]byte("data: {\"type\":\"response.output_text.delta\",\"delta\":\"partial\",\"output_index\":0}\n\n"))
 	}()
 
-	_, err := svc.Output.PassthroughStream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "", "")
+	_, err := openai.ReadPassthroughStreaming(c.Request.Context(), resp, upstreamcore.NewOutputContext(ResponseSink{Writer: c.Writer}), svc.Output.PassthroughOptions(c.Request.Context(), c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}), time.Now(), "", "")
 	_ = pr.Close()
 	if err == nil || !strings.Contains(err.Error(), "missing terminal event") {
 		t.Fatalf("expected missing terminal event error, got %v", err)
@@ -1193,7 +1193,7 @@ func TestOpenAIStreamingPassthroughPostOutputDisconnectQuarantinesSharedProxy(t 
 			Header: http.Header{"X-Request-Id": []string{"rid-passthrough-proxy-disconnect"}},
 		}
 
-		_, err := svc.Output.PassthroughStream(c.Request.Context(), resp, c, provider, time.Now(), "model", "model")
+		_, err := openai.ReadPassthroughStreaming(c.Request.Context(), resp, upstreamcore.NewOutputContext(ResponseSink{Writer: c.Writer}), svc.Output.PassthroughOptions(c.Request.Context(), c, provider), time.Now(), "model", "model")
 		require.Error(t, err)
 		var failoverErr *forwardcore.UpstreamFailoverError
 		require.False(t, errors.As(err, &failoverErr), "post-output disconnect must not fail over inside the same stream")
@@ -1224,7 +1224,7 @@ func TestOpenAIStreamingPassthroughResponseFailedBeforeOutputReturnsFailover(t *
 		Header: http.Header{"X-Request-Id": []string{"rid-passthrough-failed"}},
 	}
 
-	_, err := svc.Output.PassthroughStream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "", "")
+	_, err := openai.ReadPassthroughStreaming(c.Request.Context(), resp, upstreamcore.NewOutputContext(ResponseSink{Writer: c.Writer}), svc.Output.PassthroughOptions(c.Request.Context(), c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}), time.Now(), "", "")
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)
@@ -1262,7 +1262,7 @@ func TestOpenAIStreamingPassthroughContextWindowResponseFailedBeforeOutputApplie
 		Header: http.Header{"X-Request-Id": []string{"rid-pass-context-window-passthrough-rule"}},
 	}
 
-	_, err := svc.Output.PassthroughStream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "", "")
+	_, err := openai.ReadPassthroughStreaming(c.Request.Context(), resp, upstreamcore.NewOutputContext(ResponseSink{Writer: c.Writer}), svc.Output.PassthroughOptions(c.Request.Context(), c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}), time.Now(), "", "")
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.False(t, errors.As(err, &failoverErr))
@@ -1301,7 +1301,7 @@ func TestOpenAIStreamingPassthroughContextWindowResponseFailedBeforeOutputWithou
 		Header: http.Header{"X-Request-Id": []string{"rid-pass-context-window-no-rule"}},
 	}
 
-	_, err := svc.Output.PassthroughStream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "", "")
+	_, err := openai.ReadPassthroughStreaming(c.Request.Context(), resp, upstreamcore.NewOutputContext(ResponseSink{Writer: c.Writer}), svc.Output.PassthroughOptions(c.Request.Context(), c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}), time.Now(), "", "")
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.False(t, errors.As(err, &failoverErr))
@@ -1340,7 +1340,7 @@ func TestOpenAIStreamingPassthroughResponseFailedAfterOutputSanitizesVerboseResp
 		Header: http.Header{"X-Request-Id": []string{"rid-pass-failed-after-output"}},
 	}
 
-	result, err := svc.Output.PassthroughStream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}, time.Now(), "", "")
+	result, err := openai.ReadPassthroughStreaming(c.Request.Context(), resp, upstreamcore.NewOutputContext(ResponseSink{Writer: c.Writer}), svc.Output.PassthroughOptions(c.Request.Context(), c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "acc"}}), time.Now(), "", "")
 	require.Error(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, 123, result.Usage.InputTokens)
@@ -1376,7 +1376,7 @@ func TestOpenAIStreamingPassthroughResponseDoneWithoutDoneMarkerStillSucceeds(t 
 		_, _ = pw.Write([]byte("data: {\"type\":\"response.done\",\"response\":{\"usage\":{\"input_tokens\":2,\"output_tokens\":3,\"input_tokens_details\":{\"cached_tokens\":1}}}}\n\n"))
 	}()
 
-	result, err := svc.Output.PassthroughStream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "", "")
+	result, err := openai.ReadPassthroughStreaming(c.Request.Context(), resp, upstreamcore.NewOutputContext(ResponseSink{Writer: c.Writer}), svc.Output.PassthroughOptions(c.Request.Context(), c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}), time.Now(), "", "")
 	_ = pr.Close()
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -1406,7 +1406,7 @@ func TestOpenAIStreamingPassthroughResponseIncompleteWithoutDoneMarkerStillSucce
 		_, _ = pw.Write([]byte("data: {\"type\":\"response.incomplete\",\"response\":{\"usage\":{\"input_tokens\":2,\"output_tokens\":3,\"input_tokens_details\":{\"cached_tokens\":1}}}}\n\n"))
 	}()
 
-	result, err := svc.Output.PassthroughStream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "", "")
+	result, err := openai.ReadPassthroughStreaming(c.Request.Context(), resp, upstreamcore.NewOutputContext(ResponseSink{Writer: c.Writer}), svc.Output.PassthroughOptions(c.Request.Context(), c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}), time.Now(), "", "")
 	_ = pr.Close()
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -1438,7 +1438,7 @@ func TestOpenAIStreamingTooLong(t *testing.T) {
 		_, _ = pw.Write([]byte(payload))
 	}()
 
-	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 2}}, time.Now(), "model", "model", "")
+	_, err := svc.Output.ReadStreamObservation(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 2}}, time.Now(), "model", "model", "")
 	_ = pr.Close()
 
 	if !errors.Is(err, bufio.ErrTooLong) {
@@ -1523,7 +1523,7 @@ func TestOpenAIStreamingHeadersOverride(t *testing.T) {
 		_, _ = pw.Write([]byte("data: {\"type\":\"response.completed\",\"response\":{}}\n\n"))
 	}()
 
-	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", "")
+	_, err := svc.Output.ReadStreamObservation(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", "")
 	_ = pr.Close()
 	if err != nil {
 		t.Fatalf("handleStreamingResponse error: %v", err)
@@ -1560,7 +1560,7 @@ func TestOpenAIStreamingReuseScannerBufferAndStillWorks(t *testing.T) {
 		_, _ = pw.Write([]byte("data: {\"type\":\"response.completed\",\"response\":{\"usage\":{\"input_tokens\":1,\"output_tokens\":2,\"input_tokens_details\":{\"cached_tokens\":3}}}}\n\n"))
 	}()
 
-	result, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", "")
+	result, err := svc.Output.ReadStreamObservation(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "model", "model", "")
 	_ = pr.Close()
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -2031,7 +2031,7 @@ func TestHandleSSEToJSON_CompletedEventReturnsJSON(t *testing.T) {
 		`data: [DONE]`,
 	}, "\n"))
 
-	usage, err := svc.Output.SSEAsJSON(context.Background(), resp, c, nil, body, "gpt-4o", "gpt-4o")
+	usage, err := openai.ReadSSEAsJSON(context.Background(), resp, upstreamcore.NewOutputContext(ResponseSink{Writer: c.Writer}), svc.Output.NonStreamOptions(context.Background(), c, nil), body, "gpt-4o", "gpt-4o")
 	require.NoError(t, err)
 	require.NotNil(t, usage)
 	require.Equal(t, 7, usage.Usage.InputTokens)
@@ -2117,7 +2117,7 @@ func TestHandleSSEToJSON_ReconstructsImageGenerationOutputItemDone(t *testing.T)
 		`data: [DONE]`,
 	}, "\n"))
 
-	usage, err := svc.Output.SSEAsJSON(context.Background(), resp, c, nil, body, "gpt-5.4", "gpt-5.4")
+	usage, err := openai.ReadSSEAsJSON(context.Background(), resp, upstreamcore.NewOutputContext(ResponseSink{Writer: c.Writer}), svc.Output.NonStreamOptions(context.Background(), c, nil), body, "gpt-5.4", "gpt-5.4")
 	require.NoError(t, err)
 	require.NotNil(t, usage)
 	require.Equal(t, 4, usage.Usage.ImageOutputTokens)
@@ -2143,7 +2143,7 @@ func TestHandleSSEToJSON_NoFinalResponseKeepsSSEBody(t *testing.T) {
 		`data: [DONE]`,
 	}, "\n"))
 
-	usage, err := svc.Output.SSEAsJSON(context.Background(), resp, c, nil, body, "gpt-4o", "gpt-4o")
+	usage, err := openai.ReadSSEAsJSON(context.Background(), resp, upstreamcore.NewOutputContext(ResponseSink{Writer: c.Writer}), svc.Output.NonStreamOptions(context.Background(), c, nil), body, "gpt-4o", "gpt-4o")
 	require.NoError(t, err)
 	require.NotNil(t, usage)
 	require.Equal(t, 0, usage.Usage.InputTokens)
@@ -2167,7 +2167,7 @@ func TestHandleSSEToJSON_ResponseFailedReturnsFailoverBeforeWrite(t *testing.T) 
 	}, "\n"))
 
 	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Type: capability.ProviderTypeAPIKey, Platform: capability.PlatformOpenAI}}
-	usage, err := svc.Output.SSEAsJSON(context.Background(), resp, c, provider, body, "gpt-4o", "gpt-4o")
+	usage, err := openai.ReadSSEAsJSON(context.Background(), resp, upstreamcore.NewOutputContext(ResponseSink{Writer: c.Writer}), svc.Output.NonStreamOptions(context.Background(), c, provider), body, "gpt-4o", "gpt-4o")
 	require.Nil(t, usage)
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)

@@ -96,11 +96,6 @@ func NewMachineForSite(site Site) *MachineIdentity {
 	return NewMachine()
 }
 
-// ExchangePAT 使用 Personal Access Token 换取 AuthIdentity。
-func ExchangePAT(pat string, machine *MachineIdentity, centerURL string) (*AuthIdentity, error) {
-	return ExchangePATContext(context.Background(), pat, machine, centerURL, nil)
-}
-
 // ExchangePATContext 使用传入的 context 和请求执行器换取 AuthIdentity。
 func ExchangePATContext(ctx context.Context, pat string, machine *MachineIdentity, centerURL string, doer RequestDoer) (*AuthIdentity, error) {
 	inner := map[string]any{
@@ -111,11 +106,6 @@ func ExchangePATContext(ctx context.Context, pat string, machine *MachineIdentit
 		"authInfo":           map[string]any{},
 	}
 	return exchangeJobToken(ctx, inner, machine, centerURL, "PAT exchange", doer)
-}
-
-// RefreshSession 使用 Qoder refresh_token 换取新的 COSY 身份。
-func RefreshSession(refreshToken, securityOauthToken string, machine *MachineIdentity, centerURL string) (*AuthIdentity, error) {
-	return RefreshSessionContext(context.Background(), refreshToken, securityOauthToken, machine, centerURL, nil)
 }
 
 // RefreshSessionContext 使用传入的 context 和请求执行器刷新 COSY 身份。

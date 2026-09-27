@@ -11,6 +11,7 @@ import (
 
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
+	upstreamcore "github.com/TokenFlux/TokenRouter/internal/upstream"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
@@ -317,7 +318,7 @@ func TestOpenAIStreamPairedFailureAppliesProviderSideEffectsOnce(t *testing.T) {
 			Body:       io.NopCloser(strings.NewReader(upstream)),
 		}
 
-		result, err := svc.Output.Stream(context.Background(), resp, c, provider, time.Now(), "gpt-5", "gpt-5", "")
+		result, err := svc.Output.ReadStreamObservation(context.Background(), resp, c, provider, time.Now(), "gpt-5", "gpt-5", "")
 
 		require.Error(t, err)
 		require.NotNil(t, result)
@@ -343,9 +344,7 @@ func TestOpenAIStreamPairedFailureAppliesProviderSideEffectsOnce(t *testing.T) {
 			Body:       io.NopCloser(strings.NewReader(upstream)),
 		}
 
-		result, err := svc.Output.PassthroughStream(
-			context.Background(), resp, c, provider, time.Now(), "gpt-5", "gpt-5",
-		)
+		result, err := openai.ReadPassthroughStreaming(context.Background(), resp, upstreamcore.NewOutputContext(ResponseSink{Writer: c.Writer}), svc.Output.PassthroughOptions(context.Background(), c, provider), time.Now(), "gpt-5", "gpt-5")
 
 		require.Error(t, err)
 		require.NotNil(t, result)

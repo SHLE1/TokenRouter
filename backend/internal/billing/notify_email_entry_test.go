@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing"
+	"github.com/TokenFlux/TokenRouter/internal/identity/contact"
 	"github.com/stretchr/testify/require"
 )
 
@@ -98,12 +99,12 @@ func TestParseNotifyEmails_WhitespacePadding(t *testing.T) {
 // ---------- MarshalNotifyEmails ----------
 
 func TestMarshalNotifyEmails_EmptySlice(t *testing.T) {
-	result := billing.MarshalNotifyEmails([]billing.NotifyEmailSummary{})
+	result := contact.MarshalNotifyEmails([]billing.NotifyEmailSummary{})
 	require.Equal(t, "[]", result)
 }
 
 func TestMarshalNotifyEmails_NilSlice(t *testing.T) {
-	result := billing.MarshalNotifyEmails(nil)
+	result := contact.MarshalNotifyEmails(nil)
 	require.Equal(t, "[]", result)
 }
 
@@ -111,7 +112,7 @@ func TestMarshalNotifyEmails_SingleEntry(t *testing.T) {
 	entries := []billing.NotifyEmailSummary{
 		{Email: "test@example.com", Verified: true, Disabled: false},
 	}
-	result := billing.MarshalNotifyEmails(entries)
+	result := contact.MarshalNotifyEmails(entries)
 	require.Contains(t, result, `"email":"test@example.com"`)
 	require.Contains(t, result, `"verified":true`)
 	require.Contains(t, result, `"disabled":false`)
@@ -127,7 +128,7 @@ func TestMarshalNotifyEmails_MultipleEntries(t *testing.T) {
 		{Email: "a@example.com", Verified: true, Disabled: false},
 		{Email: "b@example.com", Verified: false, Disabled: true},
 	}
-	result := billing.MarshalNotifyEmails(entries)
+	result := contact.MarshalNotifyEmails(entries)
 
 	// Round-trip verification.
 	parsed := billing.ParseNotifyEmails(result)
@@ -141,7 +142,7 @@ func TestMarshalNotifyEmails_RoundTrip_NewFormat(t *testing.T) {
 		{Email: "x@example.com", Verified: true, Disabled: true},
 		{Email: "y@example.com", Verified: false, Disabled: false},
 	}
-	marshalled := billing.MarshalNotifyEmails(original)
+	marshalled := contact.MarshalNotifyEmails(original)
 	parsed := billing.ParseNotifyEmails(marshalled)
 	require.Equal(t, original, parsed)
 }

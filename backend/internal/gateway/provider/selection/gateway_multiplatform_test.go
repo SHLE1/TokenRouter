@@ -934,8 +934,6 @@ func TestGatewayService_SelectProviderForModelWithPlatform_NoProviders(t *testin
 }
 
 func TestGatewayService_isModelSupportedByProvider(t *testing.T) {
-	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{}, Shared: Shared{}}, nil)
-
 	tests := []struct {
 		name     string
 		provider *gatewayprovider.ExecutionProvider
@@ -1032,7 +1030,7 @@ func TestGatewayService_isModelSupportedByProvider(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := svc.isModelSupportedByProvider(tt.provider, tt.model)
+			got := gatewayprovider.ExecutionModelPolicy(tt.provider).Supports(context.Background(), tt.model)
 			require.Equal(t, tt.expected, got)
 		})
 	}

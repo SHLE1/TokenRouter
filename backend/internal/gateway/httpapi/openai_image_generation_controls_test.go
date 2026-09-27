@@ -12,15 +12,16 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
-	providerconfig "github.com/TokenFlux/TokenRouter/internal/provider"
+	"github.com/TokenFlux/TokenRouter/internal/upstream"
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway/media"
+	providerconfig "github.com/TokenFlux/TokenRouter/internal/provider"
+
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 
 	openaicore "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
-
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
@@ -552,7 +553,7 @@ func TestOpenAIGatewayServiceHandleResponsesImageOutputs_Streaming(t *testing.T)
 		)),
 	}
 
-	result, err := svc.Output.Stream(context.Background(), resp, c, &gatewayprovider.ExecutionProvider{Record: providerconfig.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "gpt-5.5", "gpt-5.5", "")
+	result, err := svc.Output.ReadStreamObservation(context.Background(), resp, c, &gatewayprovider.ExecutionProvider{Record: providerconfig.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "gpt-5.5", "gpt-5.5", "")
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -577,7 +578,7 @@ func TestOpenAIGatewayServiceHandleResponsesImageOutputs_StreamingPassthrough(t 
 		)),
 	}
 
-	result, err := svc.Output.PassthroughStream(context.Background(), resp, c, &gatewayprovider.ExecutionProvider{Record: providerconfig.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "gpt-5.5", "gpt-5.5")
+	result, err := openai.ReadPassthroughStreaming(context.Background(), resp, upstream.NewOutputContext(ResponseSink{Writer: c.Writer}), svc.Output.PassthroughOptions(context.Background(), c, &gatewayprovider.ExecutionProvider{Record: providerconfig.Record{LoadLocation: time.LoadLocation, ID: 1}}), time.Now(), "gpt-5.5", "gpt-5.5")
 
 	require.NoError(t, err)
 	require.NotNil(t, result)

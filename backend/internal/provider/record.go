@@ -2152,16 +2152,8 @@ func (a *Record) GetQuotaNotifyTotalThresholdType() string {
 	return tt
 }
 
-func NextFixedDailyReset(hour int, tz *time.Location, after time.Time) time.Time {
-	return billing.NextFixedDailyReset(hour, tz, after)
-}
-
 func LastFixedDailyReset(hour int, tz *time.Location, now time.Time) time.Time {
 	return billing.LastFixedDailyReset(hour, tz, now)
-}
-
-func NextFixedWeeklyReset(day, hour int, tz *time.Location, after time.Time) time.Time {
-	return billing.NextFixedWeeklyReset(day, hour, tz, after)
 }
 
 func LastFixedWeeklyReset(day, hour int, tz *time.Location, now time.Time) time.Time {

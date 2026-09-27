@@ -1,6 +1,7 @@
 package selection
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -10,8 +11,6 @@ import (
 )
 
 func TestGatewayServiceIsModelSupportedByProvider_BedrockDefaultMappingRestrictsModels(t *testing.T) {
-	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{}, Shared: Shared{}}, nil)
-
 	provider := &gatewayprovider.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, Platform: capability.PlatformAnthropic,
@@ -22,18 +21,16 @@ func TestGatewayServiceIsModelSupportedByProvider_BedrockDefaultMappingRestricts
 		},
 	}
 
-	if !svc.isModelSupportedByProvider(provider, "claude-sonnet-4-5") {
+	if !gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), "claude-sonnet-4-5") {
 		t.Fatalf("expected default Bedrock alias to be supported")
 	}
 
-	if svc.isModelSupportedByProvider(provider, "claude-3-5-sonnet-20241022") {
+	if gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), "claude-3-5-sonnet-20241022") {
 		t.Fatalf("expected unsupported alias to be rejected for Bedrock provider")
 	}
 }
 
 func TestGatewayServiceIsModelSupportedByProvider_BedrockCustomMappingStillActsAsAllowlist(t *testing.T) {
-	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{}, Shared: Shared{}}, nil)
-
 	provider := &gatewayprovider.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, Platform: capability.PlatformAnthropic,
@@ -47,15 +44,15 @@ func TestGatewayServiceIsModelSupportedByProvider_BedrockCustomMappingStillActsA
 		},
 	}
 
-	if !svc.isModelSupportedByProvider(provider, "claude-sonnet-4-6") {
+	if !gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), "claude-sonnet-4-6") {
 		t.Fatalf("expected matched custom mapping to be supported")
 	}
 
-	if !svc.isModelSupportedByProvider(provider, "claude-opus-4-6") {
+	if !gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), "claude-opus-4-6") {
 		t.Fatalf("expected default Bedrock alias fallback to remain supported")
 	}
 
-	if svc.isModelSupportedByProvider(provider, "claude-3-5-sonnet-20241022") {
+	if gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), "claude-3-5-sonnet-20241022") {
 		t.Fatalf("expected unsupported model to still be rejected")
 	}
 }

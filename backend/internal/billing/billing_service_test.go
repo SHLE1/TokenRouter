@@ -332,7 +332,7 @@ func TestCalculateCost_GPT56SolMarketplaceIntervalsMatchSettlement(t *testing.T)
 	svc := newCalculator(&config.Config{}, newStubPricingServiceFromJSON(t, gpt56LadderCatalogJSON))
 	const groupRate = 3.0
 
-	display := svc.GetDisplayPricing("gpt-5.6-sol", groupRate)
+	display := svc.DisplayPricing("gpt-5.6-sol", groupRate)
 	require.Equal(t, "token", display.PricingMode)
 	require.Len(t, display.ContextIntervals, 2)
 	baseInterval := display.ContextIntervals[0]
@@ -836,114 +836,6 @@ func TestComputeTokenBreakdown_GptImage2ImageEditIssue4386(t *testing.T) {
 	require.InDelta(t, 0.016081, cost.TotalCost, 1e-9, "总额应为 $0.016081（修复前为 $0.015025）")
 }
 
-func TestCalculateCostWithLongContext_BelowThreshold(t *testing.T) {
-	svc := newTestCalculator()
-
-	tokens := billingpricing.UsageTokens{
-		InputTokens:     50000,
-		OutputTokens:    1000,
-		CacheReadTokens: 100000,
-	}
-	// 总输入 150k < 200k 阈值，应走正常计费
-	cost, err := svc.CalculateCostWithLongContext("claude-sonnet-4", tokens, 1.0, 200000, 2.0)
-	require.NoError(t, err)
-
-	normalCost, err := svc.CalculateCost("claude-sonnet-4", tokens, 1.0)
-	require.NoError(t, err)
-
-	require.InDelta(t, normalCost.ActualCost, cost.ActualCost, 1e-10)
-}
-
-func TestCalculateCostWithLongContext_AboveThreshold_CacheExceedsThreshold(t *testing.T) {
-	svc := newTestCalculator()
-
-	// 缓存 210k + 输入 10k = 220k > 200k 阈值
-	// 缓存已超阈值：范围内 200k 缓存，范围外 10k 缓存 + 10k 输入
-	tokens := billingpricing.UsageTokens{
-		InputTokens:     10000,
-		OutputTokens:    1000,
-		CacheReadTokens: 210000,
-	}
-	cost, err := svc.CalculateCostWithLongContext("claude-sonnet-4", tokens, 1.0, 200000, 2.0)
-	require.NoError(t, err)
-
-	// 范围内：200k cache + 0 input + 1k output
-	inRange, _ := svc.CalculateCost("claude-sonnet-4", billingpricing.UsageTokens{
-		InputTokens:     0,
-		OutputTokens:    1000,
-		CacheReadTokens: 200000,
-	}, 1.0)
-
-	// 范围外：10k cache + 10k input，倍率 2.0
-	outRange, _ := svc.CalculateCost("claude-sonnet-4", billingpricing.UsageTokens{
-		InputTokens:     10000,
-		CacheReadTokens: 10000,
-	}, 2.0)
-
-	require.InDelta(t, inRange.ActualCost+outRange.ActualCost, cost.ActualCost, 1e-10)
-}
-
-func TestCalculateCostWithLongContext_AboveThreshold_CacheBelowThreshold(t *testing.T) {
-	svc := newTestCalculator()
-
-	// 缓存 100k + 输入 150k = 250k > 200k 阈值
-	// 缓存未超阈值：范围内 100k 缓存 + 100k 输入，范围外 50k 输入
-	tokens := billingpricing.UsageTokens{
-		InputTokens:     150000,
-		OutputTokens:    1000,
-		CacheReadTokens: 100000,
-	}
-	cost, err := svc.CalculateCostWithLongContext("claude-sonnet-4", tokens, 1.0, 200000, 2.0)
-	require.NoError(t, err)
-
-	require.True(t, cost.ActualCost > 0, "费用应大于 0")
-
-	// 正常费用不含长上下文
-	normalCost, _ := svc.CalculateCost("claude-sonnet-4", tokens, 1.0)
-	require.True(t, cost.ActualCost > normalCost.ActualCost, "长上下文费用应高于正常费用")
-}
-
-func TestCalculateCostWithLongContext_MarkerRequiresActualCostIncrease(t *testing.T) {
-	svc := newTestCalculator()
-	tokens := billingpricing.UsageTokens{InputTokens: 300000}
-
-	cost, err := svc.CalculateCostWithLongContext("claude-sonnet-4", tokens, 0, 200000, 2.0)
-
-	require.NoError(t, err)
-	require.Zero(t, cost.ActualCost)
-	require.False(t, cost.LongContextBillingApplied)
-}
-
-func TestCalculateCostWithLongContext_DisabledThreshold(t *testing.T) {
-	svc := newTestCalculator()
-
-	tokens := billingpricing.UsageTokens{InputTokens: 300000, CacheReadTokens: 0}
-
-	// threshold <= 0 应禁用长上下文计费
-	cost1, err := svc.CalculateCostWithLongContext("claude-sonnet-4", tokens, 1.0, 0, 2.0)
-	require.NoError(t, err)
-
-	cost2, err := svc.CalculateCost("claude-sonnet-4", tokens, 1.0)
-	require.NoError(t, err)
-
-	require.InDelta(t, cost2.ActualCost, cost1.ActualCost, 1e-10)
-}
-
-func TestCalculateCostWithLongContext_ExtraMultiplierLessEqualOne(t *testing.T) {
-	svc := newTestCalculator()
-
-	tokens := billingpricing.UsageTokens{InputTokens: 300000}
-
-	// extraMultiplier <= 1 应禁用长上下文计费
-	cost, err := svc.CalculateCostWithLongContext("claude-sonnet-4", tokens, 1.0, 200000, 1.0)
-	require.NoError(t, err)
-
-	normalCost, err := svc.CalculateCost("claude-sonnet-4", tokens, 1.0)
-	require.NoError(t, err)
-
-	require.InDelta(t, normalCost.ActualCost, cost.ActualCost, 1e-10)
-}
-
 func TestCalculateImageCost(t *testing.T) {
 	svc := newTestCalculator()
 
@@ -1075,16 +967,6 @@ func TestForceUpdatePricing_NilService(t *testing.T) {
 	err := svc.ForceUpdatePricing()
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "not initialized")
-}
-
-func TestCalculateCostWithLongContext_PropagatesError(t *testing.T) {
-	// 使用空的 fallback prices 让 GetModelPricing 失败
-	svc := newCalculatorWithPrices(&config.Config{}, nil, make(map[string]*billingpricing.ModelPricing))
-
-	tokens := billingpricing.UsageTokens{InputTokens: 300000, CacheReadTokens: 0}
-	_, err := svc.CalculateCostWithLongContext("unknown-model", tokens, 1.0, 200000, 2.0)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "pricing not found")
 }
 
 func TestGetModelPricing_Grok45OfficialFallback(t *testing.T) {
@@ -1980,4 +1862,53 @@ func TestComputeTokenBreakdown_NonExplicitZeroImagePrice_FallsBackToOutput(t *te
 	require.InDelta(t, 50*15e-6, bd.ImageOutputCost, 1e-12)
 	// 文本输出令牌 = 200 - 50 = 150
 	require.InDelta(t, 150*15e-6, bd.OutputCost, 1e-12)
+}
+
+// TestCalculateCostUnified_LongContextContract 覆盖当前入口的整段计价及实际扣费标记。
+func TestCalculateCostUnified_LongContextContract(t *testing.T) {
+	svc := newTestCalculator()
+	resolver := billingtestkit.PriceResolver(nil, svc)
+	cases := []struct {
+		name                            string
+		input, cacheRead, cacheWrite    int
+		threshold                       int
+		inclusive, disabled, unitPrices bool
+		rate, wantTotal, wantActual     float64
+		applied                         bool
+	}{
+		{name: "低于阈值", input: 99, cacheRead: 100, threshold: 200, rate: 1, wantTotal: 111, wantActual: 111},
+		{name: "等于排他阈值", input: 100, cacheRead: 100, threshold: 200, rate: 1, wantTotal: 112, wantActual: 112},
+		{name: "超过阈值整段计价", input: 101, cacheRead: 100, threshold: 200, rate: 2, wantTotal: 225, wantActual: 450, applied: true},
+		{name: "缓存读取超过阈值", input: 10, cacheRead: 210, threshold: 200, rate: 1, wantTotal: 65, wantActual: 65, applied: true},
+		{name: "缓存创建参与阈值和加价", input: 60, cacheRead: 30, cacheWrite: 120, threshold: 200, rate: 1, wantTotal: 249, wantActual: 249, applied: true},
+		{name: "零倍率不标记加价", input: 101, cacheRead: 100, threshold: 200, rate: 0, wantTotal: 225, wantActual: 0},
+		{name: "关闭长上下文", input: 101, cacheRead: 100, threshold: 200, disabled: true, rate: 1, wantTotal: 113, wantActual: 113},
+		{name: "零阈值", input: 101, cacheRead: 100, rate: 1, wantTotal: 113, wantActual: 113},
+		{name: "倍率均为一", input: 101, cacheRead: 100, threshold: 200, unitPrices: true, rate: 1, wantTotal: 113, wantActual: 113},
+		{name: "等于包含阈值", input: 100, cacheRead: 100, threshold: 200, inclusive: true, rate: 1, wantTotal: 223, wantActual: 223, applied: true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			prices := &billingpricing.ModelPricing{
+				InputPricePerToken: 1, OutputPricePerToken: 2,
+				CacheReadPricePerToken: 0.1, CacheCreationPricePerToken: 0.5,
+				LongContextInputThreshold: tc.threshold, LongContextThresholdInclusive: tc.inclusive,
+				LongContextInputMultiplier: 2, LongContextOutputMultiplier: 1.5,
+			}
+			if tc.unitPrices {
+				prices.LongContextInputMultiplier = 1
+				prices.LongContextOutputMultiplier = 1
+			}
+			cost, err := svc.CalculateCostUnified(billing.CostInput{
+				Ctx: t.Context(), Model: "contract-long-context", RateMultiplier: tc.rate,
+				Tokens:   billingpricing.UsageTokens{InputTokens: tc.input, OutputTokens: 1, CacheReadTokens: tc.cacheRead, CacheCreationTokens: tc.cacheWrite},
+				Resolver: resolver,
+				Resolved: &billingpricing.ResolvedPricing{Mode: billingpricing.BillingModeToken, BasePricing: prices, Source: billingpricing.PricingSourceConfig, LongContextPricingEnabled: !tc.disabled},
+			})
+			require.NoError(t, err)
+			require.InDelta(t, tc.wantTotal, cost.TotalCost, 1e-10)
+			require.InDelta(t, tc.wantActual, cost.ActualCost, 1e-10)
+			require.Equal(t, tc.applied, cost.LongContextBillingApplied)
+		})
+	}
 }

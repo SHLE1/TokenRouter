@@ -34,7 +34,7 @@ func assertChatInvariants(t *testing.T, messages []ChatMessage) {
 
 func convertGolden(t *testing.T, input string) []ChatMessage {
 	t.Helper()
-	msgs, err := responsesInputToChatMessages("You are a helpful assistant.", json.RawMessage(input))
+	msgs, err := responsesInputToChatMessagesWithOptions("You are a helpful assistant.", json.RawMessage(input), nil)
 	require.NoError(t, err)
 	return msgs
 }

@@ -10,9 +10,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/TokenFlux/TokenRouter/internal/upstream"
+
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
+
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
@@ -137,14 +140,14 @@ func TestOpenAIStreamMetadataPreambleAndMessageOnlyOverloadFailOver(t *testing.T
 		{
 			name: "native",
 			run: func(svc *OpenAIResponsesExecutor, c *gin.Context, resp *http.Response, provider *gatewayprovider.ExecutionProvider) error {
-				_, err := svc.Output.Stream(c.Request.Context(), resp, c, provider, time.Now(), "model", "model", "")
+				_, err := svc.Output.ReadStreamObservation(c.Request.Context(), resp, c, provider, time.Now(), "model", "model", "")
 				return err
 			},
 		},
 		{
 			name: "passthrough",
 			run: func(svc *OpenAIResponsesExecutor, c *gin.Context, resp *http.Response, provider *gatewayprovider.ExecutionProvider) error {
-				_, err := svc.Output.PassthroughStream(c.Request.Context(), resp, c, provider, time.Now(), "model", "model")
+				_, err := openai.ReadPassthroughStreaming(c.Request.Context(), resp, upstream.NewOutputContext(ResponseSink{Writer: c.Writer}), svc.Output.PassthroughOptions(c.Request.Context(), c, provider), time.Now(), "model", "model")
 				return err
 			},
 		},
@@ -206,7 +209,7 @@ func TestOpenAIStreamCapacityShedErrorFramePrecedingFailedStillFailsOver(t *test
 		Header: http.Header{"X-Request-Id": []string{"rid-shed-error-then-failed"}},
 	}
 
-	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth, Name: "acc"}}, time.Now(), "model", "model", "")
+	_, err := svc.Output.ReadStreamObservation(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth, Name: "acc"}}, time.Now(), "model", "model", "")
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)
@@ -248,7 +251,7 @@ func TestOpenAIStreamCapacityShedAfterOutputRewritesCodeForClient(t *testing.T) 
 		Header: http.Header{"X-Request-Id": []string{"rid-shed-after-output"}},
 	}
 
-	_, err := svc.Output.Stream(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth, Name: "acc"}}, time.Now(), "model", "model", "")
+	_, err := svc.Output.ReadStreamObservation(c.Request.Context(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth, Name: "acc"}}, time.Now(), "model", "model", "")
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.False(t, errors.As(err, &failoverErr))

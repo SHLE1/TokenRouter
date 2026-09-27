@@ -31,14 +31,6 @@ func NewUsageClient(doTLS func(*http.Request, string, int64, int, *tlsfingerprin
 	return &UsageClient{UsageURL: defaultClaudeUsageURL, DoTLS: doTLS}
 }
 
-// FetchUsage 简单版本，不支持 TLS 指纹（向后兼容）
-func (s *UsageClient) FetchUsage(ctx context.Context, accessToken, proxyURL string) (*wire.ClaudeUsageResponse, error) {
-	return s.FetchUsageWithOptions(ctx, &UsageFetchOptions{
-		AccessToken: accessToken,
-		ProxyURL:    proxyURL,
-	})
-}
-
 // FetchUsageWithOptions 完整版本，支持 TLS 指纹和自定义 User-Agent
 func (s *UsageClient) FetchUsageWithOptions(ctx context.Context, opts *UsageFetchOptions) (*wire.ClaudeUsageResponse, error) {
 	if opts == nil {

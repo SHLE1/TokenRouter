@@ -51,7 +51,7 @@ func TestDeferredStopSerializesFinalFlush(t *testing.T) {
 	<-repo.entered
 	svc.ScheduleLastUsedUpdate(2)
 	stopped := make(chan error, 1)
-	go func() { stopped <- svc.Stop() }()
+	go func() { stopped <- svc.StopContext(context.Background()) }()
 	select {
 	case <-stopped:
 		t.Fatal("周期写回未结束")
@@ -60,7 +60,7 @@ func TestDeferredStopSerializesFinalFlush(t *testing.T) {
 	close(repo.release)
 	<-flushed
 	require.NoError(t, <-stopped)
-	require.NoError(t, svc.Stop())
+	require.NoError(t, svc.StopContext(context.Background()))
 	svc.Start()
 	repo.mu.Lock()
 	require.Equal(t, 2, repo.calls)
@@ -74,8 +74,8 @@ func TestDeferredFinalFlushReportsFailure(t *testing.T) {
 	require.NoError(t, err)
 	svc := NewDeferredService(repo, wheel, DeferredOptions{Interval: time.Hour})
 	svc.ScheduleLastUsedUpdate(1)
-	require.ErrorIs(t, svc.Stop(), failure)
-	require.ErrorIs(t, svc.Stop(), failure)
+	require.ErrorIs(t, svc.StopContext(context.Background()), failure)
+	require.ErrorIs(t, svc.StopContext(context.Background()), failure)
 	_, retained := svc.lastUsedUpdates.Load(int64(1))
 	require.True(t, retained)
 }
@@ -113,5 +113,5 @@ func TestDeferredStopBudgetKeepsUnfinishedBatch(t *testing.T) {
 	require.False(t, rejected)
 	close(repo.release)
 	require.NoError(t, <-flushed)
-	require.ErrorIs(t, svc.Stop(), context.DeadlineExceeded)
+	require.ErrorIs(t, svc.StopContext(context.Background()), context.DeadlineExceeded)
 }

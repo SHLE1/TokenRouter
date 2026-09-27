@@ -36,7 +36,7 @@ func TestAuthService_Register_UsesNormalizedEmailLookupWhenEnabled(t *testing.T)
 		identity.SettingKeyRegistrationEmailNormalization: "true",
 	})
 
-	_, _, err := svc.Register(context.Background(), "Y.o.u.r.N.a.m.e+abc@googlemail.com.", "password")
+	_, _, err := svc.RegisterWithVerification(context.Background(), "Y.o.u.r.N.a.m.e+abc@googlemail.com.", "password", "", "", "", "")
 	require.ErrorIs(t, err, identity.ErrEmailExists)
 	require.Equal(t, []string{"Y.o.u.r.N.a.m.e+abc@googlemail.com."}, repo.existsByEmailCalls)
 	require.Equal(t, []string{"yourname@gmail.com"}, repo.existsByNormalizedCalls)
@@ -49,7 +49,7 @@ func TestAuthService_Register_SkipsNormalizedLookupWhenDisabled(t *testing.T) {
 		identity.SettingKeyRegistrationEnabled: "true",
 	})
 
-	_, user, err := svc.Register(context.Background(), "Y.o.u.r.N.a.m.e+abc@example.com", "password")
+	_, user, err := svc.RegisterWithVerification(context.Background(), "Y.o.u.r.N.a.m.e+abc@example.com", "password", "", "", "", "")
 	require.NoError(t, err)
 	require.NotNil(t, user)
 	require.Equal(t, []string{"Y.o.u.r.N.a.m.e+abc@example.com"}, repo.existsByEmailCalls)

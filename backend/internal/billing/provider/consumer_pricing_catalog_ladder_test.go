@@ -197,7 +197,7 @@ func TestDisplayPricing_PartialLongContextMultiplierDefaultsToOne(t *testing.T) 
 			"long_context_input_token_threshold": 272000,
 			"long_context_input_cost_multiplier": 2}
 	}`))
-	display := service.GetDisplayPricing("partial-display", 1)
+	display := service.DisplayPricing("partial-display", 1)
 	require.Len(t, display.ContextIntervals, 2)
 	require.InDelta(t, 4e-6, display.ContextIntervals[1].InputPricePerToken, 1e-12)
 	require.InDelta(t, 1e-5, display.ContextIntervals[1].OutputPricePerToken, 1e-12)

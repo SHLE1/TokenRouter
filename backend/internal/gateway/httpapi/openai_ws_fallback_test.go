@@ -55,22 +55,6 @@ func TestResolveOpenAIWSFallbackErrorResponse(t *testing.T) {
 	})
 }
 
-func TestOpenAIWSFallbackCooling(t *testing.T) {
-	svc := newWSFixture(wsFixtureInputs{options: &wsFixtureOptions{}})
-	svc.options.WS.FallbackCooldownSeconds = 1
-
-	require.False(t, svc.isOpenAIWSFallbackCooling(1))
-	svc.markOpenAIWSFallbackCooling(1, "upgrade_required")
-	require.True(t, svc.isOpenAIWSFallbackCooling(1))
-
-	svc.clearOpenAIWSFallbackCooling(1)
-	require.False(t, svc.isOpenAIWSFallbackCooling(1))
-
-	svc.markOpenAIWSFallbackCooling(2, "x")
-	time.Sleep(1200 * time.Millisecond)
-	require.False(t, svc.isOpenAIWSFallbackCooling(2))
-}
-
 func TestOpenAIWSRetryBackoff(t *testing.T) {
 	svc := newWSFixture(wsFixtureInputs{options: &wsFixtureOptions{}})
 	svc.options.WS.RetryBackoffInitialMS = 100

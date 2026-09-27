@@ -110,6 +110,7 @@ func (s *ErrorPassthroughService) beginOperation(ctx context.Context) (context.C
 	}
 	return operation, func() { stop(); cancel(); s.operations.Done() }, nil
 }
+
 func (s *ErrorPassthroughService) acquireUpdate(ctx context.Context) error {
 	select {
 	case <-ctx.Done():
@@ -124,8 +125,6 @@ func (s *ErrorPassthroughService) acquireUpdate(ctx context.Context) error {
 }
 func (s *ErrorPassthroughService) releaseUpdate() { s.updateGate <- struct{}{} }
 
-// Start 保留旧同步预热入口，生产装配传入生命周期 context。
-func (s *ErrorPassthroughService) Start() { _ = s.StartContext(context.Background()) }
 func (s *ErrorPassthroughService) StartContext(ctx context.Context) error {
 	s.initialize()
 	s.lifecycleMu.Lock()
@@ -164,6 +163,7 @@ func (s *ErrorPassthroughService) StartContext(ctx context.Context) error {
 
 // StopContext 先取消预热/订阅回源，再等待持有共享资源的操作退出。
 func (s *ErrorPassthroughService) Stop() { _ = s.StopContext(context.Background()) }
+
 func (s *ErrorPassthroughService) StopContext(ctx context.Context) error {
 	s.initialize()
 	s.lifecycleMu.Lock()
@@ -598,6 +598,7 @@ func cloneRule(rule *ErrorPassthroughRule) *ErrorPassthroughRule {
 	}
 	return &copy
 }
+
 func cloneRules(rules []*ErrorPassthroughRule) []*ErrorPassthroughRule {
 	if rules == nil {
 		return nil

@@ -74,7 +74,7 @@ func TestAntigravityRetryLoop_NoURLFallback_UsesConfiguredBaseURL(t *testing.T) 
 		require.True(t, strings.HasPrefix(callURL, base1))
 	}
 
-	available := antigravity.DefaultURLAvailability.GetAvailableURLs()
+	available := antigravity.DefaultURLAvailability.GetAvailableURLsWithBase(antigravity.BaseURLs)
 	require.NotEmpty(t, available)
 	require.Equal(t, base1, available[0])
 }

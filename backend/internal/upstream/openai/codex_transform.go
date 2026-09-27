@@ -1540,14 +1540,6 @@ type CodexInputFilterOptions struct {
 	PreserveCallIDs    bool
 }
 
-// FilterCodexInput 按需过滤 item_reference 与 id。
-// preserveReferences 为 true 时保持引用与 id，以满足续链请求对上下文的依赖。
-func FilterCodexInput(input []any, preserveReferences bool) []any {
-	return FilterCodexInputWithOptions(input, CodexInputFilterOptions{
-		PreserveReferences: preserveReferences,
-	})
-}
-
 func NormalizeCodexFilterCallID(itemType, id string, preserve bool) string {
 	if preserve && len(id) <= CodexCallIDMaxLength {
 		return id

@@ -38,7 +38,7 @@ func TestAuthService_VerifyTurnstileForRegister_SkipWhenEmailVerifyCodeProvided(
 		identity.SettingKeyRegistrationEnabled: "true",
 	}, verifier)
 
-	err := service.VerifyTurnstileForRegister(context.Background(), "", "127.0.0.1", "123456")
+	err := service.VerifyCaptchaForRegister(context.Background(), identity.CaptchaProof{TurnstileToken: ""}, "127.0.0.1", "123456")
 	require.NoError(t, err)
 	require.Equal(t, 0, verifier.called)
 }
@@ -51,7 +51,7 @@ func TestAuthService_VerifyTurnstileForRegister_RequireWhenVerifyCodeMissing(t *
 		identity.SettingKeyTurnstileSecretKey: "secret",
 	}, verifier)
 
-	err := service.VerifyTurnstileForRegister(context.Background(), "", "127.0.0.1", "")
+	err := service.VerifyCaptchaForRegister(context.Background(), identity.CaptchaProof{TurnstileToken: ""}, "127.0.0.1", "")
 	require.ErrorIs(t, err, identity.ErrTurnstileVerificationFailed)
 }
 
@@ -63,7 +63,7 @@ func TestAuthService_VerifyTurnstileForRegister_NoSkipWhenEmailVerifyDisabled(t 
 		identity.SettingKeyTurnstileSecretKey: "secret",
 	}, verifier)
 
-	err := service.VerifyTurnstileForRegister(context.Background(), "turnstile-token", "127.0.0.1", "123456")
+	err := service.VerifyCaptchaForRegister(context.Background(), identity.CaptchaProof{TurnstileToken: "turnstile-token"}, "127.0.0.1", "123456")
 	require.NoError(t, err)
 	require.Equal(t, 1, verifier.called)
 	require.Equal(t, "turnstile-token", verifier.lastToken)

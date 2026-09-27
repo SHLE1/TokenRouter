@@ -74,11 +74,6 @@ func BuildAuthPayloadJSON(identity *AuthIdentity) ([]byte, error) {
 	return json.Marshal(identity)
 }
 
-// BuildPayloadB64 构造 COSY header 使用的 base64 payload。
-func BuildPayloadB64(info, requestID string) (string, error) {
-	return BuildPayloadB64WithVersion(info, requestID, GlobalClientVersion)
-}
-
 // BuildPayloadB64WithVersion 使用站点客户端版本构造 COSY header payload。
 func BuildPayloadB64WithVersion(info, requestID, clientVersion string) (string, error) {
 	if clientVersion == "" {
@@ -126,11 +121,6 @@ func AESEncrypt(data, key []byte) ([]byte, error) {
 	return ciphertext, nil
 }
 
-// NewSession 创建新的 COSY session 上下文。
-func NewSession(identity *AuthIdentity, machine *MachineIdentity) (*SessionContext, error) {
-	return NewSessionForSite(identity, machine, SiteGlobal)
-}
-
 // NewSessionForSite 为指定站点创建新的 COSY session 上下文。
 func NewSessionForSite(identity *AuthIdentity, machine *MachineIdentity, site Site) (*SessionContext, error) {
 	profile, err := ProfileForSite(site)
@@ -138,11 +128,6 @@ func NewSessionForSite(identity *AuthIdentity, machine *MachineIdentity, site Si
 		return nil, err
 	}
 	return NewSessionForProfileWithKey(identity, machine, profile, nil)
-}
-
-// NewSessionWithKey 使用可选的显式临时 key 创建 COSY session。
-func NewSessionWithKey(identity *AuthIdentity, machine *MachineIdentity, tempKey []byte) (*SessionContext, error) {
-	return NewSessionForProfileWithKey(identity, machine, MustProfileForSite(SiteGlobal), tempKey)
 }
 
 // NewSessionForProfileWithKey 使用站点 profile 和可选临时 key 创建 COSY session。

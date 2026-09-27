@@ -153,7 +153,7 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_TransportErrorRecordsOllamaAc
 	_, err = passthroughFixture(svc, context.Background(), c2, other, []byte(`{"model":"x"}`), "x", "x", false, time.Now())
 	require.Error(t, err)
 
-	require.NoError(t, deferred.Stop())
+	require.NoError(t, deferred.StopContext(context.Background()))
 	_, ok := activity.Load(int64(601))
 	require.True(t, ok, "Anthropic passthrough transport error on Ollama provider must record activity")
 	_, ok = activity.Load(int64(602))
@@ -182,7 +182,7 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_ContextCanceledSkipsOllamaAct
 	_, err := passthroughFixture(svc, context.Background(), c, ollama, []byte(`{"model":"x"}`), "x", "x", false, time.Now())
 
 	require.Error(t, err)
-	require.NoError(t, deferred.Stop())
+	require.NoError(t, deferred.StopContext(context.Background()))
 	_, ok := activity.Load(int64(603))
 	require.False(t, ok, "context.Canceled on Anthropic passthrough must not count as Ollama activity")
 }
@@ -215,7 +215,7 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_Non2xxRecordsOllamaActivity(t
 
 	_, _ = passthroughFixture(svc, context.Background(), c, ollama, []byte(`{"model":"x"}`), "x", "x", false, time.Now())
 
-	require.NoError(t, deferred.Stop())
+	require.NoError(t, deferred.StopContext(context.Background()))
 	_, ok := activity.Load(int64(604))
 	require.True(t, ok, "Anthropic passthrough non-2xx on Ollama provider must record activity via handleErrorResponse")
 }

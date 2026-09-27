@@ -50,11 +50,6 @@ func RequestedReasoningEffortFromContext(ctx context.Context) *string {
 	return &effort
 }
 
-// WithOpenAIReasoningEffortPolicy 将分组策略绑定到请求上下文。
-func WithOpenAIReasoningEffortPolicy(ctx context.Context, maxEffort string, mappings []routing.ReasoningEffortMapping, overLimit string) context.Context {
-	return withOpenAIReasoningEffortPolicyForModel(ctx, maxEffort, mappings, overLimit, "")
-}
-
 // WithOpenAIReasoningEffortPolicyForModel 绑定策略并保留客户端模型，供模型范围映射使用。
 func WithOpenAIReasoningEffortPolicyForModel(ctx context.Context, maxEffort string, mappings []routing.ReasoningEffortMapping, overLimit, requestModel string) context.Context {
 	return withOpenAIReasoningEffortPolicyForModel(ctx, maxEffort, mappings, overLimit, requestModel)

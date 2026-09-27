@@ -48,7 +48,7 @@ func TestResponsesToChatChainedToolCallsReplayTurnReasoning(t *testing.T) {
 		]`),
 	}
 
-	out, err := ResponsesToChatCompletionsRequest(req)
+	out, err := ResponsesToChatCompletionsRequestWithOptions(req, nil)
 	require.NoError(t, err)
 	byCallID := map[string]ChatMessage{}
 	for _, message := range out.Messages {

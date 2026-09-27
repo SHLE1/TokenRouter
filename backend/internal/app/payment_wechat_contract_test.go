@@ -24,13 +24,13 @@ func TestMaybeBuildWeChatOAuthRequiredResponse(t *testing.T) {
 		identity.SettingKeyWeChatConnectFrontendRedirectURL: "/auth/wechat/callback",
 	})
 
-	resp, err := svc.MaybeBuildWeChatOAuthRequiredResponse(context.Background(), payment.CreateOrderRequest{
+	resp, err := svc.MaybeBuildWeChatOAuthRequiredResponseForSelection(context.Background(), payment.CreateOrderRequest{
 		Amount:          12.5,
 		PaymentType:     payment.TypeWxpay,
 		IsWeChatBrowser: true,
 		SrcURL:          "https://merchant.example/payment?from=wechat",
 		OrderType:       payment.OrderTypeBalance,
-	}, 12.5, payment.FeeBreakdown{PayAmount: 12.88, FeeRate: 0.03})
+	}, 12.5, payment.FeeBreakdown{PayAmount: 12.88, FeeRate: 0.03}, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -64,13 +64,13 @@ func TestMaybeBuildWeChatOAuthRequiredResponseRequiresMPConfigInWeChat(t *testin
 
 	svc := newWeChatPaymentOAuthTestService(nil)
 
-	resp, err := svc.MaybeBuildWeChatOAuthRequiredResponse(context.Background(), payment.CreateOrderRequest{
+	resp, err := svc.MaybeBuildWeChatOAuthRequiredResponseForSelection(context.Background(), payment.CreateOrderRequest{
 		Amount:          12.5,
 		PaymentType:     payment.TypeWxpay,
 		IsWeChatBrowser: true,
 		SrcURL:          "https://merchant.example/payment?from=wechat",
 		OrderType:       payment.OrderTypeBalance,
-	}, 12.5, payment.FeeBreakdown{PayAmount: 12.88, FeeRate: 0.03})
+	}, 12.5, payment.FeeBreakdown{PayAmount: 12.88, FeeRate: 0.03}, nil)
 	if resp != nil {
 		t.Fatalf("expected nil response, got %+v", resp)
 	}
@@ -99,13 +99,13 @@ func TestMaybeBuildWeChatOAuthRequiredResponseRequiresResumeSigningKey(t *testin
 		// Intentionally missing payment resume signing key.
 		nil)
 
-	resp, err := svc.MaybeBuildWeChatOAuthRequiredResponse(context.Background(), payment.CreateOrderRequest{
+	resp, err := svc.MaybeBuildWeChatOAuthRequiredResponseForSelection(context.Background(), payment.CreateOrderRequest{
 		Amount:          12.5,
 		PaymentType:     payment.TypeWxpay,
 		IsWeChatBrowser: true,
 		SrcURL:          "https://merchant.example/payment?from=wechat",
 		OrderType:       payment.OrderTypeBalance,
-	}, 12.5, payment.FeeBreakdown{PayAmount: 12.88, FeeRate: 0.03})
+	}, 12.5, payment.FeeBreakdown{PayAmount: 12.88, FeeRate: 0.03}, nil)
 	if resp != nil {
 		t.Fatalf("expected nil response, got %+v", resp)
 	}
@@ -132,13 +132,13 @@ func TestMaybeBuildWeChatOAuthRequiredResponseFallsBackToConfiguredLegacySigning
 		// Legacy stable signing key remains available for no-config upgrade compatibility.
 		[]byte("0123456789abcdef0123456789abcdef"))
 
-	resp, err := svc.MaybeBuildWeChatOAuthRequiredResponse(context.Background(), payment.CreateOrderRequest{
+	resp, err := svc.MaybeBuildWeChatOAuthRequiredResponseForSelection(context.Background(), payment.CreateOrderRequest{
 		Amount:          12.5,
 		PaymentType:     payment.TypeWxpay,
 		IsWeChatBrowser: true,
 		SrcURL:          "https://merchant.example/payment?from=wechat",
 		OrderType:       payment.OrderTypeBalance,
-	}, 12.5, payment.FeeBreakdown{PayAmount: 12.88, FeeRate: 0.03})
+	}, 12.5, payment.FeeBreakdown{PayAmount: 12.88, FeeRate: 0.03}, nil)
 	if err != nil {
 		t.Fatalf("expected nil error, got %v", err)
 	}
@@ -184,5 +184,4 @@ func TestMaybeBuildWeChatOAuthRequiredResponseForSelectionSkipsEasyPayProvider(t
 func newWeChatPaymentOAuthTestService(values map[string]string) *payment.Checkout {
 	return newWeChatPaymentCheckout(values,
 		[]byte("0123456789abcdef0123456789abcdef"))
-
 }

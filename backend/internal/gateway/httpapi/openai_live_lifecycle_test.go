@@ -269,7 +269,7 @@ func TestRunLiveControllerClosesExpiredSession(t *testing.T) {
 	record := &session.LiveCallRecord{ExpiresAt: time.Now().Add(20 * time.Millisecond)}
 	service := newLiveFixture(liveFixtureInputs{})
 
-	err := service.runLiveController(context.Background(), record, upstream, make(chan error))
+	err := service.liveRuntime().RunController(context.Background(), record, liveUpstreamFrames{upstream}, make(chan error))
 	require.ErrorIs(t, err, context.DeadlineExceeded)
 
 	select {
@@ -309,8 +309,8 @@ func TestFinalizeLiveCallIsIdempotentAndWritesZeroUsage(t *testing.T) {
 	},
 	), logs: usageRepo})
 
-	service.finalizeLiveCall(record)
-	service.finalizeLiveCall(record)
+	service.liveRuntime().Finalize(record)
+	service.liveRuntime().Finalize(record)
 
 	concurrencyCache.mu.Lock()
 	require.Equal(t, 1, concurrencyCache.releases)
@@ -540,7 +540,7 @@ func TestWaitForLiveObserverRetryLeavesExpiryToLoopFinalize(t *testing.T) {
 	require.NoError(t, store.SaveLiveCall(context.Background(), record, time.Hour))
 	svc := newLiveFixture(liveFixtureInputs{store: store})
 
-	require.True(t, svc.waitForLiveObserverRetry(record),
+	require.True(t, svc.liveRuntime().WaitForObserverRetry(context.Background(), record),
 		"过期判定必须留给循环顶部，否则不会写 usage log")
 
 	// 控制权已被他人接管时仍必须停止重试，避免与新控制者抢同一个 call。
@@ -550,7 +550,7 @@ func TestWaitForLiveObserverRetryLeavesExpiryToLoopFinalize(t *testing.T) {
 		Controller: session.LiveControllerProxy,
 		ExpiresAt:  time.Now().Add(time.Hour),
 	}, time.Hour))
-	require.False(t, svc.waitForLiveObserverRetry(record))
+	require.False(t, svc.liveRuntime().WaitForObserverRetry(context.Background(), record))
 }
 
 // store 抖动不表示 observer 已失去控制权，只有记录不存在时才停止重试。
@@ -565,9 +565,9 @@ func TestWaitForLiveObserverRetryTreatsStoreErrorAsRetryable(t *testing.T) {
 	require.NoError(t, store.SaveLiveCall(context.Background(), record, time.Hour))
 	svc := newLiveFixture(liveFixtureInputs{store: store})
 
-	require.True(t, svc.waitForLiveObserverRetry(record),
+	require.True(t, svc.liveRuntime().WaitForObserverRetry(context.Background(), record),
 		"store 报错时必须继续重试，否则会话会静默结束")
-	require.False(t, newLiveFixture(liveFixtureInputs{store: &liveTestStore{}}).waitForLiveObserverRetry(record),
+	require.False(t, newLiveFixture(liveFixtureInputs{store: &liveTestStore{}}).liveRuntime().WaitForObserverRetry(context.Background(), record),
 		"记录不存在时应停止重试")
 }
 
@@ -659,7 +659,7 @@ func TestFinalizeLiveCallUsageLogFallsBackToSyncCreate(t *testing.T) {
 	},
 	), logs: usageRepo})
 
-	svc.finalizeLiveCall(record)
+	svc.liveRuntime().Finalize(record)
 
 	usageRepo.mu.Lock()
 	defer usageRepo.mu.Unlock()

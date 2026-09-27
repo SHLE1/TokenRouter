@@ -20,7 +20,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/grok"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 
-	coderws "github.com/coder/websocket"
 	"github.com/gin-gonic/gin"
 )
 
@@ -148,19 +147,6 @@ func (s *GrokExecutor) HandleGrokRealtimeUpstreamError(ctx context.Context, prov
 	}
 	_ = gatewayprovider.ApplyGrokExecutionHealth(ctx, s.Health, provider, statusCode, nil, body, "")
 }
-
-// HTTP/既有 WS SDK 只转换同步帧接口，升级与连接租约仍由原入口拥有。
-type grokClientFrames struct{ conn *coderws.Conn }
-
-func (c grokClientFrames) ReadFrame(ctx context.Context) (upstreamcore.FrameKind, []byte, error) {
-	kind, data, err := c.conn.Read(ctx)
-	return upstreamcore.FrameKind(kind), data, err
-}
-
-func (c grokClientFrames) WriteFrame(ctx context.Context, kind upstreamcore.FrameKind, data []byte) error {
-	return c.conn.Write(ctx, coderws.MessageType(kind), data)
-}
-func (c grokClientFrames) Close() error { return c.conn.CloseNow() }
 
 type grokUpstreamFrames struct{ conn openai.WSClientConn }
 

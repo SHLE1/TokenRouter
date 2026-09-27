@@ -35,11 +35,11 @@ type cnNoQueries struct{ CNMonitorQueries }
 func TestCNMonitorStopPreventsLaterStart(t *testing.T) {
 	store := &cnLifecycleStore{}
 	disabled := NewCNUsageMonitor(store, cnNoQueries{}, CNMonitorOptions{})
-	disabled.Start()
+	require.NoError(t, disabled.StartContext(context.Background()))
 	require.Nil(t, disabled.cancel, "默认关闭时不得创建后台上下文")
 	monitor := NewCNUsageMonitor(store, cnNoQueries{}, CNMonitorOptions{Enabled: true, Interval: time.Millisecond})
 	monitor.Stop()
-	monitor.Start()
+	require.NoError(t, monitor.StartContext(context.Background()))
 	require.Nil(t, monitor.cancel)
 	require.Zero(t, store.reads.Load())
 	monitor.RunOnce(context.Background())
@@ -50,8 +50,8 @@ func TestCNMonitorWaitsFirstIntervalAndStopsInflight(t *testing.T) {
 	store := &cnLifecycleStore{started: make(chan struct{})}
 	monitor := NewCNUsageMonitor(store, cnNoQueries{}, CNMonitorOptions{Enabled: true, Interval: 30 * time.Millisecond})
 	require.Zero(t, store.reads.Load())
-	monitor.Start()
-	monitor.Start()
+	require.NoError(t, monitor.StartContext(context.Background()))
+	require.NoError(t, monitor.StartContext(context.Background()))
 	select {
 	case <-store.started:
 		t.Fatal("没有等待完整首周期")
@@ -63,7 +63,7 @@ func TestCNMonitorWaitsFirstIntervalAndStopsInflight(t *testing.T) {
 	require.NoError(t, monitor.StopContext(ctx))
 	require.NoError(t, monitor.StopContext(ctx))
 	reads := store.reads.Load()
-	monitor.Start()
+	require.NoError(t, monitor.StartContext(context.Background()))
 	monitor.RunOnce(context.Background())
 	require.Equal(t, reads, store.reads.Load())
 }
@@ -71,7 +71,7 @@ func TestCNMonitorWaitsFirstIntervalAndStopsInflight(t *testing.T) {
 func TestCNMonitorStopReportsBlockedStorage(t *testing.T) {
 	store := &cnLifecycleStore{started: make(chan struct{}), release: make(chan struct{}), ignore: true}
 	monitor := NewCNUsageMonitor(store, cnNoQueries{}, CNMonitorOptions{Enabled: true, Interval: time.Millisecond})
-	monitor.Start()
+	require.NoError(t, monitor.StartContext(context.Background()))
 	waitUsageSignal(t, store.started)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
 	defer cancel()

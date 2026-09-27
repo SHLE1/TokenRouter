@@ -137,10 +137,6 @@ func populateQoderOrganizationForUID(ctx context.Context, client OAuthClientPort
 	return nil
 }
 
-func BuildAuthorizationTokenInfo(identity *AuthIdentity, machine *MachineIdentity, userErr error, orgErr error) *AuthorizationTokenInfo {
-	return BuildAuthorizationTokenInfoForSite(identity, machine, SiteGlobal, RefreshModeCosy, time.Time{}, userErr, orgErr)
-}
-
 func BuildAuthorizationTokenInfoForSite(
 	identity *AuthIdentity,
 	machine *MachineIdentity,

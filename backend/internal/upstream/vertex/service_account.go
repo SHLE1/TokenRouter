@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
@@ -156,9 +155,4 @@ func BuildVertexAnthropicRequestBody(body []byte) ([]byte, error) {
 // @project-doc docs/interfaces/gemini_upstream.md#vertex_service_account_execution
 func ExchangeServiceAccountToken(ctx context.Context, key *google.ServiceAccountKey, proxyURL string) (string, time.Duration, error) {
 	return googleauth.ExchangeServiceAccountToken(ctx, key, proxyURL)
-}
-
-// NewServiceAccountHTTPClient 保留原独立传输参数与 timing 安装。
-func NewServiceAccountHTTPClient(proxyURL string) (*http.Client, error) {
-	return googleauth.NewServiceAccountHTTPClient(proxyURL)
 }

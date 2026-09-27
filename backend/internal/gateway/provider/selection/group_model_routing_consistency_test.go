@@ -98,11 +98,8 @@ func TestGatewayAnthropicProviderSupportMapsBeforePlatformNormalization(t *testi
 					},
 				},
 			}
-			svc := newGenericSelectionForTest(GenericDependencies{
-				Reads: Reads{}, Shared: Shared{},
-			}, nil)
 
-			require.True(t, svc.isModelSupportedByProvider(provider, "group-model"))
+			require.True(t, gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), "group-model"))
 			require.Equal(t, tt.finalModel, resolveProviderUpstreamModel(context.Background(), provider, "group-model"))
 		})
 	}
@@ -173,10 +170,10 @@ func TestOpenAIHTTPPassthroughKeepsExplicitModelScope(t *testing.T) {
 	require.False(t, scheduler.isProviderRequestCompatible(plainCtx, &provider, req))
 	require.False(t, scheduler.isProviderRequestCompatible(passthroughCtx, &provider, req))
 
-	plainErr := noAvailableOpenAISelectionErrorForRouting(plainCtx, "client-model", "client-model", false, []gatewayprovider.ExecutionProvider{provider})
+	plainErr := noAvailableOpenAISelectionErrorForRoutingWithDetails(plainCtx, "client-model", "client-model", false, "", []gatewayprovider.ExecutionProvider{provider})
 	var modelErr *routing.GroupModelUnsupportedError
 	require.True(t, errors.As(plainErr, &modelErr))
-	passthroughErr := noAvailableOpenAISelectionErrorForRouting(passthroughCtx, "client-model", "client-model", false, []gatewayprovider.ExecutionProvider{provider})
+	passthroughErr := noAvailableOpenAISelectionErrorForRoutingWithDetails(passthroughCtx, "client-model", "client-model", false, "", []gatewayprovider.ExecutionProvider{provider})
 	modelErr = nil
 	require.True(t, errors.As(passthroughErr, &modelErr))
 

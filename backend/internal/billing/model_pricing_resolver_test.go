@@ -74,17 +74,6 @@ func TestResolve_UnknownModel(t *testing.T) {
 }
 
 func TestGetIntervalPricing_NoIntervals(t *testing.T) {
-	bs := billingtestkit.ResolverCalculator()
-	r := billingtestkit.PriceResolver(routingtestkit.NewPricingConfigService(nil, nil, routing.PricingConfigOptions{
-		Warn: slog.
-			Warn,
-		Now: time.
-			Now, LoadLocation: pricingprovider.
-			LoadPricingLocation,
-	}),
-
-		bs)
-
 	basePricing := &billingpricing.ModelPricing{InputPricePerToken: 5e-6}
 	resolved := &billingpricing.ResolvedPricing{
 		Mode:        routing.BillingModeToken,
@@ -92,22 +81,11 @@ func TestGetIntervalPricing_NoIntervals(t *testing.T) {
 		Intervals:   nil,
 	}
 
-	result := r.GetIntervalPricing(resolved, 50000)
+	result := billingpricing.GetIntervalPricing(resolved, 50000)
 	require.Equal(t, basePricing, result)
 }
 
 func TestGetIntervalPricing_MatchesInterval(t *testing.T) {
-	bs := billingtestkit.ResolverCalculator()
-	r := billingtestkit.PriceResolver(routingtestkit.NewPricingConfigService(nil, nil, routing.PricingConfigOptions{
-		Warn: slog.
-			Warn,
-		Now: time.
-			Now, LoadLocation: pricingprovider.
-			LoadPricingLocation,
-	}),
-
-		bs)
-
 	resolved := &billingpricing.ResolvedPricing{
 		Mode:                   routing.BillingModeToken,
 		BasePricing:            &billingpricing.ModelPricing{InputPricePerToken: 5e-6},
@@ -118,29 +96,18 @@ func TestGetIntervalPricing_MatchesInterval(t *testing.T) {
 		},
 	}
 
-	result := r.GetIntervalPricing(resolved, 50000)
+	result := billingpricing.GetIntervalPricing(resolved, 50000)
 	require.NotNil(t, result)
 	require.InDelta(t, 1e-6, result.InputPricePerToken, 1e-12)
 	require.InDelta(t, 2e-6, result.OutputPricePerToken, 1e-12)
 	require.True(t, result.SupportsCacheBreakdown)
 
-	result2 := r.GetIntervalPricing(resolved, 200000)
+	result2 := billingpricing.GetIntervalPricing(resolved, 200000)
 	require.NotNil(t, result2)
 	require.InDelta(t, 3e-6, result2.InputPricePerToken, 1e-12)
 }
 
 func TestGetIntervalPricing_NoMatch_FallsBackToBase(t *testing.T) {
-	bs := billingtestkit.ResolverCalculator()
-	r := billingtestkit.PriceResolver(routingtestkit.NewPricingConfigService(nil, nil, routing.PricingConfigOptions{
-		Warn: slog.
-			Warn,
-		Now: time.
-			Now, LoadLocation: pricingprovider.
-			LoadPricingLocation,
-	}),
-
-		bs)
-
 	basePricing := &billingpricing.ModelPricing{InputPricePerToken: 99e-6}
 	resolved := &billingpricing.ResolvedPricing{
 		Mode:        routing.BillingModeToken,
@@ -150,7 +117,7 @@ func TestGetIntervalPricing_NoMatch_FallsBackToBase(t *testing.T) {
 		},
 	}
 
-	result := r.GetIntervalPricing(resolved, 5000)
+	result := billingpricing.GetIntervalPricing(resolved, 5000)
 	require.Equal(t, basePricing, result)
 }
 
@@ -201,17 +168,6 @@ func TestGPT56ExplicitZeroCacheWritePriceIsPreserved(t *testing.T) {
 }
 
 func TestGetRequestTierPrice(t *testing.T) {
-	bs := billingtestkit.ResolverCalculator()
-	r := billingtestkit.PriceResolver(routingtestkit.NewPricingConfigService(nil, nil, routing.PricingConfigOptions{
-		Warn: slog.
-			Warn,
-		Now: time.
-			Now, LoadLocation: pricingprovider.
-			LoadPricingLocation,
-	}),
-
-		bs)
-
 	resolved := &billingpricing.ResolvedPricing{
 		Mode: routing.BillingModePerRequest,
 		RequestTiers: []routing.PricingInterval{
@@ -220,28 +176,17 @@ func TestGetRequestTierPrice(t *testing.T) {
 		},
 	}
 
-	require.InDelta(t, 0.04, r.GetRequestTierPrice(resolved, "1K"), 1e-12)
-	require.InDelta(t, 0.04, r.GetRequestTierPrice(resolved, "1k"), 1e-12)
-	require.InDelta(t, 0.08, r.GetRequestTierPrice(resolved, "2K"), 1e-12)
-	require.InDelta(t, 0.0, r.GetRequestTierPrice(resolved, "4K"), 1e-12)
+	require.InDelta(t, 0.04, billingpricing.GetRequestTierPrice(resolved, "1K"), 1e-12)
+	require.InDelta(t, 0.04, billingpricing.GetRequestTierPrice(resolved, "1k"), 1e-12)
+	require.InDelta(t, 0.08, billingpricing.GetRequestTierPrice(resolved, "2K"), 1e-12)
+	require.InDelta(t, 0.0, billingpricing.GetRequestTierPrice(resolved, "4K"), 1e-12)
 
-	price, ok := r.GetRequestTierPriceValue(resolved, "4K")
+	price, ok := billingpricing.GetRequestTierPriceValue(resolved, "4K")
 	require.False(t, ok)
 	require.Zero(t, price)
 }
 
 func TestGetRequestTierPriceByContext(t *testing.T) {
-	bs := billingtestkit.ResolverCalculator()
-	r := billingtestkit.PriceResolver(routingtestkit.NewPricingConfigService(nil, nil, routing.PricingConfigOptions{
-		Warn: slog.
-			Warn,
-		Now: time.
-			Now, LoadLocation: pricingprovider.
-			LoadPricingLocation,
-	}),
-
-		bs)
-
 	resolved := &billingpricing.ResolvedPricing{
 		Mode: routing.BillingModePerRequest,
 		RequestTiers: []routing.PricingInterval{
@@ -250,26 +195,15 @@ func TestGetRequestTierPriceByContext(t *testing.T) {
 		},
 	}
 
-	require.InDelta(t, 0.05, r.GetRequestTierPriceByContext(resolved, 50000), 1e-12)
-	require.InDelta(t, 0.10, r.GetRequestTierPriceByContext(resolved, 200000), 1e-12)
+	require.InDelta(t, 0.05, billingpricing.GetRequestTierPriceByContext(resolved, 50000), 1e-12)
+	require.InDelta(t, 0.10, billingpricing.GetRequestTierPriceByContext(resolved, 200000), 1e-12)
 
-	price, ok := r.GetRequestTierPriceByContextValue(resolved, 0)
+	price, ok := billingpricing.GetRequestTierPriceByContextValue(resolved, 0)
 	require.False(t, ok)
 	require.Zero(t, price)
 }
 
 func TestGetRequestTierPrice_NilPerRequestPrice(t *testing.T) {
-	bs := billingtestkit.ResolverCalculator()
-	r := billingtestkit.PriceResolver(routingtestkit.NewPricingConfigService(nil, nil, routing.PricingConfigOptions{
-		Warn: slog.
-			Warn,
-		Now: time.
-			Now, LoadLocation: pricingprovider.
-			LoadPricingLocation,
-	}),
-
-		bs)
-
 	resolved := &billingpricing.ResolvedPricing{
 		Mode: routing.BillingModePerRequest,
 		RequestTiers: []routing.PricingInterval{
@@ -277,7 +211,7 @@ func TestGetRequestTierPrice_NilPerRequestPrice(t *testing.T) {
 		},
 	}
 
-	require.InDelta(t, 0.0, r.GetRequestTierPrice(resolved, "1K"), 1e-12)
+	require.InDelta(t, 0.0, billingpricing.GetRequestTierPrice(resolved, "1K"), 1e-12)
 }
 
 // ===========================================================================
@@ -504,7 +438,7 @@ func TestResolve_QoderStandardModelMappedToRouteKeyKeepsBaseForPartialIntervalPr
 	require.NotNil(t, resolved)
 	require.Equal(t, billingpricing.PricingSourceConfig, resolved.Source)
 
-	intervalPricing := r.GetIntervalPricing(resolved, 100)
+	intervalPricing := billingpricing.GetIntervalPricing(resolved, 100)
 	require.NotNil(t, intervalPricing)
 	require.InDelta(t, inputPrice, intervalPricing.InputPricePerToken, 1e-12)
 	require.InDelta(t, basePricing.OutputPricePerToken, intervalPricing.OutputPricePerToken, 1e-12)
@@ -566,7 +500,7 @@ func TestResolve_QoderCustomAliasUnknownBaseZerosMissingPartialIntervalPricing(t
 	require.NotNil(t, resolved)
 	require.Equal(t, billingpricing.PricingSourceConfig, resolved.Source)
 
-	intervalPricing := r.GetIntervalPricing(resolved, 100)
+	intervalPricing := billingpricing.GetIntervalPricing(resolved, 100)
 	require.NotNil(t, intervalPricing)
 	require.InDelta(t, inputPrice, intervalPricing.InputPricePerToken, 1e-12)
 	require.Zero(t, intervalPricing.OutputPricePerToken)
@@ -718,12 +652,12 @@ func TestResolve_WithPricingConfigOverride_TokenWithIntervals(t *testing.T) {
 	require.Len(t, resolved.Intervals, 2)
 
 	// GetIntervalPricing should use configPricing intervals
-	iv := r.GetIntervalPricing(resolved, 50000)
+	iv := billingpricing.GetIntervalPricing(resolved, 50000)
 	require.NotNil(t, iv)
 	require.InDelta(t, 2e-6, iv.InputPricePerToken, 1e-12)
 	require.InDelta(t, 8e-6, iv.OutputPricePerToken, 1e-12)
 
-	iv2 := r.GetIntervalPricing(resolved, 200000)
+	iv2 := billingpricing.GetIntervalPricing(resolved, 200000)
 	require.NotNil(t, iv2)
 	require.InDelta(t, 4e-6, iv2.InputPricePerToken, 1e-12)
 	require.InDelta(t, 16e-6, iv2.OutputPricePerToken, 1e-12)
@@ -744,7 +678,7 @@ func TestResolve_WithPricingConfigOverride_PriceMultiplierScalesIntervalsAndFall
 		GroupID: billingtestkit.GroupID(),
 	})
 
-	pricing := r.GetIntervalPricing(resolved, 50000)
+	pricing := billingpricing.GetIntervalPricing(resolved, 50000)
 	require.NotNil(t, pricing)
 	require.InDelta(t, 4e-6, pricing.InputPricePerToken, 1e-12)
 	// 区间未配置输出价时继承模型默认价，再统一乘以倍率。
@@ -770,7 +704,7 @@ func TestResolve_WithPricingConfigOverride_FastModeMultiplierAppliesToIntervals(
 		Model:   "claude-sonnet-4",
 		GroupID: billingtestkit.GroupID(),
 	})
-	pricing := r.GetIntervalPricing(resolved, 50000)
+	pricing := billingpricing.GetIntervalPricing(resolved, 50000)
 	require.NotNil(t, pricing)
 	require.Equal(t, testPtrFloat64(2), pricing.FastModeMultiplier)
 
@@ -848,8 +782,8 @@ func TestResolve_WithPricingConfigOverride_PerRequest(t *testing.T) {
 	require.Len(t, resolved.RequestTiers, 2)
 
 	// Verify tier lookups
-	require.InDelta(t, 0.03, r.GetRequestTierPriceByContext(resolved, 50000), 1e-12)
-	require.InDelta(t, 0.10, r.GetRequestTierPriceByContext(resolved, 200000), 1e-12)
+	require.InDelta(t, 0.03, billingpricing.GetRequestTierPriceByContext(resolved, 50000), 1e-12)
+	require.InDelta(t, 0.10, billingpricing.GetRequestTierPriceByContext(resolved, 200000), 1e-12)
 }
 
 func TestResolve_WithPricingConfigOverride_PriceMultiplierScalesPerRequestPrices(t *testing.T) {
@@ -869,7 +803,7 @@ func TestResolve_WithPricingConfigOverride_PriceMultiplierScalesPerRequestPrices
 	})
 
 	require.InDelta(t, 0.10, resolved.DefaultPerRequestPrice, 1e-12)
-	require.InDelta(t, 0.06, r.GetRequestTierPriceByContext(resolved, 50000), 1e-12)
+	require.InDelta(t, 0.06, billingpricing.GetRequestTierPriceByContext(resolved, 50000), 1e-12)
 }
 
 func TestResolve_WithPricingConfigOverride_PerRequestNilPrice(t *testing.T) {
@@ -938,10 +872,10 @@ func TestResolve_WithPricingConfigOverride_ImageTierLabels(t *testing.T) {
 		GroupID: billingtestkit.GroupID(),
 	})
 
-	require.InDelta(t, 0.04, r.GetRequestTierPrice(resolved, "1K"), 1e-12)
-	require.InDelta(t, 0.08, r.GetRequestTierPrice(resolved, "2K"), 1e-12)
-	require.InDelta(t, 0.16, r.GetRequestTierPrice(resolved, "4K"), 1e-12)
-	require.InDelta(t, 0.0, r.GetRequestTierPrice(resolved, "8K"), 1e-12) // not found
+	require.InDelta(t, 0.04, billingpricing.GetRequestTierPrice(resolved, "1K"), 1e-12)
+	require.InDelta(t, 0.08, billingpricing.GetRequestTierPrice(resolved, "2K"), 1e-12)
+	require.InDelta(t, 0.16, billingpricing.GetRequestTierPrice(resolved, "4K"), 1e-12)
+	require.InDelta(t, 0.0, billingpricing.GetRequestTierPrice(resolved, "8K"), 1e-12) // not found
 }
 
 // ---------------------------------------------------------------------------
@@ -1003,13 +937,13 @@ func TestGetIntervalPricing_WithPricingConfigIntervals(t *testing.T) {
 	})
 
 	// Token count 50000 matches first interval
-	pricing := r.GetIntervalPricing(resolved, 50000)
+	pricing := billingpricing.GetIntervalPricing(resolved, 50000)
 	require.NotNil(t, pricing)
 	require.InDelta(t, 1e-6, pricing.InputPricePerToken, 1e-12)
 	require.InDelta(t, 5e-6, pricing.OutputPricePerToken, 1e-12)
 
 	// Token count 150000 matches second interval
-	pricing2 := r.GetIntervalPricing(resolved, 150000)
+	pricing2 := billingpricing.GetIntervalPricing(resolved, 150000)
 	require.NotNil(t, pricing2)
 	require.InDelta(t, 2e-6, pricing2.InputPricePerToken, 1e-12)
 	require.InDelta(t, 10e-6, pricing2.OutputPricePerToken, 1e-12)
@@ -1032,7 +966,7 @@ func TestGetIntervalPricing_PricingConfigIntervalsNoMatch(t *testing.T) {
 	})
 
 	// Token count 1000 doesn't match any interval (1000 <= 50000 minTokens)
-	pricing := r.GetIntervalPricing(resolved, 1000)
+	pricing := billingpricing.GetIntervalPricing(resolved, 1000)
 	// Should fall back to BasePricing (from the billing service fallback)
 	require.NotNil(t, pricing)
 	require.Equal(t, resolved.BasePricing, pricing)
@@ -1081,23 +1015,12 @@ func TestResolve_WithPricingConfigOverride_CacheError(t *testing.T) {
 // ===========================================================================
 
 func TestGetRequestTierPriceByContext_EmptyTiers(t *testing.T) {
-	bs := billingtestkit.ResolverCalculator()
-	r := billingtestkit.PriceResolver(routingtestkit.NewPricingConfigService(nil, nil, routing.PricingConfigOptions{
-		Warn: slog.
-			Warn,
-		Now: time.
-			Now, LoadLocation: pricingprovider.
-			LoadPricingLocation,
-	}),
-
-		bs)
-
 	resolved := &billingpricing.ResolvedPricing{
 		Mode:         routing.BillingModePerRequest,
 		RequestTiers: nil, // empty
 	}
 
-	price := r.GetRequestTierPriceByContext(resolved, 50000)
+	price := billingpricing.GetRequestTierPriceByContext(resolved, 50000)
 	require.InDelta(t, 0.0, price, 1e-12)
 
 	// Also test with explicit empty slice
@@ -1106,22 +1029,11 @@ func TestGetRequestTierPriceByContext_EmptyTiers(t *testing.T) {
 		RequestTiers: []routing.PricingInterval{},
 	}
 
-	price2 := r.GetRequestTierPriceByContext(resolved2, 50000)
+	price2 := billingpricing.GetRequestTierPriceByContext(resolved2, 50000)
 	require.InDelta(t, 0.0, price2, 1e-12)
 }
 
 func TestGetRequestTierPriceByContext_ExactBoundary(t *testing.T) {
-	bs := billingtestkit.ResolverCalculator()
-	r := billingtestkit.PriceResolver(routingtestkit.NewPricingConfigService(nil, nil, routing.PricingConfigOptions{
-		Warn: slog.
-			Warn,
-		Now: time.
-			Now, LoadLocation: pricingprovider.
-			LoadPricingLocation,
-	}),
-
-		bs)
-
 	resolved := &billingpricing.ResolvedPricing{
 		Mode: routing.BillingModePerRequest,
 		RequestTiers: []routing.PricingInterval{
@@ -1133,13 +1045,13 @@ func TestGetRequestTierPriceByContext_ExactBoundary(t *testing.T) {
 	// totalContextTokens = 128000 exactly:
 	// FindMatchingInterval checks: totalTokens > MinTokens && totalTokens <= MaxTokens
 	// For first interval: 128000 > 0 (true) && 128000 <= 128000 (true) → matches first interval
-	price := r.GetRequestTierPriceByContext(resolved, 128000)
+	price := billingpricing.GetRequestTierPriceByContext(resolved, 128000)
 	require.InDelta(t, 0.05, price, 1e-12)
 
 	// totalContextTokens = 128001 should match second interval
 	// For first interval: 128001 > 0 (true) && 128001 <= 128000 (false) → no match
 	// For second interval: 128001 > 128000 (true) && MaxTokens == nil → matches
-	price2 := r.GetRequestTierPriceByContext(resolved, 128001)
+	price2 := billingpricing.GetRequestTierPriceByContext(resolved, 128001)
 	require.InDelta(t, 0.10, price2, 1e-12)
 }
 
@@ -1431,7 +1343,7 @@ func TestApplyTokenOverrides_IntervalSetsImageOutputPriceExplicit(t *testing.T) 
 	require.Equal(t, 0.0, resolved.BasePricing.ImageOutputPricePerToken)
 
 	// 区间定价也应带显式标记
-	pricing := r.GetIntervalPricing(resolved, 50000)
+	pricing := billingpricing.GetIntervalPricing(resolved, 50000)
 	require.True(t, pricing.ImageOutputPriceExplicit)
 	require.Equal(t, 0.0, pricing.ImageOutputPricePerToken)
 }
@@ -1547,14 +1459,14 @@ func TestResolve_ConfigIntervalsOverridePresetRegardlessOfToggle(t *testing.T) {
 	resolved := r.Resolve(context.Background(), billing.PricingInput{Model: "claude-sonnet-4", GroupID: billingtestkit.GroupID()})
 	require.False(t, resolved.LongContextPricingEnabled)
 	require.Len(t, resolved.Intervals, 2)
-	require.InDelta(t, 18e-6, r.GetIntervalPricing(resolved, 300000).InputPricePerToken, 1e-12)
+	require.InDelta(t, 18e-6, billingpricing.GetIntervalPricing(resolved, 300000).InputPricePerToken, 1e-12)
 	require.Equal(t, 200000, resolved.BasePricing.LongContextInputThreshold)
 
 	source.settings.LongContextPricingEnabled = true
 	resolved = r.Resolve(context.Background(), billing.PricingInput{Model: "claude-sonnet-4", GroupID: billingtestkit.GroupID()})
 	require.True(t, resolved.LongContextPricingEnabled)
 	require.Len(t, resolved.Intervals, 2)
-	require.InDelta(t, 18e-6, r.GetIntervalPricing(resolved, 300000).InputPricePerToken, 1e-12)
+	require.InDelta(t, 18e-6, billingpricing.GetIntervalPricing(resolved, 300000).InputPricePerToken, 1e-12)
 	require.Equal(t, 200000, resolved.BasePricing.LongContextInputThreshold)
 	require.InDelta(t, 2.0, resolved.BasePricing.LongContextInputMultiplier, 1e-12)
 }

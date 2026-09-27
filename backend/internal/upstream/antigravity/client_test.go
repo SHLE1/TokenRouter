@@ -13,6 +13,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/TokenFlux/TokenRouter/internal/protocol/google"
 )
 
 const defaultFetchAvailableModelsBodyLimit int64 = 8 << 20
@@ -51,8 +53,8 @@ func TestNewAPIRequestWithURL_普通请求(t *testing.T) {
 	if auth := req.Header.Get("Authorization"); auth != "Bearer test-token" {
 		t.Errorf("Authorization 不匹配: got %s", auth)
 	}
-	if ua := req.Header.Get("User-Agent"); ua != GetUserAgent() {
-		t.Errorf("User-Agent 不匹配: got %s, want %s", ua, GetUserAgent())
+	if ua := req.Header.Get("User-Agent"); ua != GetUserAgentForContext(context.Background()) {
+		t.Errorf("User-Agent 不匹配: got %s, want %s", ua, GetUserAgentForContext(context.Background()))
 	}
 }
 
@@ -266,7 +268,7 @@ func TestTierIDToPlanType(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.tierID, func(t *testing.T) {
-			if got := TierIDToPlanType(tt.tierID); got != tt.want {
+			if got := google.AntigravityTierIDToPlanType(tt.tierID); got != tt.want {
 				t.Errorf("TierIDToPlanType(%q) = %q, want %q", tt.tierID, got, tt.want)
 			}
 		})
@@ -1282,7 +1284,7 @@ func TestClient_LoadCodeAssist_Success_RealCall(t *testing.T) {
 		if ct := r.Header.Get("Content-Type"); ct != "application/json" {
 			t.Errorf("Content-Type 不匹配: got %s", ct)
 		}
-		if ua := r.Header.Get("User-Agent"); ua != GetUserAgent() {
+		if ua := r.Header.Get("User-Agent"); ua != GetUserAgentForContext(context.Background()) {
 			t.Errorf("User-Agent 不匹配: got %s", ua)
 		}
 
@@ -1477,7 +1479,7 @@ func TestClient_FetchAvailableModels_Success_RealCall(t *testing.T) {
 		if ct := r.Header.Get("Content-Type"); ct != "application/json" {
 			t.Errorf("Content-Type 不匹配: got %s", ct)
 		}
-		if ua := r.Header.Get("User-Agent"); ua != GetUserAgent() {
+		if ua := r.Header.Get("User-Agent"); ua != GetUserAgentForContext(context.Background()) {
 			t.Errorf("User-Agent 不匹配: got %s", ua)
 		}
 

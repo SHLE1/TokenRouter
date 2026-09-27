@@ -9,7 +9,7 @@ import (
 )
 
 func TestResponsesInputToChatMessages_DeveloperRoleMapsToSystem(t *testing.T) {
-	messages, err := responsesInputToChatMessages("", json.RawMessage(`[{"role":"developer","content":"follow project instructions"}]`))
+	messages, err := responsesInputToChatMessagesWithOptions("", json.RawMessage(`[{"role":"developer","content":"follow project instructions"}]`), nil)
 	require.NoError(t, err)
 	require.Len(t, messages, 1)
 
@@ -26,7 +26,7 @@ func TestResponsesInputToChatMessages_SkipsInvalidHistoricalFunctionCall(t *test
 		{"role":"user","content":"continue"}
 	]`)
 
-	messages, err := responsesInputToChatMessages("", input)
+	messages, err := responsesInputToChatMessagesWithOptions("", input, nil)
 	require.NoError(t, err)
 	require.Len(t, messages, 3)
 	require.Equal(t, "assistant", messages[0].Role)
@@ -44,7 +44,7 @@ func TestResponsesInputToChatMessages_SkipsInvalidEmptyCallIDOutput(t *testing.T
 		{"role":"user","content":"continue"}
 	]`)
 
-	messages, err := responsesInputToChatMessages("", input)
+	messages, err := responsesInputToChatMessagesWithOptions("", input, nil)
 	require.NoError(t, err)
 	require.Len(t, messages, 1)
 	require.Equal(t, "user", messages[0].Role)
@@ -81,7 +81,7 @@ func TestResponsesInputToChatMessages_KeepsChatCompletionRoles(t *testing.T) {
 		{"role":"tool","content":"tool message"}
 	]`)
 
-	messages, err := responsesInputToChatMessages("", input)
+	messages, err := responsesInputToChatMessagesWithOptions("", input, nil)
 	require.NoError(t, err)
 	require.Len(t, messages, 4)
 
@@ -89,7 +89,7 @@ func TestResponsesInputToChatMessages_KeepsChatCompletionRoles(t *testing.T) {
 }
 
 func TestResponsesInputToChatMessages_EmptyRoleFallsBackToUser(t *testing.T) {
-	messages, err := responsesInputToChatMessages("", json.RawMessage(`[{"role":"","content":"hello"}]`))
+	messages, err := responsesInputToChatMessagesWithOptions("", json.RawMessage(`[{"role":"","content":"hello"}]`), nil)
 	require.NoError(t, err)
 	require.Len(t, messages, 1)
 
@@ -102,7 +102,7 @@ func TestResponsesInputToChatMessages_DeveloperRoleTrimAndCaseInsensitive(t *tes
 		{"role":"\tDEVELOPER\n","content":"two"}
 	]`)
 
-	messages, err := responsesInputToChatMessages("", input)
+	messages, err := responsesInputToChatMessagesWithOptions("", input, nil)
 	require.NoError(t, err)
 	require.Len(t, messages, 2)
 
@@ -119,7 +119,7 @@ func TestResponsesToChatCompletionsRequest_InstructionsAndInputDeveloperRole(t *
 		]`),
 	}
 
-	out, err := ResponsesToChatCompletionsRequest(req)
+	out, err := ResponsesToChatCompletionsRequestWithOptions(req, nil)
 	require.NoError(t, err)
 	require.Len(t, out.Messages, 3)
 
@@ -140,7 +140,7 @@ func TestResponsesToChatCompletionsRequest_TextFormatJsonObject(t *testing.T) {
 		},
 	}
 
-	out, err := ResponsesToChatCompletionsRequest(req)
+	out, err := ResponsesToChatCompletionsRequestWithOptions(req, nil)
 	require.NoError(t, err)
 	assert.JSONEq(t, `{"type":"json_object"}`, string(out.ResponseFormat))
 }
@@ -166,7 +166,7 @@ func TestResponsesToChatCompletionsRequest_TextFormatJsonSchema(t *testing.T) {
 		},
 	}
 
-	out, err := ResponsesToChatCompletionsRequest(req)
+	out, err := ResponsesToChatCompletionsRequestWithOptions(req, nil)
 	require.NoError(t, err)
 	assert.JSONEq(t, `{
 		"type":"json_schema",
@@ -193,7 +193,7 @@ func TestResponsesToChatCompletionsRequest_ParallelToolCalls(t *testing.T) {
 		ParallelToolCalls: &parallel,
 	}
 
-	out, err := ResponsesToChatCompletionsRequest(req)
+	out, err := ResponsesToChatCompletionsRequestWithOptions(req, nil)
 	require.NoError(t, err)
 	require.NotNil(t, out.ParallelToolCalls)
 	assert.False(t, *out.ParallelToolCalls)

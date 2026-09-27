@@ -176,10 +176,6 @@ func DedupeRepeatedJSONArgumentString(arguments string) (string, bool) {
 	return first, true
 }
 
-func ParseSSEUsage(data string, usage *ForwardUsage) {
-	ParseSSEUsageBytes([]byte(data), usage)
-}
-
 func ParseSSEUsageBytes(data []byte, usage *ForwardUsage) {
 	if usage == nil || len(data) == 0 || bytes.Equal(bytes.TrimSpace(data), []byte("[DONE]")) {
 		return

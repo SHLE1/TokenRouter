@@ -65,16 +65,6 @@ func (e *Executor) ExecuteAdminIdempotentJSON(
 	e.ExecuteAdminIdempotentJSONWithMode(c, scope, payload, ttl, IdempotencyStoreUnavailableFailClose, execute)
 }
 
-func (e *Executor) ExecuteAdminIdempotentJSONFailOpenOnStoreUnavailable(
-	c *gin.Context,
-	scope string,
-	payload any,
-	ttl time.Duration,
-	execute func(context.Context) (any, error),
-) {
-	e.ExecuteAdminIdempotentJSONWithMode(c, scope, payload, ttl, IdempotencyStoreUnavailableFailOpen, execute)
-}
-
 func (e *Executor) ExecuteAdminIdempotentJSONWithMode(
 	c *gin.Context,
 	scope string,

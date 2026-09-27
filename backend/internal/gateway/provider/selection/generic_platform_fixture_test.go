@@ -19,6 +19,6 @@ func (s *Generic) selectProviderForModelWithPlatform(ctx context.Context, groupI
 // 查询原生平台提供商 + 启用 mixed_scheduling 的 antigravity 提供商
 func (s *Generic) selectProviderWithMixedScheduling(ctx context.Context, groupID *int64, sessionHash string, requestedModel string, excludedIDs map[int64]struct{}, nativePlatform string) (*gatewayprovider.ExecutionProvider, error) {
 	core, scope := s.genericSelector()
-	selected, err := core.SelectMixed(ctx, groupID, sessionHash, requestedModel, excludedIDs, nativePlatform)
+	selected, err := core.SelectPlatform(ctx, groupID, sessionHash, requestedModel, excludedIDs, "")
 	return scope.oldProvider(selected), err
 }

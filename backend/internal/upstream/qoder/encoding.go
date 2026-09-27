@@ -58,11 +58,6 @@ func Decode(encoded string) ([]byte, error) {
 	return base64.RawStdEncoding.DecodeString(noPad)
 }
 
-// EncodeString 是字符串输入的便捷封装。
-func EncodeString(plaintext string) string {
-	return Encode([]byte(plaintext))
-}
-
 // DecodeString 解码字符串并以明文字符串返回。
 func DecodeString(encoded string) (string, error) {
 	b, err := Decode(encoded)

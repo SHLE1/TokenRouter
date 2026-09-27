@@ -1028,24 +1028,6 @@ func normalizeUsageBillingSubscriptionRow(row usageBillingSubscriptionRow, now t
 	return row
 }
 
-// normalizeUsageBillingWindow 将存储值投影给 billing 的唯一规则。
-func normalizeUsageBillingWindow(
-	windowStart sql.NullTime,
-	limit sql.NullFloat64,
-	used float64,
-	resetStart time.Time,
-	duration time.Duration,
-	now, startsAt, expiresAt time.Time,
-	hasFiniteOuterLimit bool,
-) (*time.Time, float64) {
-	return billing.NormalizeSettlementWindow(usageBillingNullableTimePtr(windowStart), usageBillingNullableFloat64Ptr(limit), used, resetStart, duration, now, startsAt, expiresAt, hasFiniteOuterLimit)
-}
-
-// hasFiniteUsageBillingLimit 将存储值投影给 billing 的唯一规则。
-func hasFiniteUsageBillingLimit(limit sql.NullFloat64) bool {
-	return billing.PositiveSubscriptionLimit(usageBillingNullableFloat64Ptr(limit))
-}
-
 // windowRemaining 将存储值投影给 billing 的唯一规则。
 func windowRemaining(limit sql.NullFloat64, used float64) *float64 {
 	return billing.RemainingWindowAmount(usageBillingNullableFloat64Ptr(limit), used)
@@ -1098,10 +1080,6 @@ func nullTimePtr(value *time.Time) sql.NullTime {
 		return sql.NullTime{}
 	}
 	return sql.NullTime{Time: *value, Valid: true}
-}
-
-func startOfDay(t time.Time) time.Time {
-	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
 }
 
 // usage billing 必须完整记录本次请求成本，余额不足时扣成负数作为欠费。

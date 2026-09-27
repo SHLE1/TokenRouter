@@ -26,7 +26,6 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 
-	openaiprotocol "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 	"github.com/gin-gonic/gin"
 )
 
@@ -114,26 +113,6 @@ func (s *OpenAIImagesExecutor) handleOpenAIImagesErrorResponse(
 
 func openAIImagesStreamPrefix(parsed *gatewaymedia.ImageRequest) string {
 	return openai.OpenAIImagesStreamPrefix(gatewaymedia.NativeImageRequest(parsed))
-}
-
-func (s *OpenAIImagesExecutor) handleOpenAIImagesOAuthNonStreamingResponse(
-	resp *http.Response,
-	c *gin.Context,
-	responseFormat string,
-	fallbackModel string,
-) (openaiprotocol.ForwardUsage, int, []string, error) {
-	return openai.ReadImagesOAuthNonStreaming(resp, ResponseSink{Writer: c.Writer}, s.Output.ImageOptions(c), responseFormat, fallbackModel)
-}
-
-func (s *OpenAIImagesExecutor) handleOpenAIImagesOAuthStreamingResponse(
-	resp *http.Response,
-	c *gin.Context,
-	startTime time.Time,
-	responseFormat string,
-	streamPrefix string,
-	fallbackModel string,
-) (openaiprotocol.ForwardUsage, int, []string, *int, error) {
-	return openai.ReadImagesOAuthStreaming(resp, upstream.NewOutputContext(ResponseSink{Writer: c.Writer}), s.Output.ImageOptions(c), startTime, responseFormat, streamPrefix, fallbackModel)
 }
 
 func (s *OpenAIImagesExecutor) forwardOpenAIImagesOAuth(

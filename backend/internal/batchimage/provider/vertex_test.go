@@ -12,12 +12,15 @@ import (
 	"testing"
 	"time"
 
-	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
+	"github.com/TokenFlux/TokenRouter/internal/upstream/vertex"
 
 	"github.com/TokenFlux/TokenRouter/internal/batchimage"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
+
 	batchimageprovider "github.com/TokenFlux/TokenRouter/internal/batchimage/provider"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
+
 	testassert "github.com/TokenFlux/TokenRouter/internal/testutil/assertion"
 	"github.com/stretchr/testify/require"
 )
@@ -112,11 +115,11 @@ func TestNormalizeVertexBatchModelPath(t *testing.T) {
 }
 
 func TestBuildVertexBatchPredictionJobsEndpoint(t *testing.T) {
-	global, err := batchimageprovider.BuildVertexBatchPredictionJobsEndpoint("", "my-project", "global")
+	global, err := vertex.BuildVertexBatchPredictionJobsEndpoint("", "my-project", "global")
 	require.NoError(t, err)
 	require.Equal(t, "https://aiplatform.googleapis.com/v1/projects/my-project/locations/global/batchPredictionJobs", global)
 
-	regional, err := batchimageprovider.BuildVertexBatchPredictionJobsEndpoint("", "my-project", "asia-northeast1")
+	regional, err := vertex.BuildVertexBatchPredictionJobsEndpoint("", "my-project", "asia-northeast1")
 	require.NoError(t, err)
 	require.Equal(t, "https://asia-northeast1-aiplatform.googleapis.com/v1/projects/my-project/locations/asia-northeast1/batchPredictionJobs", regional)
 }

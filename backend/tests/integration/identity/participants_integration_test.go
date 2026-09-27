@@ -82,7 +82,7 @@ func TestRedeemConcurrencyUsesOuterEntTransaction(t *testing.T) {
 	user, err := tx.Client().User.Create().SetEmail("test-concurrency-" + uuid.NewString() + "@example.com").
 		SetPasswordHash("hash").SetConcurrency(3).SetBalance(10).Save(ctx)
 	require.NoError(t, err)
-	participant := billingpostgres.RedeemInTx(tx, identitypostgres.ConcurrencyInTx(tx))
+	participant := billingpostgres.RedeemInTx(tx, identitypostgres.NewConcurrencyStore(tx.Client()))
 	require.NoError(t, participant.ApplyConcurrency(ctx, user.ID, 7))
 	inside, err := tx.Client().User.Get(ctx, user.ID)
 	require.NoError(t, err)

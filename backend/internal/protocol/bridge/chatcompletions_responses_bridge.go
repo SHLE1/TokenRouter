@@ -25,12 +25,6 @@ type ResponsesToChatOptions struct {
 	ReasoningContentByID func(itemID string) string
 }
 
-// ResponsesToChatCompletionsRequest 将 Responses API 请求转换为 Chat Completions 请求，
-// 供只实现 `/v1/chat/completions` 的上游使用。
-func ResponsesToChatCompletionsRequest(req *ResponsesRequest) (*ChatCompletionsRequest, error) {
-	return ResponsesToChatCompletionsRequestWithOptions(req, nil)
-}
-
 // ResponsesToChatCompletionsRequestWithOptions 在默认转换上增加可选的 reasoning 回查。
 func ResponsesToChatCompletionsRequestWithOptions(req *ResponsesRequest, opts *ResponsesToChatOptions) (*ChatCompletionsRequest, error) {
 	if req == nil {
@@ -273,20 +267,6 @@ func HasToolSearchTool(tools []ResponsesTool) bool {
 		}
 	}
 	return false
-}
-
-// responsesInputToChatMessages 将 Responses 请求里的 instructions 和 input[]
-// 转成 Chat Completions messages，并分成三段处理：
-//
-//	parse     —— instructions 转 system message，input[] 拆成逐项输入
-//	build     —— buildChatMessagesFromItems 挂载 reasoning、合并并行工具调用，
-//	             并跳过没有 Chat 等价物的 Responses item
-//	normalize —— normalizeChatMessages 统一收口 DeepSeek 需要的消息不变量
-//
-// build + normalize 的拆分把协议规则集中在少数入口里，避免未来 Codex 新增
-// item type 时被泛化路径误传给上游。
-func responsesInputToChatMessages(instructions string, inputRaw json.RawMessage) ([]ChatMessage, error) {
-	return responsesInputToChatMessagesWithOptions(instructions, inputRaw, nil)
 }
 
 func responsesInputToChatMessagesWithOptions(instructions string, inputRaw json.RawMessage, opts *ResponsesToChatOptions) ([]ChatMessage, error) {

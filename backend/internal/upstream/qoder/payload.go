@@ -51,10 +51,6 @@ type QoderPayloadRequest struct {
 	PreviousResponseID string
 }
 
-func BuildQoderPayloadFromChatCompletions(body []byte, userType string) (map[string]any, string, error) {
-	return BuildQoderPayloadFromChatCompletionsForSite(body, userType, SiteGlobal)
-}
-
 // BuildQoderPayloadFromChatCompletionsForSite 按提供商站点解析默认模型 alias。
 func BuildQoderPayloadFromChatCompletionsForSite(body []byte, userType string, site Site) (map[string]any, string, error) {
 	request, err := ParseQoderChatCompletionsPayload(body)

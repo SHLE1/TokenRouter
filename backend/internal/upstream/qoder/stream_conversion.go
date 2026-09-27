@@ -161,10 +161,6 @@ func QoderToolArgumentsString(raw any) string {
 	}
 }
 
-func ReadQoderSSEEvents(resp *http.Response) ([]SSEEvent, error) {
-	return ReadQoderSSEEventsContext(context.Background(), resp, nil)
-}
-
 func ReadQoderSSEEventsContext(ctx context.Context, resp *http.Response, keepalive func() error) ([]SSEEvent, error) {
 	if resp == nil || resp.Body == nil {
 		return nil, errors.New("qoder response body is nil")
@@ -2435,10 +2431,6 @@ func OpenAIUsageChunk(id, model string, usage upstream.TokenUsage, totalTokens i
 		"choices": []any{},
 		"usage":   QoderOpenAIUsage(usage, totalTokens, usageDetails...),
 	}
-}
-
-func ResolveQoderModel(model string) QoderModelInfo {
-	return ResolveQoderModelForSite(SiteGlobal, model)
 }
 
 func ResolveQoderModelForSite(site Site, model string) QoderModelInfo {

@@ -85,9 +85,6 @@ func NewCNUsageMonitor(store CNMonitorStore, queries CNMonitorQueries, options C
 	return &CNUsageMonitor{providerRepo: store, usageService: queries, options: options, interval: options.Interval, probeTimeout: options.ProbeTimeout, roundTimeout: options.RoundTimeout, concurrency: options.Concurrency}
 }
 
-// Start 保留首次等待整周期；构造、禁用和停止后的再次启动均不产生后台任务。
-func (s *CNUsageMonitor) Start() { _ = s.StartContext(context.Background()) }
-
 func (s *CNUsageMonitor) StartContext(parent context.Context) error {
 	if s == nil || s.providerRepo == nil || s.usageService == nil || !s.options.Enabled {
 		return nil

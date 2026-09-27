@@ -522,10 +522,10 @@ func TestQoderOAuthServiceConcurrentCompletionReusesSingleResult(t *testing.T) {
 func TestQoderOAuthServiceWarningsDoNotPersistRawUpstreamErrors(t *testing.T) {
 	rawErr := errors.New(`upstream 500 {"access_token":"secret-token","email":"user@example.com","provider_id":"aid-123"}`)
 
-	tokenInfo := qoder.BuildAuthorizationTokenInfo(&qoder.AuthIdentity{
+	tokenInfo := qoder.BuildAuthorizationTokenInfoForSite(&qoder.AuthIdentity{
 		SecurityOauthToken: "security-token",
 		UID:                "user-1",
-	}, &qoder.MachineIdentity{MachineID: "machine-1"}, rawErr, rawErr)
+	}, &qoder.MachineIdentity{MachineID: "machine-1"}, qoder.SiteGlobal, qoder.RefreshModeCosy, time.Time{}, rawErr, rawErr)
 	body, err := json.Marshal(tokenInfo.Extra)
 	require.NoError(t, err)
 

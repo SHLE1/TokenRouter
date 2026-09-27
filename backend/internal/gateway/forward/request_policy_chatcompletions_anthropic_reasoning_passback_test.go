@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/TokenFlux/TokenRouter/internal/protocol/bridge"
+
 	protocolanthropic "github.com/TokenFlux/TokenRouter/internal/protocol/anthropic"
-	protocolbridge "github.com/TokenFlux/TokenRouter/internal/protocol/bridge"
 	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 	"github.com/stretchr/testify/require"
 )
@@ -69,7 +70,7 @@ func TestAnthropicChatBridge_MatchesResponsesChatBridgeReasoningPlacement(t *tes
 			{"type":"function_call_output","call_id":"call_1","output":"sunny"}
 		]`),
 	}
-	viaResponses, err := protocolbridge.ResponsesToChatCompletionsRequest(responsesReq)
+	viaResponses, err := bridge.ResponsesToChatCompletionsRequestWithOptions(responsesReq, nil)
 	require.NoError(t, err)
 
 	viaAnthropic, err := AnthropicToChatCompletionsRequest(anthropicAssistantMsg(t, `[

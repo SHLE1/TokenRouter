@@ -256,10 +256,6 @@ func resolveTLSFingerprintTransportProfile(profile *tlsfingerprint.Profile, prot
 	return profile
 }
 
-func (s *Client) isOpenAIHTTP2FallbackActive(proxyKey string) bool {
-	return s.transportPolicy.Active(proxyKey, time.Now())
-}
-
 func isOpenAIHTTP2CompatibilityError(err error) bool {
 	if err == nil {
 		return false

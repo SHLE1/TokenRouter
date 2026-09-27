@@ -2,7 +2,6 @@ package httpapi
 
 import (
 	"context"
-	"sync"
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
@@ -56,7 +55,6 @@ type OpenAIWSDependencies struct {
 type OpenAIWebSocketExecutor struct {
 	OpenAIWSDependencies
 	openaiWSSessionPreemptions openAIWSSessionPreemptRegistry
-	openaiWSFallbackUntil      sync.Map
 	openaiWSRetryMetrics       openAIWSRetryMetrics
 }
 

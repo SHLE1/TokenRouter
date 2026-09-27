@@ -23,27 +23,32 @@ type storeUnavailableRepoStub struct{}
 func (storeUnavailableRepoStub) CreateProcessing(context.Context, *idempotency.IdempotencyRecord) (bool, error) {
 	return false, errors.New("store unavailable")
 }
+
 func (storeUnavailableRepoStub) GetByScopeAndKeyHash(context.Context, string, string) (*idempotency.IdempotencyRecord, error) {
 	return nil, errors.New("store unavailable")
 }
+
 func (storeUnavailableRepoStub) TryReclaim(context.Context, int64, string, time.Time, time.Time, time.Time) (bool, error) {
 	return false, errors.New("store unavailable")
 }
+
 func (storeUnavailableRepoStub) ExtendProcessingLock(context.Context, int64, string, time.Time, time.Time) (bool, error) {
 	return false, errors.New("store unavailable")
 }
+
 func (storeUnavailableRepoStub) MarkSucceeded(context.Context, int64, int, string, time.Time) error {
 	return errors.New("store unavailable")
 }
+
 func (storeUnavailableRepoStub) MarkFailedRetryable(context.Context, int64, string, time.Time, time.Time) error {
 	return errors.New("store unavailable")
 }
+
 func (storeUnavailableRepoStub) DeleteExpired(context.Context, time.Time, int) (int64, error) {
 	return 0, errors.New("store unavailable")
 }
 
 func TestExecuteAdminIdempotentJSONFailCloseOnStoreUnavailable(t *testing.T) {
-
 	executor := Executor{coordinator: idempotency.NewIdempotencyCoordinator(storeUnavailableRepoStub{}, idempotency.DefaultIdempotencyConfig())}
 
 	var executed int
@@ -66,13 +71,12 @@ func TestExecuteAdminIdempotentJSONFailCloseOnStoreUnavailable(t *testing.T) {
 }
 
 func TestExecuteAdminIdempotentJSONFailOpenOnStoreUnavailable(t *testing.T) {
-
 	executor := Executor{coordinator: idempotency.NewIdempotencyCoordinator(storeUnavailableRepoStub{}, idempotency.DefaultIdempotencyConfig())}
 
 	var executed int
 	router := gin.New()
 	router.POST("/idempotent", func(c *gin.Context) {
-		executor.ExecuteAdminIdempotentJSONFailOpenOnStoreUnavailable(c, "admin.test.medium", map[string]any{"a": 1}, time.Minute, func(ctx context.Context) (any, error) {
+		executor.ExecuteAdminIdempotentJSONWithMode(c, "admin.test.medium", map[string]any{"a": 1}, time.Minute, IdempotencyStoreUnavailableFailOpen, func(ctx context.Context) (any, error) {
 			executed++
 			return gin.H{"ok": true}, nil
 		})
@@ -90,7 +94,6 @@ func TestExecuteAdminIdempotentJSONFailOpenOnStoreUnavailable(t *testing.T) {
 }
 
 func TestExecuteAdminIdempotentJSONConcurrentRetryOnlyOneSideEffect(t *testing.T) {
-
 	repo := idempotencytest.NewMemoryStore()
 	cfg := idempotency.DefaultIdempotencyConfig()
 	cfg.ProcessingTimeout = 2 * time.Second

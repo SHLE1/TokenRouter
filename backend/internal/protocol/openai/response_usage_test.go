@@ -167,30 +167,30 @@ func TestParseSSEUsage_SelectiveParsing(t *testing.T) {
 	usage := &protocolopenai.ForwardUsage{InputTokens: 9, OutputTokens: 8, CacheReadInputTokens: 7}
 
 	// 非终态事件中的显式 usage 作为兼容 fallback，非零字段会被合并。
-	protocolopenai.ParseSSEUsage(`{"type":"response.in_progress","response":{"usage":{"input_tokens":1,"output_tokens":2}}}`, usage)
+	protocolopenai.ParseSSEUsageBytes([]byte(`{"type":"response.in_progress","response":{"usage":{"input_tokens":1,"output_tokens":2}}}`), usage)
 	require.Equal(t, 1, usage.InputTokens)
 	require.Equal(t, 2, usage.OutputTokens)
 	require.Equal(t, 7, usage.CacheReadInputTokens)
 
 	// completed 事件，应提取 usage
-	protocolopenai.ParseSSEUsage(`{"type":"response.completed","response":{"usage":{"input_tokens":3,"output_tokens":5,"input_tokens_details":{"cached_tokens":2}}}}`, usage)
+	protocolopenai.ParseSSEUsageBytes([]byte(`{"type":"response.completed","response":{"usage":{"input_tokens":3,"output_tokens":5,"input_tokens_details":{"cached_tokens":2}}}}`), usage)
 	require.Equal(t, 3, usage.InputTokens)
 	require.Equal(t, 5, usage.OutputTokens)
 	require.Equal(t, 2, usage.CacheReadInputTokens)
 
 	// done 事件同样可能携带最终 usage
-	protocolopenai.ParseSSEUsage(`{"type":"response.done","response":{"usage":{"input_tokens":13,"output_tokens":15,"input_tokens_details":{"cached_tokens":4}}}}`, usage)
+	protocolopenai.ParseSSEUsageBytes([]byte(`{"type":"response.done","response":{"usage":{"input_tokens":13,"output_tokens":15,"input_tokens_details":{"cached_tokens":4}}}}`), usage)
 	require.Equal(t, 13, usage.InputTokens)
 	require.Equal(t, 15, usage.OutputTokens)
 	require.Equal(t, 4, usage.CacheReadInputTokens)
 
 	// failed 事件在部分上游路径也会携带已消耗 usage，应与 WS/passthrough 保持一致
-	protocolopenai.ParseSSEUsage(`{"type":"response.failed","response":{"usage":{"input_tokens":17,"output_tokens":19,"input_tokens_details":{"cached_tokens":6}}}}`, usage)
+	protocolopenai.ParseSSEUsageBytes([]byte(`{"type":"response.failed","response":{"usage":{"input_tokens":17,"output_tokens":19,"input_tokens_details":{"cached_tokens":6}}}}`), usage)
 	require.Equal(t, 17, usage.InputTokens)
 	require.Equal(t, 19, usage.OutputTokens)
 	require.Equal(t, 6, usage.CacheReadInputTokens)
 
-	protocolopenai.ParseSSEUsage(`{"type":"response.completed","response":{"usage":{"prompt_tokens":21,"completion_tokens":8,"prompt_tokens_details":{"cached_tokens":6}}}}`, usage)
+	protocolopenai.ParseSSEUsageBytes([]byte(`{"type":"response.completed","response":{"usage":{"prompt_tokens":21,"completion_tokens":8,"prompt_tokens_details":{"cached_tokens":6}}}}`), usage)
 	require.Equal(t, 21, usage.InputTokens)
 	require.Equal(t, 8, usage.OutputTokens)
 	require.Equal(t, 6, usage.CacheReadInputTokens)
@@ -199,8 +199,8 @@ func TestParseSSEUsage_SelectiveParsing(t *testing.T) {
 func TestParseSSEUsage_NonTerminalUsageMergesNonZeroFields(t *testing.T) {
 	usage := &protocolopenai.ForwardUsage{}
 
-	protocolopenai.ParseSSEUsage(`{"type":"response.in_progress","usage":{"input_tokens":17,"output_tokens":1,"input_tokens_details":{"cached_tokens":4}}}`, usage)
-	protocolopenai.ParseSSEUsage(`{"type":"response.output_text.done","usage":{"input_tokens":0,"output_tokens":5,"input_tokens_details":{"cached_tokens":0,"cache_write_tokens":3}}}`, usage)
+	protocolopenai.ParseSSEUsageBytes([]byte(`{"type":"response.in_progress","usage":{"input_tokens":17,"output_tokens":1,"input_tokens_details":{"cached_tokens":4}}}`), usage)
+	protocolopenai.ParseSSEUsageBytes([]byte(`{"type":"response.output_text.done","usage":{"input_tokens":0,"output_tokens":5,"input_tokens_details":{"cached_tokens":0,"cache_write_tokens":3}}}`), usage)
 
 	require.Equal(t, 17, usage.InputTokens)
 	require.Equal(t, 5, usage.OutputTokens)
@@ -211,8 +211,8 @@ func TestParseSSEUsage_NonTerminalUsageMergesNonZeroFields(t *testing.T) {
 func TestParseSSEUsage_TerminalUsageReplacesFallback(t *testing.T) {
 	usage := &protocolopenai.ForwardUsage{}
 
-	protocolopenai.ParseSSEUsage(`{"type":"response.output_text.done","usage":{"input_tokens":17,"output_tokens":5,"input_tokens_details":{"cached_tokens":4}}}`, usage)
-	protocolopenai.ParseSSEUsage(`{"type":"response.completed","response":{"usage":{"input_tokens":19,"output_tokens":7}}}`, usage)
+	protocolopenai.ParseSSEUsageBytes([]byte(`{"type":"response.output_text.done","usage":{"input_tokens":17,"output_tokens":5,"input_tokens_details":{"cached_tokens":4}}}`), usage)
+	protocolopenai.ParseSSEUsageBytes([]byte(`{"type":"response.completed","response":{"usage":{"input_tokens":19,"output_tokens":7}}}`), usage)
 
 	require.Equal(t, 19, usage.InputTokens)
 	require.Equal(t, 7, usage.OutputTokens)
@@ -222,9 +222,9 @@ func TestParseSSEUsage_TerminalUsageReplacesFallback(t *testing.T) {
 func TestParseSSEUsage_TerminalWithoutUsageKeepsFallback(t *testing.T) {
 	usage := &protocolopenai.ForwardUsage{}
 
-	protocolopenai.ParseSSEUsage(`{"type":"response.in_progress","usage":{"input_tokens":17,"output_tokens":5}}`, usage)
-	protocolopenai.ParseSSEUsage(`{"type":"response.completed","response":{"id":"resp_1"}}`, usage)
-	protocolopenai.ParseSSEUsage("  [DONE]\n", usage)
+	protocolopenai.ParseSSEUsageBytes([]byte(`{"type":"response.in_progress","usage":{"input_tokens":17,"output_tokens":5}}`), usage)
+	protocolopenai.ParseSSEUsageBytes([]byte(`{"type":"response.completed","response":{"id":"resp_1"}}`), usage)
+	protocolopenai.ParseSSEUsageBytes([]byte("  [DONE]\n"), usage)
 
 	require.Equal(t, 17, usage.InputTokens)
 	require.Equal(t, 5, usage.OutputTokens)

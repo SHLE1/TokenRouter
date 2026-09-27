@@ -185,14 +185,9 @@ func TestFreeFastIntervalOnlyDisplayMatchesStandard(t *testing.T) {
 						RateMultiplier: 0.5,
 					}
 					rCalculator := billingtestkit.ResolverCalculator()
-					r := billingtestkit.ResolverWithCards(t, rCalculator, nil)
-					if source == "channel" {
-						rCalculator = billingtestkit.ResolverCalculator()
-						r = billingtestkit.ResolverWithCards(t, rCalculator, []routing.ModelPricingEntry{card})
-					}
 					settings := purepricing.DefaultBillingSettings()
 					settings.FreeOpenAIFast = free
-					r = billingtestkit.SharedPriceResolver(rCalculator, group.ID, settings, []routing.ModelPricingEntry{card})
+					r := billingtestkit.SharedPriceResolver(rCalculator, group.ID, settings, []routing.ModelPricingEntry{card})
 					svc := newPricingMarketplaceFixture(nil, nil, r, rCalculator, nil, nil, nil)
 					display := svc.PublicModelPricing(context.Background(), group, "custom-priced")
 					require.Equal(t, "priced", display.PriceStatus)
@@ -312,9 +307,7 @@ func TestModifierCardsPreserveBuiltinPricingPolicy(t *testing.T) {
 		t.Run(scope, func(t *testing.T) {
 			bs := newCalculator(nil, nil)
 			group := &routing.Group{ID: 100}
-			var pricingConfigCards []routing.ModelPricingEntry
-
-			pricingConfigCards = []routing.ModelPricingEntry{card}
+			pricingConfigCards := []routing.ModelPricingEntry{card}
 
 			r := billingtestkit.ResolverWithCards(t, bs, pricingConfigCards)
 			for _, hour := range []int{0, 1, 3, 4} {

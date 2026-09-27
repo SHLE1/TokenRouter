@@ -189,6 +189,6 @@ func newDeferredActivityRecorder(t *testing.T) (*providercore.DeferredService, *
 	wheel := timingwheel.New()
 	repo := &deferredActivityRepository{}
 	svc := providercore.NewDeferredService(repo, wheel, providercore.DeferredOptions{Interval: time.Second, Now: time.Now, Observe: log.Printf})
-	t.Cleanup(func() { require.NoError(t, svc.Stop()) })
+	t.Cleanup(func() { require.NoError(t, svc.StopContext(context.Background())) })
 	return svc, &repo.updates
 }

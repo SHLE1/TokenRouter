@@ -321,7 +321,3 @@ func (s *GenericSelector) SelectPlatform(ctx context.Context, groupID *int64, se
 
 	return selected, nil
 }
-
-func (s *GenericSelector) SelectMixed(ctx context.Context, groupID *int64, sessionHash string, requestedModel string, excludedIDs map[int64]struct{}, nativePlatform string) (*FlowProvider, error) {
-	return s.SelectPlatform(ctx, groupID, sessionHash, requestedModel, excludedIDs, "")
-}

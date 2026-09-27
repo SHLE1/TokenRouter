@@ -8,11 +8,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/TokenFlux/TokenRouter/internal/upstream"
+
 	gatewaytestkit "github.com/TokenFlux/TokenRouter/internal/gateway/testkit"
 
+	"github.com/TokenFlux/TokenRouter/internal/gateway"
 	responseupstream "github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 
-	"github.com/TokenFlux/TokenRouter/internal/gateway"
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
@@ -100,7 +102,7 @@ func TestOpenAINativeMetadataDoesNotDisarmFirstOutputTimeout(t *testing.T) {
 	resp := &http.Response{StatusCode: http.StatusOK, Header: http.Header{}, Body: reader}
 	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Name: "provider_test", Platform: capability.PlatformOpenAI}}
 
-	_, err := svc.Output.Stream(context.Background(), resp, c, provider, time.Now(), "test-model", "test-model", "")
+	_, err := svc.Output.ReadStreamObservation(context.Background(), resp, c, provider, time.Now(), "test-model", "test-model", "")
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)
 	require.True(t, failoverErr.SafeToFailoverAfterWrite)
@@ -139,12 +141,12 @@ func runSyntheticVisibleTTFTStream(t *testing.T, passthrough bool, visibleDelay 
 	var err error
 	if passthrough {
 		var passthroughResult *responseupstream.StreamingResult
-		passthroughResult, err = svc.Output.PassthroughStream(context.Background(), resp, c, provider, started, "test-model", "test-model")
+		passthroughResult, err = responseupstream.ReadPassthroughStreaming(context.Background(), resp, upstream.NewOutputContext(ResponseSink{Writer: c.Writer}), svc.Output.PassthroughOptions(context.Background(), c, provider), started, "test-model", "test-model")
 		if passthroughResult != nil {
 			result = &responseupstream.StreamingResult{FirstTokenMs: passthroughResult.FirstTokenMs}
 		}
 	} else {
-		result, err = svc.Output.Stream(context.Background(), resp, c, provider, started, "test-model", "test-model", "")
+		result, err = svc.Output.ReadStreamObservation(context.Background(), resp, c, provider, started, "test-model", "test-model", "")
 	}
 	require.NoError(t, err)
 	require.NotNil(t, result)

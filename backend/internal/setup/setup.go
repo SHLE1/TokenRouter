@@ -98,20 +98,9 @@ type JWTConfig struct {
 }
 
 const (
-	adminBootstrapReasonEmptyDatabase          = "empty_database"
 	adminBootstrapReasonAdminExists            = "admin_exists"
 	adminBootstrapReasonUsersExistWithoutAdmin = "users_exist_without_admin"
 )
-
-type adminBootstrapDecision struct {
-	shouldCreate bool
-	reason       string
-}
-
-func decideAdminBootstrap(totalUsers, adminUsers int64) adminBootstrapDecision {
-	create, reason := identity.DecideAdminBootstrap(totalUsers, adminUsers)
-	return adminBootstrapDecision{shouldCreate: create, reason: reason}
-}
 
 // skipSetupEnabled 解析显式跳过首次安装向导的环境开关。
 func skipSetupEnabled() bool {
@@ -142,10 +131,6 @@ func NeedsSetup() bool {
 	}
 
 	return true
-}
-
-func buildDatabaseConnectionDSNs(cfg *DatabaseConfig) (bootstrapDSN, targetDSN string) {
-	return bootstrap.BuildDatabaseConnectionDSNs(cfg)
 }
 
 func TestDatabaseConnection(cfg *DatabaseConfig) error {

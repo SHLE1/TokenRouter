@@ -893,7 +893,7 @@ func TestOpenAIImagesOAuthBodyReadTransportErrorFailover(t *testing.T) {
 	provider := &gatewayprovider.ExecutionProvider{Record: providerimages.Record{LoadLocation: time.LoadLocation, ID: 5400, Name: "openai-oauth", Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}}
 	svc := newImagesFixture(imagesFixtureInputs{})
 
-	_, _, _, readErr := svc.handleOpenAIImagesOAuthNonStreamingResponse(resp, c, "b64_json", "gpt-image-2")
+	_, _, _, readErr := upstreamopenai.ReadImagesOAuthNonStreaming(resp, ResponseSink{Writer: c.Writer}, svc.Output.ImageOptions(c), "b64_json", "gpt-image-2")
 	require.Error(t, readErr)
 	err := svc.handleOpenAIImagesOAuthResponseError(context.Background(), c, provider, "gpt-image-2", "https://api.openai.com/v1/responses", resp, OpenAIImagesJSONKeepaliveAdjustedWrittenSize(c), readErr)
 

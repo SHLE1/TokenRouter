@@ -208,7 +208,7 @@ func TestQoderHTTPStorageChain(t *testing.T) {
 			profile := qoder.MustProfileForSite(qoder.SiteGlobal)
 			profile.GatewayBaseURL = provider.URL
 			client := qoder.NewClientForProfile(profile)
-			session, err := qoder.NewSession(&qoder.AuthIdentity{UID: "fixture", SecurityOauthToken: "fixture"}, qoder.NewMachine())
+			session, err := qoder.NewSessionForSite(&qoder.AuthIdentity{UID: "fixture", SecurityOauthToken: "fixture"}, qoder.NewMachine(), qoder.SiteGlobal)
 			require.NoError(t, err)
 			options := qoder.ExecuteOptions{}
 			if tc.timeout {

@@ -201,7 +201,7 @@ func TestHandleOpenAIUpstreamTransportError_RecordsOllamaActivityOnly(t *testing
 	_ = svc.Failure.Handle(context.Background(), c, ollama, errors.New("connection reset"), false)
 	_ = svc.Failure.Handle(context.Background(), c, other, errors.New("connection reset"), false)
 
-	require.NoError(t, deferred.Stop())
+	require.NoError(t, deferred.StopContext(context.Background()))
 	_, ok := activity.Load(int64(501))
 	require.True(t, ok, "Ollama Cloud transport error must schedule last_used activity")
 	_, ok = activity.Load(int64(502))
@@ -223,7 +223,7 @@ func TestHandleOpenAIUpstreamTransportError_ContextCanceledSkipsOllamaActivity(t
 	err := svc.Failure.Handle(context.Background(), c, ollama, context.Canceled, false)
 
 	require.ErrorIs(t, err, context.Canceled)
-	require.NoError(t, deferred.Stop())
+	require.NoError(t, deferred.StopContext(context.Background()))
 	_, ok := activity.Load(int64(503))
 	require.False(t, ok, "context.Canceled is client disconnect before a fault; do not count as Ollama activity")
 }
@@ -248,7 +248,7 @@ func TestHandleOpenAIProviderUpstreamError_RecordsOllamaActivityOnly(t *testing.
 	_ = gatewayprovider.ApplyOpenAIResponseHealth(context.Background(), svc.Output.Health, ollama, http.StatusTooManyRequests, http.Header{}, []byte(`{"error":{"message":"rate"}}`), false, "gpt-test").StopScheduling
 	_ = gatewayprovider.ApplyOpenAIResponseHealth(context.Background(), svc.Output.Health, other, http.StatusTooManyRequests, http.Header{}, []byte(`{"error":{"message":"rate"}}`), false, "gpt-test").StopScheduling
 
-	require.NoError(t, deferred.Stop())
+	require.NoError(t, deferred.StopContext(context.Background()))
 	_, ok := activity.Load(int64(504))
 	require.True(t, ok, "Ollama Cloud non-2xx must schedule last_used activity")
 	_, ok = activity.Load(int64(505))

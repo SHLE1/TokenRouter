@@ -1420,11 +1420,6 @@ func (p *WSConnPool) getOrCreateProviderPool(providerID int64) *openAIWSProvider
 	return ap
 }
 
-// ensureProviderPoolLocked 兼容旧调用。
-func (p *WSConnPool) ensureProviderPoolLocked(providerID int64) *openAIWSProviderPool {
-	return p.getOrCreateProviderPool(providerID)
-}
-
 func (p *WSConnPool) getProviderPool(providerID int64) (*openAIWSProviderPool, bool) {
 	if p == nil || providerID <= 0 {
 		return nil, false
@@ -1641,21 +1636,6 @@ func providerPoolLoadLocked(ap *openAIWSProviderPool) (inflight int, waiters int
 		waiters += int(conn.waiters.Load())
 	}
 	return inflight, waiters
-}
-
-// ProviderPoolLoad 返回指定提供商连接池的并发与排队快照。
-func (p *WSConnPool) ProviderPoolLoad(providerID int64) (inflight int, waiters int, conns int) {
-	if p == nil || providerID <= 0 {
-		return 0, 0, 0
-	}
-	ap, ok := p.getProviderPool(providerID)
-	if !ok || ap == nil {
-		return 0, 0, 0
-	}
-	ap.mu.Lock()
-	defer ap.mu.Unlock()
-	inflight, waiters = providerPoolLoadLocked(ap)
-	return inflight, waiters, len(ap.conns)
 }
 
 func (p *WSConnPool) ensureTargetIdleAsync(providerID int64) {
@@ -1996,14 +1976,6 @@ func (p *WSConnPool) shouldHealthCheckConn(conn *WSConn) bool {
 
 func (p *WSConnPool) maxConnsHardCap() int { return p.nativeOptions().MaxConnsHardCap() }
 
-func (p *WSConnPool) dynamicMaxConnsEnabled() bool {
-	return p.nativeOptions().DynamicMaxConnsEnabled()
-}
-
-func (p *WSConnPool) maxConnsFactorByProvider(provider *WSPoolProvider) float64 {
-	return p.nativeOptions().MaxConnsFactorByProvider(provider)
-}
-
 func (p *WSConnPool) effectiveMaxConnsByProvider(provider *WSPoolProvider) int {
 	return p.nativeOptions().EffectiveMaxConnsByProvider(provider)
 }
@@ -2222,7 +2194,7 @@ func (p *WSConnPool) SnapshotProviderState(id int64) (WSPoolProviderState, bool)
 	return state, true
 }
 
+const WSConnHealthCheckTimeout = openAIWSConnHealthCheckTO
+
 // EvictConnection 复用原连接淘汰操作，重连与重试仍由调用者决定。
 func (p *WSConnPool) EvictConnection(id int64, connectionID string) { p.evictConn(id, connectionID) }
-
-const WSConnHealthCheckTimeout = openAIWSConnHealthCheckTO

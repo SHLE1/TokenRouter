@@ -133,10 +133,6 @@ func (r *ProviderStore) ListCRSAccountIDs(ctx context.Context) (map[string]int64
 	return result, nil
 }
 
-func (r *ProviderStore) List(ctx context.Context, params pagination.PaginationParams) ([]acctcore.Record, *pagination.PaginationResult, error) {
-	return r.ListWithFilters(ctx, params, "", "", "", "", 0, "")
-}
-
 // ListWithFilters 按分页参数和管理端筛选条件查询提供商。
 func (r *ProviderStore) ListWithFilters(ctx context.Context, params pagination.PaginationParams, platform, providerType, status, search string, groupID int64, privacyMode string) ([]acctcore.Record, *pagination.PaginationResult, error) {
 	q := r.ProviderListFilteredQuery(platform, providerType, status, search, groupID, privacyMode)

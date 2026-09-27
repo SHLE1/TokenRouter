@@ -130,11 +130,6 @@ func FindMatchingInterval(intervals []PricingInterval, totalTokens int) *Pricing
 	return nil
 }
 
-// GetIntervalForContext 根据总 context token 数查找匹配的区间。
-func (p *ModelPricingEntry) GetIntervalForContext(totalTokens int) *PricingInterval {
-	return FindMatchingInterval(p.Intervals, totalTokens)
-}
-
 // GetTierByLabel 根据标签查找层级（用于 per_request / image 模式）
 func (p *ModelPricingEntry) GetTierByLabel(label string) *PricingInterval {
 	labelLower := strings.ToLower(label)

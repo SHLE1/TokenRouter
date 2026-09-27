@@ -341,12 +341,6 @@ func (v *ClaudeCodeValidator) ValidateUserAgent(ua string) bool {
 	return claudeCodeUAPattern.MatchString(ua)
 }
 
-// IncludesClaudeCodeSystemPrompt 检查请求体是否包含 Claude Code 系统提示词
-// 只要存在匹配的系统提示词就返回 true（用于宽松检测）
-func (v *ClaudeCodeValidator) IncludesClaudeCodeSystemPrompt(body map[string]any) bool {
-	return v.hasClaudeCodeSystemPrompt(body)
-}
-
 // ExtractVersion 从 User-Agent 中提取 Claude Code 版本号
 // 返回 "2.1.22" 形式的版本号，如果不匹配返回空字符串
 func (v *ClaudeCodeValidator) ExtractVersion(ua string) string {

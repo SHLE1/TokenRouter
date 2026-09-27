@@ -186,7 +186,7 @@ func TestGrokResponsesBillingPingFilterDoesNotFilterNonGrokProviders(t *testing.
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
 	output := &OpenAIResponseOutput{Options: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}
-	_, err := output.Stream(context.Background(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{Platform: capability.PlatformOpenAI}}, time.Now(), "model", "model", "")
+	_, err := output.ReadStreamObservation(context.Background(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{Platform: capability.PlatformOpenAI}}, time.Now(), "model", "model", "")
 	require.NoError(t, err)
 	require.NoError(t, body.Close())
 	require.Equal(t, input, recorder.Body.String())
@@ -214,7 +214,7 @@ func TestGrokResponsesBillingPingFilterPreservesUsageAndTerminalEvent(t *testing
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
 	svc := &OpenAIResponseOutput{Options: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}, Corrector: openai.NewCodexToolCorrector()}
 
-	result, err := svc.Stream(context.Background(), resp, c, provider, time.Now(), "grok-4.5", "grok-4.5", "")
+	result, err := svc.ReadStreamObservation(context.Background(), resp, c, provider, time.Now(), "grok-4.5", "grok-4.5", "")
 	require.NoError(t, err)
 	require.Equal(t, 3, result.Usage.InputTokens)
 	require.Equal(t, 5, result.Usage.OutputTokens)

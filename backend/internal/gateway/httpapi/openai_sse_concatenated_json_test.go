@@ -11,15 +11,19 @@ import (
 	"testing"
 	"time"
 
-	sessiontestkit "github.com/TokenFlux/TokenRouter/internal/gateway/session/testkit"
+	"github.com/TokenFlux/TokenRouter/internal/upstream"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
+	sessiontestkit "github.com/TokenFlux/TokenRouter/internal/gateway/session/testkit"
+
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/ws"
 	"github.com/TokenFlux/TokenRouter/internal/protocol/openai"
+
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
+
 	openaicore "github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
@@ -306,13 +310,13 @@ func testOpenAIStreamingRepairsConcatenatedJSONDocuments(t *testing.T, passthrou
 	var usage *openai.ForwardUsage
 	var err error
 	if passthrough {
-		result, forwardErr := svc.Output.PassthroughStream(c.Request.Context(), resp, c, provider, time.Now(), "gpt-5.6-sol", "gpt-5.6-sol")
+		result, forwardErr := openaicore.ReadPassthroughStreaming(c.Request.Context(), resp, upstream.NewOutputContext(ResponseSink{Writer: c.Writer}), svc.Output.PassthroughOptions(c.Request.Context(), c, provider), time.Now(), "gpt-5.6-sol", "gpt-5.6-sol")
 		err = forwardErr
 		if result != nil {
 			usage = result.Usage
 		}
 	} else {
-		result, forwardErr := svc.Output.Stream(c.Request.Context(), resp, c, provider, time.Now(), "gpt-5.6-sol", "gpt-5.6-sol", "")
+		result, forwardErr := svc.Output.ReadStreamObservation(c.Request.Context(), resp, c, provider, time.Now(), "gpt-5.6-sol", "gpt-5.6-sol", "")
 		err = forwardErr
 		if result != nil {
 			usage = result.Usage

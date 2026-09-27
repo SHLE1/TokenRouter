@@ -317,7 +317,7 @@ func TestOpenAIWSConnPool_AcquireQueueWaitMetrics(t *testing.T) {
 	conn := NewWSConn("busy", providerID, &openAIWSFakeConn{}, nil, nil, "")
 	require.True(t, conn.tryAcquire()) // 占用连接，触发后续排队
 
-	ap := pool.ensureProviderPoolLocked(providerID)
+	ap := pool.getOrCreateProviderPool(providerID)
 	ap.mu.Lock()
 	ap.conns[conn.id] = conn
 	ap.lastAcquire = &WSAcquireRequest{
@@ -1643,8 +1643,8 @@ func TestOpenAIWSConnPool_UtilityBranches(t *testing.T) {
 	require.NotNil(t, pool.clientDialer)
 
 	require.Equal(t, 8, nilPool.maxConnsHardCap())
-	require.False(t, nilPool.dynamicMaxConnsEnabled())
-	require.Equal(t, 1.0, nilPool.maxConnsFactorByProvider(nil))
+	require.False(t, nilPool.nativeOptions().DynamicMaxConnsEnabled())
+	require.Equal(t, 1.0, nilPool.nativeOptions().MaxConnsFactorByProvider(nil))
 	require.Equal(t, 0, nilPool.minIdlePerProvider())
 	require.Equal(t, 4, nilPool.maxIdlePerProvider())
 	require.Equal(t, 256, nilPool.queueLimitPerConn())

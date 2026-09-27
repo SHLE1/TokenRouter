@@ -729,10 +729,6 @@ func (r *KeyStore) KeyLatestUsageLogIPs(ctx context.Context, apiKeyIDs []int64) 
 	return usagequery.KeyLatestUsageLogIPs(ctx, r.sql, r.client.Driver().Dialect(), apiKeyIDs)
 }
 
-func KeyLatestUsageLogIPsQuery(apiKeyIDs []int64, dialectName string) (string, []any) {
-	return usagequery.KeyLatestUsageLogIPsQuery(apiKeyIDs, dialectName)
-}
-
 func (r *KeyStore) KeyListByUserIDWithUsageSort(ctx context.Context, q *dbent.APIKeyQuery, params pagination.PaginationParams, total int) ([]keycore.APIKey, *pagination.PaginationResult, error) {
 	keys, err := KeyWithAPIKeyCompositeGroups(q.WithGroup()).
 		Order(dbent.Desc(apikey.FieldID)).

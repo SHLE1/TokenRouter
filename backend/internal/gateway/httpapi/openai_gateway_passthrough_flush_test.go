@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/TokenFlux/TokenRouter/internal/upstream"
+
 	responseupstream "github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
@@ -98,15 +100,7 @@ func runPassthroughFlushTest(
 		Header:     http.Header{"Content-Type": []string{"text/event-stream"}},
 		Body:       body,
 	}
-	result, err := output.PassthroughStream(
-		context.Background(),
-		resp,
-		c,
-		&gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "flush-test"}},
-		time.Now(),
-		"",
-		"",
-	)
+	result, err := responseupstream.ReadPassthroughStreaming(context.Background(), resp, upstream.NewOutputContext(ResponseSink{Writer: c.Writer}), output.PassthroughOptions(context.Background(), c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Name: "flush-test"}}), time.Now(), "", "")
 	return result, recorder, writer, err
 }
 

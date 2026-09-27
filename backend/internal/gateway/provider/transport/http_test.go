@@ -757,7 +757,7 @@ func (s *HTTPUpstreamSuite) TestOpenAIHTTP2TimeoutDoesNotActivateProxyFallback()
 	svc := s.newService()
 	proxyURL := "http://proxy.local:8080"
 	svc.recordOpenAIHTTP2Failure(upstreamcore.HTTPUpstreamProfileOpenAI, upstreamProtocolModeOpenAIH2, proxyURL, errors.New("http2: timeout awaiting response headers"))
-	require.False(s.T(), svc.isOpenAIHTTP2FallbackActive(proxyURL), "header timeout should not be treated as H2 compatibility failure")
+	require.False(s.T(), svc.transportPolicy.Active(proxyURL, time.Now()), "header timeout should not be treated as H2 compatibility failure")
 }
 
 func (s *HTTPUpstreamSuite) TestOpenAIHTTP2ProxyCompatibilityErrorActivatesFallback() {
@@ -773,7 +773,7 @@ func (s *HTTPUpstreamSuite) TestOpenAIHTTP2ProxyCompatibilityErrorActivatesFallb
 	svc := s.newService()
 	proxyURL := "http://proxy.local:8080"
 	svc.recordOpenAIHTTP2Failure(upstreamcore.HTTPUpstreamProfileOpenAI, upstreamProtocolModeOpenAIH2, proxyURL, errors.New("http2: protocol error"))
-	require.True(s.T(), svc.isOpenAIHTTP2FallbackActive(proxyURL))
+	require.True(s.T(), svc.transportPolicy.Active(proxyURL, time.Now()))
 
 	entry, err := svc.getClientEntry(proxyURL, 1, 1, upstreamcore.HTTPUpstreamProfileOpenAI, false, false)
 	require.NoError(s.T(), err)

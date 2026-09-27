@@ -73,14 +73,6 @@ func clientIPForRateLimit(c *gin.Context) string {
 	return c.ClientIP()
 }
 
-// Limit 返回速率限制中间件
-// key: 限制类型标识
-// limit: 时间窗口内最大请求数
-// window: 时间窗口
-func (r *RateLimiter) Limit(key string, limit int, window time.Duration) gin.HandlerFunc {
-	return r.LimitWithOptions(key, limit, window, RateLimitOptions{})
-}
-
 // LimitWithOptions 返回速率限制中间件（带可选配置）
 func (r *RateLimiter) LimitWithOptions(key string, limit int, window time.Duration, opts RateLimitOptions) gin.HandlerFunc {
 	failureMode := opts.FailureMode

@@ -15,8 +15,12 @@ import (
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/egress"
+	"github.com/TokenFlux/TokenRouter/internal/upstream"
+	openaicore "github.com/TokenFlux/TokenRouter/internal/upstream/openai"
+
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/protocol/openai"
+
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/gin-gonic/gin"
@@ -53,7 +57,7 @@ func TestHandleStreamingResponsePassthroughDeduplicatesFunctionCallArguments(t *
 	}
 
 	svc := newResponsesFixture(responsesFixtureInputs{})
-	result, err := svc.Output.PassthroughStream(context.Background(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}, time.Now(), "gpt-5.4", "gpt-5.4")
+	result, err := openaicore.ReadPassthroughStreaming(context.Background(), resp, upstream.NewOutputContext(ResponseSink{Writer: c.Writer}), svc.Output.PassthroughOptions(context.Background(), c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1}}), time.Now(), "gpt-5.4", "gpt-5.4")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 

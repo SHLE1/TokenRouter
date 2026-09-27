@@ -32,12 +32,6 @@ type openAIProviderSchedulerMetrics struct {
 	schedulercore.PlatformMetrics
 }
 
-func (m *openAIProviderSchedulerMetrics) recordSelect(v schedulercore.PlatformDecision) {
-	if m != nil {
-		m.RecordSelect(v)
-	}
-}
-
 func (m *openAIProviderSchedulerMetrics) recordSwitch() {
 	if m != nil {
 		m.RecordSwitch()
@@ -97,13 +91,6 @@ func shouldEscapeAdvancedStickyProvider(stats *schedulercore.RuntimeStats, id in
 	return schedulercore.ShouldEscapeSticky(stats, id, policy.StickyEscapeConfig{Enabled: cfg.Enabled, TtftMs: cfg.TtftMs, ErrorRate: cfg.ErrorRate})
 }
 
-func (s *compatiblePicker) shouldEscapeStickyProvider(providerID int64, cfg policy.StickyEscapeConfig) (reason string, errorRate float64, ttft float64, shouldEscape bool) {
-	if s == nil {
-		return "", 0, 0, false
-	}
-	return shouldEscapeAdvancedStickyProvider(s.stats, providerID, cfg)
-}
-
 func (s *compatiblePicker) isProviderTransportCompatible(provider *gatewayprovider.ExecutionProvider, requiredTransport egress.OpenAIUpstreamTransport) bool {
 	if requiredTransport == egress.OpenAIUpstreamTransportAny || requiredTransport == egress.OpenAIUpstreamTransportHTTPSSE {
 		return true
@@ -128,11 +115,6 @@ func (s *compatiblePicker) lookupShadowParentProvider(ctx context.Context, id in
 	}
 	provider, _ := s.service.providerRepo.GetByID(ctx, id)
 	return provider
-}
-
-func (s *compatiblePicker) isProviderRequestCompatible(ctx context.Context, provider *gatewayprovider.ExecutionProvider, req schedulercore.PlatformSelectionInput) bool {
-	compatible, _ := s.isProviderRequestCompatibleReason(ctx, provider, req)
-	return compatible
 }
 
 // isProviderRequestCompatibleReason 返回提供商是否兼容，并在拒绝时标明具体门禁原因。

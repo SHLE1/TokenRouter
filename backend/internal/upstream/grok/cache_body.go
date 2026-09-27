@@ -147,10 +147,6 @@ func IsGrokFreeCacheFunctionToolIntent(tools, toolChoice gjson.Result) bool {
 	}
 }
 
-func AppendMissingGrokFreeCacheNativeTools(body []byte) ([]byte, error) {
-	return AppendGrokFreeCacheNativeTools(body, false)
-}
-
 func AppendGrokFreeCacheNativeTools(body []byte, allowPureClientTools bool) ([]byte, error) {
 	return AppendGrokFreeCacheNativeToolsWithPolicy(body, allowPureClientTools, true)
 }

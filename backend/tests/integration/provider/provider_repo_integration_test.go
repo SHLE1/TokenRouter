@@ -274,7 +274,7 @@ func (s *ProviderRepoSuite) TestList() {
 	mustCreateProvider(s.T(), s.client, &providercore.Record{Name: "acc1"})
 	mustCreateProvider(s.T(), s.client, &providercore.Record{Name: "acc2"})
 
-	providers, page, err := s.repo.List(s.ctx, pagination.PaginationParams{Page: 1, PageSize: 10})
+	providers, page, err := s.repo.ListWithFilters(s.ctx, pagination.PaginationParams{Page: 1, PageSize: 10}, "", "", "", "", 0, "")
 	s.Require().NoError(err, "List")
 	s.Require().Len(providers, 2)
 	s.Require().Equal(int64(2), page.Total)

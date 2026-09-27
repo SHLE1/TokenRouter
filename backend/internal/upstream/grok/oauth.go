@@ -415,20 +415,12 @@ func ParseAuthorizationInput(raw string) AuthorizationInput {
 	return AuthorizationInput{Code: trimmed}
 }
 
-func BuildResponsesURL(baseURL string) (string, error) {
-	return BuildResponsesURLWithValidator(baseURL, nil)
-}
-
 func BuildResponsesURLWithValidator(baseURL string, validator BaseURLValidator) (string, error) {
 	validatedBaseURL, err := validatedBaseURLWithValidator(baseURL, validator)
 	if err != nil {
 		return "", fmt.Errorf("invalid base url: %w", err)
 	}
 	return validatedBaseURL + "/responses", nil
-}
-
-func BuildChatCompletionsURL(baseURL string) (string, error) {
-	return BuildChatCompletionsURLWithValidator(baseURL, nil)
 }
 
 func BuildChatCompletionsURLWithValidator(baseURL string, validator BaseURLValidator) (string, error) {
@@ -439,20 +431,12 @@ func BuildChatCompletionsURLWithValidator(baseURL string, validator BaseURLValid
 	return validatedBaseURL + "/chat/completions", nil
 }
 
-func BuildImagesGenerationsURL(baseURL string) (string, error) {
-	return BuildImagesGenerationsURLWithValidator(baseURL, nil)
-}
-
 func BuildImagesGenerationsURLWithValidator(baseURL string, validator BaseURLValidator) (string, error) {
 	validatedBaseURL, err := validatedBaseURLWithValidator(baseURL, validator)
 	if err != nil {
 		return "", fmt.Errorf("invalid base url: %w", err)
 	}
 	return validatedBaseURL + "/images/generations", nil
-}
-
-func BuildImagesEditsURL(baseURL string) (string, error) {
-	return BuildImagesEditsURLWithValidator(baseURL, nil)
 }
 
 func BuildImagesEditsURLWithValidator(baseURL string, validator BaseURLValidator) (string, error) {
@@ -463,20 +447,12 @@ func BuildImagesEditsURLWithValidator(baseURL string, validator BaseURLValidator
 	return validatedBaseURL + "/images/edits", nil
 }
 
-func BuildVideosGenerationsURL(baseURL string) (string, error) {
-	return BuildVideosGenerationsURLWithValidator(baseURL, nil)
-}
-
 func BuildVideosGenerationsURLWithValidator(baseURL string, validator BaseURLValidator) (string, error) {
 	validatedBaseURL, err := validatedBaseURLWithValidator(baseURL, validator)
 	if err != nil {
 		return "", fmt.Errorf("invalid base url: %w", err)
 	}
 	return validatedBaseURL + "/videos/generations", nil
-}
-
-func BuildVideosEditsURL(baseURL string) (string, error) {
-	return BuildVideosEditsURLWithValidator(baseURL, nil)
 }
 
 func BuildVideosEditsURLWithValidator(baseURL string, validator BaseURLValidator) (string, error) {
@@ -487,20 +463,12 @@ func BuildVideosEditsURLWithValidator(baseURL string, validator BaseURLValidator
 	return validatedBaseURL + "/videos/edits", nil
 }
 
-func BuildVideosExtensionsURL(baseURL string) (string, error) {
-	return BuildVideosExtensionsURLWithValidator(baseURL, nil)
-}
-
 func BuildVideosExtensionsURLWithValidator(baseURL string, validator BaseURLValidator) (string, error) {
 	validatedBaseURL, err := validatedBaseURLWithValidator(baseURL, validator)
 	if err != nil {
 		return "", fmt.Errorf("invalid base url: %w", err)
 	}
 	return validatedBaseURL + "/videos/extensions", nil
-}
-
-func BuildVideoURL(baseURL, requestID string) (string, error) {
-	return BuildVideoURLWithValidator(baseURL, requestID, nil)
 }
 
 func BuildVideoURLWithValidator(baseURL, requestID string, validator BaseURLValidator) (string, error) {

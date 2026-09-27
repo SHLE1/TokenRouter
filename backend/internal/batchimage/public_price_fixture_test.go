@@ -7,10 +7,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/billing"
 	pricingprovider "github.com/TokenFlux/TokenRouter/internal/billing/provider"
-	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/modelidentity"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
@@ -42,12 +39,6 @@ func newPublicPricingConfigFixture(repo *publicPricingConfigFixture) *routing.Pr
 	return routing.NewPricingConfigService(repo, nil, routing.PricingConfigOptions{Warn: slog.Warn, Now: time.Now, LoadLocation: pricingprovider.LoadPricingLocation, ReadGroup: func(_ context.Context, id int64) (*routing.Group, error) {
 		return &routing.Group{ID: id, RoutingPolicy: repo.policy.Clone()}, nil
 	}})
-}
-
-func publicPriceResolverFixture() *billing.PriceResolver {
-	return billing.NewPriceResolver(nil, billingtestkit.Calculator(0, nil, nil), modelidentity.Identity, func(model string, err error) {
-		slog.Debug("failed to get model pricing from LiteLLM, using fallback", "model", model, "error", err)
-	})
 }
 
 func testImageModelPricing(prices map[string]*float64) []routing.ModelPricingEntry {

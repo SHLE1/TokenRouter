@@ -22,7 +22,7 @@ func TestResponsesToChatCompletionsRequest_CustomToolBecomesFunctionTool(t *test
 		},
 	}
 
-	out, err := ResponsesToChatCompletionsRequest(req)
+	out, err := ResponsesToChatCompletionsRequestWithOptions(req, nil)
 	require.NoError(t, err)
 	require.Len(t, out.Tools, 2)
 
@@ -46,7 +46,7 @@ func TestResponsesChatBridge_MixedCustomAndNamespaceToolNames(t *testing.T) {
 		},
 	}
 
-	chatReq, err := ResponsesToChatCompletionsRequest(req)
+	chatReq, err := ResponsesToChatCompletionsRequestWithOptions(req, nil)
 	require.NoError(t, err)
 	require.Len(t, chatReq.Tools, 2)
 	assert.Equal(t, "exec", chatReq.Tools[0].Function.Name)
@@ -110,7 +110,7 @@ func TestResponsesToChatCompletionsRequest_AdditionalToolsItem(t *testing.T) {
 	assert.True(t, CustomToolNames(effective)["exec"])
 	assert.Equal(t, NamespacedToolName{Namespace: "collaboration", Name: "send_message"}, NamespaceToolNames(effective)["collaboration__send_message"])
 
-	out, err := ResponsesToChatCompletionsRequest(req)
+	out, err := ResponsesToChatCompletionsRequestWithOptions(req, nil)
 	require.NoError(t, err)
 	require.Len(t, out.Tools, 3)
 	assert.Equal(t, "exec", out.Tools[0].Function.Name)
@@ -169,7 +169,7 @@ func TestResponsesToChatCompletionsRequest_DropsToolChoiceWhenNoConvertibleTools
 		ToolChoice: json.RawMessage(`"auto"`),
 	}
 
-	out, err := ResponsesToChatCompletionsRequest(req)
+	out, err := ResponsesToChatCompletionsRequestWithOptions(req, nil)
 	require.NoError(t, err)
 
 	assert.Empty(t, out.Tools)
@@ -184,7 +184,7 @@ func TestResponsesToChatCompletionsRequest_CustomToolChoiceMapsToFunctionChoice(
 		ToolChoice: json.RawMessage(`{"type":"custom","name":"exec"}`),
 	}
 
-	out, err := ResponsesToChatCompletionsRequest(req)
+	out, err := ResponsesToChatCompletionsRequestWithOptions(req, nil)
 	require.NoError(t, err)
 
 	assert.JSONEq(t, `{"type":"function","function":{"name":"exec"}}`, string(out.ToolChoice))
@@ -197,7 +197,7 @@ func TestResponsesInputToChatMessages_CustomToolCallHistory(t *testing.T) {
 		{"type":"custom_tool_call_output","call_id":"call_1","output":"main.go"}
 	]`)
 
-	messages, err := responsesInputToChatMessages("", input)
+	messages, err := responsesInputToChatMessagesWithOptions("", input, nil)
 	require.NoError(t, err)
 	require.Len(t, messages, 3)
 
@@ -387,7 +387,7 @@ func TestResponsesToChatCompletionsRequest_ToolSearchToolBecomesProxyFunction(t 
 		Tools: []ResponsesTool{{Type: "tool_search"}},
 	}
 
-	out, err := ResponsesToChatCompletionsRequest(req)
+	out, err := ResponsesToChatCompletionsRequestWithOptions(req, nil)
 	require.NoError(t, err)
 	require.Len(t, out.Tools, 1)
 
@@ -400,7 +400,7 @@ func TestResponsesToChatCompletionsRequest_DropsDeferredFlagWithToolSearch(t *te
 	var req ResponsesRequest
 	require.NoError(t, json.Unmarshal([]byte(`{"model":"glm-5.2","input":"hi","tools":[{"type":"tool_search"},{"type":"function","name":"shell","defer_loading":true}]}`), &req))
 
-	out, err := ResponsesToChatCompletionsRequest(&req)
+	out, err := ResponsesToChatCompletionsRequestWithOptions(&req, nil)
 	require.NoError(t, err)
 	encoded, err := json.Marshal(out)
 	require.NoError(t, err)
@@ -547,7 +547,7 @@ func TestResponsesToChatCompletionsRequest_NamespaceToolFlattensChildren(t *test
 		}},
 	}
 
-	out, err := ResponsesToChatCompletionsRequest(req)
+	out, err := ResponsesToChatCompletionsRequestWithOptions(req, nil)
 	require.NoError(t, err)
 	require.Len(t, out.Tools, 1, "namespace 子工具中仅 function 类型被摊平")
 
@@ -584,7 +584,7 @@ func TestResponsesInputToChatMessages_ToolSearchCallHistory(t *testing.T) {
 		{"type":"tool_search_output","call_id":"call_s","output":{"groups":["gmail"]}}
 	]`)
 
-	messages, err := responsesInputToChatMessages("", input)
+	messages, err := responsesInputToChatMessagesWithOptions("", input, nil)
 	require.NoError(t, err)
 	require.Len(t, messages, 3)
 
@@ -619,7 +619,7 @@ func TestResponsesToChatCompletionsRequest_PromotesCompletedToolSearchDiscoverie
 	namespaces := NamespaceToolNames(effective)
 	assert.Equal(t, NamespacedToolName{Namespace: "collaboration", Name: "spawn_agent"}, namespaces["collaboration__spawn_agent"])
 
-	chatReq, err := ResponsesToChatCompletionsRequest(&req)
+	chatReq, err := ResponsesToChatCompletionsRequestWithOptions(&req, nil)
 	require.NoError(t, err)
 	require.Len(t, chatReq.Tools, 4)
 	assert.Equal(t, []string{"tool_search", "inspect", "exec", "collaboration__spawn_agent"}, []string{
@@ -662,7 +662,7 @@ func TestResponsesInputToChatMessages_NamespacedFunctionCallHistory(t *testing.T
 		{"type":"function_call_output","call_id":"call_n","output":"ok"}
 	]`)
 
-	messages, err := responsesInputToChatMessages("", input)
+	messages, err := responsesInputToChatMessagesWithOptions("", input, nil)
 	require.NoError(t, err)
 	require.Len(t, messages, 2)
 
@@ -798,34 +798,34 @@ func TestNamespaceToolNames_MapsFlattenedNames(t *testing.T) {
 // 侧按 tool_search 这个名字调用）。
 func TestResponsesToChatCompletionsRequest_RejectsToolSearchNameConflict(t *testing.T) {
 	// 与顶层 function 工具同名。
-	_, err := ResponsesToChatCompletionsRequest(&ResponsesRequest{
+	_, err := ResponsesToChatCompletionsRequestWithOptions(&ResponsesRequest{
 		Model: "glm-5.2",
 		Input: json.RawMessage(`"hi"`),
 		Tools: []ResponsesTool{
 			{Type: "tool_search"},
 			{Type: "function", Name: "tool_search"},
 		},
-	})
+	}, nil)
 	require.Error(t, err, "与内置 tool_search 代理撞名的 function 工具必须拒绝")
 	assert.Contains(t, err.Error(), "tool_search")
 
 	// 与顶层 custom 工具同名。
-	_, err = ResponsesToChatCompletionsRequest(&ResponsesRequest{
+	_, err = ResponsesToChatCompletionsRequestWithOptions(&ResponsesRequest{
 		Model: "glm-5.2",
 		Input: json.RawMessage(`"hi"`),
 		Tools: []ResponsesTool{
 			{Type: "custom", Name: "tool_search"},
 			{Type: "tool_search"},
 		},
-	})
+	}, nil)
 	require.Error(t, err, "与内置 tool_search 代理撞名的 custom 工具必须拒绝")
 
 	// 重复声明 type=tool_search 去重后只产出一个代理，不拒绝。
-	out, err := ResponsesToChatCompletionsRequest(&ResponsesRequest{
+	out, err := ResponsesToChatCompletionsRequestWithOptions(&ResponsesRequest{
 		Model: "glm-5.2",
 		Input: json.RawMessage(`"hi"`),
 		Tools: []ResponsesTool{{Type: "tool_search"}, {Type: "tool_search"}},
-	})
+	}, nil)
 	require.NoError(t, err)
 	require.Len(t, out.Tools, 1)
 	assert.Equal(t, "tool_search", out.Tools[0].Function.Name)
@@ -837,11 +837,11 @@ func TestResponsesToChatCompletionsRequest_RejectsDuplicateTopLevelExecutableNam
 		{{Type: "function", Name: "exec"}, {Type: "function", Name: "exec"}},
 		{{Type: "custom", Name: "exec"}, {Type: "custom", Name: "exec"}},
 	} {
-		_, err := ResponsesToChatCompletionsRequest(&ResponsesRequest{
+		_, err := ResponsesToChatCompletionsRequestWithOptions(&ResponsesRequest{
 			Model: "glm-5.2",
 			Input: json.RawMessage(`"hi"`),
 			Tools: tools,
-		})
+		}, nil)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "exec")
 		assert.Contains(t, err.Error(), "cannot disambiguate")
@@ -852,7 +852,7 @@ func TestResponsesToChatCompletionsRequest_RejectsDuplicateTopLevelExecutableNam
 // chat 上游会因选择项指向未声明工具而 400；字符串形式与指向幸存工具的选择保持转发。
 func TestResponsesToChatCompletionsRequest_DropsToolChoiceForDroppedTool(t *testing.T) {
 	// 强制选择被丢弃的 web_search：工具没了，选择项也必须丢。
-	out, err := ResponsesToChatCompletionsRequest(&ResponsesRequest{
+	out, err := ResponsesToChatCompletionsRequestWithOptions(&ResponsesRequest{
 		Model: "glm-5.2",
 		Input: json.RawMessage(`"hi"`),
 		Tools: []ResponsesTool{
@@ -860,12 +860,12 @@ func TestResponsesToChatCompletionsRequest_DropsToolChoiceForDroppedTool(t *test
 			{Type: "web_search"},
 		},
 		ToolChoice: json.RawMessage(`{"type":"web_search"}`),
-	})
+	}, nil)
 	require.NoError(t, err)
 	require.Len(t, out.Tools, 1)
 	assert.Empty(t, out.ToolChoice, "指向被丢弃服务端工具的 tool_choice 必须丢弃")
 
-	out, err = ResponsesToChatCompletionsRequest(&ResponsesRequest{
+	out, err = ResponsesToChatCompletionsRequestWithOptions(&ResponsesRequest{
 		Model: "glm-5.2",
 		Input: json.RawMessage(`"hi"`),
 		Tools: []ResponsesTool{
@@ -874,37 +874,37 @@ func TestResponsesToChatCompletionsRequest_DropsToolChoiceForDroppedTool(t *test
 			{Type: "x_search"},
 		},
 		ToolChoice: json.RawMessage(`{"type":"function","name":"web_search"}`),
-	})
+	}, nil)
 	require.NoError(t, err)
 	require.Len(t, out.Tools, 2)
 	assert.Empty(t, out.ToolChoice, "surviving x_search must not keep a function tool_choice named web_search")
 
 	// 具名选择指向不存在的工具名。
-	out, err = ResponsesToChatCompletionsRequest(&ResponsesRequest{
+	out, err = ResponsesToChatCompletionsRequestWithOptions(&ResponsesRequest{
 		Model:      "glm-5.2",
 		Input:      json.RawMessage(`"hi"`),
 		Tools:      []ResponsesTool{{Type: "function", Name: "wait"}},
 		ToolChoice: json.RawMessage(`{"type":"function","name":"missing"}`),
-	})
+	}, nil)
 	require.NoError(t, err)
 	assert.Empty(t, out.ToolChoice, "指向不存在工具名的 tool_choice 必须丢弃")
 
 	// 字符串形式与指向幸存工具的选择保持原有转发行为。
-	out, err = ResponsesToChatCompletionsRequest(&ResponsesRequest{
+	out, err = ResponsesToChatCompletionsRequestWithOptions(&ResponsesRequest{
 		Model:      "glm-5.2",
 		Input:      json.RawMessage(`"hi"`),
 		Tools:      []ResponsesTool{{Type: "function", Name: "wait"}},
 		ToolChoice: json.RawMessage(`"auto"`),
-	})
+	}, nil)
 	require.NoError(t, err)
 	assert.JSONEq(t, `"auto"`, string(out.ToolChoice))
 
-	out, err = ResponsesToChatCompletionsRequest(&ResponsesRequest{
+	out, err = ResponsesToChatCompletionsRequestWithOptions(&ResponsesRequest{
 		Model:      "glm-5.2",
 		Input:      json.RawMessage(`"hi"`),
 		Tools:      []ResponsesTool{{Type: "function", Name: "wait"}},
 		ToolChoice: json.RawMessage(`{"type":"function","name":"wait"}`),
-	})
+	}, nil)
 	require.NoError(t, err)
 	assert.JSONEq(t, `{"type":"function","function":{"name":"wait"}}`, string(out.ToolChoice))
 }
@@ -913,22 +913,22 @@ func TestResponsesToChatCompletionsRequest_DropsToolChoiceForDroppedTool(t *test
 // 必须同步降级为指向代理的 function 选择，不能静默丢弃（丢弃会把强制搜索退化为
 // 自动选择，模型可以不执行搜索）。
 func TestResponsesToChatCompletionsRequest_ToolSearchToolChoiceMapsToProxy(t *testing.T) {
-	out, err := ResponsesToChatCompletionsRequest(&ResponsesRequest{
+	out, err := ResponsesToChatCompletionsRequestWithOptions(&ResponsesRequest{
 		Model:      "glm-5.2",
 		Input:      json.RawMessage(`"hi"`),
 		Tools:      []ResponsesTool{{Type: "tool_search"}},
 		ToolChoice: json.RawMessage(`{"type":"tool_search"}`),
-	})
+	}, nil)
 	require.NoError(t, err)
 	assert.JSONEq(t, `{"type":"function","function":{"name":"tool_search"}}`, string(out.ToolChoice))
 
 	// 未声明 type=tool_search 时强制选择它没有可指向的代理，丢弃选择项。
-	out, err = ResponsesToChatCompletionsRequest(&ResponsesRequest{
+	out, err = ResponsesToChatCompletionsRequestWithOptions(&ResponsesRequest{
 		Model:      "glm-5.2",
 		Input:      json.RawMessage(`"hi"`),
 		Tools:      []ResponsesTool{{Type: "function", Name: "wait"}},
 		ToolChoice: json.RawMessage(`{"type":"tool_search"}`),
-	})
+	}, nil)
 	require.NoError(t, err)
 	assert.Empty(t, out.ToolChoice)
 }
@@ -938,33 +938,33 @@ func TestResponsesToChatCompletionsRequest_ToolSearchToolChoiceMapsToProxy(t *te
 // 静默降级——否则重复声明发给上游、回程还原到错误工具，问题只能靠抓包定位。
 func TestResponsesToChatCompletionsRequest_RejectsAmbiguousFlattenedNames(t *testing.T) {
 	// 摊平名与顶层 function 工具撞名。
-	_, err := ResponsesToChatCompletionsRequest(&ResponsesRequest{
+	_, err := ResponsesToChatCompletionsRequestWithOptions(&ResponsesRequest{
 		Model: "glm-5.2",
 		Input: json.RawMessage(`"hi"`),
 		Tools: []ResponsesTool{
 			{Type: "function", Name: "gmail__send"},
 			{Type: "namespace", Name: "gmail", Tools: []ResponsesTool{{Type: "function", Name: "send"}}},
 		},
-	})
+	}, nil)
 	require.Error(t, err, "与顶层工具撞名的摊平必须拒绝")
 	assert.Contains(t, err.Error(), "gmail__send")
 
 	// 不同 namespace 组合产生相同摊平名。
-	_, err = ResponsesToChatCompletionsRequest(&ResponsesRequest{
+	_, err = ResponsesToChatCompletionsRequestWithOptions(&ResponsesRequest{
 		Model: "glm-5.2",
 		Input: json.RawMessage(`"hi"`),
 		Tools: []ResponsesTool{
 			{Type: "namespace", Name: "a", Tools: []ResponsesTool{{Type: "function", Name: "b__c"}}},
 			{Type: "namespace", Name: "a__b", Tools: []ResponsesTool{{Type: "function", Name: "c"}}},
 		},
-	})
+	}, nil)
 	require.Error(t, err, "跨 namespace 撞名的摊平必须拒绝")
 	assert.Contains(t, err.Error(), "a__b__c")
 }
 
 // 完全相同的 (namespace, 子工具) 重复声明不构成歧义：去重后正常转换，不拒绝。
 func TestResponsesToChatCompletionsRequest_DedupesIdenticalNamespaceChildren(t *testing.T) {
-	out, err := ResponsesToChatCompletionsRequest(&ResponsesRequest{
+	out, err := ResponsesToChatCompletionsRequestWithOptions(&ResponsesRequest{
 		Model: "glm-5.2",
 		Input: json.RawMessage(`"hi"`),
 		Tools: []ResponsesTool{
@@ -973,7 +973,7 @@ func TestResponsesToChatCompletionsRequest_DedupesIdenticalNamespaceChildren(t *
 				{Type: "function", Name: "send"},
 			}},
 		},
-	})
+	}, nil)
 	require.NoError(t, err)
 	require.Len(t, out.Tools, 1, "重复声明的同一子工具只声明一次")
 	assert.Equal(t, "gmail__send", out.Tools[0].Function.Name)

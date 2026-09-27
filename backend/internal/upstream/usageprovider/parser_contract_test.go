@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
-
+	"github.com/TokenFlux/TokenRouter/internal/upstream/internal/usageclient"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/usageprovider"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/usageview"
 	"github.com/stretchr/testify/require"
@@ -69,7 +69,7 @@ func TestUpstreamUsageEndpointUsesExistingVersionedBaseURLRules(t *testing.T) {
 		"https://gateway.example/api":    "https://gateway.example/api/v1/usage",
 	}
 	for base, want := range tests {
-		got, err := usageprovider.UpstreamUsageEndpoint(base, "/v1/usage", httpclient.BuildOpenAIEndpointURL)
+		got, err := usageclient.UpstreamUsageEndpoint(base, "/v1/usage", httpclient.BuildOpenAIEndpointURL)
 		require.NoError(t, err, base)
 		require.Equal(t, want, got, base)
 	}
@@ -80,20 +80,20 @@ func TestUpstreamUsageEndpointUsesExistingVersionedBaseURLRules(t *testing.T) {
 		"https://gateway.example/v4":         "https://gateway.example/api/status",
 	}
 	for base, want := range statusTests {
-		got, err := usageprovider.UpstreamUsageStatusEndpoint(base)
+		got, err := usageclient.UpstreamUsageStatusEndpoint(base)
 		require.NoError(t, err, base)
 		require.Equal(t, want, got, base)
 	}
-	tokenEndpoint, err := usageprovider.UpstreamUsageRootEndpoint("https://gateway.example/v1", "/api/usage/token")
+	tokenEndpoint, err := usageclient.UpstreamUsageRootEndpoint("https://gateway.example/v1", "/api/usage/token")
 	require.NoError(t, err)
 	require.Equal(t, "https://gateway.example/api/usage/token", tokenEndpoint)
-	tokenEndpoint, err = usageprovider.UpstreamUsageTokenEndpoint("https://gateway.example/v1")
+	tokenEndpoint, err = usageclient.UpstreamUsageTokenEndpoint("https://gateway.example/v1")
 	require.NoError(t, err)
 	require.Equal(t, "https://gateway.example/api/usage/token/", tokenEndpoint)
-	walletEndpoint, err := usageprovider.UpstreamUsageWalletEndpoint("https://gateway.example/v1")
+	walletEndpoint, err := usageclient.UpstreamUsageWalletEndpoint("https://gateway.example/v1")
 	require.NoError(t, err)
 	require.Equal(t, "https://gateway.example/user/balance", walletEndpoint)
-	selfEndpoint, err := usageprovider.UpstreamUsageUserSelfEndpoint("https://gateway.example/v1")
+	selfEndpoint, err := usageclient.UpstreamUsageUserSelfEndpoint("https://gateway.example/v1")
 	require.NoError(t, err)
 	require.Equal(t, "https://gateway.example/api/user/self", selfEndpoint)
 }

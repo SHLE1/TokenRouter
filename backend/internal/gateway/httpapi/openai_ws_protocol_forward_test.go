@@ -461,7 +461,7 @@ func TestOpenAIGatewayService_Forward_WSv2Dial426FallbackHTTP(t *testing.T) {
 	require.Contains(t, rec.Body.String(), "426")
 }
 
-func TestOpenAIGatewayService_Forward_WSv2FallbackCoolingSkipWS(t *testing.T) {
+func TestOpenAIGatewayService_Forward_WSv2FailureDoesNotFallbackHTTP(t *testing.T) {
 	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 	}))
@@ -510,7 +510,6 @@ func TestOpenAIGatewayService_Forward_WSv2FallbackCoolingSkipWS(t *testing.T) {
 		},
 	}
 
-	svc.markOpenAIWSFallbackCooling(provider.Record.ID, "upgrade_required")
 	body := []byte(`{"model":"gpt-5.1","stream":false,"previous_response_id":"resp_cooling","input":[{"type":"input_text","text":"hello"}]}`)
 	result, err := svc.Responses.Forward(context.Background(), c, provider, body)
 	require.Error(t, err)

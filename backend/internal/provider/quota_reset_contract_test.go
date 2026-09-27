@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -18,7 +19,7 @@ func TestNextFixedDailyReset_BeforeResetHour(t *testing.T) {
 	tz := time.UTC
 	// 2026-03-14 06:00 UTC, reset hour = 9
 	after := time.Date(2026, 3, 14, 6, 0, 0, 0, tz)
-	got := NextFixedDailyReset(9, tz, after)
+	got := billing.NextFixedDailyReset(9, tz, after)
 	want := time.Date(2026, 3, 14, 9, 0, 0, 0, tz)
 	assert.Equal(t, want, got)
 }
@@ -27,7 +28,7 @@ func TestNextFixedDailyReset_AtResetHour(t *testing.T) {
 	tz := time.UTC
 	// Exactly at reset hour → should return tomorrow
 	after := time.Date(2026, 3, 14, 9, 0, 0, 0, tz)
-	got := NextFixedDailyReset(9, tz, after)
+	got := billing.NextFixedDailyReset(9, tz, after)
 	want := time.Date(2026, 3, 15, 9, 0, 0, 0, tz)
 	assert.Equal(t, want, got)
 }
@@ -36,7 +37,7 @@ func TestNextFixedDailyReset_AfterResetHour(t *testing.T) {
 	tz := time.UTC
 	// After reset hour → should return tomorrow
 	after := time.Date(2026, 3, 14, 15, 30, 0, 0, tz)
-	got := NextFixedDailyReset(9, tz, after)
+	got := billing.NextFixedDailyReset(9, tz, after)
 	want := time.Date(2026, 3, 15, 9, 0, 0, 0, tz)
 	assert.Equal(t, want, got)
 }
@@ -45,7 +46,7 @@ func TestNextFixedDailyReset_MidnightReset(t *testing.T) {
 	tz := time.UTC
 	// Reset at hour 0 (midnight), currently 23:59
 	after := time.Date(2026, 3, 14, 23, 59, 0, 0, tz)
-	got := NextFixedDailyReset(0, tz, after)
+	got := billing.NextFixedDailyReset(0, tz, after)
 	want := time.Date(2026, 3, 15, 0, 0, 0, 0, tz)
 	assert.Equal(t, want, got)
 }
@@ -56,7 +57,7 @@ func TestNextFixedDailyReset_NonUTCTimezone(t *testing.T) {
 
 	// 2026-03-14 07:00 UTC = 2026-03-14 15:00 CST, reset hour = 9 (CST)
 	after := time.Date(2026, 3, 14, 7, 0, 0, 0, time.UTC)
-	got := NextFixedDailyReset(9, tz, after)
+	got := billing.NextFixedDailyReset(9, tz, after)
 	// Already past 9:00 CST today → tomorrow 9:00 CST = 2026-03-15 01:00 UTC
 	want := time.Date(2026, 3, 15, 9, 0, 0, 0, tz)
 	assert.Equal(t, want, got)
@@ -101,7 +102,7 @@ func TestNextFixedWeeklyReset_TargetDayAhead(t *testing.T) {
 	tz := time.UTC
 	// 2026-03-14 is Saturday (day=6), target = Monday (day=1), hour = 9
 	after := time.Date(2026, 3, 14, 10, 0, 0, 0, tz)
-	got := NextFixedWeeklyReset(1, 9, tz, after)
+	got := billing.NextFixedWeeklyReset(1, 9, tz, after)
 	// Next Monday = 2026-03-16
 	want := time.Date(2026, 3, 16, 9, 0, 0, 0, tz)
 	assert.Equal(t, want, got)
@@ -111,7 +112,7 @@ func TestNextFixedWeeklyReset_TargetDayToday_BeforeHour(t *testing.T) {
 	tz := time.UTC
 	// 2026-03-16 is Monday (day=1), target = Monday, hour = 9, before 9:00
 	after := time.Date(2026, 3, 16, 6, 0, 0, 0, tz)
-	got := NextFixedWeeklyReset(1, 9, tz, after)
+	got := billing.NextFixedWeeklyReset(1, 9, tz, after)
 	// Today at 9:00
 	want := time.Date(2026, 3, 16, 9, 0, 0, 0, tz)
 	assert.Equal(t, want, got)
@@ -121,7 +122,7 @@ func TestNextFixedWeeklyReset_TargetDayToday_AtHour(t *testing.T) {
 	tz := time.UTC
 	// 2026-03-16 is Monday, target = Monday, hour = 9, exactly at 9:00
 	after := time.Date(2026, 3, 16, 9, 0, 0, 0, tz)
-	got := NextFixedWeeklyReset(1, 9, tz, after)
+	got := billing.NextFixedWeeklyReset(1, 9, tz, after)
 	// Next Monday at 9:00
 	want := time.Date(2026, 3, 23, 9, 0, 0, 0, tz)
 	assert.Equal(t, want, got)
@@ -131,7 +132,7 @@ func TestNextFixedWeeklyReset_TargetDayToday_AfterHour(t *testing.T) {
 	tz := time.UTC
 	// 2026-03-16 is Monday, target = Monday, hour = 9, after 9:00
 	after := time.Date(2026, 3, 16, 15, 0, 0, 0, tz)
-	got := NextFixedWeeklyReset(1, 9, tz, after)
+	got := billing.NextFixedWeeklyReset(1, 9, tz, after)
 	// Next Monday at 9:00
 	want := time.Date(2026, 3, 23, 9, 0, 0, 0, tz)
 	assert.Equal(t, want, got)
@@ -141,7 +142,7 @@ func TestNextFixedWeeklyReset_TargetDayPast(t *testing.T) {
 	tz := time.UTC
 	// 2026-03-18 is Wednesday (day=3), target = Monday (day=1)
 	after := time.Date(2026, 3, 18, 10, 0, 0, 0, tz)
-	got := NextFixedWeeklyReset(1, 9, tz, after)
+	got := billing.NextFixedWeeklyReset(1, 9, tz, after)
 	// Next Monday = 2026-03-23
 	want := time.Date(2026, 3, 23, 9, 0, 0, 0, tz)
 	assert.Equal(t, want, got)
@@ -151,7 +152,7 @@ func TestNextFixedWeeklyReset_Sunday(t *testing.T) {
 	tz := time.UTC
 	// 2026-03-14 is Saturday (day=6), target = Sunday (day=0)
 	after := time.Date(2026, 3, 14, 10, 0, 0, 0, tz)
-	got := NextFixedWeeklyReset(0, 0, tz, after)
+	got := billing.NextFixedWeeklyReset(0, 0, tz, after)
 	// Next Sunday = 2026-03-15
 	want := time.Date(2026, 3, 15, 0, 0, 0, 0, tz)
 	assert.Equal(t, want, got)

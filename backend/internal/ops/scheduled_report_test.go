@@ -5,11 +5,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/TokenFlux/TokenRouter/internal/notification/contract"
 	"github.com/TokenFlux/TokenRouter/internal/notification/smtp"
-	mailtest "github.com/TokenFlux/TokenRouter/internal/notification/testkit"
 
 	"github.com/TokenFlux/TokenRouter/internal/notification"
-
+	mailtest "github.com/TokenFlux/TokenRouter/internal/notification/testkit"
 	"github.com/stretchr/testify/require"
 )
 
@@ -95,7 +95,7 @@ func TestOpsScheduledReportVariablesDoNotUsePreviewMetrics(t *testing.T) {
 	require.Equal(t, "Error digest", variables["report_name"])
 	require.Empty(t, variables["report_html"])
 	require.Equal(t, "block", variables["report_detail_display"])
-	for _, placeholder := range SummaryPlaceholders() {
+	for _, placeholder := range contract.SummaryPlaceholders() {
 		if placeholder == "report_summary_display" {
 			require.Equal(t, "none", variables[placeholder])
 			continue

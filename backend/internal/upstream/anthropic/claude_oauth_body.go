@@ -474,19 +474,6 @@ func InjectClaudeCodePrompt(body []byte, system any) []byte {
 	return result
 }
 
-// RewriteSystemForNonClaudeCode 将非 Claude Code 客户端的 system prompt 迁移至 messages，
-// system 字段仅保留 Claude Code 标识提示词。
-// Anthropic 基于 system 参数内容检测第三方应用，仅前置追加 Claude Code 提示词
-// 无法通过检测，因为后续内容仍为非 Claude Code 格式。
-// 策略：将原始 system prompt 提取并注入为 user/assistant 消息对，system 仅保留 Claude Code 标识。
-func RewriteSystemForNonClaudeCode(body []byte, system any) []byte {
-	return RewriteSystemForNonClaudeCodeWithPromptBlocks(body, system, "", "")
-}
-
-func RewriteSystemForNonClaudeCodeWithPrompt(body []byte, system any, expansionPrompt string) []byte {
-	return RewriteSystemForNonClaudeCodeWithPromptBlocks(body, system, expansionPrompt, "")
-}
-
 type ClaudeOAuthSystemPromptBlockConfig struct {
 	Enabled      *bool           `json:"enabled,omitempty"`
 	Type         string          `json:"type,omitempty"`

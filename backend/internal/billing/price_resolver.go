@@ -87,31 +87,6 @@ func LookupPricingForModel(model string, lookup func(string) *ModelPricingEntry,
 	return lookup(normalized)
 }
 
-// GetIntervalPricing 委托纯定价实现，旧查询与配置投影保留在适配层。
-func (r *PriceResolver) GetIntervalPricing(resolved *ResolvedPricing, totalContextTokens int) *ModelPricing {
-	return purepricing.GetIntervalPricing(resolved, totalContextTokens)
-}
-
-// GetRequestTierPrice 委托纯定价实现，旧查询与配置投影保留在适配层。
-func (r *PriceResolver) GetRequestTierPrice(resolved *ResolvedPricing, tierLabel string) float64 {
-	return purepricing.GetRequestTierPrice(resolved, tierLabel)
-}
-
-// GetRequestTierPriceValue 委托纯定价实现，旧查询与配置投影保留在适配层。
-func (r *PriceResolver) GetRequestTierPriceValue(resolved *ResolvedPricing, tierLabel string) (float64, bool) {
-	return purepricing.GetRequestTierPriceValue(resolved, tierLabel)
-}
-
-// GetRequestTierPriceByContext 委托纯定价实现，旧查询与配置投影保留在适配层。
-func (r *PriceResolver) GetRequestTierPriceByContext(resolved *ResolvedPricing, totalContextTokens int) float64 {
-	return purepricing.GetRequestTierPriceByContext(resolved, totalContextTokens)
-}
-
-// GetRequestTierPriceByContextValue 委托纯定价实现，旧查询与配置投影保留在适配层。
-func (r *PriceResolver) GetRequestTierPriceByContextValue(resolved *ResolvedPricing, totalContextTokens int) (float64, bool) {
-	return purepricing.GetRequestTierPriceByContextValue(resolved, totalContextTokens)
-}
-
 type ConfigPrices interface {
 	GetEffectiveConfigModelPricing(context.Context, int64, string) *ModelPricingEntry
 }

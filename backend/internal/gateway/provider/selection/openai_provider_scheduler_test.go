@@ -3041,7 +3041,7 @@ func TestDefaultOpenAIProviderScheduler_ShouldEscapeStickyProvider_ThresholdBoun
 	stats.Report(providerID, true, nil)
 	scheduler := &compatiblePicker{stats: stats}
 
-	reason, errorRate, observedTTFT, shouldEscape := scheduler.shouldEscapeStickyProvider(providerID, policy.StickyEscapeConfig{
+	reason, errorRate, observedTTFT, shouldEscape := shouldEscapeAdvancedStickyProvider(scheduler.stats, providerID, policy.StickyEscapeConfig{
 		Enabled:   true,
 		TtftMs:    15000,
 		ErrorRate: 0.5,
@@ -3054,14 +3054,14 @@ func TestDefaultOpenAIProviderScheduler_ShouldEscapeStickyProvider_ThresholdBoun
 	for i := 0; i < 4; i++ {
 		stats.Report(providerID, false, nil)
 	}
-	reason, errorRate, _, shouldEscape = scheduler.shouldEscapeStickyProvider(providerID, policy.StickyEscapeConfig{
+	reason, errorRate, _, shouldEscape = shouldEscapeAdvancedStickyProvider(scheduler.stats, providerID, policy.StickyEscapeConfig{
 		Enabled:   true,
 		TtftMs:    15000,
 		ErrorRate: 1,
 	})
 	require.False(t, shouldEscape)
 	require.Empty(t, reason)
-	reason, errorRate, observedTTFT, shouldEscape = scheduler.shouldEscapeStickyProvider(providerID, policy.StickyEscapeConfig{
+	reason, errorRate, observedTTFT, shouldEscape = shouldEscapeAdvancedStickyProvider(scheduler.stats, providerID, policy.StickyEscapeConfig{
 		Enabled:   true,
 		TtftMs:    15000,
 		ErrorRate: errorRate,
@@ -3650,13 +3650,13 @@ func TestDefaultOpenAIProviderScheduler_ReportSwitchAndSnapshot(t *testing.T) {
 	ttft := 100
 	scheduler.ReportResult(1001, true, &ttft)
 	scheduler.ReportSwitch()
-	scheduler.metrics.recordSelect(schedulercore.PlatformDecision{
+	scheduler.metrics.RecordSelect(schedulercore.PlatformDecision{
 		Layer:             openAIProviderScheduleLayerLoadBalance,
 		LatencyMs:         8,
 		LoadSkew:          0.5,
 		StickyPreviousHit: true,
 	})
-	scheduler.metrics.recordSelect(schedulercore.PlatformDecision{
+	scheduler.metrics.RecordSelect(schedulercore.PlatformDecision{
 		Layer:            "session_hash",
 		LatencyMs:        6,
 		LoadSkew:         0.2,

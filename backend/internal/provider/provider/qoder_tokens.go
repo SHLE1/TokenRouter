@@ -126,7 +126,3 @@ func (p *QoderTokenProvider) sessionBuilder(value *providercore.Record) *qoder.S
 func (p *QoderTokenProvider) buildSession(ctx context.Context, value *providercore.Record) (*qoder.SessionContext, time.Time, error) {
 	return p.sessionBuilder(value).BuildSession(ctx, QoderCredentialInput(value))
 }
-
-func (p *QoderTokenProvider) getOrganizationTagsForProvider(ctx context.Context, value *providercore.Record, token, uid string) (*qoder.OrganizationTags, error) {
-	return p.sessionBuilder(value).GetOrganizationTags(ctx, QoderCredentialInput(value), token, uid)
-}

@@ -1,14 +1,5 @@
-// OAuth wire 值与表单编码不持有授权会话、提供商或交换客户端。
+// OAuth 响应与身份声明不持有授权会话、提供商或交换客户端。
 package openai
-
-// OAuthTokenRequest represents the token exchange request body
-type OAuthTokenRequest struct {
-	GrantType    string `json:"grant_type"`
-	ClientID     string `json:"client_id"`
-	Code         string `json:"code"`
-	RedirectURI  string `json:"redirect_uri"`
-	CodeVerifier string `json:"code_verifier"`
-}
 
 // OAuthTokenResponse represents the token response from OpenAI OAuth
 type OAuthTokenResponse struct {
@@ -18,14 +9,6 @@ type OAuthTokenResponse struct {
 	ExpiresIn    int64  `json:"expires_in"`
 	RefreshToken string `json:"refresh_token,omitempty"`
 	Scope        string `json:"scope,omitempty"`
-}
-
-// OAuthRefreshTokenRequest represents the refresh token request
-type OAuthRefreshTokenRequest struct {
-	GrantType    string `json:"grant_type"`
-	RefreshToken string `json:"refresh_token"`
-	ClientID     string `json:"client_id"`
-	Scope        string `json:"scope"`
 }
 
 // OAuthIDTokenClaims represents the claims from OpenAI ID Token

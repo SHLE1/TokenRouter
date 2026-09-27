@@ -85,11 +85,6 @@ func contentModerationRunePrefix(text string, limit int) (string, int) {
 	return text, count
 }
 
-func ExtractContentModerationPromptExcerpt(protocol string, body []byte) string {
-	input := ExtractContentModerationInput(protocol, body)
-	return ExtractContentModerationPromptExcerptFromInput(input)
-}
-
 // ExtractContentModerationPromptExcerptFromInput 生成兼容旧列表字段的短摘要。
 func ExtractContentModerationPromptExcerptFromInput(input ContentModerationInput) string {
 	return trimRawContentModerationText(input.Text, maxCyberWarningPromptExcerptRunes)

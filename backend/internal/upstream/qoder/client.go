@@ -57,11 +57,6 @@ func NewClientForProfile(profile Profile) *Client {
 	}
 }
 
-// StreamRequest 向 Qoder API 发送流式 POST 请求并返回响应。
-func (c *Client) StreamRequest(session *SessionContext, path string, bodyJSON []byte, extraHeaders map[string]string) (*http.Response, error) {
-	return c.StreamRequestContext(context.Background(), session, path, bodyJSON, extraHeaders)
-}
-
 // StreamRequestContext 使用传入 context 向 Qoder API 发送流式 POST 请求。
 func (c *Client) StreamRequestContext(ctx context.Context, session *SessionContext, path string, bodyJSON []byte, extraHeaders map[string]string) (*http.Response, error) {
 	return c.StreamRequestContextWithDoer(ctx, session, path, bodyJSON, extraHeaders, nil)

@@ -611,7 +611,7 @@ func runOpenAIResponseFlushTestWithProvider(recorder *openAIResponseFlushRecorde
 		Header:     http.Header{"Content-Type": []string{"text/event-stream"}},
 		Body:       body,
 	}
-	return output.Stream(context.Background(), resp, c, provider, time.Now(), "gpt-5", "gpt-5", "")
+	return output.ReadStreamObservation(context.Background(), resp, c, provider, time.Now(), "gpt-5", "gpt-5", "")
 }
 
 func runOpenAIResponseFlushTestAsync(recorder *openAIResponseFlushRecorder, body io.ReadCloser, gatewayCfg OpenAIResponseOptions) (<-chan *openai.StreamingResult, <-chan error) {

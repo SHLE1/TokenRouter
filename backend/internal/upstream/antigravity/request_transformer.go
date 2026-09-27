@@ -365,11 +365,6 @@ func buildContents(messages []ClaudeMessage, toolIDToName map[string]string, isT
 // DummyThoughtSignature 保留 wire 常量的旧入口。
 const DummyThoughtSignature = bridge.DummyThoughtSignature
 
-// buildParts 传递平台已选定的签名策略。
-func buildParts(content json.RawMessage, toolIDToName map[string]string, allowDummyThought bool) ([]GeminiPart, bool, error) {
-	return bridge.BuildParts(content, toolIDToName, allowDummyThought)
-}
-
 // buildGenerationConfig 构建 generationConfig
 const (
 	defaultMaxOutputTokens    = 64000

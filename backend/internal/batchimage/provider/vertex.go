@@ -502,10 +502,6 @@ func NormalizeVertexBatchModelPath(model string) string {
 	return vertex.NormalizeVertexBatchModelPath(model)
 }
 
-func BuildVertexBatchPredictionJobsEndpoint(baseURL, projectID, location string) (string, error) {
-	return vertex.BuildVertexBatchPredictionJobsEndpoint(baseURL, projectID, location)
-}
-
 type VertexBatchHTTPClient = vertex.VertexBatchHTTPClient
 
 type VertexGCSObjectStore = vertex.VertexGCSObjectStore

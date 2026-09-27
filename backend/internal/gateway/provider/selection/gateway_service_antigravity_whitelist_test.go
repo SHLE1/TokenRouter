@@ -16,10 +16,6 @@ import (
 )
 
 func TestGatewayService_isModelSupportedByProvider_AntigravityModelMapping(t *testing.T) {
-	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{}, Shared: Shared{}},
-
-		nil)
-
 	// 使用 model_mapping 作为白名单（通配符匹配）
 	provider := &gatewayprovider.ExecutionProvider{
 		Record: providercore.Record{
@@ -35,30 +31,26 @@ func TestGatewayService_isModelSupportedByProvider_AntigravityModelMapping(t *te
 	}
 
 	// claude-* 通配符匹配
-	require.True(t, svc.isModelSupportedByProvider(provider, "claude-sonnet-4-5"))
-	require.True(t, svc.isModelSupportedByProvider(provider, "claude-haiku-4-5"))
-	require.True(t, svc.isModelSupportedByProvider(provider, "claude-opus-4-6"))
+	require.True(t, gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), "claude-sonnet-4-5"))
+	require.True(t, gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), "claude-haiku-4-5"))
+	require.True(t, gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), "claude-opus-4-6"))
 
 	// gemini-3-* 通配符匹配
-	require.True(t, svc.isModelSupportedByProvider(provider, "gemini-3-flash"))
-	require.True(t, svc.isModelSupportedByProvider(provider, "gemini-3-pro-high"))
+	require.True(t, gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), "gemini-3-flash"))
+	require.True(t, gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), "gemini-3-pro-high"))
 
 	// gemini-2.5-* 不匹配（不在 model_mapping 中）
-	require.False(t, svc.isModelSupportedByProvider(provider, "gemini-2.5-flash"))
-	require.False(t, svc.isModelSupportedByProvider(provider, "gemini-2.5-pro"))
+	require.False(t, gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), "gemini-2.5-flash"))
+	require.False(t, gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), "gemini-2.5-pro"))
 
 	// 其他平台模型不支持
-	require.False(t, svc.isModelSupportedByProvider(provider, "gpt-4"))
+	require.False(t, gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), "gpt-4"))
 
 	// 空模型允许
-	require.True(t, svc.isModelSupportedByProvider(provider, ""))
+	require.True(t, gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), ""))
 }
 
 func TestGatewayService_isModelSupportedByProvider_AntigravityNoMapping(t *testing.T) {
-	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{}, Shared: Shared{}},
-
-		nil)
-
 	// 未配置 model_mapping 时，使用默认映射（domain.DefaultAntigravityModelMapping）
 	// 只有默认映射中的模型才被支持
 	provider := &gatewayprovider.ExecutionProvider{
@@ -69,17 +61,17 @@ func TestGatewayService_isModelSupportedByProvider_AntigravityNoMapping(t *testi
 	}
 
 	// 默认映射中的模型应该被支持
-	require.True(t, svc.isModelSupportedByProvider(provider, "claude-sonnet-4-5"))
-	require.True(t, svc.isModelSupportedByProvider(provider, "gemini-3-flash"))
-	require.True(t, svc.isModelSupportedByProvider(provider, "gemini-2.5-pro"))
-	require.True(t, svc.isModelSupportedByProvider(provider, "claude-haiku-4-5"))
+	require.True(t, gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), "claude-sonnet-4-5"))
+	require.True(t, gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), "gemini-3-flash"))
+	require.True(t, gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), "gemini-2.5-pro"))
+	require.True(t, gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), "claude-haiku-4-5"))
 
 	// 不在默认映射中的模型不被支持
-	require.False(t, svc.isModelSupportedByProvider(provider, "claude-3-5-sonnet-20241022"))
-	require.False(t, svc.isModelSupportedByProvider(provider, "claude-unknown-model"))
+	require.False(t, gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), "claude-3-5-sonnet-20241022"))
+	require.False(t, gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), "claude-unknown-model"))
 
 	// 非 claude-/gemini- 前缀仍然不支持
-	require.False(t, svc.isModelSupportedByProvider(provider, "gpt-4"))
+	require.False(t, gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), "gpt-4"))
 }
 
 // TestGatewayService_isModelSupportedByProviderWithContext_ThinkingMode 测试 thinking 模式下的模型支持检查
@@ -211,10 +203,6 @@ func TestGatewayService_isModelSupportedByProviderWithContext_ThinkingMode(t *te
 // TestGatewayService_isModelSupportedByProvider_CustomMappingNotInDefault 测试自定义模型映射中
 // 不在 DefaultAntigravityModelMapping 中的模型能通过调度
 func TestGatewayService_isModelSupportedByProvider_CustomMappingNotInDefault(t *testing.T) {
-	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{}, Shared: Shared{}},
-
-		nil)
-
 	// 自定义映射中包含不在默认映射中的模型
 	provider := &gatewayprovider.ExecutionProvider{
 		Record: providercore.Record{
@@ -231,17 +219,17 @@ func TestGatewayService_isModelSupportedByProvider_CustomMappingNotInDefault(t *
 	}
 
 	// 自定义模型应该通过（不在 DefaultAntigravityModelMapping 中也可以）
-	require.True(t, svc.isModelSupportedByProvider(provider, "my-custom-model"))
-	require.True(t, svc.isModelSupportedByProvider(provider, "gpt-4o"))
-	require.True(t, svc.isModelSupportedByProvider(provider, "llama-3-70b"))
-	require.True(t, svc.isModelSupportedByProvider(provider, "claude-sonnet-4-5"))
+	require.True(t, gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), "my-custom-model"))
+	require.True(t, gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), "gpt-4o"))
+	require.True(t, gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), "llama-3-70b"))
+	require.True(t, gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), "claude-sonnet-4-5"))
 
 	// 不在自定义映射中的模型不通过
-	require.False(t, svc.isModelSupportedByProvider(provider, "gpt-3.5-turbo"))
-	require.False(t, svc.isModelSupportedByProvider(provider, "unknown-model"))
+	require.False(t, gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), "gpt-3.5-turbo"))
+	require.False(t, gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), "unknown-model"))
 
 	// 空模型允许
-	require.True(t, svc.isModelSupportedByProvider(provider, ""))
+	require.True(t, gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), ""))
 }
 
 // TestGatewayService_isModelSupportedByProviderWithContext_CustomMappingThinking

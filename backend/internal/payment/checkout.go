@@ -116,6 +116,7 @@ func (s *Checkout) CreateOrder(ctx context.Context, req CreateOrderRequest) (*Cr
 	}
 	return resp, nil
 }
+
 func (s *Checkout) ValidateOrderInput(ctx context.Context, req CreateOrderRequest, cfg *PaymentConfig) (*SubscriptionPlan, error) {
 	if req.OrderType == OrderTypeBalance && cfg.BalanceDisabled {
 		return nil, infraerrors.Forbidden("BALANCE_PAYMENT_DISABLED", "balance recharge has been disabled")
@@ -132,6 +133,7 @@ func (s *Checkout) ValidateOrderInput(ctx context.Context, req CreateOrderReques
 	}
 	return nil, nil
 }
+
 func (s *Checkout) ValidateSubOrder(ctx context.Context, req CreateOrderRequest) (*SubscriptionPlan, error) {
 	if req.PlanID == 0 {
 		return nil, infraerrors.BadRequest("INVALID_INPUT", "subscription order requires a plan")
@@ -142,9 +144,11 @@ func (s *Checkout) ValidateSubOrder(ctx context.Context, req CreateOrderRequest)
 	}
 	return plan, nil
 }
+
 func (s *Checkout) CreateOrderInTx(ctx context.Context, req CreateOrderRequest, user *Buyer, plan *SubscriptionPlan, cfg *PaymentConfig, orderAmount, limitAmount float64, fee FeeBreakdown, sel *InstanceSelection) (*Order, error) {
 	return s.store.CreateCheckout(ctx, BuildCheckoutDraft(req, user, plan, cfg, orderAmount, limitAmount, fee, sel))
 }
+
 func BuildPaymentOrderProviderSnapshot(sel *InstanceSelection, req CreateOrderRequest) map[string]any {
 	if sel == nil {
 		return nil
@@ -202,6 +206,7 @@ func BuildPaymentOrderProviderSnapshot(sel *InstanceSelection, req CreateOrderRe
 	}
 	return snapshot
 }
+
 func PaymentOrderSnapshotWxpayAppID(sel *InstanceSelection, req CreateOrderRequest) string {
 	if sel == nil || strings.TrimSpace(sel.ProviderKey) != TypeWxpay {
 		return ""
@@ -211,6 +216,7 @@ func PaymentOrderSnapshotWxpayAppID(sel *InstanceSelection, req CreateOrderReque
 	}
 	return strings.TrimSpace(sel.Config["appId"])
 }
+
 func (s *Checkout) SelectCreateOrderInstance(ctx context.Context, req CreateOrderRequest, cfg *PaymentConfig, payAmount float64) (*InstanceSelection, error) {
 	selectCtx, err := s.PrepareCreateOrderSelectionContext(ctx, req)
 	if err != nil {
@@ -226,6 +232,7 @@ func (s *Checkout) SelectCreateOrderInstance(ctx context.Context, req CreateOrde
 	}
 	return sel, nil
 }
+
 func (s *Checkout) PrepareCreateOrderSelectionContext(ctx context.Context, req CreateOrderRequest) (context.Context, error) {
 	if !RequestNeedsWeChatJSAPICompatibility(req) {
 		return ctx, nil
@@ -239,12 +246,14 @@ func (s *Checkout) PrepareCreateOrderSelectionContext(ctx context.Context, req C
 	}
 	return WithWxpayJSAPIAppID(ctx, expectedAppID), nil
 }
+
 func RequestNeedsWeChatJSAPICompatibility(req CreateOrderRequest) bool {
 	if GetBasePaymentType(req.PaymentType) != TypeWxpay {
 		return false
 	}
 	return req.IsWeChatBrowser || strings.TrimSpace(req.OpenID) != ""
 }
+
 func (s *Checkout) UsesOfficialWxpayVisibleMethod(ctx context.Context) bool {
 	if s == nil || s.configService == nil {
 		return false
@@ -258,6 +267,7 @@ func (s *Checkout) UsesOfficialWxpayVisibleMethod(ctx context.Context) bool {
 	}
 	return inst.ProviderKey == TypeWxpay
 }
+
 func (s *Checkout) InvokeProvider(ctx context.Context, order *Order, req CreateOrderRequest, cfg *PaymentConfig, limitAmount float64, payAmountStr string, payAmount float64, plan *SubscriptionPlan, sel *InstanceSelection) (*CreateOrderResponse, error) {
 	prov, err := s.runtime.CreateProvider(sel.ProviderKey, sel.InstanceID, sel.Config)
 	if err != nil {
@@ -342,6 +352,7 @@ func (s *Checkout) InvokeProvider(ctx context.Context, order *Order, req CreateO
 	resp.AlipayMobilePrecreateDeepLink = providerReq.AlipayMobilePrecreate && strings.TrimSpace(pr.QRCode) != ""
 	return resp, nil
 }
+
 func (s *Checkout) PersistCreatePaymentResponse(ctx context.Context, id int64, sel *InstanceSelection, response *CreatePaymentResponse) (*Order, error) {
 	return s.store.PersistCheckoutResponse(ctx, id, sel, response)
 }
@@ -369,12 +380,14 @@ func SanitizeCreatePaymentResponseDetails(pr *CreatePaymentResponse) {
 	pr.InvoicePDF = RemovePostgresTextNUL(pr.InvoicePDF)
 	pr.InvoiceStatus = RemovePostgresTextNUL(pr.InvoiceStatus)
 }
+
 func RemovePostgresTextNUL(value string) string {
 	if !strings.ContainsRune(value, 0) {
 		return value
 	}
 	return strings.ReplaceAll(value, "\x00", "")
 }
+
 func BuildProviderCreatePaymentRequest(req CreateOrderRequest, sel *InstanceSelection, orderID, amount, subject string, expiresAt time.Time) CreatePaymentRequest {
 	return CreatePaymentRequest{
 		OrderID:            orderID,
@@ -390,12 +403,14 @@ func BuildProviderCreatePaymentRequest(req CreateOrderRequest, sel *InstanceSele
 		BillingInfo:        req.BillingInfo,
 	}
 }
+
 func SelectedInstanceSupportedTypes(sel *InstanceSelection) string {
 	if sel == nil {
 		return ""
 	}
 	return sel.SupportedTypes
 }
+
 func (s *Checkout) BuildPaymentSubject(plan *SubscriptionPlan, limitAmount float64, cfg *PaymentConfig, sel *InstanceSelection) string {
 	if plan != nil {
 		productName := plan.ProductName
@@ -414,6 +429,7 @@ func (s *Checkout) BuildPaymentSubject(plan *SubscriptionPlan, limitAmount float
 	}
 	return "Sub2API " + amountStr + " " + currency
 }
+
 func HasPaymentProductNameAffix(cfg *PaymentConfig) bool {
 	if cfg == nil {
 		return false
@@ -422,6 +438,7 @@ func HasPaymentProductNameAffix(cfg *PaymentConfig) bool {
 	sf := strings.TrimSpace(cfg.ProductNameSuffix)
 	return pf != "" || sf != ""
 }
+
 func ApplyPaymentProductNameAffix(productName string, cfg *PaymentConfig) string {
 	if !HasPaymentProductNameAffix(cfg) {
 		return productName
@@ -430,9 +447,7 @@ func ApplyPaymentProductNameAffix(productName string, cfg *PaymentConfig) string
 	sf := strings.TrimSpace(cfg.ProductNameSuffix)
 	return strings.TrimSpace(pf + " " + productName + " " + sf)
 }
-func (s *Checkout) MaybeBuildWeChatOAuthRequiredResponse(ctx context.Context, req CreateOrderRequest, amount float64, feeBreakdown FeeBreakdown) (*CreateOrderResponse, error) {
-	return s.MaybeBuildWeChatOAuthRequiredResponseForSelection(ctx, req, amount, feeBreakdown, nil)
-}
+
 func (s *Checkout) MaybeBuildWeChatOAuthRequiredResponseForSelection(ctx context.Context, req CreateOrderRequest, amount float64, feeBreakdown FeeBreakdown, sel *InstanceSelection) (*CreateOrderResponse, error) {
 	if sel != nil && sel.ProviderKey != "" && sel.ProviderKey != TypeWxpay {
 		return nil, nil
@@ -442,6 +457,7 @@ func (s *Checkout) MaybeBuildWeChatOAuthRequiredResponseForSelection(ctx context
 	}
 	return s.BuildWeChatOAuthRequiredResponse(ctx, req, amount, feeBreakdown)
 }
+
 func (s *Checkout) BuildWeChatOAuthRequiredResponse(ctx context.Context, req CreateOrderRequest, amount float64, feeBreakdown FeeBreakdown) (*CreateOrderResponse, error) {
 	appID, _, err := s.runtime.WeChatCredential(ctx)
 	if err != nil {
@@ -473,6 +489,7 @@ func (s *Checkout) BuildWeChatOAuthRequiredResponse(ctx context.Context, req Cre
 		},
 	}, nil
 }
+
 func (s *Checkout) ValidateSelectedCreateOrderInstance(ctx context.Context, req CreateOrderRequest, sel *InstanceSelection) error {
 	if !RequiresWeChatJSAPICompatibleSelection(req, sel) {
 		return nil
@@ -487,6 +504,7 @@ func (s *Checkout) ValidateSelectedCreateOrderInstance(ctx context.Context, req 
 	}
 	return nil
 }
+
 func CalculateCreateOrderPayAmount(limitAmount float64, methodFee FeeConfig, currency string) (FeeBreakdown, string, float64, error) {
 	if err := ValidateCreateOrderAmountCurrency(limitAmount, currency); err != nil {
 		return FeeBreakdown{}, "", 0, err
@@ -504,6 +522,7 @@ func CalculateCreateOrderPayAmount(limitAmount float64, methodFee FeeConfig, cur
 	}
 	return feeBreakdown, payAmountStr, payAmount, nil
 }
+
 func CalculateCreateOrderPayAmountForOrderType(limitAmount float64, methodFee FeeConfig, currency, orderType string, usdToCnyRate float64) (FeeBreakdown, string, float64, error) {
 	paymentAmount := limitAmount
 	if orderType == OrderTypeSubscription {
@@ -525,6 +544,7 @@ func CalculateSubscriptionGatewayBaseAmount(amount, usdToCnyRate float64, curren
 		Round(int32(CurrencyMaxFractionDigits(currency))).
 		InexactFloat64()
 }
+
 func ValidateCreateOrderAmountCurrency(amount float64, currency string) error {
 	amountStr := strconv.FormatFloat(amount, 'f', -1, 64)
 	if _, err := AmountToMinorUnit(amountStr, currency); err != nil {
@@ -533,6 +553,7 @@ func ValidateCreateOrderAmountCurrency(amount float64, currency string) error {
 	}
 	return nil
 }
+
 func ValidateSelectedCreateOrderAmountCurrency(payAmount string, sel *InstanceSelection) error {
 	if sel == nil {
 		return nil
@@ -544,12 +565,14 @@ func ValidateSelectedCreateOrderAmountCurrency(payAmount string, sel *InstanceSe
 	}
 	return nil
 }
+
 func RequiresWeChatJSAPICompatibleSelection(req CreateOrderRequest, sel *InstanceSelection) bool {
 	if sel == nil || sel.ProviderKey != TypeWxpay || GetBasePaymentType(req.PaymentType) != TypeWxpay {
 		return false
 	}
 	return req.IsWeChatBrowser || strings.TrimSpace(req.OpenID) != ""
 }
+
 func ClassifyCreatePaymentError(req CreateOrderRequest, providerKey string, err error) error {
 	if err == nil {
 		return nil
@@ -566,6 +589,7 @@ func ClassifyCreatePaymentError(req CreateOrderRequest, providerKey string, err 
 	}
 	return infraerrors.ServiceUnavailable("PAYMENT_GATEWAY_ERROR", fmt.Sprintf("payment gateway error: %s", err.Error()))
 }
+
 func BuildCreateOrderResponse(order *Order, req CreateOrderRequest, payAmount float64, sel *InstanceSelection, pr *CreatePaymentResponse, resultType CreatePaymentResultType) *CreateOrderResponse {
 	return &CreateOrderResponse{
 		OrderID:       order.ID,
@@ -598,6 +622,7 @@ func BuildCreateOrderResponse(order *Order, req CreateOrderRequest, payAmount fl
 		PaymentMode:   sel.PaymentMode,
 	}
 }
+
 func BuildWeChatPaymentOAuthStartURL(req CreateOrderRequest, scope string) (string, error) {
 	u, err := url.Parse("/api/v1/auth/oauth/wechat/payment/start")
 	if err != nil {
@@ -623,6 +648,7 @@ func BuildWeChatPaymentOAuthStartURL(req CreateOrderRequest, scope string) (stri
 	u.RawQuery = q.Encode()
 	return u.String(), nil
 }
+
 func PaymentRedirectPathFromURL(rawURL string) string {
 	rawURL = strings.TrimSpace(rawURL)
 	if rawURL == "" {
@@ -647,6 +673,7 @@ func PaymentRedirectPathFromURL(rawURL string) string {
 	}
 	return NormalizePaymentRedirectPath(path)
 }
+
 func NormalizePaymentRedirectPath(path string) string {
 	path = strings.TrimSpace(path)
 	if path == "" {

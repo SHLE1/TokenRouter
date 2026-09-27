@@ -23,10 +23,6 @@ import (
 
 const geminiStickySessionTTL = time.Hour
 
-func (s *Gemini) SelectProviderForModel(ctx context.Context, groupID *int64, sessionHash string, requestedModel string) (*gatewayprovider.ExecutionProvider, error) {
-	return s.SelectProviderForModelWithExclusions(ctx, groupID, sessionHash, requestedModel, nil)
-}
-
 func (s *Gemini) SelectProviderForModelWithExclusions(ctx context.Context, groupID *int64, sessionHash string, requestedModel string, excludedIDs map[int64]struct{}) (*gatewayprovider.ExecutionProvider, error) {
 	ctx = withSelectionRequest(ctx, groupID, requestedModel)
 	core, scope := s.geminiSelector()

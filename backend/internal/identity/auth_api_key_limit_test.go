@@ -32,7 +32,7 @@ func TestAuthService_RegisterSnapshotsDefaultUserAPIKeyLimit(t *testing.T) {
 			repo := &userRepoStub{nextID: int64(index + 1)}
 			svc := newAuthService(repo, settings, nil)
 
-			_, user, err := svc.Register(context.Background(), fmt.Sprintf("api-limit-%d@example.com", index), "strong-pass")
+			_, user, err := svc.RegisterWithVerification(context.Background(), fmt.Sprintf("api-limit-%d@example.com", index), "strong-pass", "", "", "", "")
 			require.NoError(t, err)
 			require.Equal(t, tt.expect, user.APIKeyLimit)
 			require.Equal(t, tt.expect, repo.created[0].APIKeyLimit)
@@ -49,12 +49,12 @@ func TestAuthService_DefaultUserAPIKeyLimitDoesNotRetroactivelyChangeUsers(t *te
 	repo := &userRepoStub{}
 	svc := newAuthService(repo, settings, nil)
 
-	_, first, err := svc.Register(context.Background(), "api-limit-first@example.com", "strong-pass")
+	_, first, err := svc.RegisterWithVerification(context.Background(), "api-limit-first@example.com", "strong-pass", "", "", "", "")
 	require.NoError(t, err)
 	require.Equal(t, 10, first.APIKeyLimit)
 
 	settings[identity.SettingKeyDefaultUserAPIKeyLimit] = "20"
-	_, second, err := svc.Register(context.Background(), "api-limit-second@example.com", "strong-pass")
+	_, second, err := svc.RegisterWithVerification(context.Background(), "api-limit-second@example.com", "strong-pass", "", "", "", "")
 	require.NoError(t, err)
 	require.Equal(t, 20, second.APIKeyLimit)
 	require.Equal(t, 10, first.APIKeyLimit)
@@ -73,14 +73,7 @@ func TestAuthService_AllOAuthSourcesSnapshotDefaultUserAPIKeyLimit(t *testing.T)
 			svc.RefreshTokens = &refreshTokenCacheStub{}
 			rebuildSessionForTest(svc)
 
-			_, user, err := svc.LoginOrRegisterOAuthWithTokenPairForSource(
-				context.Background(),
-				fmt.Sprintf("api-limit-oauth-%d@example.com", index),
-				"OAuth User",
-				"",
-				"",
-				signupSource,
-			)
+			_, user, err := svc.LoginOrRegisterOAuthWithTokenPair(context.Background(), fmt.Sprintf("api-limit-oauth-%d@example.com", index), "OAuth User", "", "", signupSource)
 			require.NoError(t, err)
 			require.Equal(t, 29, user.APIKeyLimit)
 			require.Equal(t, 29, repo.created[0].APIKeyLimit)

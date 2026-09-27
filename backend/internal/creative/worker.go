@@ -172,11 +172,6 @@ func (w *CreativeRunWorker) BusyCount() int {
 	return int(w.busy.Load())
 }
 
-// RunOnce 处理一个队列任务。
-func (w *CreativeRunWorker) RunOnce(ctx context.Context) error {
-	return w.runOnce(ctx, nil)
-}
-
 func (w *CreativeRunWorker) runOnce(ctx context.Context, stop <-chan struct{}) error {
 	if w == nil || w.queue == nil || w.repo == nil || w.service == nil || w.executor == nil {
 		return nil
@@ -709,3 +704,8 @@ func sleepOrDone(ctx context.Context, delay time.Duration) {
 }
 
 const defaultCreativeMaxAttempts = 3
+
+// RunOnce 处理一个队列任务。
+func (w *CreativeRunWorker) RunOnce(ctx context.Context) error {
+	return w.runOnce(ctx, nil)
+}

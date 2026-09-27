@@ -140,12 +140,7 @@ func TestQoderConversationRollbackVersionControl(t *testing.T) {
 
 func TestQoderConversationRollbackAcceptedDeletesOwnNewState(t *testing.T) {
 	store := qoder.NewQoderConversationStore(5 * time.Minute)
-	plan := store.Plan(
-		"rollback_new_state",
-		"system",
-		nil,
-		[]qoder.QoderMessage{{Role: "user", Text: "hello"}},
-	)
+	plan := store.PlanWithOptions("rollback_new_state", "system", nil, []qoder.QoderMessage{{Role: "user", Text: "hello"}}, qoder.QoderConversationPlanOptions{})
 
 	plan.CommitAccepted()
 
@@ -171,7 +166,7 @@ func TestQoderConversationRollbackAcceptedRestoresPreviousState(t *testing.T) {
 	key := "rollback_previous_state"
 	system := "system"
 	firstMessages := []qoder.QoderMessage{{Role: "user", Text: "first"}}
-	initialPlan := store.Plan(key, system, nil, firstMessages)
+	initialPlan := store.PlanWithOptions(key, system, nil, firstMessages, qoder.QoderConversationPlanOptions{})
 	initialPlan.Commit(upstream.TokenUsage{InputTokens: 10, OutputTokens: 2})
 
 	store.Mu.Lock()
@@ -186,7 +181,7 @@ func TestQoderConversationRollbackAcceptedRestoresPreviousState(t *testing.T) {
 		{Role: "assistant", Text: "answer"},
 		{Role: "user", Text: "next"},
 	}
-	plan := store.Plan(key, system, nil, nextMessages)
+	plan := store.PlanWithOptions(key, system, nil, nextMessages, qoder.QoderConversationPlanOptions{})
 	if !plan.Reused {
 		t.Fatal("expected plan to reuse previous conversation")
 	}
@@ -215,21 +210,21 @@ func TestQoderConversationRollbackAcceptedDoesNotClobberConcurrentCommit(t *test
 	key := "rollback_concurrent_commit"
 	system := "system"
 	firstMessages := []qoder.QoderMessage{{Role: "user", Text: "first"}}
-	initialPlan := store.Plan(key, system, nil, firstMessages)
+	initialPlan := store.PlanWithOptions(key, system, nil, firstMessages, qoder.QoderConversationPlanOptions{})
 	initialPlan.Commit()
 
-	plan := store.Plan(key, system, nil, []qoder.QoderMessage{
+	plan := store.PlanWithOptions(key, system, nil, []qoder.QoderMessage{
 		{Role: "user", Text: "first"},
 		{Role: "assistant", Text: "answer"},
 		{Role: "user", Text: "next"},
-	})
+	}, qoder.QoderConversationPlanOptions{})
 	plan.CommitAccepted()
 
-	concurrentPlan := store.Plan(key, system, nil, []qoder.QoderMessage{
+	concurrentPlan := store.PlanWithOptions(key, system, nil, []qoder.QoderMessage{
 		{Role: "user", Text: "first"},
 		{Role: "assistant", Text: "answer"},
 		{Role: "user", Text: "next"},
-	})
+	}, qoder.QoderConversationPlanOptions{})
 	concurrentPlan.Commit()
 
 	store.Mu.Lock()

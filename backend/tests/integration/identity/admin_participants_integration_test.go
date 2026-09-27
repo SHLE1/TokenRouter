@@ -126,7 +126,7 @@ func TestAdminKeyGrantRollsBackIdentityParticipant(t *testing.T) {
 	failure := errors.New("test after key group update")
 	mutations := &keypostgres.AdminGroupMutations{Client: client, Users: users, Keys: keyUpdateFailure{keys, failure}, UsersInTx: func(tx *dbent.Tx) keypostgres.GroupAccessWriter { return identitypostgres.GroupAccessInTx(tx) }}
 	before := outboxCount(t, integrationDB, ctx, old.Key)
-	require.ErrorIs(t, mutations.GrantGroupAndUpdate(ctx, key, group.ID), failure)
+	require.ErrorIs(t, mutations.GrantGroupAndUpdateFields(ctx, key, keycore.APIKeyUpdateFields{GroupID: true}, group.ID), failure)
 	reloaded, err := users.GetByID(ctx, user.ID)
 	require.NoError(t, err)
 	require.NotContains(t, reloaded.AllowedGroups, group.ID)
@@ -135,7 +135,7 @@ func TestAdminKeyGrantRollsBackIdentityParticipant(t *testing.T) {
 	require.Nil(t, stored.GroupID)
 	require.Equal(t, before, outboxCount(t, integrationDB, ctx, old.Key))
 	mutations.Keys = keys
-	require.NoError(t, mutations.GrantGroupAndUpdate(ctx, key, group.ID))
+	require.NoError(t, mutations.GrantGroupAndUpdateFields(ctx, key, keycore.APIKeyUpdateFields{GroupID: true}, group.ID))
 	reloaded, err = users.GetByID(ctx, user.ID)
 	require.NoError(t, err)
 	require.Contains(t, reloaded.AllowedGroups, group.ID)

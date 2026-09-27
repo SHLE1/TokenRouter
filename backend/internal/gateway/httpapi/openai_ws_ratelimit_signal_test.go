@@ -689,13 +689,13 @@ func TestOpenAIWSRateLimitFailoverError_OAuthKeepsSameProviderDeadline(t *testin
 	headers := http.Header{"Retry-After": []string{"30"}}
 	body := []byte(`{"error":{"type":"rate_limit_error","message":"limited"}}`)
 
-	oauthErr := svc.newOpenAIWSRateLimitFailoverError(&gatewayprovider.ExecutionProvider{
+	oauthErr := (gatewayprovider.OpenAIFailoverPolicy{Health: svc.Output.Health}).NewProviderFailure(&gatewayprovider.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 904,
 			Platform: capability.PlatformOpenAI,
 			Type:     capability.ProviderTypeOAuth,
 		},
-	}, headers, body, "limited")
+	}, http.StatusTooManyRequests, headers, body, strings.TrimSpace("limited"), false, false)
 	require.True(t, oauthErr.RetryableOnSameProvider)
 	require.False(t, oauthErr.SameProviderRetryDeadline.IsZero())
 	require.Positive(t, oauthErr.SameProviderRetryDelay)
@@ -703,13 +703,13 @@ func TestOpenAIWSRateLimitFailoverError_OAuthKeepsSameProviderDeadline(t *testin
 	require.Equal(t, body, oauthErr.ResponseBody)
 	require.Equal(t, "30", http.Header(oauthErr.ResponseHeaders).Get("Retry-After"))
 
-	apiKeyErr := svc.newOpenAIWSRateLimitFailoverError(&gatewayprovider.ExecutionProvider{
+	apiKeyErr := (gatewayprovider.OpenAIFailoverPolicy{Health: svc.Output.Health}).NewProviderFailure(&gatewayprovider.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 905,
 			Platform: capability.PlatformOpenAI,
 			Type:     capability.ProviderTypeAPIKey,
 		},
-	}, headers, body, "limited")
+	}, http.StatusTooManyRequests, headers, body, strings.TrimSpace("limited"), false, false)
 	require.False(t, apiKeyErr.RetryableOnSameProvider)
 	require.True(t, apiKeyErr.SameProviderRetryDeadline.IsZero())
 	require.Zero(t, apiKeyErr.SameProviderRetryDelay)

@@ -5,8 +5,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/TokenFlux/TokenRouter/internal/protocol/bridge"
+
 	protocolanthropic "github.com/TokenFlux/TokenRouter/internal/protocol/anthropic"
-	protocolbridge "github.com/TokenFlux/TokenRouter/internal/protocol/bridge"
 	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 	"github.com/stretchr/testify/require"
 )
@@ -349,7 +350,7 @@ func TestDirectBridge_RequestMatchesDoubleConversion(t *testing.T) {
 	// 旧双转换桥结果。
 	responsesReq, err := AnthropicToResponses(req)
 	require.NoError(t, err)
-	double, err := protocolbridge.ResponsesToChatCompletionsRequest(responsesReq)
+	double, err := bridge.ResponsesToChatCompletionsRequestWithOptions(responsesReq, nil)
 	require.NoError(t, err)
 
 	// 比较关键字段。
@@ -448,7 +449,7 @@ func TestDirectBridge_RequestMatchesDoubleConversion_ArrayUserContent(t *testing
 
 	responsesReq, err := AnthropicToResponses(req)
 	require.NoError(t, err)
-	double, err := protocolbridge.ResponsesToChatCompletionsRequest(responsesReq)
+	double, err := bridge.ResponsesToChatCompletionsRequestWithOptions(responsesReq, nil)
 	require.NoError(t, err)
 
 	require.Len(t, direct.Messages, len(double.Messages), "message count mismatch")

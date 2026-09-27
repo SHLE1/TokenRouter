@@ -1,6 +1,10 @@
 package grok
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/TokenFlux/TokenRouter/internal/protocol"
+)
 
 func TestIncludeIndependentReasoningTokens(t *testing.T) {
 	t.Parallel()
@@ -21,7 +25,7 @@ func TestIncludeIndependentReasoningTokens(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			got := IncludeIndependentReasoningTokens(tt.input, tt.output, tt.total, tt.reason)
+			got := protocol.IncludeIndependentReasoningTokens(tt.input, tt.output, tt.total, tt.reason)
 			if got != tt.want {
 				t.Fatalf("got %d, want %d", got, tt.want)
 			}

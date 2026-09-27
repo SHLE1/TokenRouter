@@ -1,16 +1,18 @@
 package provider_test
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
 
 	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 
+	"github.com/TokenFlux/TokenRouter/internal/billing"
 	gatewaytestkit "github.com/TokenFlux/TokenRouter/internal/gateway/testkit"
 
-	"github.com/TokenFlux/TokenRouter/internal/billing"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/stretchr/testify/require"
@@ -26,7 +28,7 @@ func TestScheduleOllamaCloudUsageActivityOnlyForOllama(t *testing.T) {
 	(&provideradapter.TransportHealth{Deferred: deferred}).Attempt(gatewayprovider.ExecutionRecord(other))
 	(&provideradapter.TransportHealth{}).Attempt(gatewayprovider.ExecutionRecord(ollama))
 
-	require.NoError(t, deferred.Stop())
+	require.NoError(t, deferred.StopContext(context.Background()))
 	_, ok := activity.Load(int64(1))
 	require.True(t, ok)
 	_, ok = activity.Load(int64(2))

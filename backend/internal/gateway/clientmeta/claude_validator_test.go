@@ -32,7 +32,7 @@ func TestSystemPromptSimilarity(t *testing.T) {
 					map[string]any{"type": "text", "text": tt.prompt},
 				},
 			}
-			result := v.IncludesClaudeCodeSystemPrompt(body)
+			result := v.hasClaudeCodeSystemPrompt(body)
 			require.Equal(t, tt.want, result, "提示词: %q", tt.prompt)
 		})
 	}

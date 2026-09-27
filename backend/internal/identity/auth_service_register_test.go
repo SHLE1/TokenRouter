@@ -219,7 +219,7 @@ func TestAuthService_Register_Disabled(t *testing.T) {
 		identity.SettingKeyRegistrationEnabled: "false",
 	}, nil)
 
-	_, _, err := service.Register(context.Background(), "user@test.com", "password")
+	_, _, err := service.RegisterWithVerification(context.Background(), "user@test.com", "password", "", "", "", "")
 	require.ErrorIs(t, err, identity.ErrRegDisabled)
 }
 
@@ -228,7 +228,7 @@ func TestAuthService_Register_DisabledByDefault(t *testing.T) {
 	repo := &userRepoStub{}
 	service := newAuthService(repo, nil, nil)
 
-	_, _, err := service.Register(context.Background(), "user@test.com", "password")
+	_, _, err := service.RegisterWithVerification(context.Background(), "user@test.com", "password", "", "", "", "")
 	require.ErrorIs(t, err, identity.ErrRegDisabled)
 }
 
@@ -278,7 +278,7 @@ func TestAuthService_Register_EmailExists(t *testing.T) {
 		identity.SettingKeyRegistrationEnabled: "true",
 	}, nil)
 
-	_, _, err := service.Register(context.Background(), "user@test.com", "password")
+	_, _, err := service.RegisterWithVerification(context.Background(), "user@test.com", "password", "", "", "", "")
 	require.ErrorIs(t, err, identity.ErrEmailExists)
 }
 
@@ -288,7 +288,7 @@ func TestAuthService_Register_CheckEmailError(t *testing.T) {
 		identity.SettingKeyRegistrationEnabled: "true",
 	}, nil)
 
-	_, _, err := service.Register(context.Background(), "user@test.com", "password")
+	_, _, err := service.RegisterWithVerification(context.Background(), "user@test.com", "password", "", "", "", "")
 	require.ErrorIs(t, err, identity.ErrServiceUnavailable)
 }
 
@@ -298,7 +298,7 @@ func TestAuthService_Register_ReservedEmail(t *testing.T) {
 		identity.SettingKeyRegistrationEnabled: "true",
 	}, nil)
 
-	_, _, err := service.Register(context.Background(), "linuxdo-123@linuxdo-connect.invalid", "password")
+	_, _, err := service.RegisterWithVerification(context.Background(), "linuxdo-123@linuxdo-connect.invalid", "password", "", "", "", "")
 	require.ErrorIs(t, err, identity.ErrEmailReserved)
 }
 
@@ -310,7 +310,7 @@ func TestAuthService_Register_EmailDomainRegistrationLimit(t *testing.T) {
 		identity.SettingKeyRegistrationEmailDomainQuotaEnabled: "true",
 	}, nil)
 
-	_, _, err := service.Register(context.Background(), "user@other.com", "password")
+	_, _, err := service.RegisterWithVerification(context.Background(), "user@other.com", "password", "", "", "", "")
 	require.ErrorIs(t, err, identity.ErrEmailDomainRegistrationLimit)
 	appErr := apperror.FromError(err)
 	require.Equal(t, "EMAIL_DOMAIN_REGISTRATION_LIMIT", appErr.Reason)
@@ -324,7 +324,7 @@ func TestAuthService_Register_NonWhitelistDomainAllowsFirstAccount(t *testing.T)
 		identity.SettingKeyRegistrationEmailDomainQuotaEnabled: "true",
 	}, nil)
 
-	_, user, err := service.Register(context.Background(), "first@sub.custom.example", "password")
+	_, user, err := service.RegisterWithVerification(context.Background(), "first@sub.custom.example", "password", "", "", "", "")
 	require.NoError(t, err)
 	require.Equal(t, int64(9), user.ID)
 	require.Equal(t, []string{"custom.example"}, repo.domainGuardCalls)
@@ -337,7 +337,7 @@ func TestAuthService_Register_NonWhitelistDomainRejectedWhenQuotaDisabledByDefau
 		identity.SettingKeyRegistrationEmailSuffixWhitelist: `["@example.com"]`,
 	}, nil)
 
-	_, _, err := service.Register(context.Background(), "first@custom.example", "password")
+	_, _, err := service.RegisterWithVerification(context.Background(), "first@custom.example", "password", "", "", "", "")
 	require.ErrorIs(t, err, identity.ErrEmailSuffixNotAllowed)
 	require.Equal(t, "EMAIL_SUFFIX_NOT_ALLOWED", apperror.FromError(err).Reason)
 	require.Empty(t, repo.created)
@@ -352,7 +352,7 @@ func TestAuthService_Register_NonWhitelistDomainRejectedWhenQuotaExplicitlyDisab
 		identity.SettingKeyRegistrationEmailDomainQuotaEnabled: "false",
 	}, nil)
 
-	_, _, err := service.Register(context.Background(), "first@custom.example", "password")
+	_, _, err := service.RegisterWithVerification(context.Background(), "first@custom.example", "password", "", "", "", "")
 	require.ErrorIs(t, err, identity.ErrEmailSuffixNotAllowed)
 }
 
@@ -389,7 +389,7 @@ func TestAuthService_Register_EmailSuffixAllowed(t *testing.T) {
 		identity.SettingKeyRegistrationEmailSuffixWhitelist: `["example.com"]`,
 	}, nil)
 
-	_, user, err := service.Register(context.Background(), "user@example.com", "password")
+	_, user, err := service.RegisterWithVerification(context.Background(), "user@example.com", "password", "", "", "", "")
 	require.NoError(t, err)
 	require.NotNil(t, user)
 	require.Equal(t, int64(8), user.ID)
@@ -437,7 +437,7 @@ func TestAuthService_Register_CreateError(t *testing.T) {
 		identity.SettingKeyRegistrationEnabled: "true",
 	}, nil)
 
-	_, _, err := service.Register(context.Background(), "user@test.com", "password")
+	_, _, err := service.RegisterWithVerification(context.Background(), "user@test.com", "password", "", "", "", "")
 	require.ErrorIs(t, err, identity.ErrServiceUnavailable)
 }
 
@@ -448,7 +448,7 @@ func TestAuthService_Register_CreateEmailExistsRace(t *testing.T) {
 		identity.SettingKeyRegistrationEnabled: "true",
 	}, nil)
 
-	_, _, err := service.Register(context.Background(), "user@test.com", "password")
+	_, _, err := service.RegisterWithVerification(context.Background(), "user@test.com", "password", "", "", "", "")
 	require.ErrorIs(t, err, identity.ErrEmailExists)
 }
 
@@ -459,7 +459,7 @@ func TestAuthService_Register_Success(t *testing.T) {
 		identity.SettingKeyAuthSourceDefaultEmailGrantOnSignup: "false",
 	}, nil)
 
-	token, user, err := service.Register(context.Background(), "user@test.com", "password")
+	token, user, err := service.RegisterWithVerification(context.Background(), "user@test.com", "password", "", "", "", "")
 	require.NoError(t, err)
 	require.NotEmpty(t, token)
 	require.NotNil(t, user)
@@ -621,7 +621,7 @@ func TestAuthService_Register_AssignsDefaultSubscriptions(t *testing.T) {
 	}, nil)
 	service.DefaultSubscriptions = assigner
 
-	_, user, err := service.Register(context.Background(), "default-sub@test.com", "password")
+	_, user, err := service.RegisterWithVerification(context.Background(), "default-sub@test.com", "password", "", "", "", "")
 	require.NoError(t, err)
 	require.NotNil(t, user)
 	require.Len(t, assigner.calls, 2)
@@ -643,7 +643,7 @@ func TestAuthService_Register_UsesEmailAuthSourceDefaultsWhenGrantEnabled(t *tes
 	}, nil)
 	service.DefaultSubscriptions = assigner
 
-	_, user, err := service.Register(context.Background(), "email-defaults@test.com", "password")
+	_, user, err := service.RegisterWithVerification(context.Background(), "email-defaults@test.com", "password", "", "", "", "")
 	require.NoError(t, err)
 	require.NotNil(t, user)
 	require.Equal(t, 12.5, user.Balance)
@@ -665,7 +665,7 @@ func TestAuthService_Register_GrantOnSignupFalseFallsBackToGlobalDefaults(t *tes
 	}, nil)
 	service.DefaultSubscriptions = assigner
 
-	_, user, err := service.Register(context.Background(), "email-global@test.com", "password")
+	_, user, err := service.RegisterWithVerification(context.Background(), "email-global@test.com", "password", "", "", "", "")
 	require.NoError(t, err)
 	require.NotNil(t, user)
 	require.Equal(t, 3.5, user.Balance)
@@ -687,7 +687,7 @@ func TestAuthService_Register_GrantOnSignupMergesSourceOverridesWithGlobalDefaul
 	}, nil)
 	service.DefaultSubscriptions = assigner
 
-	_, user, err := service.Register(context.Background(), "email-merged@test.com", "password")
+	_, user, err := service.RegisterWithVerification(context.Background(), "email-merged@test.com", "password", "", "", "", "")
 	require.NoError(t, err)
 	require.NotNil(t, user)
 	require.Equal(t, 9.5, user.Balance)
@@ -711,7 +711,7 @@ func TestAuthService_LoginOrRegisterOAuthWithTokenPair_UsesLinuxDoAuthSourceDefa
 	service.RefreshTokens = &refreshTokenCacheStub{}
 	rebuildSessionForTest(service)
 
-	tokenPair, user, err := service.LoginOrRegisterOAuthWithTokenPairForSource(context.Background(), "linuxdo-123@linuxdo-connect.invalid", "linuxdo_user", "", "", "linuxdo")
+	tokenPair, user, err := service.LoginOrRegisterOAuthWithTokenPair(context.Background(), "linuxdo-123@linuxdo-connect.invalid", "linuxdo_user", "", "", "linuxdo")
 	require.NoError(t, err)
 	require.NotNil(t, tokenPair)
 	require.NotNil(t, user)
@@ -747,7 +747,7 @@ func TestAuthService_LoginOrRegisterOAuthWithTokenPair_ExistingUserDoesNotGrantA
 	service.RefreshTokens = &refreshTokenCacheStub{}
 	rebuildSessionForTest(service)
 
-	tokenPair, user, err := service.LoginOrRegisterOAuthWithTokenPairForSource(context.Background(), existing.Email, "linuxdo_user", "", "", "linuxdo")
+	tokenPair, user, err := service.LoginOrRegisterOAuthWithTokenPair(context.Background(), existing.Email, "linuxdo_user", "", "", "linuxdo")
 	require.NoError(t, err)
 	require.NotNil(t, tokenPair)
 	require.Equal(t, existing.ID, user.ID)

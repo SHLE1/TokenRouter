@@ -390,23 +390,6 @@ func HasFunctionCallOutput(reqBody map[string]any) bool {
 	return AnalyzeToolContinuationSignals(reqBody).HasFunctionCallOutput
 }
 
-// HasToolCallContext 判断 input 是否包含带 call_id 的工具调用上下文，
-// 用于判断工具输出是否具备可关联的上下文。
-func HasToolCallContext(reqBody map[string]any) bool {
-	return AnalyzeToolContinuationSignals(reqBody).HasToolCallContext
-}
-
-// FunctionCallOutputCallIDs 提取 input 中工具输出的 call_id 集合。
-// 仅返回非空 call_id，用于与 item_reference.id 做匹配校验。
-func FunctionCallOutputCallIDs(reqBody map[string]any) []string {
-	return AnalyzeToolContinuationSignals(reqBody).FunctionCallOutputCallIDs
-}
-
-// HasFunctionCallOutputMissingCallID 判断是否存在缺少 call_id 的工具输出。
-func HasFunctionCallOutputMissingCallID(reqBody map[string]any) bool {
-	return AnalyzeToolContinuationSignals(reqBody).HasFunctionCallOutputMissingCallID
-}
-
 // HasItemReferenceForCallIDs 判断 item_reference.id 是否覆盖所有 call_id。
 // 用于仅依赖引用项完成续链场景的校验。
 func HasItemReferenceForCallIDs(reqBody map[string]any, callIDs []string) bool {

@@ -108,12 +108,3 @@ func (p groupDuplicatePortFixture) CreateFromSource(ctx context.Context, value *
 	*value = *routing.CloneGroup(copy)
 	return err
 }
-
-// imagePricingFixture 仅构造原单张价格夹具，不计算费用。
-func imagePricingFixture(prices map[string]*float64) []routing.ModelPricingEntry {
-	card := routing.ModelPricingEntry{Models: []string{"*"}, BillingMode: routing.BillingModeImage}
-	for tier, price := range prices {
-		card.Intervals = append(card.Intervals, routing.PricingInterval{TierLabel: tier, PerRequestPrice: price})
-	}
-	return []routing.ModelPricingEntry{card}
-}

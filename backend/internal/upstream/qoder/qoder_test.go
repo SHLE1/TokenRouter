@@ -30,7 +30,7 @@ func TestEncodeDecodeRoundTrip(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		encoded := EncodeString(tc)
+		encoded := Encode([]byte(tc))
 		if encoded == tc {
 			t.Errorf("encode(%q) = %q, expected different", tc, encoded)
 		}
@@ -45,7 +45,7 @@ func TestEncodeDecodeRoundTrip(t *testing.T) {
 }
 
 func TestEncodeNotStandardBase64(t *testing.T) {
-	encoded := EncodeString("test")
+	encoded := Encode([]byte("test"))
 	if encoded == "dGVzdA==" {
 		t.Error("encoded result should not be standard base64")
 	}
@@ -81,11 +81,11 @@ func TestExchangePATPostsSignedCenterRequest(t *testing.T) {
 	}))
 	defer server.Close()
 
-	identity, err := ExchangePAT("pat-1", &MachineIdentity{
+	identity, err := ExchangePATContext(context.Background(), "pat-1", &MachineIdentity{
 		MachineID:    "machine-1",
 		MachineToken: "machine-token",
 		MachineType:  "5",
-	}, server.URL)
+	}, server.URL, nil)
 	if err != nil {
 		t.Fatalf("ExchangePAT: %v", err)
 	}
@@ -170,11 +170,11 @@ func TestRefreshSessionPostsRefreshPayload(t *testing.T) {
 	}))
 	defer server.Close()
 
-	identity, err := RefreshSession("old-refresh", "old-token", &MachineIdentity{
+	identity, err := RefreshSessionContext(context.Background(), "old-refresh", "old-token", &MachineIdentity{
 		MachineID:    "machine-1",
 		MachineToken: "machine-token",
 		MachineType:  "5",
-	}, server.URL)
+	}, server.URL, nil)
 	if err != nil {
 		t.Fatalf("RefreshSession: %v", err)
 	}
@@ -337,7 +337,7 @@ func TestNewSession(t *testing.T) {
 		MachineType:  "test-type",
 	}
 
-	session, err := NewSessionWithKey(identity, machine, []byte("abcdefghijklmnop"))
+	session, err := NewSessionForProfileWithKey(identity, machine, MustProfileForSite(SiteGlobal), []byte("abcdefghijklmnop"))
 	if err != nil {
 		t.Fatalf("NewSession: %v", err)
 	}
@@ -364,7 +364,7 @@ func TestNewSessionDefaultTempKeyIsASCIIHex(t *testing.T) {
 		MachineType:  "test-type",
 	}
 
-	session, err := NewSession(identity, machine)
+	session, err := NewSessionForSite(identity, machine, SiteGlobal)
 	if err != nil {
 		t.Fatalf("NewSession: %v", err)
 	}
@@ -395,7 +395,7 @@ func TestBuildPayloadB64(t *testing.T) {
 		want  string
 	}{
 		{name: "国际站默认版本", build: func() (string, error) {
-			return BuildPayloadB64("test_info", "request123")
+			return BuildPayloadB64WithVersion("test_info", "request123", GlobalClientVersion)
 		}, want: "1.24.2"},
 		{name: "国内站显式版本", build: func() (string, error) {
 			return BuildPayloadB64WithVersion("test_info", "request123", CNClientVersion)

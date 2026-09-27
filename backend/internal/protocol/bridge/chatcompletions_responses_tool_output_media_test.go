@@ -270,7 +270,7 @@ func TestResponsesToChatCompletionsRequest_ToolContentNeverContainsExtractedMedi
 		]`),
 	}
 
-	out, err := ResponsesToChatCompletionsRequest(req)
+	out, err := ResponsesToChatCompletionsRequestWithOptions(req, nil)
 	require.NoError(t, err)
 	assertChatInvariants(t, out.Messages)
 
@@ -290,7 +290,7 @@ func TestResponsesToChatCompletionsRequest_ToolContentNeverContainsExtractedMedi
 
 func convertToolOutputMedia(t *testing.T, input string) []ChatMessage {
 	t.Helper()
-	messages, err := responsesInputToChatMessages("", json.RawMessage(input))
+	messages, err := responsesInputToChatMessagesWithOptions("", json.RawMessage(input), nil)
 	require.NoError(t, err)
 	assertChatInvariants(t, messages)
 	return messages

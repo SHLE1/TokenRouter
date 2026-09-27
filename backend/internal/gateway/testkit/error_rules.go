@@ -16,9 +16,12 @@ type errorRulesFixtureRepo struct {
 func (r errorRulesFixtureRepo) List(context.Context) ([]*errorpolicy.ErrorPassthroughRule, error) {
 	return r.rules, nil
 }
+
 func ErrorRules(rules []*errorpolicy.ErrorPassthroughRule) *errorpolicy.ErrorPassthroughService {
 	s := errorpolicy.NewErrorPassthroughService(errorRulesFixtureRepo{rules: rules}, nil, gatewaytelemetry.ErrorRules)
-	s.Start()
+	if err := s.StartContext(context.Background()); err != nil {
+		panic(err)
+	}
 	return s
 }
 

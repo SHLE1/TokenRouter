@@ -11,7 +11,6 @@ import (
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	"github.com/TokenFlux/TokenRouter/internal/egress"
-	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/ws"
@@ -444,70 +443,4 @@ func openAIWSGenericPolicyCloseError(statusCode int) error {
 		coderws.StatusInternalError,
 		"Upstream gateway error", ws.NewGenericPolicyError(statusCode),
 	)
-}
-
-// newOpenAIWSRateLimitFailoverError 保留 WS 限流响应头并允许 OAuth 提供商短暂原地重试。
-func (s *OpenAIWebSocketExecutor) newOpenAIWSRateLimitFailoverError(provider *gatewayprovider.ExecutionProvider, headers http.Header, responseBody []byte, message string) *forwardcore.UpstreamFailoverError {
-	return (gatewayprovider.OpenAIFailoverPolicy{Health: s.Output.Health}).NewProviderFailure(
-		provider,
-		http.StatusTooManyRequests,
-		headers,
-		responseBody,
-		strings.TrimSpace(message),
-		false,
-		false,
-	)
-}
-
-func (s *OpenAIWebSocketExecutor) openAIWSFallbackCooldown() time.Duration {
-	if s == nil || s.Options == nil {
-		return 30 * time.Second
-	}
-	seconds := s.Options.FallbackCooldownSeconds
-	if seconds <= 0 {
-		return 0
-	}
-	return time.Duration(seconds) * time.Second
-}
-
-func (s *OpenAIWebSocketExecutor) isOpenAIWSFallbackCooling(providerID int64) bool {
-	if s == nil || providerID <= 0 {
-		return false
-	}
-	cooldown := s.openAIWSFallbackCooldown()
-	if cooldown <= 0 {
-		return false
-	}
-	rawUntil, ok := s.openaiWSFallbackUntil.Load(providerID)
-	if !ok || rawUntil == nil {
-		return false
-	}
-	until, ok := rawUntil.(time.Time)
-	if !ok || until.IsZero() {
-		s.openaiWSFallbackUntil.Delete(providerID)
-		return false
-	}
-	if time.Now().Before(until) {
-		return true
-	}
-	s.openaiWSFallbackUntil.Delete(providerID)
-	return false
-}
-
-func (s *OpenAIWebSocketExecutor) markOpenAIWSFallbackCooling(providerID int64, _ string) {
-	if s == nil || providerID <= 0 {
-		return
-	}
-	cooldown := s.openAIWSFallbackCooldown()
-	if cooldown <= 0 {
-		return
-	}
-	s.openaiWSFallbackUntil.Store(providerID, time.Now().Add(cooldown))
-}
-
-func (s *OpenAIWebSocketExecutor) clearOpenAIWSFallbackCooling(providerID int64) {
-	if s == nil || providerID <= 0 {
-		return
-	}
-	s.openaiWSFallbackUntil.Delete(providerID)
 }

@@ -37,7 +37,7 @@ func TestOpenAIImagesRequestModerationBody_MultipartEditIncludesUploadsInMemory(
 		"data:image/png;base64,ZmFrZS1tYXNrLWJ5dGVz",
 	}, input.Images)
 
-	log := (&ContentModerationService{}).buildTextLogForTest(ContentModerationCheckInput{}, defaultContentModerationConfig(), ContentModerationActionAllow, false, "", 0, nil, input.ExcerptText(), nil, nil, "")
+	log := (&ContentModerationService{}).buildTextLogForTest(ContentModerationCheckInput{}, defaultContentModerationConfig(), ContentModerationActionAllow, false, "", 0, nil, input.Text, nil, nil, "")
 	require.Equal(t, "replace background", log.InputExcerpt)
 	require.NotContains(t, log.InputExcerpt, "ZmFrZS")
 }

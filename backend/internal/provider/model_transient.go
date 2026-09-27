@@ -163,15 +163,6 @@ func (s *ModelTransientState) IsBlocked(providerID int64, model string, now time
 	return !entry.blockUntil.IsZero() && now.Before(entry.blockUntil)
 }
 
-func (s *ModelTransientState) size() int {
-	if s == nil {
-		return 0
-	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return len(s.entries)
-}
-
 // evictOldestLocked 仅在持有 s.mu 时调用，并为新键淘汰最久未访问的条目。
 func (s *ModelTransientState) evictOldestLocked() {
 	if len(s.entries) < s.maxEntries {

@@ -3,9 +3,8 @@ package billing
 import (
 	"context"
 	"fmt"
-	"time"
-
 	"sync/atomic"
+	"time"
 
 	gocache "github.com/patrickmn/go-cache"
 	"golang.org/x/sync/singleflight"
@@ -109,8 +108,10 @@ func (r *GroupRateResolver) Resolve(ctx context.Context, userID, groupID int64, 
 }
 
 // DefaultGroupRateCacheTTL 保留网关隔离缓存的原有效期。
-const defaultUserGroupRateCacheTTL = 30 * time.Second
-const DefaultGroupRateCacheTTL = defaultUserGroupRateCacheTTL
+const (
+	defaultUserGroupRateCacheTTL = 30 * time.Second
+	DefaultGroupRateCacheTTL     = defaultUserGroupRateCacheTTL
+)
 
 // GroupRateMetrics 共用一份统计状态；各网关的缓存和 singleflight 保持隔离。
 type GroupRateMetrics struct{ Hit, Miss, Load, Shared, Fallback atomic.Int64 }
@@ -122,7 +123,4 @@ func (r *GroupRateResolver) DeleteExpired() {
 	if r != nil && r.cache != nil {
 		r.cache.DeleteExpired()
 	}
-}
-func GroupRateCacheStats() (int64, int64, int64, int64, int64) {
-	return groupRateMetrics.Hit.Load(), groupRateMetrics.Miss.Load(), groupRateMetrics.Load.Load(), groupRateMetrics.Shared.Load(), groupRateMetrics.Fallback.Load()
 }

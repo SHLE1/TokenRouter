@@ -105,10 +105,6 @@ type QoderConversationPlanOptions struct {
 	AppendToExisting bool
 }
 
-func (s *QoderConversationStore) Plan(key, system string, tools []any, messages []QoderMessage) *QoderConversationPlan {
-	return s.PlanWithOptions(key, system, tools, messages, QoderConversationPlanOptions{})
-}
-
 func (s *QoderConversationStore) PlanWithOptions(key, system string, tools []any, messages []QoderMessage, options QoderConversationPlanOptions) *QoderConversationPlan {
 	systemFingerprint := QoderSystemFingerprint(system)
 	toolsFingerprint := QoderFingerprintAny(tools)

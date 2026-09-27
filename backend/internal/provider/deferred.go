@@ -69,7 +69,6 @@ func (s *DeferredService) ScheduleLastUsedUpdate(id int64) {
 		s.lastUsedUpdates.Store(id, now())
 	}
 }
-func (s *DeferredService) Stop() error { return s.StopContext(context.Background()) }
 
 // StopContext 取消尚在等待的周期 flush，保留已执行写入的原超时，再执行最终批次。
 func (s *DeferredService) StopContext(ctx context.Context) error {

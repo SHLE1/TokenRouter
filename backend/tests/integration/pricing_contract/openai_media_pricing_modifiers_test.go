@@ -54,9 +54,7 @@ func TestOpenAIMediaPricingUsesModifierOnlyCards(t *testing.T) {
 						model: {Mode: media, InputCostPerToken: 0.001, OutputCostPerToken: 0.002, OutputCostPerImageToken: 0.004},
 					}}))
 					group := &routing.Group{ID: 100}
-					var pricingConfigCards []routing.ModelPricingEntry
-
-					pricingConfigCards = []routing.ModelPricingEntry{card}
+					pricingConfigCards := []routing.ModelPricingEntry{card}
 
 					resolver := billingtestkit.ResolverWithCards(t, billing, pricingConfigCards)
 					svc := completion.NewRecorder(completion.Dependencies{Calculator: billing, Prices: resolver}, completion.RecorderOptions{DefaultMultiplier: 1})
@@ -117,9 +115,7 @@ func TestCNProviderPricingModifiersDoNotCountAsExplicitPrices(t *testing.T) {
 				model := "claude-sonnet-4"
 				card := routing.ModelPricingEntry{Models: []string{model}, FastMultiplier: testPtrFloat64(2)}
 				group := &routing.Group{ID: 100}
-				var pricingConfigCards []routing.ModelPricingEntry
-
-				pricingConfigCards = []routing.ModelPricingEntry{card}
+				pricingConfigCards := []routing.ModelPricingEntry{card}
 
 				resolver := billingtestkit.ResolverWithCards(t, newCalculator(nil, nil), pricingConfigCards)
 				svc := completion.NewRecorder(completion.Dependencies{Prices: resolver}, completion.RecorderOptions{DefaultMultiplier: 1})

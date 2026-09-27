@@ -4,6 +4,7 @@ package smtp
 
 import (
 	"bufio"
+	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -284,7 +285,7 @@ func TestSMTPConnectionImplicitTLS(t *testing.T) {
 	srv, port := startFakeSMTPServer(t, true, false)
 	svc := &Client{}
 
-	if err := svc.TestSMTPConnectionWithConfig(smtpTestConfig(port, true)); err != nil {
+	if err := svc.Test(context.Background(), smtpTestConfig(port, true)); err != nil {
 		t.Fatalf("expected implicit TLS connection to succeed, got: %v", err)
 	}
 	if !srv.sawCommand("EHLO") {
@@ -298,7 +299,7 @@ func TestSMTPConnectionStartTLSFallbackWhenTLSEnabled(t *testing.T) {
 	srv, port := startFakeSMTPServer(t, false, true)
 	svc := &Client{}
 
-	if err := svc.TestSMTPConnectionWithConfig(smtpTestConfig(port, true)); err != nil {
+	if err := svc.Test(context.Background(), smtpTestConfig(port, true)); err != nil {
 		t.Fatalf("expected STARTTLS fallback to succeed, got: %v", err)
 	}
 	if !srv.sawCommand("STARTTLS") {
@@ -314,7 +315,7 @@ func TestSMTPConnectionMandatoryStartTLSRefusesPlaintext(t *testing.T) {
 	srv, port := startFakeSMTPServer(t, false, false)
 	svc := &Client{}
 
-	err := svc.TestSMTPConnectionWithConfig(smtpTestConfig(port, true))
+	err := svc.Test(context.Background(), smtpTestConfig(port, true))
 	if err == nil {
 		t.Fatal("expected error when server does not support STARTTLS")
 	}
@@ -332,7 +333,7 @@ func TestSMTPConnectionOpportunisticStartTLSWhenTLSDisabled(t *testing.T) {
 	srv, port := startFakeSMTPServer(t, false, true)
 	svc := &Client{}
 
-	if err := svc.TestSMTPConnectionWithConfig(smtpTestConfig(port, false)); err != nil {
+	if err := svc.Test(context.Background(), smtpTestConfig(port, false)); err != nil {
 		t.Fatalf("expected opportunistic STARTTLS test connection to succeed, got: %v", err)
 	}
 	if !srv.sawCommand("STARTTLS") {
@@ -345,7 +346,7 @@ func TestSMTPConnectionPlainWhenNoStartTLS(t *testing.T) {
 	srv, port := startFakeSMTPServer(t, false, false)
 	svc := &Client{}
 
-	if err := svc.TestSMTPConnectionWithConfig(smtpTestConfig(port, false)); err != nil {
+	if err := svc.Test(context.Background(), smtpTestConfig(port, false)); err != nil {
 		t.Fatalf("expected plain connection to succeed, got: %v", err)
 	}
 	if srv.sawCommand("STARTTLS") {
@@ -358,7 +359,7 @@ func TestSendEmailWithConfigStartTLSFallback(t *testing.T) {
 	srv, port := startFakeSMTPServer(t, false, true)
 	svc := &Client{}
 
-	err := svc.SendEmailWithConfig(smtpTestConfig(port, true), "rcpt@example.com", "subject", "<p>body</p>")
+	err := svc.Send(context.Background(), smtpTestConfig(port, true), "rcpt@example.com", "subject", "<p>body</p>")
 	if err != nil {
 		t.Fatalf("expected send via STARTTLS fallback to succeed, got: %v", err)
 	}
@@ -375,7 +376,7 @@ func TestSendEmailWithConfigImplicitTLS(t *testing.T) {
 	srv, port := startFakeSMTPServer(t, true, false)
 	svc := &Client{}
 
-	err := svc.SendEmailWithConfig(smtpTestConfig(port, true), "rcpt@example.com", "subject", "<p>body</p>")
+	err := svc.Send(context.Background(), smtpTestConfig(port, true), "rcpt@example.com", "subject", "<p>body</p>")
 	if err != nil {
 		t.Fatalf("expected send via implicit TLS to succeed, got: %v", err)
 	}

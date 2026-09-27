@@ -177,7 +177,7 @@ func TestCreateOrderInTx_WritesFeeBreakdown(t *testing.T) {
 		Save(ctx)
 	require.NoError(t, err)
 
-	breakdown := payment.CalculatePayAmountWithFee(100, payment.FeeConfig{FixedFee: 2.5, FeeRate: 2.2})
+	breakdown := payment.CalculatePayAmountWithFeeForCurrency(100, payment.FeeConfig{FixedFee: 2.5, FeeRate: 2.2}, payment.DefaultPaymentCurrency)
 	svc := payment.NewCheckout(paymentpostgres.NewOrderStore(client), nil, nil, nil, payment.CheckoutRuntime{})
 	order, err := svc.CreateOrderInTx(
 		ctx,

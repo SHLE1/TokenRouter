@@ -53,8 +53,3 @@ func (s *AdminGroupMutations) GrantGroupAndUpdateFields(ctx context.Context, key
 	}
 	return nil
 }
-
-// GrantGroupAndUpdate 保留事务参与测试与旧 Adapter 入口。
-func (s *AdminGroupMutations) GrantGroupAndUpdate(ctx context.Context, key *keycore.APIKey, gid int64) error {
-	return s.GrantGroupAndUpdateFields(ctx, key, keycore.APIKeyUpdateFields{GroupID: true}, gid)
-}

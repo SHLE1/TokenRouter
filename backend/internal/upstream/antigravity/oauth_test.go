@@ -3,6 +3,7 @@
 package antigravity
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
@@ -207,7 +208,7 @@ func TestURLAvailability_GetAvailableURLs(t *testing.T) {
 	ua := NewURLAvailability(10 * time.Minute)
 
 	// 默认所有 URL 都可用
-	urls := ua.GetAvailableURLs()
+	urls := ua.GetAvailableURLsWithBase(BaseURLs)
 	if len(urls) != len(BaseURLs) {
 		t.Errorf("可用 URL 数量不匹配: got %d, want %d", len(urls), len(BaseURLs))
 	}
@@ -221,7 +222,7 @@ func TestURLAvailability_GetAvailableURLs_标记一个不可用(t *testing.T) {
 	}
 
 	ua.MarkUnavailable(BaseURLs[0])
-	urls := ua.GetAvailableURLs()
+	urls := ua.GetAvailableURLsWithBase(BaseURLs)
 
 	// 标记的 URL 不应出现在可用列表中
 	for _, u := range urls {
@@ -571,8 +572,8 @@ func TestConstants_值正确(t *testing.T) {
 	if RedirectURI != "http://localhost:8085/callback" {
 		t.Errorf("RedirectURI 不匹配: got %s", RedirectURI)
 	}
-	if GetUserAgent() != "antigravity/1.23.2 windows/amd64" {
-		t.Errorf("UserAgent 不匹配: got %s", GetUserAgent())
+	if GetUserAgentForContext(context.Background()) != "antigravity/1.23.2 windows/amd64" {
+		t.Errorf("UserAgent 不匹配: got %s", GetUserAgentForContext(context.Background()))
 	}
 	if SessionTTL != 30*time.Minute {
 		t.Errorf("SessionTTL 不匹配: got %v", SessionTTL)

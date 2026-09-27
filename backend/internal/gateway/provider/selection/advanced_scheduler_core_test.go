@@ -22,12 +22,14 @@ func TestAdvancedSchedulerCoreSelectsNonOpenAIGroupAndMarksResult(t *testing.T) 
 	ctx := requeststate.WithGroup(context.Background(), group)
 	service := newGenericSelectionForTest(GenericDependencies{Reads: Reads{}, Shared: Shared{}}, nil)
 
-	selection, selected, err := service.tryAcquireByAdvancedScheduler(ctx, &groupID, "session", []providerWithLoad{
+	core, scope := service.genericSelector()
+	result, selected, err := core.TryAdvanced(ctx, &groupID, "session", scope.loads([]providerWithLoad{
 		{
 			provider: &gatewayprovider.ExecutionProvider{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 101, Platform: capability.PlatformGemini, Priority: 1, Schedulable: true, Status: billing.StatusActive}},
 			loadInfo: &scheduler.ProviderLoadInfo{ProviderID: 101, LoadRate: 0},
 		},
-	})
+	}))
+	selection := scope.restore(result)
 
 	require.NoError(t, err)
 	require.True(t, selected)

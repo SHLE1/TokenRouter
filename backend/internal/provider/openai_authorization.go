@@ -184,11 +184,6 @@ func (s *OpenAIAuthorization) exchangeCode(ctx context.Context, input *OpenAIExc
 	return tokenInfo, nil
 }
 
-// 按显式 client_id 刷新，缺省行为保持。
-func (s *OpenAIAuthorization) refreshTokenWithClientID(ctx context.Context, refreshToken string, proxyURL string, clientID string) (*OpenAITokenInfo, error) {
-	return s.refreshTokenWithParameters(ctx, refreshToken, proxyURL, clientID, 0, nil)
-}
-
 // RefreshTokenWithClientIDAndRouter 使用指定 TLS 路由器配置刷新导入态 ChatGPT OAuth token。
 func (s *OpenAIAuthorization) refreshTokenWithClientIDAndRouter(ctx context.Context, refreshToken string, proxyURL string, clientID string, routerID *int64) (*OpenAITokenInfo, error) {
 	return s.refreshTokenWithParameters(ctx, refreshToken, proxyURL, clientID, openAIInt64Value(routerID), nil)

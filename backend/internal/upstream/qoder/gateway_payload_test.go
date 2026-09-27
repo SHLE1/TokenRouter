@@ -70,7 +70,7 @@ func TestBuildQoderPayloadFromChatCompletions(t *testing.T) {
 		"tools":[{"type":"function","function":{"name":"lookup","parameters":{"type":"object"}}}]
 	}`)
 
-	payload, modelKey, err := qoder.BuildQoderPayloadFromChatCompletions(body, "personal_standard")
+	payload, modelKey, err := qoder.BuildQoderPayloadFromChatCompletionsForSite(body, "personal_standard", qoder.SiteGlobal)
 	require.NoError(t, err)
 	require.Equal(t, "auto", modelKey)
 	require.Equal(t, true, payload["stream"])
@@ -137,7 +137,7 @@ func TestBuildQoderPayloadUserSystemReplacesBuiltInSystem(t *testing.T) {
 		]
 	}`)
 
-	payload, _, err := qoder.BuildQoderPayloadFromChatCompletions(body, "personal_standard")
+	payload, _, err := qoder.BuildQoderPayloadFromChatCompletionsForSite(body, "personal_standard", qoder.SiteGlobal)
 	require.NoError(t, err)
 
 	messages, ok := payload["messages"].([]any)
@@ -166,7 +166,7 @@ func TestBuildQoderPayloadFromChatCompletionsPreservesToolHistory(t *testing.T) 
 		"tools":[{"type":"function","function":{"name":"bash","parameters":{"type":"object"}}}]
 	}`)
 
-	payload, _, err := qoder.BuildQoderPayloadFromChatCompletions(body, "personal_standard")
+	payload, _, err := qoder.BuildQoderPayloadFromChatCompletionsForSite(body, "personal_standard", qoder.SiteGlobal)
 	require.NoError(t, err)
 
 	messages := qoderFixtureValue[[]any](t, payload["messages"])
@@ -198,7 +198,7 @@ func TestBuildQoderPayloadFromChatCompletionsPreservesLegacyFunctionHistory(t *t
 		"functions":[{"name":"get_weather","parameters":{"type":"object"}}]
 	}`)
 
-	payload, _, err := qoder.BuildQoderPayloadFromChatCompletions(body, "personal_standard")
+	payload, _, err := qoder.BuildQoderPayloadFromChatCompletionsForSite(body, "personal_standard", qoder.SiteGlobal)
 	require.NoError(t, err)
 
 	messages := qoderFixtureValue[[]any](t, payload["messages"])
@@ -233,7 +233,7 @@ func TestBuildQoderPayloadFromChatCompletionsMergesParallelToolHistory(t *testin
 		"tools":[{"type":"function","function":{"name":"bash","parameters":{"type":"object","properties":{"command":{"type":"string"}},"required":["command"]}}}]
 	}`)
 
-	payload, _, err := qoder.BuildQoderPayloadFromChatCompletions(body, "personal_standard")
+	payload, _, err := qoder.BuildQoderPayloadFromChatCompletionsForSite(body, "personal_standard", qoder.SiteGlobal)
 	require.NoError(t, err)
 
 	messages := qoderFixtureValue[[]any](t, payload["messages"])
@@ -439,14 +439,14 @@ func TestBuildQoderPayloadFromAnthropicMessagesConvertsTools(t *testing.T) {
 }
 
 func TestResolveQoderModelUsesOpus46AliasForUltimate(t *testing.T) {
-	info := qoder.ResolveQoderModel("claude-opus-4-6")
+	info := qoder.ResolveQoderModelForSite(qoder.SiteGlobal, "claude-opus-4-6")
 	require.Equal(t, "ultimate", info.Key)
 	require.Equal(t, "system", info.Source)
 
-	legacy := qoder.ResolveQoderModel("claude-opus-4-5")
+	legacy := qoder.ResolveQoderModelForSite(qoder.SiteGlobal, "claude-opus-4-5")
 	require.Equal(t, "claude-opus-4-5", legacy.Key)
 
-	codex := qoder.ResolveQoderModel("gpt-5-codex")
+	codex := qoder.ResolveQoderModelForSite(qoder.SiteGlobal, "gpt-5-codex")
 	require.Equal(t, "gpt-5-codex", codex.Key)
 }
 
@@ -460,14 +460,14 @@ func TestResolveQoderModelUsesQwen38MaxAlias(t *testing.T) {
 }
 
 func TestResolveQoderModelUsesKimiK3Alias(t *testing.T) {
-	info := qoder.ResolveQoderModel("kimi-k3")
+	info := qoder.ResolveQoderModelForSite(qoder.SiteGlobal, "kimi-k3")
 	require.Equal(t, "kmodel_latest", info.Key)
 	require.Equal(t, "system", info.Source)
 	require.Equal(t, "Kimi-K3", info.DisplayName)
 }
 
 func TestResolveQoderModelUsesGLM52RouteKey(t *testing.T) {
-	info := qoder.ResolveQoderModel("glm-5.2")
+	info := qoder.ResolveQoderModelForSite(qoder.SiteGlobal, "glm-5.2")
 	require.Equal(t, "gm51model", info.Key)
 	require.Equal(t, "system", info.Source)
 	require.Equal(t, "GLM-5.2", info.DisplayName)
@@ -484,7 +484,7 @@ func TestResolveQoderModelUsesGLM53RouteKey(t *testing.T) {
 
 func TestResolveQoderModelDoesNotTranslateRemovedCompatibilityAliases(t *testing.T) {
 	for _, model := range []string{"ultimate", "qwen3.8-max-preview", "qmodel_preview", "qwen3.5-plus", "glm-5", "glm-5.1", "kimi-k2.6"} {
-		info := qoder.ResolveQoderModel(model)
+		info := qoder.ResolveQoderModelForSite(qoder.SiteGlobal, model)
 		require.Equal(t, model, info.Key)
 		require.Equal(t, "system", info.Source)
 		require.Empty(t, info.DisplayName)
@@ -634,13 +634,13 @@ func TestQoderConversationStoreExpiresState(t *testing.T) {
 	store := qoder.NewQoderConversationStore(5 * time.Millisecond)
 	messages := []qoder.QoderMessage{{Role: "user", Text: "hello"}}
 
-	plan := store.Plan("key", "", nil, messages)
+	plan := store.PlanWithOptions("key", "", nil, messages, qoder.QoderConversationPlanOptions{})
 	require.NotNil(t, plan)
 	plan.Commit()
 
 	time.Sleep(10 * time.Millisecond)
 
-	next := store.Plan("key", "", nil, messages)
+	next := store.PlanWithOptions("key", "", nil, messages, qoder.QoderConversationPlanOptions{})
 	require.False(t, next.Reused)
 	require.True(t, next.IncludeSystem)
 	require.Len(t, next.MessagesToSend, 1)
@@ -1007,7 +1007,7 @@ func TestQoderGatewayReadsWrappedSSE(t *testing.T) {
 		)),
 	}
 
-	events, err := qoder.ReadQoderSSEEvents(resp)
+	events, err := qoder.ReadQoderSSEEventsContext(context.Background(), resp, nil)
 	require.NoError(t, err)
 	require.Len(t, events, 4)
 	require.Equal(t, "reasoning_delta", events[0].Type)
@@ -1053,7 +1053,7 @@ func TestQoderGatewayReadsWrappedSSEUpstreamError(t *testing.T) {
 		)),
 	}
 
-	events, err := qoder.ReadQoderSSEEvents(resp)
+	events, err := qoder.ReadQoderSSEEventsContext(context.Background(), resp, nil)
 	require.Error(t, err)
 	require.Empty(t, events)
 	var apiErr *qoder.APIError

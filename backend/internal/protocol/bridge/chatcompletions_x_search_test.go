@@ -24,7 +24,7 @@ func TestResponsesToChatCompletionsPreservesXSearchTool(t *testing.T) {
 		ToolChoice: json.RawMessage(`{"type":"x_search"}`),
 	}
 
-	chat, err := ResponsesToChatCompletionsRequest(req)
+	chat, err := ResponsesToChatCompletionsRequestWithOptions(req, nil)
 	require.NoError(t, err)
 	require.Len(t, chat.Tools, 1)
 	require.Equal(t, "x_search", chat.Tools[0].Type)
@@ -34,12 +34,12 @@ func TestResponsesToChatCompletionsPreservesXSearchTool(t *testing.T) {
 }
 
 func TestResponsesToChatCompletionsXSearchToolChoiceString(t *testing.T) {
-	chat, err := ResponsesToChatCompletionsRequest(&ResponsesRequest{
+	chat, err := ResponsesToChatCompletionsRequestWithOptions(&ResponsesRequest{
 		Model:      "grok-4.5",
 		Input:      json.RawMessage(`"latest xAI post"`),
 		Tools:      []ResponsesTool{{Type: "x_search"}},
 		ToolChoice: json.RawMessage(`"x_search"`),
-	})
+	}, nil)
 	require.NoError(t, err)
 	require.JSONEq(t, `"x_search"`, string(chat.ToolChoice))
 }

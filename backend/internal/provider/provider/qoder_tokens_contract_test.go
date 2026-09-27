@@ -985,7 +985,7 @@ func TestQoderTokenProviderOrganizationTagsErrorRedactsSensitiveBody(t *testing.
 		},
 	}
 
-	_, err := tokenSource.getOrganizationTagsForProvider(context.Background(), provider, "sec-token", "uid-1")
+	_, err := tokenSource.sessionBuilder(provider).GetOrganizationTags(context.Background(), QoderCredentialInput(provider), "sec-token", "uid-1")
 
 	require.Error(t, err)
 	errText := err.Error()

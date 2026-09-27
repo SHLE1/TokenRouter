@@ -126,42 +126,42 @@ func TestValidateXAIURLsAllowOfficialOAuthAndGatewayHosts(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, DefaultBaseURL, baseURLNoPath)
 
-	chatURL, err := BuildChatCompletionsURL(DefaultCLIBaseURL + "/")
+	chatURL, err := BuildChatCompletionsURLWithValidator(DefaultCLIBaseURL+"/", nil)
 	require.NoError(t, err)
 	require.Equal(t, DefaultCLIBaseURL+"/chat/completions", chatURL)
 }
 
 func TestBuildGrokMediaURLs(t *testing.T) {
-	imagesURL, err := BuildImagesGenerationsURL(DefaultBaseURL + "/")
+	imagesURL, err := BuildImagesGenerationsURLWithValidator(DefaultBaseURL+"/", nil)
 	require.NoError(t, err)
 	require.Equal(t, DefaultBaseURL+"/images/generations", imagesURL)
 
-	editsURL, err := BuildImagesEditsURL(DefaultBaseURL)
+	editsURL, err := BuildImagesEditsURLWithValidator(DefaultBaseURL, nil)
 	require.NoError(t, err)
 	require.Equal(t, DefaultBaseURL+"/images/edits", editsURL)
 
-	videosURL, err := BuildVideosGenerationsURL(DefaultBaseURL)
+	videosURL, err := BuildVideosGenerationsURLWithValidator(DefaultBaseURL, nil)
 	require.NoError(t, err)
 	require.Equal(t, DefaultBaseURL+"/videos/generations", videosURL)
 
-	videoEditsURL, err := BuildVideosEditsURL(DefaultBaseURL)
+	videoEditsURL, err := BuildVideosEditsURLWithValidator(DefaultBaseURL, nil)
 	require.NoError(t, err)
 	require.Equal(t, DefaultBaseURL+"/videos/edits", videoEditsURL)
 
-	videoExtensionsURL, err := BuildVideosExtensionsURL(DefaultBaseURL)
+	videoExtensionsURL, err := BuildVideosExtensionsURLWithValidator(DefaultBaseURL, nil)
 	require.NoError(t, err)
 	require.Equal(t, DefaultBaseURL+"/videos/extensions", videoExtensionsURL)
 
-	videoURL, err := BuildVideoURL(DefaultBaseURL, "req 123")
+	videoURL, err := BuildVideoURLWithValidator(DefaultBaseURL, "req 123", nil)
 	require.NoError(t, err)
 	require.Equal(t, DefaultBaseURL+"/videos/req%20123", videoURL)
 
-	_, err = BuildVideoURL(DefaultBaseURL, " ")
+	_, err = BuildVideoURLWithValidator(DefaultBaseURL, " ", nil)
 	require.Error(t, err)
 
 	// 纯点片段和控制字符不能进入上游视频路径。
 	for _, requestID := range []string{".", "..", "req\x00id", "req\rid", "req\nid"} {
-		_, err = BuildVideoURL(DefaultBaseURL, requestID)
+		_, err = BuildVideoURLWithValidator(DefaultBaseURL, requestID, nil)
 		require.Error(t, err, "request_id=%q", requestID)
 	}
 }
@@ -286,7 +286,7 @@ func TestValidateTrustedBaseURLAcceptsOfficialRegionalHosts(t *testing.T) {
 func TestBuildResponsesURLPreservesUnsafeOverrideCustomPath(t *testing.T) {
 	t.Setenv(EnvAllowUnsafeURLOverrides, "true")
 
-	target, err := BuildResponsesURL("http://localhost:8080/custom")
+	target, err := BuildResponsesURLWithValidator("http://localhost:8080/custom", nil)
 	require.NoError(t, err)
 	require.Equal(t, "http://localhost:8080/custom/responses", target)
 }

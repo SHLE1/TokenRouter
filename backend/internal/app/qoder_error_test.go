@@ -37,7 +37,7 @@ func TestQoderGatewayErrorDetailsAppliesPassthroughRule(t *testing.T) {
 		},
 	}, nil, gatewaytelemetry.ErrorRules,
 	)
-	svc.Start()
+	require.NoError(t, svc.StartContext(context.Background()))
 	t.Cleanup(svc.Stop)
 	h := gatewayhttp.QoderErrorPresenter{Rules: svc, Describe: gatewayprovider.DescribeQoderError}
 

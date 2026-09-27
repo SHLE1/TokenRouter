@@ -597,9 +597,7 @@ func TestOpenAIGatewayService_OAuthPassthrough_NamespaceNonStreamingResponse(t *
 	}
 	SetOpenAIResponsesNamespaceNames(c, names)
 
-	result, err := newResponsesFixture(responsesFixtureInputs{options: &responsesFixtureOptions{}}).Output.PassthroughNonStream(
-		context.Background(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 91}}, "gpt-5.5", "",
-	)
+	result, err := openai.ReadPassthroughNonStreaming(context.Background(), resp, ResponseSink{Writer: c.Writer}, newResponsesFixture(responsesFixtureInputs{options: &responsesFixtureOptions{}}).Output.PassthroughOptions(context.Background(), c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 91}}), "gpt-5.5", "")
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.NotContains(t, rec.Body.String(), "collaboration__spawn_agent")

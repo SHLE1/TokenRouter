@@ -40,7 +40,7 @@ func TestRealAPI(t *testing.T) {
 		MachineType:  qoder.RandomHex(18),
 	}
 
-	session, err := qoder.NewSession(identity, machine)
+	session, err := qoder.NewSessionForSite(identity, machine, qoder.SiteGlobal)
 	if err != nil {
 		t.Fatalf("qoder.NewSession: %v", err)
 	}
@@ -84,7 +84,7 @@ func TestRealAPI(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
 	defer cancel()
 
-	resp, err := client.StreamRequest(session, "", bodyJSON, map[string]string{
+	resp, err := client.StreamRequestContext(context.Background(), session, "", bodyJSON, map[string]string{
 		"x-model-key":    "auto",
 		"x-model-source": "system",
 	})

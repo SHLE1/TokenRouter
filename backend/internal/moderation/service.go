@@ -474,10 +474,6 @@ func contentModerationInputSource(items []ContentModerationInputItem) string {
 	return ContentModerationSourceUser
 }
 
-func (in ContentModerationInput) ExcerptText() string {
-	return in.Text
-}
-
 func (in ContentModerationInput) Hash() string {
 	h := sha256.New()
 	_, _ = h.Write([]byte("text:"))
@@ -1673,14 +1669,6 @@ func publicContentModerationError(err error) string {
 		}
 	}
 	return "moderation provider request failed"
-}
-
-func splitContentModerationText(text string, chunkSize int, overlap int) []string {
-	chunks := make([]string, 0, countContentModerationTextChunks(text, chunkSize, overlap))
-	forEachContentModerationTextBatch(text, chunkSize, overlap, contentModerationTextBatchSize, func(_ int, batch []string) {
-		chunks = append(chunks, batch...)
-	})
-	return chunks
 }
 
 func normalizeContentModerationChunkOptions(chunkSize int, overlap int) (int, int) {

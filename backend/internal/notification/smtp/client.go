@@ -15,13 +15,17 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/notification/contract"
 )
 
-type Client struct{}
-type SMTPConfig = contract.SMTPConfig
+type (
+	Client     struct{}
+	SMTPConfig = contract.SMTPConfig
+)
 
 func New() *Client { return &Client{} }
 
-const smtpDialTimeout = 10 * time.Second
-const smtpIOTimeout = 20 * time.Second
+const (
+	smtpDialTimeout = 10 * time.Second
+	smtpIOTimeout   = 20 * time.Second
+)
 
 var smtpTestRootCAs *x509.CertPool
 
@@ -72,6 +76,7 @@ func (s *Client) Send(ctx context.Context, config *SMTPConfig, to, subject, body
 	_ = client.Quit()
 	return nil
 }
+
 func smtpTLSConfig(host string) *tls.Config {
 	return &tls.Config{
 		ServerName: host,
@@ -140,6 +145,7 @@ func (s *Client) connectSMTPStartTLS(ctx context.Context, dialer *net.Dialer, ad
 	}
 	return client, nil
 }
+
 func newSMTPClient(conn net.Conn, host string) (*smtp.Client, error) {
 	_ = conn.SetDeadline(time.Now().Add(smtpIOTimeout))
 	client, err := smtp.NewClient(conn, host)
@@ -189,6 +195,7 @@ func (c *contextConn) Close() error {
 	}
 	return c.Conn.Close()
 }
+
 func bindCancellation(ctx context.Context, conn net.Conn) net.Conn {
 	wrapped := &contextConn{Conn: conn}
 	wrapped.deadline, _ = ctx.Deadline()
@@ -205,10 +212,4 @@ func (c *contextConn) SetDeadline(deadline time.Time) error {
 		deadline = c.deadline
 	}
 	return c.Conn.SetDeadline(deadline)
-}
-func (s *Client) SendEmailWithConfig(cfg *SMTPConfig, to, subject, body string) error {
-	return s.Send(context.Background(), cfg, to, subject, body)
-}
-func (s *Client) TestSMTPConnectionWithConfig(cfg *SMTPConfig) error {
-	return s.Test(context.Background(), cfg)
 }

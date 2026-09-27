@@ -12,8 +12,6 @@ import (
 	"testing"
 	"time"
 
-	responseupstream "github.com/TokenFlux/TokenRouter/internal/upstream/openai"
-
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
@@ -27,45 +25,25 @@ type grokObservationErrorReader struct{ err error }
 
 func (r grokObservationErrorReader) Read([]byte) (int, error) { return 0, r.err }
 
-func TestGrokNativeObservationRetainsPartialResultWithoutChangingLegacyFailure(t *testing.T) {
+// TestGrokNativeObservationRetainsPartialUsageAfterReadError 验证可见输出后的读取错误仍保留用量。
+func TestGrokNativeObservationRetainsPartialUsageAfterReadError(t *testing.T) {
 	failure := errors.New("fixture truncated stream")
 	payload := "data: {\"type\":\"response.output_text.delta\",\"delta\":\"visible\",\"usage\":{\"input_tokens\":9,\"output_tokens\":2}}\n\n"
-	for _, native := range []bool{true, false} {
-		name := "legacy"
-		if native {
-			name = "native"
-		}
-		t.Run(name, func(t *testing.T) {
-			recorder := httptest.NewRecorder()
-			c, _ := gin.CreateTestContext(recorder)
-			c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
-			provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 470, Platform: capability.PlatformGrok, Type: capability.ProviderTypeAPIKey}}
-			response := &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": []string{"text/event-stream"}}, Body: io.NopCloser(io.MultiReader(strings.NewReader(payload), grokObservationErrorReader{failure}))}
-			service := newResponseOutputForTest(OpenAIResponseOptions{})
-			var result *responseupstream.StreamingResult
-			var err error
-			if native {
-				result, err = service.ReadStreamObservation(context.Background(), response, c, provider, time.Now(), "grok-fixture", "grok-fixture", "")
-			} else {
-				result, err = service.Stream(context.Background(), response, c, provider, time.Now(), "grok-fixture", "grok-fixture", "")
-			}
-			require.Error(t, err)
-			require.Contains(t, recorder.Body.String(), "visible")
-			if native {
-				require.NotNil(t, result)
-				require.True(t, result.Served)
-				require.True(t, result.HasUsage)
-				require.True(t, result.HttpCommitted)
-				require.NotNil(t, result.FirstSemanticOutput)
-				require.Equal(t, 9, result.Usage.InputTokens)
-				require.Equal(t, 2, result.Usage.OutputTokens)
-			}
-			// 此路径的旧读取器原本返回错误和用量；不因新入口改变两者。
-			if !native {
-				require.NotNil(t, result)
-				require.False(t, result.ObservedOnly)
-				require.Equal(t, 9, result.Usage.InputTokens)
-			}
-		})
-	}
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 470, Platform: capability.PlatformGrok, Type: capability.ProviderTypeAPIKey}}
+	response := &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": []string{"text/event-stream"}}, Body: io.NopCloser(io.MultiReader(strings.NewReader(payload), grokObservationErrorReader{failure}))}
+	service := newResponseOutputForTest(OpenAIResponseOptions{})
+	result, err := service.ReadStreamObservation(context.Background(), response, c, provider, time.Now(), "grok-fixture", "grok-fixture", "")
+	require.Error(t, err)
+	require.Contains(t, recorder.Body.String(), "visible")
+	require.NotNil(t, result)
+	require.True(t, result.Served)
+	require.True(t, result.HasUsage)
+	require.True(t, result.HttpCommitted)
+	require.NotNil(t, result.FirstSemanticOutput)
+	require.False(t, result.ObservedOnly)
+	require.Equal(t, 9, result.Usage.InputTokens)
+	require.Equal(t, 2, result.Usage.OutputTokens)
 }

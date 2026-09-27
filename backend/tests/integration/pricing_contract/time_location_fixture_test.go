@@ -17,10 +17,3 @@ func contractTimeLocation(value *pricing.TimePricingConfig) *time.Location {
 	location, _ := billingadapter.LoadPricingLocation(value.Timezone)
 	return location
 }
-
-func contractResolvedTimeLocation(value *pricing.ResolvedPricing) *time.Location {
-	if value == nil || value.ConfigPricing == nil {
-		return nil
-	}
-	return contractTimeLocation(value.ConfigPricing.TimePricing)
-}

@@ -7,6 +7,7 @@ import (
 
 	providerhttp "github.com/TokenFlux/TokenRouter/internal/provider/httpapi"
 	schedulerhttp "github.com/TokenFlux/TokenRouter/internal/scheduler/httpapi"
+	"github.com/TokenFlux/TokenRouter/internal/server/middleware"
 
 	backuphttp "github.com/TokenFlux/TokenRouter/internal/backup/httpapi"
 	"github.com/gin-gonic/gin"
@@ -147,4 +148,47 @@ func TestCanonicalBackupIDRouteGuard(t *testing.T) {
 			require.Equal(t, tt.wantStatus, w.Code)
 		})
 	}
+}
+
+// TestRetiredAdminStatisticsNativeRoutes 验证通过管理员鉴权后的生产路由退役结果。
+func TestRetiredAdminStatisticsNativeRoutes(t *testing.T) {
+	router := gin.New()
+	checked := 0
+	security := httpRouteSecurity{
+		Admin: func(c *gin.Context) {
+			if c.GetHeader("Authorization") != "Bearer test-admin" {
+				c.AbortWithStatus(http.StatusUnauthorized)
+				return
+			}
+			checked++
+			c.Next()
+		},
+		Audit:  func(c *gin.Context) { c.Next() },
+		StepUp: func(c *gin.Context) { c.Next() },
+		Panel:  middleware.NewPanelRateLimiter(middleware.NewRateLimiter(nil), nil),
+	}
+	routeInventoryMount[adminRouteMount](t, provideAdminRouteMount)(router.Group("/api/v1"), security, func(c *gin.Context) { c.Status(http.StatusOK) })
+	for _, tc := range []struct {
+		path   string
+		status int
+	}{
+		{"/api/v1/admin/groups/2/stats", http.StatusNotFound},
+		{"/api/v1/admin/redeem-codes/stats", http.StatusBadRequest},
+	} {
+		t.Run(tc.path, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, tc.path, nil)
+			req.Header.Set("Authorization", "Bearer test-admin")
+			router.ServeHTTP(rec, req)
+			require.Equal(t, tc.status, rec.Code)
+			if tc.status == http.StatusBadRequest {
+				require.Contains(t, rec.Body.String(), "Invalid redeem code ID")
+			}
+		})
+	}
+	// 不存在的路由由 Gin 直接返回 404；兑换码动态路由必须先经过管理员鉴权。
+	require.Equal(t, 1, checked)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/admin/redeem-codes/stats", nil))
+	require.Equal(t, http.StatusUnauthorized, rec.Code)
 }

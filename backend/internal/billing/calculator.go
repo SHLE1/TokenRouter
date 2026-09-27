@@ -128,11 +128,6 @@ func (s *Calculator) CalculateCostInternal(model string, tokens UsageTokens, rat
 	return s.ComputeTokenBreakdown(pricing, tokens, rateMultiplier, serviceTier, true), nil
 }
 
-// ApplyModelSpecificPricingPolicy 委托纯定价实现，旧查询与配置投影保留在适配层。
-func (s *Calculator) ApplyModelSpecificPricingPolicy(model string, pricing *ModelPricing) *ModelPricing {
-	return purepricing.ApplyModelSpecificPricingPolicy(model, pricing, s.options.ModelPolicy(model))
-}
-
 // CalculateCostWithConfig 使用配置中的默认倍率计算费用
 func (s *Calculator) CalculateCostWithConfig(model string, tokens UsageTokens) (*CostBreakdown, error) {
 	multiplier := s.options.DefaultRateMultiplier
@@ -140,34 +135,6 @@ func (s *Calculator) CalculateCostWithConfig(model string, tokens UsageTokens) (
 		multiplier = 1.0
 	}
 	return s.CalculateCost(model, tokens, multiplier)
-}
-
-// CalculateCostWithLongContext 计算费用，支持长上下文双倍计费
-// threshold: 阈值（如 200000），超过此值的部分按 extraMultiplier 倍计费
-// extraMultiplier: 超出部分的倍率（如 2.0 表示双倍）
-//
-// 示例：缓存 210k + 输入 10k = 220k，阈值 200k，倍率 2.0
-// 拆分为：范围内 (200k, 0) + 范围外 (10k, 10k)
-// 范围内正常计费，范围外 × 2 计费
-func (s *Calculator) CalculateCostWithLongContext(model string, tokens UsageTokens, rateMultiplier float64, threshold int, extraMultiplier float64) (*CostBreakdown, error) {
-	return s.CalculateCostWithLongContextAndServiceTier(model, tokens, rateMultiplier, threshold, extraMultiplier, "")
-}
-
-// CalculateCostWithLongContextAndServiceTier 保留两段查询及部分失败返回，分段/金额合并委托纯包。
-func (s *Calculator) CalculateCostWithLongContextAndServiceTier(model string, tokens UsageTokens, rateMultiplier float64, threshold int, extraMultiplier float64, serviceTier string) (*CostBreakdown, error) {
-	charges := purepricing.LegacyLongContextCharges(tokens, rateMultiplier, threshold, extraMultiplier)
-	first, err := s.CalculateCostWithServiceTier(model, charges[0].Tokens, charges[0].RateMultiplier, serviceTier)
-	if err != nil {
-		return nil, err
-	}
-	if len(charges) == 1 {
-		return first, nil
-	}
-	second, err := s.CalculateCostWithServiceTier(model, charges[1].Tokens, charges[1].RateMultiplier, serviceTier)
-	if err != nil {
-		return first, fmt.Errorf("out-range cost: %w", err)
-	}
-	return purepricing.CombineLongContextCosts(first, second), nil
 }
 
 // ListSupportedModels 列出所有支持的模型（现在总是返回true，因为有模糊匹配）
@@ -227,12 +194,6 @@ func (s *Calculator) ForceUpdatePricing() error {
 
 // ModelDisplayPricing 保留旧用量/定价类型入口。
 type ModelDisplayPricing = purepricing.ModelDisplayPricing
-
-// GetDisplayPricing 返回用于模型广场展示的价格信息。
-// 它会优先识别图片模型并展示按图计费，否则展示按 token 计费。
-func (s *Calculator) GetDisplayPricing(model string, rateMultiplier float64) ModelDisplayPricing {
-	return s.DisplayPricing(model, rateMultiplier)
-}
 
 // DisplayPricing 使用分组倍率计算模型广场展示价格。
 func (s *Calculator) DisplayPricing(model string, rateMultiplier float64) ModelDisplayPricing {

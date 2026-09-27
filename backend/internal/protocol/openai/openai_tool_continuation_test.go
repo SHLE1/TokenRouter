@@ -59,7 +59,7 @@ func TestHasFunctionCallOutput(t *testing.T) {
 
 func TestHasToolCallContext(t *testing.T) {
 	// 工具调用上下文必须包含 call_id，才能作为可关联上下文。
-	require.False(t, openai.HasToolCallContext(nil))
+	require.False(t, openai.AnalyzeToolContinuationSignals(nil).HasToolCallContext)
 	for _, typ := range []string{
 		"tool_call",
 		"function_call",
@@ -68,19 +68,19 @@ func TestHasToolCallContext(t *testing.T) {
 		"custom_tool_call",
 		"mcp_tool_call",
 	} {
-		require.True(t, openai.HasToolCallContext(map[string]any{
+		require.True(t, openai.AnalyzeToolContinuationSignals(map[string]any{
 			"input": []any{map[string]any{"type": typ, "call_id": "call_1"}},
-		}), typ)
+		}).HasToolCallContext, typ)
 	}
-	require.False(t, openai.HasToolCallContext(map[string]any{
+	require.False(t, openai.AnalyzeToolContinuationSignals(map[string]any{
 		"input": []any{map[string]any{"type": "tool_call"}},
-	}))
+	}).HasToolCallContext)
 }
 
 func TestFunctionCallOutputCallIDs(t *testing.T) {
 	// 仅提取工具输出的非空 call_id，去重后返回。
-	require.Empty(t, openai.FunctionCallOutputCallIDs(nil))
-	callIDs := openai.FunctionCallOutputCallIDs(map[string]any{
+	require.Empty(t, openai.AnalyzeToolContinuationSignals(nil).FunctionCallOutputCallIDs)
+	callIDs := openai.AnalyzeToolContinuationSignals(map[string]any{
 		"input": []any{
 			map[string]any{"type": "function_call_output", "call_id": "call_1"},
 			map[string]any{"type": "tool_search_output", "call_id": "call_search"},
@@ -89,21 +89,21 @@ func TestFunctionCallOutputCallIDs(t *testing.T) {
 			map[string]any{"type": "function_call_output", "call_id": ""},
 			map[string]any{"type": "function_call_output", "call_id": "call_1"},
 		},
-	})
+	}).FunctionCallOutputCallIDs
 	require.ElementsMatch(t, []string{"call_1", "call_search", "call_custom", "call_mcp"}, callIDs)
 }
 
 func TestHasFunctionCallOutputMissingCallID(t *testing.T) {
-	require.False(t, openai.HasFunctionCallOutputMissingCallID(nil))
-	require.True(t, openai.HasFunctionCallOutputMissingCallID(map[string]any{
+	require.False(t, openai.AnalyzeToolContinuationSignals(nil).HasFunctionCallOutputMissingCallID)
+	require.True(t, openai.AnalyzeToolContinuationSignals(map[string]any{
 		"input": []any{map[string]any{"type": "function_call_output"}},
-	}))
-	require.True(t, openai.HasFunctionCallOutputMissingCallID(map[string]any{
+	}).HasFunctionCallOutputMissingCallID)
+	require.True(t, openai.AnalyzeToolContinuationSignals(map[string]any{
 		"input": []any{map[string]any{"type": "tool_search_output"}},
-	}))
-	require.False(t, openai.HasFunctionCallOutputMissingCallID(map[string]any{
+	}).HasFunctionCallOutputMissingCallID)
+	require.False(t, openai.AnalyzeToolContinuationSignals(map[string]any{
 		"input": []any{map[string]any{"type": "tool_search_output", "call_id": "call_1"}},
-	}))
+	}).HasFunctionCallOutputMissingCallID)
 }
 
 func TestHasItemReferenceForCallIDs(t *testing.T) {

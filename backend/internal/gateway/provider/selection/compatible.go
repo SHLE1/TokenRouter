@@ -111,11 +111,6 @@ func (s *Compatible) SelectProviderForTokenCount(
 	)
 }
 
-// noAvailableOpenAISelectionErrorForRouting 使用提供商层模型 C/D 判断能力，同时保留 R 的对外错误语义。
-func noAvailableOpenAISelectionErrorForRouting(ctx context.Context, requestedModel string, routingModel string, compactBlocked bool, providers ...[]gatewayprovider.ExecutionProvider) error {
-	return noAvailableOpenAISelectionErrorForRoutingWithDetails(ctx, requestedModel, routingModel, compactBlocked, "", providers...)
-}
-
 // noAvailableOpenAISelectionErrorForRoutingWithDetails 仅在通用无提供商错误中追加调度诊断；
 // compact 能力错误和 fork 的模型业务错误继续保留原有类型与消息。
 func noAvailableOpenAISelectionErrorForRoutingWithDetails(ctx context.Context, requestedModel string, routingModel string, compactBlocked bool, details string, providers ...[]gatewayprovider.ExecutionProvider) error {

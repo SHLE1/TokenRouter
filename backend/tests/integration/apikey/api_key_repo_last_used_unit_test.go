@@ -7,19 +7,20 @@ import (
 	"testing"
 	"time"
 
+	"github.com/TokenFlux/TokenRouter/internal/usage/postgres/query"
+
 	apikeypostgres "github.com/TokenFlux/TokenRouter/internal/apikey/postgres"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/identity"
-	identitypostgres "github.com/TokenFlux/TokenRouter/internal/identity/postgres"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 
 	"entgo.io/ent/dialect"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
+	identitypostgres "github.com/TokenFlux/TokenRouter/internal/identity/postgres"
+	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 
 	dbent "github.com/TokenFlux/TokenRouter/ent"
 	"github.com/TokenFlux/TokenRouter/ent/enttest"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
-
 	"github.com/stretchr/testify/require"
 
 	entsql "entgo.io/ent/dialect/sql"
@@ -148,7 +149,7 @@ func TestAPIKeyRepositoryListByUserIDAttachesLastUsedIP(t *testing.T) {
 }
 
 func TestLatestUsageLogIPsQueryPostgresUsesPerKeyLateralLookup(t *testing.T) {
-	query, args := apikeypostgres.KeyLatestUsageLogIPsQuery([]int64{11, 22}, dialect.Postgres)
+	query, args := query.KeyLatestUsageLogIPsQuery([]int64{11, 22}, dialect.Postgres)
 	normalizedQuery := strings.Join(strings.Fields(query), " ")
 
 	require.Contains(t, normalizedQuery, "FROM unnest($1::bigint[]) AS requested(api_key_id)")

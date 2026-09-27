@@ -14,11 +14,15 @@ import (
 	"testing"
 	"time"
 
-	gatewaytestkit "github.com/TokenFlux/TokenRouter/internal/gateway/testkit"
+	"github.com/TokenFlux/TokenRouter/internal/upstream"
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway/errorpolicy"
+	gatewaytestkit "github.com/TokenFlux/TokenRouter/internal/gateway/testkit"
+
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
+
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
@@ -89,14 +93,14 @@ func TestResponsesStreamAccessStateFailoverPrecedesPassthroughRule(t *testing.T)
 		{
 			name: "native",
 			run: func(svc *wsExecutionFixture, c *gin.Context, resp *http.Response, provider *gatewayprovider.ExecutionProvider) error {
-				_, err := svc.Output.Stream(c.Request.Context(), resp, c, provider, time.Now(), "gpt-5", "gpt-5", "")
+				_, err := svc.Output.ReadStreamObservation(c.Request.Context(), resp, c, provider, time.Now(), "gpt-5", "gpt-5", "")
 				return err
 			},
 		},
 		{
 			name: "passthrough",
 			run: func(svc *wsExecutionFixture, c *gin.Context, resp *http.Response, provider *gatewayprovider.ExecutionProvider) error {
-				_, err := svc.Output.PassthroughStream(c.Request.Context(), resp, c, provider, time.Now(), "gpt-5", "gpt-5")
+				_, err := openai.ReadPassthroughStreaming(c.Request.Context(), resp, upstream.NewOutputContext(ResponseSink{Writer: c.Writer}), svc.Output.PassthroughOptions(c.Request.Context(), c, provider), time.Now(), "gpt-5", "gpt-5")
 				return err
 			},
 		},
@@ -136,14 +140,14 @@ func TestResponsesStreamCyberPolicyPrecedesPassthroughRule(t *testing.T) {
 		{
 			name: "native",
 			run: func(svc *wsExecutionFixture, c *gin.Context, resp *http.Response, provider *gatewayprovider.ExecutionProvider) error {
-				_, err := svc.Output.Stream(c.Request.Context(), resp, c, provider, time.Now(), "gpt-5", "gpt-5", "")
+				_, err := svc.Output.ReadStreamObservation(c.Request.Context(), resp, c, provider, time.Now(), "gpt-5", "gpt-5", "")
 				return err
 			},
 		},
 		{
 			name: "passthrough",
 			run: func(svc *wsExecutionFixture, c *gin.Context, resp *http.Response, provider *gatewayprovider.ExecutionProvider) error {
-				_, err := svc.Output.PassthroughStream(c.Request.Context(), resp, c, provider, time.Now(), "gpt-5", "gpt-5")
+				_, err := openai.ReadPassthroughStreaming(c.Request.Context(), resp, upstream.NewOutputContext(ResponseSink{Writer: c.Writer}), svc.Output.PassthroughOptions(c.Request.Context(), c, provider), time.Now(), "gpt-5", "gpt-5")
 				return err
 			},
 		},
@@ -326,7 +330,7 @@ func TestOpenAIResponsesStreaming_ResponseFailedCustomStatusFailsOver(t *testing
 	provider := rawChatCompletionsTestProvider()
 	provider.Record.Credentials["custom_error_codes_enabled"] = true
 	provider.Record.Credentials["custom_error_codes"] = []any{float64(http.StatusUnprocessableEntity)}
-	_, err := svc.Output.Stream(context.Background(), resp, c, provider, time.Now(), "gpt-5.4", "gpt-5.4", "")
+	_, err := svc.Output.ReadStreamObservation(context.Background(), resp, c, provider, time.Now(), "gpt-5.4", "gpt-5.4", "")
 
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)

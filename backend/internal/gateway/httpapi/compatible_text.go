@@ -26,8 +26,6 @@ import (
 	"go.uber.org/zap"
 )
 
-type CompatibleTextKind uint8
-
 type CompatibleTextCall struct {
 	MessagesCall
 	RequestContext                        context.Context

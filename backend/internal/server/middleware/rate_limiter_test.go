@@ -50,13 +50,13 @@ func TestRateLimiterFailureModes(t *testing.T) {
 		}
 	}
 }
-func TestRateLimiterDifferentIPsIndependent(t *testing.T) {
 
+func TestRateLimiterDifferentIPsIndependent(t *testing.T) {
 	callCounts := make(map[string]int64)
 	limiter := NewRateLimiter(&fakeFixedWindow{counts: callCounts})
 
 	router := gin.New()
-	router.Use(limiter.Limit("api", 1, time.Second))
+	router.Use(limiter.LimitWithOptions("api", 1, time.Second, RateLimitOptions{}))
 	router.GET("/test", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"ok": true})
 	})
@@ -84,7 +84,6 @@ func TestRateLimiterDifferentIPsIndependent(t *testing.T) {
 }
 
 func TestRateLimiterHonorsForwardedIPSnapshot(t *testing.T) {
-
 	callCounts := make(map[string]int64)
 	limiter := NewRateLimiter(&fakeFixedWindow{counts: callCounts})
 
@@ -94,7 +93,7 @@ func TestRateLimiterHonorsForwardedIPSnapshot(t *testing.T) {
 		ippkg.SetForwardedIPSettings(c, true, nil)
 		c.Next()
 	})
-	router.Use(limiter.Limit("fwd", 1, time.Second))
+	router.Use(limiter.LimitWithOptions("fwd", 1, time.Second, RateLimitOptions{}))
 	router.GET("/test", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"ok": true})
 	})
@@ -123,7 +122,7 @@ func TestRateLimiterHonorsForwardedIPSnapshot(t *testing.T) {
 func TestRateLimiterSuccessAndLimit(t *testing.T) {
 	limiter := NewRateLimiter(&fakeFixedWindow{counts: map[string]int64{}})
 	router := gin.New()
-	router.Use(limiter.Limit("test", 1, time.Second))
+	router.Use(limiter.LimitWithOptions("test", 1, time.Second, RateLimitOptions{}))
 	router.GET("/test", func(c *gin.Context) {
 		c.Status(http.StatusOK)
 	})

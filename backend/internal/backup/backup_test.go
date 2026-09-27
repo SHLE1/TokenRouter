@@ -7,6 +7,7 @@ import (
 	"compress/gzip"
 	"context"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,8 +19,6 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"
-
-	"database/sql"
 
 	"github.com/TokenFlux/TokenRouter/internal/backup"
 	bp "github.com/TokenFlux/TokenRouter/internal/backup/provider"
@@ -1217,7 +1216,7 @@ func TestStartBackup_ShuttingDown(t *testing.T) {
 	seedStorageS3Config(t, repo)
 	svc := newTestBackupService(t, repo, &mockDumper{dumpData: []byte("data")}, newMockObjectStore())
 
-	svc.BeginStop()
+	svc.BeginStopContext(context.Background())
 
 	_, err := svc.StartBackup(context.Background(), "manual", 14)
 	require.Error(t, err)
@@ -1349,9 +1348,11 @@ type testArchive struct {
 func (a *testArchive) Write(ctx context.Context, r *backup.BackupRecord, store backup.BackupObjectStore, cfg *backup.BackupS3Config, o backup.BackupDumpOptions, save func(context.Context, *backup.BackupRecord) error, cleanup func(time.Duration) (context.Context, context.CancelFunc)) (int64, error) {
 	return bp.NewArchive(a.dumper, a.partSize).Write(ctx, r, store, cfg, o, save, cleanup)
 }
+
 func (a *testArchive) Restore(ctx context.Context, r *backup.BackupRecord, store backup.BackupObjectStore) error {
 	return bp.NewArchive(a.dumper, a.partSize).Restore(ctx, r, store)
 }
+
 func setTestMaintenance(s *backup.BackupService, db *sql.DB) {
 	s.SetMaintenanceLock(func(ctx context.Context) (func(), bool, error) {
 		return pg.TryAcquireDBAdvisoryLockWithError(ctx, db, pg.HashAdvisoryLockID("maintenance:database-heavy"))

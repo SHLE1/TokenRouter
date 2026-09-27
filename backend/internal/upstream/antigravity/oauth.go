@@ -131,11 +131,6 @@ func GetUserAgentForContext(ctx context.Context) string {
 	return BuildUserAgent(GetUserAgentVersionForContext(ctx))
 }
 
-// GetUserAgent 返回当前配置的 User-Agent。
-func GetUserAgent() string {
-	return GetUserAgentForContext(context.Background())
-}
-
 func getClientSecret() (string, error) {
 	if v := strings.TrimSpace(defaultClientSecret); v != "" {
 		return v, nil
@@ -223,12 +218,6 @@ func (u *URLAvailability) IsAvailable(url string) bool {
 		return true
 	}
 	return time.Now().After(expiry)
-}
-
-// GetAvailableURLs 返回可用的 URL 列表
-// 最近成功的 URL 优先，其他按默认顺序
-func (u *URLAvailability) GetAvailableURLs() []string {
-	return u.GetAvailableURLsWithBase(BaseURLs)
 }
 
 // GetAvailableURLsWithBase 返回可用的 URL 列表（使用自定义顺序）

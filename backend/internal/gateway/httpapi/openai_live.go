@@ -301,20 +301,8 @@ func (s *OpenAILiveExecutor) Proxy(ctx context.Context, record *session.LiveCall
 	return s.liveRuntime().ProxyLiveSideband(ctx, record, liveDownstreamFrames{downstream})
 }
 
-func (s *OpenAILiveExecutor) runLiveController(ctx context.Context, record *session.LiveCallRecord, upstream openai.LiveFrameConn, errs <-chan error) error {
-	return s.liveRuntime().RunController(ctx, record, liveUpstreamFrames{upstream}, errs)
-}
-
 func (s *OpenAILiveExecutor) observeLiveCall(record *session.LiveCallRecord) {
 	s.liveRuntime().Observe(record)
-}
-
-func (s *OpenAILiveExecutor) waitForLiveObserverRetry(record *session.LiveCallRecord) bool {
-	return s.liveRuntime().WaitForObserverRetry(context.Background(), record)
-}
-
-func (s *OpenAILiveExecutor) finalizeLiveCall(record *session.LiveCallRecord) {
-	s.liveRuntime().Finalize(record)
 }
 
 // liveObserverState 投影原应用的唯一技术登记，不复制取消表或等待计数。

@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/TokenFlux/TokenRouter/internal/upstream"
+
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 	"github.com/gin-gonic/gin"
@@ -125,7 +127,7 @@ func TestImagesOAuthNonStreaming_CompletedNoImageTriggersSameProviderRetry(t *te
 	}
 
 	svc := newImagesFixture(imagesFixtureInputs{})
-	_, _, _, err := svc.handleOpenAIImagesOAuthNonStreamingResponse(resp, c, "b64_json", "gpt-image-2")
+	_, _, _, err := openai.ReadImagesOAuthNonStreaming(resp, ResponseSink{Writer: c.Writer}, svc.Output.ImageOptions(c), "b64_json", "gpt-image-2")
 
 	if err == nil {
 		t.Fatal("completed-but-no-image should return an error")
@@ -158,7 +160,7 @@ func TestImagesOAuthNonStreaming_ContentRefusalReturns400NoRetry(t *testing.T) {
 	resp := &http.Response{StatusCode: http.StatusOK, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(upstreamSSE))}
 
 	svc := newImagesFixture(imagesFixtureInputs{})
-	_, _, _, err := svc.handleOpenAIImagesOAuthNonStreamingResponse(resp, c, "b64_json", "gpt-image-2")
+	_, _, _, err := openai.ReadImagesOAuthNonStreaming(resp, ResponseSink{Writer: c.Writer}, svc.Output.ImageOptions(c), "b64_json", "gpt-image-2")
 
 	if err == nil {
 		t.Fatal("content refusal should return an error")
@@ -193,7 +195,7 @@ func TestImagesOAuthNonStreaming_TextFallbackReturnsCapabilityError(t *testing.T
 	resp := &http.Response{StatusCode: http.StatusOK, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(upstreamSSE))}
 
 	svc := newImagesFixture(imagesFixtureInputs{})
-	_, _, _, err := svc.handleOpenAIImagesOAuthNonStreamingResponse(resp, c, "b64_json", "gpt-image-2")
+	_, _, _, err := openai.ReadImagesOAuthNonStreaming(resp, ResponseSink{Writer: c.Writer}, svc.Output.ImageOptions(c), "b64_json", "gpt-image-2")
 
 	var imgErr *openai.OpenAIImagesUpstreamError
 	if !errors.As(err, &imgErr) {
@@ -219,7 +221,7 @@ func TestImagesOAuthStreaming_TextFallbackReturnsCapabilityError(t *testing.T) {
 	resp := &http.Response{StatusCode: http.StatusOK, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(upstreamSSE))}
 
 	svc := newImagesFixture(imagesFixtureInputs{})
-	_, _, _, _, err := svc.handleOpenAIImagesOAuthStreamingResponse(resp, c, time.Now(), "b64_json", "image_generation", "gpt-image-2")
+	_, _, _, _, err := openai.ReadImagesOAuthStreaming(resp, upstream.NewOutputContext(ResponseSink{Writer: c.Writer}), svc.Output.ImageOptions(c), time.Now(), "b64_json", "image_generation", "gpt-image-2")
 
 	var imgErr *openai.OpenAIImagesUpstreamError
 	if !errors.As(err, &imgErr) {
@@ -250,7 +252,7 @@ func TestImagesOAuthStreaming_SplitSafetyRefusalReturns400(t *testing.T) {
 	resp := &http.Response{StatusCode: http.StatusOK, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(upstreamSSE))}
 
 	svc := newImagesFixture(imagesFixtureInputs{})
-	_, _, _, _, err := svc.handleOpenAIImagesOAuthStreamingResponse(resp, c, time.Now(), "b64_json", "image_generation", "gpt-image-2")
+	_, _, _, _, err := openai.ReadImagesOAuthStreaming(resp, upstream.NewOutputContext(ResponseSink{Writer: c.Writer}), svc.Output.ImageOptions(c), time.Now(), "b64_json", "image_generation", "gpt-image-2")
 
 	var imgErr *openai.OpenAIImagesUpstreamError
 	if !errors.As(err, &imgErr) {

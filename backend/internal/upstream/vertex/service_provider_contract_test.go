@@ -14,6 +14,7 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/timing"
 	"github.com/TokenFlux/TokenRouter/internal/protocol/google"
+	"github.com/TokenFlux/TokenRouter/internal/upstream/internal/googleauth"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/vertex"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
@@ -70,7 +71,7 @@ func TestVertexServiceAccountHTTPClientRecordsDependency(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client, err := vertex.NewServiceAccountHTTPClient("")
+	client, err := googleauth.NewServiceAccountHTTPClient("")
 	require.NoError(t, err)
 	collector := timing.New(time.Now())
 	ctx := timing.WithCollector(context.Background(), collector)

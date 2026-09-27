@@ -13,7 +13,6 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
-	textflow "github.com/TokenFlux/TokenRouter/internal/gateway/text"
 	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
 	"github.com/TokenFlux/TokenRouter/internal/moderation"
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
@@ -87,23 +86,8 @@ func (p *prefaceBackend) Eligibility(ctx context.Context, _ *apikey.APIKey, _ *b
 
 func (p *prefaceBackend) Isolate(context.Context, *apikey.APIKey, int64, string) error { return nil }
 
-func (p *prefaceBackend) Execution(c *gin.Context, call CompatibleTextCall, _ CompatibleTextKind) textflow.MessagePorts {
-	p.call = call
-	p.events = append(p.events, "execution")
-	return &prefaceLoop{ctx: c.Request.Context()}
-}
 func (p *prefaceBackend) FailoverObservation(context.Context, string, map[string]any) {}
 
-// 前置测试在循环接管后结束，平台转发由既有提供商循环测试覆盖。
-type prefaceLoop struct {
-	textflow.MessagePorts
-	ctx context.Context
-}
-
-func (p *prefaceLoop) Context() context.Context { return p.ctx }
-func (p *prefaceLoop) Begin()                   {}
-func (p *prefaceLoop) Finish(bool)              {}
-func (p *prefaceLoop) PrepareAttempt() bool     { return false }
 func prefaceContext(body string) (*gin.Context, *httptest.ResponseRecorder) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -262,10 +246,6 @@ func (p *geminiPrefaceBackend) BindSticky(context.Context, *int64, string, int64
 	return nil
 }
 
-func (p *geminiPrefaceBackend) Execution(c *gin.Context, call GeminiNativeCall) textflow.MessagePorts {
-	p.call = call
-	return &prefaceLoop{ctx: c.Request.Context()}
-}
 func (p *geminiPrefaceBackend) FailoverObservation(context.Context, string, map[string]any) {}
 func TestGeminiNativePrefacePreservesModerationBeforeMapping(t *testing.T) {
 	base := &prefaceBackend{key: prefaceKey(), block: true}

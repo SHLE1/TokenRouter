@@ -36,14 +36,9 @@ func TestPricingDisplayPreservesDefaultRanges(t *testing.T) {
 					RateMultiplier: 1.5,
 				}
 				rCalculator := billingtestkit.ResolverCalculator()
-				r := billingtestkit.ResolverWithCards(t, rCalculator, nil)
-				if source == "channel" {
-					rCalculator = billingtestkit.ResolverCalculator()
-					r = billingtestkit.ResolverWithCards(t, rCalculator, []routing.ModelPricingEntry{card})
-				}
 				settings := pricing.DefaultBillingSettings()
 				settings.FreeOpenAIFast = freeFast
-				r = billingtestkit.SharedPriceResolver(rCalculator, group.ID, settings, []routing.ModelPricingEntry{card})
+				r := billingtestkit.SharedPriceResolver(rCalculator, group.ID, settings, []routing.ModelPricingEntry{card})
 				market := newPricingMarketplaceFixture(nil, nil, r, rCalculator, nil, nil, nil)
 				display := market.PublicModelPricing(context.Background(), group, "custom-ranges")
 				require.Len(t, display.ContextIntervals, 5)
@@ -84,7 +79,6 @@ func TestPricingDisplayPreservesDefaultRanges(t *testing.T) {
 // 默认价与全部区间价格相同才允许压平；缺少基础价的范围不能用其它区间价代替。
 func TestPricingDisplayOnlyFlattensCompleteUniformRanges(t *testing.T) {
 	rCalculator := billingtestkit.ResolverCalculator()
-	r := billingtestkit.PriceResolver(nil, rCalculator)
 	for _, pricedBase := range []bool{true, false} {
 		card := routing.ModelPricingEntry{
 			Models: []string{"custom-uniform"}, BillingMode: routing.BillingModeToken,
@@ -97,7 +91,7 @@ func TestPricingDisplayOnlyFlattensCompleteUniformRanges(t *testing.T) {
 			ID:             1,
 			RateMultiplier: 1,
 		}
-		r = billingtestkit.SharedPriceResolver(rCalculator, 1, pricing.DefaultBillingSettings(), []routing.ModelPricingEntry{card})
+		r := billingtestkit.SharedPriceResolver(rCalculator, 1, pricing.DefaultBillingSettings(), []routing.ModelPricingEntry{card})
 		market := newPricingMarketplaceFixture(nil, nil, r, rCalculator, nil, nil, nil)
 		display := market.PublicModelPricing(context.Background(), group, "custom-uniform")
 		if pricedBase {

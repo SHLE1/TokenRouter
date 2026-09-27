@@ -290,7 +290,7 @@ func TestCNUsageMonitorSkipsCycleWhenNotLeader(t *testing.T) {
 func TestCNUsageMonitorDefaultOffAndStopCancelsProbe(t *testing.T) {
 	repo := &cnUsageMonitorRepo{providers: map[int64]*acctcore.Record{}, byPlatform: map[string][]int64{}, casResult: true}
 	service := newCNUsageMonitorForTest(repo, &cnUsageMonitorHTTP{}, newCNQueryFixtureOptions())
-	service.Start()
+	require.NoError(t, service.StartContext(context.Background()))
 	// 同一构造无上下文断言迁至 provider 的生命周期测试；这里保留外层无探测副作用。
 	require.Empty(t, repo.writes)
 
@@ -302,7 +302,7 @@ func TestCNUsageMonitorDefaultOffAndStopCancelsProbe(t *testing.T) {
 	cfg := newCNQueryFixtureOptions()
 	cfg.Monitor.Enabled = true
 	service = newCNUsageMonitorForTest(repo, upstream, cfg, func(o *acctcore.CNMonitorOptions) { o.Interval = time.Millisecond })
-	service.Start()
+	require.NoError(t, service.StartContext(context.Background()))
 	select {
 	case <-started:
 	case <-time.After(time.Second):

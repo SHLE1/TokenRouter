@@ -71,7 +71,7 @@ func TestRewriteSystemForNonClaudeCodeWithPrompt_UsesCustomExpansionPrompt(t *te
 	body := []byte(`{"model":"claude-3","system":"Project instructions","messages":[{"role":"user","content":"hello"}]}`)
 	customPrompt := "Custom Claude OAuth expansion prompt"
 
-	result := claude.RewriteSystemForNonClaudeCodeWithPrompt(body, "Project instructions", customPrompt)
+	result := claude.RewriteSystemForNonClaudeCodeWithPromptBlocks(body, "Project instructions", customPrompt, "")
 
 	system := gjson.GetBytes(result, "system")
 	require.True(t, system.IsArray())
@@ -90,7 +90,7 @@ func TestRewriteSystemForNonClaudeCode_PreservesSystemCacheControlOnMigratedMess
 		},
 	}
 
-	result := claude.RewriteSystemForNonClaudeCode(body, system)
+	result := claude.RewriteSystemForNonClaudeCodeWithPromptBlocks(body, system, "", "")
 
 	require.Equal(t, "[System Instructions]\nStable project instructions", gjson.GetBytes(result, "messages.0.content.0.text").String())
 	require.Equal(t, "ephemeral", gjson.GetBytes(result, "messages.0.content.0.cache_control.type").String())
@@ -103,7 +103,7 @@ func TestRewriteSystemForNonClaudeCode_LeavesMigratedMessageUncachedWithoutSyste
 		map[string]any{"type": "text", "text": "Project instructions"},
 	}
 
-	result := claude.RewriteSystemForNonClaudeCode(body, system)
+	result := claude.RewriteSystemForNonClaudeCodeWithPromptBlocks(body, system, "", "")
 
 	require.False(t, gjson.GetBytes(result, "messages.0.content.0.cache_control").Exists())
 }
@@ -445,7 +445,7 @@ func TestRewriteSystemForNonClaudeCode(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := claude.RewriteSystemForNonClaudeCode([]byte(tt.body), tt.system)
+			result := claude.RewriteSystemForNonClaudeCodeWithPromptBlocks([]byte(tt.body), tt.system, "", "")
 
 			var parsed map[string]any
 			err := json.Unmarshal(result, &parsed)

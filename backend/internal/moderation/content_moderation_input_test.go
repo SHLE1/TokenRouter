@@ -164,7 +164,7 @@ func TestExtractContentModerationPromptExcerpt_ResponsesUsesCurrentToolOutput(t 
 	}`)
 
 	input := ExtractContentModerationInput(ContentModerationProtocolOpenAIResponses, body)
-	excerpt := ExtractContentModerationPromptExcerpt(ContentModerationProtocolOpenAIResponses, body)
+	excerpt := ExtractContentModerationPromptExcerptFromInput(ExtractContentModerationInput(ContentModerationProtocolOpenAIResponses, body))
 
 	require.Equal(t, "all passed", input.Text)
 	require.Equal(t, "all passed", excerpt)

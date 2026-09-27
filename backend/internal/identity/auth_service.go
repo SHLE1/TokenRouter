@@ -28,11 +28,6 @@ type AuthSignupGrantPlan struct {
 	Subscriptions []DefaultSubscriptionSetting
 }
 
-// Register 用户注册，返回token和用户
-func (s *AuthService) Register(ctx context.Context, email, password string) (string, *User, error) {
-	return s.RegisterWithVerification(ctx, email, password, "", "", "", "")
-}
-
 // RegisterWithVerification 用户注册（支持邮件验证、优惠码、邀请码和邀请返利码），返回token和用户。
 func (s *AuthService) RegisterWithVerification(ctx context.Context, email, password, verifyCode, promoCode, invitationCode, affiliateCode string) (string, *User, error) {
 	// 检查是否开放注册（默认关闭：settingService 未配置时不允许注册）
@@ -341,11 +336,6 @@ func (s *AuthService) VerifyActionCaptchaIfEnabled(ctx context.Context, proof Ca
 	)
 }
 
-// VerifyTurnstileForRegister 保留旧内部接口，生产 handler 使用 VerifyCaptchaForRegister。
-func (s *AuthService) VerifyTurnstileForRegister(ctx context.Context, token, remoteIP, verifyCode string) error {
-	return s.VerifyCaptchaForRegister(ctx, CaptchaProof{TurnstileToken: token}, remoteIP, verifyCode)
-}
-
 // IsTurnstileEnabled 检查是否启用Turnstile验证
 func (s *AuthService) IsTurnstileEnabled(ctx context.Context) bool {
 	if s.Turnstile == nil {
@@ -421,12 +411,6 @@ func (s *AuthService) AuthCanBypassRegistrationDisabledForOAuth(ctx context.Cont
 // affiliateCode 是邀请返利码，仅在新用户注册时生效；signupSource 用于渠道默认授权和钉钉注册豁免。
 func (s *AuthService) LoginOrRegisterOAuthWithTokenPair(ctx context.Context, email, username, invitationCode, affiliateCode, signupSource string) (*TokenPair, *User, error) {
 	return s.AuthLoginOrRegisterOAuthWithTokenPair(ctx, email, username, invitationCode, affiliateCode, "", signupSource)
-}
-
-// LoginOrRegisterOAuthWithTokenPairForSource 用于需要显式记录 OAuth 来源的第三方登录。
-// affiliateCode 是邀请返利码，仅在新用户注册时生效；signupSource 用于渠道默认授权和钉钉注册豁免。
-func (s *AuthService) LoginOrRegisterOAuthWithTokenPairForSource(ctx context.Context, email, username, invitationCode, affiliateCode, signupSource string) (*TokenPair, *User, error) {
-	return s.LoginOrRegisterOAuthWithTokenPair(ctx, email, username, invitationCode, affiliateCode, signupSource)
 }
 
 // LoginOrRegisterOAuthWithTokenPairAndPromoCode 用于 OAuth 新用户注册时额外应用优惠码。

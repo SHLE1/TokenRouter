@@ -392,7 +392,7 @@ admin_shadow_test.go`},
 	{Scope: "internal/batchimage", Imports: "internal/batchimage/provider", Files: `cleanup_test.go download_test.go mvp_test.go pipeline_fixture_test.go
 processor_test.go public_fixture_test.go public_test.go
 result_usecase_fixture_test.go settlement_test.go`},
-	{Scope: "internal/batchimage", Imports: "internal/billing/provider internal/gateway/provider/modelidentity", Files: "public_price_fixture_test.go"},
+	{Scope: "internal/batchimage", Imports: "internal/billing/provider", Files: "public_price_fixture_test.go"},
 	{Scope: "internal/billing", Imports: "internal/billing/postgres", Files: `admin_redeem_mutations_test.go subscription_transaction_test.go
 subscription_fixture_test.go`},
 	{Scope: "internal/billing", Imports: "internal/billing/provider", Files: `calculator_calculator_fixture_test.go calculator_pricing_provider_fixture_test.go

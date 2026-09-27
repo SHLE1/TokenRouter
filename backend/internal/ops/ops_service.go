@@ -35,12 +35,6 @@ type opsRuntimeSettingsSnapshot struct {
 	advanced          OpsAdvancedSettings
 }
 
-type OpsRuntimeSettingsRefreshHealth struct {
-	Running      bool   `json:"running"`
-	SuccessTotal uint64 `json:"success_total"`
-	FailureTotal uint64 `json:"failure_total"`
-}
-
 // OpsService provides ingestion and query APIs for the Ops monitoring module.
 type OpsService struct {
 	snapshotOnce           sync.Once
@@ -356,17 +350,6 @@ func (s *OpsService) StopRuntimeSettingsRefresh() {
 		s.runtimeRefreshDone = nil
 	}
 	s.runtimeRefreshMu.Unlock()
-}
-
-func (s *OpsService) RuntimeSettingsRefreshHealth() OpsRuntimeSettingsRefreshHealth {
-	if s == nil {
-		return OpsRuntimeSettingsRefreshHealth{}
-	}
-	return OpsRuntimeSettingsRefreshHealth{
-		Running:      s.runtimeRefreshRunning.Load(),
-		SuccessTotal: s.runtimeRefreshSuccess.Load(),
-		FailureTotal: s.runtimeRefreshFailure.Load(),
-	}
 }
 
 // SetMonitoringEnabled 发布已持久化的管理设置，无需再次访问数据库。

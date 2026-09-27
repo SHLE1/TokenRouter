@@ -365,29 +365,10 @@ func (c *CodexToolCorrector) GetStats() ToolCorrectionStats {
 	return statsCopy
 }
 
-// ResetStats 重置统计信息
-func (c *CodexToolCorrector) ResetStats() {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	c.stats.TotalCorrected = 0
-	c.stats.CorrectionsByTool = make(map[string]int)
-}
-
 // CorrectToolName 直接修正工具名称（用于非 SSE 场景）
 func CorrectToolName(name string) (string, bool) {
 	if correctName, found := codexToolNameMapping[name]; found {
 		return correctName, true
 	}
 	return name, false
-}
-
-// GetToolNameMapping 获取工具名称映射表
-func GetToolNameMapping() map[string]string {
-	// 返回副本以避免外部修改
-	mapping := make(map[string]string, len(codexToolNameMapping))
-	for k, v := range codexToolNameMapping {
-		mapping[k] = v
-	}
-	return mapping
 }

@@ -730,7 +730,7 @@ func TestFilterCodexInput_RemovesItemReferenceWhenNotPreserved(t *testing.T) {
 		map[string]any{"type": "text", "id": "t1", "text": "hi"},
 	}
 
-	filtered := openai.FilterCodexInput(input, false)
+	filtered := openai.FilterCodexInputWithOptions(input, openai.CodexInputFilterOptions{PreserveReferences: false})
 	require.Len(t, filtered, 1)
 	// 校验 filtered[0] 为 map，确保字段检查可靠。
 	item, ok := filtered[0].(map[string]any)
@@ -1967,7 +1967,7 @@ func TestFilterCodexInput_PreservesReasoningStripsID(t *testing.T) {
 	for _, preserve := range []bool{true, false} {
 		preserve := preserve
 		t.Run(fmt.Sprintf("preserveReferences=%v", preserve), func(t *testing.T) {
-			filtered := openai.FilterCodexInput(build(), preserve)
+			filtered := openai.FilterCodexInputWithOptions(build(), openai.CodexInputFilterOptions{PreserveReferences: preserve})
 			require.Len(t, filtered, 1)
 
 			item, ok := filtered[0].(map[string]any)
@@ -2007,7 +2007,7 @@ func TestFilterCodexInput_BareReasoningStripsIDBackfillsSummary(t *testing.T) {
 		map[string]any{"type": "function_call_output", "call_id": "call_1", "output": "{}"},
 	}
 
-	filtered := openai.FilterCodexInput(input, false)
+	filtered := openai.FilterCodexInputWithOptions(input, openai.CodexInputFilterOptions{PreserveReferences: false})
 
 	require.Len(t, filtered, 4)
 	reasoning, ok := filtered[1].(map[string]any)
@@ -2027,7 +2027,7 @@ func TestFilterCodexInput_ReasoningBackfillsMissingSummary(t *testing.T) {
 		},
 	}
 
-	filtered := openai.FilterCodexInput(input, false)
+	filtered := openai.FilterCodexInputWithOptions(input, openai.CodexInputFilterOptions{PreserveReferences: false})
 
 	require.Len(t, filtered, 1)
 	reasoning, ok := filtered[0].(map[string]any)
@@ -2052,7 +2052,7 @@ func TestFilterCodexInput_PreservesReasoningSummaryContentAndEncryptedContent(t 
 		},
 	}
 
-	filtered := openai.FilterCodexInput(input, true)
+	filtered := openai.FilterCodexInputWithOptions(input, openai.CodexInputFilterOptions{PreserveReferences: true})
 
 	require.Len(t, filtered, 1)
 	reasoning, ok := filtered[0].(map[string]any)
@@ -2073,7 +2073,7 @@ func TestFilterCodexInput_StripsReasoningIDsWhenReferencesArePreserved(t *testin
 		},
 	}
 
-	filtered := openai.FilterCodexInput(input, true)
+	filtered := openai.FilterCodexInputWithOptions(input, openai.CodexInputFilterOptions{PreserveReferences: true})
 
 	require.Len(t, filtered, 1)
 	reasoning, ok := filtered[0].(map[string]any)

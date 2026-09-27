@@ -824,7 +824,7 @@ func TestExtractContentModerationInput_AnthropicImageSourceOnlyParticipatesInMem
 	require.Equal(t, "检查这张图", input.Text)
 	require.Equal(t, []string{"data:image/png;base64,aGVsbG8="}, input.Images)
 
-	log := (&ContentModerationService{runtime: testModerationRuntime()}).buildTextLogForTest(ContentModerationCheckInput{}, defaultContentModerationConfig(), ContentModerationActionAllow, false, "", 0, nil, input.ExcerptText(), nil, nil, "")
+	log := (&ContentModerationService{runtime: testModerationRuntime()}).buildTextLogForTest(ContentModerationCheckInput{}, defaultContentModerationConfig(), ContentModerationActionAllow, false, "", 0, nil, input.Text, nil, nil, "")
 	require.Equal(t, "检查这张图", log.InputExcerpt)
 	require.NotContains(t, log.InputExcerpt, "aGVsbG8=")
 }

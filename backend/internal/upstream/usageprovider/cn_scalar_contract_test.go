@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/TokenFlux/TokenRouter/internal/upstream/internal/usageclient"
 	"github.com/stretchr/testify/require"
 )
 
@@ -29,7 +30,7 @@ func TestCNParseF64(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			got, ok := CnParseF64(tc.raw)
+			got, ok := usageclient.CnParseF64(tc.raw)
 			require.Equal(t, tc.ok, ok)
 			if ok {
 				require.InDelta(t, tc.want, got, 1e-9)
@@ -43,22 +44,22 @@ func TestCNMillisToRFC3339(t *testing.T) {
 	t.Parallel()
 	// 1700000000 秒 = 1700000000000 毫秒
 	want := time.UnixMilli(1700000000000).UTC().Format(time.RFC3339)
-	require.Equal(t, want, CnMillisToRFC3339(1700000000))    // 秒级
-	require.Equal(t, want, CnMillisToRFC3339(1700000000000)) // 毫秒级
-	require.Equal(t, "", CnMillisToRFC3339(0))               // 非正
-	require.Equal(t, "", CnMillisToRFC3339(-1))
+	require.Equal(t, want, usageclient.CnMillisToRFC3339(1700000000))    // 秒级
+	require.Equal(t, want, usageclient.CnMillisToRFC3339(1700000000000)) // 毫秒级
+	require.Equal(t, "", usageclient.CnMillisToRFC3339(0))               // 非正
+	require.Equal(t, "", usageclient.CnMillisToRFC3339(-1))
 }
 
 // TestCnnormalizeResetTime 覆盖 ISO8601 字符串 / 数字（秒、毫秒）/ 非法输入。
 func TestCnnormalizeResetTime(t *testing.T) {
 	t.Parallel()
 	// ISO8601 字符串归一化为 RFC3339（UTC）。
-	require.Equal(t, "2026-08-14T10:00:00Z", CnNormalizeResetTime("2026-08-14T10:00:00Z"))
+	require.Equal(t, "2026-08-14T10:00:00Z", usageclient.CnNormalizeResetTime("2026-08-14T10:00:00Z"))
 	// 毫秒级 float64。
 	require.Equal(t,
 		time.UnixMilli(1700000000000).UTC().Format(time.RFC3339),
-		CnNormalizeResetTime(float64(1700000000000)))
+		usageclient.CnNormalizeResetTime(float64(1700000000000)))
 	// 非法字符串。
-	require.Equal(t, "", CnNormalizeResetTime("not-a-time"))
-	require.Equal(t, "", CnNormalizeResetTime(""))
+	require.Equal(t, "", usageclient.CnNormalizeResetTime("not-a-time"))
+	require.Equal(t, "", usageclient.CnNormalizeResetTime(""))
 }

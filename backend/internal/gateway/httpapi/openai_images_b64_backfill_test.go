@@ -437,7 +437,11 @@ func TestBackfillOpenAIImagesB64JSON_PreservesBillingMetadata(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	resp := b64BackfillImageResponse(200, "application/json", []byte(body))
-	usage, count, sizes, err := svc.handleOpenAIImagesNonStreamingResponse(t.Context(), resp, c, b64BackfillProvider(true), &media.ImageRequest{Size: "1024x1024"})
+	options := svc.Output.ImageOptions(c)
+	options.Backfill = func(body []byte) []byte {
+		return svc.backfillOpenAIImagesB64JSON(t.Context(), b64BackfillProvider(true), &media.ImageRequest{Size: "1024x1024"}, body)
+	}
+	usage, count, sizes, err := openai.ReadImagesNonStreaming(resp, ResponseSink{Writer: c.Writer}, options)
 	require.NoError(t, err)
 	require.Equal(t, 10, usage.InputTokens)
 	require.Equal(t, 20, usage.OutputTokens)

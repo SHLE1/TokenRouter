@@ -18,14 +18,14 @@ func TestOpenAIReasoningEffortPolicyContext(t *testing.T) {
 	require.Equal(t, body, unbound)
 
 	mappings := []routing.ReasoningEffortMapping{{From: "max", To: "xhigh"}}
-	ctx := WithOpenAIReasoningEffortPolicy(context.Background(), "medium", mappings, "")
+	ctx := withOpenAIReasoningEffortPolicyForModel(context.Background(), "medium", mappings, "", "")
 	mappings[0].To = "low"
 	got, changed, err := ApplyOpenAIReasoningEffortPolicyFromContext(ctx, body)
 	require.NoError(t, err)
 	require.True(t, changed)
 	require.Equal(t, "medium", gjson.GetBytes(got, "reasoning.effort").String())
 
-	denyCtx := WithOpenAIReasoningEffortPolicy(context.Background(), "medium", nil, routing.ReasoningEffortOverLimitDeny)
+	denyCtx := withOpenAIReasoningEffortPolicyForModel(context.Background(), "medium", nil, routing.ReasoningEffortOverLimitDeny, "")
 	_, _, err = ApplyOpenAIReasoningEffortPolicyFromContext(denyCtx, body)
 	require.Error(t, err)
 	var overLimit *routing.ReasoningEffortOverLimitError

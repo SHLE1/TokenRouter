@@ -95,17 +95,6 @@ func (s *diagnosticScope) provider(v *gatewayprovider.ExecutionProvider) *schedu
 	return a
 }
 
-func (s *diagnosticScope) providers(values []*gatewayprovider.ExecutionProvider) []*schedulercore.DiagnosticProvider {
-	if values == nil {
-		return nil
-	}
-	out := make([]*schedulercore.DiagnosticProvider, len(values))
-	for i, v := range values {
-		out[i] = s.provider(v)
-	}
-	return out
-}
-
 func (s *diagnosticScope) providerSlice(values []gatewayprovider.ExecutionProvider) []schedulercore.DiagnosticProvider {
 	if values == nil {
 		return nil

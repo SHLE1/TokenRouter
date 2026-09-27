@@ -48,6 +48,3 @@ type ConcurrencyStore struct{ client *dbent.Client }
 func NewConcurrencyStore(client *dbent.Client) *ConcurrencyStore {
 	return &ConcurrencyStore{client: client}
 }
-
-// ConcurrencyInTx 明确绑定外层 Ent 事务，不创建或提交事务。
-func ConcurrencyInTx(tx *dbent.Tx) *ConcurrencyStore { return NewConcurrencyStore(tx.Client()) }

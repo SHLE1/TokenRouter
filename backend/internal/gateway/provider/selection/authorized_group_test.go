@@ -43,7 +43,10 @@ func TestSelectorsNeverFollowClientFallbackWithoutAdmission(t *testing.T) {
 			case "compatible":
 				choose = NewCompatible(CompatibleDependencies{Reads: reads}, DefaultOptions()).SelectProviderForModel
 			case "gemini":
-				choose = NewGemini(GeminiDependencies{Reads: reads}, DefaultOptions()).SelectProviderForModel
+				selector := NewGemini(GeminiDependencies{Reads: reads}, DefaultOptions())
+				choose = func(ctx context.Context, groupID *int64, sessionHash, model string) (*gatewayadapter.ExecutionProvider, error) {
+					return selector.SelectProviderForModelWithExclusions(ctx, groupID, sessionHash, model, nil)
+				}
 			}
 			ctx := requeststate.WithGroup(context.Background(), source)
 			ctx = requeststate.WithRoutePlan(ctx, routing.Plan(routing.PlanInput{Group: source}))

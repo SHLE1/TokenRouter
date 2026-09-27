@@ -36,7 +36,7 @@ func TestGetIntervalForContext(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := p.GetIntervalForContext(tt.tokens)
+			result := pricing.FindMatchingInterval(p.Intervals, tt.tokens)
 			if tt.wantNil {
 				require.Nil(t, result)
 				return
@@ -53,15 +53,15 @@ func TestGetIntervalForContext_NoMatch(t *testing.T) {
 			{MinTokens: 10000, MaxTokens: new(int(50000))},
 		},
 	}
-	require.Nil(t, p.GetIntervalForContext(5000))     // 5000 <= 10000, not > min
-	require.Nil(t, p.GetIntervalForContext(10000))    // 10000 not > 10000 (left-open)
-	require.NotNil(t, p.GetIntervalForContext(50000)) // 50000 <= 50000 (right-closed)
-	require.Nil(t, p.GetIntervalForContext(50001))    // 50001 > 50000
+	require.Nil(t, pricing.FindMatchingInterval(p.Intervals, 5000))     // 5000 <= 10000, not > min
+	require.Nil(t, pricing.FindMatchingInterval(p.Intervals, 10000))    // 10000 not > 10000 (left-open)
+	require.NotNil(t, pricing.FindMatchingInterval(p.Intervals, 50000)) // 50000 <= 50000 (right-closed)
+	require.Nil(t, pricing.FindMatchingInterval(p.Intervals, 50001))    // 50001 > 50000
 }
 
 func TestGetIntervalForContext_Empty(t *testing.T) {
 	p := &pricing.ModelPricingEntry{Intervals: nil}
-	require.Nil(t, p.GetIntervalForContext(1000))
+	require.Nil(t, pricing.FindMatchingInterval(p.Intervals, 1000))
 }
 
 func TestGetTierByLabel(t *testing.T) {
