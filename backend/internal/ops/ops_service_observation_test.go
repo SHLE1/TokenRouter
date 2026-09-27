@@ -1,5 +1,6 @@
 package ops
 
+// RuntimeSettingsRefreshHealth 读取配置刷新任务的运行与成功失败计数。
 func (s *OpsService) RuntimeSettingsRefreshHealth() OpsRuntimeSettingsRefreshHealth {
 	if s == nil {
 		return OpsRuntimeSettingsRefreshHealth{}
