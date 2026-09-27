@@ -31,9 +31,6 @@ func NormalizeCNProviderCredentials(provider *Record, isCreate bool) error {
 	if provider.Credentials == nil {
 		provider.Credentials = make(map[string]any)
 	}
-	if _, legacy := provider.Credentials["account_mode"]; legacy {
-		return infraerrors.BadRequest("LEGACY_PROVIDER_FIELD", "account_mode has been renamed to provider_mode")
-	}
 	mode, _ := provider.Credentials["provider_mode"].(string)
 	mode = strings.TrimSpace(mode)
 	if mode == "" {

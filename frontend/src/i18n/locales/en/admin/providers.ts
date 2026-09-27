@@ -914,6 +914,8 @@ export default {
       },
       modelRestriction: 'Provider Model Rules (Optional)',
       modelWhitelist: 'Final Model Whitelist',
+      fromModel: 'Source model',
+      toModel: 'Target model',
       modelMapping: 'Provider Model Mapping',
       modelRestrictionCombinedHint: 'Apply the provider model mapping, then check the final model whitelist. An empty whitelist uses the default catalog for the provider platform and authentication type. Explicit mappings can add custom models. A trailing * or standalone * is supported; protocol and provider capabilities still apply.',
       selectAllowedModels: 'Leave empty to use the default model catalog. Add model IDs, trailing wildcards, or * to define an explicit range.',

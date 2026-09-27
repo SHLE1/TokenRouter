@@ -81,48 +81,67 @@ BEGIN
     END LOOP;
 END $$;
 
--- 仅迁移现行配置中的自有键，第三方身份键保持原始协议。
-CREATE OR REPLACE FUNCTION pg_temp.provider_config_keys(value JSONB) RETURNS JSONB
-LANGUAGE plpgsql AS $$
-DECLARE
-    result JSONB;
-    entry RECORD;
-    new_key TEXT;
+-- 只迁移明确归本项目所有的配置路径；模型别名、请求头及第三方 JSON 保持原样。
+CREATE OR REPLACE FUNCTION pg_temp.rename_provider_config_key(value JSONB, old_key TEXT, new_key TEXT)
+RETURNS JSONB LANGUAGE plpgsql AS $$
 BEGIN
-    IF jsonb_typeof(value) = 'object' THEN
-        result := '{}'::jsonb;
-        FOR entry IN SELECT key, val FROM jsonb_each(value) AS e(key, val) LOOP
-            new_key := CASE WHEN entry.key IN ('account_id', 'account_uuid', 'account_structure', 'account_residency_region')
-                OR entry.key LIKE 'chatgpt_account_%' OR entry.key LIKE 'crs_account_%'
-                OR entry.key LIKE 'aws_account_%' OR strpos(entry.key, 'service_account') > 0
-                THEN entry.key ELSE replace(entry.key, 'account', 'provider') END;
-            IF new_key <> entry.key AND value ? new_key THEN
-                RAISE EXCEPTION 'provider configuration key conflict: %', new_key;
-            END IF;
-            result := result || jsonb_build_object(new_key, pg_temp.provider_config_keys(entry.val));
-        END LOOP;
-        RETURN result;
-    ELSIF jsonb_typeof(value) = 'array' THEN
-        RETURN COALESCE((SELECT jsonb_agg(pg_temp.provider_config_keys(v)) FROM jsonb_array_elements(value) v), '[]'::jsonb);
+    IF jsonb_typeof(value) <> 'object' OR NOT value ? old_key THEN
+        RETURN value;
     END IF;
-    RETURN value;
+    IF value ? new_key THEN
+        RAISE EXCEPTION 'provider configuration key conflict: %', new_key;
+    END IF;
+    RETURN (value - old_key) || jsonb_build_object(new_key, value -> old_key);
 END $$;
 
-UPDATE providers SET credentials = pg_temp.provider_config_keys(credentials), extra = pg_temp.provider_config_keys(extra)
-WHERE credentials::text LIKE '%account%' OR extra::text LIKE '%account%';
+CREATE OR REPLACE FUNCTION pg_temp.provider_credentials(value JSONB)
+RETURNS JSONB LANGUAGE SQL AS $$
+    SELECT pg_temp.rename_provider_config_key(
+        pg_temp.rename_provider_config_key(value, 'account_mode', 'provider_mode'),
+        'account_scheduling_threshold', 'provider_scheduling_threshold');
+$$;
 
--- 设置键冲突让事务失败，避免覆盖已经存在的新配置。
-UPDATE settings SET key = replace(key, 'account', 'provider') WHERE key LIKE '%account%' AND key NOT LIKE 'notification_email_template:content_moderation.account_disabled:%';
+UPDATE providers SET credentials = pg_temp.provider_credentials(credentials)
+WHERE credentials ?| ARRAY['account_mode', 'account_scheduling_threshold'];
+
+-- 唯一约束检测新旧设置键冲突，不覆盖已有值；通知投递记录保持原样。
+UPDATE settings SET key = replace(key, 'account', 'provider')
+WHERE key IN ('account_quota_notify_enabled', 'account_quota_notify_emails', 'account_scheduling_thresholds')
+    OR key IN ('notification_email_template:account.quota_alert:en', 'notification_email_template:account.quota_alert:zh');
+
 DO $$
-DECLARE item RECORD;
+DECLARE
+    item RECORD;
+    payload JSONB;
+    report JSONB;
 BEGIN
-    FOR item IN SELECT id, value FROM settings
-        WHERE key IN ('openai_oauth_import_defaults', 'provider_scheduling_thresholds', 'ops_email_notification_config', 'ops_advanced_settings', 'ops_metric_thresholds', 'ops_alert_runtime_settings') AND NULLIF(btrim(value), '') IS NOT NULL LOOP
-        UPDATE settings SET value = pg_temp.provider_config_keys(item.value::jsonb)::text WHERE id = item.id;
+    FOR item IN SELECT id, key, value FROM settings
+        WHERE key IN ('openai_oauth_import_defaults', 'ops_email_notification_config', 'ops_advanced_settings')
+            AND NULLIF(btrim(value), '') IS NOT NULL LOOP
+        payload := item.value::jsonb;
+        CASE item.key
+        WHEN 'openai_oauth_import_defaults' THEN
+            payload := pg_temp.rename_provider_config_key(payload, 'account', 'provider');
+            IF jsonb_typeof(payload -> 'credentials') = 'object' THEN
+                payload := jsonb_set(payload, '{credentials}', pg_temp.provider_credentials(payload -> 'credentials'), false);
+            END IF;
+        WHEN 'ops_email_notification_config' THEN
+            report := payload -> 'report';
+            IF jsonb_typeof(report) = 'object' THEN
+                report := pg_temp.rename_provider_config_key(report, 'account_health_enabled', 'provider_health_enabled');
+                report := pg_temp.rename_provider_config_key(report, 'account_health_schedule', 'provider_health_schedule');
+                report := pg_temp.rename_provider_config_key(report, 'account_health_error_rate_threshold', 'provider_health_error_rate_threshold');
+                payload := jsonb_set(payload, '{report}', report, false);
+            END IF;
+        WHEN 'ops_advanced_settings' THEN
+            payload := pg_temp.rename_provider_config_key(payload, 'openai_account_quota_auto_pause', 'openai_provider_quota_auto_pause');
+            payload := pg_temp.rename_provider_config_key(payload, 'ignore_no_available_accounts', 'ignore_no_available_providers');
+        END CASE;
+        UPDATE settings SET value = payload::text WHERE id = item.id;
     END LOOP;
 END $$;
 
--- 模板解析器允许占位符内包含空白；先解码 JSON，再处理 subject/html，保留其它设置。
+-- 仅额度告警使用提供商占位符；其它事件模板仍保留原文。
 DO $$
 DECLARE
     item RECORD;
@@ -130,7 +149,8 @@ DECLARE
     field_name TEXT;
 BEGIN
     FOR item IN SELECT id, value FROM settings
-        WHERE key LIKE 'notification_email_template:%' AND value LIKE '%account_%' LOOP
+        WHERE key IN ('notification_email_template:provider.quota_alert:en', 'notification_email_template:provider.quota_alert:zh')
+            AND value LIKE '%account_%' LOOP
         payload := item.value::jsonb;
         FOREACH field_name IN ARRAY ARRAY['subject', 'html'] LOOP
             IF jsonb_typeof(payload -> field_name) = 'string' THEN
@@ -142,6 +162,6 @@ BEGIN
     END LOOP;
 END $$;
 
--- 告警规则是现行配置，保留阈值与启用状态，只改指标名和过滤键。
-UPDATE ops_alert_rules SET metric_type = replace(metric_type, 'account', 'provider'), filters = pg_temp.provider_config_keys(filters)
-WHERE metric_type LIKE '%account%' OR filters::text LIKE '%account%';
+-- 告警过滤字段没有本次改名项，只迁移明确的指标枚举。
+UPDATE ops_alert_rules SET metric_type = replace(metric_type, 'account', 'provider')
+WHERE metric_type IN ('group_available_accounts', 'account_rate_limited_count', 'account_error_count', 'account_error_ratio', 'overload_account_count');

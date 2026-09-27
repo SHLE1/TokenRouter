@@ -51,7 +51,7 @@ func (b *nativeGeminiAttemptBridge) Select(excluded map[int64]struct{}) (textflo
 		if change.Missing {
 			b.reqLog.Info("gemini.sticky_session_binding_missing", zap.Bool("clean_thought_signature", true))
 		} else {
-			b.reqLog.Info("gemini.sticky_session_account_switched", zap.Int64("from_account_id", change.PreviousProviderID), zap.Int64("to_account_id", b.provider.Record.ID), zap.Bool("clean_thought_signature", true))
+			b.reqLog.Info("gemini.sticky_session_provider_switched", zap.Int64("from_provider_id", change.PreviousProviderID), zap.Int64("to_provider_id", b.provider.Record.ID), zap.Bool("clean_thought_signature", true))
 		}
 		b.body = protocolgemini.CleanNativeThoughtSignatures(b.body, bridge.DummyThoughtSignature)
 	}

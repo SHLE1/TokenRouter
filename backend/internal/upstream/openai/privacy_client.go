@@ -75,9 +75,9 @@ func (p PrivacyClient) DisableOpenAITraining(ctx context.Context, clientFactory 
 	return PrivacyModeTrainingOff
 }
 
-// fetchChatGPTAccountInfo 调用 ChatGPT backend-api 获取提供商信息。
+// fetchChatGPTAccountInfo 调用 ChatGPT backend-api 获取账户信息。
 // 当 id_token 不包含这些字段时（例如 Mobile RT）作为兜底来源。
-// orgID 用于在个人提供商和团队提供商并存时匹配正确提供商。
+// orgID 用于在个人账户和团队账户并存时匹配正确账户。
 // 任意失败都返回 nil，保持 best-effort 且不阻塞主流程。
 func (p PrivacyClient) FetchChatGPTAccountInfo(ctx context.Context, clientFactory PrivacyClientFactory, accessToken, proxyURL, orgID string) *ChatGPTAccountInfo {
 	if accessToken == "" || clientFactory == nil {
@@ -120,7 +120,7 @@ func (p PrivacyClient) FetchChatGPTAccountInfo(ctx context.Context, clientFactor
 		return nil
 	}
 
-	// 优先匹配 orgID 对应的提供商（access_token JWT 中的 poid）
+	// 优先匹配 orgID 对应的账户（access_token JWT 中的 poid）
 	if orgID != "" {
 		if acctRaw, ok := providers[orgID]; ok {
 			if acct, ok := acctRaw.(map[string]any); ok {
@@ -131,7 +131,7 @@ func (p PrivacyClient) FetchChatGPTAccountInfo(ctx context.Context, clientFactor
 		}
 	}
 
-	// 未匹配到时，遍历所有提供商：优先 is_default，次选非 free
+	// 未匹配到时，遍历所有账户：优先 is_default，次选非 free
 	if info.PlanType == "" {
 		type candidate struct {
 			planType   string
@@ -186,7 +186,7 @@ func (p PrivacyClient) FetchChatGPTAccountInfo(ctx context.Context, clientFactor
 }
 
 // fetchChatGPTSubscriptionExpiresAt 读取 ChatGPT/Codex 客户端使用的轻量订阅接口。
-// 部分 Plus 提供商已不在 providers/check 暴露 entitlement.expires_at，
+// 部分 Plus 账户已不在 accounts/check 暴露 entitlement.expires_at，
 // 但该接口仍会返回 active_until。
 func (p PrivacyClient) FetchChatGPTSubscriptionExpiresAt(ctx context.Context, clientFactory PrivacyClientFactory, accessToken, proxyURL, providerID string) string {
 	providerID = strings.TrimSpace(providerID)
@@ -241,7 +241,7 @@ func (p PrivacyClient) FetchChatGPTSubscriptionExpiresAt(ctx context.Context, cl
 	return activeUntil
 }
 
-// fillProviderInfo 从单个 provider 对象中提取套餐、到期时间和来源提供商。
+// FillProviderInfo 从单个 account 对象中提取套餐、到期时间和来源账户。
 func FillProviderInfo(info *ChatGPTAccountInfo, acct map[string]any, fallbackID string) {
 	info.PlanType = ExtractPlanType(acct)
 	info.SubscriptionExpiresAt = ExtractEntitlementExpiresAt(acct)

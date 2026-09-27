@@ -42,12 +42,15 @@ func TestProviderNamesMigration(t *testing.T) {
 	require.NoError(t, infra.ApplyMigrations(ctx, db, before))
 	_, err = db.ExecContext(ctx, `
  INSERT INTO users(id,email,password_hash) VALUES(71,'provider-migration@example.test','fixture');
- INSERT INTO accounts(id,name,platform,type,credentials) VALUES(71,'fixture','openai','api_key','{"account_mode":"payg","chatgpt_account_id":"external","account_uuid":"external-uuid","chatgpt_account_is_fedramp":true,"service_account_json":{"client_email":"fixture@example.test"}}');
+ INSERT INTO accounts(id,name,platform,type,credentials) VALUES(71,'fixture','openai','api_key','{"account_mode":"payg","chatgpt_account_id":"external","account_uuid":"external-uuid","chatgpt_account_is_fedramp":true,"service_account_json":{"client_email":"fixture@example.test"},"model_mapping":{"account-report":"gpt-4.1","provider-report":"gpt-4.1-mini"},"header_overrides":{"x-account-id":"external-account"},"vendor_data":{"accountId":"vendor-id"}}');
  INSERT INTO api_keys(id,user_id,key,name) VALUES(71,71,'provider-migration-key','fixture');
  INSERT INTO usage_logs(user_id,billing_user_id,api_key_id,account_id,model,request_id,actual_cost)
  SELECT 71,71,71,71,'fixture','migration-'||n,0.25 FROM generate_series(1,10000) n;
  INSERT INTO settings(key,value) VALUES
  ('ops_email_notification_config','{"report":{"account_health_enabled":true,"account_health_schedule":"daily"}}'),
+ ('openai_oauth_import_defaults','{"account":{"priority":2},"credentials":{"account_scheduling_threshold":80,"model_mapping":{"account-report":"gpt-4.1"}},"extra":{"account_custom":"preserve"}}'),
+ ('ops_advanced_settings','{"openai_account_quota_auto_pause":{"default_threshold_5h":0.8},"ignore_no_available_accounts":true}'),
+ ('custom_account_setting','opaque'),
  ('notification_email_template:account.quota_alert:en','{"subject":"{{ account_name }}","html":"{{\naccount_id\t}}"}'),
  ('notification_email_template:content_moderation.account_disabled:en','{"subject":"Login disabled"}');
  CREATE TABLE unrelated_accounts(id BIGSERIAL PRIMARY KEY, account_id BIGINT);
@@ -80,6 +83,17 @@ func TestProviderNamesMigration(t *testing.T) {
 	require.NoError(t, db.QueryRowContext(ctx, "SELECT to_regclass('accounts') IS NOT NULL").Scan(&oldExists))
 	require.True(t, oldExists)
 	require.NoError(t, holder.Rollback())
+	// 自有配置存在新旧键冲突时回滚整个迁移，不覆盖任何一方。
+	_, err = db.ExecContext(ctx, `UPDATE accounts SET credentials = credentials || '{"provider_mode":"coding"}'::jsonb WHERE id=71`)
+	require.NoError(t, err)
+	require.ErrorContains(t, apply(), "provider configuration key conflict: provider_mode")
+	require.NoError(t, db.QueryRowContext(ctx, "SELECT to_regclass('accounts') IS NOT NULL").Scan(&oldExists))
+	require.True(t, oldExists)
+	var conflictingCredentials string
+	require.NoError(t, db.QueryRowContext(ctx, "SELECT jsonb_build_object('account_mode',credentials->'account_mode','provider_mode',credentials->'provider_mode')::text FROM accounts WHERE id=71").Scan(&conflictingCredentials))
+	require.JSONEq(t, `{"account_mode":"payg","provider_mode":"coding"}`, conflictingCredentials)
+	_, err = db.ExecContext(ctx, "UPDATE accounts SET credentials = credentials - 'provider_mode' WHERE id=71")
+	require.NoError(t, err)
 	started = time.Now()
 	require.NoError(t, infra.ApplyMigrations(ctx, db, migrations.FS))
 	t.Logf("provider migration took %s", time.Since(started))
@@ -95,8 +109,14 @@ func TestProviderNamesMigration(t *testing.T) {
 	require.Zero(t, changed)
 	var credentials string
 	require.NoError(t, db.QueryRowContext(ctx, "SELECT credentials::text FROM providers WHERE id=71").Scan(&credentials))
-	require.JSONEq(t, `{"provider_mode":"payg","chatgpt_account_id":"external","account_uuid":"external-uuid","chatgpt_account_is_fedramp":true,"service_account_json":{"client_email":"fixture@example.test"}}`, credentials)
+	require.JSONEq(t, `{"provider_mode":"payg","chatgpt_account_id":"external","account_uuid":"external-uuid","chatgpt_account_is_fedramp":true,"service_account_json":{"client_email":"fixture@example.test"},"model_mapping":{"account-report":"gpt-4.1","provider-report":"gpt-4.1-mini"},"header_overrides":{"x-account-id":"external-account"},"vendor_data":{"accountId":"vendor-id"}}`, credentials)
 	var setting string
+	require.NoError(t, db.QueryRowContext(ctx, "SELECT value FROM settings WHERE key='openai_oauth_import_defaults'").Scan(&setting))
+	require.JSONEq(t, `{"provider":{"priority":2},"credentials":{"provider_scheduling_threshold":80,"model_mapping":{"account-report":"gpt-4.1"}},"extra":{"account_custom":"preserve"}}`, setting)
+	require.NoError(t, db.QueryRowContext(ctx, "SELECT value FROM settings WHERE key='ops_advanced_settings'").Scan(&setting))
+	require.JSONEq(t, `{"openai_provider_quota_auto_pause":{"default_threshold_5h":0.8},"ignore_no_available_providers":true}`, setting)
+	require.NoError(t, db.QueryRowContext(ctx, "SELECT value FROM settings WHERE key='custom_account_setting'").Scan(&setting))
+	require.Equal(t, "opaque", setting)
 	require.NoError(t, db.QueryRowContext(ctx, "SELECT value FROM settings WHERE key='ops_email_notification_config'").Scan(&setting))
 	require.JSONEq(t, `{"report":{"provider_health_enabled":true,"provider_health_schedule":"daily"}}`, setting)
 	require.NoError(t, db.QueryRowContext(ctx, "SELECT value FROM settings WHERE key='notification_email_template:provider.quota_alert:en'").Scan(&setting))

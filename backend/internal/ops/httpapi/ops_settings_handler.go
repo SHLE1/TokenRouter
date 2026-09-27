@@ -44,7 +44,8 @@ func (h *OpsHandler) UpdateEmailNotificationConfig(c *gin.Context) {
 	}
 
 	var req ops.OpsEmailNotificationConfigUpdateRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	// 报告的旧 account_health 字段必须报错，不能被解码器忽略。
+	if err := response.BindJSONStrict(c, &req); err != nil {
 		response.BadRequest(c, "Invalid request body")
 		return
 	}

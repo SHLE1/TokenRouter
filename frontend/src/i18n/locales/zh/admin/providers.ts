@@ -976,6 +976,8 @@ export default {
       },
       modelRestriction: '提供商模型规则（可选）',
       modelWhitelist: '最终模型白名单',
+      fromModel: '来源模型',
+      toModel: '目标模型',
       modelMapping: '提供商模型映射',
       modelRestrictionCombinedHint: '先执行提供商模型映射，再检查最终模型白名单。白名单留空使用该平台和认证类型的默认目录；显式模型映射可添加自定义模型。支持末尾 * 和单独的 *，协议及提供商能力仍需满足。',
       selectAllowedModels: '留空使用默认模型目录；填写具体模型、末尾通配符或 * 明确扩展范围。',
