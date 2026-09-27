@@ -24,7 +24,7 @@ Gemini 正式支持：
 | `apikey` | 使用 Base URL 和 API Key 直连；`credentials.provider_type=third_party` 表示 Gemini 兼容第三方提供商，缺失或 `official` 表示 Google AI Studio 官方接入 |
 | `service_account` | 使用 Google Service Account 换取 Vertex token，并解析 project/location 上下文 |
 
-提供商原生 Record 负责显式 project 优先级、历史凭据字段和逐模型 location 选择，服务提供商 JSON 的校验与 project 提取由 upstream/vertex 唯一实现。提供商测试、批量任务及在线转发都在原调用时点使用这两部分，按实际需要解析凭据。
+提供商原生 Record 负责显式 project 优先级、历史凭据字段和逐模型 location 选择，服务账号 JSON 的校验与 project 提取由 upstream/vertex 唯一实现。提供商测试、批量任务及在线转发都在原调用时点使用这两部分，按实际需要解析凭据。
 
 Code Assist/Google One 需要有效 project；AI Studio 的 project 可选并使用选择的 tier。第三方 API Key 保持 `type=apikey` 和 Gemini 兼容请求形状，但必须配置非 Google 官方域名的 Base URL；它没有 Google 官方提供商等级，因此不写 `tier_id`，也不参与本地模拟 RPD/RPM 预检或用量窗口。本地配额预检由 app 唯一构造 `provider.GeminiPrecheck` 并直接绑定执行消费者，按原洛杉矶日界读取 usage 批量投影及缓存。
 
@@ -79,7 +79,7 @@ Gemini 授权会话和三类 OAuth 编排、project/tier 发现、token 回填�
 Batch 客户端与 JSONL 编码、创作 generateContent 技术调用及图片解码已接入原生实现。`protocol/gemini` 为批量与创作保留明确 wire 变体；任务输入只投影必要字段，任务状态机、最后完成/清理和资金处理仍由原任务用例负责。Vertex URL/token 端口现已绑定 `upstream/vertex` 与提供商缓存协调；Gemini 不 import Vertex，原生执行仍通过显式 URL/认证输入复用协议输出。
 
 <a id="vertex_service_account_execution"></a>
-## Vertex 服务提供商与对象流
+## Vertex 服务账号与对象流
 
 `upstream/vertex` 拥有 project/location 端点、Claude 模型日期及 body 变体、Beta 过滤、Batch 与 GCS 技术调用。签名交换使用 `upstream/internal/googleauth` 的 RSA JWT 原语；只接收已投影密钥和代理，不读取提供商、缓存或完整配置。凭据 JSON 的历史字段选择、显式 project 和逐模型 location 覆盖由 `provider` 拥有。私钥不会进入通用执行结果。
 

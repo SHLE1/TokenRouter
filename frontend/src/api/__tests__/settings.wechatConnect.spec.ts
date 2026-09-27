@@ -10,7 +10,7 @@ describe("admin settings wechat connect helpers", () => {
     expect(normalizeWeChatConnectMode("OPEN")).toBe("open");
     expect(normalizeWeChatConnectMode(" open_platform ")).toBe("open");
     expect(normalizeWeChatConnectMode("mp")).toBe("mp");
-    expect(normalizeWeChatConnectMode("official_provider")).toBe("mp");
+    expect(normalizeWeChatConnectMode("official_account")).toBe("mp");
     expect(normalizeWeChatConnectMode("unknown")).toBe("open");
   });
 

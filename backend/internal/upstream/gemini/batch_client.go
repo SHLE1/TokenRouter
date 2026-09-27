@@ -37,7 +37,7 @@ type (
 
 func NewGeminiBatchHTTPClient(baseURL string, client *http.Client, missingAPIKey error) *GeminiBatchHTTPClient {
 	if missingAPIKey == nil {
-		missingAPIKey = apperror.BadRequest("BATCH_IMAGE_PROVIDER_MISSING_API_KEY", "batch image provider provider is missing api key")
+		missingAPIKey = apperror.BadRequest("BATCH_IMAGE_PROVIDER_MISSING_API_KEY", "batch image provider is missing api key")
 	}
 	baseURL = strings.TrimRight(strings.TrimSpace(baseURL), "/")
 	if baseURL == "" {

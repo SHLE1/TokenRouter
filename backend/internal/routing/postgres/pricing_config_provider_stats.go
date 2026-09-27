@@ -196,7 +196,7 @@ func createProviderStatsModelPricingTx(ctx context.Context, tx *sql.Tx, ruleID i
 	return nil
 }
 
-// createProviderStatsIntervalTx inserts a single interval for an provider stats pricing entry.
+// createProviderStatsIntervalTx 为提供商统计定价条目插入一个区间。
 func createProviderStatsIntervalTx(ctx context.Context, tx *sql.Tx, iv *routing.PricingInterval) error {
 	return tx.QueryRowContext(ctx,
 		`INSERT INTO pricing_config_provider_stats_pricing_intervals

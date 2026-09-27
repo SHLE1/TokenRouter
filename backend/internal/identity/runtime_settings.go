@@ -208,7 +208,7 @@ func (s *RuntimeSettings) GetCaptchaProviderConfig(ctx context.Context) (Captcha
 		SettingKeyAliyunCaptchaRegion,
 	})
 	if err != nil {
-		return CaptchaProviderConfig{}, fmt.Errorf("read captcha provider settings: %w", err)
+		return CaptchaProviderConfig{}, fmt.Errorf("read captchan provider settings: %w", err)
 	}
 	return CaptchaProviderConfig{
 		TurnstileEnabled:   values[SettingKeyTurnstileEnabled] == "true",

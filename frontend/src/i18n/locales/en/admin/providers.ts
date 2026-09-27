@@ -135,7 +135,7 @@ export default {
         providerMode: {
           title: 'Provider Type',
           payg: 'Pay-as-you-go',
-          paygDesc: 'Consumes provider balance, billed per token. Auto-cools down on low balance and recovers after top-up.',
+          paygDesc: 'Uses the upstream account balance and is billed per token. Auto-cools down on low balance and recovers after top-up.',
           coding: 'Coding Plan',
           codingDesc: 'Subscription coding package, rate-limited by 5-hour / weekly rolling usage windows.',
         },
@@ -161,7 +161,7 @@ export default {
           hint: 'Fill these only for a team GLM Coding Plan. Leave both empty for a personal plan. Click the question mark for instructions.',
           help: {
             title: 'How to get the Organization / Project ID',
-            step1: 'Sign in to bigmodel.cn with the team provider and open Coding Plan > Team > My Plan.',
+            step1: 'Sign in to bigmodel.cn with the team account and open Coding Plan > Team > My Plan.',
             step2: 'Open browser DevTools, choose Network, and reload the page.',
             step3: 'Filter for /api/biz/v1/organization and open the matching request.',
             step4: 'The org- segment is the Organization ID and the proj_ segment is the Project ID. Fill them into the fields above.',

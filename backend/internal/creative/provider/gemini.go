@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/creative"
 	geminiwire "github.com/TokenFlux/TokenRouter/internal/protocol/gemini"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
-	gemininative "github.com/TokenFlux/TokenRouter/internal/upstream/gemini" // ExecuteGemini 执行 Gemini 平台任务（含 vertex 服务提供商与 AI Studio apikey/OAuth）。
+	gemininative "github.com/TokenFlux/TokenRouter/internal/upstream/gemini" // ExecuteGemini 执行 Gemini 平台任务（含 vertex 服务账号与 AI Studio apikey/OAuth）。
 	// 统一使用原生 generateContent：prompt 与参考图以 inlineData 放入 parts。
 )
 

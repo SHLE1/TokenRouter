@@ -83,7 +83,7 @@ func (s *TencentCaptchaService) VerifyTicket(ctx context.Context, ticket, randst
 	}
 	providerConfig, err := s.settingService.GetCaptchaProviderConfig(ctx)
 	if err != nil {
-		s.observer.Printf("service.tencent_captcha", "%s", "[TencentCaptcha] failed to read captcha provider settings")
+		s.observer.Printf("service.tencent_captcha", "%s", "[TencentCaptcha] failed to read captchan provider settings")
 		return ErrServiceUnavailable
 	}
 	config := providerConfig.Tencent

@@ -42,7 +42,7 @@ const (
 	opsErrInvalidAPIKey               = "invalid_api_key"
 	opsErrAPIKeyRequired              = "api_key_required"
 	opsErrInsufficientBalance         = "insufficient balance"
-	opsErrInsufficientProviderBalance = "insufficient provider balance"
+	opsErrInsufficientProviderBalance = "insufficient account balance"
 	opsErrInsufficientQuota           = "insufficient_quota"
 )
 

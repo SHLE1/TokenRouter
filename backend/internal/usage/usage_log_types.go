@@ -360,7 +360,7 @@ type BatchAPIKeyUsageStats struct {
 	TotalActualCost float64 `json:"total_actual_cost"`
 }
 
-// ProviderUsageHistory represents daily usage history for an provider
+// ProviderUsageHistory 表示提供商的每日用量历史。
 type ProviderUsageHistory struct {
 	Date       string  `json:"date"`
 	Label      string  `json:"label"`
@@ -371,7 +371,7 @@ type ProviderUsageHistory struct {
 	UserCost   float64 `json:"user_cost"`   // 用户口径费用（actual_cost，受分组倍率影响）
 }
 
-// ProviderUsageSummary represents summary statistics for an provider
+// ProviderUsageSummary 表示提供商的用量汇总统计。
 type ProviderUsageSummary struct {
 	Days              int     `json:"days"`
 	ActualDaysUsed    int     `json:"actual_days_used"`
@@ -408,7 +408,7 @@ type ProviderUsageSummary struct {
 	} `json:"highest_request_day"`
 }
 
-// ProviderUsageStatsResponse represents the full usage statistics response for an provider
+// ProviderUsageStatsResponse 表示提供商完整的用量统计响应。
 type ProviderUsageStatsResponse struct {
 	History           []ProviderUsageHistory `json:"history"`
 	Summary           ProviderUsageSummary   `json:"summary"`

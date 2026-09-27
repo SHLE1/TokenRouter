@@ -456,8 +456,8 @@ func TestClassifyForbiddenType(t *testing.T) {
 			expected: "validation",
 		},
 		{
-			name:     "verify your provider",
-			body:     `Please verify your provider to continue`,
+			name:     "verify your account",
+			body:     `Please verify your account to continue`,
 			expected: "validation",
 		},
 		{
@@ -467,7 +467,7 @@ func TestClassifyForbiddenType(t *testing.T) {
 		},
 		{
 			name:     "terms of service violation",
-			body:     `Your provider has been suspended for Terms of Service violation`,
+			body:     `Your account has been suspended for Terms of Service violation`,
 			expected: "violation",
 		},
 		{
@@ -507,8 +507,8 @@ func TestExtractValidationURL(t *testing.T) {
 	}{
 		{
 			name:     "structured validation_url",
-			body:     `{"error":{"details":[{"metadata":{"validation_url":"https://providers.google.com/verify?token=abc"}}]}}`,
-			expected: "https://providers.google.com/verify?token=abc",
+			body:     `{"error":{"details":[{"metadata":{"validation_url":"https://accounts.google.com/verify?token=abc"}}]}}`,
+			expected: "https://accounts.google.com/verify?token=abc",
 		},
 		{
 			name:     "structured appeal_url",
@@ -522,8 +522,8 @@ func TestExtractValidationURL(t *testing.T) {
 		},
 		{
 			name:     "fallback regex with verify keyword",
-			body:     `Please verify your provider at https://providers.google.com/verify`,
-			expected: "https://providers.google.com/verify",
+			body:     `Please verify your account at https://accounts.google.com/verify`,
+			expected: "https://accounts.google.com/verify",
 		},
 		{
 			name:     "no URL in generic forbidden",
@@ -542,8 +542,8 @@ func TestExtractValidationURL(t *testing.T) {
 		},
 		{
 			name:     "unicode escaped ampersand",
-			body:     `validation required: https://providers.google.com/verify?a=1\u0026b=2`,
-			expected: "https://providers.google.com/verify?a=1&b=2",
+			body:     `validation required: https://accounts.google.com/verify?a=1\u0026b=2`,
+			expected: "https://accounts.google.com/verify?a=1&b=2",
 		},
 	}
 

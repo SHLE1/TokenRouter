@@ -24,7 +24,7 @@ const (
 	ServiceAccountCacheSkew = 5 * time.Minute
 )
 
-// NewServiceAccountHTTPClient 创建用于服务提供商换 token 的 HTTP 客户端。
+// NewServiceAccountHTTPClient 创建用于服务账号换 token 的 HTTP 客户端。
 func NewServiceAccountHTTPClient(proxyURL string) (*http.Client, error) {
 	proxyURL = strings.TrimSpace(proxyURL)
 	if proxyURL == "" {
@@ -47,7 +47,7 @@ func NewServiceAccountHTTPClient(proxyURL string) (*http.Client, error) {
 	return timing.InstrumentClient(&http.Client{Timeout: 15 * time.Second, Transport: transport}), nil
 }
 
-// ExchangeServiceAccountToken 使用服务提供商私钥向 Google token 端点换取访问令牌。
+// ExchangeServiceAccountToken 使用服务账号私钥向 Google token 端点换取访问令牌。
 func ExchangeServiceAccountToken(ctx context.Context, key *google.ServiceAccountKey, proxyURL string) (string, time.Duration, error) {
 	now := time.Now()
 	claims := jwt.MapClaims{

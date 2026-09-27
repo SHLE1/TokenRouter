@@ -73,7 +73,7 @@ func (h *Handler) ensureActorTotpForStepUp(c *gin.Context) bool {
 	}
 	if !user.TotpEnabled {
 		response.ErrorWithDetails(c, http.StatusBadRequest,
-			"Enable two-factor authentication (TOTP) for your provider before turning on step-up verification",
+			"Enable two-factor authentication (TOTP) for your account before turning on step-up verification",
 			"STEP_UP_ENABLE_REQUIRES_TOTP", nil)
 		return false
 	}
@@ -317,7 +317,7 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 		}
 	}
 	if enabledCaptchaProviders > 1 {
-		response.BadRequest(c, "Multiple captcha providers (Cloudflare Turnstile / Tencent Captcha / Aliyun Captcha) cannot be enabled at the same time")
+		response.BadRequest(c, "Multiple captchan providers (Cloudflare Turnstile / Tencent Captcha / Aliyun Captcha) cannot be enabled at the same time")
 		return
 	}
 	// 规范化阿里云地域：未发送时保留已存值，非法值一律按中国内地落库。
@@ -634,7 +634,7 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 		}
 
 		if req.WeChatConnectMPEnabled && req.WeChatConnectMobileEnabled {
-			response.BadRequest(c, "WeChat Official Provider and Mobile App cannot be enabled at the same time")
+			response.BadRequest(c, "WeChat Official Account and Mobile App cannot be enabled at the same time")
 			return
 		}
 		if req.WeChatConnectMode != "" {
@@ -694,11 +694,11 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 		}
 		if req.WeChatConnectMPEnabled {
 			if req.WeChatConnectMPAppID == "" {
-				response.BadRequest(c, "WeChat Official Provider App ID is required when enabled")
+				response.BadRequest(c, "WeChat Official Account App ID is required when enabled")
 				return
 			}
 			if req.WeChatConnectMPAppSecret == "" {
-				response.BadRequest(c, "WeChat Official Provider App Secret is required when enabled")
+				response.BadRequest(c, "WeChat Official Account App Secret is required when enabled")
 				return
 			}
 		}

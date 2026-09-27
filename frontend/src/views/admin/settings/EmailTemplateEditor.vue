@@ -448,7 +448,7 @@ const eventDisplayMetaEn: Record<string, EventDisplayMeta> = {
   },
   "content_moderation.provider_disabled": {
     label: "Risk Control Provider Disabled",
-    timing: "Sent when content moderation reaches the ban threshold and automatically disables the user provider.",
+    timing: "Sent when content moderation reaches the ban threshold and automatically disables the user account.",
     categoryLabel: "Risk Control",
   },
   "ops.alert": {

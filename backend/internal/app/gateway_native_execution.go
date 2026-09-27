@@ -21,7 +21,7 @@ import (
 // provideExecutionAgentIdentity 与所有提供商查询共用协调器和连接失效拥有者。
 func provideExecutionAgentIdentity(tasks *provider.OpenAITaskCoordinator, store gatewayadapter.ExecutionProviderStore, connections *gatewayhttp.OpenAIWSConnections) *gatewayadapter.ExecutionAgentIdentity {
 	return gatewayadapter.NewExecutionAgentIdentity(tasks, store, func(ctx context.Context, value *provider.Record) (string, error) {
-		return provideradapter.RegisterAgentIdentityTask(ctx, value, "https://auth.openai.com/api/providers")
+		return provideradapter.RegisterAgentIdentityTask(ctx, value, "https://auth.openai.com/api/accounts")
 	}, connections.InvalidateProvider)
 }
 

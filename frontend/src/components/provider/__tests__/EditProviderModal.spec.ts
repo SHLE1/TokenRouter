@@ -239,9 +239,9 @@ function buildVertexProvider() {
     platform: 'gemini',
     type: 'service_account',
     credentials: {
-      service_account_json: '{"type":"service_account","client_email":"sa@example.iam.gserviceprovider.com","private_key":"-----BEGIN PRIVATE KEY-----\\nMIIE\\n-----END PRIVATE KEY-----\\n"}',
+      service_account_json: '{"type":"service_account","client_email":"sa@example.iam.gserviceaccount.com","private_key":"-----BEGIN PRIVATE KEY-----\\nMIIE\\n-----END PRIVATE KEY-----\\n"}',
       project_id: 'demo-project',
-      client_email: 'sa@example.iam.gserviceprovider.com',
+      client_email: 'sa@example.iam.gserviceaccount.com',
       location: 'us-central1',
       tier_id: 'vertex'
     },
@@ -1568,7 +1568,7 @@ describe('EditProviderModal', () => {
     const provider = buildVertexProvider()
     provider.credentials = {
       project_id: 'demo-project',
-      client_email: 'sa@example.iam.gserviceprovider.com',
+      client_email: 'sa@example.iam.gserviceaccount.com',
       location: 'us-central1',
       tier_id: 'vertex'
     }
@@ -1609,7 +1609,7 @@ describe('EditProviderModal', () => {
     const provider = buildVertexProvider()
     provider.credentials = {
       project_id: 'demo-project',
-      client_email: 'sa@example.iam.gserviceprovider.com',
+      client_email: 'sa@example.iam.gserviceaccount.com',
       location: 'us-central1',
       tier_id: 'vertex'
     }

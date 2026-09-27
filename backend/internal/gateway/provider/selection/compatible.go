@@ -35,12 +35,12 @@ func (s *Compatible) SelectProvider(ctx context.Context, groupID *int64, session
 	return s.SelectProviderForModel(ctx, groupID, sessionHash, "")
 }
 
-// SelectProviderForModel selects an provider supporting the requested model
+// SelectProviderForModel 选择支持请求模型的提供商。
 func (s *Compatible) SelectProviderForModel(ctx context.Context, groupID *int64, sessionHash string, requestedModel string) (*gatewayprovider.ExecutionProvider, error) {
 	return s.SelectProviderForModelWithExclusions(ctx, groupID, sessionHash, requestedModel, nil)
 }
 
-// SelectProviderForModelWithExclusions selects an provider supporting the requested model while excluding specified providers.
+// SelectProviderForModelWithExclusions 选择支持请求模型且不在排除集合中的提供商。
 // SelectProviderForModelWithExclusions 选择支持指定模型的提供商，同时排除指定的提供商。
 func (s *Compatible) SelectProviderForModelWithExclusions(ctx context.Context, groupID *int64, sessionHash string, requestedModel string, excludedIDs map[int64]struct{}) (*gatewayprovider.ExecutionProvider, error) {
 	ctx = s.withOpenAIQuotaAutoPauseContext(ctx)
@@ -92,11 +92,8 @@ func shouldUseGroupModelUnsupportedError(ctx context.Context, providers []gatewa
 	return hasRelevantProvider
 }
 
-// NormalizeOpenAICompatiblePlatform 保留 OpenAI 网关正式支持的平台标识，
-// 其它输入回退 OpenAI，避免把未知平台带入提供商查询。
-// SelectProviderForTokenCount selects an provider for a non-billable token-count
-// request. It applies the normal platform, model, capability, and runtime
-// eligibility checks without acquiring or waiting for a generation slot.
+// SelectProviderForTokenCount 为不计费的 token 计数请求选择提供商。
+// 仍检查平台、模型、能力和运行资格，但不获取或等待生成槽位。
 func (s *Compatible) SelectProviderForTokenCount(
 	ctx context.Context,
 	groupID *int64,
@@ -186,7 +183,7 @@ func (s *Compatible) selectProviderForModelWithExclusionsForRouting(ctx context.
 	return scope.oldProvider(selected), err
 }
 
-// SelectProviderWithLoadAwareness selects an provider with load-awareness and wait plan.
+// SelectProviderWithLoadAwareness 按负载选择提供商，并返回等待方案。
 func (s *Compatible) SelectProviderWithLoadAwareness(ctx context.Context, groupID *int64, sessionHash string, requestedModel string, excludedIDs map[int64]struct{}) (*gatewayprovider.SelectionResult, error) {
 	return s.selectProviderWithLoadAwareness(s.withOpenAIQuotaAutoPauseContext(ctx), groupID, "", sessionHash, requestedModel, excludedIDs, false, "")
 }

@@ -350,7 +350,7 @@ type UserLoadInfo struct {
 	LoadRate           int // 0-100+ (percent)
 }
 
-// AcquireProviderSlot attempts to acquire a concurrency slot for an provider.
+// AcquireProviderSlot 尝试获取提供商并发槽位。
 // If the provider is at max concurrency, it waits until a slot is available or timeout.
 // Returns a release function that MUST be called when the request completes.
 func (s *ConcurrencyService) acquireProviderSlot(ctx context.Context, providerID int64, maxConcurrency int) (*AcquireResult, error) {
@@ -507,7 +507,7 @@ func zeroAPIKeyConcurrencyMap(apiKeyIDs []int64) map[int64]int {
 // Wait Queue Count Methods
 // ============================================
 
-// GetProviderWaitingCount gets current wait queue count for an provider.
+// GetProviderWaitingCount 获取提供商当前的等待队列长度。
 func (s *ConcurrencyService) GetProviderWaitingCount(ctx context.Context, providerID int64) (int, error) {
 	if s.cache == nil {
 		return 0, nil

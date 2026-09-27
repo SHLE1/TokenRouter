@@ -20,7 +20,7 @@ func NewTestHandler(tests *provider.TestService, recover func(context.Context, i
 	return &TestHandler{tests: tests, recover: recover}
 }
 
-// TestProviderRequest represents the request body for testing an provider
+// TestProviderRequest 表示提供商连接测试的请求体。
 type TestProviderRequest struct {
 	ModelID string `json:"model_id"`
 	Prompt  string `json:"prompt"`

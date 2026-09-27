@@ -281,8 +281,8 @@ batchImageGuide: {
       enableTlsHint: 'Use TLS when connecting to Redis (public CA certs)'
     },
     admin: {
-      title: 'Admin Provider',
-      description: 'Create your administrator provider',
+      title: 'Admin Account',
+      description: 'Create your administrator account',
       email: 'Email',
       password: 'Password',
       confirmPassword: 'Confirm Password',

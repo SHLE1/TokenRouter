@@ -12,7 +12,7 @@ func ClassifyForbiddenType(body string) string {
 	lower := strings.ToLower(body)
 	switch {
 	case strings.Contains(lower, "validation_required") ||
-		strings.Contains(lower, "verify your provider") ||
+		strings.Contains(lower, "verify your account") ||
 		strings.Contains(lower, "validation_url"):
 		return "validation"
 	case strings.Contains(lower, "terms of service") ||

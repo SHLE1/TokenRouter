@@ -157,7 +157,7 @@ func NewAPIKeyAuthorization(apiKeyService *apikey.APIKeyService, subscriptionSer
 				case admission.SubscriptionInvalid:
 					httpx.AbortWithError(c, 403, "SUBSCRIPTION_INVALID", failure.Error())
 				case admission.InsufficientBalance:
-					httpx.AbortWithError(c, 403, "INSUFFICIENT_BALANCE", "Insufficient provider balance")
+					httpx.AbortWithError(c, 403, "INSUFFICIENT_BALANCE", "Insufficient account balance")
 				}
 				return
 			}
@@ -292,7 +292,7 @@ func NewGoogleAPIKeyAuthorization(apiKeyService *apikey.APIKeyService, subscript
 				case admission.SubscriptionInvalid:
 					message = failure.Error()
 				case admission.InsufficientBalance:
-					message = "Insufficient provider balance"
+					message = "Insufficient account balance"
 				}
 				keyhttp.AbortGoogleError(c, status, message)
 				return

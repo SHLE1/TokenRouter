@@ -63,7 +63,7 @@ Bedrock 的提供商模型映射先于区域解析执行。已登记的 Claude �
 
 区域规则在 `backend/internal/upstream/bedrock/model_routing.go` 集中维护，并逐型号保留来源 URL 和核对日期。已确认不支持、来源区域未收录、文档未给出精确地域 ID 分别保留相应诊断，不将未核实信息表述为官方不支持。未核实组合不自动生成 ID；未知完整供应商 ID、其它平台模型及自定义 ARN 保持显式值透传，由上游验证。解析不会迁移提供商数据或兼容历史错误的 `-v1` 写法，也不改变合法版本和日期后缀。
 
-调度、可请求模型列表、正式 Bedrock 转发和管理员账号测试共用同一解析结果。无有效路由的提供商在模型筛选阶段被排除，同组其它有效提供商仍可使用；管理员测试给出具体模型和来源区域诊断，仅在此区域已支持全局时提示启用该选项。请求路径中的二次校验失败不会调用上游、写入凭据失效状态或发起无意义重试。普通客户端沿用既有错误格式，不暴露提供商区域细节。该静态判定不代替 AWS IAM、SCP 或提供商模型权限校验。
+调度、可请求模型列表、正式 Bedrock 转发和管理端的提供商测试共用同一解析结果。无有效路由的提供商在模型筛选阶段被排除，同组其它有效提供商仍可使用；管理员测试给出具体模型和来源区域诊断，仅在此区域已支持全局时提示启用该选项。请求路径中的二次校验失败不会调用上游、写入凭据失效状态或发起无意义重试。普通客户端沿用既有错误格式，不暴露提供商区域细节。该静态判定不代替 AWS IAM、SCP 或提供商模型权限校验。
 
 <a id="claude_billing_fingerprint"></a>
 ### Claude 请求指纹
@@ -101,6 +101,6 @@ gateway/forward 组织请求准备、转换与错误策略次序；gateway/httpa
 
 Beta 配置值和模型白名单、消息缓存断点、messages/count_tokens 请求构造由 `upstream/anthropic` 唯一实现；动态设置由 gateway/provider 注入的读取端口提供。纯 thinking/tool 字节修复在 `protocol/anthropic`，`gateway/provider/modelidentity` 解释模型的 thinking 协议族，调用方再传入过滤与签名选项；官方严格校验、第三方原样回传和未知模型保守处理保持独立，平台之间不反向引用实现。
 
-Claude token 读取和回填、版本比较、刷新资格及凭据合并归 `provider`，继续复用原缓存与刷新协调器。Vertex 交换已绑定 `upstream/vertex` 和 `upstream/internal/googleauth`；提供商缓存协调由 provider 拥有，详见 [Vertex 服务提供商与对象流](gemini_upstream.md#vertex_service_account_execution)。执行接口分别报告已观测用量（包括显式零）、语义输出、终态与旧 TTFT；网关的 text/forward、HTTP 与 completion 分别拥有尝试、展示和完成次序，结算资格由完成器按入口规则判断。
+Claude token 读取和回填、版本比较、刷新资格及凭据合并归 `provider`，继续复用原缓存与刷新协调器。Vertex 交换已绑定 `upstream/vertex` 和 `upstream/internal/googleauth`；提供商缓存协调由 provider 拥有，详见 [Vertex 服务账号与对象流](gemini_upstream.md#vertex_service_account_execution)。执行接口分别报告已观测用量（包括显式零）、语义输出、终态与旧 TTFT；网关的 text/forward、HTTP 与 completion 分别拥有尝试、展示和完成次序，结算资格由完成器按入口规则判断。
 
 相关文档：[网关请求生命周期](../architecture/gateway_request_lifecycle.md)、[提供商调度与缓存一致性](../architecture/provider_scheduling_and_cache.md)、[提供商维护](../operations/provider_maintenance.md)。

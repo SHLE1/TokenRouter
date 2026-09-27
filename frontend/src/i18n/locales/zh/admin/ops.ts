@@ -708,7 +708,7 @@ export default {
         ignoreNoAvailableProviders: '忽略无可用提供商错误',
         ignoreNoAvailableProvidersHint: '启用后，"No available providers" 错误将不会写入错误日志（不推荐，这通常是配置问题）。',
         ignoreInsufficientBalanceErrors: '忽略余额不足错误',
-        ignoreInsufficientBalanceErrorsHint: '启用后，账号余额不足（Insufficient balance）的错误将不会写入错误日志。',
+        ignoreInsufficientBalanceErrorsHint: '启用后，余额或额度不足的错误将不会写入错误日志。',
         autoRefresh: '自动刷新',
         enableAutoRefresh: '启用自动刷新',
         enableAutoRefreshHint: '自动刷新仪表板数据，启用后会定期拉取最新数据。',

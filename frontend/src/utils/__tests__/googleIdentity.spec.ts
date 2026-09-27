@@ -9,7 +9,7 @@ function installGoogleClient() {
   Object.defineProperty(window, 'google', {
     configurable: true,
     writable: true,
-    value: { providers: { id: client } }
+    value: { accounts: { id: client } }
   })
   return client
 }
@@ -34,7 +34,7 @@ describe('Google Identity Services loader', () => {
     const secondPrompt = showGoogleOneTap('google-client', secondCallback)
     const scripts = document.querySelectorAll<HTMLScriptElement>('#google-identity-services')
     expect(scripts).toHaveLength(1)
-    expect(scripts[0].src).toBe('https://providers.google.com/gsi/client')
+    expect(scripts[0].src).toBe('https://accounts.google.com/gsi/client')
     expect(scripts[0].async).toBe(true)
 
     const client = installGoogleClient()

@@ -10,7 +10,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/vertex"
 )
 
-// GeminiTokenCacheKey 保留服务提供商身份摘要与 OAuth 提供商 ID 两种命名空间。
+// GeminiTokenCacheKey 保留服务账号身份摘要与 OAuth 提供商 ID 两种命名空间。
 func GeminiTokenCacheKey(value *provider.Record) string {
 	if value != nil && value.Type == provider.ProviderTypeServiceAccount {
 		if key, err := ParseVertexServiceAccountKey(value); err == nil {

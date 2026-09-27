@@ -27,7 +27,7 @@ import { AppLayout } from '@/components/layout'
 **Features:**
 
 - Responsive sidebar (collapsible), positioned below the global header
-- Full-width global header with branding and provider actions
+- Full-width global header with branding and account actions
 - Main content area with route title and slot
 - Automatically adjusts margin based on sidebar state
 
@@ -100,7 +100,7 @@ Simple centered layout for authentication pages (login/register).
     <!-- Optional footer slot -->
     <template #footer>
       <p>
-        Don't have an provider?
+        Don't have an account?
         <router-link to="/register" class="text-indigo-600 hover:underline"> Sign up </router-link>
       </p>
     </template>

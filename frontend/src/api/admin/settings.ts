@@ -228,7 +228,7 @@ const WECHAT_CONNECT_MODE_OPTIONS: WeChatConnectModeOption[] = [
   {
     value: "mp",
     labelZh: "公众号",
-    labelEn: "Official Provider",
+    labelEn: "Official Account",
   },
   {
     value: "mobile",
@@ -242,7 +242,7 @@ const WECHAT_CONNECT_MODE_ALIASES: Record<string, WeChatConnectMode> = {
   official: "open",
   wx_open: "open",
   mp: "mp",
-  official_provider: "mp",
+  official_account: "mp",
   wechat_mp: "mp",
   mini_program: "mp",
   mobile: "mobile",

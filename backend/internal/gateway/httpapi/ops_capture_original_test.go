@@ -707,7 +707,7 @@ func TestClassifyOpsAuthClientErrorsExcludedFromSLA(t *testing.T) {
 		{
 			name:    "inactive local API key user",
 			errType: "api_error",
-			message: "User provider is not active",
+			message: "User account is not active",
 			code:    "USER_INACTIVE",
 			status:  http.StatusUnauthorized,
 		},
@@ -770,7 +770,7 @@ func TestClassifyOpsAuthClientErrorsExcludedFromSLA(t *testing.T) {
 		{
 			name:    "google inactive local API key user",
 			errType: "api_error",
-			message: "User provider is not active",
+			message: "User account is not active",
 			code:    "401",
 			status:  http.StatusUnauthorized,
 		},
@@ -892,9 +892,9 @@ func TestClassifyOpsLocalBusinessLimitErrorsExcludedFromSLA(t *testing.T) {
 			wantPhase:   "request",
 		},
 		{
-			name:        "google insufficient provider balance",
+			name:        "google insufficient account balance",
 			errType:     "api_error",
-			message:     "Insufficient provider balance",
+			message:     "Insufficient account balance",
 			code:        "403",
 			status:      http.StatusForbidden,
 			wantErrType: "api_error",
@@ -1311,7 +1311,7 @@ func TestClassifyOpsUpstreamAuthTextStillCountsForSLA(t *testing.T) {
 		},
 		{
 			name:    "provider balance error",
-			message: "Insufficient provider balance",
+			message: "Insufficient account balance",
 			code:    "INSUFFICIENT_BALANCE",
 			status:  http.StatusForbidden,
 		},

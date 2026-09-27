@@ -2051,7 +2051,7 @@
               </div>
 
               <template v-else>
-                <!-- 计数维度说明：按提供商计数，反代部署无误伤 -->
+                <!-- 计数维度说明：按用户 ID 计数，反代部署无误伤 -->
                 <div
                   class="rounded-control border border-sky-200 bg-sky-50 p-4 dark:border-sky-800 dark:bg-sky-900/20"
                 >
@@ -3051,7 +3051,7 @@
                           {{
                             localText(
                               "桌面浏览器通过微信开放平台扫码登录。可与公众号或移动应用同时存在。",
-                              "Desktop browsers sign in through WeChat Open Platform QR login. This can coexist with Official Provider or Mobile App.",
+                              "Desktop browsers sign in through WeChat Open Platform QR login. This can coexist with Official Account or Mobile App.",
                             )
                           }}
                         </p>
@@ -3118,7 +3118,7 @@
                     <div class="flex items-start justify-between gap-4">
                       <div>
                         <h3 class="font-medium text-gray-900 dark:text-white">
-                          {{ localText("公众号", "Official Provider") }}
+                          {{ localText("公众号", "Official Account") }}
                         </h3>
                         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
                           {{
@@ -3143,7 +3143,7 @@
                         <label
                           class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
                         >
-                          {{ localText("公众号 AppID", "Official Provider App ID") }}
+                          {{ localText("公众号 AppID", "Official Account App ID") }}
                         </label>
                         <input
                           v-model="form.wechat_connect_mp_app_id"
@@ -3153,7 +3153,7 @@
                           :placeholder="
                             localText(
                               '公众号 AppID',
-                              'Official Provider App ID',
+                              'Official Account App ID',
                             )
                           "
                         />
@@ -3165,7 +3165,7 @@
                           {{
                             localText(
                               "公众号 AppSecret",
-                              "Official Provider App Secret",
+                              "Official Account App Secret",
                             )
                           }}
                         </label>
@@ -3182,7 +3182,7 @@
                                 )
                               : localText(
                                   '公众号 AppSecret',
-                                  'Official Provider App Secret',
+                                  'Official Account App Secret',
                                 )
                           "
                         />
@@ -3274,8 +3274,8 @@
                 >
                   {{
                     localText(
-                      "如果同时启用 PC 应用和公众号/移动应用，这些应用需要挂在同一个微信开放平台主体下，否则 UnionID 无法稳定归并提供商。",
-                      "When PC App is enabled together with Official Provider or Mobile App, they should belong to the same WeChat Open Platform provider so UnionID can merge identities reliably.",
+                      "如果同时启用 PC 应用和公众号/移动应用，这些应用需要挂在同一个微信开放平台主体下，否则 UnionID 无法稳定归并用户身份。",
+                      "When PC App is enabled together with Official Account or Mobile App, they should belong to the same WeChat Open Platform account so UnionID can merge identities reliably.",
                     )
                   }}
                 </div>
@@ -3303,7 +3303,7 @@
                       {{
                         localText(
                           "用于 PC 应用和公众号的网页回调。移动应用走原生 SDK 时不直接使用这个浏览器回调。",
-                          "Used by PC App and Official Provider browser callbacks. Native mobile SDK flows do not start from this browser callback directly.",
+                          "Used by PC App and Official Account browser callbacks. Native mobile SDK flows do not start from this browser callback directly.",
                         )
                       }}
                     </p>
@@ -11568,7 +11568,7 @@ async function saveSettings() {
       appStore.showError(
         localText(
           "公众号和移动应用不能同时启用。",
-          "Official Provider and Mobile App cannot be enabled at the same time.",
+          "Official Account and Mobile App cannot be enabled at the same time.",
         ),
       );
       return;

@@ -849,13 +849,13 @@ func (r *Store) getStatsWithFilters(ctx context.Context, filters UsageLogFilters
 	return stats, nil
 }
 
-// ProviderUsageHistory represents daily usage history for an provider
+// ProviderUsageHistory 表示提供商的每日用量历史。
 type ProviderUsageHistory = usage.ProviderUsageHistory
 
-// ProviderUsageSummary represents summary statistics for an provider
+// ProviderUsageSummary 表示提供商的用量汇总统计。
 type ProviderUsageSummary = usage.ProviderUsageSummary
 
-// ProviderUsageStatsResponse represents the full usage statistics response for an provider
+// ProviderUsageStatsResponse 表示提供商完整的用量统计响应。
 type ProviderUsageStatsResponse = usage.ProviderUsageStatsResponse
 
 // EndpointStat represents endpoint usage statistics row.
@@ -1039,7 +1039,7 @@ func (r *Store) GetUpstreamEndpointStatsWithFilters(ctx context.Context, startTi
 	return r.getEndpointStatsByColumnWithFilters(ctx, "upstream_endpoint", startTime, endTime, userID, apiKeyID, providerID, groupID, 0, model, "", requestType, stream, billingType, "", false, false, nil)
 }
 
-// GetProviderUsageStats returns comprehensive usage statistics for an provider over a time range
+// GetProviderUsageStats 返回提供商在指定时间范围内的完整用量统计。
 func (r *Store) GetProviderUsageStats(ctx context.Context, providerID int64, startTime, endTime time.Time) (resp *ProviderUsageStatsResponse, err error) {
 	daysCount := int(endTime.Sub(startTime).Hours()/24) + 1
 	if daysCount <= 0 {

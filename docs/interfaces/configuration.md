@@ -114,7 +114,7 @@ usage、audit、ops 的静态参数由 app 投影为各模块 Options；动态 O
 
 合并后的基础权重和完整权重总和都必须是有限值，写入会拒绝导致溢出的稀疏覆盖；运行时若读到历史异常对象，权重回退到全局有效值。该字段随认证快照缓存并提升快照版本；公开用户分组接口不会返回它或 `scheduler_type`。
 
-管理员账号高级调度评分诊断会逐项返回最终参数和来源：`group_override` 优先于 `global_runtime`，后者缺失时为 `process_default`。该返回只解释当前实时评分，不保存历史快照；它不会反向启用分组、高级调度器或任何平台专属策略。
+管理端的提供商高级调度评分诊断会逐项返回最终参数和来源：`group_override` 优先于 `global_runtime`，后者缺失时为 `process_default`。该返回只解释当前实时评分，不保存历史快照；它不会反向启用分组、高级调度器或任何平台专属策略。
 
 进程配置的默认参数位于 `gateway.advanced_scheduler`，包含 `lb_top_k`、`score_weights`、`ewma_error_rate_alpha`、`ewma_ttft_alpha` 与粘性逃逸阈值。两个 alpha 要求 `0 < alpha <= 1`；sticky escape 的 TTFT 阈值必须为正数，错误率阈值必须在 `0..1`，显式错误率 `0` 表示任意正错误率即可触发逃逸。
 
@@ -134,7 +134,7 @@ base URL 模式只在提供商未保存显式端点时生效，可选 CLI 代理
 
 阿里云启用时必须具备 Scene ID、Prefix、AccessKey ID、AccessKey Secret 及 `cn` 或 `sgp` 地域。公开设置只返回各提供方的启用状态、站点和渲染所需的非敏感参数；管理响应只返回 secret 的“已配置”标记，空白更新保留原值，审计仅记录字段发生写入而不记录内容。腾讯与阿里云 Web SDK 所需的脚本、连接、iframe、worker 和样式来源由默认 CSP 与运行时 CSP 补全逻辑共同维护，覆盖自定义旧策略时也不能遗漏，其中阿里云静态资源允许 `https://*.alicdn.com`。
 
-Google GIS 同样由默认策略与旧自定义策略增强共同允许：`script-src` 仅加入 `https://providers.google.com/gsi/client`，`frame-src`/`connect-src` 加入 `https://providers.google.com/gsi/`，`style-src` 加入 `https://providers.google.com/gsi/style`。tf CLI 网页导入在 `connect-src` 中只允许 `http://127.0.0.1:43110` 到 `43119` 十个精确 Origin；代码默认策略、旧自定义策略增强和 `deploy/config.example.yaml` 必须同步，不能扩大为端口或局域网通配符。完整边界见 [tf CLI 网页导入](tf_cli_web_import.md)。
+Google GIS 同样由默认策略与旧自定义策略增强共同允许：`script-src` 仅加入 `https://accounts.google.com/gsi/client`，`frame-src`/`connect-src` 加入 `https://accounts.google.com/gsi/`，`style-src` 加入 `https://accounts.google.com/gsi/style`。tf CLI 网页导入在 `connect-src` 中只允许 `http://127.0.0.1:43110` 到 `43119` 十个精确 Origin；代码默认策略、旧自定义策略增强和 `deploy/config.example.yaml` 必须同步，不能扩大为端口或局域网通配符。完整边界见 [tf CLI 网页导入](tf_cli_web_import.md)。
 
 SMTP 的测试连接与实际发送共用同一建连路径和超时。`smtp_use_tls=true` 先按隐式 TLS 连接；仅当服务端以明文 SMTP 问候响应时改用强制 STARTTLS，服务端不支持升级时直接失败，不能明文发送认证。`smtp_use_tls=false` 保留机会式 STARTTLS，并在服务端不提供扩展时允许现有明文语义。两条路径都在认证成功后忽略非标准 QUIT 响应，因此后台连接测试与实际发信能力保持一致。
 

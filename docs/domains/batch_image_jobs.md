@@ -6,7 +6,7 @@ TokenRouter 通过统一 API 提供异步 Gemini 批量图片生成，底层由 
 
 支持 `gemini_api` 和 `vertex` 两类提供商。
 
-API 用户不会看到 Gemini 文件名、Vertex 作业名、GCS 路径、签名 URL、API Key 或服务提供商材料。当前实现通过 TokenRouter 代理下载。
+API 用户不会看到 Gemini 文件名、Vertex 作业名、GCS 路径、签名 URL、API Key 或服务账号材料。当前实现通过 TokenRouter 代理下载。
 
 ## 章节导航
 
@@ -233,12 +233,12 @@ DELETE /v1/images/batches/{id}/outputs
 `vertex`：
 
 - 使用基于受管 GCS JSONL 的 Vertex `BatchPredictionJob`。
-- 支持包含有效服务提供商 JSON 的 Gemini `service_account` 上游提供商。
+- 支持包含有效服务账号 JSON 的 Gemini `service_account` 上游提供商。
 - GCS 存储桶和前缀由服务端管理。
 - Vertex 作业名和 GCS 路径只在内部使用。
 - 当前输出只支持 `1K` 或默认值，不支持 `2K`、`4K`。
 
-其他 Gemini 提供商或登录类型不会被当前批量图片提供商选择，除非它们通过相同提供商流程公开等价的 API Key 或服务提供商凭据。
+其他 Gemini 提供商或登录类型不会被当前批量图片提供商选择，除非它们通过相同提供商流程公开等价的 API Key 或服务账号凭据。
 
 ## 启用 Google 官方能力
 
@@ -248,16 +248,16 @@ DELETE /v1/images/batches/{id}/outputs
 
 - 使用已启用结算的 Google Cloud 项目。
 - 为项目启用相应 Gemini API 或 Vertex AI API。
-- TokenRouter 运行时使用服务提供商或应用默认凭据。
+- TokenRouter 运行时使用服务账号或应用默认凭据。
 - 为批量图片输入输出创建固定 Cloud Storage 存储桶，并向运行时和 Vertex 服务代理授予最低必要存储桶权限。
-- 在 TokenRouter 中配置项目 ID、区域、受管存储桶、提供商提供商、模型白名单和价格。
+- 在 TokenRouter 中配置项目 ID、区域、受管存储桶、提供商、模型白名单和价格。
 - 全局启用 `BATCH_IMAGE_ENABLED`，在目标分组的 `allowed_protocols` 中开启 `image_batches`。分组可混合任意平台，但新作业只选择组内具备 Gemini 或 Vertex 批处理能力的提供商；未绑定分组时拒绝提交，不从全局提供商池补选。
 
 API Key 路径：
 
 - Google API Key 适合 Gemini API 开发和受支持的 Gemini 方法。
 - TokenRouter 的 `x-goog-api-key` 兼容请求头仍要求 TokenRouter Key，而不是普通 Google Key。
-- 不应把普通 Google API Key 记录为 Vertex 服务提供商批量作业的默认生产凭据。
+- 不应把普通 Google API Key 记录为 Vertex 服务账号批量作业的默认生产凭据。
 - 管理员配置 Gemini API Key 上游提供商后，应在 Google 账号具备必要结算或预付状态时执行一次低成本批量图片验证。没有预付时，只能记录提供商可被选择和调用，以及提交失败会释放预留，不应推断更多能力。
 
 官方参考：
@@ -332,7 +332,7 @@ batch_image:
 - 启用 `batch_image.enabled`。
 - 配置 Redis。
 - 需要 worker 消费队列作业时启用 `batch_image.queue_enabled`。
-- 配置提供商提供商。
+- 配置提供商。
 - 使用 Vertex 时配置受管 GCS 存储桶。
 - 确认存储桶权限正确。
 - 关闭或妥善管理 GCS 软删除。
@@ -344,7 +344,7 @@ batch_image:
 
 ## 安全检查清单
 
-- 公共响应不包含提供商引用、GCS URI、签名 URL、服务提供商材料或 API Key。
+- 公共响应不包含提供商引用、GCS URI、签名 URL、服务账号材料或 API Key。
 - PostgreSQL 不保存图片字节或 Base64。
 - 日志不记录 Base64。
 - 状态、条目、下载、取消和删除路由都校验所有者，输出删除也遵守同一边界。

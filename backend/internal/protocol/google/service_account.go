@@ -1,4 +1,4 @@
-// Google 服务提供商密钥与令牌响应的协议值。
+// Google 服务账号密钥与令牌响应的协议值。
 package google
 
 type ServiceAccountKey struct {

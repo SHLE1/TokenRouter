@@ -141,14 +141,14 @@ describe('PaymentProviderDialog payment guide', () => {
     expect(wrapper.text()).toContain('/api/v1/payment/webhook/stripe')
   })
 
-  it('emits an empty Airwallex providerId when the admin clears it', async () => {
+  it('emits an empty Airwallex accountId when the admin clears it', async () => {
     const provider = providerFactory({
       config: {
         clientId: 'cid_123',
         apiBase: 'https://api.airwallex.com/api/v1',
         countryCode: 'CN',
         currency: 'CNY',
-        providerId: 'acct_123',
+        accountId: 'acct_123',
       },
     })
     const wrapper = mountDialog({ editing: provider })
@@ -156,16 +156,16 @@ describe('PaymentProviderDialog payment guide', () => {
     ;(wrapper.vm as unknown as { loadProvider: (provider: ProviderInstance) => void }).loadProvider(provider)
     await nextTick()
 
-    const providerIdInput = wrapper
+    const accountIdInput = wrapper
       .findAll('input[type="text"]')
       .find(input => (input.element as HTMLInputElement).value === 'acct_123')
-    if (!providerIdInput) throw new Error('providerId input not found')
+    if (!accountIdInput) throw new Error('accountId input not found')
 
-    await providerIdInput.setValue('')
+    await accountIdInput.setValue('')
     await wrapper.find('form').trigger('submit.prevent')
 
     const payload = wrapper.emitted('save')?.[0]?.[0] as { config: Record<string, string> }
-    expect(payload.config.providerId).toBe('')
+    expect(payload.config.accountId).toBe('')
   })
 
   it('normalizes null supported_types when loading a provider', async () => {

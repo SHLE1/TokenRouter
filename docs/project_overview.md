@@ -79,6 +79,8 @@ Go 模块路径为 `github.com/TokenFlux/TokenRouter`。后端以 `backend/go.mo
 | 权益 | 允许消费的余额、订阅窗口、额度包、团队限制或 Key 自身配额；不同来源按结算策略共同判定 |
 | 运行时设置（Setting） | 保存在 PostgreSQL、可由管理端更新的站点或功能策略；与启动时 YAML/环境变量配置分属不同生命周期 |
 
+提供商（Provider）只指本地上游接入配置。用户登录账户、Google Service Account、支付渠道账户及第三方协议中的 `account` 字段仍保留原义；SDK 对象、官方域名、授权端点和上游错误原文不能随产品术语替换。
+
 ## 运行形态
 
 进程启动前先判断是否需要首次设置。未配置且未启用自动初始化时，仅启动 setup 路由和可用的嵌入前端；CLI `-setup` 走终端设置流程。配置完整后，主服务加载启动配置、初始化日志、构建完整 Wire 依赖图，启动 HTTP server 与后台运行时，并在收到终止信号时有序停止 worker、刷新缓冲数据、关闭 Redis 和 PostgreSQL。

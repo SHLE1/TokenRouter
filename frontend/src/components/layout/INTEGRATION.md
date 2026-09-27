@@ -211,7 +211,7 @@ import { AppLayout } from '@/components/layout'
 
     <template #footer>
       <p class="text-gray-600">
-        Don't have an provider?
+        Don't have an account?
         <router-link to="/register" class="text-indigo-600 hover:underline"> Sign up </router-link>
       </p>
     </template>

@@ -390,7 +390,7 @@ func (h *PublicUsageHandler) parseUsageDateRange(c *gin.Context) (time.Time, tim
 	return startTime, endTime
 }
 
-// Usage handles getting provider balance and usage statistics for CC Switch integration
+// Usage 向 CC Switch 返回当前用户的余额和用量统计。
 // GET /v1/usage
 //
 // Two modes:

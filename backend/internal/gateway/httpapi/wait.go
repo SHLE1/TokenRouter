@@ -172,7 +172,7 @@ func (h *ConcurrencyHelper) withAPIKeySlot(ctx context.Context, apiKeyID int64, 
 	}
 }
 
-// AcquireProviderSlotWithWait acquires an provider concurrency slot, waiting if necessary.
+// AcquireProviderSlotWithWait 获取提供商并发槽位，必要时等待。
 // For streaming requests, sends ping events during the wait.
 // streamStarted is updated if streaming response has begun.
 func (h *ConcurrencyHelper) AcquireProviderSlotWithWait(c *gin.Context, providerID int64, maxConcurrency int, isStream bool, streamStarted *bool) (func(), error) {
@@ -204,7 +204,7 @@ func (h *ConcurrencyHelper) WaitForSlotWithPingTimeout(c *gin.Context, slotType 
 		WaitObserver(c, h.pingFormat, h.pingInterval, isStream, streamStarted, true))
 }
 
-// AcquireProviderSlotWithWaitTimeout acquires an provider slot with a custom timeout (keeps SSE ping).
+// AcquireProviderSlotWithWaitTimeout 使用指定超时等待提供商槽位，并保持 SSE 心跳。
 func (h *ConcurrencyHelper) AcquireProviderSlotWithWaitTimeout(c *gin.Context, providerID int64, maxConcurrency int, timeout time.Duration, isStream bool, streamStarted *bool) (func(), error) {
 	return h.WaitForSlotWithPingTimeout(c, "provider", providerID, maxConcurrency, timeout, isStream, streamStarted, true)
 }

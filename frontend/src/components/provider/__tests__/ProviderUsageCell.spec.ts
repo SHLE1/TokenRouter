@@ -1532,7 +1532,7 @@ describe('ProviderUsageCell', () => {
           credentials: {
             tier_id: 'vertex',
             project_id: 'vertex-proj',
-            client_email: 'svc@vertex-proj.iam.gserviceprovider.com',
+            client_email: 'svc@vertex-proj.iam.gserviceaccount.com',
             location: 'global'
           },
 		      extra: {}

@@ -185,7 +185,7 @@ func Authenticate(c *gin.Context, auth *apikey.APIKeyService, o AuthenticationOp
 		o.abort(c, 401, "USER_NOT_FOUND", "User associated with API key not found")
 	case apikey.AuthenticationUserInactive:
 		o.reject(c, "user_inactive")
-		o.abort(c, 401, "USER_INACTIVE", "User provider is not active")
+		o.abort(c, 401, "USER_INACTIVE", "User account is not active")
 	}
 	return nil, false
 }

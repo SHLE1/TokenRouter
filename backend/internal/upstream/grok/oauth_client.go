@@ -110,7 +110,7 @@ func (c *OAuthClient) RefreshToken(ctx context.Context, refreshToken, proxyURL, 
 	return &tokenResp, nil
 }
 
-// LoginWithPassword 向 providers.x.ai 验证密码并返回临时 SSO cookie；
+// LoginWithPassword 向 accounts.x.ai 验证密码并返回临时 SSO cookie；
 // 密码和 SSO 信息不得写入提供商凭据或日志。
 func (c *OAuthClient) LoginWithPassword(ctx context.Context, email, password, proxyURL string) (*wiregrok.PasswordLoginResult, error) {
 	turnstileToken, err := solveTurnstile(ctx)
@@ -426,7 +426,7 @@ func validateGrokCookieSetterURL(rawURL string) (*url.URL, error) {
 		return nil, err
 	}
 	if parsed.Scheme != "https" || !strings.EqualFold(parsed.Hostname(), "accounts.x.ai") {
-		return nil, fmt.Errorf("url must use https://providers.x.ai")
+		return nil, fmt.Errorf("url must use https://accounts.x.ai")
 	}
 	if parsed.User != nil || parsed.Port() != "" || parsed.Fragment != "" || parsed.Opaque != "" {
 		return nil, fmt.Errorf("url contains disallowed authority or fragment components")

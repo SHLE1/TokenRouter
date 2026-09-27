@@ -1047,7 +1047,7 @@ func TestOpenAIShouldFailoverUpstreamResponse_CyberWarningDoesNotFailover(t *tes
 		gatewayprovider.ShouldFailoverOpenAIResponse(http.StatusUnauthorized, "This request has been flagged for potentially high-risk cyber activity.", body),
 	)
 	require.True(t,
-		gatewayprovider.ShouldFailoverOpenAIResponse(http.StatusUnauthorized, "User provider is not active", []byte(`{"code":"USER_INACTIVE","message":"User provider is not active"}`)),
+		gatewayprovider.ShouldFailoverOpenAIResponse(http.StatusUnauthorized, "User account is not active", []byte(`{"code":"USER_INACTIVE","message":"User account is not active"}`)),
 	)
 }
 

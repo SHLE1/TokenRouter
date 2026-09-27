@@ -318,7 +318,7 @@ func (s *ClaudeAuthorization) RefreshToken(ctx context.Context, refreshToken str
 	}, nil
 }
 
-// RefreshProviderToken refreshes token for an provider
+// RefreshProviderToken refreshes token for a provider
 func (s *ClaudeAuthorization) RefreshProviderToken(ctx context.Context, provider *Record) (*ClaudeTokenInfo, error) {
 	refreshToken := provider.GetCredential("refresh_token")
 	if refreshToken == "" {

@@ -402,7 +402,7 @@ describe('CreateProviderModal Qoder model restriction', () => {
     wrapper.unmount()
   })
 
-  it('does not create an provider when an exchange completes after switching sites', async () => {
+  it('does not create a provider when an exchange completes after switching sites', async () => {
     generateQoderAuthUrlMock.mockResolvedValueOnce({
       auth_url: 'https://qoder.com/device',
       session_id: 'global-session',

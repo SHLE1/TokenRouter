@@ -12,7 +12,7 @@ import type {
 } from '@/types'
 
 /**
- * List all scheduled test plans for an provider
+ * 列出提供商的全部计划测试任务。
  * @param providerId - Provider ID
  * @returns List of scheduled test plans
  */

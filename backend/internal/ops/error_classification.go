@@ -182,7 +182,7 @@ func isOpsClientAuthError(code string, msg string) bool {
 		strings.Contains(msg, "api key is required") ||
 		strings.Contains(msg, "api key is disabled") ||
 		strings.Contains(msg, "user associated with api key not found") ||
-		strings.Contains(msg, "user provider is not active") ||
+		strings.Contains(msg, "user account is not active") ||
 		strings.Contains(msg, "api key 所属分组已删除") ||
 		strings.Contains(msg, "api key 所属分组已停用") ||
 		strings.Contains(msg, "api key is not assigned to any group")
@@ -203,7 +203,7 @@ func isOpsLocalBusinessLimitError(code string, msg string) bool {
 		strings.Contains(msg, "no active subscription found for this group") ||
 		strings.Contains(msg, "subscription is invalid or expired") ||
 		strings.Contains(msg, opsErrInsufficientBalance) ||
-		strings.Contains(msg, "insufficient provider balance") ||
+		strings.Contains(msg, "insufficient account balance") ||
 		strings.Contains(msg, "api key group platform is not gemini") ||
 		strings.Contains(msg, "api key 额度已用完") ||
 		strings.Contains(msg, "api key 5小时限额已用完") ||

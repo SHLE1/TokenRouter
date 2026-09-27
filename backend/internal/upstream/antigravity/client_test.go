@@ -792,7 +792,7 @@ func TestLoadCodeAssistResponse_完整JSON(t *testing.T) {
 		"cloudaicompanionProject": "proj-123",
 		"currentTier": "free-tier",
 		"paidTier": {"id": "g1-pro-tier", "name": "Pro"},
-		"ineligibleTiers": [{"tier": {"id": "g1-ultra-tier"}, "reasonCode": "INELIGIBLE_PROVIDER"}]
+		"ineligibleTiers": [{"tier": {"id": "g1-ultra-tier"}, "reasonCode": "INELIGIBLE_ACCOUNT"}]
 	}`
 	var resp LoadCodeAssistResponse
 	if err := json.Unmarshal([]byte(jsonData), &resp); err != nil {
@@ -807,7 +807,7 @@ func TestLoadCodeAssistResponse_完整JSON(t *testing.T) {
 	if len(resp.IneligibleTiers) != 1 {
 		t.Fatalf("IneligibleTiers 数量不匹配: got %d", len(resp.IneligibleTiers))
 	}
-	if resp.IneligibleTiers[0].ReasonCode != "INELIGIBLE_PROVIDER" {
+	if resp.IneligibleTiers[0].ReasonCode != "INELIGIBLE_ACCOUNT" {
 		t.Errorf("ReasonCode 不匹配: got %s", resp.IneligibleTiers[0].ReasonCode)
 	}
 }

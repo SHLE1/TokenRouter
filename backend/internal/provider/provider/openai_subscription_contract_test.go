@@ -288,7 +288,7 @@ func configureChatGPTBackendTestServer(t *testing.T, config chatGPTBackendTestCo
 				}
 			}
 			_ = json.NewEncoder(w).Encode(body)
-		case "/backend-api/settings/provider_user_setting":
+		case "/backend-api/settings/account_user_setting":
 			_ = json.NewEncoder(w).Encode(map[string]any{"value": false})
 		default:
 			w.WriteHeader(http.StatusNotFound)
@@ -299,7 +299,7 @@ func configureChatGPTBackendTestServer(t *testing.T, config chatGPTBackendTestCo
 	return upstreamopenai.PrivacyEndpoints{
 		Providers:     server.URL + "/backend-api/accounts/check/v4-2023-04-27",
 		Subscriptions: server.URL + "/backend-api/subscriptions",
-		Settings:      server.URL + "/backend-api/settings/provider_user_setting",
+		Settings:      server.URL + "/backend-api/settings/account_user_setting",
 	}
 }
 

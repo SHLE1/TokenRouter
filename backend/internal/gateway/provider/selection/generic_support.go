@@ -52,7 +52,7 @@ func prefetchedStickyProviderIDFromContext(ctx context.Context, groupID *int64) 
 // 委托 IsSchedulable() 判断提供商级可调度性（状态、配额、过载、限流等），
 // 额外检查模型级限流。
 //
-// shouldClearStickySession checks if an provider is in an unschedulable state
+// shouldClearStickySession 检查提供商是否处于不可调度状态。
 // and the sticky session binding should be cleared.
 // Delegates to IsSchedulable() for provider-level checks, plus model-level rate limiting.
 func shouldClearStickySession(provider *gatewayprovider.ExecutionProvider, requestedModel string) bool {

@@ -98,7 +98,7 @@ const balance = computed(() => authStore.user?.balance.toFixed(2) || '0.00')
 
     <template #footer>
       <p class="text-gray-600">
-        Don't have an provider?
+        Don't have an account?
         <router-link to="/register" class="font-medium text-indigo-600 hover:underline">
           Sign up
         </router-link>
@@ -299,7 +299,7 @@ const users = ref<User[]>([])
 
       <!-- User Info Card -->
       <div class="space-y-4 rounded-lg bg-white p-6 shadow">
-        <h2 class="text-xl font-semibold text-gray-900">Provider Information</h2>
+        <h2 class="text-xl font-semibold text-gray-900">Account Information</h2>
 
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>

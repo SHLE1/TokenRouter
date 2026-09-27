@@ -707,7 +707,7 @@ export default {
         ignoreNoAvailableProviders: 'Ignore no available providers errors',
         ignoreNoAvailableProvidersHint: 'When enabled, "No available providers" errors will not be written to the error log (not recommended; usually a config issue).',
         ignoreInsufficientBalanceErrors: 'Ignore Insufficient Balance Errors',
-        ignoreInsufficientBalanceErrorsHint: 'When enabled, insufficient provider balance errors will not be written to the error log.',
+        ignoreInsufficientBalanceErrorsHint: 'When enabled, insufficient balance or quota errors will not be written to the error log.',
         autoRefresh: 'Auto Refresh',
         enableAutoRefresh: 'Enable auto refresh',
         enableAutoRefreshHint: 'Automatically refresh dashboard data at a fixed interval.',

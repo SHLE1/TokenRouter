@@ -182,7 +182,7 @@ backend/
 │   │   ├── anthropic/                                   Messages 报文、beta、签名和用量事件
 │   │   ├── bridge/                                      协议间转换、工具修复与流转换状态
 │   │   ├── gemini/                                      Gemini/Code Assist 报文、图片及签名处理
-│   │   ├── google/                                      Google 错误、OAuth、服务提供商和共享报文
+│   │   ├── google/                                      Google 错误、OAuth、服务账号和共享报文
 │   │   ├── grok/                                        Grok token 估算的协议常量
 │   │   ├── openai/                                      Responses、Chat、媒体、WS、Codex 与用量报文
 │   │   └── wirejson/                                    保持报文结构的 JSON 读取与修改
@@ -261,7 +261,7 @@ backend/
 │   │   ├── usagecontract/                               供应商用量查询的请求契约
 │   │   ├── usageprovider/                               Sub2API、New API、Zivv 等用量适配
 │   │   ├── usageview/                                   用量、额度、订阅档位和归一化校验
-│   │   ├── vertex/                                      Vertex 服务提供商、区域请求与批处理客户端
+│   │   ├── vertex/                                      Vertex 服务账号、区域请求与批处理客户端
 │   │   └── zhipu/                                       智谱模型及用量查询
 │   ├── usage/                                           用量记录、统计、仪表盘、聚合与清理
 │   │   ├── httpapi/                                     HTTP 路由、鉴权接入与输入输出适配

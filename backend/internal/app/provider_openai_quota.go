@@ -22,7 +22,7 @@ func provideOpenAIQuota(admin *provider.Admin, store *postgres.ProviderStore, pr
 		TaskOptions: provider.OpenAITaskOptions{
 			Read: store.GetByID,
 			Register: func(ctx context.Context, value *provider.Record) (string, error) {
-				return provideradapter.RegisterAgentIdentityTask(ctx, value, "https://auth.openai.com/api/providers")
+				return provideradapter.RegisterAgentIdentityTask(ctx, value, "https://auth.openai.com/api/accounts")
 			},
 			Persist: func(ctx context.Context, value *provider.Record, credentials map[string]any) error {
 				_, err := provider.PersistCredentials(ctx, store, value, credentials, slog.Warn)

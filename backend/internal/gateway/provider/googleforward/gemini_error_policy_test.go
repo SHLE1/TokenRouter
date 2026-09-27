@@ -492,7 +492,7 @@ func TestGeminiErrorPolicyIntegration(t *testing.T) {
 				require.Equal(t, 1, repo.setModelRateLimitedCalls)
 				require.Equal(t, tt.expectModelScope, repo.lastModelScope)
 				require.Zero(t, repo.setTempCalls)
-				require.Zero(t, repo.setRateLimitedCalls, "model temp rule must not be widened into an provider rate limit")
+				require.Zero(t, repo.setRateLimitedCalls, "model temp rule must not be widened into a provider rate limit")
 			}
 
 			if tt.expectShouldFailover {

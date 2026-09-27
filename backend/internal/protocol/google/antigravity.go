@@ -68,7 +68,7 @@ func (t *AntigravityTierInfo) UnmarshalJSON(data []byte) error {
 // AntigravityIneligibleTier 不符合条件的层级信息
 type AntigravityIneligibleTier struct {
 	Tier *AntigravityTierInfo `json:"tier,omitempty"`
-	// ReasonCode 不符合条件的原因代码，如 INELIGIBLE_PROVIDER
+	// ReasonCode 不符合条件的原因代码，如 INELIGIBLE_ACCOUNT
 	ReasonCode    string `json:"reasonCode,omitempty"`
 	ReasonMessage string `json:"reasonMessage,omitempty"`
 }

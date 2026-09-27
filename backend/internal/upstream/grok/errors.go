@@ -124,8 +124,8 @@ func IsGrokProviderAccessCode(value string) bool {
 func GrokProviderAccessMessage(value string) bool {
 	lower := strings.ToLower(strings.TrimSpace(value))
 	for _, phrase := range []string{
-		"provider suspended",
-		"provider has been suspended",
+		"account suspended",
+		"account has been suspended",
 		"account disabled",
 		"account has been disabled",
 		"user suspended",

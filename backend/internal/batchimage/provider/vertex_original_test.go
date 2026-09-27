@@ -246,7 +246,7 @@ func TestVertexProvider_ErrorsDoNotExposeServiceAccountSecrets(t *testing.T) {
 		"type":         "service_account",
 		"project_id":   "proj",
 		"private_key":  privateKey,
-		"client_email": "svc@proj.iam.gserviceprovider.com",
+		"client_email": "svc@proj.iam.gserviceaccount.com",
 	}
 	platform := newTestVertexProvider(&fakeVertexBatchClient{createErr: &batchimageprovider.VertexAPIError{StatusCode: 403, Message: "do not expose " + privateKey}}, &fakeVertexObjectStore{})
 
@@ -314,7 +314,7 @@ func vertexServiceAccount() *providercore.Record {
 				"type":         "service_account",
 				"project_id":   "proj",
 				"private_key":  "-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----\n",
-				"client_email": "svc@proj.iam.gserviceprovider.com",
+				"client_email": "svc@proj.iam.gserviceaccount.com",
 			},
 		},
 	}

@@ -18,7 +18,7 @@ func TestParseVertexServiceAccountKey(t *testing.T) {
 		"project_id": "vertex-proj",
 		"private_key_id": "kid",
 		"private_key": "-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----\n",
-		"client_email": "svc@vertex-proj.iam.gserviceprovider.com"
+		"client_email": "svc@vertex-proj.iam.gserviceaccount.com"
 	}`
 	provider := &providercore.Record{
 		Type:     capability.ProviderTypeServiceAccount,
@@ -30,7 +30,7 @@ func TestParseVertexServiceAccountKey(t *testing.T) {
 	key, err := ParseVertexServiceAccountKey(provider)
 	require.NoError(t, err)
 	require.Equal(t, "vertex-proj", key.ProjectID)
-	require.Equal(t, "svc@vertex-proj.iam.gserviceprovider.com", key.ClientEmail)
+	require.Equal(t, "svc@vertex-proj.iam.gserviceaccount.com", key.ClientEmail)
 	require.Equal(t, vertex.DefaultTokenURL, key.TokenURI)
 	require.True(t, strings.Contains(key.PrivateKey, "BEGIN PRIVATE KEY"))
 }

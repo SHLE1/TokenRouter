@@ -132,7 +132,7 @@ func GenerateImages(ctx context.Context, request wire.ImageGenerateRequest, opti
 	projectID := strings.TrimSpace(options.ProjectID)
 	switch {
 	case options.Mode == ServiceAccountCredential:
-		// Vertex 服务提供商：{location}-aiplatform.../v1/projects/.../models/{model}:generateContent + Bearer。
+		// Vertex 服务账号：{location}-aiplatform.../v1/projects/.../models/{model}:generateContent + Bearer。
 		targetURL, err = options.VertexURL()
 		if err != nil {
 			return nil, options.Invalid("build vertex gemini url: %s", err.Error())

@@ -108,7 +108,7 @@ describe('OllamaCloudUsageCell', () => {
     expect(wrapper.text()).not.toContain('gpt-oss:120b-cloud')
   })
 
-  it('reacts to an provider snapshot update', async () => {
+  it('reacts to a provider snapshot update', async () => {
     const wrapper = mount(OllamaCloudUsageCell, { props: { provider: provider() } })
     const next = usageState()
     next.snapshot!.data!.five_hour!.used_percent = 43

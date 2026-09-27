@@ -44,7 +44,7 @@ func OpenAIAuthorizationOptions(deps *OpenAIAuthorizationDependencies) provider.
 	privacy := func() openai.PrivacyClient {
 		endpoints := deps.PrivacyEndpoints
 		if endpoints.Settings == "" {
-			endpoints.Settings = "https://chatgpt.com/backend-api/settings/provider_user_setting"
+			endpoints.Settings = "https://chatgpt.com/backend-api/settings/account_user_setting"
 		}
 		if endpoints.Providers == "" {
 			endpoints.Providers = "https://chatgpt.com/backend-api/accounts/check/v4-2023-04-27"
@@ -94,7 +94,7 @@ func OpenAIAuthorizationOptions(deps *OpenAIAuthorizationDependencies) provider.
 		ValidatePAT: func(ctx context.Context, token, proxy string) (*provider.OpenAITokenInfo, error) {
 			endpoint := deps.WhoamiURL
 			if endpoint == "" {
-				endpoint = "https://auth.openai.com/api/providers/v1/user-auth-credential/whoami"
+				endpoint = "https://auth.openai.com/api/accounts/v1/user-auth-credential/whoami"
 			}
 			result, err := openai.ValidatePersonalAccessToken(ctx, token, proxy, endpoint)
 			if err != nil {

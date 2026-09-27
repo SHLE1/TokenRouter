@@ -12,7 +12,7 @@ import (
 )
 
 func TestBuildQuotaDims_AllDimensionsReturned(t *testing.T) {
-	// Use an provider with quota notify config across all 3 dimensions.
+	// 使用在三个维度均配置额度通知的提供商。
 	a := &provider.Record{
 		Platform: capability.PlatformAnthropic,
 		Type:     capability.ProviderTypeAPIKey,

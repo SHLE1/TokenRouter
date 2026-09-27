@@ -469,7 +469,7 @@ export default {
       rateLimitCleared: '速率限制已清除',
       setupToken: 'Setup Token',
       apiKey: 'API Key',
-      serviceAccount: '服务提供商',
+      serviceAccount: '服务账号',
       deleteConfirm: "确定要删除提供商 '{name}' 吗？此操作无法撤销。",
       failedToClearRateLimit: '清除速率限制失败',
       platforms: {
@@ -488,7 +488,7 @@ export default {
         providerMode: {
           title: '提供商类型',
           payg: '按量付费',
-          paygDesc: '消耗账户余额，按 Token 计费。余额不足自动冷却，充值后恢复。',
+          paygDesc: '使用上游账户余额，按 Token 计费。余额不足自动冷却，充值后恢复。',
           coding: 'Coding Plan',
           codingDesc: '订阅制编程套餐，按 5 小时 / 每周滚动用量窗口限流。',
         },

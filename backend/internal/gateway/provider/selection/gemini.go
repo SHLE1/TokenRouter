@@ -390,14 +390,10 @@ func (s *Gemini) HasAntigravityProviders(ctx context.Context, groupID *int64) (b
 	return len(providers) > 0, nil
 }
 
-// SelectProviderForAIStudioEndpoints selects an provider that is likely to succeed against
-// generativelanguage.googleapis.com (e.g. GET /v1beta/models).
-//
-// Preference order:
-// 1) API key providers (AI Studio)
-// 2) OAuth providers without project_id (AI Studio OAuth)
-// 3) OAuth providers explicitly marked as ai_studio
-// 4) Any remaining Gemini providers (fallback)
+// SelectProviderForAIStudioEndpoints 为 generativelanguage.googleapis.com
+// （如 GET /v1beta/models）选择适合的提供商。
+// 优先使用 AI Studio API Key，然后依次尝试无 project_id 的 OAuth、
+// 显式标记 ai_studio 的 OAuth 和其余 Gemini 提供商。
 func (s *Gemini) SelectProviderForAIStudioEndpoints(ctx context.Context, groupID *int64) (*gatewayprovider.ExecutionProvider, error) {
 	var read func(context.Context, int64) (*routing.Group, error)
 	if s.groupRepo != nil {

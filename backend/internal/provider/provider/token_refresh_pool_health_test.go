@@ -797,7 +797,7 @@ func TestTokenRefreshService_GenericGrokForbiddenContainsCycleWithoutProviderMut
 
 	_, _, setErrorCalls, setTempUnschedCalls := repo.snapshot()
 	require.Equal(t, int64(1), refresher.calls.Load(), "an ambiguous Grok 403 must contain the provider immediately")
-	require.Zero(t, setErrorCalls, "a generic 403 is not evidence that an provider credential is permanently invalid")
+	require.Zero(t, setErrorCalls, "a generic 403 is not evidence that a provider credential is permanently invalid")
 	require.Zero(t, setTempUnschedCalls, "provider containment must not mutate provider scheduling state")
 }
 
@@ -817,7 +817,7 @@ func TestTokenRefreshService_ExplicitGrokEntitlementDenialIsPermanent(t *testing
 
 	_, _, setErrorCalls, setTempUnschedCalls := repo.snapshot()
 	require.Equal(t, int64(1), refresher.calls.Load())
-	require.Equal(t, 1, setErrorCalls, "explicit entitlement evidence is an provider-permanent failure")
+	require.Equal(t, 1, setErrorCalls, "explicit entitlement evidence is a provider-permanent failure")
 	require.Zero(t, setTempUnschedCalls)
 }
 

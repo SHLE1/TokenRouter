@@ -79,13 +79,13 @@ func TestIsGrokContentPolicyRejection(t *testing.T) {
 		{
 			name:   "provider policy suspension is not request policy",
 			status: http.StatusForbidden,
-			body:   `{"error":{"message":"provider suspended due to policy violation"}}`,
+			body:   `{"error":{"message":"account suspended due to policy violation"}}`,
 			want:   false,
 		},
 		{
 			name:   "structured provider suspension overrides policy reason",
 			status: http.StatusForbidden,
-			body:   `{"error":{"code":"account_suspended","reason":"policy_violation","message":"provider suspended due to policy violation"}}`,
+			body:   `{"error":{"code":"account_suspended","reason":"policy_violation","message":"account suspended due to policy violation"}}`,
 			want:   false,
 		},
 		{

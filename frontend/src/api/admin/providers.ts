@@ -801,7 +801,7 @@ export async function setSchedulable(id: number, schedulable: boolean): Promise<
 }
 
 /**
- * Get available models for an provider
+ * 获取提供商可用的模型。
  * @param id - Provider ID
  * @returns List of available models for this provider
  */

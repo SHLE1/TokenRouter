@@ -273,7 +273,7 @@ func (s *AuthService) VerifyCaptcha(ctx context.Context, proof CaptchaProof, rem
 
 	providerConfig, err := s.Settings.GetCaptchaProviderConfig(ctx)
 	if err != nil {
-		s.Observer.Printf("service.auth", "%s", "[Auth] Failed to read captcha provider settings")
+		s.Observer.Printf("service.auth", "%s", "[Auth] Failed to read captchan provider settings")
 		return ErrServiceUnavailable
 	}
 	turnstileEnabled := providerConfig.TurnstileEnabled
@@ -326,7 +326,7 @@ func (s *AuthService) VerifyActionCaptchaIfEnabled(ctx context.Context, proof Ca
 
 	providerConfig, err := s.Settings.GetCaptchaProviderConfig(ctx)
 	if err != nil {
-		s.Observer.Printf("service.auth", "%s", "[Auth] Failed to read captcha provider settings")
+		s.Observer.Printf("service.auth", "%s", "[Auth] Failed to read captchan provider settings")
 		return ErrServiceUnavailable
 	}
 	tencentEnabled := providerConfig.Tencent.Enabled
@@ -425,7 +425,7 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (string
 // - 如果邮箱已存在：直接登录（不需要本地密码）
 // - 如果邮箱不存在：创建新用户并登录
 //
-// 注意：该函数用于 LinuxDo OAuth 登录场景（不同于上游账号的 OAuth，例如 Claude/OpenAI/Gemini）。
+// 该函数处理 LinuxDo 用户登录；Claude、OpenAI、Gemini 等上游提供商的 OAuth 由提供商模块负责。
 // 为了满足现有数据库约束（需要密码哈希），新用户会生成随机密码并进行哈希保存。
 func (s *AuthService) LoginOrRegisterOAuth(ctx context.Context, email, username string) (string, *User, error) {
 	email = strings.TrimSpace(email)

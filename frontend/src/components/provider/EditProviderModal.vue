@@ -3538,7 +3538,7 @@ const syncFormFromProvider = (newProvider: Provider | null) => {
     editVertexClientEmail.value = (credentials.client_email as string) || ''
     editVertexLocation.value = (credentials.location as string) || (credentials.vertex_location as string) || 'us-central1'
 
-    // 服务提供商也分别回显请求映射与最终白名单。
+    // 服务账号也分别回显请求映射与最终白名单。
     hydrateModelRestrictionFromMapping(credentials.model_mapping as Record<string, string> | undefined, credentials.model_whitelist)
 
   } else {

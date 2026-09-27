@@ -9,7 +9,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 )
 
-// PricingMigrationPreview 返回可复核的变价与冲突；不包含账号凭据或 Key 字符串。
+// PricingMigrationPreview 返回可复核的变价与冲突；不包含提供商凭据或 Key 字符串。
 type PricingMigrationPreview struct {
 	Scopes        []PricingMigrationScope `json:"scopes"`
 	UnboundKeyIDs []int64                 `json:"unbound_key_ids"`

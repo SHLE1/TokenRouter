@@ -97,7 +97,7 @@ services:
       - REDIS_ENABLE_TLS=${REDIS_ENABLE_TLS:-false}
 
       # =======================================================================
-      # Admin Provider (auto-created on first run)
+      # 管理员账户（首次运行时自动创建）
       # =======================================================================
       - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@sub2api.local}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}

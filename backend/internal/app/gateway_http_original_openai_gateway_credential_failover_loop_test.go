@@ -526,7 +526,7 @@ func TestResponsesCredentialFailoverLoop(t *testing.T) {
 		require.Zero(t, h.Input.Choices.SnapshotOpenAIProviderSchedulerMetrics().RuntimeStatsProviderCount)
 	})
 
-	t.Run("pre-cancelled request never invokes an provider selector", func(t *testing.T) {
+	t.Run("pre-cancelled request never invokes a provider selector", func(t *testing.T) {
 		tests := []struct {
 			name   string
 			method string

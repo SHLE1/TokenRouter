@@ -19,11 +19,11 @@ const (
 	// CloudflareInsightsDomain is the domain for Cloudflare Web Analytics
 	CloudflareInsightsDomain = "https://static.cloudflareinsights.com"
 	// GoogleIdentityScriptURL 是 Google Identity Services 官方脚本地址。
-	GoogleIdentityScriptURL = "https://providers.google.com/gsi/client"
+	GoogleIdentityScriptURL = "https://accounts.google.com/gsi/client"
 	// GoogleIdentityResourceURL 是 One Tap iframe 与网络请求使用的路径来源。
-	GoogleIdentityResourceURL = "https://providers.google.com/gsi/"
+	GoogleIdentityResourceURL = "https://accounts.google.com/gsi/"
 	// GoogleIdentityStyleURL 是 One Tap 浏览器界面使用的官方样式地址。
-	GoogleIdentityStyleURL = "https://providers.google.com/gsi/style"
+	GoogleIdentityStyleURL = "https://accounts.google.com/gsi/style"
 	// TencentCaptchaDomain 是腾讯验证码 2.0 中国站 Web SDK 域名。
 	TencentCaptchaDomain = "https://turing.captcha.qcloud.com"
 	// TencentCaptchaStaticDomain 是腾讯验证码静态资源域名。

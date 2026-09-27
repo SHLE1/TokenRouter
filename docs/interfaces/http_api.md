@@ -49,7 +49,7 @@ RequestLogger
 | --- | --- | --- |
 | `/health`、`/setup/status` | 无 | `server/common.go`；进程健康与正常模式 setup 状态 |
 | `/api/event_logging/batch` | 无 | Claude Code 遥测兼容空接收，固定返回成功 |
-| `/api/v1/auth/*` | 大多公开，提供商管理子流程按路由加 JWT/短期状态 | `app/http_routes_auth.go`；注册、登录、刷新、密码恢复、OAuth、Passkey 登录和身份完成 |
+| `/api/v1/auth/*` | 大多公开，账户管理子流程按路由加 JWT/短期状态 | `app/http_routes_auth.go`；注册、登录、刷新、密码恢复、OAuth、Passkey 登录和身份完成 |
 | `/api/v1/user/*`、`/keys`、`/team`、`/groups`、`/subscriptions`、`/redeem` 等 | 用户 JWT | `app/http_routes_user.go`；用户面板资源、团队、Key、用量和权益自省 |
 | `/api/v1/admin/*` | 管理员 JWT 或受限管理密钥；部分操作另需 step-up | `app/http_routes_admin.go`；用户、分组、提供商、价格配置、设置、运维、备份、支付和安全管理 |
 | `/api/v1/payment/*` | 用户 JWT | `app/http_routes_payment.go`；配置/套餐读取、下单、查单、取消、invoice 和退款申请 |
@@ -159,7 +159,7 @@ POST /api/v1/creative/runs/{id}/outputs/{index}/ack
 
 提供商批量删除使用 `POST /api/v1/admin/providers/batch-delete`，请求体为 `provider_ids`。服务端先去除非正数和重复 ID，再以最多 5 路并发执行删除；同批选择父提供商及其影子提供商时只删除根提供商一次，并将级联影响映射回逐提供商结果。响应返回稳定排序的 `success_ids`、`failed_ids` 和错误明细，单项失败不会取消其它提供商。管理端“全选筛选结果”先以同一筛选快照分页读取轻量 ID，任何分页缺失或重复都保留原选择，不得提交部分集合。
 
-管理员账号连接测试使用 `POST /api/v1/admin/providers/:id/test`，响应为 SSE。请求体可包含 `model_id`、`prompt`、OpenAI 专用的 `mode`、API Key 文字测试的 `protocol=responses|chat_completions`，以及 `test_type`（`text` 或 `image`）；历史客户端也可用 `test_mode` 作为类型字段别名。管理端必须显式发送 `test_type`：普通 `text` 始终走文字测试路径并使用自定义提示词，`image` 始终走图片测试路径并使用自定义提示词；OpenAI 的 `compact` 与 `legacy_compact` 是固定载荷的连接测试，不使用自定义提示词且不会改写提供商能力开关。
+管理员对提供商的连接测试使用 `POST /api/v1/admin/providers/:id/test`，响应为 SSE。请求体可包含 `model_id`、`prompt`、OpenAI 专用的 `mode`、API Key 文字测试的 `protocol=responses|chat_completions`，以及 `test_type`（`text` 或 `image`）；历史客户端也可用 `test_mode` 作为类型字段别名。管理端必须显式发送 `test_type`：普通 `text` 始终走文字测试路径并使用自定义提示词，`image` 始终走图片测试路径并使用自定义提示词；OpenAI 的 `compact` 与 `legacy_compact` 是固定载荷的连接测试，不使用自定义提示词且不会改写提供商能力开关。
 
 成功与失败均不返回或持久化能力探测状态，但测试仍按现有流程记录认证错误、限流和额度观测。服务端只对未携带该字段的旧调用保留按模型名兼容判断。图片测试结果以 SSE `image` 事件返回，文字结果以 `content` 事件返回；不具备对应平台图片端点的提供商返回流式错误事件。
 
@@ -228,7 +228,7 @@ Group 不再返回 `platform` 或 `is_default`；使用 `allowed_protocols`、`p
 
 ## API Key 上游用量查询
 
-管理员账号列表提供两个手动、展示型接口：
+管理员的提供商列表提供两个手动、展示型接口：
 
 - `POST /api/v1/admin/providers/:id/upstream-usage/query`
 - `POST /api/v1/admin/providers/upstream-usage/query/batch`，请求体 `provider_ids` 最多 100 个正整数。
